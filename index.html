@@ -1599,6 +1599,13 @@ async function doLogin(){
       const client=DB.clients[clientIdx];
       const ok=await verifyClientPass(client,p);
       if(ok){
+        // Bloquear si suspendido o vencido
+        if(!MS.canLogin(client)){
+          const st=MS.getStatus(client);
+          err.textContent=st==='inactive'?'Tu cuenta está suspendida. Habla con tu coach para reactivarla.':'Tu membresía está vencida. Habla con tu coach para renovar.';
+          err.classList.add('on');
+          return;
+        }
         // Migrate to SHA-256 on first successful login
         if(!isHashed(client.password)){
           DB.clients[clientIdx].password=await hashClientPass(p,client.id);
@@ -2086,6 +2093,21 @@ syncFromCloud().then(()=>{
   initPWA();
   // ── Auto-login: restaurar sesión guardada ──
   tryAutoLogin();
+  // ── Back button: evitar que el gesto/botón físico cierre la app ──
+  history.pushState({apex:true},'');
+  window.addEventListener('popstate',function(){
+    history.pushState({apex:true},'');
+    const gm=document.getElementById('guided-mode');
+    if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return;}
+    const modal=document.querySelector('.mdbg.on');
+    if(modal){modal.classList.remove('on');return;}
+    const detail=document.getElementById('p-detail');
+    if(detail&&detail.classList.contains('on')){
+      gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');
+      const navItems=document.querySelectorAll('.cbnav-item');
+      if(navItems[1])setBottomNav(navItems[1]);
+    }
+  });
 });
 
 async function tryAutoLogin(){
@@ -2103,6 +2125,15 @@ async function tryAutoLogin(){
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
+        // Bloquear auto-login si suspendido o vencido
+        if(!MS.canLogin(client)){
+          localStorage.removeItem('ax_session');
+          const st=MS.getStatus(client);
+          const errEl=document.getElementById('lerr');
+          if(errEl){errEl.textContent=st==='inactive'?'Tu cuenta está suspendida. Habla con tu coach para reactivarla.':'Tu membresía está vencida. Habla con tu coach para renovar.';errEl.classList.add('on');}
+          const uEl=document.getElementById('lu');if(uEl)uEl.focus();
+          return;
+        }
         showScreen('s-client');
         CUR.loggedAs = 'client';
         CUR.clientId = client.id;
