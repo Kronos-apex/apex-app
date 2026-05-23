@@ -1052,7 +1052,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </div>
 
 <!-- Banner instalación PWA -->
-<div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#1B4332;color:white;border-radius:14px;padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
+<div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#1B4332;color:white;border-radius:14px;padding:12px 20px;display:none;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
   <span style="font-size:22px">💪</span>
   <div style="flex:1"><div style="font-size:13px;font-weight:700">Instala APEX</div><div style="font-size:11px;opacity:.75">Accede sin navegador, como una app real</div></div>
   <button onclick="window._apexInstall&&window._apexInstall()" style="background:#52B788;border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
@@ -2932,12 +2932,11 @@ function initClientView(client){
   document.getElementById('rest-banner').classList.add('hide');
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
   renderClientProfile(client);renderClientToday(client);renderClientAllRoutines(client);renderClientMsgs(client.id);renderClientHistory(client.id);updateMsgBadge(client.id);
-  // Show onboarding on first login
-  if(shouldShowOnboarding(client.id)){
-    setTimeout(()=>showOnboarding(client.id), 400);
-    // data wizard will be triggered from obFinish() after educational onboarding
-  } else if(shouldShowDataOnboarding(client.id)){
+  // Show onboarding on first login — data wizard first, educational after
+  if(shouldShowDataOnboarding(client.id)){
     setTimeout(()=>showDataOnboarding(client.id), 400);
+  } else if(shouldShowOnboarding(client.id)){
+    setTimeout(()=>showOnboarding(client.id), 400);
   }
 }
 
@@ -4190,6 +4189,8 @@ self.addEventListener('notificationclick',e=>{
     || window.navigator.standalone === true;
   if(isStandalone){
     localStorage.setItem(PWA_INSTALLED_KEY,'1');
+    const b=document.getElementById('install-banner');
+    if(b)b.style.display='none';
   }
 
   window.addEventListener('beforeinstallprompt',e=>{
@@ -4208,7 +4209,15 @@ self.addEventListener('notificationclick',e=>{
     toast('✅ ¡APEX instalada! Ya puedes abrirla desde tu pantalla de inicio.');
   });
   window._apexInstall=async()=>{
-    if(!deferredPrompt)return;
+    if(!deferredPrompt){
+      const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+      if(isIOS){
+        toast('En iPhone: toca Compartir → "Añadir a pantalla de inicio"');
+      } else {
+        toast('Usa el menú de tu navegador → "Instalar aplicación"');
+      }
+      return;
+    }
     deferredPrompt.prompt();
     const{outcome}=await deferredPrompt.userChoice;
     if(outcome==='accepted'){
@@ -4734,8 +4743,10 @@ function _dobFinish(){
     localStorage.setItem('apex_ob_data_done_' + _dobClientId, '1');
   }
   _dobPhotoFile = null;
-  // Show first-exercise tooltip if educational onboarding is already done
-  if(_dobClientId && localStorage.getItem(OB_KEY + '_' + _dobClientId)){
+  // After data wizard: show educational onboarding if not yet seen, otherwise show tooltip
+  if(_dobClientId && shouldShowOnboarding(_dobClientId)){
+    setTimeout(()=>showOnboarding(_dobClientId), 600);
+  } else if(_dobClientId && localStorage.getItem(OB_KEY + '_' + _dobClientId)){
     setTimeout(() => {
       _obClientId = _dobClientId;
       showExTooltip();
