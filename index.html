@@ -650,19 +650,22 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div><div class="ptitle" id="greeting">Buenos días 👋</div><div class="psub">Resumen de tu panel</div></div>
         <button class="btn bp" onclick="openAddClient()">+ Nuevo asesorado</button>
       </div>
+      <!-- Stats de negocio -->
       <div class="g4" style="margin-bottom:16px">
-        <div class="sm"><div class="smv" style="color:var(--g)" id="h-tot">0</div><div class="sml">Asesorados</div></div>
-        <div class="sm"><div class="smv" style="color:var(--or)" id="h-rut">0</div><div class="sml">Rutinas creadas</div></div>
-        <div class="sm"><div class="smv" style="color:var(--bl)" id="h-msg">0</div><div class="sml">Mensajes totales</div></div>
-        <div class="sm"><div class="smv" style="color:var(--yl)" id="h-exs">0</div><div class="sml">Ejercicios</div></div>
+        <div class="sm"><div class="smv" style="color:var(--g)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div></div>
+        <div class="sm"><div class="smv" style="color:var(--bl)" id="h-actv">0</div><div class="sml">Activos</div></div>
+        <div class="sm"><div class="smv" style="color:var(--or)" id="h-sess">0</div><div class="sml">Sesiones semana</div></div>
+        <div class="sm"><div class="smv" style="color:var(--rd)" id="h-venc">0</div><div class="sml">Por vencer</div></div>
       </div>
+      <!-- Retención semanal -->
+      <div class="card" style="margin-bottom:13px" id="h-retention-card">
+        <div class="ch"><div class="ctitle">📊 Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
+        <div id="h-ret-bars" style="padding:4px 12px 12px"></div>
+      </div>
+      <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
-        <div class="ch"><div class="ctitle">Asesorados recientes</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
+        <div class="ch"><div class="ctitle">⚡ Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
         <div style="padding:8px 10px" id="h-list"></div>
-      </div>
-      <div style="background:linear-gradient(135deg,#D8F3DC,#B7E4C7);border:1px solid var(--g2)55;border-radius:var(--rlg);padding:16px 18px;display:flex;align-items:center;gap:13px">
-        <span style="font-size:26px">💡</span>
-        <div><div style="font-size:13px;font-weight:700;color:var(--gt);margin-bottom:3px">Cómo funciona</div><div style="font-size:12px;color:var(--g);line-height:1.6">Añade asesorados con su email y contraseña → crea rutinas personalizadas → déjales mensajes. Cada asesorado entra con sus datos y ve solo su información.</div></div>
       </div>
     </div>
 
@@ -2140,19 +2143,106 @@ function setBottomNav(el){
 
 // ══════════════════════ HOME ══════════════════════
 function renderHome(){
-  document.getElementById('h-tot').textContent=DB.clients.length;
-  let r=0;DB.clients.forEach(c=>r+=(c.routines||[]).length);
-  document.getElementById('h-rut').textContent=r;
-  let m=0;Object.values(DB.msgs).forEach(ms=>m+=ms.length);
-  document.getElementById('h-msg').textContent=m;
-  document.getElementById('h-exs').textContent=DB.exercises.length;
+  const now=new Date();
+  const y=now.getFullYear(), mo=now.getMonth();
+  const weekAgo=new Date(Date.now()-7*24*60*60*1000);
+
+  // ── Ingresos del mes ──
+  let ingr=0;
+  DB.clients.forEach(c=>{
+    (c.payments||[]).forEach(p=>{
+      const d=new Date(p.date);
+      if(d.getFullYear()===y&&d.getMonth()===mo) ingr+=(parseFloat(p.amount)||0);
+    });
+  });
+  document.getElementById('h-ingr').textContent='$'+ingr.toLocaleString('es-CO');
+
+  // ── Activos ──
+  const activos=DB.clients.filter(c=>{ const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
+  document.getElementById('h-actv').textContent=activos;
+
+  // ── Sesiones esta semana ──
+  let sesiones=0;
+  Object.values(DB.history||{}).forEach(arr=>{
+    (arr||[]).forEach(s=>{ if(new Date(s.date)>=weekAgo) sesiones++; });
+  });
+  document.getElementById('h-sess').textContent=sesiones;
+
+  // ── Por vencer (próximos 7 días) ──
+  const porVencer=DB.clients.filter(c=>MS.getStatus(c)==='expiring').length;
+  document.getElementById('h-venc').textContent=porVencer;
+
+  // ── Retención semanal (barras SVG por día) ──
+  const retCard=document.getElementById('h-retention-card');
+  const retBars=document.getElementById('h-ret-bars');
+  const retLbl=document.getElementById('h-ret-label');
+  if(retCard&&retBars){
+    const days=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const counts=Array(7).fill(0);
+    Object.values(DB.history||{}).forEach(arr=>{
+      (arr||[]).forEach(s=>{
+        const d=new Date(s.date);
+        if(d>=weekAgo){ const dayIdx=d.getDay(); counts[dayIdx]++; }
+      });
+    });
+    const maxC=Math.max(...counts,1);
+    // Ordenar desde hace 6 días hasta hoy
+    const todayIdx=now.getDay();
+    const ordered=Array.from({length:7},(_,i)=>{
+      const di=(todayIdx-6+i+7)%7;
+      return {label:days[di],count:counts[di]};
+    });
+    const totalEnt=DB.clients.filter(c=>{
+      const arr=DB.history[c.id]||[];
+      return arr.some(s=>new Date(s.date)>=weekAgo);
+    }).length;
+    const ret=DB.clients.length?Math.round(totalEnt/DB.clients.length*100):0;
+    if(retLbl) retLbl.textContent=`${ret}% entrenaron esta semana`;
+    retBars.innerHTML=`<div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
+      ordered.map(o=>{
+        const h=Math.max(4,Math.round(o.count/maxC*52));
+        const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font-size:9px;color:var(--t2)">${o.count||''}</div>
+          <div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0;transition:height .3s"></div>
+          <div style="font-size:9px;color:var(--t3)">${o.label}</div>
+        </div>`;
+      }).join('')
+    }</div>`;
+    retCard.style.display=DB.clients.length?'':'none';
+  }
+
+  // ── Prioritarios: vencidos y por vencer primero ──
   const list=document.getElementById('h-list');
-  if(!DB.clients.length){list.innerHTML='<div class="empty"><div class="eico">👥</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';return}
+  if(!DB.clients.length){
+    list.innerHTML='<div class="empty"><div class="eico">👥</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';
+    return;
+  }
+  const sorted=[...DB.clients].sort((a,b)=>{
+    const order={'overdue':0,'expiring':1,'pending':2,'active':3,'inactive':4,'suspended':5};
+    return (order[MS.getStatus(a)]??9)-(order[MS.getStatus(b)]??9);
+  });
   list.innerHTML='';
-  DB.clients.slice(-4).reverse().forEach(c=>{
+  sorted.slice(0,5).forEach(c=>{
+    const st=MS.getStatus(c);
+    const badge=MS.badge(st);
+    const sessions=(DB.history&&DB.history[c.id])||[];
+    const lastS=sessions[0];
+    let trainStr='';
+    if(lastS){
+      const dd=Math.floor((Date.now()-new Date(lastS.date))/(86400000));
+      const col=dd===0?'var(--g)':dd<=2?'var(--bl)':dd<=5?'var(--or)':'var(--rd)';
+      trainStr=`<span style="color:${col};font-size:11px">🏋️ ${dd===0?'Hoy':dd===1?'Ayer':'Hace '+dd+'d'}</span>`;
+    }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} </div></div><div style="font-size:12px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>`;
-    d.onclick=()=>openDetail(c.id);list.appendChild(d);
+    d.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div>
+      <div style="flex:1;min-width:0">
+        <div class="cn">${esc(c.name)}</div>
+        <div class="cm">${esc(c.goal||'')} · ${trainStr||'<span style="color:var(--t3);font-size:11px">Sin sesiones</span>'}</div>
+      </div>
+      <span style="background:${badge.bg};color:${badge.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap">${badge.label}</span>`;
+    d.onclick=()=>openDetail(c.id);
+    list.appendChild(d);
   });
 }
 
