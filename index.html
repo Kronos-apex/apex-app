@@ -882,7 +882,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
       <!-- Plan nutricional cliente -->
       <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button></div>
+        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button><button class="btn bo bsm" onclick="exportNutImage()">📸 Imagen</button></div></div>
         <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
       </div>
       <!-- Medidas corporales cliente -->
@@ -4059,6 +4059,80 @@ function shareNutWhatsapp(){
   if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
   msg+=`\n_Plan generado por APEX 💪_`;
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+function exportNutImage(){
+  const nut=(DB.nutrition||{})[CUR.clientId];
+  if(!nut||(!nut.kcal&&!nut.plan)){toast('Sin plan nutricional para exportar');return;}
+  const cl=DB.clients.find(x=>x.id===CUR.clientId);
+  const nombre=cl?cl.name:'';
+  const W=800,PAD=40;
+  // Construir líneas de contenido
+  const lines=[];
+  if(nut.kcal) lines.push({text:`🔥 Calorías: ${nut.kcal} kcal/día`,size:22,bold:true,color:'#2D6A4F'});
+  if(nut.water) lines.push({text:`💧 Agua: ${nut.water} vasos/día`,size:18,color:'#457B9D'});
+  if(nut.meals) lines.push({text:`🍽️ Comidas: ${nut.meals} al día`,size:18,color:'#555'});
+  if(nut.prot||nut.carbs||nut.fat){
+    lines.push({text:'',size:8});
+    lines.push({text:'MACROS POR DÍA',size:13,bold:true,color:'#999',upper:true});
+    if(nut.prot) lines.push({text:`Proteína: ${nut.prot}g · ${nut.prot*4} kcal`,size:17,color:'#457B9D'});
+    if(nut.carbs) lines.push({text:`Carbohidratos: ${nut.carbs}g · ${nut.carbs*4} kcal`,size:17,color:'#7a5c00'});
+    if(nut.fat) lines.push({text:`Grasas: ${nut.fat}g · ${nut.fat*9} kcal`,size:17,color:'#E76F51'});
+  }
+  if(nut.examples){
+    lines.push({text:'',size:8});
+    lines.push({text:'EJEMPLOS DE COMIDAS',size:13,bold:true,color:'#999'});
+    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>lines.push({text:l.trim(),size:16,color:'#333',indent:true}));
+  }
+  if(nut.plan){
+    lines.push({text:'',size:8});
+    lines.push({text:'NOTAS DEL COACH',size:13,bold:true,color:'#999'});
+    nut.plan.split('\n').filter(l=>l.trim()).forEach(l=>lines.push({text:l.trim(),size:15,color:'#444',indent:true}));
+  }
+  if(nut.avoid){
+    lines.push({text:'',size:8});
+    lines.push({text:`⚠️ Evitar: ${nut.avoid}`,size:15,color:'#E63946'});
+  }
+  // Calcular altura total
+  const HEADER_H=110;
+  let totalH=HEADER_H+PAD;
+  lines.forEach(l=>totalH+=((l.size||16)+10));
+  totalH+=60; // footer
+  const canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=Math.max(totalH,400);
+  const ctx=canvas.getContext('2d');
+  // Fondo
+  ctx.fillStyle='#F4F4F0'; ctx.fillRect(0,0,W,canvas.height);
+  // Header
+  ctx.fillStyle='#2D6A4F'; ctx.fillRect(0,0,W,HEADER_H);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 28px system-ui,sans-serif';
+  ctx.fillText('🥗 Mi Plan Nutricional',PAD,46);
+  ctx.font='18px system-ui,sans-serif';
+  ctx.fillText(nombre,PAD,78);
+  ctx.font='13px system-ui,sans-serif'; ctx.fillStyle='rgba(255,255,255,.7)';
+  ctx.fillText(new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}),PAD,100);
+  // Contenido
+  let y=HEADER_H+PAD+10;
+  lines.forEach(l=>{
+    const sz=l.size||16;
+    ctx.font=(l.bold?'bold ':'')+sz+'px system-ui,sans-serif';
+    ctx.fillStyle=l.color||'#1A1A1A';
+    ctx.fillText((l.indent?'  ':'')+l.text, PAD+(l.indent?16:0), y);
+    y+=sz+10;
+  });
+  // Footer
+  ctx.fillStyle='#2D6A4F';
+  ctx.fillRect(0,canvas.height-40,W,40);
+  ctx.fillStyle='rgba(255,255,255,.8)';
+  ctx.font='13px system-ui,sans-serif';
+  ctx.fillText('Generado por APEX · Tu plataforma de entrenamiento personal',PAD,canvas.height-14);
+  // Descargar
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download=`plan-nutricional-${(nombre||'apex').toLowerCase().replace(/\s+/g,'-')}.png`;
+  a.click();
+  toast('📸 Imagen guardada');
 }
 
 // ══════════════ MEDIDAS CORPORALES ══════════════
