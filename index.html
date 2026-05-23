@@ -1554,7 +1554,10 @@ async function doLogin(){
         initCoach();
         setTimeout(()=>{
           requestNotifPermission().then(perm=>{
-            if(perm==='granted') subscribePush('_coach');
+            if(perm==='granted'){
+              subscribePush('_coach');
+              restoreNotifications();
+            }
           });
         },2000);
         if(p==='1234')setTimeout(()=>toast('🔒 Tip: cambia tu contraseña en ⚙️ Configuración'),800);
@@ -3669,7 +3672,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 
 // INIT filter buttons
 buildFilterBtns('exf',exFilter);
-restoreNotifications();
+// restoreNotifications() se llama después del login del coach, una vez confirmados los permisos
 
 // ══════════════ PLAN NUTRICIONAL ══════════════
 
@@ -3980,18 +3983,20 @@ function openNotifModal(){
   });
   renderScheduledNotifs();
   om('m-notif');
-  // Pedir permiso de notificaciones
-  if('Notification' in window && Notification.permission==='default'){
-    Notification.requestPermission().then(p=>{
-      const st=document.getElementById('notif-status');
-      if(st)st.textContent=p==='granted'?'✅ Notificaciones activadas':'⚠️ Permiso denegado — actívalas en ajustes del navegador';
-    });
+  // Renderizar estado actual de permisos de notificación
+  const st=document.getElementById('notif-status');
+  if(!('Notification' in window)){
+    if(st){st.textContent='Este navegador no soporta notificaciones push.';st.style.color='var(--rd)';}
   } else if(Notification.permission==='granted'){
-    const st=document.getElementById('notif-status');
-    if(st)st.textContent='✅ Notificaciones activadas';
+    if(st){st.innerHTML='<span style="color:var(--g);font-weight:600">Notificaciones activas</span> — los pushes llegarán a los asesorados.';st.style.color='';}
+  } else if(Notification.permission==='denied'){
+    if(st){st.innerHTML='<span style="color:var(--rd);font-weight:600">Permiso denegado.</span> Activa las notificaciones en la configuracion del navegador y recarga la app.';st.style.color='';}
   } else {
-    const st=document.getElementById('notif-status');
-    if(st)st.textContent='⚠️ Permiso denegado — actívalas en ajustes del navegador';
+    // permission === 'default': todavía no se ha pedido o no se ha decidido
+    if(st){
+      st.innerHTML='<button class="btn bp bsm" style="font-size:12px;padding:5px 12px" onclick="Notification.requestPermission().then(p=>{ const s=document.getElementById(\'notif-status\'); if(p===\'granted\'){s.innerHTML=\'<span style=\\"color:var(--g);font-weight:600\\">Notificaciones activas</span> — los pushes llegaran a los asesorados.\';subscribePush(\'_coach\');restoreNotifications();}else{s.innerHTML=\'<span style=\\"color:var(--rd);font-weight:600\\">Permiso denegado.</span> Activalas en la configuracion del navegador.\';} })">Activar notificaciones</button>';
+      st.style.color='';
+    }
   }
 }
 
@@ -4072,6 +4077,20 @@ function fireNotifAt(notif){
         }
       },i*800);
     });
+
+    // Enviar push real a los asesorados
+    if(notif.target==='all'){
+      DB.clients.forEach(cl=>{
+        const body=notif.msg.replace(/\{nombre\}/g,cl.name);
+        pushToClient(cl.id,'APEX — Recordatorio',body);
+      });
+    } else {
+      const cl=DB.clients.find(x=>x.id===notif.target);
+      if(cl){
+        const body=notif.msg.replace(/\{nombre\}/g,cl.name);
+        pushToClient(cl.id,'APEX — Recordatorio',body);
+      }
+    }
 
     // Reprogramar si es recurrente
     const shouldRepeat=notif.repeat==='daily'||(notif.repeat==='weekdays'&&[1,2,3,4,5].includes(new Date().getDay()));
