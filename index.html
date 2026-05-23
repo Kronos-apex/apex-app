@@ -2292,15 +2292,6 @@ function renderValoracion(c){
     return;
   }
 
-  // ── IMC ──
-  const hm = h/100;
-  const imc = w/(hm*hm);
-  let imcLabel, imcColor;
-  if(imc<18.5){imcLabel='Bajo peso';imcColor='#4A9EFF';}
-  else if(imc<25){imcLabel='Peso normal';imcColor='#2ECC71';}
-  else if(imc<30){imcLabel='Sobrepeso';imcColor='#FFD60A';}
-  else if(imc<35){imcLabel='Obesidad I';imcColor='#FF6B35';}
-  else{imcLabel='Obesidad II+';imcColor='#FF4757';}
 
   // ── TMB (Harris-Benedict revisado por Mifflin-St Jeor) ──
   let tmb = null;
@@ -2313,11 +2304,56 @@ function renderValoracion(c){
   // ── TDEE (Total Daily Energy Expenditure) ──
   const tdee = tmb ? Math.round(tmb * af) : null;
 
-  // ── Peso ideal (Devine) ──
-  let pesoIdeal = null;
-  if(sex){
-    pesoIdeal = sex==='M' ? 50 + 2.3*(h/2.54 - 60) : 45.5 + 2.3*(h/2.54 - 60);
-    pesoIdeal = Math.max(40, Math.round(pesoIdeal*10)/10);
+  // ── RCT e ICC (reemplaza peso ideal y BMI) ──
+  const latestMed = (DB.medidas && DB.medidas[c.id] && DB.medidas[c.id].length)
+    ? DB.medidas[c.id][DB.medidas[c.id].length - 1]
+    : {};
+  const cinturaCm = latestMed.cintura ? parseFloat(latestMed.cintura) : null;
+  const caderaCm  = latestMed.cadera  ? parseFloat(latestMed.cadera)  : null;
+  const sexCode   = c.sex === 'Hombre' ? 'M' : 'F';
+
+  let rct = null, icc = null;
+  if(cinturaCm && h) rct = cinturaCm / parseFloat(h);
+  if(cinturaCm && caderaCm) icc = cinturaCm / caderaCm;
+
+  function getRctLabel(v){
+    if(v < 0.40) return {label:'Muy delgado/a', color:'var(--bl)'};
+    if(v < 0.50) return {label:'Óptimo', color:'var(--g2)'};
+    if(v < 0.60) return {label:'Riesgo moderado', color:'var(--yl)'};
+    return {label:'Riesgo elevado', color:'var(--rd)'};
+  }
+  function getIccLabel(v, sex){
+    const lim = sex==='M' ? [0.90,0.95] : [0.80,0.85];
+    if(v < lim[0]) return {label:'Distribución favorable', color:'var(--g2)'};
+    if(v < lim[1]) return {label:'Riesgo moderado', color:'var(--yl)'};
+    return {label:'Distribución de riesgo', color:'var(--rd)'};
+  }
+
+  const rctInfo = rct ? getRctLabel(rct) : null;
+  const iccInfo = icc ? getIccLabel(icc, sexCode) : null;
+
+  function getGoalMsg(goal, rct){
+    const rctOk = !rct || rct < 0.50;
+    if(goal && (goal.includes('músculo') || goal.includes('Ganar'))){
+      return rctOk
+        ? '💪 Tu composición es favorable para ganar músculo. Enfócate en el progreso de carga, no en la balanza.'
+        : '💪 Tu objetivo es ganar músculo. El peso puede subir — eso es normal y esperado. Monitorea la cintura como referencia de salud.';
+    }
+    if(goal && goal.includes('grasa')){
+      if(!rct) return '📉 Registra tu cintura para un seguimiento más preciso.';
+      if(rct >= 0.60) return '📉 Tu relación cintura-talla indica riesgo elevado. Reducir 10% de cintura tiene impacto real en tu salud.';
+      if(rct >= 0.50) return '📉 Estás en zona de mejora. Cada cm menos en cintura importa más que los kilos en la balanza.';
+      return '📉 Tu relación cintura-talla está en zona óptima. Mantenerla es tu principal meta de salud.';
+    }
+    if(goal && goal.includes('omposición')){
+      return '⚖️ En recomposición el peso puede mantenerse igual mientras tu cuerpo cambia. Mide la cintura cada 3 semanas.';
+    }
+    if(goal && goal.includes('uerza')){
+      return '🏋️ Para fuerza máxima, la relación cintura-talla indica salud metabólica. El peso en sí es secundario al rendimiento.';
+    }
+    return rctOk
+      ? '✅ Tu relación cintura-talla está en zona saludable.'
+      : '📊 Mantener la relación cintura-talla por debajo de 0.50 es el indicador de salud más importante.';
   }
 
   // ── Calorías objetivo según meta ──
@@ -2362,10 +2398,16 @@ function renderValoracion(c){
     </div>`;
 
   let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">`;
-  html += statBox('📏','IMC',imc.toFixed(1),imcLabel,imcColor);
+  if(rct && rctInfo){
+    html += statBox('📐','Cintura/Talla', rct.toFixed(2), rctInfo.label, rctInfo.color);
+  } else if(h) {
+    html += statBox('📐','Cintura/Talla','—','Registra tu cintura','var(--t3)');
+  }
+  if(icc && iccInfo){
+    html += statBox('⚖️','Cintura/Cadera', icc.toFixed(2), iccInfo.label, iccInfo.color);
+  }
   if(tmb)  html += statBox('🔥','TMB',tmb+' kcal','En reposo','var(--or)');
   if(tdee) html += statBox('⚡','TDEE',tdee+' kcal','Con actividad','var(--g)');
-  if(pesoIdeal) html += statBox('🎯','Peso ideal',pesoIdeal+' kg','Referencia','var(--bl,#4A9EFF)');
   html += `</div>`;
 
   if(kcalObj){
@@ -2404,15 +2446,12 @@ function renderValoracion(c){
   if(sex)    html += row('Sexo biológico', sex==='M'?'Masculino':'Femenino');
   const actLabels={1.2:'Sedentario',1.375:'Ligera',1.55:'Moderada',1.725:'Alta',1.9:'Muy alta'};
   html += row('Actividad diaria', actLabels[af]||'Moderada');
-  if(w && pesoIdeal){
-    const diff = (w - pesoIdeal).toFixed(1);
-    const diffTxt = diff > 0 ? `+${diff} kg sobre peso ideal` : diff < 0 ? `${Math.abs(diff)} kg bajo peso ideal` : 'En peso ideal';
-    html += row('Diferencia vs peso ideal', `${diffTxt}`);
-  }
+  const goalMsg = getGoalMsg(goal, rct);
+  html += `<div style="background:var(--gl);border-radius:var(--rsm);padding:10px 14px;font-size:13px;color:var(--gt);margin-top:4px;line-height:1.5">${goalMsg}</div>`;
   html += `</div>`;
 
   html += `<div style="font-size:10px;color:var(--t3);margin-top:10px;line-height:1.5;border-top:1px solid var(--br);padding-top:8px">
-    ⚕️ <strong>Nota clínica:</strong> Estos cálculos son estimaciones de referencia basadas en fórmulas estándar (Mifflin-St Jeor, Devine). 
+    ⚕️ <strong>Nota clínica:</strong> Estos cálculos son estimaciones de referencia basadas en fórmulas estándar (Mifflin-St Jeor).
     Ajusta las calorías y macros según la respuesta individual del asesorado.
   </div>`;
 
