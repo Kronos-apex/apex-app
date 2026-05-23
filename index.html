@@ -1433,6 +1433,14 @@ const defaultExercises=[
   {id:'e80',name:'Sentadilla de Peso Corporal',muscle:'piernas',type:'Compuesto',sets:3,reps:'15',icon:'🦵',desc:'Pies al ancho de hombros, puntas ligeramente abiertas. Baja llevando las caderas hacia atrás y abajo hasta que los muslos queden paralelos al suelo. Rodillas siguen la dirección de los pies en todo momento, nunca colapsan hacia adentro. Talón en el suelo. El patrón base antes de agregar cualquier carga.',descSimple:'Pies separados al ancho de tus hombros. Baja como si fueras a sentarte en una silla que está un poco lejos. La espalda recta, el pecho arriba y las rodillas apuntan hacia donde apuntan tus pies. Sube empujando el suelo con los talones.',muscleLabel:'Cuádriceps, glúteos y piernas',ytQuery:'sentadilla peso corporal air squat técnica perfecta principiantes'},
   {id:'e81',name:'Mountain Climbers',muscle:'core',type:'Funcional',sets:3,reps:'20',icon:'🌀',desc:'Posición de plancha alta (manos en el suelo), lleva las rodillas alternadas hacia el pecho sin dejar caer ni elevar la cadera. La columna permanece neutra durante todo el movimiento. Reps = repeticiones totales (10 por pierna). Velocidad moderada antes de velocidad alta.',descSimple:'Apoya las manos en el suelo como en una flexión. Sin mover la cadera, lleva una rodilla hacia el pecho y regrésala, luego la otra. El cuerpo queda como una tabla que no se mueve excepto las piernas. Cuenta 1 repetición por cada pierna.',muscleLabel:'Core, cardio y cadera',ytQuery:'mountain climbers técnica correcta core tutorial'},
   {id:'e82',name:'Superman',muscle:'espalda',type:'Isométrico',sets:3,reps:'12',icon:'🦸',desc:'Boca abajo, brazos extendidos al frente. Eleva simultáneamente brazos y piernas del suelo contrayendo glúteos y erectores. Mantén 2 segundos arriba. La cabeza va en extensión natural de la columna — no elevar el cuello en hiperextensión. Versión unilateral (brazo y pierna opuestos) para principiantes absolutos.',descSimple:'Acuéstate boca abajo con los brazos extendidos al frente. Sube brazos y piernas del suelo al mismo tiempo apretando el glúteo. Aguanta 2 segundos y baja. La cabeza sigue el movimiento natural del cuerpo — no la fuerces hacia arriba.',muscleLabel:'Espalda baja y glúteos',ytQuery:'superman ejercicio espalda baja lumbar tutorial'},
+  // ── PECHO (variantes) ──
+  {id:'e83',name:'Lagartijas (Push-up)',muscle:'pecho',type:'Bodyweight',sets:3,reps:15,icon:'🤸',desc:'Posición de plancha alta, baja el pecho al suelo doblando los codos a 45°. Cuerpo recto de cabeza a talones. La versión completa del patrón de empuje.',descSimple:'Apoya las manos y las puntas de los pies. El cuerpo queda recto como una tabla. Baja el pecho al suelo doblando los codos en diagonal (no hacia los lados) y sube empujando. Si no puedes completo, apoya las rodillas.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'lagartijas push up técnica perfecta tutorial'},
+  {id:'e84',name:'Press en Máquina Hammer (Pecho)',muscle:'pecho',type:'Compuesto',sets:4,reps:10,icon:'🔨',desc:'Máquina Hammer inclinada o plana. Empuja los agarres hacia adelante con el pecho. Ideal para progresar con carga con menos riesgo que la barra libre.',descSimple:'Siéntate con la espalda bien apoyada. Agarra las manijas a la altura del pecho y empuja hacia adelante hasta extender los brazos. Baja lento y controlado. Puedes usarla inclinada (pecho superior) o plana (pecho completo).',muscleLabel:'Pecho completo',ytQuery:'press pecho máquina hammer strength tutorial'},
+  {id:'e85',name:'Aperturas en Polea Alta',muscle:'pecho',type:'Aislamiento',sets:3,reps:15,icon:'⬇️',desc:'Polea alta a ambos lados. Cruza los brazos de arriba hacia abajo y al frente. Énfasis en pecho inferior y medio por el ángulo de tracción.',descSimple:'Coloca las poleas arriba. De pie en el centro, jala ambos cables hacia abajo y al frente cruzando las manos. Los codos van ligeramente doblados. Siente la parte baja del pecho trabajar al juntar las manos.',muscleLabel:'Pecho inferior y medio',ytQuery:'aperturas en polea alta cable crossover pecho inferior tutorial'},
+  {id:'e86',name:'Aperturas en Polea Baja',muscle:'pecho',type:'Aislamiento',sets:3,reps:15,icon:'⬆️',desc:'Polea baja a ambos lados. Sube los brazos hacia adelante y arriba. Énfasis en pecho superior (clavicular) por el ángulo de tracción ascendente.',descSimple:'Coloca las poleas abajo. De pie en el centro, jala los cables hacia arriba y al frente hasta la altura del pecho. Los codos van ligeramente doblados. Siente la parte alta del pecho (cerca de la clavícula) contraerse.',muscleLabel:'Pecho superior (clavicular)',ytQuery:'aperturas en polea baja cable crossover pecho superior tutorial'},
+  // ── GLÚTEO (variantes de patada en polea) ──
+  {id:'e87',name:'Patada Lateral en Polea',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'↔️',desc:'Polea en el tobillo. Lleva la pierna hacia el lado alejándola del cuerpo. Activa el glúteo medio, clave para la estabilidad de la cadera y la postura.',descSimple:'Con la polea en el tobillo, párate de lado a la máquina. Lleva la pierna hacia afuera separándola del cuerpo. Core activo y espalda recta. Regresa lento sin dejar caer el pie. Siente el costado del glúteo trabajar.',muscleLabel:'Glúteo medio y lateral',ytQuery:'patada lateral en polea glúteo medio cable hip abduction tutorial'},
+  {id:'e88',name:'Patada en Polea Rodilla Doblada',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'🦵',desc:'Polea en el tobillo, rodilla doblada a 90°. Lleva el talón hacia el techo. Mayor aislamiento del glúteo mayor al eliminar la participación del femoral.',descSimple:'Con la polea en el tobillo, inclínate ligeramente hacia adelante apoyando las manos. Dobla la rodilla a 90° y lleva el talón hacia el techo apretando el glúteo al máximo. No muevas la cadera. Baja lento.',muscleLabel:'Glúteo mayor (aislamiento)',ytQuery:'patada polea rodilla doblada donkey kickback cable glúteo tutorial'},
 ];
 const DB={
   clients:ld('ax_c',[]),
@@ -3036,13 +3044,25 @@ function renderRfExList(){
   con.innerHTML=html;
 }
 
+function autoRoutineNote(exs){
+  if(!exs.length)return '';
+  const counts={};
+  exs.forEach(e=>{counts[e.muscle]=(counts[e.muscle]||0)+1;});
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([m])=>m);
+  const labels={pecho:'Pecho',espalda:'Espalda',hombros:'Hombros',biceps:'Bíceps',triceps:'Tríceps',piernas:'Piernas',gluteo:'Glúteo',core:'Core',cardio:'Cardio',otro:'Cuerpo completo'};
+  const ctx={pecho:'Empuje y desarrollo completo del pectoral.',espalda:'Tracción para fortalecer la espalda y el dorsal.',hombros:'Desarrollo del deltoides en sus tres cabezas.',biceps:'Aislamiento y volumen del bíceps.',triceps:'Fortalecimiento de la cabeza posterior del tríceps.',piernas:'Tren inferior: cuádriceps, femoral y pantorrilla.',gluteo:'Activación y desarrollo del glúteo.',core:'Estabilidad del núcleo y zona lumbar.',cardio:'Resistencia cardiovascular y quema calórica.',otro:'Trabajo funcional y cuerpo completo.'};
+  const focus=top.slice(0,2).map(m=>labels[m]||m).join(' y ');
+  return `Sesión de ${focus}. ${ctx[top[0]]||''}`;
+}
+
 function saveRoutine(){
   const name=document.getElementById('rf-name').value.trim();
   if(!name){toast('⚠️ Escribe un nombre para la rutina');return}
   if(!CUR.routineExs.length){toast('⚠️ Añade al menos un ejercicio');return}
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   if(!c.routines)c.routines=[];
-  const rutData={name,day:document.getElementById('rf-day').value,note:document.getElementById('rf-note').value.trim(),why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e}))};
+  const noteVal=document.getElementById('rf-note').value.trim()||autoRoutineNote(CUR.routineExs);
+  const rutData={name,day:document.getElementById('rf-day').value,note:noteVal,why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e}))};
   if(CUR.editRoutineIdx!==null){
     const existing=c.routines[CUR.editRoutineIdx];
     c.routines[CUR.editRoutineIdx]={...existing,...rutData};
