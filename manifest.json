@@ -1,0 +1,27 @@
+{
+  "name": "APEX — Entrenamiento Personal",
+  "short_name": "APEX",
+  "description": "Tu plataforma de entrenamiento personal con tu coach",
+  "start_url": "/apex-app/",
+  "scope": "/apex-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1B4332",
+  "theme_color": "#2D6A4F",
+  "lang": "es",
+  "categories": ["health", "fitness", "sports"],
+  "icons": [
+    {
+      "src": "/apex-app/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apex-app/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -34,8 +34,8 @@
 <!-- Íconos iOS (se inyectan via JS al arrancar) -->
 <link rel="apple-touch-icon" id="pwa-icon-apple" href="">
 
-<!-- Manifest (se inyecta como blob en el script de arranque) -->
-<link rel="manifest" id="pwa-manifest">
+<!-- Manifest estático para PWABuilder y Google Play -->
+<link rel="manifest" href="/apex-app/manifest.json" id="pwa-manifest">
 
 <!-- Preconnect Google Fonts para evitar bloquear el primer render -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4581,29 +4581,11 @@ function pwaGenIcon(size){
 }
 
 function initPWA(){
-  const icon192=pwaGenIcon(192);
-  const icon512=pwaGenIcon(512);
+  // Ícono para Apple Touch Icon (generado en canvas)
   const appleLink=document.getElementById('pwa-icon-apple');
-  if(appleLink)appleLink.href=icon192;
+  if(appleLink)appleLink.href=pwaGenIcon(192);
 
-  const manifest={
-    name:'APEX — Entrenamiento',short_name:'APEX',
-    description:'Tu plataforma de entrenamiento personal',
-    start_url:'/',display:'standalone',orientation:'portrait',
-    background_color:'#1B4332',theme_color:'#2D6A4F',lang:'es',
-    icons:[
-      {src:icon192,sizes:'192x192',type:'image/png',purpose:'any maskable'},
-      {src:icon512,sizes:'512x512',type:'image/png',purpose:'any maskable'}
-    ]
-  };
-  const mblob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-  const manifestLink=document.getElementById('pwa-manifest');
-  if(manifestLink){
-    const mUrl = URL.createObjectURL(mblob);
-    manifestLink.href = mUrl;
-    // Revoke after browser has parsed it (1s is enough)
-    setTimeout(() => URL.revokeObjectURL(mUrl), 5000);
-  }
+  // Manifest: ya apunta a /apex-app/manifest.json estático (no se sobreescribe)
 
   // SW embebido como Blob — no necesita archivo sw.js externo
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
