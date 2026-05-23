@@ -5620,11 +5620,20 @@ function renderDetailMembership(id){
 
 function openPaymentModal(id){
   CUR.paymentClientId=id;
+  const today=new Date().toISOString().split('T')[0];
+  const due=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
   document.getElementById('pay-amount').value='';
-  document.getElementById('pay-days').value='30';
+  document.getElementById('pay-date').value=today;
+  document.getElementById('pay-due').value=due;
   document.getElementById('pay-note').value='';
   document.getElementById('pay-err').style.display='none';
   om('m-payment');
+}
+function payDateChanged(){
+  const d=document.getElementById('pay-date').value;
+  if(!d)return;
+  const due=new Date(new Date(d+'T12:00').getTime()+30*86400000).toISOString().split('T')[0];
+  document.getElementById('pay-due').value=due;
 }
 
 function registerPayment(){
@@ -5633,20 +5642,24 @@ function registerPayment(){
   const c=DB.clients.find(x=>x.id===id);
   if(!c)return;
   const amount=parseFloat(document.getElementById('pay-amount').value)||0;
-  const days=parseInt(document.getElementById('pay-days').value)||30;
+  const dateVal=document.getElementById('pay-date').value;
+  const dueVal=document.getElementById('pay-due').value;
   const note=document.getElementById('pay-note').value.trim();
   const errEl=document.getElementById('pay-err');
-  if(days<1||days>365){
-    errEl.textContent='Duración debe ser entre 1 y 365 días.';
+  if(!dateVal||!dueVal){
+    errEl.textContent='Las fechas de pago y vencimiento son obligatorias.';
     errEl.style.display='block';
     return;
   }
-  const now=new Date();
-  const due=new Date(now.getTime()+days*86400000);
+  if(new Date(dueVal)<=new Date(dateVal)){
+    errEl.textContent='La fecha de vencimiento debe ser posterior al pago.';
+    errEl.style.display='block';
+    return;
+  }
   if(!c.payments)c.payments=[];
   c.payments.push({
-    date:now.toISOString(),
-    dueDate:due.toISOString(),
+    date:new Date(dateVal+'T12:00').toISOString(),
+    dueDate:new Date(dueVal+'T12:00').toISOString(),
     amount:amount||0,
     note:note
   });
@@ -5817,13 +5830,19 @@ function whatsappReminder(id){
       <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Monto recibido (COP)</label>
       <input type="number" id="pay-amount" class="inp" placeholder="Ej: 150000" min="0" style="width:100%">
     </div>
-    <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Duración en días</label>
-      <input type="number" id="pay-days" class="inp" placeholder="30" value="30" min="1" max="365" style="width:100%">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div>
+        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Fecha de pago</label>
+        <input type="date" id="pay-date" class="inp" oninput="payDateChanged()" style="width:100%">
+      </div>
+      <div>
+        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Vence el</label>
+        <input type="date" id="pay-due" class="inp" style="width:100%">
+      </div>
     </div>
     <div style="margin-bottom:14px">
       <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nota (opcional)</label>
-      <input type="text" id="pay-note" class="inp" placeholder="Ej: Mes de mayo, transferencia..." maxlength="120" style="width:100%">
+      <input type="text" id="pay-note" class="inp" placeholder="Ej: Mayo, transferencia Nequi..." maxlength="120" style="width:100%">
     </div>
     <div id="pay-err" style="font-size:12px;color:var(--rd);margin-bottom:8px;display:none"></div>
     <div class="mdfooter">
