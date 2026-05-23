@@ -882,7 +882,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
       <!-- Plan nutricional cliente -->
       <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div></div>
+        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button></div>
         <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
       </div>
       <!-- Medidas corporales cliente -->
@@ -3999,6 +3999,33 @@ function renderNutritionClient(clientId){
   // Evitar
   if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
   con.innerHTML=html;
+}
+
+function shareNutWhatsapp(){
+  const nut=(DB.nutrition||{})[CUR.clientId];
+  if(!nut||(!nut.kcal&&!nut.plan)){toast('Tu coach aún no ha asignado un plan nutricional');return;}
+  const cl=DB.clients.find(x=>x.id===CUR.clientId);
+  const nombre=cl?cl.name.split(' ')[0]:'';
+  let msg=`🥗 *MI PLAN NUTRICIONAL - APEX*\n`;
+  if(nombre)msg+=`👤 ${nombre}\n`;
+  msg+=`\n`;
+  if(nut.kcal)msg+=`🔥 *Calorías diarias:* ${nut.kcal} kcal\n`;
+  if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
+  if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
+  if(nut.prot||nut.carbs||nut.fat){
+    msg+=`\n📊 *Macros:*\n`;
+    if(nut.prot)msg+=`  • Proteína: ${nut.prot}g (${nut.prot*4} kcal)\n`;
+    if(nut.carbs)msg+=`  • Carbohidratos: ${nut.carbs}g (${nut.carbs*4} kcal)\n`;
+    if(nut.fat)msg+=`  • Grasas saludables: ${nut.fat}g (${nut.fat*9} kcal)\n`;
+  }
+  if(nut.examples){
+    msg+=`\n💡 *Ejemplos de comidas:*\n`;
+    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>msg+=`  ${l.trim()}\n`);
+  }
+  if(nut.plan){msg+=`\n📋 *Notas de tu coach:*\n${nut.plan}\n`;}
+  if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
+  msg+=`\n_Plan generado por APEX 💪_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ══════════════ MEDIDAS CORPORALES ══════════════
