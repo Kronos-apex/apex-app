@@ -2156,6 +2156,31 @@ function setBottomNav(el){
   el.classList.add('on');
 }
 
+// ══════════════════════ MEMBRESÍA ══════════════════════
+const MS={
+  getStatus(c){
+    if(c.suspended)return 'inactive';
+    const pays=c.payments||[];
+    if(!pays.length)return 'pending';
+    const last=pays.reduce((a,b)=>new Date(a.dueDate)>new Date(b.dueDate)?a:b);
+    const daysLeft=Math.ceil((new Date(last.dueDate)-Date.now())/86400000);
+    if(daysLeft<0)return 'overdue';
+    if(daysLeft<=7)return 'expiring';
+    return 'active';
+  },
+  canLogin(c){const s=this.getStatus(c);return s!=='inactive'&&s!=='overdue';},
+  badge(s){
+    return({
+      active:{label:'Al día',color:'#1B4332',bg:'#D8F3DC'},
+      expiring:{label:'Por vencer',color:'#7a5c00',bg:'#FEF6DE'},
+      overdue:{label:'Vencido',color:'#9b1c1c',bg:'#FCE4E6'},
+      pending:{label:'Sin pago',color:'#5A4000',bg:'#FEF3C7'},
+      inactive:{label:'Inactivo',color:'#6A6A6A',bg:'#E5E5DF'},
+      suspended:{label:'Suspendido',color:'#6A6A6A',bg:'#E5E5DF'},
+    }[s])||{label:'Sin pago',color:'#6A6A6A',bg:'#E5E5DF'};
+  }
+};
+
 // ══════════════════════ INACTIVIDAD ══════════════════════
 function checkInactivity(){
   const now=Date.now();
