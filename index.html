@@ -655,7 +655,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="sm"><div class="smv" style="color:var(--g)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div></div>
         <div class="sm"><div class="smv" style="color:var(--bl)" id="h-actv">0</div><div class="sml">Activos</div></div>
         <div class="sm"><div class="smv" style="color:var(--or)" id="h-sess">0</div><div class="sml">Sesiones semana</div></div>
-        <div class="sm"><div class="smv" style="color:var(--rd)" id="h-venc">0</div><div class="sml">Por vencer</div></div>
+        <div class="sm"><div class="smv" style="color:var(--rd)" id="h-venc">0</div><div class="sml">Sin entrenar</div></div>
       </div>
       <!-- Retención semanal -->
       <div class="card" style="margin-bottom:13px" id="h-retention-card">
@@ -1564,6 +1564,7 @@ async function doLogin(){
         showScreen('s-coach');
         CUR.loggedAs='coach';
         initCoach();
+        setTimeout(()=>checkInactivity(),3000);
         setTimeout(()=>{
           requestNotifPermission().then(perm=>{
             if(perm==='granted'){
@@ -2141,6 +2142,30 @@ function setBottomNav(el){
   el.classList.add('on');
 }
 
+// ══════════════════════ INACTIVIDAD ══════════════════════
+function checkInactivity(){
+  const now=Date.now();
+  const DAYS=4, MS_DAY=86400000, COOLDOWN=MS_DAY;
+  DB.clients.forEach(c=>{
+    const st=MS.getStatus(c);
+    if(st==='inactive'||st==='overdue'||st==='suspended')return;
+    const sessions=DB.history[c.id]||[];
+    const last=sessions[0];
+    const daysSince=last?Math.floor((now-new Date(last.date))/MS_DAY):999;
+    if(daysSince<DAYS)return;
+    const coolKey=`apex_inact_${c.id}`;
+    const lastSent=parseInt(localStorage.getItem(coolKey)||'0');
+    if(now-lastSent<COOLDOWN)return;
+    localStorage.setItem(coolKey,String(now));
+    const msg=daysSince>=14
+      ? `${c.name.split(' ')[0]}, hace ${daysSince} días que no entrenas. ¡Tu cuerpo te necesita! 💪`
+      : daysSince>=7
+      ? `${c.name.split(' ')[0]}, llevas una semana sin entrenar. ¡Retomemos hoy! 🔥`
+      : `${c.name.split(' ')[0]}, hace ${daysSince} días que no entrenas. ¡No pierdas el ritmo! 💪`;
+    pushToClient(c.id,'⚠️ APEX — Te extrañamos',msg);
+  });
+}
+
 // ══════════════════════ HOME ══════════════════════
 function renderHome(){
   const now=new Date();
@@ -2168,9 +2193,19 @@ function renderHome(){
   });
   document.getElementById('h-sess').textContent=sesiones;
 
-  // ── Por vencer (próximos 7 días) ──
-  const porVencer=DB.clients.filter(c=>MS.getStatus(c)==='expiring').length;
-  document.getElementById('h-venc').textContent=porVencer;
+  // ── Sin entrenar 4+ días (con membresía activa) ──
+  const inactivos=DB.clients.filter(c=>{
+    const st=MS.getStatus(c);
+    if(st==='inactive'||st==='overdue'||st==='suspended')return false;
+    const sessions=DB.history[c.id]||[];
+    const last=sessions[0];
+    return !last||Math.floor((Date.now()-new Date(last.date))/86400000)>=4;
+  }).length;
+  const vencEl=document.getElementById('h-venc');
+  if(vencEl){
+    vencEl.textContent=inactivos;
+    vencEl.style.color=inactivos>0?'var(--rd)':'var(--g)';
+  }
 
   // ── Retención semanal (barras SVG por día) ──
   const retCard=document.getElementById('h-retention-card');
