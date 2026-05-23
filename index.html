@@ -3393,13 +3393,15 @@ function renderClientProfile(client){
 }
 
 // TODAY
-function renderClientToday(client){
+function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
   const routines=client.routines||[];
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:22px;margin-bottom:7px">📋</div><div style="font-size:14px;font-weight:700;color:#7a5c00;margin-bottom:3px">Todavía no tienes rutinas</div><div style="font-size:12px;color:#a07820">Tu coach te asignará tu plan de entrenamiento pronto</div></div>';return}
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const today=days[new Date().getDay()];
-  const todayR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
+  const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
+  const todayR=overrideRoutine||autoR;
+  const isOverride=!!overrideRoutine;
   if(!todayR){
     con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
       <div style="font-size:36px;margin-bottom:10px">💤</div>
@@ -3410,11 +3412,22 @@ function renderClientToday(client){
     return;
   }
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-  con.innerHTML=`<div class="wohero"><div class="woday">⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}</div><div class="woname">${todayR.name}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Modo guiado — ejercicio a ejercicio</button></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${todayR.note}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
+  const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
+  const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
+  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${todayR.name}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Modo guiado — ejercicio a ejercicio</button></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${todayR.note}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
   CUR.activeRoutine=todayR;
   WU_STATE.done={};
   renderWarmup(todayR.exercises||[]);
   renderClientExList(todayR);
+}
+
+function startRoutineNow(routineId){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  const routine=routineId?((c.routines||[]).find(r=>r.id===routineId)||null):null;
+  const tabs=document.querySelectorAll('.cntab');
+  cnTab('cn-today',tabs[0]);
+  renderClientToday(c,routine);
+  document.getElementById('cn-today').scrollTop=0;
 }
 
 // Key helpers for session log
@@ -3654,7 +3667,7 @@ function renderClientAllRoutines(client){
   routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const div=document.createElement('div');div.className='rc';
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series</div></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${r.note}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series</div></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${r.note}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button></div>`;
     con.appendChild(div);
   });
 }

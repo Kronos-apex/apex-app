@@ -1,11 +1,11 @@
 ---
 name: apex-audit
-description: Auditoría profunda completa de APEX. Úsalo cuando el usuario diga "audita APEX", "corre el audit", "verifica que todo funciona", o después de cualquier cambio importante. Ejecuta los 6 checks de calidad y devuelve un reporte con ✅/❌.
+description: Auditoría profunda completa de APEX. Úsalo cuando el usuario diga "audita APEX", "corre el audit", "verifica que todo funciona", o después de cualquier cambio importante. Ejecuta los 7 checks de calidad y devuelve un reporte con ✅/❌.
 ---
 
 # APEX Audit — Auditoría profunda automatizada
 
-Este skill ejecuta la suite completa de auditoría sobre `index.html` en 6 pasos. Devuelve un reporte limpio para confirmar que APEX está listo para producción.
+Este skill ejecuta la suite completa de auditoría sobre `index.html` en 7 pasos. Devuelve un reporte limpio para confirmar que APEX está listo para producción.
 
 ## Cuándo activar este skill
 
@@ -17,7 +17,7 @@ Este skill ejecuta la suite completa de auditoría sobre `index.html` en 6 pasos
 
 ## Procedimiento
 
-Ejecuta este script Python completo. NO simplifiques los checks — corre los 6.
+Ejecuta este script Python completo. NO simplifiques los checks — corre los 7.
 IMPORTANTE: usa siempre `encoding='utf-8'` y el path de temp correcto para Windows.
 
 ```bash
@@ -102,10 +102,32 @@ ex_dupes = {k:v for k,v in Counter(ex_ids).items() if v>1}
 print(f"  {'OK' if not ex_dupes else 'ERR'} 6. Ejercicios duplicados: {len(ex_dupes)}")
 print(f"     Total: {len(ex_ids)} ({len(set(ex_ids))} unicos)")
 
+# ━━━ CHECK 7: Objetos globales de la app usados pero no definidos ━━━
+# Detecta el patrón MS.getStatus() cuando MS nunca fue definido (bug crítico real).
+# Técnica: elimina comentarios JS primero, luego busca OBJETO.minúscula para
+# evitar falsos positivos de strings ("APEX...") o comentarios ("// SW.show").
+js_no_comments = re.sub(r'//[^\n]*', '', js)
+defined_consts = set(re.findall(r'(?:const|let|var)\s+([A-Z][A-Z0-9_]{1,})\s*=', js))
+ok_globals = {
+    'Math','Date','Object','Array','JSON','Promise','URL','Blob',
+    'AbortController','FileReader','TextEncoder','RegExp','Error',
+    'TypeError','Symbol','Notification','Deno',
+}
+app_objs_used = set(re.findall(r'\b([A-Z][A-Z]{1,})\.[a-z]', js_no_comments))
+undefined_objs = [o for o in app_objs_used
+                  if o not in defined_consts and o not in ok_globals]
+objs_ok = not undefined_objs
+print(f"  {'OK' if objs_ok else 'ERR'} 7. Objetos globales indefinidos: {len(undefined_objs)}")
+if undefined_objs:
+    for o in undefined_objs:
+        idx = js_no_comments.find(o + '.')
+        ctx = js_no_comments[max(0,idx-30):idx+60].replace('\n',' ')
+        print(f"     - {o}: ...{ctx}...")
+
 # ━━━ RESUMEN ━━━
-total_checks = 6
-passed = sum([syntax_ok, not dupes, not real_missing, not missing_h, sb_ok, not ex_dupes])
-status = "PRODUCCION OK" if passed == total_checks else ("ATENCION" if passed >= 4 else "NO DESPLEGAR")
+total_checks = 7
+passed = sum([syntax_ok, not dupes, not real_missing, not missing_h, sb_ok, not ex_dupes, objs_ok])
+status = "PRODUCCION OK" if passed == total_checks else ("ATENCION" if passed >= 5 else "NO DESPLEGAR")
 print(f"\nResultado: {passed}/{total_checks} - {status}")
 print(f"Lineas: {c.count(chr(10)):,} | Funciones: {len(set(fns))} | Tamano: {len(c)/1024:.1f} KB")
 EOF
@@ -113,9 +135,9 @@ EOF
 
 ## Cómo interpretar el resultado
 
-- **🟢 PRODUCCIÓN OK (6/6)** — Listo para deploy. Push a main.
-- **🟡 ATENCIÓN (4-5/6)** — Hay algo. Revisa los ❌ antes de deploy.
-- **🔴 NO DESPLEGAR (0-3/6)** — Bug crítico. Llamar a Camila inmediatamente.
+- **🟢 PRODUCCIÓN OK (7/7)** — Listo para deploy. Push a main.
+- **🟡 ATENCIÓN (5-6/7)** — Hay algo. Revisa los ❌ antes de deploy.
+- **🔴 NO DESPLEGAR (0-4/7)** — Bug crítico. Llamar a Camila inmediatamente.
 
 ## Después del reporte
 
@@ -124,5 +146,6 @@ Si hay errores, **NO los arregles tú**. Reporta al miembro del equipo correspon
 - IDs rotos / handlers → Camila
 - SB_KEYS → Andrés DBA
 - Ejercicios duplicados → Camila
+- Objetos globales indefinidos → Camila (bug crítico — detiene renderAll)
 
 El skill solo audita. La corrección la hace quien corresponda.
