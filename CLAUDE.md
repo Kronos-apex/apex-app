@@ -135,14 +135,15 @@ session_date_{routineId}                → fecha último entreno
 ### Supabase
 ```
 URL: https://eoebhrxbokyllqalyecj.supabase.co
-Key publishable: sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8
 Tablas: apex_data, push_subscriptions
 Edge Functions: send-push (notificaciones push reales)
 ```
+> Las credenciales (SB_KEY, VAPID) viven en index.html (anon key) y en las
+> variables de entorno de Supabase (VAPID_PRIVATE). No se documentan aquí.
 
 ### Despliegue
 ```
-Plataforma: GitHub + GitHub Pages (o Netlify conectado a GitHub)
+Plataforma: GitHub + GitHub Pages
 Branch: main
 Workflow: edit → git commit → git push → deploy automático
 ```
@@ -150,12 +151,13 @@ Workflow: edit → git commit → git push → deploy automático
 ### VAPID Keys (push notifications)
 ```
 PUBLIC:  BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8
-PRIVATE: eyWkxzCg-TcFFnXIP3jCuiY-vDNud4Stts-r_4RRGVU
+PRIVATE: ver variables de entorno en Supabase Dashboard → Edge Functions → send-push
 ```
 
 ### Claves Supabase sincronizadas
 ```js
-SB_KEYS = ['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_nut','ax_med','ax_photos','ax_ce','ax_cp','ax_cn']
+SB_KEYS = ['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_nut','ax_med','ax_photos','ax_ce','ax_cn']
+// ax_cp eliminado — contraseña legacy del coach no debe sincronizarse
 ```
 
 ---

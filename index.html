@@ -1170,7 +1170,7 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cp','ax_cn','ax_nut','ax_med','ax_photos'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos'];
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
 // Convierte VAPID key de base64 a Uint8Array
@@ -2968,7 +2968,7 @@ function renderDetailRoutines(c){
 function openNewRoutine(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   CUR.editRoutineIdx=null;
-  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${c.name}</span>`;
+  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
   document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
   CUR.routineExs=[];CUR.restSec=60;
