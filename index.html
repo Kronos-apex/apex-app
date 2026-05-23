@@ -701,6 +701,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
         <div style="padding:8px 18px 13px;border-top:1px solid var(--br);font-size:12px;color:var(--t2)" id="d-notes"></div>
       </div>
+      <div id="d-membership" style="margin:0 16px 16px"></div>
 
       <!-- VALORACIÓN CARD -->
       <div class="card" style="margin-bottom:13px" id="d-valoracion-card">
@@ -2443,6 +2444,7 @@ function openDetail(id){
   const dn=document.getElementById('d-notes');dn.style.display=c.notes?'block':'none';if(c.notes)dn.innerHTML=`📝 <strong>Notas:</strong> ${esc(c.notes)}`;
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+  renderDetailMembership(id);
   gp('p-detail',null,'Detalle');document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
   document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on');
 }
@@ -5541,6 +5543,152 @@ function openExYoutube(){
   });
 })();
 
+// ══════════════════════════════════════════
+// MEMBRESÍA — DETALLE Y ACCIONES
+// ══════════════════════════════════════════
+
+function renderDetailMembership(id){
+  const con=document.getElementById('d-membership');
+  if(!con)return;
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c){con.innerHTML='';return;}
+  const st=MS.getStatus(c);
+  const badge=MS.badge(st);
+  const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const last=pays[0]||null;
+
+  // Fecha de vencimiento legible
+  let dueStr='—', dateStr='—', daysLeftStr='';
+  if(last){
+    dateStr=new Date(last.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+    const due=new Date(last.dueDate);
+    dueStr=due.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+    const daysLeft=Math.ceil((due-Date.now())/86400000);
+    if(daysLeft>=0) daysLeftStr=`<span style="font-size:11px;color:var(--t2)">${daysLeft} día${daysLeft!==1?'s':''} restante${daysLeft!==1?'s':''}</span>`;
+    else daysLeftStr=`<span style="font-size:11px;color:var(--rd)">${Math.abs(daysLeft)} día${Math.abs(daysLeft)!==1?'s':''} vencido${Math.abs(daysLeft)!==1?'s':''}</span>`;
+  }
+
+  // Historial últimos 5 pagos
+  let histHTML='';
+  if(pays.length){
+    histHTML='<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:7px">Historial de pagos</div>';
+    pays.slice(0,5).forEach(p=>{
+      const d=new Date(p.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      const dd=new Date(p.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      const amt=p.amount?'$'+Number(p.amount).toLocaleString('es-CO'):'—';
+      histHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--br);font-size:12px">
+        <div>
+          <div style="font-weight:600;color:var(--t1)">${amt}</div>
+          <div style="color:var(--t2);margin-top:1px">Pagado: ${d} · Vence: ${dd}</div>
+          ${p.note?`<div style="color:var(--t3);font-style:italic;margin-top:1px">${esc(p.note)}</div>`:''}
+        </div>
+        <span style="font-size:18px">💳</span>
+      </div>`;
+    });
+    histHTML+='</div>';
+  }else{
+    histHTML='<div style="font-size:12px;color:var(--t3);margin-top:10px;text-align:center">Sin pagos registrados</div>';
+  }
+
+  // Botones acción
+  const suspLabel=c.suspended?'Reactivar':'Suspender';
+  const suspClass=c.suspended?'btn bg':'btn bd';
+  const whatsappBtn=(st==='overdue'||st==='expiring')
+    ?`<button class="btn bo bsm" onclick="whatsappReminder('${id}')">WhatsApp</button>`
+    :'';
+
+  con.innerHTML=`
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800">Membresía</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">
+            Último pago: ${dateStr} · Vence: ${dueStr}
+          </div>
+          <div style="margin-top:4px">${daysLeftStr}</div>
+        </div>
+        <span style="background:${badge.bg};color:${badge.color};font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap">${badge.label}</span>
+      </div>
+      ${histHTML}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn bp bsm" onclick="openPaymentModal('${id}')">+ Registrar pago</button>
+        <button class="${suspClass} bsm" onclick="toggleSuspend('${id}')">${suspLabel}</button>
+        ${whatsappBtn}
+      </div>
+    </div>`;
+}
+
+function openPaymentModal(id){
+  CUR.paymentClientId=id;
+  document.getElementById('pay-amount').value='';
+  document.getElementById('pay-days').value='30';
+  document.getElementById('pay-note').value='';
+  document.getElementById('pay-err').style.display='none';
+  om('m-payment');
+}
+
+function registerPayment(){
+  const id=CUR.paymentClientId;
+  if(!id)return;
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c)return;
+  const amount=parseFloat(document.getElementById('pay-amount').value)||0;
+  const days=parseInt(document.getElementById('pay-days').value)||30;
+  const note=document.getElementById('pay-note').value.trim();
+  const errEl=document.getElementById('pay-err');
+  if(days<1||days>365){
+    errEl.textContent='Duración debe ser entre 1 y 365 días.';
+    errEl.style.display='block';
+    return;
+  }
+  const now=new Date();
+  const due=new Date(now.getTime()+days*86400000);
+  if(!c.payments)c.payments=[];
+  c.payments.push({
+    date:now.toISOString(),
+    dueDate:due.toISOString(),
+    amount:amount||0,
+    note:note
+  });
+  // Si estaba suspendido y se registra pago, reactivar
+  if(c.suspended)c.suspended=false;
+  sv('ax_c',DB.clients);
+  cm('m-payment');
+  renderDetailMembership(id);
+  renderClients();
+  renderHome();
+  toast('Pago registrado correctamente');
+}
+
+function toggleSuspend(id){
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c)return;
+  c.suspended=!c.suspended;
+  sv('ax_c',DB.clients);
+  renderDetailMembership(id);
+  renderClients();
+  renderHome();
+  toast(c.suspended?'Asesorado suspendido':'Asesorado reactivado');
+}
+
+function whatsappReminder(id){
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c)return;
+  const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
+  const last=pays[0];
+  let dueStr='pronto';
+  if(last){
+    dueStr=new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  }
+  const nombre=c.name.split(' ')[0];
+  const msg=`Hola ${nombre}, tu membresía en APEX vence el ${dueStr}. Escríbeme para renovarla 💪`;
+  const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
+  const url=phone
+    ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    :`https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+}
+
 </script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
@@ -5657,6 +5805,30 @@ function openExYoutube(){
     <div class="mdfooter">
       <button class="btn bg" onclick="cm('m-med')">Cancelar</button>
       <button class="btn bp" onclick="saveMedidas()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO DE PAGO -->
+<div class="mdbg" id="m-payment">
+  <div class="md">
+    <div class="mdtitle">💳 Registrar pago</div>
+    <div style="margin-bottom:14px">
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Monto recibido (COP)</label>
+      <input type="number" id="pay-amount" class="inp" placeholder="Ej: 150000" min="0" style="width:100%">
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Duración en días</label>
+      <input type="number" id="pay-days" class="inp" placeholder="30" value="30" min="1" max="365" style="width:100%">
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nota (opcional)</label>
+      <input type="text" id="pay-note" class="inp" placeholder="Ej: Mes de mayo, transferencia..." maxlength="120" style="width:100%">
+    </div>
+    <div id="pay-err" style="font-size:12px;color:var(--rd);margin-bottom:8px;display:none"></div>
+    <div class="mdfooter">
+      <button class="btn bg" onclick="cm('m-payment')">Cancelar</button>
+      <button class="btn bp" onclick="registerPayment()">Guardar pago</button>
     </div>
   </div>
 </div>
