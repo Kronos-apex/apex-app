@@ -3686,6 +3686,21 @@ buildFilterBtns('exf',exFilter);
 
 // ══════════════ PLAN NUTRICIONAL ══════════════
 
+function calcMacrosSugeridos(client){
+  const kg=parseFloat(client.weight)||70;
+  const actMap={'Sedentario':30,'Ligeramente activo':33,'Moderadamente activo':36,'Muy activo':40,'Extremadamente activo':44};
+  const kcalPerKg=actMap[client.activity]||33;
+  let kcal=Math.round(kg*kcalPerKg);
+  const g=(client.goal||'').toLowerCase();
+  if(g.includes('perd')||g.includes('baj')||g.includes('defin'))kcal-=350;
+  else if(g.includes('gan')||g.includes('masa')||g.includes('volum')||g.includes('musc'))kcal+=250;
+  let protG=g.includes('gan')||g.includes('masa')||g.includes('musc')?Math.round(kg*2.2):g.includes('perd')||g.includes('baj')?Math.round(kg*2.0):Math.round(kg*1.8);
+  const fatG=Math.round(kg*0.9);
+  const carbsG=Math.max(0,Math.round((kcal-protG*4-fatG*9)/4));
+  const water=Math.max(6,Math.round(kg*0.035/0.25));
+  return {kcal,prot:protG,carbs:carbsG,fat:fatG,water};
+}
+
 function openNutModal(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   document.getElementById('m-nut-cn').textContent=c.name;
@@ -3699,6 +3714,19 @@ function openNutModal(){
   document.getElementById('nut-avoid').value=nut.avoid||'';
   document.getElementById('nut-water').value=nut.water||'';
   document.getElementById('nut-examples').value=nut.examples||'';
+  if(!nut.kcal && !nut.plan){
+    const sug=calcMacrosSugeridos(c);
+    document.getElementById('nut-kcal').value=sug.kcal;
+    document.getElementById('nut-prot').value=sug.prot;
+    document.getElementById('nut-carbs').value=sug.carbs;
+    document.getElementById('nut-fat').value=sug.fat;
+    document.getElementById('nut-water').value=sug.water;
+    const nota=document.getElementById('nut-calc-nota');
+    if(nota){nota.style.display='block';nota.innerHTML='&#128161; Valores calculados para <strong>'+esc(c.name)+'</strong> ('+Math.round(parseFloat(c.weight)||0)+'kg &middot; '+(c.activity||'actividad media')+' &middot; objetivo: '+(c.goal||'general')+'). Ajusta seg&uacute;n tu criterio.';}
+  } else {
+    const nota=document.getElementById('nut-calc-nota');
+    if(nota)nota.style.display='none';
+  }
   om('m-nut');
 }
 
@@ -5241,6 +5269,7 @@ function openExYoutube(){
   <div class="md mdlg">
     <div class="mdtitle">🥗 Plan nutricional &mdash; <span id="m-nut-cn" style="color:var(--g)"></span></div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">El asesorado ver&aacute; este plan en su perfil.</div>
+    <div id="nut-calc-nota" style="display:none;background:var(--gl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--gt);margin-bottom:14px;line-height:1.5"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="fg"><label class="ilbl">Calor&iacute;as objetivo</label><input class="inp" id="nut-kcal" type="number" placeholder="Ej: 2200" inputmode="numeric"></div>
       <div class="fg"><label class="ilbl">Prote&iacute;na (g)</label><input class="inp" id="nut-prot" type="number" placeholder="Ej: 160" inputmode="numeric"></div>
