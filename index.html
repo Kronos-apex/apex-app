@@ -139,7 +139,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 
 .main{flex:1;overflow-y:auto;overflow-x:hidden;}
 .panel{display:none;padding:16px}
-.panel.on{display:block}
+.panel.on{display:block;animation:fadeIn .18s ease}
 .ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap}
 .ptitle{font-size:19px;font-weight:800;letter-spacing:-.3px}
 .psub{font-size:13px;color:var(--t2);margin-top:2px}
@@ -157,7 +157,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 
 /* ── STAT MINI ── */
 .sm{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
-.smv{font-size:26px;font-weight:800;letter-spacing:-1px}
+.smv{font-size:32px;font-weight:800;letter-spacing:-1.5px}
 .sml{font-size:12px;color:var(--t2);margin-top:2px}
 
 /* ── BUTTONS ── */
@@ -268,7 +268,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 .cntab-badge[data-count]:not([data-count="0"])::after{display:block}
 .cnbody{flex:1;overflow-y:auto}
 .cnp{display:none;padding:16px 15px 8px}
-.cnp.on{display:block}
+.cnp.on{display:block;animation:fadeIn .18s ease}
 
 /* Today hero */
 .wohero{background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
@@ -307,9 +307,9 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 .sinput::-webkit-outer-spin-button,.sinput::-webkit-inner-spin-button{-webkit-appearance:none}
 .sinput:focus{border-color:var(--g2)}
 .set-log-row.sdone .sinput{background:var(--gl);border-color:var(--g2);color:var(--gt)}
-.scheck{width:28px;height:28px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:transparent;flex-shrink:0;transition:all .18s}
+.scheck{width:36px;height:36px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent;flex-shrink:0;transition:all .18s}
 .scheck:hover{border-color:var(--g2);color:var(--g2)}
-.scheck.sdone{background:var(--g);border-color:var(--g);color:white}
+.scheck.sdone{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 
 /* Rest banner */
 .restbanner{background:linear-gradient(135deg,#1B4332,#40916C);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px}
@@ -330,6 +330,8 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 
 /* PR celebration */
 @keyframes prPop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes checkDone{0%{transform:scale(1)}35%{transform:scale(.75)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(60px) rotate(360deg);opacity:0}}
 .pr-banner{background:linear-gradient(135deg,#1B4332,#40916C);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;color:white;display:flex;align-items:center;gap:12px;animation:prPop .4s ease-out;box-shadow:0 4px 20px rgba(45,106,79,.4)}
 .pr-trophy{font-size:28px;flex-shrink:0}
@@ -477,7 +479,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 .gm-sinput-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;margin-top:2px}
 .gm-check{width:38px;height:38px;border-radius:10px;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
 .gm-check:hover{border-color:var(--g2)}
-.gm-check.checked{background:var(--g);border-color:var(--g);color:white}
+.gm-check.checked{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 /* Rest overlay inside guided */
 .gm-rest-overlay{position:absolute;inset:0;background:rgba(13,31,23,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:8px}
 .gm-rest-overlay.hidden{display:none}
