@@ -2194,18 +2194,18 @@ function renderHome(){
       if(d.getFullYear()===y&&d.getMonth()===mo) ingr+=(parseFloat(p.amount)||0);
     });
   });
-  document.getElementById('h-ingr').textContent='$'+ingr.toLocaleString('es-CO');
+  const elIngr=document.getElementById('h-ingr');if(elIngr)elIngr.textContent='$'+ingr.toLocaleString('es-CO');
 
   // ── Activos ──
   const activos=DB.clients.filter(c=>{ const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
-  document.getElementById('h-actv').textContent=activos;
+  const elActv=document.getElementById('h-actv');if(elActv)elActv.textContent=activos;
 
   // ── Sesiones esta semana ──
   let sesiones=0;
   Object.values(DB.history||{}).forEach(arr=>{
     (arr||[]).forEach(s=>{ if(new Date(s.date)>=weekAgo) sesiones++; });
   });
-  document.getElementById('h-sess').textContent=sesiones;
+  const elSess=document.getElementById('h-sess');if(elSess)elSess.textContent=sesiones;
 
   // ── Sin entrenar 4+ días (con membresía activa) ──
   const inactivos=DB.clients.filter(c=>{
@@ -4584,7 +4584,7 @@ function initPWA(){
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   if('serviceWorker' in navigator && isSecure){
     const swCode=`
-const CACHE_NAME='apex-v1';
+const CACHE_NAME='apex-v2';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));
