@@ -6,6 +6,10 @@ const VAPID_PUBLIC  = Deno.env.get("VAPID_PUBLIC")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@apex.app";
 
+// La anon key es la única credencial válida para llamar este endpoint.
+// Se lee desde env para no hardcodearla en el código del edge function.
+const APEX_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
 const cors = {
@@ -15,6 +19,22 @@ const cors = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
+  // ── Auth check ────────────────────────────────────────────────────────────
+  // Verifica que el caller envíe Authorization: Bearer {anon_key}.
+  // El frontend de APEX ya lo hace (línea pushToClient en index.html).
+  // Cualquier llamada externa sin la key correcta recibe 401.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+  if (!APEX_ANON_KEY || token !== APEX_ANON_KEY) {
+    console.log("[send-push] 401 — Authorization inválido o ausente");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   try {
     const { clientId, title, body } = await req.json();
