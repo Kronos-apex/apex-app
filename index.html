@@ -3697,6 +3697,8 @@ function openNutModal(){
   document.getElementById('nut-meals').value=nut.meals||'3';
   document.getElementById('nut-plan').value=nut.plan||'';
   document.getElementById('nut-avoid').value=nut.avoid||'';
+  document.getElementById('nut-water').value=nut.water||'';
+  document.getElementById('nut-examples').value=nut.examples||'';
   om('m-nut');
 }
 
@@ -3711,6 +3713,8 @@ function saveNutrition(){
     meals:document.getElementById('nut-meals').value,
     plan:document.getElementById('nut-plan').value.trim(),
     avoid:document.getElementById('nut-avoid').value.trim(),
+    water:parseInt(document.getElementById('nut-water').value)||0,
+    examples:document.getElementById('nut-examples').value.trim(),
     updatedAt:new Date().toISOString()
   };
   sv('ax_nut',DB.nutrition);
@@ -3731,7 +3735,8 @@ function renderNutritionCoach(clientId){
       ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
-  if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\uFE0F ${nut.meals} comidas/d\u00eda</div>`;
+  if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${nut.meals} comidas/d\u00eda</div>`;
+  if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${nut.water} vasos de agua/d\u00eda</div>`;
   if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${nut.plan}</div>`;
   if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${nut.avoid}</div>`;
   con.innerHTML=html;
@@ -3740,25 +3745,48 @@ function renderNutritionCoach(clientId){
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
   const nut=(DB.nutrition||{})[clientId];
-  if(!nut||(!nut.kcal&&!nut.plan)){con.innerHTML='Tu coach a\u00fan no ha asignado un plan nutricional.';return;}
-  // Renderizar igual que coach pero en contenedor cliente
-  const tmp=document.createElement('div');
-  const prev=document.getElementById('d-nut-preview');
-  if(prev&&prev.innerHTML){con.innerHTML=prev.innerHTML;return;}
-  // Fallback: reconstruir
-  let html='';
-  if(nut.kcal||nut.prot||nut.carbs||nut.fat){
-    html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--g)">${nut.kcal}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
-      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
-      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
-      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
-    </div>`;
+  if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
+    con.innerHTML='<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha asignado un plan nutricional.</div>';
+    return;
   }
-  if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\uFE0F ${nut.meals} comidas/d\u00eda</div>`;
-  if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${nut.plan}</div>`;
-  if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${nut.avoid}</div>`;
-  con.innerHTML=html||'Sin plan asignado.';
+  let html='';
+  // Macros grid
+  if(nut.kcal||nut.prot||nut.carbs||nut.fat){
+    html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
+    if(nut.kcal)html+=`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--g)">${nut.kcal}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(nut.water)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--bl)">${nut.water}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
+    html+=`</div>`;
+    if(nut.prot||nut.carbs||nut.fat){
+      html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
+      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div></div>`;
+      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div></div>`;
+      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div></div>`;
+      html+=`</div>`;
+    }
+  }
+  // Comidas por d\u00eda
+  if(nut.meals)html+=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;margin-bottom:12px;font-size:13px"><span style="font-size:16px">\uD83C\uDF7D\ufe0f</span><span><strong>${nut.meals} comidas por d\u00eda</strong> \u2014 distribuye tus calor\u00edas de manera uniforme</span></div>`;
+  // Ejemplos de comidas
+  if(nut.examples){
+    html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">\ud83d\udca1 Ejemplos de alimentaci\u00f3n</div>`;
+    const lines=nut.examples.split('\n').filter(l=>l.trim());
+    lines.forEach(line=>{
+      const colonIdx=line.indexOf(':');
+      if(colonIdx>0){
+        const label=line.slice(0,colonIdx).trim();
+        const content=line.slice(colonIdx+1).trim();
+        html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
+      } else {
+        html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--t1)">${esc(line)}</div>`;
+      }
+    });
+    html+=`</div>`;
+  }
+  // Plan libre
+  if(nut.plan)html+=`<div style="background:var(--gl);border-radius:var(--rsm);padding:12px;margin-bottom:12px;white-space:pre-line;font-size:13px;line-height:1.7;color:var(--gt)">\ud83d\udccb ${esc(nut.plan)}</div>`;
+  // Evitar
+  if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
+  con.innerHTML=html;
 }
 
 // ══════════════ MEDIDAS CORPORALES ══════════════
@@ -5230,6 +5258,10 @@ function openExYoutube(){
       <label class="ilbl">Alimentos a evitar</label>
       <input class="inp" id="nut-avoid" placeholder="Ej: Azucar refinada, alcohol...">
     </div>
+    <div class="ilbl">💧 Agua recomendada (vasos/día)</div>
+    <input class="inp" type="number" id="nut-water" placeholder="8" min="1" max="20" style="margin-bottom:14px">
+    <div class="ilbl">🍽️ Ejemplos de comidas (opcional)</div>
+    <textarea class="inp" id="nut-examples" rows="4" placeholder="Desayuno: avena con frutas y huevos revueltos&#10;Almuerzo: arroz, pollo a la plancha y ensalada&#10;Cena: sopa de verduras y atún" style="resize:vertical;margin-bottom:14px"></textarea>
     <div class="mdfooter">
       <button class="btn bg" onclick="cm('m-nut')">Cancelar</button>
       <button class="btn bp" onclick="saveNutrition()">💾 Guardar plan</button>
