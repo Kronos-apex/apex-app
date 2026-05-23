@@ -3885,6 +3885,39 @@ function calcMacrosSugeridos(client){
   return {kcal,prot:protG,carbs:carbsG,fat:fatG,water};
 }
 
+const NUT_TEMPLATES=[
+  {label:'Cutting 🔻',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
+   plan:'Déficit calórico moderado para perder grasa preservando músculo.\nPrioriza proteína en cada comida.',
+   examples:'Desayuno: 3 claras + 1 huevo revuelto con avena y fruta\nAlmuerzo: Arroz integral, pechuga a la plancha y ensalada\nMerienda: Yogur griego con frutas\nCena: Sopa de verduras con atún al natural',
+   avoid:'Azúcares simples, frituras, bebidas azucaradas, alcohol'},
+  {label:'Volumen 💪',kcal:3200,prot:180,carbs:380,fat:80,water:12,meals:'5',
+   plan:'Superávit calórico limpio para ganar masa muscular con mínima grasa.\nDistribuye las comidas cada 3-4 horas.',
+   examples:'Desayuno: Avena con leche, banano y 3 huevos revueltos\nMerienda AM: Batido de proteína con avena y mantequilla de maní\nAlmuerzo: Arroz, pasta o papa + carne roja o pollo + aguacate\nMerienda PM: Yogur griego con granola y frutas\nCena: Pollo o atún con camote y brócoli',
+   avoid:'Comida chatarra, azúcares procesados en exceso'},
+  {label:'Mantenimiento ⚖️',kcal:2400,prot:150,carbs:270,fat:75,water:9,meals:'3',
+   plan:'Balance calórico para mantener el peso y la composición corporal actual.\nCome variado y equilibrado.',
+   examples:'Desayuno: Huevos, tostadas integrales y fruta\nAlmuerzo: Proteína + carbohidrato complejo + vegetales\nCena: Proteína ligera con ensalada abundante',
+   avoid:'Exceso de ultraprocesados y azúcares refinados'},
+  {label:'Definición 🔥',kcal:2000,prot:175,carbs:185,fat:60,water:11,meals:'4',
+   plan:'Déficit moderado con alta proteína para definir músculo y perder grasa.\nIdeal para quienes ya tienen base muscular.',
+   examples:'Desayuno: Claras de huevo, avena y café sin azúcar\nAlmuerzo: Pollo o pescado, arroz integral y vegetales al vapor\nMerienda: Atún con galletas de arroz\nCena: Ensalada grande con proteína magra',
+   avoid:'Sodio en exceso, alcohol, azúcares, grasas saturadas'},
+];
+
+function applyNutTemplate(idx){
+  const t=NUT_TEMPLATES[idx];if(!t)return;
+  document.getElementById('nut-kcal').value=t.kcal;
+  document.getElementById('nut-prot').value=t.prot;
+  document.getElementById('nut-carbs').value=t.carbs;
+  document.getElementById('nut-fat').value=t.fat;
+  document.getElementById('nut-water').value=t.water;
+  document.getElementById('nut-meals').value=t.meals;
+  document.getElementById('nut-plan').value=t.plan;
+  document.getElementById('nut-examples').value=t.examples;
+  document.getElementById('nut-avoid').value=t.avoid;
+  document.getElementById('nut-calc-nota').style.display='none';
+}
+
 function openNutModal(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   document.getElementById('m-nut-cn').textContent=c.name;
@@ -5481,6 +5514,15 @@ function openExYoutube(){
     <div class="mdtitle">🥗 Plan nutricional &mdash; <span id="m-nut-cn" style="color:var(--g)"></span></div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">El asesorado ver&aacute; este plan en su perfil.</div>
     <div id="nut-calc-nota" style="display:none;background:var(--gl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--gt);margin-bottom:14px;line-height:1.5"></div>
+    <div style="margin-bottom:14px">
+      <div class="ilbl" style="margin-bottom:6px">⚡ Aplicar template</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn bg bsm" onclick="applyNutTemplate(0)">Cutting 🔻</button>
+        <button type="button" class="btn bg bsm" onclick="applyNutTemplate(1)">Volumen 💪</button>
+        <button type="button" class="btn bg bsm" onclick="applyNutTemplate(2)">Mantenimiento ⚖️</button>
+        <button type="button" class="btn bg bsm" onclick="applyNutTemplate(3)">Definición 🔥</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="fg"><label class="ilbl">Calor&iacute;as objetivo</label><input class="inp" id="nut-kcal" type="number" placeholder="Ej: 2200" inputmode="numeric"></div>
       <div class="fg"><label class="ilbl">Prote&iacute;na (g)</label><input class="inp" id="nut-prot" type="number" placeholder="Ej: 160" inputmode="numeric"></div>
