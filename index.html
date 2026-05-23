@@ -3876,9 +3876,9 @@ function renderNutritionClient(clientId){
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div></div>`;
-      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div></div>`;
-      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div></div>`;
+      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
+      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:#7a5c00;font-weight:600">${nut.carbs*4} kcal</div></div>`;
+      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
