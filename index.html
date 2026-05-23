@@ -850,6 +850,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div id="cn-profile" class="cnp">
       <div class="profhero" id="cn-prof-card"></div>
 
+      <!-- Streak de entrenamiento -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><div class="ctitle">🔥 Mi racha</div></div>
+        <div class="cb" id="cn-streak" style="padding:12px 16px"></div>
+      </div>
+
       <!-- Body weight tracker -->
       <div class="card" style="margin-bottom:12px">
         <div class="ch"><div class="ctitle">⚖️ Mi peso corporal</div></div>
@@ -3260,6 +3266,58 @@ function showPRCelebration(prs){
     </div>`).join('');
 }
 
+function calcStreak(clientId){
+  const sessions=(DB.history[clientId]||[]).map(s=>new Date(s.date));
+  if(!sessions.length) return {streak:0,best:0,thisWeek:0};
+  // Sesiones esta semana (lunes a hoy)
+  const now=new Date();
+  const monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));monday.setHours(0,0,0,0);
+  const thisWeek=sessions.filter(d=>d>=monday).length;
+  // Calcular semanas con al menos 1 sesion (desde la mas reciente hacia atras)
+  const weekSet=new Set(sessions.map(d=>{
+    const t=new Date(d);t.setHours(0,0,0,0);
+    const day=(t.getDay()+6)%7;
+    t.setDate(t.getDate()-day);
+    return t.getTime();
+  }));
+  const weeks=[...weekSet].sort((a,b)=>b-a);
+  // Semana actual (lunes de esta semana)
+  const thisMonday=new Date(monday).getTime();
+  let streak=0,best=0,cur=0;
+  // Racha: semanas consecutivas empezando desde la mas reciente
+  for(let i=0;i<weeks.length;i++){
+    const expected=thisMonday-i*7*86400000;
+    if(weeks[i]===expected){ cur++; if(i===0||streak>0) streak=cur; }
+    else { if(i===0&&weeks[0]<thisMonday-7*86400000){ streak=0; } break; }
+    best=Math.max(best,cur);
+  }
+  best=Math.max(best,streak);
+  return {streak,best,thisWeek};
+}
+
+function renderStreakClient(clientId){
+  let con=document.getElementById('cn-streak');
+  if(!con) return;
+  const {streak,best,thisWeek}=calcStreak(clientId);
+  const fire=streak>=8?'🔥🔥':streak>=4?'🔥':'⚡';
+  const msg=streak===0?'¡Empieza tu racha esta semana!':streak===1?'1 semana seguida. ¡Sigue así!':streak<4?`${streak} semanas seguidas. ¡Vas bien!`:`¡${streak} semanas seguidas! ${streak>=8?'¡Imparable!':'¡Increíble!'}`;
+  con.innerHTML=`
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="text-align:center;min-width:64px">
+        <div style="font-size:40px;line-height:1">${fire}</div>
+        <div style="font-size:28px;font-weight:900;color:var(--g);line-height:1.1">${streak}</div>
+        <div style="font-size:10px;color:var(--t2);font-weight:600">SEM. SEGUIDAS</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">${msg}</div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--bl)">${thisWeek}</div><div style="font-size:10px;color:var(--t2)">Esta semana</div></div>
+          <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--or)">${best}</div><div style="font-size:10px;color:var(--t2)">Mejor racha</div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
   const con=document.getElementById('cn-pr-list');if(!con)return;
@@ -3289,6 +3347,7 @@ function renderClientProfile(client){
   document.getElementById('cn-prof-card').innerHTML=`<div class="profav">${ini(client.name)}</div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills"><span class="profpill">🎯 ${client.goal}</span><span class="profpill">📊 ${client.level}</span><span class="profpill">📅 ${client.days} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${v}</span></div>`).join('');
+  renderStreakClient(client.id);
   renderBodyWeightSection(client.id);
   renderPRsInProfile(client.id);
   renderClientExProgress(client.id);
