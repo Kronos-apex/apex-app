@@ -339,8 +339,20 @@ git push origin main
 6. Campo nuevo en DB → actualizar SB_KEYS si debe sincronizar
 7. Sin funciones duplicadas — verificar antes de añadir
 
-### Al entregar
+### Al entregar (deploy)
 8. Lucas QA funcional → Julián QA estático → deploy si ambos 🟢
+9. **Actualizar CLAUDE.md** — parte obligatoria del deploy (Paso 6 del skill apex-deploy)
+
+### Al cerrar sesión
+10. Revisar si algo relevante ocurrido en la sesión **no llegó a deploy** pero debería quedar documentado:
+    - Decisiones de arquitectura tomadas
+    - Campos o funciones nuevas que ya existen en el código
+    - Bugs conocidos identificados pero no resueltos
+    - Cambios en el roadmap
+11. Si hay algo: actualizar CLAUDE.md y commitear con `docs: notas de sesión`
+12. Si no hay nada nuevo: confirmarlo — "CLAUDE.md revisado al cierre, sin cambios."
+
+**El CLAUDE.md desactualizado es tan peligroso como el código sin QA — la próxima sesión arranca con contexto falso.**
 
 ---
 

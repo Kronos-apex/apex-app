@@ -12,7 +12,7 @@ Si algún agente reporta 🔴, el deploy se aborta sin excepción, sin "es solo 
 
 ---
 
-## Pipeline obligatorio (5 pasos en orden estricto)
+## Pipeline obligatorio (6 pasos en orden estricto)
 
 ### PASO 1 — Julián QA: Auditoría estática de código
 
@@ -104,7 +104,7 @@ Tested: ✅ Lucas QA — [feature principal] LISTO
 
 ---
 
-### PASO 5 — Push y confirmación
+### PASO 5 — Push
 
 ```bash
 git add index.html  # (y otros archivos modificados, nunca git add -A sin revisar)
@@ -117,7 +117,32 @@ git push origin main
 - `--no-verify` para saltarse el hook
 - Pushear a `master` (la rama de producción es `main`)
 
-Después del push, confirmar al usuario:
+---
+
+### PASO 6 — Actualizar CLAUDE.md (obligatorio tras cada deploy)
+
+Después del push, antes de confirmar al usuario, revisar si CLAUDE.md refleja el estado actual. Actualizar si alguno de estos cambió:
+
+| Qué revisar | Cuándo actualizar |
+|---|---|
+| Número de líneas / funciones / ejercicios | Si el diff fue significativo (>50 líneas) |
+| Schema de datos (`DB`, cliente, sesión) | Si se añadió/cambió algún campo |
+| `SB_KEYS` | Si se añadió/eliminó alguna clave |
+| Funciones clave documentadas | Si se creó una función importante nueva |
+| Roadmap — versión actual | Si la feature era del roadmap, marcarla ✅ |
+| Tokens CSS | Si se añadió un token nuevo |
+| Estado de seguridad | Si se corrigió un punto de seguridad |
+| Versión del producto | Si el conjunto de cambios justifica bump de versión |
+
+**Cómo actualizar:**
+1. Leer las secciones relevantes de CLAUDE.md
+2. Editar solo lo que cambió — no reescribir secciones sanas
+3. Actualizar la línea `*Última actualización:*` al pie del archivo
+4. Incluir CLAUDE.md en el mismo commit del deploy O en un commit `docs:` inmediatamente después
+
+**Si no hubo cambio relevante para documentar:** confirmarlo explícitamente — "CLAUDE.md revisado, sin cambios necesarios."
+
+Después de todo, confirmar al usuario:
 
 ```
 🚀 Deploy completado
@@ -126,6 +151,7 @@ Después del push, confirmar al usuario:
 ✅ Lucas QA   : [feature] — LISTO
 ✅ Commit     : [tipo]: [resumen]
 ✅ Push       : origin/main → github.com/Kronos-apex/apex-app
+✅ CLAUDE.md  : [actualizado con X / sin cambios necesarios]
 ⏱️  Netlify propaga en ~30 segundos
 ```
 
