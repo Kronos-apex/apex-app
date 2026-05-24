@@ -4325,71 +4325,262 @@ function shareNutWhatsapp(){
 
 function exportNutImage(){
   const nut=(DB.nutrition||{})[CUR.clientId];
-  if(!nut||(!nut.kcal&&!nut.plan)){toast('Sin plan nutricional para exportar');return;}
+  if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){toast('Sin plan nutricional para exportar');return;}
   const cl=DB.clients.find(x=>x.id===CUR.clientId);
-  const nombre=cl?cl.name:'';
-  const W=800,PAD=40;
-  // Construir líneas de contenido
-  const lines=[];
-  if(nut.kcal) lines.push({text:`🔥 Calorías: ${nut.kcal} kcal/día`,size:22,bold:true,color:'#2D6A4F'});
-  if(nut.water) lines.push({text:`💧 Agua: ${nut.water} vasos/día`,size:18,color:'#457B9D'});
-  if(nut.meals) lines.push({text:`🍽️ Comidas: ${nut.meals} al día`,size:18,color:'#555'});
-  if(nut.prot||nut.carbs||nut.fat){
-    lines.push({text:'',size:8});
-    lines.push({text:'MACROS POR DÍA',size:13,bold:true,color:'#999',upper:true});
-    if(nut.prot) lines.push({text:`Proteína: ${nut.prot}g · ${nut.prot*4} kcal`,size:17,color:'#457B9D'});
-    if(nut.carbs) lines.push({text:`Carbohidratos: ${nut.carbs}g · ${nut.carbs*4} kcal`,size:17,color:'#7a5c00'});
-    if(nut.fat) lines.push({text:`Grasas: ${nut.fat}g · ${nut.fat*9} kcal`,size:17,color:'#E76F51'});
+  const nombre=cl?(cl.name.split(' ').slice(0,2).join(' ')):'';
+  const coachName=getCoachName()||'Tu coach';
+  const SCALE=2,W=800,PAD=36,INNER=W-PAD*2;
+  const SP=20,CP=14,CARD_GAP=8,LINE_H=19;
+
+  // Rounded rect helper
+  function rrNut(ctx,x,y,w,h,r,fill){
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+    ctx.fillStyle=fill;ctx.fill();
   }
+
+  // Text wrap helper — returns array of line strings
+  function wrap(ctx,text,maxW,font){
+    ctx.font=font;
+    const words=text.split(' ');const out=[];let cur='';
+    for(const w of words){
+      const t=cur+(cur?' ':'')+w;
+      if(ctx.measureText(t).width>maxW&&cur){out.push(cur);cur=w;}
+      else cur=t;
+    }
+    if(cur)out.push(cur);
+    return out.length?out:[''];
+  }
+
+  // Parse examples "Meal: description\n..."
+  const MEAL_EMOJI={'desayuno':'🌅','almuerzo':'☀️','merienda am':'☕',
+    'merienda pm':'🌤️','merienda':'🥪','cena':'🌙','snack':'🍎',
+    'colación':'🍎','pre-entreno':'⚡','post-entreno':'💪','refrigerio':'🥪'};
+  const MEAL_COLORS=[
+    {bg:'#EBF5EF',border:'#2D6A4F',tc:'#1B4332'},
+    {bg:'#EAF2F8',border:'#457B9D',tc:'#2c5f7a'},
+    {bg:'#FEF9EC',border:'#E9C46A',tc:'#7a5c00'},
+    {bg:'#FEF0EC',border:'#E76F51',tc:'#b34e35'},
+    {bg:'#F3EEF9',border:'#A855F7',tc:'#6b21a8'},
+  ];
+  const meals=[];
   if(nut.examples){
-    lines.push({text:'',size:8});
-    lines.push({text:'EJEMPLOS DE COMIDAS',size:13,bold:true,color:'#999'});
-    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>lines.push({text:l.trim(),size:16,color:'#333',indent:true}));
+    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>{
+      const ci=l.indexOf(':');
+      if(ci>0){
+        const name=l.substring(0,ci).trim();
+        const desc=l.substring(ci+1).trim();
+        meals.push({name,desc,emoji:MEAL_EMOJI[name.toLowerCase()]||'🍽️'});
+      }
+    });
   }
-  if(nut.plan){
-    lines.push({text:'',size:8});
-    lines.push({text:'NOTAS DEL COACH',size:13,bold:true,color:'#999'});
-    nut.plan.split('\n').filter(l=>l.trim()).forEach(l=>lines.push({text:l.trim(),size:15,color:'#444',indent:true}));
+
+  // ── PASS 1: measure heights ──────────────────────────
+  const tmp=document.createElement('canvas');
+  tmp.width=W*SCALE;tmp.height=10;
+  const tc=tmp.getContext('2d');tc.scale(SCALE,SCALE);
+
+  const HEADER_H=158,FOOTER_H=54;
+  let H=HEADER_H;
+
+  // Macro pills
+  const macros=[
+    {v:nut.kcal,u:'kcal',l:'Calorías'},
+    {v:nut.prot?nut.prot+'g':null,u:nut.prot?nut.prot*4+' kcal':null,l:'Proteína'},
+    {v:nut.carbs?nut.carbs+'g':null,u:nut.carbs?nut.carbs*4+' kcal':null,l:'Carbs'},
+    {v:nut.fat?nut.fat+'g':null,u:nut.fat?nut.fat*9+' kcal':null,l:'Grasas'},
+  ].filter(m=>m.v);
+  if(macros.length){H+=SP+14+SP+62+28+SP;}
+
+  // Meals
+  if(meals.length){
+    H+=SP+14+8+14+SP; // section title + subtitle
+    for(const m of meals){
+      const lines=wrap(tc,m.desc,INNER-CP*2-28,'14px system-ui,sans-serif');
+      H+=CP+22+(lines.length*LINE_H)+CP+CARD_GAP;
+    }
+    H+=SP-CARD_GAP;
   }
+
+  // Avoid
   if(nut.avoid){
-    lines.push({text:'',size:8});
-    lines.push({text:`⚠️ Evitar: ${nut.avoid}`,size:15,color:'#E63946'});
+    const al=wrap(tc,nut.avoid,INNER-CP*2-20,'14px system-ui,sans-serif');
+    H+=SP+CP+20+(al.length*LINE_H)+CP;
   }
-  // Calcular altura total
-  const HEADER_H=110;
-  let totalH=HEADER_H+PAD;
-  lines.forEach(l=>totalH+=((l.size||16)+10));
-  totalH+=60; // footer
+
+  // Coach note
+  if(nut.plan){
+    H+=SP+14+SP;
+    for(const pl of nut.plan.split('\n').filter(l=>l.trim())){
+      H+=wrap(tc,pl,INNER,'14px system-ui,sans-serif').length*LINE_H;
+    }
+    H+=8;
+  }
+  H+=SP+FOOTER_H;
+
+  // ── PASS 2: draw ────────────────────────────────────
   const canvas=document.createElement('canvas');
-  canvas.width=W; canvas.height=Math.max(totalH,400);
+  canvas.width=W*SCALE;canvas.height=H*SCALE;
   const ctx=canvas.getContext('2d');
-  // Fondo
-  ctx.fillStyle='#F4F4F0'; ctx.fillRect(0,0,W,canvas.height);
-  // Header
-  ctx.fillStyle='#2D6A4F'; ctx.fillRect(0,0,W,HEADER_H);
+  ctx.scale(SCALE,SCALE);
+
+  // Background
+  ctx.fillStyle='#F4F4F0';ctx.fillRect(0,0,W,H);
+
+  // ── Header ──
+  const grad=ctx.createLinearGradient(0,0,0,HEADER_H);
+  grad.addColorStop(0,'#2D6A4F');grad.addColorStop(1,'#1B4332');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,HEADER_H);
+
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.beginPath();ctx.arc(W-60,20,120,0,Math.PI*2);ctx.fill();
+
   ctx.fillStyle='#fff';
   ctx.font='bold 28px system-ui,sans-serif';
-  ctx.fillText('🥗 Mi Plan Nutricional',PAD,46);
-  ctx.font='18px system-ui,sans-serif';
-  ctx.fillText(nombre,PAD,78);
-  ctx.font='13px system-ui,sans-serif'; ctx.fillStyle='rgba(255,255,255,.7)';
-  ctx.fillText(new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}),PAD,100);
-  // Contenido
-  let y=HEADER_H+PAD+10;
-  lines.forEach(l=>{
-    const sz=l.size||16;
-    ctx.font=(l.bold?'bold ':'')+sz+'px system-ui,sans-serif';
-    ctx.fillStyle=l.color||'#1A1A1A';
-    ctx.fillText((l.indent?'  ':'')+l.text, PAD+(l.indent?16:0), y);
-    y+=sz+10;
-  });
-  // Footer
-  ctx.fillStyle='#2D6A4F';
-  ctx.fillRect(0,canvas.height-40,W,40);
-  ctx.fillStyle='rgba(255,255,255,.8)';
-  ctx.font='13px system-ui,sans-serif';
-  ctx.fillText('Generado por APEX · Tu plataforma de entrenamiento personal',PAD,canvas.height-14);
-  // Descargar
+  ctx.fillText('🥗 Plan Nutricional',PAD,46);
+
+  ctx.textAlign='right';
+  ctx.font='bold 13px system-ui,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.fillText('APEX',W-PAD,46);
+  ctx.textAlign='left';
+
+  ctx.font='bold 22px system-ui,sans-serif';
+  ctx.fillStyle='#fff';
+  ctx.fillText(nombre.toUpperCase(),PAD,82);
+
+  ctx.font='14px system-ui,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  const meta=[];
+  if(cl?.goal)meta.push('Objetivo: '+cl.goal);
+  if(cl?.activity)meta.push(cl.activity);
+  if(meta.length)ctx.fillText(meta.join('  ·  '),PAD,108);
+
+  ctx.font='12px system-ui,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  const weekStr='Semana del '+new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  ctx.fillText(weekStr,PAD,134);
+
+  let y=HEADER_H;
+
+  // ── Macros ──
+  if(macros.length){
+    y+=SP;
+    ctx.font='bold 11px system-ui,sans-serif';
+    ctx.fillStyle='#B0B0B0';
+    ctx.fillText('TU DÍA EN NÚMEROS',PAD,y+11);
+    y+=11+SP;
+
+    const PILL_W=(INNER-(macros.length-1)*8)/macros.length,PILL_H=62;
+    const PILL_BG=['#EBF5EF','#EAF2F8','#FEF9EC','#FEF0EC'];
+    const PILL_C=['#2D6A4F','#457B9D','#7a5c00','#E76F51'];
+    macros.forEach((m,i)=>{
+      const px=PAD+i*(PILL_W+8);
+      rrNut(ctx,px,y,PILL_W,PILL_H,10,PILL_BG[i]||'#EBF5EF');
+      ctx.textAlign='center';
+      ctx.font='bold 22px system-ui,sans-serif';
+      ctx.fillStyle=PILL_C[i]||'#2D6A4F';
+      ctx.fillText(m.v,px+PILL_W/2,y+28);
+      ctx.font='bold 11px system-ui,sans-serif';
+      ctx.fillText(m.l,px+PILL_W/2,y+44);
+      if(m.u&&m.u!=='kcal'){
+        ctx.font='10px system-ui,sans-serif';
+        ctx.fillStyle='rgba(0,0,0,0.38)';
+        ctx.fillText(m.u,px+PILL_W/2,y+57);
+      }
+      ctx.textAlign='left';
+    });
+    y+=PILL_H+14;
+
+    ctx.font='13px system-ui,sans-serif';
+    ctx.fillStyle='#6A6A6A';
+    const inf=[];
+    if(nut.water)inf.push(`💧 ${nut.water} vasos de agua`);
+    if(nut.meals)inf.push(`🍽️ ${nut.meals} comidas al día`);
+    if(inf.length)ctx.fillText(inf.join('   ·   '),PAD,y);
+    y+=SP+8;
+  }
+
+  // ── Meals ──
+  if(meals.length){
+    y+=SP;
+    ctx.font='bold 11px system-ui,sans-serif';
+    ctx.fillStyle='#B0B0B0';
+    ctx.fillText('TU PLAN DE COMIDAS',PAD,y+11);
+    y+=11+8;
+    ctx.font='12px system-ui,sans-serif';
+    ctx.fillStyle='#B0B0B0';
+    ctx.fillText('Guíate por estos ejemplos — no tienen que ser exactos',PAD,y+12);
+    y+=12+SP;
+
+    meals.forEach((m,i)=>{
+      const col=MEAL_COLORS[i%MEAL_COLORS.length];
+      const descLines=wrap(ctx,m.desc,INNER-CP*2-28,'14px system-ui,sans-serif');
+      const cardH=CP+22+(descLines.length*LINE_H)+CP;
+      rrNut(ctx,PAD,y,INNER,cardH,10,col.bg);
+      rrNut(ctx,PAD,y,4,cardH,2,col.border);
+      ctx.font='bold 14px system-ui,sans-serif';
+      ctx.fillStyle=col.tc;
+      ctx.fillText(m.emoji+' '+m.name.toUpperCase(),PAD+CP+8,y+CP+14);
+      ctx.font='14px system-ui,sans-serif';
+      ctx.fillStyle='#1A1A1A';
+      descLines.forEach((ln,li)=>{
+        ctx.fillText(ln,PAD+CP+8,y+CP+22+(li*LINE_H)+LINE_H-2);
+      });
+      y+=cardH+CARD_GAP;
+    });
+    y+=SP-CARD_GAP;
+  }
+
+  // ── Avoid ──
+  if(nut.avoid){
+    y+=SP;
+    const al=wrap(ctx,nut.avoid,INNER-CP*2-20,'14px system-ui,sans-serif');
+    const avH=CP+20+(al.length*LINE_H)+CP;
+    rrNut(ctx,PAD,y,INNER,avH,10,'#FCE4E6');
+    rrNut(ctx,PAD,y,4,avH,2,'#E63946');
+    ctx.font='bold 13px system-ui,sans-serif';
+    ctx.fillStyle='#E63946';
+    ctx.fillText('🚫 Mejor dejar de lado por ahora',PAD+CP+8,y+CP+14);
+    ctx.font='14px system-ui,sans-serif';
+    ctx.fillStyle='#7a1520';
+    al.forEach((ln,li)=>{
+      ctx.fillText(ln,PAD+CP+8,y+CP+20+(li*LINE_H)+LINE_H-2);
+    });
+    y+=avH;
+  }
+
+  // ── Coach note ──
+  if(nut.plan){
+    y+=SP;
+    ctx.font='bold 11px system-ui,sans-serif';
+    ctx.fillStyle='#B0B0B0';
+    ctx.fillText('MENSAJE DE TU COACH',PAD,y+11);
+    y+=11+SP;
+    ctx.font='14px system-ui,sans-serif';
+    ctx.fillStyle='#444';
+    for(const pl of nut.plan.split('\n').filter(l=>l.trim())){
+      for(const ln of wrap(ctx,pl,INNER,'14px system-ui,sans-serif')){
+        ctx.fillText(ln,PAD,y);y+=LINE_H;
+      }
+    }
+    y+=8;
+  }
+
+  // ── Footer ──
+  y+=SP;
+  ctx.fillStyle='#2D6A4F';ctx.fillRect(0,y,W,FOOTER_H);
+  ctx.font='bold 14px system-ui,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  ctx.fillText('Plan de '+coachName+' · APEX',PAD,y+22);
+  ctx.font='12px system-ui,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.fillText('Tu plataforma de entrenamiento personal',PAD,y+40);
+
+  // Download
   const a=document.createElement('a');
   a.href=canvas.toDataURL('image/png');
   a.download=`plan-nutricional-${(nombre||'apex').toLowerCase().replace(/\s+/g,'-')}.png`;
