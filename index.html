@@ -1373,9 +1373,12 @@ function requestNotifPermission(){
 // Mostrar notificación usando SW si disponible, fallback a new Notification
 function showApexNotif(title,body,tag){
   if(Notification.permission!=='granted')return;
-  const opts={body,tag:tag||'apex-'+Date.now(),icon:pwaGenIcon(192),badge:pwaGenIcon(96),vibrate:[200,100,200],requireInteraction:false};
-  if(window._swReg&&window._swReg.showNotification){
-    window._swReg.showNotification(title,opts);
+  const icon='/apex-app/icons/icon-192.png';
+  const opts={body,tag:tag||'apex-'+Date.now(),icon,badge:icon,vibrate:[200,100,200],requireInteraction:false};
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.ready.then(reg=>{
+      return reg.showNotification(title,opts);
+    }).catch(()=>{try{new Notification(title,opts);}catch(e){}});
   } else {
     try{new Notification(title,opts);}catch(e){}
   }
@@ -5189,7 +5192,7 @@ self.addEventListener('fetch',e=>{
 self.addEventListener('push',e=>{
   if(!e.data)return;
   let d={};try{d=e.data.json();}catch{d={title:'APEX',body:e.data.text()};}
-  e.waitUntil(self.registration.showNotification(d.title||'APEX',{body:d.body||'Tu coach te envió un mensaje',icon:d.icon||'/icon-192.png',vibrate:[200,100,200],data:{url:d.url||'/'}}));
+  e.waitUntil(self.registration.showNotification(d.title||'APEX',{body:d.body||'Tu coach te envió un mensaje',icon:d.icon||'/apex-app/icons/icon-192.png',vibrate:[200,100,200],data:{url:d.url||'/'}}));
 });
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
