@@ -53,6 +53,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --yl:#E9C46A; --yll:#FEF6DE; --rd:#E63946; --rdl:#FCE4E6;
   --r:12px; --rsm:8px; --rlg:18px;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
+  --accent3:#95D5B2; --surface:var(--bg);
 }
 /* dark mode automático (sistema) — no aplica si el usuario eligió "Claro" */
 @media (prefers-color-scheme: dark) {
@@ -66,6 +67,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --t3:  #4A7A58;
     --gl:  #1A3A26;
     --gt:  #95D5B2;
+    --accent3:#95D5B2; --surface:#152A1E;
     --sh:  0 2px 10px rgba(0,0,0,.25);
     --sh2: 0 6px 28px rgba(0,0,0,.40);
   }
@@ -96,6 +98,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --t3:  #4A7A58;
   --gl:  #1A3A26;
   --gt:  #95D5B2;
+  --accent3:#95D5B2; --surface:#152A1E;
   --sh:  0 2px 10px rgba(0,0,0,.25);
   --sh2: 0 6px 28px rgba(0,0,0,.40);
 }
@@ -422,7 +425,7 @@ html[data-theme="light"] .mta {
 .wlog-delta{font-size:11px;font-weight:700;padding:1px 6px;border-radius:10px}
 .wlog-add{display:flex;gap:8px;padding:10px 0 4px}
 
-.exinfo-btn{background:none;border:1.5px solid var(--br2);border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;line-height:1;transition:border-color .15s,background .15s}
+.exinfo-btn{background:none;border:1.5px solid var(--br2);border-radius:50%;width:36px;height:36px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;line-height:1;transition:border-color .15s,background .15s}
 .exinfo-btn:hover{background:var(--g);border-color:var(--g);color:white}
 /* ── Exercise Detail Bottom Sheet ── */
 .exdetail-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
@@ -643,7 +646,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
   <div class="ld-logo">💪 APEX</div>
-  <div class="ld-sub">Sincronizando datos...</div>
+  <div class="ld-sub">Preparando tu entrenamiento...</div>
   <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
   <div class="ld-msg" id="ld-msg">Conectando con la nube</div>
 </div>
@@ -702,7 +705,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="coach-topbar">
     <div class="coach-topbar-left">
       <div class="menu-btn" onclick="openDrawer()">☰</div>
-      <div class="coach-topbar-logo">APEX <span class="sync-dot" id="sync-dot" title="Sincronizando..."></span></div>
+      <div class="coach-topbar-logo">APEX <span class="sync-dot" id="sync-dot" title="Guardando en la nube..."></span></div>
     </div>
     <div style="display:flex;align-items:center;gap:7px">
       <div id="topbar-page" style="font-size:13px;font-weight:600;color:var(--t2)"></div>
@@ -733,6 +736,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="ch"><div class="ctitle">📊 Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
         <div id="h-ret-bars" style="padding:4px 12px 12px"></div>
       </div>
+      <!-- Banner de vencimientos próximos -->
+      <div id="h-expiry-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
         <div class="ch"><div class="ctitle">⚡ Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
@@ -1028,6 +1033,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="fg"><label class="ilbl">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
       <div class="fg"><label class="ilbl">Días / semana en gym</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
+    <div class="fg"><label class="ilbl">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
     <div class="fg"><label class="ilbl">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
   </div>
@@ -1217,8 +1223,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 // ── Debug logger: silencia console.log en producción ──
 window.APEX_DEBUG = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const log  = (...a) => window.APEX_DEBUG && log(...a);
-const warn = (...a) => window.APEX_DEBUG && warn(...a);
+const log  = (...a) => window.APEX_DEBUG && console.log(...a);
+const warn = (...a) => window.APEX_DEBUG && console.warn(...a);
 
 // ── Rate limiter de login ──
 const LOGIN_ATTEMPTS_KEY = 'ax_login_attempts';
@@ -1260,7 +1266,7 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site'];
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
 // Convierte VAPID key de base64 a Uint8Array
@@ -1424,7 +1430,7 @@ async function syncFromCloud(){
     }
   } else {
     // Abierto desde archivo local — saltar sync silenciosamente
-    setP(90,'Modo local — abre desde Netlify para sincronizar');
+    setP(90,'');
   }
   // Recargar DB desde localStorage (con o sin sync exitoso)
   DB.clients=ld('ax_c',[]);
@@ -1465,7 +1471,7 @@ const defaultExercises=[
   {id:'e27',name:'Jalón al Pecho Agarre Neutro',muscle:'espalda',type:'Compuesto',sets:4,reps:10,icon:'🤝',desc:'Barra en V, codos caen al lado del cuerpo. Activa romboides eficientemente.',descSimple:'Usa la barra en V. Jala hacia el pecho dejando caer los codos a los lados. Activa muy bien la espalda media.',muscleLabel:'Espalda media',ytQuery:'jalón agarre neutro v-bar tutorial'},
   {id:'e28',name:'Jalón al Pecho Agarre Cerrado',muscle:'espalda',type:'Compuesto',sets:4,reps:10,icon:'🔽',desc:'Agarre supino cerrado, tira hacia el esternón. Mayor dorsal inferior y bíceps.',descSimple:'Manos juntas y palmas mirando hacia ti. Jala la barra hacia el pecho bajo. Sentirás también los bíceps trabajar.',muscleLabel:'Dorsal inferior',ytQuery:'jalón agarre supino cerrado tutorial'},
   {id:'e34',name:'Peso Muerto Convencional',muscle:'espalda',type:'Compuesto',sets:4,reps:5,icon:'🏗️',desc:'El rey de los compuestos. Barra sobre el mediopié, espalda neutra en todo momento.',descSimple:'Párate con la barra justo sobre el medio del pie. Agáchate, agarra la barra con las manos fuera de las piernas, espalda recta y pecho arriba. Respira profundo, aprieta el abdomen y empuja el suelo con los pies para levantarte. Es el ejercicio más técnico — pide guía antes de aumentar peso.',muscleLabel:'Espalda, piernas y glúteos',ytQuery:'peso muerto convencional como hacerlo bien'},
-  {id:'e50',name:'Buenos Días con Barra',muscle:'espalda',type:'Compuesto',sets:3,reps:10,icon:'🌅',desc:'Barra en la nuca, bisagra de cadera al paralelo. Trabaja erectores, femoral y glúteo.',descSimple:'Barra apoyada en los hombros (no en el cuello). Inclínate hacia adelante desde la cadera solo hasta unos 45 grados, manteniendo la espalda completamente recta. Regresa lento. Usa poco peso — es muy exigente para la espalda baja.',muscleLabel:'Espalda baja y femoral',ytQuery:'buenos días con barra ejercicio tutorial'},
+  {id:'e50',name:'Buenos Días con Barra',muscle:'espalda',type:'Compuesto',sets:3,reps:10,icon:'🌅',desc:'Barra en la nuca, bisagra de cadera hasta 45 grados. Trabaja erectores, femoral y glúteo. Contraindicado en hernias lumbares activas.',descSimple:'Barra apoyada en los hombros (no en el cuello). Inclínate hacia adelante desde la cadera solo hasta unos 45 grados, manteniendo la espalda completamente recta. Regresa lento. Usa poco peso — es muy exigente para la espalda baja. ⚠️ No recomendado si tienes dolor lumbar activo.',muscleLabel:'Espalda baja y femoral',ytQuery:'buenos días con barra ejercicio tutorial'},
   {id:'e51',name:'Remo Gironda en Polea',muscle:'espalda',type:'Aislamiento',sets:4,reps:12,icon:'🪝',desc:'Polea baja, agarre neutro, codos hacia atrás y arriba tocando las costillas. Máxima contracción del dorsal medio.',descSimple:'Polea baja, siéntate en el suelo. Tira el agarre hacia tu barriga llevando los codos hacia atrás. Aprieta la espalda al final del movimiento.',muscleLabel:'Dorsal medio',ytQuery:'remo en polea baja sentado tutorial'},
   {id:'e52',name:'Remo con Mancuerna a una Mano',muscle:'espalda',type:'Aislamiento',sets:4,reps:12,icon:'💼',desc:'Apoyado en banco, tira la mancuerna hacia la cadera girando el codo hacia el techo. Gran estiramiento del dorsal.',descSimple:'Apoya una mano y una rodilla en el banco. Con la otra mano sube la mancuerna hacia la cadera. Un brazo a la vez.',muscleLabel:'Dorsal (espalda)',ytQuery:'remo con mancuerna un brazo tutorial'},
   // ── HOMBROS ──
@@ -1484,7 +1490,7 @@ const defaultExercises=[
   {id:'e56',name:'Curl Scott / Predicador',muscle:'biceps',type:'Aislamiento',sets:3,reps:12,icon:'🪑',desc:'Apoyado en el banco Scott, elimina el impulso. Máximo aislamiento del bíceps corto.',descSimple:'Siéntate en el banco con el cojín inclinado. Apoya los brazos en el cojín y dobla los codos subiendo el peso. El cojín evita que uses el cuerpo.',muscleLabel:'Bíceps',ytQuery:'curl scott predicador tutorial'},
   // ── TRÍCEPS ──
   {id:'e11',name:'Extensión en Polea Alta',muscle:'triceps',type:'Aislamiento',sets:4,reps:15,icon:'📉',desc:'Codos fijos al cuerpo, empuja hacia abajo hasta extensión completa.',descSimple:'Parado frente a la polea alta. Agarra la cuerda o barra y empuja hacia abajo extendiendo los brazos. Mantén los codos quietos al lado del cuerpo.',muscleLabel:'Tríceps (parte trasera del brazo)',ytQuery:'extensión tríceps polea alta tutorial'},
-  {id:'e12',name:'Skull Crushers',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'💀',desc:'Tumbado, baja la barra EZ hacia la frente. Extiende los codos explosivo.',descSimple:'Acuéstate en el banco. Mantén los codos apuntando al techo y fijos en esa posición. Dobla los codos bajando la barra hacia tu frente. Extiende lento y con control. Usa un peso que puedas controlar siempre.',muscleLabel:'Tríceps',ytQuery:'skull crushers tríceps cómo hacerlo'},
+  {id:'e12',name:'Skull Crushers',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'💀',desc:'Tumbado, baja la barra EZ hacia la frente. Extiende los codos de forma lenta y controlada.',descSimple:'Acuéstate en el banco. Mantén los codos apuntando al techo y fijos en esa posición. Dobla los codos bajando la barra hacia tu frente. Extiende lento y con control. Usa un peso que puedas controlar siempre.',muscleLabel:'Tríceps',ytQuery:'skull crushers tríceps cómo hacerlo'},
   {id:'e19',name:'Fondos en Paralelas',muscle:'triceps',type:'Compuesto',sets:3,reps:12,icon:'🤸',desc:'Torso ligeramente inclinado, baja hasta 90° de codo. Pecho y tríceps.',descSimple:'Apóyate en las barras paralelas con los brazos extendidos. Mantén el torso lo más vertical posible y baja doblando los codos hasta 90 grados. Sube empujando. Si sientes molestia en el hombro, reduce el rango o evita este ejercicio.',muscleLabel:'Tríceps y pecho',ytQuery:'fondos en paralelas tríceps pecho tutorial'},
   {id:'e30',name:'Extensión de Tríceps Trasnuca',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'🙆',desc:'Mancuerna o barra EZ sobre la cabeza, baja detrás del cuello. Cabeza larga en estiramiento.',descSimple:'Sostén el peso sobre la cabeza con los brazos extendidos. Dobla los codos bajando el peso detrás de la cabeza. Sientes el tríceps estirarse bien.',muscleLabel:'Tríceps',ytQuery:'extensión tríceps trasnuca mancuerna tutorial'},
   {id:'e31',name:'Extensión a una Mano en Polea',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'☝️',desc:'Polea alta, un brazo a la vez. Corrige desequilibrios entre brazos.',descSimple:'Con un brazo a la vez, empuja hacia abajo el agarre de la polea extendiendo el codo. Ideal para equilibrar los dos brazos.',muscleLabel:'Tríceps',ytQuery:'extensión tríceps polea un brazo tutorial'},
@@ -1512,7 +1518,7 @@ const defaultExercises=[
   {id:'e44',name:'Patada de Glúteo en Polea',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'🦵',desc:'De pie, lleva la pierna hacia atrás extendida. Core activo y espalda neutra.',descSimple:'Con la polea en el tobillo, lleva la pierna hacia atrás extendida. Aprieta el glúteo al tope del movimiento. La espalda debe quedar recta.',muscleLabel:'Glúteos',ytQuery:'patada de glúteo en polea cable kickback tutorial'},
   {id:'e45',name:'Abducción de Cadera en Máquina',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'🦋',desc:'Sentado, abre las piernas contra la resistencia. Glúteo medio y lateral.',descSimple:'Sentado en la máquina. Empuja las piernas hacia afuera separándolas contra la resistencia. Trabaja el glúteo de los lados.',muscleLabel:'Glúteo medio y lateral',ytQuery:'abducción cadera máquina glúteo medio tutorial'},
   {id:'e60',name:'Aducción de Cadera en Máquina',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'🫶',desc:'Sentado, cierra las piernas contra la resistencia. Trabaja el aductor y cara interna del muslo.',descSimple:'Sentado en la máquina. Junta las piernas contra la resistencia. Trabaja la cara interna del muslo.',muscleLabel:'Cara interna del muslo',ytQuery:'aducción cadera máquina inner thigh tutorial'},
-  {id:'e46',name:'Peso Muerto Piernas Rígidas',muscle:'gluteo',type:'Compuesto',sets:3,reps:10,icon:'🔱',desc:'Piernas casi rectas, desciende hasta sentir el estiramiento del femoral y glúteo.',descSimple:'A diferencia del Peso Muerto Rumano, aquí las piernas van casi completamente rectas. Baja el peso frente a las piernas sintiendo el estiramiento máximo en la parte trasera del muslo. Usa poco peso — es muy exigente para la espalda baja.',muscleLabel:'Glúteos y femoral',ytQuery:'peso muerto piernas rígidas stiff leg deadlift tutorial'},
+  {id:'e46',name:'Peso Muerto Piernas Rígidas',muscle:'gluteo',type:'Compuesto',sets:3,reps:10,icon:'🔱',desc:'Piernas casi rectas, desciende hasta sentir el estiramiento del femoral y glúteo. ⚠️ Contraindicado en ciatalgia, hernias discales L4-S1 e hiperlordosis marcada.',descSimple:'A diferencia del Peso Muerto Rumano, aquí las piernas van casi completamente rectas. Baja el peso frente a las piernas sintiendo el estiramiento máximo en la parte trasera del muslo. Usa poco peso — es muy exigente para la espalda baja. ⚠️ No recomendado si tienes dolor ciático, hernia de disco o mucha curva en la espalda baja.',muscleLabel:'Glúteos y femoral',ytQuery:'peso muerto piernas rígidas stiff leg deadlift tutorial'},
   {id:'e61',name:'Sentadilla Sumo',muscle:'gluteo',type:'Compuesto',sets:4,reps:10,icon:'🏆',desc:'Pies muy abiertos y puntas hacia afuera. Mayor activación del glúteo e interior de muslo.',descSimple:'Pies muy separados y apuntando hacia afuera. Baja en sentadilla. Trabaja más el glúteo y la cara interna del muslo que la sentadilla normal.',muscleLabel:'Glúteos y muslo interno',ytQuery:'sentadilla sumo glúteo tutorial'},
   {id:'e73',name:'Puente de Glúteo',muscle:'gluteo',type:'Aislamiento',sets:3,reps:'15',icon:'🌉',desc:'Tumbado boca arriba, pies apoyados. Sube las caderas apretando el glúteo al máximo. Versión sin carga del hip thrust, ideal para principiantes o activación.',descSimple:'Acuéstate boca arriba con las rodillas dobladas y los pies en el suelo. Sube las caderas apretando el glúteo al máximo. Aguanta 1 segundo arriba y baja lento. Sin barra ni equipos — perfecto para comenzar o calentar.',muscleLabel:'Glúteos',ytQuery:'puente de gluteo glute bridge tutorial'},
   // ── CORE ──
@@ -1533,7 +1539,7 @@ const defaultExercises=[
   {id:'e74',name:'HIIT / Intervalos',muscle:'cardio',type:'Cardio',sets:6,reps:'1',icon:'⚡',desc:'Alterna 20-40s de máximo esfuerzo con 20-40s de descanso. Más eficiente que el cardio de estado estable para quemar grasa. Reps = intervalos completos.',descSimple:'Alterna períodos de máximo esfuerzo (20-40 segundos) con períodos de descanso suave (20-40 segundos). Puedes hacerlo corriendo, en bici o saltando. Los "reps" son intervalos completos. Más efectivo que correr a ritmo constante para quemar grasa.',muscleLabel:'Cardio (quema de grasa)',ytQuery:'HIIT intervalos cardio tutorial principiantes'},
   // ── OTRO ──
   {id:'e68',name:'Peso Muerto Sumo',muscle:'otro',type:'Compuesto',sets:4,reps:6,icon:'🏋️',desc:'Pies muy abiertos, agarre entre las piernas. Mayor activación de aductores y glúteo.',descSimple:'Pies muy abiertos con las puntas apuntando hacia afuera. Agarra la barra entre las piernas. Espalda recta y pecho arriba. Empuja el suelo con los pies para levantarte. Las rodillas siguen la dirección de los pies.',muscleLabel:'Piernas, glúteos y espalda',ytQuery:'peso muerto sumo cómo hacerlo tutorial'},
-  {id:'e69',name:'Clean & Press',muscle:'otro',type:'Funcional',sets:4,reps:6,icon:'⚡',desc:'Levantamiento olímpico básico. Potencia desde el suelo hasta sobre la cabeza.',descSimple:'Levanta la barra del suelo de manera explosiva hasta los hombros y luego empuja hacia arriba. Es un movimiento avanzado que requiere aprender la técnica antes de usar peso. Pide guía a tu coach antes de intentarlo.',muscleLabel:'Cuerpo completo',ytQuery:'clean and press levantamiento olímpico tutorial'},
+  {id:'e69',name:'Clean & Press ⚠️ AVANZADO',muscle:'otro',type:'Funcional',sets:4,reps:6,icon:'⚡',desc:'Levantamiento olímpico básico. Potencia desde el suelo hasta sobre la cabeza. ⚠️ Requiere dominio técnico — no prescribir a principiantes sin supervisión directa.',descSimple:'Levanta la barra del suelo de manera explosiva hasta los hombros y luego empuja hacia arriba. Es un movimiento avanzado que requiere aprender la técnica antes de usar peso. Pide guía a tu coach antes de intentarlo. ⚠️ Solo para nivel intermedio-avanzado con supervisión.',muscleLabel:'Cuerpo completo',ytQuery:'clean and press levantamiento olímpico tutorial'},
   {id:'e75',name:'Burpees',muscle:'cardio',type:'Funcional',sets:3,reps:'8',icon:'🔥',desc:'De pie, lleva las manos al suelo, salta o camina los pies hacia atrás a posición de plancha, regresa los pies y salta vertical con palmas al cielo. Mantén la espalda neutra en la posición de plancha. Versión modificada para principiantes: reemplaza los saltos por pasos controlados.',descSimple:'Baja las manos al suelo, lleva los pies atrás (salta o da pasos si es tu primera vez), regresa los pies y salta arriba con los brazos al cielo. Descansa bien entre cada repetición — la calidad manda sobre la cantidad.',muscleLabel:'Cardio y cuerpo completo',ytQuery:'burpee modificado principiantes sin salto tutorial'},
   {id:'e76',name:'Saltos de Tijera',muscle:'cardio',type:'Cardio',sets:3,reps:'20',icon:'⭐',desc:'De pie, salta abriendo piernas más allá del ancho de hombros mientras subes los brazos al cielo. Regresa al centro coordinando brazos y piernas. Mantén un ritmo constante y aterriza suave sobre el mediopie, no sobre los talones.',descSimple:'Salta abriendo las piernas y subiendo los brazos al mismo tiempo, luego salta juntándolos de nuevo. Ritmo constante y aterrizaje suave. Ideal para calentar o como cardio ligero.',muscleLabel:'Cardio y coordinación',ytQuery:'saltos de tijera jumping jacks tutorial principiantes'},
   {id:'e77',name:'Flexiones en Pared',muscle:'pecho',type:'Compuesto',sets:3,reps:'12',icon:'🧱',desc:'De pie a una distancia del brazo de la pared, manos a la altura del pecho. Dobla los codos a 45 grados del torso (no en T) acercando el pecho a la pared. Extiende empujando. Versión de menor carga del patrón de empuje horizontal, ideal para principiantes absolutos o rehabilitación.',descSimple:'Parado frente a la pared, apoya las manos a la altura del pecho. Dobla los codos acercándote a la pared y empuja de regreso. Cuerpo recto de cabeza a pies — no dejes caer la cadera.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en pared wall push up principiantes tutorial'},
@@ -1719,7 +1725,7 @@ async function doLogin(){
         // Bloquear si suspendido o vencido
         if(!MS.canLogin(client)){
           const st=MS.getStatus(client);
-          err.textContent=st==='inactive'?'Tu cuenta está suspendida. Habla con tu coach para reactivarla.':'Tu membresía está vencida. Habla con tu coach para renovar.';
+          err.textContent=st==='inactive'?'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡':'Tu plan venció. Habla con tu coach para continuar entrenando 💪';
           err.classList.add('on');
           return;
         }
@@ -2249,7 +2255,7 @@ async function tryAutoLogin(){
           localStorage.removeItem('ax_session');
           const st=MS.getStatus(client);
           const errEl=document.getElementById('lerr');
-          if(errEl){errEl.textContent=st==='inactive'?'Tu cuenta está suspendida. Habla con tu coach para reactivarla.':'Tu membresía está vencida. Habla con tu coach para renovar.';errEl.classList.add('on');}
+          if(errEl){errEl.textContent=st==='inactive'?'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡':'Tu plan venció. Habla con tu coach para continuar entrenando 💪';errEl.classList.add('on');}
           const uEl=document.getElementById('lu');if(uEl)uEl.focus();
           return;
         }
@@ -2320,7 +2326,7 @@ const MS={
     if(daysLeft<=7)return 'expiring';
     return 'active';
   },
-  canLogin(c){const s=this.getStatus(c);return s!=='inactive'&&s!=='overdue';},
+  canLogin(c){const s=this.getStatus(c);return s==='active'||s==='expiring';},
   badge(s){
     return({
       active:{label:'Al día',color:'#1B4332',bg:'#D8F3DC'},
@@ -2353,7 +2359,7 @@ function checkInactivity(){
       : daysSince>=7
       ? `${c.name.split(' ')[0]}, llevas una semana sin entrenar. ¡Retomemos hoy! 🔥`
       : `${c.name.split(' ')[0]}, hace ${daysSince} días que no entrenas. ¡No pierdas el ritmo! 💪`;
-    pushToClient(c.id,'⚠️ APEX — Te extrañamos',msg);
+    pushToClient(c.id,'💪 Tu coach te extraña',msg);
   });
 }
 
@@ -2438,6 +2444,38 @@ function renderHome(){
     retCard.style.display=DB.clients.length?'':'none';
   }
 
+  // ── Banner de vencimientos próximos ──
+  const banner=document.getElementById('h-expiry-banner');
+  if(banner){
+    const in5days=new Date(Date.now()+5*24*60*60*1000);
+    const expiring=DB.clients.filter(c=>{
+      const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
+      if(!pays.length)return false;
+      const due=new Date(pays[0].dueDate);
+      const st=MS.getStatus(c);
+      return (st==='expiring'||st==='overdue')&&due<=in5days;
+    });
+    if(expiring.length){
+      banner.style.display='block';
+      banner.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
+        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px">⚠️ ${expiring.length} plan${expiring.length>1?'es':''}  vence${expiring.length>1?'n':''} en 5 días</div>
+        ${expiring.map(c=>{
+          const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
+          const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--br)">
+            <span style="font-size:13px;font-weight:600">${esc(c.name.split(' ')[0])} ${esc(c.name.split(' ')[1]||'')}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;color:var(--t2)">${dStr}</span>
+              <button class="btn bo bsm" style="font-size:11px;padding:3px 8px" onclick="whatsappReminder('${esc(c.id)}')">WhatsApp</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } else {
+      banner.style.display='none';
+    }
+  }
+
   // ── Prioritarios: vencidos y por vencer primero ──
   const list=document.getElementById('h-list');
   if(!DB.clients.length){
@@ -2507,12 +2545,12 @@ function renderClients(){
       lastTrainStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin sesiones</div>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${lastTrainStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${last.text.slice(0,45)}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0"><span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${lastTrainStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0"><span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
 
-function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
+function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
 
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
@@ -2531,6 +2569,7 @@ function openEditClient(){
   document.getElementById('cf-sex').value=c.sex||'';
   document.getElementById('cf-activity').value=c.activityFactor||'1.55';
   document.getElementById('cf-days').value=c.days||'3';
+  document.getElementById('cf-phone').value=c.phone||'';
   document.getElementById('cf-notes').value=c.notes||'';
   om('m-client');
 }
@@ -2559,6 +2598,7 @@ async function saveClient(){
     activityFactor:parseFloat(document.getElementById('cf-activity').value)||1.55,
     days:parseInt(document.getElementById('cf-days').value)||3,
     notes:document.getElementById('cf-notes').value.trim(),
+    phone:document.getElementById('cf-phone').value.trim(),
     updatedAt:new Date().toISOString()
   };
   if(hashedPass) data.password=hashedPass;
@@ -2788,11 +2828,15 @@ function renderValoracion(c){
 }
 
 function delClient(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
   DB.clients=DB.clients.filter(x=>x.id!==CUR.clientId);delete DB.msgs[CUR.clientId];
   if(DB.history)delete DB.history[CUR.clientId];
   if(DB.prs)delete DB.prs[CUR.clientId];
   if(DB.bodyweight)delete DB.bodyweight[CUR.clientId];
-  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');toast(`🗑️ ${c.name} eliminado`);
+  if(DB.nutrition)delete DB.nutrition[CUR.clientId];
+  if(DB.medidas)delete DB.medidas[CUR.clientId];
+  if(DB.photos)delete DB.photos[CUR.clientId];
+  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});sv('ax_nut',DB.nutrition||{});sv('ax_med',DB.medidas||{});sv('ax_photos',DB.photos||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');toast(`🗑️ ${c.name} eliminado`);
 }
 
 // ══════════════════════ ROUTINES ══════════════════════
@@ -3543,7 +3587,7 @@ function renderClientProfile(client){
   // Current weight from bodyweight log (most recent entry)
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
-  document.getElementById('cn-prof-card').innerHTML=`<div class="profav">${ini(client.name)}</div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills"><span class="profpill">🎯 ${client.goal}</span><span class="profpill">📊 ${client.level}</span><span class="profpill">📅 ${client.days} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
+  document.getElementById('cn-prof-card').innerHTML=`<div class="profav">${ini(client.name)}</div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills"><span class="profpill">🎯 ${esc(client.goal||'')}</span><span class="profpill">📊 ${esc(client.level||'')}</span><span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${v}</span></div>`).join('');
   renderStreakClient(client.id);
@@ -3817,7 +3861,7 @@ function saveSessionToHistory(routine,totalVol,doneSets){
       return {name:ex.name,muscle:ex.muscle,icon:ex.icon,sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,done:isDone(routine.id,ei,si)}))};
     });
     DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets:(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0),exercises:setsData});
-    if(DB.history[clientId].length>60)DB.history[clientId]=DB.history[clientId].slice(0,60);
+    if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   sv('ax_hist',DB.history);
 }
@@ -4000,7 +4044,13 @@ function exportData(){
     clients:DB.clients,
     exercises:DB.exercises,
     msgs:DB.msgs,
-    history:DB.history||{}
+    history:DB.history||{},
+    prs:DB.prs||{},
+    bodyweight:DB.bodyweight||{},
+    templates:DB.templates||[],
+    nutrition:DB.nutrition||{},
+    medidas:DB.medidas||{},
+    photos:DB.photos||{}
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -4194,7 +4244,7 @@ function renderNutritionCoach(clientId){
   }
   if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${nut.meals} comidas/d\u00eda</div>`;
   if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${nut.water} vasos de agua/d\u00eda</div>`;
-  if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${nut.plan}</div>`;
+  if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${esc(nut.plan)}</div>`;
   if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${nut.avoid}</div>`;
   con.innerHTML=html;
 }
@@ -4526,7 +4576,7 @@ function renderPhotosClient(clientId){
     ${photos.map(p=>`
       <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${p.id}','${clientId}')">
         <img src="${p.src}" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${p.label}</div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
   <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${photos.length}/12 fotos guardadas</div>`;
@@ -4539,7 +4589,7 @@ function viewPhoto(photoId,clientId){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
     <img src="${photo.src}" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
-    <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${photo.label}</div>
+    <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${esc(photo.label)}</div>
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button onclick="this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
@@ -5248,7 +5298,7 @@ function _dobRenderStep(step){
   if(step === 0){
     body.innerHTML = `
       <div style="font-size:48px;text-align:center;margin-bottom:14px">📊</div>
-      <div class="dob-title">Registra tu punto de partida</div>
+      <div class="dob-title">¿Cómo estás hoy?</div>
       <div class="dob-sub">Guardar tu peso, medidas y una foto hoy te permite ver cuánto has avanzado en semanas o meses.<br><br>Solo toma 2 minutos y marca una diferencia enorme en tu seguimiento.</div>
       <button class="btn bp bfull" style="font-size:15px;padding:14px" onclick="_dobRenderStep(1)">Empezar</button>
       <button class="dob-skip" onclick="_dobFinish()">Saltar por ahora</button>`;
@@ -5870,7 +5920,8 @@ function whatsappReminder(id){
     dueStr=new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
   }
   const nombre=c.name.split(' ')[0];
-  const msg=`Hola ${nombre}, tu membresía en APEX vence el ${dueStr}. Escríbeme para renovarla 💪`;
+  const amount=last&&last.amount?` ($${last.amount} USD)`:'';
+  const msg=`Hola ${nombre} 👋, tu plan en APEX vence el ${dueStr}${amount}. Renuévalo hoy y no pierdas tu progreso 💪 — responde aquí o escríbeme directamente.`;
   const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
   const url=phone
     ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
@@ -6128,7 +6179,7 @@ function whatsappReminder(id){
       <!-- Slide 2: Cómo registrar el peso -->
       <div class="ob-slide">
         <div class="ob-emoji">⚖️</div>
-        <div class="ob-title">Registra el peso que usas</div>
+        <div class="ob-title">Anota el peso que usaste</div>
         <div class="ob-body">
           En cada serie verás dos campos: <strong>KG</strong> y <strong>REPS</strong>.<br><br>
           Escribe el peso que levantaste (ej: <strong>10</strong>) y las repeticiones que hiciste. Si no usas peso, déjalo en <strong>0</strong>.<br><br>
