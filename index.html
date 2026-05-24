@@ -1188,12 +1188,34 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 </div>
 
-<!-- Banner instalación PWA -->
+<!-- Banner instalación PWA — Android/Chrome -->
 <div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#1B4332;color:white;border-radius:14px;padding:12px 20px;display:none;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
   <span style="font-size:22px">💪</span>
   <div style="flex:1"><div style="font-size:13px;font-weight:700">Instala APEX</div><div style="font-size:11px;opacity:.75">Accede sin navegador, como una app real</div></div>
   <button onclick="window._apexInstall&&window._apexInstall()" style="background:#52B788;border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
   <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;color:white;font-size:12px;padding:7px 9px;cursor:pointer">✕</button>
+</div>
+
+<!-- Banner instalación iOS — Safari -->
+<div id="ios-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9000;padding:12px 16px 24px">
+  <div style="background:#1B4332;border-radius:18px;padding:18px 18px 16px;color:white;box-shadow:0 -4px 40px rgba(0,0,0,.35);position:relative">
+    <button onclick="dismissIOSBanner()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:26px;height:26px;color:white;font-size:15px;cursor:pointer;font-family:inherit;line-height:1">✕</button>
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px;padding-right:30px">📲 Instala APEX en tu iPhone</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">1</div>
+        <div style="font-size:13px;line-height:1.4">Toca el botón <strong style="color:#95D5B2">Compartir</strong> <span style="font-size:16px">⬆️</span> en la barra de Safari</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">2</div>
+        <div style="font-size:13px;line-height:1.4">Selecciona <strong style="color:#95D5B2">"Añadir a pantalla de inicio"</strong></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">3</div>
+        <div style="font-size:13px;line-height:1.4">Toca <strong style="color:#95D5B2">Añadir</strong> — ¡listo!</div>
+      </div>
+    </div>
+  </div>
 </div>
 <div id="toast"></div>
 
@@ -5111,7 +5133,7 @@ self.addEventListener('notificationclick',e=>{
 
   // Si ya está instalada (standalone) ocultar todo
   if(isStandalone){
-    ['install-banner','install-hint'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    ['install-banner','install-hint','ios-install-banner'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   } else {
     // Mostrar instrucciones en login adaptadas al dispositivo
     const hint=document.getElementById('install-hint');
@@ -5120,8 +5142,10 @@ self.addEventListener('notificationclick',e=>{
       if(isIOS){
         document.getElementById('install-hint-ios').style.display='block';
         document.getElementById('install-hint-generic').style.display='none';
+        // Banner flotante iOS con instrucciones visuales
+        const iosBanner=document.getElementById('ios-install-banner');
+        if(iosBanner) setTimeout(()=>iosBanner.style.display='block', 1200);
       } else {
-        // Android/desktop: esperar beforeinstallprompt para mostrar botón, si no → instrucciones genéricas
         document.getElementById('install-hint-generic').style.display='block';
       }
     }
@@ -5158,6 +5182,11 @@ self.addEventListener('notificationclick',e=>{
     if(outcome==='accepted') toast('🚀 Instalando...');
     deferredPrompt=null;
     const b=document.getElementById('install-banner');
+    if(b)b.style.display='none';
+  };
+
+  window.dismissIOSBanner=function dismissIOSBanner(){
+    const b=document.getElementById('ios-install-banner');
     if(b)b.style.display='none';
   };
 }
