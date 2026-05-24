@@ -3,10 +3,12 @@
 -- Ejecutar en: Supabase Dashboard > SQL Editor
 -- ════════════════════════════════════════════════════════════════════
 
--- 1. Agregar columna training_days a push_subscriptions
---    (guarda los días de entreno del asesorado para personalizar mensajes)
+-- 1. Agregar columnas de personalización a push_subscriptions
 ALTER TABLE push_subscriptions
-  ADD COLUMN IF NOT EXISTS training_days JSONB DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS training_days  JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS training_shift TEXT  DEFAULT NULL;
+--    training_days : días de entreno ['Lunes','Miércoles','Viernes']
+--    training_shift: turno habitual  'morning' | 'afternoon' | 'evening' | NULL
 
 -- 2. Habilitar extensiones necesarias
 --    pg_cron  → ejecutar tareas programadas

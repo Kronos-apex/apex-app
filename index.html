@@ -1033,6 +1033,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="fg"><label class="ilbl">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
       <div class="fg"><label class="ilbl">Días / semana en gym</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
+    <div class="frow">
+      <div class="fg"><label class="ilbl">Horario habitual de entreno</label><select class="sel" id="cf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana (antes del mediodía)</option><option value="afternoon">⚡ Tarde (12pm – 6pm)</option><option value="evening">🌙 Noche (después de las 6pm)</option></select></div>
+    </div>
     <div class="fg"><label class="ilbl">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
     <div class="fg"><label class="ilbl">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
@@ -1277,7 +1280,7 @@ function urlBase64ToUint8Array(b64){
 }
 
 // Suscribe este dispositivo a push y guarda en Supabase
-async function subscribePush(clientId, trainingDays=[]){
+async function subscribePush(clientId, trainingDays=[], trainingShift=null){
   if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
   if(Notification.permission!=='granted')return;
   try{
@@ -1292,7 +1295,7 @@ async function subscribePush(clientId, trainingDays=[]){
     await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays})
+      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:trainingShift})
     });
     log('APEX Push: suscripción guardada ✅');
   }catch(e){warn('APEX Push subscribe error:',e);}
@@ -1745,8 +1748,9 @@ async function doLogin(){
         initClientView(client);
         setTimeout(()=>{
           const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
+          const trainingShift=client.trainingShift||null;
           requestNotifPermission().then(perm=>{
-            if(perm==='granted') subscribePush(client.id,trainingDays);
+            if(perm==='granted') subscribePush(client.id,trainingDays,trainingShift);
           });
         },4000);
         return;
@@ -2551,7 +2555,7 @@ function renderClients(){
   });
 }
 
-function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
+function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';document.getElementById('cf-shift').value='';om('m-client')}
 
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
@@ -2572,6 +2576,7 @@ function openEditClient(){
   document.getElementById('cf-days').value=c.days||'3';
   document.getElementById('cf-phone').value=c.phone||'';
   document.getElementById('cf-notes').value=c.notes||'';
+  document.getElementById('cf-shift').value=c.trainingShift||'';
   om('m-client');
 }
 
@@ -2600,6 +2605,7 @@ async function saveClient(){
     days:parseInt(document.getElementById('cf-days').value)||3,
     notes:document.getElementById('cf-notes').value.trim(),
     phone:document.getElementById('cf-phone').value.trim(),
+    trainingShift:document.getElementById('cf-shift').value||null,
     updatedAt:new Date().toISOString()
   };
   if(hashedPass) data.password=hashedPass;

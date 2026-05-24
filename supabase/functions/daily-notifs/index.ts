@@ -13,16 +13,12 @@ const COLOMBIA_DAYS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes
 
 type Slot = "morning" | "midmorning" | "afternoon";
 
-const MSGS: Record<Slot, {
-  title_training: string;
-  title_rest: string;
-  body_training: string[];
-  body_rest: string[];
-}> = {
-  morning: {
-    title_training: "Buenos días 💪",
-    title_rest: "Buenos días 🌅",
-    body_training: [
+// ── Morning & midmorning: solo training vs rest ───────────────────────────────
+
+const MORNING = {
+  training: {
+    title: "Buenos días 💪",
+    body: [
       "Hoy entrenas. Desayuna carbohidratos y proteína mínimo 1.5 horas antes de tu sesión.",
       "Día de entreno. Empieza bien: huevos, avena o fruta + proteína. Mínimo 90 min antes.",
       "Tienes sesión hoy. Desayuna temprano — el combustible importa más de lo que crees.",
@@ -31,7 +27,10 @@ const MSGS: Record<Slot, {
       "Entreno programado hoy. Nada de entrenar en ayunas — desayuna y espera 90 min.",
       "Arranca bien el día de entreno. Proteína + carbohidratos en el desayuno. ¡Vamos!",
     ],
-    body_rest: [
+  },
+  rest: {
+    title: "Buenos días 🌅",
+    body: [
       "Hoy descansas. Come con calma y prepara tu cuerpo para la próxima sesión.",
       "Día de descanso activo. Camina, estírate y nutre tu cuerpo para recuperarte bien.",
       "El descanso también es entrenamiento. Come bien hoy — tu músculo repara ahora.",
@@ -41,10 +40,12 @@ const MSGS: Record<Slot, {
       "Día libre. Tu cuerpo construye músculo mientras descansas — ayúdalo con buena nutrición.",
     ],
   },
-  midmorning: {
-    title_training: "💧 Hidratación",
-    title_rest: "💧 Hidratación",
-    body_training: [
+};
+
+const MIDMORNING = {
+  training: {
+    title: "💧 Hidratación",
+    body: [
       "Si entrenas hoy, toma agua ahora. No esperes a tener sed — llega hidratado/a.",
       "Check de hidratación. ¿Ya llevas 2 vasos de agua? Especialmente con sesión hoy.",
       "Agua antes del entreno. Hidratarte ahora te hace rendir mejor en tu sesión.",
@@ -53,7 +54,10 @@ const MSGS: Record<Slot, {
       "A media mañana. Toma agua ahora y llega hidratado/a a tu sesión de hoy.",
       "Hydration check. Dos vasos de agua antes de tu entreno de hoy. Dale.",
     ],
-    body_rest: [
+  },
+  rest: {
+    title: "💧 Hidratación",
+    body: [
       "Día de descanso — tu cuerpo sigue trabajando. 8 vasos de agua hoy aceleran la recuperación.",
       "Hidratación diaria. No solo los días de entreno — hoy también necesitas tus 2 litros.",
       "La recuperación muscular necesita hidratación constante, incluso en días de descanso.",
@@ -63,19 +67,67 @@ const MSGS: Record<Slot, {
       "¿Ya tomaste agua hoy? La hidratación en días de descanso es igual de importante.",
     ],
   },
-  afternoon: {
-    title_training: "⚡ Hora de moverse",
-    title_rest: "🔋 Recuperación activa",
-    body_training: [
-      "Si aún no has entrenado, este es tu momento. 45 minutos y quedas listo/a.",
-      "Tu sesión de hoy te espera — no la dejes para mañana. Dale.",
-      "Si entrenaste: ¡excelente día! Si no: aún tienes tiempo. No lo dejes ir.",
-      "Tu rutina de hoy es tu inversión en la versión más fuerte de ti.",
-      "¿Ya entrenaste? Si sí: ¡bien hecho! Si no: 30 minutos ahora hacen la diferencia.",
-      "Último turno del día. Tu sesión de hoy suma — no la saltes.",
-      "Hoy tienes sesión. Si aún no vas, ponte la ropa y empieza. Lo difícil es arrancar.",
+};
+
+// ── Afternoon: 4 variantes según turno y día ──────────────────────────────────
+
+const AFTERNOON = {
+  // Entrena de mañana → ya entrenó, mensaje de recuperación
+  postworkout: {
+    title: "💪 Gran trabajo hoy",
+    body: [
+      "Entrenamiento de hoy completado. Ahora toca recuperar: come proteína y duerme bien.",
+      "Hoy dejaste todo en el gym. Recuperación activa esta noche — estírate un poco.",
+      "Sesión de hoy: ✅. Ahora hidratación y comida de calidad para recuperarte.",
+      "Terminaste tu entreno esta mañana. La recuperación empieza ahora — no descuides la cena.",
+      "Gran día de entrenamiento. Esta noche: proteína, hidratación y sueño temprano.",
+      "Lo hiciste esta mañana. Recuperación activa: camina, estírate y come bien hoy.",
+      "Sesión cerrada con éxito. El descanso de hoy = el rendimiento de mañana.",
     ],
-    body_rest: [
+  },
+  // Entrena de tarde → recordatorio de que va a entrenar pronto
+  preworkout: {
+    title: "⚡ Hora de moverse",
+    body: [
+      "Tu sesión de hoy te espera. No la dejes para mañana — dale ahora.",
+      "Si aún no has entrenado, este es tu momento. 45 minutos y quedas listo/a.",
+      "Último turno del día. Tu sesión de hoy suma — no la saltes.",
+      "Recuerda: hoy entrenas. Ponte la ropa y empieza — lo difícil es arrancar.",
+      "Tu rutina de hoy es tu inversión en la versión más fuerte de ti.",
+      "Sesión pendiente. No hay excusas, no hay mañana — dale hoy.",
+      "Hoy tienes entreno. Un esfuerzo más y el día queda completo.",
+    ],
+  },
+  // Entrena de noche → recordatorio antes de la sesión nocturna
+  evening: {
+    title: "🌙 Esta noche entrenas",
+    body: [
+      "Esta noche tienes sesión. Cena ligera 90 min antes — y llega hidratado/a.",
+      "Sesión nocturna hoy. Evita comidas pesadas antes de entrenar — ligero y con energía.",
+      "Entrenas esta noche. Prepara tu ropa ahora para no perder tiempo después.",
+      "Tu sesión de esta noche: lista. Cena pronto y liviano para rendir al máximo.",
+      "Esta noche te toca. Hidrátate bien ahora — la noche la cierras con el entreno.",
+      "Sesión de noche en camino. Come algo ligero antes y llega concentrado/a.",
+      "Entreno nocturno hoy. No lo dejes muy tarde — descansa bien después.",
+    ],
+  },
+  // Sin turno especificado → mensaje neutral
+  neutral: {
+    title: "⚡ Tu sesión de hoy",
+    body: [
+      "Hoy es día de entreno. ¿Ya lo hiciste? Bien. ¿No? Ahora es el momento.",
+      "Si ya entrenaste: ¡excelente! Si no: aún tienes tiempo. No lo dejes ir.",
+      "Recordatorio de entreno. Solo tú sabes si ya cumpliste — y si no, ya sabes.",
+      "Si entrenaste esta mañana: buen trabajo. Si no: aún quedan horas del día.",
+      "Tu consistencia define tu resultado. Día de entreno — ¿cumplido o pendiente?",
+      "Sea mañana o tarde, lo importante es que la sesión de hoy se haga.",
+      "Día de sesión activo. Un entrenamiento más en tu historial. Dale.",
+    ],
+  },
+  // Día de descanso
+  rest: {
+    title: "🔋 Recuperación activa",
+    body: [
       "Hoy descansaste bien. Prepara tu ropa de entreno — mañana sí toca.",
       "Estírate 10 minutos antes de dormir esta noche. Tu cuerpo lo agradece.",
       "Come proteína esta noche — apoya la recuperación muscular del día.",
@@ -116,7 +168,7 @@ serve(async (req) => {
     // Colombia time = UTC - 5h
     const now = new Date();
     const colombiaDate = new Date(now.getTime() - 5 * 60 * 60 * 1000);
-    const dayIndex = colombiaDate.getUTCDay();          // 0=Dom … 6=Sáb
+    const dayIndex = colombiaDate.getUTCDay();   // 0=Dom … 6=Sáb
     const todayName = COLOMBIA_DAYS[dayIndex];
     const msgIndex = dayIndex % 7;
 
@@ -127,7 +179,7 @@ serve(async (req) => {
 
     const { data: subs, error } = await supabase
       .from("push_subscriptions")
-      .select("client_id, subscription, training_days");
+      .select("client_id, subscription, training_days, training_shift");
 
     if (error) throw new Error(error.message);
     if (!subs || subs.length === 0) {
@@ -136,22 +188,52 @@ serve(async (req) => {
       });
     }
 
-    const pool = MSGS[slot];
     let sent = 0;
     let failed = 0;
 
     for (const sub of subs) {
       try {
         const trainingDays: string[] = sub.training_days ?? [];
+        const shift: string = sub.training_shift ?? "";
         const isTraining = trainingDays.includes(todayName);
 
-        const title = isTraining ? pool.title_training : pool.title_rest;
-        const body  = isTraining ? pool.body_training[msgIndex] : pool.body_rest[msgIndex];
+        let title: string;
+        let body: string;
+
+        if (slot === "morning") {
+          const pool = isTraining ? MORNING.training : MORNING.rest;
+          title = pool.title;
+          body  = pool.body[msgIndex];
+
+        } else if (slot === "midmorning") {
+          const pool = isTraining ? MIDMORNING.training : MIDMORNING.rest;
+          title = pool.title;
+          body  = pool.body[msgIndex];
+
+        } else {
+          // afternoon — depende del turno de entreno
+          if (!isTraining) {
+            title = AFTERNOON.rest.title;
+            body  = AFTERNOON.rest.body[msgIndex];
+          } else if (shift === "morning") {
+            title = AFTERNOON.postworkout.title;
+            body  = AFTERNOON.postworkout.body[msgIndex];
+          } else if (shift === "afternoon") {
+            title = AFTERNOON.preworkout.title;
+            body  = AFTERNOON.preworkout.body[msgIndex];
+          } else if (shift === "evening") {
+            title = AFTERNOON.evening.title;
+            body  = AFTERNOON.evening.body[msgIndex];
+          } else {
+            title = AFTERNOON.neutral.title;
+            body  = AFTERNOON.neutral.body[msgIndex];
+          }
+        }
 
         const payload = JSON.stringify({ title, body, icon: "/icons/icon-192.png" });
         await webpush.sendNotification(sub.subscription, payload);
         sent++;
-        console.log(`[daily-notifs] ${slot} → ${sub.client_id} (${isTraining ? "entreno" : "descanso"}) ✅`);
+        console.log(`[daily-notifs] ${slot} → ${sub.client_id} shift=${shift||"none"} (${isTraining?"entreno":"descanso"}) ✅`);
       } catch (e) {
         failed++;
         console.error(`[daily-notifs] Error → ${sub.client_id}:`, e);
