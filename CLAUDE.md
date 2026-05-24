@@ -262,6 +262,45 @@ const MC = {
 
 ---
 
+## 🤖 PIPELINE AUTOMÁTICO — REGLA CARDINAL
+
+**El orquestador (Claude Code) activa el equipo correcto automáticamente para cada pedido. El usuario no necesita nombrar agentes.**
+
+### Ruteo automático por señal en el pedido
+
+| Si el pedido menciona... | Validador obligatorio antes de implementar |
+|---|---|
+| ejercicio, rutina, serie, músculo, calentamiento, progresión | **Coach Pro** |
+| apariencia, diseño, color, se ve, layout, espaciado, dark mode | **Isabella** → Diego implementa |
+| mensaje al asesorado, texto visible, onboarding | **Sofía** |
+| precio, cobro, plan, retención, prospecto | **Camilo** |
+| Supabase, SQL, tabla, sync, Edge Function | **Andrés DBA** |
+| feature nueva / "quiero que..." / "necesito..." | **Valentina** primero |
+
+### Secuencia obligatoria post-implementación (sin excepciones)
+
+```
+Cualquier cambio en código
+    ↓
+Lucas (QA Funcional) — flujos, visibilidad, edge cases
+    ↓ solo si pasa
+Julián (audit estático) — 6/6
+    ↓ solo si 6/6
+apex-deploy — push a main
+```
+
+**Nunca se despliega sin Lucas + Julián. Ni para hotfixes "simples".**
+
+### Blind spots que el orquestador cubre sin que nadie los pida
+
+- Elemento nuevo dentro de contenedor colapsado → Lucas lo detecta
+- Texto de usuario en innerHTML sin `esc()` → XSS, Camila lo arregla
+- Campo nuevo en DB sin SB_KEYS → Andrés DBA lo registra
+- Feature de entrenamiento sin validación fisiológica → Coach Pro obligatorio
+- Mensaje nuevo visible al asesorado → Sofía revisa el tono
+
+---
+
 ## 📝 PROTOCOLO DE TRABAJO
 
 ### Antes de tocar código
@@ -293,13 +332,21 @@ const MC = {
 - Push notifications con VAPID
 - PWA instalable
 
+### ✅ v1.2.1 — Mejoras Mayo 2026
+- Dark mode automático + toggle manual (☀️/🌙/⚙️ Auto)
+- Micro-animación al completar series (checkDone rebote)
+- Números hero más grandes en dashboard coach
+- Transición suave entre tabs (fadeIn)
+- QA Funcional (Lucas) y Design Strategist (Isabella) en el equipo
+- Pipeline automático de orquestación sin intervención manual
+
 ### 🎯 v1.3.0 — Próxima iteración
 - [ ] **Onboarding del asesorado** — wizard primera vez (peso, foto, medidas iniciales)
 - [ ] **Dashboard analytics del coach** — ingresos, retención, sesiones/semana
 - [ ] **APK real via PWABuilder** — Google Play Store
 
 ### 🚀 v1.4.0 — Escala
-- [ ] **Modo oscuro**
+- [ ] **Modo oscuro avanzado** — SVG charts + canvas export adaptados
 - [ ] **Multi-coach** (cada coach con sus asesorados aislados)
 - [ ] **Plantillas de nutrición**
 - [ ] **Stripe / Mercado Pago** — cobro automático
@@ -317,9 +364,11 @@ Cuando trabajas en APEX, asume uno de estos roles según el tipo de tarea:
 
 ### 🛠️ Equipo Técnico
 - **Camila** (Engineer) → cambios técnicos quirúrgicos en vanilla JS
-- **Diego R.** (UX/UI) → diseño visual, CSS, sistema de tokens
+- **Diego R.** (UX/UI) → diseño visual, CSS, sistema de tokens — implementación
+- **Isabella** (Design Strategist) → dirección visual, audit de experiencia, dark mode, deleite — propone, no implementa
 - **Andrés Q.** (DBA) → Supabase, SQL, edge functions
-- **Julián** (QA) → auditorías y validaciones
+- **Julián** (QA) → auditoría estática: sintaxis, IDs, duplicados, SB_KEYS
+- **Lucas** (QA Funcional) → verifica flujos reales ANTES de entregar: visibilidad, estados, edge cases de UX
 
 ### 📈 Equipo de Producto
 - **Valentina** (PM) → roadmap, priorización, specs
@@ -346,7 +395,9 @@ Sofía (si afecta experiencia) → valida lenguaje y flujo
     ↓ ✅ aprobado
 Camila/Diego/Andrés DBA → implementa
     ↓
-Julián → audita 6/6
+Lucas → QA funcional (flujos, visibilidad, edge cases)
+    ↓ ✅ verde
+Julián → audita estático 6/6
     ↓ ✅ verde
 apex-deploy → push a GitHub
     ↓
