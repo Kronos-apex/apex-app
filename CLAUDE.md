@@ -1,6 +1,6 @@
 # APEX — Plataforma de Entrenamiento Personal
 
-> Este archivo es la memoria permanente del proyecto. Claude Code lo lee automáticamente al iniciar cada sesión.
+> Este archivo es la memoria permanente del proyecto. Claude Code lo lee automáticamente al iniciar cada sesión en este directorio.
 
 ---
 
@@ -8,13 +8,13 @@
 
 **APEX** es una plataforma SaaS de entrenamiento personal en formato PWA, sincronizada con Supabase, lista para instalarse como app real en cualquier celular.
 
-**Product Owner:** Andrés Bernal — Entrenador personal independiente en Guaduas, Cundinamarca, Colombia. Conoce el negocio desde adentro. Sus decisiones sobre funcionalidad son finales.
+**Product Owner:** Andrés Bernal — Entrenador personal independiente en Guaduas, Cundinamarca, Colombia. Sus decisiones sobre funcionalidad son finales.
 
 **Usuarios:**
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
 - **Asesorados** — ejecutan rutinas, registran progreso, ven evolución
 
-**Versión actual:** v1.2.0 — Mayo 2026
+**Versión actual:** v1.3.0 — Mayo 2026
 
 ---
 
@@ -35,11 +35,13 @@
 
 ### Archivos del proyecto
 ```
-apex/
-├── index.html        ← APEX completo (3,993 líneas, 228 KB)
-├── sw.js             ← Service Worker (push + cache offline)
-├── send-push.ts      ← Edge Function en Supabase
-└── CLAUDE.md         ← Este archivo
+apex-app/
+├── index.html              ← APEX completo (~6,200 líneas, ~370 KB)
+├── .git/hooks/pre-commit   ← Audit automático en cada git commit (7 checks)
+├── .claude/agents/         ← 10 agentes especializados del equipo
+├── .claude/skills/         ← apex-audit, apex-deploy
+├── supabase/functions/send-push/  ← Edge Function push notifications
+└── CLAUDE.md               ← Este archivo
 ```
 
 ### Pantallas (`.screen`)
@@ -48,28 +50,28 @@ apex/
 | `#s-login` | Login dual coach/asesorado con remember-me |
 | `#s-coach` | Panel del entrenador |
 | `#s-client` | Vista del asesorado |
-| `#apex-loading` | Overlay de carga sincronizando con Supabase |
+| `#apex-loading` | Overlay de carga — "Preparando tu entrenamiento..." |
 
 ### Paneles del Coach (6)
-- `#p-home` — Dashboard con asesorados prioritarios (vencidos primero)
+- `#p-home` — Dashboard: MRR, activos, sesiones semanales, retención SVG, banner de vencimientos próximos, asesorados prioritarios (vencidos primero)
 - `#p-clients` — Lista con búsqueda + badge de membresía
-- `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, **mensualidad**, plan nutricional, medidas, fotos
+- `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 69 ejercicios precargados, filtros por músculo
+- `#p-exercises` — 88 ejercicios precargados, filtros por músculo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
 - `#cn-today` — Entrenamiento del día + activación auto + timer
-- `#cn-routines` — Todas sus rutinas asignadas
+- `#cn-routines` — Todas sus rutinas (no solo la del día)
 - `#cn-messages` — Chat con el coach
-- `#cn-history` — Historial + gráfica volumen + progreso por ejercicio
-- `#cn-profile` — Peso corporal, PRs, datos, fotos progreso, medidas
+- `#cn-history` — Historial (hasta 365 sesiones) + gráfica volumen + progreso por ejercicio
+- `#cn-profile` — Peso corporal, PRs, datos, fotos progreso, medidas, racha semanal
 
-### Modales (8)
-- `#m-client` — Crear/editar asesorado (con sexo, edad, actividad)
+### Modales activos
+- `#m-client` — Crear/editar asesorado (nombre, email, contraseña, teléfono, sexo, edad, actividad, objetivo, nivel, días, notas)
 - `#m-routine` — Constructor de rutinas con warmup auto-sugerido
 - `#m-picker` — Selector de ejercicios filtrable
-- `#m-ex` — CRUD ejercicio con URL de imagen/video referencia
+- `#m-ex` — CRUD ejercicio con URL imagen/video referencia
 - `#m-settings` — Configuración del coach (nombre, email, pass)
 - `#m-template` — Crear/editar plantilla de rutina
 - `#m-tpl-picker` — Aplicar plantilla a asesorado
@@ -83,10 +85,10 @@ apex/
 
 ```js
 DB = {
-  clients: [],     // ax_c — asesorados con membresía y nuevos campos
-  exercises: [],   // ax_e — 69 ejercicios precargados + custom
+  clients: [],     // ax_c — asesorados
+  exercises: [],   // ax_e — 88 ejercicios precargados + custom
   msgs: {},        // ax_m — { clientId: [{from, text, date}] }
-  history: {},     // ax_hist — { clientId: [sesiones completadas] }
+  history: {},     // ax_hist — { clientId: [hasta 365 sesiones] }
   prs: {},         // ax_pr — récords personales por ejercicio
   bodyweight: {},  // ax_bw — peso corporal histórico
   templates: [],   // ax_tpl — plantillas de rutinas
@@ -96,31 +98,32 @@ DB = {
 }
 ```
 
-### Schema cliente actualizado
+### Schema cliente completo (v1.3.0)
 ```js
 {
-  id, name, email, password,        // password en Base64 (enc/dec)
+  id, name, email, password,        // password: SHA-256 con clientId como salt
   goal, level, days, weight, notes,
+  phone,                            // ✅ v1.3.0 — teléfono para WhatsApp
   sex,                              // 'Hombre' | 'Mujer' | 'Otro' | ''
   age,                              // number | null
-  activity,                         // 5 niveles: Sedentario → Extremadamente activo
-  suspended: false,                 // membership control
-  payments: [{                      // membership tracking
+  activity,                         // Sedentario | Ligeramente activo | Moderadamente | Muy activo | Extremadamente
+  suspended: false,
+  payments: [{
     date, dueDate, amount, note
   }],
   routines: [{
     id, name, day, restSec, note,
-    warmup,                         // ✨ activación previa (auto-sugerida)
+    warmup,                         // activación previa auto-sugerida
     exercises: [{
       id, name, muscle, type,
-      sets, reps, icon, desc,
-      imgUrl                        // ✨ URL imagen/YouTube referencia
+      sets, reps, icon, desc, descSimple,
+      imgUrl
     }]
   }]
 }
 ```
 
-### Schema sesión activa (claves dinámicas en localStorage)
+### Schema sesión activa (localStorage dinámico)
 ```
 log_{routineId}_{exIdx}_{setIdx}_kg
 log_{routineId}_{exIdx}_{setIdx}_reps
@@ -136,38 +139,52 @@ session_date_{routineId}                → fecha último entreno
 ```
 URL: https://eoebhrxbokyllqalyecj.supabase.co
 Tablas: apex_data, push_subscriptions
-Edge Functions: send-push (notificaciones push reales)
+Edge Functions: send-push (verifica Authorization header con anon key)
 ```
-> Las credenciales (SB_KEY, VAPID) viven en index.html (anon key) y en las
-> variables de entorno de Supabase (VAPID_PRIVATE). No se documentan aquí.
 
 ### Despliegue
 ```
-Plataforma: GitHub + GitHub Pages
-Branch: main
-Workflow: edit → git commit → git push → deploy automático
+Plataforma: GitHub (github.com/Kronos-apex/apex-app)
+Branch producción: main (NUNCA master, NUNCA --force)
+Workflow: edit → pre-commit hook (7 checks) → git commit → git push → deploy automático
 ```
 
 ### VAPID Keys (push notifications)
 ```
 PUBLIC:  BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8
-PRIVATE: ver variables de entorno en Supabase Dashboard → Edge Functions → send-push
+PRIVATE: solo en variables de entorno Supabase → Edge Functions → send-push
 ```
 
-### Claves Supabase sincronizadas
+### SB_KEYS — claves que se sincronizan a Supabase
 ```js
-SB_KEYS = ['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_nut','ax_med','ax_photos','ax_ce','ax_cn']
-// ax_cp eliminado — contraseña legacy del coach no debe sincronizarse
+SB_KEYS = [
+  'ax_c',       // clientes
+  'ax_e',       // ejercicios
+  'ax_m',       // mensajes
+  'ax_hist',    // historial
+  'ax_pr',      // PRs
+  'ax_bw',      // peso corporal
+  'ax_tpl',     // plantillas
+  'ax_nut',     // nutrición
+  'ax_med',     // medidas
+  'ax_photos',  // fotos
+  'ax_cph',     // ✅ v1.3.0 — hash contraseña coach
+  'ax_site',    // ✅ v1.3.0 — configuración del sitio
+  'ax_ce',      // ejercicios custom
+  'ax_cn',      // nombre del coach
+]
+// ax_cp ELIMINADO — contraseña legacy del coach no debe sincronizarse
 ```
 
 ---
 
 ## 🎨 SISTEMA DE DISEÑO
 
-### Tokens CSS (`:root`)
+### Tokens CSS — los 3 bloques `:root` (light / dark-auto / dark-manual)
 ```css
 /* Fondos */
 --bg:#F4F4F0   --w:#FFF   --br:#E5E5DF   --br2:#D0D0C8
+--surface:#F9F9F6                          /* ✅ v1.3.0 */
 
 /* Tipografía */
 --t1:#1A1A1A   --t2:#6A6A6A   --t3:#B0B0B0
@@ -180,6 +197,7 @@ SB_KEYS = ['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_nut','ax_
 --bl:#457B9D   --bll:#E0EBF4   /* info */
 --yl:#E9C46A   --yll:#FEF6DE   /* advertencia */
 --rd:#E63946   --rdl:#FCE4E6   /* error */
+--accent3:#A855F7               /* ✅ v1.3.0 — acento terciario */
 
 /* Forma */
 --r:12px   --rsm:8px   --rlg:18px
@@ -187,14 +205,9 @@ SB_KEYS = ['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_nut','ax_
 --sh2:0 6px 28px rgba(0,0,0,.10)
 ```
 
-### Mapa de colores musculares (MC)
-```js
-const MC = {
-  pecho:'#E76F51', espalda:'#457B9D', hombros:'#A855F7',
-  biceps:'#2D6A4F', triceps:'#C77DFF', piernas:'#00BFA5',
-  gluteo:'#F4845F', core:'#E63946', cardio:'#FF6B6B', otro:'#6B6B6B'
-}
-```
+### Dark mode
+- **Auto:** `@media (prefers-color-scheme: dark)` — sigue el sistema
+- **Manual:** clase `.dark` en `<body>` — toggle ☀️/🌙/⚙️ persistido en `ax_theme`
 
 ### Clases reutilizables — SIEMPRE usar antes de crear nuevas
 `.btn .bp .bg .bd .bo .bsm` — botones
@@ -209,41 +222,58 @@ const MC = {
 
 ---
 
-## 🔑 FUNCIONES CLAVE (157 totales)
+## 🔑 FUNCIONES CLAVE (220 totales)
 
 ### Sync & Persistencia
 - `ld(key, default)` — lee localStorage
-- `sv(key, value)` — escribe localStorage + dispara Supabase
+- `sv(key, value)` — escribe localStorage + async Supabase upsert
 - `sbSet(key, value)` — upsert asíncrono a Supabase
-- `syncFromCloud()` — descarga todo de Supabase al arrancar
+- `syncFromCloud()` — descarga todo al arrancar (usa `SB_KEYS`)
 
-### Membresía (Nuevo)
-- `MS.getStatus(client)` — active/expiring/overdue/inactive/pending
-- `MS.canLogin(client)` — bloquea login si vencido/inactivo
-- `MS.badge(status)` — devuelve `{label, color, bg}`
-- `registerPayment(clientId)` — registra pago de $X por 30 días
+### Membresía
+- `MS.getStatus(client)` → `active | expiring | overdue | inactive | pending`
+- `MS.canLogin(client)` → solo `active` o `expiring` entran (pending BLOQUEADO)
+- `MS.badge(status)` → `{label, color, bg}`
+- `registerPayment(clientId)` — registra pago por 30 días
 - `toggleSuspend(clientId)` — pausar/reactivar
-- `whatsappReminder(clientId)` — abre WhatsApp con mensaje pre-redactado
+- `whatsappReminder(clientId)` — abre WhatsApp con monto + fecha + CTA urgente
 
 ### Auth & Seguridad
-- `enc(s)` / `dec(s)` — ofuscación Base64
-- `doLogin()` — auth dual + verifica membresía
-- `requestNotifPermission()` — pide permiso push
+- `hashClientPass(pass, clientId)` → SHA-256 con salt
+- `isHashed(pass)` → detecta si ya migró a SHA-256
+- `doLogin()` — auth dual coach/asesorado
+- `canLogin(c)` — inclusión positiva: `active || expiring`
+- `esc(str)` — sanitización XSS obligatoria en todo innerHTML con datos de usuario
+
+### Renderizado principal
+- `renderHome()` — dashboard coach con banner de vencimientos ≤5 días
+- `renderClients()` — lista asesorados con `esc()` en todos los campos
+- `renderClientToday()` — vista del día con warmup y timer
+- `renderClientHistory()` — historial + gráfica SVG de volumen
+- `exportRoutineAsImage()` — canvas con rutina exportable como PNG
+- `exportData()` — exporta las 10 colecciones en JSON
+
+### Limpieza de datos
+- `delClient()` — elimina cliente Y limpia history, prs, bodyweight, nutrition, medidas, photos en DB y localStorage
 
 ### Notificaciones
-- `subscribePush(clientId)` — suscribe dispositivo a push
-- `pushToClient(clientId, title, body)` — llama Edge Function
-- `fireNotifAt()` — notificaciones locales programadas
+- `checkInactivity()` — detecta sin entreno >7 días, push title: "💪 Tu coach te extraña"
+- `pushToClient(clientId, title, body)` — llama Edge Function send-push
+- `subscribePush(clientId)` — registra dispositivo en push_subscriptions
 
-### Renderizado (las 15 más largas)
-1. `exportRoutineAsImage` (168 chars) — canvas con header, warmup, ejercicios, frase
-2. `renderClientExList` — lista de ejercicios del día con inputs
-3. `renderClientHistory` — historial con gráfica de volumen
-4. `renderClientToday` — vista del día con warmup
-5. `renderBodyWeightSection` — gráfica de peso corporal
-6. `renderClients` — lista de asesorados ordenada por estado
-7. `renderTemplates` — plantillas reutilizables
-8. `renderDetailMembership` — pagos y estado del asesorado
+---
+
+## 🔒 SEGURIDAD — ESTADO ACTUAL
+
+| Área | Estado |
+|---|---|
+| XSS en innerHTML | ✅ `esc()` aplicado en todos los puntos de inyección |
+| Contraseña coach | ✅ SHA-256 en `ax_cph`, legacy `ax_cp` no sincroniza |
+| Contraseñas asesorados | ✅ SHA-256 con clientId como salt, migración automática |
+| Login con membresía vencida | ✅ Bloqueado — inclusión positiva `active || expiring` |
+| VAPID private key | ✅ Solo en variables de entorno Supabase — jamás en frontend |
+| send-push Edge Function | ✅ Verifica Authorization header antes de enviar |
+| Pre-commit hook | ✅ Bloquea secrets hardcodeados antes de cualquier commit |
 
 ---
 
@@ -251,160 +281,149 @@ const MC = {
 
 1. **No romper nada existente** — cada cambio retro-compatible con datos en localStorage y Supabase
 2. **Sin dependencias JS externas** — si cabe en 20 líneas vanilla, va vanilla
-3. **Mobile-first siempre** — 360px mínimo, touch-friendly, sin hover-only
+3. **Mobile-first siempre** — 360px mínimo, touch targets ≥36px, sin hover-only
 4. **Un solo archivo HTML** — jamás proponer múltiples archivos para producción
 5. **Tokens CSS del sistema** — nunca valores hardcodeados nuevos
-6. **IDs sagrados** — si una función referencia un ID, ese ID no se cambia
+6. **IDs sagrados** — si una función referencia un ID, ese ID no se cambia sin actualizar la función
 7. **Roles separados** — jamás mezclar lógica de coach con asesorado
-8. **Auditoría antes de entregar** — sintaxis + duplicados + IDs + checks = 100% verde
-9. **Validar con Node** — `node --check` sobre el JS extraído antes de cualquier entrega
+8. **`esc()` en todo innerHTML con datos del usuario** — sin excepciones
+9. **Deploy = Lucas QA + Julián QA + pre-commit hook** — los tres, siempre
 10. **Mensajes en español neutro** — sin tecnicismos para el asesorado
 
 ---
 
 ## 🤖 PIPELINE AUTOMÁTICO — REGLA CARDINAL
 
-**El orquestador (Claude Code) activa el equipo correcto automáticamente para cada pedido. El usuario no necesita nombrar agentes.**
+**El orquestador activa el equipo correcto automáticamente. El usuario no necesita nombrar agentes.**
 
 ### Ruteo automático por señal en el pedido
 
-| Si el pedido menciona... | Validador obligatorio antes de implementar |
+| Si el pedido menciona... | Agente obligatorio |
 |---|---|
-| ejercicio, rutina, serie, músculo, calentamiento, progresión | **Coach Pro** |
-| apariencia, diseño, color, se ve, layout, espaciado, dark mode | **Isabella** → Diego implementa |
-| mensaje al asesorado, texto visible, onboarding | **Sofía** |
-| precio, cobro, plan, retención, prospecto | **Camilo** |
+| ejercicio, rutina, serie, músculo, calentamiento, progresión | **Coach Pro** valida primero |
+| apariencia, diseño, color, se ve, layout, dark mode | **Isabella** propone → Diego implementa |
+| mensaje al asesorado, texto visible, toast, onboarding | **Sofía** revisa tono |
+| precio, cobro, plan, retención, prospecto | **Camilo** analiza |
 | Supabase, SQL, tabla, sync, Edge Function | **Andrés DBA** |
-| feature nueva / "quiero que..." / "necesito..." | **Valentina** primero |
+| feature nueva / "quiero que..." / "necesito..." | **Valentina** prioriza primero |
+| datos, métricas, cohortes, churn | **Mateo** (mínimo 10 asesorados) |
 
-### Secuencia obligatoria post-implementación (sin excepciones)
+### Secuencia obligatoria antes de CUALQUIER deploy
 
 ```
-Cualquier cambio en código
+Cambio implementado
     ↓
-Lucas (QA Funcional) — flujos, visibilidad, edge cases
-    ↓ solo si pasa
-Julián (audit estático) — 6/6
-    ↓ solo si 6/6
-apex-deploy — push a main
+Lucas QA (funcional) — flujos, visibilidad, edge cases
+    ↓ solo si 🟢
+Julián QA (estático) — sintaxis, IDs, duplicados, SB_KEYS, secrets
+    ↓ solo si 🟢
+pre-commit hook — 7 checks automáticos (bloquea si falla)
+    ↓ solo si 🟢
+git push origin main
 ```
 
-**Nunca se despliega sin Lucas + Julián. Ni para hotfixes "simples".**
-
-### Blind spots que el orquestador cubre sin que nadie los pida
-
-- Elemento nuevo dentro de contenedor colapsado → Lucas lo detecta
-- Texto de usuario en innerHTML sin `esc()` → XSS, Camila lo arregla
-- Campo nuevo en DB sin SB_KEYS → Andrés DBA lo registra
-- Feature de entrenamiento sin validación fisiológica → Coach Pro obligatorio
-- Mensaje nuevo visible al asesorado → Sofía revisa el tono
+**Nunca se despliega sin Lucas + Julián. Ni hotfixes "simples". Ni cambios de texto.**
 
 ---
 
 ## 📝 PROTOCOLO DE TRABAJO
 
 ### Antes de tocar código
-1. Lee el archivo `index.html` para entender el estado actual
+1. Lee `index.html` para entender el estado actual
 2. Identifica exactamente qué funciones/IDs/secciones se van a tocar
-3. Describe el plan en 2-3 líneas: qué cambia Y qué NO cambia
+3. Describe el plan: qué cambia Y qué NO cambia
 
 ### Al ejecutar
 4. Cambios quirúrgicos — solo lo necesario, nada más
-5. Validar sintaxis con `node --check` sobre el JS extraído
-6. Auditoría de IDs — cada `getElementById('x')` tiene su `id="x"`
-7. Sin funciones duplicadas
+5. `esc()` en cualquier `innerHTML` que reciba datos del usuario
+6. Campo nuevo en DB → actualizar SB_KEYS si debe sincronizar
+7. Sin funciones duplicadas — verificar antes de añadir
 
 ### Al entregar
-8. Reporte con formato:
-```
-✅ Cambio implementado: [una línea]
-📁 Archivo: index.html (actualizado)
-🧪 Cómo probar: [2-3 pasos]
-```
+8. Lucas QA funcional → Julián QA estático → deploy si ambos 🟢
 
 ---
 
 ## 🗺️ ROADMAP
 
-### ✅ v1.2.0 — Estado actual (Mayo 2026)
-- 100% de features core implementadas (50/50)
-- Sistema de membresía completo
-- Push notifications con VAPID
-- PWA instalable
+### ✅ v1.0 — Base (2025)
+- Arquitectura single-file PWA + Supabase sync
+- Login dual coach/asesorado
+- Constructor de rutinas con ejercicios
+- Historial de entrenamientos
 
-### ✅ v1.2.1 — Mejoras Mayo 2026
-- Dark mode automático + toggle manual (☀️/🌙/⚙️ Auto)
-- Micro-animación al completar series (checkDone rebote)
-- Números hero más grandes en dashboard coach
-- Transición suave entre tabs (fadeIn)
-- QA Funcional (Lucas) y Design Strategist (Isabella) en el equipo
-- Pipeline automático de orquestación sin intervención manual
+### ✅ v1.1 — Funcionalidades core
+- Push notifications con VAPID real (Edge Function send-push)
+- Sistema de mensajes coach ↔ asesorado
+- Fotos de progreso, medidas corporales, peso corporal
+- Plantillas de rutinas reutilizables
+- PWA instalable (manifest + SW)
+- TWA nativo para Android (assetlinks.json)
 
-### 🎯 v1.3.0 — Próxima iteración
-- [ ] **Onboarding del asesorado** — wizard primera vez (peso, foto, medidas iniciales)
-- [ ] **Dashboard analytics del coach** — ingresos, retención, sesiones/semana
-- [ ] **APK real via PWABuilder** — Google Play Store
+### ✅ v1.2 — Negocio y contenido
+- Sistema completo de pagos y membresía (estados, fechas manuales)
+- Dashboard analytics del coach (MRR, activos, retención SVG)
+- Plan nutricional completo (macros automáticos, templates, exportar PNG)
+- 88 ejercicios con validación Coach Pro
+- RCT e ICC reemplazando IMC (métricas con evidencia)
+- Racha de entrenamiento semanal
+- Alerta de inactividad automática
+- Asesorado puede elegir cualquier rutina
 
-### 🚀 v1.4.0 — Escala
-- [ ] **Modo oscuro avanzado** — SVG charts + canvas export adaptados
-- [ ] **Multi-coach** (cada coach con sus asesorados aislados)
-- [ ] **Plantillas de nutrición**
-- [ ] **Stripe / Mercado Pago** — cobro automático
+### ✅ v1.3 — Calidad y UX (Mayo 2026)
+- Dark mode automático + toggle manual (☀️/🌙/⚙️)
+- Hardening de seguridad: XSS, canLogin, SHA-256, send-push auth
+- Pre-commit hook — 7 checks automáticos en cada git commit
+- Pipeline de deploy con gates obligatorios Lucas QA + Julián QA
+- Campo `phone` en asesorado para WhatsApp directo
+- WhatsApp reminder mejorado (monto + fecha + CTA urgente)
+- Banner proactivo de vencimientos en Home (≤5 días)
+- History limit 60 → 365 sesiones
+- `delClient()` limpia todos los datos huérfanos (nutrition, medidas, photos)
+- exportData() exporta las 10 colecciones
+- 7 textos humanizados (Sofía): loading, sync-dot, toasts, push title, wizards
+- Tokens CSS `--surface` y `--accent3` en los 3 bloques `:root`
+- Touch targets ≥36px (WCAG 2.5.5)
 
-### 🌟 v2.0 — Producto real comercial
-- [ ] **White-label** — vender APEX a otros coaches con su branding
-- [ ] **API pública** para integraciones
-- [ ] **Versión iOS nativa**
+### 🎯 v1.4 — Próxima iteración
+- [ ] Stripe / Mercado Pago — cobro automático
+- [ ] `startedAt` / `completedAt` en sesiones de historial
+- [ ] `payment.planType` para MRR segmentado por plan
+- [ ] Widget MRR proyectado en Home
+- [ ] Análisis de cohortes de retención (Mateo — requiere ≥10 asesorados)
+- [ ] `background:white` → `var(--w)` en strings JS hardcodeados (L1912, L3135)
+
+### 🚀 v2.0 — Escala
+- [ ] Multi-coach (cada coach con sus asesorados aislados)
+- [ ] White-label — vender APEX a otros coaches
+- [ ] API pública para integraciones
+- [ ] iOS nativa
 
 ---
 
 ## 🎓 EQUIPO
 
-Cuando trabajas en APEX, asume uno de estos roles según el tipo de tarea:
+### 🛠️ Técnico
+- **Camila** (Engineer) → cambios JS/HTML quirúrgicos
+- **Diego R.** (UX/UI) → CSS, tokens, implementación visual
+- **Isabella** (Design Strategist) → dirección visual, audit de experiencia — propone, no implementa
+- **Andrés Q.** (DBA) → Supabase, SQL, Edge Functions
+- **Julián** (QA) → audit estático: sintaxis, IDs, duplicados, SB_KEYS, secrets
+- **Lucas** (QA Funcional) → flujos reales, visibilidad DOM, edge cases UX
 
-### 🛠️ Equipo Técnico
-- **Camila** (Engineer) → cambios técnicos quirúrgicos en vanilla JS
-- **Diego R.** (UX/UI) → diseño visual, CSS, sistema de tokens — implementación
-- **Isabella** (Design Strategist) → dirección visual, audit de experiencia, dark mode, deleite — propone, no implementa
-- **Andrés Q.** (DBA) → Supabase, SQL, edge functions
-- **Julián** (QA) → auditoría estática: sintaxis, IDs, duplicados, SB_KEYS
-- **Lucas** (QA Funcional) → verifica flujos reales ANTES de entregar: visibilidad, estados, edge cases de UX
-
-### 📈 Equipo de Producto
+### 📈 Producto
 - **Valentina** (PM) → roadmap, priorización, specs
 
-### 💪 Equipo Deportivo
-- **Diego R.** (Director Deportivo / Coach Pro) → validación fisiológica de rutinas, ejercicios, activaciones, progresiones
+### 💪 Deportivo
+- **Coach Pro / Diego R.** → validación fisiológica de rutinas y ejercicios
 
-### 💬 Equipo de Negocio
-- **Sofía** (Customer Success) → fricción del usuario, onboarding, mensajes
+### 💬 Negocio
+- **Sofía** (CS) → fricción del usuario, onboarding, mensajes
 - **Camilo** (Growth) → precios, adquisición, retención, MRR
-- **Mateo** (Data Analyst) → métricas, cohortes, reportes mensuales
+- **Mateo** (Data) → métricas, cohortes — mínimo 10 asesorados activos
 
-Los subagents para cada rol están en `.claude/agents/`. Invócalos cuando la tarea sea bounded y de un solo dominio.
-
-### Pipeline típico de una feature completa
-```
-Idea del usuario
-    ↓
-Valentina (¿vale la pena?) 
-    ↓ ✅ aprobado
-Coach Pro (si afecta entrenamiento) → valida fisiología
-    ↓ ✅ aprobado
-Sofía (si afecta experiencia) → valida lenguaje y flujo
-    ↓ ✅ aprobado
-Camila/Diego/Andrés DBA → implementa
-    ↓
-Lucas → QA funcional (flujos, visibilidad, edge cases)
-    ↓ ✅ verde
-Julián → audita estático 6/6
-    ↓ ✅ verde
-apex-deploy → push a GitHub
-    ↓
-Mateo → mide impacto al final del mes
-```
+Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Este archivo se actualiza con cada feature importante en producción.*
-*Última actualización: Mayo 2026 · v1.2.0*
+*Última actualización: Mayo 2026 · v1.3.0 · 36 commits · ~6,200 líneas · 220 funciones · 88 ejercicios*
