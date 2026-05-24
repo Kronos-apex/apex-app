@@ -1277,7 +1277,7 @@ function urlBase64ToUint8Array(b64){
 }
 
 // Suscribe este dispositivo a push y guarda en Supabase
-async function subscribePush(clientId){
+async function subscribePush(clientId, trainingDays=[]){
   if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
   if(Notification.permission!=='granted')return;
   try{
@@ -1292,7 +1292,7 @@ async function subscribePush(clientId){
     await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString()})
+      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays})
     });
     log('APEX Push: suscripción guardada ✅');
   }catch(e){warn('APEX Push subscribe error:',e);}
@@ -1744,8 +1744,9 @@ async function doLogin(){
         CUR.clientId=client.id;
         initClientView(client);
         setTimeout(()=>{
+          const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
           requestNotifPermission().then(perm=>{
-            if(perm==='granted') subscribePush(client.id);
+            if(perm==='granted') subscribePush(client.id,trainingDays);
           });
         },4000);
         return;
