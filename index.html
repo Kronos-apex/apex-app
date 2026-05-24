@@ -515,7 +515,7 @@ html[data-theme="light"] .mta {
 .wu-ex-info{flex:1}
 .wu-ex-name{font-size:13px;font-weight:700;color:var(--t1)}
 .wu-ex-reps{font-size:11px;color:var(--t3);margin-top:1px}
-.wu-check-btn{width:26px;height:26px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:14px;font-weight:800;color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;padding:0}
+.wu-check-btn{width:36px;height:36px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:14px;font-weight:800;color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;padding:0}
 .wu-note{font-size:12px;color:var(--t3);background:var(--bg);border-radius:var(--rsm);padding:9px 12px;margin-bottom:10px;line-height:1.6}
 .wu-apx-card{background:var(--bg);border:1px solid var(--br);border-radius:var(--rsm);padding:11px 13px;margin-bottom:8px}
 .wu-apx-header{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:8px}
@@ -717,7 +717,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="sbout" onclick="openNotifModal()" style="margin-bottom:4px">🔔 Notificaciones</div>
       <div class="sbout" onclick="openSettings()" style="margin-bottom:4px">⚙️ Configuración</div>
       <div class="sbout" onclick="logout()">🚪 Cerrar sesión</div>
-      <div style="font-size:10px;color:var(--t3);padding:8px 14px 4px;letter-spacing:.4px">v1.2.0 · May 2026</div>
+      <div style="font-size:10px;color:var(--t3);padding:8px 14px 4px;letter-spacing:.4px">v1.3.1 · May 2026</div>
     </div>
   </nav>
 
@@ -996,7 +996,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
         <div class="cb">
           <div id="cn-med-chart-wrap" style="display:none;margin-bottom:8px"><div id="cn-med-chart"></div></div>
-          <div id="cn-med-list" style="font-size:13px;color:var(--t2)">Sin medidas registradas.</div>
+          <div id="cn-med-list" style="font-size:13px;color:var(--t2)">Aún no hay medidas. La primera vez que las anotas, puedes ver cómo cambian con el tiempo.</div>
         </div>
       </div>
       <!-- Fotos de progreso -->
@@ -1006,7 +1006,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <button class="btn bp bsm" onclick="openPhotosModal()">📷 Subir</button>
         </div>
         <div class="cb" id="cn-photos-grid">
-          <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Aún no has subido fotos.</div>
+          <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Aún no tienes fotos de progreso. La primera es la más importante — marca el punto de partida.</div>
         </div>
       </div>
       <!-- Profile data -->
@@ -1019,9 +1019,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="ch"><div class="ctitle">Apariencia</div></div>
         <div class="cb" style="padding-top:4px">
           <div style="display:flex;gap:7px">
-            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
-            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
-            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
+            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
+            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
           </div>
         </div>
       </div>
@@ -1085,10 +1085,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="rp" onclick="selR(180,this)">3 min</div>
       </div>
     </div>
+    <div id="tpl-load-row" style="margin-bottom:10px;display:none"><button class="btn bg bfull" onclick="openTemplatePicker()">📂 Cargar desde plantilla</button></div>
     <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:7px;letter-spacing:.5px">EJERCICIOS DE LA RUTINA</div>
     <div id="rf-exlist" style="margin-bottom:9px"></div>
     <button class="btn bg bsm" onclick="openPicker()" style="margin-bottom:14px">+ Añadir ejercicio</button>
-    <div id="tpl-load-row" style="margin-bottom:14px;display:none"><button class="btn bg bsm bfull" onclick="openTemplatePicker()">📂 Cargar desde plantilla</button></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-routine')">Cancelar</button><button class="btn bp" onclick="saveRoutine()" id="save-rut-btn">Guardar rutina</button></div>
   </div>
 </div>
@@ -1149,9 +1149,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="fg" style="margin-bottom:16px">
       <span class="ilbl">Apariencia</span>
       <div style="display:flex;gap:7px;margin-top:4px">
-        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
-        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
-        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
+        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
+        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
       </div>
     </div>
 
@@ -1192,26 +1192,26 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#1B4332;color:white;border-radius:14px;padding:12px 20px;display:none;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
   <span style="font-size:22px">💪</span>
   <div style="flex:1"><div style="font-size:13px;font-weight:700">Instala APEX</div><div style="font-size:11px;opacity:.75">Accede sin navegador, como una app real</div></div>
-  <button onclick="window._apexInstall&&window._apexInstall()" style="background:#52B788;border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
+  <button onclick="window._apexInstall&&window._apexInstall()" style="background:var(--g2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
   <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;color:white;font-size:12px;padding:7px 9px;cursor:pointer">✕</button>
 </div>
 
 <!-- Banner instalación iOS — Safari -->
 <div id="ios-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9000;padding:12px 16px 24px">
   <div style="background:#1B4332;border-radius:18px;padding:18px 18px 16px;color:white;box-shadow:0 -4px 40px rgba(0,0,0,.35);position:relative">
-    <button onclick="dismissIOSBanner()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:26px;height:26px;color:white;font-size:15px;cursor:pointer;font-family:inherit;line-height:1">✕</button>
+    <button onclick="dismissIOSBanner()" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:44px;height:44px;color:white;font-size:18px;cursor:pointer;font-family:inherit;line-height:1">✕</button>
     <div style="font-size:15px;font-weight:800;margin-bottom:14px;padding-right:30px">📲 Instala APEX en tu iPhone</div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">1</div>
-        <div style="font-size:13px;line-height:1.4">Toca el botón <strong style="color:#95D5B2">Compartir</strong> <span style="font-size:16px">⬆️</span> en la barra de Safari</div>
+        <div style="background:var(--g2);border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">1</div>
+        <div style="font-size:13px;line-height:1.4">Toca el ícono de la cajita con flecha <span style="font-size:16px">⬆️</span> en la parte de abajo de tu pantalla</div>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">2</div>
+        <div style="background:var(--g2);border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">2</div>
         <div style="font-size:13px;line-height:1.4">Selecciona <strong style="color:#95D5B2">"Añadir a pantalla de inicio"</strong></div>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="background:#52B788;border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">3</div>
+        <div style="background:var(--g2);border-radius:10px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">3</div>
         <div style="font-size:13px;line-height:1.4">Toca <strong style="color:#95D5B2">Añadir</strong> — ¡listo!</div>
       </div>
     </div>
@@ -1472,9 +1472,8 @@ async function syncFromCloud(){
         setP(90,'Primera vez — iniciando...');
       }
     }catch(e){
-      const reason=e.name==='AbortError'?'Tiempo de espera agotado':'Sin conexión';
-      warn('APEX sync:',reason,e.message);
-      setP(90,reason+' — usando datos locales');
+      warn('APEX sync:',e.name,e.message);
+      setP(90,'Sin conexión — cargando tu última sesión');
     }
   } else {
     // Abierto desde archivo local — saltar sync silenciosamente
@@ -2172,7 +2171,7 @@ function drawExProgChart(container, points, color){
   const trend=points[points.length-1].maxKg-points[0].maxKg;
   const lineColor=color||(trend>=0?'#2D6A4F':'#E76F51');
   container.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">
-    <defs><linearGradient id="epg${Math.random().toString(36).slice(2)}" x1="0" y1="0" x2="0" y2="1" id="epgrad">
+    <defs><linearGradient id="epg${Math.random().toString(36).slice(2)}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.15"/>
       <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
     </linearGradient></defs>
@@ -2380,13 +2379,13 @@ const MS={
   canLogin(c){const s=this.getStatus(c);return s==='active'||s==='expiring';},
   badge(s){
     return({
-      active:{label:'Al día',color:'#1B4332',bg:'#D8F3DC'},
-      expiring:{label:'Por vencer',color:'#7a5c00',bg:'#FEF6DE'},
-      overdue:{label:'Vencido',color:'#9b1c1c',bg:'#FCE4E6'},
-      pending:{label:'Sin pago',color:'#5A4000',bg:'#FEF3C7'},
-      inactive:{label:'Inactivo',color:'#6A6A6A',bg:'#E5E5DF'},
-      suspended:{label:'Suspendido',color:'#6A6A6A',bg:'#E5E5DF'},
-    }[s])||{label:'Sin pago',color:'#6A6A6A',bg:'#E5E5DF'};
+      active:{label:'Al día',color:'var(--gt)',bg:'var(--gl)'},
+      expiring:{label:'Por vencer',color:'var(--or)',bg:'var(--orl)'},
+      overdue:{label:'Vencido',color:'var(--rd)',bg:'var(--rdl)'},
+      pending:{label:'Sin pago',color:'var(--yl)',bg:'var(--yll)'},
+      inactive:{label:'Inactivo',color:'var(--t2)',bg:'var(--br)'},
+      suspended:{label:'Suspendido',color:'var(--t2)',bg:'var(--br)'},
+    }[s])||{label:'Sin pago',color:'var(--t2)',bg:'var(--br)'};
   }
 };
 
@@ -3915,7 +3914,7 @@ function saveSessionToHistory(routine,totalVol,doneSets){
     DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets:(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0),exercises:setsData});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
-  sv('ax_hist',DB.history);
+  svNow('ax_hist',DB.history);
 }
 
 // ALL ROUTINES
@@ -4091,7 +4090,7 @@ function skipRest(){if(restInt)clearInterval(restInt);document.getElementById('r
 // ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){
   const data={
-    version:'1.2.0',
+    version:'1.3.1',
     exportedAt:new Date().toISOString(),
     clients:DB.clients,
     exercises:DB.exercises,
@@ -4135,6 +4134,9 @@ function importData(input){
       DB.prs=data.prs||{};
       DB.bodyweight=data.bodyweight||{};
       DB.templates=data.templates||[];
+      DB.nutrition=data.nutrition||{};
+      DB.medidas=data.medidas||{};
+      DB.photos=data.photos||{};
       sv('ax_c',DB.clients);
       sv('ax_e',DB.exercises);
       sv('ax_m',DB.msgs);
@@ -4142,6 +4144,9 @@ function importData(input){
       sv('ax_pr',DB.prs);
       sv('ax_bw',DB.bodyweight);
       sv('ax_tpl',DB.templates);
+      sv('ax_nut',DB.nutrition);
+      sv('ax_med',DB.medidas);
+      sv('ax_photos',DB.photos);
 
       renderAll();
       cm('m-backup');
@@ -4305,7 +4310,7 @@ function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
   const nut=(DB.nutrition||{})[clientId];
   if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
-    con.innerHTML='<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha asignado un plan nutricional.</div>';
+    con.innerHTML='<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha cargado tu plan de alimentaci\u00f3n. Escr\u00edbele si quieres que lo incluya.</div>';
     return;
   }
   let html='';
@@ -4818,7 +4823,7 @@ function savePhoto(){
     if(!DB.photos[clientId])DB.photos[clientId]=[];
     DB.photos[clientId].unshift({id:uid(),date:new Date().toISOString(),label:finalLabel,src:base64});
     if(DB.photos[clientId].length>12)DB.photos[clientId]=DB.photos[clientId].slice(0,12);
-    sv('ax_photos',DB.photos);
+    svNow('ax_photos',DB.photos);
     cm('m-photos');
     renderPhotosClient(clientId);
     toast('\uD83D\uDCF8 Foto guardada');
@@ -5105,7 +5110,7 @@ self.addEventListener('fetch',e=>{
 self.addEventListener('push',e=>{
   if(!e.data)return;
   let d={};try{d=e.data.json();}catch{d={title:'APEX',body:e.data.text()};}
-  e.waitUntil(self.registration.showNotification(d.title||'APEX Fitness',{body:d.body||'Tu coach te envió un mensaje',icon:d.icon||'/icon-192.png',vibrate:[200,100,200],data:{url:d.url||'/'}}));
+  e.waitUntil(self.registration.showNotification(d.title||'APEX',{body:d.body||'Tu coach te envió un mensaje',icon:d.icon||'/icon-192.png',vibrate:[200,100,200],data:{url:d.url||'/'}}));
 });
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
@@ -5142,9 +5147,9 @@ self.addEventListener('notificationclick',e=>{
       if(isIOS){
         document.getElementById('install-hint-ios').style.display='block';
         document.getElementById('install-hint-generic').style.display='none';
-        // Banner flotante iOS con instrucciones visuales
+        // Banner flotante iOS con instrucciones visuales (solo si no fue cerrado antes)
         const iosBanner=document.getElementById('ios-install-banner');
-        if(iosBanner) setTimeout(()=>iosBanner.style.display='block', 1200);
+        if(iosBanner&&!localStorage.getItem('apex_ios_banner_dismissed')) setTimeout(()=>iosBanner.style.display='block', 1200);
       } else {
         document.getElementById('install-hint-generic').style.display='block';
       }
@@ -5188,6 +5193,7 @@ self.addEventListener('notificationclick',e=>{
   window.dismissIOSBanner=function dismissIOSBanner(){
     const b=document.getElementById('ios-install-banner');
     if(b)b.style.display='none';
+    localStorage.setItem('apex_ios_banner_dismissed','1');
   };
 }
 
@@ -5441,7 +5447,19 @@ function checkAndShowCongrats(routine){
   const total=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   let done=0;
   (routine.exercises||[]).forEach((ex,ei)=>{const sets=parseInt(ex.sets)||3;for(let si=0;si<sets;si++)if(isDone(routine.id,ei,si))done++;});
-  if(done>=total){document.getElementById('congrats').classList.remove('hide');checkAndUpdatePRs(routine);}
+  if(done>=total){
+    const cEl=document.getElementById('congrats');
+    cEl.classList.remove('hide');
+    checkAndUpdatePRs(routine);
+    // Confetti
+    const colors=['#2D6A4F','#52B788','#D8F3DC','#40916C','#B7E4C7','#ffffff'];
+    for(let i=0;i<28;i++){
+      const c=document.createElement('div');
+      c.style.cssText=`position:fixed;top:${10+Math.random()*30}%;left:${Math.random()*100}%;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};background:${colors[Math.floor(Math.random()*colors.length)]};animation:confettiFall ${0.8+Math.random()*1}s ease-out ${Math.random()*0.4}s forwards;pointer-events:none;z-index:9999`;
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(),2000);
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -5600,6 +5618,7 @@ function _dobRenderStep(step){
         <div class="fg"><label class="ilbl">Pecho (cm)</label><input class="inp" id="dob-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
         <div class="fg"><label class="ilbl">Bíceps derecho (cm)</label><input class="inp" id="dob-brazo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"></div>
         <div class="fg"><label class="ilbl">Muslo derecho (cm)</label><input class="inp" id="dob-muslo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"></div>
+        <div class="fg"><label class="ilbl">Pantorrilla (cm)</label><input class="inp" id="dob-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 38"></div>
       </div>
       <button class="btn bp bfull" style="padding:13px" onclick="_dobSaveMed()">Continuar</button>
       <button class="dob-skip" onclick="_dobRenderStep(3)">Saltar este paso</button>`;
@@ -5643,7 +5662,8 @@ function _dobSaveMed(){
     {key:'cadera',id:'dob-cadera'},
     {key:'pecho',id:'dob-pecho'},
     {key:'brazo',id:'dob-brazo'},
-    {key:'muslo',id:'dob-muslo'}
+    {key:'muslo',id:'dob-muslo'},
+    {key:'pantorrilla',id:'dob-pantorrilla'}
   ];
   const entry = {date: new Date().toISOString()};
   let hasData = false;
@@ -5689,7 +5709,7 @@ function _dobSavePhoto(){
     const label = 'Foto inicial ' + new Date().toLocaleDateString('es-ES', {month:'short', year:'numeric'});
     DB.photos[clientId].unshift({id:uid(), date:new Date().toISOString(), label:label, src:base64});
     if(DB.photos[clientId].length > 12) DB.photos[clientId] = DB.photos[clientId].slice(0, 12);
-    sv('ax_photos', DB.photos);
+    svNow('ax_photos', DB.photos);
     renderPhotosClient(clientId);
     toast('📸 Foto guardada');
     _dobFinish();
@@ -6195,7 +6215,7 @@ function whatsappReminder(id){
     dueStr=new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
   }
   const nombre=c.name.split(' ')[0];
-  const amount=last&&last.amount?` ($${last.amount} USD)`:'';
+  const amount=last&&last.amount?` ($${last.amount.toLocaleString('es-CO')} COP)`:'';
   const msg=`Hola ${nombre} 👋, tu plan en APEX vence el ${dueStr}${amount}. Renuévalo hoy y no pierdas tu progreso 💪 — responde aquí o escríbeme directamente.`;
   const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
   const url=phone
@@ -6487,8 +6507,7 @@ function whatsappReminder(id){
     <button class="ob-skip" onclick="obSkip()">Saltar introducción</button>
   </div>
 </div>
-</body>
-</html>
+
 <div class="exdetail-bg" id="exdetail-bg" onclick="closeExDetail(event)">
   <div class="exdetail-sheet" id="exdetail-sheet">
     <div class="exdetail-handle"></div>

@@ -1,7 +1,7 @@
 {
   "name": "APEX — Entrenamiento Personal",
   "short_name": "APEX",
-  "description": "Tu plataforma de entrenamiento personal con tu coach",
+  "description": "Entrenamiento con nombre propio. Rutinas, seguimiento y comunicación directa con tu coach.",
   "start_url": "/apex-app/",
   "scope": "/apex-app/",
   "display": "standalone",
