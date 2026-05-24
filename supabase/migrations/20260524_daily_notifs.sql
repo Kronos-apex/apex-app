@@ -6,9 +6,9 @@
 -- 1. Agregar columnas de personalización a push_subscriptions
 ALTER TABLE push_subscriptions
   ADD COLUMN IF NOT EXISTS training_days  JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS training_shift TEXT  DEFAULT NULL;
---    training_days : días de entreno ['Lunes','Miércoles','Viernes']
---    training_shift: turno habitual  'morning' | 'afternoon' | 'evening' | NULL
+  ADD COLUMN IF NOT EXISTS training_shift JSONB DEFAULT NULL;
+--    training_days : días de entreno ej: ["Lunes","Miércoles","Viernes"]
+--    training_shift: mapa día→turno  ej: {"Lunes":"morning","Miércoles":"afternoon"}
 
 -- 2. Habilitar extensiones necesarias
 --    pg_cron  → ejecutar tareas programadas

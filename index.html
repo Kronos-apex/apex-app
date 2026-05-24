@@ -1033,9 +1033,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="fg"><label class="ilbl">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
       <div class="fg"><label class="ilbl">Días / semana en gym</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
-    <div class="frow">
-      <div class="fg"><label class="ilbl">Horario habitual de entreno</label><select class="sel" id="cf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana (antes del mediodía)</option><option value="afternoon">⚡ Tarde (12pm – 6pm)</option><option value="evening">🌙 Noche (después de las 6pm)</option></select></div>
-    </div>
     <div class="fg"><label class="ilbl">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
     <div class="fg"><label class="ilbl">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
@@ -1046,7 +1043,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="mdbg" id="m-routine">
   <div class="md mdlg">
     <div class="mdtitle" id="mr-title">Nueva rutina — <span id="mr-cn" style="color:var(--g)"></span></div>
-    <div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..."></div><div class="fg"><label class="ilbl">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div></div>
+    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..."></div><div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div><div class="fg"><label class="ilbl">Horario habitual</label><select class="sel" id="rf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana</option><option value="afternoon">⚡ Tarde</option><option value="evening">🌙 Noche</option></select></div></div>
     <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nota para el asesorado</label><input type="text" class="inp" id="rf-note" placeholder="Ej: Descansa 90 seg entre series. Enfócate en la técnica."></div>
     <div class="fg" style="margin-bottom:11px">
       <label class="ilbl">¿Por qué esta rutina? <span style="color:var(--t3);font-weight:400">(opcional)</span></label>
@@ -1280,7 +1277,7 @@ function urlBase64ToUint8Array(b64){
 }
 
 // Suscribe este dispositivo a push y guarda en Supabase
-async function subscribePush(clientId, trainingDays=[], trainingShift=null){
+async function subscribePush(clientId, trainingDays=[], shiftMap=null){
   if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
   if(Notification.permission!=='granted')return;
   try{
@@ -1295,7 +1292,7 @@ async function subscribePush(clientId, trainingDays=[], trainingShift=null){
     await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:trainingShift})
+      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
     log('APEX Push: suscripción guardada ✅');
   }catch(e){warn('APEX Push subscribe error:',e);}
@@ -1748,9 +1745,9 @@ async function doLogin(){
         initClientView(client);
         setTimeout(()=>{
           const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
-          const trainingShift=client.trainingShift||null;
+          const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
           requestNotifPermission().then(perm=>{
-            if(perm==='granted') subscribePush(client.id,trainingDays,trainingShift);
+            if(perm==='granted') subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
           });
         },4000);
         return;
@@ -2040,6 +2037,7 @@ function openNewRoutineFromTemplate(tpl){
   document.getElementById('rf-name').value=tpl.name.replace(' (plantilla)','');
   document.getElementById('rf-note').value=tpl.note||'';
   document.getElementById('rf-day').value='Lunes';
+  document.getElementById('rf-shift').value='';
   CUR.routineExs=(tpl.exercises||[]).map(e=>({...e}));
   CUR.restSec=tpl.restSec||60;
   const restMap={45:0,60:1,90:2,120:3,180:4};
@@ -2555,7 +2553,7 @@ function renderClients(){
   });
 }
 
-function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';document.getElementById('cf-shift').value='';om('m-client')}
+function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
 
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
@@ -2576,7 +2574,6 @@ function openEditClient(){
   document.getElementById('cf-days').value=c.days||'3';
   document.getElementById('cf-phone').value=c.phone||'';
   document.getElementById('cf-notes').value=c.notes||'';
-  document.getElementById('cf-shift').value=c.trainingShift||'';
   om('m-client');
 }
 
@@ -2605,7 +2602,6 @@ async function saveClient(){
     days:parseInt(document.getElementById('cf-days').value)||3,
     notes:document.getElementById('cf-notes').value.trim(),
     phone:document.getElementById('cf-phone').value.trim(),
-    trainingShift:document.getElementById('cf-shift').value||null,
     updatedAt:new Date().toISOString()
   };
   if(hashedPass) data.password=hashedPass;
@@ -3132,7 +3128,7 @@ function openNewRoutine(){
   CUR.editRoutineIdx=null;
   document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
-  document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
+  document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';document.getElementById('rf-shift').value='';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
   CUR.routineExs=[];CUR.restSec=60;
   document.querySelectorAll('#rf-rp .rp').forEach(b=>b.classList.remove('on'));document.querySelectorAll('#rf-rp .rp')[1].classList.add('on');
   // Show template loader only if templates exist
@@ -3151,6 +3147,7 @@ function openEditRoutine(cid,ri){
   document.getElementById('rf-note').value=r.note||'';
   const whyEl=document.getElementById('r-why');if(whyEl)whyEl.value=r.why||'';
   document.getElementById('rf-day').value=r.day||'Lunes';
+  document.getElementById('rf-shift').value=r.shift||'';
   CUR.routineExs=(r.exercises||[]).map(e=>({...e}));
   CUR.restSec=r.restSec||60;
   // Activate correct rest preset button
@@ -3224,7 +3221,7 @@ function saveRoutine(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   if(!c.routines)c.routines=[];
   const noteVal=document.getElementById('rf-note').value.trim()||autoRoutineNote(CUR.routineExs);
-  const rutData={name,day:document.getElementById('rf-day').value,note:noteVal,why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e}))};
+  const rutData={name,day:document.getElementById('rf-day').value,shift:document.getElementById('rf-shift').value||null,note:noteVal,why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e}))};
   if(CUR.editRoutineIdx!==null){
     const existing=c.routines[CUR.editRoutineIdx];
     c.routines[CUR.editRoutineIdx]={...existing,...rutData};

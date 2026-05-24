@@ -194,7 +194,8 @@ serve(async (req) => {
     for (const sub of subs) {
       try {
         const trainingDays: string[] = sub.training_days ?? [];
-        const shift: string = sub.training_shift ?? "";
+        const shiftMap: Record<string,string> = sub.training_shift ?? {};
+        const shift: string = shiftMap[todayName] ?? "";
         const isTraining = trainingDays.includes(todayName);
 
         let title: string;
