@@ -399,13 +399,28 @@ git push origin main
 - Touch targets ≥36px (WCAG 2.5.5)
 - Experiencia primer día asesorado (Mayo 2026): badge login removido, hint de credenciales, estados vacíos accionables con CTA a mensajes, día de descanso con mensaje maduro, botón "Empezar" renombrado, pills de perfil con guard, mensaje fin de sesión orientado al progreso, typo Bíceps, warmup simplificado, onboarding Slide 1 recontextualizado, push delay 4s
 
+### ✅ v1.3.1 — Notificaciones + Marca (Mayo 2026)
+- Notificaciones diarias personalizadas: 7am / 10am / 5pm (Colombia UTC-5)
+- Edge Function `daily-notifs` desplegada en Supabase — 3 cron jobs activos
+- Mensajes según día de entreno (training_days) y turno por rutina (training_shift JSONB)
+- 4 variantes del mensaje de 5pm: post-workout / pre-workout / noche / neutral
+- Pool de 7 mensajes por franja, rotación por día de semana
+- Formulario de rutina: campo "Horario habitual" (rf-shift) al lado de "Día asignado"
+- Fix instalación PWA: instrucciones permanentes en login para iOS y Android
+- Rebranding: emoji 💪 eliminado del wordmark, nuevo tagline en evaluación
+- Agente Lucía Brand & Copy Strategist creado (.claude/agents/lucia-brand.md)
+- Tagline actual: "Entrenamiento con tu coach, en tu bolsillo" (en revisión)
+- Candidatos evaluados por Lucía: "Tu coach real, en tu celular" / "Entrena con quien sabe"
+
 ### 🎯 v1.4 — Próxima iteración
+- [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
+- [ ] Tagline final — pendiente decisión de Andrés
+- [ ] Logo nuevo — brief listo para Looka/Canva (brief en historial de chat)
 - [ ] Stripe / Mercado Pago — cobro automático
 - [ ] `startedAt` / `completedAt` en sesiones de historial
 - [ ] `payment.planType` para MRR segmentado por plan
 - [ ] Widget MRR proyectado en Home
 - [ ] Análisis de cohortes de retención (Mateo — requiere ≥10 asesorados)
-- [ ] `background:white` → `var(--w)` en strings JS hardcodeados (L1912, L3135)
 
 ### 🚀 v2.0 — Escala
 - [ ] Multi-coach (cada coach con sus asesorados aislados)
@@ -440,4 +455,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: Mayo 2026 · v1.3.0 · 37 commits · ~6,200 líneas · 222 funciones · 88 ejercicios*
+*Última actualización: Mayo 2026 · v1.3.1 · 42 commits · ~6,200 líneas · 222 funciones · 88 ejercicios*
