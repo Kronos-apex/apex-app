@@ -668,6 +668,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <button class="lbtn" onclick="doLogin()">Entrar →</button>
     <div class="lhint">¿Eres asesorado? Usa el email y contraseña que te envió tu coach.</div>
+    <div id="install-hint" style="margin-top:16px;padding:12px 14px;background:rgba(255,255,255,.08);border-radius:12px;text-align:left;display:none">
+      <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.9);margin-bottom:6px;letter-spacing:.5px">📲 INSTALA LA APP</div>
+      <div id="install-hint-android" style="display:none;font-size:12px;color:rgba(255,255,255,.75);line-height:1.6">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button onclick="window._apexInstall&&window._apexInstall()" style="margin-top:8px;width:100%;padding:9px;background:#52B788;border:none;border-radius:8px;color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Instalar APEX</button></div>
+      <div id="install-hint-ios" style="display:none;font-size:12px;color:rgba(255,255,255,.75);line-height:1.7">1. Toca el ícono <strong style="color:white">Compartir</strong> (↑) en la barra del navegador<br>2. Selecciona <strong style="color:white">"Añadir a pantalla de inicio"</strong><br>3. Toca <strong style="color:white">Añadir</strong></div>
+      <div id="install-hint-generic" style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.7">Android: menú ⋮ → <strong style="color:white">"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong style="color:white">"Añadir a pantalla de inicio"</strong></div>
+    </div>
   </div>
 </div>
 
@@ -5061,50 +5067,58 @@ self.addEventListener('notificationclick',e=>{
       .catch(e=>{ warn('APEX SW error:',e); URL.revokeObjectURL(swUrl); });
   }
 
-  // Banner de instalación nativo
+  // Banner e instrucciones de instalación PWA
   let deferredPrompt=null;
-  const PWA_INSTALLED_KEY = 'apex_pwa_installed';
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
-  // Si ya está instalada como PWA (modo standalone) marcarla y nunca mostrar el banner
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true;
+  // Si ya está instalada (standalone) ocultar todo
   if(isStandalone){
-    localStorage.setItem(PWA_INSTALLED_KEY,'1');
-    const b=document.getElementById('install-banner');
-    if(b)b.style.display='none';
+    ['install-banner','install-hint'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  } else {
+    // Mostrar instrucciones en login adaptadas al dispositivo
+    const hint=document.getElementById('install-hint');
+    if(hint){
+      hint.style.display='block';
+      if(isIOS){
+        document.getElementById('install-hint-ios').style.display='block';
+        document.getElementById('install-hint-generic').style.display='none';
+      } else {
+        // Android/desktop: esperar beforeinstallprompt para mostrar botón, si no → instrucciones genéricas
+        document.getElementById('install-hint-generic').style.display='block';
+      }
+    }
   }
 
   window.addEventListener('beforeinstallprompt',e=>{
     e.preventDefault();
-    // No mostrar si ya instaló o ya está en modo standalone
-    if(localStorage.getItem(PWA_INSTALLED_KEY)) return;
+    if(isStandalone) return;
     deferredPrompt=e;
+    // Mostrar banner flotante
     const b=document.getElementById('install-banner');
     if(b)b.style.display='flex';
+    // En login: cambiar a botón directo
+    const generic=document.getElementById('install-hint-generic');
+    const android=document.getElementById('install-hint-android');
+    if(generic)generic.style.display='none';
+    if(android)android.style.display='block';
   });
+
   window.addEventListener('appinstalled',()=>{
     deferredPrompt=null;
-    localStorage.setItem(PWA_INSTALLED_KEY,'1');
-    const b=document.getElementById('install-banner');
-    if(b)b.style.display='none';
-    toast('✅ ¡APEX instalada! Ya puedes abrirla desde tu pantalla de inicio.');
+    ['install-banner','install-hint'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    toast('✅ ¡App instalada! Ábrela desde tu pantalla de inicio.');
   });
+
   window._apexInstall=async()=>{
     if(!deferredPrompt){
-      const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-      if(isIOS){
-        toast('En iPhone: toca Compartir → "Añadir a pantalla de inicio"');
-      } else {
-        toast('Usa el menú de tu navegador → "Instalar aplicación"');
-      }
+      if(isIOS){toast('Toca Compartir ↑ → "Añadir a pantalla de inicio"');}
+      else{toast('Menú del navegador → "Instalar aplicación"');}
       return;
     }
     deferredPrompt.prompt();
     const{outcome}=await deferredPrompt.userChoice;
-    if(outcome==='accepted'){
-      toast('🚀 Instalando APEX...');
-      localStorage.setItem(PWA_INSTALLED_KEY,'1');
-    }
+    if(outcome==='accepted') toast('🚀 Instalando...');
     deferredPrompt=null;
     const b=document.getElementById('install-banner');
     if(b)b.style.display='none';
