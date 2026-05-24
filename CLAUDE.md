@@ -22,7 +22,7 @@
 
 | Restricción | Por qué |
 |---|---|
-| **Un solo archivo `.html`** | Portabilidad total — Netlify, GitHub Pages, instalación local |
+| **Un solo archivo `.html`** | Portabilidad total — GitHub Pages, instalación local |
 | **Vanilla JS puro** | Sin frameworks, sin build, sin npm en producción |
 | **localStorage + Supabase** | localStorage como caché; Supabase como sync cross-device |
 | **Mobile-first estricto** | Mínimo 360px sin romperse — la mayoría usa móvil |
@@ -144,9 +144,10 @@ Edge Functions: send-push (verifica Authorization header con anon key)
 
 ### Despliegue
 ```
-Plataforma: GitHub (github.com/Kronos-apex/apex-app)
+Plataforma: GitHub Pages (github.com/Kronos-apex/apex-app)
 Branch producción: main (NUNCA master, NUNCA --force)
-Workflow: edit → pre-commit hook (7 checks) → git commit → git push → deploy automático
+Workflow: edit → pre-commit hook (7 checks) → git commit → git push → GitHub Pages automático
+Backend: Supabase (apex_data, push_subscriptions, Edge Functions)
 ```
 
 ### VAPID Keys (push notifications)

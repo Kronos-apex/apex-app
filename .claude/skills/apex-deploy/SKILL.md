@@ -152,7 +152,7 @@ Después de todo, confirmar al usuario:
 ✅ Commit     : [tipo]: [resumen]
 ✅ Push       : origin/main → github.com/Kronos-apex/apex-app
 ✅ CLAUDE.md  : [actualizado con X / sin cambios necesarios]
-⏱️  Netlify propaga en ~30 segundos
+⏱️  GitHub Pages propaga en ~30 segundos
 ```
 
 ---
