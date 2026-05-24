@@ -1,145 +1,159 @@
 ---
 name: apex-deploy
-description: Despliega APEX a producción via Git. Úsalo cuando el usuario diga "deploy", "publica", "sube a producción", "push a GitHub". Corre el audit primero, hace commit con mensaje descriptivo y push automático.
+description: Despliega APEX a producción via Git. Úsalo cuando el usuario diga "deploy", "publica", "sube a producción", "push a GitHub". OBLIGATORIO pasar por Julián QA y Lucas QA antes de cualquier commit. Sin verde de ambos agentes, no hay deploy.
 ---
 
-# APEX Deploy — Workflow Git completo a producción
+# APEX Deploy — Pipeline de despliegue con gates de QA
 
-Este skill maneja todo el proceso de despliegue: audit previo → commit → push → confirmación.
+## Regla inviolable
 
-## Cuándo activar este skill
+**NO existe el deploy sin QA verde. Punto.**
+Si algún agente reporta 🔴, el deploy se aborta sin excepción, sin "es solo una cosa menor", sin "lo arreglamos después".
 
-- "Deploy APEX"
-- "Sube los cambios"
-- "Publica esto en producción"
-- "Push a GitHub"
-- "Despliega la nueva versión"
+---
 
-## Procedimiento obligatorio (4 pasos)
+## Pipeline obligatorio (5 pasos en orden estricto)
 
-### Paso 1: Audit obligatorio ANTES de deploy
-Si el resultado no es 🟢, **NO continúes**. Reporta al usuario y detente.
+### PASO 1 — Julián QA: Auditoría estática de código
 
-```bash
-# Invocar skill apex-audit primero
-# Si el resultado no es 6/6, abortar
+Invocar al agente `julian-qa` como subagente. Su suite completa cubre:
+
+- Sintaxis JS (node --check)
+- Funciones duplicadas
+- IDs JS sin match en HTML
+- Handlers onclick sin función definida
+- SB_KEYS sin reload en syncFromCloud
+- Ejercicios con IDs duplicados
+
+**Resultado esperado:** `🟢 PRODUCCIÓN OK` en todos los checks.
+
+Si el resultado es `🔴`:
+```
+🔴 Deploy abortado — Julián QA bloqueó el pipeline.
+Errores encontrados:
+- [lista de errores de Julián]
+Delegar a Camila para corrección. Reinvocar deploy cuando esté en 🟢.
 ```
 
-### Paso 2: Identificar qué cambió
+Si el resultado es `🟡` (avisos menores):
+- Reportar al usuario los avisos
+- Preguntar si desea proceder igual
+- Solo continuar si el usuario confirma explícitamente
+
+---
+
+### PASO 2 — Lucas QA: Verificación funcional
+
+Invocar al agente `lucas-qa-func` como subagente. Su verificación cubre:
+
+- Visibilidad de elementos nuevos o modificados en el DOM
+- Flujo completo desde perspectiva del usuario
+- 6 edge cases críticos: sin datos, estado colapsado, tabs, re-render, datos extremos, móvil 360px
+- Contenedores con display:none que bloqueen features
+
+**Resultado esperado:** `🟢 LISTO` o `🟡 con aviso menor`.
+
+Si el resultado es `🔴`:
+```
+🔴 Deploy abortado — Lucas QA detectó un bloqueante funcional.
+Problema: [descripción de Lucas]
+Delegar a Camila / Diego según corresponda. Reinvocar cuando esté resuelto.
+```
+
+---
+
+### PASO 3 — Identificar qué cambió
+
 ```bash
-cd <ruta-del-repo>
 git status
-git diff --stat
+git diff --stat HEAD
 ```
 
-Listar los archivos modificados al usuario para confirmar.
+Presentar al usuario la lista de archivos modificados antes de continuar.
 
-### Paso 3: Commit con mensaje descriptivo
+---
 
-El mensaje de commit debe seguir este formato:
+### PASO 4 — Commit con mensaje descriptivo
+
+Formato obligatorio:
 
 ```
 [tipo]: [resumen en una línea]
 
 - [cambio específico 1]
 - [cambio específico 2]
-- [cambio específico 3]
+- [cambio específico N]
 
-Tested: ✅ apex-audit 6/6
+Tested: ✅ Julián QA — [X]/[Y] checks OK
+Tested: ✅ Lucas QA — [feature principal] LISTO
 ```
 
 **Tipos válidos:**
-- `feat` — nueva feature
-- `fix` — bug fix
+- `feat` — nueva feature visible para el usuario
+- `fix` — corrección de bug
 - `refactor` — reestructuración sin cambio de comportamiento
 - `style` — solo visual/CSS
 - `docs` — documentación / CLAUDE.md
 - `perf` — mejora de rendimiento
-- `chore` — mantenimiento
+- `chore` — mantenimiento interno
 
-**Ejemplos buenos:**
-```
-feat: dashboard analytics del coach
+**Reglas:**
+- Una feature = un commit. No mezclar cambios no relacionados.
+- El mensaje es para el Andrés del futuro — describe el QUÉ y el POR QUÉ.
+- NUNCA commitear secretos (VAPID privado, tokens, .env).
 
-- Añadido panel #p-analytics con métricas mensuales
-- Calculados ingresos, retención y sesiones/semana
-- Nueva función calcMonthlyStats()
+---
 
-Tested: ✅ apex-audit 6/6
-```
+### PASO 5 — Push y confirmación
 
-```
-fix: notificaciones push no llegan en Android background
-
-- Reemplazado new Notification() por SW.showNotification()
-- Corregido scope del Service Worker
-- Añadido push subscription guardado en Supabase
-
-Tested: ✅ apex-audit 6/6
-```
-
-### Paso 4: Ejecutar el deploy
 ```bash
-git add index.html
-git commit -m "[mensaje aquí]"
+git add index.html  # (y otros archivos modificados, nunca git add -A sin revisar)
+git commit -m "[mensaje descriptivo]"
 git push origin main
 ```
 
-IMPORTANTE: La rama de producción es siempre `main`. Nunca pushear a `master`.
+**NUNCA:**
+- `git push --force` a main
+- `--no-verify` para saltarse el hook
+- Pushear a `master` (la rama de producción es `main`)
 
-## Después del push
+Después del push, confirmar al usuario:
 
-Confirma al usuario:
 ```
-✅ Desplegado a producción
-🔗 Repo: github.com/[usuario]/apex
-⏱️  GitHub Pages tarda ~30 segundos en propagar
-🧪 Verifica en: [URL del sitio]
+🚀 Deploy completado
+
+✅ Julián QA  : [X]/[Y] checks OK
+✅ Lucas QA   : [feature] — LISTO
+✅ Commit     : [tipo]: [resumen]
+✅ Push       : origin/main → github.com/Kronos-apex/apex-app
+⏱️  Netlify propaga en ~30 segundos
 ```
+
+---
 
 ## Manejo de errores
 
-### Si `git push` falla por conflictos
+### git push falla por conflicto
 ```bash
 git pull --rebase origin main
-# Si hay conflictos, abortar y reportar al usuario
-git rebase --abort  # si no se puede resolver
+# Si hay conflictos que no se pueden resolver automáticamente:
+git rebase --abort
+# Reportar al usuario — NO forzar
 ```
 
-### Si el audit no pasa
-**Detente. NO hagas commit.**
-
+### No hay cambios para commitear
 ```
-🔴 No puedo desplegar:
-- Audit falló con [X] errores
-- Reporta a [Camila/Diego/Julián]
-- Cuando esté en 6/6, vuelve a invocar deploy
+ℹ️  Sin cambios para desplegar.
+git status: working tree clean.
+La versión actual ya está en producción.
 ```
 
-### Si no hay cambios para commitear
-```
-ℹ️  No hay cambios para desplegar
-- git status: clean
-- Última versión ya está en producción
-```
+---
 
-## Reglas inviolables
+## Lo que NUNCA hace este pipeline
 
-1. **NUNCA hagas push sin audit verde** — la regla más importante
-2. **NUNCA hagas `git push --force` a main** — solo a branches de feature
-3. **NUNCA commitees secretos** — VAPID privado, tokens, etc.
-4. **El mensaje de commit es para el futuro yo** — describe el QUÉ y el POR QUÉ
-5. **Una feature = un commit** — no mezcles cambios no relacionados
-
-## Estilo de comunicación
-
-Cuando deployas, eres directo y conciso. Como un release manager seguro de sí mismo:
-
-```
-🚀 Deploy en progreso...
-✅ Audit: 6/6
-✅ Commit: feat: dashboard analytics
-✅ Push: origin/main
-⏱️  Propagación: ~30s
-🌐 Live en 30 segundos
-```
+1. **Deploy sin Julián QA verde** — aunque "sean solo cambios de texto"
+2. **Deploy sin Lucas QA verde** — aunque "el código se vea bien"
+3. **Saltarse un agente porque el cambio es pequeño** — los bugs pequeños también rompen la app
+4. **`--no-verify`** — el hook de pre-commit existe por una razón
+5. **Proceder con 🔴 por presión de tiempo** — producción rota es peor que producción tarde
