@@ -54,8 +54,9 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --r:12px; --rsm:8px; --rlg:18px;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
 }
+/* dark mode automático (sistema) — no aplica si el usuario eligió "Claro" */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg:  #0D1F17;
     --w:   #152A1E;
     --br:  #1F3D2A;
@@ -68,14 +69,58 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --sh:  0 2px 10px rgba(0,0,0,.25);
     --sh2: 0 6px 28px rgba(0,0,0,.40);
   }
-  html, body { background: var(--bg); color: var(--t1); }
-  .li, .inp, .sel, .tarea, .sinput, .gm-sinput, .mta {
-    background: var(--w);
-    color: var(--t1);
-    border-color: var(--br2);
+  :root:not([data-theme="light"]) ~ * .li,
+  :root:not([data-theme="light"]) ~ * .inp,
+  html:not([data-theme="light"]) .li,
+  html:not([data-theme="light"]) .inp,
+  html:not([data-theme="light"]) .sel,
+  html:not([data-theme="light"]) .tarea,
+  html:not([data-theme="light"]) .sinput,
+  html:not([data-theme="light"]) .gm-sinput,
+  html:not([data-theme="light"]) .mta {
+    background: var(--w); color: var(--t1); border-color: var(--br2);
   }
-  .li::placeholder, .inp::placeholder, .sinput::placeholder { color: var(--t3); }
-  #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
+  html:not([data-theme="light"]) .li::placeholder,
+  html:not([data-theme="light"]) .inp::placeholder,
+  html:not([data-theme="light"]) .sinput::placeholder { color: var(--t3); }
+  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
+}
+/* dark mode manual — forzado por el toggle de la app */
+:root[data-theme="dark"] {
+  --bg:  #0D1F17;
+  --w:   #152A1E;
+  --br:  #1F3D2A;
+  --br2: #2D4F38;
+  --t1:  #E8F4EC;
+  --t2:  #8FAF98;
+  --t3:  #4A7A58;
+  --gl:  #1A3A26;
+  --gt:  #95D5B2;
+  --sh:  0 2px 10px rgba(0,0,0,.25);
+  --sh2: 0 6px 28px rgba(0,0,0,.40);
+}
+html[data-theme="dark"] .li, html[data-theme="dark"] .inp,
+html[data-theme="dark"] .sel, html[data-theme="dark"] .tarea,
+html[data-theme="dark"] .sinput, html[data-theme="dark"] .gm-sinput,
+html[data-theme="dark"] .mta {
+  background: var(--w); color: var(--t1); border-color: var(--br2);
+}
+html[data-theme="dark"] .li::placeholder,
+html[data-theme="dark"] .inp::placeholder,
+html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
+html[data-theme="dark"] #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
+/* light mode manual — fuerza claro aunque el sistema esté en oscuro */
+:root[data-theme="light"] {
+  --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
+  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
+  --gl:#D8F3DC; --gt:#1B4332;
+  --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
+}
+html[data-theme="light"] .li, html[data-theme="light"] .inp,
+html[data-theme="light"] .sel, html[data-theme="light"] .tarea,
+html[data-theme="light"] .sinput, html[data-theme="light"] .gm-sinput,
+html[data-theme="light"] .mta {
+  background: #FFF; color: #1A1A1A; border-color: #D0D0C8;
 }
 ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--br2);border-radius:2px}
 
@@ -938,6 +983,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="ch"><div class="ctitle">Mis datos</div></div>
         <div class="cb" id="cn-prof-data" style="display:flex;flex-direction:column;gap:9px"></div>
       </div>
+      <!-- Apariencia -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><div class="ctitle">Apariencia</div></div>
+        <div class="cb" style="padding-top:4px">
+          <div style="display:flex;gap:7px">
+            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
+            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
+            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="cntabs">
@@ -1056,6 +1112,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <input id="st-new" class="inp" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" style="width:100%;margin-bottom:8px">
       <input id="st-rep" class="inp" type="password" placeholder="Repetir nueva contraseña" style="width:100%;margin-bottom:4px">
       <div id="st-perr" style="font-size:12px;color:var(--rd);margin-top:4px;display:none"></div>
+    </div>
+
+    <div class="fg" style="margin-bottom:16px">
+      <span class="ilbl">Apariencia</span>
+      <div style="display:flex;gap:7px;margin-top:4px">
+        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
+        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
+        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:'';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+      </div>
     </div>
 
     <div class="mdfooter">
@@ -1272,6 +1337,25 @@ function notifNewMessage(fromName,preview){
 }
 
 function ld(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch{return def}}
+
+function initTheme(){
+  const t=ld('ax_theme','auto');
+  if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  else if(t==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+function setTheme(mode){
+  sv('ax_theme',mode);
+  if(mode==='dark') document.documentElement.setAttribute('data-theme','dark');
+  else if(mode==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  document.querySelectorAll('[data-theme-btn]').forEach(b=>{
+    b.style.background=b.dataset.themeBtn===mode?'var(--g)':'';
+    b.style.color=b.dataset.themeBtn===mode?'white':'';
+    b.style.borderColor=b.dataset.themeBtn===mode?'var(--g)':'';
+  });
+}
 
 // Debounce timers per key — evita saturar Supabase con cada keystroke
 const _sbDebounce = {};
@@ -1703,6 +1787,7 @@ function openSettings(){
   document.getElementById('st-rep').value='';
   document.getElementById('st-perr').style.display='none';
   closeDrawer();om('m-settings');
+  setTheme(ld('ax_theme','auto'));
 }
 
 async function saveSettings(){
@@ -2122,6 +2207,7 @@ function initRememberMe(){
 
 // Boot: sync from cloud then show login
 syncFromCloud().then(()=>{
+  initTheme();
   initRememberMe();
   initPWA();
   // ── Auto-login: restaurar sesión guardada ──
@@ -3242,6 +3328,7 @@ function cnTab(id,el){
   if(id==='cn-profile'&&CUR.clientId){
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     if(c){renderClientProfile(c);}
+    setTheme(ld('ax_theme','auto'));
   }
   if(id==='cn-history'&&CUR.clientId){
     renderClientHistory(CUR.clientId);
