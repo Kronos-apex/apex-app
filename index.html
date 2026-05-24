@@ -1390,6 +1390,80 @@ function notifNewMessage(fromName,preview){
   );
 }
 
+// ══════════════════════════════════════════
+// POLLING DE MENSAJES — tiempo real (30s)
+// ══════════════════════════════════════════
+let _msgPollInt=null;
+
+async function pollMessages(){
+  if(!CUR.loggedAs||!SB_URL)return;
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/apex_data?select=value&key=eq.ax_m`,{
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
+      signal:AbortSignal.timeout(8000)
+    });
+    if(!res.ok)return;
+    const rows=await res.json();
+    if(!rows||!rows.length)return;
+    const remote=rows[0].value||{};
+
+    if(CUR.loggedAs==='client'){
+      const cid=CUR.clientId;
+      const localList=DB.msgs[cid]||[];
+      const remoteList=remote[cid]||[];
+      if(remoteList.length>localList.length){
+        const newMsgs=remoteList.slice(localList.length);
+        DB.msgs=remote;
+        try{localStorage.setItem('ax_m',JSON.stringify(remote));}catch(e){}
+        renderClientMsgs(cid);
+        updateMsgBadge(cid);
+        newMsgs.filter(m=>m.from==='coach').forEach(m=>{
+          notifNewMessage('Tu Coach',m.text);
+          // Solo mostrar toast si el chat no está abierto
+          const chatEl=document.getElementById('cn-messages');
+          if(chatEl&&!chatEl.classList.contains('on'))toast('💬 Nuevo mensaje de tu coach');
+        });
+      }
+    } else if(CUR.loggedAs==='coach'){
+      let anyNew=false;
+      const newMsgsList=[];
+      DB.clients.forEach(c=>{
+        const localList=DB.msgs[c.id]||[];
+        const remoteList=remote[c.id]||[];
+        if(remoteList.length>localList.length){
+          const newMsgs=remoteList.slice(localList.length);
+          newMsgs.filter(m=>m.from==='client').forEach(m=>{
+            newMsgsList.push({client:c,text:m.text});
+          });
+          anyNew=true;
+        }
+      });
+      if(anyNew){
+        DB.msgs=remote;
+        try{localStorage.setItem('ax_m',JSON.stringify(remote));}catch(e){}
+        renderMsgs();
+        // Si el coach está viendo el detalle de un cliente, re-renderizar el chat
+        const detailEl=document.getElementById('p-detail');
+        if(detailEl&&detailEl.classList.contains('on')&&CUR.clientId){
+          renderDetailMsgs(CUR.clientId);
+        }
+        newMsgsList.forEach(({client,text})=>notifNewMessage(client.name,text));
+      }
+    }
+  }catch(e){/* error de red, silencioso */}
+}
+
+function startMsgPolling(){
+  if(_msgPollInt)clearInterval(_msgPollInt);
+  // Primera verificación inmediata a los 5s del login para no solaparse con syncFromCloud
+  setTimeout(pollMessages,5000);
+  _msgPollInt=setInterval(pollMessages,30000);
+}
+
+function stopMsgPolling(){
+  if(_msgPollInt){clearInterval(_msgPollInt);_msgPollInt=null;}
+}
+
 function ld(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch{return def}}
 
 function initTheme(){
@@ -1751,6 +1825,7 @@ async function doLogin(){
         CUR.loggedAs='coach';
         initCoach();
         setTimeout(()=>checkInactivity(),3000);
+        startMsgPolling();
         setTimeout(()=>{
           requestNotifPermission().then(perm=>{
             if(perm==='granted'){
@@ -1790,6 +1865,7 @@ async function doLogin(){
         CUR.loggedAs='client';
         CUR.clientId=client.id;
         initClientView(client);
+        startMsgPolling();
         setTimeout(()=>{
           const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
           const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
@@ -1820,6 +1896,7 @@ async function doLogin(){
 
 function logout(){
   if(restInt){clearInterval(restInt);restInt=null;}
+  stopMsgPolling();
   // Borrar sesión guardada — próxima vez pedirá login
   localStorage.removeItem('ax_session');
   showScreen('s-login');
@@ -4071,8 +4148,10 @@ function sendClientMsg(){
   const ta=document.getElementById('cn-msg-in');const text=ta.value.trim();const clientId=CUR.clientId;if(!text||!clientId)return;
   if(!DB.msgs[clientId])DB.msgs[clientId]=[];
   DB.msgs[clientId].push({from:'client',text,date:new Date().toISOString()});
-  sv('ax_m',DB.msgs);
-  notifNewMessage(DB.clients.find(c=>c.id===clientId)?.name||'Asesorado',text);
+  svNow('ax_m',DB.msgs);
+  const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
+  // Push al coach para notificación en tiempo real
+  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text);
   ta.value='';ta.style.height='auto';renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 
