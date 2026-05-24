@@ -397,6 +397,7 @@ git push origin main
 - 7 textos humanizados (Sofía): loading, sync-dot, toasts, push title, wizards
 - Tokens CSS `--surface` y `--accent3` en los 3 bloques `:root`
 - Touch targets ≥36px (WCAG 2.5.5)
+- Experiencia primer día asesorado (Mayo 2026): badge login removido, hint de credenciales, estados vacíos accionables con CTA a mensajes, día de descanso con mensaje maduro, botón "Empezar" renombrado, pills de perfil con guard, mensaje fin de sesión orientado al progreso, typo Bíceps, warmup simplificado, onboarding Slide 1 recontextualizado, push delay 4s
 
 ### 🎯 v1.4 — Próxima iteración
 - [ ] Stripe / Mercado Pago — cobro automático
@@ -439,4 +440,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: Mayo 2026 · v1.3.0 · 36 commits · ~6,200 líneas · 220 funciones · 88 ejercicios*
+*Última actualización: Mayo 2026 · v1.3.0 · 37 commits · ~6,200 líneas · 222 funciones · 88 ejercicios*
