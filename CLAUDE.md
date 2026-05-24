@@ -57,7 +57,7 @@ apex-app/
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 88 ejercicios precargados, filtros por músculo
+- `#p-exercises` — 93 ejercicios precargados, filtros por músculo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
@@ -86,7 +86,7 @@ apex-app/
 ```js
 DB = {
   clients: [],     // ax_c — asesorados
-  exercises: [],   // ax_e — 88 ejercicios precargados + custom
+  exercises: [],   // ax_e — 93 ejercicios precargados + custom
   msgs: {},        // ax_m — { clientId: [{from, text, date}] }
   history: {},     // ax_hist — { clientId: [hasta 365 sesiones] }
   prs: {},         // ax_pr — récords personales por ejercicio
@@ -412,6 +412,24 @@ git push origin main
 - Tagline actual: "Entrenamiento con tu coach, en tu bolsillo" (en revisión)
 - Candidatos evaluados por Lucía: "Tu coach real, en tu celular" / "Entrena con quien sabe"
 
+### ✅ v1.3.1 — Sesión 2026-05-24 (rutinas + fixes)
+- Rutinas personalizadas creadas para 5 asesorados vía Python → Supabase directo
+- Criterio de orden en rutinas: **Compuesto → Funcional → Aislamiento → Cardio** (regla permanente)
+- Criterio de diseño: mujeres → glúteo+piernas primero; hombres → tren superior; menores 16 → sin carga axial
+- 4 ejercicios nuevos: Remo Australiano (fb01), Swing Mancuerna (fb02), Thruster (fb03), PM Rumano Mancuernas (fb04)
+- Fix: `capture="environment"` eliminado de `dob-photo-input` — asesorado ya puede elegir galería en onboarding
+- agent-browser instalado globalmente (`~/.claude/agents/agent-browser.md`) + Chrome 149 en `~/.agent-browser/`
+- Pipeline de rutinas reutilizable en `C:\Users\KRONOS\AppData\Local\Temp\crear_rutinas.py`
+
+### Asesorados actuales y sus rutinas (2026-05-24)
+| Nombre | Sexo | Edad | Nivel | Días/sem | Objetivo | Rutinas |
+|---|---|---|---|---|---|---|
+| Kathe Beltran | F | 28 | Principiante | 4 | Perder grasa | Lu/Ma/Ju/Vi |
+| Samuel Cifuentes | M | 14 | Principiante | 3 | Perder grasa | Full Body Lu/Mi/Vi — sin carga axial |
+| Miguel Pulido | M | 29 | Intermedio | 4 | Ganar músculo | Lu/Ma/Ju/Vi — ⚠️ rodilla derecha operada |
+| Andrés Martínez | M | 37 | Avanzado | 5 | Ganar músculo | Pierna/Push/Pull/Hombros+Brazos/Cardio |
+| Natalia Martinez | F | 34 | Principiante | 3 | Recomposición | Lu/Mi/Vi |
+
 ### 🎯 v1.4 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Tagline final — pendiente decisión de Andrés
@@ -455,4 +473,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: Mayo 2026 · v1.3.1 · 42 commits · ~6,200 líneas · 222 funciones · 88 ejercicios*
+*Última actualización: 2026-05-24 · v1.3.1 · 43 commits · ~6,200 líneas · 222 funciones · 93 ejercicios*
