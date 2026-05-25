@@ -3296,12 +3296,20 @@ function openEditRoutine(cid,ri){
 
 function selR(sec,el){CUR.restSec=sec;document.querySelectorAll('#rf-rp .rp').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
 
+function moveEx(i,dir){
+  const j=i+dir;
+  if(j<0||j>=CUR.routineExs.length)return;
+  const tmp=CUR.routineExs[i];CUR.routineExs[i]=CUR.routineExs[j];CUR.routineExs[j]=tmp;
+  renderRfExList();
+}
+
 function renderRfExList(){
   const con=document.getElementById('rf-exlist');
   if(!CUR.routineExs.length){
     con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca "+ Añadir ejercicios" para comenzar</div>';
     return;
   }
+  const n=CUR.routineExs.length;
   // Header row
   let html=`<div style="display:flex;align-items:center;padding:0 11px 4px;gap:9px">
     <div style="flex:1;font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px">EJERCICIO</div>
@@ -3309,12 +3317,15 @@ function renderRfExList(){
       <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--g);letter-spacing:.4px">SERIES</div>
       <div style="width:8px"></div>
       <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--g);letter-spacing:.4px">REPS</div>
-      <div style="width:28px"></div>
+      <div style="width:44px"></div>
     </div>
   </div>`;
   CUR.routineExs.forEach((e,i)=>{
     const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
-    html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px">
+    const upDis=i===0;const dnDis=i===n-1;
+    const arrowBtn=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:28px;height:28px;border-radius:6px;border:1.5px solid ${dis?'var(--br)':'var(--br2)'};background:${dis?'transparent':'var(--bg)'};color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:${dis?'.35':'1'}">${dir===-1?'↑':'↓'}</button>`;
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px">
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">${arrowBtn(-1,upDis)}${arrowBtn(1,dnDis)}</div>
       <span style="font-size:17px">${e.icon||'💪'}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
@@ -3329,7 +3340,7 @@ function renderRfExList(){
           onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps"
           onfocus="this.select()">
         <button onclick="CUR.routineExs.splice(${i},1);renderRfExList()"
-          style="width:26px;height:26px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+          style="width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
       </div>
     </div>`;
   });
