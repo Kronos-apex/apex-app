@@ -2661,20 +2661,27 @@ function renderClients(){
   list.innerHTML='';
   DB.clients.forEach(c=>{
     const ms=DB.msgs[c.id]||[];const last=ms[ms.length-1];
-    // Last session info
-    const sessions=(DB.history&&DB.history[c.id])||[];
-    const lastSession=sessions[0];
-    let lastTrainStr='';
-    if(lastSession){
-      const daysDiff=Math.floor((Date.now()-new Date(lastSession.date))/(1000*60*60*24));
-      const color=daysDiff===0?'var(--g)':daysDiff<=2?'var(--bl)':daysDiff<=5?'var(--or)':'var(--rd)';
-      const label=daysDiff===0?'Hoy':daysDiff===1?'Ayer':`Hace ${daysDiff} días`;
-      lastTrainStr=`<div style="font-size:11px;margin-top:3px"><span style="color:${color};font-weight:600">🏋️ ${label}</span></div>`;
+    // Rutina del día o mañana
+    const _days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const _todayName=_days[new Date().getDay()];
+    const _tomorrowName=_days[(new Date().getDay()+1)%7];
+    const _ruts=c.routines||[];
+    const _todayR=_ruts.find(r=>r.day===_todayName);
+    const _tomorrowR=!_todayR?_ruts.find(r=>r.day===_tomorrowName):null;
+    const _todayStr=new Date().toISOString().split('T')[0];
+    const _trained=(DB.history&&DB.history[c.id]||[]).some(s=>s.date&&s.date.startsWith(_todayStr));
+    let routineStr='';
+    if(_todayR){
+      routineStr=`<div style="font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px"><span style="color:${_trained?'var(--g)':'var(--t1)'};font-weight:600">${esc(_todayR.name)} · hoy</span>${_trained?'<span style="color:var(--g);font-size:13px;font-weight:700">✓</span>':''}</div>`;
+    } else if(_tomorrowR){
+      routineStr=`<div style="font-size:11px;color:var(--t2);margin-top:3px">${esc(_tomorrowR.name)} · mañana</div>`;
+    } else if(_ruts.length){
+      routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Descanso hoy</div>`;
     } else {
-      lastTrainStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin sesiones</div>`;
+      routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin rutinas asignadas</div>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${lastTrainStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0"><span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0"><span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
