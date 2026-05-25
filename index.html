@@ -4198,15 +4198,15 @@ function playRestEndBeep(){
     const beep=(freq,start,dur)=>{
       const o=ctx.createOscillator(),g=ctx.createGain();
       o.connect(g);g.connect(ctx.destination);
-      o.type='sine';o.frequency.value=freq;
+      o.type='square';o.frequency.value=freq;
       g.gain.setValueAtTime(0,ctx.currentTime+start);
-      g.gain.linearRampToValueAtTime(0.45,ctx.currentTime+start+0.01);
+      g.gain.linearRampToValueAtTime(0.9,ctx.currentTime+start+0.01);
       g.gain.linearRampToValueAtTime(0,ctx.currentTime+start+dur);
       o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur+0.05);
     };
-    beep(660,0,.1);beep(880,.13,.1);beep(1100,.26,.2);
+    beep(660,0,.15);beep(880,.2,.15);beep(1100,.4,.35);
   }catch(e){}
-  if(navigator.vibrate)navigator.vibrate([150,80,150,80,300]);
+  if(navigator.vibrate)navigator.vibrate([200,80,200,80,500]);
 }
 
 function playRestTick(){
@@ -4214,12 +4214,13 @@ function playRestTick(){
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
-    o.type='sine';o.frequency.value=440;
+    o.type='square';o.frequency.value=660;
     g.gain.setValueAtTime(0,ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.2,ctx.currentTime+0.005);
-    g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.08);
-    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.1);
+    g.gain.linearRampToValueAtTime(0.7,ctx.currentTime+0.005);
+    g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.12);
+    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.15);
   }catch(e){}
+  if(navigator.vibrate)navigator.vibrate(60);
 }
 
 function startClientRest(sec,exName){
@@ -4229,7 +4230,7 @@ function startClientRest(sec,exName){
   let left=sec;num.textContent=left;
   restInt=setInterval(()=>{
     left--;num.textContent=left;
-    if(left>0&&left<=3)playRestTick();
+    if(left>0&&left<=5)playRestTick();
     if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
   },1000);
 }
@@ -5591,7 +5592,7 @@ function gmShowRest(secs, nextStep){
     left--;
     secEl.textContent=left;
     arc.style.strokeDashoffset=C*((secs-left)/secs);
-    if(left>0&&left<=3)playRestTick();
+    if(left>0&&left<=5)playRestTick();
     if(left<=0){
       clearInterval(GM.restTimer);GM.restTimer=null;
       overlay.classList.add('hidden');
