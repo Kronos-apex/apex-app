@@ -3310,37 +3310,32 @@ function renderRfExList(){
     return;
   }
   const n=CUR.routineExs.length;
-  // Header row
-  let html=`<div style="display:flex;align-items:center;padding:0 11px 4px;gap:9px">
-    <div style="flex:1;font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px">EJERCICIO</div>
-    <div style="display:flex;gap:5px;align-items:center">
-      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--g);letter-spacing:.4px">SERIES</div>
-      <div style="width:8px"></div>
-      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--g);letter-spacing:.4px">REPS</div>
-      <div style="width:44px"></div>
-    </div>
-  </div>`;
+  let html='';
   CUR.routineExs.forEach((e,i)=>{
-    const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
-    const upDis=i===0;const dnDis=i===n-1;
-    const arrowBtn=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:28px;height:28px;border-radius:6px;border:1.5px solid ${dis?'var(--br)':'var(--br2)'};background:${dis?'transparent':'var(--bg)'};color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:${dis?'.35':'1'}">${dir===-1?'↑':'↓'}</button>`;
-    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px">
-      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">${arrowBtn(-1,upDis)}${arrowBtn(1,dnDis)}</div>
-      <span style="font-size:17px">${e.icon||'💪'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
-        <div style="font-size:11px;color:var(--t2)">${e.muscle} · ${e.type}</div>
+    const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
+    const upDis=i===0; const dnDis=i===n-1;
+    const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
+    html+=`<div style="background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
+        <span style="font-size:18px;flex-shrink:0">${e.icon||'💪'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px">${e.muscle} · ${e.type}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:6px;padding:0 10px 9px;padding-left:44px">
+        <span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">Series</span>
         <input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20"
           onchange="CUR.routineExs[${i}].sets=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].sets"
           onfocus="this.select()">
         <span style="color:var(--t3);font-size:14px;font-weight:700">×</span>
+        <span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">Reps</span>
         <input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999"
           onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps"
           onfocus="this.select()">
         <button onclick="CUR.routineExs.splice(${i},1);renderRfExList()"
-          style="width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+          style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
       </div>
     </div>`;
   });
