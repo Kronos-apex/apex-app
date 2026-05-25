@@ -1327,29 +1327,34 @@ function urlBase64ToUint8Array(b64){
 
 // Suscribe este dispositivo a push y guarda en Supabase
 async function subscribePush(clientId, trainingDays=[], shiftMap=null){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
-  if(Notification.permission!=='granted')return;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){toast('PUSH❌ sin SW/PushManager');return;}
+  if(Notification.permission!=='granted'){toast('PUSH❌ permiso='+Notification.permission);return;}
   try{
-    // Usar _swReg directo para evitar que navigator.serviceWorker.ready se cuelgue con blob SWs
+    toast('PUSH 1/4 obteniendo SW...');
     const reg=window._swReg||(await Promise.race([
       navigator.serviceWorker.ready,
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW ready timeout')),8000))
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW timeout')),8000))
     ]));
-    if(!reg)return;
+    if(!reg){toast('PUSH❌ reg=null');return;}
+    toast('PUSH 2/4 getSubscription...');
     let sub=await reg.pushManager.getSubscription();
     if(!sub){
+      toast('PUSH 3/4 creando sub...');
       sub=await reg.pushManager.subscribe({
         userVisibleOnly:true,
         applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)
       });
     }
-    await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
+    toast('PUSH 4/4 guardando en BD...');
+    const res=await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
+    if(res.ok||res.status===201||res.status===204){toast('PUSH✅ suscrito '+clientId);}
+    else{toast('PUSH❌ BD status='+res.status);}
     log('APEX Push: suscripción guardada ✅');
-  }catch(e){warn('APEX Push subscribe error:',e);}
+  }catch(e){toast('PUSH❌ '+e.message);warn('APEX Push subscribe error:',e);}
 }
 
 // Enviar push via Edge Function de Supabase
