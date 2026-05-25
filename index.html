@@ -2407,7 +2407,16 @@ async function tryAutoLogin(){
       startMsgPolling();
       resetLoginAttempts();
       if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
-      if(Notification.permission==='granted') setTimeout(()=>{subscribePush('_coach');restoreNotifications();},3000);
+      setTimeout(async()=>{
+        const perm=Notification.permission;
+        if(perm!=='granted'){toast('🔔 Push: permiso='+perm+' — no se suscribe');return;}
+        toast('🔔 Suscribiendo push...');
+        try{
+          await subscribePush('_coach');
+          toast('✅ Push suscrito');
+        }catch(e){toast('❌ Push error: '+e.message);}
+        restoreNotifications();
+      },3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
