@@ -955,8 +955,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
       <!-- Streak de entrenamiento -->
       <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle">🔥 Mi racha</div></div>
-        <div class="cb" id="cn-streak" style="padding:12px 16px"></div>
+        <div class="cb" id="cn-streak" style="padding:16px"></div>
       </div>
 
       <!-- Body weight tracker -->
@@ -3670,25 +3669,42 @@ function calcStreak(clientId){
 }
 
 function renderStreakClient(clientId){
-  let con=document.getElementById('cn-streak');
+  const con=document.getElementById('cn-streak');
   if(!con) return;
-  const {streak,best,thisWeek}=calcStreak(clientId);
-  const fire=streak>=8?'🔥🔥':streak>=4?'🔥':'⚡';
-  const msg=streak===0?'¡Empieza tu racha esta semana!':streak===1?'1 semana seguida. ¡Sigue así!':streak<4?`${streak} semanas seguidas. ¡Vas bien!`:`¡${streak} semanas seguidas! ${streak>=8?'¡Imparable!':'¡Increíble!'}`;
+  const {streak,best}=calcStreak(clientId);
+  // Días con sesión en la semana actual
+  const now=new Date();
+  const dow=now.getDay();
+  const monday=new Date(now);
+  monday.setDate(now.getDate()-(dow===0?6:dow-1));
+  monday.setHours(0,0,0,0);
+  const sunday=new Date(monday);
+  sunday.setDate(monday.getDate()+6);
+  sunday.setHours(23,59,59,999);
+  const activeDays=new Set((DB.history[clientId]||[])
+    .filter(s=>{const d=new Date(s.date);return d>=monday&&d<=sunday;})
+    .map(s=>new Date(s.date).getDay()));
+  // Círculos L M X J V S D (JS: 1=Lun…6=Sáb, 0=Dom)
+  const LABELS=['L','M','X','J','V','S','D'];
+  const JS_DAYS=[1,2,3,4,5,6,0];
+  const circles=LABELS.map((lbl,i)=>{
+    const done=activeDays.has(JS_DAYS[i]);
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:32px;height:32px;border-radius:50%;background:${done?'var(--g)':'var(--br2)'};border:2px solid ${done?'var(--g)':'var(--br)'};display:flex;align-items:center;justify-content:center">
+        ${done?`<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+      </div>
+      <div style="font-size:10px;font-weight:${done?'700':'400'};color:${done?'var(--g)':'var(--t3)'}">${lbl}</div>
+    </div>`;
+  }).join('');
+  const msg=streak===0?'¡Empieza tu racha esta semana!':streak===1?'Primera semana seguida. ¡Sigue así!':streak<4?`¡Vas muy bien, ${streak} semanas seguidas!`:`¡${streak} semanas seguidas! ${streak>=8?'¡Imparable!':'¡Increíble!'}`;
   con.innerHTML=`
-    <div style="display:flex;align-items:center;gap:16px">
-      <div style="text-align:center;min-width:64px">
-        <div style="font-size:40px;line-height:1">${fire}</div>
-        <div style="font-size:28px;font-weight:900;color:var(--g);line-height:1.1">${streak}</div>
-        <div style="font-size:10px;color:var(--t2);font-weight:600">SEM. SEGUIDAS</div>
-      </div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">${msg}</div>
-        <div style="display:flex;gap:12px;margin-top:8px">
-          <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--bl)">${thisWeek}</div><div style="font-size:10px;color:var(--t2)">Esta semana</div></div>
-          <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--or)">${best}</div><div style="font-size:10px;color:var(--t2)">Mejor racha</div></div>
-        </div>
-      </div>
+    <div style="text-align:center">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px">Racha actual</div>
+      <div style="font-size:52px;font-weight:900;color:var(--g);line-height:1">${streak}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px;margin-bottom:6px">semanas seguidas entrenando</div>
+      <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:14px">${msg}</div>
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:14px">${circles}</div>
+      <div style="font-size:12px;color:var(--t2)">Mejor racha: <span style="font-weight:800;color:var(--or)">${best} sem.</span> 🏆</div>
     </div>`;
 }
 
