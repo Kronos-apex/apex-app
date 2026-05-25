@@ -6,9 +6,8 @@ const VAPID_PUBLIC  = Deno.env.get("VAPID_PUBLIC")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@apex.app";
 
-// La anon key es la única credencial válida para llamar este endpoint.
-// Se lee desde env para no hardcodearla en el código del edge function.
-const APEX_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// Llave pública del proyecto — misma que usa el frontend (SB_KEY en index.html)
+const APEX_ANON_KEY = "sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8";
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
