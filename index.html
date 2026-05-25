@@ -388,7 +388,7 @@ html[data-theme="light"] .mta {
 .scheck.sdone{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 
 /* Rest banner */
-.restbanner{background:linear-gradient(135deg,#1B4332,#40916C);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px}
+.restbanner{background:linear-gradient(135deg,#1B4332,#40916C);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px;position:sticky;top:0;z-index:50}
 .restbanner.hide{display:none}
 .restnum{font-size:34px;font-weight:800;font-family:'JetBrains Mono',monospace;min-width:50px}
 .restinfo{flex:1}
@@ -4189,14 +4189,49 @@ function sendClientMsg(){
 
 // REST TIMER
 let restInt=null;
+
+function playRestEndBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const beep=(freq,start,dur)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(0,ctx.currentTime+start);
+      g.gain.linearRampToValueAtTime(0.45,ctx.currentTime+start+0.01);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+start+dur);
+      o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur+0.05);
+    };
+    beep(660,0,.1);beep(880,.13,.1);beep(1100,.26,.2);
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([150,80,150,80,300]);
+}
+
+function playRestTick(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.value=440;
+    g.gain.setValueAtTime(0,ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.2,ctx.currentTime+0.005);
+    g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.08);
+    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.1);
+  }catch(e){}
+}
+
 function startClientRest(sec,exName){
   if(restInt)clearInterval(restInt);
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');
   banner.classList.remove('hide');sub.textContent=`Después de: ${exName}`;
   let left=sec;num.textContent=left;
-  restInt=setInterval(()=>{left--;num.textContent=left;if(left<=0){clearInterval(restInt);banner.classList.add('hide');toast('✅ ¡Descansado! A por la siguiente serie')}},1000);
+  restInt=setInterval(()=>{
+    left--;num.textContent=left;
+    if(left>0&&left<=3)playRestTick();
+    if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
+  },1000);
 }
-function skipRest(){if(restInt)clearInterval(restInt);document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
+function skipRest(){if(restInt)clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
 
 // ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){
@@ -5531,9 +5566,11 @@ function gmShowRest(secs, nextStep){
     left--;
     secEl.textContent=left;
     arc.style.strokeDashoffset=C*((secs-left)/secs);
+    if(left>0&&left<=3)playRestTick();
     if(left<=0){
       clearInterval(GM.restTimer);GM.restTimer=null;
       overlay.classList.add('hidden');
+      playRestEndBeep();
       toast('✅ ¡A por la siguiente serie!');
       if(nextStep){ setTimeout(()=>{ const inp=document.getElementById(`gm-kg-${nextStep.ei}-${nextStep.si}`);if(inp)inp.focus();},300); }
     }
