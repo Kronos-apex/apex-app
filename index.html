@@ -5303,7 +5303,8 @@ self.addEventListener('notificationclick',e=>{
       cls[0].postMessage({type:'notif-click',chatId:data.chatId,notifType:data.type});
       return cls[0].focus();
     }
-    const url=data.chatId?'https://kronos-apex.github.io/apex-app/?apex-chat='+data.chatId:'https://kronos-apex.github.io/apex-app/';
+    const base=self.registration.scope;
+    const url=data.chatId?base+'?apex-chat='+data.chatId:base;
     if(clients.openWindow)return clients.openWindow(url);
   }));
 });`;
