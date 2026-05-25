@@ -1327,34 +1327,25 @@ function urlBase64ToUint8Array(b64){
 
 // Suscribe este dispositivo a push y guarda en Supabase
 async function subscribePush(clientId, trainingDays=[], shiftMap=null){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window)){toast('PUSH❌ sin SW/PushManager');return;}
-  if(Notification.permission!=='granted'){toast('PUSH❌ permiso='+Notification.permission);return;}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+  if(Notification.permission!=='granted')return;
   try{
-    toast('PUSH 1/4 obteniendo SW...');
-    const reg=window._swReg||(await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW timeout')),8000))
-    ]));
-    if(!reg){toast('PUSH❌ reg=null');return;}
-    toast('PUSH 2/4 getSubscription...');
+    const reg=window._swReg||await navigator.serviceWorker.ready;
+    if(!reg)return;
     let sub=await reg.pushManager.getSubscription();
     if(!sub){
-      toast('PUSH 3/4 creando sub...');
       sub=await reg.pushManager.subscribe({
         userVisibleOnly:true,
         applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)
       });
     }
-    toast('PUSH 4/4 guardando en BD...');
-    const res=await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
+    await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
-    if(res.ok||res.status===201||res.status===204){toast('PUSH✅ suscrito '+clientId);}
-    else{toast('PUSH❌ BD status='+res.status);}
     log('APEX Push: suscripción guardada ✅');
-  }catch(e){toast('PUSH❌ '+e.message);warn('APEX Push subscribe error:',e);}
+  }catch(e){warn('APEX Push subscribe error:',e);}
 }
 
 // Enviar push via Edge Function de Supabase
@@ -5284,70 +5275,18 @@ function initPWA(){
 
   // Manifest: ya apunta a /apex-app/manifest.json estático (no se sobreescribe)
 
-  // SW embebido como Blob — no necesita archivo sw.js externo
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   if('serviceWorker' in navigator && isSecure){
-    const swCode=`
-const CACHE_NAME='apex-v6';
-self.addEventListener('install',e=>{self.skipWaiting();});
-self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));
-  self.clients.claim();
-});
-self.addEventListener('fetch',e=>{
-  const url=new URL(e.request.url);
-  if(url.hostname.includes('supabase.co')){
-    e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));return;
-  }
-  if(url.hostname.includes('googleapis.com')||url.hostname.includes('gstatic.com')){
-    e.respondWith(caches.match(e.request).then(c=>{
-      if(c)return c;
-      return fetch(e.request).then(r=>{const cl=r.clone();caches.open(CACHE_NAME).then(ca=>ca.put(e.request,cl));return r;});
-    }));return;
-  }
-  if(e.request.mode==='navigate'){
-    e.respondWith(fetch(e.request).then(r=>{const cl=r.clone();caches.open(CACHE_NAME).then(ca=>ca.put(e.request,cl));return r;}).catch(()=>caches.match('/')));return;
-  }
-  e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));
-});
-self.addEventListener('push',e=>{
-  if(!e.data)return;
-  let d={};try{d=e.data.json();}catch{d={title:'APEX',body:e.data.text()};}
-  const isMsg=d.type==='message';
-  e.waitUntil(self.registration.showNotification(d.title||'APEX',{
-    body:d.body||'',
-    icon:'/apex-app/icons/icon-192.png',
-    badge:'/apex-app/icons/icon-192.png',
-    vibrate:isMsg?[200,100,200,100,200]:[200,100,200],
-    tag:d.tag||(isMsg?'apex-chat-'+(d.chatId||'x'):'apex-notif'),
-    renotify:true,
-    requireInteraction:isMsg,
-    data:{type:d.type,chatId:d.chatId}
-  }));
-});
-self.addEventListener('notificationclick',e=>{
-  e.notification.close();
-  const data=e.notification.data||{};
-  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(cls=>{
-    if(cls.length){
-      cls[0].postMessage({type:'notif-click',chatId:data.chatId,notifType:data.type});
-      return cls[0].focus();
-    }
-    const base=self.registration.scope;
-    const url=data.chatId?base+'?apex-chat='+data.chatId:base;
-    if(clients.openWindow)return clients.openWindow(url);
-  }));
-});`;
-    const swBlob=new Blob([swCode],{type:'text/javascript'});
-    const swUrl=URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl,{scope:'/'})
+    navigator.serviceWorker.register('/apex-app/sw.js',{scope:'/apex-app/'})
       .then(reg=>{
-        log('APEX SW ✅ (inline blob)');
+        log('APEX SW ✅');
         window._swReg=reg;
-        // SW has loaded — safe to revoke the blob URL
-        setTimeout(()=>URL.revokeObjectURL(swUrl), 10000);
+        // Limpiar registraciones viejas (blob URL SWs con scope /)
+        navigator.serviceWorker.getRegistrations().then(regs=>{
+          regs.forEach(r=>{if(r.scope!==reg.scope)r.unregister();});
+        });
       })
-      .catch(e=>{ warn('APEX SW error:',e); URL.revokeObjectURL(swUrl); });
+      .catch(e=>warn('APEX SW error:',e));
   }
 
   // Banner e instrucciones de instalación PWA
