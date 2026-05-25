@@ -2402,7 +2402,14 @@ async function tryAutoLogin(){
       startMsgPolling();
       resetLoginAttempts();
       if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
-      setTimeout(()=>{if(Notification.permission==='granted'){subscribePush('_coach');restoreNotifications();}},3000);
+      // Migración única: re-suscribe push solo si no se hizo antes (evita destroy/recreate en cada apertura)
+      if(Notification.permission==='granted'&&!localStorage.getItem('ax_push_migrated')){
+        setTimeout(async()=>{
+          await subscribePush('_coach');
+          localStorage.setItem('ax_push_migrated','1');
+          restoreNotifications();
+        },3000);
+      }
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
@@ -2422,13 +2429,15 @@ async function tryAutoLogin(){
         startMsgPolling();
         resetLoginAttempts();
         if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
-        setTimeout(()=>{
-          if(Notification.permission==='granted'){
+        // Migración única: re-suscribe push solo si no se hizo antes
+        if(Notification.permission==='granted'&&!localStorage.getItem('ax_push_migrated')){
+          setTimeout(async()=>{
             const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
             const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
-            subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
-          }
-        },4000);
+            await subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
+            localStorage.setItem('ax_push_migrated','1');
+          },4000);
+        }
       } else {
         localStorage.removeItem('ax_session');
         document.getElementById('lu')&&document.getElementById('lu').focus();
