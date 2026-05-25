@@ -1330,8 +1330,12 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
   if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
   if(Notification.permission!=='granted')return;
   try{
-    const reg=await navigator.serviceWorker.ready;
-    // Reusar suscripción existente — solo crear si no hay ninguna
+    // Usar _swReg directo para evitar que navigator.serviceWorker.ready se cuelgue con blob SWs
+    const reg=window._swReg||(await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW ready timeout')),8000))
+    ]));
+    if(!reg)return;
     let sub=await reg.pushManager.getSubscription();
     if(!sub){
       sub=await reg.pushManager.subscribe({
