@@ -2399,8 +2399,10 @@ async function tryAutoLogin(){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';
       initCoach();
+      startMsgPolling();
       resetLoginAttempts();
       if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
+      setTimeout(()=>{if(Notification.permission==='granted'){subscribePush('_coach');restoreNotifications();}},3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
@@ -2417,8 +2419,16 @@ async function tryAutoLogin(){
         CUR.loggedAs = 'client';
         CUR.clientId = client.id;
         initClientView(client);
+        startMsgPolling();
         resetLoginAttempts();
         if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
+        setTimeout(()=>{
+          if(Notification.permission==='granted'){
+            const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
+            const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
+            subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
+          }
+        },4000);
       } else {
         localStorage.removeItem('ax_session');
         document.getElementById('lu')&&document.getElementById('lu').focus();
@@ -5258,7 +5268,7 @@ function initPWA(){
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   if('serviceWorker' in navigator && isSecure){
     const swCode=`
-const CACHE_NAME='apex-v5';
+const CACHE_NAME='apex-v6';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));
