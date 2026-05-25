@@ -5537,6 +5537,29 @@ function gmToggleSet(ei, si, stepIdx){
     if(num) num.textContent='✓';
     if(kgEl) kgEl.readOnly=true;
     if(repEl) repEl.readOnly=true;
+    // Avanzar paso actual y mostrar descanso si era el paso activo
+    if(stepIdx === GM.currentStep){
+      const sets2=parseInt(ex.sets)||3;
+      const exDone=Array.from({length:sets2},(_,s)=>isDone(GM.routine.id,ei,s)).every(Boolean);
+      if(exDone){const c=document.getElementById(`gm-ex-${ei}`);if(c){c.classList.add('done');c.classList.remove('active');}}
+      let next=GM.currentStep+1;
+      while(next<GM.steps.length&&isDone(GM.routine.id,GM.steps[next].ei,GM.steps[next].si))next++;
+      GM.currentStep=next;
+      if(GM.currentStep>=GM.steps.length){
+        gmUpdateProgress();updateClientProgress(GM.routine);gmUpdateActionBtn();
+        setTimeout(()=>{closeGuidedMode();checkAndShowCongrats(GM.routine);},400);
+        return;
+      }
+      const nextStep=GM.steps[GM.currentStep];
+      gmShowRest(GM.routine.restSec||60,nextStep);
+      setTimeout(()=>{
+        const nr=document.getElementById(`gm-set-${nextStep.ei}-${nextStep.si}`);
+        const nc=document.getElementById(`gm-ex-${nextStep.ei}`);
+        if(nr)nr.classList.add('active-set');
+        if(nc)nc.classList.add('active');
+        gmScrollToCurrent();gmUpdateActionBtn();
+      },100);
+    }
   } else {
     setDone(GM.routine.id,ei,si,false);
     if(row) row.classList.remove('set-done');
