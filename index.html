@@ -2407,16 +2407,7 @@ async function tryAutoLogin(){
       startMsgPolling();
       resetLoginAttempts();
       if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
-      setTimeout(async()=>{
-        const perm=Notification.permission;
-        if(perm!=='granted'){toast('🔔 Push: permiso='+perm+' — no se suscribe');return;}
-        toast('🔔 Suscribiendo push...');
-        try{
-          await subscribePush('_coach');
-          toast('✅ Push suscrito');
-        }catch(e){toast('❌ Push error: '+e.message);}
-        restoreNotifications();
-      },3000);
+      if(Notification.permission==='granted') setTimeout(()=>{subscribePush('_coach');restoreNotifications();},3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
@@ -5094,7 +5085,7 @@ function openNotifModal(){
   if(!('Notification' in window)){
     if(st){st.textContent='Este navegador no soporta notificaciones push.';st.style.color='var(--rd)';}
   } else if(Notification.permission==='granted'){
-    if(st){st.innerHTML='<span style="color:var(--g);font-weight:600">Notificaciones activas</span> — los pushes llegarán a los asesorados.';st.style.color='';}
+    if(st){st.innerHTML='<span style="color:var(--g);font-weight:600">Notificaciones activas</span> — los pushes llegarán a los asesorados. <button class="btn bp bsm" style="font-size:12px;padding:4px 10px;margin-left:8px" onclick="reactivarPush()">Reactivar push</button>';st.style.color='';}
   } else if(Notification.permission==='denied'){
     if(st){st.innerHTML='<span style="color:var(--rd);font-weight:600">Permiso denegado.</span> Activa las notificaciones en la configuracion del navegador y recarga la app.';st.style.color='';}
   } else {
@@ -5239,6 +5230,18 @@ function renderScheduledNotifs(){
 }
 
 // Reactivar notificaciones activas al arrancar la app
+async function reactivarPush(){
+  const btn=event.target;btn.disabled=true;btn.textContent='Reactivando...';
+  try{
+    await subscribePush('_coach');
+    toast('✅ Push reactivado — las notificaciones funcionan');
+    btn.textContent='✅ Listo';
+  }catch(e){
+    toast('❌ Error al reactivar: '+e.message);
+    btn.disabled=false;btn.textContent='Reintentar';
+  }
+}
+
 function restoreNotifications(){
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   const notifs=JSON.parse(localStorage.getItem('apex_notifs')||'[]').filter(n=>n.active);
