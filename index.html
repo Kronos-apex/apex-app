@@ -1348,12 +1348,12 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
 }
 
 // Enviar push via Edge Function de Supabase
-async function pushToClient(clientId,title,body){
+async function pushToClient(clientId,title,body,extras={}){
   try{
     const res=await fetch(`${SB_URL}/functions/v1/send-push`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json'},
-      body:JSON.stringify({clientId,title,body})
+      body:JSON.stringify({clientId,title,body,...extras})
     });
     return await res.json();
   }catch(e){warn('APEX Push send error:',e);return null;}
@@ -1466,6 +1466,27 @@ function startMsgPolling(){
 
 function stopMsgPolling(){
   if(_msgPollInt){clearInterval(_msgPollInt);_msgPollInt=null;}
+}
+
+function openChatFor(chatId){
+  if(!chatId)return;
+  if(CUR.loggedAs==='coach'){
+    if(chatId==='_coach')return;
+    openDetail(chatId);
+    setTimeout(()=>{const el=document.getElementById('d-msgs');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350);
+  } else {
+    const tab=document.getElementById('tab-msgs');
+    cnTab('cn-messages',tab);markMsgsRead();
+  }
+}
+
+// Listener para notificaciones push — navega al chat al tocar la notificación
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',e=>{
+    if(e.data&&e.data.type==='notif-click'&&e.data.notifType==='message'){
+      openChatFor(e.data.chatId);
+    }
+  });
 }
 
 function ld(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch{return def}}
@@ -2373,11 +2394,13 @@ async function tryAutoLogin(){
       document.getElementById('lu')&&document.getElementById('lu').focus();
       return;
     }
+    const _apexChat=new URLSearchParams(location.search).get('apex-chat');
     if(session.role === 'coach'){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';
       initCoach();
       resetLoginAttempts();
+      if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
@@ -2395,6 +2418,7 @@ async function tryAutoLogin(){
         CUR.clientId = client.id;
         initClientView(client);
         resetLoginAttempts();
+        if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
       } else {
         localStorage.removeItem('ax_session');
         document.getElementById('lu')&&document.getElementById('lu').focus();
@@ -3419,7 +3443,7 @@ function sendCoachMsg(){
   DB.msgs[CUR.clientId].push({from:'coach',text,date:new Date().toISOString()});
   sv('ax_m',DB.msgs);
   const _pc=DB.clients.find(x=>x.id===CUR.clientId);
-  if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim());}
+  if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim(),{type:'message',chatId:CUR.clientId,tag:'apex-chat-'+CUR.clientId});}
   ta.value='';ta.style.height='auto';renderDetailMsgs(CUR.clientId);renderMsgs();renderHome();toast('💬 Mensaje enviado');updateMsgBadge(CUR.clientId);
 }
 function renderMsgs(){
@@ -4185,7 +4209,7 @@ function sendClientMsg(){
   svNow('ax_m',DB.msgs);
   const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
   // Push al coach para notificación en tiempo real
-  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text);
+  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:clientId,tag:'apex-chat-coach'});
   ta.value='';ta.style.height='auto';renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 
@@ -5259,13 +5283,28 @@ self.addEventListener('fetch',e=>{
 self.addEventListener('push',e=>{
   if(!e.data)return;
   let d={};try{d=e.data.json();}catch{d={title:'APEX',body:e.data.text()};}
-  e.waitUntil(self.registration.showNotification(d.title||'APEX',{body:d.body||'Tu coach te envió un mensaje',icon:d.icon||'/apex-app/icons/icon-192.png',vibrate:[200,100,200],data:{url:d.url||'/'}}));
+  const isMsg=d.type==='message';
+  e.waitUntil(self.registration.showNotification(d.title||'APEX',{
+    body:d.body||'',
+    icon:'/apex-app/icons/icon-192.png',
+    badge:'/apex-app/icons/icon-192.png',
+    vibrate:isMsg?[200,100,200,100,200]:[200,100,200],
+    tag:d.tag||(isMsg?'apex-chat-'+(d.chatId||'x'):'apex-notif'),
+    renotify:true,
+    requireInteraction:isMsg,
+    data:{type:d.type,chatId:d.chatId}
+  }));
 });
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
-  e.waitUntil(clients.matchAll({type:'window'}).then(cls=>{
-    for(const c of cls){if('focus'in c)return c.focus();}
-    if(clients.openWindow)return clients.openWindow(e.notification.data?.url||'/');
+  const data=e.notification.data||{};
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(cls=>{
+    if(cls.length){
+      cls[0].postMessage({type:'notif-click',chatId:data.chatId,notifType:data.type});
+      return cls[0].focus();
+    }
+    const url=data.chatId?'https://kronos-apex.github.io/apex-app/?apex-chat='+data.chatId:'https://kronos-apex.github.io/apex-app/';
+    if(clients.openWindow)return clients.openWindow(url);
   }));
 });`;
     const swBlob=new Blob([swCode],{type:'text/javascript'});

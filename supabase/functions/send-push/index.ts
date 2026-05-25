@@ -36,7 +36,7 @@ serve(async (req) => {
   // ─────────────────────────────────────────────────────────────────────────
 
   try {
-    const { clientId, title, body } = await req.json();
+    const { clientId, title, body, type, chatId, tag } = await req.json();
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -56,7 +56,14 @@ serve(async (req) => {
       );
     }
 
-    const payload = JSON.stringify({ title, body, icon: "/icons/icon-192.png" });
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: "/apex-app/icons/icon-192.png",
+      ...(type  && { type }),
+      ...(chatId && { chatId }),
+      ...(tag   && { tag }),
+    });
 
     const results = await Promise.allSettled(
       subs.map((s) => webpush.sendNotification(s.subscription, payload))
