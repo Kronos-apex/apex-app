@@ -111,11 +111,14 @@ html[data-theme="dark"] .mta {
 html[data-theme="dark"] .li::placeholder,
 html[data-theme="dark"] .inp::placeholder,
 html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
-/* Logo SVG — dark mode: triángulo base se vuelve blanco para contraste */
+/* Logo SVG inline — dark mode: patas de la A se vuelven blancas */
+.apex-logo .logo-ring { fill: var(--w); }
 @media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) .apex-logo path:first-child { fill: rgba(255,255,255,.9); }
+  html:not([data-theme="light"]) .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
+  html:not([data-theme="light"]) .apex-logo .logo-ring { fill: var(--bg); }
 }
-html[data-theme="dark"] .apex-logo path:first-child { fill: rgba(255,255,255,.9); }
+html[data-theme="dark"] .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
+html[data-theme="dark"] .apex-logo .logo-ring { fill: var(--bg); }
 html[data-theme="dark"] #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
@@ -664,7 +667,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
   <div class="ld-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
-    <svg width="36" height="33" viewBox="0 0 52 48" fill="none"><path d="M19 5L38 42H2L19 5Z" fill="rgba(255,255,255,.95)"/><path d="M32 14L50 44H14L32 14Z" fill="#52B788"/><path d="M26 22L38 44H14L26 22Z" fill="#40916C"/></svg>
+    <svg width="36" height="33" viewBox="0 0 512 512" fill="none"><line x1="256" y1="70" x2="76" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><line x1="256" y1="70" x2="436" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
     APEX
   </div>
   <div class="ld-sub">Preparando tu entrenamiento...</div>
@@ -676,7 +679,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="s-login" class="screen on">
   <div class="lcard">
     <div class="llogo" style="display:flex;align-items:center;gap:10px">
-      <svg class="apex-logo" width="40" height="37" viewBox="0 0 52 48" fill="none"><path d="M19 5L38 42H2L19 5Z" fill="#2D6A4F"/><path d="M32 14L50 44H14L32 14Z" fill="#52B788"/><path d="M26 22L38 44H14L26 22Z" fill="#40916C"/></svg>
+      <svg class="apex-logo" width="40" height="37" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
       <span>APEX</span>
     </div>
     <div class="lsub">Entrenamiento con nombre propio</div>
@@ -711,7 +714,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <nav class="sidebar" id="sidebar">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 8px 16px">
       <div class="sblogo" style="padding:0;margin:0;display:flex;align-items:center;gap:8px">
-        <svg class="apex-logo" width="26" height="24" viewBox="0 0 52 48" fill="none"><path d="M19 5L38 42H2L19 5Z" fill="#2D6A4F"/><path d="M32 14L50 44H14L32 14Z" fill="#52B788"/><path d="M26 22L38 44H14L26 22Z" fill="#40916C"/></svg>
+        <svg class="apex-logo" width="26" height="24" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
         <div>APEX <small style="margin-top:2px">Panel del Coach</small></div>
       </div>
       <div onclick="closeDrawer()" style="cursor:pointer;font-size:20px;color:var(--t3);padding:4px">✕</div>
@@ -740,7 +743,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="coach-topbar-left">
       <div class="menu-btn" onclick="openDrawer()">☰</div>
       <div class="coach-topbar-logo" style="display:flex;align-items:center;gap:6px">
-        <svg class="apex-logo" width="22" height="20" viewBox="0 0 52 48" fill="none"><path d="M19 5L38 42H2L19 5Z" fill="#2D6A4F"/><path d="M32 14L50 44H14L32 14Z" fill="#52B788"/><path d="M26 22L38 44H14L26 22Z" fill="#40916C"/></svg>
+        <svg class="apex-logo" width="22" height="20" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
         APEX <span class="sync-dot" id="sync-dot" title="Guardando en la nube..."></span>
       </div>
     </div>
@@ -921,7 +924,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="s-client" class="screen" style="flex-direction:column">
   <div class="cntopbar">
     <div class="cnlogo" style="display:flex;align-items:center;gap:6px">
-      <svg class="apex-logo" width="22" height="20" viewBox="0 0 52 48" fill="none"><path d="M19 5L38 42H2L19 5Z" fill="#2D6A4F"/><path d="M32 14L50 44H14L32 14Z" fill="#52B788"/><path d="M26 22L38 44H14L26 22Z" fill="#40916C"/></svg>
+      <svg class="apex-logo" width="22" height="20" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
       APEX
     </div>
     <div style="display:flex;align-items:center;gap:10px">
