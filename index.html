@@ -645,6 +645,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .exprog-chev{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
 .exprog-card.open .exprog-chev{transform:rotate(180deg)}
 .exprog-card.open .exprog-body{display:block}
+.pload-card{background:var(--w);border:1px solid var(--br);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
+.pload-hd{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;transition:background .15s}
+.pload-hd:hover{background:var(--bg)}
+.pload-chev{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
+.pload-card.open .pload-chev{transform:rotate(180deg)}
+.pload-body{display:none;border-top:1px solid var(--br)}
+.pload-card.open .pload-body{display:block}
+.pex-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--br);cursor:pointer;transition:background .15s}
+.pex-row:hover{background:var(--bg)}
+.pex-chart-wrap{display:none;padding:8px 14px 12px;background:var(--bg);border-bottom:1px solid var(--br)}.pex-chart-wrap.show{display:block}
+.pex-adj-form{display:none;padding:10px 14px;background:var(--gl);border-bottom:1px solid var(--br)}.pex-adj-form.show{display:flex;flex-direction:column;gap:8px}
 
 </style>
 </head>
@@ -708,6 +719,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="sbsect">Principal</div>
     <div class="sbi on" onclick="gp('p-home',this,'Inicio')" id="sbi-home"><span class="ic">🏠</span>Inicio</div>
     <div class="sbi" onclick="gp('p-clients',this,'Asesorados')" id="sbi-clients"><span class="ic">👥</span>Asesorados<span class="bdg" id="bdg">0</span></div>
+    <div class="sbi" onclick="gp('p-progress',this,'Cargas');renderProgressPanel()" id="sbi-progress"><span class="ic">📈</span>Cargas</div>
     <div class="sbi" onclick="gp('p-exercises',this,'Ejercicios')" id="sbi-exercises"><span class="ic">🏋️</span>Ejercicios</div>
     <div class="sbi" onclick="gp('p-templates',this,'Plantillas')" id="sbi-templates"><span class="ic">📂</span>Plantillas</div>
     <div class="sbi" onclick="gp('p-msgs',this,'Mensajes')" id="sbi-msgs"><span class="ic">💬</span>Mensajes<span class="bdg" id="sb-msgs-bdg" style="display:none">0</span></div>
@@ -855,6 +867,19 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- CARGAS / PROGRESO -->
+    <div id="p-progress" class="panel">
+      <div class="ph">
+        <div><div class="ptitle">Progreso de cargas</div><div class="psub">Evolución por ejercicio · Ajusta series y reps directo desde aquí</div></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap" id="prog-filters">
+        <button class="btn bp bsm" onclick="setProgFilter('all',this)">Todos</button>
+        <button class="btn bg bsm" onclick="setProgFilter('up',this)">📈 Progresando</button>
+        <button class="btn bg bsm" onclick="setProgFilter('down',this)">📉 Bajando</button>
+      </div>
+      <div id="prog-list"></div>
+    </div>
+
     <!-- TEMPLATES -->
     <div id="p-templates" class="panel">
       <div class="ph">
@@ -885,6 +910,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="coach-bottom-nav">
     <div class="cbnav-item on" onclick="gp('p-home',null,'Inicio');setBottomNav(this)"><div class="cnic">🏠</div>Inicio</div>
     <div class="cbnav-item" onclick="gp('p-clients',null,'Asesorados');setBottomNav(this)"><div class="cnic">👥</div>Asesorados</div>
+    <div class="cbnav-item" onclick="gp('p-progress',null,'Cargas');setBottomNav(this);renderProgressPanel()"><div class="cnic">📈</div>Cargas</div>
     <div class="cbnav-item" onclick="gp('p-exercises',null,'Ejercicios');setBottomNav(this)"><div class="cnic">🏋️</div>Ejercicios</div>
     <div class="cbnav-item" onclick="gp('p-msgs',null,'Mensajes');setBottomNav(this)"><div class="cnic">💬</div>Mensajes</div>
   </div>
@@ -1846,7 +1872,7 @@ async function doLogin(){
         err.textContent='Email o contraseña incorrectos';
         resetLoginAttempts();
         // Guardar sesión para auto-login
-        localStorage.setItem('ax_session', JSON.stringify({role:'coach'}));
+        localStorage.setItem('ax_session', JSON.stringify({role:'coach', expiresAt: Date.now()+30*24*60*60*1000}));
         showScreen('s-coach');
         CUR.loggedAs='coach';
         initCoach();
@@ -1886,7 +1912,7 @@ async function doLogin(){
         err.textContent='Email o contraseña incorrectos';
         resetLoginAttempts();
         // Guardar sesión para auto-login
-        localStorage.setItem('ax_session', JSON.stringify({role:'client', clientId:client.id}));
+        localStorage.setItem('ax_session', JSON.stringify({role:'client', clientId:client.id, expiresAt: Date.now()+30*24*60*60*1000}));
         showScreen('s-client');
         CUR.loggedAs='client';
         CUR.clientId=client.id;
@@ -2316,9 +2342,9 @@ function renderExerciseProgressInto(con, clientId){
           const wrap=document.getElementById('${cardId}_chart');
           if(wrap&&!wrap.dataset.drawn){wrap.dataset.drawn='1';drawExProgChart(wrap,${JSON.stringify(pts)},'${color}');}
         }">
-        <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${ex.icon}</div>
+        <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${esc(ex.icon||'💪')}</div>
         <div style="flex:1;min-width:0">
-          <div class="exprog-name">${ex.name}</div>
+          <div class="exprog-name">${esc(ex.name)}</div>
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${pts.length} sesión${pts.length!==1?'es':''} · <span style="color:${trendColor};font-weight:600">${trendStr}</span></div>
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -2356,6 +2382,146 @@ function renderCoachExProgress(clientId){
   renderExerciseProgressInto(con,clientId);
 }
 
+// ── PANEL CARGAS ────────────────────────────────────────────
+let _progFilter='all';
+const _progMatches={};
+
+function setProgFilter(f,el){
+  _progFilter=f;
+  document.querySelectorAll('#prog-filters .btn').forEach(b=>b.className='btn bg bsm');
+  if(el)el.className='btn bp bsm';
+  renderProgressPanel();
+}
+
+function renderProgressPanel(){
+  const con=document.getElementById('prog-list');
+  if(!con)return;
+  if(!DB.history)DB.history=ld('ax_hist',{});
+  const clients=DB.clients||[];
+  if(!clients.length){
+    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">👥</div><div class="etxt">Sin asesorados todavía</div></div>';
+    return;
+  }
+  con.innerHTML='';
+  let anyShown=false;
+  clients.forEach(c=>{
+    const exList=buildExerciseProgress(c.id);
+    if(!exList.length)return;
+    const filtered=_progFilter==='up'
+      ?exList.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg>e.points[0].maxKg)
+      :_progFilter==='down'
+      ?exList.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg<e.points[0].maxKg)
+      :exList;
+    if(!filtered.length)return;
+    anyShown=true;
+    const upCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg>e.points[0].maxKg).length;
+    const dnCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg<e.points[0].maxKg).length;
+    const card=document.createElement('div');
+    card.className='pload-card open';
+    const bodyId=`plb_${c.id}`;
+    card.innerHTML=`<div class="pload-hd" onclick="this.closest('.pload-card').classList.toggle('open')">
+      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${ini(c.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:1px">${filtered.length} ejercicio${filtered.length!==1?'s':''} con historial</div>
+      </div>
+      <div style="display:flex;gap:4px;margin-right:6px">
+        ${upCount?`<span class="tag tg" style="font-size:10px">↑ ${upCount}</span>`:''}
+        ${dnCount?`<span class="tag tr" style="font-size:10px">↓ ${dnCount}</span>`:''}
+      </div>
+      <div class="pload-chev">▼</div>
+    </div>
+    <div class="pload-body" id="${bodyId}"></div>`;
+    const body=card.querySelector(`#${bodyId}`);
+    filtered.forEach((ex,idx)=>{
+      const pts=ex.points;
+      const lastKg=pts[pts.length-1].maxKg;
+      const firstKg=pts[0].maxKg;
+      const trend=lastKg-firstKg;
+      const trendColor=trend>0?'var(--g)':trend<0?'var(--rd)':'var(--t3)';
+      const trendStr=trend===0?'↔ estable':trend>0?`↑ +${trend.toFixed(1)}kg`:`↓ ${trend.toFixed(1)}kg`;
+      const color=MC[ex.muscle]||'#2D6A4F';
+      const chartId=`plch_${c.id}_${idx}`;
+      const adjId=`plad_${c.id}_${idx}`;
+      const matches=[];
+      (c.routines||[]).forEach((r,ri)=>{
+        (r.exercises||[]).forEach((e,ei)=>{
+          if(e.name===ex.name)matches.push({ri,ei,rName:r.name,eSets:e.sets,eReps:e.reps});
+        });
+      });
+      _progMatches[adjId]=matches;
+      const wrap=document.createElement('div');
+      wrap.innerHTML=`<div class="pex-row" onclick="togglePexRow('${chartId}')">
+        <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${esc(ex.icon||'💪')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ex.name)}</div>
+          <div style="font-size:10px;color:var(--t2)">${pts.length} sesión${pts.length!==1?'es':''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-right:8px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${lastKg}kg</div>
+          <div style="font-size:10px;font-weight:600;color:${trendColor}">${trendStr}</div>
+        </div>
+        ${matches.length?`<button class="btn bg bsm" style="padding:4px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();toggleAdjForm('${adjId}','${c.id}')">✏️ Ajustar</button>`:''}
+        <span style="font-size:10px;color:var(--t3);flex-shrink:0;margin-left:2px">▾</span>
+      </div>
+      <div class="pex-chart-wrap" id="${chartId}" data-color="${color}"></div>
+      <div class="pex-adj-form" id="${adjId}"></div>`;
+      const chartEl=wrap.querySelector(`#${chartId}`);
+      if(chartEl)chartEl.dataset.pts=JSON.stringify(pts);
+      body.appendChild(wrap);
+    });
+    con.appendChild(card);
+  });
+  if(!anyShown){
+    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Sin datos de progreso todavía. Los asesorados deben completar sesiones con kg registrado.</div>';
+  }
+}
+
+function togglePexRow(chartId){
+  const chart=document.getElementById(chartId);if(!chart)return;
+  chart.classList.toggle('show');
+  if(chart.classList.contains('show')&&!chart.dataset.drawn){
+    chart.dataset.drawn='1';
+    drawExProgChart(chart,JSON.parse(chart.dataset.pts||'[]'),chart.dataset.color);
+  }
+}
+
+function toggleAdjForm(adjId,cid){
+  const form=document.getElementById(adjId);if(!form)return;
+  if(form.classList.contains('show')){form.classList.remove('show');return;}
+  const matches=_progMatches[adjId]||[];
+  if(!matches.length){toast('Este ejercicio no está en ninguna rutina activa');return;}
+  let html='';
+  matches.forEach((m,mi)=>{
+    html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:600;color:var(--gt);min-width:80px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(m.rName)}">${esc(m.rName)}</span>
+      <span style="font-size:11px;color:var(--t3)">Series</span>
+      <input type="number" inputmode="numeric" id="ads_${adjId}_${mi}" value="${m.eSets}" min="1" max="20"
+        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)">
+      <span style="font-size:11px;color:var(--t3)">× Reps</span>
+      <input type="number" inputmode="numeric" id="adr_${adjId}_${mi}" value="${m.eReps}" min="1" max="999"
+        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)">
+      <button class="btn bp bsm" style="padding:5px 10px;font-size:11px" onclick="saveAdjLoad('${adjId}','${cid}',${m.ri},${m.ei},${mi})">Guardar</button>
+    </div>`;
+  });
+  form.innerHTML=html;
+  form.classList.add('show');
+}
+
+function saveAdjLoad(adjId,cid,ri,ei,mi){
+  const c=DB.clients.find(x=>x.id===cid);if(!c)return;
+  const ex=(c.routines[ri]||{}).exercises?.[ei];if(!ex)return;
+  const newSets=parseInt(document.getElementById(`ads_${adjId}_${mi}`)?.value)||ex.sets;
+  const newReps=parseInt(document.getElementById(`adr_${adjId}_${mi}`)?.value)||ex.reps;
+  ex.sets=Math.max(1,newSets);
+  ex.reps=Math.max(1,newReps);
+  sv('ax_c',DB.clients);
+  document.getElementById(adjId)?.classList.remove('show');
+  toast(`✅ ${esc(ex.name)} — ${ex.sets}×${ex.reps} guardado`);
+  const matches=_progMatches[adjId]||[];
+  if(matches[mi]){matches[mi].eSets=ex.sets;matches[mi].eReps=ex.reps;}
+}
+
 // ══════════ APP INIT ══════════
 function initRememberMe(){
   const rem=localStorage.getItem('ax_rem');
@@ -2391,7 +2557,8 @@ syncFromCloud().then(()=>{
 async function tryAutoLogin(){
   try{
     const session = ld('ax_session', null);
-    if(!session){
+    if(!session || (session.expiresAt && Date.now() > session.expiresAt)){
+      localStorage.removeItem('ax_session');
       document.getElementById('lu')&&document.getElementById('lu').focus();
       return;
     }
@@ -3784,7 +3951,7 @@ function renderClientProfile(client){
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   document.getElementById('cn-prof-card').innerHTML=`<div class="profav">${ini(client.name)}</div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
-  document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${v}</span></div>`).join('');
+  document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderStreakClient(client.id);
   renderBodyWeightSection(client.id);
   renderPRsInProfile(client.id);
@@ -4069,7 +4236,7 @@ function renderClientAllRoutines(client){
   routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const div=document.createElement('div');div.className='rc open';
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series</div></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${r.note}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button></div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series</div></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${esc(e.icon||'💪')}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button></div>`;
     con.appendChild(div);
   });
 }
@@ -4475,16 +4642,16 @@ function renderNutritionCoach(clientId){
   let html='';
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--g)">${nut.kcal}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
-      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
-      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
-      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
+      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
+      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
+      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
+      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
-  if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${nut.meals} comidas/d\u00eda</div>`;
-  if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${nut.water} vasos de agua/d\u00eda</div>`;
+  if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${esc(String(nut.meals))} comidas/d\u00eda</div>`;
+  if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${esc(String(nut.water))} vasos de agua/d\u00eda</div>`;
   if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${esc(nut.plan)}</div>`;
-  if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${nut.avoid}</div>`;
+  if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${esc(nut.avoid)}</div>`;
   con.innerHTML=html;
 }
 
@@ -4499,19 +4666,19 @@ function renderNutritionClient(clientId){
   // Macros grid
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
-    if(nut.kcal)html+=`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--g)">${nut.kcal}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
-    if(nut.water)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--bl)">${nut.water}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
+    if(nut.kcal)html+=`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(nut.water)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--bl)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${nut.prot}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
-      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${nut.carbs}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:#7a5c00;font-weight:600">${nut.carbs*4} kcal</div></div>`;
-      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${nut.fat}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
+      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
+      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:#7a5c00;font-weight:600">${nut.carbs*4} kcal</div></div>`;
+      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
   // Comidas por d\u00eda
-  if(nut.meals)html+=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;margin-bottom:12px;font-size:13px"><span style="font-size:16px">\uD83C\uDF7D\ufe0f</span><span><strong>${nut.meals} comidas por d\u00eda</strong> \u2014 distribuye tus calor\u00edas de manera uniforme</span></div>`;
+  if(nut.meals)html+=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;margin-bottom:12px;font-size:13px"><span style="font-size:16px">\uD83C\uDF7D\ufe0f</span><span><strong>${esc(String(nut.meals))} comidas por d\u00eda</strong> \u2014 distribuye tus calor\u00edas de manera uniforme</span></div>`;
   // Ejemplos de comidas
   if(nut.examples){
     html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">\ud83d\udca1 Ejemplos de alimentaci\u00f3n</div>`;
@@ -5021,8 +5188,8 @@ function renderPhotosClient(clientId){
   }
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
-      <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${p.id}','${clientId}')">
-        <img src="${p.src}" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
+      <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${esc(p.id)}','${esc(clientId)}')">
+        <img src="${/^data:image\//.test(p.src)?p.src:''}" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
@@ -5035,12 +5202,12 @@ function viewPhoto(photoId,clientId){
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
-    <img src="${photo.src}" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
+    <img src="${/^data:image\//.test(photo.src)?photo.src:''}" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
     <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${esc(photo.label)}</div>
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button onclick="this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
-      <button onclick="deletePhoto('${photoId}','${cid}');this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>
+      <button onclick="deletePhoto('${esc(photoId)}','${esc(cid)}');this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>
     </div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
@@ -5219,8 +5386,8 @@ function renderScheduledNotifs(){
       const targetName=n.target==='all'?'Todos':DB.clients.find(c=>c.id===n.target)?.name||'?';
       const repeatLabel={once:'Una vez',daily:'Cada día',weekdays:'Lun–Vie'}[n.repeat]||n.repeat;
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s);border-radius:var(--rsm);margin-bottom:6px;font-size:12px">
-        <div style="flex:1"><div style="font-weight:600;color:var(--t1)">🕐 ${n.time} · ${targetName} · ${repeatLabel}</div><div style="color:var(--t2);margin-top:2px">${n.msg.substring(0,60)}${n.msg.length>60?'...':''}</div></div>
-        <button class="btn bd" style="padding:3px 8px;font-size:11px" onclick="cancelNotification('${n.id}')">✕</button>
+        <div style="flex:1"><div style="font-weight:600;color:var(--t1)">🕐 ${esc(n.time)} · ${esc(targetName)} · ${esc(repeatLabel)}</div><div style="color:var(--t2);margin-top:2px">${esc(n.msg.substring(0,60))}${n.msg.length>60?'...':''}</div></div>
+        <button class="btn bd" style="padding:3px 8px;font-size:11px" onclick="cancelNotification('${esc(n.id)}')">✕</button>
       </div>`;
     }).join('');
 }

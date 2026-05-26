@@ -12,7 +12,7 @@ const APEX_ANON_KEY = "sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8";
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://kronos-apex.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 

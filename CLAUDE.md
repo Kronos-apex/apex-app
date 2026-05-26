@@ -14,7 +14,7 @@
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
 - **Asesorados** — ejecutan rutinas, registran progreso, ven evolución
 
-**Versión actual:** v1.3.0 — Mayo 2026
+**Versión actual:** v1.3.2 — Mayo 2026
 
 ---
 
@@ -36,12 +36,14 @@
 ### Archivos del proyecto
 ```
 apex-app/
-├── index.html              ← APEX completo (~6,200 líneas, ~370 KB)
-├── .git/hooks/pre-commit   ← Audit automático en cada git commit (7 checks)
-├── .claude/agents/         ← 10 agentes especializados del equipo
-├── .claude/skills/         ← apex-audit, apex-deploy
-├── supabase/functions/send-push/  ← Edge Function push notifications
-└── CLAUDE.md               ← Este archivo
+├── index.html                          ← APEX completo (~6,300 líneas, ~380 KB)
+├── sw.js                               ← Service Worker ESTÁTICO (⚠️ NUNCA convertir a blob URL)
+├── .git/hooks/pre-commit               ← Audit automático en cada git commit (7 checks)
+├── .claude/agents/                     ← 10 agentes especializados del equipo
+├── .claude/skills/                     ← apex-audit, apex-deploy
+├── supabase/functions/send-push/       ← Edge Function push notifications
+├── supabase/functions/daily-notifs/    ← Edge Function notificaciones diarias (3 cron jobs)
+└── CLAUDE.md                           ← Este archivo
 ```
 
 ### Pantallas (`.screen`)
@@ -138,8 +140,12 @@ session_date_{routineId}                → fecha último entreno
 ### Supabase
 ```
 URL: https://eoebhrxbokyllqalyecj.supabase.co
-Tablas: apex_data, push_subscriptions
-Edge Functions: send-push (verifica Authorization header con anon key)
+Tablas: apex_data (key-value), push_subscriptions
+Edge Functions:
+  - send-push       → envía push a un clientId específico
+  - daily-notifs    → notificaciones diarias 7am/10am/5pm (Colombia UTC-5)
+    Cron: 3 jobs activos — morning / midmorning / afternoon
+    CORS: restringido a https://kronos-apex.github.io (⚠️ NO usar * en producción)
 ```
 
 ### Despliegue
@@ -264,17 +270,26 @@ SB_KEYS = [
 
 ---
 
-## 🔒 SEGURIDAD — ESTADO ACTUAL
+## 🔒 SEGURIDAD — ESTADO ACTUAL (v1.3.2)
 
 | Área | Estado |
 |---|---|
-| XSS en innerHTML | ✅ `esc()` aplicado en todos los puntos de inyección |
+| XSS en innerHTML | ✅ `esc()` aplicado: nutrición, perfil, rutinas, progreso, notificaciones, fotos |
+| `photo.src` en `<img>` | ✅ Validado que sea `data:image/...` antes de insertar |
+| Sesión localStorage | ✅ `expiresAt: now + 30 días` — `tryAutoLogin` valida expiración |
+| CORS Edge Functions | ✅ Restringido a `https://kronos-apex.github.io` (NO usar `*`) |
 | Contraseña coach | ✅ SHA-256 en `ax_cph`, legacy `ax_cp` no sincroniza |
 | Contraseñas asesorados | ✅ SHA-256 con clientId como salt, migración automática |
 | Login con membresía vencida | ✅ Bloqueado — inclusión positiva `active || expiring` |
 | VAPID private key | ✅ Solo en variables de entorno Supabase — jamás en frontend |
 | send-push Edge Function | ✅ Verifica Authorization header antes de enviar |
 | Pre-commit hook | ✅ Bloquea secrets hardcodeados antes de cualquier commit |
+| Service Worker | ✅ Archivo estático `sw.js` — NUNCA blob URL (rompe Android Chrome) |
+
+**Riesgos conocidos y aceptados (app privada ~8 clientes):**
+- Auth solo en cliente — localStorage manipulable con DevTools (sin RLS en Supabase)
+- Toda la DB se descarga al navegador antes del login (arquitectura offline-first)
+- Bearer token de Edge Functions = anon key pública (solo riesgo: spam de notificaciones)
 
 ---
 
@@ -421,14 +436,43 @@ git push origin main
 - agent-browser instalado globalmente (`~/.claude/agents/agent-browser.md`) + Chrome 149 en `~/.agent-browser/`
 - Pipeline de rutinas reutilizable en `C:\Users\KRONOS\AppData\Local\Temp\crear_rutinas.py`
 
-### Asesorados actuales y sus rutinas (2026-05-24)
-| Nombre | Sexo | Edad | Nivel | Días/sem | Objetivo | Rutinas |
-|---|---|---|---|---|---|---|
-| Kathe Beltran | F | 28 | Principiante | 4 | Perder grasa | Lu/Ma/Ju/Vi |
-| Samuel Cifuentes | M | 14 | Principiante | 3 | Perder grasa | Full Body Lu/Mi/Vi — sin carga axial |
-| Miguel Pulido | M | 29 | Intermedio | 4 | Ganar músculo | Lu/Ma/Ju/Vi — ⚠️ rodilla derecha operada |
-| Andrés Martínez | M | 37 | Avanzado | 5 | Ganar músculo | Pierna/Push/Pull/Hombros+Brazos/Cardio |
-| Natalia Martinez | F | 34 | Principiante | 3 | Recomposición | Lu/Mi/Vi |
+### ✅ v1.3.2 — Sesión 2026-05-25 (push notifications + rutinas + seguridad)
+
+**Push notifications — causa raíz resuelta:**
+- Blob URL SW no registra en Android Chrome moderno → `navigator.serviceWorker.ready` nunca resuelve → push falla
+- Fix definitivo: `sw.js` ahora es archivo estático registrado como `/apex-app/sw.js` con scope `/apex-app/`
+- `subscribePush` refactorizado para ser idempotente: `window._swReg || await navigator.serviceWorker.ready` → reusa suscripción existente sin `unsubscribe()`
+- Botón "Reactivar push" en modal de notificaciones (cuando permiso ya fue concedido)
+- `tryAutoLogin` llama `subscribePush` con delay 3s (coach) / 4s (cliente) — siempre con guard de permiso
+
+**Rutinas — auditoría y corrección completa (8 asesorados):**
+- 3 asesorados nuevos detectados: Astrid Beltran, Nataly, Cristian Calderon
+- Formato roto `{exId, reps:"10-12"}` corregido en: Astrid (Jueves), Nataly (Ma/Ju/Vi), Cristian (todos)
+- `reps` como string (`"12"`, `"1"`, `"20"`) corregido a number en Andrés Martínez y Astrid Beltran
+- Fix `daily-notifs/index.ts` línea 235: icon path `/icons/icon-192.png` → `/apex-app/icons/icon-192.png`
+
+**Seguridad (hardening sin refactor arquitectural):**
+- XSS cerrado en 10 puntos: nutrición (coach+cliente), perfil, rutinas cliente, progreso ejercicios, notificaciones programadas, fotos
+- `photo.src` validado como `data:image/...` antes de insertar en `<img>`
+- Sesión con expiración: `expiresAt: now + 30 días` al hacer login; `tryAutoLogin` lo valida
+- CORS `*` → `https://kronos-apex.github.io` en `send-push` y `daily-notifs`
+
+### Asesorados actuales y sus rutinas (2026-05-25)
+| Nombre | Sexo | Edad | Nivel | Días/sem | Objetivo | Rutinas | Push sub |
+|---|---|---|---|---|---|---|---|
+| Kathe Beltran | F | 28 | Principiante | 4 | Perder grasa | Lu/Ma/Ju/Vi | ❌ |
+| Samuel Cifuentes | M | 14 | Principiante | 3 | Perder grasa | Full Body Lu/Mi/Vi — sin carga axial | ❌ |
+| Miguel Pulido | M | 29 | Intermedio | 4 | Ganar músculo | Lu/Ma/Ju/Vi — ⚠️ rodilla derecha operada | ❌ |
+| Andrés Martínez | M | 37 | Avanzado | 5 | Ganar músculo | Pierna/Push/Pull/Hombros+Brazos/Cardio | ✅ |
+| Natalia Martinez | F | 34 | Principiante | 3 | Recomposición | Lu/Mi/Vi | ❌ |
+| Astrid Beltran | F | — | Principiante | 5 | — | 5 rutinas | ❌ |
+| Nataly | F | — | — | 4 | — | Lu/Ma/Ju/Vi | ❌ |
+| Cristian Calderon | M | — | — | 4 | — | Lu/Ma/Ju/Vi | ❌ |
+
+**Regla de formato de ejercicios en rutinas (CRÍTICO):**
+- Formato CORRECTO: `{id, icon, name, reps (number), sets, type, muscle}`
+- Formato ROTO (no renderiza): `{exId, reps: "10-12", sets, muscle, restSec}` — si aparece, hay que corregirlo
+- IDs válidos: `e1`–`e88` (defaultExercises en index.html) + `fb03`/`fb04` (en Supabase ax_e)
 
 ### 🎯 v1.4 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
@@ -473,4 +517,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-24 · v1.3.1 · 43 commits · ~6,200 líneas · 222 funciones · 93 ejercicios*
+*Última actualización: 2026-05-25 · v1.3.2 · ~6,300 líneas · 222 funciones · 88 ejercicios (defaultExercises) + fb03/fb04 en Supabase · 8 asesorados activos*

@@ -141,7 +141,7 @@ const AFTERNOON = {
 };
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://kronos-apex.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -232,7 +232,7 @@ serve(async (req) => {
           }
         }
 
-        const payload = JSON.stringify({ title, body, icon: "/icons/icon-192.png" });
+        const payload = JSON.stringify({ title, body, icon: "/apex-app/icons/icon-192.png" });
         await webpush.sendNotification(sub.subscription, payload);
         sent++;
         console.log(`[daily-notifs] ${slot} → ${sub.client_id} shift=${shift||"none"} (${isTraining?"entreno":"descanso"}) ✅`);
