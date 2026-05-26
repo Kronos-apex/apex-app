@@ -517,4 +517,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-25 · v1.3.2 · ~6,300 líneas · 222 funciones · 88 ejercicios (defaultExercises) + fb03/fb04 en Supabase · 8 asesorados activos*
+*Última actualización: 2026-05-26 · v1.3.2 · ~6,300 líneas · 221 funciones · 88 ejercicios (defaultExercises) + fb03/fb04 en Supabase · 8 asesorados activos*
