@@ -1099,7 +1099,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="mdbg" id="m-routine">
   <div class="md mdlg">
     <div class="mdtitle" id="mr-title">Nueva rutina — <span id="mr-cn" style="color:var(--g)"></span></div>
-    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..."></div><div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div><div class="fg"><label class="ilbl">Horario habitual</label><select class="sel" id="rf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana</option><option value="afternoon">⚡ Tarde</option><option value="evening">🌙 Noche</option></select></div></div>
+    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..." maxlength="50"></div><div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div><div class="fg"><label class="ilbl">Horario habitual</label><select class="sel" id="rf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana</option><option value="afternoon">⚡ Tarde</option><option value="evening">🌙 Noche</option></select></div></div>
     <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nota para el asesorado</label><input type="text" class="inp" id="rf-note" placeholder="Ej: Descansa 90 seg entre series. Enfócate en la técnica."></div>
     <div class="fg" style="margin-bottom:11px">
       <label class="ilbl">¿Por qué esta rutina? <span style="color:var(--t3);font-weight:400">(opcional)</span></label>
@@ -1368,11 +1368,14 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
         applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)
       });
     }
+    const _pushKey=`apex_push:${clientId}`;
+    if(localStorage.getItem(_pushKey)===sub.endpoint)return;
     await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
+    localStorage.setItem(_pushKey,sub.endpoint);
     log('APEX Push: suscripción guardada ✅');
   }catch(e){warn('APEX Push subscribe error:',e);}
 }
@@ -1610,6 +1613,9 @@ async function syncFromCloud(){
   }
   // Recargar DB desde localStorage (con o sin sync exitoso)
   DB.clients=ld('ax_c',[]);
+  let _routineMigrated=false;
+  DB.clients.forEach(c=>{(c.routines||[]).forEach(r=>{if(!r.id){r.id=uid();_routineMigrated=true;}});});
+  if(_routineMigrated){sv('ax_c',DB.clients);log('APEX: routine.id migration applied');}
   DB.exercises=ld('ax_e',defaultExercises);
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
@@ -3020,7 +3026,7 @@ function renderValoracion(c){
     : {};
   const cinturaCm = latestMed.cintura ? parseFloat(latestMed.cintura) : null;
   const caderaCm  = latestMed.cadera  ? parseFloat(latestMed.cadera)  : null;
-  const sexCode   = c.sex === 'Hombre' ? 'M' : 'F';
+  const sexCode   = c.sex === 'M' ? 'M' : 'F';
 
   let rct = null, icc = null;
   if(cinturaCm && h) rct = cinturaCm / parseFloat(h);
@@ -3170,6 +3176,7 @@ function renderValoracion(c){
 
 function delClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(!c||!confirm(`¿Eliminar a ${c.name}? Se borrarán sus rutinas, historial, fotos y todos sus datos. Esta acción no se puede deshacer.`))return;
   DB.clients=DB.clients.filter(x=>x.id!==CUR.clientId);delete DB.msgs[CUR.clientId];
   if(DB.history)delete DB.history[CUR.clientId];
   if(DB.prs)delete DB.prs[CUR.clientId];
@@ -3717,6 +3724,12 @@ function cnTab(id,el){
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));
   document.getElementById(id).classList.add('on');if(el)el.classList.add('on');
   // Re-render sections that depend on visible width or live data
+  if(id==='cn-today'&&CUR.clientId){
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const _days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const _tod=_days[new Date().getDay()];
+    if(c&&CUR.todayRenderedDay!==_tod){CUR.todayRenderedDay=_tod;renderClientToday(c);}
+  }
   if(id==='cn-profile'&&CUR.clientId){
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     if(c){renderClientProfile(c);}
@@ -3971,6 +3984,7 @@ function renderClientToday(client, overrideRoutine){
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:#7a5c00;margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:#a07820;margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const today=days[new Date().getDay()];
+  CUR.todayRenderedDay=today;
   const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
   const todayR=overrideRoutine||autoR;
   const isOverride=!!overrideRoutine;
@@ -4543,8 +4557,8 @@ buildFilterBtns('exf',exFilter);
 
 function calcMacrosSugeridos(client){
   const kg=parseFloat(client.weight)||70;
-  const actMap={'Sedentario':30,'Ligeramente activo':33,'Moderadamente activo':36,'Muy activo':40,'Extremadamente activo':44};
-  const kcalPerKg=actMap[client.activity]||33;
+  const actMap={1.2:30,1.375:33,1.55:36,1.725:40,1.9:44};
+  const kcalPerKg=actMap[client.activityFactor]||33;
   let kcal=Math.round(kg*kcalPerKg);
   const g=(client.goal||'').toLowerCase();
   if(g.includes('perd')||g.includes('baj')||g.includes('defin'))kcal-=350;

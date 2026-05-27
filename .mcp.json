@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "C:\\Users\\KRONOS\\.local\\bin\\uvx.exe",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ],
+      "cwd": "C:\\Users\\KRONOS\\Desktop\\apex\\apex-app",
+      "type": "stdio"
+    }
+  }
+}
