@@ -318,6 +318,8 @@ SB_KEYS = [
 |---|---|
 | ejercicio, rutina, serie, músculo, calentamiento, progresión | **Coach Pro** valida primero |
 | asesorada mujer, programa femenino, glúteos, postparto, recomposición femenina | **Valery** valida primero |
+| hipertrofia, ganar músculo, masa, bulk, macros, proteína, calorías, suplemento, creatina, periodización, deload | **Andrés (Hyp)** valida primero |
+| plan nutricional, macros, calorías para un asesorado, nutrición deportiva | **Andrés (Hyp)** calcula y aprueba |
 | apariencia, diseño, color, se ve, layout, dark mode | **Isabella** propone → Diego implementa |
 | mensaje al asesorado, texto visible, toast, onboarding | **Sofía** revisa tono |
 | precio, cobro, plan, retención, prospecto | **Camilo** analiza |
@@ -509,6 +511,7 @@ git push origin main
 ### 💪 Deportivo
 - **Coach Pro / Diego R.** → validación fisiológica de rutinas y ejercicios
 - **Valery** → especialista en transformación corporal femenina — valida todo lo relacionado con asesoradas mujeres
+- **Andrés (Hyp)** → coach jefe de hipertrofia y nutrición deportiva — el único que aprueba macros, bulk/cut/recomp, periodización avanzada, suplementación y planes nutricionales
 
 ### 💬 Negocio
 - **Sofía** (CS) → fricción del usuario, onboarding, mensajes
@@ -519,4 +522,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 8 asesorados activos · Agente Valery añadida (.claude/agents/valery-coach.md)*
+*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición)*
