@@ -534,6 +534,7 @@ git push origin main
 - IDs válidos: `e1`–`e88` (defaultExercises en index.html) + `fb03`/`fb04` (en Supabase ax_e)
 
 ### 🎯 v1.4 — Próxima iteración
+- [ ] **Migración fotos → Supabase Storage** ⚡ PRIORITARIO — programado para el fin de semana (días sin asesorados activos). Reemplaza base64 en `ax_photos` por URLs públicas. Parche temporal de compresión activo hasta entonces (100KB/foto, MAX 800px).
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Tagline final — pendiente decisión de Andrés
 - [ ] Logo nuevo — brief listo para Looka/Canva (brief en historial de chat)
@@ -585,4 +586,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva) · Miguel Pulido: split 5 días PPL adaptado, Plan nutricional 3050 kcal + protocolo colágeno·VitC*
+*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva) · skill apex-generate activo · fotos comprimidas a 100KB (parche) — migración Supabase Storage pendiente este fds*
