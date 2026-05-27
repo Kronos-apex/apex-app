@@ -148,6 +148,17 @@ Edge Functions:
     CORS: restringido a https://kronos-apex.github.io (⚠️ NO usar * en producción)
 ```
 
+### ⚠️ Supabase — riesgo de sync con offline-first
+APEX usa localStorage como fuente de verdad y sincroniza **hacia** Supabase, no al revés. Si la app se abre en cualquier dispositivo con datos viejos en localStorage, esos datos sobrescriben Supabase.
+
+**Consecuencia:** cambios hechos directamente en Supabase (SQL, Python, Dashboard) pueden perderse en el próximo sync de la app.
+
+**Mitigación al editar Supabase directamente:**
+- Asegurarse de que la app no esté abierta en ningún dispositivo del asesorado
+- Hacer siempre REPLACE TOTAL del array (nunca append)
+- Después de guardar, pedirle al asesorado que abra y cierre la app una vez (forza pull desde Supabase)
+- Para cambios críticos: editar preferiblemente desde la UI de APEX para que localStorage quede actualizado
+
 ### Despliegue
 ```
 Plataforma: GitHub Pages (github.com/Kronos-apex/apex-app)
@@ -305,6 +316,50 @@ SB_KEYS = [
 8. **`esc()` en todo innerHTML con datos del usuario** — sin excepciones
 9. **Deploy = Lucas QA + Julián QA + pre-commit hook** — los tres, siempre
 10. **Mensajes en español neutro** — sin tecnicismos para el asesorado
+
+---
+
+## 🩺 PROTOCOLO — ASESORADO CON LIMITACIÓN FÍSICA
+
+Este protocolo reemplaza el flujo estándar cuando hay lesión activa, postoperatorio o limitación crónica documentada. Aplica también si el historial menciona dolor recurrente o restricción médica.
+
+### Paso 1 — Intake clínico (antes de cualquier diseño)
+Recolectar ANTES de invocar agentes deportivos:
+- [ ] Diagnóstico: qué articulación, qué estructura (menisco, LCA, manguito, hernia, etc.)
+- [ ] Intervención: cirugía / rehabilitación / tratamiento conservador
+- [ ] Tiempo post-lesión u operación (semanas o meses exactos)
+- [ ] Dolor actual: escala 0-10 en reposo y con actividad
+- [ ] Alta médica o fisioterapéutica: sí / no / parcial
+- [ ] Ejercicios que el asesorado ya hace sin dolor vs. los que evita
+
+### Paso 2 — Laura audita PRIMERO (veredicto vinculante)
+Laura recibe el intake completo + objetivo del asesorado antes de que cualquier otro agente diseñe ejercicios.
+- ❌ = no incluir en ningún caso
+- 🟡 = modificar antes de continuar
+- ✅ = seguro con los parámetros dados
+
+**No diseñar y luego auditar — diseñar CON los límites de Laura ya marcados.**
+
+### Paso 3 — Diseño con restricciones aplicadas
+Coach Pro (hombres) o Valery (mujeres) diseña la rutina completa con las restricciones de Laura ya incorporadas. No hay vuelta atrás al auditor para ejercicios que no cambiaron.
+
+### Paso 4 — Revisión nutricional (si hay cambio de carga o protocolo terapéutico)
+Andrés Hyp revisa macros y agrega suplementos terapéuticos si aplica (colágeno hidrolizado + Vit C para articulaciones, por ejemplo).
+
+### Paso 5 — Escritura en Supabase (procedimiento seguro)
+⚠️ **CRÍTICO — arquitectura offline-first:** el próximo sync de la app sobrescribe cualquier cambio directo en Supabase con los datos de localStorage del dispositivo.
+
+Reglas obligatorias:
+1. Siempre hacer **REPLACE TOTAL** de `routines[]` — nunca append de rutina individual
+2. Confirmar con el usuario que la app no está abierta en ningún dispositivo del asesorado
+3. Verificar con SELECT después de insertar — antes de dar la operación por completa
+4. Si el asesorado tiene la app instalada: pedirle que abra y cierre una vez tras la actualización (forza sync desde Supabase → localStorage)
+
+### Paso 6 — Comunicación al asesorado (Sofía revisa tono)
+- Mensaje 1: explicar el cambio de rutina — qué cambió, por qué, qué esperar
+- Mensaje 2 (si aplica): protocolo nutricional terapéutico con instrucciones claras
+- Incluir siempre criterios de automonitoreo: "Para si sientes X, avísame"
+- Sin tecnicismos en el texto que lee el asesorado
 
 ---
 
@@ -466,7 +521,7 @@ git push origin main
 |---|---|---|---|---|---|---|---|
 | Kathe Beltran | F | 28 | Principiante | 4 | Perder grasa | Lu/Ma/Ju/Vi | ❌ |
 | Samuel Cifuentes | M | 14 | Principiante | 3 | Perder grasa | Full Body Lu/Mi/Vi — sin carga axial | ❌ |
-| Miguel Pulido | M | 29 | Intermedio | 4 | Ganar músculo | Lu/Ma/Ju/Vi — ⚠️ rodilla derecha operada | ❌ |
+| Miguel Pulido | M | 29 | Intermedio | 5 | Ganar músculo | Empuje Superior (Lu) / Pierna A (Ma) / Hombros+Brazos (Mi) / Jalar Superior (Ju) / Glúteo+Bisagra+Core (Vi) — ⚠️ rodilla derecha operada, sin impacto, RDL en progresión desde patrón | ❌ |
 | Andrés Martínez | M | 37 | Avanzado | 5 | Ganar músculo | Pierna/Push/Pull/Hombros+Brazos/Cardio | ✅ |
 | Natalia Martinez | F | 34 | Principiante | 3 | Recomposición | Lu/Mi/Vi | ❌ |
 | Astrid Beltran | F | — | Principiante | 5 | — | 5 rutinas | ❌ |
@@ -522,6 +577,12 @@ git push origin main
 
 Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
+### Skills del proyecto
+- `apex-audit` — auditoría estática completa (7 checks)
+- `apex-deploy` — pipeline QA → commit → push → CLAUDE.md
+- `apex-feature` — pipeline completo de feature nueva
+- `apex-generate` — genera rutina + nutrición para un asesorado leyendo su perfil desde Supabase; orquesta el equipo correcto automáticamente según sexo, objetivo, nivel y limitaciones físicas
+
 ---
 
-*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva)*
+*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva) · Miguel Pulido: split 5 días PPL adaptado, Plan nutricional 3050 kcal + protocolo colágeno·VitC*

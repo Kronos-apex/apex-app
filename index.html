@@ -5189,12 +5189,12 @@ function compressImage(base64,maxLen){
     const img=new Image();
     img.onerror=()=>resolve(base64);
     img.onload=()=>{
-      const MAX=1200;let w=img.width,h=img.height;
+      const MAX=800;let w=img.width,h=img.height;
       if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
       const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
-      let q=0.85,out=canvas.toDataURL('image/jpeg',q);
-      while(out.length>maxLen&&q>0.35){q=Math.round((q-0.1)*10)/10;out=canvas.toDataURL('image/jpeg',q);}
+      let q=0.72,out=canvas.toDataURL('image/jpeg',q);
+      while(out.length>maxLen&&q>0.2){q=Math.round((q-0.1)*10)/10;out=canvas.toDataURL('image/jpeg',q);}
       resolve(out);
     };
     img.src=base64;
@@ -5212,7 +5212,7 @@ function savePhoto(){
   const reader=new FileReader();
   reader.onload=async e=>{
     let base64=e.target.result;
-    if(base64.length>800000){toast('\u23f3 Optimizando foto...');base64=await compressImage(base64,1500000);}
+    toast('\u23f3 Optimizando foto...');base64=await compressImage(base64,100000);
     if(!DB.photos)DB.photos={};
     if(!DB.photos[clientId])DB.photos[clientId]=[];
     DB.photos[clientId].unshift({id:uid(),date:new Date().toISOString(),label:finalLabel,src:base64});
@@ -6111,7 +6111,7 @@ function _dobSavePhoto(){
   const reader = new FileReader();
   reader.onload = async e => {
     let base64 = e.target.result;
-    if(base64.length > 800000){ toast('⏳ Optimizando foto...'); base64 = await compressImage(base64, 1500000); }
+    toast('⏳ Optimizando foto...'); base64 = await compressImage(base64, 100000);
     if(!DB.photos) DB.photos = {};
     if(!DB.photos[clientId]) DB.photos[clientId] = [];
     const label = 'Foto inicial ' + new Date().toLocaleDateString('es-ES', {month:'short', year:'numeric'});
