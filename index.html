@@ -340,14 +340,15 @@ html[data-theme="light"] .mta {
 .cnlogo{font-size:17px;font-weight:800;color:var(--g)}
 .cntabs{display:flex;background:var(--w);border-top:1px solid var(--br);position:sticky;bottom:0;z-index:100;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
 .cntab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 4px;cursor:pointer;transition:all .15s;font-size:11px;font-weight:600;color:var(--t3);gap:3px;border-top:2px solid transparent}
-.cntab .ctico{font-size:19px;line-height:1}
+.cntab .ctico{font-size:19px;line-height:1;display:inline-block;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
 .cntab.on{color:var(--g);border-top-color:var(--g)}
+.cntab.on .ctico{transform:scale(1.18) translateY(-1px)}
 .cntab-badge{position:relative;display:inline-block}
 .cntab-badge::after{content:attr(data-count);position:absolute;top:-4px;right:-8px;background:var(--rd);color:white;font-size:9px;font-weight:800;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:14px;display:none}
 .cntab-badge[data-count]:not([data-count="0"])::after{display:block}
 .cnbody{flex:1;overflow-y:auto}
 .cnp{display:none;padding:16px 15px 8px}
-.cnp.on{display:block;animation:fadeIn .18s ease}
+.cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 
 /* Today hero */
 .wohero{background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
@@ -410,7 +411,7 @@ html[data-theme="light"] .mta {
 /* PR celebration */
 @keyframes prPop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 @keyframes checkDone{0%{transform:scale(1)}35%{transform:scale(.75)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(60px) rotate(360deg);opacity:0}}
 .pr-banner{background:linear-gradient(135deg,#1B4332,#40916C);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;color:white;display:flex;align-items:center;gap:12px;animation:prPop .4s ease-out;box-shadow:0 4px 20px rgba(45,106,79,.4)}
 .pr-trophy{font-size:28px;flex-shrink:0}
@@ -564,6 +565,8 @@ html[data-theme="light"] .mta {
 .gm-rest-overlay.hidden{display:none}
 .gm-go-flash{position:fixed;inset:0;background:var(--g);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:760;pointer-events:none;animation:goFlash .9s ease-out forwards}
 @keyframes goFlash{0%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.04)}}
+@keyframes apexTick{0%{transform:scale(1.14);opacity:.6}100%{transform:scale(1);opacity:1}}
+.restnum.tick,.gm-rest-sec.tick{animation:apexTick .35s cubic-bezier(.22,.68,0,1.2)}
 .gm-rest-circle{width:160px;height:160px;position:relative;margin:8px 0}
 .gm-rest-svg{transform:rotate(-90deg)}
 .gm-rest-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -575,8 +578,8 @@ html[data-theme="light"] .mta {
 .gm-rest-skip:hover{background:rgba(255,255,255,.18)}
 /* Bottom action bar */
 .gm-footer{padding:16px 18px;border-top:1px solid var(--br);flex-shrink:0;background:var(--bg)}
-.gm-start-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:14px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.3px}
-.gm-start-btn:active{opacity:.85}
+.gm-start-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:14px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:opacity .15s,transform .12s;letter-spacing:.3px}
+.gm-start-btn:active{opacity:.85;transform:scale(.97)}
 .gm-start-btn:disabled{background:var(--br2);cursor:not-allowed;opacity:.6}
 
 /* No routine */
@@ -4446,7 +4449,7 @@ function startClientRest(sec,exName){
   banner.classList.remove('hide');sub.textContent=`Después de: ${exName}`;
   let left=sec;num.textContent=left;
   restInt=setInterval(()=>{
-    left--;num.textContent=left;
+    left--;num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
     if(left>0&&left<=5)playRestTick();
     if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
   },1000);
@@ -5788,7 +5791,7 @@ function gmShowRest(secs, nextStep){
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
   GM.restTimer=setInterval(()=>{
     left--;
-    secEl.textContent=left;
+    secEl.textContent=left;secEl.classList.remove('tick');void secEl.offsetWidth;secEl.classList.add('tick');
     arc.style.strokeDashoffset=C*((secs-left)/secs);
     if(left>0&&left<=5)playRestTick();
     if(left<=0){
