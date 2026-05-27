@@ -2867,11 +2867,23 @@ function filterClients(q){
   document.getElementById('cli-lbl').textContent=term?`${list.querySelectorAll('.cli:not([style*="none"])').length} resultado${list.querySelectorAll('.cli:not([style*="none"])').length!==1?'s':''} de ${DB.clients.length}`:`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
 }
 
+function miniSparkline(clientId){
+  const entries=(DB.bodyweight[clientId]||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(entries.length<2)return '';
+  const vals=entries.map(e=>e.kg);
+  const maxV=Math.max(...vals),minV=Math.min(...vals);
+  const W=40,H=18,pad=1;
+  const pts=entries.map((e,i)=>({x:pad+i*((W-pad*2)/(entries.length-1)),y:pad+(H-pad*2)*(1-(e.kg-minV)/(maxV-minV||1))}));
+  const d=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const col=entries[entries.length-1].kg<=entries[0].kg?'#2D6A4F':'#E76F51';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 2px"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
 function renderClients(){
   const list=document.getElementById('cli-list');
   const searchEl=document.getElementById('cli-search');if(searchEl)searchEl.value='';
   document.getElementById('cli-lbl').textContent=`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
-  if(!DB.clients.length){list.innerHTML='<div class="empty" style="padding:50px"><div class="eico">👥</div><div class="etxt">Todavía no hay asesorados</div><div class="esub" style="margin-bottom:13px">Crea el primero para empezar</div><button class="btn bp" onclick="openAddClient()">+ Nuevo asesorado</button></div>';return}
+  if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">👥</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
   DB.clients.forEach(c=>{
     const ms=DB.msgs[c.id]||[];const last=ms[ms.length-1];
@@ -2895,7 +2907,7 @@ function renderClients(){
       routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin rutinas asignadas</div>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0"><span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
@@ -4003,7 +4015,7 @@ function renderClientToday(client, overrideRoutine){
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
   const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
-  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${todayR.name}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${todayR.note}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
+  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${todayR.name}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${todayR.note}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
   CUR.activeRoutine=todayR;
   WU_STATE.done={};
   renderWarmup(todayR.exercises||[]);
@@ -4136,6 +4148,7 @@ function renderClientExList(routine){
           setLog(routine.id,ei,si,'kg',kg);
           setLog(routine.id,ei,si,'reps',reps);
           setDone(routine.id,ei,si,true);
+          if(navigator.vibrate)navigator.vibrate(40);
           row.classList.add('sdone');
           chk.classList.add('sdone');
           row.querySelector('.set-num').classList.add('sdone');
@@ -4216,6 +4229,9 @@ function updateClientProgress(routine){
   if(pn)pn.textContent=`${done}/${total}`;
   if(pf)pf.style.width=`${total>0?(done/total)*100:0}%`;
   if(pv)pv.textContent=totalVol>0?`Volumen total: ${Math.round(totalVol).toLocaleString()} kg`:'';
+  const whn=document.getElementById('wohero-num');const whf=document.getElementById('wohero-fill');
+  if(whn)whn.textContent=`${done}/${total} series`;
+  if(whf)whf.style.width=`${total>0?(done/total)*100:0}%`;
   if(done===total&&total>0){
     saveSessionToHistory(routine,totalVol,done);
     const newPRs=checkAndUpdatePRs(routine);
@@ -5689,6 +5705,7 @@ function gmActionBtn(){
   setLog(GM.routine.id, ei, si, 'kg', kg);
   setLog(GM.routine.id, ei, si, 'reps', reps);
   setDone(GM.routine.id, ei, si, true);
+  if(navigator.vibrate)navigator.vibrate(40);
   const row = document.getElementById(`gm-set-${ei}-${si}`);
   const chk = document.getElementById(`gm-chk-${ei}-${si}`);
   const num = document.getElementById(`gm-snum-${ei}-${si}`);
