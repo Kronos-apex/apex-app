@@ -316,6 +316,7 @@ SB_KEYS = [
 
 | Si el pedido menciona... | Agente obligatorio |
 |---|---|
+| lesión, rodilla, hombro, columna, limitación física, postoperatorio, dolor, rehabilitación | **Laura** audita seguridad primero — su veredicto es vinculante |
 | ejercicio, rutina, serie, músculo, calentamiento, progresión | **Coach Pro** valida primero |
 | asesorada mujer, programa femenino, glúteos, postparto, recomposición femenina | **Valery** valida primero |
 | hipertrofia, ganar músculo, masa, bulk, macros, proteína, calorías, suplemento, creatina, periodización, deload | **Andrés (Hyp)** valida primero |
@@ -509,6 +510,7 @@ git push origin main
 - **Valentina** (PM) → roadmap, priorización, specs
 
 ### 💪 Deportivo
+- **Laura** → fisioterapeuta deportiva — audita seguridad en asesorados con lesiones o limitaciones físicas; su veredicto es vinculante antes de cualquier otro agente deportivo
 - **Coach Pro / Diego R.** → validación fisiológica de rutinas y ejercicios
 - **Valery** → especialista en transformación corporal femenina — valida todo lo relacionado con asesoradas mujeres
 - **Andrés (Hyp)** → coach jefe de hipertrofia y nutrición deportiva — el único que aprueba macros, bulk/cut/recomp, periodización avanzada, suplementación y planes nutricionales
@@ -522,4 +524,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición)*
+*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva)*
