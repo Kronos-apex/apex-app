@@ -14,7 +14,7 @@
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
 - **Asesorados** — ejecutan rutinas, registran progreso, ven evolución
 
-**Versión actual:** v1.3.2 — Mayo 2026
+**Versión actual:** v1.3.3 — Mayo 2026
 
 ---
 
@@ -52,7 +52,7 @@ apex-app/
 | `#s-login` | Login dual coach/asesorado con remember-me |
 | `#s-coach` | Panel del entrenador |
 | `#s-client` | Vista del asesorado |
-| `#apex-loading` | Overlay de carga — "Preparando tu entrenamiento..." |
+| `#apex-loading` | Overlay de carga — "Entrenamiento con nombre propio" |
 
 ### Paneles del Coach (6)
 - `#p-home` — Dashboard: MRR, activos, sesiones semanales, retención SVG, banner de vencimientos próximos, asesorados prioritarios (vencidos primero)
@@ -96,7 +96,8 @@ DB = {
   templates: [],   // ax_tpl — plantillas de rutinas
   nutrition: {},   // ax_nut — planes nutricionales por asesorado
   medidas: {},     // ax_med — medidas corporales históricas
-  photos: {},      // ax_photos — fotos de progreso (base64)
+  photos: {},      // ax_photos — fotos de progreso (URLs Supabase Storage desde v1.3.3, base64 legacy migrado automático)
+  nequi: '',       // ax_nequi — número Nequi del coach para cobros
 }
 ```
 
@@ -185,11 +186,12 @@ SB_KEYS = [
   'ax_tpl',     // plantillas
   'ax_nut',     // nutrición
   'ax_med',     // medidas
-  'ax_photos',  // fotos
-  'ax_cph',     // ✅ v1.3.0 — hash contraseña coach
-  'ax_site',    // ✅ v1.3.0 — configuración del sitio
+  'ax_photos',  // fotos (URLs Supabase Storage desde v1.3.3)
+  'ax_cph',     // hash contraseña coach
+  'ax_site',    // sitio web del coach
   'ax_ce',      // ejercicios custom
   'ax_cn',      // nombre del coach
+  'ax_nequi',   // ✅ v1.3.3 — número Nequi del coach
 ]
 // ax_cp ELIMINADO — contraseña legacy del coach no debe sincronizarse
 ```
@@ -286,7 +288,7 @@ SB_KEYS = [
 | Área | Estado |
 |---|---|
 | XSS en innerHTML | ✅ `esc()` aplicado: nutrición, perfil, rutinas, progreso, notificaciones, fotos |
-| `photo.src` en `<img>` | ✅ Validado que sea `data:image/...` antes de insertar |
+| `photo.src` en `<img>` | ✅ Validado que sea `data:image/...` o `https://` antes de insertar |
 | Sesión localStorage | ✅ `expiresAt: now + 30 días` — `tryAutoLogin` valida expiración |
 | CORS Edge Functions | ✅ Restringido a `https://kronos-apex.github.io` (NO usar `*`) |
 | Contraseña coach | ✅ SHA-256 en `ax_cph`, legacy `ax_cp` no sincroniza |
@@ -533,12 +535,33 @@ git push origin main
 - Formato ROTO (no renderiza): `{exId, reps: "10-12", sets, muscle, restSec}` — si aparece, hay que corregirlo
 - IDs válidos: `e1`–`e88` (defaultExercises en index.html) + `fb03`/`fb04` (en Supabase ax_e)
 
+### ✅ v1.3.3 — Sesión 2026-05-28
+
+**Fotos → Supabase Storage (commit f261e03):**
+- Bucket `apex-photos` creado en Supabase (público, 5MB, jpeg/png/webp)
+- RLS policies para anon: INSERT, SELECT, DELETE
+- `uploadPhotoToStorage(clientId, photoId, base64)` → retorna URL pública
+- `deletePhotoFromStorage(clientId, photoId)` → borra archivo al eliminar foto
+- `migratePhotosToStorage()` → migra base64 existentes en background (3s post-arranque)
+- `savePhoto()` y `_dobSavePhoto()` ahora suben a Storage con fallback a base64
+- `renderPhotosClient()` y `viewPhoto()` aceptan `https://` además de `data:image/`
+- `deletePhoto()` limpia archivo del bucket además del registro en `ax_photos`
+
+**Cobros por Nequi (commit 076c85c):**
+- `ax_nequi` en SB_KEYS — número Nequi del coach visible para todos los clientes
+- Campo Nequi en ⚙️ Configuración del coach
+- `renderPaymentCard(client)` — card automática al cliente cuando plan vence en ≤7 días
+- `notifyPaid()` — push a `_coach` + mensaje en chat como historial
+- `copyNequi(num)` — copia al portapapeles, fallback toast
+
+**Identidad de marca (commits a485c78, d7aa7ae):**
+- Tagline confirmado: **"Entrenamiento con nombre propio"** — loading screen y login
+- Íconos PWA verificados: ya tienen la Letra de Hierro (A con barra de pesas dorada)
+- `BRAND.md` creado — brief completo de marca: paleta, tipografía, logo, tono, reglas
+
 ### 🎯 v1.4 — Próxima iteración
-- [ ] **Migración fotos → Supabase Storage** ⚡ PRIORITARIO — programado para el fin de semana (días sin asesorados activos). Reemplaza base64 en `ax_photos` por URLs públicas. Parche temporal de compresión activo hasta entonces (100KB/foto, MAX 800px).
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
-- [ ] Tagline final — pendiente decisión de Andrés
-- [ ] Logo nuevo — brief listo para Looka/Canva (brief en historial de chat)
-- [ ] Stripe / Mercado Pago — cobro automático
+- [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
 - [ ] `startedAt` / `completedAt` en sesiones de historial
 - [ ] `payment.planType` para MRR segmentado por plan
 - [ ] Widget MRR proyectado en Home
@@ -586,4 +609,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-27 · v1.3.2 · ~6,400 líneas · 238 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos (incl. Sofia prueba) · Agentes deportivos: Valery (femenino) + Andrés Hyp (hipertrofia+nutrición) + Laura (fisioterapia deportiva) · skill apex-generate activo · fotos comprimidas a 100KB (parche) — migración Supabase Storage pendiente este fds*
+*Última actualización: 2026-05-28 · v1.3.3 · ~7,000 líneas · 244 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos · Fotos migradas a Supabase Storage (bucket apex-photos) · Cobros por Nequi activos · Tagline confirmado: "Entrenamiento con nombre propio" · BRAND.md creado*
