@@ -986,6 +986,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- PROFILE -->
     <div id="cn-profile" class="cnp">
       <div class="profhero" id="cn-prof-card"></div>
+      <div id="cn-payment-card" style="margin-bottom:12px"></div>
 
       <!-- Streak de entrenamiento -->
       <div class="card" style="margin-bottom:12px">
@@ -1169,6 +1170,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Sitio web (aparece en las imágenes exportadas)</label>
       <input id="st-site" class="inp" maxlength="80" placeholder="Ej: tucoach.com" style="width:100%">
     </div>
+    <div style="margin-bottom:14px">
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">📱 Número Nequi para cobros</label>
+      <input id="st-nequi" class="inp" type="tel" inputmode="numeric" maxlength="20" placeholder="Ej: 3001234567" style="width:100%">
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">El asesorado verá este número cuando su plan esté por vencer.</div>
+    </div>
 
     <div style="border-top:1px solid var(--br);padding-top:14px;margin-top:4px">
       <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">🔒 Cambiar contraseña</div>
@@ -1347,7 +1353,7 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi'];
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
 // Convierte VAPID key de base64 a Uint8Array
@@ -1628,6 +1634,7 @@ async function syncFromCloud(){
   DB.nutrition=ld('ax_nut',{});
   DB.medidas=ld('ax_med',{});
   DB.photos=ld('ax_photos',{});
+  DB.nequi=ld('ax_nequi','');
   setP(100,'¡Listo!');
   setTimeout(()=>migratePhotosToStorage(),3000);
   // Si hay sesión guardada, quitar la pantalla de carga más rápido
@@ -1988,6 +1995,7 @@ function openSettings(){
   document.getElementById('st-name').value=getCoachName();
   document.getElementById('st-email').value=getCoachEmail();
   if(document.getElementById('st-site'))document.getElementById('st-site').value=getCoachSite();
+  if(document.getElementById('st-nequi'))document.getElementById('st-nequi').value=DB.nequi||'';
   document.getElementById('st-cur').value='';
   document.getElementById('st-new').value='';
   document.getElementById('st-rep').value='';
@@ -2017,6 +2025,8 @@ async function saveSettings(){
   sv('ax_cn',_b64enc(name));
   sv('ax_ce',_b64enc(email));
   if(site!==undefined)sv('ax_site',site);
+  const nequi=document.getElementById('st-nequi')?document.getElementById('st-nequi').value.trim().replace(/\s/g,''):'';
+  DB.nequi=nequi;sv('ax_nequi',nequi);
   document.getElementById('sb-nm').textContent=name;
   cm('m-settings');toast('✅ Configuración guardada');
 }
@@ -2691,6 +2701,45 @@ const MS={
     }[s])||{label:'Sin pago',color:'var(--t2)',bg:'var(--br)'};
   }
 };
+
+function renderPaymentCard(client){
+  const con=document.getElementById('cn-payment-card');
+  if(!con)return;
+  const nequi=DB.nequi||ld('ax_nequi','');
+  const st=MS.getStatus(client);
+  if(!nequi||st!=='expiring'){con.innerHTML='';return;}
+  const pays=(client.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
+  const last=pays[0];
+  const dueStr=last?new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'';
+  const amount=last&&last.amount?'$'+Number(last.amount).toLocaleString('es-CO')+' COP':'';
+  con.innerHTML=`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:14px 16px">
+    <div style="font-size:13px;font-weight:800;color:#7a5c00;margin-bottom:4px">💳 Tu plan vence pronto</div>
+    ${dueStr?`<div style="font-size:12px;color:#7a5c00;opacity:.85;margin-bottom:10px">Vence: ${dueStr}${amount?' · '+amount:''}</div>`:''}
+    <div style="font-size:12px;color:var(--t2);margin-bottom:6px">Paga por <strong>Nequi</strong> al número de tu coach:</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:20px;font-weight:800;letter-spacing:1px;color:var(--t1);font-family:'JetBrains Mono',monospace">${esc(nequi)}</div>
+      <button onclick="copyNequi('${esc(nequi)}')" style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:600">Copiar</button>
+    </div>
+    <button onclick="notifyPaid()" style="width:100%;padding:11px;background:var(--g);color:white;border:none;border-radius:var(--rsm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">✅ Ya pagué — Notificar al coach</button>
+  </div>`;
+}
+
+function copyNequi(num){
+  navigator.clipboard.writeText(num).then(()=>toast('📋 Número copiado')).catch(()=>toast('Número: '+num));
+}
+
+async function notifyPaid(){
+  const clientId=CUR.clientId;
+  const client=DB.clients.find(c=>c.id===clientId);
+  if(!client)return;
+  const text='✅ Ya realicé mi pago — por favor confírmame cuando lo veas 🙏';
+  if(!DB.msgs[clientId])DB.msgs[clientId]=[];
+  DB.msgs[clientId].push({from:'client',text,date:new Date().toISOString()});
+  svNow('ax_m',DB.msgs);
+  renderClientMsgs(clientId);
+  pushToClient('_coach','💳 '+client.name+' notificó su pago','Revisa y confirma el pago en APEX',{type:'payment',tag:'apex-payment-'+clientId});
+  toast('✅ Notificación enviada a tu coach');
+}
 
 // ══════════════════════ INACTIVIDAD ══════════════════════
 function checkInactivity(){
@@ -3993,6 +4042,7 @@ function renderClientProfile(client){
   document.getElementById('cn-prof-card').innerHTML=`<div class="profav">${ini(client.name)}</div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
+  renderPaymentCard(client);
   renderStreakClient(client.id);
   renderBodyWeightSection(client.id);
   renderPRsInProfile(client.id);
