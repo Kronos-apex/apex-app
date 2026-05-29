@@ -1628,6 +1628,7 @@ async function syncFromCloud(){
   const _routineMigrated=migrateRoutineIds(DB.clients,uid);
   if(_routineMigrated){sv('ax_c',DB.clients);log('APEX: routine.id migration applied');}
   DB.exercises=ld('ax_e',defaultExercises);
+  migrateExTypes();
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
   DB.prs=ld('ax_pr',{});
@@ -1657,7 +1658,7 @@ const defaultExercises=[
   {id:'e3',name:'Aperturas con Cable',muscle:'pecho',type:'Aislamiento',sets:3,reps:15,icon:'📉',desc:'Codo ligeramente flexionado, cruza por delante contrayendo el pecho.',descSimple:'De pie entre las poleas. Con los brazos ligeramente doblados, junta las manos al frente como si abrazaras. Siente el pecho contraerse.',muscleLabel:'Pecho',ytQuery:'aperturas con cable pecho tutorial'},
   {id:'e71',name:'Press de Banca con Mancuernas',muscle:'pecho',type:'Compuesto',sets:3,reps:'12',icon:'🤲',desc:'Tumbado en banco, mancuernas a los lados del pecho. Empuja hacia arriba juntando ligeramente al tope. Más accesible que la barra para principiantes.',descSimple:'Acuéstate en el banco con una mancuerna en cada mano a la altura del pecho. Empuja ambas hacia arriba hasta casi juntar las mancuernas arriba. Más fácil y seguro que con barra para comenzar.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'press de banca mancuernas tutorial principiantes'},
   // ── ESPALDA ──
-  {id:'e4',name:'Dominadas',muscle:'espalda',type:'Compuesto',sets:4,reps:8,icon:'🦅',desc:'Agarre prono, sube hasta que el mentón supere la barra. Codos al suelo.',descSimple:'Cuélgate de la barra con las palmas mirando al frente. Sube hasta que tu mentón pase la barra. Baja lento controlando. Si no puedes hacerlas solas, usa una banda de resistencia o la máquina asistida.',muscleLabel:'Espalda y bíceps',ytQuery:'dominadas como hacerlas desde cero tutorial'},
+  {id:'e4',name:'Dominadas',muscle:'espalda',type:'Bodyweight',sets:4,reps:8,icon:'🦅',desc:'Agarre prono, sube hasta que el mentón supere la barra. Codos al suelo.',descSimple:'Cuélgate de la barra con las palmas mirando al frente. Sube hasta que tu mentón pase la barra. Baja lento controlando. Si no puedes hacerlas solas, usa una banda de resistencia o la máquina asistida.',muscleLabel:'Espalda y bíceps',ytQuery:'dominadas como hacerlas desde cero tutorial'},
   {id:'e5',name:'Remo con Barra',muscle:'espalda',type:'Compuesto',sets:4,reps:10,icon:'⬇️',desc:'Espalda a 45°, tira la barra hacia el ombligo. Codos pegados.',descSimple:'Inclínate hacia adelante unos 45 grados con la espalda recta, no redonda. Tira la barra hacia tu ombligo manteniendo los codos cerca del cuerpo. Nunca redondees la espalda baja, sin importar el peso.',muscleLabel:'Espalda media',ytQuery:'remo con barra espalda tutorial'},
   {id:'e6',name:'Jalón al Pecho',muscle:'espalda',type:'Compuesto',sets:3,reps:12,icon:'🔄',desc:'Tira la barra hacia el pecho superior, codos apuntan al suelo.',descSimple:'Sentado en la máquina, agarra la barra y jálala hacia el pecho alto. Siente la espalda trabajar, no los brazos.',muscleLabel:'Dorsal (espalda)',ytQuery:'jalón al pecho máquina tutorial'},
   {id:'e24',name:'Pullover en Polea',muscle:'espalda',type:'Aislamiento',sets:3,reps:12,icon:'🌊',desc:'De pie frente a polea alta, extiende los brazos hacia abajo arqueando. Trabaja dorsal y serrato.',descSimple:'De pie frente a la polea alta. Con los brazos extendidos jálalos hacia abajo hasta las caderas como un arco. Mantén los codos ligeramente doblados.',muscleLabel:'Dorsal y serrato',ytQuery:'pullover en polea alta tutorial'},
@@ -1686,10 +1687,10 @@ const defaultExercises=[
   // ── TRÍCEPS ──
   {id:'e11',name:'Extensión en Polea Alta',muscle:'triceps',type:'Aislamiento',sets:4,reps:15,icon:'📉',desc:'Codos fijos al cuerpo, empuja hacia abajo hasta extensión completa.',descSimple:'Parado frente a la polea alta. Agarra la cuerda o barra y empuja hacia abajo extendiendo los brazos. Mantén los codos quietos al lado del cuerpo.',muscleLabel:'Tríceps (parte trasera del brazo)',ytQuery:'extensión tríceps polea alta tutorial'},
   {id:'e12',name:'Skull Crushers',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'💀',desc:'Tumbado, baja la barra EZ hacia la frente. Extiende los codos de forma lenta y controlada.',descSimple:'Acuéstate en el banco. Mantén los codos apuntando al techo y fijos en esa posición. Dobla los codos bajando la barra hacia tu frente. Extiende lento y con control. Usa un peso que puedas controlar siempre.',muscleLabel:'Tríceps',ytQuery:'skull crushers tríceps cómo hacerlo'},
-  {id:'e19',name:'Fondos en Paralelas',muscle:'triceps',type:'Compuesto',sets:3,reps:12,icon:'🤸',desc:'Torso ligeramente inclinado, baja hasta 90° de codo. Pecho y tríceps.',descSimple:'Apóyate en las barras paralelas con los brazos extendidos. Mantén el torso lo más vertical posible y baja doblando los codos hasta 90 grados. Sube empujando. Si sientes molestia en el hombro, reduce el rango o evita este ejercicio.',muscleLabel:'Tríceps y pecho',ytQuery:'fondos en paralelas tríceps pecho tutorial'},
+  {id:'e19',name:'Fondos en Paralelas',muscle:'triceps',type:'Bodyweight',sets:3,reps:12,icon:'🤸',desc:'Torso ligeramente inclinado, baja hasta 90° de codo. Pecho y tríceps.',descSimple:'Apóyate en las barras paralelas con los brazos extendidos. Mantén el torso lo más vertical posible y baja doblando los codos hasta 90 grados. Sube empujando. Si sientes molestia en el hombro, reduce el rango o evita este ejercicio.',muscleLabel:'Tríceps y pecho',ytQuery:'fondos en paralelas tríceps pecho tutorial'},
   {id:'e30',name:'Extensión de Tríceps Trasnuca',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'🙆',desc:'Mancuerna o barra EZ sobre la cabeza, baja detrás del cuello. Cabeza larga en estiramiento.',descSimple:'Sostén el peso sobre la cabeza con los brazos extendidos. Dobla los codos bajando el peso detrás de la cabeza. Sientes el tríceps estirarse bien.',muscleLabel:'Tríceps',ytQuery:'extensión tríceps trasnuca mancuerna tutorial'},
   {id:'e31',name:'Extensión a una Mano en Polea',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'☝️',desc:'Polea alta, un brazo a la vez. Corrige desequilibrios entre brazos.',descSimple:'Con un brazo a la vez, empuja hacia abajo el agarre de la polea extendiendo el codo. Ideal para equilibrar los dos brazos.',muscleLabel:'Tríceps',ytQuery:'extensión tríceps polea un brazo tutorial'},
-  {id:'e32',name:'Fondos Gironda',muscle:'triceps',type:'Compuesto',sets:4,reps:10,icon:'🧘',desc:'Codos pegados, torso vertical. Máximo aislamiento del tríceps, mínimo pectoral.',descSimple:'Como los fondos normales pero con el cuerpo bien vertical y los codos pegados al cuerpo. Activa mucho más el tríceps.',muscleLabel:'Tríceps',ytQuery:'fondos Gironda tríceps tutorial'},
+  {id:'e32',name:'Fondos Gironda',muscle:'triceps',type:'Bodyweight',sets:4,reps:10,icon:'🧘',desc:'Codos pegados, torso vertical. Máximo aislamiento del tríceps, mínimo pectoral.',descSimple:'Como los fondos normales pero con el cuerpo bien vertical y los codos pegados al cuerpo. Activa mucho más el tríceps.',muscleLabel:'Tríceps',ytQuery:'fondos Gironda tríceps tutorial'},
   {id:'e57',name:'Press Francés con Mancuernas',muscle:'triceps',type:'Aislamiento',sets:3,reps:12,icon:'🇫🇷',desc:'Tumbado, baja las mancuernas a los lados de la cabeza. Extiende controlado.',descSimple:'Acuéstate con las mancuernas extendidas hacia el techo. Dobla los codos bajando el peso a los lados de la cabeza. Extiende de vuelta.',muscleLabel:'Tríceps',ytQuery:'press francés mancuernas tumbado tutorial'},
   // ── PIERNAS ──
   {id:'e13',name:'Sentadilla con Barra',muscle:'piernas',type:'Compuesto',sets:4,reps:8,icon:'🦵',desc:'Pies al ancho de hombros, baja hasta los 90° o más. La reina de las piernas.',descSimple:'Pies al ancho de los hombros con las puntas ligeramente abiertas. Baja como si te sentaras en una silla. La espalda recta y las rodillas deben ir en la misma dirección que apuntan los pies, nunca hacia adentro. Sube empujando el suelo.',muscleLabel:'Cuádriceps, glúteos y piernas',ytQuery:'sentadilla con barra cómo hacerla correctamente'},
@@ -1715,33 +1716,33 @@ const defaultExercises=[
   {id:'e60',name:'Aducción de Cadera en Máquina',muscle:'gluteo',type:'Aislamiento',sets:4,reps:15,icon:'🫶',desc:'Sentado, cierra las piernas contra la resistencia. Trabaja el aductor y cara interna del muslo.',descSimple:'Sentado en la máquina. Junta las piernas contra la resistencia. Trabaja la cara interna del muslo.',muscleLabel:'Cara interna del muslo',ytQuery:'aducción cadera máquina inner thigh tutorial'},
   {id:'e46',name:'Peso Muerto Piernas Rígidas',muscle:'gluteo',type:'Compuesto',sets:3,reps:10,icon:'🔱',desc:'Piernas casi rectas, desciende hasta sentir el estiramiento del femoral y glúteo. ⚠️ Contraindicado en ciatalgia, hernias discales L4-S1 e hiperlordosis marcada.',descSimple:'A diferencia del Peso Muerto Rumano, aquí las piernas van casi completamente rectas. Baja el peso frente a las piernas sintiendo el estiramiento máximo en la parte trasera del muslo. Usa poco peso — es muy exigente para la espalda baja. ⚠️ No recomendado si tienes dolor ciático, hernia de disco o mucha curva en la espalda baja.',muscleLabel:'Glúteos y femoral',ytQuery:'peso muerto piernas rígidas stiff leg deadlift tutorial'},
   {id:'e61',name:'Sentadilla Sumo',muscle:'gluteo',type:'Compuesto',sets:4,reps:10,icon:'🏆',desc:'Pies muy abiertos y puntas hacia afuera. Mayor activación del glúteo e interior de muslo.',descSimple:'Pies muy separados y apuntando hacia afuera. Baja en sentadilla. Trabaja más el glúteo y la cara interna del muslo que la sentadilla normal.',muscleLabel:'Glúteos y muslo interno',ytQuery:'sentadilla sumo glúteo tutorial'},
-  {id:'e73',name:'Puente de Glúteo',muscle:'gluteo',type:'Aislamiento',sets:3,reps:'15',icon:'🌉',desc:'Tumbado boca arriba, pies apoyados. Sube las caderas apretando el glúteo al máximo. Versión sin carga del hip thrust, ideal para principiantes o activación.',descSimple:'Acuéstate boca arriba con las rodillas dobladas y los pies en el suelo. Sube las caderas apretando el glúteo al máximo. Aguanta 1 segundo arriba y baja lento. Sin barra ni equipos — perfecto para comenzar o calentar.',muscleLabel:'Glúteos',ytQuery:'puente de gluteo glute bridge tutorial'},
+  {id:'e73',name:'Puente de Glúteo',muscle:'gluteo',type:'Bodyweight',sets:3,reps:'15',icon:'🌉',desc:'Tumbado boca arriba, pies apoyados. Sube las caderas apretando el glúteo al máximo. Versión sin carga del hip thrust, ideal para principiantes o activación.',descSimple:'Acuéstate boca arriba con las rodillas dobladas y los pies en el suelo. Sube las caderas apretando el glúteo al máximo. Aguanta 1 segundo arriba y baja lento. Sin barra ni equipos — perfecto para comenzar o calentar.',muscleLabel:'Glúteos',ytQuery:'puente de gluteo glute bridge tutorial'},
   // ── CORE ──
   {id:'e17',name:'Plancha Frontal',muscle:'core',type:'Isométrico',sets:3,reps:60,icon:'🟰',desc:'Cuerpo recto de cabeza a talones. Reps = segundos. Aprieta glúteos y abdomen.',descSimple:'Apoya los antebrazos y las puntas de los pies en el suelo. Mantén el cuerpo recto como una tabla. Los "reps" son segundos que aguantas.',muscleLabel:'Abdomen y core',ytQuery:'plancha frontal abdominal cómo hacerla tutorial'},
-  {id:'e18',name:'Crunch Abdominal',muscle:'core',type:'Aislamiento',sets:3,reps:20,icon:'〽️',desc:'Eleva solo los hombros del suelo. No jalones el cuello.',descSimple:'Acostado boca arriba con rodillas dobladas. Sube solo los hombros del suelo contrayendo el abdomen. No jales el cuello con las manos.',muscleLabel:'Abdomen',ytQuery:'crunch abdominal cómo hacerlo correctamente'},
-  {id:'e47',name:'Rueda Abdominal (Ab Wheel)',muscle:'core',type:'Compuesto',sets:3,reps:10,icon:'⭕',desc:'Extiende la rueda hacia adelante manteniendo lumbar neutral. Regresa lento.',descSimple:'De rodillas, agarra la rueda. Ruédala hacia adelante solo hasta donde puedas mantener la espalda recta, sin que caiga el abdomen. Regresa lento. Empieza con poco rango y ve aumentando. No apto para principiantes sin base de core.',muscleLabel:'Abdomen y espalda baja',ytQuery:'rueda abdominal ab wheel tutorial'},
-  {id:'e48',name:'Elevación de Piernas Colgado',muscle:'core',type:'Aislamiento',sets:3,reps:15,icon:'🧲',desc:'Colgado de barra, eleva las piernas rectas. Sin balanceo, control total.',descSimple:'Cuélgate de la barra. Sube las piernas controlado, sin balancearte. Si es muy difícil, empieza subiendo solo las rodillas al pecho. Baja lento.',muscleLabel:'Abdomen bajo',ytQuery:'elevación de piernas colgado barra abdomen tutorial'},
+  {id:'e18',name:'Crunch Abdominal',muscle:'core',type:'Bodyweight',sets:3,reps:20,icon:'〽️',desc:'Eleva solo los hombros del suelo. No jalones el cuello.',descSimple:'Acostado boca arriba con rodillas dobladas. Sube solo los hombros del suelo contrayendo el abdomen. No jales el cuello con las manos.',muscleLabel:'Abdomen',ytQuery:'crunch abdominal cómo hacerlo correctamente'},
+  {id:'e47',name:'Rueda Abdominal (Ab Wheel)',muscle:'core',type:'Bodyweight',sets:3,reps:10,icon:'⭕',desc:'Extiende la rueda hacia adelante manteniendo lumbar neutral. Regresa lento.',descSimple:'De rodillas, agarra la rueda. Ruédala hacia adelante solo hasta donde puedas mantener la espalda recta, sin que caiga el abdomen. Regresa lento. Empieza con poco rango y ve aumentando. No apto para principiantes sin base de core.',muscleLabel:'Abdomen y espalda baja',ytQuery:'rueda abdominal ab wheel tutorial'},
+  {id:'e48',name:'Elevación de Piernas Colgado',muscle:'core',type:'Bodyweight',sets:3,reps:15,icon:'🧲',desc:'Colgado de barra, eleva las piernas rectas. Sin balanceo, control total.',descSimple:'Cuélgate de la barra. Sube las piernas controlado, sin balancearte. Si es muy difícil, empieza subiendo solo las rodillas al pecho. Baja lento.',muscleLabel:'Abdomen bajo',ytQuery:'elevación de piernas colgado barra abdomen tutorial'},
   {id:'e49',name:'Plancha Lateral',muscle:'core',type:'Isométrico',sets:3,reps:30,icon:'🎯',desc:'Apoyado en un codo, cuerpo recto lateral. Reps = segundos por lado. Oblicuos.',descSimple:'Apoya el antebrazo y el pie lateral en el suelo. Mantén el cuerpo recto de lado. Los "reps" son segundos por cada lado.',muscleLabel:'Oblicuos y core',ytQuery:'plancha lateral oblicuos side plank tutorial'},
-  {id:'e62',name:'Russian Twist',muscle:'core',type:'Aislamiento',sets:3,reps:20,icon:'🔁',desc:'Sentado en V, gira el tronco de lado a lado. Con o sin peso. Trabaja oblicuos.',descSimple:'Siéntate inclinado hacia atrás con las rodillas dobladas. Gira el torso de un lado al otro llevando las manos de lado a lado. Mantén la espalda recta, no redonda. Puedes apoyar los pies en el suelo si es muy difícil.',muscleLabel:'Oblicuos',ytQuery:'russian twist abdomen oblicuos tutorial'},
+  {id:'e62',name:'Russian Twist',muscle:'core',type:'Bodyweight',sets:3,reps:20,icon:'🔁',desc:'Sentado en V, gira el tronco de lado a lado. Con o sin peso. Trabaja oblicuos.',descSimple:'Siéntate inclinado hacia atrás con las rodillas dobladas. Gira el torso de un lado al otro llevando las manos de lado a lado. Mantén la espalda recta, no redonda. Puedes apoyar los pies en el suelo si es muy difícil.',muscleLabel:'Oblicuos',ytQuery:'russian twist abdomen oblicuos tutorial'},
   {id:'e63',name:'Hollow Body',muscle:'core',type:'Isométrico',sets:3,reps:30,icon:'🌙',desc:'Tumbado, espalda pegada al suelo, piernas y brazos elevados. Reps = segundos. Core profundo.',descSimple:'Acostado boca arriba, pega la espalda al suelo y levanta brazos y piernas unos 15 cm. Mantén la posición. Los "reps" son segundos.',muscleLabel:'Core profundo',ytQuery:'hollow body position core gymnastics tutorial'},
-  {id:'e72',name:'Dead Bug',muscle:'core',type:'Funcional',sets:3,reps:'10',icon:'🐛',desc:'Tumbado boca arriba, brazos al techo y piernas en 90°. Baja brazo y pierna opuestos manteniendo la lumbar pegada al suelo. Core profundo sin riesgo lumbar.',descSimple:'Acuéstate boca arriba. Sube los brazos al techo y dobla las rodillas a 90°. Pega la espalda baja al suelo. Baja el brazo derecho y la pierna izquierda a la vez sin despegar la espalda. Regresa y alterna. Lento y controlado.',muscleLabel:'Core profundo y estabilización',ytQuery:'dead bug ejercicio core tutorial'},
+  {id:'e72',name:'Dead Bug',muscle:'core',type:'Bodyweight',sets:3,reps:'10',icon:'🐛',desc:'Tumbado boca arriba, brazos al techo y piernas en 90°. Baja brazo y pierna opuestos manteniendo la lumbar pegada al suelo. Core profundo sin riesgo lumbar.',descSimple:'Acuéstate boca arriba. Sube los brazos al techo y dobla las rodillas a 90°. Pega la espalda baja al suelo. Baja el brazo derecho y la pierna izquierda a la vez sin despegar la espalda. Regresa y alterna. Lento y controlado.',muscleLabel:'Core profundo y estabilización',ytQuery:'dead bug ejercicio core tutorial'},
   // ── CARDIO ──
   {id:'e20',name:'Carrera / Caminata',muscle:'cardio',type:'Cardio',sets:1,reps:20,icon:'🏃',desc:'Reps = minutos. Mantén un ritmo constante y respira por la nariz.',descSimple:'Corre o camina en la cinta o al aire libre. Los "reps" son minutos. Ritmo constante y respira por la nariz.',muscleLabel:'Cardio (corazón y piernas)',ytQuery:'cómo correr en cinta treadmill principiantes'},
   {id:'e64',name:'Bicicleta Estática',muscle:'cardio',type:'Cardio',sets:1,reps:20,icon:'🚴',desc:'Reps = minutos. Ideal como calentamiento o cardio de baja intensidad.',descSimple:'Pedalea en la bici estática. Los "reps" son minutos. Ideal para calentar o como cardio ligero sin impacto en las rodillas.',muscleLabel:'Cardio y piernas',ytQuery:'bicicleta estática cardio tutorial principiantes'},
   {id:'e65',name:'Remo Ergómetro',muscle:'cardio',type:'Cardio',sets:1,reps:10,icon:'🛶',desc:'Reps = minutos. Cardio de cuerpo completo. Empuja con las piernas primero.',descSimple:'En la máquina de remo: primero empuja con las piernas, luego jala con los brazos. Los "reps" son minutos. Trabaja todo el cuerpo.',muscleLabel:'Cardio y cuerpo completo',ytQuery:'máquina de remo ergómetro cómo usar tutorial'},
   {id:'e66',name:'Salto a la Cuerda',muscle:'cardio',type:'Cardio',sets:3,reps:3,icon:'🪢',desc:'Reps = minutos por ronda. Excelente para coordinación y quema calórica.',descSimple:'Salta la cuerda. Los "reps" son minutos por ronda. Empieza despacio y ve aumentando la velocidad.',muscleLabel:'Cardio y coordinación',ytQuery:'saltar cuerda jump rope tutorial principiantes'},
   {id:'e67',name:'Elíptica',muscle:'cardio',type:'Cardio',sets:1,reps:20,icon:'🔁',desc:'Reps = minutos. Sin impacto articular. Ideal para recuperación activa.',descSimple:'Usa la máquina elíptica. Los "reps" son minutos. Sin impacto en las rodillas. Excelente para días de recuperación activa.',muscleLabel:'Cardio (sin impacto)',ytQuery:'máquina elíptica cómo usarla correctamente'},
-  {id:'e74',name:'HIIT / Intervalos',muscle:'cardio',type:'Cardio',sets:6,reps:'1',icon:'⚡',desc:'Alterna 20-40s de máximo esfuerzo con 20-40s de descanso. Más eficiente que el cardio de estado estable para quemar grasa. Reps = intervalos completos.',descSimple:'Alterna períodos de máximo esfuerzo (20-40 segundos) con períodos de descanso suave (20-40 segundos). Puedes hacerlo corriendo, en bici o saltando. Los "reps" son intervalos completos. Más efectivo que correr a ritmo constante para quemar grasa.',muscleLabel:'Cardio (quema de grasa)',ytQuery:'HIIT intervalos cardio tutorial principiantes'},
+  {id:'e74',name:'HIIT / Intervalos',muscle:'cardio',type:'HIIT',sets:6,reps:'1',icon:'⚡',desc:'Alterna 20-40s de máximo esfuerzo con 20-40s de descanso. Más eficiente que el cardio de estado estable para quemar grasa. Reps = intervalos completos.',descSimple:'Alterna períodos de máximo esfuerzo (20-40 segundos) con períodos de descanso suave (20-40 segundos). Puedes hacerlo corriendo, en bici o saltando. Los "reps" son intervalos completos. Más efectivo que correr a ritmo constante para quemar grasa.',muscleLabel:'Cardio (quema de grasa)',ytQuery:'HIIT intervalos cardio tutorial principiantes'},
   // ── OTRO ──
   {id:'e68',name:'Peso Muerto Sumo',muscle:'otro',type:'Compuesto',sets:4,reps:6,icon:'🏋️',desc:'Pies muy abiertos, agarre entre las piernas. Mayor activación de aductores y glúteo.',descSimple:'Pies muy abiertos con las puntas apuntando hacia afuera. Agarra la barra entre las piernas. Espalda recta y pecho arriba. Empuja el suelo con los pies para levantarte. Las rodillas siguen la dirección de los pies.',muscleLabel:'Piernas, glúteos y espalda',ytQuery:'peso muerto sumo cómo hacerlo tutorial'},
   {id:'e69',name:'Clean & Press ⚠️ AVANZADO',muscle:'otro',type:'Funcional',sets:4,reps:6,icon:'⚡',desc:'Levantamiento olímpico básico. Potencia desde el suelo hasta sobre la cabeza. ⚠️ Requiere dominio técnico — no prescribir a principiantes sin supervisión directa.',descSimple:'Levanta la barra del suelo de manera explosiva hasta los hombros y luego empuja hacia arriba. Es un movimiento avanzado que requiere aprender la técnica antes de usar peso. Pide guía a tu coach antes de intentarlo. ⚠️ Solo para nivel intermedio-avanzado con supervisión.',muscleLabel:'Cuerpo completo',ytQuery:'clean and press levantamiento olímpico tutorial'},
-  {id:'e75',name:'Burpees',muscle:'cardio',type:'Funcional',sets:3,reps:'8',icon:'🔥',desc:'De pie, lleva las manos al suelo, salta o camina los pies hacia atrás a posición de plancha, regresa los pies y salta vertical con palmas al cielo. Mantén la espalda neutra en la posición de plancha. Versión modificada para principiantes: reemplaza los saltos por pasos controlados.',descSimple:'Baja las manos al suelo, lleva los pies atrás (salta o da pasos si es tu primera vez), regresa los pies y salta arriba con los brazos al cielo. Descansa bien entre cada repetición — la calidad manda sobre la cantidad.',muscleLabel:'Cardio y cuerpo completo',ytQuery:'burpee modificado principiantes sin salto tutorial'},
+  {id:'e75',name:'Burpees',muscle:'cardio',type:'Bodyweight',sets:3,reps:'8',icon:'🔥',desc:'De pie, lleva las manos al suelo, salta o camina los pies hacia atrás a posición de plancha, regresa los pies y salta vertical con palmas al cielo. Mantén la espalda neutra en la posición de plancha. Versión modificada para principiantes: reemplaza los saltos por pasos controlados.',descSimple:'Baja las manos al suelo, lleva los pies atrás (salta o da pasos si es tu primera vez), regresa los pies y salta arriba con los brazos al cielo. Descansa bien entre cada repetición — la calidad manda sobre la cantidad.',muscleLabel:'Cardio y cuerpo completo',ytQuery:'burpee modificado principiantes sin salto tutorial'},
   {id:'e76',name:'Saltos de Tijera',muscle:'cardio',type:'Cardio',sets:3,reps:'20',icon:'⭐',desc:'De pie, salta abriendo piernas más allá del ancho de hombros mientras subes los brazos al cielo. Regresa al centro coordinando brazos y piernas. Mantén un ritmo constante y aterriza suave sobre el mediopie, no sobre los talones.',descSimple:'Salta abriendo las piernas y subiendo los brazos al mismo tiempo, luego salta juntándolos de nuevo. Ritmo constante y aterrizaje suave. Ideal para calentar o como cardio ligero.',muscleLabel:'Cardio y coordinación',ytQuery:'saltos de tijera jumping jacks tutorial principiantes'},
-  {id:'e77',name:'Flexiones en Pared',muscle:'pecho',type:'Compuesto',sets:3,reps:'12',icon:'🧱',desc:'De pie a una distancia del brazo de la pared, manos a la altura del pecho. Dobla los codos a 45 grados del torso (no en T) acercando el pecho a la pared. Extiende empujando. Versión de menor carga del patrón de empuje horizontal, ideal para principiantes absolutos o rehabilitación.',descSimple:'Parado frente a la pared, apoya las manos a la altura del pecho. Dobla los codos acercándote a la pared y empuja de regreso. Cuerpo recto de cabeza a pies — no dejes caer la cadera.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en pared wall push up principiantes tutorial'},
-  {id:'e78',name:'Flexiones en Rodillas',muscle:'pecho',type:'Compuesto',sets:3,reps:'10',icon:'🙏',desc:'Manos ligeramente más anchas que los hombros, rodillas apoyadas. Cuerpo recto de rodillas a cabeza — NO dejes caer la cadera. Dobla los codos a 45 grados del torso bajando el pecho al suelo. Paso previo a las flexiones completas.',descSimple:'Apoya las rodillas y las manos en el suelo. Mantén el cuerpo recto desde las rodillas hasta la cabeza y baja el pecho hacia el suelo doblando los codos. Sube empujando. Si la cadera cae o sube, es la señal de parar.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en rodillas knee push up técnica correcta'},
-  {id:'e79',name:'Fondos en Banco',muscle:'triceps',type:'Compuesto',sets:3,reps:'10',icon:'🪑',desc:'Manos en el borde del banco o silla firme, rodillas dobladas a 90 grados y pies en el suelo. Baja doblando los codos exactamente hasta 90 grados — no más profundo. Codos apuntan hacia atrás, no se abren al lado. ADVERTENCIA: versión con piernas extendidas aumenta significativamente el riesgo en el hombro anterior.',descSimple:'Siéntate en el borde de una silla firme, apoya las manos en el borde y desliza las nalgas hacia adelante. Dobla los codos bajando el cuerpo hasta 90 grados y sube empujando. Rodillas dobladas, pies en el suelo. Si sientes molestia en el hombro, detente.',muscleLabel:'Tríceps y pecho inferior',ytQuery:'fondos en banco silla triceps sin lesionar hombro tutorial'},
-  {id:'e80',name:'Sentadilla de Peso Corporal',muscle:'piernas',type:'Compuesto',sets:3,reps:'15',icon:'🦵',desc:'Pies al ancho de hombros, puntas ligeramente abiertas. Baja llevando las caderas hacia atrás y abajo hasta que los muslos queden paralelos al suelo. Rodillas siguen la dirección de los pies en todo momento, nunca colapsan hacia adentro. Talón en el suelo. El patrón base antes de agregar cualquier carga.',descSimple:'Pies separados al ancho de tus hombros. Baja como si fueras a sentarte en una silla que está un poco lejos. La espalda recta, el pecho arriba y las rodillas apuntan hacia donde apuntan tus pies. Sube empujando el suelo con los talones.',muscleLabel:'Cuádriceps, glúteos y piernas',ytQuery:'sentadilla peso corporal air squat técnica perfecta principiantes'},
-  {id:'e81',name:'Mountain Climbers',muscle:'core',type:'Funcional',sets:3,reps:'20',icon:'🌀',desc:'Posición de plancha alta (manos en el suelo), lleva las rodillas alternadas hacia el pecho sin dejar caer ni elevar la cadera. La columna permanece neutra durante todo el movimiento. Reps = repeticiones totales (10 por pierna). Velocidad moderada antes de velocidad alta.',descSimple:'Apoya las manos en el suelo como en una flexión. Sin mover la cadera, lleva una rodilla hacia el pecho y regrésala, luego la otra. El cuerpo queda como una tabla que no se mueve excepto las piernas. Cuenta 1 repetición por cada pierna.',muscleLabel:'Core, cardio y cadera',ytQuery:'mountain climbers técnica correcta core tutorial'},
+  {id:'e77',name:'Flexiones en Pared',muscle:'pecho',type:'Bodyweight',sets:3,reps:'12',icon:'🧱',desc:'De pie a una distancia del brazo de la pared, manos a la altura del pecho. Dobla los codos a 45 grados del torso (no en T) acercando el pecho a la pared. Extiende empujando. Versión de menor carga del patrón de empuje horizontal, ideal para principiantes absolutos o rehabilitación.',descSimple:'Parado frente a la pared, apoya las manos a la altura del pecho. Dobla los codos acercándote a la pared y empuja de regreso. Cuerpo recto de cabeza a pies — no dejes caer la cadera.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en pared wall push up principiantes tutorial'},
+  {id:'e78',name:'Flexiones en Rodillas',muscle:'pecho',type:'Bodyweight',sets:3,reps:'10',icon:'🙏',desc:'Manos ligeramente más anchas que los hombros, rodillas apoyadas. Cuerpo recto de rodillas a cabeza — NO dejes caer la cadera. Dobla los codos a 45 grados del torso bajando el pecho al suelo. Paso previo a las flexiones completas.',descSimple:'Apoya las rodillas y las manos en el suelo. Mantén el cuerpo recto desde las rodillas hasta la cabeza y baja el pecho hacia el suelo doblando los codos. Sube empujando. Si la cadera cae o sube, es la señal de parar.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en rodillas knee push up técnica correcta'},
+  {id:'e79',name:'Fondos en Banco',muscle:'triceps',type:'Bodyweight',sets:3,reps:'10',icon:'🪑',desc:'Manos en el borde del banco o silla firme, rodillas dobladas a 90 grados y pies en el suelo. Baja doblando los codos exactamente hasta 90 grados — no más profundo. Codos apuntan hacia atrás, no se abren al lado. ADVERTENCIA: versión con piernas extendidas aumenta significativamente el riesgo en el hombro anterior.',descSimple:'Siéntate en el borde de una silla firme, apoya las manos en el borde y desliza las nalgas hacia adelante. Dobla los codos bajando el cuerpo hasta 90 grados y sube empujando. Rodillas dobladas, pies en el suelo. Si sientes molestia en el hombro, detente.',muscleLabel:'Tríceps y pecho inferior',ytQuery:'fondos en banco silla triceps sin lesionar hombro tutorial'},
+  {id:'e80',name:'Sentadilla de Peso Corporal',muscle:'piernas',type:'Bodyweight',sets:3,reps:'15',icon:'🦵',desc:'Pies al ancho de hombros, puntas ligeramente abiertas. Baja llevando las caderas hacia atrás y abajo hasta que los muslos queden paralelos al suelo. Rodillas siguen la dirección de los pies en todo momento, nunca colapsan hacia adentro. Talón en el suelo. El patrón base antes de agregar cualquier carga.',descSimple:'Pies separados al ancho de tus hombros. Baja como si fueras a sentarte en una silla que está un poco lejos. La espalda recta, el pecho arriba y las rodillas apuntan hacia donde apuntan tus pies. Sube empujando el suelo con los talones.',muscleLabel:'Cuádriceps, glúteos y piernas',ytQuery:'sentadilla peso corporal air squat técnica perfecta principiantes'},
+  {id:'e81',name:'Mountain Climbers',muscle:'core',type:'Bodyweight',sets:3,reps:'20',icon:'🌀',desc:'Posición de plancha alta (manos en el suelo), lleva las rodillas alternadas hacia el pecho sin dejar caer ni elevar la cadera. La columna permanece neutra durante todo el movimiento. Reps = repeticiones totales (10 por pierna). Velocidad moderada antes de velocidad alta.',descSimple:'Apoya las manos en el suelo como en una flexión. Sin mover la cadera, lleva una rodilla hacia el pecho y regrésala, luego la otra. El cuerpo queda como una tabla que no se mueve excepto las piernas. Cuenta 1 repetición por cada pierna.',muscleLabel:'Core, cardio y cadera',ytQuery:'mountain climbers técnica correcta core tutorial'},
   {id:'e82',name:'Superman',muscle:'espalda',type:'Isométrico',sets:3,reps:'12',icon:'🦸',desc:'Boca abajo, brazos extendidos al frente. Eleva simultáneamente brazos y piernas del suelo contrayendo glúteos y erectores. Mantén 2 segundos arriba. La cabeza va en extensión natural de la columna — no elevar el cuello en hiperextensión. Versión unilateral (brazo y pierna opuestos) para principiantes absolutos.',descSimple:'Acuéstate boca abajo con los brazos extendidos al frente. Sube brazos y piernas del suelo al mismo tiempo apretando el glúteo. Aguanta 2 segundos y baja. La cabeza sigue el movimiento natural del cuerpo — no la fuerces hacia arriba.',muscleLabel:'Espalda baja y glúteos',ytQuery:'superman ejercicio espalda baja lumbar tutorial'},
   // ── PECHO (variantes) ──
   {id:'e83',name:'Lagartijas (Push-up)',muscle:'pecho',type:'Bodyweight',sets:3,reps:15,icon:'🤸',desc:'Posición de plancha alta, baja el pecho al suelo doblando los codos a 45°. Cuerpo recto de cabeza a talones. La versión completa del patrón de empuje.',descSimple:'Apoya las manos y las puntas de los pies. El cuerpo queda recto como una tabla. Baja el pecho al suelo doblando los codos en diagonal (no hacia los lados) y sube empujando. Si no puedes completo, apoya las rodillas.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'lagartijas push up técnica perfecta tutorial'},
@@ -2301,15 +2302,34 @@ function buildExerciseProgress(clientId){
   sessions.forEach(s=>{
     const dateStr=new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     (s.exercises||[]).forEach(ex=>{
-      const doneSets=ex.sets.filter(st=>st.done&&parseFloat(st.kg)>0);
-      if(!doneSets.length)return; // skip bodyweight/no-kg exercises
-      const maxKg=Math.max(...doneSets.map(st=>parseFloat(st.kg)));
-      const vol=doneSets.reduce((t,st)=>(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0)+t,0);
-      if(!map[ex.name])map[ex.name]={name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle,points:[]};
+      // track viene del historial; las sesiones antiguas sin track son peso_reps.
+      const track=ex.track||'peso_reps';
+      const done=(ex.sets||[]).filter(st=>st.done);
+      let val=0,vol=0,unit='kg';
+      if(track==='peso_reps'){
+        const ws=done.filter(st=>parseFloat(st.kg)>0);
+        if(!ws.length)return; // sin peso registrado
+        val=Math.max(...ws.map(st=>parseFloat(st.kg)));
+        vol=ws.reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
+        unit='kg';
+      } else if(track==='reps'){
+        const rs=done.filter(st=>parseInt(st.reps)>0); if(!rs.length)return;
+        val=Math.max(...rs.map(st=>parseInt(st.reps)||0)); unit='reps';
+      } else if(track==='tiempo'){
+        const ts=done.filter(st=>parseInt(st.secs)>0); if(!ts.length)return;
+        val=Math.max(...ts.map(st=>parseInt(st.secs)||0)); unit='s';
+      } else if(track==='cardio'){
+        const cs=done.filter(st=>parseFloat(st.min)>0); if(!cs.length)return;
+        val=cs.reduce((t,st)=>t+(parseFloat(st.min)||0),0); unit='min';
+      } else if(track==='hiit'){
+        if(!done.length)return; val=done.length; unit='rondas';
+      } else return;
+      if(!map[ex.name])map[ex.name]={name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle,unit,points:[]};
+      map[ex.name].unit=unit;
       // One point per session date (take max if same day trained twice)
       const existing=map[ex.name].points.find(p=>p.dateStr===dateStr);
-      if(existing){existing.maxKg=Math.max(existing.maxKg,maxKg);existing.vol+=vol;}
-      else map[ex.name].points.push({date:s.date,dateStr,maxKg,vol:Math.round(vol)});
+      if(existing){existing.maxKg=Math.max(existing.maxKg,val);existing.vol+=vol;}
+      else map[ex.name].points.push({date:s.date,dateStr,maxKg:val,vol:Math.round(vol)});
     });
   });
   // Only keep exercises with ≥2 data points (need at least 2 to draw a line)
@@ -2317,8 +2337,9 @@ function buildExerciseProgress(clientId){
 }
 
 // Draw inline SVG line chart for kg progression
-function drawExProgChart(container, points, color){
+function drawExProgChart(container, points, color, unit){
   if(!points.length)return;
+  unit=unit||'kg';
   const W=Math.max(container.offsetWidth||window.innerWidth-80||260,200);
   const H=72;const pad=8;const chartW=W-pad*2;const chartH=H-18;
   const vals=points.map(p=>p.maxKg);
@@ -2344,7 +2365,7 @@ function drawExProgChart(container, points, color){
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${points.length>12?2:3}" fill="${lineColor}"/>
       ${points.length<=8?`<text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" fill="#B0B0B0">${p.p.dateStr}</text>`:''}
     `).join('')}
-    ${pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-5).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="${lineColor}" font-weight="600">${p.p.maxKg}kg</text>`).join('')}
+    ${pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-5).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`).join('')}
   </svg>`;
 }
 
@@ -2353,17 +2374,18 @@ function renderExerciseProgressInto(con, clientId){
   if(!con)return;
   const exList=buildExerciseProgress(clientId);
   if(!exList.length){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones con peso registrado para ver tu progreso 💪</div>';
+    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tu progreso 💪</div>';
     return;
   }
   con.innerHTML='';
   exList.forEach((ex,idx)=>{
     const pts=ex.points;
+    const unit=ex.unit||'kg';
     const pr=Math.max(...pts.map(p=>p.maxKg));
     const first=pts[0].maxKg;const last=pts[pts.length-1].maxKg;
     const trend=last-first;
     const trendColor=trend>0?'var(--g)':trend<0?'var(--or)':'var(--t3)';
-    const trendStr=trend===0?'estable':(trend>0?`+${trend.toFixed(1)}kg`:`${trend.toFixed(1)}kg`);
+    const trendStr=trend===0?'estable':(trend>0?'+':'')+fmtMetric(trend,unit);
     const color=MC[ex.muscle]||'#2D6A4F';
     const cardId=`epc_${clientId}_${idx}`;
 
@@ -2374,7 +2396,7 @@ function renderExerciseProgressInto(con, clientId){
       <div class="exprog-header" onclick="document.getElementById('${cardId}').classList.toggle('open');
         if(document.getElementById('${cardId}').classList.contains('open')){
           const wrap=document.getElementById('${cardId}_chart');
-          if(wrap&&!wrap.dataset.drawn){wrap.dataset.drawn='1';drawExProgChart(wrap,${JSON.stringify(pts)},'${color}');}
+          if(wrap&&!wrap.dataset.drawn){wrap.dataset.drawn='1';drawExProgChart(wrap,${JSON.stringify(pts)},'${color}','${unit}');}
         }">
         <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${esc(ex.icon||'💪')}</div>
         <div style="flex:1;min-width:0">
@@ -2382,7 +2404,7 @@ function renderExerciseProgressInto(con, clientId){
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${pts.length} sesión${pts.length!==1?'es':''} · <span style="color:${trendColor};font-weight:600">${trendStr}</span></div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div class="exprog-pr">${pr}kg</div>
+          <div class="exprog-pr">${fmtMetric(pr,unit)}</div>
           <div style="font-size:10px;color:var(--t3)">récord</div>
         </div>
         <div class="exprog-chev">▼</div>
@@ -2391,9 +2413,9 @@ function renderExerciseProgressInto(con, clientId){
         <div class="exprog-sessions">${pts[0].dateStr} → ${pts[pts.length-1].dateStr}</div>
         <div id="${cardId}_chart" style="width:100%;min-height:72px"></div>
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--t2)">
-          <span>Inicio: <strong>${first}kg</strong></span>
-          <span>Actual: <strong style="color:${color}">${last}kg</strong></span>
-          <span>Récord: <strong style="color:var(--g)">${pr}kg</strong></span>
+          <span>Inicio: <strong>${fmtMetric(first,unit)}</strong></span>
+          <span>Actual: <strong style="color:${color}">${fmtMetric(last,unit)}</strong></span>
+          <span>Récord: <strong style="color:var(--g)">${fmtMetric(pr,unit)}</strong></span>
         </div>
       </div>`;
     con.appendChild(card);
@@ -2469,11 +2491,12 @@ function renderProgressPanel(){
     const body=card.querySelector(`#${bodyId}`);
     filtered.forEach((ex,idx)=>{
       const pts=ex.points;
+      const unit=ex.unit||'kg';
       const lastKg=pts[pts.length-1].maxKg;
       const firstKg=pts[0].maxKg;
       const trend=lastKg-firstKg;
       const trendColor=trend>0?'var(--g)':trend<0?'var(--rd)':'var(--t3)';
-      const trendStr=trend===0?'↔ estable':trend>0?`↑ +${trend.toFixed(1)}kg`:`↓ ${trend.toFixed(1)}kg`;
+      const trendStr=trend===0?'↔ estable':trend>0?`↑ +${fmtMetric(trend,unit)}`:`↓ ${fmtMetric(trend,unit)}`;
       const color=MC[ex.muscle]||'#2D6A4F';
       const chartId=`plch_${c.id}_${idx}`;
       const adjId=`plad_${c.id}_${idx}`;
@@ -2492,13 +2515,13 @@ function renderProgressPanel(){
           <div style="font-size:10px;color:var(--t2)">${pts.length} sesión${pts.length!==1?'es':''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-right:8px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${lastKg}kg</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(lastKg,unit)}</div>
           <div style="font-size:10px;font-weight:600;color:${trendColor}">${trendStr}</div>
         </div>
         ${matches.length?`<button class="btn bg bsm" style="padding:4px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();toggleAdjForm('${adjId}','${c.id}')">✏️ Ajustar</button>`:''}
         <span style="font-size:10px;color:var(--t3);flex-shrink:0;margin-left:2px">▾</span>
       </div>
-      <div class="pex-chart-wrap" id="${chartId}" data-color="${color}"></div>
+      <div class="pex-chart-wrap" id="${chartId}" data-color="${color}" data-unit="${unit}"></div>
       <div class="pex-adj-form" id="${adjId}"></div>`;
       const chartEl=wrap.querySelector(`#${chartId}`);
       if(chartEl)chartEl.dataset.pts=JSON.stringify(pts);
@@ -2507,7 +2530,7 @@ function renderProgressPanel(){
     con.appendChild(card);
   });
   if(!anyShown){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Sin datos de progreso todavía. Los asesorados deben completar sesiones con kg registrado.</div>';
+    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Sin datos de progreso todavía. Los asesorados deben completar sesiones registradas.</div>';
   }
 }
 
@@ -2516,7 +2539,7 @@ function togglePexRow(chartId){
   chart.classList.toggle('show');
   if(chart.classList.contains('show')&&!chart.dataset.drawn){
     chart.dataset.drawn='1';
-    drawExProgChart(chart,JSON.parse(chart.dataset.pts||'[]'),chart.dataset.color);
+    drawExProgChart(chart,JSON.parse(chart.dataset.pts||'[]'),chart.dataset.color,chart.dataset.unit);
   }
 }
 
@@ -3911,23 +3934,31 @@ function checkAndUpdatePRs(routine){
   const newPRs=[];
   (routine.exercises||[]).forEach((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
-    let bestKg=0;
+    const track=exTrack(ex);
+    // El récord se mide según la modalidad: kg (peso), reps (corporal),
+    // segundos (isométrico), minutos totales (cardio), rondas (HIIT).
+    let val=0,reps=0,unit='kg';
     for(let si=0;si<sets;si++){
-      if(isDone(routine.id,ei,si)){
-        const kg=parseFloat(getLog(routine.id,ei,si,'kg'))||0;
-        const reps=parseInt(getLog(routine.id,ei,si,'reps'))||parseInt(ex.reps)||0;
-        if(kg>bestKg)bestKg=kg;
-        // Only check exercises with actual weight (skip bodyweight)
-        if(kg>0){
-          const key=ex.id||ex.name;
-          const prev=DB.prs[clientId][key];
-          if(!prev||kg>prev.kg||(kg===prev.kg&&reps>prev.reps)){
-            const isNew=!prev;
-            DB.prs[clientId][key]={kg,reps,date:new Date().toISOString(),name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle};
-            newPRs.push({name:ex.name,kg,reps,icon:ex.icon||'💪',isNew,prev:prev?prev.kg:null});
-          }
-        }
-      }
+      if(!isDone(routine.id,ei,si))continue;
+      const kg=parseFloat(getLog(routine.id,ei,si,'kg'))||0;
+      const rp=parseInt(getLog(routine.id,ei,si,'reps'))||parseInt(ex.reps)||0;
+      const secs=parseInt(getLog(routine.id,ei,si,'secs'))||0;
+      const min=parseFloat(getLog(routine.id,ei,si,'min'))||0;
+      if(track==='peso_reps'){unit='kg';if(kg>val){val=kg;reps=rp;}}
+      else if(track==='reps'){unit='reps';if(rp>val){val=rp;reps=rp;}}
+      else if(track==='tiempo'){unit='s';if(secs>val)val=secs;}
+      else if(track==='cardio'){unit='min';val+=min;}
+      else if(track==='hiit'){unit='rondas';val+=1;}
+    }
+    if(val<=0)return;
+    const key=ex.id||ex.name;
+    const prev=DB.prs[clientId][key];
+    const prevVal=prev?(prev.val!=null?prev.val:prev.kg):null;
+    const better=!prev||val>prevVal||(unit==='kg'&&val===prevVal&&reps>(prev.reps||0));
+    if(better){
+      const isNew=!prev;
+      DB.prs[clientId][key]={val,unit,reps,kg:unit==='kg'?val:0,date:new Date().toISOString(),name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle};
+      newPRs.push({name:ex.name,val,unit,reps,icon:ex.icon||'💪',isNew,prev:prevVal});
     }
   });
   if(newPRs.length){sv('ax_pr',DB.prs);}
@@ -3937,14 +3968,17 @@ function checkAndUpdatePRs(routine){
 function showPRCelebration(prs){
   const container=document.getElementById('congrats-prs');
   if(!container||!prs.length)return;
-  container.innerHTML=prs.map(pr=>`
+  container.innerHTML=prs.map(pr=>{
+    const val=pr.val!=null?pr.val:pr.kg;const unit=pr.unit||'kg';
+    const detail=unit==='kg'?`${fmtMetric(val,unit)}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(val,unit);
+    return `
     <div style="background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px">
       <span style="font-size:18px">🏆</span>
       <div style="flex:1;text-align:left">
         <div style="font-size:12px;font-weight:800">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${pr.name}</div>
-        <div style="font-size:11px;opacity:.85">${pr.kg} kg × ${pr.reps} reps${pr.prev?` · antes: ${pr.prev} kg`:''}</div>
+        <div style="font-size:11px;opacity:.85">${detail}${pr.prev?` · antes: ${fmtMetric(pr.prev,unit)}`:''}</div>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 function calcStreak(clientId){
@@ -4032,8 +4066,8 @@ function renderPRsInProfile(clientId){
       <div class="pr-ex-date">${new Date(pr.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
     </div>
     <div style="text-align:right">
-      <div class="pr-ex-val">${pr.kg} kg</div>
-      <div style="font-size:10px;color:var(--t2)">${pr.reps} reps</div>
+      <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
+      <div style="font-size:10px;color:var(--t2)">${(pr.unit||'kg')==='kg'?`${pr.reps} reps`:'récord'}</div>
     </div>
   </div>`).join('');
 }
@@ -4115,8 +4149,32 @@ function exTrack(ex){
   if(t==='bodyweight')return 'reps';
   return 'peso_reps';
 }
+// Migración única: corrige el `type` de ejercicios por defecto mal clasificados
+// (peso corporal que pedía kg, HIIT que pedía kg). Solo actualiza si el ejercicio
+// aún tiene el type viejo → no pisa cambios del coach. Ver docs/modalidades.
+function migrateExTypes(){
+  if(localStorage.getItem('ax_track_migrated')==='1')return;
+  const fix={
+    e4:['Compuesto','Bodyweight'],e19:['Compuesto','Bodyweight'],e32:['Compuesto','Bodyweight'],
+    e47:['Compuesto','Bodyweight'],e18:['Aislamiento','Bodyweight'],e48:['Aislamiento','Bodyweight'],
+    e72:['Funcional','Bodyweight'],e73:['Aislamiento','Bodyweight'],e75:['Funcional','Bodyweight'],
+    e77:['Compuesto','Bodyweight'],e78:['Compuesto','Bodyweight'],e79:['Compuesto','Bodyweight'],
+    e80:['Compuesto','Bodyweight'],e81:['Funcional','Bodyweight'],e62:['Aislamiento','Bodyweight'],
+    e74:['Cardio','HIIT']
+  };
+  let n=0;
+  (DB.exercises||[]).forEach(ex=>{const f=fix[ex.id];if(f&&ex.type===f[0]){ex.type=f[1];n++;}});
+  if(n){sv('ax_e',DB.exercises);log(`APEX: ${n} ejercicios reclasificados (modalidades)`);}
+  localStorage.setItem('ax_track_migrated','1');
+}
 function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
 function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
+// Formatea un valor de progreso/PR con su unidad según la modalidad.
+function fmtMetric(v,unit){
+  const n=unit==='kg'?Math.round(v*10)/10:Math.round(v);
+  const u=unit==='kg'?' kg':unit==='reps'?' reps':unit==='s'?' s':unit==='min'?' min':unit==='rondas'?' rondas':' '+(unit||'');
+  return n+u;
+}
 function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}
 function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${ei}`,lastreOn(routine,ei)?'0':'1');}
 

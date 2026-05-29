@@ -1,7 +1,8 @@
 # Diseño: Modalidades de entrenamiento en APEX
 
-> Estado: **F1+F2 IMPLEMENTADAS** (2026-05-29, commit 0e0b48f). Pendiente F3
-> (gráficas de progreso por modalidad — los PRs siguen siendo solo de peso).
+> Estado: **F1+F2+F3 IMPLEMENTADAS** (2026-05-29). F1+F2 en commit 0e0b48f;
+> F3 (progreso y PRs por modalidad) + reclasificación de ejercicios por defecto
+> a continuación. Todas las modalidades generan progreso y récords.
 > Origen: Andrés detectó en el gym que la rutina de Cardio HIIT del asesorado
 > Andrés Martínez pedía **kilos** en vez de un cronómetro; lo mismo con
 > ejercicios de peso corporal (rueda abdominal, lagartijas) que pedían kg
