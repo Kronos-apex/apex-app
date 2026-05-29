@@ -1,6 +1,7 @@
 # Diseño: Modalidades de entrenamiento en APEX
 
-> Estado: **DISEÑO APROBADO** (2026-05-29) — pendiente de implementar.
+> Estado: **F1+F2 IMPLEMENTADAS** (2026-05-29, commit 0e0b48f). Pendiente F3
+> (gráficas de progreso por modalidad — los PRs siguen siendo solo de peso).
 > Origen: Andrés detectó en el gym que la rutina de Cardio HIIT del asesorado
 > Andrés Martínez pedía **kilos** en vez de un cronómetro; lo mismo con
 > ejercicios de peso corporal (rueda abdominal, lagartijas) que pedían kg
