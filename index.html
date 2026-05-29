@@ -1572,7 +1572,13 @@ function svNow(k,v){
   if(SB_KEYS.includes(k)){clearTimeout(_sbDebounce[k]);sbSet(k,v);}
 }
 
+// ⚠️ Solo escribir a la nube desde https/localhost — NUNCA desde file://.
+// Abrir el index.html local (file://) jamás debe poder tocar/pisar la nube.
+function canCloudWrite(){return location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';}
 async function sbSet(k,v){
+  if(!canCloudWrite()){warn('APEX: escritura a la nube bloqueada (no es https/localhost):',k);return;}
+  // Anti-borrado: nunca subir vacíos ax_c (asesorados) ni ax_e (biblioteca) — casi siempre es un bug, no intención.
+  if((k==='ax_c'||k==='ax_e')&&Array.isArray(v)&&v.length===0){warn('APEX: push vacío bloqueado para',k,'(anti-borrado masivo)');return;}
   const dot=document.getElementById('sync-dot');
   if(dot)dot.classList.add('on');
   try{
@@ -1591,8 +1597,7 @@ async function syncFromCloud(){
   const setP=(p,t)=>{if(fill)fill.style.width=p+'%';if(msg)msg.textContent=t;};
   setP(10,'Conectando con la nube...');
   // Solo intentar Supabase si hay conexión real (no file://)
-  const canSync=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  if(canSync){
+  if(canCloudWrite()){
     try{
       // Timeout de 8 segundos para no bloquear el arranque
       const controller=new AbortController();
@@ -1737,7 +1742,7 @@ const defaultExercises=[
   {id:'e68',name:'Peso Muerto Sumo',muscle:'otro',type:'Compuesto',sets:4,reps:6,icon:'🏋️',desc:'Pies muy abiertos, agarre entre las piernas. Mayor activación de aductores y glúteo.',descSimple:'Pies muy abiertos con las puntas apuntando hacia afuera. Agarra la barra entre las piernas. Espalda recta y pecho arriba. Empuja el suelo con los pies para levantarte. Las rodillas siguen la dirección de los pies.',muscleLabel:'Piernas, glúteos y espalda',ytQuery:'peso muerto sumo cómo hacerlo tutorial'},
   {id:'e69',name:'Clean & Press ⚠️ AVANZADO',muscle:'otro',type:'Funcional',sets:4,reps:6,icon:'⚡',desc:'Levantamiento olímpico básico. Potencia desde el suelo hasta sobre la cabeza. ⚠️ Requiere dominio técnico — no prescribir a principiantes sin supervisión directa.',descSimple:'Levanta la barra del suelo de manera explosiva hasta los hombros y luego empuja hacia arriba. Es un movimiento avanzado que requiere aprender la técnica antes de usar peso. Pide guía a tu coach antes de intentarlo. ⚠️ Solo para nivel intermedio-avanzado con supervisión.',muscleLabel:'Cuerpo completo',ytQuery:'clean and press levantamiento olímpico tutorial'},
   {id:'e75',name:'Burpees',muscle:'cardio',type:'Bodyweight',sets:3,reps:'8',icon:'🔥',desc:'De pie, lleva las manos al suelo, salta o camina los pies hacia atrás a posición de plancha, regresa los pies y salta vertical con palmas al cielo. Mantén la espalda neutra en la posición de plancha. Versión modificada para principiantes: reemplaza los saltos por pasos controlados.',descSimple:'Baja las manos al suelo, lleva los pies atrás (salta o da pasos si es tu primera vez), regresa los pies y salta arriba con los brazos al cielo. Descansa bien entre cada repetición — la calidad manda sobre la cantidad.',muscleLabel:'Cardio y cuerpo completo',ytQuery:'burpee modificado principiantes sin salto tutorial'},
-  {id:'e76',name:'Saltos de Tijera',muscle:'cardio',type:'Cardio',sets:3,reps:'20',icon:'⭐',desc:'De pie, salta abriendo piernas más allá del ancho de hombros mientras subes los brazos al cielo. Regresa al centro coordinando brazos y piernas. Mantén un ritmo constante y aterriza suave sobre el mediopie, no sobre los talones.',descSimple:'Salta abriendo las piernas y subiendo los brazos al mismo tiempo, luego salta juntándolos de nuevo. Ritmo constante y aterrizaje suave. Ideal para calentar o como cardio ligero.',muscleLabel:'Cardio y coordinación',ytQuery:'saltos de tijera jumping jacks tutorial principiantes'},
+  {id:'e76',name:'Saltos de Tijera',muscle:'cardio',type:'Bodyweight',sets:3,reps:'20',icon:'⭐',desc:'De pie, salta abriendo piernas más allá del ancho de hombros mientras subes los brazos al cielo. Regresa al centro coordinando brazos y piernas. Mantén un ritmo constante y aterriza suave sobre el mediopie, no sobre los talones.',descSimple:'Salta abriendo las piernas y subiendo los brazos al mismo tiempo, luego salta juntándolos de nuevo. Ritmo constante y aterrizaje suave. Ideal para calentar o como cardio ligero.',muscleLabel:'Cardio y coordinación',ytQuery:'saltos de tijera jumping jacks tutorial principiantes'},
   {id:'e77',name:'Flexiones en Pared',muscle:'pecho',type:'Bodyweight',sets:3,reps:'12',icon:'🧱',desc:'De pie a una distancia del brazo de la pared, manos a la altura del pecho. Dobla los codos a 45 grados del torso (no en T) acercando el pecho a la pared. Extiende empujando. Versión de menor carga del patrón de empuje horizontal, ideal para principiantes absolutos o rehabilitación.',descSimple:'Parado frente a la pared, apoya las manos a la altura del pecho. Dobla los codos acercándote a la pared y empuja de regreso. Cuerpo recto de cabeza a pies — no dejes caer la cadera.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en pared wall push up principiantes tutorial'},
   {id:'e78',name:'Flexiones en Rodillas',muscle:'pecho',type:'Bodyweight',sets:3,reps:'10',icon:'🙏',desc:'Manos ligeramente más anchas que los hombros, rodillas apoyadas. Cuerpo recto de rodillas a cabeza — NO dejes caer la cadera. Dobla los codos a 45 grados del torso bajando el pecho al suelo. Paso previo a las flexiones completas.',descSimple:'Apoya las rodillas y las manos en el suelo. Mantén el cuerpo recto desde las rodillas hasta la cabeza y baja el pecho hacia el suelo doblando los codos. Sube empujando. Si la cadera cae o sube, es la señal de parar.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones en rodillas knee push up técnica correcta'},
   {id:'e79',name:'Fondos en Banco',muscle:'triceps',type:'Bodyweight',sets:3,reps:'10',icon:'🪑',desc:'Manos en el borde del banco o silla firme, rodillas dobladas a 90 grados y pies en el suelo. Baja doblando los codos exactamente hasta 90 grados — no más profundo. Codos apuntan hacia atrás, no se abren al lado. ADVERTENCIA: versión con piernas extendidas aumenta significativamente el riesgo en el hombro anterior.',descSimple:'Siéntate en el borde de una silla firme, apoya las manos en el borde y desliza las nalgas hacia adelante. Dobla los codos bajando el cuerpo hasta 90 grados y sube empujando. Rodillas dobladas, pies en el suelo. Si sientes molestia en el hombro, detente.',muscleLabel:'Tríceps y pecho inferior',ytQuery:'fondos en banco silla triceps sin lesionar hombro tutorial'},
@@ -4153,19 +4158,25 @@ function exTrack(ex){
 // (peso corporal que pedía kg, HIIT que pedía kg). Solo actualiza si el ejercicio
 // aún tiene el type viejo → no pisa cambios del coach. Ver docs/modalidades.
 function migrateExTypes(){
-  if(localStorage.getItem('ax_track_migrated')==='1')return;
+  if(localStorage.getItem('ax_track_migrated')==='2')return;
   const fix={
     e4:['Compuesto','Bodyweight'],e19:['Compuesto','Bodyweight'],e32:['Compuesto','Bodyweight'],
     e47:['Compuesto','Bodyweight'],e18:['Aislamiento','Bodyweight'],e48:['Aislamiento','Bodyweight'],
     e72:['Funcional','Bodyweight'],e73:['Aislamiento','Bodyweight'],e75:['Funcional','Bodyweight'],
     e77:['Compuesto','Bodyweight'],e78:['Compuesto','Bodyweight'],e79:['Compuesto','Bodyweight'],
     e80:['Compuesto','Bodyweight'],e81:['Funcional','Bodyweight'],e62:['Aislamiento','Bodyweight'],
-    e74:['Cardio','HIIT']
+    e76:['Cardio','Bodyweight'],e74:['Cardio','HIIT']
   };
+  // Los ejercicios se copian dentro de rutinas y plantillas (no son referencias),
+  // así que hay que reclasificarlos en TODAS partes. Solo si aún tienen el type
+  // viejo → no pisa cambios manuales del coach.
   let n=0;
-  (DB.exercises||[]).forEach(ex=>{const f=fix[ex.id];if(f&&ex.type===f[0]){ex.type=f[1];n++;}});
-  if(n){sv('ax_e',DB.exercises);log(`APEX: ${n} ejercicios reclasificados (modalidades)`);}
-  localStorage.setItem('ax_track_migrated','1');
+  const apply=arr=>(arr||[]).forEach(ex=>{const f=fix[ex.id];if(f&&ex.type===f[0]){ex.type=f[1];n++;}});
+  apply(DB.exercises);
+  (DB.clients||[]).forEach(c=>(c.routines||[]).forEach(r=>apply(r.exercises)));
+  (DB.templates||[]).forEach(t=>apply(t.exercises));
+  if(n){sv('ax_e',DB.exercises);sv('ax_c',DB.clients);if(DB.templates)sv('ax_tpl',DB.templates);log(`APEX: ${n} ejercicios reclasificados (modalidades)`);}
+  localStorage.setItem('ax_track_migrated','2');
 }
 function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
 function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
