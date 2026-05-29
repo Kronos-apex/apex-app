@@ -1144,9 +1144,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="fg"><label class="ilbl">Nombre *</label><input type="text" class="inp" id="ex-n" placeholder="Ej: Press de Banca con Barra"></div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Músculo</label><select class="sel" id="ex-m"><option value="pecho">Pecho</option><option value="espalda">Espalda</option><option value="hombros">Hombros</option><option value="biceps">Bíceps</option><option value="triceps">Tríceps</option><option value="piernas">Piernas</option><option value="gluteo">Glúteo</option><option value="core">Core</option><option value="cardio">Cardio</option><option value="otro">Otro</option></select></div>
-      <div class="fg"><label class="ilbl">Tipo</label><select class="sel" id="ex-t"><option>Compuesto</option><option>Aislamiento</option><option>Cardio</option><option>Bodyweight</option><option>Isométrico</option><option>Funcional</option></select></div>
+      <div class="fg"><label class="ilbl">Tipo</label><select class="sel" id="ex-t" onchange="exFormSync()"><option>Compuesto</option><option>Aislamiento</option><option>Cardio</option><option>HIIT</option><option>Bodyweight</option><option>Isométrico</option><option>Funcional</option></select></div>
     </div>
-    <div class="frow"><div class="fg"><label class="ilbl">Series por defecto</label><input type="number" class="inp" id="ex-s" type="number" placeholder="3" min="1"></div><div class="fg"><label class="ilbl">Reps por defecto</label><input type="number" class="inp" id="ex-r" type="number" placeholder="12" min="1"></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl">Series por defecto</label><input type="number" class="inp" id="ex-s" type="number" placeholder="3" min="1"></div><div class="fg"><label class="ilbl" id="ex-r-lbl">Reps por defecto</label><input type="number" class="inp" id="ex-r" type="number" placeholder="12" min="1"></div></div>
+    <div class="frow" id="ex-hiit-row" style="display:none"><div class="fg"><label class="ilbl">HIIT: trabajo (seg)</label><input type="number" class="inp" id="ex-hiit-work" placeholder="30" min="1"></div><div class="fg"><label class="ilbl">HIIT: descanso (seg)</label><input type="number" class="inp" id="ex-hiit-rest" placeholder="15" min="1"></div></div>
+    <div class="frow" id="ex-hold-row" style="display:none"><div class="fg"><label class="ilbl">Isométrico: segundos por serie</label><input type="number" class="inp" id="ex-hold-secs" placeholder="60" min="1"></div></div>
     <div class="frow"><div class="fg"><label class="ilbl">Emoji / icono</label><input type="text" class="inp" id="ex-i" placeholder="🏋️" maxlength="2"></div><div class="fg"><label class="ilbl">Descripción técnica</label><input type="text" class="inp" id="ex-d" placeholder="Breve descripción de la ejecución..."></div></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-ex')">Cancelar</button><button class="btn bp" onclick="saveEx()">Guardar</button></div>
   </div>
@@ -3755,17 +3757,23 @@ function renderExercises(){
   });
   if(!filtered.length)grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="eico">🏋️</div><div class="etxt">Sin ejercicios aquí</div><div class="esub">Añade uno con el botón de arriba</div></div>';
 }
-function openAddEx(){CUR.editExId=null;document.getElementById('m-ex-title').textContent='Nuevo ejercicio';['ex-n','ex-d','ex-i'].forEach(id=>document.getElementById(id).value='');document.getElementById('ex-s').value='3';document.getElementById('ex-r').value='12';document.getElementById('ex-m').value='pecho';document.getElementById('ex-t').value='Compuesto';om('m-ex')}
+function openAddEx(){CUR.editExId=null;document.getElementById('m-ex-title').textContent='Nuevo ejercicio';['ex-n','ex-d','ex-i'].forEach(id=>document.getElementById(id).value='');document.getElementById('ex-s').value='3';document.getElementById('ex-r').value='12';document.getElementById('ex-m').value='pecho';document.getElementById('ex-t').value='Compuesto';['ex-hiit-work','ex-hiit-rest','ex-hold-secs'].forEach(id=>document.getElementById(id).value='');exFormSync();om('m-ex')}
 function openEditEx(id){
   const ex=DB.exercises.find(e=>e.id===id);if(!ex)return;CUR.editExId=id;
   document.getElementById('m-ex-title').textContent='Editar ejercicio';
   document.getElementById('ex-n').value=ex.name;document.getElementById('ex-m').value=ex.muscle;document.getElementById('ex-t').value=ex.type;
-  document.getElementById('ex-s').value=ex.sets;document.getElementById('ex-r').value=ex.reps;document.getElementById('ex-i').value=ex.icon||'';document.getElementById('ex-d').value=ex.desc||'';om('m-ex');
+  document.getElementById('ex-s').value=ex.sets;document.getElementById('ex-r').value=ex.reps;document.getElementById('ex-i').value=ex.icon||'';document.getElementById('ex-d').value=ex.desc||'';
+  document.getElementById('ex-hiit-work').value=(ex.hiit&&ex.hiit.work)||'';document.getElementById('ex-hiit-rest').value=(ex.hiit&&ex.hiit.rest)||'';document.getElementById('ex-hold-secs').value=ex.holdSecs||'';
+  exFormSync();om('m-ex');
 }
 function saveEx(){
   const name=document.getElementById('ex-n').value.trim();if(!name){toast('⚠️ El nombre es obligatorio');return}
   const muscle=document.getElementById('ex-m').value;
-  const data={name,muscle,type:document.getElementById('ex-t').value,sets:parseInt(document.getElementById('ex-s').value)||3,reps:parseInt(document.getElementById('ex-r').value)||12,icon:document.getElementById('ex-i').value.trim()||ME[muscle]||'💪',desc:document.getElementById('ex-d').value.trim()};
+  const type=document.getElementById('ex-t').value;
+  const data={name,muscle,type,sets:parseInt(document.getElementById('ex-s').value)||3,reps:parseInt(document.getElementById('ex-r').value)||12,icon:document.getElementById('ex-i').value.trim()||ME[muscle]||'💪',desc:document.getElementById('ex-d').value.trim()};
+  // Config por modalidad
+  data.hiit=type==='HIIT'?{work:parseInt(document.getElementById('ex-hiit-work').value)||30,rest:parseInt(document.getElementById('ex-hiit-rest').value)||15}:null;
+  data.holdSecs=type==='Isométrico'?(parseInt(document.getElementById('ex-hold-secs').value)||60):null;
   if(CUR.editExId){const i=DB.exercises.findIndex(e=>e.id===CUR.editExId);if(i!==-1)DB.exercises[i]={...DB.exercises[i],...data};toast(`✅ "${name}" actualizado`)}
   else{DB.exercises.push({id:uid(),...data});toast(`✅ "${name}" añadido`)}
   sv('ax_e',DB.exercises);cm('m-ex');renderExercises();renderHome();
@@ -4094,6 +4102,148 @@ function getDoneKey(routineId,ei,si){return `done_${routineId}_${ei}_${si}`}
 function isDone(routineId,ei,si){return localStorage.getItem(getDoneKey(routineId,ei,si))==='1'}
 function setDone(routineId,ei,si,val){localStorage.setItem(getDoneKey(routineId,ei,si),val?'1':'0')}
 
+// ══════════════════════ MODALIDADES DE ENTRENAMIENTO ══════════════════════
+// La modalidad ('track') decide qué se mide y qué UI se pinta. Se deriva del
+// campo `type` que ya existe (con override opcional ex.track).
+// Ver docs/modalidades-entrenamiento.md
+function exTrack(ex){
+  if(ex.track)return ex.track;
+  const t=(ex.type||'').toLowerCase();
+  if(t.includes('hiit'))return 'hiit';
+  if(t==='cardio')return 'cardio';
+  if(t.includes('isom'))return 'tiempo';
+  if(t==='bodyweight')return 'reps';
+  return 'peso_reps';
+}
+function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
+function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
+function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}
+function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${ei}`,lastreOn(routine,ei)?'0':'1');}
+
+function exMetaText(ex,sets,track){
+  if(track==='hiit'){const c=hiitCfg(ex);return `${sets} rondas · ${c.work}s/${c.rest}s`;}
+  if(track==='tiempo')return `${sets} series × ${holdSecsOf(ex)}s`;
+  if(track==='cardio')return `${ex.reps} min`;
+  return `${sets} series × ${ex.reps} reps`;
+}
+
+function setLogHeadHTML(track,lastre){
+  if(track==='reps'&&!lastre)return `<div class="slh">SET</div><div class="slh" style="grid-column:2/4">REPS</div><div></div>`;
+  if(track==='reps')return `<div class="slh">SET</div><div class="slh">LASTRE</div><div class="slh">REPS</div><div></div>`;
+  if(track==='tiempo')return `<div class="slh">SET</div><div class="slh">SEG</div><div class="slh">⏱</div><div></div>`;
+  if(track==='cardio')return `<div class="slh">SET</div><div class="slh">MIN</div><div class="slh">KM</div><div></div>`;
+  return `<div class="slh">SET</div><div class="slh">KG</div><div class="slh">REPS</div><div></div>`;
+}
+
+function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
+  const ro=done?'readonly':'';
+  const g=f=>getLog(routine.id,ei,si,f);
+  const inp=(f,attrs,ph,val,span)=>`<input class="sinput" data-field="${f}" ${span?'style="grid-column:2/4"':''} ${attrs} placeholder="${ph}" value="${val}" ${ro} oninput="setLog('${routine.id}',${ei},${si},'${f}',this.value)">`;
+  if(track==='reps'){
+    if(lastre)return inp('kg','type="number" step="0.5" min="0"','lastre',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
+    return inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,true);
+  }
+  if(track==='tiempo')
+    return inp('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),false)+
+      `<button type="button" class="timer-go" style="padding:7px;border:1.5px solid var(--g2);border-radius:6px;background:transparent;color:var(--g2);cursor:pointer;font-size:14px">▶</button>`;
+  if(track==='cardio')
+    return inp('min','type="number" min="0"','min',g('min')||ex.reps,false)+inp('dist','type="number" min="0" step="0.1"','km',g('dist'),false);
+  return inp('kg','type="number" step="0.5" min="0"',ex.defaultKg||'kg',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
+}
+
+function setDoneToast(track,ex,si,inputs){
+  const v=f=>{const i=[...inputs].find(x=>x.dataset.field===f);return i?i.value:'';};
+  if(track==='peso_reps'||(track==='reps'&&v('kg'))){const vol=parseFloat(v('kg')||0)*parseFloat(v('reps')||0);return vol>0?`✅ Serie ${si+1} — ${v('kg')}kg × ${v('reps')} = ${Math.round(vol)}kg`:`✅ Serie ${si+1} completada`;}
+  if(track==='reps')return `✅ Serie ${si+1} — ${v('reps')} reps`;
+  if(track==='tiempo')return `✅ Serie ${si+1} — ${v('secs')}s`;
+  if(track==='cardio')return `✅ ${v('min')} min${v('dist')?` · ${v('dist')} km`:''}`;
+  return `✅ Serie ${si+1} completada`;
+}
+
+// ── Wake Lock: mantener pantalla encendida durante timers ──
+let apexWakeLock=null;
+async function reqWake(){try{if('wakeLock'in navigator)apexWakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+function relWake(){try{if(apexWakeLock){apexWakeLock.release();apexWakeLock=null;}}catch(e){}}
+
+// ── Timer de intervalos HIIT ──
+let HIIT={int:null};
+function buildHiitCard(body,routine,ex,ei,sets){
+  const cfg=hiitCfg(ex);
+  const done=Array.from({length:sets},(_,si)=>isDone(routine.id,ei,si)).filter(Boolean).length;
+  const card=document.createElement('div');
+  card.style.cssText='padding:16px;text-align:center';
+  card.innerHTML=`
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace">${cfg.work}s 🔥 · ${cfg.rest}s 😮‍💨 · ${sets} rondas</div>
+    <div id="hiit-display_${ei}" style="font-size:46px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1">${done>=sets?'✓':cfg.work}</div>
+    <div id="hiit-phase_${ei}" style="font-size:14px;font-weight:700;margin:4px 0;color:var(--t3)">${done>=sets?'¡Completado!':'Listo para empezar'}</div>
+    <div id="hiit-rounds_${ei}" style="font-size:12px;color:var(--t2);margin-bottom:12px">Ronda ${Math.min(done+1,sets)} de ${sets}</div>
+    <button class="btn bp" id="hiit-start_${ei}" style="width:100%">${done>=sets?'▶ Reiniciar':'▶ Iniciar HIIT'}</button>`;
+  body.appendChild(card);
+  card.querySelector(`#hiit-start_${ei}`).onclick=()=>startHiit(routine,ei,sets,cfg.work,cfg.rest);
+}
+function stopHiit(reset){
+  if(HIIT.int){clearInterval(HIIT.int);HIIT.int=null;}
+  relWake();
+  if(reset&&CUR.activeRoutine)renderClientExList(CUR.activeRoutine);
+}
+function startHiit(routine,ei,rounds,work,rest){
+  stopHiit();
+  for(let s=0;s<rounds;s++)setDone(routine.id,ei,s,false);
+  reqWake();
+  const disp=document.getElementById(`hiit-display_${ei}`);
+  const phaseEl=document.getElementById(`hiit-phase_${ei}`);
+  const roundsEl=document.getElementById(`hiit-rounds_${ei}`);
+  const startBtn=document.getElementById(`hiit-start_${ei}`);
+  if(!disp)return;
+  if(startBtn){startBtn.textContent='⏹ Detener';startBtn.onclick=()=>stopHiit(true);}
+  let round=0,phase='work',left=work;
+  const paint=()=>{
+    disp.textContent=String(left).padStart(2,'0');
+    phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
+    phaseEl.style.color=phase==='work'?'var(--rd)':'var(--g2)';
+    roundsEl.textContent=`Ronda ${Math.min(round+1,rounds)} de ${rounds}`;
+  };
+  paint();playRestTick();
+  updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
+  HIIT={int:setInterval(()=>{
+    left--;
+    if(left>0&&left<=3)playRestTick();
+    if(left<=0){
+      if(phase==='work'){
+        setDone(routine.id,ei,round,true);round++;
+        updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
+        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}return;}
+        phase='rest';left=rest;playRestEndBeep();
+      } else {phase='work';left=work;playRestEndBeep();}
+    }
+    paint();
+  },1000)};
+}
+
+// ── Cronómetro de cuenta regresiva para isométricos (reusa el rest-banner) ──
+function startHoldTimer(secs,ei,si,routine){
+  if(!secs||secs<1)return;
+  if(restInt)clearInterval(restInt);
+  reqWake();
+  const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');const title=banner.querySelector('.resttitle');
+  banner.classList.remove('hide');if(title)title.textContent='⏱ Aguanta';sub.textContent=`Serie ${si+1}`;
+  let left=secs;num.textContent=left;
+  restInt=setInterval(()=>{
+    left--;num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
+    if(left>0&&left<=3)playRestTick();
+    if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');relWake();playRestEndBeep();if(title)title.textContent='⏱ Descansando';const chk=document.getElementById(`chk_${ei}_${si}`);if(chk&&!chk.classList.contains('sdone'))chk.click();}
+  },1000);
+}
+
+// ── Sincroniza campos de config del formulario de ejercicio según el tipo ──
+function exFormSync(){
+  const t=document.getElementById('ex-t').value;
+  const hiitRow=document.getElementById('ex-hiit-row');
+  const holdRow=document.getElementById('ex-hold-row');
+  if(hiitRow)hiitRow.style.display=t==='HIIT'?'':'none';
+  if(holdRow)holdRow.style.display=t==='Isométrico'?'':'none';
+}
+
 function resetSession(){
   const routine=CUR.activeRoutine;if(!routine)return;
   if(!confirm('¿Reiniciar el entrenamiento de hoy? Se borrarán las series completadas pero se conservarán los pesos.'))return;
@@ -4130,6 +4280,7 @@ function renderClientExList(routine){
     const color=MC[ex.muscle]||'#ccc';
     const doneCount=Array.from({length:sets},(_,si)=>isDone(routine.id,ei,si)).filter(Boolean).length;
     const allDone=doneCount===sets;
+    const track=exTrack(ex);
 
     // Block wrapper
     const block=document.createElement('div');
@@ -4147,7 +4298,7 @@ function renderClientExList(routine){
           <div class="cex-block-name">${esc(ex.name)}</div>
           <button class="exinfo-btn" title="Ver cómo hacerlo" onclick="event.stopPropagation();openExDetail('${ex.id}')">❓</button>
         </div>
-        <div class="cex-block-meta">${esc(muscleLabel)} · ${sets} series × ${ex.reps} reps</div>
+        <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}</div>
       </div>
       <div class="cex-block-prog ${allDone?'done':''}">${doneCount}/${sets}</div>
       <div class="cex-block-chev">▼</div>`;
@@ -4158,73 +4309,73 @@ function renderClientExList(routine){
     const body=document.createElement('div');
     body.className='cex-block-body';
 
-    // Column headers
+    if(track==='hiit'){
+      buildHiitCard(body,routine,ex,ei,sets);
+    } else {
+    const lastre=track==='reps'&&lastreOn(routine,ei);
+
+    // Toggle "+lastre" para peso corporal
+    if(track==='reps'){
+      const tg=document.createElement('div');
+      tg.style.cssText='padding:6px 14px 0;text-align:right';
+      tg.innerHTML=`<button type="button" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1.5px solid var(--br2);background:${lastre?'var(--gl)':'transparent'};color:${lastre?'var(--gt)':'var(--t3)'};cursor:pointer">${lastre?'✓ ':'+ '}Lastre (peso añadido)</button>`;
+      tg.querySelector('button').onclick=()=>{toggleLastre(routine,ei);renderClientExList(routine);};
+      body.appendChild(tg);
+    }
+
+    // Column headers según modalidad
     const head=document.createElement('div');
     head.className='set-log-head';
-    head.innerHTML=`<div class="slh">SET</div><div class="slh">KG</div><div class="slh">REPS</div><div></div>`;
+    head.innerHTML=setLogHeadHTML(track,lastre);
     body.appendChild(head);
 
     // Each set row
     for(let si=0;si<sets;si++){
       const done=isDone(routine.id,ei,si);
-      const savedKg=getLog(routine.id,ei,si,'kg');
-      const savedReps=getLog(routine.id,ei,si,'reps')||ex.reps;
 
       const row=document.createElement('div');
       row.className=`set-log-row${done?' sdone':''}`;
       row.id=`setrow_${ei}_${si}`;
 
-      row.innerHTML=`
-        <div class="set-num ${done?'sdone':''}">${si+1}</div>
-        <input class="sinput" type="number" step="0.5" min="0"
-          placeholder="${ex.defaultKg||'kg'}"
-          value="${savedKg}"
-          ${done?'readonly':''}
-          oninput="setLog('${routine.id}',${ei},${si},'kg',this.value)">
-        <input class="sinput" type="number" min="1"
-          placeholder="${ex.reps}"
-          value="${savedReps}"
-          ${done?'readonly':''}
-          oninput="setLog('${routine.id}',${ei},${si},'reps',this.value)">
-        <div class="scheck ${done?'sdone':''}" id="chk_${ei}_${si}">✓</div>`;
+      row.innerHTML=`<div class="set-num ${done?'sdone':''}">${si+1}</div>`+
+        setLogInputsHTML(track,routine,ex,ei,si,done,lastre)+
+        `<div class="scheck ${done?'sdone':''}" id="chk_${ei}_${si}">✓</div>`;
 
-      // Wire up the checkmark
+      // ▶ countdown para isométricos
+      if(track==='tiempo'){
+        const go=row.querySelector('.timer-go');
+        if(go)go.onclick=(e)=>{e.stopPropagation();const inp=row.querySelector('.sinput[data-field="secs"]');startHoldTimer(parseInt(inp.value)||0,ei,si,routine);};
+      }
+
+      // Wire up the checkmark (genérico por campos)
       const chk=row.querySelector('.scheck');
       chk.onclick=(e)=>{
         e.stopPropagation();
         const wasDone=chk.classList.contains('sdone');
-        // Grab current input values before toggling readonly
-        const kgInput=row.querySelector('input[type=number]:first-of-type');
-        const repInput=row.querySelector('input[type=number]:last-of-type');
-        const kg=kgInput.value;
-        const reps=repInput.value||ex.reps;
+        const inputs=row.querySelectorAll('.sinput[data-field]');
         if(!wasDone){
-          // Save values
-          setLog(routine.id,ei,si,'kg',kg);
-          setLog(routine.id,ei,si,'reps',reps);
+          inputs.forEach(inp=>setLog(routine.id,ei,si,inp.dataset.field,inp.value));
           setDone(routine.id,ei,si,true);
           if(navigator.vibrate)navigator.vibrate(40);
           row.classList.add('sdone');
           chk.classList.add('sdone');
           row.querySelector('.set-num').classList.add('sdone');
-          kgInput.readOnly=true;repInput.readOnly=true;
-          // vol feedback
-          const vol=parseFloat(kg||0)*parseFloat(reps||0);
-          if(vol>0)toast(`✅ Serie ${si+1} — ${kg}kg × ${reps} = ${Math.round(vol)}kg`);
-          else toast(`✅ Serie ${si+1} completada`);
-          if(routine.restSec)startClientRest(routine.restSec,ex.name);
+          inputs.forEach(inp=>inp.readOnly=true);
+          toast(setDoneToast(track,ex,si,inputs));
+          if(routine.restSec&&track!=='tiempo')startClientRest(routine.restSec,ex.name);
         } else {
           setDone(routine.id,ei,si,false);
           row.classList.remove('sdone');
           chk.classList.remove('sdone');
           row.querySelector('.set-num').classList.remove('sdone');
-          kgInput.readOnly=false;repInput.readOnly=false;
+          inputs.forEach(inp=>inp.readOnly=false);
         }
         updateBlockHeader(routine,ei,sets);
         updateClientProgress(routine);
       };
 
       body.appendChild(row);
+    }
     }
 
     // Volume summary if any sets done
@@ -4253,16 +4404,26 @@ function updateBlockHeader(routine,ei,sets){
 function updateVolSummary(routine,ei,sets,ex,el){
   if(!el)el=document.getElementById(`volsum_${ei}`);
   if(!el)return;
-  let totalVol=0,doneSets=0;
+  const track=exTrack(ex);
+  let totalVol=0,doneSets=0,totReps=0,totSecs=0,totMin=0;
   for(let si=0;si<sets;si++){
     if(isDone(routine.id,ei,si)){
       doneSets++;
-      const kg=parseFloat(getLog(routine.id,ei,si,'kg'))||0;
-      const reps=parseFloat(getLog(routine.id,ei,si,'reps'))||0;
-      totalVol+=kg*reps;
+      totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);
+      totReps+=parseInt(getLog(routine.id,ei,si,'reps'))||0;
+      totSecs+=parseInt(getLog(routine.id,ei,si,'secs'))||0;
+      totMin+=parseFloat(getLog(routine.id,ei,si,'min'))||0;
     }
   }
-  el.textContent=doneSets>0?`Volumen: ${Math.round(totalVol).toLocaleString()} kg (${doneSets} serie${doneSets!==1?'s':''} completada${doneSets!==1?'s':''})`:'' ;
+  if(!doneSets){el.textContent='';return;}
+  let txt;
+  if(track==='peso_reps'||(track==='reps'&&totalVol>0))txt=`Volumen: ${Math.round(totalVol).toLocaleString()} kg`;
+  else if(track==='reps')txt=`Total: ${totReps} reps`;
+  else if(track==='tiempo')txt=`Tiempo: ${totSecs}s`;
+  else if(track==='cardio')txt=`Cardio: ${totMin} min`;
+  else if(track==='hiit')txt=`${doneSets} ronda${doneSets!==1?'s':''}`;
+  else txt=`${doneSets} completada${doneSets!==1?'s':''}`;
+  el.textContent=`${txt} · ${doneSets}/${sets}`;
 }
 
 function updateClientProgress(routine){
@@ -4311,7 +4472,7 @@ function saveSessionToHistory(routine,totalVol,doneSets){
     // Build set data snapshot
     const setsData=(routine.exercises||[]).map((ex,ei)=>{
       const sets=parseInt(ex.sets)||3;
-      return {name:ex.name,muscle:ex.muscle,icon:ex.icon,sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,done:isDone(routine.id,ei,si)}))};
+      return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si)}))};
     });
     DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets:(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0),exercises:setsData});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
