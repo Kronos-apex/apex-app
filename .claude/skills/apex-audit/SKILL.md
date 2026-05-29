@@ -29,19 +29,27 @@ c = open('index.html', encoding='utf-8').read()
 js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 html = c[:c.find('<script>')]
 
+# apex-core.js — lógica de negocio pura cargada vía <script src>. Es código
+# ejecutable, así que el audit la cubre igual que el JS inline.
+core_js = open('apex-core.js', encoding='utf-8').read() if os.path.exists('apex-core.js') else ''
+
 print("APEX - AUDITORIA AUTOMATICA\n")
 
-# ━━━ CHECK 1: Sintaxis JS (archivo completo, no truncado) ━━━
+# ━━━ CHECK 1: Sintaxis JS (inline + apex-core.js, sin truncar) ━━━
 tmp = os.path.join(tempfile.gettempdir(), 'apex_audit.js')
 with open(tmp, 'w', encoding='utf-8') as f: f.write(js)
-r = subprocess.run(['node','--check', tmp], capture_output=True, text=True)
-syntax_ok = r.returncode == 0
-print(f"  {'OK' if syntax_ok else 'ERR'} 1. Sintaxis JS ({len(js)//1000}K chars auditados)")
-if not syntax_ok:
-    print(f"     Error: {r.stderr.strip()[:300]}")
+syntax_ok = True
+checks = [('inline', tmp)] + ([('apex-core.js', 'apex-core.js')] if core_js else [])
+for label, path in checks:
+    r = subprocess.run(['node','--check', path], capture_output=True, text=True)
+    if r.returncode != 0:
+        syntax_ok = False
+        print(f"  ERR 1. Sintaxis JS ({label}): {r.stderr.strip()[:200]}")
+print(f"  {'OK' if syntax_ok else 'ERR'} 1. Sintaxis JS ({len(js)//1000}K inline + {len(core_js)//1000}K core auditados)")
 
-# ━━━ CHECK 2: Funciones duplicadas (JS completo) ━━━
-fns = re.findall(r'function (\w+)\(', js)
+# ━━━ CHECK 2: Funciones duplicadas (inline + apex-core.js) ━━━
+# Detecta duplicados dentro de un archivo Y entre archivos.
+fns = re.findall(r'function (\w+)\(', js) + re.findall(r'function (\w+)\(', core_js)
 dupes = {k:v for k,v in Counter(fns).items() if v>1}
 print(f"  {'OK' if not dupes else 'ERR'} 2. Funciones duplicadas: {len(dupes)}")
 if dupes:

@@ -38,19 +38,33 @@ script_end   = src.find('</script>', script_start)
 js  = src[script_start + 8 : script_end] if script_start != -1 else ''
 html = src[:script_start] if script_start != -1 else src
 
+# apex-core.js — lógica de negocio pura cargada vía <script src>. Forma parte
+# del código ejecutable, así que el audit la cubre igual que el JS inline.
+CORE = os.path.join(ROOT, 'apex-core.js')
+core_js = ''
+if os.path.exists(CORE):
+    with open(CORE, encoding='utf-8') as f:
+        core_js = f.read()
+
 # ── 1. SINTAXIS JS ──────────────────────────────────────────────────────────
 print(f'\n{BOLD}[1] Sintaxis JS{RESET}')
 tmp_js = os.path.join(ROOT, '.git', '_apex_audit.js')
+# (etiqueta, path_a_chequear, archivo_temporal_a_borrar)
+targets = [('inline', tmp_js, tmp_js)]
+if core_js:
+    targets.append(('apex-core.js', CORE, None))
 try:
     with open(tmp_js, 'w', encoding='utf-8') as f:
         f.write(js)
-    result = subprocess.run(['node', '--check', tmp_js],
-                            capture_output=True, text=True)
-    if result.returncode == 0:
-        ok('node --check pasó')
-    else:
-        err_line = result.stderr.strip().split('\n')[0] if result.stderr else 'error desconocido'
-        fail(f'Sintaxis JS inválida: {err_line}')
+    syntax_fail = False
+    for label, path, _ in targets:
+        result = subprocess.run(['node', '--check', path], capture_output=True, text=True)
+        if result.returncode == 0:
+            ok(f'node --check pasó ({label})')
+        else:
+            err_line = result.stderr.strip().split('\n')[0] if result.stderr else 'error desconocido'
+            fail(f'Sintaxis JS inválida ({label}): {err_line}')
+            syntax_fail = True
 except FileNotFoundError:
     warn('node no encontrado — check de sintaxis saltado')
 finally:
@@ -59,12 +73,14 @@ finally:
 
 # ── 2. FUNCIONES DUPLICADAS ──────────────────────────────────────────────────
 print(f'\n{BOLD}[2] Funciones duplicadas{RESET}')
-fns = re.findall(r'function (\w+)\s*\(', js)
+# Combina inline + apex-core.js: detecta duplicados dentro de un archivo Y
+# entre archivos (p.ej. una función definida en ambos).
+fns = re.findall(r'function (\w+)\s*\(', js) + re.findall(r'function (\w+)\s*\(', core_js)
 dupes = {k: v for k, v in Counter(fns).items() if v > 1}
 if dupes:
     fail(f'Funciones duplicadas: {list(dupes.keys())}')
 else:
-    ok(f'{len(fns)} funciones — sin duplicados')
+    ok(f'{len(fns)} funciones (inline + apex-core.js) — sin duplicados')
 
 # ── 3. IDs JS SIN MATCH EN HTML ─────────────────────────────────────────────
 print(f'\n{BOLD}[3] IDs JS sin HTML{RESET}')
