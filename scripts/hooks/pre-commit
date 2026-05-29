@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+# APEX pre-commit hook — aborta el commit si la auditoría falla.
+# Para saltarlo intencionalmente: git commit --no-verify (solo emergencias)
+
+import re, subprocess, sys, os, io
+from collections import Counter
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+INDEX = os.path.join(ROOT, 'index.html')
+
+RED   = '\033[91m'
+GREEN = '\033[92m'
+YELLOW= '\033[93m'
+RESET = '\033[0m'
+BOLD  = '\033[1m'
+
+errors = []
+warnings = []
+
+def ok(msg):    print(f'  {GREEN}✅{RESET} {msg}')
+def fail(msg):  errors.append(msg);  print(f'  {RED}❌{RESET} {msg}')
+def warn(msg):  warnings.append(msg);print(f'  {YELLOW}⚠️ {RESET} {msg}')
+
+print(f'\n{BOLD}━━━ APEX pre-commit audit ━━━{RESET}')
+
+if not os.path.exists(INDEX):
+    print(f'{YELLOW}⚠️  index.html no encontrado — audit saltado{RESET}\n')
+    sys.exit(0)
+
+with open(INDEX, encoding='utf-8') as f:
+    src = f.read()
+
+script_start = src.find('<script>')
+script_end   = src.find('</script>', script_start)
+js  = src[script_start + 8 : script_end] if script_start != -1 else ''
+html = src[:script_start] if script_start != -1 else src
+
+# ── 1. SINTAXIS JS ──────────────────────────────────────────────────────────
+print(f'\n{BOLD}[1] Sintaxis JS{RESET}')
+tmp_js = os.path.join(ROOT, '.git', '_apex_audit.js')
+try:
+    with open(tmp_js, 'w', encoding='utf-8') as f:
+        f.write(js)
+    result = subprocess.run(['node', '--check', tmp_js],
+                            capture_output=True, text=True)
+    if result.returncode == 0:
+        ok('node --check pasó')
+    else:
+        err_line = result.stderr.strip().split('\n')[0] if result.stderr else 'error desconocido'
+        fail(f'Sintaxis JS inválida: {err_line}')
+except FileNotFoundError:
+    warn('node no encontrado — check de sintaxis saltado')
+finally:
+    if os.path.exists(tmp_js):
+        os.remove(tmp_js)
+
+# ── 2. FUNCIONES DUPLICADAS ──────────────────────────────────────────────────
+print(f'\n{BOLD}[2] Funciones duplicadas{RESET}')
+fns = re.findall(r'function (\w+)\s*\(', js)
+dupes = {k: v for k, v in Counter(fns).items() if v > 1}
+if dupes:
+    fail(f'Funciones duplicadas: {list(dupes.keys())}')
+else:
+    ok(f'{len(fns)} funciones — sin duplicados')
+
+# ── 3. IDs JS SIN MATCH EN HTML ─────────────────────────────────────────────
+print(f'\n{BOLD}[3] IDs JS sin HTML{RESET}')
+get_ids    = set(re.findall(r"getElementById\('([^']+)'\)", js))
+declared   = set(re.findall(r'id="([^"]+)"', html))
+# Filtrar IDs generados dinámicamente (contienen variables JS)
+static_ids = {i for i in get_ids if '${' not in i}
+# Un ID puede existir en template literals JS aunque no esté en el HTML estático
+in_src     = {i for i in static_ids if f'"{i}"' in src or f"'{i}'" in src}
+missing    = static_ids - declared - in_src
+if missing:
+    # Sólo reportar como error si son más de 3 (algunos son dinámicos inevitablemente)
+    if len(missing) > 5:
+        fail(f'IDs JS sin HTML: {sorted(missing)[:8]}')
+    else:
+        warn(f'IDs posiblemente dinámicos: {sorted(missing)}')
+else:
+    ok('Todos los IDs estáticos tienen match en HTML')
+
+# ── 4. HANDLERS SIN FUNCIÓN ──────────────────────────────────────────────────
+print(f'\n{BOLD}[4] Handlers sin función{RESET}')
+handlers = set(re.findall(r'on(?:click|input|change|submit)="(\w+)\(', src))
+# Excluir funciones nativas o de librerías
+exclude = {'cm', 'om', 'event', 'this', 'console', 'alert', 'confirm'}
+fn_names = set(re.findall(r'function (\w+)\s*\(', js))
+arrow_fns = set(re.findall(r'const (\w+)\s*=\s*(?:async\s*)?\(', js))
+all_fns = fn_names | arrow_fns | exclude
+broken = [h for h in handlers if h not in all_fns]
+if broken:
+    fail(f'Handlers sin función: {broken}')
+else:
+    ok(f'{len(handlers)} handlers — todos tienen función')
+
+# ── 5. SB_KEYS COMPLETAS ────────────────────────────────────────────────────
+print(f'\n{BOLD}[5] SB_KEYS sincronizadas{RESET}')
+sb_match = re.search(r'const SB_KEYS\s*=\s*\[([^\]]+)\]', src)
+required_keys = ['ax_c', 'ax_e', 'ax_hist', 'ax_pr', 'ax_bw',
+                 'ax_nut', 'ax_med', 'ax_photos', 'ax_cph', 'ax_site']
+if sb_match:
+    sb_text = sb_match.group(1)
+    missing_keys = [k for k in required_keys if k not in sb_text]
+    if missing_keys:
+        fail(f'SB_KEYS falta: {missing_keys}')
+    else:
+        ok(f'{len(required_keys)} claves críticas presentes en SB_KEYS')
+else:
+    fail('SB_KEYS no encontrado en el código')
+
+# ── 6. EJERCICIOS DUPLICADOS ─────────────────────────────────────────────────
+print(f'\n{BOLD}[6] Ejercicios duplicados{RESET}')
+ex_ids = re.findall(r"id:'(e\d+)'", src)
+ex_dupes = {k: v for k, v in Counter(ex_ids).items() if v > 1}
+if ex_dupes:
+    fail(f'Ejercicios con ID duplicado: {ex_dupes}')
+else:
+    ok(f'{len(ex_ids)} ejercicios — sin IDs duplicados')
+
+# ── 7. SECRETOS ACCIDENTALES ─────────────────────────────────────────────────
+print(f'\n{BOLD}[7] Sin secretos en código{RESET}')
+secret_patterns = [
+    (r'VAPID_PRIVATE\s*=\s*["\'][^"\']{10}', 'VAPID_PRIVATE key en frontend'),
+    (r'service_role\s*[=:]\s*["\'][^"\']{20}', 'Supabase service_role key'),
+    (r'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{50,}', 'JWT token hardcodeado'),
+]
+secret_found = False
+for pattern, label in secret_patterns:
+    if re.search(pattern, src):
+        fail(f'Secreto detectado: {label}')
+        secret_found = True
+if not secret_found:
+    ok('Sin secretos hardcodeados detectados')
+
+# ── 8. TESTS DE NEGOCIO ──────────────────────────────────────────────────────
+print(f'\n{BOLD}[8] Tests de negocio{RESET}')
+test_file = os.path.join(ROOT, 'apex.test.js')
+if os.path.exists(test_file):
+    result = subprocess.run(['node', test_file], capture_output=True,
+                            encoding='utf-8', errors='replace')
+    stdout = (result.stdout or '').strip()
+    if result.returncode == 0:
+        last = stdout.split('\n')[-1] if stdout else 'OK'
+        ok(f'apex.test.js — {last.strip()}')
+    else:
+        fail(f'Tests fallaron:\n{stdout}')
+else:
+    warn('apex.test.js no encontrado — tests de negocio saltados')
+
+# ── RESUMEN ───────────────────────────────────────────────────────────────────
+total = 8
+failed = len(errors)
+warned = len(warnings)
+
+print(f'\n{BOLD}━━━ Resultado ━━━{RESET}')
+print(f'  Checks: {total - failed}/{total} OK  |  {failed} errores  |  {warned} avisos')
+
+if errors:
+    print(f'\n{RED}{BOLD}🔴 COMMIT ABORTADO — corrige los errores antes de deployar{RESET}')
+    print(f'{YELLOW}   (Para emergencias extremas: git commit --no-verify){RESET}\n')
+    sys.exit(1)
+elif warnings:
+    print(f'\n{YELLOW}🟡 Commit permitido — revisa los avisos pronto{RESET}\n')
+    sys.exit(0)
+else:
+    print(f'\n{GREEN}{BOLD}🟢 Audit OK — commit autorizado{RESET}\n')
+    sys.exit(0)

@@ -26,7 +26,7 @@ import re, subprocess, os, tempfile
 from collections import Counter
 
 c = open('index.html', encoding='utf-8').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 html = c[:c.find('<script>')]
 
 print("APEX - AUDITORIA AUTOMATICA\n")

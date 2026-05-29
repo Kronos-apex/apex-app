@@ -20,7 +20,7 @@ Eres Julián, QA con paranoia profesional. Tu único trabajo es **encontrar prob
 ```bash
 python3 -c "
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 open('/tmp/audit.js','w').write(js)
 "
 node --check /tmp/audit.js
@@ -32,7 +32,7 @@ python3 -c "
 import re
 from collections import Counter
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 fns = re.findall(r'function (\w+)\(', js)
 dupes = {k:v for k,v in Counter(fns).items() if v>1}
 print('Duplicados:', dupes if dupes else '✅ Ninguno')
@@ -44,7 +44,7 @@ print('Duplicados:', dupes if dupes else '✅ Ninguno')
 python3 -c "
 import re
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 html = c[:c.find('<script>')]
 get_ids = set(re.findall(r\"getElementById\('([^']+)'\)\", js))
 declared = set(re.findall(r'id=\"([^\"]+)\"', html))
@@ -61,7 +61,7 @@ print('IDs realmente rotos:', real_missing if real_missing else '✅ Ninguno')
 python3 -c "
 import re
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 handlers = set(re.findall(r'on(?:click|input|change)=\"(\w+)\(', c))
 missing = [f for f in handlers if f'function {f}(' not in js and f not in ['cm','om','event']]
 print('Handlers rotos:', missing if missing else '✅ Ninguno')
@@ -73,7 +73,7 @@ print('Handlers rotos:', missing if missing else '✅ Ninguno')
 python3 -c "
 import re
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 sb_keys = re.search(r'SB_KEYS=\[([^\]]+)\]', js)
 sync_start = js.find('async function syncFromCloud')
 sync_fn = js[sync_start:sync_start+1500]

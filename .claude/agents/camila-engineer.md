@@ -42,7 +42,7 @@ Antes de ejecutar, escribe en 3 líneas:
 # Extraer JS y validar sintaxis
 python3 -c "
 c = open('index.html').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 open('/tmp/check.js','w').write(js)
 "
 node --check /tmp/check.js

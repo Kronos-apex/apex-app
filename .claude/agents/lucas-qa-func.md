@@ -76,7 +76,7 @@ python3 << 'EOF'
 import re, sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 c = open('index.html', encoding='utf-8').read()
-js = c[c.find('<script>')+8:c.find('</script>')]
+js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 html = c[:c.find('<script>')]
 
 # Listar todos los contenedores con display:none o clase hidden
