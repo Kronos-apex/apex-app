@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v7';
+const CACHE_NAME = 'apex-v8';
 
 self.addEventListener('install', e => { self.skipWaiting(); });
 
@@ -24,7 +24,12 @@ self.addEventListener('fetch', e => {
   if(e.request.mode === 'navigate'){
     e.respondWith(fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; }).catch(() => caches.match(e.request))); return;
   }
-  e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
+  // Assets del mismo origen (apex-core.js, icons, manifest): cache-first y se
+  // guardan tras el primer fetch para que funcionen offline.
+  e.respondWith(caches.match(e.request).then(c => c || fetch(e.request).then(r => {
+    if(r.ok && url.origin === self.location.origin){ const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); }
+    return r;
+  })));
 });
 
 self.addEventListener('push', e => {

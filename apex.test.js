@@ -1,8 +1,23 @@
-// apex.test.js — Tests críticos de negocio APEX v1.3.2
+// apex.test.js — Tests críticos de negocio APEX
 // Ejecutar con: node apex.test.js
-// Sin dependencias externas — Node.js puro
+// Sin dependencias externas — Node.js puro.
+//
+// Estos tests prueban apex-core.js DIRECTAMENTE (la misma fuente que carga
+// index.html). No hay lógica duplicada: si cambias una función en
+// apex-core.js, el test refleja el cambio automáticamente.
 
 const assert = require('assert');
+const core = require('./apex-core.js');
+const {
+  getIccLabel,
+  getSexCode,
+  calcMacrosSugeridos,
+  migrateRoutineIds,
+  shouldPostPush,
+  delClientGuard,
+  cnTodayGuard,
+} = core;
+
 let passed = 0, failed = 0, total = 0;
 
 function test(name, fn) {
@@ -23,83 +38,10 @@ function section(title) {
 }
 
 // ══════════════════════════════════════════════════════
-// Lógica extraída de index.html (sin DOM, sin globals)
-// ══════════════════════════════════════════════════════
-
-// getIccLabel — líneas 3041-3046
-function getIccLabel(v, sex) {
-  const lim = sex === 'M' ? [0.90, 0.95] : [0.80, 0.85];
-  if (v < lim[0]) return { label: 'Distribución favorable' };
-  if (v < lim[1]) return { label: 'Riesgo moderado' };
-  return { label: 'Distribución de riesgo' };
-}
-
-// sexCode — línea 3029 (el form guarda 'M'/'F', no 'Hombre'/'Mujer')
-function getSexCode(sex) {
-  return sex === 'M' ? 'M' : 'F';
-}
-
-// calcMacrosSugeridos — líneas 4558-4571
-function calcMacrosSugeridos(client) {
-  const kg = parseFloat(client.weight) || 70;
-  const actMap = { 1.2: 30, 1.375: 33, 1.55: 36, 1.725: 40, 1.9: 44 };
-  const kcalPerKg = actMap[client.activityFactor] || 33;
-  let kcal = Math.round(kg * kcalPerKg);
-  const g = (client.goal || '').toLowerCase();
-  if (g.includes('perd') || g.includes('baj') || g.includes('defin')) kcal -= 350;
-  else if (g.includes('gan') || g.includes('masa') || g.includes('volum') || g.includes('musc')) kcal += 250;
-  const protG = g.includes('gan') || g.includes('masa') || g.includes('musc')
-    ? Math.round(kg * 2.2)
-    : g.includes('perd') || g.includes('baj')
-      ? Math.round(kg * 2.0)
-      : Math.round(kg * 1.8);
-  const fatG = Math.round(kg * 0.9);
-  const carbsG = Math.max(0, Math.round((kcal - protG * 4 - fatG * 9) / 4));
-  const water = Math.max(6, Math.round(kg * 0.035 / 0.25));
-  return { kcal, prot: protG, carbs: carbsG, fat: fatG, water };
-}
-
-// migrateRoutineIds — líneas 1617-1618
-function uid() { return Math.random().toString(36).slice(2, 10); }
-function migrateRoutineIds(clients) {
-  let migrated = false;
-  clients.forEach(c => {
-    (c.routines || []).forEach(r => {
-      if (!r.id) { r.id = uid(); migrated = true; }
-    });
-  });
-  return migrated;
-}
-
-// subscribePush guard — líneas 1371-1372
-// Devuelve true si debe llamar fetch (guard no activado), false si el endpoint ya estaba guardado
-function subscribePushGuard(clientId, endpoint, store) {
-  const key = `apex_push:${clientId}`;
-  if (store[key] === endpoint) return false;
-  store[key] = endpoint;
-  return true;
-}
-
-// delClient guard — línea 3179
-function delClientGuard(client, confirmFn) {
-  if (!client || !confirmFn()) return false;
-  return true;
-}
-
-// cnTab cn-today re-render guard — líneas 3727-3731
-function cnTodayGuard(CUR, todayLabel, clientExists) {
-  if (clientExists && CUR.todayRenderedDay !== todayLabel) {
-    CUR.todayRenderedDay = todayLabel;
-    return true;
-  }
-  return false;
-}
-
-// ══════════════════════════════════════════════════════
 // TESTS
 // ══════════════════════════════════════════════════════
 
-section('1. ICC — umbral por sexo (lines 3041-3046)');
+section('1. ICC — umbral por sexo');
 
 test('hombre sex="M", cintura 90cm, cadera 100cm → umbral masculino → Riesgo moderado', () => {
   const icc = 90 / 100; // 0.90
@@ -112,7 +54,6 @@ test('hombre sex="M", cintura 90cm, cadera 100cm → umbral masculino → Riesgo
 });
 
 test('mismo ICC 0.90 con sex="F" → umbral femenino → Distribución de riesgo', () => {
-  // Verifica que los umbrales sí son distintos entre sexos
   const result = getIccLabel(0.90, 'F');
   // Con umbral femenino [0.80,0.85]: 0.90 < 0.80 = false → 0.90 < 0.85 = false → "Distribución de riesgo"
   assert.strictEqual(result.label, 'Distribución de riesgo');
@@ -123,7 +64,14 @@ test('mujer ICC 0.78 → Distribución favorable', () => {
   assert.strictEqual(result.label, 'Distribución favorable');
 });
 
-section('2. Macros — activityFactor → kcalPerKg (lines 4558-4561)');
+test('getSexCode: cualquier valor distinto de "M" → "F"', () => {
+  assert.strictEqual(getSexCode('M'), 'M');
+  assert.strictEqual(getSexCode('F'), 'F');
+  assert.strictEqual(getSexCode('Hombre'), 'F'); // el form guarda 'M'/'F', no etiquetas
+  assert.strictEqual(getSexCode(undefined), 'F');
+});
+
+section('2. Macros — activityFactor → kcalPerKg');
 
 test('activityFactor=1.55, goal="salud", peso 70kg → kcalPerKg=36, kcal=2520', () => {
   const result = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
@@ -132,17 +80,30 @@ test('activityFactor=1.55, goal="salud", peso 70kg → kcalPerKg=36, kcal=2520',
     `Esperaba 2520 (70kg × 36 kcal/kg). Recibió ${result.kcal}`);
 });
 
-test('activityFactor=1.2 → kcalPerKg=30', () => {
-  const actMap = { 1.2: 30, 1.375: 33, 1.55: 36, 1.725: 40, 1.9: 44 };
-  assert.strictEqual(actMap[1.2] || 33, 30);
+test('goal="bajar de peso" → déficit de 350 kcal', () => {
+  const base = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
+  const cut = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'bajar de peso' });
+  assert.strictEqual(cut.kcal, base.kcal - 350);
+});
+
+test('goal="ganar masa muscular" → superávit de 250 kcal y proteína 2.2g/kg', () => {
+  const base = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
+  const bulk = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'ganar masa muscular' });
+  assert.strictEqual(bulk.kcal, base.kcal + 250);
+  assert.strictEqual(bulk.prot, Math.round(70 * 2.2));
 });
 
 test('sin activityFactor → kcalPerKg fallback=33', () => {
-  const actMap = { 1.2: 30, 1.375: 33, 1.55: 36, 1.725: 40, 1.9: 44 };
-  assert.strictEqual(actMap[undefined] || 33, 33);
+  const result = calcMacrosSugeridos({ weight: 70, goal: 'salud' });
+  assert.strictEqual(result.kcal, 70 * 33);
 });
 
-section('3. routine.id migration (lines 1617-1618)');
+test('sin peso → fallback 70kg', () => {
+  const result = calcMacrosSugeridos({ activityFactor: 1.2, goal: 'salud' });
+  assert.strictEqual(result.kcal, 70 * 30);
+});
+
+section('3. routine.id migration');
 
 test('rutina sin .id → recibe .id tras migración, retorna true', () => {
   const clients = [{ id: 'c1', routines: [{ name: 'Lunes' }] }];
@@ -152,9 +113,15 @@ test('rutina sin .id → recibe .id tras migración, retorna true', () => {
   assert.ok(typeof clients[0].routines[0].id === 'string' && clients[0].routines[0].id.length > 0);
 });
 
+test('idFn personalizado se usa para generar el id', () => {
+  const clients = [{ id: 'c1', routines: [{ name: 'Lunes' }] }];
+  migrateRoutineIds(clients, () => 'fijo-123');
+  assert.strictEqual(clients[0].routines[0].id, 'fijo-123');
+});
+
 test('rutina con .id existente no se sobreescribe', () => {
   const clients = [{ id: 'c1', routines: [{ name: 'Lunes', id: 'id-fijo' }] }];
-  migrateRoutineIds(clients);
+  migrateRoutineIds(clients, () => 'NO');
   assert.strictEqual(clients[0].routines[0].id, 'id-fijo');
 });
 
@@ -164,32 +131,26 @@ test('todas las rutinas con .id → retorna false (sin migración)', () => {
   assert.strictEqual(migrated, false);
 });
 
-section('4. subscribePush guard (lines 1371-1372)');
-
-test('segunda llamada con mismo endpoint → NO llama fetch', () => {
-  const store = {};
-  const r1 = subscribePushGuard('client-1', 'https://push.ex/abc', store);
-  const r2 = subscribePushGuard('client-1', 'https://push.ex/abc', store);
-  assert.strictEqual(r1, true, 'Primera llamada debe pasar al fetch');
-  assert.strictEqual(r2, false, 'Segunda llamada con mismo endpoint debe ser bloqueada');
+test('clients vacío o sin routines no rompe', () => {
+  assert.strictEqual(migrateRoutineIds([]), false);
+  assert.strictEqual(migrateRoutineIds([{ id: 'c1' }]), false);
 });
 
-test('endpoint distinto → sí llama fetch (suscripción renovada)', () => {
-  const store = {};
-  subscribePushGuard('client-1', 'endpoint-A', store);
-  const result = subscribePushGuard('client-1', 'endpoint-B', store);
-  assert.strictEqual(result, true);
+section('4. shouldPostPush — guard de suscripción');
+
+test('mismo endpoint que el guardado → NO postea (false)', () => {
+  assert.strictEqual(shouldPostPush('https://push.ex/abc', 'https://push.ex/abc'), false);
 });
 
-test('clientes distintos con mismo endpoint → ambos pasan', () => {
-  const store = {};
-  const r1 = subscribePushGuard('coach', 'https://push.ex/abc', store);
-  const r2 = subscribePushGuard('client-2', 'https://push.ex/abc', store);
-  assert.strictEqual(r1, true);
-  assert.strictEqual(r2, true);
+test('endpoint distinto → sí postea (suscripción renovada)', () => {
+  assert.strictEqual(shouldPostPush('endpoint-A', 'endpoint-B'), true);
 });
 
-section('5. delClient — guard de confirmación (line 3179)');
+test('cliente sin suscripción previa (stored=null) → postea', () => {
+  assert.strictEqual(shouldPostPush(null, 'https://push.ex/abc'), true);
+});
+
+section('5. delClient — guard de confirmación');
 
 test('confirm=false → no borra (retorna false)', () => {
   const client = { id: 'c1', name: 'Kathe' };
@@ -205,7 +166,7 @@ test('confirm=true + client válido → procede (retorna true)', () => {
   assert.strictEqual(delClientGuard(client, () => true), true);
 });
 
-section('6. cnTab cn-today — re-render guard (lines 3727-3731)');
+section('6. cnTab cn-today — re-render guard');
 
 test('mismo día → NO re-renderiza', () => {
   const CUR = { todayRenderedDay: 'Martes', clientId: 'c1' };
