@@ -149,9 +149,13 @@ de casa sin colar ejercicios de gym. Mismo filtro que el generador.
    glúteo (puente a una pierna), piernas (step-up y sentadilla a una pierna). **Casa queda
    cubierta en todos los grupos.** Huecos honestos en SOLO peso corporal: bíceps 0 y
    espalda 1 (Superman) — tirar/curl exige resistencia; un band barato lo resuelve.
-3. **Fase C — Generador + picker:** filtro por entorno y `methodBias` + tests. (PENDIENTE)
-4. **Fase D — UX:** selector de estilo en el generador, chips de entorno, mostrar `env` por
-   ejercicio para que el coach valide/edite el etiquetado. (PENDIENTE)
+3. ✅ **Fase C — Generador + picker — HECHA (2026-05-30):** `generarRutinas` filtra el pool
+   por `client.place` (`_genPick` exige `env` compatible) y soporta `opts.methodBias`
+   (calistenia→prefiere peso corporal). Reporta `envGaps` (músculos sin opción en el entorno)
+   → el preview muestra aviso "ℹ️ Sin opciones... sugerir banda". Picker con filtro de entorno
+   (default = `place` del asesorado) + chips de entorno por ejercicio. 7 tests (§10, 56/56 verde).
+4. **Fase D — UX (pendiente):** selector de **estilo** (preset `TRAINING_STYLES`) en el ✨ Generar
+   para pasar `methodBias`; editor de `env` por ejercicio para que el coach valide el etiquetado.
 5. ✅ **Calentamiento con video — HECHO** (fuera de fases).
 
 ### Cobertura tras Fase A+B (nº ejercicios por músculo × entorno)

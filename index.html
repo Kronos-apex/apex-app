@@ -1144,6 +1144,16 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="mdbg" id="m-picker">
   <div class="md">
     <div class="mdtitle">Seleccionar ejercicio</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
+      <span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0">Entorno:</span>
+      <select class="sel" id="pk-env" onchange="pkEnvFilter(this.value)" style="font-size:12px;padding:5px 8px">
+        <option value="all">Todos</option>
+        <option value="corporal">🤸 Peso corporal</option>
+        <option value="casa">🏠 Casa</option>
+        <option value="parque">🌳 Parque</option>
+        <option value="gym">🏋️ Gym</option>
+      </select>
+    </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px" id="pk-f"></div>
     <div id="pk-list" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-picker')">Cerrar</button></div>
@@ -2183,18 +2193,19 @@ function renderTfExList(){
   con.innerHTML=html;
 }
 
-function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';buildFilterBtns('pk-f',pkFilter);renderPickerForTarget();om('m-picker')}
+function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.pkEnv='all';const es=document.getElementById('pk-env');if(es)es.value='all';buildFilterBtns('pk-f',pkFilter);renderPickerForTarget();om('m-picker')}
 
 function renderPickerForTarget(){
   const list=document.getElementById('pk-list');
   const currentExs=pickerTarget==='template'?tplExs:CUR.routineExs;
-  const filtered=DB.exercises.filter(e=>CUR.pkFilter==='all'||e.muscle===CUR.pkFilter);
+  const env=CUR.pkEnv||'all';
+  const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env)));
   list.innerHTML='';
   filtered.forEach(ex=>{
     const already=currentExs.some(e=>e.id===ex.id);
     const div=document.createElement('div');
     div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${already?'var(--g2)':'var(--br)'};background:${already?'var(--gl)':'var(--w)'};margin-bottom:3px;transition:all .15s`;
-    div.innerHTML=`<span style="font-size:19px">${ex.icon||'💪'}</span><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
+    div.innerHTML=`<span style="font-size:19px">${ex.icon||'💪'}</span><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
     div.onclick=()=>{
       if(already){toast('Ya está en la lista');return}
       if(pickerTarget==='template'){tplExs.push({...ex});renderTfExList();}
@@ -3623,15 +3634,17 @@ function openGenRutinas(){
   document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--g)">${esc(c.name)}</span>`;
   renderGenPreview(c,res);om('m-gen');
 }
+const PLACE_LABELS={gym:'🏋️ Gym completo',casa:'🏠 Casa (bandas/mancuernas)',corporal:'🤸 Solo peso corporal',parque:'🌳 Aire libre / parque'};
 function renderGenPreview(c,res){
   const warn=res.needsReview?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(res.limitations.zones.join(', '))}). Se excluyeron ejercicios contraindicados, pero <b>revisa cada día antes de aprobar</b>. Un algoritmo no conoce el detalle clínico — tú sí.</div>`:'';
-  const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
+  const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#7a5c00;margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
+  const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
-  document.getElementById('mg-body').innerHTML=warn+intro+cards;
+  document.getElementById('mg-body').innerHTML=warn+gaps+intro+cards;
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
@@ -3768,10 +3781,22 @@ function delRoutine(cid,ri){
 function openPicker(){
   pickerTarget='routine';
   CUR.pkFilter='all';
+  // Por defecto, filtra por el entorno del asesorado actual → el coach ve lo relevante.
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  CUR.pkEnv=(c&&c.place)||'all';
+  const envSel=document.getElementById('pk-env');if(envSel)envSel.value=CUR.pkEnv;
   buildFilterBtns('pk-f',pkFilter);
   renderPickerForTarget();om('m-picker');
 }
 function pkFilter(muscle,el){CUR.pkFilter=muscle;styleFilterBtns('pk-f',el);renderPickerForTarget()}
+function pkEnvFilter(v){CUR.pkEnv=v;renderPickerForTarget();}
+// Chip compacto del entorno MÍNIMO necesario (el más accesible) de un ejercicio.
+function envChips(env){
+  env=env||['gym'];
+  const e=env.includes('corporal')?'🤸':env.includes('casa')?'🏠':env.includes('parque')?'🌳':'🏋️';
+  const lbl=env.includes('corporal')?'Peso corporal':env.includes('casa')?'Casa':env.includes('parque')?'Parque':'Gym';
+  return `<span title="${lbl}" style="font-size:11px;opacity:.85">${e}</span>`;
+}
 
 // ══════════════════════ MESSAGES (COACH) ══════════════════════
 function renderDetailMsgs(id){

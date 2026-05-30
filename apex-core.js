@@ -205,10 +205,23 @@ function _genRank(e) {
 // Selector con rotación: avanza un cursor por (muscle|type) para que A y B no salgan idénticos.
 // Cae a "solo músculo" si el slot exacto (type) está agotado o vacío (ej. Funcional escaso).
 function _genPick(lib, muscle, type, st) {
-  const ok = e => e.muscle === muscle && !st.exclude(e) && (!st.tier || (e.tier || 'premium') === st.tier);
-  let pool = lib.filter(e => ok(e) && (type ? e.type === type : true));
-  if (!pool.some(e => !st.usedInDay.has(e.id))) pool = lib.filter(ok); // fallback solo-músculo
-  if (!pool.length) return null;
+  const ok = e => e.muscle === muscle && !st.exclude(e)
+    && (!st.tier || (e.tier || 'premium') === st.tier)
+    && (e.env || ['gym']).includes(st.place); // entorno: el ejercicio debe ser realizable ahí
+  // Pools en orden de prioridad. Se usa el primero que tenga algo sin usar hoy:
+  //  1) methodBias (ej. calistenia → peso corporal) ANTES que el tipo del slot,
+  //  2) tipo exacto del slot, 3) fallback solo-músculo (cuando el tipo está agotado/vacío).
+  const pools = [];
+  if (st.preferType) pools.push(lib.filter(e => ok(e) && e.type === st.preferType));
+  pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true)));
+  pools.push(lib.filter(ok));
+  let pool = null;
+  for (const p of pools) { if (p.some(e => !st.usedInDay.has(e.id))) { pool = p; break; } }
+  if (!pool) {
+    // Sin NINGUNA opción de este músculo en este entorno → hueco real (lo reporta al coach).
+    if (st.envShortfall && !lib.some(ok)) st.envShortfall.add(muscle);
+    return null;
+  }
   const key = muscle + '|' + (type || '*');
   const start = st.cursors[key] != null ? st.cursors[key] : (st.seed % pool.length);
   for (let i = 0; i < pool.length; i++) {
@@ -252,7 +265,13 @@ function generarRutinas(client, lib, opts) {
   const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
   const scheme = genSchemeFor(client.goal || '', level);
   const lim = parseLimitations(client.notes || '');
-  const st = { cursors: {}, seed: opts.seed || 0, tier: opts.tier || null, scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor) };
+  const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
+  const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
+  const st = {
+    cursors: {}, seed: opts.seed || 0, tier: opts.tier || null, place,
+    preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
+    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor), envShortfall: new Set(),
+  };
 
   const codes = _genResolveSplit(sexKey, days, level, minor);
   const nameCount = {};
@@ -287,7 +306,7 @@ function generarRutinas(client, lib, opts) {
       createdAt: now, generated: true, reviewed: false, needsReview: lim.detected,
     };
   });
-  return { routines, needsReview: lim.detected, limitations: lim };
+  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall] };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
