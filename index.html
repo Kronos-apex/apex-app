@@ -3991,7 +3991,7 @@ function renderBodyWeightSection(clientId){
   if(!listEl)return;
 
   if(!entries.length){
-    listEl.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:8px 0">Registra tu peso hoy para comenzar el seguimiento</div>';
+    listEl.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:10px 6px;line-height:1.6">Aún no has anotado tu peso. Anótalo de vez en cuando (no todos los días) y verás cómo cambia con el tiempo ⚖️</div>';
     if(chartWrap)chartWrap.style.display='none';
     return;
   }
@@ -4731,7 +4731,7 @@ function renderClientHistory(clientId){
   const con=document.getElementById('cn-hist-list');if(!con)return;
   renderVolChart(sessions);
   if(!sessions.length){
-    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Sin entrenos registrados</div><div class="esub">Completa tu primera sesión para ver el historial</div></div>';
+    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';
     return;
   }
   con.innerHTML='';
