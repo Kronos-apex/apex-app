@@ -833,7 +833,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div>
           <div style="font-size:14px;font-weight:700;margin-bottom:9px">📋 Rutinas asignadas</div>
           <div id="d-routines"></div>
-          <button class="btn bg bfull" style="margin-top:7px" onclick="openNewRoutine()">+ Nueva rutina</button>
+          <div style="display:flex;gap:6px;margin-top:7px">
+            <button class="btn bp bsm" style="flex:1" onclick="openGenRutinas()" title="Genera un borrador de la semana según el perfil">✨ Generar semana</button>
+            <button class="btn bg bsm" style="flex:1" onclick="openNewRoutine()">+ Nueva rutina</button>
+          </div>
         </div>
         <div>
           <div style="font-size:14px;font-weight:700;margin-bottom:9px">💬 Mensajes</div>
@@ -1124,6 +1127,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div id="rf-exlist" style="margin-bottom:9px"></div>
     <button class="btn bg bsm" onclick="openPicker()" style="margin-bottom:14px">+ Añadir ejercicio</button>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-routine')">Cancelar</button><button class="btn bp" onclick="saveRoutine()" id="save-rut-btn">Guardar rutina</button></div>
+  </div>
+</div>
+
+<!-- Auto-generador: preview del borrador de la semana -->
+<div class="mdbg" id="m-gen">
+  <div class="md mdlg">
+    <div class="mdtitle" id="mg-title">✨ Borrador de la semana</div>
+    <div id="mg-body" style="max-height:58vh;overflow-y:auto;margin-bottom:14px"></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-gen')">Cancelar</button><button class="btn bp" onclick="confirmGenRutinas()">✓ Crear estas rutinas</button></div>
   </div>
 </div>
 
@@ -3579,6 +3591,39 @@ function openNewRoutine(){
   const tplRow=document.getElementById('tpl-load-row');
   if(tplRow)tplRow.style.display=DB.templates.length?'block':'none';
   renderRfExList();om('m-routine');
+}
+
+// ══════════════════════ AUTO-GENERADOR DE RUTINAS (Paso 1) ══════════════════════
+// El motor vive en apex-core.js (generarRutinas, testeado). Aquí solo el preview + confirmación.
+// Principio: genera un BORRADOR; el coach revisa, confirma y ajusta. Nunca se auto-asigna a ciegas.
+function _genSeed(s){let h=0;s=s||'';for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+function openGenRutinas(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id)});
+  if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return;}
+  CUR.genDraft=res;
+  document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  renderGenPreview(c,res);om('m-gen');
+}
+function renderGenPreview(c,res){
+  const warn=res.needsReview?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(res.limitations.zones.join(', '))}). Se excluyeron ejercicios contraindicados, pero <b>revisa cada día antes de aprobar</b>. Un algoritmo no conoce el detalle clínico — tú sí.</div>`:'';
+  const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
+  const cards=res.routines.map(r=>{
+    const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
+    const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
+    return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
+  }).join('');
+  document.getElementById('mg-body').innerHTML=warn+intro+cards;
+}
+function confirmGenRutinas(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
+  if(!c.routines)c.routines=[];
+  const n=CUR.genDraft.routines.length;
+  c.routines.push(...CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map(e=>({...e}))})));
+  sv('ax_c',DB.clients);
+  cm('m-gen');renderDetailRoutines(c);renderHome();
+  toast(`✨ ${n} rutina${n!==1?'s':''} generada${n!==1?'s':''} para ${c.name} — revísalas y ajusta`);
+  CUR.genDraft=null;
 }
 
 function openEditRoutine(cid,ri){

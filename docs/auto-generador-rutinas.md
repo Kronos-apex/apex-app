@@ -5,7 +5,11 @@
 > **ajuste** en vez de construir desde cero. El mismo motor alimentará después el
 > **modo libre / embudo gratis** (Paso 2).
 
-**Estado:** plan aprobado por Andrés (2026-05-29). Pendiente de implementar.
+**Estado:** ✅ **Paso 1 implementado (2026-05-30).** Motor puro `generarRutinas()` en
+`apex-core.js` (testeado, 18 tests en `apex.test.js` §7-8) + UI: botón **✨ Generar semana**
+en el detalle del asesorado → modal de preview → el coach confirma y ajusta en el editor.
+Pendiente: §3.5 (etiquetar `tier` en los 96 ejercicios — lo soporta como opcional, hoy inerte)
+y Paso 1b (progresión/deload).
 
 ---
 

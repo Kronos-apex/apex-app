@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v8';
+const CACHE_NAME = 'apex-v9';
 
 self.addEventListener('install', e => { self.skipWaiting(); });
 

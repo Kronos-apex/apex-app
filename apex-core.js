@@ -83,6 +83,213 @@ function cnTodayGuard(CUR, todayLabel, clientExists) {
   return false;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// AUTO-GENERADOR DE RUTINAS (Paso 1) — ver docs/auto-generador-rutinas.md
+// ─────────────────────────────────────────────────────────────────────
+// Produce un BORRADOR completo de la semana a partir del perfil del cliente.
+// El coach SIEMPRE revisa/aprueba (innegociable por seguridad). Función pura,
+// sin DOM. Config en objetos (splits/slots/scheme/exclusiones) → fácil de tunear.
+// ─────────────────────────────────────────────────────────────────────
+
+// Normaliza texto: minúsculas + sin acentos (para matching robusto de notas/nombres).
+function _norm(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// Etiquetas de día (1..6) y nombres legibles de cada bloque.
+const GEN_DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// Plantillas de bloque: cada slot = [muscle, type|null, n]. type null = cualquiera de ese músculo.
+const GEN_DAYS = {
+  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
+  GP_A:           { name: 'Glúteo y Piernas A', slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
+  GP_B:           { name: 'Glúteo y Piernas B', slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
+  TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
+  EMP_BRAZOS:     { name: 'Empuje y Brazos', slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
+  CORE_CARDIO:    { name: 'Core y Cardio', slots: [['core', null, 2], ['cardio', null, 2]] },
+  EMPUJE:         { name: 'Empuje', slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1], ['triceps', 'Aislamiento', 2]] },
+  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1], ['biceps', 'Aislamiento', 2]] },
+  PIERNA:         { name: 'Pierna', slots: [['piernas', 'Compuesto', 2], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
+  HOMBROS_BRAZOS: { name: 'Hombros y Brazos', slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
+  CARDIO_CORE:    { name: 'Cardio y Core', slots: [['cardio', null, 2], ['core', null, 2]] },
+};
+
+// Splits por sexo + días (regla de Andrés: mujer→glúteo/pierna primero; hombre→tren sup/fuerza).
+const GEN_SPLITS = {
+  F: {
+    3: ['GP_A', 'TREN_SUP', 'GP_B'],
+    4: ['GP_A', 'TREN_SUP', 'GP_B', 'CORE_CARDIO'],
+    5: ['GP_A', 'TREN_SUP', 'GP_B', 'EMP_BRAZOS', 'CORE_CARDIO'],
+    6: ['GP_A', 'TREN_SUP', 'GP_B', 'GP_A', 'TREN_SUP', 'GP_B'],
+  },
+  M: {
+    3: ['EMPUJE', 'TRACCION', 'PIERNA'],
+    4: ['EMPUJE', 'TRACCION', 'PIERNA', 'TREN_SUP'],
+    5: ['EMPUJE', 'PIERNA', 'TRACCION', 'HOMBROS_BRAZOS', 'CARDIO_CORE'],
+    6: ['EMPUJE', 'PIERNA', 'TRACCION', 'EMPUJE', 'PIERNA', 'TRACCION'],
+  },
+};
+
+// Detección de limitaciones físicas en `notes` (lo que hace Laura, codificado).
+const GEN_LIMIT_KWS = [
+  { zone: 'rodilla', re: /rodilla|menisco|patela|rotula|ligamento|\blca\b|\blcl\b/ },
+  { zone: 'lumbar', re: /lumbar|espalda baja|lumbalgia|hernia|ciatic|disco|escolios/ },
+  { zone: 'hombro', re: /hombro|manguito|rotador|deltoid/ },
+  { zone: 'generic', re: /lesion|operad|postoperat|posoperat|tendon|cirugia|protesis|fractura/ },
+];
+const GEN_ZONE_LABEL = { rodilla: 'rodilla', lumbar: 'zona lumbar', hombro: 'hombro', generic: 'lesión/postoperatorio' };
+// Ejercicios a EXCLUIR por zona (match contra nombre normalizado). Preferimos variantes seguras
+// dejando que el fallback elija otras del mismo músculo.
+const GEN_ZONE_EXCL = {
+  rodilla: /sentadilla|zancada|estocada|salto|pistol|bulgara/,
+  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla/,
+  hombro: /tras ?nuca|trasnuca|fondos|militar con barra/,
+};
+
+// Parsea las notas del cliente → limitaciones detectadas. Exportada para tests.
+function parseLimitations(notes) {
+  const n = _norm(notes);
+  const keys = [];
+  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) keys.push(k.zone); });
+  const uniq = [...new Set(keys)];
+  const detected = uniq.length > 0;
+  return {
+    detected,
+    keys: uniq,
+    zones: [...new Set(uniq.map(z => GEN_ZONE_LABEL[z]))],
+    advice: detected ? 'Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras.' : '',
+  };
+}
+
+// Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
+function genSchemeFor(goal, level) {
+  const g = _norm(goal);
+  let base;
+  if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { reps: 14, sets: [3, 4], rest: 55, cardioClose: true };
+  else if (g.includes('ganar') || g.includes('masa') || g.includes('musc') || g.includes('volum')) base = { reps: 10, sets: [3, 4], rest: 90 };
+  else if (g.includes('recomp')) base = { reps: 12, sets: [3, 4], rest: 70, coreClose: true };
+  else if (g.includes('fuerza')) base = { reps: 6, sets: [4, 5], rest: 120 };
+  else if (g.includes('resist')) base = { reps: 18, sets: [3, 4], rest: 45, cardioClose: true };
+  else base = { reps: 12, sets: [3, 3], rest: 60 }; // salud general / default
+  const [lo, hi] = base.sets;
+  const setsN = level === 'Principiante' ? Math.min(lo, 3) : level === 'Avanzado' ? hi : Math.min(hi, 4);
+  return { setsN, repsN: base.reps, restSec: base.rest, cardioClose: !!base.cardioClose, coreClose: !!base.coreClose };
+}
+
+// ¿El ejercicio se trackea sin peso (cardio/hiit/isométrico)? → conserva sets/reps de biblioteca.
+function _genKeepNatural(ex) {
+  return ex.muscle === 'cardio' || /cardio|hiit/i.test(ex.type || '') || ex.type === 'Isométrico';
+}
+
+// Copia enriquecida del ejercicio para la rutina (§2.6 CRÍTICO: id+icon+muscle+type siempre).
+function _genMaterialize(ex, scheme) {
+  const c = { ...ex };
+  c.icon = ex.icon || '💪';
+  if (_genKeepNatural(ex)) {
+    c.sets = parseInt(ex.sets) || scheme.setsN; // reps natural (minutos/segundos/rondas)
+  } else {
+    c.sets = scheme.setsN;
+    c.reps = scheme.repsN;
+  }
+  return c;
+}
+
+// Orden §2.5: Compuesto → Funcional → Aislamiento → Cardio/Core al final (sort estable).
+function _genRank(e) {
+  if (e.muscle === 'cardio' || e.muscle === 'core' || _genKeepNatural(e)) return 5;
+  if (e.type === 'Compuesto') return 1;
+  if (e.type === 'Funcional') return 2;
+  return 3; // Aislamiento / Bodyweight
+}
+
+// Selector con rotación: avanza un cursor por (muscle|type) para que A y B no salgan idénticos.
+// Cae a "solo músculo" si el slot exacto (type) está agotado o vacío (ej. Funcional escaso).
+function _genPick(lib, muscle, type, st) {
+  const ok = e => e.muscle === muscle && !st.exclude(e) && (!st.tier || (e.tier || 'premium') === st.tier);
+  let pool = lib.filter(e => ok(e) && (type ? e.type === type : true));
+  if (!pool.some(e => !st.usedInDay.has(e.id))) pool = lib.filter(ok); // fallback solo-músculo
+  if (!pool.length) return null;
+  const key = muscle + '|' + (type || '*');
+  const start = st.cursors[key] != null ? st.cursors[key] : (st.seed % pool.length);
+  for (let i = 0; i < pool.length; i++) {
+    const cand = pool[(start + i) % pool.length];
+    if (!st.usedInDay.has(cand.id)) {
+      st.cursors[key] = (start + i + 1) % pool.length;
+      st.usedInDay.add(cand.id);
+      return cand;
+    }
+  }
+  return null; // todo el pool ya está usado en este día
+}
+
+// Excluder combinado: carga axial con barra para menores + contraindicaciones por zona.
+function _genMakeExcluder(lim, minor) {
+  const res = [];
+  if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
+  lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) res.push(GEN_ZONE_EXCL[z]); });
+  return ex => { const n = _norm(ex.name); return res.some(re => re.test(n)); };
+}
+
+// Resuelve la lista de bloques (split). Principiante/<16/≤2 días → Full Body.
+function _genResolveSplit(sexKey, days, level, minor) {
+  if (minor || level === 'Principiante' || days <= 2) return Array(Math.max(1, days)).fill('FULL_BODY');
+  return (GEN_SPLITS[sexKey] && GEN_SPLITS[sexKey][days]) || Array(days).fill('FULL_BODY');
+}
+
+// ── API principal: genera el borrador de rutinas de la semana ──
+// client: {sex,age,level,days,goal,notes}. lib: DB.exercises. opts: {idFn,now,seed,tier}.
+// Devuelve { routines:[...], needsReview:bool, limitations:{...} }.
+function generarRutinas(client, lib, opts) {
+  client = client || {};
+  opts = opts || {};
+  lib = (lib || []).filter(e => e && e.id && e.muscle);
+  const idFn = opts.idFn || (() => Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const now = opts.now || new Date().toISOString();
+  const days = Math.max(1, Math.min(6, parseInt(client.days) || 3));
+  const level = client.level || 'Principiante';
+  const age = parseInt(client.age) || null;
+  const minor = age != null && age < 16;
+  const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
+  const scheme = genSchemeFor(client.goal || '', level);
+  const lim = parseLimitations(client.notes || '');
+  const st = { cursors: {}, seed: opts.seed || 0, tier: opts.tier || null, scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor) };
+
+  const codes = _genResolveSplit(sexKey, days, level, minor);
+  const nameCount = {};
+  const routines = codes.map((code, idx) => {
+    const tpl = GEN_DAYS[code] || GEN_DAYS.FULL_BODY;
+    st.usedInDay = new Set();
+    let exs = [];
+    tpl.slots.forEach(([muscle, type, n]) => {
+      for (let i = 0; i < n; i++) {
+        const ex = _genPick(lib, muscle, type, st);
+        if (ex) exs.push(_genMaterialize(ex, scheme));
+      }
+    });
+    // Cierre por objetivo (§2.4): + cardio/HIIT o + core, si el día no lo trae ya.
+    if (scheme.cardioClose && !exs.some(e => e.muscle === 'cardio')) {
+      const f = _genPick(lib, 'cardio', null, st); if (f) exs.push(_genMaterialize(f, scheme));
+    }
+    if (scheme.coreClose && !exs.some(e => e.muscle === 'core')) {
+      const f = _genPick(lib, 'core', null, st); if (f) exs.push(_genMaterialize(f, scheme));
+    }
+    exs = exs.slice().sort((a, b) => _genRank(a) - _genRank(b));
+
+    let nm = tpl.name;
+    nameCount[nm] = (nameCount[nm] || 0) + 1;
+    if (nameCount[nm] > 1) nm += ' ' + nameCount[nm];
+    const note = lim.detected
+      ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice} Ajusta antes de aprobar.`
+      : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
+    return {
+      id: idFn(), name: nm, day: GEN_DAY_LABELS[idx] || ('Día ' + (idx + 1)), shift: null,
+      note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
+      createdAt: now, generated: true, reviewed: false, needsReview: lim.detected,
+    };
+  });
+  return { routines, needsReview: lim.detected, limitations: lim };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -93,5 +300,8 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldPostPush,
     delClientGuard,
     cnTodayGuard,
+    generarRutinas,
+    parseLimitations,
+    genSchemeFor,
   };
 }
