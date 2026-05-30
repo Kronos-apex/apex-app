@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v13';
+const CACHE_NAME = 'apex-v14';
 
 self.addEventListener('install', e => { self.skipWaiting(); });
 
@@ -24,7 +24,17 @@ self.addEventListener('fetch', e => {
   if(e.request.mode === 'navigate'){
     e.respondWith(fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; }).catch(() => caches.match(e.request))); return;
   }
-  // Assets del mismo origen (apex-core.js, icons, manifest): cache-first y se
+  // apex-core.js: network-first (con respaldo en caché para offline). Es lógica crítica
+  // que DEBE ir sincronizada con index.html; cache-first la dejaba desfasada tras un update
+  // y colgaba el arranque. Network-first evita ese desfase.
+  if(url.origin === self.location.origin && url.pathname.endsWith('apex-core.js')){
+    e.respondWith(
+      fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+  // Assets del mismo origen (icons, manifest): cache-first y se
   // guardan tras el primer fetch para que funcionen offline.
   e.respondWith(caches.match(e.request).then(c => c || fetch(e.request).then(r => {
     if(r.ok && url.origin === self.location.origin){ const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); }

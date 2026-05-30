@@ -1657,8 +1657,10 @@ async function syncFromCloud(){
   const _routineMigrated=migrateRoutineIds(DB.clients,uid);
   if(_routineMigrated){sv('ax_c',DB.clients);log('APEX: routine.id migration applied');}
   DB.exercises=ld('ax_e',defaultExercises);
-  migrateExTypes();
-  migrateEnv();
+  // Migraciones blindadas: si una falla (p.ej. apex-core.js viejo en caché tras un update),
+  // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
+  try{ migrateExTypes(); }catch(e){ warn('APEX: migrateExTypes falló (no bloquea):',e&&e.message); }
+  try{ migrateEnv(); }catch(e){ warn('APEX: migrateEnv falló (no bloquea):',e&&e.message); }
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
   DB.prs=ld('ax_pr',{});
@@ -4285,6 +4287,8 @@ function migrateExTypes(){
 // Solo asigna si falta → no pisa ediciones del coach. Ver docs/estilos-y-entornos.md.
 function migrateEnv(){
   if(localStorage.getItem('ax_env_migrated')==='1')return;
+  // Si apex-core.js está desactualizado en caché, NO marcar como hecho → reintenta al recargar.
+  if(typeof inferExerciseEnv!=='function'){warn('APEX: inferExerciseEnv no disponible aún — entorno se etiquetará al recargar');return;}
   let n=0;
   const apply=arr=>(arr||[]).forEach(ex=>{if(!ex.env){ex.env=inferExerciseEnv(ex);n++;}});
   apply(DB.exercises);
