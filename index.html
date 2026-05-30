@@ -783,6 +783,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
       <!-- Banner de vencimientos próximos -->
       <div id="h-expiry-banner" style="display:none;margin-bottom:13px"></div>
+      <!-- Banner de adherencia: quién no está entrenando (empújalos) -->
+      <div id="h-adherence-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
         <div class="ch"><div class="ctitle">⚡ Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
@@ -2967,6 +2969,52 @@ function renderHome(){
       </div>`;
     } else {
       banner.style.display='none';
+    }
+  }
+
+  // ── Banner de adherencia: quién dejó de entrenar (accionable) ──
+  // Umbral adaptado a la frecuencia de cada quien: si entrena `days`/sem, su hueco
+  // normal es ~7/days; lo marcamos si lleva 2+ días por encima de su ritmo. Nunca
+  // entrenado (con plan vigente) = urgente. Solo membresías vigentes (lo vencido lo
+  // cubre el banner de pagos).
+  const adhBanner=document.getElementById('h-adherence-banner');
+  if(adhBanner){
+    const dormidos=DB.clients.filter(c=>{
+      const st=MS.getStatus(c);
+      if(st==='inactive'||st==='overdue'||st==='suspended')return false;
+      const last=(DB.history[c.id]||[])[0];
+      if(!last)return true; // vigente y nunca entrenó
+      const dd=Math.floor((Date.now()-new Date(last.date))/86400000);
+      const expectedGap=Math.ceil(7/(parseInt(c.days)||3));
+      return dd>=expectedGap+2;
+    }).map(c=>{
+      const last=(DB.history[c.id]||[])[0];
+      return {c,dd:last?Math.floor((Date.now()-new Date(last.date))/86400000):null};
+    }).sort((a,b)=>{
+      if(a.dd===null&&b.dd!==null)return -1;
+      if(b.dd===null&&a.dd!==null)return 1;
+      return (b.dd||0)-(a.dd||0);
+    });
+    if(dormidos.length){
+      const shown=dormidos.slice(0,6), extra=dormidos.length-shown.length;
+      adhBanner.style.display='block';
+      adhBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--rd);padding:10px 14px">
+        <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:6px">💤 ${dormidos.length} ${dormidos.length>1?'asesorados necesitan':'asesorado necesita'} un empujón</div>
+        ${shown.map(({c,dd})=>{
+          const estado=dd===null?'Aún no empieza':dd===1?'Hace 1 día':'Hace '+dd+' días';
+          const col=dd===null||dd>=7?'var(--rd)':'var(--or)';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
+            <div style="min-width:0;flex:1;cursor:pointer" onclick="openDetail('${esc(c.id)}')">
+              <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
+              <div style="font-size:11px;color:${col}">🏋️ ${estado} · ${esc(String(c.days||3))}x/sem</div>
+            </div>
+            <button class="btn bo bsm" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();whatsappNudge('${esc(c.id)}')">Empujar 💪</button>
+          </div>`;
+        }).join('')}
+        ${extra>0?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${extra} más…</div>`:''}
+      </div>`;
+    } else {
+      adhBanner.style.display='none';
     }
   }
 
@@ -7211,6 +7259,23 @@ function whatsappReminder(id){
   const nombre=c.name.split(' ')[0];
   const amount=last&&last.amount?` ($${last.amount.toLocaleString('es-CO')} COP)`:'';
   const msg=`Hola ${nombre} 👋, tu plan en APEX vence el ${dueStr}${amount}. Renuévalo hoy y no pierdas tu progreso 💪 — responde aquí o escríbeme directamente.`;
+  const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
+  const url=phone
+    ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    :`https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+}
+
+// Empujón de entrenamiento por WhatsApp (adherencia, no pago). Mensaje cálido según
+// si nunca entrenó o si dejó de venir. Ver vista de adherencia (banner del home).
+function whatsappNudge(id){
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c)return;
+  const nombre=c.name.split(' ')[0];
+  const nunca=!((DB.history[c.id]||[])[0]);
+  const msg=nunca
+    ?`Hola ${nombre} 👋 ¿Cómo vas? Vi que aún no has hecho tu primer entrenamiento en APEX. ¿Te ayudo a arrancar? Cualquier duda, aquí estoy 💪`
+    :`Hola ${nombre} 👋 ¿Cómo vas? Hace unos días no te veo entrenar y no quiero que pierdas el ritmo que llevabas 💪 ¿Todo bien? Si necesitas ajustar la rutina o tienes alguna molestia, escríbeme.`;
   const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
   const url=phone
     ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
