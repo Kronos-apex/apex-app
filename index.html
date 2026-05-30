@@ -481,6 +481,8 @@ html[data-theme="light"] .mta {
 /* ── ONBOARDING ── */
 #onboarding{position:fixed;inset:0;z-index:800;background:linear-gradient(160deg,#1B4332 0%,#2D6A4F 55%,#40916C 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:opacity .4s}
 #onboarding.fade-out{opacity:0;pointer-events:none}
+#cn-help-btn{animation:helpPulse 1.5s ease 3}
+@keyframes helpPulse{0%,100%{box-shadow:0 0 0 0 rgba(45,106,79,0)}50%{box-shadow:0 0 0 6px rgba(45,106,79,.20)}}
 .ob-slides{width:100%;max-width:380px;overflow:hidden}
 .ob-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .ob-slide{min-width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 4px 0;color:white}
@@ -933,8 +935,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <svg class="apex-logo" width="22" height="20" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
       APEX
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px">
       <div id="cn-greet" style="font-size:13px;color:var(--t2)"></div>
+      <button class="btn bsm" id="cn-help-btn" onclick="openHelp()" style="background:var(--gl);color:var(--g);font-weight:700">❓ Ayuda</button>
       <button class="btn bg bsm" onclick="logout()">Salir</button>
     </div>
   </div>
@@ -1138,6 +1141,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="fg" style="margin-bottom:10px"><label class="ilbl">Estilo de entrenamiento</label><select class="sel" id="mg-style" onchange="genWithStyle(this.value)"></select></div>
     <div id="mg-body" style="max-height:52vh;overflow-y:auto;margin-bottom:14px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-gen')">Cancelar</button><button class="btn bp" onclick="confirmGenRutinas()">✓ Crear estas rutinas</button></div>
+  </div>
+</div>
+
+<!-- Ayuda contextual del asesorado (re-accesible, por sección) -->
+<div class="mdbg" id="m-help">
+  <div class="md">
+    <div class="mdtitle" id="help-title">¿Cómo funciona?</div>
+    <div id="help-body" style="font-size:14px;line-height:1.65;color:var(--t1);max-height:60vh;overflow-y:auto"></div>
+    <div class="mdfooter"><button class="btn bp bfull" onclick="cm('m-help')">Entendido 👍</button></div>
   </div>
 </div>
 
@@ -6303,6 +6315,57 @@ const OB_KEY = 'apex_ob_done';
 
 function shouldShowOnboarding(clientId){
   return !localStorage.getItem(OB_KEY + '_' + clientId);
+}
+
+// ══════════════════════ AYUDA CONTEXTUAL (asesorado) ══════════════════════
+// Re-accesible desde el botón ❓ Ayuda. Explica la SECCIÓN actual en lenguaje
+// sencillo (pensado para personas no técnicas — pedido de Andrés 2026-05-31).
+const HELP_SECTIONS = {
+  'cn-today': { emoji:'🏋️', title:'La pantalla "Hoy"', html:`
+    Aquí está tu entrenamiento de <b>hoy</b>, preparado por tu entrenador.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px">Primero haz el <b>calentamiento</b>. El botón <b>🎥</b> te muestra cómo se hace cada movimiento.</li>
+      <li style="margin-bottom:7px">En cada ejercicio, escribe el <b>peso (KG)</b> y las <b>repeticiones</b> que hiciste. Si no usas peso, deja 0.</li>
+      <li style="margin-bottom:7px">Toca el <b>círculo verde ✓</b> al terminar cada serie. La app cuenta tu descanso sola.</li>
+      <li style="margin-bottom:7px">¿No conoces un ejercicio? Toca su <b>nombre</b> para ver un video y la explicación.</li>
+    </ul>
+    <div style="margin-top:10px">Cuando termines todo, verás una <b>celebración 🎉</b>. ¡Sin presión, ve a tu ritmo!</div>` },
+  'cn-routines': { emoji:'📋', title:'Tus "Rutinas"', html:`
+    Aquí están <b>todas las rutinas</b> que tu entrenador armó para ti, organizadas por día.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px">Toca una rutina para ver sus ejercicios.</li>
+      <li style="margin-bottom:7px">Sigue la rutina del <b>día que te toca</b> entrenar.</li>
+    </ul>
+    <div style="margin-top:10px">Si algo no te queda claro o sientes molestia, escríbele a tu entrenador por <b>Mensajes 💬</b>.</div>` },
+  'cn-messages': { emoji:'💬', title:'"Mensajes" con tu entrenador', html:`
+    Este es tu <b>chat directo</b> con tu entrenador, como un WhatsApp dentro de la app.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px">Escríbele si tienes <b>dudas</b>, una <b>molestia</b> o no pudiste entrenar.</li>
+      <li style="margin-bottom:7px">Él te responde aquí mismo.</li>
+    </ul>
+    <div style="margin-top:10px">Nunca te quedes con la duda: para eso está tu entrenador 🙂</div>` },
+  'cn-history': { emoji:'📊', title:'Tu "Historial" (progreso)', html:`
+    Aquí ves cómo <b>avanzas con el tiempo</b>.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px">Cada entrenamiento que completas queda <b>guardado</b> solo.</li>
+      <li style="margin-bottom:7px">Con las semanas verás cómo subes de peso o repeticiones 📈</li>
+    </ul>
+    <div style="margin-top:10px">Al principio estará casi vacío — es normal. <b>Entrena y vuelve en unas semanas</b> para ver tu cambio.</div>` },
+  'cn-profile': { emoji:'👤', title:'Tu "Perfil"', html:`
+    Aquí están tus datos y tu <b>racha</b> de entrenamientos.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px">Puedes anotar tu <b>peso y medidas</b> para ver cómo cambian con el tiempo.</li>
+      <li style="margin-bottom:7px">Tu entrenador usa estos datos para <b>ajustar tu plan</b>.</li>
+    </ul>
+    <div style="margin-top:10px">No es obligatorio llenarlo todo. Anota lo que puedas, cuando puedas.</div>` },
+};
+function openHelp(){
+  const active = document.querySelector('#s-client .cnp.on');
+  const id = (active && active.id) || 'cn-today';
+  const h = HELP_SECTIONS[id] || HELP_SECTIONS['cn-today'];
+  document.getElementById('help-title').innerHTML = `${h.emoji} ${esc(h.title)}`;
+  document.getElementById('help-body').innerHTML = h.html;
+  om('m-help');
 }
 
 function showOnboarding(clientId){
