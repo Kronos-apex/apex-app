@@ -1094,8 +1094,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
-      <div class="fg"><label class="ilbl">Días / semana en gym</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div class="fg"><label class="ilbl">Días / semana</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
+    <div class="fg"><label class="ilbl">Entorno de entrenamiento</label><select class="sel" id="cf-place"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select></div>
     <div class="fg"><label class="ilbl">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
     <div class="fg"><label class="ilbl">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
@@ -1646,6 +1647,7 @@ async function syncFromCloud(){
   if(_routineMigrated){sv('ax_c',DB.clients);log('APEX: routine.id migration applied');}
   DB.exercises=ld('ax_e',defaultExercises);
   migrateExTypes();
+  migrateEnv();
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
   DB.prs=ld('ax_pr',{});
@@ -1778,6 +1780,20 @@ const defaultExercises=[
   {id:'e94',name:'Abducción de Cadera de Pie con Banda',muscle:'gluteo',type:'Aislamiento',sets:3,reps:15,icon:'🦋',desc:'De pie con banda en los tobillos o rodillas, lleva una pierna hacia afuera. Sin máquinas — ideal para entrenar en casa. Activa glúteo medio y menor.',descSimple:'Coloca la banda en los tobillos o justo encima de las rodillas. Párate en una pierna (apóyate en la pared si necesitas). Lleva la otra pierna hacia afuera separándola del cuerpo. Regresa lento sin dejar caer el pie. Siente el costado del glúteo trabajar.',muscleLabel:'Glúteo medio y menor',ytQuery:'abducción cadera de pie con banda resistencia glúteo tutorial'},
   {id:'e95',name:'Peso Muerto Rumano a Una Pierna',muscle:'piernas',type:'Compuesto',sets:3,reps:10,icon:'🦩',desc:'RDL unilateral con mancuerna. Bisagra de cadera sobre una pierna, el otro pie levantado atrás. Trabaja femoral, glúteo y equilibrio simultáneamente. Empieza sin peso.',descSimple:'Párate en una pierna con la mancuerna en la mano opuesta (mano derecha si apoyas en pie izquierdo). Inclínate hacia adelante desde la cadera dejando que la pierna libre suba hacia atrás, formando una T con el cuerpo. Siente el estiramiento en la parte de atrás del muslo. Regresa lento. Empieza sin peso hasta dominar el equilibrio.',muscleLabel:'Femoral y glúteos (unilateral)',ytQuery:'peso muerto rumano una pierna single leg RDL mancuerna tutorial'},
   {id:'e96',name:'Kickback con Banda (en Suelo)',muscle:'gluteo',type:'Aislamiento',sets:3,reps:15,icon:'🎯',desc:'En cuatro apoyos con banda en los pies, extiende una pierna hacia atrás apretando el glúteo al tope. Versión de suelo para entrenar en casa sin polea.',descSimple:'En cuatro apoyos (manos y rodillas en el suelo), coloca la banda alrededor de los pies. Extiende una pierna hacia atrás hasta que esté casi recta, apretando el glúteo al máximo. Baja lento sin dejar caer la rodilla al suelo. Cuenta las reps por cada lado. Para mayor dificultad, mantén 1 segundo arriba.',muscleLabel:'Glúteo mayor',ytQuery:'kickback con banda en suelo donkey kick resistencia glúteo tutorial'},
+  // ── Ejercicios sin gym (peso corporal / banda) — borrador 2026-05-30, para revisión del coach. Ver docs/estilos-y-entornos.md ──
+  {id:'e97',name:'Pike Push-up (Flexión Pica)',muscle:'hombros',type:'Bodyweight',sets:3,reps:10,icon:'🔻',env:['corporal','casa','parque','gym'],desc:'Flexión en V invertida (cadera alta), el peso recae sobre los hombros. Progresión hacia el press de hombro sin equipo.',descSimple:'Ponte en posición de flexión pero levanta la cadera formando una V o pico con el cuerpo. Baja la cabeza hacia el suelo doblando los codos, como si empujaras hacia arriba con los hombros. Cuanto más alta la cadera, más trabaja el hombro. Si es difícil, apoya las manos en una silla.',muscleLabel:'Hombros',ytQuery:'pike push up flexión pica hombros sin equipo tutorial'},
+  {id:'e98',name:'Press de Hombro con Banda',muscle:'hombros',type:'Compuesto',track:'reps',sets:3,reps:12,icon:'🎗️',env:['casa','parque','gym'],desc:'Pisa la banda y empuja sobre la cabeza. Sustituye al press militar en casa. Resistencia progresiva sin carga axial.',descSimple:'Párate sobre el centro de la banda con los dos pies. Toma un extremo en cada mano a la altura de los hombros. Empuja las manos hacia arriba hasta estirar los brazos. Baja lento. Cuenta las repeticiones (no hay peso que anotar).',muscleLabel:'Hombros',ytQuery:'press de hombro con banda elástica de pie tutorial'},
+  {id:'e99',name:'Elevaciones Laterales con Banda',muscle:'hombros',type:'Aislamiento',track:'reps',sets:3,reps:15,icon:'↔️',env:['casa','parque','gym'],desc:'Pisa la banda, sube los brazos a los lados hasta la altura del hombro. Versión en casa de las elevaciones laterales.',descSimple:'Párate sobre la banda con un pie. Toma los extremos y sube los brazos hacia los lados hasta la altura de los hombros, como abriendo alas. Baja despacio. No uses impulso. Cuenta las repeticiones.',muscleLabel:'Hombro lateral',ytQuery:'elevaciones laterales con banda elástica tutorial'},
+  {id:'e100',name:'Face Pull con Banda',muscle:'hombros',type:'Aislamiento',track:'reps',sets:3,reps:15,icon:'🎯',env:['casa','parque','gym'],desc:'Banda anclada a la altura de la cara, tira hacia la frente abriendo codos. Salud del hombro y postura — ideal para quien trabaja sentado.',descSimple:'Engancha la banda a algo firme a la altura de tu cara (una manija, un poste). Toma un extremo en cada mano y jala hacia tu frente abriendo los codos hacia los lados. Aprieta la parte de atrás de los hombros. Excelente para la postura.',muscleLabel:'Hombro posterior y postura',ytQuery:'face pull con banda elástica postura hombro tutorial'},
+  {id:'e101',name:'Curl de Bíceps con Banda',muscle:'biceps',type:'Aislamiento',track:'reps',sets:3,reps:15,icon:'🎗️',env:['casa','parque','gym'],desc:'Pisa la banda y flexiona los codos. Tensión constante en el bíceps sin mancuernas.',descSimple:'Párate sobre la banda con los dos pies. Toma un extremo en cada mano con las palmas al frente. Dobla los codos subiendo las manos hacia los hombros. Mantén los codos pegados al cuerpo. Baja lento. Cuenta las repeticiones.',muscleLabel:'Bíceps',ytQuery:'curl de bíceps con banda elástica tutorial'},
+  {id:'e102',name:'Curl Martillo con Banda',muscle:'biceps',type:'Aislamiento',track:'reps',sets:3,reps:15,icon:'🔨',env:['casa','parque','gym'],desc:'Igual al curl con banda pero con agarre neutro (pulgares arriba). Trabaja braquial y antebrazo.',descSimple:'Párate sobre la banda. Toma los extremos con las palmas mirándose entre sí (como sosteniendo un martillo). Sube doblando los codos sin girar las muñecas. Trabaja el bíceps y el antebrazo. Cuenta las repeticiones.',muscleLabel:'Bíceps y antebrazo',ytQuery:'curl martillo con banda elástica tutorial'},
+  {id:'e103',name:'Dominada Supina (Chin-up)',muscle:'biceps',type:'Bodyweight',sets:3,reps:8,icon:'🦅',env:['parque','gym'],desc:'Agarre supino (palmas hacia ti), sube el mentón sobre la barra. Máximo énfasis en bíceps junto a la espalda. Usa banda de asistencia si hace falta.',descSimple:'Cuélgate de una barra con las palmas mirando hacia ti y las manos al ancho de los hombros. Sube hasta que el mentón pase la barra, sintiendo trabajar bíceps y espalda. Baja lento. Si no puedes solo, pon una banda bajo los pies para que te ayude.',muscleLabel:'Bíceps y espalda',ytQuery:'dominada supina chin up bíceps desde cero tutorial'},
+  {id:'e104',name:'Remo con Banda',muscle:'espalda',type:'Compuesto',track:'reps',sets:3,reps:12,icon:'🎗️',env:['casa','parque','gym'],desc:'Banda anclada al frente, tira los codos hacia atrás juntando los omóplatos. Sustituye al remo en casa.',descSimple:'Engancha la banda a algo firme al frente (o pásala por una puerta). Siéntate o párate y toma un extremo en cada mano. Tira llevando los codos hacia atrás, juntando los omóplatos como si apretaras un lápiz entre ellos. Regresa lento. Cuenta las repeticiones.',muscleLabel:'Espalda media',ytQuery:'remo con banda elástica espalda tutorial casa'},
+  {id:'e105',name:'Extensión de Tríceps con Banda',muscle:'triceps',type:'Aislamiento',track:'reps',sets:3,reps:15,icon:'🎗️',env:['casa','parque','gym'],desc:'Banda anclada arriba, extiende los codos hacia abajo. Versión en casa de la extensión en polea.',descSimple:'Engancha la banda en alto (una puerta, un poste). Toma el extremo con ambas manos y, manteniendo los codos pegados al cuerpo, estira los brazos hacia abajo. Sube lento sin mover los codos. Cuenta las repeticiones.',muscleLabel:'Tríceps',ytQuery:'extensión de tríceps con banda elástica tutorial'},
+  {id:'e106',name:'Puente de Glúteo a Una Pierna',muscle:'gluteo',type:'Bodyweight',sets:3,reps:12,icon:'🌉',env:['corporal','casa','parque','gym'],desc:'Puente de glúteo con una sola pierna apoyada, la otra extendida. Mayor intensidad sin peso. Trabaja glúteo y corrige asimetrías.',descSimple:'Acuéstate boca arriba con una rodilla doblada y el pie en el suelo; estira la otra pierna al aire. Sube la cadera apretando el glúteo de la pierna apoyada, manteniendo la otra recta. Baja lento sin tocar el suelo. Cuenta las repeticiones por cada lado.',muscleLabel:'Glúteo mayor (unilateral)',ytQuery:'puente de glúteo a una pierna peso corporal tutorial'},
+  {id:'e107',name:'Step-up a Peso Corporal',muscle:'piernas',type:'Funcional',track:'reps',sets:3,reps:12,icon:'📦',env:['corporal','casa','parque','gym'],desc:'Sube a un cajón/escalón firme con una pierna, controlando la bajada. Patrón funcional unilateral sin equipo.',descSimple:'Párate frente a un escalón o banco firme. Sube apoyando todo un pie y empujando con esa pierna hasta quedar de pie arriba. Baja despacio controlando. Trabaja una pierna a la vez. Cuenta las repeticiones por cada lado. Usa un escalón más bajo si te cuesta.',muscleLabel:'Cuádriceps y glúteo',ytQuery:'step up subida al cajón peso corporal tutorial'},
+  {id:'e108',name:'Sentadilla a Una Pierna Asistida',muscle:'piernas',type:'Bodyweight',sets:3,reps:8,icon:'🦩',env:['corporal','casa','parque','gym'],desc:'Sentadilla unilateral sujetándose de un apoyo (marco de puerta, TRX). Progresión hacia la pistol. Fuerza y equilibrio sin carga.',descSimple:'Sujétate de un marco de puerta o algo firme con las manos. Párate en una pierna y baja como en una sentadilla, dejando la otra pierna al frente sin tocar el suelo. Usa los brazos solo lo necesario para ayudarte. Sube apretando la pierna. Cuenta las repeticiones por cada lado.',muscleLabel:'Cuádriceps, glúteo y equilibrio',ytQuery:'sentadilla a una pierna asistida pistol progresión tutorial'},
+  {id:'e109',name:'Elevaciones Y-T-W en Suelo',muscle:'hombros',type:'Bodyweight',sets:3,reps:12,icon:'🅈',env:['corporal','casa','parque','gym'],desc:'Boca abajo, levanta los brazos formando Y, T y W. Fortalece hombro posterior y trapecio bajo — postura y salud del hombro sin equipo.',descSimple:'Acuéstate boca abajo. Levanta los brazos del suelo formando primero una Y (brazos arriba en diagonal), luego una T (brazos a los lados) y luego una W (codos doblados pegados al cuerpo). Aprieta la espalda alta en cada posición. Ideal para la postura y para cuidar los hombros.',muscleLabel:'Hombro posterior y postura',ytQuery:'elevaciones Y T W boca abajo postura hombro tutorial'},
 ];
 const DB={
   clients:ld('ax_c',[]),
@@ -3013,7 +3029,7 @@ function renderClients(){
   });
 }
 
-function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
+function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
 
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
@@ -3032,6 +3048,7 @@ function openEditClient(){
   document.getElementById('cf-sex').value=c.sex||'';
   document.getElementById('cf-activity').value=c.activityFactor||'1.55';
   document.getElementById('cf-days').value=c.days||'3';
+  document.getElementById('cf-place').value=c.place||'gym';
   document.getElementById('cf-phone').value=c.phone||'';
   document.getElementById('cf-notes').value=c.notes||'';
   om('m-client');
@@ -3060,6 +3077,7 @@ async function saveClient(){
     sex:document.getElementById('cf-sex').value||null,
     activityFactor:parseFloat(document.getElementById('cf-activity').value)||1.55,
     days:parseInt(document.getElementById('cf-days').value)||3,
+    place:document.getElementById('cf-place').value||'gym',
     notes:document.getElementById('cf-notes').value.trim(),
     phone:document.getElementById('cf-phone').value.trim(),
     updatedAt:new Date().toISOString()
@@ -4222,6 +4240,19 @@ function migrateExTypes(){
   (DB.templates||[]).forEach(t=>apply(t.exercises));
   if(n){sv('ax_e',DB.exercises);sv('ax_c',DB.clients);if(DB.templates)sv('ax_tpl',DB.templates);log(`APEX: ${n} ejercicios reclasificados (modalidades)`);}
   localStorage.setItem('ax_track_migrated','2');
+}
+// Migración: etiqueta `env` (entorno de equipo) en los ejercicios que no lo tengan,
+// usando el heurístico inferExerciseEnv (apex-core.js). PROPONE — el coach valida/edita.
+// Solo asigna si falta → no pisa ediciones del coach. Ver docs/estilos-y-entornos.md.
+function migrateEnv(){
+  if(localStorage.getItem('ax_env_migrated')==='1')return;
+  let n=0;
+  const apply=arr=>(arr||[]).forEach(ex=>{if(!ex.env){ex.env=inferExerciseEnv(ex);n++;}});
+  apply(DB.exercises);
+  (DB.clients||[]).forEach(c=>(c.routines||[]).forEach(r=>apply(r.exercises)));
+  (DB.templates||[]).forEach(t=>apply(t.exercises));
+  if(n){sv('ax_e',DB.exercises);sv('ax_c',DB.clients);if(DB.templates)sv('ax_tpl',DB.templates);log(`APEX: ${n} ejercicios etiquetados con entorno (env)`);}
+  localStorage.setItem('ax_env_migrated','1');
 }
 function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
 function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
@@ -6502,6 +6533,18 @@ function _dobFinish(){
 // ══════════════════════════════════════════
 
 // Biblioteca de ejercicios de movilidad y activación
+// Catálogo de estilos = presets que combinan ENTORNO + METODOLOGÍA. Fase A (cimiento).
+// `env` filtra la biblioteca; `methodBias` afinará selección/split en fases siguientes.
+// Se cableará en la UI del generador en Fase D. Ver docs/estilos-y-entornos.md.
+const TRAINING_STYLES = [
+  {id:'gym_hipertrofia',  name:'Gym — Hipertrofia',          icon:'🏋️', env:'gym',      methodBias:'hipertrofia'},
+  {id:'gym_fuerza',       name:'Gym — Fuerza',               icon:'🏋️', env:'gym',      methodBias:'fuerza'},
+  {id:'casa_corporal',    name:'Casa — Peso corporal',       icon:'🤸', env:'corporal', methodBias:'funcional'},
+  {id:'casa_equipo',      name:'Casa — Bandas y mancuernas', icon:'🏠', env:'casa',     methodBias:'hipertrofia'},
+  {id:'parque_calistenia',name:'Calistenia / Parque',        icon:'🌳', env:'parque',   methodBias:'calistenia'},
+  {id:'funcional',        name:'Funcional',                  icon:'🔥', env:'casa',     methodBias:'funcional'},
+];
+
 const WARMUP_LIBRARY = {
 
   // ── MOVILIDAD ARTICULAR ──

@@ -290,6 +290,42 @@ function generarRutinas(client, lib, opts) {
   return { routines, needsReview: lim.detected, limitations: lim };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ENTORNOS DE EQUIPO (env) — ver docs/estilos-y-entornos.md (Fase A)
+// ─────────────────────────────────────────────────────────────────────
+// Eje INDEPENDIENTE de `goal` y de `tier`. Responde: ¿dónde/con qué se hace?
+// Heurístico por nombre+tipo: PROPONE, el coach valida (no es exacto).
+// Regla de compatibilidad: lo 'corporal' sirve en todos; 'casa'/'parque' también en 'gym'.
+// ─────────────────────────────────────────────────────────────────────
+const ENV_ALL = ['corporal', 'casa', 'parque', 'gym'];
+
+function inferExerciseEnv(ex) {
+  ex = ex || {};
+  const n = _norm(ex.name);
+  const type = ex.type || '';
+  const muscle = ex.muscle || '';
+  // 1) Aparatos exclusivos de gym
+  if (/maquina|polea|cable|prensa|smith|hack|gironda|peck|contractora|hammer|multipower|jaca/.test(n)) return ['gym'];
+  // 2) Calistenia en barra/paralelas (peso corporal pero necesita estructura)
+  if (/dominad|chin.?up|muscle.?up|paralel|colgad|remo invertid|australian/.test(n)) return ['parque', 'gym'];
+  // 3) Barra cargada (olímpica / EZ) → gym
+  if (/\bbarra\b|\bez\b|olimpic/.test(n)) return ['gym'];
+  // 4) Banda elástica → casa / parque / gym
+  if (/banda|elastic|\bliga\b/.test(n)) return ['casa', 'parque', 'gym'];
+  // 5) Mancuerna → casa / gym
+  if (/mancuern/.test(n)) return ['casa', 'gym'];
+  // 6) Cardio: máquina vs corporal
+  if (muscle === 'cardio') {
+    if (/estatic|eliptic|ergometr|cinta|escaladora|spinning/.test(n)) return ['gym'];
+    return ENV_ALL.slice(); // carrera, cuerda, burpees, saltos, mountain climbers...
+  }
+  // 7) Peso corporal / isométrico / funcional / patrones sin implemento → todos
+  if (type === 'Bodyweight' || type === 'Isométrico' || type === 'Funcional') return ENV_ALL.slice();
+  if (/peso corporal|lagartij|flexion|plancha|superman|puente|zancada|desplante|bulgar|a una pierna|unilateral|pike|burpee|step.?up|crunch|abdominal|mountain|escalador|wall sit|patada de gluteo en cuadrupedia/.test(n)) return ENV_ALL.slice();
+  // 8) Por defecto, conservador: gym (el coach reabre a casa si aplica)
+  return ['gym'];
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -303,5 +339,7 @@ if (typeof module !== 'undefined' && module.exports) {
     generarRutinas,
     parseLimitations,
     genSchemeFor,
+    inferExerciseEnv,
+    ENV_ALL,
   };
 }

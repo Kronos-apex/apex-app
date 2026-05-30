@@ -18,6 +18,7 @@ const {
   cnTodayGuard,
   generarRutinas,
   parseLimitations,
+  inferExerciseEnv,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -373,6 +374,52 @@ test('metadatos de borrador: generated true, reviewed false, createdAt fijado', 
     assert.strictEqual(r.createdAt, '2026-05-30T00:00:00.000Z');
     assert.ok(r.id && r.exercises.length > 0);
   });
+});
+
+section('9. Entornos de equipo — inferExerciseEnv()');
+
+test('máquina/polea/prensa → solo gym', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Prensa de Piernas', muscle: 'piernas', type: 'Compuesto' }), ['gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Jalón al Pecho', muscle: 'espalda', type: 'Compuesto' }), ['gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Aperturas con Cable', muscle: 'pecho', type: 'Aislamiento' }), ['gym']);
+});
+
+test('dominadas / remo invertido → parque + gym (necesitan barra)', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Dominadas', muscle: 'espalda', type: 'Bodyweight' }), ['parque', 'gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Remo Invertido', muscle: 'espalda', type: 'Bodyweight' }), ['parque', 'gym']);
+});
+
+test('barra cargada → solo gym', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto' }), ['gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Curl con Barra', muscle: 'biceps', type: 'Aislamiento' }), ['gym']);
+});
+
+test('banda → casa + parque + gym', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Curl de Bíceps con Banda', muscle: 'biceps', type: 'Aislamiento' }), ['casa', 'parque', 'gym']);
+});
+
+test('mancuerna → casa + gym (no parque ni corporal)', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Press Inclinado Mancuernas', muscle: 'pecho', type: 'Compuesto' }), ['casa', 'gym']);
+});
+
+test('peso corporal / isométrico → todos los entornos', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Lagartijas (Push-up)', muscle: 'pecho', type: 'Bodyweight' }), ['corporal', 'casa', 'parque', 'gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Plancha', muscle: 'core', type: 'Isométrico' }), ['corporal', 'casa', 'parque', 'gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Sentadilla de Peso Corporal', muscle: 'piernas', type: 'Compuesto' }), ['corporal', 'casa', 'parque', 'gym']);
+});
+
+test('cardio: máquina → gym; corporal → todos', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Bicicleta Estática', muscle: 'cardio', type: 'Cardio' }), ['gym']);
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Burpees', muscle: 'cardio', type: 'HIIT' }), ['corporal', 'casa', 'parque', 'gym']);
+});
+
+test('ambiguo sin pista → gym (conservador, el coach reabre)', () => {
+  assert.deepStrictEqual(inferExerciseEnv({ name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento' }), ['gym']);
+});
+
+test('precedencia: "con Banda" gana sobre default y sobre mancuerna ausente', () => {
+  // banda se evalúa antes que el default; un nombre con banda nunca cae a gym-only
+  assert.ok(inferExerciseEnv({ name: 'Sentadilla con Banda de Resistencia', muscle: 'piernas', type: 'Compuesto' }).includes('casa'));
 });
 
 // ══════════════════════════════════════════════════════

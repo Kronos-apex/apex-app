@@ -139,12 +139,37 @@ de casa sin colar ejercicios de gym. Mismo filtro que el generador.
 
 ## 7. Fases recomendadas
 
-1. **Fase A — Cimientos de datos:** campo `env` (heurístico + revisión), campo `place`
-   en cliente, catálogo `TRAINING_STYLES`. Sin esto nada filtra.
-2. **Fase B — Contenido:** agregar los ~20 ejercicios de §3 (desbloquea casa/parque real).
-3. **Fase C — Generador + picker:** filtro por entorno y `methodBias` + tests.
-4. **Fase D — UX:** selector de estilo en el generador, chips de entorno, campo en el form.
-5. ✅ **Calentamiento con video — HECHO** (fuera de fases, ya entregado).
+1. ✅ **Fase A — Cimientos de datos — HECHA (2026-05-30):** función pura `inferExerciseEnv()`
+   en apex-core.js (9 tests) + `migrateEnv()` que etiqueta `env` en los 96 ejercicios
+   (heurístico, el coach valida) · campo `place` en el formulario del asesorado (gym por
+   defecto) · catálogo `TRAINING_STYLES` (6 estilos, se cablea en Fase D).
+2. ✅ **Fase B — Contenido (primer lote) — HECHA (2026-05-30):** +13 ejercicios sin gym
+   (e97–e109): hombros (pike, Y-T-W, press/lateral/face-pull con banda), bíceps (curl y
+   martillo con banda, chin-up), espalda (remo con banda), tríceps (extensión con banda),
+   glúteo (puente a una pierna), piernas (step-up y sentadilla a una pierna). **Casa queda
+   cubierta en todos los grupos.** Huecos honestos en SOLO peso corporal: bíceps 0 y
+   espalda 1 (Superman) — tirar/curl exige resistencia; un band barato lo resuelve.
+3. **Fase C — Generador + picker:** filtro por entorno y `methodBias` + tests. (PENDIENTE)
+4. **Fase D — UX:** selector de estilo en el generador, chips de entorno, mostrar `env` por
+   ejercicio para que el coach valide/edite el etiquetado. (PENDIENTE)
+5. ✅ **Calentamiento con video — HECHO** (fuera de fases).
+
+### Cobertura tras Fase A+B (nº ejercicios por músculo × entorno)
+```
+músculo  | corporal | casa | parque | gym
+pecho    |    3     |  5   |   3    | 10
+espalda  |    1     |  3   |   3    | 14
+hombros  |    2     |  6   |   5    | 12
+biceps   |    0     |  3   |   3    |  8
+triceps  |    1     |  3   |   3    |  9
+piernas  |    6     |  8   |   7    | 20
+gluteo   |    3     |  6   |   6    | 17
+core     |    8     |  8   |   9    |  9
+cardio   |    5     |  5   |   5    |  8
+```
+> **Pendiente de Andrés:** validar/editar el `env` heurístico de los 96 originales (algunos
+> mancuerna sin pista quedaron 'gym' por conservadurismo) y decidir si añade bíceps/espalda
+> corporal (ej. remo invertido en mesa, curl isométrico) o si empuja a usar 1 banda.
 
 > **Orden lógico:** A→B son prerrequisito de C→D. B es trabajo de contenido del coach
 > (Andrés valida cada ejercicio); A y C-D son código. Se puede avanzar A en paralelo a que
