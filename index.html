@@ -1135,7 +1135,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="mdbg" id="m-gen">
   <div class="md mdlg">
     <div class="mdtitle" id="mg-title">✨ Borrador de la semana</div>
-    <div id="mg-body" style="max-height:58vh;overflow-y:auto;margin-bottom:14px"></div>
+    <div class="fg" style="margin-bottom:10px"><label class="ilbl">Estilo de entrenamiento</label><select class="sel" id="mg-style" onchange="genWithStyle(this.value)"></select></div>
+    <div id="mg-body" style="max-height:52vh;overflow-y:auto;margin-bottom:14px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-gen')">Cancelar</button><button class="btn bp" onclick="confirmGenRutinas()">✓ Crear estas rutinas</button></div>
   </div>
 </div>
@@ -3626,13 +3627,26 @@ function openNewRoutine(){
 // El motor vive en apex-core.js (generarRutinas, testeado). Aquí solo el preview + confirmación.
 // Principio: genera un BORRADOR; el coach revisa, confirma y ajusta. Nunca se auto-asigna a ciegas.
 function _genSeed(s){let h=0;s=s||'';for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+// Estilo por defecto según el entorno del asesorado.
+const PLACE_DEFAULT_STYLE={gym:'gym_hipertrofia',casa:'casa_equipo',corporal:'casa_corporal',parque:'parque_calistenia'};
 function openGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id)});
-  if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return;}
-  CUR.genDraft=res;
+  // Poblar el selector de estilos; default = el que corresponde al entorno del cliente.
+  const def=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
+  document.getElementById('mg-style').innerHTML=TRAINING_STYLES.map(s=>`<option value="${s.id}"${s.id===def?' selected':''}>${s.icon} ${esc(s.name)}</option>`).join('');
   document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--g)">${esc(c.name)}</span>`;
-  renderGenPreview(c,res);om('m-gen');
+  if(!genWithStyle(def))return;
+  om('m-gen');
+}
+// Genera (o regenera) el borrador con el estilo elegido. El estilo fija entorno + methodBias.
+function genWithStyle(styleId){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return false;
+  const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias});
+  if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}
+  CUR.genDraft=res;CUR.genStyleId=style.id;
+  renderGenPreview(c,res);
+  return true;
 }
 const PLACE_LABELS={gym:'🏋️ Gym completo',casa:'🏠 Casa (bandas/mancuernas)',corporal:'🤸 Solo peso corporal',parque:'🌳 Aire libre / parque'};
 function renderGenPreview(c,res){
@@ -6816,11 +6830,12 @@ function toggleWarmup(){
 
 
 let CUR_EX_YT_QUERY = '';
+let CUR_EX_REF = null; // ejercicio de biblioteca en edición (env), o null si no editable
 
 function openExDetail(exId, forceCoachView){
   const ex = DB.exercises.find(e=>e.id===exId);
   if(!ex) return;
-  _showExSheet(ex, forceCoachView || CUR.loggedAs === 'coach');
+  _showExSheet(ex, forceCoachView || CUR.loggedAs === 'coach', true); // editable: es de la biblioteca
 }
 // Busca un ejercicio de calentamiento por id en toda la WARMUP_LIBRARY.
 function findWarmupEx(id){
@@ -6832,9 +6847,9 @@ function findWarmupEx(id){
 function openWarmupDetail(id){
   const w = findWarmupEx(id);
   if(!w) return;
-  _showExSheet({ ...w, muscleLabel:'Calentamiento · movilidad', type:w.type||'Movilidad', sets:'—' }, CUR.loggedAs === 'coach');
+  _showExSheet({ ...w, muscleLabel:'Calentamiento · movilidad', type:w.type||'Movilidad', sets:'—' }, CUR.loggedAs === 'coach', false); // calentamiento: no editable
 }
-function _showExSheet(ex, isCoach){
+function _showExSheet(ex, isCoach, editable){
   const color = MC[ex.muscle] || '#888';
 
   // Icon block
@@ -6876,9 +6891,39 @@ function _showExSheet(ex, isCoach){
   // YouTube query
   CUR_EX_YT_QUERY = ex.ytQuery || (ex.name + ' ejercicio tutorial');
 
+  // Editor de entorno (solo coach, ejercicios de la biblioteca)
+  CUR_EX_REF = (isCoach && editable) ? ex : null;
+  const envWrap = document.getElementById('exd-env-wrap');
+  if(CUR_EX_REF){ renderExEnvChips(); envWrap.style.display='block'; }
+  else { envWrap.style.display='none'; }
+
   // Show sheet
   document.getElementById('exdetail-bg').classList.add('on');
   document.body.style.overflow = 'hidden';
+}
+
+// Chips editables del entorno del ejercicio en edición (CUR_EX_REF).
+const ENV_OPTS = [['corporal','🤸 Peso corporal'],['casa','🏠 Casa'],['parque','🌳 Parque'],['gym','🏋️ Gym']];
+function renderExEnvChips(){
+  const ex = CUR_EX_REF; if(!ex) return;
+  const env = ex.env || ['gym'];
+  document.getElementById('exd-env-chips').innerHTML = ENV_OPTS.map(([code,lbl])=>{
+    const on = env.includes(code);
+    return `<button onclick="toggleExEnv('${code}')" style="font-size:12px;padding:5px 10px;border-radius:14px;cursor:pointer;border:1.5px solid ${on?'var(--g)':'var(--br)'};background:${on?'var(--gl)':'var(--w)'};color:${on?'var(--g)':'var(--t2)'};font-weight:${on?'700':'500'}">${on?'✓ ':''}${lbl}</button>`;
+  }).join('');
+}
+function toggleExEnv(code){
+  const ex = CUR_EX_REF; if(!ex) return;
+  let env = Array.isArray(ex.env)?ex.env.slice():['gym'];
+  if(env.includes(code)){
+    if(env.length===1){toast('⚠️ Debe quedar al menos un entorno');return;}
+    env = env.filter(x=>x!==code);
+  } else { env.push(code); }
+  // Orden canónico para consistencia
+  ex.env = ['corporal','casa','parque','gym'].filter(x=>env.includes(x));
+  sv('ax_e',DB.exercises);
+  renderExEnvChips();
+  toast(`✓ Entorno actualizado: ${ex.name}`);
 }
 
 function closeExDetail(e){
@@ -7383,6 +7428,12 @@ function whatsappReminder(id){
     <div class="exdetail-section" id="exd-tech-wrap" style="display:none">
       <div class="exdetail-slabel">Notas técnicas (coach)</div>
       <div class="exdetail-desc" id="exd-tech" style="font-size:13px"></div>
+    </div>
+
+    <!-- Editor de entorno (solo coach, ejercicios de la biblioteca) -->
+    <div class="exdetail-section" id="exd-env-wrap" style="display:none">
+      <div class="exdetail-slabel">Entorno — ¿dónde se puede hacer? (toca para corregir)</div>
+      <div id="exd-env-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div>
     </div>
 
     <!-- Botón YouTube -->

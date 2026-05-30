@@ -154,8 +154,16 @@ de casa sin colar ejercicios de gym. Mismo filtro que el generador.
    (calistenia→prefiere peso corporal). Reporta `envGaps` (músculos sin opción en el entorno)
    → el preview muestra aviso "ℹ️ Sin opciones... sugerir banda". Picker con filtro de entorno
    (default = `place` del asesorado) + chips de entorno por ejercicio. 7 tests (§10, 56/56 verde).
-4. **Fase D — UX (pendiente):** selector de **estilo** (preset `TRAINING_STYLES`) en el ✨ Generar
-   para pasar `methodBias`; editor de `env` por ejercicio para que el coach valide el etiquetado.
+4. ✅ **Fase D — UX — HECHA (2026-05-30):** selector de **estilo** (`TRAINING_STYLES`) en el
+   ✨ Generar (`genWithStyle` → pasa `place`+`methodBias` del preset; default según el entorno
+   del asesorado; regenera en vivo al cambiar). Editor de `env` por ejercicio en la ficha del
+   coach (chips toggleables `corporal/casa/parque/gym`, persiste a `ax_e`) → para validar/corregir
+   el etiquetado heurístico.
+
+> **BLOQUE ESTILOS/ENTORNOS COMPLETO (A–D + calentamiento con video).** Pendiente solo el
+> trabajo de curación del coach: revisar el `env` de los 96 originales (hay mis-tags: ej.
+> "Rueda Abdominal" y "Peso Muerto Rumano a Una Pierna" quedaron 'corporal'). Futuro opcional:
+> más ejercicios corporal de bíceps/espalda, o `tier` (§3.5 del otro doc).
 5. ✅ **Calentamiento con video — HECHO** (fuera de fases).
 
 ### Cobertura tras Fase A+B (nº ejercicios por músculo × entorno)
