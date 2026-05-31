@@ -23,7 +23,7 @@
 
 <!-- PWA: identidad y display -->
 <meta name="application-name" content="APEX">
-<meta name="theme-color" content="#2D6A4F">
+<meta name="theme-color" content="#06090A">
 <meta name="mobile-web-app-capable" content="yes">
 
 <!-- PWA: iOS específico -->
@@ -40,7 +40,7 @@
 <!-- Preconnect Google Fonts para evitar bloquear el primer render -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,7 +85,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   html:not([data-theme="light"]) .li::placeholder,
   html:not([data-theme="light"]) .inp::placeholder,
   html:not([data-theme="light"]) .sinput::placeholder { color: var(--t3); }
-  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
+  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(160deg,#0B1F18,#07261D,#06090A); }
 }
 /* dark mode manual — forzado por el toggle de la app */
 :root[data-theme="dark"] {
@@ -119,7 +119,7 @@ html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
 }
 html[data-theme="dark"] .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
 html[data-theme="dark"] .apex-logo .logo-ring { fill: var(--bg); }
-html[data-theme="dark"] #apex-loading { background: linear-gradient(145deg,#0A1A10,#1B4332,#2D6A4F); }
+html[data-theme="dark"] #apex-loading { background: linear-gradient(160deg,#0B1F18,#07261D,#06090A); }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
@@ -458,7 +458,7 @@ html[data-theme="light"] .mta {
 .exdetail-stat-val{font-size:17px;font-weight:800;color:var(--g);font-family:'JetBrains Mono',monospace}
 .exdetail-stat-lbl{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 /* Loading overlay */
-#apex-loading{position:fixed;inset:0;background:linear-gradient(145deg,#1B4332,#2D6A4F,#52B788);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+#apex-loading{position:fixed;inset:0;background:linear-gradient(160deg,#0B1F18,#07261D,#06090A);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
 #apex-loading.fade{opacity:0;pointer-events:none}
 .ld-logo{font-size:32px;font-weight:800;color:white;margin-bottom:8px}
 .ld-sub{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:28px}
@@ -665,6 +665,54 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .pex-chart-wrap{display:none;padding:8px 14px 12px;background:var(--bg);border-bottom:1px solid var(--br)}.pex-chart-wrap.show{display:block}
 .pex-adj-form{display:none;padding:10px 14px;background:var(--gl);border-bottom:1px solid var(--br)}.pex-adj-form.show{display:flex;flex-direction:column;gap:8px}
 
+/* ══ LOGIN CINEMATOGRÁFICO (rediseño 2026-05-31) ══ */
+#s-login.cin{position:relative;align-items:stretch;justify-content:flex-start;padding:0;background:#000;overflow:hidden}
+.cin-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;filter:contrast(1.04)}
+.cin-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg,rgba(2,10,7,.30) 0%,rgba(0,0,0,0) 24%,rgba(0,0,0,0) 40%,rgba(2,10,7,.55) 64%,rgba(2,8,6,.94) 100%)}
+.cin-edge{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 120px 12px rgba(0,0,0,.42)}
+.cin-wrap{position:relative;z-index:6;display:flex;flex-direction:column;height:100%;width:100%;max-width:430px;margin:0 auto;
+  padding:max(38px,env(safe-area-inset-top)) 26px max(24px,env(safe-area-inset-bottom))}
+.cin-brand{display:flex;align-items:center;gap:9px}
+.cin-brand svg{width:21px;height:19px}
+.cin-brand span{font-size:10.5px;font-weight:800;letter-spacing:3.5px;color:#fff;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+.cin-dot{width:5px;height:5px;border-radius:50%;background:#10E0A0;box-shadow:0 0 10px rgba(16,224,160,.45)}
+.cin-hero{margin-top:auto;margin-bottom:22px}
+.cin-eyebrow{font-size:11.5px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:#10E0A0;margin-bottom:14px;text-shadow:0 0 18px rgba(16,224,160,.45),0 1px 6px rgba(0,0,0,.9)}
+.cin-eyebrow::before{content:"";display:inline-block;width:24px;height:2px;background:#10E0A0;vertical-align:middle;margin-right:10px;margin-bottom:3px}
+.cin-word{font-family:'Anton',sans-serif;font-size:clamp(86px,29vw,150px);line-height:.82;letter-spacing:-1px;text-transform:uppercase;color:#fff;position:relative;display:inline-block;text-shadow:0 6px 34px rgba(0,0,0,.85)}
+.cin-word::after{content:"";position:absolute;left:-2%;right:-2%;top:55%;height:7px;border-radius:5px;background:linear-gradient(90deg,#068F66,#10E0A0,#068F66);box-shadow:0 0 26px rgba(16,224,160,.45)}
+.cin-word-sub{font-family:'Anton',sans-serif;font-size:clamp(24px,7.5vw,38px);letter-spacing:7px;text-transform:uppercase;color:#10E0A0;line-height:1;margin-top:8px;text-shadow:0 2px 14px rgba(0,0,0,.85),0 0 18px rgba(16,224,160,.35)}
+.cin-tag{margin-top:18px;font-size:17px;font-weight:600;color:#fff;max-width:300px;line-height:1.32;text-shadow:0 1px 10px rgba(0,0,0,.9)}
+.cin-tag b{color:#10E0A0;font-weight:800}
+.cin-sub2{margin-top:10px;font-size:13.5px;font-weight:500;color:rgba(242,245,244,.80);max-width:320px;line-height:1.45;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+.cin-card{background:linear-gradient(180deg,rgba(10,14,12,.55),rgba(6,9,8,.84));backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid rgba(242,245,244,.12);border-radius:22px;padding:20px 18px 18px;box-shadow:0 -12px 54px rgba(0,0,0,.5)}
+.cin-card .lerr{display:none;background:rgba(230,57,70,.16);border:1px solid rgba(230,57,70,.5);color:#FF6B78;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px}
+.cin-card .lerr.on{display:block}
+.cin-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(242,245,244,.40);margin-bottom:6px}
+.cin-in{width:100%;background:transparent;border:none;border-bottom:1.5px solid rgba(242,245,244,.18);color:#fff;font-family:inherit;font-size:16px;font-weight:600;padding:6px 2px 9px;outline:none;transition:border-color .25s;margin-bottom:14px}
+.cin-in::placeholder{color:rgba(242,245,244,.30);font-weight:500}
+.cin-in:focus{border-color:#10E0A0}
+.cin-rem{display:flex;align-items:center;gap:8px;margin:-4px 0 14px}
+.cin-rem label{font-size:12px;color:rgba(242,245,244,.55);cursor:pointer;user-select:none}
+.cin-btn{width:100%;padding:15px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;font-size:16px;font-weight:800;letter-spacing:.4px;color:#06120D;background:linear-gradient(135deg,#10E0A0,#068F66);box-shadow:0 8px 30px rgba(16,224,160,.30);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s}
+.cin-btn:active{transform:translateY(1px) scale(.99)}
+.cin-hint{margin-top:13px;text-align:center;font-size:12px;color:rgba(242,245,244,.5);line-height:1.5}.cin-hint b{color:#fff}
+.cin-install{margin-top:14px;padding:12px 14px;background:rgba(16,224,160,.10);border:1px solid rgba(16,224,160,.22);border-radius:12px;text-align:left;display:none}
+.cin-install .ttl{font-size:11px;font-weight:800;color:#10E0A0;margin-bottom:6px;letter-spacing:.5px}
+.cin-install .txt{font-size:12px;color:rgba(242,245,244,.7);line-height:1.6}
+.cin-install strong{color:#10E0A0}
+.cin-install .ibtn{margin-top:8px;width:100%;padding:9px;background:#10E0A0;border:none;border-radius:8px;color:#06120D;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.cin-cta{display:flex;gap:12px;margin-top:24px}
+.cin-cta button{flex:1;padding:16px;border-radius:40px;font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid #fff;transition:transform .12s}
+.cin-cta button:active{transform:scale(.98)}
+.cin-cta-fill{background:#fff;color:#0A0E0C}
+.cin-cta-out{background:rgba(0,0,0,.20);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.cin-back{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.3px;color:rgba(242,245,244,.6);cursor:pointer;margin-bottom:12px;user-select:none}
+.cin-back:hover{color:#fff}
+@media (prefers-reduced-motion:no-preference){.cin-hero,.cin-cta{animation:cinUp .7s .1s both}}
+@keyframes cinUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
 </style>
 </head>
 <body>
@@ -672,7 +720,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
   <div class="ld-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
-    <svg width="36" height="33" viewBox="0 0 512 512" fill="none"><line x1="256" y1="70" x2="76" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><line x1="256" y1="70" x2="436" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
+    <svg width="36" height="33" viewBox="0 0 512 512" fill="none"><line x1="256" y1="70" x2="76" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><line x1="256" y1="70" x2="436" y2="440" stroke="rgba(255,255,255,.95)" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#10E0A0"/><circle cx="96" cy="289" r="46" fill="#10E0A0"/><circle cx="96" cy="289" r="28" fill="#06090A"/><circle cx="96" cy="289" r="14" fill="#10E0A0"/><circle cx="416" cy="289" r="46" fill="#10E0A0"/><circle cx="416" cy="289" r="28" fill="#06090A"/><circle cx="416" cy="289" r="14" fill="#10E0A0"/></svg>
     APEX
   </div>
   <div class="ld-sub">Entrenamiento con nombre propio</div>
@@ -680,31 +728,58 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="ld-msg" id="ld-msg">Conectando con la nube</div>
 </div>
 
-<!-- ══ LOGIN ══ -->
-<div id="s-login" class="screen on">
-  <div class="lcard">
-    <div class="llogo" style="display:flex;align-items:center;gap:10px">
-      <svg class="apex-logo" width="40" height="37" viewBox="0 0 512 512" fill="none"><line class="logo-leg" x1="256" y1="70" x2="76" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><line class="logo-leg" x1="256" y1="70" x2="436" y2="440" stroke="#1B4332" stroke-width="74" stroke-linecap="square"/><rect x="96" y="278" width="320" height="22" rx="11" fill="#E8C547"/><circle cx="96" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="96" cy="289" r="28" fill="#1B4332"/><circle cx="96" cy="289" r="14" fill="#E8C547"/><circle cx="416" cy="289" r="46" fill="#E8C547"/><circle class="logo-ring" cx="416" cy="289" r="28" fill="#1B4332"/><circle cx="416" cy="289" r="14" fill="#E8C547"/></svg>
-      <span>APEX</span>
+<!-- ══ LOGIN (cinematográfico) ══ -->
+<div id="s-login" class="screen on cin">
+  <video class="cin-vid" autoplay muted loop playsinline preload="auto" src="media/hero-montage.mp4"></video>
+  <div class="cin-scrim"></div>
+  <div class="cin-edge"></div>
+  <div class="cin-wrap">
+    <div class="cin-brand">
+      <svg viewBox="0 0 512 512" fill="none">
+        <line x1="256" y1="70" x2="76" y2="440" stroke="#F2F5F4" stroke-width="74" stroke-linecap="square"/>
+        <line x1="256" y1="70" x2="436" y2="440" stroke="#F2F5F4" stroke-width="74" stroke-linecap="square"/>
+        <rect x="96" y="278" width="320" height="22" rx="11" fill="#10E0A0"/>
+        <circle cx="96" cy="289" r="46" fill="#10E0A0"/><circle cx="96" cy="289" r="28" fill="#06090A"/>
+        <circle cx="416" cy="289" r="46" fill="#10E0A0"/><circle cx="416" cy="289" r="28" fill="#06090A"/>
+      </svg>
+      <span>Apex</span><span class="cin-dot"></span>
     </div>
-    <div class="lsub">Entrenamiento con nombre propio</div>
-    <div id="lerr" class="lerr">Email o contraseña incorrectos</div>
-    <label class="llbl">Email</label>
-    <input id="lu" maxlength="100" class="li" type="email" placeholder="tu@email.com" autocomplete="email">
-    <label class="llbl">Contraseña</label>
-    <input id="lp" maxlength="100" class="li" type="password" placeholder="••••••••" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')doLogin()">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;margin-top:-4px">
-      <input type="checkbox" id="l-rem" style="width:15px;height:15px;accent-color:var(--g);cursor:pointer">
-      <label for="l-rem" style="font-size:12px;color:var(--t2);cursor:pointer;user-select:none">Recordar mi email</label>
+
+    <div class="cin-hero">
+      <div class="cin-eyebrow">Con un coach de verdad</div>
+      <div class="cin-word">APEX</div>
+      <div class="cin-word-sub">Training</div>
+      <div class="cin-tag">Entrenamiento con <b>nombre propio.</b></div>
+      <div class="cin-sub2">Tu coach arma tu plan, te acompaña y te responde. Aquí no entrenas solo.</div>
     </div>
-    <button class="lbtn" onclick="doLogin()">Entrar →</button>
-    <div class="lhint">¿Eres asesorado? Usa el email y contraseña que te envió tu coach.</div>
-    <div id="install-hint" style="margin-top:16px;padding:12px 14px;background:var(--gl);border-radius:12px;text-align:left;display:none">
-      <div style="font-size:11px;font-weight:800;color:var(--g);margin-bottom:6px;letter-spacing:.5px">📲 INSTALA LA APP</div>
-      <div id="install-hint-android" style="display:none;font-size:12px;color:var(--t2);line-height:1.6">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button onclick="window._apexInstall&&window._apexInstall()" style="margin-top:8px;width:100%;padding:9px;background:var(--g);border:none;border-radius:8px;color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Instalar APEX</button></div>
-      <div id="install-hint-ios" style="display:none;font-size:12px;color:var(--t2);line-height:1.7">1. Toca el ícono <strong style="color:var(--gt)">Compartir</strong> (↑) en la barra de Safari<br>2. Selecciona <strong style="color:var(--gt)">"Añadir a pantalla de inicio"</strong><br>3. Toca <strong style="color:var(--gt)">Añadir</strong></div>
-      <div id="install-hint-generic" style="font-size:12px;color:var(--t2);line-height:1.7">Android: menú ⋮ → <strong style="color:var(--gt)">"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong style="color:var(--gt)">"Añadir a pantalla de inicio"</strong></div>
+
+    <!-- Bienvenida: dos opciones (estilo elegante, sin volcar toda la info) -->
+    <div class="cin-cta" id="cin-cta">
+      <button class="cin-cta-fill" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-card').style.display='block';var e=document.getElementById('lu');if(e)setTimeout(function(){e.focus()},50)">Iniciar sesión</button>
+      <button class="cin-cta-out" onclick="(window.toast?toast('¡Qué bueno que quieras empezar! 💪 Pronto podrás crear tu cuenta aquí mismo. Por ahora, pídele acceso a tu coach.'):alert('Pronto podrás crear tu cuenta. Por ahora pídele acceso a tu coach.'))">Crear cuenta</button>
+    </div>
+
+    <!-- Formulario: aparece solo al tocar "Iniciar sesión" -->
+    <div class="cin-card" id="cin-card" style="display:none">
+      <div class="cin-back" onclick="document.getElementById('cin-card').style.display='none';document.getElementById('cin-cta').style.display='flex'">← Volver</div>
+      <div id="lerr" class="lerr">Email o contraseña incorrectos</div>
+      <label class="cin-lbl">Email</label>
+      <input id="lu" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
+      <label class="cin-lbl">Contraseña</label>
+      <input id="lp" maxlength="100" class="cin-in" type="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="cin-rem">
+        <input type="checkbox" id="l-rem" style="width:15px;height:15px;accent-color:#10E0A0;cursor:pointer">
+        <label for="l-rem">Recordar mi email</label>
+      </div>
+      <button class="cin-btn lbtn" onclick="doLogin()">Entrar →</button>
+      <div class="cin-hint">¿Primera vez por aquí? Entra con el correo y la contraseña <b>que te mandó tu coach.</b></div>
+      <div id="install-hint" class="cin-install">
+        <div class="ttl">📲 INSTALA LA APP</div>
+        <div id="install-hint-android" class="txt" style="display:none">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button class="ibtn" onclick="window._apexInstall&&window._apexInstall()">Instalar APEX</button></div>
+        <div id="install-hint-ios" class="txt" style="display:none">1. Toca el ícono <strong>Compartir</strong> (↑) en la barra de Safari<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong><br>3. Toca <strong>Añadir</strong></div>
+        <div id="install-hint-generic" class="txt">Android: menú ⋮ → <strong>"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong>"Añadir a pantalla de inicio"</strong></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2052,6 +2127,10 @@ function logout(){
   // Borrar sesión guardada — próxima vez pedirá login
   localStorage.removeItem('ax_session');
   showScreen('s-login');
+  // Volver a la pantalla de bienvenida (no al formulario abierto)
+  const _cta=document.getElementById('cin-cta'),_card=document.getElementById('cin-card');
+  if(_cta)_cta.style.display='flex'; if(_card)_card.style.display='none';
+  const _err=document.getElementById('lerr'); if(_err)_err.classList.remove('on');
   CUR.loggedAs=null;CUR.clientId=null;
   // Pre-fill remembered email
   const rem=localStorage.getItem('ax_rem');
@@ -2705,6 +2784,9 @@ async function tryAutoLogin(){
           localStorage.removeItem('ax_session');
           const st=MS.getStatus(client);
           const errEl=document.getElementById('lerr');
+          // Revelar el formulario (la bienvenida lo oculta) para que se vea el mensaje
+          const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
+          if(cta)cta.style.display='none'; if(card)card.style.display='block';
           if(errEl){errEl.textContent=st==='inactive'?'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡':'Tu plan venció. Habla con tu coach para continuar entrenando 💪';errEl.classList.add('on');}
           const uEl=document.getElementById('lu');if(uEl)uEl.focus();
           return;

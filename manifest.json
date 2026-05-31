@@ -6,8 +6,8 @@
   "scope": "/apex-app/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1B4332",
-  "theme_color": "#2D6A4F",
+  "background_color": "#06090A",
+  "theme_color": "#06090A",
   "lang": "es",
   "categories": ["health", "fitness", "sports"],
   "icons": [
