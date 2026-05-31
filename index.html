@@ -291,7 +291,15 @@ html[data-theme="light"] .mta {
 .exrow:last-child{margin-bottom:0}
 .exrow:hover{border-color:var(--br2)}
 .exicon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;overflow:hidden}
-.exicon-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.exicon-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;cursor:zoom-in}
+/* Lightbox de imagen de ejercicio */
+.exlb{position:fixed;inset:0;z-index:10000;background:rgba(6,9,10,.93);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;animation:exlbIn .2s ease}
+.exlb.on{display:flex}
+.exlb img{max-width:100%;max-height:76vh;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);background:#0c0c0d}
+.exlb-name{margin-top:16px;color:#fff;font-size:16px;font-weight:700;text-align:center;max-width:90%}
+.exlb-hint{margin-top:6px;color:rgba(255,255,255,.5);font-size:12px}
+.exlb-close{position:absolute;top:max(16px,calc(env(safe-area-inset-top) + 8px));right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
+@keyframes exlbIn{from{opacity:0}to{opacity:1}}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
 .exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
 .exsets{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:right;flex-shrink:0;color:var(--t1)}
@@ -1329,6 +1337,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <button class="cw-btn" onclick="event.stopPropagation();hideClientWelcome()">Ver mi día →</button>
 </div>
 
+<!-- ══ LIGHTBOX IMAGEN DE EJERCICIO ══ -->
+<div id="ex-lightbox" class="exlb" onclick="closeExImg()">
+  <div class="exlb-close">✕</div>
+  <img id="exlb-img" src="" alt="">
+  <div id="exlb-name" class="exlb-name"></div>
+  <div class="exlb-hint">Toca para cerrar</div>
+</div>
+
 <!-- ══ MODAL: BACKUP ══ -->
 <!-- Settings / Coach profile modal -->
 <div class="mdbg" id="m-settings">
@@ -1847,8 +1863,17 @@ function exImgSrc(e){
 }
 function exIcon(e){
   const s=exImgSrc(e);
-  return s?`<img class="exicon-img" src="${s}" alt="" loading="lazy">`:esc((e&&e.icon)||'💪');
+  if(!s) return esc((e&&e.icon)||'💪');
+  return `<img class="exicon-img" src="${s}" alt="${esc((e&&e.name)||'')}" loading="lazy" onclick="event.stopPropagation();openExImg(this.src,this.alt)">`;
 }
+// Lightbox: tocar la imagen del ejercicio la expande a pantalla completa
+function openExImg(src,name){
+  const lb=document.getElementById('ex-lightbox'); if(!lb||!src) return;
+  document.getElementById('exlb-img').src=src;
+  document.getElementById('exlb-name').textContent=name||'';
+  lb.classList.add('on');
+}
+function closeExImg(){ const lb=document.getElementById('ex-lightbox'); if(lb)lb.classList.remove('on'); }
 
 const defaultExercises=[
   // ── PECHO ──
@@ -7221,7 +7246,7 @@ function _showExSheet(ex, isCoach, editable){
   const _exdImg = exImgSrc(ex);
   iconEl.style.border = '1.5px solid ' + color + '40';
   if(_exdImg){
-    iconEl.innerHTML = '<img class="exicon-img" src="'+_exdImg+'" alt="">';
+    iconEl.innerHTML = '<img class="exicon-img" src="'+_exdImg+'" alt="'+esc(ex.name||'')+'" onclick="openExImg(this.src,this.alt)">';
     iconEl.style.background = 'none';
     iconEl.style.overflow = 'hidden';
   } else {
