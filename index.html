@@ -480,6 +480,8 @@ html[data-theme="light"] .mta {
 .profav.tap{cursor:pointer}
 .profav-img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .profav-cam{position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:var(--g);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1}
+.profrm{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.75);cursor:pointer}
+.profrm:hover{color:#fff;text-decoration:underline}
 .profname{font-size:19px;font-weight:800;margin-bottom:2px}
 .profmeta{font-size:12px;opacity:.75}
 .profpills{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
@@ -4458,7 +4460,7 @@ function renderClientProfile(client){
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
-  document.getElementById('cn-prof-card').innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div></div>`;
+  document.getElementById('cn-prof-card').innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
@@ -4497,6 +4499,16 @@ function saveAvatar(file){
     toast('📸 Foto de perfil actualizada');
   };
   reader.readAsDataURL(file);
+}
+function removeAvatar(){
+  const clientId=CUR.clientId;if(!clientId)return;
+  const client=DB.clients.find(c=>c.id===clientId);if(!client||!client.avatar)return;
+  if(!confirm('¿Quitar tu foto de perfil? Volverás a ver tus iniciales.'))return;
+  delete client.avatar;
+  svNow('ax_c',DB.clients);
+  deletePhotoFromStorage(clientId,'avatar');
+  renderClientProfile(client);
+  toast('Foto quitada');
 }
 
 // ══════════════════════ GAMIFICACIÓN (nivel permanente + descuento del mes) ══════════════════════
