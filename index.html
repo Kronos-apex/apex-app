@@ -290,7 +290,8 @@ html[data-theme="light"] .mta {
 .exrow{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--w);border:1px solid var(--br);border-radius:12px;margin-bottom:8px;box-shadow:var(--sh);transition:border-color .15s,transform .12s}
 .exrow:last-child{margin-bottom:0}
 .exrow:hover{border-color:var(--br2)}
-.exicon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0}
+.exicon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;overflow:hidden}
+.exicon-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
 .exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
 .exsets{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:right;flex-shrink:0;color:var(--t1)}
@@ -1833,6 +1834,22 @@ let _tt;
 function toast(msg){const e=document.getElementById('toast');clearTimeout(_tt);e.textContent=msg;e.classList.add('on');_tt=setTimeout(()=>e.classList.remove('on'),2500)}
 
 // ══════════════════════ DB ══════════════════════
+// ══ IMÁGENES DE EJERCICIOS ══ (base libre dominio público, reemplazables por clips propios)
+// IDs y nombres con foto en media/exercises/<id>.jpg. exImgSrc resuelve por id o por nombre
+// (las rutinas copian el ejercicio; el nombre garantiza el match aunque cambie el id).
+const EX_IMG_IDS=new Set(["e1","e2","e3","e71","e4","e5","e6","e24","e25","e26","e27","e28","e34","e50","e51","e52","e7","e8","e21","e22","e23","e53","e54","e9","e10","e29","e55","e56","e11","e12","e19","e30","e31","e32","e57","e13","e14","e15","e16","e33","e35","e36","e37","e38","e39","e40","e41","e58","e59","e70","e42","e43","e44","e60","e46","e61","e73","e17","e18","e47","e48","e49","e62","e20","e64","e65","e66","e67","e68","e69","e76","e77","e78","e79","e80","e81","e82","e83","e84","e85","e86","e87","e88","e92","e93","e95","e96","e97","e98","e99","e100","e101","e102","e103","e104","e105","e106","e107","e108"]);
+const EX_IMG_NAME={"press de banca":"e1","press inclinado mancuernas":"e2","aperturas con cable":"e3","press de banca con mancuernas":"e71","dominadas":"e4","remo con barra":"e5","jalon al pecho":"e6","pullover en polea":"e24","remo en polea a una mano":"e25","jalon al pecho agarre amplio":"e26","jalon al pecho agarre neutro":"e27","jalon al pecho agarre cerrado":"e28","peso muerto convencional":"e34","buenos dias con barra":"e50","remo gironda en polea":"e51","remo con mancuerna a una mano":"e52","press militar con barra":"e7","elevaciones laterales":"e8","face pull en polea":"e21","press militar con mancuerna":"e22","press militar en maquina":"e23","elevaciones frontales":"e53","pajaro / elevaciones posteriores":"e54","curl con barra":"e9","curl martillo":"e10","curl biceps con mancuerna":"e29","curl en polea baja":"e55","curl scott / predicador":"e56","extension en polea alta":"e11","skull crushers":"e12","fondos en paralelas":"e19","extension de triceps trasnuca":"e30","extension a una mano en polea":"e31","fondos gironda":"e32","press frances con mancuernas":"e57","sentadilla con barra":"e13","peso muerto rumano":"e14","curl femoral tumbado":"e15","elevacion de talones de pie":"e16","sentadilla en smith":"e33","desplantes / zancada":"e35","prensa de pierna":"e36","extension de cuadriceps en maquina":"e37","curl femoral acostado en maquina":"e38","curl femoral de pie en maquina":"e39","zancada bulgara":"e40","step-up con mancuernas":"e41","sentadilla hack":"e58","elevacion de talones sentado":"e59","sentadilla goblet":"e70","hip thrust con barra":"e42","hip thrust en maquina":"e43","patada de gluteo en polea":"e44","aduccion de cadera en maquina":"e60","peso muerto piernas rigidas":"e46","sentadilla sumo":"e61","puente de gluteo":"e73","plancha frontal":"e17","crunch abdominal":"e18","rueda abdominal (ab wheel)":"e47","elevacion de piernas colgado":"e48","plancha lateral":"e49","russian twist":"e62","carrera / caminata":"e20","bicicleta estatica":"e64","remo ergometro":"e65","salto a la cuerda":"e66","eliptica":"e67","peso muerto sumo":"e68","clean & press ⚠️ avanzado":"e69","saltos de tijera":"e76","flexiones en pared":"e77","flexiones en rodillas":"e78","fondos en banco":"e79","sentadilla de peso corporal":"e80","mountain climbers":"e81","superman":"e82","lagartijas (push-up)":"e83","press en maquina hammer (pecho)":"e84","aperturas en polea alta":"e85","aperturas en polea baja":"e86","patada lateral en polea":"e87","patada en polea rodilla doblada":"e88","hip thrust unilateral":"e92","sentadilla con banda de resistencia":"e93","peso muerto rumano a una pierna":"e95","kickback con banda (en suelo)":"e96","pike push-up (flexion pica)":"e97","press de hombro con banda":"e98","elevaciones laterales con banda":"e99","face pull con banda":"e100","curl de biceps con banda":"e101","curl martillo con banda":"e102","dominada supina (chin-up)":"e103","remo con banda":"e104","extension de triceps con banda":"e105","puente de gluteo a una pierna":"e106","step-up a peso corporal":"e107","sentadilla a una pierna asistida":"e108"};
+function exImgSrc(e){
+  if(!e) return '';
+  const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
+  return id?('media/exercises/'+id+'.jpg'):'';
+}
+function exIcon(e){
+  const s=exImgSrc(e);
+  return s?`<img class="exicon-img" src="${s}" alt="" loading="lazy">`:esc((e&&e.icon)||'💪');
+}
+
 const defaultExercises=[
   // ── PECHO ──
   {id:'e1',name:'Press de Banca',muscle:'pecho',type:'Compuesto',sets:4,reps:10,icon:'🏋️',desc:'Tumbado en banco, baja la barra al pecho y empuja explosivo.',descSimple:'Acuéstate en el banco con los pies en el suelo. Junta los omóplatos y empuja la barra hacia arriba y ligeramente hacia atrás. No rebotas el peso y no despegues la espalda del banco.',muscleLabel:'Pecho',ytQuery:'press de banca como hacerlo correctamente'},
@@ -2274,7 +2291,7 @@ function renderTemplates(){
         ${!(tpl.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':
           (tpl.exercises||[]).map(e=>`
             <div class="exrow">
-              <div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div>
+              <div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div>
               <div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div>
               <div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div>
             </div>`).join('')}
@@ -3809,7 +3826,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
 }
@@ -3860,7 +3877,7 @@ function renderGenPreview(c,res){
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-    const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${e.icon||'💪'}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
+    const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
   document.getElementById('mg-body').innerHTML=warn+gaps+intro+cards;
@@ -4087,7 +4104,7 @@ function renderExercises(){
   grid.innerHTML='';
   filtered.forEach(ex=>{
     const color=MC[ex.muscle]||'#6B6B6B';const div=document.createElement('div');div.className='exc';
-    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ex.icon||'💪'}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${ex.muscleLabel||ex.muscle} · ${ex.type}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Ver detalle" onclick="openExDetail('${ex.id}',true)">👁</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="openEditEx('${ex.id}')">✏️</button></div></div><span class="tag" style="background:${color}15;color:${color};border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${ex.muscleLabel||ex.muscle} · ${ex.type}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Ver detalle" onclick="openExDetail('${ex.id}',true)">👁</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="openEditEx('${ex.id}')">✏️</button></div></div><span class="tag" style="background:${color}15;color:${color};border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
     grid.appendChild(div);
   });
   if(!filtered.length)grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="eico">🏋️</div><div class="etxt">Sin ejercicios aquí</div><div class="esub">Añade uno con el botón de arriba</div></div>';
@@ -4968,7 +4985,7 @@ function renderClientAllRoutines(client){
     const isRest=r.day==='Libre';
     const dayAb=isRest?'💤':esc(r.day).slice(0,2);
     const div=document.createElement('div');div.className='rc';
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${esc(e.icon||'💪')}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button></div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button></div>`;
     con.appendChild(div);
   });
 }
@@ -6350,7 +6367,7 @@ function gmRender(){
     const hdr = document.createElement('div');
     hdr.className = 'gm-ex-header';
     hdr.innerHTML = `
-      <div class="gm-ex-icon" style="background:${color}18;border:1.5px solid ${color}30">${ex.icon||'💪'}</div>
+      <div class="gm-ex-icon" style="background:${color}18;border:1.5px solid ${color}30;overflow:hidden">${exIcon(ex)}</div>
       <div style="flex:1">
         <div class="gm-ex-name">${esc(ex.name)}</div>
         <div class="gm-ex-meta">${esc(ex.muscleLabel||ex.muscle)} · ${esc(ex.type)}</div>
@@ -7201,9 +7218,17 @@ function _showExSheet(ex, isCoach, editable){
 
   // Icon block
   const iconEl = document.getElementById('exd-icon');
-  iconEl.textContent = ex.icon || '💪';
-  iconEl.style.background = color + '20';
+  const _exdImg = exImgSrc(ex);
   iconEl.style.border = '1.5px solid ' + color + '40';
+  if(_exdImg){
+    iconEl.innerHTML = '<img class="exicon-img" src="'+_exdImg+'" alt="">';
+    iconEl.style.background = 'none';
+    iconEl.style.overflow = 'hidden';
+  } else {
+    iconEl.innerHTML = '';
+    iconEl.textContent = ex.icon || '💪';
+    iconEl.style.background = color + '20';
+  }
 
   // Name & muscle label
   document.getElementById('exd-name').textContent = ex.name;
