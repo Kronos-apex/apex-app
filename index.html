@@ -306,6 +306,47 @@ html[data-theme="light"] .mta {
 .exlb-hint{margin-top:6px;color:rgba(255,255,255,.5);font-size:12px}
 .exlb-close{position:absolute;top:max(16px,calc(env(safe-area-inset-top) + 8px));right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
 @keyframes exlbIn{from{opacity:0}to{opacity:1}}
+/* ══ GAMIFICACIÓN: descuento del mes + nivel (perfil asesorado) ══ */
+.gx-month{background:radial-gradient(120% 90% at 88% 8%,rgba(232,197,71,.20),transparent 55%),linear-gradient(150deg,#15140C,#0A0A06);border:1px solid rgba(232,197,71,.28);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.4);margin-bottom:12px}
+.gx-mtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gx-k{font-size:10.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#E8C547}
+.gx-renew{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px}.gx-renew b{color:rgba(255,255,255,.9)}
+.gx-pct{text-align:right;flex-shrink:0}
+.gx-pct b{font-family:'Anton',sans-serif;font-size:40px;line-height:.9;color:#E8C547;text-shadow:0 0 20px rgba(232,197,71,.35)}
+.gx-pct small{display:block;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);margin-top:2px}
+.gx-mbar{margin-top:16px;height:10px;background:rgba(255,255,255,.10);border-radius:6px;overflow:hidden}
+.gx-mfill{height:100%;background:linear-gradient(90deg,#C9A12E,#E8C547);border-radius:6px;box-shadow:0 0 12px rgba(232,197,71,.5)}
+.gx-tiers{display:flex;justify-content:space-between;margin-top:10px}
+.gx-tier{text-align:center;font-size:10px;color:rgba(255,255,255,.5);flex:1}
+.gx-tier b{display:block;font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;font-weight:700}
+.gx-tier.on b{color:#E8C547}.gx-tier.on{color:rgba(232,197,71,.85)}
+.gx-minfo{margin-top:13px;font-size:12px;color:rgba(255,255,255,.85);line-height:1.45;border-top:1px solid rgba(255,255,255,.1);padding-top:11px}.gx-minfo b{color:#E8C547}
+.gx-lvl{background:radial-gradient(120% 90% at 85% 10%,rgba(16,224,160,.18),transparent 55%),linear-gradient(150deg,#0B1F18,#06120D);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(6,20,15,.45);margin-bottom:12px}
+.gx-ltop{display:flex;align-items:center;gap:15px}
+.gx-ring{width:74px;height:74px;flex-shrink:0;position:relative}
+.gx-ring .gx-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gx-ring .gx-num b{font-family:'Anton',sans-serif;font-size:26px;line-height:1}
+.gx-ring .gx-num small{font-size:7.5px;letter-spacing:1.5px;color:#10E0A0;font-weight:800}
+.gx-lname{flex:1;min-width:0}
+.gx-lk{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#10E0A0}
+.gx-lt{font-family:'Anton',sans-serif;font-size:26px;line-height:1;margin-top:3px}
+.gx-ls{font-size:11px;color:rgba(255,255,255,.6);margin-top:5px}
+.gx-prog{margin-top:14px}
+.gx-pbar{height:8px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden}
+.gx-pfill{height:100%;background:linear-gradient(90deg,#068F66,#10E0A0);border-radius:6px}
+.gx-plbl{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:rgba(255,255,255,.7)}.gx-plbl b{color:#fff}
+.gx-stats{display:flex;margin-top:15px;border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
+.gx-stat{flex:1;text-align:center;position:relative}
+.gx-stat+.gx-stat::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:1px;background:rgba(255,255,255,.1)}
+.gx-sv{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}.gx-sv .u{font-size:10px;color:#10E0A0}
+.gx-sl{font-size:9px;color:rgba(255,255,255,.55);margin-top:3px}
+.gx-title{font-size:13px;font-weight:800;margin:4px 2px 10px}
+.gx-badges{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
+.gx-badge{background:var(--w);border:1px solid var(--br);border-radius:13px;padding:11px 5px;text-align:center}
+.gx-bic{width:38px;height:38px;margin:0 auto 6px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,rgba(16,224,160,.18),rgba(16,224,160,.06));border:1.5px solid rgba(16,224,160,.3)}
+.gx-bn{font-size:9px;font-weight:700;line-height:1.2;color:var(--t1)}
+.gx-badge.lock{opacity:.5}.gx-badge.lock .gx-bic{background:#f0f0ec;border-color:var(--br);filter:grayscale(1)}
+.gx-badge.gold .gx-bic{background:linear-gradient(135deg,rgba(232,197,71,.25),rgba(232,197,71,.08));border-color:rgba(232,197,71,.45)}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
 .exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
 .exsets{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:right;flex-shrink:0;color:var(--t1)}
@@ -1128,6 +1169,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div id="cn-profile" class="cnp">
       <div class="profhero" id="cn-prof-card"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
+      <div id="cn-gamif"></div>
 
       <!-- Streak de entrenamiento (se oculta hasta tener la 1ª sesión) -->
       <div class="card" id="cn-streak-card" style="margin-bottom:12px">
@@ -4488,6 +4530,7 @@ function renderClientProfile(client){
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
+  renderGamification(client);
   renderStreakClient(client.id);
   renderBodyWeightSection(client.id);
   renderPRsInProfile(client.id);
@@ -4496,6 +4539,115 @@ function renderClientProfile(client){
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
   applyProfileDisclosure(client.id);
+}
+
+// ══════════════════════ GAMIFICACIÓN (nivel permanente + descuento del mes) ══════════════════════
+const GX_LEVELS=[{n:1,name:'Arranque',min:0},{n:2,name:'Constante',min:10},{n:3,name:'Comprometido',min:30},{n:4,name:'Imparable',min:60},{n:5,name:'Élite APEX',min:120}];
+const GX_WEEK=7*86400000;
+// Nivel permanente según total de entrenamientos completados
+function gxLevel(total){
+  let cur=GX_LEVELS[0]; for(const l of GX_LEVELS){ if(total>=l.min)cur=l; }
+  const i=GX_LEVELS.indexOf(cur), next=GX_LEVELS[i+1]||null;
+  let pct=100, rem=0;
+  if(next){ pct=Math.max(0,Math.min(100,Math.round(((total-cur.min)/(next.min-cur.min))*100))); rem=Math.max(0,next.min-total); }
+  return {cur,next,pct,rem};
+}
+// Racha en semanas consecutivas con al menos una sesión (lun-dom)
+function gxStreak(hist){
+  if(!hist||!hist.length)return 0;
+  const wk=d=>{const dt=new Date(d);const off=(dt.getDay()+6)%7;dt.setHours(0,0,0,0);dt.setDate(dt.getDate()-off);return dt.getTime();};
+  const set=new Set(hist.map(h=>wk(h.date)));
+  let w=wk(Date.now());
+  if(!set.has(w))w-=GX_WEEK; // gracia: si aún no entrena esta semana, cuenta desde la anterior
+  let s=0; while(set.has(w)){s++;w-=GX_WEEK;} return s;
+}
+// Descuento del mes: adherencia del ciclo de renovación actual -> tramo de %
+function gxDiscount(client,hist){
+  const pays=(client.payments||[]).slice().sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+  if(!pays.length)return null;
+  const end=new Date(pays[pays.length-1].dueDate).getTime();
+  let start; if(pays.length>=2){start=new Date(pays[pays.length-2].dueDate).getTime();}else{const d=new Date(end);d.setMonth(d.getMonth()-1);start=d.getTime();}
+  const now=Date.now();
+  const done=(hist||[]).filter(h=>{const t=new Date(h.date).getTime();return t>=start&&t<=now&&(h.doneSets>0||h.totalVol>0);}).length;
+  const perWeek=(client.routines||[]).filter(r=>r.day&&r.day!=='Libre').length||parseInt(client.days)||3;
+  const weeks=Math.max(1,Math.round((end-start)/GX_WEEK));
+  const expected=Math.max(1,perWeek*weeks);
+  const adh=Math.min(1,done/expected);
+  let pct=0; if(adh>=1)pct=15;else if(adh>=.8)pct=10;else if(adh>=.6)pct=5;
+  const daysLeft=Math.max(0,Math.ceil((end-now)/86400000));
+  return {done,expected,adh,pct,daysLeft,renewal:new Date(end)};
+}
+function gxNextTier(d){
+  const tgt=d.adh<.6?{p:5,a:.6}:d.adh<.8?{p:10,a:.8}:d.adh<1?{p:15,a:1}:null;
+  if(!tgt)return null;
+  return {pct:tgt.p,need:Math.max(1,Math.ceil(tgt.a*d.expected)-d.done)};
+}
+function renderGamification(client){
+  const con=document.getElementById('cn-gamif'); if(!con)return;
+  const hist=(DB.history||{})[client.id]||[];
+  const pays=(client.payments||[]);
+  if(!hist.length && !pays.length){ con.innerHTML=''; return; } // asesorado nuevo: nada que mostrar aún
+  const total=hist.length;
+  const totalVol=hist.reduce((s,h)=>s+(h.totalVol||0),0);
+  const streak=gxStreak(hist);
+  const L=gxLevel(total);
+  const prs=Object.keys((DB.prs||{})[client.id]||{}).length;
+  // ── Tarjeta descuento del mes ──
+  const d=gxDiscount(client,hist);
+  let monthHTML='';
+  if(d){
+    const nt=gxNextTier(d);
+    const circ=Math.round(d.adh*100);
+    const renewStr=d.renewal.toLocaleDateString('es-ES',{day:'numeric',month:'long'});
+    const infoTxt = nt
+      ? `Llevas <b>${d.done} de ${d.expected}</b> sesiones de este mes (${circ}%). Te ${nt.need===1?'falta':'faltan'} <b>${nt.need}</b> para subir a <b>${nt.pct}% de descuento</b> en tu renovación. 💪`
+      : `¡Mes perfecto! Tienes <b>15% de descuento</b> asegurado en tu renovación. 🏆`;
+    monthHTML=`<div class="gx-month">
+      <div class="gx-mtop">
+        <div><div class="gx-k">🎁 Descuento de este mes</div><div class="gx-renew">Renueva el <b>${renewStr}</b>${d.daysLeft>0?` · faltan ${d.daysLeft} días`:' · hoy'}</div></div>
+        <div class="gx-pct"><b>${d.pct}%</b><small>DESBLOQUEADO</small></div>
+      </div>
+      <div class="gx-mbar"><div class="gx-mfill" style="width:${circ}%"></div></div>
+      <div class="gx-tiers">
+        <div class="gx-tier${d.pct>=5?' on':''}"><b>5%</b>60% del plan</div>
+        <div class="gx-tier${d.pct>=10?' on':''}"><b>10%</b>80%</div>
+        <div class="gx-tier${d.pct>=15?' on':''}"><b>15%</b>100%</div>
+      </div>
+      <div class="gx-minfo">${infoTxt}</div>
+    </div>`;
+  }
+  // ── Tarjeta de nivel ──
+  const circ2=276.5, off=circ2*(1-L.pct/100);
+  const progHTML = L.next
+    ? `<div class="gx-prog"><div class="gx-pbar"><div class="gx-pfill" style="width:${L.pct}%"></div></div>
+        <div class="gx-plbl"><span>Te ${L.rem===1?'falta':'faltan'} <b>${L.rem} entreno${L.rem===1?'':'s'}</b> para <b>${esc(L.next.name)}</b></span><span>${total}/${L.next.min}</span></div></div>`
+    : `<div class="gx-prog"><div class="gx-plbl"><span>Has llegado al nivel máximo 🏆</span><span>${total} entrenos</span></div></div>`;
+  const volTxt = totalVol>=1000?`${(totalVol/1000).toFixed(1)}<span class="u">k kg</span>`:`${totalVol}<span class="u"> kg</span>`;
+  const lvlHTML=`<div class="gx-lvl">
+    <div class="gx-ltop">
+      <div class="gx-ring"><svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="7"/><circle cx="50" cy="50" r="44" fill="none" stroke="#10E0A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ2}" stroke-dashoffset="${off.toFixed(1)}" style="filter:drop-shadow(0 0 5px rgba(16,224,160,.6))"/></svg><div class="gx-num"><b>${L.cur.n}</b><small>NIVEL</small></div></div>
+      <div class="gx-lname"><div class="gx-lk">Tu nivel</div><div class="gx-lt">${esc(L.cur.name)}</div><div class="gx-ls">Tu historia en APEX — no se reinicia. Sigue subiendo 🔥</div></div>
+    </div>
+    ${progHTML}
+    <div class="gx-stats">
+      <div class="gx-stat"><div class="gx-sv">${total}</div><div class="gx-sl">ENTRENAMIENTOS</div></div>
+      <div class="gx-stat"><div class="gx-sv">${streak}<span class="u"> sem</span></div><div class="gx-sl">🔥 RACHA</div></div>
+      <div class="gx-stat"><div class="gx-sv">${volTxt}</div><div class="gx-sl">VOLUMEN</div></div>
+    </div>
+  </div>`;
+  // ── Logros ──
+  const B=[
+    {ic:'🏆',nm:'Primer récord',on:prs>=1,gold:true},
+    {ic:'✅',nm:'10 entrenos',on:total>=10},
+    {ic:'🔥',nm:'Racha 4 sem',on:streak>=4},
+    {ic:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
+    {ic:'⭐',nm:'Mes perfecto',on:!!(d&&d.pct>=15)},
+    {ic:'🎖️',nm:'30 entrenos',on:total>=30},
+    {ic:'🔥',nm:'Racha 8 sem',on:streak>=8},
+    {ic:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
+  ];
+  const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?b.ic:'🔒'}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
+  con.innerHTML=monthHTML+lvlHTML+badgesHTML;
 }
 
 // Progressive disclosure del Perfil: para un asesorado nuevo, oculta las tarjetas de
