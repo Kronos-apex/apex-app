@@ -294,6 +294,12 @@ html[data-theme="light"] .mta {
 .exmet{font-size:11px;color:var(--t2)}
 .exsets{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-align:right;flex-shrink:0}
 .exsets small{display:block;font-size:10px;color:var(--t3);font-weight:400}
+/* Editorial de la semana (asesorado) — intro tipo revista con voz de coach */
+.weekly-ed{background:linear-gradient(135deg,var(--gl),var(--w));border:1px solid var(--br);border-left:4px solid var(--g);border-radius:var(--r);padding:15px 17px;margin-bottom:14px;box-shadow:var(--sh)}
+.we-kick{font-size:10.5px;font-weight:800;letter-spacing:2px;color:var(--g);text-transform:uppercase;margin-bottom:7px}
+.we-title{font-size:18px;font-weight:800;line-height:1.22;margin-bottom:8px;color:var(--t1)}
+.we-body{font-size:13px;color:var(--t2);line-height:1.55}
+.we-body b{color:var(--gt);font-weight:800}
 
 /* ── MESSAGES ── */
 .mthread{display:flex;flex-direction:column;gap:3px;padding:13px 14px;overflow-y:auto}
@@ -1064,6 +1070,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <!-- ROUTINES -->
     <div id="cn-routines" class="cnp">
+      <div id="cn-week-ed"></div>
       <div style="font-size:15px;font-weight:700;margin-bottom:11px">📋 Todas mis rutinas</div>
       <div id="cn-all-rut"></div>
     </div>
@@ -4926,8 +4933,33 @@ function saveSessionToHistory(routine,totalVol,doneSets){
 }
 
 // ALL ROUTINES
+// Intro editorial de la semana — voz de coach, contextual al objetivo del asesorado
+function clientWeekEditorial(client){
+  const ruts=(client.routines||[]);
+  const trainDays=ruts.filter(r=>r.day!=='Libre').length;
+  const g=(client.goal||'').toLowerCase();
+  let kick,title,body;
+  if(/grasa|perder|baj|adelgaz/.test(g)){
+    kick='QUEMA Y CONSTANCIA'; title='Esta semana, cada gota cuenta';
+    body='Tu plan mezcla fuerza y movimiento para encender tu metabolismo. Preséntate aunque el día venga flojo — la constancia es la que transforma.';
+  } else if(/m[uú]sculo|muscul|ganar|hipertrof/.test(g)){
+    kick='FUERZA Y CRECIMIENTO'; title='Esta semana construimos músculo';
+    body='Sube el peso cuando la técnica te lo permita y respeta los descansos: ahí es donde creces. Tu coach diseñó cada rutina para ti.';
+  } else if(/recompos/.test(g)){
+    kick='RECOMPOSICIÓN'; title='Más fuerte y más definido';
+    body='Entrenas fuerza mientras cuidas tu energía. Ten paciencia: el cambio se nota en semanas, no en días. Vamos juntos.';
+  } else {
+    kick='TU SEMANA'; title='Entrenamos con propósito';
+    body='Tu coach armó cada rutina pensando en tu objetivo. Preséntate, dale con todo y registra tus series — el progreso se construye día a día.';
+  }
+  const daysNote=trainDays?` <b>${trainDays} día${trainDays!==1?'s':''}</b> de entreno te esperan.`:'';
+  return `<div class="weekly-ed"><div class="we-kick">${kick}</div><div class="we-title">${esc(title)}</div><div class="we-body">${esc(body)}${daysNote}</div></div>`;
+}
+
 function renderClientAllRoutines(client){
+  const ed=document.getElementById('cn-week-ed');
   const con=document.getElementById('cn-all-rut');const routines=client.routines||[];
+  if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
   if(!routines.length){con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   con.innerHTML='';
   routines.forEach((r,ri)=>{
