@@ -49,6 +49,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
   --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
   --g:#2D6A4F; --g2:#40916C; --gl:#D8F3DC; --gt:#1B4332;
+  --emerald-hdr:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);
   --or:#E76F51; --orl:#FDE8E0; --bl:#457B9D; --bll:#E0EBF4;
   --yl:#E9C46A; --yll:#FEF6DE; --rd:#E63946; --rdl:#FCE4E6;
   --r:12px; --rsm:8px; --rlg:18px;
@@ -159,7 +160,7 @@ html[data-theme="light"] .mta {
 /* ── COACH TOPBAR (mobile) ── */
 .coach-topbar{
   display:flex;align-items:center;justify-content:space-between;
-  background:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);border-bottom:1px solid rgba(16,224,160,.20);
+  background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);
   padding:0 16px;height:52px;flex-shrink:0;position:sticky;top:0;z-index:200;box-shadow:0 6px 22px rgba(6,20,15,.28);
 }
 .coach-topbar-left{display:flex;align-items:center;gap:10px}
@@ -361,7 +362,7 @@ html[data-theme="light"] .mta {
 
 /* ════ CLIENT VIEW ════ */
 #s-client{flex-direction:column;background:var(--bg);overflow-y:auto}
-.cntopbar{background:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);border-bottom:1px solid rgba(16,224,160,.20);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 6px 22px rgba(6,20,15,.28)}
+.cntopbar{background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 6px 22px rgba(6,20,15,.28)}
 .cnlogo{font-size:17px;font-weight:800;color:#fff}
 .cntopbar .apex-logo .logo-leg{stroke:#fff}
 .cntopbar .apex-logo .logo-ring{fill:#0E3A2C}
@@ -814,6 +815,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button class="cin-cta-out" onclick="(window.toast?toast('¡Qué bueno que quieras empezar! 💪 Pronto podrás crear tu cuenta aquí mismo. Por ahora, pídele acceso a tu coach.'):alert('Pronto podrás crear tu cuenta. Por ahora pídele acceso a tu coach.'))">Crear cuenta</button>
     </div>
 
+    <div id="install-hint" class="cin-install">
+      <div class="ttl">📲 INSTALA LA APP</div>
+      <div id="install-hint-android" class="txt" style="display:none">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button class="ibtn" onclick="window._apexInstall&&window._apexInstall()">Instalar APEX</button></div>
+      <div id="install-hint-ios" class="txt" style="display:none">1. Toca el ícono <strong>Compartir</strong> (↑) en la barra de Safari<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong><br>3. Toca <strong>Añadir</strong></div>
+      <div id="install-hint-generic" class="txt">Android: menú ⋮ → <strong>"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong>"Añadir a pantalla de inicio"</strong></div>
+    </div>
+
     <!-- Formulario: aparece solo al tocar "Iniciar sesión" -->
     <div class="cin-card" id="cin-card" style="display:none">
       <div class="cin-back" onclick="document.getElementById('cin-card').style.display='none';document.getElementById('cin-cta').style.display='flex'">← Volver</div>
@@ -829,12 +837,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
       <button class="cin-btn lbtn" onclick="doLogin()">Entrar →</button>
       <div class="cin-hint">¿Primera vez por aquí? Entra con el correo y la contraseña <b>que te mandó tu coach.</b></div>
-      <div id="install-hint" class="cin-install">
-        <div class="ttl">📲 INSTALA LA APP</div>
-        <div id="install-hint-android" class="txt" style="display:none">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button class="ibtn" onclick="window._apexInstall&&window._apexInstall()">Instalar APEX</button></div>
-        <div id="install-hint-ios" class="txt" style="display:none">1. Toca el ícono <strong>Compartir</strong> (↑) en la barra de Safari<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong><br>3. Toca <strong>Añadir</strong></div>
-        <div id="install-hint-generic" class="txt">Android: menú ⋮ → <strong>"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong>"Añadir a pantalla de inicio"</strong></div>
-      </div>
     </div>
   </div>
 </div>
@@ -1865,18 +1867,23 @@ function toast(msg){const e=document.getElementById('toast');clearTimeout(_tt);e
 // ══ IMÁGENES DE EJERCICIOS ══ (base libre dominio público, reemplazables por clips propios)
 // IDs y nombres con foto en media/exercises/<id>.jpg. exImgSrc resuelve por id o por nombre
 // (las rutinas copian el ejercicio; el nombre garantiza el match aunque cambie el id).
-const EX_IMG_IDS=new Set(["e1","e2","e3","e71","e4","e5","e6","e24","e25","e26","e27","e28","e34","e50","e51","e52","e7","e8","e21","e22","e23","e53","e54","e9","e10","e29","e55","e56","e11","e12","e19","e30","e31","e32","e57","e13","e14","e15","e16","e33","e35","e36","e37","e38","e39","e40","e41","e58","e59","e70","e42","e43","e44","e60","e46","e61","e73","e17","e18","e47","e48","e49","e62","e20","e64","e65","e66","e67","e68","e69","e76","e77","e78","e79","e80","e81","e82","e83","e84","e85","e86","e87","e88","e92","e93","e95","e96","e97","e98","e99","e100","e101","e102","e103","e104","e105","e106","e107","e108"]);
+// EX_IMG_IDS se deriva de EX_IMG_NAME (abajo) para no duplicar los 99 ids
 const EX_IMG_NAME={"press de banca":"e1","press inclinado mancuernas":"e2","aperturas con cable":"e3","press de banca con mancuernas":"e71","dominadas":"e4","remo con barra":"e5","jalon al pecho":"e6","pullover en polea":"e24","remo en polea a una mano":"e25","jalon al pecho agarre amplio":"e26","jalon al pecho agarre neutro":"e27","jalon al pecho agarre cerrado":"e28","peso muerto convencional":"e34","buenos dias con barra":"e50","remo gironda en polea":"e51","remo con mancuerna a una mano":"e52","press militar con barra":"e7","elevaciones laterales":"e8","face pull en polea":"e21","press militar con mancuerna":"e22","press militar en maquina":"e23","elevaciones frontales":"e53","pajaro / elevaciones posteriores":"e54","curl con barra":"e9","curl martillo":"e10","curl biceps con mancuerna":"e29","curl en polea baja":"e55","curl scott / predicador":"e56","extension en polea alta":"e11","skull crushers":"e12","fondos en paralelas":"e19","extension de triceps trasnuca":"e30","extension a una mano en polea":"e31","fondos gironda":"e32","press frances con mancuernas":"e57","sentadilla con barra":"e13","peso muerto rumano":"e14","curl femoral tumbado":"e15","elevacion de talones de pie":"e16","sentadilla en smith":"e33","desplantes / zancada":"e35","prensa de pierna":"e36","extension de cuadriceps en maquina":"e37","curl femoral acostado en maquina":"e38","curl femoral de pie en maquina":"e39","zancada bulgara":"e40","step-up con mancuernas":"e41","sentadilla hack":"e58","elevacion de talones sentado":"e59","sentadilla goblet":"e70","hip thrust con barra":"e42","hip thrust en maquina":"e43","patada de gluteo en polea":"e44","aduccion de cadera en maquina":"e60","peso muerto piernas rigidas":"e46","sentadilla sumo":"e61","puente de gluteo":"e73","plancha frontal":"e17","crunch abdominal":"e18","rueda abdominal (ab wheel)":"e47","elevacion de piernas colgado":"e48","plancha lateral":"e49","russian twist":"e62","carrera / caminata":"e20","bicicleta estatica":"e64","remo ergometro":"e65","salto a la cuerda":"e66","eliptica":"e67","peso muerto sumo":"e68","clean & press ⚠️ avanzado":"e69","saltos de tijera":"e76","flexiones en pared":"e77","flexiones en rodillas":"e78","fondos en banco":"e79","sentadilla de peso corporal":"e80","mountain climbers":"e81","superman":"e82","lagartijas (push-up)":"e83","press en maquina hammer (pecho)":"e84","aperturas en polea alta":"e85","aperturas en polea baja":"e86","patada lateral en polea":"e87","patada en polea rodilla doblada":"e88","hip thrust unilateral":"e92","sentadilla con banda de resistencia":"e93","peso muerto rumano a una pierna":"e95","kickback con banda (en suelo)":"e96","pike push-up (flexion pica)":"e97","press de hombro con banda":"e98","elevaciones laterales con banda":"e99","face pull con banda":"e100","curl de biceps con banda":"e101","curl martillo con banda":"e102","dominada supina (chin-up)":"e103","remo con banda":"e104","extension de triceps con banda":"e105","puente de gluteo a una pierna":"e106","step-up a peso corporal":"e107","sentadilla a una pierna asistida":"e108"};
+const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 function exImgSrc(e){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
   return id?('media/exercises/'+id+'.jpg'):'';
 }
+// Marca <img> de ejercicio reutilizable (tarjetas y detalle) — lazy + tocable
+function exImgTag(src,name){
+  return `<img class="exicon-img" src="${src}" alt="${esc(name||'')}" loading="lazy" decoding="async" onclick="event.stopPropagation();openExImg(this.src,this.alt)">`;
+}
 function exIcon(e){
   const s=exImgSrc(e);
   if(!s) return esc((e&&e.icon)||'💪');
-  return `<img class="exicon-img" src="${s}" alt="${esc((e&&e.name)||'')}" loading="lazy" onclick="event.stopPropagation();openExImg(this.src,this.alt)">`;
+  return exImgTag(s,(e&&e.name)||'');
 }
 // Lightbox: tocar la imagen del ejercicio la expande a pantalla completa
 function openExImg(src,name){
@@ -1886,6 +1893,8 @@ function openExImg(src,name){
   lb.classList.add('on');
 }
 function closeExImg(){ const lb=document.getElementById('ex-lightbox'); if(lb)lb.classList.remove('on'); }
+// Cerrar lightbox / bienvenida con la tecla Escape (no interfiere con otros handlers)
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeExImg(); hideClientWelcome(); } });
 
 const defaultExercises=[
   // ── PECHO ──
@@ -2238,6 +2247,7 @@ function logout(){
   const _cta=document.getElementById('cin-cta'),_card=document.getElementById('cin-card');
   if(_cta)_cta.style.display='flex'; if(_card)_card.style.display='none';
   const _err=document.getElementById('lerr'); if(_err)_err.classList.remove('on');
+  hideClientWelcome(); // cerrar el overlay de bienvenida si seguía visible
   CUR.loggedAs=null;CUR.clientId=null;
   // Pre-fill remembered email
   const rem=localStorage.getItem('ax_rem');
@@ -7258,7 +7268,7 @@ function _showExSheet(ex, isCoach, editable){
   const _exdImg = exImgSrc(ex);
   iconEl.style.border = '1.5px solid ' + color + '40';
   if(_exdImg){
-    iconEl.innerHTML = '<img class="exicon-img" src="'+_exdImg+'" alt="'+esc(ex.name||'')+'" onclick="openExImg(this.src,this.alt)">';
+    iconEl.innerHTML = exImgTag(_exdImg, ex.name);
     iconEl.style.background = 'none';
     iconEl.style.overflow = 'hidden';
   } else {
