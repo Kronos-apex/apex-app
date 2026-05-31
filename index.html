@@ -4552,15 +4552,6 @@ function gxLevel(total){
   if(next){ pct=Math.max(0,Math.min(100,Math.round(((total-cur.min)/(next.min-cur.min))*100))); rem=Math.max(0,next.min-total); }
   return {cur,next,pct,rem};
 }
-// Racha en semanas consecutivas con al menos una sesión (lun-dom)
-function gxStreak(hist){
-  if(!hist||!hist.length)return 0;
-  const wk=d=>{const dt=new Date(d);const off=(dt.getDay()+6)%7;dt.setHours(0,0,0,0);dt.setDate(dt.getDate()-off);return dt.getTime();};
-  const set=new Set(hist.map(h=>wk(h.date)));
-  let w=wk(Date.now());
-  if(!set.has(w))w-=GX_WEEK; // gracia: si aún no entrena esta semana, cuenta desde la anterior
-  let s=0; while(set.has(w)){s++;w-=GX_WEEK;} return s;
-}
 // Descuento del mes: adherencia del ciclo de renovación actual -> tramo de %
 function gxDiscount(client,hist){
   const pays=(client.payments||[]).slice().sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
@@ -4589,7 +4580,6 @@ function renderGamification(client){
   if(!hist.length && !pays.length){ con.innerHTML=''; return; } // asesorado nuevo: nada que mostrar aún
   const total=hist.length;
   const totalVol=hist.reduce((s,h)=>s+(h.totalVol||0),0);
-  const streak=gxStreak(hist);
   const L=gxLevel(total);
   const prs=Object.keys((DB.prs||{})[client.id]||{}).length;
   // ── Tarjeta descuento del mes ──
@@ -4631,20 +4621,19 @@ function renderGamification(client){
     ${progHTML}
     <div class="gx-stats">
       <div class="gx-stat"><div class="gx-sv">${total}</div><div class="gx-sl">ENTRENAMIENTOS</div></div>
-      <div class="gx-stat"><div class="gx-sv">${streak}<span class="u"> sem</span></div><div class="gx-sl">🔥 RACHA</div></div>
-      <div class="gx-stat"><div class="gx-sv">${volTxt}</div><div class="gx-sl">VOLUMEN</div></div>
+      <div class="gx-stat"><div class="gx-sv">${volTxt}</div><div class="gx-sl">VOLUMEN TOTAL</div></div>
     </div>
   </div>`;
   // ── Logros ──
   const B=[
     {ic:'🏆',nm:'Primer récord',on:prs>=1,gold:true},
     {ic:'✅',nm:'10 entrenos',on:total>=10},
-    {ic:'🔥',nm:'Racha 4 sem',on:streak>=4},
+    {ic:'🎖️',nm:'30 entrenos',on:total>=30},
     {ic:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
     {ic:'⭐',nm:'Mes perfecto',on:!!(d&&d.pct>=15)},
-    {ic:'🎖️',nm:'30 entrenos',on:total>=30},
-    {ic:'🔥',nm:'Racha 8 sem',on:streak>=8},
+    {ic:'🔩',nm:'20.000 kg',on:totalVol>=20000},
     {ic:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
+    {ic:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
   ];
   const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?b.ic:'🔒'}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
   con.innerHTML=monthHTML+lvlHTML+badgesHTML;
