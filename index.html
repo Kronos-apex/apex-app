@@ -1804,13 +1804,15 @@ function setTheme(mode){
   });
 }
 
-// Debounce timers per key — evita saturar Supabase con cada keystroke
+// Debounce timers + cola de reintento por clave — la red de seguridad del sync.
 const _sbDebounce = {};
+const _pendingPush = {}; // clave -> último valor AÚN NO confirmado en la nube (reintentable)
 function sv(k,v){
   // Guardar en localStorage inmediatamente (nunca pierde datos)
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   // Enviar a Supabase con debounce de 1.5s (excepto operaciones críticas)
   if(SB_KEYS.includes(k)){
+    _pendingPush[k]=v;
     clearTimeout(_sbDebounce[k]);
     _sbDebounce[k] = setTimeout(()=>sbSet(k,v), 1500);
   }
@@ -1818,26 +1820,42 @@ function sv(k,v){
 // Forzar sync inmediato (para logout, completar entrenamiento, etc.)
 function svNow(k,v){
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
-  if(SB_KEYS.includes(k)){clearTimeout(_sbDebounce[k]);sbSet(k,v);}
+  if(SB_KEYS.includes(k)){_pendingPush[k]=v;clearTimeout(_sbDebounce[k]);sbSet(k,v);}
 }
 
 // ⚠️ Solo escribir a la nube desde https/localhost — NUNCA desde file://.
 // Abrir el index.html local (file://) jamás debe poder tocar/pisar la nube.
 function canCloudWrite(){return location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';}
 async function sbSet(k,v){
-  if(!canCloudWrite()){warn('APEX: escritura a la nube bloqueada (no es https/localhost):',k);return;}
+  if(!canCloudWrite()){return;}
   // Anti-borrado: nunca subir vacíos ax_c (asesorados) ni ax_e (biblioteca) — casi siempre es un bug, no intención.
   if((k==='ax_c'||k==='ax_e')&&Array.isArray(v)&&v.length===0){warn('APEX: push vacío bloqueado para',k,'(anti-borrado masivo)');return;}
   const dot=document.getElementById('sync-dot');
   if(dot)dot.classList.add('on');
   try{
-    await fetch(`${SB_URL}/rest/v1/apex_data`,{
+    const res=await fetch(`${SB_URL}/rest/v1/apex_data`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({key:k,value:v,updated_at:new Date().toISOString()})
     });
-  }catch(e){warn('APEX sync error:',e);}
+    // Confirmado en la nube → sale de la cola. Si llegó un valor más nuevo entretanto
+    // (_pendingPush[k] !== v), NO lo borramos: ese push más reciente sigue pendiente.
+    if(res&&res.ok){ if(_pendingPush[k]===v) delete _pendingPush[k]; }
+  }catch(e){warn('APEX sync error (queda en cola para reintento):',e&&e.message);}
   finally{setTimeout(()=>{if(dot)dot.classList.remove('on');},600);}
+}
+
+// Reintenta todo lo que no se confirmó en la nube (mala señal en el gym, app cerrada rápido).
+// Es la red de seguridad contra pérdida de datos por envíos fallidos o debounce sin disparar.
+function flushPendingSync(){
+  if(!canCloudWrite())return;
+  Object.keys(_pendingPush).forEach(k=>{ clearTimeout(_sbDebounce[k]); sbSet(k,_pendingPush[k]); });
+}
+if(typeof window!=='undefined'){
+  // Al recuperar conexión y al cerrar/ocultar o volver a la app → forzar lo pendiente.
+  window.addEventListener('online', flushPendingSync);
+  window.addEventListener('pagehide', flushPendingSync);
+  document.addEventListener('visibilitychange', flushPendingSync);
 }
 
 async function syncFromCloud(){
@@ -1860,22 +1878,30 @@ async function syncFromCloud(){
       setP(60,'Descargando datos...');
       const rows=await res.json();
       if(rows&&rows.length){
-        let _mergedHistToPush=null;
+        // Colecciones por-cliente / append-only: NO se sobrescriben, se FUSIONAN
+        // nube + local (si no, un dispositivo con datos viejos pisa lo recién
+        // registrado en otro → era la causa de pérdida de entrenos/mensajes).
+        const MERGE={
+          ax_hist:(cv)=>mergeHistory(ld('ax_hist',{}),cv),
+          ax_m:(cv)=>mergeClientArrays(ld('ax_m',{}),cv,m=>(m.from||'')+'|'+(m.date||'')+'|'+(m.text||''),'asc',null),
+          ax_bw:(cv)=>mergeClientArrays(ld('ax_bw',{}),cv,e=>e.date||'','desc',52),
+          ax_med:(cv)=>mergeClientArrays(ld('ax_med',{}),cv,e=>e.date?new Date(e.date).toDateString():'','desc',24),
+          ax_pr:(cv)=>mergePRs(ld('ax_pr',{}),cv),
+        };
+        const reheal=[];
         rows.forEach(row=>{
           if(!SB_KEYS.includes(row.key))return;
-          // ax_hist es append-only: NO sobrescribir (pisaría entrenos recién
-          // registrados en este u otro dispositivo). Fusionar nube + local.
-          if(row.key==='ax_hist'){
-            const cloudHist=row.value||{};
-            const merged=mergeHistory(ld('ax_hist',{}),cloudHist);
-            localStorage.setItem('ax_hist',JSON.stringify(merged));
-            // Si el local tenía sesiones que la nube no, súbelas para sanar la nube.
-            if(JSON.stringify(merged)!==JSON.stringify(cloudHist))_mergedHistToPush=merged;
+          if(MERGE[row.key]){
+            const cloudVal=row.value||{};
+            const merged=MERGE[row.key](cloudVal);
+            localStorage.setItem(row.key,JSON.stringify(merged));
+            // Si el local tenía datos que la nube no, súbelos para sanar la nube.
+            if(JSON.stringify(merged)!==JSON.stringify(cloudVal))reheal.push([row.key,merged]);
             return;
           }
           localStorage.setItem(row.key,JSON.stringify(row.value));
         });
-        if(_mergedHistToPush)svNow('ax_hist',_mergedHistToPush);
+        reheal.forEach(([k,v])=>svNow(k,v));
         setP(90,'Cargando app...');
       } else {
         setP(90,'Primera vez — iniciando...');
@@ -4702,7 +4728,7 @@ function renderClientToday(client, overrideRoutine){
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
   const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
-  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
+  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div><button onclick="finishSessionEarly()" style="margin-top:10px;width:100%;padding:12px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
   CUR.activeRoutine=todayR;
   renderWarmup(todayR.exercises||[]);
   renderClientExList(todayR);
@@ -5134,20 +5160,46 @@ function saveSessionToHistory(routine,totalVol,doneSets){
   const clientId=CUR.clientId;if(!clientId)return;
   if(!DB.history)DB.history=ld('ax_hist',{});
   if(!DB.history[clientId])DB.history[clientId]=[];
-  // Avoid duplicate saves for same session
   const today=new Date().toDateString();
+  // Snapshot de series — se reconstruye SIEMPRE para que el guardado parcial y la
+  // posterior finalización al 100% queden consistentes (antes solo se construía al crear).
+  const setsData=(routine.exercises||[]).map((ex,ei)=>{
+    const sets=parseInt(ex.sets)||3;
+    return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si)}))};
+  });
+  const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
+  // Evita duplicar: misma rutina el mismo día → actualiza la entrada existente.
   const already=DB.history[clientId].find(h=>h.routineId===routine.id&&new Date(h.date).toDateString()===today);
-  if(already){already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.date=new Date().toISOString();}
+  if(already){already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();}
   else{
-    // Build set data snapshot
-    const setsData=(routine.exercises||[]).map((ex,ei)=>{
-      const sets=parseInt(ex.sets)||3;
-      return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si)}))};
-    });
-    DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets:(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0),exercises:setsData});
+    DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   svNow('ax_hist',DB.history);
+}
+
+// Guardado PARCIAL: registra el entreno con lo que el asesorado lleve hecho, aunque no
+// haya marcado el 100% de las series. Antes solo se guardaba al completar todo, así que
+// un entreno real se perdía si no se palomeaba todo. Botón "Finalizar" en la vista de hoy.
+function finishSessionEarly(){
+  const routine=CUR.activeRoutine;if(!routine)return;
+  let total=0,done=0,totalVol=0;
+  (routine.exercises||[]).forEach((ex,ei)=>{
+    const sets=parseInt(ex.sets)||3;total+=sets;
+    for(let si=0;si<sets;si++){
+      if(isDone(routine.id,ei,si)){
+        done++;
+        totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);
+      }
+    }
+  });
+  if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return;}
+  if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return;
+  saveSessionToHistory(routine,totalVol,done);
+  checkAndUpdatePRs(routine);
+  renderPRsInProfile(CUR.clientId);
+  renderClientExProgress(CUR.clientId);
+  toast('✅ Entrenamiento guardado');
 }
 
 // ALL ROUTINES

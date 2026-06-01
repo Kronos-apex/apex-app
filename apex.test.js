@@ -20,6 +20,8 @@ const {
   parseLimitations,
   inferExerciseEnv,
   mergeHistory,
+  mergeClientArrays,
+  mergePRs,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -547,6 +549,63 @@ test('respeta el tope de 365 por cliente', () => {
 test('robusto: maneja null/undefined sin reventar', () => {
   assert.deepStrictEqual(mergeHistory(null, null), {});
   assert.deepStrictEqual(mergeHistory(undefined, { c1: [{ id: 'a', date: '2026-05-01T00:00:00Z' }] }).c1.length, 1);
+});
+
+// ══════════════════════════════════════════════════════
+// 12. Fusión de mensajes / peso / medidas (mergeClientArrays)
+// ══════════════════════════════════════════════════════
+section('12. Fusión de colecciones por cliente (sync sin perder)');
+
+const msgKey = m => (m.from || '') + '|' + (m.date || '') + '|' + (m.text || '');
+
+test('mensajes: une chat de ambos lados, orden ascendente (cronológico)', () => {
+  const local = { c1: [
+    { from: 'coach', text: 'Hola', date: '2026-05-01T10:00:00Z' },
+    { from: 'client', text: 'Buenas', date: '2026-05-01T10:05:00Z' },
+  ] };
+  const cloud = { c1: [
+    { from: 'coach', text: 'Hola', date: '2026-05-01T10:00:00Z' }, // duplicado
+    { from: 'client', text: '¿Rutina hoy?', date: '2026-05-01T10:10:00Z' }, // solo en nube
+  ] };
+  const merged = mergeClientArrays(local, cloud, msgKey, 'asc', null);
+  assert.strictEqual(merged.c1.length, 3, 'Dedup del duplicado + une el nuevo');
+  assert.deepStrictEqual(merged.c1.map(m => m.text), ['Hola', 'Buenas', '¿Rutina hoy?']);
+});
+
+test('mensajes: un mensaje que solo está en local NO se pierde', () => {
+  const local = { c1: [{ from: 'client', text: 'urgente', date: '2026-06-01T09:00:00Z' }] };
+  const cloud = { c1: [] };
+  const merged = mergeClientArrays(local, cloud, msgKey, 'asc', null);
+  assert.strictEqual(merged.c1.length, 1);
+});
+
+test('peso/medidas: dedup por fecha (uno por día), newest-first, respeta tope', () => {
+  const dateKey = e => e.date || '';
+  const local = { c1: [{ date: '2026-05-03', kg: 70 }, { date: '2026-05-01', kg: 71 }] };
+  const cloud = { c1: [{ date: '2026-05-02', kg: 70.5 }, { date: '2026-05-01', kg: 71 }] };
+  const merged = mergeClientArrays(local, cloud, dateKey, 'desc', 52);
+  assert.strictEqual(merged.c1.length, 3, '3 días distintos (01 dedup)');
+  assert.deepStrictEqual(merged.c1.map(e => e.date), ['2026-05-03', '2026-05-02', '2026-05-01']);
+});
+
+test('PRs: conserva el mejor récord, nunca pierde uno', () => {
+  const local = { c1: { sentadilla: { val: 100, reps: 5, date: '2026-05-01T00:00:00Z' }, curl: { val: 20, reps: 10, date: '2026-05-01T00:00:00Z' } } };
+  const cloud = { c1: { sentadilla: { val: 110, reps: 3, date: '2026-05-10T00:00:00Z' } } };
+  const merged = mergePRs(local, cloud);
+  assert.strictEqual(merged.c1.sentadilla.val, 110, 'Gana el récord más alto');
+  assert.ok(merged.c1.curl, 'El PR que solo estaba en local sobrevive');
+});
+
+test('PRs: empate de valor → gana más reps', () => {
+  const local = { c1: { press: { val: 80, reps: 5, date: '2026-05-01T00:00:00Z' } } };
+  const cloud = { c1: { press: { val: 80, reps: 8, date: '2026-05-02T00:00:00Z' } } };
+  const merged = mergePRs(local, cloud);
+  assert.strictEqual(merged.c1.press.reps, 8);
+});
+
+test('robusto: mergeClientArrays y mergePRs manejan null', () => {
+  assert.deepStrictEqual(mergeClientArrays(null, null, msgKey, 'asc'), {});
+  assert.deepStrictEqual(mergePRs(null, null), {});
 });
 
 // ══════════════════════════════════════════════════════

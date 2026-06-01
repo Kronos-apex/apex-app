@@ -366,27 +366,65 @@ function _histKey(s) {
   return (s && (s.routineId || s.routineName) || '?') + '|' + day;
 }
 
-function mergeHistory(local, cloud, cap) {
+// Une dos colecciones por-cliente { clientId: [items] } SIN PERDER NADA.
+// keyOf(item) = identidad para dedupe; en conflicto conserva la de fecha más reciente.
+// order: 'desc' (nuevo→viejo, p.ej. historial/medidas) o 'asc' (viejo→nuevo, p.ej. chat).
+// cap: máximo por cliente (conserva siempre los más nuevos). Pura y testeable.
+function mergeClientArrays(local, cloud, keyOf, order, cap) {
   local = local && typeof local === 'object' ? local : {};
   cloud = cloud && typeof cloud === 'object' ? cloud : {};
-  const limit = cap || 365;
   const out = {};
   const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
   ids.forEach(cid => {
     const a = Array.isArray(local[cid]) ? local[cid] : [];
     const b = Array.isArray(cloud[cid]) ? cloud[cid] : [];
     const byKey = new Map();
-    a.concat(b).forEach(s => {
-      if (!s) return;
-      const k = _histKey(s);
+    a.concat(b).forEach(it => {
+      if (it == null) return;
+      const k = keyOf(it);
       const prev = byKey.get(k);
-      // Conflicto de misma sesión → conserva la de fecha más reciente (la editada).
-      if (!prev || new Date(s.date || 0) >= new Date(prev.date || 0)) byKey.set(k, s);
+      if (!prev || new Date(it.date || 0) >= new Date(prev.date || 0)) byKey.set(k, it);
     });
     let merged = [...byKey.values()];
-    merged.sort((x, y) => new Date(y.date || 0) - new Date(x.date || 0)); // nuevo→viejo
-    if (merged.length > limit) merged = merged.slice(0, limit);
+    merged.sort((x, y) => {
+      const dx = new Date(x.date || 0), dy = new Date(y.date || 0);
+      return order === 'asc' ? dx - dy : dy - dx;
+    });
+    if (cap && merged.length > cap) merged = order === 'asc' ? merged.slice(merged.length - cap) : merged.slice(0, cap);
     out[cid] = merged;
+  });
+  return out;
+}
+
+// Historial: dedupe por id de sesión (fallback rutina+día), nuevo→viejo, tope 365.
+function mergeHistory(local, cloud, cap) {
+  return mergeClientArrays(local, cloud, _histKey, 'desc', cap || 365);
+}
+
+// Récords personales { clientId: { exKey: {val,unit,reps,kg,date,...} } }.
+// Conserva el MEJOR récord: mayor valor → más reps → más reciente. Nunca pierde un PR.
+function mergePRs(local, cloud) {
+  local = local && typeof local === 'object' ? local : {};
+  cloud = cloud && typeof cloud === 'object' ? cloud : {};
+  const valOf = p => (p && p.val != null ? p.val : (p && p.kg) || 0);
+  const out = {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  ids.forEach(cid => {
+    const m = {};
+    const absorb = src => {
+      const o = (src && src[cid]) || {};
+      Object.keys(o).forEach(k => {
+        const cand = o[k], cur = m[k];
+        if (!cur) { m[k] = cand; return; }
+        const cv = valOf(cand), uv = valOf(cur);
+        const better = cv > uv
+          || (cv === uv && (cand.reps || 0) > (cur.reps || 0))
+          || (cv === uv && (cand.reps || 0) === (cur.reps || 0) && new Date(cand.date || 0) > new Date(cur.date || 0));
+        if (better) m[k] = cand;
+      });
+    };
+    absorb(local); absorb(cloud);
+    out[cid] = m;
   });
   return out;
 }
@@ -407,5 +445,7 @@ if (typeof module !== 'undefined' && module.exports) {
     inferExerciseEnv,
     ENV_ALL,
     mergeHistory,
+    mergeClientArrays,
+    mergePRs,
   };
 }
