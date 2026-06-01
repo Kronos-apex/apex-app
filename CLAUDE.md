@@ -624,6 +624,26 @@ git push origin main
 - apex-core.js cubierto por los checks de sintaxis/duplicados del audit
 - Suite de tests: 41 → **56 tests** (incluye generador + entornos)
 
+### ✅ Sesión 2026-06-01 — Integridad de datos, auditoría, marca AVI
+
+**🔴 Blindaje de pérdida de datos (incidente real: se perdieron entrenos de Nataly y Andrés Martínez):**
+- `mergeHistory` / `mergeClientArrays` / `mergePRs` en `apex-core.js`: `syncFromCloud` ya NO sobrescribe `ax_hist`/`ax_m`/`ax_bw`/`ax_med`/`ax_pr` — los FUSIONA nube+local (commits 95e91cc, 8e224b3). +14 tests → **72/72**.
+- Cola de reintento `_pendingPush` + `flushPendingSync()` en `online`/`pagehide`/`visibilitychange` (un envío fallido por mala señal se reintenta solo). Sin keepalive (límite 64KB).
+- Guardado PARCIAL: botón "Finalizar entrenamiento" (`finishSessionEarly`) guarda aunque no se marque el 100%. `saveSessionToHistory` reconstruye snapshot siempre.
+- Calentamiento PERSISTE (`wu_{routineId}_{exId}` en localStorage; antes se borraba al re-render). Commit d403eb6.
+- Tarjeta **"Entrenaron hoy"** con nombres en el dashboard del coach (commit 4a7a542).
+- `MS.canLogin` ahora permite `pending` (asesorado nuevo entra → onboarding + tier libre).
+
+**🔍 Auditoría de equipo completa → `docs/auditoria-2026-06-01.md`** (seguridad/DBA, deportivo, QA, CS, ing, diseño, PM). Backlog priorizado. Crítico abierto: **RLS permisivo** = toda la DB es pública con la key anon (no se arregla sin auth real; bloqueador del arrendamiento). Arreglados: login `pending` + mensaje honesto de lesiones genéricas (`parseLimitations.hasExclusions`).
+
+**⚖️ + 🔐 Modo libre público (v2.0) — arrancado:**
+- Decisión: abrir el modo libre a personas reales (no-coaches) con **login real Supabase Auth (Google + Email)**; usuario libre independiente que luego conecta coach. Ver [[memoria estrategia self-serve]].
+- Borradores legales en `legal/` (Habeas Data Ley 1581 — pendiente abogado + datos del responsable; SIN push).
+- Guía de config Google en `docs/setup-login-google.md` (clics de Camilo en Google Cloud + Supabase).
+- Decisión técnica pendiente: supabase-js (CDN) vs OAuth a mano (rompe "sin dependencias").
+
+**🏷️ RENOMBRE APEX → AVI (commit 83db4ae, apex-v44):** nombre visible cambiado en toda la app (login, carga, manifest, notificaciones, imágenes, WhatsApp, gamificación). **Internos INTACTOS** (`ax_*`, `apex_data`, `apex-core.js`, `#apex-loading`, caché `apex-vNN`, repo `apex-app`) — NO renombrar. AVI = iniciales de los hijos (Alexander/Valery/Isabella). Handle @avi.entrena. Dominios libres: avi.lat + holaavi.com (sin comprar aún). Pendiente: registro SIC. La PWA instalada conserva el nombre viejo hasta reinstalar (no es bug).
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -676,4 +696,5 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-01 · v1.4 · ~8,000 líneas · 309 funciones (inline + apex-core.js) · 109 ejercicios (defaultExercises: e1-e109) + fb03/fb04 en Supabase · 9 asesorados activos · Modalidades de entrenamiento (track) + auto-generador de rutinas + entornos/estilos + gamificación + rediseño Noir Esmeralda (apex-v37) · Suite 56/56 verde · audit 8/8 OK · Tagline: "Entrenamiento con nombre propio"*
+*Última actualización: 2026-06-01 (cierre de sesión) · Marca: **AVI** (ex-APEX) · v1.4 · apex-v44 · ~8,100 líneas · ~320 funciones (inline + apex-core.js) · 109 ejercicios · 9 asesorados activos · Suite **72/72** verde · audit 8/8 OK · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión: blindaje de datos (fusión sync + reintento + guardado parcial) · auditoría de equipo (docs/auditoria-2026-06-01.md) · borradores legales (legal/) + plan login Supabase Auth (modo libre público v2.0) · renombre APEX→AVI · 🔴 abierto: RLS permisivo (auth real pendiente)*
