@@ -4704,7 +4704,6 @@ function renderClientToday(client, overrideRoutine){
   const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
   con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:11px 14px;font-size:13px;color:#7a5c00;margin-bottom:12px;line-height:1.5">💡 <strong>Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div>`;
   CUR.activeRoutine=todayR;
-  WU_STATE.done={};
   renderWarmup(todayR.exercises||[]);
   renderClientExList(todayR);
 }
@@ -4920,6 +4919,7 @@ function resetSession(){
     const sets=parseInt(ex.sets)||3;
     for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
   });
+  clearWarmup(routine.id);
   localStorage.removeItem(`session_date_${routine.id}`);
   document.getElementById('congrats').classList.add('hide');
   if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
@@ -4936,6 +4936,7 @@ function checkAndResetSession(routine){
       const sets=parseInt(ex.sets)||3;
       for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
     });
+    clearWarmup(routine.id); // el calentamiento también es por día
   }
   localStorage.setItem(dateKey,today);
 }
@@ -7294,15 +7295,24 @@ function buildWarmup(exercises){
   return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};
 }
 
-// Track warmup completion in memory (resets each session)
-const WU_STATE={done:{}};
+// Persistencia del calentamiento (igual que las series: localStorage por rutina).
+// Antes vivía solo en memoria y se borraba al re-renderizar → al salir y volver a
+// la rutina tocaba re-marcar todo. Se resetea por día (checkAndResetSession) y en
+// el reinicio manual (resetSession), como el resto de la sesión.
+function wuKey(routineId,exId){return `wu_${routineId}_${exId}`}
+function wuIsDone(routineId,exId){return localStorage.getItem(wuKey(routineId,exId))==='1'}
+function clearWarmup(routineId){
+  Object.keys(localStorage).filter(k=>k.startsWith(`wu_${routineId}_`)).forEach(k=>localStorage.removeItem(k));
+}
 
 function wuToggle(id){
-  WU_STATE.done[id]=!WU_STATE.done[id];
+  const rid=CUR.activeRoutine&&CUR.activeRoutine.id;if(!rid)return;
+  const done=!wuIsDone(rid,id);
+  localStorage.setItem(wuKey(rid,id),done?'1':'0');
   const btn=document.getElementById('wu-btn-'+id);
   const row=document.getElementById('wu-row-'+id);
-  if(btn){btn.textContent=WU_STATE.done[id]?'✓':'';btn.style.background=WU_STATE.done[id]?'var(--g)':'transparent';btn.style.borderColor=WU_STATE.done[id]?'var(--g)':'var(--br2)';}
-  if(row){row.style.opacity=WU_STATE.done[id]?'.5':'1';}
+  if(btn){btn.textContent=done?'✓':'';btn.style.background=done?'var(--g)':'transparent';btn.style.borderColor=done?'var(--g)':'var(--br2)';}
+  if(row){row.style.opacity=done?'.5':'1';}
   updateWarmupProgress();
 }
 
@@ -7332,19 +7342,23 @@ function updateWarmupProgress(){
 function renderWarmup(exercises){
   const con=document.getElementById('wu-wrap');
   if(!con)return;
+  const rid=CUR.activeRoutine&&CUR.activeRoutine.id;
   const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises);
   const total=articulares.length+activaciones.length;
 
-  const exRow=(ex)=>`
-    <div id="wu-row-${ex.id}" class="wu-ex-row" onclick="wuToggle('${ex.id}')">
+  const exRow=(ex)=>{
+    const d=rid&&wuIsDone(rid,ex.id); // estado persistido: queda marcado al salir y volver
+    return `
+    <div id="wu-row-${ex.id}" class="wu-ex-row" onclick="wuToggle('${ex.id}')" style="opacity:${d?'.5':'1'}">
       <div class="wu-ex-icon">${ex.icon}</div>
       <div class="wu-ex-info">
         <div class="wu-ex-name">${esc(ex.name)}</div>
         <div class="wu-ex-reps">${esc(ex.reps)}</div>
       </div>
       <button class="wu-guide-btn" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;font-size:17px;cursor:pointer;flex-shrink:0;margin-right:2px;opacity:.75">🎥</button>
-      <button id="wu-btn-${ex.id}" class="wu-check-btn" onclick="event.stopPropagation();wuToggle('${ex.id}')"></button>
+      <button id="wu-btn-${ex.id}" class="wu-check-btn" onclick="event.stopPropagation();wuToggle('${ex.id}')" style="${d?'background:var(--g);border-color:var(--g)':''}">${d?'✓':''}</button>
     </div>`;
+  };
 
   const apxBlock=aproximacion.length?`
     <div class="wu-section-title">📊 Series de aproximación sugeridas</div>
@@ -7381,6 +7395,7 @@ function renderWarmup(exercises){
         ${apxBlock}
       </div>
     </div>`;
+  updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)
 }
 
 function toggleWarmup(){
