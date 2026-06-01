@@ -253,7 +253,7 @@ SB_KEYS = [
 
 ### Membresía
 - `MS.getStatus(client)` → `active | expiring | overdue | inactive | pending`
-- `MS.canLogin(client)` → solo `active` o `expiring` entran (pending BLOQUEADO)
+- `MS.canLogin(client)` → entran `active`, `expiring` y `pending` (asesorado nuevo sin pago — onboarding/tier libre). `overdue` (plan vencido) e `inactive` (suspendido) BLOQUEADOS
 - `MS.badge(status)` → `{label, color, bg}`
 - `registerPayment(clientId)` — registra pago por 30 días
 - `toggleSuspend(clientId)` — pausar/reactivar
@@ -263,7 +263,7 @@ SB_KEYS = [
 - `hashClientPass(pass, clientId)` → SHA-256 con salt
 - `isHashed(pass)` → detecta si ya migró a SHA-256
 - `doLogin()` — auth dual coach/asesorado
-- `canLogin(c)` — inclusión positiva: `active || expiring`
+- `canLogin(c)` — inclusión positiva: `active || expiring || pending` (pending = nuevo sin pago, entra)
 - `esc(str)` — sanitización XSS obligatoria en todo innerHTML con datos de usuario
 
 ### Renderizado principal
@@ -313,7 +313,7 @@ SB_KEYS = [
 | CORS Edge Functions | ✅ Restringido a `https://kronos-apex.github.io` (NO usar `*`) |
 | Contraseña coach | ✅ SHA-256 en `ax_cph`, legacy `ax_cp` no sincroniza |
 | Contraseñas asesorados | ✅ SHA-256 con clientId como salt, migración automática |
-| Login con membresía vencida | ✅ Bloqueado — inclusión positiva `active || expiring` |
+| Login con membresía vencida | ✅ `overdue`/`inactive` bloqueados; `pending` (nuevo sin pago) SÍ entra (onboarding/tier libre) |
 | VAPID private key | ✅ Solo en variables de entorno Supabase — jamás en frontend |
 | send-push Edge Function | ✅ Verifica Authorization header antes de enviar |
 | Pre-commit hook | ✅ Bloquea secrets hardcodeados antes de cualquier commit |

@@ -153,11 +153,18 @@ function parseLimitations(notes) {
   GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) keys.push(k.zone); });
   const uniq = [...new Set(keys)];
   const detected = uniq.length > 0;
+  // Solo rodilla/lumbar/hombro tienen reglas de exclusión. Una limitación "genérica"
+  // (p.ej. "operado", "cirugía" sin nombrar zona) se DETECTA pero NO excluye nada:
+  // el mensaje no debe prometer una exclusión que no ocurrió (lo arregla la auditoría 2026-06-01).
+  const hasExclusions = uniq.some(z => GEN_ZONE_EXCL[z]);
   return {
     detected,
     keys: uniq,
     zones: [...new Set(uniq.map(z => GEN_ZONE_LABEL[z]))],
-    advice: detected ? 'Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras.' : '',
+    hasExclusions,
+    advice: !detected ? ''
+      : hasExclusions ? 'Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras.'
+      : 'Limitación sin zona específica: NO se excluyó ningún ejercicio automáticamente. Revísala y ajústala a mano antes de aprobar.',
   };
 }
 

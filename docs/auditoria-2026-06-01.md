@@ -82,9 +82,9 @@
 Ordenado por prioridad. (S=Seguridad, D=Deportivo, Q=QA, X=CS, E=Ing, G=Diseño, P=PM)
 
 **🔴 Hacer pronto (bajo riesgo, alto impacto):**
-1. [Q/X] Mensaje correcto para `pending` en login (no "tu plan venció") + mostrar contacto del coach al usuario bloqueado.
-2. [D] Texto de lesión "genérica": no afirmar "se excluyeron ejercicios" cuando no se excluyó nada — decir "revisar manualmente".
-3. [S] Limpiar policies RLS redundantes (`apex_open`/`push_access`) + mover `pg_net` fuera de `public`. (DDL bajo riesgo, no cambia acceso.)
+1. ✅ HECHO — `MS.canLogin` ahora permite `pending` (nuevo entra; arregla también el mensaje falso, que ya solo aplica a vencidos reales). [Q/X] _Sub-item pendiente: link de contacto del coach en login para bloqueados — requiere campo de contacto del coach._
+2. ✅ HECHO — `parseLimitations.advice` ya no afirma exclusión en lesiones genéricas (`hasExclusions`); pide revisión manual. +2 tests (72/72). [D]
+3. ⏸️ DIFERIDO — Limpieza de policies RLS + `pg_net`: es **cosmético** (no cambia acceso) y tocar RLS/extensiones en prod tiene downside catastrófico (tumbar la app) por beneficio casi nulo. Hacerlo JUNTO con el trabajo de auth real (#5), no aislado. [S]
 
 **🟠 Decisiones de producto (definir antes de codificar):**
 4. [P/Q] ¿El tier "libre" permite entrar a `pending`? Define el self-serve.

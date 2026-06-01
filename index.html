@@ -3063,7 +3063,9 @@ const MS={
     if(daysLeft<=7)return 'expiring';
     return 'active';
   },
-  canLogin(c){const s=this.getStatus(c);return s==='active'||s==='expiring';},
+  // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
+  // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
+  canLogin(c){const s=this.getStatus(c);return s==='active'||s==='expiring'||s==='pending';},
   badge(s){
     return({
       active:{label:'Al día',color:'var(--gt)',bg:'var(--gl)'},

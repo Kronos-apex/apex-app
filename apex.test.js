@@ -345,6 +345,20 @@ test('parseLimitations sin limitaciones → detected false', () => {
   assert.strictEqual(parseLimitations('').detected, false);
 });
 
+test('limitación con zona (rodilla) → hasExclusions true y promete exclusión', () => {
+  const lim = parseLimitations('Operación de menisco en la rodilla');
+  assert.strictEqual(lim.hasExclusions, true);
+  assert.ok(/Se excluyeron/.test(lim.advice));
+});
+
+test('limitación GENÉRICA (sin zona) → NO promete exclusión que no ocurrió', () => {
+  const lim = parseLimitations('Cirugía reciente, postoperatorio'); // 'generic', sin zona con reglas
+  assert.strictEqual(lim.detected, true, 'se detecta');
+  assert.strictEqual(lim.hasExclusions, false, 'pero no hay exclusiones automáticas');
+  assert.ok(!/Se excluyeron/.test(lim.advice), 'el texto NO debe afirmar que excluyó');
+  assert.ok(/a mano|manual/i.test(lim.advice), 'debe pedir ajuste manual');
+});
+
 test('notas con "lumbar" → rutina marcada needsReview + ⚠️ en la nota', () => {
   const { routines, needsReview } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo', notes: 'hernia lumbar, evitar peso muerto' }, LIB, FIXED);
   assert.strictEqual(needsReview, true);
