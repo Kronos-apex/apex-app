@@ -345,6 +345,52 @@ function inferExerciseEnv(ex) {
   return ['gym'];
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// FUSIÓN DE HISTORIAL (sync) — incidente 2026-06-01
+// ─────────────────────────────────────────────────────────────────────
+// El historial es APPEND-ONLY: cada entreno completado se agrega. El sync
+// guardaba el bloque completo (last-write-wins), así que un dispositivo con
+// datos viejos podía PISAR sesiones recién registradas por otro → se perdían
+// entrenos (Nataly y Andrés Martínez, 2026-06-01).
+//
+// mergeHistory une nube + local SIN PERDER NADA: dedupe por id de sesión
+// (fallback rutina+día para sesiones viejas sin id), en conflicto conserva la
+// versión de fecha más reciente (cubre la re-edición del mismo día que hace
+// saveSessionToHistory), ordena nuevo→viejo y respeta el tope de 365 por
+// cliente. Pura y testeable. La usa syncFromCloud en index.html.
+// ─────────────────────────────────────────────────────────────────────
+function _histKey(s) {
+  if (s && s.id) return 'id:' + s.id;
+  // Sesiones viejas sin id: misma clave que usa saveSessionToHistory (rutina + día).
+  const day = s && s.date ? new Date(s.date).toDateString() : '?';
+  return (s && (s.routineId || s.routineName) || '?') + '|' + day;
+}
+
+function mergeHistory(local, cloud, cap) {
+  local = local && typeof local === 'object' ? local : {};
+  cloud = cloud && typeof cloud === 'object' ? cloud : {};
+  const limit = cap || 365;
+  const out = {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  ids.forEach(cid => {
+    const a = Array.isArray(local[cid]) ? local[cid] : [];
+    const b = Array.isArray(cloud[cid]) ? cloud[cid] : [];
+    const byKey = new Map();
+    a.concat(b).forEach(s => {
+      if (!s) return;
+      const k = _histKey(s);
+      const prev = byKey.get(k);
+      // Conflicto de misma sesión → conserva la de fecha más reciente (la editada).
+      if (!prev || new Date(s.date || 0) >= new Date(prev.date || 0)) byKey.set(k, s);
+    });
+    let merged = [...byKey.values()];
+    merged.sort((x, y) => new Date(y.date || 0) - new Date(x.date || 0)); // nuevo→viejo
+    if (merged.length > limit) merged = merged.slice(0, limit);
+    out[cid] = merged;
+  });
+  return out;
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -360,5 +406,6 @@ if (typeof module !== 'undefined' && module.exports) {
     genSchemeFor,
     inferExerciseEnv,
     ENV_ALL,
+    mergeHistory,
   };
 }

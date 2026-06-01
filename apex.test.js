@@ -19,6 +19,7 @@ const {
   generarRutinas,
   parseLimitations,
   inferExerciseEnv,
+  mergeHistory,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -477,6 +478,76 @@ test('methodBias="calistenia" (vía opts/estilo) → prefiere peso corporal cuan
 function routinesIncludeMuscle(routines, m) {
   return routines.flatMap(r => r.exercises).some(e => e.muscle === m);
 }
+
+// ══════════════════════════════════════════════════════
+// 11. Fusión de historial (mergeHistory) — incidente 2026-06-01
+// ══════════════════════════════════════════════════════
+section('11. Fusión de historial (sync sin perder entrenos)');
+
+test('EL BUG: sesión local que la nube NO tiene NO se pierde tras fusionar', () => {
+  const cloud = { c1: [{ id: 's_vieja', date: '2026-05-25T10:00:00.000Z', totalVol: 100 }] };
+  const local = {
+    c1: [
+      { id: 's_hoy', date: '2026-06-01T15:00:00.000Z', totalVol: 200 }, // entreno de hoy, solo en el celular
+      { id: 's_vieja', date: '2026-05-25T10:00:00.000Z', totalVol: 100 },
+    ],
+  };
+  const merged = mergeHistory(local, cloud);
+  const ids = merged.c1.map(s => s.id);
+  assert.ok(ids.includes('s_hoy'), 'La sesión de hoy debe sobrevivir a la fusión');
+  assert.strictEqual(merged.c1.length, 2, 'Debe quedar con las 2 sesiones');
+});
+
+test('unión: combina clientes presentes solo en nube o solo en local', () => {
+  const cloud = { c1: [{ id: 'a', date: '2026-05-01T00:00:00Z' }] };
+  const local = { c2: [{ id: 'b', date: '2026-05-02T00:00:00Z' }] };
+  const merged = mergeHistory(local, cloud);
+  assert.ok(merged.c1 && merged.c2, 'Deben estar ambos clientes');
+  assert.strictEqual(merged.c1.length, 1);
+  assert.strictEqual(merged.c2.length, 1);
+});
+
+test('dedupe: misma sesión (mismo id) en nube y local → una sola copia', () => {
+  const s = { id: 'x', date: '2026-05-10T00:00:00Z', totalVol: 50 };
+  const merged = mergeHistory({ c1: [s] }, { c1: [s] });
+  assert.strictEqual(merged.c1.length, 1);
+});
+
+test('conflicto: conserva la versión de fecha más reciente (sesión editada)', () => {
+  const cloud = { c1: [{ id: 'x', date: '2026-05-10T10:00:00Z', totalVol: 50 }] };
+  const local = { c1: [{ id: 'x', date: '2026-05-10T18:00:00Z', totalVol: 80 }] }; // editada más tarde
+  const merged = mergeHistory(local, cloud);
+  assert.strictEqual(merged.c1.length, 1);
+  assert.strictEqual(merged.c1[0].totalVol, 80, 'Debe quedar la edición más reciente');
+});
+
+test('orden: queda de más nuevo a más viejo', () => {
+  const local = { c1: [
+    { id: 'a', date: '2026-05-01T00:00:00Z' },
+    { id: 'c', date: '2026-05-03T00:00:00Z' },
+    { id: 'b', date: '2026-05-02T00:00:00Z' },
+  ] };
+  const merged = mergeHistory(local, {});
+  assert.deepStrictEqual(merged.c1.map(s => s.id), ['c', 'b', 'a']);
+});
+
+test('sesiones viejas sin id: dedupe por rutina + día', () => {
+  const cloud = { c1: [{ routineId: 'r1', routineName: 'Pierna', date: '2026-05-05T09:00:00Z' }] };
+  const local = { c1: [{ routineId: 'r1', routineName: 'Pierna', date: '2026-05-05T20:00:00Z' }] }; // mismo día/rutina
+  const merged = mergeHistory(local, cloud);
+  assert.strictEqual(merged.c1.length, 1, 'Misma rutina el mismo día = una sola sesión');
+});
+
+test('respeta el tope de 365 por cliente', () => {
+  const many = Array.from({ length: 400 }, (_, i) => ({ id: 's' + i, date: new Date(2026, 0, 1 + i).toISOString() }));
+  const merged = mergeHistory({ c1: many }, {});
+  assert.strictEqual(merged.c1.length, 365);
+});
+
+test('robusto: maneja null/undefined sin reventar', () => {
+  assert.deepStrictEqual(mergeHistory(null, null), {});
+  assert.deepStrictEqual(mergeHistory(undefined, { c1: [{ id: 'a', date: '2026-05-01T00:00:00Z' }] }).c1.length, 1);
+});
 
 // ══════════════════════════════════════════════════════
 // RESUMEN

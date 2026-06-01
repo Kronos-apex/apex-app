@@ -1858,11 +1858,22 @@ async function syncFromCloud(){
       setP(60,'Descargando datos...');
       const rows=await res.json();
       if(rows&&rows.length){
+        let _mergedHistToPush=null;
         rows.forEach(row=>{
-          if(SB_KEYS.includes(row.key)){
-            localStorage.setItem(row.key,JSON.stringify(row.value));
+          if(!SB_KEYS.includes(row.key))return;
+          // ax_hist es append-only: NO sobrescribir (pisaría entrenos recién
+          // registrados en este u otro dispositivo). Fusionar nube + local.
+          if(row.key==='ax_hist'){
+            const cloudHist=row.value||{};
+            const merged=mergeHistory(ld('ax_hist',{}),cloudHist);
+            localStorage.setItem('ax_hist',JSON.stringify(merged));
+            // Si el local tenía sesiones que la nube no, súbelas para sanar la nube.
+            if(JSON.stringify(merged)!==JSON.stringify(cloudHist))_mergedHistToPush=merged;
+            return;
           }
+          localStorage.setItem(row.key,JSON.stringify(row.value));
         });
+        if(_mergedHistToPush)svNow('ax_hist',_mergedHistToPush);
         setP(90,'Cargando app...');
       } else {
         setP(90,'Primera vez — iniciando...');
