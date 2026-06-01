@@ -14,7 +14,7 @@
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
 - **Asesorados** — ejecutan rutinas, registran progreso, ven evolución
 
-**Versión actual:** v1.3.3 — Mayo 2026
+**Versión actual:** v1.4 — Junio 2026
 
 ---
 
@@ -36,11 +36,11 @@
 ### Archivos del proyecto
 ```
 apex-app/
-├── index.html                          ← APEX completo (~6,300 líneas, ~380 KB)
+├── index.html                          ← APEX completo (~8,000 líneas, ~505 KB)
 ├── sw.js                               ← Service Worker ESTÁTICO (⚠️ NUNCA convertir a blob URL)
 ├── .git/hooks/pre-commit               ← Audit automático en cada git commit (7 checks)
-├── .claude/agents/                     ← 10 agentes especializados del equipo
-├── .claude/skills/                     ← apex-audit, apex-deploy
+├── .claude/agents/                     ← 15 agentes especializados del equipo
+├── .claude/skills/                     ← apex-audit, apex-deploy, apex-feature, apex-generate, apex-run
 ├── supabase/functions/send-push/       ← Edge Function push notifications
 ├── supabase/functions/daily-notifs/    ← Edge Function notificaciones diarias (3 cron jobs)
 └── CLAUDE.md                           ← Este archivo
@@ -66,8 +66,9 @@ apex-app/
 - `#cn-today` — Entrenamiento del día + activación auto + timer
 - `#cn-routines` — Todas sus rutinas (no solo la del día)
 - `#cn-messages` — Chat con el coach
-- `#cn-history` — Historial (hasta 365 sesiones) + gráfica volumen + progreso por ejercicio
-- `#cn-profile` — Peso corporal, PRs, datos, fotos progreso, medidas, racha semanal
+- `#cn-history` — Historial (hasta 365 sesiones) + gráfica volumen + progreso por ejercicio/modalidad
+- `#cn-profile` — Foto de perfil propia, peso corporal, PRs, datos, fotos progreso, medidas (progressive disclosure: oculta tarjetas vacías)
+- `#cn-gamif` — Gamificación: nivel permanente (1–5, no se reinicia) + descuento del mes por adherencia (5/10/15%) + logros. El coach también ve el descuento ganado en su panel
 
 ### Modales activos
 - `#m-client` — Crear/editar asesorado (nombre, email, contraseña, teléfono, sexo, edad, actividad, objetivo, nivel, días, notas)
@@ -242,7 +243,7 @@ SB_KEYS = [
 
 ---
 
-## 🔑 FUNCIONES CLAVE (220 totales)
+## 🔑 FUNCIONES CLAVE (309 totales — inline + apex-core.js)
 
 ### Sync & Persistencia
 - `ld(key, default)` — lee localStorage
@@ -281,9 +282,28 @@ SB_KEYS = [
 - `pushToClient(clientId, title, body)` — llama Edge Function send-push
 - `subscribePush(clientId)` — registra dispositivo en push_subscriptions
 
+### Modalidades de entrenamiento (v1.4 — campo `track` por ejercicio)
+- 5 modalidades: `peso_reps` · `reps` (peso corporal, lastre opcional) · `tiempo` (isométrico) · `cardio` · `hiit`
+- `exTrack(ex)` / `hiitCfg()` / `holdSecsOf()` — derivan la modalidad y su config
+- `startHiit()` / `stopHiit()` — timer de intervalos con pitido+vibración + Wake Lock
+- `startHoldTimer()` — cronómetro regresivo para isométricos (reusa rest-banner)
+- `migrateExTypes()` — guard `ax_track_migrated`, reclasifica defaults una sola vez sin pisar al coach
+- `buildExerciseProgress()` — métrica por track con unidad (kg/reps/s/min/rondas); PRs y gráficas conscientes de modalidad (back-compat: datos viejos = kg)
+
+### Auto-generador de rutinas (v1.4 — en `apex-core.js`)
+- `generarRutinas(client, lib, opts)` — borrador completo de la semana; el coach SIEMPRE revisa antes de asignar (innegociable)
+- Splits por sexo+días, scheme por objetivo+nivel, exclusiones por limitación física (`parseLimitations`) y por entorno (`inferExerciseEnv`)
+- Botón ✨ "Generar semana" en el detalle del asesorado
+
+### Gamificación (v1.4 — visible al asesorado, descuento visible también al coach)
+- `gxLevel(total)` — nivel permanente 1–5 (`GX_LEVELS`), NO se reinicia
+- `gxDiscount(client, hist)` — adherencia del ciclo de renovación → tramo de descuento (≥60%→5%, ≥80%→10%, 100%→15%). **Informativo**: el coach lo aplica a mano, sin movimiento automático de dinero
+- `gxNextTier(d)` — cuántas sesiones faltan para el siguiente tramo
+- `renderGamification(client)` — tarjetas de nivel + descuento del mes + logros
+
 ---
 
-## 🔒 SEGURIDAD — ESTADO ACTUAL (v1.3.2)
+## 🔒 SEGURIDAD — ESTADO ACTUAL (v1.4)
 
 | Área | Estado |
 |---|---|
@@ -559,13 +579,58 @@ git push origin main
 - Íconos PWA verificados: ya tienen la Letra de Hierro (A con barra de pesas dorada)
 - `BRAND.md` creado — brief completo de marca: paleta, tipografía, logo, tono, reglas
 
-### 🎯 v1.4 — Próxima iteración
+### ✅ v1.4 — Self-serve, modalidades y rediseño (Mayo–Junio 2026)
+
+**Modalidades de entrenamiento (commits 0e0b48f, fc66b83):**
+- Campo `track` por ejercicio: `peso_reps` / `reps` / `tiempo` / `cardio` / `hiit`
+- Arregla el bug histórico de pedir "kg" en cardio HIIT y peso corporal
+- Timer HIIT (intervalos + pitido/vibración + Wake Lock) y cronómetro isométrico
+- PRs y gráficas de progreso por modalidad con unidad propia (back-compat con datos viejos en kg)
+- `migrateExTypes()` reclasifica 15 defaults a Bodyweight + e74 a HIIT, una sola vez
+
+**Auto-generador de rutinas — Paso 1 self-serve (commit 98c418e):**
+- `generarRutinas()` en `apex-core.js` (función pura, testeada) + botón ✨ "Generar semana"
+- Splits por sexo+días, scheme por objetivo+nivel, exclusiones por limitación física y por entorno
+- El coach SIEMPRE revisa/aprueba el borrador antes de asignar (innegociable por seguridad)
+- Modelo self-serve de 2 niveles definido (libre gratis + coach pago) — NO se quita el coach
+
+**Entornos y estilos de equipo (commits 631348b, 004ef6f, 2609e23):**
+- Eje `env` independiente de `goal` y `tier`: corporal / casa / parque / gym
+- `inferExerciseEnv()` propone entorno por nombre+tipo; generador y picker filtran por entorno
+- Selector de estilo (preset entorno+metodología) + editor de env en la UI
+- +13 ejercicios sin gym para llenar el hueco de peso corporal
+
+**Gamificación (commits 1acb042, 832b73c):**
+- Nivel permanente 1–5 que no se reinicia + logros
+- Descuento del mes por adherencia (5/10/15%) — visible al asesorado y al coach (informativo, se aplica a mano)
+
+**Rediseño Noir Esmeralda (commits varios, apex-v37):**
+- Marca esmeralda `#10E0A0` + oro + casi-negro; login cinematográfico con video real
+- Pantalla de carga con imagen, intro editorial de la semana, bienvenida personalizada
+- Tarjetas de ejercicio estilo Nike con imágenes reales + lightbox al tocar
+- Ícono ala esmeralda (Noir Esmeralda); el asesorado puede poner su propia foto de perfil
+- Auditoría de imágenes de ejercicios (14 corregidas / 4 quitadas)
+
+**UX para no técnicos (commits 79e9251, d2600ac, 3bcfd96):**
+- Ayuda contextual ❓ re-accesible por sección; empty states accionables
+- Progressive disclosure del perfil del asesorado (oculta tarjetas vacías)
+- Vista de adherencia accionable en el coach ("necesitan un empujón")
+
+**Robustez (commits d03b343, aa46da6, 0fccb0f):**
+- Boot blindado contra `apex-core.js` viejo en caché (no cuelga el arranque)
+- Bloqueo de escritura a la nube desde `file://` + anti-borrado de `ax_c`/`ax_e`
+- apex-core.js cubierto por los checks de sintaxis/duplicados del audit
+- Suite de tests: 41 → **56 tests** (incluye generador + entornos)
+
+### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
 - [ ] `startedAt` / `completedAt` en sesiones de historial
 - [ ] `payment.planType` para MRR segmentado por plan
 - [ ] Widget MRR proyectado en Home
 - [ ] Análisis de cohortes de retención (Mateo — requiere ≥10 asesorados)
+- [ ] Footer de versión visible (`index.html` línea ~920) sigue en `v1.3.1 · May 2026` — actualizar al deployar
+- [ ] **Decisión de negocio:** RLS permisivo en Supabase (toda la DB es pública a `anon`) — aceptable a ~8 clientes, pero la beta de ~20 y v2.0 lo vuelven prioritario
 
 ### 🚀 v2.0 — Escala
 - [ ] Multi-coach (cada coach con sus asesorados aislados)
@@ -609,4 +674,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-05-28 · v1.3.3 · ~7,000 líneas · 244 funciones · 96 ejercicios (defaultExercises: e1-e96) + fb03/fb04 en Supabase · 9 asesorados activos · Fotos migradas a Supabase Storage (bucket apex-photos) · Cobros por Nequi activos · Tagline confirmado: "Entrenamiento con nombre propio" · BRAND.md creado*
+*Última actualización: 2026-06-01 · v1.4 · ~8,000 líneas · 309 funciones (inline + apex-core.js) · 109 ejercicios (defaultExercises: e1-e109) + fb03/fb04 en Supabase · 9 asesorados activos · Modalidades de entrenamiento (track) + auto-generador de rutinas + entornos/estilos + gamificación + rediseño Noir Esmeralda (apex-v37) · Suite 56/56 verde · audit 8/8 OK · Tagline: "Entrenamiento con nombre propio"*
