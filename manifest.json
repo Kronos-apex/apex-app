@@ -1,6 +1,6 @@
 {
-  "name": "Apex Training",
-  "short_name": "Apex Training",
+  "name": "AVI",
+  "short_name": "AVI",
   "description": "Entrenamiento con nombre propio. Rutinas, seguimiento y comunicación directa con tu coach.",
   "start_url": "/apex-app/",
   "scope": "/apex-app/",

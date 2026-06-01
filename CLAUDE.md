@@ -1,4 +1,6 @@
-# APEX — Plataforma de Entrenamiento Personal
+# AVI — Plataforma de Entrenamiento Personal
+
+> **Nota de marca (2026-06-01):** el producto se renombró de **APEX** a **AVI** (iniciales de los hijos del PO: Alexander, Valery, Isabella). El nombre visible es AVI; los identificadores internos siguen como `apex`/`ax_` (repo `apex-app`, tabla `apex_data`, claves `ax_*`, `apex-core.js`, caché `apex-vNN`) — NO renombrarlos (rompería datos/PWA). Handle redes: @avi.entrena. Pendiente: registro de marca en SIC.
 
 > Este archivo es la memoria permanente del proyecto. Claude Code lo lee automáticamente al iniciar cada sesión en este directorio.
 
@@ -6,9 +8,9 @@
 
 ## 🎯 IDENTIDAD DEL PRODUCTO
 
-**APEX** es una plataforma SaaS de entrenamiento personal en formato PWA, sincronizada con Supabase, lista para instalarse como app real en cualquier celular.
+**AVI** es una plataforma SaaS de entrenamiento personal en formato PWA, sincronizada con Supabase, lista para instalarse como app real en cualquier celular.
 
-**Product Owner:** Andrés Bernal — Entrenador personal independiente en Guaduas, Cundinamarca, Colombia. Sus decisiones sobre funcionalidad son finales.
+**Product Owner:** Camilo Andrés — Entrenador personal independiente en Guaduas, Cundinamarca, Colombia. Sus decisiones sobre funcionalidad son finales.
 
 **Usuarios:**
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
