@@ -3534,7 +3534,12 @@ async function saveClient(){
     if(i!==-1){
       const existing=DB.clients[i];
       if(document.getElementById('cf-pass').dataset.unchanged==='1') data.password=existing.password;
+      // ¿Cambiaron datos que afectan la rutina de un usuario LIBRE (auto-generada)?
+      const trainingChanged=isFreeClient(existing)&&(existing.place!==data.place||existing.goal!==data.goal||existing.level!==data.level||existing.days!==data.days);
       DB.clients[i]={...existing,...data};
+      if(trainingChanged&&confirm('Corregiste datos de entrenamiento de un usuario en modo libre. ¿Regenerar su rutina automática para que coincida?')){
+        try{ _autoGenerateWeek(DB.clients[i]); toast('✨ Rutina regenerada con los nuevos datos'); }catch(e){ warn('AVI: regen tras editar falló:',e&&e.message); }
+      }
     }
     toast(`✅ ${data.name} actualizado`);
   } else {
