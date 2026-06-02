@@ -2319,7 +2319,7 @@ async function doLogin(){
 }
 
 function logout(){
-  if(restInt){clearInterval(restInt);restInt=null;}
+  if(typeof _stopRest==='function')_stopRest(); else if(restInt){clearInterval(restInt);restInt=null;}
   stopMsgPolling();
   // Borrar sesión guardada — próxima vez pedirá login
   localStorage.removeItem('ax_session');
@@ -3217,20 +3217,25 @@ function renderHome(){
   const retLbl=document.getElementById('h-ret-label');
   if(retCard&&retBars){
     const days=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    const counts=Array(7).fill(0);
+    const MS_DAY=86400000;
+    // Bucket por DÍA DE CALENDARIO real (no por getDay()): los últimos 7 días, de
+    // hace 6 días (i=0) hasta hoy (i=6). Antes se agrupaba por día de la semana en una
+    // ventana de 7 días, así que el mismo día de la semana pasada caía en la columna de
+    // "hoy" y mostraba entrenos fantasma. Comparamos contra la medianoche local de hoy.
+    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+    const ordered=Array.from({length:7},(_,i)=>{
+      const di=new Date(startToday-(6-i)*MS_DAY).getDay();
+      return {label:days[di],count:0};
+    });
     Object.values(DB.history||{}).forEach(arr=>{
       (arr||[]).forEach(s=>{
-        const d=new Date(s.date);
-        if(d>=weekAgo){ const dayIdx=d.getDay(); counts[dayIdx]++; }
+        const sd=new Date(s.date);
+        const sDayStart=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()).getTime();
+        const idx=6-Math.round((startToday-sDayStart)/MS_DAY);
+        if(idx>=0&&idx<=6) ordered[idx].count++;
       });
     });
-    const maxC=Math.max(...counts,1);
-    // Ordenar desde hace 6 días hasta hoy
-    const todayIdx=now.getDay();
-    const ordered=Array.from({length:7},(_,i)=>{
-      const di=(todayIdx-6+i+7)%7;
-      return {label:days[di],count:counts[di]};
-    });
+    const maxC=Math.max(...ordered.map(o=>o.count),1);
     const totalEnt=DB.clients.filter(c=>{
       const arr=DB.history[c.id]||[];
       return arr.some(s=>new Date(s.date)>=weekAgo);
@@ -5155,10 +5160,15 @@ function updateClientProgress(routine){
     // Refresh PRs and exercise progress in profile if visible
     renderPRsInProfile(CUR.clientId);
     renderClientExProgress(CUR.clientId);
+  } else if(done>0){
+    // Auto-guardado PARCIAL: en cuanto marca la 1ª serie, el entreno queda registrado
+    // (y se va actualizando). Así no se pierde aunque no llegue al 100% ni toque
+    // "Finalizar", o si la app se cierra/congela a mitad. Sync con debounce.
+    saveSessionToHistory(routine,totalVol,done,false);
   }
 }
 
-function saveSessionToHistory(routine,totalVol,doneSets){
+function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
   const clientId=CUR.clientId;if(!clientId)return;
   if(!DB.history)DB.history=ld('ax_hist',{});
   if(!DB.history[clientId])DB.history[clientId]=[];
@@ -5177,7 +5187,11 @@ function saveSessionToHistory(routine,totalVol,doneSets){
     DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
-  svNow('ax_hist',DB.history);
+  // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada
+  // serie marcada; el 100%/Finalizar fuerza el envío inmediato (svNow). flushPendingSync
+  // (pagehide/visibilitychange) asegura que lo parcial suba aunque cierren la app.
+  if(immediate) svNow('ax_hist',DB.history);
+  else sv('ax_hist',DB.history);
 }
 
 // Guardado PARCIAL: registra el entreno con lo que el asesorado lleve hecho, aunque no
@@ -5394,6 +5408,7 @@ function sendClientMsg(){
 
 // REST TIMER
 let restInt=null;
+let _restVis=null; // handler de visibilitychange del descanso (para poder removerlo)
 
 function playRestEndBeep(){
   try{
@@ -5426,18 +5441,39 @@ function playRestTick(){
   if(navigator.vibrate)navigator.vibrate(60);
 }
 
+// El conteo se basa en un timestamp ABSOLUTO (endAt), no en restar ticks. iOS suspende
+// los setInterval cuando se bloquea la pantalla / la app pasa a segundo plano, así que un
+// contador por ticks se congela y nunca avisa. Aquí el reloj es Date.now(): el tiempo
+// transcurre igual aunque el timer no dispare, y al volver (visibilitychange) recalculamos
+// al instante y, si ya venció, sonamos/avisamos en ese momento.
+// NOTA iOS: con la pantalla bloqueada una PWA no puede reproducir sonido en segundo plano;
+// el aviso suena en cuanto el usuario vuelve a la app. Sonido con pantalla bloqueada exige
+// push nativo programado desde servidor (no implementado).
+function _stopRest(){
+  if(restInt){clearInterval(restInt);restInt=null;}
+  if(_restVis){document.removeEventListener('visibilitychange',_restVis);_restVis=null;}
+}
 function startClientRest(sec,exName){
-  if(restInt)clearInterval(restInt);
+  _stopRest();
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');
   banner.classList.remove('hide');sub.textContent=`Después de: ${exName}`;
-  let left=sec;num.textContent=left;
-  restInt=setInterval(()=>{
-    left--;num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
-    if(left>0&&left<=5)playRestTick();
-    if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
-  },1000);
+  const endAt=Date.now()+sec*1000;
+  let lastShown=sec;num.textContent=sec;
+  const tick=()=>{
+    const left=Math.max(0,Math.round((endAt-Date.now())/1000));
+    if(left!==lastShown){
+      num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
+      if(left>0&&left<=5)playRestTick();
+      lastShown=left;
+    }
+    if(left<=0){_stopRest();banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
+  };
+  // Al volver de pantalla bloqueada / segundo plano, recalcula de inmediato.
+  _restVis=()=>{ if(document.visibilityState==='visible'&&restInt) tick(); };
+  document.addEventListener('visibilitychange',_restVis);
+  restInt=setInterval(tick,250);
 }
-function skipRest(){if(restInt)clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
+function skipRest(){_stopRest();document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
 
 // ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){
