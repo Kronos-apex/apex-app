@@ -31,6 +31,7 @@ const {
   isInAdaptation,
   bmiFrom,
   bodyLoadProfile,
+  validateSignup,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -876,6 +877,47 @@ test('generarRutinas: perfil alto evita saltos/pliométricos (burpees fuera)', (
 test('generarRutinas: perfil normal no fuerza máquina (retorna loadProfile normal)', () => {
   const res = generarRutinas({ sex: 'F', level: 'Principiante', days: 3, goal: 'Ganar músculo', weight: 55, height: 165 }, LIB, FIXED);
   assert.strictEqual(res.loadProfile, 'normal');
+});
+
+// ══════════════════════════════════════════════════════
+section('17. Auto-registro (modo libre)');
+
+const COACH = 'coach@apex.com';
+
+test('validateSignup: registro válido pasa', () => {
+  const r = validateSignup({ name: 'Ana', email: 'ana@mail.com', password: 'clave123' }, [], COACH);
+  assert.strictEqual(r.ok, true);
+});
+
+test('validateSignup: email inválido se rechaza', () => {
+  assert.strictEqual(validateSignup({ name: 'Ana', email: 'ana-arroba-mail', password: '1234' }, [], COACH).ok, false);
+  assert.strictEqual(validateSignup({ name: 'Ana', email: '', password: '1234' }, [], COACH).ok, false);
+});
+
+test('validateSignup: email duplicado se rechaza (case-insensitive)', () => {
+  const clients = [{ email: 'Ana@Mail.com' }];
+  const r = validateSignup({ name: 'Otra', email: 'ana@mail.com', password: '1234' }, clients, COACH);
+  assert.strictEqual(r.ok, false);
+  assert.ok(/existe/i.test(r.error));
+});
+
+test('validateSignup: no se puede registrar con el email del coach', () => {
+  assert.strictEqual(validateSignup({ name: 'X', email: COACH, password: '1234' }, [], COACH).ok, false);
+});
+
+test('validateSignup: contraseña corta y nombre vacío se rechazan', () => {
+  assert.strictEqual(validateSignup({ name: 'Ana', email: 'a@b.com', password: '12' }, [], COACH).ok, false);
+  assert.strictEqual(validateSignup({ name: '', email: 'a@b.com', password: '1234' }, [], COACH).ok, false);
+});
+
+test('flujo libre: con los datos del registro, el generador produce ≥1 rutina (principiante)', () => {
+  // Simula lo que hace signupClient: registro válido → generar con sus datos.
+  const data = { name: 'Sofía', email: 'sofia@mail.com', password: 'clave123', sex: 'F', age: 40, weight: 85, height: 165, level: 'Principiante', days: 3, goal: 'Perder grasa', place: 'gym' };
+  assert.strictEqual(validateSignup(data, [], COACH).ok, true);
+  const res = generarRutinas(data, LIB, { ...FIXED, adaptation: true, loadProfile: bodyLoadProfile(data) });
+  assert.ok(res.routines.length >= 1, 'genera al menos una rutina');
+  assert.strictEqual(res.adaptation, true);
+  assert.strictEqual(res.loadProfile, 'high'); // 85/165 → IMC 31
 });
 
 // ══════════════════════════════════════════════════════

@@ -858,7 +858,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- Bienvenida: dos opciones (estilo elegante, sin volcar toda la info) -->
     <div class="cin-cta" id="cin-cta">
       <button class="cin-cta-fill" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-card').style.display='block';var e=document.getElementById('lu');if(e)setTimeout(function(){e.focus()},50)">Iniciar sesión</button>
-      <button class="cin-cta-out" onclick="(window.toast?toast('¡Qué bueno que quieras empezar! 💪 Pronto podrás crear tu cuenta aquí mismo. Por ahora, pídele acceso a tu coach.'):alert('Pronto podrás crear tu cuenta. Por ahora pídele acceso a tu coach.'))">Crear cuenta</button>
+      <button class="cin-cta-out" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-signup').style.display='block';var e=document.getElementById('su-name');if(e)setTimeout(function(){e.focus()},50)">Crear cuenta</button>
     </div>
 
     <div id="install-hint" class="cin-install">
@@ -883,6 +883,38 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
       <button class="cin-btn lbtn" onclick="doLogin()">Entrar →</button>
       <div class="cin-hint">¿Primera vez por aquí? Entra con el correo y la contraseña <b>que te mandó tu coach.</b></div>
+    </div>
+
+    <!-- Formulario de auto-registro (modo libre): aparece al tocar "Crear cuenta" -->
+    <div class="cin-card" id="cin-signup" style="display:none;max-height:78vh;overflow-y:auto">
+      <div class="cin-back" onclick="document.getElementById('cin-signup').style.display='none';document.getElementById('cin-cta').style.display='flex'">← Volver</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px">Crea tu cuenta gratis</div>
+      <div class="cin-hint" style="margin-top:0;margin-bottom:10px">Empieza con tu <b>rutina automática</b> hecha con criterio. Cuando quieras, súmale un coach. 💪</div>
+      <div id="su-err" class="lerr">Revisa los datos</div>
+      <label class="cin-lbl">Nombre</label>
+      <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Tu nombre">
+      <label class="cin-lbl">Email</label>
+      <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
+      <label class="cin-lbl">Contraseña</label>
+      <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password">
+      <label class="cin-lbl">Objetivo</label>
+      <select id="su-goal" class="cin-in"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
+      <label class="cin-lbl">¿Dónde entrenas?</label>
+      <select id="su-place" class="cin-in"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select>
+      <label class="cin-lbl">Nivel</label>
+      <select id="su-level" class="cin-in"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select>
+      <label class="cin-lbl">Días por semana</label>
+      <select id="su-days" class="cin-in"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label class="cin-lbl">Sexo</label><select id="su-sex" class="cin-in"><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+        <div style="flex:1"><label class="cin-lbl">Edad</label><input id="su-age" class="cin-in" type="number" min="12" max="99" placeholder="Ej: 30"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label class="cin-lbl">Peso (kg)</label><input id="su-weight" class="cin-in" type="number" min="30" max="300" step="0.1" placeholder="70"></div>
+        <div style="flex:1"><label class="cin-lbl">Altura (cm)</label><input id="su-height" class="cin-in" type="number" min="100" max="250" placeholder="168"></div>
+      </div>
+      <button class="cin-btn lbtn" style="margin-top:12px" onclick="signupClient()">Crear cuenta y empezar →</button>
+      <div class="cin-hint">El peso y la estatura nos ayudan a ajustar tu rutina a ti. Puedes cambiarlos luego en tu perfil.</div>
     </div>
   </div>
 </div>
@@ -3410,7 +3442,7 @@ function renderClients(){
       routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin rutinas asignadas</div>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span><div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span>${c.selfReg?'<span class="tag" style="background:var(--bll);color:#1a4a7a;margin-left:4px">🆓 Libre</span>':''}<div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
@@ -3483,6 +3515,75 @@ async function saveClient(){
     toast(`✅ ${data.name} añadido`);
   }
   sv('ax_c',DB.clients);cm('m-client');renderAll();if(CUR.editClientId)openDetail(CUR.editClientId);
+}
+
+// ── Auto-registro (modo libre) ──────────────────────────────────────────
+// Genera y APLICA una semana al cliente `c` reusando el motor del coach (adaptación +
+// perfil de carga). Para modo libre no hay coach que revise → se aplica directo.
+function _autoGenerateWeek(c){
+  const styleId=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
+  const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
+  const inAdapt=isInAdaptation(c,DB.history,new Date());
+  const _med=(DB.medidas&&DB.medidas[c.id])||[];
+  const _waist=_med.length?_med[_med.length-1].cintura:null;
+  const loadProfile=bodyLoadProfile(c,_waist);
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile});
+  if(res.routines&&res.routines.length){
+    c.routines=sortRoutinesByDay(res.routines.map(r=>({...r,reviewed:true})));
+  }
+  return res;
+}
+
+async function signupClient(){
+  const err=document.getElementById('su-err');
+  const g=id=>document.getElementById(id);
+  const data={
+    name:g('su-name').value.trim(),
+    email:g('su-email').value.trim().toLowerCase(),
+    password:g('su-pass').value,
+    goal:g('su-goal').value,
+    place:g('su-place').value||'gym',
+    level:g('su-level').value||'Principiante',
+    days:parseInt(g('su-days').value)||3,
+    sex:g('su-sex').value||null,
+    age:parseInt(g('su-age').value)||null,
+    weight:parseFloat(g('su-weight').value)||null,
+    height:parseFloat(g('su-height').value)||null,
+  };
+  const v=validateSignup(data,DB.clients,getCoachEmail());
+  if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
+  err.classList.remove('on');
+  const clientId=uid();
+  const hashedPass=await hashClientPass(data.password,clientId);
+  const rec={
+    id:clientId,name:data.name,email:data.email,password:hashedPass,
+    goal:data.goal,level:data.level,weight:data.weight,height:data.height,
+    age:data.age,sex:data.sex,activityFactor:1.55,days:data.days,place:data.place,
+    notes:'',phone:'',selfReg:true,tier:'libre',routines:[],
+    createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()
+  };
+  DB.clients.push(rec);
+  // La auto-generación nunca debe bloquear el alta: si falla, entra igual (con botón para generar).
+  try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación en registro falló (no bloquea):',e&&e.message); }
+  svNow('ax_c',DB.clients);
+  // Auto-login (mismo camino que doLogin para cliente)
+  localStorage.setItem('ax_session',JSON.stringify({role:'client',clientId,expiresAt:Date.now()+30*24*60*60*1000}));
+  CUR.loggedAs='client';CUR.clientId=clientId;
+  showScreen('s-client');
+  initClientView(rec);
+  startMsgPolling();
+  toast('🎉 ¡Bienvenido a AVI! Tu rutina ya está lista.');
+}
+
+// Regenerar la semana desde la vista del asesorado (solo modo libre).
+function clientSelfGenerate(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  try{
+    const res=_autoGenerateWeek(c);
+    svNow('ax_c',DB.clients);
+    renderClientAllRoutines(c);
+    toast(res.routines&&res.routines.length?'✨ ¡Tu nueva semana está lista!':'No se pudo generar, intenta de nuevo');
+  }catch(e){ warn('AVI: regenerar libre falló:',e&&e.message); toast('No se pudo generar, intenta de nuevo'); }
 }
 
 function openDetail(id){
@@ -5242,8 +5343,21 @@ function renderClientAllRoutines(client){
   const ed=document.getElementById('cn-week-ed');
   const con=document.getElementById('cn-all-rut');const routines=sortRoutinesByDay(client.routines||[]);
   if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
-  if(!routines.length){con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
+  if(!routines.length){
+    con.innerHTML=client.selfReg
+      ? '<div class="empty" style="padding:36px"><div class="eico">✨</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Generamos un plan a tu medida según tus datos. Lo puedes regenerar cuando quieras.</div><button class="btn bp bsm" style="margin-top:12px" onclick="clientSelfGenerate()">✨ Generar mi semana</button></div>'
+      : '<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';
+    return;
+  }
   con.innerHTML='';
+  if(client.selfReg){
+    const regen=document.createElement('button');
+    regen.className='btn bd bsm';
+    regen.style.cssText='width:100%;margin-bottom:10px';
+    regen.textContent='✨ Regenerar mi semana';
+    regen.onclick=clientSelfGenerate;
+    con.appendChild(regen);
+  }
   routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const isRest=r.day==='Libre';

@@ -601,6 +601,22 @@ function sortRoutinesByDay(routines) {
     .map(pair => pair[0]);
 }
 
+// ── Validación de auto-registro (modo libre) — pura, testeable ──
+// data: {name,email,password}. clients: DB.clients (para email único). coachEmail: el
+// email del coach (no se puede registrar con él). Devuelve {ok} o {ok:false,error}.
+function validateSignup(data, clients, coachEmail) {
+  data = data || {};
+  const name = (data.name || '').trim();
+  const email = (data.email || '').trim().toLowerCase();
+  const pass = data.password || '';
+  if (!name) return { ok: false, error: 'Escribe tu nombre' };
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'Escribe un email válido' };
+  if (coachEmail && email === String(coachEmail).trim().toLowerCase()) return { ok: false, error: 'Ese email no está disponible' };
+  if ((clients || []).some(c => c && c.email && c.email.toLowerCase() === email)) return { ok: false, error: 'Ya existe una cuenta con ese email. Inicia sesión.' };
+  if (!pass || pass.length < 4) return { ok: false, error: 'La contraseña debe tener al menos 4 caracteres' };
+  return { ok: true };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -630,5 +646,6 @@ if (typeof module !== 'undefined' && module.exports) {
     trainingStartTs,
     bmiFrom,
     bodyLoadProfile,
+    validateSignup,
   };
 }
