@@ -3125,14 +3125,15 @@ function checkInactivity(){
     const st=MS.getStatus(c);
     if(st==='inactive'||st==='overdue'||st==='suspended')return;
     const sessions=DB.history[c.id]||[];
-    const last=sessions[0];
-    const daysSince=last?Math.floor((now-new Date(last.date))/MS_DAY):999;
+    const daysSince=daysSinceLastSession(sessions,now);
     if(daysSince<DAYS)return;
     const coolKey=`apex_inact_${c.id}`;
     const lastSent=parseInt(localStorage.getItem(coolKey)||'0');
     if(now-lastSent<COOLDOWN)return;
     localStorage.setItem(coolKey,String(now));
-    const msg=daysSince>=14
+    const msg=daysSince===Infinity
+      ? `${c.name.split(' ')[0]}, ¡aún no registras tu primer entreno! Arranquemos hoy 💪`
+      : daysSince>=14
       ? `${c.name.split(' ')[0]}, hace ${daysSince} días que no entrenas. ¡Tu cuerpo te necesita! 💪`
       : daysSince>=7
       ? `${c.name.split(' ')[0]}, llevas una semana sin entrenar. ¡Retomemos hoy! 🔥`
@@ -3171,16 +3172,12 @@ function renderHome(){
   // ── Entrenaron HOY (quién, con nombre + rutina + hora) ──
   const todayBanner=document.getElementById('h-today-banner');
   if(todayBanner){
-    const todayStr=now.toDateString();
-    const hoy=DB.clients.map(c=>{
-      const sess=(DB.history[c.id]||[]).filter(s=>new Date(s.date).toDateString()===todayStr);
-      return sess.length?{c,sess}:null;
-    }).filter(Boolean).sort((a,b)=>new Date(b.sess[0].date)-new Date(a.sess[0].date));
+    const hoy=clientsTrainedToday(DB.clients,DB.history,now);
     if(hoy.length){
       todayBanner.style.display='block';
       todayBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">✅ ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
-        ${hoy.map(({c,sess})=>{
+        ${hoy.map(({client:c,sessions:sess})=>{
           const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ');
           const hora=new Date(sess[0].date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br);cursor:pointer" onclick="openDetail('${esc(c.id)}')">
@@ -3201,9 +3198,7 @@ function renderHome(){
   const inactivos=DB.clients.filter(c=>{
     const st=MS.getStatus(c);
     if(st==='inactive'||st==='overdue'||st==='suspended')return false;
-    const sessions=DB.history[c.id]||[];
-    const last=sessions[0];
-    return !last||Math.floor((Date.now()-new Date(last.date))/86400000)>=4;
+    return daysSinceLastSession(DB.history[c.id]||[],now)>=4;
   }).length;
   const vencEl=document.getElementById('h-venc');
   if(vencEl){
@@ -3216,30 +3211,11 @@ function renderHome(){
   const retBars=document.getElementById('h-ret-bars');
   const retLbl=document.getElementById('h-ret-label');
   if(retCard&&retBars){
-    const days=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    const MS_DAY=86400000;
-    // Bucket por DÍA DE CALENDARIO real (no por getDay()): los últimos 7 días, de
-    // hace 6 días (i=0) hasta hoy (i=6). Antes se agrupaba por día de la semana en una
-    // ventana de 7 días, así que el mismo día de la semana pasada caía en la columna de
-    // "hoy" y mostraba entrenos fantasma. Comparamos contra la medianoche local de hoy.
-    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
-    const ordered=Array.from({length:7},(_,i)=>{
-      const di=new Date(startToday-(6-i)*MS_DAY).getDay();
-      return {label:days[di],count:0};
-    });
-    Object.values(DB.history||{}).forEach(arr=>{
-      (arr||[]).forEach(s=>{
-        const sd=new Date(s.date);
-        const sDayStart=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()).getTime();
-        const idx=6-Math.round((startToday-sDayStart)/MS_DAY);
-        if(idx>=0&&idx<=6) ordered[idx].count++;
-      });
-    });
+    // Lógica de fechas extraída a apex-core.js (testeada): agrupa por día de
+    // calendario real, no por día de la semana.
+    const ordered=retentionByDay(DB.history,now);
     const maxC=Math.max(...ordered.map(o=>o.count),1);
-    const totalEnt=DB.clients.filter(c=>{
-      const arr=DB.history[c.id]||[];
-      return arr.some(s=>new Date(s.date)>=weekAgo);
-    }).length;
+    const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
     const ret=DB.clients.length?Math.round(totalEnt/DB.clients.length*100):0;
     if(retLbl) retLbl.textContent=`${ret}% entrenaron esta semana`;
     retBars.innerHTML=`<div style="display:flex;align-items:flex-end;gap:6px;height:60px">${

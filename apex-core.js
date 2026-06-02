@@ -436,6 +436,76 @@ function mergePRs(local, cloud) {
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// AGREGADOS DE ACTIVIDAD POR FECHA (dashboard del coach)
+// ──────────────────────────────────────────────────────────────────────
+// Todas reciben `now` como parámetro (nunca llaman new Date() implícito sobre
+// la "fecha de hoy"): así son deterministas y testeables. Operan en zona local
+// del navegador. Se agruparon aquí porque la lógica de fechas es la más
+// propensa a bugs sutiles (p.ej. mezclar el mismo día de la semana pasada con
+// hoy) y antes vivía suelta en index.html, sin tests.
+const MS_DAY = 86400000;
+const _DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+// Medianoche local (timestamp) del día al que pertenece `d`.
+function localDayStart(d) {
+  const x = new Date(d);
+  return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+}
+
+// Barras de retención: cuenta sesiones por DÍA DE CALENDARIO real en los últimos
+// 7 días. Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, count}].
+// CLAVE: agrupa por fecha local, NO por getDay() — si agrupara por día de la
+// semana, las sesiones del mismo día de la semana pasada caerían en la columna
+// de "hoy" y mostrarían entrenos fantasma (bug real, 2026-06-02).
+function retentionByDay(history, now) {
+  const startToday = localDayStart(now || new Date());
+  const bars = Array.from({ length: 7 }, (_, i) => {
+    const di = new Date(startToday - (6 - i) * MS_DAY).getDay();
+    return { label: _DOW[di], count: 0 };
+  });
+  Object.values(history || {}).forEach(arr => {
+    (arr || []).forEach(s => {
+      const idx = 6 - Math.round((startToday - localDayStart(s.date)) / MS_DAY);
+      if (idx >= 0 && idx <= 6) bars[idx].count++;
+    });
+  });
+  return bars;
+}
+
+// Cuántos de `clientIds` entrenaron en los últimos 7 días (ventana móvil de 7×24h).
+// Si no se pasan clientIds, usa las llaves de history.
+function weeklyActiveCount(history, now, clientIds) {
+  const ref = (now ? new Date(now) : new Date()).getTime() - 7 * MS_DAY;
+  const ids = clientIds || Object.keys(history || {});
+  return ids.filter(id =>
+    ((history && history[id]) || []).some(s => new Date(s.date).getTime() >= ref)
+  ).length;
+}
+
+// Clientes que entrenaron HOY (mismo día de calendario local que `now`).
+// Devuelve [{client, sessions}] ordenado por la sesión más reciente (desc).
+function clientsTrainedToday(clients, history, now) {
+  const today = localDayStart(now || new Date());
+  return (clients || [])
+    .map(c => {
+      const sess = ((history && history[c.id]) || []).filter(s => localDayStart(s.date) === today);
+      return sess.length ? { client: c, sessions: sess } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.sessions[0].date) - new Date(a.sessions[0].date));
+}
+
+// Días enteros transcurridos desde la sesión MÁS RECIENTE (busca el máximo, no
+// asume orden). Sin sesiones → Infinity (cuenta como "inactivo desde siempre").
+function daysSinceLastSession(sessions, now) {
+  const ref = (now ? new Date(now) : new Date()).getTime();
+  let last = 0;
+  (sessions || []).forEach(s => { const t = new Date(s.date).getTime(); if (t > last) last = t; });
+  if (!last) return Infinity;
+  return Math.floor((ref - last) / MS_DAY);
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -454,5 +524,10 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeHistory,
     mergeClientArrays,
     mergePRs,
+    localDayStart,
+    retentionByDay,
+    weeklyActiveCount,
+    clientsTrainedToday,
+    daysSinceLastSession,
   };
 }

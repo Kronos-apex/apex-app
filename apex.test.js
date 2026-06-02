@@ -22,6 +22,10 @@ const {
   mergeHistory,
   mergeClientArrays,
   mergePRs,
+  retentionByDay,
+  weeklyActiveCount,
+  clientsTrainedToday,
+  daysSinceLastSession,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -620,6 +624,104 @@ test('PRs: empate de valor → gana más reps', () => {
 test('robusto: mergeClientArrays y mergePRs manejan null', () => {
   assert.deepStrictEqual(mergeClientArrays(null, null, msgKey, 'asc'), {});
   assert.deepStrictEqual(mergePRs(null, null), {});
+});
+
+// ══════════════════════════════════════════════════════
+section('13. Agregados de actividad por fecha (dashboard del coach)');
+
+// Helper: fecha local legible (mes 1-based). Construye en zona local para que la
+// lógica (que usa límites de día locales) sea consistente sin importar el TZ del CI.
+const D = (y, m, d, h = 12) => new Date(y, m - 1, d, h, 0, 0);
+
+test('retentionByDay: el mismo día de la semana pasada NO cuenta como hoy (regresión bug 2026-06-02)', () => {
+  const now = D(2026, 6, 2, 8); // martes
+  const history = {
+    miguel: [
+      { date: D(2026, 6, 2, 8) },   // hoy (martes)
+      { date: D(2026, 5, 26, 12) }, // martes pasado — mismo getDay, NO debe caer en "hoy"
+      { date: D(2026, 5, 26, 18) },
+    ],
+  };
+  const bars = retentionByDay(history, now);
+  assert.strictEqual(bars.length, 7);
+  assert.strictEqual(bars[6].label, 'Mar', 'La última columna es hoy (martes)');
+  assert.strictEqual(bars[6].count, 1, 'HOY debe contar SOLO la sesión de hoy, no las del martes pasado');
+  assert.strictEqual(bars.reduce((a, b) => a + b.count, 0), 1, 'El martes pasado (7 días atrás) queda fuera de la ventana');
+});
+
+test('retentionByDay: ubica cada sesión en su día de calendario real', () => {
+  const now = D(2026, 6, 2, 10);
+  const history = {
+    a: [{ date: D(2026, 6, 2, 9) }, { date: D(2026, 6, 1, 9) }, { date: D(2026, 6, 1, 20) }],
+    b: [{ date: D(2026, 5, 30, 9) }],
+  };
+  const bars = retentionByDay(history, now);
+  assert.strictEqual(bars[6].count, 1, 'hoy (jun 2): 1');
+  assert.strictEqual(bars[5].count, 2, 'ayer (jun 1): 2');
+  assert.strictEqual(bars[3].count, 1, 'hace 3 días (may 30): 1');
+});
+
+test('retentionByDay: ignora sesiones futuras y de más de 6 días atrás', () => {
+  const now = D(2026, 6, 2, 10);
+  const history = { a: [{ date: D(2026, 6, 3, 9) }, { date: D(2026, 5, 25, 9) }] };
+  const bars = retentionByDay(history, now);
+  assert.strictEqual(bars.reduce((a, b) => a + b.count, 0), 0);
+});
+
+test('retentionByDay: robusto con history null/vacío', () => {
+  assert.strictEqual(retentionByDay(null, D(2026, 6, 2)).length, 7);
+  assert.strictEqual(retentionByDay({}, D(2026, 6, 2)).reduce((a, b) => a + b.count, 0), 0);
+});
+
+test('weeklyActiveCount: cuenta clientes con sesión en los últimos 7 días', () => {
+  const now = D(2026, 6, 2, 10);
+  const history = {
+    a: [{ date: D(2026, 6, 1, 9) }],  // dentro
+    b: [{ date: D(2026, 5, 20, 9) }], // fuera (>7d)
+    c: [],
+  };
+  assert.strictEqual(weeklyActiveCount(history, now, ['a', 'b', 'c']), 1);
+});
+
+test('weeklyActiveCount: un cliente cuenta una sola vez aunque tenga varias sesiones', () => {
+  const now = D(2026, 6, 2, 10);
+  const history = { a: [{ date: D(2026, 6, 1) }, { date: D(2026, 5, 31) }] };
+  assert.strictEqual(weeklyActiveCount(history, now, ['a']), 1);
+});
+
+test('clientsTrainedToday: solo clientes con sesión de hoy, orden desc por hora', () => {
+  const now = D(2026, 6, 2, 15);
+  const clients = [{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Beto' }, { id: 'c', name: 'Caro' }];
+  const history = {
+    a: [{ date: D(2026, 6, 2, 9) }],
+    b: [{ date: D(2026, 6, 1, 9) }],                          // ayer → no
+    c: [{ date: D(2026, 6, 2, 13) }, { date: D(2026, 6, 2, 7) }],
+  };
+  const res = clientsTrainedToday(clients, history, now);
+  assert.strictEqual(res.length, 2, 'Ana y Caro entrenaron hoy, Beto no');
+  assert.strictEqual(res[0].client.id, 'c', 'Caro primero (13:00 es más reciente)');
+  assert.strictEqual(res[1].client.id, 'a');
+  assert.strictEqual(res[0].sessions.length, 2);
+});
+
+test('clientsTrainedToday: robusto con datos vacíos', () => {
+  assert.deepStrictEqual(clientsTrainedToday(null, null, D(2026, 6, 2)), []);
+  assert.deepStrictEqual(clientsTrainedToday([{ id: 'a' }], {}, D(2026, 6, 2)), []);
+});
+
+test('daysSinceLastSession: días enteros desde la sesión más reciente', () => {
+  const now = D(2026, 6, 2, 12);
+  assert.strictEqual(daysSinceLastSession([{ date: D(2026, 5, 30, 12) }, { date: D(2026, 5, 28, 12) }], now), 3);
+});
+
+test('daysSinceLastSession: encuentra el máximo aunque el orden esté invertido', () => {
+  const now = D(2026, 6, 2, 12);
+  assert.strictEqual(daysSinceLastSession([{ date: D(2026, 5, 28, 12) }, { date: D(2026, 6, 1, 12) }], now), 1);
+});
+
+test('daysSinceLastSession: sin sesiones → Infinity (cuenta como inactivo)', () => {
+  assert.strictEqual(daysSinceLastSession([], D(2026, 6, 2)), Infinity);
+  assert.strictEqual(daysSinceLastSession(null, D(2026, 6, 2)), Infinity);
 });
 
 // ══════════════════════════════════════════════════════
