@@ -1036,6 +1036,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div style="padding:8px 18px 13px;border-top:1px solid var(--br);font-size:12px;color:var(--t2)" id="d-notes"></div>
       </div>
       <div id="d-membership" style="margin:0 16px 16px"></div>
+      <div id="d-freelead" style="margin:0 16px"></div>
 
       <!-- VALORACIÓN CARD -->
       <div class="card" style="margin-bottom:13px" id="d-valoracion-card">
@@ -1184,7 +1185,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div style="font-size:15px;font-weight:700;margin-bottom:11px">💬 Mensajes de tu coach</div>
       <div class="card" style="overflow:hidden">
         <div class="mthread" id="cn-msg-thread" style="max-height:380px"></div>
-        <div class="mrow">
+        <div class="mrow" id="cn-msg-composer">
           <textarea class="mta" id="cn-msg-in" maxlength="1000" placeholder="Escribe a tu coach..." rows="1"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMsg()}"
             oninput="ar(this)"></textarea>
@@ -2841,6 +2842,7 @@ function renderExerciseProgressInto(con, clientId){
 // Client-side: render into profile tab
 function renderClientExProgress(clientId){
   const con=document.getElementById('cn-exprog-list');
+  if(con&&isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Progreso por ejercicio','Mira con gráficas cómo evoluciona cada ejercicio.');return;}
   renderExerciseProgressInto(con,clientId);
 }
 
@@ -3627,6 +3629,17 @@ function coachUpsellHTML(c){
 function renderCoachUpsell(c){
   ['cn-today-upsell','cn-profile-upsell'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=coachUpsellHTML(c);});
 }
+// Candado para funciones Premium (modo libre): atenuado + invitación a coach.
+function premiumLockHTML(title,desc){
+  return `<div style="background:var(--w);border:1px dashed var(--br2);border-radius:var(--r);padding:18px 16px;text-align:center">
+    <div style="font-size:26px;margin-bottom:6px">🔒</div>
+    <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(title)}</div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">${esc(desc)} Disponible con un <b>coach (Premium)</b>.</div>
+    <button onclick="requestCoach()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+  </div>`;
+}
+// Cliente actual (para gating en vistas del asesorado).
+function _curClient(){ return DB.clients.find(x=>x.id===CUR.clientId); }
 function requestCoach(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   c.wantsCoach=true;c.wantsCoachAt=new Date().toISOString();
@@ -3637,6 +3650,16 @@ function requestCoach(){
   svNow('ax_m',DB.msgs);
   renderCoachUpsell(c);
   toast('🎉 ¡Listo! Tu coach te contactará pronto.');
+}
+
+// El coach activa Premium a un lead libre → desbloquea todas las funciones.
+function convertToPremium(cid){
+  const c=DB.clients.find(x=>x.id===cid);if(!c)return;
+  if(!confirm(`¿Activar Premium para ${c.name}? Tendrá chat, nutrición, fotos/medidas y analítica.`))return;
+  c.tier='premium';c.wantsCoach=false;c.updatedAt=new Date().toISOString();
+  svNow('ax_c',DB.clients);
+  toast(`⭐ ${c.name.split(' ')[0]} ahora es Premium`);
+  openDetail(cid);renderClients();renderHome();
 }
 
 function openDetail(id){
@@ -3653,7 +3676,13 @@ function openDetail(id){
   if(c.weight) metaParts.push(c.weight+' kg');
   if(c.email) metaParts.push(c.email);
   document.getElementById('d-meta').textContent=metaParts.join(' · ')||'Sin datos';
-  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span>`;
+  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span>${isFreeClient(c)?`<span class="tag" style="background:${c.wantsCoach?'var(--orl)':'var(--bll)'};color:${c.wantsCoach?'var(--or)':'#1a4a7a'}">${c.wantsCoach?'🙋 Quiere coach':'🆓 Libre'}</span>`:''}`;
+  const freeLead=document.getElementById('d-freelead');
+  if(freeLead){
+    freeLead.innerHTML=isFreeClient(c)
+      ? `<div style="background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:11px 13px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:12px;color:var(--gt);line-height:1.4">${c.wantsCoach?'<b>🙋 Pidió un coach.</b> ':'<b>🆓 Usuario en modo libre.</b> '}Actívale Premium para desbloquear chat, nutrición, fotos/medidas y analítica.</div><button class="btn bp bsm" style="flex-shrink:0" onclick="convertToPremium('${esc(c.id)}')">⭐ Activar Premium</button></div>`
+      : '';
+  }
   const dn=document.getElementById('d-notes');dn.style.display=c.notes?'block':'none';if(c.notes)dn.innerHTML=`📝 <strong>Notas:</strong> ${esc(c.notes)}`;
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
@@ -4661,6 +4690,7 @@ function showPRCelebration(prs){
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
   const con=document.getElementById('cn-pr-list');if(!con)return;
+  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Tus récords (PRs)','Lleva el registro de tus marcas personales por ejercicio.');return;}
   const prs=DB.prs[clientId]||{};
   const list=Object.values(prs).sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){
@@ -5426,6 +5456,7 @@ function renderClientAllRoutines(client){
 function renderVolChart(sessions){
   const wrap=document.getElementById('vol-chart-wrap');
   const con=document.getElementById('vol-chart');
+  if(wrap&&isFreeClient(_curClient())){wrap.style.display='none';return;} // analítica avanzada = Premium
   if(!wrap||!con)return;
   const withVol=sessions.filter(s=>s.totalVol>0).slice(0,12).reverse();
   if(withVol.length<2){wrap.style.display='none';return;}
@@ -5552,6 +5583,13 @@ function updateMsgBadge(clientId){
 
 function renderClientMsgs(clientId){
   const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');con.innerHTML='';
+  const composer=document.getElementById('cn-msg-composer');
+  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){
+    if(composer)composer.style.display='none';
+    con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía y te responde.');
+    return;
+  }
+  if(composer)composer.style.display='';
   if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Tu coach todavía no te ha escrito.<br>Puedes escribirle tú primero 👇</div>';return}
   msgs.forEach(m=>{
     const isC=m.from==='coach';
@@ -5848,6 +5886,7 @@ function renderNutritionCoach(clientId){
 
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
+  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}
   const nut=(DB.nutrition||{})[clientId];
   if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
     con.innerHTML='<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha cargado tu plan de alimentaci\u00f3n. Escr\u00edbele si quieres que lo incluya.</div>';
@@ -6230,6 +6269,7 @@ function renderMedidasClient(clientId){
   const listEl=document.getElementById('cn-med-list');
   const chartWrap=document.getElementById('cn-med-chart-wrap');
   if(!listEl)return;
+  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){listEl.innerHTML=premiumLockHTML('Medidas corporales','Registra cintura, cadera y más, y míralas evolucionar.');if(chartWrap)chartWrap.style.display='none';return;}
   const entries=(DB.medidas||{})[clientId]||[];
   if(!entries.length){
     listEl.innerHTML='Sin medidas registradas. Toca "+ Registrar" para empezar.';
@@ -6414,6 +6454,7 @@ function savePhoto(){
 
 function renderPhotosClient(clientId){
   const con=document.getElementById('cn-photos-grid');if(!con)return;
+  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
   const photos=(DB.photos||{})[clientId]||[];
   if(!photos.length){
     con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">A\u00fan no has subido fotos.</div>';return;

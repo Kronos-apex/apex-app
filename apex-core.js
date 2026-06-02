@@ -617,6 +617,14 @@ function validateSignup(data, clients, coachEmail) {
   return { ok: true };
 }
 
+// ── ¿Es usuario en modo libre (gratis, sin coach)? ──
+// Gating de funciones Premium. Libre = tier 'libre' (auto-registrados). Los asesorados
+// creados por el coach NO tienen tier → no son libres → acceso completo. Convertir a
+// Premium = ponerle tier 'premium' (el coach lo activa).
+function isFreeClient(client) {
+  return !!(client && client.tier === 'libre');
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -647,5 +655,6 @@ if (typeof module !== 'undefined' && module.exports) {
     bmiFrom,
     bodyLoadProfile,
     validateSignup,
+    isFreeClient,
   };
 }

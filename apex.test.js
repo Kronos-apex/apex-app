@@ -32,6 +32,7 @@ const {
   bmiFrom,
   bodyLoadProfile,
   validateSignup,
+  isFreeClient,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -918,6 +919,14 @@ test('flujo libre: con los datos del registro, el generador produce ≥1 rutina 
   assert.ok(res.routines.length >= 1, 'genera al menos una rutina');
   assert.strictEqual(res.adaptation, true);
   assert.strictEqual(res.loadProfile, 'high'); // 85/165 → IMC 31
+});
+
+test('isFreeClient: solo tier "libre" es free; coach-creados y premium tienen acceso', () => {
+  assert.strictEqual(isFreeClient({ tier: 'libre' }), true);
+  assert.strictEqual(isFreeClient({ selfReg: true, tier: 'libre' }), true);
+  assert.strictEqual(isFreeClient({ tier: 'premium' }), false);
+  assert.strictEqual(isFreeClient({}), false);          // creado por coach (sin tier)
+  assert.strictEqual(isFreeClient(null), false);
 });
 
 // ══════════════════════════════════════════════════════
