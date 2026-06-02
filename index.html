@@ -4018,7 +4018,8 @@ function openGenRutinas(){
 function genWithStyle(styleId){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return false;
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias});
+  const inAdapt=isInAdaptation(c,DB.history,new Date());
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt});
   if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}
   CUR.genDraft=res;CUR.genStyleId=style.id;
   renderGenPreview(c,res);
@@ -4028,13 +4029,14 @@ const PLACE_LABELS={gym:'🏋️ Gym completo',casa:'🏠 Casa (bandas/mancuerna
 function renderGenPreview(c,res){
   const warn=res.needsReview?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(res.limitations.zones.join(', '))}). Se excluyeron ejercicios contraindicados, pero <b>revisa cada día antes de aprobar</b>. Un algoritmo no conoce el detalle clínico — tú sí.</div>`:'';
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#7a5c00;margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
+  const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
-  document.getElementById('mg-body').innerHTML=warn+gaps+intro+cards;
+  document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+intro+cards;
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;

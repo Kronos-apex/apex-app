@@ -27,6 +27,8 @@ const {
   clientsTrainedToday,
   daysSinceLastSession,
   sortRoutinesByDay,
+  genSchemeFor,
+  isInAdaptation,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -759,6 +761,71 @@ test('sortRoutinesByDay: no muta el original y maneja null', () => {
   assert.strictEqual(r[0].id, 'a', 'el array original no se reordena');
   assert.notStrictEqual(out, r, 'devuelve un array nuevo');
   assert.deepStrictEqual(sortRoutinesByDay(null), []);
+});
+
+// ══════════════════════════════════════════════════════
+section('15. Fase de adaptación para principiantes');
+
+const DAY = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).toISOString();
+
+test('genSchemeFor: en adaptación fuerza 15 reps / 3 series / descanso 60, sin importar el objetivo', () => {
+  ['Ganar músculo', 'Perder grasa', 'Fuerza', 'Resistencia'].forEach(goal => {
+    const s = genSchemeFor(goal, 'Principiante', true);
+    assert.strictEqual(s.repsN, 15, `reps en adaptación para "${goal}"`);
+    assert.strictEqual(s.setsN, 3, `series en adaptación para "${goal}"`);
+    assert.strictEqual(s.restSec, 60, `descanso en adaptación para "${goal}"`);
+    assert.strictEqual(s.adaptation, true);
+  });
+});
+
+test('genSchemeFor: SIN adaptación mantiene el esquema del objetivo (hipertrofia = 10 reps)', () => {
+  const s = genSchemeFor('Ganar músculo', 'Principiante', false);
+  assert.strictEqual(s.repsN, 10);
+  assert.ok(!s.adaptation);
+});
+
+test('isInAdaptation: principiante recién creado (sin historial) → true', () => {
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Principiante' }, {}, new Date('2026-06-02')), true);
+});
+
+test('isInAdaptation: principiante con primera sesión hace 5 días → true', () => {
+  const hist = { c1: [{ date: DAY(2026, 5, 28) }] };
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Principiante' }, hist, new Date('2026-06-02T12:00:00')), true);
+});
+
+test('isInAdaptation: principiante con primera sesión hace 30 días → false (ya progresa)', () => {
+  const hist = { c1: [{ date: DAY(2026, 5, 30) }, { date: DAY(2026, 5, 3) }] };
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Principiante' }, hist, new Date('2026-06-02T12:00:00')), false);
+});
+
+test('isInAdaptation: NO aplica a intermedio/avanzado aunque sea su semana 1', () => {
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Intermedio' }, {}, new Date('2026-06-02')), false);
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Avanzado' }, {}, new Date('2026-06-02')), false);
+});
+
+test('isInAdaptation: client.startDate explícito manda sobre el historial', () => {
+  const hist = { c1: [{ date: DAY(2026, 6, 1) }] }; // sesión reciente
+  // pero arrancó hace mucho → ya no está en adaptación
+  assert.strictEqual(isInAdaptation({ id: 'c1', level: 'Principiante', startDate: DAY(2026, 1, 1) }, hist, new Date('2026-06-02')), false);
+});
+
+test('generarRutinas: con adaptación todos los ejercicios de carga van a 15 reps / 3 series + nota y flag', () => {
+  const res = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, adaptation: true });
+  assert.strictEqual(res.adaptation, true, 'el retorno marca adaptación');
+  const cargas = res.routines[0].exercises.filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico' && !/cardio|hiit/i.test(e.type || ''));
+  assert.ok(cargas.length > 0, 'hay ejercicios de carga');
+  cargas.forEach(e => {
+    assert.strictEqual(e.reps, 15, `${e.name} debe ir a 15 reps en adaptación`);
+    assert.strictEqual(e.sets, 3, `${e.name} debe ir a 3 series en adaptación`);
+  });
+  assert.ok(/adaptaci/i.test(res.routines[0].note), 'la nota menciona la fase de adaptación');
+});
+
+test('generarRutinas: SIN adaptación (intermedio) usa reps del objetivo, no 15', () => {
+  const res = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  assert.ok(!res.adaptation);
+  const carga = res.routines[0].exercises.find(e => e.type === 'Compuesto');
+  assert.strictEqual(carga.reps, 10, 'hipertrofia intermedio = 10 reps');
 });
 
 // ══════════════════════════════════════════════════════

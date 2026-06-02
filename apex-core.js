@@ -169,7 +169,9 @@ function parseLimitations(notes) {
 }
 
 // Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
-function genSchemeFor(goal, level) {
+// `adaptation`: si es true (principiante en sus primeras semanas) sobrescribe el
+// esquema del objetivo por una FASE DE ADAPTACIÓN ANATÓMICA — ver isInAdaptation().
+function genSchemeFor(goal, level, adaptation) {
   const g = _norm(goal);
   let base;
   if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { reps: 14, sets: [3, 4], rest: 55, cardioClose: true };
@@ -180,7 +182,41 @@ function genSchemeFor(goal, level) {
   else base = { reps: 12, sets: [3, 3], rest: 60 }; // salud general / default
   const [lo, hi] = base.sets;
   const setsN = level === 'Principiante' ? Math.min(lo, 3) : level === 'Avanzado' ? hi : Math.min(hi, 4);
-  return { setsN, repsN: base.reps, restSec: base.rest, cardioClose: !!base.cardioClose, coreClose: !!base.coreClose };
+  const scheme = { setsN, repsN: base.reps, restSec: base.rest, cardioClose: !!base.cardioClose, coreClose: !!base.coreClose };
+  // Fase de adaptación: reps altas (mín. 15; la nota indica 15-20) con poco o nada de
+  // peso, descanso corto, técnica primero. Sobrescribe el objetivo SIN importar cuál sea
+  // (primero el cuerpo aprende el patrón, luego progresamos cargas).
+  if (adaptation) {
+    scheme.setsN = 3;
+    scheme.repsN = 15;
+    scheme.restSec = 60;
+    scheme.adaptation = true;
+  }
+  return scheme;
+}
+
+// ── Fase de adaptación: ¿el cliente está en sus primeras semanas de entreno? ──
+// Solo aplica a principiantes. La ventana arranca cuando EMPIEZAN a entrenar:
+// usa client.startDate si existe, si no la primera sesión registrada, si no la fecha
+// de alta; sin ninguna referencia → recién empieza (en adaptación). Default 21 días.
+const ADAPT_DAYS = 21;
+function trainingStartTs(client, history) {
+  client = client || {};
+  if (client.startDate) return new Date(client.startDate).getTime();
+  const sess = (history && history[client.id]) || [];
+  let first = Infinity;
+  sess.forEach(s => { const t = new Date(s.date).getTime(); if (t < first) first = t; });
+  if (first !== Infinity) return first;
+  if (client.createdAt) return new Date(client.createdAt).getTime();
+  return null;
+}
+function isInAdaptation(client, history, now, adaptDays) {
+  client = client || {};
+  if ((client.level || 'Principiante') !== 'Principiante') return false;
+  const start = trainingStartTs(client, history);
+  if (start == null) return true; // sin historial ni fecha → semana 1
+  const ref = (now ? new Date(now) : new Date()).getTime();
+  return (ref - start) < (adaptDays || ADAPT_DAYS) * 86400000;
 }
 
 // ¿El ejercicio se trackea sin peso (cardio/hiit/isométrico)? → conserva sets/reps de biblioteca.
@@ -270,7 +306,7 @@ function generarRutinas(client, lib, opts) {
   const age = parseInt(client.age) || null;
   const minor = age != null && age < 16;
   const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
-  const scheme = genSchemeFor(client.goal || '', level);
+  const scheme = genSchemeFor(client.goal || '', level, opts.adaptation);
   const lim = parseLimitations(client.notes || '');
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
@@ -306,6 +342,8 @@ function generarRutinas(client, lib, opts) {
     if (nameCount[nm] > 1) nm += ' ' + nameCount[nm];
     const note = lim.detected
       ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice} Ajusta antes de aprobar.`
+      : scheme.adaptation
+      ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
       : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
     return {
       id: idFn(), name: nm, day: GEN_DAY_LABELS[idx] || ('Día ' + (idx + 1)), shift: null,
@@ -313,7 +351,7 @@ function generarRutinas(client, lib, opts) {
       createdAt: now, generated: true, reviewed: false, needsReview: lim.detected,
     };
   });
-  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall] };
+  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall], adaptation: !!scheme.adaptation };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -551,5 +589,7 @@ if (typeof module !== 'undefined' && module.exports) {
     daysSinceLastSession,
     dayOrder,
     sortRoutinesByDay,
+    isInAdaptation,
+    trainingStartTs,
   };
 }
