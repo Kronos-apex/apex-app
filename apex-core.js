@@ -306,7 +306,7 @@ function _genPick(lib, muscle, type, st) {
 
 // Movimientos guiados/asistidos (cargan parte del peso o estabilizan) — se prefieren
 // cuando el perfil de carga es alto. Patrones en minúsculas SIN tilde (van contra _norm).
-const GEN_ASSISTED_RE = /maquina|polea|cable|prensa|smith|hack|peck|contractora|hammer|multipower|jaca|asistid|guiad|sentad/;
+const GEN_ASSISTED_RE = /maquina|polea|cable|prensa|smith|hack|peck|contractora|hammer|multipower|jaca|asistid|guiad|sentado|banda/;
 // Alto impacto / pliométrico: se evita con perfil de carga alto (más masa = más estrés articular).
 const GEN_HIIMPACT_RE = /salto|jump|burpee|pliometr|plyo|sprint|saltar|box jump|tijera saltada|skipping/;
 

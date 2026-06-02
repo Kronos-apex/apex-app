@@ -863,7 +863,8 @@ test('generarRutinas: perfil alto prioriza máquina/guiado en tren inferior', ()
   assert.strictEqual(res.loadProfile, 'high');
   const piernas = res.routines[0].exercises.find(e => e.muscle === 'piernas');
   assert.ok(piernas, 'hay ejercicio de piernas');
-  assert.ok(/prensa|maquina|polea|guiad|asistid|sentad/.test(_na(piernas.name)), `esperaba variante guiada en piernas, vino "${piernas.name}"`);
+  assert.ok(/prensa|maquina|polea|guiad|asistid|sentado|banda/.test(_na(piernas.name)), `esperaba variante guiada en piernas, vino "${piernas.name}"`);
+  assert.ok(!/sentadilla con barra/.test(_na(piernas.name)), 'no debe elegir sentadilla libre con barra como "guiada"');
 });
 
 test('generarRutinas: perfil alto evita saltos/pliométricos (burpees fuera)', () => {
