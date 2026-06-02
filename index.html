@@ -1170,6 +1170,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div id="congrats-prs" style="margin-top:4px"></div>
       </div>
       <div id="pr-banners"></div>
+      <div id="cn-today-upsell"></div>
       <div id="cn-today-body"></div>
     </div>
     <!-- ROUTINES -->
@@ -1207,6 +1208,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- PROFILE -->
     <div id="cn-profile" class="cnp">
       <div class="profhero" id="cn-prof-card"></div>
+      <div id="cn-profile-upsell"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
       <div id="cn-gamif"></div>
 
@@ -3442,7 +3444,7 @@ function renderClients(){
       routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin rutinas asignadas</div>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span>${c.selfReg?'<span class="tag" style="background:var(--bll);color:#1a4a7a;margin-left:4px">🆓 Libre</span>':''}<div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span>${c.selfReg?(c.wantsCoach?'<span class="tag" style="background:var(--orl);color:var(--or);margin-left:4px">🙋 Quiere coach</span>':'<span class="tag" style="background:var(--bll);color:#1a4a7a;margin-left:4px">🆓 Libre</span>'):''}<div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
@@ -3584,6 +3586,29 @@ function clientSelfGenerate(){
     renderClientAllRoutines(c);
     toast(res.routines&&res.routines.length?'✨ ¡Tu nueva semana está lista!':'No se pudo generar, intenta de nuevo');
   }catch(e){ warn('AVI: regenerar libre falló:',e&&e.message); toast('No se pudo generar, intenta de nuevo'); }
+}
+
+// ── Invitación a Premium / coach real (solo modo libre) ──
+function coachUpsellHTML(c){
+  if(!c||!c.selfReg)return ''; // los de coach ya tienen coach
+  if(c.wantsCoach){
+    return `<div style="background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--gt);line-height:1.5">✅ <b>¡Solicitud enviada!</b> Tu coach te contactará pronto para guiarte de cerca. 💪</div>`;
+  }
+  return `<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;color:#fff;box-shadow:0 6px 18px rgba(27,67,50,.25)">
+    <div style="font-size:14px;font-weight:800;margin-bottom:4px">🌟 ¿Quieres un coach real que te guíe?</div>
+    <div style="font-size:12px;opacity:.92;line-height:1.55;margin-bottom:11px">Pásate a <b>Premium</b>: un entrenador ajusta tu plan a ti, corrige tu técnica y te acompaña semana a semana. Aquí no entrenas solo.</div>
+    <button onclick="requestCoach()" style="width:100%;padding:11px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+  </div>`;
+}
+function renderCoachUpsell(c){
+  ['cn-today-upsell','cn-profile-upsell'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=coachUpsellHTML(c);});
+}
+function requestCoach(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  c.wantsCoach=true;c.wantsCoachAt=new Date().toISOString();
+  svNow('ax_c',DB.clients);
+  renderCoachUpsell(c);
+  toast('🎉 ¡Listo! Tu coach te contactará pronto.');
 }
 
 function openDetail(id){
@@ -4628,6 +4653,7 @@ function renderPRsInProfile(clientId){
 }
 
 function renderClientProfile(client){
+  renderCoachUpsell(client);
   // Current weight from bodyweight log (most recent entry)
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
@@ -4812,6 +4838,7 @@ function toggleTrackingTools(){
 // TODAY
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
+  renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:#7a5c00;margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:#a07820;margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
