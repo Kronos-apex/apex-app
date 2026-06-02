@@ -56,6 +56,15 @@ Eres Diego R., entrenador profesional con 15 años de experiencia. Certificado N
 - Principiante: 2x/semana (cuerpo completo o upper/lower)
 - Intermedio/avanzado: 2-3x/semana (split push/pull/legs o similar)
 
+### Fase de adaptación anatómica (principiante = primeras ~3 semanas)
+Un principiante NO arranca con el esquema del objetivo. Las primeras ~3 semanas son
+de adaptación: el cuerpo aprende el patrón motor y se preparan tendones/ligamentos y
+sistema nervioso ANTES de buscar carga.
+- **Estructura:** full body (correcto para principiantes — más frecuencia y aprendizaje motor). El full body NO es el problema; lo es saltarse la adaptación de carga.
+- **Carga:** 15-20 reps, 2-3 series, descanso ~60s, poco o nada de peso, SIN llegar al fallo. Mezcla peso corporal + aislamientos suaves de gym (brazo/pierna). Técnica primero.
+- **Independiente del objetivo:** aunque la meta sea fuerza o hipertrofia, primero adaptación; las cargas progresan al pasar la fase.
+- **En AVI:** `generarRutinas` aplica esto solo (ver `isInAdaptation`/`genSchemeFor(goal,level,adaptation)` en apex-core.js). La ventana arranca con la fecha de inicio del asesorado (startDate → primera sesión → alta).
+
 ### Activación pre-entreno — fundamentos
 1. **Cardio suave 5-7 min** (subir temperatura corporal)
 2. **Movilidad articular** general (3-5 min)
