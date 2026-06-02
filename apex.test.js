@@ -26,6 +26,7 @@ const {
   weeklyActiveCount,
   clientsTrainedToday,
   daysSinceLastSession,
+  sortRoutinesByDay,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -722,6 +723,42 @@ test('daysSinceLastSession: encuentra el máximo aunque el orden esté invertido
 test('daysSinceLastSession: sin sesiones → Infinity (cuenta como inactivo)', () => {
   assert.strictEqual(daysSinceLastSession([], D(2026, 6, 2)), Infinity);
   assert.strictEqual(daysSinceLastSession(null, D(2026, 6, 2)), Infinity);
+});
+
+// ══════════════════════════════════════════════════════
+section('14. Orden de rutinas por día (Lunes primero)');
+
+test('sortRoutinesByDay: ordena Lunes→Domingo, Libre al final', () => {
+  const r = [
+    { id: 'a', day: 'Martes' },
+    { id: 'b', day: 'Lunes' },
+    { id: 'c', day: 'Libre' },
+    { id: 'd', day: 'Domingo' },
+  ];
+  assert.deepStrictEqual(sortRoutinesByDay(r).map(x => x.day), ['Lunes', 'Martes', 'Domingo', 'Libre']);
+});
+
+test('sortRoutinesByDay: martes NO queda antes que lunes (regresión del perfil)', () => {
+  const r = [{ id: 'mar', day: 'Martes' }, { id: 'lun', day: 'Lunes' }];
+  assert.strictEqual(sortRoutinesByDay(r)[0].id, 'lun');
+});
+
+test('sortRoutinesByDay: estable ante el mismo día (conserva orden original)', () => {
+  const r = [{ id: 'x', day: 'Lunes' }, { id: 'y', day: 'Lunes' }];
+  assert.deepStrictEqual(sortRoutinesByDay(r).map(x => x.id), ['x', 'y']);
+});
+
+test('sortRoutinesByDay: tolera tildes y días desconocidos van al final', () => {
+  const r = [{ id: 'a', day: '???' }, { id: 'b', day: 'Miercoles' }, { id: 'c', day: 'Miércoles' }];
+  assert.deepStrictEqual(sortRoutinesByDay(r).map(x => x.id), ['b', 'c', 'a']);
+});
+
+test('sortRoutinesByDay: no muta el original y maneja null', () => {
+  const r = [{ id: 'a', day: 'Martes' }, { id: 'b', day: 'Lunes' }];
+  const out = sortRoutinesByDay(r);
+  assert.strictEqual(r[0].id, 'a', 'el array original no se reordena');
+  assert.notStrictEqual(out, r, 'devuelve un array nuevo');
+  assert.deepStrictEqual(sortRoutinesByDay(null), []);
 });
 
 // ══════════════════════════════════════════════════════

@@ -506,6 +506,26 @@ function daysSinceLastSession(sessions, now) {
   return Math.floor((ref - last) / MS_DAY);
 }
 
+// ── Orden de rutinas por día de la semana (Lunes primero, Libre al final) ──
+// El día se guarda como nombre en español (con o sin tilde, defensivo). Cualquier
+// valor desconocido va al final. Empieza en LUNES (no domingo) porque así lo lee
+// la gente; ordenar por getDay() pondría el domingo primero.
+const _DAY_ORDER = {
+  'Lunes': 1, 'Martes': 2, 'Miércoles': 3, 'Miercoles': 3, 'Jueves': 4,
+  'Viernes': 5, 'Sábado': 6, 'Sabado': 6, 'Domingo': 7, 'Libre': 8,
+};
+function dayOrder(day) {
+  return _DAY_ORDER[day] || 99;
+}
+// Devuelve un array NUEVO ordenado por día. Ordenamiento estable: ante el mismo
+// día, conserva el orden original (por eso lleva el índice como desempate).
+function sortRoutinesByDay(routines) {
+  return (routines || [])
+    .map((r, i) => [r, i])
+    .sort((a, b) => (dayOrder(a[0] && a[0].day) - dayOrder(b[0] && b[0].day)) || (a[1] - b[1]))
+    .map(pair => pair[0]);
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -529,5 +549,7 @@ if (typeof module !== 'undefined' && module.exports) {
     weeklyActiveCount,
     clientsTrainedToday,
     daysSinceLastSession,
+    dayOrder,
+    sortRoutinesByDay,
   };
 }

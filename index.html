@@ -1918,6 +1918,18 @@ async function syncFromCloud(){
   DB.clients=ld('ax_c',[]);
   const _routineMigrated=migrateRoutineIds(DB.clients,uid);
   if(_routineMigrated){sv('ax_c',DB.clients);log('AVI: routine.id migration applied');}
+  // Migración blindada: reordena rutinas por día (Lunes primero). Datos viejos se
+  // crearon en cualquier orden; esto los normaliza una sola vez y persiste.
+  try{
+    let _daySorted=false;
+    (DB.clients||[]).forEach(c=>{
+      if(!c.routines||c.routines.length<2)return;
+      const before=c.routines.map(r=>r.id).join(',');
+      c.routines=sortRoutinesByDay(c.routines);
+      if(c.routines.map(r=>r.id).join(',')!==before)_daySorted=true;
+    });
+    if(_daySorted){sv('ax_c',DB.clients);log('AVI: routine day-order migration applied');}
+  }catch(e){ warn('AVI: ordenamiento de días falló (no bloquea):',e&&e.message); }
   DB.exercises=ld('ax_e',defaultExercises);
   // Migraciones blindadas: si una falla (p.ej. apex-core.js viejo en caché tras un update),
   // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
@@ -4029,6 +4041,7 @@ function confirmGenRutinas(){
   if(!c.routines)c.routines=[];
   const n=CUR.genDraft.routines.length;
   c.routines.push(...CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map(e=>({...e}))})));
+  c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);
   cm('m-gen');renderDetailRoutines(c);renderHome();
   toast(`✨ ${n} rutina${n!==1?'s':''} generada${n!==1?'s':''} para ${c.name} — revísalas y ajusta`);
@@ -4134,6 +4147,7 @@ function saveRoutine(){
     c.routines.push({id:uid(),...rutData,createdAt:new Date().toISOString()});
     toast(`✅ Rutina "${name}" guardada para ${c.name}`);
   }
+  c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);cm('m-routine');renderDetailRoutines(c);renderHome();
 }
 
@@ -5220,7 +5234,7 @@ function clientWeekEditorial(client){
 
 function renderClientAllRoutines(client){
   const ed=document.getElementById('cn-week-ed');
-  const con=document.getElementById('cn-all-rut');const routines=client.routines||[];
+  const con=document.getElementById('cn-all-rut');const routines=sortRoutinesByDay(client.routines||[]);
   if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
   if(!routines.length){con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   con.innerHTML='';
