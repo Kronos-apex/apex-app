@@ -681,6 +681,12 @@ git push origin main
 
 **Tests:** 72 → **111/111**. Caché `apex-v55`. Pendiente verificación visual en navegador (bloqueada por RAM/pagefile de la PC de Camilo — ver memoria). Idea Premium aprobada (parked): valoración inicial completa del principiante.
 
+**🔐 Seguridad — evaluación + plan Auth+RLS APROBADO (👉 ARRANCAR AQUÍ la próxima sesión):**
+- **Hallazgo crítico:** `apex_data` y `push_subscriptions` tienen políticas RLS `USING(true)` → la key `anon` (en el `index.html` público) da **acceso TOTAL** a toda la base (confirmado por `get_advisors(security)`). El "login" es client-side; passwords SHA-256. **No se puede compartir el enlace a usuarios reales** sin esto. Consejo vigente: mantener AVI en **círculo cerrado** hasta tener auth.
+- **Plan APROBADO** (archivo: `~/.claude/plans/quiet-hatching-teapot.md`; memoria: `project_avi_auth_rls_plan`). Decisiones del PO: **puente pragmático** (tabla `user_data` con fila por usuario, RLS `auth.uid()=user_id OR =coach_id`), **un coach (Camilo) + libres** ahora (multi-trainer después, dejar `coach_id` listo), usuarios actuales **re-crean clave vía enlace** (SHA-256 no migra). Usar **supabase-js por CDN**.
+- **Fase 0 HECHA (2026-06-02):** eliminada tabla `apex_coaches` (vacía/sin uso) → -2 alertas; `apex_data_backups` verificada (RLS sin política = bloqueada, OK). Diferidos: mover `pg_net` (no expone datos; riesgo cron) y privatizar bucket `apex-photos` (solo 2 fotos; necesita código de URLs firmadas → hacerlo con la auth).
+- **Próximo: Fase 1** — requiere clics de Camilo: habilitar Supabase Auth (Email+Google) + credenciales OAuth en Google Cloud (guía: `docs/setup-login-google.md`); luego cargar supabase-js + crear `user_data`+RLS. Fases 2-4: reescribir capa de datos a fila-por-usuario, migrar, quitar políticas `USING(true)`.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -689,7 +695,7 @@ git push origin main
 - [ ] Widget MRR proyectado en Home
 - [ ] Análisis de cohortes de retención (Mateo — requiere ≥10 asesorados)
 - [ ] Footer de versión visible (`index.html` línea ~920) sigue en `v1.3.1 · May 2026` — actualizar al deployar
-- [ ] **Decisión de negocio:** RLS permisivo en Supabase (toda la DB es pública a `anon`) — aceptable a ~8 clientes, pero la beta de ~20 y v2.0 lo vuelven prioritario
+- [ ] **🔐 Auth real + RLS (plan APROBADO, Fase 0 hecha):** el RLS permisivo (DB pública a `anon`) es el bloqueador #1 para compartir AVI. Plan completo arriba en "Sesión 2026-06-02" + `~/.claude/plans/quiet-hatching-teapot.md`. Próximo: Fase 1 (Supabase Auth Email+Google + tabla `user_data`)
 
 ### 🚀 v2.0 — Escala
 - [ ] Multi-coach (cada coach con sus asesorados aislados)
