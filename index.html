@@ -1757,6 +1757,30 @@ async function pollMessages(){
         });
       }
     } else if(CUR.loggedAs==='coach'){
+      // Re-traer ax_c para detectar asesorados nuevos (auto-registro) y solicitudes de
+      // coach que llegaron después de abrir la sesión. Merge ADITIVO: solo agrega
+      // clientes que no están y propaga wantsCoach; nunca pisa ediciones locales.
+      try{
+        const rcRes=await fetch(`${SB_URL}/rest/v1/apex_data?select=value&key=eq.ax_c`,{
+          headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},signal:AbortSignal.timeout(8000)
+        });
+        if(rcRes.ok){
+          const rcRows=await rcRes.json();
+          const remoteClients=(rcRows&&rcRows[0]&&rcRows[0].value)||[];
+          let cChanged=false;const newcomers=[];
+          remoteClients.forEach(r=>{
+            if(!r||!r.id)return;
+            const local=DB.clients.find(x=>x.id===r.id);
+            if(!local){DB.clients.push(r);cChanged=true;if(r.selfReg)newcomers.push(r);}
+            else if(r.wantsCoach&&!local.wantsCoach){local.wantsCoach=true;local.wantsCoachAt=r.wantsCoachAt;cChanged=true;newcomers.push(local);}
+          });
+          if(cChanged){
+            try{localStorage.setItem('ax_c',JSON.stringify(DB.clients));}catch(e){}
+            renderClients();renderHome();
+            newcomers.forEach(c=>notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`));
+          }
+        }
+      }catch(e){/* red, silencioso */}
       let anyNew=false;
       const newMsgsList=[];
       DB.clients.forEach(c=>{
@@ -3607,6 +3631,10 @@ function requestCoach(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   c.wantsCoach=true;c.wantsCoachAt=new Date().toISOString();
   svNow('ax_c',DB.clients);
+  // Avisar al coach por el chat: le llega a su bandeja + notificación vía su sondeo.
+  if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+  DB.msgs[c.id].push({from:'client',text:'🙋 ¡Hola! Me gustaría pasar a Premium y tener un coach que me guíe. ¿Me cuentas cómo seguir?',date:new Date().toISOString()});
+  svNow('ax_m',DB.msgs);
   renderCoachUpsell(c);
   toast('🎉 ¡Listo! Tu coach te contactará pronto.');
 }
