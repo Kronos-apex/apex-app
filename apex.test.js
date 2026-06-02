@@ -29,6 +29,8 @@ const {
   sortRoutinesByDay,
   genSchemeFor,
   isInAdaptation,
+  bmiFrom,
+  bodyLoadProfile,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -826,6 +828,53 @@ test('generarRutinas: SIN adaptación (intermedio) usa reps del objetivo, no 15'
   assert.ok(!res.adaptation);
   const carga = res.routines[0].exercises.find(e => e.type === 'Compuesto');
   assert.strictEqual(carga.reps, 10, 'hipertrofia intermedio = 10 reps');
+});
+
+// ══════════════════════════════════════════════════════
+section('16. Personalización por composición (IMC / cintura)');
+
+const _na = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+test('bmiFrom: calcula IMC en cm y en metros; null si falta dato', () => {
+  assert.ok(Math.abs(bmiFrom(85, 165) - 31.2) < 0.2);
+  assert.ok(Math.abs(bmiFrom(50, 165) - 18.4) < 0.2);
+  assert.ok(Math.abs(bmiFrom(68, 1.70) - 23.5) < 0.3, 'tolera estatura en metros');
+  assert.strictEqual(bmiFrom(null, 165), null);
+  assert.strictEqual(bmiFrom(70, null), null);
+});
+
+test('bodyLoadProfile: IMC>=30 → high; por debajo → normal (50 vs 85 kg, misma estatura)', () => {
+  assert.strictEqual(bodyLoadProfile({ weight: 85, height: 165 }), 'high');
+  assert.strictEqual(bodyLoadProfile({ weight: 50, height: 165 }), 'normal');
+});
+
+test('bodyLoadProfile: cintura alta sube el perfil aunque el IMC no sea obesidad', () => {
+  assert.strictEqual(bodyLoadProfile({ weight: 70, height: 170 }, 110), 'high'); // RCT 0.647
+  assert.strictEqual(bodyLoadProfile({ weight: 70, height: 170 }, 78), 'normal'); // RCT 0.46
+});
+
+test('bodyLoadProfile: sin datos suficientes → normal (no asume)', () => {
+  assert.strictEqual(bodyLoadProfile({}), 'normal');
+  assert.strictEqual(bodyLoadProfile({ weight: 70 }), 'normal');
+});
+
+test('generarRutinas: perfil alto prioriza máquina/guiado en tren inferior', () => {
+  const res = generarRutinas({ sex: 'F', level: 'Principiante', days: 3, goal: 'Ganar músculo', weight: 85, height: 165 }, LIB, { ...FIXED, loadProfile: 'high' });
+  assert.strictEqual(res.loadProfile, 'high');
+  const piernas = res.routines[0].exercises.find(e => e.muscle === 'piernas');
+  assert.ok(piernas, 'hay ejercicio de piernas');
+  assert.ok(/prensa|maquina|polea|guiad|asistid|sentad/.test(_na(piernas.name)), `esperaba variante guiada en piernas, vino "${piernas.name}"`);
+});
+
+test('generarRutinas: perfil alto evita saltos/pliométricos (burpees fuera)', () => {
+  const res = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Perder grasa', weight: 95, height: 170 }, LIB, { ...FIXED, loadProfile: 'high' });
+  const names = res.routines.flatMap(r => r.exercises.map(e => _na(e.name)));
+  assert.ok(!names.some(n => /burpee|salto|jump/.test(n)), 'no debe haber alto impacto con perfil alto');
+});
+
+test('generarRutinas: perfil normal no fuerza máquina (retorna loadProfile normal)', () => {
+  const res = generarRutinas({ sex: 'F', level: 'Principiante', days: 3, goal: 'Ganar músculo', weight: 55, height: 165 }, LIB, FIXED);
+  assert.strictEqual(res.loadProfile, 'normal');
 });
 
 // ══════════════════════════════════════════════════════

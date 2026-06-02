@@ -219,6 +219,29 @@ function isInAdaptation(client, history, now, adaptDays) {
   return (ref - start) < (adaptDays || ADAPT_DAYS) * 86400000;
 }
 
+// ── Perfil de carga corporal: ¿conviene priorizar máquina/asistido y bajo impacto? ──
+// Señales: IMC (peso/estatura²) y relación cintura-talla (RCT = cintura/estatura, el
+// mismo indicador que ya usa la app). Devuelve 'high' cuando IMC≥30 (obesidad) o
+// RCT≥0.60 (riesgo elevado); si no, 'normal'. Mover más masa hace el peso corporal y
+// el impacto articular más exigentes, así que en 'high' el generador prefiere variantes
+// guiadas y evita pliométricos. OJO: el IMC no distingue músculo de grasa — por eso la
+// cintura, cuando existe, puede subir el perfil. Es una guía, no diagnóstico clínico.
+function bmiFrom(weightKg, heightCm) {
+  const w = parseFloat(weightKg), h = parseFloat(heightCm);
+  if (!w || !h) return null;
+  const m = h > 3 ? h / 100 : h; // tolera cm (168) o m (1.68)
+  return w / (m * m);
+}
+function bodyLoadProfile(client, waistCm) {
+  client = client || {};
+  const bmi = bmiFrom(client.weight, client.height);
+  const waist = parseFloat(waistCm);
+  const h = parseFloat(client.height);
+  const rct = (waist && h) ? waist / (h > 3 ? h : h * 100) : null; // cintura/estatura, ambos en cm
+  if ((bmi != null && bmi >= 30) || (rct != null && rct >= 0.60)) return 'high';
+  return 'normal';
+}
+
 // ¿El ejercicio se trackea sin peso (cardio/hiit/isométrico)? → conserva sets/reps de biblioteca.
 function _genKeepNatural(ex) {
   return ex.muscle === 'cardio' || /cardio|hiit/i.test(ex.type || '') || ex.type === 'Isométrico';
@@ -256,6 +279,9 @@ function _genPick(lib, muscle, type, st) {
   //  2) tipo exacto del slot, 3) fallback solo-músculo (cuando el tipo está agotado/vacío).
   const pools = [];
   if (st.preferType) pools.push(lib.filter(e => ok(e) && e.type === st.preferType));
+  // Perfil de carga 'high' (IMC/cintura altos): prioriza variantes guiadas/asistidas
+  // (máquina, polea, prensa…) DENTRO del tipo del slot, antes de las libres.
+  if (st.preferName) pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && st.preferName.test(_norm(e.name))));
   pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true)));
   pools.push(lib.filter(ok));
   let pool = null;
@@ -278,10 +304,18 @@ function _genPick(lib, muscle, type, st) {
   return null; // todo el pool ya está usado en este día
 }
 
-// Excluder combinado: carga axial con barra para menores + contraindicaciones por zona.
-function _genMakeExcluder(lim, minor) {
+// Movimientos guiados/asistidos (cargan parte del peso o estabilizan) — se prefieren
+// cuando el perfil de carga es alto. Patrones en minúsculas SIN tilde (van contra _norm).
+const GEN_ASSISTED_RE = /maquina|polea|cable|prensa|smith|hack|peck|contractora|hammer|multipower|jaca|asistid|guiad|sentad/;
+// Alto impacto / pliométrico: se evita con perfil de carga alto (más masa = más estrés articular).
+const GEN_HIIMPACT_RE = /salto|jump|burpee|pliometr|plyo|sprint|saltar|box jump|tijera saltada|skipping/;
+
+// Excluder combinado: carga axial con barra para menores + contraindicaciones por zona
+// + (perfil de carga alto) alto impacto/pliométrico.
+function _genMakeExcluder(lim, minor, avoidHighImpact) {
   const res = [];
   if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
+  if (avoidHighImpact) res.push(GEN_HIIMPACT_RE);
   lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) res.push(GEN_ZONE_EXCL[z]); });
   return ex => { const n = _norm(ex.name); return res.some(re => re.test(n)); };
 }
@@ -310,10 +344,13 @@ function generarRutinas(client, lib, opts) {
   const lim = parseLimitations(client.notes || '');
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
+  const loadProfile = opts.loadProfile === 'high' ? 'high' : 'normal'; // por IMC/cintura (ver bodyLoadProfile)
+  const highLoad = loadProfile === 'high';
   const st = {
     cursors: {}, seed: opts.seed || 0, tier: opts.tier || null, place,
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
-    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor), envShortfall: new Set(),
+    preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
+    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad), envShortfall: new Set(),
   };
 
   const codes = _genResolveSplit(sexKey, days, level, minor);
@@ -351,7 +388,7 @@ function generarRutinas(client, lib, opts) {
       createdAt: now, generated: true, reviewed: false, needsReview: lim.detected,
     };
   });
-  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall], adaptation: !!scheme.adaptation };
+  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall], adaptation: !!scheme.adaptation, loadProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -591,5 +628,7 @@ if (typeof module !== 'undefined' && module.exports) {
     sortRoutinesByDay,
     isInAdaptation,
     trainingStartTs,
+    bmiFrom,
+    bodyLoadProfile,
   };
 }
