@@ -109,10 +109,15 @@ DB = {
 {
   id, name, email, password,        // password: SHA-256 con clientId como salt
   goal, level, days, weight, notes,
+  height,                           // cm — usado por bodyLoadProfile (IMC)
   phone,                            // ✅ v1.3.0 — teléfono para WhatsApp
-  sex,                              // 'Hombre' | 'Mujer' | 'Otro' | ''
+  sex,                              // 'M' | 'F' | ''
   age,                              // number | null
-  activity,                         // Sedentario | Ligeramente activo | Moderadamente | Muy activo | Extremadamente
+  activityFactor,                   // 1.2 | 1.375 | 1.55 | 1.725 | 1.9
+  selfReg,                          // true = se auto-registró (modo libre)
+  tier,                             // 'libre' (free) | 'premium' (activado por coach) | undefined (creado por coach = acceso completo)
+  wantsCoach, wantsCoachAt,         // true cuando un libre pide coach → lead caliente para el coach
+  startDate,                        // opcional — inicio de entreno (ventana de adaptación); si falta usa 1ª sesión/createdAt
   suspended: false,
   payments: [{
     date, dueDate, amount, note
@@ -245,7 +250,7 @@ SB_KEYS = [
 
 ---
 
-## 🔑 FUNCIONES CLAVE (309 totales — inline + apex-core.js)
+## 🔑 FUNCIONES CLAVE (334 totales — inline + apex-core.js)
 
 ### Sync & Persistencia
 - `ld(key, default)` — lee localStorage
@@ -292,10 +297,25 @@ SB_KEYS = [
 - `migrateExTypes()` — guard `ax_track_migrated`, reclasifica defaults una sola vez sin pisar al coach
 - `buildExerciseProgress()` — métrica por track con unidad (kg/reps/s/min/rondas); PRs y gráficas conscientes de modalidad (back-compat: datos viejos = kg)
 
-### Auto-generador de rutinas (v1.4 — en `apex-core.js`)
+### Auto-generador de rutinas (v1.4–v1.5 — en `apex-core.js`)
 - `generarRutinas(client, lib, opts)` — borrador completo de la semana; el coach SIEMPRE revisa antes de asignar (innegociable)
 - Splits por sexo+días, scheme por objetivo+nivel, exclusiones por limitación física (`parseLimitations`) y por entorno (`inferExerciseEnv`)
-- Botón ✨ "Generar semana" en el detalle del asesorado
+- **Fase de adaptación (v1.5):** `isInAdaptation(client, history, now)` → principiante en sus primeras ~3 semanas (`ADAPT_DAYS=21`, por `startDate`→1ª sesión→alta). `genSchemeFor(goal, level, adaptation)` sobrescribe a 15 reps / 3 series / 60s, carga suave, sin importar el objetivo. Full body se conserva.
+- **Personalización por composición (v1.5):** `bodyLoadProfile(client, cintura)` → 'high' si IMC≥30 (`bmiFrom`) o relación cintura-talla≥0.60. 'high' → `opts.loadProfile` prioriza variantes guiadas/asistidas (`GEN_ASSISTED_RE`) y excluye alto impacto/pliométricos (`GEN_HIIMPACT_RE`).
+- `opts`: `{idFn, now, seed, tier, place, methodBias, adaptation, loadProfile}`. Retorna `{routines, needsReview, limitations, place, envGaps, adaptation, loadProfile}`.
+- Botón ✨ "Generar semana" en el detalle del asesorado (coach). En modo libre: `_autoGenerateWeek(c)` (reusa el motor) al registrarse y botón "✨ Regenerar mi semana".
+
+### Auto-registro y modo libre (v1.5 — `apex-core.js` + inline)
+- `validateSignup(data, clients, coachEmail)` — valida email/único/no-coach/contraseña.
+- `signupClient()` (inline) — crea cuenta `selfReg:true, tier:'libre'` (password hasheada) → auto-login → `_autoGenerateWeek`. Form `#cin-signup` en la landing (botón "Crear cuenta").
+- `isFreeClient(client)` = `tier==='libre'` — **gating Premium**. Free conserva entrenar + rutina auto-generada + historial básico. SOLO Premium (con coach): chat (`renderClientMsgs`), nutrición (`renderNutritionClient`), fotos+medidas (`renderPhotosClient`/`renderMedidasClient`), analítica (`renderVolChart`/`renderPRsInProfile`/`renderClientExProgress`). Bloqueo = `premiumLockHTML()` (candado + "Quiero un coach").
+- `requestCoach()` — libre pide coach: `wantsCoach=true` + escribe mensaje al chat → le LLEGA al coach (su `pollMessages` re-trae `ax_c` con merge aditivo y notifica). Upsell `coachUpsellHTML`/`renderCoachUpsell` en "Hoy" y "Perfil".
+- `convertToPremium(cid)` — el coach activa Premium a un lead (`tier:'premium'`, limpia `wantsCoach`) → desbloquea todo. Botón "⭐ Activar Premium" en el detalle (`#d-freelead`).
+- Editar perfil de un libre (place/goal/level/days) ofrece **regenerar** su rutina para que coincida (`saveClient`).
+
+### Agregados de actividad por fecha (v1.5 — `apex-core.js`, deterministas, reciben `now`)
+- `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
+- `weeklyActiveCount` / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
 
 ### Gamificación (v1.4 — visible al asesorado, descuento visible también al coach)
 - `gxLevel(total)` — nivel permanente 1–5 (`GX_LEVELS`), NO se reinicia
@@ -643,6 +663,23 @@ git push origin main
 - Decisión técnica pendiente: supabase-js (CDN) vs OAuth a mano (rompe "sin dependencias").
 
 **🏷️ RENOMBRE APEX → AVI (commit 83db4ae, apex-v44):** nombre visible cambiado en toda la app (login, carga, manifest, notificaciones, imágenes, WhatsApp, gamificación). **Internos INTACTOS** (`ax_*`, `apex_data`, `apex-core.js`, `#apex-loading`, caché `apex-vNN`, repo `apex-app`) — NO renombrar. AVI = iniciales de los hijos (Alexander/Valery/Isabella). Handle @avi.entrena. Dominios libres: avi.lat + holaavi.com (sin comprar aún). Pendiente: registro SIC. La PWA instalada conserva el nombre viejo hasta reinstalar (no es bug).
+
+### ✅ Sesión 2026-06-02 — Fixes, personalización del generador y modo libre completo (apex-v44 → apex-v55)
+
+**🐛 Fixes (commit ea21854):**
+- Barra de retención mostraba entrenos fantasma: agrupaba por día de la semana (`getDay`) en ventana de 7 días → el mismo día de la semana pasada caía en "hoy". Ahora por día de calendario real.
+- Auto-guardado PARCIAL automático desde la 1ª serie marcada (antes solo al 100% o con "Finalizar") — sync con debounce.
+- Cronómetro de descanso por **timestamp absoluto** + recalcula en `visibilitychange` (iOS suspende `setInterval` con pantalla bloqueada → se congelaba). Límite iOS: no suena con pantalla bloqueada (necesita push nativo).
+
+**🧪 Refactor testeable (commit 676329a):** lógica de fechas del dashboard extraída a `apex-core.js` (era inline sin tests). Regla: funciones de fecha reciben `now`, nunca `new Date()` implícito.
+
+**📅 Orden de días (commit acf5fe9):** rutinas Lunes→Domingo (`sortRoutinesByDay`) + migración de arranque + ordena al crear/editar/generar.
+
+**🌱 Fase de adaptación (commit 925c542) + ⚖️ composición IMC/cintura (commit e996e2f):** ver sección "Auto-generador". Decisión metodológica: full body para principiantes es correcto; lo que faltaba era el esquema de carga (adaptación) y personalizar por composición (dos personas con misma estatura pero 50 vs 85 kg ya NO reciben la misma rutina).
+
+**🆓 Modo libre completo (commits c0bd44f, 229a813, ffaad0e, 73faee8, d102d44):** auto-registro público (`signupClient`) con rutina auto-generada al instante; invitación a Premium + `requestCoach` que LE LLEGA al coach (mensaje + poll de `ax_c`); gating Premium (`isFreeClient` + `premiumLockHTML`); `convertToPremium`; editar libre ofrece regenerar. Ver sección "Auto-registro y modo libre". **NOTA:** sigue escribiendo en `ax_c` compartido (RLS permisiva) — aislamiento multi-trainer real = v2.0.
+
+**Tests:** 72 → **111/111**. Caché `apex-v55`. Pendiente verificación visual en navegador (bloqueada por RAM/pagefile de la PC de Camilo — ver memoria). Idea Premium aprobada (parked): valoración inicial completa del principiante.
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
