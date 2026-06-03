@@ -1315,7 +1315,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="md">
     <div class="mdtitle" id="mc-title">Nuevo asesorado</div>
     <div class="frow"><div class="fg"><label class="ilbl">Nombre *</label><input type="text" class="inp" id="cf-name" maxlength="60" placeholder="Ej: María"></div><div class="fg"><label class="ilbl">Apellido</label><input type="text" class="inp" id="cf-last" maxlength="60" placeholder="Ej: García"></div></div>
-    <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: maria123"></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: maria123" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
       <div class="fg"><label class="ilbl">Edad (años)</label><input type="number" class="inp" id="cf-age" min="10" max="100" placeholder="Ej: 28"></div>
@@ -1469,9 +1469,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div style="border-top:1px solid var(--br);padding-top:14px;margin-top:4px">
       <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">🔒 Cambiar contraseña</div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:8px;background:var(--gl);padding:7px 10px;border-radius:var(--rsm)">🛡️ Las contraseñas se guardan con cifrado SHA-256. Ni el coach puede verlas.</div>
-      <input id="st-cur" class="inp" type="password" placeholder="Contraseña actual" style="width:100%;margin-bottom:8px">
-      <input id="st-new" class="inp" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" style="width:100%;margin-bottom:8px">
-      <input id="st-rep" class="inp" type="password" placeholder="Repetir nueva contraseña" style="width:100%;margin-bottom:4px">
+      <div style="position:relative;margin-bottom:8px"><input id="st-cur" class="inp" type="password" placeholder="Contraseña actual" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-cur')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div>
+      <div style="position:relative;margin-bottom:8px"><input id="st-new" class="inp" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-new')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div>
+      <div style="position:relative;margin-bottom:4px"><input id="st-rep" class="inp" type="password" placeholder="Repetir nueva contraseña" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-rep')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div>
       <div id="st-perr" style="font-size:12px;color:var(--rd);margin-top:4px;display:none"></div>
     </div>
 
