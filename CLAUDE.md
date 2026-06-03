@@ -687,6 +687,24 @@ git push origin main
 - **Fase 0 HECHA (2026-06-02):** eliminada tabla `apex_coaches` (vacía/sin uso) → -2 alertas; `apex_data_backups` verificada (RLS sin política = bloqueada, OK). Diferidos: mover `pg_net` (no expone datos; riesgo cron) y privatizar bucket `apex-photos` (solo 2 fotos; necesita código de URLs firmadas → hacerlo con la auth).
 - **Próximo: Fase 1** — requiere clics de Camilo: habilitar Supabase Auth (Email+Google) + credenciales OAuth en Google Cloud (guía: `docs/setup-login-google.md`); luego cargar supabase-js + crear `user_data`+RLS. Fases 2-4: reescribir capa de datos a fila-por-usuario, migrar, quitar políticas `USING(true)`.
 
+### ✅ v2.0 — Auth real + RLS (Junio 2026) — rama `feat/auth-rls`, cutover en curso
+**El cambio más grande del proyecto.** AVI pasa de "todo en blobs globales públicos (`apex_data`, RLS `USING(true)`)" a **login real con Supabase Auth + datos aislados por usuario (RLS)**. Convive con el sistema legacy durante la transición (rollout gradual).
+
+**Arquitectura nueva (coexiste con la legacy):**
+- **supabase-js** por CDN (`<script defer>` en `<head>`) + wrapper inline **`AUTH`** (init lazy `sbAuthClient()`; signUpEmail/signInEmail/signInGoogle/sendMagicLink/resetPassword/getSession/onChange/signOut). El boot offline-first NO depende del CDN.
+- Tabla **`user_data`** (Supabase): 1 fila por usuario — `user_id` (PK→auth.users), `coach_id`, `role` ('coach'|'client'), `profile/routines/history/prs/bodyweight/medidas/nutrition/photos/msgs` jsonb. **RLS por operación:** SELECT/UPDATE = `auth.uid()=user_id OR =coach_id`; INSERT = solo `user_id`; DELETE = solo propia.
+- Capa **`UD`** (inline): `loadOwn/upsertOwn/createFromClient/loadCoachClients/updateClientRow` (RLS con el JWT).
+- Helpers puros en `apex-core.js`: **`clientToRow`/`rowToClient`** (mapeo cliente↔fila; la contraseña NO viaja, la maneja Auth) + `USER_DATA_COLLECTIONS`. +7 tests de mapeo → **118 tests** (la lógica de UD/auth/coach es de runtime, no unit-test).
+- **`AUTH_MODE`** (flag): true cuando se entró por Auth. En modo auth, `sbSet` y `pollMessages` son no-op (no tocan el blob global legacy) y `sv`/`svNow` enrutan a `user_data` (cliente→su fila vía `_persistAuthUser`; coach→fila del cliente que cambió vía `_persistCoachWrite` con diff `_coachSnap`). `AUTH_ROLE` distingue cliente/coach.
+- **`doLogin` auth-primero con respaldo legacy:** intenta `AUTH.signInEmail`; si la cuenta no existe en Auth, cae al login legacy intacto (coach `coach@apex.com` + clientes con SHA-256 en `ax_c`). Boot entra en modo auth si hay sesión Supabase. Helpers: `_enterAuthSession`/`_enterCoachAuth`/`_provisionFreeClient`/`_applyAuthClientDB`/`_profileFromMeta`.
+- Registro libre (`signupClient`) → `AUTH.signUpEmail` (perfil en metadata) → provisiona rutina + fila. **Confirmación de correo DESACTIVADA** (temporal, para pruebas; reactivar con SMTP propio antes del público).
+
+**Identidades:** coach real = `camilo06197@gmail.com` (role coach). Los **7 asesorados reales migrados** del blob global → `auth.users`+`auth.identities`+fila `user_data` (coach_id=Camilo), emails placeholder `@apex.com`, claves temporales (Camilo las reparte). `apex_data` se conserva INTACTO como respaldo.
+
+**Crear usuarios por SQL (sin service_role):** insert en `auth.users` (instance_id `0…`, aud/role 'authenticated', `encrypted_password=crypt(pass,gen_salt('bf'))`, raw_app/user_meta_data) **+ `auth.identities`** (provider 'email', provider_id=uid::text) **+ columnas de token a `''` NO NULL** (confirmation_token/recovery_token/email_change*/phone_change*/reauthentication_token — su NULL ROMPE el login). Confirmar cuenta = `email_confirmed_at=now()`.
+
+**Estado del cutover:** rama lista para publicar a `main` (SW `apex-v56`); el merge/push se hace al cierre de la prep. Rollout GRADUAL protegido por el respaldo legacy (nadie se bloquea). Pendiente: repartir claves nuevas a cada asesorado (re-sync su fila justo antes de que cambie) + **Fase 4** (quitar `USING(true)` de `apex_data`/`push_subscriptions` SOLO cuando todos estén en el sistema nuevo). Cabos: botón "Entrar con Google" en UI (AUTH.signInGoogle ya existe), `requestCoach` que setee coach_id (falta COACH_UID), chat en vivo en modo auth, ajustes nivel-coach (ax_e/ax_tpl) aún globales, cola de reintento de upserts, limpiar cuentas de prueba (`andres@avi.com`/`valery@avi.com`/`nuevo@avi.com`). Plan completo: `~/.claude/plans/quiet-hatching-teapot.md`.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
