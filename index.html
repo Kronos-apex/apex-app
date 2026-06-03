@@ -1678,6 +1678,43 @@ const AUTH={
   onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((_e,session)=>cb(session));},
 };
 
+// ══════════ CAPA DE DATOS POR USUARIO — Fase 2.2 (tabla user_data) ══════════
+// Lee/escribe la fila del usuario logueado (asesorado/libre) o, para el coach, las
+// filas de SUS clientes (coach_id = su uid). Todo pasa por el cliente con sesión
+// (AUTH.client) → RLS aplica con el JWT real. Reusa clientToRow/rowToClient (apex-core).
+// Aún INERTE: lo conectan los pasos 2.2b-2.2e (registro, login, guardado, coach).
+const UD={
+  // Fila cruda del usuario actual (o null si no existe / sin sesión).
+  async loadOwn(){
+    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return null;
+    const {data,error}=await c.from('user_data').select('*').eq('user_id',u.id).maybeSingle();
+    if(error){warn('UD.loadOwn:',error.message);return null;}
+    return data;
+  },
+  // Upsert de la fila propia. patch = columnas a escribir (profile/routines/history/…).
+  // user_id y updated_at se fijan aquí; RLS exige user_id === auth.uid().
+  async upsertOwn(patch){
+    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)throw new Error('Sin sesión');
+    const row=Object.assign({user_id:u.id,updated_at:new Date().toISOString()},patch||{});
+    const {data,error}=await c.from('user_data').upsert(row).select().maybeSingle();
+    if(error)throw error;
+    return data;
+  },
+  // Crea la fila inicial del usuario a partir de un objeto cliente (registro/migración).
+  async createFromClient(client,opts){
+    const u=await AUTH.getUser();
+    const row=clientToRow(client,Object.assign({userId:u&&u.id},opts||{}));
+    return await this.upsertOwn(row);
+  },
+  // Para el coach: todas las filas donde él es el coach (coach_id = su uid). RLS las filtra.
+  async loadCoachClients(){
+    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return [];
+    const {data,error}=await c.from('user_data').select('*').eq('coach_id',u.id);
+    if(error){warn('UD.loadCoachClients:',error.message);return [];}
+    return data||[];
+  },
+};
+
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){
   const pad=b64.length%4===0?b64:b64+'='.repeat(4-b64.length%4);
