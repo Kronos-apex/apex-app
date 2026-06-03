@@ -1715,6 +1715,12 @@ const UD={
   },
 };
 
+// Modo auth: true cuando el usuario entró por Supabase Auth (fila user_data) en vez del
+// camino legacy (blob global). En modo auth NO se escribe ni se sondea el blob global
+// `apex_data` (los datos viven en user_data vía UD) → evita contaminar la nube legacy
+// durante la transición. Persiste solo lo del usuario por su propia fila (2.2d).
+let AUTH_MODE=false;
+
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){
   const pad=b64.length%4===0?b64:b64+'='.repeat(4-b64.length%4);
@@ -1802,6 +1808,7 @@ let _msgPollInt=null;
 
 async function pollMessages(){
   if(!CUR.loggedAs||!SB_URL)return;
+  if(AUTH_MODE)return; // mensajería en modo auth = vía user_data (2.2d/e), no el blob global
   try{
     const res=await fetch(`${SB_URL}/rest/v1/apex_data?select=value&key=eq.ax_m`,{
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
@@ -1959,6 +1966,7 @@ function svNow(k,v){
 function canCloudWrite(){return location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';}
 async function sbSet(k,v){
   if(!canCloudWrite()){return;}
+  if(AUTH_MODE){return;} // en modo auth los datos van a user_data (UD), no al blob global
   // Anti-borrado: nunca subir vacíos ax_c (asesorados) ni ax_e (biblioteca) — casi siempre es un bug, no intención.
   if((k==='ax_c'||k==='ax_e')&&Array.isArray(v)&&v.length===0){warn('AVI: push vacío bloqueado para',k,'(anti-borrado masivo)');return;}
   const dot=document.getElementById('sync-dot');
@@ -2377,6 +2385,20 @@ async function doLogin(){
   // Disable button while verifying (prevents double-click timing attacks)
   if(btn){btn.disabled=true;btn.textContent='Verificando...';}
   try{
+    // ── Auth real (Supabase) PRIMERO — cuentas nuevas/migradas ──
+    // Si la cuenta existe en Supabase Auth, entra por aquí (modo user_data + RLS).
+    // Si no (coach actual + 9 asesorados aún sin migrar), cae al camino legacy de abajo.
+    if(AUTH.ready()){
+      try{
+        const r=await AUTH.signInEmail(u,p);
+        if(r&&!r.error&&r.data&&r.data.session){
+          err.classList.remove('on');
+          resetLoginAttempts();
+          await _enterAuthSession(r.data.user);
+          return;
+        }
+      }catch(e){ warn('AVI auth login (cae a legacy):',e&&e.message); }
+    }
     // Coach auth
     if(u===getCoachEmail()){
       const ok=await verifyCoachPass(p);
@@ -2464,6 +2486,14 @@ async function doLogin(){
 function logout(){
   if(typeof _stopRest==='function')_stopRest(); else if(restInt){clearInterval(restInt);restInt=null;}
   stopMsgPolling();
+  // Si estábamos en modo auth: cerrar la sesión Supabase y restaurar el estado legacy
+  // en memoria (la próxima cuenta legacy necesita el DB global, no el del usuario auth).
+  if(AUTH_MODE){
+    try{ AUTH.signOut(); }catch(e){}
+    AUTH_MODE=false;
+    DB.clients=ld('ax_c',[]);DB.msgs=ld('ax_m',{});DB.history=ld('ax_hist',{});DB.prs=ld('ax_pr',{});
+    DB.bodyweight=ld('ax_bw',{});DB.medidas=ld('ax_med',{});DB.nutrition=ld('ax_nut',{});DB.photos=ld('ax_photos',{});
+  }
   // Borrar sesión guardada — próxima vez pedirá login
   localStorage.removeItem('ax_session');
   showScreen('s-login');
@@ -3078,12 +3108,20 @@ function initRememberMe(){
 }
 
 // Boot: sync from cloud then show login
-syncFromCloud().then(()=>{
+syncFromCloud().then(async ()=>{
   initTheme();
   initRememberMe();
   initPWA();
-  // ── Auto-login: restaurar sesión guardada ──
-  tryAutoLogin();
+  // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
+  let authEntered=false;
+  try{
+    if(AUTH.ready()){
+      const session=await AUTH.getSession();
+      if(session&&session.user){ await _enterAuthSession(session.user); authEntered=true; }
+    }
+  }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
+  // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
+  if(!authEntered) tryAutoLogin();
   // ── Back button: evitar que el gesto/botón físico cierre la app ──
   history.pushState({apex:true},'');
   window.addEventListener('popstate',function(){
@@ -3639,8 +3677,76 @@ function _autoGenerateWeek(c){
   return res;
 }
 
+// ── Modo auth: poblar DB SOLO con el usuario logueado (aislado del blob global) ──
+// coll = colecciones de SU fila user_data {history,prs,bodyweight,medidas,nutrition,photos,msgs}.
+// La app indexa por clientId, así que envolvemos cada colección en {[id]: …}.
+function _applyAuthClientDB(client, coll){
+  coll=coll||{};
+  const id=client.id;
+  DB.clients=[client];
+  DB.history   ={[id]: coll.history   ||[]};
+  DB.prs       ={[id]: coll.prs       ||{}};
+  DB.bodyweight={[id]: coll.bodyweight||[]};
+  DB.medidas   ={[id]: coll.medidas   ||[]};
+  DB.nutrition ={[id]: coll.nutrition ||{}};
+  DB.photos    ={[id]: coll.photos    ||[]};
+  DB.msgs      ={[id]: coll.msgs      ||[]};
+}
+
+// Perfil mínimo desde la metadata del usuario Auth (lo que se guardó en signUp).
+function _profileFromMeta(authUser){
+  const m=(authUser&&authUser.user_metadata)||{};
+  return {
+    name:m.name||((authUser&&authUser.email)||'').split('@')[0]||'Crack',
+    email:authUser&&authUser.email,
+    goal:m.goal||'Salud general', level:m.level||'Principiante', days:parseInt(m.days)||3,
+    sex:m.sex||null, age:m.age||null, weight:m.weight||null, height:m.height||null, place:m.place||'gym',
+  };
+}
+
+// Provisiona la fila de un asesorado libre nuevo: arma el cliente, genera su semana y
+// crea su fila en user_data. Se usa en el 1er ingreso (registro o primer login tras confirmar).
+async function _provisionFreeClient(authUser, p){
+  const rec={
+    id:authUser.id, name:p.name, email:authUser.email||p.email,
+    goal:p.goal, level:p.level, weight:p.weight, height:p.height,
+    age:p.age, sex:p.sex, activityFactor:1.55, days:p.days, place:p.place,
+    notes:'', phone:'', selfReg:true, tier:'libre', routines:[],
+    createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
+  };
+  _applyAuthClientDB(rec,{}); // colecciones vacías (usuario nuevo)
+  try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); }
+  try{ await UD.createFromClient(rec,{role:'client',coachId:null}); }
+  catch(e){ warn('AVI: crear fila user_data falló:',e&&e.message); }
+  return rec;
+}
+
+// Entra a la app en modo auth para un usuario con sesión Supabase. Carga su fila (o la
+// provisiona si es su 1er ingreso). Por ahora todos los auth users son asesorados libres;
+// el rol coach se conecta en 2.2e.
+async function _enterAuthSession(authUser){
+  AUTH_MODE=true;
+  let client;
+  const row=await UD.loadOwn();
+  if(row){
+    client=rowToClient(row);
+    _applyAuthClientDB(client,{
+      history:row.history, prs:row.prs, bodyweight:row.bodyweight,
+      medidas:row.medidas, nutrition:row.nutrition, photos:row.photos, msgs:row.msgs,
+    });
+  } else {
+    client=await _provisionFreeClient(authUser,_profileFromMeta(authUser));
+  }
+  CUR.loggedAs='client'; CUR.clientId=client.id;
+  showScreen('s-client');
+  initClientView(client);
+  startMsgPolling();
+  return client;
+}
+
 async function signupClient(){
   const err=document.getElementById('su-err');
+  const btn=document.querySelector('#cin-card .lbtn, #cin-card button[onclick*="signupClient"]');
   const g=id=>document.getElementById(id);
   const data={
     name:g('su-name').value.trim(),
@@ -3655,29 +3761,36 @@ async function signupClient(){
     weight:parseFloat(g('su-weight').value)||null,
     height:parseFloat(g('su-height').value)||null,
   };
-  const v=validateSignup(data,DB.clients,getCoachEmail());
+  const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
+  if(!AUTH.ready()){err.textContent='Sin conexión para crear la cuenta. Revisa tu internet.';err.classList.add('on');return;}
   err.classList.remove('on');
-  const clientId=uid();
-  const hashedPass=await hashClientPass(data.password,clientId);
-  const rec={
-    id:clientId,name:data.name,email:data.email,password:hashedPass,
-    goal:data.goal,level:data.level,weight:data.weight,height:data.height,
-    age:data.age,sex:data.sex,activityFactor:1.55,days:data.days,place:data.place,
-    notes:'',phone:'',selfReg:true,tier:'libre',routines:[],
-    createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()
-  };
-  DB.clients.push(rec);
-  // La auto-generación nunca debe bloquear el alta: si falla, entra igual (con botón para generar).
-  try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación en registro falló (no bloquea):',e&&e.message); }
-  svNow('ax_c',DB.clients);
-  // Auto-login (mismo camino que doLogin para cliente)
-  localStorage.setItem('ax_session',JSON.stringify({role:'client',clientId,expiresAt:Date.now()+30*24*60*60*1000}));
-  CUR.loggedAs='client';CUR.clientId=clientId;
-  showScreen('s-client');
-  initClientView(rec);
-  startMsgPolling();
-  toast('🎉 ¡Bienvenido a AVI! Tu rutina ya está lista.');
+  if(btn){btn.disabled=true;}
+  try{
+    // 1. Crear cuenta en Supabase Auth (la contraseña la maneja Auth; el perfil va en metadata)
+    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,selfReg:true};
+    let res;
+    try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
+    catch(e){ err.textContent='No se pudo crear la cuenta. Intenta de nuevo.';err.classList.add('on');return; }
+    if(res.error){
+      const m=res.error.message||'';
+      err.textContent=/registered|already|exists/i.test(m)?'Ya existe una cuenta con ese email. Inicia sesión.':('No se pudo crear: '+m);
+      err.classList.add('on');return;
+    }
+    const session=res.data&&res.data.session;
+    const user=res.data&&res.data.user;
+    // 2. Si Supabase exige confirmar correo, no hay sesión aún → provisionará en el 1er login.
+    if(!session){
+      err.classList.remove('on');
+      toast('📧 Te enviamos un correo para confirmar tu cuenta. Confírmalo e inicia sesión.');
+      return;
+    }
+    // 3. Hay sesión → provisionar (rutina auto-generada + fila) y entrar.
+    await _enterAuthSession(user);
+    toast('🎉 ¡Bienvenido a AVI! Tu rutina ya está lista.');
+  } finally {
+    if(btn){btn.disabled=false;}
+  }
 }
 
 // Regenerar la semana desde la vista del asesorado (solo modo libre).
