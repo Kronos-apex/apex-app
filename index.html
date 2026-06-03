@@ -824,9 +824,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </head>
 <body>
 
-<!-- Volver al panel del coach (visible solo cuando el coach está en "Mi entrenamiento") -->
-<div id="coach-self-back" onclick="backToCoachPanel()" style="display:none;position:fixed;bottom:max(78px,calc(env(safe-area-inset-bottom) + 78px));left:50%;transform:translateX(-50%);z-index:9000;align-items:center;gap:8px;background:#06231A;color:#10E0A0;border:1px solid #10E0A0;border-radius:30px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45)">← Volver al panel del coach</div>
-
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
   <div class="ld-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
@@ -1165,6 +1162,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
             AVI
     </div>
     <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn bg bsm" id="coach-self-topbar-btn" onclick="backToCoachPanel()" style="display:none">← Panel</button>
       <div id="cn-greet" style="font-size:13px;color:var(--t2)"></div>
       <button class="btn bsm" id="cn-help-btn" onclick="openHelp()" style="background:var(--gl);color:var(--g);font-weight:700">❓ Ayuda</button>
       <button class="btn bg bsm" onclick="logout()">Salir</button>
@@ -3943,13 +3941,13 @@ async function openMyTraining(){
   _applyAuthClientDB(me,{history:row.history,prs:row.prs,bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs});
   CUR.loggedAs='client'; CUR.clientId=me.id; // vista de asesorado, pero sigue siendo el coach
   closeDrawer();
-  const bk=document.getElementById('coach-self-back'); if(bk)bk.style.display='flex';
+  const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='';
   showScreen('s-client');
   initClientView(me);
 }
 async function backToCoachPanel(){
   COACH_SELF=false; CUR.clientId=null;
-  const bk=document.getElementById('coach-self-back'); if(bk)bk.style.display='none';
+  const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='none';
   await _loadCoachClientsIntoDB();
   CUR.loggedAs='coach';
   showScreen('s-coach');
