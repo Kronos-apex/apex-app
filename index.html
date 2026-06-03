@@ -1713,6 +1713,16 @@ const UD={
     if(error){warn('UD.loadCoachClients:',error.message);return [];}
     return data||[];
   },
+  // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
+  // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.
+  async updateClientRow(clientId,patch){
+    const c=AUTH.client();if(!c)throw new Error('Auth no disponible');
+    const {data,error}=await c.from('user_data')
+      .update(Object.assign({updated_at:new Date().toISOString()},patch||{}))
+      .eq('user_id',clientId).select().maybeSingle();
+    if(error)throw error;
+    return data;
+  },
 };
 
 // Modo auth: true cuando el usuario entró por Supabase Auth (fila user_data) en vez del
@@ -1720,6 +1730,7 @@ const UD={
 // `apex_data` (los datos viven en user_data vía UD) → evita contaminar la nube legacy
 // durante la transición. Persiste solo lo del usuario por su propia fila (2.2d).
 let AUTH_MODE=false;
+let AUTH_ROLE='client'; // 'client' | 'coach' — rol del usuario auth logueado
 
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){
@@ -1974,6 +1985,9 @@ function _persistAuthUserDebounced(k,v){
   _udDebounce[k]=setTimeout(()=>_persistAuthUser(k,v),800);
 }
 async function _persistAuthUser(k,v){
+  // Coach en modo auth: la escritura por-cliente se conecta en 2.2e-2. Por ahora se
+  // difiere (no-op) para no escribir por error en la propia fila del coach.
+  if(AUTH_ROLE==='coach'){ warn('AVI: escritura de coach en modo auth pendiente (2.2e-2):',k); return; }
   const id=CUR.clientId; if(!id)return;
   try{
     if(k==='ax_c'){
@@ -2521,7 +2535,7 @@ function logout(){
   // en memoria (la próxima cuenta legacy necesita el DB global, no el del usuario auth).
   if(AUTH_MODE){
     try{ AUTH.signOut(); }catch(e){}
-    AUTH_MODE=false;
+    AUTH_MODE=false; AUTH_ROLE='client';
     DB.clients=ld('ax_c',[]);DB.msgs=ld('ax_m',{});DB.history=ld('ax_hist',{});DB.prs=ld('ax_pr',{});
     DB.bodyweight=ld('ax_bw',{});DB.medidas=ld('ax_med',{});DB.nutrition=ld('ax_nut',{});DB.photos=ld('ax_photos',{});
   }
@@ -3757,8 +3771,11 @@ async function _provisionFreeClient(authUser, p){
 // el rol coach se conecta en 2.2e.
 async function _enterAuthSession(authUser){
   AUTH_MODE=true;
-  let client;
   const row=await UD.loadOwn();
+  // Rol coach: carga SOLO sus clientes (filas con coach_id = su uid) y abre el panel.
+  if(row&&row.role==='coach'){ AUTH_ROLE='coach'; return await _enterCoachAuth(authUser,row); }
+  AUTH_ROLE='client';
+  let client;
   if(row){
     client=rowToClient(row);
     _applyAuthClientDB(client,{
@@ -3773,6 +3790,29 @@ async function _enterAuthSession(authUser){
   initClientView(client);
   startMsgPolling();
   return client;
+}
+
+// Coach en modo auth: trae sus clientes (RLS filtra por coach_id) y los carga al DB.
+// 2.2e-1 = solo lectura/visualización; la escritura del coach (convertir/editar/chat)
+// se conecta en 2.2e-2 (por ahora _persistAuthUser la difiere en rol coach).
+async function _enterCoachAuth(authUser, ownRow){
+  const rows=await UD.loadCoachClients();
+  DB.clients=rows.map(rowToClient);
+  DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
+  rows.forEach(r=>{
+    const id=r.user_id;
+    DB.history[id]   =r.history   ||[];
+    DB.msgs[id]      =r.msgs      ||[];
+    DB.prs[id]       =r.prs       ||{};
+    DB.bodyweight[id]=r.bodyweight||[];
+    DB.medidas[id]   =r.medidas   ||[];
+    DB.nutrition[id] =r.nutrition ||{};
+    DB.photos[id]    =r.photos    ||[];
+  });
+  CUR.loggedAs='coach'; CUR.clientId=null;
+  showScreen('s-coach');
+  initCoach();
+  return null;
 }
 
 async function signupClient(){
