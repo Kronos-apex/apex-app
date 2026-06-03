@@ -824,6 +824,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </head>
 <body>
 
+<!-- Volver al panel del coach (visible solo cuando el coach está en "Mi entrenamiento") -->
+<div id="coach-self-back" onclick="backToCoachPanel()" style="display:none;position:fixed;bottom:max(78px,calc(env(safe-area-inset-bottom) + 78px));left:50%;transform:translateX(-50%);z-index:9000;align-items:center;gap:8px;background:#06231A;color:#10E0A0;border:1px solid #10E0A0;border-radius:30px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45)">← Volver al panel del coach</div>
+
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
   <div class="ld-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
@@ -948,6 +951,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <div class="sbsect">Principal</div>
     <div class="sbi on" onclick="gp('p-home',this,'Inicio')" id="sbi-home"><span class="ic">🏠</span>Inicio</div>
+    <div class="sbi" onclick="openMyTraining()" id="sbi-mytraining"><span class="ic">💪</span>Mi entrenamiento</div>
     <div class="sbi" onclick="gp('p-clients',this,'Asesorados')" id="sbi-clients"><span class="ic">👥</span>Asesorados<span class="bdg" id="bdg">0</span></div>
     <div class="sbi" onclick="gp('p-progress',this,'Cargas');renderProgressPanel()" id="sbi-progress"><span class="ic">📈</span>Cargas</div>
     <div class="sbi" onclick="gp('p-exercises',this,'Ejercicios')" id="sbi-exercises"><span class="ic">🏋️</span>Ejercicios</div>
@@ -1730,6 +1734,7 @@ const UD={
 // durante la transición. Persiste solo lo del usuario por su propia fila (2.2d).
 let AUTH_MODE=false;
 let AUTH_ROLE='client'; // 'client' | 'coach' — rol del usuario auth logueado
+let COACH_SELF=false;   // true cuando el coach está viendo SU propio entrenamiento (guarda en su fila)
 
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){
@@ -1985,7 +1990,8 @@ function _persistAuthUserDebounced(k,v){
 }
 async function _persistAuthUser(k,v){
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.
-  if(AUTH_ROLE==='coach'){ return await _persistCoachWrite(k,v); }
+  if(AUTH_ROLE==='coach' && !COACH_SELF){ return await _persistCoachWrite(k,v); }
+  // COACH_SELF (coach en su propio entreno) o cliente normal → escribe en SU propia fila.
   const id=CUR.clientId; if(!id)return;
   try{
     if(k==='ax_c'){
@@ -3900,7 +3906,8 @@ async function _enterAuthSession(authUser){
 // Coach en modo auth: trae sus clientes (RLS filtra por coach_id) y los carga al DB.
 // 2.2e-1 = solo lectura/visualización; la escritura del coach (convertir/editar/chat)
 // se conecta en 2.2e-2 (por ahora _persistAuthUser la difiere en rol coach).
-async function _enterCoachAuth(authUser, ownRow){
+// Carga las filas de los clientes del coach al DB (reusado al entrar y al volver de "Mi entrenamiento").
+async function _loadCoachClientsIntoDB(){
   const rows=await UD.loadCoachClients();
   DB.clients=rows.map(rowToClient);
   DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
@@ -3915,10 +3922,38 @@ async function _enterCoachAuth(authUser, ownRow){
     DB.photos[id]    =r.photos    ||[];
   });
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
-  CUR.loggedAs='coach'; CUR.clientId=null;
+}
+
+async function _enterCoachAuth(authUser, ownRow){
+  await _loadCoachClientsIntoDB();
+  CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   showScreen('s-coach');
   initCoach();
   return null;
+}
+
+// "Mi entrenamiento": el coach ve/entrena su PROPIA rutina (su fila user_data) reusando la
+// vista del asesorado. COACH_SELF enruta el guardado a SU fila (no a la de un cliente).
+async function openMyTraining(){
+  let row; try{ row=await UD.loadOwn(); }catch(e){ row=null; }
+  if(!row){ toast('No se pudo cargar tu entrenamiento'); return; }
+  COACH_SELF=true;
+  const me=rowToClient(row);
+  me.tier='premium'; // el coach tiene acceso completo en su propio entrenamiento (sin candados)
+  _applyAuthClientDB(me,{history:row.history,prs:row.prs,bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs});
+  CUR.loggedAs='client'; CUR.clientId=me.id; // vista de asesorado, pero sigue siendo el coach
+  closeDrawer();
+  const bk=document.getElementById('coach-self-back'); if(bk)bk.style.display='flex';
+  showScreen('s-client');
+  initClientView(me);
+}
+async function backToCoachPanel(){
+  COACH_SELF=false; CUR.clientId=null;
+  const bk=document.getElementById('coach-self-back'); if(bk)bk.style.display='none';
+  await _loadCoachClientsIntoDB();
+  CUR.loggedAs='coach';
+  showScreen('s-coach');
+  initCoach();
 }
 
 async function signupClient(){
