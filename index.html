@@ -872,8 +872,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <label class="cin-lbl">Email</label>
       <input id="lu" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
       <label class="cin-lbl">Contraseña</label>
-      <input id="lp" maxlength="100" class="cin-in" type="password" placeholder="••••••••" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative">
+        <input id="lp" maxlength="100" class="cin-in" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:46px"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" onclick="togglePass(this,'lp')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
+      </div>
       <div class="cin-rem">
         <input type="checkbox" id="l-rem" style="width:15px;height:15px;accent-color:#10E0A0;cursor:pointer">
         <label for="l-rem">Recordar mi email</label>
@@ -898,7 +901,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <label class="cin-lbl">Email</label>
       <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
       <label class="cin-lbl">Contraseña</label>
-      <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password">
+      <div style="position:relative">
+        <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password" style="padding-right:46px">
+        <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
+      </div>
       <label class="cin-lbl">Objetivo</label>
       <select id="su-goal" class="cin-in"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
       <label class="cin-lbl">¿Dónde entrenas?</label>
@@ -2433,6 +2439,15 @@ async function verifyClientPass(client, plain){
 // ── Save client password as SHA-256 ──
 async function hashClientPass(plain, clientId){
   return await hashPass(plain, clientId);
+}
+
+// Mostrar/ocultar contraseña (botón 👁). Cambia el type del input y el ícono.
+function togglePass(btn,id){
+  const el=document.getElementById(id); if(!el)return;
+  const show=el.type==='password';
+  el.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁';
+  btn.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');
 }
 
 // Entrar/registrarse con Google (OAuth). signInWithOAuth redirige a Google y vuelve
