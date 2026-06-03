@@ -1985,9 +1985,8 @@ function _persistAuthUserDebounced(k,v){
   _udDebounce[k]=setTimeout(()=>_persistAuthUser(k,v),800);
 }
 async function _persistAuthUser(k,v){
-  // Coach en modo auth: la escritura por-cliente se conecta en 2.2e-2. Por ahora se
-  // difiere (no-op) para no escribir por error en la propia fila del coach.
-  if(AUTH_ROLE==='coach'){ warn('AVI: escritura de coach en modo auth pendiente (2.2e-2):',k); return; }
+  // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.
+  if(AUTH_ROLE==='coach'){ return await _persistCoachWrite(k,v); }
   const id=CUR.clientId; if(!id)return;
   try{
     if(k==='ax_c'){
@@ -2004,6 +2003,45 @@ async function _persistAuthUser(k,v){
     else if(k==='ax_m')      { await UD.upsertOwn({msgs:      (v&&v[id])||[]}); }
     // ax_e/ax_tpl/ax_cn/ax_site/ax_nequi/ax_cph/ax_ce: nivel coach/global → no aplica al cliente libre
   }catch(e){ warn('AVI: persistencia modo auth falló ('+k+'):',e&&e.message); }
+}
+
+// ── Escritura del coach por-cliente (2.2e-2) ──
+// El coach muta DB.* y guarda con sv('ax_c'/'ax_m'/…). Aquí detectamos QUÉ cliente
+// cambió (diff contra _coachSnap) y escribimos SOLO su fila vía UD.updateClientRow
+// (NO toca coach_id/role). Genérico → cubre convertir/editar/asignar rutina/mensajes
+// sin tocar cada función del coach.
+const _coachSnap={};                 // `${k}:${clientId}` -> último JSON persistido
+const _COACH_COL={ax_m:'msgs',ax_hist:'history',ax_pr:'prs',ax_bw:'bodyweight',ax_med:'medidas',ax_nut:'nutrition',ax_photos:'photos'};
+function _coachClientJSON(c){ const row=clientToRow(c,{}); return JSON.stringify({p:row.profile,r:row.routines}); }
+// Toma una "foto" del estado actual de los clientes para no re-escribir lo que no cambió.
+function _primeCoachSnap(){
+  (DB.clients||[]).forEach(c=>{
+    const id=c.id; if(!id)return;
+    _coachSnap['ax_c:'+id]=_coachClientJSON(c);
+    Object.keys(_COACH_COL).forEach(k=>{ const src=DB[_COACH_COL[k]]; _coachSnap[k+':'+id]=JSON.stringify((src&&src[id])||null); });
+  });
+}
+async function _persistCoachWrite(k,v){
+  if(k==='ax_c'){
+    for(const c of (DB.clients||[])){
+      const id=c.id; if(!id)continue;
+      const val=_coachClientJSON(c), sk='ax_c:'+id;
+      if(_coachSnap[sk]===val)continue; // ese cliente no cambió
+      const row=clientToRow(c,{});
+      try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; }
+      catch(e){ warn('AVI coach persist ax_c falló:',id,e&&e.message); }
+    }
+    return;
+  }
+  const col=_COACH_COL[k]; if(!col)return; // ax_e/ax_tpl/ax_cn/…: nivel coach, fuera de alcance 2.2e-2
+  for(const c of (DB.clients||[])){
+    const id=c.id; if(!id)continue;
+    const slice=v&&v[id]; if(slice===undefined)continue;
+    const val=JSON.stringify(slice), sk=k+':'+id;
+    if(_coachSnap[sk]===val)continue;
+    try{ await UD.updateClientRow(id,{[col]:slice}); _coachSnap[sk]=val; }
+    catch(e){ warn('AVI coach persist '+k+' falló:',id,e&&e.message); }
+  }
 }
 
 // ⚠️ Solo escribir a la nube desde https/localhost — NUNCA desde file://.
@@ -3809,6 +3847,7 @@ async function _enterCoachAuth(authUser, ownRow){
     DB.nutrition[id] =r.nutrition ||{};
     DB.photos[id]    =r.photos    ||[];
   });
+  _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
   CUR.loggedAs='coach'; CUR.clientId=null;
   showScreen('s-coach');
   initCoach();
