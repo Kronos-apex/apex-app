@@ -1946,6 +1946,9 @@ function setTheme(mode){
 const _sbDebounce = {};
 const _pendingPush = {}; // clave -> último valor AÚN NO confirmado en la nube (reintentable)
 function sv(k,v){
+  // Modo auth: las claves por-usuario van a SU fila user_data (no a localStorage global
+  // ni al blob legacy) → evita contaminar la nube/caché legacy. Debounce 800ms.
+  if(AUTH_MODE&&SB_KEYS.includes(k)){ _persistAuthUserDebounced(k,v); return; }
   // Guardar en localStorage inmediatamente (nunca pierde datos)
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   // Enviar a Supabase con debounce de 1.5s (excepto operaciones críticas)
@@ -1957,8 +1960,36 @@ function sv(k,v){
 }
 // Forzar sync inmediato (para logout, completar entrenamiento, etc.)
 function svNow(k,v){
+  if(AUTH_MODE&&SB_KEYS.includes(k)){ _persistAuthUser(k,v); return; }
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   if(SB_KEYS.includes(k)){_pendingPush[k]=v;clearTimeout(_sbDebounce[k]);sbSet(k,v);}
+}
+
+// ── Persistencia en modo auth: mapea cada clave ax_* a la columna de la fila del
+// usuario logueado y la guarda con UD.upsertOwn (RLS por JWT). Las colecciones del
+// usuario viven indexadas por su id en DB.*, así que extraemos su porción (v[id]).
+const _udDebounce={};
+function _persistAuthUserDebounced(k,v){
+  clearTimeout(_udDebounce[k]);
+  _udDebounce[k]=setTimeout(()=>_persistAuthUser(k,v),800);
+}
+async function _persistAuthUser(k,v){
+  const id=CUR.clientId; if(!id)return;
+  try{
+    if(k==='ax_c'){
+      const client=(DB.clients&&DB.clients[0])||null; if(!client)return;
+      const row=clientToRow(client,{}); // perfil (escalares) + rutinas, sin tocar coach_id/role
+      await UD.upsertOwn({profile:row.profile, routines:row.routines});
+    }
+    else if(k==='ax_hist')   { await UD.upsertOwn({history:   (v&&v[id])||[]}); }
+    else if(k==='ax_pr')     { await UD.upsertOwn({prs:       (v&&v[id])||{}}); }
+    else if(k==='ax_bw')     { await UD.upsertOwn({bodyweight:(v&&v[id])||[]}); }
+    else if(k==='ax_med')    { await UD.upsertOwn({medidas:   (v&&v[id])||[]}); }
+    else if(k==='ax_nut')    { await UD.upsertOwn({nutrition: (v&&v[id])||{}}); }
+    else if(k==='ax_photos') { await UD.upsertOwn({photos:    (v&&v[id])||[]}); }
+    else if(k==='ax_m')      { await UD.upsertOwn({msgs:      (v&&v[id])||[]}); }
+    // ax_e/ax_tpl/ax_cn/ax_site/ax_nequi/ax_cph/ax_ce: nivel coach/global → no aplica al cliente libre
+  }catch(e){ warn('AVI: persistencia modo auth falló ('+k+'):',e&&e.message); }
 }
 
 // ⚠️ Solo escribir a la nube desde https/localhost — NUNCA desde file://.
