@@ -33,6 +33,9 @@ const {
   bodyLoadProfile,
   validateSignup,
   isFreeClient,
+  clientToRow,
+  rowToClient,
+  USER_DATA_COLLECTIONS,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -927,6 +930,68 @@ test('isFreeClient: solo tier "libre" es free; coach-creados y premium tienen ac
   assert.strictEqual(isFreeClient({ tier: 'premium' }), false);
   assert.strictEqual(isFreeClient({}), false);          // creado por coach (sin tier)
   assert.strictEqual(isFreeClient(null), false);
+});
+
+// ══════════════════════════════════════════════════════
+// 18. Mapeo cliente <-> fila user_data (Fase 2 — auth/RLS)
+// ══════════════════════════════════════════════════════
+console.log('\n── 18. Mapeo user_data (Fase 2 auth) ──');
+
+const SAMPLE_CLIENT = {
+  id: 'c1', name: 'Ana', email: 'ana@mail.com', password: 'sha256:abc',
+  goal: 'Perder grasa', level: 'Principiante', days: 3, sex: 'F', age: 30,
+  tier: 'libre', selfReg: true, place: 'gym',
+  routines: [{ id: 'r1', day: 'Lunes', exercises: [] }],
+};
+
+test('clientToRow: separa perfil/rutinas y mueve el id a user_id', () => {
+  const row = clientToRow(SAMPLE_CLIENT, { coachId: null, role: 'client' });
+  assert.strictEqual(row.user_id, 'c1');
+  assert.strictEqual(row.coach_id, null);
+  assert.strictEqual(row.role, 'client');
+  assert.strictEqual(row.routines.length, 1);
+  assert.strictEqual(row.profile.name, 'Ana');
+  assert.strictEqual(row.profile.tier, 'libre');
+});
+
+test('clientToRow: NUNCA filtra la contraseña ni el id al perfil', () => {
+  const row = clientToRow(SAMPLE_CLIENT, {});
+  assert.ok(!('password' in row.profile), 'password no debe estar en profile (lo maneja Auth)');
+  assert.ok(!('id' in row.profile), 'id no debe duplicarse en profile (vive en user_id)');
+  assert.ok(!('routines' in row.profile), 'routines tiene su propia columna');
+});
+
+test('clientToRow: coach_id se setea al convertir a Premium (coach asignado)', () => {
+  const row = clientToRow({ ...SAMPLE_CLIENT, tier: 'premium' }, { coachId: 'coach-uid' });
+  assert.strictEqual(row.coach_id, 'coach-uid');
+  assert.strictEqual(row.profile.tier, 'premium');
+});
+
+test('rowToClient: reconstruye {id, ...perfil, routines}', () => {
+  const row = clientToRow(SAMPLE_CLIENT, {});
+  const back = rowToClient(row);
+  assert.strictEqual(back.id, 'c1');
+  assert.strictEqual(back.name, 'Ana');
+  assert.strictEqual(back.tier, 'libre');
+  assert.strictEqual(back.routines.length, 1);
+  assert.strictEqual(back.password, undefined); // la auth la maneja, no vuelve
+});
+
+test('round-trip client→row→client conserva el perfil (sin password)', () => {
+  const back = rowToClient(clientToRow(SAMPLE_CLIENT, {}));
+  const { password, ...expected } = SAMPLE_CLIENT;
+  assert.deepStrictEqual(back, expected);
+});
+
+test('rowToClient: tolera fila vacía/parcial sin romper', () => {
+  assert.deepStrictEqual(rowToClient(null), { id: null, routines: [] });
+  assert.deepStrictEqual(rowToClient({ user_id: 'x' }), { id: 'x', routines: [] });
+});
+
+test('USER_DATA_COLLECTIONS lista las colecciones por-usuario esperadas', () => {
+  assert.ok(USER_DATA_COLLECTIONS.includes('history'));
+  assert.ok(USER_DATA_COLLECTIONS.includes('msgs'));
+  assert.ok(!USER_DATA_COLLECTIONS.includes('routines')); // routines es columna propia
 });
 
 // ══════════════════════════════════════════════════════

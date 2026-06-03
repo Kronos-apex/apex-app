@@ -816,6 +816,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @media (prefers-reduced-motion:reduce){.cwelcome.on .cw-mark,.cwelcome.on .cw-hi,.cwelcome.on .cw-line,.cwelcome.on .cw-btn{animation:none;opacity:1;transform:none}}
 
 </style>
+
+<!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
+     el cliente se inicializa LAZY (solo al usar login/registro), así el boot
+     offline-first NUNCA depende de este CDN. Si no carga, AUTH degrada con gracia. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -1642,6 +1647,36 @@ const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
 const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi'];
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
+
+// ══════════ SUPABASE AUTH — Fase 2 (login real, fila por usuario) ══════════
+// supabase-js se carga por CDN con `defer`. El cliente se crea LAZY: solo al usar
+// login/registro, jamás en el arranque → el boot offline-first NUNCA depende del CDN.
+// Si la librería no cargó (sin red / file://), las funciones degradan con gracia y la
+// app sigue funcionando con el camino actual (localStorage). NADA llama a AUTH todavía:
+// es el cimiento que el paso 2.2 (reescritura de login + capa de datos) va a conectar.
+let _sbc=null;
+function sbAuthReady(){return typeof window!=='undefined'&&!!window.supabase&&typeof window.supabase.createClient==='function';}
+function sbAuthClient(){
+  if(_sbc)return _sbc;
+  if(!sbAuthReady())return null;
+  _sbc=window.supabase.createClient(SB_URL,SB_KEY,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'avi_auth'}
+  });
+  return _sbc;
+}
+const AUTH={
+  ready(){return sbAuthReady();},
+  client(){return sbAuthClient();},
+  async getSession(){const c=sbAuthClient();if(!c)return null;const {data}=await c.auth.getSession();return (data&&data.session)||null;},
+  async getUser(){const c=sbAuthClient();if(!c)return null;const {data}=await c.auth.getUser();return (data&&data.user)||null;},
+  async signUpEmail(email,password,meta){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signUp({email,password,options:{data:meta||{}}});},
+  async signInEmail(email,password){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithPassword({email,password});},
+  async signInGoogle(){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});},
+  async sendMagicLink(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});},
+  async resetPassword(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});},
+  async signOut(){const c=sbAuthClient();if(!c)return;return await c.auth.signOut();},
+  onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((_e,session)=>cb(session));},
+};
 
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){

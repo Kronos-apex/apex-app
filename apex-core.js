@@ -625,6 +625,50 @@ function isFreeClient(client) {
   return !!(client && client.tier === 'libre');
 }
 
+// ══════════ FASE 2 — Auth + fila por usuario (modelo user_data) ══════════
+// La tabla user_data (Supabase) tiene una fila por usuario con columnas:
+//   user_id, coach_id, role, profile(jsonb), routines, history, prs, bodyweight,
+//   medidas, nutrition, photos, msgs, updated_at.
+// En la app de hoy un "cliente" (DB.clients[i]) mezcla perfil + rutinas + id, y las
+// colecciones (history/prs/…) viven globales indexadas por clientId. Estos helpers
+// PUROS traducen entre el objeto cliente de la app y su fila user_data, para que la
+// reescritura de la capa de datos (paso 2.2) los reuse en vez de inventar el mapeo.
+
+// Colecciones por-usuario que en el modelo nuevo viven en SU PROPIA fila (no globales).
+const USER_DATA_COLLECTIONS = ['history', 'prs', 'bodyweight', 'medidas', 'nutrition', 'photos', 'msgs'];
+
+// Cliente → fila user_data. Separa el perfil (escalares) de las rutinas y el id.
+// La contraseña NO viaja: Supabase Auth la maneja → se omite del perfil.
+// opts: {coachId, role, userId}. coach_id = opts.coachId (null = libre/sin coach).
+function clientToRow(client, opts) {
+  client = client || {};
+  opts = opts || {};
+  const profile = {};
+  Object.keys(client).forEach(k => {
+    if (k === 'id' || k === 'routines' || k === 'password') return;
+    profile[k] = client[k];
+  });
+  const coachId = (opts.coachId !== undefined ? opts.coachId : client.coach_id);
+  return {
+    user_id: client.id || opts.userId || null,
+    coach_id: coachId || null,
+    role: opts.role || 'client',
+    profile,
+    routines: Array.isArray(client.routines) ? client.routines : [],
+  };
+}
+
+// Fila user_data → cliente de la app. Reconstruye el objeto que esperan los renders:
+// {id, ...perfil, routines}. (Las colecciones se cargan aparte a DB.history[id], etc.)
+function rowToClient(row) {
+  row = row || {};
+  const profile = row.profile || {};
+  return Object.assign({}, profile, {
+    id: row.user_id || profile.id || null,
+    routines: Array.isArray(row.routines) ? row.routines : [],
+  });
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -656,5 +700,8 @@ if (typeof module !== 'undefined' && module.exports) {
     bodyLoadProfile,
     validateSignup,
     isFreeClient,
+    USER_DATA_COLLECTIONS,
+    clientToRow,
+    rowToClient,
   };
 }
