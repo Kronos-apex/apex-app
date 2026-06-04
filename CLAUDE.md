@@ -722,10 +722,26 @@ git push origin main
 
 **👉 RETOMAR MAÑANA (2026-06-04):** el plan Auth+RLS quedó TERMINADO; no hay nada urgente de código. Orden sugerido al arrancar:
 1. **Chequear si Astrid y Nataly ya entraron** al sistema nuevo: `select email,last_sign_in_at from auth.users where email in ('astrid@apex.com','nataly@apex.com')`. Si su `last_sign_in_at` sigue null, recordarle a Camilo que les pase la clave (`Astrid2026`/`Nataly2026`) y que cierren sesión + entren por Auth (su PWA sigue en legacy sin sincronizar hasta entonces).
-2. **Camino "abrir al público"** (lo único que falta del plan): conectar SMTP propio en Supabase + reactivar "Confirm email" (hoy OFF) + (opcional) borrar cuentas de prueba que reaparezcan.
+2. **Camino "abrir al público"** ✅ **HECHO (2026-06-04):** SMTP Brevo conectado + "Confirm email" ACTIVADO + plantillas en español. Registro público DESBLOQUEADO (ver sesión 2026-06-04 abajo).
 3. **Camino "pulir auth"** (cabos menores, sin bloquear): mover push a cliente autenticado (cierra los 2 WARN de `push_subscriptions`); `requestCoach` que setee `coach_id` (ya hay `COACH_UID=0a6484ed-…`); chat en vivo (realtime/poll sobre user_data) en modo auth; ajustes nivel-coach (`ax_e`/`ax_tpl`) aún globales; cola de reintento de upserts; CSS muerto `.apex-logo`.
 
 Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_avi_auth_rls_plan`.
+
+### ✅ Sesión 2026-06-04 — SMTP propio + Confirm email + plantillas en español (registro público DESBLOQUEADO)
+
+**Lo único que faltaba del plan Auth+RLS para abrir al público quedó hecho.** Todo es **configuración de Supabase Auth** (server-side, vía Management API con PAT temporal ya revocado) — **NO hubo cambios de código** en el repo; `index.html` ya manejaba el flujo de confirmación.
+
+**SMTP — proveedor Brevo** (gratis, no requiere dominio; verificación de remitente único):
+- Config en Supabase auth (`PATCH /v1/projects/eoebhrxbokyllqalyecj/config/auth`): `smtp_host=smtp-relay.brevo.com`, `smtp_port="587"` (⚠️ **STRING**, no number — la API rechaza el número con "Expected string"), `smtp_user=ad8dd7001@smtp-brevo.com`, `smtp_admin_email=aviapptraining2020@gmail.com` (remitente del rebrand AVI, **verificado** en Brevo), `smtp_sender_name=AVI`, `rate_limit_email_sent=30`/h (era 2 — el SMTP de prueba con 2/h era el bloqueador original).
+- ⚠️ **Un PATCH parcial de campos `smtp_*` BORRA el bloque SMTP completo** → reenviar SIEMPRE todo el bloque (incluido `smtp_pass`).
+- Tropezones resueltos (en orden): (1) Brevo bloqueaba por **"IPs autorizadas"** (error SMTP `525 5.7.1 Unauthorized IP address`) → Camilo apagó el filtro en `app.brevo.com/security/authorised_ips` ("Desactivar para claves SMTP"). (2) **Remitente no verificado** (error Brevo "sender is not valid") → verificar el sender en `app.brevo.com/senders/list` (clic en el enlace que Brevo manda a esa bandeja). **NO era DMARC** (gmail.com usa `p=none`, sí entrega una vez verificado el remitente).
+- Verificado **end-to-end**: el magic link de Supabase llegó a `aviapptraining2020@gmail.com`.
+
+**Confirm email ACTIVADO** (`mailer_autoconfirm=false`). La app ya lo soporta: `signupClient` (index.html ~L3934-3941) — si `signUp` no devuelve sesión, muestra toast "📧 Te enviamos un correo para confirmar tu cuenta" y provisiona la rutina en el 1er login. **Sin cambio de código.**
+
+**Plantillas de correo en español + branding AVI** (4: confirmación, magic link, recuperar contraseña, cambio de correo) vía `mailer_subjects_*` + `mailer_templates_*_content`. Diseño: logo **AVI** + lema oficial **"Entrenamiento con nombre propio"** debajo + botón esmeralda `#10E0A0` + cierre cálido **"Tu entrenamiento, contigo. 💚"** (combinación elegida por el PO).
+
+**Nota:** los 6 asesorados con email `@apex.com` (placeholder falso) ya están confirmados → el confirm-email nuevo NO les afecta, pero NO pueden recibir reset por correo (Camilo gestiona sus claves a mano). **Técnica útil documentada:** capturar la pantalla de Camilo con `powershell.exe` + `System.Drawing.CopyFromScreen` (vía Bash→powershell.exe; el tool PowerShell directo dio "not available") para leer su panel de Brevo en vivo.
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
@@ -779,5 +795,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-03 (sesión 2, cierre) · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN — Fase 4 COMPLETA)** · **apex-v64** · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-04 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN — Fase 4 COMPLETA + registro público DESBLOQUEADO)** · **apex-v64** · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-04: 📧 SMTP propio (Brevo, remitente verificado aviapptraining2020@gmail.com) + "Confirm email" ACTIVADO + plantillas de correo en español con branding AVI (4) · todo config server-side vía Management API (sin cambios de código; la app ya soportaba confirm-email) · registro público DESBLOQUEADO · ⚠️ `smtp_port` debe ser STRING y un PATCH parcial de `smtp_*` borra el bloque entero*
 *Hitos sesión 2026-06-03 #2: 🔒 FASE 4 — candados RLS cerrados (eliminadas las 4 políticas `USING(true)` de apex_data + push_subscriptions; fuga crítica anon resuelta) · respaldo legacy de `doLogin` eliminado (login = SOLO Supabase Auth) · migración blindada verificada cliente por cliente + Nataly reconciliada (cero pérdida) · Astrid/Nataly con claves Auth nuevas (`Astrid2026`/`Nataly2026`, Camilo las reparte) · 5 cuentas de prueba borradas · push_subscriptions solo-escritura (tradeoff para no romper registro) · COACH_UID = 0a6484ed-… · caché apex-v63→v64*
