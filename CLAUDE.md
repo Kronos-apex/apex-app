@@ -341,9 +341,10 @@ SB_KEYS = [
 | Pre-commit hook | ✅ Bloquea secrets hardcodeados antes de cualquier commit |
 | Service Worker | ✅ Archivo estático `sw.js` — NUNCA blob URL (rompe Android Chrome) |
 
-**Riesgos conocidos y aceptados (app privada ~8 clientes):**
-- Auth solo en cliente — localStorage manipulable con DevTools (sin RLS en Supabase)
-- Toda la DB se descarga al navegador antes del login (arquitectura offline-first)
+**Estado de auth (v2.0, Fase 4 completa):**
+- ✅ Auth real Supabase + RLS por usuario en `user_data` (`auth.uid()=user_id OR =coach_id`). El login client-side legacy fue eliminado.
+- ✅ `apex_data`/`apex_data_backups` cerradas a anon (blob legacy solo como respaldo). Ya NO se descarga toda la DB antes del login.
+- ⚠️ `push_subscriptions` solo-escritura para anon (tradeoff: conserva registro de push; follow-up = mover a autenticado).
 - Bearer token de Edge Functions = anon key pública (solo riesgo: spam de notificaciones)
 
 ---
@@ -709,9 +710,17 @@ git push origin main
 
 **Features desplegadas post-cutover (apex-v56→v63):** quitado logo viejo "A" (solo wordmark AVI) · verdes unificados a esmeralda (`--g/--g2/--gl/--gt`=esmeralda oscuro, acento `#10E0A0`) · fix botón ☰ invisible en claro · 👁 ver-contraseña (login/registro/coach, `togglePass`) · **Login con Google** (`loginWithGoogle`/`AUTH.signInGoogle`) en login y registro · **Conectar Google** a cuenta existente (`linkGoogle`/`linkIdentity`; **"Manual linking" YA habilitado** vía Management API; VERIFICADO sin pérdida de datos) · fix UX: signups por Google preguntan perfil (`showProfileSetup`/`needsProfile`) antes de generar · **"Mi entrenamiento" del coach** (`openMyTraining`/`backToCoachPanel`/`COACH_SELF`; botón "← Panel" en la cntopbar).
 
-**👉 RETOMAR PRÓXIMA SESIÓN — FASE 4 (cerrar candados):** en cuanto entren al sistema nuevo los 4 que faltan (**Kathe, Miguel, Astrid, Nataly**; Samuel+Natalia ya entraron). Pasos: quitar políticas `USING(true)` de `apex_data`+`push_subscriptions`, quitar respaldo legacy de `doLogin`, re-correr `get_advisors(security)` → debe quedar limpio. Verificar quién entró con: `select email,last_sign_in_at from auth.users where email like '%@apex.com'`.
+**✅ FASE 4 COMPLETADA (2026-06-03, sesión 2) — candados cerrados:**
+- **RLS:** eliminadas las 4 políticas `USING(true)` de `apex_data` (`apex_access`, `apex_open`) y `push_subscriptions` (`apex_access`, `push_access`). `apex_data`/`apex_data_backups` quedan con RLS ON sin política = **bloqueadas a anon** (el blob legacy se conserva INTACTO como respaldo, solo deja de ser legible). **La fuga crítica (anon leía toda la DB) está CERRADA.**
+- **push_subscriptions:** NO se cerró del todo — `subscribePush` hace upsert con la key anon, cerrarla rompería el registro de dispositivos nuevos. Quedó con política **solo-escritura** (`push_write_insert` + `push_write_update`, sin SELECT/DELETE) → anon ya no puede enumerar tokens/clientes, pero sigue registrando. Envío de push sigue por service_role (Edge Functions). Advisor lo marca WARN (permissive write) — **tradeoff aceptado**; follow-up: mover push a cliente autenticado (RLS `client_id=auth.uid()`).
+- **doLogin:** respaldo legacy ELIMINADO (líneas ~2533-2598). Login = SOLO Supabase Auth. Si supabase-js (CDN) no cargó → mensaje "No se pudo conectar" (no "contraseña incorrecta"). `verifyClientPass`/`verifyCoachPass`/`getCoachEmail` siguen definidas (las usa ⚙️ Configuración del coach) pero ya no se llaman en login.
+- **Migración de datos blindada antes de cerrar:** se verificó cliente por cliente que `user_data` ≥ legacy (Miguel/Samuel tenían MÁS en auth; Astrid idéntica; Camilo conserva las 6 sesiones de "Andres Martínez"). **Nataly reconciliada** (su sesión 03-jun se guardó parcial 15:36 en user_data y final 17:38 en legacy → `mergeHistory`/`mergePRs` = versión legacy, superconjunto; fijada en su fila). Cero pérdida.
+- **Astrid y Nataly** (no habían entrado al sistema nuevo): claves Auth reseteadas a valores conocidos — **Astrid → `Astrid2026`**, **Nataly → `Nataly2026`** (su email `@apex.com` es placeholder sin bandeja, así que el reset por enlace no les llega; Camilo les pasa la clave). ⚠️ Su PWA sigue en sesión legacy (auto-login desde caché) hasta que **cierren sesión y entren por Auth** — mientras tanto NO sincroniza. Camilo debe avisarles.
+- **Cuentas de prueba BORRADAS** (auth.users + identities + user_data): `valery@avi.com`, `nuevo@avi.com`, `andres@avi.com`, `pavedwings38@gmail.com`, `stevang1204@gmail.com`. Quedan solo 7 reales: Camilo (coach) + 6 asesorados.
+- **`COACH_UID` de Camilo (coach real) = `0a6484ed-42af-449d-9903-e440ac683ecf`** (útil para el cabo de `requestCoach`).
+- Advisor final: crítico cerrado. Quedan WARN menores: 2× push write (tradeoff), `pg_net` en public (diferido), leaked-password-protection off (toggle Auth). INFO: apex_data/backups RLS sin política (= deseado).
 
-**Pre-público (antes de abrir el enlace a desconocidos):** conectar SMTP propio + reactivar "Confirm email" (hoy OFF) + borrar cuentas de prueba (`valery@avi.com`, `nuevo@avi.com`, `pavedwings38@gmail.com`). **Cabos menores:** `requestCoach` que setee coach_id (falta `COACH_UID` del coach real), chat en vivo en modo auth (hoy persiste y se ve al recargar), ajustes nivel-coach (`ax_e`/`ax_tpl`) aún globales, cola de reintento de upserts, CSS muerto `.apex-logo`. Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_avi_auth_rls_plan`.
+**Pre-público (antes de abrir el enlace a desconocidos):** conectar SMTP propio + reactivar "Confirm email" (hoy OFF). **Cabos menores:** mover push a cliente autenticado (cierra los 2 WARN); `requestCoach` que setee `coach_id` (ya hay `COACH_UID`); chat en vivo en modo auth (hoy persiste y se ve al recargar); ajustes nivel-coach (`ax_e`/`ax_tpl`) aún globales; cola de reintento de upserts; CSS muerto `.apex-logo`. Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_avi_auth_rls_plan`.
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
@@ -765,5 +774,5 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-03 (cierre de sesión) · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v63** · Suite **118/118** verde · audit 8/8 OK · 6 asesorados reales + coach (camilo06197@gmail.com) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
-*Hitos sesión 2026-06-03: 🚀 CUTOVER a producción de auth real (Supabase Auth + RLS + tabla `user_data` fila-por-usuario) · migrados 6 asesorados reales (andres@apex.com era Camilo → fusionado a su "Mi entrenamiento" + borrado) · login/crear/conectar con Google (manual linking habilitado, verificado sin pérdida) · perfil pregunta antes de generar · "Mi entrenamiento" del coach · UI: logo viejo fuera + esmeralda + 👁 contraseñas + fix botón ☰ · ✅ ahora cerrado: el RLS permisivo se reemplazó por auth real (queda **Fase 4** = quitar `USING(true)` cuando entren los 4 que faltan: Kathe/Miguel/Astrid/Nataly)*
+*Última actualización: 2026-06-03 (sesión 2, cierre) · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN — Fase 4 COMPLETA)** · **apex-v64** · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-03 #2: 🔒 FASE 4 — candados RLS cerrados (eliminadas las 4 políticas `USING(true)` de apex_data + push_subscriptions; fuga crítica anon resuelta) · respaldo legacy de `doLogin` eliminado (login = SOLO Supabase Auth) · migración blindada verificada cliente por cliente + Nataly reconciliada (cero pérdida) · Astrid/Nataly con claves Auth nuevas (`Astrid2026`/`Nataly2026`, Camilo las reparte) · 5 cuentas de prueba borradas · push_subscriptions solo-escritura (tradeoff para no romper registro) · COACH_UID = 0a6484ed-… · caché apex-v63→v64*
