@@ -720,7 +720,12 @@ git push origin main
 - **`COACH_UID` de Camilo (coach real) = `0a6484ed-42af-449d-9903-e440ac683ecf`** (útil para el cabo de `requestCoach`).
 - Advisor final: crítico cerrado. Quedan WARN menores: 2× push write (tradeoff), `pg_net` en public (diferido), leaked-password-protection off (toggle Auth). INFO: apex_data/backups RLS sin política (= deseado).
 
-**Pre-público (antes de abrir el enlace a desconocidos):** conectar SMTP propio + reactivar "Confirm email" (hoy OFF). **Cabos menores:** mover push a cliente autenticado (cierra los 2 WARN); `requestCoach` que setee `coach_id` (ya hay `COACH_UID`); chat en vivo en modo auth (hoy persiste y se ve al recargar); ajustes nivel-coach (`ax_e`/`ax_tpl`) aún globales; cola de reintento de upserts; CSS muerto `.apex-logo`. Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_avi_auth_rls_plan`.
+**👉 RETOMAR MAÑANA (2026-06-04):** el plan Auth+RLS quedó TERMINADO; no hay nada urgente de código. Orden sugerido al arrancar:
+1. **Chequear si Astrid y Nataly ya entraron** al sistema nuevo: `select email,last_sign_in_at from auth.users where email in ('astrid@apex.com','nataly@apex.com')`. Si su `last_sign_in_at` sigue null, recordarle a Camilo que les pase la clave (`Astrid2026`/`Nataly2026`) y que cierren sesión + entren por Auth (su PWA sigue en legacy sin sincronizar hasta entonces).
+2. **Camino "abrir al público"** (lo único que falta del plan): conectar SMTP propio en Supabase + reactivar "Confirm email" (hoy OFF) + (opcional) borrar cuentas de prueba que reaparezcan.
+3. **Camino "pulir auth"** (cabos menores, sin bloquear): mover push a cliente autenticado (cierra los 2 WARN de `push_subscriptions`); `requestCoach` que setee `coach_id` (ya hay `COACH_UID=0a6484ed-…`); chat en vivo (realtime/poll sobre user_data) en modo auth; ajustes nivel-coach (`ax_e`/`ax_tpl`) aún globales; cola de reintento de upserts; CSS muerto `.apex-logo`.
+
+Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_avi_auth_rls_plan`.
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
