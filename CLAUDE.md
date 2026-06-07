@@ -748,7 +748,7 @@ Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_a
 
 **📋 AGENDADO — fix push a autenticado (cierra 2 WARN `rls_policy_always_true` de `push_subscriptions`).** Hoy `push_subscriptions` es escribible por anon (INSERT/UPDATE con `true`) → anon puede insertar/sobrescribir (no leer/borrar); ya acumuló **36 filas** para 7 usuarios (suscripciones viejas). **Alcance del fix:** (a) `subscribePush(clientId)` en index.html hace upsert con key anon → cambiarlo a usar el cliente Supabase autenticado (JWT de la sesión `AUTH`); (b) migración: añadir columna dueño ligada a `auth.uid()` + reemplazar políticas `push_write_insert`/`push_write_update` por RLS `client_id = auth.uid()` (INSERT/UPDATE/SELECT/DELETE propias); (c) limpiar las 36 filas viejas; (d) `send-push` (service_role) NO se afecta. **Riesgo:** no romper el registro de push de dispositivos existentes durante el cambio (hoy la tabla se keyea por clientId legacy, no por uid) → migrar/mapear con cuidado. Relacionado: cabos menores abajo.
 
-### 🟡 Sesión 2026-06-05 — Fotos de marca AVI en el wizard (⚠️ SIN COMMITEAR, SIN DEPLOY — RETOMAR AQUÍ)
+### ✅ Sesión 2026-06-05 — Fotos de marca AVI en el wizard (DESPLEGADO el 2026-06-07, apex-v65)
 **Contexto:** el wizard de onboarding premium (7 pasos, modo libre, módulo `WZ`, IDs `su-*` ocultos) ya estaba implementado en `index.html` pero **sin commitear** desde una sesión previa (+420/−61 líneas). Esta sesión añadió **fotografía de marca** a las pantallas grandes.
 
 **Hecho:**
@@ -766,6 +766,25 @@ Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_a
 - [ ] Opcional: limpiar la marca **✦** del generador (esquina inf-der de las 4 fotos; el scrim casi la tapa).
 - [ ] Footer de versión visible sigue en `v1.3.1 · May 2026` (pendiente histórico).
 - Untracked que NO entran al commit de fotos: `_preview-fotos.html`, `scripts/demo/`.
+
+### ✅ Sesión 2026-06-07 — Mega-sesión: wizard+fotos a prod, fix Google, rediseño interior dark, BUG coach, 109 fichas premium (apex-v65 → v79)
+> ⚠️ **Nota de ruta:** la carpeta del repo en el Desktop se renombró `apex` → **`AVI`**. Ruta local ahora `C:\Users\KRONOS\Desktop\AVI\apex-app`.
+
+**Todo desplegado a producción.** Lo de la sesión 06-05 (wizard 7 pasos + fotos de marca) por fin se commiteó/desplegó, más mucho trabajo nuevo:
+
+1. **Wizard + fotos de marca DESPLEGADOS** (apex-v65, `4929a0f`): onboarding premium (módulo `WZ`, reveal del plan, 17 íconos SVG propios, 4 fotos `media/brand/`) a producción.
+2. **🐛 Fix registro con Google** (apex-v66, `86f5039`): el paso 7 con Google redirigía y perdía las respuestas del wizard → caía al formulario viejo. Fix: `wzGoogle()` guarda los `su-*` en `localStorage['ax_wz_pending']` antes de redirigir; `_pendingWizard()`+`_profileFromMeta` los recuperan al volver → genera semana → reveal nuevo (caduca 30 min).
+3. **📸 Primeras 10 fotos de ejercicio AVI** (apex-v67, `f645441`): Gemini (modelo propio ♂/♀, físico natural) + grade Noir Esmeralda + recorte 720² + delogo ✦ → `media/exercises/`. Reasignación: e85 (aperturas polea ALTA) ≠ e3; e71 cambiada luego a variante de mancuernas inequívoca.
+4. **🎨 Rediseño interior DARK** (apex-v68→v71, +v79). **Causa raíz: el interior estaba en tema CLARO por defecto** (solo oscuro si el celular lo estaba) → chocaba con el onboarding oscuro. (a) tema dark Noir por DEFECTO (`initTheme` `'auto'`→`'dark'`); (b) hero "Hoy" Aurora + eyebrow Anton dorado; (c) foto del ejercicio en cada tarjeta (`.cex-thumb`); (d) detalle de ejercicio con foto full-bleed + scrim; (e) callouts/tintes coherentes en dark (override `--yll/--bll/--orl/--rdl` + browns hardcodeados → vars). **Lección:** texto sobre las fotos de ejercicio (siempre oscuras) va blanco fijo, no `var(--t1)` (fix modo claro del título, v79).
+5. **🔴→✅ BUG CRÍTICO: solicitudes de coach invisibles** (apex-v72/v73, `57c456d`/`fc06484`). Un usuario libre se creaba con `coach_id=NULL` → el coach (RLS select `coach_id=auth.uid()`) NUNCA veía la solicitud ni los mensajes (lo de la sesión 06-02 "le llega vía ax_c compartido" dejó de servir al cerrar el RLS en Fase 4). **Lead real perdido: Cristhian Calderón, 6-jun.** Fix: `requestCoach()` y `_provisionFreeClient` asignan `coach_id=COACH_UID`. **Decisión de Camilo: TODOS los self-reg entran al pipeline del coach** (ve cada registro con tag 🆓 Libre / 🙋 Quiere coach). Backfill SQL de los existentes. `COACH_UID=0a6484ed-…ecf`.
+6. **📝 LAS 109 FICHAS DE EJERCICIO a estándar premium** (apex-v74→v78): nombre específico + descripción que NOMBRA el músculo trabajado (cabeza/zona enfatizada) + criterio, en versión técnica (coach) y simple (asesorado). Patrón: reescribir solo las flacas, dejar intactas las ya buenas (mucho del catálogo ya estaba bien); cardio no lleva "músculo". 118/118 tests en cada deploy.
+
+**Fotos de ejercicio — flujo DEFINITIVO (Camilo decidió):** **GEMINI hace TODO el look** (oscuro Noir + verde + logo AVI impreso en la tela — lo integra mejor que cualquier post). Claude **no** puede generar personas ni debe estampar el logo (se ve plano/artificial; Camilo lo rechazó). Claude SOLO quita la ✦ + resize 720². Guía completa en `Desktop/AVI/PROMPTS-EJERCICIOS-BIBLIOTECA.md` (Paso 1 = bloque+foto **una vez**; Paso 2 = **solo la línea** del ejercicio). Skills de IA para el logo (RunComfy) descartadas por ser de pago.
+
+**Pendiente al retomar:**
+- [ ] Generar las **~99 fotos de ejercicio restantes** en Gemini (con la guía nueva) → Claude las procesa (✦ + 720²) e integra por lotes a `media/exercises/`.
+- [ ] Fotos correctas aún faltantes: **e27** (jalón agarre neutro — Gemini no dibuja el maneral), **e86** (aperturas polea baja), **e3** (aperturas con cable genérica).
+- [ ] Opcional: nav inferior de emojis (`.ctico`) → íconos SVG propios.
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
@@ -819,7 +838,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-05 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v64** (deploy bump pendiente → v65) · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-07 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v79** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-07: 🚀 wizard+fotos de marca a prod (apex-v65) · 🐛 fix registro Google (pierde-datos→reveal, v66) · 📸 primeras 10 fotos de ejercicio AVI (v67) · 🎨 rediseño interior DARK Noir por defecto + hero/tarjetas/detalle/callouts (v68-v71,v79; causa raíz = interior en tema claro) · 🔴→✅ BUG CRÍTICO solicitudes de coach invisibles por `coach_id=NULL` + RLS → todos los self-reg al pipeline + backfill (lead real Cristhian recuperado, v72/v73) · 📝 LAS 109 fichas de ejercicio a estándar premium (músculo nombrado + criterio, v74-v78) · flujo fotos definitivo: GEMINI hace look+logo, Claude solo ✦+720²*
 *Hitos sesión 2026-06-05: 📸 fotos de marca AVI (Camilo) integradas en hero/reveal/onboarding del wizard vía grade Noir Esmeralda + ffmpeg → `media/brand/` (316 KB las 4) · 4 ediciones quirúrgicas en index.html sobre hooks ya existentes · ⚠️ TODO SIN COMMITEAR Y SIN DEPLOY (arrastra el wizard de 7 pasos previo) · captura en navegador bloqueada por RAM (no se tocó el Chrome del usuario) · ver sección "Sesión 2026-06-05 — RETOMAR AQUÍ"*
 *Hitos sesión 2026-06-04: 📧 SMTP propio (Brevo, remitente verificado aviapptraining2020@gmail.com) + "Confirm email" ACTIVADO + plantillas de correo en español con branding AVI (4) · todo config server-side vía Management API (sin cambios de código; la app ya soportaba confirm-email) · registro público DESBLOQUEADO · ⚠️ `smtp_port` debe ser STRING y un PATCH parcial de `smtp_*` borra el bloque entero*
 *Hitos sesión 2026-06-03 #2: 🔒 FASE 4 — candados RLS cerrados (eliminadas las 4 políticas `USING(true)` de apex_data + push_subscriptions; fuga crítica anon resuelta) · respaldo legacy de `doLogin` eliminado (login = SOLO Supabase Auth) · migración blindada verificada cliente por cliente + Nataly reconciliada (cero pérdida) · Astrid/Nataly con claves Auth nuevas (`Astrid2026`/`Nataly2026`, Camilo las reparte) · 5 cuentas de prueba borradas · push_subscriptions solo-escritura (tradeoff para no romper registro) · COACH_UID = 0a6484ed-… · caché apex-v63→v64*
