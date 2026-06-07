@@ -2010,6 +2010,10 @@ const UD={
 let AUTH_MODE=false;
 let AUTH_ROLE='client'; // 'client' | 'coach' — rol del usuario auth logueado
 let COACH_SELF=false;   // true cuando el coach está viendo SU propio entrenamiento (guarda en su fila)
+// UID del coach (modelo de un solo coach). Un usuario libre que pide coach se auto-asigna
+// este coach_id para que su fila sea visible por RLS (select: coach_id = auth.uid()) y la
+// solicitud + mensajes lleguen a la bandeja del coach. Ver requestCoach().
+const COACH_UID='0a6484ed-42af-449d-9903-e440ac683ecf';
 
 // Convierte VAPID key de base64 a Uint8Array
 function urlBase64ToUint8Array(b64){
@@ -4389,14 +4393,20 @@ function premiumLockHTML(title,desc){
 }
 // Cliente actual (para gating en vistas del asesorado).
 function _curClient(){ return DB.clients.find(x=>x.id===CUR.clientId); }
-function requestCoach(){
+async function requestCoach(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
-  c.wantsCoach=true;c.wantsCoachAt=new Date().toISOString();
+  c.wantsCoach=true;c.wantsCoachAt=new Date().toISOString();c.coach_id=COACH_UID;
   svNow('ax_c',DB.clients);
   // Avisar al coach por el chat: le llega a su bandeja + notificación vía su sondeo.
   if(!DB.msgs[c.id])DB.msgs[c.id]=[];
   DB.msgs[c.id].push({from:'client',text:'🙋 ¡Hola! Me gustaría pasar a Premium y tener un coach que me guíe. ¿Me cuentas cómo seguir?',date:new Date().toISOString()});
   svNow('ax_m',DB.msgs);
+  // CLAVE: asignar coach_id en la fila (columna, no profile) para que el coach pueda LEERLA
+  // por RLS (select: coach_id = auth.uid()). Sin esto, la solicitud y el mensaje quedaban
+  // atrapados en una fila con coach_id=null que el coach nunca cargaba. upsert parcial
+  // preserva las demás columnas. Ver fix bug "solicitudes de coach invisibles" 2026-06-07.
+  try{ if(AUTH_MODE) await UD.upsertOwn({coach_id:COACH_UID}); }
+  catch(e){ warn('AVI: no se pudo asignar coach_id en requestCoach:',e&&e.message); }
   renderCoachUpsell(c);
   toast('🎉 ¡Listo! Tu coach te contactará pronto.');
 }
