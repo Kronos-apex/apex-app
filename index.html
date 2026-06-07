@@ -531,8 +531,8 @@ html[data-theme="light"] .mta {
 .exdetail-muscle{font-size:12px;font-weight:600;color:var(--g2);background:var(--gl);padding:3px 10px;border-radius:20px;display:inline-block}
 .exdetail-divider{height:1px;background:var(--br);margin:0 20px}
 .exdetail-section{padding:16px 20px 0}
-.exdetail-slabel{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
-.exdetail-desc{font-size:14px;color:var(--t2);line-height:1.7;background:var(--bg);border-radius:var(--r);padding:13px 15px}
+.exdetail-slabel{font-family:'Anton',sans-serif;font-size:11px;font-weight:400;letter-spacing:1.2px;text-transform:uppercase;color:#F2C94C;margin-bottom:8px}
+.exdetail-desc{font-size:14px;color:var(--t1);line-height:1.7;background:var(--bg);border:1px solid var(--br);border-radius:var(--r);padding:13px 15px}
 .exdetail-ytbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;background:var(--g);color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:14px}
 .exdetail-ytbtn:hover{background:var(--g2)}
 .exdetail-ytbtn .yticon{font-size:18px}
@@ -540,6 +540,13 @@ html[data-theme="light"] .mta {
 .exdetail-stat{flex:1;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;text-align:center;border:1px solid var(--br)}
 .exdetail-stat-val{font-size:17px;font-weight:800;color:var(--g);font-family:'JetBrains Mono',monospace}
 .exdetail-stat-lbl{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+/* Detalle Aurora: hero de foto grande cuando el ejercicio tiene foto (fallback al ícono si no) */
+.exdetail-hero.has-photo{display:block;gap:0;padding:0;position:relative}
+.exdetail-hero.has-photo .exdetail-bigicon{width:100%;height:auto;aspect-ratio:16/11;border-radius:0!important;border:none!important;background:#000!important;overflow:hidden}
+.exdetail-hero.has-photo .exdetail-bigicon img{width:100%;height:100%;object-fit:cover;border-radius:0;cursor:zoom-in}
+.exdetail-hero.has-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,var(--w),rgba(2,10,7,.30) 38%,transparent 66%);pointer-events:none}
+.exdetail-hero.has-photo .exdetail-herocap{position:absolute;left:18px;right:18px;bottom:13px;z-index:2}
+.exdetail-hero.has-photo .exdetail-title{font-size:22px;text-shadow:0 2px 14px rgba(0,0,0,.75)}
 /* Loading overlay */
 #apex-loading{position:fixed;inset:0;background:linear-gradient(180deg,rgba(7,38,29,.50) 0%,rgba(6,9,10,.74) 52%,rgba(6,9,10,.95) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
 #apex-loading.fade{opacity:0;pointer-events:none}
@@ -8474,16 +8481,19 @@ function _showExSheet(ex, isCoach, editable){
 
   // Icon block
   const iconEl = document.getElementById('exd-icon');
+  const heroEl = document.getElementById('exd-hero');
   const _exdImg = exImgSrc(ex);
   iconEl.style.border = '1.5px solid ' + color + '40';
   if(_exdImg){
     iconEl.innerHTML = exImgTag(_exdImg, ex.name);
     iconEl.style.background = 'none';
     iconEl.style.overflow = 'hidden';
+    if(heroEl) heroEl.classList.add('has-photo');
   } else {
     iconEl.innerHTML = '';
     iconEl.textContent = ex.icon || '💪';
     iconEl.style.background = color + '20';
+    if(heroEl) heroEl.classList.remove('has-photo');
   }
 
   // Name & muscle label
@@ -9095,9 +9105,9 @@ function whatsappNudge(id){
 <div class="exdetail-bg" id="exdetail-bg" onclick="closeExDetail(event)">
   <div class="exdetail-sheet" id="exdetail-sheet">
     <div class="exdetail-handle"></div>
-    <div class="exdetail-hero">
+    <div class="exdetail-hero" id="exd-hero">
       <div class="exdetail-bigicon" id="exd-icon"></div>
-      <div>
+      <div class="exdetail-herocap">
         <div class="exdetail-title" id="exd-name"></div>
         <div class="exdetail-muscle" id="exd-muscle"></div>
       </div>
