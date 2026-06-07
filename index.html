@@ -425,10 +425,10 @@ html[data-theme="light"] .mta {
 .cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 
 /* Today hero */
-.wohero{background:linear-gradient(135deg,#06402E,#0A7C5B);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
-.wohero::after{content:'💪';position:absolute;right:14px;bottom:-10px;font-size:64px;opacity:.12}
-.woday{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;margin-bottom:4px}
-.woname{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:6px}
+.wohero{background:linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
+.wohero::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 88% -12%,rgba(16,224,160,.30),transparent 55%);pointer-events:none}
+.woday{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1.4px;text-transform:uppercase;color:#F2C94C;margin-bottom:5px;position:relative}
+.woname{font-size:23px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px;position:relative}
 .wopills{display:flex;gap:6px;flex-wrap:wrap}
 .wopill{background:rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
 
@@ -438,6 +438,10 @@ html[data-theme="light"] .mta {
 .cex-block-header{padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;user-select:none;transition:background .15s}
 .cex-block-header:hover{background:var(--bg)}
 .cex-block-num{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1.5px solid var(--br2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--t2);flex-shrink:0;transition:all .2s}
+.cex-thumb{position:relative;width:50px;height:50px;border-radius:12px;overflow:hidden;flex-shrink:0;border:1px solid var(--br2);background:#000}
+.cex-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.cex-thumb-badge{position:absolute;left:3px;top:3px;min-width:17px;height:17px;padding:0 4px;border-radius:6px;background:rgba(6,18,11,.78);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.cex-block.all-done .cex-thumb-badge{background:var(--g);color:#04140d}
 .cex-block.all-done .cex-block-num{background:var(--gl);border-color:var(--g2);color:var(--gt)}
 .cex-block-info{flex:1}
 .cex-block-name{font-size:14px;font-weight:700}
@@ -2199,7 +2203,7 @@ if('serviceWorker' in navigator){
 function ld(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch{return def}}
 
 function initTheme(){
-  const t=ld('ax_theme','auto');
+  const t=ld('ax_theme','dark');
   if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
   else if(t==='light') document.documentElement.setAttribute('data-theme','light');
   else document.documentElement.removeAttribute('data-theme');
@@ -2859,7 +2863,7 @@ function openSettings(){
   document.getElementById('st-rep').value='';
   document.getElementById('st-perr').style.display='none';
   closeDrawer();om('m-settings');
-  setTheme(ld('ax_theme','auto'));
+  setTheme(ld('ax_theme','dark'));
 }
 
 async function saveSettings(){
@@ -5276,7 +5280,7 @@ function cnTab(id,el){
   if(id==='cn-profile'&&CUR.clientId){
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     if(c){renderClientProfile(c);}
-    setTheme(ld('ax_theme','auto'));
+    setTheme(ld('ax_theme','dark'));
   }
   if(id==='cn-history'&&CUR.clientId){
     renderClientHistory(CUR.clientId);
@@ -5914,8 +5918,12 @@ function renderClientExList(routine){
     const header=document.createElement('div');
     header.className='cex-block-header';
     const muscleLabel = ex.muscleLabel || ex.muscle;
+    const _img = exImgSrc(ex);
+    const _lead = _img
+      ? `<div class="cex-thumb"><img src="${_img}" alt="" loading="lazy" decoding="async"><span class="cex-thumb-badge">${allDone?'✓':ei+1}</span></div>`
+      : `<div class="cex-block-num">${allDone?'✓':ei+1}</div>`;
     header.innerHTML=`
-      <div class="cex-block-num">${allDone?'✓':ei+1}</div>
+      ${_lead}
       <div class="cex-block-info" style="min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="cex-block-name">${esc(ex.name)}</div>
