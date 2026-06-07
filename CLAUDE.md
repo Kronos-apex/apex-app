@@ -748,6 +748,25 @@ Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_a
 
 **📋 AGENDADO — fix push a autenticado (cierra 2 WARN `rls_policy_always_true` de `push_subscriptions`).** Hoy `push_subscriptions` es escribible por anon (INSERT/UPDATE con `true`) → anon puede insertar/sobrescribir (no leer/borrar); ya acumuló **36 filas** para 7 usuarios (suscripciones viejas). **Alcance del fix:** (a) `subscribePush(clientId)` en index.html hace upsert con key anon → cambiarlo a usar el cliente Supabase autenticado (JWT de la sesión `AUTH`); (b) migración: añadir columna dueño ligada a `auth.uid()` + reemplazar políticas `push_write_insert`/`push_write_update` por RLS `client_id = auth.uid()` (INSERT/UPDATE/SELECT/DELETE propias); (c) limpiar las 36 filas viejas; (d) `send-push` (service_role) NO se afecta. **Riesgo:** no romper el registro de push de dispositivos existentes durante el cambio (hoy la tabla se keyea por clientId legacy, no por uid) → migrar/mapear con cuidado. Relacionado: cabos menores abajo.
 
+### 🟡 Sesión 2026-06-05 — Fotos de marca AVI en el wizard (⚠️ SIN COMMITEAR, SIN DEPLOY — RETOMAR AQUÍ)
+**Contexto:** el wizard de onboarding premium (7 pasos, modo libre, módulo `WZ`, IDs `su-*` ocultos) ya estaba implementado en `index.html` pero **sin commitear** desde una sesión previa (+420/−61 líneas). Esta sesión añadió **fotografía de marca** a las pantallas grandes.
+
+**Hecho:**
+- Camilo generó 12 imágenes (ChatGPT/Gemini) en `Desktop/IMAGENES AVI`. Elegidas 4 (las de Gemini, las que clavan el ADN Noir Esmeralda). Las de torso desnudo/tono cálido → para **redes**, no para el wizard.
+- Grade Noir Esmeralda + optimización con **ffmpeg** → `media/brand/`: `hero.jpg` (iij4u, trae logo AVI dorado), `reveal.jpg` (m0wvpb, de pie+glow), `ob-1.jpg` (5kovd, manos/barra, recorte 2:1), `ob-3.jpg` (o3hkpa, sentado+neón, recorte 2:1). **316 KB las 4** (fuentes pesaban ~28 MB; 1536×2752 c/u).
+  - Grade usado: `eq=contrast=1.07:saturation=0.95,curves=master='0/0 0.25/0.19 0.5/0.5 0.85/0.88 1/1',colorbalance=bs=0.05:gs=0.02:bm=-0.02,noise=alls=4:allf=t+u` (versión `_GOLD` más suave para el hero, para no apagar el oro).
+- **4 ediciones quirúrgicas en `index.html`** usando los hooks que ya existían: (1) `<video class="cin-vid">` ahora con `poster="media/brand/hero.jpg"`; (2) `showPlanReveal` cae por defecto a `media/brand/reveal.jpg` (`window.AVI_REVEAL_PHOTO` sigue como override); (3) ob-photo slide 1 → `has-img` + `--img:url('media/brand/ob-1.jpg')`; (4) ob-photo slide 3 → `has-img` + `--img:url('media/brand/ob-3.jpg')`. **Slide 2 ("Registra tu peso") se dejó con su ícono dorado a propósito** (variedad + acento oro).
+- Verificado visualmente: los 4 assets + composite del Reveal con texto encima (legibilidad perfecta sobre el espacio negativo superior).
+
+**Pendiente al retomar:**
+- [ ] **Commitear** `media/brand/*` + `index.html` (sugerido: `feat(brand): fotos AVI en hero/reveal/onboarding`). OJO: el commit arrastra también el **wizard de 7 pasos** sin commitear de la sesión previa.
+- [ ] **Captura real en navegador** quedó BLOQUEADA por RAM (322 procesos de Chrome, ~108 MB libres; el agente NO tocó el Chrome del usuario). Re-correr cuando libere memoria; mock fiel en `_preview-fotos.html` (untracked, **NO commitear**).
+- [ ] QA Lucas (funcional) + Julián (estático) antes de deploy.
+- [ ] **SW**: cache-first runtime sin lista de precache → las imágenes se cachean solas; solo **bump `apex-v64`→`apex-v65`** al deployar.
+- [ ] Opcional: limpiar la marca **✦** del generador (esquina inf-der de las 4 fotos; el scrim casi la tapa).
+- [ ] Footer de versión visible sigue en `v1.3.1 · May 2026` (pendiente histórico).
+- Untracked que NO entran al commit de fotos: `_preview-fotos.html`, `scripts/demo/`.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -800,6 +819,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-04 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN — Fase 4 COMPLETA + registro público DESBLOQUEADO)** · **apex-v64** · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-05 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v64** (deploy bump pendiente → v65) · Suite **118/118** verde · 7 cuentas reales (coach camilo06197@gmail.com + 6 asesorados) · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-05: 📸 fotos de marca AVI (Camilo) integradas en hero/reveal/onboarding del wizard vía grade Noir Esmeralda + ffmpeg → `media/brand/` (316 KB las 4) · 4 ediciones quirúrgicas en index.html sobre hooks ya existentes · ⚠️ TODO SIN COMMITEAR Y SIN DEPLOY (arrastra el wizard de 7 pasos previo) · captura en navegador bloqueada por RAM (no se tocó el Chrome del usuario) · ver sección "Sesión 2026-06-05 — RETOMAR AQUÍ"*
 *Hitos sesión 2026-06-04: 📧 SMTP propio (Brevo, remitente verificado aviapptraining2020@gmail.com) + "Confirm email" ACTIVADO + plantillas de correo en español con branding AVI (4) · todo config server-side vía Management API (sin cambios de código; la app ya soportaba confirm-email) · registro público DESBLOQUEADO · ⚠️ `smtp_port` debe ser STRING y un PATCH parcial de `smtp_*` borra el bloque entero*
 *Hitos sesión 2026-06-03 #2: 🔒 FASE 4 — candados RLS cerrados (eliminadas las 4 políticas `USING(true)` de apex_data + push_subscriptions; fuga crítica anon resuelta) · respaldo legacy de `doLogin` eliminado (login = SOLO Supabase Auth) · migración blindada verificada cliente por cliente + Nataly reconciliada (cero pérdida) · Astrid/Nataly con claves Auth nuevas (`Astrid2026`/`Nataly2026`, Camilo las reparte) · 5 cuentas de prueba borradas · push_subscriptions solo-escritura (tradeoff para no romper registro) · COACH_UID = 0a6484ed-… · caché apex-v63→v64*

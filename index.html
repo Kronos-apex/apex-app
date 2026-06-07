@@ -558,24 +558,34 @@ html[data-theme="light"] .mta {
 .congrats.hide{display:none}
 
 /* ── ONBOARDING ── */
-#onboarding{position:fixed;inset:0;z-index:800;background:linear-gradient(160deg,#06402E 0%,#0A7C5B 55%,#13B583 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:opacity .4s}
+#onboarding{position:fixed;inset:0;z-index:800;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;transition:opacity .4s;
+  background:radial-gradient(95% 50% at 80% -8%,rgba(16,224,160,.24),transparent 60%),radial-gradient(80% 48% at 0% 108%,rgba(233,196,106,.13),transparent 58%),linear-gradient(160deg,#0A1A14,#06120D 48%,#04080A)}
 #onboarding.fade-out{opacity:0;pointer-events:none}
 #cn-help-btn{animation:helpPulse 1.5s ease 3}
 @keyframes helpPulse{0%,100%{box-shadow:0 0 0 0 rgba(45,106,79,0)}50%{box-shadow:0 0 0 6px rgba(45,106,79,.20)}}
 .ob-slides{width:100%;max-width:380px;overflow:hidden}
 .ob-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-.ob-slide{min-width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 4px 0;color:white}
-.ob-emoji{font-size:72px;margin-bottom:20px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.25))}
-.ob-title{font-size:24px;font-weight:800;margin-bottom:12px;line-height:1.2}
-.ob-body{font-size:15px;line-height:1.7;opacity:.88;max-width:300px}
-.ob-body strong{opacity:1;color:#B7E4C7}
-.ob-dots{display:flex;gap:8px;margin:28px 0 24px}
-.ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .25s}
-.ob-dot.on{width:24px;border-radius:4px;background:white}
+.ob-slide{min-width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 6px 0;color:#fff}
+/* Zona de foto: lista para imagen de marca. Hoy muestra el ícono sobre panel aurora.
+   Para activar foto: añadir clase .has-img + background-image en .ob-photo. */
+.ob-photo{position:relative;width:100%;height:188px;border-radius:22px;margin-bottom:24px;overflow:hidden;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;
+  background-color:#0a1310;background-image:linear-gradient(180deg,color-mix(in srgb,var(--c) 16%,#0c1512),#0a1310);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 16px 44px rgba(0,0,0,.45)}
+.ob-photo.has-img{background-image:var(--img)}
+.ob-photo.has-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(4,8,10,.6))}
+.ob-photo.has-img .ob-ic{display:none}
+.ob-ic{width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;background:color-mix(in srgb,var(--c) 22%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 42%,transparent);box-shadow:0 0 30px color-mix(in srgb,var(--c) 40%,transparent)}
+.ob-ic .ic{width:36px;height:36px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ob-eyebrow{font-family:'Anton',sans-serif;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:#E9C46A;margin-bottom:8px}
+.ob-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:12px;line-height:1.18;letter-spacing:-.3px}
+.ob-body{font-size:14.5px;line-height:1.7;color:rgba(242,245,244,.72);max-width:310px}
+.ob-body strong{color:#10E0A0;font-weight:700}
+.ob-dots{display:flex;gap:8px;margin:26px 0 22px}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:all .25s}
+.ob-dot.on{width:24px;border-radius:4px;background:#10E0A0;box-shadow:0 0 12px rgba(16,224,160,.6)}
 .ob-btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:380px}
-.ob-next{width:100%;padding:15px;background:white;color:var(--g);border:none;border-radius:14px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s,box-shadow .1s;box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.ob-next:active{transform:scale(.97)}
-.ob-skip{background:none;border:none;color:rgba(255,255,255,.55);font-family:inherit;font-size:13px;cursor:pointer;padding:6px;font-weight:600}
+.ob-next{width:100%;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
+.ob-next:active{transform:scale(.98)}
+.ob-skip{background:none;border:none;color:rgba(242,245,244,.5);font-family:inherit;font-size:13px;cursor:pointer;padding:8px;font-weight:600}
 /* First-exercise tooltip */
 .ex-tooltip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06402E,#0A7C5B);color:white;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(45,106,79,.35);animation:tooltipPop .4s cubic-bezier(.4,0,.2,1)}
 .ex-tooltip-icon{font-size:22px;flex-shrink:0}
@@ -815,6 +825,121 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes cwUp{to{opacity:1;transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.cwelcome.on .cw-mark,.cwelcome.on .cw-hi,.cwelcome.on .cw-line,.cwelcome.on .cw-btn{animation:none;opacity:1;transform:none}}
 
+/* ══ WIZARD DE REGISTRO PREMIUM · "AVI Aurora" (modo libre) ══ */
+/* Todo escopado a #cin-signup para NO afectar el login (#cin-card comparte .cin-card/.cin-in) */
+#cin-signup{position:relative;border-radius:24px;border:1px solid rgba(255,255,255,.09);
+  background:linear-gradient(180deg,rgba(16,24,20,.66),rgba(7,12,10,.88));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 40px rgba(16,224,160,.05),0 24px 70px rgba(0,0,0,.55)}
+#cin-signup .cin-in{background:rgba(255,255,255,.03);border:1.5px solid rgba(242,245,244,.12);border-radius:13px;padding:13px 14px}
+#cin-signup .cin-in:focus{border-color:#10E0A0;box-shadow:0 0 0 3px rgba(16,224,160,.14)}
+#cin-signup .cin-btn{background:linear-gradient(135deg,#22F0AE,#068F66);box-shadow:0 10px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
+.wz-head{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.wz-back{width:36px;height:36px;border-radius:50%;border:1px solid rgba(242,245,244,.16);background:rgba(0,0,0,.25);color:#fff;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:inherit;transition:background .15s}
+.wz-back:active{background:rgba(0,0,0,.45)}
+.wz-prog{flex:1;height:6px;border-radius:4px;background:rgba(242,245,244,.10);overflow:hidden;position:relative}
+.wz-prog-fill{height:100%;border-radius:4px;width:14%;position:relative;background:linear-gradient(90deg,#068F66,#10E0A0 65%,#F2C94C);box-shadow:0 0 14px rgba(16,224,160,.55);transition:width .45s cubic-bezier(.4,0,.2,1)}
+.wz-prog-fill::after{content:"";position:absolute;inset:0;border-radius:4px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:wzShine 2.2s infinite}
+@keyframes wzShine{to{transform:translateX(120%)}}
+.wz-count{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:1px;color:#E9C46A;flex-shrink:0;font-variant-numeric:tabular-nums}
+.wz-step{display:none}
+.wz-step.on{display:block}
+@media (prefers-reduced-motion:no-preference){.wz-step.on{animation:wzIn .4s cubic-bezier(.4,0,.2,1)}}
+@keyframes wzIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.wz-eyebrow{font-family:'Anton',sans-serif;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:#E9C46A;margin-bottom:10px;display:flex;align-items:center;gap:9px}
+.wz-eyebrow::before{content:"";width:22px;height:2px;background:linear-gradient(90deg,#E9C46A,transparent);border-radius:2px}
+.wz-q{font-family:'Plus Jakarta Sans',sans-serif;font-size:25px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:8px;letter-spacing:-.4px;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+.wz-q b{color:#10E0A0;text-shadow:0 0 22px rgba(16,224,160,.4)}
+.wz-help{font-size:13px;color:rgba(242,245,244,.6);line-height:1.55;margin-bottom:22px}
+.wz-chips{display:flex;flex-direction:column;gap:11px}
+.wz-chip{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:12px 14px;border-radius:17px;cursor:pointer;font-family:inherit;font-size:15.5px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));transition:transform .14s,border-color .2s,background .2s,box-shadow .2s}
+.wz-chip:active{transform:scale(.985)}
+.wz-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;background:rgba(255,255,255,.06);background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid rgba(255,255,255,.14);border-color:color-mix(in srgb,var(--c) 40%,transparent);box-shadow:inset 0 0 16px color-mix(in srgb,var(--c) 26%,transparent),0 4px 12px color-mix(in srgb,var(--c) 16%,transparent);transition:box-shadow .2s,transform .2s}
+.wz-chip .lab{flex:1;line-height:1.25}
+.wz-chip .sub{display:block;font-size:11.5px;font-weight:600;color:rgba(242,245,244,.5);margin-top:2px}
+.wz-chip .tick{width:24px;height:24px;border-radius:50%;background:#10E0A0;color:#04130D;font-size:13px;font-weight:900;display:none;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 14px rgba(16,224,160,.6)}
+.wz-chip.on{border-color:#10E0A0;background:linear-gradient(180deg,rgba(16,224,160,.12),rgba(16,224,160,.03));box-shadow:0 0 0 1px #10E0A0,0 10px 30px rgba(16,224,160,.18)}
+.wz-chip.on .wz-ic{transform:scale(1.06);box-shadow:inset 0 0 16px color-mix(in srgb,var(--c) 34%,transparent),0 0 22px color-mix(in srgb,var(--c) 55%,transparent)}
+.wz-chip.on .tick{display:flex;animation:wzPop .3s cubic-bezier(.3,1.4,.5,1)}
+@keyframes wzPop{from{transform:scale(0)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:no-preference){
+  .wz-step.on .wz-chips .wz-chip{animation:wzChipIn .42s both}
+  .wz-step.on .wz-chips .wz-chip:nth-child(1){animation-delay:.05s}
+  .wz-step.on .wz-chips .wz-chip:nth-child(2){animation-delay:.10s}
+  .wz-step.on .wz-chips .wz-chip:nth-child(3){animation-delay:.15s}
+  .wz-step.on .wz-chips .wz-chip:nth-child(4){animation-delay:.20s}
+  .wz-step.on .wz-chips .wz-chip:nth-child(5){animation-delay:.25s}
+  .wz-step.on .wz-chips .wz-chip:nth-child(6){animation-delay:.30s}
+}
+@keyframes wzChipIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.wz-grid{display:grid;gap:9px}
+.wz-gchip{padding:14px 6px;border-radius:14px;cursor:pointer;font-family:inherit;font-weight:800;font-size:16px;color:#fff;text-align:center;line-height:1.15;border:1.5px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));transition:transform .12s,border-color .2s,background .2s,box-shadow .2s}
+.wz-gchip:active{transform:scale(.96)}
+.wz-gchip.on{border-color:#10E0A0;background:linear-gradient(180deg,rgba(16,224,160,.14),rgba(16,224,160,.03));box-shadow:0 0 0 1px #10E0A0,0 8px 22px rgba(16,224,160,.18);color:#10E0A0}
+.wz-gchip .s{display:block;font-size:11px;font-weight:600;color:rgba(242,245,244,.5);margin-top:2px}
+.wz-gchip.on .s{color:#10E0A0}
+.wz-stepper{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:17px;padding:12px 14px;margin-bottom:12px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1.5px solid rgba(255,255,255,.08)}
+.wz-stepper .lab{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:rgba(242,245,244,.7)}
+.wz-stepper .lic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 38%,transparent)}
+.wz-stepper .ctl{display:flex;align-items:center;gap:9px}
+.wz-pm{width:40px;height:40px;border-radius:12px;border:1.5px solid rgba(16,224,160,.35);background:rgba(16,224,160,.08);color:#10E0A0;font-size:23px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;font-family:inherit;transition:transform .1s,background .15s}
+.wz-pm:active{transform:scale(.92);background:rgba(16,224,160,.18)}
+.wz-num{width:58px;background:transparent;border:none;color:#fff;font-family:'Anton',sans-serif;font-size:30px;font-weight:400;text-align:center;outline:none;-moz-appearance:textfield;letter-spacing:.5px}
+.wz-num::-webkit-outer-spin-button,.wz-num::-webkit-inner-spin-button{-webkit-appearance:none}
+.wz-unit{font-size:13px;color:rgba(242,245,244,.5);font-weight:600;min-width:30px}
+.wz-foot{margin-top:24px}
+.wz-or{display:flex;align-items:center;gap:10px;margin:15px 0;color:rgba(242,245,244,.4);font-size:12px;font-weight:600}
+.wz-or::before,.wz-or::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(242,245,244,.18),transparent)}
+.wz-gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.22);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.wz-prog-fill::after{display:none}}
+/* Íconos AVI dentro de las fichas (heredan el color de la ficha vía --c) */
+.wz-ic .ic{width:24px;height:24px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wz-stepper .lic .ic{width:19px;height:19px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ══ REVEAL DEL PLAN · pantalla cumbre post-registro (identidad Aurora) ══ */
+#plan-reveal{position:fixed;inset:0;z-index:9990;display:none;flex-direction:column;align-items:center;overflow-y:auto;
+  padding:max(40px,env(safe-area-inset-top)) 24px max(28px,env(safe-area-inset-bottom));
+  background:radial-gradient(95% 50% at 80% -8%,rgba(16,224,160,.26),transparent 60%),radial-gradient(80% 48% at 0% 108%,rgba(233,196,106,.14),transparent 58%),radial-gradient(70% 50% at 50% 125%,rgba(16,224,160,.10),transparent 60%),linear-gradient(160deg,#0A1A14,#06120D 48%,#04080A)}
+#plan-reveal.on{display:flex}
+/* capa de foto de marca (lista; se activa con .on + background-image desde showPlanReveal) */
+#plan-reveal .rv-photo{position:absolute;inset:0;max-width:none;width:auto;z-index:0;background-size:cover;background-position:center top;opacity:0;transition:opacity .7s}
+#plan-reveal .rv-photo.on{opacity:1}
+#plan-reveal .rv-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,10,.5) 0%,rgba(4,8,10,.72) 55%,rgba(4,8,10,.92) 100%)}
+#plan-reveal::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.5;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
+#plan-reveal::after{content:"";position:absolute;width:380px;height:380px;border-radius:50%;top:-150px;right:-110px;z-index:0;pointer-events:none;background:radial-gradient(circle,rgba(16,224,160,.20),transparent 70%);filter:blur(6px);animation:rvFloat 9s ease-in-out infinite}
+@keyframes rvFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(28px)}}
+#plan-reveal>*{position:relative;z-index:2;width:100%;max-width:380px}
+.rv-mark{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:24px;animation:rvUp .6s .05s both}
+.rv-mark .w{font-family:'Anton',sans-serif;font-size:22px;letter-spacing:3px;color:#fff}
+.rv-mark .dot{width:7px;height:7px;border-radius:50%;background:#10E0A0;box-shadow:0 0 14px rgba(16,224,160,.7);align-self:flex-start;margin-top:4px}
+.rv-badge{width:84px;height:84px;border-radius:50%;margin:0 auto 22px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,rgba(16,224,160,.30),rgba(16,224,160,.05));border:1.5px solid rgba(16,224,160,.5);box-shadow:0 0 0 8px rgba(16,224,160,.06),inset 0 0 36px rgba(16,224,160,.4);animation:rvPop .6s .15s both}
+.rv-badge .ic{width:40px;height:40px;stroke:#10E0A0;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+@keyframes rvPop{0%{opacity:0;transform:scale(.6)}60%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+.rv-eyebrow{font-family:'Anton',sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#E9C46A;text-align:center;margin-bottom:12px;animation:rvUp .6s .25s both}
+.rv-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;line-height:1.12;letter-spacing:-.6px;text-align:center;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.5);animation:rvUp .6s .33s both}
+.rv-title b{color:#10E0A0;text-shadow:0 0 26px rgba(16,224,160,.45)}
+.rv-lema{text-align:center;font-size:13.5px;font-style:italic;color:rgba(242,245,244,.6);margin-top:10px;animation:rvUp .6s .42s both}
+.rv-stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:20px 0 6px;animation:rvUp .6s .5s both}
+.rv-stat{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:30px;font-size:12.5px;font-weight:700;color:#fff;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.rv-stat .ic{width:15px;height:15px;stroke:#10E0A0;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rv-week{margin-top:20px;border-radius:20px;padding:7px;background:linear-gradient(180deg,rgba(18,26,22,.7),rgba(7,12,10,.55));border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 16px 50px rgba(0,0,0,.45)}
+.rv-wk-h{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px}
+.rv-wk-h .t{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(242,245,244,.75)}
+.rv-wk-h .n{font-size:11px;font-weight:700;color:#10E0A0}
+.rv-day{display:flex;align-items:center;gap:13px;padding:12px;border-radius:15px;margin:5px 0;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);opacity:0;animation:rvDay .5s both}
+.rv-day .dchip{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.5px;color:#fff;background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 42%,transparent)}
+.rv-day .info{flex:1;min-width:0}
+.rv-day .nm{font-size:14.5px;font-weight:800;color:#fff}
+.rv-day .mu{font-size:11.5px;font-weight:600;color:rgba(242,245,244,.5);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-day .go{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#10E0A0;background:rgba(16,224,160,.1);border:1px solid rgba(16,224,160,.25)}
+@keyframes rvDay{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+.rv-foot{margin-top:auto;padding-top:22px;animation:rvUp .6s .6s both}
+.rv-btn{width:100%;padding:17px;border:none;border-radius:16px;cursor:pointer;font-family:inherit;font-size:16.5px;font-weight:800;letter-spacing:.3px;color:#04130D;background:linear-gradient(135deg,#22F0AE,#068F66);box-shadow:0 12px 38px rgba(16,224,160,.4),inset 0 1px 0 rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s}
+.rv-btn:active{transform:translateY(1px) scale(.99)}
+.rv-note{text-align:center;font-size:12px;color:rgba(242,245,244,.5);line-height:1.5;margin-top:13px}
+.rv-note b{color:#E9C46A}
+@keyframes rvUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){#plan-reveal *{animation:none!important;opacity:1!important;transform:none!important}}
+
 </style>
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
@@ -823,6 +948,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<!-- ══ SPRITE DE ÍCONOS AVI · línea vectorial, heredan currentColor (sin dependencias) ══ -->
+<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 21.5a6.5 6.5 0 0 0 6.5-6.5c0-2.5-1.4-4.5-2.7-6-.3 1.3-1.2 2-2.1 2 0-2.4-1.1-4.4-2.9-5.6.2 2.3-1 3.7-2.1 5C9 11.6 6.5 13 6.5 15a6.5 6.5 0 0 0 5.5 6.5Z"/></symbol>
+  <symbol id="i-muscle" viewBox="0 0 24 24"><path d="M5 19h7a7 7 0 0 0 7-7V9a2 2 0 1 0-4 0v2a3 3 0 0 1-3 3H9a4 4 0 0 0-4 4z"/></symbol>
+  <symbol id="i-recomp" viewBox="0 0 24 24"><path d="M8 20V6M8 20l-3-3M8 20l3-3M16 4v14M16 18l-3-3M16 18l3-3"/></symbol>
+  <symbol id="i-barbell" viewBox="0 0 24 24"><path d="M4 9v6M7 6.5v11M17 6.5v11M20 9v6M7 12h10"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-7 5-12 14-13 1 9-4 14-11 14a4 4 0 0 1-3-1ZM9 19c1-4 3-6.5 6-8"/></symbol>
+  <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6M6 9.5V19h12V9.5M10 19v-5h4v5"/></symbol>
+  <symbol id="i-body" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.5v7M12 9.5l-4 2M12 9.5l4 2M12 14.5l-3 5.5M12 14.5l3 5.5"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 22v-5M12 17c-3.5 0-6-2.2-6-5 0-1.3.6-2.4 1.4-3.3C7 7.3 9 5 12 3c3 2 5 4.3 4.6 5.7.8.9 1.4 2 1.4 3.3 0 2.8-2.5 5-6 5Z"/></symbol>
+  <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 21v-7M12 14c-2.5 0-4.2-1.7-4.2-4.2C9.5 9.8 11 11 12 12.5 12 10 13.5 9 16 9c0 3-1.8 5-4 5Z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13h5l-1 8 9-11h-5l1-7z"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 8l3.5 3.5L12 5l4.5 6.5L20 8l-1.5 11h-13L4 8Z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M5 6.5h14V20H5zM5 10.5h14M8.5 4v3M15.5 4v3"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M4 14h16M12 14l4.5-3.5"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M7 4h5v16H7zM12 8H9M12 12H8.5M12 16H9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+</svg>
 
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="apex-loading">
@@ -836,7 +982,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 <!-- ══ LOGIN (cinematográfico) ══ -->
 <div id="s-login" class="screen on cin">
-  <video class="cin-vid" autoplay muted loop playsinline preload="auto" src="media/hero-montage.mp4"></video>
+  <video class="cin-vid" autoplay muted loop playsinline preload="auto" poster="media/brand/hero.jpg" src="media/hero-montage.mp4"></video>
   <div class="cin-scrim"></div>
   <div class="cin-edge"></div>
   <div class="cin-wrap">
@@ -855,7 +1001,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- Bienvenida: dos opciones (estilo elegante, sin volcar toda la info) -->
     <div class="cin-cta" id="cin-cta">
       <button class="cin-cta-fill" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-card').style.display='block';var e=document.getElementById('lu');if(e)setTimeout(function(){e.focus()},50)">Iniciar sesión</button>
-      <button class="cin-cta-out" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-signup').style.display='block';var e=document.getElementById('su-name');if(e)setTimeout(function(){e.focus()},50)">Crear cuenta</button>
+      <button class="cin-cta-out" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-signup').style.display='block';WZ.open();var e=document.getElementById('su-name');if(e)setTimeout(function(){e.focus()},60)">Crear cuenta</button>
     </div>
 
     <div id="install-hint" class="cin-install">
@@ -890,45 +1036,161 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="cin-hint">¿Primera vez por aquí? Entra con el correo y la contraseña <b>que te mandó tu coach.</b></div>
     </div>
 
-    <!-- Formulario de auto-registro (modo libre): aparece al tocar "Crear cuenta" -->
-    <div class="cin-card" id="cin-signup" style="display:none;max-height:78vh;overflow-y:auto">
-      <div class="cin-back" onclick="document.getElementById('cin-signup').style.display='none';document.getElementById('cin-cta').style.display='flex'">← Volver</div>
-      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px">Crea tu cuenta gratis</div>
-      <div class="cin-hint" style="margin-top:0;margin-bottom:10px">Empieza con tu <b>rutina automática</b> hecha con criterio. Cuando quieras, súmale un coach. 💪</div>
-      <button onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.25);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">
-        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
-        Crear cuenta con Google
-      </button>
-      <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:rgba(255,255,255,.45);font-size:12px"><div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div>o con tu correo<div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div></div>
+    <!-- Auto-registro (modo libre): WIZARD premium paso a paso. Aparece al tocar "Crear cuenta".
+         Los <select>/<input> ocultos conservan sus IDs (su-*) = fuente de verdad de signupClient(). -->
+    <div class="cin-card" id="cin-signup" style="display:none;max-height:84vh;overflow-y:auto">
+      <div class="wz-head">
+        <button type="button" class="wz-back" onclick="WZ.back()" aria-label="Atrás">←</button>
+        <div class="wz-prog"><div class="wz-prog-fill" id="wz-fill"></div></div>
+        <div class="wz-count" id="wz-count">01/07</div>
+      </div>
       <div id="su-err" class="lerr">Revisa los datos</div>
-      <label class="cin-lbl">Nombre</label>
-      <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Tu nombre">
-      <label class="cin-lbl">Email</label>
-      <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
-      <label class="cin-lbl">Contraseña</label>
-      <div style="position:relative">
-        <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password" style="padding-right:46px">
-        <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
+
+      <!-- Controles ocultos (los chips/steppers escriben aquí) -->
+      <select id="su-goal" hidden><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
+      <select id="su-place" hidden><option value="gym">Gym completo</option><option value="casa">Casa</option><option value="corporal">Peso corporal</option><option value="parque">Parque</option></select>
+      <select id="su-level" hidden><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select>
+      <select id="su-days" hidden><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+      <select id="su-sex" hidden><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option></select>
+
+      <!-- PASO 1 · Nombre -->
+      <div class="wz-step on" id="wz-s-name">
+        <div class="wz-eyebrow">Paso 01 · Tú</div>
+        <div class="wz-q">¿Cómo te <b>llamas?</b></div>
+        <div class="wz-help">Tu plan llevará tu nombre. En AVI entrenas con nombre propio.</div>
+        <label class="cin-lbl">Tu nombre</label>
+        <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Ej: Camilo" onkeydown="if(event.key==='Enter')WZ.next()">
+        <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
-      <label class="cin-lbl">Objetivo</label>
-      <select id="su-goal" class="cin-in"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
-      <label class="cin-lbl">¿Dónde entrenas?</label>
-      <select id="su-place" class="cin-in"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select>
-      <label class="cin-lbl">Nivel</label>
-      <select id="su-level" class="cin-in"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select>
-      <label class="cin-lbl">Días por semana</label>
-      <select id="su-days" class="cin-in"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1"><label class="cin-lbl">Sexo</label><select id="su-sex" class="cin-in"><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-        <div style="flex:1"><label class="cin-lbl">Edad</label><input id="su-age" class="cin-in" type="number" min="12" max="99" placeholder="Ej: 30"></div>
+
+      <!-- PASO 2 · Objetivo -->
+      <div class="wz-step" id="wz-s-goal">
+        <div class="wz-eyebrow">Paso 02 · Objetivo</div>
+        <div class="wz-q">¿Cuál es tu <b>objetivo?</b></div>
+        <div class="wz-help">Con esto definimos tu enfoque, tus series y tu progresión.</div>
+        <div class="wz-chips" data-wzgroup>
+          <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-goal','Perder grasa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-fire"/></svg></span><span class="lab">Perder grasa<span class="sub">Definición y déficit</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#10E0A0" onclick="WZ.pick('su-goal','Ganar músculo',this)"><span class="wz-ic"><svg class="ic"><use href="#i-muscle"/></svg></span><span class="lab">Ganar músculo<span class="sub">Hipertrofia y volumen</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#5FE3D0" onclick="WZ.pick('su-goal','Recomposición',this)"><span class="wz-ic"><svg class="ic"><use href="#i-recomp"/></svg></span><span class="lab">Recomposición<span class="sub">Bajar grasa, subir músculo</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-goal','Fuerza',this)"><span class="wz-ic"><svg class="ic"><use href="#i-barbell"/></svg></span><span class="lab">Ganar fuerza<span class="sub">Compuestos pesados</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#A8E060" onclick="WZ.pick('su-goal','Resistencia',this)"><span class="wz-ic"><svg class="ic"><use href="#i-pulse"/></svg></span><span class="lab">Resistencia<span class="sub">Aguante y cardio</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#7FD1A8" onclick="WZ.pick('su-goal','Salud general',this)"><span class="wz-ic"><svg class="ic"><use href="#i-leaf"/></svg></span><span class="lab">Salud general<span class="sub">Moverte y sentirte bien</span></span><span class="tick">✓</span></button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1"><label class="cin-lbl">Peso (kg)</label><input id="su-weight" class="cin-in" type="number" min="30" max="300" step="0.1" placeholder="70"></div>
-        <div style="flex:1"><label class="cin-lbl">Altura (cm)</label><input id="su-height" class="cin-in" type="number" min="100" max="250" placeholder="168"></div>
+
+      <!-- PASO 3 · Lugar -->
+      <div class="wz-step" id="wz-s-place">
+        <div class="wz-eyebrow">Paso 03 · Lugar</div>
+        <div class="wz-q">¿Dónde vas a <b>entrenar?</b></div>
+        <div class="wz-help">Ajustamos cada ejercicio al equipo que tengas a mano.</div>
+        <div class="wz-chips" data-wzgroup>
+          <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-place','gym',this)"><span class="wz-ic"><svg class="ic"><use href="#i-dumbbell"/></svg></span><span class="lab">Gym completo<span class="sub">Máquinas y peso libre</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-place','casa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-home"/></svg></span><span class="lab">En casa<span class="sub">Bandas / mancuernas</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#5FE3D0" onclick="WZ.pick('su-place','corporal',this)"><span class="wz-ic"><svg class="ic"><use href="#i-body"/></svg></span><span class="lab">Solo peso corporal<span class="sub">Sin equipo</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#A8E060" onclick="WZ.pick('su-place','parque',this)"><span class="wz-ic"><svg class="ic"><use href="#i-tree"/></svg></span><span class="lab">Aire libre / parque<span class="sub">Barras y calistenia</span></span><span class="tick">✓</span></button>
+        </div>
       </div>
-      <button class="cin-btn lbtn" style="margin-top:12px" onclick="signupClient()">Crear cuenta y empezar →</button>
-      <div class="cin-hint">El peso y la estatura nos ayudan a ajustar tu rutina a ti. Puedes cambiarlos luego en tu perfil.</div>
+
+      <!-- PASO 4 · Nivel -->
+      <div class="wz-step" id="wz-s-level">
+        <div class="wz-eyebrow">Paso 04 · Nivel</div>
+        <div class="wz-q">¿Cuál es tu <b>nivel?</b></div>
+        <div class="wz-help">Sé honesto: con esto calibramos la carga y la técnica para ti.</div>
+        <div class="wz-chips" data-wzgroup>
+          <button type="button" class="wz-chip" style="--c:#7FD1A8" onclick="WZ.pick('su-level','Principiante',this)"><span class="wz-ic"><svg class="ic"><use href="#i-sprout"/></svg></span><span class="lab">Principiante<span class="sub">Empezando o volviendo</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-level','Intermedio',this)"><span class="wz-ic"><svg class="ic"><use href="#i-bolt"/></svg></span><span class="lab">Intermedio<span class="sub">Entreno hace meses</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-level','Avanzado',this)"><span class="wz-ic"><svg class="ic"><use href="#i-crown"/></svg></span><span class="lab">Avanzado<span class="sub">Años de constancia</span></span><span class="tick">✓</span></button>
+        </div>
+      </div>
+
+      <!-- PASO 5 · Días + Sexo -->
+      <div class="wz-step" id="wz-s-when">
+        <div class="wz-eyebrow">Paso 05 · Frecuencia</div>
+        <div class="wz-q">¿Cuántos <b>días</b> por semana?</div>
+        <div class="wz-help">Elige lo realista. Vale más constante que perfecto.</div>
+        <div class="wz-grid" data-wzgroup style="grid-template-columns:repeat(6,1fr)">
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','1',this)">1</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','2',this)">2</button>
+          <button type="button" class="wz-gchip" id="wz-day3" data-adv="0" onclick="WZ.pick('su-days','3',this)">3</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','4',this)">4</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','5',this)">5</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','6',this)">6</button>
+        </div>
+        <label class="cin-lbl" style="margin-top:18px">Sexo (opcional)</label>
+        <div class="wz-grid" data-wzgroup style="grid-template-columns:repeat(3,1fr)">
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-sex','M',this)">Hombre</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-sex','F',this)">Mujer</button>
+          <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-sex','',this)">Prefiero<span class="s">no decir</span></button>
+        </div>
+        <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
+      </div>
+
+      <!-- PASO 6 · Cuerpo -->
+      <div class="wz-step" id="wz-s-body">
+        <div class="wz-eyebrow">Paso 06 · Tu cuerpo</div>
+        <div class="wz-q">Cuéntanos de <b>ti</b></div>
+        <div class="wz-help">Afina tus cargas y tu volumen. Puedes dejarlo en blanco y cambiarlo luego.</div>
+        <div class="wz-stepper" style="--c:#F2C94C">
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-cal"/></svg></span>Edad</span>
+          <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-age',-1,12,99)">−</button>
+            <input id="su-age" class="wz-num" type="number" min="12" max="99" placeholder="—"><span class="wz-unit">años</span>
+            <button type="button" class="wz-pm" onclick="WZ.step('su-age',1,12,99)">+</button></div>
+        </div>
+        <div class="wz-stepper" style="--c:#10E0A0">
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-scale"/></svg></span>Peso</span>
+          <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-weight',-0.5,30,300)">−</button>
+            <input id="su-weight" class="wz-num" type="number" min="30" max="300" step="0.1" placeholder="—"><span class="wz-unit">kg</span>
+            <button type="button" class="wz-pm" onclick="WZ.step('su-weight',0.5,30,300)">+</button></div>
+        </div>
+        <div class="wz-stepper" style="--c:#5FE3D0">
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-ruler"/></svg></span>Altura</span>
+          <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-height',-1,100,250)">−</button>
+            <input id="su-height" class="wz-num" type="number" min="100" max="250" placeholder="—"><span class="wz-unit">cm</span>
+            <button type="button" class="wz-pm" onclick="WZ.step('su-height',1,100,250)">+</button></div>
+        </div>
+        <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
+      </div>
+
+      <!-- PASO 7 · Cuenta -->
+      <div class="wz-step" id="wz-s-account">
+        <div class="wz-eyebrow">Paso 07 · Tu cuenta</div>
+        <div class="wz-q">Ya casi: crea tu <b>cuenta</b></div>
+        <div class="wz-help">Guardamos tu progreso para que nunca lo pierdas. Empiezas con tu <b style="color:#10E0A0">rutina automática</b> hecha con criterio.</div>
+        <label class="cin-lbl">Email</label>
+        <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
+        <label class="cin-lbl">Contraseña</label>
+        <div style="position:relative">
+          <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password" style="padding-right:46px">
+          <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
+        </div>
+        <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
+        <div class="wz-or">o</div>
+        <button type="button" class="wz-gbtn" onclick="loginWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
+          Crear cuenta con Google
+        </button>
+        <div class="cin-hint">Cuando quieras, súmale un <b>coach real</b> que ajuste tu plan a ti. 💪</div>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ REVEAL DEL PLAN · pantalla cumbre tras el registro (la llena showPlanReveal) ══ -->
+<div id="plan-reveal">
+  <div class="rv-photo" id="rv-photo"></div>
+  <div class="rv-mark"><span class="w">AVI</span><span class="dot"></span></div>
+  <div class="rv-badge"><svg class="ic"><use href="#i-check"/></svg></div>
+  <div class="rv-eyebrow">Tu plan está listo</div>
+  <div class="rv-title" id="rv-title">¡Listo!</div>
+  <div class="rv-lema">«Entrenamiento con nombre propio»</div>
+  <div class="rv-stats" id="rv-stats"></div>
+  <div class="rv-week">
+    <div class="rv-wk-h"><span class="t">Tu semana</span><span class="n">Hecha con criterio</span></div>
+    <div id="rv-days"></div>
+  </div>
+  <div class="rv-foot">
+    <button class="rv-btn" id="rv-btn" type="button">Ver mi plan →</button>
+    <div class="rv-note">Hecho con criterio. Cuando quieras, un <b>coach real</b> lo ajusta a ti.</div>
   </div>
 </div>
 
@@ -3816,7 +4078,39 @@ function saveProfileSetup(){
   svNow('ax_c',DB.clients); // modo auth → guarda profile+routines en su fila
   const el=document.getElementById('profile-ob'); if(el)el.style.display='none';
   initClientView(c);
-  toast('🎉 ¡Tu rutina ya está lista!');
+  // Google/perfil tardío: ya generamos su semana → Reveal del plan.
+  if(c.routines&&c.routines.length){ showPlanReveal(c); } else { toast('🎉 ¡Tu rutina ya está lista!'); }
+}
+
+// Reveal del plan — pantalla cumbre tras el registro. Construye la semana REAL desde
+// client.routines + el resumen del wizard. onContinue (opcional) corre al tocar "Ver mi plan".
+const _RV_DAY={'Lunes':'LUN','Martes':'MAR','Miércoles':'MIÉ','Miercoles':'MIÉ','Jueves':'JUE','Viernes':'VIE','Sábado':'SÁB','Sabado':'SÁB','Domingo':'DOM'};
+const _RV_PAL=['#10E0A0','#F2C94C','#5FE3D0','#FF8A5B','#A8E060','#7FD1A8'];
+function showPlanReveal(client, onContinue){
+  try{
+    const g=id=>document.getElementById(id);
+    const first=esc(((client.name||'Crack').trim().split(/\s+/)[0])||'Crack');
+    g('rv-title').innerHTML=first+', ya armamos tu <b>semana</b>.';
+    const placeLbl={gym:'Gym',casa:'Casa',corporal:'Peso corporal',parque:'Parque'}[client.place]||'Gym';
+    const placeIc={gym:'i-dumbbell',casa:'i-home',corporal:'i-body',parque:'i-tree'}[client.place]||'i-dumbbell';
+    const goalIc={'Perder grasa':'i-fire','Ganar músculo':'i-muscle','Recomposición':'i-recomp','Fuerza':'i-barbell','Resistencia':'i-pulse','Salud general':'i-leaf'}[client.goal]||'i-muscle';
+    const stats=[['i-cal',(client.days||3)+' días'],[placeIc,placeLbl],[goalIc,client.goal||'']];
+    g('rv-stats').innerHTML=stats.map(s=>`<span class="rv-stat"><svg class="ic"><use href="#${s[0]}"/></svg>${esc(String(s[1]))}</span>`).join('');
+    const rts=client.routines||[];
+    g('rv-days').innerHTML=rts.map((r,i)=>{
+      const c=_RV_PAL[i%_RV_PAL.length];
+      const dd=_RV_DAY[r.day]||String(r.day||'').slice(0,3).toUpperCase()||('D'+(i+1));
+      const mus=[];(r.exercises||[]).forEach(e=>{if(e.muscle&&mus.indexOf(e.muscle)<0)mus.push(e.muscle);});
+      const musTxt=mus.slice(0,3).join(' · ')||'Entrenamiento';
+      return `<div class="rv-day" style="--c:${c};animation-delay:${(0.6+i*0.1).toFixed(2)}s"><span class="dchip">${esc(dd)}</span><span class="info"><div class="nm">${esc(r.name||('Día '+(i+1)))}</div><div class="mu">${esc(musTxt)}</div></span><span class="go">→</span></div>`;
+    }).join('');
+    // Foto de marca de fondo: foto AVI (Camilo) con grade Noir Esmeralda; override con window.AVI_REVEAL_PHOTO.
+    const ph=g('rv-photo'); const _revPhoto=window.AVI_REVEAL_PHOTO||'media/brand/reveal.jpg';
+    if(ph){ if(_revPhoto){ ph.style.backgroundImage='url('+_revPhoto+')'; ph.classList.add('on'); } else { ph.classList.remove('on'); } }
+    const ov=g('plan-reveal');
+    g('rv-btn').onclick=()=>{ ov.classList.remove('on'); if(typeof onContinue==='function'){try{onContinue();}catch(e){}} };
+    ov.classList.add('on'); ov.scrollTop=0;
+  }catch(e){ warn('AVI: showPlanReveal falló:',e&&e.message); if(typeof onContinue==='function'){try{onContinue();}catch(_){}} }
 }
 
 // Entra a la app en modo auth para un usuario con sesión Supabase. Carga su fila (o la
@@ -3842,6 +4136,8 @@ async function _enterAuthSession(authUser){
   showScreen('s-client');
   initClientView(client);
   startMsgPolling();
+  // Registro nuevo con semana ya generada → Reveal del plan (la app queda lista detrás).
+  if(!row && client.selfReg && client.routines && client.routines.length){ showPlanReveal(client); }
   return client;
 }
 
@@ -3898,9 +4194,70 @@ async function backToCoachPanel(){
   initCoach();
 }
 
+// ══════════════════════════════════════════
+// WIZARD DE REGISTRO PREMIUM (modo libre)
+// Maneja los 7 pasos del auto-registro. Los chips/steppers escriben en los
+// controles ocultos su-* (fuente de verdad de signupClient) — la lógica de
+// creación de cuenta NO cambia.
+// ══════════════════════════════════════════
+const WZ={
+  steps:['wz-s-name','wz-s-goal','wz-s-place','wz-s-level','wz-s-when','wz-s-body','wz-s-account'],
+  cur:0,
+  open(){
+    this.cur=0;
+    // limpia selecciones previas y re-aplica el día por defecto (3)
+    document.querySelectorAll('#cin-signup .wz-chip.on,#cin-signup .wz-gchip.on').forEach(c=>c.classList.remove('on'));
+    const d3=document.getElementById('wz-day3'); if(d3)d3.classList.add('on');
+    const sd=document.getElementById('su-days'); if(sd)sd.value='3';
+    this._sync();
+  },
+  _sync(){
+    this.steps.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',i===this.cur);});
+    const pct=Math.round((this.cur+1)/this.steps.length*100);
+    const f=document.getElementById('wz-fill'); if(f)f.style.width=pct+'%';
+    const c=document.getElementById('wz-count'); if(c)c.textContent='0'+(this.cur+1)+'/0'+this.steps.length;
+    const e=document.getElementById('su-err'); if(e)e.classList.remove('on');
+    const sg=document.getElementById('cin-signup'); if(sg)sg.scrollTop=0;
+  },
+  next(){
+    if(!this._valid())return;
+    if(this.cur<this.steps.length-1){this.cur++;this._sync();}
+  },
+  back(){
+    if(this.cur===0){ // volver a la bienvenida (CTA)
+      document.getElementById('cin-signup').style.display='none';
+      document.getElementById('cin-cta').style.display='flex';
+      return;
+    }
+    this.cur--; this._sync();
+  },
+  pick(field,val,btn){
+    const el=document.getElementById(field); if(el)el.value=val;
+    const grp=btn.closest('[data-wzgroup]');
+    if(grp)grp.querySelectorAll('.wz-chip,.wz-gchip').forEach(c=>c.classList.remove('on'));
+    btn.classList.add('on');
+    if(btn.dataset.adv!=='0'){ setTimeout(()=>WZ.next(),230); } // auto-avanza en selección simple
+  },
+  step(field,delta,min,max){
+    const el=document.getElementById(field); if(!el)return;
+    let v=parseFloat(el.value);
+    if(isNaN(v))v=({'su-age':25,'su-weight':70,'su-height':168}[field])||min;
+    v=Math.min(max,Math.max(min,v+delta));
+    el.value=(field==='su-weight')?(Math.round(v*10)/10):Math.round(v);
+  },
+  _err(msg){ const e=document.getElementById('su-err'); if(e){e.textContent=msg;e.classList.add('on');} },
+  _valid(){
+    if(this.steps[this.cur]==='wz-s-name'){
+      const n=document.getElementById('su-name');
+      if(!n||!n.value.trim()){ this._err('Escribe tu nombre para continuar'); return false; }
+    }
+    return true;
+  }
+};
+
 async function signupClient(){
   const err=document.getElementById('su-err');
-  const btn=document.querySelector('#cin-card .lbtn, #cin-card button[onclick*="signupClient"]');
+  const btn=document.querySelector('#cin-signup button[onclick*="signupClient"], #cin-card button[onclick*="signupClient"]');
   const g=id=>document.getElementById(id);
   const data={
     name:g('su-name').value.trim(),
@@ -8647,33 +9004,35 @@ function whatsappNudge(id){
 
       <!-- Slide 1: Qué es una serie -->
       <div class="ob-slide">
-        <div class="ob-emoji">💪</div>
-        <div class="ob-title">Así funciona tu app de entrenamiento</div>
+        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-1.jpg')"><span class="ob-ic"><svg class="ic"><use href="#i-barbell"/></svg></span></div>
+        <div class="ob-eyebrow">Cómo funciona</div>
+        <div class="ob-title">Tu entrenamiento, paso a paso</div>
         <div class="ob-body">
-          Cada ejercicio tiene <strong>series</strong>. Una serie es un grupo de repeticiones seguidas.<br><br>
-          Por ejemplo: <strong>3 series × 12 reps</strong> significa que harás 12 repeticiones, descansarás, y repetirás eso 3 veces en total.
+          Cada ejercicio tiene <strong>series</strong>: un grupo de repeticiones seguidas.<br><br>
+          <strong>3 series × 12 reps</strong> significa que harás 12 repeticiones, descansas, y lo repites 3 veces en total.
         </div>
       </div>
 
       <!-- Slide 2: Cómo registrar el peso -->
       <div class="ob-slide">
-        <div class="ob-emoji">⚖️</div>
-        <div class="ob-title">Anota el peso que usaste</div>
+        <div class="ob-photo" style="--c:#E9C46A"><span class="ob-ic"><svg class="ic"><use href="#i-scale"/></svg></span></div>
+        <div class="ob-eyebrow">Registra tu peso</div>
+        <div class="ob-title">Anota lo que levantaste</div>
         <div class="ob-body">
           En cada serie verás dos campos: <strong>KG</strong> y <strong>REPS</strong>.<br><br>
-          Escribe el peso que levantaste (ej: <strong>10</strong>) y las repeticiones que hiciste. Si no usas peso, déjalo en <strong>0</strong>.<br><br>
-          Esto te ayudará a ver tu progreso cada semana 📈
+          Escribe el peso (ej: <strong>10</strong>) y las repeticiones que hiciste. Si no usas peso, déjalo en <strong>0</strong>.<br><br>
+          Así ves tu <strong>progreso</strong> semana a semana.
         </div>
       </div>
 
       <!-- Slide 3: Qué hacer al terminar -->
       <div class="ob-slide">
-        <div class="ob-emoji">✅</div>
+        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-3.jpg')"><span class="ob-ic"><svg class="ic"><use href="#i-check"/></svg></span></div>
+        <div class="ob-eyebrow">Cierra tu serie</div>
         <div class="ob-title">Marca cada serie al terminarla</div>
         <div class="ob-body">
-          Toca el <strong>círculo verde ✓</strong> al terminar cada serie. La app iniciará el descanso automáticamente.<br><br>
-          Al completar todos los ejercicios verás una celebración 🎉<br><br>
-          ¿Tienes dudas de cómo hacer un ejercicio? Toca el botón <strong>❓</strong> para ver el video.
+          Toca el <strong>círculo verde</strong> al terminar cada serie y la app inicia tu descanso automáticamente.<br><br>
+          ¿No conoces un ejercicio? Toca el <strong>botón de ayuda</strong> para ver el video y la técnica.
         </div>
       </div>
 
