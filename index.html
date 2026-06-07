@@ -68,6 +68,8 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --t3:  #4A7A58;
     --gl:  #103328;
     --gt:  #5FE3B0;
+    --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
+    --yl:#F2C94C; --or:#F0997F; --bl:#7FB2E8; --rd:#FF6B73;
     --accent3:#10E0A0; --surface:#152A1E;
     --sh:  0 2px 10px rgba(0,0,0,.25);
     --sh2: 0 6px 28px rgba(0,0,0,.40);
@@ -99,6 +101,8 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --t3:  #4A7A58;
   --gl:  #1A3A26;
   --gt:  #5FE3B0;
+  --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
+  --yl:#F2C94C; --or:#F0997F; --bl:#7FB2E8; --rd:#FF6B73;
   --accent3:#10E0A0; --surface:#152A1E;
   --sh:  0 2px 10px rgba(0,0,0,.25);
   --sh2: 0 6px 28px rgba(0,0,0,.40);
@@ -259,7 +263,7 @@ html[data-theme="light"] .mta {
 .tg{background:var(--gl);color:var(--gt)}
 .to{background:var(--orl);color:var(--or)}
 .tb{background:var(--bll);color:var(--bl)}
-.ty{background:var(--yll);color:#7a5c00}
+.ty{background:var(--yll);color:var(--t1)}
 .tr{background:var(--rdl);color:var(--rd)}
 
 /* ── INPUTS ── */
@@ -3619,8 +3623,8 @@ function renderPaymentCard(client){
   const dueStr=last?new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'';
   const amount=last&&last.amount?'$'+Number(last.amount).toLocaleString('es-CO')+' COP':'';
   con.innerHTML=`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:14px 16px">
-    <div style="font-size:13px;font-weight:800;color:#7a5c00;margin-bottom:4px">💳 Tu plan vence pronto</div>
-    ${dueStr?`<div style="font-size:12px;color:#7a5c00;opacity:.85;margin-bottom:10px">Vence: ${dueStr}${amount?' · '+amount:''}</div>`:''}
+    <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px">💳 Tu plan vence pronto</div>
+    ${dueStr?`<div style="font-size:12px;color:var(--t2);opacity:.85;margin-bottom:10px">Vence: ${dueStr}${amount?' · '+amount:''}</div>`:''}
     <div style="font-size:12px;color:var(--t2);margin-bottom:6px">Paga por <strong>Nequi</strong> al número de tu coach:</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
       <div style="font-size:20px;font-weight:800;letter-spacing:1px;color:var(--t1);font-family:'JetBrains Mono',monospace">${esc(nequi)}</div>
@@ -6626,7 +6630,7 @@ function renderNutritionCoach(clientId){
     html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
       ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
       ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
-      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
+      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
       ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
@@ -6655,7 +6659,7 @@ function renderNutritionClient(clientId){
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
       if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
-      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:#7a5c00">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:#7a5c00;font-weight:600">${nut.carbs*4} kcal</div></div>`;
+      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${nut.carbs*4} kcal</div></div>`;
       if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
