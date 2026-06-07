@@ -4087,11 +4087,14 @@ async function _provisionFreeClient(authUser, p){
     needsProfile:!complete, // Google: aún no eligió → pedirle antes de generar (no asumir)
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
+  rec.coach_id=COACH_UID; // modelo de un solo coach: todo self-registro entra al pipeline del coach
   _applyAuthClientDB(rec,{}); // colecciones vacías (usuario nuevo)
   // Solo auto-generar si el perfil viene completo (correo). Si no (Google), se genera
   // tras "Cuéntanos de ti" (saveProfileSetup) — no asumir principiante a ciegas.
   if(complete){ try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); } }
-  try{ await UD.createFromClient(rec,{role:'client',coachId:null}); }
+  // coachId=COACH_UID → la fila es visible para el coach por RLS (ve TODOS los registros como leads,
+  // con tag 🆓 Libre o 🙋 Quiere coach). El usuario sigue tier:'libre' (premium bloqueado hasta convertir).
+  try{ await UD.createFromClient(rec,{role:'client',coachId:COACH_UID}); }
   catch(e){ warn('AVI: crear fila user_data falló:',e&&e.message); }
   return rec;
 }
