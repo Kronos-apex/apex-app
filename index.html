@@ -1165,7 +1165,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
         <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
         <div class="wz-or">o</div>
-        <button type="button" class="wz-gbtn" onclick="loginWithGoogle()">
+        <button type="button" class="wz-gbtn" onclick="wzGoogle()">
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
           Crear cuenta con Google
         </button>
@@ -4030,15 +4030,29 @@ function _applyAuthClientDB(client, coll){
   DB.msgs      ={[id]: coll.msgs      ||[]};
 }
 
-// Perfil mínimo desde la metadata del usuario Auth (lo que se guardó en signUp).
+// Lee las respuestas que el wizard guardó ANTES de redirigir a Google (wzGoogle). Google
+// no devuelve goal/level en su metadata, así que sin esto el usuario perdía lo que ya había
+// contestado y caía al formulario viejo. Caduca a los 30 min para no contaminar logins futuros.
+function _pendingWizard(){
+  try{
+    const raw=localStorage.getItem('ax_wz_pending'); if(!raw)return{};
+    const p=JSON.parse(raw); if(p&&p.ts&&(Date.now()-p.ts)<1800000)return p;
+  }catch(e){}
+  return {};
+}
+
+// Perfil mínimo desde la metadata del usuario Auth (lo que se guardó en signUp). Para el
+// registro por Google completa los huecos con lo que el wizard dejó en ax_wz_pending.
 function _profileFromMeta(authUser){
   const m=(authUser&&authUser.user_metadata)||{};
+  const w=_pendingWizard();
+  const goal=m.goal||w.goal, level=m.level||w.level;
   return {
-    name:m.name||m.full_name||((authUser&&authUser.email)||'').split('@')[0]||'Crack',
+    name:m.name||m.full_name||w.name||((authUser&&authUser.email)||'').split('@')[0]||'Crack',
     email:authUser&&authUser.email,
-    goal:m.goal||'Salud general', level:m.level||'Principiante', days:parseInt(m.days)||3,
-    sex:m.sex||null, age:m.age||null, weight:m.weight||null, height:m.height||null, place:m.place||'gym',
-    _complete:!!(m.goal&&m.level), // email signup trae estos del form; Google NO → pedirlos
+    goal:goal||'Salud general', level:level||'Principiante', days:parseInt(m.days||w.days)||3,
+    sex:m.sex||w.sex||null, age:m.age||w.age||null, weight:m.weight||w.weight||null, height:m.height||w.height||null, place:m.place||w.place||'gym',
+    _complete:!!(goal&&level), // email trae estos del form; Google los toma del wizard guardado
   };
 }
 
@@ -4132,6 +4146,7 @@ async function _enterAuthSession(authUser){
   } else {
     client=await _provisionFreeClient(authUser,_profileFromMeta(authUser));
   }
+  try{localStorage.removeItem('ax_wz_pending');}catch(e){} // ya consumido (o usuario existente)
   CUR.loggedAs='client'; CUR.clientId=client.id;
   showScreen('s-client');
   initClientView(client);
@@ -4302,6 +4317,24 @@ async function signupClient(){
   } finally {
     if(btn){btn.disabled=false;}
   }
+}
+
+// El usuario llegó al paso 7 del wizard y eligió Google. signInWithOAuth nos saca de la
+// página y se perderían sus respuestas, así que las guardamos primero; al volver,
+// _profileFromMeta las recupera → genera su semana → Reveal nuevo (no el formulario viejo).
+function wzGoogle(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const name=(g('su-name')||'').trim();
+  if(!name){ const e=document.getElementById('su-err'); if(e){e.textContent='Escribe tu nombre antes de continuar con Google';e.classList.add('on');} WZ.cur=0; WZ._sync(); return; }
+  try{
+    localStorage.setItem('ax_wz_pending', JSON.stringify({
+      name, goal:g('su-goal')||null, place:g('su-place')||'gym', level:g('su-level')||'Principiante',
+      days:parseInt(g('su-days'))||3, sex:g('su-sex')||null,
+      age:parseInt(g('su-age'))||null, weight:parseFloat(g('su-weight'))||null, height:parseFloat(g('su-height'))||null,
+      ts:Date.now()
+    }));
+  }catch(e){}
+  loginWithGoogle();
 }
 
 // Regenerar la semana desde la vista del asesorado (solo modo libre).
