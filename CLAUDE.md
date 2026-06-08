@@ -830,6 +830,16 @@ Sobre la pantalla "Fin de entrenamiento" (benchmark: captura real de Gravl "Deta
 - **Origen:** Camilo dejó 43 fotos en `Desktop/AVI/fotos-seleccionadas/` (16 con nombre eN-...__variante + 27 `Gemini_*` de atleta MUJER sin mapear). Todas premium Noir + logo AVI.
 - **PENDIENTE Fase 2:** (a) las **27 fotos de mujer sueltas** → necesitan ID de ejercicio (Camilo renombra como las 16, o Claude propone mapeo para que confirme) → procesar a `{id}_f.jpg` + ampliar `EX_IMG_F`. (b) **7 upgrades de hombre** seleccionados (e6,e11,e13,e71,e77,e83,e85; tienen variantes de ángulo) → reemplazar `{id}.jpg` si Camilo lo aprueba. 118/118 + audit 8/8.
 
+### ✅ Sesión 2026-06-08 (cont. 4) — Gender-aware Fase 2: 21 fotos mujer + 4 hombre (apex-v89)
+De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo ✦ + 720², tamaños mixtos cuadrado/apaisado/vertical manejados). **Claude identificó cada una a resolución full contra `DB.exercises`** (no miniaturas, no EX_IMG_NAME).
+- **21 fotos de MUJER** → `{id}_f.jpg`: e96,e73,e38,e93,e40,e18,e58,e14,e41,e106,e35,e48,e37,e62,e42,e89,e13,e17,e80,e44,e92. `EX_IMG_F` ampliado a 24 ids (con los 3 de Fase 1: e2,e26,e50).
+- **4 fotos de HOMBRE** (modelo masculino, no mis-sorted) → reemplazo de `{id}.jpg` default: e36 prensa, e4 dominadas, e47 rueda abdominal, e94 abducción de pie con banda (e94 era nueva).
+- **e89, e93, e94 AÑADIDAS a `EX_IMG_NAME`** (existían en DB.exercises pero faltaban en el mapa → si no, la foto no resolvería; misma trampa que e97). Lección guardada en memoria [[feedback-verificar-catalogo-ejercicios]].
+- Descartadas 2 fotos mujer duplicadas (2ª toma de e73 y de e44).
+- 118/118 tests + audit 8/8.
+
+**Pendiente:** (a) **7 upgrades de HOMBRE con nombre** (e6,e11,e13,e71,e77,e83,e85; tienen variantes de ángulo) → reemplazar `{id}.jpg` si Camilo aprueba (las puso en fotos-seleccionadas). (b) más fotos de mujer para cubrir más ejercicios.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -882,7 +892,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v88** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v89** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 4): 👩 gender-aware Fase 2 — 21 fotos de ejercicio MUJER (`{id}_f.jpg`, EX_IMG_F=24 ids) + 4 de hombre (e36/e4/e47/e94); e89/e93/e94 añadidas a EX_IMG_NAME (faltaban, trampa tipo e97). Claude identificó cada foto a full-res contra DB.exercises. Lección: verificar catálogo real, no EX_IMG_NAME (apex-v89)*
 *Hitos sesión 2026-06-08 (cont. 3): 👩 fotos de ejercicio GENDER-AWARE (la asesorada ve la demo en mujer) — `exImgSrc(e,sex)` + `EX_IMG_F` + `_viewSex()`, sin tocar call-sites; Fase 1 = 3 fotos mujer (e2_f/e26_f/e50_f). Pendiente Fase 2: mapear las 27 fotos de mujer sueltas (necesitan ID) + 7 upgrades hombre. 43 fotos en `fotos-seleccionadas/` (apex-v88)*
 *Hitos sesión 2026-06-08 (cont. 2): cierre de entreno con ⏱️ Duración (startedAt) + 🔥 Calorías (MET·peso·h) + 📅 Fecha (referencia: captura real Gravl "Detalles del entrenamiento") · ⭐ "¿Cómo te sentiste?" 5 caritas (feeling 1-5) que el COACH ve en el historial (foso vs Gravl IA) · identidad propia (foto full-bleed + personal + esmeralda) (apex-v87)*
 *Hitos sesión 2026-06-08 (cont.): 🏆 pantalla "Fin de entrenamiento" full-bleed (overlay #workout-finish al 100%: foto + 🏆 + series/volumen/récords + PRs + confetti); primer momento full-bleed fuera del onboarding; default foto = ob-2 (pendiente foto de victoria dedicada vía Gemini); reemplaza el banner inline #congrats (apex-v86)*
