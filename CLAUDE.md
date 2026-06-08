@@ -824,6 +824,12 @@ Sobre la pantalla "Fin de entrenamiento" (benchmark: captura real de Gravl "Deta
 3. Identidad mantenida (no copia de Gravl): foto full-bleed + "¡Lo lograste, {nombre}!" + esmeralda/oro + 🏆 + confetti, vs la tarjeta plana fría de Gravl.
 - 118/118 tests + audit 8/8.
 
+### ✅ Sesión 2026-06-08 (cont. 3) — Fotos de ejercicio GENDER-AWARE, Fase 1 (apex-v88)
+**Feature nueva:** la asesarada ve la demo del ejercicio en MUJER; coach/hombre ven el default. Mecánica en `exImgSrc(e,sex)`: si `sex==='F'` y el id está en `EX_IMG_F`, devuelve `media/exercises/{id}_f.jpg`; si no, el `{id}.jpg` de siempre. `sex` por defecto = `_viewSex()` (en vista del asesorado sigue su `client.sex`; coach → default). **Sin tocar los ~8 call-sites** (exIcon/exImgSrc heredan el default). Retro-compatible y aditivo.
+- **Fase 1:** 3 fotos de mujer procesadas (delogo ✦ + 720²) → `e2_f.jpg` (press inclinado), `e26_f.jpg` (jalón amplio), `e50_f.jpg` (buenos días). `EX_IMG_F={e2,e26,e50}`.
+- **Origen:** Camilo dejó 43 fotos en `Desktop/AVI/fotos-seleccionadas/` (16 con nombre eN-...__variante + 27 `Gemini_*` de atleta MUJER sin mapear). Todas premium Noir + logo AVI.
+- **PENDIENTE Fase 2:** (a) las **27 fotos de mujer sueltas** → necesitan ID de ejercicio (Camilo renombra como las 16, o Claude propone mapeo para que confirme) → procesar a `{id}_f.jpg` + ampliar `EX_IMG_F`. (b) **7 upgrades de hombre** seleccionados (e6,e11,e13,e71,e77,e83,e85; tienen variantes de ángulo) → reemplazar `{id}.jpg` si Camilo lo aprueba. 118/118 + audit 8/8.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -876,7 +882,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v87** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v88** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 3): 👩 fotos de ejercicio GENDER-AWARE (la asesorada ve la demo en mujer) — `exImgSrc(e,sex)` + `EX_IMG_F` + `_viewSex()`, sin tocar call-sites; Fase 1 = 3 fotos mujer (e2_f/e26_f/e50_f). Pendiente Fase 2: mapear las 27 fotos de mujer sueltas (necesitan ID) + 7 upgrades hombre. 43 fotos en `fotos-seleccionadas/` (apex-v88)*
 *Hitos sesión 2026-06-08 (cont. 2): cierre de entreno con ⏱️ Duración (startedAt) + 🔥 Calorías (MET·peso·h) + 📅 Fecha (referencia: captura real Gravl "Detalles del entrenamiento") · ⭐ "¿Cómo te sentiste?" 5 caritas (feeling 1-5) que el COACH ve en el historial (foso vs Gravl IA) · identidad propia (foto full-bleed + personal + esmeralda) (apex-v87)*
 *Hitos sesión 2026-06-08 (cont.): 🏆 pantalla "Fin de entrenamiento" full-bleed (overlay #workout-finish al 100%: foto + 🏆 + series/volumen/récords + PRs + confetti); primer momento full-bleed fuera del onboarding; default foto = ob-2 (pendiente foto de victoria dedicada vía Gemini); reemplaza el banner inline #congrats (apex-v86)*
 *Hitos sesión 2026-06-08: 🧹 eliminada la "Nota del coach" duplicada (quitada la vieja gris "Notas técnicas (coach)" `#exd-tech-wrap`, queda solo el cue esmeralda `EX_COACHTIP`) · 🎨 onboarding intro rediseñado a FULL-BLEED inmersivo (foto a pantalla completa + texto abajo; antes cajita de 188px) · 📸 3 fotos de marca AVI con logo horneado en la camiseta por Gemini, 1536×2752 nativo + ✦ eliminado (ob-1 peso muerto, ob-2 de pie, ob-3 sentado); Claude solo delogo+grade (regla: Gemini hace el logo, no Claude) (apex-v85)*

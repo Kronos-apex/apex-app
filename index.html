@@ -2616,11 +2616,19 @@ const EX_COACHTIP={
  e68:"Pies muy anchos y puntas afuera; agarre entre las piernas, empuja el suelo y sube cadera y pecho juntos con espalda neutra.",
  e69:"Movimiento avanzado: domina la técnica sin peso y con supervisión antes de cargar. Potencia desde el suelo, recibe con cuidado."
 };
-function exImgSrc(e){
+// Fotos de ejercicio con versión MUJER (media/exercises/{id}_f.jpg). Gender-aware: la
+// asesorada ve la demo en mujer; coach/hombre ven el default. Se amplía conforme llegan fotos.
+const EX_IMG_F=new Set(['e2','e26','e50']);
+// Sexo de quien mira: en vista del asesorado sigue su sexo; el coach ve el default.
+function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.id===CUR.clientId); return (c&&c.sex)||''; } return ''; }
+function exImgSrc(e,sex){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
-  return id?('media/exercises/'+id+'.jpg'):'';
+  if(!id) return '';
+  const s=(sex!==undefined)?sex:_viewSex();
+  if(s==='F'&&EX_IMG_F.has(id)) return 'media/exercises/'+id+'_f.jpg';
+  return 'media/exercises/'+id+'.jpg';
 }
 // Marca <img> de ejercicio reutilizable (tarjetas y detalle) — lazy + tocable
 function exImgTag(src,name){
