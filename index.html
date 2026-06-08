@@ -578,35 +578,32 @@ html[data-theme="light"] .mta {
 .congrats{background:linear-gradient(135deg,#06402E,#13B583);border-radius:var(--r);padding:16px;color:white;text-align:center;margin-bottom:12px}
 .congrats.hide{display:none}
 
-/* ── ONBOARDING ── */
-#onboarding{position:fixed;inset:0;z-index:800;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;transition:opacity .4s;
-  background:radial-gradient(95% 50% at 80% -8%,rgba(16,224,160,.24),transparent 60%),radial-gradient(80% 48% at 0% 108%,rgba(233,196,106,.13),transparent 58%),linear-gradient(160deg,#0A1A14,#06120D 48%,#04080A)}
+/* ── ONBOARDING (full-bleed inmersivo) ── */
+#onboarding{position:fixed;inset:0;z-index:800;background:#04080A;transition:opacity .4s;overflow:hidden}
 #onboarding.fade-out{opacity:0;pointer-events:none}
 #cn-help-btn{animation:helpPulse 1.5s ease 3}
 @keyframes helpPulse{0%,100%{box-shadow:0 0 0 0 rgba(45,106,79,0)}50%{box-shadow:0 0 0 6px rgba(45,106,79,.20)}}
-.ob-slides{width:100%;max-width:380px;overflow:hidden}
-.ob-track{display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-.ob-slide{min-width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 6px 0;color:#fff}
-/* Zona de foto: lista para imagen de marca. Hoy muestra el ícono sobre panel aurora.
-   Para activar foto: añadir clase .has-img + background-image en .ob-photo. */
-.ob-photo{position:relative;width:100%;height:188px;border-radius:22px;margin-bottom:24px;overflow:hidden;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;
-  background-color:#0a1310;background-image:linear-gradient(180deg,color-mix(in srgb,var(--c) 16%,#0c1512),#0a1310);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 16px 44px rgba(0,0,0,.45)}
+.ob-slides{position:absolute;inset:0;overflow:hidden}
+.ob-track{display:flex;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.ob-slide{position:relative;min-width:100%;height:100%;color:#fff;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+/* Foto de marca a pantalla completa (cover) detrás del texto */
+.ob-photo{position:absolute;inset:0;background-size:cover;background-position:center;background-color:#04080A}
 .ob-photo.has-img{background-image:var(--img)}
-.ob-photo.has-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(4,8,10,.6))}
-.ob-photo.has-img .ob-ic{display:none}
-.ob-ic{width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;background:color-mix(in srgb,var(--c) 22%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 42%,transparent);box-shadow:0 0 30px color-mix(in srgb,var(--c) 40%,transparent)}
-.ob-ic .ic{width:36px;height:36px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ob-eyebrow{font-family:'Anton',sans-serif;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:#E9C46A;margin-bottom:8px}
-.ob-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:12px;line-height:1.18;letter-spacing:-.3px}
-.ob-body{font-size:14.5px;line-height:1.7;color:rgba(242,245,244,.72);max-width:310px}
+.ob-photo.has-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,10,.28) 0%,rgba(4,8,10,0) 30%,rgba(4,8,10,.45) 58%,rgba(4,8,10,.93) 100%)}
+.ob-ic{display:none}
+/* Texto sobre la foto, anclado abajo, dejando aire para dots + botones */
+.ob-copy{position:relative;z-index:2;padding:0 28px 224px;text-align:left}
+.ob-eyebrow{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2.5px;text-transform:uppercase;color:#10E0A0;margin-bottom:10px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.ob-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;margin-bottom:12px;line-height:1.12;letter-spacing:-.5px;text-shadow:0 2px 18px rgba(0,0,0,.55)}
+.ob-body{font-size:15px;line-height:1.65;color:rgba(242,245,244,.86);max-width:none;text-shadow:0 1px 10px rgba(0,0,0,.5)}
 .ob-body strong{color:#10E0A0;font-weight:700}
-.ob-dots{display:flex;gap:8px;margin:26px 0 22px}
-.ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:all .25s}
+.ob-dots{position:absolute;left:0;right:0;bottom:150px;z-index:3;display:flex;justify-content:center;gap:8px;margin:0}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .25s}
 .ob-dot.on{width:24px;border-radius:4px;background:#10E0A0;box-shadow:0 0 12px rgba(16,224,160,.6)}
-.ob-btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:380px}
+.ob-btns{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;flex-direction:column;gap:8px;padding:0 24px calc(26px + env(safe-area-inset-bottom));max-width:none}
 .ob-next{width:100%;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
 .ob-next:active{transform:scale(.98)}
-.ob-skip{background:none;border:none;color:rgba(242,245,244,.5);font-family:inherit;font-size:13px;cursor:pointer;padding:8px;font-weight:600}
+.ob-skip{background:none;border:none;color:rgba(242,245,244,.65);font-family:inherit;font-size:13px;cursor:pointer;padding:8px;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 /* First-exercise tooltip */
 .ex-tooltip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06402E,#0A7C5B);color:white;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(45,106,79,.35);animation:tooltipPop .4s cubic-bezier(.4,0,.2,1)}
 .ex-tooltip-icon{font-size:22px;flex-shrink:0}
@@ -8660,16 +8657,6 @@ function _showExSheet(ex, isCoach, editable){
   if(tipText){ tipEl.textContent = tipText; tipWrap.style.display = 'block'; }
   else { tipWrap.style.display = 'none'; }
 
-  // Technical description (coach only)
-  const techWrap = document.getElementById('exd-tech-wrap');
-  const techEl = document.getElementById('exd-tech');
-  if(isCoach && ex.desc){
-    techEl.textContent = ex.desc;
-    techWrap.style.display = 'block';
-  } else {
-    techWrap.style.display = 'none';
-  }
-
   // YouTube query
   CUR_EX_YT_QUERY = ex.ytQuery || (ex.name + ' ejercicio tutorial');
 
@@ -9199,35 +9186,41 @@ function whatsappNudge(id){
 
       <!-- Slide 1: Qué es una serie -->
       <div class="ob-slide">
-        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-1.jpg')"><span class="ob-ic"><svg class="ic"><use href="#i-barbell"/></svg></span></div>
-        <div class="ob-eyebrow">Cómo funciona</div>
-        <div class="ob-title">Tu entrenamiento, paso a paso</div>
-        <div class="ob-body">
-          Cada ejercicio tiene <strong>series</strong>: un grupo de repeticiones seguidas.<br><br>
-          <strong>3 series × 12 reps</strong> significa que harás 12 repeticiones, descansas, y lo repites 3 veces en total.
+        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-1.jpg')"></div>
+        <div class="ob-copy">
+          <div class="ob-eyebrow">Cómo funciona</div>
+          <div class="ob-title">Tu entrenamiento, paso a paso</div>
+          <div class="ob-body">
+            Cada ejercicio tiene <strong>series</strong>: un grupo de repeticiones seguidas.<br><br>
+            <strong>3 series × 12 reps</strong> significa que harás 12 repeticiones, descansas, y lo repites 3 veces en total.
+          </div>
         </div>
       </div>
 
       <!-- Slide 2: Cómo registrar el peso -->
       <div class="ob-slide">
-        <div class="ob-photo" style="--c:#E9C46A"><span class="ob-ic"><svg class="ic"><use href="#i-scale"/></svg></span></div>
-        <div class="ob-eyebrow">Registra tu peso</div>
-        <div class="ob-title">Anota lo que levantaste</div>
-        <div class="ob-body">
-          En cada serie verás dos campos: <strong>KG</strong> y <strong>REPS</strong>.<br><br>
-          Escribe el peso (ej: <strong>10</strong>) y las repeticiones que hiciste. Si no usas peso, déjalo en <strong>0</strong>.<br><br>
-          Así ves tu <strong>progreso</strong> semana a semana.
+        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-2.jpg')"></div>
+        <div class="ob-copy">
+          <div class="ob-eyebrow">Registra tu peso</div>
+          <div class="ob-title">Anota lo que levantaste</div>
+          <div class="ob-body">
+            En cada serie verás dos campos: <strong>KG</strong> y <strong>REPS</strong>.<br><br>
+            Escribe el peso (ej: <strong>10</strong>) y las repeticiones que hiciste. Si no usas peso, déjalo en <strong>0</strong>.<br><br>
+            Así ves tu <strong>progreso</strong> semana a semana.
+          </div>
         </div>
       </div>
 
       <!-- Slide 3: Qué hacer al terminar -->
       <div class="ob-slide">
-        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-3.jpg')"><span class="ob-ic"><svg class="ic"><use href="#i-check"/></svg></span></div>
-        <div class="ob-eyebrow">Cierra tu serie</div>
-        <div class="ob-title">Marca cada serie al terminarla</div>
-        <div class="ob-body">
-          Toca el <strong>círculo verde</strong> al terminar cada serie y la app inicia tu descanso automáticamente.<br><br>
-          ¿No conoces un ejercicio? Toca el <strong>botón de ayuda</strong> para ver el video y la técnica.
+        <div class="ob-photo has-img" style="--c:#10E0A0;--img:url('media/brand/ob-3.jpg')"></div>
+        <div class="ob-copy">
+          <div class="ob-eyebrow">Cierra tu serie</div>
+          <div class="ob-title">Marca cada serie al terminarla</div>
+          <div class="ob-body">
+            Toca el <strong>círculo verde</strong> al terminar cada serie y la app inicia tu descanso automáticamente.<br><br>
+            ¿No conoces un ejercicio? Toca el <strong>botón de ayuda</strong> para ver el video y la técnica.
+          </div>
         </div>
       </div>
 
@@ -9279,12 +9272,6 @@ function whatsappNudge(id){
         <div class="ctip-head"><span class="ctip-av"><svg class="ic"><use href="#i-barbell"/></svg></span><span class="ctip-role">Nota del coach</span></div>
         <div class="ctip-text" id="exd-coachtip"></div>
       </div>
-    </div>
-
-    <!-- Descripción técnica (solo coach) -->
-    <div class="exdetail-section" id="exd-tech-wrap" style="display:none">
-      <div class="exdetail-slabel">Notas técnicas (coach)</div>
-      <div class="exdetail-desc" id="exd-tech" style="font-size:13px"></div>
     </div>
 
     <!-- Editor de entorno (solo coach, ejercicios de la biblioteca) -->
