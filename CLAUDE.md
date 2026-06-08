@@ -838,7 +838,8 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 - Descartadas 2 fotos mujer duplicadas (2ª toma de e73 y de e44).
 - 118/118 tests + audit 8/8.
 
-**Pendiente:** (a) **7 upgrades de HOMBRE con nombre** (e6,e11,e13,e71,e77,e83,e85; tienen variantes de ángulo) → reemplazar `{id}.jpg` si Camilo aprueba (las puso en fotos-seleccionadas). (b) más fotos de mujer para cubrir más ejercicios.
+**✅ 7 upgrades de HOMBRE aplicados (apex-v90):** reemplazado `{id}.jpg` de e6 (jalón espalda), e11 (extensión tríceps abajo), e13 (sentadilla barra), e71 (press mancuernas abajo), e77 (flexiones pared), e83 (lagartijas alt), e85 (aperturas polea cerrado). Multi-ángulo: elegido el frame más representativo por ejercicio. delogo + 720².
+**Pendiente:** más fotos de mujer para cubrir más ejercicios (24/109 con versión mujer).
 
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
@@ -892,7 +893,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v89** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v90** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 5): 👨 7 upgrades de foto de hombre aplicados (e6,e11,e13,e71,e77,e83,e85 → default {id}.jpg, frame más representativo por ejercicio) (apex-v90)*
 *Hitos sesión 2026-06-08 (cont. 4): 👩 gender-aware Fase 2 — 21 fotos de ejercicio MUJER (`{id}_f.jpg`, EX_IMG_F=24 ids) + 4 de hombre (e36/e4/e47/e94); e89/e93/e94 añadidas a EX_IMG_NAME (faltaban, trampa tipo e97). Claude identificó cada foto a full-res contra DB.exercises. Lección: verificar catálogo real, no EX_IMG_NAME (apex-v89)*
 *Hitos sesión 2026-06-08 (cont. 3): 👩 fotos de ejercicio GENDER-AWARE (la asesorada ve la demo en mujer) — `exImgSrc(e,sex)` + `EX_IMG_F` + `_viewSex()`, sin tocar call-sites; Fase 1 = 3 fotos mujer (e2_f/e26_f/e50_f). Pendiente Fase 2: mapear las 27 fotos de mujer sueltas (necesitan ID) + 7 upgrades hombre. 43 fotos en `fotos-seleccionadas/` (apex-v88)*
 *Hitos sesión 2026-06-08 (cont. 2): cierre de entreno con ⏱️ Duración (startedAt) + 🔥 Calorías (MET·peso·h) + 📅 Fecha (referencia: captura real Gravl "Detalles del entrenamiento") · ⭐ "¿Cómo te sentiste?" 5 caritas (feeling 1-5) que el COACH ve en el historial (foso vs Gravl IA) · identidad propia (foto full-bleed + personal + esmeralda) (apex-v87)*
