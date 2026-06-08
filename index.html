@@ -429,8 +429,8 @@ html[data-theme="light"] .mta {
 .cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 
 /* Today hero */
-.wohero{background:linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
-.wohero::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 88% -12%,rgba(16,224,160,.30),transparent 55%);pointer-events:none}
+.wohero{background:linear-gradient(100deg,rgba(8,26,19,.96) 0%,rgba(8,26,19,.90) 34%,rgba(11,38,28,.55) 78%,rgba(11,38,28,.40) 100%),url('media/brand/ob-1.jpg') right center/cover,linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
+.wohero::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 88% -12%,rgba(16,224,160,.22),transparent 55%);pointer-events:none}
 .woday{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1.4px;text-transform:uppercase;color:#F2C94C;margin-bottom:5px;position:relative}
 .woname{font-size:23px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px;position:relative}
 .wopills{display:flex;gap:6px;flex-wrap:wrap}
@@ -5265,7 +5265,7 @@ function saveRoutine(){
   }
   c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);cm('m-routine');renderDetailRoutines(c);renderHome();
-  if(COACH_SELF){renderClientAllRoutines(c);renderClientToday(c);} // coach en su propio entreno: refrescar SU vista
+  if(CUR.loggedAs==='client'){renderClientAllRoutines(c);renderClientToday(c);} // coach-en-su-entreno o cliente libre: refrescar SU vista
 }
 
 function delRoutine(cid,ri){
@@ -5284,7 +5284,7 @@ function delRoutine(cid,ri){
     localStorage.removeItem(`session_date_${rid}`);
   }
   c.routines.splice(ri,1);sv('ax_c',DB.clients);renderDetailRoutines(c);renderHome();toast('🗑️ Rutina eliminada');
-  if(COACH_SELF){renderClientAllRoutines(c);renderClientToday(c);} // coach en su propio entreno: refrescar SU vista
+  if(CUR.loggedAs==='client'){renderClientAllRoutines(c);renderClientToday(c);} // coach-en-su-entreno o cliente libre: refrescar SU vista
 }
 
 // PICKER
@@ -6445,12 +6445,16 @@ function clientWeekEditorial(client){
 function renderClientAllRoutines(client){
   const ed=document.getElementById('cn-week-ed');
   const con=document.getElementById('cn-all-rut');const routines=sortRoutinesByDay(client.routines||[]);
+  // Puede editar su propia rutina: el coach en su entreno, o un cliente LIBRE (sin coach que se la
+  // gestione). Los asesorados premium NO editan (su coach lo hace). Las gráficas siguen siendo premium,
+  // pero armar/ajustar ejercicios está disponible para el libre que solo quiere registrar.
+  const canEdit=COACH_SELF||isFreeClient(client);
   if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
   if(!routines.length){
     con.innerHTML=COACH_SELF
       ? '<div class="empty" style="padding:36px"><div class="eico">🏋️</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Arma tu propio entrenamiento igual que el de un asesorado.</div><button class="btn bp bsm" style="margin-top:12px" onclick="openNewRoutine()">+ Nueva rutina</button></div>'
       : client.selfReg
-      ? '<div class="empty" style="padding:36px"><div class="eico">✨</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Generamos un plan a tu medida según tus datos. Lo puedes regenerar cuando quieras.</div><button class="btn bp bsm" style="margin-top:12px" onclick="clientSelfGenerate()">✨ Generar mi semana</button></div>'
+      ? '<div class="empty" style="padding:36px"><div class="eico">✨</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Generamos un plan a tu medida según tus datos — o ármalo tú mismo si ya tienes el tuyo.</div><button class="btn bp bsm" style="margin-top:12px" onclick="clientSelfGenerate()">✨ Generar mi semana</button><button class="btn bg bsm" style="margin-top:8px" onclick="openNewRoutine()">+ Crear rutina manual</button></div>'
       : '<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';
     return;
   }
@@ -6463,8 +6467,8 @@ function renderClientAllRoutines(client){
     regen.onclick=clientSelfGenerate;
     con.appendChild(regen);
   }
-  // Coach en su propio entrenamiento: puede gestionar sus rutinas como con un asesorado.
-  if(COACH_SELF){
+  // Coach en su entreno o cliente libre: puede crear/gestionar sus propias rutinas.
+  if(canEdit){
     const nb=document.createElement('button');
     nb.className='btn bp bsm';
     nb.style.cssText='width:100%;margin-bottom:10px';
@@ -6477,7 +6481,7 @@ function renderClientAllRoutines(client){
     const isRest=r.day==='Libre';
     const dayAb=isRest?'💤':esc(r.day).slice(0,2);
     const div=document.createElement('div');div.className='rc';
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${COACH_SELF?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
     con.appendChild(div);
   });
 }
