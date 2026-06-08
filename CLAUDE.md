@@ -810,6 +810,13 @@ Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_a
 - [ ] Variedad de sujetos: meter **atleta mujer** en esas pantallas (Camilo genera en Gemini, Claude procesa).
 - [ ] Footer de versión visible sigue en `v1.3.1 · May 2026` (histórico).
 
+### ✅ Sesión 2026-06-08 (cont.) — Fin de entrenamiento full-bleed 🏆 (apex-v86)
+**Primer "momento" full-bleed fuera del onboarding** (ver principio: el estilo se reserva para picos emocionales, no uso diario). Overlay `#workout-finish` (z-900) que salta al completar el **100%** de una rutina: foto de marca a pantalla completa + scrim + 🏆 + "¡Lo lograste, {nombre}!" + chips de resumen (**series · volumen · récords**) + PRs nuevos (máx 3 + "+N más") + confetti + botón "Continuar".
+- **Disparo:** `showWorkoutFinish(routine,{done,total,totalVol,newPRs})` reemplaza al banner inline `#congrats` en los DOS puntos de completado: `updateClientProgress` (marcado normal) y `checkAndShowCongrats` (modo guiado). Guard `_wfShownFor=routineId|día` evita re-pop al re-marcar la última serie.
+- **Foto:** `WF_DEFAULT_PHOTO='media/brand/ob-2.jpg'` (de momento reusa la de pie del onboarding) con override `window.AVI_FINISH_PHOTO`. **Pendiente:** foto de VICTORIA dedicada (Gemini, atleta triunfante NO posando, camiseta AVI) → swap de 1 línea por escasez/variedad.
+- **Dead code inerte (a propósito, sin riesgo):** `#congrats` (banner viejo) + `showPRCelebration` quedan definidos pero ya no se muestran; las llamadas `congrats.classList.add('hide')` son no-ops.
+- 118/118 tests + audit 8/8.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -862,7 +869,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v85** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v86** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont.): 🏆 pantalla "Fin de entrenamiento" full-bleed (overlay #workout-finish al 100%: foto + 🏆 + series/volumen/récords + PRs + confetti); primer momento full-bleed fuera del onboarding; default foto = ob-2 (pendiente foto de victoria dedicada vía Gemini); reemplaza el banner inline #congrats (apex-v86)*
 *Hitos sesión 2026-06-08: 🧹 eliminada la "Nota del coach" duplicada (quitada la vieja gris "Notas técnicas (coach)" `#exd-tech-wrap`, queda solo el cue esmeralda `EX_COACHTIP`) · 🎨 onboarding intro rediseñado a FULL-BLEED inmersivo (foto a pantalla completa + texto abajo; antes cajita de 188px) · 📸 3 fotos de marca AVI con logo horneado en la camiseta por Gemini, 1536×2752 nativo + ✦ eliminado (ob-1 peso muerto, ob-2 de pie, ob-3 sentado); Claude solo delogo+grade (regla: Gemini hace el logo, no Claude) (apex-v85)*
 *Hitos sesión 2026-06-07 (cont.): 📸 fotos de ejercicio lote 2 (23: 22 reemplazos + e97 Pike Push-up; e97 faltaba en EX_IMG_NAME) (v80) · 🔧 fix e9 (mostraba mancuernas, archivo Gemini mal nombrado→barra real) + 4 fuentes verticales reprocesadas con fit+relleno (no recorte; el calf raise perdía los pies); process-photos.sh detecta orientación (v81) · ⭐ NUEVA FEATURE "Nota del coach" por ejercicio (callout esmeralda visible al asesorado; mapa `EX_COACHTIP` resuelto por id sin migración; 109/109) (v82 lote 1→v83 completo) · 📝 22 descripciones cortas enriquecidas, 87 ya sólidas se dejaron (v84) · lección: verificar CONTENIDO de cada imagen, no el nombre del archivo*
 *Hitos sesión 2026-06-07: 🚀 wizard+fotos de marca a prod (apex-v65) · 🐛 fix registro Google (pierde-datos→reveal, v66) · 📸 primeras 10 fotos de ejercicio AVI (v67) · 🎨 rediseño interior DARK Noir por defecto + hero/tarjetas/detalle/callouts (v68-v71,v79; causa raíz = interior en tema claro) · 🔴→✅ BUG CRÍTICO solicitudes de coach invisibles por `coach_id=NULL` + RLS → todos los self-reg al pipeline + backfill (lead real Cristhian recuperado, v72/v73) · 📝 LAS 109 fichas de ejercicio a estándar premium (músculo nombrado + criterio, v74-v78) · flujo fotos definitivo: GEMINI hace look+logo, Claude solo ✦+720²*

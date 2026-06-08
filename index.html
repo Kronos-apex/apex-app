@@ -604,6 +604,30 @@ html[data-theme="light"] .mta {
 .ob-next{width:100%;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
 .ob-next:active{transform:scale(.98)}
 .ob-skip{background:none;border:none;color:rgba(242,245,244,.65);font-family:inherit;font-size:13px;cursor:pointer;padding:8px;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+
+/* ── FIN DE ENTRENAMIENTO (celebración full-bleed — pico emocional del día) ── */
+#workout-finish{position:fixed;inset:0;z-index:900;display:none;background:#04080A;overflow:hidden}
+#workout-finish.on{display:block;animation:wfFade .4s ease}
+@keyframes wfFade{from{opacity:0}to{opacity:1}}
+.wf-photo{position:absolute;inset:0;background-size:cover;background-position:center top;background-color:#04080A}
+.wf-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,10,.35) 0%,rgba(4,8,10,.05) 26%,rgba(4,8,10,.55) 56%,rgba(4,8,10,.97) 100%)}
+.wf-inner{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:0 26px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff}
+.wf-trophy{font-size:46px;margin-bottom:8px;filter:drop-shadow(0 6px 20px rgba(16,224,160,.5));animation:wfPop .5s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes wfPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.wf-eyebrow{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2.6px;text-transform:uppercase;color:#10E0A0;margin-bottom:6px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.wf-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.5px;margin-bottom:6px;text-shadow:0 2px 18px rgba(0,0,0,.6)}
+.wf-sub{font-size:14px;color:rgba(242,245,244,.82);margin-bottom:18px;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+.wf-stats{display:flex;gap:10px;width:100%;max-width:420px;margin-bottom:14px}
+.wf-stat{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 8px;backdrop-filter:blur(6px)}
+.wf-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:#10E0A0;line-height:1}
+.wf-stat-lbl{font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:rgba(242,245,244,.7);margin-top:5px}
+.wf-prs{width:100%;max-width:420px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+.wf-pr{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(16,224,160,.22),rgba(16,224,160,.08));border:1px solid rgba(16,224,160,.35);border-radius:12px;padding:8px 11px;text-align:left}
+.wf-pr-ico{font-size:17px;flex-shrink:0}
+.wf-pr-name{font-size:12.5px;font-weight:800;line-height:1.15}
+.wf-pr-det{font-size:11px;color:rgba(242,245,244,.78)}
+.wf-btn{width:100%;max-width:420px;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
+.wf-btn:active{transform:scale(.985)}
 /* First-exercise tooltip */
 .ex-tooltip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06402E,#0A7C5B);color:white;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(45,106,79,.35);animation:tooltipPop .4s cubic-bezier(.4,0,.2,1)}
 .ex-tooltip-icon{font-size:22px;flex-shrink:0}
@@ -6223,12 +6247,10 @@ function updateClientProgress(routine){
   if(done===total&&total>0){
     saveSessionToHistory(routine,totalVol,done);
     const newPRs=checkAndUpdatePRs(routine);
-    document.getElementById('congrats').classList.remove('hide');
-    if(newPRs.length)showPRCelebration(newPRs);
-    document.getElementById('congrats').scrollIntoView({behavior:'smooth'});
     // Refresh PRs and exercise progress in profile if visible
     renderPRsInProfile(CUR.clientId);
     renderClientExProgress(CUR.clientId);
+    showWorkoutFinish(routine,{done,total,totalVol,newPRs});
   } else if(done>0){
     // Auto-guardado PARCIAL: en cuanto marca la 1ª serie, el entreno queda registrado
     // (y se va actualizando). Así no se pierde aunque no llegue al 100% ni toque
@@ -6285,6 +6307,53 @@ function finishSessionEarly(){
   renderPRsInProfile(CUR.clientId);
   renderClientExProgress(CUR.clientId);
   toast('✅ Entrenamiento guardado');
+}
+
+// ── Fin de entrenamiento: celebración full-bleed (se dispara al 100%) ──
+// Foto: window.AVI_FINISH_PHOTO la sobreescribe; default = foto de marca AVI.
+const WF_DEFAULT_PHOTO='media/brand/ob-2.jpg';
+let _wfShownFor=null; // routineId|día ya celebrado → evita re-pop al re-marcar la última serie
+function showWorkoutFinish(routine,stats){
+  if(!routine)return;
+  const key=routine.id+'|'+new Date().toDateString();
+  if(_wfShownFor===key)return;
+  _wfShownFor=key;
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  const name=((c&&c.name)||'').trim().split(/\s+/)[0]||'';
+  const done=(stats&&stats.done)||0, total=(stats&&stats.total)||0;
+  const vol=Math.round((stats&&stats.totalVol)||0);
+  const prs=(stats&&stats.newPRs)||[];
+  document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
+  document.getElementById('wf-title').textContent=name?`¡Lo lograste, ${name}!`:'¡Lo lograste!';
+  document.getElementById('wf-sub').textContent=(routine.name?routine.name+' · ':'')+'sesión registrada';
+  const chips=[['Series',`${done}/${total}`]];
+  if(vol>0)chips.push(['Volumen',`${vol.toLocaleString()} kg`]);
+  if(prs.length)chips.push(['Récords',`${prs.length}`]);
+  document.getElementById('wf-stats').innerHTML=chips.map(([l,v])=>`<div class="wf-stat"><div class="wf-stat-val">${esc(v)}</div><div class="wf-stat-lbl">${esc(l)}</div></div>`).join('');
+  const prWrap=document.getElementById('wf-prs');
+  let prHtml=prs.slice(0,3).map(pr=>{
+    const val=pr.val!=null?pr.val:pr.kg;const unit=pr.unit||'kg';
+    const detail=unit==='kg'?`${fmtMetric(val,unit)}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(val,unit);
+    return `<div class="wf-pr"><span class="wf-pr-ico">🏆</span><div style="flex:1;min-width:0"><div class="wf-pr-name">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="wf-pr-det">${esc(detail)}</div></div></div>`;
+  }).join('');
+  if(prs.length>3)prHtml+=`<div style="font-size:11.5px;color:rgba(242,245,244,.7);text-align:center">+${prs.length-3} récord${prs.length-3!==1?'s':''} más 🎉</div>`;
+  prWrap.innerHTML=prHtml;
+  document.getElementById('workout-finish').classList.add('on');
+  document.body.style.overflow='hidden';
+  wfConfetti();
+}
+function closeWorkoutFinish(){
+  document.getElementById('workout-finish').classList.remove('on');
+  document.body.style.overflow='';
+}
+function wfConfetti(){
+  const colors=['#10E0A0','#52B788','#D3F4E8','#13B583','#F2C94C','#ffffff'];
+  for(let i=0;i<32;i++){
+    const c=document.createElement('div');
+    c.style.cssText=`position:fixed;top:${8+Math.random()*26}%;left:${Math.random()*100}%;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};background:${colors[Math.floor(Math.random()*colors.length)]};animation:confettiFall ${0.8+Math.random()*1}s ease-out ${Math.random()*0.4}s forwards;pointer-events:none;z-index:9999`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),2200);
+  }
 }
 
 // ALL ROUTINES
@@ -7969,20 +8038,13 @@ function gmScrollToCurrent(){
 
 function checkAndShowCongrats(routine){
   const total=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-  let done=0;
-  (routine.exercises||[]).forEach((ex,ei)=>{const sets=parseInt(ex.sets)||3;for(let si=0;si<sets;si++)if(isDone(routine.id,ei,si))done++;});
-  if(done>=total){
-    const cEl=document.getElementById('congrats');
-    cEl.classList.remove('hide');
-    checkAndUpdatePRs(routine);
-    // Confetti
-    const colors=['#0A7C5B','#52B788','#D3F4E8','#13B583','#B7E4C7','#ffffff'];
-    for(let i=0;i<28;i++){
-      const c=document.createElement('div');
-      c.style.cssText=`position:fixed;top:${10+Math.random()*30}%;left:${Math.random()*100}%;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};background:${colors[Math.floor(Math.random()*colors.length)]};animation:confettiFall ${0.8+Math.random()*1}s ease-out ${Math.random()*0.4}s forwards;pointer-events:none;z-index:9999`;
-      document.body.appendChild(c);
-      setTimeout(()=>c.remove(),2000);
-    }
+  let done=0,totalVol=0;
+  (routine.exercises||[]).forEach((ex,ei)=>{const sets=parseInt(ex.sets)||3;for(let si=0;si<sets;si++){if(isDone(routine.id,ei,si)){done++;totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);}}});
+  if(done>=total&&total>0){
+    const newPRs=checkAndUpdatePRs(routine);
+    renderPRsInProfile(CUR.clientId);
+    renderClientExProgress(CUR.clientId);
+    showWorkoutFinish(routine,{done,total,totalVol,newPRs});
   }
 }
 
@@ -9236,6 +9298,20 @@ function whatsappNudge(id){
   <div class="ob-btns">
     <button class="ob-next" id="ob-next-btn" onclick="obNext()">Siguiente →</button>
     <button class="ob-skip" onclick="obSkip()">Saltar introducción</button>
+  </div>
+</div>
+
+<!-- FIN DE ENTRENAMIENTO (celebración full-bleed) -->
+<div id="workout-finish">
+  <div class="wf-photo" id="wf-photo"></div>
+  <div class="wf-inner">
+    <div class="wf-trophy">🏆</div>
+    <div class="wf-eyebrow">Entrenamiento completado</div>
+    <div class="wf-title" id="wf-title">¡Lo lograste!</div>
+    <div class="wf-sub" id="wf-sub"></div>
+    <div class="wf-stats" id="wf-stats"></div>
+    <div class="wf-prs" id="wf-prs"></div>
+    <button class="wf-btn" onclick="closeWorkoutFinish()">Continuar →</button>
   </div>
 </div>
 
