@@ -2034,6 +2034,13 @@ const UD={
     if(error)throw error;
     return data;
   },
+  // Borra la fila de un cliente en la nube (el coach puede por RLS: coach_id = su uid).
+  // Sin esto, al eliminar un cliente su fila quedaba y reaparecía al volver a entrar.
+  async deleteClientRow(clientId){
+    const c=AUTH.client();if(!c)throw new Error('Auth no disponible');
+    const {error}=await c.from('user_data').delete().eq('user_id',clientId);
+    if(error)throw error;
+  },
 };
 
 // Modo auth: true cuando el usuario entró por Supabase Auth (fila user_data) en vez del
@@ -4794,6 +4801,9 @@ function renderValoracion(c){
 function delClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   if(!delClientGuard(c,()=>confirm(`¿Eliminar a ${c.name}? Se borrarán sus rutinas, historial, fotos y todos sus datos. Esta acción no se puede deshacer.`)))return;
+  const delId=CUR.clientId;
+  // Modo auth: borrar la fila del cliente en la nube (si no, reaparece al volver a entrar).
+  if(AUTH_MODE){ UD.deleteClientRow(delId).catch(e=>warn('AVI: borrar fila cliente en nube falló:',e&&e.message)); }
   DB.clients=DB.clients.filter(x=>x.id!==CUR.clientId);delete DB.msgs[CUR.clientId];
   if(DB.history)delete DB.history[CUR.clientId];
   if(DB.prs)delete DB.prs[CUR.clientId];
