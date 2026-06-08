@@ -817,6 +817,13 @@ Plan completo: `~/.claude/plans/quiet-hatching-teapot.md` · memoria: `project_a
 - **Dead code inerte (a propósito, sin riesgo):** `#congrats` (banner viejo) + `showPRCelebration` quedan definidos pero ya no se muestran; las llamadas `congrats.classList.add('hide')` son no-ops.
 - 118/118 tests + audit 8/8.
 
+### ✅ Sesión 2026-06-08 (cont. 2) — Cierre con datos + "¿Cómo te sentiste?" para el coach (apex-v87)
+Sobre la pantalla "Fin de entrenamiento" (benchmark: captura real de Gravl "Detalles del entrenamiento" en `Downloads/_avi_review_extract/` — muestra Fecha, Duración, Energía/Kcal, Volumen, Récords, Músculos, Ejercicios + estrellas "¿Cómo fue tu entrenamiento?").
+1. **Datos nuevos en el cierre:** ⏱️ **Duración** (desde la 1ª serie, `startedAt` en la entrada de historial) + 🔥 **Calorías aprox.** (MET 5.5 × peso × horas; fallback 70 kg) + 📅 **Fecha** (locale es-CO). Se persisten en la sesión (`startedAt`/`durationSec`/`kcal`). Chips 2×2: Duración · Calorías · Series · Volumen. Helper `fmtDuration`.
+2. **⭐ FOSO vs Gravl — "¿Cómo te sentiste hoy?"** 5 caritas (😫😕😐🙂😄 = `feeling` 1-5) en el cierre → se guarda en la sesión + sincroniza. **El COACH la ve** en el historial del asesorado (`renderCoachClientHistory`: carita + duración + kcal por sesión). Gravl pide la calificación pero su coach es IA; AVI la usa un humano real. `WF_FEELINGS`/`feelingEmoji`/`feelingLabel`/`wfRate`/`_wfEntry`. Sin migración (retro-compatible).
+3. Identidad mantenida (no copia de Gravl): foto full-bleed + "¡Lo lograste, {nombre}!" + esmeralda/oro + 🏆 + confetti, vs la tarjeta plana fría de Gravl.
+- 118/118 tests + audit 8/8.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -869,7 +876,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v86** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v87** · Suite **118/118** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 2): cierre de entreno con ⏱️ Duración (startedAt) + 🔥 Calorías (MET·peso·h) + 📅 Fecha (referencia: captura real Gravl "Detalles del entrenamiento") · ⭐ "¿Cómo te sentiste?" 5 caritas (feeling 1-5) que el COACH ve en el historial (foso vs Gravl IA) · identidad propia (foto full-bleed + personal + esmeralda) (apex-v87)*
 *Hitos sesión 2026-06-08 (cont.): 🏆 pantalla "Fin de entrenamiento" full-bleed (overlay #workout-finish al 100%: foto + 🏆 + series/volumen/récords + PRs + confetti); primer momento full-bleed fuera del onboarding; default foto = ob-2 (pendiente foto de victoria dedicada vía Gemini); reemplaza el banner inline #congrats (apex-v86)*
 *Hitos sesión 2026-06-08: 🧹 eliminada la "Nota del coach" duplicada (quitada la vieja gris "Notas técnicas (coach)" `#exd-tech-wrap`, queda solo el cue esmeralda `EX_COACHTIP`) · 🎨 onboarding intro rediseñado a FULL-BLEED inmersivo (foto a pantalla completa + texto abajo; antes cajita de 188px) · 📸 3 fotos de marca AVI con logo horneado en la camiseta por Gemini, 1536×2752 nativo + ✦ eliminado (ob-1 peso muerto, ob-2 de pie, ob-3 sentado); Claude solo delogo+grade (regla: Gemini hace el logo, no Claude) (apex-v85)*
 *Hitos sesión 2026-06-07 (cont.): 📸 fotos de ejercicio lote 2 (23: 22 reemplazos + e97 Pike Push-up; e97 faltaba en EX_IMG_NAME) (v80) · 🔧 fix e9 (mostraba mancuernas, archivo Gemini mal nombrado→barra real) + 4 fuentes verticales reprocesadas con fit+relleno (no recorte; el calf raise perdía los pies); process-photos.sh detecta orientación (v81) · ⭐ NUEVA FEATURE "Nota del coach" por ejercicio (callout esmeralda visible al asesorado; mapa `EX_COACHTIP` resuelto por id sin migración; 109/109) (v82 lote 1→v83 completo) · 📝 22 descripciones cortas enriquecidas, 87 ya sólidas se dejaron (v84) · lección: verificar CONTENIDO de cada imagen, no el nombre del archivo*
