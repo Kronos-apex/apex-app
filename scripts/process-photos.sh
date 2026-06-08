@@ -43,10 +43,23 @@ for src in "$IN_DIR"/*.jpg "$IN_DIR"/*.jpeg "$IN_DIR"/*.png; do
     echo "⏭️  $base — nombre no es eN (ej. e17.jpg). Sáltalo o renómbralo."; skipped=$((skipped+1)); continue
   fi
   dst="$OUT_DIR/$name.jpg"
-  # Recorte cuadrado centrado (lado = min(w,h)) → escala a 720 con lanczos → JPEG
-  ffmpeg -y -loglevel error -i "$src" \
-    -vf "crop='min(iw,ih)':'min(iw,ih)',scale=${SIZE}:${SIZE}:flags=lanczos" \
-    -frames:v 1 -q:v "$QUALITY" "$dst"
+  # Encuadre cuadrado SIN perder la técnica del ejercicio:
+  #  - Si la fuente ya es cuadrada → solo escala a 720 (no recorta nada).
+  #  - Si NO es cuadrada (vertical/horizontal) → NO se recorta el sujeto. Se hace
+  #    "fit" completo de la imagen dentro del cuadro y se rellenan los lados con
+  #    una copia desenfocada y oscurecida del propio fondo (sin bordes duros).
+  #    Esto conserva extremos críticos (pies en talones, manos/agarre, etc.).
+  W=$(ffprobe -v error -select_streams v:0 -show_entries stream=width  -of csv=p=0 "$src")
+  H=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$src")
+  if [ "${W:-0}" = "${H:-0}" ]; then
+    ffmpeg -y -loglevel error -i "$src" \
+      -vf "scale=${SIZE}:${SIZE}:flags=lanczos" \
+      -frames:v 1 -q:v "$QUALITY" "$dst"
+  else
+    ffmpeg -y -loglevel error -i "$src" -filter_complex \
+      "split=2[bg][fg];[bg]scale=${SIZE}:${SIZE}:force_original_aspect_ratio=increase,crop=${SIZE}:${SIZE},gblur=sigma=24,eq=brightness=-0.07:saturation=0.9[bgb];[fg]scale=${SIZE}:${SIZE}:force_original_aspect_ratio=decrease:flags=lanczos[fgs];[bgb][fgs]overlay=(W-w)/2:(H-h)/2,format=yuv420p" \
+      -frames:v 1 -q:v "$QUALITY" "$dst"
+  fi
   kb=$(( ($(wc -c < "$dst")) / 1024 ))
   echo "✅ $base → media/exercises/$name.jpg  (${SIZE}x${SIZE}, ${kb} KB)"
   count=$((count+1))
