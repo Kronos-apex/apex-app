@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v94';
+const CACHE_NAME = 'apex-v95';
 
 self.addEventListener('install', e => { self.skipWaiting(); });
 
@@ -32,6 +32,12 @@ self.addEventListener('fetch', e => {
       fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
         .catch(() => caches.match(e.request))
     );
+    return;
+  }
+  // Videos de ejercicio (.mp4): network primero para que las peticiones por rango
+  // (range requests, necesarias en iOS Safari) funcionen; respaldo en caché si no hay red.
+  if(url.origin === self.location.origin && url.pathname.endsWith('.mp4')){
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
   // Assets del mismo origen (icons, manifest): cache-first y se

@@ -561,6 +561,7 @@ html[data-theme="light"] .mta {
 .exdetail-hero.has-photo{display:block;gap:0;padding:0;position:relative}
 .exdetail-hero.has-photo .exdetail-bigicon{width:100%;height:auto;aspect-ratio:16/11;border-radius:0!important;border:none!important;background:#000!important;overflow:hidden}
 .exdetail-hero.has-photo .exdetail-bigicon img{width:100%;height:100%;object-fit:cover;border-radius:0;cursor:zoom-in}
+.exdetail-hero.has-photo .exdetail-bigicon .exicon-vid{width:100%;height:100%;object-fit:cover;display:block;background:#000}
 .exdetail-hero.has-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,10,7,.92),rgba(2,10,7,.32) 45%,transparent 72%);pointer-events:none}
 .exdetail-hero.has-photo .exdetail-herocap{position:absolute;left:18px;right:18px;bottom:13px;z-index:2}
 .exdetail-hero.has-photo .exdetail-title{font-size:22px;color:#fff!important;text-shadow:0 2px 14px rgba(0,0,0,.85)}
@@ -2644,6 +2645,17 @@ function exImgSrc(e,sex){
   const s=(sex!==undefined)?sex:_viewSex();
   if(s==='F'&&EX_IMG_F.has(id)) return 'media/exercises/'+id+'_f.jpg';
   return 'media/exercises/'+id+'.jpg';
+}
+// Ejercicios con VIDEO de demostración (media/exercises/{id}.mp4). Se muestra en el
+// DETALLE del ejercicio (loop, mudo); la lista sigue con foto (liviana). Si no hay
+// video resuelve '' → cae a la foto. Se amplía conforme llegan más videos.
+const EX_VID=new Set(['e5','e6','e13','e11']);
+function exVidSrc(e){
+  if(!e) return '';
+  const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
+  if(!id||!EX_VID.has(id)) return '';
+  return 'media/exercises/'+id+'.mp4';
 }
 // Marca <img> de ejercicio reutilizable (tarjetas y detalle) — lazy + tocable
 function exImgTag(src,name){
@@ -8781,9 +8793,14 @@ function _showExSheet(ex, isCoach, editable){
   const iconEl = document.getElementById('exd-icon');
   const heroEl = document.getElementById('exd-hero');
   const _exdImg = exImgSrc(ex);
+  const _exdVid = exVidSrc(ex);
   iconEl.style.border = '1.5px solid ' + color + '40';
   if(_exdImg){
-    iconEl.innerHTML = exImgTag(_exdImg, ex.name);
+    // Si el ejercicio tiene VIDEO, lo reproducimos en loop (mudo, autoplay) con la
+    // foto de poster (se ve al instante mientras carga). Si no, la foto normal.
+    iconEl.innerHTML = _exdVid
+      ? `<video class="exicon-vid" src="${_exdVid}" poster="${_exdImg}" autoplay loop muted playsinline preload="metadata"></video>`
+      : exImgTag(_exdImg, ex.name);
     iconEl.style.background = 'none';
     iconEl.style.overflow = 'hidden';
     if(heroEl) heroEl.classList.add('has-photo');
