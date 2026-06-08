@@ -26,6 +26,7 @@ const {
   weeklyActiveCount,
   clientsTrainedToday,
   daysSinceLastSession,
+  workoutStreak,
   sortRoutinesByDay,
   genSchemeFor,
   isInAdaptation,
@@ -732,6 +733,31 @@ test('daysSinceLastSession: encuentra el máximo aunque el orden esté invertido
 test('daysSinceLastSession: sin sesiones → Infinity (cuenta como inactivo)', () => {
   assert.strictEqual(daysSinceLastSession([], D(2026, 6, 2)), Infinity);
   assert.strictEqual(daysSinceLastSession(null, D(2026, 6, 2)), Infinity);
+});
+
+test('workoutStreak: días consecutivos terminando HOY', () => {
+  const now = D(2026, 6, 8, 18);
+  assert.strictEqual(workoutStreak([{ date: D(2026, 6, 8) }, { date: D(2026, 6, 7) }, { date: D(2026, 6, 6) }], now), 3);
+});
+
+test('workoutStreak: sigue viva desde AYER si hoy aún no entrena', () => {
+  const now = D(2026, 6, 8, 9);
+  assert.strictEqual(workoutStreak([{ date: D(2026, 6, 7) }, { date: D(2026, 6, 6) }], now), 2);
+});
+
+test('workoutStreak: se rompe si la última sesión fue hace 2+ días', () => {
+  const now = D(2026, 6, 8, 9);
+  assert.strictEqual(workoutStreak([{ date: D(2026, 6, 5) }, { date: D(2026, 6, 4) }], now), 0);
+});
+
+test('workoutStreak: varias sesiones el mismo día cuentan como 1', () => {
+  const now = D(2026, 6, 8, 20);
+  assert.strictEqual(workoutStreak([{ date: D(2026, 6, 8, 7) }, { date: D(2026, 6, 8, 19) }, { date: D(2026, 6, 7) }], now), 2);
+});
+
+test('workoutStreak: sin sesiones → 0', () => {
+  assert.strictEqual(workoutStreak([], D(2026, 6, 8)), 0);
+  assert.strictEqual(workoutStreak(null, D(2026, 6, 8)), 0);
 });
 
 // ══════════════════════════════════════════════════════

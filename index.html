@@ -435,6 +435,13 @@ html[data-theme="light"] .mta {
 .woname{font-size:23px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px;position:relative}
 .wopills{display:flex;gap:6px;flex-wrap:wrap}
 .wopill{background:rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
+/* Saludo grande + racha (cabecera del "Hoy") */
+#cn-today-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 15px}
+.today-greet .tg-hi{font-size:13px;color:var(--t2);line-height:1.1;margin-bottom:2px}
+.today-greet .tg-name{font-size:25px;font-weight:800;letter-spacing:-.4px;line-height:1.12;color:var(--t1)}
+.streak-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--g2);color:var(--gt);border-radius:22px;padding:8px 14px;font-size:13px;font-weight:700;white-space:nowrap}
+.streak-chip b{font-size:16px}
+.streak-chip.streak-0{background:var(--bg);border-color:var(--br2);color:var(--t2);font-weight:600}
 
 /* Exercise blocks client */
 .cex-block{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh);transition:border-color .15s}
@@ -1481,6 +1488,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="cnbody">
     <!-- TODAY -->
     <div id="cn-today" class="cnp on">
+      <div id="cn-today-head"></div>
       <div id="rest-banner" class="restbanner hide">
         <div class="restnum" id="rb-num">60</div>
         <div class="restinfo"><div class="resttitle">⏱ Descansando</div><div class="restsub" id="rb-sub">—</div></div>
@@ -5827,8 +5835,23 @@ function toggleTrackingTools(){
 }
 
 // TODAY
+// Cabecera del "Hoy": saludo grande con el nombre + chip de racha (días seguidos
+// entrenando). La racha la calcula workoutStreak (apex-core, testeado).
+function renderTodayHead(client){
+  const el=document.getElementById('cn-today-head'); if(!el||!client)return;
+  const h=new Date().getHours();
+  const saludo=h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches';
+  const name=esc((client.name||'').split(' ')[0]||'');
+  const streak=workoutStreak((DB.history&&DB.history[client.id])||[], new Date());
+  const chip=streak>0
+    ? `<div class="streak-chip">🔥 <b>${streak}</b> día${streak!==1?'s':''} de racha</div>`
+    : `<div class="streak-chip streak-0">💪 Empieza tu racha hoy</div>`;
+  el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
+}
+
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
+  renderTodayHead(client);
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}

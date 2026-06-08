@@ -581,6 +581,21 @@ function daysSinceLastSession(sessions, now) {
   return Math.floor((ref - last) / MS_DAY);
 }
 
+// ── Racha de entrenamiento: días de CALENDARIO consecutivos con ≥1 sesión,
+// terminando HOY o AYER (no se rompe por no haber entrenado aún hoy). Si la última
+// sesión fue hace 2+ días, la racha es 0. Varias sesiones el mismo día cuentan 1.
+function workoutStreak(sessions, now) {
+  const days = new Set();
+  (sessions || []).forEach(s => { const d = new Date(s && s.date); if (!isNaN(d.getTime())) days.add(d.toDateString()); });
+  if (!days.size) return 0;
+  const cursor = now ? new Date(now) : new Date();
+  // Si hoy aún no entrena, la racha puede seguir viva desde ayer.
+  if (!days.has(cursor.toDateString())) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (days.has(cursor.toDateString())) { streak++; cursor.setDate(cursor.getDate() - 1); }
+  return streak;
+}
+
 // ── Orden de rutinas por día de la semana (Lunes primero, Libre al final) ──
 // El día se guarda como nombre en español (con o sin tilde, defensivo). Cualquier
 // valor desconocido va al final. Empieza en LUNES (no domingo) porque así lo lee
@@ -692,6 +707,7 @@ if (typeof module !== 'undefined' && module.exports) {
     weeklyActiveCount,
     clientsTrainedToday,
     daysSinceLastSession,
+    workoutStreak,
     dayOrder,
     sortRoutinesByDay,
     isInAdaptation,
