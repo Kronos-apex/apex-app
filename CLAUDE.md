@@ -893,7 +893,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v103** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v104** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 19): ⏱️ pantalla de carga +1s (Camilo) → hold final 2800/3200ms. (apex-v104)*
 *Hitos sesión 2026-06-08 (cont. 18): ⏱️ pantalla de carga dura más — el hold final pasó de 100/350ms a 1800/2200ms (sesión/registro) para que se vea la marca + se lea el mensaje (Camilo: "no dura ni un segundo"). (apex-v103)*
 *Hitos sesión 2026-06-08 (cont. 17): 🖼️ `media/loading-bg.jpg` (fondo de la pantalla de carga) reemplazado por foto nueva de Camilo (sentado en banca, AVI, neón "DISCIPLINA ENFOQUE RESULTADOS"). Procesada: delogo de la ✦ (caja x1315 y2510 w200 h205) + escala 900×1600 + JPG q3 (~95KB). Reemplaza la foto vieja del jalón. SW bump invalida la caché de la imagen. (apex-v102)*
 *Hitos sesión 2026-06-08 (cont. 16): 🎬 hero-montage del login ajustado — Camilo no convencido con la técnica del clip press hammer (e84): reemplazado por e9 curl con barra. Montaje ahora = e13,e5,e22,e9,e6 (pierna→espalda→hombro→bíceps→espalda). El video de detalle e84 sigue intacto. (apex-v101)*
