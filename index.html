@@ -305,7 +305,7 @@ html[data-theme="light"] .mta {
 /* Lightbox de imagen de ejercicio */
 .exlb{position:fixed;inset:0;z-index:10000;background:rgba(6,9,10,.93);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;animation:exlbIn .2s ease}
 .exlb.on{display:flex}
-.exlb img{max-width:100%;max-height:76vh;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);background:#0c0c0d}
+.exlb img,.exlb video{max-width:100%;max-height:76vh;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);background:#0c0c0d}
 .exlb-name{margin-top:16px;color:#fff;font-size:16px;font-weight:700;text-align:center;max-width:90%}
 .exlb-hint{margin-top:6px;color:rgba(255,255,255,.5);font-size:12px}
 .exlb-close{position:absolute;top:max(16px,calc(env(safe-area-inset-top) + 8px));right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
@@ -1761,6 +1761,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="ex-lightbox" class="exlb" onclick="closeExImg()">
   <div class="exlb-close">✕</div>
   <img id="exlb-img" src="" alt="">
+  <video id="exlb-vid" playsinline loop muted autoplay style="display:none"></video>
   <div id="exlb-name" class="exlb-name"></div>
   <div class="exlb-hint">Toca para cerrar</div>
 </div>
@@ -2673,11 +2674,26 @@ function exIcon(e){
 // Lightbox: tocar la imagen del ejercicio la expande a pantalla completa
 function openExImg(src,name){
   const lb=document.getElementById('ex-lightbox'); if(!lb||!src) return;
-  document.getElementById('exlb-img').src=src;
+  const vid=document.getElementById('exlb-vid'); if(vid){try{vid.pause();}catch(e){} vid.removeAttribute('src'); vid.style.display='none';}
+  const img=document.getElementById('exlb-img'); img.style.display=''; img.src=src;
   document.getElementById('exlb-name').textContent=name||'';
   lb.classList.add('on');
 }
-function closeExImg(){ const lb=document.getElementById('ex-lightbox'); if(lb)lb.classList.remove('on'); }
+// Igual que openExImg pero para el video del ejercicio (se ve COMPLETO, sin recorte).
+function openExVid(src,name){
+  const lb=document.getElementById('ex-lightbox'); if(!lb||!src) return;
+  const img=document.getElementById('exlb-img'); if(img)img.style.display='none';
+  const vid=document.getElementById('exlb-vid');
+  if(vid){vid.style.display='block'; vid.src=src; vid.play&&vid.play().catch(()=>{});}
+  document.getElementById('exlb-name').textContent=name||'';
+  lb.classList.add('on');
+}
+function closeExImg(){
+  const lb=document.getElementById('ex-lightbox'); if(!lb)return;
+  lb.classList.remove('on');
+  const vid=document.getElementById('exlb-vid'); if(vid){try{vid.pause();}catch(e){} vid.removeAttribute('src'); vid.style.display='none';}
+  const img=document.getElementById('exlb-img'); if(img)img.style.display='';
+}
 // Cerrar lightbox / bienvenida con la tecla Escape (no interfiere con otros handlers)
 document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeExImg(); hideClientWelcome(); } });
 
@@ -3668,6 +3684,12 @@ syncFromCloud().then(async ()=>{
   history.pushState({apex:true},'');
   window.addEventListener('popstate',function(){
     history.pushState({apex:true},'');
+    // Lightbox de imagen/video (lo más arriba) → cerrar primero
+    const lb=document.getElementById('ex-lightbox');
+    if(lb&&lb.classList.contains('on')){closeExImg();return;}
+    // Detalle del ejercicio (overlay) → cerrar con el botón atrás (antes no hacía nada)
+    const exd=document.getElementById('exdetail-bg');
+    if(exd&&exd.classList.contains('on')){_closeExDetail();return;}
     const gm=document.getElementById('guided-mode');
     if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return;}
     const modal=document.querySelector('.mdbg.on');
@@ -8803,7 +8825,7 @@ function _showExSheet(ex, isCoach, editable){
     // Si el ejercicio tiene VIDEO, lo reproducimos en loop (mudo, autoplay) con la
     // foto de poster (se ve al instante mientras carga). Si no, la foto normal.
     iconEl.innerHTML = _exdVid
-      ? `<video class="exicon-vid" src="${_exdVid}" poster="${_exdImg}" autoplay loop muted playsinline preload="metadata"></video>`
+      ? `<video class="exicon-vid" src="${_exdVid}" poster="${_exdImg}" data-name="${esc(ex.name)}" autoplay loop muted playsinline preload="metadata" style="cursor:zoom-in" onclick="event.stopPropagation();openExVid(this.src,this.dataset.name)"></video>`
       : exImgTag(_exdImg, ex.name);
     iconEl.style.background = 'none';
     iconEl.style.overflow = 'hidden';

@@ -893,7 +893,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v104** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v105** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 20): 🔙 BUG botón atrás no cerraba el detalle del ejercicio — el handler de popstate no contemplaba `#exdetail-bg` ni `#ex-lightbox`. Añadidos al inicio del handler (lightbox→detalle→guided→modal→p-detail). 🔍 video del detalle ahora TOCABLE → abre el lightbox y se ve COMPLETO sin recorte (nuevo `openExVid` + `<video id=exlb-vid>` + `.exlb video` CSS; closeExImg resetea ambos). (apex-v105)*
 *Hitos sesión 2026-06-08 (cont. 19): ⏱️ pantalla de carga +1s (Camilo) → hold final 2800/3200ms. (apex-v104)*
 *Hitos sesión 2026-06-08 (cont. 18): ⏱️ pantalla de carga dura más — el hold final pasó de 100/350ms a 1800/2200ms (sesión/registro) para que se vea la marca + se lea el mensaje (Camilo: "no dura ni un segundo"). (apex-v103)*
 *Hitos sesión 2026-06-08 (cont. 17): 🖼️ `media/loading-bg.jpg` (fondo de la pantalla de carga) reemplazado por foto nueva de Camilo (sentado en banca, AVI, neón "DISCIPLINA ENFOQUE RESULTADOS"). Procesada: delogo de la ✦ (caja x1315 y2510 w200 h205) + escala 900×1600 + JPG q3 (~95KB). Reemplaza la foto vieja del jalón. SW bump invalida la caché de la imagen. (apex-v102)*
