@@ -2692,11 +2692,16 @@ const EX_COACHTIP={
 const EX_IMG_F=new Set(['e2','e26','e50','e96','e73','e38','e93','e40','e18','e58','e14','e41','e106','e35','e48','e37','e62','e42','e89','e13','e17','e80','e44','e92','e33','e34']);
 // Sexo de quien mira: en vista del asesorado sigue su sexo; el coach ve el default.
 function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.id===CUR.clientId); return (c&&c.sex)||''; } return ''; }
+// Fotos DESACTIVADAS por contenido incorrecto (auditoría 2026-06-09) → muestran el ícono
+// hasta regenerarlas en Gemini. Quitar de aquí cuando la foto correcta esté lista.
+//  e43/e92 = reusaban la foto de barra de e42 (no máquina / no unilateral)
+//  e31/e105 = compartían una foto ambigua (parecía press en banco, no extensión de tríceps)
+const EX_IMG_HIDE=new Set(['e43','e92','e31','e105']);
 function exImgSrc(e,sex){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
-  if(!id) return '';
+  if(!id||EX_IMG_HIDE.has(id)) return '';
   const s=(sex!==undefined)?sex:_viewSex();
   if(s==='F'&&EX_IMG_F.has(id)) return 'media/exercises/'+id+'_f.jpg';
   return 'media/exercises/'+id+'.jpg';
