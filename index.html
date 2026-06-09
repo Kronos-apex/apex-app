@@ -547,6 +547,15 @@ html[data-theme="light"] .mta {
 .exdetail-slabel{font-family:'Anton',sans-serif;font-size:11px;font-weight:400;letter-spacing:1.2px;text-transform:uppercase;color:#F2C94C;margin-bottom:8px}
 .exdetail-desc{font-size:14px;color:var(--t1);line-height:1.7;background:var(--bg);border:1px solid var(--br);border-radius:var(--r);padding:13px 15px}
 .exdetail-coachtip{background:var(--gl);border:1px solid var(--br);border-left:3px solid var(--g);border-radius:var(--r);padding:12px 15px 13px}
+/* Glosario tap-to-explain: términos técnicos resaltados que abren una explicación simple */
+.gloss-term{color:var(--g);border-bottom:1px dashed var(--g2);cursor:pointer;font-weight:600}
+.gloss-term .gloss-i{font-size:.68em;vertical-align:super;opacity:.85;margin-left:1px}
+.gloss-pop{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;background:rgba(2,10,7,.55);backdrop-filter:blur(2px);padding:24px}
+.gloss-pop.on{display:flex}
+.gloss-card{background:var(--w);border:1px solid var(--br);border-left:3px solid var(--g);border-radius:16px;padding:18px 18px 16px;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tooltipPop .25s cubic-bezier(.4,0,.2,1)}
+.gloss-card-t{font-family:'Anton',sans-serif;font-size:15px;letter-spacing:.4px;color:var(--g);margin-bottom:7px}
+.gloss-card-b{font-size:14px;line-height:1.6;color:var(--t1)}
+.gloss-card-x{margin-top:14px;width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
 .ctip-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ctip-av{width:24px;height:24px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ctip-av .ic{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2}
@@ -8810,6 +8819,60 @@ function toggleWarmup(){
 let CUR_EX_YT_QUERY = '';
 let CUR_EX_REF = null; // ejercicio de biblioteca en edición (env), o null si no editable
 
+// ══════════ GLOSARIO (tap-to-explain) ══════════
+// Términos técnicos que un principiante no entiende. En la guía y la nota de coach
+// se resaltan y, al tocarlos, abren una explicación en lenguaje simple. Pedido de
+// Camilo 2026-06-09 ("nombres técnicos como omóplato necesitan una descripción").
+const GLOSS=[
+  {k:'omoplato',t:'Omóplato (escápula)',terms:['omóplatos','omóplato','escápulas','escápula'],b:'El hueso plano de la espalda alta, detrás de cada hombro. "Juntar los omóplatos" es llevarlos hacia atrás y al centro, como apretando un lápiz entre ellos.'},
+  {k:'bisagra',t:'Bisagra de cadera',terms:['bisagra de cadera','bisagra'],b:'Empujar la cola hacia atrás doblando poco las rodillas, con la espalda recta. El movimiento sale de la cadera, no de la cintura — como cerrar una puerta con la cadera.'},
+  {k:'protraccion',t:'Protracción',terms:['protracción'],b:'Separar los hombros hacia adelante, alejando los omóplatos entre sí.'},
+  {k:'retraccion',t:'Retracción',terms:['retracción'],b:'Llevar los hombros hacia atrás juntando los omóplatos.'},
+  {k:'isometrico',t:'Isométrico',terms:['isométricos','isométrico','isométrica'],b:'Ejercicio en el que aguantas una posición fija sin moverte (como la plancha). El músculo trabaja sin cambiar de largo.'},
+  {k:'excentrico',t:'Fase excéntrica',terms:['excéntricos','excéntrico','excéntrica'],b:'La parte del movimiento en que el músculo se alarga bajo tensión, normalmente la bajada del peso. Hacerla lenta da más resultados.'},
+  {k:'concentrico',t:'Fase concéntrica',terms:['concéntrico','concéntrica'],b:'La parte en que el músculo se acorta y levanta o empuja el peso (la subida).'},
+  {k:'aduccion',t:'Aducción',terms:['aducción'],b:'Acercar una pierna o brazo hacia el centro del cuerpo (juntar).'},
+  {k:'abduccion',t:'Abducción',terms:['abducción'],b:'Alejar una pierna o brazo del centro del cuerpo (abrir).'},
+  {k:'propiocepcion',t:'Propiocepción',terms:['propiocepción','propioceptivo'],b:'El sentido de saber dónde está tu cuerpo en el espacio y mantener el equilibrio sin mirarte.'},
+  {k:'manguito',t:'Manguito rotador',terms:['manguito rotador','manguito'],b:'Grupo de músculos pequeños que estabilizan el hombro. Cuidarlos previene lesiones.'},
+  {k:'serrato',t:'Serrato',terms:['serrato'],b:'Músculo a los lados de las costillas, bajo la axila; ayuda a mover el omóplato.'},
+  {k:'romboides',t:'Romboides',terms:['romboides'],b:'Músculos entre los omóplatos que los juntan hacia el centro de la espalda.'},
+  {k:'soleo',t:'Sóleo',terms:['sóleo'],b:'Músculo profundo de la pantorrilla; trabaja sobre todo con la rodilla doblada.'},
+  {k:'gastrocnemio',t:'Gastrocnemio',terms:['gastrocnemio'],b:'El músculo visible de la pantorrilla (el "gemelo").'},
+];
+const _glossEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+let _glossRe=null,_glossMap=null;
+function _glossInit(){
+  const items=[];
+  GLOSS.forEach(g=>g.terms.forEach(t=>items.push({term:t,key:g.k})));
+  items.sort((a,b)=>b.term.length-a.term.length); // los largos primero (alternación es leftmost-first)
+  _glossMap={}; items.forEach(i=>{ const lk=i.term.toLowerCase(); if(!(lk in _glossMap))_glossMap[lk]=i.key; });
+  const alts=items.map(i=>_glossEsc(i.term)).join('|');
+  // borde consumido a la izquierda + lookahead a la derecha (sin lookbehind: compat iOS viejo)
+  _glossRe=new RegExp('(^|[^\\p{L}\\p{N}])('+alts+')(?=$|[^\\p{L}\\p{N}])','giu');
+}
+// Devuelve HTML seguro: escapa el texto y envuelve los términos conocidos en spans tocables.
+function glossarize(text){
+  if(!text) return '';
+  if(!_glossRe){ try{ _glossInit(); }catch(e){ return esc(text); } }
+  try{
+    return esc(text).replace(_glossRe,(full,pre,term)=>{
+      const key=_glossMap[term.toLowerCase()];
+      if(!key) return full;
+      return pre+'<span class="gloss-term" onclick="showGloss(event,\''+key+'\')">'+term+'<span class="gloss-i">ⓘ</span></span>';
+    });
+  }catch(e){ return esc(text); }
+}
+function showGloss(ev,key){
+  if(ev){ ev.stopPropagation(); }
+  const g=GLOSS.find(x=>x.k===key); if(!g) return;
+  let el=document.getElementById('gloss-pop');
+  if(!el){ el=document.createElement('div'); el.id='gloss-pop'; el.className='gloss-pop'; el.addEventListener('click',function(e){ if(e.target===el) closeGloss(); }); document.body.appendChild(el); }
+  el.innerHTML='<div class="gloss-card"><div class="gloss-card-t">'+esc(g.t)+'</div><div class="gloss-card-b">'+esc(g.b)+'</div><button class="gloss-card-x" onclick="closeGloss()">Entendido</button></div>';
+  el.classList.add('on');
+}
+function closeGloss(){ const el=document.getElementById('gloss-pop'); if(el) el.classList.remove('on'); }
+
 function openExDetail(exId, forceCoachView){
   const inLib = DB.exercises.find(e=>e.id===exId);
   let ex = inLib;
@@ -8877,14 +8940,14 @@ function _showExSheet(ex, isCoach, editable){
   const simpleText = ex.descSimple || ex.desc || '';
   // Nunca dejar la guía vacía: si el ejercicio no trae texto, mostramos un mensaje
   // que orienta al asesorado (al video o al coach) en vez de ocultar la sección.
-  simpleEl.textContent = simpleText || 'Aún no hay una descripción escrita de este ejercicio. Toca “Ver en YouTube” abajo para ver la técnica, o pregúntale a tu coach.';
+  simpleEl.innerHTML = glossarize(simpleText || 'Aún no hay una descripción escrita de este ejercicio. Toca “Ver en YouTube” abajo para ver la técnica, o pregúntale a tu coach.');
   simpleWrap.style.display = 'block';
 
   // Nota del coach (cue profesional corto, visible para el asesorado)
   const tipWrap = document.getElementById('exd-coachtip-wrap');
   const tipEl = document.getElementById('exd-coachtip');
   const tipText = ex.coachTip || (typeof EX_COACHTIP!=='undefined' && EX_COACHTIP[ex.id]) || '';
-  if(tipText){ tipEl.textContent = tipText; tipWrap.style.display = 'block'; }
+  if(tipText){ tipEl.innerHTML = glossarize(tipText); tipWrap.style.display = 'block'; }
   else { tipWrap.style.display = 'none'; }
 
   // YouTube query
