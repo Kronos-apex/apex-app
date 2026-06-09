@@ -165,6 +165,32 @@ body{
 .coachtip .cr{font-family:Anton;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--gt,#5FE3B0);margin-bottom:3px}
 .coachtip .cb{font-size:12.5px;line-height:1.55;color:#cfe7dc}
 .vbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;border-radius:13px;background:var(--card2);border:1px solid var(--br2);color:var(--t1);font-weight:700;font-size:14px;cursor:pointer}
+
+/* ── Check-in inicial (data onboarding) rediseñado ── */
+.co-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:34px 26px 26px;position:relative;z-index:2}
+.co-dots{display:flex;gap:7px;justify-content:center;margin-bottom:auto;padding-top:6px}
+.co-dot{width:7px;height:7px;border-radius:50%;background:var(--br2);transition:.25s}
+.co-dot.on{width:26px;border-radius:4px;background:var(--em);box-shadow:0 0 12px rgba(16,224,160,.7)}
+.co-mid{display:flex;flex-direction:column;align-items:center;margin:auto 0}
+.co-badge{width:94px;height:94px;border-radius:26px;display:grid;place-items:center;margin-bottom:24px;
+  background:linear-gradient(150deg,#10E0A0,#068F66);box-shadow:0 18px 44px -12px rgba(16,224,160,.75),inset 0 1px 0 rgba(255,255,255,.25);position:relative}
+.co-badge::after{content:"";position:absolute;inset:-6px;border-radius:30px;border:1px solid rgba(16,224,160,.3)}
+.co-badge svg{width:44px;height:44px;stroke:#04140d;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.co-eyebrow{font-family:Anton;font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.co-eyebrow::before,.co-eyebrow::after{content:"";width:16px;height:1.5px;background:var(--gold);border-radius:2px;opacity:.65}
+.co-title{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.08;margin-bottom:13px}
+.co-sub{font-size:14.5px;line-height:1.62;color:var(--t2);max-width:312px;margin-bottom:24px}
+.co-sub b{color:var(--t1)}
+.co-benefits{display:flex;gap:10px}
+.co-ben{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--t2)}
+.co-ben .ic{width:50px;height:50px;border-radius:15px;display:grid;place-items:center;font-size:21px;background:var(--card);border:1px solid var(--br2)}
+.co-foot{width:100%;max-width:332px}
+.co-cta{width:100%;border:0;border-radius:15px;padding:16px;font-family:"Plus Jakarta Sans";font-weight:800;font-size:16px;color:#04140d;background:var(--grad-em);box-shadow:var(--sh-glow);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px}
+.co-skip{margin-top:6px;background:none;border:none;color:var(--t3);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:13px;width:100%}
+.co-stepper{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;max-width:300px;border-radius:18px;padding:14px 18px;margin-top:4px;background:linear-gradient(180deg,rgba(16,224,160,.07),rgba(255,255,255,.012));border:1.5px solid var(--br2)}
+.co-pm{width:44px;height:44px;border-radius:12px;border:1px solid var(--br2);background:var(--card);color:var(--em);font-size:24px;font-weight:700;cursor:pointer}
+.co-val{font-family:'JetBrains Mono';font-weight:700;font-size:36px;color:var(--t1)}
+.co-val .u{font-size:15px;color:var(--t2);margin-left:3px}
 </style></head>
 <body>
 <div class="gallery-title">AVI · rediseño interior — <b>Noir Esmeralda</b> · preview v2 (4 pantallas)</div>
@@ -343,6 +369,50 @@ body{
     <a class="on"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6"/></svg>Progreso</a>
     <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Coach</a>
     <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+  </div>
+</div>
+
+<!-- ░░ 5 · CHECK-IN INICIAL (intro) ░░ -->
+<div class="phone">
+  <span class="label">⑤ Check-in inicial · intro</span>
+  <div class="top"><div class="brand">AVI</div><div class="av">DR</div></div>
+  <div class="co-wrap">
+    <div class="co-dots"><span class="co-dot on"></span><span class="co-dot"></span><span class="co-dot"></span><span class="co-dot"></span></div>
+    <div class="co-mid">
+      <div class="co-badge rise d1"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-3M13 16V9M18 16v-6"/></svg></div>
+      <div class="co-eyebrow rise d2">Tu punto de partida</div>
+      <div class="co-title rise d2">¿Cómo estás hoy?</div>
+      <div class="co-sub rise d3">Guarda tu <b>peso, medidas y una foto</b> de hoy. En unas semanas vas a ver —con números— cuánto avanzaste.</div>
+      <div class="co-benefits rise d4">
+        <div class="co-ben"><div class="ic">⚖️</div>Peso</div>
+        <div class="co-ben"><div class="ic">📏</div>Medidas</div>
+        <div class="co-ben"><div class="ic">📸</div>Foto</div>
+      </div>
+    </div>
+    <div class="co-foot rise d5">
+      <button class="co-cta">Empezar · 2 min</button>
+      <button class="co-skip">Saltar por ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- ░░ 6 · CHECK-IN · PESO ░░ -->
+<div class="phone">
+  <span class="label">⑥ Check-in · peso</span>
+  <div class="top"><div style="display:flex;align-items:center;gap:12px"><span class="back">‹</span></div><div class="av">DR</div></div>
+  <div class="co-wrap">
+    <div class="co-dots"><span class="co-dot"></span><span class="co-dot on"></span><span class="co-dot"></span><span class="co-dot"></span></div>
+    <div class="co-mid">
+      <div class="co-badge rise d1" style="background:linear-gradient(150deg,#5FE3D0,#0BBF88)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 12l4-4"/><path d="M12 3.5v2M20.5 12h-2M5.5 12h-2"/></svg></div>
+      <div class="co-eyebrow rise d2" style="color:var(--em)">Paso 1 de 3</div>
+      <div class="co-title rise d2">¿Cuánto pesas hoy?</div>
+      <div class="co-sub rise d3">Será tu peso de inicio. Lo puedes cambiar cuando quieras desde tu perfil.</div>
+      <div class="co-stepper rise d4"><button class="co-pm">−</button><div class="co-val">75.5<span class="u">kg</span></div><button class="co-pm">+</button></div>
+    </div>
+    <div class="co-foot rise d5">
+      <button class="co-cta">Guardar y continuar</button>
+      <button class="co-skip">Saltar este paso</button>
+    </div>
   </div>
 </div>
 
