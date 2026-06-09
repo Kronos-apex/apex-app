@@ -314,7 +314,21 @@ html[data-theme="light"] .mta {
 .exlb-hint{margin-top:6px;color:rgba(255,255,255,.5);font-size:12px}
 .exlb-close{position:absolute;top:max(16px,calc(env(safe-area-inset-top) + 8px));right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
 @keyframes exlbIn{from{opacity:0}to{opacity:1}}
-/* ══ GAMIFICACIÓN: descuento del mes + nivel (perfil asesorado) ══ */
+/* ══ PROGRESO (pestaña consolidada): header de sección + tarjetas de sesión premium ══ */
+.prog-sech{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--t2);margin:20px 2px 12px;display:flex;align-items:center;gap:9px}
+.prog-sech::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--br2),transparent)}
+.sescard{background:var(--w);border:1px solid var(--br);border-left:3px solid var(--g2);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh)}
+.sescard.done{border-left-color:var(--g)}
+.sescard-h{padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:7px}
+.sescard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sescard-name{font-size:14.5px;font-weight:800;color:var(--t1);line-height:1.2}
+.sescard-date{font-size:11px;color:var(--t3);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.sescard-sets{text-align:right;flex-shrink:0}
+.sescard-sets b{font-family:'Anton',sans-serif;font-size:20px;line-height:1;color:var(--g)}
+.sescard-sets small{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.sescard-pct{font-size:11px;font-weight:800}
+.sescard-vol{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt)}
+/* ══ GAMIFICACIÓN: descuento del mes + nivel (en pestaña Progreso) ══ */
 .gx-month{background:radial-gradient(120% 90% at 88% 8%,rgba(232,197,71,.20),transparent 55%),linear-gradient(150deg,#15140C,#0A0A06);border:1px solid rgba(232,197,71,.28);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.4);margin-bottom:12px}
 .gx-mtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .gx-k{font-size:10.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#E8C547}
@@ -1578,7 +1592,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <!-- HISTORY -->
     <div id="cn-history" class="cnp">
-      <div style="font-size:15px;font-weight:700;margin-bottom:11px">📊 Mi historial</div>
+      <!-- Progreso consolidado: gamificación (nivel+descuento) movida aquí desde Perfil -->
+      <div id="cn-gamif"></div>
+      <div class="prog-sech">📊 Historial de entrenamientos</div>
       <div class="vchart-wrap" id="vol-chart-wrap" style="display:none">
         <div class="vchart-title"><span>📈 Volumen por sesión</span><span id="vol-chart-avg" style="font-size:11px;color:var(--t2);font-weight:500"></span></div>
         <div id="vol-chart"></div>
@@ -1595,7 +1611,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div id="cn-profile-upsell"></div>
       <div id="cn-account-card"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
-      <div id="cn-gamif"></div>
 
       <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
       <div class="card" style="margin-bottom:12px" id="cn-nut-card">
@@ -1677,7 +1692,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="cntab on" onclick="cnTab('cn-today',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M7 12h10"/><path d="M7 9v6"/><path d="M17 9v6"/><path d="M4.5 10.5v3"/><path d="M19.5 10.5v3"/></svg></div>Hoy</div>
     <div class="cntab" onclick="cnTab('cn-routines',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M9 7h11"/><path d="M9 12h11"/><path d="M9 17h11"/><circle cx="4.5" cy="7" r="1.1"/><circle cx="4.5" cy="12" r="1.1"/><circle cx="4.5" cy="17" r="1.1"/></svg></div>Rutinas</div>
     <div class="cntab" id="tab-msgs" onclick="cnTab('cn-messages',this);markMsgsRead()"><div class="ctico"><span class="cntab-badge" id="msg-badge"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-5.2A8 8 0 1 1 21 12z"/></svg></span></div>Mensajes</div>
-    <div class="cntab" onclick="cnTab('cn-history',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6"/><path d="M12 20.5v-11"/><path d="M17.5 20.5v-8"/></svg></div>Historial</div>
+    <div class="cntab" onclick="cnTab('cn-history',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6"/><path d="M12 20.5v-11"/><path d="M17.5 20.5v-8"/></svg></div>Progreso</div>
     <div class="cntab" onclick="cnTab('cn-profile',this)"><div class="ctico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></div>Perfil</div>
   </div>
 </div>
@@ -6649,25 +6664,19 @@ function renderClientHistory(clientId){
     const dateStr=d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
     const timeStr=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
     const div=document.createElement('div');
-    div.style.cssText='background:var(--w);border:1px solid var(--br);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh)';
-    // Header
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
+    const pcol=pct===100?'var(--g)':'var(--or)';
+    div.className='sescard'+(pct===100?' done':'');
     div.innerHTML=`
-      <div style="padding:12px 14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-          <div>
-            <div style="font-size:14px;font-weight:700">${esc(s.routineName||"")}</div>
-            <div style="font-size:11px;color:var(--t2);margin-top:1px">${dateStr} · ${timeStr}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:18px;font-weight:800;color:var(--g)">${s.doneSets}/${s.totalSets}</div>
-            <div style="font-size:10px;color:var(--t3)">series</div>
-          </div>
+      <div class="sescard-h" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <div class="sescard-top">
+          <div><div class="sescard-name">${esc(s.routineName||"")}</div><div class="sescard-date">${dateStr} · ${timeStr}</div></div>
+          <div class="sescard-sets"><b>${s.doneSets}/${s.totalSets}</b><small>series</small></div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <div class="pbar" style="flex:1;margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div>
-          <span style="font-size:11px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>
-          ${s.totalVol>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">${s.totalVol.toLocaleString()} kg</span>`:''}
+          <div class="pbar" style="flex:1;margin-top:0"><div class="pfill" style="width:${pct}%;background:${pcol}"></div></div>
+          <span class="sescard-pct" style="color:${pcol}">${pct}%</span>
+          ${s.totalVol>0?`<span class="sescard-vol">${s.totalVol.toLocaleString()} kg</span>`:''}
         </div>
       </div>
       <div style="display:none;border-top:1px solid var(--br);background:var(--bg);padding:10px 14px">
