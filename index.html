@@ -2503,9 +2503,11 @@ async function syncFromCloud(){
   DB.nequi=ld('ax_nequi','');
   setP(100,'¡Listo!');
   setTimeout(()=>migratePhotosToStorage(),3000);
-  // Si hay sesión guardada, quitar la pantalla de carga más rápido
+  // Mantener la pantalla de carga unos segundos para que se vea la marca y se lea
+  // el mensaje (antes se quitaba en 100-350ms y no daba tiempo). Un poco menos si ya
+  // hay sesión guardada (no es registro nuevo), pero igual visible.
   const hasSession = !!ld('ax_session', null);
-  await new Promise(r=>setTimeout(r, hasSession ? 100 : 350));
+  await new Promise(r=>setTimeout(r, hasSession ? 1800 : 2200));
   const overlay=document.getElementById('apex-loading');
   if(overlay){overlay.classList.add('fade');setTimeout(()=>overlay.remove(),300);}
 }
