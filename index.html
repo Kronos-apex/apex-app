@@ -88,7 +88,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   html:not([data-theme="light"]) .li::placeholder,
   html:not([data-theme="light"]) .inp::placeholder,
   html:not([data-theme="light"]) .sinput::placeholder { color: var(--t3); }
-  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(180deg,rgba(7,38,29,.50) 0%,rgba(6,9,10,.74) 52%,rgba(6,9,10,.95) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
+  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 }
 /* dark mode manual — forzado por el toggle de la app */
 :root[data-theme="dark"] {
@@ -124,7 +124,7 @@ html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
 }
 html[data-theme="dark"] .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
 html[data-theme="dark"] .apex-logo .logo-ring { fill: var(--bg); }
-html[data-theme="dark"] #apex-loading { background: linear-gradient(180deg,rgba(7,38,29,.50) 0%,rgba(6,9,10,.74) 52%,rgba(6,9,10,.95) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
+html[data-theme="dark"] #apex-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
@@ -568,7 +568,7 @@ html[data-theme="light"] .mta {
 .exdetail-hero.has-photo .exdetail-herocap{position:absolute;left:18px;right:18px;bottom:13px;z-index:2}
 .exdetail-hero.has-photo .exdetail-title{font-size:22px;color:#fff!important;text-shadow:0 2px 14px rgba(0,0,0,.85)}
 /* Loading overlay */
-#apex-loading{position:fixed;inset:0;background:linear-gradient(180deg,rgba(7,38,29,.50) 0%,rgba(6,9,10,.74) 52%,rgba(6,9,10,.95) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+#apex-loading{position:fixed;inset:0;background:linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:9vh;z-index:9999;transition:opacity .4s}
 #apex-loading.fade{opacity:0;pointer-events:none}
 .ld-logo{font-size:32px;font-weight:800;color:white;margin-bottom:8px}
 .ld-sub{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:28px}
@@ -2639,7 +2639,7 @@ const EX_COACHTIP={
 };
 // Fotos de ejercicio con versión MUJER (media/exercises/{id}_f.jpg). Gender-aware: la
 // asesorada ve la demo en mujer; coach/hombre ven el default. Se amplía conforme llegan fotos.
-const EX_IMG_F=new Set(['e2','e26','e50','e96','e73','e38','e93','e40','e18','e58','e14','e41','e106','e35','e48','e37','e62','e42','e89','e13','e17','e80','e44','e92']);
+const EX_IMG_F=new Set(['e2','e26','e50','e96','e73','e38','e93','e40','e18','e58','e14','e41','e106','e35','e48','e37','e62','e42','e89','e13','e17','e80','e44','e92','e33','e34']);
 // Sexo de quien mira: en vista del asesorado sigue su sexo; el coach ve el default.
 function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.id===CUR.clientId); return (c&&c.sex)||''; } return ''; }
 function exImgSrc(e,sex){
@@ -2654,13 +2654,20 @@ function exImgSrc(e,sex){
 // Ejercicios con VIDEO de demostración (media/exercises/{id}.mp4). Se muestra en el
 // DETALLE del ejercicio (loop, mudo); la lista sigue con foto (liviana). Si no hay
 // video resuelve '' → cae a la foto. Se amplía conforme llegan más videos.
-const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84']);
-function exVidSrc(e){
+const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84','e36']);
+// Videos con variante MUJER (media/exercises/{id}_f.mp4). Igual que EX_IMG_F para las
+// fotos: si la asesorada es mujer y existe variante, ve la demo en mujer. Un ejercicio
+// puede tener solo video de mujer (no estar en EX_VID) — p.ej. e33/e37/e58.
+const EX_VID_F=new Set(['e33','e37','e58','e34']);
+function exVidSrc(e,sex){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
-  if(!id||!EX_VID.has(id)) return '';
-  return 'media/exercises/'+id+'.mp4';
+  if(!id) return '';
+  const s=(sex!==undefined)?sex:_viewSex();
+  if(s==='F'&&EX_VID_F.has(id)) return 'media/exercises/'+id+'_f.mp4';
+  if(EX_VID.has(id)) return 'media/exercises/'+id+'.mp4';
+  return '';
 }
 // Marca <img> de ejercicio reutilizable (tarjetas y detalle) — lazy + tocable
 function exImgTag(src,name){
@@ -2840,17 +2847,25 @@ let editTplId=null,tplExs=[],tplRestSec=60,pickerTarget='routine';
 
 // ══════════════════════ LOGIN ══════════════════════
 // ══════════ EXERCISE MIGRATION ══════════
+// Campos de "catálogo" (presentación) cuya fuente de verdad es el código.
+// Se REFRESCAN desde defaultExercises en cada arranque para que las fichas no
+// queden desfasadas (texto/foto/etiqueta). Lo editable por el coach —sets, reps,
+// env, track, holdSecs…— NO se toca.
+const CATALOG_FIELDS=['name','muscle','type','icon','desc','descSimple','muscleLabel','ytQuery'];
 function migrateExercises(){
-  // Adds new exercises to existing installations without losing user data
-  const allIds=defaultExercises.map(e=>e.id);
+  // (1) Agrega ejercicios nuevos sin perder datos del usuario.
+  // (2) Refresca los campos de catálogo de los existentes (antes solo agregaba,
+  //     por eso las bibliotecas viejas mostraban fichas sin descSimple/muscleLabel).
   let changed=false;
-  allIds.forEach(id=>{
-    if(!DB.exercises.find(e=>e.id===id)){
-      const ex=defaultExercises.find(e=>e.id===id);
-      if(ex){DB.exercises.push(ex);changed=true;}
-    }
+  const byId={}; DB.exercises.forEach(e=>{ if(e&&e.id)byId[e.id]=e; });
+  defaultExercises.forEach(def=>{
+    const cur=byId[def.id];
+    if(!cur){ DB.exercises.push({...def}); changed=true; return; }
+    CATALOG_FIELDS.forEach(f=>{
+      if(def[f]!==undefined && cur[f]!==def[f]){ cur[f]=def[f]; changed=true; }
+    });
   });
-  if(changed){sv('ax_e',DB.exercises);log('AVI: ejercicios migrados OK');}
+  if(changed){sv('ax_e',DB.exercises);log('AVI: catálogo refrescado OK');}
 }
 
 // ══════════════════════════════════════════
@@ -8796,9 +8811,19 @@ let CUR_EX_YT_QUERY = '';
 let CUR_EX_REF = null; // ejercicio de biblioteca en edición (env), o null si no editable
 
 function openExDetail(exId, forceCoachView){
-  const ex = DB.exercises.find(e=>e.id===exId);
+  const inLib = DB.exercises.find(e=>e.id===exId);
+  let ex = inLib;
+  if(!ex){
+    // Respaldo: ejercicio que NO está en la biblioteca de este usuario. Pasa cuando
+    // el coach asigna un ejercicio propio (custom): su biblioteca ax_e no se sincroniza
+    // al cliente, así que el cliente no lo tiene. Usamos el snapshot guardado en la
+    // rutina activa / modo guiado para que la ficha abra igual y no quede "perdido".
+    const pools=[ (typeof GM!=='undefined'&&GM.exercises)||[], (CUR.activeRoutine&&CUR.activeRoutine.exercises)||[] ];
+    for(const p of pools){ const f=p.find(e=>e.id===exId); if(f){ ex=f; break; } }
+  }
   if(!ex) return;
-  _showExSheet(ex, forceCoachView || CUR.loggedAs === 'coach', true); // editable: es de la biblioteca
+  // Solo editable (editor de entorno) si el ejercicio vive en la biblioteca.
+  _showExSheet(ex, forceCoachView || CUR.loggedAs === 'coach', !!inLib);
 }
 // Busca un ejercicio de calentamiento por id en toda la WARMUP_LIBRARY.
 function findWarmupEx(id){
@@ -8850,12 +8875,10 @@ function _showExSheet(ex, isCoach, editable){
   const simpleWrap = document.getElementById('exd-simple-wrap');
   const simpleEl = document.getElementById('exd-simple');
   const simpleText = ex.descSimple || ex.desc || '';
-  if(simpleText){
-    simpleEl.textContent = simpleText;
-    simpleWrap.style.display = 'block';
-  } else {
-    simpleWrap.style.display = 'none';
-  }
+  // Nunca dejar la guía vacía: si el ejercicio no trae texto, mostramos un mensaje
+  // que orienta al asesorado (al video o al coach) en vez de ocultar la sección.
+  simpleEl.textContent = simpleText || 'Aún no hay una descripción escrita de este ejercicio. Toca “Ver en YouTube” abajo para ver la técnica, o pregúntale a tu coach.';
+  simpleWrap.style.display = 'block';
 
   // Nota del coach (cue profesional corto, visible para el asesorado)
   const tipWrap = document.getElementById('exd-coachtip-wrap');
