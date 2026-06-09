@@ -2696,7 +2696,7 @@ function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.i
 // hasta regenerarlas en Gemini. Quitar de aquí cuando la foto correcta esté lista.
 //  e43/e92 = reusaban la foto de barra de e42 (no máquina / no unilateral)
 //  e31/e105 = compartían una foto ambigua (parecía press en banco, no extensión de tríceps)
-const EX_IMG_HIDE=new Set(['e43','e92','e31','e105']);
+const EX_IMG_HIDE=new Set(['e92','e31','e105']);
 function exImgSrc(e,sex){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
