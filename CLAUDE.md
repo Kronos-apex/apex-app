@@ -893,13 +893,19 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-09 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v108** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-09 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v110** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 ---
-### ⏭️ RETOMAR AQUÍ (próxima sesión) — EN CURSO: rediseño interior · pendiente-Gemini: fotos+videos
+### ⏭️ RETOMAR AQUÍ (próxima sesión) — EN CURSO: PORTAR rediseño interior a la app
 🏆 **Hito 2026-06-08:** Miguel Pulido pagó **60.000 COP/2 meses** = primer ingreso real. Ver `project_avi_primer_cliente_pago`.
 
-**🎯 SIGUIENTE (lo grande, sin Gemini): REDISEÑO INTERIOR — tema oscuro Noir por defecto.** Las pantallas internas en tema claro decepcionan frente al onboarding premium. Preview en `_preview-interior.html` esperando look final. Es el mayor salto de calidad percibida. (Camilo eligió arrancar por aquí tras la bitácora, 2026-06-09.)
+**🎯 REDISEÑO INTERIOR (diseño FINAL pre-lanzamiento — "debe quedar perfecto", Camilo). Metodología acordada: NO improvisar; perfeccionar en preview → aprobar en cel → portar a `index.html` → QA con skill `frontend-design-review`.**
+- **Tema oscuro Noir YA es default** (`ld('ax_theme','dark')`) — la "causa raíz tema claro" estaba resuelta. Lo que falta es el PULIDO premium por componente.
+- **Preview aprobado por Camilo** ("ahora siii"): `_preview-interior.html` (v2, dirección "Noir Esmeralda · atlético cinematográfico") con 6 pantallas: ① Hoy ② Ficha ③ Rutinas ④ Progreso ⑤⑥ Check-in. Visible en `https://kronos-apex.github.io/apex-app/_preview-interior.html`.
+- ✅ **PORTADO Y EN PROD: el check-in** (`#data-ob`/`.dob-*`, apex-v109) — era el modal plano "¿Cómo estás hoy?". Aprobado en vivo por Camilo.
+- ⏭️ **SIGUE PORTANDO (en este orden):** ① **Hoy** = hero `.wohero` (renderClientToday, ~línea 5951) + **rutina del día en AMARILLO** en la lista de Rutinas (`renderClientAllRoutines` ~6567) + tarjetas de ejercicio (`#cex-list`/`.cex-block` ~449). Luego ② ficha (ya tiene base premium) · ③ rutinas · ④ progreso.
+- 🧰 Skills instaladas para esto: `frontend-design` (Anthropic) + `frontend-design-review` (Microsoft, QA 3 pilares).
+- ⚠️ **QUITAR ANTES DEL LANZAMIENTO:** disparador temporal `#cidemo` (en `window load`, justo antes de `function showDataOnboarding`) que abre el check-in sin login para QA. NO se puede capturar el navegador local (RAM) → Camilo revisa en su cel; el check-in se previsualiza con `…/#cidemo` o consola `showDataOnboarding('preview')`.
 
 **FASE A — FOTOS (NECESITA GEMINI, Camilo sin tokens 2026-06-09).** Faltan **10 sin foto**: e45, e63, e72, e74, e75, e76, e90, e91, e108, e109. Y **2 solo ♀** (falta ♂): e89, e93. Claude procesa (delogo ✦ + 720² + grade Noir) y mapea en `EX_IMG_NAME`/`EX_IMG_F`.
 
@@ -909,6 +915,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 **Otras pendientes sin Gemini:** borrar 3 cuentas de prueba de `auth.users`; empty states + mini-tour (usuario nuevo); ampliar glosario (Valsalva/tempo).
 ---
+*Hitos sesión 2026-06-09 (cont. 9): 🎨 REDISEÑO INTERIOR arrancado (diseño final pre-lanzamiento). Skills cargadas: `frontend-design` + instalada `frontend-design-review` (Microsoft). Preview v2 `_preview-interior.html` (6 pantallas, "Noir Esmeralda") construido y APROBADO por Camilo en cel. Metodología: preview→aprobar→portar→QA. Disparador temporal `#cidemo` para previsualizar el check-in sin login (apex-v110, QUITAR antes del lanzamiento).*
+*Hitos sesión 2026-06-09 (cont. 8): ✅ CHECK-IN inicial rediseñado y PORTADO a prod (`#data-ob`/`.dob-*`, apex-v109). Era el modal plano "¿Cómo estás hoy?" (peso/medidas/foto) que se veía de bajo nivel (Camilo lo fotografió). Ahora full-bleed Noir: badge gradiente+glow, eyebrow Anton, `dob-cta` gradiente, stepper de peso (±), entrada animada por paso. Estructura/handlers intactos. QA con skill (3 pilares).*
+*Hitos sesión 2026-06-09 (cont. 7): 🐛 Camilo reportó: foto de e36 era hack squat (corregido cont.1) + el check-in feo. Confirmado que el wizard de registro (7 pasos) SÍ es premium; lo viejo era solo el `#data-ob`. `migrateExercises` + biblioteca: ver cont.2.*
 *Hitos sesión 2026-06-09 (cont. 6): 💨 RECORDATORIOS DE RESPIRACIÓN en el modo guiado (NO en la ficha — "ahí se pierden", Camilo). `breathCue(ex)`: cue brace/Valsalva para grandes compuestos (sentadilla/peso muerto/press banca/militar/hip thrust/RDL+variantes) + default por tipo (aislamiento/cardio/isométrico…). Línea corta '💨…' en el descanso (se repite cada serie) + tarjeta `gmShowStartCard` con el cue largo (glossarizado) al abrir el guiado y al entrar a un ejercicio nuevo. (apex-v108)*
 *Hitos sesión 2026-06-09 (cont. 5): 📖 GLOSARIO tap-to-explain — términos técnicos (omóplato, bisagra de cadera, protracción, retracción, isométrico, excéntrico, aducción/abducción, propiocepción, manguito rotador, serrato, romboides, sóleo, gastrocnemio) resaltados en la guía + nota de coach; al tocar → popover en lenguaje simple. `GLOSS`+`glossarize()` XSS-safe, frase-larga-gana, sin lookbehind (compat iOS). (apex-v107)*
 *Hitos sesión 2026-06-09 (cont. 4): 🖼️ SPLASH más vivo — `loading-bg.jpg` grade v2 (sombras levantadas+saturación), gradiente claro al centro (se ve el modelo) y oscuro solo abajo; texto bajado a `flex-end`+`padding-bottom:9vh`. Original respaldado. (apex-v106)*
