@@ -893,7 +893,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v100** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v101** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Hitos sesión 2026-06-08 (cont. 16): 🎬 hero-montage del login ajustado — Camilo no convencido con la técnica del clip press hammer (e84): reemplazado por e9 curl con barra. Montaje ahora = e13,e5,e22,e9,e6 (pierna→espalda→hombro→bíceps→espalda). El video de detalle e84 sigue intacto. (apex-v101)*
 *Hitos sesión 2026-06-08 (cont. 15): 🎬 `media/hero-montage.mp4` (fondo del login cinematográfico) REGENERADO con nuestros videos AVI — montaje vertical 720×1280/30fps/11s/1.4MB de 5 clips (e13 sentadilla, e5 remo, e22 press militar, e84 press hammer, e6 jalón) escalados a cover + concat. Antes era genérico. La regla SW `.mp4` network-first ya sirve la versión nueva. (apex-v100)*
 *Hitos sesión 2026-06-08 (cont. 14): 🎨 íconos de la barra inferior del asesorado (`.cntab .ctico`) de EMOJI a SVG de línea propios (Hoy=mancuerna, Rutinas=lista, Mensajes=burbuja, Historial=barras, Perfil=persona). Heredan color por `currentColor` (gris t3 → esmeralda al activar) + stroke-width sube en `.on`; badge de mensajes intacto (`#msg-badge` sigue con data-count). (apex-v99)*
 *Hitos sesión 2026-06-08 (cont. 13): 🎬 +2 videos limpios (logo AVI correcto) — e22 Press militar con mancuernas + e84 Press en máquina hammer. EX_VID = e5,e6,e9,e11,e13,e22,e27,e84 (8 videos) (apex-v98).*
