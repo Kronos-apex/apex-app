@@ -4356,14 +4356,14 @@ async function _provisionFreeClient(authUser, p){
     goal:p.goal, level:p.level, weight:p.weight, height:p.height,
     age:p.age, sex:p.sex, activityFactor:1.55, days:p.days, place:p.place,
     notes:'', phone:'', selfReg:true, tier:'libre', routines:[],
-    needsProfile:!complete, // Google: aún no eligió → pedirle antes de generar (no asumir)
+    needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
   rec.coach_id=COACH_UID; // modelo de un solo coach: todo self-registro entra al pipeline del coach
   _applyAuthClientDB(rec,{}); // colecciones vacías (usuario nuevo)
-  // Solo auto-generar si el perfil viene completo (correo). Si no (Google), se genera
-  // tras "Cuéntanos de ti" (saveProfileSetup) — no asumir principiante a ciegas.
-  if(complete){ try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); } }
+  // Siempre auto-generamos la semana (con defaults si faltara algún dato) — ya no hay 2ª pantalla
+  // "Cuéntanos de ti". El wizard premium ya recoge el perfil; el usuario puede regenerar desde Rutinas.
+  try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); }
   // coachId=COACH_UID → la fila es visible para el coach por RLS (ve TODOS los registros como leads,
   // con tag 🆓 Libre o 🙋 Quiere coach). El usuario sigue tier:'libre' (premium bloqueado hasta convertir).
   try{ await UD.createFromClient(rec,{role:'client',coachId:COACH_UID}); }
@@ -4371,24 +4371,6 @@ async function _provisionFreeClient(authUser, p){
   return rec;
 }
 
-// Paso "Cuéntanos de ti" — pregunta el perfil de entrenamiento a quien entró sin datos
-// (Google) ANTES de generar su rutina. Persiste y genera al confirmar.
-function showProfileSetup(){ const el=document.getElementById('profile-ob'); if(el)el.style.display='flex'; }
-function saveProfileSetup(){
-  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
-  const g=id=>document.getElementById(id);
-  c.goal=g('po-goal').value; c.place=g('po-place').value||'gym'; c.level=g('po-level').value;
-  c.days=parseInt(g('po-days').value)||3; c.sex=g('po-sex').value||null;
-  c.age=parseInt(g('po-age').value)||null;
-  c.weight=parseFloat(g('po-weight').value)||null; c.height=parseFloat(g('po-height').value)||null;
-  c.needsProfile=false; c.updatedAt=new Date().toISOString();
-  try{ _autoGenerateWeek(c); }catch(e){ warn('AVI: generar tras perfil falló:',e&&e.message); }
-  svNow('ax_c',DB.clients); // modo auth → guarda profile+routines en su fila
-  const el=document.getElementById('profile-ob'); if(el)el.style.display='none';
-  initClientView(c);
-  // Google/perfil tardío: ya generamos su semana → Reveal del plan.
-  if(c.routines&&c.routines.length){ showPlanReveal(c); } else { toast('🎉 ¡Tu rutina ya está lista!'); }
-}
 
 // Reveal del plan — pantalla cumbre tras el registro. Construye la semana REAL desde
 // client.routines + el resumen del wizard. onContinue (opcional) corre al tocar "Ver mi plan".
@@ -5525,9 +5507,9 @@ function initClientView(client){
   document.getElementById('rest-banner').classList.add('hide');
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
   renderClientProfile(client);renderClientToday(client);renderClientAllRoutines(client);renderClientMsgs(client.id);renderClientHistory(client.id);updateMsgBadge(client.id);
-  // Perfil incompleto (entró por Google sin elegir objetivo/nivel) → preguntar ANTES de
-  // cualquier otra cosa, para no asumir datos ni rutina a ciegas.
-  if(client.needsProfile){ setTimeout(()=>showProfileSetup(), 300); return; }
+  // (Eliminada la pantalla vieja "Cuéntanos de ti"/#profile-ob 2026-06-09: el wizard premium
+  // de 7 pasos ya captura el perfil; si faltaran datos se genera con defaults y el usuario
+  // puede regenerar desde Rutinas. Una sola onboarding = el wizard.)
   // Show onboarding on first login — data wizard first, educational after.
   // Si no hay onboarding pendiente (asesorado que regresa), damos la bienvenida personalizada.
   if(shouldShowDataOnboarding(client.id)){
@@ -9567,32 +9549,6 @@ function whatsappNudge(id){
       <div class="dob-dot" id="dob-d3"></div>
     </div>
     <div id="dob-body"></div>
-  </div>
-</div>
-
-<!-- COMPLETAR PERFIL (para quien entró por Google / sin datos): pregunta antes de generar -->
-<div id="profile-ob" style="display:none;position:fixed;inset:0;z-index:850;background:linear-gradient(160deg,#06231A,#0A1A12);overflow-y:auto;padding:24px 16px">
-  <div style="max-width:440px;width:100%;margin:auto;background:var(--w);border-radius:18px;padding:22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.45)">
-    <div style="font-size:40px;text-align:center;margin-bottom:6px">💪</div>
-    <div class="dob-title" style="text-align:center">Cuéntanos de ti</div>
-    <div class="dob-sub" style="text-align:center;margin-bottom:16px">Para armar tu rutina <b>a tu medida</b>. Toma 30 segundos.</div>
-    <label class="ilbl">Objetivo</label>
-    <select id="po-goal" class="inp"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
-    <label class="ilbl">¿Dónde entrenas?</label>
-    <select id="po-place" class="inp"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select>
-    <label class="ilbl">Nivel</label>
-    <select id="po-level" class="inp"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select>
-    <label class="ilbl">Días por semana</label>
-    <select id="po-days" class="inp"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
-    <div style="display:flex;gap:10px">
-      <div style="flex:1"><label class="ilbl">Sexo</label><select id="po-sex" class="inp"><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-      <div style="flex:1"><label class="ilbl">Edad</label><input id="po-age" class="inp" type="number" min="12" max="99" placeholder="Ej: 30"></div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <div style="flex:1"><label class="ilbl">Peso (kg)</label><input id="po-weight" class="inp" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 75"></div>
-      <div style="flex:1"><label class="ilbl">Altura (cm)</label><input id="po-height" class="inp" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 172"></div>
-    </div>
-    <button class="btn bp bfull" style="margin-top:16px;padding:14px;font-size:15px" onclick="saveProfileSetup()">Crear mi rutina →</button>
   </div>
 </div>
 
