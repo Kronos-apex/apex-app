@@ -732,6 +732,16 @@ html[data-theme="light"] .mta {
 .gm-rest-lbl{font-size:12px;color:var(--accent3,#5FE3B0);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
 .gm-rest-title{font-size:16px;font-weight:800;color:white;text-align:center}
 .gm-rest-next{font-size:13px;color:var(--accent3,#5FE3B0);text-align:center;max-width:240px;line-height:1.5}
+/* Respiración: recordatorio en el descanso + tarjeta al iniciar cada ejercicio */
+.gm-rest-breath{font-size:13px;color:#fff;background:rgba(82,183,136,.16);border:1px solid rgba(82,183,136,.38);border-radius:12px;padding:9px 14px;max-width:290px;text-align:center;line-height:1.45;margin-top:6px}
+.gm-start-card{position:fixed;inset:0;z-index:1400;display:flex;align-items:center;justify-content:center;padding:26px;background:rgba(6,9,10,.80);backdrop-filter:blur(3px);opacity:0;transition:opacity .25s}
+.gm-start-card.on{opacity:1}
+.gsc-card{background:var(--w);border:1px solid var(--br);border-top:4px solid var(--g);border-radius:18px;padding:22px 20px 18px;max-width:360px;box-shadow:0 18px 50px rgba(0,0,0,.5);transform:translateY(12px);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.gm-start-card.on .gsc-card{transform:translateY(0)}
+.gsc-ex{font-family:'Anton',sans-serif;font-size:20px;color:var(--t1);letter-spacing:.4px;margin-bottom:12px}
+.gsc-h{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--g);margin-bottom:7px}
+.gsc-b{font-size:14.5px;line-height:1.62;color:var(--t1)}
+.gsc-btn{margin-top:18px;width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
 .gm-rest-skip{margin-top:12px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:11px 28px;color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
 .gm-rest-skip:hover{background:rgba(255,255,255,.18)}
 /* Bottom action bar */
@@ -7952,12 +7962,15 @@ function openGuidedMode(){
   document.getElementById('guided-mode').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   setTimeout(() => gmScrollToCurrent(), 200);
+  // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
+  setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
 }
 
 function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
   document.getElementById('guided-mode').classList.add('hidden');
   document.getElementById('gm-rest-overlay').classList.add('hidden');
+  closeStartCard();
   document.body.style.overflow = '';
   if(GM.routine) updateClientProgress(GM.routine);
 }
@@ -8150,6 +8163,54 @@ function gmToggleSet(ei, si, stepIdx){
   gmUpdateActionBtn();
 }
 
+// ══════════ RESPIRACIÓN (recordatorios durante el entreno) ══════════
+// Cue específico para los grandes compuestos (brace/Valsalva); para el resto, un
+// default inteligente por TIPO. {s:corto (descanso), l:largo (tarjeta de inicio)}.
+// Pedido de Camilo 2026-06-09 — va en el modo guiado (no en la ficha) para que se vea.
+const EX_BREATH={
+  e13:{s:'Toma aire arriba y aprieta el core; sostenlo al bajar y suéltalo al subir.',l:'Llena el pecho de aire y aprieta el abdomen ANTES de bajar (como si fueras a recibir un golpe). Mantén el aire mientras bajas y suéltalo con fuerza al subir. Ese core firme transfiere la fuerza de las piernas a todo el cuerpo y protege tu espalda.'},
+  e70:{s:'Aire y core firme antes de bajar; suelta al subir.',l:'Toma aire y aprieta el abdomen antes de bajar; sostenlo en la bajada y exhala al subir. El core firme estabiliza la columna en cada repetición.'},
+  e34:{s:'Llena el aire y aprieta el abdomen ANTES de jalar; exhala arriba.',l:'De pie sobre la barra, llena el aire y aprieta fuerte el abdomen ANTES de jalar. Mantén ese bloque de aire durante toda la subida y exhala solo arriba. Nunca sueltes el aire a mitad del esfuerzo: ahí es donde el core protege la zona lumbar.'},
+  e14:{s:'Aire y core antes de bajar; exhala al subir.',l:'Toma aire y aprieta el abdomen antes de empujar la cadera hacia atrás. Mantén el aire mientras bajas sintiendo el femoral y exhala al volver arriba. Espalda siempre recta.'},
+  e1:{s:'Inhala al bajar la barra · exhala empujando.',l:'Inhala mientras bajas la barra al pecho con control, aprieta el core y los omóplatos contra el banco, y exhala con fuerza mientras empujas hacia arriba.'},
+  e7:{s:'Core firme · exhala al empujar arriba.',l:'Aprieta glúteos y abdomen para no arquear la espalda. Toma aire abajo y exhala al empujar la barra por encima de la cabeza. El core firme evita que la zona lumbar compense.'},
+  e22:{s:'Core firme · exhala al subir las mancuernas.',l:'Mantén el abdomen apretado para no arquear la espalda. Inhala abajo y exhala al subir las mancuernas. No aguantes el aire entre repeticiones.'},
+  e42:{s:'Exhala empujando la cadera arriba · inhala al bajar.',l:'Toma aire abajo, exhala mientras empujas la cadera hacia arriba apretando el glúteo al tope, e inhala al bajar con control. Costillas abajo, sin arquear la zona lumbar.'},
+};
+// Reutilizar los cues finos en variantes del mismo patrón
+EX_BREATH.e33=EX_BREATH.e58=EX_BREATH.e80=EX_BREATH.e13; // sentadillas
+EX_BREATH.e46=EX_BREATH.e50=EX_BREATH.e14;               // bisagra de cadera
+EX_BREATH.e43=EX_BREATH.e42;                              // hip thrust
+function breathCue(ex){
+  if(!ex) return null;
+  if(EX_BREATH[ex.id]) return EX_BREATH[ex.id];
+  switch(ex.type){
+    case 'Compuesto':   return {s:'Aprieta el core y exhala en el esfuerzo.',l:'Toma aire y aprieta el abdomen antes de empezar el movimiento; exhala en la parte de más esfuerzo (cuando empujas o levantas). No aguantes el aire serie tras serie.'};
+    case 'Aislamiento': return {s:'Exhala al contraer · inhala al volver.',l:'Exhala cuando haces fuerza (al contraer el músculo) e inhala al volver a la posición inicial. Mantén un ritmo constante, sin contener el aire.'};
+    case 'Cardio':      return {s:'Respira rítmico · no aguantes el aire.',l:'Respira de forma rítmica y constante; no contengas el aire. Si te falta el aire, baja el ritmo hasta recuperarte.'};
+    case 'HIIT':        return {s:'Respira parejo · recupera en las pausas.',l:'Mantén una respiración rítmica durante el esfuerzo y aprovecha las pausas para respirar profundo y recuperar.'};
+    case 'Isométrico':  return {s:'Sigue respirando · NO aguantes el aire.',l:'No contengas la respiración: sigue respirando lento y controlado mientras sostienes la posición.'};
+    default:            return {s:'Exhala en el esfuerzo · core activo.',l:'Exhala cuando haces fuerza e inhala al volver. Mantén el core activo durante todo el movimiento y no aguantes el aire.'};
+  }
+}
+// Tarjeta breve al INICIAR un ejercicio: cómo respirar aquí (cue largo).
+function gmShowStartCard(ex){
+  if(!ex) return; const bc=breathCue(ex); if(!bc) return;
+  const old=document.getElementById('gm-start-card'); if(old) old.remove();
+  const el=document.createElement('div');
+  el.id='gm-start-card'; el.className='gm-start-card';
+  el.addEventListener('click',e=>{ if(e.target===el) closeStartCard(); });
+  el.innerHTML='<div class="gsc-card">'
+    +'<div class="gsc-ex">'+esc(ex.name)+'</div>'
+    +'<div class="gsc-h">💨 Cómo respirar aquí</div>'
+    +'<div class="gsc-b">'+glossarize(bc.l)+'</div>'
+    +'<button class="gsc-btn" onclick="closeStartCard()">Empezar</button>'
+    +'</div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('on'));
+}
+function closeStartCard(){ const el=document.getElementById('gm-start-card'); if(el){ el.classList.remove('on'); setTimeout(()=>{ if(el&&!el.classList.contains('on')) el.remove(); },300); } }
+
 function gmShowRest(secs, nextStep){
   const overlay=document.getElementById('gm-rest-overlay');
   const secEl=document.getElementById('gm-rest-sec');
@@ -8161,6 +8222,8 @@ function gmShowRest(secs, nextStep){
   arc.style.transition='none';
   arc.style.strokeDashoffset='0';
   if(nextStep) nextEl.textContent=`Siguiente: ${esc(nextStep.ex.name)} — Serie ${nextStep.si+1}/${nextStep.sets}`;
+  const breEl=document.getElementById('gm-rest-breath');
+  if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.textContent=bc?('💨 '+bc.s):''; breEl.style.display=bc?'block':'none'; }
   if(GM.restTimer) clearInterval(GM.restTimer);
   let left=secs;
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
@@ -8173,7 +8236,9 @@ function gmShowRest(secs, nextStep){
       clearInterval(GM.restTimer);GM.restTimer=null;
       overlay.classList.add('hidden');
       playRestEndBeep();
-      gmShowGoFlash();
+      // Ejercicio NUEVO (primera serie) → tarjeta de respiración; misma serie → flash "¡VAMOS!"
+      if(nextStep && nextStep.si===0) gmShowStartCard(nextStep.ex);
+      else gmShowGoFlash();
       if(nextStep){ setTimeout(()=>{ const inp=document.getElementById(`gm-kg-${nextStep.ei}-${nextStep.si}`);if(inp)inp.focus();},600); }
     }
   },1000);
@@ -8183,6 +8248,7 @@ function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   const next=GM.steps[GM.currentStep];
+  if(next && next.si===0) gmShowStartCard(next.ex);
   if(next){ setTimeout(()=>{const inp=document.getElementById(`gm-kg-${next.ei}-${next.si}`);if(inp)inp.focus();},200); }
 }
 
@@ -9429,6 +9495,7 @@ function whatsappNudge(id){
       </div>
     </div>
     <div class="gm-rest-next" id="gm-rest-next">Siguiente: —</div>
+    <div class="gm-rest-breath" id="gm-rest-breath" style="display:none"></div>
     <button class="gm-rest-skip" onclick="gmSkipRest()">⏩ Saltar descanso</button>
   </div>
 </div>
