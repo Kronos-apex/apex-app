@@ -328,6 +328,15 @@ html[data-theme="light"] .mta {
 .sescard-sets small{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
 .sescard-pct{font-size:11px;font-weight:800}
 .sescard-vol{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt)}
+/* ══ PERFIL → seguimiento premium (scoped, no afecta al coach) ══ */
+#cn-profile .card{border-radius:16px}
+#cn-profile .ctitle{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1px;text-transform:uppercase;color:var(--gt)}
+.prof-collapse{display:flex;align-items:center;gap:12px;border:1px solid var(--br2);border-left:3px solid var(--g);border-radius:16px;padding:14px 16px;margin-bottom:12px;cursor:pointer;background:linear-gradient(100deg,var(--gl),var(--w) 62%)}
+.prof-collapse .pc-ic{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;font-size:18px;background:var(--w);border:1px solid var(--br2)}
+.prof-collapse .pc-tx{flex:1}
+.prof-collapse .pc-t{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.5px;color:var(--t1)}
+.prof-collapse .pc-s{font-size:11px;color:var(--t3);margin-top:2px}
+.prof-collapse .pc-chev{font-size:12px;color:var(--g);transition:transform .25s}
 /* ══ GAMIFICACIÓN: descuento del mes + nivel (en pestaña Progreso) ══ */
 .gx-month{background:radial-gradient(120% 90% at 88% 8%,rgba(232,197,71,.20),transparent 55%),linear-gradient(150deg,#15140C,#0A0A06);border:1px solid rgba(232,197,71,.28);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.4);margin-bottom:12px}
 .gx-mtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -1628,9 +1637,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
       <!-- Seguimiento personal: peso/medidas/fotos. Colapsado por defecto (progressive
            disclosure) para no abrumar al asesorado nuevo. Se auto-abre si ya hay datos. -->
-      <div id="tt-toggle" onclick="toggleTrackingTools()" style="display:flex;align-items:center;justify-content:space-between;background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;cursor:pointer">
-        <div><div style="font-size:14px;font-weight:700">📈 Mi seguimiento personal</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Peso, medidas y fotos · opcional</div></div>
-        <span id="tt-chev" style="font-size:12px;color:var(--t3);transition:transform .2s">▼</span>
+      <div id="tt-toggle" class="prof-collapse" onclick="toggleTrackingTools()">
+        <div class="pc-ic">📈</div>
+        <div class="pc-tx"><div class="pc-t">Mi seguimiento personal</div><div class="pc-s">Peso, medidas y fotos · opcional</div></div>
+        <span id="tt-chev" class="pc-chev">▼</span>
       </div>
       <div id="tt-body" style="display:none">
         <!-- Body weight tracker -->
