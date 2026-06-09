@@ -894,6 +894,19 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 ---
 
 *Última actualización: 2026-06-08 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v105** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+---
+### ⏭️ RETOMAR MAÑANA (2026-06-09) — Plan: completar fotos → videos → subir nivel premium
+🏆 **Hito 2026-06-08:** Miguel Pulido pagó **60.000 COP/2 meses** por entrenar vía app + seguimiento remoto = **primer ingreso real** (valida el modelo). Ver memoria `project_avi_primer_cliente_pago`.
+
+**FASE A — Completar FOTOS (desbloquea videos y fichas).** Faltan **10 sin foto**: e45, e63, e72, e74, e75, e76, e90, e91, e108, e109. Y **2 solo con foto ♀** (falta ♂): e89, e93. → Camilo genera en Gemini (prompts en `Desktop/AVI/PROMPTS-EJERCICIOS-*.md`); Claude procesa (delogo ✦ + 720² + grade) y mapea en `EX_IMG_NAME`/`EX_IMG_F`. Meta: 109/109 con foto.
+
+**FASE B — VIDEOS (imagen→video, Veo/Gemini).** Hechos (8): e5,e6,e9,e11,e13,e22,e27,e84. Pendiente inmediato: **regenerar e28** (logo roto). Luego priorizar por uso (compuestos: e34 peso muerto, e1 press banca, e4 dominadas, e7 press militar barra, e14 RDL, e42 hip thrust…). Flujo: Camilo genera (prompts en `Desktop/PROMPTS-VIDEO-EJERCICIOS.txt`) → Claude procesa (recorte morph -ss 2 + crop 720² + sin audio + H.264) → `media/exercises/eN.mp4` + id a `EX_VID`. **REGLA: revisar el LOGO de CADA video (Veo rompe el texto a veces).**
+
+**FASE C — Subir nivel premium.** Íconos nav SVG ✅, hero "Hoy" con foto ✅, saludo+racha ✅. Pendiente: (1) **fichas premium** (nombres específicos + desc que nombre el músculo, en pausa — cuidado: rename necesita alias en EX_IMG_NAME para no romper rutinas guardadas por nombre); (2) más pulidos a criterio. Opcional: borrar las 3 cuentas de prueba también de `auth.users`.
+
+**Estado videos en prod (8):** e5 remo · e6 jalón · e9 curl barra · e11 tríceps · e13 sentadilla · e22 press militar mancuerna · e27 jalón neutro · e84 press hammer.
+---
 *Hitos sesión 2026-06-08 (cont. 20): 🔙 BUG botón atrás no cerraba el detalle del ejercicio — el handler de popstate no contemplaba `#exdetail-bg` ni `#ex-lightbox`. Añadidos al inicio del handler (lightbox→detalle→guided→modal→p-detail). 🔍 video del detalle ahora TOCABLE → abre el lightbox y se ve COMPLETO sin recorte (nuevo `openExVid` + `<video id=exlb-vid>` + `.exlb video` CSS; closeExImg resetea ambos). (apex-v105)*
 *Hitos sesión 2026-06-08 (cont. 19): ⏱️ pantalla de carga +1s (Camilo) → hold final 2800/3200ms. (apex-v104)*
 *Hitos sesión 2026-06-08 (cont. 18): ⏱️ pantalla de carga dura más — el hold final pasó de 100/350ms a 1800/2200ms (sesión/registro) para que se vea la marca + se lea el mensaje (Camilo: "no dura ni un segundo"). (apex-v103)*
