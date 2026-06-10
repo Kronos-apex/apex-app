@@ -5247,7 +5247,10 @@ function initClientView(client){
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.getElementById('cn-today').classList.add('on');
   document.getElementById('rest-banner').classList.add('hide');
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
-  renderClientProfile(client);renderClientToday(client);renderClientAllRoutines(client);renderClientMsgs(client.id);renderClientHistory(client.id);updateMsgBadge(client.id);
+  // Fase 2 (perf móvil): en el login solo pintamos lo VISIBLE ("Hoy") + el badge de mensajes.
+  // Perfil, Historial, Rutinas y Mensajes se pintan en cnTab al abrir su pestaña (lazy),
+  // sacando 4 renders pesados (gráficas SVG, listas largas) de la ruta crítica de arranque.
+  renderClientToday(client);updateMsgBadge(client.id);
   // (Eliminada la pantalla vieja "Cuéntanos de ti"/#profile-ob 2026-06-09: el wizard premium
   // de 7 pasos ya captura el perfil; si faltaran datos se genera con defaults y el usuario
   // puede regenerar desde Rutinas. Una sola onboarding = el wizard.)
@@ -5308,6 +5311,13 @@ function cnTab(id,el){
   }
   if(id==='cn-history'&&CUR.clientId){
     renderClientHistory(CUR.clientId);
+  }
+  if(id==='cn-routines'&&CUR.clientId){
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    if(c)renderClientAllRoutines(c);
+  }
+  if(id==='cn-messages'&&CUR.clientId){
+    renderClientMsgs(CUR.clientId);
   }
 }
 
