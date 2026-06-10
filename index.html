@@ -505,7 +505,9 @@ html[data-theme="light"] .mta {
 .sinput::-webkit-outer-spin-button,.sinput::-webkit-inner-spin-button{-webkit-appearance:none}
 .sinput:focus{border-color:var(--g2)}
 .set-log-row.sdone .sinput{background:var(--gl);border-color:var(--g2);color:var(--gt)}
-.scheck{width:36px;height:36px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent;flex-shrink:0;transition:all .18s}
+.scheck{width:36px;height:36px;border-radius:50%;border:2px solid var(--br2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent;flex-shrink:0;transition:all .18s;position:relative}
+/* Área táctil efectiva 44px (mínimo recomendado móvil) sin agrandar el círculo visual */
+.scheck::after{content:'';position:absolute;inset:-4px;border-radius:50%}
 .scheck:hover{border-color:var(--g2);color:var(--g2)}
 .scheck.sdone{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 
@@ -2474,58 +2476,11 @@ async function syncFromCloud(){
   const fill=document.getElementById('ld-fill');
   const msg=document.getElementById('ld-msg');
   const setP=(p,t)=>{if(fill)fill.style.width=p+'%';if(msg)msg.textContent=t;};
-  setP(10,'Conectando con la nube...');
-  // Solo intentar Supabase si hay conexión real (no file://)
-  if(canCloudWrite()){
-    try{
-      // Timeout de 8 segundos para no bloquear el arranque
-      const controller=new AbortController();
-      const timeoutId=setTimeout(()=>controller.abort(),8000);
-      const res=await fetch(`${SB_URL}/rest/v1/apex_data?select=key,value`,{
-        headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
-        signal:controller.signal
-      });
-      clearTimeout(timeoutId);
-      if(!res.ok)throw new Error('Network error '+res.status);
-      setP(60,'Descargando datos...');
-      const rows=await res.json();
-      if(rows&&rows.length){
-        // Colecciones por-cliente / append-only: NO se sobrescriben, se FUSIONAN
-        // nube + local (si no, un dispositivo con datos viejos pisa lo recién
-        // registrado en otro → era la causa de pérdida de entrenos/mensajes).
-        const MERGE={
-          ax_hist:(cv)=>mergeHistory(ld('ax_hist',{}),cv),
-          ax_m:(cv)=>mergeClientArrays(ld('ax_m',{}),cv,m=>(m.from||'')+'|'+(m.date||'')+'|'+(m.text||''),'asc',null),
-          ax_bw:(cv)=>mergeClientArrays(ld('ax_bw',{}),cv,e=>e.date||'','desc',52),
-          ax_med:(cv)=>mergeClientArrays(ld('ax_med',{}),cv,e=>e.date?new Date(e.date).toDateString():'','desc',24),
-          ax_pr:(cv)=>mergePRs(ld('ax_pr',{}),cv),
-        };
-        const reheal=[];
-        rows.forEach(row=>{
-          if(!SB_KEYS.includes(row.key))return;
-          if(MERGE[row.key]){
-            const cloudVal=row.value||{};
-            const merged=MERGE[row.key](cloudVal);
-            localStorage.setItem(row.key,JSON.stringify(merged));
-            // Si el local tenía datos que la nube no, súbelos para sanar la nube.
-            if(JSON.stringify(merged)!==JSON.stringify(cloudVal))reheal.push([row.key,merged]);
-            return;
-          }
-          localStorage.setItem(row.key,JSON.stringify(row.value));
-        });
-        reheal.forEach(([k,v])=>svNow(k,v));
-        setP(90,'Cargando app...');
-      } else {
-        setP(90,'Primera vez — iniciando...');
-      }
-    }catch(e){
-      warn('AVI sync:',e.name,e.message);
-      setP(90,'Sin conexión — cargando tu última sesión');
-    }
-  } else {
-    // Abierto desde archivo local — saltar sync silenciosamente
-    setP(90,'');
-  }
+  // El blob legacy apex_data quedó bloqueado por RLS (2026-06-03): la lectura
+  // anónima SIEMPRE devuelve vacío, así que el fetch de arranque era peso muerto
+  // (hasta 8s de timeout en red lenta). Los datos reales bajan por UD (user_data)
+  // al restaurar la sesión auth, justo después de este boot local.
+  setP(60,'Cargando tus datos...');
   // Recargar DB desde localStorage (con o sin sync exitoso)
   DB.clients=ld('ax_c',[]);
   const _routineMigrated=migrateRoutineIds(DB.clients,uid);
@@ -5822,14 +5777,15 @@ function setLogHeadHTML(track,lastre){
 function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
   const ro=done?'readonly':'';
   const g=f=>getLog(routine.id,ei,si,f);
-  const inp=(f,attrs,ph,val,span)=>`<input class="sinput" data-field="${f}" ${span?'style="grid-column:2/4"':''} ${attrs} placeholder="${ph}" value="${val}" ${ro} oninput="setLog('${routine.id}',${ei},${si},'${f}',this.value)">`;
+  // inputmode: en iOS type=number puede abrir teclado sin punto decimal; decimal lo garantiza para kg/km.
+  const inp=(f,attrs,ph,val,span)=>`<input class="sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${span?'style="grid-column:2/4"':''} ${attrs} placeholder="${ph}" value="${val}" ${ro} oninput="setLog('${routine.id}',${ei},${si},'${f}',this.value)">`;
   if(track==='reps'){
     if(lastre)return inp('kg','type="number" step="0.5" min="0"','lastre',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
     return inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,true);
   }
   if(track==='tiempo')
     return inp('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),false)+
-      `<button type="button" class="timer-go" style="padding:7px;border:1.5px solid var(--g2);border-radius:6px;background:transparent;color:var(--g2);cursor:pointer;font-size:14px">▶</button>`;
+      `<button type="button" class="timer-go" aria-label="Iniciar cronómetro de la serie" style="padding:7px;border:1.5px solid var(--g2);border-radius:6px;background:transparent;color:var(--g2);cursor:pointer;font-size:14px">▶</button>`;
   if(track==='cardio')
     return inp('min','type="number" min="0"','min',g('min')||ex.reps,false)+inp('dist','type="number" min="0" step="0.1"','km',g('dist'),false);
   return inp('kg','type="number" step="0.5" min="0"',ex.defaultKg||'kg',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
@@ -6028,7 +5984,7 @@ function renderClientExList(routine){
 
       row.innerHTML=`<div class="set-num ${done?'sdone':''}">${si+1}</div>`+
         setLogInputsHTML(track,routine,ex,ei,si,done,lastre)+
-        `<div class="scheck ${done?'sdone':''}" id="chk_${ei}_${si}">✓</div>`;
+        `<div class="scheck ${done?'sdone':''}" id="chk_${ei}_${si}" role="button" aria-label="Marcar serie ${si+1}">✓</div>`;
 
       // ▶ countdown para isométricos
       if(track==='tiempo'){
@@ -7125,7 +7081,7 @@ function renderPhotosClient(clientId){
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
       <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${esc(p.id)}','${esc(clientId)}')">
-        <img src="${/^(data:image\/|https:\/\/)/.test(p.src)?p.src:''}" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
+        <img src="${/^(data:image\/|https:\/\/)/.test(p.src)?p.src:''}" alt="Foto de progreso" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
@@ -7138,7 +7094,7 @@ function viewPhoto(photoId,clientId){
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
-    <img src="${/^(data:image\/|https:\/\/)/.test(photo.src)?photo.src:''}" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
+    <img src="${/^(data:image\/|https:\/\/)/.test(photo.src)?photo.src:''}" alt="Foto de progreso ampliada" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
     <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${esc(photo.label)}</div>
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
@@ -9011,7 +8967,7 @@ function whatsappNudge(id){
         style="width:100%;padding:10px;border:1.5px solid var(--br);border-radius:var(--rsm);font-size:13px;font-family:inherit;background:var(--w)"
         onchange="previewPhoto(this)">
       <div id="photo-preview" style="margin-top:10px;display:none">
-        <img id="photo-img" style="width:100%;border-radius:var(--r);max-height:200px;object-fit:cover">
+        <img id="photo-img" alt="Vista previa de foto" style="width:100%;border-radius:var(--r);max-height:200px;object-fit:cover">
       </div>
     </div>
     <div class="fg">
