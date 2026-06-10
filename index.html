@@ -2715,11 +2715,11 @@ function exImgSrc(e,sex){
 // Ejercicios con VIDEO de demostración (media/exercises/{id}.mp4). Se muestra en el
 // DETALLE del ejercicio (loop, mudo); la lista sigue con foto (liviana). Si no hay
 // video resuelve '' → cae a la foto. Se amplía conforme llegan más videos.
-const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84','e36','e1','e2','e24','e23']);
+const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84','e36','e1','e2','e24','e23','e14','e26','e28','e37','e42','e51','e52','e58','e80']);
 // 1 VIDEO POR EJERCICIO, SE MUESTRA A TODOS — el sexo NO define el video (Camilo 2026-06-09:
 // hacer 220 videos ♂+♀ es inviable). EX_VID_F = ejercicios cuyo único video está guardado como
 // {id}_f.mp4 (se grabó con modelo mujer); igual se muestra a hombres y mujeres por igual.
-const EX_VID_F=new Set(['e33','e37','e58','e34']);
+const EX_VID_F=new Set(['e33','e34']);
 function exVidSrc(e){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
