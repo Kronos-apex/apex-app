@@ -168,8 +168,25 @@ if os.path.exists(test_file):
 else:
     warn('apex.test.js no encontrado — tests de negocio saltados')
 
+# ── 9. AUDITORÍA DE CATÁLOGO (integridad ejercicios/media/registros) ──────────
+# Caza dups de id/nombre, campos faltantes, registros a ids inexistentes,
+# videos/fotos sin archivo. Un BLOCK aborta el commit (exit 1 del script node).
+print(f'\n{BOLD}[9] Auditoría de catálogo{RESET}')
+audit_file = os.path.join(ROOT, 'scripts', 'audit-catalog.mjs')
+if os.path.exists(audit_file):
+    result = subprocess.run(['node', audit_file], capture_output=True,
+                            encoding='utf-8', errors='replace', cwd=ROOT)
+    stdout = (result.stdout or '').strip()
+    if result.returncode == 0:
+        last = stdout.split('\n')[-1] if stdout else 'OK'
+        ok(f'audit-catalog — {last.strip()}')
+    else:
+        fail(f'Auditoría de catálogo encontró errores BLOCK:\n{stdout}')
+else:
+    warn('scripts/audit-catalog.mjs no encontrado — auditoría saltada')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 8
+total = 9
 failed = len(errors)
 warned = len(warnings)
 
