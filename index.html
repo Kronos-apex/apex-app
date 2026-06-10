@@ -2703,7 +2703,7 @@ function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.i
 // hasta regenerarlas en Gemini. Quitar de aquí cuando la foto correcta esté lista.
 //  e43/e92 = reusaban la foto de barra de e42 (no máquina / no unilateral)
 //  e31/e105 = compartían una foto ambigua (parecía press en banco, no extensión de tríceps)
-const EX_IMG_HIDE=new Set(['e105']);
+const EX_IMG_HIDE=new Set([]);
 function exImgSrc(e,sex){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
@@ -2716,16 +2716,19 @@ function exImgSrc(e,sex){
 // Ejercicios con VIDEO de demostración (media/exercises/{id}.mp4). Se muestra en el
 // DETALLE del ejercicio (loop, mudo); la lista sigue con foto (liviana). Si no hay
 // video resuelve '' → cae a la foto. Se amplía conforme llegan más videos.
-const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84','e36','e1','e2','e24','e23','e14','e26','e28','e37','e42','e51','e52','e58','e80']);
+const EX_VID=new Set(['e5','e6','e13','e11','e9','e27','e22','e84','e36','e1','e2','e24','e23','e14','e26','e28','e37','e42','e51','e52','e58','e80','e85','e86','e56']);
 // 1 VIDEO POR EJERCICIO, SE MUESTRA A TODOS — el sexo NO define el video (Camilo 2026-06-09:
 // hacer 220 videos ♂+♀ es inviable). EX_VID_F = ejercicios cuyo único video está guardado como
 // {id}_f.mp4 (se grabó con modelo mujer); igual se muestra a hombres y mujeres por igual.
-const EX_VID_F=new Set(['e33','e34']);
+const EX_VID_F=new Set(['e34']);
+// Gender-aware SOLO donde existen ambas versiones (.mp4 ♂ + _f.mp4 ♀): la mujer ve la suya.
+const EX_VID_BOTH=new Set(['e2','e33']);
 function exVidSrc(e){
   if(!e) return '';
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const id=(e.id&&EX_IMG_IDS.has(e.id))?e.id:(EX_IMG_NAME[nf(e.name)]||'');
   if(!id) return '';
+  if(EX_VID_BOTH.has(id)) return 'media/exercises/'+id+(_viewSex()==='F'?'_f':'')+'.mp4';
   if(EX_VID.has(id)) return 'media/exercises/'+id+'.mp4';
   if(EX_VID_F.has(id)) return 'media/exercises/'+id+'_f.mp4';
   return '';
