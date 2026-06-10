@@ -6782,33 +6782,63 @@ function sendClientMsg(){
 let restInt=null;
 let _restVis=null; // handler de visibilitychange del descanso (para poder removerlo)
 
+// ── Audio iOS-safe ──────────────────────────────────────────────
+// iOS solo reproduce sonido si el AudioContext se "desbloquea" DENTRO de un
+// gesto del usuario. Antes creábamos un contexto NUEVO en cada beep → nacía
+// suspendido y el iPhone quedaba MUDO (el beep lo dispara el temporizador, no
+// un toque). Ahora: UN contexto compartido, desbloqueado en el primer toque y
+// reutilizado; cada beep lo reanuda por si iOS lo suspendió al ir a segundo plano.
+let _actx=null, _audioUnlocked=false;
+function getAudioCtx(){
+  if(!_actx){ try{ _actx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  return _actx;
+}
+function _unlockAudio(){
+  const ctx=getAudioCtx(); if(!ctx) return;
+  if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+  if(!_audioUnlocked){
+    // Buffer silencioso = desbloqueo definitivo en iOS (debe correr en un gesto).
+    try{ const b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start(0); }catch(e){}
+    _audioUnlocked=true;
+  }
+}
+['pointerdown','touchend','click'].forEach(ev=>window.addEventListener(ev,_unlockAudio,{passive:true,capture:true}));
+
 function playRestEndBeep(){
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const beep=(freq,start,dur)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.type='square';o.frequency.value=freq;
-      g.gain.setValueAtTime(0,ctx.currentTime+start);
-      g.gain.linearRampToValueAtTime(0.9,ctx.currentTime+start+0.01);
-      g.gain.linearRampToValueAtTime(0,ctx.currentTime+start+dur);
-      o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur+0.05);
-    };
-    beep(660,0,.15);beep(880,.2,.15);beep(1100,.4,.35);
+    const ctx=getAudioCtx();
+    if(ctx){
+      if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+      const t0=ctx.currentTime;
+      const beep=(freq,start,dur)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.type='square';o.frequency.value=freq;
+        g.gain.setValueAtTime(0,t0+start);
+        g.gain.linearRampToValueAtTime(0.9,t0+start+0.01);
+        g.gain.linearRampToValueAtTime(0,t0+start+dur);
+        o.start(t0+start);o.stop(t0+start+dur+0.05);
+      };
+      beep(660,0,.15);beep(880,.2,.15);beep(1100,.4,.35);
+    }
   }catch(e){}
   if(navigator.vibrate)navigator.vibrate([200,80,200,80,500]);
 }
 
 function playRestTick(){
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.connect(g);g.connect(ctx.destination);
-    o.type='square';o.frequency.value=660;
-    g.gain.setValueAtTime(0,ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.7,ctx.currentTime+0.005);
-    g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.12);
-    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.15);
+    const ctx=getAudioCtx();
+    if(ctx){
+      if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+      const t0=ctx.currentTime;
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='square';o.frequency.value=660;
+      g.gain.setValueAtTime(0,t0);
+      g.gain.linearRampToValueAtTime(0.7,t0+0.005);
+      g.gain.linearRampToValueAtTime(0,t0+0.12);
+      o.start(t0);o.stop(t0+0.15);
+    }
   }catch(e){}
   if(navigator.vibrate)navigator.vibrate(60);
 }
