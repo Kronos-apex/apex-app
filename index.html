@@ -8472,9 +8472,6 @@ function shouldShowDataOnboarding(clientId){
   return !hasBW && !hasMed && !hasPhoto;
 }
 
-// 🔎 PREVIEW/QA: abrir el check-in en .../#cidemo SIN login ni crear usuarios.
-// ⚠️ TEMPORAL — quitar antes del lanzamiento (no afecta a usuarios reales: id 'preview').
-window.addEventListener('load',function(){ if(location.hash==='#cidemo') setTimeout(function(){ showDataOnboarding('preview'); },350); });
 function showDataOnboarding(clientId){
   _dobClientId = clientId;
   _dobStep = 0;
