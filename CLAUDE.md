@@ -905,6 +905,10 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 - **💸 Leaked-password protection POSPUESTO:** requiere Supabase Pro (USD $25/mes) — Camilo aún no puede costearlo (1 cliente pago). NO volver a pedírselo hasta que el MRR lo justifique; el riesgo está mitigado (RLS + confirm email).
 - QA: 123/123 tests + audit 9/9 en ambos commits. Verificación visual en navegador pendiente (RAM de la PC); el CSS reusa el molde `wf-*` ya probado en prod — riesgo bajo. Probar en cel: como usuario libre tocar "Quiero un coach →" (overlay) y completar una rutina cruzando umbral de nivel (10/30/60/120).
 
+**🎨 (cont.) PANEL DEL COACH a paridad premium** (commit `4a63190`, mismo día — Camilo: "lo estamos abandonando del modo premium"): pulido Noir Esmeralda **escopado a `#s-coach`** (cero impacto al asesorado, lógica intacta): (a) nav inferior `.cbnav-item` + sidebar `.sbi` + botones del topbar (💾🔔🚪) pasaron de EMOJI a **SVG de línea propios** (mismo set que la nav del asesorado v99; ítem activo con línea glow esmeralda arriba y barra de acento en el drawer); (b) `.ctitle` del coach → Anton uppercase esmeralda (patrón `#cn-profile`); (c) KPIs del Home `.smv` → Anton + glow radial sutil en la tarjeta; (d) Home con eyebrow Anton "Panel del coach" + saludo 21px (se quitó el `.psub` "Resumen de tu panel", sin id ni JS que lo lea); (e) wordmark del topbar/sidebar en Anton. Sin bump de SW (index-only, navigate es network-first). NO full-bleed aquí: el panel es uso diario (principio de momentos). 123/123 + 9/9.
+**2FA:** Gmail ✅ HECHO (Camilo, 2026-06-11); faltan GitHub y Supabase.
+**Fotos stock → COWORK:** Camilo delegará la generación Gemini de las 22 restantes a Cowork; brief operativo listo en `Desktop/BRIEF-COWORK-FOTOS-EJERCICIO.txt` (flujo probado + prompt + lista + plan B semi-manual). Camilo revisa técnica → Claude procesa e integra (flujo intacto).
+
 ---
 ### ⏭️ RETOMAR AQUÍ (próxima sesión)
 🏆 **Hito 2026-06-08:** Miguel Pulido pagó **60.000 COP/2 meses** = primer ingreso real. Ver `project_avi_primer_cliente_pago`.
