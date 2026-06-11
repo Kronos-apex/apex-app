@@ -116,14 +116,6 @@ html[data-theme="dark"] .mta {
 html[data-theme="dark"] .li::placeholder,
 html[data-theme="dark"] .inp::placeholder,
 html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
-/* Logo SVG inline — dark mode: patas de la A se vuelven blancas */
-.apex-logo .logo-ring { fill: var(--w); }
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
-  html:not([data-theme="light"]) .apex-logo .logo-ring { fill: var(--bg); }
-}
-html[data-theme="dark"] .apex-logo .logo-leg { stroke: rgba(255,255,255,.9); }
-html[data-theme="dark"] .apex-logo .logo-ring { fill: var(--bg); }
 html[data-theme="dark"] #apex-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
@@ -170,8 +162,6 @@ html[data-theme="light"] .mta {
 .coach-topbar-left{display:flex;align-items:center;gap:10px}
 .coach-topbar-logo{font-size:18px;font-weight:800;color:#fff}
 .coach-topbar-page{font-size:13px;color:rgba(255,255,255,.8);font-weight:500}
-.coach-topbar .apex-logo .logo-leg{stroke:#fff}
-.coach-topbar .apex-logo .logo-ring{fill:#0E3A2C}
 .coach-topbar .menu-btn{color:#fff;background:rgba(255,255,255,.14);border-color:transparent}
 .coach-topbar #topbar-page{color:rgba(255,255,255,.82)!important}
 .coach-topbar .btn.bg{background:rgba(255,255,255,.14);color:#fff;border-color:transparent}
@@ -436,8 +426,6 @@ html[data-theme="light"] .mta {
 #s-client{flex-direction:column;background:var(--bg);overflow-y:auto}
 .cntopbar{background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 6px 22px rgba(6,20,15,.28)}
 .cnlogo{font-size:17px;font-weight:800;color:#fff}
-.cntopbar .apex-logo .logo-leg{stroke:#fff}
-.cntopbar .apex-logo .logo-ring{fill:#0E3A2C}
 .cntopbar #cn-greet{color:rgba(255,255,255,.85)!important}
 .cntopbar #cn-help-btn{background:rgba(255,255,255,.15)!important;color:#fff!important}
 .cntopbar .btn.bg{background:rgba(255,255,255,.13);color:#fff;border-color:transparent}
