@@ -5883,6 +5883,19 @@ function setLogHeadHTML(track,lastre){
   return `<div class="slh">SET</div><div class="slh">KG</div><div class="slh">REPS</div><div></div>`;
 }
 
+// ── Peso sugerido por PR (Epley, funciones en apex-core) ──
+// Solo modalidad de peso, con PR previo del MISMO ejercicio y fuera de la fase de
+// adaptación (ahí la consigna es carga suave y técnica, no acercarse al máximo).
+function _suggestKg(ex){
+  try{
+    if(exTrack(ex)!=='peso_reps')return null;
+    const c=_curClient();if(!c)return null;
+    if(isInAdaptation(c,DB.history,new Date()))return null;
+    const pr=(DB.prs[c.id]||{})[ex.id||ex.name];
+    return suggestFromPR(pr,parseInt(ex.reps)||10);
+  }catch(e){return null;}
+}
+
 function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
   const ro=done?'readonly':'';
   const g=f=>getLog(routine.id,ei,si,f);
@@ -5897,7 +5910,8 @@ function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
       `<button type="button" class="timer-go" aria-label="Iniciar cronómetro de la serie" style="padding:7px;border:1.5px solid var(--g2);border-radius:6px;background:transparent;color:var(--g2);cursor:pointer;font-size:14px">▶</button>`;
   if(track==='cardio')
     return inp('min','type="number" min="0"','min',g('min')||ex.reps,false)+inp('dist','type="number" min="0" step="0.1"','km',g('dist'),false);
-  return inp('kg','type="number" step="0.5" min="0"',ex.defaultKg||'kg',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
+  const sug=_suggestKg(ex);
+  return inp('kg','type="number" step="0.5" min="0"',ex.defaultKg||(sug?'~'+sug:'kg'),g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
 }
 
 function setDoneToast(track,ex,si,inputs){
@@ -6075,6 +6089,17 @@ function renderClientExList(routine){
       tg.innerHTML=`<button type="button" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1.5px solid var(--br2);background:${lastre?'var(--gl)':'transparent'};color:${lastre?'var(--gt)':'var(--t3)'};cursor:pointer">${lastre?'✓ ':'+ '}Lastre (peso añadido)</button>`;
       tg.querySelector('button').onclick=()=>{toggleLastre(routine,ei);renderClientExList(routine);};
       body.appendChild(tg);
+    }
+
+    // 🎯 Peso sugerido según su récord (informativo; el coach y la sensación mandan)
+    if(track==='peso_reps'){
+      const sug=_suggestKg(ex);
+      if(sug){
+        const sh=document.createElement('div');
+        sh.style.cssText='padding:7px 14px 0;font-size:11.5px;font-weight:700;color:var(--gt)';
+        sh.innerHTML=`🎯 Peso sugerido: <b>${sug} kg</b> <span style="color:var(--t3);font-weight:600">· según tu récord</span>`;
+        body.appendChild(sh);
+      }
     }
 
     // Column headers según modalidad
@@ -7659,6 +7684,13 @@ function gmRender(){
     card.appendChild(hdr);
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
+    const gmSug=_suggestKg(ex);
+    if(gmSug){
+      const sh=document.createElement('div');
+      sh.style.cssText='font-size:11.5px;font-weight:700;color:var(--gt);margin:2px 0 4px';
+      sh.textContent=`🎯 Peso sugerido: ${gmSug} kg · según tu récord`;
+      setsEl.appendChild(sh);
+    }
     steps.forEach(({si, stepIdx}) => {
       const done = isDone(GM.routine.id, ei, si);
       const savedKg = getLog(GM.routine.id, ei, si, 'kg');
@@ -7671,7 +7703,7 @@ function gmRender(){
         <div class="gm-set-num" id="gm-snum-${ei}-${si}">${done?'✓':si+1}</div>
         <div>
           <input class="gm-sinput" type="number" step="0.5" min="0" id="gm-kg-${ei}-${si}"
-            placeholder="${ex.defaultKg||'0'}" value="${savedKg}" ${done?'readonly':''}
+            placeholder="${ex.defaultKg||(gmSug?'~'+gmSug:'0')}" value="${savedKg}" ${done?'readonly':''}
             oninput="setLog('${GM.routine.id}',${ei},${si},'kg',this.value)">
           <div class="gm-sinput-label">KG</div>
         </div>

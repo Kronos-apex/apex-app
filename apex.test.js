@@ -30,6 +30,9 @@ const {
   sortRoutinesByDay,
   genSchemeFor,
   isInAdaptation,
+  estimate1RM,
+  suggestLoad,
+  suggestFromPR,
   bmiFrom,
   bodyLoadProfile,
   validateSignup,
@@ -1018,6 +1021,39 @@ test('USER_DATA_COLLECTIONS lista las colecciones por-usuario esperadas', () => 
   assert.ok(USER_DATA_COLLECTIONS.includes('history'));
   assert.ok(USER_DATA_COLLECTIONS.includes('msgs'));
   assert.ok(!USER_DATA_COLLECTIONS.includes('routines')); // routines es columna propia
+});
+
+// ══════════════════════════════════════════════════════
+// PESO SUGERIDO POR PR (estimación 1RM, Epley)
+// ══════════════════════════════════════════════════════
+
+test('estimate1RM: Epley — 60kg×8 ≈ 76kg; 1 rep = el mismo peso', () => {
+  assert.strictEqual(estimate1RM(60, 8), 60 * (1 + 8 / 30));
+  assert.strictEqual(estimate1RM(100, 1), 100);
+});
+
+test('estimate1RM: inválidos y fuera de rango → null (0kg, 0 reps, >15 reps)', () => {
+  assert.strictEqual(estimate1RM(0, 8), null);
+  assert.strictEqual(estimate1RM(60, 0), null);
+  assert.strictEqual(estimate1RM(60, 20), null); // poco confiable: mejor no sugerir
+  assert.strictEqual(estimate1RM(null, 8), null);
+});
+
+test('suggestLoad: inversa de Epley con factor conservador 0.95 y redondeo a 2.5kg', () => {
+  assert.strictEqual(suggestLoad(76, 10), 55); // 76/(1+10/30)*0.95 = 54.15 → 55
+  assert.strictEqual(suggestLoad(100, 1, { factor: 1, step: 1 }), 100);
+  assert.strictEqual(suggestLoad(0, 10), null);
+  assert.strictEqual(suggestLoad(76, 20), null);
+});
+
+test('suggestFromPR: PR 60kg×8 → sugerencia para 12 reps; PRs no-kg → null', () => {
+  assert.strictEqual(suggestFromPR({ val: 60, unit: 'kg', reps: 8 }, 12), 52.5); // e1RM 76 → 51.57 → 52.5
+  assert.strictEqual(suggestFromPR({ val: 20, unit: 'reps', reps: 20 }, 10), null); // PR corporal no estima kg
+  assert.strictEqual(suggestFromPR(null, 10), null);
+});
+
+test('suggestFromPR: tolera PR legacy {kg} sin val ni reps (asume 1RM)', () => {
+  assert.strictEqual(suggestFromPR({ kg: 80 }, 10, { factor: 1 }), 60); // 80/(1+10/30) = 60
 });
 
 // ══════════════════════════════════════════════════════

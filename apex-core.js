@@ -219,6 +219,38 @@ function isInAdaptation(client, history, now, adaptDays) {
   return (ref - start) < (adaptDays || ADAPT_DAYS) * 86400000;
 }
 
+// ── Peso sugerido por PR (estimación de 1RM, fórmula de Epley) ──
+// No se hacen tests de máximos (peligrosos para principiantes): el 1RM se ESTIMA
+// desde cualquier serie registrada (kg × reps). Epley: 1RM ≈ kg·(1 + reps/30).
+// Confiable hasta ~12-15 reps; fuera de ese rango devolvemos null (mejor no sugerir
+// que sugerir mal). Es una guía: el coach y la sensación del asesorado mandan.
+function estimate1RM(kg, reps) {
+  kg = parseFloat(kg); reps = parseInt(reps);
+  if (!kg || kg <= 0 || !reps || reps < 1 || reps > 15) return null;
+  if (reps === 1) return kg;
+  return kg * (1 + reps / 30);
+}
+// Inversa de Epley: peso para un objetivo de reps, con factor conservador (default
+// 0.95 — es sugerencia de trabajo, no reto) y redondeo a discos reales (step 2.5kg).
+function suggestLoad(e1rm, targetReps, opts) {
+  opts = opts || {};
+  e1rm = parseFloat(e1rm); targetReps = parseInt(targetReps);
+  if (!e1rm || e1rm <= 0 || !targetReps || targetReps < 1 || targetReps > 15) return null;
+  const base = targetReps === 1 ? e1rm : e1rm / (1 + targetReps / 30);
+  const raw = base * (opts.factor != null ? opts.factor : 0.95);
+  const step = opts.step || 2.5;
+  const kg = Math.round(raw / step) * step;
+  return kg > 0 ? kg : null;
+}
+// Desde un PR guardado ({val|kg, reps, unit:'kg'}) → kg sugeridos para targetReps.
+// Solo aplica a modalidad de peso; PRs en reps/seg/min no estiman 1RM.
+function suggestFromPR(pr, targetReps, opts) {
+  if (!pr || (pr.unit || 'kg') !== 'kg') return null;
+  const kg = pr.val != null ? pr.val : pr.kg;
+  const e1 = estimate1RM(kg, pr.reps || 1);
+  return e1 ? suggestLoad(e1, targetReps, opts) : null;
+}
+
 // ── Perfil de carga corporal: ¿conviene priorizar máquina/asistido y bajo impacto? ──
 // Señales: IMC (peso/estatura²) y relación cintura-talla (RCT = cintura/estatura, el
 // mismo indicador que ya usa la app). Devuelve 'high' cuando IMC≥30 (obesidad) o
@@ -711,6 +743,9 @@ if (typeof module !== 'undefined' && module.exports) {
     dayOrder,
     sortRoutinesByDay,
     isInAdaptation,
+    estimate1RM,
+    suggestLoad,
+    suggestFromPR,
     trainingStartTs,
     bmiFrom,
     bodyLoadProfile,
