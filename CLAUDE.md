@@ -61,7 +61,7 @@ apex-app/
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 93 ejercicios precargados, filtros por músculo
+- `#p-exercises` — 135 ejercicios precargados (e1–e136, sin e38), filtros por músculo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
@@ -908,6 +908,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 **🎨 (cont.) PANEL DEL COACH a paridad premium** (commit `4a63190`, mismo día — Camilo: "lo estamos abandonando del modo premium"): pulido Noir Esmeralda **escopado a `#s-coach`** (cero impacto al asesorado, lógica intacta): (a) nav inferior `.cbnav-item` + sidebar `.sbi` + botones del topbar (💾🔔🚪) pasaron de EMOJI a **SVG de línea propios** (mismo set que la nav del asesorado v99; ítem activo con línea glow esmeralda arriba y barra de acento en el drawer); (b) `.ctitle` del coach → Anton uppercase esmeralda (patrón `#cn-profile`); (c) KPIs del Home `.smv` → Anton + glow radial sutil en la tarjeta; (d) Home con eyebrow Anton "Panel del coach" + saludo 21px (se quitó el `.psub` "Resumen de tu panel", sin id ni JS que lo lea); (e) wordmark del topbar/sidebar en Anton. Sin bump de SW (index-only, navigate es network-first). NO full-bleed aquí: el panel es uso diario (principio de momentos). 123/123 + 9/9.
 **2FA:** Gmail ✅ HECHO (Camilo, 2026-06-11); faltan GitHub y Supabase.
 **Fotos stock → COWORK:** Camilo delegará la generación Gemini de las 22 restantes a Cowork; brief operativo listo en `Desktop/BRIEF-COWORK-FOTOS-EJERCICIO.txt` (flujo probado + prompt + lista + plan B semi-manual). Camilo revisa técnica → Claude procesa e integra (flujo intacto).
+
+**📚 (cont. 2) EXPANSIÓN DEL CATÁLOGO: 109 → 135 ejercicios** (commit `05549f8`, e111–e136). Pedido de Camilo: "seguir ampliando la biblioteca, faltan muchos". Método: auditoría de cobertura músculo×entorno×equipo → 26 huecos reales (NO relleno): trapecio no existía (encogimientos e115, farmers walk e136); máquinas comunes (pec deck e111/inverso e119, remo sentado e114, curl femoral sentado e126, hiperextensiones e116, crunch polea e131, laterales polea e117, escaladora e135); progresiones principiante (flexiones inclinadas e113, elev. piernas tumbado e132, zancada inversa e124, wall sit e128, donkey kick e130); clásicos (aperturas mancuernas e112, Arnold e118, curl concentrado e120/inclinado e121, kickback tríceps e122, diamante e123, zancada caminando e125, front squat e127, paseo lateral banda e129, pallof e133, bird dog e134). Ficha premium completa + EX_COACHTIP **135/135** + `env` explícito. **SIN foto** (fallback a ícono; ⚠️ al integrar fotos AGREGAR cada id a `EX_IMG_IDS`/`EX_IMG_NAME` — trampa e97). Brief de Cowork ampliado: **48 fotos pendientes** (22 reemplazos stock + 26 nuevas). Audit 0 BLOCK (26 MAJOR = fotos pendientes, esperado). **NO se promovieron fb01/fb04** (siguen como customs; decisión parqueada de Camilo — ojo: NO crear "remo invertido"/"PM rumano mancuernas" como eN nuevos, duplicaría los fb existentes).
 
 ---
 ### ⏭️ RETOMAR AQUÍ (próxima sesión)
