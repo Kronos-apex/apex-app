@@ -2892,20 +2892,36 @@ function migrateExercises(){
 //     (ej. una "Prensa de Pierna" custom que reaparece). Remapea las rutinas al id bueno.
 // Los customs legítimos (nombre único, ej. "Remo Australiano") se conservan.
 const REMOVED_EXERCISES={'e38':'e15'};
+// Fantasmas por PATRÓN de nombre: el match exacto no caza variantes ("Prensa" a secas
+// vs "Prensa de Pierna" del catálogo — por eso sobrevivió la prensa fantasma). Cualquier
+// ejercicio NO-catálogo cuyo nombre matchee se elimina y sus rutinas van al id bueno.
+const REMOVED_NAME_PATTERNS=[[/prensa|leg ?press/,'e36']];
 function dedupeExercises(){
   const nf=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const catIds=new Set(defaultExercises.map(e=>e.id));
   const catName={}; defaultExercises.forEach(e=>{catName[nf(e.name)]=e.id;});
   const remap=Object.assign({},REMOVED_EXERCISES);
   (DB.exercises||[]).forEach(e=>{
-    if(e&&e.id&&!catIds.has(e.id)){ const t=catName[nf(e.name)]; if(t&&t!==e.id)remap[e.id]=t; }
+    if(!e||!e.id||catIds.has(e.id))return;
+    const n=nf(e.name);
+    let t=catName[n];
+    if(!t){ const hit=REMOVED_NAME_PATTERNS.find(([rx])=>rx.test(n)); if(hit)t=hit[1]; }
+    if(t&&t!==e.id)remap[e.id]=t;
   });
   const drop=new Set(Object.keys(remap));
-  if(!drop.size) return;
-  DB.exercises=(DB.exercises||[]).filter(e=>e&&e.id&&!drop.has(e.id));
+  // Además: entradas sin id y entradas con el MISMO id repetido (se queda la primera).
+  const seen=new Set(); let extra=0;
+  const clean=(DB.exercises||[]).filter(e=>{
+    if(!e||!e.id){extra++;return false;}
+    if(drop.has(e.id))return false;
+    if(seen.has(e.id)){extra++;return false;}
+    seen.add(e.id); return true;
+  });
+  if(!drop.size&&!extra) return;
+  DB.exercises=clean;
   (DB.clients||[]).forEach(c=>(c.routines||[]).forEach(r=>(r.exercises||[]).forEach(ex=>{ if(ex&&remap[ex.id])ex.id=remap[ex.id]; })));
   try{ sv('ax_e',DB.exercises); sv('ax_c',DB.clients); }catch(e){}
-  log('AVI: dedupe — '+drop.size+' ejercicio(s) fantasma/retirado(s) eliminados');
+  log('AVI: dedupe — '+(drop.size+extra)+' ejercicio(s) fantasma/duplicado(s) eliminados');
 }
 
 // ══════════════════════════════════════════
