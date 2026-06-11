@@ -678,6 +678,20 @@ html[data-theme="light"] .mta {
 .wf-feeling-lbl{font-size:11.5px;color:#10E0A0;font-weight:700;min-height:15px;margin-top:8px;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 .wf-btn{width:100%;max-width:420px;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
 .wf-btn:active{transform:scale(.985)}
+/* ── MOMENTOS FULL-BLEED: upsell Premium + subida de nivel (reusan el molde .wf-*) ── */
+#premium-upsell,#level-up{position:fixed;inset:0;z-index:905;display:none;background:#04080A;overflow:hidden}
+#premium-upsell.on,#level-up.on{display:block;animation:wfFade .4s ease}
+.wf-eyebrow.gold{color:#F2C94C}
+.pu-bens{width:100%;max-width:420px;display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.pu-ben{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:13px;padding:10px 13px;text-align:left;backdrop-filter:blur(6px)}
+.pu-ben-ico{font-size:19px;flex-shrink:0}
+.pu-ben-tx{font-size:12.5px;font-weight:600;line-height:1.35;color:rgba(242,245,244,.94)}
+.pu-ben-tx b{color:#10E0A0}
+.pu-sentbox{width:100%;max-width:420px;background:linear-gradient(135deg,rgba(16,224,160,.22),rgba(16,224,160,.08));border:1px solid rgba(16,224,160,.4);border-radius:15px;padding:16px;font-size:13.5px;line-height:1.55;margin-bottom:18px;backdrop-filter:blur(6px);text-shadow:0 1px 8px rgba(0,0,0,.4)}
+.pu-skip{background:none;border:none;color:rgba(242,245,244,.6);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:12px;width:100%;max-width:420px;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+.lu-ring{width:118px;height:118px;border-radius:50%;border:3px solid rgba(16,224,160,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 16px;background:rgba(4,19,13,.55);backdrop-filter:blur(8px);box-shadow:0 0 44px rgba(16,224,160,.45),inset 0 0 22px rgba(16,224,160,.18);animation:wfPop .55s cubic-bezier(.3,1.4,.5,1) both}
+.lu-num{font-family:'Anton',sans-serif;font-size:52px;line-height:1;color:#10E0A0;text-shadow:0 0 18px rgba(16,224,160,.7)}
+.lu-lbl{font-size:9.5px;letter-spacing:2.2px;color:rgba(242,245,244,.75);margin-top:2px}
 /* First-exercise tooltip */
 .ex-tooltip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06402E,#0A7C5B);color:white;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(45,106,79,.35);animation:tooltipPop .4s cubic-bezier(.4,0,.2,1)}
 .ex-tooltip-icon{font-size:22px;flex-shrink:0}
@@ -3758,6 +3772,13 @@ syncFromCloud().then(async ()=>{
     // Lightbox de imagen/video (lo más arriba) → cerrar primero
     const lb=document.getElementById('ex-lightbox');
     if(lb&&lb.classList.contains('on')){closeExImg();return;}
+    // Momentos full-bleed (upsell / nivel / fin de entreno) → cerrar con atrás
+    const pu=document.getElementById('premium-upsell');
+    if(pu&&pu.classList.contains('on')){closePremiumUpsell();return;}
+    const lu=document.getElementById('level-up');
+    if(lu&&lu.classList.contains('on')){closeLevelUp();return;}
+    const wfo=document.getElementById('workout-finish');
+    if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return;}
     // Detalle del ejercicio (overlay) → cerrar con el botón atrás (antes no hacía nada)
     const exd=document.getElementById('exdetail-bg');
     if(exd&&exd.classList.contains('on')){_closeExDetail();return;}
@@ -4616,7 +4637,7 @@ function coachUpsellHTML(c){
   return `<div style="background:linear-gradient(135deg,#06402E,#0A7C5B);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;color:#fff;box-shadow:0 6px 18px rgba(27,67,50,.25)">
     <div style="font-size:14px;font-weight:800;margin-bottom:4px">🌟 ¿Quieres un coach real que te guíe?</div>
     <div style="font-size:12px;opacity:.92;line-height:1.55;margin-bottom:11px">Pásate a <b>Premium</b>: un entrenador ajusta tu plan a ti, corrige tu técnica y te acompaña semana a semana. Aquí no entrenas solo.</div>
-    <button onclick="requestCoach()" style="width:100%;padding:11px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+    <button onclick="showPremiumUpsell()" style="width:100%;padding:11px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
   </div>`;
 }
 function renderCoachUpsell(c){
@@ -4628,7 +4649,7 @@ function premiumLockHTML(title,desc){
     <div style="font-size:26px;margin-bottom:6px">🔒</div>
     <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(title)}</div>
     <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">${esc(desc)} Disponible con un <b>coach (Premium)</b>.</div>
-    <button onclick="requestCoach()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+    <button onclick="showPremiumUpsell()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
   </div>`;
 }
 // Cliente actual (para gating en vistas del asesorado).
@@ -6217,6 +6238,18 @@ function showWorkoutFinish(routine,stats){
     entry.durationSec=durationSec; entry.kcal=kcal;
     svNow('ax_hist',DB.history);
   }
+  // ¿Esta sesión cruzó un umbral de nivel (gamificación)? Se celebra al CERRAR este
+  // overlay (no compite con el cierre). Guard por nivel ya celebrado en este dispositivo.
+  try{
+    const tot=((DB.history||{})[CUR.clientId]||[]).length;
+    if(tot>0){
+      const L=gxLevel(tot).cur, seenKey='gx_lvlup_'+CUR.clientId;
+      const seen=parseInt(localStorage.getItem(seenKey)||'0',10)||0;
+      if(L.n>gxLevel(tot-1).cur.n && L.n>seen){
+        _pendingLevelUp=L; localStorage.setItem(seenKey,String(L.n));
+      }
+    }
+  }catch(e){}
   document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
   document.getElementById('wf-title').textContent=name?`¡Lo lograste, ${name}!`:'¡Lo lograste!';
   const fecha=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
@@ -6246,6 +6279,7 @@ function showWorkoutFinish(routine,stats){
 function closeWorkoutFinish(){
   document.getElementById('workout-finish').classList.remove('on');
   document.body.style.overflow='';
+  if(_pendingLevelUp){const L=_pendingLevelUp;_pendingLevelUp=null;setTimeout(()=>showLevelUp(L),250);}
 }
 function wfConfetti(){
   const colors=['#10E0A0','#52B788','#D3F4E8','#13B583','#F2C94C','#ffffff'];
@@ -6255,6 +6289,48 @@ function wfConfetti(){
     document.body.appendChild(c);
     setTimeout(()=>c.remove(),2200);
   }
+}
+
+// ── Momentos full-bleed: upsell Premium + subida de nivel (reusan el molde wf-*) ──
+const PU_DEFAULT_PHOTO='media/brand/ob-3.jpg';
+function showPremiumUpsell(){
+  const c=_curClient(); if(!c||!(c.selfReg||isFreeClient(c)))return;
+  document.getElementById('pu-photo').style.backgroundImage=`url('${window.AVI_UPSELL_PHOTO||PU_DEFAULT_PHOTO}')`;
+  _puState(!!c.wantsCoach);
+  document.getElementById('premium-upsell').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function _puState(sent){
+  document.getElementById('pu-sell').style.display=sent?'none':'flex';
+  document.getElementById('pu-sent').style.display=sent?'flex':'none';
+}
+async function puConfirm(){
+  const btn=document.getElementById('pu-cta');btn.disabled=true;
+  try{ await requestCoach(); _puState(true); wfConfetti(); }
+  finally{ btn.disabled=false; }
+}
+function closePremiumUpsell(){
+  document.getElementById('premium-upsell').classList.remove('on');
+  document.body.style.overflow='';
+}
+
+const LU_DEFAULT_PHOTO='media/brand/reveal.jpg';
+let _pendingLevelUp=null; // detectado en showWorkoutFinish → se celebra al cerrar ese overlay
+function showLevelUp(lvl){
+  document.getElementById('lu-photo').style.backgroundImage=`url('${window.AVI_LEVELUP_PHOTO||LU_DEFAULT_PHOTO}')`;
+  document.getElementById('lu-num').textContent=lvl.n;
+  document.getElementById('lu-name').textContent=lvl.name;
+  const next=GX_LEVELS[GX_LEVELS.findIndex(l=>l.n===lvl.n)+1]||null;
+  document.getElementById('lu-sub').textContent=next
+    ? `Tu constancia te trajo hasta aquí — y tu nivel nunca se reinicia. Siguiente meta: ${next.name} (${next.min} entrenos).`
+    : 'Nivel máximo. Eres élite AVI — esto ya es un estilo de vida. 🏆';
+  document.getElementById('level-up').classList.add('on');
+  document.body.style.overflow='hidden';
+  wfConfetti();
+}
+function closeLevelUp(){
+  document.getElementById('level-up').classList.remove('on');
+  document.body.style.overflow='';
 }
 
 // ALL ROUTINES
@@ -9131,6 +9207,45 @@ function whatsappNudge(id){
       <div class="wf-feeling-lbl" id="wf-feeling-lbl"></div>
     </div>
     <button class="wf-btn" onclick="closeWorkoutFinish()">Continuar →</button>
+  </div>
+</div>
+
+<!-- UPSELL PREMIUM "Quiero un coach" (momento full-bleed, solo modo libre) -->
+<div id="premium-upsell">
+  <div class="wf-photo" id="pu-photo"></div>
+  <div class="wf-inner">
+    <div id="pu-sell" style="width:100%;display:flex;flex-direction:column;align-items:center">
+      <div class="wf-eyebrow gold">⭐ AVI Premium</div>
+      <div class="wf-title">Un coach real, contigo</div>
+      <div class="wf-sub">Deja de entrenar solo. Un entrenador de verdad te lleva de la mano.</div>
+      <div class="pu-bens">
+        <div class="pu-ben"><span class="pu-ben-ico">🎯</span><span class="pu-ben-tx"><b>Plan hecho para ti</b> — tu coach lo ajusta a tu cuerpo y tu objetivo</span></div>
+        <div class="pu-ben"><span class="pu-ben-ico">🛡️</span><span class="pu-ben-tx"><b>Técnica corregida</b> — entrena seguro y progresa más rápido</span></div>
+        <div class="pu-ben"><span class="pu-ben-ico">💬</span><span class="pu-ben-tx"><b>Chat directo</b> — te responde una persona, no un bot</span></div>
+        <div class="pu-ben"><span class="pu-ben-ico">📈</span><span class="pu-ben-tx"><b>Nutrición y seguimiento</b> — fotos, medidas y tu progreso con gráficas</span></div>
+      </div>
+      <button class="wf-btn" id="pu-cta" onclick="puConfirm()">Quiero mi coach →</button>
+      <button class="pu-skip" onclick="closePremiumUpsell()">Ahora no</button>
+    </div>
+    <div id="pu-sent" style="width:100%;display:none;flex-direction:column;align-items:center">
+      <div class="wf-trophy">🙌</div>
+      <div class="wf-eyebrow">Solicitud enviada</div>
+      <div class="wf-title">¡Tu coach ya lo sabe!</div>
+      <div class="pu-sentbox">Te va a contactar pronto para conocerte y armar tu plan. Mientras tanto, sigue entrenando — cada sesión cuenta. 💪</div>
+      <button class="wf-btn" onclick="closePremiumUpsell()">Entendido →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBIDA DE NIVEL (celebración full-bleed, se encadena tras el fin de entreno) -->
+<div id="level-up">
+  <div class="wf-photo" id="lu-photo"></div>
+  <div class="wf-inner">
+    <div class="lu-ring"><div class="lu-num" id="lu-num"></div><div class="lu-lbl">NIVEL</div></div>
+    <div class="wf-eyebrow">⬆ Subiste de nivel</div>
+    <div class="wf-title" id="lu-name"></div>
+    <div class="wf-sub" id="lu-sub"></div>
+    <button class="wf-btn" onclick="closeLevelUp()">Seguir →</button>
   </div>
 </div>
 
