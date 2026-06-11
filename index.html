@@ -2704,7 +2704,7 @@ const EX_COACHTIP={
 };
 // Fotos de ejercicio con versión MUJER (media/exercises/{id}_f.jpg). Gender-aware: la
 // asesorada ve la demo en mujer; coach/hombre ven el default. Se amplía conforme llegan fotos.
-const EX_IMG_F=new Set(['e2','e26','e50','e96','e73','e38','e93','e40','e18','e58','e14','e41','e106','e35','e48','e37','e62','e42','e89','e13','e17','e80','e44','e92','e33','e34']);
+const EX_IMG_F=new Set(['e2','e26','e50','e96','e73','e38','e93','e40','e18','e58','e14','e41','e106','e35','e48','e37','e62','e42','e89','e13','e17','e80','e44','e92','e33','e34','e95']);
 // Sexo de quien mira: en vista del asesorado sigue su sexo; el coach ve el default.
 function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.id===CUR.clientId); return (c&&c.sex)||''; } return ''; }
 // Fotos DESACTIVADAS por contenido incorrecto (auditoría 2026-06-09) → muestran el ícono
