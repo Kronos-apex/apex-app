@@ -841,6 +841,15 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 **✅ 7 upgrades de HOMBRE aplicados (apex-v90):** reemplazado `{id}.jpg` de e6 (jalón espalda), e11 (extensión tríceps abajo), e13 (sentadilla barra), e71 (press mancuernas abajo), e77 (flexiones pared), e83 (lagartijas alt), e85 (aperturas polea cerrado). Multi-ángulo: elegido el frame más representativo por ejercicio. delogo + 720².
 **Pendiente:** más fotos de mujer para cubrir más ejercicios (24/109 con versión mujer).
 
+### ✅ Sesión 2026-06-12 — Catálogo visual COMPLETO + pipeline Gemini (apex-v143)
+- **Pipeline de imágenes por API Gemini**: skill gemini-api + `Desktop/AVI/gen-img.mjs` (GEMINI_API_KEY en env de usuario, modelo gemini-3.1-flash-image ~$0.04/img, soporta `--ref` pose+persona). Receta: ref de POSE (foto validada del catálogo) + ref de PERSONA (e50_f mujer canon) + staging + revisión de Camilo ANTES de integrar.
+- **108 fotos _f nuevas** (atleta canon) revisadas y aprobadas por Camilo → `EX_IMG_F` 27→136 ids. Rechazadas sin integrar: e21, e88, e131 (regenerables con modelo Pro).
+- **e126 Curl Femoral Sentado**: fotos reales de Camilo (díptico inicio/flexión, app Gemini gratis) → **catálogo 138/138 con foto, cero stock**. Gemini por prompt NUNCA logró el curl femoral (siempre dibuja extensión de cuádriceps) — para máquinas confundibles usar foto real como ref.
+- Pipeline de deploy se pagó solo: Lucas QA atrapó e126 fuera de `EX_IMG_IDS` (la foto no resolvía). Suite estática reutilizable en `Desktop/AVI/qa-julian.mjs`. Deploy 4ce9fc6.
+- **Pendiente VIDEOS (próxima sesión):** 106 ejercicios sin video (lista en `Desktop/AVI/videos-faltantes.json`); decisión 2026-06-09 vigente = UN video por ejercicio para todos; plan = imagen→video desde la foto aprobada del catálogo; presupuesto API por definir vs flujo gratis de Camilo.
+- **Pendiente PLAY STORE:** política de privacidad con URL pública + borrado de cuenta self-service + formulario Data Safety + cuenta dev (US$25). OJO: TWA/assetlinks.json (v1.1) y docs en `legal/` YA existen — revisar vigencia antes de rehacer.
+- **AVI GYM**: idea de la dueña del gym → proyecto SaaS multi-gimnasio SEPARADO en `Desktop/AVI-GYM/avi-gym-app` (fork). **AVI personal queda exclusiva de Camilo**; mejoras fluyen solo AVI→GYM.
+
 ### 🎯 v1.5 — Próxima iteración
 - [ ] Pasos diarios: meta por asesorado, registro manual, recordatorio de caminar, gráfica semanal
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
@@ -852,8 +861,8 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 - [ ] **🔐 Auth real + RLS (plan APROBADO, Fase 0 hecha):** el RLS permisivo (DB pública a `anon`) es el bloqueador #1 para compartir AVI. Plan completo arriba en "Sesión 2026-06-02" + `~/.claude/plans/quiet-hatching-teapot.md`. Próximo: Fase 1 (Supabase Auth Email+Google + tabla `user_data`)
 
 ### 🚀 v2.0 — Escala
-- [ ] Multi-coach (cada coach con sus asesorados aislados)
-- [ ] White-label — vender APEX a otros coaches
+- [~] Multi-coach → EN CURSO vía AVI GYM (proyecto separado, `Desktop/AVI-GYM`)
+- [~] White-label → EN CURSO vía AVI GYM (config por gimnasio, piloto fundadora $150.000/mes)
 - [ ] API pública para integraciones
 - [ ] iOS nativa
 
@@ -893,7 +902,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-11 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v138** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-12 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v143** · Catálogo **138/138 con foto · 136 con variante mujer** · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés**AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v138** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 ### ✅ Sesión 2026-06-11 — Momentos full-bleed: upsell Premium + subida de nivel (apex-v138)
 **Cierra el plan full-bleed del 06-08** (onboarding ✅ → fin de entreno ✅ → ahora upsell + nivel ✅). Ambos overlays **reusan el molde CSS `wf-*`** del fin de entreno (cero duplicación; solo se añadió `.pu-*`/`.lu-*` para lo propio).
