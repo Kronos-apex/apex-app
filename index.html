@@ -847,10 +847,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .checkin-card{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:15px 15px 13px;margin-bottom:12px}
 .checkin-q{font-size:15px;font-weight:800;color:var(--gt);margin-bottom:3px}
 .checkin-sub{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.45}
-.mood-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.mood-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 6px;background:var(--bg);border:1.5px solid var(--br);border-radius:12px;cursor:pointer;font-family:inherit;font-size:22px;color:var(--t1);transition:all .15s}
-.mood-btn span{font-size:11px;font-weight:600;line-height:1.2;text-align:center}
-.mood-btn:hover{border-color:var(--g2);background:var(--gl);transform:translateY(-1px)}
+.mood-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.mood-btn{display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 6px 11px;background:var(--w);border:1px solid var(--br);border-radius:14px;cursor:pointer;font-family:inherit;color:var(--t1);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
+.mood-emoji{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:25px;line-height:1;border-radius:50%;background:var(--mct);transition:transform .14s ease}
+.mood-lbl{font-size:11px;font-weight:700;line-height:1.2;text-align:center;color:var(--t2);transition:color .14s ease}
+.mood-btn:hover{transform:translateY(-2px);border-color:var(--mc);box-shadow:0 8px 18px -10px var(--mc)}
+.mood-btn:hover .mood-emoji{transform:scale(1.08)}
+.mood-btn:hover .mood-lbl{color:var(--t1)}
+.mood-btn:active{transform:translateY(0)}
 .mood-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .mood-chips span{font-size:11px;font-weight:700;background:rgba(0,0,0,.06);border-radius:20px;padding:3px 9px;color:var(--t2)}
 
@@ -5787,6 +5791,9 @@ function renderClientToday(client, overrideRoutine){
   const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
   const baseR=overrideRoutine||autoR;
   const isOverride=!!overrideRoutine;
+  // Recordamos la rutina mostrada para que el check-in (pickMood/changeMood)
+  // re-renderice SIN perder la selección manual (ej. abrir una rutina de otro día).
+  CUR.todayOverride=overrideRoutine||null;
   if(!baseR){
     con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
       <div style="font-size:36px;margin-bottom:10px">💤</div>
@@ -5824,9 +5831,23 @@ function getTodayMood(cid){return localStorage.getItem(moodKey(cid))||'';}
 function setTodayMood(cid,m){localStorage.setItem(moodKey(cid),m);}
 function clearTodayMood(cid){localStorage.removeItem(moodKey(cid));}
 
+// Identidad de color por estado (solo presentación; la lógica vive en core).
+// Usa los tokens de marca para adaptarse a claro/oscuro; el periodo lleva un
+// rosa propio (rgba) porque no hay token y así funciona en ambos temas.
+const MOOD_COLORS={
+  bien:    ['var(--g2)','var(--gl)'],
+  energia: ['var(--or)','var(--orl)'],
+  cansado: ['var(--bl)','var(--bll)'],
+  estres:  ['var(--yl)','var(--yll)'],
+  periodo: ['#E0668A','rgba(224,102,138,.14)'],
+  dolor:   ['var(--rd)','var(--rdl)'],
+};
 function moodChooserHtml(client){
   const opts=MOOD_STATES.filter(m=>!m.femaleOnly||client.sex==='F');
-  const btns=opts.map(m=>`<button class="mood-btn" onclick="pickMood('${m.id}')" aria-label="${esc(m.label)}">${m.emoji}<span>${esc(m.label)}</span></button>`).join('');
+  const btns=opts.map(m=>{
+    const [mc,mct]=MOOD_COLORS[m.id]||['var(--g2)','var(--gl)'];
+    return `<button class="mood-btn" style="--mc:${mc};--mct:${mct}" onclick="pickMood('${m.id}')" aria-label="${esc(m.label)}"><span class="mood-emoji">${m.emoji}</span><span class="mood-lbl">${esc(m.label)}</span></button>`;
+  }).join('');
   return `<div class="checkin-card"><div class="checkin-q">¿Cómo te sientes hoy?</div><div class="checkin-sub">Ajustamos tu entrenamiento a cómo amaneciste.</div><div class="mood-grid">${btns}</div></div>`;
 }
 function moodBannerHtml(adapt){
@@ -5838,7 +5859,7 @@ function moodBannerHtml(adapt){
 function pickMood(mood){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   setTodayMood(c.id,mood);
-  renderClientToday(c);
+  renderClientToday(c,CUR.todayOverride);
   const today=document.getElementById('cn-today');if(today)today.scrollTop=0;
   // Estados que requieren avisar al coach (hoy: dolor). La verdad vive en
   // apex-core.applyMood (adapt.flagCoach) → si mañana otro estado lo activa,
@@ -5854,7 +5875,7 @@ function pickMood(mood){
 function changeMood(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   clearTodayMood(c.id);
-  renderClientToday(c);
+  renderClientToday(c,CUR.todayOverride);
 }
 // Aviso real al coach cuando el cliente reporta dolor: crea un mensaje en el
 // hilo (mismo camino que sendClientMsg) + push al coach ('_coach'). Guard por
