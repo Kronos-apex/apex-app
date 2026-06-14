@@ -352,6 +352,53 @@ test('< 16 años → Full Body sin carga axial con barra (ni sentadilla/peso mue
   });
 });
 
+section('7b. Gate por nivel de dificultad (P/I/A)');
+
+test('exLevel: lee el mapa, respeta level propio, default I', () => {
+  assert.strictEqual(core.exLevel({ id: 'e4' }), 'A');           // Dominadas
+  assert.strictEqual(core.exLevel({ id: 'e70' }), 'P');          // Sentadilla Goblet
+  assert.strictEqual(core.exLevel({ id: 'e1' }), 'I');           // Press de banca
+  assert.strictEqual(core.exLevel({ id: 'zzz' }), 'I');          // desconocido → I
+  assert.strictEqual(core.exLevel({ id: 'e4', level: 'P' }), 'P'); // level propio manda sobre el mapa
+});
+
+test('gate: Principiante NUNCA recibe ejercicios Avanzados (y no cuela el único A de un músculo)', () => {
+  const lib = [
+    { id: 'z_pec_P', name: 'Flexión Rodillas', muscle: 'pecho', type: 'Bodyweight', sets: 3, reps: 12, icon: 'x', level: 'P' },
+    { id: 'z_pec_A', name: 'Flexión Pica', muscle: 'pecho', type: 'Bodyweight', sets: 3, reps: 8, icon: 'x', level: 'A' },
+    { id: 'z_pie_P', name: 'Sentadilla Silla', muscle: 'piernas', type: 'Bodyweight', sets: 3, reps: 12, icon: 'x', level: 'P' },
+    { id: 'z_pie_A', name: 'Sentadilla 1 Pierna', muscle: 'piernas', type: 'Bodyweight', sets: 3, reps: 8, icon: 'x', level: 'A' },
+    { id: 'z_esp_A', name: 'Dominadas', muscle: 'espalda', type: 'Bodyweight', sets: 3, reps: 6, icon: 'x', level: 'A' },
+    { id: 'z_core_P', name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 30, icon: 'x', level: 'P' },
+    { id: 'z_core_A', name: 'Rueda Abdominal', muscle: 'core', type: 'Bodyweight', sets: 3, reps: 8, icon: 'x', level: 'A' },
+  ];
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo' }, lib, FIXED);
+  const all = routines.flatMap(r => r.exercises);
+  all.forEach(e => assert.notStrictEqual(core.exLevelRank(e), 2, `Principiante recibió avanzado: ${e.name}`));
+  assert.ok(!all.some(e => e.id === 'z_esp_A'), 'No debe colar Dominadas (la única opción de espalda era Avanzada)');
+});
+
+test('gate: Principiante PREFIERE nivel P sobre I cuando hay ambos', () => {
+  const lib = [
+    { id: 'z_pec_P', name: 'Flexión Inclinada', muscle: 'pecho', type: 'Bodyweight', sets: 3, reps: 12, icon: 'x', level: 'P' },
+    { id: 'z_pec_I', name: 'Flexión Normal', muscle: 'pecho', type: 'Bodyweight', sets: 3, reps: 10, icon: 'x', level: 'I' },
+  ];
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 1, goal: 'Ganar músculo' }, lib, FIXED);
+  const pec = routines.flatMap(r => r.exercises).filter(e => e.muscle === 'pecho');
+  assert.ok(pec.length > 0, 'Debe asignar al menos un ejercicio de pecho');
+  assert.strictEqual(core.exLevel(pec[0]), 'P', 'El primer pecho debe ser el de nivel P');
+});
+
+test('gate: Avanzado SÍ puede recibir ejercicios Avanzados', () => {
+  const lib = [
+    { id: 'z_esp_A', name: 'Dominadas', muscle: 'espalda', type: 'Bodyweight', sets: 3, reps: 6, icon: 'x', level: 'A' },
+    { id: 'z_pie_A', name: 'Sentadilla 1 Pierna', muscle: 'piernas', type: 'Bodyweight', sets: 3, reps: 8, icon: 'x', level: 'A' },
+  ];
+  const { routines } = generarRutinas({ sex: 'M', level: 'Avanzado', days: 2, goal: 'Ganar músculo' }, lib, FIXED);
+  const all = routines.flatMap(r => r.exercises);
+  assert.ok(all.some(e => core.exLevelRank(e) === 2), 'Avanzado debería poder incluir ejercicios avanzados');
+});
+
 section('8. Generador — seguridad / limitaciones físicas');
 
 test('parseLimitations detecta lumbar y rodilla', () => {
