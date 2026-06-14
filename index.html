@@ -843,6 +843,17 @@ input[type=number]{-moz-appearance:textfield}
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
+/* ── CHECK-IN DIARIO "¿cómo te sientes hoy?" — adapta la rutina al ánimo ── */
+.checkin-card{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:15px 15px 13px;margin-bottom:12px}
+.checkin-q{font-size:15px;font-weight:800;color:var(--gt);margin-bottom:3px}
+.checkin-sub{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.45}
+.mood-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mood-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 6px;background:var(--bg);border:1.5px solid var(--br);border-radius:12px;cursor:pointer;font-family:inherit;font-size:22px;color:var(--t1);transition:all .15s}
+.mood-btn span{font-size:11px;font-weight:600;line-height:1.2;text-align:center}
+.mood-btn:hover{border-color:var(--g2);background:var(--gl);transform:translateY(-1px)}
+.mood-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.mood-chips span{font-size:11px;font-weight:700;background:rgba(0,0,0,.06);border-radius:20px;padding:3px 9px;color:var(--t2)}
+
 /* ── DATA ONBOARDING WIZARD ── */
 /* Check-in inicial — full-bleed premium (igual que el wizard de registro). v2 2026-06-09 */
 #data-ob{position:fixed;inset:0;z-index:900;display:none;flex-direction:column;
@@ -5774,9 +5785,9 @@ function renderClientToday(client, overrideRoutine){
   const today=days[new Date().getDay()];
   CUR.todayRenderedDay=today;
   const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
-  const todayR=overrideRoutine||autoR;
+  const baseR=overrideRoutine||autoR;
   const isOverride=!!overrideRoutine;
-  if(!todayR){
+  if(!baseR){
     con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
       <div style="font-size:36px;margin-bottom:10px">💤</div>
       <div style="font-size:15px;font-weight:800;color:var(--gt);margin-bottom:5px">Hoy es tu día de descanso</div>
@@ -5785,13 +5796,79 @@ function renderClientToday(client, overrideRoutine){
     </div>`;
     return;
   }
+  // Check-in diario: si el asesorado ya marcó cómo se siente hoy, la rutina se
+  // adapta (apex-core.applyMood, regla universal). Si no, mostramos el selector.
+  // Guard de caché: si apex-core.js está viejo (sin applyMood), degradamos sin
+  // check-in en vez de romper toda la vista de "Hoy".
+  const _moodOK=(typeof applyMood==='function'&&typeof MOOD_STATES!=='undefined');
+  const _mood=_moodOK?getTodayMood(client.id):'';
+  const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
+  const todayR=_adapted||baseR;
+  const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
   const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
-  con.innerHTML=`${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.35);border-radius:var(--r);padding:11px 14px;font-size:13px;color:var(--t1);margin-bottom:12px;line-height:1.5">💡 <strong style="color:#F2C94C">Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div><button onclick="finishSessionEarly()" style="margin-top:10px;width:100%;padding:12px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
+  con.innerHTML=`${checkinHtml}${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.35);border-radius:var(--r);padding:11px 14px;font-size:13px;color:var(--t1);margin-bottom:12px;line-height:1.5">💡 <strong style="color:#F2C94C">Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div><button onclick="finishSessionEarly()" style="margin-top:10px;width:100%;padding:12px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
   CUR.activeRoutine=todayR;
   renderWarmup(todayR.exercises||[]);
   renderClientExList(todayR);
+}
+
+// ── Check-in diario "¿cómo te sientes hoy?" ──
+// El ánimo se guarda por asesorado y por día (localStorage). La lógica de
+// adaptación vive en apex-core.applyMood (testeable); aquí solo UI + estado.
+function _moodDay(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function moodKey(cid){return 'mood_'+cid+'_'+_moodDay();}
+function moodAlertKey(cid){return 'moodalert_'+cid+'_'+_moodDay();}
+function getTodayMood(cid){return localStorage.getItem(moodKey(cid))||'';}
+function setTodayMood(cid,m){localStorage.setItem(moodKey(cid),m);}
+function clearTodayMood(cid){localStorage.removeItem(moodKey(cid));}
+
+function moodChooserHtml(client){
+  const opts=MOOD_STATES.filter(m=>!m.femaleOnly||client.sex==='F');
+  const btns=opts.map(m=>`<button class="mood-btn" onclick="pickMood('${m.id}')" aria-label="${esc(m.label)}">${m.emoji}<span>${esc(m.label)}</span></button>`).join('');
+  return `<div class="checkin-card"><div class="checkin-q">¿Cómo te sientes hoy?</div><div class="checkin-sub">Ajustamos tu entrenamiento a cómo amaneciste.</div><div class="mood-grid">${btns}</div></div>`;
+}
+function moodBannerHtml(adapt){
+  const map={g:['var(--gl)','var(--g2)','var(--gt)'],b:['var(--bll)','var(--bl)','var(--bl)'],r:['rgba(229,72,77,.10)','var(--rd)','var(--rd)']};
+  const t=map[adapt.tone]||map.g;
+  const chips=(adapt.changes&&adapt.changes.length)?`<div class="mood-chips">${adapt.changes.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:'';
+  return `<div style="background:${t[0]};border:1px solid ${t[1]};border-left:3px solid ${t[1]};border-radius:var(--r);padding:12px 14px;margin-bottom:12px"><div style="font-size:14px;font-weight:800;color:${t[2]};margin-bottom:3px">${esc(adapt.title)}</div><div style="font-size:12.5px;color:var(--t1);line-height:1.5">${esc(adapt.why)}</div>${chips}<button onclick="changeMood()" style="margin-top:9px;font-size:11px;font-weight:700;color:var(--t3);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Cambiar cómo me siento</button></div>`;
+}
+function pickMood(mood){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  setTodayMood(c.id,mood);
+  renderClientToday(c);
+  const today=document.getElementById('cn-today');if(today)today.scrollTop=0;
+  // Estados que requieren avisar al coach (hoy: dolor). La verdad vive en
+  // apex-core.applyMood (adapt.flagCoach) → si mañana otro estado lo activa,
+  // esto lo respeta sin tocar nada aquí.
+  const flagCoach=applyMood({},mood,{}).adapt.flagCoach;
+  if(flagCoach){
+    notifyCoachMood(c);
+    toast('🩺 Le avisamos a tu coach. Cuídate hoy.');
+  } else {
+    toast('✓ Ajustamos tu rutina a cómo te sientes');
+  }
+}
+function changeMood(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  clearTodayMood(c.id);
+  renderClientToday(c);
+}
+// Aviso real al coach cuando el cliente reporta dolor: crea un mensaje en el
+// hilo (mismo camino que sendClientMsg) + push al coach ('_coach'). Guard por
+// día para no spamear si el cliente cambia/re-marca el estado.
+function notifyCoachMood(client){
+  const cid=client.id;if(!cid)return;
+  if(localStorage.getItem(moodAlertKey(cid)))return; // ya avisamos hoy
+  localStorage.setItem(moodAlertKey(cid),'1');
+  const name=client.name||'Tu asesorado';
+  const text='🩺 '+name+' marcó que hoy entrena con dolor o molestia. Su rutina se ajustó a trabajo suave, sin carga. Conviene que lo revises.';
+  if(!DB.msgs[cid])DB.msgs[cid]=[];
+  DB.msgs[cid].push({from:'client',text,date:new Date().toISOString(),system:true});
+  svNow('ax_m',DB.msgs);
+  pushToClient('_coach','🩺 '+name+' tiene dolor hoy',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:cid,tag:'avi-chat-coach'});
 }
 
 function startRoutineNow(routineId){

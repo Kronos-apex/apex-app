@@ -716,9 +716,123 @@ function rowToClient(row) {
   });
 }
 
+// ── CHECK-IN DIARIO "¿cómo te sientes hoy?" — adapta la rutina al ánimo ──
+// Cada estado es una REGLA UNIVERSAL que TRANSFORMA la rutina del día que el
+// asesorado ya tiene (mismo patrón que la fase de adaptación). No es una rutina
+// por estado por persona.
+const MOOD_STATES = [
+  { id: 'bien',    emoji: '😊',   label: 'Bien' },
+  { id: 'energia', emoji: '🔥',   label: 'Con toda la energía' },
+  { id: 'cansado', emoji: '😮‍💨', label: 'Cansado' },
+  { id: 'estres',  emoji: '😤',   label: 'Estresado / enojado' },
+  { id: 'periodo', emoji: '🩸',   label: 'En mi periodo', femaleOnly: true },
+  { id: 'dolor',   emoji: '🤕',   label: 'Con dolor o molestia' },
+];
+
+// ¿El ejercicio es de carga (fuerza con peso externo)? Peso corporal,
+// isométrico, funcional, cardio y core NO cuentan como carga.
+function _isLoadedEx(ex) {
+  const type = ((ex && ex.type) || '').toLowerCase();
+  const muscle = (ex && ex.muscle) || '';
+  if (muscle === 'cardio' || muscle === 'core') return false;
+  if (/bodyweight|isom|funcional|cardio|hiit/.test(type)) return false;
+  return true;
+}
+
+// Bloque de cardio "de relleno" autocontenido (no depende de la biblioteca).
+function _cardioBlock(name, mins) {
+  return { id: '_mood_cardio', name: name, muscle: 'cardio', type: 'Cardio', sets: 1, reps: mins + ' min', icon: '🏃', _added: true };
+}
+
+// Convierte un ejercicio de carga a peso corporal (sin peso, reps altas,
+// menos series). Muta la copia recibida. Usado por 'dolor'.
+function _demoteToBodyweight(e) {
+  e.bodyweightMode = true;
+  e.loadHint = 'Sin peso — solo tu cuerpo';
+  e.reps = Math.max(parseInt(e.reps) || 12, 15);
+  e.sets = Math.min(parseInt(e.sets) || 3, 3);
+}
+
+// Aplica el modificador de ánimo a una rutina. opts: { sex }.
+// Devuelve una copia nueva con `adapt` (meta para la UI) y `moodAdjusted`.
+function applyMood(routine, mood, opts) {
+  opts = opts || {};
+  const base = routine || {};
+  const exs = (base.exercises || []).map(e => Object.assign({}, e));
+  const out = Object.assign({}, base, { exercises: exs });
+  const rest = parseInt(base.restSec) || 60;
+  const adapt = { mood: mood || 'bien', title: '', why: '', tone: 'g', changes: [], flagCoach: false };
+
+  switch (mood) {
+    case 'energia':
+      adapt.title = '¡A por todo hoy! 🔥';
+      adapt.why = 'Te sientes con energía: rutina completa. Si hay un día para buscar un récord, es hoy.';
+      break;
+
+    case 'cansado': {
+      exs.forEach(e => { e.sets = Math.max(2, (parseInt(e.sets) || 3) - 1); });
+      out.restSec = rest + 15;
+      let dropped = null;
+      if (exs.length > 4) dropped = exs.pop(); // quita el último accesorio en sesiones largas
+      adapt.title = 'Hoy entrenamos suave 😮‍💨';
+      adapt.why = 'Bajamos una serie por ejercicio y subimos el descanso. Mejor entrenar liviano que no entrenar — mañana vuelves con todo.';
+      adapt.tone = 'b';
+      adapt.changes.push('−1 serie por ejercicio', '+15s de descanso');
+      if (dropped) adapt.changes.push('Quitamos: ' + (dropped.name || 'último accesorio'));
+      break;
+    }
+
+    case 'estres': {
+      if (!exs.some(e => e.muscle === 'cardio')) exs.push(_cardioBlock('Cardio de descarga', 10));
+      adapt.title = 'Descarga la tensión 😤';
+      adapt.why = 'Sumamos un bloque de cardio al final para soltar el estrés. Hoy el gimnasio es tu terapia.';
+      adapt.tone = 'b';
+      adapt.changes.push('+ Cardio de descarga (10 min)');
+      break;
+    }
+
+    case 'periodo':
+      // Evidencia 2023-2025: la fase del ciclo NO afecta la fuerza ni la
+      // hipertrofia. "Nada de fuerza en el periodo" es un MITO. En vez de
+      // despojar la carga, EMPODERAMOS + autorregulación: si hay síntomas
+      // (cólicos/fatiga) ella marca 'Cansada'/'Con dolor' y esos estados
+      // ajustan. Ver docs/entrenamiento-femenino.md.
+      adapt.title = 'Entrena con confianza 🩸';
+      adapt.why = 'Estar en tu periodo no te frena: puedes entrenar fuerza con normalidad y además te hace bien (huesos, energía, ánimo). Escucha tu cuerpo — si hoy tienes cólicos o te sientes cansada, marca "Cansada" o "Con dolor" y ajustamos la sesión por ti.';
+      adapt.tone = 'g';
+      break;
+
+    case 'dolor': {
+      // Seguridad primero: trabajo suave (sin carga) + avisar al coach.
+      let n = 0;
+      exs.forEach(e => { if (_isLoadedEx(e)) { _demoteToBodyweight(e); e.sets = 2; n++; } });
+      out.restSec = rest + 20;
+      adapt.title = 'Escucha a tu cuerpo 🤕';
+      adapt.why = 'Con dolor lo mejor es no forzar. Hoy trabajamos suave, sin carga, y le avisamos a tu coach para que te acompañe.';
+      adapt.tone = 'r';
+      adapt.flagCoach = true;
+      if (n) adapt.changes.push(n + ' ejercicios sin carga');
+      adapt.changes.push('Tu coach fue notificado');
+      break;
+    }
+
+    case 'bien':
+    default:
+      adapt.title = 'A entrenar 💪';
+      adapt.why = 'Te sientes bien: rutina completa, tal como tu coach la preparó para ti.';
+      break;
+  }
+
+  out.adapt = adapt;
+  out.moodAdjusted = !!mood && mood !== 'bien';
+  return out;
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    MOOD_STATES,
+    applyMood,
     getIccLabel,
     getSexCode,
     calcMacrosSugeridos,

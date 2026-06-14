@@ -40,6 +40,8 @@ const {
   clientToRow,
   rowToClient,
   USER_DATA_COLLECTIONS,
+  MOOD_STATES,
+  applyMood,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1054,6 +1056,89 @@ test('suggestFromPR: PR 60kg×8 → sugerencia para 12 reps; PRs no-kg → null'
 
 test('suggestFromPR: tolera PR legacy {kg} sin val ni reps (asume 1RM)', () => {
   assert.strictEqual(suggestFromPR({ kg: 80 }, 10, { factor: 1 }), 60); // 80/(1+10/30) = 60
+});
+
+// ══════════════════════════════════════════════════════
+section('18. Check-in diario "¿cómo te sientes hoy?" (applyMood)');
+// ══════════════════════════════════════════════════════
+
+function moodRoutine() {
+  return {
+    id: 'r1', name: 'Full Body', day: 'Lunes', restSec: 60,
+    exercises: [
+      { name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', sets: 4, reps: 10 },
+      { name: 'Press de Banca', muscle: 'pecho', type: 'Compuesto', sets: 4, reps: 10 },
+      { name: 'Curl con Barra', muscle: 'biceps', type: 'Aislamiento', sets: 3, reps: 12 },
+      { name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 60 },
+    ],
+  };
+}
+
+test('applyMood: nunca muta la rutina original (devuelve copia)', () => {
+  const base = moodRoutine();
+  const snapshot = JSON.stringify(base);
+  applyMood(base, 'cansado', {});
+  applyMood(base, 'periodo', { sex: 'F' });
+  assert.strictEqual(JSON.stringify(base), snapshot, 'la rutina original cambió');
+});
+
+test('applyMood "bien" deja la rutina igual y no marca ajuste', () => {
+  const out = applyMood(moodRoutine(), 'bien', {});
+  assert.strictEqual(out.moodAdjusted, false);
+  assert.strictEqual(out.exercises.length, 4);
+  assert.strictEqual(out.exercises[0].sets, 4);
+  assert.strictEqual(out.adapt.flagCoach, false);
+});
+
+test('applyMood "cansado": baja 1 serie por ejercicio y sube descanso', () => {
+  const out = applyMood(moodRoutine(), 'cansado', {});
+  assert.strictEqual(out.moodAdjusted, true);
+  assert.strictEqual(out.restSec, 75);              // 60 + 15
+  assert.strictEqual(out.exercises.length, 4);      // base tiene 4 → no entra al drop (solo si >4)
+  assert.ok(out.exercises.every(e => e.sets >= 2));
+  assert.strictEqual(out.exercises[0].sets, 3);     // 4 - 1
+});
+
+test('applyMood "cansado" con >4 ejercicios sí quita el último accesorio', () => {
+  const r = moodRoutine();
+  r.exercises.push({ name: 'Extra', muscle: 'triceps', type: 'Aislamiento', sets: 3, reps: 12 });
+  const out = applyMood(r, 'cansado', {});
+  assert.strictEqual(out.exercises.length, 4);      // 5 → 4
+  assert.ok(out.adapt.changes.some(c => /Quitamos/.test(c)));
+});
+
+test('applyMood "estres": agrega un bloque de cardio (sin duplicar si ya hay)', () => {
+  const out = applyMood(moodRoutine(), 'estres', {});
+  assert.strictEqual(out.exercises.filter(e => e.muscle === 'cardio').length, 1);
+  const r = moodRoutine();
+  r.exercises.push({ name: 'Bicicleta', muscle: 'cardio', type: 'Cardio', sets: 1, reps: 15 });
+  assert.strictEqual(applyMood(r, 'estres', {}).exercises.filter(e => e.muscle === 'cardio').length, 1);
+});
+
+test('applyMood "periodo": NO despoja carga (empodera + autorregula); rutina intacta', () => {
+  // Evidencia: la fase del ciclo no afecta la fuerza. No convertimos a peso
+  // corporal ni agregamos cardio — la rutina queda igual; el banner educa.
+  const base = moodRoutine();
+  const out = applyMood(base, 'periodo', { sex: 'F' });
+  assert.strictEqual(out.exercises.length, base.exercises.length);
+  assert.ok(out.exercises.every(e => !e.bodyweightMode), 'no debe quitar la carga');
+  assert.ok(!out.exercises.some(e => e._added), 'no debe agregar bloques');
+  assert.strictEqual(out.adapt.flagCoach, false);
+  assert.strictEqual(out.adapt.tone, 'g'); // tono positivo / empoderador
+});
+
+test('applyMood "dolor": trabajo sin carga, descanso mayor y avisa al coach', () => {
+  const out = applyMood(moodRoutine(), 'dolor', {});
+  assert.strictEqual(out.adapt.flagCoach, true);
+  assert.strictEqual(out.restSec, 80);              // 60 + 20
+  const loaded = out.exercises.filter(e => e.muscle !== 'cardio' && e.muscle !== 'core');
+  assert.ok(loaded.every(e => e.bodyweightMode === true && e.sets === 2));
+});
+
+test('MOOD_STATES: "periodo" es el único femaleOnly; ids únicos', () => {
+  assert.deepStrictEqual(MOOD_STATES.filter(m => m.femaleOnly).map(m => m.id), ['periodo']);
+  const ids = MOOD_STATES.map(m => m.id);
+  assert.strictEqual(new Set(ids).size, ids.length);
 });
 
 // ══════════════════════════════════════════════════════
