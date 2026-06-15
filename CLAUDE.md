@@ -61,7 +61,7 @@ apex-app/
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 135 ejercicios precargados (e1–e136, sin e38), filtros por músculo
+- `#p-exercises` — 162 ejercicios precargados (e1–e164, sin e32/e38; e141–e164 = principiante peso corporal casa/parque, nivel P), filtros por músculo. El generador aplica **gate por nivel** (`EX_LEVEL`/`_levelGate` en apex-core.js): Principiante solo P, Intermedio P+I, Avanzado todo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
@@ -902,7 +902,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-12 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v143** · Catálogo **138/138 con foto · 136 con variante mujer** · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés**AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v138** · Suite **123/123** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-14 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v150** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **140/140** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 ### ✅ Sesión 2026-06-11 — Momentos full-bleed: upsell Premium + subida de nivel (apex-v138)
 **Cierra el plan full-bleed del 06-08** (onboarding ✅ → fin de entreno ✅ → ahora upsell + nivel ✅). Ambos overlays **reusan el molde CSS `wf-*`** del fin de entreno (cero duplicación; solo se añadió `.pu-*`/`.lu-*` para lo propio).
