@@ -4542,7 +4542,22 @@ async function _enterAuthSession(authUser){
       medidas:row.medidas, nutrition:row.nutrition, photos:row.photos, msgs:row.msgs,
     });
   } else {
-    client=await _provisionFreeClient(authUser,_profileFromMeta(authUser));
+    const prof=_profileFromMeta(authUser);
+    if(!prof._complete){
+      // Usuario NUEVO sin perfil = entró por "Iniciar sesión con Google" SIN haberse registrado
+      // antes (los registros por email o por "Crear cuenta con Google" sí traen perfil/pending).
+      // No creamos cuenta a la fuerza con datos por defecto: cerramos sesión y le pedimos crear
+      // cuenta primero (así su rutina se arma con su objetivo/nivel/sexo/edad reales).
+      try{ await AUTH.signOut(); }catch(e){}
+      AUTH_MODE=false;
+      try{localStorage.removeItem('ax_wz_pending');}catch(e){}
+      showScreen('s-login');
+      const er=document.getElementById('lerr');
+      if(er){ er.textContent='No tienes una cuenta todavía. Toca “Crear cuenta” para registrarte primero.'; er.classList.add('on'); }
+      toast('Aún no estás registrado. Crea primero tu cuenta. 👇');
+      return;
+    }
+    client=await _provisionFreeClient(authUser,prof);
   }
   try{localStorage.removeItem('ax_wz_pending');}catch(e){} // ya consumido (o usuario existente)
   CUR.loggedAs='client'; CUR.clientId=client.id;
