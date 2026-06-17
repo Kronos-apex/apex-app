@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v156';
+const CACHE_NAME = 'apex-v157';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
