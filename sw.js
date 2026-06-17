@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apex-v158';
+const CACHE_NAME = 'apex-v159';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
@@ -69,9 +69,9 @@ self.addEventListener('fetch', e => {
 
 self.addEventListener('push', e => {
   if(!e.data) return;
-  let d = {}; try { d = e.data.json(); } catch { d = {title: 'APEX', body: e.data.text()}; }
+  let d = {}; try { d = e.data.json(); } catch { d = {title: 'AVI', body: e.data.text()}; }
   const isMsg = d.type === 'message';
-  e.waitUntil(self.registration.showNotification(d.title || 'APEX', {
+  e.waitUntil(self.registration.showNotification(d.title || 'AVI', {
     body: d.body || '',
     icon: '/apex-app/icons/icon-192.png',
     badge: '/apex-app/icons/icon-192.png',

@@ -5457,12 +5457,20 @@ function initClientView(client){
   // puede regenerar desde Rutinas. Una sola onboarding = el wizard.)
   // Show onboarding on first login — data wizard first, educational after.
   // Si no hay onboarding pendiente (asesorado que regresa), damos la bienvenida personalizada.
+  // Deep-link desde los app shortcuts de Android (manifest "shortcuts" → ?go=…).
+  const _goId={hoy:'cn-today',rutinas:'cn-routines',mensajes:'cn-messages',progreso:'cn-history',perfil:'cn-profile'}[new URLSearchParams(location.search).get('go')];
   if(shouldShowDataOnboarding(client.id)){
     setTimeout(()=>showDataOnboarding(client.id), 400);
   } else if(shouldShowOnboarding(client.id)){
     setTimeout(()=>showOnboarding(client.id), 400);
-  } else {
+  } else if(!_goId){
+    // El "welcome de vuelta" se omite si entró directo a una pestaña por un acceso directo.
     setTimeout(()=>showClientWelcome(client), 350);
+  }
+  if(_goId){
+    const _order=['cn-today','cn-routines','cn-messages','cn-history','cn-profile'];
+    const _tab=document.querySelectorAll('.cntab')[_order.indexOf(_goId)];
+    if(_tab)setTimeout(()=>{ cnTab(_goId,_tab); if(_goId==='cn-messages')markMsgsRead(); },450);
   }
 }
 

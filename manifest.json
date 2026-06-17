@@ -18,6 +18,29 @@
     { "src": "/apex-app/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/apex-app/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
+  "shortcuts": [
+    {
+      "name": "Entreno de hoy",
+      "short_name": "Hoy",
+      "description": "Abre tu entrenamiento del día",
+      "url": "/apex-app/?go=hoy",
+      "icons": [{ "src": "/apex-app/icons/sc-hoy.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Mi progreso",
+      "short_name": "Progreso",
+      "description": "Mira cómo vas avanzando",
+      "url": "/apex-app/?go=progreso",
+      "icons": [{ "src": "/apex-app/icons/sc-progreso.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Mensajes con tu coach",
+      "short_name": "Mensajes",
+      "description": "Escríbele a tu coach",
+      "url": "/apex-app/?go=mensajes",
+      "icons": [{ "src": "/apex-app/icons/sc-mensajes.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ],
   "screenshots": [
     { "src": "/apex-app/screenshots/01-asesorado.png", "sizes": "516x689", "type": "image/png", "form_factor": "narrow", "label": "Tu entrenamiento del dia" },
     { "src": "/apex-app/screenshots/02-rutina.png", "sizes": "516x689", "type": "image/png", "form_factor": "narrow", "label": "Rutina personalizada" },
