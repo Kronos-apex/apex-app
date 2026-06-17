@@ -1,6 +1,12 @@
-const CACHE_NAME = 'apex-v155';
+const CACHE_NAME = 'apex-v156';
 
-self.addEventListener('install', e => { self.skipWaiting(); });
+// Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
+// (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
+const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/apex-core.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
+self.addEventListener('install', e => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL).catch(() => {})));
+});
 
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -22,7 +28,20 @@ self.addEventListener('fetch', e => {
     })); return;
   }
   if(e.request.mode === 'navigate'){
-    e.respondWith(fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; }).catch(() => caches.match(e.request))); return;
+    // Network-first con timeout de 3s: en red lenta (gym) sirve la versión cacheada en vez
+    // de dejar pantalla en blanco esperando. Respaldo final al index.html del shell.
+    e.respondWith((async () => {
+      try {
+        const net = await Promise.race([
+          fetch(e.request),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+        ]);
+        const cl = net.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl));
+        return net;
+      } catch (_e) {
+        return (await caches.match(e.request)) || (await caches.match('/apex-app/index.html')) || fetch(e.request);
+      }
+    })()); return;
   }
   // apex-core.js: network-first (con respaldo en caché para offline). Es lógica crítica
   // que DEBE ir sincronizada con index.html; cache-first la dejaba desfasada tras un update

@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="AVI — Tu Plan de Entrenamiento">
 <meta property="og:description" content="Accede a tu rutina personalizada, registra tu progreso y comunícate con tu coach.">
-<meta property="og:image" content="https://via.placeholder.com/1200x630/1B4332/FFFFFF?text=AVI+Fitness">
+<meta property="og:image" content="https://kronos-apex.github.io/apex-app/icons/icon-512.png">
 <meta property="og:locale" content="es_CO">
 
 <!-- Twitter / X Card -->
@@ -133,7 +133,7 @@ html[data-theme="light"] .mta {
 ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--br2);border-radius:2px}
 
 /* ── SCREENS ── */
-.screen{display:none;height:100vh;overflow:hidden}
+.screen{display:none;height:100vh;height:100dvh;overflow:hidden}
 .screen.on{display:flex}
 
 /* ════ LOGIN ════ */
@@ -142,7 +142,7 @@ html[data-theme="light"] .mta {
 .llogo{font-size:26px;font-weight:800;color:var(--g);margin-bottom:3px}
 .lsub{font-size:13px;color:var(--t2);margin-bottom:24px}
 .llbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
-.li{width:100%;padding:10px 13px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:14px;color:var(--t1);outline:none;transition:border-color .15s;margin-bottom:12px;background:var(--w)}
+.li{width:100%;padding:10px 13px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:16px;color:var(--t1);outline:none;transition:border-color .15s;margin-bottom:12px;background:var(--w)}
 .li:focus{border-color:var(--g2)}
 .lerr{background:var(--rdl);color:var(--rd);border-radius:var(--rsm);padding:9px 13px;font-size:13px;font-weight:500;margin-bottom:12px;display:none}
 .lerr.on{display:block}
@@ -157,7 +157,7 @@ html[data-theme="light"] .mta {
 .coach-topbar{
   display:flex;align-items:center;justify-content:space-between;
   background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);
-  padding:0 16px;height:52px;flex-shrink:0;position:sticky;top:0;z-index:200;box-shadow:0 6px 22px rgba(6,20,15,.28);
+  padding:0 16px;padding-top:env(safe-area-inset-top);height:calc(52px + env(safe-area-inset-top));flex-shrink:0;position:sticky;top:0;z-index:200;box-shadow:0 6px 22px rgba(6,20,15,.28);
 }
 .coach-topbar-left{display:flex;align-items:center;gap:10px}
 .coach-topbar-logo{font-size:18px;font-weight:800;color:#fff}
@@ -179,7 +179,7 @@ html[data-theme="light"] .mta {
 }
 .drawer-overlay.on{display:block}
 .sidebar{
-  position:fixed;top:0;left:-230px;height:100vh;width:220px;
+  position:fixed;top:0;left:-230px;height:100vh;height:100dvh;width:220px;
   background:var(--w);border-right:1px solid var(--br);
   display:flex;flex-direction:column;padding:16px 10px;
   z-index:400;transition:left .25s cubic-bezier(.4,0,.2,1);
@@ -279,7 +279,7 @@ html[data-theme="light"] .mta {
 .tr{background:var(--rdl);color:var(--rd)}
 
 /* ── INPUTS ── */
-.inp,.sel,.tarea{width:100%;padding:9px 12px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:13px;color:var(--t1);background:var(--w);outline:none;transition:border-color .15s}
+.inp,.sel,.tarea{width:100%;padding:9px 12px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:16px;color:var(--t1);background:var(--w);outline:none;transition:border-color .15s}
 .inp:focus,.sel:focus,.tarea:focus{border-color:var(--g2)}
 .tarea{resize:vertical;min-height:68px;line-height:1.5}
 .ilbl{display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px}
@@ -420,7 +420,7 @@ html[data-theme="light"] .mta {
 /* ── MODAL ── */
 .mdbg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px}
 .mdbg.on{display:flex}
-.md{background:var(--w);border-radius:18px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2);animation:mIn .2s ease}
+.md{background:var(--w);border-radius:18px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:var(--sh2);animation:mIn .2s ease}
 .mdlg{max-width:660px}
 @keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .mdtitle{font-size:17px;font-weight:800;margin-bottom:16px}
@@ -446,7 +446,7 @@ html[data-theme="light"] .mta {
 
 /* ════ CLIENT VIEW ════ */
 #s-client{flex-direction:column;background:var(--bg);overflow-y:auto}
-.cntopbar{background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 6px 22px rgba(6,20,15,.28)}
+.cntopbar{background:var(--emerald-hdr);border-bottom:1px solid rgba(16,224,160,.20);padding:13px 18px;padding-top:max(13px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 6px 22px rgba(6,20,15,.28)}
 .cnlogo{font-size:17px;font-weight:800;color:#fff}
 .cntopbar #cn-greet{color:rgba(255,255,255,.85)!important}
 .cntopbar #cn-help-btn{background:rgba(255,255,255,.15)!important;color:#fff!important}
@@ -511,7 +511,7 @@ html[data-theme="light"] .mta {
 .set-log-row.sdone{background:var(--gl)}
 .set-num{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--t3);text-align:center}
 .set-num.sdone{color:var(--g)}
-.sinput{width:100%;padding:7px 6px;border:1.5px solid var(--br);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--t1);background:var(--w);outline:none;text-align:center;transition:border-color .15s;-moz-appearance:textfield}
+.sinput{width:100%;padding:7px 6px;border:1.5px solid var(--br);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:500;color:var(--t1);background:var(--w);outline:none;text-align:center;transition:border-color .15s;-moz-appearance:textfield}
 .sinput::-webkit-outer-spin-button,.sinput::-webkit-inner-spin-button{-webkit-appearance:none}
 .sinput:focus{border-color:var(--g2)}
 .set-log-row.sdone .sinput{background:var(--gl);border-color:var(--g2);color:var(--gt)}
@@ -773,7 +773,7 @@ html[data-theme="light"] .mta {
 .gm-set-num{width:28px;height:28px;border-radius:50%;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--t3);transition:all .2s}
 .gm-set-row.active-set .gm-set-num{background:var(--g);color:white}
 .gm-set-row.set-done .gm-set-num{background:var(--g);color:white}
-.gm-sinput{background:var(--w);border:1.5px solid var(--br2);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:15px;font-weight:700;color:var(--t1);text-align:center;width:100%;-moz-appearance:textfield}
+.gm-sinput{background:var(--w);border:1.5px solid var(--br2);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:16px;font-weight:700;color:var(--t1);text-align:center;width:100%;-moz-appearance:textfield}
 .gm-sinput::-webkit-outer-spin-button,.gm-sinput::-webkit-inner-spin-button{-webkit-appearance:none}
 .gm-sinput:focus{outline:none;border-color:var(--g2)}
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
@@ -830,7 +830,7 @@ html[data-theme="light"] .mta {
 /* Tablet (768px+) — centrar contenido como app móvil */
 @media(min-width:601px) and (max-width:1023px){
   body{background:#1a1a1a}
-  #app{max-width:480px;margin:0 auto;height:100vh;position:relative;box-shadow:0 0 60px rgba(0,0,0,.5)}
+  #app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;position:relative;box-shadow:0 0 60px rgba(0,0,0,.5)}
 }
 
 /* Desktop (1024px+) */
@@ -3448,7 +3448,7 @@ function renderTfExList(){
       <div style="width:28px"></div>
     </div>
   </div>`;
-  const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--bl);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--bl)`;
+  const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--bl);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--bl)`;
   tplExs.forEach((e,i)=>{
     html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--bl)'};border-radius:var(--rsm);margin-bottom:6px">
       ${muscleIcon(e.muscle,20)}
@@ -5231,7 +5231,7 @@ function renderRfExList(){
   const n=CUR.routineExs.length;
   let html='';
   CUR.routineExs.forEach((e,i)=>{
-    const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
+    const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
     const upDis=i===0; const dnDis=i===n-1;
     const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
     html+=`<div style="background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px;overflow:hidden">
@@ -7806,6 +7806,7 @@ function initPWA(){
       .then(reg=>{
         log('AVI SW ✅');
         window._swReg=reg;
+        reg.addEventListener('updatefound',()=>{ const nw=reg.installing; if(!nw)return; nw.addEventListener('statechange',()=>{ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function') toast('🔄 Nueva versión de AVI lista. Ciérrala y ábrela para actualizar.'); }); });
         // Limpiar registraciones viejas (blob URL SWs con scope /)
         navigator.serviceWorker.getRegistrations().then(regs=>{
           regs.forEach(r=>{if(r.scope!==reg.scope)r.unregister();});
