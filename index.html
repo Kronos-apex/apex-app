@@ -5672,39 +5672,57 @@ function renderClientProfile(client){
   applyProfileDisclosure(client.id);
 }
 
-// Tarjeta "Cuenta" → eliminar cuenta y datos (derecho de supresión / requisito Play Store).
-// Solo para asesorados reales en modo auth. El coach en su PROPIO entrenamiento (COACH_SELF)
-// NO la ve: borraría su cuenta de coach. El coach elimina asesorados desde su panel (delClient).
+// Tarjeta "Cuenta" → eliminar cuenta (derecho de supresión / requisito Play Store).
+// El borrado real lo hace la Edge Function delete-account (service role): borra
+// user_data + push_subscriptions + auth.users (irreversible). Solo se muestra a
+// asesorados reales en modo auth. El coach (incl. su propio entrenamiento COACH_SELF)
+// NO la ve: su cuenta arrastraría las filas de todos sus asesorados — la Edge Function
+// también la protege por COACH_UID.
 function renderAccountActions(client){
   const el=document.getElementById('cn-danger-card'); if(!el)return;
   if(!AUTH_MODE||COACH_SELF||AUTH_ROLE==='coach'){ el.innerHTML=''; return; }
-  el.innerHTML=`<div class="card" style="margin-bottom:12px;border-color:var(--rd)">
-    <div class="ch"><div class="ctitle" style="color:var(--rd)">Cuenta</div></div>
+  el.innerHTML=`<div class="card" style="margin-bottom:12px">
+    <div class="ch"><div class="ctitle">Cuenta</div></div>
     <div class="cb">
-      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Eliminar tu cuenta borra de forma permanente tu perfil, rutinas, progreso, fotos y medidas. No se puede deshacer.</div>
-      <button class="btn bo bsm" onclick="deleteMyAccount()" style="color:var(--rd);border-color:var(--rd)">🗑️ Eliminar mi cuenta y mis datos</button>
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Eliminar tu cuenta borra de forma permanente tu perfil, rutinas, progreso, medidas y fotos. No se puede deshacer.</div>
+      <button class="btn bsm" onclick="openDeleteAccount()" style="background:transparent;color:var(--rd);border:1.5px solid var(--rd);font-weight:700">🗑️ Eliminar mi cuenta</button>
     </div>
   </div>`;
 }
 
-async function deleteMyAccount(){
-  if(COACH_SELF){ toast('Esta es tu cuenta de coach. Elimina asesorados desde tu panel.'); return; }
-  if(!confirm('¿Eliminar tu cuenta de AVI?\n\nSe borrarán de forma permanente tu perfil, rutinas, progreso, fotos y medidas. Esta acción NO se puede deshacer.'))return;
-  const typed=prompt('Para confirmar, escribe ELIMINAR (en mayúsculas):');
-  if((typed||'').trim().toUpperCase()!=='ELIMINAR'){ toast('Cancelado. Tu cuenta sigue activa.'); return; }
-  toast('⏳ Eliminando tu cuenta...');
+// ── Borrado de cuenta self-service (requisito Google Play) ──
+// Llama la Edge Function delete-account, que borra user_data + push_subscriptions
+// + auth.users con service role. Tras el OK, limpia el rastro local y recarga.
+function delacctCheck(el){ const b=document.getElementById('delacct-go'); if(b)b.disabled=(el.value.trim()!=='ELIMINAR'); }
+function openDeleteAccount(){
+  if(!AUTH_MODE){ toast('Disponible solo con sesión iniciada'); return; }
+  if(COACH_SELF||AUTH_ROLE==='coach'){ toast('La cuenta del coach no se elimina desde aquí'); return; }
+  const i=document.getElementById('delacct-confirm'); if(i)i.value='';
+  const b=document.getElementById('delacct-go'); if(b)b.disabled=true;
+  const e=document.getElementById('delacct-err'); if(e)e.style.display='none';
+  om('m-delacct');
+}
+async function confirmDeleteAccount(){
+  const btn=document.getElementById('delacct-go');
+  const err=document.getElementById('delacct-err');
+  if(err)err.style.display='none';
+  const c=(typeof AUTH!=='undefined')?AUTH.client():null;
+  if(!c){ if(err){err.textContent='No hay conexión con el servidor. Intenta de nuevo.';err.style.display='block';} return; }
+  if(btn){ btn.disabled=true; btn.textContent='Eliminando…'; }
   try{
-    if(AUTH_MODE && CUR.clientId){ await UD.deleteClientRow(CUR.clientId); }
+    const { data, error } = await c.functions.invoke('delete-account',{ body:{} });
+    if(error) throw new Error(error.message||'Error de red');
+    if(!data || !data.ok) throw new Error((data&&data.error)||'No se pudo eliminar');
+    // Éxito: cerrar sesión y borrar todo rastro local antes de recargar al login.
+    try{ await AUTH.signOut(); }catch(_e){}
+    try{ Object.keys(localStorage).forEach(k=>{ if(/^(ax_|avi_|apex)/.test(k)) localStorage.removeItem(k); }); }catch(_e){}
+    cm('m-delacct');
+    toast('Tu cuenta fue eliminada');
+    setTimeout(()=>{ location.reload(); }, 900);
   }catch(e){
-    warn('AVI deleteMyAccount: no se pudo borrar la fila en la nube',e&&e.message);
-    toast('No se pudo eliminar en el servidor. Revisa tu conexión e intenta de nuevo.');
-    return;
+    if(btn){ btn.disabled=false; btn.textContent='Eliminar definitivamente'; }
+    if(err){ err.textContent='No se pudo eliminar ('+((e&&e.message)||e)+'). Intenta de nuevo.'; err.style.display='block'; }
   }
-  // Limpieza local + cierre de sesión → vuelve al login.
-  try{ await AUTH.signOut(); }catch(e){}
-  ['ax_session','ax_rem'].forEach(k=>localStorage.removeItem(k));
-  toast('Tu cuenta y tus datos fueron eliminados.');
-  setTimeout(()=>location.reload(),1300);
 }
 
 // El asesorado puede poner su propia foto de perfil (opcional). Tap en el avatar
@@ -9389,6 +9407,26 @@ function whatsappNudge(id){
   <div class="md">
     <div id="m-nutri-body"></div>
     <div class="mdfooter"><button class="btn bp" onclick="cm('m-nutri-info')" style="width:100%">Entendido</button></div>
+  </div>
+</div>
+
+<!-- ELIMINAR CUENTA — confirma y llama la Edge Function delete-account (borra de verdad auth.users) -->
+<div class="mdbg" id="m-delacct">
+  <div class="md">
+    <div class="mdtitle">🗑️ Eliminar mi cuenta</div>
+    <div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--t1);margin-bottom:14px;line-height:1.6">
+      ⚠️ <strong>Esto es permanente.</strong> Se borrarán para siempre tu cuenta, perfil, rutinas, progreso, medidas y fotos. No se puede deshacer ni recuperar.
+    </div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:8px;line-height:1.5">
+      Para confirmar, escribe <strong>ELIMINAR</strong> en mayúsculas:
+    </div>
+    <input id="delacct-confirm" class="inp" type="text" autocomplete="off" placeholder="ELIMINAR"
+      oninput="delacctCheck(this)" style="width:100%;padding:10px 12px;margin-bottom:8px">
+    <div id="delacct-err" style="display:none;color:var(--rd);font-size:12px;margin-bottom:8px"></div>
+    <div class="mdfooter">
+      <button class="btn bg" onclick="cm('m-delacct')">Cancelar</button>
+      <button class="btn bsm" id="delacct-go" disabled onclick="confirmDeleteAccount()" style="background:var(--rd);color:var(--w);font-weight:700">Eliminar definitivamente</button>
+    </div>
   </div>
 </div>
 
