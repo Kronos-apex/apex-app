@@ -557,10 +557,24 @@ html[data-theme="light"] .mta {
 /* PR list in profile */
 .pr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br)}
 .pr-row:last-child{border-bottom:none}
-.pr-ex-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pr-ex-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 2px 7px -2px rgba(0,0,0,.14);border:1px solid var(--br)}
 .pr-ex-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-ex-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--g)}
 .pr-ex-date{font-size:10px;color:var(--t3);margin-top:1px;text-align:right}
+.collapse-more{display:block;width:100%;margin-top:8px;padding:8px;background:transparent;border:none;border-top:1px dashed var(--br2);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s}
+.collapse-more:hover{color:var(--gt)}
+/* Tarjetas de macros tocables → abren la ficha educativa (openNutriInfo) */
+.nutri-card{position:relative;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.nutri-card:hover{box-shadow:0 4px 14px -6px rgba(0,0,0,.18)}
+.nutri-card:active{transform:scale(.97)}
+.nutri-i{position:absolute;top:5px;right:6px;font-size:11px;color:var(--t3);line-height:1;opacity:.8}
+.nutri-sec{margin-bottom:14px}
+.nutri-h{font-size:12px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.nutri-p{font-size:13.5px;color:var(--t1);line-height:1.6}
+/* La ficha: cuerpo scrolleable y botón "Entendido" siempre visible abajo */
+#m-nutri-info .md{display:flex;flex-direction:column}
+#m-nutri-body{overflow-y:auto;min-height:0;flex:1 1 auto}
+#m-nutri-info .mdfooter{flex-shrink:0;margin-top:14px}
 /* Weight log */
 .wlog-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--br)}
 .wlog-row:last-child{border-bottom:none}
@@ -849,10 +863,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .checkin-sub{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.45}
 .mood-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
 .mood-btn{display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 6px 11px;background:var(--w);border:1px solid var(--br);border-radius:14px;cursor:pointer;font-family:inherit;color:var(--t1);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
-.mood-emoji{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:25px;line-height:1;border-radius:50%;background:var(--mct);transition:transform .14s ease}
+.mood-emoji{width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:27px;line-height:1;border-radius:50%;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.55),transparent 62%),var(--mct);box-shadow:inset 0 1px 2px rgba(255,255,255,.5),0 5px 14px -6px var(--mc);transition:transform .16s ease,box-shadow .16s ease}
 .mood-lbl{font-size:11px;font-weight:700;line-height:1.2;text-align:center;color:var(--t2);transition:color .14s ease}
 .mood-btn:hover{transform:translateY(-2px);border-color:var(--mc);box-shadow:0 8px 18px -10px var(--mc)}
-.mood-btn:hover .mood-emoji{transform:scale(1.08)}
+.mood-btn:hover .mood-emoji{transform:scale(1.12)}
 .mood-btn:hover .mood-lbl{color:var(--t1)}
 .mood-btn:active{transform:translateY(0)}
 .mood-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
@@ -1654,7 +1668,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
       <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
       <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button></div></div>
+        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()">✏️ Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button></div></div>
         <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
       </div>
 
@@ -1727,6 +1741,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           </div>
         </div>
       </div>
+      <!-- Cuenta: eliminar cuenta (derecho de supresión / requisito Play Store). Se llena
+           en renderAccountActions; oculto para el coach en su propio entrenamiento. -->
+      <div id="cn-danger-card"></div>
     </div>
   </div>
   <div class="cntabs">
@@ -5597,6 +5614,22 @@ function checkAndUpdatePRs(routine){
 }
 
 
+// Récords personales: si hay pocos (≤3) se muestran todos; si son muchos, se
+// colapsan (asoman 2) para que el perfil no quede larguísimo. _prsOpen guarda el
+// estado dentro de la sesión.
+let _prsOpen=false;
+function togglePRs(){_prsOpen=!_prsOpen;renderPRsInProfile(CUR.clientId);}
+function _prRowHtml(pr){return `<div class="pr-row">
+    <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${pr.icon}</div>
+    <div style="flex:1;min-width:0">
+      <div class="pr-ex-name">${esc(pr.name)}</div>
+      <div class="pr-ex-date">${new Date(pr.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
+      <div style="font-size:10px;color:var(--t2)">${(pr.unit||'kg')==='kg'?`${pr.reps} reps`:'récord'}</div>
+    </div>
+  </div>`;}
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
   const con=document.getElementById('cn-pr-list');if(!con)return;
@@ -5607,17 +5640,14 @@ function renderPRsInProfile(clientId){
     con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords 💪</div>';
     return;
   }
-  con.innerHTML=list.map(pr=>`<div class="pr-row">
-    <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${pr.icon}</div>
-    <div style="flex:1;min-width:0">
-      <div class="pr-ex-name">${esc(pr.name)}</div>
-      <div class="pr-ex-date">${new Date(pr.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
-    </div>
-    <div style="text-align:right">
-      <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
-      <div style="font-size:10px;color:var(--t2)">${(pr.unit||'kg')==='kg'?`${pr.reps} reps`:'récord'}</div>
-    </div>
-  </div>`).join('');
+  const COLLAPSE_AT=3, PEEK=2;
+  if(list.length>COLLAPSE_AT && !_prsOpen){
+    con.innerHTML=list.slice(0,PEEK).map(_prRowHtml).join('')+
+      `<button class="collapse-more" onclick="togglePRs()">Ver mis ${list.length} récords ▾</button>`;
+  } else {
+    con.innerHTML=list.map(_prRowHtml).join('')+
+      (list.length>COLLAPSE_AT?`<button class="collapse-more" onclick="togglePRs()">Ver menos ▴</button>`:'');
+  }
 }
 
 function renderClientProfile(client){
@@ -5638,7 +5668,43 @@ function renderClientProfile(client){
   renderMedidasClient(client.id);
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
+  renderAccountActions(client);
   applyProfileDisclosure(client.id);
+}
+
+// Tarjeta "Cuenta" → eliminar cuenta y datos (derecho de supresión / requisito Play Store).
+// Solo para asesorados reales en modo auth. El coach en su PROPIO entrenamiento (COACH_SELF)
+// NO la ve: borraría su cuenta de coach. El coach elimina asesorados desde su panel (delClient).
+function renderAccountActions(client){
+  const el=document.getElementById('cn-danger-card'); if(!el)return;
+  if(!AUTH_MODE||COACH_SELF||AUTH_ROLE==='coach'){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="card" style="margin-bottom:12px;border-color:var(--rd)">
+    <div class="ch"><div class="ctitle" style="color:var(--rd)">Cuenta</div></div>
+    <div class="cb">
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Eliminar tu cuenta borra de forma permanente tu perfil, rutinas, progreso, fotos y medidas. No se puede deshacer.</div>
+      <button class="btn bo bsm" onclick="deleteMyAccount()" style="color:var(--rd);border-color:var(--rd)">🗑️ Eliminar mi cuenta y mis datos</button>
+    </div>
+  </div>`;
+}
+
+async function deleteMyAccount(){
+  if(COACH_SELF){ toast('Esta es tu cuenta de coach. Elimina asesorados desde tu panel.'); return; }
+  if(!confirm('¿Eliminar tu cuenta de AVI?\n\nSe borrarán de forma permanente tu perfil, rutinas, progreso, fotos y medidas. Esta acción NO se puede deshacer.'))return;
+  const typed=prompt('Para confirmar, escribe ELIMINAR (en mayúsculas):');
+  if((typed||'').trim().toUpperCase()!=='ELIMINAR'){ toast('Cancelado. Tu cuenta sigue activa.'); return; }
+  toast('⏳ Eliminando tu cuenta...');
+  try{
+    if(AUTH_MODE && CUR.clientId){ await UD.deleteClientRow(CUR.clientId); }
+  }catch(e){
+    warn('AVI deleteMyAccount: no se pudo borrar la fila en la nube',e&&e.message);
+    toast('No se pudo eliminar en el servidor. Revisa tu conexión e intenta de nuevo.');
+    return;
+  }
+  // Limpieza local + cierre de sesión → vuelve al login.
+  try{ await AUTH.signOut(); }catch(e){}
+  ['ax_session','ax_rem'].forEach(k=>localStorage.removeItem(k));
+  toast('Tu cuenta y tus datos fueron eliminados.');
+  setTimeout(()=>location.reload(),1300);
 }
 
 // El asesorado puede poner su propia foto de perfil (opcional). Tap en el avatar
@@ -7076,6 +7142,9 @@ function saveNutrition(){
   };
   sv('ax_nut',DB.nutrition);
   cm('m-nut');renderNutritionCoach(clientId);
+  // En el propio entrenamiento del coach (COACH_SELF) la vista visible es la del
+  // asesorado, as\u00ed que refrescamos tambi\u00e9n ese render para que el cambio se vea.
+  if(typeof renderNutritionClient==='function')renderNutritionClient(clientId);
   toast('\u2705 Plan nutricional guardado');
 }
 
@@ -7099,26 +7168,72 @@ function renderNutritionCoach(clientId){
   con.innerHTML=html;
 }
 
+// Estado de los "Ejemplos de alimentación" colapsables (dentro de la sesión).
+let _nutExOpen=false;
+function toggleNutEx(){_nutExOpen=!_nutExOpen;renderNutritionClient(CUR.clientId);}
+
+// Fichas educativas de cada nutriente. Lenguaje simple, enfocado al entrenamiento
+// (audiencia = asesorado no técnico). Se abren al tocar una tarjeta del plan.
+const NUTRI_INFO={
+  kcal:{emoji:'🔥',title:'Calorías',tag:'Tu energía del día',
+    what:'Es la energía que tu cuerpo saca de la comida, como la gasolina de un carro.',
+    why:'Es el total de energía que debes comer al día para lograr tu objetivo. Si comes de más, subes de peso; de menos, bajas. Tu coach calculó este número para ti.',
+    where:'Todos los alimentos aportan calorías. Las "vacías" (gaseosa, fritos, dulces) llenan pero no nutren — prioriza comida real.'},
+  prot:{emoji:'🍗',title:'Proteína',tag:'Construye y repara músculo',
+    what:'Es el material con el que tu cuerpo construye y repara el músculo.',
+    why:'Recupera el músculo después de entrenar, te mantiene lleno por más tiempo y cuida tu masa muscular cuando estás bajando de peso. Es el macro más importante para verte fuerte.',
+    where:'Huevo, pollo, carne magra, pescado, atún, yogur griego, queso, lentejas, fríjoles y proteína en polvo.'},
+  carbs:{emoji:'🍚',title:'Carbohidratos',tag:'Tu combustible para entrenar',
+    what:'Son la fuente principal de energía rápida de tu cuerpo.',
+    why:'Te dan fuerza para entrenar duro y mantienen tu cerebro funcionando. Llenan tus músculos de energía para rendir en cada serie.',
+    where:'Arroz, papa, yuca, plátano, avena, pan, pasta y frutas. Prefiere los integrales y las frutas por encima del azúcar y las harinas refinadas.'},
+  fat:{emoji:'🥑',title:'Grasas',tag:'Esenciales — no son el enemigo',
+    what:'Son un nutriente que tu cuerpo necesita para vivir. No engordan por sí solas.',
+    why:'Regulan tus hormonas (incluida la testosterona), ayudan a absorber vitaminas y te dan energía de larga duración.',
+    where:'Aguacate, huevo, frutos secos (maní, almendras), aceite de oliva, salmón y semillas. Evita las grasas de frituras y ultraprocesados.'},
+  water:{emoji:'💧',title:'Agua',tag:'Tu cuerpo es ~60% agua',
+    what:'Sin suficiente agua, nada en tu cuerpo funciona bien.',
+    why:'Mejora tu rendimiento, evita calambres, ayuda a la digestión y a que el músculo se recupere. Tomar poca te hace rendir menos sin que te des cuenta.',
+    where:'El agua simple es lo mejor. También suman frutas y verduras con mucha agua (sandía, pepino). Limita gaseosas y jugos azucarados.'},
+};
+function openNutriInfo(key){
+  const d=NUTRI_INFO[key]; if(!d)return;
+  const body=document.getElementById('m-nutri-body'); if(!body)return;
+  body.innerHTML=`<div style="text-align:center;margin-bottom:16px;padding-top:6px">
+      <div style="font-size:42px;line-height:1">${d.emoji}</div>
+      <div class="mdtitle" style="margin:6px 0 2px">${d.title}</div>
+      <div style="font-size:12px;color:var(--g);font-weight:700">${d.tag}</div>
+    </div>
+    <div class="nutri-sec"><div class="nutri-h">¿Qué es?</div><div class="nutri-p">${d.what}</div></div>
+    <div class="nutri-sec"><div class="nutri-h">¿Para qué te sirve?</div><div class="nutri-p">${d.why}</div></div>
+    <div class="nutri-sec"><div class="nutri-h">¿Dónde lo encuentras?</div><div class="nutri-p">${d.where}</div></div>`;
+  om('m-nutri-info');
+}
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
   if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}
+  // El bot\u00f3n "Editar" solo aparece para el coach en su propio entrenamiento (COACH_SELF):
+  // as\u00ed el due\u00f1o ajusta su plan, pero los asesorados lo siguen viendo como lo dej\u00f3 el coach.
+  const editBtn=document.getElementById('cn-nut-edit'); if(editBtn)editBtn.style.display=COACH_SELF?'':'none';
   const nut=(DB.nutrition||{})[clientId];
   if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
-    con.innerHTML='<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha cargado tu plan de alimentaci\u00f3n. Escr\u00edbele si quieres que lo incluya.</div>';
+    con.innerHTML=COACH_SELF
+      ? '<div style="text-align:center;padding:20px 0;color:var(--t3)">A\u00fan no has armado tu plan. Toca \u270f\ufe0f Editar para crearlo.</div>'
+      : '<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha cargado tu plan de alimentaci\u00f3n. Escr\u00edbele si quieres que lo incluya.</div>';
     return;
   }
   let html='';
   // Macros grid
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
-    if(nut.kcal)html+=`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
-    if(nut.water)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><div style="font-size:22px;font-weight:800;color:var(--bl)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
+    if(nut.kcal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--bl)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
-      if(nut.carbs)html+=`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${nut.carbs*4} kcal</div></div>`;
-      if(nut.fat)html+=`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
+      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
+      if(nut.carbs)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${nut.carbs*4} kcal</div></div>`;
+      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
@@ -7128,16 +7243,19 @@ function renderNutritionClient(clientId){
   if(nut.examples){
     html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">\ud83d\udca1 Ejemplos de alimentaci\u00f3n</div>`;
     const lines=nut.examples.split('\n').filter(l=>l.trim());
-    lines.forEach(line=>{
+    const exRow=line=>{
       const colonIdx=line.indexOf(':');
       if(colonIdx>0){
         const label=line.slice(0,colonIdx).trim();
         const content=line.slice(colonIdx+1).trim();
-        html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
-      } else {
-        html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--t1)">${esc(line)}</div>`;
+        return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
       }
-    });
+      return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--t1)">${esc(line)}</div>`;
+    };
+    // Pocos (≤3): se muestran todos. Largos: asoman 2 y se expanden con el botón.
+    const shown=(lines.length>3 && !_nutExOpen)?lines.slice(0,2):lines;
+    shown.forEach(line=>{html+=exRow(line);});
+    if(lines.length>3)html+=`<button class="collapse-more" onclick="toggleNutEx()">${_nutExOpen?'Ver menos ▴':'Ver los '+lines.length+' ejemplos ▾'}</button>`;
     html+=`</div>`;
   }
   // Plan libre
@@ -9263,6 +9381,14 @@ function whatsappNudge(id){
       <button class="btn bg" onclick="cm('m-med')">Cancelar</button>
       <button class="btn bp" onclick="saveMedidas()">💾 Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- FICHA EDUCATIVA DE MACROS — se abre al tocar una tarjeta del plan nutricional -->
+<div class="mdbg" id="m-nutri-info" onclick="if(event.target===this)cm('m-nutri-info')">
+  <div class="md">
+    <div id="m-nutri-body"></div>
+    <div class="mdfooter"><button class="btn bp" onclick="cm('m-nutri-info')" style="width:100%">Entendido</button></div>
   </div>
 </div>
 
