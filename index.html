@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>AVI — Entrenamiento Personal</title>
 
 <!-- SEO + Social sharing -->
@@ -44,7 +44,7 @@
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--t1); overflow: hidden; }
+html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--t1); overflow: hidden; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 :root {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
   --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
@@ -2082,6 +2082,30 @@ function resetLoginAttempts(){
 // ══════════════════════ UTILS ══════════════════════
 const MC={pecho:'#E76F51',espalda:'#457B9D',hombros:'#A855F7',biceps:'#0A7C5B',triceps:'#C77DFF',piernas:'#00BFA5',gluteo:'#F4845F',core:'#E63946',cardio:'#FF6B6B',otro:'#6B6B6B'};
 const ME={pecho:'💪',espalda:'🔙',hombros:'⬆️',biceps:'🦾',triceps:'💪',piernas:'🦵',gluteo:'🍑',core:'🎯',cardio:'🏃',otro:'⚡'};
+// Íconos por grupo muscular — SILUETA de cuerpo con el músculo trabajado RESALTADO en su
+// color (estilo "músculos trabajados" de apps serias). Reemplaza los emojis genéricos.
+// Cardio y "otro" no son músculos → ícono propio (corazón / mancuerna). muscleIcon(m,size).
+const _BODY='<circle cx="12" cy="3.4" r="2.1"/><rect x="8.6" y="6.2" width="6.8" height="8" rx="2.2"/><rect x="5.4" y="6.6" width="2.4" height="6.6" rx="1.2"/><rect x="16.2" y="6.6" width="2.4" height="6.6" rx="1.2"/><rect x="9" y="14" width="2.7" height="7.4" rx="1.3"/><rect x="12.3" y="14" width="2.7" height="7.4" rx="1.3"/>';
+const MH={
+  pecho:'<rect x="8.6" y="6.2" width="6.8" height="3.7" rx="2"/>',
+  espalda:'<rect x="8.6" y="6.2" width="6.8" height="7.7" rx="2.4"/>',
+  hombros:'<rect x="8.6" y="6.2" width="6.8" height="2.1" rx="1"/><rect x="5.4" y="6.6" width="2.4" height="2.8" rx="1.2"/><rect x="16.2" y="6.6" width="2.4" height="2.8" rx="1.2"/>',
+  biceps:'<rect x="5.4" y="6.6" width="2.4" height="3.7" rx="1.2"/><rect x="16.2" y="6.6" width="2.4" height="3.7" rx="1.2"/>',
+  triceps:'<rect x="5.4" y="9.5" width="2.4" height="3.7" rx="1.2"/><rect x="16.2" y="9.5" width="2.4" height="3.7" rx="1.2"/>',
+  piernas:'<rect x="9" y="14" width="2.7" height="7.4" rx="1.3"/><rect x="12.3" y="14" width="2.7" height="7.4" rx="1.3"/>',
+  gluteo:'<rect x="8.8" y="13.3" width="6.4" height="3" rx="1.5"/>',
+  core:'<rect x="8.9" y="10" width="6.2" height="4" rx="1.6"/>',
+};
+const _ICON_HEART='<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 1c-2 3.8-8 8-8 8z"/>';
+const _ICON_DUMBBELL='<path d="M6.5 9v6"/><path d="M9 7v10"/><path d="M15 7v10"/><path d="M17.5 9v6"/><path d="M9 12h6"/>';
+function muscleIcon(muscle,size){
+  const s=size||20;
+  const m=muscle||'otro';
+  const col=MC[m]||'var(--g)';
+  if(m==='cardio') return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="${col}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block">${_ICON_HEART}</svg>`;
+  if(!MH[m]) return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="${col}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block">${_ICON_DUMBBELL}</svg>`;
+  return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true" style="display:block"><g fill="var(--t3)" opacity="0.42">${_BODY}</g><g fill="${col}">${MH[m]}</g></svg>`;
+}
 const AVC=['#0A7C5B','#457B9D','#E76F51','#A855F7','#00BFA5','#E9C46A','#E63946','#FF6B6B'];
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function ini(n){return n.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
@@ -3427,7 +3451,7 @@ function renderTfExList(){
   const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--bl);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:center;background:white;outline:none;color:var(--bl)`;
   tplExs.forEach((e,i)=>{
     html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--bl)'};border-radius:var(--rsm);margin-bottom:6px">
-      <span style="font-size:17px">${e.icon||'💪'}</span>
+      ${muscleIcon(e.muscle,20)}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
         <div style="font-size:11px;color:var(--t2)">${e.muscle} · ${e.type}</div>
@@ -3458,7 +3482,7 @@ function renderPickerForTarget(){
     const already=currentExs.some(e=>e.id===ex.id);
     const div=document.createElement('div');
     div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${already?'var(--g2)':'var(--br)'};background:${already?'var(--gl)':'var(--w)'};margin-bottom:3px;transition:all .15s`;
-    div.innerHTML=`<span style="font-size:19px">${ex.icon||'💪'}</span><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
+    div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
     div.onclick=()=>{
       if(already){toast('Ya está en la lista');return}
       if(pickerTarget==='template'){tplExs.push({...ex});renderTfExList();}
@@ -3695,7 +3719,7 @@ function renderExerciseProgressInto(con, clientId){
           const wrap=document.getElementById('${cardId}_chart');
           if(wrap&&!wrap.dataset.drawn){wrap.dataset.drawn='1';drawExProgChart(wrap,${JSON.stringify(pts)},'${color}','${unit}');}
         }">
-        <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${esc(ex.icon||'💪')}</div>
+        <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${muscleIcon(ex.muscle,20)}</div>
         <div style="flex:1;min-width:0">
           <div class="exprog-name">${esc(ex.name)}</div>
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${pts.length} sesión${pts.length!==1?'es':''} · <span style="color:${trendColor};font-weight:600">${trendStr}</span></div>
@@ -3807,7 +3831,7 @@ function renderProgressPanel(){
       _progMatches[adjId]=matches;
       const wrap=document.createElement('div');
       wrap.innerHTML=`<div class="pex-row" onclick="togglePexRow('${chartId}')">
-        <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${esc(ex.icon||'💪')}</div>
+        <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ex.name)}</div>
           <div style="font-size:10px;color:var(--t2)">${pts.length} sesión${pts.length!==1?'es':''}</div>
@@ -5212,7 +5236,7 @@ function renderRfExList(){
     const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
     html+=`<div style="background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px;overflow:hidden">
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
-        <span style="font-size:18px;flex-shrink:0">${e.icon||'💪'}</span>
+        ${muscleIcon(e.muscle,20)}
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</div>
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${e.muscle} · ${e.type}</div>
@@ -5620,7 +5644,7 @@ function checkAndUpdatePRs(routine){
 let _prsOpen=false;
 function togglePRs(){_prsOpen=!_prsOpen;renderPRsInProfile(CUR.clientId);}
 function _prRowHtml(pr){return `<div class="pr-row">
-    <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${pr.icon}</div>
+    <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${muscleIcon(pr.muscle,20)}</div>
     <div style="flex:1;min-width:0">
       <div class="pr-ex-name">${esc(pr.name)}</div>
       <div class="pr-ex-date">${new Date(pr.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
@@ -6796,7 +6820,7 @@ function renderClientHistory(clientId){
           },0);
           return `<div style="margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-              <span style="font-size:16px">${ex.icon||'💪'}</span>
+              ${muscleIcon(ex.muscle,18)}
               <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
               ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
             </div>
@@ -8956,7 +8980,7 @@ function _showExSheet(ex, isCoach, editable){
     if(heroEl) heroEl.classList.add('has-photo');
   } else {
     iconEl.innerHTML = '';
-    iconEl.textContent = ex.icon || '💪';
+    iconEl.innerHTML = muscleIcon(ex.muscle, 34);
     iconEl.style.background = color + '20';
     if(heroEl) heroEl.classList.remove('has-photo');
   }
