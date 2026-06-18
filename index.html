@@ -2187,11 +2187,26 @@ const UD={
     return await this.upsertOwn(row);
   },
   // Para el coach: todas las filas donde él es el coach (coach_id = su uid). RLS las filtra.
+  // Lazy-load: la lista del coach solo necesita perfil/rutinas + history/msgs/bodyweight
+  // (dashboard, tarjetas, bandeja y sparkline de peso). Las colecciones pesadas
+  // (photos/prs/medidas/nutrition) se traen al abrir cada cliente (loadClientHeavy) → con
+  // 300 socios la carga del panel es liviana en vez de bajar todas las fotos de una.
   async loadCoachClients(){
     const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return [];
-    const {data,error}=await c.from('user_data').select('*').eq('coach_id',u.id);
+    const {data,error}=await c.from('user_data')
+      .select('user_id,coach_id,role,profile,routines,history,msgs,bodyweight,updated_at')
+      .eq('coach_id',u.id);
     if(error){warn('UD.loadCoachClients:',error.message);return [];}
     return data||[];
+  },
+  // Colecciones pesadas de UN cliente, bajo demanda (al abrir su detalle). Ver _ensureClientHeavy.
+  async loadClientHeavy(clientId){
+    const c=AUTH.client();if(!c)return null;
+    const {data,error}=await c.from('user_data')
+      .select('prs,medidas,nutrition,photos')
+      .eq('user_id',clientId).maybeSingle();
+    if(error){warn('UD.loadClientHeavy:',error.message);return null;}
+    return data;
   },
   // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
   // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.
@@ -3701,6 +3716,7 @@ function drawExProgChart(container, points, color, unit){
 }
 
 // Render exercise progress list into a container element
+let _exProgOpen={}; // clientId -> mostrar TODOS los ejercicios (colapsado por defecto)
 function renderExerciseProgressInto(con, clientId){
   if(!con)return;
   const exList=buildExerciseProgress(clientId);
@@ -3709,7 +3725,9 @@ function renderExerciseProgressInto(con, clientId){
     return;
   }
   con.innerHTML='';
-  exList.forEach((ex,idx)=>{
+  const _open=_exProgOpen[clientId];
+  const _shown=(exList.length>3 && !_open)?exList.slice(0,3):exList;
+  _shown.forEach((ex,idx)=>{
     const pts=ex.points;
     const unit=ex.unit||'kg';
     const pr=Math.max(...pts.map(p=>p.maxKg));
@@ -3751,6 +3769,13 @@ function renderExerciseProgressInto(con, clientId){
       </div>`;
     con.appendChild(card);
   });
+  if(exList.length>3){
+    const mb=document.createElement('button');
+    mb.className='collapse-more';
+    mb.textContent=_open?'Ver menos ▴':`Ver los ${exList.length} ejercicios ▾`;
+    mb.onclick=()=>{_exProgOpen[clientId]=!_open;renderExerciseProgressInto(con,clientId);};
+    con.appendChild(mb);
+  }
 }
 
 // Client-side: render into profile tab
@@ -4624,21 +4649,37 @@ async function _enterAuthSession(authUser){
 // 2.2e-1 = solo lectura/visualización; la escritura del coach (convertir/editar/chat)
 // se conecta en 2.2e-2 (por ahora _persistAuthUser la difiere en rol coach).
 // Carga las filas de los clientes del coach al DB (reusado al entrar y al volver de "Mi entrenamiento").
+// Clientes cuyas colecciones pesadas ya se trajeron en esta sesión (cache del lazy-load).
+let _heavyLoaded={};
 async function _loadCoachClientsIntoDB(){
   const rows=await UD.loadCoachClients();
   DB.clients=rows.map(rowToClient);
   DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
+  _heavyLoaded={};
   rows.forEach(r=>{
     const id=r.user_id;
+    // Lo que la lista del coach SÍ usa (viene en loadCoachClients):
     DB.history[id]   =r.history   ||[];
     DB.msgs[id]      =r.msgs      ||[];
-    DB.prs[id]       =r.prs       ||{};
     DB.bodyweight[id]=r.bodyweight||[];
-    DB.medidas[id]   =r.medidas   ||[];
-    DB.nutrition[id] =r.nutrition ||{};
-    DB.photos[id]    =r.photos    ||[];
+    // Pesadas: vacías hasta abrir el cliente (_ensureClientHeavy las llena).
+    DB.prs[id]={};DB.medidas[id]=[];DB.nutrition[id]={};DB.photos[id]=[];
   });
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
+}
+// Trae las colecciones pesadas de un cliente la primera vez que el coach abre su detalle.
+// No-op en modo legacy (blob): allí DB ya tiene todo. Idempotente por _heavyLoaded.
+async function _ensureClientHeavy(id){
+  if(!AUTH_MODE)return;
+  if(_heavyLoaded[id])return;
+  const h=await UD.loadClientHeavy(id);
+  if(h){
+    DB.prs[id]      =h.prs      ||{};
+    DB.medidas[id]  =h.medidas  ||[];
+    DB.nutrition[id]=h.nutrition||{};
+    DB.photos[id]   =h.photos   ||[];
+  }
+  _heavyLoaded[id]=true;
 }
 
 async function _enterCoachAuth(authUser, ownRow){
@@ -4866,8 +4907,9 @@ function convertToPremium(cid){
   openDetail(cid);renderClients();renderHome();
 }
 
-function openDetail(id){
+async function openDetail(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
+  await _ensureClientHeavy(id); // carga diferida: fotos/medidas/nutrición/PRs de ESTE cliente
   const av=document.getElementById('d-av');
   if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
   else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.backgroundImage='';}
@@ -6859,13 +6901,16 @@ function renderClientHistory(clientId){
 }
 
 // COACH sees client history
+let _histOpen={}; // clientId -> mostrar TODAS las sesiones (colapsado por defecto)
 function renderCoachClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
   const con=document.getElementById('d-history');if(!con)return;
   if(!sessions.length){con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:12px 0;text-align:center">Sin sesiones registradas todavía</div>';return;}
   con.innerHTML='';
-  sessions.slice(0,8).forEach(s=>{
+  const _open=_histOpen[clientId];
+  const _shown=_open?sessions:sessions.slice(0,3);
+  _shown.forEach(s=>{
     const d=new Date(s.date);
     const dateStr=d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
@@ -6876,6 +6921,13 @@ function renderCoachClientHistory(clientId){
     div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div>`;
     con.appendChild(div);
   });
+  if(sessions.length>3){
+    const mb=document.createElement('button');
+    mb.className='collapse-more';
+    mb.textContent=_open?'Ver menos ▴':`Ver las ${sessions.length} sesiones ▾`;
+    mb.onclick=()=>{_histOpen[clientId]=!_open;renderCoachClientHistory(clientId);};
+    con.appendChild(mb);
+  }
 }
 function markMsgsRead(){
   if(!CUR.clientId)return;
