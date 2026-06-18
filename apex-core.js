@@ -1019,6 +1019,59 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal) {
   return { prot_g, fat_g, carb_g, kcal: kcalObj };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// GAMIFICACIÓN — nivel permanente + descuento del mes (lo ve el coach)
+// ──────────────────────────────────────────────────────────────────────
+// Lógica pura sin DOM ni DB. El nivel premia el TOTAL histórico de entrenos
+// (nunca baja). El descuento mide la ADHERENCIA del ciclo de renovación
+// actual (entre el penúltimo y el último pago) y la mapea a tramos de %.
+// gxDiscount/gxNextTier reciben `now` opcional para ser deterministas en test
+// (default Date.now(), preserva el comportamiento del navegador).
+
+const GX_LEVELS = [{ n: 1, name: 'Arranque', min: 0 }, { n: 2, name: 'Constante', min: 10 }, { n: 3, name: 'Comprometido', min: 30 }, { n: 4, name: 'Imparable', min: 60 }, { n: 5, name: 'Élite AVI', min: 120 }];
+const GX_WEEK = 7 * 86400000;
+
+// Nivel permanente según el total de entrenamientos completados.
+// Devuelve { cur, next, pct (avance al siguiente), rem (entrenos que faltan) }.
+function gxLevel(total) {
+  let cur = GX_LEVELS[0];
+  for (const l of GX_LEVELS) { if (total >= l.min) cur = l; }
+  const i = GX_LEVELS.indexOf(cur), next = GX_LEVELS[i + 1] || null;
+  let pct = 100, rem = 0;
+  if (next) { pct = Math.max(0, Math.min(100, Math.round(((total - cur.min) / (next.min - cur.min)) * 100))); rem = Math.max(0, next.min - total); }
+  return { cur, next, pct, rem };
+}
+
+// Descuento del mes: adherencia del ciclo de renovación actual → tramo de %.
+// Ventana = [penúltimo pago, último pago]; con un solo pago, el mes previo a él.
+// Cuenta sesiones reales (con series o volumen) en la ventana hasta `now`.
+function gxDiscount(client, hist, now) {
+  client = client || {};
+  const pays = (client.payments || []).slice().sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  if (!pays.length) return null;
+  const end = new Date(pays[pays.length - 1].dueDate).getTime();
+  let start;
+  if (pays.length >= 2) { start = new Date(pays[pays.length - 2].dueDate).getTime(); }
+  else { const d = new Date(end); d.setMonth(d.getMonth() - 1); start = d.getTime(); }
+  const ref = now != null ? new Date(now).getTime() : Date.now();
+  const done = (hist || []).filter(h => { const t = new Date(h.date).getTime(); return t >= start && t <= ref && (h.doneSets > 0 || h.totalVol > 0); }).length;
+  const perWeek = (client.routines || []).filter(r => r.day && r.day !== 'Libre').length || parseInt(client.days) || 3;
+  const weeks = Math.max(1, Math.round((end - start) / GX_WEEK));
+  const expected = Math.max(1, perWeek * weeks);
+  const adh = Math.min(1, done / expected);
+  let pct = 0; if (adh >= 1) pct = 15; else if (adh >= .8) pct = 10; else if (adh >= .6) pct = 5;
+  const daysLeft = Math.max(0, Math.ceil((end - ref) / 86400000));
+  return { done, expected, adh, pct, daysLeft, renewal: new Date(end) };
+}
+
+// Próximo tramo de descuento alcanzable + cuántas sesiones faltan para él.
+// d = salida de gxDiscount. Ya en el tope (15%) → null.
+function gxNextTier(d) {
+  const tgt = d.adh < .6 ? { p: 5, a: .6 } : d.adh < .8 ? { p: 10, a: .8 } : d.adh < 1 ? { p: 15, a: 1 } : null;
+  if (!tgt) return null;
+  return { pct: tgt.p, need: Math.max(1, Math.ceil(tgt.a * d.expected) - d.done) };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1075,5 +1128,9 @@ if (typeof module !== 'undefined' && module.exports) {
     USER_DATA_COLLECTIONS,
     clientToRow,
     rowToClient,
+    GX_LEVELS,
+    gxLevel,
+    gxDiscount,
+    gxNextTier,
   };
 }

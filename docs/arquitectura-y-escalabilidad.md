@@ -104,8 +104,14 @@ tests verdes + verificación de render antes de desplegar.
     (Mifflin-St Jeor), `calcTDEE`, `getRctLabel` (hermano de `getIccLabel`),
     `getGoalMsg`, `kcalTargetFor`, `calcMacrosFromKcal` (+13 tests). Sacó ~75
     líneas de lógica pura enterrada en el render de la valoración. 157 → 170.
-  - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes,
-    cálculos de progreso que no dependan de `DB`. Regla: solo lógica SIN DOM ni `DB`.
+  - Paso 4 ✅: gamificación → `apex-core.js`: `GX_LEVELS`, `gxLevel` (nivel
+    permanente), `gxDiscount` (descuento del mes por adherencia, `now` opcional
+    para tests deterministas), `gxNextTier` (+8 tests). Lógica del descuento que
+    ve el coach, antes sin un solo test. 170 → 178. `renderGamification` se queda
+    como consumidor DOM.
+  - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes
+    (`fmtT`/`fmtD`), `buildExerciseProgress` (cálculo de progreso, hoy lee `DB`
+    directo → habría que inyectarle history/prs). Regla: solo lógica SIN DOM ni `DB`.
 
 ### Deuda menor anotada
 - Advisor de Supabase: `user_data` tiene dos políticas DELETE permisivas
