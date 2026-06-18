@@ -4936,16 +4936,9 @@ function renderValoracion(c){
   }
 
 
-  // ── TMB (Harris-Benedict revisado por Mifflin-St Jeor) ──
-  let tmb = null;
-  if(age && sex){
-    if(sex==='M') tmb = 10*w + 6.25*h - 5*age + 5;
-    else          tmb = 10*w + 6.25*h - 5*age - 161;
-    tmb = Math.round(tmb);
-  }
-
-  // ── TDEE (Total Daily Energy Expenditure) ──
-  const tdee = tmb ? Math.round(tmb * af) : null;
+  // ── TMB (Mifflin-St Jeor) y TDEE → apex-core.js ──
+  const tmb = calcTMB(w, h, age, sex);
+  const tdee = calcTDEE(tmb, af);
 
   // ── RCT e ICC (reemplaza peso ideal y BMI) ──
   const latestMed = (DB.medidas && DB.medidas[c.id] && DB.medidas[c.id].length)
@@ -4959,66 +4952,16 @@ function renderValoracion(c){
   if(cinturaCm && h) rct = cinturaCm / parseFloat(h);
   if(cinturaCm && caderaCm) icc = cinturaCm / caderaCm;
 
-  function getRctLabel(v){
-    if(v < 0.40) return {label:'Muy delgado/a', color:'var(--bl)'};
-    if(v < 0.50) return {label:'Óptimo', color:'var(--g2)'};
-    if(v < 0.60) return {label:'Riesgo moderado', color:'var(--yl)'};
-    return {label:'Riesgo elevado', color:'var(--rd)'};
-  }
-  // getIccLabel → apex-core.js (fuente única de verdad)
-
+  // getRctLabel / getIccLabel → apex-core.js (fuente única de verdad)
   const rctInfo = rct ? getRctLabel(rct) : null;
   const iccInfo = icc ? getIccLabel(icc, sexCode) : null;
 
-  function getGoalMsg(goal, rct){
-    const rctOk = !rct || rct < 0.50;
-    if(goal && (goal.includes('músculo') || goal.includes('Ganar'))){
-      return rctOk
-        ? '💪 Tu composición es favorable para ganar músculo. Enfócate en el progreso de carga, no en la balanza.'
-        : '💪 Tu objetivo es ganar músculo. El peso puede subir — eso es normal y esperado. Monitorea la cintura como referencia de salud.';
-    }
-    if(goal && goal.includes('grasa')){
-      if(!rct) return '📉 Registra tu cintura para un seguimiento más preciso.';
-      if(rct >= 0.60) return '📉 Tu relación cintura-talla indica riesgo elevado. Reducir 10% de cintura tiene impacto real en tu salud.';
-      if(rct >= 0.50) return '📉 Estás en zona de mejora. Cada cm menos en cintura importa más que los kilos en la balanza.';
-      return '📉 Tu relación cintura-talla está en zona óptima. Mantenerla es tu principal meta de salud.';
-    }
-    if(goal && goal.includes('omposición')){
-      return '⚖️ En recomposición el peso puede mantenerse igual mientras tu cuerpo cambia. Mide la cintura cada 3 semanas.';
-    }
-    if(goal && goal.includes('uerza')){
-      return '🏋️ Para fuerza máxima, la relación cintura-talla indica salud metabólica. El peso en sí es secundario al rendimiento.';
-    }
-    return rctOk
-      ? '✅ Tu relación cintura-talla está en zona saludable.'
-      : '📊 Mantener la relación cintura-talla por debajo de 0.50 es el indicador de salud más importante.';
-  }
+  // getGoalMsg → apex-core.js (fuente única de verdad)
 
-  // ── Calorías objetivo según meta ──
-  let kcalObj = tdee, kcalLabel = '', deficit = 0;
-  if(tdee){
-    switch(goal){
-      case 'Perder grasa':    deficit=-500; kcalLabel='Déficit de 500 kcal/día (aprox. 0.5 kg/sem)'; break;
-      case 'Ganar músculo':   deficit=+350; kcalLabel='Superávit de 350 kcal/día (ganancia limpia)'; break;
-      case 'Recomposición':   deficit=0;    kcalLabel='Mantenimiento + ciclado calórico'; break;
-      case 'Fuerza':          deficit=+200; kcalLabel='Superávit moderado para rendimiento'; break;
-      case 'Resistencia':     deficit=0;    kcalLabel='Mantenimiento con foco en carbohidratos'; break;
-      default:                deficit=0;    kcalLabel='Mantenimiento calórico'; break;
-    }
-    kcalObj = tdee + deficit;
-  }
-
-  // ── Macros sugeridos ──
-  let macros = null;
-  if(kcalObj && w){
-    const prot_g = Math.round(w * (goal==='Ganar músculo'||goal==='Fuerza' ? 2.2 : 1.8));
-    const prot_kcal = prot_g * 4;
-    const fat_g  = Math.round(w * 0.9);
-    const fat_kcal = fat_g * 9;
-    const carb_kcal = Math.max(0, kcalObj - prot_kcal - fat_kcal);
-    const carb_g = Math.round(carb_kcal / 4);
-    macros = {prot_g, fat_g, carb_g, kcal: kcalObj};
-  }
+  // ── Calorías objetivo y macros sugeridos → apex-core.js ──
+  const _kcalT = kcalTargetFor(goal, tdee);
+  const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
+  const macros = calcMacrosFromKcal(kcalObj, w, goal);
 
   // ── Render ──
   const statBox = (icon, label, val, sub, color) =>

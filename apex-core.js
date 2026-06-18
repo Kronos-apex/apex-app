@@ -932,6 +932,93 @@ function inferNutGoal(nut) {
   return null;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// VALORACIÓN NUTRICIONAL / COMPOSICIÓN (panel del coach)
+// ──────────────────────────────────────────────────────────────────────
+// Fórmulas estándar, SIN DOM ni DB. Antes vivían sueltas dentro del render
+// de la valoración (~150 líneas) sin tests. Todas toleran datos faltantes
+// devolviendo null (TMB/TDEE/macros) o el caso por defecto, para que el
+// render decida qué mostrar. getRctLabel es el hermano de getIccLabel.
+
+// TMB — gasto basal por Mifflin-St Jeor. Requiere peso, altura, edad y sexo;
+// si falta alguno → null (no se puede estimar). Redondeado a entero (kcal/día).
+function calcTMB(weightKg, heightCm, age, sex) {
+  const w = parseFloat(weightKg), h = parseFloat(heightCm), a = parseInt(age);
+  if (!w || !h || !a || !sex) return null;
+  const base = 10 * w + 6.25 * h - 5 * a;
+  return Math.round(sex === 'M' ? base + 5 : base - 161);
+}
+
+// TDEE — gasto total = TMB × factor de actividad. Sin TMB → null.
+function calcTDEE(tmb, activityFactor) {
+  if (!tmb) return null;
+  const af = parseFloat(activityFactor) || 1.55;
+  return Math.round(tmb * af);
+}
+
+// Etiqueta de riesgo por relación cintura-talla (RCT = cintura/estatura).
+// Mismos cortes que ya usaba el render. Color = token CSS.
+function getRctLabel(v) {
+  if (v < 0.40) return { label: 'Muy delgado/a', color: 'var(--bl)' };
+  if (v < 0.50) return { label: 'Óptimo', color: 'var(--g2)' };
+  if (v < 0.60) return { label: 'Riesgo moderado', color: 'var(--yl)' };
+  return { label: 'Riesgo elevado', color: 'var(--rd)' };
+}
+
+// Mensaje educativo según objetivo + RCT (cintura/talla). rct null = sin medida.
+// El foco es enseñar que la composición/cintura pesa más que la balanza.
+function getGoalMsg(goal, rct) {
+  const rctOk = !rct || rct < 0.50;
+  if (goal && (goal.includes('músculo') || goal.includes('Ganar'))) {
+    return rctOk
+      ? '💪 Tu composición es favorable para ganar músculo. Enfócate en el progreso de carga, no en la balanza.'
+      : '💪 Tu objetivo es ganar músculo. El peso puede subir — eso es normal y esperado. Monitorea la cintura como referencia de salud.';
+  }
+  if (goal && goal.includes('grasa')) {
+    if (!rct) return '📉 Registra tu cintura para un seguimiento más preciso.';
+    if (rct >= 0.60) return '📉 Tu relación cintura-talla indica riesgo elevado. Reducir 10% de cintura tiene impacto real en tu salud.';
+    if (rct >= 0.50) return '📉 Estás en zona de mejora. Cada cm menos en cintura importa más que los kilos en la balanza.';
+    return '📉 Tu relación cintura-talla está en zona óptima. Mantenerla es tu principal meta de salud.';
+  }
+  if (goal && goal.includes('omposición')) {
+    return '⚖️ En recomposición el peso puede mantenerse igual mientras tu cuerpo cambia. Mide la cintura cada 3 semanas.';
+  }
+  if (goal && goal.includes('uerza')) {
+    return '🏋️ Para fuerza máxima, la relación cintura-talla indica salud metabólica. El peso en sí es secundario al rendimiento.';
+  }
+  return rctOk
+    ? '✅ Tu relación cintura-talla está en zona saludable.'
+    : '📊 Mantener la relación cintura-talla por debajo de 0.50 es el indicador de salud más importante.';
+}
+
+// Calorías objetivo según meta. Devuelve { kcalObj, label, deficit }. Sin TDEE
+// → kcalObj null (no hay base sobre la cual aplicar déficit/superávit).
+function kcalTargetFor(goal, tdee) {
+  let deficit = 0, label = 'Mantenimiento calórico';
+  switch (goal) {
+    case 'Perder grasa':  deficit = -500; label = 'Déficit de 500 kcal/día (aprox. 0.5 kg/sem)'; break;
+    case 'Ganar músculo': deficit = +350; label = 'Superávit de 350 kcal/día (ganancia limpia)'; break;
+    case 'Recomposición': deficit = 0;    label = 'Mantenimiento + ciclado calórico'; break;
+    case 'Fuerza':        deficit = +200; label = 'Superávit moderado para rendimiento'; break;
+    case 'Resistencia':   deficit = 0;    label = 'Mantenimiento con foco en carbohidratos'; break;
+    default:              deficit = 0;    label = 'Mantenimiento calórico'; break;
+  }
+  return { kcalObj: tdee ? tdee + deficit : null, label, deficit };
+}
+
+// Macros desde las calorías objetivo: proteína por kg (2.2 g si músculo/fuerza,
+// si no 1.8), grasa 0.9 g/kg, el resto a carbohidratos (mínimo 0). Sin kcal o
+// sin peso → null. Devuelve { prot_g, fat_g, carb_g, kcal }.
+function calcMacrosFromKcal(kcalObj, weightKg, goal) {
+  const w = parseFloat(weightKg);
+  if (!kcalObj || !w) return null;
+  const prot_g = Math.round(w * (goal === 'Ganar músculo' || goal === 'Fuerza' ? 2.2 : 1.8));
+  const fat_g = Math.round(w * 0.9);
+  const carb_kcal = Math.max(0, kcalObj - prot_g * 4 - fat_g * 9);
+  const carb_g = Math.round(carb_kcal / 4);
+  return { prot_g, fat_g, carb_g, kcal: kcalObj };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -945,6 +1032,12 @@ if (typeof module !== 'undefined' && module.exports) {
     feelingLabel,
     inferNutGoal,
     getIccLabel,
+    getRctLabel,
+    getGoalMsg,
+    calcTMB,
+    calcTDEE,
+    kcalTargetFor,
+    calcMacrosFromKcal,
     getSexCode,
     calcMacrosSugeridos,
     migrateRoutineIds,

@@ -48,6 +48,12 @@ const {
   feelingEmoji,
   feelingLabel,
   inferNutGoal,
+  calcTMB,
+  calcTDEE,
+  getRctLabel,
+  getGoalMsg,
+  kcalTargetFor,
+  calcMacrosFromKcal,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1279,6 +1285,78 @@ test('inferNutGoal: infiere del texto del plan', () => {
 test('inferNutGoal: sin pista → null', () => {
   assert.strictEqual(inferNutGoal({ plan: 'come sano' }), null);
   assert.strictEqual(inferNutGoal(null), null);
+});
+
+// ══════════════════════════════════════════════════════
+section('Valoración nutricional / composición');
+
+test('calcTMB: Mifflin-St Jeor por sexo', () => {
+  // Hombre 80kg/180cm/30: 10·80 + 6.25·180 - 5·30 + 5 = 1780
+  assert.strictEqual(calcTMB(80, 180, 30, 'M'), 1780);
+  // Mujer 60kg/165cm/30: 10·60 + 6.25·165 - 5·30 - 161 = 1320.25 → 1320
+  assert.strictEqual(calcTMB(60, 165, 30, 'F'), 1320);
+});
+test('calcTMB: falta algún dato → null', () => {
+  assert.strictEqual(calcTMB(0, 180, 30, 'M'), null);
+  assert.strictEqual(calcTMB(80, 180, 30, ''), null);
+  assert.strictEqual(calcTMB(80, 180, null, 'M'), null);
+});
+test('calcTDEE: TMB × factor (default 1.55)', () => {
+  assert.strictEqual(calcTDEE(1780, 1.2), 2136);
+  assert.strictEqual(calcTDEE(1780, null), Math.round(1780 * 1.55));
+  assert.strictEqual(calcTDEE(null, 1.5), null);
+});
+
+test('getRctLabel: cortes de riesgo cintura-talla', () => {
+  assert.strictEqual(getRctLabel(0.35).label, 'Muy delgado/a');
+  assert.strictEqual(getRctLabel(0.45).label, 'Óptimo');
+  assert.strictEqual(getRctLabel(0.55).label, 'Riesgo moderado');
+  assert.strictEqual(getRctLabel(0.65).label, 'Riesgo elevado');
+});
+
+test('getGoalMsg: ganar músculo varía con RCT', () => {
+  assert.ok(/favorable/.test(getGoalMsg('Ganar músculo', 0.45)));
+  assert.ok(/normal y esperado/.test(getGoalMsg('Ganar músculo', 0.62)));
+});
+test('getGoalMsg: perder grasa según RCT (incl. sin medida)', () => {
+  assert.ok(/Registra tu cintura/.test(getGoalMsg('Perder grasa', null)));
+  assert.ok(/riesgo elevado/.test(getGoalMsg('Perder grasa', 0.61)));
+  assert.ok(/zona óptima/.test(getGoalMsg('Perder grasa', 0.45)));
+});
+test('getGoalMsg: default saludable vs por mejorar', () => {
+  assert.ok(/zona saludable/.test(getGoalMsg('Salud general', 0.45)));
+  assert.ok(/por debajo de 0.50/.test(getGoalMsg('Salud general', 0.55)));
+});
+
+test('kcalTargetFor: aplica déficit/superávit sobre TDEE', () => {
+  assert.strictEqual(kcalTargetFor('Perder grasa', 2000).kcalObj, 1500);
+  assert.strictEqual(kcalTargetFor('Ganar músculo', 2000).kcalObj, 2350);
+  assert.strictEqual(kcalTargetFor('Fuerza', 2000).kcalObj, 2200);
+  assert.strictEqual(kcalTargetFor('Salud general', 2000).kcalObj, 2000);
+});
+test('kcalTargetFor: sin TDEE → kcalObj null', () => {
+  assert.strictEqual(kcalTargetFor('Perder grasa', null).kcalObj, null);
+});
+
+test('calcMacrosFromKcal: proteína sube en músculo/fuerza; carbs = resto', () => {
+  // 80kg, 2350 kcal, Ganar músculo → prot 2.2·80=176, fat 0.9·80=72
+  const m = calcMacrosFromKcal(2350, 80, 'Ganar músculo');
+  assert.strictEqual(m.prot_g, 176);
+  assert.strictEqual(m.fat_g, 72);
+  // carbs = (2350 - 176·4 - 72·9)/4 = (2350 - 704 - 648)/4 = 998/4 = 249.5 → 250
+  assert.strictEqual(m.carb_g, 250);
+  assert.strictEqual(m.kcal, 2350);
+});
+test('calcMacrosFromKcal: objetivo no-fuerza usa 1.8 g/kg', () => {
+  assert.strictEqual(calcMacrosFromKcal(2000, 70, 'Perder grasa').prot_g, Math.round(70 * 1.8));
+});
+test('calcMacrosFromKcal: sin kcal o sin peso → null', () => {
+  assert.strictEqual(calcMacrosFromKcal(null, 80, 'Fuerza'), null);
+  assert.strictEqual(calcMacrosFromKcal(2000, 0, 'Fuerza'), null);
+});
+test('calcMacrosFromKcal: carbohidratos nunca negativos', () => {
+  // kcal absurdamente bajas → carbs colapsan a 0, no negativo
+  assert.strictEqual(calcMacrosFromKcal(100, 80, 'Fuerza').carb_g, 0);
 });
 
 // ══════════════════════════════════════════════════════

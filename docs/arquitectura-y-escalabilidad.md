@@ -1,6 +1,6 @@
 # Arquitectura y escalabilidad de AVI
 
-> Documento vivo. Última revisión: 2026-06-17.
+> Documento vivo. Última revisión: 2026-06-18.
 > Objetivo: que cualquiera (incluido el yo del futuro) entienda cómo está armada
 > la app, qué tan lejos llega como está, y en qué orden profesionalizarla.
 
@@ -100,6 +100,10 @@ tests verdes + verificación de render antes de desplegar.
   - Paso 1 ✅: `MS` (membresía: getStatus/canLogin/badge) → `apex-core.js` (+8 tests).
   - Paso 2 ✅: `fmtMetric`, `fmtDuration`, `WF_FEELINGS`+`feelingEmoji/Label`,
     `inferNutGoal` → `apex-core.js` (+9 tests). apex.test.js: 140 → 157.
+  - Paso 3 ✅: valoración nutricional/composición → `apex-core.js`: `calcTMB`
+    (Mifflin-St Jeor), `calcTDEE`, `getRctLabel` (hermano de `getIccLabel`),
+    `getGoalMsg`, `kcalTargetFor`, `calcMacrosFromKcal` (+13 tests). Sacó ~75
+    líneas de lógica pura enterrada en el render de la valoración. 157 → 170.
   - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes,
     cálculos de progreso que no dependan de `DB`. Regla: solo lógica SIN DOM ni `DB`.
 
