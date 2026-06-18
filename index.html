@@ -7562,13 +7562,22 @@ function drawMedChart(container,points,field,color){
 
 // ══════════════ FOTOS DE PROGRESO — SUPABASE STORAGE ══════════════
 
+// Token de la sesión del usuario para Storage. Las políticas del bucket limitan
+// subir/borrar a la propia carpeta del usuario (o a la de sus clientes, si es coach),
+// así que NO usamos la anon key para escribir. Fallback a anon solo en modo legacy.
+async function _storageToken(){
+  try{const s=await AUTH.getSession();if(s&&s.access_token)return s.access_token;}catch(e){}
+  return SB_KEY;
+}
+
 async function uploadPhotoToStorage(clientId,photoId,base64){
   const res=await fetch(base64);
   const blob=await res.blob();
   const path=`${clientId}/${photoId}.jpg`;
+  const token=await _storageToken();
   const r=await fetch(`${SB_URL}/storage/v1/object/apex-photos/${path}`,{
     method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'image/jpeg','x-upsert':'true'},
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'image/jpeg','x-upsert':'true'},
     body:blob
   });
   if(!r.ok)throw new Error('Storage upload failed: '+r.status);
@@ -7576,9 +7585,10 @@ async function uploadPhotoToStorage(clientId,photoId,base64){
 }
 
 async function deletePhotoFromStorage(clientId,photoId){
+  const token=await _storageToken();
   await fetch(`${SB_URL}/storage/v1/object/apex-photos`,{
     method:'DELETE',
-    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json'},
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
     body:JSON.stringify({prefixes:[`${clientId}/${photoId}.jpg`]})
   }).catch(()=>{});
 }
@@ -7595,6 +7605,29 @@ async function migratePhotosToStorage(){
     }
   }
   if(changed){svNow('ax_photos',DB.photos);log('AVI: fotos migradas a Storage');}
+  // Avatares en base64 → Storage. Cubre los avatares de clientes cargados (coach) y, en
+  // modo asesorado, el propio (DB.clients=[me]). Mismo camino de guardado que saveAvatar.
+  let avChanged=false;
+  for(const c of (DB.clients||[])){
+    if(c.avatar&&c.avatar.startsWith('data:image/')){
+      try{c.avatar=(await uploadPhotoToStorage(c.id,'avatar',c.avatar))+'?v='+Date.now();avChanged=true;}
+      catch(e){warn('AVI avatar migration skip:',c.id,e.message);}
+    }
+  }
+  if(avChanged){svNow('ax_c',DB.clients);log('AVI: avatares migrados a Storage');}
+  // El avatar PROPIO del coach no está en DB.clients (su fila no se carga al abrir el panel).
+  if(AUTH_ROLE==='coach'){
+    try{
+      const own=await UD.loadOwn();
+      const av=own&&own.profile&&own.profile.avatar;
+      if(typeof av==='string'&&av.startsWith('data:image/')){
+        const u=await AUTH.getUser();
+        const url=(await uploadPhotoToStorage(u.id,'avatar',av))+'?v='+Date.now();
+        await UD.upsertOwn({profile:Object.assign({},own.profile,{avatar:url})});
+        log('AVI: avatar propio del coach migrado a Storage');
+      }
+    }catch(e){warn('AVI own-avatar migration skip:',e.message);}
+  }
 }
 
 // ══════════════ FOTOS DE PROGRESO ══════════════
