@@ -87,14 +87,19 @@ Principio: **refactor incremental, nunca reescritura desde cero**; cada cambio c
 tests verdes + verificación de render antes de desplegar.
 
 - **Fase 1 — Este documento.** Mapa compartido. ✅
-- **Fase 2 — Optimizar la carga del coach.** La lista del coach trae solo lo
-  ligero (perfil/rutinas/rol); historial, fotos, medidas, mensajes, PRs y peso se
-  cargan al abrir cada cliente (lazy-load). Habilita el escenario gimnasio.
-- **Fase 3 — Fotos a Supabase Storage.** Bucket + RLS; subir/leer desde Storage;
-  guardar solo URLs en `user_data.photos`; migrar las existentes.
-- **Fase 4 — Adelgazar el monolito.** Seguir extrayendo lógica pura de
-  `index.html` a módulos al estilo `apex-core.js` (con tests), por piezas y sin
-  riesgo. Hace el código mantenible y reduce el miedo a romper algo.
+- **Fase 2 — Optimizar la carga del coach.** ✅ La lista del coach trae solo lo
+  que renderiza (perfil, rutinas, history, msgs, bodyweight para el sparkline);
+  fotos/PRs/medidas/nutrición se cargan al abrir cada cliente (`UD.loadClientHeavy`
+  + `_ensureClientHeavy`). Habilita el escenario gimnasio (300 socios).
+- **Fase 3 — Fotos a Supabase Storage.** ✅ Bucket `apex-photos` (público en
+  lectura). Subir/borrar usan el **token de sesión** del usuario; políticas
+  limitadas a la propia carpeta `{uid}/` o a la de los clientes del coach.
+  `migratePhotosToStorage` auto-sana fotos y avatares base64 que queden en el blob.
+  *(Pendiente: verificar una subida real autenticada con un cliente.)*
+- **Fase 4 — Adelgazar el monolito.** 🔄 En curso (incremental, con tests).
+  - Paso 1 ✅: `MS` (membresía: getStatus/canLogin/badge) → `apex-core.js` (+8 tests).
+  - Próximos candidatos puros: helpers de formato (`fmtMetric`, `fmtDuration`),
+    `inferNutGoal`, mapeos de feeling. Regla: solo lógica SIN DOM ni `DB`.
 
 ### Deuda menor anotada
 - Advisor de Supabase: `user_data` tiene dos políticas DELETE permisivas
