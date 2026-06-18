@@ -98,8 +98,10 @@ tests verdes + verificación de render antes de desplegar.
   *(Pendiente: verificar una subida real autenticada con un cliente.)*
 - **Fase 4 — Adelgazar el monolito.** 🔄 En curso (incremental, con tests).
   - Paso 1 ✅: `MS` (membresía: getStatus/canLogin/badge) → `apex-core.js` (+8 tests).
-  - Próximos candidatos puros: helpers de formato (`fmtMetric`, `fmtDuration`),
-    `inferNutGoal`, mapeos de feeling. Regla: solo lógica SIN DOM ni `DB`.
+  - Paso 2 ✅: `fmtMetric`, `fmtDuration`, `WF_FEELINGS`+`feelingEmoji/Label`,
+    `inferNutGoal` → `apex-core.js` (+9 tests). apex.test.js: 140 → 157.
+  - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes,
+    cálculos de progreso que no dependan de `DB`. Regla: solo lógica SIN DOM ni `DB`.
 
 ### Deuda menor anotada
 - Advisor de Supabase: `user_data` tiene dos políticas DELETE permisivas
