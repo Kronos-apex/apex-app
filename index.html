@@ -7124,19 +7124,19 @@ buildFilterBtns('exf',exFilter);
 // calcMacrosSugeridos → apex-core.js (fuente única de verdad)
 
 const NUT_TEMPLATES=[
-  {label:'Cutting 🔻',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
+  {label:'Cutting 🔻',goal:'cutting',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
    plan:'Déficit calórico moderado para perder grasa preservando músculo.\nPrioriza proteína en cada comida.',
    examples:'Desayuno: 3 claras + 1 huevo revuelto con avena y fruta\nAlmuerzo: Arroz integral, pechuga a la plancha y ensalada\nMerienda: Yogur griego con frutas\nCena: Sopa de verduras con atún al natural',
    avoid:'Azúcares simples, frituras, bebidas azucaradas, alcohol'},
-  {label:'Volumen 💪',kcal:3200,prot:180,carbs:380,fat:80,water:12,meals:'5',
+  {label:'Volumen 💪',goal:'volumen',kcal:3200,prot:180,carbs:380,fat:80,water:12,meals:'5',
    plan:'Superávit calórico limpio para ganar masa muscular con mínima grasa.\nDistribuye las comidas cada 3-4 horas.',
    examples:'Desayuno: Avena con leche, banano y 3 huevos revueltos\nMerienda AM: Batido de proteína con avena y mantequilla de maní\nAlmuerzo: Arroz, pasta o papa + carne roja o pollo + aguacate\nMerienda PM: Yogur griego con granola y frutas\nCena: Pollo o atún con camote y brócoli',
    avoid:'Comida chatarra, azúcares procesados en exceso'},
-  {label:'Mantenimiento ⚖️',kcal:2400,prot:150,carbs:270,fat:75,water:9,meals:'3',
+  {label:'Mantenimiento ⚖️',goal:'mantenimiento',kcal:2400,prot:150,carbs:270,fat:75,water:9,meals:'3',
    plan:'Balance calórico para mantener el peso y la composición corporal actual.\nCome variado y equilibrado.',
    examples:'Desayuno: Huevos, tostadas integrales y fruta\nAlmuerzo: Proteína + carbohidrato complejo + vegetales\nCena: Proteína ligera con ensalada abundante',
    avoid:'Exceso de ultraprocesados y azúcares refinados'},
-  {label:'Definición 🔥',kcal:2000,prot:175,carbs:185,fat:60,water:11,meals:'4',
+  {label:'Definición 🔥',goal:'definicion',kcal:2000,prot:175,carbs:185,fat:60,water:11,meals:'4',
    plan:'Déficit moderado con alta proteína para definir músculo y perder grasa.\nIdeal para quienes ya tienen base muscular.',
    examples:'Desayuno: Claras de huevo, avena y café sin azúcar\nAlmuerzo: Pollo o pescado, arroz integral y vegetales al vapor\nMerienda: Atún con galletas de arroz\nCena: Ensalada grande con proteína magra',
    avoid:'Sodio en exceso, alcohol, azúcares, grasas saturadas'},
@@ -7150,6 +7150,7 @@ function applyNutTemplate(idx){
   document.getElementById('nut-fat').value=t.fat;
   document.getElementById('nut-water').value=t.water;
   document.getElementById('nut-meals').value=t.meals;
+  document.getElementById('nut-goal').value=t.goal||'';
   document.getElementById('nut-plan').value=t.plan;
   document.getElementById('nut-examples').value=t.examples;
   document.getElementById('nut-avoid').value=t.avoid;
@@ -7165,6 +7166,7 @@ function openNutModal(){
   document.getElementById('nut-carbs').value=nut.carbs||'';
   document.getElementById('nut-fat').value=nut.fat||'';
   document.getElementById('nut-meals').value=nut.meals||'3';
+  document.getElementById('nut-goal').value=nut.goal||'';
   document.getElementById('nut-plan').value=nut.plan||'';
   document.getElementById('nut-avoid').value=nut.avoid||'';
   document.getElementById('nut-water').value=nut.water||'';
@@ -7194,6 +7196,7 @@ function saveNutrition(){
     carbs:parseInt(document.getElementById('nut-carbs').value)||0,
     fat:parseInt(document.getElementById('nut-fat').value)||0,
     meals:document.getElementById('nut-meals').value,
+    goal:document.getElementById('nut-goal').value,
     plan:document.getElementById('nut-plan').value.trim(),
     avoid:document.getElementById('nut-avoid').value.trim(),
     water:parseInt(document.getElementById('nut-water').value)||0,
@@ -7256,6 +7259,30 @@ const NUTRI_INFO={
     why:'Mejora tu rendimiento, evita calambres, ayuda a la digestión y a que el músculo se recupere. Tomar poca te hace rendir menos sin que te des cuenta.',
     where:'El agua simple es lo mejor. También suman frutas y verduras con mucha agua (sandía, pepino). Limita gaseosas y jugos azucarados.'},
 };
+// El "por qué" del plan según el objetivo. Lo ve el asesorado encima de su plan.
+const GOAL_WHY={
+  volumen:{title:'🔼 Volumen / Superávit',
+    text:'Estás en superávit calórico: comes un poco más de lo que gastas. Ese extra, sumado a entrenar con buena carga y a descansar bien, es la materia prima con la que tu cuerpo construye músculo nuevo y gana fuerza. Por eso subimos la proteína (el material con que se repara y crece el músculo) y los carbohidratos (la energía para empujar fuerte en cada serie y recuperarte). Sin ese excedente, tu cuerpo no tiene de dónde sacar para crecer.'},
+  definicion:{title:'🔥 Definición / Déficit',
+    text:'Estás en déficit calórico: comes un poco menos de lo que gastas, así tu cuerpo tira de la grasa guardada como energía. Mantenemos la proteína alta para que, mientras pierdes grasa, conserves el músculo que ya construiste. Ajustamos los carbohidratos para que tengas energía de entrenar sin frenar la pérdida. Clave: el déficit es moderado — uno muy agresivo te hace perder músculo y fuerza.'},
+  cutting:{title:'🔻 Cutting / Pérdida de grasa',
+    text:'El objetivo es perder grasa cuidando tu músculo. Comes algo menos de lo que gastas (déficit), pero mantenemos la proteína alta para no perder lo ganado y para llegar más lleno a cada comida. El entrenamiento de fuerza le dice a tu cuerpo "conserva este músculo"; la dieta hace el resto.'},
+  mantenimiento:{title:'⚖️ Mantenimiento / Salud general',
+    text:'Estás comiendo en balance: lo que gastas. El objetivo no es subir ni bajar, sino sostener tu composición, sentirte con energía y crear hábitos sostenibles. Comida variada, suficiente proteína para cuidar el músculo y carbohidratos para rendir en el día a día.'},
+};
+// Objetivo del plan: usa nut.goal si el coach lo fijó; si no, lo infiere del texto
+// del plan (planes guardados antes de existir el campo). Devuelve null si no hay pista.
+function inferNutGoal(nut){
+  if(!nut)return null;
+  if(nut.goal && GOAL_WHY[nut.goal])return nut.goal;
+  const t=((nut.plan||'')+' '+(nut.avoid||'')).toLowerCase();
+  if(/cutting/.test(t))return 'cutting';
+  if(/definici|definir/.test(t))return 'definicion';
+  if(/super[áa]vit|volumen|ganar m[áa]sa|masa muscular|ganancia/.test(t))return 'volumen';
+  if(/d[ée]ficit|perder grasa|p[ée]rdida de grasa|bajar de peso/.test(t))return 'cutting';
+  if(/mantener|mantenimiento|balance cal/.test(t))return 'mantenimiento';
+  return null;
+}
 function openNutriInfo(key){
   const d=NUTRI_INFO[key]; if(!d)return;
   const body=document.getElementById('m-nutri-body'); if(!body)return;
@@ -7297,6 +7324,12 @@ function renderNutritionClient(clientId){
       html+=`</div>`;
     }
   }
+  // \u00bfPor qu\u00e9 este plan? \u2014 explicaci\u00f3n seg\u00fan el objetivo (encima del plan)
+  const _gw=GOAL_WHY[inferNutGoal(nut)];
+  if(_gw)html+=`<div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--gt);margin-bottom:5px">${_gw.title} \u00b7 \u00bfPor qu\u00e9 este plan?</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--gt)">${esc(_gw.text)}</div>
+    </div>`;
   // Comidas por d\u00eda
   if(nut.meals)html+=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;margin-bottom:12px;font-size:13px"><span style="font-size:16px">\uD83C\uDF7D\ufe0f</span><span><strong>${esc(String(nut.meals))} comidas por d\u00eda</strong> \u2014 distribuye tus calor\u00edas de manera uniforme</span></div>`;
   // Ejemplos de comidas
@@ -9373,6 +9406,16 @@ function whatsappNudge(id){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="fg"><label class="ilbl">Grasas (g)</label><input class="inp" id="nut-fat" type="number" placeholder="Ej: 70" inputmode="numeric"></div>
       <div class="fg"><label class="ilbl">Comidas por d&iacute;a</label><select class="sel" id="nut-meals"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="ilbl">Objetivo del plan <span style="color:var(--t3);font-weight:400">(explica el "por qué" al asesorado)</span></label>
+      <select class="sel" id="nut-goal">
+        <option value="">— Detectar automáticamente —</option>
+        <option value="volumen">Volumen / Superávit 🔼</option>
+        <option value="definicion">Definición 🔥</option>
+        <option value="cutting">Cutting / Pérdida de grasa 🔻</option>
+        <option value="mantenimiento">Mantenimiento / Salud ⚖️</option>
+      </select>
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label class="ilbl">Plan detallado (comidas, horarios, alimentos...)</label>
