@@ -42,6 +42,7 @@ const {
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
+  MS,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1186,6 +1187,44 @@ test('MOOD_STATES: "periodo" es el único femaleOnly; ids únicos', () => {
   assert.deepStrictEqual(MOOD_STATES.filter(m => m.femaleOnly).map(m => m.id), ['periodo']);
   const ids = MOOD_STATES.map(m => m.id);
   assert.strictEqual(new Set(ids).size, ids.length);
+});
+
+// ══════════════════════════════════════════════════════
+section('Membresía (MS) — estado de pago, login y badge');
+
+const _today = new Date();
+const _plusDays = n => new Date(_today.getTime() + n * 86400000).toISOString();
+
+test('MS.getStatus: sin pagos → "pending"', () => {
+  assert.strictEqual(MS.getStatus({ payments: [] }), 'pending');
+  assert.strictEqual(MS.getStatus({}), 'pending');
+});
+test('MS.getStatus: suspendido → "inactive" (aunque tenga pagos)', () => {
+  assert.strictEqual(MS.getStatus({ suspended: true, payments: [{ dueDate: _plusDays(30) }] }), 'inactive');
+});
+test('MS.getStatus: vence en >7 días → "active"', () => {
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(20) }] }), 'active');
+});
+test('MS.getStatus: vence dentro de 7 días → "expiring"', () => {
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(3) }] }), 'expiring');
+});
+test('MS.getStatus: ya venció → "overdue"', () => {
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-5) }] }), 'overdue');
+});
+test('MS.getStatus: toma el pago con dueDate más reciente', () => {
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-30) }, { dueDate: _plusDays(20) }] }), 'active');
+});
+test('MS.canLogin: active/expiring/pending SÍ; overdue/inactive NO', () => {
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(20) }] }), true);  // active
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(3) }] }), true);   // expiring
+  assert.strictEqual(MS.canLogin({ payments: [] }), true);                            // pending
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-5) }] }), false); // overdue
+  assert.strictEqual(MS.canLogin({ suspended: true }), false);                        // inactive
+});
+test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback', () => {
+  assert.strictEqual(MS.badge('active').label, 'Al día');
+  assert.strictEqual(MS.badge('overdue').label, 'Vencido');
+  assert.strictEqual(MS.badge('zzz').label, 'Sin pago');
 });
 
 // ══════════════════════════════════════════════════════

@@ -869,11 +869,42 @@ function applyMood(routine, mood, opts) {
   return out;
 }
 
+// ── MEMBRESÍA — estado de pago, permiso de login y badge ──
+// Lógica pura (extraída de index.html). getStatus deriva el estado del último
+// pago; canLogin define quién entra (pending/active/expiring SÍ; overdue/inactive NO);
+// badge mapea estado → etiqueta/colores. Los colores son tokens CSS (var(--…)).
+const MS = {
+  getStatus(c) {
+    if (c.suspended) return 'inactive';
+    const pays = c.payments || [];
+    if (!pays.length) return 'pending';
+    const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
+    const daysLeft = Math.ceil((new Date(last.dueDate) - Date.now()) / 86400000);
+    if (daysLeft < 0) return 'overdue';
+    if (daysLeft <= 7) return 'expiring';
+    return 'active';
+  },
+  // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
+  // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
+  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending'; },
+  badge(s) {
+    return ({
+      active:   { label: 'Al día',      color: 'var(--gt)', bg: 'var(--gl)' },
+      expiring: { label: 'Por vencer',  color: 'var(--or)', bg: 'var(--orl)' },
+      overdue:  { label: 'Vencido',     color: 'var(--rd)', bg: 'var(--rdl)' },
+      pending:  { label: 'Sin pago',    color: 'var(--yl)', bg: 'var(--yll)' },
+      inactive: { label: 'Inactivo',    color: 'var(--t2)', bg: 'var(--br)' },
+      suspended:{ label: 'Suspendido',  color: 'var(--t2)', bg: 'var(--br)' },
+    }[s]) || { label: 'Sin pago', color: 'var(--t2)', bg: 'var(--br)' };
+  }
+};
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     MOOD_STATES,
     applyMood,
+    MS,
     getIccLabel,
     getSexCode,
     calcMacrosSugeridos,
