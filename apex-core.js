@@ -899,12 +899,51 @@ const MS = {
   }
 };
 
+// ── Formato de métricas y duración (presentación, sin DOM) ──
+function fmtMetric(v, unit) {
+  const n = unit === 'kg' ? Math.round(v * 10) / 10 : Math.round(v);
+  const u = unit === 'kg' ? ' kg' : unit === 'reps' ? ' reps' : unit === 's' ? ' s' : unit === 'min' ? ' min' : unit === 'rondas' ? ' rondas' : ' ' + (unit || '');
+  return n + u;
+}
+function fmtDuration(sec) {
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), mm = m % 60;
+  return mm ? `${h} h ${mm} min` : `${h} h`;
+}
+
+// ── Calificación de sesión "¿cómo te sentiste?" (1–5 → emoji/etiqueta) ──
+const WF_FEELINGS = [{ v: 1, e: '😫', l: 'Muy duro' }, { v: 2, e: '😕', l: 'Pesado' }, { v: 3, e: '😐', l: 'Normal' }, { v: 4, e: '🙂', l: 'Bien' }, { v: 5, e: '😄', l: 'Excelente' }];
+function feelingEmoji(n) { const f = WF_FEELINGS.find(x => x.v === n); return f ? f.e : ''; }
+function feelingLabel(n) { const f = WF_FEELINGS.find(x => x.v === n); return f ? f.l : ''; }
+
+// ── Objetivo del plan nutricional: usa nut.goal si está fijado; si no, lo infiere
+// del texto (planes guardados antes del campo). Devuelve null si no hay pista. ──
+const _NUT_GOALS = ['volumen', 'definicion', 'cutting', 'mantenimiento'];
+function inferNutGoal(nut) {
+  if (!nut) return null;
+  if (nut.goal && _NUT_GOALS.indexOf(nut.goal) !== -1) return nut.goal;
+  const t = ((nut.plan || '') + ' ' + (nut.avoid || '')).toLowerCase();
+  if (/cutting/.test(t)) return 'cutting';
+  if (/definici|definir/.test(t)) return 'definicion';
+  if (/super[áa]vit|volumen|ganar m[áa]sa|masa muscular|ganancia/.test(t)) return 'volumen';
+  if (/d[ée]ficit|perder grasa|p[ée]rdida de grasa|bajar de peso/.test(t)) return 'cutting';
+  if (/mantener|mantenimiento|balance cal/.test(t)) return 'mantenimiento';
+  return null;
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     MOOD_STATES,
     applyMood,
     MS,
+    fmtMetric,
+    fmtDuration,
+    WF_FEELINGS,
+    feelingEmoji,
+    feelingLabel,
+    inferNutGoal,
     getIccLabel,
     getSexCode,
     calcMacrosSugeridos,

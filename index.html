@@ -6147,11 +6147,7 @@ function migrateEnv(){
 function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
 function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
 // Formatea un valor de progreso/PR con su unidad según la modalidad.
-function fmtMetric(v,unit){
-  const n=unit==='kg'?Math.round(v*10)/10:Math.round(v);
-  const u=unit==='kg'?' kg':unit==='reps'?' reps':unit==='s'?' s':unit==='min'?' min':unit==='rondas'?' rondas':' '+(unit||'');
-  return n+u;
-}
+// fmtMetric → apex-core.js (fuente única, testeada)
 function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}
 function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${ei}`,lastreOn(routine,ei)?'0':'1');}
 
@@ -6584,16 +6580,9 @@ function finishSessionEarly(){
 // Foto: window.AVI_FINISH_PHOTO la sobreescribe; default = foto de marca AVI.
 const WF_DEFAULT_PHOTO='media/brand/ob-2.jpg';
 let _wfShownFor=null; // routineId|día ya celebrado → evita re-pop al re-marcar la última serie
-function fmtDuration(sec){
-  const m=Math.round(sec/60);
-  if(m<60)return `${m} min`;
-  const h=Math.floor(m/60), mm=m%60;
-  return mm?`${h} h ${mm} min`:`${h} h`;
-}
+// fmtDuration → apex-core.js (fuente única, testeada)
 // "¿Cómo te sentiste?" — calificación de la sesión que el COACH ve en el panel (foso vs Gravl).
-const WF_FEELINGS=[{v:1,e:'😫',l:'Muy duro'},{v:2,e:'😕',l:'Pesado'},{v:3,e:'😐',l:'Normal'},{v:4,e:'🙂',l:'Bien'},{v:5,e:'😄',l:'Excelente'}];
-function feelingEmoji(n){const f=WF_FEELINGS.find(x=>x.v===n);return f?f.e:'';}
-function feelingLabel(n){const f=WF_FEELINGS.find(x=>x.v===n);return f?f.l:'';}
+// WF_FEELINGS + feelingEmoji/feelingLabel → apex-core.js (fuente única, testeada)
 let _wfEntry=null; // entrada de historial de la sesión recién cerrada (para guardar la calificación)
 function wfRate(n){
   if(_wfEntry){_wfEntry.feeling=n;svNow('ax_hist',DB.history);}
@@ -7298,19 +7287,8 @@ const GOAL_WHY={
   mantenimiento:{title:'⚖️ Mantenimiento / Salud general',
     text:'Estás comiendo en balance: lo que gastas. El objetivo no es subir ni bajar, sino sostener tu composición, sentirte con energía y crear hábitos sostenibles. Comida variada, suficiente proteína para cuidar el músculo y carbohidratos para rendir en el día a día.'},
 };
-// Objetivo del plan: usa nut.goal si el coach lo fijó; si no, lo infiere del texto
-// del plan (planes guardados antes de existir el campo). Devuelve null si no hay pista.
-function inferNutGoal(nut){
-  if(!nut)return null;
-  if(nut.goal && GOAL_WHY[nut.goal])return nut.goal;
-  const t=((nut.plan||'')+' '+(nut.avoid||'')).toLowerCase();
-  if(/cutting/.test(t))return 'cutting';
-  if(/definici|definir/.test(t))return 'definicion';
-  if(/super[áa]vit|volumen|ganar m[áa]sa|masa muscular|ganancia/.test(t))return 'volumen';
-  if(/d[ée]ficit|perder grasa|p[ée]rdida de grasa|bajar de peso/.test(t))return 'cutting';
-  if(/mantener|mantenimiento|balance cal/.test(t))return 'mantenimiento';
-  return null;
-}
+// inferNutGoal → apex-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
+// se queda aquí porque es data de presentación que usa renderNutritionClient.
 function openNutriInfo(key){
   const d=NUTRI_INFO[key]; if(!d)return;
   const body=document.getElementById('m-nutri-body'); if(!body)return;

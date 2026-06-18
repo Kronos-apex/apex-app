@@ -43,6 +43,11 @@ const {
   MOOD_STATES,
   applyMood,
   MS,
+  fmtMetric,
+  fmtDuration,
+  feelingEmoji,
+  feelingLabel,
+  inferNutGoal,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1225,6 +1230,55 @@ test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback'
   assert.strictEqual(MS.badge('active').label, 'Al día');
   assert.strictEqual(MS.badge('overdue').label, 'Vencido');
   assert.strictEqual(MS.badge('zzz').label, 'Sin pago');
+});
+
+// ══════════════════════════════════════════════════════
+section('Formato (fmtMetric / fmtDuration)');
+
+test('fmtMetric: kg redondea a 1 decimal', () => {
+  assert.strictEqual(fmtMetric(72.49, 'kg'), '72.5 kg');
+  assert.strictEqual(fmtMetric(60, 'kg'), '60 kg');
+});
+test('fmtMetric: reps/s/min/rondas redondean a entero con su sufijo', () => {
+  assert.strictEqual(fmtMetric(12.4, 'reps'), '12 reps');
+  assert.strictEqual(fmtMetric(45, 's'), '45 s');
+  assert.strictEqual(fmtMetric(30, 'min'), '30 min');
+  assert.strictEqual(fmtMetric(5, 'rondas'), '5 rondas');
+});
+test('fmtDuration: <60min en minutos; ≥60 en h/min', () => {
+  assert.strictEqual(fmtDuration(1800), '30 min');
+  assert.strictEqual(fmtDuration(3600), '1 h');
+  assert.strictEqual(fmtDuration(5400), '1 h 30 min');
+});
+
+section('Feeling (calificación de sesión)');
+
+test('feelingEmoji/feelingLabel: valor conocido', () => {
+  assert.strictEqual(feelingEmoji(5), '😄');
+  assert.strictEqual(feelingLabel(1), 'Muy duro');
+});
+test('feelingEmoji/feelingLabel: valor desconocido → cadena vacía', () => {
+  assert.strictEqual(feelingEmoji(9), '');
+  assert.strictEqual(feelingLabel(0), '');
+});
+
+section('inferNutGoal — objetivo del plan nutricional');
+
+test('inferNutGoal: usa nut.goal si es válido', () => {
+  assert.strictEqual(inferNutGoal({ goal: 'volumen' }), 'volumen');
+  assert.strictEqual(inferNutGoal({ goal: 'mantenimiento', plan: 'lo que sea' }), 'mantenimiento');
+});
+test('inferNutGoal: goal inválido cae a inferencia por texto', () => {
+  assert.strictEqual(inferNutGoal({ goal: 'xxx', plan: 'Superávit calórico para ganar masa' }), 'volumen');
+});
+test('inferNutGoal: infiere del texto del plan', () => {
+  assert.strictEqual(inferNutGoal({ plan: 'Déficit moderado para perder grasa' }), 'cutting');
+  assert.strictEqual(inferNutGoal({ plan: 'Plan de definición con alta proteína' }), 'definicion');
+  assert.strictEqual(inferNutGoal({ plan: 'Mantenimiento, balance calórico' }), 'mantenimiento');
+});
+test('inferNutGoal: sin pista → null', () => {
+  assert.strictEqual(inferNutGoal({ plan: 'come sano' }), null);
+  assert.strictEqual(inferNutGoal(null), null);
 });
 
 // ══════════════════════════════════════════════════════
