@@ -1121,6 +1121,33 @@ function computeExerciseProgress(history) {
   return Object.values(map).filter(e => e.points.length >= 1).sort((a, b) => b.points.length - a.points.length);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// EDITORIAL DE LA SEMANA — voz de coach según el objetivo del asesorado
+// ──────────────────────────────────────────────────────────────────────
+// Elige kick/título/cuerpo del banner semanal a partir del objetivo (matching
+// por regex, antes sin test) y cuenta los días de entreno. Devuelve DATOS, no
+// HTML: el armado del markup (con esc) se queda en index.html. Pura.
+function weekEditorial(client) {
+  client = client || {};
+  const trainDays = (client.routines || []).filter(r => r.day !== 'Libre').length;
+  const g = (client.goal || '').toLowerCase();
+  let kick, title, body;
+  if (/grasa|perder|baj|adelgaz/.test(g)) {
+    kick = 'QUEMA Y CONSTANCIA'; title = 'Esta semana, cada gota cuenta';
+    body = 'Tu plan mezcla fuerza y movimiento para encender tu metabolismo. Preséntate aunque el día venga flojo — la constancia es la que transforma.';
+  } else if (/m[uú]sculo|muscul|ganar|hipertrof/.test(g)) {
+    kick = 'FUERZA Y CRECIMIENTO'; title = 'Esta semana construimos músculo';
+    body = 'Sube el peso cuando la técnica te lo permita y respeta los descansos: ahí es donde creces. Tu coach diseñó cada rutina para ti.';
+  } else if (/recompos/.test(g)) {
+    kick = 'RECOMPOSICIÓN'; title = 'Más fuerte y más definido';
+    body = 'Entrenas fuerza mientras cuidas tu energía. Ten paciencia: el cambio se nota en semanas, no en días. Vamos juntos.';
+  } else {
+    kick = 'TU SEMANA'; title = 'Entrenamos con propósito';
+    body = 'Tu coach armó cada rutina pensando en tu objetivo. Preséntate, dale con todo y registra tus series — el progreso se construye día a día.';
+  }
+  return { kick, title, body, trainDays };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1182,5 +1209,6 @@ if (typeof module !== 'undefined' && module.exports) {
     gxDiscount,
     gxNextTier,
     computeExerciseProgress,
+    weekEditorial,
   };
 }

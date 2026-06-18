@@ -58,6 +58,7 @@ const {
   gxDiscount,
   gxNextTier,
   computeExerciseProgress,
+  weekEditorial,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1493,6 +1494,27 @@ test('ordena por número de puntos (más datos primero)', () => {
 test('historial vacío o nulo → []', () => {
   assert.deepStrictEqual(computeExerciseProgress([]), []);
   assert.deepStrictEqual(computeExerciseProgress(null), []);
+});
+
+// ══════════════════════════════════════════════════════
+section('Editorial de la semana (weekEditorial)');
+
+test('elige el editorial según el objetivo', () => {
+  assert.strictEqual(weekEditorial({ goal: 'Perder grasa' }).kick, 'QUEMA Y CONSTANCIA');
+  assert.strictEqual(weekEditorial({ goal: 'Ganar músculo' }).kick, 'FUERZA Y CRECIMIENTO');
+  assert.strictEqual(weekEditorial({ goal: 'Recomposición' }).kick, 'RECOMPOSICIÓN');
+  // hipertrofia cae en la rama de músculo aunque no diga "músculo"
+  assert.strictEqual(weekEditorial({ goal: 'Hipertrofia' }).kick, 'FUERZA Y CRECIMIENTO');
+});
+test('objetivo desconocido o vacío → editorial por defecto', () => {
+  assert.strictEqual(weekEditorial({ goal: 'Salud general' }).kick, 'TU SEMANA');
+  assert.strictEqual(weekEditorial({}).kick, 'TU SEMANA');
+  assert.strictEqual(weekEditorial(null).kick, 'TU SEMANA');
+});
+test('cuenta días de entreno (excluye Libre)', () => {
+  const client = { goal: 'Fuerza', routines: [{ day: 'Lunes' }, { day: 'Martes' }, { day: 'Libre' }, { day: 'Jueves' }] };
+  assert.strictEqual(weekEditorial(client).trainDays, 3);
+  assert.strictEqual(weekEditorial({ routines: [] }).trainDays, 0);
 });
 
 // ══════════════════════════════════════════════════════

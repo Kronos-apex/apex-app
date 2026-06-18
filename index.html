@@ -6585,27 +6585,12 @@ function closeLevelUp(){
 }
 
 // ALL ROUTINES
-// Intro editorial de la semana — voz de coach, contextual al objetivo del asesorado
+// Intro editorial de la semana — voz de coach, contextual al objetivo del asesorado.
+// La decisión (kick/título/cuerpo/días) → apex-core.js (weekEditorial); aquí solo el markup.
 function clientWeekEditorial(client){
-  const ruts=(client.routines||[]);
-  const trainDays=ruts.filter(r=>r.day!=='Libre').length;
-  const g=(client.goal||'').toLowerCase();
-  let kick,title,body;
-  if(/grasa|perder|baj|adelgaz/.test(g)){
-    kick='QUEMA Y CONSTANCIA'; title='Esta semana, cada gota cuenta';
-    body='Tu plan mezcla fuerza y movimiento para encender tu metabolismo. Preséntate aunque el día venga flojo — la constancia es la que transforma.';
-  } else if(/m[uú]sculo|muscul|ganar|hipertrof/.test(g)){
-    kick='FUERZA Y CRECIMIENTO'; title='Esta semana construimos músculo';
-    body='Sube el peso cuando la técnica te lo permita y respeta los descansos: ahí es donde creces. Tu coach diseñó cada rutina para ti.';
-  } else if(/recompos/.test(g)){
-    kick='RECOMPOSICIÓN'; title='Más fuerte y más definido';
-    body='Entrenas fuerza mientras cuidas tu energía. Ten paciencia: el cambio se nota en semanas, no en días. Vamos juntos.';
-  } else {
-    kick='TU SEMANA'; title='Entrenamos con propósito';
-    body='Tu coach armó cada rutina pensando en tu objetivo. Preséntate, dale con todo y registra tus series — el progreso se construye día a día.';
-  }
-  const daysNote=trainDays?` <b>${trainDays} día${trainDays!==1?'s':''}</b> de entreno te esperan.`:'';
-  return `<div class="weekly-ed"><div class="we-kick">${kick}</div><div class="we-title">${esc(title)}</div><div class="we-body">${esc(body)}${daysNote}</div></div>`;
+  const e=weekEditorial(client);
+  const daysNote=e.trainDays?` <b>${e.trainDays} día${e.trainDays!==1?'s':''}</b> de entreno te esperan.`:'';
+  return `<div class="weekly-ed"><div class="we-kick">${e.kick}</div><div class="we-title">${esc(e.title)}</div><div class="we-body">${esc(e.body)}${daysNote}</div></div>`;
 }
 
 function renderClientAllRoutines(client){

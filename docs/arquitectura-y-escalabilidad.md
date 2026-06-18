@@ -114,9 +114,13 @@ tests verdes + verificación de render antes de desplegar.
     día + volumen) según la modalidad (peso_reps/reps/tiempo/cardio/hiit).
     `buildExerciseProgress` quedó como wrapper de 3 líneas (solo el acceso a `DB`).
     178 → 184.
+  - Paso 6 ✅: editorial de la semana → `apex-core.js` `weekEditorial` (+3 tests).
+    Elige kick/título/cuerpo del banner semanal según el objetivo (matching por
+    regex, antes sin test) y cuenta días de entreno; devuelve DATOS, no HTML.
+    `clientWeekEditorial` quedó de 6 líneas (solo arma el markup con `esc`). 184 → 187.
   - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes
-    (`fmtT`/`fmtD`), agregados de volumen/sesión (`renderVolChart` tiene cálculo
-    embebido). Regla: solo lógica SIN DOM ni `DB`.
+    (`fmtT`/`fmtD`), geometría de gráficas (depende del ancho del contenedor → DOM,
+    poco extraíble). Regla: solo lógica SIN DOM ni `DB`.
 
 ### Deuda menor anotada
 - Advisor de Supabase: `user_data` tiene dos políticas DELETE permisivas
