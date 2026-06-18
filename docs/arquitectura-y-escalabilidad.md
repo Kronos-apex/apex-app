@@ -97,6 +97,9 @@ tests verdes + verificación de render antes de desplegar.
   `migratePhotosToStorage` auto-sana fotos y avatares base64 que queden en el blob.
   *(Pendiente: verificar una subida real autenticada con un cliente.)*
 - **Fase 4 — Adelgazar el monolito.** 🔄 En curso (incremental, con tests).
+  Pausada el 2026-06-18 tras el paso 7 (157 → 196 tests). Lo jugoso de lógica
+  pura ya está extraído; lo que queda son formateadores de fecha triviales y
+  geometría SVG atada al DOM (bajo valor). Retomar solo si aparece lógica nueva.
   - Paso 1 ✅: `MS` (membresía: getStatus/canLogin/badge) → `apex-core.js` (+8 tests).
   - Paso 2 ✅: `fmtMetric`, `fmtDuration`, `WF_FEELINGS`+`feelingEmoji/Label`,
     `inferNutGoal` → `apex-core.js` (+9 tests). apex.test.js: 140 → 157.
