@@ -59,6 +59,9 @@ const {
   gxNextTier,
   computeExerciseProgress,
   weekEditorial,
+  exTrack,
+  prFromSets,
+  isBetterPR,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1515,6 +1518,52 @@ test('cuenta días de entreno (excluye Libre)', () => {
   const client = { goal: 'Fuerza', routines: [{ day: 'Lunes' }, { day: 'Martes' }, { day: 'Libre' }, { day: 'Jueves' }] };
   assert.strictEqual(weekEditorial(client).trainDays, 3);
   assert.strictEqual(weekEditorial({ routines: [] }).trainDays, 0);
+});
+
+// ══════════════════════════════════════════════════════
+section('Modalidad y récords (exTrack / prFromSets / isBetterPR)');
+
+test('exTrack: track explícito manda; si no, lo infiere del tipo', () => {
+  assert.strictEqual(exTrack({ track: 'cardio', type: 'Bodyweight' }), 'cardio');
+  assert.strictEqual(exTrack({ type: 'HIIT' }), 'hiit');
+  assert.strictEqual(exTrack({ type: 'Cardio' }), 'cardio');
+  assert.strictEqual(exTrack({ type: 'Isométrico' }), 'tiempo');
+  assert.strictEqual(exTrack({ type: 'Bodyweight' }), 'reps');
+  assert.strictEqual(exTrack({ type: 'Compuesto' }), 'peso_reps');
+  assert.strictEqual(exTrack({}), 'peso_reps');
+});
+
+test('prFromSets: peso_reps → kg máx con sus reps', () => {
+  const pr = prFromSets([{ kg: '80', reps: '5' }, { kg: '100', reps: '3' }], 'peso_reps');
+  assert.deepStrictEqual(pr, { val: 100, reps: 3, unit: 'kg' });
+});
+test('prFromSets: cada modalidad calcula su valor y unidad', () => {
+  assert.deepStrictEqual(prFromSets([{ reps: '12' }, { reps: '10' }], 'reps'), { val: 12, reps: 12, unit: 'reps' });
+  assert.deepStrictEqual(prFromSets([{ secs: '60' }, { secs: '45' }], 'tiempo'), { val: 60, reps: 0, unit: 's' });
+  assert.deepStrictEqual(prFromSets([{ min: '10' }, { min: '5' }], 'cardio'), { val: 15, reps: 0, unit: 'min' });
+  assert.deepStrictEqual(prFromSets([{}, {}, {}], 'hiit'), { val: 3, reps: 0, unit: 'rondas' });
+});
+test('prFromSets: sin valor positivo o sin series → null', () => {
+  assert.strictEqual(prFromSets([{ kg: '0', reps: '8' }], 'peso_reps'), null);
+  assert.strictEqual(prFromSets([], 'peso_reps'), null);
+});
+
+test('isBetterPR: sin récord previo → siempre es récord', () => {
+  assert.strictEqual(isBetterPR(50, 5, 'kg', null), true);
+});
+test('isBetterPR: supera por valor', () => {
+  assert.strictEqual(isBetterPR(100, 3, 'kg', { val: 90, reps: 5 }), true);
+  assert.strictEqual(isBetterPR(80, 5, 'kg', { val: 90, reps: 5 }), false);
+});
+test('isBetterPR: empate en kg se desempata por más reps', () => {
+  assert.strictEqual(isBetterPR(90, 6, 'kg', { val: 90, reps: 5 }), true);
+  assert.strictEqual(isBetterPR(90, 5, 'kg', { val: 90, reps: 5 }), false);
+});
+test('isBetterPR: empate sin kg (reps/min/etc) NO mejora', () => {
+  assert.strictEqual(isBetterPR(12, 12, 'reps', { val: 12, reps: 12 }), false);
+});
+test('isBetterPR: récord previo viejo guardado como kg (sin val)', () => {
+  assert.strictEqual(isBetterPR(100, 3, 'kg', { kg: 90, reps: 5 }), true);
 });
 
 // ══════════════════════════════════════════════════════

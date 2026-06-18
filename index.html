@@ -5553,25 +5553,24 @@ function checkAndUpdatePRs(routine){
     const track=exTrack(ex);
     // El récord se mide según la modalidad: kg (peso), reps (corporal),
     // segundos (isométrico), minutos totales (cardio), rondas (HIIT).
-    let val=0,reps=0,unit='kg';
+    // Construye las series HECHAS (lee del DOM/estado) y deja el cálculo a apex-core.
+    const doneSets=[];
     for(let si=0;si<sets;si++){
       if(!isDone(routine.id,ei,si))continue;
-      const kg=parseFloat(getLog(routine.id,ei,si,'kg'))||0;
-      const rp=parseInt(getLog(routine.id,ei,si,'reps'))||parseInt(ex.reps)||0;
-      const secs=parseInt(getLog(routine.id,ei,si,'secs'))||0;
-      const min=parseFloat(getLog(routine.id,ei,si,'min'))||0;
-      if(track==='peso_reps'){unit='kg';if(kg>val){val=kg;reps=rp;}}
-      else if(track==='reps'){unit='reps';if(rp>val){val=rp;reps=rp;}}
-      else if(track==='tiempo'){unit='s';if(secs>val)val=secs;}
-      else if(track==='cardio'){unit='min';val+=min;}
-      else if(track==='hiit'){unit='rondas';val+=1;}
+      doneSets.push({
+        kg:getLog(routine.id,ei,si,'kg'),
+        reps:parseInt(getLog(routine.id,ei,si,'reps'))||parseInt(ex.reps)||0,
+        secs:getLog(routine.id,ei,si,'secs'),
+        min:getLog(routine.id,ei,si,'min'),
+      });
     }
-    if(val<=0)return;
+    const pr=prFromSets(doneSets,track);
+    if(!pr)return;
+    const {val,reps,unit}=pr;
     const key=ex.id||ex.name;
     const prev=DB.prs[clientId][key];
     const prevVal=prev?(prev.val!=null?prev.val:prev.kg):null;
-    const better=!prev||val>prevVal||(unit==='kg'&&val===prevVal&&reps>(prev.reps||0));
-    if(better){
+    if(isBetterPR(val,reps,unit,prev)){
       const isNew=!prev;
       DB.prs[clientId][key]={val,unit,reps,kg:unit==='kg'?val:0,date:new Date().toISOString(),name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle};
       newPRs.push({name:ex.name,val,unit,reps,icon:ex.icon||'💪',isNew,prev:prevVal});
@@ -5975,15 +5974,7 @@ function setDone(routineId,ei,si,val){localStorage.setItem(getDoneKey(routineId,
 // La modalidad ('track') decide qué se mide y qué UI se pinta. Se deriva del
 // campo `type` que ya existe (con override opcional ex.track).
 // Ver docs/modalidades-entrenamiento.md
-function exTrack(ex){
-  if(ex.track)return ex.track;
-  const t=(ex.type||'').toLowerCase();
-  if(t.includes('hiit'))return 'hiit';
-  if(t==='cardio')return 'cardio';
-  if(t.includes('isom'))return 'tiempo';
-  if(t==='bodyweight')return 'reps';
-  return 'peso_reps';
-}
+// exTrack → apex-core.js (fuente única de verdad)
 // Migración única: corrige el `type` de ejercicios por defecto mal clasificados
 // (peso corporal que pedía kg, HIIT que pedía kg). Solo actualiza si el ejercicio
 // aún tiene el type viejo → no pisa cambios del coach. Ver docs/modalidades.

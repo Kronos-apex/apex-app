@@ -1148,6 +1148,50 @@ function weekEditorial(client) {
   return { kick, title, body, trainDays };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// MODALIDAD (track) Y RÉCORDS PERSONALES (PR)
+// ──────────────────────────────────────────────────────────────────────
+// exTrack: cómo se mide un ejercicio (qué campo registra). Si no trae `track`
+// explícito, lo infiere del tipo. prFromSets/isBetterPR son la lógica pura del
+// récord: el valor según la modalidad y si supera al previo. El acceso a estado
+// (getLog/isDone/DB.prs) se queda en index.html (checkAndUpdatePRs).
+function exTrack(ex) {
+  ex = ex || {};
+  if (ex.track) return ex.track;
+  const t = (ex.type || '').toLowerCase();
+  if (t.includes('hiit')) return 'hiit';
+  if (t === 'cardio') return 'cardio';
+  if (t.includes('isom')) return 'tiempo';
+  if (t === 'bodyweight') return 'reps';
+  return 'peso_reps';
+}
+
+// Valor del récord a partir de las series HECHAS (ya filtradas) según la modalidad:
+// peso_reps → kg máx (+ sus reps); reps → reps máx; tiempo → segundos máx;
+// cardio → minutos sumados; hiit → nº de rondas. Sin valor positivo → null.
+// set = { kg, reps, secs, min } (strings o números; se parsean aquí).
+function prFromSets(sets, track) {
+  let val = 0, reps = 0, unit = 'kg';
+  (sets || []).forEach(s => {
+    const kg = parseFloat(s.kg) || 0, rp = parseInt(s.reps) || 0, secs = parseInt(s.secs) || 0, min = parseFloat(s.min) || 0;
+    if (track === 'peso_reps') { unit = 'kg'; if (kg > val) { val = kg; reps = rp; } }
+    else if (track === 'reps') { unit = 'reps'; if (rp > val) { val = rp; reps = rp; } }
+    else if (track === 'tiempo') { unit = 's'; if (secs > val) val = secs; }
+    else if (track === 'cardio') { unit = 'min'; val += min; }
+    else if (track === 'hiit') { unit = 'rondas'; val += 1; }
+  });
+  if (val <= 0) return null;
+  return { val, reps, unit };
+}
+
+// ¿El candidato supera al récord previo? Sin previo → siempre (récord nuevo).
+// Empate en kg se desempata por más reps (mismo peso a más repes = mejor récord).
+function isBetterPR(val, reps, unit, prev) {
+  if (!prev) return true;
+  const prevVal = prev.val != null ? prev.val : prev.kg;
+  return val > prevVal || (unit === 'kg' && val === prevVal && reps > (prev.reps || 0));
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1210,5 +1254,8 @@ if (typeof module !== 'undefined' && module.exports) {
     gxNextTier,
     computeExerciseProgress,
     weekEditorial,
+    exTrack,
+    prFromSets,
+    isBetterPR,
   };
 }

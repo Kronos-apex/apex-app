@@ -118,6 +118,11 @@ tests verdes + verificación de render antes de desplegar.
     Elige kick/título/cuerpo del banner semanal según el objetivo (matching por
     regex, antes sin test) y cuenta días de entreno; devuelve DATOS, no HTML.
     `clientWeekEditorial` quedó de 6 líneas (solo arma el markup con `esc`). 184 → 187.
+  - Paso 7 ✅: modalidad y récords → `apex-core.js`: `exTrack` (modalidad del
+    ejercicio), `prFromSets` (valor del récord según modalidad) e `isBetterPR`
+    (¿supera al previo?, desempate por reps en kg) (+9 tests). `checkAndUpdatePRs`
+    conserva el acceso a estado (getLog/isDone/DB.prs) y delega el cálculo.
+    Verificado byte-idéntico contra la lógica vieja (200k casos aleatorios). 187 → 196.
   - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes
     (`fmtT`/`fmtD`), geometría de gráficas (depende del ancho del contenedor → DOM,
     poco extraíble). Regla: solo lógica SIN DOM ni `DB`.
