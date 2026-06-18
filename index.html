@@ -2164,12 +2164,16 @@ const AUTH={
 // (AUTH.client) → RLS aplica con el JWT real. Reusa clientToRow/rowToClient (apex-core).
 // Aún INERTE: lo conectan los pasos 2.2b-2.2e (registro, login, guardado, coach).
 const UD={
-  // Fila cruda del usuario actual (o null si no existe / sin sesión).
+  // Fila cruda del usuario actual (o null si no existe / sin sesión / SIN RED).
+  // NUNCA lanza: offline (getUser o el select fallan) → null, para que el arranque
+  // pueda caer al respaldo local en vez de colgarse o expulsar al login.
   async loadOwn(){
-    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return null;
-    const {data,error}=await c.from('user_data').select('*').eq('user_id',u.id).maybeSingle();
-    if(error){warn('UD.loadOwn:',error.message);return null;}
-    return data;
+    try{
+      const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return null;
+      const {data,error}=await c.from('user_data').select('*').eq('user_id',u.id).maybeSingle();
+      if(error){warn('UD.loadOwn:',error.message);return null;}
+      return data;
+    }catch(e){ warn('UD.loadOwn (¿sin conexión?):',e&&e.message); return null; }
   },
   // Upsert de la fila propia. patch = columnas a escribir (profile/routines/history/…).
   // user_id y updated_at se fijan aquí; RLS exige user_id === auth.uid().
@@ -2499,7 +2503,14 @@ async function _persistAuthUser(k,v){
     else if(k==='ax_photos') { await UD.upsertOwn({photos:    (v&&v[id])||[]}); }
     else if(k==='ax_m')      { await UD.upsertOwn({msgs:      (v&&v[id])||[]}); }
     // ax_e/ax_tpl/ax_cn/ax_site/ax_nequi/ax_cph/ax_ce: nivel coach/global → no aplica al cliente libre
-  }catch(e){ warn('AVI: persistencia modo auth falló ('+k+'):',e&&e.message); }
+  }catch(e){
+    // Sin red (entrenando en el parque): el dato NO se pierde — queda en el respaldo
+    // local (abajo) y se reintenta al reconectar (_flushAuthOnline).
+    _authDirty=true;
+    warn('AVI: persistencia modo auth falló ('+k+'), guardado local + reintento al reconectar:',e&&e.message);
+  }
+  // Respaldo local SIEMPRE (haya o no red) → la app abre offline con los últimos datos.
+  _refreshAuthCache();
 }
 
 // ── Escritura del coach por-cliente (2.2e-2) ──
@@ -4460,6 +4471,46 @@ function _applyAuthClientDB(client, coll){
   DB.msgs      ={[id]: coll.msgs      ||[]};
 }
 
+// ── OFFLINE para clientes auth (entrenar en el parque sin señal) ──────────
+// En modo auth los datos del cliente NO van a localStorage (van a su fila
+// user_data en la nube). Sin red, el arranque no tenía de dónde leer y expulsaba
+// al login. Solución: respaldo local de SU fila, keyed por uid (no cruza cuentas
+// en un mismo dispositivo). Se refresca al cargar online y en cada guardado; el
+// arranque cae a él cuando no hay red. Guarda SOLO columnas de datos — nunca
+// coach_id/role (esos viven en la nube y no se deben pisar desde el cliente).
+let _authUid=null;       // uid del usuario auth en sesión (de getSession, offline-safe)
+let _authDirty=false;    // hubo cambios que la nube no confirmó (reintentar al reconectar)
+function _authRowKey(uid){ return 'ax_udcache_'+uid; }
+function _cacheAuthRow(uid,row){ if(!uid||!row)return; try{ localStorage.setItem(_authRowKey(uid),JSON.stringify(row)); }catch(e){} }
+function _readAuthRow(uid){ try{ const r=uid&&localStorage.getItem(_authRowKey(uid)); return r?JSON.parse(r):null; }catch(e){ return null; } }
+// Reconstruye la fila del usuario desde el estado en memoria (DB.*). role explícito
+// (rowToClient no conserva coach_id/role); las columnas de datos salen de DB.
+function _snapshotAuthRow(){
+  const client=(DB.clients&&DB.clients[0]); if(!client)return null;
+  const id=client.id;
+  const base=clientToRow(client,{}); // user_id + profile + routines
+  return Object.assign(base,{
+    role:AUTH_ROLE,
+    history:(DB.history&&DB.history[id])||[], prs:(DB.prs&&DB.prs[id])||{},
+    bodyweight:(DB.bodyweight&&DB.bodyweight[id])||[], medidas:(DB.medidas&&DB.medidas[id])||[],
+    nutrition:(DB.nutrition&&DB.nutrition[id])||{}, photos:(DB.photos&&DB.photos[id])||[],
+    msgs:(DB.msgs&&DB.msgs[id])||[],
+  });
+}
+// Refresca el respaldo local con el estado actual (tras cualquier guardado).
+function _refreshAuthCache(){ if(AUTH_MODE&&AUTH_ROLE!=='coach'&&_authUid){ _cacheAuthRow(_authUid,_snapshotAuthRow()); } }
+// Al reconectar: si quedaron cambios sin confirmar, sube la fila completa de datos
+// (sin coach_id/role → upsert deja esas columnas intactas). Idempotente.
+async function _flushAuthOnline(){
+  if(!AUTH_MODE||AUTH_ROLE==='coach'||!_authDirty)return;
+  const row=_snapshotAuthRow(); if(!row)return;
+  const patch={profile:row.profile,routines:row.routines,history:row.history,prs:row.prs,
+    bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs};
+  try{ await UD.upsertOwn(patch); _authDirty=false; log('AVI: cambios offline sincronizados con la nube'); }
+  catch(e){ warn('AVI: reintento de sync al reconectar falló:',e&&e.message); }
+}
+window.addEventListener('online',_flushAuthOnline);
+
 // Lee las respuestas que el wizard guardó ANTES de redirigir a Google (wzGoogle). Google
 // no devuelve goal/level en su metadata, así que sin esto el usuario perdía lo que ya había
 // contestado y caía al formulario viejo. Caduca a los 30 min para no contaminar logins futuros.
@@ -4547,7 +4598,13 @@ function showPlanReveal(client, onContinue){
 // el rol coach se conecta en 2.2e.
 async function _enterAuthSession(authUser){
   AUTH_MODE=true;
-  const row=await UD.loadOwn();
+  _authUid=(authUser&&authUser.id)||null;
+  let row=await UD.loadOwn();   // null si no hay red (loadOwn ya no lanza)
+  const online=!!row;
+  // Sin fila desde la nube: ¿es porque no hay red? → cae al respaldo local para
+  // poder entrenar offline. Si no hay respaldo tampoco, sigue el flujo normal
+  // (usuario realmente nuevo → onboarding / pedir crear cuenta).
+  if(!row){ const cached=_readAuthRow(_authUid); if(cached){ row=cached; log('AVI: sin red — usando respaldo local de tu fila'); } }
   // Rol coach: carga SOLO sus clientes (filas con coach_id = su uid) y abre el panel.
   if(row&&row.role==='coach'){ AUTH_ROLE='coach'; return await _enterCoachAuth(authUser,row); }
   AUTH_ROLE='client';
@@ -4558,6 +4615,7 @@ async function _enterAuthSession(authUser){
       history:row.history, prs:row.prs, bodyweight:row.bodyweight,
       medidas:row.medidas, nutrition:row.nutrition, photos:row.photos, msgs:row.msgs,
     });
+    if(online) _cacheAuthRow(_authUid,row); // refresca el respaldo con lo recién bajado
   } else {
     const prof=_profileFromMeta(authUser);
     if(!prof._complete){
