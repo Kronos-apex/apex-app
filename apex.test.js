@@ -57,6 +57,7 @@ const {
   gxLevel,
   gxDiscount,
   gxNextTier,
+  computeExerciseProgress,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1424,6 +1425,74 @@ test('gxNextTier: sesiones que faltan para el próximo tramo', () => {
 test('gxNextTier: ya en el tope (15%) → null', () => {
   const d = gxDiscount(gxClient, gxSessions(12), GX_NOW);
   assert.strictEqual(gxNextTier(d), null);
+});
+
+// ══════════════════════════════════════════════════════
+section('Progreso por ejercicio (computeExerciseProgress)');
+
+test('peso_reps: serie viejo→nuevo con maxKg y volumen del día', () => {
+  // history se guarda nuevo→viejo; la función lo invierte.
+  const hist = [
+    { date: '2026-05-10', exercises: [{ name: 'Sentadilla', muscle: 'piernas', track: 'peso_reps', sets: [{ done: true, kg: '100', reps: '5' }, { done: true, kg: '90', reps: '8' }] }] },
+    { date: '2026-05-03', exercises: [{ name: 'Sentadilla', muscle: 'piernas', track: 'peso_reps', sets: [{ done: true, kg: '80', reps: '5' }] }] },
+  ];
+  const r = computeExerciseProgress(hist);
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].name, 'Sentadilla');
+  assert.strictEqual(r[0].unit, 'kg');
+  assert.strictEqual(r[0].points.length, 2);
+  assert.strictEqual(r[0].points[0].maxKg, 80);          // el más viejo primero
+  assert.strictEqual(r[0].points[0].vol, 400);           // 80·5
+  assert.strictEqual(r[0].points[1].maxKg, 100);         // máx del día
+  assert.strictEqual(r[0].points[1].vol, 1220);          // 100·5 + 90·8
+});
+
+test('cada modalidad de track calcula su valor y unidad', () => {
+  const hist = [{ date: '2026-05-10', exercises: [
+    { name: 'Dominadas', track: 'reps', sets: [{ done: true, reps: '12' }, { done: true, reps: '10' }] },
+    { name: 'Plancha', track: 'tiempo', sets: [{ done: true, secs: '60' }, { done: true, secs: '45' }] },
+    { name: 'Trote', track: 'cardio', sets: [{ done: true, min: '10' }, { done: true, min: '5' }] },
+    { name: 'Burpees', track: 'hiit', sets: [{ done: true }, { done: true }, { done: false }] },
+  ] }];
+  const by = Object.fromEntries(computeExerciseProgress(hist).map(e => [e.name, e]));
+  assert.deepStrictEqual([by.Dominadas.points[0].maxKg, by.Dominadas.unit], [12, 'reps']);     // reps máx
+  assert.deepStrictEqual([by.Plancha.points[0].maxKg, by.Plancha.unit], [60, 's']);            // segundos máx
+  assert.deepStrictEqual([by.Trote.points[0].maxKg, by.Trote.unit], [15, 'min']);              // minutos sumados
+  assert.deepStrictEqual([by.Burpees.points[0].maxKg, by.Burpees.unit], [2, 'rondas']);        // rondas = series hechas
+});
+
+test('mismo día dos veces → un punto con el máximo y volumen sumado', () => {
+  const hist = [
+    { date: '2026-05-10T18:00', exercises: [{ name: 'Press', track: 'peso_reps', sets: [{ done: true, kg: '60', reps: '10' }] }] },
+    { date: '2026-05-10T07:00', exercises: [{ name: 'Press', track: 'peso_reps', sets: [{ done: true, kg: '50', reps: '10' }] }] },
+  ];
+  const r = computeExerciseProgress(hist);
+  assert.strictEqual(r[0].points.length, 1);
+  assert.strictEqual(r[0].points[0].maxKg, 60);
+  assert.strictEqual(r[0].points[0].vol, 1100); // 50·10 + 60·10
+});
+
+test('peso_reps sin peso o sin series hechas → no genera punto', () => {
+  const hist = [{ date: '2026-05-10', exercises: [
+    { name: 'Vacío', track: 'peso_reps', sets: [{ done: true, kg: '0', reps: '10' }] },
+    { name: 'NoHecho', track: 'peso_reps', sets: [{ done: false, kg: '80', reps: '5' }] },
+  ] }];
+  assert.strictEqual(computeExerciseProgress(hist).length, 0);
+});
+
+test('ordena por número de puntos (más datos primero)', () => {
+  const hist = [
+    { date: '2026-05-10', exercises: [{ name: 'A', track: 'peso_reps', sets: [{ done: true, kg: '50', reps: '5' }] }, { name: 'B', track: 'peso_reps', sets: [{ done: true, kg: '30', reps: '5' }] }] },
+    { date: '2026-05-03', exercises: [{ name: 'A', track: 'peso_reps', sets: [{ done: true, kg: '45', reps: '5' }] }] },
+  ];
+  const r = computeExerciseProgress(hist);
+  assert.strictEqual(r[0].name, 'A'); // 2 puntos
+  assert.strictEqual(r[1].name, 'B'); // 1 punto
+});
+
+test('historial vacío o nulo → []', () => {
+  assert.deepStrictEqual(computeExerciseProgress([]), []);
+  assert.deepStrictEqual(computeExerciseProgress(null), []);
 });
 
 // ══════════════════════════════════════════════════════

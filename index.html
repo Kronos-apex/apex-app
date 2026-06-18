@@ -3643,43 +3643,8 @@ function openTemplatePicker(){
 // Build a map: { exName → [{date, maxKg, totalVol, sessions}] } from history
 function buildExerciseProgress(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
-  const sessions=(DB.history[clientId]||[]).slice().reverse(); // oldest first
-  const map={}; // key: ex name
-  sessions.forEach(s=>{
-    const dateStr=new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
-    (s.exercises||[]).forEach(ex=>{
-      // track viene del historial; las sesiones antiguas sin track son peso_reps.
-      const track=ex.track||'peso_reps';
-      const done=(ex.sets||[]).filter(st=>st.done);
-      let val=0,vol=0,unit='kg';
-      if(track==='peso_reps'){
-        const ws=done.filter(st=>parseFloat(st.kg)>0);
-        if(!ws.length)return; // sin peso registrado
-        val=Math.max(...ws.map(st=>parseFloat(st.kg)));
-        vol=ws.reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
-        unit='kg';
-      } else if(track==='reps'){
-        const rs=done.filter(st=>parseInt(st.reps)>0); if(!rs.length)return;
-        val=Math.max(...rs.map(st=>parseInt(st.reps)||0)); unit='reps';
-      } else if(track==='tiempo'){
-        const ts=done.filter(st=>parseInt(st.secs)>0); if(!ts.length)return;
-        val=Math.max(...ts.map(st=>parseInt(st.secs)||0)); unit='s';
-      } else if(track==='cardio'){
-        const cs=done.filter(st=>parseFloat(st.min)>0); if(!cs.length)return;
-        val=cs.reduce((t,st)=>t+(parseFloat(st.min)||0),0); unit='min';
-      } else if(track==='hiit'){
-        if(!done.length)return; val=done.length; unit='rondas';
-      } else return;
-      if(!map[ex.name])map[ex.name]={name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle,unit,points:[]};
-      map[ex.name].unit=unit;
-      // One point per session date (take max if same day trained twice)
-      const existing=map[ex.name].points.find(p=>p.dateStr===dateStr);
-      if(existing){existing.maxKg=Math.max(existing.maxKg,val);existing.vol+=vol;}
-      else map[ex.name].points.push({date:s.date,dateStr,maxKg:val,vol:Math.round(vol)});
-    });
-  });
-  // Only keep exercises with ≥2 data points (need at least 2 to draw a line)
-  return Object.values(map).filter(e=>e.points.length>=1).sort((a,b)=>b.points.length-a.points.length);
+  // Agregación pura → apex-core.js (computeExerciseProgress); aquí solo el acceso a DB.
+  return computeExerciseProgress(DB.history[clientId]||[]);
 }
 
 // Draw inline SVG line chart for kg progression

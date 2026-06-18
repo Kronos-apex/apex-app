@@ -1072,6 +1072,55 @@ function gxNextTier(d) {
   return { pct: tgt.p, need: Math.max(1, Math.ceil(tgt.a * d.expected) - d.done) };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
+// ──────────────────────────────────────────────────────────────────────
+// Agrega el historial en una serie por ejercicio: un punto por día entrenado
+// con el MEJOR valor de ese día (y el volumen, en peso_reps). El "mejor valor"
+// depende de la modalidad (track): peso máx, reps máx, segundos máx, minutos
+// sumados o rondas. Pura: recibe el array de sesiones (como se guarda, nuevo→viejo)
+// y lo invierte internamente para que la serie quede viejo→nuevo (la lee el chart).
+// El consumidor (buildExerciseProgress en index.html) solo le pasa DB.history[cid].
+function computeExerciseProgress(history) {
+  const sessions = (history || []).slice().reverse(); // oldest first
+  const map = {}; // key: nombre del ejercicio
+  sessions.forEach(s => {
+    const dateStr = new Date(s.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    (s.exercises || []).forEach(ex => {
+      // track viene del historial; las sesiones antiguas sin track son peso_reps.
+      const track = ex.track || 'peso_reps';
+      const done = (ex.sets || []).filter(st => st.done);
+      let val = 0, vol = 0, unit = 'kg';
+      if (track === 'peso_reps') {
+        const ws = done.filter(st => parseFloat(st.kg) > 0);
+        if (!ws.length) return; // sin peso registrado
+        val = Math.max(...ws.map(st => parseFloat(st.kg)));
+        vol = ws.reduce((t, st) => t + (parseFloat(st.kg) || 0) * (parseFloat(st.reps) || 0), 0);
+        unit = 'kg';
+      } else if (track === 'reps') {
+        const rs = done.filter(st => parseInt(st.reps) > 0); if (!rs.length) return;
+        val = Math.max(...rs.map(st => parseInt(st.reps) || 0)); unit = 'reps';
+      } else if (track === 'tiempo') {
+        const ts = done.filter(st => parseInt(st.secs) > 0); if (!ts.length) return;
+        val = Math.max(...ts.map(st => parseInt(st.secs) || 0)); unit = 's';
+      } else if (track === 'cardio') {
+        const cs = done.filter(st => parseFloat(st.min) > 0); if (!cs.length) return;
+        val = cs.reduce((t, st) => t + (parseFloat(st.min) || 0), 0); unit = 'min';
+      } else if (track === 'hiit') {
+        if (!done.length) return; val = done.length; unit = 'rondas';
+      } else return;
+      if (!map[ex.name]) map[ex.name] = { name: ex.name, icon: ex.icon || '💪', muscle: ex.muscle, unit, points: [] };
+      map[ex.name].unit = unit;
+      // Un punto por fecha de sesión (si entrenó dos veces el mismo día, toma el máx).
+      const existing = map[ex.name].points.find(p => p.dateStr === dateStr);
+      if (existing) { existing.maxKg = Math.max(existing.maxKg, val); existing.vol += vol; }
+      else map[ex.name].points.push({ date: s.date, dateStr, maxKg: val, vol: Math.round(vol) });
+    });
+  });
+  // Conserva ejercicios con ≥1 punto; ordena por nº de puntos (más datos primero).
+  return Object.values(map).filter(e => e.points.length >= 1).sort((a, b) => b.points.length - a.points.length);
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1132,5 +1181,6 @@ if (typeof module !== 'undefined' && module.exports) {
     gxLevel,
     gxDiscount,
     gxNextTier,
+    computeExerciseProgress,
   };
 }

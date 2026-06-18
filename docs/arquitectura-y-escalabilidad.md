@@ -109,9 +109,14 @@ tests verdes + verificación de render antes de desplegar.
     para tests deterministas), `gxNextTier` (+8 tests). Lógica del descuento que
     ve el coach, antes sin un solo test. 170 → 178. `renderGamification` se queda
     como consumidor DOM.
+  - Paso 5 ✅: progreso por ejercicio → `apex-core.js` `computeExerciseProgress`
+    (+6 tests). Agrega el historial en una serie por ejercicio (mejor valor del
+    día + volumen) según la modalidad (peso_reps/reps/tiempo/cardio/hiit).
+    `buildExerciseProgress` quedó como wrapper de 3 líneas (solo el acceso a `DB`).
+    178 → 184.
   - Próximos candidatos puros a evaluar: helpers de fecha/formato restantes
-    (`fmtT`/`fmtD`), `buildExerciseProgress` (cálculo de progreso, hoy lee `DB`
-    directo → habría que inyectarle history/prs). Regla: solo lógica SIN DOM ni `DB`.
+    (`fmtT`/`fmtD`), agregados de volumen/sesión (`renderVolChart` tiene cálculo
+    embebido). Regla: solo lógica SIN DOM ni `DB`.
 
 ### Deuda menor anotada
 - Advisor de Supabase: `user_data` tiene dos políticas DELETE permisivas
