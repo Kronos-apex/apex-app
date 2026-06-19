@@ -31,6 +31,10 @@ const {
   genSchemeFor,
   restForType,
   restForExercise,
+  bisetBlocks,
+  guidedStepOrder,
+  bisetInfo,
+  normalizeBisets,
   isInAdaptation,
   estimate1RM,
   suggestLoad,
@@ -1633,6 +1637,62 @@ test('applyMood "cansado": sube +15s sobre el descanso por tipo de cada ejercici
   const out = applyMood(routine, 'cansado', { sex: 'M' });
   assert.strictEqual(out.exercises[0].restSec, 135, 'compuesto 120+15');
   assert.strictEqual(out.exercises[1].restSec, 75, 'aislamiento 60+15');
+});
+
+// ══════════════════════════════════════════════════════
+section('Biseries (superseries de a 2, manual)');
+
+test('bisetBlocks: sin biseries → cada ejercicio es su propio bloque', () => {
+  const exs = [{ sets: 3 }, { sets: 3 }, { sets: 3 }];
+  assert.deepStrictEqual(bisetBlocks(exs), [[0], [1], [2]]);
+});
+test('bisetBlocks: ssNext empareja con el siguiente', () => {
+  const exs = [{ sets: 3, ssNext: true }, { sets: 3 }, { sets: 3 }];
+  assert.deepStrictEqual(bisetBlocks(exs), [[0, 1], [2]]);
+});
+test('bisetBlocks: solo parejas — un ssNext encadenado NO forma triserie', () => {
+  const exs = [{ ssNext: true }, { ssNext: true }, { ssNext: true }, {}];
+  // (0,1) pareja; el ssNext de 1 se salta; (2,3) pareja
+  assert.deepStrictEqual(bisetBlocks(exs), [[0, 1], [2, 3]]);
+});
+test('bisetBlocks: ssNext en el último ejercicio no tiene con quién (queda solo)', () => {
+  const exs = [{}, { ssNext: true }];
+  assert.deepStrictEqual(bisetBlocks(exs), [[0], [1]]);
+});
+
+test('guidedStepOrder: normal = serie por serie', () => {
+  const exs = [{ sets: 2 }, { sets: 2 }];
+  assert.deepStrictEqual(guidedStepOrder(exs),
+    [{ ei: 0, si: 0 }, { ei: 0, si: 1 }, { ei: 1, si: 0 }, { ei: 1, si: 1 }]);
+});
+test('guidedStepOrder: biserie intercala por ronda (A1,B1,A2,B2)', () => {
+  const exs = [{ sets: 2, ssNext: true }, { sets: 2 }];
+  assert.deepStrictEqual(guidedStepOrder(exs),
+    [{ ei: 0, si: 0 }, { ei: 1, si: 0 }, { ei: 0, si: 1 }, { ei: 1, si: 1 }]);
+});
+test('guidedStepOrder: biserie con distinto nº de series no se desfasa', () => {
+  const exs = [{ sets: 3, ssNext: true }, { sets: 2 }];
+  assert.deepStrictEqual(guidedStepOrder(exs),
+    [{ ei: 0, si: 0 }, { ei: 1, si: 0 }, { ei: 0, si: 1 }, { ei: 1, si: 1 }, { ei: 0, si: 2 }]);
+});
+
+test('bisetInfo: identifica rol A/B y la pareja', () => {
+  const exs = [{ ssNext: true }, {}, {}];
+  assert.deepStrictEqual(bisetInfo(exs, 0), { biset: true, role: 'a', partner: 1 });
+  assert.deepStrictEqual(bisetInfo(exs, 1), { biset: true, role: 'b', partner: 0 });
+  assert.deepStrictEqual(bisetInfo(exs, 2), { biset: false, role: null, partner: null });
+});
+
+test('normalizeBisets: limpia ssNext del último (sin pareja)', () => {
+  const exs = [{}, { ssNext: true }];
+  normalizeBisets(exs);
+  assert.strictEqual(exs[1].ssNext, undefined);
+});
+test('normalizeBisets: rompe cadenas dejando solo la primera pareja', () => {
+  const exs = [{ ssNext: true }, { ssNext: true }, {}];
+  normalizeBisets(exs);
+  assert.strictEqual(exs[0].ssNext, true);
+  assert.strictEqual(exs[1].ssNext, undefined); // el 2º de la pareja no encadena
 });
 
 // ══════════════════════════════════════════════════════

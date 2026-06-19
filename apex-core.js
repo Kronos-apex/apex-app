@@ -237,6 +237,68 @@ function restForExercise(ex, routine) {
   return (routine && +routine.restSec) || 60;
 }
 
+// ── BISERIES (superseries de a 2) — manual, validado con Camilo 2026-06-19 ──
+// Una biserie = dos ejercicios ADYACENTES que se hacen alternados SIN descanso
+// entre ellos; el descanso va al terminar la pareja. Modelo: el primer ejercicio
+// lleva `ssNext:true` (se empareja con el siguiente). Solo parejas: si el segundo
+// también trae ssNext, se ignora (no encadena triseries).
+function bisetBlocks(exercises) {
+  const exs = exercises || [];
+  const blocks = [];
+  let i = 0;
+  while (i < exs.length) {
+    if (exs[i] && exs[i].ssNext && i + 1 < exs.length) { blocks.push([i, i + 1]); i += 2; }
+    else { blocks.push([i]); i += 1; }
+  }
+  return blocks;
+}
+// Orden de ejecución para el modo guiado: dentro de una biserie intercala por
+// RONDA (A1, B1, A2, B2…); los ejercicios normales van serie por serie.
+function guidedStepOrder(exercises) {
+  const exs = exercises || [];
+  const order = [];
+  bisetBlocks(exs).forEach(block => {
+    if (block.length === 1) {
+      const ei = block[0]; const sets = parseInt(exs[ei] && exs[ei].sets) || 3;
+      for (let si = 0; si < sets; si++) order.push({ ei, si });
+    } else {
+      const [a, b] = block;
+      const sa = parseInt(exs[a].sets) || 3, sb = parseInt(exs[b].sets) || 3;
+      const rounds = Math.max(sa, sb);
+      for (let r = 0; r < rounds; r++) {
+        if (r < sa) order.push({ ei: a, si: r });
+        if (r < sb) order.push({ ei: b, si: r });
+      }
+    }
+  });
+  return order;
+}
+// ¿El ejercicio `ei` es parte de una biserie? Devuelve su rol y la pareja.
+function bisetInfo(exercises, ei) {
+  const blocks = bisetBlocks(exercises);
+  for (const blk of blocks) {
+    if (blk.length === 2) {
+      if (blk[0] === ei) return { biset: true, role: 'a', partner: blk[1] };
+      if (blk[1] === ei) return { biset: true, role: 'b', partner: blk[0] };
+    }
+  }
+  return { biset: false, role: null, partner: null };
+}
+// Limpia flags ssNext inválidos tras mover/borrar (último sin pareja, o encadenados).
+function normalizeBisets(exercises) {
+  const exs = exercises || [];
+  let i = 0;
+  while (i < exs.length) {
+    if (exs[i] && exs[i].ssNext) {
+      if (i + 1 >= exs.length) { delete exs[i].ssNext; i += 1; continue; } // último: no hay pareja
+      if (exs[i + 1]) delete exs[i + 1].ssNext; // el segundo de la pareja NO puede iniciar otra
+      i += 2; continue;
+    }
+    i += 1;
+  }
+  return exs;
+}
+
 // ── Fase de adaptación: ¿el cliente está en sus primeras semanas de entreno? ──
 // Solo aplica a principiantes. La ventana arranca cuando EMPIEZAN a entrenar:
 // usa client.startDate si existe, si no la primera sesión registrada, si no la fecha
@@ -1276,6 +1338,10 @@ if (typeof module !== 'undefined' && module.exports) {
     restForType,
     restForExercise,
     REST_BY_TYPE,
+    bisetBlocks,
+    guidedStepOrder,
+    bisetInfo,
+    normalizeBisets,
     inferExerciseEnv,
     ENV_ALL,
     mergeHistory,

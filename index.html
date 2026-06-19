@@ -3570,7 +3570,7 @@ function saveRoutineAsTemplate(cid,ri){
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
   const r=c.routines[ri];if(!r)return;
   const name=r.name+' (plantilla)';
-  DB.templates.push({id:uid(),name,tag:'',note:r.note||'',restSec:r.restSec||60,exercises:(r.exercises||[]).map(e=>({...e})),createdAt:new Date().toISOString()});
+  DB.templates.push({id:uid(),name,tag:'',note:r.note||'',restSec:r.restSec||60,exercises:(r.exercises||[]).map((e,_ei,_arr)=>({...e})),createdAt:new Date().toISOString()});
   sv('ax_tpl',DB.templates);
   toast(`📂 "${r.name}" guardada como plantilla`);
 }
@@ -5142,7 +5142,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
 }
@@ -5199,7 +5199,7 @@ function renderGenPreview(c,res){
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-    const exs=r.exercises.map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
+    const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
   document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+intro+cards;
@@ -5208,7 +5208,7 @@ function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
   if(!c.routines)c.routines=[];
   const n=CUR.genDraft.routines.length;
-  c.routines.push(...CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map(e=>({...e}))})));
+  c.routines.push(...CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map((e,_ei,_arr)=>({...e}))})));
   c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);
   cm('m-gen');renderDetailRoutines(c);renderHome();
@@ -5227,7 +5227,7 @@ function openEditRoutine(cid,ri){
   const whyEl=document.getElementById('r-why');if(whyEl)whyEl.value=r.why||'';
   document.getElementById('rf-day').value=r.day||'Lunes';
   document.getElementById('rf-shift').value=r.shift||'';
-  CUR.routineExs=(r.exercises||[]).map(e=>({...e}));
+  CUR.routineExs=(r.exercises||[]).map((e,_ei,_arr)=>({...e}));
   CUR.restSec=r.restSec||60;
   // Activate correct rest preset button
   const restMap={45:0,60:1,90:2,120:3,180:4};
@@ -5246,29 +5246,35 @@ function moveEx(i,dir){
   const j=i+dir;
   if(j<0||j>=CUR.routineExs.length)return;
   const tmp=CUR.routineExs[i];CUR.routineExs[i]=CUR.routineExs[j];CUR.routineExs[j]=tmp;
+  normalizeBisets(CUR.routineExs);
   renderRfExList();
 }
+function rfDelEx(i){ CUR.routineExs.splice(i,1); normalizeBisets(CUR.routineExs); renderRfExList(); }
+// Biseries: unir el ejercicio i con el siguiente (sin descanso entre ambos) / deshacer.
+function linkBiset(i){ if(CUR.routineExs[i]){CUR.routineExs[i].ssNext=true;normalizeBisets(CUR.routineExs);renderRfExList();} }
+function unlinkBiset(i){ if(CUR.routineExs[i]){delete CUR.routineExs[i].ssNext;renderRfExList();} }
 
-function renderRfExList(){
-  const con=document.getElementById('rf-exlist');
-  if(!CUR.routineExs.length){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca "+ Añadir ejercicios" para comenzar</div>';
-    return;
-  }
-  const n=CUR.routineExs.length;
-  let html='';
-  CUR.routineExs.forEach((e,i)=>{
-    const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
-    const upDis=i===0; const dnDis=i===n-1;
-    const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
-    html+=`<div style="background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm);margin-bottom:6px;overflow:hidden">
+// Una fila de ejercicio del constructor. abMark: 'A'|'B' si va dentro de una biserie.
+function rfExRow(i,n,abMark){
+  const e=CUR.routineExs[i];
+  const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
+  const upDis=i===0; const dnDis=i===n-1;
+  const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
+  // Botón de unir en biserie: solo si i no está ya en pareja, hay un siguiente, y el siguiente tampoco está en pareja.
+  const canLink = !abMark && i<n-1 && !bisetInfo(CUR.routineExs,i).biset && !bisetInfo(CUR.routineExs,i+1).biset;
+  const linkBtn = canLink
+    ? `<button title="Unir en biserie con el ejercicio de abajo (sin descanso entre ambos)" onclick="linkBiset(${i})" style="width:30px;height:30px;border-radius:6px;border:1.5px solid #A855F7;background:#A855F710;color:#A855F7;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">🔗</button>`
+    : '';
+  const abChip = abMark ? `<span style="font-size:10px;font-weight:900;color:#A855F7;background:#A855F718;border-radius:5px;padding:1px 6px;margin-right:2px;flex-shrink:0">${abMark}</span>` : '';
+  const border = abMark ? 'border:none;border-radius:0' : `border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm)`;
+  return `<div style="background:var(--w);${border};margin-bottom:${abMark?'0':'6px'};overflow:hidden">
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
-        ${muscleIcon(e.muscle,20)}
+        ${abChip}${muscleIcon(e.muscle,20)}
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</div>
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${e.muscle} · ${e.type}</div>
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">${ab(-1,upDis)}${ab(1,dnDis)}</div>
+        <div style="display:flex;gap:4px;flex-shrink:0">${linkBtn}${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;padding:0 10px 9px;padding-left:44px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">Series</span>
@@ -5285,10 +5291,34 @@ function renderRfExList(){
           onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()"
           onfocus="this.select()">
         <span style="color:var(--t3);font-size:11px;font-weight:600">seg</span>
-        <button onclick="CUR.routineExs.splice(${i},1);renderRfExList()"
+        <button onclick="rfDelEx(${i})"
           style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
       </div>
     </div>`;
+}
+
+function renderRfExList(){
+  const con=document.getElementById('rf-exlist');
+  if(!CUR.routineExs.length){
+    con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca "+ Añadir ejercicios" para comenzar</div>';
+    return;
+  }
+  normalizeBisets(CUR.routineExs);
+  const n=CUR.routineExs.length;
+  let html='';
+  bisetBlocks(CUR.routineExs).forEach(block=>{
+    if(block.length===1){ html+=rfExRow(block[0],n,null); }
+    else {
+      html+=`<div style="border:1.5px solid #A855F7;border-radius:var(--rsm);margin-bottom:6px;overflow:hidden;background:#A855F708">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#A855F712">
+          <span style="font-size:11px;font-weight:800;color:#A855F7;letter-spacing:.3px">🔗 BISERIE · alterna sin descanso entre ambos</span>
+          <button onclick="unlinkBiset(${block[0]})" style="font-size:11px;font-weight:700;color:#A855F7;background:none;border:none;cursor:pointer;text-decoration:underline">Deshacer</button>
+        </div>
+        ${rfExRow(block[0],n,'A')}
+        <div style="height:1px;background:#A855F725;margin:0 10px"></div>
+        ${rfExRow(block[1],n,'B')}
+      </div>`;
+    }
   });
   con.innerHTML=html;
 }
@@ -6314,7 +6344,7 @@ function renderClientExList(routine){
           <div class="cex-block-name">${esc(ex.name)}</div>
           <button class="exinfo-btn" title="Ver cómo hacerlo" onclick="event.stopPropagation();openExDetail('${ex.id}')">❓</button>
         </div>
-        <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}</div>
+        <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}${(()=>{const _bi=bisetInfo(routine.exercises,ei);return _bi.biset?` · <span style="color:#A855F7;font-weight:700">🔗 biserie con ${esc((routine.exercises[_bi.partner]||{}).name||'')}</span>`:'';})()}</div>
       </div>
       <div class="cex-block-prog ${allDone?'done':''}">${doneCount}/${sets}</div>
       <div class="cex-block-chev">▼</div>`;
@@ -6720,7 +6750,7 @@ function renderClientAllRoutines(client){
     const isToday=!isRest && r.day===['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
     const dayAb=isRest?'💤':esc(r.day).slice(0,2);
     const div=document.createElement('div');div.className='rc'+(isToday?' rc-today':'');
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}${isToday?'<span class="rc-today-tag">Hoy</span>':''}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')} · ⏱${restForExercise(e,r)}s</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}${isToday?'<span class="rc-today-tag">Hoy</span>':''}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
     con.appendChild(div);
   });
 }
@@ -7938,10 +7968,11 @@ function openGuidedMode(){
   if(!routine || !(routine.exercises||[]).length){ toast('No hay ejercicios en esta rutina'); return; }
   GM.routine = routine;
   GM.exercises = routine.exercises;
-  GM.steps = [];
-  GM.exercises.forEach((ex, ei) => {
-    const sets = parseInt(ex.sets)||3;
-    for(let si = 0; si < sets; si++) GM.steps.push({ei, si, ex, sets});
+  // Orden de pasos respetando biseries (intercala A1,B1,A2,B2…). Sin biseries
+  // queda idéntico al orden serie-por-serie de siempre.
+  GM.steps = guidedStepOrder(GM.exercises).map(({ei, si}) => {
+    const ex = GM.exercises[ei];
+    return { ei, si, ex, sets: parseInt(ex.sets)||3 };
   });
   GM.currentStep = 0;
   for(let i = 0; i < GM.steps.length; i++){
@@ -8096,7 +8127,7 @@ function gmActionBtn(){
     return;
   }
   const nextStep = GM.steps[GM.currentStep];
-  gmShowRest(restForExercise(ex, GM.routine), nextStep);
+  gmRest(ei, si, nextStep);
   setTimeout(() => {
     const nr = document.getElementById(`gm-set-${nextStep.ei}-${nextStep.si}`);
     const nc = document.getElementById(`gm-ex-${nextStep.ei}`);
@@ -8138,7 +8169,7 @@ function gmToggleSet(ei, si, stepIdx){
         return;
       }
       const nextStep=GM.steps[GM.currentStep];
-      gmShowRest(restForExercise(ex, GM.routine),nextStep);
+      gmRest(ei, si, nextStep);
       setTimeout(()=>{
         const nr=document.getElementById(`gm-set-${nextStep.ei}-${nextStep.si}`);
         const nc=document.getElementById(`gm-ex-${nextStep.ei}`);
@@ -8208,11 +8239,41 @@ function gmShowStartCard(ex){
 }
 function closeStartCard(){ const el=document.getElementById('gm-start-card'); if(el){ el.classList.remove('on'); setTimeout(()=>{ if(el&&!el.classList.contains('on')) el.remove(); },300); } }
 
-function gmShowRest(secs, nextStep){
+// Plan de descanso tras completar la serie (ei,si). En biserie: si acabas el
+// PRIMER ejercicio (rol A) y a la pareja le falta esa ronda → transición SIN
+// descanso (pasas al otro ya). Al cerrar la pareja → descanso = el mayor de los dos.
+function gmRestPlan(ei, si){
+  const info = bisetInfo(GM.exercises, ei);
+  if(info.biset && info.role==='a'){
+    const pSets = parseInt(GM.exercises[info.partner].sets)||3;
+    // Transición sin descanso solo si a la pareja le falta ESTA ronda (si toggleó
+    // fuera de orden y ya la hizo, mejor un descanso normal).
+    if(si < pSets && !isDone(GM.routine.id, info.partner, si)) return { transition:true, partner: GM.exercises[info.partner] };
+  }
+  let sec = restForExercise(GM.exercises[ei], GM.routine);
+  if(info.biset) sec = Math.max(sec, restForExercise(GM.exercises[info.partner], GM.routine));
+  return { transition:false, sec };
+}
+// Lanza el descanso/transición correcto según el plan de biserie.
+function gmRest(ei, si, nextStep){
+  const plan = gmRestPlan(ei, si);
+  if(plan.transition){
+    gmShowRest(BISET_TRANSITION_SEC, nextStep, { title:'🔗 Biserie — ¡sin pausa!', label:'cambia de ejercicio', biset:true });
+  } else {
+    gmShowRest(plan.sec, nextStep);
+  }
+}
+const BISET_TRANSITION_SEC = 12; // respiro mínimo para cambiar de estación en una biserie
+function gmShowRest(secs, nextStep, opts){
+  opts=opts||{};
   const overlay=document.getElementById('gm-rest-overlay');
   const secEl=document.getElementById('gm-rest-sec');
   const arc=document.getElementById('gm-rest-arc');
   const nextEl=document.getElementById('gm-rest-next');
+  const titleEl=document.getElementById('gm-rest-title');
+  const lblEl=overlay.querySelector('.gm-rest-lbl');
+  if(titleEl) titleEl.textContent = opts.title || '¡Serie completada! 💪';
+  if(lblEl) lblEl.textContent = opts.label || 'descanso';
   const C=439.8;
   overlay.classList.remove('hidden');
   secEl.textContent=secs;
