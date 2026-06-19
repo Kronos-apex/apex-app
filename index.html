@@ -6253,7 +6253,7 @@ function startHiit(routine,ei,rounds,work,rest){
       if(phase==='work'){
         setDone(routine.id,ei,round,true);round++;
         updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
-        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}return;}
+        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}gmAfterHiit(ei);return;}
         phase='rest';left=rest;playRestEndBeep();
       } else {phase='work';left=work;playRestEndBeep();}
     }
@@ -8034,36 +8034,115 @@ function gmRender(){
       sh.textContent=`🎯 Peso sugerido: ${gmSug} kg · según tu récord`;
       setsEl.appendChild(sh);
     }
+    const gmTrack = exTrack(ex);
+    if(gmTrack==='hiit'){
+      gmRenderHiit(setsEl, ei, ex, steps.length);
+    } else {
     steps.forEach(({si, stepIdx}) => {
       const done = isDone(GM.routine.id, ei, si);
-      const savedKg = getLog(GM.routine.id, ei, si, 'kg');
-      const savedReps = getLog(GM.routine.id, ei, si, 'reps') || ex.reps;
       const isActive = stepIdx === GM.currentStep;
       const row = document.createElement('div');
       row.className = `gm-set-row${isActive?' active-set':''}${done?' set-done':''}`;
       row.id = `gm-set-${ei}-${si}`;
       row.innerHTML = `
         <div class="gm-set-num" id="gm-snum-${ei}-${si}">${done?'✓':si+1}</div>
-        <div>
-          <input class="gm-sinput" type="number" step="0.5" min="0" id="gm-kg-${ei}-${si}"
-            placeholder="${ex.defaultKg||(gmSug?'~'+gmSug:'0')}" value="${savedKg}" ${done?'readonly':''}
-            oninput="setLog('${GM.routine.id}',${ei},${si},'kg',this.value)">
-          <div class="gm-sinput-label">KG</div>
-        </div>
-        <div>
-          <input class="gm-sinput" type="number" min="1" id="gm-reps-${ei}-${si}"
-            placeholder="${ex.reps}" value="${savedReps}" ${done?'readonly':''}
-            oninput="setLog('${GM.routine.id}',${ei},${si},'reps',this.value)">
-          <div class="gm-sinput-label">REPS</div>
-        </div>
+        ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug)}
         <button class="gm-check${done?' checked':''}" id="gm-chk-${ei}-${si}"
           onclick="gmToggleSet(${ei},${si},${stepIdx})">${done?'✓':'○'}</button>`;
+      if(gmTrack==='tiempo'){
+        const go=row.querySelector('.gm-timer-go');
+        if(go) go.onclick=(e)=>{e.stopPropagation();const inp=row.querySelector('.gm-sinput[data-field="secs"]');gmHoldTimer(ei,si,parseInt(inp&&inp.value)||0);};
+      }
       setsEl.appendChild(row);
     });
+    }
     card.appendChild(setsEl);
     body.appendChild(card);
   });
   gmUpdateActionBtn();
+}
+
+// Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
+// peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
+function gmSetCellsHTML(track, ex, ei, si, done, gmSug){
+  const ro=done?'readonly':'';
+  const g=f=>getLog(GM.routine.id,ei,si,f);
+  const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
+    <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
+      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)">
+    <div class="gm-sinput-label">${label}</div></div>`;
+  if(track==='reps') return cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',true);
+  if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
+    +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
+  if(track==='cardio') return cell('min','type="number" min="0"','min',g('min')||ex.reps,'MIN',false)+cell('dist','type="number" min="0" step="0.1"','km',g('dist'),'KM',false);
+  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',false);
+}
+
+// Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.
+function gmLogRow(ei, si){
+  const ex=GM.exercises[ei];
+  const row=document.getElementById(`gm-set-${ei}-${si}`);
+  if(!row) return;
+  const inps=row.querySelectorAll('.gm-sinput[data-field]');
+  inps.forEach(inp=>{
+    let v=inp.value;
+    if(inp.dataset.field==='reps' && !v) v=ex.reps; // reps vacío → el objetivo de la rutina
+    setLog(GM.routine.id, ei, si, inp.dataset.field, v);
+    inp.readOnly=true;
+  });
+}
+
+// Cronómetro de isométrico en el guiado: cuenta regresiva en el overlay y, al
+// terminar, marca la serie (clic en el check) → registra los segundos y avanza.
+function gmHoldTimer(ei, si, secs){
+  if(!secs || secs<1) return;
+  if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
+  reqWake();
+  const overlay=document.getElementById('gm-rest-overlay');
+  const secEl=document.getElementById('gm-rest-sec');
+  const arc=document.getElementById('gm-rest-arc');
+  const titleEl=document.getElementById('gm-rest-title');
+  const lblEl=overlay.querySelector('.gm-rest-lbl');
+  const nextEl=document.getElementById('gm-rest-next');
+  const breEl=document.getElementById('gm-rest-breath');
+  if(breEl) breEl.style.display='none';
+  if(nextEl) nextEl.textContent='';
+  if(titleEl) titleEl.textContent='⏱ Aguanta la posición';
+  if(lblEl) lblEl.textContent='segundos';
+  const C=439.8;
+  overlay.classList.remove('hidden');
+  secEl.textContent=secs;
+  arc.style.transition='none'; arc.style.strokeDashoffset='0';
+  setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
+  let left=secs;
+  GM.restTimer=setInterval(()=>{
+    left--;
+    secEl.textContent=left; secEl.classList.remove('tick'); void secEl.offsetWidth; secEl.classList.add('tick');
+    arc.style.strokeDashoffset=C*((secs-left)/secs);
+    if(left>0&&left<=5) playRestTick();
+    if(left<=0){
+      clearInterval(GM.restTimer); GM.restTimer=null;
+      overlay.classList.add('hidden'); relWake(); playRestEndBeep();
+      const chk=document.getElementById(`gm-chk-${ei}-${si}`);
+      if(chk && !chk.classList.contains('checked')) chk.click();
+    }
+  },1000);
+}
+
+// Tarjeta de intervalos HIIT dentro del modo guiado (trabajo/descanso × rondas).
+function gmRenderHiit(setsEl, ei, ex, sets){
+  buildHiitCard(setsEl, GM.routine, ex, ei, sets); // misma UI de intervalos del flujo clásico
+}
+// Tras completar un HIIT en el guiado: sincroniza progreso, avanza y refresca.
+function gmAfterHiit(ei){
+  if(document.getElementById('guided-mode').classList.contains('hidden')) return;
+  gmUpdateProgress(); updateClientProgress(GM.routine);
+  let next=GM.currentStep;
+  while(next<GM.steps.length && isDone(GM.routine.id, GM.steps[next].ei, GM.steps[next].si)) next++;
+  GM.currentStep=next;
+  gmRender();
+  if(GM.currentStep>=GM.steps.length){ setTimeout(()=>{ closeGuidedMode(); checkAndShowCongrats(GM.routine); }, 500); }
+  else { setTimeout(()=>gmScrollToCurrent(), 100); }
 }
 
 function gmUpdateProgress(){
@@ -8090,6 +8169,11 @@ function gmUpdateActionBtn(){
     return;
   }
   const {ex, si, sets} = GM.steps[GM.currentStep];
+  if(exTrack(ex)==='hiit'){
+    btn.textContent = `▶ Inicia el HIIT — ${esc(ex.name)}`;
+    btn.onclick = () => { gmScrollToCurrent(); const b=document.getElementById(`hiit-start_${GM.steps[GM.currentStep].ei}`); if(b) b.click(); };
+    return;
+  }
   btn.textContent = `✓ Completar serie ${si+1}/${sets} — ${esc(ex.name)}`;
   btn.onclick = () => gmActionBtn();
 }
@@ -8097,12 +8181,8 @@ function gmUpdateActionBtn(){
 function gmActionBtn(){
   if(GM.currentStep >= GM.steps.length){ closeGuidedMode(); return; }
   const {ei, si, ex} = GM.steps[GM.currentStep];
-  const kgEl = document.getElementById(`gm-kg-${ei}-${si}`);
-  const repEl = document.getElementById(`gm-reps-${ei}-${si}`);
-  const kg = kgEl ? kgEl.value : '';
-  const reps = repEl ? (repEl.value || ex.reps) : ex.reps;
-  setLog(GM.routine.id, ei, si, 'kg', kg);
-  setLog(GM.routine.id, ei, si, 'reps', reps);
+  if(exTrack(ex)==='hiit'){ toast('▶ Inicia el HIIT con el botón de su tarjeta'); return; } // el HIIT lo maneja su tarjeta de intervalos
+  gmLogRow(ei, si); // registra los inputs de la modalidad (kg/reps, reps, secs, min/km)
   setDone(GM.routine.id, ei, si, true);
   if(navigator.vibrate)navigator.vibrate(40);
   const row = document.getElementById(`gm-set-${ei}-${si}`);
@@ -8111,8 +8191,6 @@ function gmActionBtn(){
   if(row){ row.classList.remove('active-set'); row.classList.add('set-done'); }
   if(chk){ chk.classList.add('checked'); chk.textContent='✓'; }
   if(num) num.textContent='✓';
-  if(kgEl) kgEl.readOnly=true;
-  if(repEl) repEl.readOnly=true;
   const sets2 = parseInt(ex.sets)||3;
   const exDone = Array.from({length:sets2},(_,s)=>isDone(GM.routine.id,ei,s)).every(Boolean);
   if(exDone){ const c=document.getElementById(`gm-ex-${ei}`);if(c){c.classList.add('done');c.classList.remove('active');}}
@@ -8140,21 +8218,16 @@ function gmActionBtn(){
 
 function gmToggleSet(ei, si, stepIdx){
   const done = isDone(GM.routine.id, ei, si);
-  const kgEl=document.getElementById(`gm-kg-${ei}-${si}`);
-  const repEl=document.getElementById(`gm-reps-${ei}-${si}`);
   const row=document.getElementById(`gm-set-${ei}-${si}`);
   const chk=document.getElementById(`gm-chk-${ei}-${si}`);
   const num=document.getElementById(`gm-snum-${ei}-${si}`);
   const ex=GM.exercises[ei];
   if(!done){
-    setLog(GM.routine.id,ei,si,'kg',kgEl?kgEl.value:'');
-    setLog(GM.routine.id,ei,si,'reps',repEl?(repEl.value||ex.reps):ex.reps);
+    gmLogRow(ei,si); // registra los inputs de la modalidad y los bloquea
     setDone(GM.routine.id,ei,si,true);
     if(row){row.classList.add('set-done');row.classList.remove('active-set');}
     if(chk){chk.classList.add('checked');chk.textContent='✓';}
     if(num) num.textContent='✓';
-    if(kgEl) kgEl.readOnly=true;
-    if(repEl) repEl.readOnly=true;
     // Avanzar paso actual y mostrar descanso si era el paso activo
     if(stepIdx === GM.currentStep){
       const sets2=parseInt(ex.sets)||3;
@@ -8183,8 +8256,7 @@ function gmToggleSet(ei, si, stepIdx){
     if(row) row.classList.remove('set-done');
     if(chk){chk.classList.remove('checked');chk.textContent='○';}
     if(num) num.textContent=si+1;
-    if(kgEl) kgEl.readOnly=false;
-    if(repEl) repEl.readOnly=false;
+    if(row) row.querySelectorAll('.gm-sinput[data-field]').forEach(inp=>inp.readOnly=false);
   }
   gmUpdateProgress();
   updateClientProgress(GM.routine);
@@ -8256,6 +8328,8 @@ function gmRestPlan(ei, si){
 }
 // Lanza el descanso/transición correcto según el plan de biserie.
 function gmRest(ei, si, nextStep){
+  // Isométricos (tiempo): el descanso lo decide la persona; no lanzamos overlay (igual que el clásico).
+  if(exTrack(GM.exercises[ei])==='tiempo') return;
   const plan = gmRestPlan(ei, si);
   if(plan.transition){
     gmShowRest(BISET_TRANSITION_SEC, nextStep, { title:'🔗 Biserie — ¡sin pausa!', label:'cambia de ejercicio', biset:true });
@@ -8297,7 +8371,7 @@ function gmShowRest(secs, nextStep, opts){
       // Ejercicio NUEVO (primera serie) → tarjeta de respiración; misma serie → flash "¡VAMOS!"
       if(nextStep && nextStep.si===0) gmShowStartCard(nextStep.ex);
       else gmShowGoFlash();
-      if(nextStep){ setTimeout(()=>{ const inp=document.getElementById(`gm-kg-${nextStep.ei}-${nextStep.si}`);if(inp)inp.focus();},600); }
+      if(nextStep){ setTimeout(()=>{ const _r=document.getElementById(`gm-set-${nextStep.ei}-${nextStep.si}`);const inp=_r&&_r.querySelector('.gm-sinput[data-field]');if(inp)inp.focus();},600); }
     }
   },1000);
 }
@@ -8307,7 +8381,7 @@ function gmSkipRest(){
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   const next=GM.steps[GM.currentStep];
   if(next && next.si===0) gmShowStartCard(next.ex);
-  if(next){ setTimeout(()=>{const inp=document.getElementById(`gm-kg-${next.ei}-${next.si}`);if(inp)inp.focus();},200); }
+  if(next){ setTimeout(()=>{const _r=document.getElementById(`gm-set-${next.ei}-${next.si}`);const inp=_r&&_r.querySelector('.gm-sinput[data-field]');if(inp)inp.focus();},200); }
 }
 
 function gmShowGoFlash(){
