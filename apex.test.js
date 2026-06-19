@@ -29,6 +29,8 @@ const {
   workoutStreak,
   sortRoutinesByDay,
   genSchemeFor,
+  restForType,
+  restForExercise,
   isInAdaptation,
   estimate1RM,
   suggestLoad,
@@ -1564,6 +1566,73 @@ test('isBetterPR: empate sin kg (reps/min/etc) NO mejora', () => {
 });
 test('isBetterPR: récord previo viejo guardado como kg (sin val)', () => {
   assert.strictEqual(isBetterPR(100, 3, 'kg', { kg: 90, reps: 5 }), true);
+});
+
+// ══════════════════════════════════════════════════════
+section('Descanso por tipo de ejercicio (variable, no uniforme)');
+
+test('restForType: hipertrofia → compuesto 120s, aislamiento 60s', () => {
+  assert.strictEqual(restForType('Compuesto', 'Ganar músculo'), 120);
+  assert.strictEqual(restForType('Aislamiento', 'Ganar músculo'), 60);
+});
+test('restForType: fuerza descansa más (compuesto 180, aislamiento 90)', () => {
+  assert.strictEqual(restForType('Compuesto', 'Fuerza'), 180);
+  assert.strictEqual(restForType('Aislamiento', 'Fuerza'), 90);
+});
+test('restForType: perder grasa / resistencia descansa menos (compuesto 75)', () => {
+  assert.strictEqual(restForType('Compuesto', 'Perder grasa'), 75);
+  assert.strictEqual(restForType('Aislamiento', 'Resistencia'), 45);
+});
+test('restForType: objetivo desconocido cae a hipertrofia (default moderado)', () => {
+  assert.strictEqual(restForType('Compuesto', 'Salud general'), 120);
+  assert.strictEqual(restForType('Compuesto', ''), 120);
+});
+test('restForType: tipo raro/sin tabla cae a aislamiento', () => {
+  assert.strictEqual(restForType('Movilidad', 'Ganar músculo'), 60);
+});
+
+test('restForExercise: prioriza el descanso propio del ejercicio (override del coach)', () => {
+  assert.strictEqual(restForExercise({ type: 'Compuesto', restSec: 200 }, { why: 'Ganar músculo' }), 200);
+});
+test('restForExercise: sin propio → deriva por tipo y objetivo de la rutina', () => {
+  assert.strictEqual(restForExercise({ type: 'Compuesto' }, { why: 'Fuerza' }), 180);
+  assert.strictEqual(restForExercise({ type: 'Aislamiento' }, { why: 'Perder grasa' }), 45);
+});
+test('restForExercise: cardio sin descanso propio cae al de la rutina', () => {
+  assert.strictEqual(restForExercise({ type: 'Cardio' }, { restSec: 30 }), 30);
+});
+test('restForExercise: ejercicio sin tipo cae al descanso de la rutina, o 60 por defecto', () => {
+  assert.strictEqual(restForExercise({}, { restSec: 80 }), 80);
+  assert.strictEqual(restForExercise({}, {}), 60);
+  assert.strictEqual(restForExercise(null, null), 60);
+});
+test('restForExercise: restSec=0 o negativo no cuenta como propio (cae a derivar/rutina)', () => {
+  assert.strictEqual(restForExercise({ type: 'Compuesto', restSec: 0 }, { why: 'Ganar músculo' }), 120);
+});
+
+test('generador: hornea descanso por tipo en cada ejercicio (compuesto > aislamiento)', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  const exs = routines.flatMap(r => r.exercises);
+  const comp = exs.find(e => e.type === 'Compuesto');
+  const aisl = exs.find(e => e.type === 'Aislamiento');
+  if (comp) assert.strictEqual(comp.restSec, 120, 'compuesto hipertrofia debe ser 120s');
+  if (aisl) assert.strictEqual(aisl.restSec, 60, 'aislamiento hipertrofia debe ser 60s');
+  assert.ok(comp || aisl, 'la rutina debería traer al menos un compuesto o aislamiento');
+});
+test('generador en fuerza: compuesto horneado a 180s', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Avanzado', days: 4, goal: 'Fuerza' }, LIB, FIXED);
+  const comp = routines.flatMap(r => r.exercises).find(e => e.type === 'Compuesto');
+  if (comp) assert.strictEqual(comp.restSec, 180);
+});
+
+test('applyMood "cansado": sube +15s sobre el descanso por tipo de cada ejercicio', () => {
+  const routine = { why: 'Ganar músculo', restSec: 90, exercises: [
+    { name: 'Sentadilla', type: 'Compuesto', sets: 4, restSec: 120 },
+    { name: 'Extensión', type: 'Aislamiento', sets: 3, restSec: 60 },
+  ] };
+  const out = applyMood(routine, 'cansado', { sex: 'M' });
+  assert.strictEqual(out.exercises[0].restSec, 135, 'compuesto 120+15');
+  assert.strictEqual(out.exercises[1].restSec, 75, 'aislamiento 60+15');
 });
 
 // ══════════════════════════════════════════════════════

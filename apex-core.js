@@ -192,7 +192,49 @@ function genSchemeFor(goal, level, adaptation) {
     scheme.restSec = 60;
     scheme.adaptation = true;
   }
+  scheme.goalBucket = _restGoalBucket(goal); // cubeta para el descanso por tipo de ejercicio
   return scheme;
+}
+
+// ── DESCANSO POR TIPO DE EJERCICIO (validado con Camilo, coach, 2026-06-19) ──
+// El descanso ya NO es uniforme: un compuesto pesado pide más recuperación que un
+// aislamiento. La tabla cruza el TIPO del ejercicio × la cubeta del OBJETIVO.
+// Cardio/HIIT NO usan esta tabla (tienen su propio flujo de intervalos).
+const REST_BY_TYPE = {
+  // hipertrofia / recomposición / salud general (default moderado)
+  hipertrofia: { Compuesto: 120, Aislamiento: 60, Funcional: 75, Isométrico: 45, Bodyweight: 60 },
+  // fuerza: cargas altas, recuperación neural completa
+  fuerza:      { Compuesto: 180, Aislamiento: 90, Funcional: 90, Isométrico: 60, Bodyweight: 75 },
+  // pérdida de grasa / resistencia: densidad alta, descansos cortos
+  resistencia: { Compuesto: 75,  Aislamiento: 45, Funcional: 45, Isométrico: 30, Bodyweight: 45 },
+};
+// Mapea el objetivo del cliente a una de las 3 columnas de REST_BY_TYPE.
+function _restGoalBucket(goal) {
+  const g = _norm(goal || '');
+  if (g.includes('fuerza')) return 'fuerza';
+  if (g.includes('perder') || g.includes('grasa') || g.includes('defin') || g.includes('resist')) return 'resistencia';
+  return 'hipertrofia'; // ganar masa / recomp / salud general / default
+}
+// Descanso (seg) recomendado para un TIPO de ejercicio bajo un objetivo dado.
+function restForType(type, goal) {
+  const bucket = REST_BY_TYPE[_restGoalBucket(goal)] || REST_BY_TYPE.hipertrofia;
+  return bucket[type] || bucket.Aislamiento; // tipos sin entrada (raros) caen a aislamiento
+}
+// Descanso EFECTIVO de un ejercicio dentro de una rutina. Orden de prioridad:
+//   1) descanso propio del ejercicio (override manual del coach o horneado al generar)
+//   2) derivado de su TIPO × objetivo de la rutina (mejora aplicada a TODA rutina)
+//   3) descanso base de la rutina (compatibilidad con rutinas viejas) · 4) 60s
+// Cardio/HIIT sin descanso propio → caen al de la rutina (su intervalo lo maneja su flujo).
+function restForExercise(ex, routine) {
+  ex = ex || {};
+  const own = +ex.restSec;
+  if (Number.isFinite(own) && own > 0) return own;
+  const t = ex.type;
+  if (t && t !== 'Cardio' && t !== 'HIIT') {
+    const goal = (routine && (routine.goalBucket || routine.why || routine.goal)) || '';
+    return restForType(t, goal);
+  }
+  return (routine && +routine.restSec) || 60;
 }
 
 // ── Fase de adaptación: ¿el cliente está en sus primeras semanas de entreno? ──
@@ -288,6 +330,14 @@ function _genMaterialize(ex, scheme) {
   } else {
     c.sets = scheme.setsN;
     c.reps = scheme.repsN;
+  }
+  // Hornea el descanso por tipo (cada ejercicio nace con su descanso correcto).
+  // En adaptación se respeta el descanso corto uniforme (técnica primero, ver genSchemeFor).
+  // Cardio/HIIT no llevan descanso propio: su intervalo lo maneja su flujo.
+  if (scheme.adaptation) {
+    c.restSec = scheme.restSec;
+  } else if (ex.type && ex.type !== 'Cardio' && ex.type !== 'HIIT') {
+    c.restSec = restForType(ex.type, scheme.goalBucket);
   }
   return c;
 }
@@ -811,7 +861,7 @@ function applyMood(routine, mood, opts) {
       break;
 
     case 'cansado': {
-      exs.forEach(e => { e.sets = Math.max(2, (parseInt(e.sets) || 3) - 1); });
+      exs.forEach(e => { e.sets = Math.max(2, (parseInt(e.sets) || 3) - 1); e.restSec = restForExercise(e, base) + 15; });
       out.restSec = rest + 15;
       let dropped = null;
       if (exs.length > 4) dropped = exs.pop(); // quita el último accesorio en sesiones largas
@@ -846,7 +896,7 @@ function applyMood(routine, mood, opts) {
     case 'dolor': {
       // Seguridad primero: trabajo suave (sin carga) + avisar al coach.
       let n = 0;
-      exs.forEach(e => { if (_isLoadedEx(e)) { _demoteToBodyweight(e); e.sets = 2; n++; } });
+      exs.forEach(e => { if (_isLoadedEx(e)) { _demoteToBodyweight(e); e.sets = 2; n++; } e.restSec = restForExercise(e, base) + 20; });
       out.restSec = rest + 20;
       adapt.title = 'Escucha a tu cuerpo 🤕';
       adapt.why = 'Con dolor lo mejor es no forzar. Hoy trabajamos suave, sin carga, y le avisamos a tu coach para que te acompañe.';
@@ -1223,6 +1273,9 @@ if (typeof module !== 'undefined' && module.exports) {
     exLevelRank,
     parseLimitations,
     genSchemeFor,
+    restForType,
+    restForExercise,
+    REST_BY_TYPE,
     inferExerciseEnv,
     ENV_ALL,
     mergeHistory,
