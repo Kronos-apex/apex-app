@@ -6253,7 +6253,7 @@ function startHiit(routine,ei,rounds,work,rest){
       if(phase==='work'){
         setDone(routine.id,ei,round,true);round++;
         updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
-        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}gmAfterHiit(ei);return;}
+        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}return;}
         phase='rest';left=rest;playRestEndBeep();
       } else {phase='work';left=work;playRestEndBeep();}
     }
@@ -7961,6 +7961,7 @@ const GM = {
   currentStep: 0,
   restTimer: null,
   restTotal: 60,
+  hiit: null,
 };
 
 function openGuidedMode(){
@@ -7989,6 +7990,7 @@ function openGuidedMode(){
 
 function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
   document.getElementById('guided-mode').classList.add('hidden');
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   closeStartCard();
@@ -8130,8 +8132,64 @@ function gmHoldTimer(ei, si, secs){
 }
 
 // Tarjeta de intervalos HIIT dentro del modo guiado (trabajo/descanso × rondas).
+// IDs propios `gm-hiit-*` para NO chocar con la tarjeta HIIT del flujo clásico que
+// vive detrás del overlay (ambas con el mismo ei → getElementById tomaba la oculta).
 function gmRenderHiit(setsEl, ei, ex, sets){
-  buildHiitCard(setsEl, GM.routine, ex, ei, sets); // misma UI de intervalos del flujo clásico
+  const cfg=hiitCfg(ex);
+  const done=Array.from({length:sets},(_,si)=>isDone(GM.routine.id,ei,si)).filter(Boolean).length;
+  const card=document.createElement('div');
+  card.style.cssText='padding:16px;text-align:center;background:var(--bg);border-radius:12px';
+  card.innerHTML=`
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace">${cfg.work}s 🔥 · ${cfg.rest}s 😮‍💨 · ${sets} rondas</div>
+    <div id="gm-hiit-disp-${ei}" style="font-size:46px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1">${done>=sets?'✓':cfg.work}</div>
+    <div id="gm-hiit-phase-${ei}" style="font-size:14px;font-weight:700;margin:4px 0;color:var(--t3)">${done>=sets?'¡Completado!':'Listo para empezar'}</div>
+    <div id="gm-hiit-rounds-${ei}" style="font-size:12px;color:var(--t2);margin-bottom:12px">Ronda ${Math.min(done+1,sets)} de ${sets}</div>
+    <button class="btn bp" id="gm-hiit-btn-${ei}" style="width:100%">${done>=sets?'▶ Reiniciar':'▶ Iniciar HIIT'}</button>`;
+  setsEl.appendChild(card);
+  card.querySelector(`#gm-hiit-btn-${ei}`).onclick=()=>gmStartHiit(ei,sets,cfg.work,cfg.rest);
+}
+function gmStartHiit(ei, rounds, work, rest){
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; }
+  for(let s=0;s<rounds;s++) setDone(GM.routine.id,ei,s,false);
+  reqWake();
+  const disp=document.getElementById(`gm-hiit-disp-${ei}`);
+  const phaseEl=document.getElementById(`gm-hiit-phase-${ei}`);
+  const roundsEl=document.getElementById(`gm-hiit-rounds-${ei}`);
+  const btn=document.getElementById(`gm-hiit-btn-${ei}`);
+  if(!disp) return;
+  if(btn){ btn.textContent='⏹ Detener'; btn.onclick=()=>gmStopHiit(); }
+  let round=0, phase='work', left=work;
+  const paint=()=>{
+    disp.textContent=String(left).padStart(2,'0');
+    phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
+    phaseEl.style.color=phase==='work'?'var(--rd)':'var(--g2)';
+    roundsEl.textContent=`Ronda ${Math.min(round+1,rounds)} de ${rounds}`;
+  };
+  paint(); playRestTick();
+  gmUpdateProgress(); updateClientProgress(GM.routine);
+  GM.hiit=setInterval(()=>{
+    left--;
+    if(left>0&&left<=3) playRestTick();
+    if(left<=0){
+      if(phase==='work'){
+        setDone(GM.routine.id,ei,round,true); round++;
+        gmUpdateProgress(); updateClientProgress(GM.routine);
+        if(round>=rounds){
+          disp.textContent='✓'; phaseEl.textContent='¡Completado!'; phaseEl.style.color='var(--g)';
+          roundsEl.textContent=`${rounds}/${rounds} rondas`;
+          clearInterval(GM.hiit); GM.hiit=null; relWake(); playRestEndBeep();
+          gmAfterHiit(ei); return;
+        }
+        phase='rest'; left=rest; playRestEndBeep();
+      } else { phase='work'; left=work; playRestEndBeep(); }
+    }
+    paint();
+  },1000);
+}
+function gmStopHiit(){
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; }
+  relWake();
+  gmRender(); // vuelve la tarjeta al estado actual
 }
 // Tras completar un HIIT en el guiado: sincroniza progreso, avanza y refresca.
 function gmAfterHiit(ei){
@@ -8171,7 +8229,7 @@ function gmUpdateActionBtn(){
   const {ex, si, sets} = GM.steps[GM.currentStep];
   if(exTrack(ex)==='hiit'){
     btn.textContent = `▶ Inicia el HIIT — ${esc(ex.name)}`;
-    btn.onclick = () => { gmScrollToCurrent(); const b=document.getElementById(`hiit-start_${GM.steps[GM.currentStep].ei}`); if(b) b.click(); };
+    btn.onclick = () => { gmScrollToCurrent(); const b=document.getElementById(`gm-hiit-btn-${GM.steps[GM.currentStep].ei}`); if(b) b.click(); };
     return;
   }
   btn.textContent = `✓ Completar serie ${si+1}/${sets} — ${esc(ex.name)}`;
