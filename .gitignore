@@ -6,3 +6,7 @@ scripts/apex-smoke.png
 
 # Artefactos temporales del audit
 .git/_apex_audit.js
+
+# Scratch de desarrollo (previews, batches, generadores de íconos/mapa muscular)
+scripts/_*
+_*.html

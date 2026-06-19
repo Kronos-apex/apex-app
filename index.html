@@ -300,8 +300,10 @@ html[data-theme="light"] .mta {
 .cli{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r);cursor:pointer;transition:all .15s;box-shadow:var(--sh);margin-bottom:7px}
 .cli:hover{border-color:var(--g2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(45,106,79,.10)}
 .cav{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:white;flex-shrink:0}
-.cn{font-size:14px;font-weight:700}
+.cn{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cm{font-size:12px;color:var(--t2);margin-top:2px}
+.cli-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;line-height:1.25;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cav.ring{box-shadow:0 0 0 2.5px var(--w),0 0 0 5px var(--cring)}
 
 /* ── ROUTINE CARDS ── */
 .rc{background:var(--w);border:1px solid var(--br);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:7px}
@@ -2053,6 +2055,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </div>
 
 <script src="apex-core.js"></script>
+<script src="muscle-map.js"></script>
+<script src="exercise-muscles.js"></script>
 <script>
 'use strict';
 
@@ -2108,12 +2112,21 @@ const MH={
 };
 const _ICON_HEART='<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 1c-2 3.8-8 8-8 8z"/>';
 const _ICON_DUMBBELL='<path d="M6.5 9v6"/><path d="M9 7v10"/><path d="M15 7v10"/><path d="M17.5 9v6"/><path d="M9 12h6"/>';
+// Vista anatómica que mejor muestra cada grupo en el ícono (frente o espalda).
+const MM_ICON_VIEW={pecho:'front',espalda:'back',hombros:'front',biceps:'front',triceps:'back',piernas:'front',gluteo:'back',core:'front'};
 function muscleIcon(muscle,size){
   const s=size||20;
   const m=muscle||'otro';
   const col=MC[m]||'var(--g)';
   if(m==='cardio') return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="${col}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block">${_ICON_HEART}</svg>`;
   if(!MH[m]) return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="${col}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block">${_ICON_DUMBBELL}</svg>`;
+  // Mini-silueta anatómica con el músculo del grupo resaltado en su color (forma humana real).
+  // A tamaño chico la silueta angosta se pierde; usamos un alto mínimo y silueta limpia
+  // (sin líneas internas) para que el músculo resaltado se LEA. Si muscle-map.js no cargó,
+  // caemos al ícono de bloques (respaldo seguro).
+  if(typeof muscleMapSVG==='function'){
+    try{ return muscleMapSVG(m, [], {view:MM_ICON_VIEW[m]||'front', size:Math.max(s,30), prim:col, primStroke:col, body:'#52665a', stroke:'#2a3d33', sw:0.4}); }catch(_){}
+  }
   return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true" style="display:block"><g fill="var(--t3)" opacity="0.42">${_BODY}</g><g fill="${col}">${MH[m]}</g></svg>`;
 }
 const AVC=['#0A7C5B','#457B9D','#E76F51','#A855F7','#00BFA5','#E9C46A','#E63946','#FF6B6B'];
@@ -2995,7 +3008,7 @@ const defaultExercises=[
   {id:'e112',name:'Aperturas con Mancuernas en Banco',muscle:'pecho',type:'Aislamiento',sets:3,reps:12,icon:'🪽',env:['casa','gym'],desc:'Aislamiento del pectoral mayor con mancuernas en banco plano, con énfasis en el estiramiento. Codos ligeramente flexionados y FIJOS: abre en arco hasta sentir estirar el pecho (sin pasar la línea del torso) y cierra como abrazando. No es un press: el codo no se dobla más al subir.',descSimple:'Acuéstate en el banco con una mancuerna en cada mano sobre el pecho. Con los codos un poco doblados y quietos, abre los brazos en arco hasta sentir el estiramiento del pecho y ciérralos como si abrazaras a alguien. Usa menos peso del que crees: aquí manda el estiramiento, no la carga.',muscleLabel:'Pecho (pectoral mayor)',ytQuery:'aperturas con mancuernas banco plano pecho tutorial'},
   {id:'e113',name:'Flexiones Inclinadas (Manos Elevadas)',muscle:'pecho',type:'Bodyweight',track:'reps',sets:3,reps:12,icon:'📐',env:['corporal','casa','parque','gym'],desc:'Flexión con las manos sobre un apoyo elevado (banco, mesa, baranda): el ángulo reduce la carga y es el puente perfecto entre las flexiones en pared y las del suelo. Cuerpo recto de cabeza a talones, baja el pecho al borde del apoyo y empuja.',descSimple:'Apoya las manos en un banco, mesa o baranda firme, con el cuerpo recto como una tabla. Baja el pecho hacia el apoyo doblando los codos y empuja para subir. Mientras más alto el apoyo, más fácil. Cuando logres 15 repeticiones fáciles, busca un apoyo más bajo.',muscleLabel:'Pecho, hombros y tríceps',ytQuery:'flexiones inclinadas manos elevadas principiantes tutorial'},
   {id:'e114',name:'Remo Sentado en Máquina',muscle:'espalda',type:'Compuesto',sets:4,reps:12,icon:'🚣',env:['gym'],desc:'Remo horizontal en máquina con apoyo de pecho: aísla el jalón de la espalda media (romboides y dorsal) eliminando el trabajo de la lumbar — ideal para principiantes o para series pesadas seguras. Tira llevando los codos atrás y aprieta las escápulas al final.',descSimple:'Siéntate con el pecho apoyado en el cojín y agarra los manerales. Tira hacia ti llevando los codos hacia atrás y aprieta los omóplatos como si quisieras juntar ambos codos detrás de la espalda. Regresa despacio sin soltar el peso de golpe. El pecho no se despega del apoyo.',muscleLabel:'Espalda media y dorsal',ytQuery:'remo sentado en máquina espalda tutorial'},
-  {id:'e115',name:'Encogimientos con Mancuernas',muscle:'hombros',type:'Aislamiento',sets:3,reps:15,icon:'🤷',env:['casa','gym'],desc:'Aislamiento del trapecio superior: con mancuernas a los lados, encoge los hombros hacia las orejas en vertical, pausa de 1 segundo arriba y baja estirando. Sin girar los hombros en círculo (no aporta y castiga la articulación) ni doblar los codos.',descSimple:'De pie con una mancuerna en cada mano a los lados del cuerpo, sube los hombros hacia las orejas lo más alto que puedas, aguanta 1 segundo y baja despacio. Los brazos quedan rectos todo el tiempo: solo se mueven los hombros, sin hacer círculos.',muscleLabel:'Trapecio (cuello-hombro)',ytQuery:'encogimientos de hombros con mancuernas trapecio tutorial'},
+  {id:'e115',name:'Encogimientos con Mancuernas',muscle:'espalda',type:'Aislamiento',sets:3,reps:15,icon:'🤷',env:['casa','gym'],desc:'Aislamiento del trapecio superior: con mancuernas a los lados, encoge los hombros hacia las orejas en vertical, pausa de 1 segundo arriba y baja estirando. Sin girar los hombros en círculo (no aporta y castiga la articulación) ni doblar los codos.',descSimple:'De pie con una mancuerna en cada mano a los lados del cuerpo, sube los hombros hacia las orejas lo más alto que puedas, aguanta 1 segundo y baja despacio. Los brazos quedan rectos todo el tiempo: solo se mueven los hombros, sin hacer círculos.',muscleLabel:'Trapecio (cuello-hombro)',ytQuery:'encogimientos de hombros con mancuernas trapecio tutorial'},
   {id:'e116',name:'Hiperextensiones en Banco Romano',muscle:'espalda',type:'Compuesto',sets:3,reps:12,icon:'🛋️',env:['gym'],desc:'Extensión de cadera y columna en banco 45° para la cadena posterior: erectores lumbares, glúteo y femoral. Baja con la espalda neutra hasta donde el femoral lo permita y sube hasta la línea del cuerpo SIN hiperextender arriba. Cruza los brazos al pecho; agrega disco solo con técnica dominada.',descSimple:'Acomódate en el banco inclinado con los muslos en el cojín y los pies fijos. Cruza los brazos sobre el pecho, baja el torso controlado manteniendo la espalda recta y sube apretando glúteo y espalda baja hasta quedar en línea recta, sin pasar de ahí ni arquearte de más arriba.',muscleLabel:'Espalda baja, glúteo y femoral',ytQuery:'hiperextensiones banco romano 45 grados tutorial'},
   {id:'e117',name:'Elevaciones Laterales en Polea',muscle:'hombros',type:'Aislamiento',sets:3,reps:15,icon:'📡',env:['gym'],desc:'Aislamiento del deltoides medio en polea baja: a diferencia de la mancuerna, la tensión es constante también abajo, donde más crece el estímulo. De lado a la polea, sube el brazo liderando con el codo hasta la altura del hombro y baja en 2-3 segundos.',descSimple:'Párate de lado a la polea baja y toma la manija con la mano más lejana (el cable cruza por delante del cuerpo). Sube el brazo hacia el lado hasta la altura del hombro guiando con el codo y baja despacio. La polea hace que el hombro trabaje durante todo el recorrido.',muscleLabel:'Hombro lateral (deltoides medio)',ytQuery:'elevaciones laterales en polea baja hombro tutorial'},
   {id:'e118',name:'Press Arnold con Mancuernas',muscle:'hombros',type:'Compuesto',sets:3,reps:10,icon:'🌀',env:['casa','gym'],desc:'Press de hombro con rotación: arranca con las palmas mirando hacia ti a la altura del pecho y termina arriba con las palmas al frente. La rotación recorre las tres cabezas del deltoides con énfasis en la anterior. Hazlo sentado y controlado; no es para cargas máximas.',descSimple:'Sentado, sostén las mancuernas frente al pecho con las palmas mirando hacia ti. Empuja hacia arriba girando las muñecas, de modo que arriba las palmas miren al frente. Baja deshaciendo el giro, despacio. Usa menos peso que en el press normal: el giro es lo que trabaja.',muscleLabel:'Deltoides (las 3 cabezas)',ytQuery:'press arnold con mancuernas hombro tutorial'},
@@ -3806,7 +3819,7 @@ function renderProgressPanel(){
     const upCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg>e.points[0].maxKg).length;
     const dnCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg<e.points[0].maxKg).length;
     const card=document.createElement('div');
-    card.className='pload-card open';
+    card.className='pload-card';
     const bodyId=`plb_${c.id}`;
     card.innerHTML=`<div class="pload-hd" onclick="this.closest('.pload-card').classList.toggle('open')">
       <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${ini(c.name)}</div>
@@ -4347,18 +4360,38 @@ function renderClients(){
     const _tomorrowR=!_todayR?_ruts.find(r=>r.day===_tomorrowName):null;
     const _todayStr=new Date().toISOString().split('T')[0];
     const _trained=(DB.history&&DB.history[c.id]||[]).some(s=>s.date&&s.date.startsWith(_todayStr));
-    let routineStr='';
-    if(_todayR){
-      routineStr=`<div style="font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px"><span style="color:${_trained?'var(--g)':'var(--t1)'};font-weight:600">${esc(_todayR.name)} · hoy</span>${_trained?'<span style="color:var(--g);font-size:13px;font-weight:700">✓</span>':''}</div>`;
+    // Estado del día → color (verde entrenó · coral pendiente · rojo sin rutinas · azul mañana · gris descanso)
+    let st;
+    if(_trained){
+      st={ring:'var(--g2)',bg:'var(--gl)',col:'var(--g)',ico:'✓',txt:'Entrenó hoy'};
+    } else if(_todayR){
+      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:'⏳',txt:`${_todayR.name} · hoy`};
     } else if(_tomorrowR){
-      routineStr=`<div style="font-size:11px;color:var(--t2);margin-top:3px">${esc(_tomorrowR.name)} · mañana</div>`;
+      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:'📅',txt:`${_tomorrowR.name} · mañana`};
     } else if(_ruts.length){
-      routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Descanso hoy</div>`;
+      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:'💤',txt:'Descanso hoy'};
     } else {
-      routineStr=`<div style="font-size:11px;color:var(--t3);margin-top:3px">Sin rutinas asignadas</div>`;
+      st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rd)',ico:'🚩',txt:'Sin rutinas asignadas'};
     }
+    const lvlCls=c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to';
+    const spark=miniSparkline(c.id);
+    const selfBadge=c.selfReg?(c.wantsCoach?'<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>':'<span class="tag" style="background:var(--bll);color:var(--bl)">🆓 Libre</span>'):'';
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div><div class="cm">${esc(c.goal||'')} · ${esc(c.level||'')} · ${esc(String(c.days||3))} días/sem</div>${routineStr}${last?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div>`:''}</div><div style="text-align:right;flex-shrink:0">${miniSparkline(c.id)}<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${c.level||'—'}</span>${c.selfReg?(c.wantsCoach?'<span class="tag" style="background:var(--orl);color:var(--or);margin-left:4px">🙋 Quiere coach</span>':'<span class="tag" style="background:var(--bll);color:#1a4a7a;margin-left:4px">🆓 Libre</span>'):''}<div style="font-size:11px;color:var(--t2);margin-top:4px">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><button class="btn bg bsm" style="margin-left:8px" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>`;
+    d.innerHTML=`<div class="cav ring" style="background:${avc(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px;min-width:0">
+          <span class="cn">${esc(c.name)}</span>
+          <span class="tag ${lvlCls}" style="flex-shrink:0">${c.level||'—'}</span>
+          ${selfBadge}
+        </div>
+        <div style="margin-top:6px"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span></div>
+        <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
+        ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}"</div>`:''}
+      </div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px;align-self:stretch;justify-content:center">
+        ${spark||''}
+        <button class="btn bg bsm" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>
+      </div>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
 }
@@ -8992,6 +9025,19 @@ function _showExSheet(ex, isCoach, editable){
   document.getElementById('exd-name').textContent = ex.name;
   document.getElementById('exd-muscle').textContent = ex.muscleLabel || ex.muscle;
 
+  // Mapa muscular anatómico (sub-región por ejercicio). Solo si hay datos del músculo.
+  const muscWrap = document.getElementById('exd-muscles-wrap');
+  const muscEl = document.getElementById('exd-muscles');
+  const hasMap = typeof muscleMapForExercise === 'function' && ex.id
+    && (typeof exerciseMuscles === 'function' ? exerciseMuscles(ex.id) : true)
+    && ex.muscle && ex.muscle !== 'cardio' && ex.muscle !== 'otro';
+  if(hasMap){
+    try{
+      muscEl.innerHTML = muscleMapForExercise(ex.id, ex.muscle, { size: 168, gap: 14 });
+      muscWrap.style.display = 'block';
+    }catch(_){ muscWrap.style.display = 'none'; }
+  } else { muscWrap.style.display = 'none'; }
+
   // Stats
   document.getElementById('exd-sets').textContent = ex.sets;
   document.getElementById('exd-reps').textContent = ex.reps;
@@ -9691,6 +9737,16 @@ function whatsappNudge(id){
     <div class="exdetail-section" id="exd-simple-wrap">
       <div class="exdetail-slabel">Cómo hacerlo</div>
       <div class="exdetail-desc" id="exd-simple"></div>
+    </div>
+
+    <!-- Músculos que trabaja (mapa anatómico por sub-región) -->
+    <div class="exdetail-section" id="exd-muscles-wrap" style="display:none">
+      <div class="exdetail-slabel">Músculos que trabaja</div>
+      <div id="exd-muscles" style="display:flex;justify-content:center;background:var(--c2);border:1px solid var(--bd);border-radius:12px;padding:14px 10px"></div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:9px;font-size:11px;color:var(--t2)">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF5A47;vertical-align:middle;margin-right:5px"></span>Principal</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,90,71,.42);vertical-align:middle;margin-right:5px"></span>Secundario</span>
+      </div>
     </div>
 
     <!-- Nota del coach (visible para el asesorado) -->
