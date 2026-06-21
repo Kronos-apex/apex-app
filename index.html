@@ -533,6 +533,26 @@ html[data-theme="light"] .mta {
 .scheck:hover{border-color:var(--g2);color:var(--g2)}
 .scheck.sdone{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 
+/* ── Sets de calentamiento + Dropsets ── */
+.train-sec-label{display:flex;align-items:center;justify-content:space-between;padding:9px 14px 3px;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t2)}
+.warmup-toggle{background:none;border:none;color:var(--gt);font-size:11px;font-weight:700;cursor:pointer;padding:2px 4px;letter-spacing:.2px}
+.warmup-row .set-num.warm{color:#E8973A}
+.warmup-row.sdone{background:rgba(232,151,58,.10)}
+.warmup-row.sdone .sinput{background:rgba(232,151,58,.10);border-color:#E8973A66;color:#E8973A}
+.scheck.warm:hover{border-color:#E8973A;color:#E8973A}
+.scheck.warm.sdone{background:#E8973A;border-color:#E8973A;color:white}
+.warmup-hint{padding:2px 14px 8px;font-size:10.5px;color:var(--t3);line-height:1.3}
+.drop-add-btn{background:none;border:1.5px dashed var(--br2);color:var(--t3);font-size:11px;font-weight:700;cursor:pointer;padding:3px 9px;border-radius:99px;transition:all .15s}
+.drop-add-btn:hover{border-color:#3B82F6;color:#3B82F6}
+.dropset-row{grid-template-columns:28px 1fr 1fr 32px}
+.dropset-row .set-num.drop{color:#3B82F6;font-size:10px;font-weight:800}
+.dropset-row.sdone{background:rgba(59,130,246,.08)}
+.dropset-row.sdone .sinput{background:rgba(59,130,246,.08);border-color:#3B82F666;color:#3B82F6}
+.scheck.drop:hover{border-color:#3B82F6;color:#3B82F6}
+.scheck.drop.sdone{background:#3B82F6;border-color:#3B82F6;color:white}
+.drop-rm{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:2px 8px}
+.drop-rm:hover{color:#EF4444}
+
 /* Rest banner */
 .restbanner{background:linear-gradient(135deg,#06402E,#13B583);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px;position:sticky;top:0;z-index:50}
 .restbanner.hide{display:none}
@@ -793,6 +813,15 @@ html[data-theme="light"] .mta {
 .gm-check{width:38px;height:38px;border-radius:10px;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
 .gm-check:hover{border-color:var(--g2)}
 .gm-check.checked{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
+/* Filas auxiliares del guiado: calentamiento (ámbar) + dropset (azul) */
+.gm-set-row.gm-warm .gm-set-num.warm{background:rgba(232,151,58,.16);color:#E8973A;font-size:15px}
+.gm-set-row.gm-warm.set-done{background:rgba(232,151,58,.08);border-color:#E8973A55}
+.gm-check.warm:hover{border-color:#E8973A}
+.gm-check.warm.checked{background:#E8973A;border-color:#E8973A;color:white}
+.gm-set-row.gm-drop .gm-set-num.drop{background:rgba(59,130,246,.16);color:#3B82F6;font-size:15px}
+.gm-set-row.gm-drop.set-done{background:rgba(59,130,246,.08);border-color:#3B82F655}
+.gm-check.drop:hover{border-color:#3B82F6}
+.gm-check.drop.checked{background:#3B82F6;border-color:#3B82F6;color:white}
 /* Rest overlay inside guided */
 .gm-rest-overlay{position:fixed;inset:0;background:rgba(13,31,23,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:750;gap:8px}
 .gm-rest-overlay.hidden{display:none}
@@ -6173,6 +6202,128 @@ function _suggestKg(ex){
     return suggestFromPR(pr,parseInt(ex.reps)||10);
   }catch(e){return null;}
 }
+// Peso ligero sugerido para el calentamiento ≈ 50% del peso de trabajo, redondeado a
+// 2.5 kg (sin bajar de 2.5). Devuelve null si no hay referencia de carga.
+function _warmupKg(ex){
+  return warmupLoad(_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
+}
+// Estado de "mostrar/ocultar calentamiento" por ejercicio (default: mostrar).
+function warmupShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)!=='0';}
+function toggleWarmup(routine,ei){localStorage.setItem(`wshow_${routine.id}_${ei}`,warmupShown(routine,ei)?'0':'1');renderClientExList(routine);}
+// Índice de log del set de calentamiento. Token 'w0' (string) → los bucles de
+// volumen/récords/historial recorren si ENTEROS 0..sets-1, así que NUNCA lo tocan.
+const WARM_SI='w0';
+// Construye la sección de calentamiento (solo modalidad de peso). No cuenta para
+// volumen ni récords: vive en claves de log aparte (ei,'w0').
+function buildWarmupSection(body,routine,ex,ei){
+  const sug=_warmupKg(ex);
+  const shown=warmupShown(routine,ei);
+  const done=isDone(routine.id,ei,WARM_SI);
+  const g=f=>getLog(routine.id,ei,WARM_SI,f);
+  const sec=document.createElement('div');
+  const head=document.createElement('div');
+  head.className='train-sec-label';
+  head.innerHTML=`<span>🔥 Sets de calentamiento</span>`;
+  const tg=document.createElement('button');
+  tg.type='button';tg.className='warmup-toggle';tg.textContent=shown?'Ocultar':'Mostrar';
+  tg.onclick=()=>toggleWarmup(routine,ei);
+  head.appendChild(tg);
+  sec.appendChild(head);
+  if(shown){
+    const row=document.createElement('div');
+    row.className=`set-log-row warmup-row${done?' sdone':''}`;
+    row.id=`warmrow_${ei}`;
+    row.innerHTML=`<div class="set-num warm ${done?'sdone':''}">🔥</div>`+
+      `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${WARM_SI}','kg',this.value)">`+
+      `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="12" value="${g('reps')||''}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${WARM_SI}','reps',this.value)">`+
+      `<div class="scheck warm ${done?'sdone':''}" role="button" aria-label="Marcar calentamiento">✓</div>`;
+    const chk=row.querySelector('.scheck');
+    chk.onclick=(e)=>{
+      e.stopPropagation();
+      const was=chk.classList.contains('sdone');
+      const inps=row.querySelectorAll('.sinput[data-field]');
+      if(!was){
+        inps.forEach(inp=>setLog(routine.id,ei,WARM_SI,inp.dataset.field,inp.value));
+        setDone(routine.id,ei,WARM_SI,true);
+        if(navigator.vibrate)navigator.vibrate(30);
+        row.classList.add('sdone');chk.classList.add('sdone');row.querySelector('.set-num').classList.add('sdone');
+        inps.forEach(inp=>inp.readOnly=true);
+        toast('🔥 Calentamiento listo');
+      } else {
+        setDone(routine.id,ei,WARM_SI,false);
+        row.classList.remove('sdone');chk.classList.remove('sdone');row.querySelector('.set-num').classList.remove('sdone');
+        inps.forEach(inp=>inp.readOnly=false);
+      }
+    };
+    sec.appendChild(row);
+    const hint=document.createElement('div');
+    hint.className='warmup-hint';
+    hint.textContent='Peso ligero para preparar el músculo · no cuenta en tu volumen';
+    sec.appendChild(hint);
+  }
+  body.appendChild(sec);
+}
+
+// ── Dropsets ── (un dropset sobre la última serie efectiva; peso reducido, SIN
+// descanso). Token de log 'd0' → fuera de los bucles enteros de volumen/récords.
+const DROP_SI='d0';
+function dropOn(routine,ei){return localStorage.getItem(`drop_${routine.id}_${ei}`)==='1';}
+// Desmarca el "hecho" de calentamiento y dropset (por día / reinicio), conservando
+// el peso como sugerencia — igual que las series efectivas.
+function clearWarmDropDone(routine){
+  (routine.exercises||[]).forEach((ex,ei)=>{setDone(routine.id,ei,WARM_SI,false);setDone(routine.id,ei,DROP_SI,false);});
+}
+function addDrop(routine,ei){localStorage.setItem(`drop_${routine.id}_${ei}`,'1');renderClientExList(routine);}
+function removeDrop(routine,ei){localStorage.removeItem(`drop_${routine.id}_${ei}`);['kg','reps'].forEach(f=>setLog(routine.id,ei,DROP_SI,f,''));setDone(routine.id,ei,DROP_SI,false);renderClientExList(routine);}
+// Peso de dropset ≈ 70% del peso de la última serie registrada (o del sugerido).
+function _dropKg(routine,ex,ei,lastSi){
+  return dropLoad(parseFloat(getLog(routine.id,ei,lastSi,'kg'))||_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
+}
+function buildDropAdd(body,routine,ei){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='padding:6px 14px 2px;text-align:right';
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='drop-add-btn';btn.textContent='🔻 Añadir dropset';
+  btn.onclick=()=>addDrop(routine,ei);
+  wrap.appendChild(btn);
+  body.appendChild(wrap);
+}
+function buildDropRow(body,routine,ex,ei,lastSi){
+  const done=isDone(routine.id,ei,DROP_SI);
+  const g=f=>getLog(routine.id,ei,DROP_SI,f);
+  const sug=_dropKg(routine,ex,ei,lastSi);
+  const row=document.createElement('div');
+  row.className=`set-log-row dropset-row${done?' sdone':''}`;
+  row.id=`droprow_${ei}`;
+  row.innerHTML=`<div class="set-num drop ${done?'sdone':''}">DROP</div>`+
+    `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${DROP_SI}','kg',this.value)">`+
+    `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="al fallo" value="${g('reps')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${DROP_SI}','reps',this.value)">`+
+    `<div class="scheck drop ${done?'sdone':''}" role="button" aria-label="Marcar dropset">✓</div>`;
+  const chk=row.querySelector('.scheck');
+  chk.onclick=(e)=>{
+    e.stopPropagation();
+    const was=chk.classList.contains('sdone');
+    const inps=row.querySelectorAll('.sinput[data-field]');
+    if(!was){
+      inps.forEach(inp=>setLog(routine.id,ei,DROP_SI,inp.dataset.field,inp.value));
+      setDone(routine.id,ei,DROP_SI,true);
+      if(navigator.vibrate)navigator.vibrate(30);
+      row.classList.add('sdone');chk.classList.add('sdone');row.querySelector('.set-num').classList.add('sdone');
+      inps.forEach(inp=>inp.readOnly=true);
+      toast('🔻 Dropset al fallo, ¡bien!');
+    } else {
+      setDone(routine.id,ei,DROP_SI,false);
+      row.classList.remove('sdone');chk.classList.remove('sdone');row.querySelector('.set-num').classList.remove('sdone');
+      inps.forEach(inp=>inp.readOnly=false);
+    }
+  };
+  body.appendChild(row);
+  const hint=document.createElement('div');
+  hint.className='warmup-hint';
+  hint.innerHTML='Tras la última serie, baja el peso y sigue sin descanso. <button type="button" class="drop-rm">Quitar</button>';
+  hint.querySelector('.drop-rm').onclick=()=>removeDrop(routine,ei);
+  body.appendChild(hint);
+}
 
 function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
   const ro=done?'readonly':'';
@@ -6293,6 +6444,7 @@ function resetSession(){
     for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
   });
   clearWarmup(routine.id);
+  clearWarmDropDone(routine);
   localStorage.removeItem(`session_date_${routine.id}`);
   if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
   renderClientExList(routine);updateClientProgress(routine);toast('↺ Sesión reiniciada');
@@ -6309,6 +6461,7 @@ function checkAndResetSession(routine){
       for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
     });
     clearWarmup(routine.id); // el calentamiento también es por día
+    clearWarmDropDone(routine); // sets de calentamiento + dropsets: desmarcar por día
   }
   localStorage.setItem(dateKey,today);
 }
@@ -6380,6 +6533,15 @@ function renderClientExList(routine){
       }
     }
 
+    // 🔥 Sets de calentamiento (solo peso) — peso ligero, no cuenta para volumen/récords
+    if(track==='peso_reps'){
+      buildWarmupSection(body,routine,ex,ei);
+      const sl=document.createElement('div');
+      sl.className='train-sec-label';
+      sl.innerHTML='<span>Series efectivas</span>';
+      body.appendChild(sl);
+    }
+
     // Column headers según modalidad
     const head=document.createElement('div');
     head.className='set-log-head';
@@ -6432,6 +6594,12 @@ function renderClientExList(routine){
       };
 
       body.appendChild(row);
+    }
+
+    // 🔻 Dropset sobre la última serie (solo peso): fila azul o botón para añadirlo
+    if(track==='peso_reps'){
+      if(dropOn(routine,ei)) buildDropRow(body,routine,ex,ei,sets-1);
+      else buildDropAdd(body,routine,ei);
     }
     }
 
@@ -8040,6 +8208,10 @@ function gmRender(){
     if(gmTrack==='hiit'){
       gmRenderHiit(setsEl, ei, ex, steps.length);
     } else {
+    // 🔥 Calentamiento (solo peso, si está visible) — fila aparte, fuera del flujo de pasos
+    if(gmTrack==='peso_reps' && warmupShown(GM.routine,ei)){
+      setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
+    }
     steps.forEach(({si, stepIdx}) => {
       const done = isDone(GM.routine.id, ei, si);
       const isActive = stepIdx === GM.currentStep;
@@ -8057,11 +8229,51 @@ function gmRender(){
       }
       setsEl.appendChild(row);
     });
+    // 🔻 Dropset (solo peso, si se activó en la tarjeta) — fila final, fuera del flujo
+    if(gmTrack==='peso_reps' && dropOn(GM.routine,ei)){
+      setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,DROP_SI,'drop','🔻', _dropKg(GM.routine,ex,ei,(parseInt(ex.sets)||3)-1), 'fallo'));
+    }
     }
     card.appendChild(setsEl);
     body.appendChild(card);
   });
   gmUpdateActionBtn();
+}
+
+// Fila auxiliar del guiado (calentamiento/dropset): NO entra en GM.steps ni dispara
+// descanso. El usuario la marca manualmente; no toca volumen/récords (token w0/d0).
+function gmAuxRowHTML(ei,ex,tok,kind,num,sug,repsPh){
+  const done=isDone(GM.routine.id,ei,tok);
+  const g=f=>getLog(GM.routine.id,ei,tok,f);
+  const ro=done?'readonly':'';
+  const rid=`gm-aux-${ei}-${tok}`, cid=`gm-auxchk-${ei}-${tok}`;
+  return `<div class="gm-set-row gm-${kind}${done?' set-done':''}" id="${rid}">
+    <div class="gm-set-num ${kind}">${num}</div>
+    <div><input class="gm-sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','kg',this.value)"><div class="gm-sinput-label">${kind==='warm'?'KG · CALENT.':'KG · DROP'}</div></div>
+    <div><input class="gm-sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="${repsPh}" value="${g('reps')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','reps',this.value)"><div class="gm-sinput-label">REPS</div></div>
+    <button class="gm-check ${kind}${done?' checked':''}" id="${cid}" onclick="gmToggleAux(${ei},'${tok}','${rid}','${cid}')">${done?'✓':'○'}</button>
+  </div>`;
+}
+// Marca/desmarca una fila auxiliar (calentamiento/dropset) sin avanzar el paso activo
+// ni lanzar el cronómetro de descanso.
+function gmToggleAux(ei,tok,rid,cid){
+  const done=isDone(GM.routine.id,ei,tok);
+  const row=document.getElementById(rid), chk=document.getElementById(cid);
+  const inps=row?row.querySelectorAll('.gm-sinput[data-field]'):[];
+  if(!done){
+    inps.forEach(inp=>setLog(GM.routine.id,ei,tok,inp.dataset.field,inp.value));
+    setDone(GM.routine.id,ei,tok,true);
+    if(navigator.vibrate)navigator.vibrate(30);
+    if(row)row.classList.add('set-done');
+    if(chk){chk.classList.add('checked');chk.textContent='✓';}
+    inps.forEach(inp=>inp.readOnly=true);
+    toast(tok===WARM_SI?'🔥 Calentamiento listo':'🔻 Dropset al fallo, ¡bien!');
+  } else {
+    setDone(GM.routine.id,ei,tok,false);
+    if(row)row.classList.remove('set-done');
+    if(chk){chk.classList.remove('checked');chk.textContent='○';}
+    inps.forEach(inp=>inp.readOnly=false);
+  }
 }
 
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):

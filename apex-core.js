@@ -355,6 +355,24 @@ function suggestFromPR(pr, targetReps, opts) {
   return e1 ? suggestLoad(e1, targetReps, opts) : null;
 }
 
+// ── Calentamiento + dropset: peso derivado del peso de trabajo ──
+// Calentamiento ≈ 50% del peso de trabajo; dropset ≈ 70% del peso de la última serie.
+// Ambos redondean a discos reales (2.5 kg) con piso de 2.5 kg. null si no hay base.
+function warmupLoad(workKg, opts) {
+  opts = opts || {};
+  workKg = parseFloat(workKg);
+  if (!workKg || workKg <= 0) return null;
+  const step = opts.step || 2.5;
+  const frac = opts.frac != null ? opts.frac : 0.5;
+  // Limpia el ruido de punto flotante (87.5*0.7 = 61.2499…) antes de redondear a disco,
+  // para que un empate exacto (61.25) suba al disco superior y no caiga por el error FP.
+  const raw = Math.round(workKg * frac * 1e6) / 1e6;
+  return Math.max(step, Math.round(raw / step) * step);
+}
+function dropLoad(baseKg, opts) {
+  return warmupLoad(baseKg, Object.assign({ frac: 0.7 }, opts || {}));
+}
+
 // ── Perfil de carga corporal: ¿conviene priorizar máquina/asistido y bajo impacto? ──
 // Señales: IMC (peso/estatura²) y relación cintura-talla (RCT = cintura/estatura, el
 // mismo indicador que ya usa la app). Devuelve 'high' cuando IMC≥30 (obesidad) o
@@ -1359,6 +1377,8 @@ if (typeof module !== 'undefined' && module.exports) {
     estimate1RM,
     suggestLoad,
     suggestFromPR,
+    warmupLoad,
+    dropLoad,
     trainingStartTs,
     bmiFrom,
     bodyLoadProfile,

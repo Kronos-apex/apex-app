@@ -39,6 +39,8 @@ const {
   estimate1RM,
   suggestLoad,
   suggestFromPR,
+  warmupLoad,
+  dropLoad,
   bmiFrom,
   bodyLoadProfile,
   validateSignup,
@@ -1129,6 +1131,28 @@ test('suggestFromPR: PR 60kg×8 → sugerencia para 12 reps; PRs no-kg → null'
 
 test('suggestFromPR: tolera PR legacy {kg} sin val ni reps (asume 1RM)', () => {
   assert.strictEqual(suggestFromPR({ kg: 80 }, 10, { factor: 1 }), 60); // 80/(1+10/30) = 60
+});
+
+section('Calentamiento + dropset — peso derivado');
+
+test('warmupLoad: ≈50% del peso de trabajo, redondeado a 2.5kg', () => {
+  assert.strictEqual(warmupLoad(90), 45);    // 90*0.5 = 45
+  assert.strictEqual(warmupLoad(87.5), 45);  // 43.75 → 45 (redondeo a 2.5)
+  assert.strictEqual(warmupLoad(20), 10);    // 20*0.5 = 10
+  assert.strictEqual(warmupLoad(11), 5);     // 5.5 → 5
+});
+
+test('dropLoad: ≈70% del peso de la última serie, redondeado a 2.5kg', () => {
+  assert.strictEqual(dropLoad(87.5), 62.5);  // 61.25 → 62.5
+  assert.strictEqual(dropLoad(100), 70);     // 70
+  assert.strictEqual(dropLoad(50), 35);      // 35
+});
+
+test('warmupLoad/dropLoad: sin base o base inválida → null; piso de 2.5kg', () => {
+  assert.strictEqual(warmupLoad(0), null);
+  assert.strictEqual(warmupLoad(null), null);
+  assert.strictEqual(dropLoad(undefined), null);
+  assert.strictEqual(warmupLoad(2), 2.5);    // 1 → piso 2.5 (mancuerna mínima real)
 });
 
 // ══════════════════════════════════════════════════════
