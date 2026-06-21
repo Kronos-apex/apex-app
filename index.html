@@ -542,8 +542,12 @@ html[data-theme="light"] .mta {
 .scheck.warm:hover{border-color:#E8973A;color:#E8973A}
 .scheck.warm.sdone{background:#E8973A;border-color:#E8973A;color:white}
 .warmup-hint{padding:2px 14px 8px;font-size:10.5px;color:var(--t3);line-height:1.3}
-.drop-add-btn{background:none;border:1.5px dashed var(--br2);color:var(--t3);font-size:11px;font-weight:700;cursor:pointer;padding:3px 9px;border-radius:99px;transition:all .15s}
-.drop-add-btn:hover{border-color:#3B82F6;color:#3B82F6}
+/* Deslizar una serie a la derecha → revela "🔻 Dropset" detrás y, al soltar, lo añade */
+.setrow-wrap{position:relative;overflow:hidden}
+.setrow-wrap .set-log-row{position:relative;background:var(--bg);touch-action:pan-y;will-change:transform}
+.setrow-wrap .set-log-row.sdone{background:var(--gl)}
+.drop-reveal{position:absolute;inset:0;display:flex;align-items:center;padding-left:18px;gap:6px;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(90deg,#3B82F6,#2563EB);opacity:0;transition:opacity .12s}
+.setrow-wrap.revealing .drop-reveal{opacity:1}
 .dropset-row{grid-template-columns:28px 1fr 1fr 32px}
 .dropset-row .set-num.drop{color:#3B82F6;font-size:10px;font-weight:800}
 .dropset-row.sdone{background:rgba(59,130,246,.08)}
@@ -5167,7 +5171,6 @@ function renderDetailRoutines(c){
           ${wu.articulares.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`).join('')}
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:8px 0 6px">⚡ Activación</div>
           ${wu.activaciones.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`).join('')}
-          ${wu.aproximacion.length?`<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:8px 0 6px">📊 Aproximación</div>${wu.aproximacion.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon||'💪'} ${esc(e.name)} <span style="color:var(--t3)">· 40% × 10 / 60% × 5 / 80% × 3</span></div>`).join('')}`:''}
         </div>
       </div>` : '';
 
@@ -6208,8 +6211,10 @@ function _warmupKg(ex){
   return warmupLoad(_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
 }
 // Estado de "mostrar/ocultar calentamiento" por ejercicio (default: mostrar).
-function warmupShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)!=='0';}
-function toggleWarmup(routine,ei){localStorage.setItem(`wshow_${routine.id}_${ei}`,warmupShown(routine,ei)?'0':'1');renderClientExList(routine);}
+// OJO nombre único: ya existe toggleWarmup() (colapsa el bloque de calentamiento global);
+// reusar ese nombre lo pisaba y el botón Ocultar no respondía. Por eso exWarm*.
+function exWarmShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)!=='0';}
+function toggleExWarm(routine,ei){localStorage.setItem(`wshow_${routine.id}_${ei}`,exWarmShown(routine,ei)?'0':'1');renderClientExList(routine);}
 // Índice de log del set de calentamiento. Token 'w0' (string) → los bucles de
 // volumen/récords/historial recorren si ENTEROS 0..sets-1, así que NUNCA lo tocan.
 const WARM_SI='w0';
@@ -6217,7 +6222,7 @@ const WARM_SI='w0';
 // volumen ni récords: vive en claves de log aparte (ei,'w0').
 function buildWarmupSection(body,routine,ex,ei){
   const sug=_warmupKg(ex);
-  const shown=warmupShown(routine,ei);
+  const shown=exWarmShown(routine,ei);
   const done=isDone(routine.id,ei,WARM_SI);
   const g=f=>getLog(routine.id,ei,WARM_SI,f);
   const sec=document.createElement('div');
@@ -6226,7 +6231,7 @@ function buildWarmupSection(body,routine,ex,ei){
   head.innerHTML=`<span>🔥 Sets de calentamiento</span>`;
   const tg=document.createElement('button');
   tg.type='button';tg.className='warmup-toggle';tg.textContent=shown?'Ocultar':'Mostrar';
-  tg.onclick=()=>toggleWarmup(routine,ei);
+  tg.onclick=()=>toggleExWarm(routine,ei);
   head.appendChild(tg);
   sec.appendChild(head);
   if(shown){
@@ -6264,40 +6269,47 @@ function buildWarmupSection(body,routine,ex,ei){
   body.appendChild(sec);
 }
 
-// ── Dropsets ── (un dropset sobre la última serie efectiva; peso reducido, SIN
-// descanso). Token de log 'd0' → fuera de los bucles enteros de volumen/récords.
-const DROP_SI='d0';
-function dropOn(routine,ei){return localStorage.getItem(`drop_${routine.id}_${ei}`)==='1';}
-// Desmarca el "hecho" de calentamiento y dropset (por día / reinicio), conservando
-// el peso como sugerencia — igual que las series efectivas.
+// ── Dropsets (uno por serie, opcional) ── peso reducido tras la serie, SIN descanso.
+// Se AÑADE deslizando la serie a la DERECHA (attachDropSwipe). Token de log 'd'+si →
+// fuera de los bucles enteros de volumen/récords/historial (que recorren si ENTERO).
+function dropTok(si){return 'd'+si;}
+function dropSetOn(routine,ei,si){return localStorage.getItem(`drop_${routine.id}_${ei}_${si}`)==='1';}
+function addDropSet(routine,ei,si){
+  localStorage.setItem(`drop_${routine.id}_${ei}_${si}`,'1');
+  if(navigator.vibrate)navigator.vibrate(25);
+  toast(`🔻 Dropset añadido a la serie ${si+1}`);
+  renderClientExList(routine);
+}
+function removeDropSet(routine,ei,si){
+  localStorage.removeItem(`drop_${routine.id}_${ei}_${si}`);
+  const tok=dropTok(si); ['kg','reps'].forEach(f=>setLog(routine.id,ei,tok,f,'')); setDone(routine.id,ei,tok,false);
+  renderClientExList(routine);
+}
+// Desmarca el "hecho" de calentamiento + dropsets (por día / reinicio), conservando el
+// peso como sugerencia (la CONFIG de dropset persiste). Igual que las series efectivas.
 function clearWarmDropDone(routine){
-  (routine.exercises||[]).forEach((ex,ei)=>{setDone(routine.id,ei,WARM_SI,false);setDone(routine.id,ei,DROP_SI,false);});
+  (routine.exercises||[]).forEach((ex,ei)=>{
+    setDone(routine.id,ei,WARM_SI,false);
+    const sets=parseInt(ex.sets)||3;
+    for(let si=0;si<sets;si++) setDone(routine.id,ei,dropTok(si),false);
+  });
 }
-function addDrop(routine,ei){localStorage.setItem(`drop_${routine.id}_${ei}`,'1');renderClientExList(routine);}
-function removeDrop(routine,ei){localStorage.removeItem(`drop_${routine.id}_${ei}`);['kg','reps'].forEach(f=>setLog(routine.id,ei,DROP_SI,f,''));setDone(routine.id,ei,DROP_SI,false);renderClientExList(routine);}
-// Peso de dropset ≈ 70% del peso de la última serie registrada (o del sugerido).
-function _dropKg(routine,ex,ei,lastSi){
-  return dropLoad(parseFloat(getLog(routine.id,ei,lastSi,'kg'))||_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
+// Peso de dropset ≈ 70% del peso registrado en SU serie (o del sugerido).
+function _dropKg(routine,ex,ei,si){
+  return dropLoad(parseFloat(getLog(routine.id,ei,si,'kg'))||_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
 }
-function buildDropAdd(body,routine,ei){
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:6px 14px 2px;text-align:right';
-  const btn=document.createElement('button');
-  btn.type='button';btn.className='drop-add-btn';btn.textContent='🔻 Añadir dropset';
-  btn.onclick=()=>addDrop(routine,ei);
-  wrap.appendChild(btn);
-  body.appendChild(wrap);
-}
-function buildDropRow(body,routine,ex,ei,lastSi){
-  const done=isDone(routine.id,ei,DROP_SI);
-  const g=f=>getLog(routine.id,ei,DROP_SI,f);
-  const sug=_dropKg(routine,ex,ei,lastSi);
+// Fila de dropset bajo su serie (si). Azul · peso ~70% · reps al fallo · ✕ para quitar.
+function buildDropRow(body,routine,ex,ei,si){
+  const tok=dropTok(si);
+  const done=isDone(routine.id,ei,tok);
+  const g=f=>getLog(routine.id,ei,tok,f);
+  const sug=_dropKg(routine,ex,ei,si);
   const row=document.createElement('div');
   row.className=`set-log-row dropset-row${done?' sdone':''}`;
-  row.id=`droprow_${ei}`;
+  row.id=`droprow_${ei}_${si}`;
   row.innerHTML=`<div class="set-num drop ${done?'sdone':''}">DROP</div>`+
-    `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${DROP_SI}','kg',this.value)">`+
-    `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="al fallo" value="${g('reps')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${DROP_SI}','reps',this.value)">`+
+    `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${tok}','kg',this.value)">`+
+    `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="al fallo" value="${g('reps')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${tok}','reps',this.value)">`+
     `<div class="scheck drop ${done?'sdone':''}" role="button" aria-label="Marcar dropset">✓</div>`;
   const chk=row.querySelector('.scheck');
   chk.onclick=(e)=>{
@@ -6305,14 +6317,14 @@ function buildDropRow(body,routine,ex,ei,lastSi){
     const was=chk.classList.contains('sdone');
     const inps=row.querySelectorAll('.sinput[data-field]');
     if(!was){
-      inps.forEach(inp=>setLog(routine.id,ei,DROP_SI,inp.dataset.field,inp.value));
-      setDone(routine.id,ei,DROP_SI,true);
+      inps.forEach(inp=>setLog(routine.id,ei,tok,inp.dataset.field,inp.value));
+      setDone(routine.id,ei,tok,true);
       if(navigator.vibrate)navigator.vibrate(30);
       row.classList.add('sdone');chk.classList.add('sdone');row.querySelector('.set-num').classList.add('sdone');
       inps.forEach(inp=>inp.readOnly=true);
       toast('🔻 Dropset al fallo, ¡bien!');
     } else {
-      setDone(routine.id,ei,DROP_SI,false);
+      setDone(routine.id,ei,tok,false);
       row.classList.remove('sdone');chk.classList.remove('sdone');row.querySelector('.set-num').classList.remove('sdone');
       inps.forEach(inp=>inp.readOnly=false);
     }
@@ -6320,9 +6332,40 @@ function buildDropRow(body,routine,ex,ei,lastSi){
   body.appendChild(row);
   const hint=document.createElement('div');
   hint.className='warmup-hint';
-  hint.innerHTML='Tras la última serie, baja el peso y sigue sin descanso. <button type="button" class="drop-rm">Quitar</button>';
-  hint.querySelector('.drop-rm').onclick=()=>removeDrop(routine,ei);
+  hint.innerHTML=`Dropset de la serie ${si+1} · baja el peso y sigue sin descanso. <button type="button" class="drop-rm">Quitar</button>`;
+  hint.querySelector('.drop-rm').onclick=()=>removeDropSet(routine,ei,si);
   body.appendChild(hint);
+}
+// Gesto: deslizar una serie (peso) a la DERECHA añade un dropset a ESA serie. Solo
+// actúa si el arrastre es claramente horizontal (no interfiere con scroll ni con tipear).
+function attachDropSwipe(row,routine,ei,si){
+  let x0=0,y0=0,dx=0,dragging=false,decided=false,horiz=false;
+  const TH=64;
+  row.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1||dropSetOn(routine,ei,si))return;
+    x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;dragging=true;decided=false;horiz=false;
+    row.style.transition='none';
+  },{passive:true});
+  row.addEventListener('touchmove',e=>{
+    if(!dragging)return;
+    dx=e.touches[0].clientX-x0; const dy=e.touches[0].clientY-y0;
+    if(!decided&&(Math.abs(dx)>8||Math.abs(dy)>8)){decided=true;horiz=Math.abs(dx)>Math.abs(dy);}
+    if(decided&&horiz){
+      e.preventDefault();
+      const t=Math.max(0,Math.min(dx,100));
+      row.style.transform=`translateX(${t}px)`;
+      const w=row.parentElement; if(w)w.classList.toggle('revealing',t>14);
+    }
+  },{passive:false});
+  const end=()=>{
+    if(!dragging)return; dragging=false;
+    const fire=horiz&&dx>=TH;
+    row.style.transition='transform .18s'; row.style.transform='';
+    const w=row.parentElement; if(w)w.classList.remove('revealing');
+    if(fire)addDropSet(routine,ei,si);
+  };
+  row.addEventListener('touchend',end);
+  row.addEventListener('touchcancel',end);
 }
 
 function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
@@ -6536,10 +6579,6 @@ function renderClientExList(routine){
     // 🔥 Sets de calentamiento (solo peso) — peso ligero, no cuenta para volumen/récords
     if(track==='peso_reps'){
       buildWarmupSection(body,routine,ex,ei);
-      const sl=document.createElement('div');
-      sl.className='train-sec-label';
-      sl.innerHTML='<span>Series efectivas</span>';
-      body.appendChild(sl);
     }
 
     // Column headers según modalidad
@@ -6593,13 +6632,22 @@ function renderClientExList(routine){
         updateClientProgress(routine);
       };
 
-      body.appendChild(row);
-    }
-
-    // 🔻 Dropset sobre la última serie (solo peso): fila azul o botón para añadirlo
-    if(track==='peso_reps'){
-      if(dropOn(routine,ei)) buildDropRow(body,routine,ex,ei,sets-1);
-      else buildDropAdd(body,routine,ei);
+      // Solo peso: envolver la serie para poder DESLIZARLA → dropset; y debajo, su
+      // dropset si esa serie ya tiene uno. Otras modalidades: fila directa, sin swipe.
+      if(track==='peso_reps'){
+        const w=document.createElement('div');
+        w.className='setrow-wrap';
+        const rv=document.createElement('div');
+        rv.className='drop-reveal';
+        rv.textContent='🔻 Dropset';
+        w.appendChild(rv);
+        w.appendChild(row);
+        attachDropSwipe(row,routine,ei,si);
+        body.appendChild(w);
+        if(dropSetOn(routine,ei,si)) buildDropRow(body,routine,ex,ei,si);
+      } else {
+        body.appendChild(row);
+      }
     }
     }
 
@@ -8209,7 +8257,7 @@ function gmRender(){
       gmRenderHiit(setsEl, ei, ex, steps.length);
     } else {
     // 🔥 Calentamiento (solo peso, si está visible) — fila aparte, fuera del flujo de pasos
-    if(gmTrack==='peso_reps' && warmupShown(GM.routine,ei)){
+    if(gmTrack==='peso_reps' && exWarmShown(GM.routine,ei)){
       setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
     }
     steps.forEach(({si, stepIdx}) => {
@@ -8228,11 +8276,11 @@ function gmRender(){
         if(go) go.onclick=(e)=>{e.stopPropagation();const inp=row.querySelector('.gm-sinput[data-field="secs"]');gmHoldTimer(ei,si,parseInt(inp&&inp.value)||0);};
       }
       setsEl.appendChild(row);
+      // 🔻 Dropset de ESTA serie (si se activó deslizando en la tarjeta) — bajo su serie
+      if(gmTrack==='peso_reps' && dropSetOn(GM.routine,ei,si)){
+        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop','🔻', _dropKg(GM.routine,ex,ei,si), 'fallo'));
+      }
     });
-    // 🔻 Dropset (solo peso, si se activó en la tarjeta) — fila final, fuera del flujo
-    if(gmTrack==='peso_reps' && dropOn(GM.routine,ei)){
-      setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,DROP_SI,'drop','🔻', _dropKg(GM.routine,ex,ei,(parseInt(ex.sets)||3)-1), 'fallo'));
-    }
     }
     card.appendChild(setsEl);
     body.appendChild(card);
@@ -9261,18 +9309,8 @@ function renderWarmup(exercises){
     </div>`;
   };
 
-  const apxBlock=aproximacion.length?`
-    <div class="wu-section-title">📊 Series de aproximación sugeridas</div>
-    <div class="wu-note">Haz estas series con poco peso antes de empezar fuerte. Te ayudan a calentar y reducir el riesgo de lesiones. <strong>No cuentan como series de trabajo.</strong></div>
-    ${aproximacion.map(ex=>`
-      <div class="wu-apx-card">
-        <div class="wu-apx-header">${ex.icon||'💪'} ${esc(ex.name)}</div>
-        <div class="wu-apx-sets">
-          <div class="wu-apx-set"><span class="wu-apx-pct">40%</span><span class="wu-apx-info">del peso de trabajo · 10 reps · descanso 60s</span></div>
-          <div class="wu-apx-set"><span class="wu-apx-pct">60%</span><span class="wu-apx-info">del peso de trabajo · 5 reps · descanso 90s</span></div>
-          <div class="wu-apx-set"><span class="wu-apx-pct">80%</span><span class="wu-apx-info">del peso de trabajo · 2–3 reps · descanso 2 min</span></div>
-        </div>
-      </div>`).join('')}`:'';
+  // La "Aproximación" (series con % del peso) se movió a los Sets de calentamiento POR
+  // ejercicio (en cada tarjeta) — aquí queda solo Movilidad + Activación para no duplicar.
 
   con.innerHTML=`
     <div class="wu-card">
@@ -9293,7 +9331,6 @@ function renderWarmup(exercises){
         ${articulares.map(exRow).join('')}
         <div class="wu-section-title" style="margin-top:14px">⚡ Activación muscular</div>
         ${activaciones.map(exRow).join('')}
-        ${apxBlock}
       </div>
     </div>`;
   updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)
