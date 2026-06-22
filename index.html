@@ -512,6 +512,10 @@ html[data-theme="light"] .mta {
 .cex-block-prog.done{color:var(--g)}
 .cex-block-chev{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
 .cex-block.open .cex-block-chev{transform:rotate(180deg)}
+.cex-reorder{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.cex-reorder button{width:26px;height:26px;border-radius:7px;border:1px solid var(--br2);background:var(--bg);color:var(--t1);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
+.cex-reorder button:hover:not(:disabled){border-color:var(--g2);color:var(--gt)}
+.cex-reorder button:disabled{opacity:.28;cursor:default}
 .cex-block-body{display:none;border-top:1px solid var(--br);background:var(--bg)}
 .cex-block.open .cex-block-body{display:block}
 
@@ -3610,6 +3614,20 @@ function renderPickerForTarget(){
     if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
     return;
   }
+  // Sustituir (usuario en "Hoy"): elegir el reemplazo → _applySubstitute.
+  if(pickerTarget==='substitute'){
+    if(titleEl)titleEl.textContent='🔄 Cambiar ejercicio';
+    list.innerHTML='';
+    filtered.forEach(ex=>{
+      const div=document.createElement('div');
+      div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);margin-bottom:3px;transition:all .15s';
+      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:var(--g)">→</span>`;
+      div.onclick=()=>_applySubstitute(ex);
+      list.appendChild(div);
+    });
+    if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+    return;
+  }
   if(titleEl)titleEl.textContent='Seleccionar ejercicio';
   const currentExs=pickerTarget==='template'?tplExs:CUR.routineExs;
   list.innerHTML='';
@@ -6108,11 +6126,14 @@ function renderClientToday(client, overrideRoutine){
   const today=days[new Date().getDay()];
   CUR.todayRenderedDay=today;
   const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
-  const baseR=overrideRoutine||autoR;
+  let baseR=overrideRoutine||autoR;
   const isOverride=!!overrideRoutine;
   // Recordamos la rutina mostrada para que el check-in (pickMood/changeMood)
   // re-renderice SIN perder la selección manual (ej. abrir una rutina de otro día).
   CUR.todayOverride=overrideRoutine||null;
+  // Si el usuario reordenó/sustituyó hoy, usamos su copia de trabajo (misma rutina) para
+  // que los cambios sobrevivan a los re-render (mood, etc.). El plan guardado no se toca.
+  if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
     con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
       <div style="font-size:36px;margin-bottom:10px">💤</div>
@@ -6630,10 +6651,84 @@ function _sweepOrphanSessionKeys(routine){
   }catch(e){ warn('AVI: barrido de claves de sesión falló (no bloquea):',e&&e.message); }
 }
 
+// ══════════ REORDENAR / SUSTITUIR EJERCICIOS (usuario, en "Hoy") ══════════
+// Los logs de serie se indexan por (routineId, ei). Al reordenar movemos TAMBIÉN sus
+// claves log_/done_ para que el peso y el ✓ sigan al ejercicio (no al índice). Al
+// sustituir las limpiamos (es otro ejercicio). Las ediciones viven en una COPIA de
+// trabajo en memoria (CUR.todayWorking); el plan guardado no se toca hasta que el usuario
+// confirme "guardar para la próxima" al finalizar. Ver feedback_avi_practicidad_usuario.
+function _swapSessionKeys(rid,a,b){
+  const grab=idx=>{ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`,out=[];
+    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0)out.push(['log',k.slice(lp.length),localStorage.getItem(k)]);
+      else if(k.indexOf(dp)===0)out.push(['done',k.slice(dp.length),localStorage.getItem(k)]); }); return out; };
+  const A=grab(a),B=grab(b);
+  [a,b].forEach(idx=>{ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`;
+    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0||k.indexOf(dp)===0)localStorage.removeItem(k); }); });
+  const put=(es,idx)=>es.forEach(([kind,suf,val])=>localStorage.setItem(`${kind}_${rid}_${idx}_${suf}`,val));
+  put(A,b); put(B,a);
+}
+function _clearSessionKeys(rid,idx){ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`;
+  Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0||k.indexOf(dp)===0)localStorage.removeItem(k); }); }
+// Copia de trabajo del día (se crea al primer cambio; ligada a la rutina base por id).
+function _todayWork(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return null;
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const today=days[new Date().getDay()];
+  const autoR=(c.routines||[]).find(r=>r.day===today)||(c.routines||[]).find(r=>r.day==='Libre');
+  const baseR=CUR.todayOverride||autoR; if(!baseR)return null;
+  if(!CUR.todayWorking||CUR.todayWorking.id!==baseR.id){
+    CUR.todayWorking={...baseR,exercises:(baseR.exercises||[]).map(e=>({...e}))};
+  }
+  return CUR.todayWorking;
+}
+function todayMoveEx(ei,dir){
+  const w=_todayWork(); if(!w)return; const exs=w.exercises; const j=ei+dir;
+  if(j<0||j>=exs.length)return;
+  const t=exs[ei];exs[ei]=exs[j];exs[j]=t;
+  _swapSessionKeys(w.id,ei,j);
+  if(typeof normalizeBisets==='function')normalizeBisets(exs);
+  CUR.todayDirty=true;
+  const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
+}
+function todaySubstitute(ei){
+  const w=_todayWork(); if(!w)return; const ex=w.exercises[ei]; if(!ex)return;
+  CUR.subEi=ei; pickerTarget='substitute';
+  CUR.pkFilter=ex.muscle||'all'; CUR.pkEnv='all';
+  const es=document.getElementById('pk-env'); if(es)es.value='all';
+  buildFilterBtns('pk-f',pkFilter); renderPickerForTarget(); om('m-picker');
+}
+function _applySubstitute(newEx){
+  const w=_todayWork(); if(!w)return; const ei=CUR.subEi; const old=w.exercises[ei]; if(!old)return;
+  // Conserva el VOLUMEN planeado (series/reps/descanso); cambia el movimiento.
+  w.exercises[ei]={...newEx,sets:old.sets,reps:old.reps,restSec:old.restSec};
+  delete w.exercises[ei].ssNext; // no heredar la pareja de biserie del anterior
+  if(typeof normalizeBisets==='function')normalizeBisets(w.exercises);
+  _clearSessionKeys(w.id,ei); // ejercicio nuevo → empieza limpio
+  CUR.todayDirty=true; cm('m-picker');
+  const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
+  toast('🔄 Ejercicio cambiado');
+}
+// Al finalizar: si la estructura (orden o ejercicios) cambió vs el plan guardado, ofrece
+// conservarlo para la próxima. Si dice que no, el cambio fue solo por hoy.
+function offerKeepReorder(){
+  if(!CUR.todayDirty||!CUR.todayWorking){CUR.todayDirty=false;return;}
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c){CUR.todayDirty=false;return;}
+  const stored=(c.routines||[]).find(r=>r.id===CUR.todayWorking.id);
+  if(!stored){CUR.todayDirty=false;CUR.todayWorking=null;return;}
+  const a=CUR.todayWorking.exercises.map(e=>e.id).join(',');
+  const b=(stored.exercises||[]).map(e=>e.id).join(',');
+  if(a!==b&&confirm('Cambiaste tu rutina hoy (orden o ejercicios). ¿Guardar estos cambios para la próxima vez?')){
+    stored.exercises=CUR.todayWorking.exercises.map(e=>({...e}));
+    sv('ax_c',DB.clients); toast('✅ Guardado para la próxima');
+  } else if(a!==b){ toast('Solo por hoy 👍'); }
+  CUR.todayDirty=false; CUR.todayWorking=null;
+}
+
 function renderClientExList(routine){
   checkAndResetSession(routine);
   const con=document.getElementById('cex-list');if(!con)return;
   con.innerHTML='';
+  const _nEx=(routine.exercises||[]).length;
   (routine.exercises||[]).forEach((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
     const color=MC[ex.muscle]||'#ccc';
@@ -6664,6 +6759,11 @@ function renderClientExList(routine){
         <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}${(()=>{const _bi=bisetInfo(routine.exercises,ei);return _bi.biset?` · <span style="color:#A855F7;font-weight:700">🔗 biserie con ${esc((routine.exercises[_bi.partner]||{}).name||'')}</span>`:'';})()}</div>
       </div>
       <div class="cex-block-prog ${allDone?'done':''}">${doneCount}/${sets}</div>
+      <div class="cex-reorder" onclick="event.stopPropagation()">
+        <button onclick="todayMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
+        <button onclick="todayMoveEx(${ei},1)" ${ei===_nEx-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
+        <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+      </div>
       <div class="cex-block-chev">▼</div>`;
     header.onclick=()=>block.classList.toggle('open');
     block.appendChild(header);
@@ -6911,6 +7011,7 @@ function finishSessionEarly(){
   renderPRsInProfile(CUR.clientId);
   renderClientExProgress(CUR.clientId);
   toast('✅ Entrenamiento guardado');
+  offerKeepReorder();
 }
 
 // ── Fin de entrenamiento: celebración full-bleed (se dispara al 100%) ──
@@ -6989,6 +7090,7 @@ function showWorkoutFinish(routine,stats){
 function closeWorkoutFinish(){
   document.getElementById('workout-finish').classList.remove('on');
   document.body.style.overflow='';
+  offerKeepReorder(); // ¿guardar el reorden/cambio de hoy para la próxima?
   if(_pendingLevelUp){const L=_pendingLevelUp;_pendingLevelUp=null;setTimeout(()=>showLevelUp(L),250);}
 }
 function wfConfetti(){
