@@ -1769,9 +1769,10 @@ function renderClientMsgs(clientId){
   if(composer)composer.style.display='';
   if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Tu coach todavía no te ha escrito.<br>Puedes escribirle tú primero 👇</div>';return}
   msgs.forEach(m=>{
-    const isC=m.from==='coach';
-    const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
-    const t=document.createElement('div');t.className=`mt${isC?' r':''}`;t.textContent=`${isC?'Coach':'Tú'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
+    // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
+    const mine=m.from!=='coach';
+    const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
   });
   con.scrollTop=con.scrollHeight;
 }
