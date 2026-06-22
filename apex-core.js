@@ -217,8 +217,11 @@ function _restGoalBucket(goal) {
 }
 // Descanso (seg) recomendado para un TIPO de ejercicio bajo un objetivo dado.
 function restForType(type, goal) {
+  // Cardio/HIIT no tienen "descanso entre series": su intervalo lo maneja su propio flujo.
+  // Devolvemos null (antes daba un número de aislamiento engañoso a quien lo llamara directo).
+  if (type === 'Cardio' || type === 'HIIT') return null;
   const bucket = REST_BY_TYPE[_restGoalBucket(goal)] || REST_BY_TYPE.hipertrofia;
-  return bucket[type] || bucket.Aislamiento; // tipos sin entrada (raros) caen a aislamiento
+  return bucket[type] || bucket.Aislamiento; // otros tipos sin entrada (raros) caen a aislamiento
 }
 // Descanso EFECTIVO de un ejercicio dentro de una rutina. Orden de prioridad:
 //   1) descanso propio del ejercicio (override manual del coach o horneado al generar)
@@ -580,7 +583,9 @@ function generarRutinas(client, lib, opts) {
     let nm = tpl.name;
     nameCount[nm] = (nameCount[nm] || 0) + 1;
     if (nameCount[nm] > 1) nm += ' ' + nameCount[nm];
-    const note = lim.detected
+    const note = exs.length === 0
+      ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
+      : lim.detected
       ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice} Ajusta antes de aprobar.`
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
@@ -588,10 +593,16 @@ function generarRutinas(client, lib, opts) {
     return {
       id: idFn(), name: nm, day: GEN_DAY_LABELS[idx] || ('Día ' + (idx + 1)), shift: null,
       note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
-      createdAt: now, generated: true, reviewed: false, needsReview: lim.detected,
+      // needsReview también si el día quedó VACÍO (lib/entorno sin match) — el coach no
+      // debe poder aprobar un día en blanco sin alerta. Auditoría 2026-06-21.
+      createdAt: now, generated: true, reviewed: false, needsReview: lim.detected || exs.length === 0,
     };
   });
-  return { routines, needsReview: lim.detected, limitations: lim, place, envGaps: [...st.envShortfall], adaptation: !!scheme.adaptation, loadProfile };
+  const envGaps = [...st.envShortfall];
+  // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
+  // lo hacían las limitaciones, así que un plan a medio cubrir pasaba sin bandera).
+  const anyEmpty = routines.some(r => !(r.exercises || []).length);
+  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, loadProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════

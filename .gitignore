@@ -3,6 +3,8 @@ supabase/.temp/
 
 # Artefactos del smoke test (apex-run)
 scripts/apex-smoke.png
+scripts/avi-smoke.png
+scripts/demo/
 
 # Artefactos temporales del audit
 .git/_apex_audit.js

@@ -2242,11 +2242,13 @@ const UD={
   // (photos/prs/medidas/nutrition) se traen al abrir cada cliente (loadClientHeavy) → con
   // 300 socios la carga del panel es liviana en vez de bajar todas las fotos de una.
   async loadCoachClients(){
-    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return [];
+    // Devuelve null al FALLAR (sin red/auth) para distinguirlo de "0 clientes" ([]). Así el
+    // caller no pisa la lista guardada cuando el coach abre el panel sin conexión (auditoría 2026-06-21).
+    const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)return null;
     const {data,error}=await c.from('user_data')
       .select('user_id,coach_id,role,profile,routines,history,msgs,bodyweight,updated_at')
       .eq('coach_id',u.id);
-    if(error){warn('UD.loadCoachClients:',error.message);return [];}
+    if(error){warn('UD.loadCoachClients:',error.message);return null;}
     return data||[];
   },
   // Colecciones pesadas de UN cliente, bajo demanda (al abrir su detalle). Ver _ensureClientHeavy.
@@ -2526,9 +2528,21 @@ function svNow(k,v){
 // usuario logueado y la guarda con UD.upsertOwn (RLS por JWT). Las colecciones del
 // usuario viven indexadas por su id en DB.*, así que extraemos su porción (v[id]).
 const _udDebounce={};
+const _udPending={};   // clave -> valor con persistencia AÚN pendiente (debounce sin disparar)
 function _persistAuthUserDebounced(k,v){
+  // Respaldo local INMEDIATO + marca "sucio": si cierran/duermen la app dentro de los 800ms,
+  // el dato ya quedó en el caché local (ax_udcache_) y _flushAuthOnline lo reintenta al
+  // reconectar. Antes se perdía el guardado PARCIAL del entreno en esa ventana (auditoría 2026-06-21).
+  _authDirty=true;
+  _refreshAuthCache();
+  _udPending[k]=v;
   clearTimeout(_udDebounce[k]);
-  _udDebounce[k]=setTimeout(()=>_persistAuthUser(k,v),800);
+  _udDebounce[k]=setTimeout(()=>{ delete _udPending[k]; _persistAuthUser(k,v); },800);
+}
+// Vacía de inmediato las escrituras de modo auth que aún esperaban el debounce (al cerrar/
+// ocultar la app o al reconectar). Cubre al cliente y al coach (escritura per-cliente).
+function flushAuthDebounced(){
+  Object.keys(_udPending).forEach(k=>{ const v=_udPending[k]; delete _udPending[k]; clearTimeout(_udDebounce[k]); _persistAuthUser(k,v); });
 }
 async function _persistAuthUser(k,v){
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.
@@ -2628,10 +2642,12 @@ function flushPendingSync(){
   Object.keys(_pendingPush).forEach(k=>{ clearTimeout(_sbDebounce[k]); sbSet(k,_pendingPush[k]); });
 }
 if(typeof window!=='undefined'){
-  // Al recuperar conexión y al cerrar/ocultar o volver a la app → forzar lo pendiente.
-  window.addEventListener('online', flushPendingSync);
-  window.addEventListener('pagehide', flushPendingSync);
-  document.addEventListener('visibilitychange', flushPendingSync);
+  // Al recuperar conexión y al cerrar/ocultar o volver a la app → forzar lo pendiente
+  // (cola legacy/blob + escrituras debounced de modo auth, para no perder el parcial offline).
+  const _flushAll=()=>{ flushPendingSync(); flushAuthDebounced(); };
+  window.addEventListener('online', _flushAll);
+  window.addEventListener('pagehide', _flushAll);
+  document.addEventListener('visibilitychange', _flushAll);
 }
 
 async function syncFromCloud(){
@@ -2645,7 +2661,11 @@ async function syncFromCloud(){
   setP(60,'Cargando tus datos...');
   // Recargar DB desde localStorage (con o sin sync exitoso)
   DB.clients=ld('ax_c',[]);
-  const _routineMigrated=migrateRoutineIds(DB.clients,uid);
+  // Migración blindada (como las de abajo): si lanza (datos raros, apex-core.js viejo en
+  // caché tras un update) NUNCA debe colgar el arranque en el splash. Auditoría 2026-06-21.
+  let _routineMigrated=false;
+  try{ _routineMigrated=migrateRoutineIds(DB.clients,uid); }
+  catch(e){ warn('AVI: migrateRoutineIds falló (no bloquea):',e&&e.message); }
   if(_routineMigrated){sv('ax_c',DB.clients);log('AVI: routine.id migration applied');}
   // Migración blindada: reordena rutinas por día (Lunes primero). Datos viejos se
   // crearon en cualquier orden; esto los normaliza una sola vez y persiste.
@@ -3220,9 +3240,11 @@ async function verifyPass(stored, plain, salt){
     const h=await hashPass(plain,salt||'');
     return h===stored;
   }
-  // Legacy base64 — accept and migrate on next save
+  // Legacy base64 (cuentas viejas pre-SHA-256): se acepta SOLO para migrar al hashear en el
+  // próximo guardado. Se ELIMINÓ el "last resort" de texto plano (auditoría 2026-06-21): la
+  // verificación nunca debe validar comparando contra una contraseña almacenada en claro.
   try{if(_b64dec(stored)===plain)return true;}catch(e){}
-  return stored===plain; // plain-text last resort
+  return false;
 }
 
 // ── Coach credential accessors ──
@@ -3461,7 +3483,7 @@ function renderTemplates(){
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">
         <div class="rcnum" style="background:var(--bll);color:var(--bl)">📂</div>
         <div class="rci">
-          <div class="rcname">${tpl.name} ${tagHtml}</div>
+          <div class="rcname">${esc(tpl.name)} ${tagHtml}</div>
           <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${tpl.restSec||60}s</div>
         </div>
         <div style="display:flex;gap:4px;margin-right:4px">
@@ -3630,7 +3652,7 @@ function openTemplateClientSelector(tplId){
   DB.clients.forEach(c=>{
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:all .15s';
-    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${ini(c.name)}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Aplicar →</span>`;
+    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Aplicar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
@@ -3673,7 +3695,7 @@ function openTemplatePicker(){
     const exN=(tpl.exercises||[]).length;
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:all .15s;margin-bottom:4px';
-    div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${tpl.name}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--bl)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Usar →</span>`;
+    div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--bl)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Usar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
@@ -3855,7 +3877,7 @@ function renderProgressPanel(){
     card.className='pload-card';
     const bodyId=`plb_${c.id}`;
     card.innerHTML=`<div class="pload-hd" onclick="this.closest('.pload-card').classList.toggle('open')">
-      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${ini(c.name)}</div>
+      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:1px">${filtered.length} ejercicio${filtered.length!==1?'s':''} con historial</div>
@@ -4009,6 +4031,14 @@ syncFromCloud().then(async ()=>{
       if(navItems[1])setBottomNav(navItems[1]);
     }
   });
+}).catch(e=>{
+  // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
+  // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.
+  // Auditoría 2026-06-21.
+  warn('AVI: el arranque falló, cayendo al login:', e&&e.message);
+  const ov=document.getElementById('apex-loading');
+  if(ov){ ov.classList.add('fade'); setTimeout(()=>ov.remove(),300); }
+  try{ showScreen('s-login'); }catch(_e){}
 });
 
 async function tryAutoLogin(){
@@ -4716,8 +4746,12 @@ async function _enterAuthSession(authUser){
 // Carga las filas de los clientes del coach al DB (reusado al entrar y al volver de "Mi entrenamiento").
 // Clientes cuyas colecciones pesadas ya se trajeron en esta sesión (cache del lazy-load).
 let _heavyLoaded={};
-async function _loadCoachClientsIntoDB(){
-  const rows=await UD.loadCoachClients();
+// Caché local de la lista de asesorados del coach (sin colecciones pesadas) → para que el
+// panel no aparezca VACÍO si el coach lo abre sin red. Auditoría 2026-06-21.
+function _coachCacheKey(){ return 'ax_coachcache_'+(_authUid||'x'); }
+function _cacheCoachClients(rows){ try{ localStorage.setItem(_coachCacheKey(),JSON.stringify(rows)); }catch(e){} }
+function _readCoachCache(){ try{ const r=localStorage.getItem(_coachCacheKey()); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function _hydrateCoachFromRows(rows){
   DB.clients=rows.map(rowToClient);
   DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
   _heavyLoaded={};
@@ -4731,6 +4765,18 @@ async function _loadCoachClientsIntoDB(){
     DB.prs[id]={};DB.medidas[id]=[];DB.nutrition[id]={};DB.photos[id]=[];
   });
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
+}
+async function _loadCoachClientsIntoDB(){
+  const rows=await UD.loadCoachClients();
+  if(!rows){
+    // Falló la carga (sin red/auth) → NO pisar la lista; caer al caché si lo hay.
+    const cached=_readCoachCache();
+    if(cached&&cached.length){ _hydrateCoachFromRows(cached); toast('📴 Sin conexión — mostrando tus asesorados guardados'); }
+    else if(!(DB.clients&&DB.clients.length)){ DB.clients=DB.clients||[]; }
+    return;
+  }
+  _cacheCoachClients(rows); // refresca el respaldo local de la lista
+  _hydrateCoachFromRows(rows);
 }
 // Trae las colecciones pesadas de un cliente la primera vez que el coach abre su detalle.
 // No-op en modo legacy (blob): allí DB ya tiene todo. Idempotente por _heavyLoaded.
@@ -6432,6 +6478,7 @@ function startHiit(routine,ei,rounds,work,rest){
   if(!disp)return;
   if(startBtn){startBtn.textContent='⏹ Detener';startBtn.onclick=()=>stopHiit(true);}
   let round=0,phase='work',left=work;
+  let phaseEnd=Date.now()+work*1000; // fin de la fase actual por timestamp (robusto a iOS bloqueado)
   const paint=()=>{
     disp.textContent=String(left).padStart(2,'0');
     phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
@@ -6441,15 +6488,15 @@ function startHiit(routine,ei,rounds,work,rest){
   paint();playRestTick();
   updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
   HIIT={int:setInterval(()=>{
-    left--;
+    left=Math.max(0,Math.round((phaseEnd-Date.now())/1000));
     if(left>0&&left<=3)playRestTick();
     if(left<=0){
       if(phase==='work'){
         setDone(routine.id,ei,round,true);round++;
         updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
         if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}return;}
-        phase='rest';left=rest;playRestEndBeep();
-      } else {phase='work';left=work;playRestEndBeep();}
+        phase='rest';left=rest;phaseEnd=Date.now()+rest*1000;playRestEndBeep();
+      } else {phase='work';left=work;phaseEnd=Date.now()+work*1000;playRestEndBeep();}
     }
     paint();
   },1000)};
@@ -6462,9 +6509,10 @@ function startHoldTimer(secs,ei,si,routine){
   reqWake();
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');const title=banner.querySelector('.resttitle');
   banner.classList.remove('hide');if(title)title.textContent='⏱ Aguanta';sub.textContent=`Serie ${si+1}`;
+  const endAt=Date.now()+secs*1000; // conteo por timestamp absoluto (robusto a iOS bloqueado)
   let left=secs;num.textContent=left;
   restInt=setInterval(()=>{
-    left--;num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
+    left=Math.max(0,Math.round((endAt-Date.now())/1000));num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
     if(left>0&&left<=3)playRestTick();
     if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');relWake();playRestEndBeep();if(title)title.textContent='⏱ Descansando';const chk=document.getElementById(`chk_${ei}_${si}`);if(chk&&!chk.classList.contains('sdone'))chk.click();}
   },1000);
@@ -6505,8 +6553,27 @@ function checkAndResetSession(routine){
     });
     clearWarmup(routine.id); // el calentamiento también es por día
     clearWarmDropDone(routine); // sets de calentamiento + dropsets: desmarcar por día
+    _sweepOrphanSessionKeys(routine); // limpia log_/done_ de ei/si que ya no existen
   }
   localStorage.setItem(dateKey,today);
+}
+// Barre las claves de sesión (log_/done_) de índices que ya no existen en la rutina: si el
+// coach reduce las series o reordena/quita ejercicios, esos índices quedaban huérfanos y los
+// `log_` NUNCA se borraban → crecían sin límite (riesgo de llenar localStorage). Auditoría 2026-06-21.
+function _sweepOrphanSessionKeys(routine){
+  try{
+    const valid=new Set();
+    (routine.exercises||[]).forEach((ex,ei)=>{
+      const sets=parseInt(ex.sets)||3;
+      for(let si=0;si<sets;si++){ valid.add(ei+'_'+si); valid.add(ei+'_'+dropTok(si)); }
+      valid.add(ei+'_'+WARM_SI);
+    });
+    const dp='done_'+routine.id+'_', lp='log_'+routine.id+'_';
+    Object.keys(localStorage).forEach(k=>{
+      if(k.indexOf(dp)===0){ const t=k.slice(dp.length); if(!valid.has(t)) localStorage.removeItem(k); }
+      else if(k.indexOf(lp)===0){ const rest=k.slice(lp.length); const i=rest.lastIndexOf('_'); const t=i>0?rest.slice(0,i):rest; if(!valid.has(t)) localStorage.removeItem(k); }
+    });
+  }catch(e){ warn('AVI: barrido de claves de sesión falló (no bloquea):',e&&e.message); }
 }
 
 function renderClientExList(routine){
@@ -8376,9 +8443,10 @@ function gmHoldTimer(ei, si, secs){
   secEl.textContent=secs;
   arc.style.transition='none'; arc.style.strokeDashoffset='0';
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
+  const endAt=Date.now()+secs*1000; // conteo por timestamp absoluto (robusto a iOS bloqueado)
   let left=secs;
   GM.restTimer=setInterval(()=>{
-    left--;
+    left=Math.max(0,Math.round((endAt-Date.now())/1000));
     secEl.textContent=left; secEl.classList.remove('tick'); void secEl.offsetWidth; secEl.classList.add('tick');
     arc.style.strokeDashoffset=C*((secs-left)/secs);
     if(left>0&&left<=5) playRestTick();
@@ -8419,6 +8487,7 @@ function gmStartHiit(ei, rounds, work, rest){
   if(!disp) return;
   if(btn){ btn.textContent='⏹ Detener'; btn.onclick=()=>gmStopHiit(); }
   let round=0, phase='work', left=work;
+  let phaseEnd=Date.now()+work*1000; // fin de la fase actual por timestamp (robusto a iOS bloqueado)
   const paint=()=>{
     disp.textContent=String(left).padStart(2,'0');
     phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
@@ -8428,7 +8497,7 @@ function gmStartHiit(ei, rounds, work, rest){
   paint(); playRestTick();
   gmUpdateProgress(); updateClientProgress(GM.routine);
   GM.hiit=setInterval(()=>{
-    left--;
+    left=Math.max(0,Math.round((phaseEnd-Date.now())/1000));
     if(left>0&&left<=3) playRestTick();
     if(left<=0){
       if(phase==='work'){
@@ -8440,8 +8509,8 @@ function gmStartHiit(ei, rounds, work, rest){
           clearInterval(GM.hiit); GM.hiit=null; relWake(); playRestEndBeep();
           gmAfterHiit(ei); return;
         }
-        phase='rest'; left=rest; playRestEndBeep();
-      } else { phase='work'; left=work; playRestEndBeep(); }
+        phase='rest'; left=rest; phaseEnd=Date.now()+rest*1000; playRestEndBeep();
+      } else { phase='work'; left=work; phaseEnd=Date.now()+work*1000; playRestEndBeep(); }
     }
     paint();
   },1000);
@@ -8675,10 +8744,14 @@ function gmShowRest(secs, nextStep, opts){
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.textContent=bc?('💨 '+bc.s):''; breEl.style.display=bc?'block':'none'; }
   if(GM.restTimer) clearInterval(GM.restTimer);
+  // Conteo por timestamp ABSOLUTO (no por ticks): iOS congela los setInterval con la
+  // pantalla bloqueada; al volver, el reloj Date.now() ya avanzó y el siguiente tick
+  // recalcula y cierra el descanso. Ver [[feedback_avi_timers_ios]] / auditoría 2026-06-21.
+  const endAt=Date.now()+secs*1000;
   let left=secs;
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
   GM.restTimer=setInterval(()=>{
-    left--;
+    left=Math.max(0,Math.round((endAt-Date.now())/1000));
     secEl.textContent=left;secEl.classList.remove('tick');void secEl.offsetWidth;secEl.classList.add('tick');
     arc.style.strokeDashoffset=C*((secs-left)/secs);
     if(left>0&&left<=5)playRestTick();

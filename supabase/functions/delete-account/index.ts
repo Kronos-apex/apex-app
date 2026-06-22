@@ -12,8 +12,10 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Origen restringido al dominio de la app (igual que send-push/daily-notifs). Antes era "*",
+// lo que permitía invocarla desde cualquier sitio con un token robado. Auditoría 2026-06-21.
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://kronos-apex.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };

@@ -463,6 +463,16 @@ test('notas con "lumbar" → rutina marcada needsReview + ⚠️ en la nota', ()
   });
 });
 
+test('biblioteca sin ejercicios → día vacío marca needsReview + ⚠️ en la nota', () => {
+  const { routines, needsReview } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 2, goal: 'Ganar músculo' }, [], FIXED);
+  assert.strictEqual(needsReview, true); // antes daba false aunque el día saliera en blanco
+  assert.ok(routines.some(r => (r.exercises || []).length === 0), 'algún día debe quedar vacío');
+  routines.filter(r => !(r.exercises || []).length).forEach(r => {
+    assert.strictEqual(r.needsReview, true);
+    assert.ok(r.note.includes('⚠️'), 'la nota del día vacío debe llevar ⚠️');
+  });
+});
+
 test('limitación lumbar → excluye peso muerto y sentadilla de TODAS las rutinas', () => {
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 4, goal: 'Ganar músculo', notes: 'dolor lumbar' }, LIB, FIXED);
   const nombres = routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
@@ -1617,6 +1627,10 @@ test('restForType: objetivo desconocido cae a hipertrofia (default moderado)', (
 });
 test('restForType: tipo raro/sin tabla cae a aislamiento', () => {
   assert.strictEqual(restForType('Movilidad', 'Ganar músculo'), 60);
+});
+test('restForType: Cardio/HIIT → null (su intervalo lo maneja su propio flujo)', () => {
+  assert.strictEqual(restForType('Cardio', 'Ganar músculo'), null);
+  assert.strictEqual(restForType('HIIT', 'Perder grasa'), null);
 });
 
 test('restForExercise: prioriza el descanso propio del ejercicio (override del coach)', () => {
