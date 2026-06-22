@@ -804,7 +804,7 @@ function buildWarmupSection(body,routine,ex,ei){
 }
 
 // ── Dropsets (uno por serie, opcional) ── peso reducido tras la serie, SIN descanso.
-// Se AÑADE deslizando la serie a la DERECHA (attachDropSwipe). Token de log 'd'+si →
+// Se ALTERNA deslizando la serie a la DERECHA (attachDropSwipe): añade o quita. Token 'd'+si →
 // fuera de los bucles enteros de volumen/récords/historial (que recorren si ENTERO).
 function dropTok(si){return 'd'+si;}
 function dropSetOn(routine,ei,si){return localStorage.getItem(`drop_${routine.id}_${ei}_${si}`)==='1';}
@@ -870,13 +870,14 @@ function buildDropRow(body,routine,ex,ei,si){
   hint.querySelector('.drop-rm').onclick=()=>removeDropSet(routine,ei,si);
   body.appendChild(hint);
 }
-// Gesto: deslizar una serie (peso) a la DERECHA añade un dropset a ESA serie. Solo
-// actúa si el arrastre es claramente horizontal (no interfiere con scroll ni con tipear).
+// Gesto: deslizar una serie (peso) a la DERECHA ALTERNA su dropset (añade si no hay,
+// quita si ya hay). Solo actúa si el arrastre es claramente horizontal (no interfiere
+// con scroll ni con tipear). La etiqueta del reveal dice "Quitar" cuando ya está activo.
 function attachDropSwipe(row,routine,ei,si){
   let x0=0,y0=0,dx=0,dragging=false,decided=false,horiz=false;
   const TH=64;
   row.addEventListener('touchstart',e=>{
-    if(e.touches.length!==1||dropSetOn(routine,ei,si))return;
+    if(e.touches.length!==1)return;
     x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;dragging=true;decided=false;horiz=false;
     row.style.transition='none';
   },{passive:true});
@@ -896,7 +897,7 @@ function attachDropSwipe(row,routine,ei,si){
     const fire=horiz&&dx>=TH;
     row.style.transition='transform .18s'; row.style.transform='';
     const w=row.parentElement; if(w)w.classList.remove('revealing');
-    if(fire)addDropSet(routine,ei,si);
+    if(fire) dropSetOn(routine,ei,si)?removeDropSet(routine,ei,si):addDropSet(routine,ei,si);
   };
   row.addEventListener('touchend',end);
   row.addEventListener('touchcancel',end);
@@ -1273,7 +1274,7 @@ function renderClientExList(routine){
         w.className='setrow-wrap';
         const rv=document.createElement('div');
         rv.className='drop-reveal';
-        rv.textContent='🔻 Dropset';
+        rv.textContent=dropSetOn(routine,ei,si)?'🔻 Quitar dropset':'🔻 Dropset';
         w.appendChild(rv);
         w.appendChild(row);
         attachDropSwipe(row,routine,ei,si);
