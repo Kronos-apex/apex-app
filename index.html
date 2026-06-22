@@ -1863,6 +1863,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="md mdlg">
     <div class="mdtitle" id="mg-title">✨ Borrador de la semana</div>
     <div class="fg" style="margin-bottom:10px"><label class="ilbl">Estilo de entrenamiento</label><select class="sel" id="mg-style" onchange="genWithStyle(this.value)"></select></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:var(--rsm)">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;margin-right:auto"><input type="checkbox" id="mg-deload" onchange="toggleGenDeload(this.checked)"> 🔄 Semana de descarga</label>
+      <button class="btn bg bsm" id="mg-excl-btn" onclick="openGenPrefsPicker('exclude')">🚫 Excluidos (0)</button>
+      <button class="btn bg bsm" id="mg-pref-btn" onclick="openGenPrefsPicker('prefer')">⭐ Priorizados (0)</button>
+    </div>
     <div id="mg-body" style="max-height:52vh;overflow-y:auto;margin-bottom:14px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-gen')">Cancelar</button><button class="btn bp" onclick="confirmGenRutinas()">✓ Crear estas rutinas</button></div>
   </div>
@@ -1880,7 +1885,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- Exercise Picker -->
 <div class="mdbg" id="m-picker">
   <div class="md">
-    <div class="mdtitle">Seleccionar ejercicio</div>
+    <div class="mdtitle" id="pk-title">Seleccionar ejercicio</div>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
       <span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0">Entorno:</span>
       <select class="sel" id="pk-env" onchange="pkEnvFilter(this.value)" style="font-size:12px;padding:5px 8px">
@@ -3578,9 +3583,35 @@ function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.
 
 function renderPickerForTarget(){
   const list=document.getElementById('pk-list');
-  const currentExs=pickerTarget==='template'?tplExs:CUR.routineExs;
   const env=CUR.pkEnv||'all';
   const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env)));
+  const titleEl=document.getElementById('pk-title');
+  // Fase C: modos "excluir 🚫" / "priorizar ⭐" → togglean la lista en c.genPrefs.
+  if(pickerTarget==='exclude'||pickerTarget==='prefer'){
+    const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c){list.innerHTML='';return;}
+    const p=genPrefs(c); const arr=p[pickerTarget];
+    if(titleEl)titleEl.textContent=pickerTarget==='exclude'?'🚫 Excluir del generador':'⭐ Priorizar al generar';
+    list.innerHTML='';
+    filtered.forEach(ex=>{
+      const on=arr.includes(ex.id);
+      const col=pickerTarget==='exclude'?'var(--rd)':'var(--g)';
+      const div=document.createElement('div');
+      div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${on?col:'var(--br)'};background:${on?col+'14':'var(--w)'};margin-bottom:3px;transition:all .15s`;
+      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:${on?col:'var(--t3)'}">${on?(pickerTarget==='exclude'?'🚫':'⭐'):'+'}</span>`;
+      div.onclick=()=>{
+        const i=arr.indexOf(ex.id);
+        if(i>=0)arr.splice(i,1); else arr.push(ex.id);
+        sv('ax_c',DB.clients);
+        renderPickerForTarget(); _updateGenPrefBtns(c);
+        if(CUR.genStyleId)genWithStyle(CUR.genStyleId); // refresca el borrador detrás
+      };
+      list.appendChild(div);
+    });
+    if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+    return;
+  }
+  if(titleEl)titleEl.textContent='Seleccionar ejercicio';
+  const currentExs=pickerTarget==='template'?tplExs:CUR.routineExs;
   list.innerHTML='';
   filtered.forEach(ex=>{
     const already=currentExs.some(e=>e.id===ex.id);
@@ -4544,7 +4575,8 @@ function _autoGenerateWeek(c){
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
   const _waist=_med.length?_med[_med.length-1].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile});
+  const _p=genPrefs(c);
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
   if(res.routines&&res.routines.length){
     c.routines=sortRoutinesByDay(res.routines.map(r=>({...r,reviewed:true})));
   }
@@ -5245,12 +5277,25 @@ function openNewRoutine(){
 function _genSeed(s){let h=0;s=s||'';for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
 // Estilo por defecto según el entorno del asesorado.
 const PLACE_DEFAULT_STYLE={gym:'gym_hipertrofia',casa:'casa_equipo',corporal:'casa_corporal',parque:'parque_calistenia'};
+// ── Fase C: preferencias del generador por asesorado (excluir 🚫 / priorizar ⭐) ──
+// Viven en el propio objeto del cliente (c.genPrefs) → viajan y se sincronizan con él,
+// igual que sus rutinas. El deload 🔄 es por-sesión de generación (no se persiste).
+function genPrefs(c){ if(!c.genPrefs)c.genPrefs={exclude:[],prefer:[]}; c.genPrefs.exclude=c.genPrefs.exclude||[]; c.genPrefs.prefer=c.genPrefs.prefer||[]; return c.genPrefs; }
+function _updateGenPrefBtns(c){ const p=genPrefs(c); const eb=document.getElementById('mg-excl-btn'),pb=document.getElementById('mg-pref-btn'); if(eb)eb.textContent=`🚫 Excluidos (${p.exclude.length})`; if(pb)pb.textContent=`⭐ Priorizados (${p.prefer.length})`; }
+function toggleGenDeload(v){ CUR.genDeload=!!v; if(CUR.genStyleId)genWithStyle(CUR.genStyleId); }
+function openGenPrefsPicker(kind){
+  pickerTarget=kind; CUR.pkFilter='all'; CUR.pkEnv='all';
+  const es=document.getElementById('pk-env'); if(es)es.value='all';
+  buildFilterBtns('pk-f',pkFilter); renderPickerForTarget(); om('m-picker');
+}
 function openGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   // Poblar el selector de estilos; default = el que corresponde al entorno del cliente.
   const def=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
   document.getElementById('mg-style').innerHTML=TRAINING_STYLES.map(s=>`<option value="${s.id}"${s.id===def?' selected':''}>${s.icon} ${esc(s.name)}</option>`).join('');
   document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  CUR.genDeload=false; const dl=document.getElementById('mg-deload'); if(dl)dl.checked=false;
+  _updateGenPrefBtns(c);
   if(!genWithStyle(def))return;
   om('m-gen');
 }
@@ -5262,9 +5307,11 @@ function genWithStyle(styleId){
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
   const _waist=_med.length?_med[_med.length-1].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile});
+  const _p=genPrefs(c);
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer,deload:!!CUR.genDeload});
   if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}
   CUR.genDraft=res;CUR.genStyleId=style.id;
+  _updateGenPrefBtns(c);
   renderGenPreview(c,res);
   return true;
 }
@@ -5274,13 +5321,14 @@ function renderGenPreview(c,res){
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#7a5c00;margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
   const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
   const loadBanner=res.loadProfile==='high'?`<div style="background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1a4a7a;margin-bottom:12px"><b>⚖️ Perfil de carga alto</b> (IMC/cintura) — el borrador prioriza <b>máquinas y movimientos guiados/asistidos</b> y evita saltos/pliométricos, para cuidar articulaciones mientras gana base. Ajústalo según veas a la persona.</div>`:'';
+  const deloadBanner=res.deload?`<div style="background:rgba(232,151,58,.12);border:1px solid #E8973A;border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#8a5a14;margin-bottom:12px"><b>🔄 Semana de descarga</b> — volumen reducido (−1 serie por ejercicio). Recuérdale <b>bajar la carga ~10-20%</b>: la meta de esta semana es recuperar, no exigir.</div>`:'';
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
-  document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+intro+cards;
+  document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+deloadBanner+intro+cards;
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;

@@ -171,7 +171,7 @@ function parseLimitations(notes) {
 // Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
 // `adaptation`: si es true (principiante en sus primeras semanas) sobrescribe el
 // esquema del objetivo por una FASE DE ADAPTACIÓN ANATÓMICA — ver isInAdaptation().
-function genSchemeFor(goal, level, adaptation) {
+function genSchemeFor(goal, level, adaptation, deload) {
   const g = _norm(goal);
   let base;
   if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { reps: 14, sets: [3, 4], rest: 55, cardioClose: true };
@@ -191,6 +191,13 @@ function genSchemeFor(goal, level, adaptation) {
     scheme.repsN = 15;
     scheme.restSec = 60;
     scheme.adaptation = true;
+  }
+  // Semana de descarga (deload, Fase C): baja el VOLUMEN (−1 serie por ejercicio, piso 2)
+  // sobre el esquema que toque. La carga (kg) no la fija el generador, así que la baja se
+  // comunica como NOTA (~10-20% menos). Recuperación planificada, no castigo.
+  if (deload) {
+    scheme.setsN = Math.max(2, scheme.setsN - 1);
+    scheme.deload = true;
   }
   scheme.goalBucket = _restGoalBucket(goal); // cubeta para el descanso por tipo de ejercicio
   return scheme;
@@ -469,9 +476,18 @@ function _levelGate(level) {
 function _genPick(lib, muscle, type, st) {
   const cap = st.levelCap == null ? 2 : st.levelCap;
   const ok = e => e.muscle === muscle && !st.exclude(e)
+    && !(st.excludeIds && st.excludeIds.has(e.id)) // 🚫 lista negra manual del coach (Fase C)
     && exLevelRank(e) <= cap // gate por nivel: el ejercicio no puede exceder el tope del cliente
     && (!st.tier || (e.tier || 'premium') === st.tier)
     && (e.env || ['gym']).includes(st.place); // entorno: el ejercicio debe ser realizable ahí
+  // ⭐ Priorizados (Fase C): si el coach marcó un ejercicio de este músculo/tipo, va PRIMERO
+  // (cubre "impulsar" y "asegurar que entre"). Respeta ok() (nivel/entorno/tier/exclusión) y
+  // el tipo del slot; si no pasa esos filtros, simplemente no se fuerza.
+  if (st.preferIds && st.preferIds.size) {
+    const pref = lib.find(e => st.preferIds.has(e.id) && e.muscle === muscle
+      && (type ? e.type === type : true) && ok(e) && !st.usedInDay.has(e.id));
+    if (pref) { st.usedInDay.add(pref.id); return pref; }
+  }
   // Pools en orden de prioridad. Se usa el primero que tenga algo sin usar hoy:
   //  1) methodBias (ej. calistenia → peso corporal) ANTES que el tipo del slot,
   //  2) tipo exacto del slot, 3) fallback solo-músculo (cuando el tipo está agotado/vacío).
@@ -544,7 +560,7 @@ function generarRutinas(client, lib, opts) {
   const age = parseInt(client.age) || null;
   const minor = age != null && age < 16;
   const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
-  const scheme = genSchemeFor(client.goal || '', level, opts.adaptation);
+  const scheme = genSchemeFor(client.goal || '', level, opts.adaptation, opts.deload);
   const lim = parseLimitations(client.notes || '');
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
@@ -557,6 +573,8 @@ function generarRutinas(client, lib, opts) {
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
     preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
     scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad), envShortfall: new Set(),
+    excludeIds: new Set(opts.excludeIds || []), // 🚫 lista negra manual (Fase C)
+    preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
 
   const codes = _genResolveSplit(sexKey, days, level, minor);
@@ -589,6 +607,8 @@ function generarRutinas(client, lib, opts) {
       ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice} Ajusta antes de aprobar.`
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
+      : scheme.deload
+      ? '🔄 Semana de descarga (deload): −1 serie por ejercicio. Baja la carga ~10-20% respecto a tu semana normal — la meta es recuperar, no exigir.'
       : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
     return {
       id: idFn(), name: nm, day: GEN_DAY_LABELS[idx] || ('Día ' + (idx + 1)), shift: null,
@@ -602,7 +622,7 @@ function generarRutinas(client, lib, opts) {
   // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
   // lo hacían las limitaciones, así que un plan a medio cubrir pasaba sin bandera).
   const anyEmpty = routines.some(r => !(r.exercises || []).length);
-  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, loadProfile };
+  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, deload: !!scheme.deload, loadProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════

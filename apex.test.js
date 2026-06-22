@@ -369,6 +369,43 @@ test('restSec coincide con el objetivo (Perder grasa → 55s)', () => {
   routines.forEach(r => assert.strictEqual(r.restSec, 55));
 });
 
+// ── Fase C: excluir 🚫 / priorizar ⭐ / deload 🔄 ──
+test('Fase C excluir: un ejercicio en la lista negra NUNCA aparece', () => {
+  const base = { sex: 'M', level: 'Avanzado', days: 5, goal: 'Ganar músculo' };
+  const all = generarRutinas(base, LIB, FIXED).routines.flatMap(r => r.exercises).map(e => e.id);
+  assert.ok(all.includes('p1'), 'precondición: p1 normalmente sí aparece');
+  const { routines } = generarRutinas(base, LIB, { ...FIXED, excludeIds: ['p1'] });
+  assert.ok(!routines.flatMap(r => r.exercises).some(e => e.id === 'p1'), 'p1 excluido no debe aparecer');
+});
+
+test('Fase C priorizar: un ejercicio marcado ⭐ entra primero en su músculo/tipo', () => {
+  // p2 (pecho Compuesto): forzado debe aparecer en el slot de pecho compuesto.
+  const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, preferIds: ['p2'] });
+  assert.ok(routines.flatMap(r => r.exercises).some(e => e.id === 'p2'), 'p2 priorizado debe estar presente');
+});
+
+test('Fase C: excluir gana sobre priorizar (no se fuerza un ejercicio vetado)', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Avanzado', days: 5, goal: 'Ganar músculo' }, LIB, { ...FIXED, preferIds: ['p1'], excludeIds: ['p1'] });
+  assert.ok(!routines.flatMap(r => r.exercises).some(e => e.id === 'p1'), 'p1 vetado no debe aparecer aunque esté priorizado');
+});
+
+test('Fase C deload: −1 serie por ejercicio + flag deload + nota de descarga', () => {
+  const normal = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  const pesoNormal = normal.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico')[0];
+  const res = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, deload: true });
+  assert.strictEqual(res.deload, true);
+  const peso = res.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico');
+  peso.forEach(e => assert.strictEqual(e.sets, pesoNormal.sets - 1, `deload debe bajar 1 serie (${pesoNormal.sets}→${pesoNormal.sets - 1})`));
+  assert.ok(res.routines.every(r => /descarga|deload/i.test(r.note)), 'la nota debe mencionar la descarga');
+});
+
+test('Fase C deload: piso de 2 series (no baja de ahí)', () => {
+  // Principiante Ganar músculo = 3 series → deload 2; un segundo deload no baja de 2.
+  const res = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, deload: true });
+  res.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico')
+    .forEach(e => assert.ok(e.sets >= 2, `deload no debe bajar de 2 series, fue ${e.sets}`));
+});
+
 test('< 16 años → Full Body sin carga axial con barra (ni sentadilla/peso muerto con barra)', () => {
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', age: 14, days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
   routines.forEach(r => assert.ok(/Full Body/.test(r.name)));
