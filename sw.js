@@ -1,8 +1,8 @@
-const CACHE_NAME = 'apex-v176';
+const CACHE_NAME = 'apex-v177';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
-const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/apex-core.js', '/apex-app/muscle-map.js', '/apex-app/exercise-muscles.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
+const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/styles.css', '/apex-app/apex-core.js', '/apex-app/muscle-map.js', '/apex-app/exercise-muscles.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL).catch(() => {})));
