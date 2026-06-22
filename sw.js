@@ -1,8 +1,8 @@
-const CACHE_NAME = 'apex-v178';
+const CACHE_NAME = 'apex-v179';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
-const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/styles.css', '/apex-app/app.js', '/apex-app/apex-core.js', '/apex-app/muscle-map.js', '/apex-app/exercise-muscles.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
+const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/styles.css', '/apex-app/app-1-infra.js', '/apex-app/app-2-login.js', '/apex-app/app-3-coach.js', '/apex-app/app-4-entreno.js', '/apex-app/app-5-salud.js', '/apex-app/app-6-extra.js', '/apex-app/apex-core.js', '/apex-app/muscle-map.js', '/apex-app/exercise-muscles.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL).catch(() => {})));
@@ -46,7 +46,7 @@ self.addEventListener('fetch', e => {
   // apex-core.js: network-first (con respaldo en caché para offline). Es lógica crítica
   // que DEBE ir sincronizada con index.html; cache-first la dejaba desfasada tras un update
   // y colgaba el arranque. Network-first evita ese desfase.
-  if(url.origin === self.location.origin && (url.pathname.endsWith('app.js') || url.pathname.endsWith('apex-core.js') || url.pathname.endsWith('muscle-map.js') || url.pathname.endsWith('exercise-muscles.js'))){
+  if(url.origin === self.location.origin && /\/(app-\d-[\w-]+|apex-core|muscle-map|exercise-muscles)\.js$/.test(url.pathname)){
     e.respondWith(
       fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
         .catch(() => caches.match(e.request))

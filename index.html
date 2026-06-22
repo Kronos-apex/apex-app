@@ -980,7 +980,15 @@
 <script src="apex-core.js"></script>
 <script src="muscle-map.js"></script>
 <script src="exercise-muscles.js"></script>
-<script src="app.js"></script>
+<!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
+     para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
+     que vive ordenado de fuente. Ver memoria de arquitectura. -->
+<script src="app-1-infra.js"></script>
+<script src="app-2-login.js"></script>
+<script src="app-3-coach.js"></script>
+<script src="app-4-entreno.js"></script>
+<script src="app-5-salud.js"></script>
+<script src="app-6-extra.js"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

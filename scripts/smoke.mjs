@@ -68,8 +68,9 @@ async function main() {
     const portFile = path.join(tmp, 'DevToolsActivePort');
     let dport = null;
     for (let i = 0; i < 100 && !dport; i++) {
-      if (fs.existsSync(portFile)) dport = fs.readFileSync(portFile, 'utf8').split('\n')[0].trim();
-      else await sleep(100);
+      // El archivo puede estar a medio escribir por Chrome (EBUSY) → tolera y reintenta.
+      try { if (fs.existsSync(portFile)) { const c = fs.readFileSync(portFile, 'utf8').split('\n')[0].trim(); if (c) dport = c; } } catch {}
+      if (!dport) await sleep(100);
     }
     if (!dport) throw new Error('Chrome no arrancó (sin DevToolsActivePort)');
 
@@ -107,6 +108,8 @@ async function main() {
       hasLogin: !!document.getElementById('s-login'),
       coreLoaded: typeof generarRutinas === 'function',
       uiLoaded: typeof renderClientToday === 'function',
+      saludLoaded: typeof renderNutritionCoach === 'function',
+      extraLoaded: typeof openGuidedMode === 'function',
       bodyKids: document.body ? document.body.children.length : 0
     })` });
     const r = checks.result.value;
@@ -123,6 +126,8 @@ async function main() {
     console.log('  #s-login presente :', r.hasLogin);
     console.log('  core cargado      :', r.coreLoaded, '(generarRutinas)');
     console.log('  UI cargada        :', r.uiLoaded, '(renderClientToday)');
+    console.log('  salud cargado     :', r.saludLoaded, '(renderNutritionCoach)');
+    console.log('  extra cargado     :', r.extraLoaded, '(openGuidedMode)');
     console.log('  hijos en <body>   :', r.bodyKids);
     if (consoleErrors.length) console.log('  ⚠️ console.error :', consoleErrors.length, '→', consoleErrors.slice(0,5));
     if (logErrors.length)     console.log('  ⚠️ errores de log:', logErrors.length, '→', logErrors.slice(0,5));
@@ -131,7 +136,9 @@ async function main() {
     if (exceptions.length) problems.push('excepciones JS no capturadas: ' + exceptions.slice(0,5).join(' | '));
     if (!r.hasLogin)   problems.push('no se pintó la pantalla de login (#s-login)');
     if (!r.coreLoaded) problems.push('apex-core.js no cargó (generarRutinas indefinido) — ¿error de sintaxis?');
-    if (!r.uiLoaded)   problems.push('el script de index.html no cargó (renderClientToday indefinido) — ¿error de sintaxis?');
+    if (!r.uiLoaded)   problems.push('módulo de entreno no cargó (renderClientToday indefinido) — ¿error de sintaxis?');
+    if (!r.saludLoaded) problems.push('módulo de salud no cargó (renderNutritionCoach indefinido) — ¿error de sintaxis?');
+    if (!r.extraLoaded) problems.push('módulo extra no cargó (openGuidedMode indefinido) — ¿error de sintaxis?');
     if (!r.bodyKids)   problems.push('<body> vacío');
     if (problems.length) fail = problems;
 
