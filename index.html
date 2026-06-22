@@ -5790,7 +5790,12 @@ function checkAndUpdatePRs(routine){
 // estado dentro de la sesión.
 let _prsOpen=false;
 function togglePRs(){_prsOpen=!_prsOpen;renderPRsInProfile(CUR.clientId);}
-function _prRowHtml(pr){return `<div class="pr-row">
+function _prRowHtml(pr){
+  // 1RM estimado (Epley) solo para récords de peso con >1 rep — si es 1 rep el récord YA
+  // es el 1RM, y reps fuera de rango devuelven null (no se muestra). Es una estimación.
+  const isKg=(pr.unit||'kg')==='kg';
+  const e1=isKg&&pr.reps>1?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
+  return `<div class="pr-row">
     <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${muscleIcon(pr.muscle,20)}</div>
     <div style="flex:1;min-width:0">
       <div class="pr-ex-name">${esc(pr.name)}</div>
@@ -5798,7 +5803,8 @@ function _prRowHtml(pr){return `<div class="pr-row">
     </div>
     <div style="text-align:right">
       <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
-      <div style="font-size:10px;color:var(--t2)">${(pr.unit||'kg')==='kg'?`${pr.reps} reps`:'récord'}</div>
+      <div style="font-size:10px;color:var(--t2)">${isKg?`${pr.reps} reps`:'récord'}</div>
+      ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)}kg · 1RM est.</div>`:''}
     </div>
   </div>`;}
 function renderPRsInProfile(clientId){
@@ -6810,9 +6816,14 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
   const today=new Date().toDateString();
   // Snapshot de series — se reconstruye SIEMPRE para que el guardado parcial y la
   // posterior finalización al 100% queden consistentes (antes solo se construía al crear).
+  // Calentamiento (w0, uno por ejercicio) y dropset (dN, uno por serie de trabajo) se
+  // guardan en campos APARTE (warm/drop) — visibles para cliente y coach, pero SIN entrar
+  // en volumen ni récords (misma regla que en vivo). Solo se incluyen si tienen datos.
+  const auxVal=(ei,tok)=>{ const kg=getLog(routine.id,ei,tok,'kg'), reps=getLog(routine.id,ei,tok,'reps'); return (kg||reps)?{kg,reps}:null; };
   const setsData=(routine.exercises||[]).map((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
-    return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),sets:Array.from({length:sets},(_,si)=>({kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si)}))};
+    const warm=auxVal(ei,WARM_SI);
+    return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
   });
   const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   // Evita duplicar: misma rutina el mismo día → actualiza la entrada existente.
@@ -7070,6 +7081,36 @@ function renderVolChart(sessions){
   </svg>`;
 }
 
+// Detalle de una sesión (ejercicios → series). Compartido por la vista del cliente y la
+// del coach. Calentamiento (🔥 ámbar) y dropset (🔻 azul) se muestran como chips aparte,
+// SIN sumar al volumen (que solo cuenta series de trabajo hechas). Valores escapados.
+function _sessionExercisesHTML(s){
+  return (s.exercises||[]).map(ex=>{
+    const exVol=ex.sets.filter(st=>st.done).reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
+    const auxChip=(emoji,label,col,bg,a)=>`<div style="background:${bg};border:1px solid ${col}55;border-radius:6px;padding:6px 8px;text-align:center">
+        <div style="font-size:10px;color:${col};margin-bottom:2px">${emoji} ${label}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${col}">${a.kg?esc(a.kg)+'kg':'—'}${a.reps?' × '+esc(a.reps):''}</div>
+      </div>`;
+    const chips=[];
+    if(ex.warm&&(ex.warm.kg||ex.warm.reps))chips.push(auxChip('🔥','Calent.','#E8973A','rgba(232,151,58,.10)',ex.warm));
+    ex.sets.forEach((st,si)=>{
+      chips.push(`<div style="background:${st.done?'var(--gl)':'var(--bg)'};border:1px solid ${st.done?'var(--g2)':'var(--br)'};border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:2px">Serie ${si+1}</div>
+          ${st.done?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?esc(st.kg)+'kg':'—'} × ${esc(st.reps)}</div>`:`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
+        </div>`);
+      if(st.drop&&(st.drop.kg||st.drop.reps))chips.push(auxChip('🔻','Drop','#3B82F6','rgba(59,130,246,.08)',st.drop));
+    });
+    return `<div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          ${muscleIcon(ex.muscle,18)}
+          <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
+          ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px">${chips.join('')}</div>
+      </div>`;
+  }).join('');
+}
+
 // HISTORY
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
@@ -7102,27 +7143,7 @@ function renderClientHistory(clientId){
         </div>
       </div>
       <div style="display:none;border-top:1px solid var(--br);background:var(--bg);padding:10px 14px">
-        ${(s.exercises||[]).map(ex=>{
-          const exVol=ex.sets.filter(st=>st.done).reduce((t,st)=>{
-            return t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0);
-          },0);
-          return `<div style="margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-              ${muscleIcon(ex.muscle,18)}
-              <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
-              ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px">
-              ${ex.sets.map((st,si)=>`
-                <div style="background:${st.done?'var(--gl)':'var(--bg)'};border:1px solid ${st.done?'var(--g2)':'var(--br)'};border-radius:6px;padding:6px 8px;text-align:center">
-                  <div style="font-size:10px;color:var(--t3);margin-bottom:2px">Serie ${si+1}</div>
-                  ${st.done
-                    ?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?st.kg+'kg':'—'} × ${st.reps}</div>`
-                    :`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
-                </div>`).join('')}
-            </div>
-          </div>`;
-        }).join('')}
+        ${_sessionExercisesHTML(s)}
       </div>`;
     con.appendChild(div);
   });
@@ -7143,10 +7164,11 @@ function renderCoachClientHistory(clientId){
     const dateStr=d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
     const div=document.createElement('div');
-    div.style.cssText='padding:9px 0;border-bottom:1px solid var(--br)';
+    div.style.cssText='border-bottom:1px solid var(--br)';
     const feel=s.feeling?` <span title="${esc(feelingLabel(s.feeling))}">${feelingEmoji(s.feeling)}</span>`:'';
     const meta=[s.durationSec?fmtDuration(s.durationSec):'',s.kcal?`${s.kcal} kcal`:''].filter(Boolean).join(' · ');
-    div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div>`;
+    const hasDetail=(s.exercises||[]).length>0;
+    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s)}</div>`:''}`;
     con.appendChild(div);
   });
   if(sessions.length>3){
