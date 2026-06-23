@@ -408,6 +408,24 @@ function setTheme(mode){
   });
 }
 
+// ── Tamaño de texto POR DISPOSITIVO (accesibilidad) ──
+// Ajuste fijo elegible en el Perfil (Normal / Grande / Muy grande), recordado en este
+// celular (ax_textsize). NO es pinch-zoom: escala la app de forma proporcional vía CSS
+// (la tipografía está en px fijos). Pedido de Camilo 2026-06-23 (letras chicas cansan la
+// vista en ciertos celulares). Mismo patrón que setTheme.
+function _syncFsBtns(size){
+  document.querySelectorAll('[data-fs-btn]').forEach(b=>{
+    const on=b.dataset.fsBtn===(size||'normal');
+    b.style.background=on?'var(--g)':''; b.style.color=on?'white':''; b.style.borderColor=on?'var(--g)':'';
+  });
+}
+function applyTextSize(size){
+  if(size==='lg'||size==='xl') document.documentElement.setAttribute('data-fs',size);
+  else document.documentElement.removeAttribute('data-fs');
+}
+function initTextSize(){ const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
+function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFsBtns(size); }
+
 // Debounce timers + cola de reintento por clave — la red de seguridad del sync.
 const _sbDebounce = {};
 const _pendingPush = {}; // clave -> último valor AÚN NO confirmado en la nube (reintentable)

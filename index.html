@@ -671,6 +671,18 @@
           </div>
         </div>
       </div>
+      <!-- Tamaño de texto (accesibilidad) — por dispositivo, NO pinch-zoom -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><div class="ctitle">Tamaño de texto</div></div>
+        <div class="cb" style="padding-top:4px">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Si las letras se ven pequeñas, agrándalas. Se recuerda en este dispositivo.</div>
+          <div style="display:flex;gap:7px">
+            <button type="button" data-fs-btn="normal" onclick="setTextSize('normal')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Normal</button>
+            <button type="button" data-fs-btn="lg" onclick="setTextSize('lg')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Grande</button>
+            <button type="button" data-fs-btn="xl" onclick="setTextSize('xl')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Muy grande</button>
+          </div>
+        </div>
+      </div>
       <!-- Cuenta: eliminar cuenta (derecho de supresión / requisito Play Store). Se llena
            en renderAccountActions; oculto para el coach en su propio entrenamiento. -->
       <div id="cn-danger-card"></div>

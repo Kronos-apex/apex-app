@@ -839,6 +839,13 @@ html[data-theme="light"] .mta {
   .screens{border-radius:24px}
 }
 
+/* Accesibilidad: TAMAÑO DE TEXTO por dispositivo (ajuste fijo en el Perfil, NO pinch-zoom).
+   Escala toda la app de forma proporcional porque la tipografía está en px fijos. La app
+   reflowea al ancho como un zoom de página; los scrollers internos siguen funcionando.
+   Ver setTextSize()/initTextSize() (ax_textsize). */
+html[data-fs="lg"]{ zoom:1.12; }
+html[data-fs="xl"]{ zoom:1.25; }
+
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
   *, *::before, *::after{

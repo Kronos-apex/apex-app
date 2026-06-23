@@ -126,6 +126,7 @@ function cnTab(id,el){
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     if(c){renderClientProfile(c);}
     setTheme(ld('ax_theme','dark'));
+    _syncFsBtns(ld('ax_textsize','normal'));
   }
   if(id==='cn-history'&&CUR.clientId){
     renderClientHistory(CUR.clientId);

@@ -899,6 +899,7 @@ function initRememberMe(){
 // Boot: sync from cloud then show login
 syncFromCloud().then(async ()=>{
   initTheme();
+  initTextSize();
   initRememberMe();
   initPWA();
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
