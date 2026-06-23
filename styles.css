@@ -849,6 +849,15 @@ html[data-fs="lg"] .cnp{ zoom:1.12; width:calc(100%/1.12); }
 html[data-fs="xl"] .cnp{ zoom:1.25; width:calc(100%/1.25); }
 html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
+/* Panel del coach: escala el contenido (.panel); su topbar va arriba (sticky) y no hay barra
+   inferior, así que el contenido scrollea sin recortar nada. */
+html[data-fs="lg"] #s-coach .panel{ zoom:1.12; width:calc(100%/1.12); }
+html[data-fs="xl"] #s-coach .panel{ zoom:1.25; width:calc(100%/1.25); }
+/* Modo guiado: escala el contenido (.gm-body) y ancla el footer al viewport (mismo patrón
+   que la barra del cliente) para que el contenido agrandado no lo empuje. */
+html[data-fs="lg"] .gm-body{ zoom:1.12; width:calc(100%/1.12); padding-bottom:86px; }
+html[data-fs="xl"] .gm-body{ zoom:1.25; width:calc(100%/1.25); padding-bottom:96px; }
+html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
