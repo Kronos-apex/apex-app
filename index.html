@@ -889,6 +889,15 @@
       </div>
     </div>
 
+    <div class="fg" style="margin-bottom:16px">
+      <span class="ilbl">Tamaño de texto</span>
+      <div style="display:flex;gap:7px;margin-top:4px">
+        <button type="button" data-fs-btn="normal" onclick="setTextSize('normal')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Normal</button>
+        <button type="button" data-fs-btn="lg" onclick="setTextSize('lg')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Grande</button>
+        <button type="button" data-fs-btn="xl" onclick="setTextSize('xl')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">Muy grande</button>
+      </div>
+    </div>
+
     <div class="mdfooter">
       <button class="btn bg" onclick="cm('m-settings')">Cancelar</button>
       <button class="btn bp" onclick="saveSettings()">Guardar cambios</button>

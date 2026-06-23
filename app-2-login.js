@@ -297,6 +297,7 @@ function openSettings(){
   document.getElementById('st-perr').style.display='none';
   closeDrawer();om('m-settings');
   setTheme(ld('ax_theme','dark'));
+  _syncFsBtns(ld('ax_textsize','normal'));
 }
 
 async function saveSettings(){
