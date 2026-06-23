@@ -745,10 +745,12 @@ function _suggestKg(ex){
 function _warmupKg(ex){
   return warmupLoad(_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
 }
-// Estado de "mostrar/ocultar calentamiento" por ejercicio (default: mostrar).
+// Estado de "mostrar/ocultar calentamiento" por ejercicio (default: OCULTO). Se colapsa por
+// defecto para que cada ejercicio de "Hoy" no quede tan alto (auditoría visual 2026-06-22);
+// el encabezado "🔥 Sets de calentamiento [Mostrar]" sigue visible → un toque lo despliega.
 // OJO nombre único: ya existe toggleWarmup() (colapsa el bloque de calentamiento global);
 // reusar ese nombre lo pisaba y el botón Ocultar no respondía. Por eso exWarm*.
-function exWarmShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)!=='0';}
+function exWarmShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)==='1';}
 function toggleExWarm(routine,ei){localStorage.setItem(`wshow_${routine.id}_${ei}`,exWarmShown(routine,ei)?'0':'1');renderClientExList(routine);}
 // Índice de log del set de calentamiento. Token 'w0' (string) → los bucles de
 // volumen/récords/historial recorren si ENTEROS 0..sets-1, así que NUNCA lo tocan.
