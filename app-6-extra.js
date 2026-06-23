@@ -202,8 +202,22 @@ function gmRender(){
         const go=row.querySelector('.gm-timer-go');
         if(go) go.onclick=(e)=>{e.stopPropagation();const inp=row.querySelector('.gm-sinput[data-field="secs"]');gmHoldTimer(ei,si,parseInt(inp&&inp.value)||0);};
       }
-      setsEl.appendChild(row);
-      // 🔻 Dropset de ESTA serie (si se activó deslizando en la tarjeta) — bajo su serie
+      // Solo peso: envolver la serie para poder DESLIZARLA → dropset (igual que la tarjeta
+      // clásica). El re-render del guiado es gmRender, no renderClientExList.
+      if(gmTrack==='peso_reps'){
+        const w=document.createElement('div');
+        w.className='setrow-wrap';
+        const rv=document.createElement('div');
+        rv.className='drop-reveal';
+        rv.textContent=dropSetOn(GM.routine,ei,si)?'🔻 Quitar dropset':'🔻 Dropset';
+        w.appendChild(rv);
+        w.appendChild(row);
+        attachDropSwipe(row,GM.routine,ei,si,gmRender);
+        setsEl.appendChild(w);
+      } else {
+        setsEl.appendChild(row);
+      }
+      // 🔻 Dropset de ESTA serie (si se activó deslizando) — bajo su serie
       if(gmTrack==='peso_reps' && dropSetOn(GM.routine,ei,si)){
         setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop','🔻', _dropKg(GM.routine,ex,ei,si), 'fallo'));
       }

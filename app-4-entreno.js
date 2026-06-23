@@ -564,6 +564,7 @@ function renderClientToday(client, overrideRoutine){
   const _mood=_moodOK?getTodayMood(client.id):'';
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
+  _rehomeOrphanDropsets(todayR); // si el check-in recortó series, no perder el dropset (reubicar a la última)
   const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
@@ -808,16 +809,48 @@ function buildWarmupSection(body,routine,ex,ei){
 // fuera de los bucles enteros de volumen/récords/historial (que recorren si ENTERO).
 function dropTok(si){return 'd'+si;}
 function dropSetOn(routine,ei,si){return localStorage.getItem(`drop_${routine.id}_${ei}_${si}`)==='1';}
-function addDropSet(routine,ei,si){
+// `rerender` opcional: la tarjeta clásica re-pinta su lista (default); el modo guiado pasa
+// gmRender para que la fila 🔻 aparezca/desaparezca ahí. Misma config (clave drop_) para ambos.
+function addDropSet(routine,ei,si,rerender){
   localStorage.setItem(`drop_${routine.id}_${ei}_${si}`,'1');
   if(navigator.vibrate)navigator.vibrate(25);
   toast(`🔻 Dropset añadido a la serie ${si+1}`);
-  renderClientExList(routine);
+  (rerender||(()=>renderClientExList(routine)))();
 }
-function removeDropSet(routine,ei,si){
+function removeDropSet(routine,ei,si,rerender){
   localStorage.removeItem(`drop_${routine.id}_${ei}_${si}`);
   const tok=dropTok(si); ['kg','reps'].forEach(f=>setLog(routine.id,ei,tok,f,'')); setDone(routine.id,ei,tok,false);
-  renderClientExList(routine);
+  (rerender||(()=>renderClientExList(routine)))();
+}
+// Si una adaptación reduce las series (check-in "Cansado"/"Con dolor", o el coach recorta el
+// plan), un dropset configurado en una serie que ya NO existe quedaba huérfano e invisible.
+// Lo reubicamos a la última serie vigente para no perder la intención del usuario, migrando su
+// peso/reps/✓. Solo sobrevive el de mayor índice; los demás huérfanos se descartan. Idempotente.
+function _rehomeOrphanDropsets(routine){
+  if(!routine) return;
+  const rid=routine.id;
+  (routine.exercises||[]).forEach((ex,ei)=>{
+    const sets=parseInt(ex.sets)||3; if(sets<1) return;
+    const last=sets-1;
+    const prefix=`drop_${rid}_${ei}_`;
+    const orphans=Object.keys(localStorage)
+      .filter(k=>k.indexOf(prefix)===0)
+      .map(k=>parseInt(k.slice(prefix.length)))
+      .filter(si=>!isNaN(si)&&si>=sets)
+      .sort((a,b)=>b-a); // de mayor a menor: el más alto se reubica, el resto se quita
+    if(!orphans.length) return;
+    let lastHas=dropSetOn(routine,ei,last);
+    orphans.forEach(si=>{
+      if(!lastHas){
+        const from=dropTok(si), to=dropTok(last);
+        ['kg','reps'].forEach(f=>{ const v=getLog(rid,ei,from,f); if(v) setLog(rid,ei,to,f,v); });
+        if(isDone(rid,ei,from)) setDone(rid,ei,to,true);
+        localStorage.setItem(`drop_${rid}_${ei}_${last}`,'1');
+        lastHas=true;
+      }
+      removeDropSet(routine,ei,si,()=>{}); // limpia config + logs del huérfano, sin re-render
+    });
+  });
 }
 // Desmarca el "hecho" de calentamiento + dropsets (por día / reinicio), conservando el
 // peso como sugerencia (la CONFIG de dropset persiste). Igual que las series efectivas.
@@ -873,7 +906,7 @@ function buildDropRow(body,routine,ex,ei,si){
 // Gesto: deslizar una serie (peso) a la DERECHA ALTERNA su dropset (añade si no hay,
 // quita si ya hay). Solo actúa si el arrastre es claramente horizontal (no interfiere
 // con scroll ni con tipear). La etiqueta del reveal dice "Quitar" cuando ya está activo.
-function attachDropSwipe(row,routine,ei,si){
+function attachDropSwipe(row,routine,ei,si,rerender){
   let x0=0,y0=0,dx=0,dragging=false,decided=false,horiz=false;
   const TH=64;
   row.addEventListener('touchstart',e=>{
@@ -897,7 +930,7 @@ function attachDropSwipe(row,routine,ei,si){
     const fire=horiz&&dx>=TH;
     row.style.transition='transform .18s'; row.style.transform='';
     const w=row.parentElement; if(w)w.classList.remove('revealing');
-    if(fire) dropSetOn(routine,ei,si)?removeDropSet(routine,ei,si):addDropSet(routine,ei,si);
+    if(fire) dropSetOn(routine,ei,si)?removeDropSet(routine,ei,si,rerender):addDropSet(routine,ei,si,rerender);
   };
   row.addEventListener('touchend',end);
   row.addEventListener('touchcancel',end);

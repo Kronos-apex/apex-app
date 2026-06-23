@@ -775,6 +775,11 @@ html[data-theme="light"] .mta {
 .gm-set-row.gm-drop.set-done{background:rgba(59,130,246,.08);border-color:#3B82F655}
 .gm-check.drop:hover{border-color:#3B82F6}
 .gm-check.drop.checked{background:#3B82F6;border-color:#3B82F6;color:white}
+/* Guiado: deslizar la serie → dropset (igual que la clásica). La fila debe quedar OPACA y
+   por encima del reveal azul (que va detrás), revelándose solo al arrastrar. */
+.setrow-wrap .gm-set-row{position:relative;touch-action:pan-y;will-change:transform;background:var(--bg)}
+.setrow-wrap .gm-set-row.active-set{background:linear-gradient(0deg,rgba(82,183,136,.06),rgba(82,183,136,.06)),var(--bg)}
+.setrow-wrap .gm-set-row.set-done{background:var(--gl)}
 /* Rest overlay inside guided */
 .gm-rest-overlay{position:fixed;inset:0;background:rgba(13,31,23,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:750;gap:8px}
 .gm-rest-overlay.hidden{display:none}
