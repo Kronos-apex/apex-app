@@ -406,15 +406,23 @@ test('Fase C deload: piso de 2 series (no baja de ahí)', () => {
     .forEach(e => assert.ok(e.sets >= 2, `deload no debe bajar de 2 series, fue ${e.sets}`));
 });
 
-test('< 16 años → Full Body sin carga axial con barra (ni sentadilla/peso muerto con barra)', () => {
+test('< 16 años INTERMEDIO → split de gym (no full body) PERO sin carga axial con barra', () => {
+  // El NIVEL decide la estructura, no la edad: un menor intermedio sin condiciones recibe su
+  // split (Empuje/Tracción/Pierna). La seguridad de menores es de SELECCIÓN (sin carga axial
+  // con barra), no de estructura. Corrección 2026-06-23 (caso Samuel, 14, casi intermedio).
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', age: 14, days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
-  routines.forEach(r => assert.ok(/Full Body/.test(r.name)));
+  assert.deepStrictEqual(routines.map(r => r.name), ['Empuje', 'Tracción', 'Pierna'], 'menor intermedio debe recibir split, no Full Body');
   const nombres = routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
   nombres.forEach(n => {
     assert.ok(!/sentadilla/.test(n), `Menor no debe recibir "${n}" (carga axial)`);
     assert.ok(!/peso muerto/.test(n), `Menor no debe recibir "${n}" (carga axial)`);
     assert.ok(!/militar con barra/.test(n), `Menor no debe recibir "${n}" (carga axial sobre la cabeza)`);
   });
+});
+
+test('< 16 años PRINCIPIANTE → Full Body (el nivel, no la edad, fija la estructura)', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', age: 14, days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  routines.forEach(r => assert.ok(/Full Body/.test(r.name), `Menor principiante sí va Full Body, fue "${r.name}"`));
 });
 
 section('7b. Gate por nivel de dificultad (P/I/A)');

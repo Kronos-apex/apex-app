@@ -540,9 +540,14 @@ function _genMakeExcluder(lim, minor, avoidHighImpact) {
   return ex => { const n = _norm(ex.name); return res.some(re => re.test(n)); };
 }
 
-// Resuelve la lista de bloques (split). Principiante/<16/≤2 días → Full Body.
-function _genResolveSplit(sexKey, days, level, minor) {
-  if (minor || level === 'Principiante' || days <= 2) return Array(Math.max(1, days)).fill('FULL_BODY');
+// Resuelve la lista de bloques (split). Full Body para Principiante o ≤2 días (poco margen
+// para dividir). NIVEL manda, no la edad: un menor INTERMEDIO/AVANZADO sin condiciones recibe
+// su split de gym (PPL hombre / glúteo-pierna+tren mujer); la seguridad de menores es de
+// SELECCIÓN de ejercicios (sin carga axial con barra, ver _genMakeExcluder), no de estructura.
+// Antes `minor` forzaba Full Body toda la semana y un joven intermedio (Samuel, 14) quedaba
+// como principiante — corregido 2026-06-23 por pedido de Camilo.
+function _genResolveSplit(sexKey, days, level) {
+  if (level === 'Principiante' || days <= 2) return Array(Math.max(1, days)).fill('FULL_BODY');
   return (GEN_SPLITS[sexKey] && GEN_SPLITS[sexKey][days]) || Array(days).fill('FULL_BODY');
 }
 
@@ -577,7 +582,7 @@ function generarRutinas(client, lib, opts) {
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
 
-  const codes = _genResolveSplit(sexKey, days, level, minor);
+  const codes = _genResolveSplit(sexKey, days, level);
   const nameCount = {};
   const routines = codes.map((code, idx) => {
     const tpl = GEN_DAYS[code] || GEN_DAYS.FULL_BODY;
