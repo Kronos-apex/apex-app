@@ -850,7 +850,7 @@ function openNewRoutine(){
   document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
   document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';document.getElementById('rf-shift').value='';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
-  CUR.routineExs=[];CUR.restSec=60;
+  CUR.routineExs=[];CUR.restSec=60;CUR.routineWarmup=null;
   document.querySelectorAll('#rf-rp .rp').forEach(b=>b.classList.remove('on'));document.querySelectorAll('#rf-rp .rp')[1].classList.add('on');
   // Show template loader only if templates exist
   const tplRow=document.getElementById('tpl-load-row');
@@ -942,6 +942,7 @@ function openEditRoutine(cid,ri){
   document.getElementById('rf-day').value=r.day||'Lunes';
   document.getElementById('rf-shift').value=r.shift||'';
   CUR.routineExs=(r.exercises||[]).map((e,_ei,_arr)=>({...e}));
+  CUR.routineWarmup=(r.warmup&&r.warmup.length)?r.warmup.slice():null;
   CUR.restSec=r.restSec||60;
   // Activate correct rest preset button
   const restMap={45:0,60:1,90:2,120:3,180:4};
@@ -1015,6 +1016,7 @@ function renderRfExList(){
   const con=document.getElementById('rf-exlist');
   if(!CUR.routineExs.length){
     con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca "+ Añadir ejercicios" para comenzar</div>';
+    renderRfWarmup();
     return;
   }
   normalizeBisets(CUR.routineExs);
@@ -1035,6 +1037,49 @@ function renderRfExList(){
     }
   });
   con.innerHTML=html;
+  renderRfWarmup();
+}
+
+// ── Calentamiento editable por rutina (coach) ──
+// CUR.routineWarmup: null = no personalizado (se muestra el auto-sugerido y, al editar, se
+// "materializa"); array = lista propia de ids de WARMUP_LIBRARY. Vacío/[] = el cliente
+// auto-sugiere. Resuelto por id con findWarmupEx (app-6-extra.js). Pedido de Camilo 2026-06-23.
+function _effWarmIds(){
+  if(CUR.routineWarmup) return CUR.routineWarmup.slice();
+  const w=buildWarmup(CUR.routineExs||[]); // auto-sugerido según músculos
+  return [...w.articulares,...w.activaciones].map(e=>e.id);
+}
+function renderRfWarmup(){
+  const con=document.getElementById('rf-warmup'); if(!con) return;
+  const isCustom=!!CUR.routineWarmup;
+  const items=_effWarmIds().map(id=>findWarmupEx(id)).filter(Boolean);
+  const rows=items.map(ex=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg);border:1px solid var(--br);border-radius:9px;margin-bottom:6px">
+      <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div></div>
+      <button onclick="rfWarmDel('${ex.id}')" title="Quitar" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0">✕</button>
+    </div>`).join('');
+  con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Auto-sugerido según los músculos. Quitá o agregá para personalizarlo.</div>'}`
+    +(rows||'<div style="font-size:11.5px;color:var(--t3);margin-bottom:6px">Sin movimientos — la app auto-sugiere el calentamiento.</div>')
+    +`<button class="btn bg bsm" onclick="openWarmPicker()" style="margin-top:2px">+ Agregar movimiento</button>`;
+}
+function rfWarmDel(id){ CUR.routineWarmup=_effWarmIds().filter(x=>x!==id); renderRfWarmup(); }
+function rfWarmAdd(id){ const cur=_effWarmIds(); if(!cur.includes(id))cur.push(id); CUR.routineWarmup=cur; renderRfWarmup(); cm('m-warmpick'); }
+function openWarmPicker(){
+  const body=document.getElementById('wp-body'); if(!body) return;
+  const have=new Set(_effWarmIds());
+  const labels={hombros:'Hombro',cadera:'Cadera',rodillas:'Rodilla',tobillos:'Tobillo',munecas:'Muñeca',espalda:'Espalda / columna',activacion_superior:'Activación — tren superior',activacion_inferior:'Activación — tren inferior',activacion_core:'Activación — core'};
+  let html='';
+  for(const area in WARMUP_LIBRARY){
+    const pool=WARMUP_LIBRARY[area]||[]; if(!pool.length) continue;
+    html+=`<div style="font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin:10px 0 5px">${esc(labels[area]||area)}</div>`;
+    html+=pool.map(ex=>{const used=have.has(ex.id);return `<div onclick="${used?'':`rfWarmAdd('${ex.id}')`}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--br);border-radius:9px;margin-bottom:5px;cursor:${used?'default':'pointer'};opacity:${used?'.45':'1'}">
+        <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div></div>
+        <span style="font-size:13px;font-weight:800;color:${used?'var(--g)':'var(--g2)'};flex-shrink:0">${used?'✓':'+'}</span>
+      </div>`;}).join('');
+  }
+  body.innerHTML=html;
+  om('m-warmpick');
 }
 
 function autoRoutineNote(exs){
@@ -1055,7 +1100,9 @@ function saveRoutine(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   if(!c.routines)c.routines=[];
   const noteVal=document.getElementById('rf-note').value.trim()||autoRoutineNote(CUR.routineExs);
-  const rutData={name,day:document.getElementById('rf-day').value,shift:document.getElementById('rf-shift').value||null,note:noteVal,why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e}))};
+  // warmup: lista propia si el coach personalizó; [] = auto-sugerir en la app (y sobrescribe
+  // cualquier personalización vieja al editar, ya que el merge es {...existing,...rutData}).
+  const rutData={name,day:document.getElementById('rf-day').value,shift:document.getElementById('rf-shift').value||null,note:noteVal,why:(document.getElementById('r-why')?.value||'').trim(),restSec:CUR.restSec,exercises:CUR.routineExs.map(e=>({...e})),warmup:(CUR.routineWarmup&&CUR.routineWarmup.length)?CUR.routineWarmup.slice():[]};
   if(CUR.editRoutineIdx!==null){
     const existing=c.routines[CUR.editRoutineIdx];
     c.routines[CUR.editRoutineIdx]={...existing,...rutData};

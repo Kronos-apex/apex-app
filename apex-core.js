@@ -531,11 +531,14 @@ const GEN_ASSISTED_RE = /maquina|polea|cable|prensa|smith|hack|peck|contractora|
 const GEN_HIIMPACT_RE = /salto|jump|burpee|pliometr|plyo|sprint|saltar|box jump|tijera saltada|skipping/;
 
 // Excluder combinado: carga axial con barra para menores + contraindicaciones por zona
-// + (perfil de carga alto) alto impacto/pliométrico.
-function _genMakeExcluder(lim, minor, avoidHighImpact) {
+// + (perfil de carga alto) alto impacto/pliométrico + (gym completo) NO bandas como
+// ejercicio PRINCIPAL. En gym hay equipo real → las bandas se ven pobres como trabajo
+// principal (sí valen para calentar/activar o para casa/parque). Pedido de Camilo 2026-06-23.
+function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   const res = [];
   if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
   if (avoidHighImpact) res.push(GEN_HIIMPACT_RE);
+  if (place === 'gym') res.push(/banda|elastic|\bliga\b/); // gym completo: bandas no como principal
   lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) res.push(GEN_ZONE_EXCL[z]); });
   return ex => { const n = _norm(ex.name); return res.some(re => re.test(n)); };
 }
@@ -577,7 +580,7 @@ function generarRutinas(client, lib, opts) {
     levelCap: _gate.cap, preferP: _gate.preferP,
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
     preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
-    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad), envShortfall: new Set(),
+    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad, place), envShortfall: new Set(),
     excludeIds: new Set(opts.excludeIds || []), // 🚫 lista negra manual (Fase C)
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };

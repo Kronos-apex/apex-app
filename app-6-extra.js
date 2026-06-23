@@ -1081,6 +1081,7 @@ const WARMUP_LIBRARY = {
   ],
 
   espalda:[
+    {id:'we5',name:'Rollitos sobre colchoneta',icon:'🌀',reps:'8–10 reps',desc:'Acostado de espalda en la colchoneta, abraza las rodillas al pecho y rueda suavemente adelante y atrás sobre la columna, masajeando y descomprimiendo la espalda baja. Lento y controlado.',ytQuery:'rollitos sobre colchoneta descompresión espalda baja'},
     {id:'we1',name:'Cat-Cow (Gato-Vaca)',icon:'🐱',reps:'10 reps',desc:'En cuatro patas. Alterna entre arquear la espalda hacia arriba (gato) y hundirla hacia abajo (vaca). 1 segundo en cada posición.',ytQuery:'ejercicio gato vaca cat cow movilidad columna'},
     {id:'we2',name:'Rotación torácica en el suelo',icon:'🔄',reps:'8 c/lado',desc:'Acostado de lado con rodillas dobladas. Extiende los brazos al frente. Rota el brazo de arriba hacia atrás abriendo el pecho. La cadera no se mueve.',ytQuery:'rotación torácica en el suelo movilidad'},
     {id:'we3',name:'Apertura de cadena posterior',icon:'🙇',reps:'30 seg',desc:'De pie, pies separados. Dobla el cuerpo hacia adelante dejando caer los brazos y la cabeza. Relaja la espalda completamente. No fuerces.',ytQuery:'estiramiento cadena posterior de pie flexión'},
@@ -1090,9 +1091,9 @@ const WARMUP_LIBRARY = {
   // ── ACTIVACIÓN ──
   activacion_superior:[
     {id:'wa1',name:'Flexión de pecho (lagartija)',icon:'💪',reps:'10–15 reps',desc:'Lagartija completa con el cuerpo recto. Si es muy difícil, apoya las rodillas. El objetivo es activar, no fatigarse.',ytQuery:'cómo hacer flexiones lagartijas principiantes'},
-    {id:'wa2',name:'Remo invertido en barra baja',icon:'🔙',reps:'10 reps',desc:'Debajo de una barra baja, jala el pecho hacia la barra. Activa dorsal y bíceps sin carga extra.',ytQuery:'remo invertido en barra baja tutorial'},
     {id:'wa3',name:'Band pull-apart / apertura con banda',icon:'↔️',reps:'15 reps',desc:'Sostén una banda o toalla con los brazos extendidos al frente. Jala los extremos hacia afuera hasta los lados. Aprieta la espalda alta.',ytQuery:'band pull apart apertura con banda tutorial'},
     {id:'wa4',name:'Balanceo de brazos cruzados',icon:'🤸',reps:'15 reps',desc:'Balancéa los brazos abiertos y luego crúzalos frente al pecho. Alterna cuál brazo queda por encima. Calienta la articulación del hombro.',ytQuery:'balanceo de brazos calentamiento hombros'},
+    {id:'wa2',name:'Remo invertido en barra baja',icon:'🔙',reps:'10 reps',desc:'Debajo de una barra baja, jala el pecho hacia la barra. Activa dorsal y bíceps sin carga extra. (Requiere barra baja — opcional.)',ytQuery:'remo invertido en barra baja tutorial'},
   ],
 
   activacion_inferior:[
@@ -1240,7 +1241,11 @@ function renderWarmup(exercises){
   if(!con)return;
   const rid=CUR.activeRoutine&&CUR.activeRoutine.id;
   const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises);
-  const total=articulares.length+activaciones.length;
+  // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
+  // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
+  const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;
+  const custom=(customIds&&customIds.length)?customIds.map(id=>findWarmupEx(id)).filter(Boolean):null;
+  const total=custom?custom.length:(articulares.length+activaciones.length);
 
   const exRow=(ex)=>{
     const d=rid&&wuIsDone(rid,ex.id); // estado persistido: queda marcado al salir y volver
@@ -1274,10 +1279,12 @@ function renderWarmup(exercises){
       <div class="wu-prog-bar"><div class="wu-prog-fill" id="wu-prog-fill"></div></div>
 
       <div id="wu-body" class="wu-body">
-        <div class="wu-section-title">🦴 Movilidad articular</div>
+        ${custom
+          ? custom.map(exRow).join('')
+          : `<div class="wu-section-title">🦴 Movilidad articular</div>
         ${articulares.map(exRow).join('')}
         <div class="wu-section-title" style="margin-top:14px">⚡ Activación muscular</div>
-        ${activaciones.map(exRow).join('')}
+        ${activaciones.map(exRow).join('')}`}
       </div>
     </div>`;
   updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)

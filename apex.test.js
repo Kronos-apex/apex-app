@@ -425,6 +425,26 @@ test('< 16 años PRINCIPIANTE → Full Body (el nivel, no la edad, fija la estru
   routines.forEach(r => assert.ok(/Full Body/.test(r.name), `Menor principiante sí va Full Body, fue "${r.name}"`));
 });
 
+test('place=gym → bandas NO como ejercicio principal; en casa sí pueden entrar', () => {
+  // lib propio: para hombros hay opción de máquina (solo gym) y de banda (casa/parque/gym).
+  const lib = [
+    { id: 'pe1', name: 'Press de Banca', muscle: 'pecho', type: 'Compuesto', sets: 4, reps: 10, icon: 'x', env: ['gym'] },
+    { id: 'es1', name: 'Remo en Máquina', muscle: 'espalda', type: 'Compuesto', sets: 4, reps: 10, icon: 'x', env: ['gym'] },
+    { id: 'pi1', name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', sets: 4, reps: 10, icon: 'x', env: ['gym', 'casa'] },
+    { id: 'co1', name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 1, icon: 'x', env: ['gym', 'casa'] },
+    { id: 'ho_m', name: 'Press de Hombro en Máquina', muscle: 'hombros', type: 'Compuesto', sets: 4, reps: 10, icon: 'x', env: ['gym'] },
+    { id: 'ho_b', name: 'Press de Hombro con Banda', muscle: 'hombros', type: 'Compuesto', sets: 3, reps: 12, icon: 'x', env: ['casa', 'parque', 'gym'] },
+  ];
+  const gymNames = generarRutinas({ sex: 'M', level: 'Principiante', days: 1, goal: 'Ganar músculo', place: 'gym' }, lib, FIXED)
+    .routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
+  assert.ok(!gymNames.some(n => /banda/.test(n)), `En gym no debe haber bandas como principal: ${gymNames}`);
+  assert.ok(gymNames.some(n => /máquina/.test(n)), 'en gym debe entrar la versión de máquina');
+  // En casa la opción de máquina (env=gym) no está → la banda sí puede cubrir el hueco.
+  const casaNames = generarRutinas({ sex: 'M', level: 'Principiante', days: 1, goal: 'Ganar músculo', place: 'casa' }, lib, FIXED)
+    .routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
+  assert.ok(casaNames.some(n => /banda/.test(n)), `En casa la banda sí debe poder entrar: ${casaNames}`);
+});
+
 section('7b. Gate por nivel de dificultad (P/I/A)');
 
 test('exLevel: lee el mapa, respeta level propio, default I', () => {
