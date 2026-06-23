@@ -919,10 +919,11 @@ function renderGenPreview(c,res){
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
-  if(!c.routines)c.routines=[];
   const n=CUR.genDraft.routines.length;
-  c.routines.push(...CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map((e,_ei,_arr)=>({...e}))})));
-  c.routines=sortRoutinesByDay(c.routines);
+  // REEMPLAZA la semana, no la acumula: antes hacía push y regenerar daba 3+3=6 días
+  // (bug reportado por Camilo 2026-06-23). Consistente con _autoGenerateWeek/clientSelfGenerate,
+  // que ya reemplazaban. Los logs de las viejas (por id) los barre _sweepOrphanSessionKeys.
+  c.routines=sortRoutinesByDay(CUR.genDraft.routines.map(r=>({...r,exercises:r.exercises.map((e,_ei,_arr)=>({...e}))})));
   sv('ax_c',DB.clients);
   cm('m-gen');renderDetailRoutines(c);renderHome();
   toast(`✨ ${n} rutina${n!==1?'s':''} generada${n!==1?'s':''} para ${c.name} — revísalas y ajusta`);
