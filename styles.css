@@ -840,11 +840,15 @@ html[data-theme="light"] .mta {
 }
 
 /* Accesibilidad: TAMAÑO DE TEXTO por dispositivo (ajuste fijo en el Perfil, NO pinch-zoom).
-   Escala toda la app de forma proporcional porque la tipografía está en px fijos. La app
-   reflowea al ancho como un zoom de página; los scrollers internos siguen funcionando.
+   Escala el CONTENIDO scrollable del cliente (.cnp) — la tipografía está en px fijos, así que
+   se agranda con `zoom` (con compensación de ancho para no desbordar horizontal). La barra de
+   navegación inferior (.cntabs) se ANCLA al viewport con position:fixed para que el contenido
+   agrandado NO la empuje fuera (antes el zoom sobre el shell la recortaba — bug 2026-06-23).
    Ver setTextSize()/initTextSize() (ax_textsize). */
-html[data-fs="lg"]{ zoom:1.12; }
-html[data-fs="xl"]{ zoom:1.25; }
+html[data-fs="lg"] .cnp{ zoom:1.12; width:calc(100%/1.12); }
+html[data-fs="xl"] .cnp{ zoom:1.25; width:calc(100%/1.25); }
+html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
+html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
