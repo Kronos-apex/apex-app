@@ -426,6 +426,14 @@ function applyTextSize(size){
 function initTextSize(){ const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
 function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFsBtns(size); }
 
+// Aviso ÚNICO por dispositivo que OFRECE agrandar el texto (descubribilidad: quien más lo
+// necesita es quien menos explora el Perfil). Solo si no se ofreció antes y el tamaño sigue en
+// 'normal'. Pedido de Camilo 2026-06-23. Ver [[feedback_avi_tamano_texto_accesibilidad]].
+function shouldShowFsIntro(){ return !ld('ax_fsPrompted',false) && ld('ax_textsize','normal')==='normal'; }
+function showFsIntro(){ if(typeof om==='function') om('m-fsintro'); }
+function fsIntroApply(){ sv('ax_fsPrompted',true); cm('m-fsintro'); setTextSize('lg'); toast('🔠 Texto agrandado · ajústalo en tu Perfil → Tamaño de texto'); }
+function fsIntroDismiss(){ sv('ax_fsPrompted',true); cm('m-fsintro'); }
+
 // Debounce timers + cola de reintento por clave — la red de seguridad del sync.
 const _sbDebounce = {};
 const _pendingPush = {}; // clave -> último valor AÚN NO confirmado en la nube (reintentable)

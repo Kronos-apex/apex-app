@@ -73,8 +73,14 @@ function initClientView(client){
   } else if(shouldShowOnboarding(client.id)){
     setTimeout(()=>showOnboarding(client.id), 400);
   } else if(!_goId){
-    // El "welcome de vuelta" se omite si entró directo a una pestaña por un acceso directo.
-    setTimeout(()=>showClientWelcome(client), 350);
+    // Aviso único de "agrandar texto" (descubribilidad) tiene prioridad sobre el welcome esa
+    // primera vez; después de ofrecerlo, vuelve el saludo normal.
+    if(typeof shouldShowFsIntro==='function' && shouldShowFsIntro()){
+      setTimeout(()=>showFsIntro(), 650);
+    } else {
+      // El "welcome de vuelta" se omite si entró directo a una pestaña por un acceso directo.
+      setTimeout(()=>showClientWelcome(client), 350);
+    }
   }
   if(_goId){
     const _order=['cn-today','cn-routines','cn-messages','cn-history','cn-profile'];
