@@ -858,6 +858,13 @@ html[data-fs="xl"] #s-coach .panel{ zoom:1.25; width:calc(100%/1.25); }
 html[data-fs="lg"] .gm-body{ zoom:1.12; width:calc(100%/1.12); padding-bottom:86px; }
 html[data-fs="xl"] .gm-body{ zoom:1.25; width:calc(100%/1.25); padding-bottom:96px; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
+/* Modales: escala la tarjeta con compensación de ancho y alto. `zoom` escala desde la esquina
+   sup-izq (rompe el centrado del flex), así que en modo texto-grande el modal se alinea
+   arriba-izquierda y la compensación de ancho lo mantiene dentro del viewport; el alto se acota
+   para que no exceda la pantalla (scroll interno de .md). */
+html[data-fs="lg"] .mdbg, html[data-fs="xl"] .mdbg{ align-items:flex-start; justify-content:flex-start; }
+html[data-fs="lg"] .md{ zoom:1.12; width:calc(100%/1.12); max-height:calc(94vh/1.12); }
+html[data-fs="xl"] .md{ zoom:1.25; width:calc(100%/1.25); max-height:calc(94vh/1.25); }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
