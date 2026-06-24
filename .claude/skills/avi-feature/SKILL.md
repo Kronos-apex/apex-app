@@ -1,9 +1,9 @@
 ---
-name: apex-feature
-description: Orquestador maestro de APEX. Úsalo para cualquier pedido del usuario — feature nueva, bug fix, mejora visual, decisión de negocio o cambio de contenido. Enruta automáticamente al equipo correcto sin que el usuario tenga que nombrar a nadie.
+name: avi-feature
+description: Orquestador maestro de AVI. Úsalo para cualquier pedido del usuario — feature nueva, bug fix, mejora visual, decisión de negocio o cambio de contenido. Enruta automáticamente al equipo correcto sin que el usuario tenga que nombrar a nadie.
 ---
 
-# APEX Orquestador — Pipeline automático completo
+# AVI Orquestador — Pipeline automático completo
 
 Este skill es el cerebro del equipo. Recibe cualquier pedido del usuario y decide quién trabaja, en qué orden, y cómo se valida antes de llegar a producción.
 
@@ -45,9 +45,9 @@ Un pedido puede activar múltiples dominios. Ej: "añadir rutina de calentamient
    ↓
 4. lucas-qa-func   → QA funcional: flujos, visibilidad, edge cases
    ↓ (si pasa)
-5. apex-audit      → auditoría estática 6/6
+5. avi-audit      → auditoría estática 6/6
    ↓ (si 6/6)
-6. apex-deploy     → push a main
+6. avi-deploy     → push a main
 ```
 
 ### 🐛 Bug fix
@@ -58,9 +58,9 @@ Un pedido puede activar múltiples dominios. Ej: "añadir rutina de calentamient
    ↓
 3. lucas-qa-func   → verifica que el flujo donde estaba el bug funciona
    ↓
-4. apex-audit      → 6/6
+4. avi-audit      → 6/6
    ↓
-5. apex-deploy     → push con mensaje fix:
+5. avi-deploy     → push con mensaje fix:
 ```
 
 ### 🎨 Cambio visual / diseño
@@ -72,9 +72,9 @@ Un pedido puede activar múltiples dominios. Ej: "añadir rutina de calentamient
    ↓
 3. lucas-qa-func   → verifica que el cambio se ve bien en los flujos afectados
    ↓
-4. apex-audit      → 6/6
+4. avi-audit      → 6/6
    ↓
-5. apex-deploy     → push con mensaje style:
+5. avi-deploy     → push con mensaje style:
 ```
 
 ### 🔧 Cambio de base de datos / Edge Function
@@ -82,9 +82,9 @@ Un pedido puede activar múltiples dominios. Ej: "añadir rutina de calentamient
 ```
 1. andres-dba      → implementa SQL / Edge Function
    ↓
-2. apex-audit      → 6/6 (si afecta index.html)
+2. avi-audit      → 6/6 (si afecta index.html)
    ↓
-3. apex-deploy     → push si hay cambios en archivos del repo
+3. avi-deploy     → push si hay cambios en archivos del repo
 ```
 
 ---

@@ -1,19 +1,19 @@
-# APEX — Brief de Marca
+# AVI — Brief de Marca
 
 ---
 
 ## Esencia
 
-**Nombre:** APEX  
+**Nombre:** AVI  
 **Tagline:** Entrenamiento con nombre propio  
 **Categoría:** Plataforma de entrenamiento personal con coach real  
 **Origen:** Guaduas, Cundinamarca, Colombia — 2026
 
 ---
 
-## Por qué existe APEX
+## Por qué existe AVI
 
-Millones de personas quieren entrenar pero no pueden pagar un coach presencial todos los días, o no saben por dónde empezar. Las apps genéricas les dan rutinas de internet que no conocen su cuerpo, su horario ni sus limitaciones. APEX existe para que cada persona tenga un plan hecho para ella — con el respaldo de un entrenador real detrás.
+Millones de personas quieren entrenar pero no pueden pagar un coach presencial todos los días, o no saben por dónde empezar. Las apps genéricas les dan rutinas de internet que no conocen su cuerpo, su horario ni sus limitaciones. AVI existe para que cada persona tenga un plan hecho para ella — con el respaldo de un entrenador real detrás.
 
 ---
 
@@ -36,7 +36,7 @@ Millones de personas quieren entrenar pero no pueden pagar un coach presencial t
 
 ## Personalidad de marca
 
-APEX es el coach que te habla de tú, que celebra tu progreso sin exagerar y que te dice la verdad cuando no estás rindiendo. No es intimidante ni elitista — es el entrenador del barrio que sabe lo que hace.
+AVI es el coach que te habla de tú, que celebra tu progreso sin exagerar y que te dice la verdad cuando no estás rindiendo. No es intimidante ni elitista — es el entrenador del barrio que sabe lo que hace.
 
 | Atributo | Sí | No |
 |---|---|---|
@@ -51,7 +51,7 @@ APEX es el coach que te habla de tú, que celebra tu progreso sin exagerar y que
 ## Identidad Visual
 
 ### Logo — Letra de Hierro
-La letra A de APEX formada por dos líneas diagonales (las piernas del entrenamiento) cruzadas por una barra de pesas dorada con discos en los extremos. Sin fondo obligatorio. Disponible en verde sobre blanco, blanco sobre verde, y adaptación dark mode.
+La letra A de AVI formada por dos líneas diagonales (las piernas del entrenamiento) cruzadas por una barra de pesas dorada con discos en los extremos. Sin fondo obligatorio. Disponible en verde sobre blanco, blanco sobre verde, y adaptación dark mode.
 
 **Usos correctos:**
 - Sobre fondo verde oscuro (`#1B4332`) — versión ícono PWA
@@ -60,7 +60,7 @@ La letra A de APEX formada por dos líneas diagonales (las piernas del entrenami
 
 **No hacer:**
 - Cambiar los colores del logo por otros de la paleta
-- Agregar texto debajo del logo en contextos donde ya aparece "APEX" escrito
+- Agregar texto debajo del logo en contextos donde ya aparece "AVI" escrito
 - Usar el logo en tamaños menores a 20px de alto
 
 ### Paleta de color
@@ -94,7 +94,7 @@ La letra A de APEX formada por dos líneas diagonales (las piernas del entrenami
 
 ## Tono de voz
 
-### Cómo habla APEX
+### Cómo habla AVI
 
 **En motivación:** Concreto, sin exagerar.
 > ✅ "Completaste 18 series. Tu récord personal en press de banca."
@@ -122,7 +122,7 @@ La letra A de APEX formada por dos líneas diagonales (las piernas del entrenami
 
 ---
 
-## APEX no es
+## AVI no es
 
 - Una app de recetas o dietas genéricas
 - Un contador de calorías
@@ -134,19 +134,19 @@ La letra A de APEX formada por dos líneas diagonales (las piernas del entrenami
 
 ## Referencias de producto
 
-Apps que APEX estudia (sin copiar):
+Apps que AVI estudia (sin copiar):
 - **Hevy** — jerarquía clara en el log de entreno
 - **Strong** — feedback inmediato al completar serie
 - **Whoop** — datos como elementos hero, tipografía grande
 - **Freeletics** — progresión gamificada, motivación visual
 
-Lo que APEX tiene que ellos no tienen: **un coach real con nombre y apellido detrás de cada rutina.**
+Lo que AVI tiene que ellos no tienen: **un coach real con nombre y apellido detrás de cada rutina.**
 
 ---
 
 ## Frase de posicionamiento interno
 
-> "APEX es la única app de entrenamiento donde el plan lo hizo alguien que te conoce."
+> "AVI es la única app de entrenamiento donde el plan lo hizo alguien que te conoce."
 
 ---
 

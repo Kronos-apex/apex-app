@@ -1,15 +1,15 @@
 ---
-name: apex-audit
-description: Auditoría profunda completa de APEX. Úsalo cuando el usuario diga "audita APEX", "corre el audit", "verifica que todo funciona", o después de cualquier cambio importante. Ejecuta los 7 checks de calidad y devuelve un reporte con ✅/❌.
+name: avi-audit
+description: Auditoría profunda completa de AVI. Úsalo cuando el usuario diga "audita AVI", "corre el audit", "verifica que todo funciona", o después de cualquier cambio importante. Ejecuta los 7 checks de calidad y devuelve un reporte con ✅/❌.
 ---
 
-# APEX Audit — Auditoría profunda automatizada
+# AVI Audit — Auditoría profunda automatizada
 
-Este skill ejecuta la suite completa de auditoría sobre `index.html` en 7 pasos. Devuelve un reporte limpio para confirmar que APEX está listo para producción.
+Este skill ejecuta la suite completa de auditoría sobre `index.html` en 7 pasos. Devuelve un reporte limpio para confirmar que AVI está listo para producción.
 
 ## Cuándo activar este skill
 
-- "Corre el audit de APEX"
+- "Corre el audit de AVI"
 - "Verifica que todo está bien"
 - "Audita el código"
 - "¿Hay errores?"
@@ -29,17 +29,17 @@ c = open('index.html', encoding='utf-8').read()
 js = c[c.find('<script>')+8:c.find('</script>', c.find('<script>'))]
 html = c[:c.find('<script>')]
 
-# apex-core.js — lógica de negocio pura cargada vía <script src>. Es código
+# avi-core.js — lógica de negocio pura cargada vía <script src>. Es código
 # ejecutable, así que el audit la cubre igual que el JS inline.
-core_js = open('apex-core.js', encoding='utf-8').read() if os.path.exists('apex-core.js') else ''
+core_js = open('avi-core.js', encoding='utf-8').read() if os.path.exists('avi-core.js') else ''
 
-print("APEX - AUDITORIA AUTOMATICA\n")
+print("AVI - AUDITORIA AUTOMATICA\n")
 
-# ━━━ CHECK 1: Sintaxis JS (inline + apex-core.js, sin truncar) ━━━
-tmp = os.path.join(tempfile.gettempdir(), 'apex_audit.js')
+# ━━━ CHECK 1: Sintaxis JS (inline + avi-core.js, sin truncar) ━━━
+tmp = os.path.join(tempfile.gettempdir(), 'avi_audit.js')
 with open(tmp, 'w', encoding='utf-8') as f: f.write(js)
 syntax_ok = True
-checks = [('inline', tmp)] + ([('apex-core.js', 'apex-core.js')] if core_js else [])
+checks = [('inline', tmp)] + ([('avi-core.js', 'avi-core.js')] if core_js else [])
 for label, path in checks:
     r = subprocess.run(['node','--check', path], capture_output=True, text=True)
     if r.returncode != 0:
@@ -47,7 +47,7 @@ for label, path in checks:
         print(f"  ERR 1. Sintaxis JS ({label}): {r.stderr.strip()[:200]}")
 print(f"  {'OK' if syntax_ok else 'ERR'} 1. Sintaxis JS ({len(js)//1000}K inline + {len(core_js)//1000}K core auditados)")
 
-# ━━━ CHECK 2: Funciones duplicadas (inline + apex-core.js) ━━━
+# ━━━ CHECK 2: Funciones duplicadas (inline + avi-core.js) ━━━
 # Detecta duplicados dentro de un archivo Y entre archivos.
 fns = re.findall(r'function (\w+)\(', js) + re.findall(r'function (\w+)\(', core_js)
 dupes = {k:v for k,v in Counter(fns).items() if v>1}
@@ -113,7 +113,7 @@ print(f"     Total: {len(ex_ids)} ({len(set(ex_ids))} unicos)")
 # ━━━ CHECK 7: Objetos globales de la app usados pero no definidos ━━━
 # Detecta el patrón MS.getStatus() cuando MS nunca fue definido (bug crítico real).
 # Técnica: elimina comentarios JS primero, luego busca OBJETO.minúscula para
-# evitar falsos positivos de strings ("APEX...") o comentarios ("// SW.show").
+# evitar falsos positivos de strings ("AVI...") o comentarios ("// SW.show").
 js_no_comments = re.sub(r'//[^\n]*', '', js)
 defined_consts = set(re.findall(r'(?:const|let|var)\s+([A-Z][A-Z0-9_]{1,})\s*=', js))
 ok_globals = {

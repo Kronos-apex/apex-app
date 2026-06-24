@@ -1,9 +1,9 @@
 ---
-name: apex-deploy
-description: Despliega APEX a producción via Git. Úsalo cuando el usuario diga "deploy", "publica", "sube a producción", "push a GitHub". OBLIGATORIO pasar por Julián QA y Lucas QA antes de cualquier commit. Sin verde de ambos agentes, no hay deploy.
+name: avi-deploy
+description: Despliega AVI a producción via Git. Úsalo cuando el usuario diga "deploy", "publica", "sube a producción", "push a GitHub". OBLIGATORIO pasar por Julián QA y Lucas QA antes de cualquier commit. Sin verde de ambos agentes, no hay deploy.
 ---
 
-# APEX Deploy — Pipeline de despliegue con gates de QA
+# AVI Deploy — Pipeline de despliegue con gates de QA
 
 ## Regla inviolable
 

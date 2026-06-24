@@ -1,6 +1,6 @@
 # AVI — Plataforma de Entrenamiento Personal
 
-> **Nota de marca (2026-06-01):** el producto se renombró de **APEX** a **AVI** (iniciales de los hijos del PO: Alexander, Valery, Isabella). El nombre visible es AVI; los identificadores internos siguen como `apex`/`ax_` (repo `apex-app`, tabla `apex_data`, claves `ax_*`, `apex-core.js`, caché `apex-vNN`) — NO renombrarlos (rompería datos/PWA). Handle redes: @avi.entrena. Pendiente: registro de marca en SIC.
+> **Nota de marca (2026-06-01):** el producto se renombró de **AVI** a **AVI** (iniciales de los hijos del PO: Alexander, Valery, Isabella). El nombre visible es AVI; los identificadores internos siguen como `apex`/`ax_` (repo `apex-app`, tabla `apex_data`, claves `ax_*`, `avi-core.js`, caché `apex-vNN`) — NO renombrarlos (rompería datos/PWA). Handle redes: @avi.entrena. Pendiente: registro de marca en SIC.
 
 > Este archivo es la memoria permanente del proyecto. Claude Code lo lee automáticamente al iniciar cada sesión en este directorio.
 
@@ -38,11 +38,11 @@
 ### Archivos del proyecto
 ```
 apex-app/
-├── index.html                          ← APEX completo (~8,000 líneas, ~505 KB)
+├── index.html                          ← AVI completo (~8,000 líneas, ~505 KB)
 ├── sw.js                               ← Service Worker ESTÁTICO (⚠️ NUNCA convertir a blob URL)
 ├── .git/hooks/pre-commit               ← Audit automático en cada git commit (7 checks)
 ├── .claude/agents/                     ← 15 agentes especializados del equipo
-├── .claude/skills/                     ← apex-audit, apex-deploy, apex-feature, apex-generate, apex-run
+├── .claude/skills/                     ← avi-audit, avi-deploy, avi-feature, avi-generate, avi-run
 ├── supabase/functions/send-push/       ← Edge Function push notifications
 ├── supabase/functions/daily-notifs/    ← Edge Function notificaciones diarias (3 cron jobs)
 └── CLAUDE.md                           ← Este archivo
@@ -61,7 +61,7 @@ apex-app/
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 162 ejercicios precargados (e1–e164, sin e32/e38; e141–e164 = principiante peso corporal casa/parque, nivel P), filtros por músculo. El generador aplica **gate por nivel** (`EX_LEVEL`/`_levelGate` en apex-core.js): Principiante solo P, Intermedio P+I, Avanzado todo
+- `#p-exercises` — 162 ejercicios precargados (e1–e164, sin e32/e38; e141–e164 = principiante peso corporal casa/parque, nivel P), filtros por músculo. El generador aplica **gate por nivel** (`EX_LEVEL`/`_levelGate` en avi-core.js): Principiante solo P, Intermedio P+I, Avanzado todo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
@@ -158,7 +158,7 @@ Edge Functions:
 ```
 
 ### ⚠️ Supabase — riesgo de sync con offline-first
-APEX usa localStorage como fuente de verdad y sincroniza **hacia** Supabase, no al revés. Si la app se abre en cualquier dispositivo con datos viejos en localStorage, esos datos sobrescriben Supabase.
+AVI usa localStorage como fuente de verdad y sincroniza **hacia** Supabase, no al revés. Si la app se abre en cualquier dispositivo con datos viejos en localStorage, esos datos sobrescriben Supabase.
 
 **Consecuencia:** cambios hechos directamente en Supabase (SQL, Python, Dashboard) pueden perderse en el próximo sync de la app.
 
@@ -166,7 +166,7 @@ APEX usa localStorage como fuente de verdad y sincroniza **hacia** Supabase, no 
 - Asegurarse de que la app no esté abierta en ningún dispositivo del asesorado
 - Hacer siempre REPLACE TOTAL del array (nunca append)
 - Después de guardar, pedirle al asesorado que abra y cierre la app una vez (forza pull desde Supabase)
-- Para cambios críticos: editar preferiblemente desde la UI de APEX para que localStorage quede actualizado
+- Para cambios críticos: editar preferiblemente desde la UI de AVI para que localStorage quede actualizado
 
 ### Despliegue
 ```
@@ -250,7 +250,7 @@ SB_KEYS = [
 
 ---
 
-## 🔑 FUNCIONES CLAVE (334 totales — inline + apex-core.js)
+## 🔑 FUNCIONES CLAVE (334 totales — inline + avi-core.js)
 
 ### Sync & Persistencia
 - `ld(key, default)` — lee localStorage
@@ -297,7 +297,7 @@ SB_KEYS = [
 - `migrateExTypes()` — guard `ax_track_migrated`, reclasifica defaults una sola vez sin pisar al coach
 - `buildExerciseProgress()` — métrica por track con unidad (kg/reps/s/min/rondas); PRs y gráficas conscientes de modalidad (back-compat: datos viejos = kg)
 
-### Auto-generador de rutinas (v1.4–v1.5 — en `apex-core.js`)
+### Auto-generador de rutinas (v1.4–v1.5 — en `avi-core.js`)
 - `generarRutinas(client, lib, opts)` — borrador completo de la semana; el coach SIEMPRE revisa antes de asignar (innegociable)
 - Splits por sexo+días, scheme por objetivo+nivel, exclusiones por limitación física (`parseLimitations`) y por entorno (`inferExerciseEnv`)
 - **Fase de adaptación (v1.5):** `isInAdaptation(client, history, now)` → principiante en sus primeras ~3 semanas (`ADAPT_DAYS=21`, por `startDate`→1ª sesión→alta). `genSchemeFor(goal, level, adaptation)` sobrescribe a 15 reps / 3 series / 60s, carga suave, sin importar el objetivo. Full body se conserva.
@@ -305,7 +305,7 @@ SB_KEYS = [
 - `opts`: `{idFn, now, seed, tier, place, methodBias, adaptation, loadProfile}`. Retorna `{routines, needsReview, limitations, place, envGaps, adaptation, loadProfile}`.
 - Botón ✨ "Generar semana" en el detalle del asesorado (coach). En modo libre: `_autoGenerateWeek(c)` (reusa el motor) al registrarse y botón "✨ Regenerar mi semana".
 
-### Auto-registro y modo libre (v1.5 — `apex-core.js` + inline)
+### Auto-registro y modo libre (v1.5 — `avi-core.js` + inline)
 - `validateSignup(data, clients, coachEmail)` — valida email/único/no-coach/contraseña.
 - `signupClient()` (inline) — crea cuenta `selfReg:true, tier:'libre'` (password hasheada) → auto-login → `_autoGenerateWeek`. Form `#cin-signup` en la landing (botón "Crear cuenta").
 - `isFreeClient(client)` = `tier==='libre'` — **gating Premium**. Free conserva entrenar + rutina auto-generada + historial básico. SOLO Premium (con coach): chat (`renderClientMsgs`), nutrición (`renderNutritionClient`), fotos+medidas (`renderPhotosClient`/`renderMedidasClient`), analítica (`renderVolChart`/`renderPRsInProfile`/`renderClientExProgress`). Bloqueo = `premiumLockHTML()` (candado + "Quiero un coach").
@@ -313,7 +313,7 @@ SB_KEYS = [
 - `convertToPremium(cid)` — el coach activa Premium a un lead (`tier:'premium'`, limpia `wantsCoach`) → desbloquea todo. Botón "⭐ Activar Premium" en el detalle (`#d-freelead`).
 - Editar perfil de un libre (place/goal/level/days) ofrece **regenerar** su rutina para que coincida (`saveClient`).
 
-### Agregados de actividad por fecha (v1.5 — `apex-core.js`, deterministas, reciben `now`)
+### Agregados de actividad por fecha (v1.5 — `avi-core.js`, deterministas, reciben `now`)
 - `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
 - `weeklyActiveCount` / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
 
@@ -461,7 +461,7 @@ git push origin main
 
 ### Al entregar (deploy)
 8. Lucas QA funcional → Julián QA estático → deploy si ambos 🟢
-9. **Actualizar CLAUDE.md** — parte obligatoria del deploy (Paso 6 del skill apex-deploy)
+9. **Actualizar CLAUDE.md** — parte obligatoria del deploy (Paso 6 del skill avi-deploy)
 
 ### Al cerrar sesión
 10. Revisar si algo relevante ocurrido en la sesión **no llegó a deploy** pero debería quedar documentado:
@@ -612,7 +612,7 @@ git push origin main
 - `migrateExTypes()` reclasifica 15 defaults a Bodyweight + e74 a HIIT, una sola vez
 
 **Auto-generador de rutinas — Paso 1 self-serve (commit 98c418e):**
-- `generarRutinas()` en `apex-core.js` (función pura, testeada) + botón ✨ "Generar semana"
+- `generarRutinas()` en `avi-core.js` (función pura, testeada) + botón ✨ "Generar semana"
 - Splits por sexo+días, scheme por objetivo+nivel, exclusiones por limitación física y por entorno
 - El coach SIEMPRE revisa/aprueba el borrador antes de asignar (innegociable por seguridad)
 - Modelo self-serve de 2 niveles definido (libre gratis + coach pago) — NO se quita el coach
@@ -640,15 +640,15 @@ git push origin main
 - Vista de adherencia accionable en el coach ("necesitan un empujón")
 
 **Robustez (commits d03b343, aa46da6, 0fccb0f):**
-- Boot blindado contra `apex-core.js` viejo en caché (no cuelga el arranque)
+- Boot blindado contra `avi-core.js` viejo en caché (no cuelga el arranque)
 - Bloqueo de escritura a la nube desde `file://` + anti-borrado de `ax_c`/`ax_e`
-- apex-core.js cubierto por los checks de sintaxis/duplicados del audit
+- avi-core.js cubierto por los checks de sintaxis/duplicados del audit
 - Suite de tests: 41 → **56 tests** (incluye generador + entornos)
 
 ### ✅ Sesión 2026-06-01 — Integridad de datos, auditoría, marca AVI
 
 **🔴 Blindaje de pérdida de datos (incidente real: se perdieron entrenos de Nataly y Andrés Martínez):**
-- `mergeHistory` / `mergeClientArrays` / `mergePRs` en `apex-core.js`: `syncFromCloud` ya NO sobrescribe `ax_hist`/`ax_m`/`ax_bw`/`ax_med`/`ax_pr` — los FUSIONA nube+local (commits 95e91cc, 8e224b3). +14 tests → **72/72**.
+- `mergeHistory` / `mergeClientArrays` / `mergePRs` en `avi-core.js`: `syncFromCloud` ya NO sobrescribe `ax_hist`/`ax_m`/`ax_bw`/`ax_med`/`ax_pr` — los FUSIONA nube+local (commits 95e91cc, 8e224b3). +14 tests → **72/72**.
 - Cola de reintento `_pendingPush` + `flushPendingSync()` en `online`/`pagehide`/`visibilitychange` (un envío fallido por mala señal se reintenta solo). Sin keepalive (límite 64KB).
 - Guardado PARCIAL: botón "Finalizar entrenamiento" (`finishSessionEarly`) guarda aunque no se marque el 100%. `saveSessionToHistory` reconstruye snapshot siempre.
 - Calentamiento PERSISTE (`wu_{routineId}_{exId}` en localStorage; antes se borraba al re-render). Commit d403eb6.
@@ -663,7 +663,7 @@ git push origin main
 - Guía de config Google en `docs/setup-login-google.md` (clics de Camilo en Google Cloud + Supabase).
 - Decisión técnica pendiente: supabase-js (CDN) vs OAuth a mano (rompe "sin dependencias").
 
-**🏷️ RENOMBRE APEX → AVI (commit 83db4ae, apex-v44):** nombre visible cambiado en toda la app (login, carga, manifest, notificaciones, imágenes, WhatsApp, gamificación). **Internos INTACTOS** (`ax_*`, `apex_data`, `apex-core.js`, `#apex-loading`, caché `apex-vNN`, repo `apex-app`) — NO renombrar. AVI = iniciales de los hijos (Alexander/Valery/Isabella). Handle @avi.entrena. Dominios libres: avi.lat + holaavi.com (sin comprar aún). Pendiente: registro SIC. La PWA instalada conserva el nombre viejo hasta reinstalar (no es bug).
+**🏷️ RENOMBRE AVI → AVI (commit 83db4ae, apex-v44):** nombre visible cambiado en toda la app (login, carga, manifest, notificaciones, imágenes, WhatsApp, gamificación). **Internos INTACTOS** (`ax_*`, `apex_data`, `avi-core.js`, `#apex-loading`, caché `apex-vNN`, repo `apex-app`) — NO renombrar. AVI = iniciales de los hijos (Alexander/Valery/Isabella). Handle @avi.entrena. Dominios libres: avi.lat + holaavi.com (sin comprar aún). Pendiente: registro SIC. La PWA instalada conserva el nombre viejo hasta reinstalar (no es bug).
 
 ### ✅ Sesión 2026-06-02 — Fixes, personalización del generador y modo libre completo (apex-v44 → apex-v55)
 
@@ -672,7 +672,7 @@ git push origin main
 - Auto-guardado PARCIAL automático desde la 1ª serie marcada (antes solo al 100% o con "Finalizar") — sync con debounce.
 - Cronómetro de descanso por **timestamp absoluto** + recalcula en `visibilitychange` (iOS suspende `setInterval` con pantalla bloqueada → se congelaba). Límite iOS: no suena con pantalla bloqueada (necesita push nativo).
 
-**🧪 Refactor testeable (commit 676329a):** lógica de fechas del dashboard extraída a `apex-core.js` (era inline sin tests). Regla: funciones de fecha reciben `now`, nunca `new Date()` implícito.
+**🧪 Refactor testeable (commit 676329a):** lógica de fechas del dashboard extraída a `avi-core.js` (era inline sin tests). Regla: funciones de fecha reciben `now`, nunca `new Date()` implícito.
 
 **📅 Orden de días (commit acf5fe9):** rutinas Lunes→Domingo (`sortRoutinesByDay`) + migración de arranque + ordena al crear/editar/generar.
 
@@ -695,7 +695,7 @@ git push origin main
 - **supabase-js** por CDN (`<script defer>` en `<head>`) + wrapper inline **`AUTH`** (init lazy `sbAuthClient()`; signUpEmail/signInEmail/signInGoogle/sendMagicLink/resetPassword/getSession/onChange/signOut). El boot offline-first NO depende del CDN.
 - Tabla **`user_data`** (Supabase): 1 fila por usuario — `user_id` (PK→auth.users), `coach_id`, `role` ('coach'|'client'), `profile/routines/history/prs/bodyweight/medidas/nutrition/photos/msgs` jsonb. **RLS por operación:** SELECT/UPDATE = `auth.uid()=user_id OR =coach_id`; INSERT = solo `user_id`; DELETE = solo propia.
 - Capa **`UD`** (inline): `loadOwn/upsertOwn/createFromClient/loadCoachClients/updateClientRow` (RLS con el JWT).
-- Helpers puros en `apex-core.js`: **`clientToRow`/`rowToClient`** (mapeo cliente↔fila; la contraseña NO viaja, la maneja Auth) + `USER_DATA_COLLECTIONS`. +7 tests de mapeo → **118 tests** (la lógica de UD/auth/coach es de runtime, no unit-test).
+- Helpers puros en `avi-core.js`: **`clientToRow`/`rowToClient`** (mapeo cliente↔fila; la contraseña NO viaja, la maneja Auth) + `USER_DATA_COLLECTIONS`. +7 tests de mapeo → **118 tests** (la lógica de UD/auth/coach es de runtime, no unit-test).
 - **`AUTH_MODE`** (flag): true cuando se entró por Auth. En modo auth, `sbSet` y `pollMessages` son no-op (no tocan el blob global legacy) y `sv`/`svNow` enrutan a `user_data` (cliente→su fila vía `_persistAuthUser`; coach→fila del cliente que cambió vía `_persistCoachWrite` con diff `_coachSnap`). `AUTH_ROLE` distingue cliente/coach.
 - **`doLogin` auth-primero con respaldo legacy:** intenta `AUTH.signInEmail`; si la cuenta no existe en Auth, cae al login legacy intacto (coach `coach@apex.com` + clientes con SHA-256 en `ax_c`). Boot entra en modo auth si hay sesión Supabase. Helpers: `_enterAuthSession`/`_enterCoachAuth`/`_provisionFreeClient`/`_applyAuthClientDB`/`_profileFromMeta`.
 - Registro libre (`signupClient`) → `AUTH.signUpEmail` (perfil en metadata) → provisiona rutina + fila. **Confirmación de correo DESACTIVADA** (temporal, para pruebas; reactivar con SMTP propio antes del público).
@@ -895,10 +895,10 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ### Skills del proyecto
-- `apex-audit` — auditoría estática completa (7 checks)
-- `apex-deploy` — pipeline QA → commit → push → CLAUDE.md
-- `apex-feature` — pipeline completo de feature nueva
-- `apex-generate` — genera rutina + nutrición para un asesorado leyendo su perfil desde Supabase; orquesta el equipo correcto automáticamente según sexo, objetivo, nivel y limitaciones físicas
+- `avi-audit` — auditoría estática completa (7 checks)
+- `avi-deploy` — pipeline QA → commit → push → CLAUDE.md
+- `avi-feature` — pipeline completo de feature nueva
+- `avi-generate` — genera rutina + nutrición para un asesorado leyendo su perfil desde Supabase; orquesta el equipo correcto automáticamente según sexo, objetivo, nivel y limitaciones físicas
 
 ---
 
@@ -920,7 +920,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 **📸 (cont. 5) DÍA DE FOTOS HISTÓRICO + RETIRO e32 (2026-06-11 tarde, apex-v139→v142).** Camilo generó él mismo (sin Cowork) y entraron **52 fotos en 3 lotes** (`f286f2b` 18 stock + e95_f mujer · `eb04028` 27 = 26 nuevos e111-e140 + e67 elíptica real + e37 default hombre · `99a5263` últimas 6) → **catálogo 137/138 con foto AVI, CERO stock; falta SOLO e126** Curl Femoral Sentado (Gemini la confunde con la extensión; claves de prompt en `Desktop/FOTOS-STOCK-POR-REEMPLAZAR.txt`). Cazas de la revisión visual: "eliptica" era bici estática (→e64), clean&press sin press rechazada (Camilo la recicló como e68 sumo, donde SÍ encaja), bird dog con mancuerna azul (regenerada sin ella). Validar ojo-coach: e138 codo despegado, e137 banco azul. ⚠️ Recordar agregar ids nuevos a `EX_IMG_IDS`. 🗑️ **e32 Fondos Gironda ELIMINADO** (`f0e042b`, decisión Camilo: redundante con e19 y confunde): catálogo 139→138, `REMOVED_EXERCISES` e32→e19, y el remap del dedupe ahora **también refresca nombre/ícono/músculo** del catálogo (antes dejaba el nombre viejo — hueco del caso e38); en la nube solo lo tenía el coach (rutina "Hombros + Brazos" + PR 12 reps) → remapeado a e19 vía SQL, verificado 0 rastros. 🖥️ Aparte: limpieza PC −4.3GB (97 perfiles `agent-browser-chrome-*` huérfanos en Temp; sin tocar Xbox/Gaming Services/Chrome). 🌍 **DOMINIO BLINDADO:** hermano de Camilo en POLONIA no pudo abrir la app — le llegó el link SIN `/apex-app/` y la raíz `kronos-apex.github.io` daba 404 de GitHub. Fix: repo nuevo **`Kronos-apex/kronos-apex.github.io`** (local `Desktop/AVI/kronos-root-redirect`) con index.html+404.html que redirigen a `/apex-app/` (verificado 200 + redirect). Ahora el dominio pelado y cualquier ruta rota caen en AVI. (El repo se creó vía API con la credencial del manager de Windows; `gh` no está instalado.)
 
-**🎯 (cont. 4) FEATURE: PESO SUGERIDO POR PR** (commit `d5a071d`, aprobada por Camilo — salió de la tabla %1RM↔reps del libro). **Sin tests de máximos:** el 1RM se ESTIMA con Epley desde las series ya registradas. Núcleo en `apex-core.js` (testeado, +5 → **128 tests**): `estimate1RM(kg,reps)` (válido 1–15 reps, fuera → null), `suggestLoad(e1rm,targetReps,{factor:0.95,step:2.5})` (caso especial targetReps=1 → e1rm directo), `suggestFromPR(pr,targetReps)` (lee el PR `{val,reps,unit}` existente; solo unit kg). Integración inline `_suggestKg(ex)` con 3 guards: track `peso_reps` + PR del MISMO ejercicio (`DB.prs[cid][ex.id||ex.name]`) + **NO en fase de adaptación** (ahí la consigna es carga suave). UI: línea "🎯 Peso sugerido: N kg · según tu récord" en la tarjeta del Hoy (antes del set-log-head) y en el modo guiado (primer hijo de `.gm-sets`, flex column) + placeholder `~N` en inputs de kg (normal y guiado; `ex.defaultKg` manda si existe). Sin migración/sync (solo lectura de PRs). Sin PR → sin sugerencia.
+**🎯 (cont. 4) FEATURE: PESO SUGERIDO POR PR** (commit `d5a071d`, aprobada por Camilo — salió de la tabla %1RM↔reps del libro). **Sin tests de máximos:** el 1RM se ESTIMA con Epley desde las series ya registradas. Núcleo en `avi-core.js` (testeado, +5 → **128 tests**): `estimate1RM(kg,reps)` (válido 1–15 reps, fuera → null), `suggestLoad(e1rm,targetReps,{factor:0.95,step:2.5})` (caso especial targetReps=1 → e1rm directo), `suggestFromPR(pr,targetReps)` (lee el PR `{val,reps,unit}` existente; solo unit kg). Integración inline `_suggestKg(ex)` con 3 guards: track `peso_reps` + PR del MISMO ejercicio (`DB.prs[cid][ex.id||ex.name]`) + **NO en fase de adaptación** (ahí la consigna es carga suave). UI: línea "🎯 Peso sugerido: N kg · según tu récord" en la tarjeta del Hoy (antes del set-log-head) y en el modo guiado (primer hijo de `.gm-sets`, flex column) + placeholder `~N` en inputs de kg (normal y guiado; `ex.defaultKg` manda si existe). Sin migración/sync (solo lectura de PRs). Sin PR → sin sugerencia.
 
 **📚 (cont. 3) +4 ejercicios por cruce con bibliografía → catálogo 139** (commit `5d717ef`, e137–e140). Camilo trajo la *Enciclopedia de ejercicios de musculación* (Óscar Morán, Pila Teleña 2008; PDF que circula en la web). **Política de uso (importante):** el libro tiene copyright explícito → NO copiar su texto a las fichas ni extraer sus ilustraciones para la app; SÍ usarlo como **checklist de cobertura y referencia técnica de consulta** (la lista de qué ejercicios existen y los hechos anatómicos no son protegibles; nuestras fichas siguen siendo redacción original). Cruce de su lista (~149 básicos + variantes) vs nuestro catálogo → 4 huecos que valían: e137 Pullover con Mancuerna (solo había polea), e138 Rotación Externa con Banda (manguito rotador, prehab — no había trabajo de rotadores), e139 Curl Invertido con Barra, e140 Curl de Muñeca con Barra (**antebrazos: grupo que no existía**, agrupados en filtro bíceps). Descartados a criterio Coach Pro: remo al mentón (riesgo de pinzamiento), press declinado (banco escaso, cubierto por fondos+cruces), sissy squat, trabajo de cuello. **Idea PARQUEADA para Camilo:** tabla %1RM↔reps (relación estándar de la ciencia del ejercicio) como feature "peso sugerido por PR" en el registro de series. PDF en `Desktop/AVI/_tmp/enciclopedia.pdf` (NO commitear). Brief Cowork → **52 fotos**.
 
@@ -943,7 +943,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 **Otras pendientes:** reemplazar las 22 fotos stock restantes (Camilo las genera); revisar e4; decisión: ¿promover fb01 Remo Australiano (y fb04) al catálogo?; atleta MUJER para los momentos full-bleed (Camilo genera en Gemini); leaked-password protection POSPUESTO (requiere Pro $25/mes — no insistir). Full-bleed upsell Premium + subida de nivel ✅ HECHOS 2026-06-11 (apex-v138). ✅ Glosario ampliado (15→29 términos: Valsalva, tempo, lumbar, femoral, dorsal, glúteo medio, etc.; apex-v131). Datos prod de Miguel: ver memorias.
 ---
-*Hitos sesión 2026-06-10 (auditoría completa + mejoras, apex-v136): 🔴 **BACKUP DE DATOS REALES** — `apex_weekly_backup()` solo respaldaba el blob legacy `apex_data`; `user_data` (datos reales de los 10 usuarios) estaba SIN respaldo automático → función reescrita (snapshot = `{apex_data:{...}, user_data:[filas]}`, retención 8) + ejecutada ya (snapshot #4: 10 usuarios, 315KB). ⚡ Quitado el fetch legacy de `apex_data` en `syncFromCloud()` (RLS sin policies → siempre vacío = peso muerto con timeout de 8s en el boot; la carga local/migraciones se conservan; merge* siguen en apex-core.js, testeadas). 📱 UX móvil: `.scheck` área táctil efectiva 44px (::after, sin cambio visual), `inputmode` decimal/numérico en inputs de serie (kg/km vs reps/secs), aria-labels (scheck, timer-go) + alts en fotos de progreso. 🔍 Auditoría área×área: catálogo limpio (109), suite 123/123, auth 10/10 cuentas con datos y 0 huérfanas, payload sano (index 636KB, video máx 848KB), `fb01` Remo Australiano / `fb04` PM Rumano c/ Mancuernas = customs legítimos sin ficha (oportunidad, no bug). Pendiente Camilo: activar leaked-password protection (Dashboard→Auth→Settings) y confirmar Prensa desaparecida tras reabrir.*
+*Hitos sesión 2026-06-10 (auditoría completa + mejoras, apex-v136): 🔴 **BACKUP DE DATOS REALES** — `apex_weekly_backup()` solo respaldaba el blob legacy `apex_data`; `user_data` (datos reales de los 10 usuarios) estaba SIN respaldo automático → función reescrita (snapshot = `{apex_data:{...}, user_data:[filas]}`, retención 8) + ejecutada ya (snapshot #4: 10 usuarios, 315KB). ⚡ Quitado el fetch legacy de `apex_data` en `syncFromCloud()` (RLS sin policies → siempre vacío = peso muerto con timeout de 8s en el boot; la carga local/migraciones se conservan; merge* siguen en avi-core.js, testeadas). 📱 UX móvil: `.scheck` área táctil efectiva 44px (::after, sin cambio visual), `inputmode` decimal/numérico en inputs de serie (kg/km vs reps/secs), aria-labels (scheck, timer-go) + alts en fotos de progreso. 🔍 Auditoría área×área: catálogo limpio (109), suite 123/123, auth 10/10 cuentas con datos y 0 huérfanas, payload sano (index 636KB, video máx 848KB), `fb01` Remo Australiano / `fb04` PM Rumano c/ Mancuernas = customs legítimos sin ficha (oportunidad, no bug). Pendiente Camilo: activar leaked-password protection (Dashboard→Auth→Settings) y confirmar Prensa desaparecida tras reabrir.*
 *Hito 2026-06-10 (prensa fantasma, 2º intento — apex-v137): la Prensa SEGUÍA apareciendo porque `dedupeExercises` solo cazaba fantasmas con nombre EXACTO al catálogo ("Prensa" a secas ≠ "Prensa de Pierna" e36 → la conservaba como custom legítimo). Fix: `REMOVED_NAME_PATTERNS` (regex /prensa|leg ?press/→e36 sobre no-catálogo) + limpieza de entradas sin id e ids repetidos. Los customs legítimos (fb01 Remo Australiano, fb04) NO matchean y se conservan. Lección: el dedupe por nombre debe tolerar VARIANTES, no solo igualdad exacta.*
 *Hitos sesión 2026-06-10 (anti-duplicados de raíz, apex-v131→v135): 🛡️ `scripts/audit-catalog.mjs` (dups id/nombre, campos faltantes, registros→ids inexistentes, media sin archivo) integrado al pre-commit como check [9] — un BLOCK aborta el commit. 👻 PRENSA FANTASMA raíz hallada: vivía solo en localStorage del navegador de Camilo (el sync ya no la limpiaba) → `dedupeExercises()` en boot elimina retirados/fantasma y remapea rutinas (REMOVED_EXERCISES e38→e15). 🗑️ e38 "Curl Femoral Acostado en Máquina" ELIMINADO (dup de e15) en código + Supabase (6 rutinas + ax_c remapeadas, verificado 0). 🎬 +4 videos (e40,e47,e48,e57). 🖼️ 24 fotos stock reemplazadas (lote Gemini de Camilo) + e15/e33/e36 → quedan 22 stock. 📖 Glosario 15→29 términos.*
 *Hitos sesión 2026-06-10 (cont. media): 🎬 +5 VIDEOS (e30 foto trasnuca; e85 aperturas alta, e86 baja, e3 cable, e56 predicador, e33 smith) → **~28 ejercicios con video**. 🚺🚹 GENDER-AWARE reactivado SOLO para e2 y e33 (`EX_VID_BOTH` + `exVidSrc` usa `_viewSex()`; existen `.mp4`♂+`_f.mp4`♀; Camilo "muestra ambos"). 📸 e105 foto correcta → **`EX_IMG_HIDE` vacío = 110/110 fotos OK**. 🖼️ Auditadas las 110 fotos por tamaño → **46 son STOCK** (320px, no AVI) vs 64 AVI (720²); lista exportada a `Desktop/FOTOS-STOCK-POR-REEMPLAZAR.txt`. (apex-v128→v130)*
@@ -974,7 +974,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 *Hitos sesión 2026-06-08 (cont. 13): 🎬 +2 videos limpios (logo AVI correcto) — e22 Press militar con mancuernas + e84 Press en máquina hammer. EX_VID = e5,e6,e9,e11,e13,e22,e27,e84 (8 videos) (apex-v98).*
 *Hitos sesión 2026-06-08 (cont. 12): 🎬 +1 video — e27 Jalón al pecho agarre neutro (back-view, limpio). EX_VID = e5,e6,e13,e11,e9,e27 (apex-v97). ❌ e28 (jalón agarre cerrado) NO desplegado: el video tiene el LOGO ROTO ("ANGLE/ZIBLE", no AVI) → Camilo lo regenera. e9 quedó con logo "AVi" (aceptable). Regla firme: revisar el logo de CADA video, Veo rompe el texto a veces.*
 *Hitos sesión 2026-06-08 (cont. 10): 🎬 PILOTO de VIDEO de ejercicio — 4 videos generados por Gemini/Veo a partir de nuestras fotos (e5 remo, e6 jalón, e13 sentadilla, e11 tríceps). Procesados con ffmpeg: recorte del morpheo inicial (-ss 2), crop centrado a 720² (de 1280×720), sin audio, H.264 faststart (~400KB c/u) → `media/exercises/eN.mp4`. Registro `EX_VID` + `exVidSrc()`; `_showExSheet` reproduce `<video autoplay loop muted playsinline>` con la foto de `poster` en el detalle (la lista sigue con foto). SW: `.mp4` network-first (range requests iOS). Descartado el de Vidu (marca de agua). Pendiente: ver en celular y, si OK, seguir con los 109. (apex-v95)*
-*Hitos sesión 2026-06-08 (cont. 9): 👋 cabecera del "Hoy" rediseñada — saludo GRANDE con el nombre (`#cn-today-head`/`renderTodayHead`) + chip de RACHA 🔥 (días de calendario consecutivos con sesión, terminando hoy/ayer). Nueva fn `workoutStreak(sessions,now)` en apex-core (testeada, +5 tests → 123). 🧹 3 cuentas de prueba borradas de `user_data` por SQL (Tocino AbusaMadres, Sam Blux, AVI); quedan 8 clientes reales. (apex-v94)*
+*Hitos sesión 2026-06-08 (cont. 9): 👋 cabecera del "Hoy" rediseñada — saludo GRANDE con el nombre (`#cn-today-head`/`renderTodayHead`) + chip de RACHA 🔥 (días de calendario consecutivos con sesión, terminando hoy/ayer). Nueva fn `workoutStreak(sessions,now)` en avi-core (testeada, +5 tests → 123). 🧹 3 cuentas de prueba borradas de `user_data` por SQL (Tocino AbusaMadres, Sam Blux, AVI); quedan 8 clientes reales. (apex-v94)*
 *Hitos sesión 2026-06-08 (cont. 8): 🎨 hero del "Hoy" (`.wohero`) ahora con FOTO de marca (`media/brand/ob-1.jpg`, agarre de peso muerto) a la derecha + degradado oscuro a la izquierda (texto legible) — cierra el gap visual con onboarding/finish full-bleed. 🆓 cliente LIBRE puede editar su propia rutina: flag `canEdit=COACH_SELF||isFreeClient(client)` en `renderClientAllRoutines` → "+ Nueva rutina" + ✏️/🗑️ + "Crear rutina manual" en empty state; refresco al guardar/borrar gateado por `CUR.loggedAs==='client'`. Las gráficas siguen Premium (gating intacto); los ejercicios/edición ya están disponibles para quien solo quiere registrar. (apex-v93)*
 *Hitos sesión 2026-06-08 (cont. 7): 🐛 BUG el coach no podía editar SU PROPIA rutina en "Mi entrenamiento" (sí la de asesorados). Causa: la vista de asesorado (`renderClientAllRoutines`) no expone editor a propósito, y "Mi entrenamiento" la reusa → coach sin botones. Fix UI: con `COACH_SELF` se muestran "+ Nueva rutina" + ✏️ Editar/🗑️ por tarjeta (reusan openNewRoutine/openEditRoutine/delRoutine; DB.clients=[coach] ya apunta a su fila, persistencia vía upsertOwn ya estaba OK) + refresco de su vista al guardar/borrar (apex-v92).*
 *Hitos sesión 2026-06-08 (cont. 6): 🐛 BUG usuarios eliminados reaparecían — al borrar un cliente desde el panel, en modo auth la fila `user_data` quedaba en la nube y volvía al re-loguear. Fix: política RLS `user_data_delete_coach` (DELETE si `coach_id = auth.uid()`) + `UD.deleteClientRow()` + `delClient()` ahora borra la fila en la nube (apex-v91). 🎬 99 prompts de video (imagen→video) en `Desktop/PROMPTS-VIDEO-EJERCICIOS.txt`. 📋 faltan 10 fotos de ejercicio: e45,e63,e72,e74,e75,e76,e90,e91,e108,e109.*

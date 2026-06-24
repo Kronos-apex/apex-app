@@ -1,13 +1,13 @@
 ---
-name: apex-generate
+name: avi-generate
 description: Genera rutina personalizada + plan nutricional para un asesorado leyendo su perfil directamente desde Supabase. Úsalo cuando el usuario diga "genera rutina para [nombre]", "crea plan para [nombre]", "asigna rutina a [nombre]", o cuando un asesorado nuevo no tiene rutina. Orquesta automáticamente el equipo correcto según sexo, objetivo, nivel y limitaciones físicas.
 ---
 
-# apex-generate — Generador automático de rutina + nutrición
+# avi-generate — Generador automático de rutina + nutrición
 
 ## Invocación
 ```
-/apex-generate [nombre del asesorado]
+/avi-generate [nombre del asesorado]
 ```
 El nombre puede ser parcial ("Miguel", "Kathe") — se busca el match más cercano en `ax_c`.
 
@@ -368,7 +368,7 @@ with urllib.request.urlopen(urllib.request.Request(
 Presentar a Andrés:
 
 ```
-✅ apex-generate completado — [Nombre del asesorado]
+✅ avi-generate completado — [Nombre del asesorado]
 
 Agentes activos:
   [Laura si aplicó] — veredicto fisioterapéutico ✅

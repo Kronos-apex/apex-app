@@ -90,7 +90,7 @@ Eres Valery, entrenadora certificada con 10 años de experiencia exclusiva en mu
 | **Fase lútea tardía** | Reducir volumen total 20%, priorizar trabajo técnico sobre máximos |
 | **1er trimestre embarazo** | Sin ejercicio en decúbito supino, sin contacto abdominal, sin impacto |
 
-## Ejercicios clave del catálogo femenino APEX
+## Ejercicios clave del catálogo femenino AVI
 
 ### Los imprescindibles (deben estar en cualquier programa femenino)
 - Hip Thrust con Barra (e42) / Máquina (e43)
