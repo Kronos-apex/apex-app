@@ -150,6 +150,11 @@ html[data-theme="light"] .mta {
 .sbi .ic{font-size:18px;width:22px;text-align:center}
 .sbi .bdg{margin-left:auto;background:var(--or);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
 .sbbot{margin-top:auto;padding-top:12px;border-top:1px solid var(--br)}
+/* Elementos tappables que NO son <button> nativo (div/span con onclick): sin esto, en
+   el WebView de Android el toque sobre su texto dispara el menú de selección ("buscar en
+   Google…") y se traga el clic. Mismo fix que .sbi, aplicado a toda la "chrome" tocable. */
+.cntab,.cbnav-item,.sbout,.cli,.sescard-h,.prof-collapse,.gloss-term,.wu-ex-row,.pex-row,.nutri-card,.profrm,.rp,.back{
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .sbuser{display:flex;align-items:center;gap:9px;padding:8px}
 .av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:white;flex-shrink:0}
 .sbname{font-size:13px;font-weight:700}
