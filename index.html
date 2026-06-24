@@ -83,7 +83,7 @@
 </svg>
 
 <!-- ══ LOADING OVERLAY ══ -->
-<div id="apex-loading">
+<div id="avi-loading">
   <div class="ld-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
     AVI
   </div>
@@ -118,7 +118,7 @@
 
     <div id="install-hint" class="cin-install">
       <div class="ttl">📲 INSTALA LA APP</div>
-      <div id="install-hint-android" class="txt" style="display:none">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button class="ibtn" onclick="window._apexInstall&&window._apexInstall()">Instalar AVI</button></div>
+      <div id="install-hint-android" class="txt" style="display:none">Toca el botón de abajo para instalarla y acceder sin navegador, como una app real.<br><button class="ibtn" onclick="window._aviInstall&&window._aviInstall()">Instalar AVI</button></div>
       <div id="install-hint-ios" class="txt" style="display:none">1. Toca el ícono <strong>Compartir</strong> (↑) en la barra de Safari<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong><br>3. Toca <strong>Añadir</strong></div>
       <div id="install-hint-generic" class="txt">Android: menú ⋮ → <strong>"Instalar aplicación"</strong><br>iPhone: Compartir ↑ → <strong>"Añadir a pantalla de inicio"</strong></div>
     </div>
@@ -947,7 +947,7 @@
 <div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#06402E;color:white;border-radius:14px;padding:12px 20px;display:none;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
   <span style="font-size:22px">💪</span>
   <div style="flex:1"><div style="font-size:13px;font-weight:700">Instala AVI</div><div style="font-size:11px;opacity:.75">Accede sin navegador, como una app real</div></div>
-  <button onclick="window._apexInstall&&window._apexInstall()" style="background:var(--g2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
+  <button onclick="window._aviInstall&&window._aviInstall()" style="background:var(--g2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
   <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;color:white;font-size:12px;padding:7px 9px;cursor:pointer">✕</button>
 </div>
 
@@ -1021,7 +1021,7 @@
   </div>
 </div>
 
-<script src="apex-core.js"></script>
+<script src="avi-core.js"></script>
 <script src="muscle-map.js"></script>
 <script src="exercise-muscles.js"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible

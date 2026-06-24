@@ -1,9 +1,9 @@
 // Smoke test de arranque — red de seguridad para la capa de "glue" de index.html
-// (que NO tiene tests unitarios, a diferencia de apex-core.js). Levanta un server
+// (que NO tiene tests unitarios, a diferencia de avi-core.js). Levanta un server
 // estático, abre la app en Chrome headless del sistema vía CDP y FALLA si:
 //   · hay alguna excepción JS no capturada al arrancar, o
 //   · no cargó el core (generarRutinas) o la UI (renderClientToday) — eso delata
-//     errores de sintaxis / parse en apex-core.js o en el script de index.html, o
+//     errores de sintaxis / parse en avi-core.js o en el script de index.html, o
 //   · no se pinta la pantalla de login (#s-login).
 // Sin dependencias: usa el WebSocket nativo de Node 24. Uso: node scripts/smoke.mjs
 import http from 'http';
@@ -135,7 +135,7 @@ async function main() {
     const problems = [];
     if (exceptions.length) problems.push('excepciones JS no capturadas: ' + exceptions.slice(0,5).join(' | '));
     if (!r.hasLogin)   problems.push('no se pintó la pantalla de login (#s-login)');
-    if (!r.coreLoaded) problems.push('apex-core.js no cargó (generarRutinas indefinido) — ¿error de sintaxis?');
+    if (!r.coreLoaded) problems.push('avi-core.js no cargó (generarRutinas indefinido) — ¿error de sintaxis?');
     if (!r.uiLoaded)   problems.push('módulo de entreno no cargó (renderClientToday indefinido) — ¿error de sintaxis?');
     if (!r.saludLoaded) problems.push('módulo de salud no cargó (renderNutritionCoach indefinido) — ¿error de sintaxis?');
     if (!r.extraLoaded) problems.push('módulo extra no cargó (openGuidedMode indefinido) — ¿error de sintaxis?');

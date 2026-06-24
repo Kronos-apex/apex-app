@@ -1,9 +1,9 @@
-// smoke-run.mjs — Levanta APEX en un navegador headless y confirma que arranca.
+// smoke-run.mjs — Levanta AVI en un navegador headless y confirma que arranca.
 // Uso:  node scripts/smoke-run.mjs        (desde apex-app/)
 //   o:  node apex-app/scripts/smoke-run.mjs
 //
 // Qué verifica:
-//   1. apex-core.js carga en el navegador real → las 7 funciones de negocio
+//   1. avi-core.js carga en el navegador real → las 7 funciones de negocio
 //      existen en el window y devuelven valores correctos.
 //   2. La app renderiza (no pantalla en blanco).
 //   3. No hay errores de consola/página relevantes.
@@ -53,7 +53,7 @@ const URL = `http://localhost:${PORT}${PREFIX}/index.html`;
 await page.goto(URL, { waitUntil: 'domcontentloaded' });
 await new Promise(r => setTimeout(r, 1500));   // dejar inicializar el script principal
 
-// 1) apex-core.js en el window real
+// 1) avi-core.js en el window real
 const core = await page.evaluate(() => {
   const fns = ['getIccLabel','getSexCode','calcMacrosSugeridos','migrateRoutineIds',
                'shouldPostPush','delClientGuard','cnTodayGuard'];
@@ -68,7 +68,7 @@ const core = await page.evaluate(() => {
 const bodyText = (await page.evaluate(() => document.body.innerText || '')).trim();
 
 // 3) Screenshot
-const shot = join(SCRIPT_DIR, 'apex-smoke.png');
+const shot = join(SCRIPT_DIR, 'avi-smoke.png');
 await page.screenshot({ path: shot, fullPage: false });
 
 await browser.close();
@@ -84,9 +84,9 @@ const realHttp = http404.filter(u => !benign(u));
 // El "Failed to load resource" genérico ya está cubierto por realHttp (con URL).
 const realErrors = errors.filter(e => !/favicon/i.test(e) && !/Failed to load resource/i.test(e));
 
-console.log('\n━━━ APEX smoke run ━━━');
+console.log('\n━━━ AVI smoke run ━━━');
 console.log(`URL: ${URL}`);
-console.log(`\n[1] apex-core.js en window: ${allFns ? '✅ las 7 funciones presentes' : '❌ faltan funciones'}`);
+console.log(`\n[1] avi-core.js en window: ${allFns ? '✅ las 7 funciones presentes' : '❌ faltan funciones'}`);
 console.log('    ' + JSON.stringify(core.present));
 console.log(`    getIccLabel(0.90,'M') = "${core.icc}"  ·  calcMacrosSugeridos = ${core.macro}  ${coreWorks ? '✅' : '❌'}`);
 console.log(`\n[2] Render: ${rendered ? '✅' : '❌'} ${bodyText.length} chars visibles`);

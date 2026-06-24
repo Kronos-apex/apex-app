@@ -1,0 +1,1163 @@
+[
+  {
+    "id": "e110",
+    "name": "Press Inclinado con Barra",
+    "muscle": "pecho",
+    "type": "Compuesto",
+    "img": "media/exercises/e110.jpg",
+    "descSimple": "Acuéstate en un banco inclinado (30-45°) con los pies en el suelo. Junta los omóplatos y baja la barra hacia la parte alta del pecho; empuja hacia arriba sintiendo el pecho de arriba. No rebotes la barra ni arquees de más la espalda.",
+    "muscleLabel": "Pecho superior, hombros y tríceps"
+  },
+  {
+    "id": "e71",
+    "name": "Press de Banca con Mancuernas",
+    "muscle": "pecho",
+    "type": "Compuesto",
+    "img": "media/exercises/e71.jpg",
+    "descSimple": "Acuéstate en el banco con una mancuerna en cada mano a la altura del pecho. Empuja ambas hacia arriba hasta casi juntar las mancuernas arriba. Más fácil y seguro que con barra para comenzar.",
+    "muscleLabel": "Pecho, hombros y tríceps"
+  },
+  {
+    "id": "e4",
+    "name": "Dominadas",
+    "muscle": "espalda",
+    "type": "Bodyweight",
+    "img": "media/exercises/e4.jpg",
+    "descSimple": "Cuélgate de la barra con las palmas mirando al frente. Sube llevando los codos hacia abajo hasta que el mentón pase la barra, sintiendo la espalda (no solo los brazos). Baja lento. Si no puedes solo, usa una banda de resistencia o la máquina asistida.",
+    "muscleLabel": "Espalda (dorsal) y bíceps"
+  },
+  {
+    "id": "e25",
+    "name": "Remo en Polea a una Mano",
+    "muscle": "espalda",
+    "type": "Aislamiento",
+    "img": "media/exercises/e25.jpg",
+    "descSimple": "Con un brazo a la vez, tira el agarre de la polea hacia tu cadera llevando el codo hacia atrás, apretando la espalda. Estira bien al volver. Ideal para equilibrar si un lado es más fuerte que el otro.",
+    "muscleLabel": "Dorsal (espalda)"
+  },
+  {
+    "id": "e50",
+    "name": "Buenos Días con Barra",
+    "muscle": "espalda",
+    "type": "Compuesto",
+    "img": "media/exercises/e50.jpg",
+    "descSimple": "Barra apoyada en los hombros (no en el cuello). Inclínate hacia adelante desde la cadera solo hasta unos 45 grados, manteniendo la espalda completamente recta. Regresa lento. Usa poco peso — es muy exigente para la espalda baja. ⚠️ No recomendado si tienes dolor lumbar activo.",
+    "muscleLabel": "Espalda baja y femoral"
+  },
+  {
+    "id": "e7",
+    "name": "Press Militar con Barra",
+    "muscle": "hombros",
+    "type": "Compuesto",
+    "img": "media/exercises/e7.jpg",
+    "descSimple": "De pie, sostén la barra a la altura de los hombros. Aprieta el abdomen fuerte y empuja la barra hacia arriba hasta estirar los brazos, sintiendo los hombros. Baja controlado. Si la espalda se arquea mucho, baja el peso.",
+    "muscleLabel": "Deltoides (hombros) y tríceps"
+  },
+  {
+    "id": "e8",
+    "name": "Elevaciones Laterales",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e8.jpg",
+    "descSimple": "Con una mancuerna en cada mano, sube los brazos hacia los lados hasta la altura del hombro guiando con el codo. Baja despacio, sin impulso. Trabaja la parte lateral del hombro (la que da anchura).",
+    "muscleLabel": "Hombro lateral (deltoides medio)"
+  },
+  {
+    "id": "e21",
+    "name": "Face Pull en Polea",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e21.jpg",
+    "descSimple": "Coloca la polea a la altura de la cara y toma la cuerda. Jala hacia tu nariz abriendo los codos hacia los lados y aprieta la espalda alta. Aquí manda la técnica, no el peso: cuida y fortalece tus hombros.",
+    "muscleLabel": "Hombro posterior"
+  },
+  {
+    "id": "e53",
+    "name": "Elevaciones Frontales",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e53.jpg",
+    "descSimple": "Con la mancuerna colgando al frente, sube el brazo recto hasta la altura del hombro y baja controlado. Sin balanceo de cadera ni columpiar el peso: si necesitas impulso, baja la carga. Trabaja el hombro de adelante.",
+    "muscleLabel": "Hombro frontal"
+  },
+  {
+    "id": "e54",
+    "name": "Pájaro / Elevaciones Posteriores",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e54.jpg",
+    "descSimple": "Inclínate hacia adelante con la espalda recta. Sube las mancuernas hacia los lados como abriendo las alas. Trabaja la parte trasera del hombro.",
+    "muscleLabel": "Hombro posterior"
+  },
+  {
+    "id": "e10",
+    "name": "Curl Martillo con Mancuernas",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e10.jpg",
+    "descSimple": "Mancuernas con el agarre vertical (como sostener un martillo). Sube sin girar la muñeca, codos quietos. Trabaja el bíceps y también el antebrazo.",
+    "muscleLabel": "Bíceps y antebrazo"
+  },
+  {
+    "id": "e29",
+    "name": "Curl de Bíceps con Mancuernas",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e29.jpg",
+    "descSimple": "Con una mancuerna en cada mano, dobla los codos subiendo el peso y gira un poco la muñeca al final para apretar el bíceps. Puedes alternar o subir las dos juntas. Codos quietos.",
+    "muscleLabel": "Bíceps"
+  },
+  {
+    "id": "e55",
+    "name": "Curl de Bíceps en Polea Baja",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e55.jpg",
+    "descSimple": "Polea a la altura del suelo. Dobla los codos jalando el agarre hacia arriba hasta apretar el bíceps. La polea mantiene tensión en todo el movimiento. Mantén los codos quietos.",
+    "muscleLabel": "Bíceps"
+  },
+  {
+    "id": "e12",
+    "name": "Extensión de Tríceps Tumbado (Skull Crushers)",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e12.jpg",
+    "descSimple": "Acuéstate en el banco con la barra arriba. Mantén los codos apuntando al techo y quietos. Baja la barra hacia tu frente doblando solo los codos y sube extendiendo el tríceps (parte de atrás del brazo). Usa un peso que controles siempre.",
+    "muscleLabel": "Tríceps (cabeza larga)"
+  },
+  {
+    "id": "e19",
+    "name": "Fondos en Paralelas (Tríceps)",
+    "muscle": "triceps",
+    "type": "Bodyweight",
+    "img": "media/exercises/e19.jpg",
+    "descSimple": "Apóyate en las barras con los brazos estirados. Mantén el torso lo más vertical posible y baja doblando los codos hasta 90 grados; sube empujando con el tríceps. Si sientes molestia en el hombro, reduce el rango o evítalo.",
+    "muscleLabel": "Tríceps y pecho"
+  },
+  {
+    "id": "e30",
+    "name": "Extensión de Tríceps sobre la Cabeza (Trasnuca)",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e30.jpg",
+    "descSimple": "Sostén el peso sobre la cabeza con los brazos estirados. Baja doblando los codos detrás de la nuca hasta sentir estirar el tríceps; sube extendiendo. Mantén los codos quietos apuntando hacia arriba.",
+    "muscleLabel": "Tríceps (cabeza larga)"
+  },
+  {
+    "id": "e31",
+    "name": "Extensión de Tríceps a una Mano en Polea",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e31.jpg",
+    "descSimple": "Con un brazo a la vez, empuja hacia abajo la manija de la polea estirando el codo hasta apretar el tríceps. Mantén el codo pegado al cuerpo. Ideal para emparejar la fuerza de los dos brazos.",
+    "muscleLabel": "Tríceps"
+  },
+  {
+    "id": "e15",
+    "name": "Curl Femoral Tumbado",
+    "muscle": "piernas",
+    "type": "Aislamiento",
+    "img": "media/exercises/e15.jpg",
+    "descSimple": "Boca abajo en la máquina, dobla las rodillas llevando los talones hacia las nalgas apretando el femoral. Baja muy lento, en unos 3 segundos, sin despegar la cadera del apoyo ni usar impulso.",
+    "muscleLabel": "Femoral (parte trasera del muslo)"
+  },
+  {
+    "id": "e16",
+    "name": "Elevación de Talones de Pie",
+    "muscle": "piernas",
+    "type": "Aislamiento",
+    "img": "media/exercises/e16.jpg",
+    "descSimple": "Párate en el borde de un escalón con el peso en la punta del pie. Sube de puntillas lo más alto posible, aguanta 1 segundo arriba y baja despacio buscando el estiramiento completo de la pantorrilla.",
+    "muscleLabel": "Pantorrilla"
+  },
+  {
+    "id": "e35",
+    "name": "Desplantes / Zancada",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e35.jpg",
+    "descSimple": "Da un paso largo al frente y baja la rodilla trasera hacia el suelo. El torso permanece recto. La rodilla delantera apunta hacia el pie, no se desploma hacia adentro. Regresa y repite con la otra pierna.",
+    "muscleLabel": "Cuádriceps y glúteos"
+  },
+  {
+    "id": "e39",
+    "name": "Curl Femoral de Pie en Máquina",
+    "muscle": "piernas",
+    "type": "Aislamiento",
+    "img": "media/exercises/e39.jpg",
+    "descSimple": "De pie y sujeto del apoyo, dobla una rodilla llevando el talón hacia atrás hasta apretar el femoral. Trabaja un pie a la vez y baja lento; no muevas la cadera ni uses impulso.",
+    "muscleLabel": "Femoral"
+  },
+  {
+    "id": "e41",
+    "name": "Step-up con Mancuernas",
+    "muscle": "piernas",
+    "type": "Funcional",
+    "img": "media/exercises/e41.jpg",
+    "descSimple": "Con una mancuerna en cada mano, sube a un cajón o escalón firme pisando con un pie y empujando desde el talón, sin impulsarte con la pierna de abajo. Baja controlado y repite. Trabaja cuádriceps y glúteo. Cuenta las repeticiones por cada pierna.",
+    "muscleLabel": "Cuádriceps y glúteos"
+  },
+  {
+    "id": "e59",
+    "name": "Elevación de Talones Sentado",
+    "muscle": "piernas",
+    "type": "Aislamiento",
+    "img": "media/exercises/e59.jpg",
+    "descSimple": "Sentado en la máquina con las rodillas bajo los apoyos, sube los talones lo más alto posible con pausa de 1 segundo y baja lento estirando. Esta posición enfatiza el sóleo, el músculo más profundo de la pantorrilla.",
+    "muscleLabel": "Pantorrilla (sóleo)"
+  },
+  {
+    "id": "e70",
+    "name": "Sentadilla Goblet",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e70.jpg",
+    "descSimple": "Sostén una mancuerna vertical frente a tu pecho con las dos manos. Pies separados al ancho de los hombros. Baja en sentadilla lo más profundo que puedas manteniendo la espalda recta y el pecho arriba. Ideal para aprender la mecánica correcta.",
+    "muscleLabel": "Cuádriceps, glúteos y core"
+  },
+  {
+    "id": "e43",
+    "name": "Hip Thrust en Máquina",
+    "muscle": "gluteo",
+    "type": "Compuesto",
+    "img": "media/exercises/e43.jpg",
+    "descSimple": "Igual al hip thrust con barra pero en la máquina. Más fácil de usar y muy seguro. Empuja las caderas hacia arriba apretando el glúteo al máximo y baja controlado.",
+    "muscleLabel": "Glúteos"
+  },
+  {
+    "id": "e44",
+    "name": "Patada de Glúteo en Polea",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e44.jpg",
+    "descSimple": "Con la polea en el tobillo e inclinado al frente apoyando las manos, lleva la pierna atrás extendida y aprieta el glúteo al tope. El movimiento sale de la cadera: mantén la espalda recta y no la arquees.",
+    "muscleLabel": "Glúteos"
+  },
+  {
+    "id": "e45",
+    "name": "Abducción de Cadera en Máquina",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e45.jpg",
+    "descSimple": "Sentado en la máquina, empuja las piernas hacia afuera contra la resistencia y aprieta el glúteo medio al final. Inclínate un poco al frente para sentirlo más y regresa con control, sin que el peso te cierre de golpe.",
+    "muscleLabel": "Glúteo medio y lateral"
+  },
+  {
+    "id": "e60",
+    "name": "Aducción de Cadera en Máquina",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e60.jpg",
+    "descSimple": "Siéntate en la máquina con las piernas abiertas sobre los soportes. Junta las piernas con control contra la resistencia, sintiendo la cara interna del muslo, y regresa despacio sin dejar que el peso te abra de golpe.",
+    "muscleLabel": "Cara interna del muslo"
+  },
+  {
+    "id": "e46",
+    "name": "Peso Muerto Piernas Rígidas",
+    "muscle": "gluteo",
+    "type": "Compuesto",
+    "img": "media/exercises/e46.jpg",
+    "descSimple": "A diferencia del Peso Muerto Rumano, aquí las piernas van casi completamente rectas. Baja el peso frente a las piernas sintiendo el estiramiento máximo en la parte trasera del muslo. Usa poco peso — es muy exigente para la espalda baja. ⚠️ No recomendado si tienes dolor ciático, hernia de disco o mucha curva en la espalda baja.",
+    "muscleLabel": "Glúteos y femoral"
+  },
+  {
+    "id": "e61",
+    "name": "Sentadilla Sumo",
+    "muscle": "gluteo",
+    "type": "Compuesto",
+    "img": "media/exercises/e61.jpg",
+    "descSimple": "Pies muy separados y apuntando hacia afuera. Baja en sentadilla. Trabaja más el glúteo y la cara interna del muslo que la sentadilla normal.",
+    "muscleLabel": "Glúteos y muslo interno"
+  },
+  {
+    "id": "e73",
+    "name": "Puente de Glúteo",
+    "muscle": "gluteo",
+    "type": "Bodyweight",
+    "img": "media/exercises/e73.jpg",
+    "descSimple": "Acuéstate boca arriba con las rodillas dobladas y los pies en el suelo. Sube las caderas apretando el glúteo al máximo. Aguanta 1 segundo arriba y baja lento. Sin barra ni equipos — perfecto para comenzar o calentar.",
+    "muscleLabel": "Glúteos"
+  },
+  {
+    "id": "e17",
+    "name": "Plancha Frontal",
+    "muscle": "core",
+    "type": "Isométrico",
+    "img": "media/exercises/e17.jpg",
+    "descSimple": "Apoya los antebrazos y las puntas de los pies en el suelo. Mantén el cuerpo recto como una tabla, apretando abdomen y glúteo, sin dejar caer la cadera. Los \"reps\" son segundos que aguantas.",
+    "muscleLabel": "Core (abdomen profundo)"
+  },
+  {
+    "id": "e18",
+    "name": "Crunch Abdominal",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e18.jpg",
+    "descSimple": "Acostado boca arriba con rodillas dobladas. Sube solo los hombros del suelo apretando el abdomen (el recto abdominal). No jales el cuello con las manos ni uses impulso. Baja lento.",
+    "muscleLabel": "Abdomen (recto abdominal)"
+  },
+  {
+    "id": "e49",
+    "name": "Plancha Lateral",
+    "muscle": "core",
+    "type": "Isométrico",
+    "img": "media/exercises/e49.jpg",
+    "descSimple": "Apoya el antebrazo bajo el hombro y el canto del pie; sube la cadera hasta que el cuerpo quede recto de lado. Aprieta el oblicuo y no dejes caer la cintura. Los \"reps\" son segundos por cada lado.",
+    "muscleLabel": "Oblicuos y core"
+  },
+  {
+    "id": "e62",
+    "name": "Russian Twist",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e62.jpg",
+    "descSimple": "Siéntate inclinado hacia atrás con las rodillas dobladas. Gira el torso de un lado al otro llevando las manos de lado a lado. Mantén la espalda recta, no redonda. Puedes apoyar los pies en el suelo si es muy difícil.",
+    "muscleLabel": "Oblicuos"
+  },
+  {
+    "id": "e63",
+    "name": "Hollow Body",
+    "muscle": "core",
+    "type": "Isométrico",
+    "img": "media/exercises/e63.jpg",
+    "descSimple": "Boca arriba, pega la lumbar al suelo y levanta brazos y piernas unos 15 cm. Mantén la posición sin que la espalda baja se despegue; si se levanta, sube un poco los brazos o las piernas. Los \"reps\" son segundos.",
+    "muscleLabel": "Core profundo"
+  },
+  {
+    "id": "e72",
+    "name": "Dead Bug",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e72.jpg",
+    "descSimple": "Acuéstate boca arriba. Sube los brazos al techo y dobla las rodillas a 90°. Pega la espalda baja al suelo. Baja el brazo derecho y la pierna izquierda a la vez sin despegar la espalda. Regresa y alterna. Lento y controlado.",
+    "muscleLabel": "Core profundo y estabilización"
+  },
+  {
+    "id": "e20",
+    "name": "Carrera / Caminata",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e20.jpg",
+    "descSimple": "Corre o camina en la cinta o al aire libre con la postura erguida y la pisada suave. Los \"reps\" son minutos. Busca un ritmo en el que puedas hablar entrecortado: ese es tu punto de cardio sostenible.",
+    "muscleLabel": "Cardio (corazón y piernas)"
+  },
+  {
+    "id": "e64",
+    "name": "Bicicleta Estática",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e64.jpg",
+    "descSimple": "Ajusta el sillín para que la rodilla no se estire del todo abajo. Pedalea a una cadencia constante sin mecerte. Los \"reps\" son minutos: ideal para calentar o como cardio ligero sin impacto en las rodillas.",
+    "muscleLabel": "Cardio y piernas"
+  },
+  {
+    "id": "e65",
+    "name": "Remo Ergómetro",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e65.jpg",
+    "descSimple": "En la máquina de remo el orden es piernas, tronco y brazos: empuja con las piernas, inclínate un poco atrás y jala a la barriga; regresa a la inversa. Los \"reps\" son minutos. Espalda firme, trabaja todo el cuerpo.",
+    "muscleLabel": "Cardio y cuerpo completo"
+  },
+  {
+    "id": "e66",
+    "name": "Salto a la Cuerda",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e66.jpg",
+    "descSimple": "Salta la cuerda con saltos bajos sobre la punta del pie; el giro sale de las muñecas, no de los brazos. Los \"reps\" son minutos por ronda: empieza lento, aterriza suave y sube la velocidad cuando el ritmo te salga natural.",
+    "muscleLabel": "Cardio y coordinación"
+  },
+  {
+    "id": "e67",
+    "name": "Elíptica",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e67.jpg",
+    "descSimple": "Pedalea erguido sin colgarte de los brazos, empujando con las piernas a una cadencia pareja. Los \"reps\" son minutos. Sin impacto en las rodillas: excelente para calentar o para días de recuperación activa.",
+    "muscleLabel": "Cardio (sin impacto)"
+  },
+  {
+    "id": "e74",
+    "name": "HIIT / Intervalos",
+    "muscle": "cardio",
+    "type": "HIIT",
+    "img": "media/exercises/e74.jpg",
+    "descSimple": "Alterna períodos de máximo esfuerzo (20-40 segundos) con períodos de descanso suave (20-40 segundos). Puedes hacerlo corriendo, en bici o saltando. Los \"reps\" son intervalos completos. Más efectivo que correr a ritmo constante para quemar grasa.",
+    "muscleLabel": "Cardio (quema de grasa)"
+  },
+  {
+    "id": "e68",
+    "name": "Peso Muerto Sumo",
+    "muscle": "otro",
+    "type": "Compuesto",
+    "img": "media/exercises/e68.jpg",
+    "descSimple": "Pies muy abiertos con las puntas apuntando hacia afuera. Agarra la barra entre las piernas. Espalda recta y pecho arriba. Empuja el suelo con los pies para levantarte. Las rodillas siguen la dirección de los pies.",
+    "muscleLabel": "Piernas, glúteos y espalda"
+  },
+  {
+    "id": "e69",
+    "name": "Clean & Press ⚠️ AVANZADO",
+    "muscle": "otro",
+    "type": "Funcional",
+    "img": "media/exercises/e69.jpg",
+    "descSimple": "Levanta la barra del suelo de manera explosiva hasta los hombros y luego empuja hacia arriba. Es un movimiento avanzado que requiere aprender la técnica antes de usar peso. Pide guía a tu coach antes de intentarlo. ⚠️ Solo para nivel intermedio-avanzado con supervisión.",
+    "muscleLabel": "Cuerpo completo"
+  },
+  {
+    "id": "e75",
+    "name": "Burpees",
+    "muscle": "cardio",
+    "type": "Bodyweight",
+    "img": "media/exercises/e75.jpg",
+    "descSimple": "Baja las manos al suelo, lleva los pies atrás (salta o da pasos si es tu primera vez), regresa los pies y salta arriba con los brazos al cielo. Descansa bien entre cada repetición — la calidad manda sobre la cantidad.",
+    "muscleLabel": "Cardio y cuerpo completo"
+  },
+  {
+    "id": "e76",
+    "name": "Saltos de Tijera",
+    "muscle": "cardio",
+    "type": "Bodyweight",
+    "img": "media/exercises/e76.jpg",
+    "descSimple": "Salta abriendo las piernas y subiendo los brazos al mismo tiempo, luego salta juntándolos de nuevo. Ritmo constante y aterrizaje suave. Ideal para calentar o como cardio ligero.",
+    "muscleLabel": "Cardio y coordinación"
+  },
+  {
+    "id": "e77",
+    "name": "Flexiones en Pared",
+    "muscle": "pecho",
+    "type": "Bodyweight",
+    "img": "media/exercises/e77.jpg",
+    "descSimple": "Parado frente a la pared, apoya las manos a la altura del pecho. Dobla los codos acercándote a la pared y empuja de regreso. Cuerpo recto de cabeza a pies — no dejes caer la cadera.",
+    "muscleLabel": "Pecho, hombros y tríceps"
+  },
+  {
+    "id": "e78",
+    "name": "Flexiones en Rodillas",
+    "muscle": "pecho",
+    "type": "Bodyweight",
+    "img": "media/exercises/e78.jpg",
+    "descSimple": "Apoya las rodillas y las manos en el suelo. Mantén el cuerpo recto desde las rodillas hasta la cabeza y baja el pecho hacia el suelo doblando los codos. Sube empujando. Si la cadera cae o sube, es la señal de parar.",
+    "muscleLabel": "Pecho, hombros y tríceps"
+  },
+  {
+    "id": "e79",
+    "name": "Fondos en Banco (Tríceps)",
+    "muscle": "triceps",
+    "type": "Bodyweight",
+    "img": "media/exercises/e79.jpg",
+    "descSimple": "Siéntate en el borde de una silla firme, apoya las manos en el borde y desliza las nalgas hacia adelante. Baja doblando los codos hasta 90 grados y sube empujando con el tríceps (parte de atrás del brazo). Rodillas dobladas, pies en el suelo. Si sientes molestia en el hombro, detente.",
+    "muscleLabel": "Tríceps y pecho inferior"
+  },
+  {
+    "id": "e81",
+    "name": "Mountain Climbers",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e81.jpg",
+    "descSimple": "Apoya las manos en el suelo como en una flexión. Sin mover la cadera, lleva una rodilla hacia el pecho y regrésala, luego la otra. El cuerpo queda como una tabla que no se mueve excepto las piernas. Cuenta 1 repetición por cada pierna.",
+    "muscleLabel": "Core, cardio y cadera"
+  },
+  {
+    "id": "e82",
+    "name": "Superman",
+    "muscle": "espalda",
+    "type": "Isométrico",
+    "img": "media/exercises/e82.jpg",
+    "descSimple": "Acuéstate boca abajo con los brazos extendidos al frente. Sube brazos y piernas del suelo al mismo tiempo apretando el glúteo. Aguanta 2 segundos y baja. La cabeza sigue el movimiento natural del cuerpo — no la fuerces hacia arriba.",
+    "muscleLabel": "Espalda baja y glúteos"
+  },
+  {
+    "id": "e83",
+    "name": "Lagartijas (Push-up)",
+    "muscle": "pecho",
+    "type": "Bodyweight",
+    "img": "media/exercises/e83.jpg",
+    "descSimple": "Apoya las manos y las puntas de los pies. El cuerpo queda recto como una tabla. Baja el pecho al suelo doblando los codos en diagonal (no hacia los lados) y sube empujando. Si no puedes completo, apoya las rodillas.",
+    "muscleLabel": "Pecho, hombros y tríceps"
+  },
+  {
+    "id": "e87",
+    "name": "Patada Lateral en Polea",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e87.jpg",
+    "descSimple": "Con la polea en el tobillo, párate de lado a la máquina. Lleva la pierna hacia afuera separándola del cuerpo. Core activo y espalda recta. Regresa lento sin dejar caer el pie. Siente el costado del glúteo trabajar.",
+    "muscleLabel": "Glúteo medio y lateral"
+  },
+  {
+    "id": "e88",
+    "name": "Patada en Polea Rodilla Doblada",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e88.jpg",
+    "descSimple": "Con la polea en el tobillo, inclínate ligeramente hacia adelante apoyando las manos. Dobla la rodilla a 90° y lleva el talón hacia el techo apretando el glúteo al máximo. No muevas la cadera. Baja lento.",
+    "muscleLabel": "Glúteo mayor (aislamiento)"
+  },
+  {
+    "id": "e89",
+    "name": "Clamshell con Banda (Concha)",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e89.jpg",
+    "descSimple": "Acuéstate de lado con las rodillas dobladas y la banda a la altura de las rodillas. Mantén los pies juntos y abre la rodilla de arriba hacia el techo lo que más puedas sin girar la cadera. Cierra lento. Vas a sentir el costado del glúteo trabajar — es exactamente lo que buscamos.",
+    "muscleLabel": "Glúteo medio"
+  },
+  {
+    "id": "e90",
+    "name": "Fire Hydrant (Hidrante)",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e90.jpg",
+    "descSimple": "Apoya manos y rodillas en el suelo (posición de cuatro apoyos). Sin mover la cadera, lleva una rodilla doblada hacia afuera y arriba, como un perro marcando territorio. Baja lento sin dejar caer la cadera. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Glúteo medio y rotadores de cadera"
+  },
+  {
+    "id": "e91",
+    "name": "Frog Pump (Bomba de Rana)",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e91.jpg",
+    "descSimple": "Acuéstate boca arriba y une las plantas de los pies con las rodillas abiertas hacia los lados (como una rana). Sube las caderas apretando el glúteo al máximo arriba. Baja sin llegar a tocar el suelo y repite. Vas a sentir una quema intensa en el glúteo — es lo normal.",
+    "muscleLabel": "Glúteo mayor"
+  },
+  {
+    "id": "e92",
+    "name": "Hip Thrust Unilateral",
+    "muscle": "gluteo",
+    "type": "Compuesto",
+    "img": "media/exercises/e92.jpg",
+    "descSimple": "Igual que el hip thrust normal pero con una sola pierna en el suelo. Extiende la otra pierna hacia adelante. Sube la cadera apretando el glúteo del lado de la pierna apoyada. Es más difícil — usa primero solo el peso de tu cuerpo antes de agregar carga.",
+    "muscleLabel": "Glúteos (unilateral)"
+  },
+  {
+    "id": "e93",
+    "name": "Sentadilla con Banda de Resistencia",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e93.jpg",
+    "descSimple": "Coloca una banda de resistencia a la altura de las rodillas o muslos. Haz la sentadilla empujando las rodillas hacia afuera contra la banda — esto activa el costado del glúteo. No dejes que las rodillas colapsen hacia adentro. Es más difícil de lo que parece.",
+    "muscleLabel": "Cuádriceps, glúteos y glúteo medio"
+  },
+  {
+    "id": "e94",
+    "name": "Abducción de Cadera de Pie con Banda",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e94.jpg",
+    "descSimple": "Coloca la banda en los tobillos o justo encima de las rodillas. Párate en una pierna (apóyate en la pared si necesitas). Lleva la otra pierna hacia afuera separándola del cuerpo. Regresa lento sin dejar caer el pie. Siente el costado del glúteo trabajar.",
+    "muscleLabel": "Glúteo medio y menor"
+  },
+  {
+    "id": "e95",
+    "name": "Peso Muerto Rumano a Una Pierna",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e95.jpg",
+    "descSimple": "Párate en una pierna con la mancuerna en la mano opuesta (mano derecha si apoyas en pie izquierdo). Inclínate hacia adelante desde la cadera dejando que la pierna libre suba hacia atrás, formando una T con el cuerpo. Siente el estiramiento en la parte de atrás del muslo. Regresa lento. Empieza sin peso hasta dominar el equilibrio.",
+    "muscleLabel": "Femoral y glúteos (unilateral)"
+  },
+  {
+    "id": "e96",
+    "name": "Kickback con Banda (en Suelo)",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e96.jpg",
+    "descSimple": "En cuatro apoyos (manos y rodillas en el suelo), coloca la banda alrededor de los pies. Extiende una pierna hacia atrás hasta que esté casi recta, apretando el glúteo al máximo. Baja lento sin dejar caer la rodilla al suelo. Cuenta las reps por cada lado. Para mayor dificultad, mantén 1 segundo arriba.",
+    "muscleLabel": "Glúteo mayor"
+  },
+  {
+    "id": "e97",
+    "name": "Pike Push-up (Flexión Pica)",
+    "muscle": "hombros",
+    "type": "Bodyweight",
+    "img": "media/exercises/e97.jpg",
+    "descSimple": "Ponte en posición de flexión pero levanta la cadera formando una V o pico con el cuerpo. Baja la cabeza hacia el suelo doblando los codos, como si empujaras hacia arriba con los hombros. Cuanto más alta la cadera, más trabaja el hombro. Si es difícil, apoya las manos en una silla.",
+    "muscleLabel": "Hombros"
+  },
+  {
+    "id": "e98",
+    "name": "Press de Hombro con Banda",
+    "muscle": "hombros",
+    "type": "Compuesto",
+    "img": "media/exercises/e98.jpg",
+    "descSimple": "Párate sobre el centro de la banda con los dos pies. Toma un extremo en cada mano a la altura de los hombros. Empuja las manos hacia arriba hasta estirar los brazos. Baja lento. Cuenta las repeticiones (no hay peso que anotar).",
+    "muscleLabel": "Hombros"
+  },
+  {
+    "id": "e99",
+    "name": "Elevaciones Laterales con Banda",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e99.jpg",
+    "descSimple": "Párate sobre la banda con un pie. Toma los extremos y sube los brazos hacia los lados hasta la altura de los hombros, como abriendo alas. Baja despacio. No uses impulso. Cuenta las repeticiones.",
+    "muscleLabel": "Hombro lateral"
+  },
+  {
+    "id": "e100",
+    "name": "Face Pull con Banda",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e100.jpg",
+    "descSimple": "Engancha la banda a algo firme a la altura de tu cara (una manija, un poste). Toma un extremo en cada mano y jala hacia tu frente abriendo los codos hacia los lados. Aprieta la parte de atrás de los hombros. Excelente para la postura.",
+    "muscleLabel": "Hombro posterior y postura"
+  },
+  {
+    "id": "e101",
+    "name": "Curl de Bíceps con Banda",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e101.jpg",
+    "descSimple": "Párate sobre la banda con los dos pies. Toma un extremo en cada mano con las palmas al frente. Dobla los codos subiendo las manos hacia los hombros y aprieta el bíceps. Mantén los codos pegados al cuerpo. Baja lento. Cuenta las repeticiones.",
+    "muscleLabel": "Bíceps"
+  },
+  {
+    "id": "e102",
+    "name": "Curl Martillo con Banda",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e102.jpg",
+    "descSimple": "Párate sobre la banda. Toma los extremos con las palmas mirándose entre sí (como sosteniendo un martillo). Sube doblando los codos sin girar las muñecas, apretando bíceps y antebrazo. Codos quietos. Cuenta las repeticiones.",
+    "muscleLabel": "Bíceps y antebrazo"
+  },
+  {
+    "id": "e103",
+    "name": "Dominada Supina (Chin-up)",
+    "muscle": "biceps",
+    "type": "Bodyweight",
+    "img": "media/exercises/e103.jpg",
+    "descSimple": "Cuélgate de una barra con las palmas mirando hacia ti y las manos al ancho de los hombros. Sube hasta que el mentón pase la barra, sintiendo trabajar bíceps y espalda. Baja lento. Si no puedes solo, pon una banda bajo los pies para que te ayude.",
+    "muscleLabel": "Bíceps y espalda"
+  },
+  {
+    "id": "e104",
+    "name": "Remo con Banda",
+    "muscle": "espalda",
+    "type": "Compuesto",
+    "img": "media/exercises/e104.jpg",
+    "descSimple": "Engancha la banda a algo firme al frente (o pásala por una puerta). Siéntate o párate y toma un extremo en cada mano. Tira llevando los codos hacia atrás, juntando los omóplatos como si apretaras un lápiz entre ellos. Regresa lento. Cuenta las repeticiones.",
+    "muscleLabel": "Espalda media"
+  },
+  {
+    "id": "e105",
+    "name": "Extensión de Tríceps con Banda",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e105.jpg",
+    "descSimple": "Engancha la banda en alto (una puerta, un poste). Toma el extremo con ambas manos y, con los codos pegados al cuerpo, estira los brazos hacia abajo apretando el tríceps. Sube lento sin mover los codos. Cuenta las repeticiones.",
+    "muscleLabel": "Tríceps"
+  },
+  {
+    "id": "e106",
+    "name": "Puente de Glúteo a Una Pierna",
+    "muscle": "gluteo",
+    "type": "Bodyweight",
+    "img": "media/exercises/e106.jpg",
+    "descSimple": "Acuéstate boca arriba con una rodilla doblada y el pie en el suelo; estira la otra pierna al aire. Sube la cadera apretando el glúteo de la pierna apoyada, manteniendo la otra recta. Baja lento sin tocar el suelo. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Glúteo mayor (unilateral)"
+  },
+  {
+    "id": "e107",
+    "name": "Step-up a Peso Corporal",
+    "muscle": "piernas",
+    "type": "Funcional",
+    "img": "media/exercises/e107.jpg",
+    "descSimple": "Párate frente a un escalón o banco firme. Sube apoyando todo un pie y empujando con esa pierna hasta quedar de pie arriba. Baja despacio controlando. Trabaja una pierna a la vez. Cuenta las repeticiones por cada lado. Usa un escalón más bajo si te cuesta.",
+    "muscleLabel": "Cuádriceps y glúteo"
+  },
+  {
+    "id": "e108",
+    "name": "Sentadilla a Una Pierna Asistida",
+    "muscle": "piernas",
+    "type": "Bodyweight",
+    "img": "media/exercises/e108.jpg",
+    "descSimple": "Sujétate de un marco de puerta o algo firme con las manos. Párate en una pierna y baja como en una sentadilla, dejando la otra pierna al frente sin tocar el suelo. Usa los brazos solo lo necesario para ayudarte. Sube apretando la pierna. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Cuádriceps, glúteo y equilibrio"
+  },
+  {
+    "id": "e109",
+    "name": "Elevaciones Y-T-W en Suelo",
+    "muscle": "hombros",
+    "type": "Bodyweight",
+    "img": "media/exercises/e109.jpg",
+    "descSimple": "Acuéstate boca abajo. Levanta los brazos del suelo formando primero una Y (brazos arriba en diagonal), luego una T (brazos a los lados) y luego una W (codos doblados pegados al cuerpo). Aprieta la espalda alta en cada posición. Ideal para la postura y para cuidar los hombros.",
+    "muscleLabel": "Hombro posterior y postura"
+  },
+  {
+    "id": "e111",
+    "name": "Pec Deck (Máquina Contractora)",
+    "muscle": "pecho",
+    "type": "Aislamiento",
+    "img": "media/exercises/e111.jpg",
+    "descSimple": "Siéntate con la espalda apoyada y agarra los manerales con los codos a la altura del pecho. Junta los brazos al frente apretando el pecho 1 segundo y abre despacio, sin dejar que el peso te jale de golpe. No abras más allá de donde el hombro se sienta cómodo.",
+    "muscleLabel": "Pecho (pectoral mayor)"
+  },
+  {
+    "id": "e112",
+    "name": "Aperturas con Mancuernas en Banco",
+    "muscle": "pecho",
+    "type": "Aislamiento",
+    "img": "media/exercises/e112.jpg",
+    "descSimple": "Acuéstate en el banco con una mancuerna en cada mano sobre el pecho. Con los codos un poco doblados y quietos, abre los brazos en arco hasta sentir el estiramiento del pecho y ciérralos como si abrazaras a alguien. Usa menos peso del que crees: aquí manda el estiramiento, no la carga.",
+    "muscleLabel": "Pecho (pectoral mayor)"
+  },
+  {
+    "id": "e113",
+    "name": "Flexiones Inclinadas (Manos Elevadas)",
+    "muscle": "pecho",
+    "type": "Bodyweight",
+    "img": "media/exercises/e113.jpg",
+    "descSimple": "Apoya las manos en un banco, mesa o baranda firme, con el cuerpo recto como una tabla. Baja el pecho hacia el apoyo doblando los codos y empuja para subir. Mientras más alto el apoyo, más fácil. Cuando logres 15 repeticiones fáciles, busca un apoyo más bajo.",
+    "muscleLabel": "Pecho, hombros y tríceps"
+  },
+  {
+    "id": "e114",
+    "name": "Remo Sentado en Máquina",
+    "muscle": "espalda",
+    "type": "Compuesto",
+    "img": "media/exercises/e114.jpg",
+    "descSimple": "Siéntate con el pecho apoyado en el cojín y agarra los manerales. Tira hacia ti llevando los codos hacia atrás y aprieta los omóplatos como si quisieras juntar ambos codos detrás de la espalda. Regresa despacio sin soltar el peso de golpe. El pecho no se despega del apoyo.",
+    "muscleLabel": "Espalda media y dorsal"
+  },
+  {
+    "id": "e115",
+    "name": "Encogimientos con Mancuernas",
+    "muscle": "espalda",
+    "type": "Aislamiento",
+    "img": "media/exercises/e115.jpg",
+    "descSimple": "De pie con una mancuerna en cada mano a los lados del cuerpo, sube los hombros hacia las orejas lo más alto que puedas, aguanta 1 segundo y baja despacio. Los brazos quedan rectos todo el tiempo: solo se mueven los hombros, sin hacer círculos.",
+    "muscleLabel": "Trapecio (cuello-hombro)"
+  },
+  {
+    "id": "e116",
+    "name": "Hiperextensiones en Banco Romano",
+    "muscle": "espalda",
+    "type": "Compuesto",
+    "img": "media/exercises/e116.jpg",
+    "descSimple": "Acomódate en el banco inclinado con los muslos en el cojín y los pies fijos. Cruza los brazos sobre el pecho, baja el torso controlado manteniendo la espalda recta y sube apretando glúteo y espalda baja hasta quedar en línea recta, sin pasar de ahí ni arquearte de más arriba.",
+    "muscleLabel": "Espalda baja, glúteo y femoral"
+  },
+  {
+    "id": "e117",
+    "name": "Elevaciones Laterales en Polea",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e117.jpg",
+    "descSimple": "Párate de lado a la polea baja y toma la manija con la mano más lejana (el cable cruza por delante del cuerpo). Sube el brazo hacia el lado hasta la altura del hombro guiando con el codo y baja despacio. La polea hace que el hombro trabaje durante todo el recorrido.",
+    "muscleLabel": "Hombro lateral (deltoides medio)"
+  },
+  {
+    "id": "e118",
+    "name": "Press Arnold con Mancuernas",
+    "muscle": "hombros",
+    "type": "Compuesto",
+    "img": "media/exercises/e118.jpg",
+    "descSimple": "Sentado, sostén las mancuernas frente al pecho con las palmas mirando hacia ti. Empuja hacia arriba girando las muñecas, de modo que arriba las palmas miren al frente. Baja deshaciendo el giro, despacio. Usa menos peso que en el press normal: el giro es lo que trabaja.",
+    "muscleLabel": "Deltoides (las 3 cabezas)"
+  },
+  {
+    "id": "e119",
+    "name": "Posteriores en Máquina (Pec Deck Inverso)",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e119.jpg",
+    "descSimple": "Siéntate de frente al respaldo de la máquina contractora y agarra los manerales con los brazos extendidos al frente. Abre los brazos hacia atrás como si quisieras juntar los omóplatos, aguanta 1 segundo y regresa despacio. Trabaja la parte de atrás del hombro, la que casi nadie entrena.",
+    "muscleLabel": "Hombro posterior"
+  },
+  {
+    "id": "e120",
+    "name": "Curl Concentrado con Mancuerna",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e120.jpg",
+    "descSimple": "Siéntate con las piernas abiertas y apoya el codo contra la parte interna del muslo. Sube la mancuerna doblando el codo y apretando el bíceps, aguanta arriba y baja despacio hasta estirar el brazo. El codo nunca se despega del muslo. Un brazo a la vez.",
+    "muscleLabel": "Bíceps (pico)"
+  },
+  {
+    "id": "e121",
+    "name": "Curl Inclinado con Mancuernas",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e121.jpg",
+    "descSimple": "Recuéstate en un banco inclinado con una mancuerna en cada mano y deja los brazos colgar hacia atrás. Sube doblando solo los codos, sin mover los hombros, y baja muy despacio hasta sentir el estiramiento del bíceps. Usa menos peso que en el curl normal: el estiramiento es la clave.",
+    "muscleLabel": "Bíceps (cabeza larga)"
+  },
+  {
+    "id": "e122",
+    "name": "Patada de Tríceps con Mancuerna (Kickback)",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e122.jpg",
+    "descSimple": "Inclínate hacia adelante con la espalda recta (puedes apoyar una mano en un banco). Sube el codo hasta que el brazo quede paralelo al suelo y, sin moverlo de ahí, estira el antebrazo hacia atrás apretando el tríceps. Regresa despacio. Si necesitas balancearte, baja el peso.",
+    "muscleLabel": "Tríceps"
+  },
+  {
+    "id": "e123",
+    "name": "Flexiones Diamante",
+    "muscle": "triceps",
+    "type": "Bodyweight",
+    "img": "media/exercises/e123.jpg",
+    "descSimple": "Ponte en posición de lagartija pero con las manos juntas debajo del pecho, formando un diamante con los dedos. Baja con los codos pegados al cuerpo y empuja para subir, sintiendo la parte de atrás del brazo. Si aún no dominas las lagartijas normales, empieza por esas.",
+    "muscleLabel": "Tríceps y pecho interno"
+  },
+  {
+    "id": "e124",
+    "name": "Zancada Inversa",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e124.jpg",
+    "descSimple": "De pie, da un paso largo hacia atrás y baja la rodilla de atrás hacia el suelo, manteniendo el torso recto. Empuja con el talón de la pierna de adelante para volver a ponerte de pie. Más amable con las rodillas que la zancada hacia adelante. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Cuádriceps y glúteos"
+  },
+  {
+    "id": "e125",
+    "name": "Zancada Caminando con Mancuernas",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e125.jpg",
+    "descSimple": "Con una mancuerna en cada mano, da un paso largo al frente, baja la rodilla trasera hacia el suelo y, al subir, encadena el paso con la otra pierna avanzando. El torso siempre recto y las rodillas en la dirección de los pies. Cuenta las repeticiones por cada pierna.",
+    "muscleLabel": "Cuádriceps, glúteos y estabilidad"
+  },
+  {
+    "id": "e126",
+    "name": "Curl Femoral Sentado en Máquina",
+    "muscle": "piernas",
+    "type": "Aislamiento",
+    "img": "media/exercises/e126.jpg",
+    "descSimple": "Siéntate con la espalda bien pegada al respaldo y las piernas sobre el rodillo. Dobla las rodillas llevando los talones hacia abajo y atrás, apretando la parte trasera del muslo, y regresa muy despacio. No despegues la cadera del asiento al hacer fuerza.",
+    "muscleLabel": "Femoral (parte trasera del muslo)"
+  },
+  {
+    "id": "e127",
+    "name": "Sentadilla Frontal con Barra",
+    "muscle": "piernas",
+    "type": "Compuesto",
+    "img": "media/exercises/e127.jpg",
+    "descSimple": "Apoya la barra al frente, sobre los hombros, con los codos apuntando hacia adelante y bien altos. Baja en sentadilla manteniendo el torso lo más vertical posible y sube empujando el suelo. Si los codos caen, la barra se rueda: empieza con poco peso hasta dominar la posición.",
+    "muscleLabel": "Cuádriceps y core"
+  },
+  {
+    "id": "e128",
+    "name": "Sentadilla Isométrica en Pared (Wall Sit)",
+    "muscle": "piernas",
+    "type": "Isométrico",
+    "img": "media/exercises/e128.jpg",
+    "descSimple": "Apoya toda la espalda en una pared y baja deslizándote hasta que los muslos queden paralelos al suelo, como sentado en una silla invisible. Aguanta ahí respirando normal, sin apoyar las manos en las piernas. Los \"reps\" son segundos. Quema, pero es muy seguro.",
+    "muscleLabel": "Cuádriceps"
+  },
+  {
+    "id": "e129",
+    "name": "Paseo Lateral con Banda",
+    "muscle": "gluteo",
+    "type": "Aislamiento",
+    "img": "media/exercises/e129.jpg",
+    "descSimple": "Ponte una banda alrededor de las piernas (arriba de las rodillas), baja a media sentadilla y da pasos hacia un lado sin que los pies se junten del todo, manteniendo la banda siempre estirada. Da los pasos hacia un lado y luego regresa. Sentirás arder el costado de la cadera: ese es el músculo que cuida tus rodillas.",
+    "muscleLabel": "Glúteo medio (estabilidad de cadera)"
+  },
+  {
+    "id": "e130",
+    "name": "Patada de Glúteo en Cuadrupedia",
+    "muscle": "gluteo",
+    "type": "Bodyweight",
+    "img": "media/exercises/e130.jpg",
+    "descSimple": "Ponte en el suelo sobre manos y rodillas. Con la rodilla doblada, sube una pierna llevando el talón hacia el techo y aprieta el glúteo arriba 1 segundo. Baja sin tocar el suelo y repite. No arquees la espalda baja para subir más: el movimiento es de la cadera. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Glúteo mayor"
+  },
+  {
+    "id": "e131",
+    "name": "Crunch en Polea Alta",
+    "muscle": "core",
+    "type": "Aislamiento",
+    "img": "media/exercises/e131.jpg",
+    "descSimple": "Arrodíllate frente a la polea alta sosteniendo la cuerda a los lados de la cabeza. Enróllate hacia abajo llevando los codos hacia los muslos, apretando el abdomen como si quisieras juntar las costillas con la cadera. Regresa despacio. Los brazos solo sostienen: el que jala es el abdomen.",
+    "muscleLabel": "Abdomen (recto abdominal)"
+  },
+  {
+    "id": "e132",
+    "name": "Elevación de Piernas Tumbado",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e132.jpg",
+    "descSimple": "Acuéstate boca arriba con las manos bajo la cadera y la espalda baja pegada al suelo. Sube las piernas casi rectas hasta la vertical y bájalas despacio sin que la espalda baja se despegue del piso. Si se despega, dobla un poco las rodillas. Mucho más accesible que la versión colgado de la barra.",
+    "muscleLabel": "Abdomen bajo"
+  },
+  {
+    "id": "e133",
+    "name": "Press Pallof con Banda",
+    "muscle": "core",
+    "type": "Funcional",
+    "img": "media/exercises/e133.jpg",
+    "descSimple": "Engancha la banda a un poste a la altura del pecho y párate de lado, sosteniéndola con las dos manos al pecho. Estira los brazos al frente y aguanta 2-3 segundos sin dejar que la banda te gire el cuerpo; regresa las manos al pecho. El abdomen trabaja quieto, resistiendo. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Core (anti-rotación)"
+  },
+  {
+    "id": "e134",
+    "name": "Bird Dog (Perro de Caza)",
+    "muscle": "core",
+    "type": "Bodyweight",
+    "img": "media/exercises/e134.jpg",
+    "descSimple": "Ponte sobre manos y rodillas con la espalda plana. Estira al mismo tiempo un brazo al frente y la pierna contraria hacia atrás, sin que la cadera se ladee ni la espalda se mueva. Aguanta 2 segundos y cambia de lado. Imagina que llevas un vaso de agua apoyado en la espalda: que no se caiga.",
+    "muscleLabel": "Core y espalda baja (estabilidad)"
+  },
+  {
+    "id": "e135",
+    "name": "Escaladora (Stair Climber)",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e135.jpg",
+    "descSimple": "Sube a la escaladora y camina los escalones pisando con todo el pie, con el cuerpo derecho. Apoya las manos solo para equilibrarte, sin descargar el peso en las barandas. Los \"reps\" son minutos. Quema bastante y además trabaja glúteos y piernas.",
+    "muscleLabel": "Cardio, glúteos y piernas"
+  },
+  {
+    "id": "e136",
+    "name": "Caminata del Granjero (Farmers Walk)",
+    "muscle": "otro",
+    "type": "Funcional",
+    "img": "media/exercises/e136.jpg",
+    "descSimple": "Toma una mancuerna o pesa en cada mano, ponte derecho con los hombros atrás y camina dando pasos cortos y firmes, sin inclinarte a ningún lado. Los \"reps\" son pasos. Suelta el peso cuando ya no puedas mantener la postura, no cuando se te abran las manos. Trabaja agarre, abdomen y postura a la vez.",
+    "muscleLabel": "Agarre, core y cuerpo completo"
+  },
+  {
+    "id": "e137",
+    "name": "Pullover con Mancuerna en Banco",
+    "muscle": "espalda",
+    "type": "Aislamiento",
+    "img": "media/exercises/e137.jpg",
+    "descSimple": "Acuéstate en el banco sosteniendo UNA mancuerna con las dos manos sobre el pecho. Con los brazos casi rectos, llévala en arco por detrás de la cabeza hasta sentir el estiramiento de la espalda y el pecho, y regresa al inicio. Agarra firme la mancuerna por dentro del disco de arriba y no bajes más de donde el hombro se sienta cómodo.",
+    "muscleLabel": "Dorsal, serrato y pecho"
+  },
+  {
+    "id": "e138",
+    "name": "Rotación Externa con Banda",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e138.jpg",
+    "descSimple": "Engancha la banda a un poste a la altura del codo y párate de lado. Con el codo pegado al cuerpo y doblado a 90 grados, gira el antebrazo hacia afuera (como abriendo una puerta) y regresa despacio. Se siente suave y así debe ser: este ejercicio cuida los músculos profundos que protegen tu hombro. Cuenta las repeticiones por cada lado.",
+    "muscleLabel": "Manguito rotador (salud del hombro)"
+  },
+  {
+    "id": "e139",
+    "name": "Curl Invertido con Barra",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e139.jpg",
+    "descSimple": "Toma la barra con las palmas mirando hacia ABAJO y los codos pegados al cuerpo. Sube doblando los codos sin que las muñecas se quiebren hacia abajo y baja despacio. Usa bastante menos peso que en el curl normal: aquí trabajan el antebrazo y un músculo que está debajo del bíceps y empuja el brazo hacia afuera.",
+    "muscleLabel": "Antebrazo y braquial"
+  },
+  {
+    "id": "e140",
+    "name": "Curl de Muñeca con Barra",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e140.jpg",
+    "descSimple": "Siéntate y apoya los antebrazos en los muslos o en un banco, con las palmas hacia arriba y las muñecas colgando por fuera del borde. Deja rodar la barra hacia los dedos, ciérrala y sube doblando solo las muñecas. Baja despacio. Es un movimiento cortico: el antebrazo no se despega del apoyo. Fortalece el agarre para todos los demás ejercicios.",
+    "muscleLabel": "Antebrazo (flexores de muñeca)"
+  },
+  {
+    "id": "e141",
+    "name": "Marcha en el Sitio",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e141.jpg",
+    "descSimple": "Camina en el mismo sitio levantando las rodillas y moviendo los brazos, sin saltar. Empieza suave; el ritmo está bien si todavía puedes hablar. Cero golpe a las rodillas.",
+    "muscleLabel": "Cardio (cuerpo completo)"
+  },
+  {
+    "id": "e142",
+    "name": "Paso Lateral (Step-Touch)",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e142.jpg",
+    "descSimple": "Da un paso a la derecha y junta el pie izquierdo; luego a la izquierda. Como bailando suave de lado a lado, moviendo los brazos. Sin saltos, ritmo constante.",
+    "muscleLabel": "Cardio (cuerpo completo)"
+  },
+  {
+    "id": "e143",
+    "name": "Talones Atrás Suave",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e143.jpg",
+    "descSimple": "En el mismo lugar, lleva un talón hacia el glúteo y luego el otro, suave, casi sin saltar. Acompaña con los brazos. Si cansa, baja el ritmo.",
+    "muscleLabel": "Cardio (piernas)"
+  },
+  {
+    "id": "e144",
+    "name": "Sombra de Boxeo",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e144.jpg",
+    "descSimple": "Sube las manos como guardia y lanza golpes al aire al frente, alternando brazos, moviéndote suave sobre las piernas. Diviértete y mantén el ritmo. Nada de saltos.",
+    "muscleLabel": "Cardio (cuerpo completo)"
+  },
+  {
+    "id": "e145",
+    "name": "Subir y Bajar Escalón",
+    "muscle": "cardio",
+    "type": "Cardio",
+    "img": "media/exercises/e145.jpg",
+    "descSimple": "Usa un escalón o banca bajita. Sube con un pie, luego el otro, y baja igual. Cambia la pierna que empieza cada tanto. Sube y baja a ritmo cómodo, agarrándote de algo si lo necesitas.",
+    "muscleLabel": "Cardio y piernas"
+  },
+  {
+    "id": "e146",
+    "name": "Remo Invertido en Mesa o Barra Baja",
+    "muscle": "espalda",
+    "type": "Bodyweight",
+    "img": "media/exercises/e146.jpg",
+    "descSimple": "Acuéstate boca arriba debajo de una mesa resistente (o barra baja). Agárrate del borde y jala tu pecho hacia la mesa manteniendo el cuerpo en línea, como un remo al revés. Si pesa mucho, dobla las rodillas y apoya más los pies.",
+    "muscleLabel": "Espalda y bíceps"
+  },
+  {
+    "id": "e147",
+    "name": "Remo con Toalla en Puerta",
+    "muscle": "espalda",
+    "type": "Bodyweight",
+    "img": "media/exercises/e147.jpg",
+    "descSimple": "Enrolla una toalla por el borde de una puerta cerrada y bien firme; agárrala con las dos manos. Inclínate hacia atrás con los brazos estirados y jálate hacia la puerta apretando la espalda. Cuanto más atrás te inclines, más cuesta.",
+    "muscleLabel": "Espalda y bíceps"
+  },
+  {
+    "id": "e148",
+    "name": "Patrón de Bisagra (Buenos Días sin Peso)",
+    "muscle": "espalda",
+    "type": "Bodyweight",
+    "img": "media/exercises/e148.jpg",
+    "descSimple": "De pie, manos en la nuca y rodillas un poco dobladas. Empuja la cola hacia atrás y baja el pecho con la espalda RECTA (no encorvada), hasta sentir el estiramiento atrás del muslo; vuelve apretando los glúteos. Aprende a agacharte sin lastimar la espalda.",
+    "muscleLabel": "Zona lumbar y glúteo"
+  },
+  {
+    "id": "e149",
+    "name": "Nadador en Suelo",
+    "muscle": "espalda",
+    "type": "Bodyweight",
+    "img": "media/exercises/e149.jpg",
+    "descSimple": "Acuéstate boca abajo con brazos y piernas estirados. Sube a la vez un brazo y la pierna del lado contrario, bájalos y cambia, como nadando lento. Aprieta la espalda baja y la cola. Sin rebotes.",
+    "muscleLabel": "Espalda baja y glúteo"
+  },
+  {
+    "id": "e150",
+    "name": "Curl con Botellas o Mochila",
+    "muscle": "biceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e150.jpg",
+    "descSimple": "Agarra una botella de agua llena en cada mano (o una mochila con cosas). Con los codos pegados a las costillas, súbelas doblando los brazos y bájalas despacio. No balancees el cuerpo para ayudarte.",
+    "muscleLabel": "Bíceps"
+  },
+  {
+    "id": "e151",
+    "name": "Curl Isométrico Autorresistido",
+    "muscle": "biceps",
+    "type": "Isométrico",
+    "img": "media/exercises/e151.jpg",
+    "descSimple": "Pon la palma de una mano debajo del puño de la otra. Intenta subir el puño doblando el codo mientras la mano de abajo lo frena. Aprieta fuerte unos segundos, suelta y repite. Trabajas el bíceps sin necesitar pesas.",
+    "muscleLabel": "Bíceps"
+  },
+  {
+    "id": "e152",
+    "name": "Flexión Cerrada Inclinada",
+    "muscle": "triceps",
+    "type": "Bodyweight",
+    "img": "media/exercises/e152.jpg",
+    "descSimple": "Apoya las manos juntas en una mesa o banca firme y aleja los pies para quedar inclinado. Baja el pecho doblando los codos pegados al cuerpo y empuja. Mientras más alta la superficie, más fácil; ve bajando la altura con el tiempo.",
+    "muscleLabel": "Tríceps y pecho"
+  },
+  {
+    "id": "e153",
+    "name": "Patada de Tríceps con Botella",
+    "muscle": "triceps",
+    "type": "Aislamiento",
+    "img": "media/exercises/e153.jpg",
+    "descSimple": "Inclínate al frente con la espalda recta y el codo arriba pegado a las costillas, una botella en la mano. Estira el brazo hacia atrás hasta que quede recto y vuelve despacio. Solo se mueve del codo para abajo.",
+    "muscleLabel": "Tríceps"
+  },
+  {
+    "id": "e154",
+    "name": "Pike Push-up Inclinado",
+    "muscle": "hombros",
+    "type": "Bodyweight",
+    "img": "media/exercises/e154.jpg",
+    "descSimple": "Pon las manos en el piso y los pies sobre un escalón, formando una \"V\" con la cola arriba. Baja la cabeza despacio entre las manos doblando los codos y empuja para subir. Si cuesta mucho, baja la altura de los pies o hazlo con las manos en una mesa.",
+    "muscleLabel": "Hombros y tríceps"
+  },
+  {
+    "id": "e155",
+    "name": "Elevaciones Laterales con Botellas",
+    "muscle": "hombros",
+    "type": "Aislamiento",
+    "img": "media/exercises/e155.jpg",
+    "descSimple": "Una botella de agua en cada mano, brazos a los lados. Súbelos abriéndolos hacia los lados hasta la altura de los hombros, como alas, y baja lento. No uses impulso ni subas los hombros hacia las orejas. Poco peso, mucho control.",
+    "muscleLabel": "Hombro (deltoides lateral)"
+  },
+  {
+    "id": "e156",
+    "name": "Press de Hombro con Mochila",
+    "muscle": "hombros",
+    "type": "Compuesto",
+    "img": "media/exercises/e156.jpg",
+    "descSimple": "Carga una mochila con libros o botellas y sostenla pegada al pecho/hombros. Empújala hacia arriba hasta estirar los brazos y bájala despacio. Mantén el abdomen y la cola apretados para no arquear la espalda.",
+    "muscleLabel": "Hombros y tríceps"
+  },
+  {
+    "id": "e157",
+    "name": "Toques de Hombro en Plancha",
+    "muscle": "hombros",
+    "type": "Bodyweight",
+    "img": "media/exercises/e157.jpg",
+    "descSimple": "Ponte en plancha con los brazos estirados (manos y puntas de los pies). Toca con una mano el hombro contrario y vuelve, alternando, SIN que la cola se mueva de lado a lado. Separa más los pies para que sea más fácil; o apoya las manos en una mesa.",
+    "muscleLabel": "Hombros y core"
+  },
+  {
+    "id": "e158",
+    "name": "Sentadilla a Silla (Sit-to-Stand)",
+    "muscle": "piernas",
+    "type": "Bodyweight",
+    "img": "media/exercises/e158.jpg",
+    "descSimple": "Párate frente a una silla con los pies al ancho de los hombros. Baja sentándote suave hasta tocar el asiento y levántate empujando con los talones, sin impulso de los brazos. La silla te enseña a bajar bien y te da confianza. Más adelante usa una silla más bajita.",
+    "muscleLabel": "Cuádriceps y glúteo"
+  },
+  {
+    "id": "e160",
+    "name": "Zancada Estática con Apoyo",
+    "muscle": "piernas",
+    "type": "Bodyweight",
+    "img": "media/exercises/e160.jpg",
+    "descSimple": "Pon un pie adelante y otro atrás (sin moverlos) y agárrate de una silla o pared. Baja doblando las dos rodillas, llevando la de atrás hacia el piso, y sube. Como arrodillarte y levantarte en el sitio. Cambia de pierna cada serie.",
+    "muscleLabel": "Cuádriceps y glúteo"
+  },
+  {
+    "id": "e161",
+    "name": "Sentadilla Sumo a Peso Corporal",
+    "muscle": "piernas",
+    "type": "Bodyweight",
+    "img": "media/exercises/e161.jpg",
+    "descSimple": "Abre los pies más que los hombros con las puntas hacia afuera. Baja la cola recta hacia abajo (no atrás) manteniendo el pecho arriba, y sube empujando con los talones. Las rodillas apuntan hacia donde miran los pies. Buena si te cuesta la sentadilla normal.",
+    "muscleLabel": "Glúteo e interno del muslo"
+  },
+  {
+    "id": "e162",
+    "name": "Zancada Inversa a Peso Corporal",
+    "muscle": "gluteo",
+    "type": "Bodyweight",
+    "img": "media/exercises/e162.jpg",
+    "descSimple": "De pie, da un paso hacia atrás con una pierna y baja la rodilla de atrás cerca del piso; vuelve empujando con la pierna de adelante. Es más suave para las rodillas que dar el paso al frente. Agárrate de una silla si pierdes el equilibrio.",
+    "muscleLabel": "Glúteo y cuádriceps"
+  },
+  {
+    "id": "e163",
+    "name": "Abducción Tumbado de Lado",
+    "muscle": "gluteo",
+    "type": "Bodyweight",
+    "img": "media/exercises/e163.jpg",
+    "descSimple": "Acuéstate de lado con las piernas estiradas y el cuerpo derecho. Sube la pierna de arriba hacia el techo despacio y bájala con control, sin dejarla caer. No dejes que la cadera ruede hacia atrás. Trabaja el lado de la cola.",
+    "muscleLabel": "Glúteo medio"
+  },
+  {
+    "id": "e164",
+    "name": "Plancha en Rodillas",
+    "muscle": "core",
+    "type": "Isométrico",
+    "img": "media/exercises/e164.jpg",
+    "descSimple": "Apóyate en los antebrazos y las rodillas (no los pies), con el cuerpo en línea recta de la cabeza a las rodillas. Aprieta la barriga y la cola para no hundir la cadera. Aguanta unos segundos. Es la plancha más fácil para empezar.",
+    "muscleLabel": "Core (abdomen)"
+  }
+]

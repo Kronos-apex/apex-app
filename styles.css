@@ -43,7 +43,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   html:not([data-theme="light"]) .li::placeholder,
   html:not([data-theme="light"]) .inp::placeholder,
   html:not([data-theme="light"]) .sinput::placeholder { color: var(--t3); }
-  html:not([data-theme="light"]) #apex-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
+  html:not([data-theme="light"]) #avi-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 }
 /* dark mode manual — forzado por el toggle de la app */
 :root[data-theme="dark"] {
@@ -71,7 +71,7 @@ html[data-theme="dark"] .mta {
 html[data-theme="dark"] .li::placeholder,
 html[data-theme="dark"] .inp::placeholder,
 html[data-theme="dark"] .sinput::placeholder { color: var(--t3); }
-html[data-theme="dark"] #apex-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
+html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
@@ -620,8 +620,8 @@ html[data-theme="light"] .mta {
 .exdetail-hero.has-photo .exdetail-herocap{position:absolute;left:18px;right:18px;bottom:13px;z-index:2}
 .exdetail-hero.has-photo .exdetail-title{font-size:22px;color:#fff!important;text-shadow:0 2px 14px rgba(0,0,0,.85)}
 /* Loading overlay */
-#apex-loading{position:fixed;inset:0;background:linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:9vh;z-index:9999;transition:opacity .4s}
-#apex-loading.fade{opacity:0;pointer-events:none}
+#avi-loading{position:fixed;inset:0;background:linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:9vh;z-index:9999;transition:opacity .4s}
+#avi-loading.fade{opacity:0;pointer-events:none}
 .ld-logo{font-size:32px;font-weight:800;color:white;margin-bottom:8px}
 .ld-sub{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:28px}
 .ld-bar{width:180px;height:3px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden}
@@ -790,8 +790,8 @@ html[data-theme="light"] .mta {
 .gm-rest-overlay.hidden{display:none}
 .gm-go-flash{position:fixed;inset:0;background:var(--g);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:760;pointer-events:none;animation:goFlash .9s ease-out forwards}
 @keyframes goFlash{0%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.04)}}
-@keyframes apexTick{0%{transform:scale(1.14);opacity:.6}100%{transform:scale(1);opacity:1}}
-.restnum.tick,.gm-rest-sec.tick{animation:apexTick .35s cubic-bezier(.22,.68,0,1.2)}
+@keyframes aviTick{0%{transform:scale(1.14);opacity:.6}100%{transform:scale(1);opacity:1}}
+.restnum.tick,.gm-rest-sec.tick{animation:aviTick .35s cubic-bezier(.22,.68,0,1.2)}
 .gm-rest-circle{width:160px;height:160px;position:relative;margin:8px 0}
 .gm-rest-svg{transform:rotate(-90deg)}
 .gm-rest-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}

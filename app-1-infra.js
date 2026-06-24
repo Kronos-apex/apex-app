@@ -114,7 +114,7 @@ const AUTH={
 // ══════════ CAPA DE DATOS POR USUARIO — Fase 2.2 (tabla user_data) ══════════
 // Lee/escribe la fila del usuario logueado (asesorado/libre) o, para el coach, las
 // filas de SUS clientes (coach_id = su uid). Todo pasa por el cliente con sesión
-// (AUTH.client) → RLS aplica con el JWT real. Reusa clientToRow/rowToClient (apex-core).
+// (AUTH.client) → RLS aplica con el JWT real. Reusa clientToRow/rowToClient (avi-core).
 // Aún INERTE: lo conectan los pasos 2.2b-2.2e (registro, login, guardado, coach).
 const UD={
   // Fila cruda del usuario actual (o null si no existe / sin sesión / SIN RED).
@@ -249,7 +249,7 @@ async function pushToClient(clientId,title,body,extras={}){
 function showAviNotif(title,body,tag){
   if(Notification.permission!=='granted')return;
   const icon='/apex-app/icons/icon-192.png';
-  const opts={body,tag:tag||'apex-'+Date.now(),icon,badge:icon,vibrate:[200,100,200],requireInteraction:false};
+  const opts={body,tag:tag||'avi-'+Date.now(),icon,badge:icon,vibrate:[200,100,200],requireInteraction:false};
   if('serviceWorker' in navigator){
     navigator.serviceWorker.ready.then(reg=>{
       return reg.showNotification(title,opts);
@@ -264,7 +264,7 @@ function notifNewMessage(fromName,preview){
   showAviNotif(
     '💬 Nuevo mensaje de '+fromName,
     preview.length>80?preview.slice(0,77)+'...':preview,
-    'apex-msg-'+Date.now()
+    'avi-msg-'+Date.now()
   );
 }
 
@@ -595,7 +595,7 @@ async function syncFromCloud(){
   setP(60,'Cargando tus datos...');
   // Recargar DB desde localStorage (con o sin sync exitoso)
   DB.clients=ld('ax_c',[]);
-  // Migración blindada (como las de abajo): si lanza (datos raros, apex-core.js viejo en
+  // Migración blindada (como las de abajo): si lanza (datos raros, avi-core.js viejo en
   // caché tras un update) NUNCA debe colgar el arranque en el splash. Auditoría 2026-06-21.
   let _routineMigrated=false;
   try{ _routineMigrated=migrateRoutineIds(DB.clients,uid); }
@@ -614,7 +614,7 @@ async function syncFromCloud(){
     if(_daySorted){sv('ax_c',DB.clients);log('AVI: routine day-order migration applied');}
   }catch(e){ warn('AVI: ordenamiento de días falló (no bloquea):',e&&e.message); }
   DB.exercises=ld('ax_e',defaultExercises);
-  // Migraciones blindadas: si una falla (p.ej. apex-core.js viejo en caché tras un update),
+  // Migraciones blindadas: si una falla (p.ej. avi-core.js viejo en caché tras un update),
   // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
   try{ migrateExTypes(); }catch(e){ warn('AVI: migrateExTypes falló (no bloquea):',e&&e.message); }
   try{ migrateEnv(); }catch(e){ warn('AVI: migrateEnv falló (no bloquea):',e&&e.message); }
@@ -634,7 +634,7 @@ async function syncFromCloud(){
   // hay sesión guardada (no es registro nuevo), pero igual visible.
   const hasSession = !!ld('ax_session', null);
   await new Promise(r=>setTimeout(r, hasSession ? 2800 : 3200));
-  const overlay=document.getElementById('apex-loading');
+  const overlay=document.getElementById('avi-loading');
   if(overlay){overlay.classList.add('fade');setTimeout(()=>overlay.remove(),300);}
 }
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px'}

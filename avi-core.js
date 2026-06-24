@@ -1,11 +1,11 @@
-// apex-core.js — Lógica de negocio pura de APEX (sin DOM, sin globals de app)
+// avi-core.js — Lógica de negocio pura de AVI (sin DOM, sin globals de app)
 // ─────────────────────────────────────────────────────────────────────
 // FUENTE ÚNICA DE VERDAD para la lógica crítica testeable.
 //
-// Se carga en index.html como <script src="apex-core.js"></script> ANTES
+// Se carga en index.html como <script src="avi-core.js"></script> ANTES
 // del script principal, por lo que estas funciones quedan disponibles como
 // globales del navegador. También se exporta con module.exports para que
-// apex.test.js pruebe ESTE archivo (no una copia).
+// avi.test.js pruebe ESTE archivo (no una copia).
 //
 // REGLA: si tocas una de estas funciones, los tests reflejan el cambio
 // automáticamente. No dupliques esta lógica dentro de index.html.

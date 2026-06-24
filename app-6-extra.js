@@ -2,11 +2,11 @@
 
 // El ícono de la PWA viene de archivos PNG de marca (icons/icon-192.png y icon-512.png,
 // el ala esmeralda de AVI): el manifest los usa en Android y el apple-touch-icon en iOS.
-// (Se eliminó pwaGenIcon, que dibujaba en canvas el logo viejo APEX — la "A" con barra.)
+// (Se eliminó pwaGenIcon, que dibujaba en canvas el logo viejo AVI — la "A" con barra.)
 
 function initPWA(){
   // Ícono para Apple Touch Icon (iOS "Añadir a inicio") = MISMO logo AVI que usa
-  // el manifest en Android. Antes se generaba en canvas con el logo viejo APEX (la
+  // el manifest en Android. Antes se generaba en canvas con el logo viejo AVI (la
   // "A" con barra) → en iPhone salía el ícono antiguo. Ahora apunta al PNG de marca.
   const appleLink=document.getElementById('pwa-icon-apple');
   if(appleLink)appleLink.href='/apex-app/icons/icon-192.png?v=avi2';
@@ -73,7 +73,7 @@ function initPWA(){
     toast('✅ ¡App instalada! Ábrela desde tu pantalla de inicio.');
   });
 
-  window._apexInstall=async()=>{
+  window._aviInstall=async()=>{
     if(!deferredPrompt){
       if(isIOS){toast('Toca Compartir ↑ → "Añadir a pantalla de inicio"');}
       else{toast('Menú del navegador → "Instalar aplicación"');}

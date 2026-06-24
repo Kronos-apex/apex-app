@@ -710,7 +710,7 @@ function renderValoracion(c){
   }
 
 
-  // ── TMB (Mifflin-St Jeor) y TDEE → apex-core.js ──
+  // ── TMB (Mifflin-St Jeor) y TDEE → avi-core.js ──
   const tmb = calcTMB(w, h, age, sex);
   const tdee = calcTDEE(tmb, af);
 
@@ -726,13 +726,13 @@ function renderValoracion(c){
   if(cinturaCm && h) rct = cinturaCm / parseFloat(h);
   if(cinturaCm && caderaCm) icc = cinturaCm / caderaCm;
 
-  // getRctLabel / getIccLabel → apex-core.js (fuente única de verdad)
+  // getRctLabel / getIccLabel → avi-core.js (fuente única de verdad)
   const rctInfo = rct ? getRctLabel(rct) : null;
   const iccInfo = icc ? getIccLabel(icc, sexCode) : null;
 
-  // getGoalMsg → apex-core.js (fuente única de verdad)
+  // getGoalMsg → avi-core.js (fuente única de verdad)
 
-  // ── Calorías objetivo y macros sugeridos → apex-core.js ──
+  // ── Calorías objetivo y macros sugeridos → avi-core.js ──
   const _kcalT = kcalTargetFor(goal, tdee);
   const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
   const macros = calcMacrosFromKcal(kcalObj, w, goal);
@@ -879,7 +879,7 @@ function openNewRoutine(){
 }
 
 // ══════════════════════ AUTO-GENERADOR DE RUTINAS (Paso 1) ══════════════════════
-// El motor vive en apex-core.js (generarRutinas, testeado). Aquí solo el preview + confirmación.
+// El motor vive en avi-core.js (generarRutinas, testeado). Aquí solo el preview + confirmación.
 // Principio: genera un BORRADOR; el coach revisa, confirma y ajusta. Nunca se auto-asigna a ciegas.
 function _genSeed(s){let h=0;s=s||'';for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
 // Estilo por defecto según el entorno del asesorado.
@@ -1194,7 +1194,7 @@ function sendCoachMsg(){
   DB.msgs[CUR.clientId].push({from:'coach',text,date:new Date().toISOString()});
   sv('ax_m',DB.msgs);
   const _pc=DB.clients.find(x=>x.id===CUR.clientId);
-  if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim(),{type:'message',chatId:CUR.clientId,tag:'apex-chat-'+CUR.clientId});}
+  if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim(),{type:'message',chatId:CUR.clientId,tag:'avi-chat-'+CUR.clientId});}
   ta.value='';ta.style.height='auto';renderDetailMsgs(CUR.clientId);renderMsgs();renderHome();toast('💬 Mensaje enviado');updateMsgBadge(CUR.clientId);
 }
 function renderMsgs(){

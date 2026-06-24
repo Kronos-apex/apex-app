@@ -243,7 +243,7 @@ function checkAndUpdatePRs(routine){
     const track=exTrack(ex);
     // El récord se mide según la modalidad: kg (peso), reps (corporal),
     // segundos (isométrico), minutos totales (cardio), rondas (HIIT).
-    // Construye las series HECHAS (lee del DOM/estado) y deja el cálculo a apex-core.
+    // Construye las series HECHAS (lee del DOM/estado) y deja el cálculo a avi-core.
     const doneSets=[];
     for(let si=0;si<sets;si++){
       if(!isDone(routine.id,ei,si))continue;
@@ -426,7 +426,7 @@ function removeAvatar(){
 }
 
 // ══════════════════════ GAMIFICACIÓN (nivel permanente + descuento del mes) ══════════════════════
-// GX_LEVELS, gxLevel, gxDiscount, gxNextTier → apex-core.js (fuente única de verdad, con tests)
+// GX_LEVELS, gxLevel, gxDiscount, gxNextTier → avi-core.js (fuente única de verdad, con tests)
 function renderGamification(client){
   const con=document.getElementById('cn-gamif'); if(!con)return;
   const hist=(DB.history||{})[client.id]||[];
@@ -523,7 +523,7 @@ function toggleTrackingTools(){
 
 // TODAY
 // Cabecera del "Hoy": saludo grande con el nombre + chip de racha (días seguidos
-// entrenando). La racha la calcula workoutStreak (apex-core, testeado).
+// entrenando). La racha la calcula workoutStreak (avi-core, testeado).
 function renderTodayHead(client){
   const el=document.getElementById('cn-today-head'); if(!el||!client)return;
   const h=new Date().getHours();
@@ -564,8 +564,8 @@ function renderClientToday(client, overrideRoutine){
     return;
   }
   // Check-in diario: si el asesorado ya marcó cómo se siente hoy, la rutina se
-  // adapta (apex-core.applyMood, regla universal). Si no, mostramos el selector.
-  // Guard de caché: si apex-core.js está viejo (sin applyMood), degradamos sin
+  // adapta (avi-core.applyMood, regla universal). Si no, mostramos el selector.
+  // Guard de caché: si avi-core.js está viejo (sin applyMood), degradamos sin
   // check-in en vez de romper toda la vista de "Hoy".
   const _moodOK=(typeof applyMood==='function'&&typeof MOOD_STATES!=='undefined');
   const _mood=_moodOK?getTodayMood(client.id):'';
@@ -584,7 +584,7 @@ function renderClientToday(client, overrideRoutine){
 
 // ── Check-in diario "¿cómo te sientes hoy?" ──
 // El ánimo se guarda por asesorado y por día (localStorage). La lógica de
-// adaptación vive en apex-core.applyMood (testeable); aquí solo UI + estado.
+// adaptación vive en avi-core.applyMood (testeable); aquí solo UI + estado.
 function _moodDay(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function moodKey(cid){return 'mood_'+cid+'_'+_moodDay();}
 function moodAlertKey(cid){return 'moodalert_'+cid+'_'+_moodDay();}
@@ -623,7 +623,7 @@ function pickMood(mood){
   renderClientToday(c,CUR.todayOverride);
   const today=document.getElementById('cn-today');if(today)today.scrollTop=0;
   // Estados que requieren avisar al coach (hoy: dolor). La verdad vive en
-  // apex-core.applyMood (adapt.flagCoach) → si mañana otro estado lo activa,
+  // avi-core.applyMood (adapt.flagCoach) → si mañana otro estado lo activa,
   // esto lo respeta sin tocar nada aquí.
   const flagCoach=applyMood({},mood,{}).adapt.flagCoach;
   if(flagCoach){
@@ -674,7 +674,7 @@ function setDone(routineId,ei,si,val){localStorage.setItem(getDoneKey(routineId,
 // La modalidad ('track') decide qué se mide y qué UI se pinta. Se deriva del
 // campo `type` que ya existe (con override opcional ex.track).
 // Ver docs/modalidades-entrenamiento.md
-// exTrack → apex-core.js (fuente única de verdad)
+// exTrack → avi-core.js (fuente única de verdad)
 // Migración única: corrige el `type` de ejercicios por defecto mal clasificados
 // (peso corporal que pedía kg, HIIT que pedía kg). Solo actualiza si el ejercicio
 // aún tiene el type viejo → no pisa cambios del coach. Ver docs/modalidades.
@@ -699,11 +699,11 @@ function migrateExTypes(){
   localStorage.setItem('ax_track_migrated','2');
 }
 // Migración: etiqueta `env` (entorno de equipo) en los ejercicios que no lo tengan,
-// usando el heurístico inferExerciseEnv (apex-core.js). PROPONE — el coach valida/edita.
+// usando el heurístico inferExerciseEnv (avi-core.js). PROPONE — el coach valida/edita.
 // Solo asigna si falta → no pisa ediciones del coach. Ver docs/estilos-y-entornos.md.
 function migrateEnv(){
   if(localStorage.getItem('ax_env_migrated')==='1')return;
-  // Si apex-core.js está desactualizado en caché, NO marcar como hecho → reintenta al recargar.
+  // Si avi-core.js está desactualizado en caché, NO marcar como hecho → reintenta al recargar.
   if(typeof inferExerciseEnv!=='function'){warn('AVI: inferExerciseEnv no disponible aún — entorno se etiquetará al recargar');return;}
   let n=0;
   const apply=arr=>(arr||[]).forEach(ex=>{if(!ex.env){ex.env=inferExerciseEnv(ex);n++;}});
@@ -716,7 +716,7 @@ function migrateEnv(){
 function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
 function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
 // Formatea un valor de progreso/PR con su unidad según la modalidad.
-// fmtMetric → apex-core.js (fuente única, testeada)
+// fmtMetric → avi-core.js (fuente única, testeada)
 function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}
 function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${ei}`,lastreOn(routine,ei)?'0':'1');}
 
@@ -735,7 +735,7 @@ function setLogHeadHTML(track,lastre){
   return `<div class="slh">SET</div><div class="slh">KG</div><div class="slh">REPS</div><div></div>`;
 }
 
-// ── Peso sugerido por PR (Epley, funciones en apex-core) ──
+// ── Peso sugerido por PR (Epley, funciones en avi-core) ──
 // Solo modalidad de peso, con PR previo del MISMO ejercicio y fuera de la fase de
 // adaptación (ahí la consigna es carga suave y técnica, no acercarse al máximo).
 function _suggestKg(ex){
@@ -973,9 +973,9 @@ function setDoneToast(track,ex,si,inputs){
 }
 
 // ── Wake Lock: mantener pantalla encendida durante timers ──
-let apexWakeLock=null;
-async function reqWake(){try{if('wakeLock'in navigator)apexWakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
-function relWake(){try{if(apexWakeLock){apexWakeLock.release();apexWakeLock=null;}}catch(e){}}
+let aviWakeLock=null;
+async function reqWake(){try{if('wakeLock'in navigator)aviWakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+function relWake(){try{if(aviWakeLock){aviWakeLock.release();aviWakeLock=null;}}catch(e){}}
 
 // ── Timer de intervalos HIIT ──
 let HIIT={int:null};
@@ -1474,9 +1474,9 @@ function finishSessionEarly(){
 // Foto: window.AVI_FINISH_PHOTO la sobreescribe; default = foto de marca AVI.
 const WF_DEFAULT_PHOTO='media/brand/ob-2.jpg';
 let _wfShownFor=null; // routineId|día ya celebrado → evita re-pop al re-marcar la última serie
-// fmtDuration → apex-core.js (fuente única, testeada)
+// fmtDuration → avi-core.js (fuente única, testeada)
 // "¿Cómo te sentiste?" — calificación de la sesión que el COACH ve en el panel (foso vs Gravl).
-// WF_FEELINGS + feelingEmoji/feelingLabel → apex-core.js (fuente única, testeada)
+// WF_FEELINGS + feelingEmoji/feelingLabel → avi-core.js (fuente única, testeada)
 let _wfEntry=null; // entrada de historial de la sesión recién cerrada (para guardar la calificación)
 function wfRate(n){
   if(_wfEntry){_wfEntry.feeling=n;svNow('ax_hist',DB.history);}
@@ -1603,7 +1603,7 @@ function closeLevelUp(){
 
 // ALL ROUTINES
 // Intro editorial de la semana — voz de coach, contextual al objetivo del asesorado.
-// La decisión (kick/título/cuerpo/días) → apex-core.js (weekEditorial); aquí solo el markup.
+// La decisión (kick/título/cuerpo/días) → avi-core.js (weekEditorial); aquí solo el markup.
 function clientWeekEditorial(client){
   const e=weekEditorial(client);
   const daysNote=e.trainDays?` <b>${e.trainDays} día${e.trainDays!==1?'s':''}</b> de entreno te esperan.`:'';
@@ -1825,7 +1825,7 @@ function sendClientMsg(){
   svNow('ax_m',DB.msgs);
   const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
   // Push al coach para notificación en tiempo real
-  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:clientId,tag:'apex-chat-coach'});
+  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
   ta.value='';ta.style.height='auto';renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 
@@ -1949,7 +1949,7 @@ function exportData(){
   const a=document.createElement('a');
   a.href=url;
   const date=new Date().toLocaleDateString('es-ES').replace(/\//g,'-');
-  a.download=`apex-backup-${date}.json`;
+  a.download=`avi-backup-${date}.json`;
   a.click();
   URL.revokeObjectURL(url);
   toast('✅ Backup descargado correctamente');

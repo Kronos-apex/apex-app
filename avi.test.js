@@ -1,13 +1,13 @@
-// apex.test.js — Tests críticos de negocio APEX
-// Ejecutar con: node apex.test.js
+// avi.test.js — Tests críticos de negocio AVI
+// Ejecutar con: node avi.test.js
 // Sin dependencias externas — Node.js puro.
 //
-// Estos tests prueban apex-core.js DIRECTAMENTE (la misma fuente que carga
+// Estos tests prueban avi-core.js DIRECTAMENTE (la misma fuente que carga
 // index.html). No hay lógica duplicada: si cambias una función en
-// apex-core.js, el test refleja el cambio automáticamente.
+// avi-core.js, el test refleja el cambio automáticamente.
 
 const assert = require('assert');
-const core = require('./apex-core.js');
+const core = require('./avi-core.js');
 const {
   getIccLabel,
   getSexCode,
@@ -1805,8 +1805,8 @@ test('normalizeBisets: rompe cadenas dejando solo la primera pareja', () => {
 const line = '─'.repeat(50);
 console.log(`\n${line}`);
 if (failed === 0) {
-  console.log(`✅ APEX Tests: ${passed}/${total} pasaron`);
+  console.log(`✅ AVI Tests: ${passed}/${total} pasaron`);
 } else {
-  console.log(`❌ APEX Tests: ${passed}/${total} pasaron — ${failed} FALLARON`);
+  console.log(`❌ AVI Tests: ${passed}/${total} pasaron — ${failed} FALLARON`);
   process.exit(1);
 }

@@ -631,7 +631,7 @@ function openTemplatePicker(){
 // Build a map: { exName → [{date, maxKg, totalVol, sessions}] } from history
 function buildExerciseProgress(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
-  // Agregación pura → apex-core.js (computeExerciseProgress); aquí solo el acceso a DB.
+  // Agregación pura → avi-core.js (computeExerciseProgress); aquí solo el acceso a DB.
   return computeExerciseProgress(DB.history[clientId]||[]);
 }
 
@@ -914,9 +914,9 @@ syncFromCloud().then(async ()=>{
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered) tryAutoLogin();
   // ── Back button: evitar que el gesto/botón físico cierre la app ──
-  history.pushState({apex:true},'');
+  history.pushState({avi:true},'');
   window.addEventListener('popstate',function(){
-    history.pushState({apex:true},'');
+    history.pushState({avi:true},'');
     // Lightbox de imagen/video (lo más arriba) → cerrar primero
     const lb=document.getElementById('ex-lightbox');
     if(lb&&lb.classList.contains('on')){closeExImg();return;}
@@ -946,7 +946,7 @@ syncFromCloud().then(async ()=>{
   // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.
   // Auditoría 2026-06-21.
   warn('AVI: el arranque falló, cayendo al login:', e&&e.message);
-  const ov=document.getElementById('apex-loading');
+  const ov=document.getElementById('avi-loading');
   if(ov){ ov.classList.add('fade'); setTimeout(()=>ov.remove(),300); }
   try{ showScreen('s-login'); }catch(_e){}
 });
@@ -959,14 +959,14 @@ async function tryAutoLogin(){
       document.getElementById('lu')&&document.getElementById('lu').focus();
       return;
     }
-    const _apexChat=new URLSearchParams(location.search).get('apex-chat');
+    const _aviChat=new URLSearchParams(location.search).get('avi-chat');
     if(session.role === 'coach'){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';
       initCoach();
       startMsgPolling();
       resetLoginAttempts();
-      if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
+      if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
       if(Notification.permission==='granted') setTimeout(()=>{subscribePush('_coach');restoreNotifications();},3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
@@ -989,7 +989,7 @@ async function tryAutoLogin(){
         initClientView(client);
         startMsgPolling();
         resetLoginAttempts();
-        if(_apexChat)setTimeout(()=>openChatFor(_apexChat),600);
+        if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
         if(Notification.permission==='granted') setTimeout(()=>{
           const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
           const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
@@ -1046,7 +1046,7 @@ function setBottomNav(el){
 }
 
 // ══════════════════════ MEMBRESÍA ══════════════════════
-// MS (membresía: getStatus/canLogin/badge) → apex-core.js (fuente única, testeada)
+// MS (membresía: getStatus/canLogin/badge) → avi-core.js (fuente única, testeada)
 
 function renderPaymentCard(client){
   const con=document.getElementById('cn-payment-card');
@@ -1083,7 +1083,7 @@ async function notifyPaid(){
   DB.msgs[clientId].push({from:'client',text,date:new Date().toISOString()});
   svNow('ax_m',DB.msgs);
   renderClientMsgs(clientId);
-  pushToClient('_coach','💳 '+client.name+' notificó su pago','Revisa y confirma el pago en AVI',{type:'payment',tag:'apex-payment-'+clientId});
+  pushToClient('_coach','💳 '+client.name+' notificó su pago','Revisa y confirma el pago en AVI',{type:'payment',tag:'avi-payment-'+clientId});
   toast('✅ Notificación enviada a tu coach');
 }
 
@@ -1157,7 +1157,7 @@ function renderHome(){
   const retBars=document.getElementById('h-ret-bars');
   const retLbl=document.getElementById('h-ret-label');
   if(retCard&&retBars){
-    // Lógica de fechas extraída a apex-core.js (testeada): agrupa por día de
+    // Lógica de fechas extraída a avi-core.js (testeada): agrupa por día de
     // calendario real, no por día de la semana.
     const ordered=retentionByDay(DB.history,now);
     const maxC=Math.max(...ordered.map(o=>o.count),1);

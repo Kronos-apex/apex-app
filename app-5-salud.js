@@ -1,6 +1,6 @@
 // ══════════════ PLAN NUTRICIONAL ══════════════
 
-// calcMacrosSugeridos → apex-core.js (fuente única de verdad)
+// calcMacrosSugeridos → avi-core.js (fuente única de verdad)
 
 const NUT_TEMPLATES=[
   {label:'Cutting 🔻',goal:'cutting',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
@@ -149,7 +149,7 @@ const GOAL_WHY={
   mantenimiento:{title:'⚖️ Mantenimiento / Salud general',
     text:'Estás comiendo en balance: lo que gastas. El objetivo no es subir ni bajar, sino sostener tu composición, sentirte con energía y crear hábitos sostenibles. Comida variada, suficiente proteína para cuidar el músculo y carbohidratos para rendir en el día a día.'},
 };
-// inferNutGoal → apex-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
+// inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
 function openNutriInfo(key){
   const d=NUTRI_INFO[key]; if(!d)return;
@@ -661,7 +661,7 @@ function fireNotifAt(notif){
         const body=notif.msg.replace(/\{nombre\}/g,nombre);
         const iconSvg='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%231B4332"/><text y="44" x="8" font-size="44">%F0%9F%92%AA</text></svg>';
         const opts={body,icon:iconSvg,badge:iconSvg,
-          tag:'apex-'+notif.id+'-'+i,
+          tag:'avi-'+notif.id+'-'+i,
           requireInteraction:false,
           vibrate:[200,100,200,100,200]};
         // Usar SW.showNotification — funciona con app en background en Android/iOS
