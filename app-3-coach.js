@@ -652,7 +652,6 @@ function convertToPremium(cid){
 
 async function openDetail(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
-  await _ensureClientHeavy(id); // carga diferida: fotos/medidas/nutrición/PRs de ESTE cliente
   const av=document.getElementById('d-av');
   if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
   else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.backgroundImage='';}
@@ -678,6 +677,14 @@ async function openDetail(id){
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle');document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
   document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on');
+  // El panel YA se mostró con lo que había en memoria (perfil/rutinas/historial/mensajes).
+  // Las colecciones pesadas (PRs/medidas/nutrición/fotos) se cargan DESPUÉS, sin congelar la
+  // pantalla, y se re-renderiza SOLO esas secciones. Re-open de un cliente ya cargado = instantáneo.
+  if(!_heavyLoaded[id]){
+    await _ensureClientHeavy(id);
+    if(CUR.clientId!==id) return; // el coach abrió otro cliente mientras cargaba → no pisar
+    renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+  }
 }
 
 // ══════════════════════════════════════════
