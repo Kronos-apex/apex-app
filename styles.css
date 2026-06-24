@@ -144,7 +144,7 @@ html[data-theme="light"] .mta {
 .sblogo{font-size:18px;font-weight:800;color:var(--g);padding:3px 8px 16px}
 .sblogo small{display:block;font-size:11px;color:var(--t3);font-weight:400;margin-top:1px}
 .sbsect{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);padding:0 8px;margin:12px 0 4px}
-.sbi{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;color:var(--t2);cursor:pointer;transition:all .15s;margin-bottom:3px}
+.sbi{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;color:var(--t2);cursor:pointer;transition:all .15s;margin-bottom:3px;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .sbi:hover{background:var(--bg);color:var(--t1)}
 .sbi.on{background:var(--gl);color:var(--gt);font-weight:700}
 .sbi .ic{font-size:18px;width:22px;text-align:center}

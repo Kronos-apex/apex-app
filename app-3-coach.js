@@ -413,6 +413,8 @@ async function _ensureClientHeavy(id){
 }
 
 async function _enterCoachAuth(authUser, ownRow){
+  COACH_OWN_ROW=ownRow||null;                    // ya la cargamos aquí → "Mi entrenamiento" no re-pide red
+  if(ownRow&&_authUid) _cacheAuthRow(_authUid,ownRow); // respaldo local (también sirve offline)
   await _loadCoachClientsIntoDB();
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   showScreen('s-coach');
@@ -423,19 +425,30 @@ async function _enterCoachAuth(authUser, ownRow){
 // "Mi entrenamiento": el coach ve/entrena su PROPIA rutina (su fila user_data) reusando la
 // vista del asesorado. COACH_SELF enruta el guardado a SU fila (no a la de un cliente).
 async function openMyTraining(){
-  let row; try{ row=await UD.loadOwn(); }catch(e){ row=null; }
+  closeDrawer(); // feedback INMEDIATO: el panel se cierra al toque, no después de la red
+  // Fuente instantánea: tu fila propia ya se cargó al entrar al panel (COACH_OWN_ROW) o
+  // quedó en el respaldo local. Evita el await de red que dejaba el panel "congelado".
+  // Solo si no hay ninguna (caso raro) se pide a la nube, con aviso de carga.
+  let row=COACH_OWN_ROW||_readAuthRow(_authUid);
+  if(!row){
+    toast('Cargando tu entrenamiento…');
+    try{ row=await UD.loadOwn(); }catch(e){ row=null; }
+  }
   if(!row){ toast('No se pudo cargar tu entrenamiento'); return; }
+  COACH_OWN_ROW=row;
   COACH_SELF=true;
   const me=rowToClient(row);
   me.tier='premium'; // el coach tiene acceso completo en su propio entrenamiento (sin candados)
   _applyAuthClientDB(me,{history:row.history,prs:row.prs,bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs});
   CUR.loggedAs='client'; CUR.clientId=me.id; // vista de asesorado, pero sigue siendo el coach
-  closeDrawer();
   const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='';
   showScreen('s-client');
   initClientView(me);
 }
 async function backToCoachPanel(){
+  // Conserva las ediciones de esta sesión: re-snapshot de tu fila ANTES de recargar clientes,
+  // así reabrir "Mi entrenamiento" sigue siendo instantáneo Y refleja lo recién cambiado.
+  try{ const s=_snapshotAuthRow(); if(s) COACH_OWN_ROW=s; }catch(e){}
   COACH_SELF=false; CUR.clientId=null;
   const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='none';
   await _loadCoachClientsIntoDB();

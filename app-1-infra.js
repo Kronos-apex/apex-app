@@ -193,6 +193,7 @@ const UD={
 let AUTH_MODE=false;
 let AUTH_ROLE='client'; // 'client' | 'coach' — rol del usuario auth logueado
 let COACH_SELF=false;   // true cuando el coach está viendo SU propio entrenamiento (guarda en su fila)
+let COACH_OWN_ROW=null; // fila propia del coach, ya cargada al entrar al panel → "Mi entrenamiento" abre instantáneo sin re-pedir red
 // UID del coach (modelo de un solo coach). Un usuario libre que pide coach se auto-asigna
 // este coach_id para que su fila sea visible por RLS (select: coach_id = auth.uid()) y la
 // solicitud + mensajes lleguen a la bandeja del coach. Ver requestCoach().
