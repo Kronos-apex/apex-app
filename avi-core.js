@@ -99,10 +99,12 @@ function _norm(s) {
 // Etiquetas de día (1..6) y nombres legibles de cada bloque.
 const GEN_DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// Deltoides POSTERIOR (face pull, pájaro, pec deck inverso) = músculo de TRACCIÓN aunque su
-// etiqueta de catálogo sea "hombros". No debe caer en día de EMPUJE; pertenece al de jalón.
-// Patrón contra el nombre normalizado (sin tilde, minúscula). Pedido de Camilo 2026-06-25.
-const REAR_DELT_RE = /face pull|pajaro|posterior/;
+// Deltoides POSTERIOR (face pull, pájaro, pec deck inverso, Y-T-W…) = músculo de TRACCIÓN
+// aunque su etiqueta de catálogo sea "hombros". No debe caer en día de EMPUJE; pertenece al
+// de jalón. Se detecta por el muscleLabel ("Hombro posterior…") — más fiable que el nombre,
+// que no siempre lleva la palabra (ej. e109 "Elevaciones Y-T-W") — con respaldo por nombre.
+// Pedido de Camilo 2026-06-25.
+const _isRearDelt = ex => /posterior|face pull|pajaro/.test(_norm(((ex && ex.muscleLabel) || '') + ' ' + ((ex && ex.name) || '')));
 
 // Plantillas de bloque: cada slot = [muscle, type|null, n] (4º opcional = {avoid|prefer:RegExp}
 // para filtrar por nombre dentro del slot). type null = cualquiera de ese músculo.
@@ -113,8 +115,8 @@ const GEN_DAYS = {
   TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
   EMP_BRAZOS:     { name: 'Empuje y Brazos', slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
   CORE_CARDIO:    { name: 'Core y Cardio', slots: [['core', null, 2], ['cardio', null, 2]] },
-  EMPUJE:         { name: 'Empuje', slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: REAR_DELT_RE }], ['triceps', 'Aislamiento', 2]] },
-  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: REAR_DELT_RE }], ['biceps', 'Aislamiento', 2]] },
+  EMPUJE:         { name: 'Empuje', slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: _isRearDelt }], ['triceps', 'Aislamiento', 2]] },
+  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
   PIERNA:         { name: 'Pierna', slots: [['piernas', 'Compuesto', 2], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
   HOMBROS_BRAZOS: { name: 'Hombros y Brazos', slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
   CARDIO_CORE:    { name: 'Cardio y Core', slots: [['cardio', null, 2], ['core', null, 2]] },
@@ -481,12 +483,12 @@ function _levelGate(level) {
 
 function _genPick(lib, muscle, type, st, slotOpts) {
   const cap = st.levelCap == null ? 2 : st.levelCap;
-  // Filtro por SLOT (4º elemento): `avoid` saca ejercicios cuyo nombre matchea el patrón
+  // Filtro por SLOT (4º elemento): `avoid` es un predicado que saca ejercicios de este slot
   // (ej. deltoides posteriores fuera del día de EMPUJE — son músculo de tracción, no de empuje).
-  const avoidRe = slotOpts && slotOpts.avoid;
+  const avoidFn = slotOpts && slotOpts.avoid;
   const ok = e => e.muscle === muscle && !st.exclude(e)
     && !(st.excludeIds && st.excludeIds.has(e.id)) // 🚫 lista negra manual del coach (Fase C)
-    && !(avoidRe && avoidRe.test(_norm(e.name)))   // 🚫 patrón a evitar en este slot (Camilo 2026-06-25)
+    && !(avoidFn && avoidFn(e))                    // 🚫 predicado a evitar en este slot (Camilo 2026-06-25)
     && exLevelRank(e) <= cap // gate por nivel: el ejercicio no puede exceder el tope del cliente
     && (!st.tier || (e.tier || 'premium') === st.tier)
     && (e.env || ['gym']).includes(st.place); // entorno: el ejercicio debe ser realizable ahí
@@ -511,10 +513,10 @@ function _genPick(lib, muscle, type, st, slotOpts) {
     pools.push(lib.filter(e => ok(e) && extra(e)));
   };
   const pools = [];
-  // `prefer` del slot: ejercicios cuyo nombre matchea van PRIMERO (ej. los posteriores en el
-  // día de TRACCIÓN), respetando nivel/entorno/tier y el tipo del slot.
+  // `prefer` del slot: predicado cuyos ejercicios van PRIMERO (ej. los posteriores en el día
+  // de TRACCIÓN), respetando nivel/entorno/tier y el tipo del slot.
   if (slotOpts && slotOpts.prefer) {
-    pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && slotOpts.prefer.test(_norm(e.name))));
+    pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && slotOpts.prefer(e)));
   }
   // Principiante: agota TODAS las opciones de nivel P antes de permitir Intermedio.
   if (st.preferP) addTier(e => exLevelRank(e) === 0);

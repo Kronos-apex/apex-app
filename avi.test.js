@@ -89,7 +89,8 @@ const LIB = [
   { id: 'h1', name: 'Press Militar con Barra', muscle: 'hombros', type: 'Compuesto', sets: 4, reps: 8, icon: '⬆️' },
   { id: 'h2', name: 'Press Militar en Máquina', muscle: 'hombros', type: 'Compuesto', sets: 4, reps: 10, icon: '🖥️' },
   { id: 'h3', name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento', sets: 4, reps: 15, icon: '🚣' },
-  { id: 'h4', name: 'Face Pull en Polea', muscle: 'hombros', type: 'Aislamiento', sets: 4, reps: 15, icon: '🎯' },
+  { id: 'h4', name: 'Face Pull en Polea', muscle: 'hombros', type: 'Aislamiento', sets: 4, reps: 15, icon: '🎯' }, // rear delt detectado por NOMBRE
+  { id: 'h5', name: 'Elevaciones Y-T-W en Suelo', muscle: 'hombros', type: 'Aislamiento', muscleLabel: 'Hombro posterior y postura', sets: 3, reps: 15, icon: '🔠' }, // rear delt solo por muscleLabel (caso e109)
   // biceps
   { id: 'bi1', name: 'Curl con Barra', muscle: 'biceps', type: 'Aislamiento', sets: 3, reps: 12, icon: '🧲' },
   { id: 'bi2', name: 'Curl Martillo', muscle: 'biceps', type: 'Aislamiento', sets: 3, reps: 12, icon: '🎣' },
@@ -310,14 +311,16 @@ test('hombre Intermedio 3 días → split Empuje/Tracción/Pierna', () => {
   assert.deepStrictEqual(routines.map(r => r.name), ['Empuje', 'Tracción', 'Pierna']);
 });
 
-test('deltoides posterior (face pull/pájaro) NO cae en EMPUJE, sí en TRACCIÓN (Camilo 2026-06-25)', () => {
-  // h4 = "Face Pull en Polea" (hombros/Aislamiento) = deltoides posterior. Es músculo de
-  // tracción, así que el día de Empuje no debe traerlo; el de Tracción sí debe priorizarlo.
+test('deltoides posterior NO cae en EMPUJE, sí en TRACCIÓN — por nombre Y por muscleLabel (Camilo 2026-06-25)', () => {
+  // h4 = rear delt detectado por NOMBRE ("Face Pull"); h5 = rear delt detectado SOLO por
+  // muscleLabel ("Hombro posterior", nombre sin la palabra — caso real e109). Ninguno debe
+  // caer en Empuje (son músculo de tracción); el día de Tracción debe priorizar el posterior.
+  const REAR = new Set(['h4', 'h5']);
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
   const empuje = routines.find(r => r.name === 'Empuje');
   const traccion = routines.find(r => r.name === 'Tracción');
-  assert.ok(!empuje.exercises.some(e => e.id === 'h4'), 'Face Pull (deltoide posterior) no debe ir en día de Empuje');
-  assert.ok(traccion.exercises.some(e => e.id === 'h4'), 'el día de Tracción debe priorizar el deltoide posterior (Face Pull)');
+  assert.ok(!empuje.exercises.some(e => REAR.has(e.id)), 'ningún deltoide posterior (h4 nombre / h5 label) debe ir en Empuje');
+  assert.ok(traccion.exercises.some(e => REAR.has(e.id)), 'el día de Tracción debe priorizar el deltoide posterior');
 });
 
 test('TODOS los ejercicios llevan id+icon+muscle+type (§2.6 crítico)', () => {

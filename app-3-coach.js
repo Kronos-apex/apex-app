@@ -598,7 +598,10 @@ function clientSelfGenerate(){
 
 // ── Invitación a Premium / coach real (solo modo libre) ──
 function coachUpsellHTML(c){
-  if(!c||!c.selfReg)return ''; // los de coach ya tienen coach
+  // Solo a usuarios LIBRES (tier='libre'). Antes gateaba por selfReg, así que un auto-registrado
+  // YA convertido a Premium (selfReg + tier='premium') seguía viendo "Pásate a Premium" — se le
+  // ofrecía algo que ya tiene. Premium/gestionados no llevan upsell. (Auditoría Camilo 2026-06-25)
+  if(!c||!isFreeClient(c))return '';
   if(c.wantsCoach){
     return `<div style="background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--gt);line-height:1.5">✅ <b>¡Solicitud enviada!</b> Tu coach te contactará pronto para guiarte de cerca. 💪</div>`;
   }
