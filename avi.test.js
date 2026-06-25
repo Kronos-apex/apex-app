@@ -310,6 +310,16 @@ test('hombre Intermedio 3 días → split Empuje/Tracción/Pierna', () => {
   assert.deepStrictEqual(routines.map(r => r.name), ['Empuje', 'Tracción', 'Pierna']);
 });
 
+test('deltoides posterior (face pull/pájaro) NO cae en EMPUJE, sí en TRACCIÓN (Camilo 2026-06-25)', () => {
+  // h4 = "Face Pull en Polea" (hombros/Aislamiento) = deltoides posterior. Es músculo de
+  // tracción, así que el día de Empuje no debe traerlo; el de Tracción sí debe priorizarlo.
+  const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  const empuje = routines.find(r => r.name === 'Empuje');
+  const traccion = routines.find(r => r.name === 'Tracción');
+  assert.ok(!empuje.exercises.some(e => e.id === 'h4'), 'Face Pull (deltoide posterior) no debe ir en día de Empuje');
+  assert.ok(traccion.exercises.some(e => e.id === 'h4'), 'el día de Tracción debe priorizar el deltoide posterior (Face Pull)');
+});
+
 test('TODOS los ejercicios llevan id+icon+muscle+type (§2.6 crítico)', () => {
   const { routines } = generarRutinas({ sex: 'M', level: 'Avanzado', days: 5, goal: 'Perder grasa' }, LIB, FIXED);
   routines.forEach(r => r.exercises.forEach(e => {

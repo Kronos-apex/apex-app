@@ -1613,10 +1613,12 @@ function clientWeekEditorial(client){
 function renderClientAllRoutines(client){
   const ed=document.getElementById('cn-week-ed');
   const con=document.getElementById('cn-all-rut');const routines=sortRoutinesByDay(client.routines||[]);
-  // Puede editar su propia rutina: el coach en su entreno, o un cliente LIBRE (sin coach que se la
-  // gestione). Los asesorados premium NO editan (su coach lo hace). Las gráficas siguen siendo premium,
-  // pero armar/ajustar ejercicios está disponible para el libre que solo quiere registrar.
-  const canEdit=COACH_SELF||isFreeClient(client);
+  // TODO cliente puede editar SUS propias rutinas (Opción B, Camilo 2026-06-25). Antes los
+  // premium quedaban bloqueados, así que "Activar Premium" le QUITABA al usuario la capacidad
+  // de ajustar su plan que ya tenía gratis — un contrasentido. El coach sigue editándolas desde
+  // su panel (renderDetailRoutines). Esta vista es siempre el entreno propio del que entró.
+  // (Las gráficas avanzadas siguen siendo Premium; esto es solo armar/ajustar ejercicios.)
+  const canEdit=true;
   if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
   if(!routines.length){
     con.innerHTML=COACH_SELF
