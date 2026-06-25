@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>AVI — Entrenamiento Personal</title>
 
+<!-- Captura TEMPRANA del evento de instalación. Chrome dispara beforeinstallprompt
+     muy pronto (antes de que cargue el resto del JS, que espera a la nube). Si no se
+     atrapa aquí, se pierde y el botón ya no puede instalar de un toque. -->
+<script>
+window.__aviBIP=null;
+addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__aviBIP=e;try{window._aviOnBIP&&window._aviOnBIP(e);}catch(_){}});
+addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviOnInstalled&&window._aviOnInstalled();}catch(_){}});
+</script>
+
 <!-- SEO + Social sharing -->
 <meta name="description" content="Tu plan de entrenamiento personalizado. Rutinas, progreso y comunicación directa con tu coach.">
 <meta name="robots" content="noindex, nofollow">

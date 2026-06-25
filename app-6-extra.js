@@ -28,8 +28,11 @@ function initPWA(){
       .catch(e=>warn('AVI SW error:',e));
   }
 
-  // Banner e instrucciones de instalación PWA
-  let deferredPrompt=null;
+  // Banner e instrucciones de instalación PWA.
+  // El evento beforeinstallprompt lo captura un script en el <head> ANTES de que
+  // cargue este JS (que espera a la nube), y lo deja en window.__aviBIP. Aquí lo
+  // recogemos para que el botón pueda instalar de un toque sin perder el evento.
+  let deferredPrompt=window.__aviBIP||null;
   const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
@@ -39,6 +42,16 @@ function initPWA(){
     if(sessionStorage.getItem('avi_install_dismissed')) return;
     const b=document.getElementById('install-banner');
     if(b) b.style.display='flex';
+  };
+
+  // Cuando el navegador ya permite instalar de un toque: botón visible + pista directa
+  const reflectInstallable=()=>{
+    if(isStandalone) return;
+    showInstallBtn();
+    const generic=document.getElementById('install-hint-generic');
+    const android=document.getElementById('install-hint-android');
+    if(generic)generic.style.display='none';
+    if(android)android.style.display='block';
   };
 
   // Si ya está instalada (standalone) ocultar todo; si no, mostrar botón + instrucciones de login
@@ -58,26 +71,22 @@ function initPWA(){
         document.getElementById('install-hint-generic').style.display='block';
       }
     }
+    // Si el evento ya se capturó en el <head>, reflejar "instalable" de una vez
+    if(deferredPrompt) reflectInstallable();
   }
 
-  window.addEventListener('beforeinstallprompt',e=>{
-    e.preventDefault();
+  // Hook llamado por el script del <head> si el evento llega DESPUÉS de este init
+  window._aviOnBIP=e=>{
     if(isStandalone) return;
     deferredPrompt=e;
-    // El navegador ya permite instalar de un toque → asegurar el botón visible
-    showInstallBtn();
-    // En login: cambiar la pista de texto a "botón directo"
-    const generic=document.getElementById('install-hint-generic');
-    const android=document.getElementById('install-hint-android');
-    if(generic)generic.style.display='none';
-    if(android)android.style.display='block';
-  });
+    reflectInstallable();
+  };
 
-  window.addEventListener('appinstalled',()=>{
+  window._aviOnInstalled=()=>{
     deferredPrompt=null;
     ['install-banner','install-hint','ios-install-banner'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
-    toast('✅ ¡App instalada! Ábrela desde tu pantalla de inicio.');
-  });
+    if(typeof toast==='function') toast('✅ ¡App instalada! Ábrela desde tu pantalla de inicio.');
+  };
 
   window._aviInstall=async()=>{
     // iPhone/Safari: Apple no permite instalar por botón → abrir la guía visual de pasos
