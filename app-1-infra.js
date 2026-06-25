@@ -274,8 +274,9 @@ function notifNewMessage(fromName,preview){
 let _msgPollInt=null;
 
 async function pollMessages(){
-  if(!CUR.loggedAs||!SB_URL)return;
-  if(AUTH_MODE)return; // mensajería en modo auth = vía user_data (2.2d/e), no el blob global
+  if(!CUR.loggedAs)return;
+  if(AUTH_MODE)return _pollAuthData(); // modo auth: refresco en vivo desde user_data (ver _pollAuthData)
+  if(!SB_URL)return;
   try{
     const res=await fetch(`${SB_URL}/rest/v1/apex_data?select=value&key=eq.ax_m`,{
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
@@ -356,11 +357,94 @@ async function pollMessages(){
   }catch(e){/* error de red, silencioso */}
 }
 
+// ── Refresco EN VIVO en modo auth (reemplaza al sondeo del blob legacy, que quedaba
+// deshabilitado con `if(AUTH_MODE)return`) ──────────────────────────────────────────
+// Re-trae la fila del usuario (cliente) o las de sus asesorados (coach) y refresca SOLO
+// las vistas abiertas, para que los mensajes nuevos y los cambios de rutina del coach
+// lleguen SIN tener que salir y volver a entrar. Pedido de Camilo 2026-06-25.
+async function _pollAuthData(){
+  try{
+    if(AUTH_ROLE==='coach') return await _pollAuthCoach();
+    return await _pollAuthClient();
+  }catch(e){ /* red, silencioso */ }
+}
+
+async function _pollAuthClient(){
+  const cid=CUR.clientId; if(!cid)return;
+  const row=await UD.loadOwn(); if(!row)return;
+  let touched=false;
+  // 1) Mensajes nuevos del coach (aditivo → siempre seguro).
+  const remoteMsgs=Array.isArray(row.msgs)?row.msgs:[];
+  const localMsgs=DB.msgs[cid]||[];
+  if(remoteMsgs.length>localMsgs.length){
+    const fresh=remoteMsgs.slice(localMsgs.length);
+    DB.msgs[cid]=remoteMsgs; touched=true;
+    if(typeof renderClientMsgs==='function')renderClientMsgs(cid);
+    if(typeof updateMsgBadge==='function')updateMsgBadge(cid);
+    fresh.filter(m=>m.from==='coach').forEach(m=>{
+      if(typeof notifNewMessage==='function')notifNewMessage('Tu Coach',m.text);
+      const chatEl=document.getElementById('cn-messages');
+      if(chatEl&&!chatEl.classList.contains('on')&&typeof toast==='function')toast('💬 Nuevo mensaje de tu coach');
+    });
+  }
+  // 2) Cambios de rutina que hizo el coach. NO pisar si el usuario está editando, entrenando
+  //    o tiene cambios locales sin confirmar (_authDirty) — su copia manda hasta que suba.
+  const editorOpen=(()=>{const m=document.getElementById('m-routine');return !!(m&&getComputedStyle(m).display!=='none');})();
+  const busy=editorOpen||CUR.todayWorking||CUR.todayDirty||_authDirty;
+  if(!busy&&Array.isArray(row.routines)){
+    const client=DB.clients.find(x=>x.id===cid);
+    if(client&&JSON.stringify(client.routines||[])!==JSON.stringify(row.routines)){
+      client.routines=row.routines; touched=true;
+      if(typeof renderClientToday==='function')renderClientToday(client);
+      const rtTab=document.getElementById('cn-routines');
+      if(rtTab&&rtTab.classList.contains('on')&&typeof renderClientAllRoutines==='function')renderClientAllRoutines(client);
+      if(typeof toast==='function')toast('🔄 Tu coach actualizó tu plan');
+    }
+  }
+  if(touched)_refreshAuthCache();
+}
+
+async function _pollAuthCoach(){
+  const rows=await UD.loadCoachClients(); if(!rows)return;
+  let changed=false; const inbox=[]; const leads=[];
+  rows.forEach(r=>{
+    if(!r||!r.user_id)return;
+    let local=DB.clients.find(x=>x.id===r.user_id);
+    if(!local){ // asesorado nuevo (auto-registro) que llegó después de abrir la sesión
+      local=rowToClient(r);
+      DB.clients.push(local);
+      DB.msgs[local.id]=Array.isArray(r.msgs)?r.msgs:[];
+      if(Array.isArray(r.history)){DB.history=DB.history||{};DB.history[local.id]=r.history;}
+      changed=true; if(local.selfReg)leads.push(local);
+      return;
+    }
+    // Mensajes nuevos del cliente (aditivo). NO traemos sus rutinas aquí para no pisar una
+    // edición del coach en vuelo; las autoediciones del cliente se ven al abrir su detalle.
+    const remoteMs=Array.isArray(r.msgs)?r.msgs:[]; const localMs=DB.msgs[local.id]||[];
+    if(remoteMs.length>localMs.length){
+      remoteMs.slice(localMs.length).filter(m=>m.from==='client').forEach(m=>inbox.push({client:local,text:m.text}));
+      DB.msgs[local.id]=remoteMs; changed=true;
+    }
+    const rWants=r.profile&&r.profile.wantsCoach;
+    if(rWants&&!local.wantsCoach){ local.wantsCoach=true; local.wantsCoachAt=r.profile&&r.profile.wantsCoachAt; changed=true; leads.push(local); }
+  });
+  if(changed){
+    if(typeof renderMsgs==='function')renderMsgs();
+    if(typeof renderClients==='function')renderClients();
+    if(typeof renderHome==='function')renderHome();
+    const detailEl=document.getElementById('p-detail');
+    if(detailEl&&detailEl.classList.contains('on')&&CUR.clientId&&typeof renderDetailMsgs==='function')renderDetailMsgs(CUR.clientId);
+    inbox.forEach(({client,text})=>{ if(typeof notifNewMessage==='function')notifNewMessage(client.name,text); });
+    leads.forEach(c=>{ if(typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
+  }
+}
+
 function startMsgPolling(){
   if(_msgPollInt)clearInterval(_msgPollInt);
-  // Primera verificación inmediata a los 5s del login para no solaparse con syncFromCloud
+  // Primera verificación a los 5s del login (no solaparse con syncFromCloud) y luego cada 15s
+  // para que el chat y los cambios de plan se sientan en vivo con la app abierta.
   setTimeout(pollMessages,5000);
-  _msgPollInt=setInterval(pollMessages,30000);
+  _msgPollInt=setInterval(pollMessages,15000);
 }
 
 function stopMsgPolling(){
@@ -582,6 +666,9 @@ if(typeof window!=='undefined'){
   window.addEventListener('online', _flushAll);
   window.addEventListener('pagehide', _flushAll);
   document.addEventListener('visibilitychange', _flushAll);
+  // Al volver a la app (foreground) refresca de inmediato mensajes/plan, sin esperar el tick.
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'&&CUR.loggedAs&&typeof pollMessages==='function'){ setTimeout(pollMessages,400); } });
+  window.addEventListener('online', ()=>{ if(CUR.loggedAs&&typeof pollMessages==='function')setTimeout(pollMessages,800); });
 }
 
 async function syncFromCloud(){
