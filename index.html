@@ -943,12 +943,12 @@
   </div>
 </div>
 
-<!-- Banner instalación PWA — Android/Chrome -->
-<div id="install-banner" class="hide" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8000;background:#06402E;color:white;border-radius:14px;padding:12px 20px;display:none;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;width:calc(100% - 32px)">
-  <span style="font-size:22px">💪</span>
-  <div style="flex:1"><div style="font-size:13px;font-weight:700">Instala AVI</div><div style="font-size:11px;opacity:.75">Accede sin navegador, como una app real</div></div>
-  <button onclick="window._aviInstall&&window._aviInstall()" style="background:var(--g2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;font-family:inherit">Instalar</button>
-  <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;color:white;font-size:12px;padding:7px 9px;cursor:pointer">✕</button>
+<!-- Botón flotante de instalación PWA — un toque instala en Android; en iPhone abre la guía -->
+<div id="install-banner" class="hide" style="position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:8000;display:none;align-items:center;gap:9px">
+  <button onclick="window._aviInstall&&window._aviInstall()" aria-label="Instalar AVI" style="display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#13B583,#0A7C5B);border:none;border-radius:999px;color:#fff;font-size:14px;font-weight:800;padding:13px 22px;cursor:pointer;font-family:inherit;box-shadow:0 10px 30px rgba(10,124,91,.45);animation:aviInstallPulse 2.2s ease-in-out infinite">
+    <span style="font-size:18px">📲</span> Instalar app
+  </button>
+  <button onclick="window._aviDismissInstall&&window._aviDismissInstall()" aria-label="Cerrar" style="background:rgba(0,0,0,.4);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.3)">✕</button>
 </div>
 
 <!-- Banner instalación iOS — Safari -->

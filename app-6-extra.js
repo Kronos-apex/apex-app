@@ -33,20 +33,27 @@ function initPWA(){
   const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
-  // Si ya está instalada (standalone) ocultar todo
+  // Muestra el botón flotante de instalar (un solo control, práctico, siempre a la mano)
+  const showInstallBtn=()=>{
+    if(isStandalone) return;
+    if(sessionStorage.getItem('avi_install_dismissed')) return;
+    const b=document.getElementById('install-banner');
+    if(b) b.style.display='flex';
+  };
+
+  // Si ya está instalada (standalone) ocultar todo; si no, mostrar botón + instrucciones de login
   if(isStandalone){
     ['install-banner','install-hint','ios-install-banner'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   } else {
-    // Mostrar instrucciones en login adaptadas al dispositivo
+    // Botón flotante visible de una vez (no espera al permiso del navegador)
+    showInstallBtn();
+    // Instrucciones en login adaptadas al dispositivo
     const hint=document.getElementById('install-hint');
     if(hint){
       hint.style.display='block';
       if(isIOS){
         document.getElementById('install-hint-ios').style.display='block';
         document.getElementById('install-hint-generic').style.display='none';
-        // Banner flotante iOS con instrucciones visuales (solo si no fue cerrado antes)
-        const iosBanner=document.getElementById('ios-install-banner');
-        if(iosBanner&&!localStorage.getItem('apex_ios_banner_dismissed')) setTimeout(()=>iosBanner.style.display='block', 1200);
       } else {
         document.getElementById('install-hint-generic').style.display='block';
       }
@@ -57,10 +64,9 @@ function initPWA(){
     e.preventDefault();
     if(isStandalone) return;
     deferredPrompt=e;
-    // Mostrar banner flotante
-    const b=document.getElementById('install-banner');
-    if(b)b.style.display='flex';
-    // En login: cambiar a botón directo
+    // El navegador ya permite instalar de un toque → asegurar el botón visible
+    showInstallBtn();
+    // En login: cambiar la pista de texto a "botón directo"
     const generic=document.getElementById('install-hint-generic');
     const android=document.getElementById('install-hint-android');
     if(generic)generic.style.display='none';
@@ -69,14 +75,21 @@ function initPWA(){
 
   window.addEventListener('appinstalled',()=>{
     deferredPrompt=null;
-    ['install-banner','install-hint'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    ['install-banner','install-hint','ios-install-banner'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
     toast('✅ ¡App instalada! Ábrela desde tu pantalla de inicio.');
   });
 
   window._aviInstall=async()=>{
+    // iPhone/Safari: Apple no permite instalar por botón → abrir la guía visual de pasos
+    if(isIOS){
+      const b=document.getElementById('ios-install-banner');
+      if(b) b.style.display='block';
+      else toast('Toca Compartir ↑ → "Añadir a pantalla de inicio"');
+      return;
+    }
+    // Android/Chrome: si el navegador ya dio el permiso, instalación nativa de un toque
     if(!deferredPrompt){
-      if(isIOS){toast('Toca Compartir ↑ → "Añadir a pantalla de inicio"');}
-      else{toast('Menú del navegador → "Instalar aplicación"');}
+      toast('Abre el menú del navegador (⋮) y toca "Instalar aplicación"');
       return;
     }
     deferredPrompt.prompt();
@@ -85,6 +98,13 @@ function initPWA(){
     deferredPrompt=null;
     const b=document.getElementById('install-banner');
     if(b)b.style.display='none';
+  };
+
+  // Cerrar el botón flotante (solo por esta sesión: vuelve la próxima vez)
+  window._aviDismissInstall=()=>{
+    const b=document.getElementById('install-banner');
+    if(b)b.style.display='none';
+    try{sessionStorage.setItem('avi_install_dismissed','1');}catch(e){}
   };
 
   window.dismissIOSBanner=function dismissIOSBanner(){
