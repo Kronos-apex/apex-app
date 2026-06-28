@@ -490,7 +490,10 @@ function renderGamification(client){
     {ic:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
   ];
   const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?b.ic:'🔒'}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
-  con.innerHTML=monthHTML+lvlHTML+badgesHTML;
+  // El banner de descuento del mes se quitó del Progreso del cliente (descongestión,
+  // 2026-06-28). La info de descuento sigue visible para el coach en su panel
+  // (renderDetailMembership). monthHTML ya no se inserta; `d` se usa en los logros.
+  con.innerHTML=lvlHTML+badgesHTML;
 }
 
 // Progressive disclosure del Perfil: para un asesorado nuevo, oculta las tarjetas de
@@ -1430,7 +1433,7 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
   const setsData=(routine.exercises||[]).map((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
     const warm=auxVal(ei,WARM_SI);
-    return {name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
   });
   const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   // Evita duplicar: misma rutina el mismo día → actualiza la entrada existente.
@@ -1744,7 +1747,9 @@ function renderClientStreak(clientId){
     if(d.trained)cls+=' trained'+(d.count>=2?' t2':'');
     else if(d.isFuture)cls+=' future';
     if(d.isToday)cls+=' today';
-    grid+=`<div class="${cls}">${d.day}</div>`;
+    // Día con entreno → clickeable: lleva a la sesión que hizo ese día.
+    const click=d.trained?` onclick="cnOpenDayHistory('${clientId}',${cal.year},${cal.month},${d.day})" style="cursor:pointer" title="Ver el entrenamiento de este día"`:'';
+    grid+=`<div class="${cls}"${click}>${d.day}</div>`;
   }));
   // Mensaje en lenguaje claro: explica qué es la racha y qué hacer ahora.
   const msg = streak>=2
@@ -1763,8 +1768,27 @@ function renderClientStreak(clientId){
     <div class="cal-month">${mes.charAt(0).toUpperCase()+mes.slice(1)}</div>
     <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
     <div class="cal-grid">${grid}</div>
-    <div class="cal-legend"><i></i> Días que entrenaste · <span style="opacity:.6">hoy va resaltado</span></div>
+    <div class="cal-legend"><i></i> Días que entrenaste · <span style="opacity:.6">toca un día para ver ese entreno</span></div>
   </div>`;
+}
+
+// Tocar un día entrenado del calendario → despliega el historial y salta a la sesión
+// de ese día (la abre y la resalta un instante).
+function cnOpenDayHistory(clientId,year,month,day){
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const target=sessions.find(s=>{const d=new Date(s.date);return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day;});
+  if(!target)return;
+  _cnHistOpen[clientId]=true;        // asegura que la tarjeta esté en la lista
+  renderClientHistory(clientId);
+  setTimeout(()=>{
+    const card=document.getElementById('sescard-'+target.id);
+    if(!card)return;
+    const detail=card.children[1];   // el bloque de detalle (oculto por defecto)
+    if(detail)detail.style.display='block';
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.classList.add('flash');
+    setTimeout(()=>card.classList.remove('flash'),1600);
+  },60);
 }
 
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.
@@ -1808,27 +1832,64 @@ function renderAdvStats(clientId){
     </div>`;
   }
   // Volumen por grupo muscular — barras horizontales (color por categoría).
+  // Cada grupo con desglose es expandible: al tocarlo muestra sus subregiones
+  // (Cuádriceps, Femoral, Aductores…) calculadas con MM_EX (vía _exSubregions).
   const catColor={empuje:'#3ba776',traccion:'#3a86c8',piernas:'#9b6dd6',core:'#e0a72e',cardio:'#e07a5f',otro:'#8a8f98'};
   const maxSets=vol.groups[0]?vol.groups[0].sets:1;
   const bars=vol.groups.map(g=>{
     const w=Math.max(6,Math.round(g.sets/maxSets*100));
     const col=catColor[g.cat]||catColor.otro;
-    return `<div class="adv-row">
-      <div class="adv-row-lbl">${esc(g.label)}</div>
-      <div class="adv-row-track"><div class="adv-row-fill" style="width:${w}%;background:${col}"></div></div>
-      <div class="adv-row-val">${g.sets}<span>series</span></div>
+    const subs=(g.group==='cardio'||g.group==='otro')?[]:submuscleVolume(sessions,g.group,win,new Date(),_exSubregions);
+    const canExpand=subs.length>0;
+    let smRows='';
+    if(canExpand){
+      const smMax=subs[0].sets||1;
+      smRows=subs.map(s=>{
+        const sw=Math.max(8,Math.round(s.sets/smMax*100));
+        return `<div class="adv-smrow"><div class="adv-smrow-lbl">${esc(s.label)}</div><div class="adv-smrow-track"><div class="adv-smrow-fill" style="width:${sw}%;background:${col}"></div></div><div class="adv-smrow-val">${s.sets}</div></div>`;
+      }).join('');
+    }
+    return `<div class="adv-grp${canExpand?' can':''}">
+      <div class="adv-row"${canExpand?' onclick="cnToggleSub(this)"':''}>
+        <div class="adv-row-lbl">${esc(g.label)}${canExpand?' <span class="adv-chev">▾</span>':''}</div>
+        <div class="adv-row-track"><div class="adv-row-fill" style="width:${w}%;background:${col}"></div></div>
+        <div class="adv-row-val">${g.sets}<span>series</span></div>
+      </div>
+      ${canExpand?`<div class="adv-sm" style="display:none">${smRows}</div>`:''}
     </div>`;
   }).join('');
   con.innerHTML=`<div class="card adv-card">
     <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
     <div class="adv-sub">Series <b>completadas</b> en los últimos ${winLbl} · ${vol.totalSets} en total, ${vol.sessions} entreno${vol.sessions===1?'':'s'}.</div>
     ${balHTML}
-    <div class="adv-sech">Cuánto le das a cada músculo</div>
+    <div class="adv-sech">Cuánto le das a cada músculo <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca un grupo para ver el detalle</span></div>
     <div class="adv-bars">${bars}</div>
     <div class="adv-foot">Contamos solo las <b>series que marcaste como hechas</b> (sin calentamiento). Más series = más estímulo para ese músculo.</div>
   </div>`;
 }
+// Expandir/colapsar el desglose de subgrupos de una fila de grupo muscular.
+function cnToggleSub(rowEl){
+  const grp=rowEl.parentElement;const sm=grp.querySelector('.adv-sm');if(!sm)return;
+  const open=sm.style.display!=='none';
+  sm.style.display=open?'none':'block';
+  const chev=rowEl.querySelector('.adv-chev');if(chev)chev.style.transform=open?'':'rotate(180deg)';
+}
+// Resuelve las subregiones PRIMARIAS de un ejercicio del historial. La sesión guarda
+// nombre+grupo (y, en sesiones nuevas, id). Mapea por id si está; si no, por nombre
+// contra el catálogo. Cae a [] si es un ejercicio a medida no mapeado en MM_EX.
+let _nameIdCache=null;
+function _exSubregions(ex){
+  let id=ex&&ex.id;
+  if(!id&&ex&&ex.name){
+    if(!_nameIdCache){_nameIdCache={};(DB.exercises||[]).forEach(e=>{if(e&&e.name)_nameIdCache[String(e.name).toLowerCase().trim()]=e.id;});}
+    id=_nameIdCache[String(ex.name).toLowerCase().trim()];
+  }
+  if(!id||typeof MM_EX==='undefined')return [];
+  const e=MM_EX[id];
+  return e?(e.p||[]):[];
+}
 
+let _cnHistOpen={}; // clientId -> ver TODO el historial (por defecto colapsado a 2)
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
@@ -1841,11 +1902,15 @@ function renderClientHistory(clientId){
     return;
   }
   con.innerHTML='';
-  sessions.forEach(s=>{
+  // Plegable: por defecto solo los últimos 2 entrenos; el resto tras "Ver todos".
+  const open=_cnHistOpen[clientId];
+  const shown=open?sessions:sessions.slice(0,2);
+  shown.forEach(s=>{
     const d=new Date(s.date);
     const dateStr=d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
     const timeStr=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
     const div=document.createElement('div');
+    if(s.id)div.id='sescard-'+s.id;
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
     const pcol=pct===100?'var(--g)':'var(--or)';
     div.className='sescard'+(pct===100?' done':'');
@@ -1866,6 +1931,13 @@ function renderClientHistory(clientId){
       </div>`;
     con.appendChild(div);
   });
+  if(sessions.length>2){
+    const mb=document.createElement('button');
+    mb.className='collapse-more';
+    mb.textContent=open?'Ver menos ▴':`Ver todos (${sessions.length}) ▾`;
+    mb.onclick=()=>{_cnHistOpen[clientId]=!open;renderClientHistory(clientId);};
+    con.appendChild(mb);
+  }
 }
 
 // COACH sees client history

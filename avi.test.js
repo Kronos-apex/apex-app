@@ -77,6 +77,7 @@ const {
   pushPullBalance,
   clientHasCoach,
   clientPlan,
+  submuscleVolume,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1974,6 +1975,53 @@ test('pushPullBalance: sin datos → verdict sin-datos, no rompe', () => {
   assert.strictEqual(r.verdict, 'sin-datos');
   assert.strictEqual(r.ratio, null);
   assert.strictEqual(pushPullBalance(null).verdict, 'sin-datos');
+});
+
+// ══════════════════════════════════════════════════════
+section('Subgrupos musculares (submuscleVolume)');
+
+// getSubregions falso: ejercicio → subregiones primarias (como MM_EX[id].p).
+const _subs = {
+  'Sentadilla': ['quads', 'gluteus-maximus'],   // glúteo es de OTRO grupo
+  'Prensa': ['quads', 'gluteus-maximus'],
+  'Curl femoral': ['hamstrings'],
+  'Aductor en máquina': ['adductors'],
+  'Hip thrust': ['gluteus-maximus'],
+};
+const _getSub = ex => _subs[ex.name] || [];
+const _sm = (date, ...exs) => ({ date, exercises: exs.map(([muscle, name, done]) => ({ muscle, name, sets: Array.from({ length: done }, () => ({ done: true })) })) });
+
+test('submuscleVolume: desglosa Piernas en sus subregiones (cuádriceps/femoral/aductores)', () => {
+  const now = new Date('2026-05-15T12:00');
+  const r = submuscleVolume([
+    _sm('2026-05-14T10:00', ['piernas', 'Sentadilla', 3], ['piernas', 'Curl femoral', 2], ['piernas', 'Aductor en máquina', 2]),
+  ], 'piernas', 7, now, _getSub);
+  const m = Object.fromEntries(r.map(x => [x.label, x.sets]));
+  assert.strictEqual(m['Cuádriceps'], 3);
+  assert.strictEqual(m['Femoral'], 2);
+  assert.strictEqual(m['Aductores'], 2);
+  assert.strictEqual(m['Glúteo mayor'], undefined); // glúteo NO entra bajo Piernas
+});
+
+test('submuscleVolume: el glúteo de la sentadilla va bajo Glúteos, no Piernas', () => {
+  const now = new Date('2026-05-15T12:00');
+  const piernas = submuscleVolume([_sm('2026-05-14T10:00', ['piernas', 'Sentadilla', 4])], 'piernas', 7, now, _getSub);
+  assert.deepStrictEqual(piernas, [{ label: 'Cuádriceps', sets: 4 }]);
+  const gluteo = submuscleVolume([_sm('2026-05-14T10:00', ['gluteo', 'Hip thrust', 3])], 'gluteo', 7, now, _getSub);
+  assert.deepStrictEqual(gluteo, [{ label: 'Glúteo mayor', sets: 3 }]);
+});
+
+test('submuscleVolume: respeta ventana y solo el grupo pedido; sin resolver → General', () => {
+  const now = new Date('2026-05-15T12:00');
+  const sess = [
+    _sm('2026-05-14T10:00', ['piernas', 'Sentadilla', 3], ['pecho', 'Press', 5]), // pecho ignorado
+    _sm('2026-05-01T10:00', ['piernas', 'Curl femoral', 9]), // fuera de ventana
+  ];
+  const r = submuscleVolume(sess, 'piernas', 7, now, _getSub);
+  assert.deepStrictEqual(r, [{ label: 'Cuádriceps', sets: 3 }]);
+  // ejercicio cuyo nombre no resuelve subregiones → General
+  const g = submuscleVolume([_sm('2026-05-14T10:00', ['piernas', 'Ejercicio raro', 2])], 'piernas', 7, now, _getSub);
+  assert.deepStrictEqual(g, [{ label: 'General', sets: 2 }]);
 });
 
 // ══════════════════════════════════════════════════════

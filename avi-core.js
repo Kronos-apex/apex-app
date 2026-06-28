@@ -983,6 +983,64 @@ function pushPullBalance(byCat) {
   return { push, pull, total, pushPct, pullPct, ratio, verdict, msg };
 }
 
+// ── Desglose por SUBGRUPO muscular: al tocar un grupo (Piernas) se muestran sus
+// subregiones (Cuádriceps, Femoral, Aductores…). Subregión canónica (la de MM_EX)
+// → grupo AVI al que pertenece, y → etiqueta en español. Mantener en sync con
+// MM_GROUP (muscle-map.js) y MM_EX (exercise-muscles.js).
+const SUBMUSCLE_GROUP = {
+  'chest-upper': 'pecho', 'chest-lower': 'pecho',
+  'lats-upper': 'espalda', 'lats-mid': 'espalda', 'lats-lower': 'espalda',
+  'traps-upper': 'espalda', 'traps-mid': 'espalda', 'traps-lower': 'espalda', 'lower-back-erectors': 'espalda',
+  'shoulder-front': 'hombros', 'shoulder-side': 'hombros', 'deltoid-rear': 'hombros',
+  'biceps': 'biceps', 'brachialis': 'biceps', 'brachioradialis': 'biceps', 'brachioradialis-back': 'biceps',
+  'forearm': 'biceps', 'forearm-flexors': 'biceps', 'forearm-extensors': 'biceps',
+  'triceps-long': 'triceps', 'triceps-lateral': 'triceps',
+  'quads': 'piernas', 'hamstrings': 'piernas', 'adductors': 'piernas', 'calves-gastroc': 'piernas', 'calves-soleus': 'piernas',
+  'gluteus-maximus': 'gluteo', 'gluteus-medius': 'gluteo',
+  'abs-upper': 'core', 'abs-lower': 'core', 'obliques': 'core', 'hip-flexor': 'core',
+};
+const SUBMUSCLE_LABEL = {
+  'chest-upper': 'Pecho superior', 'chest-lower': 'Pecho inferior',
+  'lats-upper': 'Dorsal superior', 'lats-mid': 'Dorsal medio', 'lats-lower': 'Dorsal inferior',
+  'traps-upper': 'Trapecio superior', 'traps-mid': 'Trapecio medio', 'traps-lower': 'Trapecio inferior', 'lower-back-erectors': 'Lumbares',
+  'shoulder-front': 'Hombro anterior', 'shoulder-side': 'Hombro lateral', 'deltoid-rear': 'Hombro posterior',
+  'biceps': 'Bíceps', 'brachialis': 'Braquial', 'brachioradialis': 'Braquiorradial', 'brachioradialis-back': 'Braquiorradial',
+  'forearm': 'Antebrazo', 'forearm-flexors': 'Antebrazo', 'forearm-extensors': 'Antebrazo',
+  'triceps-long': 'Tríceps (cabeza larga)', 'triceps-lateral': 'Tríceps (cabeza lateral)',
+  'quads': 'Cuádriceps', 'hamstrings': 'Femoral', 'adductors': 'Aductores', 'calves-gastroc': 'Gemelos', 'calves-soleus': 'Sóleo',
+  'gluteus-maximus': 'Glúteo mayor', 'gluteus-medius': 'Glúteo medio (abductores)',
+  'abs-upper': 'Abdomen superior', 'abs-lower': 'Abdomen inferior', 'obliques': 'Oblicuos', 'hip-flexor': 'Flexores de cadera',
+};
+
+// Series efectivas por SUBREGIÓN dentro de UN grupo AVI, en los últimos windowDays.
+// Solo cuenta ejercicios cuyo `muscle` ES el grupo pedido, y atribuye sus series a las
+// subregiones PRIMARIAS que pertenecen a ESE grupo (las de otros grupos se ignoran;
+// p.ej. el glúteo de una sentadilla no aparece bajo Piernas). Agrega por etiqueta
+// (Antebrazo/Braquiorradial unen sus variantes). getSubregions(ex)→[subregión…] lo
+// inyecta la UI (resuelve el ejercicio por id o nombre vía MM_EX). Pura/testeable.
+// Devuelve [{label, sets}] desc (sets>0). Si un ejercicio no resuelve subregiones del
+// grupo, su volumen cae en 'General'.
+function submuscleVolume(sessions, group, windowDays, now, getSubregions) {
+  const ref = now ? new Date(now) : new Date();
+  const cutoff = ref.getTime() - (windowDays || 7) * MS_DAY;
+  const counts = {};
+  (sessions || []).forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    if (isNaN(t) || t < cutoff) return;
+    ((s && s.exercises) || []).forEach(ex => {
+      if (((ex && ex.muscle) || '') !== group) return;
+      const sets = (((ex && ex.sets) || []).filter(st => st && st.done)).length;
+      if (!sets) return;
+      const subs = (getSubregions && getSubregions(ex)) || [];
+      const labels = [...new Set(subs.filter(sb => SUBMUSCLE_GROUP[sb] === group).map(sb => SUBMUSCLE_LABEL[sb] || sb))];
+      if (labels.length) labels.forEach(lb => { counts[lb] = (counts[lb] || 0) + sets; });
+      else counts['General'] = (counts['General'] || 0) + sets;
+    });
+  });
+  return Object.keys(counts).map(lb => ({ label: lb, sets: counts[lb] }))
+    .sort((a, b) => b.sets - a.sets || a.label.localeCompare(b.label));
+}
+
 // ── Orden de rutinas por día de la semana (Lunes primero, Libre al final) ──
 // El día se guarda como nombre en español (con o sin tilde, defensivo). Cualquier
 // valor desconocido va al final. Empieza en LUNES (no domingo) porque así lo lee
@@ -1625,5 +1683,8 @@ if (typeof module !== 'undefined' && module.exports) {
     MUSCLE_GROUP_LABEL,
     muscleVolume,
     pushPullBalance,
+    SUBMUSCLE_GROUP,
+    SUBMUSCLE_LABEL,
+    submuscleVolume,
   };
 }
