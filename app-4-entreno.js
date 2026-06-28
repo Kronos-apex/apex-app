@@ -1821,13 +1821,25 @@ function openSessionRoom(clientId,sid){
   const timeStr=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   const pct=s.totalSets>0?Math.round(s.doneSets/s.totalSets*100):0;
   const stats=[];
-  if(s.durationSec)stats.push(['⏱','Duración',fmtDuration(s.durationSec)]);
-  if(s.kcal)stats.push(['🔥','Calorías',s.kcal+' kcal']);
-  if(s.totalVol>0)stats.push(['🏋️','Volumen',s.totalVol.toLocaleString()+' kg']);
-  if(reps>0)stats.push(['🔁','Reps totales',String(reps)]);
-  stats.push(['📋','Ejercicios',String(exCount||exs.length)]);
-  stats.push(['✅','Series',`${s.doneSets}/${s.totalSets}`]);
-  const statsHTML=stats.map(([ic,l,v])=>`<div class="sroom-stat"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`).join('');
+  if(s.durationSec)stats.push(['⏱','Duración',fmtDuration(s.durationSec),'#3a86c8']);
+  if(s.kcal)stats.push(['🔥','Calorías',s.kcal+' kcal','#e0772e']);
+  if(s.totalVol>0)stats.push(['🏋️','Volumen',s.totalVol.toLocaleString()+' kg','#10b981']);
+  if(reps>0)stats.push(['🔁','Reps totales',String(reps),'#9b6dd6']);
+  stats.push(['📋','Ejercicios',String(exCount||exs.length),'#0ea5b7']);
+  stats.push(['✅','Series',`${s.doneSets}/${s.totalSets}`,pct===100?'#10b981':'#e0a72e']);
+  const statsHTML=stats.map(([ic,l,v,col])=>`<div class="sroom-stat" style="--sc:${col}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`).join('');
+  // Comparación con la última vez que hizo ESTA rutina (no con cualquier otra, que sería
+  // peras con manzanas): sube/baja de volumen → engancha a superarse. Solo si hay con qué.
+  let cmpHTML='';
+  const _idx=sessions.findIndex(x=>x.id===s.id);
+  const _prev=_idx>=0?sessions.slice(_idx+1).find(x=>(x.routineId&&x.routineId===s.routineId)||(x.routineName&&x.routineName===s.routineName)):null;
+  if(_prev&&s.totalVol>0&&_prev.totalVol>0){
+    const dv=s.totalVol-_prev.totalVol, pd=Math.round(dv/_prev.totalVol*100);
+    const cls=pd>=2?'up':pd<=-2?'down':'flat';
+    const ic=cls==='up'?'📈':cls==='down'?'📉':'➖';
+    const txt=cls==='flat'?'Mismo volumen que la vez anterior de esta rutina':`${dv>0?'Subiste':'Bajaste'} el volumen vs la vez anterior de esta rutina`;
+    cmpHTML=`<div class="sroom-cmp ${cls}"><span>${ic}</span><span>${txt}</span><span class="sroom-cmp-d">${dv>0?'+':''}${dv.toLocaleString()} kg</span></div>`;
+  }
   let prHTML='';
   const prs=s.prs||[];
   if(prs.length){
@@ -1842,7 +1854,7 @@ function openSessionRoom(clientId,sid){
     <div class="sroom-hero">
       <div class="sroom-ring">
         <svg viewBox="0 0 60 60"><circle class="sr-bg" cx="30" cy="30" r="26"/><circle class="sr-fg" cx="30" cy="30" r="26" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off}"/></svg>
-        <div class="sroom-ring-n">${pct}<small>%</small></div>
+        <div class="sroom-ring-n"><span id="sroom-pct">${pct}</span><small>%</small></div>
       </div>
       <div class="sroom-hero-txt">
         <div class="sroom-date">${dateStr.charAt(0).toUpperCase()+dateStr.slice(1)} · ${timeStr}</div>
@@ -1851,6 +1863,7 @@ function openSessionRoom(clientId,sid){
       </div>
     </div>
     <div class="sroom-stats">${statsHTML}</div>
+    ${cmpHTML}
     <div class="sroom-summary">${_sessionSummary(s,reps,exCount,pct)}</div>
     ${prHTML}
     <div class="sroom-sec">Ejercicios de la sesión</div>
@@ -1859,11 +1872,32 @@ function openSessionRoom(clientId,sid){
   body.scrollTop=0;
   room.classList.add('on');
   document.body.style.overflow='hidden';
+  // El % del anillo cuenta hacia arriba a la par del trazo → sensación viva (no número seco).
+  const pn=document.getElementById('sroom-pct');
+  if(pn)_roomCountUp(pn,pct,750);
+  // El botón flotante "Instalar app" (z-index alto, fixed) se montaba encima de la
+  // habitación → su ✕ se veía como un "círculo negro" sobre la pantalla de entreno.
+  // Lo ocultamos mientras la habitación está abierta y lo restauramos al cerrar.
+  const ib=document.getElementById('install-banner');
+  if(ib&&ib.style.display&&ib.style.display!=='none'){ib.style.display='none';_roomIbHidden=true;}
+}
+let _roomIbHidden=false;
+function _roomCountUp(el,target,dur){
+  target=parseInt(target)||0;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=target;return;}
+  const t0=performance.now();
+  const step=now=>{
+    const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3); // easeOutCubic
+    el.textContent=Math.round(target*e);
+    if(p<1)requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 function closeSessionRoom(){
   const room=document.getElementById('session-room');
   if(room)room.classList.remove('on');
   document.body.style.overflow='';
+  if(_roomIbHidden){const ib=document.getElementById('install-banner');if(ib)ib.style.display='flex';_roomIbHidden=false;}
 }
 
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.

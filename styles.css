@@ -544,8 +544,14 @@ html[data-theme="light"] .mta {
 .sroom-hero-feel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:rgba(234,251,244,.9);background:rgba(255,255,255,.09);padding:4px 11px;border-radius:999px}
 /* tarjetas de estadística con capas y sombra */
 .sroom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
-.sroom-stat{background:linear-gradient(168deg,var(--w),var(--bg));border:1px solid var(--br);border-radius:14px;padding:14px 8px;text-align:center;box-shadow:0 5px 14px rgba(0,0,0,.14);min-width:0}
-.sroom-stat-ic{font-size:20px;line-height:1;margin-bottom:6px}
+.sroom-stat{position:relative;background:linear-gradient(168deg,var(--w),var(--bg));border:1px solid var(--br);border-radius:14px;padding:15px 8px 13px;text-align:center;box-shadow:0 5px 14px rgba(0,0,0,.14);min-width:0;overflow:hidden}
+.sroom-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--sc,var(--g));opacity:.9}
+.sroom-stat-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;margin:0 auto 7px;background:color-mix(in srgb,var(--sc,var(--g)) 14%,transparent)}
+.sroom-cmp{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;border-radius:var(--rsm);padding:9px 13px;margin-bottom:16px;line-height:1.35}
+.sroom-cmp.up{background:var(--gl);color:var(--gt);border:1px solid var(--g2)}
+.sroom-cmp.down{background:var(--orl);color:var(--or);border:1px solid color-mix(in srgb,var(--or) 35%,transparent)}
+.sroom-cmp.flat{background:var(--bg);color:var(--t2);border:1px solid var(--br)}
+.sroom-cmp .sroom-cmp-d{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px}
 .sroom-stat-v{font-size:18px;font-weight:800;color:var(--t1);line-height:1.1;word-break:break-word}
 .sroom-stat-l{font-size:9.5px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
 .sroom-summary{background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:14px 16px;font-size:13.5px;line-height:1.62;color:var(--t1);margin-bottom:16px;box-shadow:0 4px 14px rgba(16,224,160,.08)}
