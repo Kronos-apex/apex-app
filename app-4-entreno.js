@@ -1950,18 +1950,50 @@ function cnToggleSub(rowEl){
   const chev=rowEl.querySelector('.adv-chev');if(chev)chev.style.transform=open?'':'rotate(180deg)';
 }
 // Resuelve las subregiones PRIMARIAS de un ejercicio del historial. La sesión guarda
-// nombre+grupo (y, en sesiones nuevas, id). Mapea por id si está; si no, por nombre
-// contra el catálogo. Cae a [] si es un ejercicio a medida no mapeado en MM_EX.
-let _nameIdCache=null;
+// nombre+grupo (y, en sesiones nuevas, id). Estrategia, de más a menos confiable:
+//   1) por id (sesiones nuevas) → exacto.
+//   2) por nombre NORMALIZADO exacto (ignora mayúsculas, tildes, paréntesis, puntuación).
+//   3) aproximado SEGURO: entre catálogo del MISMO grupo, candidatos cuyo nombre
+//      normalizado es prefijo-superset del histórico (o viceversa); se usa SOLO si TODOS
+//      coinciden en la misma subregión del grupo. Si no, cae a [] ("General"): preferimos
+//      no atribuir antes que mostrar un submúsculo equivocado. Datos nuevos (con id)
+//      resuelven al 100%; esto recupera el historial viejo cuyo nombre derivó del catálogo.
+function _normExName(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,' ').trim();
+}
+let _subCache=null; // { exact:{norm:subs}, group:{muscle:[{norm,subs}]} }
+function _buildSubCache(){
+  _subCache={exact:{},group:{}};
+  if(typeof MM_EX==='undefined')return;
+  (DB.exercises||[]).forEach(e=>{
+    if(!e||!e.name)return;
+    const subs=(MM_EX[e.id]&&MM_EX[e.id].p)||[];
+    const nm=_normExName(e.name);
+    if(nm&&!_subCache.exact[nm])_subCache.exact[nm]={subs};
+    (_subCache.group[e.muscle]=_subCache.group[e.muscle]||[]).push({norm:nm,subs});
+  });
+}
 function _exSubregions(ex){
-  let id=ex&&ex.id;
-  if(!id&&ex&&ex.name){
-    if(!_nameIdCache){_nameIdCache={};(DB.exercises||[]).forEach(e=>{if(e&&e.name)_nameIdCache[String(e.name).toLowerCase().trim()]=e.id;});}
-    id=_nameIdCache[String(ex.name).toLowerCase().trim()];
+  // 1) por id directo
+  const id=ex&&ex.id;
+  if(id&&typeof MM_EX!=='undefined'&&MM_EX[id])return MM_EX[id].p||[];
+  if(typeof MM_EX==='undefined')return [];
+  if(!_subCache)_buildSubCache();
+  const nm=_normExName(ex&&ex.name);
+  if(!nm)return [];
+  // 2) normalizado exacto
+  if(_subCache.exact[nm])return _subCache.exact[nm].subs;
+  // 3) aproximado seguro dentro del grupo del ejercicio
+  const grp=ex&&ex.muscle;
+  const pool=(grp&&_subCache.group[grp])||[];
+  const cand=pool.filter(p=>p.norm&&(p.norm===nm||p.norm.startsWith(nm+' ')||nm.startsWith(p.norm+' ')));
+  if(cand.length){
+    const inGrpKey=c=>JSON.stringify([...new Set((c.subs||[]).filter(s=>SUBMUSCLE_GROUP[s]===grp))].sort());
+    const k0=inGrpKey(cand[0]);
+    if(k0!=='[]'&&cand.every(c=>inGrpKey(c)===k0))return cand[0].subs;
   }
-  if(!id||typeof MM_EX==='undefined')return [];
-  const e=MM_EX[id];
-  return e?(e.p||[]):[];
+  return [];
 }
 
 let _cnHistOpen={}; // clientId -> ver TODO el historial (por defecto colapsado a 2)
