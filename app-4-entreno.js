@@ -1714,8 +1714,12 @@ function renderVolChart(sessions){
 // del coach. Calentamiento (🔥 ámbar) y dropset (🔻 azul) se muestran como chips aparte,
 // SIN sumar al volumen (que solo cuenta series de trabajo hechas). Valores escapados.
 function _sessionExercisesHTML(s){
+  // Volumen por ejercicio + barrita relativa al ejercicio que más movió en la sesión
+  // → de un vistazo se ve dónde estuvo el trabajo pesado. Color = músculo (MC).
+  const _exVol=ex=>(ex.sets||[]).filter(st=>st.done).reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
+  const _maxVol=(s.exercises||[]).reduce((m,ex)=>Math.max(m,_exVol(ex)),0);
   return (s.exercises||[]).map(ex=>{
-    const exVol=ex.sets.filter(st=>st.done).reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
+    const exVol=_exVol(ex);
     const auxChip=(emoji,label,col,bg,a)=>`<div style="background:${bg};border:1px solid ${col}55;border-radius:6px;padding:6px 8px;text-align:center">
         <div style="font-size:10px;color:${col};margin-bottom:2px">${emoji} ${label}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${col}">${a.kg?esc(a.kg)+'kg':'—'}${a.reps?' × '+esc(a.reps):''}</div>
@@ -1729,12 +1733,16 @@ function _sessionExercisesHTML(s){
         </div>`);
       if(st.drop&&(st.drop.kg||st.drop.reps))chips.push(auxChip('🔻','Drop','#3B82F6','rgba(59,130,246,.08)',st.drop));
     });
+    const barCol=(typeof MC!=='undefined'&&MC[ex.muscle])||'var(--g)';
+    const barW=_maxVol>0?Math.max(5,Math.round(exVol/_maxVol*100)):0;
+    const volBar=exVol>0?`<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 0 8px"><div style="height:100%;width:${barW}%;background:${barCol};border-radius:3px"></div></div>`:'';
     return `<div style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
           ${muscleIcon(ex.muscle,18)}
           <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
           ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
         </div>
+        ${volBar}
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px">${chips.join('')}</div>
       </div>`;
   }).join('');
@@ -1876,12 +1884,10 @@ function openSessionRoom(clientId,sid){
   const pn=document.getElementById('sroom-pct');
   if(pn)_roomCountUp(pn,pct,750);
   // El botón flotante "Instalar app" (z-index alto, fixed) se montaba encima de la
-  // habitación → su ✕ se veía como un "círculo negro" sobre la pantalla de entreno.
-  // Lo ocultamos mientras la habitación está abierta y lo restauramos al cerrar.
-  const ib=document.getElementById('install-banner');
-  if(ib&&ib.style.display&&ib.style.display!=='none'){ib.style.display='none';_roomIbHidden=true;}
+  // habitación → su ✕ se veía como "círculo negro". La clase en body lo oculta por CSS
+  // !important, robusto aunque beforeinstallprompt re-muestre el banner async.
+  document.body.classList.add('sroom-open');
 }
-let _roomIbHidden=false;
 function _roomCountUp(el,target,dur){
   target=parseInt(target)||0;
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=target;return;}
@@ -1897,7 +1903,7 @@ function closeSessionRoom(){
   const room=document.getElementById('session-room');
   if(room)room.classList.remove('on');
   document.body.style.overflow='';
-  if(_roomIbHidden){const ib=document.getElementById('install-banner');if(ib)ib.style.display='flex';_roomIbHidden=false;}
+  document.body.classList.remove('sroom-open');
 }
 
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.

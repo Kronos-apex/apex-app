@@ -522,6 +522,10 @@ html[data-theme="light"] .mta {
 .planopt-sub{font-size:11px;color:var(--t2);margin-top:2px}
 
 /* ── "Habitación" de detalle de sesión: aparece con scale+fade (premium, no slide) ── */
+/* Mientras una habitación está abierta, el botón flotante "Instalar app" NO debe
+   asomarse encima (su ✕ se veía como un círculo negro). !important gana aunque el
+   evento beforeinstallprompt re-muestre el banner async con display:flex inline. */
+body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none!important}
 .sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
 .sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg);border-bottom:1px solid var(--br)}
