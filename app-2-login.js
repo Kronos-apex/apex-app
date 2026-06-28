@@ -913,33 +913,27 @@ syncFromCloud().then(async ()=>{
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered) tryAutoLogin();
-  // ── Back button: evitar que el gesto/botón físico cierre la app ──
-  history.pushState({avi:true},'');
+  // ── Botón ATRÁS (Android/TWA): retroceso por pasos, no salida directa ──
+  // Mantenemos UNA entrada "guard" en el history; cada atrás MANEJADO la re-empuja.
+  // Prioridad: overlays → stack de pestañas (cliente) → detalle del coach → inicio
+  // (doble-atrás para salir). Ver AVINAV/navRecord en app-1-infra.js.
+  history.pushState({aviGuard:1},'');
   window.addEventListener('popstate',function(){
-    history.pushState({avi:true},'');
-    // Lightbox de imagen/video (lo más arriba) → cerrar primero
-    const lb=document.getElementById('ex-lightbox');
-    if(lb&&lb.classList.contains('on')){closeExImg();return;}
-    // Momentos full-bleed (upsell / nivel / fin de entreno) → cerrar con atrás
-    const pu=document.getElementById('premium-upsell');
-    if(pu&&pu.classList.contains('on')){closePremiumUpsell();return;}
-    const lu=document.getElementById('level-up');
-    if(lu&&lu.classList.contains('on')){closeLevelUp();return;}
-    const wfo=document.getElementById('workout-finish');
-    if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return;}
-    // Detalle del ejercicio (overlay) → cerrar con el botón atrás (antes no hacía nada)
-    const exd=document.getElementById('exdetail-bg');
-    if(exd&&exd.classList.contains('on')){_closeExDetail();return;}
-    const gm=document.getElementById('guided-mode');
-    if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return;}
-    const modal=document.querySelector('.mdbg.on');
-    if(modal){modal.classList.remove('on');return;}
+    // 1) Overlays/modales (el de más arriba primero)
+    if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
+    // 2) Stack de navegación (pestañas del cliente)
+    if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} history.pushState({aviGuard:1},''); return; }
+    // 3) Coach en detalle de un asesorado → volver a la lista
     const detail=document.getElementById('p-detail');
     if(detail&&detail.classList.contains('on')){
       gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');
-      const navItems=document.querySelectorAll('.cbnav-item');
-      if(navItems[1])setBottomNav(navItems[1]);
+      const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
+      history.pushState({aviGuard:1},''); return;
     }
+    // 4) En el INICIO → doble atrás para salir
+    if(AVINAV.exitArmed){ AVINAV.exitArmed=false; history.go(-1); return; }
+    AVINAV.exitArmed=true; toast('Presiona atrás otra vez para salir 👋');
+    history.pushState({aviGuard:1},''); setTimeout(function(){ AVINAV.exitArmed=false; }, 2000);
   });
 }).catch(e=>{
   // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
@@ -1009,6 +1003,7 @@ async function tryAutoLogin(){
 
 // ══════════════════════ COACH INIT ══════════════════════
 function initCoach(){migrateExercises();dedupeExercises();
+  navReset(null); // botón atrás: limpia el stack del cliente al entrar como coach
   const h=new Date().getHours();
   document.getElementById('greeting').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches')+' 👋';
   document.getElementById('sb-nm').textContent=getCoachName();
@@ -1018,6 +1013,26 @@ function initCoach(){migrateExercises();dedupeExercises();
 function renderAll(){renderHome();renderClients();renderExercises();renderMsgs();renderTemplates();document.getElementById('bdg').textContent=DB.clients.length}
 
 // ── NAVIGATION ──
+// Cierra el overlay/modal de más arriba si hay uno abierto. Devuelve true si cerró algo.
+// Orden de prioridad = el más superpuesto primero.
+function _aviCloseTopOverlay(){
+  const lb=document.getElementById('ex-lightbox');
+  if(lb&&lb.classList.contains('on')){closeExImg();return true;}
+  const pu=document.getElementById('premium-upsell');
+  if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
+  const luo=document.getElementById('level-up');
+  if(luo&&luo.classList.contains('on')){closeLevelUp();return true;}
+  const wfo=document.getElementById('workout-finish');
+  if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return true;}
+  const exd=document.getElementById('exdetail-bg');
+  if(exd&&exd.classList.contains('on')){_closeExDetail();return true;}
+  const gm=document.getElementById('guided-mode');
+  if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return true;}
+  const modal=document.querySelector('.mdbg.on');
+  if(modal){modal.classList.remove('on');return true;}
+  return false;
+}
+
 function gp(id,sidebarEl,pageTitle){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));

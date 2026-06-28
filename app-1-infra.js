@@ -5,6 +5,14 @@ window.AVI_DEBUG = location.hostname === 'localhost' || location.hostname === '1
 const log  = (...a) => window.AVI_DEBUG && console.log(...a);
 const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 
+// ── Navegación con botón ATRÁS (Android/TWA): stack lógico de pantallas ──
+// Cada navegación HACIA ADELANTE (cambiar de pestaña) registra en AVINAV.stack cómo
+// deshacerse. El botón atrás (popstate) cierra overlays → retrocede un paso → y en el
+// inicio pide doble-atrás para salir. Ver el handler en app-2-login.js.
+const AVINAV = { stack: [], exitArmed: false, curTab: null };
+function navRecord(undo){ if(typeof undo==='function') AVINAV.stack.push({ undo: undo }); }
+function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; }
+
 // ── Rate limiter de login ──
 const LOGIN_ATTEMPTS_KEY = 'ax_login_attempts';
 const LOGIN_BLOCK_KEY    = 'ax_login_block_until';

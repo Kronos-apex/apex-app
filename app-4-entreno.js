@@ -55,6 +55,7 @@ function initClientView(client){
   document.getElementById('cn-greet').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches')+', '+client.name.split(' ')[0]+'!';
   document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));document.querySelector('.cntab').classList.add('on');
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.getElementById('cn-today').classList.add('on');
+  navReset('cn-today'); // botón atrás: inicio = Hoy, sin pasos previos
   document.getElementById('rest-banner').classList.add('hide');
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
   // Fase 2 (perf móvil): en el login solo pintamos lo VISIBLE ("Hoy") + el badge de mensajes.
@@ -118,9 +119,19 @@ function hideClientWelcome(){
   clearTimeout(window._cwTimer);
 }
 
-function cnTab(id,el){
+const _CNTAB_ORDER=['cn-today','cn-routines','cn-messages','cn-history','cn-profile'];
+function _cnTabEl(id){return document.querySelectorAll('.cntab')[_CNTAB_ORDER.indexOf(id)];}
+function cnTab(id,el,_silent){
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));
   document.getElementById(id).classList.add('on');if(el)el.classList.add('on');
+  // Botón atrás: registrar el salto de pestaña (solo navegación REAL hacia adelante).
+  // _silent (lo usa el "undo" del stack) solo sincroniza la pestaña actual sin registrar.
+  if(_silent){ AVINAV.curTab=id; }
+  else if(id!==AVINAV.curTab){
+    const prev=AVINAV.curTab;
+    if(prev){ const pel=_cnTabEl(prev); navRecord(function(){ cnTab(prev,pel,true); }); }
+    AVINAV.curTab=id;
+  }
   // Re-render sections that depend on visible width or live data
   if(id==='cn-today'&&CUR.clientId){
     const c=DB.clients.find(x=>x.id===CUR.clientId);
