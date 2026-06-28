@@ -1027,6 +1027,24 @@ function isFreeClient(client) {
   return !!(client && client.tier === 'libre');
 }
 
+// ── Niveles de acceso (3): 'libre' | 'app' (Premium app, sin coach) | 'coach'
+// (Premium + Coach). `isFreeClient` gatea lo PREMIUM DE APP (libre NO entra; app y
+// coach SÍ). `clientHasCoach` gatea lo SOLO-COACH (hoy: el chat). Compatibilidad
+// crítica: tiene coach TODO el que NO es libre y NO es el nuevo tier 'app' —
+// incluido el cliente creado por coach SIN tier (isFreeClient=false, tier
+// indefinido) que YA tenía chat. Así, al introducir el split, NADIE pierde el
+// chat (regla: activar/cambiar un nivel nunca debe quitar capacidades).
+function clientHasCoach(client) {
+  return !!client && !isFreeClient(client) && client.tier !== 'app';
+}
+// Nivel normalizado del cliente para etiquetas/UI.
+function clientPlan(client) {
+  if (!client || isFreeClient(client)) return 'libre';
+  if (client.tier === 'app') return 'app';
+  return 'coach';
+}
+const PLAN_LABEL = { libre: 'Libre', app: 'Premium app', coach: 'Premium + Coach' };
+
 // ══════════ FASE 2 — Auth + fila por usuario (modelo user_data) ══════════
 // La tabla user_data (Supabase) tiene una fila por usuario con columnas:
 //   user_id, coach_id, role, profile(jsonb), routines, history, prs, bodyweight,
@@ -1588,6 +1606,9 @@ if (typeof module !== 'undefined' && module.exports) {
     bodyLoadProfile,
     validateSignup,
     isFreeClient,
+    clientHasCoach,
+    clientPlan,
+    PLAN_LABEL,
     USER_DATA_COLLECTIONS,
     clientToRow,
     rowToClient,

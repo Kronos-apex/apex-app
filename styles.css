@@ -498,6 +498,17 @@ html[data-theme="light"] .mta {
 .adv-foot{font-size:11px;color:var(--t3);line-height:1.5;margin-top:14px}
 .adv-foot b{color:var(--t2)}
 
+/* Plan selector (coach): 3 niveles de acceso */
+.plan-control{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:13px 14px;margin-bottom:12px}
+.plan-control-h{font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+.plan-wants{font-size:12px;color:var(--or);background:var(--orl);border-radius:var(--rsm);padding:9px 11px;line-height:1.45;margin-bottom:10px}
+.planopts{display:flex;flex-direction:column;gap:7px}
+.planopt{display:block;width:100%;text-align:left;background:var(--bg);border:1.5px solid var(--br2);border-radius:var(--rsm);padding:10px 12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.planopt:hover:not(.on){border-color:var(--g2);background:var(--gl)}
+.planopt.on{border-color:var(--g);background:var(--gl);cursor:default}
+.planopt-lbl{font-size:13px;font-weight:800;color:var(--t1)}
+.planopt-sub{font-size:11px;color:var(--t2);margin-top:2px}
+
 /* Exercise blocks client */
 .cex-block{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh);transition:border-color .15s}
 .cex-block.all-done{border-color:var(--g2)}

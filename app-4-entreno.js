@@ -1565,7 +1565,8 @@ function wfConfetti(){
 // ── Momentos full-bleed: upsell Premium + subida de nivel (reusan el molde wf-*) ──
 const PU_DEFAULT_PHOTO='media/brand/ob-3.jpg';
 function showPremiumUpsell(){
-  const c=_curClient(); if(!c||!(c.selfReg||isFreeClient(c)))return;
+  // Lo puede abrir cualquiera SIN coach (libre o Premium app) para pedir un coach.
+  const c=_curClient(); if(!c||clientHasCoach(c))return;
   document.getElementById('pu-photo').style.backgroundImage=`url('${window.AVI_UPSELL_PHOTO||PU_DEFAULT_PHOTO}')`;
   _puState(!!c.wantsCoach);
   document.getElementById('premium-upsell').classList.add('on');
@@ -1915,9 +1916,11 @@ function updateMsgBadge(clientId){
 function renderClientMsgs(clientId){
   const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');con.innerHTML='';
   const composer=document.getElementById('cn-msg-composer');
-  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){
+  // El chat es SOLO-COACH (Premium + Coach). Libre y Premium app (sin coach) ven el
+  // candado con invitación a sumar coach. El resto de lo premium de app NO se toca.
+  if(!clientHasCoach(DB.clients.find(x=>x.id===clientId))){
     if(composer)composer.style.display='none';
-    con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía y te responde.');
+    con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía, ajusta tu plan y te responde.');
     return;
   }
   if(composer)composer.style.display='';

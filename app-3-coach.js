@@ -643,15 +643,42 @@ async function requestCoach(){
   toast('🎉 ¡Listo! Tu coach te contactará pronto.');
 }
 
-// El coach activa Premium a un lead libre → desbloquea todas las funciones.
-function convertToPremium(cid){
+// Selector de nivel del cliente (3): Libre / Premium app / Premium + Coach.
+// El coach elige el nivel; el actual va resaltado. Cambiar pide confirmación.
+function planControlHTML(c){
+  if(!c)return '';
+  const cur=clientPlan(c);
+  const opts=[
+    ['libre','🆓 Libre','Gratis · app auto-generada'],
+    ['app','⭐ Premium app','$19.900 · toda la app, sin coach'],
+    ['coach','👑 Premium + Coach','$100.000 · todo + chat y ajustes'],
+  ];
+  const btns=opts.map(([k,lbl,sub])=>{
+    const on=k===cur;
+    return `<button class="planopt${on?' on':''}"${on?' disabled':''} onclick="setClientPlan('${esc(c.id)}','${k}')">
+      <div class="planopt-lbl">${lbl}${on?' ✓':''}</div>
+      <div class="planopt-sub">${sub}</div>
+    </button>`;
+  }).join('');
+  const wants=(cur!=='coach'&&c.wantsCoach)?`<div class="plan-wants">🙋 <b>Pidió un coach.</b> Súbelo a <b>Premium + Coach</b> cuando confirmes el pago.</div>`:'';
+  return `<div class="plan-control"><div class="plan-control-h">Nivel de acceso</div>${wants}<div class="planopts">${btns}</div></div>`;
+}
+// Cambia el nivel del cliente. 'coach' se persiste como tier='premium' (compatibilidad
+// con datos existentes; clientHasCoach lo trata como coacheado).
+function setClientPlan(cid,plan){
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
-  if(!confirm(`¿Activar Premium para ${c.name}? Tendrá chat, nutrición, fotos/medidas y analítica.`))return;
-  c.tier='premium';c.wantsCoach=false;c.updatedAt=new Date().toISOString();
+  if(clientPlan(c)===plan)return;
+  const labels={libre:'Libre (gratis)',app:'Premium app (sin coach)',coach:'Premium + Coach'};
+  if(!confirm(`¿Cambiar a ${c.name.split(' ')[0]} al nivel "${labels[plan]}"?`))return;
+  c.tier = plan==='coach' ? 'premium' : plan;
+  if(plan==='coach'){ c.wantsCoach=false; if(!c.coach_id)c.coach_id=COACH_UID; }
+  c.updatedAt=new Date().toISOString();
   svNow('ax_c',DB.clients);
-  toast(`⭐ ${c.name.split(' ')[0]} ahora es Premium`);
+  toast(`✅ ${c.name.split(' ')[0]}: ${labels[plan]}`);
   openDetail(cid);renderClients();renderHome();
 }
+// Compat: alias del botón anterior (Premium = con coach).
+function convertToPremium(cid){ setClientPlan(cid,'coach'); }
 
 async function openDetail(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
@@ -667,13 +694,13 @@ async function openDetail(id){
   if(c.weight) metaParts.push(c.weight+' kg');
   if(c.email) metaParts.push(c.email);
   document.getElementById('d-meta').textContent=metaParts.join(' · ')||'Sin datos';
-  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span>${isFreeClient(c)?`<span class="tag" style="background:${c.wantsCoach?'var(--orl)':'var(--bll)'};color:${c.wantsCoach?'var(--or)':'#1a4a7a'}">${c.wantsCoach?'🙋 Quiere coach':'🆓 Libre'}</span>`:''}`;
+  const _plan=clientPlan(c);
+  const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
+  const _planIco={libre:'🆓',app:'⭐',coach:'👑'}[_plan];
+  const _wantsTag=(_plan!=='coach'&&c.wantsCoach)?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
+  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
-  if(freeLead){
-    freeLead.innerHTML=isFreeClient(c)
-      ? `<div style="background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:11px 13px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:12px;color:var(--gt);line-height:1.4">${c.wantsCoach?'<b>🙋 Pidió un coach.</b> ':'<b>🆓 Usuario en modo libre.</b> '}Actívale Premium para desbloquear chat, nutrición, fotos/medidas y analítica.</div><button class="btn bp bsm" style="flex-shrink:0" onclick="convertToPremium('${esc(c.id)}')">⭐ Activar Premium</button></div>`
-      : '';
-  }
+  if(freeLead) freeLead.innerHTML=planControlHTML(c);
   const dn=document.getElementById('d-notes');dn.style.display=c.notes?'block':'none';if(c.notes)dn.innerHTML=`📝 <strong>Notas:</strong> ${esc(c.notes)}`;
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);

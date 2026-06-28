@@ -75,6 +75,8 @@ const {
   isBetterPR,
   muscleVolume,
   pushPullBalance,
+  clientHasCoach,
+  clientPlan,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1129,6 +1131,25 @@ test('isFreeClient: solo tier "libre" es free; coach-creados y premium tienen ac
   assert.strictEqual(isFreeClient({ tier: 'premium' }), false);
   assert.strictEqual(isFreeClient({}), false);          // creado por coach (sin tier)
   assert.strictEqual(isFreeClient(null), false);
+});
+
+test('clientHasCoach / clientPlan: split de 3 niveles sin quitar capacidades', () => {
+  // Libre: ni premium de app ni coach.
+  assert.strictEqual(clientHasCoach({ tier: 'libre' }), false);
+  assert.strictEqual(clientPlan({ tier: 'libre' }), 'libre');
+  // Premium app (sin coach): tiene premium de app, NO chat.
+  assert.strictEqual(isFreeClient({ tier: 'app' }), false);      // sí ve premium de app
+  assert.strictEqual(clientHasCoach({ tier: 'app' }), false);     // NO chat
+  assert.strictEqual(clientPlan({ tier: 'app' }), 'app');
+  // Premium + Coach: todo.
+  assert.strictEqual(clientHasCoach({ tier: 'premium' }), true);
+  assert.strictEqual(clientPlan({ tier: 'premium' }), 'coach');
+  // COMPAT: cliente creado por coach SIN tier conserva el chat (no regresión).
+  assert.strictEqual(clientHasCoach({}), true);
+  assert.strictEqual(clientPlan({}), 'coach');
+  // Nulos seguros.
+  assert.strictEqual(clientHasCoach(null), false);
+  assert.strictEqual(clientPlan(null), 'libre');
 });
 
 // ══════════════════════════════════════════════════════
