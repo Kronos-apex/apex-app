@@ -1728,13 +1728,13 @@ function _sessionExercisesHTML(s){
 function renderClientStreak(clientId){
   const con=document.getElementById('cn-streak');if(!con)return;
   const c=DB.clients.find(x=>x.id===clientId);
-  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu racha y constancia','Mira tu racha de días, tu récord histórico y el calendario de este mes.');return;}
+  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu constancia','Cuántos días seguidos llevas entrenando, tu récord y el calendario del mes.');return;}
   const sessions=(DB.history&&DB.history[clientId])||[];
   const now=new Date();
   const streak=workoutStreak(sessions,now);
   const record=longestStreak(sessions);
   const cal=adherenceMonth(sessions,now);
-  const mes=now.toLocaleDateString('es-ES',{month:'long'});
+  const mes=now.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
   const dows=['L','M','M','J','V','S','D'];
   let grid='';
   cal.weeks.forEach(w=>w.forEach(d=>{
@@ -1745,17 +1745,24 @@ function renderClientStreak(clientId){
     if(d.isToday)cls+=' today';
     grid+=`<div class="${cls}">${d.day}</div>`;
   }));
+  // Mensaje en lenguaje claro: explica qué es la racha y qué hacer ahora.
+  const msg = streak>=2
+    ? `Llevas <b>${streak} días seguidos</b> entrenando. ¡Mantén la cadena viva!`
+    : streak===1
+      ? `Arrancaste tu racha <b>hoy</b>. Vuelve mañana para encadenar 2 días seguidos.`
+      : `Tu racha son los <b>días seguidos</b> que entrenas. Entrena hoy para encenderla 🔥`;
   con.innerHTML=`<div class="card streak-card">
-    <div class="streak-hd">
-      <div class="streak-big"><span class="streak-fire">${streak>0?'🔥':'💪'}</span><span class="streak-num">${streak}</span></div>
-      <div>
-        <div class="streak-lbl">día${streak!==1?'s':''} de racha</div>
-        <div class="streak-sub">Récord <b>${record}</b> · <b>${cal.trainedDays}</b> día${cal.trainedDays!==1?'s':''} entrenado${cal.trainedDays!==1?'s':''} este mes</div>
-      </div>
+    <div class="streak-title">🔥 Tu constancia</div>
+    <div class="streak-stats">
+      <div class="sstat sstat-g"><div class="sstat-n">${streak}</div><div class="sstat-l">Racha actual</div></div>
+      <div class="sstat sstat-y"><div class="sstat-n">${record}</div><div class="sstat-l">Tu récord</div></div>
+      <div class="sstat sstat-b"><div class="sstat-n">${cal.trainedDays}</div><div class="sstat-l">Este mes</div></div>
     </div>
+    <div class="streak-msg">${msg}</div>
     <div class="cal-month">${mes.charAt(0).toUpperCase()+mes.slice(1)}</div>
     <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
     <div class="cal-grid">${grid}</div>
+    <div class="cal-legend"><i></i> Días que entrenaste · <span style="opacity:.6">hoy va resaltado</span></div>
   </div>`;
 }
 
