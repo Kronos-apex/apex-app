@@ -1713,9 +1713,10 @@ function renderVolChart(sessions){
 // Detalle de una sesión (ejercicios → series). Compartido por la vista del cliente y la
 // del coach. Calentamiento (🔥 ámbar) y dropset (🔻 azul) se muestran como chips aparte,
 // SIN sumar al volumen (que solo cuenta series de trabajo hechas). Valores escapados.
-function _sessionExercisesHTML(s){
+function _sessionExercisesHTML(s,clientId){
   // Volumen por ejercicio + barrita relativa al ejercicio que más movió en la sesión
   // → de un vistazo se ve dónde estuvo el trabajo pesado. Color = músculo (MC).
+  // clientId → cada ejercicio es una "puerta" a su habitación (historial/progresión).
   const _exVol=ex=>(ex.sets||[]).filter(st=>st.done).reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);
   const _maxVol=(s.exercises||[]).reduce((m,ex)=>Math.max(m,_exVol(ex)),0);
   return (s.exercises||[]).map(ex=>{
@@ -1736,11 +1737,13 @@ function _sessionExercisesHTML(s){
     const barCol=(typeof MC!=='undefined'&&MC[ex.muscle])||'var(--g)';
     const barW=_maxVol>0?Math.max(5,Math.round(exVol/_maxVol*100)):0;
     const volBar=exVol>0?`<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 0 8px"><div style="height:100%;width:${barW}%;background:${barCol};border-radius:3px"></div></div>`:'';
+    const door=clientId?` data-exid="${esc(ex.id||'')}" data-exname="${esc(ex.name||'')}" onclick="event.stopPropagation();openExerciseRoom('${esc(String(clientId))}',this.dataset.exid,this.dataset.exname)" style="cursor:pointer"`:'';
     return `<div style="margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"${door}>
           ${muscleIcon(ex.muscle,18)}
           <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
           ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
+          ${clientId?`<span style="${exVol>0?'':'margin-left:auto;'}color:var(--t3);font-size:16px;flex-shrink:0">›</span>`:''}
         </div>
         ${volBar}
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px">${chips.join('')}</div>
@@ -1874,19 +1877,23 @@ function openSessionRoom(clientId,sid){
     ${cmpHTML}
     <div class="sroom-summary">${_sessionSummary(s,reps,exCount,pct)}</div>
     ${prHTML}
-    <div class="sroom-sec">Ejercicios de la sesión</div>
-    <div class="sroom-exs">${_sessionExercisesHTML(s)}</div>
+    <div class="sroom-sec">Ejercicios de la sesión <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca uno para ver su progreso</span></div>
+    <div class="sroom-exs">${_sessionExercisesHTML(s,clientId)}</div>
     <div style="height:30px"></div>`;
   body.scrollTop=0;
   room.classList.add('on');
-  document.body.style.overflow='hidden';
   // El % del anillo cuenta hacia arriba a la par del trazo → sensación viva (no número seco).
   const pn=document.getElementById('sroom-pct');
   if(pn)_roomCountUp(pn,pct,750);
-  // El botón flotante "Instalar app" (z-index alto, fixed) se montaba encima de la
-  // habitación → su ✕ se veía como "círculo negro". La clase en body lo oculta por CSS
-  // !important, robusto aunque beforeinstallprompt re-muestre el banner async.
-  document.body.classList.add('sroom-open');
+  _syncRoomBodyClass();
+}
+// Una o más habitaciones (.sroom) abiertas → bloquea scroll de fondo y oculta el banner
+// flotante "Instalar app" (clase consumida por CSS !important). Robusto a que la
+// habitación de sesión conviva con la de ejercicio encima.
+function _syncRoomBodyClass(){
+  const any=document.querySelector('.sroom.on');
+  document.body.classList.toggle('sroom-open',!!any);
+  document.body.style.overflow=any?'hidden':'';
 }
 function _roomCountUp(el,target,dur){
   target=parseInt(target)||0;
@@ -1902,8 +1909,84 @@ function _roomCountUp(el,target,dur){
 function closeSessionRoom(){
   const room=document.getElementById('session-room');
   if(room)room.classList.remove('on');
-  document.body.style.overflow='';
-  document.body.classList.remove('sroom-open');
+  _syncRoomBodyClass();
+}
+
+// ── HABITACIÓN DE EJERCICIO: historial + progresión de carga/1RM + récord + técnica.
+// Se entra tocando un ejercicio (en la habitación de sesión o en la vista del coach).
+// Resuelve por id (sesiones nuevas) o por nombre (historial viejo) contra el catálogo.
+function openExerciseRoom(clientId,exId,exName){
+  const room=document.getElementById('exercise-room'),body=document.getElementById('exroom-body');
+  if(!room||!body)return;
+  exId=(exId&&exId!=='null'&&exId!=='')?exId:null;
+  const cat=DB.exercises||[];
+  let def=exId?cat.find(e=>e.id===exId):null;
+  if(!def&&exName)def=cat.find(e=>e.name&&e.name.toLowerCase().trim()===String(exName).toLowerCase().trim());
+  const name=(def&&def.name)||exName||'Ejercicio';
+  const muscle=(def&&def.muscle)||'otro';
+  const type=(def&&def.type)||'';
+  const muscleLabel=(def&&def.muscleLabel)||(typeof MUSCLE_GROUP_LABEL!=='undefined'&&MUSCLE_GROUP_LABEL[muscle])||muscle;
+  const col=(typeof MC!=='undefined'&&MC[muscle])||'#0A7C5B';
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const prog=computeExerciseProgress(sessions).find(e=>e.name===name);
+  const pts=(prog&&prog.points)||[];
+  const unit=(prog&&prog.unit)||'kg';
+  const prs=(DB.prs&&DB.prs[clientId])||{};
+  const pr=prs[exId]||prs[name]||null;
+  const recordVal=pr?(pr.val!=null?pr.val:pr.kg):(pts.length?Math.max(...pts.map(p=>p.maxKg)):null);
+  const e1=(unit==='kg'&&pr&&pr.reps>1)?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
+  const did=sessions.filter(s=>(s.exercises||[]).some(x=>(exId&&x.id===exId)||x.name===name));
+  const veces=did.length;
+  const lastDate=did.reduce((m,s)=>(!m||new Date(s.date)>new Date(m))?s.date:m,null);
+  const lastStr=lastDate?new Date(lastDate).toLocaleDateString('es-ES',{day:'numeric',month:'short'}):'—';
+  const first=pts.length?pts[0].maxKg:null,last=pts.length?pts[pts.length-1].maxKg:null;
+  const trend=(first!=null&&last!=null)?last-first:0;
+  const trendStr=!pts.length?'':trend>0?`↑ +${fmtMetric(trend,unit)}`:trend<0?`↓ ${fmtMetric(trend,unit)}`:'↔ estable';
+  const trendCol=trend>0?'var(--g)':trend<0?'var(--or)':'var(--t3)';
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const statsHTML=[
+    stat('🏆','Récord',recordVal!=null?fmtMetric(recordVal,unit):'—','#e0a72e'),
+    stat('🔁','Veces',String(veces),'#9b6dd6'),
+    stat('📅','Última vez',lastStr,'#3a86c8'),
+  ].join('');
+  const chartHTML=pts.length>=2
+    ? `<div class="sroom-sec">Progresión de carga</div><div id="exroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+       <div style="display:flex;justify-content:space-between;margin:9px 2px 16px;font-size:11.5px;color:var(--t2)"><span>Inicio <b>${fmtMetric(first,unit)}</b></span><span style="color:${trendCol};font-weight:700">${trendStr}</span><span>Actual <b style="color:${col}">${fmtMetric(last,unit)}</b></span></div>`
+    : pts.length===1
+    ? `<div class="exroom-note">Lo registraste una vez (<b>${fmtMetric(pts[0].maxKg,unit)}</b>). Con más sesiones verás aquí tu curva de progreso 📈</div>`
+    : `<div class="exroom-note">Aún no hay cargas registradas. Cuando lo entrenes en <b>"Hoy"</b>, aquí verás cómo progresas.</div>`;
+  const recent=did.slice(0,6).map(s=>{
+    const ex=(s.exercises||[]).find(x=>(exId&&x.id===exId)||x.name===name)||{};
+    const done=(ex.sets||[]).filter(st=>st.done);
+    let best='—';
+    if(done.length){const bw=done.reduce((m,st)=>Math.max(m,parseFloat(st.kg)||0),0);const br=done.find(st=>(parseFloat(st.kg)||0)===bw);best=bw>0?`${bw}kg × ${br?esc(String(br.reps)):''}`:`${done.length} serie${done.length!==1?'s':''}`;}
+    return `<div class="exroom-hrow"><span>${new Date(s.date).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})}</span><span class="exroom-hrow-v">${best}</span></div>`;
+  }).join('');
+  const recentHTML=did.length?`<div class="sroom-sec">Últimas veces</div>${recent}`:'';
+  const tech=def?`<div class="sroom-sec">Cómo hacerlo</div>${(def.descSimple||def.desc)?`<div class="exroom-tech">${esc(def.descSimple||def.desc)}</div>`:''}${def.id?`<button class="exroom-tech-btn" onclick="openExDetail('${esc(def.id)}')">▶ Ver técnica y video</button>`:''}`:'';
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero">
+      <div class="exroom-hero-ic" style="background:${col}22;border:1px solid ${col}55">${muscleIcon(muscle,38)}</div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-title" style="margin-top:0">${esc(name)}</div>
+        <div class="exroom-tags"><span>${esc(muscleLabel)}</span>${type?`<span>${esc(type)}</span>`:''}</div>
+        ${e1?`<div class="sroom-hero-feel">≈ ${Math.round(e1)} kg · 1RM estimado</div>`:''}
+      </div>
+    </div>
+    <div class="sroom-stats">${statsHTML}</div>
+    ${chartHTML}
+    ${recentHTML}
+    ${tech}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0;
+  room.classList.add('on');
+  _syncRoomBodyClass();
+  if(pts.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('exroom-chart');if(ch)drawExProgChart(ch,pts,col,unit);});
+}
+function closeExerciseRoom(){
+  const room=document.getElementById('exercise-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
 }
 
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.
@@ -2108,7 +2191,7 @@ function renderCoachClientHistory(clientId){
     const feel=s.feeling?` <span title="${esc(feelingLabel(s.feeling))}">${feelingEmoji(s.feeling)}</span>`:'';
     const meta=[s.durationSec?fmtDuration(s.durationSec):'',s.kcal?`${s.kcal} kcal`:''].filter(Boolean).join(' · ');
     const hasDetail=(s.exercises||[]).length>0;
-    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s)}</div>`:''}`;
+    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
     con.appendChild(div);
   });
   if(sessions.length>3){
