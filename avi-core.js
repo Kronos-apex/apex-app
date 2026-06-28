@@ -855,6 +855,47 @@ function workoutStreak(sessions, now) {
   return streak;
 }
 
+// ── Récord de racha: la racha de días de CALENDARIO consecutivos MÁS LARGA en todo
+// el historial (vigente o pasada). Varias sesiones el mismo día cuentan 1. Pura/testeable.
+function longestStreak(sessions) {
+  const days = [...new Set((sessions || [])
+    .map(s => { const d = new Date(s && s.date); return isNaN(d.getTime()) ? null : localDayStart(d); })
+    .filter(v => v != null))].sort((a, b) => a - b);
+  if (!days.length) return 0;
+  let best = 1, cur = 1;
+  for (let i = 1; i < days.length; i++) {
+    const gap = days[i] - days[i - 1];
+    if (gap === MS_DAY) { cur++; if (cur > best) best = cur; }
+    else if (gap !== 0) cur = 1;
+  }
+  return best;
+}
+
+// ── Calendario de adherencia del MES de `now`: filas de semanas (Lunes→Domingo);
+// cada celda { inMonth, day, count, trained, isToday, isFuture } + días entrenados del
+// mes. Para el heatmap Premium. Agrupa por día de calendario LOCAL. Pura/testeable.
+function adherenceMonth(sessions, now) {
+  const ref = now ? new Date(now) : new Date();
+  const year = ref.getFullYear(), month = ref.getMonth();
+  const todayStart = localDayStart(ref);
+  const counts = {};
+  (sessions || []).forEach(s => { const d = new Date(s && s.date); if (!isNaN(d.getTime())) { const k = localDayStart(d); counts[k] = (counts[k] || 0) + 1; } });
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // 0 = Lunes (semana arranca lunes)
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weeks = []; let week = [];
+  for (let i = 0; i < firstDow; i++) week.push({ inMonth: false });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = localDayStart(new Date(year, month, d));
+    const count = counts[ds] || 0;
+    week.push({ inMonth: true, day: d, count, trained: count > 0, isToday: ds === todayStart, isFuture: ds > todayStart });
+    if (week.length === 7) { weeks.push(week); week = []; }
+  }
+  if (week.length) { while (week.length < 7) week.push({ inMonth: false }); weeks.push(week); }
+  let trainedDays = 0;
+  for (const k in counts) { const dd = new Date(Number(k)); if (dd.getFullYear() === year && dd.getMonth() === month) trainedDays++; }
+  return { year, month, weeks, trainedDays };
+}
+
 // ── Orden de rutinas por día de la semana (Lunes primero, Libre al final) ──
 // El día se guarda como nombre en español (con o sin tilde, defensivo). Cualquier
 // valor desconocido va al final. Empieza en LUNES (no domingo) porque así lo lee
@@ -1427,6 +1468,8 @@ if (typeof module !== 'undefined' && module.exports) {
     clientsTrainedToday,
     daysSinceLastSession,
     workoutStreak,
+    longestStreak,
+    adherenceMonth,
     dayOrder,
     sortRoutinesByDay,
     isInAdaptation,

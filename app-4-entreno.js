@@ -1720,10 +1720,47 @@ function _sessionExercisesHTML(s){
 }
 
 // HISTORY
+// ── Racha y constancia (Premium): racha actual + récord + calendario del mes.
+// La racha simple ya vive como chip en "Hoy" (libre); esta vista rica es Premium.
+function renderClientStreak(clientId){
+  const con=document.getElementById('cn-streak');if(!con)return;
+  const c=DB.clients.find(x=>x.id===clientId);
+  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu racha y constancia','Mira tu racha de días, tu récord histórico y el calendario de este mes.');return;}
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const now=new Date();
+  const streak=workoutStreak(sessions,now);
+  const record=longestStreak(sessions);
+  const cal=adherenceMonth(sessions,now);
+  const mes=now.toLocaleDateString('es-ES',{month:'long'});
+  const dows=['L','M','M','J','V','S','D'];
+  let grid='';
+  cal.weeks.forEach(w=>w.forEach(d=>{
+    if(!d.inMonth){grid+='<div class="cal-cell empty"></div>';return;}
+    let cls='cal-cell';
+    if(d.trained)cls+=' trained'+(d.count>=2?' t2':'');
+    else if(d.isFuture)cls+=' future';
+    if(d.isToday)cls+=' today';
+    grid+=`<div class="${cls}">${d.day}</div>`;
+  }));
+  con.innerHTML=`<div class="card streak-card">
+    <div class="streak-hd">
+      <div class="streak-big"><span class="streak-fire">${streak>0?'🔥':'💪'}</span><span class="streak-num">${streak}</span></div>
+      <div>
+        <div class="streak-lbl">día${streak!==1?'s':''} de racha</div>
+        <div class="streak-sub">Récord <b>${record}</b> · <b>${cal.trainedDays}</b> día${cal.trainedDays!==1?'s':''} entrenado${cal.trainedDays!==1?'s':''} este mes</div>
+      </div>
+    </div>
+    <div class="cal-month">${mes.charAt(0).toUpperCase()+mes.slice(1)}</div>
+    <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
+    <div class="cal-grid">${grid}</div>
+  </div>`;
+}
+
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
   const con=document.getElementById('cn-hist-list');if(!con)return;
+  renderClientStreak(clientId);
   renderVolChart(sessions);
   if(!sessions.length){
     con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';

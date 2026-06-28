@@ -27,6 +27,8 @@ const {
   clientsTrainedToday,
   daysSinceLastSession,
   workoutStreak,
+  longestStreak,
+  adherenceMonth,
   sortRoutinesByDay,
   genSchemeFor,
   restForType,
@@ -1809,6 +1811,57 @@ test('normalizeBisets: rompe cadenas dejando solo la primera pareja', () => {
   normalizeBisets(exs);
   assert.strictEqual(exs[0].ssNext, true);
   assert.strictEqual(exs[1].ssNext, undefined); // el 2º de la pareja no encadena
+});
+
+// ══════════════════════════════════════════════════════
+section('Racha y adherencia (longestStreak / adherenceMonth)');
+
+test('longestStreak: vacío → 0, un día → 1', () => {
+  assert.strictEqual(longestStreak([]), 0);
+  assert.strictEqual(longestStreak(null), 0);
+  assert.strictEqual(longestStreak([{ date: '2026-05-10T12:00' }]), 1);
+});
+test('longestStreak: 3 días consecutivos → 3', () => {
+  assert.strictEqual(longestStreak([
+    { date: '2026-05-10T12:00' }, { date: '2026-05-11T12:00' }, { date: '2026-05-12T12:00' },
+  ]), 3);
+});
+test('longestStreak: dos rachas (3 y 2) → toma la más larga', () => {
+  assert.strictEqual(longestStreak([
+    { date: '2026-05-08T12:00' }, { date: '2026-05-09T12:00' }, { date: '2026-05-10T12:00' },
+    { date: '2026-05-12T12:00' }, { date: '2026-05-13T12:00' },
+  ]), 3);
+});
+test('longestStreak: mismo día varias veces cuenta 1', () => {
+  assert.strictEqual(longestStreak([
+    { date: '2026-05-10T07:00' }, { date: '2026-05-10T20:00' },
+  ]), 1);
+});
+
+test('adherenceMonth: cuenta días entrenados del mes y arma la grilla', () => {
+  const now = new Date('2026-05-15T12:00');
+  const sess = [
+    { date: '2026-05-01T12:00' }, { date: '2026-05-02T12:00' },
+    { date: '2026-05-15T08:00' }, { date: '2026-05-15T20:00' }, // dos el día 15 = 1 día
+    { date: '2026-04-30T12:00' }, // mes anterior, no cuenta
+  ];
+  const r = adherenceMonth(sess, now);
+  assert.strictEqual(r.month, 4);            // mayo = índice 4
+  assert.strictEqual(r.trainedDays, 3);      // 1, 2 y 15
+  r.weeks.forEach(w => assert.strictEqual(w.length, 7));
+  const cells = r.weeks.flat().filter(c => c.inMonth);
+  assert.strictEqual(cells.length, 31);      // mayo tiene 31 días
+  const d15 = cells.find(c => c.day === 15);
+  assert.deepStrictEqual([d15.trained, d15.count, d15.isToday], [true, 2, true]);
+  const d16 = cells.find(c => c.day === 16);
+  assert.deepStrictEqual([d16.trained, d16.isFuture], [false, true]);
+  assert.strictEqual(cells.find(c => c.day === 1).trained, true);
+  assert.strictEqual(cells.find(c => c.day === 3).trained, false);
+});
+test('adherenceMonth: sin sesiones → grilla del mes con 0 entrenados', () => {
+  const r = adherenceMonth([], new Date('2026-05-15T12:00'));
+  assert.strictEqual(r.trainedDays, 0);
+  assert.strictEqual(r.weeks.flat().filter(c => c.inMonth).length, 31);
 });
 
 // ══════════════════════════════════════════════════════
