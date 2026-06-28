@@ -1766,11 +1766,74 @@ function renderClientStreak(clientId){
   </div>`;
 }
 
+// Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.
+let _advWin=30;
+function setAdvWin(d){_advWin=d;renderAdvStats(CUR.clientId);}
+// Estadísticas avanzadas Premium: balance empuje/tracción + volumen por grupo muscular.
+// Series EFECTIVAS (completadas) de las últimas _advWin días. Funciona sobre el historial
+// que YA existe. Patrón premium: tarjetas etiquetadas + lenguaje claro (no datos sueltos).
+function renderAdvStats(clientId){
+  const con=document.getElementById('cn-advstats');if(!con)return;
+  const c=DB.clients.find(x=>x.id===clientId);
+  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu entrenamiento en números','Cuántas series le das a cada músculo y si tu empuje y tu tracción están equilibrados.');return;}
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const win=_advWin;
+  const vol=muscleVolume(sessions,win,new Date());
+  const bal=pushPullBalance(vol.byCat);
+  const winLbl=win===7?'7 días':'30 días';
+  const pills=`<div class="adv-win">
+    <button class="adv-pill${win===7?' on':''}" onclick="setAdvWin(7)">7 días</button>
+    <button class="adv-pill${win===30?' on':''}" onclick="setAdvWin(30)">30 días</button>
+  </div>`;
+  if(!vol.totalSets){
+    con.innerHTML=`<div class="card adv-card">
+      <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
+      <div class="empty" style="padding:26px 10px"><div class="eico">📊</div><div class="etxt">Aún no hay series en los últimos ${winLbl}</div><div class="esub">Cuando completes entrenamientos en <b>"Hoy"</b>, aquí verás cuántas series le das a cada músculo y si tu cuerpo entrena equilibrado 💪</div></div>
+    </div>`;
+    return;
+  }
+  // Balance empuje/tracción — barra de dos segmentos + veredicto.
+  const vcolor={equilibrado:'var(--g2,#2ecc71)','mas-empuje':'var(--yl,#f1c40f)','mas-traccion':'var(--yl,#f1c40f)','sin-datos':'var(--t3,#888)'}[bal.verdict];
+  const vicon={equilibrado:'✅','mas-empuje':'⚖️','mas-traccion':'⚖️','sin-datos':'—'}[bal.verdict];
+  let balHTML='';
+  if(bal.total){
+    balHTML=`<div class="adv-bal">
+      <div class="adv-bal-bar">
+        <div class="adv-bal-seg push" style="width:${bal.pushPct}%">${bal.pushPct>=16?bal.pushPct+'%':''}</div>
+        <div class="adv-bal-seg pull" style="width:${bal.pullPct}%">${bal.pullPct>=16?bal.pullPct+'%':''}</div>
+      </div>
+      <div class="adv-bal-legend"><span><i class="dot push"></i> Empuje · ${bal.push} series</span><span><i class="dot pull"></i> Tracción · ${bal.pull} series</span></div>
+      <div class="adv-verdict" style="border-color:${vcolor}55"><span>${vicon}</span><span>${esc(bal.msg)}</span></div>
+    </div>`;
+  }
+  // Volumen por grupo muscular — barras horizontales (color por categoría).
+  const catColor={empuje:'#3ba776',traccion:'#3a86c8',piernas:'#9b6dd6',core:'#e0a72e',cardio:'#e07a5f',otro:'#8a8f98'};
+  const maxSets=vol.groups[0]?vol.groups[0].sets:1;
+  const bars=vol.groups.map(g=>{
+    const w=Math.max(6,Math.round(g.sets/maxSets*100));
+    const col=catColor[g.cat]||catColor.otro;
+    return `<div class="adv-row">
+      <div class="adv-row-lbl">${esc(g.label)}</div>
+      <div class="adv-row-track"><div class="adv-row-fill" style="width:${w}%;background:${col}"></div></div>
+      <div class="adv-row-val">${g.sets}<span>series</span></div>
+    </div>`;
+  }).join('');
+  con.innerHTML=`<div class="card adv-card">
+    <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
+    <div class="adv-sub">Series <b>completadas</b> en los últimos ${winLbl} · ${vol.totalSets} en total, ${vol.sessions} entreno${vol.sessions===1?'':'s'}.</div>
+    ${balHTML}
+    <div class="adv-sech">Cuánto le das a cada músculo</div>
+    <div class="adv-bars">${bars}</div>
+    <div class="adv-foot">Contamos solo las <b>series que marcaste como hechas</b> (sin calentamiento). Más series = más estímulo para ese músculo.</div>
+  </div>`;
+}
+
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
   const con=document.getElementById('cn-hist-list');if(!con)return;
   renderClientStreak(clientId);
+  renderAdvStats(clientId);
   renderVolChart(sessions);
   if(!sessions.length){
     con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';

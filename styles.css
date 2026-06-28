@@ -467,6 +467,37 @@ html[data-theme="light"] .mta {
 .cal-legend{margin-top:10px;font-size:11px;color:var(--t2);display:flex;align-items:center;gap:7px}
 .cal-legend i{width:13px;height:13px;border-radius:4px;background:var(--g);display:inline-block;flex-shrink:0}
 
+/* Advanced stats (Premium): push/pull balance + muscle volume */
+.adv-card{margin-bottom:14px}
+.adv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.adv-head .streak-title{margin-bottom:0}
+.adv-win{display:flex;gap:4px;flex-shrink:0}
+.adv-pill{border:1.5px solid var(--br2);background:var(--bg);color:var(--t2);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
+.adv-pill.on{background:var(--g);border-color:var(--g);color:#EAFBF4}
+.adv-sub{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:14px}
+.adv-sub b{color:var(--t1)}
+.adv-bal{margin-bottom:18px}
+.adv-bal-bar{display:flex;height:30px;border-radius:9px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--br)}
+.adv-bal-seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;min-width:0;transition:width .4s ease}
+.adv-bal-seg.push{background:#3ba776}
+.adv-bal-seg.pull{background:#3a86c8}
+.adv-bal-legend{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--t2);font-weight:600;margin-top:7px}
+.adv-bal-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:4px}
+.adv-bal-legend .dot.push{background:#3ba776}
+.adv-bal-legend .dot.pull{background:#3a86c8}
+.adv-verdict{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--t1);line-height:1.5;background:var(--bg);border:1.5px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-top:11px}
+.adv-verdict span:first-child{flex-shrink:0;font-size:15px;line-height:1.2}
+.adv-sech{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:11px}
+.adv-bars{display:flex;flex-direction:column;gap:9px}
+.adv-row{display:flex;align-items:center;gap:9px}
+.adv-row-lbl{width:64px;flex-shrink:0;font-size:12px;font-weight:700;color:var(--t1);text-align:right}
+.adv-row-track{flex:1;height:14px;background:var(--bg);border-radius:7px;overflow:hidden}
+.adv-row-fill{height:100%;border-radius:7px;transition:width .4s ease;min-width:6px}
+.adv-row-val{width:54px;flex-shrink:0;font-size:14px;font-weight:800;color:var(--t1);line-height:1}
+.adv-row-val span{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;margin-left:3px}
+.adv-foot{font-size:11px;color:var(--t3);line-height:1.5;margin-top:14px}
+.adv-foot b{color:var(--t2)}
+
 /* Exercise blocks client */
 .cex-block{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh);transition:border-color .15s}
 .cex-block.all-done{border-color:var(--g2)}

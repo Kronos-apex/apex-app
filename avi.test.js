@@ -73,6 +73,8 @@ const {
   exTrack,
   prFromSets,
   isBetterPR,
+  muscleVolume,
+  pushPullBalance,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -1863,6 +1865,94 @@ test('adherenceMonth: sin sesiones → grilla del mes con 0 entrenados', () => {
   const r = adherenceMonth([], new Date('2026-05-15T12:00'));
   assert.strictEqual(r.trainedDays, 0);
   assert.strictEqual(r.weeks.flat().filter(c => c.inMonth).length, 31);
+});
+
+// ══════════════════════════════════════════════════════
+section('Estadísticas avanzadas (muscleVolume / pushPullBalance)');
+
+// Helper: sesión con N series completadas de un grupo muscular.
+const _sess = (date, ...exs) => ({
+  date,
+  exercises: exs.map(([muscle, done, total]) => ({
+    muscle,
+    sets: Array.from({ length: total != null ? total : done }, (_, i) => ({ kg: '50', reps: '10', done: i < done })),
+  })),
+});
+
+test('muscleVolume: cuenta SOLO series completadas (done), por grupo', () => {
+  const now = new Date('2026-05-15T12:00');
+  const r = muscleVolume([
+    _sess('2026-05-14T10:00', ['pecho', 3], ['espalda', 2, 4]), // espalda: 2 done de 4
+  ], 7, now);
+  assert.strictEqual(r.totalSets, 5);
+  assert.strictEqual(r.groups.find(g => g.group === 'pecho').sets, 3);
+  assert.strictEqual(r.groups.find(g => g.group === 'espalda').sets, 2);
+});
+
+test('muscleVolume: respeta la ventana de días (cutoff)', () => {
+  const now = new Date('2026-05-15T12:00');
+  const sess = [
+    _sess('2026-05-14T10:00', ['pecho', 3]), // dentro de 7 días
+    _sess('2026-05-01T10:00', ['pecho', 5]), // fuera de 7 días
+  ];
+  assert.strictEqual(muscleVolume(sess, 7, now).totalSets, 3);
+  assert.strictEqual(muscleVolume(sess, 30, now).totalSets, 8);
+});
+
+test('muscleVolume: agrupa por categoría (empuje/tracción/piernas/core)', () => {
+  const now = new Date('2026-05-15T12:00');
+  const r = muscleVolume([
+    _sess('2026-05-14T10:00', ['pecho', 3], ['triceps', 2], ['espalda', 4], ['biceps', 1], ['piernas', 5], ['core', 2]),
+  ], 7, now);
+  assert.strictEqual(r.byCat.empuje, 5);    // pecho 3 + triceps 2
+  assert.strictEqual(r.byCat.traccion, 5);  // espalda 4 + biceps 1
+  assert.strictEqual(r.byCat.piernas, 5);
+  assert.strictEqual(r.byCat.core, 2);
+});
+
+test('muscleVolume: grupos ordenados desc por series, con % y etiqueta', () => {
+  const now = new Date('2026-05-15T12:00');
+  const r = muscleVolume([
+    _sess('2026-05-14T10:00', ['espalda', 6], ['pecho', 2], ['biceps', 2]),
+  ], 7, now);
+  assert.strictEqual(r.groups[0].group, 'espalda');
+  assert.strictEqual(r.groups[0].label, 'Espalda');
+  assert.strictEqual(r.groups[0].pct, 60); // 6 de 10
+  assert.strictEqual(r.totalSets, 10);
+});
+
+test('muscleVolume: sin sesiones / sin series done → vacío seguro', () => {
+  const now = new Date('2026-05-15T12:00');
+  assert.strictEqual(muscleVolume([], 7, now).totalSets, 0);
+  assert.strictEqual(muscleVolume(null, 7, now).groups.length, 0);
+  const r = muscleVolume([_sess('2026-05-14T10:00', ['pecho', 0, 3])], 7, now); // 0 done de 3
+  assert.strictEqual(r.totalSets, 0);
+  assert.strictEqual(r.sessions, 0);
+});
+
+test('pushPullBalance: empuje y tracción parejos → equilibrado', () => {
+  const r = pushPullBalance({ empuje: 10, traccion: 10 });
+  assert.strictEqual(r.verdict, 'equilibrado');
+  assert.strictEqual(r.pushPct, 50);
+  assert.strictEqual(r.pullPct, 50);
+});
+
+test('pushPullBalance: mucho empuje, poca tracción → mas-empuje', () => {
+  const r = pushPullBalance({ empuje: 12, traccion: 4 });
+  assert.strictEqual(r.verdict, 'mas-empuje');
+  assert.strictEqual(r.pushPct, 75);
+});
+
+test('pushPullBalance: más tracción que empuje → mas-traccion', () => {
+  const r = pushPullBalance({ empuje: 3, traccion: 12 });
+  assert.strictEqual(r.verdict, 'mas-traccion');
+});
+
+test('pushPullBalance: sin datos → verdict sin-datos, no rompe', () => {
+  const r = pushPullBalance({ empuje: 0, traccion: 0 });
+  assert.strictEqual(r.verdict, 'sin-datos');
+  assert.strictEqual(r.ratio, null);
+  assert.strictEqual(pushPullBalance(null).verdict, 'sin-datos');
 });
 
 // ══════════════════════════════════════════════════════

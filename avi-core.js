@@ -896,6 +896,93 @@ function adherenceMonth(sessions, now) {
   return { year, month, weeks, trainedDays };
 }
 
+// ── Estadísticas avanzadas Premium: volumen por grupo muscular + balance
+// empuje/tracción. Se calcula desde el historial REAL (cada sesión guarda, por
+// ejercicio, su grupo `muscle` y las series con `done`). Cuenta SERIES EFECTIVAS
+// (completadas) — la métrica que usa la ciencia del entrenamiento para volumen, y
+// que funciona igual con peso corporal que con barra. El calentamiento y los
+// dropsets ya van en campos aparte de la sesión, así que no inflan el conteo.
+// Puras/testeables — sirven sobre datos que YA existen (sesiones viejas también).
+
+// Grupo muscular AVI → categoría de patrón de movimiento.
+const MUSCLE_GROUP_CAT = {
+  pecho: 'empuje', hombros: 'empuje', triceps: 'empuje',
+  espalda: 'traccion', biceps: 'traccion',
+  piernas: 'piernas', gluteo: 'piernas',
+  core: 'core', cardio: 'cardio', otro: 'otro',
+};
+// Etiqueta legible por grupo.
+const MUSCLE_GROUP_LABEL = {
+  pecho: 'Pecho', espalda: 'Espalda', hombros: 'Hombros', biceps: 'Bíceps',
+  triceps: 'Tríceps', piernas: 'Piernas', gluteo: 'Glúteos', core: 'Core',
+  cardio: 'Cardio', otro: 'Otro',
+};
+
+// Series efectivas por grupo muscular y por categoría en los últimos `windowDays`.
+// sessions = DB.history[clientId]; `now` opcional (para tests). Devuelve:
+// { days, totalSets, sessions, groups:[{group,label,cat,sets,pct}] (desc, solo >0),
+//   byCat:{empuje,traccion,piernas,core,cardio,otro} }
+function muscleVolume(sessions, windowDays, now) {
+  const ref = now ? new Date(now) : new Date();
+  const days = windowDays || 7;
+  const cutoff = ref.getTime() - days * MS_DAY;
+  const groups = {};
+  const byCat = { empuje: 0, traccion: 0, piernas: 0, core: 0, cardio: 0, otro: 0 };
+  let totalSets = 0, sessCount = 0;
+  (sessions || []).forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    if (isNaN(t) || t < cutoff) return;
+    let sessHadSets = false;
+    ((s && s.exercises) || []).forEach(ex => {
+      const g = (ex && ex.muscle) || 'otro';
+      const sets = (((ex && ex.sets) || []).filter(st => st && st.done)).length;
+      if (sets > 0) {
+        groups[g] = (groups[g] || 0) + sets;
+        const cat = MUSCLE_GROUP_CAT[g] || 'otro';
+        byCat[cat] = (byCat[cat] || 0) + sets;
+        totalSets += sets;
+        sessHadSets = true;
+      }
+    });
+    if (sessHadSets) sessCount++;
+  });
+  const groupArr = Object.keys(groups).map(g => ({
+    group: g,
+    label: MUSCLE_GROUP_LABEL[g] || g,
+    cat: MUSCLE_GROUP_CAT[g] || 'otro',
+    sets: groups[g],
+    pct: totalSets ? Math.round(groups[g] / totalSets * 100) : 0,
+  })).sort((a, b) => b.sets - a.sets || a.label.localeCompare(b.label));
+  return { days, totalSets, sessions: sessCount, groups: groupArr, byCat };
+}
+
+// Balance empuje/tracción desde las series por categoría. Buen entrenamiento =
+// empuje y tracción parejos (la tracción puede ir ligeramente por encima). Devuelve
+// { push, pull, total, pushPct, pullPct, ratio, verdict, msg }.
+// verdict: 'sin-datos' | 'equilibrado' | 'mas-empuje' | 'mas-traccion'.
+function pushPullBalance(byCat) {
+  const push = (byCat && byCat.empuje) || 0;
+  const pull = (byCat && byCat.traccion) || 0;
+  const total = push + pull;
+  if (!total) return { push: 0, pull: 0, total: 0, pushPct: 0, pullPct: 0, ratio: null, verdict: 'sin-datos', msg: 'Aún no hay series de empuje o tracción registradas. Completa un par de entrenamientos y aquí verás tu balance.' };
+  const ratio = pull ? push / pull : Infinity;
+  const pushPct = Math.round(push / total * 100);
+  const pullPct = 100 - pushPct;
+  let verdict, msg;
+  // Tolerancia: si ninguno supera al otro por más de ~40% → equilibrado.
+  if (push >= pull * 0.7 && push <= pull * 1.4) {
+    verdict = 'equilibrado';
+    msg = 'Tu empuje y tu tracción están parejos 💪 Así cuidas tu postura y tus hombros.';
+  } else if (push > pull) {
+    verdict = 'mas-empuje';
+    msg = 'Estás empujando bastante más de lo que jalas. Suma algo de espalda y bíceps (remos, jalones) para equilibrar y cuidar tu postura.';
+  } else {
+    verdict = 'mas-traccion';
+    msg = 'Estás jalando más de lo que empujas. Un poco más de pecho, hombros y tríceps equilibraría tu desarrollo.';
+  }
+  return { push, pull, total, pushPct, pullPct, ratio, verdict, msg };
+}
+
 // ── Orden de rutinas por día de la semana (Lunes primero, Libre al final) ──
 // El día se guarda como nombre en español (con o sin tilde, defensivo). Cualquier
 // valor desconocido va al final. Empieza en LUNES (no domingo) porque así lo lee
@@ -1513,5 +1600,9 @@ if (typeof module !== 'undefined' && module.exports) {
     exTrack,
     prFromSets,
     isBetterPR,
+    MUSCLE_GROUP_CAT,
+    MUSCLE_GROUP_LABEL,
+    muscleVolume,
+    pushPullBalance,
   };
 }
