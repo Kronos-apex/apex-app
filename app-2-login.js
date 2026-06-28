@@ -1016,6 +1016,8 @@ function renderAll(){renderHome();renderClients();renderExercises();renderMsgs()
 // Cierra el overlay/modal de más arriba si hay uno abierto. Devuelve true si cerró algo.
 // Orden de prioridad = el más superpuesto primero.
 function _aviCloseTopOverlay(){
+  const sr=document.getElementById('session-room');
+  if(sr&&sr.classList.contains('on')){closeSessionRoom();return true;}
   const lb=document.getElementById('ex-lightbox');
   if(lb&&lb.classList.contains('on')){closeExImg();return true;}
   const pu=document.getElementById('premium-upsell');

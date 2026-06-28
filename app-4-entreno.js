@@ -1520,6 +1520,9 @@ function showWorkoutFinish(routine,stats){
     const w=parseFloat(c&&c.weight)||70;            // kg; fallback 70 si no hay peso
     kcal=Math.round(5.5*w*(durationSec/3600));       // MET 5.5 ≈ entrenamiento de fuerza
     entry.durationSec=durationSec; entry.kcal=kcal;
+    // Récords logrados este día → se guardan en la sesión para mostrarlos luego en
+    // la "habitación" de detalle (el historial viejo no los tiene; se omiten sin romper).
+    if(prs&&prs.length)entry.prs=prs.slice(0,6).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps,isNew:!!pr.isNew}));
     svNow('ax_hist',DB.history);
   }
   // ¿Esta sesión cruzó un umbral de nivel (gamificación)? Se celebra al CERRAR este
@@ -1783,23 +1786,78 @@ function renderClientStreak(clientId){
   </div>`;
 }
 
-// Tocar un día entrenado del calendario → despliega el historial y salta a la sesión
-// de ese día (la abre y la resalta un instante).
+// Tocar un día entrenado del calendario → abre la "habitación" de esa sesión.
 function cnOpenDayHistory(clientId,year,month,day){
   const sessions=(DB.history&&DB.history[clientId])||[];
   const target=sessions.find(s=>{const d=new Date(s.date);return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day;});
-  if(!target)return;
-  _cnHistOpen[clientId]=true;        // asegura que la tarjeta esté en la lista
-  renderClientHistory(clientId);
-  setTimeout(()=>{
-    const card=document.getElementById('sescard-'+target.id);
-    if(!card)return;
-    const detail=card.children[1];   // el bloque de detalle (oculto por defecto)
-    if(detail)detail.style.display='block';
-    card.scrollIntoView({behavior:'smooth',block:'center'});
-    card.classList.add('flash');
-    setTimeout(()=>card.classList.remove('flash'),1600);
-  },60);
+  if(target)openSessionRoom(clientId,target.id);
+}
+
+// ── "Habitación" de detalle de una sesión: pantalla dedicada que entra con
+// profundidad (no es una pestaña plana). Muestra todo el entreno de ese día.
+function _sessionSummary(s,reps,exCount,pct){
+  const nEx=exCount||((s.exercises||[]).length);
+  let t=`Completaste <b>${s.doneSets} de ${s.totalSets} series</b> (${pct}%) en <b>${nEx} ejercicio${nEx===1?'':'s'}</b>`;
+  if(s.durationSec)t+=`, durante <b>${fmtDuration(s.durationSec)}</b>`;
+  t+='. ';
+  if(s.totalVol>0)t+=`Moviste <b>${s.totalVol.toLocaleString()} kg</b> en total`;
+  if(s.kcal)t+=`${s.totalVol>0?' y':'Quemaste'} unas <b>${s.kcal} kcal</b>`;
+  if(s.totalVol>0||s.kcal)t+='. ';
+  const np=(s.prs||[]).length;
+  if(np)t+=`¡Y marcaste <b>${np} récord${np===1?'':'s'}</b>! 🏆`;
+  else if(pct===100)t+='¡Sesión redonda! 💪';
+  return t;
+}
+function openSessionRoom(clientId,sid){
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const s=sessions.find(x=>x.id===sid);
+  const room=document.getElementById('session-room'),body=document.getElementById('sroom-body');
+  if(!s||!room||!body)return;
+  const exs=s.exercises||[];
+  let reps=0,exCount=0;
+  exs.forEach(ex=>{let any=false;(ex.sets||[]).forEach(st=>{if(st&&st.done){reps+=parseInt(st.reps)||0;any=true;}});if(any)exCount++;});
+  const d=new Date(s.date);
+  const dateStr=d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  const timeStr=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  const pct=s.totalSets>0?Math.round(s.doneSets/s.totalSets*100):0;
+  const stats=[];
+  if(s.durationSec)stats.push(['⏱','Duración',fmtDuration(s.durationSec)]);
+  if(s.kcal)stats.push(['🔥','Calorías',s.kcal+' kcal']);
+  if(s.totalVol>0)stats.push(['🏋️','Volumen',s.totalVol.toLocaleString()+' kg']);
+  if(reps>0)stats.push(['🔁','Reps totales',String(reps)]);
+  stats.push(['📋','Ejercicios',String(exCount||exs.length)]);
+  stats.push(['✅','Series',`${s.doneSets}/${s.totalSets}`]);
+  const statsHTML=stats.map(([ic,l,v])=>`<div class="sroom-stat"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`).join('');
+  let prHTML='';
+  const prs=s.prs||[];
+  if(prs.length){
+    prHTML=`<div class="sroom-sec">🏆 Récords de este día</div>`+prs.map(pr=>{
+      const detail=(pr.unit==='kg'||!pr.unit)?`${fmtMetric(pr.val,pr.unit||'kg')}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(pr.val,pr.unit);
+      return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
+    }).join('');
+  }
+  const feelHTML=s.feeling?`<div class="sroom-feel">${feelingEmoji(s.feeling)} <span>Te sentiste: <b>${esc(feelingLabel(s.feeling))}</b></span></div>`:'';
+  body.innerHTML=`
+    <div class="sroom-hero">
+      <div class="sroom-date">${dateStr.charAt(0).toUpperCase()+dateStr.slice(1)} · ${timeStr}</div>
+      <div class="sroom-title">${esc(s.routineName||'Entrenamiento')}</div>
+      <div class="sroom-badge ${pct===100?'full':''}">${pct}% completado</div>
+    </div>
+    <div class="sroom-stats">${statsHTML}</div>
+    <div class="sroom-summary">${_sessionSummary(s,reps,exCount,pct)}</div>
+    ${feelHTML}
+    ${prHTML}
+    <div class="sroom-sec">Ejercicios de la sesión</div>
+    <div class="sroom-exs">${_sessionExercisesHTML(s)}</div>
+    <div style="height:30px"></div>`;
+  body.scrollTop=0;
+  room.classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeSessionRoom(){
+  const room=document.getElementById('session-room');
+  if(room)room.classList.remove('on');
+  document.body.style.overflow='';
 }
 
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.
@@ -1905,6 +1963,9 @@ function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
   const con=document.getElementById('cn-hist-list');if(!con)return;
+  // Gamificación (Tu nivel + Tus logros) vive en este panel pero la pintaba solo
+  // el Perfil → al entrar a Progreso llegaba tarde. La pintamos aquí, de una.
+  const _gc=DB.clients.find(x=>x.id===clientId); if(_gc)renderGamification(_gc);
   renderClientStreak(clientId);
   renderAdvStats(clientId);
   renderVolChart(sessions);
@@ -1924,9 +1985,10 @@ function renderClientHistory(clientId){
     if(s.id)div.id='sescard-'+s.id;
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
     const pcol=pct===100?'var(--g)':'var(--or)';
-    div.className='sescard'+(pct===100?' done':'');
+    div.className='sescard door'+(pct===100?' done':'');
+    // La tarjeta es una "puerta": al tocarla entra a la habitación de esa sesión.
     div.innerHTML=`
-      <div class="sescard-h" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <div class="sescard-h" onclick="openSessionRoom('${clientId}','${s.id}')">
         <div class="sescard-top">
           <div><div class="sescard-name">${esc(s.routineName||"")}</div><div class="sescard-date">${dateStr} · ${timeStr}</div></div>
           <div class="sescard-sets"><b>${s.doneSets}/${s.totalSets}</b><small>series</small></div>
@@ -1935,10 +1997,8 @@ function renderClientHistory(clientId){
           <div class="pbar" style="flex:1;margin-top:0"><div class="pfill" style="width:${pct}%;background:${pcol}"></div></div>
           <span class="sescard-pct" style="color:${pcol}">${pct}%</span>
           ${s.totalVol>0?`<span class="sescard-vol">${s.totalVol.toLocaleString()} kg</span>`:''}
+          <span class="sescard-arrow">›</span>
         </div>
-      </div>
-      <div style="display:none;border-top:1px solid var(--br);background:var(--bg);padding:10px 14px">
-        ${_sessionExercisesHTML(s)}
       </div>`;
     con.appendChild(div);
   });
