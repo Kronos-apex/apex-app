@@ -506,7 +506,10 @@ function applyProfileDisclosure(clientId){
   const med=(DB.medidas||{})[clientId]||[];
   const ph=(DB.photos||{})[clientId]||[];
   show('cn-pr-card', Object.keys(prs).length>0);
-  show('cn-nut-card', hasNut);
+  // Nutrición: visible si el coach asignó plan O si es Premium (ahí vive la calculadora
+  // automática de calorías/macros para el self-serve sin coach). El modo libre no la ve.
+  const _nutClient=(DB.clients||[]).find(x=>x.id===clientId);
+  show('cn-nut-card', hasNut || (_nutClient && !isFreeClient(_nutClient)));
   // Seguimiento personal: abierto si ya hay datos; colapsado si está todo vacío.
   const ttBody=document.getElementById('tt-body'), ttChev=document.getElementById('tt-chev');
   const hasTracking=bw.length||med.length||ph.length;

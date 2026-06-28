@@ -12,6 +12,7 @@ const {
   getIccLabel,
   getSexCode,
   calcMacrosSugeridos,
+  nutritionEstimate,
   migrateRoutineIds,
   shouldPostPush,
   delClientGuard,
@@ -1862,6 +1863,35 @@ test('adherenceMonth: sin sesiones → grilla del mes con 0 entrenados', () => {
   const r = adherenceMonth([], new Date('2026-05-15T12:00'));
   assert.strictEqual(r.trainedDays, 0);
   assert.strictEqual(r.weeks.flat().filter(c => c.inMonth).length, 31);
+});
+
+// ══════════════════════════════════════════════════════
+section('Calculadora nutricional (nutritionEstimate)');
+
+test('nutritionEstimate: compone TMB→TDEE→objetivo→macros (ganar músculo)', () => {
+  const c = { weight: 80, height: 180, age: 30, sex: 'M', activityFactor: 1.55, goal: 'Ganar músculo' };
+  const e = nutritionEstimate(c);
+  assert.strictEqual(e.tmb, 1780);                 // 10·80 + 6.25·180 − 5·30 + 5
+  assert.strictEqual(e.tdee, Math.round(1780 * 1.55));
+  assert.strictEqual(e.kcalObj, e.tdee + 350);     // superávit por ganar músculo
+  assert.strictEqual(e.macros.prot_g, 176);        // 2.2 · 80
+  assert.strictEqual(e.macros.fat_g, 72);          // 0.9 · 80
+  assert.ok(e.water > 0);
+});
+test('nutritionEstimate: perder grasa → déficit (kcal < TDEE)', () => {
+  const c = { weight: 70, height: 175, age: 25, sex: 'F', goal: 'Perder grasa' };
+  const e = nutritionEstimate(c);
+  assert.strictEqual(e.af, 1.55);                  // default cuando no hay activityFactor
+  assert.ok(e.kcalObj < e.tdee);
+});
+test('nutritionEstimate: weightKg pasado manda sobre client.weight', () => {
+  const c = { weight: 70, height: 175, age: 25, sex: 'F', goal: 'Mantenimiento' };
+  const e = nutritionEstimate(c, 60);
+  assert.strictEqual(e.tmb, Math.round(10 * 60 + 6.25 * 175 - 5 * 25 - 161));
+});
+test('nutritionEstimate: faltan datos → null', () => {
+  assert.strictEqual(nutritionEstimate({ weight: 80, height: 180 }), null); // sin edad/sexo
+  assert.strictEqual(nutritionEstimate(null), null);
 });
 
 // ══════════════════════════════════════════════════════

@@ -1246,6 +1246,23 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal) {
   return { prot_g, fat_g, carb_g, kcal: kcalObj };
 }
 
+// ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
+// TMB(Mifflin-St Jeor) → TDEE(×actividad) → objetivo calórico por meta → macros.
+// weightKg opcional (si no, usa client.weight). Devuelve null si faltan datos
+// (peso/estatura/edad). Pura/testeable; reúne las funciones ya existentes.
+function nutritionEstimate(client, weightKg) {
+  client = client || {};
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  const tmb = calcTMB(w, client.height, client.age, getSexCode(client.sex));
+  if (!tmb) return null;
+  const af = parseFloat(client.activityFactor) || 1.55;
+  const tdee = calcTDEE(tmb, af);
+  const t = kcalTargetFor(client.goal, tdee);
+  const macros = calcMacrosFromKcal(t.kcalObj, w, client.goal);
+  const water = w ? Math.round(w * 35 / 250) : null; // ~35 ml/kg en vasos de 250 ml
+  return { tmb, tdee, af, kcalObj: t.kcalObj, label: t.label, deficit: t.deficit, macros, water };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // GAMIFICACIÓN — nivel permanente + descuento del mes (lo ve el coach)
 // ──────────────────────────────────────────────────────────────────────
@@ -1438,6 +1455,7 @@ if (typeof module !== 'undefined' && module.exports) {
     calcTDEE,
     kcalTargetFor,
     calcMacrosFromKcal,
+    nutritionEstimate,
     getSexCode,
     calcMacrosSugeridos,
     migrateRoutineIds,

@@ -164,6 +164,42 @@ function openNutriInfo(key){
     <div class="nutri-sec"><div class="nutri-h">¿Dónde lo encuentras?</div><div class="nutri-p">${d.where}</div></div>`;
   om('m-nutri-info');
 }
+// ── Calculadora nutricional automática (Premium): estima kcal + macros desde los
+// datos del cliente (Mifflin-St Jeor → TDEE → objetivo por meta → macros). Para
+// quien NO tiene plan escrito por un coach (self-serve). Reusa nutritionEstimate (core).
+const _NUT_ACTS=[[1.2,'Sedentario'],[1.375,'Ligero'],[1.55,'Moderado'],[1.725,'Activo'],[1.9,'Muy activo']];
+function setNutActivity(f){
+  const c=_curClient();if(!c)return;
+  c.activityFactor=f;sv('ax_c',DB.clients);
+  renderNutritionClient(c.id);
+}
+function nutCalcHTML(c){
+  const est=nutritionEstimate(c);
+  if(!est){
+    return `<div style="text-align:center;padding:22px 14px">
+      <div style="font-size:34px;margin-bottom:8px">🍎</div>
+      <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:6px">Calculadora nutricional</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--t2)">Completa tu <b>peso, estatura, edad y sexo</b> en tu Perfil y aquí verás tu estimación automática de calorías y macros para tu objetivo.</div>
+    </div>`;
+  }
+  const curAf=parseFloat(c.activityFactor)||1.55;
+  const actBtns=_NUT_ACTS.map(([f,l])=>`<button type="button" onclick="setNutActivity(${f})" style="flex:1;min-width:0;padding:8px 3px;border:1.5px solid ${curAf===f?'var(--g)':'var(--br2)'};border-radius:var(--rsm);background:${curAf===f?'var(--gl)':'transparent'};color:${curAf===f?'var(--gt)':'var(--t2)'};font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">${l}</button>`).join('');
+  const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
+  return `<div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🍎 Tu estimación automática</div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:9px">¿Qué tan activo eres en tu día a día?</div>
+    <div style="display:flex;gap:5px;margin-bottom:16px">${actBtns}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
+      <div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--g)">${est.kcalObj}</div><div style="font-size:11px;color:var(--t2);font-weight:600">KCAL / DÍA</div></div>
+      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--bl)">${est.water||'—'}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${m.prot_g}g</div><div style="font-size:10px;color:var(--t2)">Proteína</div><div style="font-size:10px;color:var(--bl);font-weight:600">${m.prot_g*4} kcal</div></div>
+      <div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${m.carb_g}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${m.carb_g*4} kcal</div></div>
+      <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${m.fat_g}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${m.fat_g*9} kcal</div></div>
+    </div>
+    <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
+}
+
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
   if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}
@@ -172,9 +208,12 @@ function renderNutritionClient(clientId){
   const editBtn=document.getElementById('cn-nut-edit'); if(editBtn)editBtn.style.display=COACH_SELF?'':'none';
   const nut=(DB.nutrition||{})[clientId];
   if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
-    con.innerHTML=COACH_SELF
-      ? '<div style="text-align:center;padding:20px 0;color:var(--t3)">A\u00fan no has armado tu plan. Toca \u270f\ufe0f Editar para crearlo.</div>'
-      : '<div style="text-align:center;padding:20px 0;color:var(--t3)">Tu coach a\u00fan no ha cargado tu plan de alimentaci\u00f3n. Escr\u00edbele si quieres que lo incluya.</div>';
+    // Sin plan escrito por un coach \u2192 calculadora autom\u00e1tica (Premium self-serve).
+    // El coach (COACH_SELF) ve adem\u00e1s el recordatorio de armar un plan a medida.
+    const c=DB.clients.find(x=>x.id===clientId);
+    con.innerHTML=nutCalcHTML(c)+(COACH_SELF
+      ? '<div style="text-align:center;margin-top:12px;color:var(--t3);font-size:12px">O toca \u270f\ufe0f Editar para escribir un plan a medida.</div>'
+      : '');
     return;
   }
   let html='';
