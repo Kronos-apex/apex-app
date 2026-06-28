@@ -930,6 +930,18 @@ syncFromCloud().then(async ()=>{
       const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
       history.pushState({aviGuard:1},''); return;
     }
+    // 3b) Cliente: si NO está en Inicio (Hoy) → ir a Inicio. Inicio es el ÚNICO
+    // punto de salida (garantía aunque el stack esté vacío por venir directo a otra
+    // pestaña). Solo desde Hoy se arma la salida.
+    const sc=document.getElementById('s-client');
+    if(sc&&getComputedStyle(sc).display!=='none'){
+      const cur=document.querySelector('#s-client .cnp.on');
+      if(cur&&cur.id!=='cn-today'){
+        cnTab('cn-today',_cnTabEl('cn-today'),true);
+        AVINAV.stack.length=0;
+        history.pushState({aviGuard:1},''); return;
+      }
+    }
     // 4) En el INICIO → doble atrás para salir
     if(AVINAV.exitArmed){ AVINAV.exitArmed=false; history.go(-1); return; }
     AVINAV.exitArmed=true; toast('Presiona atrás otra vez para salir 👋');

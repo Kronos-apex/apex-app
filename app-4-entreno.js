@@ -1836,16 +1836,22 @@ function openSessionRoom(clientId,sid){
       return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
     }).join('');
   }
-  const feelHTML=s.feeling?`<div class="sroom-feel">${feelingEmoji(s.feeling)} <span>Te sentiste: <b>${esc(feelingLabel(s.feeling))}</b></span></div>`:'';
+  const circ=2*Math.PI*26, off=(circ*(1-pct/100)).toFixed(1);
+  const feelHero=s.feeling?`<div class="sroom-hero-feel">${feelingEmoji(s.feeling)} ${esc(feelingLabel(s.feeling))}</div>`:'';
   body.innerHTML=`
     <div class="sroom-hero">
-      <div class="sroom-date">${dateStr.charAt(0).toUpperCase()+dateStr.slice(1)} · ${timeStr}</div>
-      <div class="sroom-title">${esc(s.routineName||'Entrenamiento')}</div>
-      <div class="sroom-badge ${pct===100?'full':''}">${pct}% completado</div>
+      <div class="sroom-ring">
+        <svg viewBox="0 0 60 60"><circle class="sr-bg" cx="30" cy="30" r="26"/><circle class="sr-fg" cx="30" cy="30" r="26" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off}"/></svg>
+        <div class="sroom-ring-n">${pct}<small>%</small></div>
+      </div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-date">${dateStr.charAt(0).toUpperCase()+dateStr.slice(1)} · ${timeStr}</div>
+        <div class="sroom-title">${esc(s.routineName||'Entrenamiento')}</div>
+        ${feelHero}
+      </div>
     </div>
     <div class="sroom-stats">${statsHTML}</div>
     <div class="sroom-summary">${_sessionSummary(s,reps,exCount,pct)}</div>
-    ${feelHTML}
     ${prHTML}
     <div class="sroom-sec">Ejercicios de la sesión</div>
     <div class="sroom-exs">${_sessionExercisesHTML(s)}</div>

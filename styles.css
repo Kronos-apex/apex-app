@@ -521,48 +521,53 @@ html[data-theme="light"] .mta {
 .planopt-lbl{font-size:13px;font-weight:800;color:var(--t1)}
 .planopt-sub{font-size:11px;color:var(--t2);margin-top:2px}
 
-/* ── "Habitación" de detalle de sesión: entra deslizando desde la derecha (depth) ── */
-.sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform .34s cubic-bezier(.22,.85,.26,1);box-shadow:-20px 0 60px rgba(0,0,0,.55);visibility:hidden;overscroll-behavior:contain}
-.sroom.on{transform:translateX(0);visibility:visible}
+/* ── "Habitación" de detalle de sesión: aparece con scale+fade (premium, no slide) ── */
+.sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
+.sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg);border-bottom:1px solid var(--br)}
 .sroom-back{background:var(--w);border:1.5px solid var(--br2);color:var(--t1);font-family:inherit;font-size:14px;font-weight:800;padding:7px 15px;border-radius:999px;cursor:pointer}
 .sroom-back:active{transform:scale(.96)}
 .sroom-bar-t{font-size:13px;font-weight:700;color:var(--t2)}
-.sroom-body{padding:18px 16px 34px;max-width:560px;margin:0 auto}
-.sroom-hero{margin-bottom:18px}
-.sroom-date{font-size:12px;color:var(--t2);font-weight:600;text-transform:capitalize}
-.sroom-title{font-size:24px;font-weight:800;color:var(--t1);line-height:1.15;margin:3px 0 9px}
-.sroom-badge{display:inline-block;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;background:var(--orl);color:var(--or)}
-.sroom-badge.full{background:var(--gl);color:var(--g)}
+.sroom-body{padding:16px 16px 34px;max-width:560px;margin:0 auto}
+/* hero: tarjeta con gradiente de marca + anillo de progreso (profundidad) */
+.sroom-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(150deg,#0e3d2c 0%,#06231a 72%);border:1px solid rgba(16,224,160,.18);border-radius:20px;padding:17px 18px;margin-bottom:15px;box-shadow:0 12px 32px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06)}
+.sroom-ring{position:relative;width:74px;height:74px;flex-shrink:0}
+.sroom-ring svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
+.sroom-ring .sr-bg{fill:none;stroke:rgba(255,255,255,.13);stroke-width:6}
+.sroom-ring .sr-fg{fill:none;stroke:#10E0A0;stroke-width:6;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(16,224,160,.5))}
+.sroom.on .sroom-ring .sr-fg{transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1) .18s}
+.sroom-ring-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;color:#fff}
+.sroom-ring-n small{font-size:11px;margin-left:1px;opacity:.8}
+.sroom-hero-txt{min-width:0}
+.sroom-date{font-size:12px;color:rgba(234,251,244,.7);font-weight:600;text-transform:capitalize}
+.sroom-title{font-size:22px;font-weight:800;color:#fff;line-height:1.15;margin:3px 0 7px}
+.sroom-hero-feel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:rgba(234,251,244,.9);background:rgba(255,255,255,.09);padding:4px 11px;border-radius:999px}
+/* tarjetas de estadística con capas y sombra */
 .sroom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
-.sroom-stat{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:13px 8px;text-align:center;box-shadow:var(--sh);min-width:0}
-.sroom-stat-ic{font-size:19px;line-height:1;margin-bottom:6px}
-.sroom-stat-v{font-size:17px;font-weight:800;color:var(--t1);line-height:1.1;word-break:break-word}
-.sroom-stat-l{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
-.sroom-summary{background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:13px 15px;font-size:13.5px;line-height:1.6;color:var(--t1);margin-bottom:16px}
+.sroom-stat{background:linear-gradient(168deg,var(--w),var(--bg));border:1px solid var(--br);border-radius:14px;padding:14px 8px;text-align:center;box-shadow:0 5px 14px rgba(0,0,0,.14);min-width:0}
+.sroom-stat-ic{font-size:20px;line-height:1;margin-bottom:6px}
+.sroom-stat-v{font-size:18px;font-weight:800;color:var(--t1);line-height:1.1;word-break:break-word}
+.sroom-stat-l{font-size:9.5px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
+.sroom-summary{background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:14px 16px;font-size:13.5px;line-height:1.62;color:var(--t1);margin-bottom:16px;box-shadow:0 4px 14px rgba(16,224,160,.08)}
 .sroom-summary b{color:var(--g);font-weight:800}
-.sroom-feel{display:flex;align-items:center;gap:9px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:11px 14px;margin-bottom:16px;font-size:20px}
-.sroom-feel span{font-size:13px;color:var(--t2)}
-.sroom-feel b{color:var(--t1)}
 .sroom-sec{font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin:6px 0 11px}
-.sroom-pr{display:flex;align-items:center;gap:11px;background:#FBF4DC;border:1px solid #EBDDA8;border-radius:var(--rsm);padding:11px 13px;margin-bottom:8px}
+.sroom-pr{display:flex;align-items:center;gap:11px;background:linear-gradient(165deg,#FBF4DC,#F4E9C2);border:1px solid #EBDDA8;border-radius:var(--rsm);padding:11px 13px;margin-bottom:8px;box-shadow:0 4px 12px rgba(154,123,22,.14)}
 .sroom-pr-ic{font-size:22px;flex-shrink:0}
 .sroom-pr-n{font-size:13px;font-weight:800;color:#7a5e0e}
 .sroom-pr-d{font-size:12px;color:#9A7B16;margin-top:1px}
 .sroom-exs{margin-top:2px}
-.sroom.on .sroom-body>*{animation:roomUp .42s cubic-bezier(.2,.7,.3,1) both}
-.sroom.on .sroom-body>*:nth-child(2){animation-delay:.04s}
-.sroom.on .sroom-body>*:nth-child(3){animation-delay:.08s}
-.sroom.on .sroom-body>*:nth-child(4){animation-delay:.12s}
-.sroom.on .sroom-body>*:nth-child(n+5){animation-delay:.16s}
-@keyframes roomUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.sroom.on .sroom-body>*{animation:roomUp .5s cubic-bezier(.2,.7,.3,1) both}
+.sroom.on .sroom-body>*:nth-child(2){animation-delay:.05s}
+.sroom.on .sroom-body>*:nth-child(3){animation-delay:.1s}
+.sroom.on .sroom-body>*:nth-child(4){animation-delay:.15s}
+.sroom.on .sroom-body>*:nth-child(n+5){animation-delay:.2s}
+@keyframes roomUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .sescard.door{cursor:pointer;transition:transform .12s,box-shadow .12s}
 .sescard.door:active{transform:scale(.985)}
 .sescard-arrow{font-size:22px;font-weight:700;color:var(--t3);line-height:1;margin-left:2px;flex-shrink:0}
 @media (prefers-reduced-motion:reduce){
-  .sroom{transition:opacity .2s ease;transform:none;opacity:0}
-  .sroom.on{opacity:1}
-  .sroom.on .sroom-body>*{animation:none}
+  .sroom{transition:opacity .2s ease;transform:none}
+  .sroom.on .sroom-body>*,.sroom.on .sroom-ring .sr-fg{animation:none;transition:none}
 }
 
 /* Exercise blocks client */
