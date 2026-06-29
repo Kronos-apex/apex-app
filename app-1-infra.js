@@ -8,14 +8,23 @@ const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 // ── Navegación con botón ATRÁS (Android/TWA): stack lógico de pantallas ──
 // Cada navegación HACIA ADELANTE (cambiar de pestaña) registra en AVINAV.stack cómo
 // deshacerse. El handler (_aviHandleBack en app-2-login.js) por cada atrás del sistema:
-// cierra el overlay de arriba → o saca UN paso del stack (pestaña) → o en el inicio pide
-// doble-atrás para salir, RE-EMPUJANDO una entrada "guard" cada vez para no agotar el
-// historial. CLAVE (bug Camilo 2026-06-28 "atrás se devuelve una vez y sale"): el handler
-// se registra ANTES del `await _enterAuthSession` del boot; cuando se registraba después,
-// ese await podía no resolver y el atrás quedaba sin manejar → el navegador se salía.
-const AVINAV = { stack: [], exitArmed: false, curTab: null };
+// cierra la habitación/overlay de arriba → o saca UN paso del stack (pestaña) → o en el
+// inicio pide doble-atrás para salir.
+//
+// CLAVE (bug Camilo "atrás se devuelve una vez y a la SIGUIENTE se sale", reincidente pese a
+// v211/v216): la lógica JS estaba bien (reproducida OK en escritorio); el bug es del WebView
+// del TWA. El patrón viejo mantenía UN solo "guard" y lo RE-EMPUJABA dentro del popstate;
+// esa operación (pushState dentro del propio handler de popstate) el WebView de Android la
+// pierde a veces → el siguiente atrás cae al fondo del historial y Android cierra la app.
+// ARREGLO (avi-v223): cada HABITACIÓN, al abrirse, empuja su PROPIA entrada de historial real
+// (navOpenLayer → AVINAV.layers). El botón físico la saca de forma natural y el handler solo
+// DESCUENTA la capa, sin re-empujar nada. Así se elimina la operación frágil para el flujo que
+// Camilo usa (entrar a una habitación y salir con el botón físico).
+const AVINAV = { stack: [], exitArmed: false, curTab: null, layers: 0 };
 function navRecord(undo){ if(typeof undo==='function') AVINAV.stack.push({ undo: undo }); }
-function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; }
+function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; AVINAV.layers=0; }
+// Empuja una entrada de historial REAL por cada habitación que se abre (ver nota de arriba).
+function navOpenLayer(){ AVINAV.layers=(AVINAV.layers||0)+1; history.pushState({aviLayer:1},''); }
 
 // ── Rate limiter de login ──
 const LOGIN_ATTEMPTS_KEY = 'ax_login_attempts';

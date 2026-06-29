@@ -1002,7 +1002,11 @@ function renderAll(){renderHome();renderClients();renderExercises();renderMsgs()
 // cerrar; 2) un paso del stack de pestañas → deshacer; 3) coach en detalle → lista;
 // 3b) cliente fuera de Inicio con stack vacío → ir a Inicio; 4) en Inicio → doble-atrás.
 function _aviHandleBack(){
-  // 1) Overlays/habitaciones/modales (el de más arriba primero).
+  // 0) HABITACIÓN con su propia capa de historial (navOpenLayer): el atrás físico YA consumió
+  // su entrada al disparar este popstate. Cerrar la de más arriba y DESCONTAR la capa, SIN
+  // re-empujar — eso es lo que arregla el bug del TWA (ver nota en app-1-infra.js).
+  if(AVINAV.layers>0){ _aviCloseTopOverlay(); AVINAV.layers--; return; }
+  // 1) Overlays/modales legacy (no empujan capa propia) → cerrar con re-empuje del guard único.
   if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
   // 2) Stack de navegación (pestañas del cliente) → retroceder un paso.
   if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} history.pushState({aviGuard:1},''); return; }

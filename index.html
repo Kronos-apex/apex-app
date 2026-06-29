@@ -1398,7 +1398,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- HABITACIÓN: detalle completo de una sesión (entra con profundidad desde el calendario/historial) -->
 <div id="session-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeSessionRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Detalle del entreno</span>
   </div>
   <div class="sroom-body" id="sroom-body"></div>
@@ -1407,7 +1407,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación de un EJERCICIO: historial, progresión de carga/1RM, récord y técnica -->
 <div id="exercise-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeExerciseRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Ejercicio</span>
   </div>
   <div class="sroom-body" id="exroom-body"></div>
@@ -1416,7 +1416,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación del MES: reporte mensual (entrenos, volumen, adherencia, racha, top lifts) -->
 <div id="month-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeMonthRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Resumen del mes</span>
   </div>
   <div class="sroom-body" id="mroom-body"></div>
@@ -1425,7 +1425,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación de RÉCORD/PR: línea de tiempo de marcas personales de un ejercicio -->
 <div id="record-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeRecordRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Récord personal</span>
   </div>
   <div class="sroom-body" id="rroom-body"></div>
@@ -1434,7 +1434,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación de RUTINA: plan + historial de cumplimiento de una rutina -->
 <div id="routine-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeRoutineRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Rutina</span>
   </div>
   <div class="sroom-body" id="rtroom-body"></div>
@@ -1443,7 +1443,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación de MÚSCULO: volumen, subregiones, ejercicios y tendencia de un grupo -->
 <div id="muscle-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeMuscleRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Músculo</span>
   </div>
   <div class="sroom-body" id="mscroom-body"></div>
@@ -1452,7 +1452,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Habitación de NUTRICIÓN: kcal, macros, agua, comidas y el porqué del plan -->
 <div id="nutrition-room" class="sroom">
   <div class="sroom-bar">
-    <button class="sroom-back" onclick="closeNutritionRoom()">‹ Volver</button>
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
     <span class="sroom-bar-t">Nutrición</span>
   </div>
   <div class="sroom-body" id="nutroom-body"></div>
