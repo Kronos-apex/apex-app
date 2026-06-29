@@ -902,7 +902,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v223** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v224** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Habitaciones (.sroom) — pase PREMIUM avi-v224: fuente display **Fraunces** (serif) en títulos/números clave, marca verde+**dorado**, héroe con glow esmeralda + filo dorado + barrido de luz, tarjetas stat tipo vidrio con filo degradado, secciones con tinte dorado. CSS sobre las clases compartidas `.sroom*` → sube las 7 de una; sirve en tema claro y oscuro. Fuente cargada en index.html (Google Fonts).*
 
 *Navegación ATRÁS (Android/TWA) — avi-v223: cada habitación (.sroom) empuja su propia entrada de historial vía `navOpenLayer` (AVINAV.layers); el handler `_aviHandleBack` cierra la capa de arriba y descuenta SIN re-empujar (antes re-empujaba un único guard dentro del popstate, que el WebView del TWA perdía → la app se salía al 2º atrás). Los botones "‹ Volver" pasan por `history.back()`.*
 
