@@ -1026,8 +1026,10 @@ function _aviHandleBack(){
 }
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
-  const er=document.getElementById('exercise-room');
-  if(er&&er.classList.contains('on')){closeExerciseRoom();return true;}
+  const exr=document.getElementById('exercise-room');
+  if(exr&&exr.classList.contains('on')){closeExerciseRoom();return true;}
+  const mr=document.getElementById('month-room');
+  if(mr&&mr.classList.contains('on')){closeMonthRoom();return true;}
   const sr=document.getElementById('session-room');
   if(sr&&sr.classList.contains('on')){closeSessionRoom();return true;}
   const lb=document.getElementById('ex-lightbox');

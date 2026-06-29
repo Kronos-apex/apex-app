@@ -1790,7 +1790,7 @@ function renderClientStreak(clientId){
       <div class="sstat sstat-b"><div class="sstat-n">${cal.trainedDays}</div><div class="sstat-l">Este mes</div></div>
     </div>
     <div class="streak-msg">${msg}</div>
-    <div class="cal-month">${mes.charAt(0).toUpperCase()+mes.slice(1)}</div>
+    <div class="cal-month cal-month-door" onclick="openMonthRoom('${clientId}',${cal.year},${cal.month})" title="Ver el resumen del mes">${mes.charAt(0).toUpperCase()+mes.slice(1)} <span class="cal-month-chev">›</span></div>
     <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
     <div class="cal-grid">${grid}</div>
     <div class="cal-legend"><i></i> Días que entrenaste · <span style="opacity:.6">toca un día para ver ese entreno</span></div>
@@ -1985,6 +1985,95 @@ function openExerciseRoom(clientId,exId,exName){
 }
 function closeExerciseRoom(){
   const room=document.getElementById('exercise-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
+}
+
+// ── HABITACIÓN DEL MES: reporte mensual (se entra tocando el nombre del mes en el
+// calendario de Progreso). Reúne lo que ya existe: adherenceMonth, longestStreak,
+// muscleVolume + pushPullBalance, y agrega volumen/kcal/duración del mes calendario.
+function openMonthRoom(clientId,year,month){
+  const room=document.getElementById('month-room'),body=document.getElementById('mroom-body');
+  if(!room||!body)return;
+  const all=(DB.history&&DB.history[clientId])||[];
+  const ms=all.filter(s=>{const d=new Date(s.date);return d.getFullYear()===year&&d.getMonth()===month;});
+  const ref=new Date(year,month,15);
+  const monthName=ref.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  const adh=adherenceMonth(all,ref);
+  const now=new Date();
+  const isCurrent=(now.getFullYear()===year&&now.getMonth()===month);
+  const denom=isCurrent?now.getDate():new Date(year,month+1,0).getDate();
+  const adhPct=denom?Math.round(adh.trainedDays/denom*100):0;
+  let vol=0,kcal=0,dur=0,reps=0;
+  ms.forEach(s=>{vol+=s.totalVol||0;kcal+=s.kcal||0;dur+=s.durationSec||0;(s.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(st=>{if(st&&st.done)reps+=parseInt(st.reps)||0;}));});
+  const streakRec=longestStreak(ms);
+  const exVol={};
+  ms.forEach(s=>(s.exercises||[]).forEach(ex=>{const v=(ex.sets||[]).filter(st=>st.done).reduce((t,st)=>t+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0);if(v>0){const k=ex.name||'?';if(!exVol[k])exVol[k]={name:k,muscle:ex.muscle,id:ex.id,vol:0};exVol[k].vol+=v;}}));
+  const topEx=Object.values(exVol).sort((a,b)=>b.vol-a.vol).slice(0,5);
+  const mv=muscleVolume(ms,99999,ref), bal=pushPullBalance(mv.byCat);
+  const cap=monthName.charAt(0).toUpperCase()+monthName.slice(1);
+
+  if(!ms.length){
+    body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#3a86c822;border:1px solid #3a86c855">📅</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div><div class="exroom-tags"><span>Sin entrenos este mes</span></div></div></div>
+      <div class="exroom-note">No registraste entrenamientos en ${esc(cap)}. Cada sesión que completes en <b>"Hoy"</b> sumará a tu resumen del mes 💪</div><div style="height:30px"></div>`;
+    body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass(); return;
+  }
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const statsHTML=[
+    stat('🏋️','Entrenos',String(ms.length),'#10b981'),
+    stat('📊','Volumen',vol>=1000?(vol/1000).toFixed(1).replace('.0','')+' t':vol+' kg','#9b6dd6'),
+    stat('🔥','Calorías',kcal?kcal.toLocaleString()+'':'—','#e0772e'),
+    stat('⏱','Tiempo',dur?fmtDuration(dur):'—','#3a86c8'),
+    stat('📅','Días','+'+adh.trainedDays,'#0ea5b7'),
+    stat('⚡','Racha máx',streakRec+(streakRec===1?' día':' días'),'#e0a72e'),
+  ].join('');
+  // mini calendario del mes
+  const dows=['L','M','M','J','V','S','D'];
+  // hoy/futuro se calculan contra la fecha REAL (no contra `ref`, que es mitad de mes y
+  // solo sirve para fijar el mes en adherenceMonth) → así el mes en curso marca bien el día
+  // de hoy y los meses pasados no grisan días como si fueran futuros.
+  const todayStr=now.toDateString();
+  let grid='';
+  adh.weeks.forEach(w=>w.forEach(d=>{
+    if(!d.inMonth){grid+='<div class="cal-cell empty"></div>';return;}
+    const dd=new Date(year,month,d.day);
+    let cls='cal-cell'; if(d.trained)cls+=' trained'+(d.count>=2?' t2':''); else if(dd>now)cls+=' future'; if(dd.toDateString()===todayStr)cls+=' today';
+    grid+=`<div class="${cls}">${d.day}</div>`;
+  }));
+  const calHTML=`<div class="sroom-sec">Tu mes día a día</div><div class="mroom-cal"><div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div><div class="cal-grid">${grid}</div><div class="cal-legend"><i></i> Días que entrenaste</div></div>`;
+  // top ejercicios por volumen
+  const maxV=topEx.length?topEx[0].vol:1;
+  const topHTML=topEx.length?`<div class="sroom-sec">Tus ejercicios estrella</div>`+topEx.map((e,i)=>{
+    const col=(typeof MC!=='undefined'&&MC[e.muscle])||'var(--g)'; const w=Math.max(8,Math.round(e.vol/maxV*100));
+    return `<div class="mroom-top" onclick="openExerciseRoom('${esc(String(clientId))}','${esc(e.id||'')}','${esc(e.name||'')}')"><div class="mroom-top-rk">${i+1}</div><div class="mroom-top-mid"><div class="mroom-top-nm">${esc(e.name)}</div><div class="mroom-top-track"><div class="mroom-top-fill" style="width:${w}%;background:${col}"></div></div></div><div class="mroom-top-v">${Math.round(e.vol).toLocaleString()}<small>kg</small></div></div>`;
+  }).join(''):'';
+  // balance empuje/tracción
+  let balHTML='';
+  if(bal.total){
+    const vcol={equilibrado:'#10b981','mas-empuje':'#e0a72e','mas-traccion':'#e0a72e'}[bal.verdict]||'#8a8f98';
+    balHTML=`<div class="sroom-sec">Equilibrio del mes</div>
+      <div class="adv-bal" style="margin-bottom:8px"><div class="adv-bal-bar"><div class="adv-bal-seg push" style="width:${bal.pushPct}%">${bal.pushPct>=16?bal.pushPct+'%':''}</div><div class="adv-bal-seg pull" style="width:${bal.pullPct}%">${bal.pullPct>=16?bal.pullPct+'%':''}</div></div>
+      <div class="adv-bal-legend"><span><i class="dot push"></i> Empuje · ${bal.push}</span><span><i class="dot pull"></i> Tracción · ${bal.pull}</span></div>
+      <div class="adv-verdict" style="border-color:${vcol}55"><span>${bal.verdict==='equilibrado'?'✅':'⚖️'}</span><span>${esc(bal.msg)}</span></div></div>`;
+  }
+  const summary=`Entrenaste <b>${ms.length} ${ms.length===1?'vez':'veces'}</b> en ${esc(cap)} (${adh.trainedDays} ${adh.trainedDays===1?'día':'días'}, ${adhPct}% de adherencia). Moviste <b>${vol.toLocaleString()} kg</b> en total${kcal?` y quemaste unas <b>${kcal.toLocaleString()} kcal</b>`:''}. ${streakRec>=2?`Tu mejor racha fue de <b>${streakRec} días seguidos</b> 🔥`:'¡A encadenar más días seguidos el próximo mes! 💪'}`;
+
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero">
+      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155">📅</div>
+      <div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div>
+        <div class="exroom-tags"><span>${ms.length} ${ms.length===1?'entreno':'entrenos'}</span><span>${adhPct}% adherencia</span></div></div>
+    </div>
+    <div class="sroom-stats">${statsHTML}</div>
+    <div class="sroom-summary">${summary}</div>
+    ${calHTML}
+    ${topHTML}
+    ${balHTML}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass();
+}
+function closeMonthRoom(){
+  const room=document.getElementById('month-room');
   if(room)room.classList.remove('on');
   _syncRoomBodyClass();
 }
