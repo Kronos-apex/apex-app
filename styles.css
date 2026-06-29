@@ -661,6 +661,61 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
   .sroom.on .sroom-body>*,.sroom.on .sroom-ring .sr-fg{animation:none;transition:none}
 }
 
+/* ═══════════ HABITACIONES · PASE PREMIUM (avi-v224) ═══════════
+   Refina las clases .sroom* compartidas → sube las 7 habitaciones de una.
+   Marca verde + DORADO, serif display Fraunces, profundidad/glow, vidrio.
+   Reglas posteriores = ganan en cascada sobre las originales de arriba.        */
+:root{ --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --sr-gold:#E7C66B; --sr-gold-2:#C9A227; --sr-gold-deep:#9A7B16; }
+
+/* Barra superior: pill "Volver" más fina y con peso */
+.sroom-back{box-shadow:0 2px 9px rgba(0,0,0,.14);letter-spacing:.1px}
+.sroom-bar-t{letter-spacing:.3px}
+
+/* HÉROE: glow esmeralda radial + filo dorado + barrido de luz al abrir */
+.sroom-hero{position:relative;overflow:hidden;border:1px solid rgba(231,198,107,.22);
+  background:
+    radial-gradient(125% 145% at 12% -8%, rgba(19,181,131,.24), transparent 56%),
+    radial-gradient(95% 120% at 102% 0%, rgba(231,198,107,.12), transparent 52%),
+    linear-gradient(155deg,#114836 0%,#0a2c20 56%,#061f17 100%);
+  box-shadow:0 18px 42px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.09), inset 0 0 0 1px rgba(19,181,131,.06)}
+.sroom-hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.12) 48%,transparent 60%);
+  transform:translateX(-130%)}
+.sroom.on .sroom-hero::after{animation:srShine 1.15s ease .38s 1}
+@keyframes srShine{to{transform:translateX(130%)}}
+
+/* Títulos y números clave en serif → editorial/lujo */
+.sroom-title{font-family:var(--font-display);font-weight:600;font-size:25px;letter-spacing:-.012em}
+.sroom-ring-n{font-family:var(--font-display);font-weight:600}
+.sroom-ring-n small{font-family:'Plus Jakarta Sans',sans-serif}
+
+/* Anillo: glow esmeralda más rico */
+.sroom-ring .sr-fg{filter:drop-shadow(0 0 7px rgba(19,181,131,.62))}
+
+/* TARJETAS STAT: vidrio esmerilado + filo superior degradado con glow */
+.sroom-stat{
+  background:linear-gradient(168deg, color-mix(in srgb,var(--w) 90%, transparent), color-mix(in srgb,var(--bg) 86%, transparent));
+  border:1px solid color-mix(in srgb,var(--sc,var(--g)) 16%, var(--br));
+  box-shadow:0 7px 20px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.06)}
+.sroom-stat::before{height:3px;opacity:1;
+  background:linear-gradient(90deg,transparent, var(--sc,var(--g)) 22%, var(--sc,var(--g)) 78%, transparent);
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--sc,var(--g)) 60%, transparent))}
+.sroom-stat-ic{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sc,var(--g)) 28%, transparent), 0 0 13px color-mix(in srgb,var(--sc,var(--g)) 16%, transparent)}
+.sroom-stat-v{letter-spacing:-.01em}
+
+/* SECCIONES: acento dorado sutil en el título (sin pseudo-elemento → cero riesgo de layout) */
+.sroom-sec{color:color-mix(in srgb,var(--sr-gold) 78%, var(--t2))}
+
+/* RESUMEN: filo verde-dorado sutil */
+.sroom-summary{box-shadow:0 6px 18px rgba(16,224,160,.10), inset 0 1px 0 rgba(255,255,255,.05)}
+
+/* PR / RÉCORD: número serif + glow dorado más cálido */
+.sroom-pr{box-shadow:0 7px 20px rgba(154,123,22,.24), inset 0 1px 0 rgba(255,255,255,.55)}
+.sroom-pr-n{font-family:var(--font-display);font-weight:700;font-size:14.5px}
+
+@media (prefers-reduced-motion:reduce){ .sroom.on .sroom-hero::after{animation:none} }
+
 /* Exercise blocks client */
 .cex-block{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh);transition:border-color .15s}
 .cex-block.all-done{border-color:var(--g2)}
