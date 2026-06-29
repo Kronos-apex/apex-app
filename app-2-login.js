@@ -1028,6 +1028,8 @@ function _aviHandleBack(){
 function _aviCloseTopOverlay(){
   const exr=document.getElementById('exercise-room');
   if(exr&&exr.classList.contains('on')){closeExerciseRoom();return true;}
+  const rr=document.getElementById('record-room');
+  if(rr&&rr.classList.contains('on')){closeRecordRoom();return true;}
   const mr=document.getElementById('month-room');
   if(mr&&mr.classList.contains('on')){closeMonthRoom();return true;}
   const sr=document.getElementById('session-room');

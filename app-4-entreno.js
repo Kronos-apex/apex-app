@@ -287,12 +287,13 @@ function checkAndUpdatePRs(routine){
 // estado dentro de la sesión.
 let _prsOpen=false;
 function togglePRs(){_prsOpen=!_prsOpen;renderPRsInProfile(CUR.clientId);}
-function _prRowHtml(pr){
+function _prRowHtml(pr,clientId){
   // 1RM estimado (Epley) solo para récords de peso con >1 rep — si es 1 rep el récord YA
   // es el 1RM, y reps fuera de rango devuelven null (no se muestra). Es una estimación.
   const isKg=(pr.unit||'kg')==='kg';
   const e1=isKg&&pr.reps>1?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
-  return `<div class="pr-row">
+  const tap=clientId?` pr-row-door" onclick="openRecordRoom('${esc(String(clientId))}','${esc(pr.name)}')` :'';
+  return `<div class="pr-row${tap}">
     <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${muscleIcon(pr.muscle,20)}</div>
     <div style="flex:1;min-width:0">
       <div class="pr-ex-name">${esc(pr.name)}</div>
@@ -316,10 +317,10 @@ function renderPRsInProfile(clientId){
   }
   const COLLAPSE_AT=3, PEEK=2;
   if(list.length>COLLAPSE_AT && !_prsOpen){
-    con.innerHTML=list.slice(0,PEEK).map(_prRowHtml).join('')+
+    con.innerHTML=list.slice(0,PEEK).map(p=>_prRowHtml(p,clientId)).join('')+
       `<button class="collapse-more" onclick="togglePRs()">Ver mis ${list.length} récords ▾</button>`;
   } else {
-    con.innerHTML=list.map(_prRowHtml).join('')+
+    con.innerHTML=list.map(p=>_prRowHtml(p,clientId)).join('')+
       (list.length>COLLAPSE_AT?`<button class="collapse-more" onclick="togglePRs()">Ver menos ▴</button>`:'');
   }
 }
@@ -2074,6 +2075,73 @@ function openMonthRoom(clientId,year,month){
 }
 function closeMonthRoom(){
   const room=document.getElementById('month-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
+}
+
+// ── HABITACIÓN DE RÉCORD/PR: línea de tiempo de marcas de UN ejercicio (se entra
+// tocando un récord en "Tus récords"). Reúne el PR guardado + computeExerciseProgress:
+// recorre los puntos (oldest-first) y marca cada vez que el máximo SUPERÓ a todos los
+// anteriores = un récord nuevo. Muestra hito a hito + curva + 1RM estimado.
+function openRecordRoom(clientId,exName){
+  const room=document.getElementById('record-room'),body=document.getElementById('rroom-body');
+  if(!room||!body)return;
+  const prs=(DB.prs&&DB.prs[clientId])||{};
+  const pr=Object.values(prs).find(p=>p.name===exName)||{name:exName};
+  const hist=(DB.history&&DB.history[clientId])||[];
+  const prog=computeExerciseProgress(hist).find(e=>e.name===exName);
+  const unit=(prog&&prog.unit)||pr.unit||'kg';
+  const muscle=(prog&&prog.muscle)||pr.muscle;
+  const col=(typeof MC!=='undefined'&&MC[muscle])||'var(--g)';
+  // hitos: cada punto cuyo máximo superó a todos los previos
+  const milestones=[]; let run=-Infinity;
+  if(prog)prog.points.forEach(p=>{ if(p.maxKg>run){ milestones.push({date:p.date,dateStr:p.dateStr,val:p.maxKg,first:run===-Infinity}); run=p.maxKg; } });
+  const cur=milestones.length?milestones[milestones.length-1]:null;
+  const first=milestones.length?milestones[0]:null;
+  const recVal=cur?cur.val:(pr.val!=null?pr.val:pr.kg);
+  const isKg=unit==='kg';
+  const e1=isKg&&pr.reps>1?estimate1RM(recVal,pr.reps):null;
+  const beat=Math.max(0,milestones.length-1);
+  const gain=(first&&cur)?(cur.val-first.val):0;
+  const recDate=pr.date?new Date(pr.date):(cur?new Date(cur.date):null);
+
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stats=[
+    stat('🏆','Récord',fmtMetric(recVal,unit),'#e0a72e'),
+    e1?stat('💪','1RM est.','≈ '+Math.round(e1)+' kg','#9b6dd6'):null,
+    beat>0?stat('📈','Lo superaste',beat+(beat===1?' vez':' veces'),'#10b981'):null,
+    (gain>0&&isKg)?stat('⬆️','Desde el inicio','+'+Math.round(gain)+' kg','#0ea5b7'):null,
+  ].filter(Boolean).join('');
+
+  // línea de tiempo (más reciente arriba)
+  const tl=milestones.slice().reverse().map((m,i)=>{
+    const isCur=(i===0);
+    const d=new Date(m.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+    const tag=m.first?'Primer registro':(isCur?'Récord actual':'Nueva marca');
+    return `<div class="rr-mile${isCur?' cur':''}"><div class="rr-mile-dot">${isCur?'🏆':'•'}</div><div class="rr-mile-body"><div class="rr-mile-top"><span class="rr-mile-val">${fmtMetric(m.val,unit)}</span><span class="rr-mile-tag">${tag}</span></div><div class="rr-mile-date">${d}</div></div></div>`;
+  }).join('');
+  const tlHTML=milestones.length?`<div class="sroom-sec">Tu línea de marcas</div><div class="rr-timeline">${tl}</div>`:`<div class="exroom-note">Aún no hay marcas registradas para este ejercicio. Completa una sesión con peso para empezar tu historial 💪</div>`;
+
+  const chartHTML=(prog&&prog.points.length>=2)?`<div class="sroom-sec">Cómo subió tu marca</div><div id="rroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>`:'';
+
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,#e0a72e18,#e0a72e08);border-color:#e0a72e44">
+      <div class="exroom-hero-ic" style="background:#e0a72e22;border:1px solid #e0a72e66">🏆</div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-title" style="margin-top:0">${esc(exName)}</div>
+        <div class="rr-hero-rec">${fmtMetric(recVal,unit)}${isKg&&pr.reps?` <small>× ${pr.reps}</small>`:''}</div>
+        <div class="exroom-tags"><span>Récord personal</span>${recDate?`<span>${recDate.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}</div>
+      </div>
+    </div>
+    <div class="sroom-stats">${stats}</div>
+    ${tlHTML}
+    ${chartHTML}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass();
+  if(prog&&prog.points.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('rroom-chart');if(ch)drawExProgChart(ch,prog.points,col,unit);});
+}
+function closeRecordRoom(){
+  const room=document.getElementById('record-room');
   if(room)room.classList.remove('on');
   _syncRoomBodyClass();
 }
