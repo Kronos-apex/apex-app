@@ -2222,6 +2222,82 @@ function closeRoutineRoom(){
   _syncRoomBodyClass();
 }
 
+// ── HABITACIÓN DE MÚSCULO: detalle de un grupo (se entra tocándolo en estadísticas).
+// Reúne muscleVolume (series del grupo en la ventana _advWin) + submuscleVolume (subregiones)
+// + los ejercicios del historial que lo trabajan (cada uno = puerta a su habitación) +
+// la tendencia de series por sesión. Usa la misma ventana 7/30 que las estadísticas.
+function openMuscleRoom(clientId,group){
+  const room=document.getElementById('muscle-room'),body=document.getElementById('mscroom-body');
+  if(!room||!body)return;
+  const sessions=(DB.history&&DB.history[clientId])||[];
+  const win=_advWin, winLbl=win===7?'7 días':'30 días';
+  const vol=muscleVolume(sessions,win,new Date());
+  const g=vol.groups.find(x=>x.group===group)||{group,label:group,cat:'otro',sets:0};
+  const catColor={empuje:'#3ba776',traccion:'#3a86c8',piernas:'#9b6dd6',core:'#e0a72e',cardio:'#e07a5f',otro:'#8a8f98'};
+  const col=catColor[g.cat]||catColor.otro;
+  const catLabel={empuje:'Empuje',traccion:'Tracción',piernas:'Piernas',core:'Core',cardio:'Cardio',otro:'Otro'}[g.cat]||'';
+  const pct=vol.totalSets?Math.round(g.sets/vol.totalSets*100):0;
+  const subs=(group==='cardio'||group==='otro')?[]:submuscleVolume(sessions,group,win,new Date(),_exSubregions);
+  // ejercicios que lo trabajan (en la ventana): por nombre → series done + volumen
+  const cutoff=Date.now()-win*864e5, exMap={};
+  sessions.forEach(s=>{ const t=new Date(s.date).getTime(); if(isNaN(t)||t<cutoff)return; (s.exercises||[]).forEach(ex=>{ if(ex.muscle!==group)return; const done=(ex.sets||[]).filter(st=>st&&st.done); if(!done.length)return; const k=ex.name||'?'; if(!exMap[k])exMap[k]={name:k,id:ex.id,muscle:ex.muscle,sets:0,vol:0}; exMap[k].sets+=done.length; exMap[k].vol+=done.reduce((a,st)=>a+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0); }); });
+  const exList=Object.values(exMap).sort((a,b)=>b.sets-a.sets);
+  // tendencia: series del músculo por sesión (todas, últimas 10 con datos)
+  const trend=[];
+  sessions.slice().reverse().forEach(s=>{ let n=0; (s.exercises||[]).forEach(ex=>{ if(ex.muscle===group)n+=(ex.sets||[]).filter(st=>st&&st.done).length; }); if(n>0)trend.push({date:s.date,dateStr:new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}),maxKg:n}); });
+  const trendPts=trend.slice(-10);
+
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stats=[
+    stat('💪','Series',String(g.sets),col),
+    stat('🏋️','Ejercicios',String(exList.length),'#10b981'),
+    stat('🥧','Del total',pct+'%','#9b6dd6'),
+  ].join('');
+
+  let subHTML='';
+  if(subs.length){
+    const smMax=subs[0].sets||1;
+    subHTML=`<div class="sroom-sec">Por dónde le pegas</div>`+subs.map(s=>{
+      const sw=Math.max(8,Math.round(s.sets/smMax*100));
+      return `<div class="msc-sub"><div class="msc-sub-lbl">${esc(s.label)}</div><div class="msc-sub-track"><div class="msc-sub-fill" style="width:${sw}%;background:${col}"></div></div><div class="msc-sub-val">${s.sets}</div></div>`;
+    }).join('');
+  }
+
+  let exHTML='';
+  if(exList.length){
+    const mxs=exList[0].sets||1;
+    exHTML=`<div class="sroom-sec">Ejercicios que lo trabajan</div>`+exList.map(e=>{
+      const w=Math.max(8,Math.round(e.sets/mxs*100));
+      return `<div class="msc-ex" onclick="openExerciseRoom('${esc(String(clientId))}','${esc(e.id||'')}','${esc(e.name||'')}')"><div class="msc-ex-mid"><div class="msc-ex-nm">${esc(e.name)}</div><div class="msc-ex-track"><div class="msc-ex-fill" style="width:${w}%;background:${col}"></div></div></div><div class="msc-ex-v">${e.sets}<small>series</small></div><span class="rtr-chev">›</span></div>`;
+    }).join('');
+  } else {
+    exHTML=`<div class="exroom-note">No registré ejercicios de este grupo en los últimos ${winLbl}.</div>`;
+  }
+
+  const chartHTML=trendPts.length>=2?`<div class="sroom-sec">Tus series, sesión a sesión</div><div id="mscroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>`:'';
+
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,${col}18,${col}08);border-color:${col}44">
+      <div class="exroom-hero-ic" style="background:${col}1f;border:1px solid ${col}55">${typeof muscleIcon==='function'?muscleIcon(group,30):'💪'}</div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-title" style="margin-top:0">${esc(g.label)}</div>
+        <div class="exroom-tags"><span>${g.sets} series · ${winLbl}</span>${catLabel?`<span>${catLabel}</span>`:''}</div>
+      </div>
+    </div>
+    <div class="sroom-stats">${stats}</div>
+    ${subHTML}
+    ${exHTML}
+    ${chartHTML}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+  if(trendPts.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('mscroom-chart');if(ch)drawExProgChart(ch,trendPts,col,'series');});
+}
+function closeMuscleRoom(){
+  const room=document.getElementById('muscle-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
+}
+
 // Ventana de días para estadísticas avanzadas (7 = semana, 30 = mes). Por cliente-sesión.
 let _advWin=30;
 function setAdvWin(d){_advWin=d;renderAdvStats(CUR.clientId);}
@@ -2267,33 +2343,24 @@ function renderAdvStats(clientId){
   // (Cuádriceps, Femoral, Aductores…) calculadas con MM_EX (vía _exSubregions).
   const catColor={empuje:'#3ba776',traccion:'#3a86c8',piernas:'#9b6dd6',core:'#e0a72e',cardio:'#e07a5f',otro:'#8a8f98'};
   const maxSets=vol.groups[0]?vol.groups[0].sets:1;
+  // Cada grupo es una PUERTA a su Habitación de Músculo (detalle: subregiones + ejercicios
+  // que lo trabajan + tendencia). El desglose de subregiones vive ahora dentro de la habitación.
   const bars=vol.groups.map(g=>{
     const w=Math.max(6,Math.round(g.sets/maxSets*100));
     const col=catColor[g.cat]||catColor.otro;
-    const subs=(g.group==='cardio'||g.group==='otro')?[]:submuscleVolume(sessions,g.group,win,new Date(),_exSubregions);
-    const canExpand=subs.length>0;
-    let smRows='';
-    if(canExpand){
-      const smMax=subs[0].sets||1;
-      smRows=subs.map(s=>{
-        const sw=Math.max(8,Math.round(s.sets/smMax*100));
-        return `<div class="adv-smrow"><div class="adv-smrow-lbl">${esc(s.label)}</div><div class="adv-smrow-track"><div class="adv-smrow-fill" style="width:${sw}%;background:${col}"></div></div><div class="adv-smrow-val">${s.sets}</div></div>`;
-      }).join('');
-    }
-    return `<div class="adv-grp${canExpand?' can':''}">
-      <div class="adv-row"${canExpand?' onclick="cnToggleSub(this)"':''}>
-        <div class="adv-row-lbl">${esc(g.label)}${canExpand?' <span class="adv-chev">▾</span>':''}</div>
+    return `<div class="adv-grp">
+      <div class="adv-row adv-row-door" onclick="openMuscleRoom('${clientId}','${g.group}')">
+        <div class="adv-row-lbl">${esc(g.label)} <span class="adv-chev">›</span></div>
         <div class="adv-row-track"><div class="adv-row-fill" style="width:${w}%;background:${col}"></div></div>
         <div class="adv-row-val">${g.sets}<span>series</span></div>
       </div>
-      ${canExpand?`<div class="adv-sm" style="display:none">${smRows}</div>`:''}
     </div>`;
   }).join('');
   con.innerHTML=`<div class="card adv-card">
     <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
     <div class="adv-sub">Series <b>completadas</b> en los últimos ${winLbl} · ${vol.totalSets} en total, ${vol.sessions} entreno${vol.sessions===1?'':'s'}.</div>
     ${balHTML}
-    <div class="adv-sech">Cuánto le das a cada músculo <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca un grupo para ver el detalle</span></div>
+    <div class="adv-sech">Cuánto le das a cada músculo <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca un grupo para entrar al detalle</span></div>
     <div class="adv-bars">${bars}</div>
     <div class="adv-foot">Contamos solo las <b>series que marcaste como hechas</b> (sin calentamiento). Más series = más estímulo para ese músculo.</div>
   </div>`;
