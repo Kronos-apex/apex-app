@@ -369,7 +369,7 @@ function renderTemplates(){
             <div class="exrow">
               <div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div>
               <div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div>
-              <div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div>
+              <div class="exsets">${exSetsCellHTML(e)}</div>
             </div>`).join('')}
         <div style="padding-top:10px;border-top:1px solid var(--br);margin-top:4px">
           <button class="btn bp bsm bfull" onclick="applyTemplateToClient('${tpl.id}')">📋 Aplicar a un asesorado →</button>

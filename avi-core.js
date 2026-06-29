@@ -481,6 +481,16 @@ function _levelGate(level) {
   return { cap: 1, preferP: true };
 }
 
+// Familia de MOVIMIENTO: evita dos ejercicios del MISMO patrón el mismo día (ej. dos
+// abducciones de cadera —máquina, banda o tumbado— que son redundantes). null = no se
+// deduplica (la mayoría). Camilo 2026-06-29: abducción (abre) y aducción (cierra) son
+// OPUESTOS → familias DISTINTAS, deben poder convivir.
+function _genMoveFamily(ex) {
+  const n = _norm((ex && ex.name) || '');
+  if (/abducc/.test(n)) return 'abduccion_cadera';
+  if (/aducc/.test(n))  return 'aduccion_cadera';
+  return null;
+}
 function _genPick(lib, muscle, type, st, slotOpts) {
   const cap = st.levelCap == null ? 2 : st.levelCap;
   // Filtro por SLOT (4º elemento): `avoid` es un predicado que saca ejercicios de este slot
@@ -498,7 +508,7 @@ function _genPick(lib, muscle, type, st, slotOpts) {
   if (st.preferIds && st.preferIds.size) {
     const pref = lib.find(e => st.preferIds.has(e.id) && e.muscle === muscle
       && (type ? e.type === type : true) && ok(e) && !st.usedInDay.has(e.id));
-    if (pref) { st.usedInDay.add(pref.id); return pref; }
+    if (pref) { st.usedInDay.add(pref.id); const fm=_genMoveFamily(pref); if(fm&&st.usedFamiliesInDay)st.usedFamiliesInDay.add(fm); return pref; }
   }
   // Pools en orden de prioridad. Se usa el primero que tenga algo sin usar hoy:
   //  1) methodBias (ej. calistenia → peso corporal) ANTES que el tipo del slot,
@@ -530,13 +540,25 @@ function _genPick(lib, muscle, type, st, slotOpts) {
   }
   const key = muscle + '|' + (type || '*');
   const start = st.cursors[key] != null ? st.cursors[key] : (st.seed % pool.length);
+  let fb = -1; // fallback: primer candidato libre cuya FAMILIA ya se usó hoy (último recurso)
   for (let i = 0; i < pool.length; i++) {
-    const cand = pool[(start + i) % pool.length];
-    if (!st.usedInDay.has(cand.id)) {
-      st.cursors[key] = (start + i + 1) % pool.length;
-      st.usedInDay.add(cand.id);
-      return cand;
-    }
+    const idx = (start + i) % pool.length;
+    const cand = pool[idx];
+    if (st.usedInDay.has(cand.id)) continue;
+    const fam = _genMoveFamily(cand);
+    if (fam && st.usedFamiliesInDay && st.usedFamiliesInDay.has(fam)) { if (fb < 0) fb = idx; continue; }
+    st.cursors[key] = (idx + 1) % pool.length;
+    st.usedInDay.add(cand.id);
+    if (fam && st.usedFamiliesInDay) st.usedFamiliesInDay.add(fam);
+    return cand;
+  }
+  // Solo quedaban repetidos del mismo patrón (familia) → tomar el fallback antes que dejar el
+  // slot vacío (la dedup por patrón es una preferencia, no debe romper la generación).
+  if (fb >= 0) {
+    const cand = pool[fb];
+    st.cursors[key] = (fb + 1) % pool.length;
+    st.usedInDay.add(cand.id);
+    return cand;
   }
   return null; // todo el pool ya está usado en este día
 }
@@ -597,7 +619,7 @@ function generarRutinas(client, lib, opts) {
     levelCap: _gate.cap, preferP: _gate.preferP,
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
     preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
-    scheme, usedInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad, place), envShortfall: new Set(),
+    scheme, usedInDay: new Set(), usedFamiliesInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad, place), envShortfall: new Set(),
     excludeIds: new Set(opts.excludeIds || []), // 🚫 lista negra manual (Fase C)
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
@@ -607,6 +629,7 @@ function generarRutinas(client, lib, opts) {
   const routines = codes.map((code, idx) => {
     const tpl = GEN_DAYS[code] || GEN_DAYS.FULL_BODY;
     st.usedInDay = new Set();
+    st.usedFamiliesInDay = new Set();
     let exs = [];
     tpl.slots.forEach(([muscle, type, n, slotOpts]) => {
       for (let i = 0; i < n; i++) {

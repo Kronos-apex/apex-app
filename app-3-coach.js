@@ -889,7 +889,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
 }
@@ -962,7 +962,7 @@ function renderGenPreview(c,res){
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-    const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${esc(String(e.sets))}×${esc(String(e.reps))}<small>series × reps</small></div></div>`).join('');
+    const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
   document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+deloadBanner+intro+cards;
@@ -1032,6 +1032,32 @@ function rfExRow(i,n,abMark){
     : '';
   const abChip = abMark ? `<span style="font-size:10px;font-weight:900;color:#A855F7;background:#A855F718;border-radius:5px;padding:1px 6px;margin-right:2px;flex-shrink:0">${abMark}</span>` : '';
   const border = abMark ? 'border:none;border-radius:0' : `border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm)`;
+  // Controles según MODALIDAD (track): cardio→minutos, isométrico→series×segundos,
+  // resto→series×reps. Antes pintaba siempre "Series × Reps" y para cardio confundía
+  // (e.reps ES minutos, no reps; el "seg" era el descanso). Camilo 2026-06-29.
+  const track = (typeof exTrack==='function') ? exTrack(e) : 'peso_reps';
+  const lbl = t => `<span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">${t}</span>`;
+  const restCtl = `<span title="Descanso entre series — por defecto según el tipo de ejercicio; edítalo para fijarlo" style="font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;margin-right:2px">⏱</span>`
+    + `<input type="number" inputmode="numeric" style="${inpSt};width:58px;color:var(--t2);border-color:var(--br2)" value="${restForExercise(e,{restSec:CUR.restSec})}" min="0" max="600" step="5" onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()" onfocus="this.select()"><span style="color:var(--t3);font-size:11px;font-weight:600">seg</span>`;
+  const delCtl = `<button onclick="rfDelEx(${i})" style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>`;
+  const setsIn = `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20" onchange="CUR.routineExs[${i}].sets=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].sets" onfocus="this.select()">`;
+  let ctl;
+  if(track==='cardio'){
+    // Cardio: SOLO duración en minutos (e.reps = minutos). Sin series ni descanso.
+    ctl = lbl('Duración')
+      + `<input type="number" inputmode="numeric" style="${inpSt};width:58px" value="${e.reps}" min="1" max="240" onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);CUR.routineExs[${i}].sets=1;this.value=CUR.routineExs[${i}].reps" onfocus="this.select()">`
+      + `<span style="color:var(--t3);font-size:11px;font-weight:600">min de cardio</span>` + delCtl;
+  } else if(track==='tiempo'){
+    // Isométrico: series × SEGUNDOS de aguante (e.reps = segundos).
+    ctl = lbl('Series') + setsIn + `<span style="color:var(--t3);font-size:14px;font-weight:700">×</span>` + lbl('Seg')
+      + `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999" onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps" onfocus="this.select()">`
+      + restCtl + delCtl;
+  } else {
+    // peso/reps/hiit: series × reps + descanso (comportamiento de siempre).
+    ctl = lbl('Series') + setsIn + `<span style="color:var(--t3);font-size:14px;font-weight:700">×</span>` + lbl('Reps')
+      + `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999" onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps" onfocus="this.select()">`
+      + restCtl + delCtl;
+  }
   return `<div style="background:var(--w);${border};margin-bottom:${abMark?'0':'6px'};overflow:hidden">
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
         ${abChip}${muscleIcon(e.muscle,20)}
@@ -1041,24 +1067,7 @@ function rfExRow(i,n,abMark){
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">${linkBtn}${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;padding:0 10px 9px;padding-left:44px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">Series</span>
-        <input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20"
-          onchange="CUR.routineExs[${i}].sets=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].sets"
-          onfocus="this.select()">
-        <span style="color:var(--t3);font-size:14px;font-weight:700">×</span>
-        <span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">Reps</span>
-        <input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999"
-          onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps"
-          onfocus="this.select()">
-        <span title="Descanso entre series — por defecto según el tipo de ejercicio; edítalo para fijarlo" style="font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;margin-right:2px">⏱</span>
-        <input type="number" inputmode="numeric" style="${inpSt};width:58px;color:var(--t2);border-color:var(--br2)" value="${restForExercise(e,{restSec:CUR.restSec})}" min="0" max="600" step="5"
-          onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()"
-          onfocus="this.select()">
-        <span style="color:var(--t3);font-size:11px;font-weight:600">seg</span>
-        <button onclick="rfDelEx(${i})"
-          style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:0 10px 9px;padding-left:44px;flex-wrap:wrap">${ctl}</div>
     </div>`;
 }
 
