@@ -1026,14 +1026,19 @@ function _aviHandleBack(){
 }
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
+  // Orden = de la más "encima" a la más "abajo" en la pila de habitaciones:
+  // ejercicio (puede ir sobre sesión o mes) → sesión (puede ir sobre rutina) →
+  // récord/mes (hojas) → rutina (base).
   const exr=document.getElementById('exercise-room');
   if(exr&&exr.classList.contains('on')){closeExerciseRoom();return true;}
+  const sr=document.getElementById('session-room');
+  if(sr&&sr.classList.contains('on')){closeSessionRoom();return true;}
   const rr=document.getElementById('record-room');
   if(rr&&rr.classList.contains('on')){closeRecordRoom();return true;}
   const mr=document.getElementById('month-room');
   if(mr&&mr.classList.contains('on')){closeMonthRoom();return true;}
-  const sr=document.getElementById('session-room');
-  if(sr&&sr.classList.contains('on')){closeSessionRoom();return true;}
+  const rtr=document.getElementById('routine-room');
+  if(rtr&&rtr.classList.contains('on')){closeRoutineRoom();return true;}
   const lb=document.getElementById('ex-lightbox');
   if(lb&&lb.classList.contains('on')){closeExImg();return true;}
   const pu=document.getElementById('premium-upsell');

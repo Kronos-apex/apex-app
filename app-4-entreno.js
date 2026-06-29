@@ -1674,7 +1674,7 @@ function renderClientAllRoutines(client){
     const isToday=!isRest && r.day===['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
     const dayAb=isRest?'💤':esc(r.day).slice(0,2);
     const div=document.createElement('div');div.className='rc'+(isToday?' rc-today':'');
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}${isToday?'<span class="rc-today-tag">Hoy</span>':''}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}${isToday?'<span class="rc-today-tag">Hoy</span>':''}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span style="color:#A855F7;font-weight:700">🔗 biserie</span>':''}</div></div><div class="exsets">${e.sets}×${e.reps}<small>series × reps</small></div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">▶ Hacer esta rutina ahora</button>${!isRest?`<button class="btn bg bsm" style="width:100%;margin-top:8px" onclick="event.stopPropagation();openRoutineRoom('${client.id}','${r.id}')">📊 Mi progreso con esta rutina</button>`:''}${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">✏️ Editar</button><button class="btn bd bsm" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">🗑️</button></div>`:''}</div>`;
     con.appendChild(div);
   });
 }
@@ -1882,7 +1882,7 @@ function openSessionRoom(clientId,sid){
     <div class="sroom-exs">${_sessionExercisesHTML(s,clientId)}</div>
     <div style="height:30px"></div>`;
   body.scrollTop=0;
-  room.classList.add('on');
+  _roomFront(room);
   // El % del anillo cuenta hacia arriba a la par del trazo → sensación viva (no número seco).
   const pn=document.getElementById('sroom-pct');
   if(pn)_roomCountUp(pn,pct,750);
@@ -1896,6 +1896,11 @@ function _syncRoomBodyClass(){
   document.body.classList.toggle('sroom-open',!!any);
   document.body.style.overflow=any?'hidden':'';
 }
+// Abre una habitación SIEMPRE encima de las demás. Todas las .sroom comparten z-index, así
+// que sin esto la que pinta arriba es la última en el DOM (no la recién abierta) → una
+// habitación abierta sobre otra posterior en el HTML quedaría DETRÁS. Bumpeamos su z al abrir.
+let _roomZSeq=1400;
+function _roomFront(room){ if(room){ room.style.zIndex=String(++_roomZSeq); room.classList.add('on'); } }
 function _roomCountUp(el,target,dur){
   target=parseInt(target)||0;
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=target;return;}
@@ -1980,7 +1985,7 @@ function openExerciseRoom(clientId,exId,exName){
     ${tech}
     <div style="height:30px"></div>`;
   body.scrollTop=0;
-  room.classList.add('on');
+  _roomFront(room);
   _syncRoomBodyClass();
   if(pts.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('exroom-chart');if(ch)drawExProgChart(ch,pts,col,unit);});
 }
@@ -2017,7 +2022,7 @@ function openMonthRoom(clientId,year,month){
   if(!ms.length){
     body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#3a86c822;border:1px solid #3a86c855">📅</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div><div class="exroom-tags"><span>Sin entrenos este mes</span></div></div></div>
       <div class="exroom-note">No registraste entrenamientos en ${esc(cap)}. Cada sesión que completes en <b>"Hoy"</b> sumará a tu resumen del mes 💪</div><div style="height:30px"></div>`;
-    body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass(); return;
+    body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
   }
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const statsHTML=[
@@ -2071,7 +2076,7 @@ function openMonthRoom(clientId,year,month){
     ${topHTML}
     ${balHTML}
     <div style="height:30px"></div>`;
-  body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass();
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
 }
 function closeMonthRoom(){
   const room=document.getElementById('month-room');
@@ -2137,11 +2142,82 @@ function openRecordRoom(clientId,exName){
     ${tlHTML}
     ${chartHTML}
     <div style="height:30px"></div>`;
-  body.scrollTop=0; room.classList.add('on'); _syncRoomBodyClass();
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
   if(prog&&prog.points.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('rroom-chart');if(ch)drawExProgChart(ch,prog.points,col,unit);});
 }
 function closeRecordRoom(){
   const room=document.getElementById('record-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
+}
+
+// ── HABITACIÓN DE RUTINA: el plan + el historial de cumplimiento (se entra desde la
+// tarjeta de cada rutina en "Rutinas"). Reúne client.routines (el plan) + las sesiones
+// del historial que la realizaron (match por routineId, o por nombre en datos viejos).
+function openRoutineRoom(clientId,routineId){
+  const room=document.getElementById('routine-room'),body=document.getElementById('rtroom-body');
+  if(!room||!body)return;
+  const client=(DB.clients||[]).find(c=>c.id===clientId)||(typeof _curClient==='function'?_curClient():null);
+  const rt=((client&&client.routines)||[]).find(r=>r.id===routineId);
+  if(!rt){ if(typeof toast==='function')toast('No encontré esa rutina'); return; }
+  const hist=(DB.history&&DB.history[clientId])||[];
+  const done=hist.filter(s=>s.routineId===routineId||(rt.name&&s.routineName===rt.name)).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const exN=(rt.exercises||[]).length, totS=(rt.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
+  const vols=done.map(s=>s.totalVol||0).filter(v=>v>0);
+  const avgVol=vols.length?Math.round(vols.reduce((a,b)=>a+b,0)/vols.length):0;
+  const bestVol=vols.length?Math.max(...vols):0;
+  const last=done.length?new Date(done[0].date):null;
+  const daysAgo=last?Math.floor((Date.now()-last.getTime())/864e5):null;
+  const lastStr=daysAgo===null?'—':daysAgo<=0?'Hoy':daysAgo===1?'Ayer':daysAgo<7?'Hace '+daysAgo+' d':last.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  const IND='#6366f1';
+  const fv=v=>v>=1000?(v/1000).toFixed(1).replace('.0','')+' t':v+' kg';
+
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stats=[
+    stat('🔁','Veces',String(done.length),IND),
+    stat('📅','Última vez',lastStr,'#3a86c8'),
+    avgVol?stat('📊','Volumen típico',fv(avgVol),'#10b981'):null,
+    bestVol?stat('🏆','Tu mejor día',fv(bestVol),'#e0a72e'):null,
+  ].filter(Boolean).join('');
+
+  // historial de veces — cada una abre la habitación de sesión, con ▲/▼ vs la anterior
+  let sessHTML='';
+  if(done.length){
+    const rows=done.map((s,i)=>{
+      const prev=done[i+1]; const v=s.totalVol||0;
+      let delta=''; if(prev&&prev.totalVol>0&&v>0){ const d=v-prev.totalVol; const pc=Math.abs(d/prev.totalVol); if(pc>=0.02)delta=d>0?`<span class="rtr-up">▲ ${fv(Math.abs(d))}</span>`:`<span class="rtr-dn">▼ ${fv(Math.abs(d))}</span>`; }
+      const dd=new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+      return `<div class="rtr-sess" onclick="openSessionRoom('${esc(String(clientId))}','${esc(s.id||'')}')"><div class="rtr-sess-d">${dd}</div><div class="rtr-sess-r"><span class="rtr-sess-v">${v?fv(v):'—'}</span>${delta}<span class="rtr-chev">›</span></div></div>`;
+    }).join('');
+    sessHTML=`<div class="sroom-sec">Tus veces con esta rutina</div>${rows}`;
+  } else {
+    sessHTML=`<div class="exroom-note">Aún no has hecho esta rutina. Tócala en "Hoy" o usa <b>"Hacer esta rutina ahora"</b> y aquí verás tu progreso cada vez 💪</div>`;
+  }
+
+  const planHTML=(rt.exercises||[]).length?`<div class="sroom-sec">El plan</div>`+(rt.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${(MC[e.muscle]||'#ccc')}18;border:1px solid ${(MC[e.muscle]||'#ccc')}30">${exIcon(e)}</div><div style="flex:1;min-width:0"><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(e.muscle||'')} · ${esc(e.type||'')}</div></div><div class="exsets">${esc(String(e.sets||''))}×${esc(String(e.reps||''))}<small>series × reps</small></div></div>`).join(''):'';
+
+  const chartHTML=vols.length>=2?`<div class="sroom-sec">Tu volumen, vez a vez</div><div id="rtroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>`:'';
+
+  const isToday=rt.day===['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,${IND}18,${IND}08);border-color:${IND}44">
+      <div class="exroom-hero-ic" style="background:${IND}22;border:1px solid ${IND}66">📋</div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-title" style="margin-top:0">${esc(rt.name)}</div>
+        <div class="exroom-tags"><span>${esc(rt.day||'')}${isToday?' · hoy':''}</span><span>${exN} ejercicio${exN!==1?'s':''}</span><span>${totS} series</span></div>
+      </div>
+    </div>
+    <div class="sroom-stats">${stats}</div>
+    <button onclick="startRoutineNow('${esc(String(rt.id))}')" style="width:100%;padding:12px;margin-bottom:6px;background:linear-gradient(135deg,var(--g),var(--g2));color:#fff;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer">▶ Hacer esta rutina ahora</button>
+    ${chartHTML}
+    ${sessHTML}
+    ${planHTML}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+  if(vols.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('rtroom-chart');if(ch){const pts=done.slice().reverse().filter(s=>s.totalVol>0).map(s=>({date:s.date,dateStr:new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}),maxKg:s.totalVol}));drawExProgChart(ch,pts,IND,'kg');}});
+}
+function closeRoutineRoom(){
+  const room=document.getElementById('routine-room');
   if(room)room.classList.remove('on');
   _syncRoomBodyClass();
 }
