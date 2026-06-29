@@ -584,6 +584,14 @@ function flushAuthDebounced(){
   Object.keys(_udPending).forEach(k=>{ const v=_udPending[k]; delete _udPending[k]; clearTimeout(_udDebounce[k]); _persistAuthUser(k,v); });
 }
 async function _persistAuthUser(k,v){
+  // Plantillas (ax_tpl): nivel coach/global → viven en la fila PROPIA del coach (columna
+  // `templates`), no por-cliente ni en el blob legacy. Sin esto NO se guardaban en modo auth
+  // (memoria-only → se perdían al recargar). Camilo 2026-06-29.
+  if(k==='ax_tpl'){
+    try{ await UD.upsertOwn({templates:Array.isArray(v)?v:[]}); }
+    catch(e){ _authDirty=true; warn('AVI: persistir plantillas falló, reintento al reconectar:',e&&e.message); }
+    return;
+  }
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.
   if(AUTH_ROLE==='coach' && !COACH_SELF){ return await _persistCoachWrite(k,v); }
   // COACH_SELF (coach en su propio entreno) o cliente normal → escribe en SU propia fila.

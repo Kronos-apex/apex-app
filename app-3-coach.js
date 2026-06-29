@@ -451,6 +451,9 @@ async function _ensureClientHeavy(id){
 async function _enterCoachAuth(authUser, ownRow){
   COACH_OWN_ROW=ownRow||null;                    // ya la cargamos aquí → "Mi entrenamiento" no re-pide red
   if(ownRow&&_authUid) _cacheAuthRow(_authUid,ownRow); // respaldo local (también sirve offline)
+  // Plantillas del coach: viven en SU fila (columna `templates`). Cargarlas a DB para que el
+  // cargador de plantillas las muestre. Antes no se guardaban en modo auth → se perdían al recargar.
+  DB.templates = Array.isArray(ownRow&&ownRow.templates) ? ownRow.templates : (DB.templates||[]);
   await _loadCoachClientsIntoDB();
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   showScreen('s-coach');
