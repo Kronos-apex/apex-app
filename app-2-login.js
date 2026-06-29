@@ -1026,6 +1026,10 @@ function _aviHandleBack(){
 }
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
+  // La ficha de ejercicio (técnica/video) puede abrirse ENCIMA de una habitación (su z se
+  // sube por encima de la habitación al abrirla), así que se cierra ANTES que las habitaciones.
+  const exdTop=document.getElementById('exdetail-bg');
+  if(exdTop&&exdTop.classList.contains('on')){_closeExDetail();return true;}
   // Orden = de la más "encima" a la más "abajo" en la pila de habitaciones:
   // ejercicio (puede ir sobre sesión o mes) → sesión (puede ir sobre rutina) →
   // récord/mes (hojas) → rutina (base).

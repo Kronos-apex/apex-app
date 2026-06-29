@@ -1498,8 +1498,14 @@ function _showExSheet(ex, isCoach, editable){
   if(CUR_EX_REF){ renderExEnvChips(); envWrap.style.display='block'; }
   else { envWrap.style.display='none'; }
 
-  // Show sheet
-  document.getElementById('exdetail-bg').classList.add('on');
+  // Show sheet — SIEMPRE por encima de cualquier habitación (.sroom) abierta. La ficha vive
+  // en z-index 900 pero las habitaciones están en 1400+, así que al abrir "Ver técnica y video"
+  // DESDE una habitación, la ficha salía DETRÁS y parecía que el botón no hacía nada. Subimos
+  // su z por encima de la habitación más alta que esté abierta (y la dejamos en CSS si no hay).
+  const bg = document.getElementById('exdetail-bg');
+  const openRooms = [...document.querySelectorAll('.sroom.on')].map(e => parseInt(getComputedStyle(e).zIndex) || 0);
+  bg.style.zIndex = openRooms.length ? String(Math.max(...openRooms) + 10) : '';
+  bg.classList.add('on');
   document.body.style.overflow = 'hidden';
 }
 
@@ -1532,8 +1538,13 @@ function closeExDetail(e){
   _closeExDetail();
 }
 function _closeExDetail(){
-  document.getElementById('exdetail-bg').classList.remove('on');
-  document.body.style.overflow = '';
+  const bg = document.getElementById('exdetail-bg');
+  bg.classList.remove('on');
+  bg.style.zIndex = '';
+  // Si quedó una habitación abierta debajo, mantener el scroll bloqueado (lo resincroniza
+  // _syncRoomBodyClass); si no, liberar el body.
+  if(typeof _syncRoomBodyClass === 'function') _syncRoomBodyClass();
+  else document.body.style.overflow = '';
 }
 
 function openExYoutube(){
