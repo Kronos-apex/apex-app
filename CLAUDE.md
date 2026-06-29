@@ -902,7 +902,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v224** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v225** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Generador (v225): dedup por PATRÓN de movimiento — `_genMoveFamily` + `st.usedFamiliesInDay` evita 2 ejercicios del mismo patrón el mismo día (ej. dos abducciones de cadera); abducción/aducción son familias distintas. Modalidad CARDIO: editor del coach (`rfExRow`) y vista de rutina (`exSetsCellHTML`) ahora respetan `exTrack` → cardio se configura/muestra en MINUTOS (e.reps=minutos, sets=1), isométrico en segundos. Antes pintaba siempre "Series × Reps".*
 
 *Habitaciones (.sroom) — pase PREMIUM avi-v224: fuente display **Fraunces** (serif) en títulos/números clave, marca verde+**dorado**, héroe con glow esmeralda + filo dorado + barrido de luz, tarjetas stat tipo vidrio con filo degradado, secciones con tinte dorado. CSS sobre las clases compartidas `.sroom*` → sube las 7 de una; sirve en tema claro y oscuro. Fuente cargada en index.html (Google Fonts).*
 
