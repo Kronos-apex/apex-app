@@ -632,6 +632,21 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .msc-ex-fill{height:100%;border-radius:3px}
 .msc-ex-v{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--t1);flex-shrink:0;text-align:right}
 .msc-ex-v small{display:block;font-size:8.5px;color:var(--t3);font-weight:600}
+/* Habitación de NUTRICIÓN */
+.nutr-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:11px;background:var(--bg)}
+.nutr-seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;min-width:0}
+.nutr-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.nutr-card{text-align:center;background:var(--w);border:1px solid var(--br);border-top:3px solid var(--nc,var(--g));border-radius:12px;padding:11px 4px}
+.nutr-card-g{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:800;color:var(--nc,var(--t1))}
+.nutr-card-l{font-size:11px;color:var(--t2);font-weight:600;margin-top:1px}
+.nutr-card-k{font-size:10px;color:var(--t3);margin-top:2px}
+.nutr-acts{display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap}
+.nutr-act{flex:1;min-width:60px;padding:9px 4px;border:1.5px solid var(--br2);border-radius:10px;background:transparent;color:var(--t2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.nutr-act.on{border-color:var(--g);background:var(--gl);color:var(--gt)}
+.nutr-meal{background:var(--w);border:1px solid var(--br);border-radius:12px;padding:10px 13px;margin-bottom:7px}
+.nutr-meal-h{font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.nutr-meal-t{font-size:13px;color:var(--t1);line-height:1.5}
+.nutr-avoid{background:var(--rdl);border-radius:12px;padding:10px 13px;font-size:12.5px;color:var(--rd);margin-top:8px;line-height:1.5}
 .sroom.on .sroom-body>*{animation:roomUp .5s cubic-bezier(.2,.7,.3,1) both}
 .sroom.on .sroom-body>*:nth-child(2){animation-delay:.05s}
 .sroom.on .sroom-body>*:nth-child(3){animation-delay:.1s}

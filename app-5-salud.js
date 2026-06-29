@@ -172,6 +172,8 @@ function setNutActivity(f){
   const c=_curClient();if(!c)return;
   c.activityFactor=f;sv('ax_c',DB.clients);
   renderNutritionClient(c.id);
+  const nr=document.getElementById('nutrition-room');
+  if(nr&&nr.classList.contains('on'))openNutritionRoom(c.id);
 }
 function nutCalcHTML(c){
   const est=nutritionEstimate(c);
@@ -211,7 +213,7 @@ function renderNutritionClient(clientId){
     // Sin plan escrito por un coach \u2192 calculadora autom\u00e1tica (Premium self-serve).
     // El coach (COACH_SELF) ve adem\u00e1s el recordatorio de armar un plan a medida.
     const c=DB.clients.find(x=>x.id===clientId);
-    con.innerHTML=nutCalcHTML(c)+(COACH_SELF
+    con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:12px" onclick="openNutritionRoom('${clientId}')">\ud83c\udf7d\ufe0f Ver mi plan en grande</button>`+nutCalcHTML(c)+(COACH_SELF
       ? '<div style="text-align:center;margin-top:12px;color:var(--t3);font-size:12px">O toca \u270f\ufe0f Editar para escribir un plan a medida.</div>'
       : '');
     return;
@@ -262,7 +264,102 @@ function renderNutritionClient(clientId){
   if(nut.plan)html+=`<div style="background:var(--gl);border-radius:var(--rsm);padding:12px;margin-bottom:12px;white-space:pre-line;font-size:13px;line-height:1.7;color:var(--gt)">\ud83d\udccb ${esc(nut.plan)}</div>`;
   // Evitar
   if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
-  con.innerHTML=html;
+  con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:14px" onclick="openNutritionRoom('${clientId}')">\ud83c\udf7d\ufe0f Ver mi plan en grande</button>`+html;
+}
+
+// ── HABITACIÓN DE NUTRICIÓN: versión inmersiva del plan (se entra desde la tarjeta
+// "Mi plan nutricional"). Une las dos fuentes: plan escrito por el coach (DB.nutrition)
+// o estimación automática self-serve (nutritionEstimate). Reúne kcal, agua, macros con
+// reparto visual, el "por qué", comidas/ejemplos y el selector de actividad (self-serve).
+function openNutritionRoom(clientId){
+  const room=document.getElementById('nutrition-room'),body=document.getElementById('nutroom-body');
+  if(!room||!body)return;
+  const c=(DB.clients||[]).find(x=>x.id===clientId);
+  if(!c)return;
+  const nut=(DB.nutrition||{})[clientId];
+  const hasPlan=nut&&(nut.kcal||nut.plan||nut.examples);
+  let d;
+  if(hasPlan){
+    d={kcal:nut.kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
+  } else {
+    const est=nutritionEstimate(c);
+    if(!est){
+      body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155">🥗</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">Nutrición</div></div></div>
+        <div class="exroom-note">Completa tu <b>peso, estatura, edad y sexo</b> en tu Perfil y aquí verás tu estimación automática de calorías y macros para tu objetivo 🍎</div><div style="height:30px"></div>`;
+      body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
+    }
+    const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
+    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label};
+  }
+  const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
+  const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
+
+  const stat=(ic,l,v,c2)=>`<div class="sroom-stat" style="--sc:${c2}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stats=[
+    stat('🔥','Kcal / día',d.kcal||'—','#10b981'),
+    d.water?stat('💧','Vasos de agua',d.water,'#3a86c8'):null,
+    d.meals?stat('🍽️','Comidas',d.meals,'#e0a72e'):null,
+  ].filter(Boolean).join('');
+
+  let macroHTML='';
+  if(d.prot||d.carb||d.fat){
+    macroHTML=`<div class="sroom-sec">Tus macros</div>
+      <div class="nutr-bar">
+        <div class="nutr-seg" style="width:${pp}%;background:#3a86c8">${pp>=12?pp+'%':''}</div>
+        <div class="nutr-seg" style="width:${cp}%;background:#e0a72e">${cp>=12?cp+'%':''}</div>
+        <div class="nutr-seg" style="width:${fp}%;background:#e0772e">${fp>=12?fp+'%':''}</div>
+      </div>
+      <div class="nutr-cards">
+        <div class="nutr-card" style="--nc:#3a86c8"><div class="nutr-card-g">${d.prot}g</div><div class="nutr-card-l">Proteína</div><div class="nutr-card-k">${pk} kcal</div></div>
+        <div class="nutr-card" style="--nc:#e0a72e"><div class="nutr-card-g">${d.carb}g</div><div class="nutr-card-l">Carbos</div><div class="nutr-card-k">${ck} kcal</div></div>
+        <div class="nutr-card" style="--nc:#e0772e"><div class="nutr-card-g">${d.fat}g</div><div class="nutr-card-l">Grasas</div><div class="nutr-card-k">${fk} kcal</div></div>
+      </div>`;
+  }
+
+  let actHTML='';
+  if(d.isEst){
+    const curAf=parseFloat(c.activityFactor)||1.55;
+    actHTML=`<div class="sroom-sec">¿Qué tan activo eres?</div><div class="nutr-acts">`+_NUT_ACTS.map(([f,l])=>`<button type="button" onclick="setNutActivity(${f})" class="nutr-act${curAf===f?' on':''}">${l}</button>`).join('')+`</div>`;
+  }
+
+  let whyHTML='';
+  if(d.why)whyHTML=`<div class="sroom-sec">¿Por qué este plan?</div><div class="exroom-tech" style="border-left:3px solid #10b981"><b>${d.why.title}.</b> ${esc(d.why.text)}</div>`;
+  else if(d.isEst)whyHTML=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
+
+  let mealsHTML='';
+  if(d.examples){
+    const lines=d.examples.split('\n').filter(l=>l.trim());
+    mealsHTML=`<div class="sroom-sec">Ejemplos de alimentación</div>`+lines.map(line=>{
+      const ci=line.indexOf(':');
+      if(ci>0)return `<div class="nutr-meal"><div class="nutr-meal-h">${esc(line.slice(0,ci).trim())}</div><div class="nutr-meal-t">${esc(line.slice(ci+1).trim())}</div></div>`;
+      return `<div class="nutr-meal"><div class="nutr-meal-t">${esc(line)}</div></div>`;
+    }).join('');
+  }
+  let planHTML='';
+  if(d.plan)planHTML=`<div class="sroom-sec">Plan</div><div class="exroom-tech" style="white-space:pre-line">📋 ${esc(d.plan)}</div>`;
+  if(d.avoid)planHTML+=`<div class="nutr-avoid">⚠️ <b>Evitar:</b> ${esc(d.avoid)}</div>`;
+
+  body.innerHTML=`
+    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,#10b98118,#10b98108);border-color:#10b98144">
+      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98166">🥗</div>
+      <div class="sroom-hero-txt">
+        <div class="sroom-title" style="margin-top:0">Mi nutrición</div>
+        <div class="exroom-tags"><span>${d.isEst?'Estimación automática':'Plan de tu coach'}</span>${d.label?`<span>${esc(d.label)}</span>`:''}</div>
+      </div>
+    </div>
+    <div class="sroom-stats">${stats}</div>
+    ${macroHTML}
+    ${actHTML}
+    ${whyHTML}
+    ${mealsHTML}
+    ${planHTML}
+    <div style="height:30px"></div>`;
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+}
+function closeNutritionRoom(){
+  const room=document.getElementById('nutrition-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
 }
 
 function shareNutWhatsapp(){

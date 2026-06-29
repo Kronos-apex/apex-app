@@ -1045,6 +1045,8 @@ function _aviCloseTopOverlay(){
   if(rtr&&rtr.classList.contains('on')){closeRoutineRoom();return true;}
   const mscr=document.getElementById('muscle-room');
   if(mscr&&mscr.classList.contains('on')){closeMuscleRoom();return true;}
+  const nutr=document.getElementById('nutrition-room');
+  if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
   const lb=document.getElementById('ex-lightbox');
   if(lb&&lb.classList.contains('on')){closeExImg();return true;}
   const pu=document.getElementById('premium-upsell');
