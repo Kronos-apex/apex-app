@@ -902,7 +902,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-14 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **apex-v150** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **140/140** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v223** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Navegación ATRÁS (Android/TWA) — avi-v223: cada habitación (.sroom) empuja su propia entrada de historial vía `navOpenLayer` (AVINAV.layers); el handler `_aviHandleBack` cierra la capa de arriba y descuenta SIN re-empujar (antes re-empujaba un único guard dentro del popstate, que el WebView del TWA perdía → la app se salía al 2º atrás). Los botones "‹ Volver" pasan por `history.back()`.*
 
 ### ✅ Sesión 2026-06-11 — Momentos full-bleed: upsell Premium + subida de nivel (apex-v138)
 **Cierra el plan full-bleed del 06-08** (onboarding ✅ → fin de entreno ✅ → ahora upsell + nivel ✅). Ambos overlays **reusan el molde CSS `wf-*`** del fin de entreno (cero duplicación; solo se añadió `.pu-*`/`.lu-*` para lo propio).
