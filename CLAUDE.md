@@ -45,6 +45,8 @@ apex-app/
 ├── .claude/skills/                     ← avi-audit, avi-deploy, avi-feature, avi-generate, avi-run
 ├── supabase/functions/send-push/       ← Edge Function push notifications
 ├── supabase/functions/daily-notifs/    ← Edge Function notificaciones diarias (3 cron jobs)
+├── supabase/functions/delete-account/  ← Edge Function borrado de cuenta (service role)
+├── supabase/functions/coach-create-client/ ← Edge Function: el coach crea cuenta de acceso pre-confirmada del asesorado
 └── CLAUDE.md                           ← Este archivo
 ```
 
@@ -902,7 +904,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v225** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v226** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Alta de cliente con cuenta de acceso real (v226): el coach "Nuevo asesorado" antes creaba un cliente LOCAL sin cuenta auth → no podía ingresar (login es solo-Auth). Ahora `saveClient` llama la Edge Function **`coach-create-client`** (service role; candado: solo COACH_UID puede invocarla) que crea la cuenta **pre-confirmada** (`email_confirm:true` → correos ficticios sirven, ej. `claudia@avi.com`) + siembra su fila `user_data` (coach_id/role/profile/routines tal cual, sin tocar history/prs). Cliente-side: `_isAuthId` (uuid?) + `_provisionClientAccount` re-vinculan el id local al `user_id` real. Para clientes ya creados (ej. Claudia): el coach los re-guarda con su clave → se provisiona subiendo su rutina actual. Verificado E2E contra Supabase real (coach→función→login del cliente ficticio). Luego cada cliente conecta Google en Perfil → "Conectar mi Google" (`linkIdentity`; requiere Manual linking activo). Confirm-email del proyecto está ON.*
 
 *Generador (v225): dedup por PATRÓN de movimiento — `_genMoveFamily` + `st.usedFamiliesInDay` evita 2 ejercicios del mismo patrón el mismo día (ej. dos abducciones de cadera); abducción/aducción son familias distintas. Modalidad CARDIO: editor del coach (`rfExRow`) y vista de rutina (`exSetsCellHTML`) ahora respetan `exTrack` → cardio se configura/muestra en MINUTOS (e.reps=minutos, sets=1), isométrico en segundos. Antes pintaba siempre "Series × Reps".*
 

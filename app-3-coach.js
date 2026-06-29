@@ -102,6 +102,32 @@ function openEditClient(){
   om('m-client');
 }
 
+// ¿El id ya es de una cuenta auth real (uuid)? Los clientes creados localmente por el coach
+// tienen id de uid() (base36, no-uuid) → aún sin cuenta de acceso.
+function _isAuthId(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||'')); }
+// Crea la CUENTA DE ACCESO real (Supabase Auth, pre-confirmada) del asesorado vía la Edge
+// Function coach-create-client, para que pueda ingresar con su correo+clave (ficticio sirve).
+// Sube su perfil + rutina ACTUAL tal cual (no regenera). Re-vincula el cliente local a su
+// user_id (así coincide con su fila en la nube y futuras ediciones van por updateClientRow).
+// Devuelve el nuevo user_id o null si no se provisionó. Camilo 2026-06-29.
+async function _provisionClientAccount(client, rawPass){
+  if(!AUTH_MODE || !AUTH.ready()) return null;   // solo en modo auth real (no legacy)
+  if(!client || !client.email || !rawPass) return null; // sin credenciales no hay cuenta
+  if(_isAuthId(client.id)) return null;          // ya vinculado a una cuenta
+  const c=AUTH.client(); if(!c) return null;
+  const row=clientToRow(client,{});              // profile (escalares) + routines (sin id/password)
+  let data,error;
+  try{ ({data,error}=await c.functions.invoke('coach-create-client',{body:{
+    email:client.email, password:rawPass, profile:row.profile, routines:row.routines
+  }})); }catch(e){ error=e; }
+  if(error || !data || !data.ok || !data.user_id){
+    toast('⚠️ No se pudo crear el acceso: '+((data&&data.error)||(error&&error.message)||'error de red'));
+    return null;
+  }
+  const i=DB.clients.findIndex(x=>x.id===client.id);
+  if(i!==-1){ DB.clients[i].id=data.user_id; sv('ax_c',DB.clients); }
+  return data.user_id;
+}
 async function saveClient(){
   const fn=document.getElementById('cf-name').value.trim();
   const ln=document.getElementById('cf-last').value.trim();
@@ -149,7 +175,17 @@ async function saveClient(){
     DB.clients.push({id:clientId,routines:[],...data,createdAt:new Date().toISOString()});
     toast(`✅ ${data.name} añadido`);
   }
-  sv('ax_c',DB.clients);cm('m-client');renderAll();if(CUR.editClientId)openDetail(CUR.editClientId);
+  sv('ax_c',DB.clients);
+  // ── Crear/asegurar la CUENTA DE ACCESO real del asesorado (Supabase Auth, pre-confirmada),
+  // para que pueda ingresar con su correo+clave. Solo si hay credenciales y aún no está
+  // vinculado. Re-vincula su id al de la cuenta. Camilo 2026-06-29 (Claudia no podía entrar
+  // porque el form creaba un cliente LOCAL sin cuenta de acceso).
+  const _target=DB.clients.find(x=>x.id===(CUR.editClientId||clientId));
+  if(_target && AUTH_MODE && _target.email && pass && !_isAuthId(_target.id)){
+    const _newId=await _provisionClientAccount(_target,pass);
+    if(_newId){ toast(`🔑 ${_target.name} ya puede ingresar con ${_target.email}`); if(CUR.editClientId)CUR.editClientId=_newId; }
+  }
+  cm('m-client');renderAll();if(CUR.editClientId)openDetail(CUR.editClientId);
 }
 
 // ── Auto-registro (modo libre) ──────────────────────────────────────────
