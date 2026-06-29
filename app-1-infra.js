@@ -7,8 +7,12 @@ const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 
 // ── Navegación con botón ATRÁS (Android/TWA): stack lógico de pantallas ──
 // Cada navegación HACIA ADELANTE (cambiar de pestaña) registra en AVINAV.stack cómo
-// deshacerse. El botón atrás (popstate) cierra overlays → retrocede un paso → y en el
-// inicio pide doble-atrás para salir. Ver el handler en app-2-login.js.
+// deshacerse. El handler (_aviHandleBack en app-2-login.js) por cada atrás del sistema:
+// cierra el overlay de arriba → o saca UN paso del stack (pestaña) → o en el inicio pide
+// doble-atrás para salir, RE-EMPUJANDO una entrada "guard" cada vez para no agotar el
+// historial. CLAVE (bug Camilo 2026-06-28 "atrás se devuelve una vez y sale"): el handler
+// se registra ANTES del `await _enterAuthSession` del boot; cuando se registraba después,
+// ese await podía no resolver y el atrás quedaba sin manejar → el navegador se salía.
 const AVINAV = { stack: [], exitArmed: false, curTab: null };
 function navRecord(undo){ if(typeof undo==='function') AVINAV.stack.push({ undo: undo }); }
 function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; }

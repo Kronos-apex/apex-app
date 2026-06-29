@@ -903,6 +903,12 @@ syncFromCloud().then(async ()=>{
   initTextSize();
   initRememberMe();
   initPWA();
+  // ── Botón ATRÁS (Android/TWA): guard + handler registrados AQUÍ, ANTES de la entrada de
+  // sesión. CLAVE (bug Camilo 2026-06-28): el `await _enterAuthSession` de abajo puede NO
+  // resolver (muestra la vista pero su promesa queda pendiente); cuando este setup iba
+  // DESPUÉS del await, quedaba sin ejecutar y el atrás se salía a la primera. Va antes.
+  history.pushState({aviGuard:1},'');
+  window.addEventListener('popstate',_aviHandleBack);
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
   let authEntered=false;
   try{
@@ -913,40 +919,6 @@ syncFromCloud().then(async ()=>{
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered) tryAutoLogin();
-  // ── Botón ATRÁS (Android/TWA): retroceso por pasos, no salida directa ──
-  // Mantenemos UNA entrada "guard" en el history; cada atrás MANEJADO la re-empuja.
-  // Prioridad: overlays → stack de pestañas (cliente) → detalle del coach → inicio
-  // (doble-atrás para salir). Ver AVINAV/navRecord en app-1-infra.js.
-  history.pushState({aviGuard:1},'');
-  window.addEventListener('popstate',function(){
-    // 1) Overlays/modales (el de más arriba primero)
-    if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
-    // 2) Stack de navegación (pestañas del cliente)
-    if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} history.pushState({aviGuard:1},''); return; }
-    // 3) Coach en detalle de un asesorado → volver a la lista
-    const detail=document.getElementById('p-detail');
-    if(detail&&detail.classList.contains('on')){
-      gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');
-      const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
-      history.pushState({aviGuard:1},''); return;
-    }
-    // 3b) Cliente: si NO está en Inicio (Hoy) → ir a Inicio. Inicio es el ÚNICO
-    // punto de salida (garantía aunque el stack esté vacío por venir directo a otra
-    // pestaña). Solo desde Hoy se arma la salida.
-    const sc=document.getElementById('s-client');
-    if(sc&&getComputedStyle(sc).display!=='none'){
-      const cur=document.querySelector('#s-client .cnp.on');
-      if(cur&&cur.id!=='cn-today'){
-        cnTab('cn-today',_cnTabEl('cn-today'),true);
-        AVINAV.stack.length=0;
-        history.pushState({aviGuard:1},''); return;
-      }
-    }
-    // 4) En el INICIO → doble atrás para salir
-    if(AVINAV.exitArmed){ AVINAV.exitArmed=false; history.go(-1); return; }
-    AVINAV.exitArmed=true; toast('Presiona atrás otra vez para salir 👋');
-    history.pushState({aviGuard:1},''); setTimeout(function(){ AVINAV.exitArmed=false; }, 2000);
-  });
 }).catch(e=>{
   // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
   // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.
@@ -1025,8 +997,34 @@ function initCoach(){migrateExercises();dedupeExercises();
 function renderAll(){renderHome();renderClients();renderExercises();renderMsgs();renderTemplates();document.getElementById('bdg').textContent=DB.clients.length}
 
 // ── NAVIGATION ──
-// Cierra el overlay/modal de más arriba si hay uno abierto. Devuelve true si cerró algo.
-// Orden de prioridad = el más superpuesto primero.
+// Manejador del botón ATRÁS. Un solo "guard" en el historial que se RE-EMPUJA en cada atrás
+// manejado, para no agotar el historial nunca. Orden: 1) overlay/habitación de arriba →
+// cerrar; 2) un paso del stack de pestañas → deshacer; 3) coach en detalle → lista;
+// 3b) cliente fuera de Inicio con stack vacío → ir a Inicio; 4) en Inicio → doble-atrás.
+function _aviHandleBack(){
+  // 1) Overlays/habitaciones/modales (el de más arriba primero).
+  if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
+  // 2) Stack de navegación (pestañas del cliente) → retroceder un paso.
+  if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} history.pushState({aviGuard:1},''); return; }
+  // 3) Coach en detalle de un asesorado → volver a la lista.
+  const detail=document.getElementById('p-detail');
+  if(detail&&detail.classList.contains('on')){
+    gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');
+    const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
+    history.pushState({aviGuard:1},''); return;
+  }
+  // 3b) Cliente fuera de Inicio con el stack ya vacío → ir a Inicio (último colchón).
+  const sc=document.getElementById('s-client');
+  if(sc&&getComputedStyle(sc).display!=='none'){
+    const cur=document.querySelector('#s-client .cnp.on');
+    if(cur&&cur.id!=='cn-today'){ cnTab('cn-today',_cnTabEl('cn-today'),true); AVINAV.stack.length=0; history.pushState({aviGuard:1},''); return; }
+  }
+  // 4) En el INICIO → doble atrás para salir.
+  if(AVINAV.exitArmed){ AVINAV.exitArmed=false; history.go(-1); return; }
+  AVINAV.exitArmed=true; if(typeof toast==='function')toast('Presiona atrás otra vez para salir 👋');
+  history.pushState({aviGuard:1},''); setTimeout(function(){ AVINAV.exitArmed=false; }, 2000);
+}
+// Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
   const er=document.getElementById('exercise-room');
   if(er&&er.classList.contains('on')){closeExerciseRoom();return true;}
