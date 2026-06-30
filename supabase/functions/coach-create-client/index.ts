@@ -45,15 +45,33 @@ Deno.serve(async (req) => {
   if (callerErr || !caller?.user) return json({ error: "Unauthorized" }, 401);
   if (caller.user.id !== COACH_UID) return json({ error: "forbidden_not_coach" }, 403);
 
-  let body: { email?: string; password?: string; profile?: Record<string, unknown>; routines?: unknown[] };
+  let body: { user_id?: string; email?: string; password?: string; profile?: Record<string, unknown>; routines?: unknown[] };
   try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
 
   const email = (body.email || "").trim().toLowerCase();
   const password = (body.password || "").trim();
   const profile = body.profile && typeof body.profile === "object" ? body.profile : {};
   const routines = Array.isArray(body.routines) ? body.routines : [];
+  const updateId = (body.user_id || "").trim();
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "invalid_email" }, 400);
+  // ── Modo UPDATE: edición de un asesorado YA provisionado (cambio de clave y/o correo de
+  // acceso). Se enruta por user_id (no por correo) para que cambiar el email actualice la
+  // cuenta existente en vez de crear una nueva. Antes era un no-op silencioso (bug #3
+  // auditoría 2026-06-30). Solo toca auth.users; perfil/rutinas van por el guardado normal.
+  if (updateId) {
+    if (!password && !email) return json({ error: "nothing_to_update" }, 400);
+    if (password && password.length < 4) return json({ error: "weak_password" }, 400);
+    if (email && !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
+    const patch: Record<string, unknown> = { email_confirm: true };
+    if (password) patch.password = password;
+    if (email) patch.email = email;
+    const { data: upd, error: uErr } = await admin.auth.admin.updateUserById(updateId, patch);
+    if (uErr || !upd?.user) return json({ error: "update_failed", detail: uErr?.message || "" }, 500);
+    return json({ ok: true, user_id: upd.user.id, updated: true });
+  }
+
+  if (!email || !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
   if (!password || password.length < 4) return json({ error: "weak_password" }, 400);
 
   try {

@@ -100,6 +100,17 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
 const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi'];
+// Ajustes GLOBALES del coach (no per-cliente, no secretos): ejercicios custom, nº Nequi para
+// cobrar, nombre/email/sitio. En AUTH_MODE viven en SU fila (columna `coach_settings` jsonb),
+// igual que las plantillas (ax_tpl→templates). Antes caían al vacío en _persistCoachWrite →
+// se perdían al recargar (bug #1 auditoría 2026-06-30). ax_cph NO va aquí: la clave real del
+// coach es la de Supabase Auth (lo cubre saveCoachPass→updateUser, bug #2).
+const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site'];
+// Construye el objeto completo coach_settings desde el estado local (sv ya espejó cada clave a
+// localStorage antes de persistir) → un upsert idempotente que no pisa las demás claves.
+function _coachSettingsObj(){
+  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site','') };
+}
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
 // ══════════ SUPABASE AUTH — Fase 2 (login real, fila por usuario) ══════════
@@ -128,6 +139,7 @@ const AUTH={
   async signInGoogle(){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});},
   async sendMagicLink(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});},
   async resetPassword(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});},
+  async updatePassword(password){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.updateUser({password});},
   async signOut(){const c=sbAuthClient();if(!c)return;return await c.auth.signOut();},
   onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((_e,session)=>cb(session));},
 };
@@ -569,7 +581,13 @@ const _pendingPush = {}; // clave -> último valor AÚN NO confirmado en la nube
 function sv(k,v){
   // Modo auth: las claves por-usuario van a SU fila user_data (no a localStorage global
   // ni al blob legacy) → evita contaminar la nube/caché legacy. Debounce 800ms.
-  if(AUTH_MODE&&SB_KEYS.includes(k)){ _persistAuthUserDebounced(k,v); return; }
+  if(AUTH_MODE&&SB_KEYS.includes(k)){
+    // Ajustes globales del coach: además de la nube, espejar a localStorage para que los
+    // lectores ld()-based (getCoachName/Email/Site, DB.nequi/exercises) los vean frescos
+    // sin esperar recarga. No son per-usuario ni secretos → no contaminan datos de cliente.
+    if(_COACH_SETTINGS_KEYS.includes(k)){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+    _persistAuthUserDebounced(k,v); return;
+  }
   // Guardar en localStorage inmediatamente (nunca pierde datos)
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   // Enviar a Supabase con debounce de 1.5s (excepto operaciones críticas)
@@ -581,7 +599,10 @@ function sv(k,v){
 }
 // Forzar sync inmediato (para logout, completar entrenamiento, etc.)
 function svNow(k,v){
-  if(AUTH_MODE&&SB_KEYS.includes(k)){ _persistAuthUser(k,v); return; }
+  if(AUTH_MODE&&SB_KEYS.includes(k)){
+    if(_COACH_SETTINGS_KEYS.includes(k)){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+    _persistAuthUser(k,v); return;
+  }
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   if(SB_KEYS.includes(k)){_pendingPush[k]=v;clearTimeout(_sbDebounce[k]);sbSet(k,v);}
 }
@@ -613,6 +634,14 @@ async function _persistAuthUser(k,v){
   if(k==='ax_tpl'){
     try{ await UD.upsertOwn({templates:Array.isArray(v)?v:[]}); }
     catch(e){ _authDirty=true; warn('AVI: persistir plantillas falló, reintento al reconectar:',e&&e.message); }
+    return;
+  }
+  // Ajustes globales del coach (ax_e/ax_nequi/ax_cn/ax_ce/ax_site): nivel coach → fila PROPIA,
+  // columna `coach_settings` (jsonb). Sin esto caían al vacío en _persistCoachWrite → se perdían
+  // al recargar (bug #1 auditoría 2026-06-30). Idempotente: re-escribe el objeto completo.
+  if(AUTH_ROLE==='coach' && _COACH_SETTINGS_KEYS.includes(k)){
+    try{ await UD.upsertOwn({coach_settings:_coachSettingsObj()}); }
+    catch(e){ _authDirty=true; warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message); }
     return;
   }
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.

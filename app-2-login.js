@@ -133,6 +133,14 @@ async function verifyCoachPass(plain){
 
 // ── Save new coach password as SHA-256 ──
 async function saveCoachPass(plain){
+  // En AUTH_MODE la contraseña REAL es la de Supabase Auth (con la que el coach inicia sesión):
+  // sin esto el cambio era un no-op silencioso (bug #2 auditoría 2026-06-30). Lanza si la nube
+  // falla → saveSettings lo reporta en vez de mostrar un "✅" falso. El hash local (ax_cph) se
+  // mantiene para el camino legacy/local.
+  if(AUTH_MODE){
+    const {error}=await AUTH.updatePassword(plain);
+    if(error)throw new Error(error.message||'No se pudo actualizar la contraseña en la nube');
+  }
   const salt='_coach_'+getCoachEmail();
   const hash=await hashPass(plain,salt);
   sv('ax_cph',hash);
@@ -315,7 +323,8 @@ async function saveSettings(){
     if(!curOk){perr.textContent='La contraseña actual no es correcta';perr.style.display='block';return;}
     if(nw.length<6){perr.textContent='La nueva contraseña debe tener mínimo 6 caracteres';perr.style.display='block';return;}
     if(nw!==rep){perr.textContent='Las contraseñas nuevas no coinciden';perr.style.display='block';return;}
-    await saveCoachPass(nw);
+    try{ await saveCoachPass(nw); }
+    catch(e){ perr.textContent='No se pudo cambiar la contraseña: '+((e&&e.message)||'error de red')+'. Intenta de nuevo.'; perr.style.display='block'; return; }
     perr.style.display='none';
   }
   sv('ax_cn',_b64enc(name));

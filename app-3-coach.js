@@ -128,6 +128,26 @@ async function _provisionClientAccount(client, rawPass){
   if(i!==-1){ DB.clients[i].id=data.user_id; sv('ax_c',DB.clients); }
   return data.user_id;
 }
+// Edición de un asesorado YA provisionado (su id es uuid): cambiar su CLAVE y/o CORREO de
+// acceso real (Supabase Auth) vía la edge admin en modo update (por user_id). Sin esto era un
+// no-op silencioso: clientToRow descarta `password` y updateClientRow nunca toca auth.users
+// (bug #3 auditoría 2026-06-30). Devuelve true si la nube confirmó el cambio.
+async function _updateClientAccount(client, changes){
+  if(!AUTH_MODE || !AUTH.ready()) return false;
+  if(!client || !_isAuthId(client.id)) return false;   // sin cuenta real → nada que actualizar
+  const email=(changes&&changes.email)||'', password=(changes&&changes.password)||'';
+  if(!email && !password) return false;
+  const c=AUTH.client(); if(!c) return false;
+  let data,error;
+  try{ ({data,error}=await c.functions.invoke('coach-create-client',{body:{
+    user_id:client.id, email:email||undefined, password:password||undefined
+  }})); }catch(e){ error=e; }
+  if(error || !data || !data.ok){
+    toast('⚠️ No se pudo actualizar el acceso: '+((data&&data.error)||(error&&error.message)||'error de red'));
+    return false;
+  }
+  return true;
+}
 async function saveClient(){
   const fn=document.getElementById('cf-name').value.trim();
   const ln=document.getElementById('cf-last').value.trim();
@@ -157,10 +177,12 @@ async function saveClient(){
     updatedAt:new Date().toISOString()
   };
   if(hashedPass) data.password=hashedPass;
+  let _oldEmail=null; // correo previo, para detectar cambio de correo de acceso (bug #3)
   if(CUR.editClientId){
     const i=DB.clients.findIndex(c=>c.id===CUR.editClientId);
     if(i!==-1){
       const existing=DB.clients[i];
+      _oldEmail=(existing.email||'').toLowerCase();
       if(document.getElementById('cf-pass').dataset.unchanged==='1') data.password=existing.password;
       // ¿Cambiaron datos que afectan la rutina de un usuario LIBRE (auto-generada)?
       const trainingChanged=isFreeClient(existing)&&(existing.place!==data.place||existing.goal!==data.goal||existing.level!==data.level||existing.days!==data.days);
@@ -184,6 +206,16 @@ async function saveClient(){
   if(_target && AUTH_MODE && _target.email && pass && !_isAuthId(_target.id)){
     const _newId=await _provisionClientAccount(_target,pass);
     if(_newId){ toast(`🔑 ${_target.name} ya puede ingresar con ${_target.email}`); if(CUR.editClientId)CUR.editClientId=_newId; }
+  }
+  // Asesorado YA con cuenta de acceso (uuid): aplicar a Supabase Auth los cambios de CLAVE
+  // y/o CORREO. Antes no surtían efecto (bug #3 auditoría 2026-06-30).
+  else if(_target && AUTH_MODE && _isAuthId(_target.id)){
+    const _passChanged = !!pass && document.getElementById('cf-pass').dataset.unchanged!=='1';
+    const _emailChanged = _oldEmail!=null && !!email && email!==_oldEmail;
+    if(_passChanged || _emailChanged){
+      const ok=await _updateClientAccount(_target,{ email:_emailChanged?email:'', password:_passChanged?pass:'' });
+      if(ok) toast('🔑 Acceso de '+_target.name+' actualizado');
+    }
   }
   cm('m-client');renderAll();if(CUR.editClientId)openDetail(CUR.editClientId);
 }
@@ -454,6 +486,20 @@ async function _enterCoachAuth(authUser, ownRow){
   // Plantillas del coach: viven en SU fila (columna `templates`). Cargarlas a DB para que el
   // cargador de plantillas las muestre. Antes no se guardaban en modo auth → se perdían al recargar.
   DB.templates = Array.isArray(ownRow&&ownRow.templates) ? ownRow.templates : (DB.templates||[]);
+  // Ajustes globales del coach (ejercicios custom, Nequi, nombre/email/sitio): viven en SU fila
+  // (columna `coach_settings`). Reflejarlos a localStorage para que los lectores ld()-based
+  // (getCoachName/Email/Site, DB.nequi/exercises) los vean. Antes se perdían al recargar en
+  // AUTH_MODE (bug #1 auditoría 2026-06-30). Guardas anti-vacío: no pisar defaults con nada.
+  const _cs = ownRow && ownRow.coach_settings;
+  if(_cs && typeof _cs==='object'){
+    try{
+      if(Array.isArray(_cs.e) && _cs.e.length){ localStorage.setItem('ax_e',JSON.stringify(_cs.e)); DB.exercises=_cs.e; }
+      if(_cs.nequi!=null){ localStorage.setItem('ax_nequi',JSON.stringify(_cs.nequi)); DB.nequi=_cs.nequi; }
+      if(_cs.cn)        localStorage.setItem('ax_cn',  JSON.stringify(_cs.cn));
+      if(_cs.ce)        localStorage.setItem('ax_ce',  JSON.stringify(_cs.ce));
+      if(_cs.site!=null)localStorage.setItem('ax_site',JSON.stringify(_cs.site));
+    }catch(e){ warn('AVI: hidratar coach_settings falló (no bloquea):',e&&e.message); }
+  }
   await _loadCoachClientsIntoDB();
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   showScreen('s-coach');
