@@ -354,6 +354,9 @@ html[data-theme="light"] .mta {
 .gx-badge.gold .gx-bic{background:linear-gradient(135deg,rgba(232,197,71,.25),rgba(232,197,71,.08));border-color:rgba(232,197,71,.45)}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
 .exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
+/* Indicador de biserie (🔗) — antes heredaba los 11px diminutos de .exmet; se ve apretado y
+   cuesta leerlo en plena rutina. Más grande, más peso y más contraste. Camilo 2026-06-29. */
+.biset-tag{color:#A855F7;font-weight:800;font-size:13.5px;text-transform:none}
 .exsets{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:right;flex-shrink:0;color:var(--t1)}
 .exsets small{display:block;font-size:9.5px;color:var(--t3);font-weight:500;letter-spacing:.2px;margin-top:1px;text-transform:none}
 /* Editorial de la semana (asesorado) — intro tipo revista con voz de coach */
@@ -1117,29 +1120,24 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 }
 
 /* Accesibilidad: TAMAÑO DE TEXTO por dispositivo (ajuste fijo en el Perfil, NO pinch-zoom).
-   Escala el CONTENIDO con `zoom` (la tipografía está en px fijos). Chrome estandarizó `zoom`
-   (≥128, p.ej. el WebView de Android): el contenido escalado YA llena el ancho y respeta
-   centrado y unidades vh, así que NO se compensa ancho/alto ni se realinea — hacerlo dejaba
-   un HUECO a la derecha y encogía el contenido (bug 2026-06-27, reportado por Camilo). La barra
-   inferior se ancla al viewport con position:fixed. Ver setTextSize()/initTextSize (ax_textsize). */
-/* zoom escala también el ANCHO → el panel se hacía más ancho que la pantalla y se
-   movía de lado / no llenaba (reportado por Camilo 2026-06-28). Se compensa con
-   width = 100%/zoom + anclaje a la izquierda (transform-origin) → encaja EXACTO. */
-html[data-fs="lg"] .cnp{ zoom:1.12; width:calc(100%/1.12); transform-origin:left top; }
-html[data-fs="xl"] .cnp{ zoom:1.25; width:calc(100%/1.25); transform-origin:left top; }
-html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
+   La tipografía está en px fijos → se escala el CONTENIDO con `zoom` (estandarizado en
+   Chrome/WebView ≥128: afecta el layout, por eso escala también el ANCHO). En TODOS los
+   contenedores de pantalla completa anclados a la izquierda — .cnp (cliente), .panel (coach),
+   .gm-body (guiado) — se compensa con width:calc(100%/zoom) + transform-origin:left top para
+   que llenen EXACTO: sin desbordar (Perfil del coach se salía: correo cortado, botones fuera de
+   la tarjeta) ni dejar hueco (la rutina se encogía a la izquierda). Antes la compensación estaba
+   SOLO en .cnp → comportamiento inconsistente. Footers/tabs anclados con position:fixed.
+   Ver setTextSize()/initTextSize (ax_textsize). Reportado por Camilo 2026-06-29. */
+html[data-fs="lg"] .cnp, html[data-fs="lg"] #s-coach .panel, html[data-fs="lg"] .gm-body{ zoom:1.18; width:calc(100%/1.18); transform-origin:left top; }
+html[data-fs="xl"] .cnp, html[data-fs="xl"] #s-coach .panel, html[data-fs="xl"] .gm-body{ zoom:1.40; width:calc(100%/1.40); transform-origin:left top; }
+html[data-fs="lg"] .gm-body{ padding-bottom:86px; }
+html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
-/* Panel del coach */
-html[data-fs="lg"] #s-coach .panel{ zoom:1.12; }
-html[data-fs="xl"] #s-coach .panel{ zoom:1.25; }
-/* Modo guiado: escala el contenido y ancla el footer al viewport */
-html[data-fs="lg"] .gm-body{ zoom:1.12; padding-bottom:86px; }
-html[data-fs="xl"] .gm-body{ zoom:1.25; padding-bottom:96px; }
+html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
-/* Modales: con `zoom` estandarizado el centrado del flex y el alto en vh se conservan, así que
-   solo se escala la tarjeta (su width:100% llena el backdrop sin desbordar, igual que .cnp). */
-html[data-fs="lg"] .md{ zoom:1.12; }
-html[data-fs="xl"] .md{ zoom:1.25; }
+/* Modales: centrados por flex; solo se escala la tarjeta (tiene max-width, no desborda). */
+html[data-fs="lg"] .md{ zoom:1.18; }
+html[data-fs="xl"] .md{ zoom:1.40; }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
