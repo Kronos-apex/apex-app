@@ -1135,9 +1135,14 @@ html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
 html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
-/* Modales: centrados por flex; solo se escala la tarjeta (tiene max-width, no desborda). */
-html[data-fs="lg"] .md{ zoom:1.18; }
-html[data-fs="xl"] .md{ zoom:1.40; }
+/* Modales: `zoom` escala también el ANCHO → la tarjeta se desbordaba (campos de contraseña
+   cortados a la derecha, captura de Camilo 2026-06-29). Misma compensación que .cnp:
+   width:calc(100%/zoom) + transform-origin:left top + max-height:calc(/zoom). Como zoom escala
+   desde la esquina sup-izq y rompe el centrado del flex, en texto-grande el backdrop ancla la
+   tarjeta arriba-izquierda (ya llena el ancho tras escalar, así que el centrado es indiferente). */
+html[data-fs="lg"] .mdbg.on, html[data-fs="xl"] .mdbg.on{ align-items:flex-start; justify-content:flex-start; }
+html[data-fs="lg"] .md{ zoom:1.18; width:calc(100%/1.18); transform-origin:left top; max-height:calc(90vh/1.18); }
+html[data-fs="xl"] .md{ zoom:1.40; width:calc(100%/1.40); transform-origin:left top; max-height:calc(90vh/1.40); }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
