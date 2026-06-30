@@ -63,7 +63,7 @@ apex-app/
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
-- `#p-exercises` — 162 ejercicios precargados (e1–e164, sin e32/e38; e141–e164 = principiante peso corporal casa/parque, nivel P), filtros por músculo. El generador aplica **gate por nivel** (`EX_LEVEL`/`_levelGate` en avi-core.js): Principiante solo P, Intermedio P+I, Avanzado todo
+- `#p-exercises` — 212 ejercicios precargados (e1–e214, sin e32/e38; e141–e164 = principiante peso corporal casa/parque; **e165–e214 = 50 nuevos: 16 movilidad/calentamiento + 25 HIIT/funcional + 9 antebrazo/trapecio/grip**, con imagen 1:1 + mapa muscular + modalidad), filtros por músculo. El generador aplica **gate por nivel** (`EX_LEVEL`/`_levelGate` en avi-core.js): Principiante solo P, Intermedio P+I, Avanzado todo
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
@@ -904,7 +904,9 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v227** · Catálogo **162 ejercicios** (e141–e164 principiante peso corporal) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-06-29 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v228** · Catálogo **212 ejercicios** (e1–e214; +50 nuevos e165–e214: movilidad, HIIT/funcional, antebrazo/grip) + **gate por nivel** en el generador · Suite **255/255** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Catálogo +50 ejercicios (v228): cierra los 3 huecos de cobertura de la auditoría 2026-06-29. **16 movilidad/calentamiento** (e165–e180, type:'Movilidad', track reps/tiempo — antes había 0), **25 HIIT/funcional** (e181–e205, type HIIT/Funcional — antes ~5), **9 antebrazo/trapecio/grip** (e206–e214). Cada uno: imagen 1:1 720–1024px generada con Veo/Gemini (gen-img.mjs, estilo de la casa + camiseta negra con logo AVI horneado en el prompt) + entrada en MM_EX (mapa muscular, 196 mapeados) + modalidad correcta (exTrack). Grupos reusan taxonomía existente (movilidad→core/piernas/hombros, conditioning→piernas/core/cardio/etc., antebrazo→biceps, trapecio→espalda); la categoría real va en `type`. `mergeDefaultExercises` (app-2-login.js) los propaga a usuarios existentes al arrancar. HTML de prompts/revisión en Desktop/AVI (fuera del repo).*
 
 *Persistencia de PLANTILLAS del coach (v227): BUG pre-existente — en modo auth `sv('ax_tpl')` ni escribía localStorage (early-return línea 549) ni tenía columna en user_data (`_persistAuthUser` línea 604 lo descartaba) → las plantillas vivían SOLO en memoria y se perdían al recargar (mismo class de bug que los clientes solo-locales, ver v226). FIX: nueva columna `templates jsonb` en user_data; `_persistAuthUser` enruta `ax_tpl`→`UD.upsertOwn({templates})` (fila PROPIA del coach, mismo mecanismo probado de "Mi entrenamiento"); `_enterCoachAuth` carga `DB.templates=ownRow.templates`. Migración `add_templates_column_to_user_data` aplicada.*
 
