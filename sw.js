@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v229';
+const CACHE_NAME = 'avi-v230';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
@@ -43,10 +43,11 @@ self.addEventListener('fetch', e => {
       }
     })()); return;
   }
-  // avi-core.js: network-first (con respaldo en caché para offline). Es lógica crítica
-  // que DEBE ir sincronizada con index.html; cache-first la dejaba desfasada tras un update
-  // y colgaba el arranque. Network-first evita ese desfase.
-  if(url.origin === self.location.origin && /\/(app-\d-[\w-]+|avi-core|muscle-map|exercise-muscles)\.js$/.test(url.pathname)){
+  // JS de la app + styles.css: network-first (con respaldo en caché para offline). Es lógica/
+  // estilo crítico que DEBE ir sincronizado con index.html; cache-first los dejaba DESFASADOS
+  // tras un update (styles.css se quedaba pegado en la versión vieja → "agrandé el texto y
+  // sigue igual" de Camilo 2026-06-29). Network-first evita ese desfase y refresca al recargar.
+  if(url.origin === self.location.origin && (/\/(app-\d-[\w-]+|avi-core|muscle-map|exercise-muscles)\.js$/.test(url.pathname) || /\/styles\.css$/.test(url.pathname))){
     e.respondWith(
       fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
         .catch(() => caches.match(e.request))
