@@ -1910,7 +1910,7 @@ function _syncRoomBodyClass(){
 // que sin esto la que pinta arriba es la última en el DOM (no la recién abierta) → una
 // habitación abierta sobre otra posterior en el HTML quedaría DETRÁS. Bumpeamos su z al abrir.
 let _roomZSeq=1400;
-function _roomFront(room){ if(room){ if(!room.classList.contains('on'))navOpenLayer(); room.style.zIndex=String(++_roomZSeq); room.classList.add('on'); } }
+function _roomFront(room){ if(room){ if(!room.classList.contains('on')){ navOpenLayer(); room.scrollTop=0; } room.style.zIndex=String(++_roomZSeq); room.classList.add('on'); } }
 function _roomCountUp(el,target,dur){
   target=parseInt(target)||0;
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=target;return;}

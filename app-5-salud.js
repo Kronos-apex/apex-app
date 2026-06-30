@@ -151,6 +151,23 @@ const GOAL_WHY={
 };
 // inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
+// Mapa del objetivo del cliente (client.goal) a la clave de GOAL_WHY, para mostrar
+// el "por qué" educativo también en la estimación automática (sin plan del coach).
+const GOAL_WHY_KEY={'Perder grasa':'cutting','Ganar músculo':'volumen','Fuerza':'volumen','Recomposición':'mantenimiento','Resistencia':'mantenimiento'};
+// Ideas para armar el plato (contexto colombiano) + tips prácticos. Llenan la
+// habitación de Nutrición cuando el cliente solo tiene la estimación automática.
+const NUT_PLATE=[
+  {ic:'🍗',h:'Proteína · en cada comida',t:'Huevo, pollo, carne magra, pescado, atún, lentejas, fríjol, queso campesino, yogurt griego, proteína en polvo.'},
+  {ic:'🍚',h:'Carbohidratos · tu energía',t:'Arroz, papa, yuca, plátano, avena, arepa, pasta, pan integral, fruta. Pon más alrededor de tu entrenamiento.'},
+  {ic:'🥑',h:'Grasas saludables · poco y bueno',t:'Aguacate, aceite de oliva, maní, almendras, semillas, huevo entero. Pequeñas cantidades, mucho valor.'},
+  {ic:'🥗',h:'Vegetales y fibra · libres',t:'Tomate, lechuga, espinaca, brócoli, zanahoria, pepino. Sacian, cuidan tu digestión y casi no suman calorías.'},
+];
+const NUT_TIPS=[
+  '💧 Toma agua a lo largo del día, no toda de golpe. Muchas veces la sed se confunde con hambre.',
+  '🍗 Reparte la proteína en todas tus comidas, no toda en una. Así tu cuerpo la aprovecha mejor para construir músculo.',
+  '🥗 Llena medio plato de vegetales: te sacian, cuidan tu digestión y casi no suman calorías.',
+  '📆 La constancia le gana a la perfección. Un día no define tu progreso; tu semana sí.',
+];
 function openNutriInfo(key){
   const d=NUTRI_INFO[key]; if(!d)return;
   const body=document.getElementById('m-nutri-body'); if(!body)return;
@@ -289,7 +306,7 @@ function openNutritionRoom(clientId){
       body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
     }
     const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
-    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label};
+    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[GOAL_WHY_KEY[c.goal]||'mantenimiento']};
   }
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
@@ -324,7 +341,7 @@ function openNutritionRoom(clientId){
 
   let whyHTML='';
   if(d.why)whyHTML=`<div class="sroom-sec">¿Por qué este plan?</div><div class="exroom-tech" style="border-left:3px solid #10b981"><b>${d.why.title}.</b> ${esc(d.why.text)}</div>`;
-  else if(d.isEst)whyHTML=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
+  if(d.isEst)whyHTML+=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (fórmula Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
 
   let mealsHTML='';
   if(d.examples){
@@ -338,6 +355,25 @@ function openNutritionRoom(clientId){
   let planHTML='';
   if(d.plan)planHTML=`<div class="sroom-sec">Plan</div><div class="exroom-tech" style="white-space:pre-line">📋 ${esc(d.plan)}</div>`;
   if(d.avoid)planHTML+=`<div class="nutr-avoid">⚠️ <b>Evitar:</b> ${esc(d.avoid)}</div>`;
+
+  // Sin ejemplos del coach (estimación automática o plan solo con números) la
+  // habitación quedaba vacía abajo: la llenamos con guía práctica self-serve.
+  let guideHTML='';
+  if(!d.examples){
+    if(d.kcal&&d.prot){
+      const split=nutMealSplit(d.kcal,d.prot,d.meals||4);
+      guideHTML+=`<div class="sroom-sec">Cómo repartir tu día</div>`+split.map(s=>
+        `<div class="nutr-meal" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div class="nutr-meal-h" style="margin:0">${esc(s.name)}</div>
+          <div class="nutr-meal-t" style="white-space:nowrap;color:var(--t2)"><b style="color:var(--t1)">${s.kcal}</b> kcal · <b style="color:#3a86c8">${s.prot}g</b> prot</div>
+        </div>`).join('')+
+        `<div class="exroom-note" style="margin-top:9px">Guía aproximada. La proteína va repartida en partes iguales: tu cuerpo la aprovecha mejor cuando llega a cada comida, no toda de una.</div>`;
+    }
+    guideHTML+=`<div class="sroom-sec">Ideas para armar tu plato</div>`+NUT_PLATE.map(p=>
+      `<div class="nutr-meal"><div class="nutr-meal-h">${p.ic} ${esc(p.h)}</div><div class="nutr-meal-t">${esc(p.t)}</div></div>`).join('');
+    guideHTML+=`<div class="sroom-sec">Para que funcione</div><div class="exroom-tech" style="line-height:1.7">`+
+      NUT_TIPS.map(t=>esc(t)).join('<br><br>')+`</div>`;
+  }
 
   body.innerHTML=`
     <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,#10b98118,#10b98108);border-color:#10b98144">
@@ -353,6 +389,7 @@ function openNutritionRoom(clientId){
     ${whyHTML}
     ${mealsHTML}
     ${planHTML}
+    ${guideHTML}
     <div style="height:30px"></div>`;
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
 }

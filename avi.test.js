@@ -13,6 +13,7 @@ const {
   getSexCode,
   calcMacrosSugeridos,
   nutritionEstimate,
+  nutMealSplit,
   migrateRoutineIds,
   shouldPostPush,
   delClientGuard,
@@ -2051,6 +2052,25 @@ test('nutritionEstimate: weightKg pasado manda sobre client.weight', () => {
 test('nutritionEstimate: faltan datos → null', () => {
   assert.strictEqual(nutritionEstimate({ weight: 80, height: 180 }), null); // sin edad/sexo
   assert.strictEqual(nutritionEstimate(null), null);
+});
+
+section('Reparto del día en comidas (nutMealSplit)');
+
+test('nutMealSplit: default 4 comidas, kcal reparten ~100%, proteína en partes iguales', () => {
+  const s = nutMealSplit(2000, 160);
+  assert.strictEqual(s.length, 4);
+  assert.strictEqual(s.reduce((t, m) => t + m.kcal, 0), 2000); // pesos suman 1.0 → sin redondeo perdido
+  assert.ok(s.every(m => m.prot === 40)); // 160/4 igual en todas
+});
+test('nutMealSplit: respeta el nº de comidas pedido y lo acota a 2–6', () => {
+  assert.strictEqual(nutMealSplit(2000, 160, 3).length, 3);
+  assert.strictEqual(nutMealSplit(2000, 160, 6).length, 6);
+  assert.strictEqual(nutMealSplit(2000, 160, 9).length, 6); // clamp arriba
+  assert.strictEqual(nutMealSplit(2000, 160, 1).length, 2); // clamp abajo
+});
+test('nutMealSplit: sin kcal/proteína → ceros sin romper', () => {
+  const s = nutMealSplit(0, 0, 4);
+  assert.ok(s.every(m => m.kcal === 0 && m.prot === 0));
 });
 
 // ══════════════════════════════════════════════════════

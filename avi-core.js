@@ -1449,6 +1449,33 @@ function nutritionEstimate(client, weightKg) {
   return { tmb, tdee, af, kcalObj: t.kcalObj, label: t.label, deficit: t.deficit, macros, water };
 }
 
+// ── Reparto del día en comidas: distribuye las kcal objetivo por comida según
+// pesos típicos y reparte la proteína EN PARTES IGUALES (mejor síntesis cuando
+// se distribuye en todas las tomas). n = nº de comidas (2–6; default 4). Pura:
+// la usa la habitación de Nutrición para mostrar "cómo repartir tu día" cuando
+// el cliente solo tiene la estimación automática (sin ejemplos del coach).
+function nutMealSplit(kcal, protG, n) {
+  kcal = parseFloat(kcal) || 0; protG = parseFloat(protG) || 0;
+  n = Math.max(2, Math.min(6, parseInt(n) || 4));
+  const NAMES = {
+    2: ['Comida principal', 'Segunda comida'],
+    3: ['Desayuno', 'Almuerzo', 'Cena'],
+    4: ['Desayuno', 'Almuerzo', 'Snack', 'Cena'],
+    5: ['Desayuno', 'Snack mañana', 'Almuerzo', 'Snack tarde', 'Cena'],
+    6: ['Desayuno', 'Snack mañana', 'Almuerzo', 'Snack tarde', 'Cena', 'Antes de dormir'],
+  };
+  const WEIGHTS = {
+    2: [0.55, 0.45],
+    3: [0.30, 0.40, 0.30],
+    4: [0.30, 0.35, 0.10, 0.25],
+    5: [0.25, 0.10, 0.30, 0.10, 0.25],
+    6: [0.22, 0.10, 0.28, 0.10, 0.22, 0.08],
+  };
+  const names = NAMES[n], w = WEIGHTS[n];
+  const protEach = protG ? Math.round(protG / n) : 0;
+  return names.map((name, i) => ({ name, kcal: kcal ? Math.round(kcal * w[i]) : 0, prot: protEach }));
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // GAMIFICACIÓN — nivel permanente + descuento del mes (lo ve el coach)
 // ──────────────────────────────────────────────────────────────────────
@@ -1642,6 +1669,7 @@ if (typeof module !== 'undefined' && module.exports) {
     kcalTargetFor,
     calcMacrosFromKcal,
     nutritionEstimate,
+    nutMealSplit,
     getSexCode,
     calcMacrosSugeridos,
     migrateRoutineIds,
