@@ -84,11 +84,21 @@ Deno.serve(async (req) => {
       user_metadata: { name: (profile as any)?.name || "" },
     });
     if (cErr || !created?.user) {
-      // ¿ya existe? buscar por correo y actualizar la clave (idempotente).
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      // ¿ya existe? buscar por correo (perPage alto para no fallar con muchas cuentas).
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       const ex = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
       if (!ex) return json({ error: "create_failed", detail: cErr?.message || "" }, 500);
       userId = ex.id;
+      // GUARD (#D3 auditoría 2026-06-30): ese correo YA pertenece a una cuenta. Solo es seguro
+      // reescribir clave+perfil si es un asesorado de ESTE coach (re-provisión de acceso). Si es
+      // de otro coach, un coach, o una cuenta independiente, reescribirla pisaría a un usuario
+      // ajeno (le cambia la clave y le borra sus rutinas) → rechazar.
+      const { data: exRow } = await admin.from("user_data").select("coach_id,role").eq("user_id", userId).maybeSingle();
+      if (exRow && (exRow.role === "coach" || exRow.coach_id !== COACH_UID)) {
+        // 200 con ok:false a propósito: así supabase-js expone el cuerpo y el cliente puede
+        // leer 'email_taken' para NO encolar el alta a reintento infinito (es permanente).
+        return json({ ok: false, error: "email_taken", detail: "Ese correo ya pertenece a otra cuenta" }, 200);
+      }
       await admin.auth.admin.updateUserById(userId, { password, email_confirm: true });
     } else {
       userId = created.user.id;

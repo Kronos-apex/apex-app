@@ -110,23 +110,31 @@ function _isAuthId(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 // Sube su perfil + rutina ACTUAL tal cual (no regenera). Re-vincula el cliente local a su
 // user_id (así coincide con su fila en la nube y futuras ediciones van por updateClientRow).
 // Devuelve el nuevo user_id o null si no se provisionó. Camilo 2026-06-29.
+// Devuelve: user_id (string) si se provisionó · null si falló de forma TRANSITORIA (sin red /
+// auth no lista / 5xx) → la cola lo reintenta · false si el rechazo es PERMANENTE (correo en uso,
+// datos inválidos, no-coach) → NO reintentar. Ver _addPending/_flushPendingClients (#8/#D3).
 async function _provisionClientAccount(client, rawPass){
-  if(!AUTH_MODE || !AUTH.ready()) return null;   // solo en modo auth real (no legacy)
-  if(!client || !client.email || !rawPass) return null; // sin credenciales no hay cuenta
-  if(_isAuthId(client.id)) return null;          // ya vinculado a una cuenta
+  if(!AUTH_MODE || !AUTH.ready()) return null;   // transitorio: auth aún no lista
+  if(!client || !client.email || !rawPass) return false; // permanente: faltan credenciales
+  if(_isAuthId(client.id)) return false;         // permanente: ya vinculado a una cuenta
   const c=AUTH.client(); if(!c) return null;
   const row=clientToRow(client,{});              // profile (escalares) + routines (sin id/password)
   let data,error;
   try{ ({data,error}=await c.functions.invoke('coach-create-client',{body:{
     email:client.email, password:rawPass, profile:row.profile, routines:row.routines
   }})); }catch(e){ error=e; }
-  if(error || !data || !data.ok || !data.user_id){
-    toast('⚠️ No se pudo crear el acceso: '+((data&&data.error)||(error&&error.message)||'error de red'));
-    return null;
+  if(data && data.ok && data.user_id){
+    const i=DB.clients.findIndex(x=>x.id===client.id);
+    if(i!==-1){ DB.clients[i].id=data.user_id; sv('ax_c',DB.clients); }
+    return data.user_id;
   }
-  const i=DB.clients.findIndex(x=>x.id===client.id);
-  if(i!==-1){ DB.clients[i].id=data.user_id; sv('ax_c',DB.clients); }
-  return data.user_id;
+  // Rechazo PERMANENTE (la edge respondió con un motivo de negocio) → no reintentar.
+  const code=(data&&data.error)||'';
+  const PERMA={email_taken:'ese correo ya pertenece a otra cuenta',forbidden_not_coach:'no autorizado',invalid_email:'correo inválido',weak_password:'contraseña muy corta'};
+  if(PERMA[code]){ toast('⚠️ No se pudo crear el acceso: '+PERMA[code]); return false; }
+  // Transitorio (sin red / 5xx / función caída) → se reintenta al reconectar.
+  toast('⚠️ No se pudo crear el acceso ahora: '+((error&&error.message)||code||'error de red'));
+  return null;
 }
 // Edición de un asesorado YA provisionado (su id es uuid): cambiar su CLAVE y/o CORREO de
 // acceso real (Supabase Auth) vía la edge admin en modo update (por user_id). Sin esto era un
@@ -204,8 +212,10 @@ async function saveClient(){
   // porque el form creaba un cliente LOCAL sin cuenta de acceso).
   const _target=DB.clients.find(x=>x.id===(CUR.editClientId||clientId));
   if(_target && AUTH_MODE && _target.email && pass && !_isAuthId(_target.id)){
-    const _newId=await _provisionClientAccount(_target,pass);
-    if(_newId){ toast(`🔑 ${_target.name} ya puede ingresar con ${_target.email}`); if(CUR.editClientId)CUR.editClientId=_newId; }
+    const _pr=await _provisionClientAccount(_target,pass);
+    if(_pr){ toast(`🔑 ${_target.name} ya puede ingresar con ${_target.email}`); if(CUR.editClientId)CUR.editClientId=_pr; _removePending(_target); }
+    else if(_pr===null){ _addPending(_target,pass); toast('📴 Guardé el alta; crearé el acceso de '+_target.name+' al reconectar'); } // #8: transitorio, no se pierde
+    // _pr===false: rechazo permanente (correo en uso, etc.), el error ya se avisó; no encolar
   }
   // Asesorado YA con cuenta de acceso (uuid): aplicar a Supabase Auth los cambios de CLAVE
   // y/o CORREO. Antes no surtían efecto (bug #3 auditoría 2026-06-30).
@@ -438,6 +448,63 @@ let _heavyLoaded={};
 function _coachCacheKey(){ return 'ax_coachcache_'+(_authUid||'x'); }
 function _cacheCoachClients(rows){ try{ localStorage.setItem(_coachCacheKey(),JSON.stringify(rows)); }catch(e){} }
 function _readCoachCache(){ try{ const r=localStorage.getItem(_coachCacheKey()); return r?JSON.parse(r):null; }catch(e){ return null; } }
+
+// ── Cola de ALTAS PENDIENTES (#8 auditoría 2026-06-30) ──────────────────────────────────────
+// Si el coach crea un asesorado SIN conexión (o la edge coach-create-client falla), su cuenta
+// de acceso no se provisiona y antes el cliente quedaba SOLO en memoria → al recargar
+// _hydrateCoachFromRows (que reemplaza DB.clients con las filas de la nube) lo borraba. Lo
+// guardamos en una cola local por coach y: (1) lo re-inyectamos en DB.clients al hidratar (no se
+// pierde), (2) reintentamos provisionar al reconectar y al cargar el panel. Guarda la clave en
+// claro porque la edge la necesita para crear la cuenta; es el dispositivo del coach y la entrada
+// se BORRA en cuanto se provisiona (self-healing por email si quedó alguna huérfana).
+function _pendingKey(){ return 'ax_coachpending_'+(_authUid||'x'); }
+function _readPending(){ try{ const r=localStorage.getItem(_pendingKey()); return r?JSON.parse(r):[]; }catch(e){ return []; } }
+function _writePending(list){ try{ localStorage.setItem(_pendingKey(),JSON.stringify(list||[])); }catch(e){} }
+function _addPending(client,rawPass){
+  if(!client)return;
+  const em=(client.email||'').toLowerCase();
+  const list=_readPending().filter(p=>p.client.id!==client.id && (p.client.email||'').toLowerCase()!==em);
+  list.push({client:{...client}, pass:rawPass, ts:Date.now()});
+  _writePending(list);
+}
+function _removePending(client){
+  if(!client)return;
+  const id=client.id, em=(client.email||'').toLowerCase();
+  _writePending(_readPending().filter(p=> p.client.id!==id && (p.client.email||'').toLowerCase()!==em));
+}
+// Re-inyecta en DB.clients las altas pendientes que aún no están (por id o email) → sobreviven
+// a la recarga aunque la nube todavía no las tenga. Llamado dentro de _hydrateCoachFromRows.
+function _mergePendingIntoDB(){
+  const pend=_readPending(); if(!pend.length)return;
+  pend.forEach(p=>{
+    const c=p.client; if(!c)return;
+    const em=(c.email||'').toLowerCase();
+    const exists=(DB.clients||[]).some(x=>x.id===c.id||(em&&(x.email||'').toLowerCase()===em));
+    if(exists)return;
+    DB.clients.push(c);
+    const id=c.id;
+    DB.history[id]=DB.history[id]||[]; DB.msgs[id]=DB.msgs[id]||[];
+    DB.bodyweight[id]=DB.bodyweight[id]||[]; DB.prs[id]=DB.prs[id]||{};
+    DB.medidas[id]=DB.medidas[id]||[]; DB.nutrition[id]=DB.nutrition[id]||{}; DB.photos[id]=DB.photos[id]||[];
+  });
+}
+// Reintenta provisionar las altas pendientes (al reconectar / al cargar el panel). Idempotente:
+// si una ya quedó con cuenta real (uuid), solo limpia la cola.
+async function _flushPendingClients(){
+  if(!AUTH_MODE||AUTH_ROLE!=='coach'||!AUTH.ready())return;
+  const list=_readPending(); if(!list.length)return;
+  for(const p of list){
+    const em=(p.client.email||'').toLowerCase();
+    const inDb=(DB.clients||[]).find(c=>c.id===p.client.id||(em&&(c.email||'').toLowerCase()===em));
+    if(inDb && _isAuthId(inDb.id)){ _removePending(p.client); continue; } // ya provisionado
+    const target=inDb||p.client;
+    // r=string → provisionado; r=false → rechazo permanente (correo en uso): se saca de la cola
+    // para no reintentar en vano; r=null → transitorio: sigue en cola.
+    try{ const r=await _provisionClientAccount(target,p.pass); if(r||r===false) _removePending(p.client); }
+    catch(e){ warn('AVI: reintento de alta pendiente falló (sigue en cola):',e&&e.message); }
+  }
+}
+window.addEventListener('online',()=>{ _flushPendingClients(); });
 function _hydrateCoachFromRows(rows){
   DB.clients=rows.map(rowToClient);
   DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
@@ -451,6 +518,7 @@ function _hydrateCoachFromRows(rows){
     // Pesadas: vacías hasta abrir el cliente (_ensureClientHeavy las llena).
     DB.prs[id]={};DB.medidas[id]=[];DB.nutrition[id]={};DB.photos[id]=[];
   });
+  _mergePendingIntoDB(); // #8: no perder altas offline aún no provisionadas
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
 }
 async function _loadCoachClientsIntoDB(){
@@ -464,6 +532,7 @@ async function _loadCoachClientsIntoDB(){
   }
   _cacheCoachClients(rows); // refresca el respaldo local de la lista
   _hydrateCoachFromRows(rows);
+  _flushPendingClients(); // #8: ya hay red → reintenta provisionar altas que quedaron en cola
 }
 // Trae las colecciones pesadas de un cliente la primera vez que el coach abre su detalle.
 // No-op en modo legacy (blob): allí DB ya tiene todo. Idempotente por _heavyLoaded.

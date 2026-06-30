@@ -1531,6 +1531,16 @@ function wfRate(n){
   document.querySelectorAll('#wf-faces .wf-face').forEach((b,i)=>b.classList.toggle('sel',WF_FEELINGS[i].v===n));
   const lbl=document.getElementById('wf-feeling-lbl');if(lbl)lbl.textContent=`¡Gracias! · ${feelingLabel(n)}`;
 }
+// MET aproximado por modalidad (para estimar calorías quemadas). Antes era 5.5 fijo para TODA
+// la sesión → subestimaba cardio/HIIT y sobreestimaba isométricos. Ahora se promedia según la
+// modalidad real de los ejercicios. Sigue siendo una estimación. Auditoría 2026-06-30 (menor).
+function _trackMET(track){ return ({cardio:7,hiit:8,peso_reps:5,reps:4,tiempo:4})[track]||5.5; }
+function _sessionMET(routine){
+  const exs=(routine&&routine.exercises)||[];
+  if(!exs.length)return 5.5;
+  let sum=0; exs.forEach(e=>{ sum+=_trackMET(exTrack(e)); });
+  return sum/exs.length;
+}
 function showWorkoutFinish(routine,stats){
   if(!routine)return;
   const key=routine.id+'|'+new Date().toDateString();
@@ -1549,7 +1559,7 @@ function showWorkoutFinish(routine,stats){
   if(entry&&entry.startedAt){
     durationSec=Math.max(60,Math.min(4*3600,Math.round((Date.now()-Date.parse(entry.startedAt))/1000)));
     const w=parseFloat(c&&c.weight)||70;            // kg; fallback 70 si no hay peso
-    kcal=Math.round(5.5*w*(durationSec/3600));       // MET 5.5 ≈ entrenamiento de fuerza
+    kcal=Math.round(_sessionMET(routine)*w*(durationSec/3600)); // MET según la modalidad de la sesión
     entry.durationSec=durationSec; entry.kcal=kcal;
     // Récords logrados este día → se guardan en la sesión para mostrarlos luego en
     // la "habitación" de detalle (el historial viejo no los tiene; se omiten sin romper).
