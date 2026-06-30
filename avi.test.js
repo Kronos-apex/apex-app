@@ -1346,6 +1346,9 @@ test('applyMood "dolor": trabajo sin carga, descanso mayor y avisa al coach', ()
   assert.strictEqual(out.restSec, 80);              // 60 + 20
   const loaded = out.exercises.filter(e => e.muscle !== 'cardio' && e.muscle !== 'core');
   assert.ok(loaded.every(e => e.bodyweightMode === true && e.sets === 2));
+  // #6: la modalidad pasa a 'reps' → la UI NO pide KG ni sugiere peso ni permite dropset
+  // (todo eso está gateado por track==='peso_reps'). Sin esto el "sin carga" era invisible.
+  assert.ok(loaded.every(e => exTrack(e) === 'reps'), 'dolor debe dejar la modalidad sin carga (reps)');
 });
 
 test('MOOD_STATES: "periodo" es el único femaleOnly; ids únicos', () => {

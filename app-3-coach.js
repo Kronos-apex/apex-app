@@ -228,7 +228,7 @@ function _autoGenerateWeek(c){
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
   const inAdapt=isInAdaptation(c,DB.history,new Date());
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
-  const _waist=_med.length?_med[_med.length-1].cintura:null;
+  const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
   const _p=genPrefs(c);
   const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
@@ -830,8 +830,11 @@ function renderValoracion(c){
   const tdee = calcTDEE(tmb, af);
 
   // ── RCT e ICC (reemplaza peso ideal y BMI) ──
+  // Las medidas se guardan con unshift (la más NUEVA en índice 0). Antes se leía [length-1]
+  // = la más VIEJA → RCT/ICC/getRctLabel/getGoalMsg invertidos (podía decir "riesgo elevado"
+  // cuando el asesorado mejoró). Bug #4 auditoría 2026-06-30.
   const latestMed = (DB.medidas && DB.medidas[c.id] && DB.medidas[c.id].length)
-    ? DB.medidas[c.id][DB.medidas[c.id].length - 1]
+    ? DB.medidas[c.id][0]
     : {};
   const cinturaCm = latestMed.cintura ? parseFloat(latestMed.cintura) : null;
   const caderaCm  = latestMed.cadera  ? parseFloat(latestMed.cadera)  : null;
@@ -1027,7 +1030,7 @@ function genWithStyle(styleId){
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
   const inAdapt=isInAdaptation(c,DB.history,new Date());
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
-  const _waist=_med.length?_med[_med.length-1].cintura:null;
+  const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
   const _p=genPrefs(c);
   const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer,deload:!!CUR.genDeload});

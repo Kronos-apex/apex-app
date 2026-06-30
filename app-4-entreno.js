@@ -1121,38 +1121,58 @@ function checkAndResetSession(routine){
 // `log_` NUNCA se borraban → crecían sin límite (riesgo de llenar localStorage). Auditoría 2026-06-21.
 function _sweepOrphanSessionKeys(routine){
   try{
-    const valid=new Set();
+    const valid=new Set();      // 'ei_si' / 'ei_dSi' / 'ei_WARM' vigentes (por-serie)
+    const validEi=new Set();    // 'ei' vigentes (por-ejercicio: lastre_/wshow_)
     (routine.exercises||[]).forEach((ex,ei)=>{
+      validEi.add(String(ei));
       const sets=parseInt(ex.sets)||3;
       for(let si=0;si<sets;si++){ valid.add(ei+'_'+si); valid.add(ei+'_'+dropTok(si)); }
       valid.add(ei+'_'+WARM_SI);
     });
-    const dp='done_'+routine.id+'_', lp='log_'+routine.id+'_';
+    const rid=routine.id;
+    const dp='done_'+rid+'_', drp='drop_'+rid+'_', lp='log_'+rid+'_';
+    const exP=_SK_EX.map(kind=>kind+'_'+rid+'_'); // ['lastre_<rid>_','wshow_<rid>_']
     Object.keys(localStorage).forEach(k=>{
-      if(k.indexOf(dp)===0){ const t=k.slice(dp.length); if(!valid.has(t)) localStorage.removeItem(k); }
-      else if(k.indexOf(lp)===0){ const rest=k.slice(lp.length); const i=rest.lastIndexOf('_'); const t=i>0?rest.slice(0,i):rest; if(!valid.has(t)) localStorage.removeItem(k); }
+      // por-serie con suffix 'ei_si' (done_/drop_): mismo formato → misma comprobación
+      if(k.indexOf(dp)===0){ const t=k.slice(dp.length); if(!valid.has(t)) localStorage.removeItem(k); return; }
+      if(k.indexOf(drp)===0){ const t=k.slice(drp.length); if(!valid.has(t)) localStorage.removeItem(k); return; }
+      // log_ con suffix 'ei_si_field' → recortar el último '_field'
+      if(k.indexOf(lp)===0){ const rest=k.slice(lp.length); const i=rest.lastIndexOf('_'); const t=i>0?rest.slice(0,i):rest; if(!valid.has(t)) localStorage.removeItem(k); return; }
+      // por-ejercicio con suffix 'ei' (lastre_/wshow_)
+      for(const p of exP){ if(k.indexOf(p)===0){ const t=k.slice(p.length); if(!validEi.has(t)) localStorage.removeItem(k); return; } }
     });
   }catch(e){ warn('AVI: barrido de claves de sesión falló (no bloquea):',e&&e.message); }
 }
 
 // ══════════ REORDENAR / SUSTITUIR EJERCICIOS (usuario, en "Hoy") ══════════
-// Los logs de serie se indexan por (routineId, ei). Al reordenar movemos TAMBIÉN sus
-// claves log_/done_ para que el peso y el ✓ sigan al ejercicio (no al índice). Al
-// sustituir las limpiamos (es otro ejercicio). Las ediciones viven en una COPIA de
-// trabajo en memoria (CUR.todayWorking); el plan guardado no se toca hasta que el usuario
-// confirme "guardar para la próxima" al finalizar. Ver feedback_avi_practicidad_usuario.
+// Las claves de sesión se indexan por (routineId, ei). Al reordenar movemos TAMBIÉN todas
+// para que sigan al ejercicio (no al índice): por-serie log_/done_/drop_ (suffix `ei_si…`)
+// y por-ejercicio lastre_/wshow_ (clave exacta, sin si). Antes solo se movían log_/done_ →
+// el dropset/lastre/calentamiento quedaba pegado al índice viejo: fila de dropset fantasma,
+// peso del dropset perdido, lastre/🔥 en el ejercicio equivocado (bug #5 auditoría 2026-06-30).
+// Al sustituir las limpiamos (es otro ejercicio). Las ediciones viven en una COPIA de trabajo
+// en memoria (CUR.todayWorking); el plan guardado no se toca hasta confirmar al finalizar.
+// Ver feedback_avi_practicidad_usuario.
+const _SK_SET=['log','done','drop'];   // por-serie: clave `${kind}_${rid}_${ei}_${si}…`
+const _SK_EX=['lastre','wshow'];        // por-ejercicio: clave exacta `${kind}_${rid}_${ei}`
 function _swapSessionKeys(rid,a,b){
-  const grab=idx=>{ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`,out=[];
-    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0)out.push(['log',k.slice(lp.length),localStorage.getItem(k)]);
-      else if(k.indexOf(dp)===0)out.push(['done',k.slice(dp.length),localStorage.getItem(k)]); }); return out; };
+  const grab=idx=>{ const out=[];
+    _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`;
+      Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)out.push([kind,k.slice(p.length),localStorage.getItem(k),false]); }); });
+    _SK_EX.forEach(kind=>{ const ek=`${kind}_${rid}_${idx}`; const v=localStorage.getItem(ek); if(v!=null)out.push([kind,'',v,true]); });
+    return out; };
   const A=grab(a),B=grab(b);
-  [a,b].forEach(idx=>{ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`;
-    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0||k.indexOf(dp)===0)localStorage.removeItem(k); }); });
-  const put=(es,idx)=>es.forEach(([kind,suf,val])=>localStorage.setItem(`${kind}_${rid}_${idx}_${suf}`,val));
+  const wipe=idx=>{
+    _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`; Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)localStorage.removeItem(k); }); });
+    _SK_EX.forEach(kind=>localStorage.removeItem(`${kind}_${rid}_${idx}`)); };
+  wipe(a); wipe(b);
+  const put=(es,idx)=>es.forEach(([kind,suf,val,isEx])=>localStorage.setItem(isEx?`${kind}_${rid}_${idx}`:`${kind}_${rid}_${idx}_${suf}`,val));
   put(A,b); put(B,a);
 }
-function _clearSessionKeys(rid,idx){ const lp=`log_${rid}_${idx}_`,dp=`done_${rid}_${idx}_`;
-  Object.keys(localStorage).forEach(k=>{ if(k.indexOf(lp)===0||k.indexOf(dp)===0)localStorage.removeItem(k); }); }
+function _clearSessionKeys(rid,idx){
+  _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`; Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)localStorage.removeItem(k); }); });
+  _SK_EX.forEach(kind=>localStorage.removeItem(`${kind}_${rid}_${idx}`));
+}
 // Copia de trabajo del día (se crea al primer cambio; ligada a la rutina base por id).
 function _todayWork(){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return null;

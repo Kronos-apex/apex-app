@@ -1203,6 +1203,11 @@ function _cardioBlock(name, mins) {
 function _demoteToBodyweight(e) {
   e.bodyweightMode = true;
   e.loadHint = 'Sin peso — solo tu cuerpo';
+  // Forzar la modalidad a 'reps' (peso corporal): exTrack devuelve ex.track si existe, y TODO
+  // lo de carga (input KG, peso sugerido, calentamiento 🔥, swipe→dropset) está gateado por
+  // track==='peso_reps'. Antes solo se marcaba bodyweightMode (que ningún render lee) → seguía
+  // pidiendo KG y podía registrar un PR de peso en un día sin carga (bug #6 auditoría 2026-06-30).
+  e.track = 'reps';
   e.reps = Math.max(parseInt(e.reps) || 12, 15);
   e.sets = Math.min(parseInt(e.sets) || 3, 3);
 }
