@@ -988,6 +988,9 @@ async function tryAutoLogin(){
 // ══════════════════════ COACH INIT ══════════════════════
 function initCoach(){migrateExercises();dedupeExercises();
   navReset(null); // botón atrás: limpia el stack del cliente al entrar como coach
+  // curTab = el panel que queda visible (Inicio en login fresco, o el último al volver de
+  // "Mi entrenamiento") → desde ahí el atrás recorre los paneles del coach paso a paso.
+  const _onP=document.querySelector('#s-coach .panel.on'); AVINAV.curTab=(_onP&&_onP.id)||'p-home';
   const h=new Date().getHours();
   document.getElementById('greeting').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches')+' 👋';
   document.getElementById('sb-nm').textContent=getCoachName();
@@ -1013,7 +1016,7 @@ function _aviHandleBack(){
   // 3) Coach en detalle de un asesorado → volver a la lista.
   const detail=document.getElementById('p-detail');
   if(detail&&detail.classList.contains('on')){
-    gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');
+    gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
     const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
     history.pushState({aviGuard:1},''); return;
   }
@@ -1068,7 +1071,41 @@ function _aviCloseTopOverlay(){
   return false;
 }
 
-function gp(id,sidebarEl,pageTitle){
+// Botón atrás (coach): metadata de cada panel para reconstruir la navegación al retroceder.
+// nav = índice en la barra inferior móvil (.cbnav-item); -1 = sin entrada en esa barra.
+const _COACH_PANELS={
+  'p-home':{sbi:'sbi-home',title:'Inicio',nav:0},
+  'p-clients':{sbi:'sbi-clients',title:'Asesorados',nav:1},
+  'p-progress':{sbi:'sbi-progress',title:'Cargas',nav:2},
+  'p-exercises':{sbi:'sbi-exercises',title:'Ejercicios',nav:3},
+  'p-templates':{sbi:'sbi-templates',title:'Plantillas',nav:-1},
+  'p-msgs':{sbi:'sbi-msgs',title:'Mensajes',nav:4},
+  'p-detail':{sbi:'sbi-clients',title:'Detalle',nav:1},
+};
+// Restaura un panel previo del coach SIN registrar (lo usa el "undo" del stack del botón atrás).
+// p-detail recrea el detalle del asesorado que estaba abierto; si ya no existe (borrado) cae a la lista.
+function _coachRestore(snap){
+  if(snap.id==='p-detail'){
+    const exists=snap.cid&&(DB.clients||[]).some(x=>x.id===snap.cid);
+    if(exists&&typeof openDetail==='function'){ openDetail(snap.cid,true); return; }
+    gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
+    const it=document.querySelectorAll('.cbnav-item'); if(it[1])setBottomNav(it[1]);
+    return;
+  }
+  const m=_COACH_PANELS[snap.id]; if(!m)return;
+  gp(snap.id,document.getElementById(m.sbi),m.title,true);
+  const items=document.querySelectorAll('.cbnav-item'); if(m.nav>=0&&items[m.nav])setBottomNav(items[m.nav]);
+  if(snap.id==='p-progress'&&typeof renderProgressPanel==='function')renderProgressPanel();
+}
+function gp(id,sidebarEl,pageTitle,_silent){
+  // Botón atrás (coach): registrar el salto de panel SOLO en navegación REAL hacia adelante.
+  // _silent (undo del stack + navegaciones "hacia atrás") solo sincroniza la pestaña sin registrar.
+  if(_silent){ AVINAV.curTab=id; }
+  else if(id!==AVINAV.curTab){
+    const prev=AVINAV.curTab;
+    if(prev&&_COACH_PANELS[prev]){ const snap={id:prev,cid:CUR.clientId}; navRecord(function(){ _coachRestore(snap); }); }
+    AVINAV.curTab=id;
+  }
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');

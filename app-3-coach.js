@@ -719,7 +719,7 @@ function setClientPlan(cid,plan){
 // Compat: alias del botón anterior (Premium = con coach).
 function convertToPremium(cid){ setClientPlan(cid,'coach'); }
 
-async function openDetail(id){
+async function openDetail(id,_silent){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
   const av=document.getElementById('d-av');
   if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
@@ -744,7 +744,7 @@ async function openDetail(id){
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
-  gp('p-detail',null,'Detalle');document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
+  gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
   document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on');
   // El panel YA se mostró con lo que había en memoria (perfil/rutinas/historial/mensajes).
   // Las colecciones pesadas (PRs/medidas/nutrición/fotos) se cargan DESPUÉS, sin congelar la
@@ -895,7 +895,7 @@ function delClient(){
   if(DB.nutrition)delete DB.nutrition[CUR.clientId];
   if(DB.medidas)delete DB.medidas[CUR.clientId];
   if(DB.photos)delete DB.photos[CUR.clientId];
-  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});sv('ax_nut',DB.nutrition||{});sv('ax_med',DB.medidas||{});sv('ax_photos',DB.photos||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados');toast(`🗑️ ${c.name} eliminado`);
+  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});sv('ax_nut',DB.nutrition||{});sv('ax_med',DB.medidas||{});sv('ax_photos',DB.photos||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);toast(`🗑️ ${c.name} eliminado`);
 }
 
 // ══════════════════════ ROUTINES ══════════════════════
