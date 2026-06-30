@@ -1120,29 +1120,32 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 }
 
 /* Accesibilidad: TAMAÑO DE TEXTO por dispositivo (ajuste fijo en el Perfil, NO pinch-zoom).
-   La tipografía está en px fijos → se escala el CONTENIDO con `zoom` (estandarizado en
-   Chrome/WebView ≥128: afecta el layout, por eso escala también el ANCHO). En TODOS los
-   contenedores de pantalla completa anclados a la izquierda — .cnp (cliente), .panel (coach),
-   .gm-body (guiado) — se compensa con width:calc(100%/zoom) + transform-origin:left top para
-   que llenen EXACTO: sin desbordar (Perfil del coach se salía: correo cortado, botones fuera de
-   la tarjeta) ni dejar hueco (la rutina se encogía a la izquierda). Antes la compensación estaba
-   SOLO en .cnp → comportamiento inconsistente. Footers/tabs anclados con position:fixed.
-   Ver setTextSize()/initTextSize (ax_textsize). Reportado por Camilo 2026-06-29. */
-html[data-fs="lg"] .cnp, html[data-fs="lg"] #s-coach .panel, html[data-fs="lg"] .gm-body{ zoom:1.18; width:calc(100%/1.18); transform-origin:left top; }
-html[data-fs="xl"] .cnp, html[data-fs="xl"] #s-coach .panel, html[data-fs="xl"] .gm-body{ zoom:1.40; width:calc(100%/1.40); transform-origin:left top; }
+   La tipografía está en px fijos → se escala el CONTENIDO con `zoom`. CLAVE: el `zoom` se
+   comporta DISTINTO según el motor web, y ningún CSS fijo sirve para los dos:
+   - ESTANDARIZADO (Chrome/WebView ≥128, escritorio): `width:100% + zoom` YA llena exacto →
+     compensar con width:calc(100%/zoom) deja un HUECO (encoge al ~71%). NO compensar.
+   - LEGACY (WebViews viejos / Huawei sin Google): `zoom` escala también el ANCHO →
+     `width:100% + zoom` DESBORDA y corta a la derecha → HAY que compensar con width:calc(100%/zoom).
+   Por eso detectamos el motor en runtime (detectZoomWidthScaling en app-1-infra.js) y marcamos
+   `html[data-zoomw="scale"]` SOLO en los legacy. El `zoom` (con sus factores) va SIEMPRE; la
+   compensación de ancho/alto va SOLO bajo [data-zoomw="scale"]. Verificado: headless escritorio
+   (std → comp dejaba 50% de hueco) + capturas Huawei (sin comp desbordaba). Camilo 2026-06-29. */
+html[data-fs="lg"] .cnp, html[data-fs="lg"] #s-coach .panel, html[data-fs="lg"] .gm-body{ zoom:1.18; }
+html[data-fs="xl"] .cnp, html[data-fs="xl"] #s-coach .panel, html[data-fs="xl"] .gm-body{ zoom:1.40; }
+html[data-zoomw="scale"][data-fs="lg"] .cnp, html[data-zoomw="scale"][data-fs="lg"] #s-coach .panel, html[data-zoomw="scale"][data-fs="lg"] .gm-body{ width:calc(100%/1.18); transform-origin:left top; }
+html[data-zoomw="scale"][data-fs="xl"] .cnp, html[data-zoomw="scale"][data-fs="xl"] #s-coach .panel, html[data-zoomw="scale"][data-fs="xl"] .gm-body{ width:calc(100%/1.40); transform-origin:left top; }
 html[data-fs="lg"] .gm-body{ padding-bottom:86px; }
 html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
 html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
-/* Modales: `zoom` escala también el ANCHO → la tarjeta se desbordaba (campos de contraseña
-   cortados a la derecha, captura de Camilo 2026-06-29). Misma compensación que .cnp:
-   width:calc(100%/zoom) + transform-origin:left top + max-height:calc(/zoom). Como zoom escala
-   desde la esquina sup-izq y rompe el centrado del flex, en texto-grande el backdrop ancla la
-   tarjeta arriba-izquierda (ya llena el ancho tras escalar, así que el centrado es indiferente). */
-html[data-fs="lg"] .mdbg.on, html[data-fs="xl"] .mdbg.on{ align-items:flex-start; justify-content:flex-start; }
-html[data-fs="lg"] .md{ zoom:1.18; width:calc(100%/1.18); transform-origin:left top; max-height:calc(90vh/1.18); }
-html[data-fs="xl"] .md{ zoom:1.40; width:calc(100%/1.40); transform-origin:left top; max-height:calc(90vh/1.40); }
+/* Modales: el `zoom` (factor) va siempre; la compensación de ancho + el anclaje del backdrop
+   arriba-izquierda (zoom rompe el centrado del flex en legacy) van SOLO en motores legacy. */
+html[data-fs="lg"] .md{ zoom:1.18; }
+html[data-fs="xl"] .md{ zoom:1.40; }
+html[data-zoomw="scale"][data-fs="lg"] .mdbg.on, html[data-zoomw="scale"][data-fs="xl"] .mdbg.on{ align-items:flex-start; justify-content:flex-start; }
+html[data-zoomw="scale"][data-fs="lg"] .md{ width:calc(100%/1.18); transform-origin:left top; max-height:calc(90vh/1.18); }
+html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-origin:left top; max-height:calc(90vh/1.40); }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){

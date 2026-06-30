@@ -529,7 +529,30 @@ function applyTextSize(size){
   if(size==='lg'||size==='xl') document.documentElement.setAttribute('data-fs',size);
   else document.documentElement.removeAttribute('data-fs');
 }
-function initTextSize(){ const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
+// El `zoom` que usa el ajuste de texto se comporta distinto según el motor: estandarizado
+// (Chrome/WebView ≥128, escritorio) NO escala el ancho → width:100% ya llena; LEGACY (WebViews
+// viejos/Huawei sin Google) SÍ escala el ancho → width:100% desborda y hay que compensar con
+// width:calc(100%/zoom). Ningún CSS fijo sirve para ambos, así que medimos el motor en runtime:
+// un hijo width:100% con zoom:2 dentro de un padre fijo de 300px → si el hijo mide ~600px (ratio≈2)
+// el zoom escala el ancho (legacy) y marcamos html[data-zoomw="scale"] para activar la compensación
+// (solo bajo ese atributo en styles.css). Si mide ~300px (ratio≈1, estandarizado) NO se compensa.
+// Verificado: escritorio→ratio 1.00 (sin comp llena, con comp dejaba 50% de hueco) / Huawei→desborda
+// sin comp. Camilo 2026-06-29. Ver [[feedback_avi_tamano_texto_accesibilidad]].
+function detectZoomWidthScaling(){
+  try{
+    const host=document.body||document.documentElement; if(!host) return;
+    const parent=document.createElement('div');
+    parent.style.cssText='position:fixed;left:-99999px;top:0;width:300px;height:10px;visibility:hidden;pointer-events:none';
+    const child=document.createElement('div');
+    child.style.cssText='width:100%;height:10px;zoom:2';
+    parent.appendChild(child); host.appendChild(parent);
+    const cw=child.getBoundingClientRect().width, pw=parent.getBoundingClientRect().width;
+    parent.remove();
+    if(pw>0 && (cw/pw)>1.5) document.documentElement.setAttribute('data-zoomw','scale');
+    else document.documentElement.removeAttribute('data-zoomw');
+  }catch(e){ /* ante la duda, sin comp (el escritorio/WebView moderno es lo común) */ }
+}
+function initTextSize(){ detectZoomWidthScaling(); const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
 function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFsBtns(size); }
 
 // Aviso ÚNICO por dispositivo que OFRECE agrandar el texto (descubribilidad: quien más lo
