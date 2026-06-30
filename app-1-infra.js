@@ -789,6 +789,9 @@ const EX_IMG_NAME={"press de banca":"e1","press inclinado mancuernas":"e2","aper
 const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // Fotos nuevas por id (ejercicios que antes NO tenían foto y no están en EX_IMG_NAME)
 ['e126','e63','e45','e72','e74','e75','e76','e90','e91','e108','e109','e110','e111','e112','e113','e114','e115','e116','e117','e118','e119','e120','e121','e122','e123','e124','e125','e127','e128','e129','e131','e132','e133','e135','e138','e139','e140','e130','e134','e136','e137','e141','e142','e143','e144','e145','e146','e147','e148','e149','e150','e151','e152','e153','e154','e155','e156','e157','e158','e160','e161','e162','e163','e164','fb03','fb01','fb02','fb04'].forEach(id=>EX_IMG_IDS.add(id));
+// Lote 50 ejercicios nuevos (e165–e214, 2026-06-29): cobertura de huecos del catálogo. Imágenes
+// generadas e integradas en media/exercises; faltaba registrar los ids aquí para que se muestren.
+['e165','e166','e167','e168','e169','e170','e171','e172','e173','e174','e175','e176','e177','e178','e179','e180','e181','e182','e183','e184','e185','e186','e187','e188','e189','e190','e191','e192','e193','e194','e195','e196','e197','e198','e199','e200','e201','e202','e203','e204','e205','e206','e207','e208','e209','e210','e211','e212','e213','e214'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
