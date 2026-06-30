@@ -154,6 +154,11 @@ const GOAL_WHY={
 // Mapa del objetivo del cliente (client.goal) a la clave de GOAL_WHY, para mostrar
 // el "por qué" educativo también en la estimación automática (sin plan del coach).
 const GOAL_WHY_KEY={'Perder grasa':'cutting','Ganar músculo':'volumen','Fuerza':'volumen','Recomposición':'mantenimiento','Resistencia':'mantenimiento'};
+// ¿El coach guardó un plan nutricional? Fuente ÚNICA para card/room/share — antes cada uno
+// usaba una definición distinta y un plan SOLO con macros (sin kcal/plan/examples) se trataba
+// como "sin plan" → se mostraba la estimación automática encima del plan real del coach.
+// Bug Clase 4 auditoría 2026-06-30.
+function _hasCoachNutPlan(nut){ return !!(nut&&(nut.kcal||nut.plan||nut.examples||nut.prot||nut.carbs||nut.fat||nut.water||nut.meals)); }
 // Ideas para armar el plato (contexto colombiano) + tips prácticos. Llenan la
 // habitación de Nutrición cuando el cliente solo tiene la estimación automática.
 const NUT_PLATE=[
@@ -226,7 +231,7 @@ function renderNutritionClient(clientId){
   // as\u00ed el due\u00f1o ajusta su plan, pero los asesorados lo siguen viendo como lo dej\u00f3 el coach.
   const editBtn=document.getElementById('cn-nut-edit'); if(editBtn)editBtn.style.display=COACH_SELF?'':'none';
   const nut=(DB.nutrition||{})[clientId];
-  if(!nut||(!nut.kcal&&!nut.plan&&!nut.examples)){
+  if(!_hasCoachNutPlan(nut)){
     // Sin plan escrito por un coach \u2192 calculadora autom\u00e1tica (Premium self-serve).
     // El coach (COACH_SELF) ve adem\u00e1s el recordatorio de armar un plan a medida.
     const c=DB.clients.find(x=>x.id===clientId);
@@ -294,7 +299,7 @@ function openNutritionRoom(clientId){
   const c=(DB.clients||[]).find(x=>x.id===clientId);
   if(!c)return;
   const nut=(DB.nutrition||{})[clientId];
-  const hasPlan=nut&&(nut.kcal||nut.plan||nut.examples);
+  const hasPlan=_hasCoachNutPlan(nut);
   let d;
   if(hasPlan){
     d={kcal:nut.kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
@@ -401,27 +406,43 @@ function closeNutritionRoom(){
 
 function shareNutWhatsapp(){
   const nut=(DB.nutrition||{})[CUR.clientId];
-  if(!nut||(!nut.kcal&&!nut.plan)){toast('Tu coach aún no ha asignado un plan nutricional');return;}
   const cl=DB.clients.find(x=>x.id===CUR.clientId);
   const nombre=cl?cl.name.split(' ')[0]:'';
   let msg=`🥗 *MI PLAN NUTRICIONAL - AVI*\n`;
   if(nombre)msg+=`👤 ${nombre}\n`;
   msg+=`\n`;
-  if(nut.kcal)msg+=`🔥 *Calorías diarias:* ${nut.kcal} kcal\n`;
-  if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
-  if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
-  if(nut.prot||nut.carbs||nut.fat){
-    msg+=`\n📊 *Macros:*\n`;
-    if(nut.prot)msg+=`  • Proteína: ${nut.prot}g (${nut.prot*4} kcal)\n`;
-    if(nut.carbs)msg+=`  • Carbohidratos: ${nut.carbs}g (${nut.carbs*4} kcal)\n`;
-    if(nut.fat)msg+=`  • Grasas saludables: ${nut.fat}g (${nut.fat*9} kcal)\n`;
+  if(_hasCoachNutPlan(nut)){
+    if(nut.kcal)msg+=`🔥 *Calorías diarias:* ${nut.kcal} kcal\n`;
+    if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
+    if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
+    if(nut.prot||nut.carbs||nut.fat){
+      msg+=`\n📊 *Macros:*\n`;
+      if(nut.prot)msg+=`  • Proteína: ${nut.prot}g (${nut.prot*4} kcal)\n`;
+      if(nut.carbs)msg+=`  • Carbohidratos: ${nut.carbs}g (${nut.carbs*4} kcal)\n`;
+      if(nut.fat)msg+=`  • Grasas saludables: ${nut.fat}g (${nut.fat*9} kcal)\n`;
+    }
+    if(nut.examples){
+      msg+=`\n💡 *Ejemplos de comidas:*\n`;
+      nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>msg+=`  ${l.trim()}\n`);
+    }
+    if(nut.plan){msg+=`\n📋 *Notas de tu coach:*\n${nut.plan}\n`;}
+    if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
+  } else {
+    // Self-serve (Premium sin plan del coach): comparte la ESTIMACIÓN automática. Antes decía
+    // "tu coach aún no ha asignado un plan" aunque la app mostraba kcal+macros. Bug #9 auditoría 2026-06-30.
+    const est=cl?nutritionEstimate(cl):null;
+    if(!est){toast('Completa tu peso, estatura, edad y sexo en tu Perfil para ver tu estimación');return;}
+    const m=est.macros||{};
+    msg+=`🔥 *Calorías diarias:* ${est.kcalObj} kcal _(estimación automática)_\n`;
+    if(est.water)msg+=`💧 *Agua:* ${est.water} vasos/día\n`;
+    if(m.prot_g||m.carb_g||m.fat_g){
+      msg+=`\n📊 *Macros:*\n`;
+      if(m.prot_g)msg+=`  • Proteína: ${m.prot_g}g (${m.prot_g*4} kcal)\n`;
+      if(m.carb_g)msg+=`  • Carbohidratos: ${m.carb_g}g (${m.carb_g*4} kcal)\n`;
+      if(m.fat_g)msg+=`  • Grasas saludables: ${m.fat_g}g (${m.fat_g*9} kcal)\n`;
+    }
+    if(est.label)msg+=`\n🎯 ${est.label}\n`;
   }
-  if(nut.examples){
-    msg+=`\n💡 *Ejemplos de comidas:*\n`;
-    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>msg+=`  ${l.trim()}\n`);
-  }
-  if(nut.plan){msg+=`\n📋 *Notas de tu coach:*\n${nut.plan}\n`;}
-  if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
   msg+=`\n_Plan generado por AVI 💪_`;
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }

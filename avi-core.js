@@ -1443,8 +1443,14 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal) {
 // (peso/estatura/edad). Pura/testeable; reúne las funciones ya existentes.
 function nutritionEstimate(client, weightKg) {
   client = client || {};
+  // Exigir sexo EXPLÍCITO: sin él no calibramos. Antes getSexCode caía a 'F' y estimaba a un
+  // hombre sin sexo como mujer en silencio (~166 kcal menos), además incoherente con la
+  // valoración del coach que ya muestra blanco sin sexo. La UI pide "peso, estatura, edad y
+  // sexo" cuando esto devuelve null. Bug #10 auditoría 2026-06-30.
+  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
+  if (!sx) return null;
   const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
-  const tmb = calcTMB(w, client.height, client.age, getSexCode(client.sex));
+  const tmb = calcTMB(w, client.height, client.age, sx);
   if (!tmb) return null;
   const af = parseFloat(client.activityFactor) || 1.55;
   const tdee = calcTDEE(tmb, af);

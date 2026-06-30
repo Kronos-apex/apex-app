@@ -2055,6 +2055,10 @@ test('nutritionEstimate: weightKg pasado manda sobre client.weight', () => {
 test('nutritionEstimate: faltan datos → null', () => {
   assert.strictEqual(nutritionEstimate({ weight: 80, height: 180 }), null); // sin edad/sexo
   assert.strictEqual(nutritionEstimate(null), null);
+  // #10 auditoría 2026-06-30: sexo OBLIGATORIO. Con todo menos sexo → null (no calibrar como
+  // mujer en silencio). La UI pide completar el sexo en vez de mostrar kcal mal estimadas.
+  assert.strictEqual(nutritionEstimate({ weight: 80, height: 180, age: 30, activityFactor: 1.55, goal: 'Ganar músculo' }), null);
+  assert.ok(nutritionEstimate({ weight: 80, height: 180, age: 30, sex: 'M', goal: 'Ganar músculo' }), 'con sexo sí estima');
 });
 
 section('Reparto del día en comidas (nutMealSplit)');
