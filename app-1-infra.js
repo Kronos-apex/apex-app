@@ -406,12 +406,17 @@ async function _pollAuthClient(){
   const cid=CUR.clientId; if(!cid)return;
   const row=await UD.loadOwn(); if(!row)return;
   let touched=false;
-  // 1) Mensajes nuevos del coach (aditivo → siempre seguro).
+  // 1) Mensajes nuevos del coach — UNIÓN, no reemplazo por longitud (P1-3 auditoría
+  //    2026-07-01): antes, si el cliente tenía un mensaje local sin subir y el remoto
+  //    venía más largo, el reemplazo lo DESCARTABA; y con longitudes empatadas el del
+  //    coach no se pintaba. mergeMsgs (avi-core, testeada) une por (from,date,text).
   const remoteMsgs=Array.isArray(row.msgs)?row.msgs:[];
   const localMsgs=DB.msgs[cid]||[];
-  if(remoteMsgs.length>localMsgs.length){
-    const fresh=remoteMsgs.slice(localMsgs.length);
-    DB.msgs[cid]=remoteMsgs; touched=true;
+  const mergedMsgs=mergeMsgs(localMsgs,remoteMsgs);
+  if(mergedMsgs.length!==localMsgs.length){
+    const seen=new Set(localMsgs.map(_msgKey));
+    const fresh=mergedMsgs.filter(m=>!seen.has(_msgKey(m)));
+    DB.msgs[cid]=mergedMsgs; touched=true;
     if(typeof renderClientMsgs==='function')renderClientMsgs(cid);
     if(typeof updateMsgBadge==='function')updateMsgBadge(cid);
     fresh.filter(m=>m.from==='coach').forEach(m=>{
@@ -451,12 +456,16 @@ async function _pollAuthCoach(){
       changed=true; if(local.selfReg)leads.push(local);
       return;
     }
-    // Mensajes nuevos del cliente (aditivo). NO traemos sus rutinas aquí para no pisar una
-    // edición del coach en vuelo; las autoediciones del cliente se ven al abrir su detalle.
+    // Mensajes nuevos del cliente — UNIÓN, no reemplazo por longitud (P1-3, ver
+    // _pollAuthClient): un mensaje del coach aún sin subir ya no se descarta.
+    // NO traemos sus rutinas aquí para no pisar una edición del coach en vuelo;
+    // las autoediciones del cliente se ven al abrir su detalle.
     const remoteMs=Array.isArray(r.msgs)?r.msgs:[]; const localMs=DB.msgs[local.id]||[];
-    if(remoteMs.length>localMs.length){
-      remoteMs.slice(localMs.length).filter(m=>m.from==='client').forEach(m=>inbox.push({client:local,text:m.text}));
-      DB.msgs[local.id]=remoteMs; changed=true;
+    const mergedMs=mergeMsgs(localMs,remoteMs);
+    if(mergedMs.length!==localMs.length){
+      const seenMs=new Set(localMs.map(_msgKey));
+      mergedMs.filter(m=>!seenMs.has(_msgKey(m))&&m.from==='client').forEach(m=>inbox.push({client:local,text:m.text}));
+      DB.msgs[local.id]=mergedMs; changed=true;
     }
     const rWants=r.profile&&r.profile.wantsCoach;
     if(rWants&&!local.wantsCoach){ local.wantsCoach=true; local.wantsCoachAt=r.profile&&r.profile.wantsCoachAt; changed=true; leads.push(local); }
@@ -612,11 +621,20 @@ function svNow(k,v){
 // usuario viven indexadas por su id en DB.*, así que extraemos su porción (v[id]).
 const _udDebounce={};
 const _udPending={};   // clave -> valor con persistencia AÚN pendiente (debounce sin disparar)
+const _udFailedKeys={}; // clave -> true: escritura que la nube NO confirmó (se limpia al confirmar)
+let _udInflight=0;      // escrituras auth en vuelo (para no limpiar el flag antes de tiempo)
+// ¿Quedó todo confirmado? → apaga el flag dirty persistido (P0-2 auditoría 2026-07-01).
+// Solo cuando: esta es la única escritura en vuelo, no hay debounces esperando y
+// ninguna clave quedó marcada como fallida. Antes NADA limpiaba _authDirty tras un
+// guardado exitoso → el flag vivía prendido y el merge del boot correría siempre.
+function _udMaybeClean(){
+  if(_udInflight<=1 && !Object.keys(_udPending).length && !Object.keys(_udFailedKeys).length) _setAuthDirty(false);
+}
 function _persistAuthUserDebounced(k,v){
   // Respaldo local INMEDIATO + marca "sucio": si cierran/duermen la app dentro de los 800ms,
   // el dato ya quedó en el caché local (ax_udcache_) y _flushAuthOnline lo reintenta al
   // reconectar. Antes se perdía el guardado PARCIAL del entreno en esa ventana (auditoría 2026-06-21).
-  _authDirty=true;
+  _setAuthDirty(true);
   _refreshAuthCache();
   _udPending[k]=v;
   clearTimeout(_udDebounce[k]);
@@ -633,7 +651,7 @@ async function _persistAuthUser(k,v){
   // (memoria-only → se perdían al recargar). Camilo 2026-06-29.
   if(k==='ax_tpl'){
     try{ await UD.upsertOwn({templates:Array.isArray(v)?v:[]}); }
-    catch(e){ _authDirty=true; warn('AVI: persistir plantillas falló, reintento al reconectar:',e&&e.message); }
+    catch(e){ _setAuthDirty(true); warn('AVI: persistir plantillas falló, reintento al reconectar:',e&&e.message); }
     return;
   }
   // Ajustes globales del coach (ax_e/ax_nequi/ax_cn/ax_ce/ax_site): nivel coach → fila PROPIA,
@@ -641,13 +659,14 @@ async function _persistAuthUser(k,v){
   // al recargar (bug #1 auditoría 2026-06-30). Idempotente: re-escribe el objeto completo.
   if(AUTH_ROLE==='coach' && _COACH_SETTINGS_KEYS.includes(k)){
     try{ await UD.upsertOwn({coach_settings:_coachSettingsObj()}); }
-    catch(e){ _authDirty=true; warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message); }
+    catch(e){ _setAuthDirty(true); warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message); }
     return;
   }
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.
   if(AUTH_ROLE==='coach' && !COACH_SELF){ return await _persistCoachWrite(k,v); }
   // COACH_SELF (coach en su propio entreno) o cliente normal → escribe en SU propia fila.
   const id=CUR.clientId; if(!id)return;
+  _udInflight++;
   try{
     if(k==='ax_c'){
       const client=(DB.clients&&DB.clients[0])||null; if(!client)return;
@@ -662,12 +681,15 @@ async function _persistAuthUser(k,v){
     else if(k==='ax_photos') { await UD.upsertOwn({photos:    (v&&v[id])||[]}); }
     else if(k==='ax_m')      { await UD.upsertOwn({msgs:      (v&&v[id])||[]}); }
     // ax_e/ax_tpl/ax_cn/ax_site/ax_nequi/ax_cph/ax_ce: nivel coach/global → no aplica al cliente libre
+    delete _udFailedKeys[k]; _udMaybeClean(); // la nube confirmó ESTA clave
   }catch(e){
     // Sin red (entrenando en el parque): el dato NO se pierde — queda en el respaldo
-    // local (abajo) y se reintenta al reconectar (_flushAuthOnline).
-    _authDirty=true;
+    // local (abajo) y se reintenta al reconectar (_flushAuthOnline) o al próximo
+    // arranque (merge del boot vía flag persistido; P0-2 auditoría 2026-07-01).
+    _udFailedKeys[k]=true;
+    _setAuthDirty(true);
     warn('AVI: persistencia modo auth falló ('+k+'), guardado local + reintento al reconectar:',e&&e.message);
-  }
+  }finally{ _udInflight--; }
   // Respaldo local SIEMPRE (haya o no red) → la app abre offline con los últimos datos.
   _refreshAuthCache();
 }

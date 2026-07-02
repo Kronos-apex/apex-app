@@ -182,13 +182,27 @@ async function loginWithGoogle(){
 
 // Vincular Google a la cuenta YA logueada (linkIdentity) → luego puede entrar con Google
 // sin la clave temporal. Requiere "Manual linking" habilitado en Supabase Auth.
+// Traduce los errores de linkIdentity a mensajes accionables en español. El caso real
+// (Claudia/Luz/Nataly, auditoría 2026-07-01): la asesorada tocó antes "Continuar con
+// Google" en el login → Supabase auto-creó una cuenta vacía con su Gmail → al vincular
+// aquí, GoTrue responde identity_already_exists y el toast crudo en inglés (2,5s) no
+// dejaba diagnosticar nada.
+function _linkGoogleErrMsg(error){
+  const code=(error&&error.code)||'';
+  const msg=String((error&&error.message)||'').toLowerCase();
+  if(code==='identity_already_exists'||msg.indexOf('already linked')>=0)
+    return 'Ese Google ya está conectado a otra cuenta. Pídele a tu coach que lo revise y vuelve a intentar. 🙏';
+  if(code==='manual_linking_disabled'||msg.indexOf('manual linking')>=0)
+    return 'Conectar Google está desactivado por ahora. Avísale a tu coach.';
+  return 'No se pudo conectar Google. Revisa tu internet e intenta de nuevo.';
+}
 async function linkGoogle(){
   const c=AUTH.client(); if(!c){toast('Inicia sesión primero');return;}
   try{
     const {error}=await c.auth.linkIdentity({provider:'google',options:{redirectTo:location.origin+location.pathname}});
-    if(error)toast('No se pudo conectar Google: '+error.message);
+    if(error){ warn('AVI: linkIdentity falló:',error.code||'',error.message||''); toast(_linkGoogleErrMsg(error)); }
     // Sin error: el navegador redirige a Google para autorizar el vínculo.
-  }catch(e){ toast('No se pudo conectar Google.'); }
+  }catch(e){ warn('AVI: linkGoogle lanzó:',e&&e.message); toast(_linkGoogleErrMsg(e)); }
 }
 
 // Pinta la tarjeta de "Conectar Google" en el perfil (solo en modo auth). Muestra estado.
@@ -1042,6 +1056,12 @@ function _aviHandleBack(){
 }
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
+  // El lightbox (foto/video ampliado) se abre ENCIMA de la ficha de ejercicio → se cierra
+  // PRIMERO. Regresión cazada en la auditoría 2026-07-01: al mover la ficha al tope
+  // (caso ficha-sobre-habitación) el atrás cerraba la ficha POR DEBAJO del lightbox y
+  // dejaba la imagen ampliada huérfana (el fix original era de apex-v105).
+  const lb=document.getElementById('ex-lightbox');
+  if(lb&&lb.classList.contains('on')){closeExImg();return true;}
   // La ficha de ejercicio (técnica/video) puede abrirse ENCIMA de una habitación (su z se
   // sube por encima de la habitación al abrirla), así que se cierra ANTES que las habitaciones.
   const exdTop=document.getElementById('exdetail-bg');
@@ -1063,16 +1083,14 @@ function _aviCloseTopOverlay(){
   if(mscr&&mscr.classList.contains('on')){closeMuscleRoom();return true;}
   const nutr=document.getElementById('nutrition-room');
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
-  const lb=document.getElementById('ex-lightbox');
-  if(lb&&lb.classList.contains('on')){closeExImg();return true;}
   const pu=document.getElementById('premium-upsell');
   if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
   const luo=document.getElementById('level-up');
   if(luo&&luo.classList.contains('on')){closeLevelUp();return true;}
   const wfo=document.getElementById('workout-finish');
   if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return true;}
-  const exd=document.getElementById('exdetail-bg');
-  if(exd&&exd.classList.contains('on')){_closeExDetail();return true;}
+  // (el chequeo duplicado de #exdetail-bg que vivía aquí era código muerto — la ficha
+  // ya se atiende arriba, tras el lightbox)
   const gm=document.getElementById('guided-mode');
   if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return true;}
   const modal=document.querySelector('.mdbg.on');

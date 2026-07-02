@@ -24,6 +24,8 @@ const {
   mergeHistory,
   mergeClientArrays,
   mergePRs,
+  mergeMsgs,
+  mergeAuthRow,
   retentionByDay,
   weeklyActiveCount,
   clientsTrainedToday,
@@ -812,6 +814,68 @@ test('PRs: empate de valor → gana más reps', () => {
 test('robusto: mergeClientArrays y mergePRs manejan null', () => {
   assert.deepStrictEqual(mergeClientArrays(null, null, msgKey, 'asc'), {});
   assert.deepStrictEqual(mergePRs(null, null), {});
+});
+
+// ══════════════════════════════════════════════════════
+// 12b. mergeMsgs + mergeAuthRow — auditoría 2026-07-01 (P1-3 y P0-2)
+// ══════════════════════════════════════════════════════
+section('12b. Pollers y boot offline: unión sin perder nada');
+
+test('EL BUG P1-3: mensaje local sin subir NO se descarta cuando el remoto viene más largo', () => {
+  const local = [{ from: 'client', text: 'me dolió el hombro', date: '2026-07-01T09:00:00Z' }]; // sin subir
+  const remote = [
+    { from: 'coach', text: 'Hola', date: '2026-07-01T08:00:00Z' },
+    { from: 'coach', text: '¿Cómo vas?', date: '2026-07-01T08:30:00Z' },
+  ];
+  const merged = mergeMsgs(local, remote);
+  assert.strictEqual(merged.length, 3, 'Los 3 mensajes sobreviven');
+  assert.ok(merged.some(m => m.text === 'me dolió el hombro'), 'El local sin subir sobrevive');
+  assert.deepStrictEqual(merged.map(m => m.text), ['Hola', '¿Cómo vas?', 'me dolió el hombro'], 'Orden cronológico');
+});
+
+test('EL BUG P1-3 (empate): longitudes iguales pero contenido distinto → une, no ignora', () => {
+  const local = [{ from: 'client', text: 'listo', date: '2026-07-01T10:00:00Z' }];
+  const remote = [{ from: 'coach', text: 'sube el peso', date: '2026-07-01T10:01:00Z' }];
+  const merged = mergeMsgs(local, remote);
+  assert.strictEqual(merged.length, 2, 'Ambos mensajes quedan');
+});
+
+test('mergeMsgs: duplicados exactos no se repiten; null no revienta', () => {
+  const m = { from: 'coach', text: 'Hola', date: '2026-07-01T08:00:00Z' };
+  assert.strictEqual(mergeMsgs([m], [m]).length, 1);
+  assert.deepStrictEqual(mergeMsgs(null, null), []);
+});
+
+test('EL BUG P0-2: sesión entrenada offline sobrevive al merge del boot', () => {
+  const cached = { // respaldo local con la sesión que la nube nunca recibió
+    history: [{ id: 's_offline', date: '2026-07-01T06:00:00.000Z', totalVol: 500 }],
+    prs: { sentadilla: { val: 90, reps: 5, date: '2026-07-01T06:30:00Z' } },
+    msgs: [], bodyweight: [{ date: '2026-07-01', kg: 74 }], medidas: [], photos: [],
+    routines: [{ id: 'r_vieja' }], profile: { name: 'Luz' },
+  };
+  const cloud = { // fila de la nube: sin la sesión, pero con rutina nueva del coach
+    history: [{ id: 's_ayer', date: '2026-06-30T18:00:00.000Z', totalVol: 400 }],
+    prs: { sentadilla: { val: 100, reps: 3, date: '2026-06-28T00:00:00Z' } },
+    msgs: [{ from: 'coach', text: 'Nueva rutina', date: '2026-07-01T07:00:00Z' }],
+    bodyweight: [], medidas: [], photos: [],
+    routines: [{ id: 'r_nueva' }], profile: { name: 'Luz' }, user_id: 'u1', role: 'client',
+  };
+  const merged = mergeAuthRow(cached, cloud);
+  assert.strictEqual(merged.history.length, 2, 'La sesión offline Y la de la nube quedan');
+  assert.ok(merged.history.some(s => s.id === 's_offline'), 'La sesión offline sobrevive');
+  assert.strictEqual(merged.prs.sentadilla.val, 100, 'PR: gana el mejor récord');
+  assert.strictEqual(merged.msgs.length, 1, 'El mensaje del coach queda');
+  assert.strictEqual(merged.bodyweight.length, 1, 'El peso registrado offline queda');
+  assert.deepStrictEqual(merged.routines, [{ id: 'r_nueva' }], 'Las rutinas las manda la NUBE (territorio del coach)');
+  assert.strictEqual(merged.user_id, 'u1', 'user_id/role de la nube intactos');
+});
+
+test('mergeAuthRow: robusto ante filas incompletas o null', () => {
+  const out = mergeAuthRow(null, { history: [{ id: 'a', date: '2026-07-01T00:00:00Z' }] });
+  assert.strictEqual(out.history.length, 1);
+  assert.deepStrictEqual(out.msgs, []);
+  const out2 = mergeAuthRow({ history: [{ id: 'b', date: '2026-07-01T00:00:00Z' }] }, null);
+  assert.strictEqual(out2.history.length, 1, 'Sin fila de nube, el respaldo local no se pierde');
 });
 
 // ══════════════════════════════════════════════════════

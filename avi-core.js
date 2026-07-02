@@ -793,6 +793,44 @@ function mergePRs(local, cloud) {
   return out;
 }
 
+// Identidad de un mensaje de chat para dedupe (quién + cuándo + qué).
+function _msgKey(m) {
+  return (m && m.from || '?') + '|' + (m && m.date || '?') + '|' + (m && m.text || '');
+}
+
+// Une dos listas de mensajes SIN PERDER NINGUNO (unión por identidad, orden
+// cronológico viejo→nuevo). Reemplaza la comparación por longitud de los pollers,
+// que descartaba un mensaje local sin subir cuando el remoto venía más largo
+// (P1-3 auditoría 2026-07-01). Pura y testeable.
+function mergeMsgs(local, cloud, cap) {
+  const merged = mergeClientArrays(
+    { x: Array.isArray(local) ? local : [] },
+    { x: Array.isArray(cloud) ? cloud : [] },
+    _msgKey, 'asc', cap
+  );
+  return merged.x || [];
+}
+
+// Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
+// con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
+// usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
+// de arriba (nada se pierde); el resto (perfil, rutinas, nutrición — territorio
+// del coach) lo manda la nube. Cierra la ventana "entrené offline y Android mató
+// la app antes de reconectar" (P0-2 auditoría 2026-07-01). Pura y testeable.
+function mergeAuthRow(localRow, cloudRow) {
+  localRow = localRow || {}; cloudRow = cloudRow || {};
+  const out = Object.assign({}, cloudRow);
+  const pair = (fn, l, c) => fn({ x: l }, { x: c }).x;
+  out.history = pair(mergeHistory, localRow.history || [], cloudRow.history || []);
+  out.prs = pair(mergePRs, localRow.prs || {}, cloudRow.prs || {});
+  out.msgs = mergeMsgs(localRow.msgs, cloudRow.msgs);
+  const byDate = it => String(it && it.date || '');
+  out.bodyweight = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.bodyweight || [], cloudRow.bodyweight || []);
+  out.medidas = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.medidas || [], cloudRow.medidas || []);
+  out.photos = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.photos || [], cloudRow.photos || []);
+  return out;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // AGREGADOS DE ACTIVIDAD POR FECHA (dashboard del coach)
 // ──────────────────────────────────────────────────────────────────────
@@ -1705,6 +1743,9 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeHistory,
     mergeClientArrays,
     mergePRs,
+    mergeMsgs,
+    mergeAuthRow,
+    _msgKey,
     localDayStart,
     retentionByDay,
     weeklyActiveCount,

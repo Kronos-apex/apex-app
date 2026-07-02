@@ -272,7 +272,18 @@ function _applyAuthClientDB(client, coll){
 // arranque cae a él cuando no hay red. Guarda SOLO columnas de datos — nunca
 // coach_id/role (esos viven en la nube y no se deben pisar desde el cliente).
 let _authUid=null;       // uid del usuario auth en sesión (de getSession, offline-safe)
-let _authDirty=false;    // hubo cambios que la nube no confirmó (reintentar al reconectar)
+// _authDirty = hubo cambios que la nube no confirmó (reintentar al reconectar).
+// PERSISTE en localStorage (ax_udirty_{uid}): si Android mata la app antes de
+// reconectar, el próximo arranque sabe que el respaldo local trae datos que la
+// nube no tiene y los FUSIONA en vez de pisarlos (P0-2 auditoría 2026-07-01).
+let _authDirty=false;
+function _dirtyKey(uid){ return 'ax_udirty_'+uid; }
+function _setAuthDirty(v){
+  _authDirty=!!v;
+  if(!_authUid)return;
+  try{ if(v)localStorage.setItem(_dirtyKey(_authUid),'1'); else localStorage.removeItem(_dirtyKey(_authUid)); }catch(e){}
+}
+function _readAuthDirty(uid){ try{ return localStorage.getItem(_dirtyKey(uid))==='1'; }catch(e){ return false; } }
 function _authRowKey(uid){ return 'ax_udcache_'+uid; }
 function _cacheAuthRow(uid,row){ if(!uid||!row)return; try{ localStorage.setItem(_authRowKey(uid),JSON.stringify(row)); }catch(e){} }
 function _readAuthRow(uid){ try{ const r=uid&&localStorage.getItem(_authRowKey(uid)); return r?JSON.parse(r):null; }catch(e){ return null; } }
@@ -299,7 +310,13 @@ async function _flushAuthOnline(){
   const row=_snapshotAuthRow(); if(!row)return;
   const patch={profile:row.profile,routines:row.routines,history:row.history,prs:row.prs,
     bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs};
-  try{ await UD.upsertOwn(patch); _authDirty=false; log('AVI: cambios offline sincronizados con la nube'); }
+  try{
+    await UD.upsertOwn(patch);
+    // Subió la fila COMPLETA de datos → todo confirmado: limpia claves fallidas y el flag.
+    Object.keys(_udFailedKeys).forEach(k=>{delete _udFailedKeys[k];});
+    _setAuthDirty(false);
+    log('AVI: cambios offline sincronizados con la nube');
+  }
   catch(e){ warn('AVI: reintento de sync al reconectar falló:',e&&e.message); }
 }
 window.addEventListener('online',_flushAuthOnline);
@@ -392,6 +409,9 @@ function showPlanReveal(client, onContinue){
 async function _enterAuthSession(authUser){
   AUTH_MODE=true;
   _authUid=(authUser&&authUser.id)||null;
+  // Hidrata el flag dirty persistido: si la sesión anterior dejó cambios sin confirmar,
+  // el reintento al reconectar (_flushAuthOnline) debe saberlo aunque arranquemos offline.
+  _authDirty=_readAuthDirty(_authUid);
   let row=await UD.loadOwn();   // null si no hay red (loadOwn ya no lanza)
   const online=!!row;
   // Sin fila desde la nube: ¿es porque no hay red? → cae al respaldo local para
@@ -402,13 +422,43 @@ async function _enterAuthSession(authUser){
   if(row&&row.role==='coach'){ AUTH_ROLE='coach'; return await _enterCoachAuth(authUser,row); }
   AUTH_ROLE='client';
   let client;
+  // P0-2 (auditoría 2026-07-01): si el arranque anterior dejó cambios SIN confirmar
+  // (flag dirty persistido — p.ej. entrenó offline y Android mató la app antes de
+  // reconectar), la fila de la nube NO trae esa sesión. Antes se aplicaba tal cual
+  // y en la línea de abajo PISABA el respaldo local (pérdida silenciosa). Ahora se
+  // FUSIONA respaldo local + nube (mergeAuthRow, pura y testeada: une historial/PRs/
+  // mensajes/peso/medidas/fotos sin perder nada; perfil/rutinas los manda la nube)
+  // y se re-sube la fila fusionada.
+  let _mergedOffline=false;
+  if(online && row && _readAuthDirty(_authUid)){
+    const cached=_readAuthRow(_authUid);
+    if(cached){
+      try{ row=mergeAuthRow(cached,row); _mergedOffline=true; log('AVI: fusionando datos offline pendientes con la nube'); }
+      catch(e){ warn('AVI: merge offline falló, se usa la nube tal cual:',e&&e.message); }
+    }
+  }
   if(row){
     client=rowToClient(row);
+    // P1-1 (auditoría 2026-07-01): el gate de membresía murió con el cutover a Auth —
+    // un asesorado suspendido o con plan vencido entraba normal. Mismo criterio y
+    // mensajes del camino legacy (tryAutoLogin): pending/active/expiring SÍ entran.
+    if(!MS.canLogin(client)){
+      try{ await AUTH.signOut(); }catch(e){}
+      AUTH_MODE=false; _authUid=null;
+      const st=MS.getStatus(client);
+      showScreen('s-login');
+      const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
+      if(cta)cta.style.display='none'; if(card)card.style.display='block';
+      const er=document.getElementById('lerr');
+      if(er){ er.textContent = st==='inactive' ? 'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡' : 'Tu plan venció. Habla con tu coach para continuar entrenando 💪'; er.classList.add('on'); }
+      return;
+    }
     _applyAuthClientDB(client,{
       history:row.history, prs:row.prs, bodyweight:row.bodyweight,
       medidas:row.medidas, nutrition:row.nutrition, photos:row.photos, msgs:row.msgs,
     });
-    if(online) _cacheAuthRow(_authUid,row); // refresca el respaldo con lo recién bajado
+    if(online) _cacheAuthRow(_authUid,row); // refresca el respaldo con lo recién bajado (ya fusionado)
+    if(_mergedOffline){ _setAuthDirty(true); _flushAuthOnline(); } // sube la fila fusionada; al confirmar limpia el flag
   } else {
     const prof=_profileFromMeta(authUser);
     if(!prof._complete){
@@ -421,8 +471,13 @@ async function _enterAuthSession(authUser){
       try{localStorage.removeItem('ax_wz_pending');}catch(e){}
       showScreen('s-login');
       const er=document.getElementById('lerr');
-      if(er){ er.textContent='No tienes una cuenta todavía. Toca “Crear cuenta” para registrarte primero.'; er.classList.add('on'); }
-      toast('Aún no estás registrado. Crea primero tu cuenta. 👇');
+      // OJO (auditoría 2026-07-01): a este punto llegan también asesoradas a las que el
+      // coach YA les creó cuenta (correo+clave) pero que tocaron "Continuar con Google".
+      // Ese toque auto-crea una cuenta vacía con su Gmail que luego BLOQUEA el
+      // "Conectar mi Google" del Perfil (identity_already_exists). El mensaje las
+      // redirige al camino correcto: entrar con correo y clave.
+      if(er){ er.textContent='Ese Google no tiene cuenta en AVI. Si tu coach ya te creó una, entra con tu correo y clave (Google se conecta después, desde tu Perfil). Si eres nuevo, toca “Crear cuenta”.'; er.classList.add('on'); }
+      toast('Entra con tu correo y clave, o crea tu cuenta. 👇');
       return;
     }
     client=await _provisionFreeClient(authUser,prof);
