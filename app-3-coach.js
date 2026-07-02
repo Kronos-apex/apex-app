@@ -466,6 +466,19 @@ async function _enterAuthSession(authUser){
       // antes (los registros por email o por "Crear cuenta con Google" sí traen perfil/pending).
       // No creamos cuenta a la fuerza con datos por defecto: cerramos sesión y le pedimos crear
       // cuenta primero (así su rutina se arma con su objetivo/nivel/sexo/edad reales).
+      // MATA AL FANTASMA AL NACER (auditoría 2026-07-01): este "Continuar con Google"
+      // ya AUTO-CREÓ una cuenta auth vacía con su Gmail; si queda viva, bloquea para
+      // siempre el "Conectar mi Google" de su cuenta real (identity_already_exists —
+      // caso Luz/Nataly). La edge delete-account en modo ghost la borra SOLO si no
+      // tiene fila de datos (candado en el SERVIDOR — una cuenta con datos es intocable
+      // por esta vía). Si falla (red caída), no bloquea: el mensaje de abajo guía y el
+      // próximo intento con Google vuelve a pasar por aquí y la limpia (self-healing).
+      try{
+        const c=AUTH.client();
+        if(c){ const r=await c.functions.invoke('delete-account',{body:{ghost:true}});
+               if(r&&r.data&&r.data.ok) log('AVI: cuenta fantasma de Google limpiada');
+               else warn('AVI: limpieza de fantasma no aplicó:',JSON.stringify((r&&r.data)||(r&&r.error&&r.error.message)||'')); }
+      }catch(e){ warn('AVI: limpieza de cuenta fantasma falló (self-healing al próximo intento):',e&&e.message); }
       try{ await AUTH.signOut(); }catch(e){}
       AUTH_MODE=false;
       try{localStorage.removeItem('ax_wz_pending');}catch(e){}

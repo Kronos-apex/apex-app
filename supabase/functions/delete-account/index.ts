@@ -58,6 +58,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── MODO FANTASMA (auditoría 2026-07-01) ──
+    // "Continuar con Google" en el login AUTO-CREA una cuenta auth vacía cuando la
+    // persona aún no tiene cuenta en AVI; ese cascarón luego bloquea el "Conectar
+    // mi Google" de su cuenta real (identity_already_exists). La app lo invoca con
+    // {ghost:true} justo al rechazar ese ingreso, para matar al fantasma al nacer.
+    // CANDADO EN EL SERVIDOR: solo borra si el usuario NO tiene fila user_data —
+    // una cuenta con datos JAMÁS se borra por esta vía, diga lo que diga el cliente.
+    const body = await req.json().catch(() => ({}));
+    if (body && body.ghost === true) {
+      const { data: rows, error: eg } = await admin
+        .from("user_data").select("user_id").eq("user_id", uid).limit(1);
+      if (eg) throw new Error("user_data check: " + eg.message);
+      if (rows && rows.length) return json({ ok: false, error: "not_a_ghost" }, 403);
+      const { error: eDel } = await admin.auth.admin.deleteUser(uid);
+      if (eDel) throw new Error("auth.deleteUser: " + eDel.message);
+      return json({ ok: true, deleted: uid, ghost: true });
+    }
+
+    // ── Borrado COMPLETO self-service (flujo original de Play Store) ──
     // 1. Datos del usuario.
     const { error: e1 } = await admin.from("user_data").delete().eq("user_id", uid);
     if (e1) throw new Error("user_data: " + e1.message);
