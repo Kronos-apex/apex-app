@@ -25,6 +25,11 @@ function navRecord(undo){ if(typeof undo==='function') AVINAV.stack.push({ undo:
 function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; AVINAV.layers=0; }
 // Empuja una entrada de historial REAL por cada habitación que se abre (ver nota de arriba).
 function navOpenLayer(){ AVINAV.layers=(AVINAV.layers||0)+1; history.pushState({aviLayer:1},''); }
+// Cierre por UI (tap/swipe/Escape) de un overlay que empujó capa con navOpenLayer: consumir
+// su entrada de historial con history.back() — el popstate hace el cierre real y descuenta
+// la capa, igual que los botones "‹ Volver" de las habitaciones. Colchón: si no hay capa
+// contada (el handler del atrás no llegó a instalarse), cerrar directo sin tocar el historial.
+function navCloseLayer(closeFn){ if(AVINAV.layers>0){ history.back(); } else if(typeof closeFn==='function'){ closeFn(); } }
 
 // ── Rate limiter de login ──
 const LOGIN_ATTEMPTS_KEY = 'ax_login_attempts';
@@ -1034,12 +1039,16 @@ function exIcon(e){
   if(!s) return esc((e&&e.icon)||'💪');
   return exImgTag(s,(e&&e.name)||'');
 }
-// Lightbox: tocar la imagen del ejercicio la expande a pantalla completa
+// Lightbox: tocar la imagen del ejercicio la expande a pantalla completa.
+// Empuja su PROPIA capa de historial (navOpenLayer) — igual que las habitaciones — para que
+// el atrás físico lo cierre sin robarle la capa a la habitación que tenga debajo (bug #7
+// auditoría 2026-06-30: atrás desde "Ver técnica" dentro de una sala podía cerrar la app en TWA).
 function openExImg(src,name){
   const lb=document.getElementById('ex-lightbox'); if(!lb||!src) return;
   const vid=document.getElementById('exlb-vid'); if(vid){try{vid.pause();}catch(e){} vid.removeAttribute('src'); vid.style.display='none';}
   const img=document.getElementById('exlb-img'); img.style.display=''; img.src=src;
   document.getElementById('exlb-name').textContent=name||'';
+  if(!lb.classList.contains('on')) navOpenLayer();
   lb.classList.add('on');
 }
 // Igual que openExImg pero para el video del ejercicio (se ve COMPLETO, sin recorte).
@@ -1049,6 +1058,7 @@ function openExVid(src,name){
   const vid=document.getElementById('exlb-vid');
   if(vid){vid.style.display='block'; vid.src=src; vid.play&&vid.play().catch(()=>{});}
   document.getElementById('exlb-name').textContent=name||'';
+  if(!lb.classList.contains('on')) navOpenLayer();
   lb.classList.add('on');
 }
 function closeExImg(){
@@ -1057,8 +1067,13 @@ function closeExImg(){
   const vid=document.getElementById('exlb-vid'); if(vid){try{vid.pause();}catch(e){} vid.removeAttribute('src'); vid.style.display='none';}
   const img=document.getElementById('exlb-img'); if(img)img.style.display='';
 }
-// Cerrar lightbox / bienvenida con la tecla Escape (no interfiere con otros handlers)
-document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeExImg(); hideClientWelcome(); } });
+// Cerrar lightbox / bienvenida con la tecla Escape (no interfiere con otros handlers).
+// El lightbox tiene capa de historial propia → cerrar via navCloseLayer para consumirla.
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){
+  const lb=document.getElementById('ex-lightbox');
+  if(lb&&lb.classList.contains('on')) navCloseLayer(closeExImg);
+  hideClientWelcome();
+} });
 
 const defaultExercises=[
   // ── PECHO ──

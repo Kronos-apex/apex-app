@@ -1505,6 +1505,10 @@ function _showExSheet(ex, isCoach, editable){
   const bg = document.getElementById('exdetail-bg');
   const openRooms = [...document.querySelectorAll('.sroom.on')].map(e => parseInt(getComputedStyle(e).zIndex) || 0);
   bg.style.zIndex = openRooms.length ? String(Math.max(...openRooms) + 10) : '';
+  // La ficha empuja su PROPIA capa de historial (como las habitaciones): así el atrás físico
+  // la cierra descontando SU capa y no la de la sala que tenga debajo (bug #7 auditoría
+  // 2026-06-30: atrás desde "Ver técnica" dentro de una .sroom podía cerrar la app en TWA).
+  if(!bg.classList.contains('on')) navOpenLayer();
   bg.classList.add('on');
   document.body.style.overflow = 'hidden';
 }
@@ -1535,7 +1539,9 @@ function toggleExEnv(code){
 
 function closeExDetail(e){
   if(e && e.target !== document.getElementById('exdetail-bg')) return;
-  _closeExDetail();
+  // Cierre por UI (tap en el fondo): la ficha tiene capa de historial propia → consumirla
+  // con history.back(); el popstate llama _closeExDetail y descuenta la capa.
+  navCloseLayer(_closeExDetail);
 }
 function _closeExDetail(){
   const bg = document.getElementById('exdetail-bg');
@@ -1560,7 +1566,8 @@ function openExYoutube(){
     if(!sheet) return;
     sheet.addEventListener('touchstart', e=>{ startY = e.touches[0].clientY; }, {passive:true});
     sheet.addEventListener('touchend', e=>{
-      if(e.changedTouches[0].clientY - startY > 80) _closeExDetail();
+      // Swipe hacia abajo = cierre por UI → consumir la capa de historial de la ficha.
+      if(e.changedTouches[0].clientY - startY > 80) navCloseLayer(_closeExDetail);
     }, {passive:true});
   });
 })();

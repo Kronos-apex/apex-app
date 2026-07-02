@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=242">
+<link rel="stylesheet" href="styles.css?v=243">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -413,7 +413,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
     <!-- CLIENT DETAIL -->
     <div id="p-detail" class="panel">
-      <div class="back" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on')">← Volver a asesorados</div>
+      <!-- Pasa por history.back(): el handler del atrás deshace el paso registrado al entrar
+           al detalle (antes hacía gp silencioso y esa entrada quedaba VIVA en el stack →
+           un atrás físico "muerto" después de volver — #11 auditoría 2026-06-30). Dice
+           "Volver" a secas: regresa al panel de ORIGEN (lista, Inicio o Cargas). -->
+      <div class="back" onclick="history.back()">← Volver</div>
       <div class="card" style="margin-bottom:13px">
         <div class="cb" style="display:flex;align-items:center;gap:13px">
           <div class="cav" style="width:52px;height:52px;font-size:19px" id="d-av"></div>
@@ -864,7 +868,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 </div>
 
 <!-- ══ LIGHTBOX IMAGEN DE EJERCICIO ══ -->
-<div id="ex-lightbox" class="exlb" onclick="closeExImg()">
+<div id="ex-lightbox" class="exlb" onclick="navCloseLayer(closeExImg)">
   <div class="exlb-close">✕</div>
   <img id="exlb-img" src="" alt="">
   <video id="exlb-vid" playsinline loop muted autoplay style="display:none"></video>
@@ -1034,18 +1038,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=242"></script>
-<script src="muscle-map.js?v=242"></script>
-<script src="exercise-muscles.js?v=242"></script>
+<script src="avi-core.js?v=243"></script>
+<script src="muscle-map.js?v=243"></script>
+<script src="exercise-muscles.js?v=243"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=242"></script>
-<script src="app-2-login.js?v=242"></script>
-<script src="app-3-coach.js?v=242"></script>
-<script src="app-4-entreno.js?v=242"></script>
-<script src="app-5-salud.js?v=242"></script>
-<script src="app-6-extra.js?v=242"></script>
+<script src="app-1-infra.js?v=243"></script>
+<script src="app-2-login.js?v=243"></script>
+<script src="app-3-coach.js?v=243"></script>
+<script src="app-4-entreno.js?v=243"></script>
+<script src="app-5-salud.js?v=243"></script>
+<script src="app-6-extra.js?v=243"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

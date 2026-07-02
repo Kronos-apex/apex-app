@@ -920,18 +920,25 @@ function initRememberMe(){
   if(rem&&uEl){uEl.value=rem;if(remCk)remCk.checked=true;}
 }
 
+// ── Botón ATRÁS (Android/TWA): guard + handler. Registrados ANTES de la entrada de sesión
+// (bug Camilo 2026-06-28: el `await _enterAuthSession` puede NO resolver; si este setup iba
+// después, quedaba sin ejecutar y el atrás se salía a la primera). Función con guarda de una
+// sola ejecución porque se llama TAMBIÉN en la rama catch del boot (latente auditoría
+// 2026-06-30: si syncFromCloud lanzaba, la app mostraba el login pero el atrás salía en seco).
+let _aviBackInstalled=false;
+function _aviInstallBack(){
+  if(_aviBackInstalled)return; _aviBackInstalled=true;
+  history.pushState({aviGuard:1},'');
+  window.addEventListener('popstate',_aviHandleBack);
+}
+
 // Boot: sync from cloud then show login
 syncFromCloud().then(async ()=>{
   initTheme();
   initTextSize();
   initRememberMe();
   initPWA();
-  // ── Botón ATRÁS (Android/TWA): guard + handler registrados AQUÍ, ANTES de la entrada de
-  // sesión. CLAVE (bug Camilo 2026-06-28): el `await _enterAuthSession` de abajo puede NO
-  // resolver (muestra la vista pero su promesa queda pendiente); cuando este setup iba
-  // DESPUÉS del await, quedaba sin ejecutar y el atrás se salía a la primera. Va antes.
-  history.pushState({aviGuard:1},'');
-  window.addEventListener('popstate',_aviHandleBack);
+  _aviInstallBack();
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
   let authEntered=false;
   try{
@@ -949,6 +956,7 @@ syncFromCloud().then(async ()=>{
   warn('AVI: el arranque falló, cayendo al login:', e&&e.message);
   const ov=document.getElementById('avi-loading');
   if(ov){ ov.classList.add('fade'); setTimeout(()=>ov.remove(),300); }
+  try{ _aviInstallBack(); }catch(_e){}
   try{ showScreen('s-login'); }catch(_e){}
 });
 
@@ -1028,9 +1036,12 @@ function renderAll(){renderHome();renderClients();renderExercises();renderMsgs()
 // cerrar; 2) un paso del stack de pestañas → deshacer; 3) coach en detalle → lista;
 // 3b) cliente fuera de Inicio con stack vacío → ir a Inicio; 4) en Inicio → doble-atrás.
 function _aviHandleBack(){
-  // 0) HABITACIÓN con su propia capa de historial (navOpenLayer): el atrás físico YA consumió
-  // su entrada al disparar este popstate. Cerrar la de más arriba y DESCONTAR la capa, SIN
-  // re-empujar — eso es lo que arregla el bug del TWA (ver nota en app-1-infra.js).
+  // 0) Overlay con su propia capa de historial (navOpenLayer): habitaciones .sroom Y TAMBIÉN
+  // la ficha de ejercicio (#exdetail-bg) y el lightbox (#ex-lightbox) desde v243 — se abren
+  // sobre las salas y sin capa propia le "robaban" el descuento a la sala de abajo (#7
+  // auditoría 2026-06-30). El atrás físico YA consumió su entrada al disparar este popstate:
+  // cerrar lo de más arriba y DESCONTAR la capa, SIN re-empujar — eso arregla el bug del TWA
+  // (ver nota en app-1-infra.js).
   if(AVINAV.layers>0){ _aviCloseTopOverlay(); AVINAV.layers--; return; }
   // 1) Overlays/modales legacy (no empujan capa propia) → cerrar con re-empuje del guard único.
   if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
