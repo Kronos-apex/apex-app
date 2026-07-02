@@ -878,6 +878,35 @@ test('mergeAuthRow: robusto ante filas incompletas o null', () => {
   assert.strictEqual(out2.history.length, 1, 'Sin fila de nube, el respaldo local no se pierde');
 });
 
+// 12c. parseOAuthReturn — retorno de linkIdentity/OAuth (caso Luz 2026-07-02: los
+// errores de GoTrue vuelven en el hash de la URL y se perdían en silencio).
+const { parseOAuthReturn } = core;
+
+test('parseOAuthReturn: error de GoTrue en el hash (identity_already_exists)', () => {
+  const r = parseOAuthReturn('#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user', '');
+  assert.strictEqual(r.error, 'server_error');
+  assert.strictEqual(r.code, 'identity_already_exists');
+  assert.strictEqual(r.desc, 'Identity is already linked to another user', 'Los + se vuelven espacios');
+});
+
+test('parseOAuthReturn: error en el search (?error=) también se captura', () => {
+  const r = parseOAuthReturn('', '?error=access_denied&error_description=User%20denied%20access');
+  assert.strictEqual(r.error, 'access_denied');
+  assert.strictEqual(r.desc, 'User denied access');
+});
+
+test('parseOAuthReturn: retorno exitoso (tokens) o vacío → sin error', () => {
+  assert.strictEqual(parseOAuthReturn('#access_token=abc&refresh_token=def', '').error, '');
+  assert.strictEqual(parseOAuthReturn('', '').error, '');
+  assert.strictEqual(parseOAuthReturn(null, undefined).error, '', 'null/undefined no revientan');
+});
+
+test('parseOAuthReturn: hash gana pero search rellena lo que falte', () => {
+  const r = parseOAuthReturn('#error=server_error', '?error=otro&error_code=manual_linking_disabled');
+  assert.strictEqual(r.error, 'server_error', 'El hash tiene prioridad');
+  assert.strictEqual(r.code, 'manual_linking_disabled', 'El search rellena el código ausente');
+});
+
 // ══════════════════════════════════════════════════════
 section('13. Agregados de actividad por fecha (dashboard del coach)');
 

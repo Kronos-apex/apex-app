@@ -831,6 +831,28 @@ function mergeAuthRow(localRow, cloudRow) {
   return out;
 }
 
+// Retorno de OAuth (Google): GoTrue devuelve los ERRORES del vínculo/login por la
+// URL de redirect (#error=…&error_code=…&error_description=…), NO en el valor de
+// retorno de linkIdentity/signInWithOAuth — y supabase-js (detectSessionInUrl)
+// consume el hash al crear el cliente. Sin parsear esto ANTES, la app tiraba los
+// errores a la basura y "Conectar mi Google" fallaba en silencio (caso Luz
+// 2026-07-02). Pura y testeable: recibe hash y search crudos.
+function parseOAuthReturn(hash, search) {
+  const out = { error: '', code: '', desc: '' };
+  const read = (raw, strip) => {
+    try {
+      const p = new URLSearchParams(String(raw || '').replace(strip, ''));
+      out.error = out.error || p.get('error') || '';
+      out.code = out.code || p.get('error_code') || '';
+      out.desc = out.desc || p.get('error_description') || '';
+    } catch (e) { /* URL malformada → sin error */ }
+  };
+  read(hash, /^#/); read(search, /^\?/);
+  // error_description llega con + por espacios (form-encoding sobre el fragment)
+  out.desc = out.desc.replace(/\+/g, ' ');
+  return out;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // AGREGADOS DE ACTIVIDAD POR FECHA (dashboard del coach)
 // ──────────────────────────────────────────────────────────────────────
@@ -1745,6 +1767,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mergePRs,
     mergeMsgs,
     mergeAuthRow,
+    parseOAuthReturn,
     _msgKey,
     localDayStart,
     retentionByDay,

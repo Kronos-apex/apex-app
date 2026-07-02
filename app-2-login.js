@@ -191,18 +191,59 @@ function _linkGoogleErrMsg(error){
   const code=(error&&error.code)||'';
   const msg=String((error&&error.message)||'').toLowerCase();
   if(code==='identity_already_exists'||msg.indexOf('already linked')>=0)
-    return 'Ese Google ya está conectado a otra cuenta. Pídele a tu coach que lo revise y vuelve a intentar. 🙏';
+    return 'Ese Google ya está usado por otra cuenta. Cierra sesión, toca "Continuar con Google" UNA vez (si era una cuenta vacía se limpia sola), vuelve a entrar con tu correo e intenta de nuevo. Si sigue fallando, avísale a tu coach. 🙏';
   if(code==='manual_linking_disabled'||msg.indexOf('manual linking')>=0)
     return 'Conectar Google está desactivado por ahora. Avísale a tu coach.';
+  if(code==='access_denied'||msg.indexOf('denied')>=0)
+    return 'Cancelaste la conexión con Google. Puedes intentarlo cuando quieras.';
   return 'No se pudo conectar Google. Revisa tu internet e intenta de nuevo.';
 }
 async function linkGoogle(){
   const c=AUTH.client(); if(!c){toast('Inicia sesión primero');return;}
   try{
+    // Marca "vínculo en curso" ANTES de redirigir: al volver de Google el resultado
+    // (éxito o #error= en el hash) llega por URL y detectSessionInUrl consume el hash,
+    // así que _handleGoogleLinkReturn necesita esta miga para saber que veníamos de aquí.
+    try{ localStorage.setItem('ax_glink_pending',String(Date.now())); }catch(_e){}
     const {error}=await c.auth.linkIdentity({provider:'google',options:{redirectTo:location.origin+location.pathname}});
-    if(error){ warn('AVI: linkIdentity falló:',error.code||'',error.message||''); toast(_linkGoogleErrMsg(error)); }
+    if(error){ try{ localStorage.removeItem('ax_glink_pending'); }catch(_e){} warn('AVI: linkIdentity falló:',error.code||'',error.message||''); toast(_linkGoogleErrMsg(error),6000); }
     // Sin error: el navegador redirige a Google para autorizar el vínculo.
-  }catch(e){ warn('AVI: linkGoogle lanzó:',e&&e.message); toast(_linkGoogleErrMsg(e)); }
+  }catch(e){ try{ localStorage.removeItem('ax_glink_pending'); }catch(_e){} warn('AVI: linkGoogle lanzó:',e&&e.message); toast(_linkGoogleErrMsg(e),6000); }
+}
+
+// Al VOLVER de Google tras linkIdentity: GoTrue devuelve el resultado en la URL
+// (#error=... si falló; tokens si funcionó) y supabase-js consume el hash al crear el
+// cliente (detectSessionInUrl) → sin esto el error se PERDÍA en silencio (caso Luz
+// 2026-07-02: el vínculo sí quedó pero nadie se lo dijo). _OAUTH_RET (app-1-infra) captura
+// el hash/search en parse-time, antes de que el cliente lo consuma.
+async function _handleGoogleLinkReturn(){
+  // El flag lleva timestamp: si el usuario abandonó en la pantalla de Google y abre la
+  // app días después, un flag viejo (>10 min) se descarta EN SILENCIO (sin toast espurio).
+  let pending=false;
+  try{
+    const ts=parseInt(localStorage.getItem('ax_glink_pending'),10);
+    localStorage.removeItem('ax_glink_pending');
+    pending=!isNaN(ts)&&(Date.now()-ts)<10*60*1000;
+  }catch(_e){}
+  if(!pending)return;
+  // Limpia el hash de la URL (tokens/error) para que un reload no lo re-procese.
+  try{ if(location.hash) history.replaceState(history.state,'',location.pathname+location.search); }catch(_e){}
+  if(_OAUTH_RET&&_OAUTH_RET.error){
+    warn('AVI: retorno de linkIdentity con error:',_OAUTH_RET.code,_OAUTH_RET.desc||_OAUTH_RET.error);
+    toast(_linkGoogleErrMsg({code:_OAUTH_RET.code,message:_OAUTH_RET.desc||_OAUTH_RET.error}),8000);
+    return;
+  }
+  // Sin error en la URL: confirma contra el usuario real si el vínculo quedó.
+  let linked=false;
+  try{ const u=await AUTH.getUser(); if(u)linked=(u.identities||[]).some(i=>i.provider==='google'); }catch(_e){}
+  if(linked){
+    toast('✅ ¡Google conectado! Ya puedes entrar con un toque.',6000);
+    // Si el retorno de Google cayó en el navegador (no en la app instalada), oriéntala.
+    try{ if(!matchMedia('(display-mode: standalone)').matches) setTimeout(()=>toast('📱 Puedes volver a la app AVI desde su ícono.',6000),6500); }catch(_e){}
+    try{ renderGoogleLink(); }catch(_e){}
+  }else{
+    toast('No se pudo confirmar la conexión con Google. Revisa en Perfil e intenta de nuevo.',6000);
+  }
 }
 
 // Pinta la tarjeta de "Conectar Google" en el perfil (solo en modo auth). Muestra estado.
@@ -944,7 +985,12 @@ syncFromCloud().then(async ()=>{
   try{
     if(AUTH.ready()){
       const session=await AUTH.getSession();
-      if(session&&session.user){ await _enterAuthSession(session.user); authEntered=true; }
+      if(session&&session.user){
+        // Retorno de "Conectar mi Google": programado ANTES del await (que puede quedar
+        // pendiente, gotcha v216) y con settle para que el splash no tape el toast.
+        setTimeout(()=>{ try{ _handleGoogleLinkReturn().catch(()=>{}); }catch(_e){} },1500);
+        await _enterAuthSession(session.user); authEntered=true;
+      }
     }
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──

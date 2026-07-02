@@ -125,6 +125,13 @@ const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPB
 // app sigue funcionando con el camino actual (localStorage). NADA llama a AUTH todavía:
 // es el cimiento que el paso 2.2 (reescritura de login + capa de datos) va a conectar.
 let _sbc=null;
+// Captura TEMPRANA (al parsear este script, ANTES de crear el cliente) del retorno de
+// OAuth: detectSessionInUrl consume/limpia el hash, y los errores reales del vínculo
+// Google (identity_already_exists, etc.) llegan AQUÍ — no en el return de linkIdentity.
+// Ver _handleGoogleLinkReturn (app-2-login.js). Caso Luz 2026-07-02.
+const _OAUTH_RET=(typeof parseOAuthReturn==='function'&&typeof location!=='undefined')
+  ? parseOAuthReturn(location.hash,location.search)
+  : {error:'',code:'',desc:''};
 function sbAuthReady(){return typeof window!=='undefined'&&!!window.supabase&&typeof window.supabase.createClient==='function';}
 function sbAuthClient(){
   if(_sbc)return _sbc;
@@ -834,7 +841,7 @@ async function syncFromCloud(){
 }
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px'}
 let _tt;
-function toast(msg){const e=document.getElementById('toast');clearTimeout(_tt);e.textContent=msg;e.classList.add('on');_tt=setTimeout(()=>e.classList.remove('on'),2500)}
+function toast(msg,ms){const e=document.getElementById('toast');clearTimeout(_tt);e.textContent=msg;e.classList.add('on');_tt=setTimeout(()=>e.classList.remove('on'),ms||2500)}
 
 // ══════════════════════ DB ══════════════════════
 // ══ IMÁGENES DE EJERCICIOS ══ (base libre dominio público, reemplazables por clips propios)
