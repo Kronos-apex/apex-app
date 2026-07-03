@@ -369,19 +369,19 @@ function renderGuidedViewToggle(client){
 }
 function switchToGuidedView(){ _switchTodayView(true); }
 function switchToClassicView(){ _switchTodayView(false); }
-// Cambia la vista de "Hoy" (guiada/clásica) y FUERZA el re-render. cnTodayGuard solo re-dibuja
-// "Hoy" cuando cambia el DÍA → sin resetear su marca, al volver a "Hoy" se veía lo viejo y
-// parecía que el interruptor no hacía nada (reporte de Camilo 2026-07-03). Reseteamos
-// CUR.todayRenderedDay y, si "Hoy" está visible ahora mismo, lo re-renderizamos al instante.
+// Cambia la vista de "Hoy" (guiada/clásica) y LLEVA al usuario a "Hoy" para que vea el cambio
+// al instante. El interruptor vive en Perfil, así que antes el cambio quedaba listo pero no se
+// veía hasta salir/entrar de la app (reporte de Camilo 2026-07-03). Además cnTodayGuard solo
+// re-dibuja "Hoy" al cambiar el DÍA → reseteamos CUR.todayRenderedDay para saltar la guarda.
 function _switchTodayView(on){
   setUiGuided(on);
-  toast(on?'🧭 Vista guiada activada · abre "Hoy"':'↩ Vista clásica restaurada');
-  CUR.todayRenderedDay=null; // la próxima entrada a "Hoy" re-renderiza (salta la guarda)
+  toast(on?'🧭 Vista guiada activada':'↩ Vista clásica restaurada');
+  CUR.todayRenderedDay=null; // salta la guarda cnTodayGuard → "Hoy" se re-renderiza
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   if(!c)return;
-  renderClientProfile(c);
-  const todayTab=document.getElementById('cn-today');
-  if(todayTab&&todayTab.classList.contains('on')){ renderClientToday(c); } // ya está en "Hoy" → aplica ya
+  // Navegar a "Hoy" (re-renderiza por la guarda reseteada). Fallback: render directo.
+  if(typeof cnTab==='function'){ cnTab('cn-today', typeof _cnTabEl==='function'?_cnTabEl('cn-today'):null); }
+  else { renderClientToday(c); }
 }
 
 // Tarjeta "Cuenta" → eliminar cuenta (derecho de supresión / requisito Play Store).
