@@ -348,15 +348,13 @@ function renderClientProfile(client){
   applyProfileDisclosure(client.id);
 }
 
-// Interruptor de la vista de "Hoy" (unificación guiado F2). Con la vista guiada ON se muestra
-// siempre (kill-switch a mano para volver a la clásica). Con OFF, el botón para ACTIVARLA solo
-// aparece en el propio entrenamiento del coach (COACH_SELF = Camilo) para que sus clientes no lo
-// vean mientras la vista guiada está en prueba (plan F2.5). El flag es por dispositivo.
+// Interruptor de la vista de "Hoy" (unificación guiado F2). Se muestra SIEMPRE en el Perfil
+// (con ON → "Volver a la clásica"; con OFF → "Activar vista guiada"). Antes lo escondía salvo
+// COACH_SELF, pero eso impedía a Camilo encontrarlo en su celular → se quitó esa restricción.
+// El flag es por dispositivo (opt-in, default OFF: la vista clásica sigue siendo la de todos).
 function renderGuidedViewToggle(client){
   const el=document.getElementById('cn-guided-card'); if(!el)return;
   const on=(typeof uiGuided==='function'&&uiGuided());
-  // Con OFF y sin ser el coach en su entreno → oculto (los clientes no lo ven todavía).
-  if(!on && !COACH_SELF){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="card" style="margin-bottom:12px">
     <div class="ch"><div class="ctitle">🧭 Vista de entrenamiento</div></div>
     <div class="cb">
