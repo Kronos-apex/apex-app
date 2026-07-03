@@ -578,6 +578,10 @@ function renderTodayHead(client){
 
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
+  // F2: devolver #guided-mode a su sitio de overlay ANTES de tocar con.innerHTML (si estaba
+  // embebido, es hijo de `con` y un innerHTML='' lo borraría del DOM). Cada render decide
+  // de nuevo si embebe. Guard typeof por si app-6 (donde vive) aún no cargó.
+  if(typeof _gmCaptureHome==='function'){ _gmCaptureHome(); gmRestoreOverlayHome(); }
   renderTodayHead(client);
   renderCoachUpsell(client);
   const routines=client.routines||[];
@@ -612,6 +616,14 @@ function renderClientToday(client, overrideRoutine){
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
   prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos (común a clásica y guiado)
+  // F2: con la vista guiada ON, "Hoy" ES el guiado embebido (no el hero+lista clásicos).
+  // Kill-switch: con el flag OFF (default) NADA de esto corre y todo sigue igual.
+  if(typeof uiGuided==='function' && uiGuided() && typeof openGuidedEmbedded==='function'){
+    CUR.activeRoutine=todayR;
+    con.innerHTML='';
+    if(openGuidedEmbedded(todayR)) return;
+    // si por lo que sea no pudo embeber, cae a la vista clásica de abajo
+  }
   const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';

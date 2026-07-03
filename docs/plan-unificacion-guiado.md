@@ -223,14 +223,28 @@ Para cada uno:
   harness (no solo el listener 9266) antes de correr, si no el setup falla en falso
   ("Cannot set properties of undefined (setting 'routines')" = login no completó por hablar con
   Chrome zombi). Receta: `taskkill` del PID de 9266 + `wmic` de los chrome con `9266`/`remote-debug`.
-- **SIGUIENTE → F2·sub-2 (el render embebido, LO GRANDE):** con flag ON, `renderClientToday`
-  pinta el guiado EMBEBIDO en `#cn-today-body` en vez del hero+cex-list. Reusar `#guided-mode`
-  reubicándolo (o `gmRender` con contenedor destino) + clase `gm-embedded` que quita
-  `position:fixed`; ocultar el ✕ y el botón "▶ Empezar"; NO tocar `document.body.overflow`.
-  ⚠️ NUNCA dos renders `gm-*` a la vez (embebido + overlay): con flag ON, bloquear el camino
-  del overlay desde "Hoy". Verificar con harness: flag ON → Hoy muestra guiado embebido y
-  funciona (marcar serie, descanso); flag OFF → clásica intacta. Luego F2·sub-3 = el poll de 15s
-  re-renderizando el embebido sin matar timers vivos (patrón paintGo v245).
+- **F2·sub-2 ✅ (2026-07-03, avi-v252):** el render EMBEBIDO. Con flag ON, `renderClientToday`
+  hace `con.innerHTML=''` + `openGuidedEmbedded(todayR)` y `return` (no pinta hero+cex-list).
+  `openGuidedEmbedded` reubica el MISMO `#guided-mode` dentro de `#cn-today-body` (reusa
+  topbar/body/footer/rest-overlay ya probados) con la clase `.gm-embedded` (CSS: quita
+  position:fixed, oculta el ✕, sin scroll interno, `zoom:1` para no doblar el zoom de texto del
+  `.cnp`). Helpers `_gmCaptureHome`/`gmRestoreOverlayHome` mueven el nodo entre overlay↔tab;
+  `gmRestoreOverlayHome` corre al tope de `renderClientToday` ANTES del `innerHTML=''` (si no,
+  borraría el nodo compartido) y **SOLO actúa si está embebido** (un overlay abierto no se toca
+  — bug hallado y corregido: hidden a media sesión cuando pickMood/todayMoveEx disparan el
+  render con el overlay abierto, S6/S7/S8). `closeGuidedMode` es embedded-aware: al completar
+  todo NO oculta el tab (la celebración la muestra `checkAndShowCongrats`); `gmUpdateActionBtn`
+  oculta el botón "Cerrar" en embebido. Como `openGuidedMode` (overlay) tiene UN solo llamador
+  (el botón "▶ Empezar", que NO se pinta con flag ON) → nunca hay dos renders `gm-*` a la vez.
+  Harness a **50 checks** (S13: embebido dentro del tab sin ✕/cex-list/Empezar; marcar serie;
+  completar todo sin ocultar + botón Cerrar oculto; flag OFF restaura clásica y devuelve el nodo).
+- **SIGUIENTE → F2·sub-3 (el poll en vivo):** el `_pollAuthClient` de 15s llama
+  `renderClientToday`; con flag ON debe re-render el embebido respetando la guarda anti-pisado
+  (`CUR.todayWorking`/`_authDirty`) y SIN matar timers vivos (`GM.restTimer`/`GM.hiit`/HOLD).
+  ⚠️ Hoy `openGuidedEmbedded` cancela timers al re-embeber → un poll a media serie con descanso/
+  HIIT en curso los cortaría. Hacer que el poll, si el guiado embebido ya está montado y hay un
+  timer vivo, NO re-embeba (o re-embeba preservando el timer, patrón paintGo v245). Verificar
+  con harness: descanso/HIIT vivo + poll → el timer sobrevive. Luego F3 (atrás/TWA), F4, F5.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

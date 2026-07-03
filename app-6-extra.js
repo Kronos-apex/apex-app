@@ -143,12 +143,59 @@ function openGuidedMode(){
   // de que la clásica haya renderizado (plan unificación P10). Idempotente el mismo día.
   if(typeof prepareTodaySession==='function') prepareTodaySession(routine);
   gmRebuild();
-  document.getElementById('guided-mode').classList.remove('hidden');
+  const g=document.getElementById('guided-mode');
+  g.classList.remove('gm-embedded'); // defensivo: si venía embebido, vuelve a ser overlay
+  g.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   setTimeout(() => gmScrollToCurrent(), 200);
   // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
   setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
 }
+
+// ══════════ GUIADO EMBEBIDO como pantalla de "Hoy" (unificación F2 sub-2) ══════════
+// Con el flag ax_ui_guided ON, "Hoy" ES el guiado embebido en #cn-today-body (no overlay).
+// Reubica el MISMO #guided-mode (reusa topbar/body/footer/rest-overlay ya probados) dentro del
+// tab y le quita position:fixed vía la clase gm-embedded. No hay ✕, no bloquea el scroll del
+// body, no muestra tarjeta de inicio. El camino del overlay (openGuidedMode) NO se usa con el
+// flag ON (el botón "▶ Empezar" no se pinta) → nunca hay dos renders gm-* a la vez.
+let _gmHomeParent=null, _gmHomeNext=null;
+function _gmCaptureHome(){
+  const g=document.getElementById('guided-mode'); if(!g||_gmHomeParent!==null) return;
+  _gmHomeParent=g.parentNode; _gmHomeNext=g.nextSibling;
+}
+// Devuelve #guided-mode a su sitio original (overlay) y oculto. Debe correr ANTES de que
+// renderClientToday haga con.innerHTML='' (si no, borraría el nodo compartido del DOM).
+// SOLO actúa si está EMBEBIDO: si es un overlay abierto (flag OFF, guiado clásico encima de
+// "Hoy") NO se toca — hacerlo lo ocultaría a media sesión (bug S6/S7/S8: pickMood/todayMoveEx
+// disparan renderClientToday con el overlay abierto).
+function gmRestoreOverlayHome(){
+  const g=document.getElementById('guided-mode'); if(!g) return;
+  if(!g.classList.contains('gm-embedded')) return;
+  g.classList.remove('gm-embedded');
+  g.classList.add('hidden');
+  if(_gmHomeParent && g.parentNode!==_gmHomeParent){ _gmHomeParent.insertBefore(g,_gmHomeNext); }
+}
+function openGuidedEmbedded(routine){
+  if(!routine || !(routine.exercises||[]).length) return false;
+  const g=document.getElementById('guided-mode');
+  const con=document.getElementById('cn-today-body');
+  if(!g||!con) return false;
+  _gmCaptureHome();
+  if(typeof prepareTodaySession==='function') prepareTodaySession(routine);
+  // Sin timers heredados de una sesión previa
+  if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
+  if(GM.holding) _gmEndHoldUI();
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; relWake(); }
+  const ov=document.getElementById('gm-rest-overlay'); if(ov) ov.classList.add('hidden');
+  g.classList.add('gm-embedded');
+  g.classList.remove('hidden');
+  if(g.parentNode!==con) con.appendChild(g); // mueve el nodo (con su rest-overlay hijo) al tab
+  document.body.style.overflow=''; // embebido NO bloquea el scroll de la app
+  gmRebuild();
+  setTimeout(()=>gmScrollToCurrent(),120);
+  return true;
+}
+function _gmIsEmbedded(){ const g=document.getElementById('guided-mode'); return !!(g&&g.classList.contains('gm-embedded')); }
 
 // Reconstruye el estado del guiado desde CUR.activeRoutine (tras ánimo, reorden o
 // sustitución). Las claves de sesión ya viajaron con el ejercicio
@@ -194,9 +241,12 @@ function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
   if(GM.holding) _gmEndHoldUI();
   if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
-  document.getElementById('guided-mode').classList.add('hidden');
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   closeStartCard();
+  // Embebido (F2): "Hoy" ES el guiado → NO se oculta ni se relocaliza. Solo se limpian timers;
+  // la celebración de fin la muestra checkAndShowCongrats (quien llama). El body no se bloquea.
+  if(_gmIsEmbedded()){ if(GM.routine) updateClientProgress(GM.routine); return; }
+  document.getElementById('guided-mode').classList.add('hidden');
   document.body.style.overflow = '';
   if(GM.routine) updateClientProgress(GM.routine);
 }
@@ -595,7 +645,11 @@ function gmUpdateProgress(){
 function gmUpdateActionBtn(){
   const btn = document.getElementById('gm-action-btn');
   if(!btn) return;
+  btn.style.display='';
   if(GM.currentStep >= GM.steps.length){
+    // Embebido: "Cerrar entrenamiento" no aplica (es la pantalla de Hoy) → ocultar el botón;
+    // las tarjetas en verde + la celebración de fin ya comunican que terminó.
+    if(_gmIsEmbedded()){ btn.style.display='none'; return; }
     btn.textContent = '🏆 ¡Listo! Cerrar entrenamiento';
     btn.onclick = () => closeGuidedMode();
     return;

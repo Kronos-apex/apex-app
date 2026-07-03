@@ -1023,6 +1023,14 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 /* ── MODO GUIADO ── */
 #guided-mode{position:fixed;inset:0;z-index:700;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 #guided-mode.hidden{display:none}
+/* Guiado EMBEBIDO como pantalla de "Hoy" (unificación F2): fluye dentro de #cn-today-body,
+   sin position:fixed, sin ✕, sin scroll interno propio (scrollea el tab). El rest-overlay hijo
+   sigue position:fixed (modal a pantalla completa durante el descanso). */
+#guided-mode.gm-embedded{position:static;inset:auto;z-index:auto;overflow:visible;background:transparent;display:block}
+#guided-mode.gm-embedded .gm-topbar{padding:0 0 12px;border-bottom:none}
+#guided-mode.gm-embedded .gm-close{display:none}
+#guided-mode.gm-embedded .gm-body{overflow:visible;flex:none;padding:0;zoom:1}
+#guided-mode.gm-embedded .gm-footer{position:static;border-top:none;background:transparent;padding:14px 0 4px}
 .gm-topbar{display:flex;align-items:center;gap:12px;padding:14px 16px 10px;border-bottom:1px solid var(--br);flex-shrink:0}
 .gm-close{width:36px;height:36px;border-radius:10px;background:var(--surface,var(--bg));border:1.5px solid var(--br2);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex-shrink:0;color:var(--t2)}
 .gm-progress-wrap{flex:1}
