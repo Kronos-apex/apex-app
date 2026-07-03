@@ -201,11 +201,23 @@ Para cada uno:
   series/descanso) + nota del coach + "POR QUÉ ESTA RUTINA" + banner si `CUR.todayOverride`.
   Estilos sobre tokens neutros (el guiado va sobre var(--bg), no el gradiente del hero); todo
   con esc(). Harness a **40 checks** (S10). En F2 esta cabecera reemplaza al hero de la clásica.
-- **SIGUIENTE → F1·P11** (thumb de foto del ejercicio en la tarjeta gm — `exImgSrc`, hoy usa
-  `exIcon`; baja prioridad, visual) y luego **F2** (el guiado embebido en `#cn-today` tras el
-  flag `ax_ui_guided`, con kill-switch; es la fase grande — releer F2 completa en §3). P15
-  (marcar fuera de orden sin sentirse forzado) se verifica DURANTE F2. ⚠️ El puerto 9266 queda
-  zombi CADA corrida — matar PID antes de correr el harness.
+- **F1·P11 ✅ (2026-07-03):** SIN código nuevo — el guiado ya pinta la foto del ejercicio vía
+  `exIcon`→`exImgTag`→`.exicon-img` dentro de `.gm-ex-icon` (overflow:hidden, object-fit:cover).
+  Se dejó como regresión el check S11 (verifica `img.exicon-img` con src `.jpg` en la tarjeta).
+
+- **✅✅ F1 COMPLETA (2026-07-03).** Toda la paridad del inventario §2 está en el guiado:
+  P1 (ánimo), P2 (finalizar/reiniciar), P3 (reordenar/sustituir), P4 (lastre), P10 (reset
+  diario común), P11 (foto), P12 (cabecera). P5–P9/P13/P14 ya estaban; P15 se valida DURANTE F2.
+  Desplegado en avi-v246→v250. Harness `_repro-plancha.mjs` = **41 checks** (S1–S11), jsErrors [].
+  🟡 Falta el ojo de Camilo en el celular (recorrer el guiado: ánimo, reordenar, lastre, cabecera).
+
+- **SIGUIENTE → F2 (FASE GRANDE, empezar en sesión fresca).** El guiado se vuelve la vista de
+  "Hoy" detrás del flag `ax_ui_guided` (kill-switch). Releer §3-F2 COMPLETA antes de tocar nada:
+  los frentes de riesgo son (a) NUNCA dos renders `gm-*` a la vez (embebido + overlay),
+  (b) el poll de 15s re-renderizando con timers vivos, (c) `position:fixed`→embebido, (d)
+  `document.body.overflow`. Partir F2 en sub-deploys: primero el flag + toggle en Perfil (inerte
+  con OFF), luego el render embebido, luego el poll. NO hacerla de un solo golpe. ⚠️ El puerto
+  9266 queda zombi CADA corrida — matar PID antes de correr el harness.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 
