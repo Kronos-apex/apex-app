@@ -621,11 +621,12 @@ const MOOD_COLORS={
   periodo: ['#E0668A','rgba(224,102,138,.14)'],
   dolor:   ['var(--rd)','var(--rdl)'],
 };
-function moodChooserHtml(client){
+function moodChooserHtml(client,fnName){
+  const fn=fnName==='gmPickMood'?fnName:'pickMood'; // allowlist: el nombre viaja a onclick
   const opts=MOOD_STATES.filter(m=>!m.femaleOnly||client.sex==='F');
   const btns=opts.map(m=>{
     const [mc,mct]=MOOD_COLORS[m.id]||['var(--g2)','var(--gl)'];
-    return `<button class="mood-btn" style="--mc:${mc};--mct:${mct}" onclick="pickMood('${m.id}')" aria-label="${esc(m.label)}"><span class="mood-emoji">${m.emoji}</span><span class="mood-lbl">${esc(m.label)}</span></button>`;
+    return `<button class="mood-btn" style="--mc:${mc};--mct:${mct}" onclick="${fn}('${m.id}')" aria-label="${esc(m.label)}"><span class="mood-emoji">${m.emoji}</span><span class="mood-lbl">${esc(m.label)}</span></button>`;
   }).join('');
   return `<div class="checkin-card"><div class="checkin-q">¿Cómo te sientes hoy?</div><div class="checkin-sub">Ajustamos tu entrenamiento a cómo amaneciste.</div><div class="mood-grid">${btns}</div></div>`;
 }

@@ -170,8 +170,16 @@ Para cada uno:
   `_repro-plancha.mjs` ampliado a **29 checks** (S5 nuevo: P2 reiniciar/finalizar + P10 día
   nuevo sin render clásico), jsErrors []. 🟡 Falta ojo visual humano de la fila de botones
   (el DOM se verificó E2E; captura dedicada no se tomó).
-- **SIGUIENTE → F1·P1** (check-in de ánimo al entrar al guiado; ver §3-F1.5), luego P3, P4,
-  P12, P11 y F2. Releer las reglas de oro antes de cada tajada.
+- **F1·P1 ✅ (2026-07-03, avi-v247):** check-in de ánimo DENTRO del guiado. `moodChooserHtml`
+  acepta handler (`'gmPickMood'`, con allowlist); `gmRender` antepone el chooser si hoy no
+  eligió; `gmPickMood` = `pickMood` (guarda/adapta/avisa coach/re-renderiza clásica) +
+  `openGuidedMode()` encima (regenera GM.steps sobre la rutina adaptada y recalcula el paso).
+  No bloquea (igual que la clásica). Harness ampliado a **31 checks** (S6), jsErrors [].
+  NOTA: el banner de ánimo elegido (moodBannerHtml) NO se portó — va con P12 (header del
+  guiado absorbe el hero).
+- **SIGUIENTE → F1·P3** (reordenar/sustituir; regenerar GM.steps tras mover, check E2E de
+  reorden con serie hecha + dropset), luego P4, P12, P11 y F2. Releer las reglas de oro
+  antes de cada tajada.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

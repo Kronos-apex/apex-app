@@ -178,6 +178,15 @@ function gmRender(){
   const body = document.getElementById('gm-body');
   body.innerHTML = '';
   gmUpdateProgress();
+  // Check-in de ánimo (plan unificación P1): si hoy aún no eligió cómo se siente, el
+  // chooser vive TAMBIÉN en el guiado (paridad con la clásica; en F2 será el único lugar).
+  // No bloquea: puede entrenar sin elegir, igual que en la clásica.
+  const _cli = DB.clients.find(x=>x.id===CUR.clientId);
+  if(_cli && typeof applyMood==='function' && typeof MOOD_STATES!=='undefined' && !getTodayMood(_cli.id)){
+    const mc=document.createElement('div');
+    mc.innerHTML=moodChooserHtml(_cli,'gmPickMood');
+    if(mc.firstElementChild) body.appendChild(mc.firstElementChild);
+  }
   const exGroups = {};
   GM.steps.forEach((step, idx) => {
     if(!exGroups[step.ei]) exGroups[step.ei] = [];
@@ -270,6 +279,17 @@ function gmRender(){
     <button onclick="gmFinishEarly()" style="flex:2;padding:11px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
   body.appendChild(acts);
   gmUpdateActionBtn();
+}
+
+// ── Check-in de ánimo desde el guiado (plan unificación P1) ──
+// Reusa pickMood (guarda el ánimo, adapta con applyMood, avisa al coach si aplica y
+// re-renderiza la clásica → CUR.activeRoutine queda ADAPTADA) y reconstruye el guiado
+// encima: openGuidedMode regenera GM.steps sobre la rutina adaptada, corre
+// prepareTodaySession (dropsets huérfanos si applyMood recortó series) y recalcula
+// GM.currentStep con su bucle de series hechas.
+function gmPickMood(mood){
+  pickMood(mood);
+  openGuidedMode();
 }
 
 // ── Finalizar/Reiniciar desde el guiado (plan unificación P2) ──
