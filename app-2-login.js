@@ -977,6 +977,7 @@ function _aviInstallBack(){
 syncFromCloud().then(async ()=>{
   initTheme();
   initTextSize();
+  _initUiGuidedFromUrl(); // ?uig=1/0 fija la vista de "Hoy" por dispositivo (unificación F2)
   initRememberMe();
   initPWA();
   _aviInstallBack();

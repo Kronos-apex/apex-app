@@ -211,13 +211,26 @@ Para cada uno:
   Desplegado en avi-v246→v250. Harness `_repro-plancha.mjs` = **41 checks** (S1–S11), jsErrors [].
   🟡 Falta el ojo de Camilo en el celular (recorrer el guiado: ánimo, reordenar, lastre, cabecera).
 
-- **SIGUIENTE → F2 (FASE GRANDE, empezar en sesión fresca).** El guiado se vuelve la vista de
-  "Hoy" detrás del flag `ax_ui_guided` (kill-switch). Releer §3-F2 COMPLETA antes de tocar nada:
-  los frentes de riesgo son (a) NUNCA dos renders `gm-*` a la vez (embebido + overlay),
-  (b) el poll de 15s re-renderizando con timers vivos, (c) `position:fixed`→embebido, (d)
-  `document.body.overflow`. Partir F2 en sub-deploys: primero el flag + toggle en Perfil (inerte
-  con OFF), luego el render embebido, luego el poll. NO hacerla de un solo golpe. ⚠️ El puerto
-  9266 queda zombi CADA corrida — matar PID antes de correr el harness.
+### F2 EN CURSO (partida en sub-deploys, kill-switch protege prod entera)
+- **F2·sub-1 ✅ (2026-07-03, avi-v251):** flag `ax_ui_guided` + toggle. `uiGuided()`/`setUiGuided(on)`
+  en app-1-infra.js (per-dispositivo, NO en SB_KEYS → no sincroniza); `_initUiGuidedFromUrl()`
+  parsea `?uig=1`/`?uig=0` al boot (app-2-login.js, tras initTextSize); `renderGuidedViewToggle`
+  (app-4) llena `#cn-guided-card` en el Perfil SOLO cuando el flag ya está ON (con botón
+  "↩ Volver a la vista clásica" → `switchToClassicView`), oculto por defecto. **INERTE con OFF**:
+  nada lee el flag para cambiar el render todavía → "Hoy" sigue clásica. Harness a **46 checks**
+  (S12: OFF por defecto; setUiGuided persiste; toggle aparece con ON; volver-a-clásica apaga;
+  con OFF Hoy sigue clásica). ⚠️ GOTCHA harness confirmado HOY: matar TODOS los Chrome del
+  harness (no solo el listener 9266) antes de correr, si no el setup falla en falso
+  ("Cannot set properties of undefined (setting 'routines')" = login no completó por hablar con
+  Chrome zombi). Receta: `taskkill` del PID de 9266 + `wmic` de los chrome con `9266`/`remote-debug`.
+- **SIGUIENTE → F2·sub-2 (el render embebido, LO GRANDE):** con flag ON, `renderClientToday`
+  pinta el guiado EMBEBIDO en `#cn-today-body` en vez del hero+cex-list. Reusar `#guided-mode`
+  reubicándolo (o `gmRender` con contenedor destino) + clase `gm-embedded` que quita
+  `position:fixed`; ocultar el ✕ y el botón "▶ Empezar"; NO tocar `document.body.overflow`.
+  ⚠️ NUNCA dos renders `gm-*` a la vez (embebido + overlay): con flag ON, bloquear el camino
+  del overlay desde "Hoy". Verificar con harness: flag ON → Hoy muestra guiado embebido y
+  funciona (marcar serie, descanso); flag OFF → clásica intacta. Luego F2·sub-3 = el poll de 15s
+  re-renderizando el embebido sin matar timers vivos (patrón paintGo v245).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

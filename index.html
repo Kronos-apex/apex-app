@@ -700,6 +700,10 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           </div>
         </div>
       </div>
+      <!-- Vista de "Hoy" (guiado embebido, unificación F2). Se llena en renderGuidedViewToggle
+           SOLO cuando el flag ax_ui_guided está ON (se activa con ?uig=1); es el kill-switch
+           al alcance del usuario para volver a la vista clásica. Oculto por defecto. -->
+      <div id="cn-guided-card"></div>
       <!-- Cuenta: eliminar cuenta (derecho de supresión / requisito Play Store). Se llena
            en renderAccountActions; oculto para el coach en su propio entrenamiento. -->
       <div id="cn-danger-card"></div>

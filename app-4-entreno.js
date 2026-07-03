@@ -343,8 +343,30 @@ function renderClientProfile(client){
   renderMedidasClient(client.id);
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
+  renderGuidedViewToggle(client);
   renderAccountActions(client);
   applyProfileDisclosure(client.id);
+}
+
+// Toggle de la vista de "Hoy" (unificación guiado F2). Aparece SOLO cuando el flag ya está ON
+// (se enciende con ?uig=1): es el kill-switch a mano del usuario para volver a la clásica.
+// Oculto por defecto para no confundir a los demás clientes mientras la prueba es de Camilo.
+function renderGuidedViewToggle(client){
+  const el=document.getElementById('cn-guided-card'); if(!el)return;
+  if(typeof uiGuided!=='function'||!uiGuided()){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="card" style="margin-bottom:12px">
+    <div class="ch"><div class="ctitle">🧭 Vista de entrenamiento</div></div>
+    <div class="cb">
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Estás usando la <b>vista guiada</b> (nueva): tu entrenamiento de "Hoy" te lleva ejercicio por ejercicio. Se recuerda en este dispositivo.</div>
+      <button class="btn bsm" onclick="switchToClassicView()" style="background:transparent;color:var(--t2);border:1.5px solid var(--br2);font-weight:700">↩ Volver a la vista clásica</button>
+    </div>
+  </div>`;
+}
+function switchToClassicView(){
+  setUiGuided(false);
+  toast('↩ Vista clásica restaurada');
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(c)renderClientProfile(c);
 }
 
 // Tarjeta "Cuenta" → eliminar cuenta (derecho de supresión / requisito Play Store).

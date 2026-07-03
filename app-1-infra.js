@@ -588,6 +588,22 @@ function detectZoomWidthScaling(){
 function initTextSize(){ detectZoomWidthScaling(); const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
 function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFsBtns(size); }
 
+// ── Vista de "Hoy" POR DISPOSITIVO: guiado embebido vs tarjeta clásica (unificación F2) ──
+// '1' = el modo guiado ES la pantalla de "Hoy" (embebido); '0' = tarjeta clásica (default).
+// KILL-SWITCH: mientras esté OFF, "Hoy" funciona exactamente como siempre. Per-dispositivo
+// (ax_ui_guided NO está en SB_KEYS → sv() solo escribe localStorage, no sincroniza a la nube).
+// Se enciende con ?uig=1 o el toggle del Perfil (que solo aparece cuando YA está ON, para no
+// confundir a los demás clientes durante la prueba). Ver docs/plan-unificacion-guiado.md §F2.
+function uiGuided(){ try{ return ld('ax_ui_guided','0')==='1'; }catch(e){ return false; } }
+function setUiGuided(on){ sv('ax_ui_guided', on?'1':'0'); }
+// ?uig=1 / ?uig=0 en la URL fija el flag para que Camilo lo pruebe en su celular sin tocar UI.
+function _initUiGuidedFromUrl(){
+  try{
+    const m=/[?&]uig=([01])/.exec(location.search||''); if(!m) return;
+    setUiGuided(m[1]==='1');
+  }catch(e){}
+}
+
 // Aviso ÚNICO por dispositivo que OFRECE agrandar el texto (descubribilidad: quien más lo
 // necesita es quien menos explora el Perfil). Solo si no se ofreció antes y el tamaño sigue en
 // 'normal'. Pedido de Camilo 2026-06-23. Ver [[feedback_avi_tamano_texto_accesibilidad]].
