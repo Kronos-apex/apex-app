@@ -189,11 +189,18 @@ Para cada uno:
   huérfano; ahora se cancela. Harness a **36 checks** (S7 reorden con serie+dropset+segundos;
   S8 mover HIIT en curso sin timer huérfano). QA estática hecha inline (Opus 4.8, tras agotarse
   Fable 5): 0 duplicados, handlers resueltos, .cex-reorder en CSS, 267 tests, jsErrors [].
-- **SIGUIENTE → F1·P4** (lastre/peso añadido para corporal en el guiado: `toggleLastre` +
-  celda KG condicional; ya existe en la clásica), luego P12 (nota/why + banner override en el
-  header del guiado), P11 (thumb de foto) y **F2** (el guiado embebido en `#cn-today` tras el
-  flag `ax_ui_guided`). Releer las reglas de oro antes de cada tajada. ⚠️ El puerto 9266 quedó
-  zombi CADA corrida — matar PID antes de correr el harness (loop en Bash que ya uso).
+- **F1·P4 ✅ (2026-07-03, avi-v249):** lastre (peso añadido) para peso corporal en el guiado.
+  Toggle "+ Lastre" una vez por ejercicio (reusa `lastreOn`/`toggleLastre` de la clásica →
+  clave `lastre_<rid>_<ei>` compartida, ya viaja en reorden vía `_SK_EX`); `gmSetCellsHTML`
+  acepta `lastre` y con él pinta celda KG (placeholder "lastre") + REPS, mismo campo `kg` →
+  entra al volumen igual que la clásica. Harness a **39 checks** (S9: toggle presente, KG
+  aparece al activar, estado persiste, serie con lastre suma 10×12=120 al volumen). 267 tests,
+  jsErrors [], auditoría estática inline (0 duplicados, node --check).
+- **SIGUIENTE → F1·P12** (nota/why de la rutina + banner override "elegiste otra rutina" en el
+  header del guiado; hoy están en el hero de la clásica), luego P11 (thumb de foto en la
+  tarjeta gm, baja prioridad) y **F2** (el guiado embebido en `#cn-today` tras el flag
+  `ax_ui_guided`, con kill-switch). Releer las reglas de oro antes de cada tajada. ⚠️ El puerto
+  9266 queda zombi CADA corrida — matar PID antes de correr el harness (loop en Bash que ya uso).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

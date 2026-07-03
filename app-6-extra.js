@@ -254,9 +254,22 @@ function gmRender(){
       setsEl.appendChild(sh);
     }
     const gmTrack = exTrack(ex);
+    // Lastre (peso añadido) para peso corporal — paridad con la clásica (plan unificación P4).
+    // Estado por ejercicio en lastre_<rid>_<ei> (compartido con la clásica: reusa lastreOn/
+    // toggleLastre y las claves ya viajan en reorden vía _SK_EX).
+    const gmLastre = gmTrack==='reps' && lastreOn(GM.routine,ei);
     if(gmTrack==='hiit'){
       gmRenderHiit(setsEl, ei, ex, steps.length);
     } else {
+    // Toggle "+ Lastre (peso añadido)" para peso corporal — una vez por ejercicio, antes de las series
+    if(gmTrack==='reps'){
+      const tg=document.createElement('div');
+      tg.className='gm-lastre-toggle';
+      tg.style.cssText='text-align:right;margin:0 0 6px';
+      tg.innerHTML=`<button type="button" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1.5px solid var(--br2);background:${gmLastre?'var(--gl)':'transparent'};color:${gmLastre?'var(--gt)':'var(--t3)'};cursor:pointer">${gmLastre?'✓ ':'+ '}Lastre (peso añadido)</button>`;
+      tg.querySelector('button').onclick=()=>{toggleLastre(GM.routine,ei);gmRender();};
+      setsEl.appendChild(tg);
+    }
     // 🔥 Calentamiento (solo peso, si está visible) — fila aparte, fuera del flujo de pasos
     if(gmTrack==='peso_reps' && exWarmShown(GM.routine,ei)){
       setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
@@ -269,7 +282,7 @@ function gmRender(){
       row.id = `gm-set-${ei}-${si}`;
       row.innerHTML = `
         <div class="gm-set-num" id="gm-snum-${ei}-${si}">${done?'✓':si+1}</div>
-        ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug)}
+        ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug, gmLastre)}
         <button class="gm-check${done?' checked':''}" id="gm-chk-${ei}-${si}"
           onclick="gmToggleSet(${ei},${si},${stepIdx})">${done?'✓':'○'}</button>`;
       if(gmTrack==='tiempo'){
@@ -383,13 +396,16 @@ function gmToggleAux(ei,tok,rid,cid){
 
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
-function gmSetCellsHTML(track, ex, ei, si, done, gmSug){
+function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   const ro=done?'readonly':'';
   const g=f=>getLog(GM.routine.id,ei,si,f);
   const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
     <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
       oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)">
     <div class="gm-sinput-label">${label}</div></div>`;
+  // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
+  // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.
+  if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',false);
   if(track==='reps') return cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',true);
   if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
     +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
