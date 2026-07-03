@@ -1149,8 +1149,16 @@ function _aviCloseTopOverlay(){
   if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return true;}
   // (el chequeo duplicado de #exdetail-bg que vivía aquí era código muerto — la ficha
   // ya se atiende arriba, tras el lightbox)
+  // Descanso del guiado (overlay a pantalla completa, sin capa propia): el atrás lo SALTA
+  // (cierra el descanso) — antes en overlay cerraba TODO el guiado y en el embebido (F2) el
+  // atrás quedaba sin efecto. gmSkipRest cierra el descanso o cancela el crono isométrico.
+  const gmRestOv=document.getElementById('gm-rest-overlay');
+  if(gmRestOv&&!gmRestOv.classList.contains('hidden')){ if(typeof gmSkipRest==='function')gmSkipRest(); return true; }
+  // Guiado como OVERLAY (flag OFF, tras "▶ Empezar"): el atrás lo cierra. El guiado EMBEBIDO
+  // (F2, clase gm-embedded) es un TAB, no un overlay → NO se cierra aquí; el atrás sigue al
+  // flujo de pestañas (volver a la pestaña previa o armar salida en "Hoy").
   const gm=document.getElementById('guided-mode');
-  if(gm&&!gm.classList.contains('hidden')){closeGuidedMode();return true;}
+  if(gm&&!gm.classList.contains('hidden')&&!gm.classList.contains('gm-embedded')){closeGuidedMode();return true;}
   const modal=document.querySelector('.mdbg.on');
   if(modal){modal.classList.remove('on');return true;}
   return false;

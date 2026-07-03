@@ -253,11 +253,23 @@ Para cada uno:
   reordenar, ánimo, completar), y confirmar que se siente bien. Volver a la clásica: Perfil →
   "Volver a la vista clásica". NO seguir a F4 (default ON) sin ese visto bueno + idealmente
   1-2 clientes beta.
-- **SIGUIENTE → F3 (atrás/TWA con el embebido).** El embebido NO empuja capa al entrar (es un
-  tab), pero sus overlays internos (gm-rest-overlay, ficha ❓) siguen las reglas de capas de
-  v223/v243. Correr `_repro-back-v243.mjs` (aún no corrido en toda la unificación) y AÑADIR
-  escenarios: atrás con descanso abierto en el embebido, atrás con ficha abierta. Probar en el
-  TWA real. Luego F4 (default ON, gradual con fallback) y F5 (retiro de la clásica).
+- **F3 ✅ en código (2026-07-03, avi-v254) — 🟡 falta confirmarlo en el TWA real.** Dos fixes en
+  `_aviCloseTopOverlay` (app-2-login.js): (1) BUG crítico corregido — el check del guiado era
+  `!hidden`, pero el embebido tampoco está hidden → el atrás entraba a `closeGuidedMode()`
+  (embedded-aware, no hace nada) y quedaba SIN EFECTO; ahora excluye `.gm-embedded` (el embebido
+  es un TAB → el atrás sigue el flujo de pestañas: vuelve a la previa o arma salida en "Hoy").
+  (2) el descanso del guiado (`gm-rest-overlay`) ahora se cierra con atrás (gmSkipRest) — antes,
+  en overlay cerraba TODO el guiado y en el embebido no hacía nada. La ficha ❓ y el lightbox ya
+  empujaban capa propia (navOpenLayer, v243) → el atrás los cierra igual embebido. Harness
+  `_repro-plancha.mjs` a **58 checks** (S15: embebido no se cierra con atrás; descanso sí; ficha
+  empuja capa; overlay clásico SÍ se cierra — sin regresión); `_repro-back-v243.mjs` regresión
+  LIMPIA. 🟡 **Falta probar el atrás en el TWA real de Camilo** (el WebView del TWA es donde el
+  atrás se rompe) — hacerlo con el flag ON (`?uig=1`): atrás en Hoy, atrás con descanso, atrás
+  con ficha abierta.
+- **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
+  Poner default `ax_ui_guided='1'`; dejar el enlace "Volver a la vista clásica" ≥2 semanas.
+  Luego F5 (retiro de la clásica: borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo
+  huérfano, grep de cada función antes; el coach reusa helpers como `updateClientProgress`).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 
