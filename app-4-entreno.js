@@ -367,17 +367,21 @@ function renderGuidedViewToggle(client){
     </div>
   </div>`;
 }
-function switchToGuidedView(){
-  setUiGuided(true);
-  toast('🧭 Vista guiada activada · ve a "Hoy"');
+function switchToGuidedView(){ _switchTodayView(true); }
+function switchToClassicView(){ _switchTodayView(false); }
+// Cambia la vista de "Hoy" (guiada/clásica) y FUERZA el re-render. cnTodayGuard solo re-dibuja
+// "Hoy" cuando cambia el DÍA → sin resetear su marca, al volver a "Hoy" se veía lo viejo y
+// parecía que el interruptor no hacía nada (reporte de Camilo 2026-07-03). Reseteamos
+// CUR.todayRenderedDay y, si "Hoy" está visible ahora mismo, lo re-renderizamos al instante.
+function _switchTodayView(on){
+  setUiGuided(on);
+  toast(on?'🧭 Vista guiada activada · abre "Hoy"':'↩ Vista clásica restaurada');
+  CUR.todayRenderedDay=null; // la próxima entrada a "Hoy" re-renderiza (salta la guarda)
   const c=DB.clients.find(x=>x.id===CUR.clientId);
-  if(c)renderClientProfile(c);
-}
-function switchToClassicView(){
-  setUiGuided(false);
-  toast('↩ Vista clásica restaurada');
-  const c=DB.clients.find(x=>x.id===CUR.clientId);
-  if(c)renderClientProfile(c);
+  if(!c)return;
+  renderClientProfile(c);
+  const todayTab=document.getElementById('cn-today');
+  if(todayTab&&todayTab.classList.contains('on')){ renderClientToday(c); } // ya está en "Hoy" → aplica ya
 }
 
 // Tarjeta "Cuenta" → eliminar cuenta (derecho de supresión / requisito Play Store).
