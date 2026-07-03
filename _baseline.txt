@@ -1,0 +1,5 @@
+BASELINE unificación guiado — 2026-07-03 (HEAD f6fa193, avi-v245)
+node --check: 9/9 OK
+avi.test.js: 267/267
+_repro-plancha.mjs: TODO OK (25 checks, jsErrors [])
+_repro-back-v243.mjs: no corrido aún (correr antes de F3)

@@ -155,6 +155,24 @@ Para cada uno:
    pero solo lo que de verdad quedó huérfano.
 3. Bump SW + limpiar CLAUDE.md (secciones de la clásica) + actualizar memoria.
 
+## 3b. PROGRESO (actualizar aquí al cerrar cada tajada)
+
+- **F0 ✅ COMPLETA (2026-07-03, sesión Fable 5):** baseline en `_baseline.txt` (raíz del repo):
+  267/267 tests, 9/9 node --check, `_repro-plancha.mjs` TODO OK. `_repro-back-v243.mjs` NO
+  corrido aún — correrlo antes de F3. Gotcha confirmado en vivo: el puerto 9266 quedó zombi
+  DOS veces (matar PID antes de cada corrida, como dice F0.2).
+- **F1·P10 ✅ + F1·P2 ✅ (2026-07-03, avi-v246):** `prepareTodaySession(routine)` en
+  app-4-entreno.js (reset diario + `_rehomeOrphanDropsets`, llamada desde `renderClientToday`
+  y `openGuidedMode`; se SACÓ `checkAndResetSession` de `renderClientExList`).
+  `finishSessionEarly()`/`resetSession()` ahora devuelven boolean; el guiado los reusa vía
+  `gmFinishEarly()`/`gmResetSession()` (app-6-extra.js) + fila `#gm-session-actions` al final
+  de `gm-body` (no en el footer fijo, para no taparlo). Verificación: 267/267 tests +
+  `_repro-plancha.mjs` ampliado a **29 checks** (S5 nuevo: P2 reiniciar/finalizar + P10 día
+  nuevo sin render clásico), jsErrors []. 🟡 Falta ojo visual humano de la fila de botones
+  (el DOM se verificó E2E; captura dedicada no se tomó).
+- **SIGUIENTE → F1·P1** (check-in de ánimo al entrar al guiado; ver §3-F1.5), luego P3, P4,
+  P12, P11 y F2. Releer las reglas de oro antes de cada tajada.
+
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 
 - La gente HOY entrena en la clásica; cambiarles la pantalla principal es un cambio de hábito.

@@ -139,6 +139,9 @@ const GM = {
 function openGuidedMode(){
   const routine = CUR.activeRoutine;
   if(!routine || !(routine.exercises||[]).length){ toast('No hay ejercicios en esta rutina'); return; }
+  // Reset diario + dropsets huérfanos ANTES de calcular pasos: el guiado no debe depender
+  // de que la clásica haya renderizado (plan unificación P10). Idempotente el mismo día.
+  if(typeof prepareTodaySession==='function') prepareTodaySession(routine);
   GM.routine = routine;
   GM.exercises = routine.exercises;
   // Orden de pasos respetando biseries (intercala A1,B1,A2,B2…). Sin biseries
@@ -256,7 +259,37 @@ function gmRender(){
     card.appendChild(setsEl);
     body.appendChild(card);
   });
+  // Acciones de sesión al final de la lista (paridad con la clásica, plan unificación P2):
+  // finalizar con lo que lleve + reiniciar el día. Van en el cuerpo (no en el footer fijo)
+  // para no crecer el footer ni tapar contenido.
+  const acts=document.createElement('div');
+  acts.id='gm-session-actions';
+  acts.style.cssText='display:flex;gap:8px;margin:14px 2px 4px';
+  acts.innerHTML=`
+    <button onclick="gmResetSession()" style="flex:1;padding:11px;background:var(--bg);color:var(--t2);border:1px solid var(--br2);border-radius:12px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer">↺ Reiniciar</button>
+    <button onclick="gmFinishEarly()" style="flex:2;padding:11px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
+  body.appendChild(acts);
   gmUpdateActionBtn();
+}
+
+// ── Finalizar/Reiniciar desde el guiado (plan unificación P2) ──
+// Reusan las funciones de la clásica (mismo guardado de historial/PRs y mismo reset de
+// claves); aquí solo se re-sincroniza el estado GM y sus overlays/timers.
+function gmFinishEarly(){
+  if(!finishSessionEarly()) return; // no guardó (0 series o canceló el confirm)
+  closeGuidedMode();
+}
+function gmResetSession(){
+  if(!resetSession()) return; // canceló el confirm (o no hay rutina)
+  if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
+  if(GM.holding) _gmEndHoldUI();
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; relWake(); }
+  document.getElementById('gm-rest-overlay').classList.add('hidden');
+  closeStartCard();
+  GM.currentStep=0;
+  gmUpdateProgress();
+  gmRender();
+  gmScrollToCurrent();
 }
 
 // Fila auxiliar del guiado (calentamiento/dropset): NO entra en GM.steps ni dispara

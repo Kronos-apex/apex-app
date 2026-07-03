@@ -589,7 +589,7 @@ function renderClientToday(client, overrideRoutine){
   const _mood=_moodOK?getTodayMood(client.id):'';
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
-  _rehomeOrphanDropsets(todayR); // si el check-in recortó series, no perder el dropset (reubicar a la última)
+  prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos (común a clásica y guiado)
   const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
@@ -1119,9 +1119,10 @@ function exFormSync(){
   if(holdRow)holdRow.style.display=t==='Isométrico'?'':'none';
 }
 
+// Devuelve true si reinició (el guiado lo usa para re-sincronizar su estado GM).
 function resetSession(){
-  const routine=CUR.activeRoutine;if(!routine)return;
-  if(!confirm('¿Reiniciar el entrenamiento de hoy? Se borrarán las series completadas pero se conservarán los pesos.'))return;
+  const routine=CUR.activeRoutine;if(!routine)return false;
+  if(!confirm('¿Reiniciar el entrenamiento de hoy? Se borrarán las series completadas pero se conservarán los pesos.'))return false;
   (routine.exercises||[]).forEach((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
     for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
@@ -1132,6 +1133,18 @@ function resetSession(){
   _endHoldUI();
   if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
   renderClientExList(routine);updateClientProgress(routine);toast('↺ Sesión reiniciada');
+  return true;
+}
+
+// Preparación de la sesión del día, INDEPENDIENTE del modo (clásica o guiado): reset
+// diario + reubicación de dropsets huérfanos. Debe correr al entrar a "Hoy" ANTES de
+// cualquier render — cuando el guiado sea la pantalla principal (plan unificación F2),
+// la lista clásica puede no renderizar nunca, así que esto no puede vivir dentro de
+// renderClientExList. La llaman renderClientToday y openGuidedMode; es idempotente
+// dentro del mismo día.
+function prepareTodaySession(routine){
+  checkAndResetSession(routine);
+  _rehomeOrphanDropsets(routine);
 }
 
 // SESSION RESET: clear done flags if last session was a different day (keep kg/reps as suggestions)
@@ -1263,7 +1276,8 @@ function offerKeepReorder(){
 }
 
 function renderClientExList(routine){
-  checkAndResetSession(routine);
+  // El reset diario ya NO vive aquí: corre en prepareTodaySession al entrar a "Hoy"
+  // (renderClientToday/openGuidedMode), para que el guiado no dependa de este render.
   const con=document.getElementById('cex-list');if(!con)return;
   con.innerHTML='';
   const _nEx=(routine.exercises||[]).length;
@@ -1533,8 +1547,9 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
 // Guardado PARCIAL: registra el entreno con lo que el asesorado lleve hecho, aunque no
 // haya marcado el 100% de las series. Antes solo se guardaba al completar todo, así que
 // un entreno real se perdía si no se palomeaba todo. Botón "Finalizar" en la vista de hoy.
+// Devuelve true si guardó (el guiado lo usa para cerrarse tras finalizar).
 function finishSessionEarly(){
-  const routine=CUR.activeRoutine;if(!routine)return;
+  const routine=CUR.activeRoutine;if(!routine)return false;
   let total=0,done=0,totalVol=0;
   (routine.exercises||[]).forEach((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;total+=sets;
@@ -1545,14 +1560,15 @@ function finishSessionEarly(){
       }
     }
   });
-  if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return;}
-  if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return;
+  if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return false;}
+  if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return false;
   saveSessionToHistory(routine,totalVol,done);
   checkAndUpdatePRs(routine);
   renderPRsInProfile(CUR.clientId);
   renderClientExProgress(CUR.clientId);
   toast('✅ Entrenamiento guardado');
   offerKeepReorder();
+  return true;
 }
 
 // ── Fin de entrenamiento: celebración full-bleed (se dispara al 100%) ──
