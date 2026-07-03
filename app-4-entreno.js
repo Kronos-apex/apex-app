@@ -348,19 +348,32 @@ function renderClientProfile(client){
   applyProfileDisclosure(client.id);
 }
 
-// Toggle de la vista de "Hoy" (unificación guiado F2). Aparece SOLO cuando el flag ya está ON
-// (se enciende con ?uig=1): es el kill-switch a mano del usuario para volver a la clásica.
-// Oculto por defecto para no confundir a los demás clientes mientras la prueba es de Camilo.
+// Interruptor de la vista de "Hoy" (unificación guiado F2). Con la vista guiada ON se muestra
+// siempre (kill-switch a mano para volver a la clásica). Con OFF, el botón para ACTIVARLA solo
+// aparece en el propio entrenamiento del coach (COACH_SELF = Camilo) para que sus clientes no lo
+// vean mientras la vista guiada está en prueba (plan F2.5). El flag es por dispositivo.
 function renderGuidedViewToggle(client){
   const el=document.getElementById('cn-guided-card'); if(!el)return;
-  if(typeof uiGuided!=='function'||!uiGuided()){ el.innerHTML=''; return; }
+  const on=(typeof uiGuided==='function'&&uiGuided());
+  // Con OFF y sin ser el coach en su entreno → oculto (los clientes no lo ven todavía).
+  if(!on && !COACH_SELF){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="card" style="margin-bottom:12px">
     <div class="ch"><div class="ctitle">🧭 Vista de entrenamiento</div></div>
     <div class="cb">
-      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Estás usando la <b>vista guiada</b> (nueva): tu entrenamiento de "Hoy" te lleva ejercicio por ejercicio. Se recuerda en este dispositivo.</div>
-      <button class="btn bsm" onclick="switchToClassicView()" style="background:transparent;color:var(--t2);border:1.5px solid var(--br2);font-weight:700">↩ Volver a la vista clásica</button>
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">${on
+        ? 'Estás usando la <b>vista guiada</b> (nueva): tu "Hoy" te lleva ejercicio por ejercicio. Se recuerda en este dispositivo.'
+        : 'Prueba la <b>vista guiada</b> (nueva): tu "Hoy" te llevará ejercicio por ejercicio, con descansos y respiración. Se recuerda en este dispositivo.'}</div>
+      ${on
+        ? `<button class="btn bsm" onclick="switchToClassicView()" style="background:transparent;color:var(--t2);border:1.5px solid var(--br2);font-weight:700">↩ Volver a la vista clásica</button>`
+        : `<button class="btn bp bsm" onclick="switchToGuidedView()">🧭 Activar vista guiada</button>`}
     </div>
   </div>`;
+}
+function switchToGuidedView(){
+  setUiGuided(true);
+  toast('🧭 Vista guiada activada · ve a "Hoy"');
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(c)renderClientProfile(c);
 }
 function switchToClassicView(){
   setUiGuided(false);

@@ -212,6 +212,13 @@ Para cada uno:
   🟡 Falta el ojo de Camilo en el celular (recorrer el guiado: ánimo, reordenar, lastre, cabecera).
 
 ### F2 EN CURSO (partida en sub-deploys, kill-switch protege prod entera)
+- **Interruptor en Perfil ✅ (2026-07-03, avi-v255):** Camilo pidió poder encenderlo desde la app
+  (el `?uig=1` no sirve en el TWA instalado). `renderGuidedViewToggle` ahora es un ON/OFF real:
+  con ON muestra "↩ Volver a la vista clásica" (a cualquiera que la tenga ON); con OFF muestra
+  "🧭 Activar vista guiada" SOLO en el propio entreno del coach (`COACH_SELF`=Camilo) para que
+  los clientes no lo vean aún. `switchToGuidedView()` enciende, `switchToClassicView()` apaga.
+  Camilo lo activa en Perfil de "Mi entrenamiento". Harness S12 ampliado (60 checks): cliente+OFF
+  oculto; COACH_SELF+OFF muestra Activar; activar enciende; ON muestra Volver.
 - **F2·sub-1 ✅ (2026-07-03, avi-v251):** flag `ax_ui_guided` + toggle. `uiGuided()`/`setUiGuided(on)`
   en app-1-infra.js (per-dispositivo, NO en SB_KEYS → no sincroniza); `_initUiGuidedFromUrl()`
   parsea `?uig=1`/`?uig=0` al boot (app-2-login.js, tras initTextSize); `renderGuidedViewToggle`
