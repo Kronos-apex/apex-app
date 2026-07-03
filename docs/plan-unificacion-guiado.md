@@ -238,13 +238,26 @@ Para cada uno:
   (el botón "▶ Empezar", que NO se pinta con flag ON) → nunca hay dos renders `gm-*` a la vez.
   Harness a **50 checks** (S13: embebido dentro del tab sin ✕/cex-list/Empezar; marcar serie;
   completar todo sin ocultar + botón Cerrar oculto; flag OFF restaura clásica y devuelve el nodo).
-- **SIGUIENTE → F2·sub-3 (el poll en vivo):** el `_pollAuthClient` de 15s llama
-  `renderClientToday`; con flag ON debe re-render el embebido respetando la guarda anti-pisado
-  (`CUR.todayWorking`/`_authDirty`) y SIN matar timers vivos (`GM.restTimer`/`GM.hiit`/HOLD).
-  ⚠️ Hoy `openGuidedEmbedded` cancela timers al re-embeber → un poll a media serie con descanso/
-  HIIT en curso los cortaría. Hacer que el poll, si el guiado embebido ya está montado y hay un
-  timer vivo, NO re-embeba (o re-embeba preservando el timer, patrón paintGo v245). Verificar
-  con harness: descanso/HIIT vivo + poll → el timer sobrevive. Luego F3 (atrás/TWA), F4, F5.
+- **F2·sub-3 ✅ (2026-07-03, avi-v253):** el poll en vivo ya NO corta la serie del embebido.
+  Guarda al TOPE de `renderClientToday`: si `uiGuided() && _gmIsEmbedded() && _gmLiveTimer()`
+  (descanso/HIIT/isométrico corriendo) → `return` inmediato (no toca el DOM). Así el
+  `_pollAuthClient` de 15s (que re-renderiza "Hoy" cuando el coach cambia el plan) no interrumpe
+  una serie en curso; el refresco entra en el próximo render sin timer. Reorden/ánimo NO pasan
+  por esta guarda para re-render (llaman `gmRebuild` aparte, que cancela el timer a propósito).
+  Harness a **54 checks** (S14: HIIT del embebido sobrevive a un poll con cambio de plan; termina
+  normal; render posterior sin timer aplica el plan nuevo).
+
+- **✅✅ FASE F2 COMPLETA (2026-07-03, avi-v251→v253).** El guiado embebido ES la pantalla de
+  "Hoy" detrás del flag `ax_ui_guided` (kill-switch, default OFF). 🟡 **Ahora toca CAMILO en su
+  celular**: abrir `...apex-app/?uig=1`, entrenar varios días (marcar series, descanso, HIIT,
+  reordenar, ánimo, completar), y confirmar que se siente bien. Volver a la clásica: Perfil →
+  "Volver a la vista clásica". NO seguir a F4 (default ON) sin ese visto bueno + idealmente
+  1-2 clientes beta.
+- **SIGUIENTE → F3 (atrás/TWA con el embebido).** El embebido NO empuja capa al entrar (es un
+  tab), pero sus overlays internos (gm-rest-overlay, ficha ❓) siguen las reglas de capas de
+  v223/v243. Correr `_repro-back-v243.mjs` (aún no corrido en toda la unificación) y AÑADIR
+  escenarios: atrás con descanso abierto en el embebido, atrás con ficha abierta. Probar en el
+  TWA real. Luego F4 (default ON, gradual con fallback) y F5 (retiro de la clásica).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

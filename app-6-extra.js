@@ -196,6 +196,9 @@ function openGuidedEmbedded(routine){
   return true;
 }
 function _gmIsEmbedded(){ const g=document.getElementById('guided-mode'); return !!(g&&g.classList.contains('gm-embedded')); }
+// ¿Hay un timer del guiado corriendo (descanso, HIIT o isométrico)? Lo usa renderClientToday
+// para que el poll en vivo NO corte una serie en curso (F2 sub-3).
+function _gmLiveTimer(){ return !!(GM.restTimer||GM.hiit||GM.holding); }
 
 // Reconstruye el estado del guiado desde CUR.activeRoutine (tras ánimo, reorden o
 // sustitución). Las claves de sesión ya viajaron con el ejercicio

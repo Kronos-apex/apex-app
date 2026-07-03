@@ -578,6 +578,12 @@ function renderTodayHead(client){
 
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
+  // F2 sub-3: si el guiado embebido está montado con un timer vivo (descanso/HIIT/isométrico),
+  // NO re-renderizar "Hoy" — el poll en vivo de 15s (que refresca cuando el coach cambia el
+  // plan) no debe cortar la serie en curso. El refresco entra en el próximo render sin timer.
+  // Reorden/ánimo NO pasan por aquí para re-render (llaman gmRebuild aparte), así que siguen ágiles.
+  if(typeof uiGuided==='function' && uiGuided() && typeof _gmIsEmbedded==='function'
+     && _gmIsEmbedded() && typeof _gmLiveTimer==='function' && _gmLiveTimer()) return;
   // F2: devolver #guided-mode a su sitio de overlay ANTES de tocar con.innerHTML (si estaba
   // embebido, es hijo de `con` y un innerHTML='' lo borraría del DOM). Cada render decide
   // de nuevo si embebe. Guard typeof por si app-6 (donde vive) aún no cargó.
