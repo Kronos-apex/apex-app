@@ -196,11 +196,16 @@ Para cada uno:
   entra al volumen igual que la clásica. Harness a **39 checks** (S9: toggle presente, KG
   aparece al activar, estado persiste, serie con lastre suma 10×12=120 al volumen). 267 tests,
   jsErrors [], auditoría estática inline (0 duplicados, node --check).
-- **SIGUIENTE → F1·P12** (nota/why de la rutina + banner override "elegiste otra rutina" en el
-  header del guiado; hoy están en el hero de la clásica), luego P11 (thumb de foto en la
-  tarjeta gm, baja prioridad) y **F2** (el guiado embebido en `#cn-today` tras el flag
-  `ax_ui_guided`, con kill-switch). Releer las reglas de oro antes de cada tajada. ⚠️ El puerto
-  9266 queda zombi CADA corrida — matar PID antes de correr el harness (loop en Bash que ya uso).
+- **F1·P12 ✅ (2026-07-03, avi-v250):** cabecera de rutina en el guiado. `gmRoutineHeaderHTML()`
+  antepone (tras el chooser de ánimo, antes de las tarjetas) nombre + pills (nº ejercicios/
+  series/descanso) + nota del coach + "POR QUÉ ESTA RUTINA" + banner si `CUR.todayOverride`.
+  Estilos sobre tokens neutros (el guiado va sobre var(--bg), no el gradiente del hero); todo
+  con esc(). Harness a **40 checks** (S10). En F2 esta cabecera reemplaza al hero de la clásica.
+- **SIGUIENTE → F1·P11** (thumb de foto del ejercicio en la tarjeta gm — `exImgSrc`, hoy usa
+  `exIcon`; baja prioridad, visual) y luego **F2** (el guiado embebido en `#cn-today` tras el
+  flag `ax_ui_guided`, con kill-switch; es la fase grande — releer F2 completa en §3). P15
+  (marcar fuera de orden sin sentirse forzado) se verifica DURANTE F2. ⚠️ El puerto 9266 queda
+  zombi CADA corrida — matar PID antes de correr el harness.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 
