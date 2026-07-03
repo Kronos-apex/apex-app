@@ -142,6 +142,28 @@ function openGuidedMode(){
   // Reset diario + dropsets huérfanos ANTES de calcular pasos: el guiado no debe depender
   // de que la clásica haya renderizado (plan unificación P10). Idempotente el mismo día.
   if(typeof prepareTodaySession==='function') prepareTodaySession(routine);
+  gmRebuild();
+  document.getElementById('guided-mode').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => gmScrollToCurrent(), 200);
+  // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
+  setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
+}
+
+// Reconstruye el estado del guiado desde CUR.activeRoutine (tras ánimo, reorden o
+// sustitución). Las claves de sesión ya viajaron con el ejercicio
+// (_swapSessionKeys/_clearSessionKeys de la clásica), así que el paso actual se recalcula
+// solo con el bucle de series hechas. Cancela cualquier timer vivo ANTES de repintar: al
+// reordenar/sustituir, GM.steps cambia de índices y un descanso/hold/HIIT en curso quedaría
+// apuntando a un paso movido (el HIIT es el caso real: corre dentro de la tarjeta, con los
+// botones ↑↓ a la vista; los overlays de descanso/hold tapan la pantalla y no dejan reordenar
+// debajo). En openGuidedMode no hay timers vivos → la limpieza es no-op segura.
+function gmRebuild(){
+  const routine = CUR.activeRoutine; if(!routine) return;
+  if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
+  if(GM.holding) _gmEndHoldUI();
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
+  const _ov = document.getElementById('gm-rest-overlay'); if(_ov) _ov.classList.add('hidden');
   GM.routine = routine;
   GM.exercises = routine.exercises;
   // Orden de pasos respetando biseries (intercala A1,B1,A2,B2…). Sin biseries
@@ -156,11 +178,16 @@ function openGuidedMode(){
     if(i === GM.steps.length - 1) GM.currentStep = GM.steps.length;
   }
   gmRender();
-  document.getElementById('guided-mode').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  setTimeout(() => gmScrollToCurrent(), 200);
-  // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
-  setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
+}
+
+// ── Reordenar / sustituir desde el guiado (plan unificación P3) ──
+// Reusa todayMoveEx/todaySubstitute de la clásica (copia de trabajo del día + claves de
+// sesión que siguen al ejercicio + re-render clásico debajo) y reconstruye el guiado encima.
+// La sustitución abre #m-picker (z-index 1000 > 700 del guiado); al elegir, _applySubstitute
+// detecta el guiado abierto y llama gmRebuild.
+function gmMoveEx(ei,dir){
+  todayMoveEx(ei,dir);
+  gmRebuild();
 }
 
 function closeGuidedMode(){
@@ -210,7 +237,12 @@ function gmRender(){
         <div class="gm-ex-meta">${esc(ex.muscleLabel||ex.muscle)} · ${esc(ex.type)}</div>
       </div>
       ${exAllDone?'<div style="font-size:20px">✅</div>':''}
-      <button class="exinfo-btn" style="flex-shrink:0" onclick="openExDetail('${ex.id}')">❓</button>`;
+      <button class="exinfo-btn" style="flex-shrink:0" onclick="openExDetail('${ex.id}')">❓</button>
+      <div class="cex-reorder" onclick="event.stopPropagation()">
+        <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
+        <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
+        <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+      </div>`;
     card.appendChild(hdr);
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
@@ -289,7 +321,8 @@ function gmRender(){
 // GM.currentStep con su bucle de series hechas.
 function gmPickMood(mood){
   pickMood(mood);
-  openGuidedMode();
+  gmRebuild(); // sin re-lanzar la tarjeta de inicio (anotación de Lucas QA en v247)
+  gmScrollToCurrent();
 }
 
 // ── Finalizar/Reiniciar desde el guiado (plan unificación P2) ──

@@ -177,9 +177,23 @@ Para cada uno:
   No bloquea (igual que la clásica). Harness ampliado a **31 checks** (S6), jsErrors [].
   NOTA: el banner de ánimo elegido (moodBannerHtml) NO se portó — va con P12 (header del
   guiado absorbe el hero).
-- **SIGUIENTE → F1·P3** (reordenar/sustituir; regenerar GM.steps tras mover, check E2E de
-  reorden con serie hecha + dropset), luego P4, P12, P11 y F2. Releer las reglas de oro
-  antes de cada tajada.
+- **F1·P3 ✅ (2026-07-03, avi-v248):** reordenar ↑↓ y sustituir 🔄 desde el guiado. Se extrajo
+  el cuerpo de reconstrucción de `openGuidedMode` a **`gmRebuild()`** (regenera GM.steps/
+  currentStep desde `CUR.activeRoutine`, SIN re-lanzar la tarjeta de inicio). `gmMoveEx` =
+  `todayMoveEx` (copia de trabajo + `_swapSessionKeys` + re-render clásico) + `gmRebuild`;
+  la botonera `.cex-reorder` se añadió al `.gm-ex-header`; 🔄 reusa `todaySubstitute`→`#m-picker`
+  (z-index 1000 > 700) y `_applySubstitute` llama `gmRebuild` si el guiado sigue abierto.
+  `gmPickMood` migró a `gmRebuild` (mata la tarjeta de inicio repetida que anotó Lucas en v247).
+  **BLINDAJE:** `gmRebuild` cancela timers vivos (rest/hold/HIIT) antes de repintar — el HIIT
+  corre dentro de la tarjeta con los ↑↓ visibles, así que mover esa tarjeta dejaría el intervalo
+  huérfano; ahora se cancela. Harness a **36 checks** (S7 reorden con serie+dropset+segundos;
+  S8 mover HIIT en curso sin timer huérfano). QA estática hecha inline (Opus 4.8, tras agotarse
+  Fable 5): 0 duplicados, handlers resueltos, .cex-reorder en CSS, 267 tests, jsErrors [].
+- **SIGUIENTE → F1·P4** (lastre/peso añadido para corporal en el guiado: `toggleLastre` +
+  celda KG condicional; ya existe en la clásica), luego P12 (nota/why + banner override en el
+  header del guiado), P11 (thumb de foto) y **F2** (el guiado embebido en `#cn-today` tras el
+  flag `ax_ui_guided`). Releer las reglas de oro antes de cada tajada. ⚠️ El puerto 9266 quedó
+  zombi CADA corrida — matar PID antes de correr el harness (loop en Bash que ya uso).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

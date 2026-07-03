@@ -1258,6 +1258,9 @@ function _applySubstitute(newEx){
   _clearSessionKeys(w.id,ei); // ejercicio nuevo → empieza limpio
   CUR.todayDirty=true; cm('m-picker');
   const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
+  // Si el guiado está abierto encima (sustitución lanzada desde él), reconstruirlo también.
+  const _gm=document.getElementById('guided-mode');
+  if(_gm&&!_gm.classList.contains('hidden')&&typeof gmRebuild==='function')gmRebuild();
   toast('🔄 Ejercicio cambiado');
 }
 // Al finalizar: si la estructura (orden o ejercicios) cambió vs el plan guardado, ofrece
