@@ -162,6 +162,7 @@ function openGuidedMode(){
 
 function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
+  if(GM.holding) _gmEndHoldUI();
   if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
   document.getElementById('guided-mode').classList.add('hidden');
   document.getElementById('gm-rest-overlay').classList.add('hidden');
@@ -326,10 +327,20 @@ function gmLogRow(ei, si){
 
 // Cronómetro de isométrico en el guiado: cuenta regresiva en el overlay y, al
 // terminar, marca la serie (clic en el check) → registra los segundos y avanza.
+// El overlay pasa a ÁMBAR (clase gm-hold) y el botón de abajo dice "⏹ Cancelar":
+// mientras aguantas NO es un descanso y cancelar no marca nada (reporte 2026-07-02).
+function _gmEndHoldUI(){
+  GM.holding=null;
+  const overlay=document.getElementById('gm-rest-overlay');
+  if(!overlay)return;
+  overlay.classList.remove('gm-hold');
+  const sk=overlay.querySelector('.gm-rest-skip'); if(sk)sk.textContent='⏩ Saltar descanso';
+}
 function gmHoldTimer(ei, si, secs){
-  if(!secs || secs<1) return;
+  if(!secs || secs<1){ toast('⏱ Pon los segundos a aguantar y vuelve a tocar ▶'); return; }
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
   reqWake();
+  GM.holding={ei,si};
   const overlay=document.getElementById('gm-rest-overlay');
   const secEl=document.getElementById('gm-rest-sec');
   const arc=document.getElementById('gm-rest-arc');
@@ -339,8 +350,10 @@ function gmHoldTimer(ei, si, secs){
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl) breEl.style.display='none';
   if(nextEl) nextEl.textContent='';
-  if(titleEl) titleEl.textContent='⏱ Aguanta la posición';
-  if(lblEl) lblEl.textContent='segundos';
+  if(titleEl) titleEl.textContent='💪 ¡Aguanta la posición!';
+  if(lblEl) lblEl.textContent='segundos · se marca sola al llegar a 0';
+  overlay.classList.add('gm-hold');
+  const sk=overlay.querySelector('.gm-rest-skip'); if(sk)sk.textContent='⏹ Cancelar — no marcar la serie';
   const C=439.8;
   overlay.classList.remove('hidden');
   secEl.textContent=secs;
@@ -355,6 +368,7 @@ function gmHoldTimer(ei, si, secs){
     if(left>0&&left<=5) playRestTick();
     if(left<=0){
       clearInterval(GM.restTimer); GM.restTimer=null;
+      _gmEndHoldUI();
       overlay.classList.add('hidden'); relWake(); playRestEndBeep();
       const chk=document.getElementById(`gm-chk-${ei}-${si}`);
       if(chk && !chk.classList.contains('checked')) chk.click();
@@ -630,6 +644,7 @@ function gmRest(ei, si, nextStep){
 const BISET_TRANSITION_SEC = 12; // respiro mínimo para cambiar de estación en una biserie
 function gmShowRest(secs, nextStep, opts){
   opts=opts||{};
+  _gmEndHoldUI(); // por si el overlay venía de un isométrico (clase/label de "aguanta")
   const overlay=document.getElementById('gm-rest-overlay');
   const secEl=document.getElementById('gm-rest-sec');
   const arc=document.getElementById('gm-rest-arc');
@@ -673,6 +688,11 @@ function gmShowRest(secs, nextStep, opts){
 function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
   document.getElementById('gm-rest-overlay').classList.add('hidden');
+  if(GM.holding){ // cancelar el crono isométrico: NO marca la serie ni lanza "siguiente"
+    _gmEndHoldUI(); relWake();
+    toast('⏹ Cronómetro cancelado — la serie no se marcó');
+    return;
+  }
   const next=GM.steps[GM.currentStep];
   if(next && next.si===0) gmShowStartCard(next.ex);
   if(next){ setTimeout(()=>{const _r=document.getElementById(`gm-set-${next.ei}-${next.si}`);const inp=_r&&_r.querySelector('.gm-sinput[data-field]');if(inp)inp.focus();},200); }

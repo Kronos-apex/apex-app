@@ -1062,18 +1062,51 @@ function startHiit(routine,ei,rounds,work,rest){
 }
 
 // ── Cronómetro de cuenta regresiva para isométricos (reusa el rest-banner) ──
+// El estado "aguantando" debe distinguirse del descanso (reporte Camilo 2026-07-02:
+// el banner verde de siempre parecía "serie ya hecha"): banner ÁMBAR con "¡Aguanta!",
+// fila resaltada y el ▶ convertido en cuenta regresiva. Tocar el ▶ de nuevo o
+// "⏹ Cancelar" detiene SIN marcar; al llegar a 0 la serie se marca sola (chk.click).
+let HOLD=null; // {ei,si} de la serie isométrica en curso (solo tarjeta clásica)
+function _endHoldUI(){
+  if(!HOLD)return;
+  const row=document.getElementById(`setrow_${HOLD.ei}_${HOLD.si}`);
+  if(row){row.classList.remove('holding');const go=row.querySelector('.timer-go');if(go)go.textContent='▶';}
+  const banner=document.getElementById('rest-banner');
+  if(banner){banner.classList.remove('hold');const sk=banner.querySelector('.restskip');if(sk)sk.textContent='Saltar ⏩';const title=banner.querySelector('.resttitle');if(title)title.textContent='⏱ Descansando';}
+  HOLD=null;
+}
+function cancelHold(){
+  if(!HOLD)return;
+  _stopRest();
+  _endHoldUI();
+  document.getElementById('rest-banner').classList.add('hide');
+  relWake();
+  toast('⏹ Cronómetro cancelado — la serie no se marcó');
+}
 function startHoldTimer(secs,ei,si,routine){
-  if(!secs||secs<1)return;
-  if(restInt)clearInterval(restInt);
+  if(!secs||secs<1){toast('⏱ Pon los segundos a aguantar y vuelve a tocar ▶');return;}
+  // _stopRest (no solo clearInterval): desmonta también el listener _restVis del descanso
+  // previo — si quedara vivo, al volver de segundo plano su tick() viejo mataría este hold.
+  _stopRest();
+  _endHoldUI(); // si había otro isométrico corriendo, restaurar su fila
   reqWake();
+  HOLD={ei,si,t0:Date.now()}; // t0: ignora un 2º tap inmediato (doble-tap accidental ≠ cancelar)
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');const title=banner.querySelector('.resttitle');
-  banner.classList.remove('hide');if(title)title.textContent='⏱ Aguanta';sub.textContent=`Serie ${si+1}`;
+  banner.classList.remove('hide');banner.classList.add('hold');
+  if(title)title.textContent='💪 ¡Aguanta la posición!';
+  sub.textContent=`Serie ${si+1} · se marca sola al llegar a 0`;
+  const sk=banner.querySelector('.restskip');if(sk)sk.textContent='⏹ Cancelar';
+  // La fila y su ▶ muestran el conteo; se re-consultan por id en cada tick porque un
+  // re-render (poll, mood) reconstruye la lista y dejaría referencias muertas.
+  const paintGo=v=>{const r=document.getElementById(`setrow_${ei}_${si}`);if(!r)return;r.classList.add('holding');const go=r.querySelector('.timer-go');if(go)go.textContent=v;};
+  paintGo(secs+'s');
   const endAt=Date.now()+secs*1000; // conteo por timestamp absoluto (robusto a iOS bloqueado)
   let left=secs;num.textContent=left;
   restInt=setInterval(()=>{
     left=Math.max(0,Math.round((endAt-Date.now())/1000));num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
+    paintGo(left+'s');
     if(left>0&&left<=3)playRestTick();
-    if(left<=0){clearInterval(restInt);restInt=null;banner.classList.add('hide');relWake();playRestEndBeep();if(title)title.textContent='⏱ Descansando';const chk=document.getElementById(`chk_${ei}_${si}`);if(chk&&!chk.classList.contains('sdone'))chk.click();}
+    if(left<=0){clearInterval(restInt);restInt=null;_endHoldUI();banner.classList.add('hide');relWake();playRestEndBeep();const chk=document.getElementById(`chk_${ei}_${si}`);if(chk&&!chk.classList.contains('sdone'))chk.click();}
   },1000);
 }
 
@@ -1096,6 +1129,7 @@ function resetSession(){
   clearWarmup(routine.id);
   clearWarmDropDone(routine);
   localStorage.removeItem(`session_date_${routine.id}`);
+  _endHoldUI();
   if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
   renderClientExList(routine);updateClientProgress(routine);toast('↺ Sesión reiniciada');
 }
@@ -1327,7 +1361,7 @@ function renderClientExList(routine){
       // ▶ countdown para isométricos
       if(track==='tiempo'){
         const go=row.querySelector('.timer-go');
-        if(go)go.onclick=(e)=>{e.stopPropagation();const inp=row.querySelector('.sinput[data-field="secs"]');startHoldTimer(parseInt(inp.value)||0,ei,si,routine);};
+        if(go)go.onclick=(e)=>{e.stopPropagation();if(HOLD&&HOLD.ei===ei&&HOLD.si===si){if(Date.now()-HOLD.t0>800)cancelHold();return;}const inp=row.querySelector('.sinput[data-field="secs"]');startHoldTimer(parseInt(inp.value)||0,ei,si,routine);};
       }
 
       // Wire up the checkmark (genérico por campos)
@@ -1337,6 +1371,9 @@ function renderClientExList(routine){
         const wasDone=chk.classList.contains('sdone');
         const inputs=row.querySelectorAll('.sinput[data-field]');
         if(!wasDone){
+          // Si marcó a mano la MISMA serie cuyo crono isométrico corre, detenerlo en
+          // silencio (sin toast de "cancelado": la serie sí queda marcada).
+          if(HOLD&&HOLD.ei===ei&&HOLD.si===si){_stopRest();_endHoldUI();document.getElementById('rest-banner').classList.add('hide');relWake();}
           inputs.forEach(inp=>setLog(routine.id,ei,si,inp.dataset.field,inp.value));
           setDone(routine.id,ei,si,true);
           if(navigator.vibrate)navigator.vibrate(40);
@@ -2667,6 +2704,7 @@ function _stopRest(){
 }
 function startClientRest(sec,exName){
   _stopRest();
+  _endHoldUI(); // si un isométrico corría, restaurar su fila/banner antes de reusar el banner
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');
   banner.classList.remove('hide');sub.textContent=`Después de: ${exName}`;
   const endAt=Date.now()+sec*1000;
@@ -2685,7 +2723,7 @@ function startClientRest(sec,exName){
   document.addEventListener('visibilitychange',_restVis);
   restInt=setInterval(tick,250);
 }
-function skipRest(){_stopRest();document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
+function skipRest(){if(HOLD){cancelHold();return;}_stopRest();document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
 
 // ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){

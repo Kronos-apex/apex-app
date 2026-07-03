@@ -794,6 +794,12 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .resttitle{font-size:14px;font-weight:700;margin-bottom:1px}
 .restsub{font-size:12px;opacity:.75}
 .restskip{background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:5px 13px;color:white;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+/* Isométrico EN CURSO: ámbar para que "aguantando" no se confunda con el descanso verde */
+.restbanner.hold{background:linear-gradient(135deg,#7A4310,#E8973A)}
+.set-log-row.holding{background:rgba(232,151,58,.14);box-shadow:inset 3px 0 0 #E8973A}
+.set-log-row.holding .timer-go{border-color:#E8973A!important;color:#E8973A!important;font-family:'JetBrains Mono',monospace;font-weight:700}
+.gm-rest-overlay.gm-hold #gm-rest-arc{stroke:#E8973A}
+.gm-rest-overlay.gm-hold .gm-rest-sec{color:#E8973A}
 
 /* Profile hero */
 .profhero{background:linear-gradient(135deg,#06402E,#0A7C5B);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;display:flex;align-items:center;gap:14px}
