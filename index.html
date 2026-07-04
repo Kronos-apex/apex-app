@@ -254,19 +254,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="wz-stepper" style="--c:#F2C94C">
           <span class="lab"><span class="lic"><svg class="ic"><use href="#i-cal"/></svg></span>Edad</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-age',-1,12,99)">−</button>
-            <input id="su-age" class="wz-num" type="number" min="12" max="99" placeholder="—"><span class="wz-unit">años</span>
+            <input id="su-age" class="wz-num" type="number" inputmode="numeric" min="12" max="99" placeholder="—"><span class="wz-unit">años</span>
             <button type="button" class="wz-pm" onclick="WZ.step('su-age',1,12,99)">+</button></div>
         </div>
         <div class="wz-stepper" style="--c:#10E0A0">
           <span class="lab"><span class="lic"><svg class="ic"><use href="#i-scale"/></svg></span>Peso</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-weight',-0.5,30,300)">−</button>
-            <input id="su-weight" class="wz-num" type="number" min="30" max="300" step="0.1" placeholder="—"><span class="wz-unit">kg</span>
+            <input id="su-weight" class="wz-num" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="—"><span class="wz-unit">kg</span>
             <button type="button" class="wz-pm" onclick="WZ.step('su-weight',0.5,30,300)">+</button></div>
         </div>
         <div class="wz-stepper" style="--c:#5FE3D0">
           <span class="lab"><span class="lic"><svg class="ic"><use href="#i-ruler"/></svg></span>Altura</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-height',-1,100,250)">−</button>
-            <input id="su-height" class="wz-num" type="number" min="100" max="250" placeholder="—"><span class="wz-unit">cm</span>
+            <input id="su-height" class="wz-num" type="number" inputmode="numeric" min="100" max="250" placeholder="—"><span class="wz-unit">cm</span>
             <button type="button" class="wz-pm" onclick="WZ.step('su-height',1,100,250)">+</button></div>
         </div>
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
@@ -728,11 +728,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: maria123" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-      <div class="fg"><label class="ilbl">Edad (años)</label><input type="number" class="inp" id="cf-age" min="10" max="100" placeholder="Ej: 28"></div>
+      <div class="fg"><label class="ilbl">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28"></div>
     </div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Peso (kg)</label><input class="inp" id="cf-weight" type="number" min="30" max="300" step="0.1" placeholder="70"></div>
-      <div class="fg"><label class="ilbl">Altura (cm)</label><input type="number" class="inp" id="cf-height" min="100" max="250" placeholder="Ej: 168"></div>
+      <div class="fg"><label class="ilbl">Peso (kg)</label><input class="inp" id="cf-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"></div>
+      <div class="fg"><label class="ilbl">Altura (cm)</label><input type="number" class="inp" id="cf-height" inputmode="numeric" min="100" max="250" placeholder="Ej: 168"></div>
     </div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Objetivo</label><select class="sel" id="cf-goal"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select></div>
@@ -853,9 +853,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div class="fg"><label class="ilbl">Músculo</label><select class="sel" id="ex-m"><option value="pecho">Pecho</option><option value="espalda">Espalda</option><option value="hombros">Hombros</option><option value="biceps">Bíceps</option><option value="triceps">Tríceps</option><option value="piernas">Piernas</option><option value="gluteo">Glúteo</option><option value="core">Core</option><option value="cardio">Cardio</option><option value="otro">Otro</option></select></div>
       <div class="fg"><label class="ilbl">Tipo</label><select class="sel" id="ex-t" onchange="exFormSync()"><option>Compuesto</option><option>Aislamiento</option><option>Cardio</option><option>HIIT</option><option>Bodyweight</option><option>Isométrico</option><option>Funcional</option></select></div>
     </div>
-    <div class="frow"><div class="fg"><label class="ilbl">Series por defecto</label><input type="number" class="inp" id="ex-s" type="number" placeholder="3" min="1"></div><div class="fg"><label class="ilbl" id="ex-r-lbl">Reps por defecto</label><input type="number" class="inp" id="ex-r" type="number" placeholder="12" min="1"></div></div>
-    <div class="frow" id="ex-hiit-row" style="display:none"><div class="fg"><label class="ilbl">HIIT: trabajo (seg)</label><input type="number" class="inp" id="ex-hiit-work" placeholder="30" min="1"></div><div class="fg"><label class="ilbl">HIIT: descanso (seg)</label><input type="number" class="inp" id="ex-hiit-rest" placeholder="15" min="1"></div></div>
-    <div class="frow" id="ex-hold-row" style="display:none"><div class="fg"><label class="ilbl">Isométrico: segundos por serie</label><input type="number" class="inp" id="ex-hold-secs" placeholder="60" min="1"></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl">Series por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-s" placeholder="3" min="1"></div><div class="fg"><label class="ilbl" id="ex-r-lbl">Reps por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-r" placeholder="12" min="1"></div></div>
+    <div class="frow" id="ex-hiit-row" style="display:none"><div class="fg"><label class="ilbl">HIIT: trabajo (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-work" placeholder="30" min="1"></div><div class="fg"><label class="ilbl">HIIT: descanso (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-rest" placeholder="15" min="1"></div></div>
+    <div class="frow" id="ex-hold-row" style="display:none"><div class="fg"><label class="ilbl">Isométrico: segundos por serie</label><input type="number" inputmode="numeric" class="inp" id="ex-hold-secs" placeholder="60" min="1"></div></div>
     <div class="frow"><div class="fg"><label class="ilbl">Emoji / icono</label><input type="text" class="inp" id="ex-i" placeholder="🏋️" maxlength="2"></div><div class="fg"><label class="ilbl">Descripción técnica</label><input type="text" class="inp" id="ex-d" placeholder="Breve descripción de la ejecución..."></div></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-ex')">Cancelar</button><button class="btn bp" onclick="saveEx()">Guardar</button></div>
   </div>
@@ -1154,7 +1154,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <input class="inp" id="nut-avoid" placeholder="Ej: Azucar refinada, alcohol...">
     </div>
     <div class="ilbl">💧 Agua recomendada (vasos/día)</div>
-    <input class="inp" type="number" id="nut-water" placeholder="8" min="1" max="20" style="margin-bottom:14px">
+    <input class="inp" type="number" inputmode="numeric" id="nut-water" placeholder="8" min="1" max="20" style="margin-bottom:14px">
     <div class="ilbl">🍽️ Ejemplos de comidas (opcional)</div>
     <textarea class="inp" id="nut-examples" rows="4" placeholder="Desayuno: avena con frutas y huevos revueltos&#10;Almuerzo: arroz, pollo a la plancha y ensalada&#10;Cena: sopa de verduras y atún" style="resize:vertical;margin-bottom:14px"></textarea>
     <div class="mdfooter">
@@ -1218,7 +1218,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="mdtitle">💳 Registrar pago</div>
     <div style="margin-bottom:14px">
       <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Monto recibido (COP)</label>
-      <input type="number" id="pay-amount" class="inp" placeholder="Ej: 150000" min="0" style="width:100%">
+      <input type="number" inputmode="numeric" id="pay-amount" class="inp" placeholder="Ej: 150000" min="0" style="width:100%">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div>

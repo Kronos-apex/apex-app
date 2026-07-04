@@ -1,5 +1,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--t1); overflow: hidden; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* Accesibilidad (auditoría UX · WCAG 2.4.7): anillo de foco visible SOLO para navegación por
+   teclado. No aparece con mouse/touch (:focus-visible) y no pisa los border-color de :focus de
+   los inputs (outline es una capa aparte). Quick win de la auditoría 2026-07-04. */
+:focus-visible { outline: 2px solid var(--g2); outline-offset: 2px; border-radius: 4px; }
+:focus:not(:focus-visible) { outline: none; }
 :root {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
   --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
