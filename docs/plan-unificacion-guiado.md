@@ -321,6 +321,23 @@ Para cada uno:
   Verificación: 267/267 tests, `_repro-plancha.mjs` TODO OK (jsErrors []). 🟡 **Ahora toca a
   Camilo y a algún cliente beta (Miguel/Kathe) USAR el default por ~2 semanas y vigilar reportes
   (poll/foreground y TWA son los frentes de riesgo). CERO reportes 2 semanas → habilita F5.**
+- **F4 BLINDAJE ✅ (2026-07-04, avi-v263) — auditoría profunda "tipo 5 agentes" tras el deploy.**
+  4 ángulos: (1) datos reales Supabase (497 ejercicios de 18 clientes+coach → 0 sin sets, 0
+  rutinas vacías, 7 tipos→5 tracks todos manejados, HIIT real sin `hiit` inline corre por default
+  30/15 de `hiitCfg`, Isométrico guarda segs en `reps`→`holdSecsOf`); (2) cobertura de tracks
+  (los 5 renderizan+se marcan; cardio y biserie verificados, eran huecos del harness); (3)
+  regresión atrás/TWA (`_repro-back-v243.mjs` 18/18, boot con guiado-default sin errores JS);
+  (4) robustez ante excepciones → **hallazgo real**: `renderClientToday` hacía `con.innerHTML=''`
+  y llamaba `openGuidedEmbedded` SIN try/catch → un throw (p.ej. `#gm-body` ausente por SW/index
+  viejo, o hueco null en `exercises`) dejaba "Hoy" en BLANCO (y el poll de 15s lo hacía
+  permanente). Datos reales NO lo disparan hoy (0 nulls), pero es trampa latente en un default
+  para todos. FIX (2 guardas mínimas): (a) `prepareTodaySession` filtra huecos null de
+  `exercises` (raíz común clásica+guiado; no-op sin huecos); (b) `try/catch` alrededor de
+  `openGuidedEmbedded` → cualquier throw cae a la clásica (repinta `con` completo). Harness +S20
+  (a: null filtrado→embebe 2 reales; b: sin `#gm-body`→cae a clásica, no blanco). 267/267 tests,
+  TODO OK, jsErrors []. Hallazgos 🟡 no aplicados (para el ojo de Camilo): tooltip educativo de
+  onboarding (`showExTooltip` busca `#cex-list`, ausente en el guiado default → no se muestra a
+  usuarios nuevos, degrada sin crash); harness sin assert de atrás parado en el tab embebido.
 - **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
   Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
   el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML` → esos se QUEDAN.

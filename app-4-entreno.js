@@ -643,8 +643,13 @@ function renderClientToday(client, overrideRoutine){
   if(typeof uiGuided==='function' && uiGuided() && typeof openGuidedEmbedded==='function'){
     CUR.activeRoutine=todayR;
     con.innerHTML='';
-    if(openGuidedEmbedded(todayR)) return;
-    // si por lo que sea no pudo embeber, cae a la vista clásica de abajo
+    // Blindaje (F4): openGuidedEmbedded devuelve false si no puede embeber, PERO si algo lanza
+    // (p.ej. index.html cacheado por un SW viejo sin #gm-body) el throw se propagaría con "Hoy"
+    // ya vaciado (innerHTML='') → pantalla en blanco. El try/catch garantiza caer a la vista
+    // clásica de abajo (repinta con completo) ante CUALQUIER throw. Ningún usuario sin entrenar.
+    try{ if(openGuidedEmbedded(todayR)) return; }
+    catch(err){ console.error('[AVI] guiado embebido lanzó; cae a la vista clásica', err); }
+    // si no pudo embeber (falsy o throw), cae a la vista clásica de abajo
   }
   const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
   const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
@@ -1212,6 +1217,11 @@ function resetSession(){
 // renderClientExList. La llaman renderClientToday y openGuidedMode; es idempotente
 // dentro del mismo día.
 function prepareTodaySession(routine){
+  // Blindaje (F4): un hueco null/undefined en exercises (dato corrupto por sync/edición) haría
+  // lanzar tanto a la clásica (checkAndResetSession recorre exercises) como al guiado
+  // (gmRebuild/guidedStepOrder) → "Hoy" en blanco. Ignoramos los huecos aquí, en la raíz común
+  // de ambas vistas. No-op si no hay huecos (no cambia índices en el caso sano).
+  if(routine && Array.isArray(routine.exercises) && routine.exercises.some(e=>!e)) routine.exercises=routine.exercises.filter(Boolean);
   checkAndResetSession(routine);
   _rehomeOrphanDropsets(routine);
 }
