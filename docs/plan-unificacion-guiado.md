@@ -310,10 +310,20 @@ Para cada uno:
   check en el harness (**S19, 68 checks**): MIDE el `getBoundingClientRect` de cada botón contra
   el viewport (390px) con `data-fs=xl` → 0 fuera de pantalla (antes salían). Lección: las
   auditorías deben incluir geometría real con texto grande, no solo presencia en el DOM. 🟡 ojo de Camilo.
-- **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
-  Poner default `ax_ui_guided='1'`; dejar el enlace "Volver a la vista clásica" ≥2 semanas.
-  Luego F5 (retiro de la clásica: borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo
-  huérfano, grep de cada función antes; el coach reusa helpers como `updateClientProgress`).
+- **F4 ✅ en código (2026-07-04, avi-v262) — Camilo dio visto bueno de F2+F3 en su celular.**
+  El guiado es el DEFAULT: `uiGuided()` lee `ld('ax_ui_guided','1')` (antes `'0'`). Quien nunca
+  tocó el flag → guiado embebido en "Hoy"; quien guardó `'0'` con "Volver a la vista clásica"
+  → clásica (opt-out respetado). El enlace kill-switch del Perfil queda VISIBLE ≥2 semanas
+  (`renderGuidedViewToggle`, ambas direcciones). Fallback intacto: si `openGuidedEmbedded` no
+  puede embeber, `renderClientToday` cae a la lista clásica. Harness: **S12 ahora verifica el
+  default real** (`localStorage.removeItem('ax_ui_guided')` → `uiGuided()===true`) y `setupRoutine`
+  fija OFF explícito para que los escenarios clásicos/overlay (SETUP,S1–S11) corran igual.
+  Verificación: 267/267 tests, `_repro-plancha.mjs` TODO OK (jsErrors []). 🟡 **Ahora toca a
+  Camilo y a algún cliente beta (Miguel/Kathe) USAR el default por ~2 semanas y vigilar reportes
+  (poll/foreground y TWA son los frentes de riesgo). CERO reportes 2 semanas → habilita F5.**
+- **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
+  Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
+  el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML` → esos se QUEDAN.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

@@ -588,13 +588,14 @@ function detectZoomWidthScaling(){
 function initTextSize(){ detectZoomWidthScaling(); const s=ld('ax_textsize','normal'); applyTextSize(s); _syncFsBtns(s); }
 function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFsBtns(size); }
 
-// ── Vista de "Hoy" POR DISPOSITIVO: guiado embebido vs tarjeta clásica (unificación F2) ──
-// '1' = el modo guiado ES la pantalla de "Hoy" (embebido); '0' = tarjeta clásica (default).
-// KILL-SWITCH: mientras esté OFF, "Hoy" funciona exactamente como siempre. Per-dispositivo
+// ── Vista de "Hoy" POR DISPOSITIVO: guiado embebido vs tarjeta clásica (unificación F2/F4) ──
+// '1' = el modo guiado ES la pantalla de "Hoy" (embebido, DEFAULT desde F4); '0' = tarjeta
+// clásica (el usuario la eligió explícitamente con "Volver a la vista clásica"). Per-dispositivo
 // (ax_ui_guided NO está en SB_KEYS → sv() solo escribe localStorage, no sincroniza a la nube).
-// Se enciende con ?uig=1 o el toggle del Perfil (que solo aparece cuando YA está ON, para no
-// confundir a los demás clientes durante la prueba). Ver docs/plan-unificacion-guiado.md §F2.
-function uiGuided(){ try{ return ld('ax_ui_guided','0')==='1'; }catch(e){ return false; } }
+// F4 (2026-07-04): default '1'. Quien nunca tocó el flag → guiado; quien guardó '0' → clásica.
+// El toggle del Perfil deja el enlace "Volver a la vista clásica" al alcance del usuario (≥2 sem).
+// Fallback: si el guiado no puede embeber, renderClientToday cae a la clásica. Ver §F4 del plan.
+function uiGuided(){ try{ return ld('ax_ui_guided','1')==='1'; }catch(e){ return false; } }
 function setUiGuided(on){ sv('ax_ui_guided', on?'1':'0'); }
 // ?uig=1 / ?uig=0 en la URL fija el flag para que Camilo lo pruebe en su celular sin tocar UI.
 function _initUiGuidedFromUrl(){

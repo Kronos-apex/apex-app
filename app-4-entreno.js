@@ -348,10 +348,11 @@ function renderClientProfile(client){
   applyProfileDisclosure(client.id);
 }
 
-// Interruptor de la vista de "Hoy" (unificación guiado F2). Se muestra SIEMPRE en el Perfil
+// Interruptor de la vista de "Hoy" (unificación guiado F2/F4). Se muestra SIEMPRE en el Perfil
 // (con ON → "Volver a la clásica"; con OFF → "Activar vista guiada"). Antes lo escondía salvo
 // COACH_SELF, pero eso impedía a Camilo encontrarlo en su celular → se quitó esa restricción.
-// El flag es por dispositivo (opt-in, default OFF: la vista clásica sigue siendo la de todos).
+// F4 (2026-07-04): el guiado es el DEFAULT → este enlace es el kill-switch del usuario para
+// volver a la clásica (se deja visible ≥2 semanas). El flag es por dispositivo, no sincroniza.
 function renderGuidedViewToggle(client){
   const el=document.getElementById('cn-guided-card'); if(!el)return;
   const on=(typeof uiGuided==='function'&&uiGuided());
@@ -637,8 +638,8 @@ function renderClientToday(client, overrideRoutine){
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
   prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos (común a clásica y guiado)
-  // F2: con la vista guiada ON, "Hoy" ES el guiado embebido (no el hero+lista clásicos).
-  // Kill-switch: con el flag OFF (default) NADA de esto corre y todo sigue igual.
+  // F2/F4: con la vista guiada ON (DEFAULT desde F4), "Hoy" ES el guiado embebido (no el
+  // hero+lista clásicos). Quien eligió "Volver a la clásica" (flag '0') cae a la lista de abajo.
   if(typeof uiGuided==='function' && uiGuided() && typeof openGuidedEmbedded==='function'){
     CUR.activeRoutine=todayR;
     con.innerHTML='';
