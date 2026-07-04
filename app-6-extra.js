@@ -316,18 +316,23 @@ function gmRender(){
     card.id = `gm-ex-${ei}`;
     const hdr = document.createElement('div');
     hdr.className = 'gm-ex-header';
+    // Tools (❓ + reorder) van en un grupo propio que ENVUELVE a una 2ª línea cuando la letra
+    // está grande (zoom), en vez de irse fuera de pantalla — reporte Camilo 2026-07-03 (el ↑↓🔄
+    // quedaba casi invisible al agrandar el texto). El nombre conserva un ancho mínimo legible.
     hdr.innerHTML = `
       <div class="gm-ex-icon" style="background:${color}18;border:1.5px solid ${color}30;overflow:hidden">${exIcon(ex)}</div>
-      <div style="flex:1">
+      <div class="gm-ex-nm">
         <div class="gm-ex-name">${esc(ex.name)}</div>
         <div class="gm-ex-meta">${esc(ex.muscleLabel||ex.muscle)} · ${esc(ex.type)}</div>
       </div>
-      ${exAllDone?'<div style="font-size:20px">✅</div>':''}
-      <button class="exinfo-btn" style="flex-shrink:0" onclick="openExDetail('${ex.id}')">❓</button>
-      <div class="cex-reorder" onclick="event.stopPropagation()">
-        <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
-        <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
-        <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+      <div class="gm-ex-tools">
+        ${exAllDone?'<span style="font-size:20px">✅</span>':''}
+        <button class="exinfo-btn" onclick="openExDetail('${ex.id}')">❓</button>
+        <div class="cex-reorder" onclick="event.stopPropagation()">
+          <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
+          <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
+          <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+        </div>
       </div>`;
     card.appendChild(hdr);
     const setsEl = document.createElement('div');

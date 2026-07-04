@@ -299,6 +299,17 @@ Para cada uno:
   el historial hace match por ese id → un reinicio crea una entrada NUEVA, no destruye la hecha.
   Harness a **67 checks** (S18: mañana completa 2/2 → reiniciar cambia el sid → tarde 1/2 es
   entrada APARTE, la mañana intacta). 267/267 tests, jsErrors []. 🟡 falta el ojo de Camilo.
+- **Reorder ↑↓🔄 fuera de pantalla con letra grande ✅ (2026-07-03, avi-v261):** Camilo (con razón,
+  molesto por lo que se escapa de las auditorías) reportó que al agrandar la letra los botones de
+  subir/bajar/cambiar ejercicio quedaban casi fuera de pantalla. Causa: `.gm-ex-header` era una
+  fila flex sin `flex-wrap` y el nombre (`flex:1` SIN `min-width:0`) empujaba las herramientas
+  fuera del viewport cuando el zoom de texto (`.cnp` a 1.40 en `xl`) las agrandaba. Fix: el
+  nombre y las herramientas (❓+↑↓🔄) van en grupos propios (`.gm-ex-nm` con ancho mínimo legible,
+  `.gm-ex-tools` con `margin-left:auto`), y `.gm-ex-header` tiene `flex-wrap:wrap` → con letra
+  grande las herramientas ENVUELVEN a una 2ª línea (visibles) en vez de salirse. Nuevo tipo de
+  check en el harness (**S19, 70 checks**): MIDE el `getBoundingClientRect` de cada botón contra
+  el viewport (390px) con `data-fs=xl` → 0 fuera de pantalla (antes salían). Lección: las
+  auditorías deben incluir geometría real con texto grande, no solo presencia en el DOM. 🟡 ojo de Camilo.
 - **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
   Poner default `ax_ui_guided='1'`; dejar el enlace "Volver a la vista clásica" ≥2 semanas.
   Luego F5 (retiro de la clásica: borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo

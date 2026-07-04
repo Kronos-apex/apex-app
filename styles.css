@@ -1041,8 +1041,12 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .gm-ex-card{background:var(--w);border:2px solid var(--br);border-radius:18px;padding:18px;transition:border-color .3s}
 .gm-ex-card.active{border-color:var(--g2);box-shadow:0 0 0 4px rgba(82,183,136,.1)}
 .gm-ex-card.done{border-color:var(--g2);opacity:.6}
-.gm-ex-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.gm-ex-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .gm-ex-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+/* Nombre con ancho mínimo legible (no se encoge hasta desaparecer) → cuando la letra está grande
+   el grupo de herramientas se va a una 2ª línea en vez de salirse de la pantalla. Camilo 2026-07-03. */
+.gm-ex-nm{flex:1 1 140px;min-width:120px}
+.gm-ex-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .gm-ex-name{font-size:17px;font-weight:800;color:var(--t1);line-height:1.2}
 .gm-ex-meta{font-size:12px;color:var(--t3);margin-top:3px}
 .gm-sets{display:flex;flex-direction:column;gap:8px}
