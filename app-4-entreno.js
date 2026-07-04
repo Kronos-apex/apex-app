@@ -1389,7 +1389,7 @@ function renderClientExList(routine){
       <div class="cex-block-info" style="min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="cex-block-name">${esc(ex.name)}</div>
-          <button class="exinfo-btn" title="Ver cómo hacerlo" onclick="event.stopPropagation();openExDetail('${ex.id}')">❓</button>
+          <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo hacerlo" onclick="event.stopPropagation();openExDetail('${ex.id}')">❓</button>
         </div>
         <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}${(()=>{const _bi=bisetInfo(routine.exercises,ei);return _bi.biset?` · <span class="biset-tag">🔗 biserie con ${esc((routine.exercises[_bi.partner]||{}).name||'')}</span>`:'';})()}</div>
       </div>

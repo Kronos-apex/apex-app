@@ -333,7 +333,7 @@ function gmRender(){
       </div>
       <div class="gm-ex-tools">
         ${exAllDone?'<span style="font-size:20px">✅</span>':''}
-        <button class="exinfo-btn" onclick="openExDetail('${ex.id}')">❓</button>
+        <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo se hace" onclick="openExDetail('${ex.id}')">❓</button>
         <div class="cex-reorder" onclick="event.stopPropagation()">
           <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
           <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
@@ -393,7 +393,7 @@ function gmRender(){
       row.innerHTML = `
         <div class="gm-set-num" id="gm-snum-${ei}-${si}">${done?'✓':si+1}</div>
         ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug, gmLastre)}
-        <button class="gm-check${done?' checked':''}" id="gm-chk-${ei}-${si}"
+        <button class="gm-check${done?' checked':''}" id="gm-chk-${ei}-${si}" aria-label="Marcar serie ${si+1} como hecha"
           onclick="gmToggleSet(${ei},${si},${stepIdx})">${done?'✓':'○'}</button>`;
       if(gmTrack==='tiempo'){
         const go=row.querySelector('.gm-timer-go');
@@ -499,7 +499,7 @@ function gmAuxRowHTML(ei,ex,tok,kind,num,sug,repsPh){
     <div class="gm-set-num ${kind}">${num}</div>
     <div><input class="gm-sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','kg',this.value)"><div class="gm-sinput-label">${kind==='warm'?'KG · CALENT.':'KG · DROP'}</div></div>
     <div><input class="gm-sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="${repsPh}" value="${g('reps')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','reps',this.value)"><div class="gm-sinput-label">REPS</div></div>
-    <button class="gm-check ${kind}${done?' checked':''}" id="${cid}" onclick="gmToggleAux(${ei},'${tok}','${rid}','${cid}')">${done?'✓':'○'}</button>
+    <button class="gm-check ${kind}${done?' checked':''}" id="${cid}" aria-label="Marcar ${kind==='warm'?'calentamiento':'dropset'} como hecho" onclick="gmToggleAux(${ei},'${tok}','${rid}','${cid}')">${done?'✓':'○'}</button>
   </div>`;
 }
 // Marca/desmarca una fila auxiliar (calentamiento/dropset) sin avanzar el paso activo
@@ -1583,7 +1583,7 @@ function renderWarmup(exercises){
         <div class="wu-ex-name">${esc(ex.name)}</div>
         <div class="wu-ex-reps">${esc(ex.reps)}</div>
       </div>
-      <button class="wu-guide-btn" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;font-size:17px;cursor:pointer;flex-shrink:0;margin-right:2px;opacity:.75">🎥</button>
+      <button class="wu-guide-btn" aria-label="Ver cómo se hace: guía y video" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;font-size:17px;cursor:pointer;flex-shrink:0;margin-right:2px;opacity:.75">🎥</button>
       <button id="wu-btn-${ex.id}" class="wu-check-btn" onclick="event.stopPropagation();wuToggle('${ex.id}')" style="${d?'background:var(--g);border-color:var(--g)':''}">${d?'✓':''}</button>
     </div>`;
   };
