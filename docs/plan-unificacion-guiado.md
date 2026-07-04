@@ -347,6 +347,16 @@ Para cada uno:
   267/267, TODO OK, jsErrors []. Nota: S20b es destructivo del nodo `#guided-mode` (al lanzar tras
   moverlo a "Hoy", el innerHTML de la clásica lo consume) → en el harness va al final; en prod solo
   pasa con SW-desync y una recarga lo restaura.
+- **F4 REGRESIÓN calentamiento ✅ (2026-07-04, avi-v265) — reporte de Camilo.** Con el guiado como
+  default NO aparecían: los ejercicios de estiramiento/movilidad, sus reps de calentamiento, ni el
+  botón "mostrar/ocultar". Causa: la clásica pinta `renderWarmup` en `#wu-wrap` (tarjeta colapsable
+  con movilidad+activación / `routine.warmup` custom, reps, 🎥 y toggle `toggleWarmup`), pero el
+  guiado embebido (`gmRender`) NO lo hacía — el paso P-warmup de sesión se saltó al portar F2. FIX:
+  `gmRender` inserta `#wu-wrap` tras la cabecera de rutina y antes de los ejercicios, y llama
+  `renderWarmup(GM.exercises)` (reusa TODO el sistema clásico: `buildWarmup`, `wuToggle`,
+  `openWarmupDetail`, persistencia `wu_<rid>_<id>`). Un solo `#wu-wrap` a la vez (la clásica no está
+  montada con el guiado ON → sin colisión de id). Colapsado por defecto = paridad con la clásica.
+  Harness +S22 (tarjeta con filas+reps+🎥+chevron; `toggleWarmup` alterna). 267/267, TODO OK, jsErrors [].
 - **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
   Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
   el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML` → esos se QUEDAN.

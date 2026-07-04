@@ -300,6 +300,12 @@ function gmRender(){
   // principal) reemplaza al hero de la clásica. insertAdjacentHTML para no perder listeners.
   const _hdrHTML=gmRoutineHeaderHTML();
   if(_hdrHTML) body.insertAdjacentHTML('beforeend', _hdrHTML);
+  // Calentamiento / movilidad-estiramiento de la sesión (paridad con la clásica): la tarjeta
+  // colapsable con sus ejercicios, reps y el toggle "mostrar/ocultar" (▼) va tras la cabecera y
+  // ANTES de los ejercicios. renderWarmup la pinta dentro de #wu-wrap — aquí el ÚNICO del DOM (la
+  // clásica no está montada con el guiado ON). Faltaba en el guiado embebido (reporte Camilo).
+  body.insertAdjacentHTML('beforeend', '<div id="wu-wrap" style="margin:2px 0 12px"></div>');
+  if(typeof renderWarmup==='function') renderWarmup(GM.exercises);
   const exGroups = {};
   GM.steps.forEach((step, idx) => {
     if(!exGroups[step.ei]) exGroups[step.ei] = [];
