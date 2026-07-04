@@ -307,7 +307,7 @@ Para cada uno:
   nombre y las herramientas (❓+↑↓🔄) van en grupos propios (`.gm-ex-nm` con ancho mínimo legible,
   `.gm-ex-tools` con `margin-left:auto`), y `.gm-ex-header` tiene `flex-wrap:wrap` → con letra
   grande las herramientas ENVUELVEN a una 2ª línea (visibles) en vez de salirse. Nuevo tipo de
-  check en el harness (**S19, 70 checks**): MIDE el `getBoundingClientRect` de cada botón contra
+  check en el harness (**S19, 68 checks**): MIDE el `getBoundingClientRect` de cada botón contra
   el viewport (390px) con `data-fs=xl` → 0 fuera de pantalla (antes salían). Lección: las
   auditorías deben incluir geometría real con texto grande, no solo presencia en el DOM. 🟡 ojo de Camilo.
 - **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
