@@ -1,4 +1,5 @@
 const CACHE_NAME = 'avi-v265';
+// re-deploy trigger 2026-07-04: el build de Pages de v265 quedó pendiente; este commit lo re-lanza.
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
