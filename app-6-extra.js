@@ -415,6 +415,7 @@ function gmRender(){
     <button onclick="gmFinishEarly()" style="flex:2;padding:11px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
   body.appendChild(acts);
   gmUpdateActionBtn();
+  gmShowExTip(); // tooltip educativo (❓ video + 💨 respiración) mientras no lo haya cerrado
 }
 
 // ── Check-in de ánimo desde el guiado (plan unificación P1) ──
@@ -1059,13 +1060,18 @@ function obFinish(){
 }
 
 // ── First-exercise tooltip ──
+// Enseña a tocar el ❓ (video del ejercicio). En la vista guiada (default desde F4) el tip vive
+// DENTRO del guiado embebido y suma la respiración (💨), que es la ventaja del guiado (P13);
+// lo pinta gmShowExTip. En la clásica va sobre #cex-list.
+function _exTipClientId(){ return _obClientId || (typeof CUR!=='undefined' && CUR.clientId) || ''; }
 function showExTooltip(){
-  // Only if there's at least one exercise visible
+  const cid=_exTipClientId();
+  if(cid && localStorage.getItem('apex_tip_done_' + cid)) return; // ya lo cerró
+  // Vista guiada (default): dentro del guiado, con el ❓ + la respiración.
+  if(typeof _gmIsEmbedded==='function' && _gmIsEmbedded()){ gmShowExTip(); return; }
+  // Vista clásica: sobre la lista de ejercicios.
   const list = document.getElementById('cex-list');
   if(!list || !list.firstChild) return;
-  // Don't show if already dismissed
-  if(localStorage.getItem('apex_tip_done_' + _obClientId)) return;
-
   const tip = document.createElement('div');
   tip.className = 'ex-tooltip';
   tip.id = 'ex-first-tip';
@@ -1077,10 +1083,32 @@ function showExTooltip(){
   list.insertBefore(tip, list.firstChild);
 }
 
+// Tooltip del MODO GUIADO (pantalla default desde F4): vive en #gm-body, sobre la primera tarjeta
+// de ejercicio, y enseña las DOS ayudas del guiado — el ❓ (video) y el 💨 "Cómo respirar aquí"
+// (P13). gmRender lo re-inserta mientras no esté cerrado → aparece aunque el usuario elija primero
+// su ánimo (el chooser va arriba, los ejercicios abajo) y no molesta al marcar series (eso no
+// re-renderiza). Se cierra con la × (o queda cerrado por dispositivo en apex_tip_done_<cid>).
+function gmShowExTip(){
+  const cid=_exTipClientId();
+  if(!cid || localStorage.getItem('apex_tip_done_' + cid)) return;
+  const body = document.getElementById('gm-body'); if(!body) return;
+  const firstCard = body.querySelector('.gm-ex-card'); if(!firstCard) return;
+  if(document.getElementById('ex-first-tip')) return; // ya está puesto
+  const tip = document.createElement('div');
+  tip.className = 'ex-tooltip';
+  tip.id = 'ex-first-tip';
+  tip.innerHTML = `
+    <div class="ex-tooltip-icon">👆</div>
+    <div>Toca el <strong>❓</strong> de un ejercicio para ver el <strong>video</strong>. Y al empezar cada uno, el <strong>💨</strong> te muestra <strong>cómo respirar</strong>.</div>
+    <button class="ex-tooltip-close" onclick="dismissExTooltip()">×</button>`;
+  body.insertBefore(tip, firstCard);
+}
+
 function dismissExTooltip(){
   const tip = document.getElementById('ex-first-tip');
   if(tip) tip.remove();
-  if(_obClientId) localStorage.setItem('apex_tip_done_' + _obClientId, '1');
+  const cid=_exTipClientId();
+  if(cid) localStorage.setItem('apex_tip_done_' + cid, '1');
 }
 
 // ══════════════════════════════════════════

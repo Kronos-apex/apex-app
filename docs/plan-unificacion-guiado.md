@@ -335,9 +335,18 @@ Para cada uno:
   `exercises` (raíz común clásica+guiado; no-op sin huecos); (b) `try/catch` alrededor de
   `openGuidedEmbedded` → cualquier throw cae a la clásica (repinta `con` completo). Harness +S20
   (a: null filtrado→embebe 2 reales; b: sin `#gm-body`→cae a clásica, no blanco). 267/267 tests,
-  TODO OK, jsErrors []. Hallazgos 🟡 no aplicados (para el ojo de Camilo): tooltip educativo de
-  onboarding (`showExTooltip` busca `#cex-list`, ausente en el guiado default → no se muestra a
-  usuarios nuevos, degrada sin crash); harness sin assert de atrás parado en el tab embebido.
+  TODO OK, jsErrors []. Hallazgo 🟡 restante: harness sin assert de atrás parado en el tab embebido.
+- **F4 tooltip adaptado ✅ (2026-07-04, avi-v264) — pedido de Camilo.** El tooltip educativo de
+  primer uso (`showExTooltip`) buscaba `#cex-list` (clásica) → no le salía a usuarios nuevos en el
+  guiado default. Ahora `gmShowExTip()` lo pinta dentro de `#gm-body`, sobre la 1ª tarjeta, y suma
+  la RESPIRACIÓN (💨, ventaja P13 del guiado) al ❓ del video: "Toca el ❓ para ver el video; al
+  empezar cada uno, el 💨 te muestra cómo respirar". `gmRender` lo re-inserta hasta la × (resiste
+  el flujo ánimo-primero; no molesta al marcar series, que no re-renderizan). `_exTipClientId()` y
+  `dismissExTooltip` usan `_obClientId||CUR.clientId`. La clásica intacta (`#cex-list`). Harness
+  +S21 (tooltip guiado con ❓+💨 sobre la 1ª tarjeta; la × cierra y persiste por dispositivo).
+  267/267, TODO OK, jsErrors []. Nota: S20b es destructivo del nodo `#guided-mode` (al lanzar tras
+  moverlo a "Hoy", el innerHTML de la clásica lo consume) → en el harness va al final; en prod solo
+  pasa con SW-desync y una recarga lo restaura.
 - **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
   Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
   el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML` → esos se QUEDAN.
