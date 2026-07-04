@@ -367,9 +367,22 @@ function gmRender(){
       tg.querySelector('button').onclick=()=>{toggleLastre(GM.routine,ei);gmRender();};
       setsEl.appendChild(tg);
     }
-    // 🔥 Calentamiento (solo peso, si está visible) — fila aparte, fuera del flujo de pasos
-    if(gmTrack==='peso_reps' && exWarmShown(GM.routine,ei)){
-      setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
+    // 🔥 Sets de calentamiento (aproximación) — solo peso: ENCABEZADO con Mostrar/Ocultar
+    // (paridad con la clásica buildWarmupSection) + la fila cuando está visible. Antes el guiado
+    // solo pintaba la fila si YA estaba activada, sin el botón para activarla → el usuario no
+    // encontraba las series de aproximación ni el botón "mostrar" (reporte Camilo 2026-07-04).
+    if(gmTrack==='peso_reps'){
+      const _wShown=exWarmShown(GM.routine,ei);
+      const wh=document.createElement('div');
+      wh.className='gm-warm-toggle';
+      wh.style.cssText='display:flex;align-items:center;justify-content:space-between;margin:2px 0 6px';
+      wh.innerHTML=`<span style="font-size:11.5px;font-weight:700;color:var(--t2)">🔥 Sets de calentamiento</span>`
+        +`<button type="button" style="font-size:11px;font-weight:600;padding:3px 11px;border-radius:99px;border:1.5px solid var(--br2);background:${_wShown?'var(--gl)':'transparent'};color:${_wShown?'var(--gt)':'var(--t3)'};cursor:pointer">${_wShown?'Ocultar':'Mostrar'}</button>`;
+      wh.querySelector('button').onclick=()=>gmToggleExWarm(ei);
+      setsEl.appendChild(wh);
+      if(_wShown){
+        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
+      }
     }
     steps.forEach(({si, stepIdx}) => {
       const done = isDone(GM.routine.id, ei, si);
@@ -464,6 +477,15 @@ function gmResetSession(){
   gmUpdateProgress();
   gmRender();
   gmScrollToCurrent();
+}
+
+// Mostrar/ocultar los "Sets de calentamiento" (aproximación) de UN ejercicio desde el guiado.
+// Comparte la clave wshow_<rid>_<ei> y exWarmShown con la clásica; re-renderiza el guiado (la
+// clásica usa toggleExWarm→renderClientExList). Añadido tras el reporte de Camilo (guiado default).
+function gmToggleExWarm(ei){
+  if(!GM.routine) return;
+  localStorage.setItem(`wshow_${GM.routine.id}_${ei}`, exWarmShown(GM.routine,ei)?'0':'1');
+  gmRender();
 }
 
 // Fila auxiliar del guiado (calentamiento/dropset): NO entra en GM.steps ni dispara

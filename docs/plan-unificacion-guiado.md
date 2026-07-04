@@ -357,9 +357,21 @@ Para cada uno:
   `openWarmupDetail`, persistencia `wu_<rid>_<id>`). Un solo `#wu-wrap` a la vez (la clásica no está
   montada con el guiado ON → sin colisión de id). Colapsado por defecto = paridad con la clásica.
   Harness +S22 (tarjeta con filas+reps+🎥+chevron; `toggleWarmup` alterna). 267/267, TODO OK, jsErrors [].
+- **F4 REGRESIÓN calentamiento — 2ª pieza ✅ (2026-07-04, avi-v266) — reporte de Camilo.** El
+  v265 arregló la tarjeta de MOVILIDAD (`renderWarmup`) pero faltaba la 2ª pieza que Camilo
+  también reportó: los **"🔥 Sets de calentamiento" (aproximación) por ejercicio + su botón
+  Mostrar/Ocultar**. La clásica los pinta con `buildWarmupSection` (header con toggle `toggleExWarm`
+  → `wshow_<rid>_<ei>` → fila de aproximación token `w0`); el guiado solo pintaba la fila SI ya
+  estaba activada, sin el botón para activarla. FIX: `gmRender` (peso_reps) pinta el encabezado
+  "🔥 Sets de calentamiento" con botón Mostrar/Ocultar (`gmToggleExWarm(ei)` → misma clave/`exWarmShown`
+  que la clásica, re-render del guiado) + la fila cuando `_wShown`. Harness S22c. 267/267, TODO OK.
+  ⚠️ GOTCHA de proceso: v265 tardó ~22 min en propagar en GitHub Pages (build atascado tras 4
+  deploys seguidos) → SIEMPRE verificar en prod con `curl .../sw.js` y `raw.githubusercontent` tras
+  el push; si no propaga, un commit extra re-lanza el build.
 - **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
   Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
-  el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML` → esos se QUEDAN.
+  el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML`/`renderWarmup`/
+  `buildWarmupSection` → esos se QUEDAN (los usa el guiado).
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 
