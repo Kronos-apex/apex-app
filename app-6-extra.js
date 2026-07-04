@@ -147,7 +147,7 @@ function openGuidedMode(){
   g.classList.remove('gm-embedded'); // defensivo: si venía embebido, vuelve a ser overlay
   g.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  setTimeout(() => gmScrollToCurrent(), 200);
+  _gmDeferScrollToCurrent(200);
   // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
   setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
 }
@@ -192,7 +192,7 @@ function openGuidedEmbedded(routine){
   if(g.parentNode!==con) con.appendChild(g); // mueve el nodo (con su rest-overlay hijo) al tab
   document.body.style.overflow=''; // embebido NO bloquea el scroll de la app
   gmRebuild();
-  setTimeout(()=>gmScrollToCurrent(),120);
+  _gmDeferScrollToCurrent(120);
   return true;
 }
 function _gmIsEmbedded(){ const g=document.getElementById('guided-mode'); return !!(g&&g.classList.contains('gm-embedded')); }
@@ -421,7 +421,7 @@ function gmRender(){
 function gmPickMood(mood){
   pickMood(mood);
   gmRebuild(); // sin re-lanzar la tarjeta de inicio (anotación de Lucas QA en v247)
-  gmScrollToCurrent();
+  gmScrollTop(); // el ánimo va ARRIBA del guiado → subir al banner, NO saltar al ejercicio actual
 }
 // "Cambiar cómo me siento" desde el guiado: limpia el ánimo del día. Embebido → renderClientToday
 // re-adapta (applyMood sin ánimo → rutina base) y re-embebe. Overlay → gmRebuild con la copia
@@ -429,9 +429,9 @@ function gmPickMood(mood){
 function gmChangeMood(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   clearTodayMood(c.id);
-  if(_gmIsEmbedded()){ renderClientToday(c,CUR.todayOverride); return; }
+  if(_gmIsEmbedded()){ renderClientToday(c,CUR.todayOverride); gmScrollTop(); return; }
   gmRebuild();
-  gmScrollToCurrent();
+  gmScrollTop();
 }
 
 // ── Finalizar/Reiniciar desde el guiado (plan unificación P2) ──
@@ -644,7 +644,7 @@ function gmAfterHiit(ei){
   GM.currentStep=next;
   gmRender();
   if(GM.currentStep>=GM.steps.length){ setTimeout(()=>{ closeGuidedMode(); checkAndShowCongrats(GM.routine); }, 500); }
-  else { setTimeout(()=>gmScrollToCurrent(), 100); }
+  else { _gmDeferScrollToCurrent(100); }
 }
 
 function gmUpdateProgress(){
@@ -912,6 +912,21 @@ function gmScrollToCurrent(){
   const step=GM.steps[GM.currentStep];if(!step)return;
   const card=document.getElementById(`gm-ex-${step.ei}`);
   if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+}
+// El scroll-a-current se difiere (tras el render) y se RASTREA en un solo handle para poder
+// cancelarlo: al re-embeber (openGuidedEmbedded) se programa uno, y una acción de ánimo que
+// quiere quedarse ARRIBA debía poder anularlo (si no, saltaba al ejercicio 120ms después —
+// reporte Camilo 2026-07-03, sc=155).
+let _gmScrollT=null;
+function _gmDeferScrollToCurrent(ms){ if(_gmScrollT)clearTimeout(_gmScrollT); _gmScrollT=setTimeout(()=>{_gmScrollT=null;gmScrollToCurrent();},ms); }
+// Sube al tope del guiado. Embebido: el scroll real vive en .cnbody (NO en #cn-today, que es un
+// .cnp sin overflow → la clásica hace today.scrollTop=0 pero es no-op inofensivo). Overlay: el
+// scroll propio es #gm-body. Lo usan las acciones de ánimo (chooser/banner van arriba) para NO
+// saltar la pantalla al ejercicio actual; cancela cualquier scroll-a-current diferido pendiente.
+function gmScrollTop(){
+  if(_gmScrollT){ clearTimeout(_gmScrollT); _gmScrollT=null; }
+  if(_gmIsEmbedded()){ const b=document.querySelector('#s-client .cnbody'); if(b) b.scrollTop=0; }
+  else { const b=document.getElementById('gm-body'); if(b) b.scrollTop=0; }
 }
 
 function checkAndShowCongrats(routine){

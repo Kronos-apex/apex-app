@@ -1177,6 +1177,16 @@ function exFormSync(){
 }
 
 // Devuelve true si reinició (el guiado lo usa para re-sincronizar su estado GM).
+// ── Identidad de sesión (fix pérdida de datos, Camilo 2026-07-03) ──
+// El historial se de-duplicaba por (rutina + día), así que un SEGUNDO entreno de la misma rutina
+// el mismo día PISABA al primero (Camilo entrenó pierna en la mañana y al reiniciar por la tarde
+// mientras probaba el guiado se borró el de la mañana). Ahora cada sesión tiene id propio: se
+// acuña al arrancar fresca (día nuevo o reiniciar) y saveSessionToHistory hace match por ese id
+// → un reinicio crea una entrada NUEVA, no destruye la anterior. Regla: nunca perder un entreno.
+function _sessionIdKey(rid){ return 'session_id_'+rid; }
+function currentSessionId(rid){ try{ return localStorage.getItem(_sessionIdKey(rid))||''; }catch(e){ return ''; } }
+function startNewSession(rid){ const id=uid(); try{ localStorage.setItem(_sessionIdKey(rid),id); }catch(e){} return id; }
+
 function resetSession(){
   const routine=CUR.activeRoutine;if(!routine)return false;
   if(!confirm('¿Reiniciar el entrenamiento de hoy? Se borrarán las series completadas pero se conservarán los pesos.'))return false;
@@ -1187,6 +1197,7 @@ function resetSession(){
   clearWarmup(routine.id);
   clearWarmDropDone(routine);
   localStorage.removeItem(`session_date_${routine.id}`);
+  startNewSession(routine.id); // reiniciar = sesión NUEVA → no pisa la entrada de historial ya guardada
   _endHoldUI();
   if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
   renderClientExList(routine);updateClientProgress(routine);toast('↺ Sesión reiniciada');
@@ -1217,6 +1228,7 @@ function checkAndResetSession(routine){
     clearWarmup(routine.id); // el calentamiento también es por día
     clearWarmDropDone(routine); // sets de calentamiento + dropsets: desmarcar por día
     _sweepOrphanSessionKeys(routine); // limpia log_/done_ de ei/si que ya no existen
+    startNewSession(routine.id); // día nuevo = sesión nueva (entrada de historial aparte)
   }
   localStorage.setItem(dateKey,today);
 }
@@ -1589,12 +1601,24 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
     return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
   });
   const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-  // Evita duplicar: misma rutina el mismo día → actualiza la entrada existente.
-  const already=DB.history[clientId].find(h=>h.routineId===routine.id&&new Date(h.date).toDateString()===today);
-  if(already){already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();}
+  // Evita duplicar DENTRO de una misma sesión (cada serie marcada re-guarda) matcheando por el
+  // id de sesión, NO por (rutina+día): así un 2º entreno de la misma rutina el mismo día crea
+  // una entrada NUEVA en vez de pisar la anterior (fix pérdida de datos Camilo 2026-07-03).
+  let sid=currentSessionId(routine.id);
+  let already;
+  if(sid){
+    already=DB.history[clientId].find(h=>h.sessionId===sid);
+  }else{
+    // Sesión iniciada antes de esta versión (sin id): se acuña uno y se ADOPTA solo una entrada
+    // del mismo día/rutina SIN id y NO completada (misma sesión en curso, para no duplicar); una
+    // sesión ya COMPLETADA no se toca (justo el caso que borraba el entreno de la mañana).
+    sid=startNewSession(routine.id);
+    already=DB.history[clientId].find(h=>!h.sessionId&&h.routineId===routine.id&&new Date(h.date).toDateString()===today&&(h.doneSets||0)<(h.totalSets||0));
+  }
+  if(already){already.sessionId=sid;already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();}
   else{
-    // startedAt = primera serie marcada (este else corre la 1ª vez del día) → duración real de entreno
-    DB.history[clientId].unshift({id:uid(),routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData});
+    // startedAt = primera serie marcada (este else corre la 1ª vez de la sesión) → duración real
+    DB.history[clientId].unshift({id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada
@@ -1667,7 +1691,8 @@ function showWorkoutFinish(routine,stats){
   // Duración (desde la 1ª serie) + calorías aproximadas (MET·peso·horas). Se persisten en la sesión.
   let durationSec=null, kcal=null;
   const today=new Date().toDateString();
-  const entry=(DB.history[CUR.clientId]||[]).find(h=>h.routineId===routine.id&&new Date(h.date).toDateString()===today);
+  const _sid=currentSessionId(routine.id); // la sesión recién guardada (no la de la mañana)
+  const entry=(DB.history[CUR.clientId]||[]).find(h=>_sid?h.sessionId===_sid:(h.routineId===routine.id&&new Date(h.date).toDateString()===today));
   _wfEntry=entry||null;
   if(entry&&entry.startedAt){
     durationSec=Math.max(60,Math.min(4*3600,Math.round((Date.now()-Date.parse(entry.startedAt))/1000)));

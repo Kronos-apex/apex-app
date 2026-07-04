@@ -286,6 +286,19 @@ Para cada uno:
   embebido → `renderClientToday` (re-adapta sin ánimo + re-embebe), overlay → `gmRebuild` (chooser,
   y re-elegir re-adapta). Harness `_repro-plancha.mjs` a **64 checks** (S17: chooser antes →
   banner al elegir → chooser tras "Cambiar", siempre embebido). 🟡 falta el ojo de Camilo.
+- **Bugs del ojo de Camilo en el ánimo del embebido ✅ (2026-07-03, avi-v260):** dos cosas que vio
+  al probarlo en el celular. (1) **Salto de pantalla:** al cambiar de ánimo la pantalla saltaba
+  hacia abajo — `openGuidedEmbedded` difería un `gmScrollToCurrent()` a 120ms que pisaba el
+  scroll-al-tope de la acción de ánimo; ahora ese scroll diferido se rastrea en un handle
+  (`_gmDeferScrollToCurrent`) y `gmScrollTop()` lo CANCELA + sube `.cnbody` (el scroller real es
+  `.cnbody`, no `#cn-today`) al tope. (2) **PÉRDIDA DE DATOS (crítico, fuera del plan pero salió
+  aquí):** entrenó pierna en la mañana (completo) y al reiniciar por la tarde mientras probaba el
+  guiado, Progreso mostró SOLO el nuevo y BORRÓ el de la mañana. Causa: `saveSessionToHistory`
+  de-duplicaba por (rutina+día) → el parcial de la tarde pisaba el completo de la mañana. Fix:
+  identidad de sesión (`session_id_<rid>`, acuñada al arrancar fresca = día nuevo o reiniciar);
+  el historial hace match por ese id → un reinicio crea una entrada NUEVA, no destruye la hecha.
+  Harness a **67 checks** (S18: mañana completa 2/2 → reiniciar cambia el sid → tarde 1/2 es
+  entrada APARTE, la mañana intacta). 267/267 tests, jsErrors []. 🟡 falta el ojo de Camilo.
 - **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
   Poner default `ax_ui_guided='1'`; dejar el enlace "Volver a la vista clásica" ≥2 semanas.
   Luego F5 (retiro de la clásica: borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo

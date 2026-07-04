@@ -1414,6 +1414,7 @@ function delRoutine(cid,ri){
       }
     });
     localStorage.removeItem(`session_date_${rid}`);
+    localStorage.removeItem(`session_id_${rid}`);
   }
   c.routines.splice(ri,1);sv('ax_c',DB.clients);renderDetailRoutines(c);renderHome();toast('🗑️ Rutina eliminada');
   if(CUR.loggedAs==='client'){renderClientAllRoutines(c);renderClientToday(c);} // coach-en-su-entreno o cliente libre: refrescar SU vista
