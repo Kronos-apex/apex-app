@@ -279,13 +279,20 @@ function gmRender(){
   const body = document.getElementById('gm-body');
   body.innerHTML = '';
   gmUpdateProgress();
-  // Check-in de ánimo (plan unificación P1): si hoy aún no eligió cómo se siente, el
-  // chooser vive TAMBIÉN en el guiado (paridad con la clásica; en F2 será el único lugar).
-  // No bloquea: puede entrenar sin elegir, igual que en la clásica.
+  // Check-in de ánimo (plan unificación P1) — paridad COMPLETA con la clásica: si aún no eligió
+  // cómo se siente → chooser; si YA eligió → banner con la adaptación + "Cambiar cómo me siento"
+  // (antes solo mostraba el chooser y al elegir DESAPARECÍA todo → parecía que la feature no
+  // estaba; reporte de Camilo 2026-07-03). GM.routine.adapt lo trae applyMood (la rutina activa
+  // ya viene adaptada desde renderClientToday). No bloquea el entreno.
   const _cli = DB.clients.find(x=>x.id===CUR.clientId);
-  if(_cli && typeof applyMood==='function' && typeof MOOD_STATES!=='undefined' && !getTodayMood(_cli.id)){
+  if(_cli && typeof applyMood==='function' && typeof MOOD_STATES!=='undefined'){
+    const _mood = getTodayMood(_cli.id);
     const mc=document.createElement('div');
-    mc.innerHTML=moodChooserHtml(_cli,'gmPickMood');
+    if(!_mood){
+      mc.innerHTML=moodChooserHtml(_cli,'gmPickMood');
+    } else if(GM.routine && GM.routine.adapt && typeof moodBannerHtml==='function'){
+      mc.innerHTML=moodBannerHtml(GM.routine.adapt,'gmChangeMood');
+    }
     if(mc.firstElementChild) body.appendChild(mc.firstElementChild);
   }
   // Cabecera de rutina (plan unificación P12): nombre + pills + nota + por-qué + banner de
@@ -414,6 +421,16 @@ function gmRender(){
 function gmPickMood(mood){
   pickMood(mood);
   gmRebuild(); // sin re-lanzar la tarjeta de inicio (anotación de Lucas QA en v247)
+  gmScrollToCurrent();
+}
+// "Cambiar cómo me siento" desde el guiado: limpia el ánimo del día. Embebido → renderClientToday
+// re-adapta (applyMood sin ánimo → rutina base) y re-embebe. Overlay → gmRebuild con la copia
+// actual y muestra el chooser; al re-elegir, gmPickMood→pickMood re-adapta la rutina.
+function gmChangeMood(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  clearTodayMood(c.id);
+  if(_gmIsEmbedded()){ renderClientToday(c,CUR.todayOverride); return; }
+  gmRebuild();
   gmScrollToCurrent();
 }
 

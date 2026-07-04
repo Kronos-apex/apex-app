@@ -268,11 +268,24 @@ Para cada uno:
   (2) el descanso del guiado (`gm-rest-overlay`) ahora se cierra con atrás (gmSkipRest) — antes,
   en overlay cerraba TODO el guiado y en el embebido no hacía nada. La ficha ❓ y el lightbox ya
   empujaban capa propia (navOpenLayer, v243) → el atrás los cierra igual embebido. Harness
-  `_repro-plancha.mjs` a **58 checks** (S15: embebido no se cierra con atrás; descanso sí; ficha
+  `_repro-plancha.mjs` a **64 checks** (S15: embebido no se cierra con atrás; descanso sí; ficha
   empuja capa; overlay clásico SÍ se cierra — sin regresión); `_repro-back-v243.mjs` regresión
   LIMPIA. 🟡 **Falta probar el atrás en el TWA real de Camilo** (el WebView del TWA es donde el
   atrás se rompe) — hacerlo con el flag ON (`?uig=1`): atrás en Hoy, atrás con descanso, atrás
   con ficha abierta.
+- **Bugs del ojo de Camilo en F2+F3 ✅ (2026-07-03, avi-v255→v258).** Interruptor visible SIEMPRE
+  (quité gate COACH_SELF, v256); el toggle re-renderiza "Hoy" DE VERDAD (`_switchTodayView` pone
+  `CUR.todayRenderedDay=null` saltando `cnTodayGuard`, v257) y NAVEGA a "Hoy" (`cnTab('cn-today')`)
+  para que el cambio se vea sin salir/entrar de la app (v258). S16 en el harness.
+- **P1 ánimo en el embebido ✅ (2026-07-03, avi-v259).** Camilo: "la vista me gusta pero no podemos
+  dejar fuera la feature de cómo te sientes". El guiado (`gmRender`, app-6-extra.js) solo mostraba
+  el chooser y al elegir DESAPARECÍA todo → parecía que la feature no estaba. Ahora hay paridad
+  COMPLETA con la clásica: si no eligió → chooser (`moodChooserHtml(_cli,'gmPickMood')`); si YA
+  eligió → banner con la adaptación + "Cambiar cómo me siento" (`moodBannerHtml(GM.routine.adapt,
+  'gmChangeMood')`). `moodBannerHtml` ahora acepta `fnName` (allowlist); nuevo `gmChangeMood()`:
+  embebido → `renderClientToday` (re-adapta sin ánimo + re-embebe), overlay → `gmRebuild` (chooser,
+  y re-elegir re-adapta). Harness `_repro-plancha.mjs` a **64 checks** (S17: chooser antes →
+  banner al elegir → chooser tras "Cambiar", siempre embebido). 🟡 falta el ojo de Camilo.
 - **SIGUIENTE → F4 (default ON, SOLO tras visto bueno de Camilo en F2+F3 en su celular).**
   Poner default `ax_ui_guided='1'`; dejar el enlace "Volver a la vista clásica" ≥2 semanas.
   Luego F5 (retiro de la clásica: borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo
