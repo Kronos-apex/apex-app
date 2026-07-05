@@ -370,9 +370,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   <div class="main">
     <!-- HOME -->
     <div id="p-home" class="panel on">
-      <div class="ph">
-        <div><div class="ph-eyebrow">Panel del coach</div><div class="ptitle" id="greeting">Buenos días 👋</div></div>
-        <button class="btn bp" onclick="openAddClient()">+ Nuevo asesorado</button>
+      <div class="avi-coachbnr">
+        <div class="cb-bg" style="background-image:url('media/brand/coach-verde.jpg')"></div><div class="cb-ov"></div>
+        <div class="cb-in">
+          <div><div class="ph-eyebrow">Panel del coach</div><div class="ptitle" id="greeting">Buenos días 👋</div></div>
+          <button class="btn bp" onclick="openAddClient()">+ Nuevo asesorado</button>
+        </div>
       </div>
       <!-- Stats de negocio -->
       <div class="g4" style="margin-bottom:16px">
@@ -559,6 +562,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <!-- TODAY -->
     <div id="cn-today" class="cnp on">
       <div id="cn-today-head"></div>
+      <button id="qw-entry" class="qw-entry" onclick="openQuickWorkouts()" aria-label="Abrir entrenamientos rápidos">
+        <span class="qw-entry-ic">⚡</span>
+        <span class="qw-entry-tx"><b>¿Hoy quieres algo distinto?</b><small>Entrenamientos rápidos — HIIT, abdomen, movilidad…</small></span>
+        <span class="qw-entry-chev">›</span>
+      </button>
       <div id="rest-banner" class="restbanner hide">
         <div class="restnum" id="rb-num">60</div>
         <div class="restinfo"><div class="resttitle">⏱ Descansando</div><div class="restsub" id="rb-sub">—</div></div>
@@ -1485,6 +1493,15 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <span class="sroom-bar-t" id="coach-stat-title">Reporte</span>
   </div>
   <div class="sroom-body" id="coach-stat-body"></div>
+</div>
+
+<!-- Habitación de ENTRENAMIENTOS RÁPIDOS: biblioteca de sesiones curadas fuera del plan -->
+<div id="quickwo-room" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
+    <span class="sroom-bar-t">Entrenamientos rápidos</span>
+  </div>
+  <div class="sroom-body" id="quickwo-body"></div>
 </div>
 
 <!-- UPSELL PREMIUM "Quiero un coach" (momento full-bleed, solo modo libre) -->
