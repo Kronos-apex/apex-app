@@ -588,8 +588,8 @@ function toggleTrackingTools(){
 function aviProfilePhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/ath-woman-2.jpg'; }
 function aviRestPhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/hiit-mujer.jpg'; }
 
-// Saludo del "Hoy": foto COMPLETA del coach saludando a una asesorada (igual para todos)
-// arriba, y el "Buenos días, [nombre]" + racha en una franja debajo.
+// Saludo del "Hoy": texto simple (el wohero de abajo ya trae foto — una sola imagen por
+// pantalla, decisión de Camilo 2026-07-05; la foto del coach saludando vive en la bienvenida).
 function renderTodayHead(client){
   const el=document.getElementById('cn-today-head'); if(!el||!client)return;
   const h=new Date().getHours();
@@ -599,7 +599,7 @@ function renderTodayHead(client){
   const chip=streak>0
     ? `<div class="streak-chip">🔥 <b>${streak}</b> día${streak!==1?'s':''} de racha</div>`
     : `<div class="streak-chip streak-0">💪 Empieza tu racha hoy</div>`;
-  el.innerHTML=`<div class="avi-greet"><img class="ag-photo" src="media/brand/coach-camilo.jpg" alt=""><div class="ag-strip today-greet"><div><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}</div></div>`;
+  el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
 }
 
 function renderClientToday(client, overrideRoutine){
