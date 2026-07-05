@@ -262,15 +262,17 @@ function gmRoutineHeaderHTML(){
   const r=GM.routine; if(!r) return '';
   const nEx=(r.exercises||[]).length;
   const nSets=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-  const pill=t=>`<span style="font-size:11px;font-weight:700;color:var(--t2);background:var(--w);border:1px solid var(--br);border-radius:99px;padding:3px 9px">${t}</span>`;
-  const pills=pill(nEx+' ejercicios')+pill(nSets+' series')+(r.restSec?pill('⏱ '+r.restSec+'s descanso'):'');
+  // Hero con foto (Camilo 2026-07-05): la misma tarjeta .wohero de la clásica — foto libre
+  // arriba, día + nombre + pills anclados abajo. Un solo CSS para las dos vistas.
+  const _today=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
+  const dayLabel=CUR.todayOverride?'📋 RUTINA SELECCIONADA':'⚡ ENTRENAMIENTO DE HOY · '+_today.toUpperCase();
+  const pills=`<span class="wopill">${nEx} ejercicios</span><span class="wopill">${nSets} series</span>${r.restSec?`<span class="wopill">⏱ ${r.restSec}s descanso</span>`:''}`;
   const override=CUR.todayOverride?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span></div>`:'';
   const note=r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.35);border-radius:var(--rsm);padding:9px 12px;font-size:12.5px;color:var(--t1);margin-bottom:8px;line-height:1.5">💡 <strong style="color:#E9C46A">Nota:</strong> ${esc(r.note)}</div>`:'';
   const why=r.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:9px 12px;margin-bottom:8px;font-size:12.5px;color:var(--gt);line-height:1.55"><div style="font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:3px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(r.why)}</div>`:'';
   return `<div class="gm-routine-head" style="margin:0 0 10px">
     ${override}
-    <div style="font-size:17px;font-weight:800;color:var(--gt);margin-bottom:6px">${esc(r.name||'Tu entrenamiento')}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${(note||why)?'9px':'0'}">${pills}</div>
+    <div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(r.name||'Tu entrenamiento')}</div><div class="wopills">${pills}</div></div>
     ${note}${why}
   </div>`;
 }
