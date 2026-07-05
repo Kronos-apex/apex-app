@@ -332,9 +332,7 @@ function renderClientProfile(client){
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
-  const _pc=document.getElementById('cn-prof-card');
-  _pc.style.backgroundImage=`url('${aviProfilePhoto(client.sex)}')`;
-  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  document.getElementById('cn-prof-card').innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
@@ -582,14 +580,6 @@ function toggleTrackingTools(){
 // TODAY
 // Cabecera del "Hoy": saludo grande con el nombre + chip de racha (días seguidos
 // entrenando). La racha la calcula workoutStreak (avi-core, testeado).
-// Fotos de marca por pantalla, según el sexo del asesorado (mismo criterio que los videos).
-// Cualquier valor distinto de 'M' cae a la foto femenina (default seguro).
-// Perfil/descanso: el hombre ve una foto del coach (coach-verde); la mujer, una atleta.
-function aviProfilePhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/ath-woman-2.jpg'; }
-function aviRestPhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/hiit-mujer.jpg'; }
-
-// Saludo del "Hoy": foto COMPLETA del coach saludando a una asesorada (igual para todos)
-// arriba, y el "Buenos días, [nombre]" + racha en una franja debajo.
 function renderTodayHead(client){
   const el=document.getElementById('cn-today-head'); if(!el||!client)return;
   const h=new Date().getHours();
@@ -599,7 +589,7 @@ function renderTodayHead(client){
   const chip=streak>0
     ? `<div class="streak-chip">🔥 <b>${streak}</b> día${streak!==1?'s':''} de racha</div>`
     : `<div class="streak-chip streak-0">💪 Empieza tu racha hoy</div>`;
-  el.innerHTML=`<div class="avi-greet"><img class="ag-photo" src="media/brand/coach-camilo.jpg" alt=""><div class="ag-strip today-greet"><div><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}</div></div>`;
+  el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
 }
 
 function renderClientToday(client, overrideRoutine){
@@ -631,12 +621,12 @@ function renderClientToday(client, overrideRoutine){
   // que los cambios sobrevivan a los re-render (mood, etc.). El plan guardado no se toca.
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
-    con.innerHTML=`<div class="avi-restbnr"><div class="rb-bg" style="background-image:url('${aviRestPhoto(client.sex)}')"></div><div class="rb-ov"></div><div class="rb-in">
-      <div style="font-size:34px">💤</div>
-      <div class="rb-title">Hoy es tu día de descanso</div>
-      <div class="rb-sub">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
-      <button class="btn bp bsm" style="margin-top:6px" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
-    </div></div>`;
+    con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
+      <div style="font-size:36px;margin-bottom:10px">💤</div>
+      <div style="font-size:15px;font-weight:800;color:var(--gt);margin-bottom:5px">Hoy es tu día de descanso</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:14px">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
+      <button class="btn bp bsm" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
+    </div>`;
     return;
   }
   // Check-in diario: si el asesorado ya marcó cómo se siente hoy, la rutina se
@@ -751,77 +741,6 @@ function startRoutineNow(routineId){
   cnTab('cn-today',tabs[0]);
   renderClientToday(c,routine);
   document.getElementById('cn-today').scrollTop=0;
-}
-
-// ══════════════════════ BIBLIOTECA DE ENTRENAMIENTOS RÁPIDOS ══════════════════════
-// Sesiones curadas para días FUERA del plan asignado (no pudo ir al gym, quiere un HIIT
-// o abdomen suelto en casa…). No tocan el plan guardado, pero SÍ cuentan en el historial:
-// cada una tiene id propio → session_id propio ([[project_avi_historial_session_id]]).
-// Reusan el motor de "Hoy" vía renderClientToday(client, override). `track` explícito por
-// ítem porque exTrack manda 'Movilidad' a 'peso_reps' (pediría kg). Todo sin equipo.
-const QUICK_WORKOUTS=[
-  {id:'qw_hiit_casa', emoji:'🔥', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
-   desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
-   items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e181',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
-  {id:'qw_abs_casa', emoji:'💥', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
-   desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
-   items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
-  {id:'qw_movilidad', emoji:'🧘', name:'Movilidad & Estiramiento', goal:'Movilidad · Recuperación', place:'Casa', dur:'~10 min',
-   desc:'Sesión suave para descanso activo o cuando no puedes entrenar fuerte. Suelta espalda y caderas.',
-   items:[{id:'e165',sets:2,reps:30,track:'tiempo'},{id:'e173',sets:2,reps:30,track:'tiempo'},{id:'e170',sets:2,reps:30,track:'tiempo'},{id:'e168',sets:2,reps:30,track:'tiempo'},{id:'e179',sets:2,reps:30,track:'tiempo'},{id:'e167',sets:2,reps:40,track:'tiempo'}]},
-  {id:'qw_fullbody_casa', emoji:'⚡', name:'Full-Body Express', goal:'Cuerpo completo', place:'Casa', dur:'~20 min',
-   desc:'Un poco de todo sin equipo: empuje, pierna, glúteo, tracción y core.',
-   items:[{id:'e83',sets:3,reps:12,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e73',sets:3,reps:15,track:'reps'},{id:'e146',sets:3,reps:12,track:'reps'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
-  {id:'qw_gluteo_casa', emoji:'🍑', name:'Glúteo & Pierna en casa', goal:'Glúteo · Pierna', place:'Casa', dur:'~15 min',
-   desc:'Tren inferior sin equipo, enfocado en glúteo. Con banda, aún mejor.',
-   items:[{id:'e73',sets:4,reps:15,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e130',sets:3,reps:15,track:'reps'},{id:'e106',sets:3,reps:10,track:'reps'},{id:'e163',sets:3,reps:15,track:'reps'}]},
-  {id:'qw_plio', emoji:'🏃', name:'Cardio Pliométrico', goal:'Cardio · Potencia', place:'Parque/Casa', dur:'~12 min',
-   desc:'Saltos e intervalos explosivos: 3 rondas de 40s fuerte / 20s de pausa. Alto impacto.',
-   items:[{id:'e184',sets:3,hiit:{work:40,rest:20}},{id:'e185',sets:3,hiit:{work:40,rest:20}},{id:'e186',sets:3,hiit:{work:40,rest:20}},{id:'e198',sets:3,hiit:{work:40,rest:20}},{id:'e203',sets:3,hiit:{work:40,rest:20}}]}
-];
-// Arma una rutina válida para el motor de "Hoy" desde un preset: spread de la entrada del
-// catálogo (hereda name/muscle/type/icon/desc) + override de sets/reps/track/hiit.
-function buildQuickRoutine(spec){
-  const exercises=(spec.items||[]).map(it=>{
-    const base=(DB.exercises||[]).find(e=>e.id===it.id)||{id:it.id,name:it.id,type:'Bodyweight'};
-    const ex={...base};
-    if(it.sets!=null)ex.sets=it.sets;
-    if(it.reps!=null)ex.reps=it.reps;
-    if(it.track)ex.track=it.track;
-    if(it.hiit){ex.type='HIIT';ex.track='hiit';ex.hiit={...(base.hiit||{}),...it.hiit};}
-    return ex;
-  });
-  return {id:spec.id,name:spec.name,day:'Libre',quick:true,exercises};
-}
-function openQuickWorkouts(){
-  const room=document.getElementById('quickwo-room'),body=document.getElementById('quickwo-body');
-  if(!room||!body)return;
-  body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+
-    QUICK_WORKOUTS.map(w=>`<button class="qw-card" onclick="startQuickWorkout('${w.id}')">
-      <span class="qw-card-ic">${w.emoji}</span>
-      <span class="qw-card-mid">
-        <span class="qw-card-nm">${esc(w.name)}</span>
-        <span class="qw-card-meta">${esc(w.goal)} · ${esc(w.place)} · ${esc(w.dur)}</span>
-        <span class="qw-card-desc">${esc(w.desc)}</span>
-        <span class="qw-card-tag">${(w.items||[]).length} ejercicios</span>
-      </span>
-      <span class="qw-card-go">›</span>
-    </button>`).join('')+`<div style="height:30px"></div>`;
-  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
-}
-function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
-// Arranca un extra como "Hoy" (override) sin tocar el plan. Cierra la biblioteca consumiendo
-// su capa de historial (como el botón atrás) antes de renderizar, para no dejar el overlay encima.
-function startQuickWorkout(id){
-  const spec=QUICK_WORKOUTS.find(w=>w.id===id); if(!spec)return;
-  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
-  const routine=buildQuickRoutine(spec);
-  // La entrada vive dentro de "Hoy", así que ya estamos en esa pestaña: NO usamos cnTab (su
-  // manejo de historial chocaría con el history.back que cierra la biblioteca). Solo renderizamos
-  // el extra como override y dejamos que history.back cierre la sala (consume su capa).
-  const room=document.getElementById('quickwo-room');
-  const go=()=>{ renderClientToday(c,routine); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; toast('⚡ '+spec.name+' — ¡a darle!'); };
-  if(room&&room.classList.contains('on')){ history.back(); setTimeout(go,70); } else go();
 }
 
 // Key helpers for session log

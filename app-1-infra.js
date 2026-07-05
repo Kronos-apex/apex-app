@@ -440,9 +440,7 @@ async function _pollAuthClient(){
   // 2) Cambios de rutina que hizo el coach. NO pisar si el usuario está editando, entrenando
   //    o tiene cambios locales sin confirmar (_authDirty) — su copia manda hasta que suba.
   const editorOpen=(()=>{const m=document.getElementById('m-routine');return !!(m&&getComputedStyle(m).display!=='none');})();
-  // CUR.todayOverride: está viendo/haciendo otra rutina (extra rápido u otro día) → no le
-  // pises "Hoy" con el plan nuevo hasta que vuelva a su día (si no, lo saca del entreno).
-  const busy=editorOpen||CUR.todayWorking||CUR.todayDirty||_authDirty||CUR.todayOverride;
+  const busy=editorOpen||CUR.todayWorking||CUR.todayDirty||_authDirty;
   if(!busy&&Array.isArray(row.routines)){
     const client=DB.clients.find(x=>x.id===cid);
     if(client&&JSON.stringify(client.routines||[])!==JSON.stringify(row.routines)){

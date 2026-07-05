@@ -221,26 +221,6 @@ html[data-theme="light"] .mta {
 .crep-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .crep-empty{text-align:center;color:var(--t2);font-size:14px;line-height:1.6;padding:34px 20px}
 .crep-empty-ic{font-size:40px;margin-bottom:10px}
-/* ── Entrenamientos rápidos: botón de entrada en "Hoy" + biblioteca ── */
-.qw-entry{display:flex;align-items:center;gap:11px;width:100%;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:12px;padding:11px 13px;border-radius:var(--r);border:1.5px dashed var(--br2);background:linear-gradient(135deg,var(--gl),var(--w));color:var(--t1);transition:border-color .12s,transform .12s,box-shadow .12s}
-.qw-entry:hover{border-color:var(--g2);box-shadow:0 5px 16px -8px rgba(0,0,0,.22)}
-.qw-entry:active{transform:scale(.99)}
-.qw-entry-ic{font-size:22px;flex-shrink:0;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--gl);border-radius:11px}
-.qw-entry-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
-.qw-entry-tx b{font-size:13.5px;font-weight:800;color:var(--gt)}
-.qw-entry-tx small{font-size:11.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qw-entry-chev{font-size:20px;font-weight:700;color:var(--g);flex-shrink:0}
-.qw-intro{font-size:13px;color:var(--t2);line-height:1.55;background:var(--gl);border:1px solid var(--br);border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
-.qw-card{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:11px;padding:14px;border-radius:var(--r);border:1px solid var(--br);background:var(--w);box-shadow:var(--sh);transition:border-color .12s,transform .12s,box-shadow .12s}
-.qw-card:hover{border-color:var(--g2);box-shadow:0 6px 18px -8px rgba(0,0,0,.24)}
-.qw-card:active{transform:scale(.985)}
-.qw-card-ic{font-size:26px;flex-shrink:0;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:var(--gl);border-radius:13px}
-.qw-card-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.qw-card-nm{font-size:15px;font-weight:800;color:var(--t1)}
-.qw-card-meta{font-size:11.5px;font-weight:700;color:var(--gt)}
-.qw-card-desc{font-size:12.5px;color:var(--t2);line-height:1.45}
-.qw-card-tag{align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--t3);background:var(--bg);border:1px solid var(--br);border-radius:20px;padding:2px 9px}
-.qw-card-go{font-size:22px;font-weight:700;color:var(--t3);flex-shrink:0;align-self:center}
 
 /* ── PANEL DEL COACH — pulido Noir Esmeralda (paridad con el interior premium del asesorado) ── */
 #s-coach .coach-topbar-logo{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:2.5px}
@@ -483,33 +463,12 @@ html[data-theme="light"] .mta {
 .wopills{display:flex;gap:6px;flex-wrap:wrap}
 .wopill{background:rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
 /* Saludo grande + racha (cabecera del "Hoy") */
-#cn-today-head{display:block;margin:2px 0 0}
+#cn-today-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 15px}
 .today-greet .tg-hi{font-size:13px;color:var(--t2);line-height:1.1;margin-bottom:2px}
 .today-greet .tg-name{font-size:25px;font-weight:800;letter-spacing:-.4px;line-height:1.12;color:var(--t1)}
 .streak-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--g2);color:var(--gt);border-radius:22px;padding:8px 14px;font-size:13px;font-weight:700;white-space:nowrap}
 .streak-chip b{font-size:16px}
 .streak-chip.streak-0{background:var(--bg);border-color:var(--br2);color:var(--t2);font-weight:600}
-
-/* ── Fotos de marca en pantallas ──
-   Saludo: foto horizontal COMPLETA (coach-camilo, la escena del saludo) arriba +
-   franja con el "Buenos días" debajo (sobre fondo de tarjeta, tema-aware). */
-.avi-greet{border-radius:var(--rlg);overflow:hidden;background:var(--w);border:1px solid var(--br);margin-bottom:15px}
-.avi-greet .ag-photo{display:block;width:100%;height:auto}
-.avi-greet .ag-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px}
-/* Estado vacío (día de descanso): foto vertical de fondo + degradado + texto blanco centrado */
-.avi-restbnr{position:relative;border-radius:var(--rlg);overflow:hidden;isolation:isolate;background:#0a1712}
-.avi-restbnr .rb-bg{position:absolute;inset:0;background-size:cover;background-position:center 16%}
-.avi-restbnr .rb-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,9,.15) 0%,rgba(6,12,9,.5) 45%,rgba(6,12,9,.92) 100%)}
-.avi-restbnr .rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;gap:9px;min-height:210px;padding:30px 18px 22px}
-.avi-restbnr .rb-title{color:#fff;font-weight:800;font-size:16px;line-height:1.2;margin:0}
-.avi-restbnr .rb-sub{color:rgba(255,255,255,.85);font-size:13px;line-height:1.5;margin:0;max-width:34ch}
-/* Panel del coach: foto horizontal (coach-verde) + degradado lateral + título/botón */
-.avi-coachbnr{position:relative;border-radius:var(--rlg);overflow:hidden;isolation:isolate;margin-bottom:16px;background:#0a1712}
-.avi-coachbnr .cb-bg{position:absolute;inset:0;background-size:cover;background-position:center 15%}
-.avi-coachbnr .cb-ov{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,12,9,.88) 0%,rgba(6,12,9,.5) 58%,rgba(6,12,9,.22) 100%)}
-.avi-coachbnr .cb-in{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:112px;padding:20px 18px}
-#s-coach .avi-coachbnr .ph-eyebrow{color:#F2C94C}
-.avi-coachbnr .ptitle{color:#fff}
 /* Racha y constancia (Premium): 3 stats etiquetados + mensaje claro + calendario */
 .streak-card{margin-bottom:14px}
 .streak-title{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:12px}
@@ -874,10 +833,8 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .gm-rest-overlay.gm-hold #gm-rest-arc{stroke:#E8973A}
 .gm-rest-overlay.gm-hold .gm-rest-sec{color:#E8973A}
 
-/* Profile hero — foto de marca detrás + degradado (izq. sólido para el texto, der. deja ver al atleta) */
-.profhero{position:relative;overflow:hidden;background:#0a1712;background-size:cover;background-position:center 20%;border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;display:flex;align-items:center;gap:14px}
-.profhero::before{content:'';position:absolute;inset:0;background:linear-gradient(100deg,rgba(6,64,46,.95) 0%,rgba(6,64,46,.82) 40%,rgba(10,124,91,.30) 100%);z-index:0}
-.profhero>*{position:relative;z-index:1}
+/* Profile hero */
+.profhero{background:linear-gradient(135deg,#06402E,#0A7C5B);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;display:flex;align-items:center;gap:14px}
 .profav{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;border:2px solid rgba(255,255,255,.4);flex-shrink:0;position:relative;overflow:visible}
 .profav.tap{cursor:pointer}
 .profav-img{width:100%;height:100%;border-radius:50%;object-fit:cover}

@@ -1143,8 +1143,6 @@ function _aviCloseTopOverlay(){
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
   const csr=document.getElementById('coach-stat-room');
   if(csr&&csr.classList.contains('on')){closeCoachStat();return true;}
-  const qwr=document.getElementById('quickwo-room');
-  if(qwr&&qwr.classList.contains('on')){closeQuickRoom();return true;}
   const pu=document.getElementById('premium-upsell');
   if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
   const luo=document.getElementById('level-up');
