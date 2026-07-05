@@ -953,7 +953,7 @@ function gmRestAdd15(){
   const secEl=document.getElementById('gm-rest-sec');
   if(GM.restPaused){GM.restFrozen=(GM.restFrozen||0)+15;if(secEl)secEl.textContent=GM.restFrozen;}
   else{GM.restEndAt+=15000;if(secEl)secEl.textContent=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));}
-  toast('⏱ +15 segundos');
+  a11ySay('15 segundos añadidos');toast('⏱ +15 segundos');
 }
 function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}

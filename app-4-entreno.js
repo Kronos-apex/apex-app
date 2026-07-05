@@ -2863,7 +2863,7 @@ function restAdd15(){
   const num=document.getElementById('rb-num');
   if(_restPaused){_restFrozen+=15;if(num)num.textContent=_restFrozen;}
   else{_restEndAt+=15000;_restLast=-1;if(num)num.textContent=Math.max(0,Math.round((_restEndAt-Date.now())/1000));}
-  toast('⏱ +15 segundos');
+  a11ySay('15 segundos añadidos');toast('⏱ +15 segundos');
 }
 function skipRest(){if(HOLD){cancelHold();return;}_stopRest();const b=document.getElementById('rest-banner');b.classList.add('hide');b.classList.remove('paused');toast('⏩ Descanso saltado')}
 
