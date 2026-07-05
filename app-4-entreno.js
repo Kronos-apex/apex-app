@@ -743,6 +743,77 @@ function startRoutineNow(routineId){
   document.getElementById('cn-today').scrollTop=0;
 }
 
+// ══════════════════════ BIBLIOTECA DE ENTRENAMIENTOS RÁPIDOS ══════════════════════
+// Sesiones curadas para días FUERA del plan asignado (no pudo ir al gym, quiere un HIIT
+// o abdomen suelto en casa…). No tocan el plan guardado, pero SÍ cuentan en el historial:
+// cada una tiene id propio → session_id propio ([[project_avi_historial_session_id]]).
+// Reusan el motor de "Hoy" vía renderClientToday(client, override). `track` explícito por
+// ítem porque exTrack manda 'Movilidad' a 'peso_reps' (pediría kg). Todo sin equipo.
+const QUICK_WORKOUTS=[
+  {id:'qw_hiit_casa', emoji:'🔥', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
+   desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
+   items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e181',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
+  {id:'qw_abs_casa', emoji:'💥', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
+   desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
+   items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
+  {id:'qw_movilidad', emoji:'🧘', name:'Movilidad & Estiramiento', goal:'Movilidad · Recuperación', place:'Casa', dur:'~10 min',
+   desc:'Sesión suave para descanso activo o cuando no puedes entrenar fuerte. Suelta espalda y caderas.',
+   items:[{id:'e165',sets:2,reps:30,track:'tiempo'},{id:'e173',sets:2,reps:30,track:'tiempo'},{id:'e170',sets:2,reps:30,track:'tiempo'},{id:'e168',sets:2,reps:30,track:'tiempo'},{id:'e179',sets:2,reps:30,track:'tiempo'},{id:'e167',sets:2,reps:40,track:'tiempo'}]},
+  {id:'qw_fullbody_casa', emoji:'⚡', name:'Full-Body Express', goal:'Cuerpo completo', place:'Casa', dur:'~20 min',
+   desc:'Un poco de todo sin equipo: empuje, pierna, glúteo, tracción y core.',
+   items:[{id:'e83',sets:3,reps:12,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e73',sets:3,reps:15,track:'reps'},{id:'e146',sets:3,reps:12,track:'reps'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
+  {id:'qw_gluteo_casa', emoji:'🍑', name:'Glúteo & Pierna en casa', goal:'Glúteo · Pierna', place:'Casa', dur:'~15 min',
+   desc:'Tren inferior sin equipo, enfocado en glúteo. Con banda, aún mejor.',
+   items:[{id:'e73',sets:4,reps:15,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e130',sets:3,reps:15,track:'reps'},{id:'e106',sets:3,reps:10,track:'reps'},{id:'e163',sets:3,reps:15,track:'reps'}]},
+  {id:'qw_plio', emoji:'🏃', name:'Cardio Pliométrico', goal:'Cardio · Potencia', place:'Parque/Casa', dur:'~12 min',
+   desc:'Saltos e intervalos explosivos: 3 rondas de 40s fuerte / 20s de pausa. Alto impacto.',
+   items:[{id:'e184',sets:3,hiit:{work:40,rest:20}},{id:'e185',sets:3,hiit:{work:40,rest:20}},{id:'e186',sets:3,hiit:{work:40,rest:20}},{id:'e198',sets:3,hiit:{work:40,rest:20}},{id:'e203',sets:3,hiit:{work:40,rest:20}}]}
+];
+// Arma una rutina válida para el motor de "Hoy" desde un preset: spread de la entrada del
+// catálogo (hereda name/muscle/type/icon/desc) + override de sets/reps/track/hiit.
+function buildQuickRoutine(spec){
+  const exercises=(spec.items||[]).map(it=>{
+    const base=(DB.exercises||[]).find(e=>e.id===it.id)||{id:it.id,name:it.id,type:'Bodyweight'};
+    const ex={...base};
+    if(it.sets!=null)ex.sets=it.sets;
+    if(it.reps!=null)ex.reps=it.reps;
+    if(it.track)ex.track=it.track;
+    if(it.hiit){ex.type='HIIT';ex.track='hiit';ex.hiit={...(base.hiit||{}),...it.hiit};}
+    return ex;
+  });
+  return {id:spec.id,name:spec.name,day:'Libre',quick:true,exercises};
+}
+function openQuickWorkouts(){
+  const room=document.getElementById('quickwo-room'),body=document.getElementById('quickwo-body');
+  if(!room||!body)return;
+  body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+
+    QUICK_WORKOUTS.map(w=>`<button class="qw-card" onclick="startQuickWorkout('${w.id}')">
+      <span class="qw-card-ic">${w.emoji}</span>
+      <span class="qw-card-mid">
+        <span class="qw-card-nm">${esc(w.name)}</span>
+        <span class="qw-card-meta">${esc(w.goal)} · ${esc(w.place)} · ${esc(w.dur)}</span>
+        <span class="qw-card-desc">${esc(w.desc)}</span>
+        <span class="qw-card-tag">${(w.items||[]).length} ejercicios</span>
+      </span>
+      <span class="qw-card-go">›</span>
+    </button>`).join('')+`<div style="height:30px"></div>`;
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+}
+function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
+// Arranca un extra como "Hoy" (override) sin tocar el plan. Cierra la biblioteca consumiendo
+// su capa de historial (como el botón atrás) antes de renderizar, para no dejar el overlay encima.
+function startQuickWorkout(id){
+  const spec=QUICK_WORKOUTS.find(w=>w.id===id); if(!spec)return;
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const routine=buildQuickRoutine(spec);
+  // La entrada vive dentro de "Hoy", así que ya estamos en esa pestaña: NO usamos cnTab (su
+  // manejo de historial chocaría con el history.back que cierra la biblioteca). Solo renderizamos
+  // el extra como override y dejamos que history.back cierre la sala (consume su capa).
+  const room=document.getElementById('quickwo-room');
+  const go=()=>{ renderClientToday(c,routine); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; toast('⚡ '+spec.name+' — ¡a darle!'); };
+  if(room&&room.classList.contains('on')){ history.back(); setTimeout(go,70); } else go();
+}
+
 // Key helpers for session log
 function logKey(routineId,ei,si,field){return `log_${routineId}_${ei}_${si}_${field}`}
 function getLog(routineId,ei,si,field){return localStorage.getItem(logKey(routineId,ei,si,field))||''}
