@@ -376,10 +376,10 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <!-- Stats de negocio -->
       <div class="g4" style="margin-bottom:16px">
-        <div class="sm"><div class="smv" style="color:var(--g)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div></div>
-        <div class="sm"><div class="smv" style="color:var(--bl)" id="h-actv">0</div><div class="sml">Activos</div></div>
-        <div class="sm"><div class="smv" style="color:var(--or)" id="h-sess">0</div><div class="sml">Sesiones semana</div></div>
-        <div class="sm"><div class="smv" style="color:var(--rd)" id="h-venc">0</div><div class="sml">Sin entrenar</div></div>
+        <button class="sm sm-tap" onclick="openCoachStat('ingresos')" aria-label="Ver reporte de ingresos del mes"><div class="smv" style="color:var(--g)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div><span class="sm-chev">›</span></button>
+        <button class="sm sm-tap" onclick="openCoachStat('activos')" aria-label="Ver asesorados activos"><div class="smv" style="color:var(--bl)" id="h-actv">0</div><div class="sml">Activos</div><span class="sm-chev">›</span></button>
+        <button class="sm sm-tap" onclick="openCoachStat('sesiones')" aria-label="Ver sesiones de la semana"><div class="smv" style="color:var(--or)" id="h-sess">0</div><div class="sml">Sesiones semana</div><span class="sm-chev">›</span></button>
+        <button class="sm sm-tap" onclick="openCoachStat('sinentrenar')" aria-label="Ver asesorados sin entrenar"><div class="smv" style="color:var(--rd)" id="h-venc">0</div><div class="sml">Sin entrenar</div><span class="sm-chev">›</span></button>
       </div>
       <!-- Retención semanal -->
       <div class="card" style="margin-bottom:13px" id="h-retention-card">
@@ -1475,6 +1475,16 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <span class="sroom-bar-t">Nutrición</span>
   </div>
   <div class="sroom-body" id="nutroom-body"></div>
+</div>
+
+<!-- Habitación de ESTADÍSTICA DEL COACH: reporte de cada tarjeta del panel
+     (ingresos del mes, activos, sesiones de la semana, sin entrenar) -->
+<div id="coach-stat-room" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">‹ Volver</button>
+    <span class="sroom-bar-t" id="coach-stat-title">Reporte</span>
+  </div>
+  <div class="sroom-body" id="coach-stat-body"></div>
 </div>
 
 <!-- UPSELL PREMIUM "Quiero un coach" (momento full-bleed, solo modo libre) -->

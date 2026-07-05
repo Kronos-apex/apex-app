@@ -203,6 +203,24 @@ html[data-theme="light"] .mta {
 .sm{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
 .smv{font-size:32px;font-weight:800;letter-spacing:-1.5px}
 .sml{font-size:12px;color:var(--t2);margin-top:2px}
+/* Tarjeta de stat TOCABLE (abre su habitación-reporte). Reset de <button> + affordance. */
+.sm-tap{position:relative;display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.sm-tap:hover{border-color:var(--g2);box-shadow:0 5px 16px -6px rgba(0,0,0,.2)}
+.sm-tap:active{transform:scale(.97)}
+.sm-chev{position:absolute;top:9px;right:11px;font-size:15px;font-weight:700;color:var(--t3);line-height:1}
+/* ── Habitación-reporte del coach: filas de asesorado ── */
+.crep-row{display:flex;align-items:center;gap:11px;padding:11px 2px;border-top:1px solid var(--br);cursor:pointer;transition:background .12s}
+.crep-row:first-of-type{border-top:none}
+.crep-row:hover{background:var(--bg)}
+.crep-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.crep-mid{flex:1;min-width:0}
+.crep-nm{font-size:14px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crep-meta{font-size:11.5px;color:var(--t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crep-right{flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.crep-amt{font-size:15px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.crep-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.crep-empty{text-align:center;color:var(--t2);font-size:14px;line-height:1.6;padding:34px 20px}
+.crep-empty-ic{font-size:40px;margin-bottom:10px}
 
 /* ── PANEL DEL COACH — pulido Noir Esmeralda (paridad con el interior premium del asesorado) ── */
 #s-coach .coach-topbar-logo{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:2.5px}

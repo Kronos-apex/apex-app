@@ -1141,6 +1141,8 @@ function _aviCloseTopOverlay(){
   if(mscr&&mscr.classList.contains('on')){closeMuscleRoom();return true;}
   const nutr=document.getElementById('nutrition-room');
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
+  const csr=document.getElementById('coach-stat-room');
+  if(csr&&csr.classList.contains('on')){closeCoachStat();return true;}
   const pu=document.getElementById('premium-upsell');
   if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
   const luo=document.getElementById('level-up');
@@ -1468,4 +1470,131 @@ function renderHome(){
     d.onclick=()=>openDetail(c.id);
     list.appendChild(d);
   });
+}
+
+// ══════════════════════ HABITACIONES-REPORTE DEL PANEL ══════════════════════
+// Cada tarjeta de stat del panel (ingresos/activos/sesiones/sin entrenar) abre una
+// habitación .sroom con su desglose: de dónde sale el número y de qué asesorados.
+// Toda fila es tocable → salta a la ficha del asesorado (openDetail).
+function _crepAv(name){ return `<div class="crep-av" style="background:${avc(name)}">${esc(ini(name))}</div>`; }
+// La habitación es un overlay .sroom; abrir la ficha directamente la dejaría DEBAJO.
+// history.back() dispara el manejador que cierra la sala y descuenta su capa; abrimos
+// la ficha en el siguiente tick, ya sin el overlay encima.
+function _crepGoDetail(id){
+  const room=document.getElementById('coach-stat-room');
+  if(room&&room.classList.contains('on')){ history.back(); setTimeout(()=>openDetail(id),60); }
+  else openDetail(id);
+}
+function _crepRow(cid,name,meta,rightHTML){
+  return `<div class="crep-row" onclick="_crepGoDetail('${esc(String(cid))}')">
+    ${_crepAv(name)}
+    <div class="crep-mid"><div class="crep-nm">${esc(name)}</div><div class="crep-meta">${meta}</div></div>
+    <div class="crep-right">${rightHTML}</div>
+  </div>`;
+}
+function _crepHero(ic,hex,val,label){
+  return `<div class="sroom-hero exroom-hero">
+    <div class="exroom-hero-ic" style="background:${hex}22;border:1px solid ${hex}55">${ic}</div>
+    <div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(val)}</div>
+      <div class="exroom-tags"><span>${esc(label)}</span></div></div>
+  </div>`;
+}
+// dueDate del pago más reciente (ms) o Infinity si no hay pagos.
+function _dueMs(c){ const p=(c.payments||[]); if(!p.length)return Infinity; const last=p.reduce((a,b)=>new Date(a.dueDate)>new Date(b.dueDate)?a:b); return new Date(last.dueDate).getTime(); }
+function closeCoachStat(){ const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
+function openCoachStat(kind){
+  const room=document.getElementById('coach-stat-room'), body=document.getElementById('coach-stat-body'), titleEl=document.getElementById('coach-stat-title');
+  if(!room||!body)return;
+  const now=new Date(), y=now.getFullYear(), mo=now.getMonth();
+  const weekAgo=new Date(Date.now()-7*24*60*60*1000);
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const empty=(ic,txt)=>`<div class="crep-empty"><div class="crep-empty-ic">${ic}</div>${txt}</div>`;
+  let title='Reporte', html='';
+
+  if(kind==='ingresos'){
+    const mesName=now.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+    const cap=mesName.charAt(0).toUpperCase()+mesName.slice(1);
+    title='Ingresos de '+cap;
+    const rows=[]; let total=0, nPagos=0;
+    DB.clients.forEach(c=>{
+      const pm=(c.payments||[]).filter(p=>{const d=new Date(p.date);return d.getFullYear()===y&&d.getMonth()===mo;});
+      if(!pm.length)return;
+      const sub=pm.reduce((t,p)=>t+(parseFloat(p.amount)||0),0);
+      total+=sub; nPagos+=pm.length; rows.push({c,sub,pm});
+    });
+    rows.sort((a,b)=>b.sub-a.sub);
+    html=_crepHero('💰','#10b981','$'+total.toLocaleString('es-CO'),`${nPagos} ${nPagos===1?'pago':'pagos'} · ${rows.length} ${rows.length===1?'asesorado':'asesorados'} · ${cap}`);
+    if(rows.length){
+      const prom=Math.round(total/rows.length);
+      html+=`<div class="sroom-stats">${stat('💵','Total','$'+total.toLocaleString('es-CO'),'#10b981')}${stat('👥','Pagaron',rows.length,'#3a86c8')}${stat('📊','Promedio','$'+prom.toLocaleString('es-CO'),'#9b6dd6')}</div>`;
+      html+=`<div class="sroom-sec">De dónde salen</div>`;
+      html+=rows.map(({c,sub,pm})=>{
+        const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short'})).join(', ');
+        const nota=pm.map(p=>p.note).filter(Boolean)[0]||'';
+        const meta=`${pm.length>1?pm.length+' pagos: ':''}${fechas}${nota?' · '+esc(nota):''}`;
+        return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--g)">$${sub.toLocaleString('es-CO')}</span>`);
+      }).join('');
+    } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`);
+  }
+
+  else if(kind==='activos'){
+    title='Asesorados activos';
+    const act=DB.clients.map(c=>({c,st:MS.getStatus(c)})).filter(x=>x.st==='active'||x.st==='expiring');
+    act.sort((a,b)=>{ if(a.st!==b.st)return a.st==='expiring'?-1:1; return _dueMs(a.c)-_dueMs(b.c); });
+    const nAl=act.filter(x=>x.st==='active').length, nPv=act.filter(x=>x.st==='expiring').length;
+    html=_crepHero('🟢','#3a86c8',String(act.length),`${act.length===1?'asesorado':'asesorados'} al día o por vencer`);
+    if(act.length){
+      html+=`<div class="sroom-stats">${stat('✅','Al día',nAl,'#10b981')}${stat('⏳','Por vencer',nPv,'#e0a72e')}</div>`;
+      html+=`<div class="sroom-sec">Tus asesorados vigentes</div>`;
+      html+=act.map(({c,st})=>{
+        const b=MS.badge(st), d=_dueMs(c);
+        const dueStr=isFinite(d)?new Date(d).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'—';
+        return _crepRow(c.id,c.name,`Vence: ${dueStr} · ${esc(c.level||'—')}`,`<span class="crep-badge" style="background:${b.bg};color:${b.color}">${esc(b.label)}</span>`);
+      }).join('');
+    } else html+=empty('🟢','No hay asesorados activos ahora mismo.');
+  }
+
+  else if(kind==='sesiones'){
+    title='Sesiones de la semana';
+    const byClient=[];
+    DB.clients.forEach(c=>{
+      const sess=((DB.history&&DB.history[c.id])||[]).filter(s=>new Date(s.date)>=weekAgo);
+      if(sess.length)byClient.push({c,sess});
+    });
+    const totalSess=byClient.reduce((t,x)=>t+x.sess.length,0);
+    byClient.sort((a,b)=>b.sess.length-a.sess.length);
+    html=_crepHero('🏋️','#e0772e',String(totalSess),`en los últimos 7 días · ${byClient.length} ${byClient.length===1?'asesorado':'asesorados'}`);
+    if(byClient.length){
+      const prom=(totalSess/byClient.length).toFixed(1).replace('.0','');
+      html+=`<div class="sroom-stats">${stat('🔥','Sesiones',totalSess,'#e0772e')}${stat('👥','Entrenaron',byClient.length,'#3a86c8')}${stat('📊','Promedio',prom,'#9b6dd6')}</div>`;
+      html+=`<div class="sroom-sec">Quién entrenó</div>`;
+      html+=byClient.map(({c,sess})=>{
+        const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
+        const last=sess.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
+        const lastStr=new Date(last.date).toLocaleDateString('es-CO',{weekday:'short',day:'2-digit',month:'short'});
+        return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--or)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
+      }).join('');
+    } else html+=empty('🏋️','Nadie ha entrenado esta semana todavía.');
+  }
+
+  else if(kind==='sinentrenar'){
+    title='Sin entrenar (4+ días)';
+    const dorm=DB.clients.filter(c=>{const st=MS.getStatus(c);if(st==='inactive'||st==='overdue'||st==='suspended')return false;return daysSinceLastSession((DB.history&&DB.history[c.id])||[],now)>=4;})
+      .map(c=>({c,dd:daysSinceLastSession((DB.history&&DB.history[c.id])||[],now)}))
+      .sort((a,b)=>b.dd-a.dd);
+    html=_crepHero('😴','#e5484d',String(dorm.length),`${dorm.length===1?'asesorado':'asesorados'} con membresía activa`);
+    if(dorm.length){
+      html+=`<div class="sroom-sec">Necesitan un empujón 💪</div>`;
+      html+=dorm.map(({c,dd})=>{
+        const estado=!isFinite(dd)?'Sin registro de entrenos':dd===1?'última vez: ayer':`última vez: hace ${dd} días`;
+        const col=(!isFinite(dd)||dd>=7)?'var(--rd)':'var(--or)';
+        const right=`<span class="crep-amt" style="color:${col}">${isFinite(dd)?dd:'∞'}</span><span style="font-size:10px;color:var(--t3)">días</span>`;
+        return _crepRow(c.id,c.name,`${esc(String(c.days||3))}x/sem · ${estado}`,right);
+      }).join('');
+    } else html+=empty('💪','¡Todos tus asesorados activos entrenaron hace poco!');
+  }
+
+  titleEl.textContent=title;
+  body.innerHTML=html+'<div style="height:30px"></div>';
+  body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
 }
