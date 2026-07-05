@@ -475,8 +475,10 @@ html[data-theme="light"] .mta {
 .cnp{display:none;padding:16px 15px 8px}
 .cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 
-/* Today hero */
-.wohero{background:linear-gradient(100deg,rgba(8,26,19,.96) 0%,rgba(8,26,19,.90) 34%,rgba(11,38,28,.55) 78%,rgba(11,38,28,.40) 100%),url('media/brand/ob-1.jpg') right center/cover,linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden}
+/* Today hero — foto libre ARRIBA y texto ABAJO (Camilo 2026-07-05: "que las letras
+   no escondan la imagen"); mismo patrón del banner del coach. Degradado vertical:
+   suave arriba (foto visible) → oscuro abajo (texto legible). */
+.wohero{background:linear-gradient(180deg,rgba(8,26,19,.15) 0%,rgba(8,26,19,.35) 42%,rgba(6,17,12,.93) 78%,rgba(5,14,10,.97) 100%),url('media/brand/ob-1.jpg') center 20%/cover,linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(280px,82vw,400px)}
 .wohero::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 88% -12%,rgba(16,224,160,.22),transparent 55%);pointer-events:none}
 .woday{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1.4px;text-transform:uppercase;color:#F2C94C;margin-bottom:5px;position:relative}
 .woname{font-size:23px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px;position:relative}
