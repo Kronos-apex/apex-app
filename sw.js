@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v276';
+const CACHE_NAME = 'avi-v277';
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
@@ -32,8 +32,12 @@ self.addEventListener('fetch', e => {
     // de dejar pantalla en blanco esperando. Respaldo final al index.html del shell.
     e.respondWith((async () => {
       try {
+        // cache:'no-cache' → revalida contra el servidor (ETag/304) en vez de aceptar la
+        // copia del caché HTTP (GitHub Pages manda max-age=600 → hasta 10 min de desfase
+        // tras cada deploy, Camilo 2026-07-05). Se usa la URL porque construir un fetch
+        // con init sobre un request en modo 'navigate' lanza error en Chrome.
         const net = await Promise.race([
-          fetch(e.request),
+          fetch(e.request.url, {cache:'no-cache'}),
           new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
         ]);
         const cl = net.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl));
@@ -48,8 +52,10 @@ self.addEventListener('fetch', e => {
   // tras un update (styles.css se quedaba pegado en la versión vieja → "agrandé el texto y
   // sigue igual" de Camilo 2026-06-29). Network-first evita ese desfase y refresca al recargar.
   if(url.origin === self.location.origin && (/\/(app-\d-[\w-]+|avi-core|muscle-map|exercise-muscles)\.js$/.test(url.pathname) || /\/styles\.css$/.test(url.pathname))){
+    // cache:'no-cache' → sin él, "network-first" devolvía la copia del caché HTTP
+    // (max-age=600 de Pages) hasta 10 min tras un deploy. Con ETag el 304 es barato.
     e.respondWith(
-      fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
+      fetch(e.request, {cache:'no-cache'}).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
         .catch(() => caches.match(e.request))
     );
     return;
