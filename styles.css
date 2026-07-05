@@ -504,7 +504,7 @@ html[data-theme="light"] .mta {
 .avi-coachbnr{position:relative;border-radius:var(--rlg);overflow:hidden;isolation:isolate;margin-bottom:16px;background:#0a1712}
 .avi-coachbnr .cb-bg{position:absolute;inset:0;background-size:cover;background-position:center 15%}
 .avi-coachbnr .cb-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,9,.16) 0%,rgba(6,12,9,.42) 55%,rgba(6,12,9,.88) 100%)}
-.avi-coachbnr .cb-in{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:200px;padding:20px 18px 16px}
+.avi-coachbnr .cb-in{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:clamp(240px,76vw,340px);padding:20px 18px 16px}
 #s-coach .avi-coachbnr .ph-eyebrow{color:#F2C94C}
 .avi-coachbnr .ptitle{color:#fff}
 /* Racha y constancia (Premium): 3 stats etiquetados + mensaje claro + calendario */
