@@ -332,7 +332,9 @@ function renderClientProfile(client){
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
-  document.getElementById('cn-prof-card').innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  const _pc=document.getElementById('cn-prof-card');
+  _pc.style.backgroundImage=`url('${aviProfilePhoto(client.sex)}')`;
+  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
   const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
@@ -580,6 +582,14 @@ function toggleTrackingTools(){
 // TODAY
 // Cabecera del "Hoy": saludo grande con el nombre + chip de racha (días seguidos
 // entrenando). La racha la calcula workoutStreak (avi-core, testeado).
+// Fotos de marca por pantalla, según el sexo del asesorado (mismo criterio que los videos).
+// Cualquier valor distinto de 'M' cae a la foto femenina (default seguro).
+// Perfil/descanso: el hombre ve una foto del coach (coach-verde); la mujer, una atleta.
+function aviProfilePhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/ath-woman-2.jpg'; }
+function aviRestPhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : 'media/brand/hiit-mujer.jpg'; }
+
+// Saludo del "Hoy": foto COMPLETA del coach saludando a una asesorada (igual para todos)
+// arriba, y el "Buenos días, [nombre]" + racha en una franja debajo.
 function renderTodayHead(client){
   const el=document.getElementById('cn-today-head'); if(!el||!client)return;
   const h=new Date().getHours();
@@ -589,7 +599,7 @@ function renderTodayHead(client){
   const chip=streak>0
     ? `<div class="streak-chip">🔥 <b>${streak}</b> día${streak!==1?'s':''} de racha</div>`
     : `<div class="streak-chip streak-0">💪 Empieza tu racha hoy</div>`;
-  el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
+  el.innerHTML=`<div class="avi-greet"><img class="ag-photo" src="media/brand/coach-camilo.jpg" alt=""><div class="ag-strip today-greet"><div><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}</div></div>`;
 }
 
 function renderClientToday(client, overrideRoutine){
@@ -621,12 +631,12 @@ function renderClientToday(client, overrideRoutine){
   // que los cambios sobrevivan a los re-render (mood, etc.). El plan guardado no se toca.
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
-    con.innerHTML=`<div class="noroutine" style="text-align:center;padding:24px 16px">
-      <div style="font-size:36px;margin-bottom:10px">💤</div>
-      <div style="font-size:15px;font-weight:800;color:var(--gt);margin-bottom:5px">Hoy es tu día de descanso</div>
-      <div style="font-size:13px;color:var(--t2);margin-bottom:14px">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
-      <button class="btn bp bsm" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
-    </div>`;
+    con.innerHTML=`<div class="avi-restbnr"><div class="rb-bg" style="background-image:url('${aviRestPhoto(client.sex)}')"></div><div class="rb-ov"></div><div class="rb-in">
+      <div style="font-size:34px">💤</div>
+      <div class="rb-title">Hoy es tu día de descanso</div>
+      <div class="rb-sub">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
+      <button class="btn bp bsm" style="margin-top:6px" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
+    </div></div>`;
     return;
   }
   // Check-in diario: si el asesorado ya marcó cómo se siente hoy, la rutina se
