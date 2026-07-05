@@ -1155,7 +1155,7 @@ function startHoldTimer(secs,ei,si,routine){
   reqWake();
   HOLD={ei,si,t0:Date.now()}; // t0: ignora un 2º tap inmediato (doble-tap accidental ≠ cancelar)
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');const title=banner.querySelector('.resttitle');
-  banner.classList.remove('hide');banner.classList.add('hold');
+  banner.classList.remove('hide','paused');banner.classList.add('hold');
   if(title)title.textContent='💪 ¡Aguanta la posición!';
   sub.textContent=`Serie ${si+1} · se marca sola al llegar a 0`;
   const sk=banner.querySelector('.restskip');if(sk)sk.textContent='⏹ Cancelar';
@@ -2810,32 +2810,62 @@ function playRestTick(){
 // NOTA iOS: con la pantalla bloqueada una PWA no puede reproducir sonido en segundo plano;
 // el aviso suena en cuanto el usuario vuelve a la app. Sonido con pantalla bloqueada exige
 // push nativo programado desde servidor (no implementado).
+// Estado del descanso normal (mutable para pausar/+15s). endAt es el deadline absoluto por
+// timestamp (robusto a iOS bloqueado); en pausa se congela el restante en _restFrozen.
+let _restEndAt=0, _restPaused=false, _restFrozen=0, _restLast=0;
 function _stopRest(){
   if(restInt){clearInterval(restInt);restInt=null;}
   if(_restVis){document.removeEventListener('visibilitychange',_restVis);_restVis=null;}
+  _restPaused=false;
 }
 function startClientRest(sec,exName){
   _stopRest();
   _endHoldUI(); // si un isométrico corría, restaurar su fila/banner antes de reusar el banner
   const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');
-  banner.classList.remove('hide');sub.textContent=`Después de: ${exName}`;
-  const endAt=Date.now()+sec*1000;
-  let lastShown=sec;num.textContent=sec;
+  banner.classList.remove('hide','paused');sub.textContent=`Después de: ${exName}`;
+  const pb=document.getElementById('rb-pause');if(pb){pb.textContent='⏸';pb.setAttribute('aria-label','Pausar descanso');}
+  _restEndAt=Date.now()+sec*1000;_restPaused=false;_restLast=sec;
+  num.textContent=sec;
   const tick=()=>{
-    const left=Math.max(0,Math.round((endAt-Date.now())/1000));
-    if(left!==lastShown){
+    if(_restPaused)return;
+    const left=Math.max(0,Math.round((_restEndAt-Date.now())/1000));
+    if(left!==_restLast){
       num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
       if(left>0&&left<=5)playRestTick();
-      lastShown=left;
+      _restLast=left;
     }
-    if(left<=0){_stopRest();banner.classList.add('hide');playRestEndBeep();toast('✅ ¡A por la siguiente serie!');}
+    if(left<=0){_stopRest();banner.classList.add('hide');playRestEndBeep();a11ySay('Descanso terminado. A por la siguiente serie.');toast('✅ ¡A por la siguiente serie!');}
   };
   // Al volver de pantalla bloqueada / segundo plano, recalcula de inmediato.
-  _restVis=()=>{ if(document.visibilityState==='visible'&&restInt) tick(); };
+  _restVis=()=>{ if(document.visibilityState==='visible'&&restInt&&!_restPaused) tick(); };
   document.addEventListener('visibilitychange',_restVis);
   restInt=setInterval(tick,250);
 }
-function skipRest(){if(HOLD){cancelHold();return;}_stopRest();document.getElementById('rest-banner').classList.add('hide');toast('⏩ Descanso saltado')}
+// Pausar / reanudar el descanso normal (no aplica al isométrico "aguanta").
+function restPause(){
+  if(HOLD||!restInt)return;
+  const banner=document.getElementById('rest-banner');const pb=document.getElementById('rb-pause');
+  if(_restPaused){
+    _restPaused=false;_restEndAt=Date.now()+_restFrozen*1000;
+    banner.classList.remove('paused');
+    if(pb){pb.textContent='⏸';pb.setAttribute('aria-label','Pausar descanso');}
+    a11ySay('Descanso reanudado');
+  }else{
+    _restPaused=true;_restFrozen=Math.max(0,Math.round((_restEndAt-Date.now())/1000));
+    banner.classList.add('paused');
+    if(pb){pb.textContent='▶';pb.setAttribute('aria-label','Reanudar descanso');}
+    a11ySay('Descanso en pausa');
+  }
+}
+// Suma 15s al descanso en curso (o al restante congelado si está en pausa).
+function restAdd15(){
+  if(HOLD||!restInt)return;
+  const num=document.getElementById('rb-num');
+  if(_restPaused){_restFrozen+=15;if(num)num.textContent=_restFrozen;}
+  else{_restEndAt+=15000;_restLast=-1;if(num)num.textContent=Math.max(0,Math.round((_restEndAt-Date.now())/1000));}
+  toast('⏱ +15 segundos');
+}
+function skipRest(){if(HOLD){cancelHold();return;}_stopRest();const b=document.getElementById('rest-banner');b.classList.add('hide');b.classList.remove('paused');toast('⏩ Descanso saltado')}
 
 // ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){

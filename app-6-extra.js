@@ -587,7 +587,7 @@ function gmHoldTimer(ei, si, secs){
   overlay.classList.add('gm-hold');
   const sk=overlay.querySelector('.gm-rest-skip'); if(sk)sk.textContent='⏹ Cancelar — no marcar la serie';
   const C=439.8;
-  overlay.classList.remove('hidden');
+  overlay.classList.remove('hidden','gm-rest-paused'); GM.restPaused=false;
   secEl.textContent=secs;
   arc.style.transition='none'; arc.style.strokeDashoffset='0';
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
@@ -890,7 +890,7 @@ function gmShowRest(secs, nextStep, opts){
   if(titleEl) titleEl.textContent = opts.title || '¡Serie completada! 💪';
   if(lblEl) lblEl.textContent = opts.label || 'descanso';
   const C=439.8;
-  overlay.classList.remove('hidden');
+  overlay.classList.remove('hidden','gm-rest-paused');
   secEl.textContent=secs;
   arc.style.transition='none';
   arc.style.strokeDashoffset='0';
@@ -898,21 +898,26 @@ function gmShowRest(secs, nextStep, opts){
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.textContent=bc?('💨 '+bc.s):''; breEl.style.display=bc?'block':'none'; }
   if(GM.restTimer) clearInterval(GM.restTimer);
+  // Reset del estado de pausa/+15s y del botón de pausa (el overlay se reusa entre descansos).
+  GM.restPaused=false;GM.restTotal=secs;GM.restEndAt=Date.now()+secs*1000;
+  const pbtn=document.getElementById('gm-rest-pause');if(pbtn){pbtn.textContent='⏸ Pausar';pbtn.setAttribute('aria-label','Pausar descanso');}
   // Conteo por timestamp ABSOLUTO (no por ticks): iOS congela los setInterval con la
   // pantalla bloqueada; al volver, el reloj Date.now() ya avanzó y el siguiente tick
   // recalcula y cierra el descanso. Ver [[feedback_avi_timers_ios]] / auditoría 2026-06-21.
-  const endAt=Date.now()+secs*1000;
   let left=secs;
   setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
   GM.restTimer=setInterval(()=>{
-    left=Math.max(0,Math.round((endAt-Date.now())/1000));
+    if(GM.restPaused)return;
+    left=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));
     secEl.textContent=left;secEl.classList.remove('tick');void secEl.offsetWidth;secEl.classList.add('tick');
-    arc.style.strokeDashoffset=C*((secs-left)/secs);
+    arc.style.strokeDashoffset=C*((GM.restTotal-left)/GM.restTotal);
     if(left>0&&left<=5)playRestTick();
     if(left<=0){
       clearInterval(GM.restTimer);GM.restTimer=null;
+      overlay.classList.remove('gm-rest-paused');
       overlay.classList.add('hidden');
       playRestEndBeep();
+      a11ySay('Descanso terminado. Empieza la siguiente serie.');
       // Ejercicio NUEVO (primera serie) → tarjeta de respiración; misma serie → flash "¡VAMOS!"
       if(nextStep && nextStep.si===0) gmShowStartCard(nextStep.ex);
       else gmShowGoFlash();
@@ -921,9 +926,41 @@ function gmShowRest(secs, nextStep, opts){
   },1000);
 }
 
+// Pausar / reanudar el descanso del guiado. No aplica al isométrico "aguanta" (GM.holding).
+function gmRestPause(){
+  if(GM.holding||!GM.restTimer)return;
+  const overlay=document.getElementById('gm-rest-overlay');
+  const btn=document.getElementById('gm-rest-pause');
+  const arc=document.getElementById('gm-rest-arc');
+  if(GM.restPaused){
+    GM.restPaused=false;GM.restEndAt=Date.now()+GM.restFrozen*1000;
+    overlay.classList.remove('gm-rest-paused');
+    if(arc)arc.style.transition='stroke-dashoffset 1s linear';
+    if(btn){btn.textContent='⏸ Pausar';btn.setAttribute('aria-label','Pausar descanso');}
+    a11ySay('Descanso reanudado');
+  }else{
+    GM.restPaused=true;GM.restFrozen=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));
+    overlay.classList.add('gm-rest-paused');
+    if(arc)arc.style.transition='none'; // congela el arco donde está
+    if(btn){btn.textContent='▶ Reanudar';btn.setAttribute('aria-label','Reanudar descanso');}
+    a11ySay('Descanso en pausa');
+  }
+}
+// Suma 15s al descanso del guiado (aumenta también el total para que el arco no salte feo).
+function gmRestAdd15(){
+  if(GM.holding||!GM.restTimer)return;
+  GM.restTotal=(GM.restTotal||0)+15;
+  const secEl=document.getElementById('gm-rest-sec');
+  if(GM.restPaused){GM.restFrozen=(GM.restFrozen||0)+15;if(secEl)secEl.textContent=GM.restFrozen;}
+  else{GM.restEndAt+=15000;if(secEl)secEl.textContent=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));}
+  toast('⏱ +15 segundos');
+}
 function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
-  document.getElementById('gm-rest-overlay').classList.add('hidden');
+  GM.restPaused=false;
+  const _ov=document.getElementById('gm-rest-overlay');
+  _ov.classList.remove('gm-rest-paused');
+  _ov.classList.add('hidden');
   if(GM.holding){ // cancelar el crono isométrico: NO marca la serie ni lanza "siguiente"
     _gmEndHoldUI(); relWake();
     toast('⏹ Cronómetro cancelado — la serie no se marcó');

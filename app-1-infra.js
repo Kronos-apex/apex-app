@@ -859,6 +859,8 @@ async function syncFromCloud(){
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px'}
 let _tt;
 function toast(msg,ms){const e=document.getElementById('toast');clearTimeout(_tt);e.textContent=msg;e.classList.add('on');_tt=setTimeout(()=>e.classList.remove('on'),ms||2500)}
+// Anuncio para lectores de pantalla (aria-live). Se limpia y reescribe para forzar la relectura.
+function a11ySay(msg){try{const e=document.getElementById('a11y-live');if(!e)return;e.textContent='';setTimeout(()=>{e.textContent=msg;},60);}catch(_){}}
 
 // ══════════════════════ DB ══════════════════════
 // ══ IMÁGENES DE EJERCICIOS ══ (base libre dominio público, reemplazables por clips propios)

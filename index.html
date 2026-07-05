@@ -562,7 +562,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="rest-banner" class="restbanner hide">
         <div class="restnum" id="rb-num">60</div>
         <div class="restinfo"><div class="resttitle">⏱ Descansando</div><div class="restsub" id="rb-sub">—</div></div>
-        <button class="restskip" onclick="skipRest()">Saltar ⏩</button>
+        <div class="rest-actions">
+          <button id="rb-pause" class="rest-ctl-btn" onclick="restPause()" aria-label="Pausar descanso">⏸</button>
+          <button class="rest-ctl-btn" onclick="restAdd15()" aria-label="Añadir 15 segundos al descanso">+15s</button>
+          <button class="restskip" onclick="skipRest()">Saltar ⏩</button>
+        </div>
       </div>
       <div id="pr-banners"></div>
       <div id="cn-today-upsell"></div>
@@ -995,6 +999,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 <div id="toast"></div>
+<!-- Región para lectores de pantalla: anuncios puntuales (fin de descanso, etc.) sin robar foco -->
+<div id="a11y-live" aria-live="assertive" role="status" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0"></div>
 
 <!-- Template picker -->
 <div class="mdbg" id="m-tpl-picker">
@@ -1308,6 +1314,10 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     </div>
     <div class="gm-rest-next" id="gm-rest-next">Siguiente: —</div>
     <div class="gm-rest-breath" id="gm-rest-breath" style="display:none"></div>
+    <div class="gm-rest-ctl">
+      <button id="gm-rest-pause" class="gm-rest-ctl-btn" onclick="gmRestPause()" aria-label="Pausar descanso">⏸ Pausar</button>
+      <button id="gm-rest-add15" class="gm-rest-ctl-btn" onclick="gmRestAdd15()" aria-label="Añadir 15 segundos al descanso">+15s</button>
+    </div>
     <button class="gm-rest-skip" onclick="gmSkipRest()">⏩ Saltar descanso</button>
   </div>
 </div>

@@ -743,7 +743,10 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .cex-block-chev{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
 .cex-block.open .cex-block-chev{transform:rotate(180deg)}
 .cex-reorder{display:flex;align-items:center;gap:3px;flex-shrink:0}
-.cex-reorder button{width:26px;height:26px;border-radius:7px;border:1px solid var(--br2);background:var(--bg);color:var(--t1);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
+.cex-reorder button{position:relative;width:26px;height:26px;border-radius:7px;border:1px solid var(--br2);background:var(--bg);color:var(--t1);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
+/* Área táctil ~44px de alto sin agrandar el botón ni descuadrar la fila (letra grande, v261).
+   Solo se expande en vertical: el gap entre ↑↓🔄 es horizontal, así no se solapan las zonas. */
+.cex-reorder button::after{content:'';position:absolute;inset:-9px 0}
 .cex-reorder button:hover:not(:disabled){border-color:var(--g2);color:var(--gt)}
 .cex-reorder button:disabled{opacity:.28;cursor:default}
 .cex-block-body{display:none;border-top:1px solid var(--br);background:var(--bg)}
@@ -792,13 +795,19 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .drop-rm:hover{color:#EF4444}
 
 /* Rest banner */
-.restbanner{background:linear-gradient(135deg,#06402E,#13B583);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px;position:sticky;top:0;z-index:50}
+.restbanner{background:linear-gradient(135deg,#06402E,#13B583);border-radius:var(--r);padding:13px 15px;color:white;display:flex;align-items:center;gap:13px;margin-bottom:12px;position:sticky;top:0;z-index:50;flex-wrap:wrap}
 .restbanner.hide{display:none}
 .restnum{font-size:34px;font-weight:800;font-family:'JetBrains Mono',monospace;min-width:50px}
-.restinfo{flex:1}
+.restbanner.paused .restnum{opacity:.5}
+.restinfo{flex:1;min-width:80px}
 .resttitle{font-size:14px;font-weight:700;margin-bottom:1px}
 .restsub{font-size:12px;opacity:.75}
-.restskip{background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:5px 13px;color:white;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.rest-actions{display:flex;align-items:center;gap:7px;margin-left:auto;flex-shrink:0}
+.rest-ctl-btn{background:rgba(255,255,255,.2);border:none;border-radius:20px;min-width:42px;min-height:40px;padding:5px 11px;color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.rest-ctl-btn:hover{background:rgba(255,255,255,.3)}
+/* En el isométrico "aguanta" el banner se reusa: pausar/+15s no aplican, solo queda "⏹ Cancelar". */
+.restbanner.hold .rest-ctl-btn{display:none}
+.restskip{background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:5px 13px;min-height:40px;color:white;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
 /* Isométrico EN CURSO: ámbar para que "aguantando" no se confunda con el descanso verde */
 .restbanner.hold{background:linear-gradient(135deg,#7A4310,#E8973A)}
 .set-log-row.holding{background:rgba(232,151,58,.14);box-shadow:inset 3px 0 0 #E8973A}
@@ -1066,7 +1075,9 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .gm-sinput:focus{outline:none;border-color:var(--g2)}
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
 .gm-sinput-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;margin-top:2px}
-.gm-check{width:38px;height:38px;border-radius:10px;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.gm-check{position:relative;width:38px;height:38px;border-radius:10px;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+/* Área táctil 44px efectiva sin agrandar el cuadro visual (mín. móvil recomendado). */
+.gm-check::after{content:'';position:absolute;inset:-3px;border-radius:12px}
 .gm-check:hover{border-color:var(--g2)}
 .gm-check.checked{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 /* Filas auxiliares del guiado: calentamiento (ámbar) + dropset (azul) */
@@ -1107,6 +1118,12 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .gsc-h{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--g);margin-bottom:7px}
 .gsc-b{font-size:14.5px;line-height:1.62;color:var(--t1)}
 .gsc-btn{margin-top:18px;width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+.gm-rest-ctl{display:flex;gap:10px;margin-top:14px}
+.gm-rest-ctl-btn{background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.24);border-radius:12px;padding:11px 20px;min-height:46px;color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
+.gm-rest-ctl-btn:hover{background:rgba(255,255,255,.24)}
+/* En el isométrico "aguanta" no tiene sentido pausar/+15s: solo queda "⏹ Cancelar". */
+.gm-rest-overlay.gm-hold #gm-rest-pause,.gm-rest-overlay.gm-hold #gm-rest-add15{display:none}
+.gm-rest-overlay.gm-rest-paused .gm-rest-sec{opacity:.5}
 .gm-rest-skip{margin-top:12px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:11px 28px;color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
 .gm-rest-skip:hover{background:rgba(255,255,255,.18)}
 /* Bottom action bar */
