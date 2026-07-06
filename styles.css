@@ -7,7 +7,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
 :focus:not(:focus-visible) { outline: none; }
 :root {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
-  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
+  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#757575;
   --g:#0A7C5B; --g2:#13B583; --gl:#D3F4E8; --gt:#06402E;
   --emerald-hdr:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);
   --or:#E76F51; --orl:#FDE8E0; --bl:#457B9D; --bll:#E0EBF4;
@@ -25,7 +25,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --br2: #2D4F38;
     --t1:  #E8F4EC;
     --t2:  #8FAF98;
-    --t3:  #4A7A58;
+    --t3:  #669B74;
     --gl:  #103328;
     --gt:  #5FE3B0;
     --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
@@ -58,7 +58,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --br2: #2D4F38;
   --t1:  #E8F4EC;
   --t2:  #8FAF98;
-  --t3:  #4A7A58;
+  --t3:  #669B74;
   --gl:  #1A3A26;
   --gt:  #5FE3B0;
   --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
@@ -80,7 +80,7 @@ html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
   --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8;
-  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
+  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#757575;
   --gl:#D3F4E8; --gt:#06402E;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
 }

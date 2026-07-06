@@ -1,8 +1,14 @@
-const CACHE_NAME = 'avi-v283';
+const CACHE_NAME = 'avi-v284';
+// La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
+// debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
+// El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
+const V = CACHE_NAME.replace('avi-v', '');
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
-const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/styles.css', '/apex-app/app-1-infra.js', '/apex-app/app-2-login.js', '/apex-app/app-3-coach.js', '/apex-app/app-4-entreno.js', '/apex-app/app-5-salud.js', '/apex-app/app-6-extra.js', '/apex-app/avi-core.js', '/apex-app/muscle-map.js', '/apex-app/exercise-muscles.js', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png'];
+const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png']
+  .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js']
+    .map(f => '/apex-app/' + f + '?v=' + V));
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL).catch(() => {})));
@@ -21,7 +27,9 @@ self.addEventListener('fetch', e => {
   if(url.hostname.includes('supabase.co')){
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); return;
   }
-  if(url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')){
+  // cdn.jsdelivr.net = supabase-js: sin cachearlo, el login moría offline aunque el shell
+  // entero estuviera precacheado (hueco cazado en la auditoría 2026-07-06).
+  if(url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com') || url.hostname.includes('cdn.jsdelivr.net')){
     e.respondWith(caches.match(e.request).then(c => {
       if(c) return c;
       return fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; });
@@ -56,7 +64,9 @@ self.addEventListener('fetch', e => {
     // (max-age=600 de Pages) hasta 10 min tras un deploy. Con ETag el 304 es barato.
     e.respondWith(
       fetch(e.request, {cache:'no-cache'}).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
-        .catch(() => caches.match(e.request))
+        // Offline: primero la MISMA versión (?v= exacto); si no está (SW recién actualizado
+        // sin red), cualquier copia cacheada del archivo antes que pantalla rota.
+        .catch(() => caches.match(e.request).then(c => c || caches.match(e.request, {ignoreSearch:true})))
     );
     return;
   }
