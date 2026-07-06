@@ -310,11 +310,16 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
     }
     const _pushKey=`apex_push:${clientId}`;
     if(!shouldPostPush(localStorage.getItem(_pushKey),sub.endpoint))return;
-    await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
+    // RLS 2026-07-06: anon quedó FUERA de push_subscriptions (podía pisar filas ajenas).
+    // Se escribe con el token de la sesión: cada quien registra SOLO su fila.
+    let _tok=null; try{ const s=await AUTH.getSession(); _tok=s&&s.access_token; }catch(_e){}
+    if(!_tok){ warn('AVI Push: sin sesión auth — registro pospuesto'); return; }
+    const _res=await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${_tok}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
+    if(!_res.ok){ warn('AVI Push: registro rechazado',_res.status); return; } // no marcar el endpoint como registrado
     localStorage.setItem(_pushKey,sub.endpoint);
     log('AVI Push: suscripción guardada ✅');
   }catch(e){warn('AVI Push subscribe error:',e);}

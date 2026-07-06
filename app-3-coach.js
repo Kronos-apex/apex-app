@@ -500,6 +500,17 @@ async function _enterAuthSession(authUser){
   showScreen('s-client');
   initClientView(client);
   startMsgPolling();
+  // Push: el registro vivía SOLO en tryAutoLogin (camino legacy) → desde el cutover a auth
+  // NINGÚN dispositivo se re-registraba y los envíos dirigidos (chat) no encontraban
+  // suscripción (última fila: 2026-06-02, cazado en auditoría 2026-07-06). Mismo patrón
+  // que el camino legacy: espera 4s para no competir con el arranque.
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted') setTimeout(()=>{
+    try{
+      const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
+      const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
+      subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
+    }catch(_e){}
+  },4000);
   // Registro nuevo con semana ya generada → Reveal del plan (la app queda lista detrás).
   if(!row && client.selfReg && client.routines && client.routines.length){ showPlanReveal(client); }
   return client;
@@ -641,6 +652,11 @@ async function _enterCoachAuth(authUser, ownRow){
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   showScreen('s-coach');
   initCoach();
+  // Push del coach ('_coach'): igual que el cliente, el registro se perdió con el cutover
+  // a auth (vivía solo en tryAutoLogin). Ver nota en el camino del cliente (2026-07-06).
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted') setTimeout(()=>{
+    try{ subscribePush('_coach'); if(typeof restoreNotifications==='function')restoreNotifications(); }catch(_e){}
+  },3000);
   return null;
 }
 
