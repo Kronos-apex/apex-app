@@ -32,6 +32,7 @@ const {
   daysSinceLastSession,
   workoutStreak,
   longestStreak,
+  errReportGate,
   adherenceMonth,
   sortRoutinesByDay,
   genSchemeFor,
@@ -2171,6 +2172,59 @@ test('nutMealSplit: respeta el nº de comidas pedido y lo acota a 2–6', () => 
 test('nutMealSplit: sin kcal/proteína → ceros sin romper', () => {
   const s = nutMealSplit(0, 0, 4);
   assert.ok(s.every(m => m.kcal === 0 && m.prot === 0));
+});
+
+// ══════════════════════════════════════════════════════
+section('Telemetría de errores (errReportGate)');
+
+const T0 = '2026-07-06T10:00:00'; // now fijo → deterministas
+
+test('errReportGate: primer error se reporta y actualiza el estado', () => {
+  const r = errReportGate(null, 'TypeError: x is not a function', T0);
+  assert.strictEqual(r.report, true);
+  assert.strictEqual(r.state.sent, 1);
+  assert.strictEqual(r.state.dayCount, 1);
+  assert.strictEqual(r.state.seen.length, 1);
+});
+
+test('errReportGate: mensaje vacío o solo espacios → no reporta', () => {
+  assert.strictEqual(errReportGate(null, '', T0).report, false);
+  assert.strictEqual(errReportGate(null, '   ', T0).report, false);
+  assert.strictEqual(errReportGate(null, null, T0).report, false);
+});
+
+test('errReportGate: el mismo error dos veces → la repetición no se reporta', () => {
+  const r1 = errReportGate(null, 'boom', T0);
+  const r2 = errReportGate(r1.state, 'boom', T0);
+  assert.strictEqual(r2.report, false);
+  assert.strictEqual(r2.state.sent, 1, 'el contador no sube con duplicados');
+});
+
+test('errReportGate: dedupe por firma — errores largos que solo difieren tras 120 chars cuentan como uno', () => {
+  const base = 'x'.repeat(120);
+  const r1 = errReportGate(null, base + 'AAA', T0);
+  const r2 = errReportGate(r1.state, base + 'BBB', T0);
+  assert.strictEqual(r1.report, true);
+  assert.strictEqual(r2.report, false);
+});
+
+test('errReportGate: tope de 5 por sesión — el 6º distinto no se reporta', () => {
+  let st = null;
+  for (let i = 0; i < 5; i++) { const r = errReportGate(st, 'err distinto ' + i, T0); assert.strictEqual(r.report, true); st = r.state; }
+  const r6 = errReportGate(st, 'err distinto 5', T0);
+  assert.strictEqual(r6.report, false);
+});
+
+test('errReportGate: tope diario de 20 (cross-sesión) — bloquea aunque la sesión vaya en cero', () => {
+  const st = { seen: [], sent: 0, day: new Date(T0).toDateString(), dayCount: 20 };
+  assert.strictEqual(errReportGate(st, 'otro error', T0).report, false);
+});
+
+test('errReportGate: al cambiar el día de calendario el tope diario arranca en cero', () => {
+  const st = { seen: [], sent: 0, day: new Date(T0).toDateString(), dayCount: 20 };
+  const r = errReportGate(st, 'error de mañana', '2026-07-07T08:00:00');
+  assert.strictEqual(r.report, true);
+  assert.strictEqual(r.state.dayCount, 1);
 });
 
 // ══════════════════════════════════════════════════════

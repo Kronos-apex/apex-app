@@ -1720,6 +1720,29 @@ function isBetterPR(val, reps, unit, prev) {
   return val > prevVal || (unit === 'kg' && val === prevVal && reps > (prev.reps || 0));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// TELEMETRÍA DE ERRORES — limitador puro (v282)
+// ──────────────────────────────────────────────────────────────────────
+// Decide si un error JS se reporta a la nube (tabla app_errors). Reglas:
+// mensaje no vacío, dedupe por firma (primeros 120 chars), máx 5 por
+// sesión y 20 por día de calendario. PURA: recibe y devuelve el estado;
+// el caller lo persiste (sesión en memoria, tope diario en localStorage).
+// state = { seen:[firmas], sent:n, day:'Mon Jul 06 2026', dayCount:n }
+function errReportGate(state, msg, now) {
+  const s = state || {};
+  const seen = Array.isArray(s.seen) ? s.seen : [];
+  const sent = s.sent || 0;
+  const today = (now ? new Date(now) : new Date()).toDateString();
+  const dayCount = s.day === today ? (s.dayCount || 0) : 0; // nuevo día → contador diario en cero
+  const base = { seen, sent, day: today, dayCount };
+  const clean = String(msg == null ? '' : msg).trim();
+  if (!clean) return { report: false, state: base };
+  const sig = clean.slice(0, 120);
+  if (seen.indexOf(sig) !== -1) return { report: false, state: base };
+  if (sent >= 5 || dayCount >= 20) return { report: false, state: base };
+  return { report: true, state: { seen: seen.concat(sig), sent: sent + 1, day: today, dayCount: dayCount + 1 } };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1812,5 +1835,6 @@ if (typeof module !== 'undefined' && module.exports) {
     SUBMUSCLE_GROUP,
     SUBMUSCLE_LABEL,
     submuscleVolume,
+    errReportGate,
   };
 }

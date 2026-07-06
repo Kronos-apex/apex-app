@@ -118,6 +118,49 @@ function _coachSettingsObj(){
 }
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
+// ══════════ TELEMETRÍA DE ERRORES (v282) ══════════
+// Los errores de producción fallaban EN SILENCIO (caso Luz 2026-07-02: el vínculo Google
+// quedó a medias y nadie se enteró por días). window error + unhandledrejection → INSERT
+// en app_errors (RLS: insert-only para anon/auth; solo el coach lee). El limitador
+// errReportGate (avi-core, puro, testeado) aplica dedupe + 5 por sesión + 20 por día
+// (el tope diario persiste en localStorage ax_errday). JAMÁS lanza: la telemetría no
+// puede tumbar la app que vigila. `build` = CACHE_NAME del SW activo leído del Cache
+// Storage → sin constante de versión que mantener a mano.
+let _errSt=null; // estado de sesión del limitador (seen/sent)
+function _logAppError(kind,msg,src){
+  try{
+    if(typeof errReportGate!=='function')return; // avi-core no cargó aún
+    let day=null; try{ day=JSON.parse(localStorage.getItem('ax_errday')||'null'); }catch(_e){}
+    const st={seen:(_errSt&&_errSt.seen)||[],sent:(_errSt&&_errSt.sent)||0,day:day&&day.d,dayCount:(day&&day.n)||0};
+    const g=errReportGate(st,msg);
+    _errSt={seen:g.state.seen,sent:g.state.sent};
+    try{ localStorage.setItem('ax_errday',JSON.stringify({d:g.state.day,n:g.state.dayCount})); }catch(_e){}
+    if(!g.report)return;
+    const fin=b=>{ try{ fetch(SB_URL+'/rest/v1/app_errors',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({
+      kind, msg:String(msg).slice(0,500), src:String(src||'').slice(0,300), build:b,
+      ua:(navigator.userAgent||'').slice(0,300),
+      ctx:{standalone:!!(window.matchMedia&&matchMedia('(display-mode: standalone)').matches),w:window.innerWidth||0,
+           uid:(typeof _authUid!=='undefined'&&_authUid)||null}
+    })}).catch(()=>{}); }catch(_e){} };
+    try{ caches.keys().then(ks=>fin((ks.find(k=>/^avi-v\d+$/.test(k))||'').slice(0,40))).catch(()=>fin('')); }
+    catch(_e){ fin(''); }
+  }catch(_e){}
+}
+// Sin capture: solo errores JS de runtime (los 404 de recursos no burbujean hasta window).
+// Cuerpos try-totales (hallazgo Lucas QA): un reason exótico (toString/getter que lanza,
+// Object.create(null)) haría lanzar a la PROPIA telemetría al leerle message/String/stack.
+window.addEventListener('error',e=>{
+  try{ _logAppError('error',e&&e.message,e&&e.filename?String(e.filename).split('/').pop()+':'+e.lineno+':'+e.colno:''); }catch(_e){}
+});
+window.addEventListener('unhandledrejection',e=>{
+  try{
+    const r=e&&e.reason;
+    let m=''; try{ m=(r&&r.message)||''; if(!m)m=String(r); }catch(_e){ m='razón no serializable'; }
+    let st=''; try{ st=((r&&r.stack)||'').split('\n')[1]||''; }catch(_e){}
+    _logAppError('promise',m||'promesa rechazada sin razón',st);
+  }catch(_e){}
+});
+
 // ══════════ SUPABASE AUTH — Fase 2 (login real, fila por usuario) ══════════
 // supabase-js se carga por CDN con `defer`. El cliente se crea LAZY: solo al usar
 // login/registro, jamás en el arranque → el boot offline-first NUNCA depende del CDN.
