@@ -179,6 +179,18 @@ Workflow: edit → pre-commit hook (7 checks) → git commit → git push → Gi
 Backend: Supabase (apex_data, push_subscriptions, Edge Functions)
 ```
 
+### Respaldos (2026-07-06 — doble capa, ambos verificados)
+```
+1. EN LA DB (no depende de la PC): pg_cron "apex-daily-backup" 8:00 UTC diario
+   → apex_daily_backup() snapshotea apex_data + user_data en apex_data_backups.
+   Retención: 14 diarios + domingos por 90 días. (Reemplazó al semanal 2026-07-06.)
+2. FUERA de Supabase: scripts/backup-local.mjs + Tarea de Windows "AVI backup Supabase"
+   (diaria 8:00 pm, corre al prender si estaba apagada) → exporta user_data, apex_data,
+   push_subscriptions y cuentas auth (uid↔email) a Desktop\AVI\backups\ (45 días).
+   Requiere service role key en %USERPROFILE%\.avi\service-role.key (JAMÁS en el repo).
+Restaurar: corrupción de datos → snapshot de apex_data_backups; pérdida del proyecto → JSON local.
+```
+
 ### VAPID Keys (push notifications)
 ```
 PUBLIC:  BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8
