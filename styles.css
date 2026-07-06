@@ -498,8 +498,8 @@ html[data-theme="light"] .mta {
    Estado vacío (día de descanso): foto vertical de fondo + degradado + texto blanco centrado */
 .avi-restbnr{position:relative;border-radius:var(--rlg);overflow:hidden;isolation:isolate;background:#0a1712}
 .avi-restbnr .rb-bg{position:absolute;inset:0;background-size:cover;background-position:center 16%}
-.avi-restbnr .rb-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,9,.15) 0%,rgba(6,12,9,.5) 45%,rgba(6,12,9,.92) 100%)}
-.avi-restbnr .rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;gap:9px;min-height:210px;padding:30px 18px 22px}
+.avi-restbnr .rb-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,9,.12) 0%,rgba(6,12,9,.32) 48%,rgba(6,12,9,.93) 100%)}
+.avi-restbnr .rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;gap:9px;min-height:clamp(280px,82vw,400px);padding:30px 18px 22px}
 .avi-restbnr .rb-title{color:#fff;font-weight:800;font-size:16px;line-height:1.2;margin:0}
 .avi-restbnr .rb-sub{color:rgba(255,255,255,.85);font-size:13px;line-height:1.5;margin:0;max-width:34ch}
 /* Panel del coach: foto horizontal (coach-verde) + degradado lateral + título/botón */
