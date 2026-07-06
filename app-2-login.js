@@ -986,11 +986,19 @@ syncFromCloud().then(async ()=>{
   try{
     if(AUTH.ready()){
       const session=await AUTH.getSession();
-      if(session&&session.user){
+      // Guard anti doble-entrada (regresión cazada 2026-07-06 con _test-coach-back):
+      // si el usuario alcanzó a hacer login MIENTRAS esta cadena async del boot seguía
+      // pendiente (red lenta + autofill; el harness E2E lo dispara siempre), getSession
+      // devuelve la sesión recién creada por doLogin y el boot RE-ENTRABA completo:
+      // segunda carga + segundo initClientView cuyo navReset tardío arrasaba el stack
+      // del botón atrás (2 entradas → 0). Si ya estamos en modo auth, no re-entrar.
+      if(session&&session.user&&!AUTH_MODE){
         // Retorno de "Conectar mi Google": programado ANTES del await (que puede quedar
         // pendiente, gotcha v216) y con settle para que el splash no tape el toast.
         setTimeout(()=>{ try{ _handleGoogleLinkReturn().catch(()=>{}); }catch(_e){} },1500);
         await _enterAuthSession(session.user); authEntered=true;
+      } else if(session&&session.user&&AUTH_MODE){
+        authEntered=true; // el login manual ya entró — no pisar su sesión ni su navegación
       }
     }
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
