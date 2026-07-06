@@ -478,7 +478,7 @@ html[data-theme="light"] .mta {
 /* Today hero — foto libre ARRIBA y texto ABAJO (Camilo 2026-07-05: "que las letras
    no escondan la imagen"); mismo patrón del banner del coach. Degradado vertical:
    suave arriba (foto visible) → oscuro abajo (texto legible). */
-.wohero{background:linear-gradient(180deg,rgba(8,26,19,.15) 0%,rgba(8,26,19,.35) 42%,rgba(6,17,12,.93) 78%,rgba(5,14,10,.97) 100%),url('media/brand/ob-1.jpg') center 20%/cover,linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(280px,82vw,400px)}
+.wohero{background:linear-gradient(180deg,rgba(8,26,19,.12) 0%,rgba(8,26,19,.30) 42%,rgba(6,17,12,.93) 78%,rgba(5,14,10,.97) 100%),url('media/brand/ob-1.jpg') center 20%/cover,linear-gradient(160deg,#0f3526,#0a2118 72%);border:1px solid var(--br2);border-radius:var(--rlg);padding:20px;color:white;margin-bottom:13px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(360px,95vw,470px)}
 .wohero::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 88% -12%,rgba(16,224,160,.22),transparent 55%);pointer-events:none}
 .woday{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1.4px;text-transform:uppercase;color:#F2C94C;margin-bottom:5px;position:relative}
 .woname{font-size:23px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px;position:relative}
@@ -499,7 +499,7 @@ html[data-theme="light"] .mta {
 .avi-restbnr{position:relative;border-radius:var(--rlg);overflow:hidden;isolation:isolate;background:#0a1712}
 .avi-restbnr .rb-bg{position:absolute;inset:0;background-size:cover;background-position:center 16%}
 .avi-restbnr .rb-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,9,.12) 0%,rgba(6,12,9,.32) 48%,rgba(6,12,9,.93) 100%)}
-.avi-restbnr .rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;gap:9px;min-height:clamp(280px,82vw,400px);padding:30px 18px 22px}
+.avi-restbnr .rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;gap:9px;min-height:clamp(360px,95vw,470px);padding:30px 18px 22px}
 .avi-restbnr .rb-title{color:#fff;font-weight:800;font-size:16px;line-height:1.2;margin:0}
 .avi-restbnr .rb-sub{color:rgba(255,255,255,.85);font-size:13px;line-height:1.5;margin:0;max-width:34ch}
 /* Panel del coach: foto horizontal (coach-verde) + degradado lateral + título/botón */
