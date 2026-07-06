@@ -210,8 +210,25 @@ if os.path.exists(audit_file):
 else:
     warn('scripts/audit-catalog.mjs no encontrado — auditoría saltada')
 
+# ── 10. VERSIÓN COHERENTE (regla cache-bust: ?v=NNN de index.html = CACHE_NAME) ──
+# Se desalineó 37 versiones en silencio (v244 vs v281, caught 2026-07-06).
+print(f'\n{BOLD}[10] Versión ?v= vs CACHE_NAME{RESET}')
+sw_src = sw_js  # ya leído en el check 7
+m_sw = re.search(r"CACHE_NAME\s*=\s*'avi-v(\d+)'", sw_src)
+vs = set(re.findall(r'\?v=(\d+)', src))
+if not m_sw:
+    fail('CACHE_NAME no encontrado en sw.js')
+elif not vs:
+    warn('index.html no usa ?v= — ¿se retiró el cache-bust? Actualiza este check')
+elif len(vs) > 1:
+    fail(f'index.html mezcla versiones ?v=: {sorted(vs)}')
+elif vs != {m_sw.group(1)}:
+    fail(f'Desalineados: index.html ?v={vs.pop()} vs sw.js avi-v{m_sw.group(1)} — bump ambos juntos')
+else:
+    ok(f'?v={m_sw.group(1)} coherente con CACHE_NAME avi-v{m_sw.group(1)}')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 9
+total = 10
 failed = len(errors)
 warned = len(warnings)
 

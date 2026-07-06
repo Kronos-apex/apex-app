@@ -1,0 +1,23 @@
+# CI de AVI — corre el MISMO audit que el pre-commit hook en cada push/PR.
+# Red de seguridad para pushes desde otra máquina o commits con --no-verify:
+# el hook local puede saltarse; esto no.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Suite de negocio (avi.test.js)
+        run: node avi.test.js
+      - name: Audit completo (mismo script que el pre-commit hook)
+        run: python3 scripts/hooks/pre-commit
