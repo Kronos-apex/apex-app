@@ -359,6 +359,8 @@ function gmRender(){
     const gmLastre = gmTrack==='reps' && lastreOn(GM.routine,ei);
     if(gmTrack==='hiit'){
       gmRenderHiit(setsEl, ei, ex, steps.length);
+    } else if(gmTrack==='cardio'){
+      gmRenderCardio(setsEl, ei, ex, steps.length);
     } else {
     // Toggle "+ Lastre (peso añadido)" para peso corporal — una vez por ejercicio, antes de las series
     if(gmTrack==='reps'){
@@ -567,7 +569,7 @@ function _gmEndHoldUI(){
   GM.holding=null;
   const overlay=document.getElementById('gm-rest-overlay');
   if(!overlay)return;
-  overlay.classList.remove('gm-hold');
+  overlay.classList.remove('gm-hold','gm-cardio');
   const sk=overlay.querySelector('.gm-rest-skip'); if(sk)sk.textContent='⏩ Saltar descanso';
 }
 function gmHoldTimer(ei, si, secs){
@@ -681,6 +683,90 @@ function gmAfterHiit(ei){
   gmRender();
   if(GM.currentStep>=GM.steps.length){ setTimeout(()=>{ closeGuidedMode(); checkAndShowCongrats(GM.routine); }, 500); }
   else { _gmDeferScrollToCurrent(100); }
+}
+
+// ── Tarjeta de CARDIO del guiado (pedido Camilo 2026-07-06): pones los minutos (y km
+// opcional), das ▶ Empezar y corre una cuenta regresiva fullscreen que AVISA al llegar
+// a 0 (pitido + vibración) y marca la sesión sola. Como es larga (ej. 20 min), SÍ se
+// puede minimizar al banner flotante (a diferencia de la plancha, v245): tocar a un
+// lado o dar atrás la esconde y el conteo sigue.
+function gmRenderCardio(setsEl, ei, ex, sets){
+  const rid=GM.routine.id;
+  const done=Array.from({length:sets},(_,si)=>isDone(rid,ei,si)).filter(Boolean).length;
+  const g=f=>getLog(rid,ei,0,f);
+  const card=document.createElement('div');
+  card.style.cssText='padding:16px;text-align:center;background:var(--bg);border-radius:12px';
+  card.innerHTML=`
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px">
+      <div style="flex:1;max-width:110px"><input id="gm-cardio-min-${ei}" class="gm-sinput" type="number" min="1" inputmode="numeric" placeholder="min" value="${g('min')||ex.reps||20}" ${done>=sets?'readonly':''} oninput="setLog('${rid}',${ei},0,'min',this.value)"><div class="gm-sinput-label">MINUTOS</div></div>
+      <div style="flex:1;max-width:110px"><input id="gm-cardio-km-${ei}" class="gm-sinput" type="number" min="0" step="0.1" inputmode="decimal" placeholder="km" value="${g('dist')||''}" oninput="setLog('${rid}',${ei},0,'dist',this.value)"><div class="gm-sinput-label">KM (OPCIONAL)</div></div>
+    </div>
+    <button class="btn bp" id="gm-cardio-btn-${ei}" style="width:100%">${done>=sets?'✓ Completado':'▶ Empezar'}</button>
+    ${done>=sets?'':'<div style="font-size:11px;color:var(--t3);margin-top:8px">Te avisamos al terminar — puedes ocultar la pantalla y seguir usando la app</div>'}`;
+  setsEl.appendChild(card);
+  if(done<sets){
+    card.querySelector(`#gm-cardio-btn-${ei}`).onclick=()=>{
+      const inp=document.getElementById(`gm-cardio-min-${ei}`);
+      gmCardioTimer(ei, parseInt(inp&&inp.value)||0, sets);
+    };
+  }
+}
+// Cuenta regresiva del cardio (mm:ss). Reusa el overlay del descanso en modo "en curso"
+// (ámbar gm-hold) + clase gm-cardio (hint de ocultar visible, tamaño mm:ss). Al llegar
+// a 0: pitido + vibración + toast + marca todas las series del bloque y avanza (mismo
+// cierre que el HIIT). Cancelar (⏹ o el atrás en fullscreen NO — el atrás minimiza) es
+// explícito desde el botón y no marca nada.
+function gmCardioTimer(ei, mins, sets){
+  if(!mins||mins<1){ toast('⏱ Pon los minutos y vuelve a tocar ▶ Empezar'); return; }
+  if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
+  _gmRemoveRestMini();
+  reqWake();
+  GM.holding={ei,si:0,cardio:true};
+  const overlay=document.getElementById('gm-rest-overlay');
+  const secEl=document.getElementById('gm-rest-sec');
+  const arc=document.getElementById('gm-rest-arc');
+  const titleEl=document.getElementById('gm-rest-title');
+  const lblEl=overlay.querySelector('.gm-rest-lbl');
+  const nextEl=document.getElementById('gm-rest-next');
+  const breEl=document.getElementById('gm-rest-breath');
+  if(breEl)breEl.style.display='none';
+  if(nextEl)nextEl.textContent='';
+  if(titleEl)titleEl.textContent='🚴 ¡Dale! Cardio en marcha';
+  if(lblEl)lblEl.textContent='se marca solo al llegar a 0';
+  overlay.classList.add('gm-hold','gm-cardio');
+  _gmWireRestMinimize(overlay);
+  const sk=overlay.querySelector('.gm-rest-skip'); if(sk)sk.textContent='⏹ Cancelar — no marcar';
+  const C=439.8;
+  overlay.classList.remove('hidden','gm-rest-paused'); GM.restPaused=false;
+  const secs=Math.round(mins*60);
+  const fmt=s=>s>=60?Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):String(s);
+  secEl.textContent=fmt(secs);
+  arc.style.transition='none'; arc.style.strokeDashoffset='0';
+  setTimeout(()=>{ arc.style.transition='stroke-dashoffset 1s linear'; },50);
+  // Estado en GM.restEndAt/restTotal (no en locales) → los botones ⏸ Pausar y +15s del
+  // overlay FUNCIONAN durante el cardio (pausa de agua en 20 min es real). Timestamp
+  // absoluto: robusto a pantalla bloqueada.
+  GM.restTotal=secs; GM.restEndAt=Date.now()+secs*1000;
+  const pbtn=document.getElementById('gm-rest-pause');if(pbtn){pbtn.textContent='⏸ Pausar';pbtn.setAttribute('aria-label','Pausar el cardio');}
+  let left=secs;
+  GM.restTimer=setInterval(()=>{
+    if(GM.restPaused)return;
+    left=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));
+    secEl.textContent=fmt(left);
+    arc.style.strokeDashoffset=C*((GM.restTotal-left)/GM.restTotal);
+    const _ms=document.getElementById('gm-rest-mini-sec'); if(_ms)_ms.textContent=fmt(left);
+    if(left>0&&left<=5) playRestTick();
+    if(left<=0){
+      clearInterval(GM.restTimer); GM.restTimer=null;
+      _gmEndHoldUI(); _gmRemoveRestMini();
+      overlay.classList.add('hidden'); relWake(); playRestEndBeep();
+      try{ if(navigator.vibrate)navigator.vibrate([300,120,300]); }catch(_e){}
+      toast('🚴 ¡Cardio completado! Quedó registrado.');
+      a11ySay('Cardio completado. Quedó registrado.');
+      for(let s=0;s<sets;s++) setDone(GM.routine.id,ei,s,true);
+      gmAfterHiit(ei); // sincroniza progreso, avanza y refresca (cierre genérico de bloque)
+    }
+  },1000);
 }
 
 function gmUpdateProgress(){
@@ -894,16 +980,7 @@ function gmShowRest(secs, nextStep, opts){
   const C=439.8;
   overlay.classList.remove('hidden','gm-rest-paused');
   _gmRemoveRestMini(); // descanso nuevo siempre arranca a pantalla completa
-  // Tocar A UN LADO (fuera de los botones) minimiza a banner (pedido Camilo 2026-07-06).
-  // Se cablea UNA vez; en isométrico (GM.holding) no aplica — cancelar es explícito.
-  if(!overlay._miniWired){
-    overlay._miniWired=true;
-    overlay.addEventListener('click',e=>{
-      if(GM.holding)return;
-      if(e.target&&e.target.closest&&e.target.closest('button'))return;
-      gmMinimizeRest();
-    });
-  }
+  _gmWireRestMinimize(overlay);
   secEl.textContent=secs;
   arc.style.transition='none';
   arc.style.strokeDashoffset='0';
@@ -941,9 +1018,10 @@ function gmShowRest(secs, nextStep, opts){
   },1000);
 }
 
-// Pausar / reanudar el descanso del guiado. No aplica al isométrico "aguanta" (GM.holding).
+// Pausar / reanudar el descanso del guiado. No aplica al isométrico "aguanta"; el
+// CARDIO sí se puede pausar (pausa de agua en 20 min — 2026-07-06).
 function gmRestPause(){
-  if(GM.holding||!GM.restTimer)return;
+  if((GM.holding&&!GM.holding.cardio)||!GM.restTimer)return;
   const overlay=document.getElementById('gm-rest-overlay');
   const btn=document.getElementById('gm-rest-pause');
   const arc=document.getElementById('gm-rest-arc');
@@ -963,11 +1041,13 @@ function gmRestPause(){
 }
 // Suma 15s al descanso del guiado (aumenta también el total para que el arco no salte feo).
 function gmRestAdd15(){
-  if(GM.holding||!GM.restTimer)return;
+  if((GM.holding&&!GM.holding.cardio)||!GM.restTimer)return;
   GM.restTotal=(GM.restTotal||0)+15;
   const secEl=document.getElementById('gm-rest-sec');
-  if(GM.restPaused){GM.restFrozen=(GM.restFrozen||0)+15;if(secEl)secEl.textContent=GM.restFrozen;}
-  else{GM.restEndAt+=15000;if(secEl)secEl.textContent=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));}
+  // En cardio el display va en mm:ss (2026-07-06).
+  const _cf=s=>(GM.holding&&GM.holding.cardio&&s>=60)?Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):String(s);
+  if(GM.restPaused){GM.restFrozen=(GM.restFrozen||0)+15;if(secEl)secEl.textContent=_cf(GM.restFrozen);}
+  else{GM.restEndAt+=15000;if(secEl)secEl.textContent=_cf(Math.max(0,Math.round((GM.restEndAt-Date.now())/1000)));}
   a11ySay('15 segundos añadidos');toast('⏱ +15 segundos');
 }
 function gmSkipRest(){
@@ -992,8 +1072,20 @@ function gmSkipRest(){
 // el modo clásico) para poder ver el siguiente ejercicio, chatear, etc. El timer NO
 // se toca. Tocar el banner re-abre la pantalla; "Saltar ⏭" salta el descanso normal.
 // El isométrico (GM.holding) NO se minimiza: ahí cancelar es una acción explícita (v245).
+// Tocar A UN LADO (fuera de los botones) minimiza a banner (pedido Camilo 2026-07-06).
+// Se cablea UNA vez por overlay; lo llaman gmShowRest Y gmCardioTimer (cualquiera puede
+// ser el primero en mostrar el overlay). En plancha (hold sin cardio) no aplica.
+function _gmWireRestMinimize(overlay){
+  if(!overlay||overlay._miniWired)return;
+  overlay._miniWired=true;
+  overlay.addEventListener('click',e=>{
+    if(GM.holding&&!GM.holding.cardio)return; // plancha: cancelar es explícito; cardio sí se minimiza
+    if(e.target&&e.target.closest&&e.target.closest('button'))return;
+    gmMinimizeRest();
+  });
+}
 function gmMinimizeRest(){
-  if(GM.holding||!GM.restTimer)return;
+  if((GM.holding&&!GM.holding.cardio)||!GM.restTimer)return; // cardio sí; plancha no (v245)
   const ov=document.getElementById('gm-rest-overlay');
   if(ov)ov.classList.add('hidden');
   _gmEnsureRestMini();
@@ -1011,7 +1103,9 @@ function _gmEnsureRestMini(){
   el.id='gm-rest-mini';el.className='gm-rest-mini';el.setAttribute('role','timer');
   el.setAttribute('aria-label','Descanso en curso. Toca para verlo en grande.');
   const left=GM.restPaused?(GM.restFrozen||0):Math.max(0,Math.round(((GM.restEndAt||Date.now())-Date.now())/1000));
-  el.innerHTML=`<b id="gm-rest-mini-sec">${left}</b><small>descanso</small><button onclick="event.stopPropagation();gmSkipRest()" aria-label="Saltar el descanso">Saltar ⏭</button>`;
+  const _f=left>=60?Math.floor(left/60)+':'+String(left%60).padStart(2,'0'):String(left);
+  const esCardio=!!(GM.holding&&GM.holding.cardio);
+  el.innerHTML=`<b id="gm-rest-mini-sec">${esCardio?'—':_f}</b><small>${esCardio?'cardio':'descanso'}</small><button onclick="event.stopPropagation();gmSkipRest()" aria-label="${esCardio?'Cancelar el cardio':'Saltar el descanso'}">${esCardio?'⏹':'Saltar ⏭'}</button>`;
   el.onclick=()=>gmExpandRest();
   // Watchdog: si el descanso murió por CUALQUIER camino de teardown (cerrar guiado,
   // reset de sesión, etc.), el banner se retira solo — nunca queda huérfano congelado.

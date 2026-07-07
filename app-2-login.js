@@ -1167,7 +1167,9 @@ function _aviCloseTopOverlay(){
   // (acción explícita, v245). Antes el atrás saltaba el descanso completo.
   const gmRestOv=document.getElementById('gm-rest-overlay');
   if(gmRestOv&&!gmRestOv.classList.contains('hidden')){
-    if(typeof GM!=='undefined'&&GM.holding){ if(typeof gmSkipRest==='function')gmSkipRest(); }
+    // Plancha (hold sin cardio): el atrás CANCELA el crono (v245). Descanso y CARDIO
+    // (largo, ej. 20 min): el atrás MINIMIZA al banner — el conteo sigue.
+    if(typeof GM!=='undefined'&&GM.holding&&!GM.holding.cardio){ if(typeof gmSkipRest==='function')gmSkipRest(); }
     else if(typeof gmMinimizeRest==='function'){ gmMinimizeRest(); }
     return true;
   }
