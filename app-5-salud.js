@@ -345,7 +345,7 @@ function openNutritionRoom(clientId){
   }
 
   let whyHTML='';
-  if(d.why)whyHTML=`<div class="sroom-sec">¿Por qué este plan?</div><div class="exroom-tech" style="border-left:3px solid #10b981"><b>${d.why.title}.</b> ${esc(d.why.text)}</div>`;
+  if(d.why)whyHTML=`<div class="sroom-sec">¿Por qué este plan?</div><div class="exroom-tech" style="border-left:3px solid #10b981"><b>${esc(d.why.title)}.</b> ${esc(d.why.text)}</div>`;
   if(d.isEst)whyHTML+=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (fórmula Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
 
   let mealsHTML='';

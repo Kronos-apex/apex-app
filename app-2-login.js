@@ -436,12 +436,12 @@ function renderTemplates(){
         <div class="rcchev">▼</div>
       </div>
       <div class="rcbody">
-        ${tpl.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${tpl.note}</div>`:''}
+        ${tpl.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(tpl.note)}</div>`:''}
         ${!(tpl.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':
           (tpl.exercises||[]).map(e=>`
             <div class="exrow">
               <div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div>
-              <div><div class="exname">${e.name}</div><div class="exmet">${e.muscle} · ${e.type}</div></div>
+              <div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div>
               <div class="exsets">${exSetsCellHTML(e)}</div>
             </div>`).join('')}
         <div style="padding-top:10px;border-top:1px solid var(--br);margin-top:4px">

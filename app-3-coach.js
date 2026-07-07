@@ -46,9 +46,9 @@ function renderClients(){
     if(_trained){
       st={ring:'var(--g2)',bg:'var(--gl)',col:'var(--g)',ico:'✓',txt:'Entrenó hoy'};
     } else if(_todayR){
-      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:'⏳',txt:`${_todayR.name} · hoy`};
+      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:'⏳',txt:`${esc(_todayR.name)} · hoy`};
     } else if(_tomorrowR){
-      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:'📅',txt:`${_tomorrowR.name} · mañana`};
+      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:'📅',txt:`${esc(_tomorrowR.name)} · mañana`};
     } else if(_ruts.length){
       st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:'💤',txt:'Descanso hoy'};
     } else {
