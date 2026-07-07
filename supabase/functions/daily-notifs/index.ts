@@ -140,6 +140,51 @@ const AFTERNOON = {
   },
 };
 
+
+// ── Pools por ESTADO REAL (2026-07-07): la función ya no adivina por turno — lee el
+// historial. RESCUE = registrado que NUNCA ha entrenado (máx 2/semana: martes y sábado).
+// COMEBACK = entrenaba y lleva ≥7 días sin sesión (máx 2/semana: lunes y jueves).
+// MORNING_DONE = ya entrenó HOY antes de la notif de la mañana (madrugadores).
+
+const RESCUE = {
+  title: "Tu rutina te espera 💚",
+  body: [
+    "Tu plan sigue listo, hecho para ti. El primer entreno es el más difícil — y el que más cambia todo.",
+    "No necesitas una hora: tu primera sesión toma ~40 minutos y sales con energía. ¿Hoy?",
+    "Registrarte fue el paso 1. El paso 2 es una sola sesión. Tu rutina te está esperando.",
+    "Todos empiezan una vez. Abre tu rutina, mira el primer ejercicio y solo haz ese. El resto sale solo.",
+    "Tu cuerpo no necesita el momento perfecto, necesita el primer movimiento. Tu plan está listo.",
+    "¿Sabías que tu rutina se adapta a cómo te sientas? Ábrela hoy y pruébala a tu ritmo.",
+    "Una sesión esta semana vale más que un plan perfecto el mes que viene. Dale al primer paso.",
+  ],
+};
+
+const COMEBACK = {
+  title: "Te extrañamos 💪",
+  body: [
+    "Hace días no entrenas. No pasa nada — lo importante es volver. Tu rutina sigue lista.",
+    "La constancia no es no fallar nunca: es volver. Hoy es un buen día para retomar.",
+    "Tu progreso no se borró — está esperándote. Una sesión suave para volver a agarrar el ritmo.",
+    "Volver es más fácil de lo que parece: abre tu rutina y haz solo la mitad. Cuenta igual.",
+    "Tu cuerpo recuerda más de lo que crees. Retoma hoy con calma — mañana lo agradeces.",
+    "Un descanso largo no es el final — es una pausa. Tu plan sigue ahí, ajustado a ti.",
+    "El mejor momento para volver fue ayer. El segundo mejor es hoy. Te esperamos.",
+  ],
+};
+
+const MORNING_DONE = {
+  title: "¡Ya entrenaste! 🔥",
+  body: [
+    "Madrugaste y cumpliste. Ahora desayuna con proteína — tu músculo la necesita YA.",
+    "Sesión hecha antes que el resto despierte. Hidrátate y come bien — la recuperación empieza ahora.",
+    "Entreno de hoy: ✅ desde temprano. Buen desayuno y a ganar el día.",
+    "Ya cumpliste lo más difícil del día. Proteína + agua ahora mismo.",
+    "Entrenar temprano = disciplina de verdad. Recupera con un buen desayuno.",
+    "Tu sesión ya quedó en el historial. Ahora aliméntate a la altura del esfuerzo.",
+    "Cumpliste antes de las 7am. Eso no lo hace cualquiera. Desayuna bien — te lo ganaste.",
+  ],
+};
+
 const cors = {
   "Access-Control-Allow-Origin": "https://kronos-apex.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -158,8 +203,9 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json() as { slot?: Slot };
+    const body = await req.json() as { slot?: Slot; dry?: boolean };
     const slot = body.slot;
+    const dry = body.dry === true; // dry:true = clasifica y cuenta SIN enviar (para pruebas)
     if (!slot || !["morning", "midmorning", "afternoon"].includes(slot)) {
       return new Response(JSON.stringify({ error: "slot inválido. Usa: morning | midmorning | afternoon" }), {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
@@ -183,6 +229,30 @@ serve(async (req) => {
       .select("client_id, subscription, training_days, training_shift");
 
     if (error) throw new Error(error.message);
+
+    // ── Estado REAL por usuario (2026-07-07): el historial manda sobre el turno ──
+    // trainedToday: tiene una sesión con fecha (Colombia) de HOY. total: sesiones de
+    // por vida. daysSince: días desde la última. Con esto la función deja de adivinar.
+    const { data: udRows, error: udErr } = await supabase
+      .from("user_data")
+      .select("user_id, history");
+    if (udErr) console.error("[daily-notifs] user_data:", udErr.message);
+    const todayCol = new Date(now.getTime() - 5 * 3600_000).toISOString().slice(0, 10);
+    const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null }>();
+    for (const r of (udRows ?? [])) {
+      const hist: Array<{ date?: string }> = Array.isArray(r.history) ? r.history : [];
+      let trainedToday = false, last = 0;
+      for (const h of hist) {
+        const t = h && h.date ? Date.parse(h.date) : NaN;
+        if (isNaN(t)) continue;
+        if (new Date(t - 5 * 3600_000).toISOString().slice(0, 10) === todayCol) trainedToday = true;
+        if (t > last) last = t;
+      }
+      state.set(String(r.user_id), {
+        trainedToday, total: hist.length,
+        daysSince: last ? Math.floor((now.getTime() - last) / 86400_000) : null,
+      });
+    }
     if (!subs || subs.length === 0) {
       return new Response(JSON.stringify({ ok: true, sent: 0, reason: "no_subscriptions" }), {
         headers: { ...cors, "Content-Type": "application/json" },
@@ -191,6 +261,7 @@ serve(async (req) => {
 
     let sent = 0;
     let failed = 0;
+    let skipped = 0;
 
     for (const sub of subs) {
       try {
@@ -198,11 +269,27 @@ serve(async (req) => {
         const shiftMap: Record<string,string> = sub.training_shift ?? {};
         const shift: string = shiftMap[todayName] ?? "";
         const isTraining = trainingDays.includes(todayName);
+        const st = state.get(String(sub.client_id)) ?? null; // null p.ej. para '_coach'
 
         let title: string;
         let body: string;
 
-        if (slot === "morning") {
+        // ── Segmentos por estado (solo asesorados con fila user_data) ──
+        if (st && st.total === 0) {
+          // NUNCA ha entrenado → rescate SOLO tarde, SOLO martes y sábado (no quemar el push)
+          if (slot !== "afternoon" || (dayIndex !== 2 && dayIndex !== 6)) { skipped++; continue; }
+          title = RESCUE.title; body = RESCUE.body[msgIndex];
+        } else if (st && st.daysSince !== null && st.daysSince >= 7 && !st.trainedToday) {
+          // INACTIVO ≥7 días → "vuelve" SOLO tarde, SOLO lunes y jueves
+          if (slot !== "afternoon" || (dayIndex !== 1 && dayIndex !== 4)) { skipped++; continue; }
+          title = COMEBACK.title; body = COMEBACK.body[msgIndex];
+        } else if (st && st.trainedToday && slot === "morning") {
+          // Madrugador: YA entrenó antes de la notif de la mañana
+          title = MORNING_DONE.title; body = MORNING_DONE.body[msgIndex];
+        } else if (st && st.trainedToday && slot === "afternoon") {
+          // Ya entrenó HOY (lo dice el historial, no el turno) → recuperación
+          title = AFTERNOON.postworkout.title; body = AFTERNOON.postworkout.body[msgIndex];
+        } else if (slot === "morning") {
           const pool = isTraining ? MORNING.training : MORNING.rest;
           title = pool.title;
           body  = pool.body[msgIndex];
@@ -233,7 +320,7 @@ serve(async (req) => {
         }
 
         const payload = JSON.stringify({ title, body, icon: "/apex-app/icons/icon-192.png" });
-        await webpush.sendNotification(sub.subscription, payload);
+        if (!dry) await webpush.sendNotification(sub.subscription, payload);
         sent++;
         console.log(`[daily-notifs] ${slot} → ${sub.client_id} shift=${shift||"none"} (${isTraining?"entreno":"descanso"}) ✅`);
       } catch (e) {
@@ -243,7 +330,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, slot, today: todayName, sent, failed, total: subs.length }),
+      JSON.stringify({ ok: true, slot, dry, today: todayName, sent, failed, skipped, total: subs.length }),
       { headers: { ...cors, "Content-Type": "application/json" } },
     );
   } catch (err) {
