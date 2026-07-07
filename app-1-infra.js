@@ -129,6 +129,10 @@ const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPB
 let _errSt=null; // estado de sesión del limitador (seen/sent)
 function _logAppError(kind,msg,src){
   try{
+    // localhost = harness/smoke/dev — sus errores (incluidos los inyectados a propósito
+    // por los repros) NO van a la telemetría de producción (auditoría 2026-07-07: un
+    // throw de prueba del harness terminó como fila real en app_errors).
+    if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return;
     if(typeof errReportGate!=='function')return; // avi-core no cargó aún
     let day=null; try{ day=JSON.parse(localStorage.getItem('ax_errday')||'null'); }catch(_e){}
     const st={seen:(_errSt&&_errSt.seen)||[],sent:(_errSt&&_errSt.sent)||0,day:day&&day.d,dayCount:(day&&day.n)||0};
