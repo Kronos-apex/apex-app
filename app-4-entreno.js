@@ -569,10 +569,14 @@ function renderTodayHead(client){
   const h=new Date().getHours();
   const saludo=h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches';
   const name=esc((client.name||'').split(' ')[0]||'');
-  const streak=workoutStreak((DB.history&&DB.history[client.id])||[], new Date());
-  const chip=streak>0
-    ? `<div class="streak-chip">🔥 <b>${streak}</b> día${streak!==1?'s':''} de racha</div>`
-    : `<div class="streak-chip streak-0">💪 Empieza tu racha hoy</div>`;
+  // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan — la racha
+  // por días consecutivos castigaba al de 3/sem (vivía en "Empieza tu racha hoy").
+  const ws=weekStreak((DB.history&&DB.history[client.id])||[], planDays(client), new Date());
+  const chip=ws.weeks>=1
+    ? `<div class="streak-chip">🔥 <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} cumpliendo tu plan</div>`
+    : ws.thisWeekDays>0
+      ? `<div class="streak-chip">💪 Esta semana: <b>${ws.thisWeekDays}/${ws.target}</b> días</div>`
+      : `<div class="streak-chip streak-0">💪 Empieza tu racha esta semana</div>`;
   el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
 }
 
@@ -2002,11 +2006,13 @@ function _sessionExercisesHTML(s,clientId){
 function renderClientStreak(clientId){
   const con=document.getElementById('cn-streak');if(!con)return;
   const c=DB.clients.find(x=>x.id===clientId);
-  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu constancia','Cuántos días seguidos llevas entrenando, tu récord y el calendario del mes.');return;}
+  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu constancia','Cuántas semanas seguidas llevas cumpliendo tu plan, tu récord y el calendario del mes.');return;}
   const sessions=(DB.history&&DB.history[clientId])||[];
   const now=new Date();
-  const streak=workoutStreak(sessions,now);
-  const record=longestStreak(sessions);
+  // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan.
+  const tgt=planDays(c);
+  const ws=weekStreak(sessions,tgt,now);
+  const record=longestWeekStreak(sessions,tgt);
   const cal=adherenceMonth(sessions,now);
   const mes=now.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
   const dows=['L','M','M','J','V','S','D'];
@@ -2022,17 +2028,20 @@ function renderClientStreak(clientId){
     grid+=`<div class="${cls}"${click}>${d.day}</div>`;
   }));
   // Mensaje en lenguaje claro: explica qué es la racha y qué hacer ahora.
-  const msg = streak>=2
-    ? `Llevas <b>${streak} días seguidos</b> entrenando. ¡Mantén la cadena viva!`
-    : streak===1
-      ? `Arrancaste tu racha <b>hoy</b>. Vuelve mañana para encadenar 2 días seguidos.`
-      : `Tu racha son los <b>días seguidos</b> que entrenas. Entrena hoy para encenderla 🔥`;
+  const falta=Math.max(0,ws.target-ws.thisWeekDays);
+  const msg = ws.weeks>=2
+    ? `Llevas <b>${ws.weeks} semanas seguidas</b> cumpliendo tu plan de ${ws.target} día${ws.target!==1?'s':''}. ¡Sigue así!${!ws.metThisWeek?` Esta semana vas <b>${ws.thisWeekDays}/${ws.target}</b>.`:''}`
+    : ws.weeks===1
+      ? `¡Semana cumplida! 🎉 Completa esta (${ws.thisWeekDays}/${ws.target}) para encadenar 2 seguidas.`
+      : ws.thisWeekDays>0
+        ? `Esta semana llevas <b>${ws.thisWeekDays} de ${ws.target}</b> día${ws.target!==1?'s':''}. Te ${falta===1?'falta':'faltan'} <b>${falta}</b> para encender tu racha 🔥`
+        : `Tu racha son las <b>semanas seguidas</b> cumpliendo tu meta de ${ws.target} día${ws.target!==1?'s':''}. ¡Esta semana cuenta!`;
   con.innerHTML=`<div class="card streak-card">
     <div class="streak-title">🔥 Tu constancia</div>
     <div class="streak-stats">
-      <div class="sstat sstat-g"><div class="sstat-n">${streak}</div><div class="sstat-l">Racha actual</div></div>
+      <div class="sstat sstat-g"><div class="sstat-n">${ws.weeks}</div><div class="sstat-l">Semanas seguidas</div></div>
       <div class="sstat sstat-y"><div class="sstat-n">${record}</div><div class="sstat-l">Tu récord</div></div>
-      <div class="sstat sstat-b"><div class="sstat-n">${cal.trainedDays}</div><div class="sstat-l">Este mes</div></div>
+      <div class="sstat sstat-b"><div class="sstat-n">${cal.trainedDays}</div><div class="sstat-l">Días este mes</div></div>
     </div>
     <div class="streak-msg">${msg}</div>
     <div class="cal-month cal-month-door" onclick="openMonthRoom('${clientId}',${cal.year},${cal.month})" title="Ver el resumen del mes">${mes.charAt(0).toUpperCase()+mes.slice(1)} <span class="cal-month-chev">›</span></div>
@@ -2306,7 +2315,7 @@ function openMonthRoom(clientId,year,month){
       <div class="adv-bal-legend"><span><i class="dot push"></i> Empuje · ${bal.push}</span><span><i class="dot pull"></i> Tracción · ${bal.pull}</span></div>
       <div class="adv-verdict" style="border-color:${vcol}55"><span>${bal.verdict==='equilibrado'?'✅':'⚖️'}</span><span>${esc(bal.msg)}</span></div></div>`;
   }
-  const summary=`Entrenaste <b>${ms.length} ${ms.length===1?'vez':'veces'}</b> en ${esc(cap)} (${adh.trainedDays} ${adh.trainedDays===1?'día':'días'}, ${adhPct}% de adherencia). Moviste <b>${vol.toLocaleString()} kg</b> en total${kcal?` y quemaste unas <b>${kcal.toLocaleString()} kcal</b>`:''}. ${streakRec>=2?`Tu mejor racha fue de <b>${streakRec} días seguidos</b> 🔥`:'¡A encadenar más días seguidos el próximo mes! 💪'}`;
+  const summary=`Entrenaste <b>${ms.length} ${ms.length===1?'vez':'veces'}</b> en ${esc(cap)} (${adh.trainedDays} ${adh.trainedDays===1?'día':'días'}, ${adhPct}% de adherencia). Moviste <b>${vol.toLocaleString()} kg</b> en total${kcal?` y quemaste unas <b>${kcal.toLocaleString()} kcal</b>`:''}. ${streakRec>=2?`Encadenaste hasta <b>${streakRec} días seguidos</b> 🔥`:'¡A sumar más días el próximo mes! 💪'}`;
 
   body.innerHTML=`
     <div class="sroom-hero exroom-hero">

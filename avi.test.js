@@ -32,6 +32,9 @@ const {
   daysSinceLastSession,
   workoutStreak,
   longestStreak,
+  planDays,
+  weekStreak,
+  longestWeekStreak,
   errReportGate,
   adherenceMonth,
   sortRoutinesByDay,
@@ -2131,6 +2134,62 @@ test('nutMealSplit: respeta el nº de comidas pedido y lo acota a 2–6', () => 
 test('nutMealSplit: sin kcal/proteína → ceros sin romper', () => {
   const s = nutMealSplit(0, 0, 4);
   assert.ok(s.every(m => m.kcal === 0 && m.prot === 0));
+});
+
+// ══════════════════════════════════════════════════════
+section('Racha semanal (planDays / weekStreak / longestWeekStreak)');
+
+// Ref: 2026-07-06 es LUNES. Semanas: 06-15 (L) … 06-21 (D) · 06-22…06-28 · 06-29…07-05 · 07-06…
+const WS_NOW = '2026-07-08T10:00:00'; // miércoles de la semana del 07-06
+const wsDay = d => ({ date: d + 'T07:00:00', doneSets: 3, totalVol: 100 });
+
+test('planDays: rutinas con día real mandan; fallback a client.days; clamp 1–7', () => {
+  assert.strictEqual(planDays({ days: 5, routines: [{ day: 'Lunes' }, { day: 'Jueves' }, { day: 'Libre' }] }), 2);
+  assert.strictEqual(planDays({ days: 4, routines: [] }), 4);
+  assert.strictEqual(planDays({}), 3);
+  assert.strictEqual(planDays({ days: 99 }), 7);
+});
+
+test('weekStreak: 3/sem con 2 semanas cumplidas + la actual a medias → racha 2, NO se rompe', () => {
+  const s = ['2026-06-22', '2026-06-24', '2026-06-26', '2026-06-29', '2026-07-01', '2026-07-03', '2026-07-06'].map(wsDay);
+  const r = weekStreak(s, 3, WS_NOW);
+  assert.strictEqual(r.weeks, 2);
+  assert.strictEqual(r.thisWeekDays, 1);
+  assert.strictEqual(r.metThisWeek, false);
+});
+
+test('weekStreak: la semana actual ya cumplida extiende la racha', () => {
+  const s = ['2026-06-29', '2026-07-01', '2026-07-03', '2026-07-06', '2026-07-07', '2026-07-08'].map(wsDay);
+  const r = weekStreak(s, 3, WS_NOW);
+  assert.strictEqual(r.weeks, 2);
+  assert.strictEqual(r.metThisWeek, true);
+});
+
+test('weekStreak: semana pasada fallada → racha 0 aunque haya historia vieja', () => {
+  const s = ['2026-06-15', '2026-06-17', '2026-06-19', '2026-06-29'].map(wsDay); // la del 06-29 solo tuvo 1 día
+  assert.strictEqual(weekStreak(s, 3, WS_NOW).weeks, 0);
+});
+
+test('weekStreak: varias sesiones el mismo día cuentan 1 día', () => {
+  const s = [wsDay('2026-06-29'), wsDay('2026-06-29'), wsDay('2026-07-01'), wsDay('2026-07-03')];
+  const r = weekStreak(s, 3, WS_NOW);
+  assert.strictEqual(r.weeks, 1); // 3 días únicos esa semana, no 4 sesiones
+});
+
+test('weekStreak: sin sesiones → todo en cero', () => {
+  const r = weekStreak([], 3, WS_NOW);
+  assert.strictEqual(r.weeks, 0);
+  assert.strictEqual(r.thisWeekDays, 0);
+});
+
+test('longestWeekStreak: récord histórico con hueco en el medio', () => {
+  const s = [
+    '2026-05-04', '2026-05-06', '2026-05-08',   // semana cumplida
+    '2026-05-11', '2026-05-13', '2026-05-15',   // cumplida (racha 2)
+    // 2026-05-18: semana fallada (0 días)
+    '2026-05-25', '2026-05-27', '2026-05-29',   // cumplida (racha 1)
+  ].map(wsDay);
+  assert.strictEqual(longestWeekStreak(s, 3), 2);
 });
 
 // ══════════════════════════════════════════════════════

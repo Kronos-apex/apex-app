@@ -954,6 +954,69 @@ function longestStreak(sessions) {
   return best;
 }
 
+// ── Racha SEMANAL (decisión Camilo 2026-07-06): semanas de calendario (Lunes→Domingo)
+// consecutivas CUMPLIENDO la meta de días del plan. La racha por días consecutivos
+// castigaba al que entrena 3/sem (nunca pasaba de 2). La semana EN CURSO no rompe la
+// racha mientras no termine; si ya cumplió, la extiende. Sin DST en Colombia (UTC-5
+// fijo) → aritmética de 7 días exacta. Puras/testeables.
+
+// Meta de días/semana del plan: rutinas con día real (≠ Libre) o client.days; clamp 1–7.
+function planDays(client) {
+  client = client || {};
+  const fromRoutines = (client.routines || []).filter(r => r && r.day && r.day !== 'Libre').length;
+  const d = fromRoutines || parseInt(client.days) || 3;
+  return Math.max(1, Math.min(7, d));
+}
+
+// Lunes 00:00 local de la semana de `d`, como timestamp.
+function weekStartTs(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); // 0 = lunes
+  return x.getTime();
+}
+
+// weekStreak(sessions, target, now) → { weeks, thisWeekDays, target, metThisWeek }
+// weeks = semanas consecutivas cumplidas terminando en la semana pasada, o en la
+// actual si ya cumplió. Varias sesiones el mismo día cuentan 1 día.
+function weekStreak(sessions, target, now) {
+  const tgt = Math.max(1, Math.min(7, parseInt(target) || 3));
+  const ref = now ? new Date(now) : new Date();
+  const byWeek = {};
+  (sessions || []).forEach(s => {
+    const d = new Date(s && s.date); if (isNaN(d.getTime())) return;
+    const wk = weekStartTs(d);
+    (byWeek[wk] = byWeek[wk] || new Set()).add(d.toDateString());
+  });
+  const WEEK = 7 * 86400000;
+  const curWk = weekStartTs(ref);
+  const thisWeekDays = (byWeek[curWk] || { size: 0 }).size;
+  const metThisWeek = thisWeekDays >= tgt;
+  let weeks = 0;
+  let cursor = metThisWeek ? curWk : curWk - WEEK;
+  while (byWeek[cursor] && byWeek[cursor].size >= tgt) { weeks++; cursor -= WEEK; }
+  return { weeks, thisWeekDays, target: tgt, metThisWeek };
+}
+
+// Récord histórico: la racha de semanas cumplidas MÁS LARGA de todo el historial.
+function longestWeekStreak(sessions, target) {
+  const tgt = Math.max(1, Math.min(7, parseInt(target) || 3));
+  const byWeek = {};
+  (sessions || []).forEach(s => {
+    const d = new Date(s && s.date); if (isNaN(d.getTime())) return;
+    const wk = weekStartTs(d);
+    (byWeek[wk] = byWeek[wk] || new Set()).add(d.toDateString());
+  });
+  const met = Object.keys(byWeek).filter(k => byWeek[k].size >= tgt).map(Number).sort((a, b) => a - b);
+  if (!met.length) return 0;
+  const WEEK = 7 * 86400000;
+  let best = 1, cur = 1;
+  for (let i = 1; i < met.length; i++) {
+    if (met[i] - met[i - 1] === WEEK) { cur++; if (cur > best) best = cur; }
+    else cur = 1;
+  }
+  return best;
+}
+
 // ── Calendario de adherencia del MES de `now`: filas de semanas (Lunes→Domingo);
 // cada celda { inMonth, day, count, trained, isToday, isFuture } + días entrenados del
 // mes. Para el heatmap Premium. Agrupa por día de calendario LOCAL. Pura/testeable.
@@ -1766,6 +1829,9 @@ if (typeof module !== 'undefined' && module.exports) {
     daysSinceLastSession,
     workoutStreak,
     longestStreak,
+    planDays,
+    weekStreak,
+    longestWeekStreak,
     adherenceMonth,
     dayOrder,
     sortRoutinesByDay,
