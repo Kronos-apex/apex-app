@@ -10,9 +10,22 @@ description: Despliega AVI a producción via Git. Úsalo cuando el usuario diga 
 **NO existe el deploy sin QA verde. Punto.**
 Si algún agente reporta 🔴, el deploy se aborta sin excepción, sin "es solo una cosa menor", sin "lo arreglamos después".
 
+## Gates mecánicos (corren SIEMPRE, además de los agentes)
+
+- `node avi.test.js` — suite completa verde (el hook la exige)
+- `python scripts/hooks/pre-commit` — los 11 checks (sintaxis, dupes, IDs, handlers, SB_KEYS,
+  catálogo, secretos, suite, audit, **coherencia `?v=NNN` ↔ `CACHE_NAME`**)
+- `node scripts/smoke.mjs` — la app arranca sin errores
+- Harness E2E de `scripts/e2e/` si el cambio toca flujo de entreno / timers / navegación / registro
+
+## PASO 0 — Bump de versión (si cambió JS/CSS/HTML)
+
+Subir JUNTOS `?v=NNN` en index.html (las ~10 referencias) y `CACHE_NAME='avi-vNNN'` en sw.js.
+Sin esto los celulares siguen sirviendo la versión vieja. El check 10 del hook lo bloquea si van desparejados.
+
 ---
 
-## Pipeline obligatorio (6 pasos en orden estricto)
+## Pipeline obligatorio (pasos en orden estricto)
 
 ### PASO 1 — Julián QA: Auditoría estática de código
 
@@ -107,8 +120,8 @@ Tested: ✅ Lucas QA — [feature principal] LISTO
 ### PASO 5 — Push
 
 ```bash
-git add index.html  # (y otros archivos modificados, nunca git add -A sin revisar)
-git commit -m "[mensaje descriptivo]"
+git add [archivos del cambio]  # revisar git status antes; nunca git add -A a ciegas
+git commit -m "[mensaje descriptivo]"   # mensajes multilínea: git commit -F <archivo>
 git push origin main
 ```
 
@@ -119,26 +132,30 @@ git push origin main
 
 ---
 
-### PASO 6 — Actualizar CLAUDE.md (obligatorio tras cada deploy)
+### PASO 6 — VERIFICAR producción (obligatorio — nunca "debería estar ya")
 
-Después del push, antes de confirmar al usuario, revisar si CLAUDE.md refleja el estado actual. Actualizar si alguno de estos cambió:
+```bash
+# bucle hasta ver la versión nueva (Pages tarda 30s-3min; a veces el paso deploy
+# falla flaky → relanzar con commit vacío)
+curl -s "https://kronos-apex.github.io/apex-app/index.html?nocache=$(date +%s)" | grep -o 'app-1-infra.js?v=[0-9]*'
+```
+
+Solo cuando el grep devuelva la versión nueva se puede decir "está en producción".
+
+### PASO 7 — Documentar (obligatorio tras cada deploy)
+
+- **Hito de sesión → `docs/bitacora.md`** (al tope de "Hitos por sesión", más reciente primero).
+  Los hitos NO van a CLAUDE.md desde 2026-07-07.
+- **CLAUDE.md** solo si cambió el CONTEXTO VIVO:
 
 | Qué revisar | Cuándo actualizar |
 |---|---|
-| Número de líneas / funciones / ejercicios | Si el diff fue significativo (>50 líneas) |
 | Schema de datos (`DB`, cliente, sesión) | Si se añadió/cambió algún campo |
 | `SB_KEYS` | Si se añadió/eliminó alguna clave |
 | Funciones clave documentadas | Si se creó una función importante nueva |
-| Roadmap — versión actual | Si la feature era del roadmap, marcarla ✅ |
-| Tokens CSS | Si se añadió un token nuevo |
-| Estado de seguridad | Si se corrigió un punto de seguridad |
-| Versión del producto | Si el conjunto de cambios justifica bump de versión |
-
-**Cómo actualizar:**
-1. Leer las secciones relevantes de CLAUDE.md
-2. Editar solo lo que cambió — no reescribir secciones sanas
-3. Actualizar la línea `*Última actualización:*` al pie del archivo
-4. Incluir CLAUDE.md en el mismo commit del deploy O en un commit `docs:` inmediatamente después
+| GOTCHAS VIGENTES | Si la sesión dejó una lección que no expira |
+| ROADMAP → Backlog vigente | Item completado ✅ o item nuevo |
+| Footer `*Última actualización:*` | Versión avi-vNNN + conteo de suite |
 
 **Si no hubo cambio relevante para documentar:** confirmarlo explícitamente — "CLAUDE.md revisado, sin cambios necesarios."
 
@@ -147,12 +164,13 @@ Después de todo, confirmar al usuario:
 ```
 🚀 Deploy completado
 
+✅ Suite + hook : [N]/[N] · 11/11
 ✅ Julián QA  : [X]/[Y] checks OK
 ✅ Lucas QA   : [feature] — LISTO
 ✅ Commit     : [tipo]: [resumen]
 ✅ Push       : origin/main → github.com/Kronos-apex/apex-app
-✅ CLAUDE.md  : [actualizado con X / sin cambios necesarios]
-⏱️  GitHub Pages propaga en ~30 segundos
+✅ Producción : curl confirma ?v=NNN en Pages
+✅ Bitácora   : hito registrado en docs/bitacora.md
 ```
 
 ---

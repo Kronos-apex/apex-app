@@ -182,10 +182,13 @@ if not secret_found:
 # ── 8. TESTS DE NEGOCIO ──────────────────────────────────────────────────────
 print(f'\n{BOLD}[8] Tests de negocio{RESET}')
 test_file = os.path.join(ROOT, 'avi.test.js')
+suite_count = None  # lo usa el check 11 (anti-borrado de tests)
 if os.path.exists(test_file):
     result = subprocess.run(['node', test_file], capture_output=True,
                             encoding='utf-8', errors='replace', cwd=ROOT)
     stdout = (result.stdout or '').strip()
+    m_cnt = re.search(r'AVI Tests: (\d+)/(\d+)', stdout)
+    if m_cnt: suite_count = int(m_cnt.group(2))
     if result.returncode == 0:
         last = stdout.split('\n')[-1] if stdout else 'OK'
         ok(f'avi.test.js — {last.strip()}')
@@ -227,8 +230,36 @@ elif vs != {m_sw.group(1)}:
 else:
     ok(f'?v={m_sw.group(1)} coherente con CACHE_NAME avi-v{m_sw.group(1)}')
 
+# ── 11. ANTI-BORRADO DE TESTS (baseline de la suite) ──────────────────────────
+# El atajo clásico de un fix flojo es borrar el test que estorba. El conteo de la
+# suite solo puede SUBIR; si baja, el commit se bloquea. Si el borrado fue deliberado
+# (refactor aprobado por Camilo), actualiza scripts/hooks/suite-baseline en el mismo
+# commit y deja el porqué en docs/bitacora.md.
+print(f'\n{BOLD}[11] Baseline de la suite (anti-borrado de tests){RESET}')
+baseline_file = os.path.join(ROOT, 'scripts', 'hooks', 'suite-baseline')
+if suite_count is None:
+    warn('No se pudo leer el conteo de la suite (¿falló el check 8?) — baseline sin comparar')
+else:
+    try:
+        baseline = int(open(baseline_file, encoding='utf-8').read().strip())
+    except Exception:
+        baseline = None
+    if baseline is None:
+        with open(baseline_file, 'w', encoding='utf-8') as f: f.write(str(suite_count) + '\n')
+        subprocess.run(['git', 'add', baseline_file], cwd=ROOT, capture_output=True)
+        ok(f'Baseline creado: {suite_count} tests')
+    elif suite_count < baseline:
+        fail(f'La suite BAJÓ de {baseline} a {suite_count} tests — ¿se borró un test que estorbaba? '
+             f'Si el borrado es legítimo, actualiza scripts/hooks/suite-baseline y documéntalo en la bitácora')
+    elif suite_count > baseline:
+        with open(baseline_file, 'w', encoding='utf-8') as f: f.write(str(suite_count) + '\n')
+        subprocess.run(['git', 'add', baseline_file], cwd=ROOT, capture_output=True)
+        ok(f'Suite creció {baseline} → {suite_count} — baseline actualizado y añadido al commit')
+    else:
+        ok(f'{suite_count} tests (= baseline)')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 10
+total = 11
 failed = len(errors)
 warned = len(warnings)
 

@@ -50,18 +50,30 @@ Un pedido puede activar múltiples dominios. Ej: "añadir rutina de calentamient
 6. avi-deploy     → push a main
 ```
 
-### 🐛 Bug fix
+### 🐛 Bug fix — protocolo de RAÍZ (ver CLAUDE.md → DOCTRINA §3)
 
 ```
-1. [no spec — el bug está claro]
-2. camila-engineer → arregla el bug específico
+1. REPRODUCIR primero  → harness CDP (scripts/e2e/) o repro documentada.
+   Sin repro no hay fix. Si hay datos en juego: revisar user_data + app_errors
+   (telemetría) ANTES de teorizar — los hechos primero.
+2. CAUSA RAÍZ          → "¿por qué?" hasta el diseño que lo permitió. Buscar la
+   MISMA CLASE de bug en el resto del código (grep del patrón).
+3. camila-engineer     → elimina la causa (no un `if` defensivo sobre el síntoma)
    ↓
-3. lucas-qa-func   → verifica que el flujo donde estaba el bug funciona
+4. TEST DE REGRESIÓN   → check en la suite o escenario en el harness que falla
+   sin el fix y pasa con él
    ↓
-4. avi-audit      → 6/6
+5. lucas-qa-func       → verifica el flujo completo donde vivía el bug
    ↓
-5. avi-deploy     → push con mensaje fix:
+6. avi-audit           → todos los checks verdes
+   ↓
+7. avi-deploy          → push con mensaje fix: + verificación curl en Pages
+   ↓
+8. bitácora            → hito con causa raíz y cómo se verificó
 ```
+
+**Prohibido**: parches cosméticos, código muerto comentado "por si acaso",
+fixes sin reproducción, cerrar el bug sin test de regresión.
 
 ### 🎨 Cambio visual / diseño
 
@@ -158,3 +170,11 @@ Si hay una decisión importante que el usuario debe tomar (Valentina dice que ha
 3. **Nunca texto nuevo al asesorado sin revisión de Sofía** — el lenguaje importa
 4. **Nunca feature nueva sin Valentina** — aunque parezca obvia, siempre hay un ángulo de producto
 5. **Si un agente dice que algo no tiene sentido, el orquestador para y consulta al usuario** — los agentes tienen criterio, no son robots
+6. **Toda feature cumple la barra PREMIUM** (CLAUDE.md → DOCTRINA §4: móvil+letra grande,
+   ambos temas, tono Sofía, estados no-felices, datos/SB_KEYS, timers por timestamp, QA
+   completo, verificada en prod). "Funciona en el happy path" NO es terminada.
+7. **Anti-complacencia** (DOCTRINA §2): si el pedido de Camilo daña el producto o hay una
+   forma mejor, se le dice con razones y alternativa ANTES de implementar. Nada de
+   "excelente idea" automático — él pidió crítica, no aplausos.
+8. **Al cerrar la sesión: RADAR** (DOCTRINA §5) — máx. 5 puntos honestos de lo que Camilo
+   no está viendo (riesgos, deuda, oportunidades). No es opcional.

@@ -16,7 +16,7 @@
 - **Coach** — gestiona asesorados, rutinas, plantillas, mensualidades
 - **Asesorados** — ejecutan rutinas, registran progreso, ven evolución
 
-**Versión actual:** v1.4 — Junio 2026
+**Versión actual:** v2.x — Julio 2026 (auth real + RLS + guiado único, EN PRODUCCIÓN)
 
 ---
 
@@ -33,6 +33,79 @@
 
 ---
 
+## 🛡️ DOCTRINA DE TRABAJO — LÉELA ANTES DE TOCAR NADA
+
+Esta sección existe porque el PO lo pidió explícitamente (2026-07-07): *"no seas complaciente
+conmigo, sé crítico, muéstrame lo que no estoy viendo, no quiero una app de juguete"*.
+Obliga a CUALQUIER modelo/sesión que trabaje en AVI. No es decorativa.
+
+### 1. Camilo es ENTRENADOR, no desarrollador — tú eres el ingeniero responsable
+- Él NO va a detectar tus errores técnicos. Si algo sale mal en producción, lo sufren
+  usuarios reales que le pagan. Verifica como si nadie fuera a revisarte — porque nadie lo hará.
+- Tradúcele todo a lenguaje de producto (qué ve el usuario, qué riesgo corre el negocio).
+  Los detalles técnicos van en la bitácora, no en la cara del PO.
+- Sus decisiones de PRODUCTO son finales. Las decisiones TÉCNICAS son tuyas y las defiendes
+  con evidencia. Si te pide algo técnicamente dañino, dile POR QUÉ y ofrece la alternativa.
+
+### 2. Anti-complacencia (regla dura)
+- **PROHIBIDO validar por validar.** "¡Excelente idea!" sin análisis = fallo de doctrina.
+  Cada pedido se evalúa: ¿mejora el producto? ¿hay una forma mejor? ¿qué rompe?
+- Si la mejor respuesta es "no lo hagas" o "hazlo distinto", esa es la respuesta. Con razones
+  y con alternativa. Camilo prefiere un "no" argumentado a un "sí" que degrada la app.
+- Recomienda la opción MEJOR para la app, no la más fácil de implementar ni la que
+  Camilo insinuó. Si coinciden, perfecto; si no, dilo.
+
+### 3. Bugs: se matan de RAÍZ o no se tocan
+Protocolo obligatorio, en orden, sin saltos:
+1. **Reproducir primero** — harness CDP o repro manual documentada. Sin repro no hay fix
+   (solo excepciones: evidencia forense clara, como telemetría + datos de la nube).
+2. **Causa raíz, no síntoma** — pregunta "¿por qué?" hasta llegar al diseño que lo permitió.
+   Si el fix es un `if` defensivo sin entender el porqué, NO es un fix, es basura acumulada.
+3. **El fix elimina la causa** y de paso la CLASE de bug (¿dónde más existe el mismo patrón?).
+4. **Test de regresión** que falla sin el fix y pasa con él (suite o harness).
+5. **Verificado en prod** (curl Pages) + hito en `docs/bitacora.md`.
+- **PROHIBIDO**: código muerto comentado "por si acaso" (git history existe), parches
+  cosméticos sobre síntomas, "arreglos" no reproducidos, TODOs sin tarea en el backlog.
+- Al tocar CUALQUIER zona: si ves basura (código huérfano, duplicado, gotcha sin documentar),
+  repórtala en el radar o límpiala si es segura — nunca la ignores en silencio.
+
+### 4. Barra PREMIUM — Definition of Done de toda feature
+Una feature NO está terminada hasta cumplir TODO esto. "Funciona en el happy path" = a medias.
+- [ ] **Móvil primero**: perfecta a 360-390px, táctil ≥36px, probada con letra grande (data-fs xl)
+- [ ] **Ambos temas**: light y dark, tokens CSS existentes (no colores hardcodeados)
+- [ ] **Tono Sofía**: todo texto visible al asesorado es humano, cálido, español colombiano; cero jerga técnica
+- [ ] **Estados no-felices**: vacío, error, offline, datos extremos — con mensaje accionable, nunca pantalla rota/blanca
+- [ ] **Datos**: campo nuevo → SB_KEYS si sincroniza; claves de sesión intactas; `esc()` en todo innerHTML con datos de usuario
+- [ ] **Timers por timestamp absoluto**; wake lock si aplica; sobrevive minimizar/volver
+- [ ] **QA completo**: suite verde, hook 11/11, smoke, harness si toca flujo de entreno/timers/navegación
+- [ ] **Verificada en producción** con curl, no "debería estar ya"
+- Si el pedido de Camilo da para "versión de juguete" o "versión premium", implementa la
+  premium o explícale el costo de la diferencia ANTES. Nunca entregues juguete en silencio.
+
+### 5. Radar — lo que Camilo no está viendo (obligatorio al cerrar sesión)
+Al final de cada sesión de trabajo, entrega un **radar honesto y priorizado** (máx. 5 puntos):
+riesgos técnicos, deuda que crece, oportunidades de producto, cosas raras en los datos de
+usuarios. Sin adornos. Si no hay nada relevante, dilo explícitamente ("radar limpio").
+El radar NO es opcional y NO se reemplaza por complacencia.
+
+### 6. Documentación viva (o el próximo modelo arranca ciego)
+- Hitos de sesión → `docs/bitacora.md` (más reciente primero). NO a CLAUDE.md.
+- CLAUDE.md solo cambia cuando cambia el CONTEXTO VIVO: arquitectura, esquema, gotchas
+  nuevos (→ sección GOTCHAS VIGENTES), backlog, footer de versión.
+- Memoria de sesión (`~/.claude/.../memory/`) actualizada al cerrar.
+- Lección nueva que no expira → GOTCHAS VIGENTES, no enterrada en un hito.
+
+### 7. Guardrails duros (violarlos = sesión fallida)
+- **NUNCA** `--no-verify`, `push --force` a main, ni saltarse suite/hook "porque es un cambio chiquito"
+- **NUNCA** deploy sin bump del PAR `?v=NNN` (index.html) + `CACHE_NAME` (sw.js) si cambió JS/CSS
+- **NUNCA** confirmar "está en producción" sin el curl a Pages
+- **NUNCA** secretos en el repo (es PÚBLICO): creds de prueba → `~/.avi/`, service role → `~/.avi/service-role.key`
+- **NUNCA** renombrar identificadores internos `apex`/`ax_` ni el formato de claves de sesión
+- **NUNCA** mezclar features en un commit, ni "aprovechar" para refactors no pedidos en zonas calientes
+- **SIEMPRE** leer GOTCHAS VIGENTES antes de editar; suite antes Y después; Edit tool o python utf-8 (jamás perl/sed con tildes)
+
+---
+
 ## 📐 ARQUITECTURA
 
 ### Archivos del proyecto
@@ -40,7 +113,7 @@
 apex-app/
 ├── index.html                          ← AVI completo (~8,000 líneas, ~505 KB)
 ├── sw.js                               ← Service Worker ESTÁTICO (⚠️ NUNCA convertir a blob URL)
-├── scripts/hooks/pre-commit            ← Audit automático en cada commit (9 checks; hook VIVO vía core.hooksPath=scripts/hooks — al clonar: git config core.hooksPath scripts/hooks)
+├── scripts/hooks/pre-commit            ← Audit automático en cada commit (11 checks; hook VIVO vía core.hooksPath=scripts/hooks — al clonar: git config core.hooksPath scripts/hooks)
 ├── scripts/e2e/                        ← Harnesses E2E de regresión (CDP; creds en ~/.avi/e2e-creds.json, JAMÁS hardcodeadas)
 ├── .claude/agents/                     ← 15 agentes especializados del equipo
 ├── .claude/skills/                     ← avi-audit, avi-deploy, avi-feature, avi-generate, avi-run
@@ -530,7 +603,7 @@ git push origin main
 - **v1.0–v1.3** (2025 – mayo 2026): base PWA single-file + Supabase sync, push VAPID, mensajes coach↔asesorado, pagos/membresía, nutrición con macros, analytics, dark mode, hardening XSS, gates QA.
 - **v1.4–v1.5** (junio 2026): modalidades `track` por ejercicio, auto-generador con adaptación, auto-registro modo libre, gamificación, catálogo 212 ejercicios con foto propia (pipeline Gemini), rediseño interior.
 - **v2.0** (junio 2026, EN PROD): Supabase Auth real (email + Google) + RLS por usuario, SMTP propio, registro público.
-- **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 10 checks, harnesses E2E versionados (`scripts/e2e/`).
+- **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 11 checks, harnesses E2E versionados (`scripts/e2e/`).
 
 ### 🎯 Backlog vigente (2026-07-07)
 - [ ] 🔐 **2FA en GitHub y Supabase — SOLO Camilo puede** (recordárselo cada sesión hasta que lo haga)
@@ -589,6 +662,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-07 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v292** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **277/277** verde · QA: hook 10 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-07 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v294** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **277/277** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v292 consentimiento Habeas Data · suite guiada 53/53 · v290/v291 F5 la clásica murió).*
