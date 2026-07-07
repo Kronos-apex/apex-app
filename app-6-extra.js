@@ -893,6 +893,17 @@ function gmShowRest(secs, nextStep, opts){
   if(lblEl) lblEl.textContent = opts.label || 'descanso';
   const C=439.8;
   overlay.classList.remove('hidden','gm-rest-paused');
+  _gmRemoveRestMini(); // descanso nuevo siempre arranca a pantalla completa
+  // Tocar A UN LADO (fuera de los botones) minimiza a banner (pedido Camilo 2026-07-06).
+  // Se cablea UNA vez; en isométrico (GM.holding) no aplica — cancelar es explícito.
+  if(!overlay._miniWired){
+    overlay._miniWired=true;
+    overlay.addEventListener('click',e=>{
+      if(GM.holding)return;
+      if(e.target&&e.target.closest&&e.target.closest('button'))return;
+      gmMinimizeRest();
+    });
+  }
   secEl.textContent=secs;
   arc.style.transition='none';
   arc.style.strokeDashoffset='0';
@@ -913,11 +924,13 @@ function gmShowRest(secs, nextStep, opts){
     left=Math.max(0,Math.round((GM.restEndAt-Date.now())/1000));
     secEl.textContent=left;secEl.classList.remove('tick');void secEl.offsetWidth;secEl.classList.add('tick');
     arc.style.strokeDashoffset=C*((GM.restTotal-left)/GM.restTotal);
+    const _ms=document.getElementById('gm-rest-mini-sec'); if(_ms)_ms.textContent=left; // banner minimizado en vivo
     if(left>0&&left<=5)playRestTick();
     if(left<=0){
       clearInterval(GM.restTimer);GM.restTimer=null;
       overlay.classList.remove('gm-rest-paused');
       overlay.classList.add('hidden');
+      _gmRemoveRestMini();
       playRestEndBeep();
       a11ySay('Descanso terminado. Empieza la siguiente serie.');
       // Ejercicio NUEVO (primera serie) → tarjeta de respiración; misma serie → flash "¡VAMOS!"
@@ -960,6 +973,7 @@ function gmRestAdd15(){
 function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
   GM.restPaused=false;
+  _gmRemoveRestMini();
   const _ov=document.getElementById('gm-rest-overlay');
   _ov.classList.remove('gm-rest-paused');
   _ov.classList.add('hidden');
@@ -971,6 +985,42 @@ function gmSkipRest(){
   const next=GM.steps[GM.currentStep];
   if(next && next.si===0) gmShowStartCard(next.ex);
   if(next){ setTimeout(()=>{const _r=document.getElementById(`gm-set-${next.ei}-${next.si}`);const inp=_r&&_r.querySelector('.gm-sinput[data-field]');if(inp)inp.focus();},200); }
+}
+
+// ── Descanso MINIMIZABLE (pedido Camilo 2026-07-06): tocar a un lado o dar atrás
+// esconde la pantalla completa y deja el conteo en un banner pequeño flotante (como
+// el modo clásico) para poder ver el siguiente ejercicio, chatear, etc. El timer NO
+// se toca. Tocar el banner re-abre la pantalla; "Saltar ⏭" salta el descanso normal.
+// El isométrico (GM.holding) NO se minimiza: ahí cancelar es una acción explícita (v245).
+function gmMinimizeRest(){
+  if(GM.holding||!GM.restTimer)return;
+  const ov=document.getElementById('gm-rest-overlay');
+  if(ov)ov.classList.add('hidden');
+  _gmEnsureRestMini();
+  a11ySay('Descanso minimizado. El conteo sigue.');
+}
+function gmExpandRest(){
+  if(!GM.restTimer)return;
+  _gmRemoveRestMini();
+  const ov=document.getElementById('gm-rest-overlay');
+  if(ov)ov.classList.remove('hidden');
+}
+function _gmEnsureRestMini(){
+  if(document.getElementById('gm-rest-mini'))return;
+  const el=document.createElement('div');
+  el.id='gm-rest-mini';el.className='gm-rest-mini';el.setAttribute('role','timer');
+  el.setAttribute('aria-label','Descanso en curso. Toca para verlo en grande.');
+  const left=GM.restPaused?(GM.restFrozen||0):Math.max(0,Math.round(((GM.restEndAt||Date.now())-Date.now())/1000));
+  el.innerHTML=`<b id="gm-rest-mini-sec">${left}</b><small>descanso</small><button onclick="event.stopPropagation();gmSkipRest()" aria-label="Saltar el descanso">Saltar ⏭</button>`;
+  el.onclick=()=>gmExpandRest();
+  // Watchdog: si el descanso murió por CUALQUIER camino de teardown (cerrar guiado,
+  // reset de sesión, etc.), el banner se retira solo — nunca queda huérfano congelado.
+  el._watch=setInterval(()=>{ if(!GM.restTimer)_gmRemoveRestMini(); },1000);
+  document.body.appendChild(el);
+}
+function _gmRemoveRestMini(){
+  const el=document.getElementById('gm-rest-mini');
+  if(el){ if(el._watch)clearInterval(el._watch); el.remove(); }
 }
 
 function gmShowGoFlash(){
