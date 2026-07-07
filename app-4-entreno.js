@@ -345,47 +345,12 @@ function renderClientProfile(client){
   renderMedidasClient(client.id);
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
-  renderGuidedViewToggle(client);
   renderAccountActions(client);
   applyProfileDisclosure(client.id);
 }
 
-// Interruptor de la vista de "Hoy" (unificación guiado F2/F4). Se muestra SIEMPRE en el Perfil
-// (con ON → "Volver a la clásica"; con OFF → "Activar vista guiada"). Antes lo escondía salvo
-// COACH_SELF, pero eso impedía a Camilo encontrarlo en su celular → se quitó esa restricción.
-// F4 (2026-07-04): el guiado es el DEFAULT → este enlace es el kill-switch del usuario para
-// volver a la clásica (se deja visible ≥2 semanas). El flag es por dispositivo, no sincroniza.
-function renderGuidedViewToggle(client){
-  const el=document.getElementById('cn-guided-card'); if(!el)return;
-  const on=(typeof uiGuided==='function'&&uiGuided());
-  el.innerHTML=`<div class="card" style="margin-bottom:12px">
-    <div class="ch"><div class="ctitle">🧭 Vista de entrenamiento</div></div>
-    <div class="cb">
-      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">${on
-        ? 'Estás usando la <b>vista guiada</b> (nueva): tu "Hoy" te lleva ejercicio por ejercicio. Se recuerda en este dispositivo.'
-        : 'Prueba la <b>vista guiada</b> (nueva): tu "Hoy" te llevará ejercicio por ejercicio, con descansos y respiración. Se recuerda en este dispositivo.'}</div>
-      ${on
-        ? `<button class="btn bsm" onclick="switchToClassicView()" style="background:transparent;color:var(--t2);border:1.5px solid var(--br2);font-weight:700">↩ Volver a la vista clásica</button>`
-        : `<button class="btn bp bsm" onclick="switchToGuidedView()">🧭 Activar vista guiada</button>`}
-    </div>
-  </div>`;
-}
-function switchToGuidedView(){ _switchTodayView(true); }
-function switchToClassicView(){ _switchTodayView(false); }
-// Cambia la vista de "Hoy" (guiada/clásica) y LLEVA al usuario a "Hoy" para que vea el cambio
-// al instante. El interruptor vive en Perfil, así que antes el cambio quedaba listo pero no se
-// veía hasta salir/entrar de la app (reporte de Camilo 2026-07-03). Además cnTodayGuard solo
-// re-dibuja "Hoy" al cambiar el DÍA → reseteamos CUR.todayRenderedDay para saltar la guarda.
-function _switchTodayView(on){
-  setUiGuided(on);
-  toast(on?'🧭 Vista guiada activada':'↩ Vista clásica restaurada');
-  CUR.todayRenderedDay=null; // salta la guarda cnTodayGuard → "Hoy" se re-renderiza
-  const c=DB.clients.find(x=>x.id===CUR.clientId);
-  if(!c)return;
-  // Navegar a "Hoy" (re-renderiza por la guarda reseteada). Fallback: render directo.
-  if(typeof cnTab==='function'){ cnTab('cn-today', typeof _cnTabEl==='function'?_cnTabEl('cn-today'):null); }
-  else { renderClientToday(c); }
-}
+// (F5a 2026-07-06: el interruptor guiada/clásica y el flag ax_ui_guided se RETIRARON —
+// el guiado es la única vista de "Hoy". Decisión de Camilo, validada en su celular.)
 
 // Tarjeta "Cuenta" → eliminar cuenta (derecho de supresión / requisito Play Store).
 // El borrado real lo hace la Edge Function delete-account (service role): borra
@@ -586,7 +551,7 @@ function renderClientToday(client, overrideRoutine){
   // NO re-renderizar "Hoy" — el poll en vivo de 15s (que refresca cuando el coach cambia el
   // plan) no debe cortar la serie en curso. El refresco entra en el próximo render sin timer.
   // Reorden/ánimo NO pasan por aquí para re-render (llaman gmRebuild aparte), así que siguen ágiles.
-  if(typeof uiGuided==='function' && uiGuided() && typeof _gmIsEmbedded==='function'
+  if(typeof _gmIsEmbedded==='function'
      && _gmIsEmbedded() && typeof _gmLiveTimer==='function' && _gmLiveTimer()) return;
   // F2: devolver #guided-mode a su sitio de overlay ANTES de tocar con.innerHTML (si estaba
   // embebido, es hijo de `con` y un innerHTML='' lo borraría del DOM). Cada render decide
@@ -626,9 +591,10 @@ function renderClientToday(client, overrideRoutine){
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
   prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos (común a clásica y guiado)
-  // F2/F4: con la vista guiada ON (DEFAULT desde F4), "Hoy" ES el guiado embebido (no el
-  // hero+lista clásicos). Quien eligió "Volver a la clásica" (flag '0') cae a la lista de abajo.
-  if(typeof uiGuided==='function' && uiGuided() && typeof openGuidedEmbedded==='function'){
+  // F5a (2026-07-06): el guiado embebido ES la única vista de "Hoy" — el flag ax_ui_guided
+  // y el interruptor se retiraron. La lista clásica de abajo queda SOLO como paracaídas del
+  // try/catch hasta F5b (retiro definitivo del código clásico).
+  if(typeof openGuidedEmbedded==='function'){
     CUR.activeRoutine=todayR;
     con.innerHTML='';
     // Blindaje (F4): openGuidedEmbedded devuelve false si no puede embeber, PERO si algo lanza

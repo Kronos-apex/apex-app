@@ -153,7 +153,7 @@ function openGuidedMode(){
 }
 
 // ══════════ GUIADO EMBEBIDO como pantalla de "Hoy" (unificación F2 sub-2) ══════════
-// Con el flag ax_ui_guided ON, "Hoy" ES el guiado embebido en #cn-today-body (no overlay).
+// "Hoy" ES el guiado embebido en #cn-today-body (única vista desde F5a 2026-07-06).
 // Reubica el MISMO #guided-mode (reusa topbar/body/footer/rest-overlay ya probados) dentro del
 // tab y le quita position:fixed vía la clase gm-embedded. No hay ✕, no bloquea el scroll del
 // body, no muestra tarjeta de inicio. El camino del overlay (openGuidedMode) NO se usa con el
