@@ -618,6 +618,9 @@ git push origin main
 - [ ] `completedAt` en sesiones de historial (`startedAt` ya existe)
 - [ ] Supabase Dashboard → Auth → leaked-password protection (Camilo)
 - [ ] Limpieza: `openGuidedMode` quedó sin callers tras F5 — borrarlo junto con la rama overlay de `closeGuidedMode`/`_aviCloseTopOverlay`
+- [ ] 🧯 SIMULACRO DE RESTORE (auditoría 2026-07-07): hay backup doble pero NUNCA se ensayó restaurar un snapshot — un backup sin restore probado no es un backup. Ensayar: snapshot → user_data en tabla/proyecto de prueba.
+- [ ] 🔍 Re-barrido XSS de los ~190 `innerHTML` (el último pase completo fue v1.3; la app creció mucho desde entonces)
+- [ ] 📱 Cobertura iOS/Safari: hay al menos un usuario real en iPhone (telemetría 2026-07-06) y todas las pruebas son Chrome/Android
 
 ### 🚀 v2.0+ — Escala
 - [~] Multi-coach → EN CURSO vía AVI GYM (proyecto separado, `Desktop/AVI-GYM`)
