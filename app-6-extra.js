@@ -1151,9 +1151,13 @@ function checkAndShowCongrats(routine){
   let done=0,totalVol=0;
   (routine.exercises||[]).forEach((ex,ei)=>{const sets=parseInt(ex.sets)||3;for(let si=0;si<sets;si++){if(isDone(routine.id,ei,si)){done++;totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);}}});
   if(done>=total&&total>0){
-    const newPRs=checkAndUpdatePRs(routine);
-    renderPRsInProfile(CUR.clientId);
-    renderClientExProgress(CUR.clientId);
+    // Mismo blindaje que updateClientProgress (caso Claudia 2026-07-07): la celebración
+    // no puede morir por un throw en los pasos intermedios.
+    let newPRs=[];
+    try{ newPRs=checkAndUpdatePRs(routine)||[]; }
+    catch(e){ warn('AVI: checkAndUpdatePRs falló:',e&&e.message); try{ _logAppError('error','wf-prs: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
+    try{ renderPRsInProfile(CUR.clientId); renderClientExProgress(CUR.clientId); }
+    catch(e){ warn('AVI: refresh de PRs/progreso falló:',e&&e.message); try{ _logAppError('error','wf-refresh: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
     showWorkoutFinish(routine,{done,total,totalVol,newPRs});
   }
 }

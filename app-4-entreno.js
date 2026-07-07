@@ -1199,10 +1199,14 @@ function updateClientProgress(routine){
   // retiraron en F5b; el progreso visible lo pinta el guiado con gmUpdateProgress.)
   if(done===total&&total>0){
     saveSessionToHistory(routine,totalVol,done);
-    const newPRs=checkAndUpdatePRs(routine);
-    // Refresh PRs and exercise progress in profile if visible
-    renderPRsInProfile(CUR.clientId);
-    renderClientExProgress(CUR.clientId);
+    // Blindaje (caso Claudia 2026-07-07: historial guardado 19/19 pero SIN pantalla de fin):
+    // si algo entre el guardado y la celebración lanza, la celebración NO puede morir en
+    // silencio — se atrapa, se reporta a app_errors y la pantalla sale igual.
+    let newPRs=[];
+    try{ newPRs=checkAndUpdatePRs(routine)||[]; }
+    catch(e){ warn('AVI: checkAndUpdatePRs falló:',e&&e.message); try{ _logAppError('error','wf-prs: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
+    try{ renderPRsInProfile(CUR.clientId); renderClientExProgress(CUR.clientId); }
+    catch(e){ warn('AVI: refresh de PRs/progreso falló:',e&&e.message); try{ _logAppError('error','wf-refresh: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
     showWorkoutFinish(routine,{done,total,totalVol,newPRs});
   } else if(done>0){
     // Auto-guardado PARCIAL: en cuanto marca la 1ª serie, el entreno queda registrado
@@ -1310,7 +1314,9 @@ function showWorkoutFinish(routine,stats){
   if(!routine)return;
   const key=routine.id+'|'+new Date().toDateString();
   if(_wfShownFor===key)return;
-  _wfShownFor=key;
+  // OJO: el guard se fija AL FINAL (junto al classList.add). Si se fijara aquí y algo
+  // lanzara a mitad de la función, el día entero quedaría sin celebración aunque el
+  // usuario re-marque (caso Claudia 2026-07-07: guardado OK, pantalla nunca salió).
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   const name=((c&&c.name)||'').trim().split(/\s+/)[0]||'';
   const done=(stats&&stats.done)||0, total=(stats&&stats.total)||0;
@@ -1367,6 +1373,7 @@ function showWorkoutFinish(routine,stats){
   document.getElementById('wf-faces').innerHTML=WF_FEELINGS.map(f=>`<button type="button" class="wf-face${f.v===curFeel?' sel':''}" onclick="wfRate(${f.v})">${f.e}</button>`).join('');
   document.getElementById('wf-feeling-lbl').textContent=curFeel?feelingLabel(curFeel):'';
   document.getElementById('workout-finish').classList.add('on');
+  _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
   document.body.style.overflow='hidden';
   wfConfetti();
 }
