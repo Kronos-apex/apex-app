@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=290">
+<link rel="stylesheet" href="styles.css?v=291">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -567,15 +567,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <span class="qw-entry-tx"><b>¿Hoy quieres algo distinto?</b><small>Entrenamientos rápidos — HIIT, abdomen, movilidad…</small></span>
         <span class="qw-entry-chev">›</span>
       </button>
-      <div id="rest-banner" class="restbanner hide">
-        <div class="restnum" id="rb-num">60</div>
-        <div class="restinfo"><div class="resttitle">⏱ Descansando</div><div class="restsub" id="rb-sub">—</div></div>
-        <div class="rest-actions">
-          <button id="rb-pause" class="rest-ctl-btn" onclick="restPause()" aria-label="Pausar descanso">⏸</button>
-          <button class="rest-ctl-btn" onclick="restAdd15()" aria-label="Añadir 15 segundos al descanso">+15s</button>
-          <button class="restskip" onclick="skipRest()">Saltar ⏩</button>
-        </div>
-      </div>
+      <!-- (#rest-banner clásico RETIRADO en F5b 2026-07-06 — el guiado usa gm-rest-overlay + #gm-rest-mini) -->
       <div id="pr-banners"></div>
       <div id="cn-today-upsell"></div>
       <div id="cn-today-body"></div>
@@ -1052,18 +1044,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=290"></script>
-<script src="muscle-map.js?v=290"></script>
-<script src="exercise-muscles.js?v=290"></script>
+<script src="avi-core.js?v=291"></script>
+<script src="muscle-map.js?v=291"></script>
+<script src="exercise-muscles.js?v=291"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=290"></script>
-<script src="app-2-login.js?v=290"></script>
-<script src="app-3-coach.js?v=290"></script>
-<script src="app-4-entreno.js?v=290"></script>
-<script src="app-5-salud.js?v=290"></script>
-<script src="app-6-extra.js?v=290"></script>
+<script src="app-1-infra.js?v=291"></script>
+<script src="app-2-login.js?v=291"></script>
+<script src="app-3-coach.js?v=291"></script>
+<script src="app-4-entreno.js?v=291"></script>
+<script src="app-5-salud.js?v=291"></script>
+<script src="app-6-extra.js?v=291"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

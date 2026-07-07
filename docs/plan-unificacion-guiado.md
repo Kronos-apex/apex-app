@@ -368,10 +368,24 @@ Para cada uno:
   ⚠️ GOTCHA de proceso: v265 tardó ~22 min en propagar en GitHub Pages (build atascado tras 4
   deploys seguidos) → SIEMPRE verificar en prod con `curl .../sw.js` y `raw.githubusercontent` tras
   el push; si no propaga, un commit extra re-lanza el build.
-- **SIGUIENTE → F5 (retiro de la clásica), SOLO con F4 estable ≥2 semanas y CERO reportes.**
-  Borrar `renderClientExList`/`buildHiitCard`/etc., SOLO lo huérfano, grep de cada función antes;
-  el coach reusa helpers como `updateClientProgress`/`_sessionExercisesHTML`/`renderWarmup`/
-  `buildWarmupSection` → esos se QUEDAN (los usa el guiado).
+- **✅✅ F5 COMPLETA (2026-07-06, avi-v290 F5a + avi-v291 F5b).** Camilo waiveó el gate de 2
+  semanas (validó guiado + descanso escondible + cardio en su celular; además ya existe la
+  telemetría app_errors en prod, que no existía al escribir este plan). **F5a (v290):** retiro
+  del flag `ax_ui_guided` y todos sus caminos (uiGuided/setUiGuided/?uig/interruptor del Perfil).
+  **F5b (v291):** borrado del código clásico huérfano — renderClientExList+updateBlockHeader,
+  buildHiitCard/startHiit/stopHiit, HOLD/startHoldTimer/cancelHold/_endHoldUI, setLogInputsHTML/
+  setDoneToast/setLogHeadHTML, buildWarmupSection/toggleExWarm, buildDropRow, rest-banner completo
+  (funciones + #rest-banner + estado restInt/_restVis) y ~70 líneas de CSS muerto. renderClientToday
+  sin clásica: si el embebido lanza → tarjeta de error con Recargar (nunca blanco). resetSession
+  ya no toca DOM clásico; logout para los timers del GUIADO. SE QUEDARON (verificado por grep +
+  suite + E2E): renderWarmup, todayMoveEx/todaySubstitute, finishSessionEarly/resetSession,
+  attachDropSwipe + .setrow-wrap/.drop-reveal, pickMood/mood*Html, _suggestKg, updateClientProgress/
+  updateVolSummary (null-guarded), startRoutineNow, exSetsCellHTML, .wohero (el header del guiado
+  la usa), .cex-reorder (botonera del guiado), @keyframes checkDone. Verificación: 274/274, smoke,
+  _verify-f5a (login real), _repro-back-v243 17/17, _verify-restmini 8/8, _verify-cardio 8/8,
+  _verify-gamif, _verify-streak. ⚠️ Deuda: `_repro-plancha.mjs` (68 checks) quedó ROTO — sus
+  escenarios guiados S5-S22 se portan en la tarea #19; cobertura interina = harnesses de arriba +
+  telemetría en prod.
 
 ## 4. Riesgos señalados (dicho con franqueza, luego se ejecuta lo decidido)
 

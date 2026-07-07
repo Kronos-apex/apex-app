@@ -1271,27 +1271,13 @@ function obFinish(){
 }
 
 // ── First-exercise tooltip ──
-// Enseña a tocar el ❓ (video del ejercicio). En la vista guiada (default desde F4) el tip vive
-// DENTRO del guiado embebido y suma la respiración (💨), que es la ventaja del guiado (P13);
-// lo pinta gmShowExTip. En la clásica va sobre #cex-list.
+// Enseña las ayudas del guiado (❓ video + 💨 respiración). Vive DENTRO del guiado
+// embebido (gmShowExTip). (La variante clásica sobre #cex-list se retiró en F5b.)
 function _exTipClientId(){ return _obClientId || (typeof CUR!=='undefined' && CUR.clientId) || ''; }
 function showExTooltip(){
   const cid=_exTipClientId();
   if(cid && localStorage.getItem('apex_tip_done_' + cid)) return; // ya lo cerró
-  // Vista guiada (default): dentro del guiado, con el ❓ + la respiración.
-  if(typeof _gmIsEmbedded==='function' && _gmIsEmbedded()){ gmShowExTip(); return; }
-  // Vista clásica: sobre la lista de ejercicios.
-  const list = document.getElementById('cex-list');
-  if(!list || !list.firstChild) return;
-  const tip = document.createElement('div');
-  tip.className = 'ex-tooltip';
-  tip.id = 'ex-first-tip';
-  tip.innerHTML = `
-    <div class="ex-tooltip-icon">👆</div>
-    <div>Toca el <strong>❓</strong> junto al nombre de cualquier ejercicio para ver cómo hacerlo en video.</div>
-    <button class="ex-tooltip-close" onclick="dismissExTooltip()">×</button>
-  `;
-  list.insertBefore(tip, list.firstChild);
+  if(typeof _gmIsEmbedded==='function' && _gmIsEmbedded()) gmShowExTip();
 }
 
 // Tooltip del MODO GUIADO (pantalla default desde F4): vive en #gm-body, sobre la primera tarjeta

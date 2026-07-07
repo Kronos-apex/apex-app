@@ -321,7 +321,16 @@ async function doLogin(){
 }
 
 function logout(){
-  if(typeof _stopRest==='function')_stopRest(); else if(restInt){clearInterval(restInt);restInt=null;}
+  // F5b: parar los timers del GUIADO al salir (el rest-banner clásico ya no existe).
+  try{
+    if(typeof GM!=='undefined'){
+      if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
+      if(GM.hiit){clearInterval(GM.hiit);GM.hiit=null;}
+      if(GM.holding&&typeof _gmEndHoldUI==='function')_gmEndHoldUI();
+    }
+    if(typeof _gmRemoveRestMini==='function')_gmRemoveRestMini();
+    if(typeof relWake==='function')relWake();
+  }catch(_e){}
   stopMsgPolling();
   // Si estábamos en modo auth: cerrar la sesión Supabase y restaurar el estado legacy
   // en memoria (la próxima cuenta legacy necesita el DB global, no el del usuario auth).

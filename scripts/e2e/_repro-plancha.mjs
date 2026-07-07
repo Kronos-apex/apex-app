@@ -1,3 +1,6 @@
+// *** ROTO desde F5 (2026-07-06): setUiGuided/uiGuided y la vista clasica ya no existen. ***
+// *** Los escenarios GUIADOS (S5-S22) se portaran a un harness nuevo (tarea #19). ***
+// *** NO correr contra el codigo actual; referencia historica de cobertura. ***
 // Repro bug Camilo 2026-07-02: plancha (isométrico) en día cardio/HIIT — al oprimir ▶
 // "aparece como si ya hubiera terminado". Barrido: isométrico + HIIT × clásica + guiado.
 // Basado en _repro-back-v243.mjs. Sirve el repo local + Chrome headless por CDP (salta SW).

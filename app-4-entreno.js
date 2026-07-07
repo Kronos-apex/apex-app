@@ -56,7 +56,6 @@ function initClientView(client){
   document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));document.querySelector('.cntab').classList.add('on');
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.getElementById('cn-today').classList.add('on');
   navReset('cn-today'); // botón atrás: inicio = Hoy, sin pasos previos
-  document.getElementById('rest-banner').classList.add('hide');
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
   // Fase 2 (perf móvil): en el login solo pintamos lo VISIBLE ("Hoy") + el badge de mensajes.
   // Perfil, Historial, Rutinas y Mensajes se pintan en cnTab al abrir su pestaña (lazy),
@@ -590,29 +589,20 @@ function renderClientToday(client, overrideRoutine){
   const _mood=_moodOK?getTodayMood(client.id):'';
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
-  prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos (común a clásica y guiado)
-  // F5a (2026-07-06): el guiado embebido ES la única vista de "Hoy" — el flag ax_ui_guided
-  // y el interruptor se retiraron. La lista clásica de abajo queda SOLO como paracaídas del
-  // try/catch hasta F5b (retiro definitivo del código clásico).
-  if(typeof openGuidedEmbedded==='function'){
-    CUR.activeRoutine=todayR;
-    con.innerHTML='';
-    // Blindaje (F4): openGuidedEmbedded devuelve false si no puede embeber, PERO si algo lanza
-    // (p.ej. index.html cacheado por un SW viejo sin #gm-body) el throw se propagaría con "Hoy"
-    // ya vaciado (innerHTML='') → pantalla en blanco. El try/catch garantiza caer a la vista
-    // clásica de abajo (repinta con completo) ante CUALQUIER throw. Ningún usuario sin entrenar.
-    try{ if(openGuidedEmbedded(todayR)) return; }
-    catch(err){ console.error('[AVI] guiado embebido lanzó; cae a la vista clásica', err); }
-    // si no pudo embeber (falsy o throw), cae a la vista clásica de abajo
-  }
-  const checkinHtml=!_moodOK?'':(_mood?moodBannerHtml(_adapted.adapt):moodChooserHtml(client));
-  const totalSets=(todayR.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-  const overrideBanner=isOverride?`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span>${autoR?`<button onclick="startRoutineNow('')" style="font-size:11px;font-weight:700;color:var(--bl);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Volver a la de hoy</button>`:'Hoy no hay rutina asignada'}</div>`:'';
-  const dayLabel=isOverride?`📋 RUTINA SELECCIONADA`:`⚡ ENTRENAMIENTO DE HOY · ${today.toUpperCase()}`;
-  con.innerHTML=`${checkinHtml}${overrideBanner}<div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(todayR.name)}</div><div class="wopills"><span class="wopill">${(todayR.exercises||[]).length} ejercicios</span><span class="wopill">${totalSets} series</span>${todayR.restSec?`<span class="wopill">⏱ ${todayR.restSec}s descanso</span>`:''}</div><button onclick="openGuidedMode()" style="margin-top:12px;width:100%;padding:13px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px">▶ Empezar — ejercicio a ejercicio</button><div id="wohero-prog-wrap" style="margin-top:11px;display:flex;align-items:center;gap:9px"><div style="flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden"><div id="wohero-fill" style="height:100%;background:white;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.22,.68,0,1.2)"></div></div><div id="wohero-num" style="font-size:11px;font-weight:700;opacity:.75;white-space:nowrap;font-family:'JetBrains Mono',monospace">0/${totalSets} series</div></div></div>${todayR.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.35);border-radius:var(--r);padding:11px 14px;font-size:13px;color:var(--t1);margin-bottom:12px;line-height:1.5">💡 <strong style="color:#F2C94C">Nota:</strong> ${esc(todayR.note)}</div>`:''}${todayR.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--gt);line-height:1.6"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(todayR.why)}</div>`:''}<div id="wu-wrap" style="margin-bottom:12px"></div><div id="cex-list"></div><div style="margin-top:7px;padding:13px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;color:var(--t2)">Progreso de hoy</div><div style="display:flex;align-items:center;gap:8px"><button onclick="resetSession()" style="font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--br2);background:var(--bg);color:var(--t3);cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s" onmouseover="this.style.color='var(--rd)';this.style.borderColor='var(--rd)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--br2)'">↺ Reiniciar</button><div style="font-size:22px;font-weight:800;color:var(--g)" id="prog-num">0/${totalSets}</div></div></div><div class="pbar" style="margin-bottom:6px"><div class="pfill" style="width:0%;background:var(--g)" id="prog-fill"></div></div><div style="font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right" id="prog-vol"></div></div><button onclick="finishSessionEarly()" style="margin-top:10px;width:100%;padding:12px;background:var(--gl);color:var(--gt);border:1.5px solid var(--g2);border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">✓ Finalizar entrenamiento</button>`;
+  prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos
+  // F5b (2026-07-06): la lista clásica se RETIRÓ. El guiado embebido es la única vista;
+  // si no puede embeber (throw por SW/index desincronizado), tarjeta de error con
+  // Reintentar — NUNCA pantalla en blanco (blindaje F4, adaptado).
   CUR.activeRoutine=todayR;
-  renderWarmup(todayR.exercises||[]);
-  renderClientExList(todayR);
+  con.innerHTML='';
+  try{ if(typeof openGuidedEmbedded==='function' && openGuidedEmbedded(todayR)) return; }
+  catch(err){ console.error('[AVI] el guiado embebido lanzó', err); }
+  con.innerHTML=`<div class="card" style="text-align:center;padding:26px 18px">
+    <div style="font-size:32px;margin-bottom:10px">🔄</div>
+    <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">No pudimos cargar tu entrenamiento</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Suele resolverse recargando la app. Tus datos están a salvo.</div>
+    <button class="btn bp bsm" onclick="location.reload()">🔄 Recargar la app</button>
+  </div>`;
 }
 
 // ── Check-in diario "¿cómo te sientes hoy?" ──
@@ -843,13 +833,7 @@ function exSetsCellHTML(e){
   return `${esc(String(e.sets||0))}×${esc(String(e.reps||0))}<small>series × reps</small>`;
 }
 
-function setLogHeadHTML(track,lastre){
-  if(track==='reps'&&!lastre)return `<div class="slh">SET</div><div class="slh" style="grid-column:2/4">REPS</div><div></div>`;
-  if(track==='reps')return `<div class="slh">SET</div><div class="slh">LASTRE</div><div class="slh">REPS</div><div></div>`;
-  if(track==='tiempo')return `<div class="slh">SET</div><div class="slh">SEG</div><div class="slh">⏱</div><div></div>`;
-  if(track==='cardio')return `<div class="slh">SET</div><div class="slh">MIN</div><div class="slh">KM</div><div></div>`;
-  return `<div class="slh">SET</div><div class="slh">KG</div><div class="slh">REPS</div><div></div>`;
-}
+// (setLogHeadHTML — cabecera de la tabla clásica — RETIRADA en F5b 2026-07-06)
 
 // ── Peso sugerido por PR (Epley, funciones en avi-core) ──
 // Solo modalidad de peso, con PR previo del MISMO ejercicio y fuera de la fase de
@@ -868,84 +852,31 @@ function _suggestKg(ex){
 function _warmupKg(ex){
   return warmupLoad(_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
 }
-// Estado de "mostrar/ocultar calentamiento" por ejercicio (default: OCULTO). Se colapsa por
-// defecto para que cada ejercicio de "Hoy" no quede tan alto (auditoría visual 2026-06-22);
-// el encabezado "🔥 Sets de calentamiento [Mostrar]" sigue visible → un toque lo despliega.
-// OJO nombre único: ya existe toggleWarmup() (colapsa el bloque de calentamiento global);
-// reusar ese nombre lo pisaba y el botón Ocultar no respondía. Por eso exWarm*.
+// Estado de "mostrar/ocultar calentamiento" por ejercicio (default: OCULTO). El toggle
+// del guiado es gmToggleExWarm (app-6); comparte esta clave wshow_. (toggleExWarm y
+// buildWarmupSection — la sección clásica — se RETIRARON en F5b 2026-07-06.)
 function exWarmShown(routine,ei){return localStorage.getItem(`wshow_${routine.id}_${ei}`)==='1';}
-function toggleExWarm(routine,ei){localStorage.setItem(`wshow_${routine.id}_${ei}`,exWarmShown(routine,ei)?'0':'1');renderClientExList(routine);}
 // Índice de log del set de calentamiento. Token 'w0' (string) → los bucles de
 // volumen/récords/historial recorren si ENTEROS 0..sets-1, así que NUNCA lo tocan.
 const WARM_SI='w0';
-// Construye la sección de calentamiento (solo modalidad de peso). No cuenta para
-// volumen ni récords: vive en claves de log aparte (ei,'w0').
-function buildWarmupSection(body,routine,ex,ei){
-  const sug=_warmupKg(ex);
-  const shown=exWarmShown(routine,ei);
-  const done=isDone(routine.id,ei,WARM_SI);
-  const g=f=>getLog(routine.id,ei,WARM_SI,f);
-  const sec=document.createElement('div');
-  const head=document.createElement('div');
-  head.className='train-sec-label';
-  head.innerHTML=`<span>🔥 Sets de calentamiento</span>`;
-  const tg=document.createElement('button');
-  tg.type='button';tg.className='warmup-toggle';tg.textContent=shown?'Ocultar':'Mostrar';
-  tg.onclick=()=>toggleExWarm(routine,ei);
-  head.appendChild(tg);
-  sec.appendChild(head);
-  if(shown){
-    const row=document.createElement('div');
-    row.className=`set-log-row warmup-row${done?' sdone':''}`;
-    row.id=`warmrow_${ei}`;
-    row.innerHTML=`<div class="set-num warm ${done?'sdone':''}">🔥</div>`+
-      `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${WARM_SI}','kg',this.value)">`+
-      `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="12" value="${g('reps')||''}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${WARM_SI}','reps',this.value)">`+
-      `<div class="scheck warm ${done?'sdone':''}" role="button" aria-label="Marcar calentamiento">✓</div>`;
-    const chk=row.querySelector('.scheck');
-    chk.onclick=(e)=>{
-      e.stopPropagation();
-      const was=chk.classList.contains('sdone');
-      const inps=row.querySelectorAll('.sinput[data-field]');
-      if(!was){
-        inps.forEach(inp=>setLog(routine.id,ei,WARM_SI,inp.dataset.field,inp.value));
-        setDone(routine.id,ei,WARM_SI,true);
-        if(navigator.vibrate)navigator.vibrate(30);
-        row.classList.add('sdone');chk.classList.add('sdone');row.querySelector('.set-num').classList.add('sdone');
-        inps.forEach(inp=>inp.readOnly=true);
-        toast('🔥 Calentamiento listo');
-      } else {
-        setDone(routine.id,ei,WARM_SI,false);
-        row.classList.remove('sdone');chk.classList.remove('sdone');row.querySelector('.set-num').classList.remove('sdone');
-        inps.forEach(inp=>inp.readOnly=false);
-      }
-    };
-    sec.appendChild(row);
-    const hint=document.createElement('div');
-    hint.className='warmup-hint';
-    hint.textContent='Peso ligero para preparar el músculo · no cuenta en tu volumen';
-    sec.appendChild(hint);
-  }
-  body.appendChild(sec);
-}
 
 // ── Dropsets (uno por serie, opcional) ── peso reducido tras la serie, SIN descanso.
 // Se ALTERNA deslizando la serie a la DERECHA (attachDropSwipe): añade o quita. Token 'd'+si →
 // fuera de los bucles enteros de volumen/récords/historial (que recorren si ENTERO).
 function dropTok(si){return 'd'+si;}
 function dropSetOn(routine,ei,si){return localStorage.getItem(`drop_${routine.id}_${ei}_${si}`)==='1';}
-// `rerender` opcional: la tarjeta clásica re-pinta su lista (default); el modo guiado pasa
-// gmRender para que la fila 🔻 aparezca/desaparezca ahí. Misma config (clave drop_) para ambos.
+// `rerender`: el guiado pasa gmRender para que la fila 🔻 aparezca/desaparezca.
+// (El default clásico renderClientExList se retiró en F5b — sin rerender, no-op.)
 function addDropSet(routine,ei,si,rerender){
   localStorage.setItem(`drop_${routine.id}_${ei}_${si}`,'1');
   if(navigator.vibrate)navigator.vibrate(25);
   toast(`🔻 Dropset añadido a la serie ${si+1}`);
-  (rerender||(()=>renderClientExList(routine)))();
+  (rerender||(()=>{}))();
 }
 function removeDropSet(routine,ei,si,rerender){
   localStorage.removeItem(`drop_${routine.id}_${ei}_${si}`);
   const tok=dropTok(si); ['kg','reps'].forEach(f=>setLog(routine.id,ei,tok,f,'')); setDone(routine.id,ei,tok,false);
-  (rerender||(()=>renderClientExList(routine)))();
+  (rerender||(()=>{}))();
 }
 // Si una adaptación reduce las series (check-in "Cansado"/"Con dolor", o el coach recorta el
 // plan), un dropset configurado en una serie que ya NO existe quedaba huérfano e invisible.
@@ -990,44 +921,8 @@ function clearWarmDropDone(routine){
 function _dropKg(routine,ex,ei,si){
   return dropLoad(parseFloat(getLog(routine.id,ei,si,'kg'))||_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
 }
-// Fila de dropset bajo su serie (si). Azul · peso ~70% · reps al fallo · ✕ para quitar.
-function buildDropRow(body,routine,ex,ei,si){
-  const tok=dropTok(si);
-  const done=isDone(routine.id,ei,tok);
-  const g=f=>getLog(routine.id,ei,tok,f);
-  const sug=_dropKg(routine,ex,ei,si);
-  const row=document.createElement('div');
-  row.className=`set-log-row dropset-row${done?' sdone':''}`;
-  row.id=`droprow_${ei}_${si}`;
-  row.innerHTML=`<div class="set-num drop ${done?'sdone':''}">DROP</div>`+
-    `<input class="sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${tok}','kg',this.value)">`+
-    `<input class="sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="al fallo" value="${g('reps')}" ${done?'readonly':''} oninput="setLog('${routine.id}',${ei},'${tok}','reps',this.value)">`+
-    `<div class="scheck drop ${done?'sdone':''}" role="button" aria-label="Marcar dropset">✓</div>`;
-  const chk=row.querySelector('.scheck');
-  chk.onclick=(e)=>{
-    e.stopPropagation();
-    const was=chk.classList.contains('sdone');
-    const inps=row.querySelectorAll('.sinput[data-field]');
-    if(!was){
-      inps.forEach(inp=>setLog(routine.id,ei,tok,inp.dataset.field,inp.value));
-      setDone(routine.id,ei,tok,true);
-      if(navigator.vibrate)navigator.vibrate(30);
-      row.classList.add('sdone');chk.classList.add('sdone');row.querySelector('.set-num').classList.add('sdone');
-      inps.forEach(inp=>inp.readOnly=true);
-      toast('🔻 Dropset al fallo, ¡bien!');
-    } else {
-      setDone(routine.id,ei,tok,false);
-      row.classList.remove('sdone');chk.classList.remove('sdone');row.querySelector('.set-num').classList.remove('sdone');
-      inps.forEach(inp=>inp.readOnly=false);
-    }
-  };
-  body.appendChild(row);
-  const hint=document.createElement('div');
-  hint.className='warmup-hint';
-  hint.innerHTML=`Dropset de la serie ${si+1} · baja el peso y sigue sin descanso. <button type="button" class="drop-rm">Quitar</button>`;
-  hint.querySelector('.drop-rm').onclick=()=>removeDropSet(routine,ei,si);
-  body.appendChild(hint);
-}
+// (buildDropRow — la fila de dropset de la tarjeta clásica — RETIRADA en F5b 2026-07-06;
+// el guiado pinta la suya vía gmAuxRowHTML con las MISMAS claves d<si>.)
 // Gesto: deslizar una serie (peso) a la DERECHA ALTERNA su dropset (añade si no hay,
 // quita si ya hay). Solo actúa si el arrastre es claramente horizontal (no interfiere
 // con scroll ni con tipear). La etiqueta del reveal dice "Quitar" cuando ya está activo.
@@ -1061,142 +956,18 @@ function attachDropSwipe(row,routine,ei,si,rerender){
   row.addEventListener('touchcancel',end);
 }
 
-function setLogInputsHTML(track,routine,ex,ei,si,done,lastre){
-  const ro=done?'readonly':'';
-  const g=f=>getLog(routine.id,ei,si,f);
-  // inputmode: en iOS type=number puede abrir teclado sin punto decimal; decimal lo garantiza para kg/km.
-  const inp=(f,attrs,ph,val,span)=>`<input class="sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${span?'style="grid-column:2/4"':''} ${attrs} placeholder="${ph}" value="${val}" ${ro} oninput="setLog('${routine.id}',${ei},${si},'${f}',this.value)">`;
-  if(track==='reps'){
-    if(lastre)return inp('kg','type="number" step="0.5" min="0"','lastre',g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
-    return inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,true);
-  }
-  if(track==='tiempo')
-    return inp('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),false)+
-      `<button type="button" class="timer-go" aria-label="Iniciar cronómetro de la serie" style="padding:7px;border:1.5px solid var(--g2);border-radius:6px;background:transparent;color:var(--g2);cursor:pointer;font-size:14px">▶</button>`;
-  if(track==='cardio')
-    return inp('min','type="number" min="0"','min',g('min')||ex.reps,false)+inp('dist','type="number" min="0" step="0.1"','km',g('dist'),false);
-  const sug=_suggestKg(ex);
-  return inp('kg','type="number" step="0.5" min="0"',ex.defaultKg||(sug?'~'+sug:'kg'),g('kg'),false)+inp('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,false);
-}
-
-function setDoneToast(track,ex,si,inputs){
-  const v=f=>{const i=[...inputs].find(x=>x.dataset.field===f);return i?i.value:'';};
-  if(track==='peso_reps'||(track==='reps'&&v('kg'))){const vol=parseFloat(v('kg')||0)*parseFloat(v('reps')||0);return vol>0?`✅ Serie ${si+1} — ${v('kg')}kg × ${v('reps')} = ${Math.round(vol)}kg`:`✅ Serie ${si+1} completada`;}
-  if(track==='reps')return `✅ Serie ${si+1} — ${v('reps')} reps`;
-  if(track==='tiempo')return `✅ Serie ${si+1} — ${v('secs')}s`;
-  if(track==='cardio')return `✅ ${v('min')} min${v('dist')?` · ${v('dist')} km`:''}`;
-  return `✅ Serie ${si+1} completada`;
-}
+// (setLogInputsHTML y setDoneToast — inputs/toast de la tarjeta clásica — RETIRADOS en
+// F5b 2026-07-06; el guiado usa gmSetCellsHTML y sus propios toasts.)
 
 // ── Wake Lock: mantener pantalla encendida durante timers ──
 let aviWakeLock=null;
 async function reqWake(){try{if('wakeLock'in navigator)aviWakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
 function relWake(){try{if(aviWakeLock){aviWakeLock.release();aviWakeLock=null;}}catch(e){}}
 
-// ── Timer de intervalos HIIT ──
-let HIIT={int:null};
-function buildHiitCard(body,routine,ex,ei,sets){
-  const cfg=hiitCfg(ex);
-  const done=Array.from({length:sets},(_,si)=>isDone(routine.id,ei,si)).filter(Boolean).length;
-  const card=document.createElement('div');
-  card.style.cssText='padding:16px;text-align:center';
-  card.innerHTML=`
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace">${cfg.work}s 🔥 · ${cfg.rest}s 😮‍💨 · ${sets} rondas</div>
-    <div id="hiit-display_${ei}" style="font-size:46px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1">${done>=sets?'✓':cfg.work}</div>
-    <div id="hiit-phase_${ei}" style="font-size:14px;font-weight:700;margin:4px 0;color:var(--t3)">${done>=sets?'¡Completado!':'Listo para empezar'}</div>
-    <div id="hiit-rounds_${ei}" style="font-size:12px;color:var(--t2);margin-bottom:12px">Ronda ${Math.min(done+1,sets)} de ${sets}</div>
-    <button class="btn bp" id="hiit-start_${ei}" style="width:100%">${done>=sets?'▶ Reiniciar':'▶ Iniciar HIIT'}</button>`;
-  body.appendChild(card);
-  card.querySelector(`#hiit-start_${ei}`).onclick=()=>startHiit(routine,ei,sets,cfg.work,cfg.rest);
-}
-function stopHiit(reset){
-  if(HIIT.int){clearInterval(HIIT.int);HIIT.int=null;}
-  relWake();
-  if(reset&&CUR.activeRoutine)renderClientExList(CUR.activeRoutine);
-}
-function startHiit(routine,ei,rounds,work,rest){
-  stopHiit();
-  for(let s=0;s<rounds;s++)setDone(routine.id,ei,s,false);
-  reqWake();
-  const disp=document.getElementById(`hiit-display_${ei}`);
-  const phaseEl=document.getElementById(`hiit-phase_${ei}`);
-  const roundsEl=document.getElementById(`hiit-rounds_${ei}`);
-  const startBtn=document.getElementById(`hiit-start_${ei}`);
-  if(!disp)return;
-  if(startBtn){startBtn.textContent='⏹ Detener';startBtn.onclick=()=>stopHiit(true);}
-  let round=0,phase='work',left=work;
-  let phaseEnd=Date.now()+work*1000; // fin de la fase actual por timestamp (robusto a iOS bloqueado)
-  const paint=()=>{
-    disp.textContent=String(left).padStart(2,'0');
-    phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
-    phaseEl.style.color=phase==='work'?'var(--rd)':'var(--g2)';
-    roundsEl.textContent=`Ronda ${Math.min(round+1,rounds)} de ${rounds}`;
-  };
-  paint();playRestTick();
-  updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
-  HIIT={int:setInterval(()=>{
-    left=Math.max(0,Math.round((phaseEnd-Date.now())/1000));
-    if(left>0&&left<=3)playRestTick();
-    if(left<=0){
-      if(phase==='work'){
-        setDone(routine.id,ei,round,true);round++;
-        updateBlockHeader(routine,ei,rounds);updateClientProgress(routine);
-        if(round>=rounds){disp.textContent='✓';phaseEl.textContent='¡Completado!';phaseEl.style.color='var(--g)';roundsEl.textContent=`${rounds}/${rounds} rondas`;clearInterval(HIIT.int);HIIT.int=null;relWake();playRestEndBeep();if(startBtn){startBtn.textContent='▶ Reiniciar';startBtn.onclick=()=>startHiit(routine,ei,rounds,work,rest);}return;}
-        phase='rest';left=rest;phaseEnd=Date.now()+rest*1000;playRestEndBeep();
-      } else {phase='work';left=work;phaseEnd=Date.now()+work*1000;playRestEndBeep();}
-    }
-    paint();
-  },1000)};
-}
-
-// ── Cronómetro de cuenta regresiva para isométricos (reusa el rest-banner) ──
-// El estado "aguantando" debe distinguirse del descanso (reporte Camilo 2026-07-02:
-// el banner verde de siempre parecía "serie ya hecha"): banner ÁMBAR con "¡Aguanta!",
-// fila resaltada y el ▶ convertido en cuenta regresiva. Tocar el ▶ de nuevo o
-// "⏹ Cancelar" detiene SIN marcar; al llegar a 0 la serie se marca sola (chk.click).
-let HOLD=null; // {ei,si} de la serie isométrica en curso (solo tarjeta clásica)
-function _endHoldUI(){
-  if(!HOLD)return;
-  const row=document.getElementById(`setrow_${HOLD.ei}_${HOLD.si}`);
-  if(row){row.classList.remove('holding');const go=row.querySelector('.timer-go');if(go)go.textContent='▶';}
-  const banner=document.getElementById('rest-banner');
-  if(banner){banner.classList.remove('hold');const sk=banner.querySelector('.restskip');if(sk)sk.textContent='Saltar ⏩';const title=banner.querySelector('.resttitle');if(title)title.textContent='⏱ Descansando';}
-  HOLD=null;
-}
-function cancelHold(){
-  if(!HOLD)return;
-  _stopRest();
-  _endHoldUI();
-  document.getElementById('rest-banner').classList.add('hide');
-  relWake();
-  toast('⏹ Cronómetro cancelado — la serie no se marcó');
-}
-function startHoldTimer(secs,ei,si,routine){
-  if(!secs||secs<1){toast('⏱ Pon los segundos a aguantar y vuelve a tocar ▶');return;}
-  // _stopRest (no solo clearInterval): desmonta también el listener _restVis del descanso
-  // previo — si quedara vivo, al volver de segundo plano su tick() viejo mataría este hold.
-  _stopRest();
-  _endHoldUI(); // si había otro isométrico corriendo, restaurar su fila
-  reqWake();
-  HOLD={ei,si,t0:Date.now()}; // t0: ignora un 2º tap inmediato (doble-tap accidental ≠ cancelar)
-  const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');const title=banner.querySelector('.resttitle');
-  banner.classList.remove('hide','paused');banner.classList.add('hold');
-  if(title)title.textContent='💪 ¡Aguanta la posición!';
-  sub.textContent=`Serie ${si+1} · se marca sola al llegar a 0`;
-  const sk=banner.querySelector('.restskip');if(sk)sk.textContent='⏹ Cancelar';
-  // La fila y su ▶ muestran el conteo; se re-consultan por id en cada tick porque un
-  // re-render (poll, mood) reconstruye la lista y dejaría referencias muertas.
-  const paintGo=v=>{const r=document.getElementById(`setrow_${ei}_${si}`);if(!r)return;r.classList.add('holding');const go=r.querySelector('.timer-go');if(go)go.textContent=v;};
-  paintGo(secs+'s');
-  const endAt=Date.now()+secs*1000; // conteo por timestamp absoluto (robusto a iOS bloqueado)
-  let left=secs;num.textContent=left;
-  restInt=setInterval(()=>{
-    left=Math.max(0,Math.round((endAt-Date.now())/1000));num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
-    paintGo(left+'s');
-    if(left>0&&left<=3)playRestTick();
-    if(left<=0){clearInterval(restInt);restInt=null;_endHoldUI();banner.classList.add('hide');relWake();playRestEndBeep();const chk=document.getElementById(`chk_${ei}_${si}`);if(chk&&!chk.classList.contains('sdone'))chk.click();}
-  },1000);
-}
+// (El HIIT clásico — buildHiitCard/startHiit/stopHiit — y el cronómetro isométrico
+// clásico — HOLD/_endHoldUI/cancelHold/startHoldTimer — se RETIRARON en F5b 2026-07-06.
+// El guiado tiene los suyos: gmRenderHiit/gmStartHiit/gmStopHiit y gmHoldTimer, con la
+// misma semántica v245: ámbar, cancelar honesto, marca sola al llegar a 0.)
 
 // ── Sincroniza campos de config del formulario de ejercicio según el tipo ──
 function exFormSync(){
@@ -1229,9 +1000,8 @@ function resetSession(){
   clearWarmDropDone(routine);
   localStorage.removeItem(`session_date_${routine.id}`);
   startNewSession(routine.id); // reiniciar = sesión NUEVA → no pisa la entrada de historial ya guardada
-  _endHoldUI();
-  if(restInt){clearInterval(restInt);restInt=null;document.getElementById('rest-banner').classList.add('hide');}
-  renderClientExList(routine);updateClientProgress(routine);toast('↺ Sesión reiniciada');
+  // (F5b: la limpieza de timers/overlay del guiado la hace gmResetSession, que es quien llama.)
+  updateClientProgress(routine);toast('↺ Sesión reiniciada');
   return true;
 }
 
@@ -1383,180 +1153,8 @@ function offerKeepReorder(){
   CUR.todayDirty=false; CUR.todayWorking=null;
 }
 
-function renderClientExList(routine){
-  // El reset diario ya NO vive aquí: corre en prepareTodaySession al entrar a "Hoy"
-  // (renderClientToday/openGuidedMode), para que el guiado no dependa de este render.
-  const con=document.getElementById('cex-list');if(!con)return;
-  con.innerHTML='';
-  const _nEx=(routine.exercises||[]).length;
-  (routine.exercises||[]).forEach((ex,ei)=>{
-    const sets=parseInt(ex.sets)||3;
-    const color=MC[ex.muscle]||'#ccc';
-    const doneCount=Array.from({length:sets},(_,si)=>isDone(routine.id,ei,si)).filter(Boolean).length;
-    const allDone=doneCount===sets;
-    const track=exTrack(ex);
-
-    // Block wrapper
-    const block=document.createElement('div');
-    block.className=`cex-block${allDone?' all-done':''} open`;
-    block.id=`block_${ei}`;
-
-    // Header
-    const header=document.createElement('div');
-    header.className='cex-block-header';
-    const muscleLabel = ex.muscleLabel || ex.muscle;
-    const _img = exImgSrc(ex);
-    const _lead = _img
-      ? `<div class="cex-thumb"><img src="${_img}" alt="" loading="lazy" decoding="async"><span class="cex-thumb-badge">${allDone?'✓':ei+1}</span></div>`
-      : `<div class="cex-block-num">${allDone?'✓':ei+1}</div>`;
-    header.innerHTML=`
-      ${_lead}
-      <div class="cex-block-info" style="min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <div class="cex-block-name">${esc(ex.name)}</div>
-          <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo hacerlo" onclick="event.stopPropagation();openExDetail('${ex.id}')">❓</button>
-        </div>
-        <div class="cex-block-meta">${esc(muscleLabel)} · ${exMetaText(ex,sets,track)}${(()=>{const _bi=bisetInfo(routine.exercises,ei);return _bi.biset?` · <span class="biset-tag">🔗 biserie con ${esc((routine.exercises[_bi.partner]||{}).name||'')}</span>`:'';})()}</div>
-      </div>
-      <div class="cex-block-prog ${allDone?'done':''}">${doneCount}/${sets}</div>
-      <div class="cex-reorder" onclick="event.stopPropagation()">
-        <button onclick="todayMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
-        <button onclick="todayMoveEx(${ei},1)" ${ei===_nEx-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
-        <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
-      </div>
-      <div class="cex-block-chev">▼</div>`;
-    header.onclick=()=>block.classList.toggle('open');
-    block.appendChild(header);
-
-    // Body with set rows
-    const body=document.createElement('div');
-    body.className='cex-block-body';
-
-    if(track==='hiit'){
-      buildHiitCard(body,routine,ex,ei,sets);
-    } else {
-    const lastre=track==='reps'&&lastreOn(routine,ei);
-
-    // Toggle "+lastre" para peso corporal
-    if(track==='reps'){
-      const tg=document.createElement('div');
-      tg.style.cssText='padding:6px 14px 0;text-align:right';
-      tg.innerHTML=`<button type="button" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1.5px solid var(--br2);background:${lastre?'var(--gl)':'transparent'};color:${lastre?'var(--gt)':'var(--t3)'};cursor:pointer">${lastre?'✓ ':'+ '}Lastre (peso añadido)</button>`;
-      tg.querySelector('button').onclick=()=>{toggleLastre(routine,ei);renderClientExList(routine);};
-      body.appendChild(tg);
-    }
-
-    // 🎯 Peso sugerido según su récord (informativo; el coach y la sensación mandan)
-    if(track==='peso_reps'){
-      const sug=_suggestKg(ex);
-      if(sug){
-        const sh=document.createElement('div');
-        sh.style.cssText='padding:7px 14px 0;font-size:11.5px;font-weight:700;color:var(--gt)';
-        sh.innerHTML=`🎯 Peso sugerido: <b>${sug} kg</b> <span style="color:var(--t3);font-weight:600">· según tu récord</span>`;
-        body.appendChild(sh);
-      }
-    }
-
-    // 🔥 Sets de calentamiento (solo peso) — peso ligero, no cuenta para volumen/récords
-    if(track==='peso_reps'){
-      buildWarmupSection(body,routine,ex,ei);
-    }
-
-    // Column headers según modalidad
-    const head=document.createElement('div');
-    head.className='set-log-head';
-    head.innerHTML=setLogHeadHTML(track,lastre);
-    body.appendChild(head);
-
-    // Each set row
-    for(let si=0;si<sets;si++){
-      const done=isDone(routine.id,ei,si);
-
-      const row=document.createElement('div');
-      row.className=`set-log-row${done?' sdone':''}`;
-      row.id=`setrow_${ei}_${si}`;
-
-      row.innerHTML=`<div class="set-num ${done?'sdone':''}">${si+1}</div>`+
-        setLogInputsHTML(track,routine,ex,ei,si,done,lastre)+
-        `<div class="scheck ${done?'sdone':''}" id="chk_${ei}_${si}" role="button" aria-label="Marcar serie ${si+1}">✓</div>`;
-
-      // ▶ countdown para isométricos
-      if(track==='tiempo'){
-        const go=row.querySelector('.timer-go');
-        if(go)go.onclick=(e)=>{e.stopPropagation();if(HOLD&&HOLD.ei===ei&&HOLD.si===si){if(Date.now()-HOLD.t0>800)cancelHold();return;}const inp=row.querySelector('.sinput[data-field="secs"]');startHoldTimer(parseInt(inp.value)||0,ei,si,routine);};
-      }
-
-      // Wire up the checkmark (genérico por campos)
-      const chk=row.querySelector('.scheck');
-      chk.onclick=(e)=>{
-        e.stopPropagation();
-        const wasDone=chk.classList.contains('sdone');
-        const inputs=row.querySelectorAll('.sinput[data-field]');
-        if(!wasDone){
-          // Si marcó a mano la MISMA serie cuyo crono isométrico corre, detenerlo en
-          // silencio (sin toast de "cancelado": la serie sí queda marcada).
-          if(HOLD&&HOLD.ei===ei&&HOLD.si===si){_stopRest();_endHoldUI();document.getElementById('rest-banner').classList.add('hide');relWake();}
-          inputs.forEach(inp=>setLog(routine.id,ei,si,inp.dataset.field,inp.value));
-          setDone(routine.id,ei,si,true);
-          if(navigator.vibrate)navigator.vibrate(40);
-          row.classList.add('sdone');
-          chk.classList.add('sdone');
-          row.querySelector('.set-num').classList.add('sdone');
-          inputs.forEach(inp=>inp.readOnly=true);
-          toast(setDoneToast(track,ex,si,inputs));
-          if(track!=='tiempo'){const _rs=restForExercise(ex,routine);if(_rs)startClientRest(_rs,ex.name);}
-        } else {
-          setDone(routine.id,ei,si,false);
-          row.classList.remove('sdone');
-          chk.classList.remove('sdone');
-          row.querySelector('.set-num').classList.remove('sdone');
-          inputs.forEach(inp=>inp.readOnly=false);
-        }
-        updateBlockHeader(routine,ei,sets);
-        updateClientProgress(routine);
-      };
-
-      // Solo peso: envolver la serie para poder DESLIZARLA → dropset; y debajo, su
-      // dropset si esa serie ya tiene uno. Otras modalidades: fila directa, sin swipe.
-      if(track==='peso_reps'){
-        const w=document.createElement('div');
-        w.className='setrow-wrap';
-        const rv=document.createElement('div');
-        rv.className='drop-reveal';
-        rv.textContent=dropSetOn(routine,ei,si)?'🔻 Quitar dropset':'🔻 Dropset';
-        w.appendChild(rv);
-        w.appendChild(row);
-        attachDropSwipe(row,routine,ei,si);
-        body.appendChild(w);
-        if(dropSetOn(routine,ei,si)) buildDropRow(body,routine,ex,ei,si);
-      } else {
-        body.appendChild(row);
-      }
-    }
-    }
-
-    // Volume summary if any sets done
-    const volSum=document.createElement('div');
-    volSum.id=`volsum_${ei}`;
-    volSum.style.cssText='padding:8px 14px 10px;font-size:12px;color:var(--t2);font-family:\'JetBrains Mono\',monospace';
-    updateVolSummary(routine,ei,sets,ex,volSum);
-    body.appendChild(volSum);
-
-    block.appendChild(body);
-    con.appendChild(block);
-  });
-}
-
-function updateBlockHeader(routine,ei,sets){
-  const block=document.getElementById(`block_${ei}`);if(!block)return;
-  const doneCount=Array.from({length:sets},(_,si)=>isDone(routine.id,ei,si)).filter(Boolean).length;
-  const allDone=doneCount===sets;
-  const numEl=block.querySelector('.cex-block-num');
-  const progEl=block.querySelector('.cex-block-prog');
-  if(numEl)numEl.textContent=allDone?'✓':ei+1;
-  if(progEl){progEl.textContent=`${doneCount}/${sets}`;progEl.className=`cex-block-prog${allDone?' done':''}`;};
-  block.className=`cex-block open${allDone?' all-done':''}`;
-}
+// (renderClientExList y updateBlockHeader — la LISTA CLÁSICA de "Hoy" completa —
+// se RETIRARON en F5b 2026-07-06. El guiado embebido (gmRender, app-6) es la única vista.)
 
 function updateVolSummary(routine,ei,sets,ex,el){
   if(!el)el=document.getElementById(`volsum_${ei}`);
@@ -1597,14 +1195,8 @@ function updateClientProgress(routine){
     }
     updateVolSummary(routine,ei,sets,ex,null);
   });
-  const pn=document.getElementById('prog-num');const pf=document.getElementById('prog-fill');
-  const pv=document.getElementById('prog-vol');
-  if(pn)pn.textContent=`${done}/${total}`;
-  if(pf)pf.style.width=`${total>0?(done/total)*100:0}%`;
-  if(pv)pv.textContent=totalVol>0?`Volumen total: ${Math.round(totalVol).toLocaleString()} kg`:'';
-  const whn=document.getElementById('wohero-num');const whf=document.getElementById('wohero-fill');
-  if(whn)whn.textContent=`${done}/${total} series`;
-  if(whf)whf.style.width=`${total>0?(done/total)*100:0}%`;
+  // (Los contadores del hero clásico — prog-num/prog-fill/prog-vol/wohero-* — se
+  // retiraron en F5b; el progreso visible lo pinta el guiado con gmUpdateProgress.)
   if(done===total&&total>0){
     saveSessionToHistory(routine,totalVol,done);
     const newPRs=checkAndUpdatePRs(routine);
@@ -2767,9 +2359,7 @@ function sendClientMsg(){
   ta.value='';ta.style.height='auto';renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 
-// REST TIMER
-let restInt=null;
-let _restVis=null; // handler de visibilitychange del descanso (para poder removerlo)
+// (restInt/_restVis/_restPaused — estado del rest-banner clasico — RETIRADOS en F5b)
 
 // ── Audio iOS-safe ──────────────────────────────────────────────
 // iOS solo reproduce sonido si el AudioContext se "desbloquea" DENTRO de un
@@ -2840,64 +2430,9 @@ function playRestTick(){
 // NOTA iOS: con la pantalla bloqueada una PWA no puede reproducir sonido en segundo plano;
 // el aviso suena en cuanto el usuario vuelve a la app. Sonido con pantalla bloqueada exige
 // push nativo programado desde servidor (no implementado).
-// Estado del descanso normal (mutable para pausar/+15s). endAt es el deadline absoluto por
-// timestamp (robusto a iOS bloqueado); en pausa se congela el restante en _restFrozen.
-let _restEndAt=0, _restPaused=false, _restFrozen=0, _restLast=0;
-function _stopRest(){
-  if(restInt){clearInterval(restInt);restInt=null;}
-  if(_restVis){document.removeEventListener('visibilitychange',_restVis);_restVis=null;}
-  _restPaused=false;
-}
-function startClientRest(sec,exName){
-  _stopRest();
-  _endHoldUI(); // si un isométrico corría, restaurar su fila/banner antes de reusar el banner
-  const banner=document.getElementById('rest-banner');const num=document.getElementById('rb-num');const sub=document.getElementById('rb-sub');
-  banner.classList.remove('hide','paused');sub.textContent=`Después de: ${exName}`;
-  const pb=document.getElementById('rb-pause');if(pb){pb.textContent='⏸';pb.setAttribute('aria-label','Pausar descanso');}
-  _restEndAt=Date.now()+sec*1000;_restPaused=false;_restLast=sec;
-  num.textContent=sec;
-  const tick=()=>{
-    if(_restPaused)return;
-    const left=Math.max(0,Math.round((_restEndAt-Date.now())/1000));
-    if(left!==_restLast){
-      num.textContent=left;num.classList.remove('tick');void num.offsetWidth;num.classList.add('tick');
-      if(left>0&&left<=5)playRestTick();
-      _restLast=left;
-    }
-    if(left<=0){_stopRest();banner.classList.add('hide');playRestEndBeep();a11ySay('Descanso terminado. A por la siguiente serie.');toast('✅ ¡A por la siguiente serie!');}
-  };
-  // Al volver de pantalla bloqueada / segundo plano, recalcula de inmediato.
-  _restVis=()=>{ if(document.visibilityState==='visible'&&restInt&&!_restPaused) tick(); };
-  document.addEventListener('visibilitychange',_restVis);
-  restInt=setInterval(tick,250);
-}
-// Pausar / reanudar el descanso normal (no aplica al isométrico "aguanta").
-function restPause(){
-  if(HOLD||!restInt)return;
-  const banner=document.getElementById('rest-banner');const pb=document.getElementById('rb-pause');
-  if(_restPaused){
-    _restPaused=false;_restEndAt=Date.now()+_restFrozen*1000;
-    banner.classList.remove('paused');
-    if(pb){pb.textContent='⏸';pb.setAttribute('aria-label','Pausar descanso');}
-    a11ySay('Descanso reanudado');
-  }else{
-    _restPaused=true;_restFrozen=Math.max(0,Math.round((_restEndAt-Date.now())/1000));
-    banner.classList.add('paused');
-    if(pb){pb.textContent='▶';pb.setAttribute('aria-label','Reanudar descanso');}
-    a11ySay('Descanso en pausa');
-  }
-}
-// Suma 15s al descanso en curso (o al restante congelado si está en pausa).
-function restAdd15(){
-  if(HOLD||!restInt)return;
-  const num=document.getElementById('rb-num');
-  if(_restPaused){_restFrozen+=15;if(num)num.textContent=_restFrozen;}
-  else{_restEndAt+=15000;_restLast=-1;if(num)num.textContent=Math.max(0,Math.round((_restEndAt-Date.now())/1000));}
-  a11ySay('15 segundos añadidos');toast('⏱ +15 segundos');
-}
-function skipRest(){if(HOLD){cancelHold();return;}_stopRest();const b=document.getElementById('rest-banner');b.classList.add('hide');b.classList.remove('paused');toast('⏩ Descanso saltado')}
+// (_stopRest/startClientRest/restPause/restAdd15/skipRest — el rest-banner clasico completo —
+// se RETIRARON en F5b 2026-07-06; el guiado usa gm-rest-overlay + #gm-rest-mini.)
 
-// ══════════════════════ BACKUP / RESTORE ══════════════════════
 function exportData(){
   const data={
     version:'1.3.1',
