@@ -665,6 +665,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-07 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v294** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **277/277** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-07 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v297** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **283/283** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v292 consentimiento Habeas Data · suite guiada 53/53 · v290/v291 F5 la clásica murió).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v297 contraseñas fuertes + 2FA · v296 dolor + push asesorado + notifs por estado · v295 seguridad RPCs).*
