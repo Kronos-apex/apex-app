@@ -506,11 +506,17 @@ async function _enterAuthSession(authUser){
   // NINGÚN dispositivo se re-registraba y los envíos dirigidos (chat) no encontraban
   // suscripción (última fila: 2026-06-02, cazado en auditoría 2026-07-06). Mismo patrón
   // que el camino legacy: espera 4s para no competir con el arranque.
-  if(typeof Notification!=='undefined'&&Notification.permission==='granted') setTimeout(()=>{
+  setTimeout(()=>{
     try{
       const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
       const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
-      subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
+      _pushCtx={clientId:client.id,days:trainingDays,shifts:Object.keys(shiftMap).length?shiftMap:null};
+      // Con permiso ya dado: re-registra (endpoint puede rotar). Sin pedir aún ('default'):
+      // tarjeta amable en "Hoy" — auditoría 2026-07-07: nadie le pedía el permiso al
+      // asesorado y NINGUNO estaba suscrito (las notifs diarias solo llegaban al coach).
+      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+        subscribePush(client.id,_pushCtx.days,_pushCtx.shifts);
+      } else { renderPushNudge(); }
     }catch(_e){}
   },4000);
   // Registro nuevo con semana ya generada → Reveal del plan (la app queda lista detrás).
@@ -1007,7 +1013,21 @@ async function openDetail(id,_silent){
   document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
   if(freeLead) freeLead.innerHTML=planControlHTML(c);
-  const dn=document.getElementById('d-notes');dn.style.display=c.notes?'block':'none';if(c.notes)dn.innerHTML=`📝 <strong>Notas:</strong> ${esc(c.notes)}`;
+  const dn=document.getElementById('d-notes');
+  // Dolor vigente reportado por el asesorado (feature 2026-07-07): el coach lo ve de
+  // frente en la ficha, con qué ejercicio y hace cuánto — para ajustar la rutina.
+  let _painHTML='';
+  try{
+    const _act=(typeof painCareActive==='function')?painCareActive(c.painCare):[];
+    if(_act.length){
+      const _lv={1:'🟡 leve',2:'🟠 molesto',3:'🔴 no pudo hacerlo'};
+      _painHTML='<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6">🩹 <strong>Dolor reportado:</strong> '+
+        _act.slice(-3).map(p=>`${esc(p.area)} (${_lv[p.level]||p.level}) con ${esc(p.exName||'—')} · ${fmtD(p.at)}${p.note?` — “${esc(p.note)}”`:''}`).join('<br>')+
+        '</div>';
+    }
+  }catch(_e){}
+  dn.style.display=(c.notes||_painHTML)?'block':'none';
+  dn.innerHTML=_painHTML+(c.notes?`📝 <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);

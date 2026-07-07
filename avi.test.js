@@ -55,6 +55,11 @@ const {
   bodyLoadProfile,
   validateSignup,
   consentEvidence,
+  PAIN_AREAS,
+  PAIN_LEVELS,
+  painTipFor,
+  painCareAdd,
+  painCareActive,
   isFreeClient,
   clientToRow,
   rowToClient,
@@ -1211,6 +1216,49 @@ test('validateSignup: no se puede registrar con el email del coach', () => {
 test('validateSignup: contraseña corta y nombre vacío se rechazan', () => {
   assert.strictEqual(validateSignup({ name: 'Ana', email: 'a@b.com', password: '12' }, [], COACH).ok, false);
   assert.strictEqual(validateSignup({ name: '', email: 'a@b.com', password: '1234' }, [], COACH).ok, false);
+});
+
+test('painCareAdd: normaliza área/nivel/nota y no muta la lista original', () => {
+  const orig = [];
+  const l1 = painCareAdd(orig, { area: 'hombro', level: 3, exId: 'e7', exName: 'Press Militar', note: 'x'.repeat(500) }, '2026-07-07T12:00:00Z');
+  assert.strictEqual(orig.length, 0);
+  assert.strictEqual(l1.length, 1);
+  assert.strictEqual(l1[0].area, 'hombro');
+  assert.strictEqual(l1[0].level, 3);
+  assert.strictEqual(l1[0].note.length, 300);
+  const l2 = painCareAdd(l1, { area: 'marciano', level: 99 });
+  assert.strictEqual(l2[1].area, 'otra zona');
+  assert.strictEqual(l2[1].level, 3);
+  const l3 = painCareAdd(l1, { area: 'rodilla', level: 0 });
+  assert.strictEqual(l3[1].level, 1);
+});
+
+test('painCareAdd: tope de 20 reportes (conserva los más recientes)', () => {
+  let l = [];
+  for (let i = 0; i < 25; i++) l = painCareAdd(l, { area: 'rodilla', level: 1, note: 'n' + i });
+  assert.strictEqual(l.length, 20);
+  assert.strictEqual(l[19].note, 'n24');
+});
+
+test('painCareActive: expira a los 14 días y respeta cleared', () => {
+  const now = Date.parse('2026-07-07T12:00:00Z');
+  const list = [
+    { area: 'hombro', at: '2026-07-06T12:00:00Z' },              // 1 día → activo
+    { area: 'rodilla', at: '2026-06-20T12:00:00Z' },             // 17 días → expiró
+    { area: 'codo', at: '2026-07-05T12:00:00Z', cleared: true }, // descartado por el usuario
+    { area: 'cadera', at: '2026-07-13T12:00:00Z' },              // fecha futura (reloj raro) → fuera
+  ];
+  const act = painCareActive(list, now);
+  assert.strictEqual(act.length, 1);
+  assert.strictEqual(act[0].area, 'hombro');
+  assert.deepStrictEqual(painCareActive(null, now), []);
+});
+
+test('painTipFor: tip por área con fallback conservador', () => {
+  assert.ok(/encima de la cabeza/.test(painTipFor('hombro')));
+  assert.ok(/rango de movimiento que NO duele/.test(painTipFor('zona inventada')));
+  assert.strictEqual(PAIN_AREAS.length, 10);
+  assert.strictEqual(PAIN_LEVELS[2].v, 3);
 });
 
 test('consentEvidence: las 3 casillas marcadas arman la evidencia con versión y fecha', () => {

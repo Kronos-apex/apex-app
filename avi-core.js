@@ -1223,6 +1223,54 @@ function validateSignup(data, clients, coachEmail) {
   return { ok: true };
 }
 
+// ── Reporte de dolor (pedido Camilo 2026-07-07) — puro, testeable ──
+// El asesorado marca DÓNDE le duele y QUÉ TANTO desde la tarjeta del ejercicio en el
+// guiado. Niveles: 1=leve, 2=molesto, 3=me impide hacer el ejercicio. El reporte vive
+// en client.painCare (perfil → sincroniza a user_data → el coach lo ve) y expira a los
+// 14 días. Los tips son CONSERVADORES a propósito: la app no es un médico — la UI
+// SIEMPRE añade el aviso de consultar a un profesional si persiste.
+const PAIN_AREAS = ['hombro','pecho','codo','muñeca','espalda alta','zona lumbar','cadera','rodilla','tobillo','otra zona'];
+const PAIN_LEVELS = [
+  { v: 1, label: 'Leve', emoji: '🟡' },
+  { v: 2, label: 'Molesto', emoji: '🟠' },
+  { v: 3, label: 'No puedo hacerlo', emoji: '🔴' },
+];
+const PAIN_TIPS = {
+  'hombro': 'Evita por ahora las cargas por encima de la cabeza y los rangos que duelan. Prueba agarres neutros (palmas enfrentadas) y baja el peso — como te pasó: a veces cambiar de mancuerna a barra (o al revés) cambia todo.',
+  'pecho': 'Reduce el rango de bajada y el peso en los presses. Si un ángulo duele (inclinado), prueba plano o máquinas con recorrido guiado mientras pasa.',
+  'codo': 'Baja el peso en empujes y jalones, y evita bloquear el codo con fuerza al final del movimiento. Agarres neutros suelen ayudar.',
+  'muñeca': 'Revisa que la muñeca vaya RECTA bajo la carga. Agarres neutros o straps pueden ayudar mientras se calma.',
+  'espalda alta': 'Calienta más tiempo la zona antes de jalones/remos y baja el peso. Evita encoger los hombros al remar.',
+  'zona lumbar': 'Evita por ahora cargar peso con la columna flexionada (peso muerto, remo con barra) y prefiere ejercicios con apoyo (máquinas, poleas). El core firme es tu protección.',
+  'cadera': 'Reduce la profundidad en sentadillas/zancadas al rango que NO duela y trabaja movilidad suave de cadera en el calentamiento.',
+  'rodilla': 'Controla la bajada (no rebotes), reduce profundidad y carga. Las extensiones/prensas con rango corto suelen tolerarse mejor mientras pasa.',
+  'tobillo': 'Evita impacto (saltos, trote) mientras duela; la bici estática y ejercicios sentado son buena alternativa.',
+  '_default': 'Baja la carga y quédate en el rango de movimiento que NO duele. Si un ejercicio puntual molesta, cámbialo por una variante — para eso está el botón 🔄.',
+};
+function painTipFor(area) {
+  return PAIN_TIPS[area] || PAIN_TIPS._default;
+}
+// Agrega un reporte normalizado a la lista de cuidado (inmutable). Cap 20 (los más recientes).
+function painCareAdd(list, rep, nowIso) {
+  rep = rep || {};
+  const entry = {
+    id: 'p' + Math.random().toString(36).slice(2, 9),
+    area: PAIN_AREAS.includes(rep.area) ? rep.area : 'otra zona',
+    level: Math.min(3, Math.max(1, parseInt(rep.level) || 1)),
+    exId: rep.exId || null,
+    exName: String(rep.exName || '').slice(0, 80),
+    note: String(rep.note || '').slice(0, 300),
+    at: nowIso || new Date().toISOString(),
+  };
+  return (list || []).concat([entry]).slice(-20);
+}
+// Reportes vigentes: menos de 14 días y no descartados por el usuario ("Ya estoy bien").
+const PAIN_TTL_MS = 14 * 86400000;
+function painCareActive(list, nowTs) {
+  const now = nowTs || Date.now();
+  return (list || []).filter(p => p && !p.cleared && p.at && (now - Date.parse(p.at)) < PAIN_TTL_MS && (now - Date.parse(p.at)) >= 0);
+}
+
 // ── Evidencia de consentimiento (Habeas Data, Ley 1581/2012) — pura, testeable ──
 // Las 3 casillas del registro se marcan POR SEPARADO y ninguna viene pre-marcada
 // (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
@@ -1861,6 +1909,11 @@ if (typeof module !== 'undefined' && module.exports) {
     bodyLoadProfile,
     validateSignup,
     consentEvidence,
+    PAIN_AREAS,
+    PAIN_LEVELS,
+    painTipFor,
+    painCareAdd,
+    painCareActive,
     isFreeClient,
     clientHasCoach,
     clientPlan,

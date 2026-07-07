@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=295">
+<link rel="stylesheet" href="styles.css?v=296">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -577,6 +577,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </button>
       <!-- (#rest-banner clásico RETIRADO en F5b 2026-07-06 — el guiado usa gm-rest-overlay + #gm-rest-mini) -->
       <div id="pr-banners"></div>
+      <div id="cn-push-nudge"></div>
       <div id="cn-today-upsell"></div>
       <div id="cn-today-body"></div>
     </div>
@@ -728,6 +729,23 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODALS -->
 <!-- Add/Edit Client -->
+<!-- Reporte de dolor (⚠️ en la tarjeta del guiado): el asesorado marca dónde y qué tanto;
+     painSubmit guarda en client.painCare (el coach lo ve) y le avisa por el chat. -->
+<div class="mdbg" id="m-pain">
+  <div class="md">
+    <div class="mdtitle">⚠️ ¿Algo te duele?</div>
+    <div id="pain-ex" style="font-size:13px;color:var(--t2);margin-bottom:12px"></div>
+    <label class="ilbl">¿Dónde sientes el dolor?</label>
+    <div id="pain-areas" class="pain-chips"></div>
+    <label class="ilbl" style="margin-top:10px">¿Qué tanto duele?</label>
+    <div id="pain-levels" class="pain-chips"></div>
+    <label class="ilbl" style="margin-top:10px">Cuéntale más a tu coach (opcional)</label>
+    <textarea class="tarea" id="pain-note" maxlength="300" placeholder="Ej: me duele al bajar la mancuerna, con barra no me molesta..."></textarea>
+    <div style="font-size:11px;color:var(--t3);line-height:1.5;margin-top:8px">⚠️ Si el dolor es agudo, punzante o lleva varios días, consúltalo con un profesional de la salud.</div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-pain')">Cancelar</button><button class="btn bp" onclick="painSubmit()">Avisar a mi coach</button></div>
+  </div>
+</div>
+
 <!-- Visor de documentos legales (Política / Términos): lo llena showLegalDoc desde
      legal/*.md. Es .mdbg → el atrás de Android lo cierra por la rama genérica de
      _aviCloseTopOverlay. Se abre encima del wizard de registro (z-index 1000). -->
@@ -1063,18 +1081,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=295"></script>
-<script src="muscle-map.js?v=295"></script>
-<script src="exercise-muscles.js?v=295"></script>
+<script src="avi-core.js?v=296"></script>
+<script src="muscle-map.js?v=296"></script>
+<script src="exercise-muscles.js?v=296"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=295"></script>
-<script src="app-2-login.js?v=295"></script>
-<script src="app-3-coach.js?v=295"></script>
-<script src="app-4-entreno.js?v=295"></script>
-<script src="app-5-salud.js?v=295"></script>
-<script src="app-6-extra.js?v=295"></script>
+<script src="app-1-infra.js?v=296"></script>
+<script src="app-2-login.js?v=296"></script>
+<script src="app-3-coach.js?v=296"></script>
+<script src="app-4-entreno.js?v=296"></script>
+<script src="app-5-salud.js?v=296"></script>
+<script src="app-6-extra.js?v=296"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

@@ -240,6 +240,82 @@ function gmMoveEx(ei,dir){
   gmRebuild();
 }
 
+// ══════════ REPORTE DE DOLOR (pedido Camilo 2026-07-07) ══════════
+// El asesorado toca ⚠️ en la tarjeta del ejercicio: elige DÓNDE y QUÉ TANTO le duele.
+// El reporte va a client.painCare (perfil → sync → el coach lo ve en su panel) y se
+// le avisa al coach por el chat (que ya dispara push). Nivel 🔴 ("no puedo hacerlo")
+// abre de una el selector de sustitución. La lógica pura (normalización, expiración
+// 14 días, tips por zona) vive en avi-core (painCareAdd/painCareActive/painTipFor).
+let PAIN={ei:null,exId:null,exName:'',area:null,level:null};
+function gmReportPain(ei){
+  const ex=GM.exercises&&GM.exercises[ei]; if(!ex)return;
+  PAIN={ei,exId:ex.id||null,exName:ex.name||'',area:null,level:null};
+  const exEl=document.getElementById('pain-ex');
+  if(exEl)exEl.innerHTML=`Con: <b>${esc(ex.name||'este ejercicio')}</b>. Cuéntanos y le avisamos a tu coach — sin pena, esto nos ayuda a cuidarte.`;
+  const note=document.getElementById('pain-note'); if(note)note.value='';
+  _painRenderChips();
+  om('m-pain');
+}
+function _painRenderChips(){
+  const ar=document.getElementById('pain-areas');
+  if(ar)ar.innerHTML=PAIN_AREAS.map(a=>`<button type="button" class="pain-chip${PAIN.area===a?' on':''}" onclick="painPick('area','${esc(a)}')">${esc(a)}</button>`).join('');
+  const lv=document.getElementById('pain-levels');
+  if(lv)lv.innerHTML=PAIN_LEVELS.map(l=>`<button type="button" class="pain-chip lvl${PAIN.level===l.v?' on':''}" onclick="painPick('level',${l.v})">${l.emoji} ${esc(l.label)}</button>`).join('');
+}
+function painPick(field,val){ PAIN[field]=val; _painRenderChips(); }
+function painSubmit(){
+  if(!PAIN.area||!PAIN.level){ toast('Marca dónde y qué tanto te duele 🙏'); return; }
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const note=(document.getElementById('pain-note')||{value:''}).value.trim();
+  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,level:PAIN.level,exId:PAIN.exId,exName:PAIN.exName,note});
+  svNow('ax_c',DB.clients);
+  // Aviso al coach por el chat (mismo camino que sendClientMsg → le llega push)
+  const lvl=PAIN_LEVELS.find(l=>l.v===PAIN.level)||PAIN_LEVELS[0];
+  const txt=`⚠️ Reporte de dolor: ${lvl.emoji} ${lvl.label} en ${PAIN.area} con ${PAIN.exName||'un ejercicio'}.${note?' Nota: '+note:''}`;
+  try{
+    if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+    DB.msgs[c.id].push({from:'client',text:txt,date:new Date().toISOString()});
+    svNow('ax_m',DB.msgs);
+    pushToClient('_coach','⚠️ '+(c.name||'Asesorado').split(' ')[0]+' reportó dolor',txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+  }catch(_e){}
+  cm('m-pain');
+  const wasBlocking=PAIN.level===3, ei=PAIN.ei;
+  toast('🩹 Le avisamos a tu coach. Cuídate — te dejamos tips arriba.');
+  a11ySay('Reporte enviado a tu coach.');
+  gmRender(); // repinta: banner de cuidado + chip en la tarjeta
+  gmScrollTop();
+  // Nivel 🔴: que no siga con ese ejercicio — se le abre el cambio de una
+  if(wasBlocking&&typeof todaySubstitute==='function'){ setTimeout(()=>{ try{ todaySubstitute(ei); }catch(_e){} },600); }
+}
+// "Ya estoy bien ✓" del banner: descarta los reportes vigentes (quedan en el historial
+// del perfil para el coach, pero dejan de pintar banner/chips).
+function painCareClear(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  (c.painCare||[]).forEach(p=>{ p.cleared=true; });
+  svNow('ax_c',DB.clients);
+  toast('💚 ¡Qué bueno que ya estás bien!');
+  gmRender();
+}
+// Banner de cuidado para la cabecera del guiado (y chip por tarjeta vía _painForEx).
+function gmPainBannerHTML(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return '';
+  const act=painCareActive(c.painCare); if(!act.length)return '';
+  const areas=[...new Set(act.map(p=>p.area))];
+  const tips=areas.slice(0,2).map(a=>`<div style="margin-top:6px;font-size:12px;line-height:1.55;color:var(--t1)"><b>${esc(a)}:</b> ${esc(painTipFor(a))}</div>`).join('');
+  return `<div class="pain-banner">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">🩹 Cuidando tu ${esc(areas.join(' y '))}</div>
+      <button type="button" class="btn bg bsm" style="flex-shrink:0" onclick="painCareClear()">Ya estoy bien ✓</button>
+    </div>
+    ${tips}
+    <div style="margin-top:7px;font-size:11px;color:var(--t3);line-height:1.5">⚠️ Si el dolor es agudo o lleva varios días, consúltalo con un profesional de la salud.</div>
+  </div>`;
+}
+function _painForEx(exId){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!exId)return null;
+  return painCareActive(c.painCare).find(p=>p.exId===exId)||null;
+}
+
 function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
   if(GM.holding) _gmEndHoldUI();
@@ -273,6 +349,7 @@ function gmRoutineHeaderHTML(){
   return `<div class="gm-routine-head" style="margin:0 0 10px">
     ${override}
     <div class="wohero"><div class="woday">${dayLabel}</div><div class="woname">${esc(r.name||'Tu entrenamiento')}</div><div class="wopills">${pills}</div></div>
+    ${gmPainBannerHTML()}
     ${note}${why}
   </div>`;
 }
@@ -340,9 +417,18 @@ function gmRender(){
           <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
           <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
           <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+          <button onclick="gmReportPain(${ei})" title="Reportar dolor con este ejercicio" aria-label="Reportar dolor">⚠️</button>
         </div>
       </div>`;
     card.appendChild(hdr);
+    // Chip de cuidado: este ejercicio tiene un reporte de dolor VIGENTE (14 días)
+    const _pw=_painForEx(ex.id);
+    if(_pw){
+      const w=document.createElement('div');
+      w.className='pain-exchip';
+      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--g);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo 🔄</button>`;
+      card.appendChild(w);
+    }
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
     const gmSug=_suggestKg(ex);

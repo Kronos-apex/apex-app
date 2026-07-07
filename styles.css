@@ -1422,6 +1422,18 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-ck input{width:17px;height:17px;flex-shrink:0;margin-top:1px;accent-color:#10E0A0;cursor:pointer}
 .wz-ck a{color:#10E0A0;font-weight:700;text-decoration:underline}
 .wz-ck b{color:rgba(242,245,244,.92)}
+/* Nudge de push del asesorado (tarjeta en "Hoy") */
+.push-nudge{display:flex;align-items:center;gap:12px;background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;flex-wrap:wrap}
+.push-nudge-txt{flex:1;min-width:180px;font-size:12.5px;color:var(--t2);line-height:1.5}
+.push-nudge-txt b{display:block;font-size:13.5px;color:var(--t1);margin-bottom:2px}
+.push-nudge-btns{display:flex;gap:8px;flex-shrink:0}
+/* Reporte de dolor: chips del modal + banner de cuidado + chip por tarjeta */
+.pain-chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 4px}
+.pain-chip{padding:8px 12px;border-radius:20px;border:1.5px solid var(--br2);background:var(--w);color:var(--t1);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .15s,background .15s}
+.pain-chip.on{border-color:var(--or);background:var(--orl);color:var(--or)}
+.pain-chip.lvl.on{box-shadow:0 0 0 1px var(--or)}
+.pain-banner{background:var(--orl);border:1px solid var(--or);border-radius:var(--r);padding:11px 13px;margin:0 0 10px}
+.pain-exchip{font-size:12px;color:var(--t2);background:var(--orl);border:1px dashed var(--or);border-radius:var(--rsm);padding:7px 10px;margin:6px 0 2px;line-height:1.5}
 /* Visor de documentos legales (m-legal) */
 .legal-body{overflow-y:auto;font-size:12.5px;line-height:1.65;color:var(--t2);padding:2px 2px 8px}
 .legal-body h3{font-size:15px;color:var(--t1);margin:4px 0 10px}

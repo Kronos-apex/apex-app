@@ -329,6 +329,35 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
   }catch(e){warn('AVI Push subscribe error:',e);}
 }
 
+// ── Activación de push del ASESORADO (auditoría 2026-07-07) ──
+// Nadie le pedía el permiso al asesorado (requestPermission solo existía en pantallas
+// del coach) → 0 asesorados suscritos y las notifs diarias solo le llegaban al coach.
+// Tarjeta amable en "Hoy" cuando el permiso está en 'default'; el prompt del navegador
+// SOLO se lanza con gesto del usuario (Chrome penaliza los prompts no solicitados).
+let _pushCtx=null; // {clientId,days,shifts} — lo fija el camino auth del cliente
+function renderPushNudge(){
+  const el=document.getElementById('cn-push-nudge'); if(!el)return;
+  const cid=_pushCtx&&_pushCtx.clientId;
+  if(!cid||typeof Notification==='undefined'||!('PushManager' in window)||Notification.permission!=='default'){ el.innerHTML=''; return; }
+  let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze_'+cid)||'0',10)||0; }catch(_e){}
+  if(Date.now()-snooze<7*86400000){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="push-nudge">
+    <div class="push-nudge-txt"><b>🔔 Activa tus recordatorios</b><span>Te avisamos en tus días de entreno, con tips de hidratación y recuperación. Sin spam.</span></div>
+    <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozePush()">Ahora no</button></div>
+  </div>`;
+}
+async function aviAskPush(){
+  try{
+    const p=await Notification.requestPermission();
+    if(p==='granted'){
+      if(_pushCtx)subscribePush(_pushCtx.clientId,_pushCtx.days,_pushCtx.shifts);
+      toast('🔔 ¡Listo! Te avisamos en tus días de entreno.');
+    } else if(p==='denied'){ toast('Sin problema — puedes activarlas luego en la configuración del navegador.'); }
+  }catch(_e){}
+  renderPushNudge();
+}
+function aviSnoozePush(){ try{ if(_pushCtx)localStorage.setItem('ax_push_snooze_'+_pushCtx.clientId,String(Date.now())); }catch(_e){} renderPushNudge(); }
+
 // Enviar push via Edge Function de Supabase
 async function pushToClient(clientId,title,body,extras={}){
   try{
