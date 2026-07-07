@@ -54,6 +54,7 @@ const {
   bmiFrom,
   bodyLoadProfile,
   validateSignup,
+  consentEvidence,
   isFreeClient,
   clientToRow,
   rowToClient,
@@ -1210,6 +1211,25 @@ test('validateSignup: no se puede registrar con el email del coach', () => {
 test('validateSignup: contraseña corta y nombre vacío se rechazan', () => {
   assert.strictEqual(validateSignup({ name: 'Ana', email: 'a@b.com', password: '12' }, [], COACH).ok, false);
   assert.strictEqual(validateSignup({ name: '', email: 'a@b.com', password: '1234' }, [], COACH).ok, false);
+});
+
+test('consentEvidence: las 3 casillas marcadas arman la evidencia con versión y fecha', () => {
+  const ev = consentEvidence({ general: true, salud: true, adulto: true }, '2026-07-07', '2026-07-07T15:00:00.000Z');
+  assert.deepStrictEqual(ev, { general: true, salud: true, adulto: true, v: '2026-07-07', at: '2026-07-07T15:00:00.000Z' });
+});
+
+test('consentEvidence: cualquier casilla sin marcar devuelve null (no hay "acepto todo")', () => {
+  assert.strictEqual(consentEvidence({ general: true, salud: true, adulto: false }, 'v1'), null);
+  assert.strictEqual(consentEvidence({ general: true, salud: false, adulto: true }, 'v1'), null);
+  assert.strictEqual(consentEvidence({ general: false, salud: true, adulto: true }, 'v1'), null);
+  assert.strictEqual(consentEvidence({}, 'v1'), null);
+  assert.strictEqual(consentEvidence(null, 'v1'), null);
+});
+
+test('consentEvidence: sin nowIso usa la fecha actual (ISO válido)', () => {
+  const ev = consentEvidence({ general: true, salud: true, adulto: true }, '2026-07-07');
+  assert.ok(!isNaN(Date.parse(ev.at)), 'at es fecha ISO parseable');
+  assert.strictEqual(ev.v, '2026-07-07');
 });
 
 test('flujo libre: con los datos del registro, el generador produce ≥1 rutina (principiante)', () => {

@@ -1416,6 +1416,21 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-or{display:flex;align-items:center;gap:10px;margin:15px 0;color:rgba(242,245,244,.4);font-size:12px;font-weight:600}
 .wz-or::before,.wz-or::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(242,245,244,.18),transparent)}
 .wz-gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.22);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+/* Consentimiento Habeas Data (paso 7 del wizard): 3 casillas separadas, ninguna pre-marcada */
+.wz-consent{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
+.wz-ck{display:flex;align-items:flex-start;gap:10px;font-size:11.5px;line-height:1.5;color:rgba(242,245,244,.72);cursor:pointer;padding:10px 12px;border-radius:13px;border:1.5px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01))}
+.wz-ck input{width:17px;height:17px;flex-shrink:0;margin-top:1px;accent-color:#10E0A0;cursor:pointer}
+.wz-ck a{color:#10E0A0;font-weight:700;text-decoration:underline}
+.wz-ck b{color:rgba(242,245,244,.92)}
+/* Visor de documentos legales (m-legal) */
+.legal-body{overflow-y:auto;font-size:12.5px;line-height:1.65;color:var(--t2);padding:2px 2px 8px}
+.legal-body h3{font-size:15px;color:var(--t1);margin:4px 0 10px}
+.legal-body h4{font-size:13px;color:var(--t1);margin:14px 0 6px}
+.legal-body p{margin:0 0 9px}
+.legal-body ul{margin:0 0 9px;padding-left:18px}
+.legal-body li{margin-bottom:4px}
+.legal-body .lg-quote{border-left:3px solid var(--g2);padding-left:10px;color:var(--t1)}
+.legal-body b{color:var(--t1)}
 @media (prefers-reduced-motion:reduce){.wz-prog-fill::after{display:none}}
 /* Íconos AVI dentro de las fichas (heredan el color de la ficha vía --c) */
 .wz-ic .ic{width:24px;height:24px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

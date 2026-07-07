@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=291">
+<link rel="stylesheet" href="styles.css?v=292">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -283,6 +283,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div style="position:relative">
           <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password" style="padding-right:46px">
           <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
+        </div>
+        <!-- Consentimiento Habeas Data (Ley 1581/2012): 3 casillas SEPARADAS, ninguna
+             pre-marcada (legal/autorizacion-consentimiento.md §E). signupClient y wzGoogle
+             exigen las 3 y guardan la evidencia (fecha/versión) en el perfil. -->
+        <div class="wz-consent">
+          <label class="wz-ck"><input type="checkbox" id="su-ck-general"><span>He leído y acepto los <a href="#" onclick="showLegalDoc('terminos');return false">Términos y Condiciones</a> y la <a href="#" onclick="showLegalDoc('politica');return false">Política de Tratamiento de Datos</a>, y autorizo a AVI a tratar mis datos para crear mi cuenta, generar mis rutinas y guardar mi progreso.</span></label>
+          <label class="wz-ck"><input type="checkbox" id="su-ck-salud"><span>Autorizo <b>de forma expresa</b> el tratamiento de mis <b>datos de salud y estado físico</b> (peso, medidas, edad, sexo, lesiones y fotos de progreso) para personalizar mis rutinas y seguir mi evolución. Es voluntario: puedo revocarlo y pedir eliminar mis datos cuando quiera.</span></label>
+          <label class="wz-ck"><input type="checkbox" id="su-ck-adulto"><span>Declaro que soy <b>mayor de 18 años</b>.</span></label>
         </div>
         <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
         <div class="wz-or">o</div>
@@ -720,6 +728,17 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODALS -->
 <!-- Add/Edit Client -->
+<!-- Visor de documentos legales (Política / Términos): lo llena showLegalDoc desde
+     legal/*.md. Es .mdbg → el atrás de Android lo cierra por la rama genérica de
+     _aviCloseTopOverlay. Se abre encima del wizard de registro (z-index 1000). -->
+<div class="mdbg" id="m-legal">
+  <div class="md mdlg" style="max-height:82vh;display:flex;flex-direction:column">
+    <div class="mdtitle" id="legal-title">Documento</div>
+    <div class="legal-body" id="legal-body">Cargando…</div>
+    <div class="mdfooter"><button class="btn bp" onclick="cm('m-legal')">Cerrar</button></div>
+  </div>
+</div>
+
 <div class="mdbg" id="m-client">
   <div class="md">
     <div class="mdtitle" id="mc-title">Nuevo asesorado</div>
@@ -1044,18 +1063,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=291"></script>
-<script src="muscle-map.js?v=291"></script>
-<script src="exercise-muscles.js?v=291"></script>
+<script src="avi-core.js?v=292"></script>
+<script src="muscle-map.js?v=292"></script>
+<script src="exercise-muscles.js?v=292"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=291"></script>
-<script src="app-2-login.js?v=291"></script>
-<script src="app-3-coach.js?v=291"></script>
-<script src="app-4-entreno.js?v=291"></script>
-<script src="app-5-salud.js?v=291"></script>
-<script src="app-6-extra.js?v=291"></script>
+<script src="app-1-infra.js?v=292"></script>
+<script src="app-2-login.js?v=292"></script>
+<script src="app-3-coach.js?v=292"></script>
+<script src="app-4-entreno.js?v=292"></script>
+<script src="app-5-salud.js?v=292"></script>
+<script src="app-6-extra.js?v=292"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

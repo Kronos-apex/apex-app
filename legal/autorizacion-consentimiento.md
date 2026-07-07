@@ -1,4 +1,4 @@
-# AUTORIZACIÓN / CONSENTIMIENTO + AVISO DE PRIVACIDAD — APEX
+# AUTORIZACIÓN / CONSENTIMIENTO + AVISO DE PRIVACIDAD — AVI
 
 > **BORRADOR — pendiente de revisión legal.** Para mostrar en el registro de la app.
 
@@ -6,7 +6,7 @@
 *(Casilla NO pre-marcada. El usuario debe marcarla activamente.)*
 
 > ☐ He leído y acepto los **[Términos y Condiciones]** y la **[Política de Tratamiento de
-> Datos Personales]**, y **autorizo** a APEX a tratar mis datos personales para crear mi
+> Datos Personales]**, y **autorizo** a AVI a tratar mis datos personales para crear mi
 > cuenta, generar y guardar mis rutinas y mi progreso, según las finalidades allí descritas.
 
 ## B. Consentimiento explícito para datos sensibles (salud/fitness)
@@ -25,7 +25,7 @@ medidas, lesiones o fotos.)*
 
 ## D. Aviso de Privacidad (versión corta — para mostrar al inicio o enlazar)
 
-> **Tu privacidad en APEX.** Recolectamos tu nombre, correo y los datos de tu entrenamiento
+> **Tu privacidad en AVI.** Recolectamos tu nombre, correo y los datos de tu entrenamiento
 > (incluidos datos de salud como peso, medidas y fotos, que son sensibles) **solo para darte
 > el servicio**: crear tu cuenta, armar tus rutinas y guardar tu progreso. **No vendemos tus
 > datos.** Puedes ver, corregir o **eliminar tus datos** cuando quieras. Tus datos se guardan

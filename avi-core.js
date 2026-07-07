@@ -1223,6 +1223,21 @@ function validateSignup(data, clients, coachEmail) {
   return { ok: true };
 }
 
+// ── Evidencia de consentimiento (Habeas Data, Ley 1581/2012) — pura, testeable ──
+// Las 3 casillas del registro se marcan POR SEPARADO y ninguna viene pre-marcada
+// (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
+// no procede); si están todas, arma la "prueba de autorización" que exige la ley:
+// qué se aceptó, cuándo y con qué versión de los textos. Va en la fila del usuario.
+function consentEvidence(checks, version, nowIso) {
+  checks = checks || {};
+  if (!checks.general || !checks.salud || !checks.adulto) return null;
+  return {
+    general: true, salud: true, adulto: true,
+    v: String(version || ''),
+    at: nowIso || new Date().toISOString(),
+  };
+}
+
 // ── ¿Es usuario en modo libre (gratis, sin coach)? ──
 // Gating de funciones Premium. Libre = tier 'libre' (auto-registrados). Los asesorados
 // creados por el coach NO tienen tier → no son libres → acceso completo. Convertir a
@@ -1845,6 +1860,7 @@ if (typeof module !== 'undefined' && module.exports) {
     bmiFrom,
     bodyLoadProfile,
     validateSignup,
+    consentEvidence,
     isFreeClient,
     clientHasCoach,
     clientPlan,

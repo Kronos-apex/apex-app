@@ -1,4 +1,4 @@
-# POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES — APEX
+# POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES — AVI
 
 > **BORRADOR — pendiente de revisión legal.** Cumple en estructura con la Ley 1581 de 2012
 > y el Decreto 1377 de 2013 (Colombia). Completar los [CORCHETES] y validar con abogado.
@@ -12,7 +12,7 @@
 - **Correo de contacto:** [CORREO PARA PROTECCIÓN DE DATOS]
 - **Teléfono:** [TELÉFONO]
 
-APEX es una aplicación de entrenamiento personal. Esta política aplica a los datos
+AVI es una aplicación de entrenamiento personal. Esta política aplica a los datos
 personales de los usuarios de la aplicación ("Titulares").
 
 ## 2. Datos que recolectamos
@@ -34,7 +34,7 @@ Tratamos tus datos para:
 3. Personalizar recomendaciones según tu perfil y objetivos.
 4. Enviarte recordatorios y notificaciones relacionados con tu entrenamiento (si los aceptas).
 5. Mejorar la aplicación y, de forma agregada y anónima, entender su uso.
-6. Si decides conectarte con un entrenador dentro de APEX, compartir con ese entrenador los
+6. Si decides conectarte con un entrenador dentro de AVI, compartir con ese entrenador los
    datos necesarios para tu asesoría (con tu autorización).
 
 No vendemos tus datos a terceros.

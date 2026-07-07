@@ -26,4 +26,10 @@
    - Edad mínima o verificación de mayoría de edad en el registro.
 
 ## Estado
-🟡 Borradores — pendientes de completar datos + revisión legal. NO publicados.
+🟡 Borradores — pendientes de completar datos + revisión legal. **CONECTADOS al registro
+desde avi-v292 (2026-07-07, decisión de Camilo de usarlos tal cual mientras tanto):**
+3 casillas separadas no pre-marcadas en el paso 7 del wizard, visor in-app (showLegalDoc)
+y evidencia de aceptación (fecha + versión `LEGAL_V` de app-3-coach.js) guardada en el
+perfil del usuario. Los textos se renombraron APEX→AVI para coincidir con la marca de la
+app. Al cambiar cualquier documento: subir `LEGAL_V`. Siguen pendientes la revisión del
+abogado y los botones "descargar mis datos" / "eliminar mi cuenta" (§3).

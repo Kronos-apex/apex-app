@@ -1,24 +1,24 @@
-# TÉRMINOS Y CONDICIONES DE USO — APEX
+# TÉRMINOS Y CONDICIONES DE USO — AVI
 
 > **BORRADOR — pendiente de revisión legal.** Completar [CORCHETES] y validar con abogado.
 
 **Última actualización:** [FECHA]
 
 ## 1. Aceptación
-Al crear una cuenta y usar APEX ("la aplicación") aceptas estos Términos y Condiciones y la
+Al crear una cuenta y usar AVI ("la aplicación") aceptas estos Términos y Condiciones y la
 [Política de Tratamiento de Datos Personales]. Si no estás de acuerdo, no uses la aplicación.
 
-## 2. Qué es APEX
-APEX es una herramienta de entrenamiento que te permite registrarte, recibir rutinas
+## 2. Qué es AVI
+AVI es una herramienta de entrenamiento que te permite registrarte, recibir rutinas
 (generadas automáticamente o asignadas por un entrenador) y llevar tu progreso. **Es una
 ayuda, no un servicio médico.**
 
 ## 3. ⚠️ Aviso de salud (importante)
-- APEX **no brinda consejo médico** ni reemplaza la valoración de un profesional de la salud.
+- AVI **no brinda consejo médico** ni reemplaza la valoración de un profesional de la salud.
 - Antes de iniciar cualquier programa de ejercicio, especialmente si tienes una condición
   médica, lesión, estás embarazada o tienes dudas, **consulta a un médico**.
 - Entrenas **bajo tu propia responsabilidad**. Detén el ejercicio si sientes dolor o malestar.
-- En la medida permitida por la ley, [NOMBRE/APEX] no se hace responsable por lesiones
+- En la medida permitida por la ley, [NOMBRE/AVI] no se hace responsable por lesiones
   derivadas del uso de las rutinas. [Validar alcance de esta limitación con abogado.]
 
 ## 4. Tu cuenta
@@ -27,7 +27,7 @@ ayuda, no un servicio médico.**
 - Puedes eliminar tu cuenta y tus datos cuando quieras desde la app.
 
 ## 5. Uso aceptable
-No debes usar APEX para fines ilícitos, intentar vulnerar su seguridad, ni acceder a datos de
+No debes usar AVI para fines ilícitos, intentar vulnerar su seguridad, ni acceder a datos de
 otras personas. Nos reservamos el derecho de suspender cuentas que incumplan estos términos.
 
 ## 6. Planes y pagos
@@ -35,7 +35,7 @@ El modo libre es gratuito. Si en el futuro contratas un plan con un entrenador o
 pago, sus condiciones y precios se informarán claramente antes de cualquier cobro.
 
 ## 7. Propiedad
-El contenido, marca y código de APEX pertenecen a [NOMBRE/TITULAR]. Tus datos personales son
+El contenido, marca y código de AVI pertenecen a [NOMBRE/TITULAR]. Tus datos personales son
 tuyos; nosotros solo los tratamos según la Política de Tratamiento de Datos.
 
 ## 8. Disponibilidad

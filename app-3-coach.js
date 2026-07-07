@@ -343,6 +343,7 @@ function _profileFromMeta(authUser){
     email:authUser&&authUser.email,
     goal:goal||'Salud general', level:level||'Principiante', days:parseInt(m.days||w.days)||3,
     sex:m.sex||w.sex||null, age:m.age||w.age||null, weight:m.weight||w.weight||null, height:m.height||w.height||null, place:m.place||w.place||'gym',
+    consent:m.consent||w.consent||null, // evidencia Habeas Data (email: metadata; Google: ax_wz_pending)
     _complete:!!(goal&&level), // email trae estos del form; Google los toma del wizard guardado
   };
 }
@@ -356,6 +357,7 @@ async function _provisionFreeClient(authUser, p){
     goal:p.goal, level:p.level, weight:p.weight, height:p.height,
     age:p.age, sex:p.sex, activityFactor:1.55, days:p.days, place:p.place,
     notes:'', phone:'', selfReg:true, tier:'libre', routines:[],
+    consent:p.consent||null, // prueba de autorización (fecha + versión de los textos legales)
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
@@ -701,6 +703,65 @@ async function backToCoachPanel(){
 // controles ocultos su-* (fuente de verdad de signupClient) — la lógica de
 // creación de cuenta NO cambia.
 // ══════════════════════════════════════════
+// ── Consentimiento Habeas Data en el registro (Ley 1581/2012) ──
+// Versión de los textos legales que el usuario acepta — súbela cuando cambien los
+// documentos de legal/ para que la evidencia guardada diga QUÉ versión se aceptó.
+// Los textos son BORRADORES pendientes de revisión de abogado (legal/LEEME-IMPORTANTE.md);
+// Camilo decidió conectarlos tal cual mientras tanto (2026-07-06).
+const LEGAL_V='2026-07-07-borrador';
+const LEGAL_DOCS={
+  politica:{file:'politica-tratamiento-datos.md',title:'Política de Tratamiento de Datos'},
+  terminos:{file:'terminos-y-condiciones.md',title:'Términos y Condiciones'},
+};
+
+// Render mínimo de los .md legales (títulos, negrita, listas, citas). No es un parser
+// markdown general: cubre exactamente lo que usan los documentos de legal/.
+function _legalMdToHtml(md){
+  const inline=s=>esc(s)
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .replace(/\*(.+?)\*/g,'<i>$1</i>')
+    .replace(/\[(.+?)\]/g,'$1'); // enlaces placeholder [Doc] → texto plano
+  const out=[]; let list=false;
+  const closeList=()=>{ if(list){out.push('</ul>');list=false;} };
+  String(md||'').split(/\r?\n/).forEach(ln=>{
+    const t=ln.trim();
+    if(/^- /.test(t)){ if(!list){out.push('<ul>');list=true;} out.push('<li>'+inline(t.slice(2))+'</li>'); return; }
+    closeList();
+    if(!t){ return; }
+    if(/^### /.test(t)){ out.push('<h4>'+inline(t.slice(4))+'</h4>'); return; }
+    if(/^## /.test(t)){ out.push('<h4>'+inline(t.slice(3))+'</h4>'); return; }
+    if(/^# /.test(t)){ out.push('<h3>'+inline(t.slice(2))+'</h3>'); return; }
+    if(/^> /.test(t)){ out.push('<p class="lg-quote">'+inline(t.slice(2))+'</p>'); return; }
+    if(/^---+$/.test(t)){ return; }
+    out.push('<p>'+inline(t)+'</p>');
+  });
+  closeList();
+  return out.join('');
+}
+
+// Abre el visor con un documento de legal/ (links de las casillas del registro).
+async function showLegalDoc(which){
+  const doc=LEGAL_DOCS[which]; if(!doc)return;
+  const tt=document.getElementById('legal-title'), bd=document.getElementById('legal-body');
+  if(tt)tt.textContent=doc.title;
+  if(bd)bd.innerHTML='Cargando…';
+  om('m-legal');
+  try{
+    const r=await fetch('legal/'+doc.file);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    if(bd)bd.innerHTML=_legalMdToHtml(await r.text());
+  }catch(e){
+    if(bd)bd.innerHTML='<p>No se pudo cargar el documento. Revisa tu conexión e intenta de nuevo.</p>';
+  }
+}
+
+// Lee las 3 casillas y arma la evidencia (o null si falta alguna). La usan los DOS
+// caminos de registro: email (signupClient) y Google (wzGoogle).
+function _wzConsent(){
+  const ck=id=>{const e=document.getElementById(id);return !!(e&&e.checked);};
+  return consentEvidence({general:ck('su-ck-general'),salud:ck('su-ck-salud'),adulto:ck('su-ck-adulto')},LEGAL_V);
+}
+
 const WZ={
   steps:['wz-s-name','wz-s-goal','wz-s-place','wz-s-level','wz-s-when','wz-s-body','wz-s-account'],
   cur:0,
@@ -775,12 +836,14 @@ async function signupClient(){
   };
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
+  const consent=_wzConsent();
+  if(!consent){err.textContent='Para crear tu cuenta marca las 3 casillas de autorización (incluida la de datos de salud: sin ella no podemos armar tu rutina).';err.classList.add('on');return;}
   if(!AUTH.ready()){err.textContent='Sin conexión para crear la cuenta. Revisa tu internet.';err.classList.add('on');return;}
   err.classList.remove('on');
   if(btn){btn.disabled=true;}
   try{
     // 1. Crear cuenta en Supabase Auth (la contraseña la maneja Auth; el perfil va en metadata)
-    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,selfReg:true};
+    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,selfReg:true,consent};
     let res;
     try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
     catch(e){ err.textContent='No se pudo crear la cuenta. Intenta de nuevo.';err.classList.add('on');return; }
@@ -812,11 +875,16 @@ function wzGoogle(){
   const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
   const name=(g('su-name')||'').trim();
   if(!name){ const e=document.getElementById('su-err'); if(e){e.textContent='Escribe tu nombre antes de continuar con Google';e.classList.add('on');} WZ.cur=0; WZ._sync(); return; }
+  // Mismo gate de consentimiento que el registro por email: sin las 3 casillas no se
+  // redirige a Google (la evidencia viaja en ax_wz_pending porque OAuth nos saca de la página).
+  const consent=_wzConsent();
+  if(!consent){ const e=document.getElementById('su-err'); if(e){e.textContent='Para crear tu cuenta marca las 3 casillas de autorización (incluida la de datos de salud: sin ella no podemos armar tu rutina).';e.classList.add('on');} return; }
   try{
     localStorage.setItem('ax_wz_pending', JSON.stringify({
       name, goal:g('su-goal')||null, place:g('su-place')||'gym', level:g('su-level')||'Principiante',
       days:parseInt(g('su-days'))||3, sex:g('su-sex')||null,
       age:parseInt(g('su-age'))||null, weight:parseFloat(g('su-weight'))||null, height:parseFloat(g('su-height'))||null,
+      consent,
       ts:Date.now()
     }));
   }catch(e){}
