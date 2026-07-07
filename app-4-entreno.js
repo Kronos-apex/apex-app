@@ -1352,7 +1352,11 @@ function showWorkoutFinish(routine,stats){
   }catch(e){}
   document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
   document.getElementById('wf-title').textContent=name?`¡Lo lograste, ${name}!`:'¡Lo lograste!';
-  const fecha=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+  // toLocaleDateString con options lanza RangeError en WebViews sin ICU completo (Huawei
+  // viejos) — y aquí un throw mata la celebración entera. Fallback manual sin locale.
+  let fecha;
+  try{ fecha=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'}); }
+  catch(e){ const d=new Date(); fecha=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()]+', '+d.getDate()+' de '+['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][d.getMonth()]; }
   document.getElementById('wf-sub').textContent=(routine.name?routine.name+' · ':'')+fecha;
   const chips=[];
   if(durationSec!=null)chips.push(['Duración',fmtDuration(durationSec)]);
