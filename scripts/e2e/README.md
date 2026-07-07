@@ -21,8 +21,9 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_repro-back.mjs` | Botón atrás Android/TWA — capas de overlays (v223) | 2026-06-29 |
 | `_repro-back-v243.mjs` | Atrás con ficha técnica/lightbox como capas propias, 17/17 | 2026-06-30 |
 | `_repro-glink-v244.mjs` | Retorno de "Conectar mi Google" — toasts éxito/error, 13/13 | 2026-07-02 |
-| `_repro-plancha.mjs` | Máquina de estados isométrico/HIIT × clásica/guiado + regresión S1z | 2026-07-03 |
+| `_guiado-suite.mjs` | Suite del GUIADO post-clásica (S3-S22 portados de `_repro-plancha.mjs`, borrado tras F5 — git history): iso/HIIT, finalizar/reiniciar, ánimo, reorden, lastre, embebido, poll, atrás (minimizar v288 / cancelar hold v245), doble sesión, layout xl, tooltip, calentamiento, blindaje. 53/53 | 2026-07-07 |
 | `_repro-plancha-visual.mjs` | Verificación visual del cronómetro isométrico (banner ámbar) | 2026-07-03 |
+| `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20 | 2026-06-30 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |
 | `_shots-rooms.mjs` | Screenshots de las 7 habitaciones (.sroom) | 2026-06-29 |
