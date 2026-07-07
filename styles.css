@@ -354,21 +354,8 @@ html[data-theme="light"] .mta {
 .prof-collapse .pc-t{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.5px;color:var(--t1)}
 .prof-collapse .pc-s{font-size:11px;color:var(--t3);margin-top:2px}
 .prof-collapse .pc-chev{font-size:12px;color:var(--g);transition:transform .25s}
-/* ══ GAMIFICACIÓN: descuento del mes + nivel (en pestaña Progreso) ══ */
-.gx-month{background:radial-gradient(120% 90% at 88% 8%,rgba(232,197,71,.20),transparent 55%),linear-gradient(150deg,#15140C,#0A0A06);border:1px solid rgba(232,197,71,.28);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.4);margin-bottom:12px}
-.gx-mtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.gx-k{font-size:10.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#E8C547}
-.gx-renew{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px}.gx-renew b{color:rgba(255,255,255,.9)}
-.gx-pct{text-align:right;flex-shrink:0}
-.gx-pct b{font-family:'Anton',sans-serif;font-size:40px;line-height:.9;color:#E8C547;text-shadow:0 0 20px rgba(232,197,71,.35)}
-.gx-pct small{display:block;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);margin-top:2px}
-.gx-mbar{margin-top:16px;height:10px;background:rgba(255,255,255,.10);border-radius:6px;overflow:hidden}
-.gx-mfill{height:100%;background:linear-gradient(90deg,#C9A12E,#E8C547);border-radius:6px;box-shadow:0 0 12px rgba(232,197,71,.5)}
-.gx-tiers{display:flex;justify-content:space-between;margin-top:10px}
-.gx-tier{text-align:center;font-size:10px;color:rgba(255,255,255,.5);flex:1}
-.gx-tier b{display:block;font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;font-weight:700}
-.gx-tier.on b{color:#E8C547}.gx-tier.on{color:rgba(232,197,71,.85)}
-.gx-minfo{margin-top:13px;font-size:12px;color:rgba(255,255,255,.85);line-height:1.45;border-top:1px solid rgba(255,255,255,.1);padding-top:11px}.gx-minfo b{color:#E8C547}
+/* ══ GAMIFICACIÓN: nivel + logros (en pestaña Progreso) ══ */
+/* (.gx-month y sus hijas — tarjeta del descuento por adherencia — ELIMINADAS 2026-07-06) */
 .gx-lvl{background:radial-gradient(120% 90% at 85% 10%,rgba(16,224,160,.18),transparent 55%),linear-gradient(150deg,#0B1F18,#06120D);border-radius:18px;padding:18px;color:#fff;box-shadow:0 12px 32px rgba(6,20,15,.45);margin-bottom:12px}
 .gx-ltop{display:flex;align-items:center;gap:15px}
 .gx-ring{width:74px;height:74px;flex-shrink:0;position:relative}

@@ -477,8 +477,9 @@ function removeAvatar(){
   toast('Foto quitada');
 }
 
-// ══════════════════════ GAMIFICACIÓN (nivel permanente + descuento del mes) ══════════════════════
-// GX_LEVELS, gxLevel, gxDiscount, gxNextTier → avi-core.js (fuente única de verdad, con tests)
+// ══════════════════════ GAMIFICACIÓN (nivel permanente + logros) ══════════════════════
+// GX_LEVELS, gxLevel → avi-core.js (fuente única de verdad, con tests). El descuento por
+// adherencia (gxDiscount/gxNextTier) se ELIMINÓ el 2026-07-06 — decisión de Camilo: poca recepción.
 function renderGamification(client){
   const con=document.getElementById('cn-gamif'); if(!con)return;
   const hist=(DB.history||{})[client.id]||[];
@@ -488,30 +489,6 @@ function renderGamification(client){
   const totalVol=hist.reduce((s,h)=>s+(h.totalVol||0),0);
   const L=gxLevel(total);
   const prs=Object.keys((DB.prs||{})[client.id]||{}).length;
-  // ── Tarjeta descuento del mes ──
-  const d=gxDiscount(client,hist);
-  let monthHTML='';
-  if(d){
-    const nt=gxNextTier(d);
-    const circ=Math.round(d.adh*100);
-    const renewStr=d.renewal.toLocaleDateString('es-ES',{day:'numeric',month:'long'});
-    const infoTxt = nt
-      ? `Llevas <b>${d.done} de ${d.expected}</b> sesiones de este mes (${circ}%). Te ${nt.need===1?'falta':'faltan'} <b>${nt.need}</b> para subir a <b>${nt.pct}% de descuento</b> en tu renovación. 💪`
-      : `¡Mes perfecto! Tienes <b>15% de descuento</b> asegurado en tu renovación. 🏆`;
-    monthHTML=`<div class="gx-month">
-      <div class="gx-mtop">
-        <div><div class="gx-k">🎁 Descuento de este mes</div><div class="gx-renew">Renueva el <b>${renewStr}</b>${d.daysLeft>0?` · faltan ${d.daysLeft} días`:' · hoy'}</div></div>
-        <div class="gx-pct"><b>${d.pct}%</b><small>DESBLOQUEADO</small></div>
-      </div>
-      <div class="gx-mbar"><div class="gx-mfill" style="width:${circ}%"></div></div>
-      <div class="gx-tiers">
-        <div class="gx-tier${d.pct>=5?' on':''}"><b>5%</b>60% del plan</div>
-        <div class="gx-tier${d.pct>=10?' on':''}"><b>10%</b>80%</div>
-        <div class="gx-tier${d.pct>=15?' on':''}"><b>15%</b>100%</div>
-      </div>
-      <div class="gx-minfo">${infoTxt}</div>
-    </div>`;
-  }
   // ── Tarjeta de nivel ──
   const circ2=276.5, off=circ2*(1-L.pct/100);
   const progHTML = L.next
@@ -536,15 +513,12 @@ function renderGamification(client){
     {ic:'✅',nm:'10 entrenos',on:total>=10},
     {ic:'🎖️',nm:'30 entrenos',on:total>=30},
     {ic:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
-    {ic:'⭐',nm:'Mes perfecto',on:!!(d&&d.pct>=15)},
+    {ic:'⭐',nm:'50.000 kg',on:totalVol>=50000},
     {ic:'🔩',nm:'20.000 kg',on:totalVol>=20000},
     {ic:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
     {ic:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
   ];
   const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?b.ic:'🔒'}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
-  // El banner de descuento del mes se quitó del Progreso del cliente (descongestión,
-  // 2026-06-28). La info de descuento sigue visible para el coach en su panel
-  // (renderDetailMembership). monthHTML ya no se inserta; `d` se usa en los logros.
   con.innerHTML=lvlHTML+badgesHTML;
 }
 

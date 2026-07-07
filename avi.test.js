@@ -70,8 +70,6 @@ const {
   kcalTargetFor,
   calcMacrosFromKcal,
   gxLevel,
-  gxDiscount,
-  gxNextTier,
   computeExerciseProgress,
   weekEditorial,
   exTrack,
@@ -1611,7 +1609,7 @@ test('calcMacrosFromKcal: carbohidratos nunca negativos', () => {
 });
 
 // ══════════════════════════════════════════════════════
-section('Gamificación (nivel + descuento del mes)');
+section('Gamificación (nivel permanente)');
 
 test('gxLevel: arranque, intermedio y tope', () => {
   const a = gxLevel(0);
@@ -1632,47 +1630,8 @@ test('gxLevel: arranque, intermedio y tope', () => {
   assert.strictEqual(top.rem, 0);
 });
 
-// Cliente base: 2 pagos (ciclo 01-may → 01-jun = 4 semanas), 3 días/sem → esperado 12.
-const gxClient = { days: 3, routines: [], payments: [{ dueDate: '2026-05-01' }, { dueDate: '2026-06-01' }] };
-const gxSessions = n => Array.from({ length: n }, () => ({ date: '2026-05-10', doneSets: 1, totalVol: 100 }));
-const GX_NOW = '2026-05-25';
-
-test('gxDiscount: adherencia plena → 15% (esperado 12 sesiones)', () => {
-  const d = gxDiscount(gxClient, gxSessions(12), GX_NOW);
-  assert.strictEqual(d.expected, 12);
-  assert.strictEqual(d.done, 12);
-  assert.strictEqual(d.adh, 1);
-  assert.strictEqual(d.pct, 15);
-  assert.strictEqual(d.daysLeft, 7); // 25-may → 01-jun
-});
-test('gxDiscount: tramos 10% / 5% / 0%', () => {
-  assert.strictEqual(gxDiscount(gxClient, gxSessions(10), GX_NOW).pct, 10); // 10/12 = .83
-  assert.strictEqual(gxDiscount(gxClient, gxSessions(8), GX_NOW).pct, 5);   // 8/12  = .67
-  assert.strictEqual(gxDiscount(gxClient, gxSessions(4), GX_NOW).pct, 0);   // 4/12  = .33
-});
-test('gxDiscount: solo cuenta sesiones reales (con series o volumen)', () => {
-  const sess = gxSessions(6).concat([{ date: '2026-05-10', doneSets: 0, totalVol: 0 }]);
-  assert.strictEqual(gxDiscount(gxClient, sess, GX_NOW).done, 6); // la vacía no suma
-});
-test('gxDiscount: sin pagos → null', () => {
-  assert.strictEqual(gxDiscount({ days: 3 }, gxSessions(5), GX_NOW), null);
-});
-test('gxDiscount: un solo pago → ventana del mes previo', () => {
-  const d = gxDiscount({ days: 3, routines: [], payments: [{ dueDate: '2026-06-01' }] }, gxSessions(12), GX_NOW);
-  assert.strictEqual(d.expected, 12);
-  assert.strictEqual(d.done, 12);
-});
-
-test('gxNextTier: sesiones que faltan para el próximo tramo', () => {
-  const d = gxDiscount(gxClient, gxSessions(4), GX_NOW); // adh .33
-  const nt = gxNextTier(d);
-  assert.strictEqual(nt.pct, 5);
-  assert.strictEqual(nt.need, 4); // ceil(.6·12)=8, faltan 8-4
-});
-test('gxNextTier: ya en el tope (15%) → null', () => {
-  const d = gxDiscount(gxClient, gxSessions(12), GX_NOW);
-  assert.strictEqual(gxNextTier(d), null);
-});
+// (gxDiscount/gxNextTier ELIMINADAS 2026-07-06 — decisión de Camilo: el descuento por
+// adherencia tuvo poca recepción; se retiró todo rastro. El nivel y los logros siguen.)
 
 // ══════════════════════════════════════════════════════
 section('Progreso por ejercicio (computeExerciseProgress)');

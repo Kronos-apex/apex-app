@@ -1934,26 +1934,8 @@ function renderDetailMembership(id){
     else daysLeftStr=`<span style="font-size:11px;color:var(--rd)">${Math.abs(daysLeft)} día${Math.abs(daysLeft)!==1?'s':''} vencido${Math.abs(daysLeft)!==1?'s':''}</span>`;
   }
 
-  // Descuento ganado este ciclo (gamificación) — el coach lo honra MANUAL al renovar.
-  // Misma lógica que ve el asesorado en su perfil, para que ambos vean lo mismo.
-  const hist=(DB.history||{})[id]||[];
-  const disc=gxDiscount(c,hist);
-  let discHTML='';
-  if(disc){
-    const adhPct=Math.round(disc.adh*100);
-    const nt=gxNextTier(disc);
-    const sub=disc.pct>0
-      ?`Ganado por constancia este ciclo · ${disc.done}/${disc.expected} sesiones (${adhPct}%).`
-      :`Sin descuento aún este ciclo · ${disc.done}/${disc.expected} sesiones (${adhPct}%).`;
-    const ntTxt=nt?` Le ${nt.need===1?'falta':'faltan'} ${nt.need} para ${nt.pct}%.`:' ¡Ciclo perfecto! 🏆';
-    discHTML=`<div style="display:flex;align-items:center;gap:13px;padding:13px 15px;background:#FBF4DC;border:1px solid #EBDDA8;border-radius:var(--rsm);margin-bottom:14px">
-      <div style="font-size:28px;font-weight:900;color:#9A7B16;line-height:1;flex-shrink:0;min-width:54px;text-align:center">${disc.pct}%</div>
-      <div>
-        <div style="font-size:12px;font-weight:800;color:var(--t1)">🎁 Descuento a aplicar en su renovación</div>
-        <div style="font-size:11.5px;color:var(--t2);margin-top:2px;line-height:1.4">${sub}${ntTxt}</div>
-      </div>
-    </div>`;
-  }
+  // (El descuento por adherencia que se mostraba aquí se ELIMINÓ el 2026-07-06 —
+  // decisión de Camilo: poca recepción. Ver avi-core.js, sección GAMIFICACIÓN.)
 
   // Historial últimos 5 pagos
   let histHTML='';
@@ -1995,7 +1977,6 @@ function renderDetailMembership(id){
         <span style="background:${badge.bg};color:${badge.color};font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0">${badge.label}</span>
       </div>
       <div class="cb">
-        ${discHTML}
         ${histHTML}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
           <button class="btn bp bsm" onclick="openPaymentModal('${id}')">+ Registrar pago</button>

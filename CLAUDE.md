@@ -73,7 +73,7 @@ apex-app/
 - `#cn-messages` — Chat con el coach
 - `#cn-history` — Historial (hasta 365 sesiones) + gráfica volumen + progreso por ejercicio/modalidad
 - `#cn-profile` — Foto de perfil propia, peso corporal, PRs, datos, fotos progreso, medidas (progressive disclosure: oculta tarjetas vacías)
-- `#cn-gamif` — Gamificación: nivel permanente (1–5, no se reinicia) + descuento del mes por adherencia (5/10/15%) + logros. El coach también ve el descuento ganado en su panel
+- `#cn-gamif` — Gamificación: nivel permanente (1–5, no se reinicia) + logros (el descuento por adherencia se eliminó el 2026-07-06)
 
 ### Modales activos
 - `#m-client` — Crear/editar asesorado (nombre, email, contraseña, teléfono, sexo, edad, actividad, objetivo, nivel, días, notas)
@@ -333,11 +333,10 @@ SB_KEYS = [
 - `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
 - `weeklyActiveCount` / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
 
-### Gamificación (v1.4 — visible al asesorado, descuento visible también al coach)
+### Gamificación (v1.4 — nivel permanente + logros)
 - `gxLevel(total)` — nivel permanente 1–5 (`GX_LEVELS`), NO se reinicia
-- `gxDiscount(client, hist)` — adherencia del ciclo de renovación → tramo de descuento (≥60%→5%, ≥80%→10%, 100%→15%). **Informativo**: el coach lo aplica a mano, sin movimiento automático de dinero
-- `gxNextTier(d)` — cuántas sesiones faltan para el siguiente tramo
-- `renderGamification(client)` — tarjetas de nivel + descuento del mes + logros
+- `renderGamification(client)` — tarjeta de nivel + logros
+- ⚰️ **Descuento por adherencia ELIMINADO (2026-07-06, decisión de Camilo):** `gxDiscount`/`gxNextTier`, la tarjeta del cliente, la del coach y su CSS (.gx-month) — tuvo poca recepción ("a nadie le importa mucho"). NO reconstruirlo sin pedido explícito.
 
 ---
 
@@ -919,6 +918,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 ---
 
 *Última actualización: 2026-07-03 · Marca: **AVI** · **v2.0 (auth real + RLS, EN PRODUCCIÓN)** · **avi-v261** · Catálogo **212 ejercicios** (e1–e214; +50 nuevos e165–e214: movilidad, HIIT/funcional, antebrazo/grip — **con foto, ya registrados en `EX_IMG_IDS` en v234**) + **gate por nivel** en el generador · Suite **267/267** verde · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+
+*Hitos sesión 2026-07-06 (parte 5 — descuento por adherencia ELIMINADO, avi-v286): decisión de Camilo ("mejor eliminar todo rastro... a nadie le importa mucho" — tuvo poca recepción con los asesorados). Fuera: gxDiscount/gxNextTier (avi-core + 7 tests → suite 267/267), tarjeta del coach en renderDetailMembership (app-6), bloque monthHTML del cliente (app-4; ya no se insertaba desde el 06-28), CSS .gx-month y familia, logro "Mes perfecto" (dependía del descuento) → reemplazado por "⭐ 50.000 kg". El NIVEL permanente y los LOGROS siguen intactos. Verificado con harness dedicado scripts/_verify-gamif.mjs (nivel+logros pintan, cero rastro en cliente y coach). Aprendizaje de producto: incentivos de dinero por adherencia no movieron la aguja con esta base de usuarios; NO reconstruir sin pedido explícito.*
 
 *Hitos sesión 2026-07-06 (parte 4 — CI + SW + contraste + PUSH RESUCITADO, avi-v284/v285): **CI en GitHub Actions** (.github/workflows/ci.yml: suite + el MISMO script del hook en cada push/PR) + check 10 del hook (?v= de index.html debe = CACHE_NAME del sw.js — estuvo 37 versiones desalineado). **v284**: precache del SHELL con ?v=NNN (antes nunca matcheaba → instalación fresca offline sin JS), fallback ignoreSearch, cdn.jsdelivr.net cacheado (supabase-js: el login moría offline), contraste AA de --t3 (claro B0B0B0→757575, oscuro 4A7A58→669B74; jerarquía t1>t2>t3 intacta). **v285 — PUSH ESTABA MUERTO desde el cutover a auth (~2026-06-02)**: subscribePush solo corría en tryAutoLogin (legacy) → ningún dispositivo se re-registraba y los push dirigidos (chat) no encontraban suscripción. Re-conectado a _enterAuthSession (cliente, 4s post-init) y _enterCoachAuth ('_coach', 3s). RLS de push_subscriptions cerrada: anon FUERA (podía UPDATE de cualquier fila); cada quien escribe solo su fila (client_id=auth.uid(); '_coach' solo COACH_UID); subscribePush manda el token de sesión y NO marca el endpoint si el POST falla. Filas pre-auth podadas (re-registro automático al abrir la app). Verificado contra la API real: anon 401, fila ajena 403, propia 201. OJO: los asesorados recuperan push al ABRIR la app una vez (los que no la abran quedan sin notificaciones hasta entonces). Banner de inactivos + whatsappNudge YA EXISTÍAN (backlog viejo estaba desactualizado). legal/: borradores de consentimiento SIN conectar al registro (decisión de Camilo pendiente).*
 
