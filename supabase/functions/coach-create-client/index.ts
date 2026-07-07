@@ -54,6 +54,11 @@ Deno.serve(async (req) => {
   const routines = Array.isArray(body.routines) ? body.routines : [];
   const updateId = (body.user_id || "").trim();
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // admin.createUser/updateUserById NO aplican la política de contraseñas del proyecto
+  // (es un bypass de admin), así que ESTA es la única puerta server-side de las cuentas
+  // que crea el coach. Se replica la regla de avi-core passwordProblem para que las claves
+  // de asesorados tengan la misma fuerza que las de auto-registro (Camilo 2026-07-07).
+  const weakPass = (p: string) => p.length < 8 || !/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/[0-9]/.test(p);
 
   // ── Modo UPDATE: edición de un asesorado YA provisionado (cambio de clave y/o correo de
   // acceso). Se enruta por user_id (no por correo) para que cambiar el email actualice la
@@ -61,7 +66,7 @@ Deno.serve(async (req) => {
   // auditoría 2026-06-30). Solo toca auth.users; perfil/rutinas van por el guardado normal.
   if (updateId) {
     if (!password && !email) return json({ error: "nothing_to_update" }, 400);
-    if (password && password.length < 4) return json({ error: "weak_password" }, 400);
+    if (password && weakPass(password)) return json({ error: "weak_password" }, 400);
     if (email && !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
     const patch: Record<string, unknown> = { email_confirm: true };
     if (password) patch.password = password;
@@ -72,7 +77,7 @@ Deno.serve(async (req) => {
   }
 
   if (!email || !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
-  if (!password || password.length < 4) return json({ error: "weak_password" }, 400);
+  if (!password || weakPass(password)) return json({ error: "weak_password" }, 400);
 
   try {
     // 1) Crear la cuenta auth pre-confirmada. Si el correo ya existe, recuperarla.

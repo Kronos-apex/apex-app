@@ -163,7 +163,7 @@ async function saveClient(){
   const pass=document.getElementById('cf-pass').value.trim();
   if(!fn){toast('⚠️ El nombre es obligatorio');return}
   if(!CUR.editClientId&&(!email||!pass)){toast('⚠️ Email y contraseña son obligatorios');return}
-  if(pass&&pass.length<4){toast('⚠️ La contraseña debe tener al menos 4 caracteres');return}
+  const _pp=pass?passwordProblem(pass):null; if(_pp){toast('⚠️ '+_pp);return}
   const dup=DB.clients.find(c=>c.email&&c.email.toLowerCase()===email&&c.id!==CUR.editClientId);
   if(dup){toast('⚠️ Ya existe un asesorado con ese email');return}
   const clientId=CUR.editClientId||uid();

@@ -54,6 +54,7 @@ const {
   bmiFrom,
   bodyLoadProfile,
   validateSignup,
+  passwordProblem,
   consentEvidence,
   PAIN_AREAS,
   PAIN_LEVELS,
@@ -1193,7 +1194,7 @@ section('17. Auto-registro (modo libre)');
 const COACH = 'coach@apex.com';
 
 test('validateSignup: registro válido pasa', () => {
-  const r = validateSignup({ name: 'Ana', email: 'ana@mail.com', password: 'clave123' }, [], COACH);
+  const r = validateSignup({ name: 'Ana', email: 'ana@mail.com', password: 'Clave123' }, [], COACH);
   assert.strictEqual(r.ok, true);
 });
 
@@ -1261,6 +1262,24 @@ test('painTipFor: tip por área con fallback conservador', () => {
   assert.strictEqual(PAIN_LEVELS[2].v, 3);
 });
 
+test('passwordProblem: exige 8+ con minúscula, mayúscula y dígito (política Supabase)', () => {
+  assert.strictEqual(passwordProblem('Clave123'), null);
+  assert.strictEqual(passwordProblem('MiClaveSegura2026'), null);
+  assert.ok(/8 caracteres/.test(passwordProblem('Cl1a')));
+  assert.ok(/minúscula/.test(passwordProblem('CLAVE123')));
+  assert.ok(/mayúscula/.test(passwordProblem('clave123')));
+  assert.ok(/número/.test(passwordProblem('ClaveSegura')));
+  assert.ok(passwordProblem(''));
+  assert.ok(passwordProblem(null));
+});
+
+test('validateSignup: rechaza contraseña que no cumple la política y lo dice en español', () => {
+  const r = validateSignup({ name: 'Ana', email: 'ana@mail.com', password: 'corta1' }, [], COACH);
+  assert.strictEqual(r.ok, false);
+  assert.ok(/8 caracteres/.test(r.error));
+  assert.strictEqual(validateSignup({ name: 'Ana', email: 'ana@mail.com', password: 'Clave123' }, [], COACH).ok, true);
+});
+
 test('consentEvidence: las 3 casillas marcadas arman la evidencia con versión y fecha', () => {
   const ev = consentEvidence({ general: true, salud: true, adulto: true }, '2026-07-07', '2026-07-07T15:00:00.000Z');
   assert.deepStrictEqual(ev, { general: true, salud: true, adulto: true, v: '2026-07-07', at: '2026-07-07T15:00:00.000Z' });
@@ -1282,7 +1301,7 @@ test('consentEvidence: sin nowIso usa la fecha actual (ISO válido)', () => {
 
 test('flujo libre: con los datos del registro, el generador produce ≥1 rutina (principiante)', () => {
   // Simula lo que hace signupClient: registro válido → generar con sus datos.
-  const data = { name: 'Sofía', email: 'sofia@mail.com', password: 'clave123', sex: 'F', age: 40, weight: 85, height: 165, level: 'Principiante', days: 3, goal: 'Perder grasa', place: 'gym' };
+  const data = { name: 'Sofía', email: 'sofia@mail.com', password: 'Clave123', sex: 'F', age: 40, weight: 85, height: 165, level: 'Principiante', days: 3, goal: 'Perder grasa', place: 'gym' };
   assert.strictEqual(validateSignup(data, [], COACH).ok, true);
   const res = generarRutinas(data, LIB, { ...FIXED, adaptation: true, loadProfile: bodyLoadProfile(data) });
   assert.ok(res.routines.length >= 1, 'genera al menos una rutina');

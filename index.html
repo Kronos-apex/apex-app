@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=296">
+<link rel="stylesheet" href="styles.css?v=297">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -281,7 +281,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
         <label class="cin-lbl">Contraseña</label>
         <div style="position:relative">
-          <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password" style="padding-right:46px">
+          <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mín. 8: mayúscula, minúscula y número" autocomplete="new-password" style="padding-right:46px">
           <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7">👁</button>
         </div>
         <!-- Consentimiento Habeas Data (Ley 1581/2012): 3 casillas SEPARADAS, ninguna
@@ -761,7 +761,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   <div class="md">
     <div class="mdtitle" id="mc-title">Nuevo asesorado</div>
     <div class="frow"><div class="fg"><label class="ilbl">Nombre *</label><input type="text" class="inp" id="cf-name" maxlength="60" placeholder="Ej: María"></div><div class="fg"><label class="ilbl">Apellido</label><input type="text" class="inp" id="cf-last" maxlength="60" placeholder="Ej: García"></div></div>
-    <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: maria123" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: Maria2026" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
     <div class="frow">
       <div class="fg"><label class="ilbl">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
       <div class="fg"><label class="ilbl">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28"></div>
@@ -1081,18 +1081,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=296"></script>
-<script src="muscle-map.js?v=296"></script>
-<script src="exercise-muscles.js?v=296"></script>
+<script src="avi-core.js?v=297"></script>
+<script src="muscle-map.js?v=297"></script>
+<script src="exercise-muscles.js?v=297"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=296"></script>
-<script src="app-2-login.js?v=296"></script>
-<script src="app-3-coach.js?v=296"></script>
-<script src="app-4-entreno.js?v=296"></script>
-<script src="app-5-salud.js?v=296"></script>
-<script src="app-6-extra.js?v=296"></script>
+<script src="app-1-infra.js?v=297"></script>
+<script src="app-2-login.js?v=297"></script>
+<script src="app-3-coach.js?v=297"></script>
+<script src="app-4-entreno.js?v=297"></script>
+<script src="app-5-salud.js?v=297"></script>
+<script src="app-6-extra.js?v=297"></script>
 
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">

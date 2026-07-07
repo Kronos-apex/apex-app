@@ -1207,6 +1207,21 @@ function sortRoutinesByDay(routines) {
     .map(pair => pair[0]);
 }
 
+// ── Requisitos de contraseña — pura, testeable ──
+// DEBE coincidir con la política de Supabase Auth (Camilo la endureció 2026-07-07:
+// mínimo 8, con minúscula, mayúscula y dígito). Si la validación local fuera más laxa,
+// el registro pasaría aquí y Supabase lo rechazaría con un error EN INGLÉS confuso.
+// Fuente única: la usan validateSignup (auto-registro) y el alta de asesorados del coach.
+// Devuelve null si la contraseña cumple, o el mensaje de error (en español) si no.
+function passwordProblem(pass) {
+  pass = pass || '';
+  if (pass.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+  if (!/[a-z]/.test(pass)) return 'La contraseña debe incluir una letra minúscula';
+  if (!/[A-Z]/.test(pass)) return 'La contraseña debe incluir una letra mayúscula';
+  if (!/[0-9]/.test(pass)) return 'La contraseña debe incluir un número';
+  return null;
+}
+
 // ── Validación de auto-registro (modo libre) — pura, testeable ──
 // data: {name,email,password}. clients: DB.clients (para email único). coachEmail: el
 // email del coach (no se puede registrar con él). Devuelve {ok} o {ok:false,error}.
@@ -1219,7 +1234,8 @@ function validateSignup(data, clients, coachEmail) {
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'Escribe un email válido' };
   if (coachEmail && email === String(coachEmail).trim().toLowerCase()) return { ok: false, error: 'Ese email no está disponible' };
   if ((clients || []).some(c => c && c.email && c.email.toLowerCase() === email)) return { ok: false, error: 'Ya existe una cuenta con ese email. Inicia sesión.' };
-  if (!pass || pass.length < 4) return { ok: false, error: 'La contraseña debe tener al menos 4 caracteres' };
+  const pp = passwordProblem(pass);
+  if (pp) return { ok: false, error: pp };
   return { ok: true };
 }
 
@@ -1908,6 +1924,7 @@ if (typeof module !== 'undefined' && module.exports) {
     bmiFrom,
     bodyLoadProfile,
     validateSignup,
+    passwordProblem,
     consentEvidence,
     PAIN_AREAS,
     PAIN_LEVELS,
