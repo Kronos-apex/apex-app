@@ -11,6 +11,12 @@ Harnesses de regresión y verificación visual que antes vivían sueltos en `Des
 - **Credenciales de la cuenta de prueba** en `%USERPROFILE%\.avi\e2e-creds.json`:
   `{"email":"...","pass":"..."}` (o env vars `AVI_E2E_EMAIL`/`AVI_E2E_PASS`).
   Jamás hardcodearlas: el repo es público.
+  - ⚠️ **Usar SIEMPRE la cuenta QA dedicada `qa-harness@apex.com`** (creada 2026-07-08,
+    aislada bajo un coach QA que NO aparece en el panel de Camilo) — **NUNCA la cuenta de
+    un asesorado real.** Antes se usaba `samuel@apex.com` (real) y un harness le borró las
+    rutinas (incidente 2026-07-08). Refuerzo de raíz: el sello `cloudWriteSealed` corta toda
+    escritura a la nube en localhost, así que aunque un harness mute datos NO toca producción.
+    Detalle de las cuentas QA: `%USERPROFILE%\.avi\qa-accounts.txt`.
 
 Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de cada uno).
 
