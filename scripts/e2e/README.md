@@ -35,7 +35,11 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_shots-rooms.mjs` | Screenshots de las 7 habitaciones (.sroom) | 2026-06-29 |
 | `_walk-samuel.mjs` / `_walk-live.mjs` / `_walk-train.mjs` | Recorridos del asesorado (hoy/en vivo/entreno) | 2026-06-25 |
 | `_walk-progreso.mjs` / `_walk-advstats.mjs` / `_walk-split.mjs` / `_walk-room.mjs` | Recorridos de progreso/estadísticas/split/habitaciones | 2026-06-28 |
-| `qa-julian.mjs` | Audit estático complementario (sin credenciales) | 2026-06-13 |
+
+> `qa-julian.mjs` se borró el 2026-07-08: era el audit estático pre-modularización (v146),
+> escaneaba el `index.html` (que ya casi no tiene JS) y quedó superado por el pre-commit hook
+> (11 checks sobre los módulos reales, `scripts/hooks/pre-commit`). El hook es la única fuente
+> de verdad del audit estático.
 
 ## Gotchas conocidos (del CLAUDE.md)
 
