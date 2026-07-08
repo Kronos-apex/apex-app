@@ -223,6 +223,7 @@ const UD={
   // Upsert de la fila propia. patch = columnas a escribir (profile/routines/history/…).
   // user_id y updated_at se fijan aquí; RLS exige user_id === auth.uid().
   async upsertOwn(patch){
+    if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)){ if(window.AVI_DEBUG)console.warn('[AVI] UD.upsertOwn SELLADO en localhost (harness/dev) — no toca la nube'); return null; }
     const c=AUTH.client();const u=await AUTH.getUser();if(!c||!u)throw new Error('Sin sesión');
     const row=Object.assign({user_id:u.id,updated_at:new Date().toISOString()},patch||{});
     const {data,error}=await c.from('user_data').upsert(row).select().maybeSingle();
@@ -262,6 +263,7 @@ const UD={
   // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
   // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.
   async updateClientRow(clientId,patch){
+    if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)){ if(window.AVI_DEBUG)console.warn('[AVI] UD.updateClientRow SELLADO en localhost (harness/dev) — no toca la nube'); return null; }
     const c=AUTH.client();if(!c)throw new Error('Auth no disponible');
     const {data,error}=await c.from('user_data')
       .update(Object.assign({updated_at:new Date().toISOString()},patch||{}))
@@ -272,6 +274,7 @@ const UD={
   // Borra la fila de un cliente en la nube (el coach puede por RLS: coach_id = su uid).
   // Sin esto, al eliminar un cliente su fila quedaba y reaparecía al volver a entrar.
   async deleteClientRow(clientId){
+    if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)){ if(window.AVI_DEBUG)console.warn('[AVI] UD.deleteClientRow SELLADO en localhost (harness/dev) — no toca la nube'); return; }
     const c=AUTH.client();if(!c)throw new Error('Auth no disponible');
     const {error}=await c.from('user_data').delete().eq('user_id',clientId);
     if(error)throw error;

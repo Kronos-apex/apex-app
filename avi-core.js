@@ -1852,6 +1852,36 @@ function errReportGate(state, msg, now) {
   return { report: true, state: { seen: seen.concat(sig), sent: sent + 1, day: today, dayCount: dayCount + 1 } };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// SELLO ANTI-HARNESS — corta escrituras a la nube desde localhost (v298)
+// ──────────────────────────────────────────────────────────────────────
+// Incidente 2026-07-08 (Samuel): los harness E2E corren `python http.server`
+// sobre el index.html LOCAL, que apunta al Supabase de PRODUCCIÓN. Al iniciar
+// sesión con la cuenta REAL de un asesorado y hacer svNow('ax_c') con una
+// rutina de PRUEBA (fixture rTest), el harness SOBRESCRIBIÓ las 4 rutinas
+// reales de Samuel en la nube. Causa de raíz: la ruta de escritura (UD.upsert*)
+// nunca se sellaba en localhost. Este guard la sella para CUALQUIER harness,
+// presente o futuro, sin tener que tocar cada script. Pura y testeable:
+// recibe hostname + flag de opt-in. Escape hatch para probar sync a propósito
+// contra un proyecto de PRUEBA: window.AVI_ALLOW_CLOUD_WRITE = true.
+function cloudWriteSealed(hostname, allowFlag) {
+  if (allowFlag) return false;
+  return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(String(hostname || ''));
+}
+
+// IDs de rutina que SOLO usan los harness E2E (nunca un asesorado real: las rutinas
+// reales llevan id hex/base36 tipo "mqqx81o..."). Antes del sello v298, algún harness
+// alcanzó a inyectar sesiones de PRUEBA en el historial real de un asesorado (y su
+// teléfono las re-empujaba a la nube). stripFixtureSessions las barre de cualquier
+// dispositivo al cargar. Blocklist explícita → cero riesgo de tocar datos reales.
+const FIXTURE_ROUTINE_IDS = ['rTest', 'rVis', 'rf5'];
+// Purga sesiones-fixture de un array de historial. Devuelve {history, removed}. PURA.
+function stripFixtureSessions(history) {
+  const arr = Array.isArray(history) ? history : [];
+  const clean = arr.filter(h => !h || FIXTURE_ROUTINE_IDS.indexOf(h.routineId) === -1);
+  return { history: clean, removed: arr.length - clean.length };
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1953,5 +1983,8 @@ if (typeof module !== 'undefined' && module.exports) {
     SUBMUSCLE_LABEL,
     submuscleVolume,
     errReportGate,
+    cloudWriteSealed,
+    FIXTURE_ROUTINE_IDS,
+    stripFixtureSessions,
   };
 }

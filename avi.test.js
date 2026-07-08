@@ -36,6 +36,8 @@ const {
   weekStreak,
   longestWeekStreak,
   errReportGate,
+  cloudWriteSealed,
+  stripFixtureSessions,
   adherenceMonth,
   sortRoutinesByDay,
   genSchemeFor,
@@ -2330,6 +2332,61 @@ test('errReportGate: al cambiar el día de calendario el tope diario arranca en 
   const r = errReportGate(st, 'error de mañana', '2026-07-07T08:00:00');
   assert.strictEqual(r.report, true);
   assert.strictEqual(r.state.dayCount, 1);
+});
+
+// ══════════════════════════════════════════════════════
+// Sello anti-harness (cloudWriteSealed) — incidente Samuel 2026-07-08
+// ══════════════════════════════════════════════════════
+section('Sello anti-harness (cloudWriteSealed)');
+
+test('cloudWriteSealed: localhost sella la escritura (sin opt-in)', () => {
+  assert.strictEqual(cloudWriteSealed('localhost', false), true);
+  assert.strictEqual(cloudWriteSealed('localhost', undefined), true);
+});
+
+test('cloudWriteSealed: 127.0.0.1 e IPv6 [::1] también se sellan', () => {
+  assert.strictEqual(cloudWriteSealed('127.0.0.1', false), true);
+  assert.strictEqual(cloudWriteSealed('[::1]', false), true);
+});
+
+test('cloudWriteSealed: producción (github.io) NUNCA se sella — usuarios reales sí escriben', () => {
+  assert.strictEqual(cloudWriteSealed('kronos-apex.github.io', false), false);
+  assert.strictEqual(cloudWriteSealed('avi.entrena.app', false), false);
+});
+
+test('cloudWriteSealed: opt-in explícito (AVI_ALLOW_CLOUD_WRITE) permite escribir aun en localhost', () => {
+  assert.strictEqual(cloudWriteSealed('localhost', true), false);
+});
+
+test('cloudWriteSealed: hostname vacío/indefinido NO se sella (no es localhost)', () => {
+  assert.strictEqual(cloudWriteSealed('', false), false);
+  assert.strictEqual(cloudWriteSealed(undefined, false), false);
+});
+
+test('stripFixtureSessions: barre sesiones-fixture (rTest/rVis/rf5) y conserva las reales', () => {
+  const hist = [
+    { routineId: 'mqqx81o', routineName: 'Empuje' },
+    { routineId: 'rTest', routineName: 'WF Guard2' },
+    { routineId: 'rVis', routineName: 'Cardio + Core' },
+    { routineId: 'rf5', routineName: 'Test F5a' },
+    { routineId: '6d8c55048f9d', routineName: 'Full Body C' },
+  ];
+  const r = stripFixtureSessions(hist);
+  assert.strictEqual(r.removed, 3);
+  assert.strictEqual(r.history.length, 2);
+  assert.deepStrictEqual(r.history.map(h => h.routineId), ['mqqx81o', '6d8c55048f9d']);
+});
+
+test('stripFixtureSessions: historial sin basura queda idéntico (removed 0)', () => {
+  const hist = [{ routineId: 'mqqx81o' }, { routineId: 'aaea3e62d581' }];
+  const r = stripFixtureSessions(hist);
+  assert.strictEqual(r.removed, 0);
+  assert.strictEqual(r.history.length, 2);
+});
+
+test('stripFixtureSessions: entrada no-array → array vacío sin lanzar', () => {
+  assert.deepStrictEqual(stripFixtureSessions(null), { history: [], removed: 0 });
+  assert.deepStrictEqual(stripFixtureSessions(undefined), { history: [], removed: 0 });
 });
 
 // ══════════════════════════════════════════════════════

@@ -255,7 +255,12 @@ function _applyAuthClientDB(client, coll){
   coll=coll||{};
   const id=client.id;
   DB.clients=[client];
-  DB.history   ={[id]: coll.history   ||[]};
+  // 🧹 Auto-cura (v298): barre sesiones-fixture (rTest/rVis/rf5) que un harness pudo
+  // inyectar en el historial real antes del sello. Si limpió algo, lo persiste a la nube
+  // (svNow, ya con sesión y en https) para que no vuelva a re-empujarse al entrenar.
+  const _hclean=(typeof stripFixtureSessions==='function')?stripFixtureSessions(coll.history):{history:coll.history||[],removed:0};
+  DB.history   ={[id]: _hclean.history};
+  if(_hclean.removed>0){ try{ svNow('ax_hist',DB.history); log&&log('AVI: purgadas '+_hclean.removed+' sesiones-fixture del historial'); }catch(_e){} }
   DB.prs       ={[id]: coll.prs       ||{}};
   DB.bodyweight={[id]: coll.bodyweight||[]};
   DB.medidas   ={[id]: coll.medidas   ||[]};

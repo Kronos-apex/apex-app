@@ -583,6 +583,7 @@ git push origin main
 - NUNCA cortar un harness con `head` (deja el puerto zombi); matar listeners del puerto antes de correr.
 - NUNCA reintentar `doLogin` encima de otro en curso (dispara `_enterAuthSession` doble — el bug real v283).
 - Para probar REGISTRO sin crear cuentas ni rate limit: espiar `AUTH.signUpEmail` y `loginWithGoogle` (patrón `_verify-consent.mjs`).
+- 🛑 **Los harness corren el index.html LOCAL, que apunta al Supabase de PRODUCCIÓN, y hacen login con cuentas REALES (samuel).** Antes del sello v298, mutar `DB` + `svNow('ax_c'/'ax_hist')` empujaba fixtures a la nube real (**incidente 2026-07-08: `_verify-pain` borró las 4 rutinas reales de Samuel** dejando solo una rutina de prueba). **Fix de raíz (v298):** `cloudWriteSealed(location.hostname)` (avi-core) sella `UD.upsertOwn/updateClientRow/deleteClientRow` en localhost → NINGÚN harness puede escribir a producción. Para probar sync a propósito: `window.AVI_ALLOW_CLOUD_WRITE=true` **y contra un proyecto de PRUEBA, jamás producción**. Complemento: `stripFixtureSessions` purga sesiones-fixture (rTest/rVis/rf5) del historial real al cargar (auto-cura los teléfonos ya contaminados).
 
 ### App / datos
 - Claves de sesión (`done_/log_/lastre_/wshow_/drop_/wu_` + tokens `w0/dN`, `session_id_<rid>`) — **NUNCA cambiar el formato** (rompe sesiones en curso de usuarios reales).
@@ -665,6 +666,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-07 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v297** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **283/283** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-08 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v298** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **291/291** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v297 contraseñas fuertes + 2FA · v296 dolor + push asesorado + notifs por estado · v295 seguridad RPCs).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v298 sello anti-harness (incidente Samuel) · v297 contraseñas fuertes + 2FA · v296 dolor + push asesorado + notifs por estado).*
