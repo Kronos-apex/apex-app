@@ -194,6 +194,7 @@ DB = {
   tier,                             // 'libre' (free) | 'premium' (activado por coach) | undefined (creado por coach = acceso completo)
   wantsCoach, wantsCoachAt,         // true cuando un libre pide coach → lead caliente para el coach
   startDate,                        // opcional — inicio de entreno (ventana de adaptación); si falta usa 1ª sesión/createdAt
+  habits,                           // ✅ v300 — hábitos diarios: {water:{'YYYY-MM-DD':vasos}} (poda 30 días; viaja en el perfil como painCare)
   suspended: false,
   payments: [{
     date, dueDate, amount, note
@@ -405,6 +406,13 @@ SB_KEYS = [
 ### Agregados de actividad por fecha (v1.5 — `avi-core.js`, deterministas, reciben `now`)
 - `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
 - `weeklyActiveCount` / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
+
+### Hábitos diarios (v300 — 💧 agua por vasos)
+- Tarjeta `#cn-habits` en Hoy (render `renderHabitsCard`/`waterTap` en app-5; llamada desde `renderClientToday` ANTES de los early-returns → sale también en descanso/sin rutina)
+- Lógica pura en avi-core: `waterGoalGlasses(weightKg)` (~35ml/kg, vaso 250ml, clamp 6-12, fallback 8) · `waterToday`/`waterAdd` (clamp 0-30, poda 30 días, inmutable) · `waterWeek` (mini-fila 7 días) · `habitDayKey`
+- La meta respeta `nut.water` del plan del coach (ya viene en vasos) vía `_waterGoalFor`; sin plan → peso
+- Datos en `client.habits` → viajan en el perfil (clientToRow copia todo, patrón painCare); sync con `sv()` (debounce)
+- Diseñada para crecer: pasos y adherencia de comidas van en esta MISMA tarjeta (decisión Camilo 2026-07-09)
 
 ### Gamificación (v1.4 — nivel permanente + logros)
 - `gxLevel(total)` — nivel permanente 1–5 (`GX_LEVELS`), NO se reinicia
