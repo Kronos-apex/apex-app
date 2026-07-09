@@ -614,7 +614,11 @@ git push origin main
 - **v2.0** (junio 2026, EN PROD): Supabase Auth real (email + Google) + RLS por usuario, SMTP propio, registro público.
 - **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 11 checks, harnesses E2E versionados (`scripts/e2e/`).
 
-### 🎯 Backlog vigente (2026-07-07)
+### 🎯 Backlog vigente (2026-07-09)
+- [ ] 💧 Hábitos parte 2: 👟 PASOS (meta + registro MANUAL + recordatorio push; Google Fit NO viable — API apagada por Google, Health Connect solo apps nativas) → misma tarjeta #cn-habits
+- [ ] 💧 Hábitos parte 3: 🍽️ COMIDAS = check-in de adherencia al plan (✅/más o menos/❌) + foto opcional al coach. DECISIÓN 2026-07-09: NO construir base de datos de alimentos
+- [ ] ⚡ Entrenamientos rápidos: que el usuario elija las RONDAS antes de empezar (hoy fijas por preset) — pedido Camilo 2026-07-09
+- [ ] 📊 Coach: adherencia de hábitos (agua) del asesorado en p-detail (los datos YA sincronizan en client.habits)
 - [ ] 🔐 **2FA en GitHub y Supabase — SOLO Camilo puede** (recordárselo cada sesión hasta que lo haga)
 - [ ] ⚖️ Legal: revisión de ABOGADO de `legal/` + botones "descargar mis datos" / "eliminar mi cuenta" (derecho de supresión). Al cambiar textos: subir `LEGAL_V`.
 - [ ] 🏪 Play Store: política de privacidad con URL pública (`legal/` ya se sirve en Pages — validar si basta), borrado self-service (mismo item legal), formulario Data Safety, cuenta dev US$25
