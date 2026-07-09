@@ -1041,9 +1041,11 @@ function gmRestPlan(ei, si){
   return { transition:false, sec };
 }
 // Lanza el descanso/transición correcto según el plan de biserie.
+// Isométricos INCLUIDOS (v299): al terminar de aguantar (o marcar ✓ a mano) el descanso
+// arranca solo, igual que cualquier serie. Antes había un return especial heredado del
+// clásico ("el descanso lo decide la persona") y la plancha quedaba muda al llegar a 0
+// — reporte recurrente de Camilo, cerrado de raíz el 2026-07-09.
 function gmRest(ei, si, nextStep){
-  // Isométricos (tiempo): el descanso lo decide la persona; no lanzamos overlay (igual que el clásico).
-  if(exTrack(GM.exercises[ei])==='tiempo') return;
   const plan = gmRestPlan(ei, si);
   if(plan.transition){
     gmShowRest(BISET_TRANSITION_SEC, nextStep, { title:'🔗 Biserie — ¡sin pausa!', label:'cambia de ejercicio', biset:true });

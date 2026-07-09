@@ -103,6 +103,10 @@ try {
 
   // ── S3: isométrico · ▶ CRONO no marca de una (el bug original de la plancha) ──
   log('\n=== S3: plancha isométrica · ▶ CRONO (3s) ===');
+  // La plancha debe ser el PASO ACTUAL para que, al terminar de aguantar, encadene el
+  // descanso (v299): se marca el HIIT previo directo y gmRebuild recalcula el paso.
+  await ev(`(()=>{setDone('rTest',0,0,true);setDone('rTest',0,1,true);gmRebuild();closeStartCard();})()`);
+  await sleep(400);
   await ev(`(()=>{const row=document.getElementById('gm-set-1-0');const inp=row.querySelector('.gm-sinput[data-field="secs"]');inp.value='3';row.querySelector('.gm-timer-go').click();})()`);
   await sleep(500);
   let s = JSON.parse(await ev(`JSON.stringify({
@@ -118,8 +122,10 @@ try {
   check('S3 durante: overlay AMBAR con Aguanta', s.overlay && s.gmHold && /Aguanta/.test(s.title || ''), 'title=' + s.title);
   check('S3 durante: botón dice Cancelar', /Cancelar/.test(s.skip || ''), 'skip=' + s.skip);
   await sleep(4200);
-  s = JSON.parse(await ev(`JSON.stringify({done:isDone('rTest',1,0),overlay:!document.getElementById('gm-rest-overlay').classList.contains('hidden'),gmHold:document.getElementById('gm-rest-overlay').classList.contains('gm-hold'),skip:(document.querySelector('#gm-rest-overlay .gm-rest-skip')||{}).textContent,rest:!!GM.restTimer})`));
-  check('S3 al terminar: marcada, overlay cerrado y restaurado, SIN descanso auto', s.done && !s.overlay && !s.gmHold && /Saltar/.test(s.skip || '') && !s.rest, JSON.stringify(s));
+  s = JSON.parse(await ev(`JSON.stringify({done:isDone('rTest',1,0),overlay:!document.getElementById('gm-rest-overlay').classList.contains('hidden'),gmHold:document.getElementById('gm-rest-overlay').classList.contains('gm-hold'),title:(document.getElementById('gm-rest-title')||{}).textContent,skip:(document.querySelector('#gm-rest-overlay .gm-rest-skip')||{}).textContent,rest:!!GM.restTimer})`));
+  check('S3 al terminar: marcada y el DESCANSO ARRANCA solo (v299)', s.done && s.overlay && !s.gmHold && /completada/.test(s.title || '') && /Saltar/.test(s.skip || '') && s.rest, JSON.stringify(s));
+  await ev(`gmSkipRest()`); // cierra el descanso para que S3x arranque limpio
+  await sleep(300);
 
   // ── S3x: cancelar el hold con el botón del overlay ──
   log('\n=== S3x: ▶ CRONO y "⏹ Cancelar" ===');
