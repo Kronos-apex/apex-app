@@ -666,6 +666,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-08 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v298** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **291/291** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v299** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **291/291** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v298 sello anti-harness (incidente Samuel) · v297 contraseñas fuertes + 2FA · v296 dolor + push asesorado + notifs por estado).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v299 plancha encadena el descanso · v298 sello anti-harness (incidente Samuel) · v297 contraseñas fuertes + 2FA).*
