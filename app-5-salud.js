@@ -930,3 +930,55 @@ function restoreNotifications(){
   notifs.forEach(n=>fireNotifAt(n));
   if(notifs.length)log('AVI: '+notifs.length+' notificaci\u00f3n(es) restauradas');
 }
+
+// ══════════════ HÁBITOS DE HOY (v300): 💧 AGUA POR VASOS ══════════════
+// Tarjeta compacta en la pantalla "Hoy" (también en días de descanso — el agua es
+// diaria). El registro vive en client.habits y viaja SOLO en el perfil (clientToRow
+// copia todas las claves, mismo camino probado que painCare). La lógica es pura y
+// testeada en avi-core (waterGoalGlasses/waterToday/waterAdd/waterWeek).
+// La meta respeta el plan nutricional del coach (nut.water, ya viene en vasos);
+// sin plan → se calcula del peso (~35 ml/kg). Diseñada para crecer: pasos y
+// adherencia de comidas se sumarán a esta misma tarjeta.
+function _waterGoalFor(client){
+  const nut=(DB.nutrition||{})[client.id];
+  const coachGoal=nut&&parseInt(nut.water);
+  return (coachGoal>0)?Math.min(30,coachGoal):waterGoalGlasses(client.weight);
+}
+function renderHabitsCard(client){
+  const el=document.getElementById('cn-habits'); if(!el)return;
+  if(!client){ el.innerHTML=''; return; }
+  const goal=_waterGoalFor(client);
+  const n=waterToday(client.habits);
+  const met=n>=goal;
+  const lts=v=>(Math.round(v*WATER_GLASS_ML/100)/10)+' L';
+  const pct=Math.min(100,Math.round(n/goal*100));
+  const dots=waterWeek(client.habits).map(d=>{
+    const cls=d.n>=goal?' full':(d.n>0?' some':'');
+    return `<span class="hb-dot${cls}" title="${d.day}: ${d.n} vaso${d.n!==1?'s':''}"></span>`;
+  }).join('');
+  el.innerHTML=`<div class="hb-card" role="group" aria-label="Registro de agua de hoy">
+    <div class="hb-row">
+      <span class="hb-ic" aria-hidden="true">💧</span>
+      <div class="hb-info">
+        <div class="hb-title">Agua de hoy</div>
+        <div class="hb-sub" aria-live="polite">${met
+          ?`¡Meta cumplida! ${n} vasos · ${lts(n)} 🎉`
+          :`<b>${n}</b> de ${goal} vasos · ${lts(n)} de ${lts(goal)}`}</div>
+        <div class="hb-bar"><div class="hb-fill${met?' met':''}" style="width:${pct}%"></div></div>
+      </div>
+      <button type="button" class="hb-btn hb-minus" aria-label="Quitar un vaso (corregir)" onclick="waterTap(-1)">−</button>
+      <button type="button" class="hb-btn hb-plus" aria-label="Agregar un vaso de agua" onclick="waterTap(1)">+1</button>
+    </div>
+    <div class="hb-week" aria-hidden="true">${dots}</div>
+  </div>`;
+}
+function waterTap(delta){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const goal=_waterGoalFor(c);
+  const before=waterToday(c.habits);
+  c.habits=waterAdd(c.habits,delta);
+  sv('ax_c',DB.clients); // debounce del sync: varios toques seguidos = una escritura
+  renderHabitsCard(c);
+  if(delta>0&&navigator.vibrate)navigator.vibrate(15);
+  if(delta>0&&before<goal&&waterToday(c.habits)>=goal)toast('💧 ¡Meta de agua cumplida! Tu cuerpo te lo agradece');
+}

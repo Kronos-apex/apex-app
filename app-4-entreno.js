@@ -557,6 +557,9 @@ function renderClientToday(client, overrideRoutine){
   // de nuevo si embebe. Guard typeof por si app-6 (donde vive) aún no cargó.
   if(typeof _gmCaptureHome==='function'){ _gmCaptureHome(); gmRestoreOverlayHome(); }
   renderTodayHead(client);
+  // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
+  // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
+  if(typeof renderHabitsCard==='function')renderHabitsCard(client);
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}

@@ -63,6 +63,10 @@ const {
   painTipFor,
   painCareAdd,
   painCareActive,
+  waterGoalGlasses,
+  waterToday,
+  waterAdd,
+  waterWeek,
   isFreeClient,
   clientToRow,
   rowToClient,
@@ -1255,6 +1259,48 @@ test('painCareActive: expira a los 14 días y respeta cleared', () => {
   assert.strictEqual(act.length, 1);
   assert.strictEqual(act[0].area, 'hombro');
   assert.deepStrictEqual(painCareActive(null, now), []);
+});
+
+// ── Hábitos: agua por vasos (v300) ──
+test('waterGoalGlasses: meta por peso (~35ml/kg, vaso 250ml) con clamp [6..12] y fallback 8', () => {
+  assert.strictEqual(waterGoalGlasses(70), 10);   // 2450ml → 9.8 → 10
+  assert.strictEqual(waterGoalGlasses(50), 7);    // 1750ml → 7
+  assert.strictEqual(waterGoalGlasses(30), 6);    // clamp piso
+  assert.strictEqual(waterGoalGlasses(120), 12);  // clamp techo
+  assert.strictEqual(waterGoalGlasses(null), 8);  // sin peso
+  assert.strictEqual(waterGoalGlasses('abc'), 8); // basura
+  assert.strictEqual(waterGoalGlasses(-5), 8);    // negativo
+});
+
+test('waterAdd/waterToday: suma por día local, clamp [0..30], inmutable', () => {
+  const now = new Date(2026, 6, 9, 15, 0, 0); // 2026-07-09 local
+  const orig = { water: { '2026-07-08': 5 } };
+  const h1 = waterAdd(orig, 1, now);
+  assert.strictEqual(waterToday(h1, now), 1);
+  assert.strictEqual(orig.water['2026-07-09'], undefined); // no muta
+  const h2 = waterAdd(waterAdd(h1, 1, now), 1, now);
+  assert.strictEqual(waterToday(h2, now), 3);
+  assert.strictEqual(waterToday(waterAdd(h2, -5, now), now), 0);  // piso 0
+  assert.strictEqual(waterToday(waterAdd(h2, 99, now), now), 30); // techo 30
+  assert.strictEqual(waterToday(null, now), 0);                    // sin datos
+  assert.strictEqual(h2.water['2026-07-08'], 5); // ayer intacto (< 30 días)
+});
+
+test('waterAdd: poda entradas con más de 30 días', () => {
+  const now = new Date(2026, 6, 9);
+  const h = waterAdd({ water: { '2026-05-01': 8, '2026-06-20': 6 } }, 1, now);
+  assert.strictEqual(h.water['2026-05-01'], undefined); // 69 días → fuera
+  assert.strictEqual(h.water['2026-06-20'], 6);         // 19 días → queda
+});
+
+test('waterWeek: 7 días terminando hoy, con ceros donde no hay registro', () => {
+  const now = new Date(2026, 6, 9);
+  const wk = waterWeek({ water: { '2026-07-09': 4, '2026-07-06': 8 } }, now);
+  assert.strictEqual(wk.length, 7);
+  assert.strictEqual(wk[6].day, '2026-07-09');
+  assert.strictEqual(wk[6].n, 4);
+  assert.strictEqual(wk[3].n, 8);
+  assert.strictEqual(wk[0].n, 0);
 });
 
 test('painTipFor: tip por área con fallback conservador', () => {

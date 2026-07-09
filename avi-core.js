@@ -1287,6 +1287,48 @@ function painCareActive(list, nowTs) {
   return (list || []).filter(p => p && !p.cleared && p.at && (now - Date.parse(p.at)) < PAIN_TTL_MS && (now - Date.parse(p.at)) >= 0);
 }
 
+// ── Hábitos diarios (v300): AGUA por vasos — puro, testeable ──
+// El registro vive en client.habits (viaja en el perfil vía clientToRow, igual que
+// painCare). Vaso estándar 250ml; la meta sale del peso (~35 ml/kg) acotada a un
+// rango humano [6..12]; sin peso → 8. Todo recibe `now` (determinista).
+const WATER_GLASS_ML = 250;
+const WATER_KEEP_DAYS = 30; // poda: el objeto no crece sin límite
+function habitDayKey(now) {
+  const d = now || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function waterGoalGlasses(weightKg) {
+  const w = +weightKg;
+  if (!Number.isFinite(w) || w <= 0) return 8;
+  return Math.min(12, Math.max(6, Math.round((w * 35) / WATER_GLASS_ML)));
+}
+function waterToday(habits, now) {
+  const w = (habits && habits.water) || {};
+  return Math.max(0, parseInt(w[habitDayKey(now)]) || 0);
+}
+// Suma delta (puede ser negativo) al día de `now`. Inmutable. Clamp [0..30] (30 vasos
+// = 7.5L, tope de cordura). Poda entradas con más de WATER_KEEP_DAYS días.
+function waterAdd(habits, delta, now) {
+  const h = Object.assign({}, habits || {});
+  const w = Object.assign({}, h.water || {});
+  const k = habitDayKey(now);
+  w[k] = Math.max(0, Math.min(30, (parseInt(w[k]) || 0) + (parseInt(delta) || 0)));
+  const cutoff = habitDayKey(new Date((now ? now.getTime() : Date.now()) - WATER_KEEP_DAYS * 86400000));
+  Object.keys(w).forEach(dk => { if (dk < cutoff) delete w[dk]; }); // YYYY-MM-DD ordena lexicográfico
+  h.water = w;
+  return h;
+}
+// Últimos 7 días (hoy de último) para la mini-fila de la tarjeta: [{day, n}].
+function waterWeek(habits, now) {
+  const base = now || new Date();
+  const out = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(base.getTime() - i * 86400000);
+    out.push({ day: habitDayKey(d), n: waterToday(habits, d) });
+  }
+  return out;
+}
+
 // ── Evidencia de consentimiento (Habeas Data, Ley 1581/2012) — pura, testeable ──
 // Las 3 casillas del registro se marcan POR SEPARADO y ninguna viene pre-marcada
 // (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
@@ -1986,5 +2028,11 @@ if (typeof module !== 'undefined' && module.exports) {
     cloudWriteSealed,
     FIXTURE_ROUTINE_IDS,
     stripFixtureSessions,
+    WATER_GLASS_ML,
+    habitDayKey,
+    waterGoalGlasses,
+    waterToday,
+    waterAdd,
+    waterWeek,
   };
 }
