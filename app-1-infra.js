@@ -1468,6 +1468,11 @@ const AVI_ICONS={
   pencil:'<path d="M15.4 4.4l4.2 4.2L8.2 20 3 21l1-5.2L15.4 4.4z"/><path d="M13.6 6.2l4.2 4.2"/>',
   help:'<circle cx="12" cy="12" r="8"/><path d="M9.7 9.6a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.1 1-1.1 1.9"/><path d="M12 16.6h.01"/>',
   phone:'<path d="M6.2 3.5c1 0 2.4 2.6 2.4 3.5 0 .9-1.3 1.5-1.3 2.4 0 1.6 4.3 5.9 5.9 5.9.9 0 1.5-1.3 2.4-1.3.9 0 3.5 1.4 3.5 2.4 0 1.2-1.7 3.1-3.4 3.1-5.6 0-12.2-6.6-12.2-12.2 0-1.7 1.9-3.8 2.7-3.8z"/>',
+  // F4 (v308): guiado — dolor, biserie y dropset. Solo superficies innerHTML; los tokens
+  // de estado ✓/○/▶/⏸ (textContent que lee la lógica y el harness) NO se migran.
+  alert:'<path d="M12 3.8L21.4 20H2.6L12 3.8z"/><path d="M12 10v4.4"/><path d="M12 17.2h.01"/>',
+  link:'<path d="M10 13.6a4 4 0 0 0 6 .4l2.4-2.4a4 4 0 1 0-5.7-5.7L11.4 7.2"/><path d="M14 10.4a4 4 0 0 0-6-.4l-2.4 2.4a4 4 0 1 0 5.7 5.7l1.3-1.3"/>',
+  tridown:'<path d="M4.8 7h14.4L12 19.2 4.8 7z"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;

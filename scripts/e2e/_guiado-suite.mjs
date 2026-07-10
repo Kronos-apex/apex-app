@@ -64,7 +64,12 @@ async function freshLogin() {
   }
   if (!inApp) { log('FATAL: no se pudo entrar a la app (login)'); throw new Error('login'); }
   await sleep(2500);
-  for (let k = 0; k < 8; k++) { await ev(`(()=>{try{if(typeof hideClientWelcome==='function')hideClientWelcome();}catch(e){}['data-ob','cwelcome','fsintro','m-fsintro','m-textsize'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on');e.style.display='none';}});const ob=document.getElementById('onboarding');if(ob)ob.style.display='none';})()`); await sleep(150); }
+  // Guard duro (2026-07-10): s-client visible NO garantiza sesión completa — con el login
+  // rate-limitado la pantalla puede quedar a medias y los 53 checks cascadean con errores
+  // confusos ("Cannot set properties of undefined"). Mejor un FATAL claro.
+  const sesionOk = await ev(`!!(typeof CUR!=='undefined'&&CUR.clientId&&typeof DB!=='undefined'&&(DB.clients||[]).some(x=>x.id===CUR.clientId))`);
+  if (!sesionOk) { log('FATAL: login no completó (CUR/DB vacíos) — probable rate limit de qa-harness; espera ~4-5 min y reintenta'); throw new Error('rate-limit'); }
+  for (let k = 0; k < 8; k++) { await ev(`(()=>{try{if(typeof hideClientWelcome==='function')hideClientWelcome();}catch(e){}['data-ob','cwelcome','fsintro','m-fsintro','m-textsize'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on');e.style.display='none';}});const ob=document.getElementById('onboarding');if(ob)ob.style.display='none';try{if(typeof AVI_NEWS!=='undefined')localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));if(typeof ntClose==='function')ntClose(false);}catch(e){}})()`); await sleep(150); }
   // El poll de 15s (_pollAuthClient) pisaría la rutina inyectada — apagado SOLO en el harness
   await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}})()`);
 }
@@ -379,7 +384,7 @@ try {
   await setR('Tip Guiado Test', `({byTrack})=>{const mk=()=>{const e=JSON.parse(JSON.stringify(byTrack('reps')));e.sets=2;return e;};return [mk(),mk()];}`);
   await sleep(400);
   await sleep(900); // showExTooltip corre con 600ms de retardo tras el render
-  s = JSON.parse(await ev(`JSON.stringify((()=>{const t=document.getElementById('ex-first-tip');const body=document.getElementById('gm-body');const inBody=!!(t&&body&&body.contains(t));const html=t?t.innerHTML:'';const beforeCard=!!(t&&t.nextElementSibling&&t.nextElementSibling.classList.contains('gm-ex-card'));return{present:!!t,inBody,video:/❓/.test(html)&&/video/i.test(html),breath:/💨/.test(html)&&/respirar/i.test(html),beforeCard};})())`));
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const t=document.getElementById('ex-first-tip');const body=document.getElementById('gm-body');const inBody=!!(t&&body&&body.contains(t));const html=t?t.innerHTML:'';const beforeCard=!!(t&&t.nextElementSibling&&t.nextElementSibling.classList.contains('gm-ex-card'));return{present:!!t,inBody,video:/svg/.test(html)&&/video/i.test(html),breath:(html.match(/<svg/g)||[]).length>=2&&/respirar/i.test(html),beforeCard};})())`));
   check('S21: el tooltip aparece en #gm-body, sobre la 1ª tarjeta, con ❓ video + 💨 respiración', s.present && s.inBody && s.video && s.breath && s.beforeCard, JSON.stringify(s));
   await ev(`dismissExTooltip()`);
   await ev(`gmRender()`);

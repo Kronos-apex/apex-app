@@ -27,7 +27,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_repro-back.mjs` | Botón atrás Android/TWA — capas de overlays (v223) | 2026-06-29 |
 | `_repro-back-v243.mjs` | Atrás con ficha técnica/lightbox como capas propias, 17/17 | 2026-06-30 |
 | `_repro-glink-v244.mjs` | Retorno de "Conectar mi Google" — toasts éxito/error, 13/13 | 2026-07-02 |
-| `_guiado-suite.mjs` | Suite del GUIADO post-clásica (S3-S22 portados de `_repro-plancha.mjs`, borrado tras F5 — git history): iso/HIIT, finalizar/reiniciar, ánimo, reorden, lastre, embebido, poll, atrás (minimizar v288 / cancelar hold v245), doble sesión, layout xl, tooltip, calentamiento, blindaje. 53/53 | 2026-07-07 |
+| `_guiado-suite.mjs` | Suite del GUIADO post-clásica (S3-S22 portados de `_repro-plancha.mjs`, borrado tras F5 — git history): iso/HIIT, finalizar/reiniciar, ánimo, reorden, lastre, embebido, poll, atrás (minimizar v288 / cancelar hold v245), doble sesión, layout xl, tooltip (SVG v308), calentamiento, blindaje. Setup marca ax_news_seen (el tour v304 salía en medio). 53/53 | 2026-07-10 |
 | `_repro-plancha-visual.mjs` | Verificación visual del cronómetro isométrico (banner ámbar) | 2026-07-03 |
 | `_verify-water.mjs` | Tarjeta Hábitos 💧 agua (v300): contador, piso 0, meta cumplida, meta del plan del coach, re-render. 7/7 | 2026-07-09 |
 | `_verify-qwcfg.mjs` | HIIT rápido configurable (v301): preset Máquina, modal prellenado, atrás, clamps, preset sin HIIT directo. 6/6 | 2026-07-09 |

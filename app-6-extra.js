@@ -241,6 +241,9 @@ function gmMoveEx(ei,dir){
 }
 
 // ══════════ REPORTE DE DOLOR (pedido Camilo 2026-07-07) ══════════
+// F4 (v308): íconos de marca en el guiado — SOLO presentación (innerHTML). Los tokens de
+// estado ✓/○/▶/⏸ que la lógica y el harness leen por textContent NO se tocan.
+const _gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
 // El asesorado toca ⚠️ en la tarjeta del ejercicio: elige DÓNDE y QUÉ TANTO le duele.
 // El reporte va a client.painCare (perfil → sync → el coach lo ve en su panel) y se
 // le avisa al coach por el chat (que ya dispara push). Nivel 🔴 ("no puedo hacerlo")
@@ -412,12 +415,12 @@ function gmRender(){
       </div>
       <div class="gm-ex-tools">
         ${exAllDone?'<span style="font-size:20px">✅</span>':''}
-        <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo se hace" onclick="openExDetail('${ex.id}')">❓</button>
+        <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo se hace" onclick="openExDetail('${ex.id}')">${_gmIco('help',15,'❓')}</button>
         <div class="cex-reorder" onclick="event.stopPropagation()">
           <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
           <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
           <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
-          <button onclick="gmReportPain(${ei})" title="Reportar dolor con este ejercicio" aria-label="Reportar dolor">⚠️</button>
+          <button onclick="gmReportPain(${ei})" title="Reportar dolor con este ejercicio" aria-label="Reportar dolor">${_gmIco('alert',15,'⚠️')}</button>
         </div>
       </div>`;
     card.appendChild(hdr);
@@ -466,12 +469,12 @@ function gmRender(){
       const wh=document.createElement('div');
       wh.className='gm-warm-toggle';
       wh.style.cssText='display:flex;align-items:center;justify-content:space-between;margin:2px 0 6px';
-      wh.innerHTML=`<span style="font-size:11.5px;font-weight:700;color:var(--t2)">🔥 Sets de calentamiento</span>`
+      wh.innerHTML=`<span style="font-size:11.5px;font-weight:700;color:var(--t2)">${_gmIco('flame',12,'🔥')} Sets de calentamiento</span>`
         +`<button type="button" style="font-size:11px;font-weight:600;padding:3px 11px;border-radius:99px;border:1.5px solid var(--br2);background:${_wShown?'var(--gl)':'transparent'};color:${_wShown?'var(--gt)':'var(--t3)'};cursor:pointer">${_wShown?'Ocultar':'Mostrar'}</button>`;
       wh.querySelector('button').onclick=()=>gmToggleExWarm(ei);
       setsEl.appendChild(wh);
       if(_wShown){
-        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm','🔥', _warmupKg(ex), '12'));
+        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,WARM_SI,'warm',_gmIco('flame',13,'🔥'), _warmupKg(ex), '12'));
       }
     }
     steps.forEach(({si, stepIdx}) => {
@@ -506,7 +509,7 @@ function gmRender(){
       }
       // 🔻 Dropset de ESTA serie (si se activó deslizando) — bajo su serie
       if(gmTrack==='peso_reps' && dropSetOn(GM.routine,ei,si)){
-        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop','🔻', _dropKg(GM.routine,ex,ei,si), 'fallo'));
+        setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop',_gmIco('tridown',12,'🔻'), _dropKg(GM.routine,ex,ei,si), 'fallo'));
       }
     });
     }
@@ -1016,7 +1019,7 @@ function gmShowStartCard(ex){
   el.addEventListener('click',e=>{ if(e.target===el) closeStartCard(); });
   el.innerHTML='<div class="gsc-card">'
     +'<div class="gsc-ex">'+esc(ex.name)+'</div>'
-    +'<div class="gsc-h">💨 Cómo respirar aquí</div>'
+    +'<div class="gsc-h">'+_gmIco('wind',13,'💨')+' Cómo respirar aquí</div>'
     +'<div class="gsc-b">'+glossarize(bc.l)+'</div>'
     +'<button class="gsc-btn" onclick="closeStartCard()">Empezar</button>'
     +'</div>';
@@ -1074,7 +1077,7 @@ function gmShowRest(secs, nextStep, opts){
   arc.style.strokeDashoffset='0';
   if(nextStep) nextEl.textContent=`Siguiente: ${esc(nextStep.ex.name)} — Serie ${nextStep.si+1}/${nextStep.sets}`;
   const breEl=document.getElementById('gm-rest-breath');
-  if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.textContent=bc?('💨 '+bc.s):''; breEl.style.display=bc?'block':'none'; }
+  if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.innerHTML=bc?(_gmIco('wind',12,'💨')+' '+esc(bc.s)):''; breEl.style.display=bc?'block':'none'; }
   if(GM.restTimer) clearInterval(GM.restTimer);
   // Reset del estado de pausa/+15s y del botón de pausa (el overlay se reusa entre descansos).
   GM.restPaused=false;GM.restTotal=secs;GM.restEndAt=Date.now()+secs*1000;
@@ -1388,7 +1391,7 @@ function gmShowExTip(){
   tip.id = 'ex-first-tip';
   tip.innerHTML = `
     <div class="ex-tooltip-icon">👆</div>
-    <div>Toca el <strong>❓</strong> de un ejercicio para ver el <strong>video</strong>. Y al empezar cada uno, el <strong>💨</strong> te muestra <strong>cómo respirar</strong>.</div>
+    <div>Toca el <strong>${_gmIco('help',13,'❓')}</strong> de un ejercicio para ver el <strong>video</strong>. Y al empezar cada uno, el <strong>${_gmIco('wind',13,'💨')}</strong> te muestra <strong>cómo respirar</strong>.</div>
     <button class="ex-tooltip-close" onclick="dismissExTooltip()">×</button>`;
   body.insertBefore(tip, firstCard);
 }
