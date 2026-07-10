@@ -1159,6 +1159,11 @@ function _aviCloseTopOverlay(){
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
   const csr=document.getElementById('coach-stat-room');
   if(csr&&csr.classList.contains('on')){closeCoachStat();return true;}
+  // El mini-modal de config HIIT (v301) se abre ENCIMA de la biblioteca de rápidos → el
+  // atrás lo cierra a ÉL primero (si no, cerraría la sala por debajo y lo dejaría huérfano
+  // — misma clase de bug que el lightbox sobre la ficha, auditoría 2026-07-01).
+  const qwc=document.getElementById('m-qwcfg');
+  if(qwc&&qwc.classList.contains('on')){_qwCfgSpec=null;qwc.classList.remove('on');return true;}
   const qwr=document.getElementById('quickwo-room');
   if(qwr&&qwr.classList.contains('on')){closeQuickRoom();return true;}
   const pu=document.getElementById('premium-upsell');

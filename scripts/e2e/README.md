@@ -30,6 +30,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_guiado-suite.mjs` | Suite del GUIADO post-clásica (S3-S22 portados de `_repro-plancha.mjs`, borrado tras F5 — git history): iso/HIIT, finalizar/reiniciar, ánimo, reorden, lastre, embebido, poll, atrás (minimizar v288 / cancelar hold v245), doble sesión, layout xl, tooltip, calentamiento, blindaje. 53/53 | 2026-07-07 |
 | `_repro-plancha-visual.mjs` | Verificación visual del cronómetro isométrico (banner ámbar) | 2026-07-03 |
 | `_verify-water.mjs` | Tarjeta Hábitos 💧 agua (v300): contador, piso 0, meta cumplida, meta del plan del coach, re-render. 7/7 | 2026-07-09 |
+| `_verify-qwcfg.mjs` | HIIT rápido configurable (v301): preset Máquina, modal prellenado, atrás, clamps, preset sin HIIT directo. 6/6 | 2026-07-09 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20 | 2026-06-30 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

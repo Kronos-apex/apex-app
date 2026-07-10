@@ -697,6 +697,9 @@ function startRoutineNow(routineId){
 // Reusan el motor de "Hoy" vía renderClientToday(client, override). `track` explícito por
 // ítem porque exTrack manda 'Movilidad' a 'peso_reps' (pediría kg). Todo sin equipo.
 const QUICK_WORKOUTS=[
+  {id:'qw_hiit_maquina', emoji:'🚴', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
+   desc:'Bici estática, elíptica o trotadora: sprints fuertes con pausas suaves. Tú eliges las rondas.',
+   items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
   {id:'qw_hiit_casa', emoji:'🔥', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
    items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e181',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
@@ -718,14 +721,19 @@ const QUICK_WORKOUTS=[
 ];
 // Arma una rutina válida para el motor de "Hoy" desde un preset: spread de la entrada del
 // catálogo (hereda name/muscle/type/icon/desc) + override de sets/reps/track/hiit.
-function buildQuickRoutine(spec){
+// cfg opcional (v301, pedido Camilo 2026-07-09): {rounds,work,rest} elegidos por el
+// usuario en el mini-modal — se aplica SOLO a los ítems HIIT (rondas = sets).
+function buildQuickRoutine(spec, cfg){
   const exercises=(spec.items||[]).map(it=>{
     const base=(DB.exercises||[]).find(e=>e.id===it.id)||{id:it.id,name:it.id,type:'Bodyweight'};
     const ex={...base};
     if(it.sets!=null)ex.sets=it.sets;
     if(it.reps!=null)ex.reps=it.reps;
     if(it.track)ex.track=it.track;
-    if(it.hiit){ex.type='HIIT';ex.track='hiit';ex.hiit={...(base.hiit||{}),...it.hiit};}
+    if(it.hiit){
+      ex.type='HIIT';ex.track='hiit';ex.hiit={...(base.hiit||{}),...it.hiit};
+      if(cfg){ex.sets=cfg.rounds;ex.hiit={work:cfg.work,rest:cfg.rest};}
+    }
     return ex;
   });
   return {id:spec.id,name:spec.name,day:'Libre',quick:true,exercises};
@@ -749,10 +757,36 @@ function openQuickWorkouts(){
 function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
 // Arranca un extra como "Hoy" (override) sin tocar el plan. Cierra la biblioteca consumiendo
 // su capa de historial (como el botón atrás) antes de renderizar, para no dejar el overlay encima.
+// Presets con HIIT (v301): antes de arrancar se abre el mini-modal de rondas/trabajo/descanso
+// prellenado con los valores del preset — el usuario decide (pedido Camilo 2026-07-09).
+let _qwCfgSpec=null;
 function startQuickWorkout(id){
   const spec=QUICK_WORKOUTS.find(w=>w.id===id); if(!spec)return;
+  const hiitItem=(spec.items||[]).find(it=>it.hiit);
+  if(hiitItem){
+    _qwCfgSpec=spec;
+    const nm=document.getElementById('qwcfg-name'); if(nm)nm.textContent=spec.emoji+' '+spec.name;
+    const set=(i,v)=>{const e=document.getElementById(i);if(e)e.value=v;};
+    set('qwcfg-rounds',hiitItem.sets||4); set('qwcfg-work',(hiitItem.hiit&&hiitItem.hiit.work)||30); set('qwcfg-rest',(hiitItem.hiit&&hiitItem.hiit.rest)||15);
+    om('m-qwcfg');
+    return;
+  }
+  _qwGo(spec,null);
+}
+// Confirmación del mini-modal: clamps de cordura en avi-core (clampQwHiit, testeado).
+function qwStartConfigured(){
+  const spec=_qwCfgSpec; if(!spec){cm('m-qwcfg');return;}
+  const hiitItem=(spec.items||[]).find(it=>it.hiit)||{};
+  const def={rounds:hiitItem.sets||4,work:(hiitItem.hiit&&hiitItem.hiit.work)||30,rest:(hiitItem.hiit&&hiitItem.hiit.rest)||15};
+  const g=i=>(document.getElementById(i)||{}).value;
+  const cfg=clampQwHiit({rounds:g('qwcfg-rounds'),work:g('qwcfg-work'),rest:g('qwcfg-rest')},def);
+  _qwCfgSpec=null;
+  cm('m-qwcfg');
+  _qwGo(spec,cfg);
+}
+function _qwGo(spec,cfg){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
-  const routine=buildQuickRoutine(spec);
+  const routine=buildQuickRoutine(spec,cfg);
   // La entrada vive dentro de "Hoy", así que ya estamos en esa pestaña: NO usamos cnTab (su
   // manejo de historial chocaría con el history.back que cierra la biblioteca). Solo renderizamos
   // el extra como override y dejamos que history.back cierre la sala (consume su capa).

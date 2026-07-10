@@ -1329,6 +1329,23 @@ function waterWeek(habits, now) {
   return out;
 }
 
+// ── Config de HIIT rápido (v301): el usuario elige rondas/trabajo/descanso ──
+// Clamps de cordura: rondas 1-20, trabajo 10-180s, descanso 5-180s. Basura/NaN → el
+// default del preset. Puro (lo usa el mini-modal de Entrenamientos rápidos).
+function clampQwHiit(cfg, def) {
+  cfg = cfg || {}; def = def || {};
+  const pick = (v, d, lo, hi) => {
+    const n = parseInt(v);
+    if (!Number.isFinite(n)) return d;
+    return Math.min(hi, Math.max(lo, n));
+  };
+  return {
+    rounds: pick(cfg.rounds, def.rounds || 4, 1, 20),
+    work:   pick(cfg.work,   def.work   || 30, 10, 180),
+    rest:   pick(cfg.rest,   def.rest   || 15, 5, 180),
+  };
+}
+
 // ── Evidencia de consentimiento (Habeas Data, Ley 1581/2012) — pura, testeable ──
 // Las 3 casillas del registro se marcan POR SEPARADO y ninguna viene pre-marcada
 // (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
@@ -2029,6 +2046,7 @@ if (typeof module !== 'undefined' && module.exports) {
     FIXTURE_ROUTINE_IDS,
     stripFixtureSessions,
     WATER_GLASS_ML,
+    clampQwHiit,
     habitDayKey,
     waterGoalGlasses,
     waterToday,

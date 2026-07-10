@@ -67,6 +67,7 @@ const {
   waterToday,
   waterAdd,
   waterWeek,
+  clampQwHiit,
   isFreeClient,
   clientToRow,
   rowToClient,
@@ -1301,6 +1302,14 @@ test('waterWeek: 7 días terminando hoy, con ceros donde no hay registro', () =>
   assert.strictEqual(wk[6].n, 4);
   assert.strictEqual(wk[3].n, 8);
   assert.strictEqual(wk[0].n, 0);
+});
+
+test('clampQwHiit: clamps de cordura y fallback al default del preset', () => {
+  const def = { rounds: 6, work: 30, rest: 15 };
+  assert.deepStrictEqual(clampQwHiit({ rounds: 8, work: 45, rest: 20 }, def), { rounds: 8, work: 45, rest: 20 });
+  assert.deepStrictEqual(clampQwHiit({ rounds: 99, work: 5, rest: 999 }, def), { rounds: 20, work: 10, rest: 180 }); // clamps
+  assert.deepStrictEqual(clampQwHiit({ rounds: 'abc', work: '', rest: null }, def), def); // basura → default
+  assert.deepStrictEqual(clampQwHiit(null, null), { rounds: 4, work: 30, rest: 15 }); // sin nada → defaults duros
 });
 
 test('painTipFor: tip por área con fallback conservador', () => {

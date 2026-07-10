@@ -259,6 +259,8 @@ html[data-theme="light"] .mta {
 .hb-dot{width:8px;height:8px;border-radius:50%;background:var(--br2)}
 .hb-dot.some{background:var(--bl);opacity:.45}
 .hb-dot.full{background:var(--bl)}
+/* Config de HIIT rápido (v301): el modal va ENCIMA de la biblioteca (.sroom z1400) */
+#m-qwcfg{z-index:1500}
 
 /* ── PANEL DEL COACH — pulido Noir Esmeralda (paridad con el interior premium del asesorado) ── */
 #s-coach .coach-topbar-logo{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:2.5px}
