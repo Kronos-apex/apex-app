@@ -414,12 +414,12 @@ function gmRender(){
         <div class="gm-ex-meta">${esc(ex.muscleLabel||ex.muscle)} · ${esc(ex.type)}</div>
       </div>
       <div class="gm-ex-tools">
-        ${exAllDone?'<span style="font-size:20px">✅</span>':''}
+        ${exAllDone?'<span style="color:var(--g)">'+_gmIco('check',20,'✅')+'</span>':''}
         <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo se hace" onclick="openExDetail('${ex.id}')">${_gmIco('help',15,'❓')}</button>
         <div class="cex-reorder" onclick="event.stopPropagation()">
           <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
           <button onclick="gmMoveEx(${ei},1)" ${ei===GM.exercises.length-1?'disabled':''} title="Bajar" aria-label="Bajar ejercicio">↓</button>
-          <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">🔄</button>
+          <button onclick="todaySubstitute(${ei})" title="Cambiar este ejercicio" aria-label="Cambiar ejercicio">${_gmIco('repeat',15,'🔄')}</button>
           <button onclick="gmReportPain(${ei})" title="Reportar dolor con este ejercicio" aria-label="Reportar dolor">${_gmIco('alert',15,'⚠️')}</button>
         </div>
       </div>`;
@@ -429,7 +429,7 @@ function gmRender(){
     if(_pw){
       const w=document.createElement('div');
       w.className='pain-exchip';
-      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--g);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo 🔄</button>`;
+      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--g);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo ${_gmIco('repeat',12,'🔄')}</button>`;
       card.appendChild(w);
     }
     const setsEl = document.createElement('div');
