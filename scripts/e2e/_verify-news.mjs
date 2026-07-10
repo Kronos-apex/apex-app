@@ -98,6 +98,20 @@ try {
   await ev(`(()=>{try{history.back();}catch(e){} localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
   await sleep(400);
 
+  // N8: bienvenida encima (login fresco) → NO abre, pero reintenta solo al despejarse (v305)
+  // Reproduce el reporte de Camilo 2026-07-10: incógnito con perfil real → tour nunca salió.
+  await ev(`(()=>{localStorage.removeItem('ax_news_seen');
+    const w=document.getElementById('cwelcome');if(w){w.classList.add('on');w.style.display='';}
+    renderNewsCard();})()`);
+  await sleep(500);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden')})`));
+  check('N8a con la bienvenida encima el tour ESPERA (no abre)', !s.open, JSON.stringify(s));
+  await ev(`hideClientWelcome()`);
+  const opened = await waitFor(`!document.getElementById('news-tour').classList.contains('hidden')`, 5000);
+  check('N8b al cerrarse la bienvenida el tour abre SOLO (reintento v305)', opened);
+  await ev(`(()=>{if(typeof ntClose==='function')ntClose(false);})()`);
+  await sleep(200);
+
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;
   log('\n' + (fails === 0 && jsErrors.length === 0 ? 'TODO OK' : fails + ' FALLA(S)'));

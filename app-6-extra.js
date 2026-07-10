@@ -2337,21 +2337,32 @@ const _NT_ACTIONS={
     el.scrollIntoView({behavior:'smooth',block:'center'});
     el.classList.add('nt-pulse'); setTimeout(()=>el.classList.remove('nt-pulse'),1800); },
 };
-let _ntItems=[],_ntIdx=0;
-// Punto de entrada (lo llama renderClientToday). Abre el tour si hay novedades sin ver
-// y ninguna pantalla de bienvenida/onboarding está encima (en ese caso, al próximo render).
+let _ntItems=[],_ntIdx=0,_ntRetry=null;
+// Punto de entrada (lo llama renderClientToday). Abre el tour si hay novedades sin ver.
+// Si hay una pantalla de bienvenida/onboarding encima NO se rinde: reintenta solo hasta
+// que se despeje (v305 — en login fresco #cwelcome tapa 5,2s y nadie re-renderiza Hoy
+// después, así que "al próximo render" era NUNCA justo en los dispositivos nuevos).
 function renderNewsCard(){
   const el=document.getElementById('cn-news'); if(el)el.innerHTML=''; // la tarjeta plana murió en v304
+  clearTimeout(_ntRetry);
   const tour=document.getElementById('news-tour');
   if(!tour||!tour.classList.contains('hidden'))return; // ya abierto → no repintar encima
+  if(!CUR.clientId)return; // sesión cerrada entre reintentos
   const seen=parseInt(localStorage.getItem(_NEWS_SEEN_KEY))||0;
   const items=newsToShow(AVI_NEWS,seen);
   if(!items.length)return;
-  const blocked=['cwelcome','onboarding','data-ob','fsintro'].some(id=>{
-    const e=document.getElementById(id);
-    return e&&(e.classList.contains('on')||getComputedStyle(e).display!=='none');
+  // Visibilidad REAL de cada overlay: no todos se ocultan igual. #cwelcome y #onboarding
+  // viven con display:flex y se ocultan con opacity:0 + pointer-events:none (el check
+  // display!=='none' de v304 los veía "visibles" SIEMPRE → el tour jamás abría en prod).
+  // #data-ob y #m-fsintro sí usan display:none. (v305; 'fsintro' a secas no existía.)
+  const blocked=['cwelcome','onboarding','data-ob','m-fsintro'].some(id=>{
+    const e=document.getElementById(id); if(!e)return false;
+    const cs=getComputedStyle(e);
+    if(cs.display==='none'||cs.visibility==='hidden')return false;
+    if(parseFloat(cs.opacity)===0&&cs.pointerEvents==='none')return false;
+    return true;
   });
-  if(blocked)return;
+  if(blocked){_ntRetry=setTimeout(renderNewsCard,1500);return;}
   _ntItems=items.slice().reverse(); // cronológico: la más vieja sin ver primero
   _ntIdx=0;
   tour.classList.remove('hidden');
