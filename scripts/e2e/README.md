@@ -31,7 +31,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_repro-plancha-visual.mjs` | Verificación visual del cronómetro isométrico (banner ámbar) | 2026-07-03 |
 | `_verify-water.mjs` | Tarjeta Hábitos 💧 agua (v300): contador, piso 0, meta cumplida, meta del plan del coach, re-render. 7/7 | 2026-07-09 |
 | `_verify-qwcfg.mjs` | HIIT rápido configurable (v301): preset Máquina, modal prellenado, atrás, clamps, preset sin HIIT directo. 6/6 | 2026-07-09 |
-| `_verify-news.mjs` | Novedades ✨ (v302): tarjeta con tope 3, Entendido descarta, no resucita, visto parcial. 4/4 | 2026-07-09 |
+| `_verify-news.mjs` | Tour guiado de novedades (v304): slides con pasos/dots/SVG, Listo/atrás marcan visto, visto parcial, CTA deep-link. 7/7 + screenshots | 2026-07-09 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20 | 2026-06-30 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

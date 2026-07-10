@@ -3,6 +3,7 @@
 // Cuenta QA + sello v298 → cero riesgo a producción.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 const PORT = 8773;
 const APP = `http://localhost:${PORT}/`;
 import { EMAIL, PASS } from './_creds.mjs';
@@ -21,6 +22,8 @@ let msgId = 1; const pending = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pending.has(m.id)) { const { resolve, reject } = pending.get(m.id); pending.delete(m.id); m.error ? reject(new Error(m.error.message)) : resolve(m.result); } else if (m.method === 'Runtime.exceptionThrown') jsErrors.push((m.params.exceptionDetails?.exception?.description || m.params.exceptionDetails?.text || '?').split('\n')[0]); });
 const send = (method, params = {}) => new Promise((res, rej) => { const id = msgId++; pending.set(id, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id, method, params })); });
 const ev = async expr => { try { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }); return r.result?.value; } catch (e) { return '<<err:' + e.message + '>>'; } };
+const SHOTDIR = 'C:/Users/KRONOS/AppData/Local/Temp/claude/C--Users-KRONOS/40941d22-8542-4c7c-9e7a-88c3e84720fc/scratchpad';
+const shot = async n => { try { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(SHOTDIR + '/' + n + '.png', Buffer.from(r.data, 'base64')); } catch {} };
 const waitFor = async (expr, ms = 12000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await ev(expr)) return true; } catch {} await sleep(300); } return false; };
 await new Promise((res, rej) => { ws.on('open', res); ws.on('error', rej); });
 await send('Page.enable'); await send('Runtime.enable');
@@ -46,30 +49,54 @@ try {
     const c=DB.clients.find(x=>x.id===CUR.clientId);renderClientToday(c);})()`);
   await sleep(500);
 
-  // N1: dispositivo sin marca → la tarjeta sale con hasta 3 novedades + botón Entendido
-  let s = JSON.parse(await ev(`JSON.stringify({card:!!document.querySelector('#cn-news .news-card'),
-    items:document.querySelectorAll('#cn-news .news-item').length,
-    ok:!!document.querySelector('#cn-news .news-ok'),
-    title:(document.querySelector('#cn-news .news-title')||{}).textContent})`));
-  check('N1 tarjeta ✨ visible con hasta 3 novedades + Entendido', s.card && s.items >= 1 && s.items <= 3 && s.ok && /nuev/i.test(s.title||''), JSON.stringify(s));
+  // N1: tour abierto con la slide 1 (la novedad más vieja sin ver), pasos y dots
+  let s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),
+    title:(document.querySelector('#nt-body .nt-title')||{}).textContent,
+    pill:(document.querySelector('#nt-body .nt-pill')||{}).textContent,
+    steps:document.querySelectorAll('#nt-body .nt-step').length,
+    dots:document.querySelectorAll('#nt-dots .nt-dot').length,
+    next:(document.getElementById('nt-next')||{}).textContent,
+    chip:!!document.querySelector('#nt-body .nt-chip svg')})`));
+  await shot('news-tour-slide1');
+  check('N1 tour abre en slide 1 (plancha) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /plancha/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
 
-  // N2: "Entendido" descarta y marca la última versión vista
-  await ev(`aviNewsDismiss()`);
-  s = JSON.parse(await ev(`JSON.stringify({card:!!document.querySelector('#cn-news .news-card'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
-  check('N2 Entendido → tarjeta fuera, ax_news_seen = última versión', !s.card && s.seen === s.latest, JSON.stringify(s));
+  // N2: avanzar hasta la ultima slide → boton "Listo" + CTA de deep-link
+  await ev(`ntNext()`); await ev(`ntNext()`);
+  s = JSON.parse(await ev(`JSON.stringify({title:(document.querySelector('#nt-body .nt-title')||{}).textContent,
+    next:(document.getElementById('nt-next')||{}).textContent,
+    cta:(document.querySelector('#nt-body .nt-cta')||{}).textContent,
+    dotOn:[...document.querySelectorAll('#nt-dots .nt-dot')].findIndex(d=>d.classList.contains('on'))})`));
+  await shot('news-tour-slide3');
+  check('N2 ultima slide (HIIT) con "Listo" y CTA "Probarlo ahora"', /HIIT/i.test(s.title||'') && /Listo/.test(s.next||'') && /Probarlo/.test(s.cta||'') && s.dotOn === 2, JSON.stringify(s));
 
-  // N3: re-render no la resucita
+  // N3: "Listo" cierra y marca la ultima version vista
+  await ev(`ntNext()`);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
+  check('N3 Listo → tour cerrado, ax_news_seen = ultima version', !s.open && s.seen === s.latest, JSON.stringify(s));
+
+  // N4: re-render de Hoy no lo reabre
   await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);renderClientToday(c);})()`);
   await sleep(400);
-  s = JSON.parse(await ev(`JSON.stringify({card:!!document.querySelector('#cn-news .news-card')})`));
-  check('N3 re-render de Hoy no la resucita', !s.card, JSON.stringify(s));
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden')})`));
+  check('N4 re-render no lo reabre', !s.open, JSON.stringify(s));
 
-  // N4: visto parcial (v300) → solo sale lo más nuevo (v301)
-  s = JSON.parse(await ev(`JSON.stringify((()=>{localStorage.setItem('ax_news_seen','300');renderNewsCard();
-    const items=[...document.querySelectorAll('#cn-news .news-item b')].map(b=>b.textContent);
-    localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
-    return {n:items.length,first:items[0]||''};})())`));
-  check('N4 con v300 visto solo sale la novedad v301 (HIIT)', s.n === 1 && /HIIT/i.test(s.first), JSON.stringify(s));
+  // N5: visto parcial (v300) → tour de UNA slide (v301) — y el atras lo cierra marcando visto
+  await ev(`(()=>{localStorage.setItem('ax_news_seen','300');renderNewsCard();})()`);
+  await sleep(300);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),dots:document.querySelectorAll('#nt-dots .nt-dot').length,title:(document.querySelector('#nt-body .nt-title')||{}).textContent})`));
+  check('N5 visto parcial → tour con SOLO la novedad v301 (HIIT)', s.open && s.dots === 1 && /HIIT/i.test(s.title||''), JSON.stringify(s));
+  s = JSON.parse(await ev(`JSON.stringify({closed:_aviCloseTopOverlay(),open:!document.getElementById('news-tour').classList.contains('hidden'),seen:localStorage.getItem('ax_news_seen')})`));
+  check('N6 atras cierra el tour y marca visto', s.closed === true && !s.open && s.seen === '301', JSON.stringify(s));
+
+  // N7: CTA deep-link — cierra el tour y abre la biblioteca de Entrenamientos rapidos
+  await ev(`(()=>{localStorage.setItem('ax_news_seen','300');renderNewsCard();})()`);
+  await sleep(300);
+  await ev(`ntCta()`);
+  await sleep(600);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),room:document.getElementById('quickwo-room').classList.contains('on'),seen:localStorage.getItem('ax_news_seen')})`));
+  check('N7 CTA "Probarlo ahora" cierra el tour y abre los Entrenamientos rapidos', !s.open && s.room && s.seen === '301', JSON.stringify(s));
+  await ev(`(()=>{try{history.back();}catch(e){} localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
+  await sleep(400);
 
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;

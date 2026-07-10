@@ -1172,6 +1172,9 @@ function _aviCloseTopOverlay(){
   if(luo&&luo.classList.contains('on')){closeLevelUp();return true;}
   const wfo=document.getElementById('workout-finish');
   if(wfo&&wfo.classList.contains('on')){closeWorkoutFinish();return true;}
+  // Tour de novedades (v304): el atrás lo cierra y marca visto (como "Saltar").
+  const ntw=document.getElementById('news-tour');
+  if(ntw&&!ntw.classList.contains('hidden')){if(typeof ntClose==='function')ntClose(false);else ntw.classList.add('hidden');return true;}
   // (el chequeo duplicado de #exdetail-bg que vivía aquí era código muerto — la ficha
   // ya se atiende arriba, tras el lightbox)
   // Descanso del guiado (overlay a pantalla completa, sin capa propia): el atrás lo

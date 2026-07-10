@@ -2311,37 +2311,82 @@ function whatsappNudge(id){
   window.open(url,'_blank');
 }
 
-// ══════════════ NOVEDADES DE LA APP (v302) — "¿Qué hay de nuevo?" ══════════════
-// Pedido Camilo 2026-07-09: los asesorados no se enteran de las features nuevas (los
-// Entrenamientos rápidos existían hace semanas y ni él los tenía presentes). Tarjeta
-// descartable en "Hoy": muestra lo más nuevo que la última versión VISTA (localStorage
-// por dispositivo) y desaparece con "Entendido". Al publicar una feature visible al
-// asesorado: agregar entrada aquí (v = versión de la app) y podar las viejas (tope
-// visual 3 vía newsToShow, avi-core). Textos en tono Sofía, sin jerga.
+// ══════════════ NOVEDADES DE LA APP — TOUR GUIADO (v302→v304) ══════════════
+// Pedido Camilo 2026-07-09 (2 iteraciones): los asesorados no se enteran de las features
+// nuevas; la tarjeta de texto plano (v302) se quedó corta → TOUR a pantalla completa
+// (v304): una slide por feature con ícono grande, pill NUEVO, PASOS numerados de cómo
+// usarla, puntos de progreso y CTA opcional que lleva DIRECTO a la feature. Se abre solo
+// UNA vez por tanda (gate ax_news_seen por dispositivo), "Saltar"/atrás lo cierran y
+// marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
+// y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  {v:299, icon:'wind', t:'La plancha ahora te cuida el descanso', d:'Cuando el cronómetro llega a 0, arranca solo tu tiempo de descanso — como en las demás series.'},
-  {v:300, icon:'droplet', t:'Registra tu agua del día', d:'Nueva tarjeta en "Hoy": toca +1 por cada vaso y cumple tu meta. También en días de descanso.'},
-  {v:301, icon:'bike', t:'HIIT a tu medida', d:'En ⚡ Entrenamientos rápidos hay un nuevo "HIIT en Máquina" (bici, elíptica o trotadora) y ahora TÚ eliges las rondas y los tiempos antes de empezar.'},
+  {v:299, icon:'wind', t:'La plancha te cuida el descanso', d:'Ya no tienes que adivinar cuánto descansar después de aguantar.',
+   steps:['Abre tu rutina y busca un ejercicio de tiempo (como la plancha)','Toca ▶ CRONO y aguanta la posición','Al llegar a 0 la serie se marca sola y arranca tu descanso']},
+  {v:300, icon:'droplet', t:'Registra tu agua del día', d:'Tomar suficiente agua también es entrenar. Ahora la app te acompaña.',
+   steps:['En "Hoy" encuentra la tarjeta Agua de hoy','Toca +1 por cada vaso que te tomes','Cumple tu meta — la barra se pone verde y lo celebramos'],
+   cta:{label:'Ver mi tarjeta de agua',run:'ntGoWater'}},
+  {v:301, icon:'bike', t:'HIIT a tu medida', d:'Cardio de intervalos en bici, elíptica o trotadora — con TUS tiempos.',
+   steps:['En "Hoy" toca "¿Hoy quieres algo distinto?"','Elige HIIT en Máquina (o el que quieras)','Ajusta rondas, trabajo y pausa — y dale ▶'],
+   cta:{label:'Probarlo ahora',run:'openQuickWorkouts'}},
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
+// Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).
+const _NT_ACTIONS={
+  openQuickWorkouts:()=>{ if(typeof openQuickWorkouts==='function')openQuickWorkouts(); },
+  ntGoWater:()=>{ const el=document.getElementById('cn-habits'); if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.add('nt-pulse'); setTimeout(()=>el.classList.remove('nt-pulse'),1800); },
+};
+let _ntItems=[],_ntIdx=0;
+// Punto de entrada (lo llama renderClientToday). Abre el tour si hay novedades sin ver
+// y ninguna pantalla de bienvenida/onboarding está encima (en ese caso, al próximo render).
 function renderNewsCard(){
-  const el=document.getElementById('cn-news'); if(!el)return;
+  const el=document.getElementById('cn-news'); if(el)el.innerHTML=''; // la tarjeta plana murió en v304
+  const tour=document.getElementById('news-tour');
+  if(!tour||!tour.classList.contains('hidden'))return; // ya abierto → no repintar encima
   const seen=parseInt(localStorage.getItem(_NEWS_SEEN_KEY))||0;
   const items=newsToShow(AVI_NEWS,seen);
-  if(!items.length){ el.innerHTML=''; return; }
-  // Íconos SVG de marca (v303, F1) con fallback si el caché mezcló versiones de módulos.
-  const ic=(n,s)=>(typeof aviIcon==='function'?aviIcon(n,s):'✨');
-  el.innerHTML=`<div class="news-card" role="region" aria-label="Novedades de la app">
-    <div class="news-head">
-      <span class="news-title">${ic('sparkles',15)} ¡Hay cosas nuevas en tu app!</span>
-      <button type="button" class="news-ok" onclick="aviNewsDismiss()" aria-label="Cerrar novedades">Entendido ✓</button>
-    </div>
-    ${items.map(n=>`<div class="news-item"><span class="news-ico" aria-hidden="true">${ic(n.icon,17)}</span><div><b>${esc(n.t)}</b><div class="news-desc">${esc(n.d)}</div></div></div>`).join('')}
-  </div>`;
+  if(!items.length)return;
+  const blocked=['cwelcome','onboarding','data-ob','fsintro'].some(id=>{
+    const e=document.getElementById(id);
+    return e&&(e.classList.contains('on')||getComputedStyle(e).display!=='none');
+  });
+  if(blocked)return;
+  _ntItems=items.slice().reverse(); // cronológico: la más vieja sin ver primero
+  _ntIdx=0;
+  tour.classList.remove('hidden');
+  _ntPaint();
 }
-function aviNewsDismiss(){
+function _ntPaint(){
+  const n=_ntItems[_ntIdx]; if(!n)return;
+  const body=document.getElementById('nt-body');
+  const dots=document.getElementById('nt-dots');
+  const next=document.getElementById('nt-next');
+  const ic=(nm,s)=>(typeof aviIcon==='function'?aviIcon(nm,s):'✨');
+  if(body)body.innerHTML=`
+    <div class="nt-chip">${ic(n.icon,34)}</div>
+    <div class="nt-pill">NUEVO</div>
+    <div class="nt-title">${esc(n.t)}</div>
+    <div class="nt-desc">${esc(n.d)}</div>
+    <div class="nt-steps">${(n.steps||[]).map((st,i)=>`<div class="nt-step"><span class="nt-stepnum">${i+1}</span><span>${esc(st)}</span></div>`).join('')}</div>
+    ${n.cta?`<button type="button" class="nt-cta" onclick="ntCta()">${esc(n.cta.label)} →</button>`:''}`;
+  if(dots)dots.innerHTML=_ntItems.map((_,i)=>`<span class="nt-dot${i===_ntIdx?' on':''}"></span>`).join('');
+  if(next)next.textContent=_ntIdx<_ntItems.length-1?'Siguiente →':'¡Listo, entendido!';
+  const card=document.querySelector('#news-tour .nt-card');
+  if(card){card.classList.remove('nt-in');void card.offsetWidth;card.classList.add('nt-in');}
+}
+function ntNext(){ if(_ntIdx<_ntItems.length-1){_ntIdx++;_ntPaint();} else ntClose(true); }
+function ntClose(done){
   const latest=AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0);
   localStorage.setItem(_NEWS_SEEN_KEY,String(latest));
-  renderNewsCard();
-  toast('✨ ¡Listo! Te avisamos cuando haya algo nuevo');
+  const tour=document.getElementById('news-tour');
+  if(tour)tour.classList.add('hidden');
+  _ntItems=[];_ntIdx=0;
+  if(done)toast('✨ ¡Listo! Te avisamos cuando haya algo nuevo');
+}
+function ntCta(){
+  const n=_ntItems[_ntIdx];
+  const run=n&&n.cta&&_NT_ACTIONS[n.cta.run];
+  ntClose(false);
+  if(run)setTimeout(run,180); // deja cerrar el overlay antes de navegar
 }

@@ -578,6 +578,7 @@ git push origin main
 - **JAMÁS perl/sed sobre archivos con tildes/emojis** (corrupción UTF-8) → Edit tool o `python io` con `encoding='utf-8'` y `newline` LF. PowerShell: `[System.Text.UTF8Encoding]::new($false)` (sin BOM).
 - Tras ediciones por regex en CSS, **revisar selectores compuestos**: al quitar tokens pueden quedar dos selectores PEGADOS (pasó con `html[data-theme]` duplicado en F5b).
 - bash: `UID` es variable readonly del shell — no usarla como nombre propio.
+- **Heredocs de Git Bash MANGLAN `\\`** en scripts python inline (2026-07-09: `s.index("log('\\njsErrors")` no encontraba el marcador). Scripts de reescritura con backslashes → escribirlos a ARCHIVO (Edit/Write tool) y correr `python archivo.py`; si no queda opción, construir el backslash con `chr(92)`.
 
 ### Deploy / GitHub Pages
 - **NUNCA decirle al usuario "es tu caché" sin confirmar qué sirve producción**: `curl .../index.html?nocache=$(date +%s)` y grep del `?v=NNN`.
@@ -679,6 +680,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v303** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v304** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v303 íconos SVG F1 · v302 novedades ✨ · v301 HIIT rápido configurable + Máquina).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v304 tour guiado de novedades · v303 íconos SVG F1 · v302 novedades ✨).*
