@@ -36,6 +36,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_verify-icons-f3.mjs` | Íconos SVG F3 (v307): 24 t-ic estáticos (parte A sin login), Constancia, títulos y héroe del Perfil. 5/5 + screenshots | 2026-07-10 |
 | `_shot-f4.mjs` | Shot visual del guiado real (rutina inyectada, tooltip fresco) — el paso que cazó 🔄/✅ en v309. Correr tras CUALQUIER cambio visual del guiado | 2026-07-10 |
 | `_shot-f5.mjs` | Shot visual del panel del coach (home + p-detail forzados con la cuenta QA) | 2026-07-10 |
+| `_verify-v313.mjs` | Estudio mejoras 1-2 (v313): orden de Hoy por tipo de día + cierre compartible (botón, lienzo 1080×1920, imagen real vía _wfLastCanvas). 5/5 + shots | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

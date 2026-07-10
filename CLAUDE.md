@@ -680,6 +680,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v312** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v313** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v312 medallas de marca del gamif (47 íconos) · v311 foto en ::placeholder + hero ilegible en claro · v310 íconos SVG F5 coach — PLAN COMPLETO).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v313 Hoy reordenado + cierre compartible (estudio de interfaz, mejoras 1-2) · v312 medallas de marca del gamif · v311 foto en ::placeholder + hero claro).*

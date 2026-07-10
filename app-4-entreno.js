@@ -559,6 +559,17 @@ function renderTodayHead(client){
   if(qe&&typeof aviIcon==='function')qe.innerHTML=aviIcon('bolt',22);
 }
 
+// v313 (estudio de interfaz, mejora 1 aprobada por Camilo): en día de ENTRENO el entreno
+// va PRIMERO (arriba del pliegue) y agua/rápidos/recordatorios/upsell después; en descanso
+// o sin rutinas se mantiene el orden clásico. appendChild re-ancla en secuencia (idempotente,
+// no duplica). Corre en cada render de Hoy — nunca con timer vivo (ese render se salta antes).
+function _todayOrder(training){
+  const panel=document.getElementById('cn-today'); if(!panel)return;
+  const ids=training
+    ? ['cn-today-head','pr-banners','cn-today-body','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
+    : ['cn-today-head','qw-entry','pr-banners','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
+  ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
+}
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
   // F2 sub-3: si el guiado embebido está montado con un timer vivo (descanso/HIIT/isométrico),
@@ -579,7 +590,7 @@ function renderClientToday(client, overrideRoutine){
   if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
   const routines=client.routines||[];
-  if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
+  if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const today=days[new Date().getDay()];
   CUR.todayRenderedDay=today;
@@ -593,6 +604,7 @@ function renderClientToday(client, overrideRoutine){
   // que los cambios sobrevivan a los re-render (mood, etc.). El plan guardado no se toca.
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
+    _todayOrder(false);
     con.innerHTML=`<div class="avi-restbnr"><div class="rb-bg" style="background-image:url('${aviRestPhoto(client.sex)}')"></div><div class="rb-ov"></div><div class="rb-in">
       <div style="color:#fff;opacity:.92">${typeof aviIcon==='function'?aviIcon('moon',34):'💤'}</div>
       <div class="rb-title">Hoy es tu día de descanso</div>
@@ -614,6 +626,7 @@ function renderClientToday(client, overrideRoutine){
   // si no puede embeber (throw por SW/index desincronizado), tarjeta de error con
   // Reintentar — NUNCA pantalla en blanco (blindaje F4, adaptado).
   CUR.activeRoutine=todayR;
+  _todayOrder(true); // v313: el entreno arriba del pliegue
   con.innerHTML='';
   try{ if(typeof openGuidedEmbedded==='function' && openGuidedEmbedded(todayR)) return; }
   catch(err){ console.error('[AVI] el guiado embebido lanzó', err); }
@@ -1433,10 +1446,87 @@ function showWorkoutFinish(routine,stats){
   const curFeel=(entry&&entry.feeling)||0;
   document.getElementById('wf-faces').innerHTML=WF_FEELINGS.map(f=>`<button type="button" class="wf-face${f.v===curFeel?' sel':''}" onclick="wfRate(${f.v})">${f.e}</button>`).join('');
   document.getElementById('wf-feeling-lbl').textContent=curFeel?feelingLabel(curFeel):'';
+  // v313 (estudio, mejora 2): datos para la imagen compartible del cierre.
+  _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
+    prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
   document.body.style.overflow='hidden';
   wfConfetti();
+}
+// ── Compartir el cierre (v313, estudio de interfaz mejora 2, aprobada por Camilo) ──
+// Imagen 1080×1920 (formato historia/estado de WhatsApp) dibujada en canvas con la marca:
+// gradiente esmeralda, números grandes, récords y el sitio del coach. navigator.share con
+// archivo si el dispositivo puede (Android/TWA sí); si no, descarga el PNG. Sin fotos en
+// el lienzo: solo gradientes y texto → jamás canvas contaminado ni dependencias de red.
+let _wfShareData=null;
+function wfShare(){
+  const d=_wfShareData; if(!d){toast('Aún no hay datos de esta sesión');return;}
+  const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
+  const x=cv.getContext('2d');
+  // fondo de marca
+  const bg=x.createLinearGradient(0,0,0,1920);
+  bg.addColorStop(0,'#06120D');bg.addColorStop(.55,'#0A2118');bg.addColorStop(1,'#04090688');
+  x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
+  x.fillStyle=bg;x.fillRect(0,0,1080,1920);
+  const glow=x.createRadialGradient(870,240,60,870,240,700);
+  glow.addColorStop(0,'rgba(16,224,160,.20)');glow.addColorStop(1,'rgba(16,224,160,0)');
+  x.fillStyle=glow;x.fillRect(0,0,1080,1100);
+  const F='system-ui,Roboto,sans-serif';
+  // wordmark
+  x.fillStyle='#EAFBF4';x.font='900 84px '+F;x.fillText('AVI',90,190);
+  x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
+  x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
+  x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
+  // titular
+  x.fillStyle='#10E0A0';x.font='800 34px '+F;x.fillText('ENTRENAMIENTO COMPLETADO',90,520);
+  x.fillStyle='#FFFFFF';x.font='900 112px '+F;
+  x.fillText(d.name?('¡Lo logré!'):'¡Sesión lista!',90,650);
+  x.fillStyle='rgba(234,251,244,.75)';x.font='600 40px '+F;
+  x.fillText((d.rname?d.rname+'  ·  ':'')+d.fecha,90,725);
+  // estadísticas 2×2
+  const cells=d.chips.slice(0,4);
+  // roundRect no existe en WebViews viejos → rectángulo normal antes que un throw
+  const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  cells.forEach((c2,i)=>{
+    const cx=90+(i%2)*470, cy=850+Math.floor(i/2)*260;
+    x.fillStyle='rgba(255,255,255,.05)';
+    _rr(cx,cy,430,215,26);x.fill();
+    x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;
+    _rr(cx,cy,430,215,26);x.stroke();
+    x.fillStyle='#10E0A0';x.font='900 76px '+F;x.fillText(String(c2[1]),cx+36,cy+112);
+    x.fillStyle='rgba(234,251,244,.6)';x.font='700 28px '+F;x.fillText(String(c2[0]).toUpperCase(),cx+36,cy+172);
+  });
+  // récords
+  let ry=850+Math.ceil(cells.length/2)*260+70;
+  d.prs.forEach(pr=>{
+    x.fillStyle='#F2C94C';x.font='900 40px '+F;x.fillText('★',90,ry);
+    x.fillStyle='#FFFFFF';x.font='800 38px '+F;
+    const det=pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps:'')):(pr.val+' '+pr.unit);
+    x.fillText('Récord: '+pr.name+' — '+det,150,ry);
+    ry+=72;
+  });
+  // pie con el coach
+  x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
+  x.fillStyle='rgba(234,251,244,.8)';x.font='700 34px '+F;
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
+  x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),90,1830);
+  try{window._wfLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness v313)
+  cv.toBlob(async blob=>{
+    if(!blob){toast('No se pudo crear la imagen');return;}
+    const file=new File([blob],'avi-entreno.png',{type:'image/png'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Mi entreno en AVI'});
+        return;
+      }
+    }catch(e){ if(e&&e.name==='AbortError')return; } // canceló el share: silencio
+    // Respaldo (desktop/navegadores sin share de archivos): descarga directa
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='avi-entreno.png';
+    document.body.appendChild(a);a.click();a.remove();
+    toast('📥 Imagen guardada — súbela a tu estado');
+  },'image/png');
 }
 function closeWorkoutFinish(){
   document.getElementById('workout-finish').classList.remove('on');

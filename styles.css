@@ -1046,6 +1046,8 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .wf-feeling-lbl{font-size:11.5px;color:#10E0A0;font-weight:700;min-height:15px;margin-top:8px;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 .wf-btn{width:100%;max-width:420px;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
 .wf-btn:active{transform:scale(.985)}
+/* v313 (estudio, mejora 2): compartir — secundario sobre la foto, no compite con Continuar */
+.wf-btn.wf-share{background:rgba(255,255,255,.10);color:#EAFBF4;border:1.5px solid rgba(16,224,160,.55);box-shadow:none;margin-bottom:10px;backdrop-filter:blur(6px)}
 /* ── MOMENTOS FULL-BLEED: upsell Premium + subida de nivel (reusan el molde .wf-*) ── */
 #premium-upsell,#level-up{position:fixed;inset:0;z-index:905;display:none;background:#04080A;overflow:hidden}
 #premium-upsell.on,#level-up.on{display:block;animation:wfFade .4s ease}
