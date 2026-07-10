@@ -615,6 +615,7 @@ git push origin main
 - **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 11 checks, harnesses E2E versionados (`scripts/e2e/`).
 
 ### 🎯 Backlog vigente (2026-07-09)
+- [ ] 🎨 Íconos SVG de marca F2-F5 (plan vivo en **`docs/plan-iconos-svg.md`**; F1 hecha en v303 — sistema `aviIcon` en app-1). F4 (guiado) = zona caliente, harness completo obligatorio
 - [ ] 💧 Hábitos parte 2: 👟 PASOS (meta + registro MANUAL + recordatorio push; Google Fit NO viable — API apagada por Google, Health Connect solo apps nativas) → misma tarjeta #cn-habits
 - [ ] 💧 Hábitos parte 3: 🍽️ COMIDAS = check-in de adherencia al plan (✅/más o menos/❌) + foto opcional al coach. DECISIÓN 2026-07-09: NO construir base de datos de alimentos
 - [ ] 📊 Coach: adherencia de hábitos (agua) del asesorado en p-detail (los datos YA sincronizan en client.habits)
@@ -678,6 +679,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v302** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v303** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v302 novedades ✨ · v301 HIIT rápido configurable + Máquina · v300 hábitos 💧 agua).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v303 íconos SVG F1 · v302 novedades ✨ · v301 HIIT rápido configurable + Máquina).*

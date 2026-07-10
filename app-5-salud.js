@@ -958,7 +958,7 @@ function renderHabitsCard(client){
   }).join('');
   el.innerHTML=`<div class="hb-card" role="group" aria-label="Registro de agua de hoy">
     <div class="hb-row">
-      <span class="hb-ic" aria-hidden="true">💧</span>
+      <span class="hb-ic" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('droplet',21):'💧'}</span>
       <div class="hb-info">
         <div class="hb-title">Agua de hoy</div>
         <div class="hb-sub" aria-live="polite">${met

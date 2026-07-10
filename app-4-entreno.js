@@ -699,7 +699,7 @@ function startRoutineNow(routineId){
 // Reusan el motor de "Hoy" vía renderClientToday(client, override). `track` explícito por
 // ítem porque exTrack manda 'Movilidad' a 'peso_reps' (pediría kg). Todo sin equipo.
 const QUICK_WORKOUTS=[
-  {id:'qw_hiit_maquina', emoji:'🚴', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
+  {id:'qw_hiit_maquina', emoji:'🚴', ic:'bike', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
    desc:'Bici estática, elíptica o trotadora: sprints fuertes con pausas suaves. Tú eliges las rondas.',
    items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
   {id:'qw_hiit_casa', emoji:'🔥', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
@@ -767,7 +767,10 @@ function startQuickWorkout(id){
   const hiitItem=(spec.items||[]).find(it=>it.hiit);
   if(hiitItem){
     _qwCfgSpec=spec;
-    const nm=document.getElementById('qwcfg-name'); if(nm)nm.textContent=spec.emoji+' '+spec.name;
+    const nm=document.getElementById('qwcfg-name'); if(nm)nm.textContent=spec.name;
+    // Ícono SVG de marca en el título (v303, F1): bici para máquina, rayo para el resto.
+    const icEl=document.getElementById('qwcfg-ic');
+    if(icEl)icEl.innerHTML=(typeof aviIcon==='function')?aviIcon(spec.ic||'bolt',20):(spec.emoji||'⚡');
     const set=(i,v)=>{const e=document.getElementById(i);if(e)e.value=v;};
     set('qwcfg-rounds',hiitItem.sets||4); set('qwcfg-work',(hiitItem.hiit&&hiitItem.hiit.work)||30); set('qwcfg-rest',(hiitItem.hiit&&hiitItem.hiit.rest)||15);
     om('m-qwcfg');

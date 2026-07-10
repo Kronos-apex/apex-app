@@ -1421,3 +1421,21 @@ const DB={
 
 let CUR={clientId:null,editClientId:null,editExId:null,editRoutineIdx:null,routineExs:[],restSec:60,pkFilter:'all',exFilter:'all',loggedAs:null,activeRoutine:null};
 let editTplId=null,tplExs=[],tplRestSec=60,pickerTarget='routine';
+
+// ══════════════ ICONOS SVG DE MARCA (v303 — F1 de docs/plan-iconos-svg.md) ══════════════
+// Pedido Camilo 2026-07-09: "premium desde los stickers en adelante". Los emojis se ven
+// distintos en cada celular (Samsung/Xiaomi/iPhone) y a nivel sticker; estos SVG en línea
+// 2px con currentColor se ven IDÉNTICOS en todos y heredan los tokens (claro/oscuro).
+// Regla del plan: emojis que actúan como ICONO DE UI se migran por fases; los emojis
+// dentro de TEXTOS (toasts, mensajes del coach) se quedan. Agregar íconos aquí.
+const AVI_ICONS={
+  sparkles:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/>',
+  droplet:'<path d="M12 3c3.5 4.2 6 7.5 6 10.5a6 6 0 0 1-12 0C6 10.5 8.5 7.2 12 3z"/>',
+  bike:'<circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M6 17l3.6-7h5.2l3.2 7"/><path d="M9.6 10L8.2 7H6.2"/><path d="M14.8 10L13.6 7h2.6"/>',
+  bolt:'<path d="M13 2L5 13.5h5L9 22l8-11.5h-5L13 2z"/>',
+  wind:'<path d="M3 8h9.5A2.5 2.5 0 1 0 10.5 5.5"/><path d="M3 12h13.5A2.5 2.5 0 1 1 14 14.5"/><path d="M3 16h7.5a2.25 2.25 0 1 1-2.3 2.2"/>',
+};
+function aviIcon(name,size){
+  const p=AVI_ICONS[name]||AVI_ICONS.sparkles;
+  return '<svg class="avic" width="'+(size||20)+'" height="'+(size||20)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
+}
