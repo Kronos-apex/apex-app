@@ -451,6 +451,10 @@ html[data-theme="light"] .mta {
 .gx-bn{font-size:9px;font-weight:700;line-height:1.2;color:var(--t1)}
 .gx-badge.lock{opacity:.5}.gx-badge.lock .gx-bic{background:#f0f0ec;border-color:var(--br);filter:grayscale(1)}
 .gx-badge.gold .gx-bic{background:linear-gradient(135deg,rgba(232,197,71,.25),rgba(232,197,71,.08));border-color:rgba(232,197,71,.45)}
+/* Medallas de marca (v312): glifo de línea tintado según el chip */
+.gx-bic .avic{color:#0FBF8A}
+.gx-badge.gold .gx-bic .avic{color:#C9962B}
+.gx-badge.lock .gx-bic .avic{color:#8a8a8a}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
 .exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
 /* Indicador de biserie (🔗) — antes heredaba los 11px diminutos de .exmet; se ve apretado y

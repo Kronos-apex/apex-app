@@ -1478,6 +1478,12 @@ const AVI_ICONS={
   trash:'<path d="M4.5 6.5h15"/><path d="M8.5 6.5V4.9a1.4 1.4 0 0 1 1.4-1.4h4.2a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M6.6 6.5l.8 12.9a1.7 1.7 0 0 0 1.7 1.6h5.8a1.7 1.7 0 0 0 1.7-1.6l.8-12.9"/><path d="M10 10.5v6"/><path d="M14 10.5v6"/>',
   flag:'<path d="M6 21V4"/><path d="M6 4.5h11.5L15 8l2.5 3.5H6"/>',
   card:'<rect x="3" y="5.5" width="18" height="13" rx="2.4"/><path d="M3 9.8h18"/><path d="M6.5 14.5h4"/>',
+  // Medallas del gamif (v312): el "oro" lo pone el chip .gx-bic; el glifo es de línea.
+  star:'<path d="M12 3.2l2.5 5.4 5.9.6-4.4 4 1.2 5.8L12 16l-5.2 3 1.2-5.8-4.4-4 5.9-.6L12 3.2z"/>',
+  crown:'<path d="M4.2 17.5L3.2 7.5l4.9 3.4L12 5l3.9 5.9 4.9-3.4-1 10H4.2z"/><path d="M4.8 20.5h14.4"/>',
+  medal:'<circle cx="12" cy="9.2" r="5.6"/><path d="M9 13.8L7.2 21l4.8-2.7L16.8 21 15 13.8"/>',
+  disc:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.4"/>',
+  lock:'<rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2"/><path d="M8.5 10.5V7.6a3.5 3.5 0 0 1 7 0v2.9"/><path d="M12 14.3v2.2"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;

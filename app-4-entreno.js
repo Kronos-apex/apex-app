@@ -478,17 +478,21 @@ function renderGamification(client){
     </div>
   </div>`;
   // ── Logros ──
+  // Medallas de marca (v312, pedido Camilo): el "oro" lo pone el chip .gx-bic (anillo
+  // degradado), el glifo es del set de línea. Progresión de kg: dumbbell→disc→barbell.
+  // fb = emoji original por si aviIcon no cargó (caché mezclada).
   const B=[
-    {ic:'🏆',nm:'Primer récord',on:prs>=1,gold:true},
-    {ic:'✅',nm:'10 entrenos',on:total>=10},
-    {ic:'🎖️',nm:'30 entrenos',on:total>=30},
-    {ic:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
-    {ic:'⭐',nm:'50.000 kg',on:totalVol>=50000},
-    {ic:'🔩',nm:'20.000 kg',on:totalVol>=20000},
-    {ic:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
-    {ic:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
+    {ic:'trophy',fb:'🏆',nm:'Primer récord',on:prs>=1,gold:true},
+    {ic:'check',fb:'✅',nm:'10 entrenos',on:total>=10},
+    {ic:'medal',fb:'🎖️',nm:'30 entrenos',on:total>=30},
+    {ic:'dumbbell',fb:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
+    {ic:'barbell',fb:'⭐',nm:'50.000 kg',on:totalVol>=50000},
+    {ic:'disc',fb:'🔩',nm:'20.000 kg',on:totalVol>=20000},
+    {ic:'star',fb:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
+    {ic:'crown',fb:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
   ];
-  const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?b.ic:'🔒'}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
+  const _bIc=(n,fb)=>typeof aviIcon==='function'?aviIcon(n,19):fb;
+  const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?_bIc(b.ic,b.fb):_bIc('lock','🔒')}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
   con.innerHTML=lvlHTML+badgesHTML;
 }
 

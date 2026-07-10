@@ -43,7 +43,8 @@ try {
       emojis:t.filter(x=>/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test(x.textContent)).length,
       plain:document.querySelectorAll('.t-ic.plain svg.avic').length};})())`));
   check('A1 todos los .t-ic estáticos migrados a SVG (0 emojis)', s.total >= 24 && s.svgs === s.total && s.emojis === 0, JSON.stringify(s));
-  check('A2 t-ic .plain (tema ×6 + Ayuda/Editar×3/WhatsApp/Subir) heredan color', s.plain === 12, JSON.stringify(s));
+  // A2 estructural (no conteo exacto — cada fase agrega .plain): al menos los 12 de F3
+  check('A2 t-ic .plain (heredan color del contenedor) presentes y con SVG', s.plain >= 12, JSON.stringify(s));
 
   // ── Parte B: títulos renderizados por JS (requieren sesión) ──
   let inApp = await ev(`(()=>{const sc=document.getElementById('s-client');return !!(sc&&getComputedStyle(sc).display!=='none')})()`);
