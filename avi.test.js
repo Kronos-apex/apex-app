@@ -68,6 +68,7 @@ const {
   waterAdd,
   waterWeek,
   clampQwHiit,
+  newsToShow,
   isFreeClient,
   clientToRow,
   rowToClient,
@@ -1310,6 +1311,15 @@ test('clampQwHiit: clamps de cordura y fallback al default del preset', () => {
   assert.deepStrictEqual(clampQwHiit({ rounds: 99, work: 5, rest: 999 }, def), { rounds: 20, work: 10, rest: 180 }); // clamps
   assert.deepStrictEqual(clampQwHiit({ rounds: 'abc', work: '', rest: null }, def), def); // basura → default
   assert.deepStrictEqual(clampQwHiit(null, null), { rounds: 4, work: 30, rest: 15 }); // sin nada → defaults duros
+});
+
+test('newsToShow: solo lo más nuevo que lo visto, reciente primero, tope 3', () => {
+  const list = [{ v: 299, t: 'a' }, { v: 300, t: 'b' }, { v: 301, t: 'c' }, { v: 302, t: 'd' }];
+  assert.deepStrictEqual(newsToShow(list, 300).map(n => n.v), [302, 301]);
+  assert.deepStrictEqual(newsToShow(list, 0).map(n => n.v), [302, 301, 300]); // tope 3
+  assert.deepStrictEqual(newsToShow(list, 302), []);       // al día
+  assert.deepStrictEqual(newsToShow(list, 'abc').map(n => n.v), [302, 301, 300]); // basura = 0
+  assert.deepStrictEqual(newsToShow(null, 0), []);
 });
 
 test('painTipFor: tip por área con fallback conservador', () => {

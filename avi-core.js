@@ -1346,6 +1346,17 @@ function clampQwHiit(cfg, def) {
   };
 }
 
+// ── Novedades de la app (v302): qué mostrarle al asesorado — puro, testeable ──
+// Devuelve las entradas MÁS NUEVAS que la última versión vista (seenV), de la más
+// reciente a la más vieja, tope 3 (una tarjeta digerible; lo viejo ya no es noticia).
+function newsToShow(list, seenV) {
+  const seen = parseInt(seenV) || 0;
+  return (list || [])
+    .filter(n => n && parseInt(n.v) > seen)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 3);
+}
+
 // ── Evidencia de consentimiento (Habeas Data, Ley 1581/2012) — pura, testeable ──
 // Las 3 casillas del registro se marcan POR SEPARADO y ninguna viene pre-marcada
 // (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
@@ -2047,6 +2058,7 @@ if (typeof module !== 'undefined' && module.exports) {
     stripFixtureSessions,
     WATER_GLASS_ML,
     clampQwHiit,
+    newsToShow,
     habitDayKey,
     waterGoalGlasses,
     waterToday,

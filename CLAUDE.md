@@ -617,8 +617,8 @@ git push origin main
 ### 🎯 Backlog vigente (2026-07-09)
 - [ ] 💧 Hábitos parte 2: 👟 PASOS (meta + registro MANUAL + recordatorio push; Google Fit NO viable — API apagada por Google, Health Connect solo apps nativas) → misma tarjeta #cn-habits
 - [ ] 💧 Hábitos parte 3: 🍽️ COMIDAS = check-in de adherencia al plan (✅/más o menos/❌) + foto opcional al coach. DECISIÓN 2026-07-09: NO construir base de datos de alimentos
-- [ ] ⚡ Entrenamientos rápidos: que el usuario elija las RONDAS antes de empezar (hoy fijas por preset) — pedido Camilo 2026-07-09
 - [ ] 📊 Coach: adherencia de hábitos (agua) del asesorado en p-detail (los datos YA sincronizan en client.habits)
+- [x] ⚡ Rondas configurables en Entrenamientos rápidos → HECHO en avi-v301 (+ preset HIIT en Máquina). REGLA NUEVA: al publicar feature visible al asesorado, agregar entrada a `AVI_NEWS` (app-6, v302) y podar las viejas
 - [ ] 🔐 **2FA en GitHub y Supabase — SOLO Camilo puede** (recordárselo cada sesión hasta que lo haga)
 - [ ] ⚖️ Legal: revisión de ABOGADO de `legal/` + botones "descargar mis datos" / "eliminar mi cuenta" (derecho de supresión). Al cambiar textos: subir `LEGAL_V`.
 - [ ] 🏪 Play Store: política de privacidad con URL pública (`legal/` ya se sirve en Pages — validar si basta), borrado self-service (mismo item legal), formulario Data Safety, cuenta dev US$25
@@ -678,6 +678,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v300** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **295/295** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-09 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v302** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v300 hábitos 💧 agua · v299 plancha encadena el descanso · v298 sello anti-harness (incidente Samuel)).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v302 novedades ✨ · v301 HIIT rápido configurable + Máquina · v300 hábitos 💧 agua).*

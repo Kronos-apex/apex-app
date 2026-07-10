@@ -2310,3 +2310,36 @@ function whatsappNudge(id){
     :`https://wa.me/?text=${encodeURIComponent(msg)}`;
   window.open(url,'_blank');
 }
+
+// ══════════════ NOVEDADES DE LA APP (v302) — "¿Qué hay de nuevo?" ══════════════
+// Pedido Camilo 2026-07-09: los asesorados no se enteran de las features nuevas (los
+// Entrenamientos rápidos existían hace semanas y ni él los tenía presentes). Tarjeta
+// descartable en "Hoy": muestra lo más nuevo que la última versión VISTA (localStorage
+// por dispositivo) y desaparece con "Entendido". Al publicar una feature visible al
+// asesorado: agregar entrada aquí (v = versión de la app) y podar las viejas (tope
+// visual 3 vía newsToShow, avi-core). Textos en tono Sofía, sin jerga.
+const AVI_NEWS=[
+  {v:299, emoji:'😮‍💨', t:'La plancha ahora te cuida el descanso', d:'Cuando el cronómetro llega a 0, arranca solo tu tiempo de descanso — como en las demás series.'},
+  {v:300, emoji:'💧', t:'Registra tu agua del día', d:'Nueva tarjeta en "Hoy": toca +1 por cada vaso y cumple tu meta. También en días de descanso.'},
+  {v:301, emoji:'🚴', t:'HIIT a tu medida', d:'En ⚡ Entrenamientos rápidos hay un nuevo "HIIT en Máquina" (bici, elíptica o trotadora) y ahora TÚ eliges las rondas y los tiempos antes de empezar.'},
+];
+const _NEWS_SEEN_KEY='ax_news_seen';
+function renderNewsCard(){
+  const el=document.getElementById('cn-news'); if(!el)return;
+  const seen=parseInt(localStorage.getItem(_NEWS_SEEN_KEY))||0;
+  const items=newsToShow(AVI_NEWS,seen);
+  if(!items.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="news-card" role="region" aria-label="Novedades de la app">
+    <div class="news-head">
+      <span class="news-title">✨ ¡Hay cosas nuevas en tu app!</span>
+      <button type="button" class="news-ok" onclick="aviNewsDismiss()" aria-label="Cerrar novedades">Entendido ✓</button>
+    </div>
+    ${items.map(n=>`<div class="news-item"><span class="news-emoji" aria-hidden="true">${n.emoji}</span><div><b>${esc(n.t)}</b><div class="news-desc">${esc(n.d)}</div></div></div>`).join('')}
+  </div>`;
+}
+function aviNewsDismiss(){
+  const latest=AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0);
+  localStorage.setItem(_NEWS_SEEN_KEY,String(latest));
+  renderNewsCard();
+  toast('✨ ¡Listo! Te avisamos cuando haya algo nuevo');
+}

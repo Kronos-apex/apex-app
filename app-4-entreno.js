@@ -560,6 +560,8 @@ function renderClientToday(client, overrideRoutine){
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
   if(typeof renderHabitsCard==='function')renderHabitsCard(client);
+  // ✨ Novedades (v302): una vez por tanda, descartable.
+  if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
