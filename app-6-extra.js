@@ -241,6 +241,9 @@ function gmMoveEx(ei,dir){
 }
 
 // ══════════ REPORTE DE DOLOR (pedido Camilo 2026-07-07) ══════════
+// v314 (estudio, mejora 5): micro-celebración al marcar — pop de 450ms en el check.
+// Solo presentación; respeta prefers-reduced-motion vía CSS.
+function _gmPop(el){ if(!el)return; el.classList.remove('gm-pop'); void el.offsetWidth; el.classList.add('gm-pop'); setTimeout(()=>{try{el.classList.remove('gm-pop');}catch(e){}},500); }
 // F4 (v308): íconos de marca en el guiado — SOLO presentación (innerHTML). Los tokens de
 // estado ✓/○/▶/⏸ que la lógica y el harness leen por textContent NO se tocan.
 const _gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
@@ -606,7 +609,7 @@ function gmToggleAux(ei,tok,rid,cid){
     setDone(GM.routine.id,ei,tok,true);
     if(navigator.vibrate)navigator.vibrate(30);
     if(row)row.classList.add('set-done');
-    if(chk){chk.classList.add('checked');chk.textContent='✓';}
+    if(chk){chk.classList.add('checked');chk.textContent='✓';_gmPop(chk);}
     inps.forEach(inp=>inp.readOnly=true);
     toast(tok===WARM_SI?'🔥 Calentamiento listo':'🔻 Dropset al fallo, ¡bien!');
   } else {
@@ -906,7 +909,7 @@ function gmActionBtn(){
   const chk = document.getElementById(`gm-chk-${ei}-${si}`);
   const num = document.getElementById(`gm-snum-${ei}-${si}`);
   if(row){ row.classList.remove('active-set'); row.classList.add('set-done'); }
-  if(chk){ chk.classList.add('checked'); chk.textContent='✓'; }
+  if(chk){ chk.classList.add('checked'); chk.textContent='✓';_gmPop(chk); }
   if(num) num.textContent='✓';
   const sets2 = parseInt(ex.sets)||3;
   const exDone = Array.from({length:sets2},(_,s)=>isDone(GM.routine.id,ei,s)).every(Boolean);
@@ -943,7 +946,7 @@ function gmToggleSet(ei, si, stepIdx){
     gmLogRow(ei,si); // registra los inputs de la modalidad y los bloquea
     setDone(GM.routine.id,ei,si,true);
     if(row){row.classList.add('set-done');row.classList.remove('active-set');}
-    if(chk){chk.classList.add('checked');chk.textContent='✓';}
+    if(chk){chk.classList.add('checked');chk.textContent='✓';_gmPop(chk);}
     if(num) num.textContent='✓';
     // Avanzar paso actual y mostrar descanso si era el paso activo
     if(stepIdx === GM.currentStep){

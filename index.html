@@ -604,13 +604,20 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     </div>
     <!-- HISTORY -->
     <div id="cn-history" class="cnp">
+      <!-- v314 (estudio, mejora 3): anclas de salto — Progreso son ~6 pantallas de scroll -->
+      <div id="prog-anchors" class="prog-anchors" style="display:none">
+        <button type="button" data-jump="cn-gamif" onclick="progJump('cn-gamif')">Nivel</button>
+        <button type="button" data-jump="cn-streak" onclick="progJump('cn-streak')">Constancia</button>
+        <button type="button" data-jump="cn-advstats" onclick="progJump('cn-advstats')">Números</button>
+        <button type="button" data-jump="prog-hist-sec" onclick="progJump('prog-hist-sec')">Historial</button>
+      </div>
       <!-- Progreso consolidado: gamificación (nivel+logros) movida aquí desde Perfil -->
       <div id="cn-gamif"></div>
       <!-- Racha y constancia (Premium): racha actual + récord + calendario del mes -->
       <div id="cn-streak"></div>
       <!-- Estadísticas avanzadas (Premium): volumen por músculo + balance empuje/tracción -->
       <div id="cn-advstats"></div>
-      <div class="prog-sech"><span class="t-ic" data-ic="chart">📊</span> Historial de entrenamientos</div>
+      <div class="prog-sech" id="prog-hist-sec"><span class="t-ic" data-ic="chart">📊</span> Historial de entrenamientos</div>
       <div class="vchart-wrap" id="vol-chart-wrap" style="display:none">
         <div class="vchart-title"><span><span class="t-ic" data-ic="trend" data-ic-size="14">📈</span> Volumen por sesión</span><span id="vol-chart-avg" style="font-size:11px;color:var(--t2);font-weight:500"></span></div>
         <div id="vol-chart"></div>

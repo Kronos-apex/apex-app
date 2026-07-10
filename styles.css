@@ -1048,6 +1048,14 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .wf-btn:active{transform:scale(.985)}
 /* v313 (estudio, mejora 2): compartir — secundario sobre la foto, no compite con Continuar */
 .wf-btn.wf-share{background:rgba(255,255,255,.10);color:#EAFBF4;border:1.5px solid rgba(16,224,160,.55);box-shadow:none;margin-bottom:10px;backdrop-filter:blur(6px)}
+/* v314 (estudio, mejora 3): anclas de salto en Progreso — pegajosas al hacer scroll */
+.prog-anchors{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;position:sticky;top:0;z-index:5;background:var(--bg)}
+.prog-anchors button{flex-shrink:0;font-family:inherit;font-size:12px;font-weight:700;color:var(--gt);background:var(--gl);border:1px solid var(--g2);border-radius:99px;padding:7px 14px;cursor:pointer}
+.prog-anchors button:active{transform:scale(.97)}
+/* v314 (estudio, mejora 5): micro-celebración al marcar una serie */
+@keyframes gmPop{0%{transform:scale(1)}45%{transform:scale(1.32);box-shadow:0 0 0 7px rgba(16,224,160,.22)}100%{transform:scale(1)}}
+.gm-check.gm-pop,.gm-set-num.gm-pop{animation:gmPop .45s cubic-bezier(.2,.8,.3,1.2)}
+@media (prefers-reduced-motion:reduce){.gm-check.gm-pop,.gm-set-num.gm-pop{animation:none}}
 /* ── MOMENTOS FULL-BLEED: upsell Premium + subida de nivel (reusan el molde .wf-*) ── */
 #premium-upsell,#level-up{position:fixed;inset:0;z-index:905;display:none;background:#04080A;overflow:hidden}
 #premium-upsell.on,#level-up.on{display:block;animation:wfFade .4s ease}

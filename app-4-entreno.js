@@ -2389,6 +2389,17 @@ function _exSubregions(ex){
 }
 
 let _cnHistOpen={}; // clientId -> ver TODO el historial (por defecto colapsado a 2)
+// v314 (estudio, mejora 3): salto por anclas dentro de Progreso. La fila solo aparece
+// cuando hay sesiones; cada chip se oculta si su bloque está vacío (gamif con 0 entrenos).
+function progJump(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+function _syncProgAnchors(hasSessions){
+  const row=document.getElementById('prog-anchors'); if(!row)return;
+  row.style.display=hasSessions?'flex':'none';
+  row.querySelectorAll('[data-jump]').forEach(b=>{
+    const t=document.getElementById(b.getAttribute('data-jump'));
+    b.style.display=(t&&(t.id==='prog-hist-sec'||t.innerHTML.trim()))?'':'none';
+  });
+}
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const sessions=DB.history[clientId]||[];
@@ -2399,6 +2410,7 @@ function renderClientHistory(clientId){
   renderClientStreak(clientId);
   renderAdvStats(clientId);
   renderVolChart(sessions);
+  _syncProgAnchors(sessions.length>0);
   if(!sessions.length){
     con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';
     return;
