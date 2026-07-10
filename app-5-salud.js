@@ -381,7 +381,7 @@ function openNutritionRoom(clientId){
   }
 
   body.innerHTML=`
-    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,#10b98118,#10b98108);border-color:#10b98144">
+    <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,#10b98118,#10b98108),var(--w);border-color:#10b98144">
       <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98166">🥗</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">Mi nutrición</div>

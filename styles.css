@@ -40,14 +40,17 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   html:not([data-theme="light"]) .inp,
   html:not([data-theme="light"]) .sel,
   html:not([data-theme="light"]) .tarea,
-  html:not([data-theme="light"])
   html:not([data-theme="light"]) .gm-sinput,
   html:not([data-theme="light"]) .mta {
     background: var(--w); color: var(--t1); border-color: var(--br2);
   }
+  /* OJO (bug v311, reporte Camilo 2026-07-10): estos ::placeholder van en su PROPIA regla.
+     Un renombrado viejo dejó un selector colgando y los fusionó con el background de
+     #avi-loading → la foto del loading aparecía RECORTADA dentro de cada input (Chrome
+     sí pinta background en ::placeholder). Jamás volver a mezclar estas dos reglas. */
   html:not([data-theme="light"]) .li::placeholder,
   html:not([data-theme="light"]) .inp::placeholder,
-  html:not([data-theme="light"])
+  html:not([data-theme="light"]) .gm-sinput::placeholder { color: var(--t3); }
   html:not([data-theme="light"]) #avi-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 }
 /* dark mode manual — forzado por el toggle de la app */
@@ -73,8 +76,10 @@ html[data-theme="dark"] .gm-sinput,
 html[data-theme="dark"] .mta {
   background: var(--w); color: var(--t1); border-color: var(--br2);
 }
+/* Placeholders en su PROPIA regla — ver nota del bloque auto-oscuro (bug v311). */
 html[data-theme="dark"] .li::placeholder,
 html[data-theme="dark"] .inp::placeholder,
+html[data-theme="dark"] .gm-sinput::placeholder { color: var(--t3); }
 html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6,9,10,.34) 0%,rgba(6,9,10,.08) 32%,rgba(6,9,10,.10) 55%,rgba(6,9,10,.72) 86%,rgba(6,9,10,.96) 100%),url('media/loading-bg.jpg') center/cover no-repeat #06090A; }
 /* light mode manual — fuerza claro aunque el sistema esté en oscuro */
 :root[data-theme="light"] {
@@ -688,6 +693,11 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .exroom-hero-ic{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .exroom-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .exroom-tags span{font-size:11px;font-weight:700;color:rgba(234,251,244,.92);background:rgba(255,255,255,.10);padding:3px 10px;border-radius:999px}
+/* Heros con TINTE translúcido (récord/rutina/músculo/nutrición) — bug v311, reporte Camilo:
+   el tinte reemplazaba el gradiente oscuro del hero y el título #fff quedaba ilegible en tema
+   claro. El inline ahora pinta el tinte SOBRE var(--w) y el texto usa tokens del tema. */
+.sroom-hero.hero-tint .sroom-title{color:var(--t1)}
+.sroom-hero.hero-tint .exroom-tags span{color:var(--t1);background:color-mix(in srgb,var(--t1) 9%,transparent)}
 .exroom-note{background:var(--w);border:1px solid var(--br);border-radius:14px;padding:14px 16px;font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:16px}
 .exroom-tech{background:var(--w);border:1px solid var(--br);border-radius:14px;padding:13px 15px;font-size:13px;color:var(--t1);line-height:1.6;margin-bottom:10px}
 .exroom-tech-btn{width:100%;padding:12px;background:var(--gl);border:1px solid var(--g2);border-radius:12px;color:var(--gt);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:6px}

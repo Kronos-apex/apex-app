@@ -2005,7 +2005,7 @@ function openRecordRoom(clientId,exName){
   const chartHTML=(prog&&prog.points.length>=2)?`<div class="sroom-sec">Cómo subió tu marca</div><div id="rroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>`:'';
 
   body.innerHTML=`
-    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,#e0a72e18,#e0a72e08);border-color:#e0a72e44">
+    <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,#e0a72e18,#e0a72e08),var(--w);border-color:#e0a72e44">
       <div class="exroom-hero-ic" style="background:#e0a72e22;border:1px solid #e0a72e66">🏆</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(exName)}</div>
@@ -2075,7 +2075,7 @@ function openRoutineRoom(clientId,routineId){
 
   const isToday=rt.day===['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
   body.innerHTML=`
-    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,${IND}18,${IND}08);border-color:${IND}44">
+    <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,${IND}18,${IND}08),var(--w);border-color:${IND}44">
       <div class="exroom-hero-ic" style="background:${IND}22;border:1px solid ${IND}66">📋</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(rt.name)}</div>
@@ -2152,7 +2152,7 @@ function openMuscleRoom(clientId,group){
   const chartHTML=trendPts.length>=2?`<div class="sroom-sec">Tus series, sesión a sesión</div><div id="mscroom-chart" style="width:100%;min-height:78px;background:var(--w);border:1px solid var(--br);border-radius:14px;padding:10px 6px;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>`:'';
 
   body.innerHTML=`
-    <div class="sroom-hero exroom-hero" style="background:linear-gradient(135deg,${col}18,${col}08);border-color:${col}44">
+    <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,${col}18,${col}08),var(--w);border-color:${col}44">
       <div class="exroom-hero-ic" style="background:${col}1f;border:1px solid ${col}55">${typeof muscleIcon==='function'?muscleIcon(group,30):'💪'}</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(g.label)}</div>
