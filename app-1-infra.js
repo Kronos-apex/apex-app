@@ -1443,8 +1443,44 @@ const AVI_ICONS={
   leaf:'<path d="M6 20C6 11.5 11 5.3 20 4.2c.6 9-4 15-13.4 15.8"/><path d="M6 20c2.2-5.6 5.6-9.6 10-12.2"/>',
   dumbbell:'<path d="M7.3 8.3v7.4"/><path d="M4.3 10v4"/><path d="M16.7 8.3v7.4"/><path d="M19.7 10v4"/><path d="M7.3 12h9.4"/>',
   gauge:'<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4.2-4.6"/><circle cx="12" cy="16" r="1.2"/>',
+  // F3 (v307): títulos de sección (Rutinas/Mensajes/Progreso/Perfil + habitaciones) y tema.
+  // chat y chart calcan el trazo de los tabs de abajo (ya eran SVG) para hablar el mismo idioma.
+  clipboard:'<rect x="5" y="4.6" width="14" height="16.4" rx="2.2"/><rect x="9" y="2.8" width="6" height="3.6" rx="1.2"/><path d="M9 11.5h6"/><path d="M9 15.5h4"/>',
+  chat:'<path d="M21 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-5.2A8 8 0 1 1 21 12z"/>',
+  chart:'<path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6"/><path d="M12 20.5v-11"/><path d="M17.5 20.5v-8"/>',
+  trend:'<path d="M3.5 19.5l6-6.5 3.5 3.5 7-7.5"/><path d="M15.6 9h4.4v4.4"/>',
+  apple:'<path d="M12 7.4c-3-2-6.6-.3-6.6 3.6 0 4 2.6 8.2 4.6 8.2 1 0 1.3-.6 2-.6s1 .6 2 .6c2 0 4.6-4.2 4.6-8.2 0-3.9-3.6-5.6-6.6-3.6z"/><path d="M12 7.4c0-2.2 1.2-3.6 3.2-4.2"/>',
+  trophy:'<path d="M8 4.5h8v5.5a4 4 0 0 1-8 0V4.5z"/><path d="M8 6H4.8c0 2.8 1.4 4.6 3.4 4.9"/><path d="M16 6h3.2c0 2.8-1.4 4.6-3.4 4.9"/><path d="M12 14v3"/><path d="M12 17c-2 0-3 1.4-3 3.5h6c0-2.1-1-3.5-3-3.5z"/>',
+  scale:'<rect x="4" y="4" width="16" height="16" rx="3.2"/><path d="M8.4 10.2a5.2 5.2 0 0 1 7.2 0"/><path d="M12 9.2l1.4 2.2"/>',
+  ruler:'<rect x="3" y="8.5" width="18" height="7" rx="1.6"/><path d="M7 8.5v3"/><path d="M10.5 8.5v3.8"/><path d="M14 8.5v3"/><path d="M17.5 8.5v3.8"/>',
+  camera:'<path d="M4 8.6A2.6 2.6 0 0 1 6.6 6H8l1.5-2.2h5L16 6h1.4A2.6 2.6 0 0 1 20 8.6v7.8a2.6 2.6 0 0 1-2.6 2.6H6.6A2.6 2.6 0 0 1 4 16.4V8.6z"/><circle cx="12" cy="12.4" r="3.2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2"/><path d="M12 19v2"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="M5.6 5.6l1.4 1.4"/><path d="M17 17l1.4 1.4"/><path d="M18.4 5.6L17 7"/><path d="M7 17l-1.4 1.4"/>',
+  contrast:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 7.5a4.5 4.5 0 0 1 0 9"/>',
+  // F3b (v307): héroe del perfil, chips de estadísticas de las habitaciones y botones.
+  calendar:'<rect x="4" y="5.5" width="16" height="15" rx="2.4"/><path d="M8 3.5v4"/><path d="M16 3.5v4"/><path d="M4 10.5h16"/>',
+  repeat:'<path d="M17 3l3 3-3 3"/><path d="M20 6H8.5A4.5 4.5 0 0 0 4 10.5"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h11.5a4.5 4.5 0 0 0 4.5-4.5"/>',
+  utensils:'<path d="M7 3v7.5"/><path d="M4.4 3v3.8a2.6 2.6 0 0 0 5.2 0V3"/><path d="M7 13v8"/><path d="M17.5 3c-2 2.2-2.6 5.4-2.6 8.4h2.6"/><path d="M17.5 3v18"/>',
+  pie:'<circle cx="12" cy="12" r="8"/><path d="M12 4v8h8"/>',
+  arrowup:'<path d="M12 19.5V5"/><path d="M5.8 11.2L12 5l6.2 6.2"/>',
+  timer:'<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5v-4"/><path d="M10 2.5h4"/><path d="M12 2.5v2"/>',
+  check:'<path d="M4.5 12.8l5 5L19.5 7"/>',
+  barbell:'<path d="M2.5 12h19"/><path d="M6.2 8v8"/><path d="M17.8 8v8"/><path d="M3.6 9.6v4.8"/><path d="M20.4 9.6v4.8"/>',
+  pencil:'<path d="M15.4 4.4l4.2 4.2L8.2 20 3 21l1-5.2L15.4 4.4z"/><path d="M13.6 6.2l4.2 4.2"/>',
+  help:'<circle cx="12" cy="12" r="8"/><path d="M9.7 9.6a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.1 1-1.1 1.9"/><path d="M12 16.6h.01"/>',
+  phone:'<path d="M6.2 3.5c1 0 2.4 2.6 2.4 3.5 0 .9-1.3 1.5-1.3 2.4 0 1.6 4.3 5.9 5.9 5.9.9 0 1.5-1.3 2.4-1.3.9 0 3.5 1.4 3.5 2.4 0 1.2-1.7 3.1-3.4 3.1-5.6 0-12.2-6.6-12.2-12.2 0-1.7 1.9-3.8 2.7-3.8z"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;
   return '<svg class="avic" width="'+(size||20)+'" height="'+(size||20)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
 }
+// F3 (v307): los títulos ESTÁTICOS del index llevan <span class="t-ic" data-ic="nombre">emoji</span>
+// — el emoji queda como fallback en el HTML y este pase único lo cambia por el SVG de marca.
+// OJO: hay t-ic ANTES de los <script> (pestañas) y DESPUÉS (modales como #m-photos) →
+// el pase corre con el DOM completo (DOMContentLoaded), no al cargar este módulo.
+function aviIconizeStatic(){
+  document.querySelectorAll('.t-ic[data-ic]').forEach(el=>{
+    el.innerHTML=aviIcon(el.getAttribute('data-ic'),parseInt(el.getAttribute('data-ic-size'))||16);
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aviIconizeStatic);
+else{try{aviIconizeStatic();}catch(_e){}}

@@ -324,17 +324,23 @@ function renderPRsInProfile(clientId){
   }
 }
 
+// F3 (v307): chips de estadísticas de las habitaciones — el emoji pasa al SVG de marca
+// equivalente (hereda --sc del chip). Emojis sin ícono propio se quedan como están.
+const _SROOM_IC={'📅':'calendar','🏆':'trophy','🔁':'repeat','📊':'chart','💪':'dumbbell','🏋️':'barbell','🔥':'flame','💧':'droplet','🍽️':'utensils','🥧':'pie','📈':'trend','⬆️':'arrowup','⚡':'bolt','⏱':'timer','✅':'check','📋':'clipboard'};
+function _sroomIc(e){const n=_SROOM_IC[e];return (n&&typeof aviIcon==='function')?aviIcon(n,18):e;}
+
 function renderClientProfile(client){
   renderCoachUpsell(client);
   renderGoogleLink();
   // Current weight from bodyweight log (most recent entry)
   const bwEntries=DB.bodyweight[client.id]||[];
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
+  const _pfi=(nm,fb)=>typeof aviIcon==='function'?aviIcon(nm,12):fb;
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
   const _pc=document.getElementById('cn-prof-card');
   _pc.style.backgroundImage=`url('${aviProfilePhoto(client.sex)}')`;
-  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">📷</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">🎯 ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">📊 ${esc(client.level)}</span>`:''}<span class="profpill">📅 ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">⚖️ ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
-  const rows=[['🎯 Objetivo',client.goal],['📊 Nivel',client.level],['📅 Días de entreno',`${client.days} días por semana`],currentKg?['⚖️ Peso actual',`${currentKg} kg`]:null,client.notes?['📝 Nota del coach',client.notes]:null].filter(Boolean);
+  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">${typeof aviIcon==='function'?aviIcon('camera',12):'📷'}</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">${_pfi('target','🎯')} ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">${_pfi('chart','📊')} ${esc(client.level)}</span>`:''}<span class="profpill">${_pfi('calendar','📅')} ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">${_pfi('scale','⚖️')} ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  const rows=[[`${_pfi('target','🎯')} Objetivo`,client.goal],[`${_pfi('chart','📊')} Nivel`,client.level],[`${_pfi('calendar','📅')} Días de entreno`,`${client.days} días por semana`],currentKg?[`${_pfi('scale','⚖️')} Peso actual`,`${currentKg} kg`]:null,client.notes?[`${_pfi('pencil','📝')} Nota del coach`,client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
   renderGamification(client);
@@ -1653,7 +1659,7 @@ function renderClientStreak(clientId){
         ? `Esta semana llevas <b>${ws.thisWeekDays} de ${ws.target}</b> día${ws.target!==1?'s':''}. Te ${falta===1?'falta':'faltan'} <b>${falta}</b> para encender tu racha 🔥`
         : `Tu racha son las <b>semanas seguidas</b> cumpliendo tu meta de ${ws.target} día${ws.target!==1?'s':''}. ¡Esta semana cuenta!`;
   con.innerHTML=`<div class="card streak-card">
-    <div class="streak-title">🔥 Tu constancia</div>
+    <div class="streak-title">${typeof aviIcon==='function'?aviIcon('flame',14):'🔥'} Tu constancia</div>
     <div class="streak-stats">
       <div class="sstat sstat-g"><div class="sstat-n">${ws.weeks}</div><div class="sstat-l">Semanas seguidas</div></div>
       <div class="sstat sstat-y"><div class="sstat-n">${record}</div><div class="sstat-l">Tu récord</div></div>
@@ -1708,7 +1714,7 @@ function openSessionRoom(clientId,sid){
   if(reps>0)stats.push(['🔁','Reps totales',String(reps),'#9b6dd6']);
   stats.push(['📋','Ejercicios',String(exCount||exs.length),'#0ea5b7']);
   stats.push(['✅','Series',`${s.doneSets}/${s.totalSets}`,pct===100?'#10b981':'#e0a72e']);
-  const statsHTML=stats.map(([ic,l,v,col])=>`<div class="sroom-stat" style="--sc:${col}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`).join('');
+  const statsHTML=stats.map(([ic,l,v,col])=>`<div class="sroom-stat" style="--sc:${col}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`).join('');
   // Comparación con la última vez que hizo ESTA rutina (no con cualquier otra, que sería
   // peras con manzanas): sube/baja de volumen → engancha a superarse. Solo si hay con qué.
   let cmpHTML='';
@@ -1724,7 +1730,7 @@ function openSessionRoom(clientId,sid){
   let prHTML='';
   const prs=s.prs||[];
   if(prs.length){
-    prHTML=`<div class="sroom-sec">🏆 Récords de este día</div>`+prs.map(pr=>{
+    prHTML=`<div class="sroom-sec">${typeof aviIcon==='function'?aviIcon('trophy',14):'🏆'} Récords de este día</div>`+prs.map(pr=>{
       const detail=(pr.unit==='kg'||!pr.unit)?`${fmtMetric(pr.val,pr.unit||'kg')}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(pr.val,pr.unit);
       return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
     }).join('');
@@ -1818,7 +1824,7 @@ function openExerciseRoom(clientId,exId,exName){
   const trend=(first!=null&&last!=null)?last-first:0;
   const trendStr=!pts.length?'':trend>0?`↑ +${fmtMetric(trend,unit)}`:trend<0?`↓ ${fmtMetric(trend,unit)}`:'↔ estable';
   const trendCol=trend>0?'var(--g)':trend<0?'var(--or)':'var(--t3)';
-  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const statsHTML=[
     stat('🏆','Récord',recordVal!=null?fmtMetric(recordVal,unit):'—','#e0a72e'),
     stat('🔁','Veces',String(veces),'#9b6dd6'),
@@ -1889,11 +1895,11 @@ function openMonthRoom(clientId,year,month){
   const cap=monthName.charAt(0).toUpperCase()+monthName.slice(1);
 
   if(!ms.length){
-    body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#3a86c822;border:1px solid #3a86c855">📅</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div><div class="exroom-tags"><span>Sin entrenos este mes</span></div></div></div>
+    body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#3a86c822;border:1px solid #3a86c855;color:#3a86c8">${typeof aviIcon==='function'?aviIcon('calendar',26):'📅'}</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div><div class="exroom-tags"><span>Sin entrenos este mes</span></div></div></div>
       <div class="exroom-note">No registraste entrenamientos en ${esc(cap)}. Cada sesión que completes en <b>"Hoy"</b> sumará a tu resumen del mes 💪</div><div style="height:30px"></div>`;
     body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
   }
-  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const statsHTML=[
     stat('🏋️','Entrenos',String(ms.length),'#10b981'),
     stat('📊','Volumen',vol>=1000?(vol/1000).toFixed(1).replace('.0','')+' t':vol+' kg','#9b6dd6'),
@@ -1935,7 +1941,7 @@ function openMonthRoom(clientId,year,month){
 
   body.innerHTML=`
     <div class="sroom-hero exroom-hero">
-      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155">📅</div>
+      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155;color:#10b981">${typeof aviIcon==='function'?aviIcon('calendar',26):'📅'}</div>
       <div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">${esc(cap)}</div>
         <div class="exroom-tags"><span>${ms.length} ${ms.length===1?'entreno':'entrenos'}</span><span>${adhPct}% adherencia</span></div></div>
     </div>
@@ -1979,7 +1985,7 @@ function openRecordRoom(clientId,exName){
   const gain=(first&&cur)?(cur.val-first.val):0;
   const recDate=pr.date?new Date(pr.date):(cur?new Date(cur.date):null);
 
-  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
     stat('🏆','Récord',fmtMetric(recVal,unit),'#e0a72e'),
     e1?stat('💪','1RM est.','≈ '+Math.round(e1)+' kg','#9b6dd6'):null,
@@ -2041,7 +2047,7 @@ function openRoutineRoom(clientId,routineId){
   const IND='#6366f1';
   const fv=v=>v>=1000?(v/1000).toFixed(1).replace('.0','')+' t':v+' kg';
 
-  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
     stat('🔁','Veces',String(done.length),IND),
     stat('📅','Última vez',lastStr,'#3a86c8'),
@@ -2116,7 +2122,7 @@ function openMuscleRoom(clientId,group){
   sessions.slice().reverse().forEach(s=>{ let n=0; (s.exercises||[]).forEach(ex=>{ if(ex.muscle===group)n+=(ex.sets||[]).filter(st=>st&&st.done).length; }); if(n>0)trend.push({date:s.date,dateStr:new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}),maxKg:n}); });
   const trendPts=trend.slice(-10);
 
-  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
     stat('💪','Series',String(g.sets),col),
     stat('🏋️','Ejercicios',String(exList.length),'#10b981'),
@@ -2188,7 +2194,7 @@ function renderAdvStats(clientId){
   </div>`;
   if(!vol.totalSets){
     con.innerHTML=`<div class="card adv-card">
-      <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
+      <div class="adv-head"><div class="streak-title">${typeof aviIcon==='function'?aviIcon('chart',14):'📊'} Tu entrenamiento en números</div>${pills}</div>
       <div class="empty" style="padding:26px 10px"><div class="eico">📊</div><div class="etxt">Aún no hay series en los últimos ${winLbl}</div><div class="esub">Cuando completes entrenamientos en <b>"Hoy"</b>, aquí verás cuántas series le das a cada músculo y si tu cuerpo entrena equilibrado 💪</div></div>
     </div>`;
     return;
@@ -2226,7 +2232,7 @@ function renderAdvStats(clientId){
     </div>`;
   }).join('');
   con.innerHTML=`<div class="card adv-card">
-    <div class="adv-head"><div class="streak-title">📊 Tu entrenamiento en números</div>${pills}</div>
+    <div class="adv-head"><div class="streak-title">${typeof aviIcon==='function'?aviIcon('chart',14):'📊'} Tu entrenamiento en números</div>${pills}</div>
     <div class="adv-sub">Series <b>completadas</b> en los últimos ${winLbl} · ${vol.totalSets} en total, ${vol.sessions} entreno${vol.sessions===1?'':'s'}.</div>
     ${balHTML}
     <div class="adv-sech">Cuánto le das a cada músculo <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca un grupo para entrar al detalle</span></div>

@@ -33,6 +33,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_verify-qwcfg.mjs` | HIIT rápido configurable (v301): preset Máquina, modal prellenado, atrás, clamps, preset sin HIIT directo. 6/6 | 2026-07-09 |
 | `_verify-news.mjs` | Tour guiado de novedades (v304+v305): slides con pasos/dots/SVG, Listo/atrás marcan visto, visto parcial, CTA deep-link, espera bienvenida y reintenta con CSS real. 9/9 + screenshots | 2026-07-10 |
 | `_verify-icons-f2.mjs` | Íconos SVG F2 en Hoy (v306): botón QW, chip de racha, nudge push, 7 tarjetas de biblioteca, banner de descanso. 5/5 + screenshots | 2026-07-10 |
+| `_verify-icons-f3.mjs` | Íconos SVG F3 (v307): 24 t-ic estáticos (parte A sin login), Constancia, títulos y héroe del Perfil. 5/5 + screenshots | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20 | 2026-06-30 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

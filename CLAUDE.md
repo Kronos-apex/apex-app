@@ -680,6 +680,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v306** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v307** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v306 íconos SVG F2 (Hoy completa) · v305 el tour nunca abría en prod (guard de visibilidad + reintento) · v304 tour guiado de novedades).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v307 íconos SVG F3 (Perfil/Progreso/habitaciones, data-ic) · v306 íconos SVG F2 (Hoy completa) · v305 el tour nunca abría en prod).*

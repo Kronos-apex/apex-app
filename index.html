@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=306">
+<link rel="stylesheet" href="styles.css?v=307">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -438,7 +438,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
             <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap" id="d-tags"></div>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn bg bsm" onclick="openEditClient()">✏️ Editar</button>
+            <button class="btn bg bsm" onclick="openEditClient()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button>
             <button class="btn bo bsm" onclick="openNewRoutine()">+ Rutina</button>
             <button class="btn bd bsm" onclick="delClient()">🗑️</button>
           </div>
@@ -492,7 +492,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div style="margin-top:16px" id="d-nut-wrap">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
           <div style="font-size:14px;font-weight:700">🥗 Plan nutricional</div>
-          <button class="btn bp bsm" onclick="openNutModal()">✏️ Editar plan</button>
+          <button class="btn bp bsm" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar plan</button>
         </div>
         <div class="card"><div class="cb" id="d-nut-preview" style="font-size:13px;color:var(--t2);line-height:1.7">Sin plan nutricional asignado.</div></div>
       </div>
@@ -562,7 +562,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn bg bsm" id="coach-self-topbar-btn" onclick="backToCoachPanel()" style="display:none">← Panel</button>
       <div id="cn-greet" style="font-size:13px;color:var(--t2)"></div>
-      <button class="btn bsm" id="cn-help-btn" onclick="openHelp()" style="background:var(--gl);color:var(--g);font-weight:700">❓ Ayuda</button>
+      <button class="btn bsm" id="cn-help-btn" onclick="openHelp()" style="background:var(--gl);color:var(--g);font-weight:700"><span class="t-ic plain" data-ic="help" data-ic-size="15">❓</span> Ayuda</button>
       <button class="btn bg bsm" onclick="logout()">Salir</button>
     </div>
   </div>
@@ -586,12 +586,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <!-- ROUTINES -->
     <div id="cn-routines" class="cnp">
       <div id="cn-week-ed"></div>
-      <div style="font-size:15px;font-weight:700;margin-bottom:11px">📋 Todas mis rutinas</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:11px"><span class="t-ic" data-ic="clipboard">📋</span> Todas mis rutinas</div>
       <div id="cn-all-rut"></div>
     </div>
     <!-- MESSAGES -->
     <div id="cn-messages" class="cnp">
-      <div style="font-size:15px;font-weight:700;margin-bottom:11px">💬 Mensajes de tu coach</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:11px"><span class="t-ic" data-ic="chat">💬</span> Mensajes de tu coach</div>
       <div class="card" style="overflow:hidden">
         <div class="mthread" id="cn-msg-thread" style="max-height:380px"></div>
         <div class="mrow" id="cn-msg-composer">
@@ -610,14 +610,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="cn-streak"></div>
       <!-- Estadísticas avanzadas (Premium): volumen por músculo + balance empuje/tracción -->
       <div id="cn-advstats"></div>
-      <div class="prog-sech">📊 Historial de entrenamientos</div>
+      <div class="prog-sech"><span class="t-ic" data-ic="chart">📊</span> Historial de entrenamientos</div>
       <div class="vchart-wrap" id="vol-chart-wrap" style="display:none">
-        <div class="vchart-title"><span>📈 Volumen por sesión</span><span id="vol-chart-avg" style="font-size:11px;color:var(--t2);font-weight:500"></span></div>
+        <div class="vchart-title"><span><span class="t-ic" data-ic="trend" data-ic-size="14">📈</span> Volumen por sesión</span><span id="vol-chart-avg" style="font-size:11px;color:var(--t2);font-weight:500"></span></div>
         <div id="vol-chart"></div>
       </div>
       <div id="cn-hist-list"></div>
       <div style="margin-top:14px" id="cn-exprog-wrap">
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px">📈 Mi progreso por ejercicio</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px"><span class="t-ic" data-ic="trend" data-ic-size="15">📈</span> Mi progreso por ejercicio</div>
         <div id="cn-exprog-list"></div>
       </div>
     </div>
@@ -630,13 +630,13 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
       <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
       <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle">🥗 Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()">✏️ Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()">📲 WhatsApp</button></div></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="apple">🥗</span> Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()"><span class="t-ic plain" data-ic="phone" data-ic-size="13">📲</span> WhatsApp</button></div></div>
         <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
       </div>
 
       <!-- Personal records (se oculta hasta tener récords) -->
       <div class="card" style="margin-bottom:12px" id="cn-pr-card">
-        <div class="ch"><div class="ctitle">🏆 Mis récords personales</div></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="trophy">🏆</span> Mis récords personales</div></div>
         <div class="cb" id="cn-pr-list">
           <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords</div>
         </div>
@@ -645,14 +645,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <!-- Seguimiento personal: peso/medidas/fotos. Colapsado por defecto (progressive
            disclosure) para no abrumar al asesorado nuevo. Se auto-abre si ya hay datos. -->
       <div id="tt-toggle" class="prof-collapse" onclick="toggleTrackingTools()">
-        <div class="pc-ic">📈</div>
+        <div class="pc-ic"><span class="t-ic" data-ic="trend" data-ic-size="20">📈</span></div>
         <div class="pc-tx"><div class="pc-t">Mi seguimiento personal</div><div class="pc-s">Peso, medidas y fotos · opcional</div></div>
         <span id="tt-chev" class="pc-chev">▼</span>
       </div>
       <div id="tt-body" style="display:none">
         <!-- Body weight tracker -->
         <div class="card" style="margin-bottom:12px">
-          <div class="ch"><div class="ctitle">⚖️ Mi peso corporal</div></div>
+          <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="scale">⚖️</span> Mi peso corporal</div></div>
           <div class="cb">
             <div class="wlog-add">
               <input id="bw-kg" class="inp" type="number" inputmode="decimal" placeholder="Ej: 75.5" step="0.1" style="flex:1;padding:9px 12px">
@@ -668,7 +668,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <!-- Medidas corporales cliente -->
         <div class="card" style="margin-bottom:12px">
           <div class="ch">
-            <div class="ctitle">📏 Mis medidas</div>
+            <div class="ctitle"><span class="t-ic" data-ic="ruler">📏</span> Mis medidas</div>
             <button class="btn bp bsm" onclick="openMedModal()">+ Registrar</button>
           </div>
           <div class="cb">
@@ -679,8 +679,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <!-- Fotos de progreso -->
         <div class="card" style="margin-bottom:12px">
           <div class="ch">
-            <div class="ctitle">📸 Fotos de progreso</div>
-            <button class="btn bp bsm" onclick="openPhotosModal()">📷 Subir</button>
+            <div class="ctitle"><span class="t-ic" data-ic="camera">📸</span> Fotos de progreso</div>
+            <button class="btn bp bsm" onclick="openPhotosModal()"><span class="t-ic plain" data-ic="camera" data-ic-size="13">📷</span> Subir</button>
           </div>
           <div class="cb" id="cn-photos-grid">
             <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Aún no tienes fotos de progreso. La primera es la más importante — marca el punto de partida.</div>
@@ -697,9 +697,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="ch"><div class="ctitle">Apariencia</div></div>
         <div class="cb" style="padding-top:4px">
           <div style="display:flex;gap:7px">
-            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
-            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
-            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
+            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="moon" data-ic-size="15">🌙</span> Oscuro</button>
+            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="contrast" data-ic-size="15">⚙️</span> Auto</button>
           </div>
         </div>
       </div>
@@ -955,9 +955,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="fg" style="margin-bottom:16px">
       <span class="ilbl">Apariencia</span>
       <div style="display:flex;gap:7px;margin-top:4px">
-        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">☀️ Claro</button>
-        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">🌙 Oscuro</button>
-        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)">⚙️ Auto</button>
+        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
+        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="moon" data-ic-size="15">🌙</span> Oscuro</button>
+        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="contrast" data-ic-size="15">⚙️</span> Auto</button>
       </div>
     </div>
 
@@ -1083,18 +1083,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=306"></script>
-<script src="muscle-map.js?v=306"></script>
-<script src="exercise-muscles.js?v=306"></script>
+<script src="avi-core.js?v=307"></script>
+<script src="muscle-map.js?v=307"></script>
+<script src="exercise-muscles.js?v=307"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=306"></script>
-<script src="app-2-login.js?v=306"></script>
-<script src="app-3-coach.js?v=306"></script>
-<script src="app-4-entreno.js?v=306"></script>
-<script src="app-5-salud.js?v=306"></script>
-<script src="app-6-extra.js?v=306"></script>
+<script src="app-1-infra.js?v=307"></script>
+<script src="app-2-login.js?v=307"></script>
+<script src="app-3-coach.js?v=307"></script>
+<script src="app-4-entreno.js?v=307"></script>
+<script src="app-5-salud.js?v=307"></script>
+<script src="app-6-extra.js?v=307"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1312,7 +1312,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- MODAL FOTOS -->
 <div class="mdbg" id="m-photos">
   <div class="md">
-    <div class="mdtitle">📸 Fotos de progreso</div>
+    <div class="mdtitle"><span class="t-ic" data-ic="camera">📸</span> Fotos de progreso</div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">M&aacute;x. 12 fotos. Solo t&uacute; y tu coach pueden verlas.</div>
     <div style="margin-bottom:14px">
       <label class="ilbl">Seleccionar foto</label>

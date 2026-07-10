@@ -265,6 +265,13 @@ html[data-theme="light"] .mta {
 #m-qwcfg{z-index:1500}
 /* ── Íconos SVG de marca (v303, F1 — docs/plan-iconos-svg.md) ── */
 .avic{display:inline-block;vertical-align:-2px;flex-shrink:0}
+/* F3 (v307): íconos en títulos estáticos (aviIconizeStatic) — tinte de marca por defecto;
+   .plain hereda el color del contenedor (botones de tema: el seleccionado pinta blanco). */
+.t-ic{color:var(--g2)}
+.t-ic.plain{color:inherit}
+.streak-title .avic,.sroom-sec .avic{color:var(--g2)}
+.sroom-stat-ic .avic{color:var(--sc,var(--g))}
+.profav-cam .avic{color:#fff}
 .ic-chip{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:var(--gl);color:var(--g2);border-radius:10px;flex-shrink:0}
 .news-ico{flex-shrink:0;margin-top:1px;color:var(--g2);display:flex}
 /* ── Novedades (v304): TOUR guiado a pantalla completa — la tarjeta plana de v302 murió ── */

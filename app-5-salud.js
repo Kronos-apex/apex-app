@@ -201,7 +201,7 @@ function nutCalcHTML(c){
   const est=nutritionEstimate(c);
   if(!est){
     return `<div style="text-align:center;padding:22px 14px">
-      <div style="font-size:34px;margin-bottom:8px">🍎</div>
+      <div style="margin-bottom:8px;color:var(--g2)">${typeof aviIcon==='function'?aviIcon('apple',34):'🍎'}</div>
       <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:6px">Calculadora nutricional</div>
       <div style="font-size:13px;line-height:1.6;color:var(--t2)">Completa tu <b>peso, estatura, edad y sexo</b> en tu Perfil y aquí verás tu estimación automática de calorías y macros para tu objetivo.</div>
     </div>`;
@@ -209,7 +209,7 @@ function nutCalcHTML(c){
   const curAf=parseFloat(c.activityFactor)||1.55;
   const actBtns=_NUT_ACTS.map(([f,l])=>`<button type="button" onclick="setNutActivity(${f})" style="flex:1;min-width:0;padding:8px 3px;border:1.5px solid ${curAf===f?'var(--g)':'var(--br2)'};border-radius:var(--rsm);background:${curAf===f?'var(--gl)':'transparent'};color:${curAf===f?'var(--gt)':'var(--t2)'};font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">${l}</button>`).join('');
   const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
-  return `<div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🍎 Tu estimación automática</div>
+  return `<div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('apple',13):'🍎'} Tu estimación automática</div>
     <div style="font-size:11px;color:var(--t2);margin-bottom:9px">¿Qué tan activo eres en tu día a día?</div>
     <div style="display:flex;gap:5px;margin-bottom:16px">${actBtns}</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
@@ -235,7 +235,7 @@ function renderNutritionClient(clientId){
     // Sin plan escrito por un coach \u2192 calculadora autom\u00e1tica (Premium self-serve).
     // El coach (COACH_SELF) ve adem\u00e1s el recordatorio de armar un plan a medida.
     const c=DB.clients.find(x=>x.id===clientId);
-    con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:12px" onclick="openNutritionRoom('${clientId}')">\ud83c\udf7d\ufe0f Ver mi plan en grande</button>`+nutCalcHTML(c)+(COACH_SELF
+    con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:12px" onclick="openNutritionRoom('${clientId}')">${typeof aviIcon==='function'?aviIcon('utensils',15):'\ud83c\udf7d\ufe0f'} Ver mi plan en grande</button>`+nutCalcHTML(c)+(COACH_SELF
       ? '<div style="text-align:center;margin-top:12px;color:var(--t3);font-size:12px">O toca \u270f\ufe0f Editar para escribir un plan a medida.</div>'
       : '');
     return;
@@ -286,7 +286,7 @@ function renderNutritionClient(clientId){
   if(nut.plan)html+=`<div style="background:var(--gl);border-radius:var(--rsm);padding:12px;margin-bottom:12px;white-space:pre-line;font-size:13px;line-height:1.7;color:var(--gt)">\ud83d\udccb ${esc(nut.plan)}</div>`;
   // Evitar
   if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
-  con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:14px" onclick="openNutritionRoom('${clientId}')">\ud83c\udf7d\ufe0f Ver mi plan en grande</button>`+html;
+  con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:14px" onclick="openNutritionRoom('${clientId}')">${typeof aviIcon==='function'?aviIcon('utensils',15):'\ud83c\udf7d\ufe0f'} Ver mi plan en grande</button>`+html;
 }
 
 // ── HABITACIÓN DE NUTRICIÓN: versión inmersiva del plan (se entra desde la tarjeta
@@ -316,7 +316,7 @@ function openNutritionRoom(clientId){
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
 
-  const stat=(ic,l,v,c2)=>`<div class="sroom-stat" style="--sc:${c2}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const stat=(ic,l,v,c2)=>`<div class="sroom-stat" style="--sc:${c2}"><div class="sroom-stat-ic">${typeof _sroomIc==='function'?_sroomIc(ic):ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
     stat('🔥','Kcal / día',d.kcal||'—','#10b981'),
     d.water?stat('💧','Vasos de agua',d.water,'#3a86c8'):null,
