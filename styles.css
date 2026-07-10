@@ -225,6 +225,8 @@ html[data-theme="light"] .mta {
 .qw-entry:hover{border-color:var(--g2);box-shadow:0 5px 16px -8px rgba(0,0,0,.22)}
 .qw-entry:active{transform:scale(.99)}
 .qw-entry-ic{font-size:22px;flex-shrink:0;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--gl);border-radius:11px}
+/* F2 (v306): con SVG de marca dentro, los chips de entrada/tarjetas QW se tintan como .ic-chip */
+.qw-entry-ic .avic,.qw-card-ic .avic{color:var(--g2)}
 .qw-entry-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
 .qw-entry-tx b{font-size:13.5px;font-weight:800;color:var(--gt)}
 .qw-entry-tx small{font-size:11.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

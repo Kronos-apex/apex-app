@@ -536,12 +536,17 @@ function renderTodayHead(client){
   // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan — la racha
   // por días consecutivos castigaba al de 3/sem (vivía en "Empieza tu racha hoy").
   const ws=weekStreak((DB.history&&DB.history[client.id])||[], planDays(client), new Date());
+  // Íconos SVG de marca (v306, F2): flame para racha encendida, target para la meta en curso.
+  const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
   const chip=ws.weeks>=1
-    ? `<div class="streak-chip">🔥 <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} cumpliendo tu plan</div>`
+    ? `<div class="streak-chip">${_ic('flame',15,'🔥')} <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} cumpliendo tu plan</div>`
     : ws.thisWeekDays>0
-      ? `<div class="streak-chip">💪 Esta semana: <b>${ws.thisWeekDays}/${ws.target}</b> días</div>`
-      : `<div class="streak-chip streak-0">💪 Empieza tu racha esta semana</div>`;
+      ? `<div class="streak-chip">${_ic('target',15,'💪')} Esta semana: <b>${ws.thisWeekDays}/${ws.target}</b> días</div>`
+      : `<div class="streak-chip streak-0">${_ic('target',15,'💪')} Empieza tu racha esta semana</div>`;
   el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
+  // Botón de entrenamientos rápidos (HTML estático): el ⚡ emoji pasa a bolt SVG (F2).
+  const qe=document.querySelector('#qw-entry .qw-entry-ic');
+  if(qe&&typeof aviIcon==='function')qe.innerHTML=aviIcon('bolt',22);
 }
 
 function renderClientToday(client, overrideRoutine){
@@ -579,7 +584,7 @@ function renderClientToday(client, overrideRoutine){
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
     con.innerHTML=`<div class="avi-restbnr"><div class="rb-bg" style="background-image:url('${aviRestPhoto(client.sex)}')"></div><div class="rb-ov"></div><div class="rb-in">
-      <div style="font-size:34px">💤</div>
+      <div style="color:#fff;opacity:.92">${typeof aviIcon==='function'?aviIcon('moon',34):'💤'}</div>
       <div class="rb-title">Hoy es tu día de descanso</div>
       <div class="rb-sub">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
       <button class="btn bp bsm" style="margin-top:6px" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
@@ -702,22 +707,22 @@ const QUICK_WORKOUTS=[
   {id:'qw_hiit_maquina', emoji:'🚴', ic:'bike', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
    desc:'Bici estática, elíptica o trotadora: sprints fuertes con pausas suaves. Tú eliges las rondas.',
    items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
-  {id:'qw_hiit_casa', emoji:'🔥', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
+  {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
    items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e181',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
-  {id:'qw_abs_casa', emoji:'💥', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
+  {id:'qw_abs_casa', emoji:'💥', ic:'burst', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
    desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
    items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
-  {id:'qw_movilidad', emoji:'🧘', name:'Movilidad & Estiramiento', goal:'Movilidad · Recuperación', place:'Casa', dur:'~10 min',
+  {id:'qw_movilidad', emoji:'🧘', ic:'leaf', name:'Movilidad & Estiramiento', goal:'Movilidad · Recuperación', place:'Casa', dur:'~10 min',
    desc:'Sesión suave para descanso activo o cuando no puedes entrenar fuerte. Suelta espalda y caderas.',
    items:[{id:'e165',sets:2,reps:30,track:'tiempo'},{id:'e173',sets:2,reps:30,track:'tiempo'},{id:'e170',sets:2,reps:30,track:'tiempo'},{id:'e168',sets:2,reps:30,track:'tiempo'},{id:'e179',sets:2,reps:30,track:'tiempo'},{id:'e167',sets:2,reps:40,track:'tiempo'}]},
-  {id:'qw_fullbody_casa', emoji:'⚡', name:'Full-Body Express', goal:'Cuerpo completo', place:'Casa', dur:'~20 min',
+  {id:'qw_fullbody_casa', emoji:'⚡', ic:'bolt', name:'Full-Body Express', goal:'Cuerpo completo', place:'Casa', dur:'~20 min',
    desc:'Un poco de todo sin equipo: empuje, pierna, glúteo, tracción y core.',
    items:[{id:'e83',sets:3,reps:12,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e73',sets:3,reps:15,track:'reps'},{id:'e146',sets:3,reps:12,track:'reps'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
-  {id:'qw_gluteo_casa', emoji:'🍑', name:'Glúteo & Pierna en casa', goal:'Glúteo · Pierna', place:'Casa', dur:'~15 min',
+  {id:'qw_gluteo_casa', emoji:'🍑', ic:'dumbbell', name:'Glúteo & Pierna en casa', goal:'Glúteo · Pierna', place:'Casa', dur:'~15 min',
    desc:'Tren inferior sin equipo, enfocado en glúteo. Con banda, aún mejor.',
    items:[{id:'e73',sets:4,reps:15,track:'reps'},{id:'e162',sets:3,reps:12,track:'reps'},{id:'e130',sets:3,reps:15,track:'reps'},{id:'e106',sets:3,reps:10,track:'reps'},{id:'e163',sets:3,reps:15,track:'reps'}]},
-  {id:'qw_plio', emoji:'🏃', name:'Cardio Pliométrico', goal:'Cardio · Potencia', place:'Parque/Casa', dur:'~12 min',
+  {id:'qw_plio', emoji:'🏃', ic:'gauge', name:'Cardio Pliométrico', goal:'Cardio · Potencia', place:'Parque/Casa', dur:'~12 min',
    desc:'Saltos e intervalos explosivos: 3 rondas de 40s fuerte / 20s de pausa. Alto impacto.',
    items:[{id:'e184',sets:3,hiit:{work:40,rest:20}},{id:'e185',sets:3,hiit:{work:40,rest:20}},{id:'e186',sets:3,hiit:{work:40,rest:20}},{id:'e198',sets:3,hiit:{work:40,rest:20}},{id:'e203',sets:3,hiit:{work:40,rest:20}}]}
 ];
@@ -745,7 +750,7 @@ function openQuickWorkouts(){
   if(!room||!body)return;
   body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+
     QUICK_WORKOUTS.map(w=>`<button class="qw-card" onclick="startQuickWorkout('${w.id}')">
-      <span class="qw-card-ic">${w.emoji}</span>
+      <span class="qw-card-ic">${typeof aviIcon==='function'&&w.ic?aviIcon(w.ic,24):w.emoji}</span>
       <span class="qw-card-mid">
         <span class="qw-card-nm">${esc(w.name)}</span>
         <span class="qw-card-meta">${esc(w.goal)} · ${esc(w.place)} · ${esc(w.dur)}</span>

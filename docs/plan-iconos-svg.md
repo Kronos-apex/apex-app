@@ -24,14 +24,16 @@
 | Fase | Superficie | Estado |
 |---|---|---|
 | **F1** | Tarjeta novedades (✨→sparkles, items), tarjeta agua (💧→droplet), modal HIIT rápido (⚡/🚴→bolt/bike) | ✅ avi-v303 (2026-07-09) |
-| **F2** | Pantalla Hoy restante: botón ⚡ entrenamientos rápidos + tarjetas de la biblioteca QW (chips), saludo/racha (🔥💪), banner de descanso (💤), nudge de push (🔔) | pendiente |
+| **F2** | Pantalla Hoy restante: botón ⚡ entrenamientos rápidos (bolt) + tarjetas de la biblioteca QW (chips por preset), saludo/racha (🔥→flame, 💪→target), banner de descanso (💤→moon), nudge de push (🔔→bell). Harness propio `_verify-icons-f2.mjs`. Nota: la tarjeta "🔥 Tu constancia" vive en PROGRESO → va en F3. | ✅ avi-v306 (2026-07-10) |
 | **F3** | Tabs del asesorado (cnp/cntab) + cabeceras de las habitaciones (.sroom) + perfil | pendiente |
 | **F4** | ⚠️ Guiado (checks ✓/○, ⏱ crono, ⚠️ dolor, 🔗 biserie) — ZONA CALIENTE: harness completo obligatorio (_guiado-suite 53) | pendiente |
 | **F5** | Panel del coach (paneles, botones de acción, badges) | pendiente |
 
-## Íconos existentes (F1)
+## Íconos existentes
 
-`sparkles` · `droplet` · `bike` · `bolt` · `wind`
+F1: `sparkles` · `droplet` · `bike` · `bolt` · `wind`
+F2: `flame` (racha/HIIT casa) · `target` (meta semanal) · `moon` (descanso) · `bell` (push) ·
+`burst` (abdomen) · `leaf` (movilidad) · `dumbbell` (glúteo/pierna) · `gauge` (pliométrico)
 
 Al agregar: dibujar a mano en el estilo (nada de copiar sets con licencia dudosa),
 previsualizar en ambos temas, y mantener este inventario al día.

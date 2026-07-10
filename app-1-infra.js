@@ -345,7 +345,7 @@ function renderPushNudge(){
   let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze_'+cid)||'0',10)||0; }catch(_e){}
   if(Date.now()-snooze<7*86400000){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="push-nudge">
-    <div class="push-nudge-txt"><b>🔔 Activa tus recordatorios</b><span>Te avisamos en tus días de entreno, con tips de hidratación y recuperación. Sin spam.</span></div>
+    <div class="push-nudge-txt"><b>${typeof aviIcon==='function'?aviIcon('bell',15):'🔔'} Activa tus recordatorios</b><span>Te avisamos en tus días de entreno, con tips de hidratación y recuperación. Sin spam.</span></div>
     <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozePush()">Ahora no</button></div>
   </div>`;
 }
@@ -1434,6 +1434,15 @@ const AVI_ICONS={
   bike:'<circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M6 17l3.6-7h5.2l3.2 7"/><path d="M9.6 10L8.2 7H6.2"/><path d="M14.8 10L13.6 7h2.6"/>',
   bolt:'<path d="M13 2L5 13.5h5L9 22l8-11.5h-5L13 2z"/>',
   wind:'<path d="M3 8h9.5A2.5 2.5 0 1 0 10.5 5.5"/><path d="M3 12h13.5A2.5 2.5 0 1 1 14 14.5"/><path d="M3 16h7.5a2.25 2.25 0 1 1-2.3 2.2"/>',
+  // F2 (v306): racha/constancia, biblioteca QW, banner de descanso y nudge de push.
+  flame:'<path d="M12 3c.5 2.6-2.9 4.3-4.3 7.1A7 7 0 0 0 12 21a7 7 0 0 0 6.5-9.6C17.2 8.6 13 7.2 12 3z"/><path d="M12 21c1.9 0 3.2-1.4 3.2-3.2 0-1.7-1.3-2.7-3.2-4.3-1.9 1.6-3.2 2.6-3.2 4.3C8.8 19.6 10.1 21 12 21z"/>',
+  bell:'<path d="M18 16H6c1.2-1.3 1.8-2.5 1.8-5.2a4.2 4.2 0 0 1 8.4 0c0 2.7.6 3.9 1.8 5.2z"/><path d="M10.3 19a1.9 1.9 0 0 0 3.4 0"/>',
+  moon:'<path d="M20 14.5A8.3 8.3 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1"/>',
+  burst:'<path d="M12 2.5v3.6"/><path d="M12 17.9v3.6"/><path d="M2.5 12h3.6"/><path d="M17.9 12h3.6"/><path d="M5.3 5.3l2.5 2.5"/><path d="M16.2 16.2l2.5 2.5"/><path d="M18.7 5.3l-2.5 2.5"/><path d="M7.8 16.2l-2.5 2.5"/>',
+  leaf:'<path d="M6 20C6 11.5 11 5.3 20 4.2c.6 9-4 15-13.4 15.8"/><path d="M6 20c2.2-5.6 5.6-9.6 10-12.2"/>',
+  dumbbell:'<path d="M7.3 8.3v7.4"/><path d="M4.3 10v4"/><path d="M16.7 8.3v7.4"/><path d="M19.7 10v4"/><path d="M7.3 12h9.4"/>',
+  gauge:'<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4.2-4.6"/><circle cx="12" cy="16" r="1.2"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;
