@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=309">
+<link rel="stylesheet" href="styles.css?v=310">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -350,8 +350,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="av" style="background:var(--g)" id="sb-av">C</div>
         <div><div class="sbname" id="sb-nm">Mi Coach</div><div class="sbrole">Entrenador personal</div></div>
       </div>
-      <div class="sbout" onclick="openNotifModal()" style="margin-bottom:4px">🔔 Notificaciones</div>
-      <div class="sbout" onclick="openSettings()" style="margin-bottom:4px">⚙️ Configuración</div>
+      <div class="sbout" onclick="openNotifModal()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones</div>
+      <div class="sbout" onclick="openSettings()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración</div>
       <div class="sbout" onclick="logout()">🚪 Cerrar sesión</div>
       <div style="font-size:10px;color:var(--t3);padding:8px 14px 4px;letter-spacing:.4px">v2.0 · Jun 2026</div>
     </div>
@@ -394,7 +394,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <!-- Retención semanal -->
       <div class="card" style="margin-bottom:13px" id="h-retention-card">
-        <div class="ch"><div class="ctitle">📊 Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="chart">📊</span> Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
         <div id="h-ret-bars" style="padding:4px 12px 12px"></div>
       </div>
       <!-- Banner: quién entrenó hoy (con nombre) -->
@@ -405,7 +405,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="h-adherence-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
-        <div class="ch"><div class="ctitle">⚡ Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="bolt">⚡</span> Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
         <div style="padding:8px 10px" id="h-list"></div>
       </div>
     </div>
@@ -440,7 +440,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn bg bsm" onclick="openEditClient()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button>
             <button class="btn bo bsm" onclick="openNewRoutine()">+ Rutina</button>
-            <button class="btn bd bsm" onclick="delClient()">🗑️</button>
+            <button class="btn bd bsm" onclick="delClient()"><span class="t-ic plain" data-ic="trash" data-ic-size="14">🗑️</span></button>
           </div>
         </div>
         <div style="padding:8px 18px 13px;border-top:1px solid var(--br);font-size:12px;color:var(--t2)" id="d-notes"></div>
@@ -451,14 +451,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <!-- VALORACIÓN CARD -->
       <div class="card" style="margin-bottom:13px" id="d-valoracion-card">
         <div class="ch">
-          <div class="ctitle">📊 Valoración física</div>
+          <div class="ctitle"><span class="t-ic" data-ic="chart">📊</span> Valoración física</div>
           <span style="font-size:11px;font-weight:500;color:var(--t3)">Calculado automáticamente</span>
         </div>
         <div class="cb" id="d-valoracion-body"></div>
       </div>
       <div class="g2">
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:9px">📋 Rutinas asignadas</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="clipboard">📋</span> Rutinas asignadas</div>
           <div id="d-routines"></div>
           <div style="display:flex;gap:6px;margin-top:7px">
             <button class="btn bp bsm" style="flex:1" onclick="openGenRutinas()" title="Genera un borrador de la semana según el perfil">✨ Generar semana</button>
@@ -466,7 +466,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           </div>
         </div>
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:9px">💬 Mensajes</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="chat">💬</span> Mensajes</div>
           <div class="card" style="overflow:hidden">
             <div class="mthread" id="d-msgs" style="max-height:270px"></div>
             <div class="mrow">
@@ -480,25 +480,25 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <!-- History section -->
       <div style="margin-top:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:9px">📊 Historial de sesiones</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="chart">📊</span> Historial de sesiones</div>
         <div class="card"><div class="cb" style="padding:8px 18px" id="d-history"><div style="color:var(--t3);font-size:13px;padding:10px 0;text-align:center">Sin sesiones todavía</div></div></div>
       </div>
       <!-- Exercise progress section -->
       <div style="margin-top:16px" id="d-exprog-wrap">
-        <div style="font-size:14px;font-weight:700;margin-bottom:9px">📈 Progreso por ejercicio</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="trend">📈</span> Progreso por ejercicio</div>
         <div id="d-exprog"></div>
       </div>
       <!-- Plan Nutricional -->
       <div style="margin-top:16px" id="d-nut-wrap">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
-          <div style="font-size:14px;font-weight:700">🥗 Plan nutricional</div>
+          <div style="font-size:14px;font-weight:700"><span class="t-ic" data-ic="apple">🥗</span> Plan nutricional</div>
           <button class="btn bp bsm" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar plan</button>
         </div>
         <div class="card"><div class="cb" id="d-nut-preview" style="font-size:13px;color:var(--t2);line-height:1.7">Sin plan nutricional asignado.</div></div>
       </div>
       <!-- Medidas corporales -->
       <div style="margin-top:16px" id="d-med-wrap">
-        <div style="font-size:14px;font-weight:700;margin-bottom:9px">📏 Medidas corporales</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="ruler">📏</span> Medidas corporales</div>
         <div id="d-med-preview"></div>
       </div>
     </div>
@@ -510,7 +510,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap" id="prog-filters">
         <button class="btn bp bsm" onclick="setProgFilter('all',this)">Todos</button>
-        <button class="btn bg bsm" onclick="setProgFilter('up',this)">📈 Progresando</button>
+        <button class="btn bg bsm" onclick="setProgFilter('up',this)"><span class="t-ic plain" data-ic="trend" data-ic-size="13">📈</span> Progresando</button>
         <button class="btn bg bsm" onclick="setProgFilter('down',this)">📉 Bajando</button>
       </div>
       <div id="prog-list"></div>
@@ -923,7 +923,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Settings / Coach profile modal -->
 <div class="mdbg" id="m-settings">
   <div class="md">
-    <div class="mdtitle">⚙️ Configuración del coach</div>
+    <div class="mdtitle"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración del coach</div>
 
     <div style="margin-bottom:14px">
       <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nombre del coach</label>
@@ -1083,18 +1083,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=309"></script>
-<script src="muscle-map.js?v=309"></script>
-<script src="exercise-muscles.js?v=309"></script>
+<script src="avi-core.js?v=310"></script>
+<script src="muscle-map.js?v=310"></script>
+<script src="exercise-muscles.js?v=310"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=309"></script>
-<script src="app-2-login.js?v=309"></script>
-<script src="app-3-coach.js?v=309"></script>
-<script src="app-4-entreno.js?v=309"></script>
-<script src="app-5-salud.js?v=309"></script>
-<script src="app-6-extra.js?v=309"></script>
+<script src="app-1-infra.js?v=310"></script>
+<script src="app-2-login.js?v=310"></script>
+<script src="app-3-coach.js?v=310"></script>
+<script src="app-4-entreno.js?v=310"></script>
+<script src="app-5-salud.js?v=310"></script>
+<script src="app-6-extra.js?v=310"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1126,7 +1126,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- MODAL NOTIFICACIONES COACH -->
 <div class="mdbg" id="m-notif">
   <div class="md" style="max-width:520px">
-    <div class="mdtitle">🔔 Notificaciones Push</div>
+    <div class="mdtitle"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones Push</div>
     <div style="font-size:13px;color:var(--t2);margin-bottom:16px">Programa mensajes automáticos personalizados. Usa <strong>{nombre}</strong> para el nombre del asesorado.</div>
 
     <div style="margin-bottom:14px">

@@ -1451,7 +1451,7 @@ function _dobRenderStep(step){
         <div class="dob-eyebrow">Tu punto de partida</div>
         <div class="dob-title">¿Cómo estás hoy?</div>
         <div class="dob-sub">Guarda tu <b>peso, medidas y una foto</b> de hoy. En unas semanas vas a ver —con números— cuánto avanzaste.</div>
-        <div class="dob-benefits"><div class="dob-ben"><div class="ic">⚖️</div>Peso</div><div class="dob-ben"><div class="ic">📏</div>Medidas</div><div class="dob-ben"><div class="ic">📸</div>Foto</div></div>
+        <div class="dob-benefits"><div class="dob-ben"><div class="ic">${_gmIco('scale',18,'⚖️')}</div>Peso</div><div class="dob-ben"><div class="ic">${_gmIco('ruler',18,'📏')}</div>Medidas</div><div class="dob-ben"><div class="ic">${_gmIco('camera',18,'📸')}</div>Foto</div></div>
       </div>
       <div class="dob-foot">
         <button class="dob-cta" onclick="_dobRenderStep(1)">Empezar · 2 min</button>
@@ -2195,7 +2195,7 @@ function renderDetailMembership(id){
     <div class="card">
       <div class="ch">
         <div>
-          <div class="ctitle">💳 Membresía</div>
+          <div class="ctitle">${_gmIco('card',16,'💳')} Membresía</div>
           <div style="font-size:12px;color:var(--t2);margin-top:3px">Último pago: ${dateStr} · Vence: ${dueStr}</div>
           ${daysLeftStr?`<div style="margin-top:4px">${daysLeftStr}</div>`:''}
         </div>

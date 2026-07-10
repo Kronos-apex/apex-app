@@ -29,6 +29,10 @@ await ev(`(()=>{document.getElementById('lu').value=${JSON.stringify(EMAIL)};doc
 await ev(`doLogin()`);
 await waitFor(`(()=>{const e=document.getElementById('s-client');return e&&getComputedStyle(e).display!=='none'})()`);
 
+// El login-cliente pudo abrir el TOUR de novedades (reintento v305) — es un overlay a nivel
+// body (z1600) que sobrevive al cambio a s-coach y se COME el primer atrás (2026-07-10:
+// 6 checks corridos en uno). El coach real nunca lo ve (no renderiza el Hoy del cliente).
+await ev(`(()=>{try{if(typeof AVI_NEWS!=='undefined')localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));if(typeof ntClose==='function')ntClose(false);}catch(e){}})()`);
 // Forzar la PANTALLA DEL COACH y un estado inicial como initCoach (sin datos reales del coach):
 // metemos un cliente de prueba en DB.clients para poder probar p-detail.
 await ev(`(()=>{

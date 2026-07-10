@@ -35,8 +35,9 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_verify-icons-f2.mjs` | Íconos SVG F2 en Hoy (v306): botón QW, chip de racha, nudge push, 7 tarjetas de biblioteca, banner de descanso. 5/5 + screenshots | 2026-07-10 |
 | `_verify-icons-f3.mjs` | Íconos SVG F3 (v307): 24 t-ic estáticos (parte A sin login), Constancia, títulos y héroe del Perfil. 5/5 + screenshots | 2026-07-10 |
 | `_shot-f4.mjs` | Shot visual del guiado real (rutina inyectada, tooltip fresco) — el paso que cazó 🔄/✅ en v309. Correr tras CUALQUIER cambio visual del guiado | 2026-07-10 |
+| `_shot-f5.mjs` | Shot visual del panel del coach (home + p-detail forzados con la cuenta QA) | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
-| `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20 | 2026-06-30 |
+| `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |
 | `_shots-rooms.mjs` | Screenshots de las 7 habitaciones (.sroom) | 2026-06-29 |
 | `_walk-samuel.mjs` / `_walk-live.mjs` / `_walk-train.mjs` | Recorridos del asesorado (hoy/en vivo/entreno) | 2026-06-25 |

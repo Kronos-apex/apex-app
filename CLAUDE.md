@@ -680,6 +680,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v309** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v310** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v309 F4 remate (🔄/✅ cazados por el shot post-deploy — regla nueva) · v308 íconos SVG F4 guiado (✓/○/▶/⏸ NO se migran) · v307 íconos SVG F3).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v310 íconos SVG F5 coach — PLAN F1-F5 COMPLETO · v309 F4 remate (regla del shot post-deploy) · v308 íconos SVG F4 guiado).*

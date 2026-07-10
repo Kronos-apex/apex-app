@@ -1,3 +1,5 @@
+// F5 (v310): iconos de marca en el panel del coach — solo presentacion (innerHTML).
+const _coIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
 // ══════════════════════ CLIENTS ══════════════════════
 function filterClients(q){
   const term=(q||'').toLowerCase().trim();
@@ -46,13 +48,13 @@ function renderClients(){
     if(_trained){
       st={ring:'var(--g2)',bg:'var(--gl)',col:'var(--g)',ico:'✓',txt:'Entrenó hoy'};
     } else if(_todayR){
-      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:'⏳',txt:`${esc(_todayR.name)} · hoy`};
+      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:_coIco('timer',12,'⏳'),txt:`${esc(_todayR.name)} · hoy`};
     } else if(_tomorrowR){
-      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:'📅',txt:`${esc(_tomorrowR.name)} · mañana`};
+      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:_coIco('calendar',12,'📅'),txt:`${esc(_tomorrowR.name)} · mañana`};
     } else if(_ruts.length){
-      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:'💤',txt:'Descanso hoy'};
+      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
     } else {
-      st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rd)',ico:'🚩',txt:'Sin rutinas asignadas'};
+      st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rd)',ico:_coIco('flag',12,'🚩'),txt:'Sin rutinas asignadas'};
     }
     const lvlCls=c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to';
     const spark=miniSparkline(c.id);
@@ -67,7 +69,7 @@ function renderClients(){
         </div>
         <div style="margin-top:6px"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span></div>
         <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
-        ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 "${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}"</div>`:''}
+        ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_coIco('chat',11,'💬')} "${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}"</div>`:''}
       </div>
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px;align-self:stretch;justify-content:center">
         ${spark||''}
@@ -1015,7 +1017,7 @@ async function openDetail(id,_silent){
   const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
   const _planIco={libre:'🆓',app:'⭐',coach:'👑'}[_plan];
   const _wantsTag=(_plan!=='coach'&&c.wantsCoach)?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
-  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">🎯 ${esc(c.goal)}</span><span class="tag tg">📅 ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
+  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
   if(freeLead) freeLead.innerHTML=planControlHTML(c);
   const dn=document.getElementById('d-notes');
@@ -1032,7 +1034,7 @@ async function openDetail(id,_silent){
     }
   }catch(_e){}
   dn.style.display=(c.notes||_painHTML)?'block':'none';
-  dn.innerHTML=_painHTML+(c.notes?`📝 <strong>Notas:</strong> ${esc(c.notes)}`:'');
+  dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
@@ -1118,20 +1120,20 @@ function renderValoracion(c){
 
   let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">`;
   if(rct && rctInfo){
-    html += statBox('📐','Cintura/Talla', rct.toFixed(2), rctInfo.label, rctInfo.color);
+    html += statBox(_coIco('ruler',12,'📐'),'Cintura/Talla', rct.toFixed(2), rctInfo.label, rctInfo.color);
   } else if(h) {
-    html += statBox('📐','Cintura/Talla','—','Registra tu cintura','var(--t3)');
+    html += statBox(_coIco('ruler',12,'📐'),'Cintura/Talla','—','Registra tu cintura','var(--t3)');
   }
   if(icc && iccInfo){
-    html += statBox('⚖️','Cintura/Cadera', icc.toFixed(2), iccInfo.label, iccInfo.color);
+    html += statBox(_coIco('scale',12,'⚖️'),'Cintura/Cadera', icc.toFixed(2), iccInfo.label, iccInfo.color);
   }
-  if(tmb)  html += statBox('🔥','TMB',tmb+' kcal','En reposo','var(--or)');
-  if(tdee) html += statBox('⚡','TDEE',tdee+' kcal','Con actividad','var(--g)');
+  if(tmb)  html += statBox(_coIco('flame',12,'🔥'),'TMB',tmb+' kcal','En reposo','var(--or)');
+  if(tdee) html += statBox(_coIco('bolt',12,'⚡'),'TDEE',tdee+' kcal','Con actividad','var(--g)');
   html += `</div>`;
 
   if(kcalObj){
     html += `<div style="background:linear-gradient(135deg,rgba(45,106,79,.15),rgba(82,183,136,.08));border:1.5px solid rgba(82,183,136,.3);border-radius:12px;padding:13px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:800;color:var(--g2);margin-bottom:8px">🎯 OBJETIVO: ${esc(goal).toUpperCase()}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--g2);margin-bottom:8px">${_coIco('target',12,'🎯')} OBJETIVO: ${esc(goal).toUpperCase()}</div>
       <div style="font-size:24px;font-weight:900;color:white;margin-bottom:4px">${kcalObj.toLocaleString()} kcal/día</div>
       <div style="font-size:12px;color:var(--accent3,#5FE3B0)">${kcalLabel}</div>
     </div>`;
@@ -1197,7 +1199,7 @@ function delClient(){
 
 function renderDetailRoutines(c){
   const con=document.getElementById('d-routines');
-  if(!(c.routines||[]).length){con.innerHTML='<div class="empty" style="padding:18px 0"><div class="eico">📋</div><div class="etxt">Sin rutinas todavía</div><div class="esub">Crea la primera para este asesorado</div></div>';return}
+  if(!(c.routines||[]).length){con.innerHTML='<div class="empty" style="padding:18px 0"><div class="eico" style="color:var(--g2)">'+_coIco('clipboard',34,'📋')+'</div><div class="etxt">Sin rutinas todavía</div><div class="esub">Crea la primera para este asesorado</div></div>';return}
   con.innerHTML='';
   c.routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;
@@ -1223,7 +1225,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">✏️</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">🗑️</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">🔗 biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" title="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">📂</button><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)} · ⏱${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">🔗 biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
 }
@@ -1362,7 +1364,7 @@ function rfExRow(i,n,abMark){
   // Botón de unir en biserie: solo si i no está ya en pareja, hay un siguiente, y el siguiente tampoco está en pareja.
   const canLink = !abMark && i<n-1 && !bisetInfo(CUR.routineExs,i).biset && !bisetInfo(CUR.routineExs,i+1).biset;
   const linkBtn = canLink
-    ? `<button title="Unir en biserie con el ejercicio de abajo (sin descanso entre ambos)" onclick="linkBiset(${i})" style="width:30px;height:30px;border-radius:6px;border:1.5px solid #A855F7;background:#A855F710;color:#A855F7;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">🔗</button>`
+    ? `<button title="Unir en biserie con el ejercicio de abajo (sin descanso entre ambos)" onclick="linkBiset(${i})" style="width:30px;height:30px;border-radius:6px;border:1.5px solid #A855F7;background:#A855F710;color:#A855F7;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">${_coIco('link',15,'🔗')}</button>`
     : '';
   const abChip = abMark ? `<span style="font-size:10px;font-weight:900;color:#A855F7;background:#A855F718;border-radius:5px;padding:1px 6px;margin-right:2px;flex-shrink:0">${abMark}</span>` : '';
   const border = abMark ? 'border:none;border-radius:0' : `border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--g)'};border-radius:var(--rsm)`;
@@ -1420,7 +1422,7 @@ function renderRfExList(){
     else {
       html+=`<div style="border:1.5px solid #A855F7;border-radius:var(--rsm);margin-bottom:6px;overflow:hidden;background:#A855F708">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#A855F712">
-          <span style="font-size:11px;font-weight:800;color:#A855F7;letter-spacing:.3px">🔗 BISERIE · alterna sin descanso entre ambos</span>
+          <span style="font-size:11px;font-weight:800;color:#A855F7;letter-spacing:.3px">${_coIco('link',11,'🔗')} BISERIE · alterna sin descanso entre ambos</span>
           <button onclick="unlinkBiset(${block[0]})" style="font-size:11px;font-weight:700;color:#A855F7;background:none;border:none;cursor:pointer;text-decoration:underline">Deshacer</button>
         </div>
         ${rfExRow(block[0],n,'A')}
@@ -1584,7 +1586,7 @@ function renderMsgs(){
   }).length;
   const sbBdg=document.getElementById('sb-msgs-bdg');
   if(sbBdg){sbBdg.textContent=unreadClients;sbBdg.style.display=unreadClients>0?'inline-flex':'none';}
-  if(!list.length){con.innerHTML='<div class="empty" style="padding:50px"><div class="eico">💬</div><div class="etxt">Sin mensajes todavía</div><div class="esub">Ve a un asesorado y escríbele</div></div>';return}
+  if(!list.length){con.innerHTML='<div class="empty" style="padding:50px"><div class="eico" style="color:var(--g2)">'+_coIco('chat',34,'💬')+'</div><div class="etxt">Sin mensajes todavía</div><div class="esub">Ve a un asesorado y escríbele</div></div>';return}
   con.innerHTML='';
   list.forEach(({c,last,count})=>{
     const lastClientMsg=(DB.msgs[c.id]||[]).filter(m=>m.from==='client').slice(-1)[0];

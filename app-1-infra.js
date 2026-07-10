@@ -1473,6 +1473,11 @@ const AVI_ICONS={
   alert:'<path d="M12 3.8L21.4 20H2.6L12 3.8z"/><path d="M12 10v4.4"/><path d="M12 17.2h.01"/>',
   link:'<path d="M10 13.6a4 4 0 0 0 6 .4l2.4-2.4a4 4 0 1 0-5.7-5.7L11.4 7.2"/><path d="M14 10.4a4 4 0 0 0-6-.4l-2.4 2.4a4 4 0 1 0 5.7 5.7l1.3-1.3"/>',
   tridown:'<path d="M4.8 7h14.4L12 19.2 4.8 7z"/>',
+  // F5 (v310): panel del coach — configuración, borrar y bandera de "sin rutinas".
+  sliders:'<path d="M4 7h9.5"/><circle cx="17" cy="7" r="2.3"/><path d="M20 12h-9.5"/><circle cx="7" cy="12" r="2.3"/><path d="M4 17h9.5"/><circle cx="17" cy="17" r="2.3"/>',
+  trash:'<path d="M4.5 6.5h15"/><path d="M8.5 6.5V4.9a1.4 1.4 0 0 1 1.4-1.4h4.2a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M6.6 6.5l.8 12.9a1.7 1.7 0 0 0 1.7 1.6h5.8a1.7 1.7 0 0 0 1.7-1.6l.8-12.9"/><path d="M10 10.5v6"/><path d="M14 10.5v6"/>',
+  flag:'<path d="M6 21V4"/><path d="M6 4.5h11.5L15 8l2.5 3.5H6"/>',
+  card:'<rect x="3" y="5.5" width="18" height="13" rx="2.4"/><path d="M3 9.8h18"/><path d="M6.5 14.5h4"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;
