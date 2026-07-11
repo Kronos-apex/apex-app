@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v323';
+const CACHE_NAME = 'avi-v324';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -19,6 +19,13 @@ self.addEventListener('activate', e => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      // Al ACTIVAR una versión NUEVA, RECARGAR las páginas abiertas (v324). Antes, en Android
+      // el SW se actualizaba pero la página seguía corriendo el JS VIEJO en memoria (resume, no
+      // reload) → los fixes no se aplicaban aunque "cerraran y abrieran" (bug real 2026-07-11:
+      // las suscripciones push seguían fallando con el fetch crudo viejo pese a desplegar v323).
+      // navigate() desde el SW fuerza la recarga sin que la app tenga que cooperar.
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(cls => cls.forEach(c => { try { c.navigate(c.url); } catch (_e) {} }))
   );
 });
 
