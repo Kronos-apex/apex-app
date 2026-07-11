@@ -325,16 +325,24 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
     // force: re-inserta aunque el endpoint no haya cambiado (self-heal cuando la fila del
     // servidor se borró — p.ej. tras el cutover o al podar suscripciones muertas).
     if(!force && !shouldPostPush(localStorage.getItem(_pushKey),sub.endpoint))return true; // ya al día
-    // RLS 2026-07-06: anon quedó FUERA de push_subscriptions (podía pisar filas ajenas).
-    // Se escribe con el token de la sesión: cada quien registra SOLO su fila.
-    let _tok=null; try{ const s=await AUTH.getSession(); _tok=s&&s.access_token; }catch(_e){}
-    if(!_tok){ warn('AVI Push: sin sesión auth — registro pospuesto'); return false; }
-    const _res=await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${_tok}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
-    });
-    if(!_res.ok){ warn('AVI Push: registro rechazado',_res.status); return false; } // no marcar el endpoint como registrado
+    // Escribir con el CLIENTE de Supabase (como UD.upsertOwn), NO con fetch crudo. El fetch
+    // crudo mandaba `Bearer ${getSession().access_token}` — un token que llegaba VENCIDO (no se
+    // refrescaba) → PostgREST lo trataba como ANÓNIMO → la RLS rechazaba TODAS las suscripciones
+    // (bug 2026-07-11, logs postgres: cientos de "violates row-level security" → CERO asesorados
+    // suscritos y el _coach del coach sin refrescar). El cliente refresca el JWT antes de la
+    // petición, igual que el resto de escrituras que SÍ funcionan. onConflict = la UNIQUE
+    // (client_id, subscription) → re-suscribir el mismo endpoint ACTUALIZA en vez de duplicar.
+    if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))return false; // no registrar desde localhost/harness
+    const _c=AUTH.client(); let _u=null; try{ _u=await AUTH.getUser(); }catch(_e){}
+    if(!_c||!_u){ warn('AVI Push: sin sesión auth — registro pospuesto'); return false; }
+    // client_id = el UID REAL del usuario autenticado (no el _pushCtx, que podía estar
+    // desfasado) → coincide SIEMPRE con la RLS `client_id = auth.uid()`. El coach usa '_coach'.
+    const _cid=(clientId==='_coach')?'_coach':_u.id;
+    const { error:_perr }=await _c.from('push_subscriptions').upsert(
+      { client_id:_cid, subscription:sub.toJSON(), updated_at:new Date().toISOString(), training_days:trainingDays, training_shift:shiftMap },
+      { onConflict:'client_id,subscription' }
+    );
+    if(_perr){ warn('AVI Push: registro rechazado',_perr.message); return false; } // no marcar el endpoint como registrado
     localStorage.setItem(_pushKey,sub.endpoint);
     log('AVI Push: suscripción guardada ✅');
     return true;
