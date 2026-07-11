@@ -37,7 +37,8 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_shot-f4.mjs` | Shot visual del guiado real (rutina inyectada, tooltip fresco) — el paso que cazó 🔄/✅ en v309. Correr tras CUALQUIER cambio visual del guiado | 2026-07-10 |
 | `_shot-f5.mjs` | Shot visual del panel del coach (home + p-detail forzados con la cuenta QA) | 2026-07-10 |
 | `_verify-v313.mjs` | Estudio mejoras 1-2 (v313): orden de Hoy por tipo de día + cierre compartible (botón, lienzo 1080×1920, imagen real vía _wfLastCanvas). 5/5 + shots | 2026-07-10 |
-| `_verify-v314.mjs` | Estudio mejoras 3+5 (v314): anclas de Progreso (oculta sin sesiones, sticky al ras de la barra — el scroller es .cnbody —, chips por contenido, salto con scroll-margin) + micro-pop al marcar (3 rutas, cascada vs checkDone, reduced-motion). 9/9 + shots | 2026-07-10 |
+| `_verify-v314.mjs` | Estudio mejoras 3+5 (v314): anclas de Progreso (oculta sin sesiones, sticky al ras de la barra — el scroller es .cnbody —, chips por contenido, salto con scroll-margin) + micro-pop al marcar (3 rutas, cascada vs checkDone, reduced-motion). 10/10 + shots | 2026-07-10 |
+| `_verify-v315.mjs` | Estudio mejora 4 (v315): Rutinas con foto — .rc-photo del primer ejercicio con foto (46% derecho, máscara, full opacidad), fallback sin foto/Libre, acordeón vivo, chevron con contraste. 5/5 + shots claro/oscuro | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

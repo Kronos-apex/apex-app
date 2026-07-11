@@ -359,7 +359,16 @@ html[data-theme="light"] .mta {
 
 /* ── ROUTINE CARDS ── */
 .rc{background:var(--w);border:1px solid var(--br);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:7px}
-.rch{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;transition:background .15s;user-select:none}
+.rch{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;transition:background .15s;user-select:none;position:relative}
+/* v315 (estudio, mejora 4): foto del primer ejercicio de fondo, a TODA opacidad en el 46%
+   derecho con degradado hacia la tarjeta — el texto SIEMPRE queda sobre fondo sólido (lección
+   v311). Variante elegida por preview visual (la tímida al 40% de opacidad era una mancha). */
+.rc-photo{position:absolute;top:0;right:0;bottom:0;width:46%;background-size:cover;background-position:right center;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent 4%,#000 55%);mask-image:linear-gradient(90deg,transparent 4%,#000 55%)}
+.rch>:not(.rc-photo){position:relative;z-index:1}
+/* el chevron cae SOBRE la foto (oscura) → blanco con sombra para que no desaparezca */
+.rc-photo~.rcchev{color:#EAF6EF;text-shadow:0 1px 4px rgba(0,0,0,.65)}
+/* nombres largos: el texto no entra a la zona opaca de la foto (aviso Julián v315) */
+.rc-photo~.rci{padding-right:20%}
 .rch:hover{background:var(--bg)}
 .rcnum{width:26px;height:26px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
 .rcthumb{width:52px;height:52px;border-radius:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:19px;letter-spacing:.5px;color:#fff;text-transform:uppercase;background:linear-gradient(140deg,#10E0A0,#068F66);box-shadow:0 5px 16px rgba(16,224,160,.30)}
