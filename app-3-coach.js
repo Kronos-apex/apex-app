@@ -32,7 +32,10 @@ function renderClients(){
   document.getElementById('cli-lbl').textContent=`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
   if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">👥</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
-  DB.clients.forEach(c=>{
+  // Orden inteligente (mejora 7): quién necesita atención primero. sortClientsByAttention
+  // (avi-core, puro/testeado) NO muta DB.clients — home y otras vistas conservan su orden.
+  // Determinista (desempata por nombre) → el poll de 15s no reordena la lista en vivo.
+  sortClientsByAttention(DB.clients,DB.history).forEach(({c,r})=>{
     const ms=DB.msgs[c.id]||[];const last=ms[ms.length-1];
     // Rutina del día o mañana
     const _days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -59,6 +62,11 @@ function renderClients(){
     const lvlCls=c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to';
     const spark=miniSparkline(c.id);
     const selfBadge=c.selfReg?(c.wantsCoach?'<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>':'<span class="tag" style="background:var(--bll);color:var(--bl)">🆓 Libre</span>'):'';
+    // Chip de ATENCIÓN (mejora 7): la RAZÓN por la que este asesorado sube en la lista.
+    // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
+    const _ATN={pain:['--rdl','--rd'],overdue:['--rdl','--rd'],expiring:['--orl','--or'],idle:['--br','--t2'],nostart:['--br','--t2']};
+    const _ac=_ATN[r.reason];
+    const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
     const d=document.createElement('div');d.className='cli';
     d.innerHTML=`<div class="cav ring" style="background:${avc(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
@@ -67,7 +75,7 @@ function renderClients(){
           <span class="tag ${lvlCls}" style="flex-shrink:0">${c.level||'—'}</span>
           ${selfBadge}
         </div>
-        <div style="margin-top:6px"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span></div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span>${atn}</div>
         <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
         ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_coIco('chat',11,'💬')} "${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}"</div>`:''}
       </div>

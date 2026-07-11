@@ -1564,12 +1564,14 @@ function applyMood(routine, mood, opts) {
 // pago; canLogin define quién entra (pending/active/expiring SÍ; overdue/inactive NO);
 // badge mapea estado → etiqueta/colores. Los colores son tokens CSS (var(--…)).
 const MS = {
-  getStatus(c) {
+  // `now` opcional (default Date.now()) para determinismo en tests/rank — los callers
+  // viejos que pasan solo `c` siguen funcionando igual.
+  getStatus(c, now) {
     if (c.suspended) return 'inactive';
     const pays = c.payments || [];
     if (!pays.length) return 'pending';
     const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
-    const daysLeft = Math.ceil((new Date(last.dueDate) - Date.now()) / 86400000);
+    const daysLeft = Math.ceil((new Date(last.dueDate) - (now != null ? new Date(now).getTime() : Date.now())) / 86400000);
     if (daysLeft < 0) return 'overdue';
     if (daysLeft <= 7) return 'expiring';
     return 'active';
@@ -1588,6 +1590,60 @@ const MS = {
     }[s]) || { label: 'Sin pago', color: 'var(--t2)', bg: 'var(--br)' };
   }
 };
+
+// ── Orden inteligente de asesorados (mejora 7 del estudio, 2026-07-11) — puro/testeable ──
+// El coach con 20+ asesorados no puede escanear una lista plana. Esta función ordena por
+// QUIÉN NECESITA ATENCIÓN, usando SOLO señales que ya existen en los datos. Devuelve un
+// tier (0 = más urgente) + sev (desempate dentro del tier) + reason/label para el chip.
+// El orden final (en renderClients) es: tier asc → sev desc → nombre asc — DETERMINISTA,
+// para que el poll de 15s del coach no reordene la lista "en vivo" (el desempate por nombre
+// es el candado contra el salto). NADA de DOM/colores aquí: el color lo pone la vista.
+// Prioridades: dolor reportado → plan vencido → plan por vencer → inactivo → al día.
+function clientAttentionRank(c, history, now) {
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  c = c || {};
+  // SUSPENDIDO primero: el coach lo pausó a propósito → tier 5, el FONDO (debajo incluso de
+  // los sanos al día), SIN chip de atención. (Sin este corte un suspendido "no entrena" →
+  // caería en inactivo y rankearía por encima de los sanos; con dolor hasta saltaría al tope.
+  // Aviso Lucas v317.)
+  if (c.suspended) return { tier: 5, sev: 0, reason: 'ok', label: '' };
+  // 0) Dolor vigente: lo más urgente (nivel 3 = "no puedo" pesa más que leve).
+  const pains = painCareActive(c.painCare, nowTs);
+  if (pains.length) {
+    const maxLvl = pains.reduce((m, p) => Math.max(m, p.level || 1), 1);
+    return { tier: 0, sev: maxLvl, reason: 'pain',
+             label: maxLvl >= 3 ? '🤕 Dolor le impide entrenar' : '🤕 Reportó dolor' };
+  }
+  // 1-2) Membresía (determinista con now).
+  const st = MS.getStatus(c, nowTs);
+  if (st === 'overdue')  return { tier: 1, sev: 0, reason: 'overdue',  label: '⛔ Plan vencido' };
+  if (st === 'expiring') return { tier: 2, sev: 0, reason: 'expiring', label: '⏳ Plan por vencer' };
+  // 3) Inactividad. Distinguimos "entrenaba y paró" de "nunca estrenó":
+  //    - dejó de entrenar (≥7 días, tenía historial) → churn real, lo más accionable.
+  //    - nunca estrenó → SOLO si ya lleva ≥7 días como asesorado Y tiene rutinas asignadas
+  //      (si no tiene rutinas, el trabajo del coach es asignarlas y eso ya lo grita el
+  //      estado "Sin rutinas" de la tarjeta; y ≥7 días evita marcar a un registro de hoy).
+  const dsls = daysSinceLastSession((history && history[c.id]) || [], nowTs);
+  const tenureDays = c.createdAt ? Math.floor((nowTs - Date.parse(c.createdAt)) / MS_DAY) : Infinity;
+  if (dsls === Infinity) {
+    if (tenureDays >= 7 && (c.routines || []).length) {
+      return { tier: 3, sev: 9999, reason: 'nostart', label: '🚩 Aún no estrena' };
+    }
+  } else if (dsls >= 7) {
+    // Ícono 📉 (no 💤): el pill de estado del día ya usa 💤 para "Descanso hoy" — dos lunas
+    // pegadas confundían descanso planificado con abandono real (aviso Lucas v317).
+    return { tier: 3, sev: dsls, reason: 'idle', label: `📉 ${dsls} días sin entrenar` };
+  }
+  // 4) Al día: sin chip de atención.
+  return { tier: 4, sev: 0, reason: 'ok', label: '' };
+}
+// Ordena una copia de la lista de asesorados por atención (no muta el arreglo original —
+// DB.clients lo comparten home y otras vistas). Estable/determinista.
+function sortClientsByAttention(clients, history, now) {
+  return (clients || []).map(c => ({ c, r: clientAttentionRank(c, history, now) }))
+    .sort((a, b) => (a.r.tier - b.r.tier) || (b.r.sev - a.r.sev)
+                    || String(a.c.name || '').localeCompare(String(b.c.name || ''), 'es'));
+}
 
 // ── Formato de métricas y duración (presentación, sin DOM) ──
 function fmtMetric(v, unit) {
@@ -2031,6 +2087,8 @@ if (typeof module !== 'undefined' && module.exports) {
     painTipFor,
     painCareAdd,
     painCareActive,
+    clientAttentionRank,
+    sortClientsByAttention,
     isFreeClient,
     clientHasCoach,
     clientPlan,

@@ -30,12 +30,22 @@
    fases de íconos / v315).
 6. Al cerrar: **RADAR** honesto (máx 5), memoria de sesión, bitácora, CLAUDE.md.
 
-**Recordatorio a Camilo cada sesión (obligatorio hasta que lo haga): 2FA en GitHub
-y Supabase — solo él puede activarlo.**
+**2FA en GitHub y Supabase: ✅ ACTIVADO por Camilo (confirmado 2026-07-11, con
+recovery codes guardados). Ya no recordar.**
 
 ---
 
-## 📋 SESIÓN A — Mejora 7 del estudio: orden inteligente de asesorados (coach)
+## ✅ SESIÓN A — Mejora 7: orden inteligente de asesorados (coach) — HECHA (avi-v317, 2026-07-11)
+
+> Desplegada: `clientAttentionRank`/`sortClientsByAttention` (avi-core, puro, 10 tests) +
+> orden en `renderClients` + chip de razón. Lucas cazó 2 bugs (suspendido al fondo; ícono 📉
+> anti-doble-luna). Pendientes de PRODUCTO que dejó Lucas (en el backlog de CLAUDE.md, decidir
+> con Camilo, NO construir a ciegas): priorizar mensaje sin leer; preservar el buscador en el
+> poll. Detalle: bitácora parte 19. Texto original de la sesión abajo (referencia).
+
+<details><summary>Plan original de la sesión A</summary>
+
+### 📋 SESIÓN A — Mejora 7 del estudio: orden inteligente de asesorados (coach)
 
 **Objetivo:** en `#p-clients` (y de paso el orden de "prioritarios" del home si aplica),
 la lista se ordena por quién necesita atención: **dolor reportado → vencimientos
@@ -62,6 +72,8 @@ próximos/vencidos → inactivos (sin entrenar ≥7 días) → resto**. Tamaño:
   lista cada 15s (el orden debe ser estable/determinista para no "saltar" en vivo:
   desempatar por nombre).
 - **AVI_NEWS:** NO (es del coach, no del asesorado).
+
+</details>
 
 ## 📋 SESIÓN B — Mejora 8 del estudio: transiciones + números tabulares (CIERRA el estudio)
 

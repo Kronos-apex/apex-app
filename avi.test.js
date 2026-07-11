@@ -63,6 +63,8 @@ const {
   painTipFor,
   painCareAdd,
   painCareActive,
+  clientAttentionRank,
+  sortClientsByAttention,
   waterGoalGlasses,
   waterToday,
   waterAdd,
@@ -1642,6 +1644,94 @@ test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback'
   assert.strictEqual(MS.badge('active').label, 'Al día');
   assert.strictEqual(MS.badge('overdue').label, 'Vencido');
   assert.strictEqual(MS.badge('zzz').label, 'Sin pago');
+});
+test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viejos', () => {
+  const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
+  assert.strictEqual(MS.getStatus(c, '2026-07-01T00:00:00Z'), 'active');   // faltan 14 días
+  assert.strictEqual(MS.getStatus(c, '2026-07-10T00:00:00Z'), 'expiring'); // faltan 5 días
+  assert.strictEqual(MS.getStatus(c, '2026-07-20T00:00:00Z'), 'overdue');  // venció
+});
+
+// ══════════════════════════════════════════════════════
+section('Orden inteligente de asesorados (clientAttentionRank / sortClientsByAttention)');
+
+const _RNOW = '2026-07-11T12:00:00Z';
+const _rDay = n => new Date(Date.parse(_RNOW) + n * 86400000).toISOString();
+// cliente al día, entrenó hoy → tier 4 "ok" (base para clonar en los casos)
+const _mkClient = (over) => Object.assign({
+  id: 'x', name: 'Zoe', createdAt: _rDay(-60), routines: [{ id: 'r1' }],
+  payments: [{ dueDate: _rDay(20) }], painCare: [],
+}, over || {});
+
+test('rank tier 0: dolor vigente gana a todo; nivel 3 sube la severidad', () => {
+  const hist = { x: [{ date: _rDay(-30) }] };            // además inactivo y…
+  const c = _mkClient({ payments: [{ dueDate: _rDay(-10) }], // …vencido
+    painCare: [{ level: 3, at: _rDay(-1) }] });
+  const r = clientAttentionRank(c, hist, _RNOW);
+  assert.strictEqual(r.tier, 0);
+  assert.strictEqual(r.reason, 'pain');
+  assert.strictEqual(r.sev, 3);
+  assert.match(r.label, /impide/);
+});
+test('rank: dolor expirado (>14 días) NO cuenta', () => {
+  const c = _mkClient({ painCare: [{ level: 2, at: _rDay(-20) }] });
+  assert.strictEqual(clientAttentionRank(c, { x: [{ date: _rDay(-1) }] }, _RNOW).reason, 'ok');
+});
+test('rank tier 1/2: plan vencido y por vencer', () => {
+  const hist = { x: [{ date: _rDay(-1) }] };
+  assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(-3) }] }), hist, _RNOW).reason, 'overdue');
+  assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(4) }] }), hist, _RNOW).reason, 'expiring');
+});
+test('rank tier 3: dejó de entrenar (≥7 días) → idle con nº de días en sev', () => {
+  const r = clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-9) }] }, _RNOW);
+  assert.strictEqual(r.tier, 3);
+  assert.strictEqual(r.reason, 'idle');
+  assert.strictEqual(r.sev, 9);
+  assert.match(r.label, /9 días/);
+});
+test('rank: entrenó hace <7 días → al día (no molesta al coach)', () => {
+  assert.strictEqual(clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-3) }] }, _RNOW).reason, 'ok');
+});
+test('rank: SUSPENDIDO va al fondo sin chip, aunque no entrene o tenga dolor (Lucas v317)', () => {
+  // suspendido + inactivo 30 días → NO "sin entrenar"; tier 5 = el fondo (debajo del sano tier 4)
+  const s1 = clientAttentionRank(_mkClient({ suspended: true }), { x: [{ date: _rDay(-30) }] }, _RNOW);
+  assert.strictEqual(s1.tier, 5);
+  assert.strictEqual(s1.reason, 'ok');
+  assert.strictEqual(s1.label, '');
+  // suspendido + dolor nivel 3 → tampoco salta al tope
+  const s2 = clientAttentionRank(_mkClient({ suspended: true, painCare: [{ level: 3, at: _rDay(-1) }] }), {}, _RNOW);
+  assert.strictEqual(s2.tier, 5);
+  assert.strictEqual(s2.reason, 'ok');
+});
+test('rank: "aún no estrena" SOLO si lleva ≥7 días Y tiene rutinas', () => {
+  const noHist = {};
+  // recién creado (2 días) con rutinas → NO molesta todavía
+  assert.strictEqual(clientAttentionRank(_mkClient({ createdAt: _rDay(-2) }), noHist, _RNOW).reason, 'ok');
+  // veterano sin rutinas → no es "aún no estrena" (el estado "sin rutinas" ya lo grita)
+  assert.strictEqual(clientAttentionRank(_mkClient({ createdAt: _rDay(-30), routines: [] }), noHist, _RNOW).reason, 'ok');
+  // veterano con rutinas y sin una sola sesión → sí
+  assert.strictEqual(clientAttentionRank(_mkClient({ createdAt: _rDay(-30) }), noHist, _RNOW).reason, 'nostart');
+});
+test('sortClientsByAttention: orden por urgencia y desempate estable por nombre', () => {
+  const clients = [
+    { id: 'ok', name: 'Ana', createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }] },
+    { id: 'pain', name: 'Beto', createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }], painCare: [{ level: 1, at: _rDay(-1) }] },
+    { id: 'idleA', name: 'Yara', createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }] },
+    { id: 'idleB', name: 'Aaron', createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }] },
+    { id: 'due', name: 'Carla', createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(-2) }] },
+  ];
+  const hist = { ok: [{ date: _rDay(-1) }], pain: [{ date: _rDay(-1) }], due: [{ date: _rDay(-1) }],
+                 idleA: [{ date: _rDay(-10) }], idleB: [{ date: _rDay(-10) }] };
+  const order = sortClientsByAttention(clients, hist, _RNOW).map(x => x.c.id);
+  // dolor → vencido → inactivos (empatados en días: desempate por nombre Aaron<Yara) → al día
+  assert.deepStrictEqual(order, ['pain', 'due', 'idleB', 'idleA', 'ok']);
+});
+test('sortClientsByAttention: NO muta el arreglo original', () => {
+  const clients = [{ id: 'a', name: 'B', createdAt: _rDay(-60), routines: [], payments: [] },
+                   { id: 'b', name: 'A', createdAt: _rDay(-60), routines: [], payments: [] }];
+  const before = clients.map(c => c.id);
+  sortClientsByAttention(clients, {}, _RNOW);
+  assert.deepStrictEqual(clients.map(c => c.id), before);
 });
 
 // ══════════════════════════════════════════════════════
