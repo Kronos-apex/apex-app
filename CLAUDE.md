@@ -615,7 +615,12 @@ git push origin main
 - **v2.0** (junio 2026, EN PROD): Supabase Auth real (email + Google) + RLS por usuario, SMTP propio, registro público.
 - **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 11 checks, harnesses E2E versionados (`scripts/e2e/`).
 
-### 🎯 Backlog vigente (2026-07-09)
+### 🎯 Backlog vigente (2026-07-10)
+
+> 🗺️ **ARRANQUE DE SESIÓN: leer `docs/plan-sesiones.md`** — plan VIVO con las próximas
+> sesiones ya diseñadas (objetivo, pasos, trampas y verificación por sesión: mejoras 7-8
+> del estudio, deuda técnica, simulacro de restore, XSS, pasos manuales, adherencia coach)
+> + el protocolo de arranque/cierre. Escrito 2026-07-10 al desplegar v314→v316.
 - [ ] 🎨 Íconos SVG de marca F2-F5 (plan vivo en **`docs/plan-iconos-svg.md`**; F1 hecha en v303 — sistema `aviIcon` en app-1). F4 (guiado) = zona caliente, harness completo obligatorio
 - [ ] 💧 Hábitos parte 2: 👟 PASOS (meta + registro MANUAL + recordatorio push; Google Fit NO viable — API apagada por Google, Health Connect solo apps nativas) → misma tarjeta #cn-habits
 - [ ] 💧 Hábitos parte 3: 🍽️ COMIDAS = check-in de adherencia al plan (✅/más o menos/❌) + foto opcional al coach. DECISIÓN 2026-07-09: NO construir base de datos de alimentos
