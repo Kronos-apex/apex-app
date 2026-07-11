@@ -669,6 +669,14 @@ async function _enterCoachAuth(authUser, ownRow){
       if(_cs.cn)        localStorage.setItem('ax_cn',  JSON.stringify(_cs.cn));
       if(_cs.ce)        localStorage.setItem('ax_ce',  JSON.stringify(_cs.ce));
       if(_cs.site!=null)localStorage.setItem('ax_site',JSON.stringify(_cs.site));
+      // v321: estado de leído del chat sincronizado (fusiona con lo local, gana el más reciente
+      // por asesorado) → los mensajes ya leídos NO reaparecen como nuevos en otro dispositivo.
+      if(_cs.mr && typeof _cs.mr==='object'){
+        const loc=(function(){try{return JSON.parse(localStorage.getItem('ax_msgreads')||'{}')||{};}catch(e){return {};}})();
+        const merged={...loc};
+        Object.keys(_cs.mr).forEach(id=>{ if(!merged[id]||new Date(_cs.mr[id])>new Date(merged[id]))merged[id]=_cs.mr[id]; });
+        localStorage.setItem('ax_msgreads',JSON.stringify(merged));
+      }
     }catch(e){ warn('AVI: hidratar coach_settings falló (no bloquea):',e&&e.message); }
   }
   await _loadCoachClientsIntoDB();
@@ -1562,7 +1570,9 @@ function envChips(env){
 
 // ══════════════════════ MESSAGES (COACH) ══════════════════════
 function renderDetailMsgs(id){
-  localStorage.setItem(`coach_read_${id}`,new Date().toISOString());
+  // v321: NO marcar leído por abrir el PERFIL (aviso Lucas: se abre para editar rutina/medidas
+  // sin ver el chat → limpiaba el badge en falso, y con el sync sería permanente). El leído se
+  // marca al abrir el chat real (openCoachChat) o al responder (sendCoachMsg).
   const msgs=DB.msgs[id]||[];const con=document.getElementById('d-msgs');con.innerHTML='';
   if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin mensajes. Escribe el primero 👇</div>';return}
   msgs.forEach(m=>{
@@ -1579,7 +1589,7 @@ function sendCoachMsg(){
   sv('ax_m',DB.msgs);
   const _pc=DB.clients.find(x=>x.id===CUR.clientId);
   if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim(),{type:'message',chatId:CUR.clientId,tag:'avi-chat-'+CUR.clientId});}
-  ta.value='';ta.style.height='auto';renderDetailMsgs(CUR.clientId);renderMsgs();renderHome();toast('💬 Mensaje enviado');updateMsgBadge(CUR.clientId);
+  ta.value='';ta.style.height='auto';markCoachRead(CUR.clientId);renderDetailMsgs(CUR.clientId);renderMsgs();renderHome();toast('💬 Mensaje enviado');updateMsgBadge(CUR.clientId);
 }
 function renderMsgs(){
   const con=document.getElementById('msgs-list');
@@ -1589,7 +1599,7 @@ function renderMsgs(){
     const ms=DB.msgs[c.id]||[];
     const lastClientMsg=ms.filter(m=>m.from==='client').slice(-1)[0];
     if(!lastClientMsg)return false;
-    const lastRead=localStorage.getItem(`coach_read_${c.id}`);
+    const lastRead=_coachReadOf(c.id);
     return !lastRead||new Date(lastClientMsg.date)>new Date(lastRead);
   }).length;
   const sbBdg=document.getElementById('sb-msgs-bdg');
@@ -1598,10 +1608,80 @@ function renderMsgs(){
   con.innerHTML='';
   list.forEach(({c,last,count})=>{
     const lastClientMsg=(DB.msgs[c.id]||[]).filter(m=>m.from==='client').slice(-1)[0];
-    const lastRead=localStorage.getItem(`coach_read_${c.id}`);
+    const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
     div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'📤 Tú':'📥 Asesorado'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
-    div.onclick=()=>openDetail(c.id);con.appendChild(div);
+    div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
 }
+
+// ══════════ ESTADO DE LEÍDO DEL COACH — sincronizado a la nube (v321) ══════════
+// Antes vivía SOLO en localStorage (`coach_read_<id>`) → al cambiar de dispositivo/navegador
+// (o tras el cutover) se perdía y los mensajes ya leídos volvían a verse como nuevos y a
+// re-notificar (bug reportado por Camilo). Ahora es un mapa `ax_msgreads` {id: iso} que viaja
+// en coach_settings.mr (ver _coachSettingsObj + la hidratación al entrar como coach, arriba).
+function _coachReads(){ try{ return JSON.parse(localStorage.getItem('ax_msgreads')||'{}')||{}; }catch(e){ return {}; } }
+function _coachReadOf(id){ const m=_coachReads(); return m[id]||null; }
+function markCoachRead(id){
+  if(!id)return;
+  const m=_coachReads(); m[id]=new Date().toISOString();
+  if(typeof sv==='function')sv('ax_msgreads',m); // sv espeja a localStorage y sube coach_settings
+  else { try{ localStorage.setItem('ax_msgreads',JSON.stringify(m)); }catch(e){} }
+}
+
+// ══════════ CHAT DE PANTALLA COMPLETA DEL COACH (v321) ══════════
+// La conversación con un asesorado en una vista dedicada (no enterrada en el perfil). La abren
+// la notificación (openChatFor) y la bandeja (renderMsgs). Aterriza SIEMPRE en el último msg.
+let _cchatId=null;
+function _cchatGrow(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }
+function openCoachChat(clientId){
+  const c=DB.clients.find(x=>x.id===clientId); if(!c)return;
+  _cchatId=clientId;
+  const av=document.getElementById('cchat-av'); if(av){ av.style.background=avc(c.name); av.textContent=ini(c.name); }
+  const nm=document.getElementById('cchat-name'); if(nm)nm.textContent=c.name; // textContent → sin XSS
+  renderCoachChatThread(clientId,true); // al abrir SIEMPRE al final
+  markCoachRead(clientId);
+  if(typeof renderMsgs==='function')renderMsgs(); // refresca badges/lista detrás
+  const el=document.getElementById('coach-chat'); if(!el)return;
+  if(!el.classList.contains('on'))navOpenLayer();
+  el.classList.add('on');
+  // Aterrizar al final DESPUÉS de mostrar (con display:none el scrollHeight es 0 y no scrollea).
+  const con=document.getElementById('cchat-thread'); if(con)con.scrollTop=con.scrollHeight;
+  const ta=document.getElementById('cchat-in'); if(ta){ ta.value=''; ta.style.height='auto'; }
+}
+function renderCoachChatThread(clientId, forceBottom){
+  const con=document.getElementById('cchat-thread'); if(!con)return;
+  // Solo auto-scrollear si el coach YA estaba pegado al fondo (o al abrir, forceBottom). Si está
+  // leyendo mensajes de arriba y llega uno nuevo por el poll, NO lo tiramos al fondo (aviso Lucas).
+  const nearBottom=forceBottom||con.scrollHeight<=con.clientHeight||(con.scrollHeight-con.clientHeight-con.scrollTop)<=48;
+  const prevTop=con.scrollTop;
+  const msgs=DB.msgs[clientId]||[]; con.innerHTML='';
+  const first=((DB.clients.find(x=>x.id===clientId)||{}).name||'Asesorado').split(' ')[0];
+  if(!msgs.length){ con.innerHTML='<div class="cchat-empty">Aún no hay mensajes.<br>Escríbele el primero 👇</div>'; return; }
+  msgs.forEach(m=>{
+    const isC=m.from==='coach';
+    const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    const t=document.createElement('div');t.className=`mt${isC?' r':''}`;t.textContent=`${isC?'Tú':first} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
+  });
+  con.scrollTop=nearBottom?con.scrollHeight:prevTop; // aterriza en el más reciente solo si procede
+}
+function sendCoachChatMsg(){
+  const ta=document.getElementById('cchat-in'); const text=(ta&&ta.value||'').trim(); const id=_cchatId;
+  if(!text||!id)return;
+  if(!DB.msgs[id])DB.msgs[id]=[];
+  DB.msgs[id].push({from:'coach',text,date:new Date().toISOString()});
+  sv('ax_m',DB.msgs);
+  if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
+  ta.value=''; ta.style.height='auto';
+  markCoachRead(id);
+  renderCoachChatThread(id,true); // acabas de enviar → sigue al fondo
+  if(typeof renderMsgs==='function')renderMsgs();
+  if(typeof renderHome==='function')renderHome();
+  const det=document.getElementById('p-detail');
+  if(CUR.clientId===id&&det&&det.classList.contains('on')&&typeof renderDetailMsgs==='function')renderDetailMsgs(id);
+  toast('💬 Mensaje enviado');
+}
+function closeCoachChat(){ navCloseLayer(_closeCoachChat); }
+function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; }
+function coachChatOpenProfile(){ const id=_cchatId; if(!id)return; closeCoachChat(); setTimeout(()=>{ if(typeof openDetail==='function')openDetail(id); },60); }

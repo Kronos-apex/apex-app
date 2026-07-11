@@ -104,17 +104,19 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi','ax_msgreads'];
 // Ajustes GLOBALES del coach (no per-cliente, no secretos): ejercicios custom, nº Nequi para
 // cobrar, nombre/email/sitio. En AUTH_MODE viven en SU fila (columna `coach_settings` jsonb),
 // igual que las plantillas (ax_tpl→templates). Antes caían al vacío en _persistCoachWrite →
 // se perdían al recargar (bug #1 auditoría 2026-06-30). ax_cph NO va aquí: la clave real del
 // coach es la de Supabase Auth (lo cubre saveCoachPass→updateUser, bug #2).
-const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site'];
+const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site','ax_msgreads'];
 // Construye el objeto completo coach_settings desde el estado local (sv ya espejó cada clave a
 // localStorage antes de persistir) → un upsert idempotente que no pisa las demás claves.
+// `mr` (v321) = mapa {clientId: iso} de leído del chat → el estado de leído persiste entre
+// dispositivos (antes coach_read_<id> era solo-local y re-notificaba mensajes ya leídos).
 function _coachSettingsObj(){
-  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site','') };
+  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site',''), mr:ld('ax_msgreads',{}) };
 }
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
@@ -503,6 +505,7 @@ function notifNewMessage(fromName,preview){
 // POLLING DE MENSAJES — tiempo real (30s)
 // ══════════════════════════════════════════
 let _msgPollInt=null;
+let _msgNotifSince=0; // v321: solo notificar mensajes/leads posteriores al arranque de sesión
 
 async function pollMessages(){
   if(!CUR.loggedAs)return;
@@ -664,7 +667,7 @@ async function _pollAuthCoach(){
     const mergedMs=mergeMsgs(localMs,remoteMs);
     if(mergedMs.length!==localMs.length){
       const seenMs=new Set(localMs.map(_msgKey));
-      mergedMs.filter(m=>!seenMs.has(_msgKey(m))&&m.from==='client').forEach(m=>inbox.push({client:local,text:m.text}));
+      mergedMs.filter(m=>!seenMs.has(_msgKey(m))&&m.from==='client').forEach(m=>inbox.push({client:local,text:m.text,date:m.date}));
       DB.msgs[local.id]=mergedMs; changed=true;
     }
     const rWants=r.profile&&r.profile.wantsCoach;
@@ -676,13 +679,22 @@ async function _pollAuthCoach(){
     if(typeof renderHome==='function')renderHome();
     const detailEl=document.getElementById('p-detail');
     if(detailEl&&detailEl.classList.contains('on')&&CUR.clientId&&typeof renderDetailMsgs==='function')renderDetailMsgs(CUR.clientId);
-    inbox.forEach(({client,text})=>{ if(typeof notifNewMessage==='function')notifNewMessage(client.name,text); });
-    leads.forEach(c=>{ if(typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
+    // v321: si el chat de pantalla completa está abierto para este asesorado, refréscalo en vivo.
+    const cch=document.getElementById('coach-chat');
+    if(cch&&cch.classList.contains('on')&&_cchatId&&typeof renderCoachChatThread==='function'){ renderCoachChatThread(_cchatId); if(typeof markCoachRead==='function')markCoachRead(_cchatId); }
+    // Anti-ráfaga (v321): solo notificar lo que llegó DESPUÉS del arranque de sesión (los viejos
+    // del cargado inicial no re-notifican). El badge/lista de no-leídos sí los muestra igual.
+    inbox.forEach(({client,text,date})=>{ if(new Date(date).getTime()>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage(client.name,text); });
+    leads.forEach(c=>{ const at=c.wantsCoachAt?new Date(c.wantsCoachAt).getTime():Date.now(); if(at>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
   }
 }
 
 function startMsgPolling(){
   if(_msgPollInt)clearInterval(_msgPollInt);
+  // Anti-ráfaga (v321): solo notificamos mensajes/leads cuyo timestamp sea POSTERIOR al
+  // arranque de esta sesión. Al abrir la app, los mensajes viejos que llegan del cargado
+  // inicial NO deben re-notificar (bug reportado: ráfaga de "mensajes viejos ya leídos").
+  _msgNotifSince=Date.now();
   // Primera verificación a los 5s del login (no solaparse con syncFromCloud) y luego cada 15s
   // para que el chat y los cambios de plan se sientan en vivo con la app abierta.
   setTimeout(pollMessages,5000);
@@ -697,8 +709,10 @@ function openChatFor(chatId){
   if(!chatId)return;
   if(CUR.loggedAs==='coach'){
     if(chatId==='_coach')return;
-    openDetail(chatId);
-    setTimeout(()=>{const el=document.getElementById('d-msgs');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350);
+    // v321: chat de pantalla completa directo a la conversación (antes abría el perfil y había
+    // que scrollear hasta el chat enterrado). Fallback al detalle si el chat no está montado.
+    if(typeof openCoachChat==='function')openCoachChat(chatId);
+    else { openDetail(chatId); setTimeout(()=>{const el=document.getElementById('d-msgs');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350); }
   } else {
     const tab=document.getElementById('tab-msgs');
     cnTab('cn-messages',tab);markMsgsRead();
