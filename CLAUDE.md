@@ -635,6 +635,7 @@ git push origin main
 - [ ] Limpieza: `openGuidedMode` quedó sin callers tras F5 — borrarlo junto con la rama overlay de `closeGuidedMode`/`_aviCloseTopOverlay`
 - [ ] 🧯 SIMULACRO DE RESTORE (auditoría 2026-07-07): hay backup doble pero NUNCA se ensayó restaurar un snapshot — un backup sin restore probado no es un backup. Ensayar: snapshot → user_data en tabla/proyecto de prueba.
 - [ ] 🔍 Re-barrido XSS de los ~190 `innerHTML` (el último pase completo fue v1.3; la app creció mucho desde entonces)
+- [ ] 🧹 `EX_IMG_NAME`/`exIcon`/`exVidSrc`: lookup por nombre hereda del prototipo (un custom llamado `constructor`/`__proto__` da 404 inofensivo de imagen) → `Object.hasOwn` o `Object.create(null)` (hallazgo Julián v315)
 - [ ] 📱 Cobertura iOS/Safari: hay al menos un usuario real en iPhone (telemetría 2026-07-06) y todas las pruebas son Chrome/Android
 
 ### 🚀 v2.0+ — Escala
@@ -680,6 +681,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v314** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v315** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v314 anclas en Progreso + micro-pop al marcar (estudio, mejoras 3+5) · v313 Hoy reordenado + cierre compartible (estudio, mejoras 1-2) · v312 medallas de marca del gamif).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v315 Rutinas con foto (estudio, mejora 4) · v314 anclas en Progreso + micro-pop al marcar (estudio, mejoras 3+5) · v313 Hoy reordenado + cierre compartible (estudio, mejoras 1-2)).*
