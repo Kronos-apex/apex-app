@@ -1279,6 +1279,18 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
     transition-duration:.01ms !important;
   }
 }
+
+/* ═══ Números tabulares — mejora 8 del estudio de interfaz (v319) ═══
+   tabular-nums fija todos los dígitos al mismo ancho para que un número no "salte" al cambiar.
+   IMPORTANTE (medido 2026-07-11): la mayoría de los números que cambian en vivo YA son tabulares
+   por fuente — los timers del guiado (gm-rest/HIIT/plancha), cargas y volúmenes usan
+   'JetBrains Mono' (monoespaciada). Y 'Anton' (stats del coach .smv, sets .sescard-sets b) NO
+   trae la feature OpenType `tnum` → tabular-nums es INERTE ahí (se comprobó midiendo: mismo
+   ancho con y sin la propiedad), y además sus dígitos ya son casi uniformes y van solos en su
+   celda, así que no bailan. La única superficie proporcional donde tabular-nums SÍ aplica y
+   mejora la alineación es el cierre de entreno (.wf-stat-val = Plus Jakarta Sans, que sí trae
+   tnum): la grilla 2×2 de stats queda alineada. CSS puro — el textContent no cambia. */
+.wf-stat-val{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
 .rpresets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .rp{padding:5px 13px;border-radius:20px;border:1.5px solid var(--br);background:var(--w);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .15s}
 .rp.on{border-color:var(--g2);background:var(--gl);color:var(--gt)}

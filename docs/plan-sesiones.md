@@ -75,7 +75,15 @@ próximos/vencidos → inactivos (sin entrenar ≥7 días) → resto**. Tamaño:
 
 </details>
 
-## 📋 SESIÓN B — Mejora 8 del estudio: transiciones + números tabulares (CIERRA el estudio)
+## ✅ SESIÓN B — Mejora 8: transiciones + números tabulares — HECHA (avi-v319, 2026-07-11) → **ESTUDIO 8/8 COMPLETO**
+
+> Hallazgo honesto: el grueso ya estaba hecho. Transiciones de pestaña YA existían y funcionan
+> para ambos roles (.panel.on/.cnp.on fadeIn, reduced-motion global). Los timers que "bailaban"
+> YA eran JetBrains Mono (tabulares). Se MIDIÓ que tabular-nums es INERTE en Anton (stats del
+> coach) → se acotó la regla a `.wf-stat-val` (Plus Jakarta, cierre de entreno). Detalle:
+> bitácora parte 21; gotcha Anton/tnum en CLAUDE.md. Texto original abajo.
+
+<details><summary>Plan original de la sesión B</summary>
 
 **Objetivo:** (a) fade/slide de ~150ms al cambiar de pestaña (asesorado y coach) para
 sensación "de app"; (b) `font-variant-numeric: tabular-nums` en cronómetros y stats
@@ -98,6 +106,8 @@ sensación "de app"; (b) `font-variant-numeric: tabular-nums` en cronómetros y 
 - **AVI_NEWS:** NO (polish visual).
 - **Al terminar:** el estudio queda 8/8 → anotarlo en bitácora y avisar a Camilo
   con el resumen del antes/después completo.
+
+</details>
 
 ## 📋 SESIÓN C — Deuda técnica corta (limpieza, ~1 sesión)
 

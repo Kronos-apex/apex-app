@@ -603,7 +603,8 @@ git push origin main
 ### App / datos
 - Claves de sesión (`done_/log_/lastre_/wshow_/drop_/wu_` + tokens `w0/dN`, `session_id_<rid>`) — **NUNCA cambiar el formato** (rompe sesiones en curso de usuarios reales).
 - Timers SIEMPRE por **timestamp absoluto** (`endAt`), nunca por conteo de ticks — iOS congela intervalos en background.
-- Push: tras cambios de auth, los asesorados recuperan la suscripción **al ABRIR la app una vez** — quien no la abra queda sin notificaciones hasta entonces.
+- Push: tras cambios de auth, los asesorados/coach recuperan la suscripción **al ABRIR la app una vez** — quien no la abra queda sin notificaciones hasta entonces. **v318:** la del COACH murió en el cutover y no se auto-reinsertaba → tarjeta "Activa notificaciones" en su home + `ensureCoachPush` self-heal forzado + `send-push` poda 410/404. La RLS `push_ins_own` permite `_coach` solo con el UID del coach.
+- **`tabular-nums` es INERTE en fuentes sin la feature OpenType `tnum`** — 'Anton' (stats del coach `.smv`, `.sescard-sets b`) la ignora (medido: mismo ancho con y sin). Solo aplica a fuentes que la traen ('Plus Jakarta Sans', 'JetBrains Mono' es mono de por sí). Para alinear dígitos en una fuente sin tnum: mono, o ancho fijo — no `font-variant-numeric` (v319).
 - TWA: Chrome **cachea la verificación** de assetlinks — el celular puede necesitar reinstalar o reiniciar Chrome.
 - Fotos de ejercicio: verificar el **CONTENIDO** de cada imagen, no el nombre del archivo.
 - Al cambiar cualquier texto de `legal/`: **subir `LEGAL_V`** (app-3-coach.js) para que la evidencia de consentimiento diga qué versión se aceptó.
@@ -695,6 +696,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v318** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v319** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v318 fix push del coach (suscripción muerta del cutover + poda de zombis en send-push + tarjeta "activa notificaciones") · v317 orden inteligente de asesorados en el coach (estudio, mejora 7) · v316 respuestas rápidas en Mensajes (estudio, mejora 6)).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v319 números tabulares (estudio mejora 8 → estudio 8/8 COMPLETO; tabular-nums inerte en Anton, acotado a .wf-stat-val) · v318 fix push del coach (suscripción muerta del cutover + poda de zombis en send-push) · v317 orden inteligente de asesorados en el coach (estudio, mejora 7)).*
