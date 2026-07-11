@@ -834,42 +834,16 @@ function fireNotifAt(notif){
   if(target<=now)target.setDate(target.getDate()+1); // mañana si ya pasó
   const ms=target-now;
 
-  // Determinar nombres a notificar
-  let names=[];
-  if(notif.target==='all'){
-    names=DB.clients.map(c=>c.name);
-    if(!names.length)names=['Asesorado'];
-  } else {
-    const c=DB.clients.find(x=>x.id===notif.target);
-    names=c?[c.name]:['Asesorado'];
-  }
-
   // Timer principal
   const timerId=setTimeout(()=>{
     const activeNotifs=JSON.parse(localStorage.getItem('apex_notifs')||'[]');
     const still=activeNotifs.find(n=>n.id===notif.id&&n.active);
     if(!still)return;
 
-    names.forEach((nombre,i)=>{
-      setTimeout(()=>{
-        const body=notif.msg.replace(/\{nombre\}/g,nombre);
-        const iconSvg='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%231B4332"/><text y="44" x="8" font-size="44">%F0%9F%92%AA</text></svg>';
-        const opts={body,icon:iconSvg,badge:iconSvg,
-          tag:'avi-'+notif.id+'-'+i,
-          requireInteraction:false,
-          vibrate:[200,100,200,100,200]};
-        // Usar SW.showNotification — funciona con app en background en Android/iOS
-        if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-          navigator.serviceWorker.ready
-            .then(reg=>reg.showNotification('AVI — '+getCoachName(),opts))
-            .catch(()=>{try{new Notification('AVI — '+getCoachName(),opts);}catch(e){}});
-        } else {
-          try{new Notification('AVI — '+getCoachName(),opts);}catch(e){warn('Notif:',e);}
-        }
-      },i*800);
-    });
-
-    // Enviar push real a los asesorados
+    // Enviar el push SOLO a los asesorados (a SUS dispositivos). El bucle que mostraba una
+    // notificación LOCAL en el navegador del COACH por cada asesorado se ELIMINÓ (v322):
+    // hacía que Camilo recibiera en su teléfono las N que eran para ellos (bug 2026-07-11 —
+    // "me llegaron las 21 que debían llegarle a los asesorados").
     if(notif.target==='all'){
       DB.clients.forEach(cl=>{
         const body=notif.msg.replace(/\{nombre\}/g,cl.name);
