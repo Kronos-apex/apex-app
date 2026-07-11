@@ -344,15 +344,31 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
 // del coach) → 0 asesorados suscritos y las notifs diarias solo le llegaban al coach.
 // Tarjeta amable en "Hoy" cuando el permiso está en 'default'; el prompt del navegador
 // SOLO se lanza con gesto del usuario (Chrome penaliza los prompts no solicitados).
-let _pushCtx=null; // {clientId,days,shifts} — lo fija el camino auth del cliente
+var _pushCtx=null; // {clientId,days,shifts} — lo fija el camino auth del cliente (var: ya es un
+                   // global compartido entre archivos; expuesto en window para poder testearlo)
+// Instrucciones para reactivar cuando el permiso está BLOQUEADO — compartidas coach/asesorado.
+// En PWA instalada (standalone) NO hay barra ni candado 🔒 → hay que ir a los ajustes del sistema.
+function _pushDeniedHowto(){
+  const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  return standalone
+    ? 'Mantén pulsado el ícono de AVI en tu pantalla de inicio → Información de la app → Notificaciones → Activar, y vuelve a abrir AVI.'
+    : 'Ábrelas en el candado 🔒 junto a la dirección → Notificaciones → Permitir, y recarga la app.';
+}
 function renderPushNudge(){
   const el=document.getElementById('cn-push-nudge'); if(!el)return;
   const cid=_pushCtx&&_pushCtx.clientId;
-  if(!cid||typeof Notification==='undefined'||!('PushManager' in window)||Notification.permission!=='default'){ el.innerHTML=''; return; }
+  if(!cid||typeof Notification==='undefined'||!('PushManager' in window)){ el.innerHTML=''; return; }
+  const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
+  if(Notification.permission==='granted'){ el.innerHTML=''; return; }
+  // Bloqueadas: instrucciones (antes el asesorado quedaba sin salida — aviso Lucas v320).
+  if(Notification.permission==='denied'){
+    el.innerHTML=`<div class="push-nudge"><div class="push-nudge-txt"><b>${bell} Notificaciones bloqueadas</b><span>Para recibir tus recordatorios de entreno: ${_pushDeniedHowto()}</span></div></div>`;
+    return;
+  }
   let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze_'+cid)||'0',10)||0; }catch(_e){}
   if(Date.now()-snooze<7*86400000){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="push-nudge">
-    <div class="push-nudge-txt"><b>${typeof aviIcon==='function'?aviIcon('bell',15):'🔔'} Activa tus recordatorios</b><span>Te avisamos en tus días de entreno, con tips de hidratación y recuperación. Sin spam.</span></div>
+    <div class="push-nudge-txt"><b>${bell} Activa tus recordatorios</b><span>Te avisamos en tus días de entreno, con tips de hidratación y recuperación. Sin spam.</span></div>
     <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozePush()">Ahora no</button></div>
   </div>`;
 }
@@ -360,13 +376,37 @@ async function aviAskPush(){
   try{
     const p=await Notification.requestPermission();
     if(p==='granted'){
-      if(_pushCtx)subscribePush(_pushCtx.clientId,_pushCtx.days,_pushCtx.shifts);
-      toast('🔔 ¡Listo! Te avisamos en tus días de entreno.');
+      // Toast HONESTO (mismo fix que el coach v318): solo "¡Listo!" si el registro entró de
+      // verdad. force=true re-inserta aunque el endpoint no cambie (self-heal del cutover).
+      const ok=_pushCtx?await subscribePush(_pushCtx.clientId,_pushCtx.days,_pushCtx.shifts,true):false;
+      if(ok){ _clientPushHealed=true; _clientPushPending=false; toast('🔔 ¡Listo! Te avisamos en tus días de entreno.'); }
+      // Fallo transitorio (token/red): NO pedir reintento manual — la app reintenta sola en el
+      // próximo render de Hoy y ensureClientPush cierra el lazo con el "¡Listo!" (aviso Lucas v320).
+      else { _clientPushPending=true; toast('🔔 Activando tus recordatorios… puede tardar unos segundos.'); }
     } else if(p==='denied'){ toast('Sin problema — puedes activarlas luego en la configuración del navegador.'); }
   }catch(_e){}
   renderPushNudge();
 }
 function aviSnoozePush(){ try{ if(_pushCtx)localStorage.setItem('ax_push_snooze_'+_pushCtx.clientId,String(Date.now())); }catch(_e){} renderPushNudge(); }
+// Self-heal del ASESORADO (2026-07-11): si ya dio permiso, re-suscribe FORZADO una vez por
+// sesión — así el asesorado cuya suscripción murió en el cutover (o que nunca posteó por la
+// carrera del token a los 4s) se recupera al abrir la app. Marca "curado" SOLO tras éxito
+// (reintenta en el próximo render si falló). Gemelo de ensureCoachPush. CERO asesorados
+// suscritos en 40+ días (auditoría 2026-07-11) → este es el camino de recuperación.
+let _clientPushHealed=false;
+let _clientPushPending=false; // aviAskPush concedió pero el POST falló → cerrar el lazo al curar
+async function ensureClientPush(){
+  if(!_pushCtx||CUR.loggedAs!=='client')return;
+  try{
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&!_clientPushHealed){
+      const ok=await subscribePush(_pushCtx.clientId,_pushCtx.days,_pushCtx.shifts,true);
+      if(ok){ _clientPushHealed=true;
+        // Si un intento previo (botón Activar) había quedado pendiente, ahora sí confirma.
+        if(_clientPushPending){ _clientPushPending=false; if(typeof toast==='function')toast('🔔 ¡Listo! Te avisamos en tus días de entreno.'); }
+      }
+    }
+  }catch(_e){}
+}
 
 // ── Activación de push del COACH (2026-07-11) ──
 // Diagnóstico (Supabase): TODAS las suscripciones '_coach' murieron en el cutover de Auth
@@ -384,13 +424,7 @@ function renderCoachPushNudge(){
   if(state==='hidden'){ el.innerHTML=''; return; }
   const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
   if(state==='denied'){
-    // Instrucción según CÓMO corre AVI: instalada (standalone) no tiene barra ni candado 🔒
-    // → hay que ir a los ajustes de la app en el sistema (aviso Lucas v318).
-    const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
-    const howto=standalone
-      ? 'Mantén pulsado el ícono de AVI en tu pantalla de inicio → Información de la app → Notificaciones → Activar, y vuelve a abrir AVI.'
-      : 'Ábrelas en el candado 🔒 junto a la dirección → Notificaciones → Permitir, y recarga la app.';
-    el.innerHTML=`<div class="push-nudge"><div class="push-nudge-txt"><b>${bell} Notificaciones bloqueadas</b><span>Tu navegador las tiene bloqueadas. ${howto}</span></div></div>`;
+    el.innerHTML=`<div class="push-nudge"><div class="push-nudge-txt"><b>${bell} Notificaciones bloqueadas</b><span>Tu navegador las tiene bloqueadas. ${_pushDeniedHowto()}</span></div></div>`;
     return;
   }
   el.innerHTML=`<div class="push-nudge">

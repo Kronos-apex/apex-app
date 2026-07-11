@@ -331,6 +331,10 @@ function logout(){
     if(typeof _gmRemoveRestMini==='function')_gmRemoveRestMini();
     if(typeof relWake==='function')relWake();
   }catch(_e){}
+  // Limpiar el contexto de push al salir (aviso Julián v320): sin esto, en la MISMA pestaña el
+  // 2º asesorado hereda _pushCtx/flags del 1º → se salta su self-heal o reintenta con id ajeno
+  // (RLS lo rechaza, pero desperdicia). Mata la clase de bug de contexto stale entre cuentas.
+  try{ _pushCtx=null; _clientPushHealed=false; _clientPushPending=false; _coachPushHealed=false; }catch(_e){}
   stopMsgPolling();
   // Si estábamos en modo auth: cerrar la sesión Supabase y restaurar el estado legacy
   // en memoria (la próxima cuenta legacy necesita el DB global, no el del usuario auth).

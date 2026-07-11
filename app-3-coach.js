@@ -526,11 +526,11 @@ async function _enterAuthSession(authUser){
       const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
       const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
       _pushCtx={clientId:client.id,days:trainingDays,shifts:Object.keys(shiftMap).length?shiftMap:null};
-      // Con permiso ya dado: re-registra (endpoint puede rotar). Sin pedir aún ('default'):
-      // tarjeta amable en "Hoy" — auditoría 2026-07-07: nadie le pedía el permiso al
-      // asesorado y NINGUNO estaba suscrito (las notifs diarias solo llegaban al coach).
+      // Con permiso ya dado: self-heal FORZADO (v320 — el no-forzado no re-insertaba la fila
+      // muerta del cutover; CERO asesorados suscritos en 40+ días). Sin pedir aún ('default'):
+      // tarjeta amable en "Hoy" — auditoría 2026-07-07: nadie le pedía el permiso al asesorado.
       if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-        subscribePush(client.id,_pushCtx.days,_pushCtx.shifts);
+        if(typeof ensureClientPush==='function')ensureClientPush();
       } else { renderPushNudge(); }
     }catch(_e){}
   },4000);

@@ -587,6 +587,9 @@ function renderClientToday(client, overrideRoutine){
   // ahora en cada render de Hoy, para que persista si el permiso sigue en 'default'. La propia
   // renderPushNudge decide (permiso/snooze/_pushCtx) — barato y sin efectos si no aplica.
   if(typeof renderPushNudge==='function')renderPushNudge();
+  // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
+  // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.
+  if(typeof ensureClientPush==='function')ensureClientPush();
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
   if(typeof renderHabitsCard==='function')renderHabitsCard(client);
