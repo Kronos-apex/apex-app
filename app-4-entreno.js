@@ -583,6 +583,10 @@ function renderClientToday(client, overrideRoutine){
   // de nuevo si embebe. Guard typeof por si app-6 (donde vive) aún no cargó.
   if(typeof _gmCaptureHome==='function'){ _gmCaptureHome(); gmRestoreOverlayHome(); }
   renderTodayHead(client);
+  // 🔔 Recordatorio de notificaciones (2026-07-11): antes se pintaba UNA vez (4s tras login);
+  // ahora en cada render de Hoy, para que persista si el permiso sigue en 'default'. La propia
+  // renderPushNudge decide (permiso/snooze/_pushCtx) — barato y sin efectos si no aplica.
+  if(typeof renderPushNudge==='function')renderPushNudge();
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
   if(typeof renderHabitsCard==='function')renderHabitsCard(client);

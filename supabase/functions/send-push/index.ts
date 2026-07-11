@@ -4,10 +4,10 @@ import webpush from "https://esm.sh/web-push@3.6.7";
 
 const VAPID_PUBLIC  = Deno.env.get("VAPID_PUBLIC")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE")!;
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@apex.app";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@avi.app";
 
 // Llave pública del proyecto — misma que usa el frontend (SB_KEY en index.html)
-const APEX_ANON_KEY = "sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8";
+const AVI_ANON_KEY = "sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8";
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
@@ -21,12 +21,12 @@ serve(async (req) => {
 
   // ── Auth check ────────────────────────────────────────────────────────────
   // Verifica que el caller envíe Authorization: Bearer {anon_key}.
-  // El frontend de APEX ya lo hace (línea pushToClient en index.html).
+  // El frontend de AVI ya lo hace (línea pushToClient en index.html).
   // Cualquier llamada externa sin la key correcta recibe 401.
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (!APEX_ANON_KEY || token !== APEX_ANON_KEY) {
+  if (!AVI_ANON_KEY || token !== AVI_ANON_KEY) {
     console.log("[send-push] 401 — Authorization inválido o ausente");
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
@@ -45,7 +45,7 @@ serve(async (req) => {
 
     const { data: subs, error } = await supabase
       .from("push_subscriptions")
-      .select("subscription")
+      .select("id, subscription")
       .eq("client_id", clientId);
 
     if (error) throw new Error(error.message);
@@ -72,8 +72,30 @@ serve(async (req) => {
     const sent  = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.filter((r) => r.status === "rejected").length;
 
+    // Poda de suscripciones MUERTAS: si el push falla con 410 Gone / 404 Not Found, ese
+    // endpoint ya no existe (el dispositivo/navegador rotó o revocó la suscripción). Sin esto
+    // los endpoints zombis se acumulan para siempre y la función reporta "ok" enviando a la
+    // nada (raíz del bug 2026-07-11: 7 suscripciones '_coach' del cutover, todas muertas).
+    const deadIds: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === "rejected") {
+        const reason = r.reason as { statusCode?: number; status?: number } | undefined;
+        const code = reason?.statusCode ?? reason?.status;
+        if (code === 410 || code === 404) deadIds.push(subs[i].id);
+      }
+    });
+    let pruned = 0;
+    if (deadIds.length) {
+      const { error: delErr } = await supabase
+        .from("push_subscriptions")
+        .delete()
+        .in("id", deadIds);
+      if (!delErr) pruned = deadIds.length;
+    }
+
+    // ok = al menos UN dispositivo recibió (antes devolvía ok:true aunque fallaran todos).
     return new Response(
-      JSON.stringify({ ok: true, sent, failed, total: subs.length }),
+      JSON.stringify({ ok: sent > 0, sent, failed, pruned, total: subs.length }),
       { headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {

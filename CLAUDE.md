@@ -631,6 +631,7 @@ git push origin main
 - [ ] 💧 Hábitos parte 2: 👟 PASOS (meta + registro MANUAL + recordatorio push; Google Fit NO viable — API apagada por Google, Health Connect solo apps nativas) → misma tarjeta #cn-habits
 - [ ] 💧 Hábitos parte 3: 🍽️ COMIDAS = check-in de adherencia al plan (✅/más o menos/❌) + foto opcional al coach. DECISIÓN 2026-07-09: NO construir base de datos de alimentos
 - [ ] 📊 Coach: adherencia de hábitos (agua) del asesorado en p-detail (los datos YA sincronizan en client.habits)
+- [ ] 🔔 Asesorados: CERO suscritos a push en 40+ días (auditoría v318). `aviAskPush` (asesorado) aún canta "¡Listo!" sin confirmar el registro (mismo patrón de falla silenciosa que se arregló en el coach v318 → aplicar el retorno boolean de `subscribePush` también aquí). Es el bloqueante de las notifs diarias del asesorado
 - [ ] 🔔 Coach: priorizar MENSAJE SIN LEER del asesorado en el orden de `#p-clients` (aviso Lucas v317 — es la señal #1 que el coach espera; DB.msgs no entra al ranking). Decisión de producto: ¿dónde rankea (¿entre dolor y vencido?)? + ¿`wantsCoach` como lead? Evaluar con Valentina/Camilo antes de construir
 - [ ] 🔎 Coach: `renderClients` limpia el buscador en CADA re-render (incl. el poll de 15s) → si Camilo está filtrando y llega un mensaje, pierde el filtro. Preexistente, pero la mejora 7 lo hace más notorio (además reordena). Preservar el término y re-aplicar `filterClients` tras el poll (distinguir poll de navegación-a-panel)
 - [x] ⚡ Rondas configurables en Entrenamientos rápidos → HECHO en avi-v301 (+ preset HIIT en Máquina). REGLA NUEVA: al publicar feature visible al asesorado, agregar entrada a `AVI_NEWS` (app-6, v302) y podar las viejas
@@ -694,6 +695,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v317** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **307/307** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v318** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v317 orden inteligente de asesorados en el coach (estudio, mejora 7) · v316 respuestas rápidas en Mensajes (estudio, mejora 6) · v315 Rutinas con foto (estudio, mejora 4)).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v318 fix push del coach (suscripción muerta del cutover + poda de zombis en send-push + tarjeta "activa notificaciones") · v317 orden inteligente de asesorados en el coach (estudio, mejora 7) · v316 respuestas rápidas en Mensajes (estudio, mejora 6)).*

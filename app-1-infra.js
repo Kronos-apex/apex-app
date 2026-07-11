@@ -302,12 +302,16 @@ function urlBase64ToUint8Array(b64){
 }
 
 // Suscribe este dispositivo a push y guarda en Supabase
-async function subscribePush(clientId, trainingDays=[], shiftMap=null){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
-  if(Notification.permission!=='granted')return;
+// Devuelve TRUE solo si el dispositivo quedó suscrito de verdad (POST 2xx, o ya estaba al
+// día sin force). FALSE en cualquier bail (sin SW/permiso/token, POST rechazado, error) —
+// así el caller NO canta éxito ni marca "curado" cuando en realidad falló en silencio
+// (esa falla muda fue la raíz de los 40 días sin push del coach, 2026-07-11).
+async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=false){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return false;
+  if(Notification.permission!=='granted')return false;
   try{
     const reg=window._swReg||await navigator.serviceWorker.ready;
-    if(!reg)return;
+    if(!reg)return false;
     let sub=await reg.pushManager.getSubscription();
     if(!sub){
       sub=await reg.pushManager.subscribe({
@@ -316,20 +320,23 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null){
       });
     }
     const _pushKey=`apex_push:${clientId}`;
-    if(!shouldPostPush(localStorage.getItem(_pushKey),sub.endpoint))return;
+    // force: re-inserta aunque el endpoint no haya cambiado (self-heal cuando la fila del
+    // servidor se borró — p.ej. tras el cutover o al podar suscripciones muertas).
+    if(!force && !shouldPostPush(localStorage.getItem(_pushKey),sub.endpoint))return true; // ya al día
     // RLS 2026-07-06: anon quedó FUERA de push_subscriptions (podía pisar filas ajenas).
     // Se escribe con el token de la sesión: cada quien registra SOLO su fila.
     let _tok=null; try{ const s=await AUTH.getSession(); _tok=s&&s.access_token; }catch(_e){}
-    if(!_tok){ warn('AVI Push: sin sesión auth — registro pospuesto'); return; }
+    if(!_tok){ warn('AVI Push: sin sesión auth — registro pospuesto'); return false; }
     const _res=await fetch(`${SB_URL}/rest/v1/push_subscriptions`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${_tok}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify({client_id:clientId,subscription:sub.toJSON(),updated_at:new Date().toISOString(),training_days:trainingDays,training_shift:shiftMap})
     });
-    if(!_res.ok){ warn('AVI Push: registro rechazado',_res.status); return; } // no marcar el endpoint como registrado
+    if(!_res.ok){ warn('AVI Push: registro rechazado',_res.status); return false; } // no marcar el endpoint como registrado
     localStorage.setItem(_pushKey,sub.endpoint);
     log('AVI Push: suscripción guardada ✅');
-  }catch(e){warn('AVI Push subscribe error:',e);}
+    return true;
+  }catch(e){warn('AVI Push subscribe error:',e);return false;}
 }
 
 // ── Activación de push del ASESORADO (auditoría 2026-07-07) ──
@@ -360,6 +367,67 @@ async function aviAskPush(){
   renderPushNudge();
 }
 function aviSnoozePush(){ try{ if(_pushCtx)localStorage.setItem('ax_push_snooze_'+_pushCtx.clientId,String(Date.now())); }catch(_e){} renderPushNudge(); }
+
+// ── Activación de push del COACH (2026-07-11) ──
+// Diagnóstico (Supabase): TODAS las suscripciones '_coach' murieron en el cutover de Auth
+// (updated_at ≤ 2026-06-01) y nada las re-registraba → los mensajes/dolor/pagos de los
+// asesorados NUNCA le llegaban a Camilo, y — a diferencia del asesorado — no había tarjeta
+// que se lo recordara. Esta vive en el home del coach (#h-push-nudge). Decisión pura en
+// avi-core (pushNudgeDecision) para no repetir el manejo de snooze/estados.
+function renderCoachPushNudge(){
+  const el=document.getElementById('h-push-nudge'); if(!el)return;
+  if(CUR.loggedAs!=='coach'||typeof Notification==='undefined'||!('PushManager' in window)){ el.innerHTML=''; return; }
+  let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze__coach')||'0',10)||0; }catch(_e){}
+  const state=(typeof pushNudgeDecision==='function')
+    ? pushNudgeDecision(Notification.permission,snooze,Date.now(),7)
+    : (Notification.permission==='granted'?'hidden':'ask');
+  if(state==='hidden'){ el.innerHTML=''; return; }
+  const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
+  if(state==='denied'){
+    // Instrucción según CÓMO corre AVI: instalada (standalone) no tiene barra ni candado 🔒
+    // → hay que ir a los ajustes de la app en el sistema (aviso Lucas v318).
+    const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+    const howto=standalone
+      ? 'Mantén pulsado el ícono de AVI en tu pantalla de inicio → Información de la app → Notificaciones → Activar, y vuelve a abrir AVI.'
+      : 'Ábrelas en el candado 🔒 junto a la dirección → Notificaciones → Permitir, y recarga la app.';
+    el.innerHTML=`<div class="push-nudge"><div class="push-nudge-txt"><b>${bell} Notificaciones bloqueadas</b><span>Tu navegador las tiene bloqueadas. ${howto}</span></div></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="push-nudge">
+    <div class="push-nudge-txt"><b>${bell} Activa tus notificaciones</b><span>Te avisamos al instante cuando un asesorado te escriba, reporte dolor o notifique un pago. Sin esto, no te enteras.</span></div>
+    <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskCoachPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozeCoachPush()">Ahora no</button></div>
+  </div>`;
+}
+function aviSnoozeCoachPush(){ try{ localStorage.setItem('ax_push_snooze__coach',String(Date.now())); }catch(_e){} renderCoachPushNudge(); }
+async function aviAskCoachPush(){
+  try{
+    const p=await Notification.requestPermission();
+    if(p==='granted'){
+      // Toast HONESTO: solo "¡Listo!" si el registro realmente entró (aviso Lucas v318 — antes
+      // cantaba éxito aunque el POST fallara en silencio, el mismo patrón de los 40 días).
+      const ok=await subscribePush('_coach',[],null,true);
+      if(ok){ _coachPushHealed=true; toast('🔔 ¡Listo! Ahora te avisamos al instante.'); }
+      else { toast('⚠️ No se pudo activar ahora. Revisa tu conexión e inténtalo de nuevo.'); }
+    }
+    else if(p==='denied'){ toast('Quedaron bloqueadas — puedes activarlas en la configuración del navegador.'); }
+  }catch(_e){}
+  renderCoachPushNudge();
+}
+// Home del coach: si YA dio permiso, re-suscribe FORZADO una vez por sesión (self-heal del
+// endpoint que murió en el cutover — shouldPostPush no lo re-añadía porque el endpoint no
+// cambió). Marca "curado" SOLO si el POST entró (si falló, reintenta en el próximo render de
+// esta sesión — hay muchos por el poll; aviso Lucas/Julián v318). Idempotente y barato.
+let _coachPushHealed=false;
+async function ensureCoachPush(){
+  if(CUR.loggedAs!=='coach')return;
+  try{
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&!_coachPushHealed){
+      const ok=await subscribePush('_coach',[],null,true);
+      if(ok)_coachPushHealed=true;
+    }
+  }catch(_e){}
+  renderCoachPushNudge();
+}
 
 // Enviar push via Edge Function de Supabase
 async function pushToClient(clientId,title,body,extras={}){

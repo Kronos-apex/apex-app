@@ -1287,6 +1287,20 @@ function painCareActive(list, nowTs) {
   return (list || []).filter(p => p && !p.cleared && p.at && (now - Date.parse(p.at)) < PAIN_TTL_MS && (now - Date.parse(p.at)) >= 0);
 }
 
+// ── Tarjeta "Activa notificaciones" (2026-07-11): decisión pura/testeable ──
+// Gobierna la tarjeta del coach (y sirve para la del asesorado). 'granted' → oculta;
+// 'denied' → 'denied' (instrucciones, sin botón inútil); 'default' → 'ask' salvo snooze
+// vigente. `now`/`snoozeDays` inyectables para tests.
+function pushNudgeDecision(perm, snoozeTs, now, snoozeDays) {
+  if (perm === 'granted') return 'hidden';
+  if (perm === 'denied') return 'denied';
+  const days = snoozeDays || 7;
+  const n = (now != null ? new Date(now).getTime() : Date.now());
+  const s = parseInt(snoozeTs, 10) || 0;
+  if (n - s < days * 86400000) return 'hidden';
+  return 'ask';
+}
+
 // ── Hábitos diarios (v300): AGUA por vasos — puro, testeable ──
 // El registro vive en client.habits (viaja en el perfil vía clientToRow, igual que
 // painCare). Vaso estándar 250ml; la meta sale del peso (~35 ml/kg) acotada a un
@@ -2089,6 +2103,7 @@ if (typeof module !== 'undefined' && module.exports) {
     painCareActive,
     clientAttentionRank,
     sortClientsByAttention,
+    pushNudgeDecision,
     isFreeClient,
     clientHasCoach,
     clientPlan,

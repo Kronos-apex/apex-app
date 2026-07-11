@@ -1090,6 +1090,9 @@ function initCoach(){migrateExercises();dedupeExercises();
   document.getElementById('sb-nm').textContent=getCoachName();
   document.getElementById('sb-av').textContent='C';
   renderAll();
+  // Push del coach: self-heal + tarjeta AQUÍ (no solo dentro de renderHome, que hace
+  // early-return con 0 asesorados y se saltaría el fix crítico; aviso Lucas v318).
+  if(typeof ensureCoachPush==='function')ensureCoachPush();
 }
 function renderAll(){renderHome();renderClients();renderExercises();renderMsgs();renderTemplates();document.getElementById('bdg').textContent=DB.clients.length}
 
@@ -1503,6 +1506,8 @@ function renderHome(){
     d.onclick=()=>openDetail(c.id);
     list.appendChild(d);
   });
+  // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
+  if(typeof ensureCoachPush==='function')ensureCoachPush();
 }
 
 // ══════════════════════ HABITACIONES-REPORTE DEL PANEL ══════════════════════

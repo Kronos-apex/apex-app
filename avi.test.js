@@ -65,6 +65,7 @@ const {
   painCareActive,
   clientAttentionRank,
   sortClientsByAttention,
+  pushNudgeDecision,
   waterGoalGlasses,
   waterToday,
   waterAdd,
@@ -1726,6 +1727,30 @@ test('sortClientsByAttention: orden por urgencia y desempate estable por nombre'
   // dolor → vencido → inactivos (empatados en días: desempate por nombre Aaron<Yara) → al día
   assert.deepStrictEqual(order, ['pain', 'due', 'idleB', 'idleA', 'ok']);
 });
+// ══════════════════════════════════════════════════════
+section('Tarjeta de notificaciones (pushNudgeDecision)');
+
+const _PN_NOW = '2026-07-11T12:00:00Z';
+test('pushNudgeDecision: granted → oculta', () => {
+  assert.strictEqual(pushNudgeDecision('granted', 0, _PN_NOW), 'hidden');
+});
+test('pushNudgeDecision: denied → denied (instrucciones, sin botón inútil)', () => {
+  assert.strictEqual(pushNudgeDecision('denied', 0, _PN_NOW), 'denied');
+});
+test('pushNudgeDecision: default sin snooze → ask', () => {
+  assert.strictEqual(pushNudgeDecision('default', 0, _PN_NOW), 'ask');
+  assert.strictEqual(pushNudgeDecision('default', null, _PN_NOW), 'ask');
+});
+test('pushNudgeDecision: default con snooze vigente (<7d) → hidden; vencido → ask', () => {
+  const now = Date.parse(_PN_NOW);
+  assert.strictEqual(pushNudgeDecision('default', now - 3 * 86400000, now), 'hidden'); // snooze de hace 3d
+  assert.strictEqual(pushNudgeDecision('default', now - 8 * 86400000, now), 'ask');    // snooze vencido
+});
+test('pushNudgeDecision: snoozeDays configurable', () => {
+  const now = Date.parse(_PN_NOW);
+  assert.strictEqual(pushNudgeDecision('default', now - 2 * 86400000, now, 1), 'ask'); // ventana de 1 día ya venció
+});
+
 test('sortClientsByAttention: NO muta el arreglo original', () => {
   const clients = [{ id: 'a', name: 'B', createdAt: _rDay(-60), routines: [], payments: [] },
                    { id: 'b', name: 'A', createdAt: _rDay(-60), routines: [], payments: [] }];
