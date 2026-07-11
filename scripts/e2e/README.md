@@ -37,6 +37,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_shot-f4.mjs` | Shot visual del guiado real (rutina inyectada, tooltip fresco) — el paso que cazó 🔄/✅ en v309. Correr tras CUALQUIER cambio visual del guiado | 2026-07-10 |
 | `_shot-f5.mjs` | Shot visual del panel del coach (home + p-detail forzados con la cuenta QA) | 2026-07-10 |
 | `_verify-v313.mjs` | Estudio mejoras 1-2 (v313): orden de Hoy por tipo de día + cierre compartible (botón, lienzo 1080×1920, imagen real vía _wfLastCanvas). 5/5 + shots | 2026-07-10 |
+| `_verify-v314.mjs` | Estudio mejoras 3+5 (v314): anclas de Progreso (oculta sin sesiones, sticky al ras de la barra — el scroller es .cnbody —, chips por contenido, salto con scroll-margin) + micro-pop al marcar (3 rutas, cascada vs checkDone, reduced-motion). 9/9 + shots | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |
@@ -54,4 +55,17 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 - El poll de 15s del cliente PISA rutinas inyectadas → stub `UD.loadOwn=async()=>null`.
 - `cnTodayGuard` salta re-renders de Hoy → llamar `renderClientToday(c)` directo tras inyectar.
 - Logins repetidos de la cuenta de prueba se rate-limitan → los harnesses usan perfil Chrome temporal.
+  Afinado 2026-07-10: la ventana aguanta ~3 logins de app seguidos (cada login de la app hace ~2
+  requests de token) y **los intentos fallidos REINICIAN la ventana** — reintentar a los 5 min la
+  mantiene cerrada; esperar ~10 min limpios sí la abre. Antes de quemar una corrida, sondear con
+  un POST directo a `auth/v1/token?grant_type=password` (creds de `~/.avi/e2e-creds.json` + la
+  key pública `SB_KEY`): 200 = ventana probablemente limpia, 429 = seguir esperando.
 - Navegar de APP a APP#hash es same-document (no re-parsea `_OAUTH_RET`) → pasar por about:blank.
+- Los Chrome headless HUÉRFANOS se acumulan entre corridas (chrome.kill() no siempre mata el árbol
+  en Windows) y con ~14 vivos el login del harness deja de completar aunque el rate-limit esté
+  limpio (2026-07-10: corridas que PARECÍAN rate-limited y no lo eran — el probe daba 200).
+  Limpiar antes de diagnosticar: `Get-Process chrome | Where-Object {$_.MainWindowTitle -eq ''} | Stop-Process -Force`.
+- El headless NUEVO de Chrome corre con `prefers-reduced-motion: reduce` POR DEFECTO → cualquier
+  check de animaciones ve `animation-name:none`. Forzar en el setup:
+  `Emulation.setEmulatedMedia {features:[{name:'prefers-reduced-motion',value:'no-preference'}]}`
+  (patrón en `_verify-v314.mjs`).

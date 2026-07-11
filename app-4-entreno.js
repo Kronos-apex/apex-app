@@ -2395,9 +2395,15 @@ function progJump(id){const el=document.getElementById(id);if(el)el.scrollIntoVi
 function _syncProgAnchors(hasSessions){
   const row=document.getElementById('prog-anchors'); if(!row)return;
   row.style.display=hasSessions?'flex':'none';
+  // CANDADO: el scroll del asesorado vive en .cnbody (overflow:auto) y la barra superior
+  // queda FUERA de ese scroller → top:0 (styles.css) pega la fila JUSTO debajo de la barra.
+  // No poner top en px aquí: 55px dentro de .cnbody = hueco de 55px (bug cazado 2026-07-10).
+  // El salto sí necesita despejar la fila: scroll-margin medido en vivo (letra grande cambia el alto).
+  const clear=(row.offsetHeight||38)+8; // fila + aire
   row.querySelectorAll('[data-jump]').forEach(b=>{
     const t=document.getElementById(b.getAttribute('data-jump'));
     b.style.display=(t&&(t.id==='prog-hist-sec'||t.innerHTML.trim()))?'':'none';
+    if(t)t.style.scrollMarginTop=clear+'px'; // que el salto no deje el título tapado
   });
 }
 function renderClientHistory(clientId){

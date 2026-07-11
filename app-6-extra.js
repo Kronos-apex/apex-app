@@ -243,7 +243,10 @@ function gmMoveEx(ei,dir){
 // ══════════ REPORTE DE DOLOR (pedido Camilo 2026-07-07) ══════════
 // v314 (estudio, mejora 5): micro-celebración al marcar — pop de 450ms en el check.
 // Solo presentación; respeta prefers-reduced-motion vía CSS.
-function _gmPop(el){ if(!el)return; el.classList.remove('gm-pop'); void el.offsetWidth; el.classList.add('gm-pop'); setTimeout(()=>{try{el.classList.remove('gm-pop');}catch(e){}},500); }
+// CANDADO: al quitar .gm-pop el animation-name volvería a checkDone (.gm-check.checked) y
+// per spec esa animación ARRANCARÍA fresca → doble rebote a los 500ms. El inline 'none' lo
+// corta; se limpia al inicio del próximo pop (los re-renders crean elementos nuevos, sin inline).
+function _gmPop(el){ if(!el)return; clearTimeout(el._popT); el.style.animation=''; el.classList.remove('gm-pop'); void el.offsetWidth; el.classList.add('gm-pop'); el._popT=setTimeout(()=>{try{el.style.animation='none';el.classList.remove('gm-pop');}catch(e){}},500); }
 // F4 (v308): íconos de marca en el guiado — SOLO presentación (innerHTML). Los tokens de
 // estado ✓/○/▶/⏸ que la lógica y el harness leen por textContent NO se tocan.
 const _gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
@@ -2326,14 +2329,13 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  {v:299, icon:'wind', t:'La plancha te cuida el descanso', d:'Ya no tienes que adivinar cuánto descansar después de aguantar.',
-   steps:['Abre tu rutina y busca un ejercicio de tiempo (como la plancha)','Toca ▶ CRONO y aguanta la posición','Al llegar a 0 la serie se marca sola y arranca tu descanso']},
-  {v:300, icon:'droplet', t:'Registra tu agua del día', d:'Tomar suficiente agua también es entrenar. Ahora la app te acompaña.',
-   steps:['En "Hoy" encuentra la tarjeta Agua de hoy','Toca +1 por cada vaso que te tomes','Cumple tu meta — la barra se pone verde y lo celebramos'],
-   cta:{label:'Ver mi tarjeta de agua',run:'ntGoWater'}},
   {v:301, icon:'bike', t:'HIIT a tu medida', d:'Cardio de intervalos en bici, elíptica o trotadora — con TUS tiempos.',
    steps:['En "Hoy" toca "¿Hoy quieres algo distinto?"','Elige HIIT en Máquina (o el que quieras)','Ajusta rondas, trabajo y pausa — y dale ▶'],
    cta:{label:'Probarlo ahora',run:'openQuickWorkouts'}},
+  {v:313, icon:'camera', t:'Comparte tu entreno', d:'Al terminar tu sesión puedes crear una imagen con tus números, lista para presumir.',
+   steps:['Completa tu entrenamiento de hoy','En la pantalla de cierre toca "Compartir mi entreno"','Súbela a tus historias o mándasela a quien quieras 💚']},
+  {v:314, icon:'trend', t:'Tu Progreso, de un toque', d:'Se acabó el scroll infinito: salta directo a lo que quieres ver.',
+   steps:['Entra a la pestaña Progreso','Arriba verás Nivel · Constancia · Números · Historial','Tócalos para saltar directo — te acompañan mientras bajas']},
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).
