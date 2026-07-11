@@ -2329,21 +2329,21 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  {v:301, icon:'bike', t:'HIIT a tu medida', d:'Cardio de intervalos en bici, elíptica o trotadora — con TUS tiempos.',
-   steps:['En "Hoy" toca "¿Hoy quieres algo distinto?"','Elige HIIT en Máquina (o el que quieras)','Ajusta rondas, trabajo y pausa — y dale ▶'],
-   cta:{label:'Probarlo ahora',run:'openQuickWorkouts'}},
   {v:313, icon:'camera', t:'Comparte tu entreno', d:'Al terminar tu sesión puedes crear una imagen con tus números, lista para presumir.',
    steps:['Completa tu entrenamiento de hoy','En la pantalla de cierre toca "Compartir mi entreno"','Súbela a tus historias o mándasela a quien quieras 💚']},
   {v:314, icon:'trend', t:'Tu Progreso, de un toque', d:'Se acabó el scroll infinito: salta directo a lo que quieres ver.',
    steps:['Entra a la pestaña Progreso','Arriba verás Nivel · Constancia · Números · Historial','Tócalos para saltar directo — te acompañan mientras bajas']},
+  {v:316, icon:'chat', t:'Respuestas rápidas en el chat', d:'Escribirle a tu coach ahora toma UN toque.',
+   steps:['Entra a Mensajes','Toca una respuesta lista: "¡Entrenamiento hecho!", "Tengo una duda" o "Algo me dolió"','Tu coach la recibe al instante — y te responde'],
+   cta:{label:'Probarlas ahora',run:'ntGoMsgs'}, coach:true}, // solo con coach (aviso Lucas: al libre le prometía un chat que no tiene)
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).
+// Solo las ctas de las novedades VIVAS (los deep-links de entradas podadas se podan
+// con ellas — git history los guarda si una news futura los revive).
 const _NT_ACTIONS={
-  openQuickWorkouts:()=>{ if(typeof openQuickWorkouts==='function')openQuickWorkouts(); },
-  ntGoWater:()=>{ const el=document.getElementById('cn-habits'); if(!el)return;
-    el.scrollIntoView({behavior:'smooth',block:'center'});
-    el.classList.add('nt-pulse'); setTimeout(()=>el.classList.remove('nt-pulse'),1800); },
+  ntGoMsgs:()=>{ const tab=document.getElementById('tab-msgs');
+    if(typeof cnTab==='function'&&tab){ cnTab('cn-messages',tab); if(typeof markMsgsRead==='function')markMsgsRead(); } },
 };
 let _ntItems=[],_ntIdx=0,_ntRetry=null;
 // Punto de entrada (lo llama renderClientToday). Abre el tour si hay novedades sin ver.
@@ -2357,7 +2357,11 @@ function renderNewsCard(){
   if(!tour||!tour.classList.contains('hidden'))return; // ya abierto → no repintar encima
   if(!CUR.clientId)return; // sesión cerrada entre reintentos
   const seen=parseInt(localStorage.getItem(_NEWS_SEEN_KEY))||0;
-  const items=newsToShow(AVI_NEWS,seen);
+  let items=newsToShow(AVI_NEWS,seen);
+  // v316 (aviso Lucas): novedades marcadas coach:true no se muestran al modo libre —
+  // le prometían un chat que no tiene y el CTA lo estrellaba contra el candado.
+  const _nc=DB.clients.find(x=>x.id===CUR.clientId);
+  items=items.filter(n=>!n.coach||(typeof clientHasCoach==='function'&&clientHasCoach(_nc)));
   if(!items.length)return;
   // Visibilidad REAL de cada overlay: no todos se ocultan igual. #cwelcome y #onboarding
   // viven con display:flex y se ocultan con opacity:0 + pointer-events:none (el check

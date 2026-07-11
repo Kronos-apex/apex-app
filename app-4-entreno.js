@@ -2510,14 +2510,17 @@ function updateMsgBadge(clientId){
 function renderClientMsgs(clientId){
   const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');con.innerHTML='';
   const composer=document.getElementById('cn-msg-composer');
+  const quick=document.getElementById('cn-msg-quick'); // v316: respuestas rápidas
   // El chat es SOLO-COACH (Premium + Coach). Libre y Premium app (sin coach) ven el
   // candado con invitación a sumar coach. El resto de lo premium de app NO se toca.
   if(!clientHasCoach(DB.clients.find(x=>x.id===clientId))){
     if(composer)composer.style.display='none';
+    if(quick)quick.style.display='none';
     con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía, ajusta tu plan y te responde.');
     return;
   }
   if(composer)composer.style.display='';
+  if(quick)quick.style.display='flex';
   if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Tu coach todavía no te ha escrito.<br>Puedes escribirle tú primero 👇</div>';return}
   msgs.forEach(m=>{
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
@@ -2527,16 +2530,25 @@ function renderClientMsgs(clientId){
   });
   con.scrollTop=con.scrollHeight;
 }
-function sendClientMsg(){
-  const ta=document.getElementById('cn-msg-in');const text=ta.value.trim();const clientId=CUR.clientId;if(!text||!clientId)return;
+// Ruta ÚNICA de envío del asesorado — la usan el textarea y las respuestas rápidas (v316).
+function _clientSend(text){
+  const clientId=CUR.clientId;if(!text||!clientId)return;
   if(!DB.msgs[clientId])DB.msgs[clientId]=[];
   DB.msgs[clientId].push({from:'client',text,date:new Date().toISOString()});
   svNow('ax_m',DB.msgs);
   const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
   // Push al coach para notificación en tiempo real
   pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
-  ta.value='';ta.style.height='auto';renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
+  renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
+function sendClientMsg(){
+  // Guard ANTES de limpiar (aviso Julián v316): sin sesión el texto no se borra en silencio.
+  const ta=document.getElementById('cn-msg-in');const text=ta.value.trim();if(!text||!CUR.clientId)return;
+  ta.value='';ta.style.height='auto';
+  _clientSend(text);
+}
+// v316 (estudio, mejora 6): chip de respuesta rápida — un toque, mensaje enviado.
+function clientQuickMsg(t){ if(navigator.vibrate)navigator.vibrate(15); _clientSend((t||'').trim()); }
 
 // (restInt/_restVis/_restPaused — estado del rest-banner clasico — RETIRADOS en F5b)
 

@@ -486,6 +486,12 @@ html[data-theme="light"] .mta {
 .mt{font-size:10px;color:var(--t3);padding:0 4px 4px}
 .mt.r{text-align:right}
 .mrow{display:flex;gap:7px;padding:10px 14px;border-top:1px solid var(--br);align-items:flex-end}
+/* v316 (estudio, mejora 6): respuestas rápidas del asesorado — un toque y sale el mensaje */
+.mquick{display:flex;gap:7px;padding:9px 14px 0;border-top:1px solid var(--br);overflow-x:auto;scrollbar-width:none}
+.mquick::-webkit-scrollbar{display:none}
+.mquick button{flex-shrink:0;min-height:36px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--gt);background:var(--gl);border:1px solid var(--g2);border-radius:99px;padding:7px 13px;cursor:pointer}
+.mquick button:active{transform:scale(.96)}
+.mquick~.mrow{border-top:none}
 .mta{flex:1;padding:8px 12px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:13px;color:var(--t1);background:var(--w);outline:none;resize:none;transition:border-color .15s;max-height:90px;line-height:1.4}
 .mta:focus{border-color:var(--g2)}
 

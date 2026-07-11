@@ -31,14 +31,15 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_repro-plancha-visual.mjs` | Verificación visual del cronómetro isométrico (banner ámbar) | 2026-07-03 |
 | `_verify-water.mjs` | Tarjeta Hábitos 💧 agua (v300): contador, piso 0, meta cumplida, meta del plan del coach, re-render. 7/7 | 2026-07-09 |
 | `_verify-qwcfg.mjs` | HIIT rápido configurable (v301): preset Máquina, modal prellenado, atrás, clamps, preset sin HIIT directo. 6/6 | 2026-07-09 |
-| `_verify-news.mjs` | Tour guiado de novedades (v304+v305): slides con pasos/dots/SVG, Listo/atrás marcan visto, visto parcial, CTA deep-link, espera bienvenida y reintenta con CSS real. 9/9 + screenshots | 2026-07-10 |
+| `_verify-news.mjs` | Tour guiado de novedades (v304+v305): slides con pasos/dots/SVG, Listo/atrás marcan visto, visto parcial, CTA deep-link, espera bienvenida y reintenta con CSS real, filtro coach:true para libres (v316). 10/10 + screenshots. ⚠️ Expectativas atadas al CONTENIDO de AVI_NEWS — actualizar al podar/agregar entradas | 2026-07-10 |
 | `_verify-icons-f2.mjs` | Íconos SVG F2 en Hoy (v306): botón QW, chip de racha, nudge push, 7 tarjetas de biblioteca, banner de descanso. 5/5 + screenshots | 2026-07-10 |
 | `_verify-icons-f3.mjs` | Íconos SVG F3 (v307): 24 t-ic estáticos (parte A sin login), Constancia, títulos y héroe del Perfil. 5/5 + screenshots | 2026-07-10 |
 | `_shot-f4.mjs` | Shot visual del guiado real (rutina inyectada, tooltip fresco) — el paso que cazó 🔄/✅ en v309. Correr tras CUALQUIER cambio visual del guiado | 2026-07-10 |
 | `_shot-f5.mjs` | Shot visual del panel del coach (home + p-detail forzados con la cuenta QA) | 2026-07-10 |
 | `_verify-v313.mjs` | Estudio mejoras 1-2 (v313): orden de Hoy por tipo de día + cierre compartible (botón, lienzo 1080×1920, imagen real vía _wfLastCanvas). 5/5 + shots | 2026-07-10 |
 | `_verify-v314.mjs` | Estudio mejoras 3+5 (v314): anclas de Progreso (oculta sin sesiones, sticky al ras de la barra — el scroller es .cnbody —, chips por contenido, salto con scroll-margin) + micro-pop al marcar (3 rutas, cascada vs checkDone, reduced-motion). 10/10 + shots | 2026-07-10 |
-| `_verify-v315.mjs` | Estudio mejora 4 (v315): Rutinas con foto — .rc-photo del primer ejercicio con foto (46% derecho, máscara, full opacidad), fallback sin foto/Libre, acordeón vivo, chevron con contraste. 5/5 + shots claro/oscuro | 2026-07-10 |
+| `_verify-v315.mjs` | Estudio mejora 4 (v315): Rutinas con foto — .rc-photo del primer ejercicio con foto (46% derecho, máscara, full opacidad), fallback sin foto/Libre, acordeón vivo, chevron con contraste, padding anti-nombres-largos. 6/6 + shots claro/oscuro | 2026-07-10 |
+| `_verify-v316.mjs` | Estudio mejora 6 (v316): respuestas rápidas del chat — 4 chips ≥36px, envío por la ruta única _clientSend (DB+burbuja+push espiado), textarea intacto, candado sin coach oculta chips, vacío no envía. 5/5 + shots | 2026-07-10 |
 | `_verify-f5a.mjs` | F5: guiado único en Hoy, flag retirado, Perfil sin interruptor (login real) | 2026-07-06 |
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |

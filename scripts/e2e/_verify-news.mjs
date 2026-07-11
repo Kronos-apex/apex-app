@@ -58,7 +58,7 @@ try {
     next:(document.getElementById('nt-next')||{}).textContent,
     chip:!!document.querySelector('#nt-body .nt-chip svg')})`));
   await shot('news-tour-slide1');
-  check('N1 tour abre en slide 1 (HIIT, la más vieja) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /HIIT/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
+  check('N1 tour abre en slide 1 (Comparte, la más vieja) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /Comparte/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
 
   // N2: avanzar hasta la ultima slide → boton "Listo" + CTA de deep-link
   await ev(`ntNext()`); await ev(`ntNext()`);
@@ -67,7 +67,7 @@ try {
     cta:(document.querySelector('#nt-body .nt-cta')||{}).textContent,
     dotOn:[...document.querySelectorAll('#nt-dots .nt-dot')].findIndex(d=>d.classList.contains('on'))})`));
   await shot('news-tour-slide3');
-  check('N2 ultima slide (Progreso v314) con "Listo" y sin CTA (no tiene deep-link)', /Progreso/i.test(s.title||'') && /Listo/.test(s.next||'') && !s.cta && s.dotOn === 2, JSON.stringify(s));
+  check('N2 ultima slide (chat v316) con "Listo" y CTA "Probarlas ahora"', /chat/i.test(s.title||'') && /Listo/.test(s.next||'') && /Probarlas/.test(s.cta||'') && s.dotOn === 2, JSON.stringify(s));
 
   // N3: "Listo" cierra y marca la ultima version vista
   await ev(`ntNext()`);
@@ -80,22 +80,22 @@ try {
   s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden')})`));
   check('N4 re-render no lo reabre', !s.open, JSON.stringify(s));
 
-  // N5: visto parcial (v313) → tour de UNA slide (v314) — y el atras lo cierra marcando visto
-  await ev(`(()=>{localStorage.setItem('ax_news_seen','313');renderNewsCard();})()`);
+  // N5: visto parcial (v314) → tour de UNA slide (v316) — y el atras lo cierra marcando visto
+  await ev(`(()=>{localStorage.setItem('ax_news_seen','314');renderNewsCard();})()`);
   await sleep(300);
   s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),dots:document.querySelectorAll('#nt-dots .nt-dot').length,title:(document.querySelector('#nt-body .nt-title')||{}).textContent})`));
-  check('N5 visto parcial → tour con SOLO la novedad v314 (Progreso)', s.open && s.dots === 1 && /Progreso/i.test(s.title||''), JSON.stringify(s));
+  check('N5 visto parcial → tour con SOLO la novedad v316 (chat)', s.open && s.dots === 1 && /chat/i.test(s.title||''), JSON.stringify(s));
   s = JSON.parse(await ev(`JSON.stringify({closed:_aviCloseTopOverlay(),open:!document.getElementById('news-tour').classList.contains('hidden'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
   check('N6 atras cierra el tour y marca visto', s.closed === true && !s.open && s.seen === s.latest, JSON.stringify(s));
 
-  // N7: CTA deep-link (vive en la slide 1, HIIT v301) — cierra el tour y abre la biblioteca
-  await ev(`(()=>{localStorage.setItem('ax_news_seen','300');renderNewsCard();})()`);
+  // N7: CTA deep-link (slide única v316) — cierra el tour y abre la pestaña Mensajes
+  await ev(`(()=>{localStorage.setItem('ax_news_seen','314');renderNewsCard();})()`);
   await sleep(300);
   await ev(`ntCta()`);
   await sleep(600);
-  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),room:document.getElementById('quickwo-room').classList.contains('on'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
-  check('N7 CTA "Probarlo ahora" cierra el tour y abre los Entrenamientos rapidos', !s.open && s.room && s.seen === s.latest, JSON.stringify(s));
-  await ev(`(()=>{try{history.back();}catch(e){} localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),msgs:document.getElementById('cn-messages').classList.contains('on'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
+  check('N7 CTA "Probarlas ahora" cierra el tour y abre la pestaña Mensajes', !s.open && s.msgs && s.seen === s.latest, JSON.stringify(s));
+  await ev(`(()=>{const t=document.querySelectorAll('.cntab')[0];if(typeof cnTab==='function'&&t)cnTab('cn-today',t); localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
   await sleep(400);
 
   // N8: bienvenida encima (login fresco) → NO abre, pero reintenta solo al despejarse (v305)
@@ -111,6 +111,16 @@ try {
   check('N8b al cerrarse la bienvenida el tour abre SOLO (reintento v305)', opened);
   await ev(`(()=>{if(typeof ntClose==='function')ntClose(false);})()`);
   await sleep(200);
+
+  // N9 (v316): las novedades coach:true NO se muestran al modo libre (prometían chat sin coach)
+  s = JSON.parse(await ev(`JSON.stringify((()=>{
+    const orig=window.clientHasCoach; window.clientHasCoach=()=>false;
+    localStorage.setItem('ax_news_seen','314');
+    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; }
+    const open=!document.getElementById('news-tour').classList.contains('hidden');
+    localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
+    return {open};})())`));
+  check('N9 libre (sin coach): la novedad del chat NO se le muestra', !s.open, JSON.stringify(s));
 
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;
