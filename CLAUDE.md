@@ -88,6 +88,12 @@ riesgos técnicos, deuda que crece, oportunidades de producto, cosas raras en lo
 usuarios. Sin adornos. Si no hay nada relevante, dilo explícitamente ("radar limpio").
 El radar NO es opcional y NO se reemplaza por complacencia.
 
+> **🧠 CÓMO se opera esta doctrina → `docs/metodologia.md`** — instrucciones concretas
+> (pedido de Camilo 2026-07-11): cómo cazar bugs antes de prod (capas de QA, harness por
+> feature, subagentes Julián/Lucas), cómo matar el bug de raíz Y lo que lo causó (candado +
+> check permanente + gotcha), y cómo pensar/verificar CADA área (interfaz con benchmarking
+> de referentes + preview de variantes, features, coach, datos, seguridad, tono, deportivo).
+
 ### 6. Documentación viva (o el próximo modelo arranca ciego)
 - Hitos de sesión → `docs/bitacora.md` (más reciente primero). NO a CLAUDE.md.
 - CLAUDE.md solo cambia cuando cambia el CONTEXTO VIVO: arquitectura, esquema, gotchas
@@ -686,6 +692,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-10 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v316** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v316** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **297/297** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v316 respuestas rápidas en Mensajes (estudio, mejora 6) · v315 Rutinas con foto (estudio, mejora 4) · v314 anclas en Progreso + micro-pop (estudio, mejoras 3+5)).*

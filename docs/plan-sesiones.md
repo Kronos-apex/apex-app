@@ -11,7 +11,9 @@
 ## ⚡ PROTOCOLO DE ARRANQUE (cada sesión, sin excepción)
 
 1. Leer `CLAUDE.md` completo — en especial **🛡️ DOCTRINA** (anti-complacencia, bugs
-   de raíz, barra PREMIUM, radar al cierre) y **🧠 GOTCHAS VIGENTES**.
+   de raíz, barra PREMIUM, radar al cierre) y **🧠 GOTCHAS VIGENTES**. Y **`docs/metodologia.md`**
+   — el CÓMO se trabaja con el nivel de inteligencia que Camilo exige (caza de bugs,
+   fix de raíz, y las instrucciones por área). No es opcional: es el estándar de la sesión.
 2. Leer `scripts/e2e/README.md` — gotchas operativos de los harnesses. Los 3 que más
    duelen: (a) el rate-limit del login QA se REINICIA con cada intento fallido →
    **sondear con POST directo a `auth/v1/token` antes de quemar una corrida**;
