@@ -59,6 +59,15 @@ try {
   r = await ev(`(()=>{const i=document.createElement('input');document.body.appendChild(i);i.focus(); const b=window._aviUpdateBusy(); i.blur(); i.remove(); const a=window._aviUpdateBusy(); return JSON.stringify({escribiendo:b,quieto:a});})()`);
   o = JSON.parse(r); check('U6 escribiendo en un input → busy=true; al salir → false', o.escribiendo === true && o.quieto === false, r);
 
+  // U9: la PANTALLA DE CIERRE del entreno abierta → ocupado. Cazado por Julián/Lucas 2026-07-12:
+  //     recargar ahí borra logros + confeti + el propio nudge de push (auto-sabotaje de v326).
+  r = await ev(`(()=>{const wf=document.getElementById('workout-finish'); wf.classList.add('on'); const b=window._aviUpdateBusy(); wf.classList.remove('on'); const a=window._aviUpdateBusy(); return JSON.stringify({enCierre:b,fuera:a});})()`);
+  o = JSON.parse(r); check('U9 pantalla de cierre (#workout-finish.on) → busy=true; al cerrar → false', o.enCierre === true && o.fuera === false, r);
+
+  // U10: el TOUR de novedades abierto (#news-tour sin .hidden) → ocupado.
+  r = await ev(`(()=>{const t=document.getElementById('news-tour'); const had=t.classList.contains('hidden'); t.classList.remove('hidden'); const b=window._aviUpdateBusy(); if(had)t.classList.add('hidden'); const a=window._aviUpdateBusy(); return JSON.stringify({tourAbierto:b,tourCerrado:a});})()`);
+  o = JSON.parse(r); check('U10 tour de novedades abierto → busy=true; al cerrar → false', o.tourAbierto === true && o.tourCerrado === false, r);
+
   // U7: el sw.js servido ya NO fuerza el reload (sin navigate) y SÍ escucha SKIP_WAITING.
   r = await ev(`(async()=>{const t=await (await fetch('/sw.js?nocache='+Date.now())).text(); return JSON.stringify({skipWaitingMsg:/SKIP_WAITING/.test(t), sinNavigateForzado:!/c\\.navigate\\(c\\.url\\)/.test(t), cache:(t.match(/avi-v\\d+/)||['?'])[0]});})()`);
   o = JSON.parse(r); check('U7 sw.js escucha SKIP_WAITING y ya no fuerza navigate()', o.skipWaitingMsg === true && o.sinNavigateForzado === true, r);

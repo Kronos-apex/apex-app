@@ -14,15 +14,22 @@ function initPWA(){
   // Manifest: ya apunta a /apex-app/manifest.json estático (no se sobreescribe)
 
   // ¿Es un momento SEGURO para recargar y aplicar una versión nueva? Diferir si recargar
-  // perdería trabajo: timer de entreno vivo, modal/overlay abierto (coach editando rutina) o
-  // el usuario escribiendo. Las series marcadas viven en localStorage y sobreviven; un modal a
-  // medio llenar, no. Helper PURO (no depende del SW) → siempre definido y testeable (v325).
+  // perdería trabajo o borraría un momento importante: timer de entreno vivo, modal/overlay
+  // abierto (coach editando rutina), el usuario escribiendo, la PANTALLA DE CIERRE del entreno
+  // (recargar ahí mata los logros + confeti + el propio nudge de activar push → auto-sabotaje;
+  // cazado por Julián/Lucas 2026-07-12) o el TOUR de novedades abierto. Las series marcadas
+  // viven en localStorage y sobreviven; un modal a medio llenar o una celebración, no. Helper
+  // PURO (no depende del SW) → siempre definido y testeable (v325, ampliado v327).
   window._aviUpdateBusy=()=>{
     const ae=document.activeElement;
+    const wf=document.getElementById('workout-finish');
+    const tour=document.getElementById('news-tour');
     return !!((typeof _gmLiveTimer==='function' && _gmLiveTimer())
       || (ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA'))
       || document.querySelector('.mdbg.on')
-      || (typeof AVINAV!=='undefined' && AVINAV.layers>0));
+      || (typeof AVINAV!=='undefined' && AVINAV.layers>0)
+      || (wf && wf.classList.contains('on'))
+      || (tour && !tour.classList.contains('hidden')));
   };
 
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
