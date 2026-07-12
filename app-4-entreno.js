@@ -492,7 +492,7 @@ function renderGamification(client){
     {ic:'crown',fb:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
   ];
   const _bIc=(n,fb)=>typeof aviIcon==='function'?aviIcon(n,19):fb;
-  const badgesHTML=`<div class="gx-title">Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?_bIc(b.ic,b.fb):_bIc('lock','🔒')}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
+  const badgesHTML=`<div class="streak-title" style="margin-top:16px">${typeof aviIcon==='function'?aviIcon('medal',14):'🎖️'} Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?_bIc(b.ic,b.fb):_bIc('lock','🔒')}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
   con.innerHTML=lvlHTML+badgesHTML;
 }
 
@@ -1694,14 +1694,18 @@ function renderVolChart(sessions){
   });
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
-  con.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  con.innerHTML=`<svg width="100%" height="${H+16}" viewBox="0 0 ${W} ${H+16}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A7C5B" stop-opacity="0.18"/><stop offset="100%" stop-color="#0A7C5B" stop-opacity="0"/></linearGradient></defs>
     <path d="${areaD}" fill="url(#vg)"/>
     <path d="${pathD}" fill="none" stroke="#0A7C5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${pts.map((p,i)=>`
-      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#0A7C5B"/>
-      <text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-size="9" fill="#B0B0B0">${new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>
-    `).join('')}
+    ${pts.map((p,i)=>{
+      // Etiquetas en su propia banda (y=H+11), y las de los extremos ancladas hacia
+      // dentro (start/end) para que "23 jun" y la última no se salgan del borde.
+      const anc=i===0?'start':(i===pts.length-1?'end':'middle');
+      const lx=i===0?pad:(i===pts.length-1?W-pad:p.x);
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#0A7C5B"/>
+      <text x="${lx.toFixed(1)}" y="${H+11}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="9" fill="#B0B0B0">${new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`;
+    }).join('')}
   </svg>`;
 }
 
