@@ -231,7 +231,7 @@ function renderBodyWeightSection(clientId){
       <div class="wlog-date">${isToday?'<strong>Hoy</strong>':new Date(e.date+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
       <div class="wlog-kg">${e.kg} kg</div>
       ${deltaStr}
-      <button class="tap" onclick="deleteBodyWeight('${e.date}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:14px;padding:0;line-height:1" aria-label="Eliminar registro de peso">✕</button>
+      <button class="hit40" onclick="deleteBodyWeight('${e.date}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:14px;padding:0;line-height:1" aria-label="Eliminar registro de peso">✕</button>
     </div>`;
   }).join('');
 }
