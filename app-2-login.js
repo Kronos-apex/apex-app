@@ -503,8 +503,8 @@ function renderTfExList(){
     html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--bl)'};border-radius:var(--rsm);margin-bottom:6px">
       ${muscleIcon(e.muscle,20)}
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
-        <div style="font-size:11px;color:var(--t2)">${e.muscle} · ${e.type}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</div>
+        <div style="font-size:11px;color:var(--t2)">${esc(e.muscle)} · ${esc(e.type)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
         <input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20"

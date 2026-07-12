@@ -1414,8 +1414,8 @@ function rfExRow(i,n,abMark){
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
         ${abChip}${muscleIcon(e.muscle,20)}
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:1px">${e.muscle} · ${e.type}</div>
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name)}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(e.muscle)} · ${esc(e.type)}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">${linkBtn}${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
