@@ -31,10 +31,10 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
    - **Decidido por preview de variantes A/B/C × 2 temas** (tokens exactos): B (borde `--br2`) ganó sobre C (borde + sombra en capas) — C añadía peso/complejidad y no rinde en oscuro (las sombras no se ven). Divisores internos (`.ch`) se quedan en `--br` a propósito (jerarquía: exterior fuerte, interior suave).
    - **Pendiente (fase superficie):** subir al modelo las tarjetas de COMPONENTE (`.qw-card`, `.sescard`, `.nutri-card`, etc.) y las superficies recesadas (pills/step-boxes con `--bg`+`--br`). El token `--surface` (definido, 0 usos) queda para consolidar ahí. NO en bloque.
 
-3. **Ritmo tipográfico + cifras tabulares donde la fuente lo soporte.**
-   Escala tipográfica consistente. `font-variant-numeric:tabular-nums` en stats/timers **de fuentes
-   que traen `tnum`** (Plus Jakarta, JetBrains Mono). ⚠️ **gotcha v319: 'Anton' (KPIs del coach)
-   IGNORA tnum** → ahí ancho fijo/mono, no tabular-nums.
+3. ✅ **Ritmo tipográfico + cifras tabulares.** **HECHO avi-v331 (2026-07-12) — en gran parte pre-satisfecha.**
+   - **Cifras tabulares: YA resueltas en v319.** Los timers/cargas/volúmenes usan 'JetBrains Mono' (monoespaciada → ya tabular); 'Anton' (KPIs coach) IGNORA `tnum` (medido); el único lugar proporcional que ayudaba (`.wf-stat-val`, Plus Jakarta) ya lo tiene. Nada que añadir.
+   - **Escala tipográfica: tokens en `:root`** (`--fs-2xs:10 … --fs-4xl:30`, base 13) destilados de los tamaños REALES dominantes de AVI (13/12/11 = 43% de 425 usos). Es la "regla" a la que las fases de superficie ajustan cada pantalla. Tokenizadas las primitivas de texto (`.btn/.tag/.psub/.ctitle/.llbl/.ilbl/.bsm/.etxt/.esub`) como no-op exacto.
+   - **Hallazgo:** las primitivas ya estaban en ritmo limpio; la inconsistencia (38 tamaños, oddballs 12.5/13.5/…) vive en el styling DE COMPONENTES. Barrer los 425 a ciegas = riesgo sin QA → **fase superficie** (radar). `.ptitle` 19px vs escala 18 → reconciliar al pulir esa superficie.
 
 4. **Estados de foco (`:focus-visible`) + táctil ≥44px** (accesibilidad — Vercel).
    Anillo de foco visible con `--g` para teclado; auditar que ningún control táctil baje de 44px.
