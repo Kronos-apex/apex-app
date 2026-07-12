@@ -57,7 +57,7 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
 - [ ] `#workout-finish` (cierre — pico emocional; ya casi premium, aplicar H2/H3/H4)
 - [ ] `#cn-routines` (rutinas con foto, v315)
 - [ ] `#cn-history` + gráficas SVG de volumen
-- [ ] `#cn-profile` (progressive disclosure)
+- [~] `#cn-profile` (progressive disclosure) — **PASE 1 hecho avi-v334**: reorden identidad-primero (Mis datos → Récords → Nutrición → seguimiento → ajustes; antes lideraba la nutrición gigante y Mis datos quedaba al fondo) + íconos SVG en los 3 encabezados sin ellos (Mis datos/Apariencia/Tamaño). Método: captura full-page `_shot-profile.mjs` ambos temas → audit → decisión Camilo → re-captura verificada. **PENDIENTE PASE 2**: estados vacíos que el JS pinta más planos que el HTML (medidas/fotos → usar componente `.empty`/tono Sofía); banner "Instalar app" flotante (H1 — ¿artefacto del preview?); espaciado fino entre tarjetas
 - [ ] `#cn-gamif` (nivel + logros/medallas)
 
 ### Grupo B — Coach (uso diario)
