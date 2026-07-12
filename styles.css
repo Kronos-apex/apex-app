@@ -348,6 +348,13 @@ html[data-theme="light"] .mta {
 .bo{background:var(--or);color:white;border-color:var(--or)}.bo:hover{background:#d4624a}
 .bd{background:var(--rdl);color:var(--rd);border-color:var(--rd)44}.bd:hover{background:var(--rd);color:white}
 .bsm{padding:5px 11px;font-size:var(--fs-sm)}
+/* Zona táctil mínima (FASE 0 · primitiva #4, avi-v332) — íconos-botón sin fondo (✕/borrar).
+   Expande el ÁREA de toque a ≥40px con un overlay ::after, SIN agrandar el ícono ni la
+   altura de la fila (técnica WCAG 2.5.5). Úsalo cuando los vecinos NO son clickables (si lo
+   fueran, el overlay les robaría toque). Botones VISIBLES (con fondo) suben su tamaño real,
+   no usan esto. En filas densas (constructor) el cluster se rediseña en su superficie. */
+.tap{position:relative}
+.tap::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:max(100%,40px);height:max(100%,40px)}
 .bfull{width:100%;justify-content:center}
 
 /* ── TAGS ── */
@@ -1120,7 +1127,7 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 /* First-exercise tooltip */
 .ex-tooltip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06402E,#0A7C5B);color:white;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:13px;line-height:1.5;box-shadow:0 4px 16px rgba(45,106,79,.35);animation:tooltipPop .4s cubic-bezier(.4,0,.2,1)}
 .ex-tooltip-icon{font-size:22px;flex-shrink:0}
-.ex-tooltip-close{margin-left:auto;background:rgba(255,255,255,.2);border:none;border-radius:50%;width:22px;height:22px;color:white;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ex-tooltip-close{margin-left:auto;background:rgba(255,255,255,.2);border:none;border-radius:50%;width:34px;height:34px;color:white;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 @keyframes tooltipPop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── CALENTAMIENTO ── */
