@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v324';
+const CACHE_NAME = 'avi-v325';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -10,8 +10,19 @@ const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', 
   .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js']
     .map(f => '/apex-app/' + f + '?v=' + V));
 self.addEventListener('install', e => {
-  self.skipWaiting();
+  // SIN skipWaiting automático (v325): el SW nuevo ESPERA en 'waiting' hasta que la página
+  // pida activarlo en un momento SEGURO — nunca encima de un timer de entreno corriendo. La
+  // página manda {type:'SKIP_WAITING'} vía postMessage (app-6, auto-actualización segura). En
+  // la PRIMERA instalación no hay worker activo → se activa igual sin esperar a nadie.
+  // (Antes, v324 hacía skipWaiting + navigate() a la fuerza de TODAS las pestañas al activar →
+  // podía RECARGAR y cortar un entrenamiento en curso. Ahora la recarga la decide la página.)
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL).catch(() => {})));
+});
+
+// La página pide activar el SW nuevo cuando es seguro (no hay timer vivo) → skipWaiting →
+// dispara controllerchange en la página → la página recarga UNA vez. Ver app-6-extra.js.
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -19,13 +30,8 @@ self.addEventListener('activate', e => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
-      // Al ACTIVAR una versión NUEVA, RECARGAR las páginas abiertas (v324). Antes, en Android
-      // el SW se actualizaba pero la página seguía corriendo el JS VIEJO en memoria (resume, no
-      // reload) → los fixes no se aplicaban aunque "cerraran y abrieran" (bug real 2026-07-11:
-      // las suscripciones push seguían fallando con el fetch crudo viejo pese a desplegar v323).
-      // navigate() desde el SW fuerza la recarga sin que la app tenga que cooperar.
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then(cls => cls.forEach(c => { try { c.navigate(c.url); } catch (_e) {} }))
+    // La RECARGA la coordina la PÁGINA (controllerchange en app-6) cuando NO hay timer vivo,
+    // en vez del navigate() a la fuerza de v324 que podía cortar un entrenamiento en curso.
   );
 });
 

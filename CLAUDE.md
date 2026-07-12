@@ -655,6 +655,7 @@ git push origin main
 - [ ] Limpieza: `openGuidedMode` quedó sin callers tras F5 — borrarlo junto con la rama overlay de `closeGuidedMode`/`_aviCloseTopOverlay`
 - [ ] 🧯 SIMULACRO DE RESTORE (auditoría 2026-07-07): hay backup doble pero NUNCA se ensayó restaurar un snapshot — un backup sin restore probado no es un backup. Ensayar: snapshot → user_data en tabla/proyecto de prueba.
 - [ ] 🔍 Re-barrido XSS de los ~190 `innerHTML` (el último pase completo fue v1.3; la app creció mucho desde entonces)
+- [ ] 📸 Fotos/avatares a Storage ROTOS (cazado 2026-07-12): `uploadPhotoToStorage` sube a la carpeta `${clientId}/` con `x-upsert:true`, pero (a) el `clientId` es el ID LEGACY del asesorado (`mpiru2b…`), NO su `auth.uid()` (uuid) → la policy INSERT `folder[1]=auth.uid()` NUNCA coincide; (b) el upsert necesitaría policy SELECT (falta, mismo patrón que el bug de push); (c) el coach no puede subir fotos de sus asesorados. Impacto BAJO: cae a base64 (funciona; ~109 kB de bloat, ruido en logs). **DECISIÓN Camilo 2026-07-12: hacerlo BIEN, nada de aflojar la policy a "cualquier autenticado" (pañito) → re-arquitectura: rutas por `uuid` + propiedad real (subidas del coach vía edge function con service role, RLS estricta).** Preferible tocarlo cuando se trabaje el módulo de fotos en la app.
 - [ ] 🧹 `EX_IMG_NAME`/`exIcon`/`exVidSrc`: lookup por nombre hereda del prototipo (un custom llamado `constructor`/`__proto__` da 404 inofensivo de imagen) → `Object.hasOwn` o `Object.create(null)` (hallazgo Julián v315)
 - [ ] 📱 Cobertura iOS/Safari: hay al menos un usuario real en iPhone (telemetría 2026-07-06) y todas las pruebas son Chrome/Android
 
@@ -701,6 +702,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-11 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v324** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-12 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v325** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: v322 fix — las notifs PROGRAMADAS para asesorados le llegaban al coach (bucle local en fireNotifAt eliminado) · v321 chat del coach de pantalla completa + leído sincronizado · v320 fix notificaciones del asesorado).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: **v325 auto-actualización SEGURA de la app** (la página decide cuándo recargar, nunca encima de un entreno) · **fix RAÍZ del cero-suscritos push** — faltaba la policy SELECT en `push_subscriptions` (migración `push_sel_own`), verificado end-to-end · v324 el SW no recargaba la página vieja tras un deploy).*

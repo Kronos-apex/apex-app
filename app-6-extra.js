@@ -13,13 +13,57 @@ function initPWA(){
 
   // Manifest: ya apunta a /apex-app/manifest.json estático (no se sobreescribe)
 
+  // ¿Es un momento SEGURO para recargar y aplicar una versión nueva? Diferir si recargar
+  // perdería trabajo: timer de entreno vivo, modal/overlay abierto (coach editando rutina) o
+  // el usuario escribiendo. Las series marcadas viven en localStorage y sobreviven; un modal a
+  // medio llenar, no. Helper PURO (no depende del SW) → siempre definido y testeable (v325).
+  window._aviUpdateBusy=()=>{
+    const ae=document.activeElement;
+    return !!((typeof _gmLiveTimer==='function' && _gmLiveTimer())
+      || (ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA'))
+      || document.querySelector('.mdbg.on')
+      || (typeof AVINAV!=='undefined' && AVINAV.layers>0));
+  };
+
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   if('serviceWorker' in navigator && isSecure){
     navigator.serviceWorker.register('/apex-app/sw.js',{scope:'/apex-app/'})
       .then(reg=>{
         log('AVI SW ✅');
         window._swReg=reg;
-        reg.addEventListener('updatefound',()=>{ const nw=reg.installing; if(!nw)return; nw.addEventListener('statechange',()=>{ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function') toast('🔄 Nueva versión de AVI lista. Ciérrala y ábrela para actualizar.'); }); });
+        // ── AUTO-ACTUALIZACIÓN SEGURA (v325) ─────────────────────────────────
+        // La PÁGINA decide CUÁNDO aplicar una versión nueva, nunca el SW a la fuerza
+        // (v324 recargaba TODAS las pestañas al activar → podía cortar un entreno). Reglas:
+        // (1) nunca aplicar con un timer de entreno vivo (_gmLiveTimer) ni mientras el usuario
+        //     escribe en un campo (las series marcadas YA viven en localStorage → un reload en
+        //     reposo no pierde nada; un timer corriendo, sí);
+        // (2) detección RÁPIDA: reg.update() al volver a la app y cada 20 min (no esperar 24h);
+        // (3) recargar UNA sola vez, y SOLO cuando nosotros pedimos el update (no en la 1ª visita).
+        const _applyUpdate=()=>{ if(reg.waiting){ window._aviWantReload=true; reg.waiting.postMessage({type:'SKIP_WAITING'}); } };
+        const _tryApplyUpdate=()=>{
+          if(!reg.waiting) return;                                   // no hay versión esperando
+          if(window._aviUpdateBusy()){ window._aviUpdatePending=true; return; }
+          window._aviUpdatePending=false; _applyUpdate();
+        };
+        window._aviTryApplyUpdate=_tryApplyUpdate;
+        if(reg.waiting) _tryApplyUpdate();                           // update ya esperando al cargar
+        reg.addEventListener('updatefound',()=>{
+          const nw=reg.installing; if(!nw)return;
+          nw.addEventListener('statechange',()=>{
+            if(nw.state==='installed' && navigator.serviceWorker.controller) _tryApplyUpdate();
+          });
+        });
+        // Recargar cuando el SW nuevo toma control — SOLO si el update lo pedimos nosotros
+        // (evita el reload espurio de la 1ª visita, cuando clients.claim dispara controllerchange).
+        navigator.serviceWorker.addEventListener('controllerchange',()=>{
+          if(!window._aviWantReload || window._aviReloading) return;
+          window._aviReloading=true; location.reload();
+        });
+        const _checkUpdate=()=>{ try{ reg.update(); }catch(_e){} };
+        document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ _checkUpdate(); _tryApplyUpdate(); } });
+        window.addEventListener('focus',_tryApplyUpdate);
+        setInterval(_checkUpdate, 20*60*1000);                      // buscar versión nueva cada 20 min
+        setInterval(()=>{ if(window._aviUpdatePending) _tryApplyUpdate(); }, 20*1000); // aplicar el diferido al terminar el timer
         // Limpiar registraciones viejas (blob URL SWs con scope /)
         navigator.serviceWorker.getRegistrations().then(regs=>{
           regs.forEach(r=>{if(r.scope!==reg.scope)r.unregister();});
