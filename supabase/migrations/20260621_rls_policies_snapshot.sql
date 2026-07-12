@@ -1,3 +1,6 @@
+-- ⚠️ DESACTUALIZADO — SUPERSEDIDO por 20260712_rls_snapshot_refresh.sql (2026-07-12).
+-- Este archivo nombra policies que ya NO existen (push_write_insert/update). Se conserva
+-- como historia; para el estado ACTUAL y autoritativo usar el snapshot de 2026-07-12.
 -- ════════════════════════════════════════════════════════════════════════
 -- SNAPSHOT de RLS — versiona el estado REAL de las policies en producción
 -- (proyecto eoebhrxbokyllqalyecj). Generado desde pg_policies en la auditoría
