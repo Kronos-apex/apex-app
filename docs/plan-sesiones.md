@@ -127,7 +127,15 @@ sensación "de app"; (b) `font-variant-numeric: tabular-nums` en cronómetros y 
 - **Verificación:** suite completa (toca zona del guiado por el punto 1) + hook +
   shots. Sin AVI_NEWS.
 
-## 📋 SESIÓN D — Simulacro de RESTORE (crítico, nunca ensayado)
+## ✅ SESIÓN D — Simulacro de RESTORE — HECHA (2026-07-12) → runbook en `docs/runbook-restore.md`
+
+> Ambas capas probadas restaurando en tabla de prueba aislada + validando integridad vs prod
+> viva (24 filas · 89 rutinas · 140 sesiones, idénticas). Deuda menor: el Escenario B (recrear
+> proyecto + cuentas auth) no se ejecutó punta a punta — ensayar en proyecto de PRUEBA. Texto original abajo.
+
+<details><summary>Plan original de la sesión D</summary>
+
+### 📋 SESIÓN D — Simulacro de RESTORE (crítico, nunca ensayado)
 
 **Objetivo:** probar que los backups sirven. "Un backup sin restore probado no es
 un backup" (auditoría 2026-07-07 — sigue pendiente y es el mayor riesgo real).
@@ -140,6 +148,8 @@ un backup" (auditoría 2026-07-07 — sigue pendiente y es el mayor riesgo real)
 - **Trampas:** riesgo de sync offline-first (CLAUDE.md ☁️): NUNCA escribir a las
   tablas reales; service role key vive en `~/.avi/service-role.key`. Coordinar con
   Camilo la ventana (aunque sea solo lectura de prod, mejor avisado).
+
+</details>
 
 ## 📋 SESIÓN E — Re-barrido XSS (~190 innerHTML)
 
