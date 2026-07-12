@@ -25,10 +25,11 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
    - Guard `prefers-reduced-motion` para el nuevo transform. NO se tocó el guiado (suite 53 intacta).
    - **Pendiente de esta primitiva (radar, fase superficie):** estandarizar las otras 19 `transition:all` y 28 `:active` ad-hoc al token `--ease-out` — superficie por superficie; varias en zona caliente (`gm-*`, `cntab`, `sbi`, `sbout`). NO hacerlo en bloque (regresiones + zona caliente). Emil: nunca entrar desde `scale(0)` (arrancar en `.95`+opacity) — aplica al diseñar entradas nuevas.
 
-2. **Sistema de elevación/superficie coherente en AMBOS temas.**
-   Definir 3 niveles de superficie (`--surface-0/1/2`) con su borde+sombra por tema. Hoy en
-   claro las tarjetas se apoyan solo en `--sh` suave y el borde `--br` casi no separa (audit H5).
-   Subir el borde de tarjetas a `--br2` y estandarizar la elevación.
+2. ✅ **Sistema de elevación/superficie coherente en AMBOS temas.** **HECHO avi-v330 (2026-07-12).**
+   - Modelo de 3 niveles codificado en un comentario del CSS: **N0** fondo (`--bg`) · **N1** tarjeta (`--w` + borde `--br2` + `--sh`) · **N2** modal (`--w` + `--sh2`, sin borde). Los modales ya tenían `--sh2` por tema.
+   - **Fix H5:** borde de tarjeta `--br`→`--br2` en las 3 primitivas del sistema (`.card`, `.cli`, `.exc`). En claro `#E5E5DF` apenas separaba del fondo crema; `#D0D0C8` define con nitidez. En oscuro el canto verde claro `--br2` da separación coherente.
+   - **Decidido por preview de variantes A/B/C × 2 temas** (tokens exactos): B (borde `--br2`) ganó sobre C (borde + sombra en capas) — C añadía peso/complejidad y no rinde en oscuro (las sombras no se ven). Divisores internos (`.ch`) se quedan en `--br` a propósito (jerarquía: exterior fuerte, interior suave).
+   - **Pendiente (fase superficie):** subir al modelo las tarjetas de COMPONENTE (`.qw-card`, `.sescard`, `.nutri-card`, etc.) y las superficies recesadas (pills/step-boxes con `--bg`+`--br`). El token `--surface` (definido, 0 usos) queda para consolidar ahí. NO en bloque.
 
 3. **Ritmo tipográfico + cifras tabulares donde la fuente lo soporte.**
    Escala tipográfica consistente. `font-variant-numeric:tabular-nums` en stats/timers **de fuentes
