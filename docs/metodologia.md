@@ -58,7 +58,8 @@ Ninguna reemplaza a la otra; cada una atrapa una clase distinta de fallo.
 | **4. Suite guiada** (53 checks) | regresión en la ZONA CALIENTE (entreno guiado, timers, navegación) | **si el cambio toca CSS/JS del guiado** | 53/53 |
 | **5. Harness por feature** (`scripts/e2e/_verify-vNNN.mjs`) | **el bug específico de ESTA feature**, con shots revisados a ojo | uno nuevo por cada feature | verde + shots mirados, no solo "corrió" |
 | **6. Subagentes QA** (Julián estático + Lucas funcional) | lo que un humano crítico ve y un script no: sobrepromesas, edge cases de UX, código huérfano | **antes de todo deploy** (§🤖 pipeline) | ambos 🟢 o no se despliega |
-| **7. Verificación en prod** (`curl` a Pages con nocache) | "¿de verdad salió?" — Pages tarda en propagar | después del push, poll hasta ver `?v=NNN` + `avi-vNNN` | **NUNCA** decir "está en producción" sin esto |
+| **7a. Verificación en prod — archivo** (`curl` a Pages con nocache) | "¿de verdad salió el archivo?" — Pages tarda en propagar | después del push, poll hasta ver `?v=NNN` + `avi-vNNN` | **NUNCA** decir "está en producción" sin esto |
+| **7b. Verificación en prod — arranque** (`node scripts/e2e/_prodcheck.mjs <vNNN>`) | "¿la app ARRANCA sin errores contra la URL real?" (el curl solo ve el archivo, no que boote) | después del 7a; headless contra prod, espera el boot REAL (`_aviUpdateBusy`, no el DOM), afirma versión + login/core + cero errores JS | adoptado 2026-07-12; "está en producción" = 7a **Y** 7b verdes |
 
 ### 1.3 Cómo se construye un harness por feature (el corazón de la caza)
 
