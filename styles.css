@@ -198,7 +198,13 @@ html[data-theme="light"] .mta {
 .psub{font-size:13px;color:var(--t2);margin-top:2px}
 
 /* ── CARDS ── */
-.card{background:var(--w);border:1px solid var(--br);border-radius:var(--rlg);box-shadow:var(--sh)}
+/* ── FASE 0 · primitiva #2 (avi-v330): sistema de elevación de 3 niveles ──
+   N0 fondo (--bg) · N1 tarjeta (--w + borde --br2 + --sh) · N2 modal (--w + --sh2, sin borde).
+   El borde de tarjeta usa --br2 (no --br): en claro #E5E5DF apenas separaba del fondo crema
+   (audit H5); #D0D0C8 la define con nitidez y en oscuro da un canto verde claro coherente.
+   Los divisores INTERNOS (.ch) siguen en --br a propósito: exterior fuerte, interior suave.
+   Las tarjetas de componente (.qw-card/.sescard/.nutri-card…) suben en su fase de superficie. */
+.card{background:var(--w);border:1px solid var(--br2);border-radius:var(--rlg);box-shadow:var(--sh)}
 .ch{padding:13px 18px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between}
 .ctitle{font-size:13px;font-weight:700}
 .cb{padding:15px 18px}
@@ -355,7 +361,7 @@ html[data-theme="light"] .mta {
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 
 /* ── CLIENT ITEMS ── */
-.cli{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--w);border:1px solid var(--br);border-radius:var(--r);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);box-shadow:var(--sh);margin-bottom:7px}
+.cli{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--w);border:1px solid var(--br2);border-radius:var(--r);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);box-shadow:var(--sh);margin-bottom:7px}
 .cli:hover{border-color:var(--g2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(45,106,79,.10)}
 .cli:active{transform:scale(.985)}
 /* Press-feedback FASE 0 (avi-v329): respeta a quien pidió menos movimiento. */
@@ -506,7 +512,7 @@ html[data-theme="light"] .mta {
 
 /* ── EX LIBRARY ── */
 .exgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.exc{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);padding:13px;box-shadow:var(--sh);transition:all .15s}
+.exc{background:var(--w);border:1.5px solid var(--br2);border-radius:var(--r);padding:13px;box-shadow:var(--sh);transition:all .15s}
 .exc:hover{border-color:var(--g2)}
 
 /* ── MODAL ── */
