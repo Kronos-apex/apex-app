@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=333">
+<link rel="stylesheet" href="styles.css?v=334">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -644,10 +644,10 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="cn-account-card"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
 
-      <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
-      <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="apple">🥗</span> Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()"><span class="t-ic plain" data-ic="phone" data-ic-size="13">📲</span> WhatsApp</button></div></div>
-        <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
+      <!-- Datos del asesorado (identidad) — lidera el perfil (reorden v334) -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="clipboard">📋</span> Mis datos</div></div>
+        <div class="cb" id="cn-prof-data" style="display:flex;flex-direction:column;gap:9px"></div>
       </div>
 
       <!-- Personal records (se oculta hasta tener récords) -->
@@ -656,6 +656,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="cb" id="cn-pr-list">
           <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords</div>
         </div>
+      </div>
+
+      <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
+      <div class="card" style="margin-bottom:12px" id="cn-nut-card">
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="apple">🥗</span> Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()"><span class="t-ic plain" data-ic="phone" data-ic-size="13">📲</span> WhatsApp</button></div></div>
+        <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
       </div>
 
       <!-- Seguimiento personal: peso/medidas/fotos. Colapsado por defecto (progressive
@@ -703,14 +709,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           </div>
         </div>
       </div>
-      <!-- Profile data -->
-      <div class="card">
-        <div class="ch"><div class="ctitle">Mis datos</div></div>
-        <div class="cb" id="cn-prof-data" style="display:flex;flex-direction:column;gap:9px"></div>
-      </div>
       <!-- Apariencia -->
       <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle">Apariencia</div></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="contrast">🎨</span> Apariencia</div></div>
         <div class="cb" style="padding-top:4px">
           <div style="display:flex;gap:7px">
             <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
@@ -721,7 +722,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <!-- Tamaño de texto (accesibilidad) — por dispositivo, NO pinch-zoom -->
       <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle">Tamaño de texto</div></div>
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="sliders">🔠</span> Tamaño de texto</div></div>
         <div class="cb" style="padding-top:4px">
           <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Si las letras se ven pequeñas, agrándalas. Se recuerda en este dispositivo.</div>
           <div style="display:flex;gap:7px">
@@ -1099,18 +1100,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=333"></script>
-<script src="muscle-map.js?v=333"></script>
-<script src="exercise-muscles.js?v=333"></script>
+<script src="avi-core.js?v=334"></script>
+<script src="muscle-map.js?v=334"></script>
+<script src="exercise-muscles.js?v=334"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=333"></script>
-<script src="app-2-login.js?v=333"></script>
-<script src="app-3-coach.js?v=333"></script>
-<script src="app-4-entreno.js?v=333"></script>
-<script src="app-5-salud.js?v=333"></script>
-<script src="app-6-extra.js?v=333"></script>
+<script src="app-1-infra.js?v=334"></script>
+<script src="app-2-login.js?v=334"></script>
+<script src="app-3-coach.js?v=334"></script>
+<script src="app-4-entreno.js?v=334"></script>
+<script src="app-5-salud.js?v=334"></script>
+<script src="app-6-extra.js?v=334"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
