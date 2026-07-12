@@ -1,0 +1,64 @@
+<!--
+  AVI — Plantilla de correo "Confirm signup" (Supabase Auth).
+  Objetivo: que un usuario NO técnico confíe y confirme. Problema real (2026-07-12): un
+  usuario vio el enlace crudo larguísimo de Supabase, le dio MIEDO y no abrió la app.
+  Solución: correo de MARCA + botón grande (nunca el muro de caracteres) + copy que tranquiliza
+  (tono Sofía) + educación ("los enlaces de seguridad son largos a propósito, es normal").
+  Email-safe: tablas + estilos inline + fuentes web-safe (las custom no cargan en email).
+  Variable de Supabase: {{ .ConfirmationURL }} (el enlace de confirmación).
+  Aplicar en: Supabase → Authentication → Email Templates → "Confirm signup" → pegar este HTML.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F0;margin:0;padding:24px 0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:18px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.06)">
+
+      <!-- Header de marca -->
+      <tr><td style="background:linear-gradient(135deg,#2D6A4F,#40916C);padding:34px 32px 28px;text-align:center">
+        <div style="font-size:30px;font-weight:800;letter-spacing:2px;color:#FFFFFF;font-family:Georgia,serif">AVI</div>
+        <div style="font-size:12px;color:#D8F3DC;letter-spacing:.5px;margin-top:4px">Entrenamiento con nombre propio</div>
+      </td></tr>
+
+      <!-- Cuerpo -->
+      <tr><td style="padding:32px 32px 8px">
+        <div style="font-size:21px;font-weight:800;color:#1A1A1A;margin-bottom:10px">¡Ya casi estás! 💪</div>
+        <div style="font-size:15px;line-height:1.55;color:#4A4A4A">
+          Bienvenido a AVI. Solo falta un paso: confirma tu correo para activar tu cuenta y empezar a entrenar.
+        </div>
+      </td></tr>
+
+      <!-- Botón -->
+      <tr><td style="padding:26px 32px 10px" align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td style="border-radius:14px;background:linear-gradient(135deg,#2D6A4F,#40916C)">
+            <a href="{{ .ConfirmationURL }}" target="_blank"
+               style="display:inline-block;padding:16px 40px;font-size:16px;font-weight:800;color:#FFFFFF;text-decoration:none;border-radius:14px">
+              Confirmar mi cuenta
+            </a>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Tranquilizador (la clave del fix) -->
+      <tr><td style="padding:14px 32px 30px">
+        <div style="background:#F9F9F6;border:1px solid #E5E5DF;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.5;color:#6A6A6A">
+          🔒 <b style="color:#4A4A4A">Es seguro.</b> Este enlace es solo para ti y se desactiva en 24 horas.
+          Si el botón no abre, hay un enlace de respaldo abajo — <b>es normal que sea largo</b>: así funcionan
+          los enlaces de seguridad. Si no creaste una cuenta en AVI, ignora este correo con tranquilidad.
+        </div>
+      </td></tr>
+
+      <!-- Fallback discreto (muted, después de tranquilizar) -->
+      <tr><td style="padding:0 32px 28px">
+        <div style="font-size:11px;color:#B0B0B0;line-height:1.5;word-break:break-all">
+          Enlace de respaldo: <a href="{{ .ConfirmationURL }}" style="color:#9AA">{{ .ConfirmationURL }}</a>
+        </div>
+      </td></tr>
+
+      <!-- Pie -->
+      <tr><td style="background:#F9F9F6;border-top:1px solid #E5E5DF;padding:18px 32px;text-align:center">
+        <div style="font-size:12px;color:#B0B0B0">AVI · Entrenamiento personal · Guaduas, Colombia</div>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
