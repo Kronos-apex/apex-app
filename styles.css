@@ -576,6 +576,12 @@ html[data-theme="light"] .mta {
 .cntab-badge::after{content:attr(data-count);position:absolute;top:-4px;right:-8px;background:var(--rd);color:white;font-size:9px;font-weight:800;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:14px;display:none}
 .cntab-badge[data-count]:not([data-count="0"])::after{display:block}
 .cnbody{flex:1;overflow-y:auto}
+/* El botón flotante "Instalar app" (#install-banner, position:fixed bottom:84px) tapaba el
+   final del contenido en las pantallas del asesorado. Mientras está visible (solo si NO está
+   instalada la app), reservar hueco al final del scroller para que la última tarjeta quede por
+   encima. :has() → cero cambios a la lógica de instalación; degrada elegante si no hay soporte.
+   (Pase 2 de la superficie del perfil, avi-v335.) */
+body:has(#install-banner[style*="flex"]) .cnbody{padding-bottom:64px}
 .cnp{display:none;padding:16px 15px 8px}
 .cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 

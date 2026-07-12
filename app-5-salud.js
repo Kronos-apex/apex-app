@@ -496,7 +496,7 @@ function renderMedidasClient(clientId){
   if(isFreeClient(DB.clients.find(x=>x.id===clientId))){listEl.innerHTML=premiumLockHTML('Medidas corporales','Registra cintura, cadera y más, y míralas evolucionar.');if(chartWrap)chartWrap.style.display='none';return;}
   const entries=(DB.medidas||{})[clientId]||[];
   if(!entries.length){
-    listEl.innerHTML='Sin medidas registradas. Toca "+ Registrar" para empezar.';
+    listEl.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('ruler',32):'📏'}</div><div class="etxt">Aún no has registrado medidas</div><div class="esub">Anota cintura, cadera y más — así ves cómo tu cuerpo cambia con el tiempo.</div></div>`;
     if(chartWrap)chartWrap.style.display='none';return;
   }
   if(chartWrap){
@@ -714,7 +714,7 @@ function renderPhotosClient(clientId){
   if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
   const photos=(DB.photos||{})[clientId]||[];
   if(!photos.length){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">A\u00fan no has subido fotos.</div>';return;
+    con.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('camera',32):'\ud83d\udcf7'}</div><div class="etxt">A\u00fan no tienes fotos de progreso</div><div class="esub">La primera es la m\u00e1s importante: marca tu punto de partida.</div></div>`;return;
   }
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
