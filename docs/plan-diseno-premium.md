@@ -19,12 +19,11 @@ premium, cada pantalla nueva nace premium sin esfuerzo extra.
 
 Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca hay cohesión.
 
-1. **Movimiento como token + press-feedback global** *(el lever #1 "se siente premium" — Emil).*
-   Hoy los tokens (`--r`, `--sh`) NO tienen easing ni duración → cero feedback táctil.
-   - Agregar: `--ease-out: cubic-bezier(.23,1,.32,1)`, `--ease-io`, `--dur-fast:160ms`, `--dur:220ms`.
-   - Regla global: `.btn,.bp,.cli,[role=button]{transition:transform var(--dur-fast) var(--ease-out)}` + `:active{transform:scale(.97)}`.
-   - Reglas Vercel: **nunca `transition:all`**, animar SOLO `transform`/`opacity`, respetar `prefers-reduced-motion`. Emil: nunca entrar desde `scale(0)` (arrancar en `.95`+opacity).
-   - ⚠️ zona caliente: el guiado tiene su propia coreografía de timers → no pisar; suite 53 obligatoria.
+1. ✅ **Movimiento como token + press-feedback** *(el lever #1 "se siente premium" — Emil).* **HECHO avi-v329 (2026-07-12).**
+   - Tokens en `:root` base: `--ease-out:cubic-bezier(.23,1,.32,1)`, `--ease-io:cubic-bezier(.4,0,.2,1)`, `--dur-fast:160ms`, `--dur:220ms`. Disponibles para toda fase futura.
+   - **Corrección al plan:** AVI SÍ tenía press-feedback, pero disperso (28 reglas `:active{transform}` ad-hoc con escalas inconsistentes .94–.99). El gap real eran las 2 clases *workhorse* `.btn` y `.cli` — sin `:active` y con `transition:all`. Se aplicó ahí: `transition:all`→props explícitas con `--ease-out` + `.btn:active{scale(.97)}`, `.cli:active{scale(.985)}` (tras su `:hover`).
+   - Guard `prefers-reduced-motion` para el nuevo transform. NO se tocó el guiado (suite 53 intacta).
+   - **Pendiente de esta primitiva (radar, fase superficie):** estandarizar las otras 19 `transition:all` y 28 `:active` ad-hoc al token `--ease-out` — superficie por superficie; varias en zona caliente (`gm-*`, `cntab`, `sbi`, `sbout`). NO hacerlo en bloque (regresiones + zona caliente). Emil: nunca entrar desde `scale(0)` (arrancar en `.95`+opacity) — aplica al diseñar entradas nuevas.
 
 2. **Sistema de elevación/superficie coherente en AMBOS temas.**
    Definir 3 niveles de superficie (`--surface-0/1/2`) con su borde+sombra por tema. Hoy en

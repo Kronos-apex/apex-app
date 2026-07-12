@@ -705,6 +705,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-12 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v328** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-12 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v329** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: **v328 re-barrido XSS** (auditó Julián; el nombre de ejercicio custom llegaba a innerHTML sin esc() en los 2 builders — fix + harness `_verify-xss.mjs` con control negativo) · **v327 fix del guard de auto-update** · **v326 adopción push — activar notificaciones al TERMINAR el entreno**).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: **v329 elevación PREMIUM FASE 0 #1** (tokens de movimiento `--ease-out`/`--dur` + press-feedback en las 2 clases workhorse `.btn`/`.cli`; arranca `docs/plan-diseno-premium.md`) · **v328 re-barrido XSS** (auditó Julián; el nombre de ejercicio custom llegaba a innerHTML sin esc() en los 2 builders — fix + harness `_verify-xss.mjs` con control negativo) · **v327 fix del guard de auto-update**).*
