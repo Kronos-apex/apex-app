@@ -36,8 +36,10 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
    - **Escala tipográfica: tokens en `:root`** (`--fs-2xs:10 … --fs-4xl:30`, base 13) destilados de los tamaños REALES dominantes de AVI (13/12/11 = 43% de 425 usos). Es la "regla" a la que las fases de superficie ajustan cada pantalla. Tokenizadas las primitivas de texto (`.btn/.tag/.psub/.ctitle/.llbl/.ilbl/.bsm/.etxt/.esub`) como no-op exacto.
    - **Hallazgo:** las primitivas ya estaban en ritmo limpio; la inconsistencia (38 tamaños, oddballs 12.5/13.5/…) vive en el styling DE COMPONENTES. Barrer los 425 a ciegas = riesgo sin QA → **fase superficie** (radar). `.ptitle` 19px vs escala 18 → reconciliar al pulir esa superficie.
 
-4. **Estados de foco (`:focus-visible`) + táctil ≥44px** (accesibilidad — Vercel).
-   Anillo de foco visible con `--g` para teclado; auditar que ningún control táctil baje de 44px.
+4. ✅ **Estados de foco (`:focus-visible`) + táctil.** **HECHO avi-v332 (2026-07-12).**
+   - `:focus-visible` (anillo `--g2` para teclado) YA existía de una auditoría vieja (styles.css línea 6). Nada que añadir.
+   - Táctil: auditados TODOS los controles < 36px (estándar propio de AVI). Peor caso borrar peso 20×20px; `.ex-tooltip-close` 22px. Primitiva reusable **`.tap`**: expande el ÁREA de toque a ≥40px con overlay `::after` (WCAG 2.5.5) SIN agrandar el ícono ni la altura de la fila (verificado en preview: ícono 11×14px, fila 32px, hit-test a 15px del centro = botón). Aplicada a `deleteBodyWeight` (+`aria-label`). `.ex-tooltip-close` (botón visible con fondo) → 34px real.
+   - **Diferido (radar, superficie del coach):** micro-botones del constructor de rutinas (`moveEx`/`rfDelEx`/`linkBiset` 28-30px, `cex-reorder`/`tplExs` 26px) — fila densa que en 360px ya va apretada; el cluster se rediseña en su superficie, no a ciegas.
 
 5. **Sistema de iconografía SVG (matar los emojis funcionales).**
    AVI ya tiene `aviIcon` (47 íconos). Extenderlo a TODO control funcional (el mood-selector del
