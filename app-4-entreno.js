@@ -1456,10 +1456,30 @@ function showWorkoutFinish(routine,stats){
   // v313 (estudio, mejora 2): datos para la imagen compartible del cierre.
   _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
+  renderWfPushNudge(); // v325: ofrecer activar notificaciones en el momento de máximo compromiso
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
   document.body.style.overflow='hidden';
   wfConfetti();
+}
+// v325 (adopción push, palanca #1): al TERMINAR el entreno, ofrecer activar notificaciones al
+// asesorado que aún no las tiene (permiso 'default') — el momento de máximo compromiso. Reusa
+// aviAskPush/aviSnoozePush y RESPETA el mismo snooze de 7 días de la tarjeta de "Hoy" (no
+// duplica el fastidio). 'denied' y 'granted' no se molestan aquí (denied → instrucciones en
+// "Hoy"; granted → ya está). El coach nunca lo ve (su nudge vive en su home).
+function renderWfPushNudge(){
+  const el=document.getElementById('wf-push-nudge'); if(!el) return;
+  el.innerHTML='';
+  const cid=_pushCtx&&_pushCtx.clientId;
+  if(!cid||cid==='_coach'||typeof Notification==='undefined'||!('PushManager' in window)) return;
+  if(Notification.permission!=='default') return;
+  let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze_'+cid)||'0',10)||0; }catch(_e){}
+  if(Date.now()-snooze<7*86400000) return;
+  const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
+  el.innerHTML=`<div class="wf-push">
+    <div class="wf-push-txt"><b>${bell} No te pierdas tu próximo entreno</b>Te aviso en tus días, con tips de hidratación y recuperación. Sin spam — cuando quieras lo apagas.</div>
+    <div class="wf-push-btns"><button type="button" class="wf-push-on" onclick="aviAskPush().then(renderWfPushNudge)">Activar recordatorios</button><button type="button" class="wf-push-later" onclick="aviSnoozePush();renderWfPushNudge()">Ahora no</button></div>
+  </div>`;
 }
 // ── Compartir el cierre (v313, estudio de interfaz mejora 2, aprobada por Camilo) ──
 // Imagen 1080×1920 (formato historia/estado de WhatsApp) dibujada en canvas con la marca:

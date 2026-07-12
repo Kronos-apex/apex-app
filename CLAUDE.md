@@ -702,6 +702,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-12 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v325** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-12 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v326** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
-*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: **v325 auto-actualización SEGURA de la app** (la página decide cuándo recargar, nunca encima de un entreno) · **fix RAÍZ del cero-suscritos push** — faltaba la policy SELECT en `push_subscriptions` (migración `push_sel_own`), verificado end-to-end · v324 el SW no recargaba la página vieja tras un deploy).*
+*Hitos por sesión: **`docs/bitacora.md`** (los 3 más recientes: **v326 adopción push — activar notificaciones al TERMINAR el entreno** (momento de máximo compromiso) · **v325 auto-actualización SEGURA de la app** (la página decide cuándo recargar, nunca encima de un entreno) · **fix RAÍZ del cero-suscritos push** — faltaba la policy SELECT en `push_subscriptions`, verificado end-to-end).*
