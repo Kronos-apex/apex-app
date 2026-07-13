@@ -1588,6 +1588,7 @@ const AVI_ICONS={
   arrowup:'<path d="M12 19.5V5"/><path d="M5.8 11.2L12 5l6.2 6.2"/>',
   timer:'<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5v-4"/><path d="M10 2.5h4"/><path d="M12 2.5v2"/>',
   check:'<path d="M4.5 12.8l5 5L19.5 7"/>',
+  play:'<path d="M8 5.6v12.8l10-6.4z"/>',
   barbell:'<path d="M2.5 12h19"/><path d="M6.2 8v8"/><path d="M17.8 8v8"/><path d="M3.6 9.6v4.8"/><path d="M20.4 9.6v4.8"/>',
   pencil:'<path d="M15.4 4.4l4.2 4.2L8.2 20 3 21l1-5.2L15.4 4.4z"/><path d="M13.6 6.2l4.2 4.2"/>',
   help:'<circle cx="12" cy="12" r="8"/><path d="M9.7 9.6a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.1 1-1.1 1.9"/><path d="M12 16.6h.01"/>',
