@@ -1602,6 +1602,7 @@ const AVI_ICONS={
   sliders:'<path d="M4 7h9.5"/><circle cx="17" cy="7" r="2.3"/><path d="M20 12h-9.5"/><circle cx="7" cy="12" r="2.3"/><path d="M4 17h9.5"/><circle cx="17" cy="17" r="2.3"/>',
   trash:'<path d="M4.5 6.5h15"/><path d="M8.5 6.5V4.9a1.4 1.4 0 0 1 1.4-1.4h4.2a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M6.6 6.5l.8 12.9a1.7 1.7 0 0 0 1.7 1.6h5.8a1.7 1.7 0 0 0 1.7-1.6l.8-12.9"/><path d="M10 10.5v6"/><path d="M14 10.5v6"/>',
   flag:'<path d="M6 21V4"/><path d="M6 4.5h11.5L15 8l2.5 3.5H6"/>',
+  folder:'<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
   card:'<rect x="3" y="5.5" width="18" height="13" rx="2.4"/><path d="M3 9.8h18"/><path d="M6.5 14.5h4"/>',
   // Medallas del gamif (v312): el "oro" lo pone el chip .gx-bic; el glifo es de línea.
   star:'<path d="M12 3.2l2.5 5.4 5.9.6-4.4 4 1.2 5.8L12 16l-5.2 3 1.2-5.8-4.4-4 5.9-.6L12 3.2z"/>',
