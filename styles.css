@@ -733,6 +733,7 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 .sroom-cmp.up{background:var(--gl);color:var(--gt);border:1px solid var(--g2)}
 .sroom-cmp.down{background:var(--orl);color:var(--or);border:1px solid color-mix(in srgb,var(--or) 35%,transparent)}
 .sroom-cmp.flat{background:var(--bg);color:var(--t2);border:1px solid var(--br)}
+.sroom-cmp .sroom-cmp-ic{display:flex;align-items:center;flex-shrink:0}
 .sroom-cmp .sroom-cmp-d{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px}
 .sroom-stat-v{font-size:18px;font-weight:800;color:var(--t1);line-height:1.1;word-break:break-word}
 .sroom-stat-l{font-size:9.5px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}

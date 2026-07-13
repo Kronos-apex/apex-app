@@ -737,11 +737,20 @@ function drawExProgChart(container, points, color, unit){
     </linearGradient></defs>
     <path d="${areaD}" fill="${lineColor}" fill-opacity="0.12"/>
     <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${pts.map((p,i)=>`
+    ${pts.map((p,i)=>{
+      // extremos anclados start/end para que la etiqueta no se salga del borde (patrón v336)
+      const anc=i===0?'start':i===pts.length-1?'end':'middle';
+      const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
+      return `
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${points.length>12?2:3}" fill="${lineColor}"/>
-      ${points.length<=8?`<text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" fill="#B0B0B0">${p.p.dateStr}</text>`:''}
-    `).join('')}
-    ${pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-5).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`).join('')}
+      ${points.length<=8?`<text x="${lx.toFixed(1)}" y="${H-2}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" fill="#B0B0B0">${p.p.dateStr}</text>`:''}`;
+    }).join('')}
+    ${pts.map((p,i)=>{
+      const anc=i===0?'start':i===pts.length-1?'end':'middle';
+      const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
+      const ly=p.y<16?(p.y+12):(p.y-5); // el punto más alto voltea su etiqueta hacia abajo (no se recorta arriba)
+      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" fill="${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
+    }).join('')}
   </svg>`;
 }
 

@@ -326,7 +326,7 @@ function renderPRsInProfile(clientId){
 
 // F3 (v307): chips de estadísticas de las habitaciones — el emoji pasa al SVG de marca
 // equivalente (hereda --sc del chip). Emojis sin ícono propio se quedan como están.
-const _SROOM_IC={'📅':'calendar','🏆':'trophy','🔁':'repeat','📊':'chart','💪':'dumbbell','🏋️':'barbell','🔥':'flame','💧':'droplet','🍽️':'utensils','🥧':'pie','📈':'trend','⬆️':'arrowup','⚡':'bolt','⏱':'timer','✅':'check','📋':'clipboard'};
+const _SROOM_IC={'📅':'calendar','🏆':'trophy','🔁':'repeat','📊':'chart','💪':'dumbbell','🏋️':'barbell','🔥':'flame','💧':'droplet','🍽️':'utensils','🥧':'pie','📈':'trend','📉':'trenddown','➖':'flat','⬆️':'arrowup','⚡':'bolt','⏱':'timer','✅':'check','📋':'clipboard'};
 function _sroomIc(e){const n=_SROOM_IC[e];return (n&&typeof aviIcon==='function')?aviIcon(n,18):e;}
 
 function renderClientProfile(client){
@@ -1853,7 +1853,7 @@ function openSessionRoom(clientId,sid){
     const cls=pd>=2?'up':pd<=-2?'down':'flat';
     const ic=cls==='up'?'📈':cls==='down'?'📉':'➖';
     const txt=cls==='flat'?'Mismo volumen que la vez anterior de esta rutina':`${dv>0?'Subiste':'Bajaste'} el volumen vs la vez anterior de esta rutina`;
-    cmpHTML=`<div class="sroom-cmp ${cls}"><span>${ic}</span><span>${txt}</span><span class="sroom-cmp-d">${dv>0?'+':''}${dv.toLocaleString()} kg</span></div>`;
+    cmpHTML=`<div class="sroom-cmp ${cls}"><span class="sroom-cmp-ic">${_sroomIc(ic)}</span><span>${txt}</span><span class="sroom-cmp-d">${dv>0?'+':''}${dv.toLocaleString()} kg</span></div>`;
   }
   let prHTML='';
   const prs=s.prs||[];
