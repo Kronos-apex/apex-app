@@ -2747,8 +2747,55 @@ function openBackup(){
 }
 function om(id){document.getElementById(id).classList.add('on')}
 function cm(id){document.getElementById(id).classList.remove('on')}
-document.querySelectorAll('.mdbg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('on')}));
+// Cierre por click en el FONDO (tap-fuera) — DELEGADO en document para cubrir TODOS los .mdbg,
+// incluidos los declarados DESPUÉS de este <script> (m-qwcfg/m-notif/m-nut/m-med/m-delacct/
+// m-payment/m-photos). El binding por-elemento anterior (`querySelectorAll('.mdbg').forEach`)
+// corría en tiempo de PARSEO y no veía esos modales tardíos → el tap-fuera no los cerraba
+// (bug cazado y reproducido 2026-07-13). La delegación es inmune al orden de declaración.
+document.addEventListener('click',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('mdbg')&&t.classList.contains('on'))t.classList.remove('on');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mdbg.on').forEach(m=>m.classList.remove('on'))});
+
+// ── Accesibilidad de modales (Grupo D) ──────────────────────────────────────────────
+// Al ABRIR, el foco entra al diálogo (enfoca el contenedor .md, NO un input → no dispara el
+// teclado en móvil); Tab queda ATRAPADO dentro; al CERRAR, el foco vuelve a quien lo abrió.
+// Un MutationObserver por .mdbg detecta abrir/cerrar por la clase 'on' → cubre TODAS las vías
+// de cierre (cm, tap-fuera, Escape, botón atrás/_aviCloseTopOverlay) sin tocar la navegación.
+// Init tras el parseo completo: los modales tardíos aún no existen cuando corre este script.
+function _initModalA11y(){
+  const _mReturn=new WeakMap();
+  const _focusables=m=>[...m.querySelectorAll('a[href],button:not([disabled]),input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetParent!==null||el===document.activeElement);
+  document.querySelectorAll('.mdbg').forEach(m=>{
+    new MutationObserver(()=>{
+      const open=m.classList.contains('on');
+      if(open&&!m._a11yOpen){
+        m._a11yOpen=true; _mReturn.set(m,document.activeElement);
+        requestAnimationFrame(()=>{
+          if(!m.classList.contains('on'))return;
+          if(m.contains(document.activeElement)&&document.activeElement!==document.body)return; // foco manual del modal ya ganó
+          const md=m.querySelector('.md')||m;
+          if(!md.hasAttribute('tabindex'))md.setAttribute('tabindex','-1');
+          try{md.focus({preventScroll:true});}catch(e){}
+        });
+      }else if(!open&&m._a11yOpen){
+        m._a11yOpen=false;
+        const r=_mReturn.get(m); _mReturn.delete(m);
+        if(r&&document.body.contains(r)&&typeof r.focus==='function'){try{r.focus({preventScroll:true});}catch(e){}}
+      }
+    }).observe(m,{attributes:true,attributeFilter:['class']});
+  });
+  // Tab atrapado dentro del modal de más arriba (último .mdbg.on en el DOM = el recién abierto)
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Tab')return;
+    const open=document.querySelectorAll('.mdbg.on'); if(!open.length)return;
+    const m=open[open.length-1], f=_focusables(m);
+    if(!f.length){e.preventDefault();return;}
+    const first=f[0], last=f[f.length-1];
+    if(!m.contains(document.activeElement)){e.preventDefault();first.focus();return;}
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  },true);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_initModalA11y);else _initModalA11y();
 
 // INIT filter buttons
 buildFilterBtns('exf',exFilter);

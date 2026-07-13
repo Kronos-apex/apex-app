@@ -535,6 +535,10 @@ html[data-theme="light"] .mta {
 .md{background:var(--w);border-radius:18px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:var(--sh2);animation:mIn .2s ease}
 .mdlg{max-width:660px}
 @keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+/* El foco de accesibilidad (Grupo D) enfoca el contenedor .md por programa (tabindex=-1) → sin
+   anillo visible (no es navegación por teclado hacia él). */
+.md:focus{outline:none}
+@media (prefers-reduced-motion:reduce){.md{animation:none}}
 .mdtitle{font-size:17px;font-weight:800;margin-bottom:16px}
 .mdfooter{display:flex;gap:7px;justify-content:flex-end;margin-top:16px}
 
