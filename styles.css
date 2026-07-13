@@ -577,11 +577,13 @@ html[data-theme="light"] .mta {
 .cntab-badge[data-count]:not([data-count="0"])::after{display:block}
 .cnbody{flex:1;overflow-y:auto}
 /* El botón flotante "Instalar app" (#install-banner, position:fixed bottom:84px) tapaba el
-   final del contenido en las pantallas del asesorado. Mientras está visible (solo si NO está
-   instalada la app), reservar hueco al final del scroller para que la última tarjeta quede por
-   encima. :has() → cero cambios a la lógica de instalación; degrada elegante si no hay soporte.
-   (Pase 2 de la superficie del perfil, avi-v335.) */
-body:has(#install-banner[style*="flex"]) .cnbody{padding-bottom:64px}
+   final del contenido en las pantallas del asesorado (.cnbody) Y en el panel del coach (.main —
+   tapaba la última tarjeta de prioritarios). Mientras está visible (solo si NO está instalada la
+   app), reservar hueco al final del scroller para que la última tarjeta quede por encima.
+   :has() → cero cambios a la lógica de instalación; degrada elegante si no hay soporte.
+   (Perfil pase 2 avi-v335 → extendido al home del coach avi-v338.) */
+body:has(#install-banner[style*="flex"]) .cnbody,
+body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .cnp{display:none;padding:16px 15px 8px}
 .cnp.on{display:block;animation:fadeIn .28s cubic-bezier(.22,.68,0,1.2)}
 

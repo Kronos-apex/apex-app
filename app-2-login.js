@@ -1347,14 +1347,14 @@ function renderHome(){
     if(hoy.length){
       todayBanner.style.display='block';
       todayBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">✅ ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
+        <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('check',13):'✅'} ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
         ${hoy.map(({client:c,sessions:sess})=>{
           const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ');
           const hora=new Date(sess[0].date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br);cursor:pointer" onclick="openDetail('${esc(c.id)}')">
             <div style="min-width:0;flex:1">
               <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
-              <div style="font-size:11px;color:var(--t2)">🏋️ ${esc(rutinas||'Entrenó')}${sess.length>1?` · ${sess.length} sesiones`:''}</div>
+              <div style="font-size:11px;color:var(--t2)">${typeof aviIcon==='function'?aviIcon('dumbbell',12):'🏋️'} ${esc(rutinas||'Entrenó')}${sess.length>1?` · ${sess.length} sesiones`:''}</div>
             </div>
             <span style="font-size:11px;color:var(--t3);flex-shrink:0">${esc(hora)}</span>
           </div>`;
@@ -1417,7 +1417,7 @@ function renderHome(){
     if(expiring.length){
       banner.style.display='block';
       banner.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px">⚠️ ${expiring.length} plan${expiring.length>1?'es':''}  vence${expiring.length>1?'n':''} en 5 días</div>
+        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} ${expiring.length} plan${expiring.length>1?'es':''} vence${expiring.length>1?'n':''} en 5 días</div>
         ${expiring.map(c=>{
           const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
           const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
@@ -1500,8 +1500,8 @@ function renderHome(){
     let trainStr='';
     if(lastS){
       const dd=Math.floor((Date.now()-new Date(lastS.date))/(86400000));
-      const col=dd===0?'var(--g)':dd<=2?'var(--bl)':dd<=5?'var(--or)':'var(--rd)';
-      trainStr=`<span style="color:${col};font-size:11px">🏋️ ${dd===0?'Hoy':dd===1?'Ayer':'Hace '+dd+'d'}</span>`;
+      const col=dd<=0?'var(--g)':dd<=2?'var(--bl)':dd<=5?'var(--or)':'var(--rd)';
+      trainStr=`<span style="color:${col};font-size:11px">${typeof aviIcon==='function'?aviIcon('dumbbell',12):'🏋️'} ${dd<=0?'Hoy':dd===1?'Ayer':'Hace '+dd+'d'}</span>`;
     }
     const d=document.createElement('div');d.className='cli';
     d.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div>
