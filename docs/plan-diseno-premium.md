@@ -75,7 +75,7 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
   (foco: animación de entrada coherente, jerarquía, foco atrapado, botón primario claro)
 
 ### Grupo E — Entrada
-- [ ] `#s-login` (primera impresión — H6 dos CTAs iguales) · [ ] `#apex-loading`
+- [x] `#s-login` (primera impresión) · [x] `#apex-loading` — **AUDITADO/HECHO avi-v348**. Harness NUEVO `_shots-login.mjs` (pantalla PRE-login, sin credenciales/rate-limit: loading + bienvenida ±banner + form + wizard). Veredicto honesto (igual que rooms/rutinas): login/loading/wizard YA eran premium (video cinematográfico, wordmark, wizard de registro paso-a-paso, overlay de carga de marca). El H6 "2 CTAs iguales" YA estaba resuelto (Iniciar sesión blanco sólido = primario, Crear cuenta contorno = secundario). ÚNICO defecto real (el 🔴 top del backlog): la píldora flotante `#install-banner` se ENCIMABA sobre el recuadro propio del login `#install-hint` (redundante + tapaba su título) → fix CSS `#s-login.on~#install-banner{display:none!important}` (hermano `~`, el banner va después de `#s-login`); reaparece sola en las pantallas internas (`showScreen` quita `.on`). Verificado sin login: `{onLogin:none, onCoach:flex}`. No se pierde install (el login conserva su recuadro + botón "Instalar AVI" de un toque en Android instalable). **PROGRAMA `plan-diseno-premium.md` COMPLETO: FASE 0 + Grupos A·B·C·E hechos; Grupo D (modales) queda como el único pendiente.**
 
 ---
 
