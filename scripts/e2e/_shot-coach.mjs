@@ -61,7 +61,7 @@ const setup = await ev(`(()=>{try{
   if(panel==='home'){ gp('p-home',document.getElementById('sbi-home'),'Inicio'); if(typeof renderHome==='function')renderHome(); }
   else if(panel==='clients'){ gp('p-clients',document.getElementById('sbi-clients'),'Asesorados'); if(typeof renderClients==='function')renderClients(); }
   else if(panel==='exercises'){ gp('p-exercises',document.getElementById('sbi-exercises'),'Ejercicios'); if(typeof renderExercises==='function')renderExercises(); }
-  else if(panel==='detail'){ if(typeof openDetail==='function')openDetail('c1'); }
+  else if(panel==='detail'){ if(typeof openDetail==='function')openDetail('c1'); if(${process.env.EXPAND_VAL?'true':'false'}&&typeof toggleValoracion==='function'){setTimeout(toggleValoracion,300);} }
   else if(panel==='templates'){
     const mkE=(nm,mus)=>({id:nm,name:nm,muscle:mus,type:'Compuesto',track:'peso_reps',sets:3,reps:'10'});
     DB.templates=[

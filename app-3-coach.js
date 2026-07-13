@@ -1086,10 +1086,12 @@ function renderValoracion(c){
   const af = parseFloat(c.activityFactor)||1.55;
   const goal = c.goal||'Salud general';
 
+  const sumEl=document.getElementById('d-valoracion-sum');
   // Need at least weight + height for basic calculations
   if(!w || !h){
+    if(sumEl){sumEl.textContent='Faltan peso y altura';sumEl.style.color='var(--t3)';}
     con.innerHTML=`<div style="font-size:13px;color:var(--t3);text-align:center;padding:12px 0">
-      Completa peso y altura del asesorado para ver la valoración 📊
+      Completa peso y altura del asesorado para ver la valoración.
     </div>`;
     return;
   }
@@ -1124,6 +1126,8 @@ function renderValoracion(c){
   const _kcalT = kcalTargetFor(goal, tdee);
   const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
   const macros = calcMacrosFromKcal(kcalObj, w, goal);
+  // Resumen visible cuando la tarjeta está colapsada: el dato clave (objetivo calórico).
+  if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--g2)'; }
 
   // ── Render ──
   const statBox = (icon, label, val, sub, color) =>
@@ -1182,11 +1186,9 @@ function renderValoracion(c){
     </div>`;
   }
 
-  // Additional data rows
+  // Datos base: Peso/Altura, Edad y Sexo ya viven en la CABECERA del asesorado (no repetir —
+  // anti-redundancia). Solo queda Actividad diaria, que no aparece en otro lado y alimenta el TDEE.
   html += `<div style="margin-top:4px">`;
-  if(w && h) html += row('Peso actual / Altura', `${w} kg / ${h} cm`);
-  if(age)    html += row('Edad', `${age} años`);
-  if(sex)    html += row('Sexo biológico', sex==='M'?'Masculino':'Femenino');
   const actLabels={1.2:'Sedentario',1.375:'Ligera',1.55:'Moderada',1.725:'Alta',1.9:'Muy alta'};
   html += row('Actividad diaria', actLabels[af]||'Moderada');
   const goalMsg = getGoalMsg(goal, rct);
@@ -1199,6 +1201,18 @@ function renderValoracion(c){
   </div>`;
 
   con.innerHTML = html;
+}
+
+// Valoración física colapsable (progressive disclosure): es data de REFERENCIA (calorías/macros/
+// fórmulas) que el coach consulta, no necesita ocupar la pantalla siempre. Colapsada muestra el
+// dato clave (objetivo calórico) en el encabezado; se expande con un toque.
+function toggleValoracion(){
+  const b=document.getElementById('d-valoracion-body');
+  const ch=document.getElementById('d-valoracion-chev');
+  if(!b)return;
+  const open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  if(ch)ch.style.transform=open?'rotate(0deg)':'rotate(180deg)';
 }
 
 function delClient(){
