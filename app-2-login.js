@@ -412,7 +412,7 @@ function renderTemplates(){
   document.getElementById('tpl-lbl').textContent=tpls.length?`${tpls.length} plantilla${tpls.length!==1?'s':''} guardada${tpls.length!==1?'s':''}` :'Rutinas reutilizables para tus asesorados';
   if(!tpls.length){
     con.innerHTML=`<div class="empty" style="padding:50px">
-      <div class="eico">📂</div>
+      <div class="eico" style="color:var(--g2)">${typeof aviIcon==='function'?aviIcon('folder',34):'📂'}</div>
       <div class="etxt">Sin plantillas todavía</div>
       <div class="esub" style="margin-bottom:13px">Crea una rutina base y aplícala a cualquier asesorado en segundos</div>
       <button class="btn bp" onclick="openNewTemplate()">+ Nueva plantilla</button>
@@ -427,15 +427,15 @@ function renderTemplates(){
     const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${tpl.tag}</span>`:'';
     div.innerHTML=`
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">
-        <div class="rcnum" style="background:var(--bll);color:var(--bl)">📂</div>
+        <div class="rcnum" style="background:var(--bll);color:var(--bl)">${typeof aviIcon==='function'?aviIcon('folder',16):'📂'}</div>
         <div class="rci">
           <div class="rcname">${esc(tpl.name)} ${tagHtml}</div>
-          <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ⏱${tpl.restSec||60}s</div>
+          <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${typeof aviIcon==='function'?aviIcon('timer',11):'⏱'}${tpl.restSec||60}s</div>
         </div>
         <div style="display:flex;gap:4px;margin-right:4px">
-          <button class="btn bp bsm" style="padding:3px 10px;font-size:11px" onclick="event.stopPropagation();applyTemplateToClient(tpl.id ?? '${tpl.id}')">Aplicar →</button>
-          <button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openEditTemplate('${tpl.id}')">✏️</button>
-          <button class="btn bd bsm" style="padding:3px 8px" onclick="event.stopPropagation();delTemplate('${tpl.id}')">🗑️</button>
+          <button class="btn bp bsm" style="padding:0 12px;min-height:36px;font-size:11px" onclick="event.stopPropagation();applyTemplateToClient(tpl.id ?? '${tpl.id}')">Aplicar →</button>
+          <button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar plantilla" aria-label="Editar plantilla" onclick="event.stopPropagation();openEditTemplate('${tpl.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button>
+          <button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar plantilla" aria-label="Eliminar plantilla" onclick="event.stopPropagation();delTemplate('${tpl.id}')">${typeof aviIcon==='function'?aviIcon('trash',14):'🗑️'}</button>
         </div>
         <div class="rcchev">▼</div>
       </div>
@@ -449,7 +449,7 @@ function renderTemplates(){
               <div class="exsets">${exSetsCellHTML(e)}</div>
             </div>`).join('')}
         <div style="padding-top:10px;border-top:1px solid var(--br);margin-top:4px">
-          <button class="btn bp bsm bfull" onclick="applyTemplateToClient('${tpl.id}')">📋 Aplicar a un asesorado →</button>
+          <button class="btn bp bsm bfull" onclick="applyTemplateToClient('${tpl.id}')">${typeof aviIcon==='function'?aviIcon('clipboard',13):'📋'} Aplicar a un asesorado →</button>
         </div>
       </div>`;
     con.appendChild(div);

@@ -62,6 +62,24 @@ const setup = await ev(`(()=>{try{
   else if(panel==='clients'){ gp('p-clients',document.getElementById('sbi-clients'),'Asesorados'); if(typeof renderClients==='function')renderClients(); }
   else if(panel==='exercises'){ gp('p-exercises',document.getElementById('sbi-exercises'),'Ejercicios'); if(typeof renderExercises==='function')renderExercises(); }
   else if(panel==='detail'){ if(typeof openDetail==='function')openDetail('c1'); }
+  else if(panel==='templates'){
+    const mkE=(nm,mus)=>({id:nm,name:nm,muscle:mus,type:'Compuesto',track:'peso_reps',sets:3,reps:'10'});
+    DB.templates=[
+      {id:'t1',name:'Full Body Principiante',tag:'Principiante',restSec:90,note:'Ideal para las primeras 3 semanas.',exercises:[mkE('Sentadilla','Cuádriceps'),mkE('Press banca','Pecho'),mkE('Remo','Espalda')]},
+      {id:'t2',name:'Empuje — Hipertrofia',tag:'Intermedio',restSec:75,exercises:[mkE('Press inclinado','Pecho'),mkE('Press militar','Hombro'),mkE('Fondos','Tríceps')]},
+      {id:'t3',name:'Pierna Fuerza',tag:'Avanzado',restSec:120,exercises:[mkE('Sentadilla','Cuádriceps'),mkE('Peso muerto','Isquios'),mkE('Prensa','Cuádriceps')]}
+    ];
+    gp('p-templates',document.getElementById('sbi-templates'),'Plantillas'); if(typeof renderTemplates==='function')renderTemplates();
+  }
+  else if(panel==='msgs'){
+    const mkM=(from,text,hAgo)=>{const d=new Date();d.setHours(d.getHours()-hAgo);return{from,text,date:d.toISOString()};};
+    DB.msgs={
+      c1:[mkM('coach','¡Buen trabajo hoy Samuel!',5),mkM('client','Gracias coach, me sentí fuerte 💪',3)],
+      c2:[mkM('client','Coach, me dolió un poco la rodilla en la sentadilla',2)],
+      c4:[mkM('coach','Valery, subí tu nueva rutina de pierna',20)]
+    };
+    gp('p-msgs',document.getElementById('sbi-msgs'),'Mensajes'); if(typeof renderMsgs==='function')renderMsgs();
+  }
   return true;
 }catch(e){return 'err:'+e.message+' | '+e.stack;}})()`);
 console.log('  setup:', setup);

@@ -1611,7 +1611,7 @@ function renderMsgs(){
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'📤 Tú':'📥 Asesorado'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--bl);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
 }
