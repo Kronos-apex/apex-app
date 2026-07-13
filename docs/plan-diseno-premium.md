@@ -61,7 +61,7 @@ Estas 5 primitivas son la base. Sin ellas, cada pantalla se pule a mano y nunca 
 - [ ] `#cn-gamif` (nivel + logros/medallas)
 
 ### Grupo B — Coach (uso diario)
-- [ ] `#p-home` (dashboard — H1 banner instalar, H5 tarjetas)
+- [x] `#p-home` (dashboard) — **HECHO avi-v338**. Harness NUEVO `_shot-coach.mjs` (patrón reusable para pantallas del coach: monta 4 clientes fake + `showScreen('s-coach')` + `gp(panel)`; expande `.main`). Auditoría honesta: el home ya estaba bastante trabajado (banner héroe, stats g4, retención, banners). Gaps reales cerrados: (1) 🔴 el banner "Instalar app" (`#install-banner` fixed bottom:84px) tapaba la última tarjeta de prioritarios → extendida la regla `:has()` del perfil (v335) a `.main`; (2) 🟡 emojis funcionales → SVG (#5): ✅→check, ⚠️→alert, 🏋️→dumbbell en los 3 banners/lista (toasts conservan emoji); (3) robustez: "Hace -1d" (días negativos) → clamp `dd<=0`→"Hoy". PENDIENTE del home: micro-audit de las tarjetas de stat/retención si se retoma
 - [ ] `#p-clients` (lista + orden inteligente v317)
 - [ ] `#p-detail` (el más denso: rutinas/mensajes/progreso/nutrición/medidas/fotos)
 - [ ] `#p-exercises` (212 ejercicios, filtros)

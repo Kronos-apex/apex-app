@@ -706,6 +706,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-13 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v337** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-13 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v338** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **312/312** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Elevación PREMIUM FASE 0 (fundación) COMPLETA v329-v332: #1 movimiento (tokens `--ease-out`/`--dur` + press-feedback), #2 elevación (borde tarjeta `--br2`, 3 niveles), #3 tipografía (escala `--fs-*`; tabular ya de v319), #4 táctil/foco (primitiva `.tap` overlay ≥40px WCAG). #5 iconos = fundación ya hecha (`aviIcon` 55 + `_coIco`) + aplicación por superficie. Siguiente: Grupos A-E superficie-por-superficie con `docs/plan-diseno-premium.md`. Hitos crudos → `docs/bitacora.md` (parte 36 la más reciente).*
