@@ -41,7 +41,7 @@ const setup = await ev(`(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const mkEx=(nm,mus)=>({id:nm,name:nm,muscle:mus,type:'Compuesto',track:'peso_reps',sets:3,reps:'10'});
   const rout=(nm,day)=>({id:'r'+nm+day,name:nm,day,exercises:[mkEx('Sentadilla','Cuádriceps'),mkEx('Press banca','Pecho'),mkEx('Remo','Espalda')]});
-  const mkC=(id,name,due,sex,goal)=>({id,name,email:name.toLowerCase().replace(/ /g,'')+'@ej.com',goal,level:'Intermedio',days:4,weight:75,sex,tier:'premium',
+  const mkC=(id,name,due,sex,goal)=>({id,name,email:name.toLowerCase().replace(/ /g,'.')+'@gmail.com',goal,level:'Intermedio',days:4,weight:75,height:178,age:32,sex,phone:'3001234567',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:due,amount:120000}],routines:[rout('Empuje','Lunes'),rout('Tracción','Martes'),rout('Pierna','Jueves')]});
   DB.clients=[
     mkC('c1','Samuel Cifuentes','2026-08-05','M','Ganar músculo'),

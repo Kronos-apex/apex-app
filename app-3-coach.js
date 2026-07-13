@@ -1021,14 +1021,20 @@ async function openDetail(id,_silent){
   if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
   else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.backgroundImage='';}
   document.getElementById('d-name').textContent=c.name;
-  // Meta: sex, age, height, weight, email
-  const metaParts=[];
-  if(c.sex) metaParts.push(c.sex==='M'?'♂ Masculino':'♀ Femenino');
-  if(c.age) metaParts.push(c.age+' años');
-  if(c.height) metaParts.push(c.height+' cm');
-  if(c.weight) metaParts.push(c.weight+' kg');
-  if(c.email) metaParts.push(c.email);
-  document.getElementById('d-meta').textContent=metaParts.join(' · ')||'Sin datos';
+  // Identidad y datos organizados en grupos (skill: agrupar por whitespace, jerarquía):
+  // (1) CORREO en su propia línea con ícono de sobre — contacto, separado de las medidas.
+  const _emailEl=document.getElementById('d-email');
+  if(c.email){ _emailEl.style.display='flex'; _emailEl.innerHTML=`${_coIco('mail',13,'✉')}<span style="min-width:0;overflow-wrap:break-word">${esc(c.email)}</span>`; }
+  else { _emailEl.style.display='none'; _emailEl.innerHTML=''; }
+  // (2) DATOS FÍSICOS (sexo · edad · altura · peso) en su propia fila a ancho completo.
+  const _stats=[];
+  if(c.sex) _stats.push(c.sex==='M'?'♂ Masculino':'♀ Femenino');
+  if(c.age) _stats.push(c.age+' años');
+  if(c.height) _stats.push(c.height+' cm');
+  if(c.weight) _stats.push(c.weight+' kg');
+  const _statsEl=document.getElementById('d-stats');
+  if(_stats.length){ _statsEl.style.display='flex'; _statsEl.textContent=_stats.join(' · '); }
+  else { _statsEl.style.display='none'; }
   const _plan=clientPlan(c);
   const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
   const _planIco={libre:_coIco('leaf',12,'🆓'),app:_coIco('star',12,'⭐'),coach:_coIco('crown',12,'👑')}[_plan];
