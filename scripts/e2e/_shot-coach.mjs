@@ -17,13 +17,15 @@ let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse
 const send = (m, p = {}) => new Promise(res => { const i = id++; pend.set(i, { resolve: res }); ws.send(JSON.stringify({ id: i, method: m, params: p })); });
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; };
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
+const MAXH = parseInt(process.env.SHOT_MAXH || '0');
 async function shotFull(n) {
-  const h = await ev(`(()=>{
+  let h = await ev(`(()=>{
     const mn=document.querySelector('#s-coach .main'); if(mn){mn.style.overflow='visible';mn.style.height='auto';mn.style.flex='none';}
     const cs=document.getElementById('s-coach'); if(cs){cs.style.height='auto';cs.style.maxHeight='none';cs.style.overflow='visible';}
     document.querySelectorAll('.coach-topbar').forEach(e=>{e.style.position='static';});
     return document.getElementById('s-coach').scrollHeight;
   })()`);
+  if (MAXH && h > MAXH) h = MAXH;
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: h, deviceScaleFactor: 2, mobile: true });
   await sleep(400);
   const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
