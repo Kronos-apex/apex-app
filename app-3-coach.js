@@ -996,7 +996,22 @@ function planControlHTML(c){
     </button>`;
   }).join('');
   const wants=(cur!=='coach'&&c.wantsCoach)?`<div class="plan-wants">🙋 <b>Pidió un coach.</b> Súbelo a <b>Premium + Coach</b> cuando confirmes el pago.</div>`:'';
-  return `<div class="plan-control"><div class="plan-control-h">Nivel de acceso</div>${wants}<div class="planopts">${btns}</div></div>`;
+  // Colapsable (progressive disclosure): el nivel rara vez cambia → colapsado muestra el tier
+  // ACTUAL en el encabezado; se expande con un toque para cambiarlo. El aviso "Pidió un coach"
+  // (lead caliente) se mantiene visible aunque esté colapsado.
+  const _co=opts.find(o=>o[0]===cur);
+  const _curSum=_co?`${_coIco(_co[1],13,_co[2])} ${_co[3]}`:'';
+  return `<div class="plan-control">
+    <div class="plan-control-h" onclick="togglePlanControl(this)" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;margin-bottom:0">
+      <span>Nivel de acceso</span>
+      <span style="display:flex;align-items:center;gap:8px;text-transform:none">
+        <span style="font-size:12.5px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:4px">${_curSum}</span>
+        <span class="plan-chev" style="font-size:11px;color:var(--t3);transition:transform .2s">▼</span>
+      </span>
+    </div>
+    ${wants?`<div style="margin-top:10px">${wants}</div>`:''}
+    <div class="planopts" style="display:none;margin-top:10px">${btns}</div>
+  </div>`;
 }
 // Cambia el nivel del cliente. 'coach' se persiste como tier='premium' (compatibilidad
 // con datos existentes; clientHasCoach lo trata como coacheado).
@@ -1212,6 +1227,17 @@ function toggleValoracion(){
   if(!b)return;
   const open=b.style.display!=='none';
   b.style.display=open?'none':'block';
+  if(ch)ch.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+}
+
+// Nivel de acceso colapsable (mismo patrón que la valoración). Restaura display:'' (no 'block')
+// para no romper el flex-column de .planopts.
+function togglePlanControl(h){
+  const pc=h.closest('.plan-control'); if(!pc)return;
+  const opts=pc.querySelector('.planopts'); const ch=pc.querySelector('.plan-chev');
+  if(!opts)return;
+  const open=opts.style.display!=='none';
+  opts.style.display=open?'none':'';
   if(ch)ch.style.transform=open?'rotate(0deg)':'rotate(180deg)';
 }
 
