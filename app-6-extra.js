@@ -2234,7 +2234,7 @@ function renderDetailMembership(id){
           <div style="font-size:12px;color:var(--t2);margin-top:2px">Pagado: ${d} · Vence: ${dd}</div>
           ${p.note?`<div style="font-size:11px;color:var(--t3);font-style:italic;margin-top:2px">${esc(p.note)}</div>`:''}
         </div>
-        <div style="background:var(--gl);border-radius:8px;padding:6px 8px;font-size:16px;flex-shrink:0">💳</div>
+        <div style="background:var(--gl);color:var(--g2);border-radius:8px;padding:6px 8px;flex-shrink:0;display:flex;align-items:center">${_gmIco('card',18,'💳')}</div>
       </div>`;
     });
   }else{

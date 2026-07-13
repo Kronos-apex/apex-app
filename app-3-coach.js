@@ -984,14 +984,14 @@ function planControlHTML(c){
   if(!c)return '';
   const cur=clientPlan(c);
   const opts=[
-    ['libre','🆓 Libre','Gratis · app auto-generada'],
-    ['app','⭐ Premium app','$19.900 · toda la app, sin coach'],
-    ['coach','👑 Premium + Coach','$100.000 · todo + chat y ajustes'],
+    ['libre','leaf','🆓','Libre','Gratis · app auto-generada'],
+    ['app','star','⭐','Premium app','$19.900 · toda la app, sin coach'],
+    ['coach','crown','👑','Premium + Coach','$100.000 · todo + chat y ajustes'],
   ];
-  const btns=opts.map(([k,lbl,sub])=>{
+  const btns=opts.map(([k,ico,fb,lbl,sub])=>{
     const on=k===cur;
     return `<button class="planopt${on?' on':''}"${on?' disabled':''} onclick="setClientPlan('${esc(c.id)}','${k}')">
-      <div class="planopt-lbl">${lbl}${on?' ✓':''}</div>
+      <div class="planopt-lbl">${_coIco(ico,14,fb)} ${lbl}${on?' ✓':''}</div>
       <div class="planopt-sub">${sub}</div>
     </button>`;
   }).join('');
@@ -1031,7 +1031,7 @@ async function openDetail(id,_silent){
   document.getElementById('d-meta').textContent=metaParts.join(' · ')||'Sin datos';
   const _plan=clientPlan(c);
   const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
-  const _planIco={libre:'🆓',app:'⭐',coach:'👑'}[_plan];
+  const _planIco={libre:_coIco('leaf',12,'🆓'),app:_coIco('star',12,'⭐'),coach:_coIco('crown',12,'👑')}[_plan];
   const _wantsTag=(_plan!=='coach'&&c.wantsCoach)?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
   document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
