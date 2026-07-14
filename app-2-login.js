@@ -1208,11 +1208,10 @@ function _aviCloseTopOverlay(){
     else if(typeof gmMinimizeRest==='function'){ gmMinimizeRest(); }
     return true;
   }
-  // Guiado como OVERLAY (flag OFF, tras "▶ Empezar"): el atrás lo cierra. El guiado EMBEBIDO
-  // (F2, clase gm-embedded) es un TAB, no un overlay → NO se cierra aquí; el atrás sigue al
-  // flujo de pestañas (volver a la pestaña previa o armar salida en "Hoy").
-  const gm=document.getElementById('guided-mode');
-  if(gm&&!gm.classList.contains('hidden')&&!gm.classList.contains('gm-embedded')){closeGuidedMode();return true;}
+  // (El guiado EMBEBIDO (F2, clase gm-embedded) es un TAB, no un overlay → el atrás sigue el
+  // flujo de pestañas, no se cierra aquí. El viejo guiado como OVERLAY, que sí se cerraba aquí,
+  // murió con la clásica (avi-v291) y su rama se borró en la auditoría 2026-07-13 — era
+  // inalcanzable: nada más produce #guided-mode visible-sin-gm-embedded tras borrar openGuidedMode.)
   const modal=document.querySelector('.mdbg.on');
   if(modal){modal.classList.remove('on');return true;}
   return false;

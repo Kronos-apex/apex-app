@@ -187,28 +187,13 @@ const GM = {
   hiit: null,
 };
 
-function openGuidedMode(){
-  const routine = CUR.activeRoutine;
-  if(!routine || !(routine.exercises||[]).length){ toast('No hay ejercicios en esta rutina'); return; }
-  // Reset diario + dropsets huérfanos ANTES de calcular pasos: el guiado no debe depender
-  // de que la clásica haya renderizado (plan unificación P10). Idempotente el mismo día.
-  if(typeof prepareTodaySession==='function') prepareTodaySession(routine);
-  gmRebuild();
-  const g=document.getElementById('guided-mode');
-  g.classList.remove('gm-embedded'); // defensivo: si venía embebido, vuelve a ser overlay
-  g.classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  _gmDeferScrollToCurrent(200);
-  // Tarjeta de respiración del primer ejercicio (si la rutina no está ya completa)
-  setTimeout(() => { const s=GM.steps[GM.currentStep]; if(s) gmShowStartCard(s.ex); }, 420);
-}
-
 // ══════════ GUIADO EMBEBIDO como pantalla de "Hoy" (unificación F2 sub-2) ══════════
 // "Hoy" ES el guiado embebido en #cn-today-body (única vista desde F5a 2026-07-06).
 // Reubica el MISMO #guided-mode (reusa topbar/body/footer/rest-overlay ya probados) dentro del
 // tab y le quita position:fixed vía la clase gm-embedded. No hay ✕, no bloquea el scroll del
-// body, no muestra tarjeta de inicio. El camino del overlay (openGuidedMode) NO se usa con el
-// flag ON (el botón "▶ Empezar" no se pinta) → nunca hay dos renders gm-* a la vez.
+// body, no muestra tarjeta de inicio. (El viejo camino del OVERLAY — `openGuidedMode` — murió
+// con la clásica en avi-v291 y se borró en la auditoría 2026-07-13: era código muerto, sin
+// callers, junto con su rama de cierre en _aviCloseTopOverlay.)
 let _gmHomeParent=null, _gmHomeNext=null;
 function _gmCaptureHome(){
   const g=document.getElementById('guided-mode'); if(!g||_gmHomeParent!==null) return;
@@ -258,7 +243,7 @@ function _gmLiveTimer(){ return !!(GM.restTimer||GM.hiit||GM.holding); }
 // reordenar/sustituir, GM.steps cambia de índices y un descanso/hold/HIIT en curso quedaría
 // apuntando a un paso movido (el HIIT es el caso real: corre dentro de la tarjeta, con los
 // botones ↑↓ a la vista; los overlays de descanso/hold tapan la pantalla y no dejan reordenar
-// debajo). En openGuidedMode no hay timers vivos → la limpieza es no-op segura.
+// debajo). En la apertura embebida (openGuidedEmbedded) no hay timers vivos → no-op segura.
 function gmRebuild(){
   const routine = CUR.activeRoutine; if(!routine) return;
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
@@ -590,9 +575,9 @@ function gmRender(){
 // ── Check-in de ánimo desde el guiado (plan unificación P1) ──
 // Reusa pickMood (guarda el ánimo, adapta con applyMood, avisa al coach si aplica y
 // re-renderiza la clásica → CUR.activeRoutine queda ADAPTADA) y reconstruye el guiado
-// encima: openGuidedMode regenera GM.steps sobre la rutina adaptada, corre
-// prepareTodaySession (dropsets huérfanos si applyMood recortó series) y recalcula
-// GM.currentStep con su bucle de series hechas.
+// encima: gmRebuild regenera GM.steps sobre la rutina adaptada (prepareTodaySession ya
+// corrió dropsets huérfanos si applyMood recortó series) y recalcula GM.currentStep con
+// su bucle de series hechas.
 function gmPickMood(mood){
   pickMood(mood);
   gmRebuild(); // sin re-lanzar la tarjeta de inicio (anotación de Lucas QA en v247)

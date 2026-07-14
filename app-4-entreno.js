@@ -1086,7 +1086,7 @@ function resetSession(){
 // diario + reubicación de dropsets huérfanos. Debe correr al entrar a "Hoy" ANTES de
 // cualquier render — cuando el guiado sea la pantalla principal (plan unificación F2),
 // la lista clásica puede no renderizar nunca, así que esto no puede vivir dentro de
-// renderClientExList. La llaman renderClientToday y openGuidedMode; es idempotente
+// renderClientExList. La llaman renderClientToday y openGuidedEmbedded; es idempotente
 // dentro del mismo día.
 function prepareTodaySession(routine){
   // Blindaje (F4): un hueco null/undefined en exercises (dato corrupto por sync/edición) haría

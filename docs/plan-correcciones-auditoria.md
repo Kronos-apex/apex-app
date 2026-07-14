@@ -233,4 +233,14 @@ Correr en orden; TODO debe pasar antes de dar el trabajo por bueno:
 
 ## Desviaciones (llenar por la sesión que corrige, si las hay)
 
-_(vacío)_
+**C3 — alcance acotado a lo estipulado (Opus, 2026-07-13).** Borré `openGuidedMode`
+(cero callers) y SU rama exclusiva de cierre en `_aviCloseTopOverlay` (app-2-login.js:
+`#guided-mode` visible-sin-`gm-embedded`, estado que sólo `openGuidedMode` producía —
+verificado: nada más quita `hidden` sin poner `gm-embedded`). **NO** toqué las ramas
+`else` de `if(_gmIsEmbedded()){…}else{…}` que quedan en funciones VIVAS (`closeGuidedMode`
+tail, `gmChangeMood` :592-593, etc.): son fallbacks DEFENSIVOS guardados por condición,
+no código huérfano comentado, y removerlos era un refactor MÁS ancho que lo estipulado
+(rule 2: un hallazgo = un commit, sin refactors colados; rule 8: parar y documentar).
+Quedan como oportunidad de limpieza futura si se decide retirar del todo el modo overlay.
+Harnesses de la zona caliente verdes tras el cambio: `_guiado-suite` 53/53,
+`_test-coach-back` 20/20, `_verify-modals` 12/12.
