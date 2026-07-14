@@ -34,7 +34,7 @@
 
 ## 🔴 C1 — Botón "Aplicar →" de la lista de plantillas ROTO (bug real, reproducido)
 
-- [ ] corregido · [ ] test de regresión · [ ] verificado
+- [x] corregido · [x] test de regresión · [x] verificado — commit `ca50c67` (suite 313)
 
 **Problema (producto):** en el panel Plantillas (`#p-templates`), cada tarjeta tiene el botón
 rápido **"Aplicar →"** en su encabezado. Al tocarlo **no pasa nada** (error silencioso en
@@ -74,7 +74,7 @@ en la app local: login coach QA → Plantillas → tocar "Aplicar →" abre el s
 
 ## 🟡 C2 — El buscador de asesorados se borra solo cada 15 segundos
 
-- [ ] corregido · [ ] test de regresión · [ ] verificado
+- [x] corregido · [x] test de regresión · [x] verificado — commit `ee21c7d` (_verify-v317 +4 checks)
 
 **Problema (producto):** el coach escribe en el buscador de `#p-clients` para filtrar; si en
 ese momento llega el poll de sincronización (cada 15 s) o un mensaje, la lista se re-renderiza,
@@ -111,7 +111,7 @@ el filtro sigue.
 
 ## 🟡 C3 — Código muerto: `openGuidedMode` y la rama overlay del guiado
 
-- [ ] corregido · [ ] verificado
+- [x] corregido · [x] verificado — commit `6f8af92` (guiado 53/53, coach-back 20/20, modales 12/12). Ver Desviaciones.
 
 **Problema:** desde que murió la clásica (F5, avi-v291) `openGuidedMode` (`app-6-extra.js:190`)
 no tiene NINGÚN caller (auditado hoy: solo comentarios lo mencionan). La DOCTRINA §3 prohíbe
@@ -137,7 +137,7 @@ respetar el rate-limit de login QA (~2 min entre corridas; sondear con el POST d
 
 ## 🟡 C4 — Lookup de ejercicios hereda del prototipo (hallazgo Julián v315, aún vivo)
 
-- [ ] corregido · [ ] test de regresión · [ ] verificado
+- [x] corregido · [x] test de regresión · [x] verificado — commit `419853d` (setPrototypeOf null; suite 314)
 
 **Problema:** `EX_IMG_NAME[nf(e.name)]` (`app-1-infra.js:1230` en `exImgSrc` y `:1249` en
 `exVidSrc`; revisar también `exIcon` por el mismo patrón) usa acceso directo a objeto literal:
@@ -164,7 +164,7 @@ llamado `constructor` → no rompe el render (icono fallback, sin src basura).
 
 ## 🟢 C5 — CLAUDE.md desactualizado: nota de seguridad de `push_subscriptions`
 
-- [ ] corregido
+- [x] corregido — junto con este bloque de checkboxes (docs)
 
 **Problema:** la tabla "🔒 SEGURIDAD — ESTADO ACTUAL" y la sección de estado de auth dicen
 `⚠️ push_subscriptions solo-escritura para anon (tradeoff… follow-up = mover a autenticado)`.
@@ -180,7 +180,7 @@ Commit `docs:` separado. Nada más de CLAUDE.md se toca (salvo lo que C3 estipul
 
 ## 🟢 C6 — Cohesión menor de diseño (OPCIONAL — solo si Camilo lo pide)
 
-- [ ] decidido por Camilo: sí / no
+- [ ] decidido por Camilo: sí / no — **NO ejecutado en esta pasada** (opcional; Opus lo dejó para que Camilo decida)
 
 Deuda estética consciente, NO bloqueante. Se lista para que Camilo decida si vale una sesión:
 1. **20 `transition:all` en styles.css** contradicen la regla FASE 0 ("animar solo

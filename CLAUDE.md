@@ -446,7 +446,7 @@ SB_KEYS = [
 **Estado de auth (v2.0, Fase 4 completa):**
 - ✅ Auth real Supabase + RLS por usuario en `user_data` (`auth.uid()=user_id OR =coach_id`). El login client-side legacy fue eliminado.
 - ✅ `apex_data`/`apex_data_backups` cerradas a anon (blob legacy solo como respaldo). Ya NO se descarga toda la DB antes del login.
-- ⚠️ `push_subscriptions` solo-escritura para anon (tradeoff: conserva registro de push; follow-up = mover a autenticado).
+- ✅ `push_subscriptions` con RLS propia para **authenticated** (policies `push_ins_own` + `push_upd_own` + `push_sel_own`, alcance `*_own` por UID) — el follow-up "mover a autenticado" se CUMPLIÓ en el fix de raíz del cero-suscritos (v320-v324; la policy SELECT faltante fue la causa final, 2026-07-12). Verificado contra `pg_policies` en la auditoría 2026-07-13.
 - Bearer token de Edge Functions = anon key pública (solo riesgo: spam de notificaciones)
 
 ---
