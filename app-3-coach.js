@@ -22,8 +22,8 @@ function miniSparkline(clientId){
   const W=40,H=18,pad=1;
   const pts=entries.map((e,i)=>({x:pad+i*((W-pad*2)/(entries.length-1)),y:pad+(H-pad*2)*(1-(e.kg-minV)/(maxV-minV||1))}));
   const d=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const col=entries[entries.length-1].kg<=entries[0].kg?'#0A7C5B':'#E76F51';
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 2px"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const col=entries[entries.length-1].kg<=entries[0].kg?'var(--chart-g)':'var(--chart-or)';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 2px"><path d="${d}" fill="none" style="stroke:${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 function renderClients(){

@@ -206,13 +206,14 @@ function renderBodyWeightSection(clientId){
     const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
     const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
     const trend=entries[entries.length-1].kg-entries[0].kg;
-    const trendColor=trend<0?'#0A7C5B':trend>0?'#E76F51':'#888';
-    const lineColor=trend<=0?'#0A7C5B':'#E76F51';
+    // Tokens de gráfica (C6) — var() solo en style=, nunca en atributos SVG (gotcha en styles.css)
+    const trendColor=trend<0?'var(--chart-g)':trend>0?'var(--chart-or)':'var(--t3)';
+    const lineColor=trend<=0?'var(--chart-g)':'var(--chart-or)';
     document.getElementById('bw-chart').innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-      <defs><linearGradient id="bwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${lineColor}" stop-opacity="0.15"/><stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/></linearGradient></defs>
+      <defs><linearGradient id="bwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:${lineColor}" stop-opacity="0.15"/><stop offset="100%" style="stop-color:${lineColor}" stop-opacity="0"/></linearGradient></defs>
       <path d="${areaD}" fill="url(#bwg)"/>
-      <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${lineColor}"/>`).join('')}
+      <path d="${pathD}" fill="none" style="stroke:${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:${lineColor}"/>`).join('')}
     </svg>`;
     if(summEl){
       const arrow=trend<0?'↓':trend>0?'↑':'→';
@@ -1695,16 +1696,16 @@ function renderVolChart(sessions){
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
   con.innerHTML=`<svg width="100%" height="${H+16}" viewBox="0 0 ${W} ${H+16}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A7C5B" stop-opacity="0.18"/><stop offset="100%" stop-color="#0A7C5B" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--chart-g)" stop-opacity="0.18"/><stop offset="100%" style="stop-color:var(--chart-g)" stop-opacity="0"/></linearGradient></defs>
     <path d="${areaD}" fill="url(#vg)"/>
-    <path d="${pathD}" fill="none" stroke="#0A7C5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${pathD}" fill="none" style="stroke:var(--chart-g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     ${pts.map((p,i)=>{
       // Etiquetas en su propia banda (y=H+11), y las de los extremos ancladas hacia
       // dentro (start/end) para que "23 jun" y la última no se salgan del borde.
       const anc=i===0?'start':(i===pts.length-1?'end':'middle');
       const lx=i===0?pad:(i===pts.length-1?W-pad:p.x);
-      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#0A7C5B"/>
-      <text x="${lx.toFixed(1)}" y="${H+11}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="9" fill="#B0B0B0">${new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`;
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:var(--chart-g)"/>
+      <text x="${lx.toFixed(1)}" y="${H+11}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="9" style="fill:var(--t3)">${new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`;
     }).join('')}
   </svg>`;
 }

@@ -503,7 +503,7 @@ function renderMedidasClient(clientId){
     const cintPts=entries.filter(e=>e.cintura).slice(0,12).reverse();
     if(cintPts.length>=2){
       chartWrap.style.display='block';
-      drawMedChart(document.getElementById('cn-med-chart'),cintPts,'cintura','#E76F51');
+      drawMedChart(document.getElementById('cn-med-chart'),cintPts,'cintura','var(--chart-or)');
     } else chartWrap.style.display='none';
   }
   const latest=entries[0];const first=entries[entries.length-1];
@@ -562,11 +562,12 @@ function drawMedChart(container,points,field,color){
     y:6+(H-16)-((p[field]-minV)/span)*(H-16),p
   }));
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  // Colores en style= (no atributos): el caller pasa tokens var(--chart-*) — gotcha en styles.css
   container.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-    <path d="${pathD} L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z" fill="${color}" fill-opacity="0.1"/>
-    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}"/>
-      <text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="8" fill="#B0B0B0" font-family="sans-serif">${new Date(p.p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`).join('')}
+    <path d="${pathD} L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z" style="fill:${color}" fill-opacity="0.1"/>
+    <path d="${pathD}" fill="none" style="stroke:${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:${color}"/>
+      <text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="8" style="fill:var(--t3)" font-family="sans-serif">${new Date(p.p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`).join('')}
   </svg>`;
 }
 

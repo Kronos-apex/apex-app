@@ -729,27 +729,29 @@ function drawExProgChart(container, points, color, unit){
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
   const trend=points[points.length-1].maxKg-points[0].maxKg;
-  const lineColor=color||(trend>=0?'#0A7C5B':'#E76F51');
+  // Tokens de gráfica (C6): claro = verde/coral de siempre, oscuro = menta/coral del tema.
+  // var() NO vale en atributos SVG → todos los colores van en style= (gotcha en styles.css).
+  const lineColor=color||(trend>=0?'var(--chart-g)':'var(--chart-or)');
   container.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">
     <defs><linearGradient id="epg${Math.random().toString(36).slice(2)}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+      <stop offset="0%" style="stop-color:${lineColor}" stop-opacity="0.15"/>
+      <stop offset="100%" style="stop-color:${lineColor}" stop-opacity="0"/>
     </linearGradient></defs>
-    <path d="${areaD}" fill="${lineColor}" fill-opacity="0.12"/>
-    <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${areaD}" style="fill:${lineColor}" fill-opacity="0.12"/>
+    <path d="${pathD}" fill="none" style="stroke:${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     ${pts.map((p,i)=>{
       // extremos anclados start/end para que la etiqueta no se salga del borde (patrón v336)
       const anc=i===0?'start':i===pts.length-1?'end':'middle';
       const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
       return `
-      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${points.length>12?2:3}" fill="${lineColor}"/>
-      ${points.length<=8?`<text x="${lx.toFixed(1)}" y="${H-2}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" fill="#B0B0B0">${p.p.dateStr}</text>`:''}`;
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${points.length>12?2:3}" style="fill:${lineColor}"/>
+      ${points.length<=8?`<text x="${lx.toFixed(1)}" y="${H-2}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" style="fill:var(--t3)">${p.p.dateStr}</text>`:''}`;
     }).join('')}
     ${pts.map((p,i)=>{
       const anc=i===0?'start':i===pts.length-1?'end':'middle';
       const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
       const ly=p.y<16?(p.y+12):(p.y-5); // el punto más alto voltea su etiqueta hacia abajo (no se recorta arriba)
-      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" fill="${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
+      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" style="fill:${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
     }).join('')}
   </svg>`;
 }

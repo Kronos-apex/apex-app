@@ -15,6 +15,12 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --r:12px; --rsm:8px; --rlg:18px;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
   --accent3:#10E0A0; --surface:var(--bg);
+  /* Tokens de GRÁFICA (cohesión C6, avi-v351): los SVG dibujados a mano usaban hex fijos
+     (#0A7C5B/#E76F51) idénticos en ambos temas → en oscuro la línea verde quedaba apagada.
+     En claro estos tokens SON los colores de siempre (cero cambio); en oscuro suben al verde
+     menta --gt y al coral claro --or del tema. OJO: var() NO vale en ATRIBUTOS SVG
+     (fill="var(...)" es inválido y cae a negro) → siempre style="fill:var(...)". */
+  --chart-g:var(--g); --chart-or:var(--or);
   /* Movimiento (FASE 0 · primitiva #1, avi-v329) — tokens únicos de easing/duración
      para todo el sistema. Animar SOLO transform/opacity (guía Vercel), nunca transition:all.
      --ease-out: salida rápida con asentamiento suave (Emil, el "snap" que se siente premium). */
@@ -42,6 +48,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
     --yl:#F2C94C; --or:#F0997F; --bl:#7FB2E8; --rd:#FF6B73;
     --accent3:#10E0A0; --surface:#152A1E;
+    --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
     --sh:  0 2px 10px rgba(0,0,0,.25);
     --sh2: 0 6px 28px rgba(0,0,0,.40);
   }
@@ -78,6 +85,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --yll:#2a2512; --orl:#2e1c15; --bll:#13273a; --rdl:#33161a;
   --yl:#F2C94C; --or:#F0997F; --bl:#7FB2E8; --rd:#FF6B73;
   --accent3:#10E0A0; --surface:#152A1E;
+  --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
   --sh:  0 2px 10px rgba(0,0,0,.25);
   --sh2: 0 6px 28px rgba(0,0,0,.40);
 }
