@@ -313,8 +313,13 @@ SB_KEYS = [
 /* Tipografía */
 --t1:#1A1A1A   --t2:#6A6A6A   --t3:#B0B0B0
 
-/* Verde marca */
---g:#2D6A4F   --g2:#40916C   --gl:#D8F3DC   --gt:#1B4332
+/* Verde marca (valores REALES corregidos 2026-07-13 — el doc decía #2D6A4F y no era) */
+--g:#0A7C5B   --g2:#13B583   --gl:#D3F4E8   --gt:#06402E (claro) / #5FE3B0 (oscuro)
+
+/* Gráficas SVG (v351) — conscientes del tema */
+--chart-g: var(--g) claro / var(--gt) oscuro   --chart-or: var(--or)
+/* Movimiento (FASE 0 v329) */
+--ease-out:cubic-bezier(.23,1,.32,1)   --dur-fast:160ms   --dur:220ms
 
 /* Semánticos */
 --or:#E76F51   --orl:#FDE8E0   /* alerta */
@@ -613,6 +618,8 @@ git push origin main
 - TWA: Chrome **cachea la verificación** de assetlinks — el celular puede necesitar reinstalar o reiniciar Chrome.
 - Fotos de ejercicio: verificar el **CONTENIDO** de cada imagen, no el nombre del archivo.
 - Al cambiar cualquier texto de `legal/`: **subir `LEGAL_V`** (app-3-coach.js) para que la evidencia de consentimiento diga qué versión se aceptó.
+- **`var()` NO funciona en ATRIBUTOS SVG** (`fill="var(--x)"` es inválido → cae a NEGRO). En SVG generado por JS, todo color con token va en `style="fill:var(--x)"`. Y `var()` TAMPOCO existe en canvas (`fillStyle`) — los lienzos (imagen compartible, export rutina) usan hex propios a propósito. Tokens de gráfica: `--chart-g`/`--chart-or` (v351).
+- **`transition:all` está PROHIBIDO y erradicado (v351)** — cada componente transiciona SOLO las propiedades que cambian en sus estados, con `--dur-fast`/`--dur` + `--ease-out`. Al crear un componente nuevo, enumerar sus propiedades de estado; no volver a `all`.
 
 ---
 
@@ -707,6 +714,6 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-13 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v350** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **314/314** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-13 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v351** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **314/314** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Elevación PREMIUM FASE 0 (fundación) COMPLETA v329-v332: #1 movimiento (tokens `--ease-out`/`--dur` + press-feedback), #2 elevación (borde tarjeta `--br2`, 3 niveles), #3 tipografía (escala `--fs-*`; tabular ya de v319), #4 táctil/foco (primitiva `.tap` overlay ≥40px WCAG). #5 iconos = fundación ya hecha (`aviIcon` 55 + `_coIco`) + aplicación por superficie. Siguiente: Grupos A-E superficie-por-superficie con `docs/plan-diseno-premium.md`. Hitos crudos → `docs/bitacora.md` (parte 36 la más reciente).*

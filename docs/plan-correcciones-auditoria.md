@@ -180,7 +180,7 @@ Commit `docs:` separado. Nada más de CLAUDE.md se toca (salvo lo que C3 estipul
 
 ## 🟢 C6 — Cohesión menor de diseño (OPCIONAL — solo si Camilo lo pide)
 
-- [ ] decidido por Camilo: sí / no — **NO ejecutado en esta pasada** (opcional; Opus lo dejó para que Camilo decida)
+- [x] decidido por Camilo: **SÍ** (2026-07-13, "terminar todo lo de interfaz antes del Coach Inteligente") — **EJECUTADO en avi-v351** con skill emil-design-eng: C6.1 `transition:all` erradicado (36, commit `fe9c817`) · C6.2 gráficas SVG conscientes del tema, tokens `--chart-g/--chart-or` (`47aac34`) · C6.3 últimos 7 `.eico` emoji → SVG (`2ecf97f`). Verificación visual ambos temas (rooms + history). Ver bitácora parte 56.
 
 Deuda estética consciente, NO bloqueante. Se lista para que Camilo decida si vale una sesión:
 1. **20 `transition:all` en styles.css** contradicen la regla FASE 0 ("animar solo
