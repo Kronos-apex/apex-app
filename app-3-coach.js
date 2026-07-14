@@ -28,7 +28,11 @@ function miniSparkline(clientId){
 
 function renderClients(){
   const list=document.getElementById('cli-list');
-  const searchEl=document.getElementById('cli-search');if(searchEl)searchEl.value='';
+  // Preservar el filtro activo (C2 auditoría 2026-07-13): antes se limpiaba el buscador en CADA
+  // render, así que el poll de 15s (o la llegada de un mensaje) borraba el término mientras el
+  // coach filtraba. Ahora navegar limpia (gp→p-clients); render sólo reconstruye y re-aplica.
+  const searchEl=document.getElementById('cli-search');
+  const _term=searchEl?searchEl.value:'';
   document.getElementById('cli-lbl').textContent=`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
   if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--g2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">${_coIco('users',26,'👥')}</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
@@ -85,6 +89,9 @@ function renderClients(){
       </div>`;
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
+  // Re-aplicar el filtro activo sobre la lista recién reconstruida (filterClients opera sobre el
+  // DOM ya creado y actualiza la etiqueta a "N resultados de M"). Si no hay término, no-op.
+  if(_term&&typeof filterClients==='function')filterClients(_term);
 }
 
 function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}

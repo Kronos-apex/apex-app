@@ -1263,6 +1263,10 @@ function gp(id,sidebarEl,pageTitle,_silent){
   // Show/hide topbar action button
   const ab=document.getElementById('topbar-action-btn');
   if(ab) ab.style.display=(id==='p-clients'||id==='p-home')?'flex':'none';
+  // Navegar a Asesorados = lista fresca: limpiar el buscador y mostrar a todos (C2 auditoría
+  // 2026-07-13). El poll de 15s conserva el filtro (renderClients lo re-aplica); SÓLO navegar
+  // lo resetea. filterClients('') quita el display:none heredado de un filtro anterior en el DOM.
+  if(id==='p-clients'){ const _s=document.getElementById('cli-search'); if(_s&&_s.value){ _s.value=''; if(typeof filterClients==='function')filterClients(''); } }
   closeDrawer();
 }
 

@@ -132,6 +132,40 @@ try {
   check('R7 suspendido queda DEBAJO del sano al día',
         susp.names.indexOf('Sara Suspendida') > susp.names.indexOf('Zoe Sana'), JSON.stringify(susp.names));
 
+  // C2 (auditoría 2026-07-13): el buscador NO se borra en el re-render del poll de 15s; SÓLO
+  // navegar a Asesorados (gp) lo resetea. Antes renderClients limpiaba el input en cada render.
+  const c2 = JSON.parse(await ev(`JSON.stringify((()=>{
+    const now=Date.now(); const d=n=>new Date(now+n*86400000).toISOString();
+    const base={level:'Intermedio',goal:'Ganar músculo',days:3,payments:[{dueDate:d(20)}],routines:[{id:'r1',day:'Lunes',name:'x',exercises:[]}],createdAt:d(-90)};
+    DB.clients=[
+      {...base,id:'m1',name:'María López'},
+      {...base,id:'m2',name:'Marta Ruiz'},
+      {...base,id:'p1',name:'Pedro Gómez'},
+    ];
+    DB.history={}; DB.msgs={}; renderClients();
+    const inp=document.getElementById('cli-search');
+    // El coach filtra 'mar'
+    inp.value='mar'; filterClients('mar');
+    const hiddenNow=[...document.querySelectorAll('#cli-list .cli')].filter(c=>c.style.display==='none').map(c=>c.querySelector('.cn')?.textContent.trim());
+    // Llega el poll de 15s → re-render
+    renderClients();
+    const inpAfterPoll=document.getElementById('cli-search').value;
+    const hiddenAfterPoll=[...document.querySelectorAll('#cli-list .cli')].filter(c=>c.style.display==='none').map(c=>c.querySelector('.cn')?.textContent.trim());
+    // El coach navega a Asesorados (gp) → lista fresca
+    let navCleared='(no probado)';
+    try{ gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
+      navCleared={val:document.getElementById('cli-search').value, visible:[...document.querySelectorAll('#cli-list .cli')].filter(c=>c.style.display!=='none').length}; }catch(e){ navCleared='ERR:'+e.message; }
+    return {hiddenNow,inpAfterPoll,hiddenAfterPoll,navCleared};
+  })())`));
+  check('C2 filtrando "mar" oculta al que no coincide (Pedro)',
+        c2.hiddenNow.length===1 && /Pedro/.test(c2.hiddenNow[0]), JSON.stringify(c2.hiddenNow));
+  check('C2 el poll de 15s CONSERVA el término del buscador',
+        c2.inpAfterPoll==='mar', 'input='+c2.inpAfterPoll);
+  check('C2 el poll de 15s CONSERVA el filtro (Pedro sigue oculto)',
+        c2.hiddenAfterPoll.length===1 && /Pedro/.test(c2.hiddenAfterPoll[0]), JSON.stringify(c2.hiddenAfterPoll));
+  check('C2 navegar a Asesorados (gp) LIMPIA el buscador y muestra a todos',
+        c2.navCleared && c2.navCleared.val==='' && c2.navCleared.visible===3, JSON.stringify(c2.navCleared));
+
   // Restaurar la lista completa y tomar shots claro/oscuro de la lista ordenada.
   await ev(`(()=>{const now=Date.now(); const d=n=>new Date(now+n*86400000).toISOString();
     const base={level:'Intermedio',goal:'Ganar músculo',days:3,routines:[{id:'r1',day:'Lunes',name:'Full body',exercises:[]}],createdAt:d(-90)};
