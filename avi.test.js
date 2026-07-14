@@ -2570,6 +2570,27 @@ test('stripFixtureSessions: entrada no-array → array vacío sin lanzar', () =>
 });
 
 // ══════════════════════════════════════════════════════
+// ESTÁTICO — anti-clase de bug (C1 auditoría 2026-07-13)
+// ══════════════════════════════════════════════════════
+// Un onclick inline con `identificadorLocal ?? '${...}'` deja el identificador
+// CRUDO en el atributo (se evalúa en scope global donde no existe) → ReferenceError
+// silencioso ANTES de que el ?? actúe. Fue el bug del botón "Aplicar →" de plantillas.
+// Este test escanea los módulos de la app y prohíbe la CLASE entera.
+section('Estático — anti-clase (onclick con ?? antes de interpolar)');
+test('ningún módulo tiene el patrón `?? \'${` (interpolación a medias en onclick)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const files = ['app-1-infra.js','app-2-login.js','app-3-coach.js','app-4-entreno.js','app-5-salud.js','app-6-extra.js'];
+  const re = /\?\?\s*'\$\{/;
+  const offenders = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    src.split('\n').forEach((ln, i) => { if (re.test(ln)) offenders.push(`${f}:${i + 1}`); });
+  }
+  assert.strictEqual(offenders.length, 0, 'patron de interpolacion a medias encontrado en: ' + offenders.join(', '));
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
