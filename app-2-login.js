@@ -853,7 +853,7 @@ function renderProgressPanel(){
   if(!DB.history)DB.history=ld('ax_hist',{});
   const clients=DB.clients||[];
   if(!clients.length){
-    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">👥</div><div class="etxt">Sin asesorados todavía</div></div>';
+    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico" style="color:var(--t3)">'+(typeof aviIcon==='function'?aviIcon('users',34):'👥')+'</div><div class="etxt">Sin asesorados todavía</div></div>';
     return;
   }
   con.innerHTML='';
@@ -1498,7 +1498,7 @@ function renderHome(){
   // ── Prioritarios: vencidos y por vencer primero ──
   const list=document.getElementById('h-list');
   if(!DB.clients.length){
-    list.innerHTML='<div class="empty"><div class="eico">👥</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';
+    list.innerHTML='<div class="empty"><div class="eico" style="color:var(--t3)">'+(typeof aviIcon==='function'?aviIcon('users',34):'👥')+'</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';
     return;
   }
   const sorted=[...DB.clients].sort((a,b)=>{

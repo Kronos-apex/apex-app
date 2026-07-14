@@ -1636,10 +1636,10 @@ function renderClientAllRoutines(client){
   if(ed)ed.innerHTML=routines.length?clientWeekEditorial(client):'';
   if(!routines.length){
     con.innerHTML=COACH_SELF
-      ? '<div class="empty" style="padding:36px"><div class="eico">🏋️</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Arma tu propio entrenamiento igual que el de un asesorado.</div><button class="btn bp bsm" style="margin-top:12px" onclick="openNewRoutine()">+ Nueva rutina</button></div>'
+      ? '<div class="empty" style="padding:36px"><div class="eico" style="color:var(--g2)">'+(typeof aviIcon==='function'?aviIcon('dumbbell',34):'🏋️')+'</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Arma tu propio entrenamiento igual que el de un asesorado.</div><button class="btn bp bsm" style="margin-top:12px" onclick="openNewRoutine()">+ Nueva rutina</button></div>'
       : client.selfReg
-      ? '<div class="empty" style="padding:36px"><div class="eico">✨</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Generamos un plan a tu medida según tus datos — o ármalo tú mismo si ya tienes el tuyo.</div><button class="btn bp bsm" style="margin-top:12px" onclick="clientSelfGenerate()">✨ Generar mi semana</button><button class="btn bg bsm" style="margin-top:8px" onclick="openNewRoutine()">+ Crear rutina manual</button></div>'
-      : '<div class="empty" style="padding:36px"><div class="eico">📋</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';
+      ? '<div class="empty" style="padding:36px"><div class="eico" style="color:var(--g2)">'+(typeof aviIcon==='function'?aviIcon('sparkles',34):'✨')+'</div><div class="etxt">Crea tu primera rutina</div><div class="esub">Generamos un plan a tu medida según tus datos — o ármalo tú mismo si ya tienes el tuyo.</div><button class="btn bp bsm" style="margin-top:12px" onclick="clientSelfGenerate()">✨ Generar mi semana</button><button class="btn bg bsm" style="margin-top:8px" onclick="openNewRoutine()">+ Crear rutina manual</button></div>'
+      : '<div class="empty" style="padding:36px"><div class="eico" style="color:var(--g2)">'+(typeof aviIcon==='function'?aviIcon('clipboard',34):'📋')+'</div><div class="etxt">Tu plan está en preparación</div><div class="esub">Escríbele a tu coach si tienes alguna pregunta mientras tanto.</div><button class="btn bp bsm" style="margin-top:12px" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';
     return;
   }
   con.innerHTML='';
@@ -2324,7 +2324,7 @@ function renderAdvStats(clientId){
   if(!vol.totalSets){
     con.innerHTML=`<div class="card adv-card">
       <div class="adv-head"><div class="streak-title">${typeof aviIcon==='function'?aviIcon('chart',14):'📊'} Tu entrenamiento en números</div>${pills}</div>
-      <div class="empty" style="padding:26px 10px"><div class="eico">📊</div><div class="etxt">Aún no hay series en los últimos ${winLbl}</div><div class="esub">Cuando completes entrenamientos en <b>"Hoy"</b>, aquí verás cuántas series le das a cada músculo y si tu cuerpo entrena equilibrado 💪</div></div>
+      <div class="empty" style="padding:26px 10px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('chart',34):'📊'}</div><div class="etxt">Aún no hay series en los últimos ${winLbl}</div><div class="esub">Cuando completes entrenamientos en <b>"Hoy"</b>, aquí verás cuántas series le das a cada músculo y si tu cuerpo entrena equilibrado 💪</div></div>
     </div>`;
     return;
   }
@@ -2453,7 +2453,7 @@ function renderClientHistory(clientId){
   renderVolChart(sessions);
   _syncProgAnchors(sessions.length>0);
   if(!sessions.length){
-    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico">📊</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';
+    con.innerHTML='<div class="empty" style="padding:36px"><div class="eico" style="color:var(--g2)">'+(typeof aviIcon==='function'?aviIcon('chart',34):'📊')+'</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';
     return;
   }
   con.innerHTML='';
