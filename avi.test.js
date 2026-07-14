@@ -2590,6 +2590,21 @@ test('ningún módulo tiene el patrón `?? \'${` (interpolación a medias en onc
   assert.strictEqual(offenders.length, 0, 'patron de interpolacion a medias encontrado en: ' + offenders.join(', '));
 });
 
+// ── C4 (auditoría 2026-07-13): el mapa EX_IMG_NAME debe ser null-proto ──
+// El lookup `EX_IMG_NAME[nf(nombre)]` de exImgSrc/exVidSrc (app-1-infra.js) resolvería a un
+// miembro HEREDADO del prototipo si un ejercicio custom se llama 'constructor'/'__proto__'/
+// 'toString' (→ id basura → 404 de imagen). Se blinda severando el prototipo del mapa. app-1
+// no es requerible en Node (usa globals de browser), así que se verifica estáticamente en la
+// fuente: el severado debe estar presente. Falla si alguien lo quita o reintroduce el literal.
+test('C4: EX_IMG_NAME es null-proto (lookup por nombre no hereda del prototipo)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const nulled = /Object\.setPrototypeOf\(\s*EX_IMG_NAME\s*,\s*null\s*\)/.test(src)
+              || /EX_IMG_NAME\s*=\s*Object\.assign\(\s*Object\.create\(\s*null\s*\)/.test(src);
+  assert.ok(nulled, 'EX_IMG_NAME debe blindarse (Object.setPrototypeOf(...,null) u Object.create(null)) — C4');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
