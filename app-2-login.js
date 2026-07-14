@@ -537,7 +537,7 @@ function renderPickerForTarget(){
       const on=arr.includes(ex.id);
       const col=pickerTarget==='exclude'?'var(--rd)':'var(--g)';
       const div=document.createElement('div');
-      div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${on?col:'var(--br)'};background:${on?col+'14':'var(--w)'};margin-bottom:3px;transition:all .15s`;
+      div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${on?col:'var(--br)'};background:${on?col+'14':'var(--w)'};margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)`;
       div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:${on?col:'var(--t3)'}">${on?(pickerTarget==='exclude'?'🚫':'⭐'):'+'}</span>`;
       div.onclick=()=>{
         const i=arr.indexOf(ex.id);
@@ -557,7 +557,7 @@ function renderPickerForTarget(){
     list.innerHTML='';
     filtered.forEach(ex=>{
       const div=document.createElement('div');
-      div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);margin-bottom:3px;transition:all .15s';
+      div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
       div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:var(--g)">→</span>`;
       div.onclick=()=>_applySubstitute(ex);
       list.appendChild(div);
@@ -571,7 +571,7 @@ function renderPickerForTarget(){
   filtered.forEach(ex=>{
     const already=currentExs.some(e=>e.id===ex.id);
     const div=document.createElement('div');
-    div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${already?'var(--g2)':'var(--br)'};background:${already?'var(--gl)':'var(--w)'};margin-bottom:3px;transition:all .15s`;
+    div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${already?'var(--g2)':'var(--br)'};background:${already?'var(--gl)':'var(--w)'};margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)`;
     div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
     div.onclick=()=>{
       if(already){toast('Ya está en la lista');return}
@@ -637,7 +637,7 @@ function openTemplateClientSelector(tplId){
   list.innerHTML=`<div style="font-size:13px;color:var(--t2);margin-bottom:10px">¿A qué asesorado quieres aplicar <strong>"${esc(tpl.name)}"</strong>?</div>`;
   DB.clients.forEach(c=>{
     const div=document.createElement('div');
-    div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:all .15s';
+    div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
     div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Aplicar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
@@ -680,7 +680,7 @@ function openTemplatePicker(){
   DB.templates.forEach(tpl=>{
     const exN=(tpl.exercises||[]).length;
     const div=document.createElement('div');
-    div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:all .15s;margin-bottom:4px';
+    div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out);margin-bottom:4px';
     div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--bl)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Usar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
