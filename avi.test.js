@@ -1609,6 +1609,31 @@ test('MOOD_STATES: "periodo" es el único femaleOnly; ids únicos', () => {
   assert.strictEqual(new Set(ids).size, ids.length);
 });
 
+// ── Capa A del Coach Inteligente: adapt.care (bienestar por ánimo, v352) ──
+test('adapt.care: SIEMPRE presente (1-3 consejos) para cada estado + default', () => {
+  const moods = MOOD_STATES.map(m => m.id).concat(['bien', '__desconocido__']);
+  moods.forEach(mood => {
+    const care = applyMood(moodRoutine(), mood, { sex: 'F' }).adapt.care;
+    assert.ok(Array.isArray(care), `care no es array para "${mood}"`);
+    assert.ok(care.length >= 1 && care.length <= 3, `care fuera de 1-3 para "${mood}" (${care.length})`);
+    assert.ok(care.every(c => typeof c === 'string' && c.trim().length), `care con string vacío en "${mood}"`);
+  });
+});
+
+test('adapt.care "dolor": empuja a PARAR, no a aguantar (límite de seguridad)', () => {
+  const care = applyMood(moodRoutine(), 'dolor', {}).adapt.care;
+  assert.ok(care.some(c => /\bpara\b/i.test(c)), 'el consejo de dolor debe decir que pare');
+});
+
+test('adapt.care: no rompe changes/flagCoach existentes (no regresión)', () => {
+  const cansado = applyMood(moodRoutine(), 'cansado', {}).adapt;
+  assert.ok(cansado.changes.length >= 2, 'cansado conserva sus chips de ajuste');
+  assert.strictEqual(cansado.flagCoach, false);
+  const dolor = applyMood(moodRoutine(), 'dolor', {}).adapt;
+  assert.strictEqual(dolor.flagCoach, true);
+  assert.ok(dolor.changes.some(c => /coach/i.test(c)), 'dolor conserva el aviso al coach');
+});
+
 // ══════════════════════════════════════════════════════
 section('Membresía (MS) — estado de pago, login y badge');
 

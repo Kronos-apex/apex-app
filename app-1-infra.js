@@ -1622,6 +1622,8 @@ const AVI_ICONS={
   medal:'<circle cx="12" cy="9.2" r="5.6"/><path d="M9 13.8L7.2 21l4.8-2.7L16.8 21 15 13.8"/>',
   disc:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.4"/>',
   lock:'<rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2"/><path d="M8.5 10.5V7.6a3.5 3.5 0 0 1 7 0v2.9"/><path d="M12 14.3v2.2"/>',
+  // Coach Inteligente Capa A (v352): bloque de bienestar del check-in de ánimo.
+  heart:'<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 1c-2 3.8-8 8-8 8z"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;

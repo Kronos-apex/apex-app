@@ -189,7 +189,7 @@ la analítica ya está premium-gated (`isFreeClient`). A confirmar.
 
 ### E1 — Capa A core: `adapt.care` en `applyMood` (avi-core.js) — commit 1 (con E2)
 
-- [ ] implementado · [ ] tests · [ ] verificado
+- [x] implementado · [x] tests (suite 314→317) · [x] verificado
 
 **Dónde:** `avi-core.js` — `applyMood` (línea ~1503). El objeto `adapt` se crea en ~1509:
 `{ mood, title, why, tone, changes, flagCoach }`. **Agregar `care: []`** al literal inicial y
@@ -219,7 +219,7 @@ no a aguantar), (e) `applyMood` sigue devolviendo `changes`/`flagCoach` intactos
 
 ### E2 — Capa A UI: bloque de cuidado en `moodBannerHtml` (app-4-entreno.js) — commit 1 (con E1)
 
-- [ ] implementado · [ ] verificado visual ambos temas
+- [x] implementado (+ ícono `heart` en AVI_ICONS) · [x] verificado visual (harness E6-A)
 
 **Dónde:** `app-4-entreno.js` — `moodBannerHtml` (línea ~679). Esta función la usan las DOS
 vistas (clásica vía `pickMood` y guiado embebido vía app-6-extra.js:417-418

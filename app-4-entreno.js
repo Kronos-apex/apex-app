@@ -681,7 +681,13 @@ function moodBannerHtml(adapt,fnName){
   const map={g:['var(--gl)','var(--g2)','var(--gt)'],b:['var(--bll)','var(--bl)','var(--bl)'],r:['rgba(229,72,77,.10)','var(--rd)','var(--rd)']};
   const t=map[adapt.tone]||map.g;
   const chips=(adapt.changes&&adapt.changes.length)?`<div class="mood-chips">${adapt.changes.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:'';
-  return `<div style="background:${t[0]};border:1px solid ${t[1]};border-left:3px solid ${t[1]};border-radius:var(--r);padding:12px 14px;margin-bottom:12px"><div style="font-size:14px;font-weight:800;color:${t[2]};margin-bottom:3px">${esc(adapt.title)}</div><div style="font-size:12.5px;color:var(--t1);line-height:1.5">${esc(adapt.why)}</div>${chips}<button onclick="${fn}()" style="margin-top:9px;font-size:11px;font-weight:700;color:var(--t3);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Cambiar cómo me siento</button></div>`;
+  // Coach Inteligente Capa A (v352): bloque de bienestar "Para cuidarte hoy". esc() aunque
+  // hoy sean estáticos (regla de la casa). Un solo cambio cubre la vista clásica Y el guiado
+  // embebido (app-6 reusa moodBannerHtml). Guard por caché vieja de avi-core sin adapt.care.
+  const care=(adapt.care&&adapt.care.length)
+    ?`<div style="margin-top:10px;padding-top:9px;border-top:1px solid ${t[1]}"><div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:${t[2]};text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">${typeof aviIcon==='function'?aviIcon('heart',13):'💚'}<span>Para cuidarte hoy</span></div>${adapt.care.map(c=>`<div style="font-size:12px;color:var(--t1);line-height:1.5;padding-left:2px">${esc(c)}</div>`).join('')}</div>`
+    :'';
+  return `<div style="background:${t[0]};border:1px solid ${t[1]};border-left:3px solid ${t[1]};border-radius:var(--r);padding:12px 14px;margin-bottom:12px"><div style="font-size:14px;font-weight:800;color:${t[2]};margin-bottom:3px">${esc(adapt.title)}</div><div style="font-size:12.5px;color:var(--t1);line-height:1.5">${esc(adapt.why)}</div>${chips}${care}<button onclick="${fn}()" style="margin-top:9px;font-size:11px;font-weight:700;color:var(--t3);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Cambiar cómo me siento</button></div>`;
 }
 function pickMood(mood){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;

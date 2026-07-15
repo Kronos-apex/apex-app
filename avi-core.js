@@ -1506,12 +1506,19 @@ function applyMood(routine, mood, opts) {
   const exs = (base.exercises || []).map(e => Object.assign({}, e));
   const out = Object.assign({}, base, { exercises: exs });
   const rest = parseInt(base.restSec) || 60;
-  const adapt = { mood: mood || 'bien', title: '', why: '', tone: 'g', changes: [], flagCoach: false };
+  // `care` = 1-3 consejos de BIENESTAR (voz AVI cálida). Consejos generales, NUNCA
+  // médicos ni cifras prescriptivas. SIEMPRE presente (también en 'bien'/default).
+  // Coach Inteligente Capa A (plan-coach-inteligente §11.E1, 2026-07-15).
+  const adapt = { mood: mood || 'bien', title: '', why: '', tone: 'g', changes: [], care: [], flagCoach: false };
 
   switch (mood) {
     case 'energia':
       adapt.title = '¡A por todo hoy! 🔥';
       adapt.why = 'Te sientes con energía: rutina completa. Si hay un día para buscar un récord, es hoy.';
+      adapt.care.push(
+        'Aprovecha el día: hidrátate bien durante la sesión',
+        'Esta noche duerme 7-8 horas — ahí se consolida lo que entrenas hoy'
+      );
       break;
 
     case 'cansado': {
@@ -1524,6 +1531,11 @@ function applyMood(routine, mood, opts) {
       adapt.tone = 'b';
       adapt.changes.push('−1 serie por ejercicio', '+15s de descanso');
       if (dropped) adapt.changes.push('Quitamos: ' + (dropped.name || 'último accesorio'));
+      adapt.care.push(
+        'Duerme 7-8 horas esta noche: el descanso también entrena',
+        'Súbele hoy a los carbohidratos, son tu gasolina',
+        'Sé amable contigo: el cansancio pone irritable a cualquiera'
+      );
       break;
     }
 
@@ -1533,6 +1545,11 @@ function applyMood(routine, mood, opts) {
       adapt.why = 'Sumamos un bloque de cardio al final para soltar el estrés. Hoy el gimnasio es tu terapia.';
       adapt.tone = 'b';
       adapt.changes.push('+ Cardio de descarga (10 min)');
+      adapt.care.push(
+        'Respira profundo entre series — el ejercicio es tu descarga',
+        'Al terminar, camina un poco sin afán',
+        'Evita la cafeína en la tarde para dormir mejor'
+      );
       break;
     }
 
@@ -1545,6 +1562,10 @@ function applyMood(routine, mood, opts) {
       adapt.title = 'Entrena con confianza 🩸';
       adapt.why = 'Estar en tu periodo no te frena: puedes entrenar fuerza con normalidad y además te hace bien (huesos, energía, ánimo). Escucha tu cuerpo — si hoy tienes cólicos o te sientes cansada, marca "Cansada" o "Con dolor" y ajustamos la sesión por ti.';
       adapt.tone = 'g';
+      adapt.care.push(
+        'Hidrátate más de lo normal estos días',
+        'Si hay cólicos, el movimiento suave ayuda — escucha tu cuerpo'
+      );
       break;
 
     case 'dolor': {
@@ -1558,6 +1579,12 @@ function applyMood(routine, mood, opts) {
       adapt.flagCoach = true;
       if (n) adapt.changes.push(n + ' ejercicios sin carga');
       adapt.changes.push('Tu coach fue notificado');
+      // Seguridad: el care empuja a PARAR, no a aguantar (el test lo verifica).
+      adapt.care.push(
+        'Si algo duele de verdad, para — no es negociable',
+        'Al llegar a casa: hielo y descanso en la zona',
+        'Si sigue igual en unos días, consúltalo con un profesional'
+      );
       break;
     }
 
@@ -1565,6 +1592,7 @@ function applyMood(routine, mood, opts) {
     default:
       adapt.title = 'A entrenar 💪';
       adapt.why = 'Te sientes bien: rutina completa, tal como tu coach la preparó para ti.';
+      adapt.care.push('La constancia es lo que te transforma — hoy suma un día más');
       break;
   }
 
