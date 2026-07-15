@@ -463,7 +463,7 @@ en producción (avi-v352).** Siguiente: Fase 3 (estipulada en §14, Camilo la ap
 
 ### F0 — Limpieza `#pr-banners` (radar §13) — commit 0, PROPIO
 
-- [x] borrado · [x] verificado (0 refs activas, hook 11/11) — commit `<F0>`
+- [x] borrado · [x] verificado (0 refs activas, hook 11/11) — commit `806f9da`
 
 Borrar el div huérfano `#pr-banners` (index.html:~588) y su entrada en los DOS arrays de
 `_todayOrder` (app-4). ANTES de borrar: `grep -n "pr-banners"` en *.js, index.html y
@@ -593,15 +593,17 @@ decisión de Opus, documentada): loguear como COACH QA (patrón `_shot-coach.mjs
 `~/.avi/qa-accounts.txt`), inyectar 3 clientes fake con señales, congelar poll, afirmar orden
 + tap-✕ silencia + XSS-probe en nombre de ejercicio del label + shot ambos temas.
 
-### Cierre de Fase 3
-1. [ ] Suite completa (≥327+nuevos) · `_guiado-suite` 53/53 · `_test-coach-back` 20/20 ·
-   `_verify-coach` verde · `_verify-modals` 12/12 · `_verify-news` verde (sin cambios de news).
-2. [ ] **SIN entrada AVI_NEWS** — decisión estipulada: la news v352 ya anunció el coach
-   inteligente en genérico («si algo se estanca o te ausentas…»); deload/agua/peso son más de
-   lo mismo y el pulso es del COACH (las news son del asesorado). No spamear el tour.
-3. [ ] Deploy único `?v=353` + `avi-v353` (regla 5: bytes sin BOM) → push → curl → `_prodcheck 353`.
-4. [ ] Bitácora (parte 58) · CLAUDE.md (backlog Fase 3 hecha, `coachPulse` en funciones clave,
-   footer v353/suite) · checkboxes de este §14 · memoria de sesión.
+### Cierre de Fase 3 — ✅ EJECUTADO (Opus, 2026-07-15)
+1. [x] Suite **336/336** · `_guiado-suite` 53/53 · `_test-coach-back` 20/20 · `_verify-coach`
+   12/12 · `_verify-modals` 12/12 · `_verify-news` verde (sin cambios) · `_verify-pulse` 6/6 · cero jsErrors.
+2. [x] **SIN entrada AVI_NEWS** (cumplido — la news v352 ya lo anunció; el pulso es del coach).
+3. [x] Deploy `9f2763a` `?v=353`/`avi-v353` (bump python SIN BOM, 3 primeros bytes verificados) →
+   push → curl (v353 + `#h-pulse` servidos) → `_prodcheck.mjs 353` ✅ (arranca limpio, cero jsErrors).
+4. [x] Bitácora parte 58 · CLAUDE.md (backlog `[~]`, `coachPulse`/8 señales en funciones clave,
+   footer v353/suite 336) · checkboxes marcados · memoria de sesión.
+
+**Commits:** F0 `806f9da` · F1 `417795f` · F2 `28aa462` · F3 `2e91293` · deploy `9f2763a`.
+**Queda la VERIFICACIÓN de Fable (§15).**
 
 ## 15. 🔍 Verificación de Fable (post-Opus, Fase 3)
 El protocolo es el MISMO de §12 con línea base `3ba343c` y v353, más estos puntos específicos:
