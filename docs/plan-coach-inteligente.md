@@ -661,3 +661,136 @@ panel llega a 100+ asesorados, memoizar por sesión. Anotado, sin acción hoy.
 
 **Ciclo planificar → ejecutar → verificar CERRADO. Coach Inteligente Fases 1+2+3 APROBADAS
 en producción (avi-v353).** Restan como futuro opcional: capa LLM y push (adopción).
+
+---
+
+## 17. 📋 PLAN DE EJECUCIÓN ESTIPULADO — FASE 4: PLAN DE CHOQUE (Opus ejecuta, Fable verifica)
+
+> **Feedback de Camilo (2026-07-15, tras probar v353):** *"ya vi el pulso pero no es nada
+> especial — me dice 'Astrid se estancó en jalón al pecho', le doy clic y me manda al perfil,
+> nada especial. Bien que me diga los estancamientos, pero necesito MÁS de un coach
+> inteligente: si ya encontró un estancamiento, que proponga al asesorado o a mí un PLAN DE
+> CHOQUE."* Tiene razón: detectar sin proponer es medio producto. La promesa completa es
+> **detección → propuesta concreta → acción en UN toque.**
+>
+> **Decisión de diseño (Fable):** la propuesta va AL COACH, no directo al asesorado — la regla
+> innegociable del generador aplica igual (AVI propone, el coach SIEMPRE aprueba antes de tocar
+> la rutina; prescribir directo saltaría los guardas de dolor/limitaciones y la autoridad del
+> coach). El asesorado lo SIENTE cuando su rutina cambia y le llega el mensaje de su coach.
+> Consistente: `estancado` es señal premium → siempre hay coach humano en el circuito.
+
+### Línea base (2026-07-15, tras la verificación de Fase 3)
+- Prod: **avi-v353** · HEAD `e0dd00a` · Suite **336/336** · `_verify-pulse` 6/6 · `_verify-coach` 12/12.
+
+### 🛡️ Reglas obligatorias (las de §14, TODAS, más:)
+1. **Sabotajes anti-test-decorativo SOLO con el árbol limpio** (gotcha de proceso §16).
+2. Los MENSAJES prellenados para el asesorado van en **voz del COACH** (los envía Camilo desde
+   SU chat, editables SIEMPRE antes de enviar) — NO en voz AVI (esa es de las tarjetas).
+3. NADA se aplica ni se envía sin un tap explícito del coach. Cero automatismos hacia el asesorado.
+
+---
+
+### G1 — Core: `shockPlan` + `applyShockOption` (avi-core, puras) — commit 1 (con tests)
+
+- [ ] `shockPlan` · [ ] `applyShockOption` · [ ] seguridad dolor/limitaciones · [ ] tests · [ ] verificado
+
+**`shockPlan(client, exName, sessions, lib, now)`** → `null` si `_insStallOf(sessions)` no
+detecta estancamiento en ESE ejercicio, o:
+
+```js
+{ ex: {name, muscle},                         // del progreso (computeExerciseProgress)
+  analysis: {bestKg, flatPoints, sinceStr},   // peso plantado, nº de puntos planos
+  warnings: [...],                            // strings para el coach (dolor/limitación)
+  options: [{id, title, desc, msg, apply}] }  // 2-3 según seguridad
+```
+
+**Las 3 opciones (protocolos estándar de periodización; constantes ajustables por Camilo):**
+- **`remonta` «Descarga y remonta» (SIEMPRE presente, la recomendada).** desc: «2 semanas con
+  ~10% menos peso a 12 repeticiones con técnica perfecta; en la semana 3 vuelve a su peso y lo
+  supera.» `apply:{reps:SHOCK_REMONTA_REPS}` (=12). msg prellenado (voz coach): «{nombre}, vi
+  que el {ex} se te plantó en {kg} kg. Vamos a destrabarlo: estas 2 semanas baja el peso ~10% y
+  hazlo a 12 repeticiones con técnica perfecta. En la semana 3 volvemos por ese récord 💪»
+- **`pesado` «Bloque de fuerza 5×5» (EXCLUIDA si hay dolor activo).** desc: «3 semanas de 5
+  series × 5 repeticiones con más carga y descansos largos — un estímulo distinto rompe la
+  meseta.» `apply:{sets:SHOCK_PESADO_SETS, reps:SHOCK_PESADO_REPS, restSecDelta:SHOCK_PESADO_REST_PLUS}`
+  (=5, 5, +30). msg análogo.
+- **`variante` «Rota a una variante» (si hay candidata segura).** Candidatas del catálogo `lib`:
+  mismo `muscle`, nombre distinto, **gate por nivel** (`exLevelRank` ≤ nivel del cliente,
+  patrón `_levelGate`), **excluyendo** las que matcheen `GEN_ZONE_EXCL[zona]` para las zonas de
+  `parseLimitations(client.notes).keys` Y las zonas con dolor activo (`painCareActive`).
+  Elegir DETERMINISTA (primera candidata en el orden del catálogo). `apply:{swapTo:exId}`.
+  desc y msg con el nombre de la variante («rotemos {ex} por {variante} unas 3-4 semanas»).
+
+**Warnings (para la tarjeta del coach):** dolor activo → «🤕 Reportó dolor hace poco — revisa
+su estado antes de subir cargas» (y `pesado` NO se ofrece); `parseLimitations.detected` →
+«Tiene una limitación anotada ({zonas}) — confirma que la opción no la comprometa».
+
+**`applyShockOption(routines, exName, option, lib)`** → PURA, devuelve **copia nueva** del
+array de rutinas con la opción aplicada a **TODAS las entradas** cuyo `name === exName` (el
+mismo criterio de agrupación del estancamiento): `remonta`/`pesado` ajustan `reps`/`sets`/
+`restSec` de la entrada; `variante` hace swap de `id/name/muscle/type/track/icon/desc/imgUrl`
+desde `lib` **CONSERVANDO** `sets`/`reps` de la entrada. No muta los argumentos.
+
+**Constantes:** `SHOCK_REMONTA_REPS=12` · `SHOCK_PESADO_SETS=5` · `SHOCK_PESADO_REPS=5` ·
+`SHOCK_PESADO_REST_PLUS=30` · `SHOCK_MUTE_DAYS=21`.
+
+**Tests estipulados:** sin estancamiento → null · con estancamiento → `remonta` siempre y
+análisis con el kg correcto · dolor activo → SIN `pesado` + warning · limitación lumbar →
+variantes con «peso muerto/remo con barra/…» EXCLUIDAS · sin candidata de nivel → sin opción
+`variante` · swap conserva sets/reps y cambia id/name · `applyShockOption` NO muta el original
+· determinismo (mismos args → mismas opciones) · msg contiene nombre y kg (voz coach).
+
+### G2 — UI coach: tarjeta en `p-detail` + integración con el pulso — commit 2 (con harness)
+
+- [ ] tarjeta `#d-shock` · [ ] aplicar 1-toque · [ ] chat prellenado · [ ] pulso→detalle enfocado · [ ] harness · [ ] visual
+
+**Tarjeta `#d-shock`** (div nuevo en index.html dentro de `#p-detail`, tras la cabecera y antes
+de Membresía — visible sin scroll): se pinta desde `openDetail` (app-3:~1040) si
+`shockPlan(...)` devuelve algo Y no está silenciado (`shockmute_<cid>_<exNorm>` en localStorage,
+21 días tras aplicar o descartar; LOCAL, NO SB_KEYS). Contenido: encabezado «⚡ Plan de choque —
+{ex}» + análisis («plantado en {kg} kg hace {n} sesiones») + warnings + las opciones, cada una
+con su desc y botón **«Aplicar»** (≥36px) + botón global **«✍️ Escribirle»** + **«Descartar»**.
+- **Aplicar** → `applyShockOption` → `c.routines=resultado` → `sv('ax_c')` → toast «Plan
+  aplicado a la rutina de {nombre}» → abre `openCoachChat(cid)` con `#cchat-in` PRELLENADO con
+  `option.msg` (el coach lo edita y lo envía él mismo — NADA se envía solo) → mute 21 días.
+- **Escribirle** (sin aplicar) → chat prellenado con el msg de la opción recomendada.
+- **Descartar** → mute 21 días + la tarjeta desaparece.
+- `esc()` en TODO (ex/cliente/variante van a innerHTML y a onclick). Tokens, ambos temas, sin
+  animación nueva.
+
+**Pulso:** la fila `estancado` conserva su tap→`openDetail`; ANTES del open, setear un foco
+(`window._shockFocus=cid` o mecanismo equivalente mínimo) para que el detalle haga
+`scrollIntoView` suave de `#d-shock` al llegar. No tocar el ✕ ni el orden del pulso.
+
+**Harness `_verify-shock.mjs`** (patrón inyección de `_shot-coach`, sin login real; DB en
+memoria — el sello v298 protege la nube): fixture «Astrid» estancada en «Jalón al Pecho»
+(6 puntos planos) → S1 tarjeta aparece con análisis y 3 opciones · S2 con `painCare` activo →
+2 opciones (sin 5×5) + warning · S3 «Aplicar» 5×5 → TODAS las entradas de ese nombre quedan
+sets=5/reps=5/restSec+30 y el original NO mutó · S4 variante → swap conserva sets/reps · S5
+chat abierto con `#cchat-in` prellenado (editable, no enviado) · S6 «Descartar» → mute y no
+reaparece en re-open · S7 XSS-probe en nombre de ejercicio/variante · S8 render determinista ·
+shots ambos temas mirados a ojo. Regla 6 (tour silenciado ANTES del primer shot).
+
+**Asesorado: SIN cambios.** Su tarjeta `estancado` ya existe y su plan le llega por el canal
+correcto: la rutina actualizada + el mensaje de su coach. **SIN AVI_NEWS** (cara del coach).
+
+### Cierre de Fase 4
+1. [ ] Suite (≥336+nuevos) · `_verify-shock` verde · `_verify-pulse` 6/6 · `_test-coach-back`
+   20/20 · `_verify-coach` 12/12 · `_guiado-suite` 53/53 (cinturón: avi-core cambia) ·
+   `_verify-modals` 12/12.
+2. [ ] Deploy único `?v=354` + `avi-v354` (bump python SIN BOM, bytes verificados) → push →
+   curl → `_prodcheck.mjs 354`.
+3. [ ] Bitácora (parte 59) · CLAUDE.md (funciones clave `shockPlan`/`applyShockOption`, footer)
+   · checkboxes de este §17 · memoria de sesión.
+
+## 18. 🔍 Verificación de Fable (post-Opus, Fase 4)
+Protocolo §12 con línea base `e0dd00a` y v354, más:
+- **Nada llega al asesorado sin tap del coach**: revisar el código — cero `sendCoachMsg`/
+  `pushToClient`/`sv` automáticos desde la detección; el chat solo se PRELLENA.
+- Dolor activo NUNCA ofrece `pesado` (código + test + sabotaje del candado).
+- `applyShockOption` es pura (test de no-mutación) y el swap respeta nivel/limitaciones.
+- Los tests v353 (coachInsight/coachPulse) pasan SIN modificación.
+- Sabotaje de ≥2 candados nuevos (dolor-filtra-pesado; exclusión por limitación) con árbol limpio.
+
+## 19. Desviaciones de la Fase 4
+*(la sesión que ejecuta documenta aquí; Fable agrega el veredicto)*
