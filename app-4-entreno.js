@@ -566,9 +566,12 @@ function renderTodayHead(client){
 // no duplica). Corre en cada render de Hoy — nunca con timer vivo (ese render se salta antes).
 function _todayOrder(training){
   const panel=document.getElementById('cn-today'); if(!panel)return;
+  // v352: la tarjeta del Coach Inteligente (#cn-coach-card) va DESPUÉS del entreno en día de
+  // entreno (no empuja el guiado bajo el pliegue, decisión v313) y ARRIBA en descanso/sin rutina
+  // (ahí es el contenido principal del día).
   const ids=training
-    ? ['cn-today-head','pr-banners','cn-today-body','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
-    : ['cn-today-head','qw-entry','pr-banners','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
+    ? ['cn-today-head','pr-banners','cn-today-body','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
+    : ['cn-today-head','cn-coach-card','qw-entry','pr-banners','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 function renderClientToday(client, overrideRoutine){
@@ -594,6 +597,9 @@ function renderClientToday(client, overrideRoutine){
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
   if(typeof renderHabitsCard==='function')renderHabitsCard(client);
+  // 🧠 Coach Inteligente (v352): 1 insight priorizado (récord/racha/inactividad/…). Antes de los
+  // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
+  if(typeof renderCoachCard==='function')renderCoachCard(client);
   // ✨ Novedades (v302): una vez por tanda, descartable.
   if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
@@ -723,6 +729,46 @@ function notifyCoachMood(client){
   DB.msgs[cid].push({from:'client',text,date:new Date().toISOString(),system:true});
   svNow('ax_m',DB.msgs);
   pushToClient('_coach','🩺 '+name+' tiene dolor hoy',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:cid,tag:'avi-chat-coach'});
+}
+
+// ── Coach Inteligente: tarjeta de insight en "Hoy" (Capa B, v352) ──
+// Lee el insight priorizado de avi-core.coachInsight (motor de REGLAS puro) y lo pinta como una
+// tarjeta ligera. "Entendido" silencia ese tipo por unos días — localStorage por asesorado+tipo,
+// LOCAL a propósito (no sincroniza: es preferencia efímera de UI, no dato del asesorado).
+const _INSIGHT_MUTE_DAYS={inactivo:2,record:2,racha:3,estancado:7,adaptacion:5};
+function _coachMuteKey(cid,type){return 'coachmute_'+cid+'_'+type;}
+function _coachMuteMap(cid){
+  const m={};
+  Object.keys(_INSIGHT_MUTE_DAYS).forEach(t=>{const v=parseInt(localStorage.getItem(_coachMuteKey(cid,t)));if(v)m[t]=v;});
+  return m;
+}
+function dismissCoachInsight(type){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!type)return;
+  const days=_INSIGHT_MUTE_DAYS[type]||3;
+  localStorage.setItem(_coachMuteKey(c.id,type),String(Date.now()+days*86400000));
+  renderCoachCard(c); // se oculta o muestra el siguiente insight
+}
+function renderCoachCard(client){
+  const el=document.getElementById('cn-coach-card');if(!el)return;
+  const cid=client&&client.id;
+  if(typeof coachInsight!=='function'||!cid){el.innerHTML='';return;} // guard caché vieja de avi-core
+  const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:isFreeClient(client),muted:_coachMuteMap(cid)});
+  if(!ins){el.innerHTML='';return;} // sin señal (o todas silenciadas) → la tarjeta desaparece sola
+  const ic=typeof aviIcon==='function'?aviIcon(ins.icon,20):'';
+  // El cta solo llega en insights premium (estancado); premium sí tiene chat → coherente.
+  const ctaBtn=(ins.cta&&ins.cta.action==='msgs')
+    ?`<button class="btn bp bsm" onclick="cnTab('cn-messages',document.getElementById('tab-msgs'))" style="flex:1;min-height:36px">${esc(ins.cta.label)}</button>`
+    :'';
+  el.innerHTML=`<div class="card" data-insight="${esc(ins.type)}" style="padding:14px 15px;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="color:var(--g2);flex:0 0 auto;margin-top:1px">${ic}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:3px">${esc(ins.title)}</div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.5">${esc(ins.msg)}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:11px">${ctaBtn}<button class="btn bg bsm" onclick="dismissCoachInsight('${esc(ins.type)}')" style="${ins.cta?'':'flex:1;'}min-height:36px">Entendido</button></div>
+  </div>`;
 }
 
 function startRoutineNow(routineId){

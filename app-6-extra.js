@@ -2365,13 +2365,13 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  {v:313, icon:'camera', t:'Comparte tu entreno', d:'Al terminar tu sesión puedes crear una imagen con tus números, lista para presumir.',
-   steps:['Completa tu entrenamiento de hoy','En la pantalla de cierre toca "Compartir mi entreno"','Súbela a tus historias o mándasela a quien quieras 💚']},
   {v:314, icon:'trend', t:'Tu Progreso, de un toque', d:'Se acabó el scroll infinito: salta directo a lo que quieres ver.',
    steps:['Entra a la pestaña Progreso','Arriba verás Nivel · Constancia · Números · Historial','Tócalos para saltar directo — te acompañan mientras bajas']},
   {v:316, icon:'chat', t:'Respuestas rápidas en el chat', d:'Escribirle a tu coach ahora toma UN toque.',
    steps:['Entra a Mensajes','Toca una respuesta lista: "¡Entrenamiento hecho!", "Tengo una duda" o "Algo me dolió"','Tu coach la recibe al instante — y te responde'],
    cta:{label:'Probarlas ahora',run:'ntGoMsgs'}, coach:true}, // solo con coach (aviso Lucas: al libre le prometía un chat que no tiene)
+  {v:352, icon:'heart', t:'AVI está pendiente de ti', d:'Ahora AVI te acompaña de verdad: consejos según cómo amaneces y un mensaje cuando rompes un récord, cumples tu plan o te perdemos de vista.',
+   steps:['En "Hoy", marca cómo te sientes — verás consejos para cuidarte','Cuando avances (un récord, una racha) AVI te lo celebra ahí mismo','Si algo se estanca o te ausentas, te lo dice con cariño']}, // coach:false → para todos (bienestar/racha/récord)
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).

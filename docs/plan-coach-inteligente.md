@@ -292,7 +292,7 @@ para que Camilo los ajuste fácil.
 
 ### E4 — Capa B UI: tarjeta del coach en «Hoy» — commit 3 (con E5+E6)
 
-- [ ] implementado · [ ] verificado visual ambos temas × free/premium
+- [x] implementado · [x] verificado visual ambos temas × free/premium (harness E6 shots)
 
 **Contenedor:** div nuevo `<div id="cn-coach-card"></div>` en index.html dentro de `#cn-today`,
 junto a `#pr-banners` (línea ~588).
@@ -327,7 +327,7 @@ early-returns → sale también en descanso y sin rutinas). Guard `typeof coachI
 
 ### E5 — AVI_NEWS (regla v302) — commit 3
 
-- [ ] entrada nueva · [ ] poda de viejas · [ ] `_verify-news.mjs` actualizado y verde
+- [x] entrada nueva (v352, coach:false) · [x] poda de v313 · [x] `_verify-news.mjs` actualizado (N1/N2/N5/N9)
 
 Capacidad nueva VISIBLE al asesorado → entrada en `AVI_NEWS` (app-6-extra.js) anunciando que
 AVI ahora acompaña («AVI está pendiente de ti: consejos según cómo amaneces y mensajes cuando
@@ -337,7 +337,7 @@ commit** (regla de oro de los harness). `coach:false` (aplica también a libres)
 
 ### E6 — Harness E2E `_verify-coach.mjs` (nuevo) — commit 3
 
-- [ ] escrito · [ ] verde · [ ] shots ambos temas mirados a ojo
+- [x] escrito · [x] verde (8 checks A-F, cero jsErrors) · [x] shots ambos temas mirados a ojo
 
 Patrón `_verify-v315`/gamif: `s-client` forzado con `CUR`/`DB` fake SIN login real, poll de
 nube CONGELADO tras inyectar (gotcha v347: clearInterval + stub — si no, la nube borra los
