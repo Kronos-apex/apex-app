@@ -570,8 +570,8 @@ function _todayOrder(training){
   // entreno (no empuja el guiado bajo el pliegue, decisión v313) y ARRIBA en descanso/sin rutina
   // (ahí es el contenido principal del día).
   const ids=training
-    ? ['cn-today-head','pr-banners','cn-today-body','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
-    : ['cn-today-head','cn-coach-card','qw-entry','pr-banners','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
+    ? ['cn-today-head','cn-today-body','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
+    : ['cn-today-head','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 function renderClientToday(client, overrideRoutine){
