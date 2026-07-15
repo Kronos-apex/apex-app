@@ -530,7 +530,7 @@ forma-legacy (`{kg:100, date:reciente}` sin `val`) → el msg dice «100 kg», n
 
 ### F2 — UI del asesorado: cablear las señales nuevas — commit 2
 
-- [ ] mute days · [ ] bw/waterGoal pasados · [ ] harness actualizado · [ ] visual ambos temas
+- [x] mute days (deload:21,peso:5,agua:3) · [x] bw/waterGoal pasados (guard `_waterGoalFor`) · [x] harness +4 checks (G/H/I/J) + tour silenciado antes del 1er shot · [x] visual ambos temas (overlay deload/agua)
 
 En `renderCoachCard` (app-4): agregar a `_INSIGHT_MUTE_DAYS` → `deload:21` (un mesociclo;
 si no, reaparece cada semana al que nunca para), `peso:5`, `agua:3`. Pasar

@@ -735,7 +735,7 @@ function notifyCoachMood(client){
 // Lee el insight priorizado de avi-core.coachInsight (motor de REGLAS puro) y lo pinta como una
 // tarjeta ligera. "Entendido" silencia ese tipo por unos días — localStorage por asesorado+tipo,
 // LOCAL a propósito (no sincroniza: es preferencia efímera de UI, no dato del asesorado).
-const _INSIGHT_MUTE_DAYS={inactivo:2,record:2,racha:3,estancado:7,adaptacion:5};
+const _INSIGHT_MUTE_DAYS={inactivo:2,record:2,racha:3,estancado:7,adaptacion:5,deload:21,peso:5,agua:3};
 function _coachMuteKey(cid,type){return 'coachmute_'+cid+'_'+type;}
 function _coachMuteMap(cid){
   const m={};
@@ -752,7 +752,11 @@ function renderCoachCard(client){
   const el=document.getElementById('cn-coach-card');if(!el)return;
   const cid=client&&client.id;
   if(typeof coachInsight!=='function'||!cid){el.innerHTML='';return;} // guard caché vieja de avi-core
-  const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:isFreeClient(client),muted:_coachMuteMap(cid)});
+  // v353: pasamos peso (bodyweight) y meta de agua para las señales finas. Guard typeof:
+  // _waterGoalFor vive en app-5; si aún no cargó, agua cae a waterGoalGlasses(peso) en core.
+  const _bw=(DB.bodyweight&&DB.bodyweight[cid])||[];
+  const _wg=(typeof _waterGoalFor==='function')?_waterGoalFor(client):undefined;
+  const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:isFreeClient(client),muted:_coachMuteMap(cid),bw:_bw,waterGoal:_wg});
   if(!ins){el.innerHTML='';return;} // sin señal (o todas silenciadas) → la tarjeta desaparece sola
   const ic=typeof aviIcon==='function'?aviIcon(ins.icon,20):'';
   // El cta solo llega en insights premium (estancado); premium sí tiene chat → coherente.

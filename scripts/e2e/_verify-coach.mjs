@@ -61,7 +61,10 @@ try {
     c.routines=[{id:'rHoy',name:'Full Body',day:hoy,restSec:60,exercises:[
       {name:'Sentadilla',muscle:'piernas',type:'Compuesto',track:'peso_reps',sets:4,reps:10},
       {name:'Press de Banca',muscle:'pecho',type:'Compuesto',track:'peso_reps',sets:4,reps:10}]}];
-    localStorage.removeItem('ax_news_seen'); // que el tour de novedades no tape los shots más tarde lo ocultamos aparte
+    // Regla 6 (v353): silenciar el tour de novedades ANTES del PRIMER shot (lección del shot E
+    // tapado en v352) — ax_news_seen al máximo + ocultar el overlay si ya apareció.
+    localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
+    const nt=document.getElementById('news-tour');if(nt)nt.classList.add('hidden');
   })()`);
   await sleep(300);
 
@@ -88,10 +91,13 @@ try {
 
   // ═══════════ CAPA B — tarjeta del coach ═══════════
   // Helper para inyectar historial/prs y renderizar SOLO la tarjeta.
-  const inject = `(cfg)=>{const c=window.__C;const now=Date.now();const D=86400000;
-    DB.history[c.id]=cfg.sessions||[]; DB.prs[c.id]=cfg.prs||{};
+  const inject = `(cfg)=>{const c=window.__C;
+    DB.history[c.id]=cfg.sessions||[]; DB.prs[c.id]=cfg.prs||{}; DB.bodyweight[c.id]=cfg.bw||[];
     if(cfg.tier!==undefined)c.tier=cfg.tier; else c.tier=undefined;
     c.days=cfg.days||3;
+    if(cfg.goal!==undefined)c.goal=cfg.goal;
+    c.habits=cfg.habits||{};
+    if(cfg.clearRoutines)c.routines=[];
     Object.keys(window.__mutes||{}).forEach(k=>localStorage.removeItem('coachmute_'+c.id+'_'+k));
     renderCoachCard(c);
     const card=document.querySelector('#cn-coach-card [data-insight]');
@@ -99,7 +105,7 @@ try {
       title:card?(card.querySelector('div div div')||{}).textContent:'',
       html:card?card.outerHTML.length:0,
       hasCta:!!(card&&card.querySelector('.bp'))};}`;
-  await ev(`window.__inject=${inject};window.__mutes={inactivo:1,record:1,racha:1,estancado:1,adaptacion:1};`);
+  await ev(`window.__inject=${inject};window.__mutes={inactivo:1,record:1,racha:1,estancado:1,adaptacion:1,deload:1,peso:1,agua:1};`);
   const sess = `(offDays)=>({date:new Date(Date.now()-offDays*86400000).toISOString(),exercises:[{name:'X',track:'reps',sets:[{done:true,reps:'15'}]}]})`;
   await ev(`window.__sess=${sess};`);
 
@@ -156,6 +162,35 @@ try {
   check('E estancamiento: premium ve type=estancado (con CTA), free NO', ePrem.type === 'estancado' && ePrem.hasCta && eFree.type !== 'estancado', JSON.stringify({ ePrem: ePrem.type, eFree: eFree.type }));
   await ev(`window.__C.tier=undefined;window.__C.routines=${JSON.stringify(rutBak)}?JSON.parse(${JSON.stringify(rutBak)}):[];`);
 
+  // ═══════════ FASE 3 — señales nuevas (v353) ═══════════
+  // Fixture de 4 semanas de plan cumplidas, ROBUSTO al día de la semana: 2 sesiones por cada una
+  // de las últimas 4 semanas de calendario (ancladas al lunes de cada semana). clearRoutines +
+  // days:2 → planDays cae a 2 → weekStreak cuenta 4 semanas.
+  await ev(`window.__wk4=(()=>{const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));const mon=x.getTime();const out=[];for(let i=0;i<4;i++){[0,2].forEach(d=>out.push({date:new Date(mon-i*7*86400000+d*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]}));}return out;})();`);
+  // G: deload → premium con ≥4 semanas; free ve racha (deload es premium).
+  let gPrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:undefined,days:2,clearRoutines:true}))`));
+  let gFree = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:'libre',days:2,clearRoutines:true}))`));
+  await shot('G-deload-premium');
+  check('G deload: premium ve type=deload (con CTA); free ve racha', gPrem.type === 'deload' && gPrem.hasCta && gFree.type === 'racha', JSON.stringify({ gPrem: gPrem.type, gFree: gFree.type }));
+
+  // H: agua → para TODOS con ≥3 días registrados y casi nunca cumplida (HOY excluido).
+  await ev(`window.__habitsLow=(()=>{const w={};[1,2,3,4].forEach(o=>{w[habitDayKey(new Date(Date.now()-o*86400000))]=2;});return {water:w};})();`);
+  let hAgua = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:[window.__sess(0)],prs:{},habits:window.__habitsLow,tier:undefined,days:3,clearRoutines:true}))`));
+  await shot('H-agua');
+  let hNone = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:[window.__sess(0)],prs:{},habits:{water:{}},tier:undefined,days:3,clearRoutines:true}))`));
+  check('H agua: 4 días flojos → type=agua; sin registros → NO regaña (null)', hAgua.type === 'agua' && hNone.type === null, JSON.stringify({ hAgua: hAgua.type, hNone: hNone.type }));
+
+  // I: peso → premium, objetivo bajar + pérdida dispara; subida (contrario) SILENCIO.
+  await ev(`window.__bwDown=[{date:new Date(Date.now()-30*86400000).toISOString(),kg:80},{date:new Date(Date.now()-15*86400000).toISOString(),kg:79},{date:new Date(Date.now()-86400000).toISOString(),kg:78.6}];window.__bwUp=[{date:new Date(Date.now()-30*86400000).toISOString(),kg:78},{date:new Date(Date.now()-15*86400000).toISOString(),kg:79},{date:new Date(Date.now()-86400000).toISOString(),kg:79.4}];`);
+  let iPos = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:[window.__sess(0)],prs:{},bw:window.__bwDown,goal:'perder grasa',tier:undefined,days:3,clearRoutines:true}))`));
+  let iNeg = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:[window.__sess(0)],prs:{},bw:window.__bwUp,goal:'perder grasa',tier:undefined,days:3,clearRoutines:true}))`));
+  check('I peso: baja con objetivo bajar → type=peso; sube (contrario) → NUNCA peso', iPos.type === 'peso' && iNeg.type !== 'peso', JSON.stringify({ iPos: iPos.type, iNeg: iNeg.type }));
+
+  // J: prioridad deload > record (ambos presentes → gana deload).
+  let jP = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{k:{val:100,unit:'kg',name:'X',date:new Date(Date.now()-3600000).toISOString()}},tier:undefined,days:2,clearRoutines:true}))`));
+  check('J prioridad: deload gana a record', jP.type === 'deload', JSON.stringify(jP));
+  await ev(`window.__C.goal='';DB.bodyweight[window.__CID]=[];`);
+
   // F: día de DESCANSO → la tarjeta sale ARRIBA (orden no-training de _todayOrder).
   s = JSON.parse(await ev(`JSON.stringify((()=>{const c=window.__C;
     const rutGuardadas=c.routines; c.routines=[]; // sin rutina hoy → descanso/preparación
@@ -177,6 +212,29 @@ try {
   await ev(`(()=>{const t=document.getElementById('cn-today');if(t)t.scrollTop=0;})()`);
   await setTheme('dark'); await shot('card-record-dark');
   await setTheme('light'); await shot('card-record-light');
+
+  // Tarjetas deload y agua AISLADAS en overlay (el guiado las tapa en su sitio real): renderizamos
+  // el insight en #cn-coach-card y levantamos su HTML a un overlay a pantalla completa para eyeball.
+  const cardOverlay = `(cfg)=>{window.__inject(cfg);
+    const card=document.querySelector('#cn-coach-card');
+    const ov=document.createElement('div');ov.id='__cardov';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:var(--bg);padding:60px 16px 0;overflow:auto';
+    ov.innerHTML=card?card.innerHTML:'(sin tarjeta)';
+    document.body.appendChild(ov);}`;
+  await ev(`window.__cardOverlay=${cardOverlay};`);
+  const clearOverlay = `(()=>{const o=document.getElementById('__cardov');if(o)o.remove();})()`;
+  // deload (premium, 4 semanas)
+  await ev(`window.__cardOverlay({sessions:window.__wk4,prs:{},tier:undefined,days:2,clearRoutines:true})`);
+  await setTheme('light'); await shot('card-deload-light');
+  await setTheme('dark'); await shot('card-deload-dark');
+  await ev(clearOverlay);
+  // agua (para todos)
+  await ev(`window.__cardOverlay({sessions:[window.__sess(0)],prs:{},habits:window.__habitsLow,tier:undefined,days:3,clearRoutines:true})`);
+  await setTheme('light'); await shot('card-agua-light');
+  await setTheme('dark'); await shot('card-agua-dark');
+  await ev(clearOverlay);
+  await ev(`window.__C.goal='';DB.bodyweight[window.__CID]=[];window.__C.habits={};`);
+
   // banner de ánimo ambos temas
   await ev(`(()=>{const c=window.__C;const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];c.routines=[{id:'rHoy',name:'FB',day:dias[new Date().getDay()],restSec:60,exercises:[{name:'Sentadilla',muscle:'piernas',type:'Compuesto',track:'peso_reps',sets:4,reps:10}]}];setTodayMood(c.id,'cansado');renderClientToday(c);const nt=document.getElementById('news-tour');if(nt)nt.classList.add('hidden');const t=document.getElementById('cn-today');if(t)t.scrollTop=0;})()`);
   await sleep(400);
