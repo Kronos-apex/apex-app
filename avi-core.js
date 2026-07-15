@@ -1939,6 +1939,12 @@ const INSIGHT_RECORD_HOURS = 48;   // ventana de un PR "reciente"
 const INSIGHT_STREAK_WEEKS = 2;    // semanas de plan cumplidas → celebrar racha
 const INSIGHT_STALL_POINTS = 6;    // mínimo de puntos de un ejercicio para evaluar estancamiento
 const INSIGHT_STALL_RECENT = 4;    // últimos N puntos que NO superan el máx previo → estancado
+const INSIGHT_DELOAD_WEEKS = 4;      // semanas de plan a tope → sugerir descarga (premium, v353)
+const INSIGHT_WATER_MIN_LOGGED = 3;  // días con agua registrada para evaluar el hábito (v353)
+const INSIGHT_WATER_MET_MAX = 1;     // si cumplió la meta en ≤1 de esos días → anduvo flojo
+const INSIGHT_BW_MIN_ENTRIES = 3;    // registros de peso mínimos para evaluar tendencia (v353)
+const INSIGHT_BW_WINDOW_DAYS = 45;   // ventana de la tendencia de peso
+const INSIGHT_BW_MIN_DELTA = 0.5;    // kg de cambio para que valga la pena celebrar
 
 function coachInsight(client, sessions, prs, now, opts) {
   client = client || {};
@@ -1950,7 +1956,8 @@ function coachInsight(client, sessions, prs, now, opts) {
   const isFree = !!opts.isFree;
   const isMuted = type => muted[type] != null && nowTs < muted[type];
 
-  // Candidatos en ORDEN de prioridad: inactivo > récord > racha > estancado > adaptación.
+  // Candidatos en ORDEN de prioridad (v353):
+  //   inactivo > deload > récord > racha > estancado > adaptación > peso > agua.
   // Se construyen todos y luego se devuelve el primero NO silenciado (así, si el de mayor
   // prioridad está en "Entendido", aparece el siguiente).
   const candidates = [];
@@ -1965,7 +1972,18 @@ function coachInsight(client, sessions, prs, now, opts) {
     });
   }
 
-  // 2) Récord reciente (últimas 48 h) — toma el PR más nuevo dentro de la ventana.
+  // 2) Descarga (deload) — SOLO premium. Muchas semanas seguidas a tope → recuperar para crecer.
+  const ws = weekStreak(sessions, planDays(client), nowTs);
+  if (!isFree && ws.weeks >= INSIGHT_DELOAD_WEEKS) {
+    candidates.push({
+      type: 'deload', icon: 'wind',
+      title: 'Vas duro hace semanas',
+      msg: 'Llevas ' + ws.weeks + ' semanas a tope. Una semana más suave ayuda a crecer — coméntalo con tu coach.',
+      cta: { label: 'Hablar con mi coach', action: 'msgs' },
+    });
+  }
+
+  // 3) Récord reciente (últimas 48 h) — toma el PR más nuevo dentro de la ventana.
   let bestPr = null;
   Object.keys(prs).forEach(k => {
     const p = prs[k]; if (!p || !p.date) return;
@@ -1975,15 +1993,16 @@ function coachInsight(client, sessions, prs, now, opts) {
     }
   });
   if (bestPr) {
+    // val ?? kg: los PR legacy guardaban solo `kg` (paridad con isBetterPR) — evita "undefined kg".
+    const v = bestPr.val != null ? bestPr.val : bestPr.kg;
     candidates.push({
       type: 'record', icon: 'trend',
       title: '¡Récord en ' + (bestPr.name || 'tu ejercicio') + '!',
-      msg: bestPr.val + ' ' + (bestPr.unit || 'kg') + ' — tu mejor marca hasta hoy. Vas volando 🏆',
+      msg: v + ' ' + (bestPr.unit || 'kg') + ' — tu mejor marca hasta hoy. Vas volando 🏆',
     });
   }
 
-  // 3) Racha de semanas cumpliendo el plan (weekStreak ya es consciente de la semana en curso).
-  const ws = weekStreak(sessions, planDays(client), nowTs);
+  // 4) Racha de semanas cumpliendo el plan (reusa ws — weekStreak es consciente de la semana en curso).
   if (ws.weeks >= INSIGHT_STREAK_WEEKS) {
     candidates.push({
       type: 'racha', icon: 'flame',
@@ -1992,7 +2011,7 @@ function coachInsight(client, sessions, prs, now, opts) {
     });
   }
 
-  // 4) Estancamiento por ejercicio — SOLO premium (coherente con la analítica gateada).
+  // 5) Estancamiento por ejercicio — SOLO premium (coherente con la analítica gateada).
   //    kg, ≥6 puntos, y el máx de los últimos 4 no supera el máx de los anteriores.
   if (!isFree) {
     const prog = computeExerciseProgress(sessions);
@@ -2016,12 +2035,52 @@ function coachInsight(client, sessions, prs, now, opts) {
     }
   }
 
-  // 5) Fase de adaptación — con ≥1 sesión (sin sesiones el onboarding ya habla).
+  // 6) Fase de adaptación — con ≥1 sesión (sin sesiones el onboarding ya habla).
   if (sessions.length >= 1 && isInAdaptation(client, sessions, nowTs)) {
     candidates.push({
       type: 'adaptacion', icon: 'leaf',
       title: 'Vas empezando, y vas bien',
       msg: 'En estas primeras semanas la constancia importa más que el peso. Tu cuerpo se está adaptando.',
+    });
+  }
+
+  // 7) Peso hacia el objetivo — SOLO premium, SOLO en positivo. CANDADO DE PRODUCTO: si el peso
+  //    va en dirección CONTRARIA al objetivo, SILENCIO TOTAL — esa conversación es del coach
+  //    humano, no de una tarjeta automática (nunca regañamos por la báscula).
+  if (!isFree && Array.isArray(opts.bw)) {
+    const cutoff = nowTs - INSIGHT_BW_WINDOW_DAYS * 86400000;
+    const bwPts = opts.bw
+      .map(e => ({ t: new Date(e && e.date).getTime(), kg: parseFloat(e && e.kg) }))
+      .filter(e => !isNaN(e.t) && Number.isFinite(e.kg) && e.t >= cutoff && e.t <= nowTs)
+      .sort((a, b) => a.t - b.t);
+    if (bwPts.length >= INSIGHT_BW_MIN_ENTRIES) {
+      const delta = bwPts[bwPts.length - 1].kg - bwPts[0].kg;
+      const g = (client.goal || '').toLowerCase();
+      const wantsDown = /grasa|perder|baj|adelgaz/.test(g);
+      const wantsUp = /m[uú]sculo|muscul|ganar|hipertrof/.test(g);
+      const good = (wantsDown && delta <= -INSIGHT_BW_MIN_DELTA) || (wantsUp && delta >= INSIGHT_BW_MIN_DELTA);
+      if (good) {
+        candidates.push({
+          type: 'peso', icon: 'scale',
+          title: 'Vas en la dirección de tu objetivo',
+          msg: Math.abs(delta).toFixed(1) + ' kg en las últimas semanas, paso a paso y sin afán. Así se hace.',
+        });
+      }
+    }
+  }
+
+  // 8) Agua — para TODOS (hábito/gancho). SOLO si USA la feature (≥3 días registrados) y casi
+  //    nunca llegó a la meta. HOY se excluye (a media mañana nadie ha cumplido). Candado
+  //    anti-regaño: quien no registra agua (0-2 días) NUNCA recibe este mensaje.
+  const goal = opts.waterGoal || waterGoalGlasses(client.weight);
+  const week = waterWeek((client && client.habits) || {}, new Date(nowTs)).slice(0, 6); // sin HOY (último)
+  const logged = week.filter(d => d.n > 0).length;
+  const met = week.filter(d => d.n >= goal).length;
+  if (logged >= INSIGHT_WATER_MIN_LOGGED && met <= INSIGHT_WATER_MET_MAX) {
+    candidates.push({
+      type: 'agua', icon: 'droplet',
+      title: 'Esta semana anduvimos bajos de agua',
+      msg: 'Tu cuerpo rinde mejor hidratado. Mañana súbele un vasito a la vez 💧',
     });
   }
 

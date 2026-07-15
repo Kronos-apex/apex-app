@@ -2593,6 +2593,59 @@ test('coachInsight: historial vacío + sin datos → null', () => {
   assert.strictEqual(coachInsight({ level: 'Intermedio', days: 3 }, [], {}, CI_NOW, {}), null);
 });
 
+// ── Fase 3: señales nuevas (deload / agua / peso) + hardening (v353) ──
+const ciWaterKey = off => { const d = new Date(CI_NOW - off * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+// 4 semanas de plan cumplidas (days:2 → target 2): esta semana + 3 previas, 2 días c/u.
+const ci4weeks = [0, 2, 7, 9, 14, 16, 21, 23].map(o => ciDay(o, [ciBW('A')]));
+
+test('coachInsight "deload": ≥4 semanas premium dispara; 3 → racha; free → racha', () => {
+  const c = { level: 'Intermedio', days: 2 };
+  const r = coachInsight(c, ci4weeks, {}, CI_NOW, { isFree: false });
+  assert.ok(r && r.type === 'deload', 'a 4 semanas premium sugiere descarga');
+  assert.ok(r.cta && r.cta.action === 'msgs');
+  const s3 = [0, 2, 7, 9, 14, 16].map(o => ciDay(o, [ciBW('A')]));
+  assert.strictEqual(coachInsight(c, s3, {}, CI_NOW, { isFree: false }).type, 'racha', '3 semanas → racha, no deload');
+  assert.strictEqual(coachInsight(c, ci4weeks, {}, CI_NOW, { isFree: true }).type, 'racha', 'free no ve deload');
+});
+
+test('coachInsight "agua": ≥3 días registrados y casi nunca cumple → dispara; 2 días → NO (anti-regaño)', () => {
+  const hoySesion = [ciDay(0, [ciBW('A')])]; // entrenó hoy → sin inactivo
+  const mk = (offs, n) => { const w = {}; offs.forEach(o => w[ciWaterKey(o)] = n); return { level: 'Intermedio', days: 3, habits: { water: w } }; };
+  const r = coachInsight(mk([1, 2, 3, 4], 3), hoySesion, {}, CI_NOW, { waterGoal: 8 });
+  assert.ok(r && r.type === 'agua', 'con 4 días flojos dispara agua');
+  assert.strictEqual(coachInsight(mk([1, 2], 3), hoySesion, {}, CI_NOW, { waterGoal: 8 }), null, '2 días registrados NO dispara');
+  assert.ok((coachInsight(mk([1, 2, 3, 4], 8), hoySesion, {}, CI_NOW, { waterGoal: 8 }) || {}).type !== 'agua', 'si cumple todos los días no regaña');
+});
+
+test('coachInsight "peso": objetivo bajar + pérdida → celebra; subida (contrario) → JAMÁS mensaje', () => {
+  const sess = [ciDay(0, [ciBW('A')])];
+  const bwDown = [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: 80 }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: 79 }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: 78.8 }];
+  const c = { level: 'Intermedio', days: 3, goal: 'perder grasa' };
+  const r = coachInsight(c, sess, {}, CI_NOW, { bw: bwDown });
+  assert.ok(r && r.type === 'peso' && /1\.2 kg/.test(r.msg), r && r.msg);
+  const bwUp = [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: 78 }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: 79 }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: 79.2 }];
+  assert.ok((coachInsight(c, sess, {}, CI_NOW, { bw: bwUp }) || {}).type !== 'peso', 'subir con objetivo de bajar NO emite nada');
+  assert.ok((coachInsight({ level: 'Intermedio', days: 3, goal: 'recomposición' }, sess, {}, CI_NOW, { bw: bwDown }) || {}).type !== 'peso', 'recomp no dispara');
+  assert.ok((coachInsight(c, sess, {}, CI_NOW, { bw: bwDown.slice(0, 2) }) || {}).type !== 'peso', '2 registros no basta');
+  assert.ok((coachInsight(c, sess, {}, CI_NOW, {}) || {}).type !== 'peso', 'sin bw no dispara');
+});
+
+test('coachInsight récord legacy: PR con solo kg (sin val) → msg con el número, no "undefined"', () => {
+  const prs = { k: { kg: 100, unit: 'kg', name: 'Peso Muerto', date: new Date(CI_NOW - 3600000).toISOString() } };
+  const r = coachInsight({ level: 'Intermedio', days: 3 }, [ciDay(0, [ciBW('A')])], prs, CI_NOW, {});
+  assert.ok(r && r.type === 'record' && /100 kg/.test(r.msg) && !/undefined/.test(r.msg), r && r.msg);
+});
+
+test('coachInsight prioridad v353: deload > record; peso > agua', () => {
+  const c = { level: 'Intermedio', days: 2 };
+  const pr = { k: { val: 100, unit: 'kg', name: 'X', date: new Date(CI_NOW - 3600000).toISOString() } };
+  assert.strictEqual(coachInsight(c, ci4weeks, pr, CI_NOW, { isFree: false }).type, 'deload', 'deload gana a record');
+  const w = {}; [1, 2, 3, 4].forEach(o => w[ciWaterKey(o)] = 2);
+  const cp = { level: 'Intermedio', days: 3, goal: 'perder grasa', habits: { water: w } };
+  const bw = [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: 80 }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: 79 }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: 78.5 }];
+  assert.strictEqual(coachInsight(cp, [ciDay(0, [ciBW('A')])], {}, CI_NOW, { bw, waterGoal: 8 }).type, 'peso', 'peso gana a agua');
+});
+
 // ══════════════════════════════════════════════════════
 section('Telemetría de errores (errReportGate)');
 

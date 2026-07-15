@@ -463,7 +463,7 @@ en producción (avi-v352).** Siguiente: Fase 3 (estipulada en §14, Camilo la ap
 
 ### F0 — Limpieza `#pr-banners` (radar §13) — commit 0, PROPIO
 
-- [ ] borrado · [ ] verificado
+- [x] borrado · [x] verificado (0 refs activas, hook 11/11) — commit `<F0>`
 
 Borrar el div huérfano `#pr-banners` (index.html:~588) y su entrada en los DOS arrays de
 `_todayOrder` (app-4). ANTES de borrar: `grep -n "pr-banners"` en *.js, index.html y
@@ -473,7 +473,7 @@ entreno (`newPRs` en workout-finish) — NO se toca.
 
 ### F1 — Core: 3 señales nuevas en `coachInsight` + hardening — commit 1 (con sus tests)
 
-- [ ] deload · [ ] agua · [ ] peso · [ ] hardening `val ?? kg` · [ ] tests · [ ] verificado
+- [x] deload · [x] agua · [x] peso · [x] hardening `val ?? kg` · [x] tests (5 nuevos, suite 327→332) · [x] verificado (sabotaje → 5 fallan)
 
 **Firma:** se conserva `coachInsight(client, sessions, prs, now, opts)`. `opts` crece con dos
 campos OPCIONALES (back-compat total): `opts.bw` = `DB.bodyweight[cid]` (array `[{date,kg}]`)
