@@ -616,3 +616,48 @@ El protocolo es el MISMO de §12 con línea base `3ba343c` y v353, más estos pu
 
 ## 16. Desviaciones de la Fase 3
 *(la sesión que ejecuta documenta aquí; Fable agrega el veredicto)*
+
+### ✅ VEREDICTO DE FABLE (verificación §15 EJECUTADA, 2026-07-15) — APROBADO
+
+1. **Diff completo leído** (`95fea06..a69f0ba`, commit por commit): archivos = exactamente los
+   estipulados por bloque; cero scope creep. Señales, umbrales, candados y textos calcan §14.
+2. **Re-corrido por Fable:** suite **336/336** · `_verify-pulse.mjs` 6/6 · `_verify-coach.mjs`
+   12/12 · `_guiado-suite` TODO OK · `_test-coach-back` TODO OK · `_verify-modals` 12/12 ·
+   `_verify-news` TODO OK · cero jsErrors. Shots re-mirados a ojo (pulso claro/oscuro, deload,
+   agua claro/oscuro): premium, tokens correctos.
+3. **Greps limpios:** `pr-banners` 0 refs activas (F0 cumplido) · 5× `esc(` en `renderPulse`
+   (nombre Y label, el nombre de ejercicio viaja ahí) · `coachpulse_`/`coachmute_` fuera de
+   SB_KEYS y claves de sesión · 13 constantes `INSIGHT_*`/`PULSE_*` nombradas ·
+   `transition:all` 0 · secretos 0.
+4. **Puntos específicos §15, todos verificados:**
+   - Pulso SIN `'inactivo'` en el cuerpo de `coachPulse` (grep 0) — no duplica el banner 💤.
+   - Determinismo bajo doble `renderHome()` → mismo DOM (check P3 del harness, re-corrido).
+   - Peso JAMÁS en dirección contraria: código leído (el `good` exige dirección coincidente
+     con el objetivo) + test + sabotaje (ver 5).
+   - Tests v352 de `coachInsight` SIN modificación: el diff de avi.test.js es **100% aditivo**
+     (0 líneas eliminadas/cambiadas) — prueba formal de que el refactor de detectores
+     compartidos preservó la semántica.
+5. **Anti-test-decorativo (sabotaje de Fable, con árbol LIMPIO):** rompí el candado de
+   dirección del peso Y la exclusión de suspendidos + orden del pulso → **2 tests fallaron**
+   (334/336); restaurado → 336/336. Los tests muerden.
+6. **Prod re-verificada:** curl v353 + `#h-pulse` servido + el div `#pr-banners` YA NO está en
+   el HTML servido + sw.js arranca con `const` (sin BOM) + `_prodcheck.mjs 353` verde.
+7. **Tono:** deload empuja a hablar con el coach (no prescribe), agua anima sin regañar, peso
+   solo celebra, el pulso le habla al coach en su idioma. Voz AVI correcta.
+
+**Desviaciones:** la única fue una OPCIÓN contemplada en el plan (harness del pulso en
+`_verify-pulse.mjs` separado, documentada por Opus con su porqué — patrón de inyección de
+`_shot-coach`, incompatible con el login-asesorado del otro harness). Bien resuelta.
+
+**Gotcha de PROCESO anotado (para futuros ciclos):** durante la ejecución, un
+`git checkout -- <archivo>` usado para deshacer un sabotaje de prueba BORRÓ trabajo aún no
+commiteado del mismo archivo (Opus lo detectó por los tests y lo re-aplicó). Regla desde ya:
+**sabotajes anti-test-decorativo SOLO con el árbol limpio** (todo commiteado) — así el
+checkout restaura exactamente al estado bueno. Fable lo cumplió en esta verificación.
+
+**Observación menor (no bloquea):** `coachPulse` corre en cada `renderHome()` (poll de 15s del
+coach) y llama `computeExerciseProgress` por asesorado. A la escala actual es trivial; si el
+panel llega a 100+ asesorados, memoizar por sesión. Anotado, sin acción hoy.
+
+**Ciclo planificar → ejecutar → verificar CERRADO. Coach Inteligente Fases 1+2+3 APROBADAS
+en producción (avi-v353).** Restan como futuro opcional: capa LLM y push (adopción).
