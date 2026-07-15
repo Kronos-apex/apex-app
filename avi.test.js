@@ -93,6 +93,7 @@ const {
   gxLevel,
   computeExerciseProgress,
   coachInsight,
+  coachPulse,
   weekEditorial,
   exTrack,
   prFromSets,
@@ -2644,6 +2645,53 @@ test('coachInsight prioridad v353: deload > record; peso > agua', () => {
   const cp = { level: 'Intermedio', days: 3, goal: 'perder grasa', habits: { water: w } };
   const bw = [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: 80 }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: 79 }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: 78.5 }];
   assert.strictEqual(coachInsight(cp, [ciDay(0, [ciBW('A')])], {}, CI_NOW, { bw, waterGoal: 8 }).type, 'peso', 'peso gana a agua');
+});
+
+// ── Fase 3: EL PULSO DEL COACH (coachPulse) — v353 ──
+const ciRecentPr = name => ({ x: { val: 100, unit: 'kg', name, date: new Date(CI_NOW - 3600000).toISOString() } });
+
+test('coachPulse: mezcla de señales → orden por tipo luego nombre, tope 5, suspendido excluido', () => {
+  const clients = [
+    { id: 'a', name: 'Zoe', days: 2 },   // record
+    { id: 'b', name: 'Ana', days: 2 },   // record (desempata por nombre)
+    { id: 'c', name: 'Beto', days: 2 },  // estancado
+    { id: 'd', name: 'Cira', days: 2 },  // deload (4 semanas)
+    { id: 'e', name: 'Dan', days: 2 },   // racha (3 semanas)
+    { id: 'f', name: 'Eva', days: 2, suspended: true }, // excluida
+  ];
+  const prs = { a: ciRecentPr('Press'), b: ciRecentPr('Sentadilla') };
+  const stall = [62, 62, 61, 60, 62, 62].map((kg, i) => ciDay(i, [ciEx('Press', kg)]));
+  const wk4 = [0, 2, 7, 9, 14, 16, 21, 23].map(o => ciDay(o, [ciBW('A')]));
+  const wk3 = [0, 2, 7, 9, 14, 16].map(o => ciDay(o, [ciBW('A')]));
+  const history = { c: stall, d: wk4, e: wk3, f: wk4 };
+  const r = coachPulse(clients, history, prs, CI_NOW, {});
+  assert.deepStrictEqual(r.map(x => x.name), ['Ana', 'Zoe', 'Beto', 'Cira', 'Dan']);
+  assert.deepStrictEqual(r.map(x => x.type), ['record', 'record', 'estancado', 'deload', 'racha']);
+  assert.ok(/Sentadilla/.test(r[0].label), 'label con el nombre del ejercicio');
+  assert.ok(!r.some(x => x.id === 'f'), 'suspendido excluido');
+  assert.ok(r.length <= 5);
+});
+
+test('coachPulse: NO incluye inactividad (el home ya la grita)', () => {
+  // Un asesorado que solo entrenó hace 10 días → inactivo, pero SIN señal positiva → no aparece.
+  const clients = [{ id: 'a', name: 'Ana', days: 2 }];
+  const history = { a: [ciDay(10, [ciBW('A')])] };
+  assert.deepStrictEqual(coachPulse(clients, history, {}, CI_NOW, {}), []);
+});
+
+test('coachPulse: fila silenciada por el coach (✕) se excluye', () => {
+  const clients = [{ id: 'a', name: 'Ana', days: 2 }];
+  const prs = { a: ciRecentPr('Press') };
+  assert.strictEqual(coachPulse(clients, {}, prs, CI_NOW, {}).length, 1);
+  assert.strictEqual(coachPulse(clients, {}, prs, CI_NOW, { muted: { 'a_record': CI_NOW + 86400000 } }).length, 0);
+});
+
+test('coachPulse: sin datos → []; determinista (mismos args → mismo resultado)', () => {
+  assert.deepStrictEqual(coachPulse([], {}, {}, CI_NOW, {}), []);
+  assert.deepStrictEqual(coachPulse([{ id: 'a', name: 'Ana' }], {}, {}, CI_NOW, {}), []);
+  const clients = [{ id: 'a', name: 'Ana', days: 2 }, { id: 'b', name: 'Beto', days: 2 }];
+  const prs = { a: ciRecentPr('X'), b: ciRecentPr('Y') };
+  assert.strictEqual(JSON.stringify(coachPulse(clients, {}, prs, CI_NOW, {})), JSON.stringify(coachPulse(clients, {}, prs, CI_NOW, {})));
 });
 
 // ══════════════════════════════════════════════════════

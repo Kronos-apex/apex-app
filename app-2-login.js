@@ -1527,8 +1527,42 @@ function renderHome(){
     d.onclick=()=>openDetail(c.id);
     list.appendChild(d);
   });
+  // 🫀 El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles. Al final para no
+  // competir con los banners de urgencia (vencimientos/adherencia). Guard por caché vieja de core.
+  if(typeof renderPulse==='function')renderPulse();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
+}
+
+// ── El pulso del coach (v353): tarjeta en Inicio con los motivos positivos/técnicos para
+// escribirle a cada asesorado (récord/estancamiento/deload/racha). La lógica vive en
+// avi-core.coachPulse (pura, determinista); aquí solo UI + estado. El ✕ silencia esa fila
+// por 3 días (localStorage coachpulse_<cid>_<type>, LOCAL — preferencia de UI del coach).
+function renderPulse(){
+  const el=document.getElementById('h-pulse'); if(!el)return;
+  if(typeof coachPulse!=='function'){el.style.display='none';return;}
+  // Junta los mutes vigentes por fila (prefijo coachpulse_) → clave '<cid>_<type>' para coachPulse.
+  const muted={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+    if(k&&k.indexOf('coachpulse_')===0){const v=parseInt(localStorage.getItem(k));if(v)muted[k.slice(11)]=v;}}
+  const rows=coachPulse(DB.clients,DB.history,DB.prs,Date.now(),{muted});
+  if(!rows.length){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:10px 14px">
+    <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('bolt',13):'⚡'} El pulso de tus asesorados</div>
+    ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
+      <div style="min-width:0;flex:1;cursor:pointer" onclick="openDetail('${esc(r.id)}')">
+        <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
+        <div style="font-size:11px;color:var(--t2)">${esc(r.label)}</div>
+      </div>
+      <button class="btn bg bsm" style="min-height:36px;padding:0 11px;flex-shrink:0" aria-label="Descartar aviso" onclick="event.stopPropagation();dismissPulse('${esc(r.id)}','${esc(r.type)}')">✕</button>
+    </div>`).join('')}
+  </div>`;
+}
+function dismissPulse(id,type){
+  if(!id||!type)return;
+  localStorage.setItem('coachpulse_'+id+'_'+type,String(Date.now()+3*86400000));
+  renderPulse();
 }
 
 // ══════════════════════ HABITACIONES-REPORTE DEL PANEL ══════════════════════

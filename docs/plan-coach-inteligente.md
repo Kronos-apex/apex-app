@@ -543,7 +543,14 @@ la regla 6 (tour silenciado ANTES del primer shot) + shots de deload y agua en a
 
 ### F3 — EL PULSO DEL COACH (coach-para-el-coach) — commit 3
 
-- [ ] `coachPulse` core + tests · [ ] tarjeta `#h-pulse` en home · [ ] harness · [ ] visual
+- [x] `coachPulse` core + tests (4 nuevos, suite 332→336) · [x] tarjeta `#h-pulse` en home · [x] harness `_verify-pulse.mjs` (6/6) · [x] visual
+
+> **Decisión de Opus (permitida por el plan):** el harness va en `_verify-pulse.mjs` SEPARADO
+> (no dentro de `_verify-coach.mjs`) porque el pulso es del COACH y usa el patrón de login-coach
+> de `_shot-coach` (inyecta clientes + `CUR.loggedAs='coach'` sin login real), incompatible con
+> el login-asesorado del harness del coach. Refactor: detectores compartidos `_insRecordOf`/
+> `_insStallOf` extraídos; los tests de `coachInsight` pasan SIN modificación (prueba de la
+> equivalencia). `PULSE_STREAK_WEEKS=3` (racha del coach más exigente); deload reusa `INSIGHT_DELOAD_WEEKS`.
 
 **Qué NO es:** el home del coach YA grita lo negativo (banner 💤 de adherencia = inactividad,
 banner de vencimientos = pagos, prioritarios). El pulso es lo que HOY no ve: **motivos

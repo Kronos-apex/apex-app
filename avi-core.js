@@ -1946,6 +1946,36 @@ const INSIGHT_BW_MIN_ENTRIES = 3;    // registros de peso mínimos para evaluar 
 const INSIGHT_BW_WINDOW_DAYS = 45;   // ventana de la tendencia de peso
 const INSIGHT_BW_MIN_DELTA = 0.5;    // kg de cambio para que valga la pena celebrar
 
+// ── Detectores COMPARTIDOS por coachInsight (asesorado) y coachPulse (coach), v353 ──
+// Puros. Extraídos para no duplicar la detección entre los dos lados de la misma máquina.
+// _insRecordOf: el PR más nuevo dentro de la ventana de 48 h, o null.
+function _insRecordOf(prs, nowTs) {
+  let best = null;
+  Object.keys(prs || {}).forEach(k => {
+    const p = prs[k]; if (!p || !p.date) return;
+    const t = new Date(p.date).getTime(); if (isNaN(t)) return;
+    if (t <= nowTs && nowTs - t <= INSIGHT_RECORD_HOURS * 3600000) {
+      if (!best || t > best._t) best = Object.assign({ _t: t }, p);
+    }
+  });
+  return best;
+}
+// _insStallOf: el ejercicio de carga (kg) estancado (≥6 puntos, últimos 4 no superan el máx
+// previo), o null.
+function _insStallOf(sessions) {
+  const prog = computeExerciseProgress(sessions || []);
+  return prog.find(e => {
+    if (e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
+    const n = e.points.length;
+    const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
+    const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
+    if (!prior.length) return false;
+    const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
+    const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
+    return recentMax <= priorMax;
+  }) || null;
+}
+
 function coachInsight(client, sessions, prs, now, opts) {
   client = client || {};
   sessions = sessions || [];
@@ -1984,14 +2014,7 @@ function coachInsight(client, sessions, prs, now, opts) {
   }
 
   // 3) Récord reciente (últimas 48 h) — toma el PR más nuevo dentro de la ventana.
-  let bestPr = null;
-  Object.keys(prs).forEach(k => {
-    const p = prs[k]; if (!p || !p.date) return;
-    const t = new Date(p.date).getTime(); if (isNaN(t)) return;
-    if (t <= nowTs && nowTs - t <= INSIGHT_RECORD_HOURS * 3600000) {
-      if (!bestPr || t > bestPr._t) bestPr = Object.assign({ _t: t }, p);
-    }
-  });
+  const bestPr = _insRecordOf(prs, nowTs);
   if (bestPr) {
     // val ?? kg: los PR legacy guardaban solo `kg` (paridad con isBetterPR) — evita "undefined kg".
     const v = bestPr.val != null ? bestPr.val : bestPr.kg;
@@ -2014,17 +2037,7 @@ function coachInsight(client, sessions, prs, now, opts) {
   // 5) Estancamiento por ejercicio — SOLO premium (coherente con la analítica gateada).
   //    kg, ≥6 puntos, y el máx de los últimos 4 no supera el máx de los anteriores.
   if (!isFree) {
-    const prog = computeExerciseProgress(sessions);
-    const stalled = prog.find(e => {
-      if (e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
-      const n = e.points.length;
-      const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
-      const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
-      if (!prior.length) return false;
-      const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
-      const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
-      return recentMax <= priorMax;
-    });
+    const stalled = _insStallOf(sessions);
     if (stalled) {
       candidates.push({
         type: 'estancado', icon: 'flat',
@@ -2088,6 +2101,52 @@ function coachInsight(client, sessions, prs, now, opts) {
     if (!isMuted(candidates[i].type)) return candidates[i];
   }
   return null;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// EL PULSO DEL COACH — coach-para-el-coach (v353)
+// ──────────────────────────────────────────────────────────────────────
+// Motivos POSITIVOS/técnicos para escribirle a cada asesorado (récord/estancamiento/deload/
+// racha). NO incluye inactividad: el home del coach ya la grita con el banner de adherencia 💤
+// (no duplicar). Pura y DETERMINISTA (el poll de 15s del coach re-renderiza → orden estable o
+// "salta"). SIN gating free/premium: el coach ve TODO lo suyo. Reusa los detectores compartidos.
+// clients = DB.clients · history = DB.history · prs = DB.prs · opts.muted = {'<cid>_<type>': ts}
+const PULSE_STREAK_WEEKS = 3;   // al coach solo lo NOTABLE (más exigente que el lado del asesorado)
+const PULSE_TYPE_RANK = { record: 0, estancado: 1, deload: 2, racha: 3 };
+function coachPulse(clients, history, prs, now, opts) {
+  clients = clients || [];
+  history = history || {};
+  prs = prs || {};
+  opts = opts || {};
+  const muted = opts.muted || {};
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const rows = [];
+  clients.forEach(c => {
+    if (!c || c.suspended) return;
+    const sessions = history[c.id] || [];
+    // Un solo item por asesorado, prioridad: record > estancado > deload > racha.
+    let item = null;
+    const rec = _insRecordOf(prs[c.id] || {}, nowTs);
+    if (rec) {
+      item = { type: 'record', label: '🏆 Rompió récord en ' + (rec.name || 'un ejercicio') };
+    } else {
+      const stall = _insStallOf(sessions);
+      if (stall) {
+        item = { type: 'estancado', label: 'Se estancó en ' + stall.name };
+      } else {
+        const weeks = weekStreak(sessions, planDays(c), nowTs).weeks;
+        if (weeks >= INSIGHT_DELOAD_WEEKS) item = { type: 'deload', label: 'Lleva ' + weeks + ' semanas a tope — ¿descarga?' };
+        else if (weeks >= PULSE_STREAK_WEEKS) item = { type: 'racha', label: weeks + ' semanas cumpliendo su plan' };
+      }
+    }
+    if (!item) return;
+    const mk = c.id + '_' + item.type;
+    if (muted[mk] != null && nowTs < muted[mk]) return; // silenciado por el coach (✕)
+    rows.push({ id: c.id, name: c.name || '', type: item.type, label: item.label });
+  });
+  // Orden DETERMINISTA: prioridad de tipo, luego nombre asc (candado contra el poll de 15s).
+  rows.sort((a, b) => (PULSE_TYPE_RANK[a.type] - PULSE_TYPE_RANK[b.type]) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return rows.slice(0, 5);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2307,6 +2366,7 @@ if (typeof module !== 'undefined' && module.exports) {
     gxLevel,
     computeExerciseProgress,
     coachInsight,
+    coachPulse,
     weekEditorial,
     exTrack,
     prFromSets,
