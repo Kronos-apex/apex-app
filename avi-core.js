@@ -1927,6 +1927,111 @@ function computeExerciseProgress(history) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// COACH INTELIGENTE — motor de insights proactivos (Capa B, v352)
+// ──────────────────────────────────────────────────────────────────────
+// Función PURA: recibe `now` SIEMPRE (jamás Date.now() adentro), sin DOM, sin
+// localStorage, sin DB. Devuelve el insight de MAYOR prioridad NO silenciado, o
+// null. Reglas deterministas (docs/plan-coach-inteligente §11.E3). Voz AVI cálida.
+// sessions = DB.history[cid] (nuevo→viejo) · prs = DB.prs[cid] (mapa key→{val,unit,reps,date,name,…})
+// opts = { isFree:bool, muted:{tipo: ts_hasta_ms} }. Umbrales como constantes para ajuste fácil.
+const INSIGHT_INACTIVE_DAYS = 4;   // días sin entrenar → "te extrañamos"
+const INSIGHT_RECORD_HOURS = 48;   // ventana de un PR "reciente"
+const INSIGHT_STREAK_WEEKS = 2;    // semanas de plan cumplidas → celebrar racha
+const INSIGHT_STALL_POINTS = 6;    // mínimo de puntos de un ejercicio para evaluar estancamiento
+const INSIGHT_STALL_RECENT = 4;    // últimos N puntos que NO superan el máx previo → estancado
+
+function coachInsight(client, sessions, prs, now, opts) {
+  client = client || {};
+  sessions = sessions || [];
+  prs = prs || {};
+  opts = opts || {};
+  const muted = opts.muted || {};
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const isFree = !!opts.isFree;
+  const isMuted = type => muted[type] != null && nowTs < muted[type];
+
+  // Candidatos en ORDEN de prioridad: inactivo > récord > racha > estancado > adaptación.
+  // Se construyen todos y luego se devuelve el primero NO silenciado (así, si el de mayor
+  // prioridad está en "Entendido", aparece el siguiente).
+  const candidates = [];
+
+  // 1) Inactividad — la señal más accionable (churn real). Infinity = nunca entrenó (no aplica aquí).
+  const dsls = daysSinceLastSession(sessions, nowTs);
+  if (dsls !== Infinity && dsls >= INSIGHT_INACTIVE_DAYS) {
+    candidates.push({
+      type: 'inactivo', icon: 'moon',
+      title: 'Te extrañamos por aquí',
+      msg: 'Hace ' + dsls + ' días que no entrenas. ¿Todo bien? Sin presión — tu plan te espera para cuando quieras retomar.',
+    });
+  }
+
+  // 2) Récord reciente (últimas 48 h) — toma el PR más nuevo dentro de la ventana.
+  let bestPr = null;
+  Object.keys(prs).forEach(k => {
+    const p = prs[k]; if (!p || !p.date) return;
+    const t = new Date(p.date).getTime(); if (isNaN(t)) return;
+    if (t <= nowTs && nowTs - t <= INSIGHT_RECORD_HOURS * 3600000) {
+      if (!bestPr || t > bestPr._t) bestPr = Object.assign({ _t: t }, p);
+    }
+  });
+  if (bestPr) {
+    candidates.push({
+      type: 'record', icon: 'trend',
+      title: '¡Récord en ' + (bestPr.name || 'tu ejercicio') + '!',
+      msg: bestPr.val + ' ' + (bestPr.unit || 'kg') + ' — tu mejor marca hasta hoy. Vas volando 🏆',
+    });
+  }
+
+  // 3) Racha de semanas cumpliendo el plan (weekStreak ya es consciente de la semana en curso).
+  const ws = weekStreak(sessions, planDays(client), nowTs);
+  if (ws.weeks >= INSIGHT_STREAK_WEEKS) {
+    candidates.push({
+      type: 'racha', icon: 'flame',
+      title: '¡' + ws.weeks + ' semanas cumpliendo tu plan!',
+      msg: 'Constancia pura. Esto es lo que te transforma 💪',
+    });
+  }
+
+  // 4) Estancamiento por ejercicio — SOLO premium (coherente con la analítica gateada).
+  //    kg, ≥6 puntos, y el máx de los últimos 4 no supera el máx de los anteriores.
+  if (!isFree) {
+    const prog = computeExerciseProgress(sessions);
+    const stalled = prog.find(e => {
+      if (e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
+      const n = e.points.length;
+      const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
+      const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
+      if (!prior.length) return false;
+      const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
+      const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
+      return recentMax <= priorMax;
+    });
+    if (stalled) {
+      candidates.push({
+        type: 'estancado', icon: 'flat',
+        title: stalled.name + ' se estancó un poquito',
+        msg: 'Llevas varias sesiones en la misma marca. Un cambio de reps o de técnica lo destraba — coméntalo con tu coach.',
+        cta: { label: 'Hablar con mi coach', action: 'msgs' },
+      });
+    }
+  }
+
+  // 5) Fase de adaptación — con ≥1 sesión (sin sesiones el onboarding ya habla).
+  if (sessions.length >= 1 && isInAdaptation(client, sessions, nowTs)) {
+    candidates.push({
+      type: 'adaptacion', icon: 'leaf',
+      title: 'Vas empezando, y vas bien',
+      msg: 'En estas primeras semanas la constancia importa más que el peso. Tu cuerpo se está adaptando.',
+    });
+  }
+
+  for (let i = 0; i < candidates.length; i++) {
+    if (!isMuted(candidates[i].type)) return candidates[i];
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // EDITORIAL DE LA SEMANA — voz de coach según el objetivo del asesorado
 // ──────────────────────────────────────────────────────────────────────
 // Elige kick/título/cuerpo del banner semanal a partir del objetivo (matching
@@ -2142,6 +2247,7 @@ if (typeof module !== 'undefined' && module.exports) {
     GX_LEVELS,
     gxLevel,
     computeExerciseProgress,
+    coachInsight,
     weekEditorial,
     exTrack,
     prFromSets,

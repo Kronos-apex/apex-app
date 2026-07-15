@@ -245,7 +245,7 @@ resto de app-4.
 
 ### E3 — Capa B core: motor `coachInsight` (avi-core.js) — commit 2
 
-- [ ] implementado · [ ] tests · [ ] verificado
+- [x] implementado · [x] tests (10 nuevos, suite 317→327) · [x] verificado
 
 **Qué:** función PURA nueva en avi-core.js (junto a los agregados por fecha, ~línea 900) +
 export en el bloque final (~2028):

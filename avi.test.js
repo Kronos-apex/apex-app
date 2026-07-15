@@ -92,6 +92,7 @@ const {
   calcMacrosFromKcal,
   gxLevel,
   computeExerciseProgress,
+  coachInsight,
   weekEditorial,
   exTrack,
   prFromSets,
@@ -2484,6 +2485,112 @@ test('longestWeekStreak: récord histórico con hueco en el medio', () => {
     '2026-05-25', '2026-05-27', '2026-05-29',   // cumplida (racha 1)
   ].map(wsDay);
   assert.strictEqual(longestWeekStreak(s, 3), 2);
+});
+
+// ══════════════════════════════════════════════════════
+section('Coach Inteligente — motor coachInsight (Capa B, v352)');
+
+const CI_NOW = new Date('2026-07-08T10:00:00').getTime();
+const ciDay = (offsetDays, exercises) => ({
+  date: new Date(CI_NOW - offsetDays * 86400000).toISOString(),
+  exercises: exercises || [],
+});
+// Un ejercicio de carga con una serie hecha (para computeExerciseProgress).
+const ciEx = (name, kg) => ({ name, track: 'peso_reps', sets: [{ done: true, kg: String(kg), reps: '8' }] });
+// Ejercicio sin carga (no cuenta para estancamiento kg).
+const ciBW = name => ({ name, track: 'reps', sets: [{ done: true, reps: '15' }] });
+
+test('coachInsight: sin argumentos → null (no lanza)', () => {
+  assert.strictEqual(coachInsight(), null);
+});
+
+test('coachInsight "inactivo": ≥4 días sin entrenar dispara; 3 días no', () => {
+  const c = { level: 'Intermedio', days: 3 };
+  const seis = coachInsight(c, [ciDay(6, [ciBW('Sentadilla')])], {}, CI_NOW, {});
+  assert.ok(seis && seis.type === 'inactivo', 'a 6 días debe extrañar');
+  assert.ok(/6 días/.test(seis.msg));
+  const tres = coachInsight(c, [ciDay(3, [ciBW('Sentadilla')])], {}, CI_NOW, {});
+  assert.strictEqual(tres, null, 'a 3 días no dispara nada');
+});
+
+test('coachInsight "record": PR en 48h dispara con el nombre; PR viejo no', () => {
+  const c = { level: 'Intermedio', days: 3 };
+  const recent = [ciDay(0, [ciBW('Press')])]; // entrenó hoy → no inactivo
+  const prNuevo = { k1: { val: 120, unit: 'kg', name: 'Sentadilla', date: new Date(CI_NOW - 3600000).toISOString() } };
+  const rec = coachInsight(c, recent, prNuevo, CI_NOW, {});
+  assert.ok(rec && rec.type === 'record');
+  assert.ok(/Sentadilla/.test(rec.title) && /120 kg/.test(rec.msg));
+  const prViejo = { k1: { val: 120, unit: 'kg', name: 'Sentadilla', date: new Date(CI_NOW - 3 * 86400000).toISOString() } };
+  assert.strictEqual(coachInsight(c, recent, prViejo, CI_NOW, {}), null, 'PR de 3 días atrás no es reciente');
+});
+
+test('coachInsight "racha": ≥2 semanas de plan cumplidas dispara', () => {
+  const c = { level: 'Intermedio', days: 2 };
+  // 3 semanas con 2 días cada una, sin carga (para no gatillar estancado), terminando esta semana.
+  const s = [
+    ciDay(0, [ciBW('A')]), ciDay(2, [ciBW('A')]),        // esta semana (07-06,07-08→ 2 días)
+    ciDay(7, [ciBW('A')]), ciDay(9, [ciBW('A')]),        // semana pasada
+    ciDay(14, [ciBW('A')]), ciDay(16, [ciBW('A')]),      // 2 semanas atrás
+  ];
+  const r = coachInsight(c, s, {}, CI_NOW, {});
+  assert.ok(r && r.type === 'racha', 'debe celebrar la racha');
+  assert.ok(/semanas/.test(r.title));
+});
+
+test('coachInsight "estancado": premium sí, free no (gating)', () => {
+  const c = { level: 'Intermedio', days: 7 }; // days 7 → weekStreak no llega a 2 (evita racha)
+  // 6 sesiones de 'Press' en kg: los últimos 4 no superan el máx previo (62).
+  const kgs = [60, 62, 62, 60, 61, 62];
+  const s = kgs.map((kg, i) => ciDay(i, [ciEx('Press', kg)])); // i=0 es hoy → no inactivo
+  const prem = coachInsight(c, s, {}, CI_NOW, { isFree: false });
+  assert.ok(prem && prem.type === 'estancado', 'premium ve el estancamiento');
+  assert.ok(/Press/.test(prem.title));
+  assert.ok(prem.cta && prem.cta.action === 'msgs');
+  const free = coachInsight(c, s, {}, CI_NOW, { isFree: true });
+  assert.ok(!free || free.type !== 'estancado', 'free NO ve el estancamiento');
+});
+
+test('coachInsight "estancado": 5 puntos (< mínimo) no dispara', () => {
+  const c = { level: 'Intermedio', days: 7 };
+  const s = [62, 62, 61, 60, 62].map((kg, i) => ciDay(i, [ciEx('Press', kg)]));
+  const r = coachInsight(c, s, {}, CI_NOW, { isFree: false });
+  assert.ok(!r || r.type !== 'estancado', 'con 5 puntos no evalúa estancamiento');
+});
+
+test('coachInsight "adaptacion": principiante nuevo con ≥1 sesión; intermedio no', () => {
+  const nuevo = { level: 'Principiante', days: 3, createdAt: new Date(CI_NOW - 5 * 86400000).toISOString() };
+  const r = coachInsight(nuevo, [ciDay(0, [ciBW('A')])], {}, CI_NOW, {});
+  assert.ok(r && r.type === 'adaptacion');
+  const inter = { level: 'Intermedio', days: 3, createdAt: new Date(CI_NOW - 5 * 86400000).toISOString() };
+  const r2 = coachInsight(inter, [ciDay(0, [ciBW('A')])], {}, CI_NOW, {});
+  assert.ok(!r2 || r2.type !== 'adaptacion');
+});
+
+test('coachInsight prioridad: inactivo > record; record > racha', () => {
+  const c = { level: 'Intermedio', days: 2 };
+  // inactivo (6 días) + record (PR reciente) → gana inactivo
+  const pr = { k1: { val: 100, unit: 'kg', name: 'X', date: new Date(CI_NOW - 3600000).toISOString() } };
+  const a = coachInsight(c, [ciDay(6, [ciBW('A')])], pr, CI_NOW, {});
+  assert.strictEqual(a.type, 'inactivo');
+  // record + racha (sesiones recientes formando racha) → gana record
+  const s = [ciDay(0, [ciBW('A')]), ciDay(2, [ciBW('A')]), ciDay(7, [ciBW('A')]), ciDay(9, [ciBW('A')]), ciDay(14, [ciBW('A')]), ciDay(16, [ciBW('A')])];
+  const b = coachInsight(c, s, pr, CI_NOW, {});
+  assert.strictEqual(b.type, 'record');
+});
+
+test('coachInsight muted: si el de mayor prioridad está silenciado, cae al siguiente', () => {
+  const c = { level: 'Intermedio', days: 2 };
+  const pr = { k1: { val: 100, unit: 'kg', name: 'X', date: new Date(CI_NOW - 3600000).toISOString() } };
+  const sessions = [ciDay(6, [ciBW('A')])]; // inactivo + record
+  const r = coachInsight(c, sessions, pr, CI_NOW, { muted: { inactivo: CI_NOW + 86400000 } });
+  assert.strictEqual(r.type, 'record', 'con inactivo silenciado gana record');
+  // mute vencido (en el pasado) → inactivo vuelve
+  const r2 = coachInsight(c, sessions, pr, CI_NOW, { muted: { inactivo: CI_NOW - 1000 } });
+  assert.strictEqual(r2.type, 'inactivo');
+});
+
+test('coachInsight: historial vacío + sin datos → null', () => {
+  assert.strictEqual(coachInsight({ level: 'Intermedio', days: 3 }, [], {}, CI_NOW, {}), null);
 });
 
 // ══════════════════════════════════════════════════════
