@@ -4,6 +4,10 @@
 > recomendaciones según cómo amaneces y seguimiento inteligente del progreso, para que el
 > asesorado sienta que **hay alguien pendiente de él**. Este documento se revisa ANTES de
 > construir (decisión de Camilo: diseñar el plan primero). Marcar aquí lo aprobado/hecho.
+>
+> **2026-07-15 — DESBLOQUEADO.** Camilo respondió las 5 decisiones de producto (§9, resueltas).
+> Flujo acordado: **Fable estipuló el plan de ejecución (§11) · Opus ejecuta EXACTAMENTE lo
+> estipulado · Fable verifica con el protocolo (§12).** Igual que la auditoría C1-C6 (v350/v351).
 
 ---
 
@@ -129,16 +133,18 @@ la analítica ya está premium-gated (`isFreeClient`). A confirmar.
 
 ---
 
-## 9. Preguntas abiertas para Camilo (decisiones de producto)
-1. **Voz del coach:** ¿habla como "AVI" (asistente), como Sofía (cálida/CS), o como TÚ (Camilo, el
-   entrenador)? Define el tono de todos los mensajes.
-2. **Free vs premium:** ¿qué insights son para todos y cuáles solo premium? (propuesta en §6).
-3. **¿Push también?** ¿El coach solo habla dentro de la app, o también manda una notificación (ej.
-   "hace 6 días que no entrenas")? (los push server-side ya existen).
-4. **¿Coach para EL COACH?** ¿Quieres que además te avise A TI sobre tus asesorados ("Samuel lleva
-   6 días sin entrenar", "María rompió récord")? Es la misma máquina de reglas, del otro lado.
-5. **Umbrales:** días para "inactivo", sesiones para "estancado", etc. — propongo defaults y los
-   ajustas.
+## 9. Preguntas abiertas para Camilo — ✅ RESUELTAS (2026-07-15)
+1. **Voz del coach → AVI, cálida (tono Sofía).** La app habla como AVI. Funciona igual para
+   libres (que NO tienen coach humano) y no se confunde con los mensajes reales del chat de
+   Camilo. Camilo sigue siendo la voz humana; AVI es la que acompaña a diario.
+2. **Free vs premium → gancho gratis, fino premium** (la propuesta de §6, confirmada):
+   bienestar por ánimo, racha, récords e inactividad para TODOS; estancamiento por ejercicio,
+   deload y tendencias solo PREMIUM (coherente con el gating de analítica existente).
+3. **Push → solo dentro de la app, por ahora.** El push de inactividad ya existe (daily-notifs).
+   Cuando la adopción de push suba, se conectan las señales sin rehacer nada.
+4. **Coach para EL COACH → sí, en fase posterior** (Fase 3): primero el asesorado.
+5. **Umbrales → defaults del ingeniero** (estipulados en §11.E3), Camilo los ajusta después
+   de verlos en vivo.
 
 ---
 
@@ -147,5 +153,236 @@ la analítica ya está premium-gated (`isFreeClient`). A confirmar.
   una sesión, valor emocional inmediato, riesgo casi nulo.
 - **Fase 2:** Capa B — motor `coachInsight` + tarjeta en Hoy, con 4-5 señales de arranque (récord,
   racha, inactividad, estancamiento, adaptación) + tests.
-- **Fase 3:** afinar señales (deload, hábitos, peso), free/premium, push si se decide.
+- **Fase 3:** afinar señales (deload, hábitos, peso), coach-para-el-coach, push si se decide.
 - **Fase 4 (opcional/futuro):** capa LLM para lenguaje natural; y — aparte — la apuesta de cámara.
+
+---
+
+## 11. 📋 PLAN DE EJECUCIÓN ESTIPULADO — Fases 1+2 (Opus ejecuta)
+
+> **Estipulado por Fable el 2026-07-15 tras leer el código real** (líneas verificadas contra
+> avi-v351). La sesión que ejecuta (Opus) implementa EXACTAMENTE esto y marca cada checkbox.
+> Si algo resulta imposible o revela un problema mayor: **PARAR y documentarlo en §13
+> (Desviaciones)** — no inventar un fix alternativo en silencio.
+
+### Línea base (2026-07-15, avi-v351 en prod)
+- Suite unit: **314/314** · Hook: **11/11** · `_prodcheck.mjs 351` verde · árbol limpio (`4d2567f`).
+
+### 🛡️ Reglas obligatorias para la sesión que ejecuta
+1. **Leer primero** `CLAUDE.md` completo (DOCTRINA + GOTCHAS VIGENTES) y `docs/metodologia.md`.
+2. **Un bloque = un commit** (E1+E2 juntos = Capa A; E3 = Capa B core; E4+E5+E6 = Capa B UI+news+harness;
+   deploy aparte). Prohibido mezclar o "aprovechar" para refactors no estipulados.
+3. **Edit tool o python utf-8** — jamás perl/sed (tildes/emojis se corrompen en Windows).
+4. Suite (`node avi.test.js`) **antes y después** de cada commit; no puede bajar de 314 (sube con
+   los tests nuevos; actualizar `_baseline.txt` si el check 11 del hook lo exige).
+5. Los tests estipulados **deben fallar sin el código nuevo y pasar con él** (probarlo).
+6. Todo texto visible al asesorado = **voz AVI cálida (tono Sofía)**, español colombiano, cero
+   jerga, cero consejo médico, cero cifras prescriptivas de nutrición/medicación.
+7. `esc()` en TODO dato interpolado en innerHTML (el nombre de ejercicio en los insights es
+   DATO DE USUARIO). Tokens CSS existentes, nada hardcodeado. Táctil ≥36px. Ambos temas.
+8. Zona CALIENTE: esto toca `renderClientToday`/banner de ánimo/guiado embebido →
+   **`_guiado-suite.mjs` 53/53 obligatoria** antes del deploy.
+9. Al final: **UN deploy** con bump del PAR `?v=352` (index.html, TODAS las refs) + `CACHE_NAME`
+   `avi-v352` (sw.js) + Lucas y Julián 🟢 + curl a Pages + `node scripts/e2e/_prodcheck.mjs 352`.
+
+---
+
+### E1 — Capa A core: `adapt.care` en `applyMood` (avi-core.js) — commit 1 (con E2)
+
+- [ ] implementado · [ ] tests · [ ] verificado
+
+**Dónde:** `avi-core.js` — `applyMood` (línea ~1503). El objeto `adapt` se crea en ~1509:
+`{ mood, title, why, tone, changes, flagCoach }`. **Agregar `care: []`** al literal inicial y
+poblarlo en cada rama del `switch` (los 6 estados + default comparten la rama 'bien').
+
+**Contrato:** `adapt.care` = array de **1 a 3 strings** de bienestar, SIEMPRE presente (también
+en 'bien'/'energia'/default). Consejos generales y cálidos, nunca médicos.
+
+**Textos estipulados** (base §3; Opus puede pulir la redacción SIN cambiar el sentido ni el límite
+de seguridad; voz AVI):
+
+| Estado | `adapt.care` |
+|---|---|
+| `energia` | «Aprovecha el día: hidrátate bien durante la sesión» · «Esta noche duerme 7-8 horas — ahí se consolida lo que entrenas hoy» |
+| `bien` | «La constancia es lo que te transforma — hoy suma un día más» |
+| `cansado` | «Duerme 7-8 horas esta noche: el descanso también entrena» · «Súbele hoy a los carbohidratos, son tu gasolina» · «Sé amable contigo: el cansancio pone irritable a cualquiera» |
+| `estres` | «Respira profundo entre series — el ejercicio es tu descarga» · «Al terminar, camina un poco sin afán» · «Evita la cafeína en la tarde para dormir mejor» |
+| `periodo` | «Hidrátate más de lo normal estos días» · «Si hay cólicos, el movimiento suave ayuda — escucha tu cuerpo» |
+| `dolor` | «Si algo duele de verdad, para — no es negociable» · «Al llegar a casa: hielo y descanso en la zona» · «Si sigue igual en unos días, consúltalo con un profesional» |
+
+**Tests estipulados (avi.test.js):** batería «adapt.care»: para CADA id de `MOOD_STATES` + el
+default (mood desconocido), afirmar: (a) `Array.isArray(adapt.care)`, (b) 1 ≤ length ≤ 3,
+(c) todos strings no vacíos, (d) el care de `dolor` contiene «para» (seguridad: empuja a parar,
+no a aguantar), (e) `applyMood` sigue devolviendo `changes`/`flagCoach` intactos (no regresión).
+
+---
+
+### E2 — Capa A UI: bloque de cuidado en `moodBannerHtml` (app-4-entreno.js) — commit 1 (con E1)
+
+- [ ] implementado · [ ] verificado visual ambos temas
+
+**Dónde:** `app-4-entreno.js` — `moodBannerHtml` (línea ~679). Esta función la usan las DOS
+vistas (clásica vía `pickMood` y guiado embebido vía app-6-extra.js:417-418
+`moodBannerHtml(GM.routine.adapt,'gmChangeMood')`) → **un solo cambio cubre ambas**. NO tocar
+app-6.
+
+**Qué:** después de los `chips` y antes del botón «Cambiar cómo me siento», si
+`adapt.care && adapt.care.length`, pintar un bloque:
+- Encabezado pequeño «Para cuidarte hoy» con ícono `heart` (ver nota) — mismo color `t[2]` del tono.
+- Los consejos como lista compacta (una línea por consejo, `esc()` en cada uno aunque hoy sean
+  estáticos — regla de la casa), `font-size:12px`, `color:var(--t1)`, `line-height:1.5`.
+- Sin animaciones nuevas. Sin CSS nuevo si se puede inline con tokens (patrón del propio banner).
+
+**Ícono `heart`:** NO existe como clave de `AVI_ICONS` (app-1-infra.js:1561). Existe el path
+`_ICON_HEART` (app-1-infra.js:79) usado por otro sistema. Estipulado: **agregar clave `heart`
+a `AVI_ICONS`** con un path monolínea coherente (puede derivar de `_ICON_HEART`), patrón de los
+íconos `trenddown`/`flat` agregados en v347. Fallback `typeof aviIcon==='function'` como en el
+resto de app-4.
+
+**Verificación:** harness E6 escenario (a) + shots ambos temas mirados a ojo.
+
+---
+
+### E3 — Capa B core: motor `coachInsight` (avi-core.js) — commit 2
+
+- [ ] implementado · [ ] tests · [ ] verificado
+
+**Qué:** función PURA nueva en avi-core.js (junto a los agregados por fecha, ~línea 900) +
+export en el bloque final (~2028):
+
+```js
+// coachInsight(client, sessions, prs, now, opts) → insight | null
+// sessions = DB.history[cid] (array, nuevo→viejo) · prs = DB.prs[cid] (mapa key→{val,unit,reps,date,name,…})
+// opts = { isFree: bool, muted: {tipo: ts_hasta_ms} }
+// Devuelve { type, icon, title, msg, cta } del insight de MAYOR prioridad no silenciado, o null.
+```
+
+**Señales, umbrales DEFAULT y prioridad** (orden = prioridad; el primero que dispara gana;
+un tipo en `opts.muted` con `now < ts` se SALTA y se evalúa el siguiente):
+
+| # | `type` | Dispara cuando (defaults) | Gating | Mensaje (voz AVI; pulir sin cambiar sentido) | `cta` |
+|---|---|---|---|---|---|
+| 1 | `inactivo` | `daysSinceLastSession(sessions,now)` es finito y **≥ 4** | todos | title «Te extrañamos por aquí» · msg «Hace {d} días que no entrenas. ¿Todo bien? Sin presión — tu plan te espera para cuando quieras retomar.» | — |
+| 2 | `record` | algún PR de `prs` con `date` en las últimas **48 h** (tomar el más reciente) | todos | title «¡Récord en {name}!» · msg «{val} {unit} — tu mejor marca hasta hoy. Vas volando 🏆» | — |
+| 3 | `racha` | `weekStreak(sessions, planDays(client), now).weeks ≥ 2` | todos | title «¡{weeks} semanas cumpliendo tu plan!» · msg «Constancia pura. Esto es lo que te transforma 💪» | — |
+| 4 | `estancado` | `computeExerciseProgress(sessions)`: algún ejercicio con `unit==='kg'` y **≥6 puntos** cuyo máximo de los **últimos 4 puntos** NO supera el máximo de los puntos anteriores (tomar el de más puntos) | **solo premium** (`opts.isFree` → saltar) | title «{name} se estancó un poquito» · msg «Llevas varias sesiones en la misma marca. Un cambio de reps o de técnica lo destraba — coméntalo con tu coach.» | `{label:'Hablar con mi coach', action:'msgs'}` |
+| 5 | `adaptacion` | `isInAdaptation(client, sessions, now)` **y** `sessions.length ≥ 1` (sin sesiones, el onboarding ya habla) | todos | title «Vas empezando, y vas bien» · msg «En estas primeras semanas la constancia importa más que el peso. Tu cuerpo se está adaptando.» | — |
+
+**Ícono por tipo** (claves EXISTENTES de `AVI_ICONS`; verificar nombre exacto al implementar):
+`inactivo`→`moon` · `record`→`trend` · `racha`→`flame` · `estancado`→`flat` (v347) ·
+`adaptacion`→`leaf`. Si alguna clave no existe, elegir la existente más cercana y documentarlo.
+
+**Candados de pureza:** recibe `now` SIEMPRE (jamás `Date.now()` adentro); sin DOM, sin
+localStorage, sin `DB`; `client`/`sessions`/`prs` nulos o vacíos → `null` sin lanzar; los
+umbrales como constantes nombradas arriba de la función (`INSIGHT_INACTIVE_DAYS = 4`, etc.)
+para que Camilo los ajuste fácil.
+
+**Tests estipulados (avi.test.js), batería por señal con datos sintéticos:**
+- Por cada señal: caso que DISPARA y caso que NO (p. ej. 3 días inactivo → null/otra señal;
+  PR de hace 3 días → no record; 1 semana de racha → no racha; 5 puntos → no estancado;
+  intermedio → no adaptación).
+- Prioridad: datos que disparan `inactivo`+`record` a la vez → gana `inactivo`; `record`+`racha`
+  → gana `record`.
+- Muted: con `muted:{inactivo: now+1}` y ambas señales → devuelve `record`.
+- Free: datos de estancamiento con `isFree:true` → NO devuelve `estancado` (cae a la siguiente o null).
+- Bordes: sin argumentos → null; historial vacío → null o `adaptacion` según nivel/fechas (fijar
+  el esperado en el test); determinismo con `now` fijo.
+
+---
+
+### E4 — Capa B UI: tarjeta del coach en «Hoy» — commit 3 (con E5+E6)
+
+- [ ] implementado · [ ] verificado visual ambos temas × free/premium
+
+**Contenedor:** div nuevo `<div id="cn-coach-card"></div>` en index.html dentro de `#cn-today`,
+junto a `#pr-banners` (línea ~588).
+
+**Orden (v313 — el entreno arriba del pliegue es decisión de Camilo, NO romperla):** agregar
+`'cn-coach-card'` a los DOS arrays de `_todayOrder` (app-4-entreno.js:570-571):
+- día de ENTRENO: `[...,'pr-banners','cn-today-body','cn-coach-card','cn-habits',...]` — la
+  tarjeta va DESPUÉS del entreno (no empuja el guiado bajo el pliegue).
+- descanso/sin rutina: `['cn-today-head','cn-coach-card','qw-entry',...]` — arriba, ahí sí es
+  el contenido principal del día.
+
+**Render:** función `renderCoachCard(client)` en app-4-entreno.js (junto al check-in, ~línea 650),
+llamada desde `renderClientToday` al lado de `renderHabitsCard` (~596, ANTES de los
+early-returns → sale también en descanso y sin rutinas). Guard `typeof coachInsight==='function'`
+(caché vieja de avi-core, patrón `_moodOK`).
+- Construye `muted` leyendo `localStorage['coachmute_'+cid+'_'+type]` (ts hasta) por los 5 tipos.
+- `coachInsight(client, DB.history[c.id]||[], (DB.prs&&DB.prs[c.id])||{}, Date.now(),
+  {isFree:isFreeClient(client), muted})`.
+- `null` → `el.innerHTML=''` (la tarjeta desaparece sola cuando la señal expira).
+- Con insight → tarjeta `.card` compacta: ícono del tipo (aviIcon, 20px, color `var(--g2)`) +
+  título (`--fs` de tarjeta, peso 800) + msg (12.5px, `--t1`) + fila de acciones: cta si existe
+  (`action:'msgs'` → `cnTab('cn-messages',document.getElementById('tab-msgs'))`; recordar que
+  solo premium tiene chat — el cta solo llega en insight premium, coherente) + botón fantasma
+  **«Entendido»** (≥36px táctil).
+- **Entendido** → `localStorage['coachmute_'+cid+'_'+type] = Date.now() + días×86400000` con
+  días por tipo: `inactivo` 2 · `record` 2 · `racha` 3 · `estancado` 7 · `adaptacion` 5 —
+  y re-llama `renderCoachCard` (la tarjeta se oculta o muestra el siguiente insight).
+- `data-insight="{type}"` en el root de la tarjeta (ancla para el harness).
+- `esc()` en título y msg (llevan `{name}` de ejercicio = dato de usuario). Sin animación de
+  entrada (o con `prefers-reduced-motion` respetado si se agrega).
+- NO tocar `pr-banners` (huérfano, ver §13-radar). NO tocar el poll de 15s.
+
+### E5 — AVI_NEWS (regla v302) — commit 3
+
+- [ ] entrada nueva · [ ] poda de viejas · [ ] `_verify-news.mjs` actualizado y verde
+
+Capacidad nueva VISIBLE al asesorado → entrada en `AVI_NEWS` (app-6-extra.js) anunciando que
+AVI ahora acompaña («AVI está pendiente de ti: consejos según cómo amaneces y mensajes cuando
+rompes récords, cumples tu plan o te perdemos de vista»; redacción final voz AVI) + poda de las
+entradas más viejas + **actualizar las expectativas ATADAS de `_verify-news.mjs` en el MISMO
+commit** (regla de oro de los harness). `coach:false` (aplica también a libres).
+
+### E6 — Harness E2E `_verify-coach.mjs` (nuevo) — commit 3
+
+- [ ] escrito · [ ] verde · [ ] shots ambos temas mirados a ojo
+
+Patrón `_verify-v315`/gamif: `s-client` forzado con `CUR`/`DB` fake SIN login real, poll de
+nube CONGELADO tras inyectar (gotcha v347: clearInterval + stub — si no, la nube borra los
+fixtures a los 15 s), puertos limpios antes de arrancar (zombis). Checks nombrados:
+- **A (Capa A):** elegir ánimo `cansado` en el chooser → el banner muestra el bloque «Para
+  cuidarte hoy» con ≥2 consejos; check también en el guiado embebido (misma función, pero
+  verificar RENDER real); `dolor` → el care de seguridad presente.
+- **B (récord):** fixture con PR `date=now-1h` → tarjeta `data-insight="record"` con el nombre
+  del ejercicio; XSS-probe: PR con `name` `<img src=x onerror=...>` NO ejecuta (patrón
+  `_verify-xss.mjs`, con control negativo).
+- **C (inactivo + prioridad):** fixture 6 días sin sesión Y racha de 3 semanas → gana `inactivo`.
+- **D (Entendido):** tap en «Entendido» → la tarjeta se oculta y en el siguiente
+  `renderClientToday` NO vuelve (muted); si había segunda señal, aparece la segunda.
+- **E (free/premium):** fixture de estancamiento (7 puntos planos) con `tier:'libre'` → NO sale
+  `estancado`; sin tier (cliente de coach) → SÍ.
+- **F (descanso):** día sin rutina → la tarjeta sale ARRIBA (orden `_todayOrder` no-training).
+- Shots de la tarjeta y el banner de ánimo en AMBOS temas (revisar a ojo, no solo asserts).
+
+---
+
+### Secuencia de cierre (después de E1-E6)
+1. Suite completa (≥314+nuevos) · `node -c` de cada módulo tocado · `_guiado-suite.mjs` 53/53 ·
+   `_verify-modals.mjs` 12/12 (el foco/delegación conviven con la tarjeta nueva) ·
+   `_verify-news.mjs` verde · `_verify-coach.mjs` verde.
+2. **Lucas QA** (funcional, subagente: flujos free/premium/descanso/sin-datos, sobrepromesas,
+   tono) y **Julián QA** (estático: sintaxis, IDs, esc(), SB_KEYS —no hay campo nuevo que
+   sincronice: el mute es local por diseño—, secretos) → ambos 🟢 o no hay deploy.
+3. Deploy único: bump PAR `?v=352` + `CACHE_NAME avi-v352` → push → curl Pages con nocache →
+   `node scripts/e2e/_prodcheck.mjs 352`.
+4. Documentar: hito en `docs/bitacora.md` · CLAUDE.md (backlog: marcar Fases 1-2 del Coach
+   Inteligente; funciones clave: `coachInsight`; GOTCHAS solo si apareció uno NUEVO) · marcar
+   los checkboxes de este plan.
+
+## 12. 🔍 Protocolo de verificación (Fable, después de Opus)
+1. `git log` desde `4d2567f`: commits = los estipulados, sin scope creep (diff completo leído).
+2. Re-correr: suite · `_verify-coach.mjs` · `_guiado-suite.mjs` · `_verify-news.mjs` · shots a ojo.
+3. Greps: `transition:all` sigue en 0 real · `esc(` presente en el render de la tarjeta ·
+   umbrales como constantes nombradas · `coachmute_` no está en SB_KEYS ni claves de sesión.
+4. Probar que ≥2 tests nuevos FALLAN al revertir su código (sanity anti-test-decorativo).
+5. Prod: curl `?v=352` + `avi-v352` + `_prodcheck.mjs 352` re-corrido.
+6. Tono: leer cada texto nuevo como el asesorado nervioso del primer día (§3.6 metodología).
+7. Veredicto en §13 + memoria de sesión + RADAR.
+
+## 13. Desviaciones y radar de la ejecución
+*(la sesión que ejecuta documenta aquí cualquier desviación; Fable agrega el veredicto)*
+- Radar pre-anotado por Fable (2026-07-15): `#pr-banners` (index.html:588) es un contenedor
+  HUÉRFANO — está en los arrays de `_todayOrder` pero NADA le escribe (la celebración de PRs
+  vive en el cierre del entreno). Candidato a limpieza en commit propio FUERA de esta feature.
