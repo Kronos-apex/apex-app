@@ -427,4 +427,183 @@ pipeline §🤖 sigue vigente para futuros deploys.
   ventana.
 
 **Ciclo planificar → ejecutar → verificar CERRADO. Fases 1+2 del Coach Inteligente APROBADAS
-en producción (avi-v352).** Siguiente: decisión de Camilo sobre cuándo atacar la Fase 3.
+en producción (avi-v352).** Siguiente: Fase 3 (estipulada en §14, Camilo la aprobó el 2026-07-15).
+
+---
+
+## 14. 📋 PLAN DE EJECUCIÓN ESTIPULADO — FASE 3 (Opus ejecuta, Fable verifica)
+
+> **Estipulado por Fable el 2026-07-15 tras verificar la Fase 1+2 y leer el código real de
+> avi-v352.** Camilo aprobó continuar con el mismo flujo. Alcance de la Fase 3 según las
+> decisiones ya tomadas (§9): **3 señales finas del asesorado (deload, agua, peso) + el pulso
+> para EL COACH**. SIN push (decisión #3: esperar adopción). La sesión que ejecuta (Opus)
+> implementa EXACTAMENTE esto y marca cada checkbox; desviaciones → §16, sin fixes inventados.
+
+### Línea base (2026-07-15, tras la verificación)
+- Prod: **avi-v352** · HEAD `3ba343c` · Suite **327/327** · Hook 11/11 · `_verify-coach.mjs` 8/8.
+
+### 🛡️ Reglas obligatorias (las de §11 + lecciones de la Fase 1+2)
+1. Leer `CLAUDE.md` (DOCTRINA + GOTCHAS) y `docs/metodologia.md` PRIMERO.
+2. **Un bloque = un commit** (F0, F1, F2, F3, deploy). Nada fuera de lo estipulado.
+3. Edit tool o **python a ARCHIVO** (jamás inline con comillas en PowerShell, jamás perl/sed).
+4. Suite antes/después de cada commit (≥327, sube); tests nuevos DEBEN fallar sin su código.
+5. **Bump de versión SIN BOM**: tras el replace de `?v=`, re-guardar con
+   `[System.Text.UTF8Encoding]::new($false)` y **verificar los 3 primeros bytes** de
+   index.html y sw.js (gotcha cazado en v352).
+6. En harnesses con shots: **silenciar el tour de novedades ANTES del PRIMER shot**
+   (`ax_news_seen` al máximo + `#news-tour` hidden — lección del shot E tapado en v352).
+7. Textos visibles = voz AVI cálida; cero consejo médico; el peso SIN obsesión (ver F1.c).
+8. Zona caliente: se toca `renderClientToday`/tarjeta → `_guiado-suite.mjs` 53/53 antes del
+   deploy. Se toca el home del COACH → `_test-coach-back.mjs` 20/20 también.
+9. Cierre: deploy único `?v=353` + `CACHE_NAME avi-v353` + curl + `_prodcheck.mjs 353`;
+   pase estático = hook 11/11 por commit + auto-auditoría; pase funcional = harnesses
+   (la equivalencia Lucas/Julián aceptada en §13 aplica igual aquí, documentada).
+
+---
+
+### F0 — Limpieza `#pr-banners` (radar §13) — commit 0, PROPIO
+
+- [ ] borrado · [ ] verificado
+
+Borrar el div huérfano `#pr-banners` (index.html:~588) y su entrada en los DOS arrays de
+`_todayOrder` (app-4). ANTES de borrar: `grep -n "pr-banners"` en *.js, index.html y
+scripts/e2e/ → confirmar que SOLO existen esas 3 referencias (2 arrays + div). El check 3 del
+hook (IDs JS sin HTML) valida el borrado. La celebración real de PRs vive en el cierre del
+entreno (`newPRs` en workout-finish) — NO se toca.
+
+### F1 — Core: 3 señales nuevas en `coachInsight` + hardening — commit 1 (con sus tests)
+
+- [ ] deload · [ ] agua · [ ] peso · [ ] hardening `val ?? kg` · [ ] tests · [ ] verificado
+
+**Firma:** se conserva `coachInsight(client, sessions, prs, now, opts)`. `opts` crece con dos
+campos OPCIONALES (back-compat total): `opts.bw` = `DB.bodyweight[cid]` (array `[{date,kg}]`)
+y `opts.waterGoal` = meta de vasos (número). Sin ellos, las señales de peso/agua no disparan
+(o agua cae a `waterGoalGlasses(client.weight)` — ver b).
+
+**Constantes nuevas** (mismo patrón `INSIGHT_*`):
+`INSIGHT_DELOAD_WEEKS = 4` · `INSIGHT_WATER_MIN_LOGGED = 3` · `INSIGHT_WATER_MET_MAX = 1` ·
+`INSIGHT_BW_MIN_ENTRIES = 3` · `INSIGHT_BW_WINDOW_DAYS = 45` · `INSIGHT_BW_MIN_DELTA = 0.5`.
+
+**a) `deload` (SOLO premium — decisión #2).** Dispara cuando
+`weekStreak(sessions, planDays(client), now).weeks >= INSIGHT_DELOAD_WEEKS`. Ícono **`wind`**
+(existe en AVI_ICONS, verificado; `moon` NO — ya es el de inactivo). title «Vas duro hace semanas» ·
+msg «Llevas {weeks} semanas a tope. Una semana más suave ayuda a crecer — coméntalo con tu
+coach.» · cta `{label:'Hablar con mi coach', action:'msgs'}`.
+
+**b) `agua` (para TODOS — es hábito/gancho).** Meta = `opts.waterGoal` o
+`waterGoalGlasses(client.weight)`. Sobre `waterWeek(client.habits, new Date(nowTs))`
+(shape `[{day,n}]`, hoy de último): sea `logged` = días con `n>0` y `met` = días con
+`n>=meta`, **excluyendo HOY de ambos** (el día en curso no cuenta — a las 8am nadie ha
+cumplido). Dispara si `logged >= INSIGHT_WATER_MIN_LOGGED && met <= INSIGHT_WATER_MET_MAX`.
+Ícono `droplet`. title «Esta semana anduvimos bajos de agua» · msg «Tu cuerpo rinde mejor
+hidratado. Mañana súbele un vasito a la vez 💧». Sin cta (la tarjeta de agua está ahí mismo).
+**Candado anti-regaño:** si `logged` es 0-2 (no usa la feature) → NO disparar jamás.
+
+**c) `peso` (SOLO premium — decisión #2). SOLO en positivo, NUNCA regaña.** Con `opts.bw`:
+filtrar entradas de los últimos `INSIGHT_BW_WINDOW_DAYS` días con `kg` numérico, ordenar por
+fecha; si hay `>= INSIGHT_BW_MIN_ENTRIES`, `delta = último.kg - primero.kg`. Dirección del
+objetivo con los regex de `weekEditorial`: `/grasa|perder|baj|adelgaz/` → bajar;
+`/m[uú]sculo|muscul|ganar|hipertrof/` → subir; **cualquier otro objetivo (recomp/vacío) → NO
+disparar**. Dispara SOLO si la dirección coincide y `|delta| >= INSIGHT_BW_MIN_DELTA`:
+ícono `scale`, title «Vas en la dirección de tu objetivo» · msg «{|delta|} kg en las últimas
+semanas, paso a paso y sin afán. Así se hace.» (formatear con 1 decimal). **Si va en dirección
+contraria: SILENCIO TOTAL** (esa conversación es del coach humano, no de una tarjeta — límite
+de producto, dejar comentario-candado en el código).
+
+**d) Hardening del récord (observación §13):** en el msg de `record`, usar
+`(bestPr.val != null ? bestPr.val : bestPr.kg)` (paridad con `isBetterPR`). Test con un PR
+forma-legacy (`{kg:100, date:reciente}` sin `val`) → el msg dice «100 kg», no «undefined».
+
+**Prioridad FINAL (orden §4 del plan):**
+`inactivo > deload > record > racha > estancado > adaptacion > peso > agua`.
+
+**Tests estipulados (batería por señal, patrón `ciDay`/`ciEx` existente):**
+- deload: 4 semanas cumplidas → dispara (premium); 3 → no; `isFree:true` → no; con deload Y
+  racha activas → gana deload.
+- agua: 4 días registrados con 0-1 cumplidos → dispara; 2 registrados → NO (no usa la feature);
+  todos cumplidos → no; hoy con n=0 NO cuenta como día registrado ni fallado.
+- peso: goal «perder grasa» con −1.2kg en 3 registros → dispara con «1.2 kg»; +1.2kg (dirección
+  contraria) → **null/otra señal, JAMÁS mensaje negativo**; goal «recomposición» → no; 2
+  registros → no; sin `opts.bw` → no.
+- record legacy: PR `{kg:100}` sin `val` reciente → msg con «100».
+- prioridad: deload+record simultáneos → deload; peso+agua → peso.
+
+### F2 — UI del asesorado: cablear las señales nuevas — commit 2
+
+- [ ] mute days · [ ] bw/waterGoal pasados · [ ] harness actualizado · [ ] visual ambos temas
+
+En `renderCoachCard` (app-4): agregar a `_INSIGHT_MUTE_DAYS` → `deload:21` (un mesociclo;
+si no, reaparece cada semana al que nunca para), `peso:5`, `agua:3`. Pasar
+`bw:(DB.bodyweight&&DB.bodyweight[cid])||[]` y `waterGoal:(typeof _waterGoalFor==='function'?
+_waterGoalFor(client):undefined)` en opts (guard typeof — `_waterGoalFor` vive en app-5).
+`_coachMuteMap` itera `Object.keys(_INSIGHT_MUTE_DAYS)` → cubre los nuevos solo con la
+entrada. Harness `_verify-coach.mjs`: +4 checks (deload premium/free, agua dispara con
+fixture de hábitos, peso positivo dispara / contrario NO, prioridad deload>record) + aplicar
+la regla 6 (tour silenciado ANTES del primer shot) + shots de deload y agua en ambos temas.
+
+### F3 — EL PULSO DEL COACH (coach-para-el-coach) — commit 3
+
+- [ ] `coachPulse` core + tests · [ ] tarjeta `#h-pulse` en home · [ ] harness · [ ] visual
+
+**Qué NO es:** el home del coach YA grita lo negativo (banner 💤 de adherencia = inactividad,
+banner de vencimientos = pagos, prioritarios). El pulso es lo que HOY no ve: **motivos
+positivos/técnicos para escribirle a cada asesorado** — récords, rachas, estancamientos,
+candidatos a descarga. NO duplicar inactividad (candado: `inactivo` EXCLUIDO del pulso).
+
+**Core (avi-core, pura):** `coachPulse(clients, history, prs, now, opts)` →
+array de hasta **5** `{id, name, type, label}`. Por asesorado NO suspendido evalúa:
+- `record`: PR ≤48h → «🏆 Rompió récord en {ejercicio}» (label CON el dato).
+- `estancado`: mismo criterio kg/6-puntos → «Se estancó en {ejercicio}».
+- `deload`: `weeks >= 4` → «Lleva {weeks} semanas a tope — ¿descarga?».
+- `racha`: `weeks >= 3` (más exigente que el lado del asesorado: al coach solo lo notable) →
+  «{weeks} semanas cumpliendo su plan».
+Un solo item por asesorado (el de mayor prioridad). Orden del array (DETERMINISTA — el poll de
+15s del coach re-renderiza, gotcha §3.3 metodología): prioridad de tipo
+`record > estancado > deload > racha`, luego **nombre asc** como desempate. `opts.muted` =
+`{'<cid>_<type>': ts_hasta}` (mismo mecanismo). SIN gating free/premium (el coach ve TODO lo
+suyo — el gating es del lado del asesorado). Para no duplicar detección: extraer los
+detectores compartidos a helpers puros internos (`_insRecordOf(prs,nowTs)`,
+`_insStallOf(sessions)`, etc.) que usan tanto `coachInsight` como `coachPulse` — refactor
+QUIRÚRGICO, los tests de F1 y los existentes de coachInsight deben seguir verdes SIN tocarse
+(esa es la prueba de que el refactor no cambió semántica).
+
+**Tests:** 3 asesorados con señales mixtas → orden correcto y tope 5; suspendido excluido;
+muted por fila respetado; sin datos → `[]`; determinismo (dos llamadas mismos args = mismo
+resultado); los tests EXISTENTES de coachInsight pasan sin modificación.
+
+**UI:** contenedor `<div id="h-pulse"></div>` en index.html DESPUÉS de `#h-adherence-banner`
+y ANTES de la sección de prioritarios (`#h-list` y su encabezado). Render al final de
+`renderHome()` (app-2, ~línea 1529, junto a `ensureCoachPush`): tarjeta `.card` con encabezado
+«El pulso de tus asesorados» (ícono `bolt`), filas con patrón EXACTO del banner
+"entrenaron hoy" (nombre + label, `border-top:1px solid var(--br)`, tap → `openDetail(cid)`)
++ ✕ por fila (`event.stopPropagation()`, ≥36px táctil, `aria-label`) que silencia
+`coachpulse_<cid>_<type>` por **3 días** y re-renderiza. Sin filas → `display:none` (sin
+tarjeta vacía). `esc()` en nombre y label (¡el nombre del ejercicio viaja en el label!).
+Guard `typeof coachPulse==='function'`.
+
+**Harness:** nuevos checks en `_verify-coach.mjs` (o `_verify-pulse.mjs` si queda más limpio;
+decisión de Opus, documentada): loguear como COACH QA (patrón `_shot-coach.mjs`, creds
+`~/.avi/qa-accounts.txt`), inyectar 3 clientes fake con señales, congelar poll, afirmar orden
++ tap-✕ silencia + XSS-probe en nombre de ejercicio del label + shot ambos temas.
+
+### Cierre de Fase 3
+1. [ ] Suite completa (≥327+nuevos) · `_guiado-suite` 53/53 · `_test-coach-back` 20/20 ·
+   `_verify-coach` verde · `_verify-modals` 12/12 · `_verify-news` verde (sin cambios de news).
+2. [ ] **SIN entrada AVI_NEWS** — decisión estipulada: la news v352 ya anunció el coach
+   inteligente en genérico («si algo se estanca o te ausentas…»); deload/agua/peso son más de
+   lo mismo y el pulso es del COACH (las news son del asesorado). No spamear el tour.
+3. [ ] Deploy único `?v=353` + `avi-v353` (regla 5: bytes sin BOM) → push → curl → `_prodcheck 353`.
+4. [ ] Bitácora (parte 58) · CLAUDE.md (backlog Fase 3 hecha, `coachPulse` en funciones clave,
+   footer v353/suite) · checkboxes de este §14 · memoria de sesión.
+
+## 15. 🔍 Verificación de Fable (post-Opus, Fase 3)
+El protocolo es el MISMO de §12 con línea base `3ba343c` y v353, más estos puntos específicos:
+- El pulso NO muestra inactividad (duplicaría el banner 💤) y su orden es determinista bajo
+  el poll (correr `renderHome()` dos veces seguidas en el harness = mismo DOM).
+- La señal de peso JAMÁS emite mensaje en dirección contraria (revisar el código Y un test).
+- Los tests EXISTENTES de `coachInsight` (v352) pasan SIN modificación (prueba del refactor).
+- Sabotaje de ≥2 tests nuevos (patrón §12.4: umbral + texto de seguridad/candado).
+- `#pr-banners` → grep 0 referencias tras F0.
+
+## 16. Desviaciones de la Fase 3
+*(la sesión que ejecuta documenta aquí; Fable agrega el veredicto)*
