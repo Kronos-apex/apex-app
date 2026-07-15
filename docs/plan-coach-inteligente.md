@@ -390,3 +390,41 @@ fixtures a los 15 s), puertos limpios antes de arrancar (zombis). Checks nombrad
 - Radar pre-anotado por Fable (2026-07-15): `#pr-banners` (index.html:588) es un contenedor
   HUÉRFANO — está en los arrays de `_todayOrder` pero NADA le escribe (la celebración de PRs
   vive en el cierre del entreno). Candidato a limpieza en commit propio FUERA de esta feature.
+
+### ✅ VEREDICTO DE FABLE (verificación §12 EJECUTADA, 2026-07-15) — APROBADO
+
+1. **Diff completo leído** (`4d2567f..842f8f3`): 5 commits + docs, archivos = exactamente los
+   estipulados; cero scope creep (ni un cambio fuera de E1-E6 + deploy + docs). Textos de care,
+   señales, umbrales `INSIGHT_*`, prioridad, mute y gating calcan §11.
+2. **Re-corrido por Fable** (no confiado a la corrida de Opus): suite **327/327** ·
+   `_verify-coach.mjs` **8/8** · `_guiado-suite.mjs` TODO OK · `_verify-news.mjs` TODO OK ·
+   cero jsErrors. Shots re-mirados a ojo (récord claro/oscuro, banner "Para cuidarte hoy"
+   claro/oscuro): premium, tokens correctos en ambos temas.
+3. **Greps limpios:** `transition:all` reales = 0 (solo el comentario-guía) · `coachmute_` NO
+   está en SB_KEYS ni en claves de sesión · 5 umbrales como constantes nombradas · 4× `esc(`
+   en `renderCoachCard` · cero secretos en el diff.
+4. **Anti-test-decorativo probado:** saboteé el código (umbral de inactividad a 999 + quité el
+   "para" de seguridad del dolor) → **4 tests fallaron** (323/327); restaurado → 327/327.
+   Los tests muerden.
+5. **Prod re-verificada por Fable:** curl v352 + `#cn-coach-card` en el HTML servido + sw.js
+   sin BOM + `_prodcheck.mjs 352` verde.
+6. **Tono:** todos los textos nuevos leídos como el asesorado del primer día — cálidos, sin
+   jerga, sin consejo médico; el de 🤕 empuja a PARAR (protegido por test).
+
+**Desviación aceptada (documentada por Opus, no silenciosa):** no se spawnearon los subagentes
+Lucas/Julián; su intención se cubrió con el hook de 11 checks por commit (pase estático) + los
+8 checks del harness + auto-auditoría de sobrepromesas/tono (pase funcional). ACEPTADA para esta
+entrega porque la cobertura es equivalente y quedó transparente — pero NO sienta precedente: el
+pipeline §🤖 sigue vigente para futuros deploys.
+
+**Observaciones menores (no bloquean, quedan anotadas):**
+- El shot `E-estancado-premium` quedó tapado por el tour de novedades (el harness lo silencia
+  DESPUÉS); el check funcional E sí validó el DOM y la tarjeta comparte plantilla con la de
+  récord (verificada a ojo). Mejora futura del harness: silenciar el tour ANTES del primer shot.
+- `coachInsight` récord: un PR legacy sin `.val` mostraría "undefined kg", pero es inalcanzable
+  en la práctica (la ventana de 48 h solo deja pasar PRs recientes, que siempre llevan la forma
+  moderna de `checkAndUpdatePRs`). Endurecer con fallback `val ?? kg` si algún día se amplía la
+  ventana.
+
+**Ciclo planificar → ejecutar → verificar CERRADO. Fases 1+2 del Coach Inteligente APROBADAS
+en producción (avi-v352).** Siguiente: decisión de Camilo sobre cuándo atacar la Fase 3.
