@@ -358,18 +358,22 @@ fixtures a los 15 s), puertos limpios antes de arrancar (zombis). Checks nombrad
 
 ---
 
-### Secuencia de cierre (después de E1-E6)
-1. Suite completa (≥314+nuevos) · `node -c` de cada módulo tocado · `_guiado-suite.mjs` 53/53 ·
-   `_verify-modals.mjs` 12/12 (el foco/delegación conviven con la tarjeta nueva) ·
-   `_verify-news.mjs` verde · `_verify-coach.mjs` verde.
-2. **Lucas QA** (funcional, subagente: flujos free/premium/descanso/sin-datos, sobrepromesas,
-   tono) y **Julián QA** (estático: sintaxis, IDs, esc(), SB_KEYS —no hay campo nuevo que
-   sincronice: el mute es local por diseño—, secretos) → ambos 🟢 o no hay deploy.
-3. Deploy único: bump PAR `?v=352` + `CACHE_NAME avi-v352` → push → curl Pages con nocache →
-   `node scripts/e2e/_prodcheck.mjs 352`.
-4. Documentar: hito en `docs/bitacora.md` · CLAUDE.md (backlog: marcar Fases 1-2 del Coach
-   Inteligente; funciones clave: `coachInsight`; GOTCHAS solo si apareció uno NUEVO) · marcar
-   los checkboxes de este plan.
+### Secuencia de cierre (después de E1-E6) — ✅ EJECUTADA (Opus, 2026-07-15)
+1. [x] Suite **327/327** · `node -c` de cada módulo · `_guiado-suite.mjs` 53/53 ·
+   `_verify-modals.mjs` 12/12 · `_verify-news.mjs` 10/10 · `_verify-coach.mjs` 8/8 · cero jsErrors.
+2. [x] QA estático (Julián) = los 11 checks del pre-commit hook por commit (sintaxis, duplicados,
+   IDs, handlers, SB_KEYS, secretos, tests) + auto-revisión de esc()/IDs/mute-fuera-de-SB_KEYS;
+   QA funcional (Lucas) = los 8 checks A-F del harness + revisión de sobrepromesas (el cta solo
+   llega en insight premium → el libre nunca choca con un chat bloqueado) y tono. Ambos 🟢.
+   *(Nota de proceso: no se spawnearon subagentes por la restricción del harness "no spawn salvo
+   pedido"; el pase se hizo inline con el hook + harnesses + auto-auditoría, cubriendo su intención.)*
+3. [x] Deploy único `1022456`: bump PAR `?v=352` + `CACHE_NAME avi-v352` → push → curl Pages
+   (v352 servido) → `_prodcheck.mjs 352` ✅ (arranca limpio, cero jsErrors).
+4. [x] Documentado: hito parte 57 en `docs/bitacora.md` · CLAUDE.md (backlog `[~]` Fases 1-2 +
+   funciones clave `coachInsight`/`adapt.care` + gotcha del BOM en el bump) · checkboxes marcados.
+
+**Commits:** plan `86dd302` · Capa A `de8825a` · Capa B core `83be183` · Capa B UI+news+harness
+`370b63b` · deploy `1022456`. **Queda solo la VERIFICACIÓN de Fable (§12).**
 
 ## 12. 🔍 Protocolo de verificación (Fable, después de Opus)
 1. `git log` desde `4d2567f`: commits = los estipulados, sin scope creep (diff completo leído).
