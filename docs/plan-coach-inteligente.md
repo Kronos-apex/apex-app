@@ -941,3 +941,64 @@ el test de 3-estancados debe morder) y del ganador por músculo (invertir flatPo
 verificar con click real que la tarjeta global abre m-gen con deload marcado · tests v354
 (shockPlan/applyShockOption) pasan SIN modificación.
 
+## 22. Desviaciones de la Fase 4.1 y VEREDICTO
+
+### Desviaciones documentadas por la ejecución (Opus)
+Ninguna estructural (§20 cierre). Añadidos de UI no estipulados textualmente: nota `also` sobre
+fondo `--gl`/`--gt`, título adaptivo («Plan»/«Planes de choque»), «Descartar» → «Descartar todos»
+con 2 targets. → **ACEPTADAS**: cohesión visual y claridad de copy, no scope creep material.
+
+### Verificación de Fable (2026-07-16, protocolo §21, base `64d99f7` → v355 `5f74e0d`)
+- [x] **Diff completo leído** (10 archivos, 400+/72−): avi-core solo suma `_flatPointsOf` +
+  `shockTargets` + 2 constantes `SHOCK_GLOBAL_*` y el export; `shockPlan`/`applyShockOption` NO
+  cambiaron firma ni lógica (`shockPlan` solo usa el helper para `analysis.flatPoints` — misma
+  fórmula extraída, verificado línea a línea); app-3 solo el bloque del plan de choque;
+  index.html/sw.js solo bump v355; sin scope creep.
+- [x] **`avi.test.js` 100% ADITIVO** (0 líneas previas eliminadas/modificadas, `grep -c '^-[^-]'`
+  = 0) → los tests v354 de shockPlan/applyShockOption pasan SIN tocarse.
+- [x] **Suite 359/359** re-corrida por Fable.
+- [x] **Sabotajes con árbol LIMPIO, ejecutados por Fable (no reusé los de Opus):**
+  (a) `SHOCK_GLOBAL_MIN=99` → mordió el test «3 estancados → global» (358/359);
+  (b) desempate invertido `_flatPointsOf(a)-_flatPointsOf(b)` → mordió «gana el de MÁS puntos
+  planos» (358/359); (c) sabotaje PROPIO adicional: romper el agrupamiento por músculo
+  (`const m=''` — todo colapsa a un grupo) → mordieron 2 tests («1 estancado → target con su
+  músculo» y «2 músculos distintos → 2 targets»). Restaurado tras cada uno; suite verde
+  359/359 y `git status` limpio al final.
+- [x] **Harness `_verify-shock.mjs` 33/33, cero jsErrors.** El candado global S12d se ejercita
+  con CLICK REAL (leído el código del harness: `querySelector('#d-shock
+  button[onclick*="shockDeload"]').click()`) → `m-gen` abierto + `#mg-deload` checked +
+  `CUR.genDeload=true`, los tres true.
+- [x] **Candado «nada al asesorado sin tap» verificado en el CÓDIGO:** grep sobre el bloque
+  completo del plan de choque (app-3:1270-1466) → UN solo `sv(` en todo el bloque, dentro de
+  `applyShock` (handler de tap); cero `sendCoachMsg`/`pushToClient`/`fetch`. `_shockChat`/
+  `shockWriteGlobal` solo asignan `ta.value`. `shockDeload` NO escribe rutinas: solo abre
+  `m-gen` y marca la descarga; `genWithStyle` deja el borrador en `CUR.genDraft` y las rutinas
+  SOLO se escriben en `confirmGenRutinas` (tap explícito del coach) — cadena leída completa.
+- [x] **Cinturón re-corrido por Fable:** `_verify-pulse` 6/6 · `_verify-coach` 12/12 ·
+  `_test-coach-back` OK · `_guiado-suite` 53/53 · `_verify-modals` 12/12 · cero jsErrors en todos.
+- [x] **Greps limpios:** `shockmute_` fuera de SB_KEYS (app-1:107) y de `_COACH_SETTINGS_KEYS`
+  (app-1:113) · `esc()` en TODO el innerHTML de la tarjeta (nombres, also, warnings, títulos,
+  descripciones, names del global) · onclick por ÍNDICE (`applyShock(ti,oi)`/`shockWrite(ti)`,
+  ningún dato de usuario en atributos) · constantes `SHOCK_GLOBAL_MIN`/`SHOCK_GLOBAL_MUTE_DAYS`
+  nombradas.
+- [x] **Prod re-verificada por Fable:** curl con nocache sirve `?v=355` (único) · primeros bytes
+  SIN BOM (`<!D` en index.html, `con` en sw.js) · `_prodcheck.mjs 355` verde re-corrido (boot
+  limpio, cero jsErrors).
+- [x] **Tono:** la nota «X también se plantó — destrabemos este primero», la tarjeta global
+  («eso ya no es un problema de un ejercicio: es fatiga acumulada… lo correcto es una semana de
+  descarga») y el chat prellenado («bajamos revoluciones a propósito: es una descarga programada
+  para recuperar, no un retroceso. Volvemos con todo la próxima 💪») van en voz del coach,
+  cálidos y sin jerga. **SIN AVI_NEWS nuevo** (verificado en el diff — solo menciones en docs).
+
+**Observaciones menores (no bloquean, para el radar):**
+- `dismissShockGlobal` guarda con `if(!S)return` (sin chequear `mode==='global'` como sus
+  hermanas) — inalcanzable en modo equivocado vía UI, pero asimétrico; 1 línea si se quiere pulir.
+- `shockDeload` genera el borrador DOS veces (openGenRutinas corre `genWithStyle(def)` sin
+  descarga y `toggleGenDeload(true)` regenera con ella) — imperceptible para el coach, cero bug.
+- Si `genWithStyle` fallara al abrir (catálogo vacío), `m-gen` no abre pero `shockDeload` marca
+  igual el checkbox del modal cerrado — inofensivo (el coach ve el toast de error del generador).
+- Los mutes siguen siendo por dispositivo (localStorage, a propósito): el coach en celular + PC
+  verá reaparecer una tarjeta descartada en el otro equipo. Conocido desde v354, decisión vigente.
+
+### 🟢 VEREDICTO: FASE 4.1 APROBADA — ciclo planificar→ejecutar→verificar CERRADO (4º consecutivo).
+
