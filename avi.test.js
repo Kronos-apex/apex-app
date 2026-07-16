@@ -2998,6 +2998,21 @@ test('🔒 shockTargets: PARÓN RECIENTE (entrenó DENSO pero paró hace 3 seman
   assert.strictEqual(shockTargets(paron, stClient, CI_NOW).mode, 'rebuild', 'un parón reciente NO es fatiga: recuperar ritmo');
 });
 
+test('🔒 shockTargets: RETORNANTE (faltó semanas y vuelve DENSO su 1ª semana) → rebuild, no descarga', () => {
+  // Meseta vieja (>4 semanas atrás, fuera de la ventana) + esta semana entrenando fuerte. Sin el
+  // candado «no cuenta la 1ª semana», la semana densa infla la cadencia (span≈1) y clasificaría
+  // GLOBAL (descarga) por error a alguien que apenas volvió. Debe caer en rebuild.
+  const offsets = [41, 38, 35, 5, 3, 1]; // nuevo→viejo se arma con reverse; 3 viejos + 3 de esta semana
+  const ret = offsets.map((off, k) => ({
+    date: new Date(CI_NOW - off * 86400000).toISOString(),
+    // kgs por orden CRONOLÓGICO (viejo→nuevo): mapear el índice cronológico i=5-k... construimos
+    // directo: como offsets va de más viejo (41) a más nuevo (1), k es ya el índice cronológico.
+    exercises: stall3.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[k]), reps: '8' }] })),
+  }));
+  // ret está de viejo→nuevo (offset 41 primero); la app va nuevo→viejo → reverse.
+  assert.strictEqual(shockTargets(ret.slice().reverse(), stClient, CI_NOW).mode, 'rebuild', 'un retornante NO recibe descarga por su 1ª semana');
+});
+
 test('shockTargets: el gate de constancia NO afecta al modo multi (1-2 estancados)', () => {
   // Con <3 estancados, entrenar a saltos NO cambia nada: los planes por-ejercicio siguen válidos.
   const r = shockTargets(stHist([

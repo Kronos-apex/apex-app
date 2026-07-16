@@ -1313,14 +1313,19 @@ function renderShockCard(c){
   if(tg.mode==='rebuild'){
     if(_shockGlobalMuted(c.id))return;
     CUR.shock={cid:c.id,mode:'rebuild',count:tg.count,names:tg.names};
-    // Cifra de constancia = la EVIDENCIA de por qué no es descarga. Decimal con coma (es-CO).
+    // Cifra de constancia = la EVIDENCIA de por qué no es descarga. Se mide SIN contar la semana en
+    // curso (un retornante que vuelve fuerte no es constancia establecida). Decimal con coma (es-CO).
     const _cad=String(tg.cadence).replace('.',',');
     const _plan=tg.plan+(tg.plan===1?' día':' días');
+    // cadencia 0 = casi no entrenó las semanas previas (ausente / apenas volvió) → frase digna, no "~0".
+    const _cadLine=tg.cadence>0
+      ? `Viene entrenando <strong>~${_cad}</strong> de sus <strong>${_plan}</strong> por semana (sin contar esta).`
+      : `Casi no entrenó las semanas previas (su plan son <strong>${_plan}</strong> por semana).`;
     el.style.display='block';
     el.innerHTML=`<div class="card" style="padding:12px 14px">
       <div class="ctitle" style="margin-bottom:4px">${_shockBolt()} ${tg.count} estancados — pero es por constancia</div>
-      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:8px">${esc(tg.names.join(', '))} llevan rato sin subir, pero las últimas semanas fueron <strong>a saltos</strong>. Antes de tocar el plan, lo que más mueve la aguja es <strong>recuperar el ritmo</strong> — cuando vuelva a entrenar parejo, revisamos si algo se estancó de verdad. (Una descarga ahora bajaría aún más el volumen: no es lo que necesita.)</div>
-      <div style="background:var(--bll);border-radius:var(--rsm);padding:7px 10px;margin-bottom:10px;font-size:12px;color:var(--bl);line-height:1.5">${typeof aviIcon==='function'?aviIcon('calendar',13):'📅'} Viene entrenando <strong>~${_cad}</strong> de sus <strong>${_plan}</strong> por semana (últimas 4 semanas).</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:8px">${esc(tg.names.join(', '))} llevan rato sin subir, pero <strong>no ha venido entrenando parejo</strong>. Antes de tocar el plan, lo que más mueve la aguja es <strong>afianzar el ritmo</strong> — cuando sostenga la constancia unas semanas, revisamos si algo se estancó de verdad. (Una descarga ahora bajaría aún más el volumen: no es lo que necesita.)</div>
+      <div style="background:var(--bll);border-radius:var(--rsm);padding:7px 10px;margin-bottom:10px;font-size:12px;color:var(--bl);line-height:1.5">${typeof aviIcon==='function'?aviIcon('calendar',13):'📅'} ${_cadLine}</div>
       <div style="display:flex;gap:6px">
         <button class="btn bp bsm" style="flex:1;min-height:36px" onclick="shockWriteRebuild()">${_coIco('pencil',13,'✍️')} Escribirle</button>
         <button class="btn bg bsm" style="min-height:36px" onclick="dismissShockGlobal()">Descartar</button>

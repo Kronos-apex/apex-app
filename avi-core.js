@@ -2179,18 +2179,23 @@ const SHOCK_GLOBAL_MUTE_DAYS = 7;   // re-chequear antes que los 21d: si está f
 // Camilo con el caso real de Astrid, 2026-07-16). Ver [[avi-coach-inteligente-plan]].
 const SHOCK_CONSISTENCY_DAYS = 28;       // ventana para medir la constancia reciente
 const SHOCK_CONSISTENCY_MIN_RATIO = 0.7; // fracción del plan (días/sem) para llamarla "constante"
+const SHOCK_RETURN_WEEK_DAYS = 7;        // la "primera semana de vuelta" NO cuenta: un retornante que
+// entrena denso su 1ª semana tras faltar NO es constancia establecida (decisión de Camilo, radar de
+// Fable §24). La constancia se juzga por lo SOSTENIDO (semanas anteriores a esta), no por el arranque.
 
-// _recentCadence: días entrenados por semana en los últimos `windowDays`, medidos HASTA `now` (un
-// parón reciente baja la cadencia aunque antes entrenara seguido → capta «huecos» Y «baja frecuencia»
-// en una sola cifra). Puro. Varias sesiones el mismo día cuentan 1.
-function _recentCadence(sessions, now, windowDays) {
+// _recentCadence: días entrenados por semana en la ventana `[now-windowDays, now-skipRecentDays]`
+// —ignora los últimos `skipRecentDays` (la semana en curso / de vuelta)— medidos hasta el FIN de esa
+// ventana. Un parón reciente baja la cadencia aunque antes entrenara seguido → capta «huecos», «baja
+// frecuencia» Y «acaba de volver» en una cifra. Puro. Varias sesiones el mismo día cuentan 1.
+function _recentCadence(sessions, now, windowDays, skipRecentDays) {
   const ref = (now != null ? new Date(now) : new Date()).getTime();
+  const end = ref - (skipRecentDays || 0) * 86400000;
   const cutoff = ref - windowDays * 86400000;
   const days = [...new Set((sessions || [])
     .map(s => { const t = new Date(s && s.date).getTime(); return isNaN(t) ? null : new Date(t).setHours(0, 0, 0, 0); })
-    .filter(t => t != null && t <= ref && t >= cutoff))].sort((a, b) => a - b);
+    .filter(t => t != null && t <= end && t >= cutoff))].sort((a, b) => a - b);
   if (!days.length) return 0;
-  const spanWeeks = Math.max(1, (ref - days[0]) / (7 * 86400000));
+  const spanWeeks = Math.max(1, (end - days[0]) / (7 * 86400000));
   return days.length / spanWeeks;
 }
 // Área de dolor (PAIN_AREAS) → zona con reglas de exclusión (GEN_ZONE_EXCL). Solo estas 3 tienen
@@ -2217,7 +2222,7 @@ function shockTargets(sessions, client, now) {
   if (stalled.length >= SHOCK_GLOBAL_MIN) {
     const names = stalled.map(e => e.name);
     if (now != null) {
-      const cadence = _recentCadence(sessions, now, SHOCK_CONSISTENCY_DAYS);
+      const cadence = _recentCadence(sessions, now, SHOCK_CONSISTENCY_DAYS, SHOCK_RETURN_WEEK_DAYS);
       const plan = planDays(client);
       if (cadence < plan * SHOCK_CONSISTENCY_MIN_RATIO) {
         // Se estancó entrenando a saltos → una descarga sería consejo equivocado. Recuperar ritmo.

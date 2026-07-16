@@ -333,6 +333,32 @@ try {
   check('🔒 S14d Escribirle prellena (voz coach) SIN enviar ni tocar la rutina', s14d.open && s14d.val.length > 20 && s14d.msgs === 0 && s14d.routTocada === false, JSON.stringify({ len: s14d.val.length, msgs: s14d.msgs, rout: s14d.routTocada }));
   await ev(`(()=>{const el=document.getElementById('coach-chat');if(el)el.classList.remove('on');})()`);
 
+  // ── S15 (CANDADO RETORNANTE): meseta VIEJA (>4 semanas) + esta semana DENSA → rebuild, NO descarga.
+  // La 1ª semana de vuelta no cuenta: sin el candado, la semana densa inflaría la cadencia → descarga
+  // falsa a quien apenas volvió. Historial con offsets a medida (3 viejos >28d + 3 de esta semana). ──
+  const s15 = await ev(`(()=>{try{
+    ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
+    const specs=[{name:'Jalón al Pecho',muscle:'espalda',kgs:[62,60,60,60,60,60]},
+      {name:'Press Banca',muscle:'pecho',kgs:[60,62,60,60,60,60]},{name:'Sentadilla',muscle:'pierna',kgs:[60,62,60,60,60,60]}];
+    const offs=[41,38,35,5,3,1]; // viejo→nuevo; 3 de hace >4 semanas + 3 de esta semana
+    const sess=offs.map((off,k)=>({date:new Date(Date.now()-off*86400000).toISOString(),routineName:'R',
+      exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[k]),reps:'8'}]}))})).reverse();
+    const c={id:'a1',name:'Retornante Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+      payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:1}],
+      routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))},
+        {id:'r2',name:'B',day:'Miércoles',restSec:60,exercises:[]},{id:'r3',name:'C',day:'Viernes',restSec:60,exercises:[]}]};
+    DB.clients=[c];DB.history={a1:sess};DB.prs={};DB.msgs={};
+    for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&kk.indexOf('shockmute_')===0)localStorage.removeItem(kk);}
+    window.CUR=window.CUR||{};CUR.loggedAs='coach';showScreen('s-coach');gp('p-detail',null,'Detalle',true);CUR.clientId=c.id;
+    renderShockCard(c);return true;}catch(e){return 'err:'+e.message}})()`);
+  if (s15 !== true) throw new Error('S15 setup: ' + s15);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S15-retornante');
+  const s15mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
+  check('🔒 S15 retornante (vuelve denso su 1ª semana) → rebuild, NO descarga', s15mode === 'rebuild' && s.deload === false && s.opts === 0, 'mode=' + s15mode + ' deload=' + s.deload);
+  check('S15b la tarjeta no miente con "~0": frase digna cuando casi no entrenó antes', s.rebuild === true && /(casi no entren|no ha venido entrenando parejo)/i.test(s.text), (s.text.match(/casi no[^.]*\.|viene entrenando[^)]*\)/i) || [''])[0]);
+
   // ── Shots ambos temas ──
   await ev(fixture());
   await sleep(300);
