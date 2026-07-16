@@ -693,7 +693,11 @@ async function _pollAuthCoach(){
     // Anti-ráfaga (v321): solo notificar lo que llegó DESPUÉS del arranque de sesión (los viejos
     // del cargado inicial no re-notifican). El badge/lista de no-leídos sí los muestra igual.
     inbox.forEach(({client,text,date})=>{ if(new Date(date).getTime()>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage(client.name,text); });
-    leads.forEach(c=>{ const at=c.wantsCoachAt?new Date(c.wantsCoachAt).getTime():Date.now(); if(at>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
+    // Un lead SIN `wantsCoachAt` (legacy/degradado) NO es un pedido nuevo → fallback 0 (época), no
+    // Date.now(): con Date.now() burlaba este guard y re-notificaba a CADA sesión (bug: "me siguen
+    // llegando los 21 asesorados pidiendo coach", 2026-07-16). requestCoach SIEMPRE fija la fecha, así
+    // que un lead genuinamente nuevo la trae; los viejos sin fecha ya salen en la lista con su etiqueta.
+    leads.forEach(c=>{ const at=c.wantsCoachAt?new Date(c.wantsCoachAt).getTime():0; if(at>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
   }
 }
 
