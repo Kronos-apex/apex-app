@@ -799,5 +799,52 @@ Protocolo §12 con línea base `e0dd00a` y v354, más:
 - Los tests v353 (coachInsight/coachPulse) pasan SIN modificación.
 - Sabotaje de ≥2 candados nuevos (dolor-filtra-pesado; exclusión por limitación) con árbol limpio.
 
-## 19. Desviaciones de la Fase 4
-*(la sesión que ejecuta documenta aquí; Fable agrega el veredicto)*
+## 19. Desviaciones de la Fase 4 y VEREDICTO
+
+### Desviaciones documentadas por la ejecución (Opus)
+1. **Msg de `variante` corregido contra lo estipulado** — el texto de §17 no llevaba el kg, pero
+   el test estipulado exige «msg contiene nombre y kg». Se corrigió el MENSAJE, no el test
+   (ahora dice «lleva rato clavado en {kg} kg»). → **ACEPTADA**: es la dirección correcta; un
+   test estipulado manda sobre un copy estipulado, y el mensaje quedó mejor.
+2. **✍️ del botón «Escribirle» → SVG `_coIco('pencil')`** (no estipulado). → **ACEPTADA**: 1
+   línea, aplica la regla de cohesión de los Grupos B (v337-v343); no es scope creep material.
+3. **Pulso→detalle con `_pulseGo`+`setTimeout(120)`** en vez de `window._shockFocus`. →
+   **ACEPTADA**: §17 permitía «mecanismo equivalente mínimo»; verificado con CLICK real (abajo).
+
+### Verificación de Fable (2026-07-15, protocolo §18, base `e0dd00a` → v354 `ccfa97b`)
+- [x] **Diff completo revisado** (11 archivos, 799+/29−): core solo borra el cuerpo de
+  `_insStallOf` (refactor estipulado, predicado idéntico + guard `!e`); index.html solo
+  `#d-shock` + bump; sw.js solo CACHE; sin scope creep.
+- [x] **`avi.test.js` 100% ADITIVO** (0 líneas previas tocadas) = los tests v352/v353 de
+  coachInsight/coachPulse pasan SIN modificación — prueba formal del refactor.
+- [x] **Candado «nada llega al asesorado sin tap»** verificado en el CÓDIGO: `renderShockCard`
+  (la detección) no contiene `sv`/`sendCoachMsg`/`pushToClient`; `sv('ax_c')` vive SOLO dentro
+  de `applyShock` (handler de tap); `_shockChat` solo asigna `ta.value` (prellenar) y jamás
+  envía. Y en el HARNESS: S4b = 0 mensajes en la conversación tras Aplicar.
+- [x] **Sabotajes con árbol LIMPIO, ejecutados por Fable (no reusé los de Opus):**
+  (1) `if(true||!hasPain)` → el test 🔒 del dolor mordió; (2) quitar la exclusión de
+  `GEN_ZONE_EXCL` → los 2 tests 🔒 de limitación/dolor-de-zona mordieron; (3) sabotaje PROPIO
+  adicional a la pureza (`rt = r` en vez de copia) → el test de no-mutación mordió. 4 tests
+  distintos muerden, restaurado verde (352/352).
+- [x] **Harnesses re-corridos por Fable:** suite 352/352 · `_verify-shock` 23/23 ·
+  `_verify-pulse` 6/6 · cero jsErrors.
+- [x] **Brecha de verificación CAZADA y CERRADA:** el checkbox «pulso→detalle enfocado» estaba
+  marcado pero ningún harness lo ejercitaba con un click real (solo el check estático del hook).
+  Check one-off de Fable: click REAL en la fila `estancado` del pulso → `p-detail` activo +
+  `#d-shock` visible + ficha de Astrid + cero jsErrors → **PULSEGO OK**.
+- [x] **Greps limpios:** `shockmute_` fuera de SB_KEYS · `esc()`×6 en la tarjeta · onclick por
+  índice (ningún dato de usuario en atributos) · `_levelGate(client.level||'Principiante')` =
+  default al nivel MÁS restrictivo (seguridad por defecto).
+- [x] **Prod re-verificada por Fable:** bytes sin BOM en index.html y sw.js (`<!D`/`con`) ·
+  curl sirve `?v=354` · `_prodcheck.mjs 354` verde re-corrido.
+- [x] **Tono:** los msgs van en voz del coach, cálidos y sin jerga («Vamos a destrabarlo»,
+  «volvemos por ese récord 💪»); los warnings del coach son claros y accionables.
+
+**Observaciones menores (no bloquean, para el radar):**
+- `renderShockCard` propone solo el PRIMER ejercicio estancado; si el coach lo descarta y hay un
+  SEGUNDO estancado, no se propone hasta que venza el mute (21d). Coincide con lo estipulado;
+  si en la práctica molesta, iterar los estancados no muteados es un cambio de 3 líneas.
+- Si el coach descartó el plan (shockmute) pero la fila del pulso sigue viva (coachpulse es un
+  mute aparte, 3d), el tap aterriza en el tope de la ficha sin scroll — inofensivo por el guard.
+
+### 🟢 VEREDICTO: FASE 4 APROBADA — ciclo planificar→ejecutar→verificar CERRADO (3º consecutivo).
