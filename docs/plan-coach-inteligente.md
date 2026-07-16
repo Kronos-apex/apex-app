@@ -746,7 +746,10 @@ variantes con «peso muerto/remo con barra/…» EXCLUIDAS · sin candidata de n
 
 ### G2 — UI coach: tarjeta en `p-detail` + integración con el pulso — commit 2 (con harness)
 
-- [ ] tarjeta `#d-shock` · [ ] aplicar 1-toque · [ ] chat prellenado · [ ] pulso→detalle enfocado · [ ] harness · [ ] visual
+- [x] tarjeta `#d-shock` · [x] aplicar 1-toque · [x] chat prellenado · [x] pulso→detalle enfocado · [x] harness · [x] visual
+      (commit `b449ea5`; `_verify-shock.mjs` **23/23** S1-S9, cero jsErrors; shots ambos temas
+      mirados a ojo. Añadido no estipulado (mínimo, cohesión Grupo B): el ✍️ del botón
+      «Escribirle» va como SVG `_coIco('pencil')`, no emoji.)
 
 **Tarjeta `#d-shock`** (div nuevo en index.html dentro de `#p-detail`, tras la cabecera y antes
 de Membresía — visible sin scroll): se pinta desde `openDetail` (app-3:~1040) si
@@ -779,12 +782,12 @@ shots ambos temas mirados a ojo. Regla 6 (tour silenciado ANTES del primer shot)
 correcto: la rutina actualizada + el mensaje de su coach. **SIN AVI_NEWS** (cara del coach).
 
 ### Cierre de Fase 4
-1. [ ] Suite (≥336+nuevos) · `_verify-shock` verde · `_verify-pulse` 6/6 · `_test-coach-back`
+1. [x] Suite **352/352** · `_verify-shock` verde · `_verify-pulse` 6/6 · `_test-coach-back`
    20/20 · `_verify-coach` 12/12 · `_guiado-suite` 53/53 (cinturón: avi-core cambia) ·
    `_verify-modals` 12/12.
-2. [ ] Deploy único `?v=354` + `avi-v354` (bump python SIN BOM, bytes verificados) → push →
+2. [x] Deploy único `?v=354` + `avi-v354` (bump python SIN BOM, bytes verificados) → push →
    curl → `_prodcheck.mjs 354`.
-3. [ ] Bitácora (parte 59) · CLAUDE.md (funciones clave `shockPlan`/`applyShockOption`, footer)
+3. [x] Bitácora (parte 59) · CLAUDE.md (funciones clave `shockPlan`/`applyShockOption`, footer)
    · checkboxes de este §17 · memoria de sesión.
 
 ## 18. 🔍 Verificación de Fable (post-Opus, Fase 4)
