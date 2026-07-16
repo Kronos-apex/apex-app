@@ -1002,3 +1002,38 @@ con 2 targets. → **ACEPTADAS**: cohesión visual y claridad de copy, no scope 
 
 ### 🟢 VEREDICTO: FASE 4.1 APROBADA — ciclo planificar→ejecutar→verificar CERRADO (4º consecutivo).
 
+
+## 23. FASE 4.2 — GATE DE CONSTANCIA (avi-v356, refinamiento de producto de Camilo)
+
+**Origen (caso real, 2026-07-16):** Camilo probó la Fase 4.1 con su asesorada **Astrid**, que tiene
+varios estancamientos — pero **por faltas de trabajo, no por fatiga**. Detectó el punto ciego: la
+regla «3+ estancados = semana de descarga» asume que la persona viene entrenando duro y parejo
+(fatiga de tanto exigir). Para quien se estancó **sub-entrenando**, una descarga es el consejo
+EQUIVOCADO (baja aún más el volumen) — necesita **recuperar el ritmo**. Los números se ven iguales;
+los separa la constancia reciente. Camilo pidió "hazlo de una vez" → Opus ejecutó directo (no medió
+plan de Fable; es un refinamiento acotado sobre lo ya verificado).
+
+**Core (`avi-core`, puro):** `shockTargets(sessions)` → `shockTargets(sessions, client, now)`.
+Cuando hay ≥`SHOCK_GLOBAL_MIN` estancados, mide la **cadencia reciente** con el helper puro
+`_recentCadence(sessions, now, windowDays)` = días entrenados por semana en los últimos
+`SHOCK_CONSISTENCY_DAYS=28`, medidos HASTA `now` (un parón reciente baja la cadencia aunque antes
+entrenara seguido → capta «huecos» Y «baja frecuencia» en una cifra, calendario-agnóstico — se
+prefirió sobre `weekStreak`, que es por semana Lun-Dom y frágil para tests). Si
+`cadencia < planDays(client) * SHOCK_CONSISTENCY_MIN_RATIO(0.7)` → modo nuevo **`rebuild`**
+(`{mode:'rebuild',count,names,cadence}`); si no → `global` (descarga). El gate **NO afecta al modo
+multi** (1-2 estancados: los planes por-ejercicio siguen válidos). Sin `now` se asume `global`
+(contrato base; la UI SIEMPRE pasa `client`+`now`). Sesgo deliberado: el error costoso es
+recomendar descarga a quien sub-entrena → se exige evidencia de constancia ANTES de proponerla.
+
+**UI (`app-3`):** rama `rebuild` en `renderShockCard` (usa el mute global 7d) — tarjeta que le dice
+al coach «{n} estancados — pero es por constancia: las últimas semanas fueron a saltos, primero
+recuperar el ritmo (una descarga ahora bajaría aún más el volumen)». NO ofrece generar descarga ni
+protocolos: solo `shockWriteRebuild()` (chat prellenado, voz coach, sin tocar la rutina) + Descartar.
+
+**QA:** 4 tests nuevos (suite 359→**363**; sabotaje del gate muerde el test 🔒 de rebuild) +
+harness `_verify-shock` **S14** (3 estancados a saltos → rebuild sin descarga + Escribirle prellena
+sin enviar/tocar rutina) y **S12 reforzado** (consistente → global, NO rebuild) → **37/37**. Cinturón
+verde (pulso/coach/coach-back/guiado/modales), cero jsErrors. Commits: `a...` core+tests → UI+harness
+→ deploy `a31191c` v356 (bump sin BOM) → docs. Prod: curl v356 + `_prodcheck 356` verde. **Disponible
+para verificación de Fable si Camilo la pide** (no se auto-lanzó: refinamiento pequeño, no una fase
+planificada). Constantes tunables: `SHOCK_CONSISTENCY_DAYS`, `SHOCK_CONSISTENCY_MIN_RATIO`.
