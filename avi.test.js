@@ -2982,6 +2982,21 @@ test('shockTargets: sin `now` (contrato base) → asume global aunque haya sido 
   assert.strictEqual(shockTargets(stHist(stall3, 8), stClient).mode, 'global', 'sin now tampoco evalúa');
 });
 
+test('🔒 shockTargets: PARÓN RECIENTE (entrenó DENSO pero paró hace 3 semanas) → rebuild, no descarga', () => {
+  // Bloque denso (cada 2 días) que TERMINÓ hace 21 días → la cadencia medida HASTA now queda baja
+  // aunque en su momento entrenara parejo. Blinda que _recentCadence use el span hasta `now` y no el
+  // que hay entre 1ª y última sesión (eso daría cadencia alta = descarga FALSA a un retornante).
+  const paron = [];
+  for (let i = 0; i < 6; i++) { // i=5 = la más reciente (a 21 días); i=0 = a 31 días
+    paron.push({
+      date: new Date(CI_NOW - (21 + (5 - i) * 2) * 86400000).toISOString(),
+      exercises: stall3.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
+    });
+  }
+  paron.reverse(); // nuevo→viejo como la app
+  assert.strictEqual(shockTargets(paron, stClient, CI_NOW).mode, 'rebuild', 'un parón reciente NO es fatiga: recuperar ritmo');
+});
+
 test('shockTargets: el gate de constancia NO afecta al modo multi (1-2 estancados)', () => {
   // Con <3 estancados, entrenar a saltos NO cambia nada: los planes por-ejercicio siguen válidos.
   const r = shockTargets(stHist([
