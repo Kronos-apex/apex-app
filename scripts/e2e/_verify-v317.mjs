@@ -132,6 +132,40 @@ try {
   check('R7 suspendido queda DEBAJO del sano al día',
         susp.names.indexOf('Sara Suspendida') > susp.names.indexOf('Zoe Sana'), JSON.stringify(susp.names));
 
+  // V360: 💬 mensaje sin leer sube (tier 2) y 🙋 lead persiste (tier 3, por antigüedad); leer el
+  // chat (markCoachRead) baja al asesorado del tier 2. Estado de lectura = ax_msgreads (v321).
+  const v360 = JSON.parse(await ev(`JSON.stringify((()=>{
+    try{localStorage.removeItem('ax_msgreads');}catch(e){}
+    const now=Date.now(); const d=n=>new Date(now+n*86400000).toISOString();
+    const base={level:'Intermedio',goal:'x',days:3,payments:[{dueDate:d(20)}],routines:[{id:'r1',day:'Lunes',name:'x',exercises:[]}],createdAt:d(-90)};
+    DB.clients=[
+      {...base,id:'unread',name:'Caro Mensaje'},
+      {...base,id:'leadOld',name:'Beto Lead',selfReg:true,wantsCoach:true,wantsCoachAt:d(-5)},
+      {...base,id:'leadNew',name:'Ana Lead',selfReg:true,wantsCoach:true,wantsCoachAt:d(-1)},
+      {...base,id:'ok',name:'Zoe Sana'},
+    ];
+    DB.history={unread:[{date:d(-1)}],leadOld:[{date:d(-1)}],leadNew:[{date:d(-1)}],ok:[{date:d(-1)}]};
+    DB.msgs={unread:[{from:'client',text:'hola coach',date:d(-2)}]};
+    renderClients();
+    const order1=[...document.querySelectorAll('#cli-list .cli .cn')].map(e=>e.textContent.trim());
+    const byName={};[...document.querySelectorAll('#cli-list .cli')].forEach(card=>{
+      byName[card.querySelector('.cn')?.textContent.trim()]=[...card.querySelectorAll('.cli-pill')].map(p=>p.textContent.trim());});
+    // El coach ABRE/lee el chat de Caro → markCoachRead marca leído en ax_msgreads.
+    markCoachRead('unread'); renderClients();
+    const order2=[...document.querySelectorAll('#cli-list .cli .cn')].map(e=>e.textContent.trim());
+    return {order1,order2,chips:byName};
+  })())`));
+  check('V360 mensaje sin leer SUBE al tope (por encima de los leads y sanos)',
+        v360.order1[0]==='Caro Mensaje', JSON.stringify(v360.order1));
+  check('V360 chip "Mensaje sin responder" en el asesorado con unread',
+        (v360.chips['Caro Mensaje']||[]).some(t=>/sin responder/i.test(t)), JSON.stringify(v360.chips['Caro Mensaje']));
+  check('V360 leads ordenados por antigüedad (Beto -5d antes que Ana -1d)',
+        v360.order1.indexOf('Beto Lead')<v360.order1.indexOf('Ana Lead'), JSON.stringify(v360.order1));
+  check('V360 chip "Pidió coach hace 5d" en el lead más viejo',
+        (v360.chips['Beto Lead']||[]).some(t=>/Pidió coach hace 5d/i.test(t)), JSON.stringify(v360.chips['Beto Lead']));
+  check('V360 leer el chat (markCoachRead) BAJA a Caro del tier 2 (deja de ir primero)',
+        v360.order2[0]!=='Caro Mensaje' && v360.order2.indexOf('Caro Mensaje')>v360.order2.indexOf('Beto Lead'), JSON.stringify(v360.order2));
+
   // C2 (auditoría 2026-07-13): el buscador NO se borra en el re-render del poll de 15s; SÓLO
   // navegar a Asesorados (gp) lo resetea. Antes renderClients limpiaba el input en cada render.
   const c2 = JSON.parse(await ev(`JSON.stringify((()=>{
