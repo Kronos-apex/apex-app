@@ -2885,17 +2885,19 @@ test('applyShockOption: entradas raras no lanzan ni pierden datos', () => {
 // ── shockTargets (v355, Fase 4.1: múltiples estancamientos) ──
 // Construye un historial (nuevo→viejo, como en la app) de 6 sesiones donde cada ejercicio dado
 // sigue su propio patrón de kg. exs = [{name, muscle, kgs:[6 valores cronológicos]}].
-const stHist = (exs) => {
+const stHist = (exs, spacingDays = 3) => {
   const N = 6;
   const out = [];
   for (let i = 0; i < N; i++) { // i=0 = la más vieja
     out.push({
-      date: new Date(CI_NOW - (N - 1 - i) * 3 * 86400000).toISOString(),
+      date: new Date(CI_NOW - (N - 1 - i) * spacingDays * 86400000).toISOString(),
       exercises: exs.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
     });
   }
   return out.reverse();
 };
+// Cliente de prueba para el gate de constancia (planDays = client.days = 3 sin rutinas con día).
+const stClient = { level: 'Intermedio', days: 3 };
 // Patrones que ESTANCAN (techo en los 2 primeros puntos, últimos 4 no lo superan). El techo más
 // temprano = MÁS puntos planos: idx0 → flatPoints 5, idx1 → flatPoints 4.
 const KG_FLAT5 = [62, 60, 60, 60, 60, 60]; // techo 62 en idx0 → flatPoints 5
@@ -2949,6 +2951,45 @@ test('shockTargets: 3 estancados (aunque sean de 3 músculos distintos) → glob
   assert.strictEqual(r.mode, 'global', '3+ a la vez = fatiga sistémica, no N planes');
   assert.strictEqual(r.count, 3);
   assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
+});
+
+// ── Gate de constancia (v356): 3+ estancados → descarga SOLO si viene entrenando parejo ──
+const stall3 = [
+  { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+  { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+  { name: 'Sentadilla', muscle: 'pierna', kgs: KG_FLAT4 },
+];
+
+test('shockTargets: 3+ estancados ENTRENANDO PAREJO (cadencia alta) → global (descarga)', () => {
+  // 6 sesiones cada 3 días = ~2.8 días/sem sobre su lapso → constante (bar planDays*0.7 = 2.1).
+  const r = shockTargets(stHist(stall3, 3), stClient, CI_NOW);
+  assert.strictEqual(r.mode, 'global', 'fatiga real → semana de descarga');
+  assert.strictEqual(r.count, 3);
+});
+
+test('🔒 shockTargets: 3+ estancados pero A SALTOS (cadencia baja) → rebuild, NO descarga', () => {
+  // Mismos 3 estancados, pero 1 sesión cada 8 días → ~1.2 días/sem → por debajo del bar → rebuild.
+  const r = shockTargets(stHist(stall3, 8), stClient, CI_NOW);
+  assert.strictEqual(r.mode, 'rebuild', 'se estancó por faltas: recuperar ritmo, no bajar volumen');
+  assert.strictEqual(r.count, 3);
+  assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
+  assert.ok(typeof r.cadence === 'number' && r.cadence < 2.1, 'reporta la cadencia baja: ' + r.cadence);
+});
+
+test('shockTargets: sin `now` (contrato base) → asume global aunque haya sido a saltos', () => {
+  // La UI SIEMPRE pasa now; sin él no se puede evaluar constancia → comportamiento base agnóstico.
+  assert.strictEqual(shockTargets(stHist(stall3, 8)).mode, 'global');
+  assert.strictEqual(shockTargets(stHist(stall3, 8), stClient).mode, 'global', 'sin now tampoco evalúa');
+});
+
+test('shockTargets: el gate de constancia NO afecta al modo multi (1-2 estancados)', () => {
+  // Con <3 estancados, entrenar a saltos NO cambia nada: los planes por-ejercicio siguen válidos.
+  const r = shockTargets(stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+  ], 8), stClient, CI_NOW);
+  assert.strictEqual(r.mode, 'multi');
+  assert.strictEqual(r.targets.length, 2);
 });
 
 test('shockTargets: determinista — mismo historial, mismo resultado', () => {

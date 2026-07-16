@@ -2173,25 +2173,57 @@ const SHOCK_PESADO_REST_PLUS = 30;  // + descanso para el trabajo pesado
 const SHOCK_MUTE_DAYS = 21;         // tras aplicar/descartar, no re-proponer por ~un mesociclo
 const SHOCK_GLOBAL_MIN = 3;         // ≥3 ejercicios plantados a la vez = fatiga sistémica → descarga global
 const SHOCK_GLOBAL_MUTE_DAYS = 7;   // re-chequear antes que los 21d: si está fundido, una semana después hay que volver a mirar
+// «3+ estancados = descarga» SOLO vale si viene entrenando parejo (fatiga de tanto exigir). Si se
+// estancó por FALTAS (poca frecuencia / huecos por trabajo), una descarga es el consejo equivocado
+// —ya entrena poco— y toca RECUPERAR EL RITMO. Los separa la constancia reciente (decisión de
+// Camilo con el caso real de Astrid, 2026-07-16). Ver [[avi-coach-inteligente-plan]].
+const SHOCK_CONSISTENCY_DAYS = 28;       // ventana para medir la constancia reciente
+const SHOCK_CONSISTENCY_MIN_RATIO = 0.7; // fracción del plan (días/sem) para llamarla "constante"
+
+// _recentCadence: días entrenados por semana en los últimos `windowDays`, medidos HASTA `now` (un
+// parón reciente baja la cadencia aunque antes entrenara seguido → capta «huecos» Y «baja frecuencia»
+// en una sola cifra). Puro. Varias sesiones el mismo día cuentan 1.
+function _recentCadence(sessions, now, windowDays) {
+  const ref = (now != null ? new Date(now) : new Date()).getTime();
+  const cutoff = ref - windowDays * 86400000;
+  const days = [...new Set((sessions || [])
+    .map(s => { const t = new Date(s && s.date).getTime(); return isNaN(t) ? null : new Date(t).setHours(0, 0, 0, 0); })
+    .filter(t => t != null && t <= ref && t >= cutoff))].sort((a, b) => a - b);
+  if (!days.length) return 0;
+  const spanWeeks = Math.max(1, (ref - days[0]) / (7 * 86400000));
+  return days.length / spanWeeks;
+}
 // Área de dolor (PAIN_AREAS) → zona con reglas de exclusión (GEN_ZONE_EXCL). Solo estas 3 tienen
 // exclusiones; un dolor de codo/muñeca no filtra variantes (no hay regla), pero SÍ genera warning.
 const _PAIN_ZONE_TO_EXCL = { hombro: 'hombro', 'zona lumbar': 'lumbar', rodilla: 'rodilla' };
 
-// shockTargets(sessions) → PURA (sin `now`: solo agrupa lo que _isStalledEx ya detecta). Decide
-// CÓMO atacar cuando hay varios ejercicios plantados a la vez (v355, Fase 4.1). Criterio del coach
-// profesional (decisión de Camilo): mismo músculo = un problema con dos síntomas → se ataca UNO
-// primero; músculos distintos = recuperación independiente → en paralelo; 3+ = fatiga sistémica →
-// semana de descarga global, no N planes. Devuelve:
+// shockTargets(sessions, client, now) → PURA. Decide CÓMO atacar cuando hay varios ejercicios
+// plantados a la vez (v355 Fase 4.1; gate de constancia v356). Criterio del coach profesional
+// (decisión de Camilo): mismo músculo = un problema con dos síntomas → se ataca UNO primero;
+// músculos distintos = recuperación independiente → en paralelo; 3+ = fatiga sistémica → descarga
+// global… PERO solo si viene entrenando parejo — si se estancó por FALTAS, toca recuperar el ritmo,
+// no bajar aún más el volumen. Devuelve:
 //   null                                              → 0 estancados
-//   { mode:'global', count, names:[...] }             → ≥SHOCK_GLOBAL_MIN estancados
-//   { mode:'multi', targets:[{name,muscle,also:[...]}, ...] }  → 1-2 músculos (uno por músculo)
-function shockTargets(sessions) {
+//   { mode:'global', count, names }                   → ≥SHOCK_GLOBAL_MIN estancados y constante → descarga
+//   { mode:'rebuild', count, names, cadence }         → ≥SHOCK_GLOBAL_MIN pero entrenó a saltos → recuperar ritmo
+//   { mode:'multi', targets:[{name,muscle,also}] }    → 1-2 músculos (uno por músculo)
+// `client`/`now` solo hacen falta para el gate de constancia del modo 3+; sin `now` se asume el
+// modo `global` (contrato base). La UI SIEMPRE los pasa.
+function shockTargets(sessions, client, now) {
   const stalled = computeExerciseProgress(sessions || []).filter(_isStalledEx);
   if (!stalled.length) return null;
-  // 3+ ejercicios plantados = ya no es por-ejercicio, es fatiga sistémica (el umbral es por Nº de
-  // ejercicios, aunque sean de músculos distintos) → una semana de descarga, no varios planes.
+  // 3+ ejercicios plantados = ya no es por-ejercicio (el umbral es por Nº de ejercicios, aunque sean
+  // de músculos distintos). ¿Fatiga (→ descarga) o faltas (→ ritmo)? Lo separa la constancia reciente.
   if (stalled.length >= SHOCK_GLOBAL_MIN) {
-    return { mode: 'global', count: stalled.length, names: stalled.map(e => e.name) };
+    const names = stalled.map(e => e.name);
+    if (now != null) {
+      const cadence = _recentCadence(sessions, now, SHOCK_CONSISTENCY_DAYS);
+      if (cadence < planDays(client) * SHOCK_CONSISTENCY_MIN_RATIO) {
+        // Se estancó entrenando a saltos → una descarga sería consejo equivocado. Recuperar ritmo.
+        return { mode: 'rebuild', count: stalled.length, names, cadence: Math.round(cadence * 10) / 10 };
+      }
+    }
+    return { mode: 'global', count: stalled.length, names };
   }
   // 1-2 músculos: por cada músculo gana la entrada con MÁS puntos planos (la más clavada); las
   // hermanas del mismo músculo van en `also` («X también se plantó — destrabemos este primero»).
