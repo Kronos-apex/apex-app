@@ -1640,15 +1640,22 @@ const MS = {
 // El orden final (en renderClients) es: tier asc → sev desc → nombre asc — DETERMINISTA,
 // para que el poll de 15s del coach no reordene la lista "en vivo" (el desempate por nombre
 // es el candado contra el salto). NADA de DOM/colores aquí: el color lo pone la vista.
-// Prioridades: dolor reportado → plan vencido → plan por vencer → inactivo → al día.
-function clientAttentionRank(c, history, now) {
+// Prioridades: dolor → vencido → 💬 mensaje sin leer → 🙋 pidió coach → por vencer →
+// inactivo → al día → suspendido (siempre el fondo).
+//
+// FIRMA ADITIVA (v360): `opts = { msgs:[...], lastReadTs:number|null }` es OPCIONAL y trae el
+// estado de conversación de ESTE asesorado. Sin opts el resultado es idéntico al de v317 (la
+// vista y los callers viejos siguen funcionando). PURO: nada de localStorage/DB aquí — el
+// estado de lectura entra por opts (lo arma la vista desde DB.msgs + ax_msgreads).
+function clientAttentionRank(c, history, now, opts) {
   const nowTs = (now != null ? new Date(now) : new Date()).getTime();
   c = c || {};
-  // SUSPENDIDO primero: el coach lo pausó a propósito → tier 5, el FONDO (debajo incluso de
+  opts = opts || {};
+  // SUSPENDIDO primero: el coach lo pausó a propósito → tier 7, el FONDO (debajo incluso de
   // los sanos al día), SIN chip de atención. (Sin este corte un suspendido "no entrena" →
   // caería en inactivo y rankearía por encima de los sanos; con dolor hasta saltaría al tope.
-  // Aviso Lucas v317.)
-  if (c.suspended) return { tier: 5, sev: 0, reason: 'ok', label: '' };
+  // Aviso Lucas v317. Un suspendido con mensaje sin leer TAMPOCO sube: el corte va primero.)
+  if (c.suspended) return { tier: 7, sev: 0, reason: 'ok', label: '' };
   // 0) Dolor vigente: lo más urgente (nivel 3 = "no puedo" pesa más que leve).
   const pains = painCareActive(c.painCare, nowTs);
   if (pains.length) {
@@ -1656,11 +1663,47 @@ function clientAttentionRank(c, history, now) {
     return { tier: 0, sev: maxLvl, reason: 'pain',
              label: maxLvl >= 3 ? '🤕 Dolor le impide entrenar' : '🤕 Reportó dolor' };
   }
-  // 1-2) Membresía (determinista con now).
+  // 1) Plan vencido (determinista con now).
   const st = MS.getStatus(c, nowTs);
   if (st === 'overdue')  return { tier: 1, sev: 0, reason: 'overdue',  label: '⛔ Plan vencido' };
-  if (st === 'expiring') return { tier: 2, sev: 0, reason: 'expiring', label: '⏳ Plan por vencer' };
-  // 3) Inactividad. Distinguimos "entrenaba y paró" de "nunca estrenó":
+  // 2) 💬 MENSAJE SIN LEER del asesorado — la señal #1 que el coach espera (aviso Lucas v317).
+  //    Va ENCIMA del lead a propósito: un lead recién llegado también escribió al chat
+  //    (requestCoach empuja un mensaje) → entra aquí hasta que el coach lo lea, y DESPUÉS
+  //    persiste en el tier 3 hasta convertirlo. Unread = mensaje del asesorado (from !=='coach')
+  //    con fecha VÁLIDA posterior a lastReadTs (null = nunca leyó → todo cuenta). sev = ms desde
+  //    el unread MÁS VIEJO → quien más lleva esperando respuesta, primero. NO inventamos fechas:
+  //    un mensaje sin fecha parseable NO cuenta (lección del bug v359, fallback = época/0).
+  const msgs = opts.msgs;
+  if (Array.isArray(msgs) && msgs.length) {
+    const readTs = (opts.lastReadTs != null && isFinite(opts.lastReadTs)) ? opts.lastReadTs : 0;
+    let oldestUnread = Infinity;
+    for (let i = 0; i < msgs.length; i++) {
+      const m = msgs[i];
+      if (!m || m.from === 'coach') continue;
+      const t = Date.parse(m.date);
+      if (!isFinite(t)) continue;                 // sin fecha válida → no cuenta (no inventamos)
+      if (t > readTs && t < oldestUnread) oldestUnread = t;
+    }
+    if (oldestUnread !== Infinity) {
+      return { tier: 2, sev: Math.max(0, nowTs - oldestUnread), reason: 'unread',
+               label: '💬 Mensaje sin responder' };
+    }
+  }
+  // 3) 🙋 PIDIÓ COACH — lead libre que quiere coach = conversión a Premium enterrada. sev = días
+  //    desde wantsCoachAt (el más antiguo primero). Sin wantsCoachAt VÁLIDO → sev 0, al FINAL del
+  //    tier: JAMÁS inventar una fecha para adelantarlo (lección del bug v359).
+  if (c.wantsCoach) {
+    const at = c.wantsCoachAt != null ? Date.parse(c.wantsCoachAt) : NaN;
+    if (isFinite(at)) {
+      const d = Math.max(0, Math.floor((nowTs - at) / MS_DAY));
+      return { tier: 3, sev: d, reason: 'lead',
+               label: d === 0 ? '🙋 Pidió coach hoy' : `🙋 Pidió coach hace ${d}d` };
+    }
+    return { tier: 3, sev: 0, reason: 'lead', label: '🙋 Pidió coach' };
+  }
+  // 4) Plan por vencer.
+  if (st === 'expiring') return { tier: 4, sev: 0, reason: 'expiring', label: '⏳ Plan por vencer' };
+  // 5) Inactividad. Distinguimos "entrenaba y paró" de "nunca estrenó":
   //    - dejó de entrenar (≥7 días, tenía historial) → churn real, lo más accionable.
   //    - nunca estrenó → SOLO si ya lleva ≥7 días como asesorado Y tiene rutinas asignadas
   //      (si no tiene rutinas, el trabajo del coach es asignarlas y eso ya lo grita el
@@ -1669,20 +1712,23 @@ function clientAttentionRank(c, history, now) {
   const tenureDays = c.createdAt ? Math.floor((nowTs - Date.parse(c.createdAt)) / MS_DAY) : Infinity;
   if (dsls === Infinity) {
     if (tenureDays >= 7 && (c.routines || []).length) {
-      return { tier: 3, sev: 9999, reason: 'nostart', label: '🚩 Aún no estrena' };
+      return { tier: 5, sev: 9999, reason: 'nostart', label: '🚩 Aún no estrena' };
     }
   } else if (dsls >= 7) {
     // Ícono 📉 (no 💤): el pill de estado del día ya usa 💤 para "Descanso hoy" — dos lunas
     // pegadas confundían descanso planificado con abandono real (aviso Lucas v317).
-    return { tier: 3, sev: dsls, reason: 'idle', label: `📉 ${dsls} días sin entrenar` };
+    return { tier: 5, sev: dsls, reason: 'idle', label: `📉 ${dsls} días sin entrenar` };
   }
-  // 4) Al día: sin chip de atención.
-  return { tier: 4, sev: 0, reason: 'ok', label: '' };
+  // 6) Al día: sin chip de atención.
+  return { tier: 6, sev: 0, reason: 'ok', label: '' };
 }
 // Ordena una copia de la lista de asesorados por atención (no muta el arreglo original —
 // DB.clients lo comparten home y otras vistas). Estable/determinista.
-function sortClientsByAttention(clients, history, now) {
-  return (clients || []).map(c => ({ c, r: clientAttentionRank(c, history, now) }))
+// `optsById` (v360) es OPCIONAL: mapa { clientId: {msgs, lastReadTs} } con el estado de
+// conversación por asesorado. Sin él, el orden es idéntico al de v317.
+function sortClientsByAttention(clients, history, now, optsById) {
+  optsById = optsById || {};
+  return (clients || []).map(c => ({ c, r: clientAttentionRank(c, history, now, optsById[c && c.id]) }))
     .sort((a, b) => (a.r.tier - b.r.tier) || (b.r.sev - a.r.sev)
                     || String(a.c.name || '').localeCompare(String(b.c.name || ''), 'es'));
 }

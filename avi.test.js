@@ -1713,9 +1713,9 @@ test('rank tier 1/2: plan vencido y por vencer', () => {
   assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(-3) }] }), hist, _RNOW).reason, 'overdue');
   assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(4) }] }), hist, _RNOW).reason, 'expiring');
 });
-test('rank tier 3: dejó de entrenar (≥7 días) → idle con nº de días en sev', () => {
+test('rank tier 5: dejó de entrenar (≥7 días) → idle con nº de días en sev', () => {
   const r = clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-9) }] }, _RNOW);
-  assert.strictEqual(r.tier, 3);
+  assert.strictEqual(r.tier, 5); // v360: re-numerado (antes 3) al insertar unread(2)/lead(3)
   assert.strictEqual(r.reason, 'idle');
   assert.strictEqual(r.sev, 9);
   assert.match(r.label, /9 días/);
@@ -1724,14 +1724,14 @@ test('rank: entrenó hace <7 días → al día (no molesta al coach)', () => {
   assert.strictEqual(clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-3) }] }, _RNOW).reason, 'ok');
 });
 test('rank: SUSPENDIDO va al fondo sin chip, aunque no entrene o tenga dolor (Lucas v317)', () => {
-  // suspendido + inactivo 30 días → NO "sin entrenar"; tier 5 = el fondo (debajo del sano tier 4)
+  // suspendido + inactivo 30 días → NO "sin entrenar"; tier 7 = el fondo (debajo del sano tier 6)
   const s1 = clientAttentionRank(_mkClient({ suspended: true }), { x: [{ date: _rDay(-30) }] }, _RNOW);
-  assert.strictEqual(s1.tier, 5);
+  assert.strictEqual(s1.tier, 7); // v360: re-numerado (antes 5) — sigue siendo el FONDO
   assert.strictEqual(s1.reason, 'ok');
   assert.strictEqual(s1.label, '');
   // suspendido + dolor nivel 3 → tampoco salta al tope
   const s2 = clientAttentionRank(_mkClient({ suspended: true, painCare: [{ level: 3, at: _rDay(-1) }] }), {}, _RNOW);
-  assert.strictEqual(s2.tier, 5);
+  assert.strictEqual(s2.tier, 7);
   assert.strictEqual(s2.reason, 'ok');
 });
 test('rank: "aún no estrena" SOLO si lleva ≥7 días Y tiene rutinas', () => {
@@ -1756,6 +1756,98 @@ test('sortClientsByAttention: orden por urgencia y desempate estable por nombre'
   const order = sortClientsByAttention(clients, hist, _RNOW).map(x => x.c.id);
   // dolor → vencido → inactivos (empatados en días: desempate por nombre Aaron<Yara) → al día
   assert.deepStrictEqual(order, ['pain', 'due', 'idleB', 'idleA', 'ok']);
+});
+
+// ── v360: 💬 mensaje sin leer (tier 2) + 🙋 pidió coach (tier 3) ──
+test('rank tier 2: mensaje sin leer del asesorado rankea ENTRE vencido y lead', () => {
+  const c = _mkClient({ wantsCoach: true, wantsCoachAt: _rDay(-5) }); // también es lead…
+  const opts = { msgs: [{ from: 'client', text: 'hola', date: _rDay(-2) }], lastReadTs: null };
+  const r = clientAttentionRank(c, { x: [{ date: _rDay(-1) }] }, _RNOW, opts);
+  assert.strictEqual(r.tier, 2); // …pero el unread manda mientras no lo lea
+  assert.strictEqual(r.reason, 'unread');
+  assert.match(r.label, /sin responder/);
+  // sev = ms desde el unread más viejo (2 días)
+  assert.strictEqual(r.sev, 2 * 86400000);
+});
+test('rank tier 2: sev = ms desde el mensaje sin leer MÁS VIEJO (quien más espera, primero)', () => {
+  const opts = { msgs: [
+    { from: 'client', text: 'a', date: _rDay(-3) },
+    { from: 'coach',  text: 'resp', date: _rDay(-2.5) }, // el mensaje del coach NO cuenta
+    { from: 'client', text: 'b', date: _rDay(-1) },
+  ], lastReadTs: null };
+  const r = clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-1) }] }, _RNOW, opts);
+  assert.strictEqual(r.tier, 2);
+  assert.strictEqual(r.sev, 3 * 86400000); // el más viejo (3 días), no el reciente
+});
+test('rank tier 2: lastReadTs posterior al último mensaje → ya leído, NO sube', () => {
+  const opts = { msgs: [{ from: 'client', text: 'a', date: _rDay(-3) }], lastReadTs: Date.parse(_rDay(-2)) };
+  const r = clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(20) }] }), { x: [{ date: _rDay(-1) }] }, _RNOW, opts);
+  assert.strictEqual(r.reason, 'ok'); // entrenó hace 1 día → al día, sin chip
+});
+test('rank tier 2: mensaje sin fecha válida NO cuenta (no inventamos, lección v359)', () => {
+  const opts = { msgs: [{ from: 'client', text: 'sin fecha' }], lastReadTs: null };
+  const r = clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-1) }] }, _RNOW, opts);
+  assert.strictEqual(r.reason, 'ok'); // sin date parseable → no es "sin leer"
+});
+test('rank tier 3: lead "pidió coach" ordena por antigüedad de wantsCoachAt', () => {
+  const r = clientAttentionRank(_mkClient({ wantsCoach: true, wantsCoachAt: _rDay(-6) }), { x: [{ date: _rDay(-1) }] }, _RNOW);
+  assert.strictEqual(r.tier, 3);
+  assert.strictEqual(r.reason, 'lead');
+  assert.strictEqual(r.sev, 6);
+  assert.match(r.label, /hace 6d/);
+});
+test('rank tier 3: lead sin wantsCoachAt → sev 0 (al FINAL del tier, sin inventar fecha)', () => {
+  const r = clientAttentionRank(_mkClient({ wantsCoach: true }), { x: [{ date: _rDay(-1) }] }, _RNOW);
+  assert.strictEqual(r.tier, 3);
+  assert.strictEqual(r.reason, 'lead');
+  assert.strictEqual(r.sev, 0);
+  assert.strictEqual(r.label, '🙋 Pidió coach'); // sin "hoy" ni "hace Nd" — no afirmamos cuándo
+  // y NO adelanta a un lead con fecha (sev 0 = el más bajo del tier)
+  const withDate = clientAttentionRank(_mkClient({ wantsCoach: true, wantsCoachAt: _rDay(-1) }), {}, _RNOW);
+  assert.ok(withDate.sev > r.sev);
+});
+test('rank tier 3: lead que pidió coach HOY → label "hoy"', () => {
+  const r = clientAttentionRank(_mkClient({ wantsCoach: true, wantsCoachAt: _rDay(0) }), { x: [{ date: _rDay(-1) }] }, _RNOW);
+  assert.strictEqual(r.sev, 0);
+  assert.match(r.label, /hoy/);
+});
+test('rank v360: SUSPENDIDO con mensaje sin leer SIGUE al fondo (tier 7 corta antes)', () => {
+  const opts = { msgs: [{ from: 'client', text: 'urgente', date: _rDay(-1) }], lastReadTs: null };
+  const r = clientAttentionRank(_mkClient({ suspended: true }), { x: [{ date: _rDay(-1) }] }, _RNOW, opts);
+  assert.strictEqual(r.tier, 7);
+  assert.strictEqual(r.reason, 'ok');
+  assert.strictEqual(r.label, '');
+});
+test('rank v360: dolor sigue ARRIBA de todo (aun con mensaje sin leer y lead)', () => {
+  const c = _mkClient({ wantsCoach: true, wantsCoachAt: _rDay(-5), painCare: [{ level: 2, at: _rDay(-1) }] });
+  const opts = { msgs: [{ from: 'client', text: 'x', date: _rDay(-1) }], lastReadTs: null };
+  const r = clientAttentionRank(c, {}, _RNOW, opts);
+  assert.strictEqual(r.tier, 0);
+  assert.strictEqual(r.reason, 'pain');
+});
+test('rank v360: SIN opts → comportamiento v317 idéntico (prueba del refactor aditivo)', () => {
+  // un lead con mensajes existe en DB, pero sin pasar opts la función no los ve → tier por
+  // membresía/actividad como antes. Aquí: al día, entrenó ayer → ok.
+  const c = _mkClient({ wantsCoach: true, wantsCoachAt: _rDay(-5) });
+  // Sin wantsCoach el resultado base es 'ok'; CON wantsCoach y sin opts, el lead SÍ se detecta
+  // por el propio campo del cliente (no necesita opts) → tier 3. Ambos deterministas.
+  const r = clientAttentionRank(c, { x: [{ date: _rDay(-1) }] }, _RNOW);
+  assert.strictEqual(r.tier, 3);
+  assert.strictEqual(r.reason, 'lead');
+  // un cliente normal sin nada especial y sin opts → ok (idéntico a v317)
+  assert.strictEqual(clientAttentionRank(_mkClient(), { x: [{ date: _rDay(-1) }] }, _RNOW).reason, 'ok');
+});
+test('sortClientsByAttention v360: unread(2) sobre lead(3) sobre por-vencer(4); optsById aditivo', () => {
+  const clients = [
+    { id: 'ok',     name: 'Ana',   createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }] },
+    { id: 'lead',   name: 'Beto',  createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }], wantsCoach: true, wantsCoachAt: _rDay(-3) },
+    { id: 'unread', name: 'Caro',  createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(20) }] },
+    { id: 'exp',    name: 'Dani',  createdAt: _rDay(-60), routines: [{ id: 1 }], payments: [{ dueDate: _rDay(4) }] },
+  ];
+  const hist = { ok: [{ date: _rDay(-1) }], lead: [{ date: _rDay(-1) }], unread: [{ date: _rDay(-1) }], exp: [{ date: _rDay(-1) }] };
+  const optsById = { unread: { msgs: [{ from: 'client', text: 'hola', date: _rDay(-2) }], lastReadTs: null } };
+  const order = sortClientsByAttention(clients, hist, _RNOW, optsById).map(x => x.c.id);
+  assert.deepStrictEqual(order, ['unread', 'lead', 'exp', 'ok']);
 });
 // ══════════════════════════════════════════════════════
 section('Tarjeta de notificaciones (pushNudgeDecision)');
