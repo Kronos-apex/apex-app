@@ -867,7 +867,7 @@ hoy solo se propone el PRIMER ejercicio estancado. Camilo preguntó y la fisiolo
 
 ### H1 — Core: selector puro `shockTargets` (avi-core) — commit 1 (con tests)
 
-- [ ] `shockTargets` · [ ] agrupación por músculo · [ ] modo global · [ ] tests · [ ] verificado
+- [x] `shockTargets` · [x] agrupación por músculo · [x] modo global · [x] tests · [x] verificado (940a974)
 
 **`shockTargets(sessions)`** → función PURA (sin `now`: solo agrupa lo que `_isStalledEx` ya
 detecta), devuelve:
@@ -894,8 +894,8 @@ cada target sigue funcionando igual (no se toca su firma).
 
 ### H2 — UI: tarjeta multi-sección + modo descarga global — commit 2 (harness +checks)
 
-- [ ] secciones por target · [ ] nota "también se plantó" · [ ] tarjeta global→descarga ·
-  [ ] mutes independientes · [ ] harness S10-S13 · [ ] visual
+- [x] secciones por target · [x] nota "también se plantó" · [x] tarjeta global→descarga ·
+  [x] mutes independientes · [x] harness S10-S13 · [x] visual (dce2860)
 
 `renderShockCard` pasa de `_insStallOf` a `shockTargets`:
 - **`multi`:** UNA tarjeta `#d-shock` con una SECCIÓN por target (cada una = análisis + warnings
@@ -921,12 +921,19 @@ cada target sigue funcionando igual (no se toca su firma).
 - **SIN AVI_NEWS** (cara del coach). **Candados intactos:** nada al asesorado sin tap; dolor
   jamás ofrece `pesado` (por-target, ya lo hace `shockPlan`).
 
-### Cierre 4.1
-1. [ ] Suite (≥352+nuevos) · `_verify-shock` (23+4) · `_verify-pulse` 6/6 · `_verify-coach`
-   12/12 · `_test-coach-back` · `_guiado-suite` 53/53 · `_verify-modals` 12/12.
-2. [ ] Deploy `?v=355` + `avi-v355` (bump python SIN BOM, bytes verificados) → push → curl →
-   `_prodcheck.mjs 355`.
-3. [ ] Bitácora (parte 60) · CLAUDE.md · checkboxes §20 · memoria.
+### Cierre 4.1 — ✅ EJECUTADO (Opus, 2026-07-16)
+1. [x] Suite **359/359** (7 nuevos shockTargets) · `_verify-shock` **33/33** (S1-S13) · `_verify-pulse`
+   6/6 · `_verify-coach` 12/12 · `_test-coach-back` OK · `_guiado-suite` 53/53 · `_verify-modals` 12/12.
+   Sabotajes propios: umbral global (SHOCK_GLOBAL_MIN=99) y ganador por músculo (flatPoints invertido) → ambos muerden.
+2. [x] Deploy `?v=355` + `avi-v355` (bump python SIN BOM, bytes `3c2144`/`636f6e`) → push `b00f1e0` →
+   curl sirve v355 → `_prodcheck.mjs 355` verde (boot limpio, cero jsErrors).
+3. [x] Bitácora (parte 60) · CLAUDE.md · checkboxes §20 · memoria.
+
+**Commits:** H1 `940a974` (core+tests) · H2 `dce2860` (UI+harness) · deploy `b00f1e0` (v355).
+**Desviaciones:** ninguna estructural. Añadidos de UI no estipulados textualmente pero coherentes:
+nota `also` sobre fondo `--gl`/`--gt` (verde suave), título de tarjeta adaptivo ("Plan"/"Planes de
+choque"), "Descartar" → "Descartar todos" cuando hay 2 targets. `_pulseGo` NO se tocó (aterriza en
+`#d-shock` igual, sea multi o global). **Pendiente:** verificación de Fable con §21.
 
 ## 21. 🔍 Verificación de Fable (post-Opus, Fase 4.1)
 Protocolo §18 con base `ffd5d31` y v355, más: sabotaje del umbral global (SHOCK_GLOBAL_MIN=99 →
