@@ -94,6 +94,7 @@ const {
   computeExerciseProgress,
   coachInsight,
   coachPulse,
+  shockTargets,
   shockPlan,
   applyShockOption,
   weekEditorial,
@@ -2879,6 +2880,96 @@ test('applyShockOption: entradas raras no lanzan ni pierden datos', () => {
   assert.deepStrictEqual(applyShockOption(null, 'X', null, null), []);
   const out = applyShockOption(spRoutines(), 'Jalón al Pecho', { apply: { swapTo: 'noexiste' } }, spLib);
   assert.strictEqual(out[0].exercises[0].name, 'Jalón al Pecho', 'un swap a un id inexistente no borra el ejercicio');
+});
+
+// ── shockTargets (v355, Fase 4.1: múltiples estancamientos) ──
+// Construye un historial (nuevo→viejo, como en la app) de 6 sesiones donde cada ejercicio dado
+// sigue su propio patrón de kg. exs = [{name, muscle, kgs:[6 valores cronológicos]}].
+const stHist = (exs) => {
+  const N = 6;
+  const out = [];
+  for (let i = 0; i < N; i++) { // i=0 = la más vieja
+    out.push({
+      date: new Date(CI_NOW - (N - 1 - i) * 3 * 86400000).toISOString(),
+      exercises: exs.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
+    });
+  }
+  return out.reverse();
+};
+// Patrones que ESTANCAN (techo en los 2 primeros puntos, últimos 4 no lo superan). El techo más
+// temprano = MÁS puntos planos: idx0 → flatPoints 5, idx1 → flatPoints 4.
+const KG_FLAT5 = [62, 60, 60, 60, 60, 60]; // techo 62 en idx0 → flatPoints 5
+const KG_FLAT4 = [60, 62, 60, 60, 60, 60]; // techo 62 en idx1 → flatPoints 4
+
+test('shockTargets: 0 estancados → null', () => {
+  assert.strictEqual(shockTargets(spProgress), null, 'un ejercicio que progresa no dispara nada');
+  assert.strictEqual(shockTargets([]), null, 'sin historial');
+  assert.strictEqual(shockTargets(), null, 'sin argumentos no lanza');
+});
+
+test('shockTargets: 1 estancado → multi con 1 target sin also', () => {
+  const r = shockTargets(stHist([{ name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 }]));
+  assert.strictEqual(r.mode, 'multi');
+  assert.strictEqual(r.targets.length, 1);
+  assert.strictEqual(r.targets[0].name, 'Jalón al Pecho');
+  assert.strictEqual(r.targets[0].muscle, 'espalda');
+  assert.deepStrictEqual(r.targets[0].also, [], 'un solo estancado no tiene hermanos');
+});
+
+test('shockTargets: 2 del MISMO músculo → 1 target, gana el de MÁS puntos planos, el otro va en also', () => {
+  // 'Jalón' va primero y alfabéticamente antes que 'Remo', PERO 'Remo' está más clavado (flat5) →
+  // debe ganar por flatPoints, aislado del orden de inserción Y del desempate por nombre.
+  const r = shockTargets(stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT4 }, // flatPoints 4
+    { name: 'Remo con Barra', muscle: 'espalda', kgs: KG_FLAT5 }, // flatPoints 5 (más clavado)
+  ]));
+  assert.strictEqual(r.mode, 'multi');
+  assert.strictEqual(r.targets.length, 1, 'mismo músculo = un solo problema → una sección');
+  assert.strictEqual(r.targets[0].name, 'Remo con Barra', 'ataca primero el más plantado, no el 1º ni el alfabético');
+  assert.deepStrictEqual(r.targets[0].also, ['Jalón al Pecho'], 'el hermano queda anotado para la nota');
+});
+
+test('shockTargets: 2 músculos DISTINTOS → 2 targets (recuperación independiente → en paralelo)', () => {
+  const r = shockTargets(stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+  ]));
+  assert.strictEqual(r.mode, 'multi');
+  assert.strictEqual(r.targets.length, 2);
+  assert.deepStrictEqual(r.targets.map(t => t.muscle).sort(), ['espalda', 'pecho']);
+  r.targets.forEach(t => assert.deepStrictEqual(t.also, [], 'cada músculo tiene un solo estancado'));
+});
+
+test('shockTargets: 3 estancados (aunque sean de 3 músculos distintos) → global con los nombres', () => {
+  const r = shockTargets(stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_FLAT4 },
+  ]));
+  assert.strictEqual(r.mode, 'global', '3+ a la vez = fatiga sistémica, no N planes');
+  assert.strictEqual(r.count, 3);
+  assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
+});
+
+test('shockTargets: determinista — mismo historial, mismo resultado', () => {
+  const h = stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+  ]);
+  assert.strictEqual(JSON.stringify(shockTargets(h)), JSON.stringify(shockTargets(h)));
+});
+
+test('shockTargets: shockPlan de cada target sigue funcionando (la firma no se tocó)', () => {
+  const h = stHist([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+  ]);
+  const r = shockTargets(h);
+  r.targets.forEach(t => {
+    const p = shockPlan(spClient, t.name, h, spLib, CI_NOW);
+    assert.ok(p && p.options.length, t.name + ': cada target sigue produciendo su plan de choque');
+    assert.strictEqual(p.ex.name, t.name);
+  });
 });
 
 // ══════════════════════════════════════════════════════

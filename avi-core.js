@@ -1976,6 +1976,15 @@ function _isStalledEx(e) {
 function _insStallOf(sessions) {
   return computeExerciseProgress(sessions || []).find(_isStalledEx) || null;
 }
+// _flatPointsOf: nº de sesiones desde el ÚLTIMO récord de kg de un ejercicio sin superarlo.
+// Extraído de shockPlan para que shockTargets ordene por "el más plantado" sin duplicar el cálculo.
+function _flatPointsOf(e) {
+  if (!e || !e.points || !e.points.length) return 0;
+  const bestKg = Math.max.apply(null, e.points.map(p => p.maxKg));
+  let lastBestIdx = 0;
+  e.points.forEach((p, i) => { if (p.maxKg === bestKg) lastBestIdx = i; });
+  return e.points.length - 1 - lastBestIdx;
+}
 
 function coachInsight(client, sessions, prs, now, opts) {
   client = client || {};
@@ -2162,9 +2171,42 @@ const SHOCK_PESADO_SETS = 5;        // bloque de fuerza 5×5
 const SHOCK_PESADO_REPS = 5;
 const SHOCK_PESADO_REST_PLUS = 30;  // + descanso para el trabajo pesado
 const SHOCK_MUTE_DAYS = 21;         // tras aplicar/descartar, no re-proponer por ~un mesociclo
+const SHOCK_GLOBAL_MIN = 3;         // ≥3 ejercicios plantados a la vez = fatiga sistémica → descarga global
+const SHOCK_GLOBAL_MUTE_DAYS = 7;   // re-chequear antes que los 21d: si está fundido, una semana después hay que volver a mirar
 // Área de dolor (PAIN_AREAS) → zona con reglas de exclusión (GEN_ZONE_EXCL). Solo estas 3 tienen
 // exclusiones; un dolor de codo/muñeca no filtra variantes (no hay regla), pero SÍ genera warning.
 const _PAIN_ZONE_TO_EXCL = { hombro: 'hombro', 'zona lumbar': 'lumbar', rodilla: 'rodilla' };
+
+// shockTargets(sessions) → PURA (sin `now`: solo agrupa lo que _isStalledEx ya detecta). Decide
+// CÓMO atacar cuando hay varios ejercicios plantados a la vez (v355, Fase 4.1). Criterio del coach
+// profesional (decisión de Camilo): mismo músculo = un problema con dos síntomas → se ataca UNO
+// primero; músculos distintos = recuperación independiente → en paralelo; 3+ = fatiga sistémica →
+// semana de descarga global, no N planes. Devuelve:
+//   null                                              → 0 estancados
+//   { mode:'global', count, names:[...] }             → ≥SHOCK_GLOBAL_MIN estancados
+//   { mode:'multi', targets:[{name,muscle,also:[...]}, ...] }  → 1-2 músculos (uno por músculo)
+function shockTargets(sessions) {
+  const stalled = computeExerciseProgress(sessions || []).filter(_isStalledEx);
+  if (!stalled.length) return null;
+  // 3+ ejercicios plantados = ya no es por-ejercicio, es fatiga sistémica (el umbral es por Nº de
+  // ejercicios, aunque sean de músculos distintos) → una semana de descarga, no varios planes.
+  if (stalled.length >= SHOCK_GLOBAL_MIN) {
+    return { mode: 'global', count: stalled.length, names: stalled.map(e => e.name) };
+  }
+  // 1-2 músculos: por cada músculo gana la entrada con MÁS puntos planos (la más clavada); las
+  // hermanas del mismo músculo van en `also` («X también se plantó — destrabemos este primero»).
+  // Desempate por nombre asc = determinista (el poll de 15s del coach no debe reordenar).
+  const byMuscle = {};
+  stalled.forEach(e => { const m = e.muscle || ''; (byMuscle[m] = byMuscle[m] || []).push(e); });
+  const targets = Object.keys(byMuscle).map(m => {
+    const group = byMuscle[m].slice().sort((a, b) =>
+      (_flatPointsOf(b) - _flatPointsOf(a)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return { name: group[0].name, muscle: m, also: group.slice(1).map(e => e.name) };
+  });
+  // Orden estable de las secciones por nombre del ganador (con <3 estancados hay ≤2 targets).
+  targets.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { mode: 'multi', targets };
+}
 
 // shockPlan(client, exName, sessions, lib, now) → null si ESE ejercicio no está estancado, o el plan.
 function shockPlan(client, exName, sessions, lib, now) {
@@ -2179,7 +2221,7 @@ function shockPlan(client, exName, sessions, lib, now) {
   e.points.forEach((p, i) => { if (p.maxKg === bestKg) lastBestIdx = i; });
   const analysis = {
     bestKg,
-    flatPoints: e.points.length - 1 - lastBestIdx, // sesiones desde el último récord sin superarlo
+    flatPoints: _flatPointsOf(e), // sesiones desde el último récord sin superarlo (helper compartido)
     sinceStr: (e.points[lastBestIdx] || {}).dateStr || '',
   };
 
@@ -2480,6 +2522,7 @@ if (typeof module !== 'undefined' && module.exports) {
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,
+    shockTargets,
     shockPlan,
     applyShockOption,
     weekEditorial,
