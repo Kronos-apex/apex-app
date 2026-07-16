@@ -2974,6 +2974,7 @@ test('🔒 shockTargets: 3+ estancados pero A SALTOS (cadencia baja) → rebuild
   assert.strictEqual(r.count, 3);
   assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
   assert.ok(typeof r.cadence === 'number' && r.cadence < 2.1, 'reporta la cadencia baja: ' + r.cadence);
+  assert.strictEqual(r.plan, 3, 'reporta el plan (días/sem) para mostrar la evidencia en la tarjeta');
 });
 
 test('shockTargets: sin `now` (contrato base) → asume global aunque haya sido a saltos', () => {

@@ -2218,9 +2218,11 @@ function shockTargets(sessions, client, now) {
     const names = stalled.map(e => e.name);
     if (now != null) {
       const cadence = _recentCadence(sessions, now, SHOCK_CONSISTENCY_DAYS);
-      if (cadence < planDays(client) * SHOCK_CONSISTENCY_MIN_RATIO) {
+      const plan = planDays(client);
+      if (cadence < plan * SHOCK_CONSISTENCY_MIN_RATIO) {
         // Se estancó entrenando a saltos → una descarga sería consejo equivocado. Recuperar ritmo.
-        return { mode: 'rebuild', count: stalled.length, names, cadence: Math.round(cadence * 10) / 10 };
+        // Devuelve la cadencia y el plan para que la tarjeta muestre la evidencia («~1,2 de 3 días»).
+        return { mode: 'rebuild', count: stalled.length, names, cadence: Math.round(cadence * 10) / 10, plan };
       }
     }
     return { mode: 'global', count: stalled.length, names };

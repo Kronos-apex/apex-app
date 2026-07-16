@@ -321,6 +321,7 @@ try {
   check('🔒 S14 3+ estancados a saltos → modo rebuild (no fatiga, es por faltas)', s14mode === 'rebuild', 'mode=' + s14mode);
   check('🔒 S14b NO ofrece descarga ni protocolos (0 Aplicar, 0 deload)', s.shown && s.opts === 0 && s.deload === false, 'opts=' + s.opts + ' deload=' + s.deload);
   check('S14c habla de recuperar el ritmo / constancia', s.rebuild === true && /(ritmo|constancia|saltos)/i.test(s.text), s.text.replace(/\n/g, ' ').slice(0, 90));
+  check('S14c2 muestra la CIFRA de cadencia (~X de sus 3 días por semana)', /de sus 3 d[ií]as por semana/i.test(s.text) && /~\s*\d/.test(s.text), (s.text.match(/viene entrenando[^)]*\)/i) || [''])[0]);
   // Escribirle desde el rebuild → chat prellenado sobre volver al ritmo, sin tocar la rutina.
   const s14d = await evj(`(()=>{
     document.querySelector('#d-shock button[onclick*="shockWriteRebuild"]').click();
