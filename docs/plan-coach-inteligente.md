@@ -848,3 +848,89 @@ Protocolo §12 con línea base `e0dd00a` y v354, más:
   mute aparte, 3d), el tap aterriza en el tope de la ficha sin scroll — inofensivo por el guard.
 
 ### 🟢 VEREDICTO: FASE 4 APROBADA — ciclo planificar→ejecutar→verificar CERRADO (3º consecutivo).
+
+**Validación del PO (2026-07-15):** Camilo probó el plan de choque en su celular y aprobó los
+métodos propuestos ante estancamiento. Fase 4 validada en dispositivo real.
+
+## 20. 📋 FASE 4.1 ESTIPULADA — MÚLTIPLES ESTANCAMIENTOS (Opus ejecuta, Fable verifica con §21)
+
+**Origen (decisión de PRODUCTO de Camilo, 2026-07-15, con el criterio del coach profesional):**
+hoy solo se propone el PRIMER ejercicio estancado. Camilo preguntó y la fisiología responde:
+- **2+ estancados del MISMO músculo** = un solo problema con dos síntomas (estímulo repetido/
+  recuperación) → se ataca UNO primero (el más plantado); el otro suele destrabarse de rebote.
+  Dos 5×5 sobre el mismo músculo la misma semana = sobrecarga; y no sabrías qué funcionó.
+- **Estancados de músculos DISTINTOS** (glúteo + espalda) = sistemas con recuperación casi
+  independiente → se trabajan EN PARALELO; hacer esperar 21 días al segundo no tiene sustento.
+- **3+ estancados a la vez** = eso ya NO es por-ejercicio, es FATIGA SISTÉMICA (o vida: sueño/
+  comida/estrés) → la respuesta correcta es UNA SEMANA DE DESCARGA global, no N planes de choque
+  (tratar síntomas ignorando la enfermedad).
+
+### H1 — Core: selector puro `shockTargets` (avi-core) — commit 1 (con tests)
+
+- [ ] `shockTargets` · [ ] agrupación por músculo · [ ] modo global · [ ] tests · [ ] verificado
+
+**`shockTargets(sessions)`** → función PURA (sin `now`: solo agrupa lo que `_isStalledEx` ya
+detecta), devuelve:
+```js
+null                                              // 0 estancados
+{ mode:'global', count, names:[...] }             // ≥ SHOCK_GLOBAL_MIN (=3) estancados
+{ mode:'multi', targets:[ {name, muscle, also:[...]}, ... ] }  // 1-2 músculos
+```
+Reglas: estancados = TODAS las entradas de `computeExerciseProgress` que pasan `_isStalledEx`
+(hoy solo se toma la primera). Si ≥3 → modo `global`. Si no: agrupar por `muscle`; por músculo
+gana la entrada con MÁS puntos planos (`flatPoints` — el cálculo de `shockPlan` se extrae a un
+helper puro `_flatPointsOf(e)` para no duplicarlo; desempate por nombre asc = determinista);
+las hermanas del mismo músculo van en `also` (para la nota «X también se plantó — destrabemos
+este primero»). Máximo 2 targets (si hubiera 2 músculos ya cubre el caso real; 3 músculos ≠
+global solo si son exactamente 2 ejercicios… no: 3 ejercicios estancados = global SIEMPRE,
+aunque sean de 3 músculos distintos — el umbral es por Nº de ejercicios). Constantes:
+`SHOCK_GLOBAL_MIN=3` · `SHOCK_GLOBAL_MUTE_DAYS=7` (re-chequear antes que los 21d: si está
+sistémicamente fundido, una semana después hay que volver a mirar).
+
+**Tests estipulados:** 0 estancados → null · 1 → multi con 1 target sin also · 2 mismo músculo
+→ 1 target con also=[el otro] y gana el de MÁS flatPoints · 2 músculos distintos → 2 targets ·
+3 estancados (aun de 3 músculos distintos) → global con names · determinismo · `shockPlan` de
+cada target sigue funcionando igual (no se toca su firma).
+
+### H2 — UI: tarjeta multi-sección + modo descarga global — commit 2 (harness +checks)
+
+- [ ] secciones por target · [ ] nota "también se plantó" · [ ] tarjeta global→descarga ·
+  [ ] mutes independientes · [ ] harness S10-S13 · [ ] visual
+
+`renderShockCard` pasa de `_insStallOf` a `shockTargets`:
+- **`multi`:** UNA tarjeta `#d-shock` con una SECCIÓN por target (cada una = análisis + warnings
+  + opciones + Aplicar propios, `CUR.shock` pasa a array indexado y los onclick llevan
+  `applyShock(t,i)` — SIGUE por índices, nada de datos en atributos). Target con `also` → nota
+  «{X} también se plantó — destrabemos este primero» (esc). Mute POR EJERCICIO como hoy
+  (`shockmute_<cid>_<exNorm>`): un target muteado se salta SIN ocultar al otro; «Descartar»
+  mutea TODOS los targets visibles. Si tras filtrar mutes no queda target → tarjeta oculta.
+- **`global`:** la tarjeta NO propone protocolos por ejercicio. Dice «{n} ejercicios plantados
+  a la vez ({nombres}) — eso no es un problema de ejercicios, es fatiga acumulada. Lo correcto
+  es una semana de descarga.» + botón **«Generar semana de descarga»** → `openGenRutinas()` y
+  tras abrir marca `#mg-deload` + `CUR.genDeload=true` + `genWithStyle` re-corre (reusar
+  `toggleGenDeload(true)` YA existente, app-3:1404 — cablear mínimo, cero lógica nueva de
+  generación) + **«✍️ Escribirle»** (chat prellenado voz coach: «...esta semana bajamos
+  revoluciones a propósito: descarga programada, no retroceso») + «Descartar» (mute global
+  `shockmute_<cid>__global` 7d). El generador YA tiene el candado del coach (borrador → él
+  aprueba) — no se toca.
+- Pulso: `_pulseGo` no cambia (aterriza en `#d-shock` igual).
+- Harness `_verify-shock.mjs` +4: S10 2 mismo músculo → 1 sección + nota also · S11 2 músculos
+  → 2 secciones con Aplicar independientes (aplicar el 1º NO oculta el 2º) · S12 3 estancados →
+  tarjeta global SIN botones Aplicar de protocolo y con CTA de descarga; el click abre m-gen
+  con `#mg-deload` marcado · S13 mute independiente (mutear target 1 deja visible el 2).
+- **SIN AVI_NEWS** (cara del coach). **Candados intactos:** nada al asesorado sin tap; dolor
+  jamás ofrece `pesado` (por-target, ya lo hace `shockPlan`).
+
+### Cierre 4.1
+1. [ ] Suite (≥352+nuevos) · `_verify-shock` (23+4) · `_verify-pulse` 6/6 · `_verify-coach`
+   12/12 · `_test-coach-back` · `_guiado-suite` 53/53 · `_verify-modals` 12/12.
+2. [ ] Deploy `?v=355` + `avi-v355` (bump python SIN BOM, bytes verificados) → push → curl →
+   `_prodcheck.mjs 355`.
+3. [ ] Bitácora (parte 60) · CLAUDE.md · checkboxes §20 · memoria.
+
+## 21. 🔍 Verificación de Fable (post-Opus, Fase 4.1)
+Protocolo §18 con base `ffd5d31` y v355, más: sabotaje del umbral global (SHOCK_GLOBAL_MIN=99 →
+el test de 3-estancados debe morder) y del ganador por músculo (invertir flatPoints → muerde) ·
+verificar con click real que la tarjeta global abre m-gen con deload marcado · tests v354
+(shockPlan/applyShockOption) pasan SIN modificación.
+
