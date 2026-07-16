@@ -1037,3 +1037,84 @@ verde (pulso/coach/coach-back/guiado/modales), cero jsErrors. Commits: `a...` co
 → deploy `a31191c` v356 (bump sin BOM) → docs. Prod: curl v356 + `_prodcheck 356` verde. **Disponible
 para verificación de Fable si Camilo la pide** (no se auto-lanzó: refinamiento pequeño, no una fase
 planificada). Constantes tunables: `SHOCK_CONSISTENCY_DAYS`, `SHOCK_CONSISTENCY_MIN_RATIO`.
+
+## 24. Verificación de Fable — Fase 4.2 (gate de constancia, v356) y VEREDICTO
+
+### Verificación (2026-07-16, base `eefe819` → v356 `842b8c1`)
+- [x] **Diff completo leído** (10 archivos, 207+/36−): avi-core solo suma `_recentCadence` + 2
+  constantes `SHOCK_CONSISTENCY_*` + el gate dentro del branch 3+ de `shockTargets`; app-3 solo la
+  rama `rebuild` de `renderShockCard` + `shockWriteRebuild`; index.html/sw.js solo bump v356; sin
+  scope creep. **Fase 4.1 intacta:** `shockPlan`/`applyShockOption` sin tocar; `shockTargets` con
+  firma nueva pero RETRO-COMPATIBLE — verificado en código (`planDays(client||{})` tolera cliente
+  ausente; sin `now` el gate ni se evalúa) y en tests (los de 1 arg de la 4.1 pasan sin tocarse).
+- [x] **`avi.test.js` semánticamente ADITIVO:** las únicas 2 líneas previas modificadas son el
+  helper `stHist` ganando `spacingDays = 3` como DEFAULT (= el spacing que antes estaba hardcodeado
+  → historiales idénticos para los tests viejos); cero asserts previos tocados. 4 tests nuevos.
+- [x] **Suite 363/363** re-corrida por Fable (antes y después de cada sabotaje).
+- [x] **Sabotajes con árbol LIMPIO, ejecutados por Fable (no reusé el de Opus):**
+  (a) gate neutralizado (`if(false && cadence < …)`) → mordió el test 🔒 «a saltos → rebuild»
+  (362/363); (b) sentido del umbral invertido (`<` → `>`) → mordieron los DOS tests del gate
+  («parejo → global» y 🔒 «a saltos → rebuild», 361/363); (c) sabotaje PROPIO: `_recentCadence`
+  devolviendo siempre 99 («todo el mundo entrena parejo») → mordió el test 🔒 (362/363).
+  Restaurado tras cada uno; suite 363/363 y `git status` limpio al final.
+- [x] **Sondeo adicional de Fable (c2, NO mordió — va al radar):** romper la propiedad «medido
+  HASTA now» (span entre primera y última sesión en vez de hasta `now`) deja la suite en 363/363 —
+  ningún test protege el caso del PARÓN reciente, precisamente la semántica que distingue esta
+  medida. El código actual la tiene BIEN (verificado a mano, abajo); el candado que falta es
+  del test, no del producto.
+- [x] **Harness `_verify-shock.mjs` 37/37, cero jsErrors.** S12: consistente (spacing 3) → global
+  con assert explícito `rebuild===false` + click real abre `m-gen` con deload marcado. S14: a
+  saltos (spacing 8) → `rebuild` con `opts===0 && deload===false` (ni protocolos ni descarga) y
+  S14d Escribirle prellena 312 chars con 0 mensajes enviados y rutina intacta. **Fixture honesto**
+  (leído el código): `multiFixture(specs, spacingDays)` construye FECHAS reales espaciadas y 3
+  rutinas con día (→ `planDays=3`, bar 2.1); la cadencia la calcula la app sola — spacing 3 da
+  ~2.8 (≥2.1 → global) y spacing 8 da ~1.2 (<2.1 → rebuild) por aritmética, no por stub.
+- [x] **La MEDIDA verificada a mano** (script node contra avi-core real, 6 escenarios):
+  (i) **parón reciente** — entrenó parejo hace 4→3 semanas y luego NADA → cadence 1.3 → `rebuild`
+  ✓ (el span corre `days[0]→now`, así que los 21 días vacíos pesan); historial 100% >28d →
+  cadence 0 → `rebuild` ✓; (ii) el gate **NO toca multi**: 2 estancados a saltos → `multi` ✓;
+  (iii) **sesgo hacia rebuild ante la duda** confirmado: span redondeado hacia arriba (día-cero →
+  timestamp exacto de now) y bar relativo al PLAN — plan de 6 días entrenando 4/sem PAREJO →
+  `rebuild` (documentado abajo como sesgo asumido, no bug). Grindeando cada 3 días → `global` ✓.
+- [x] **Candados intactos (código app-3):** la rama `rebuild` no contiene `sv(`/`sendCoachMsg`/
+  `pushToClient` (grep sobre el diff = vacío); `shockWriteRebuild` → `_shockChat` que SOLO asigna
+  `ta.value` (leída la función: `openCoachChat` + prellenar + focus, sin envío); el modo `rebuild`
+  no ofrece generar descarga ni protocolos (S14b lo pinna con `deload===false && opts===0`);
+  `esc(tg.names.join(', '))` en el único dato de usuario del innerHTML; respeta el mute global 7d
+  (`_shockGlobalMuted` al entrar a la rama).
+- [x] **Cinturón re-corrido por Fable:** `_verify-pulse` 6/6 · `_verify-coach` TODO OK ·
+  `_test-coach-back` OK · `_guiado-suite` TODO OK · `_verify-modals` 12/12 · cero jsErrors en todos.
+- [x] **Greps limpios:** `SHOCK_CONSISTENCY_DAYS`/`SHOCK_CONSISTENCY_MIN_RATIO` como constantes
+  nombradas y usadas en el gate · `_recentCadence` sin DOM/localStorage/`Date.now()` (recibe `now`;
+  ver observación del fallback abajo).
+- [x] **Prod re-verificada por Fable:** curl con nocache sirve `?v=356` (único) · primeros bytes
+  SIN BOM (`<!D` index.html, `con` sw.js) · `_prodcheck.mjs 356` verde (boot limpio, cero jsErrors).
+- [x] **Tono:** la tarjeta («llevan rato sin subir, pero las últimas semanas fueron a saltos…
+  recuperar el ritmo — una descarga ahora bajaría aún más el volumen») habla AL COACH claro y sin
+  culpar; el chat prellenado («No es para preocuparse: lo primero es volver a un ritmo parejo,
+  aunque sean sesiones cortas… tu cuerpo vuelve a responder 💪») es cálido, voz del coach, cero
+  regaño. **SIN AVI_NEWS nuevo** (el grep del diff solo encuentra menciones en docs).
+
+### Observaciones menores (no bloquean, para el radar)
+- **Falta el test 🔒 del parón reciente** (mi sondeo c2): un refactor futuro de `_recentCadence`
+  podría cambiar el span a «entre sesiones» sin que nada muerda — y ese refactor convertiría al
+  que entrenó parejo y PARÓ en candidato a descarga. 1 test de ~5 líneas lo blinda.
+- **Punto ciego «regreso denso tras ausencia»:** los huecos ANTES de la primera sesión dentro de
+  la ventana de 28d no pesan (el span arranca en `days[0]`). Asesorado ausente 3 semanas que
+  vuelve y entrena sus 3 días la primera semana → cadence 3 ≥ 2.1 → `global` (descarga) cuando lo
+  suyo es ritmo. Mitigado por el candado humano (el coach aprueba y CONOCE la ausencia) y el mute
+  de 7d; si molesta en la práctica, anclar el arranque del span a `max(cutoff, primera sesión
+  histórica)` lo corrige sin tocar los tests actuales.
+- **El bar es relativo al PLAN, no absoluto:** con planes ambiciosos (6d) un asesorado que entrena
+  4/sem parejo cae en `rebuild` aunque pueda traer fatiga real. Es el sesgo deliberado (§23) y el
+  lado barato del error, pero Camilo debe saber que a más días de plan, más «rebuild» verá.
+- `_recentCadence` trae fallback `new Date()` si `now` es null — hoy INALCANZABLE desde
+  `shockTargets` (guard `now != null` antes de llamar), pero contradice la firma «recibe now»;
+  quitar el fallback es 1 línea si se quiere pureza estricta.
+- La tarjeta `rebuild` no muestra la CIFRA de cadencia que el motor ya calcula (`tg.cadence`,
+  p. ej. «viene entrenando ~1.2 días/sem de 3 planeados») — dato que le daría al coach el «por
+  qué» en un vistazo. Nice-to-have de producto, no defecto.
+
+### 🟢 VEREDICTO: FASE 4.2 APROBADA — los 3 sabotajes mordieron, la medida separa fatiga de
+faltas en los casos nucleares (parón reciente incluido, verificado a mano), candados y cinturón
+intactos, prod v356 verde. Ciclo de verificación CERRADO (5º consecutivo).
