@@ -1305,7 +1305,25 @@ function renderShockCard(c){
   el.innerHTML='';el.style.display='none';CUR.shock=null;
   if(typeof shockTargets!=='function'||typeof shockPlan!=='function'||!c)return;
   const sessions=(DB.history[c.id]||[]);
-  const tg=shockTargets(sessions); if(!tg)return;
+  const tg=shockTargets(sessions,c,Date.now()); if(!tg)return;
+
+  // ── Modo REBUILD: 3+ estancados pero entrenó a saltos → recuperar ritmo, NO descarga ──
+  // La descarga a quien ya entrena poco es el consejo equivocado (baja aún más el volumen). AVI se
+  // lo dice al coach y NO ofrece generar descarga: primero constancia.
+  if(tg.mode==='rebuild'){
+    if(_shockGlobalMuted(c.id))return;
+    CUR.shock={cid:c.id,mode:'rebuild',count:tg.count,names:tg.names};
+    el.style.display='block';
+    el.innerHTML=`<div class="card" style="padding:12px 14px">
+      <div class="ctitle" style="margin-bottom:4px">${_shockBolt()} ${tg.count} estancados — pero es por constancia</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:10px">${esc(tg.names.join(', '))} llevan rato sin subir, pero las últimas semanas fueron <strong>a saltos</strong>. Antes de tocar el plan, lo que más mueve la aguja es <strong>recuperar el ritmo</strong> — cuando vuelva a entrenar parejo, revisamos si algo se estancó de verdad. (Una descarga ahora bajaría aún más el volumen: no es lo que necesita.)</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn bp bsm" style="flex:1;min-height:36px" onclick="shockWriteRebuild()">${_coIco('pencil',13,'✍️')} Escribirle</button>
+        <button class="btn bg bsm" style="min-height:36px" onclick="dismissShockGlobal()">Descartar</button>
+      </div>
+    </div>`;
+    return;
+  }
 
   // ── Modo GLOBAL: fatiga sistémica → semana de descarga (no N protocolos) ──
   if(tg.mode==='global'){
@@ -1408,6 +1426,12 @@ function shockWriteGlobal(){
   const S=CUR.shock; if(!S||S.mode!=='global')return;
   const first=(((DB.clients.find(x=>x.id===S.cid)||{}).name||'').split(' ')[0])||'';
   _shockChat(S.cid,first+', vi que varios ejercicios se te estancaron a la vez. Esta semana bajamos revoluciones a propósito: es una descarga programada para recuperar, no un retroceso. Volvemos con todo la próxima 💪');
+}
+// Rebuild: escribirle enfocado en volver al ritmo (nada de descarga; nada toca la rutina).
+function shockWriteRebuild(){
+  const S=CUR.shock; if(!S||S.mode!=='rebuild')return;
+  const first=(((DB.clients.find(x=>x.id===S.cid)||{}).name||'').split(' ')[0])||'';
+  _shockChat(S.cid,first+', he visto que varios ejercicios llevan rato sin subir, pero también que las últimas semanas fueron a saltos. No es para preocuparse: lo primero es volver a un ritmo parejo, aunque sean sesiones cortas. En cuanto retomemos la constancia tu cuerpo vuelve a responder, y ahí sí ajustamos lo que haga falta 💪');
 }
 function dismissShockGlobal(){
   const S=CUR.shock; if(!S)return;

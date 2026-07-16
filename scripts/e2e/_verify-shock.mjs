@@ -49,6 +49,7 @@ const shockCard = `(()=>{const el=document.getElementById('d-shock');
     dismiss:btns.some(b=>/dismissShock\\(/.test(oc(b)))||btns.some(b=>/dismissShockGlobal\\(/.test(oc(b))),
     sections:btns.filter(b=>/shockWrite\\(/.test(oc(b))).length,
     deload:btns.some(b=>/shockDeload\\(/.test(oc(b))),
+    rebuild:btns.some(b=>/shockWriteRebuild\\(/.test(oc(b))),
     warns:[...card.querySelectorAll('div')].filter(d=>/--orl/.test(d.getAttribute('style')||'')).length,
     text:el.innerText};})()`;
 
@@ -80,17 +81,19 @@ const fixture = (extra) => `(()=>{try{
 
 // Fase 4.1: historial con VARIOS ejercicios plantados. specs=[{name,muscle,kgs:[6 cronológicos]}].
 // Patrones que estancan: techo en los 2 primeros puntos; FLAT5 (techo idx0) tiene MÁS puntos planos
-// que FLAT4 (techo idx1). Cada ejercicio tiene su entrada en una sola rutina.
-const multiFixture = (specs) => `(()=>{try{
+// que FLAT4 (techo idx1). `spacingDays` controla la CADENCIA (cada cuántos días entrena) → separa
+// «grindeando» (denso, spacing 3) de «a saltos» (spacing 8). 3 rutinas con día → planDays=3 (bar 2.1).
+const multiFixture = (specs, spacingDays = 3) => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const specs=${JSON.stringify(specs)};
+  const specs=${JSON.stringify(specs)}; const SP=${spacingDays};
   const N=6, out=[];
-  for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(N-1-i)*3*86400000).toISOString(),routineName:'R',
+  for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(N-1-i)*SP*86400000).toISOString(),routineName:'R',
     exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[i]),reps:'8'}]}))}); }
   const sess=out.reverse();
   const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
     payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
-    routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))}]};
+    routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))},
+      {id:'r2',name:'B',day:'Miércoles',restSec:60,exercises:[]},{id:'r3',name:'C',day:'Viernes',restSec:60,exercises:[]}]};
   DB.clients=[c]; DB.history={a1:sess}; DB.prs={}; DB.msgs={};
   for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&(kk.indexOf('shockmute_')===0||kk.indexOf('coachpulse_')===0))localStorage.removeItem(kk);}
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
@@ -263,12 +266,13 @@ try {
     return {t0,t1,shownAfter:getComputedStyle(document.getElementById('d-shock')).display!=='none',remaining:sec};})()`);
   check('S11b aplicar el 1º NO oculta el 2º (recuperación independiente)', s11b.shownAfter && s11b.remaining.length === 1 && s11b.remaining[0] === s11b.t1, JSON.stringify(s11b.remaining));
 
-  // ── S12 (CANDADO GLOBAL): 3 estancados → tarjeta global SIN Aplicar de protocolo + CTA descarga ──
+  // ── S12 (CANDADO GLOBAL): 3 estancados ENTRENANDO PAREJO (spacing 3 = cadencia alta) → tarjeta
+  // global SIN Aplicar de protocolo + CTA descarga ──
   const s12 = await ev(multiFixture([
     { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
     { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
     { name: 'Sentadilla', muscle: 'pierna', kgs: FLAT4 },
-  ]));
+  ], 3));
   if (s12 !== true) throw new Error('S12 setup: ' + s12);
   await sleep(400);
   s = await evj(shockCard);
@@ -276,7 +280,7 @@ try {
   const s12mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
   check('S12 3+ estancados → modo global (fatiga sistémica)', s12mode === 'global', 'mode=' + s12mode);
   check('S12b la tarjeta NO ofrece protocolos por ejercicio (0 botones Aplicar)', s.shown && s.opts === 0, 'opts=' + s.opts);
-  check('S12c ofrece la CTA de semana de descarga', s.deload === true && /descarga/i.test(s.text));
+  check('S12c ofrece la CTA de semana de descarga (y NO es rebuild)', s.deload === true && s.rebuild === false && /descarga/i.test(s.text), 'deload=' + s.deload + ' rebuild=' + s.rebuild);
   // Click real en "Generar semana de descarga" → abre m-gen con #mg-deload marcado.
   const s12d = await evj(`(()=>{
     document.querySelector('#d-shock button[onclick*="shockDeload"]').click();
@@ -301,6 +305,32 @@ try {
     const t=(CUR.shock&&CUR.shock.targets||[]).map(x=>x.exName);
     return {t0, shown:getComputedStyle(document.getElementById('d-shock')).display!=='none', remaining:t};})()`);
   check('S13 mutear un target deja VISIBLE el otro (mute por ejercicio)', s13r.shown && s13r.remaining.length === 1 && s13r.remaining[0] !== s13r.t0, JSON.stringify(s13r.remaining));
+
+  // ── S14 (CANDADO CONSTANCIA): 3 estancados pero A SALTOS (spacing 8 = cadencia baja) → REBUILD,
+  // NO descarga. La descarga a quien ya entrena poco es el consejo equivocado (caso real de Astrid). ──
+  const s14 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: FLAT4 },
+  ], 8));
+  if (s14 !== true) throw new Error('S14 setup: ' + s14);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S14-rebuild');
+  const s14mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
+  check('🔒 S14 3+ estancados a saltos → modo rebuild (no fatiga, es por faltas)', s14mode === 'rebuild', 'mode=' + s14mode);
+  check('🔒 S14b NO ofrece descarga ni protocolos (0 Aplicar, 0 deload)', s.shown && s.opts === 0 && s.deload === false, 'opts=' + s.opts + ' deload=' + s.deload);
+  check('S14c habla de recuperar el ritmo / constancia', s.rebuild === true && /(ritmo|constancia|saltos)/i.test(s.text), s.text.replace(/\n/g, ' ').slice(0, 90));
+  // Escribirle desde el rebuild → chat prellenado sobre volver al ritmo, sin tocar la rutina.
+  const s14d = await evj(`(()=>{
+    document.querySelector('#d-shock button[onclick*="shockWriteRebuild"]').click();
+    const ta=document.getElementById('cchat-in');
+    const c=DB.clients.find(x=>x.id==='a1');
+    const routTocada=c.routines[0].exercises[0].sets!==4;
+    const el=document.getElementById('coach-chat'); const open=!!(el&&el.classList.contains('on'));
+    return {val:ta?ta.value:'', open, msgs:((DB.msgs&&DB.msgs.a1)||[]).length, routTocada};})()`);
+  check('🔒 S14d Escribirle prellena (voz coach) SIN enviar ni tocar la rutina', s14d.open && s14d.val.length > 20 && s14d.msgs === 0 && s14d.routTocada === false, JSON.stringify({ len: s14d.val.length, msgs: s14d.msgs, rout: s14d.routTocada }));
+  await ev(`(()=>{const el=document.getElementById('coach-chat');if(el)el.classList.remove('on');})()`);
 
   // ── Shots ambos temas ──
   await ev(fixture());
