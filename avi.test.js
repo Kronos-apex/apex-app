@@ -94,6 +94,8 @@ const {
   computeExerciseProgress,
   coachInsight,
   coachPulse,
+  shockPlan,
+  applyShockOption,
   weekEditorial,
   exTrack,
   prFromSets,
@@ -2692,6 +2694,191 @@ test('coachPulse: sin datos → []; determinista (mismos args → mismo resultad
   const clients = [{ id: 'a', name: 'Ana', days: 2 }, { id: 'b', name: 'Beto', days: 2 }];
   const prs = { a: ciRecentPr('X'), b: ciRecentPr('Y') };
   assert.strictEqual(JSON.stringify(coachPulse(clients, {}, prs, CI_NOW, {})), JSON.stringify(coachPulse(clients, {}, prs, CI_NOW, {})));
+});
+
+// ══════════════════════════════════════════════════════
+section('Plan de choque contra estancamientos (shockPlan / applyShockOption, v354)');
+
+// Una sesión con un ejercicio de carga que SÍ trae músculo (shockPlan busca variantes por músculo).
+const spSess = (offsetDays, name, muscle, kg) => ({
+  date: new Date(CI_NOW - offsetDays * 86400000).toISOString(),
+  exercises: [{ name, muscle, track: 'peso_reps', sets: [{ done: true, kg: String(kg), reps: '8' }] }],
+});
+// Historial ESTANCADO en "Jalón al Pecho": cronológico 60,62,61,60,61,61 → máx previo 62 (2º punto),
+// y los últimos 4 (61,60,61,61) no lo superan. bestKg=62, 4 sesiones planas desde el récord.
+// El historial de la app va nuevo→viejo, por eso el reverse().
+const spStalled = [60, 62, 61, 60, 61, 61]
+  .map((kg, i) => spSess((5 - i) * 3, 'Jalón al Pecho', 'espalda', kg)).reverse();
+// Historial que PROGRESA (el último punto supera el máx previo) → no hay meseta.
+const spProgress = [60, 61, 62, 63, 64, 65]
+  .map((kg, i) => spSess((5 - i) * 3, 'Jalón al Pecho', 'espalda', kg)).reverse();
+// Catálogo de prueba. Orden deliberado: "Remo con Barra" (P) es la 1ª candidata de espalda…
+// …pero la excluye una limitación lumbar (GEN_ZONE_EXCL.lumbar) → cae en "Dominada" (I).
+const spLib = [
+  { id: 'x1', name: 'Remo con Barra', muscle: 'espalda', level: 'P', icon: '🏋️', desc: 'd1', imgUrl: 'u1', track: 'peso_reps' },
+  { id: 'x2', name: 'Dominada', muscle: 'espalda', level: 'I', icon: '💪', desc: 'd2', imgUrl: 'u2', track: 'reps' },
+  { id: 'x3', name: 'Remo Pendlay', muscle: 'espalda', level: 'A', icon: '🔥', desc: 'd3', imgUrl: 'u3' },
+  { id: 'x9', name: 'Press Banca', muscle: 'pecho', level: 'P', icon: '🏋️', desc: 'd9', imgUrl: 'u9' },
+];
+const spClient = { id: 'c1', name: 'Astrid', level: 'Intermedio', notes: '' };
+const spPain = area => [{ area, at: new Date(CI_NOW - 2 * 86400000).toISOString() }];
+
+test('shockPlan: sin estancamiento (o ejercicio inexistente) → null', () => {
+  assert.strictEqual(shockPlan(spClient, 'Jalón al Pecho', spProgress, spLib, CI_NOW), null, 'si progresa no hay plan');
+  assert.strictEqual(shockPlan(spClient, 'Sentadilla', spStalled, spLib, CI_NOW), null, 'ejercicio que no está en el historial');
+  assert.strictEqual(shockPlan(spClient, 'Jalón al Pecho', [], spLib, CI_NOW), null, 'sin historial');
+  assert.strictEqual(shockPlan(), null, 'sin argumentos no lanza');
+});
+
+test('shockPlan: con estancamiento → análisis con el kg plantado y las sesiones planas', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.ok(p, 'hay plan');
+  assert.strictEqual(p.ex.name, 'Jalón al Pecho');
+  assert.strictEqual(p.ex.muscle, 'espalda');
+  assert.strictEqual(p.analysis.bestKg, 62, 'el mejor kg es el techo real, no el último');
+  assert.strictEqual(p.analysis.flatPoints, 4, 'sesiones desde el récord sin superarlo');
+  assert.ok(p.analysis.sinceStr, 'trae la fecha del récord para el coach');
+});
+
+test('shockPlan: "remonta" SIEMPRE está y es la primera opción (la recomendada)', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.strictEqual(p.options[0].id, 'remonta');
+  assert.strictEqual(p.options[0].apply.reps, 12);
+  // Y sigue estando incluso con dolor activo (es la opción segura).
+  const conDolor = shockPlan({ ...spClient, painCare: spPain('hombro') }, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.strictEqual(conDolor.options[0].id, 'remonta');
+});
+
+test('🔒 shockPlan: dolor activo NUNCA ofrece el bloque pesado 5×5, y avisa al coach', () => {
+  const p = shockPlan({ ...spClient, painCare: spPain('hombro') }, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.ok(!p.options.some(o => o.id === 'pesado'), 'subir cargas con dolor activo está prohibido');
+  assert.ok(p.warnings.some(w => /dolor/i.test(w)), 'el coach ve el aviso de dolor');
+  // Un dolor VIEJO (>14 días, fuera de la ventana de painCareActive) ya no bloquea.
+  const viejo = { ...spClient, painCare: [{ area: 'hombro', at: new Date(CI_NOW - 30 * 86400000).toISOString() }] };
+  assert.ok(shockPlan(viejo, 'Jalón al Pecho', spStalled, spLib, CI_NOW).options.some(o => o.id === 'pesado'));
+  // Y un dolor descartado ("ya estoy bien") tampoco.
+  const cleared = { ...spClient, painCare: [{ area: 'hombro', at: new Date(CI_NOW - 2 * 86400000).toISOString(), cleared: true }] };
+  assert.ok(shockPlan(cleared, 'Jalón al Pecho', spStalled, spLib, CI_NOW).options.some(o => o.id === 'pesado'));
+});
+
+test('shockPlan: sin dolor → ofrece el bloque pesado 5×5 con más descanso', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const pesado = p.options.find(o => o.id === 'pesado');
+  assert.ok(pesado, 'sin dolor el 5×5 es una opción válida');
+  assert.strictEqual(pesado.apply.sets, 5);
+  assert.strictEqual(pesado.apply.reps, 5);
+  assert.strictEqual(pesado.apply.restSecDelta, 30);
+  assert.deepStrictEqual(p.warnings, [], 'sin dolor ni limitación, sin avisos');
+});
+
+test('🔒 shockPlan: una limitación lumbar EXCLUYE las variantes contraindicadas', () => {
+  const lesionado = { ...spClient, notes: 'Tiene hernia lumbar diagnosticada' };
+  const p = shockPlan(lesionado, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const v = p.options.find(o => o.id === 'variante');
+  assert.ok(v, 'sigue habiendo una variante segura');
+  assert.strictEqual(v.apply.swapTo, 'x2', 'salta "Remo con Barra" (contraindicado en lumbar) y toma "Dominada"');
+  assert.ok(p.warnings.some(w => /limitaci/i.test(w)), 'el coach ve el aviso de la limitación');
+  // Sin la limitación, la primera candidata SÍ es el remo.
+  const sano = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.strictEqual(sano.options.find(o => o.id === 'variante').apply.swapTo, 'x1');
+});
+
+test('🔒 shockPlan: el dolor de zona también filtra las variantes de esa zona', () => {
+  const conDolor = { ...spClient, painCare: spPain('zona lumbar') };
+  const v = shockPlan(conDolor, 'Jalón al Pecho', spStalled, spLib, CI_NOW).options.find(o => o.id === 'variante');
+  assert.strictEqual(v.apply.swapTo, 'x2', 'con dolor lumbar tampoco se propone "Remo con Barra"');
+});
+
+test('shockPlan: sin candidata del nivel del asesorado → sin opción "variante"', () => {
+  // Solo queda una variante Avanzada; un Intermedio (cap I) no la puede recibir.
+  const libAvanzado = [spLib[2], spLib[3]];
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, libAvanzado, CI_NOW);
+  assert.ok(!p.options.some(o => o.id === 'variante'), 'no se propone un ejercicio por encima de su nivel');
+  assert.strictEqual(p.options.length, 2, 'quedan remonta + pesado');
+  // El mismo catálogo con un Avanzado sí la ofrece.
+  const av = shockPlan({ ...spClient, level: 'Avanzado' }, 'Jalón al Pecho', spStalled, libAvanzado, CI_NOW);
+  assert.strictEqual(av.options.find(o => o.id === 'variante').apply.swapTo, 'x3');
+});
+
+test('shockPlan: sin catálogo o sin variantes del mismo músculo → sigue habiendo plan (sin variante)', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, [spLib[3]], CI_NOW);
+  assert.deepStrictEqual(p.options.map(o => o.id), ['remonta', 'pesado'], 'el pecho no sirve para un ejercicio de espalda');
+  assert.deepStrictEqual(shockPlan(spClient, 'Jalón al Pecho', spStalled, [], CI_NOW).options.map(o => o.id), ['remonta', 'pesado']);
+});
+
+test('shockPlan: los mensajes van en VOZ DEL COACH — nombre del asesorado, ejercicio y kg', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  p.options.forEach(o => {
+    assert.ok(o.msg.includes('Astrid'), o.id + ': le habla por su nombre');
+    assert.ok(o.msg.includes('Jalón al Pecho'), o.id + ': nombra el ejercicio');
+    assert.ok(o.msg.includes('62'), o.id + ': dice el kg en el que se plantó');
+    assert.ok(o.title && o.desc, o.id + ': tiene título y explicación para el coach');
+  });
+});
+
+test('shockPlan: determinista — mismos argumentos, mismas opciones', () => {
+  const a = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const b = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  assert.strictEqual(JSON.stringify(a), JSON.stringify(b));
+});
+
+// ── applyShockOption ──
+const spRoutines = () => ([
+  { id: 'r1', restSec: 60, exercises: [
+    { id: 'e0', name: 'Jalón al Pecho', muscle: 'espalda', sets: 4, reps: 8, restSec: 90, icon: '🏋️', desc: 'viejo', imgUrl: 'v' },
+    { id: 'e1', name: 'Press Banca', muscle: 'pecho', sets: 3, reps: 10 },
+  ] },
+  { id: 'r2', restSec: 45, exercises: [
+    { id: 'e0', name: 'Jalón al Pecho', muscle: 'espalda', sets: 3, reps: 12 },
+  ] },
+]);
+
+test('applyShockOption: "remonta" cambia las reps de TODAS las apariciones del ejercicio', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const out = applyShockOption(spRoutines(), 'Jalón al Pecho', p.options.find(o => o.id === 'remonta'), spLib);
+  assert.strictEqual(out[0].exercises[0].reps, 12);
+  assert.strictEqual(out[1].exercises[0].reps, 12, 'también en la segunda rutina');
+  assert.strictEqual(out[0].exercises[0].sets, 4, 'las series no las toca');
+  assert.strictEqual(out[0].exercises[1].reps, 10, 'no toca los demás ejercicios');
+});
+
+test('applyShockOption: "pesado" pone 5×5 y suma 30s al descanso (propio, o el de la rutina)', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const out = applyShockOption(spRoutines(), 'Jalón al Pecho', p.options.find(o => o.id === 'pesado'), spLib);
+  assert.strictEqual(out[0].exercises[0].sets, 5);
+  assert.strictEqual(out[0].exercises[0].reps, 5);
+  assert.strictEqual(out[0].exercises[0].restSec, 120, '90 propio + 30');
+  assert.strictEqual(out[1].exercises[0].restSec, 75, 'sin descanso propio hereda el de la rutina (45) + 30');
+});
+
+test('applyShockOption: "variante" rota el ejercicio CONSERVANDO series y repeticiones', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const out = applyShockOption(spRoutines(), 'Jalón al Pecho', p.options.find(o => o.id === 'variante'), spLib);
+  const ex = out[0].exercises[0];
+  assert.strictEqual(ex.id, 'x1');
+  assert.strictEqual(ex.name, 'Remo con Barra');
+  assert.strictEqual(ex.muscle, 'espalda');
+  assert.strictEqual(ex.icon, '🏋️');
+  assert.strictEqual(ex.desc, 'd1', 'la ficha nueva reemplaza a la vieja');
+  assert.strictEqual(ex.imgUrl, 'u1');
+  assert.strictEqual(ex.sets, 4, 'conserva las series de ESA entrada');
+  assert.strictEqual(ex.reps, 8, 'conserva las reps de ESA entrada');
+  assert.strictEqual(out[1].exercises[0].sets, 3, 'y las de la otra rutina, que eran distintas');
+  assert.strictEqual(out[1].exercises[0].reps, 12);
+});
+
+test('applyShockOption: PURA — no muta las rutinas originales', () => {
+  const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
+  const original = spRoutines();
+  const snapshot = JSON.stringify(original);
+  p.options.forEach(o => applyShockOption(original, 'Jalón al Pecho', o, spLib));
+  assert.strictEqual(JSON.stringify(original), snapshot, 'nada se aplica hasta que el coach lo guarde');
+});
+
+test('applyShockOption: entradas raras no lanzan ni pierden datos', () => {
+  assert.deepStrictEqual(applyShockOption(null, 'X', null, null), []);
+  const out = applyShockOption(spRoutines(), 'Jalón al Pecho', { apply: { swapTo: 'noexiste' } }, spLib);
+  assert.strictEqual(out[0].exercises[0].name, 'Jalón al Pecho', 'un swap a un id inexistente no borra el ejercicio');
 });
 
 // ══════════════════════════════════════════════════════

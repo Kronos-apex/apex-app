@@ -1960,20 +1960,21 @@ function _insRecordOf(prs, nowTs) {
   });
   return best;
 }
-// _insStallOf: el ejercicio de carga (kg) estancado (≥6 puntos, últimos 4 no superan el máx
-// previo), o null.
+// _isStalledEx: ¿una entrada de progreso (computeExerciseProgress) está estancada? kg, ≥6 puntos,
+// y el máx de los últimos 4 no supera el máx de los anteriores. Predicado compartido.
+function _isStalledEx(e) {
+  if (!e || e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
+  const n = e.points.length;
+  const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
+  const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
+  if (!prior.length) return false;
+  const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
+  const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
+  return recentMax <= priorMax;
+}
+// _insStallOf: el PRIMER ejercicio de carga estancado del historial, o null.
 function _insStallOf(sessions) {
-  const prog = computeExerciseProgress(sessions || []);
-  return prog.find(e => {
-    if (e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
-    const n = e.points.length;
-    const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
-    const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
-    if (!prior.length) return false;
-    const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
-    const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
-    return recentMax <= priorMax;
-  }) || null;
+  return computeExerciseProgress(sessions || []).find(_isStalledEx) || null;
 }
 
 function coachInsight(client, sessions, prs, now, opts) {
@@ -2147,6 +2148,117 @@ function coachPulse(clients, history, prs, now, opts) {
   // Orden DETERMINISTA: prioridad de tipo, luego nombre asc (candado contra el poll de 15s).
   rows.sort((a, b) => (PULSE_TYPE_RANK[a.type] - PULSE_TYPE_RANK[b.type]) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return rows.slice(0, 5);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PLAN DE CHOQUE contra estancamientos — coach propone, coach aprueba (v354, Fase 4)
+// ──────────────────────────────────────────────────────────────────────
+// Cuando un asesorado se planta en un ejercicio, el coach ve una PROPUESTA concreta (2-3 opciones
+// de periodización) y la aplica en un toque. AVI PROPONE, el coach SIEMPRE aprueba — igual que el
+// generador (nada toca la rutina del asesorado ni le llega mensaje sin acción del coach). Puras/
+// testeables. Ver docs/plan-coach-inteligente §17. Los mensajes prellenados van en VOZ DEL COACH.
+const SHOCK_REMONTA_REPS = 12;      // descarga: 2 semanas a reps altas con menos peso
+const SHOCK_PESADO_SETS = 5;        // bloque de fuerza 5×5
+const SHOCK_PESADO_REPS = 5;
+const SHOCK_PESADO_REST_PLUS = 30;  // + descanso para el trabajo pesado
+const SHOCK_MUTE_DAYS = 21;         // tras aplicar/descartar, no re-proponer por ~un mesociclo
+// Área de dolor (PAIN_AREAS) → zona con reglas de exclusión (GEN_ZONE_EXCL). Solo estas 3 tienen
+// exclusiones; un dolor de codo/muñeca no filtra variantes (no hay regla), pero SÍ genera warning.
+const _PAIN_ZONE_TO_EXCL = { hombro: 'hombro', 'zona lumbar': 'lumbar', rodilla: 'rodilla' };
+
+// shockPlan(client, exName, sessions, lib, now) → null si ESE ejercicio no está estancado, o el plan.
+function shockPlan(client, exName, sessions, lib, now) {
+  client = client || {};
+  lib = lib || [];
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const e = computeExerciseProgress(sessions || []).find(x => x.name === exName);
+  if (!_isStalledEx(e)) return null;
+
+  const bestKg = Math.max.apply(null, e.points.map(p => p.maxKg));
+  let lastBestIdx = 0;
+  e.points.forEach((p, i) => { if (p.maxKg === bestKg) lastBestIdx = i; });
+  const analysis = {
+    bestKg,
+    flatPoints: e.points.length - 1 - lastBestIdx, // sesiones desde el último récord sin superarlo
+    sinceStr: (e.points[lastBestIdx] || {}).dateStr || '',
+  };
+
+  // Zonas a excluir de las variantes: limitaciones anotadas + dolor activo. + warnings al coach.
+  const warnings = [];
+  const excludeZones = new Set();
+  const lim = parseLimitations(client.notes);
+  if (lim.detected) {
+    warnings.push('Tiene una limitación anotada (' + lim.zones.join(', ') + ') — confirma que la opción no la comprometa.');
+    lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) excludeZones.add(z); });
+  }
+  const hasPain = painCareActive(client.painCare, nowTs).length > 0;
+  if (hasPain) {
+    warnings.push('🤕 Reportó dolor hace poco — revisa su estado antes de subir cargas.');
+    painCareActive(client.painCare, nowTs).forEach(p => { const z = _PAIN_ZONE_TO_EXCL[p.area]; if (z) excludeZones.add(z); });
+  }
+
+  const name = client.name || 'Tu asesorado';
+  const options = [];
+  // 1) Descarga y remonta — SIEMPRE (la recomendada, segura con o sin dolor).
+  options.push({
+    id: 'remonta', title: 'Descarga y remonta',
+    desc: '2 semanas con ~10% menos peso a ' + SHOCK_REMONTA_REPS + ' repeticiones con técnica perfecta; en la semana 3 vuelve a su peso y lo supera.',
+    apply: { reps: SHOCK_REMONTA_REPS },
+    msg: name + ', vi que el ' + exName + ' se te plantó en ' + bestKg + ' kg. Vamos a destrabarlo: estas 2 semanas baja el peso ~10% y hazlo a ' + SHOCK_REMONTA_REPS + ' repeticiones con técnica perfecta. En la semana 3 volvemos por ese récord 💪',
+  });
+  // 2) Bloque de fuerza 5×5 — NO si hay dolor activo (subir carga con dolor es peligroso).
+  if (!hasPain) {
+    options.push({
+      id: 'pesado', title: 'Bloque de fuerza 5×5',
+      desc: '3 semanas de ' + SHOCK_PESADO_SETS + ' series × ' + SHOCK_PESADO_REPS + ' repeticiones con más carga y descansos largos — un estímulo distinto rompe la meseta.',
+      apply: { sets: SHOCK_PESADO_SETS, reps: SHOCK_PESADO_REPS, restSecDelta: SHOCK_PESADO_REST_PLUS },
+      msg: name + ', el ' + exName + ' se estancó en ' + bestKg + ' kg. Cambiemos el estímulo: 3 semanas de ' + SHOCK_PESADO_SETS + '×' + SHOCK_PESADO_REPS + ' con más peso y descansos largos. La fuerza que ganes ahí destraba el resto.',
+    });
+  }
+  // 3) Rota a una variante — si hay candidata segura (mismo músculo, del nivel, sin chocar zonas).
+  const cap = _levelGate(client.level || 'Principiante').cap;
+  const exNorm = _norm(exName);
+  const cand = lib.find(x => x && x.muscle === e.muscle && _norm(x.name) !== exNorm
+    && exLevelRank(x) <= cap
+    && ![...excludeZones].some(z => GEN_ZONE_EXCL[z].test(_norm(x.name))));
+  if (cand) {
+    options.push({
+      id: 'variante', title: 'Rota a una variante',
+      desc: 'Cambia ' + exName + ' por ' + cand.name + ' unas 3-4 semanas — un ejercicio nuevo para el mismo músculo reactiva el progreso.',
+      apply: { swapTo: cand.id },
+      msg: name + ', el ' + exName + ' lleva rato clavado en ' + bestKg + ' kg. Rotemos a ' + cand.name + ' unas 3-4 semanas: trabaja el mismo músculo desde otro ángulo y suele reactivar el progreso. Después volvemos por ese récord 💪',
+    });
+  }
+
+  return { ex: { name: e.name, muscle: e.muscle }, analysis, warnings, options };
+}
+
+// applyShockOption(routines, exName, option, lib) → PURA, copia nueva de las rutinas con la opción
+// aplicada a TODAS las entradas de ese ejercicio (mismo criterio de agrupación del estancamiento).
+function applyShockOption(routines, exName, option, lib) {
+  const opt = (option && option.apply) || {};
+  lib = lib || [];
+  const swap = opt.swapTo ? lib.find(x => x && x.id === opt.swapTo) : null;
+  return (routines || []).map(r => {
+    const rt = Object.assign({}, r);
+    rt.exercises = (r.exercises || []).map(ex => {
+      if (!ex || ex.name !== exName) return ex;
+      const nx = Object.assign({}, ex);
+      if (swap) {
+        // Rota el ejercicio CONSERVANDO sets/reps de la entrada; cambia su identidad.
+        nx.id = swap.id; nx.name = swap.name; nx.muscle = swap.muscle;
+        if (swap.type != null) nx.type = swap.type;
+        if (swap.track != null) nx.track = swap.track;
+        nx.icon = swap.icon; nx.desc = swap.desc; nx.imgUrl = swap.imgUrl;
+      } else {
+        if (opt.sets != null) nx.sets = opt.sets;
+        if (opt.reps != null) nx.reps = opt.reps;
+        if (opt.restSecDelta != null) nx.restSec = (parseInt(ex.restSec) || parseInt(r.restSec) || 60) + opt.restSecDelta;
+      }
+      return nx;
+    });
+    return rt;
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2367,6 +2479,8 @@ if (typeof module !== 'undefined' && module.exports) {
     computeExerciseProgress,
     coachInsight,
     coachPulse,
+    shockPlan,
+    applyShockOption,
     weekEditorial,
     exTrack,
     prFromSets,
