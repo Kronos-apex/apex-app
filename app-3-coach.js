@@ -1080,6 +1080,7 @@ async function openDetail(id,_silent){
   dn.style.display=(c.notes||_painHTML)?'block':'none';
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
+  renderShockCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
@@ -1265,6 +1266,82 @@ function delClient(){
 }
 
 // ══════════════════════ ROUTINES ══════════════════════
+
+// ══════════════════════ PLAN DE CHOQUE (v354, Fase 4) ══════════════════════
+// Detectar un estancamiento y no proponer nada es medio producto (Camilo, v353). Cuando un
+// asesorado se planta en un ejercicio, el coach ve aquí una propuesta concreta y la aplica en
+// un toque. La lógica es PURA y vive en avi-core (`shockPlan`/`applyShockOption`); esto solo
+// pinta y cablea. CANDADO: nada llega al asesorado sin que el coach lo toque — "Aplicar" cambia
+// su rutina y PRELLENA el chat, pero el mensaje lo envía él.
+function _shockMuteKey(cid,exName){ return 'shockmute_'+cid+'_'+(typeof _norm==='function'?_norm(exName):exName); }
+function _shockMuted(cid,exName){ const v=parseInt(localStorage.getItem(_shockMuteKey(cid,exName))); return !!v&&Date.now()<v; }
+// Mute LOCAL (no va a SB_KEYS a propósito: es ruido de UI de ESTE dispositivo, no dato del negocio).
+function _shockMute(cid,exName){
+  const days=(typeof SHOCK_MUTE_DAYS==='number')?SHOCK_MUTE_DAYS:21;
+  localStorage.setItem(_shockMuteKey(cid,exName),String(Date.now()+days*86400000));
+}
+function renderShockCard(c){
+  const el=document.getElementById('d-shock'); if(!el)return;
+  el.innerHTML='';el.style.display='none';CUR.shock=null;
+  if(typeof shockPlan!=='function'||typeof _insStallOf!=='function'||!c)return;
+  const sessions=(DB.history[c.id]||[]);
+  const stall=_insStallOf(sessions); if(!stall)return;
+  if(_shockMuted(c.id,stall.name))return;
+  const plan=shockPlan(c,stall.name,sessions,DB.exercises,Date.now());
+  if(!plan||!plan.options.length)return;
+  // El plan queda en memoria: los onclick van por ÍNDICE, así ningún dato del usuario
+  // (nombre de ejercicio/variante) se interpola dentro de un atributo.
+  CUR.shock={cid:c.id,exName:stall.name,plan};
+  const a=plan.analysis;
+  const _since=a.sinceStr?` desde el ${esc(a.sinceStr)}`:'';
+  const _flat=a.flatPoints>0?` · ${a.flatPoints} ${a.flatPoints===1?'sesión':'sesiones'} sin superarlo`:'';
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:12px 14px">
+    <div class="ctitle" style="margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('bolt',14):'⚡'} Plan de choque — ${esc(plan.ex.name)}</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:9px">Plantado en <strong>${esc(String(a.bestKg))} kg</strong>${_since}${_flat}.</div>
+    ${plan.warnings.map(w=>`<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:7px 9px;margin-bottom:8px;font-size:12px;line-height:1.5">${esc(w)}</div>`).join('')}
+    ${plan.options.map((o,i)=>`<div style="padding:9px 0;border-top:1px solid var(--br)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">${esc(o.title)}</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:7px">${esc(o.desc)}</div>
+      <button class="btn bp bsm" style="min-height:36px" onclick="applyShock(${i})">Aplicar</button>
+    </div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn bg bsm" style="flex:1;min-height:36px" onclick="shockWrite()">${_coIco('pencil',13,'✍️')} Escribirle</button>
+      <button class="btn bg bsm" style="min-height:36px" onclick="dismissShock()">Descartar</button>
+    </div>
+  </div>`;
+}
+// Abre el chat con el mensaje YA ESCRITO — el coach lo edita y lo envía. Jamás se envía solo.
+function _shockChat(cid,msg){
+  if(typeof openCoachChat!=='function')return;
+  openCoachChat(cid); // openCoachChat vacía el textarea al abrir → prellenar DESPUÉS
+  const ta=document.getElementById('cchat-in'); if(!ta)return;
+  ta.value=msg||'';
+  if(typeof _cchatGrow==='function')_cchatGrow(ta);
+  ta.focus();
+}
+function applyShock(i){
+  const S=CUR.shock; if(!S)return;
+  const c=DB.clients.find(x=>x.id===S.cid); if(!c)return;
+  const opt=S.plan.options[i]; if(!opt)return;
+  c.routines=applyShockOption(c.routines||[],S.exName,opt,DB.exercises);
+  sv('ax_c',DB.clients);
+  _shockMute(S.cid,S.exName);
+  renderDetailRoutines(c);renderShockCard(c);renderHome();
+  toast('✅ Plan aplicado a la rutina de '+(c.name||'').split(' ')[0]);
+  _shockChat(S.cid,opt.msg);
+}
+// Escribirle SIN tocar la rutina: usa el mensaje de la opción recomendada (la primera).
+function shockWrite(){
+  const S=CUR.shock; if(!S||!S.plan.options.length)return;
+  _shockChat(S.cid,S.plan.options[0].msg);
+}
+function dismissShock(){
+  const S=CUR.shock; if(!S)return;
+  _shockMute(S.cid,S.exName);
+  const c=DB.clients.find(x=>x.id===S.cid);
+  if(c)renderShockCard(c);
+}
 
 function renderDetailRoutines(c){
   const con=document.getElementById('d-routines');

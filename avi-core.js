@@ -2479,6 +2479,7 @@ if (typeof module !== 'undefined' && module.exports) {
     computeExerciseProgress,
     coachInsight,
     coachPulse,
+    stalledExercise: _insStallOf,
     shockPlan,
     applyShockOption,
     weekEditorial,

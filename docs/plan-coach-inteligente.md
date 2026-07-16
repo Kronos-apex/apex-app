@@ -692,7 +692,11 @@ en producción (avi-v353).** Restan como futuro opcional: capa LLM y push (adopc
 
 ### G1 — Core: `shockPlan` + `applyShockOption` (avi-core, puras) — commit 1 (con tests)
 
-- [ ] `shockPlan` · [ ] `applyShockOption` · [ ] seguridad dolor/limitaciones · [ ] tests · [ ] verificado
+- [x] `shockPlan` · [x] `applyShockOption` · [x] seguridad dolor/limitaciones · [x] tests · [x] verificado
+      (commit `b8b38e8`; suite 336→**352/352**; sabotaje de los 2 candados con árbol limpio → 3
+      tests 🔒 mordieron → restaurado verde. Desviación menor: el msg de `variante` estipulado no
+      llevaba el kg, pero el test estipulado exige «msg contiene nombre y kg» → se corrigió el
+      MENSAJE, no el test; ahora dice «lleva rato clavado en {kg} kg».)
 
 **`shockPlan(client, exName, sessions, lib, now)`** → `null` si `_insStallOf(sessions)` no
 detecta estancamiento en ESE ejercicio, o:

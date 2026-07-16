@@ -1551,13 +1551,24 @@ function renderPulse(){
   el.innerHTML=`<div class="card" style="padding:10px 14px">
     <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('bolt',13):'⚡'} El pulso de tus asesorados</div>
     ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
-      <div style="min-width:0;flex:1;cursor:pointer" onclick="openDetail('${esc(r.id)}')">
+      <div style="min-width:0;flex:1;cursor:pointer" onclick="_pulseGo('${esc(r.id)}','${esc(r.type)}')">
         <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
         <div style="font-size:11px;color:var(--t2)">${esc(r.label)}</div>
       </div>
       <button class="btn bg bsm" style="min-height:36px;padding:0 11px;flex-shrink:0" aria-label="Descartar aviso" onclick="event.stopPropagation();dismissPulse('${esc(r.id)}','${esc(r.type)}')">✕</button>
     </div>`).join('')}
   </div>`;
+}
+// Tap en una fila del pulso → la ficha. Si la fila es un estancamiento, el coach viene a HACER
+// algo: lo aterrizamos en el plan de choque (#d-shock), no en el tope de la ficha (v354).
+function _pulseGo(id,type){
+  if(typeof openDetail!=='function')return;
+  openDetail(id);
+  if(type!=='estancado')return;
+  setTimeout(()=>{
+    const el=document.getElementById('d-shock');
+    if(el&&el.style.display!=='none')el.scrollIntoView({behavior:'smooth',block:'center'});
+  },120);
 }
 function dismissPulse(id,type){
   if(!id||!type)return;
