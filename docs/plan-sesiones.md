@@ -54,7 +54,21 @@ recovery codes guardados). Ya no recordar.**
 > inteligente (un bloque=un commit con sus tests, suite antes/después, sabotaje de candados
 > con árbol limpio, bump python sin BOM, curl+prodcheck, sin AVI_NEWS salvo que se estipule).
 
-## 📋 SESIÓN H — Leads + mensajes sin leer en el orden inteligente (avi-v360)
+## ✅ SESIÓN H — Leads + mensajes sin leer en el orden inteligente — HECHA (avi-v360, 2026-07-16)
+
+> **Ejecutada por Opus.** H1 core `aac8347`: `clientAttentionRank(c,history,now,opts)` +
+> `sortClientsByAttention(...,optsById)` aditivos y puros (sin opts = v317 idéntico); tiers
+> re-numerados con 2=💬 mensaje sin leer (sev=ms desde el más viejo) y 3=🙋 pidió coach
+> (sev=días desde `wantsCoachAt`, sin fecha al final — lección v359), suspendido tier 7 al
+> fondo. +11 tests (suite 365→376). H2 UI `dd4996a`: `renderClients` arma `optsById` desde
+> `DB.msgs`+`ax_msgreads`, chips unread(azul)/lead(naranja), se suprime el badge «Quiere coach»
+> redundante cuando el chip ya dice «Pidió coach»; `_verify-v317` +5 checks V360. Sabotajes
+> (corte de suspendido · lead sin fecha rankeando primero) mordieron y se restauraron. Cinturón
+> completo verde (v317 22/22, coachlead 4/4, pulse, coach 12/12, coach-back, modales 12/12,
+> guiado 53/53). Deploy `ea23727` v360, `_prodcheck 360` verde. Desviaciones menores
+> documentadas: 3 aserciones de tier absoluto de v317 ajustadas al re-numerar; cohesión del
+> badge duplicado. SIN AVI_NEWS. Detalle: bitácora parte 65. Falta verificación de Fable.
+> Spec original abajo (referencia).
 
 **Por qué primero:** los 21 leads "quiere coach" son conversiones a Premium enterradas en la
 lista; el mensaje sin leer es la señal #1 que un coach espera (aviso Lucas v317). Ambos son
