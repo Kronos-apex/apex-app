@@ -40,13 +40,15 @@ async function setTheme(t) { await ev(`typeof setTheme==='function' && setTheme(
 // texto: así el check no depende del copy. innerText aplica text-transform (gotcha v352) → el
 // texto se compara case-insensitive.
 const shockCard = `(()=>{const el=document.getElementById('d-shock');
-  if(!el||getComputedStyle(el).display==='none')return {shown:false,opts:0,warns:0,text:''};
-  const card=el.querySelector('.card'); if(!card)return {shown:false,opts:0,warns:0,text:''};
-  const btns=[...card.querySelectorAll('button')];
+  if(!el||getComputedStyle(el).display==='none')return {shown:false,opts:0,warns:0,text:'',sections:0,deload:false};
+  const card=el.querySelector('.card'); if(!card)return {shown:false,opts:0,warns:0,text:'',sections:0,deload:false};
+  const btns=[...card.querySelectorAll('button')]; const oc=b=>b.getAttribute('onclick')||'';
   return {shown:true,
-    opts:btns.filter(b=>/applyShock\\(/.test(b.getAttribute('onclick')||'')).length,
-    write:btns.some(b=>/shockWrite\\(/.test(b.getAttribute('onclick')||'')),
-    dismiss:btns.some(b=>/dismissShock\\(/.test(b.getAttribute('onclick')||'')),
+    opts:btns.filter(b=>/applyShock\\(/.test(oc(b))).length,
+    write:btns.some(b=>/shockWrite\\(/.test(oc(b))),
+    dismiss:btns.some(b=>/dismissShock\\(/.test(oc(b)))||btns.some(b=>/dismissShockGlobal\\(/.test(oc(b))),
+    sections:btns.filter(b=>/shockWrite\\(/.test(oc(b))).length,
+    deload:btns.some(b=>/shockDeload\\(/.test(oc(b))),
     warns:[...card.querySelectorAll('div')].filter(d=>/--orl/.test(d.getAttribute('style')||'')).length,
     text:el.innerText};})()`;
 
@@ -76,6 +78,32 @@ const fixture = (extra) => `(()=>{try{
   return true;
 }catch(e){return 'err:'+e.message+' | '+e.stack;}})()`;
 
+// Fase 4.1: historial con VARIOS ejercicios plantados. specs=[{name,muscle,kgs:[6 cronológicos]}].
+// Patrones que estancan: techo en los 2 primeros puntos; FLAT5 (techo idx0) tiene MÁS puntos planos
+// que FLAT4 (techo idx1). Cada ejercicio tiene su entrada en una sola rutina.
+const multiFixture = (specs) => `(()=>{try{
+  ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
+  const specs=${JSON.stringify(specs)};
+  const N=6, out=[];
+  for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(N-1-i)*3*86400000).toISOString(),routineName:'R',
+    exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[i]),reps:'8'}]}))}); }
+  const sess=out.reverse();
+  const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+    payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
+    routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))}]};
+  DB.clients=[c]; DB.history={a1:sess}; DB.prs={}; DB.msgs={};
+  for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&(kk.indexOf('shockmute_')===0||kk.indexOf('coachpulse_')===0))localStorage.removeItem(kk);}
+  window.CUR=window.CUR||{}; CUR.loggedAs='coach';
+  showScreen('s-coach');
+  gp('p-detail',null,'Detalle',true);
+  CUR.clientId=c.id;
+  renderShockCard(c);
+  document.getElementById('s-coach').scrollTop=0;
+  const _el=document.getElementById('d-shock'); if(_el&&_el.style.display!=='none')_el.scrollIntoView();
+  return true;
+}catch(e){return 'err:'+e.message+' | '+e.stack;}})()`;
+const FLAT5=[62,60,60,60,60,60], FLAT4=[60,62,60,60,60,60];
+
 try {
   await waitFor(`!!document.getElementById('s-login') && typeof showScreen==='function' && !document.getElementById('avi-loading')`);
   await sleep(2000);
@@ -100,7 +128,7 @@ try {
   await sleep(300);
   s = await evj(shockCard);
   await shot('S2-dolor');
-  const pesadoConDolor = await ev(`(()=>{const o=(CUR.shock&&CUR.shock.plan.options)||[];return o.some(x=>x.id==='pesado');})()`);
+  const pesadoConDolor = await ev(`(()=>{const o=(CUR.shock&&CUR.shock.targets&&CUR.shock.targets[0].plan.options)||[];return o.some(x=>x.id==='pesado');})()`);
   check('🔒 S2 dolor activo → SIN bloque pesado 5×5', s.shown && s.opts === 2 && pesadoConDolor === false, 'opts=' + s.opts + ' pesado=' + pesadoConDolor);
   check('S2b el coach ve el aviso de dolor', s.warns >= 1 && /dolor/i.test(s.text), 'warns=' + s.warns);
 
@@ -110,7 +138,7 @@ try {
   const applied = await evj(`(()=>{
     const el=document.getElementById('d-shock');
     const btns=[...el.querySelectorAll('button')].filter(b=>/applyShock\\(/.test(b.getAttribute('onclick')||''));
-    const idx=CUR.shock.plan.options.findIndex(o=>o.id==='pesado');
+    const idx=CUR.shock.targets[0].plan.options.findIndex(o=>o.id==='pesado');
     btns[idx].click();
     const c=DB.clients.find(x=>x.id==='a1');
     const rows=[];
@@ -138,10 +166,10 @@ try {
   await ev(fixture());
   await sleep(300);
   const swap = await evj(`(()=>{
-    const idx=CUR.shock.plan.options.findIndex(o=>o.id==='variante');
+    const idx=CUR.shock.targets[0].plan.options.findIndex(o=>o.id==='variante');
     if(idx<0)return {skip:true};
-    const cand=CUR.shock.plan.options[idx].apply.swapTo;
-    applyShock(idx);
+    const cand=CUR.shock.targets[0].plan.options[idx].apply.swapTo;
+    applyShock(0,idx);
     const c=DB.clients.find(x=>x.id==='a1');
     const a=c.routines[0].exercises[0], b=c.routines[1].exercises[0];
     return {cand, a:{id:a.id,name:a.name,muscle:a.muscle,sets:a.sets,reps:a.reps}, b:{sets:b.sets,reps:b.reps,name:b.name}};})()`);
@@ -200,6 +228,79 @@ try {
     renderShockCard(c);
     return {display:getComputedStyle(document.getElementById('d-shock')).display, shock:CUR.shock};})()`);
   check('S9 si el asesorado progresa → sin tarjeta (no inventa mesetas)', sin.display === 'none' && !sin.shock, JSON.stringify(sin));
+
+  // ══════════════ FASE 4.1 — MÚLTIPLES ESTANCAMIENTOS ══════════════
+  // ── S10: 2 del MISMO músculo → 1 sección + nota "también se plantó" (gana el más clavado) ──
+  const s10 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT4 }, // menos clavado
+    { name: 'Remo con Barra', muscle: 'espalda', kgs: FLAT5 }, // MÁS clavado → gana
+  ]));
+  if (s10 !== true) throw new Error('S10 setup: ' + s10);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S10-mismo-musculo');
+  const s10win = await ev(`(()=>{const t=(CUR.shock&&CUR.shock.targets)||[];return t.length===1?t[0].exName:('n='+t.length);})()`);
+  check('S10 mismo músculo → 1 sola sección', s.shown && s.sections === 1, 'sections=' + s.sections);
+  check('S10b ataca el más plantado (Remo), el otro en la nota', s10win === 'Remo con Barra' && /jal[oó]n al pecho.*tambi[eé]n se plant/i.test(s.text.replace(/\n/g, ' ')), 'win=' + s10win);
+
+  // ── S11: 2 músculos DISTINTOS → 2 secciones; aplicar la 1ª NO oculta la 2ª ──
+  const s11 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+  ]));
+  if (s11 !== true) throw new Error('S11 setup: ' + s11);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S11-dos-musculos');
+  check('S11 dos músculos → 2 secciones (en paralelo)', s.shown && s.sections === 2, 'sections=' + s.sections);
+  // Aplica la opción "remonta" del PRIMER target y comprueba que el segundo SIGUE visible.
+  const s11b = await evj(`(()=>{
+    const t0=CUR.shock.targets[0].exName, t1=CUR.shock.targets[1].exName;
+    const oi=CUR.shock.targets[0].plan.options.findIndex(o=>o.id==='remonta');
+    applyShock(0,oi);
+    const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on');
+    const sec=(CUR.shock&&CUR.shock.targets||[]).map(x=>x.exName);
+    return {t0,t1,shownAfter:getComputedStyle(document.getElementById('d-shock')).display!=='none',remaining:sec};})()`);
+  check('S11b aplicar el 1º NO oculta el 2º (recuperación independiente)', s11b.shownAfter && s11b.remaining.length === 1 && s11b.remaining[0] === s11b.t1, JSON.stringify(s11b.remaining));
+
+  // ── S12 (CANDADO GLOBAL): 3 estancados → tarjeta global SIN Aplicar de protocolo + CTA descarga ──
+  const s12 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: FLAT4 },
+  ]));
+  if (s12 !== true) throw new Error('S12 setup: ' + s12);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S12-global');
+  const s12mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
+  check('S12 3+ estancados → modo global (fatiga sistémica)', s12mode === 'global', 'mode=' + s12mode);
+  check('S12b la tarjeta NO ofrece protocolos por ejercicio (0 botones Aplicar)', s.shown && s.opts === 0, 'opts=' + s.opts);
+  check('S12c ofrece la CTA de semana de descarga', s.deload === true && /descarga/i.test(s.text));
+  // Click real en "Generar semana de descarga" → abre m-gen con #mg-deload marcado.
+  const s12d = await evj(`(()=>{
+    document.querySelector('#d-shock button[onclick*="shockDeload"]').click();
+    const mg=document.getElementById('m-gen');
+    return {gopen:!!(mg&&mg.classList.contains('on')), deloadChk:!!(document.getElementById('mg-deload')||{}).checked, curDeload:!!CUR.genDeload};})()`);
+  check('🔒 S12d el click abre el generador (m-gen) con la descarga marcada', s12d.gopen && s12d.deloadChk && s12d.curDeload, JSON.stringify(s12d));
+  await shot('S12-gen-deload');
+  await ev(`(()=>{const m=document.getElementById('m-gen');if(m)m.classList.remove('on');})()`);
+
+  // ── S13: mute independiente — silenciar (aplicar) el target 1 deja visible el 2 al re-render ──
+  const s13 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
+    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+  ]));
+  if (s13 !== true) throw new Error('S13 setup: ' + s13);
+  await sleep(400);
+  const s13r = await evj(`(()=>{
+    const t0=CUR.shock.targets[0].exName;
+    // Mutea SOLO el primero por su clave de ejercicio y re-renderiza (sin tocar el segundo).
+    localStorage.setItem('shockmute_a1_'+_norm(t0),String(Date.now()+21*86400000));
+    renderShockCard(DB.clients[0]);
+    const t=(CUR.shock&&CUR.shock.targets||[]).map(x=>x.exName);
+    return {t0, shown:getComputedStyle(document.getElementById('d-shock')).display!=='none', remaining:t};})()`);
+  check('S13 mutear un target deja VISIBLE el otro (mute por ejercicio)', s13r.shown && s13r.remaining.length === 1 && s13r.remaining[0] !== s13r.t0, JSON.stringify(s13r.remaining));
 
   // ── Shots ambos temas ──
   await ev(fixture());

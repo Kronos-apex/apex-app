@@ -1267,12 +1267,17 @@ function delClient(){
 
 // ══════════════════════ ROUTINES ══════════════════════
 
-// ══════════════════════ PLAN DE CHOQUE (v354, Fase 4) ══════════════════════
+// ══════════════════════ PLAN DE CHOQUE (v354 Fase 4 · v355 Fase 4.1) ══════════════════════
 // Detectar un estancamiento y no proponer nada es medio producto (Camilo, v353). Cuando un
-// asesorado se planta en un ejercicio, el coach ve aquí una propuesta concreta y la aplica en
-// un toque. La lógica es PURA y vive en avi-core (`shockPlan`/`applyShockOption`); esto solo
-// pinta y cablea. CANDADO: nada llega al asesorado sin que el coach lo toque — "Aplicar" cambia
-// su rutina y PRELLENA el chat, pero el mensaje lo envía él.
+// asesorado se planta, el coach ve aquí una propuesta concreta y la aplica en un toque. La lógica
+// es PURA y vive en avi-core (`shockTargets`/`shockPlan`/`applyShockOption`); esto solo pinta y
+// cablea. CANDADO: nada llega al asesorado sin que el coach lo toque — "Aplicar" cambia su rutina
+// y PRELLENA el chat, pero el mensaje lo envía él.
+// Fase 4.1 (múltiples estancamientos, criterio del coach profesional):
+//   · 1-2 músculos → tarjeta multi-sección (uno por músculo, el más plantado; el hermano en `also`).
+//     Aplicar/Escribirle POR sección; mute POR ejercicio → aplicar a uno NO oculta al otro.
+//   · 3+ ejercicios a la vez → fatiga sistémica → tarjeta GLOBAL: no propone protocolos por
+//     ejercicio, sino una SEMANA DE DESCARGA (cablea el generador ya existente con #mg-deload).
 function _shockMuteKey(cid,exName){ return 'shockmute_'+cid+'_'+(typeof _norm==='function'?_norm(exName):exName); }
 function _shockMuted(cid,exName){ const v=parseInt(localStorage.getItem(_shockMuteKey(cid,exName))); return !!v&&Date.now()<v; }
 // Mute LOCAL (no va a SB_KEYS a propósito: es ruido de UI de ESTE dispositivo, no dato del negocio).
@@ -1280,34 +1285,75 @@ function _shockMute(cid,exName){
   const days=(typeof SHOCK_MUTE_DAYS==='number')?SHOCK_MUTE_DAYS:21;
   localStorage.setItem(_shockMuteKey(cid,exName),String(Date.now()+days*86400000));
 }
+// Mute del modo GLOBAL: clave propia, ventana más corta (SHOCK_GLOBAL_MUTE_DAYS=7) — si está
+// sistémicamente fundido, una semana después hay que volver a mirar.
+function _shockGlobalMuteKey(cid){ return 'shockmute_'+cid+'__global'; }
+function _shockGlobalMuted(cid){ const v=parseInt(localStorage.getItem(_shockGlobalMuteKey(cid))); return !!v&&Date.now()<v; }
+function _shockGlobalMute(cid){
+  const days=(typeof SHOCK_GLOBAL_MUTE_DAYS==='number')?SHOCK_GLOBAL_MUTE_DAYS:7;
+  localStorage.setItem(_shockGlobalMuteKey(cid),String(Date.now()+days*86400000));
+}
+function _shockBolt(){ return typeof aviIcon==='function'?aviIcon('bolt',14):'⚡'; }
+// HTML del análisis de un target (kg plantado + fecha + sesiones planas).
+function _shockAnalysisLine(a){
+  const _since=a.sinceStr?` desde el ${esc(a.sinceStr)}`:'';
+  const _flat=a.flatPoints>0?` · ${a.flatPoints} ${a.flatPoints===1?'sesión':'sesiones'} sin superarlo`:'';
+  return `<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Plantado en <strong>${esc(String(a.bestKg))} kg</strong>${_since}${_flat}.</div>`;
+}
 function renderShockCard(c){
   const el=document.getElementById('d-shock'); if(!el)return;
   el.innerHTML='';el.style.display='none';CUR.shock=null;
-  if(typeof shockPlan!=='function'||typeof _insStallOf!=='function'||!c)return;
+  if(typeof shockTargets!=='function'||typeof shockPlan!=='function'||!c)return;
   const sessions=(DB.history[c.id]||[]);
-  const stall=_insStallOf(sessions); if(!stall)return;
-  if(_shockMuted(c.id,stall.name))return;
-  const plan=shockPlan(c,stall.name,sessions,DB.exercises,Date.now());
-  if(!plan||!plan.options.length)return;
-  // El plan queda en memoria: los onclick van por ÍNDICE, así ningún dato del usuario
-  // (nombre de ejercicio/variante) se interpola dentro de un atributo.
-  CUR.shock={cid:c.id,exName:stall.name,plan};
-  const a=plan.analysis;
-  const _since=a.sinceStr?` desde el ${esc(a.sinceStr)}`:'';
-  const _flat=a.flatPoints>0?` · ${a.flatPoints} ${a.flatPoints===1?'sesión':'sesiones'} sin superarlo`:'';
+  const tg=shockTargets(sessions); if(!tg)return;
+
+  // ── Modo GLOBAL: fatiga sistémica → semana de descarga (no N protocolos) ──
+  if(tg.mode==='global'){
+    if(_shockGlobalMuted(c.id))return;
+    CUR.shock={cid:c.id,mode:'global',count:tg.count,names:tg.names};
+    el.style.display='block';
+    el.innerHTML=`<div class="card" style="padding:12px 14px">
+      <div class="ctitle" style="margin-bottom:4px">${_shockBolt()} Atención — ${tg.count} ejercicios plantados a la vez</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:10px">${esc(tg.names.join(', '))} se estancaron a la vez. Eso ya no es un problema de un ejercicio: es <strong>fatiga acumulada</strong> (sueño, comida o estrés cuentan). Lo correcto es una <strong>semana de descarga</strong>, no forzar cada uno.</div>
+      <button class="btn bp bsm" style="width:100%;min-height:38px;margin-bottom:8px" onclick="shockDeload()">Generar semana de descarga</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn bg bsm" style="flex:1;min-height:36px" onclick="shockWriteGlobal()">${_coIco('pencil',13,'✍️')} Escribirle</button>
+        <button class="btn bg bsm" style="min-height:36px" onclick="dismissShockGlobal()">Descartar</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  // ── Modo MULTI: 1-2 secciones (una por músculo). Filtra los targets muteados por ejercicio. ──
+  const targets=[];
+  tg.targets.forEach(t=>{
+    if(_shockMuted(c.id,t.name))return;
+    const plan=shockPlan(c,t.name,sessions,DB.exercises,Date.now());
+    if(!plan||!plan.options.length)return;
+    targets.push({exName:t.name,also:(t.also||[]),plan});
+  });
+  if(!targets.length)return; // todos muteados o sin plan aplicable
+  // El plan vive en memoria (CUR.shock): los onclick van por ÍNDICE de sección+opción, así ningún
+  // dato del usuario (nombre de ejercicio/variante) se interpola dentro de un atributo.
+  CUR.shock={cid:c.id,mode:'multi',targets};
+  const multi=targets.length>1;
   el.style.display='block';
   el.innerHTML=`<div class="card" style="padding:12px 14px">
-    <div class="ctitle" style="margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('bolt',14):'⚡'} Plan de choque — ${esc(plan.ex.name)}</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:9px">Plantado en <strong>${esc(String(a.bestKg))} kg</strong>${_since}${_flat}.</div>
-    ${plan.warnings.map(w=>`<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:7px 9px;margin-bottom:8px;font-size:12px;line-height:1.5">${esc(w)}</div>`).join('')}
-    ${plan.options.map((o,i)=>`<div style="padding:9px 0;border-top:1px solid var(--br)">
-      <div style="font-size:13px;font-weight:700;margin-bottom:2px">${esc(o.title)}</div>
-      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:7px">${esc(o.desc)}</div>
-      <button class="btn bp bsm" style="min-height:36px" onclick="applyShock(${i})">Aplicar</button>
+    <div class="ctitle" style="margin-bottom:8px">${_shockBolt()} ${multi?'Planes de choque':'Plan de choque'}</div>
+    ${targets.map((T,ti)=>`<div style="padding:9px 0;border-top:1px solid var(--br)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px">${esc(T.exName)}</div>
+      ${_shockAnalysisLine(T.plan.analysis)}
+      ${T.also.length?`<div style="background:var(--gl);border-radius:var(--rsm);padding:6px 9px;margin-bottom:8px;font-size:11px;color:var(--gt);line-height:1.5">${esc(T.also.join(', '))} también se plantó — destrabemos este primero.</div>`:''}
+      ${T.plan.warnings.map(w=>`<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:7px 9px;margin-bottom:8px;font-size:12px;line-height:1.5">${esc(w)}</div>`).join('')}
+      ${T.plan.options.map((o,oi)=>`<div style="padding:7px 0 3px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:2px">${esc(o.title)}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:7px">${esc(o.desc)}</div>
+        <button class="btn bp bsm" style="min-height:36px" onclick="applyShock(${ti},${oi})">Aplicar</button>
+      </div>`).join('')}
+      <div style="margin-top:8px"><button class="btn bg bsm" style="min-height:36px" onclick="shockWrite(${ti})">${_coIco('pencil',13,'✍️')} Escribirle</button></div>
     </div>`).join('')}
-    <div style="display:flex;gap:6px;margin-top:10px">
-      <button class="btn bg bsm" style="flex:1;min-height:36px" onclick="shockWrite()">${_coIco('pencil',13,'✍️')} Escribirle</button>
-      <button class="btn bg bsm" style="min-height:36px" onclick="dismissShock()">Descartar</button>
+    <div style="display:flex;margin-top:10px">
+      <button class="btn bg bsm" style="min-height:36px" onclick="dismissShock()">${multi?'Descartar todos':'Descartar'}</button>
     </div>
   </div>`;
 }
@@ -1320,25 +1366,52 @@ function _shockChat(cid,msg){
   if(typeof _cchatGrow==='function')_cchatGrow(ta);
   ta.focus();
 }
-function applyShock(i){
-  const S=CUR.shock; if(!S)return;
+// Aplica la opción `oi` del target `ti` a la rutina. Muta SOLO ese ejercicio → los otros targets
+// siguen visibles. Prellena el chat con el mensaje de esa opción.
+function applyShock(ti,oi){
+  const S=CUR.shock; if(!S||S.mode!=='multi')return;
+  const T=S.targets[ti]; if(!T)return;
+  const opt=T.plan.options[oi]; if(!opt)return;
   const c=DB.clients.find(x=>x.id===S.cid); if(!c)return;
-  const opt=S.plan.options[i]; if(!opt)return;
-  c.routines=applyShockOption(c.routines||[],S.exName,opt,DB.exercises);
+  c.routines=applyShockOption(c.routines||[],T.exName,opt,DB.exercises);
   sv('ax_c',DB.clients);
-  _shockMute(S.cid,S.exName);
+  _shockMute(S.cid,T.exName);
   renderDetailRoutines(c);renderShockCard(c);renderHome();
   toast('✅ Plan aplicado a la rutina de '+(c.name||'').split(' ')[0]);
   _shockChat(S.cid,opt.msg);
 }
-// Escribirle SIN tocar la rutina: usa el mensaje de la opción recomendada (la primera).
-function shockWrite(){
-  const S=CUR.shock; if(!S||!S.plan.options.length)return;
-  _shockChat(S.cid,S.plan.options[0].msg);
+// Escribirle SIN tocar la rutina: usa el mensaje de la opción recomendada (la primera) de ese target.
+function shockWrite(ti){
+  const S=CUR.shock; if(!S||S.mode!=='multi')return;
+  const T=S.targets[ti]; if(!T||!T.plan.options.length)return;
+  _shockChat(S.cid,T.plan.options[0].msg);
 }
+// Descartar: silencia TODOS los targets visibles (mute por ejercicio) y re-renderiza.
 function dismissShock(){
+  const S=CUR.shock; if(!S||S.mode!=='multi')return;
+  S.targets.forEach(T=>_shockMute(S.cid,T.exName));
+  const c=DB.clients.find(x=>x.id===S.cid);
+  if(c)renderShockCard(c);
+}
+// ── Modo global: descarga / escribir / descartar ──
+// Cablea el generador YA existente: abre m-gen, marca #mg-deload y regenera con descarga. El
+// borrador sigue teniendo el candado del coach (él aprueba antes de asignar) — no se toca.
+function shockDeload(){
+  const S=CUR.shock; if(!S||S.mode!=='global')return;
+  if(typeof openGenRutinas!=='function')return;
+  CUR.clientId=S.cid;
+  openGenRutinas();
+  const dl=document.getElementById('mg-deload'); if(dl)dl.checked=true;
+  if(typeof toggleGenDeload==='function')toggleGenDeload(true); // marca CUR.genDeload + re-genera
+}
+function shockWriteGlobal(){
+  const S=CUR.shock; if(!S||S.mode!=='global')return;
+  const first=(((DB.clients.find(x=>x.id===S.cid)||{}).name||'').split(' ')[0])||'';
+  _shockChat(S.cid,first+', vi que varios ejercicios se te estancaron a la vez. Esta semana bajamos revoluciones a propósito: es una descarga programada para recuperar, no un retroceso. Volvemos con todo la próxima 💪');
+}
+function dismissShockGlobal(){
   const S=CUR.shock; if(!S)return;
-  _shockMute(S.cid,S.exName);
+  _shockGlobalMute(S.cid);
   const c=DB.clients.find(x=>x.id===S.cid);
   if(c)renderShockCard(c);
 }
