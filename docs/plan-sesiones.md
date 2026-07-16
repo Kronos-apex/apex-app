@@ -70,6 +70,85 @@ recovery codes guardados). Ya no recordar.**
 > badge duplicado. SIN AVI_NEWS. Detalle: bitácora parte 65. Falta verificación de Fable.
 > Spec original abajo (referencia).
 
+### 🟢 VEREDICTO DE FABLE — SESIÓN H APROBADA (verificación 2026-07-16, base `23ce911` → v360 `4497d29`)
+
+- [x] **Diff completo leído** (10 archivos, 241+/39−): avi-core solo re-numera tiers e inserta
+  los bloques unread(2)/lead(3); app-3 solo `_optsById` + chips + supresión del badge; index/sw
+  solo bump v360; tests/harness/docs. Sin scope creep. **PURO verificado:** ni `localStorage` ni
+  `DB` dentro de `clientAttentionRank`/`sortClientsByAttention` — el estado de lectura entra por
+  `opts` y lo arma la vista. Labels del chip = texto fijo + entero (`d` calculado) → sin datos de
+  usuario en innerHTML, no requiere `esc()`. Mutes/estado nuevos: ninguno (reusa `ax_msgreads`
+  v321, que ya estaba en SB_KEYS+`_COACH_SETTINGS_KEYS`).
+- [x] **Suite 376/376** re-corrida por Fable (antes y después de cada sabotaje). Baseline del
+  hook 365→376 correcto.
+- [x] **Sabotajes con árbol LIMPIO, ejecutados por Fable (no reusé los de Opus):**
+  (a) corte de suspendido esquivable con mensajes (`c.suspended && !(opts&&opts.msgs)`) → mordió
+  «SUSPENDIDO con mensaje sin leer SIGUE al fondo» (375/376); (b) lead sin `wantsCoachAt` con
+  `sev:9999` → mordió «lead sin wantsCoachAt → sev 0 al FINAL» (375/376) — candado de la lección
+  v359 vivo; (c) sabotaje PROPIO: unread ignorando `lastReadTs` (`t > 0` en vez de `t > readTs`)
+  → mordió «lastReadTs posterior → ya leído, NO sube» (375/376). Restaurado tras cada uno;
+  suite 376/376 y `git status` limpio al final.
+- [x] **Harness `_verify-v317.mjs` 22/22, cero jsErrors.** Los +5 checks V360 ejercitan de
+  verdad: Caro (unread) sube al TOPE sobre leads y sanos; leads por antigüedad **contra** el
+  alfabeto (Beto −5d antes que Ana −1d — si mandara el nombre, Ana iría primero); chips
+  «💬 Mensaje sin responder» y «🙋 Pidió coach hace 5d» presentes; `markCoachRead('unread')` +
+  re-render BAJA a Caro del tier 2 (cae detrás de ambos leads). El harness usa el
+  `markCoachRead` REAL (no un stub) → prueba el cableado completo lectura→orden.
+- [x] **Fix v359 intacto:** `_verify-coachlead` 4/4 (lead nuevo notifica; viejos con/sin fecha
+  callados; spam=0 en 2 sesiones).
+- [x] **La MEDIDA de unread verificada a mano contra el código real:** cuenta mensajes
+  `from!=='coach'` con `Date.parse(m.date)` FINITO y `> lastReadTs`; sin fecha parseable → NO
+  cuenta (lección v359, cero fechas inventadas); `lastReadTs` null/NaN → 0 (época) = nunca leyó,
+  todo cuenta (conservador: a lo sumo muestra un no-leído de más, jamás esconde uno). Forma REAL
+  de `ax_msgreads` confirmada: `markCoachRead` escribe `{id: iso}` (app-3:1876) y `renderClients`
+  lo consume con `_coachReads()` + `Date.parse(iso)` — mismo mapa, misma unidad. La hidratación
+  cross-device (app-3:694) fusiona tomando el leído MÁS RECIENTE por asesorado → un chat leído
+  en el celular NO resucita como no-leído en la PC. **Sin desajuste.** Todos los emisores de
+  mensajes escriben `date: toISOString()` (7 sitios greppeados) → parsea siempre.
+- [x] **Cinturón COMPLETO re-corrido por Fable:** suite 376/376 · `_verify-v317` 22/22 ·
+  `_verify-coachlead` 4/4 · `_verify-pulse` 6/6 · `_verify-coach` 12/12 · `_test-coach-back` OK ·
+  `_verify-modals` 12/12 · `_guiado-suite` 53/53 — cero jsErrors en todos. (El guiado dio 1
+  falso rojo por rate-limit al colisionar con otro harness de login; en corrida limpia
+  secuencial: 53/53 dos veces.)
+- [x] **Prod re-verificada por Fable:** curl con nocache sirve `?v=360` (único) · primeros bytes
+  SIN BOM (`<!D` index.html, `con` sw.js) · `_prodcheck.mjs 360` verde (boot limpio,
+  login/core/renderToday true, cero jsErrors).
+- [x] **Tono (cara del coach):** «💬 Mensaje sin responder» · «🙋 Pidió coach hace Xd» /
+  «hoy» / a secas si no hay fecha (no afirma cuándo) — claros y accionables. **SIN AVI_NEWS**
+  (grep del diff: solo menciones en docs). Commits con granularidad correcta (H1+tests · H2+harness
+  · deploy · docs).
+
+**Juicio de las 2 desviaciones declaradas por Opus — ambas ACEPTABLES, no son scope creep:**
+1. *3 aserciones de tier absoluto ajustadas (idle 3→5, suspendido 5→7 ×2):* forzadas por la
+   re-numeración que la PROPIA spec estipula — la frase de la spec «los 10 tests pasan sin
+   tocarse» era internamente inconsistente con sus tiers nuevos (error de la spec, no del
+   ejecutor). Lo que prueba el refactor (los `.reason`, los labels, el orden relativo del
+   `sortClientsByAttention` viejo) quedó INTACTO — verificado en el diff línea a línea.
+2. *Supresión del badge «🙋 Quiere coach» cuando el chip ya dice «Pidió coach»:* solo aplica si
+   `reason==='lead'`. Verifiqué los otros caminos: lead con unread (reason='unread') CONSERVA el
+   badge + gana el chip 💬; lead con dolor/vencido/suspendido conserva el badge; el 🆓 Libre no
+   se toca. Ninguna señal se pierde; es de-duplicación visual dentro del alcance de la sesión.
+
+**Observaciones para el radar (no bloquean):**
+- La frase «sin opts = v317 idéntico» es IMPRECISA para leads: el tier 3 se detecta por
+  `c.wantsCoach` (campo del cliente, no necesita opts) → un lead que en v317 rankeaba «ok» ahora
+  rankea tier 3 aun sin opts. Es EXACTAMENTE lo estipulado (decisión D1) y el único caller es
+  `renderClients`, pero que el próximo refactor no se fíe de esa frase al pie de la letra.
+- Los 21 leads viejos SIN `wantsCoachAt` empatan en sev 0 → quedan al final del tier 3 en orden
+  ALFABÉTICO, no por antigüedad (no hay fecha que ordenar — correcto, pero que Camilo lo sepa).
+- Medida unread = `from!=='coach'` vs badge de bandeja = `from==='client'`: equivalentes HOY
+  (todos los emisores usan uno de los dos), divergirían si algún día aparece un tercer `from`.
+  Los mensajes automáticos `system:true` (aviso de dolor) cuentan como no-leídos en AMBOS →
+  coherente.
+- El sev del tier 2 va en ms y el de los demás tiers en días/enteros — nunca se comparan entre
+  tiers (el tier corta primero), pero ningún test protege esa unidad; un refactor que compare
+  sev cross-tier se rompería en silencio.
+
+### 🟢 VEREDICTO: SESIÓN H APROBADA — los 3 sabotajes mordieron, la medida de unread coincide
+punta a punta con lo que escribe `markCoachRead` (sin resurrecciones cross-device), el candado
+del suspendido y la lección v359 siguen blindados, cinturón completo y prod v360 verdes.
+Ciclo estipular→ejecutar→verificar CERRADO (1º del plan H-M).
+
 **Por qué primero:** los 21 leads "quiere coach" son conversiones a Premium enterradas en la
 lista; el mensaje sin leer es la señal #1 que un coach espera (aviso Lucas v317). Ambos son
 la MISMA función (`clientAttentionRank`) → una sesión.
