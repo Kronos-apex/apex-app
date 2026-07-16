@@ -750,7 +750,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-16 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v356** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **364/364** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-16 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v357** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **364/364** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Coach Inteligente Fases 1+2+3+4+4.1 EN PROD (v355, 2026-07-16): Capa A `adapt.care` + Capa B `coachInsight` (8 señales, `#cn-coach-card` en Hoy) + Pulso del coach `coachPulse` (`#h-pulse` en Inicio) + **PLAN DE CHOQUE** `shockPlan`/`applyShockOption` (`#d-shock` en la ficha) + **MÚLTIPLES ESTANCAMIENTOS** `shockTargets` (v355: mismo músculo=uno primero con nota «también se plantó» · músculos distintos=en paralelo · 3+=fatiga sistémica→CTA semana de descarga que cablea el generador). Falta capa LLM opcional y push (futuro). Plan+verificación en `docs/plan-coach-inteligente.md`.*
 
