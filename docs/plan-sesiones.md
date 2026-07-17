@@ -464,6 +464,70 @@ Considerarlo si el caso «sin teléfono» resulta frecuente. (5) A2 verifica que
 ensucia pero no que `DB.msgs` no crece en la rama WhatsApp — hueco teórico mínimo del
 harness (hoy imposible por código); si alguien toca la función, añadir esa aserción espejo.
 
+## 🟢 § VERDICTO FIX WHATSAPP v365 (Fable) — `waPhone` normaliza el teléfono: **APROBADA** (2026-07-17)
+
+Fix de raíz del bug de clase que yo mismo señalé (radar #3 de mi verdicto v364): los 3
+nudges de WhatsApp asumían número CON indicativo. Verificación independiente completa
+contra la línea base `85e21da` (HEAD `aacddd0`, código `826fc6e`). Todo re-corrido por mí;
+ningún número tomado del reporte de Opus.
+
+1. **Diff (`git diff 85e21da HEAD`, 10 archivos, +62/−20):** SOLO lo estipulado — helper
+   `waPhone(raw)` puro en avi-core (con comentario de raíz completo) + export dual; los 3
+   callers cambiados a `waPhone(c.phone)` (app-3:1966 `coachInviteOpenApp`, app-6:2335
+   `whatsappReminder`, app-6:2352 `whatsappNudge`); +1 test en avi.test.js (import + caso);
+   harness A2 pasa a sembrar número PELÓN «300 123 4567»; baseline 385→386; bump ?v=365
+   ×10 + CACHE `avi-v365`; CLAUDE.md (gotcha wa.me + footer) + bitácora 70. **CERO scope
+   creep.** Greps re-corridos por mí: NINGÚN `wa.me/${...}` con número quedó fuera de
+   `waPhone` — los únicos `wa.me` restantes son los fallback `wa.me/?text=` sin número
+   (app-6 ×2 en los propios callers, app-5:447 = share del plan nutricional sin teléfono,
+   correcto que no se toque) y el único `replace(/\D/g,'')` vivo en app-*.js es el de
+   DENTRO de `waPhone` (avi-core:2583). La clase quedó cerrada de verdad.
+2. **Suite re-corrida por mí: 386/386** (subió de 385 exactamente por el test `waPhone`;
+   cero regresiones en el resto).
+3. **Prueba de raíz — EL TEST MUERDE:** con árbol limpio saboteé `waPhone` al
+   comportamiento viejo (`return d` sin normalizar) → **385/386 con SOLO el test `waPhone`
+   en rojo**; restaurado con `git checkout` → 386/386. La regresión de clase tiene diente.
+4. **Harness re-corrido por mí:** `_verify-chatunified.mjs` **20/20**, cero jsErrors. A2
+   capturado con mis ojos: siembra `c.phone='300 123 4567'` (pelón) y `window.open`
+   stubbeado recibe `https://wa.me/573001234567?text=Hola%20Ana%20…` — el fix cruza
+   core→UI de punta a punta. Sin jitter de rate-limit esta vez.
+5. **Sabotajes propios (2 inventados; 1 mordió, 1 CAZÓ UNA BRECHA):** (a) regla cambiada a
+   `d[0]==='1'` (país equivocado) → FAIL 385/386, muerde. (b) **quitar el guard de longitud
+   (`d.length===10`) → la suite quedó VERDE 386/386**: ningún caso del test empieza por 3
+   con largo ≠ 10. El guard es load-bearing (un móvil español «34 612 345 678» guardado sin
+   `+` son 11 dígitos que empiezan por 3; sin el guard se corrompería a `5734…`), pero HOY
+   ningún test lo fija — un refactor futuro podría borrarlo en silencio. El código
+   DESPLEGADO es correcto (el guard está); la brecha es de cobertura → radar #1, arreglo de
+   1 línea. Árbol restaurado y re-verificado 386/386 + `git status` limpio.
+6. **Cobertura de la regla (juicio de diseño): la decisión es CORRECTA y conservadora.**
+   Fijos CO (60x, 10 dígitos): NO normalizarlos es lo correcto — WhatsApp es de móvil, un
+   fijo con WhatsApp Business es rarísimo en el segmento de Camilo, y adivinar país sobre
+   un patrón ambiguo crearía enlaces MAL dirigidos (peor que inválidos). Números con `00`
+   inicial («0057300…»): quedan tal cual → enlace inválido, pero es un formato que en
+   Colombia casi nadie escribe en un campo de teléfono; no vale código hoy (radar #2 como
+   mejora de 1 línea si algún día aparece un caso real). El alcance «solo móvil CO pelón»
+   ataca exactamente el caso real y nada más — sano, sin sobre-ingeniería.
+7. **Seguridad/tono:** `waPhone` es pura, sin DOM ni sinks; el resultado solo entra a la
+   URL vía template ya existente y el mensaje sigue pasando entero por `encodeURIComponent`.
+   Cero texto visible nuevo; los 3 mensajes de los nudges NO cambiaron (verificado en el
+   diff: solo la línea del `phone`). Cero secretos.
+8. **Prod:** curl Pages → `?v=365` ×10 + `CACHE_NAME='avi-v365'` servido; primeros 3 bytes
+   de index.html/sw.js = `3c2144`/`636f6e` (sin BOM); `_prodcheck.mjs 365` **verde a la 1ª
+   corrida** (boot 6s, versión v365, login/core/renderToday true/true/true, cero jsErrors).
+
+**Radar (4):** (1) **[del sabotaje 5b] Fijar el guard de longitud con 1 aserción**:
+`assert.strictEqual(waPhone('34612345678'), '34612345678')` (11 dígitos que empiezan por 3
+= internacional, NO se toca) — sin ella, borrar `d.length===10` deja la suite verde;
+próxima sesión que toque avi.test.js la añade de pasada. (2) Si algún día un teléfono real
+llega con prefijo internacional `00` («0057300…»), un `d.replace(/^00/,'')` al inicio de
+`waPhone` lo cubre — NO construirlo hoy, solo si aparece el caso. (3) Sigue abierto mi
+radar #2 de v364 (medir si el nudge funciona: timestamp de invitación + cruce con
+suscripción) — el fix de hoy hace los enlaces válidos, pero seguimos sin saber cuántos
+convierten. (4) El gotcha nuevo de CLAUDE.md («cualquier `wa.me` nuevo pasa por `waPhone`»)
+es la única defensa contra reincidencia además del grep — si los nudges de WhatsApp siguen
+creciendo, considerar un check del pre-commit hook que rechace `wa.me/${` sin `waPhone` en
+la misma función; hoy con 3 callers no lo exijo.
+
 ## 📋 SESIÓN L — Pagos: COMPARATIVA Colombia (investigación, CERO código)
 
 **Decisión D4:** Camilo elige con datos; no se construye nada aún.
