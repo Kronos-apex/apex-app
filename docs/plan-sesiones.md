@@ -183,7 +183,22 @@ Extender `_verify-v317.mjs` (+3: unread sube, lead por antigüedad, leer el chat
 **Cierre:** suite ≥365+nuevos · `_verify-v317` · `_verify-coachlead` 4/4 (no romper el fix
 v359) · cinturón estándar · deploy v360 · bitácora. **SIN AVI_NEWS** (cara del coach).
 
-## 📋 SESIÓN I — El coach ve la adherencia de hábitos (agua) en la ficha (avi-v361)
+## ✅ SESIÓN I — El coach ve la adherencia de hábitos (agua) en la ficha — HECHA (avi-v361, 2026-07-16)
+
+> **Ejecutada por Opus.** I1 core `30daefc`: `waterAdherence(habits, goal, now)` →
+> `{week:[{n,met}×7], metDays, loggedDays}` + `waterGoalFor(client, nut)` (réplica PURA del
+> criterio de `_waterGoalFor`: plan del coach o peso) — ambos puros, reusan waterWeek/
+> waterGoalGlasses. +5 tests (con/sin datos, meta plan vs peso, límites). Suite 376→381.
+> I2 UI `8da58e0`: `renderCoachHabitsCard` pinta `#d-habits` en `p-detail` — tarjeta directa
+> «💧 Hidratación» con mini-fila de 7 puntos (lleno = cumplió la meta) + «Cumplió X de los
+> últimos 7 días · meta N vasos/día», OCULTA si 0 días registrados (progressive disclosure).
+> Ambos temas premium, solo lectura, re-render tras carga pesada (afina la meta con el plan
+> nutricional). GOTCHA: `waterWeek`/`waterAdherence` esperan un `Date` (no `Date.now()`).
+> Harness `_shot-coach.mjs detail` con fixture de agua + verificación visible/oculto; shots OK;
+> `_test-coach-back` OK. Deploy `08eff87` v361, `_prodcheck 361` verde. SIN AVI_NEWS. Detalle:
+> bitácora parte 66. Falta verificación de Fable. Spec original abajo (referencia).
+
+<details><summary>Spec original de la sesión I</summary>
 
 **Chica, alto valor.** Los datos YA sincronizan en `client.habits`.
 - **I1 — Core:** helper puro `waterAdherence(habits, goal, now)` → `{week:[{n,met}×7], metDays,
@@ -196,6 +211,8 @@ v359) · cinturón estándar · deploy v360 · bitácora. **SIN AVI_NEWS** (cara
   disclosure, sin regañar). Ambos temas. Harness: fixture con hábitos en `_shot-coach.mjs
   detail` + shots a ojo.
 **Cierre:** suite · shots · deploy v361 · bitácora. SIN AVI_NEWS.
+
+</details>
 
 ## 📋 SESIÓN J — Hábitos parte 2: 👟 PASOS + recordatorio push + adopción (avi-v362)
 
