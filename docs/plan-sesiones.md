@@ -394,6 +394,76 @@ sigue siendo el roce diario más visible del panel del coach. (5) Oportunidad: c
 UNIFICADO, el ítem (c) de adopción push («que el coach invite por chat a abrir la app») tiene
 ahora un solo punto de integración — buen candidato para sesión corta.
 
+## 🟢 § VERDICTO ADOPCIÓN v364 (Fable) — invitar a abrir la app desde el chat: **APROBADA** (2026-07-17)
+
+Sesión corta de adopción (ítem c del backlog push; nace de mi radar #5 en K). Verificación
+independiente completa contra la línea base `9d543aa` (HEAD `d841b09`, código `7206735`).
+Todo re-corrido por mí; ningún número tomado del reporte de Opus.
+
+1. **Diff (`git diff 9d543aa HEAD`, 7 archivos, +70/−15):** SOLO lo estipulado — botón
+   `.cchat-invite` en la barra de `#coach-chat` (index.html, `data-ic="bell"`, aria-label +
+   title), 2 líneas de CSS (`.cchat-invite` + `:active{scale(.9)}`, tokens `--dur-fast`/
+   `--ease-out`, 44px táctil), `coachInviteOpenApp()` en app-3 insertada JUSTO después de
+   `sendCoachChatMsg` (la función vecina NO cambió ni una línea: el diff solo AÑADE tras su
+   `}` de cierre), +7 checks A1-A3 en `_verify-chatunified.mjs`, bump ?v=364 ×10 + CACHE
+   `avi-v364`, docs. **CERO scope creep.** `openCoachChat`/`renderDetailMsgs`/toda la
+   Sesión K fuera del diff. Sin cambios en avi.test.js (nada borrado ni debilitado).
+2. **Suite re-corrida por mí: 385/385** (sin funciones puras nuevas — consistente: la
+   función es 100% DOM/window.open, correcta como no-pura).
+3. **Harnesses re-corridos por mí:** `_verify-chatunified.mjs` **20/20** (13 K intactos +
+   A1 botón en la barra · A2 con teléfono `+57 300 123 4567` → `window.open` stubbeado
+   recibe `https://wa.me/573001234567?text=` con «Abre%20AVI»+«activar%20tus%20recordatorios»
+   y `#cchat-in` queda VACÍO · A3 sin teléfono → cero window.open, chat prellenado con
+   «Abre AVI un momentito», `DB.msgs` NO crece) · `_test-coach-back.mjs` **20/20** (la barra
+   del chat tocada no rompió navegación). Cero jsErrors en ambas corridas.
+4. **Sabotajes propios con árbol limpio (3/3 MORDIERON):** (a) invertir la rama
+   `if(phone)`→`if(!phone)` → FAIL ×5 (A2 sin URL + chat ensuciado, A3 abre WhatsApp y no
+   prellena — ambas ramas vigiladas); (b) quitar el `replace(/\D/g,'')` → FAIL A2 cazó la
+   URL mal formada `wa.me/+57 300 123 4567?text=` (el regex exige el número LIMPIO); (c)
+   INVENTADO: hacer que la rama sin teléfono llame `sendCoachChatMsg()` (enviar solo) →
+   FAIL «A3 NADA se envía solo» con `count=5` — el candado «el coach revisa y envía» tiene
+   diente real. Árbol restaurado con `git checkout` tras cada uno; verde 20/20 re-confirmado
+   con corrida limpia final.
+5. **Seguridad (greps + lectura):** dentro de `coachInviteOpenApp` hay CERO `innerHTML`/
+   `insertAdjacentHTML`/`setAttribute` — el nombre del asesorado solo entra a un template
+   string que pasa entero por `encodeURIComponent` (rama WA) o a `ta.value` (asignación de
+   propiedad, no HTML; rama chat). El `onclick` del botón es estático sin datos. Número
+   limpiado con `replace(/\D/g,'')` (mismo patrón que `whatsappReminder`/`whatsappNudge`,
+   app-6:2335/2352). SB_KEYS intacto (no guarda datos — correcto). Cero secretos.
+6. **Prod:** curl Pages ×10 sondas → `?v=364` en TODAS (10 refs c/u) + `CACHE_NAME='avi-v364'`
+   servido; primeros 3 bytes de index.html/sw.js = `3c2144`/`636f6e` (sin BOM) LOCAL y
+   SERVIDO; `_prodcheck.mjs 364` **verde a la 1ª corrida** (boot 7s, versión v364,
+   login/core/renderToday true/true/true, cero jsErrors) — el gotcha del edge frío no
+   apareció ya con el edge caliente, consistente con lo documentado por Opus.
+7. **Tono Sofía (leído como el asesorado nervioso del primer día):** «Hola {nombre} 👋
+   Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus
+   rutinas ni tu progreso 💪» — cálido, colombiano («un momentito»), pide UNA acción mínima
+   («solo entrar»), sin culpa ni jerga («recordatorios», no «notificaciones push»). Sin
+   `name` → «¡Hola! 👋 …» genérico digno (verificado en código: `split(' ')[0]||''` +
+   saludo alterno). Toasts del coach claros: «📲 Invitación lista en WhatsApp» / «✍️
+   Revísalo y envíaselo para invitarlo» (este último deja explícito que el coach envía).
+   Aprobado.
+
+**Radar (5):** (1) **El botón no sabe quién YA está suscrito** — el 🔔 sale siempre, aunque
+el asesorado ya reciba push; el coach puede invitar a quien no lo necesita (roce menor) y,
+peor, no tiene forma de saber a quién SÍ le urge. Oportunidad: exponer el estado de
+suscripción en `p-detail`/chat (hoy la RLS `*_own` de push_subscriptions no deja al coach
+leerlas — necesitaría edge function o policy de coach; medir antes de construir). (2) **No
+se mide si el nudge funciona:** no queda rastro de CUÁNDO se invitó ni si el asesorado
+abrió después — sin eso, en un mes nadie sabrá si esta feature movió la aguja. Barato:
+timestamp local `invited_<cid>` + cruzarlo con la próxima suscripción/sesión. (3) **Deuda
+de CLASE preexistente (no de v364):** los 3 usos de `wa.me/${phone}` asumen número CON
+indicativo de país — un teléfono guardado como «300 123 4567» (sin +57) produce
+`wa.me/3001234567`, que WhatsApp interpreta como internacional inválido. Normalizar una vez
+(10 dígitos que empiezan por 3 → prefijar 57) en un helper compartido cerraría la clase.
+(4) La rama de respaldo (sin teléfono) prellena el CHAT INTERNO, que por la propia raíz del
+problema NO alcanza al no-suscrito hasta que abra la app — es la decisión de Camilo y es
+honesta como respaldo, pero los nudges de app-6 ya tienen el patrón `wa.me/?text=` (abre
+WhatsApp y el coach ELIGE el contacto): sería un respaldo que SÍ llega, sin pedir teléfono.
+Considerarlo si el caso «sin teléfono» resulta frecuente. (5) A2 verifica que el chat no se
+ensucia pero no que `DB.msgs` no crece en la rama WhatsApp — hueco teórico mínimo del
+harness (hoy imposible por código); si alguien toca la función, añadir esa aserción espejo.
+
 ## 📋 SESIÓN L — Pagos: COMPARATIVA Colombia (investigación, CERO código)
 
 **Decisión D4:** Camilo elige con datos; no se construye nada aún.
