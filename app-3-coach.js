@@ -1963,7 +1963,7 @@ function coachInviteOpenApp(){
   const nombre=(c.name||'').split(' ')[0]||'';
   const saludo=nombre?`Hola ${nombre} 👋 `:'¡Hola! 👋 ';
   const msg=`${saludo}Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus rutinas ni tu progreso 💪`;
-  const phone=c.phone?c.phone.replace(/\D/g,''):'';
+  const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   if(phone){ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank'); toast('📲 Invitación lista en WhatsApp'); return; }
   const ta=document.getElementById('cchat-in'); if(ta){ ta.value=msg; if(typeof _cchatGrow==='function')_cchatGrow(ta); ta.focus(); }
   toast('✍️ Revísalo y envíaselo para invitarlo');

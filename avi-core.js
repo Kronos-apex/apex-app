@@ -2571,11 +2571,27 @@ function stripFixtureSessions(history) {
   return { history: clean, removed: arr.length - clean.length };
 }
 
+// Normaliza un teléfono a los dígitos que espera wa.me (E.164 sin '+'). PURA.
+// RAÍZ del bug (2026-07-17, cazado por Fable): los 3 nudges de WhatsApp (recordatorio de pago,
+// empujón de adherencia, invitar a abrir la app) hacían `wa.me/${phone.replace(/\D/g,'')}` →
+// un móvil colombiano guardado SIN indicativo («300 123 4567») producía `wa.me/3001234567`,
+// que WhatsApp NO reconoce (falta el país). Regla: móvil CO = 10 dígitos que empiezan por 3 →
+// anteponer 57. Un número que YA trae indicativo (12 dígitos con 57, o cualquier otro largo) se
+// respeta tal cual. Vacío/no reconocible → '' (el caller cae a `wa.me/?text=` para elegir contacto).
+// Solo se toca el móvil CO pelón: NO adivinamos país de fijos ni de números internacionales.
+function waPhone(raw) {
+  const d = String(raw == null ? '' : raw).replace(/\D/g, '');
+  if (!d) return '';
+  if (d.length === 10 && d[0] === '3') return '57' + d; // móvil CO sin indicativo → +57
+  return d; // ya trae indicativo (12 con 57, o internacional) → respetar
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     MOOD_STATES,
     applyMood,
+    waPhone,
     MS,
     fmtMetric,
     fmtDuration,

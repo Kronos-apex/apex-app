@@ -77,6 +77,7 @@ const {
   stepsSet,
   stepsAdd,
   stepsWeek,
+  waPhone,
   clampQwHiit,
   newsToShow,
   isFreeClient,
@@ -1301,6 +1302,25 @@ test('waterAdd/waterToday: suma por día local, clamp [0..30], inmutable', () =>
   assert.strictEqual(waterToday(waterAdd(h2, 99, now), now), 30); // techo 30
   assert.strictEqual(waterToday(null, now), 0);                    // sin datos
   assert.strictEqual(h2.water['2026-07-08'], 5); // ayer intacto (< 30 días)
+});
+
+test('waPhone: móvil CO sin indicativo → +57; ya con indicativo se respeta; vacío → ""', () => {
+  // EL BUG: móvil de 10 dígitos que empieza por 3 (formatos variados) → anteponer 57
+  assert.strictEqual(waPhone('300 123 4567'), '573001234567');
+  assert.strictEqual(waPhone('3001234567'), '573001234567');
+  assert.strictEqual(waPhone('310-555-0000'), '573105550000');
+  // ya trae indicativo → NO se duplica
+  assert.strictEqual(waPhone('57 300 123 4567'), '573001234567');
+  assert.strictEqual(waPhone('+57 300 123 4567'), '573001234567');
+  // internacional (no CO) → respetar tal cual
+  assert.strictEqual(waPhone('1 415 555 2671'), '14155552671');
+  // vacío / basura → '' (el caller cae a wa.me/?text=)
+  assert.strictEqual(waPhone(''), '');
+  assert.strictEqual(waPhone(null), '');
+  assert.strictEqual(waPhone(undefined), '');
+  assert.strictEqual(waPhone('  '), '');
+  // fijo CO (no empieza por 3) → NO adivinamos país, se deja
+  assert.strictEqual(waPhone('6012345678'), '6012345678');
 });
 
 test('waterAdd: poda entradas con más de 30 días', () => {

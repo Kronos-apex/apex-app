@@ -2332,7 +2332,7 @@ function whatsappReminder(id){
   const nombre=c.name.split(' ')[0];
   const amount=last&&last.amount?` ($${last.amount.toLocaleString('es-CO')} COP)`:'';
   const msg=`Hola ${nombre} 👋, tu plan en AVI vence el ${dueStr}${amount}. Renuévalo hoy y no pierdas tu progreso 💪 — responde aquí o escríbeme directamente.`;
-  const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
+  const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   const url=phone
     ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
     :`https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -2349,7 +2349,7 @@ function whatsappNudge(id){
   const msg=nunca
     ?`Hola ${nombre} 👋 ¿Cómo vas? Vi que aún no has hecho tu primer entrenamiento en AVI. ¿Te ayudo a arrancar? Cualquier duda, aquí estoy 💪`
     :`Hola ${nombre} 👋 ¿Cómo vas? Hace unos días no te veo entrenar y no quiero que pierdas el ritmo que llevabas 💪 ¿Todo bien? Si necesitas ajustar la rutina o tienes alguna molestia, escríbeme.`;
-  const phone=c.phone?(c.phone.replace(/\D/g,'')):'';
+  const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   const url=phone
     ?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
     :`https://wa.me/?text=${encodeURIComponent(msg)}`;

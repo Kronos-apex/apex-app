@@ -130,12 +130,13 @@ await ev(`(()=>{window.__opened=[];window.open=(u)=>{window.__opened.push(u);ret
 const inviteBtn = await ev(`!!document.querySelector('#coach-chat .cchat-bar .cchat-invite')`);
 check('A1 botón «Invitar a abrir la app» en la barra del chat', inviteBtn===true, 'btn='+inviteBtn);
 
-// A2 — CON teléfono → abre WhatsApp con el número y el mensaje de «abre AVI»
-await ev(`(()=>{const c=DB.clients.find(x=>x.id==='kc1');c.phone='+57 300 123 4567';})()`);
+// A2 — CON teléfono (PELÓN, sin +57 → prueba el normalizador waPhone del bug de clase v364) →
+// abre WhatsApp con el número YA con indicativo (57…) y el mensaje de «abre AVI»
+await ev(`(()=>{const c=DB.clients.find(x=>x.id==='kc1');c.phone='300 123 4567';})()`);
 await ev(`(()=>{window.__opened=[];const b=document.querySelector('#coach-chat .cchat-invite');if(b)b.click();})()`);
 await sleep(150);
 const waUrl = await ev(`(window.__opened&&window.__opened[0])||''`);
-check('A2 con teléfono abre WhatsApp (wa.me + número limpio)', /^https:\/\/wa\.me\/573001234567\?text=/.test(waUrl), JSON.stringify(waUrl.slice(0,60)));
+check('A2 móvil CO sin +57 → wa.me con indicativo 57 antepuesto (fix bug de clase)', /^https:\/\/wa\.me\/573001234567\?text=/.test(waUrl), JSON.stringify(waUrl.slice(0,60)));
 check('A2 el mensaje invita a ABRIR la app', /Abre%20AVI/i.test(waUrl)&&/activar%20tus%20recordatorios/i.test(waUrl), 'urlLen='+waUrl.length);
 const chatUntouchedWA = await ev(`document.getElementById('cchat-in').value===''`);
 check('A2 con teléfono NO ensucia el chat interno (solo WhatsApp)', chatUntouchedWA===true, 'chatEmpty='+chatUntouchedWA);
