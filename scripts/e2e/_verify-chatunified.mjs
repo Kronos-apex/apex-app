@@ -118,10 +118,43 @@ await ev(`_aviHandleBack()`); await sleep(300);
 const previewLast = await ev(`(()=>{const b=document.querySelectorAll('#d-msgs .mb');return b.length?b[b.length-1].textContent:''})()`);
 check('K4 el preview de la ficha refleja el mensaje enviado', previewLast==='Dale, sube 2.5kg y me cuentas', JSON.stringify(previewLast));
 
+// ── INVITAR A ABRIR LA APP (adopción, ítem c, v364) ──
+// El botón 🔔 vive en la barra del chat del coach. Con teléfono → WhatsApp (canal que SÍ llega a
+// quien no ha abierto la app); sin teléfono → prellena el chat interno (el coach lo envía).
+await ev(`openCoachChat('kc1')`);
+await waitFor(`(()=>{const e=document.getElementById('coach-chat');return e&&e.classList.contains('on')})()`);
+// stub window.open para capturar la URL sin abrir pestañas reales
+await ev(`(()=>{window.__opened=[];window.open=(u)=>{window.__opened.push(u);return null;};})()`);
+
+// A1 — el botón existe en la barra del chat
+const inviteBtn = await ev(`!!document.querySelector('#coach-chat .cchat-bar .cchat-invite')`);
+check('A1 botón «Invitar a abrir la app» en la barra del chat', inviteBtn===true, 'btn='+inviteBtn);
+
+// A2 — CON teléfono → abre WhatsApp con el número y el mensaje de «abre AVI»
+await ev(`(()=>{const c=DB.clients.find(x=>x.id==='kc1');c.phone='+57 300 123 4567';})()`);
+await ev(`(()=>{window.__opened=[];const b=document.querySelector('#coach-chat .cchat-invite');if(b)b.click();})()`);
+await sleep(150);
+const waUrl = await ev(`(window.__opened&&window.__opened[0])||''`);
+check('A2 con teléfono abre WhatsApp (wa.me + número limpio)', /^https:\/\/wa\.me\/573001234567\?text=/.test(waUrl), JSON.stringify(waUrl.slice(0,60)));
+check('A2 el mensaje invita a ABRIR la app', /Abre%20AVI/i.test(waUrl)&&/activar%20tus%20recordatorios/i.test(waUrl), 'urlLen='+waUrl.length);
+const chatUntouchedWA = await ev(`document.getElementById('cchat-in').value===''`);
+check('A2 con teléfono NO ensucia el chat interno (solo WhatsApp)', chatUntouchedWA===true, 'chatEmpty='+chatUntouchedWA);
+
+// A3 — SIN teléfono → prellena el chat interno (el coach envía), NO abre WhatsApp
+await ev(`(()=>{const c=DB.clients.find(x=>x.id==='kc1');c.phone='';document.getElementById('cchat-in').value='';window.__opened=[];})()`);
+await ev(`(()=>{const b=document.querySelector('#coach-chat .cchat-invite');if(b)b.click();})()`);
+await sleep(150);
+const openedNone = await ev(`(window.__opened||[]).length===0`);
+const prefilled = await ev(`/Abre AVI un momentito/.test(document.getElementById('cchat-in').value)`);
+check('A3 sin teléfono NO abre WhatsApp', openedNone===true, 'opened='+openedNone);
+check('A3 sin teléfono prellena el chat interno (coach lo envía)', prefilled===true, 'prefilled='+prefilled);
+const notSentAlone = await ev(`(DB.msgs['kc1']||[]).length===4`);
+check('A3 NADA se envía solo (el mensaje sigue sin salir)', notSentAlone===true, 'count='+(await ev(`(DB.msgs['kc1']||[]).length`)));
+
 // ── jsErrors ──
 check('Sin errores JS en toda la corrida', jsErrors.length===0, jsErrors.join(' | '));
 
-console.log('\n──── RESULTADOS CHAT UNIFICADO (SESIÓN K) ────');
+console.log('\n──── RESULTADOS CHAT UNIFICADO (K) + INVITAR A ABRIR LA APP (adopción v364) ────');
 results.forEach(r => console.log('  ' + r));
 const failed = results.filter(r => r.startsWith('❌'));
 console.log('\njsErrors: ' + JSON.stringify(jsErrors));

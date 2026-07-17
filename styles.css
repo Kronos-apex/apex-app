@@ -1378,6 +1378,8 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
 .cchat-back{background:none;border:none;font-size:32px;line-height:1;color:var(--g);cursor:pointer;padding:0 4px;min-height:44px;min-width:36px}
 .cchat-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0}
 .cchat-who{flex:1;min-width:0;cursor:pointer}
+.cchat-invite{background:none;border:none;color:var(--g);cursor:pointer;padding:0 6px;min-height:44px;min-width:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform var(--dur-fast) var(--ease-out)}
+.cchat-invite:active{transform:scale(.9)}
 .cchat-name{font-size:15px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cchat-sub{font-size:11px;color:var(--t3)}
 .cchat-thread{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column}

@@ -1953,6 +1953,21 @@ function sendCoachChatMsg(){
   if(CUR.clientId===id&&det&&det.classList.contains('on')&&typeof renderDetailMsgs==='function')renderDetailMsgs(id);
   toast('💬 Mensaje enviado');
 }
+// v364 (adopción, ítem c): invitar al asesorado a ABRIR la app para activar sus notificaciones.
+// RAÍZ del problema de adopción: un mensaje del chat interno solo llega como PUSH a quien YA está
+// suscrito → a quien no ha abierto la app NO lo alcanza (huevo/gallina). Por eso el canal es
+// WhatsApp (el que sí llega, como whatsappNudge/whatsappReminder). Sin teléfono → se prellena el
+// chat interno (el coach revisa y envía; patrón del plan de choque). NADA se envía solo.
+function coachInviteOpenApp(){
+  const id=_cchatId; const c=DB.clients.find(x=>x.id===id); if(!c)return;
+  const nombre=(c.name||'').split(' ')[0]||'';
+  const saludo=nombre?`Hola ${nombre} 👋 `:'¡Hola! 👋 ';
+  const msg=`${saludo}Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus rutinas ni tu progreso 💪`;
+  const phone=c.phone?c.phone.replace(/\D/g,''):'';
+  if(phone){ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank'); toast('📲 Invitación lista en WhatsApp'); return; }
+  const ta=document.getElementById('cchat-in'); if(ta){ ta.value=msg; if(typeof _cchatGrow==='function')_cchatGrow(ta); ta.focus(); }
+  toast('✍️ Revísalo y envíaselo para invitarlo');
+}
 function closeCoachChat(){ navCloseLayer(_closeCoachChat); }
 function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; }
 function coachChatOpenProfile(){ const id=_cchatId; if(!id)return; closeCoachChat(); setTimeout(()=>{ if(typeof openDetail==='function')openDetail(id); },60); }
