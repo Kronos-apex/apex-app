@@ -1314,6 +1314,10 @@ test('waPhone: móvil CO sin indicativo → +57; ya con indicativo se respeta; v
   assert.strictEqual(waPhone('+57 300 123 4567'), '573001234567');
   // internacional (no CO) → respetar tal cual
   assert.strictEqual(waPhone('1 415 555 2671'), '14155552671');
+  // FIJA el guard de longitud (radar Fable §v365): un móvil extranjero que EMPIEZA por 3 pero
+  // NO tiene 10 dígitos (España «34 612 345 678») NO debe recibir el 57 — sin este assert, borrar
+  // `d.length===10` dejaba la suite verde en silencio.
+  assert.strictEqual(waPhone('34 612 345 678'), '34612345678');
   // vacío / basura → '' (el caller cae a wa.me/?text=)
   assert.strictEqual(waPhone(''), '');
   assert.strictEqual(waPhone(null), '');
