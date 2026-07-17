@@ -1342,6 +1342,26 @@ function waterWeek(habits, now) {
   }
   return out;
 }
+// Meta de agua PURA — réplica del criterio de `_waterGoalFor` (app-5, que toca DOM/estado
+// leyendo DB.nutrition): el plan del coach manda (nut.water, ya en vasos) si es >0, acotado
+// a 30; sin plan → se calcula del peso (~35 ml/kg). Recibe el registro nutricional del
+// asesorado (o null) para NO tocar estado global. Determinista.
+function waterGoalFor(client, nut) {
+  const coachGoal = nut && parseInt(nut.water);
+  return (coachGoal > 0) ? Math.min(30, coachGoal) : waterGoalGlasses(client && client.weight);
+}
+// Adherencia de agua de los últimos 7 días — para que el COACH la vea en la ficha.
+// `goal` = meta ya resuelta (usar waterGoalFor); si viene inválida se cae al default por peso.
+// Devuelve: week = [{n, met}×7] cronológico (hoy al final, met = cumplió la meta ese día),
+// metDays = cuántos cumplieron la meta, loggedDays = cuántos tienen ≥1 vaso registrado
+// (la ficha se OCULTA si loggedDays === 0: progressive disclosure, sin regañar al asesorado).
+function waterAdherence(habits, goal, now) {
+  const g = (parseInt(goal) > 0) ? parseInt(goal) : waterGoalGlasses();
+  const week = waterWeek(habits, now).map(d => ({ n: d.n, met: d.n >= g }));
+  let metDays = 0, loggedDays = 0;
+  week.forEach(d => { if (d.met) metDays++; if (d.n > 0) loggedDays++; });
+  return { week, metDays, loggedDays };
+}
 
 // ── Config de HIIT rápido (v301): el usuario elige rondas/trabajo/descanso ──
 // Clamps de cordura: rondas 1-20, trabajo 10-180s, descanso 5-180s. Basura/NaN → el
@@ -2633,5 +2653,7 @@ if (typeof module !== 'undefined' && module.exports) {
     waterToday,
     waterAdd,
     waterWeek,
+    waterGoalFor,
+    waterAdherence,
   };
 }

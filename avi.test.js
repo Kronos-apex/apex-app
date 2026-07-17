@@ -70,6 +70,8 @@ const {
   waterToday,
   waterAdd,
   waterWeek,
+  waterGoalFor,
+  waterAdherence,
   clampQwHiit,
   newsToShow,
   isFreeClient,
@@ -1311,6 +1313,66 @@ test('waterWeek: 7 días terminando hoy, con ceros donde no hay registro', () =>
   assert.strictEqual(wk[6].n, 4);
   assert.strictEqual(wk[3].n, 8);
   assert.strictEqual(wk[0].n, 0);
+});
+
+test('waterGoalFor: plan del coach manda (>0, tope 30); sin plan → peso', () => {
+  const c = { weight: 70 };
+  assert.strictEqual(waterGoalFor(c, { water: 10 }), 10);      // plan del coach
+  assert.strictEqual(waterGoalFor(c, { water: '9' }), 9);      // string numérico
+  assert.strictEqual(waterGoalFor(c, { water: 99 }), 30);      // tope 30
+  assert.strictEqual(waterGoalFor(c, { water: 0 }), 10);       // 0 → cae al peso (70kg → 10)
+  assert.strictEqual(waterGoalFor(c, null), 10);               // sin plan → peso
+  assert.strictEqual(waterGoalFor(c, {}), 10);                 // plan sin water → peso
+  assert.strictEqual(waterGoalFor({ weight: null }, null), 8); // sin peso ni plan → fallback 8
+});
+
+test('waterAdherence: cuenta días cumplidos y registrados en los últimos 7', () => {
+  const now = new Date(2026, 6, 9); // 2026-07-09
+  // meta 8: 07-09=8 (cumple), 07-08=10 (cumple), 07-06=3 (registrado, no cumple), resto 0
+  const habits = { water: { '2026-07-09': 8, '2026-07-08': 10, '2026-07-06': 3 } };
+  const a = waterAdherence(habits, 8, now);
+  assert.strictEqual(a.week.length, 7);
+  assert.strictEqual(a.week[6].n, 8);
+  assert.strictEqual(a.week[6].met, true);   // hoy cumplió
+  assert.strictEqual(a.week[5].met, true);   // ayer cumplió (10≥8)
+  assert.strictEqual(a.week[3].met, false);  // 07-06: 3 vasos, no cumple
+  assert.strictEqual(a.week[3].n, 3);
+  assert.strictEqual(a.metDays, 2);          // solo 07-09 y 07-08
+  assert.strictEqual(a.loggedDays, 3);       // 3 días con ≥1 vaso
+});
+
+test('waterAdherence: sin datos → todo en cero (ficha oculta)', () => {
+  const now = new Date(2026, 6, 9);
+  const a = waterAdherence(null, 8, now);
+  assert.strictEqual(a.metDays, 0);
+  assert.strictEqual(a.loggedDays, 0); // 0 registrados → la UI oculta la tarjeta
+  assert.strictEqual(a.week.every(d => d.n === 0 && d.met === false), true);
+});
+
+test('waterAdherence: la meta cambia qué días cuentan (plan del coach vs peso)', () => {
+  const now = new Date(2026, 6, 9);
+  const habits = { water: { '2026-07-09': 6, '2026-07-08': 6 } };
+  assert.strictEqual(waterAdherence(habits, 6, now).metDays, 2);  // meta 6 → ambos cumplen
+  assert.strictEqual(waterAdherence(habits, 8, now).metDays, 0);  // meta 8 → ninguno
+  assert.strictEqual(waterAdherence(habits, 8, now).loggedDays, 2); // pero sí registrados
+  // meta inválida → cae al default por peso (8): ninguno cumple
+  assert.strictEqual(waterAdherence(habits, 0, now).metDays, 0);
+  assert.strictEqual(waterAdherence(habits, 'x', now).metDays, 0);
+});
+
+test('waterAdherence: límites — 7 días llenos y borde de semana', () => {
+  const now = new Date(2026, 6, 9);
+  const full = { water: {} };
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now.getTime() - i * 86400000);
+    full.water[waterWeek({ water: {} }, d)[6].day] = 8;
+  }
+  const a = waterAdherence(full, 8, now);
+  assert.strictEqual(a.metDays, 7);
+  assert.strictEqual(a.loggedDays, 7);
+  // un registro de hace 7 días (fuera de la ventana) NO cuenta
+  const old = { water: { '2026-07-02': 8 } }; // 07-09 menos 7 días = 07-02, queda fuera del arreglo de 7
+  assert.strictEqual(waterAdherence(old, 8, now).loggedDays, 0);
 });
 
 test('clampQwHiit: clamps de cordura y fallback al default del preset', () => {
