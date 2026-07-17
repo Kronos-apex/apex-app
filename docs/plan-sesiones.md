@@ -329,6 +329,71 @@ ficha + pantalla completa `#coach-chat`). Los datos no se desincronizan, pero co
   desde pantalla completa se refleja en el preview al volver.
 **Cierre:** suite · cinturón completo · deploy v363. SIN AVI_NEWS (cara del coach).
 
+## 🟢 § VERDICTO SESIÓN K (Fable) — v363: **APROBADA** (2026-07-17)
+
+Verificación independiente completa contra la línea base `05e5c38` (v362). Todo re-corrido
+por mí; ningún número tomado del reporte de Opus.
+
+1. **Diff (2 commits `7aeebd0` código + `ea8d8bd` docs, 7 archivos):** SOLO lo estipulado —
+   index.html (sección Mensajes de `p-detail` + bump ×10 refs), app-3 (`renderDetailMsgs`
+   reescrita a preview + `sendCoachMsg` BORRADA entera), harness nuevo, sw.js CACHE, docs.
+   CERO scope creep. Confirmado por grep: `#msg-in` ya no existe (el único `cn-msg-in` que
+   queda es el chat del ASESORADO, otra feature); `sendCoachMsg` sin rastro en código.
+   `openCoachChat`/`sendCoachChatMsg`/`renderCoachChatThread`/`_shockChat` **INTACTOS**
+   (fuera del diff — el puente `sendCoachChatMsg`→`renderDetailMsgs` línea 1953 ya existía
+   de v321 y es lo que refresca el preview). `_pollAuthCoach` (app-1:594/689) sigue llamando
+   `renderDetailMsgs` → ahora pinta el preview, con `if(!con)return` defensivo: adaptación
+   correcta al spec. `updateMsgBadge` y `ar()` conservan callers (app-1/app-4, `#cn-msg-in`).
+2. **Suite re-corrida por mí: 385/385** — `avi.test.js` SIN cambios en el diff (numstat
+   vacío): ningún test borrado ni debilitado; K no añade funciones puras, consistente.
+3. **Harnesses re-corridos por mí:** `_test-coach-back.mjs` **20/20** (zona de overlays
+   sana: forward/atrás/pila en F1-F3) · `_verify-chatunified.mjs` **13/13** (K1 preview
+   2 burbujas + «+1 más», K2 sin `#msg-in` ni `sendCoachMsg`, K3 «Abrir chat» abre
+   `#coach-chat` del asesorado correcto y entra como LAYER, K3b atrás vuelve a la ficha,
+   K4 enviar desde pantalla completa se refleja en el preview) · `_verify-shock.mjs`
+   **TODO OK** (S1-S15: el chat sigue prellenándose SIN enviar — candado del coach vivo).
+   Cero jsErrors en las tres corridas.
+4. **Sabotajes propios con árbol limpio (3/3 MORDIERON):** (a) `slice(-2)`→`slice(-1)` →
+   FAIL K1 ×2 (`bubbles=1`, sin nota «+1 más»); (b) el botón «Abrir chat» sin
+   `CUR.clientId` → FAIL ×5 (chat no abre, `cchatId=null`, back-stack y K4 caen en
+   cascada); (c) INVENTADO: borrar el puente de refresco `renderDetailMsgs(id)` dentro de
+   `sendCoachChatMsg` → FAIL exactamente K4-preview (`"¿Subo el peso en sentadilla?"` en
+   vez del mensaje nuevo) — prueba que el harness vigila el puente pantalla-completa→ficha,
+   no solo el DOM inicial. Árbol restaurado con `git checkout` y verde re-confirmado
+   (13/13) tras el último.
+5. **Seguridad (greps + lectura):** el preview usa `textContent` para texto y meta de cada
+   burbuja Y para la nota «+N» (número calculado, no dato de usuario); los dos `innerHTML`
+   de la función son strings estáticos (vaciado + estado vacío). `openCoachChat` sigue con
+   `textContent` para nombre e iniciales (sin XSS). SB_KEYS sin claves nuevas (K no añade
+   datos — correcto). Cero secretos en el diff.
+6. **Prod:** curl Pages sirve `?v=363` (×10 refs) + `CACHE_NAME='avi-v363'`; primeros 3
+   bytes de index.html/sw.js = `3c2144`/`636f6e` (sin BOM) tanto LOCAL como SERVIDO;
+   `_prodcheck.mjs 363` verde (boot real 4s, login/core/renderToday true, cero jsErrors).
+7. **Tono/UX (cara del coach):** «Abrir chat» (directo), «Sin mensajes. Abre el chat para
+   escribir el primero 👇» (el 👇 ahora apunta al botón — coherente), «+N mensaje(s) más —
+   abre el chat para ver todo» (plural manejado). Casos borde revisados: 0 mensajes =
+   estado vacío + botón (sano); 1 mensaje = 1 burbuja SIN nota «+0» (correcto,
+   `msgs.length>prev.length` lo evita); mensajes larguísimos = burbujas con scroll dentro
+   del contenedor de 200px, aterriza al final. Claro y humano. Aprobado.
+8. **Desviación documentada (acepto):** el cierre estipulaba «cinturón completo», pero el
+   diff NO toca app-4 ni el flujo de entreno (solo `p-detail` del coach + app-3) → el
+   cinturón relevante era coach-back + shock + chatunified, y los tres están verdes.
+   Misma lógica que la desviación aceptada en la Sesión J.
+
+**Radar (5):** (1) la nota «+N mensajes más» se pinta ARRIBA de las burbujas y el preview
+scrollea al fondo — con 2 mensajes largos la nota queda fuera de vista hasta scrollear;
+menor (el botón «Abrir chat» siempre está visible), pero si Camilo no la ve, ponerla DEBAJO
+o fuera del contenedor scrolleable. (2) El poll de 15s re-llama `renderDetailMsgs` con la
+ficha abierta (app-1:689) — hoy es barato (2 burbujas), pero re-pinta aunque no haya
+mensajes nuevos; si algún día el preview crece, comparar antes de re-render. (3) El botón
+«Abrir chat» con `if(CUR.clientId)` silencioso: si `CUR.clientId` fuese null el tap no hace
+NADA (sin toast) — hoy es imposible llegar a `p-detail` sin clientId, pero es un fallo mudo
+si algo lo rompe; barato añadir telemetría o no-op visible. (4) Deuda preexistente que esta
+sesión NO cierra: el backlog aún lista `renderClients` borrando el buscador en cada poll —
+sigue siendo el roce diario más visible del panel del coach. (5) Oportunidad: con el chat ya
+UNIFICADO, el ítem (c) de adopción push («que el coach invite por chat a abrir la app») tiene
+ahora un solo punto de integración — buen candidato para sesión corta.
+
 ## 📋 SESIÓN L — Pagos: COMPARATIVA Colombia (investigación, CERO código)
 
 **Decisión D4:** Camilo elige con datos; no se construye nada aún.
