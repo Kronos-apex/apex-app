@@ -58,15 +58,17 @@ try {
     next:(document.getElementById('nt-next')||{}).textContent,
     chip:!!document.querySelector('#nt-body .nt-chip svg')})`));
   await shot('news-tour-slide1');
-  check('N1 tour abre en slide 1 (Progreso, la más vieja tras podar v313) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /Progreso/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
+  // Con v362 (pasos) añadida, la ventana de las 3 más nuevas es [chat v316, coach v352, pasos v362];
+  // v314 (Progreso) sale del top-3 → la slide 1 (la más vieja de la ventana) pasa a ser el chat.
+  check('N1 tour abre en slide 1 (chat v316, la más vieja de las 3 nuevas) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /chat|respuestas/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
 
-  // N2: avanzar hasta la ultima slide (v352 Coach Inteligente) → boton "Listo"
+  // N2: avanzar hasta la ultima slide (v362 Pasos) → boton "Listo"
   await ev(`ntNext()`); await ev(`ntNext()`);
   s = JSON.parse(await ev(`JSON.stringify({title:(document.querySelector('#nt-body .nt-title')||{}).textContent,
     next:(document.getElementById('nt-next')||{}).textContent,
     dotOn:[...document.querySelectorAll('#nt-dots .nt-dot')].findIndex(d=>d.classList.contains('on'))})`));
   await shot('news-tour-slide3');
-  check('N2 ultima slide (v352 "AVI está pendiente de ti") con "Listo" en el 3er dot', /pendiente/i.test(s.title||'') && /Listo/.test(s.next||'') && s.dotOn === 2, JSON.stringify(s));
+  check('N2 ultima slide (v362 "Ahora cuentas tus pasos") con "Listo" en el 3er dot', /pasos/i.test(s.title||'') && /Listo/.test(s.next||'') && s.dotOn === 2, JSON.stringify(s));
 
   // N3: "Listo" cierra y marca la ultima version vista
   await ev(`ntNext()`);
@@ -83,7 +85,7 @@ try {
   await ev(`(()=>{localStorage.setItem('ax_news_seen','314');renderNewsCard();})()`);
   await sleep(300);
   s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),dots:document.querySelectorAll('#nt-dots .nt-dot').length,title:(document.querySelector('#nt-body .nt-title')||{}).textContent})`));
-  check('N5 visto parcial (v314) → tour con las 2 novedades nuevas (chat v316 + coach v352), slide 1 = chat', s.open && s.dots === 2 && /chat/i.test(s.title||''), JSON.stringify(s));
+  check('N5 visto parcial (v314) → tour con las 3 novedades nuevas (chat v316 + coach v352 + pasos v362), slide 1 = chat', s.open && s.dots === 3 && /chat|respuestas/i.test(s.title||''), JSON.stringify(s));
   s = JSON.parse(await ev(`JSON.stringify({closed:_aviCloseTopOverlay(),open:!document.getElementById('news-tour').classList.contains('hidden'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
   check('N6 atras cierra el tour y marca visto', s.closed === true && !s.open && s.seen === s.latest, JSON.stringify(s));
 
@@ -112,8 +114,8 @@ try {
   await sleep(200);
 
   // N9 (v316): las novedades coach:true NO se muestran al modo libre (prometían chat sin coach).
-  // Con seen=314, al libre le quedan v316 (chat, coach:true → SE FILTRA) y v352 (coach:false → SÍ):
-  // el tour abre SOLO con v352, sin la slide del chat. Antes (cuando v352 no existía) el tour ni abría.
+  // Con seen=314, al libre le quedan v316 (chat, coach:true → SE FILTRA), v352 y v362 (coach:false → SÍ):
+  // el tour abre con v352 + v362 (2 slides), sin la slide del chat. slide 1 = v352 (la más vieja).
   s = JSON.parse(await ev(`JSON.stringify((()=>{
     const orig=window.clientHasCoach; window.clientHasCoach=()=>false;
     localStorage.setItem('ax_news_seen','314');
@@ -123,7 +125,7 @@ try {
     const title=(document.querySelector('#nt-body .nt-title')||{}).textContent||'';
     localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
     return {open,dots,title};})())`));
-  check('N9 libre (sin coach): la novedad del chat SE FILTRA; solo queda v352 (1 slide, sin "chat")', s.open && s.dots === 1 && !/chat|respuestas/i.test(s.title), JSON.stringify(s));
+  check('N9 libre (sin coach): la novedad del chat SE FILTRA; quedan v352 + v362 (2 slides), slide 1 = v352 sin "chat"', s.open && s.dots === 2 && /pendiente/i.test(s.title) && !/chat|respuestas/i.test(s.title), JSON.stringify(s));
 
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;

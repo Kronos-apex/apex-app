@@ -291,6 +291,18 @@ html[data-theme="light"] .mta {
 .hb-dot{width:8px;height:8px;border-radius:50%;background:var(--br2)}
 .hb-dot.some{background:var(--bl);opacity:.45}
 .hb-dot.full{background:var(--bl)}
+/* Hábitos parte 2 (v362): 👟 pasos — misma tarjeta, acento VERDE para distinguir del agua azul */
+.hb-sep{height:1px;background:var(--br);margin:12px 0}
+.hb-ic.st{background:var(--gl);color:var(--g2)}
+.hb-sub b.st{color:var(--g);font-size:13px}
+.hb-fill.st{background:var(--g2)}
+.hb-dot.st.some{background:var(--g2);opacity:.45}
+.hb-dot.st.full{background:var(--g2)}
+.hb-entry{display:flex;gap:8px;margin-top:9px;padding-left:48px}
+.hb-num{flex:1;min-width:0;height:42px;border-radius:11px;border:1.5px solid var(--br2);background:var(--surface);color:var(--t1);font-size:15px;font-weight:700;font-family:inherit;padding:0 12px;-moz-appearance:textfield}
+.hb-num::-webkit-outer-spin-button,.hb-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.hb-num:focus{outline:none;border-color:var(--g2)}
+.hb-plus.st{background:var(--g);border-color:var(--g)}
 /* Config de HIIT rápido (v301): el modal va ENCIMA de la biblioteca (.sroom z1400) */
 #m-qwcfg{z-index:1500}
 /* ── Íconos SVG de marca (v303, F1 — docs/plan-iconos-svg.md) ── */

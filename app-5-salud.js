@@ -919,9 +919,9 @@ function _waterGoalFor(client){
   const coachGoal=nut&&parseInt(nut.water);
   return (coachGoal>0)?Math.min(30,coachGoal):waterGoalGlasses(client.weight);
 }
-function renderHabitsCard(client){
-  const el=document.getElementById('cn-habits'); if(!el)return;
-  if(!client){ el.innerHTML=''; return; }
+// Formatea un entero con separador de miles colombiano (8000 → "8.000").
+function _fmtSteps(n){ return String(Math.max(0,parseInt(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+function _waterBlockHtml(client){
   const goal=_waterGoalFor(client);
   const n=waterToday(client.habits);
   const met=n>=goal;
@@ -931,8 +931,7 @@ function renderHabitsCard(client){
     const cls=d.n>=goal?' full':(d.n>0?' some':'');
     return `<span class="hb-dot${cls}" title="${d.day}: ${d.n} vaso${d.n!==1?'s':''}"></span>`;
   }).join('');
-  el.innerHTML=`<div class="hb-card" role="group" aria-label="Registro de agua de hoy">
-    <div class="hb-row">
+  return `<div class="hb-row">
       <span class="hb-ic" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('droplet',21):'💧'}</span>
       <div class="hb-info">
         <div class="hb-title">Agua de hoy</div>
@@ -944,7 +943,44 @@ function renderHabitsCard(client){
       <button type="button" class="hb-btn hb-minus" aria-label="Quitar un vaso (corregir)" onclick="waterTap(-1)">−</button>
       <button type="button" class="hb-btn hb-plus" aria-label="Agregar un vaso de agua" onclick="waterTap(1)">+1</button>
     </div>
-    <div class="hb-week" aria-hidden="true">${dots}</div>
+    <div class="hb-week" aria-hidden="true">${dots}</div>`;
+}
+// 👟 Pasos (v362): el asesorado teclea el total que marca su celular (input = fija) y de
+// paso puede sumar de a 1.000. Meta fija 8.000 (OMS). Acento verde para distinguir del agua.
+function _stepsBlockHtml(client){
+  const goal=STEPS_GOAL_DEFAULT;
+  const n=stepsToday(client.habits);
+  const met=n>=goal;
+  const pct=Math.min(100,Math.round(n/goal*100));
+  const dots=stepsWeek(client.habits).map(d=>{
+    const cls=d.n>=goal?' full':(d.n>0?' some':'');
+    return `<span class="hb-dot st${cls}" title="${d.day}: ${_fmtSteps(d.n)} pasos"></span>`;
+  }).join('');
+  return `<div class="hb-sep"></div>
+    <div class="hb-row">
+      <span class="hb-ic st" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('footprints',21):'👟'}</span>
+      <div class="hb-info">
+        <div class="hb-title">Pasos de hoy</div>
+        <div class="hb-sub" aria-live="polite">${met
+          ?`¡Meta cumplida! ${_fmtSteps(n)} pasos 🎉`
+          :`<b class="st">${_fmtSteps(n)}</b> de ${_fmtSteps(goal)} pasos`}</div>
+        <div class="hb-bar"><div class="hb-fill st${met?' met':''}" style="width:${pct}%"></div></div>
+      </div>
+    </div>
+    <div class="hb-entry">
+      <input type="number" class="hb-num" inputmode="numeric" min="0" max="${STEPS_MAX}" step="100"
+        value="${n>0?n:''}" placeholder="Escribe tus pasos de hoy"
+        aria-label="Escribe cuántos pasos llevas hoy" onchange="stepsSetInput(this)">
+      <button type="button" class="hb-btn hb-plus st" aria-label="Sumar mil pasos" onclick="stepsQuick(1000)">+1.000</button>
+    </div>
+    <div class="hb-week" aria-hidden="true">${dots}</div>`;
+}
+function renderHabitsCard(client){
+  const el=document.getElementById('cn-habits'); if(!el)return;
+  if(!client){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="hb-card" role="group" aria-label="Tus hábitos de hoy">
+    ${_waterBlockHtml(client)}
+    ${_stepsBlockHtml(client)}
   </div>`;
 }
 function waterTap(delta){
@@ -956,4 +992,24 @@ function waterTap(delta){
   renderHabitsCard(c);
   if(delta>0&&navigator.vibrate)navigator.vibrate(15);
   if(delta>0&&before<goal&&waterToday(c.habits)>=goal)toast('💧 ¡Meta de agua cumplida! Tu cuerpo te lo agradece');
+}
+// Fija el total de pasos del día con lo que escribió (lee su celular). El clamp vive en el core.
+function stepsSetInput(inp){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const before=stepsToday(c.habits);
+  c.habits=stepsSet(c.habits,inp?inp.value:0);
+  sv('ax_c',DB.clients);
+  renderHabitsCard(c);
+  if(navigator.vibrate)navigator.vibrate(15);
+  if(before<STEPS_GOAL_DEFAULT&&stepsToday(c.habits)>=STEPS_GOAL_DEFAULT)toast('👟 ¡Meta de pasos cumplida! Bien hecho');
+}
+// Suma rápida de +1.000 pasos.
+function stepsQuick(delta){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const before=stepsToday(c.habits);
+  c.habits=stepsAdd(c.habits,delta);
+  sv('ax_c',DB.clients);
+  renderHabitsCard(c);
+  if(navigator.vibrate)navigator.vibrate(15);
+  if(before<STEPS_GOAL_DEFAULT&&stepsToday(c.habits)>=STEPS_GOAL_DEFAULT)toast('👟 ¡Meta de pasos cumplida! Bien hecho');
 }

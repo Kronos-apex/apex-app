@@ -1628,6 +1628,8 @@ const AVI_ICONS={
   lock:'<rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2"/><path d="M8.5 10.5V7.6a3.5 3.5 0 0 1 7 0v2.9"/><path d="M12 14.3v2.2"/>',
   // Coach Inteligente Capa A (v352): bloque de bienestar del check-in de ánimo.
   heart:'<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 1c-2 3.8-8 8-8 8z"/>',
+  // Hábitos parte 2 (v362): pasos del día en la tarjeta #cn-habits.
+  footprints:'<path d="M4 15.5v-2C4 11 2.9 10 3 8c.05-2.4 1.3-5 4-5C8.7 3 9.3 4.6 9.3 6c0 2.7-1.6 4.9-1.6 7.5v2a1.9 1.9 0 1 1-3.7 0z"/><path d="M19.7 19v-2c0-1.8.9-2.7 1-4.6.1-2.4-1.3-5-4-5-1.6 0-2.3 1.6-2.3 3 0 2.7 1.6 4.9 1.6 7.5v1.1a1.9 1.9 0 1 0 3.7 0z"/><path d="M4 13h4"/><path d="M16 17h4"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;
