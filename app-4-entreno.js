@@ -574,6 +574,32 @@ function _todayOrder(training){
     : ['cn-today-head','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
+// Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
+// sesiones de hoy, deduplicado) y deja botones para entrenar otra vez o ver sus rutinas.
+function _trainedTodayCardHTML(client){
+  const today=(typeof localDayStart==='function')?localDayStart(new Date()):null;
+  const sess=(DB.history[client.id]||[]).filter(s=>s&&today&&localDayStart(s.date)===today);
+  const names=[...new Set(sess.map(s=>s.routineName).filter(Boolean))];
+  const trainedLine=names.length
+    ? `Hoy entrenaste <b>${esc(names.join(' + '))}</b>${sess.length>1?` · ${sess.length} sesiones`:''}.`
+    : 'Hoy ya hiciste tu entrenamiento.';
+  return `<div class="trained-card">
+    <div class="tc-ic">${typeof aviIcon==='function'?aviIcon('check',30):'✅'}</div>
+    <div class="tc-title">¡Ya entrenaste hoy! 💪</div>
+    <div class="tc-sub">${trainedLine} Tu cuerpo ya hizo el trabajo — hidrátate, registra tus pasos y descansa.</div>
+    <div class="tc-actions">
+      <button class="btn bo bsm" onclick="todayTrainAgain()">Entrenar otra vez</button>
+      <button class="btn bg bsm" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver mis rutinas</button>
+    </div>
+  </div>`;
+}
+// "Entrenar otra vez": muestra el entrenamiento de hoy aunque ya haya entrenado (2ª sesión del día).
+// El flag vive en CUR (se resetea al recargar); un nuevo día ya no aplica (trainedToday será false).
+function todayTrainAgain(){
+  CUR.trainAgain=true;
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(c){ renderClientToday(c,CUR.todayOverride); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; }
+}
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
   // F2 sub-3: si el guiado embebido está montado con un timer vivo (descanso/HIIT/isométrico),
@@ -605,6 +631,16 @@ function renderClientToday(client, overrideRoutine){
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
+  // ✅ "Ya entrenaste hoy" (v366): si YA entrenó hoy (CUALQUIER sesión — el lunes de pierna pudo
+  // hacer la de espalda), colapsamos el entrenamiento en una tarjeta compacta para que el agua/pasos
+  // queden a la mano sin scrollear todo el entreno. NO aplica si abrió una rutina a propósito
+  // (overrideRoutine = "quiere entrenar esa") ni si tocó "Entrenar otra vez" (CUR.trainAgain).
+  // Va DESPUÉS del no-hay-rutinas y ANTES del descanso: entrenó = entrenó, aunque hoy tocara descanso.
+  if(typeof trainedToday==='function' && !overrideRoutine && !CUR.trainAgain && trainedToday(DB.history[client.id],new Date())){
+    _todayOrder(false);
+    con.innerHTML=_trainedTodayCardHTML(client);
+    return;
+  }
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const today=days[new Date().getDay()];
   CUR.todayRenderedDay=today;

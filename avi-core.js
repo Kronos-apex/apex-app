@@ -913,6 +913,14 @@ function clientsTrainedToday(clients, history, now) {
     .sort((a, b) => new Date(b.sessions[0].date) - new Date(a.sessions[0].date));
 }
 
+// ¿El asesorado YA entrenó hoy? CUALQUIER sesión de hoy cuenta, no solo la rutina del día:
+// si el lunes de pierna hizo la de espalda, igual entrenó. PURA. `sessions` = historial del
+// asesorado (DB.history[id]); `now` opcional. Determinista por día de CALENDARIO local.
+function trainedToday(sessions, now) {
+  const today = localDayStart(now || new Date());
+  return (sessions || []).some(s => s && localDayStart(s.date) === today);
+}
+
 // Días enteros transcurridos desde la sesión MÁS RECIENTE (busca el máximo, no
 // asume orden). Sin sesiones → Infinity (cuenta como "inactivo desde siempre").
 function daysSinceLastSession(sessions, now) {
@@ -2640,6 +2648,7 @@ if (typeof module !== 'undefined' && module.exports) {
     retentionByDay,
     weeklyActiveCount,
     clientsTrainedToday,
+    trainedToday,
     daysSinceLastSession,
     workoutStreak,
     longestStreak,

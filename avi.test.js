@@ -29,6 +29,7 @@ const {
   retentionByDay,
   weeklyActiveCount,
   clientsTrainedToday,
+  trainedToday,
   daysSinceLastSession,
   workoutStreak,
   longestStreak,
@@ -1021,6 +1022,21 @@ test('clientsTrainedToday: solo clientes con sesión de hoy, orden desc por hora
 test('clientsTrainedToday: robusto con datos vacíos', () => {
   assert.deepStrictEqual(clientsTrainedToday(null, null, D(2026, 6, 2)), []);
   assert.deepStrictEqual(clientsTrainedToday([{ id: 'a' }], {}, D(2026, 6, 2)), []);
+});
+
+test('trainedToday: CUALQUIER sesión de hoy cuenta (no solo la rutina del día)', () => {
+  const now = D(2026, 6, 2, 15); // martes
+  // entrenó hoy con una rutina de OTRO día (rEspalda aunque hoy tocara rPierna) → cuenta igual
+  assert.strictEqual(trainedToday([{ date: D(2026, 6, 2, 9), routineId: 'rEspalda' }], now), true);
+  // solo sesiones de días previos → false
+  assert.strictEqual(trainedToday([{ date: D(2026, 6, 1, 20) }, { date: D(2026, 5, 30, 8) }], now), false);
+  // varias, una de hoy → true
+  assert.strictEqual(trainedToday([{ date: D(2026, 5, 28) }, { date: D(2026, 6, 2, 7) }], now), true);
+  // sin datos / basura → false
+  assert.strictEqual(trainedToday([], now), false);
+  assert.strictEqual(trainedToday(null, now), false);
+  assert.strictEqual(trainedToday(undefined, now), false);
+  assert.strictEqual(trainedToday([null, { date: D(2026, 6, 2, 10) }], now), true);
 });
 
 test('daysSinceLastSession: días enteros desde la sesión más reciente', () => {

@@ -1296,6 +1296,12 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
 
 /* No routine */
 .noroutine{background:var(--gl);border:1.5px solid var(--g2);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:12px}
+/* ✅ "Ya entrenaste hoy" (v366) — colapsa el entrenamiento del día cuando ya entrenó */
+.trained-card{background:var(--w);border:1px solid var(--br2);border-radius:var(--rlg);padding:22px 18px;text-align:center;box-shadow:var(--sh)}
+.trained-card .tc-ic{width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--g);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.trained-card .tc-title{font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px}
+.trained-card .tc-sub{font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px}
+.trained-card .tc-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 
 /* ── RESPONSIVE ── */
 @media(max-width:600px){
