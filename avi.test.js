@@ -72,6 +72,11 @@ const {
   waterWeek,
   waterGoalFor,
   waterAdherence,
+  STEPS_GOAL_DEFAULT,
+  stepsToday,
+  stepsSet,
+  stepsAdd,
+  stepsWeek,
   clampQwHiit,
   newsToShow,
   isFreeClient,
@@ -1313,6 +1318,47 @@ test('waterWeek: 7 días terminando hoy, con ceros donde no hay registro', () =>
   assert.strictEqual(wk[6].n, 4);
   assert.strictEqual(wk[3].n, 8);
   assert.strictEqual(wk[0].n, 0);
+});
+
+// ── Pasos diarios (v362 — 👟 hábito parte 2) ──
+test('stepsSet/stepsToday: fija el total del día, clamp [0..100000], inmutable', () => {
+  const now = new Date(2026, 6, 9, 15, 0, 0); // 2026-07-09 local
+  const orig = { steps: { '2026-07-08': 5000 } };
+  const h1 = stepsSet(orig, 6200, now);
+  assert.strictEqual(stepsToday(h1, now), 6200);
+  assert.strictEqual(orig.steps['2026-07-09'], undefined);          // no muta
+  assert.strictEqual(stepsToday(stepsSet(h1, 9500, now), now), 9500); // fija (no suma)
+  assert.strictEqual(stepsToday(stepsSet(h1, -100, now), now), 0);    // piso 0
+  assert.strictEqual(stepsToday(stepsSet(h1, 999999, now), now), 100000); // techo
+  assert.strictEqual(stepsToday(stepsSet(h1, 'abc', now), now), 0);   // basura → 0
+  assert.strictEqual(stepsToday(null, now), 0);                       // sin datos
+  assert.strictEqual(h1.steps['2026-07-08'], 5000);                   // ayer intacto
+});
+
+test('stepsAdd: suma delta al total del día (atajos +1.000), clamp e inmutable', () => {
+  const now = new Date(2026, 6, 9, 15, 0, 0);
+  const h1 = stepsSet({}, 3000, now);
+  assert.strictEqual(stepsToday(stepsAdd(h1, 1000, now), now), 4000);
+  assert.strictEqual(stepsToday(stepsAdd(h1, -5000, now), now), 0);   // piso 0
+  assert.strictEqual(stepsToday(stepsAdd({}, 1000, now), now), 1000); // desde cero
+});
+
+test('stepsSet: poda entradas con más de 30 días', () => {
+  const now = new Date(2026, 6, 9);
+  const h = stepsSet({ steps: { '2026-05-01': 8000, '2026-06-20': 6000 } }, 7000, now);
+  assert.strictEqual(h.steps['2026-05-01'], undefined); // 69 días → fuera
+  assert.strictEqual(h.steps['2026-06-20'], 6000);      // 19 días → queda
+});
+
+test('stepsWeek: 7 días terminando hoy, con ceros donde no hay registro', () => {
+  const now = new Date(2026, 6, 9);
+  const wk = stepsWeek({ steps: { '2026-07-09': 8200, '2026-07-06': 5000 } }, now);
+  assert.strictEqual(wk.length, 7);
+  assert.strictEqual(wk[6].day, '2026-07-09');
+  assert.strictEqual(wk[6].n, 8200);
+  assert.strictEqual(wk[3].n, 5000);
+  assert.strictEqual(wk[0].n, 0);
+  assert.strictEqual(STEPS_GOAL_DEFAULT, 8000); // meta fija OMS
 });
 
 test('waterGoalFor: plan del coach manda (>0, tope 30); sin plan → peso', () => {

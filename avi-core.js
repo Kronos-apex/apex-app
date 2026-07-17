@@ -1363,6 +1363,45 @@ function waterAdherence(habits, goal, now) {
   return { week, metDays, loggedDays };
 }
 
+// ── Pasos diarios (v362 — 👟 hábito parte 2, mismo hogar que el agua) ──
+// Viven en client.habits.steps {'YYYY-MM-DD': pasos} y viajan en el perfil (clientToRow
+// copia todo, como painCare). A diferencia del agua (se suma vaso a vaso), los pasos se
+// LEEN del celular: la entrada natural es teclear el total del día (stepsSet), y de paso
+// hay atajos de +1.000 (stepsAdd). Meta FIJA 8.000 (referencia OMS) — no depende del peso.
+// Todo recibe `now` (determinista). Retención compartida con el agua (WATER_KEEP_DAYS).
+const STEPS_GOAL_DEFAULT = 8000;
+const STEPS_MAX = 100000; // tope de cordura (una jornada extrema ronda un maratón a pie)
+function stepsToday(habits, now) {
+  const s = (habits && habits.steps) || {};
+  return Math.max(0, parseInt(s[habitDayKey(now)]) || 0);
+}
+// Fija el total del día de `now` (lo que marca el celular). Inmutable. Clamp [0..STEPS_MAX].
+// Basura/NaN → 0. Poda entradas con más de WATER_KEEP_DAYS días.
+function stepsSet(habits, value, now) {
+  const h = Object.assign({}, habits || {});
+  const s = Object.assign({}, h.steps || {});
+  s[habitDayKey(now)] = Math.max(0, Math.min(STEPS_MAX, parseInt(value) || 0));
+  const cutoff = habitDayKey(new Date((now ? now.getTime() : Date.now()) - WATER_KEEP_DAYS * 86400000));
+  Object.keys(s).forEach(dk => { if (dk < cutoff) delete s[dk]; }); // YYYY-MM-DD ordena lexicográfico
+  h.steps = s;
+  return h;
+}
+// Suma delta (puede ser negativo) al día de `now`, para los atajos +1.000. Inmutable.
+// Clamp [0..STEPS_MAX], misma poda que stepsSet.
+function stepsAdd(habits, delta, now) {
+  return stepsSet(habits, stepsToday(habits, now) + (parseInt(delta) || 0), now);
+}
+// Últimos 7 días (hoy de último) para la mini-fila de la tarjeta: [{day, n}].
+function stepsWeek(habits, now) {
+  const base = now || new Date();
+  const out = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(base.getTime() - i * 86400000);
+    out.push({ day: habitDayKey(d), n: stepsToday(habits, d) });
+  }
+  return out;
+}
+
 // ── Config de HIIT rápido (v301): el usuario elige rondas/trabajo/descanso ──
 // Clamps de cordura: rondas 1-20, trabajo 10-180s, descanso 5-180s. Basura/NaN → el
 // default del preset. Puro (lo usa el mini-modal de Entrenamientos rápidos).
@@ -2655,5 +2694,11 @@ if (typeof module !== 'undefined' && module.exports) {
     waterWeek,
     waterGoalFor,
     waterAdherence,
+    STEPS_GOAL_DEFAULT,
+    STEPS_MAX,
+    stepsToday,
+    stepsSet,
+    stepsAdd,
+    stepsWeek,
   };
 }
