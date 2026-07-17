@@ -1118,3 +1118,72 @@ planificada). Constantes tunables: `SHOCK_CONSISTENCY_DAYS`, `SHOCK_CONSISTENCY_
 ### 🟢 VEREDICTO: FASE 4.2 APROBADA — los 3 sabotajes mordieron, la medida separa fatiga de
 faltas en los casos nucleares (parón reciente incluido, verificado a mano), candados y cinturón
 intactos, prod v356 verde. Ciclo de verificación CERRADO (5º consecutivo).
+
+## 25. Verificación de Fable — SESIÓN I (adherencia de agua en la ficha del coach, v361) y VEREDICTO
+
+> La Sesión I vive en `docs/plan-sesiones.md` (plan de acción 2026-07-16); el veredicto se
+> documenta aquí por continuidad del ciclo «Fable estipula → Opus ejecuta → Fable verifica»
+> (6º consecutivo).
+
+### Verificación (2026-07-16, base v360 `0421b83` → v361 `d128ba7`)
+- [x] **Árbol limpio + 4 commits presentes** (`30daefc` core · `8da58e0` UI · `08eff87` deploy ·
+  `d128ba7` docs). Deploy = bump PURO ?v=361/CACHE avi-v361 (leído el diff completo); docs solo
+  bitácora 66 + plan-sesiones. **Sin scope creep** en ningún commit (I1 = 2 helpers + exports +
+  5 tests + baseline 381; I2 = `renderCoachHabitsCard` + 1 div en index + 2 llamadas en
+  `openDetail` + fixture del harness).
+- [x] **Réplica `waterGoalFor` FIEL al original** — comparada línea por línea contra
+  `_waterGoalFor` (app-5-salud.js:917-921): mismo `parseInt(nut.water)`, mismo umbral `>0`,
+  mismo tope `Math.min(30,·)`, mismo fallback `waterGoalGlasses(weight)`. La UI le pasa
+  `(DB.nutrition||{})[c.id]` — exactamente la MISMA fuente que lee el original. Única
+  diferencia: guard defensivo `client && client.weight` (inofensivo). W7 de `_verify-water`
+  confirma que el lado del asesorado sigue leyendo el plan del coach igual.
+- [x] **GOTCHA Date-vs-timestamp cerrado:** grep de `waterAdherence(` en TODO el repo → la única
+  llamada de producción es app-3-coach.js:1413 con `new Date()` (objeto Date, no timestamp).
+  Tests y harness también pasan Dates. Ninguna llamada con `Date.now()` quedó viva.
+- [x] **Suite 381/381** re-corrida por Fable (antes y después de cada sabotaje).
+- [x] **Sabotajes con árbol LIMPIO, ejecutados por Fable (4; tres mordieron en suite):**
+  (a) tope de 30 removido en `waterGoalFor` → mordió (380/381); (b) `waterGoalFor` ignorando
+  `nut.water` (siempre peso) → mordió (380/381); (c) `met: d.n > 0` (cumple sin llegar a la
+  meta) → mordieron 2 tests (379/381); (d) guard de progressive disclosure removido en la UI
+  (`if(a.loggedDays===0)return`) → **NO lo cazó NADA**: la suite no cubre UI y el harness solo
+  hacía `console.log` sin aserción (EXITCODE=0 con c2 mostrando tarjeta con 0 registros).
+  **Brecha REAL de cobertura** → cerrada abajo. Árbol restaurado tras cada sabotaje.
+- [x] **Brecha cerrada — el harness ganó DIENTES** (`_shot-coach.mjs detail`, cambio de Fable):
+  aserciones duras con `process.exit(1)` — c1 visible (`display:block`), 7 puntos, **exactamente
+  4 llenos** (`var(--bl)` sin `transparent` = metDays del fixture), texto «4 de los últimos 7»,
+  y c2 sin registro `display:none`. Verde en árbol limpio; re-sabotaje del guard → EXITCODE=1
+  (muerde, verificado). Era la línea de defensa que faltaba para la clase «regresión de UI
+  silenciosa».
+- [x] **UI verificada con RENDER real (no solo programático):** shots claro/oscuro leídos a ojo —
+  patrón de puntos `●○○●○●●` coincide 1:1 con el fixture cronológico (8✓·6✗·sin registro✗·8✓·
+  4✗·10✓·8✓ con meta 8), texto y meta correctos, tokens visibles en AMBOS temas (lleno `--bl`,
+  aro `--br2`), tarjeta bien ubicada entre valoración y rutinas; c2 sin datos → oculta.
+- [x] **Cinturón re-corrido por Fable:** `_verify-shock` TODO OK (misma zona `openDetail`) ·
+  `_verify-water` 7/7 (lado del asesorado intacto) · `_verify-modals` 12/12 · `_verify-pulse`
+  6/6 · `_verify-coach` 12/12 (check F confirma el orden con `cn-habits` presente) ·
+  `_guiado-suite` 53/53 · `_test-coach-back` 20/20 TODO OK · cero jsErrors en todos. (1ª
+  corrida del guiado dio FATAL por rate-limit del login QA — gotcha conocido; reintento a los
+  5 min en verde.)
+- [x] **Prod re-verificada por Fable:** `_prodcheck.mjs 361` verde — v361 servida, boot limpio,
+  login/core/renderToday true, **cero jsErrors**.
+- [x] **Seguridad/datos:** los únicos datos interpolados en el innerHTML nuevo son NÚMEROS
+  (`d.n`, `goal`, `metDays` salen de `parseInt`/contadores) — sin `esc()` pendiente. Solo
+  lectura verificada por grep del diff: sin `sv(`/`sendCoachMsg`/`pushToClient`/`Date.now`.
+  Nada nuevo en SB_KEYS (correcto: `habits` ya viaja en `ax_c`).
+
+### Observaciones menores (no bloquean, para el radar)
+- El comentario de `waterAdherence` dice que una meta inválida «se cae al default por peso»,
+  pero llama `waterGoalGlasses()` SIN peso → siempre 8. Inalcanzable desde la UI (la meta llega
+  de `waterGoalFor`, siempre ≥6); precisión de comentario, no bug.
+- El fixture del harness usa fechas RELATIVAS a hoy (`_dk(off)`) — correcto y determinista para
+  metDays; si algún día la tarjeta pinta nombres de día, el shot variará según el día de la
+  corrida.
+- La ficha `p-detail` sigue creciendo (valoración + hidratación + shock + rutinas + chat inline
+  + historial + nutrición + medidas) — refuerza el pendiente de backlog de unificar el chat
+  inline con el de pantalla completa y, a futuro, repensar el orden de secciones.
+
+### 🟢 VEREDICTO: SESIÓN I APROBADA — 3 sabotajes de suite mordieron; el 4º destapó una brecha
+real (guard de UI sin cobertura automatizada) que quedó CERRADA con aserciones en el harness
+(verificadas mordiendo); la réplica de `waterGoalFor` es fiel al original línea por línea; el
+contrato `Date` está respetado en la única llamada de producción; render real correcto en ambos
+temas; cinturón y prod v361 verdes. Ciclo de verificación CERRADO (6º consecutivo).

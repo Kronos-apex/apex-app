@@ -90,10 +90,21 @@ const setup = await ev(`(()=>{try{
 console.log('  setup:', setup);
 await sleep(1000);
 if (PANEL === 'detail') {
-  const hab = await ev(`(()=>{const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?',txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'',dots:el?el.querySelectorAll('.card > div > span[title]').length:0};})()`);
+  const hab = await ev(`(()=>{const el=document.getElementById('d-habits');const dots=el?[...el.querySelectorAll('.card span[title]')]:[];return {disp:el?el.style.display:'?',txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'',dots:dots.length,full:dots.filter(s=>(s.getAttribute('style')||'').includes('var(--bl)')&&!(s.getAttribute('style')||'').includes('transparent')).length};})()`);
   console.log('  #d-habits (c1, con datos):', JSON.stringify(hab));
   const empty = await ev(`(()=>{try{DB.clients[1].habits={};openDetail('c2');const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?'};}catch(e){return 'err:'+e.message;}})()`);
   console.log('  #d-habits (c2, 0 días → debe ocultar):', JSON.stringify(empty));
+  // ASERCIONES CON DIENTES (Fable, verificación Sesión I): el fixture de c1 produce metDays=4
+  // sobre 7 puntos, y c2 sin registro DEBE ocultar la tarjeta. Un console.log sin exit-code
+  // no caza regresiones (sabotaje al guard de progressive disclosure pasó en verde).
+  const bad = [];
+  if (hab.disp !== 'block') bad.push(`c1 con datos: display='${hab.disp}' (esperaba block)`);
+  if (hab.dots !== 7) bad.push(`c1: ${hab.dots} puntos (esperaba 7)`);
+  if (hab.full !== 4) bad.push(`c1: ${hab.full} puntos llenos (esperaba 4 = metDays del fixture)`);
+  if (!/4 de los últimos 7/.test(hab.txt)) bad.push(`c1: texto no dice "4 de los últimos 7": "${hab.txt}"`);
+  if (empty.disp !== 'none') bad.push(`c2 sin registro: display='${empty.disp}' (esperaba none — progressive disclosure)`);
+  if (bad.length) { console.error('❌ #d-habits FALLÓ:\n  - ' + bad.join('\n  - ')); chrome.kill(); srv.kill(); process.exit(1); }
+  console.log('  ✅ #d-habits: visible con 4/7 llenos en c1, oculto en c2');
   await ev(`openDetail('c1')`); await sleep(600); // volver a c1 con datos para los shots
 }
 await ev(`typeof setTheme==='function' && setTheme('light')`); await sleep(500); await shotFull('coach-'+PANEL+'-claro');

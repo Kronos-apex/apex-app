@@ -196,7 +196,16 @@ v359) · cinturón estándar · deploy v360 · bitácora. **SIN AVI_NEWS** (cara
 > nutricional). GOTCHA: `waterWeek`/`waterAdherence` esperan un `Date` (no `Date.now()`).
 > Harness `_shot-coach.mjs detail` con fixture de agua + verificación visible/oculto; shots OK;
 > `_test-coach-back` OK. Deploy `08eff87` v361, `_prodcheck 361` verde. SIN AVI_NEWS. Detalle:
-> bitácora parte 66. Falta verificación de Fable. Spec original abajo (referencia).
+> bitácora parte 66. Spec original abajo (referencia).
+>
+> **🟢 VERIFICACIÓN DE FABLE: APROBADA (2026-07-16)** — veredicto completo en §25 de
+> `docs/plan-coach-inteligente.md`. Resumen: 3 sabotajes de suite mordieron (tope 30, plan del
+> coach ignorado, met sin meta); un 4º sabotaje (guard de progressive disclosure) destapó una
+> brecha real de cobertura — el harness solo logueaba sin aserción — CERRADA dándole dientes a
+> `_shot-coach.mjs detail` (exit 1 si c1 no muestra 4/7 llenos o c2 no oculta; verificado
+> mordiendo). Réplica `waterGoalFor` fiel línea a línea a `_waterGoalFor`; contrato `Date`
+> respetado (única llamada de prod con `new Date()`); render real OK ambos temas; cinturón
+> completo y prod v361 verdes.
 
 <details><summary>Spec original de la sesión I</summary>
 
