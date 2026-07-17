@@ -53,6 +53,11 @@ const setup = await ev(`(()=>{try{
   const mkS=(cid,daysAgo,vol)=>{const d=new Date();d.setDate(d.getDate()-daysAgo);d.setHours(18,0,0,0);
     return {id:cid+'s'+daysAgo,sessionId:cid+'sid'+daysAgo,routineId:'r1',routineName:'Empuje',date:d.toISOString(),startedAt:d.toISOString(),totalVol:vol,doneSets:12,totalSets:12,exercises:[]};};
   DB.history={c1:[mkS('c1',0,4800),mkS('c1',2,4600),mkS('c1',5,4400)],c2:[mkS('c2',1,3200),mkS('c2',4,3100)],c4:[mkS('c4',0,2800)]};
+  // I2: adherencia de agua para la ficha (#d-habits). c1 tiene registro (tarjeta VISIBLE);
+  // c2/c3/c4 sin habits → tarjeta OCULTA (progressive disclosure). Plan del coach: 8 vasos.
+  const _dk=off=>{const d=new Date();d.setDate(d.getDate()-off);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  DB.nutrition={c1:{water:8}};
+  DB.clients[0].habits={water:{[_dk(0)]:8,[_dk(1)]:10,[_dk(2)]:4,[_dk(3)]:8,[_dk(5)]:6,[_dk(6)]:8}}; // metDays=4, loggedDays=6, día -4 sin registro
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
   if(typeof COACH_NAME!=='undefined'){}
   showScreen('s-coach');
@@ -84,6 +89,13 @@ const setup = await ev(`(()=>{try{
 }catch(e){return 'err:'+e.message+' | '+e.stack;}})()`);
 console.log('  setup:', setup);
 await sleep(1000);
+if (PANEL === 'detail') {
+  const hab = await ev(`(()=>{const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?',txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'',dots:el?el.querySelectorAll('.card > div > span[title]').length:0};})()`);
+  console.log('  #d-habits (c1, con datos):', JSON.stringify(hab));
+  const empty = await ev(`(()=>{try{DB.clients[1].habits={};openDetail('c2');const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?'};}catch(e){return 'err:'+e.message;}})()`);
+  console.log('  #d-habits (c2, 0 días → debe ocultar):', JSON.stringify(empty));
+  await ev(`openDetail('c1')`); await sleep(600); // volver a c1 con datos para los shots
+}
 await ev(`typeof setTheme==='function' && setTheme('light')`); await sleep(500); await shotFull('coach-'+PANEL+'-claro');
 await ev(`typeof setTheme==='function' && setTheme('dark')`); await sleep(500); await shotFull('coach-'+PANEL+'-oscuro');
 console.log('OUT:', OUT);

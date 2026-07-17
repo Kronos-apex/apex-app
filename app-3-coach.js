@@ -1095,6 +1095,7 @@ async function openDetail(id,_silent){
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
   renderShockCard(c);
+  renderCoachHabitsCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
@@ -1106,6 +1107,7 @@ async function openDetail(id,_silent){
     await _ensureClientHeavy(id);
     if(CUR.clientId!==id) return; // el coach abrió otro cliente mientras cargaba → no pisar
     renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+    renderCoachHabitsCard(c); // la meta puede afinarse con el plan nutricional recién cargado
   }
 }
 
@@ -1396,6 +1398,28 @@ function renderShockCard(c){
     <div style="display:flex;margin-top:10px">
       <button class="btn bg bsm" style="min-height:36px" onclick="dismissShock()">${multi?'Descartar todos':'Descartar'}</button>
     </div>
+  </div>`;
+}
+// ── Hábitos: adherencia de agua del asesorado (I2) — el COACH la ve en la ficha ──
+// Los datos viven en client.habits (sincronizan como painCare, ya viajan). Meta = plan del
+// coach (nut.water) o peso, vía waterGoalFor puro. OCULTO si 0 días registrados
+// (progressive disclosure: ni tarjeta vacía ni regaño al asesorado). Solo lectura.
+function renderCoachHabitsCard(c){
+  const el=document.getElementById('d-habits'); if(!el)return;
+  el.innerHTML='';el.style.display='none';
+  if(typeof waterAdherence!=='function'||typeof waterGoalFor!=='function'||!c)return;
+  const nut=(DB.nutrition||{})[c.id];
+  const goal=waterGoalFor(c,nut);
+  const a=waterAdherence(c.habits||{},goal,new Date());
+  if(a.loggedDays===0)return; // nada registrado → no mostrar (sin tarjeta vacía)
+  // Puntos: lleno (azul) = cumplió la meta ese día; vacío (aro gris) = no. Título con el conteo.
+  const dots=a.week.map(d=>`<span title="${d.n} vaso${d.n!==1?'s':''}" style="width:13px;height:13px;border-radius:50%;box-sizing:border-box;${d.met?'background:var(--bl)':'background:transparent;border:2px solid var(--br2)'}"></span>`).join('');
+  const done=a.metDays===7?'Cumplió la meta los 7 días 💧':`Cumplió la meta ${a.metDays} de los últimos 7 días`;
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:12px 14px">
+    <div class="ctitle" style="margin-bottom:9px">${_coIco('droplet',15,'💧')} Hidratación</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:9px">${dots}</div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.5">${done} · meta ${goal} vaso${goal!==1?'s':''}/día</div>
   </div>`;
 }
 // Abre el chat con el mensaje YA ESCRITO — el coach lo edita y lo envía. Jamás se envía solo.
