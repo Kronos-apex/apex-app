@@ -1844,26 +1844,23 @@ function envChips(env){
 
 // ══════════════════════ MESSAGES (COACH) ══════════════════════
 function renderDetailMsgs(id){
-  // v321: NO marcar leído por abrir el PERFIL (aviso Lucas: se abre para editar rutina/medidas
-  // sin ver el chat → limpiaba el badge en falso, y con el sync sería permanente). El leído se
-  // marca al abrir el chat real (openCoachChat) o al responder (sendCoachMsg).
-  const msgs=DB.msgs[id]||[];const con=document.getElementById('d-msgs');con.innerHTML='';
-  if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin mensajes. Escribe el primero 👇</div>';return}
-  msgs.forEach(m=>{
+  // v363: la ficha ya NO tiene input propio. Un solo lugar para escribir = el chat de pantalla
+  // completa (openCoachChat, botón «Abrir chat»). Aquí va solo un PREVIEW de los últimos 2
+  // mensajes, SOLO LECTURA. El leído NO se marca por abrir el PERFIL (v321, aviso Lucas): se
+  // abre para editar rutina/medidas sin ver el chat → limpiaría el badge en falso.
+  const msgs=DB.msgs[id]||[];const con=document.getElementById('d-msgs');if(!con)return;con.innerHTML='';
+  if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin mensajes. Abre el chat para escribir el primero 👇</div>';return}
+  const prev=msgs.slice(-2);
+  if(msgs.length>prev.length){
+    const more=document.createElement('div');more.style.cssText='text-align:center;color:var(--t3);font-size:11px;padding:2px 0 8px';
+    const extra=msgs.length-prev.length;more.textContent=`+${extra} mensaje${extra>1?'s':''} más — abre el chat para ver todo`;con.appendChild(more);
+  }
+  prev.forEach(m=>{
     const isC=m.from==='coach';
     const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
     const t=document.createElement('div');t.className=`mt${isC?' r':''}`;t.textContent=`${isC?'Coach':'Asesorado'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
   });
   con.scrollTop=con.scrollHeight;
-}
-function sendCoachMsg(){
-  const ta=document.getElementById('msg-in');const text=ta.value.trim();if(!text||!CUR.clientId)return;
-  if(!DB.msgs[CUR.clientId])DB.msgs[CUR.clientId]=[];
-  DB.msgs[CUR.clientId].push({from:'coach',text,date:new Date().toISOString()});
-  sv('ax_m',DB.msgs);
-  const _pc=DB.clients.find(x=>x.id===CUR.clientId);
-  if(_pc){pushToClient(CUR.clientId,'💬 Mensaje de tu Coach',ta.value.trim().length>80?ta.value.trim().slice(0,77)+'...':ta.value.trim(),{type:'message',chatId:CUR.clientId,tag:'avi-chat-'+CUR.clientId});}
-  ta.value='';ta.style.height='auto';markCoachRead(CUR.clientId);renderDetailMsgs(CUR.clientId);renderMsgs();renderHome();toast('💬 Mensaje enviado');updateMsgBadge(CUR.clientId);
 }
 function renderMsgs(){
   const con=document.getElementById('msgs-list');
