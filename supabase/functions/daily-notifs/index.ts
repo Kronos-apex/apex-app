@@ -185,6 +185,19 @@ const MORNING_DONE = {
   ],
 };
 
+// ── Recordatorio de hábitos (v362): se APENDE al push de la tarde SOLO si el asesorado
+// no registró su agua ni sus pasos hoy. No es un push nuevo — es una coletilla suave al
+// mensaje que ya recibe, para cerrar el día completo. Rotativo por día (msgIndex).
+const HABITS_REMINDER = [
+  "Y no olvides: ¿ya registraste tu agua y tus pasos de hoy?",
+  "De paso, anota tu agua y tus pasos de hoy en la app.",
+  "Cierra el día completo: registra tu agua y tus pasos.",
+  "¿Cuántos pasos llevas hoy? Anótalos junto con tu agua.",
+  "Un toque más: registra tu agua y tus pasos de hoy.",
+  "Antes de dormir, apunta tu agua y tus pasos de hoy.",
+  "Tu agua y tus pasos de hoy te esperan en la app.",
+];
+
 const cors = {
   "Access-Control-Allow-Origin": "https://kronos-apex.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -235,10 +248,10 @@ serve(async (req) => {
     // por vida. daysSince: días desde la última. Con esto la función deja de adivinar.
     const { data: udRows, error: udErr } = await supabase
       .from("user_data")
-      .select("user_id, history");
+      .select("user_id, history, profile");
     if (udErr) console.error("[daily-notifs] user_data:", udErr.message);
     const todayCol = new Date(now.getTime() - 5 * 3600_000).toISOString().slice(0, 10);
-    const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null }>();
+    const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null; habitsLoggedToday: boolean }>();
     for (const r of (udRows ?? [])) {
       const hist: Array<{ date?: string }> = Array.isArray(r.history) ? r.history : [];
       let trainedToday = false, last = 0;
@@ -248,9 +261,15 @@ serve(async (req) => {
         if (new Date(t - 5 * 3600_000).toISOString().slice(0, 10) === todayCol) trainedToday = true;
         if (t > last) last = t;
       }
+      // Hábitos de HOY (v362): el asesorado está en Colombia (UTC-5) → su habitDayKey local
+      // == todayCol. Registró si tiene agua o pasos > 0 hoy. profile.habits viaja en el perfil.
+      const habits = (r.profile && (r.profile as { habits?: { water?: Record<string, number>; steps?: Record<string, number> } }).habits) || {};
+      const waterToday = Number((habits.water || {})[todayCol]) || 0;
+      const stepsToday = Number((habits.steps || {})[todayCol]) || 0;
       state.set(String(r.user_id), {
         trainedToday, total: hist.length,
         daysSince: last ? Math.floor((now.getTime() - last) / 86400_000) : null,
+        habitsLoggedToday: waterToday > 0 || stepsToday > 0,
       });
     }
     if (!subs || subs.length === 0) {
@@ -273,6 +292,7 @@ serve(async (req) => {
 
         let title: string;
         let body: string;
+        let habitsNudge = false; // v362: ¿apendemos el recordatorio de hábitos a la tarde?
 
         // ── Segmentos por estado (solo asesorados con fila user_data) ──
         if (st && st.total === 0) {
@@ -289,6 +309,7 @@ serve(async (req) => {
         } else if (st && st.trainedToday && slot === "afternoon") {
           // Ya entrenó HOY (lo dice el historial, no el turno) → recuperación
           title = AFTERNOON.postworkout.title; body = AFTERNOON.postworkout.body[msgIndex];
+          habitsNudge = true;
         } else if (slot === "morning") {
           const pool = isTraining ? MORNING.training : MORNING.rest;
           title = pool.title;
@@ -317,6 +338,14 @@ serve(async (req) => {
             title = AFTERNOON.neutral.title;
             body  = AFTERNOON.neutral.body[msgIndex];
           }
+          habitsNudge = true;
+        }
+
+        // v362: coletilla de hábitos SOLO en la tarde, SOLO si no registró agua/pasos hoy
+        // (y solo en las ramas normales/postworkout — nunca en rescate/comeback, que son pushes
+        // de retención con su propio foco). Un push, un objetivo claro; esto solo cierra el día.
+        if (habitsNudge && st && !st.habitsLoggedToday) {
+          body = body + " " + HABITS_REMINDER[msgIndex];
         }
 
         const payload = JSON.stringify({ title, body, icon: "/apex-app/icons/icon-192.png" });
