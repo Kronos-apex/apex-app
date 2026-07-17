@@ -247,6 +247,73 @@ SUSCRITOS y hoy casi nadie lo está (v320) → esta sesión incluye el empujón 
 **Cierre:** suite · `_verify-water` como plantilla + checks de pasos · `_verify-news` ·
 harness del guiado (workout-finish es zona caliente → cinturón completo) · deploy v362.
 
+## 🟢 § VERDICTO SESIÓN J (Fable) — v362: **APROBADA** (2026-07-17)
+
+Verificación independiente completa contra la línea base `917ab86` (v361). Todo re-corrido
+por mí; nada tomado de los números reportados por Opus.
+
+1. **Diff (4 commits `86766a6`→`05e5c38`, 14 archivos):** SOLO lo estipulado — J1 core,
+   J2 UI+news+bump, J3 edge fn, docs. CERO scope creep. Tests puramente ADITIVOS
+   (`avi.test.js` numstat 46/0 — ningún test viejo borrado ni debilitado; los ajustes de
+   `_verify-news` son la consecuencia CORRECTA de que v362 entra al top-3 de `newsToShow`
+   — verifiqué la función: filter>seen, sort desc, slice 3 → [362,352,316], slide 1 = la
+   más vieja = chat v316; y el re-scope de W1 a `.hb-dot:not(.st)` conserva la aserción).
+2. **Decisión `stepsSet` de Opus: extensión mínima JUSTIFICADA, no scope creep.** El plan
+   estipuló `stepsAdd` calcado del agua, pero los pasos se LEEN del celular como total —
+   sumar deltas obliga a cuentas mentales y arriesga doble conteo. `stepsSet` son 6 líneas
+   puras, `stepsAdd` se define encima de ella (=set(today+delta)), ambas con `now`
+   determinista, clamp [0..100.000], basura→0, poda 30d compartida (`WATER_KEEP_DAYS`),
+   inmutables y testeadas (fija-no-suma, techo, piso, poda, semana). Producto correcto.
+3. **Suite re-corrida por mí: 385/385** (baseline hook 381→385 consistente con +4 tests).
+4. **Harnesses re-corridos por mí:** `_verify-water` **12/12** (W1-W7 agua intactas +
+   S1-S5 pasos: SET 6200, +1.000 suma→7200, meta 8.000, clamp 100.000, re-render vía
+   `renderClientToday` conserva estado) y `_verify-news` **10/10** (N1 slide1=chat v316,
+   N2 última=pasos v362, N5 3 dots, N9 libre filtra chat → v352+v362). Cero jsErrors.
+5. **Sabotajes propios con árbol limpio (3/3 MORDIERON):** (a) quitar el techo
+   `STEPS_MAX` de `stepsSet` → suite 384/385 (test «techo»); (b) `stepsAdd` fija el delta
+   en vez de sumar → suite 384/385; (c) INVENTADO capa UI: `stepsQuick` suma 0 → la suite
+   queda VERDE (no ve el cableado) pero el harness cazó FAIL S3 `{"n":6200}` — prueba que
+   `_verify-water` vigila el puente UI→core, no solo el core. Árbol restaurado y verificado
+   limpio tras cada uno (suite 385/385 final).
+6. **Greps de seguridad:** SB_KEYS SIN claves nuevas (los pasos viajan dentro de
+   `ax_c→habits`, patrón painCare — correcto); `_stepsBlockHtml` solo interpola números
+   clampados por `parseInt` y claves de fecha generadas por `habitDayKey` — ningún dato de
+   usuario crudo entra al innerHTML; cero secretos en el diff; mute/estado local fuera de
+   SB_KEYS. BOM: index.html/sw.js locales y en prod arrancan `3c 21 44` (sin EF BB BF).
+7. **Prod:** curl Pages sirve `?v=362` (×10 refs) + `CACHE_NAME='avi-v362'`;
+   `_prodcheck.mjs 362` verde (boot real 4s, login/core/renderToday true, cero jsErrors).
+8. **Edge Function `daily-notifs`:** dry-run (`{"slot":"afternoon","dry":true}`, sin envío)
+   → `{ok:true, sent:7, failed:0, skipped:0, total:7}`. Verifiqué vía MCP que el código
+   DESPLEGADO (versión 5, `verify_jwt:false`) es IDÉNTICO al del repo. Lógica revisada
+   línea a línea: `habitsNudge` solo se enciende en postworkout-tarde y en la rama genérica
+   de la tarde; rescate/comeback hacen `continue`/asignan SIN el flag; el guard
+   `habitsNudge && st && !st.habitsLoggedToday` excluye al coach (`st===null`) y a quien ya
+   registró agua O pasos hoy. Es coletilla apendada, jamás un push nuevo.
+9. **Tono Sofía:** fila de pasos («Pasos de hoy», «¡Meta cumplida! 8.200 pasos 🎉»,
+   placeholder «Escribe tus pasos de hoy»), toast («👟 ¡Meta de pasos cumplida! Bien
+   hecho»), AVI_NEWS v362 («Ahora cuentas tus pasos») y los 7 copys de `HABITS_REMINDER`
+   — humanos, cálidos, es-CO, cero jerga. Aprobados.
+10. **J4 confirmado preexistente:** `renderWfPushNudge` (v325) vive en app-4:1527 y está
+    cableado en el show del cierre (app-4:1516) — FUERA del diff v361→v362. Opus verificó
+    en vez de reconstruir: correcto por doctrina.
+11. **Desviación documentada (acepto):** el cierre estipulaba cinturón del guiado porque
+    J4 iba a tocar workout-finish; al resultar J4 no-código, el diff NO toca app-4 ni el
+    flujo de entreno → no re-corrí `_guiado-suite` (el path `renderClientToday`→tarjeta de
+    hábitos queda cubierto por S5 del harness + `_prodcheck` con renderToday true).
+
+**Radar (5):** (1) la Edge Function NO tiene test automatizado — un sabotaje en `index.ts`
+no lo muerde NADA (mi verificación fue dry-run + fuente desplegada + lectura); si
+`daily-notifs` sigue creciendo, extraer la segmentación a función pura testeable.
+(2) Endoso el radar de Opus: la coletilla llega a cualquier suscrito sin registro hoy,
+incluso a quien jamás usa la tarjeta — refinamiento futuro: gatearla a quien tenga
+historial de hábitos. (3) `habitsLoggedToday` asume usuario en UTC-5 (correcto para
+Colombia; si algún día hay usuarios fuera, el día no coincide — documentado en comentario).
+(4) Footer de CLAUDE.md del Coach Inteligente sigue diciendo «Fases …+4.1 (v355)» — quedó
+desactualizado desde v356, preexistente a esta sesión, corregir al próximo toque de
+CLAUDE.md. (5) Solo hay 7 suscripciones push — el recordatorio sigue siendo un timbre con
+pocas casas: los ítems (a) copy de la tarjeta de Hoy y (c) invitación del coach por chat
+del backlog de adopción son el siguiente palanquazo real.
+
 ## 📋 SESIÓN K — Chat unificado: la ficha abre el chat de pantalla completa (avi-v363)
 
 **Aviso Lucas v321:** hoy hay DOS UIs para la misma conversación (inline `#d-msgs` en la
