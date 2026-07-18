@@ -528,6 +528,107 @@ es la única defensa contra reincidencia además del grep — si los nudges de W
 creciendo, considerar un check del pre-commit hook que rechace `wa.me/${` sin `waPhone` en
 la misma función; hoy con 3 callers no lo exijo.
 
+## 🔴 § VERDICTO «YA ENTRENASTE HOY» v366 (Fable) — **RECHAZADA: se come el entreno EN CURSO** (2026-07-17)
+
+Feature pedida por Camilo (lote de ideas, #1): colapsar el entrenamiento en la pantalla
+Hoy cuando ya entrenó, para dejar agua/pasos a la mano. Verificación independiente completa
+contra la línea base `3be63d2` (HEAD `16a6145`, código `64de694`). Todo re-corrido por mí.
+
+**El happy path está bien hecho y bonito. El problema es que «ya entrenó hoy» se vuelve
+verdad DESDE LA PRIMERA SERIE MARCADA (auto-guardado parcial, app-4:1385) — y el
+corto-circuito no distingue «terminó» de «está entrenando AHORA». Reproduje 3 vías reales
+en las que la tarjeta reemplaza el entrenamiento EN CURSO.** Detalle abajo (punto 6).
+
+1. **Diff (`git diff 3be63d2 HEAD`, 11 archivos, +186/−18): CERO scope creep.** Solo lo
+   estipulado: `trainedToday` puro + export dual (avi-core:916/2651); corto-circuito
+   (app-4:639, orden CORRECTO: tras no-hay-rutinas:633, antes de descanso:656) +
+   `_trainedTodayCardHTML` + `todayTrainAgain`; `.trained-card` con tokens (styles:1300);
+   +1 test; harness nuevo `_shot-trained.mjs`; ajuste `_guiado-suite` S5 P10/S14; bump
+   ?v=366 ×10 + CACHE `avi-v366`; baseline 386→387; CLAUDE.md + bitácora 71. Sin sesión
+   hoy el flujo normal embebe como antes (verificado en mi repro: setup sin historial →
+   `embedded:true, card:false`).
+2. **Suite re-corrida por mí: 387/387** (subió exactamente por el test `trainedToday`).
+3. **El test MUERDE:** con árbol limpio saboteé `trainedToday` (`===` → `!==`) →
+   **386/387 con SOLO ese test en rojo**; `git checkout` → 387/387.
+4. **Harnesses re-corridos por mí:** `_shot-trained.mjs` **6/6 + cero jsErrors**; capturas
+   `trained-claro/oscuro.png` MIRADAS: tarjeta premium en ambos temas (check verde en
+   círculo `--gl`, jerarquía clara, botones táctiles), agua/pasos ARRIBA de la tarjeta,
+   «Hoy entrenaste **Espalda**» correcto (rutina de otro día cuenta). `_guiado-suite.mjs`
+   **53/53, dos corridas completas**, cero jsErrors, sin rate-limit.
+5. **Sabotajes propios (3; 2 mordieron, 1 CAZÓ UNA BRECHA):** (a) **quitar
+   `!overrideRoutine` del corto-circuito → TODO VERDE** (`_shot-trained` 6/6; y
+   `_guiado-suite` no ejercita overrides — grep: cero usos). El camino «abrir una rutina
+   a propósito / entreno rápido con sesión ya guardada hoy» tiene CERO cobertura: un
+   refactor podría romperlo en silencio → radar #2. (b) corto-circuito sin `return` →
+   muerde (T1/T2/T3 caen). (c) inventado: `todayTrainAgain` sin poner `CUR.trainAgain` →
+   muerde (T6 cae). Árbol restaurado y re-verificado (suite verde, `git status` limpio).
+6. **🔴 BUG REAL REPRODUCIDO — la tarjeta colapsa el entrenamiento EN CURSO.** Desde la
+   1ª serie marcada, `updateClientProgress` guarda la sesión parcial con fecha de HOY →
+   `trainedToday=true` A MEDIA SESIÓN. El único guard que protege el embebido es el de
+   TIMER VIVO (app-4:609); cualquier `renderClientToday` sin timer y sin override pasa por
+   el corto-circuito. Repro CDP (`scripts/e2e/_fable-repro-midsession.mjs`, sin login,
+   guiado embebido real con 1 serie marcada, `liveTimer:false`):
+   - **A — «Cambiar cómo me siento»** (`gmChangeMood` embebido, app-6:592) →
+     `card:true, embedded:false`: el entreno desaparece y NO hay chooser para re-elegir.
+   - **B — reordenar ejercicio** (`gmMoveEx`→`todayMoveEx`, app-4:1287) → `card:true`.
+     La MISMA llamada vive en `_applySubstitute` (app-4:1304) = **sustituir un ejercicio,
+     incluido el flujo de DOLOR** («🩹 reportaste dolor… cámbialo», app-6:474): el
+     asesorado reporta dolor, cambia el ejercicio, y la app le contesta «¡Ya entrenaste
+     hoy! 💪 …descansa» borrándole el entreno en curso.
+   - **C — el coach cambia el plan** (poll 15s, app-1:647) → `card:true` a media sesión
+     (antes: refresco diferido del plan, comportamiento diseñado en F2).
+   - **Control D — con timer de descanso vivo** → `card:false, embedded:true` (el guard
+     F2 sub-3 sí protege, pero solo mientras el timer corre).
+   No hay pérdida de datos (claves `done_/log_` y parcial intactos; «Entrenar otra vez»
+   recupera), pero es una rotura de flujo real en la ZONA MÁS CALIENTE de la app, con un
+   caso (dolor) donde el mensaje es activamente equivocado.
+7. **El ajuste de `_guiado-suite` — juicio dividido:** S5 P10 (día nuevo) es **FIEL**: en
+   un día nuevo real la sesión sí sería de ayer; re-fecharla simula bien. **S14 TAPA el
+   problema real**: su escenario es «mismo día, mid-sesión, el coach cambió el plan» — en
+   producción ese render mostraría la TARJETA, no el plan nuevo (mi repro C es exactamente
+   S14 sin el re-fechado). El comentario de Opus («aquí probamos el refresco diferido, no
+   un entreno completado») elude que a media sesión SIEMPRE hay una sesión parcial de hoy
+   en el historial. El fix debe hacer que S14 vuelva a pasar SIN re-fechar.
+8. **Seguridad/tono:** `routineName` entra a innerHTML **CON `esc()`** (app-4:582,
+   verificado en el diff); el resto de la tarjeta es estático; onclick sin datos de
+   usuario. Tono Sofía correcto y cálido («Tu cuerpo ya hizo el trabajo — hidrátate,
+   registra tus pasos y descansa»). Cero secretos.
+9. **Prod:** curl Pages → `?v=366` ×10 + `CACHE_NAME='avi-v366'`; sin BOM (`3c 21 44`);
+   `_prodcheck.mjs 366` **verde en 2 corridas** (boot 11s/13s, v366, login/core/renderToday
+   true×3, cero jsErrors).
+
+**VEREDICTO: RECHAZADA — el ciclo NO se cierra hasta corregir el punto 6.** NO exige
+rollback inmediato (happy path correcto, sin pérdida de datos, recuperación en 1 toque),
+pero el fix es OBLIGATORIO y pronto: cada asesorado que a media sesión cambie el ánimo,
+reordene o sustituya (incl. dolor) pierde la vista del entreno.
+
+**FIX ESTIPULADO para Opus (mínimo, de raíz):** el corto-circuito debe exigir además que
+NO haya sesión EN CURSO — la señal más fiel es «la sesión activa de hoy NO está finalizada»
+(p.ej. guiado embebido montado con sesión activa, o sesión de hoy con el mismo
+`session_id_` vivo y sin finalizar). «Terminó» (100% o Finalizar temprano) SÍ muestra la
+tarjeta al volver; «va por la serie 3» JAMÁS. Con el fix: (i) revertir el re-fechado de
+S14 (debe pasar con la sesión parcial fechada HOY — esa es la prueba de que el fix
+funciona); S5 P10 se queda como está; (ii) +1 check en `_shot-trained` o en el repro:
+sesión parcial de hoy + `gmChangeMood`/`todayMoveEx` → el embebido sobrevive; (iii) +1
+check del camino override (cierra mi sabotaje (a)). Mi repro queda en
+`scripts/e2e/_fable-repro-midsession.mjs` (sin commitear) para verificar el fix.
+
+**Radar (5):**
+1. 🔴 **El fix del punto 6** — prioridad sobre el resto del lote de ideas de Camilo; es
+   regresión de flujo en producción, no deuda.
+2. 🟡 **Cobertura cero del camino override** (sabotaje (a) invisible para TODO el cinturón):
+   1 check al hacer el fix — abrir rutina a propósito con sesión de hoy → NO tarjeta.
+3. 🟡 **AVI_NEWS**: la regla de la casa dice que toda feature visible al asesorado lleva
+   entrada (v302); Opus la omitió «por ahora». La tarjeta se descubre sola, pero el
+   anuncio le daría contexto («si ya entrenaste, ahora la app te lo celebra») y haría
+   descubrible «Entrenar otra vez». Decisión de Camilo al aprobar el fix.
+4. 🟢 Matiz de producto aceptable pero consciente: un Finalizar temprano con 1 de 20
+   series también dice «¡Ya entrenaste hoy!» — fue decisión explícita del usuario
+   (Finalizar), lo doy por bueno; si Camilo ve quejas, el umbral vive en un solo lugar.
+5. 🟢 Preexistente (zona v362, NO de esta feature): el botón «+1.000» de pasos se recorta
+   ~2px a 390px en tema claro (visto en `trained-claro.png`). Arreglo cosmético de 1 línea
+   cuando se toque esa tarjeta.
+
 ## 📋 SESIÓN L — Pagos: COMPARATIVA Colombia (investigación, CERO código)
 
 **Decisión D4:** Camilo elige con datos; no se construye nada aún.
