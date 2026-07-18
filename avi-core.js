@@ -1263,6 +1263,20 @@ function weeklyMissed(client, sessions, now) {
   return out.sort((a, b) => a.weekdayIdx - b.weekdayIdx);
 }
 
+// ── ¿Mostrar el banner "comparte AVI"? (idea Camilo 2026-07-18, crecimiento orgánico) ──
+// PURA. Se muestra SOLO tras engagement real (>= SHARE_MIN_SESSIONS sesiones FINALIZADAS — que el
+// asesorado ya le sacó provecho antes de pedirle que invite) y si no lo silenció hace poco
+// (snoozeUntil, timestamp). Al descartarlo se pospone SHARE_SNOOZE_DAYS días (ocasional, no molesto).
+const SHARE_MIN_SESSIONS = 3;
+const SHARE_SNOOZE_DAYS = 45;
+function shareBannerEligible(sessions, now, snoozeUntil) {
+  const t = +new Date(now == null ? Date.now() : now);
+  if (snoozeUntil && t < +snoozeUntil) return false;
+  let finished = 0;
+  (sessions || []).forEach(s => { if (sessionFinished(s)) finished++; });
+  return finished >= SHARE_MIN_SESSIONS;
+}
+
 // ── Resumen del PROPIO entrenamiento del coach para su panel (idea Camilo 2026-07-18) ──
 // PURA. El coach entrena en una cuenta de asesorado aparte (la marca como "mi cuenta"); esto
 // destila su fila de historial en las 3 cifras de la tarjeta "Mi entrenamiento" del Inicio:
@@ -2731,6 +2745,7 @@ if (typeof module !== 'undefined' && module.exports) {
     sortRoutinesByDay,
     weeklyMissed,
     myTrainingSummary,
+    shareBannerEligible,
     isInAdaptation,
     estimate1RM,
     suggestLoad,

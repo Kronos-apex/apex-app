@@ -37,6 +37,7 @@ const {
   planDays,
   weeklyMissed,
   myTrainingSummary,
+  shareBannerEligible,
   weekStreak,
   longestWeekStreak,
   errReportGate,
@@ -1118,6 +1119,23 @@ test('myTrainingSummary: pasa las cifras (días de esta semana, meta, hace cuán
   assert.strictEqual(s.target, 3);
   assert.strictEqual(s.daysSince, 1);          // última = martes, hoy miércoles
   assert.strictEqual(s.lastName, 'Empuje');    // la MÁS reciente
+});
+
+test('shareBannerEligible: solo tras ≥3 sesiones FINALIZADAS y respetando el snooze', () => {
+  const now = D(2026, 6, 3, 12);
+  const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 6, 1, 8 + i), finishedAt: 'x' }));
+  // menos de 3 finalizadas → no
+  assert.strictEqual(shareBannerEligible(fin(2), now, 0), false);
+  // 3 finalizadas → sí
+  assert.strictEqual(shareBannerEligible(fin(3), now, 0), true);
+  // parciales en curso NO cuentan (sessionFinished false)
+  assert.strictEqual(shareBannerEligible([{ date: D(2026, 6, 1), doneSets: 1, totalSets: 8 }, { date: D(2026, 6, 2), doneSets: 2, totalSets: 8 }, { date: D(2026, 6, 2), doneSets: 3, totalSets: 8 }], now, 0), false);
+  // snooze en el futuro → no, aunque sea elegible
+  assert.strictEqual(shareBannerEligible(fin(5), now, +now + 86400000), false);
+  // snooze ya vencido → sí
+  assert.strictEqual(shareBannerEligible(fin(5), now, +now - 86400000), true);
+  // sin sesiones → no
+  assert.strictEqual(shareBannerEligible([], now, 0), false);
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

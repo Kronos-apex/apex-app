@@ -572,8 +572,8 @@ function _todayOrder(training){
   // v368: #cn-missday (día que se corrió) — en día de entreno va tras el entreno (no empuja el
   // guiado bajo el pliegue) y en descanso/sin rutina arriba, junto a las tarjetas de coaching.
   const ids=training
-    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
-    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
+    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-share']
+    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-share'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -632,6 +632,8 @@ function renderClientToday(client, overrideRoutine){
   // semana sin entrenar → tarjeta para recuperarla hoy o moverla en el plan. Recibe el
   // override para callarse cuando el asesorado ya está enfocado en un entreno concreto.
   if(typeof renderMissedDayCard==='function')renderMissedDayCard(client, overrideRoutine);
+  // 💚 Comparte AVI (v370): banner ocasional de crecimiento orgánico, solo tras engagement real.
+  if(typeof renderShareBanner==='function')renderShareBanner(client);
   // ✨ Novedades (v302): una vez por tanda, descartable.
   if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
@@ -890,6 +892,46 @@ function missMoveToday(rid){
   toast(`✅ ${r.name||'Rutina'} movida a hoy`);
   renderClientToday(c);                                      // ahora HOY es la rutina movida → entreno arriba
   const t=document.getElementById('cn-today'); if(t)t.scrollTop=0;
+}
+
+// ══════════════════ COMPARTE AVI — crecimiento orgánico (v370) ══════════════════
+// Banner ocasional en "Hoy" para que el asesorado invite a alguien. Aparece SOLO tras engagement
+// real (≥3 sesiones finalizadas, motor puro shareBannerEligible) y se pospone 45 días al descartar.
+// Comparte con navigator.share nativo (móvil) y cae a WhatsApp (elige contacto) si no está.
+const AVI_SHARE_URL='https://kronos-apex.github.io/apex-app/';
+const AVI_SHARE_MSG='Entreno con AVI 💪 una app para llevar mis rutinas y ver mi progreso. Míralo aquí:';
+function renderShareBanner(client){
+  const el=document.getElementById('cn-share'); if(!el)return;
+  el.innerHTML='';
+  if(typeof shareBannerEligible!=='function'||!client){ el.style.display='none'; return; }
+  let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_sharesnooze'))||0; }catch(e){}
+  if(!shareBannerEligible((DB.history&&DB.history[client.id])||[],Date.now(),snooze)){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:11px">
+    <div style="color:var(--g2);flex:0 0 auto">${typeof aviIcon==='function'?aviIcon('heart',20):'💚'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">¿Te sirve AVI?</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.45">Invita a alguien a empezar a entrenar contigo.</div>
+    </div>
+    <button class="btn bp bsm" style="flex:0 0 auto;min-height:36px" onclick="shareApp()">Compartir</button>
+    <button class="btn bg bsm" style="flex:0 0 auto;min-height:36px;padding:0 10px" aria-label="Ahora no" onclick="dismissShare()">✕</button>
+  </div>`;
+}
+async function shareApp(){
+  const msg=AVI_SHARE_MSG+' '+AVI_SHARE_URL;
+  try{
+    if(navigator.share){
+      await navigator.share({title:'AVI',text:AVI_SHARE_MSG,url:AVI_SHARE_URL});
+      dismissShare(); // compartió → no seguir insistiendo pronto
+      return;
+    }
+  }catch(e){ if(e&&e.name==='AbortError')return; } // canceló el share: silencio, sin snooze
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'); // respaldo: elige contacto en WhatsApp
+  dismissShare();
+}
+function dismissShare(){
+  try{ localStorage.setItem('ax_sharesnooze',String(Date.now()+ (typeof SHARE_SNOOZE_DAYS!=='undefined'?SHARE_SNOOZE_DAYS:45)*86400000)); }catch(e){}
+  const el=document.getElementById('cn-share'); if(el){ el.style.display='none'; el.innerHTML=''; }
 }
 
 function startRoutineNow(routineId){
