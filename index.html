@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=370">
+<link rel="stylesheet" href="styles.css?v=371">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -447,7 +447,6 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           </div>
           <div style="margin-top:12px;font-size:12.5px;color:var(--t2)" id="d-stats"></div>
           <div style="display:flex;gap:5px;margin-top:10px;flex-wrap:wrap" id="d-tags"></div>
-          <div id="d-selfacct" style="margin-top:10px"></div>
           <div style="display:flex;gap:6px;margin-top:13px">
             <button class="btn bg bsm" style="flex:1" onclick="openEditClient()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button>
             <button class="btn bo bsm" style="flex:1" onclick="openNewRoutine()">+ Rutina</button>
@@ -1114,18 +1113,18 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=370"></script>
-<script src="muscle-map.js?v=370"></script>
-<script src="exercise-muscles.js?v=370"></script>
+<script src="avi-core.js?v=371"></script>
+<script src="muscle-map.js?v=371"></script>
+<script src="exercise-muscles.js?v=371"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=370"></script>
-<script src="app-2-login.js?v=370"></script>
-<script src="app-3-coach.js?v=370"></script>
-<script src="app-4-entreno.js?v=370"></script>
-<script src="app-5-salud.js?v=370"></script>
-<script src="app-6-extra.js?v=370"></script>
+<script src="app-1-infra.js?v=371"></script>
+<script src="app-2-login.js?v=371"></script>
+<script src="app-3-coach.js?v=371"></script>
+<script src="app-4-entreno.js?v=371"></script>
+<script src="app-5-salud.js?v=371"></script>
+<script src="app-6-extra.js?v=371"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

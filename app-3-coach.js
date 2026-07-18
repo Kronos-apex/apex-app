@@ -690,8 +690,6 @@ async function _enterCoachAuth(authUser, ownRow){
       if(_cs.cn)        localStorage.setItem('ax_cn',  JSON.stringify(_cs.cn));
       if(_cs.ce)        localStorage.setItem('ax_ce',  JSON.stringify(_cs.ce));
       if(_cs.site!=null)localStorage.setItem('ax_site',JSON.stringify(_cs.site));
-      // v369: cuál asesorado es la cuenta de entrenamiento del PROPIO coach (tarjeta "Mi entrenamiento").
-      if(_cs.selfclient!=null)localStorage.setItem('ax_selfclient',JSON.stringify(_cs.selfclient));
       // v321: estado de leído del chat sincronizado (fusiona con lo local, gana el más reciente
       // por asesorado) → los mensajes ya leídos NO reaparecen como nuevos en otro dispositivo.
       if(_cs.mr && typeof _cs.mr==='object'){
@@ -736,31 +734,6 @@ async function openMyTraining(){
   const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='';
   showScreen('s-client');
   initClientView(me);
-}
-// ── "Mi cuenta de entrenamiento" (v369, idea Camilo 2026-07-18) ──
-// El coach entrena en una cuenta de asesorado aparte. Puede marcar CUÁL de sus asesorados es la
-// suya → aparece la tarjeta "Mi entrenamiento" en su Inicio con sus cifras. La designación es un
-// ajuste del coach que SINCRONIZA (SB_KEYS + _COACH_SETTINGS_KEYS): guarda el clientId en ax_selfclient.
-function _selfClientId(){ return ld('ax_selfclient',''); }
-function renderSelfAcctToggle(c){
-  const el=document.getElementById('d-selfacct'); if(!el)return;
-  if(!c){ el.innerHTML=''; return; }
-  const self=_selfClientId();
-  if(self===c.id){ // ESTA es mi cuenta → chip con "quitar"
-    el.innerHTML=`<button class="tag" style="background:var(--gl);color:var(--gt);border:1px solid var(--g2);cursor:pointer;min-height:32px" onclick="toggleSelfAcct('${esc(c.id)}')" aria-label="Quitar como mi cuenta de entrenamiento">${_coIco('star',12,'★')} Mi cuenta de entrenamiento · quitar ✕</button>`;
-  }else if(!self){ // aún no hay ninguna marcada → ofrecer marcar esta (una vez marcada, las demás fichas quedan limpias)
-    el.innerHTML=`<button class="btn bg bsm" style="min-height:34px;font-size:12px;color:var(--t2)" onclick="toggleSelfAcct('${esc(c.id)}')">${_coIco('star',12,'☆')} Marcar como mi cuenta de entrenamiento</button>`;
-  }else{ el.innerHTML=''; } // otra ficha y ya hay una marcada → sin ruido
-}
-function toggleSelfAcct(id){
-  const cur=_selfClientId();
-  const next=(cur===id)?'':id;
-  localStorage.setItem('ax_selfclient',JSON.stringify(next));
-  sv('ax_selfclient',next); // sincroniza (coach_settings)
-  const c=DB.clients.find(x=>x.id===id);
-  renderSelfAcctToggle(c);
-  if(typeof renderHome==='function')renderHome();
-  toast(next?'★ Marcada como tu cuenta de entrenamiento':'Cuenta de entrenamiento desmarcada');
 }
 async function backToCoachPanel(){
   // Conserva las ediciones de esta sesión: re-snapshot de tu fila ANTES de recargar clientes,
@@ -1121,7 +1094,6 @@ async function openDetail(id,_silent){
   dn.style.display=(c.notes||_painHTML)?'block':'none';
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
-  renderSelfAcctToggle(c);
   renderShockCard(c);
   renderCoachHabitsCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);

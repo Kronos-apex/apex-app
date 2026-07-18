@@ -1539,37 +1539,32 @@ function renderHome(){
 // escribirle a cada asesorado (récord/estancamiento/deload/racha). La lógica vive en
 // avi-core.coachPulse (pura, determinista); aquí solo UI + estado. El ✕ silencia esa fila
 // por 3 días (localStorage coachpulse_<cid>_<type>, LOCAL — preferencia de UI del coach).
-// Mi entrenamiento (v369, idea Camilo 2026-07-18): tarjeta en el Inicio del coach con las cifras
-// de SU propio entreno. El coach entrena en una cuenta de asesorado aparte; la marca como "mi
-// cuenta" (ax_selfclient, en la ficha) y aquí resumimos racha/semana/último. Toca → su ficha
-// (donde vive su progreso completo). Se oculta sola si no hay cuenta marcada o si ya no existe.
+// Mi entrenamiento (v369, fix v371, idea Camilo 2026-07-18): tarjeta en el Inicio del coach con las
+// cifras de SU propio entreno. Camilo entrena con "Mi entrenamiento" (COACH_SELF), que se guarda en
+// SU PROPIA fila (no en un cliente). Por eso leemos de COACH_OWN_ROW — la MISMA fuente que
+// openMyTraining — sin marcar nada. Toca → abre "Mi entrenamiento". Se oculta sola si no hay
+// historial propio. (v369 leía de un cliente marcado; Camilo no entrena en un cliente → nunca salía.)
 function renderMyTrainingCard(){
   const el=document.getElementById('h-mytraining'); if(!el)return;
-  const selfId=ld('ax_selfclient','');
-  const me=selfId?DB.clients.find(c=>c.id===selfId):null;
-  if(!me||typeof myTrainingSummary!=='function'){ el.style.display='none'; el.innerHTML=''; return; }
-  const s=myTrainingSummary(me,(DB.history&&DB.history[selfId])||[],Date.now());
+  if(typeof myTrainingSummary!=='function'){ el.style.display='none'; el.innerHTML=''; return; }
+  const row=(typeof COACH_OWN_ROW!=='undefined'&&COACH_OWN_ROW)
+    || (typeof _readAuthRow==='function'&&typeof _authUid!=='undefined'&&_authUid?_readAuthRow(_authUid):null);
+  const hist=(row&&row.history)||[];
+  if(!hist.length){ el.style.display='none'; el.innerHTML=''; return; } // sin entreno propio → sin tarjeta
+  const planClient={routines:(row&&row.routines)||[],days:(row&&row.profile&&row.profile.days)};
+  const s=myTrainingSummary(planClient,hist,Date.now());
   const ic=(nm,sz)=>(typeof aviIcon==='function'?aviIcon(nm,sz):'');
-  const head=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-size:12px;font-weight:700;color:var(--g);display:flex;align-items:center;gap:6px">${ic('dumbbell',14)} Mi entrenamiento</div>
-      <div style="font-size:11px;color:var(--t3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(me.name)}</div>
-    </div>`;
-  let body;
-  if(!s.hasData){
-    body=`<div style="font-size:12.5px;color:var(--t2);line-height:1.5">Aún no registras entrenos en esta cuenta. Cuando entrenes con ella, aquí verás tu racha y tu semana.</div>`;
-  }else{
-    const lastTxt=s.daysSince<=0?'Hoy':s.daysSince===1?'Ayer':('Hace '+s.daysSince+' días');
-    const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;
-    body=`<div style="display:flex;gap:6px">
+  const lastTxt=s.daysSince<=0?'Hoy':s.daysSince===1?'Ayer':('Hace '+s.daysSince+' días');
+  const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:12px 14px;cursor:pointer" onclick="openMyTraining()">
+    <div style="font-size:12px;font-weight:700;color:var(--g);display:flex;align-items:center;gap:6px;margin-bottom:8px">${ic('dumbbell',14)} Mi entrenamiento</div>
+    <div style="display:flex;gap:6px">
       ${stat(s.streakWeeks+' sem','Racha')}
       ${stat(s.thisWeekDays+'/'+s.target,'Esta semana')}
       ${stat(lastTxt,'Último')}
-    </div>`;
-  }
-  el.style.display='block';
-  el.innerHTML=`<div class="card" style="padding:12px 14px;cursor:pointer" onclick="openDetail('${esc(selfId)}')">
-    ${head}${body}
-    <div style="margin-top:10px"><button class="btn bg bsm" style="width:100%;min-height:36px" onclick="event.stopPropagation();openDetail('${esc(selfId)}')">Ver mi entrenamiento →</button></div>
+    </div>
+    <div style="margin-top:10px"><button class="btn bg bsm" style="width:100%;min-height:36px" onclick="event.stopPropagation();openMyTraining()">Ver mi entrenamiento →</button></div>
   </div>`;
 }
 function renderPulse(){
