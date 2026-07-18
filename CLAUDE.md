@@ -139,7 +139,7 @@ apex-app/
 | `#apex-loading` | Overlay de carga — "Entrenamiento con nombre propio" |
 
 ### Paneles del Coach (6)
-- `#p-home` — Dashboard: MRR, activos, sesiones semanales, retención SVG, banner de vencimientos próximos, asesorados prioritarios (vencidos primero)
+- `#p-home` — Dashboard: MRR, activos, sesiones semanales, retención SVG, banner de vencimientos próximos, asesorados prioritarios (vencidos primero). **v369 tarjeta `#h-mytraining` «Mi entrenamiento»:** el coach entrena en una cuenta de asesorado aparte; la marca como «mi cuenta» en la ficha (`#d-selfacct`→`ax_selfclient`, ajuste que SINCRONIZA) y aquí ve su racha/semana/último + acceso a su ficha (`myTrainingSummary` puro en avi-core; `renderMyTrainingCard`)
 - `#p-clients` — Lista con búsqueda + badge de membresía
 - `#p-detail` — Detalle: rutinas, mensajes, historial, progreso, mensualidad, nutrición, medidas, fotos
 - `#p-templates` — Biblioteca de plantillas reutilizables
@@ -297,8 +297,10 @@ SB_KEYS = [
   'ax_ce',      // ejercicios custom
   'ax_cn',      // nombre del coach
   'ax_nequi',   // ✅ v1.3.3 — número Nequi del coach
+  'ax_selfclient', // ✅ v369 — clientId del asesorado que ES la cuenta de entreno del coach (tarjeta "Mi entrenamiento")
 ]
 // ax_cp ELIMINADO — contraseña legacy del coach no debe sincronizarse
+// ax_msgreads y ax_selfclient viajan en coach_settings (están también en _COACH_SETTINGS_KEYS)
 ```
 
 ---
@@ -754,7 +756,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-18 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v368** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **392/392** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app, `_shot-trained` = ya entrenaste hoy, `_fable-repro-midsession` = regresión tarjeta a media sesión, `_verify-missday` = día que se corrió) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-18 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v369** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **395/395** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app, `_shot-trained` = ya entrenaste hoy, `_fable-repro-midsession` = regresión tarjeta a media sesión, `_verify-missday` = día que se corrió, `_verify-selftraining` = mi entrenamiento del coach) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Hábitos: 💧 agua (v300) + 👟 PASOS (SESIÓN J, v362, 2026-07-17, VERIFICADO por Fable §VERDICTO SESIÓN J) en la tarjeta `#cn-habits` — meta 8.000, input SET + atajo +1.000, recordatorio en el cron de las 5pm. Adopción push al fin del entreno ya existía (v325).*
 
@@ -765,6 +767,8 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 *Fix WhatsApp (v365, 2026-07-17, VERIFICADO por Fable §VERDICTO FIX WHATSAPP v365 `d0542e8`): `waPhone(raw)` puro en avi-core normaliza el teléfono para `wa.me` — móvil CO sin +57 daba enlace roto en los 3 nudges (pago/adherencia/invitar). Ver GOTCHAS VIGENTES.*
 
 *«Ya entrenaste hoy» (v366 + fix v367, 2026-07-17): `finishedTrainingToday(sessions,now)` + `sessionFinished(s)` puros → `renderClientToday` colapsa el entreno en `.trained-card` cuando ya TERMINÓ (cualquier rutina cuenta; exige `finishedAt`), dejando agua/pasos arriba. **v366 RECHAZADA por Fable** (`e48323d`): el auto-guardado parcial de la 1ª serie hacía que la tarjeta pisara el entreno EN CURSO al re-renderizar (ánimo/reordenar/dolor/poll). **Fix v367:** `finishedAt` marcado por los 2 flujos de fin (100% + Finalizar temprano); la tarjeta exige sesión finalizada. Harnesses `_shot-trained.mjs` (8/8, +T7 override +T8 parcial) y `_fable-repro-midsession.mjs` (regresión A/B/C/D + positivo). Suite 388. Pendiente re-verificación de Fable. **LOTE DE IDEAS de Camilo (bitácora parte 71): (2) sugerencia al correrse los días [híbrido elegido, diseño listo] · (3) perfil propio del coach en sus stats · (4) banner compartir · (5) comunidad (proyecto aparte).** FOLLOW-UP menor: la edge `daily-notifs` tiene su propio `trainedToday` local con el mismo patrón (impacto = una notificación; no bloqueante).*
+
+*«Mi entrenamiento» del coach (v369, 2026-07-18, idea Camilo #3): Camilo entrena en una **cuenta de asesorado aparte** (lo aclaró por AskUserQuestion). Solución sin duplicar: marca CUÁL de sus asesorados es él en la ficha (`#d-selfacct`, botón «Marcar como mi cuenta» → chip «Mi cuenta · quitar»; una vez marcada, las OTRAS fichas quedan limpias) → guarda `clientId` en **`ax_selfclient`** (ajuste del coach que SINCRONIZA: `SB_KEYS` + `_COACH_SETTINGS_KEYS` + `_coachSettingsObj().selfclient` + hidratación en `_loadCoachClientsIntoDB`). Su Inicio muestra la tarjeta `#h-mytraining` con racha/esta-semana/último + «Ver mi entrenamiento →» (abre su ficha). Motor PURO `myTrainingSummary(client,sessions,now)` en avi-core (reusa `weekStreak`/`daysSinceLastSession`/`planDays`; +3 tests → suite 395). `renderMyTrainingCard` (app-2, llamada en `renderHome`), `renderSelfAcctToggle`/`toggleSelfAcct` (app-3, llamada en `openDetail`). Estado vacío honesto si la cuenta no tiene historial. Harness NUEVO `_verify-selftraining.mjs` (ST1-ST7 + shots, sin login). `_prodcheck 369`. **Pendiente re-verificación de Fable.** Nota: el coach solo VE sus stats en el panel; para MARCAR series sigue entrando por «Mi entrenamiento» (drawer) o por la app en esa cuenta.*
 
 *«Día que se corrió» (v368, 2026-07-18, idea Camilo #2 — HÍBRIDO elegido por él): motor puro `weeklyMissed(client,sessions,now)` en avi-core (rutina con día real cuyo `dayOrder < hoy` esta semana y sin sesión de esta semana por id/nombre; hoy NO cuenta como perdido; orden por antigüedad). Tarjeta `#cn-missday` («Te quedó pendiente esta semana») en Hoy con 3 acciones: **«Entrenar hoy»** = `missTrainToday`→`startRoutineNow` (override, plan INTACTO) · **«Mover a hoy en mi plan»** = `missMoveToday` (SWAP: la perdida toma hoy, la que ocupaba hoy toma el día que ella dejó; `sv('ax_c')` → misma vía sancionada `upsertOwn` perfil+rutinas de la fila propia, NADA de sync nuevo; si el desplazado cae en día pasado se auto-mutea) · **«Hoy no»** = `missMute` (mute por-rutina-por-semana en `ax_missmute_<cid>`, LOCAL, NO en SB_KEYS). Se calla con override/`CUR.trainAgain`/`finishedTrainingToday`. Colocada en `_todayOrder` (tras el entreno en día de entreno, arriba en descanso). Suite 392 (+4 `weeklyMissed`). Harness NUEVO `_verify-missday.mjs` (MD1-MD9 + shots, sin login, cloud sellado). AVI_NEWS v368 (corrí `_verify-news` esta vez → verde). **Pendiente re-verificación de Fable.** RADAR: un asesorado PREMIUM que «mueve» reescribe el plan del coach (el coach lo ve al siguiente poll) — aceptado por el PO (Camilo entrena consigo mismo), pero es la primera vez que el asesorado edita el plan; vigilar si conviene un aviso al coach. Quedan ideas #3 (perfil propio del coach en sus stats — antes aclarar cómo registra sus entrenos), #4 (banner compartir), #5 (comunidad, proyecto aparte).*
 

@@ -36,6 +36,7 @@ const {
   longestStreak,
   planDays,
   weeklyMissed,
+  myTrainingSummary,
   weekStreak,
   longestWeekStreak,
   errReportGate,
@@ -1097,6 +1098,36 @@ test('weeklyMissed: varias perdidas ordenadas por antigüedad (el día más leja
 test('weeklyMissed: sin rutinas / cliente nulo → []', () => {
   assert.deepStrictEqual(weeklyMissed({ routines: [] }, [], D(2026, 6, 3)), []);
   assert.deepStrictEqual(weeklyMissed(null, null, D(2026, 6, 3)), []);
+});
+
+test('myTrainingSummary: sin sesiones → vacío honesto (hasData false, racha 0, último Infinity)', () => {
+  const s = myTrainingSummary({ days: 3 }, [], D(2026, 6, 3, 15));
+  assert.strictEqual(s.hasData, false);
+  assert.strictEqual(s.streakWeeks, 0);
+  assert.strictEqual(s.thisWeekDays, 0);
+  assert.strictEqual(s.daysSince, Infinity);
+  assert.strictEqual(s.lastName, '');
+});
+
+test('myTrainingSummary: pasa las cifras (días de esta semana, meta, hace cuánto, nombre del último)', () => {
+  const now = D(2026, 6, 3, 15); // miércoles; semana lun 1 → dom 7
+  const sess = [{ date: D(2026, 6, 1), routineName: 'Pierna' }, { date: D(2026, 6, 2), routineName: 'Empuje' }];
+  const s = myTrainingSummary({ days: 3 }, sess, now);
+  assert.strictEqual(s.hasData, true);
+  assert.strictEqual(s.thisWeekDays, 2);
+  assert.strictEqual(s.target, 3);
+  assert.strictEqual(s.daysSince, 1);          // última = martes, hoy miércoles
+  assert.strictEqual(s.lastName, 'Empuje');    // la MÁS reciente
+});
+
+test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {
+  const now = D(2026, 6, 3, 15); // miércoles
+  // meta 2; esta semana (lun 1 + mié 3) cumple, semana pasada (lun 25 + mié 27 de mayo) cumple
+  const sess = [{ date: D(2026, 5, 25) }, { date: D(2026, 5, 27) }, { date: D(2026, 6, 1) }, { date: D(2026, 6, 3) }];
+  const s = myTrainingSummary({ days: 2 }, sess, now);
+  assert.strictEqual(s.streakWeeks, 2);
+  assert.strictEqual(s.daysSince, 0);          // entrenó HOY
+  assert.strictEqual(s.thisWeekDays, 2);
 });
 
 test('daysSinceLastSession: días enteros desde la sesión más reciente', () => {
