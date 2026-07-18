@@ -2376,6 +2376,8 @@ const AVI_NEWS=[
    steps:['En "Hoy", baja hasta tu tarjeta de hábitos','Escribe los pasos que marca tu celular, o suma de a 1.000','Mira tu semana de un vistazo y apunta a los 8.000 al día']}, // coach:false → para todos (hábito diario)
   {v:367, icon:'check', t:'Ya entrenaste hoy', d:'Cuando terminas tu entreno del día, "Hoy" se despeja para dejar agua y pasos a la mano — sin scrollear todo el entreno.',
    steps:['Termina tu entrenamiento como siempre','La pantalla "Hoy" se despeja: verás "¡Ya entrenaste hoy!"','¿Quieres más? Toca "Entrenar otra vez" para una segunda sesión']}, // coach:false → para todos
+  {v:368, icon:'repeat', t:'¿Se te corrió un día?', d:'Si te faltó una rutina de esta semana, "Hoy" te lo recuerda y te deja recuperarla sin enredos.',
+   steps:['En "Hoy" verás "Te quedó pendiente esta semana" si te saltaste una rutina','Toca "Entrenar hoy" para hacerla ahora — tu plan no se toca','O "Mover a hoy en mi plan" para reacomodar tus días de una vez']}, // coach:false → para todos
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).

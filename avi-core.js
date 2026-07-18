@@ -1227,6 +1227,42 @@ function sortRoutinesByDay(routines) {
     .map(pair => pair[0]);
 }
 
+// ── Rutinas que se "corrieron": día programado ya pasó esta semana y no se entrenó ──
+// PURA (recibe `now`), sin localStorage. Alimenta la tarjeta "te quedó pendiente" del
+// asesorado (idea Camilo 2026-07-17): si el lunes de pierna quedó sin hacer y hoy es
+// miércoles, la ofrece recuperar. Semana Lunes→Domingo (weekStartTs, mismo que weekStreak).
+// Reglas:
+//   • Solo rutinas con día real (dayOrder 1..7); 'Libre'/''/desconocido NO cuentan.
+//   • El día de HOY NO es "perdido" (aún puede entrenarlo) → exige dayOrder(r.day) < hoy.
+//   • "No entrenada" = ninguna sesión de ESTA semana con ese routineId (fallback por nombre);
+//     cuenta cualquier sesión aun parcial (si ya la tocó, no la nagueamos).
+//   • Orden: el día más lejano primero (dayOrder asc = el más atrasado arriba).
+// Devuelve [{routine, dayName, weekdayIdx}]. El mute por-semana vive en la UI (no aquí).
+function weeklyMissed(client, sessions, now) {
+  const ref = now ? new Date(now) : new Date();
+  const routines = (client && client.routines) || [];
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const todayOrd = dayOrder(days[ref.getDay()]);
+  const wk = weekStartTs(ref);
+  const trainedIds = new Set(), trainedNames = new Set();
+  (sessions || []).forEach(s => {
+    if (!s || !s.date || weekStartTs(s.date) !== wk) return;
+    if (s.routineId) trainedIds.add(s.routineId);
+    if (s.routineName) trainedNames.add(s.routineName);
+  });
+  const out = [];
+  routines.forEach(r => {
+    if (!r) return;
+    const ord = dayOrder(r.day);
+    if (ord < 1 || ord > 7) return;                       // Libre / '' / desconocido
+    if (ord >= todayOrd) return;                          // hoy o futuro → aún no perdida
+    if (trainedIds.has(r.id)) return;                     // ya la entrenó esta semana
+    if (r.name && trainedNames.has(r.name)) return;       // fallback por nombre
+    out.push({ routine: r, dayName: r.day, weekdayIdx: ord });
+  });
+  return out.sort((a, b) => a.weekdayIdx - b.weekdayIdx);
+}
+
 // ── Requisitos de contraseña — pura, testeable ──
 // DEBE coincidir con la política de Supabase Auth (Camilo la endureció 2026-07-07:
 // mínimo 8, con minúscula, mayúscula y dígito). Si la validación local fuera más laxa,
@@ -2671,6 +2707,7 @@ if (typeof module !== 'undefined' && module.exports) {
     adherenceMonth,
     dayOrder,
     sortRoutinesByDay,
+    weeklyMissed,
     isInAdaptation,
     estimate1RM,
     suggestLoad,

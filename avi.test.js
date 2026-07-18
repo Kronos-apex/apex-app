@@ -35,6 +35,7 @@ const {
   workoutStreak,
   longestStreak,
   planDays,
+  weeklyMissed,
   weekStreak,
   longestWeekStreak,
   errReportGate,
@@ -1053,6 +1054,49 @@ test('finishedTrainingToday: solo cuenta una sesión FINALIZADA de hoy (no una p
   assert.strictEqual(finishedTrainingToday(null, now), false);
   assert.strictEqual(finishedTrainingToday(undefined, now), false);
   assert.strictEqual(finishedTrainingToday([null, { date: iso, doneSets: 8, totalSets: 8 }], now), true);
+});
+
+test('weeklyMissed: rutina de un día ya pasado sin entrenar aparece; hoy/futuro/Libre/sin-día no', () => {
+  const now = D(2026, 6, 3, 15); // miércoles; semana lun 1 → dom 7
+  const client = { routines: [
+    { id: 'rLeg', name: 'Pierna', day: 'Lunes' },       // pasado, sin entrenar → PERDIDA
+    { id: 'rChest', name: 'Pecho', day: 'Miércoles' },  // HOY → aún puede hacerla, no
+    { id: 'rBack', name: 'Espalda', day: 'Jueves' },    // futuro → no
+    { id: 'rFree', name: 'Suave', day: 'Libre' },       // Libre → no
+    { id: 'rNone', name: 'Suelta', day: '' },           // sin día → no
+  ]};
+  const missed = weeklyMissed(client, [], now);
+  assert.strictEqual(missed.length, 1);
+  assert.strictEqual(missed[0].routine.id, 'rLeg');
+  assert.strictEqual(missed[0].dayName, 'Lunes');
+});
+
+test('weeklyMissed: entrenada esta semana (por id o nombre, aun otro día, aun parcial) NO aparece', () => {
+  const now = D(2026, 6, 3, 15); // miércoles
+  const client = { routines: [{ id: 'rLeg', name: 'Pierna', day: 'Lunes' }] };
+  // sesión de ESTA semana con ese routineId (aunque la hiciera el martes) → no perdida
+  assert.strictEqual(weeklyMissed(client, [{ date: D(2026, 6, 2), routineId: 'rLeg', doneSets: 8, totalSets: 8 }], now).length, 0);
+  // match por nombre (id viejo migrado) → tampoco perdida
+  assert.strictEqual(weeklyMissed(client, [{ date: D(2026, 6, 2), routineName: 'Pierna', doneSets: 8, totalSets: 8 }], now).length, 0);
+  // parcial esta semana (1 de 8) → ya la tocó, no nagear
+  assert.strictEqual(weeklyMissed(client, [{ date: D(2026, 6, 2), routineId: 'rLeg', doneSets: 1, totalSets: 8 }], now).length, 0);
+  // pero una sesión de la semana PASADA no la salva
+  assert.strictEqual(weeklyMissed(client, [{ date: D(2026, 5, 26), routineId: 'rLeg', doneSets: 8, totalSets: 8 }], now).length, 1);
+});
+
+test('weeklyMissed: varias perdidas ordenadas por antigüedad (el día más lejano primero)', () => {
+  const now = D(2026, 6, 4, 15); // jueves → lun/mar/mié ya pasaron
+  const client = { routines: [
+    { id: 'rMar', name: 'Martes', day: 'Martes' },
+    { id: 'rLun', name: 'Lunes', day: 'Lunes' },
+    { id: 'rMie', name: 'Miércoles', day: 'Miércoles' },
+  ]};
+  assert.deepStrictEqual(weeklyMissed(client, [], now).map(m => m.routine.id), ['rLun', 'rMar', 'rMie']);
+});
+
+test('weeklyMissed: sin rutinas / cliente nulo → []', () => {
+  assert.deepStrictEqual(weeklyMissed({ routines: [] }, [], D(2026, 6, 3)), []);
+  assert.deepStrictEqual(weeklyMissed(null, null, D(2026, 6, 3)), []);
 });
 
 test('daysSinceLastSession: días enteros desde la sesión más reciente', () => {

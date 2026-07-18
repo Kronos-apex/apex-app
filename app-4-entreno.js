@@ -569,9 +569,11 @@ function _todayOrder(training){
   // v352: la tarjeta del Coach Inteligente (#cn-coach-card) va DESPUÉS del entreno en día de
   // entreno (no empuja el guiado bajo el pliegue, decisión v313) y ARRIBA en descanso/sin rutina
   // (ahí es el contenido principal del día).
+  // v368: #cn-missday (día que se corrió) — en día de entreno va tras el entreno (no empuja el
+  // guiado bajo el pliegue) y en descanso/sin rutina arriba, junto a las tarjetas de coaching.
   const ids=training
-    ? ['cn-today-head','cn-today-body','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
-    : ['cn-today-head','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
+    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news']
+    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -626,6 +628,10 @@ function renderClientToday(client, overrideRoutine){
   // 🧠 Coach Inteligente (v352): 1 insight priorizado (récord/racha/inactividad/…). Antes de los
   // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
   if(typeof renderCoachCard==='function')renderCoachCard(client);
+  // 🔁 Día que se corrió (v368, idea Camilo 2026-07-17): rutina de un día ya pasado esta
+  // semana sin entrenar → tarjeta para recuperarla hoy o moverla en el plan. Recibe el
+  // override para callarse cuando el asesorado ya está enfocado en un entreno concreto.
+  if(typeof renderMissedDayCard==='function')renderMissedDayCard(client, overrideRoutine);
   // ✨ Novedades (v302): una vez por tanda, descartable.
   if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
@@ -811,6 +817,79 @@ function renderCoachCard(client){
     </div>
     <div style="display:flex;gap:8px;margin-top:11px">${ctaBtn}<button class="btn bg bsm" onclick="dismissCoachInsight('${esc(ins.type)}')" style="${ins.cta?'':'flex:1;'}min-height:36px">Entendido</button></div>
   </div>`;
+}
+
+// ══════════════════ DÍA QUE SE CORRIÓ — recuperar / mover (v368) ══════════════════
+// Idea de Camilo 2026-07-17 (híbrido elegido por él): si una rutina de un día YA PASADO de
+// esta semana quedó sin entrenar, ofrecerle (1) "Entrenar hoy" = abrirla como override (el
+// plan NO se toca), (2) "Mover a hoy en mi plan" = swap de días + sync a su fila, (3) "Hoy no"
+// = mute por-rutina-por-semana (local). El motor (weeklyMissed) es puro en avi-core.
+function _missMuteMap(cid){ try{ return JSON.parse(localStorage.getItem('ax_missmute_'+cid))||{}; }catch(e){ return {}; } }
+function _missMuteSet(cid,rid){
+  const map=_missMuteMap(cid);
+  map[rid]=(typeof weekStartTs==='function')?weekStartTs(new Date()):Date.now();
+  try{ localStorage.setItem('ax_missmute_'+cid, JSON.stringify(map)); }catch(e){}
+}
+function renderMissedDayCard(client, override){
+  const el=document.getElementById('cn-missday'); if(!el)return;
+  el.innerHTML='';
+  if(typeof weeklyMissed!=='function'||!client)return;                    // guard caché vieja
+  if(override||CUR.trainAgain)return;                                     // ya está en un entreno
+  const hist=(DB.history&&DB.history[client.id])||[];
+  if(typeof finishedTrainingToday==='function'&&finishedTrainingToday(hist,new Date()))return; // hoy ya cerró
+  let missed=weeklyMissed(client,hist,new Date());
+  if(!missed.length)return;
+  // Mute por-rutina-por-semana (LOCAL, NO en SB_KEYS a propósito, como los mutes del coach).
+  const mute=_missMuteMap(client.id), wk=(typeof weekStartTs==='function')?weekStartTs(new Date()):0;
+  missed=missed.filter(m=>mute[m.routine.id]!==wk);
+  if(!missed.length)return;
+  const r=missed[0].routine;                                             // top-1: la más atrasada
+  const nm=esc(r.name||'tu rutina'), dn=esc(missed[0].dayName||'');
+  el.innerHTML=`<div class="card" style="padding:14px 15px;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="color:var(--g2);flex:0 0 auto;margin-top:1px">${typeof aviIcon==='function'?aviIcon('repeat',20):'🔁'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:3px">Te quedó pendiente esta semana</div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.5">No alcanzaste <b>${nm}</b> (${dn}). ¿La recuperas hoy?</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:11px">
+      <button class="btn bp bsm" onclick="missTrainToday('${esc(r.id)}')" style="flex:1;min-width:132px;min-height:36px">Entrenar hoy</button>
+      <button class="btn bo bsm" onclick="missMoveToday('${esc(r.id)}')" style="flex:1;min-width:132px;min-height:36px">Mover a hoy en mi plan</button>
+    </div>
+    <button class="btn bg bsm" onclick="missMute('${esc(r.id)}')" style="width:100%;min-height:36px;margin-top:8px">Hoy no</button>
+  </div>`;
+}
+// "Entrenar hoy": abre la rutina perdida como override — el plan guardado NO cambia (reusa startRoutineNow).
+function missTrainToday(rid){ if(typeof startRoutineNow==='function')startRoutineNow(rid); }
+// "Hoy no": mute de esa rutina por esta semana (caduca al cambiar de semana) + re-render.
+function missMute(rid){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  _missMuteSet(c.id,rid);
+  renderClientToday(c);
+}
+// "Mover a hoy en mi plan": SWAP de días — la perdida toma HOY; lo que ocupaba hoy toma el día
+// que ella dejó libre. Persiste + sincroniza por la MISMA vía sancionada que cualquier edición
+// del plan (sv('ax_c') → upsertOwn perfil+rutinas de la fila propia). Si el desplazado cae en un
+// día ya pasado (porque el que dejó la perdida es pasado), lo muteamos esta semana: el asesorado
+// lo desplazó a propósito, no es un "olvido" que valga la pena volver a gritar.
+function missMoveToday(rid){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const routines=c.routines||[];
+  const r=routines.find(x=>x.id===rid); if(!r)return;
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const today=days[new Date().getDay()];
+  const oldDay=r.day;
+  const occ=routines.find(x=>x&&x.day===today&&x.id!==r.id); // la que ocupaba hoy (si había)
+  r.day=today;
+  if(occ){
+    occ.day=oldDay;                                          // swap
+    if(typeof dayOrder==='function'&&dayOrder(oldDay)<dayOrder(today))_missMuteSet(c.id,occ.id); // cayó en pasado → no nagear
+  }
+  sv('ax_c',DB.clients);
+  toast(`✅ ${r.name||'Rutina'} movida a hoy`);
+  renderClientToday(c);                                      // ahora HOY es la rutina movida → entreno arriba
+  const t=document.getElementById('cn-today'); if(t)t.scrollTop=0;
 }
 
 function startRoutineNow(routineId){
