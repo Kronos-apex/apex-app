@@ -31,6 +31,11 @@ await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, devi
 
 const results = [];
 const check = (n, c, x='') => { const line = (c?'OK ':'FAIL ') + n + (x?' — '+x:''); results.push(line); log('  ' + line); };
+// Deriva del PROPIO AVI_NEWS lo que el tour DEBE mostrar (top-3 más nuevas > seen, filtro coach,
+// orden de display = la más VIEJA primero) para que las aserciones NO envejezcan al añadir novedades
+// (radar Fable v367: la entrada v367 corrió la ventana y dejó N1/N2/N5/N9 en rojo por versiones clavadas).
+const expNews = async (seen, coachExpr = "((typeof clientHasCoach==='function')?!!clientHasCoach(DB.clients.find(x=>x.id===CUR.clientId)):true)") =>
+  JSON.parse(await ev(`(()=>{const has=${coachExpr};let items=newsToShow(AVI_NEWS,${seen}).filter(n=>!n.coach||has);const asc=items.slice().sort((a,b)=>a.v-b.v);return JSON.stringify({dots:asc.length,firstT:(asc[0]||{}).t||'',lastT:(asc[asc.length-1]||{}).t||'',firstSteps:((asc[0]||{}).steps||[]).length});})()`));
 
 try {
   await waitFor(`(()=>{const sc=document.getElementById('s-client');if(sc&&getComputedStyle(sc).display!=='none')return true;const sl=document.getElementById('s-login');return !!(sl&&getComputedStyle(sl).display!=='none'&&typeof doLogin==='function'&&!document.getElementById('avi-loading'))})()`, 60000);
@@ -58,17 +63,17 @@ try {
     next:(document.getElementById('nt-next')||{}).textContent,
     chip:!!document.querySelector('#nt-body .nt-chip svg')})`));
   await shot('news-tour-slide1');
-  // Con v362 (pasos) añadida, la ventana de las 3 más nuevas es [chat v316, coach v352, pasos v362];
-  // v314 (Progreso) sale del top-3 → la slide 1 (la más vieja de la ventana) pasa a ser el chat.
-  check('N1 tour abre en slide 1 (chat v316, la más vieja de las 3 nuevas) con pill NUEVO, 3 pasos, 3 dots e icono SVG', s.open && /chat|respuestas/i.test(s.title||'') && s.pill === 'NUEVO' && s.steps === 3 && s.dots === 3 && /Siguiente/.test(s.next||'') && s.chip, JSON.stringify(s));
+  // Derivado de AVI_NEWS (no clavado a versiones): slide 1 = la más VIEJA de las ≤3 novedades nuevas.
+  const e1 = await expNews(0);
+  check('N1 tour abre en slide 1 (la más vieja de las 3 nuevas, derivada de AVI_NEWS) con pill NUEVO, pasos, dots e icono SVG', s.open && s.title === e1.firstT && s.pill === 'NUEVO' && s.steps === e1.firstSteps && s.dots === e1.dots && (e1.dots > 1 ? /Siguiente/ : /Listo/).test(s.next||'') && s.chip, JSON.stringify({ s, exp: e1 }));
 
-  // N2: avanzar hasta la ultima slide (v362 Pasos) → boton "Listo"
-  await ev(`ntNext()`); await ev(`ntNext()`);
+  // N2: avanzar hasta la ultima slide (la más NUEVA) → boton "Listo"
+  for (let i = 0; i < e1.dots - 1; i++) await ev(`ntNext()`);
   s = JSON.parse(await ev(`JSON.stringify({title:(document.querySelector('#nt-body .nt-title')||{}).textContent,
     next:(document.getElementById('nt-next')||{}).textContent,
     dotOn:[...document.querySelectorAll('#nt-dots .nt-dot')].findIndex(d=>d.classList.contains('on'))})`));
   await shot('news-tour-slide3');
-  check('N2 ultima slide (v362 "Ahora cuentas tus pasos") con "Listo" en el 3er dot', /pasos/i.test(s.title||'') && /Listo/.test(s.next||'') && s.dotOn === 2, JSON.stringify(s));
+  check('N2 ultima slide (la más nueva de AVI_NEWS) con "Listo" en el ultimo dot', s.title === e1.lastT && /Listo/.test(s.next||'') && s.dotOn === e1.dots - 1, JSON.stringify({ s, exp: e1 }));
 
   // N3: "Listo" cierra y marca la ultima version vista
   await ev(`ntNext()`);
@@ -81,22 +86,30 @@ try {
   s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden')})`));
   check('N4 re-render no lo reabre', !s.open, JSON.stringify(s));
 
-  // N5: visto parcial (v314) → tour de UNA slide (v316) — y el atras lo cierra marcando visto
+  // N5: visto parcial (v314) → tour con las novedades > 314 (top-3), slide 1 = la más vieja (derivado)
   await ev(`(()=>{localStorage.setItem('ax_news_seen','314');renderNewsCard();})()`);
   await sleep(300);
+  const e5 = await expNews(314);
   s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),dots:document.querySelectorAll('#nt-dots .nt-dot').length,title:(document.querySelector('#nt-body .nt-title')||{}).textContent})`));
-  check('N5 visto parcial (v314) → tour con las 3 novedades nuevas (chat v316 + coach v352 + pasos v362), slide 1 = chat', s.open && s.dots === 3 && /chat|respuestas/i.test(s.title||''), JSON.stringify(s));
+  check('N5 visto parcial (v314) → tour con las novedades nuevas (derivado de AVI_NEWS), slide 1 = la más vieja', s.open && s.dots === e5.dots && s.title === e5.firstT, JSON.stringify({ s, exp: e5 }));
   s = JSON.parse(await ev(`JSON.stringify({closed:_aviCloseTopOverlay(),open:!document.getElementById('news-tour').classList.contains('hidden'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
   check('N6 atras cierra el tour y marca visto', s.closed === true && !s.open && s.seen === s.latest, JSON.stringify(s));
 
-  // N7: CTA deep-link (slide única v316) — cierra el tour y abre la pestaña Mensajes
-  await ev(`(()=>{localStorage.setItem('ax_news_seen','314');renderNewsCard();})()`);
-  await sleep(300);
+  // N7: mecanismo CTA (ntCta → ntGoMsgs abre Mensajes y cierra el tour). Inyecto una novedad
+  // temporal CON cta como la ÚNICA nueva, porque la única real con cta (chat v316) ya salió del
+  // top-3 al crecer AVI_NEWS (v352/v362/v367 más nuevas) → probar el mecanismo, no una versión.
+  await ev(`(()=>{window.__origNews=AVI_NEWS.slice();const maxV=AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0);
+    AVI_NEWS.push({v:maxV+1,icon:'chat',t:'CTA Test',d:'prueba de deep-link',steps:['a','b','c'],cta:{label:'Probarlas ahora',run:'ntGoMsgs'}});
+    localStorage.setItem('ax_news_seen',String(maxV));renderNewsCard();})()`);
+  await sleep(400);
   await ev(`ntCta()`);
   await sleep(600);
-  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),msgs:document.getElementById('cn-messages').classList.contains('on'),seen:localStorage.getItem('ax_news_seen'),latest:String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0))})`));
-  check('N7 CTA "Probarlas ahora" cierra el tour y abre la pestaña Mensajes', !s.open && s.msgs && s.seen === s.latest, JSON.stringify(s));
-  await ev(`(()=>{const t=document.querySelectorAll('.cntab')[0];if(typeof cnTab==='function'&&t)cnTab('cn-today',t); localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
+  s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),msgs:document.getElementById('cn-messages').classList.contains('on')})`));
+  check('N7 CTA "Probarlas ahora" (ntCta→ntGoMsgs) cierra el tour y abre la pestaña Mensajes', !s.open && s.msgs, JSON.stringify(s));
+  // Restaura AVI_NEWS intacto y vuelve a Hoy con todo visto (no contamina N8/N9).
+  await ev(`(()=>{if(window.__origNews){AVI_NEWS.length=0;window.__origNews.forEach(n=>AVI_NEWS.push(n));}
+    const t=document.querySelectorAll('.cntab')[0];if(typeof cnTab==='function'&&t)cnTab('cn-today',t);
+    localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));})()`);
   await sleep(400);
 
   // N8: bienvenida encima (login fresco) → NO abre, pero reintenta solo al despejarse (v305)
@@ -114,8 +127,8 @@ try {
   await sleep(200);
 
   // N9 (v316): las novedades coach:true NO se muestran al modo libre (prometían chat sin coach).
-  // Con seen=314, al libre le quedan v316 (chat, coach:true → SE FILTRA), v352 y v362 (coach:false → SÍ):
-  // el tour abre con v352 + v362 (2 slides), sin la slide del chat. slide 1 = v352 (la más vieja).
+  // Derivado con has=false: al libre se le filtran los coach:true; slide 1 = la más vieja del resto.
+  const e9 = await expNews(314, 'false');
   s = JSON.parse(await ev(`JSON.stringify((()=>{
     const orig=window.clientHasCoach; window.clientHasCoach=()=>false;
     localStorage.setItem('ax_news_seen','314');
@@ -125,7 +138,7 @@ try {
     const title=(document.querySelector('#nt-body .nt-title')||{}).textContent||'';
     localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
     return {open,dots,title};})())`));
-  check('N9 libre (sin coach): la novedad del chat SE FILTRA; quedan v352 + v362 (2 slides), slide 1 = v352 sin "chat"', s.open && s.dots === 2 && /pendiente/i.test(s.title) && !/chat|respuestas/i.test(s.title), JSON.stringify(s));
+  check('N9 libre (sin coach): la novedad del chat (coach:true) SE FILTRA; dots y slide 1 = derivados sin coach, sin "chat"', s.open && s.dots === e9.dots && s.title === e9.firstT && !/chat|respuestas/i.test(s.title), JSON.stringify({ s, exp: e9 }));
 
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;
