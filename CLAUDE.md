@@ -88,6 +88,13 @@ riesgos técnicos, deuda que crece, oportunidades de producto, cosas raras en lo
 usuarios. Sin adornos. Si no hay nada relevante, dilo explícitamente ("radar limpio").
 El radar NO es opcional y NO se reemplaza por complacencia.
 
+> **⚖️ CONTRATO DE EJECUCIÓN → `docs/reglas-opus.md` (LECTURA OBLIGATORIA antes de ejecutar
+> cualquier feature/fix).** Reglas INVIOLABLES estipuladas por Fable a pedido del PO (2026-07-18):
+> qué hacer antes de tocar código (supuestos vs datos reales), cómo ejecutar (pureza, vías
+> sancionadas, barra premium), cómo verificar (sabotaje obligatorio, prohibido callar tests,
+> cinturón por zona caliente) y el ciclo con Fable (nada está "hecho" sin su veredicto).
+> Actualizables SOLO por enmienda de Fable/PO (§E del doc).
+
 > **🧠 CÓMO se opera esta doctrina → `docs/metodologia.md`** — instrucciones concretas
 > (pedido de Camilo 2026-07-11): cómo cazar bugs antes de prod (capas de QA, harness por
 > feature, subagentes Julián/Lucas), cómo matar el bug de raíz Y lo que lo causó (candado +
