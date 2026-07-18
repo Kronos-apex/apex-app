@@ -1550,9 +1550,13 @@ function renderMyTrainingCard(){
   const row=(typeof COACH_OWN_ROW!=='undefined'&&COACH_OWN_ROW)
     || (typeof _readAuthRow==='function'&&typeof _authUid!=='undefined'&&_authUid?_readAuthRow(_authUid):null);
   const hist=(row&&row.history)||[];
-  if(!hist.length){ el.style.display='none'; el.innerHTML=''; return; } // sin entreno propio → sin tarjeta
   const planClient={routines:(row&&row.routines)||[],days:(row&&row.profile&&row.profile.days)};
   const s=myTrainingSummary(planClient,hist,Date.now());
+  // v372 (reserva Fable): guard por s.hasData, NO por hist.length — un historial con TODAS las
+  // fechas inválidas tiene length>0 pero daysSince=Infinity → pintaba "Hace Infinity días". hasData
+  // ya filtra fechas válidas (y cubre el historial vacío). Nota: la tarjeta se refresca al entrar/
+  // volver de "Mi entrenamiento", no en el poll de 15s (COACH_OWN_ROW se re-snapshotea en backToCoachPanel).
+  if(!s.hasData){ el.style.display='none'; el.innerHTML=''; return; }
   const ic=(nm,sz)=>(typeof aviIcon==='function'?aviIcon(nm,sz):'');
   const lastTxt=s.daysSince<=0?'Hoy':s.daysSince===1?'Ayer':('Hace '+s.daysSince+' días');
   const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;

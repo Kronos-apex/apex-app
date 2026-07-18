@@ -1107,18 +1107,22 @@ test('myTrainingSummary: sin sesiones → vacío honesto (hasData false, racha 0
   assert.strictEqual(s.streakWeeks, 0);
   assert.strictEqual(s.thisWeekDays, 0);
   assert.strictEqual(s.daysSince, Infinity);
-  assert.strictEqual(s.lastName, '');
 });
 
-test('myTrainingSummary: pasa las cifras (días de esta semana, meta, hace cuánto, nombre del último)', () => {
+test('myTrainingSummary: pasa las cifras (días de esta semana, meta, hace cuánto)', () => {
   const now = D(2026, 6, 3, 15); // miércoles; semana lun 1 → dom 7
-  const sess = [{ date: D(2026, 6, 1), routineName: 'Pierna' }, { date: D(2026, 6, 2), routineName: 'Empuje' }];
+  const sess = [{ date: D(2026, 6, 1) }, { date: D(2026, 6, 2) }];
   const s = myTrainingSummary({ days: 3 }, sess, now);
   assert.strictEqual(s.hasData, true);
   assert.strictEqual(s.thisWeekDays, 2);
   assert.strictEqual(s.target, 3);
   assert.strictEqual(s.daysSince, 1);          // última = martes, hoy miércoles
-  assert.strictEqual(s.lastName, 'Empuje');    // la MÁS reciente
+});
+
+test('myTrainingSummary: historial con fechas TODAS inválidas → hasData false (no "Hace Infinity días")', () => {
+  const s = myTrainingSummary({ days: 3 }, [{ date: 'basura' }, { date: null }, {}], D(2026, 6, 3, 15));
+  assert.strictEqual(s.hasData, false);        // el fix v372: la tarjeta se oculta, no pinta Infinity
+  assert.strictEqual(s.daysSince, Infinity);
 });
 
 test('shareBannerEligible: solo tras ≥3 sesiones FINALIZADAS y respetando el snooze', () => {

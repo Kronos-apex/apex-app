@@ -137,6 +137,14 @@ try {
     return {n:stepsToday(c.habits),met:!!document.querySelector('#cn-habits .hb-fill.st.met')};})())`));
   check('S5 clamp 100.000 + re-render conserva conteo y estado', s.n === 100000 && s.met, JSON.stringify(s));
 
+  // S6 (reserva Fable v372): el botón "+1.000" NO se recorta a 390px en tema claro (width:auto).
+  await ev(`typeof setTheme==='function' && setTheme('light')`);
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);renderHabitsCard(c);})()`);
+  await sleep(300);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.querySelector('#cn-habits .hb-plus.st');
+    return b?{sw:b.scrollWidth,cw:b.clientWidth,txt:(b.textContent||'').trim()}:{sw:0,cw:0,txt:''};})())`));
+  check('S6 el botón "+1.000" no se recorta (scrollWidth ≤ clientWidth) y muestra el texto completo', /\+1\.000/.test(s.txt) && s.sw <= s.cw + 1, JSON.stringify(s));
+
   // limpieza en memoria (la nube está sellada igual, pero dejamos el estado prolijo)
   await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.habits={};renderHabitsCard(c);})()`);
 

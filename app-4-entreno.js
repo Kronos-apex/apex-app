@@ -838,7 +838,13 @@ function renderMissedDayCard(client, override){
   if(typeof weeklyMissed!=='function'||!client)return;                    // guard caché vieja
   if(override||CUR.trainAgain)return;                                     // ya está en un entreno
   const hist=(DB.history&&DB.history[client.id])||[];
-  if(typeof finishedTrainingToday==='function'&&finishedTrainingToday(hist,new Date()))return; // hoy ya cerró
+  // v372 (reserva Fable): NO mostrar si ya entrenó O está entrenando hoy. Antes solo miraba
+  // finishedTrainingToday → con un entreno de hoy a MEDIA SESIÓN (parcial ya auto-guardado) la
+  // tarjeta salía y "Mover a hoy" cambiaba la vista escondiendo el entreno en curso (misma CLASE
+  // del bug que v367 mató en la trained-card). Cualquier sesión de hoy (parcial o cerrada) = hoy ya
+  // hizo algo → sin nudge. Antes de la 1ª serie aún no hay sesión → puede salir (no hay qué pisar).
+  const _td=(typeof localDayStart==='function')?localDayStart(new Date()):null;
+  if(_td!==null && hist.some(s=>s&&localDayStart(s.date)===_td))return;
   let missed=weeklyMissed(client,hist,new Date());
   if(!missed.length)return;
   // Mute por-rutina-por-semana (LOCAL, NO en SB_KEYS a propósito, como los mutes del coach).

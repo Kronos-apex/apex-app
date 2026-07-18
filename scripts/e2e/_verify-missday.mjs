@@ -138,6 +138,15 @@ if (isMon) {
   await sleep(500);
   const finCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
   check('MD9 si ya terminó un entreno hoy, la tarjeta NO sale (no encima "ya entrenaste")', finCardGone === true, 'gone=' + finCardGone);
+
+  // ── MD10 (reserva Fable v372): con una sesión PARCIAL EN CURSO de hoy (sin finishedAt) la tarjeta
+  // NO sale — antes salía y "Mover a hoy" a media sesión escondía el entreno en curso (clase v367). ──
+  await ev(RESET); await sleep(300);
+  await ev(`(()=>{const iso=new Date().toISOString();DB.history={ct1:[{id:'hp',sessionId:'sp',routineId:'rToday',routineName:'Empuje',date:iso,startedAt:iso,totalVol:600,doneSets:1,totalSets:8,exercises:[]}]};renderClientToday(DB.clients[0]);})()`);
+  await sleep(500);
+  const partCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
+  const partWorkout = await ev(`/PressBanca/.test(document.getElementById('cn-today-body').textContent)`);
+  check('MD10 con un entreno de HOY a media sesión (parcial) la tarjeta NO sale (no puede pisar el entreno)', partCardGone === true && partWorkout === true, JSON.stringify({ partCardGone, partWorkout }));
 }
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));

@@ -1278,24 +1278,21 @@ function shareBannerEligible(sessions, now, snoozeUntil) {
 }
 
 // ── Resumen del PROPIO entrenamiento del coach para su panel (idea Camilo 2026-07-18) ──
-// PURA. El coach entrena en una cuenta de asesorado aparte (la marca como "mi cuenta"); esto
-// destila su fila de historial en las 3 cifras de la tarjeta "Mi entrenamiento" del Inicio:
-// racha de semanas, días entrenados esta semana (contra su meta) y hace cuántos días fue el
-// último, con el nombre de esa rutina. Reusa weekStreak/daysSinceLastSession/planDays (ya testeadas).
+// PURA. El coach entrena con "Mi entrenamiento" (COACH_SELF, en su fila propia); esto destila su
+// historial en las 3 cifras de la tarjeta "Mi entrenamiento" del Inicio: racha de semanas, días
+// entrenados esta semana (contra su meta) y hace cuántos días fue el último. `hasData` distingue
+// "no hay entreno" de datos corruptos. Reusa weekStreak/daysSinceLastSession/planDays (ya testeadas).
 function myTrainingSummary(client, sessions, now) {
   const ref = now ? new Date(now) : new Date();
   const sess = (sessions || []).filter(s => s && s.date && !isNaN(new Date(s.date).getTime()));
   const ws = weekStreak(sess, planDays(client), ref);
   const daysSince = daysSinceLastSession(sess, ref); // Infinity si nunca entrenó
-  let last = null;
-  sess.forEach(s => { if (!last || new Date(s.date) > new Date(last.date)) last = s; });
   return {
     hasData: sess.length > 0,
     streakWeeks: ws.weeks,
     thisWeekDays: ws.thisWeekDays,
     target: ws.target,
     daysSince: daysSince,
-    lastName: (last && last.routineName) || '',
   };
 }
 
