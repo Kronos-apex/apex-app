@@ -629,6 +629,94 @@ check del camino override (cierra mi sabotaje (a)). Mi repro queda en
    ~2px a 390px en tema claro (visto en `trained-claro.png`). Arreglo cosmético de 1 línea
    cuando se toque esa tarjeta.
 
+## 🟡 § VERDICTO FIX «YA ENTRENASTE HOY» v367 (Fable) — **APROBADA CON RESERVAS** (2026-07-17)
+
+Re-verificación del fix que estipulé al RECHAZAR v366 (mi radar #1). Verificación
+independiente completa contra la línea base `e48323d` (HEAD = código `033648b`). Todo
+re-corrido por mí; ningún número tomado del reporte de Opus.
+
+**El fix es de RAÍZ y está bien hecho: mi bug original ya NO reproduce por ninguna de las
+3 vías, y la prueba reina (S14 destapado) pasa. La reserva no es del fix: Opus tocó
+AVI_NEWS y dejó su harness `_verify-news.mjs` EN ROJO (5 checks viejos) sin correrlo.**
+
+1. **Diff (`git diff e48323d HEAD`, 12 archivos, +225/−56): CERO scope creep.** Todo lo
+   estipulado por mí + lo sancionado en mi radar: `sessionFinished(s)` (finishedAt O 100%
+   legacy) + `finishedTrainingToday` REEMPLAZA a `trainedToday` (renombre limpio — grep:
+   cero referencias vivas, solo comentarios históricos) + export dual; `saveSessionToHistory`
+   gana `finished` y los DOS flujos de fin lo marcan (100% app-4:1373, Finalizar temprano
+   app-4:1455); el corto-circuito exige sesión FINALIZADA; `_trainedTodayCardHTML` filtra
+   por `sessionFinished` (el conteo «N sesiones» ya no cuenta parciales — detalle fino);
+   AVI_NEWS v367 sin clave `coach` = para todos (filtro app-6:2404, correcto); S14
+   DESTAPADO; S5 P10 conserva su re-fechado (fiel, lo confirmé en v366); `_shot-trained`
+   +T7 override +T8 parcial; mi repro convertido en `_fable-repro-midsession.mjs` asertivo
+   (8 checks, exit 1); +2 tests; baseline 388; bump ?v=367 + `avi-v367`; docs.
+2. **Suite re-corrida por mí: 388/388** (los 2 tests nuevos: `sessionFinished` 7 aserciones
+   + `finishedTrainingToday` 9, incl. «parcial hoy → false» = EL FIX).
+3. **El test MUERDE + MI REPRO ORIGINAL CONTRA EL FIX (sabotaje a):** con árbol limpio
+   quité `&& sessionFinished(s)` de `finishedTrainingToday` (= conducta v366) →
+   **suite 387/388** (solo ese test rojo) **Y `_fable-repro-midsession` 4 checks rojos**
+   (PASO 1 + REPRO A/B/C vuelven a `card:true` = mi bug de v366 reproducido EXACTO).
+   Restaurado → 388/388 y 8/8. La regresión tiene diente doble (unit + E2E).
+4. **Harnesses re-corridos por mí (árbol limpio):** `_fable-repro-midsession.mjs` **8/8**
+   (setup sin historial → embebido sin tarjeta · parcial 1ª serie → `finishedAt:false`,
+   `finishedTrainingToday:false` · gmChangeMood/todayMoveEx/poll → `card:false`, el
+   entreno SIGUE · control timer vivo · POSITIVO: `finishSessionEarly` → `finishedAt:true`
+   → tarjeta SÍ). `_shot-trained.mjs` **8/8**; capturas MIRADAS: tarjeta premium ambos
+   temas, agua/pasos arriba, y ahora la siembra es un fin TEMPRANO (6/8 con finishedAt) →
+   prueba que la marca manda, no el 100%. `_guiado-suite.mjs` **53/53 × 2 corridas con S14
+   SIN re-fechar** — la parcial fechada HOY ya no tapa el refresco diferido del plan: la
+   prueba reina de que el enmascaramiento que señalé quedó eliminado de verdad.
+5. **Sabotajes propios (4; 3 mordieron, 1 sondeo confirmó redundancia benigna):**
+   (a) el del punto 3 (muerde doble). (b) `finishSessionEarly` sin marcar `finished` →
+   POSITIVO del repro cae (`finishedAt:false, card:false`) — el cableado del fin temprano
+   tiene diente. (c) quitar `!overrideRoutine` (el que en v366 fue INVISIBLE para todo el
+   cinturón) → **T7 lo caza** (`card=true workout=false`) — mi radar #2 cerrado con diente
+   real. (d) SONDEO: quitar el `finished` del flujo 100% → suite y ambos harnesses VERDES:
+   el fallback `doneSets>=totalSets` de `sessionFinished` lo cubre (por eso el historial
+   viejo también funciona). Redundancia benigna y hasta protectora (si luego DES-marca una
+   serie, `finishedAt` conserva el estado terminado) — no es brecha, no exijo nada.
+   Árbol restaurado y re-verificado tras cada uno (`git status` limpio).
+6. **🟡 LA RESERVA — `_verify-news.mjs` quedó EN ROJO (5 checks) tras añadir la entrada
+   AVI_NEWS v367:** `newsToShow` muestra las **3 más recientes** sin ver (avi-core:1450,
+   diseño de v302/«podar las viejas») → v367 empuja a v316 (chat) fuera de la ventana y
+   las aserciones del harness siguen fijadas a «v316+v352+v362, slide 1 = chat» (N1, N2,
+   N5, N7 — su CTA vive en la slide del chat que ya no entra —, N9). **El PRODUCTO está
+   correcto** (N2 de hecho confirma que la slide v367 renderiza con «¡Listo, entendido!»
+   y cierra bien; N3/N4/N6/N8 verdes), pero es una violación de la barra premium: se tocó
+   AVI_NEWS sin correr su cinturón, y un harness rojo en `scripts/e2e/` = falsas alarmas
+   para la próxima sesión. **Estipulado para Opus:** actualizar las aserciones a la
+   ventana viva (v352/v362/v367) y, mejor, derivar dots/orden/última-slide del propio
+   `AVI_NEWS` para que el harness no envejezca con cada entrada nueva. Sin deploy (solo
+   harness). Nota de producto: que v316 salga de la ventana es el diseño (tope 3).
+7. **Seguridad/tono:** ningún dato de usuario nuevo entra a innerHTML (`finishedAt` es ISO
+   local; `esc()` de `routineName` intacto); el texto de la slide v367 es tono Sofía
+   correcto («la pantalla Hoy se despeja…»). Cero secretos. Follow-up de Opus verificado
+   por mí: la edge `daily-notifs` tiene su `trainedToday` local que cuenta parciales
+   (index.ts:257-261) — impacto = el TEXTO de un push (podría decir «ya entrenaste» a
+   alguien a media sesión), no la UI; no bloqueante, va al radar.
+8. **Prod:** curl Pages → `?v=367` ×10 + `CACHE_NAME='avi-v367'`; sin BOM (`3c 21 44`);
+   `_prodcheck.mjs 367` **verde en 2 corridas** (v367, login/core/renderToday true×3,
+   cero jsErrors).
+
+**VEREDICTO: APROBADA CON RESERVAS.** Mi radar #1 de v366 (el bug) queda CERRADO con
+evidencia dura; #2 (override) cerrado con T7; #3 (AVI_NEWS) cumplido a medias — la entrada
+existe y renderiza, pero dejó su harness rojo. La reserva es puntual y sin deploy:
+actualizar `_verify-news.mjs`. El ciclo v366→v367 se cierra al quedar ese harness verde.
+
+**Radar (5):**
+1. 🟡 **`_verify-news.mjs` rojo** (punto 6) — arreglo de aserciones, sin deploy; hacerlo
+   ANTES de la siguiente feature para no acostumbrarse a un cinturón con falsas alarmas.
+2. 🟢 **Edge `daily-notifs`**: su `trainedToday` local cuenta parciales — 1 línea (exigir
+   `finishedAt` o 100%) la próxima vez que se toque la edge; impacto = texto de un push.
+3. 🟢 Edge consciente: recarga de la app con la 1ª sesión TERMINADA y una 2ª EN CURSO
+   («Entrenar otra vez» + reload) → `CUR.trainAgain` no sobrevive y la tarjeta vuelve a
+   tapar la 2ª sesión parcial; se recupera con un toque y el estado queda intacto. Raro y
+   benigno; si algún día molesta, persistir `trainAgain` en sessionStorage.
+4. 🟢 La ventana de 3 del tour deja fuera v316 (chat) para quien no la vio — es el diseño;
+   si Camilo quiere podar de verdad, borrar entradas viejas del array (regla del backlog).
+5. 🟢 Sigue pendiente el recorte del «+1.000» de pasos en claro (radar #5 de mi verdicto
+   v366, zona v362).
+
 ## 📋 SESIÓN L — Pagos: COMPARATIVA Colombia (investigación, CERO código)
 
 **Decisión D4:** Camilo elige con datos; no se construye nada aún.
