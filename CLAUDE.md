@@ -147,7 +147,7 @@ apex-app/
 - `#p-msgs` — Bandeja con badges de no leídos
 
 ### Secciones del Asesorado (5)
-- `#cn-today` — Entrenamiento del día + activación auto + timer. **v366:** si YA entrenó hoy (`trainedToday`, CUALQUIER sesión cuenta) → colapsa el entreno en la tarjeta `.trained-card` («Ya entrenaste hoy» + «Entrenar otra vez»/«Ver rutinas»); agua/pasos quedan arriba sin scrollear. `CUR.trainAgain`/`overrideRoutine` permiten entrenar de nuevo
+- `#cn-today` — Entrenamiento del día + activación auto + timer. **v366/v367:** si ya TERMINÓ un entreno hoy (`finishedTrainingToday` → exige sesión FINALIZADA `finishedAt`, CUALQUIER rutina cuenta) → colapsa el entreno en la tarjeta `.trained-card` («Ya entrenaste hoy» + «Entrenar otra vez»/«Ver rutinas»); agua/pasos quedan arriba sin scrollear. **Fix v367 (bug cazado por Fable):** una sesión PARCIAL en curso (el auto-guardado de la 1ª serie fecha hoy) NO debe disparar la tarjeta — antes pisaba el entreno al re-renderizar (cambiar ánimo/reordenar/dolor/poll del coach). `sessionFinished(s)` = `finishedAt` o 100%. `CUR.trainAgain`/`overrideRoutine` permiten entrenar de nuevo
 - `#cn-routines` — Todas sus rutinas (no solo la del día)
 - `#cn-messages` — Chat con el coach
 - `#cn-history` — Historial (hasta 365 sesiones) + gráfica volumen + progreso por ejercicio/modalidad
@@ -754,7 +754,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-17 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v366** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **387/387** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-17 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v367** · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **388/388** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app, `_shot-trained` = ya entrenaste hoy, `_fable-repro-midsession` = regresión tarjeta a media sesión) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *Hábitos: 💧 agua (v300) + 👟 PASOS (SESIÓN J, v362, 2026-07-17, VERIFICADO por Fable §VERDICTO SESIÓN J) en la tarjeta `#cn-habits` — meta 8.000, input SET + atajo +1.000, recordatorio en el cron de las 5pm. Adopción push al fin del entreno ya existía (v325).*
 
@@ -764,7 +764,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 *Fix WhatsApp (v365, 2026-07-17, VERIFICADO por Fable §VERDICTO FIX WHATSAPP v365 `d0542e8`): `waPhone(raw)` puro en avi-core normaliza el teléfono para `wa.me` — móvil CO sin +57 daba enlace roto en los 3 nudges (pago/adherencia/invitar). Ver GOTCHAS VIGENTES.*
 
-*«Ya entrenaste hoy» (v366, 2026-07-17): `trainedToday(sessions,now)` puro → `renderClientToday` colapsa el entreno en `.trained-card` cuando ya entrenó (cualquier rutina cuenta), dejando agua/pasos arriba. `_shot-trained.mjs`. Suite 387. Falta verificación de Fable. **LOTE DE IDEAS de Camilo pendiente (bitácora parte 71): (2) sugerencia al correrse los días · (3) perfil propio del coach en sus stats · (4) banner compartir · (5) comunidad (proyecto aparte).***
+*«Ya entrenaste hoy» (v366 + fix v367, 2026-07-17): `finishedTrainingToday(sessions,now)` + `sessionFinished(s)` puros → `renderClientToday` colapsa el entreno en `.trained-card` cuando ya TERMINÓ (cualquier rutina cuenta; exige `finishedAt`), dejando agua/pasos arriba. **v366 RECHAZADA por Fable** (`e48323d`): el auto-guardado parcial de la 1ª serie hacía que la tarjeta pisara el entreno EN CURSO al re-renderizar (ánimo/reordenar/dolor/poll). **Fix v367:** `finishedAt` marcado por los 2 flujos de fin (100% + Finalizar temprano); la tarjeta exige sesión finalizada. Harnesses `_shot-trained.mjs` (8/8, +T7 override +T8 parcial) y `_fable-repro-midsession.mjs` (regresión A/B/C/D + positivo). Suite 388. Pendiente re-verificación de Fable. **LOTE DE IDEAS de Camilo (bitácora parte 71): (2) sugerencia al correrse los días [híbrido elegido, diseño listo] · (3) perfil propio del coach en sus stats · (4) banner compartir · (5) comunidad (proyecto aparte).** FOLLOW-UP menor: la edge `daily-notifs` tiene su propio `trainedToday` local con el mismo patrón (impacto = una notificación; no bloqueante).*
 
 *Coach Inteligente Fases 1+2+3+4+4.1 EN PROD (v355, 2026-07-16): Capa A `adapt.care` + Capa B `coachInsight` (8 señales, `#cn-coach-card` en Hoy) + Pulso del coach `coachPulse` (`#h-pulse` en Inicio) + **PLAN DE CHOQUE** `shockPlan`/`applyShockOption` (`#d-shock` en la ficha) + **MÚLTIPLES ESTANCAMIENTOS** `shockTargets` (v355: mismo músculo=uno primero con nota «también se plantó» · músculos distintos=en paralelo · 3+=fatiga sistémica→CTA semana de descarga que cablea el generador). Falta capa LLM opcional y push (futuro). Plan+verificación en `docs/plan-coach-inteligente.md`.*
 

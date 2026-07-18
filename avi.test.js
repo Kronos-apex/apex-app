@@ -29,7 +29,8 @@ const {
   retentionByDay,
   weeklyActiveCount,
   clientsTrainedToday,
-  trainedToday,
+  sessionFinished,
+  finishedTrainingToday,
   daysSinceLastSession,
   workoutStreak,
   longestStreak,
@@ -1024,19 +1025,34 @@ test('clientsTrainedToday: robusto con datos vacíos', () => {
   assert.deepStrictEqual(clientsTrainedToday([{ id: 'a' }], {}, D(2026, 6, 2)), []);
 });
 
-test('trainedToday: CUALQUIER sesión de hoy cuenta (no solo la rutina del día)', () => {
+test('sessionFinished: finishedAt o 100% (historial viejo); parcial en curso → false', () => {
+  assert.strictEqual(sessionFinished({ finishedAt: '2026-07-02T09:00:00Z' }), true); // marca explícita
+  assert.strictEqual(sessionFinished({ doneSets: 8, totalSets: 8 }), true);           // 100% (legacy sin flag)
+  assert.strictEqual(sessionFinished({ doneSets: 3, totalSets: 8 }), false);          // serie 3 de 8 → EN CURSO
+  assert.strictEqual(sessionFinished({ doneSets: 3, totalSets: 8, finishedAt: 'x' }), true); // finalizó temprano
+  assert.strictEqual(sessionFinished({ doneSets: 0, totalSets: 0 }), false);          // nada marcado, sin sets
+  assert.strictEqual(sessionFinished(null), false);
+  assert.strictEqual(sessionFinished(undefined), false);
+});
+
+test('finishedTrainingToday: solo cuenta una sesión FINALIZADA de hoy (no una parcial en curso)', () => {
   const now = D(2026, 6, 2, 15); // martes
-  // entrenó hoy con una rutina de OTRO día (rEspalda aunque hoy tocara rPierna) → cuenta igual
-  assert.strictEqual(trainedToday([{ date: D(2026, 6, 2, 9), routineId: 'rEspalda' }], now), true);
-  // solo sesiones de días previos → false
-  assert.strictEqual(trainedToday([{ date: D(2026, 6, 1, 20) }, { date: D(2026, 5, 30, 8) }], now), false);
-  // varias, una de hoy → true
-  assert.strictEqual(trainedToday([{ date: D(2026, 5, 28) }, { date: D(2026, 6, 2, 7) }], now), true);
+  const iso = D(2026, 6, 2, 9);  // hoy 9am
+  // 🔴 EL FIX: parcial EN CURSO hoy (marcó 1 de 8, sin finishedAt) → NO cuenta (sigue entrenando)
+  assert.strictEqual(finishedTrainingToday([{ date: iso, doneSets: 1, totalSets: 8 }], now), false);
+  // finalizó hoy (100%) con rutina de OTRO día (rEspalda aunque hoy tocara rPierna) → cuenta igual
+  assert.strictEqual(finishedTrainingToday([{ date: iso, routineId: 'rEspalda', doneSets: 8, totalSets: 8 }], now), true);
+  // finalizó temprano hoy (finishedAt, aunque doneSets<totalSets) → cuenta
+  assert.strictEqual(finishedTrainingToday([{ date: iso, doneSets: 2, totalSets: 8, finishedAt: iso }], now), true);
+  // finalizada pero AYER → false
+  assert.strictEqual(finishedTrainingToday([{ date: D(2026, 6, 1, 20), doneSets: 8, totalSets: 8 }], now), false);
+  // parcial hoy + finalizada ayer → false (hoy aún no ha terminado nada)
+  assert.strictEqual(finishedTrainingToday([{ date: iso, doneSets: 1, totalSets: 8 }, { date: D(2026, 6, 1, 20), doneSets: 6, totalSets: 6 }], now), false);
   // sin datos / basura → false
-  assert.strictEqual(trainedToday([], now), false);
-  assert.strictEqual(trainedToday(null, now), false);
-  assert.strictEqual(trainedToday(undefined, now), false);
-  assert.strictEqual(trainedToday([null, { date: D(2026, 6, 2, 10) }], now), true);
+  assert.strictEqual(finishedTrainingToday([], now), false);
+  assert.strictEqual(finishedTrainingToday(null, now), false);
+  assert.strictEqual(finishedTrainingToday(undefined, now), false);
+  assert.strictEqual(finishedTrainingToday([null, { date: iso, doneSets: 8, totalSets: 8 }], now), true);
 });
 
 test('daysSinceLastSession: días enteros desde la sesión más reciente', () => {

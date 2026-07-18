@@ -169,9 +169,10 @@ try {
   s = JSON.parse(await ev(`JSON.stringify((()=>{const h=(DB.history[CUR.clientId]||[]).find(x=>x.routineId==='rTest');return {embedded:_gmIsEmbedded(),visible:!document.getElementById('guided-mode').classList.contains('hidden'),hist:!!h,doneSets:h&&h.doneSets,timers:!!(GM.restTimer||GM.hiit||GM.holding)};})())`));
   check('S5 P2 finalizar: guarda historial parcial (1 serie); el embebido NO se oculta (es el tab) y sin timers', s.hist && s.doneSets === 1 && s.embedded && s.visible && !s.timers, JSON.stringify(s));
   // P10: cambio de día → el siguiente render de "Hoy" resetea la sesión (prepareTodaySession).
-  // v366: la sesión que guardó gmFinishEarly quedó fechada HOY → sin re-fecharla, la tarjeta
-  // "ya entrenaste hoy" (trainedToday) taparía el embebido. En un día NUEVO real esa sesión sería
-  // de AYER → la re-fechamos a ayer para simular fielmente el cambio de día.
+  // v367: gmFinishEarly marca la sesión como FINALIZADA (finishedAt) → es un entreno TERMINADO de hoy.
+  // P10 prueba el reset en un día NUEVO, donde esa sesión sería de AYER → re-fecharla a ayer es la
+  // simulación FIEL del cambio de día (el entreno de ayer no debe tapar el embebido fresco de hoy).
+  // Fable confirmó que este re-fechado es fiel (a diferencia del de S14, que sí enmascaraba el bug).
   await ev(`(()=>{const y=new Date(Date.now()-86400000).toISOString();(DB.history[CUR.clientId]||[]).forEach(h=>{if(h.routineId==='rTest')h.date=y;});localStorage.setItem('session_date_rTest','Tue Jan 01 2030');CUR.todayRenderedDay=null;CUR.trainAgain=false;renderClientToday(DB.clients.find(x=>x.id===CUR.clientId));})()`);
   await sleep(500);
   s = JSON.parse(await ev(`JSON.stringify({d00:isDone('rTest',0,0),step:GM.currentStep,embedded:_gmIsEmbedded()})`));
@@ -288,10 +289,12 @@ try {
   await sleep(9000);
   s = JSON.parse(await ev(`JSON.stringify({hiitDone:!GM.hiit})`));
   check('S14: el HIIT termina normalmente tras el poll', s.hiitDone, JSON.stringify(s));
-  // v366: si alguna sesión de rTest quedó fechada hoy, la tarjeta "ya entrenaste" taparía el
-  // embebido — aquí probamos el refresco diferido del plan (mismo día, mid-sesión), no un entreno
-  // completado. Re-fechamos a ayer para aislar el mecanismo que este check verifica.
-  await ev(`(()=>{const y=new Date(Date.now()-86400000).toISOString();(DB.history[CUR.clientId]||[]).forEach(h=>{if(h.routineId==='rTest')h.date=y;});const c=DB.clients.find(x=>x.id===CUR.clientId);renderClientToday(c);})()`);
+  // v367 (PRUEBA DEL FIX): la sesión de rTest está fechada HOY pero es PARCIAL (mid-sesión, sin
+  // finishedAt) → finishedTrainingToday=false, la tarjeta "ya entrenaste" NO dispara y el embebido
+  // sigue. Un render posterior mid-sesión aplica el plan nuevo (refresco diferido) sin que la parcial
+  // de hoy lo tape. Antes (v366, con trainedToday) la parcial SÍ disparaba la tarjeta y este check se
+  // enmascaraba re-fechando a ayer — ese re-fechado se ELIMINÓ (radar de Fable).
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);renderClientToday(c);})()`);
   await sleep(400);
   s = JSON.parse(await ev(`JSON.stringify({embedded:_gmIsEmbedded(),name:/Plan Cambiado/.test((document.querySelector('#gm-body .gm-routine-head')||{textContent:''}).textContent)})`));
   check('S14: sin timer vivo, un render posterior sí aplica el plan nuevo (refresco diferido)', s.embedded && s.name, JSON.stringify(s));

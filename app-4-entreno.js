@@ -578,7 +578,7 @@ function _todayOrder(training){
 // sesiones de hoy, deduplicado) y deja botones para entrenar otra vez o ver sus rutinas.
 function _trainedTodayCardHTML(client){
   const today=(typeof localDayStart==='function')?localDayStart(new Date()):null;
-  const sess=(DB.history[client.id]||[]).filter(s=>s&&today&&localDayStart(s.date)===today);
+  const sess=(DB.history[client.id]||[]).filter(s=>s&&today&&localDayStart(s.date)===today&&(typeof sessionFinished!=='function'||sessionFinished(s)));
   const names=[...new Set(sess.map(s=>s.routineName).filter(Boolean))];
   const trainedLine=names.length
     ? `Hoy entrenaste <b>${esc(names.join(' + '))}</b>${sess.length>1?` · ${sess.length} sesiones`:''}.`
@@ -594,7 +594,7 @@ function _trainedTodayCardHTML(client){
   </div>`;
 }
 // "Entrenar otra vez": muestra el entrenamiento de hoy aunque ya haya entrenado (2ª sesión del día).
-// El flag vive en CUR (se resetea al recargar); un nuevo día ya no aplica (trainedToday será false).
+// El flag vive en CUR (se resetea al recargar); un nuevo día ya no aplica (finishedTrainingToday será false).
 function todayTrainAgain(){
   CUR.trainAgain=true;
   const c=DB.clients.find(x=>x.id===CUR.clientId);
@@ -631,12 +631,14 @@ function renderClientToday(client, overrideRoutine){
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
-  // ✅ "Ya entrenaste hoy" (v366): si YA entrenó hoy (CUALQUIER sesión — el lunes de pierna pudo
-  // hacer la de espalda), colapsamos el entrenamiento en una tarjeta compacta para que el agua/pasos
-  // queden a la mano sin scrollear todo el entreno. NO aplica si abrió una rutina a propósito
-  // (overrideRoutine = "quiere entrenar esa") ni si tocó "Entrenar otra vez" (CUR.trainAgain).
-  // Va DESPUÉS del no-hay-rutinas y ANTES del descanso: entrenó = entrenó, aunque hoy tocara descanso.
-  if(typeof trainedToday==='function' && !overrideRoutine && !CUR.trainAgain && trainedToday(DB.history[client.id],new Date())){
+  // ✅ "Ya entrenaste hoy" (v366, fix v367): si ya TERMINÓ un entreno hoy (CUALQUIER rutina
+  // finalizada — el lunes de pierna pudo finalizar la de espalda), colapsamos el entrenamiento en una
+  // tarjeta compacta para que agua/pasos queden a la mano sin scrollear. CLAVE DEL FIX: exige sesión
+  // FINALIZADA (finishedAt), NO una parcial en curso — el auto-guardado parcial (1ª serie) NO debe
+  // disparar la tarjeta, o cambiar ánimo/reordenar/dolor/poll del coach (que re-renderizan a media
+  // sesión) le pisarían el entreno en curso. NO aplica con override ("quiere entrenar esa") ni con
+  // "Entrenar otra vez" (CUR.trainAgain). Va DESPUÉS del no-hay-rutinas y ANTES del descanso.
+  if(typeof finishedTrainingToday==='function' && !overrideRoutine && !CUR.trainAgain && finishedTrainingToday(DB.history[client.id],new Date())){
     _todayOrder(false);
     con.innerHTML=_trainedTodayCardHTML(client);
     return;
@@ -1368,7 +1370,7 @@ function updateClientProgress(routine){
   // (Los contadores del hero clásico — prog-num/prog-fill/prog-vol/wohero-* — se
   // retiraron en F5b; el progreso visible lo pinta el guiado con gmUpdateProgress.)
   if(done===total&&total>0){
-    saveSessionToHistory(routine,totalVol,done);
+    saveSessionToHistory(routine,totalVol,done,true,true); // finalizada al 100% → marca finishedAt
     // Blindaje (caso Claudia 2026-07-07: historial guardado 19/19 pero SIN pantalla de fin):
     // si algo entre el guardado y la celebración lanza, la celebración NO puede morir en
     // silencio — se atrapa, se reporta a app_errors y la pantalla sale igual.
@@ -1386,7 +1388,7 @@ function updateClientProgress(routine){
   }
 }
 
-function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
+function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=false){
   const clientId=CUR.clientId;if(!clientId)return;
   if(!DB.history)DB.history=ld('ax_hist',{});
   if(!DB.history[clientId])DB.history[clientId]=[];
@@ -1417,10 +1419,12 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true){
     sid=startNewSession(routine.id);
     already=DB.history[clientId].find(h=>!h.sessionId&&h.routineId===routine.id&&new Date(h.date).toDateString()===today&&(h.doneSets||0)<(h.totalSets||0));
   }
-  if(already){already.sessionId=sid;already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();}
+  if(already){already.sessionId=sid;already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();if(finished&&!already.finishedAt)already.finishedAt=new Date().toISOString();}
   else{
-    // startedAt = primera serie marcada (este else corre la 1ª vez de la sesión) → duración real
-    DB.history[clientId].unshift({id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData});
+    // startedAt = primera serie marcada (este else corre la 1ª vez de la sesión) → duración real.
+    // finishedAt: solo si esta llamada viene de un flujo de FIN (100% o "Finalizar temprano") — es
+    // lo que distingue una sesión TERMINADA de una parcial en curso (fix tarjeta "ya entrenaste" v367).
+    DB.history[clientId].unshift({id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada
@@ -1448,7 +1452,7 @@ function finishSessionEarly(){
   });
   if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return false;}
   if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return false;
-  saveSessionToHistory(routine,totalVol,done);
+  saveSessionToHistory(routine,totalVol,done,true,true); // "Finalizar temprano" → marca finishedAt (sesión cerrada, no parcial)
   checkAndUpdatePRs(routine);
   renderPRsInProfile(CUR.clientId);
   renderClientExProgress(CUR.clientId);

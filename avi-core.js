@@ -913,12 +913,24 @@ function clientsTrainedToday(clients, history, now) {
     .sort((a, b) => new Date(b.sessions[0].date) - new Date(a.sessions[0].date));
 }
 
-// ¿El asesorado YA entrenó hoy? CUALQUIER sesión de hoy cuenta, no solo la rutina del día:
-// si el lunes de pierna hizo la de espalda, igual entrenó. PURA. `sessions` = historial del
-// asesorado (DB.history[id]); `now` opcional. Determinista por día de CALENDARIO local.
-function trainedToday(sessions, now) {
+// ¿Una sesión ya está TERMINADA (no una serie suelta a media sesión)? La marca `finishedAt` la
+// ponen los DOS flujos de fin (100% en updateClientProgress y "Finalizar temprano" en
+// finishSessionEarly); una sesión 100% del historial VIEJO (sin flag) también cuenta por
+// doneSets>=totalSets. Una parcial en curso (marcó 1 serie pero sigue entrenando) → false. PURA.
+function sessionFinished(s) {
+  if (!s) return false;
+  if (s.finishedAt) return true;
+  const ds = +s.doneSets || 0, ts = +s.totalSets || 0;
+  return ts > 0 && ds >= ts;
+}
+
+// ¿El asesorado ya TERMINÓ un entrenamiento HOY? CUALQUIER rutina finalizada cuenta, no solo la
+// del día: si el lunes de pierna FINALIZÓ la de espalda, igual entrenó. Una parcial EN CURSO no
+// cuenta → la tarjeta "ya entrenaste" JAMÁS pisa un entreno a medias (bug v366). PURA. `sessions`
+// = historial del asesorado (DB.history[id]); `now` opcional. Determinista por día LOCAL.
+function finishedTrainingToday(sessions, now) {
   const today = localDayStart(now || new Date());
-  return (sessions || []).some(s => s && localDayStart(s.date) === today);
+  return (sessions || []).some(s => s && localDayStart(s.date) === today && sessionFinished(s));
 }
 
 // Días enteros transcurridos desde la sesión MÁS RECIENTE (busca el máximo, no
@@ -2648,7 +2660,8 @@ if (typeof module !== 'undefined' && module.exports) {
     retentionByDay,
     weeklyActiveCount,
     clientsTrainedToday,
-    trainedToday,
+    sessionFinished,
+    finishedTrainingToday,
     daysSinceLastSession,
     workoutStreak,
     longestStreak,

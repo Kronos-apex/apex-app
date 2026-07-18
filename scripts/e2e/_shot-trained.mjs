@@ -43,8 +43,9 @@ const setup = await ev(`(()=>{try{
     routines:[{id:'r1',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'peso_reps',sets:4,reps:'10'}]}],
     habits:{water:{},steps:{}}};
   DB.clients=[client];
-  const iso=new Date().toISOString(); // sesión de HOY con rutina de OTRO día (Espalda)
-  DB.history={ct1:[{id:'h1',sessionId:'s1',routineId:'rEspalda',routineName:'Espalda',date:iso,startedAt:iso,totalVol:3200,doneSets:8,totalSets:8,exercises:[]}]};
+  const iso=new Date().toISOString(); // sesión FINALIZADA de HOY (finishedAt), rutina de OTRO día (Espalda),
+  // finalizada TEMPRANO (doneSets<totalSets) → prueba que la marca finishedAt, no el 100%, dispara la tarjeta
+  DB.history={ct1:[{id:'h1',sessionId:'s1',routineId:'rEspalda',routineName:'Espalda',date:iso,startedAt:iso,finishedAt:iso,totalVol:3200,doneSets:6,totalSets:8,exercises:[]}]};
   DB.msgs=DB.msgs||{};
   CUR.clientId='ct1'; CUR.loggedAs='client'; CUR.trainAgain=false; CUR.todayOverride=null;
   renderClientToday(client);
@@ -76,6 +77,22 @@ await ev(`todayTrainAgain()`);
 await sleep(600);
 const cardGone = await ev(`!document.querySelector('#cn-today-body .trained-card')`);
 check('T6 «Entrenar otra vez» quita la tarjeta y muestra el entreno', cardGone === true, 'gone=' + cardGone);
+
+// T7 (cobertura del override, radar Fable #2): si abre una rutina a propósito (override), la tarjeta
+// NO debe salir aunque ya haya finalizado hoy — quiere entrenar ESA. Mata el sabotaje "quitar !overrideRoutine".
+await ev(`(()=>{CUR.trainAgain=false;const c=DB.clients[0];renderClientToday(c,c.routines[0]);})()`);
+await sleep(500);
+const t7card = await ev(`!!document.querySelector('#cn-today-body .trained-card')`);
+const t7workout = await ev(`/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
+check('T7 con override (abrió una rutina) NO sale la tarjeta y se pinta el entreno', t7card === false && t7workout === true, 'card=' + t7card + ' workout=' + t7workout);
+
+// T8 (EL FIX, radar Fable #1): una sesión PARCIAL en curso hoy (marcó 1 serie, SIN finishedAt) NO
+// dispara la tarjeta — el asesorado sigue entrenando y debe poder continuar, no ver "ya entrenaste".
+await ev(`(()=>{const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];const c=DB.clients[0];c.routines[0].day=days[new Date().getDay()];const iso=new Date().toISOString();DB.history={ct1:[{id:'hp',sessionId:'sp',routineId:c.routines[0].id,routineName:'Pierna',date:iso,startedAt:iso,totalVol:600,doneSets:1,totalSets:4,exercises:[]}]};CUR.trainAgain=false;CUR.todayOverride=null;CUR.todayWorking=null;renderClientToday(c);})()`);
+await sleep(500);
+const t8card = await ev(`!!document.querySelector('#cn-today-body .trained-card')`);
+const t8workout = await ev(`/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
+check('T8 parcial en curso (sin finishedAt) NO dispara la tarjeta; sigue el entreno', t8card === false && t8workout === true, 'card=' + t8card + ' workout=' + t8workout);
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
