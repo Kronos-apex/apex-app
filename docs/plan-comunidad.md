@@ -1,10 +1,13 @@
 # Plan de diseño — COMUNIDAD en AVI
 
-> **Estado:** DISEÑO (sin código). Idea #5 del lote de Camilo (2026-07-17). Documento vivo.
-> **Autor del borrador:** Opus 4.8 (2026-07-18), a pedido de Camilo tras cerrar las ideas #1-#4.
+> **Estado:** DISEÑO v2 (sin código). Idea #5 del lote de Camilo (2026-07-17). Documento vivo.
+> **Autor del borrador:** Opus 4.8 (2026-07-18). **Endurecido por Fable (auditoría 2026-07-18):**
+> se cerraron 4 huecos de arquitectura (§5.0, §5.2, §5.3, §5.6) y se añadió la **decisión #7**
+> (integridad del snapshot) — la v1 era inconstruible tal cual (el flujo "agregar por código"
+> chocaba con su propia RLS).
 > **Regla del proyecto:** *Fable planifica → Opus ejecuta → Fable verifica.* Este doc es la base
 > para que Fable estipule las sesiones de construcción. **NO se toca código hasta que Camilo
-> apruebe el alcance y las 6 decisiones abiertas del final.**
+> apruebe el alcance y las 7 decisiones abiertas del final.**
 
 ---
 
@@ -22,7 +25,7 @@ que es justo lo que AVI ya predica ("la constancia es lo que te transforma").
 **Recomendación:** hacerlo en **2 fases chicas**, no de un solo golpe. Fase 1 = perfil
 compartible opt-in + amigo por código + ver su tarjeta + ❤️. Si la gente lo usa, Fase 2 =
 feed de logros + ranking de constancia. Todo **gratis** (una comunidad con muro de pago no
-tiene efecto de red). Antes de escribir una línea, decidir las 6 preguntas del §9.
+tiene efecto de red). Antes de escribir una línea, decidir las 7 preguntas del §9.
 
 ---
 
@@ -100,9 +103,21 @@ de amistad/día). No es opcional aunque la base sea chica y conocida (gente del 
 ## 5. Arquitectura de datos (propuesta — a validar con Andrés DBA)
 
 > **Principio rector:** `user_data` NO se toca. Todo lo social vive en tablas nuevas con RLS
-> propia y estricta. El cliente CALCULA el snapshot agregado (con las funciones puras que ya
-> existen: `weekStreak`, `gxLevel`, `myTrainingSummary`, etc.) y lo publica a su fila pública —
-> igual que hoy `habits` viaja en el perfil. Los amigos leen el SNAPSHOT, jamás el historial.
+> propia y estricta. Los amigos leen un SNAPSHOT agregado, jamás el historial crudo. **Quién
+> calcula el snapshot (cliente vs servidor) es la DECISIÓN #7 — ver §5.1 y §9.**
+
+### 5.0 ⚠️ Resolución del código de amigo — RPC obligatoria (hueco (a) de la auditoría)
+El flujo "pego un código → mando solicitud" **no puede implementarse con SELECT directo**: la RLS
+de `community_profiles` (correctamente) solo deja leer a amigos ya aceptados, y resolver
+`share_code → user_id` ocurre ANTES de ser amigos. Sin esto la Fase 1 es inconstruible.
+**Solución:** una función RPC `SECURITY DEFINER` (o edge function) `resolve_share_code(code)` que:
+- devuelve SOLO lo mínimo para confirmar a quién agregas: `{user_id, handle, avatar_url}` —
+  NUNCA el snapshot de stats ni `trained_today`;
+- solo responde si el perfil está `visible=true` y el solicitante está autenticado;
+- aplica rate-limit EN SERVIDOR (p. ej. tabla de intentos: máx. N resoluciones/día por uid) para
+  que no sirva de oráculo de enumeración de códigos (los `share_code` además deben ser largos y
+  aleatorios — mínimo 8 chars base32, no secuenciales);
+- misma vía para el link de invitación (el link solo encapsula el código).
 
 ### 5.1 `community_profiles` — el perfil público (1 fila por usuario opt-in)
 ```
@@ -126,6 +141,21 @@ created_at     timestamptz
 ⚠️ Recordar el gotcha de los upserts: si el cliente hace upsert, la tabla necesita policy
 SELECT además de INSERT/UPDATE (bug de push 2026-07-12).
 
+⚠️ **INTEGRIDAD DEL SNAPSHOT (hueco (c) de la auditoría → DECISIÓN #7 del §9).** La v1 de este
+doc descartaba el ranking de kilos por "trampeable sin verificación"… y a la vez proponía que el
+CLIENTE calcule y publique su snapshot — igual de trampeable (cualquiera escribe `streak_weeks:999`
+desde la consola del navegador). Ser honestos con la contradicción. Opciones:
+- **(A) Server-side (recomendada si habrá ranking):** una edge function `refresh_snapshot` con
+  service role lee `user_data.history` del PROPIO solicitante (jamás de otros), calcula el
+  agregado con la misma lógica pura y escribe `community_profiles`. El cliente solo la invoca.
+  La RLS de `community_profiles` entonces NIEGA el UPDATE de las columnas de stats al cliente
+  (o directamente todo UPDATE salvo handle/bio/avatar/visible).
+- **(B) Cliente + aceptar el riesgo:** válido SOLO si la Fase 2 nunca rankea (tarjetas entre
+  amigos que se conocen en persona = el costo social de inflarse es el castigo). Si Camilo
+  quiere ranking, (B) queda descartada.
+La decisión define media arquitectura → se toma ANTES del spec de Fase 1 aunque el ranking sea
+de Fase 2 (migrar de (B) a (A) después = rehacer políticas y sembrar desconfianza en los datos).
+
 ### 5.2 `friendships` — el grafo de amistades
 ```
 id           uuid PK
@@ -136,8 +166,18 @@ requested_by uuid   -- quién mandó la solicitud
 created_at   timestamptz
 UNIQUE(user_a, user_b)
 ```
-**RLS:** SELECT/UPDATE/DELETE si `auth.uid() IN (user_a, user_b)`. INSERT si `requested_by =
-auth.uid()` y es parte del par. `blocked` lo puede setear cualquiera de los dos y oculta al otro.
+**RLS (endurecida — hueco (b) de la auditoría):** un UPDATE genérico con `auth.uid() IN
+(user_a,user_b)` deja que **la parte BLOQUEADA se des-bloquee sola** (regresa `status` a
+`accepted`). Falta memoria de QUIÉN bloqueó:
+- columna `blocked_by uuid NULL`;
+- transiciones válidas (por policy granular con `WITH CHECK`, o trigger `BEFORE UPDATE`):
+  `pending→accepted` solo el que NO la pidió; `pending→(DELETE)` cualquiera; `*→blocked`
+  cualquiera de los dos y setea `blocked_by=auth.uid()`; `blocked→*` **SOLO** `auth.uid() =
+  blocked_by`. Todo lo demás se rechaza.
+- SELECT si `auth.uid() IN (user_a,user_b)`; INSERT si `requested_by=auth.uid()` y es parte del
+  par, con `status='pending'` forzado por `WITH CHECK`.
+- Rate-limit de solicitudes EN SERVIDOR (no "lógica de app"): p. ej. trigger que cuenta
+  `pending` creadas por uid en 24 h y rechaza sobre un tope (anti-spam de solicitudes).
 Normalizar `user_a<user_b` evita filas duplicadas del mismo par.
 
 ### 5.3 `community_reactions` — los ❤️ (Fase 1 simple)
@@ -149,8 +189,15 @@ kind       text   -- 'heart' (extensible: 'fire','clap')
 context    text NULL -- Fase 2: id del "momento"/logro reaccionado; Fase 1: NULL (reacción al perfil)
 created_at timestamptz
 ```
-**RLS:** INSERT si `from_user = auth.uid()` y hay amistad aceptada con `to_user`. SELECT si
-`auth.uid() IN (from_user, to_user)`. Rate-limit por lógica de app + índice.
+**RLS + integridad (hueco (d) de la auditoría — "rate-limit por lógica de app" = cero
+enforcement, el spam de ❤️ era trivial por consola):**
+- `UNIQUE(from_user, to_user, kind, context)` → en Fase 1 (context NULL) un ❤️ por amigo,
+  idempotente; quitar el ❤️ = DELETE de la fila propia. En Fase 2, uno por momento.
+- INSERT si `from_user = auth.uid()` **y** amistad `accepted` (verificada en la policy) **y**
+  `kind` dentro de un CHECK de valores permitidos. SELECT si `auth.uid() IN (from_user,to_user)`.
+  DELETE solo `from_user = auth.uid()`.
+- El UNIQUE ya elimina el spam del caso Fase 1; para Fase 2 (momentos) añadir tope diario por
+  trigger si hiciera falta. Nada de confiar en el cliente.
 
 ### 5.4 `community_reports` — moderación
 ```
@@ -174,7 +221,20 @@ created_at timestamptz
 El cliente publica un "momento" cuando pasa algo celebrable (cumplió su semana, subió de
 nivel). **Opt-in por tipo** (que el usuario elija qué se publica). Los amigos lo ven en su feed
 y reaccionan. **Sin comentarios en Fase 2** (los comentarios = carga de moderación real →
-se difieren o se descartan).
+se difieren o se descartan). La integridad de los momentos hereda la decisión #7 (si el snapshot
+es server-side, los momentos derivados también deberían serlo).
+
+### 5.6 Salida de la comunidad = borrado REAL (hueco (d), parte 2)
+"Salir borra todo" no puede ser un flag ni quedar a merced de que el cliente ejecute N DELETEs
+con red intermitente. Diseño:
+- FKs de `friendships`/`community_reactions`/`community_moments` hacia `community_profiles
+  (user_id)` con **`ON DELETE CASCADE`** → borrar el perfil arrastra todo lo social del usuario
+  en una transacción.
+- El botón "salir de la comunidad" = un solo `DELETE FROM community_profiles WHERE user_id =
+  auth.uid()` (policy DELETE propia ya prevista). `community_reports` NO cascadea (el historial
+  de moderación se conserva — interés legítimo; anonimizar `reporter` si aplica).
+- **Integrar a la edge `delete-account`:** borrar la CUENTA debe borrar también el perfil
+  comunitario (hoy esa función no lo sabe; añadirlo al spec de Fase 1, no después).
 
 ## 6. UX / pantallas (propuesta)
 
@@ -212,7 +272,7 @@ se difieren o se descartan).
 
 | Fase | Alcance | Por qué en este orden |
 |---|---|---|
-| **0** | Este doc + decisiones §9 + esquema+RLS revisado por Andrés DBA en proyecto de PRUEBA | No tocar prod sin RLS probada (memoria: RLS se rompe fácil) |
+| **0** | Este doc + 7 decisiones §9 + esquema+RLS+**RPC resolve_share_code**+cascadas revisados por Andrés DBA en proyecto de PRUEBA (probar el flujo por-código y el des-bloqueo con dos uids reales) | No tocar prod sin RLS probada (memoria: RLS se rompe fácil) |
 | **1 (MVP)** | Opt-in+consentimiento · perfil público · amigo por código · lista de amigos con tarjeta (racha/nivel/hoy) · ❤️ · bloquear/reportar · degradación offline | Mínimo para validar si la gente lo usa. Sin feed, sin ranking. |
 | **2** | Feed de logros (opt-in por tipo) · ranking de constancia semanal · fuerza relativa opcional | Solo si Fase 1 tiene tracción real |
 | **3 (futuro, quizá nunca)** | Retos entre amigos, grupos/gym, integración AVI GYM | Depende de demanda; cada uno su propio doc |
@@ -221,7 +281,7 @@ se difieren o se descartan).
 propio (incluido un harness de RLS que pruebe que un no-amigo NO puede leer, y que `user_data`
 sigue blindada).
 
-## 9. ⚖️ DECISIONES ABIERTAS (las necesito de Camilo antes de un spec de construcción)
+## 9. ⚖️ DECISIONES ABIERTAS (las necesita el spec, responde Camilo antes de un spec de construcción)
 
 1. **Identidad:** ¿handle que el usuario elige (recomendado, más privado) o nombre real? Default
    sugerido: nombre de pila editable.
@@ -236,6 +296,10 @@ sigue blindada).
    FUERA. ¿Sumamos "fuerza relativa" como stat secundaria divertida en Fase 2, o ni eso?
 6. **Alcance de arranque:** ¿construimos SOLO Fase 1 (perfil+amigo+❤️) y evaluamos, o Camilo
    quiere el ranking desde el principio? (recomiendo Fase 1 sola primero).
+7. **Integridad del snapshot (añadida por Fable, §5.1):** ¿el snapshot de constancia lo calcula
+   una edge function server-side (opción A — obligatoria si algún día hay ranking; recomendada)
+   o el cliente aceptando que es inflable (opción B — solo válida si NUNCA rankeamos)? Esta
+   decisión define media arquitectura y NO es diferible a Fase 2.
 
 ## 10. Lo que este doc NO propone (no-goals, para acotar expectativas)
 
@@ -256,8 +320,22 @@ sigue blindada).
   flujo mínimo (email al coach / vista admin).
 - **Diseño premium:** aplica la barra premium completa (móvil 360-390, ambos temas, tono Sofía,
   estados vacíos/offline, táctil ≥36px).
+- **🔴 Patrones de actividad (añadido por Fable):** `trained_today` + `snapshot_at` le dicen a un
+  "amigo" CUÁNDO alguien está o no está en el gym — con usuarias mujeres eso es un dato de
+  seguridad personal, no una stat. Mitigar: granularidad gruesa (día, jamás hora), toggle
+  "ocultar mi actividad de hoy" dentro del opt-in, y recordar que amistad = confianza mutua
+  aceptada (por eso NO hay directorio). Evaluar si `trained_today` aporta lo suficiente para
+  existir en Fase 1.
+- **Menores de edad (añadido por Fable):** hay asesorados adolescentes reales (p. ej. registro
+  de 2009 en la base). Habeas Data reforzado para menores → la comunidad podría requerir 18+
+  en el consentimiento, o autorización del representante. Consultarlo en la revisión de abogado
+  YA pendiente en el backlog legal.
+- **Avatares = moderación + infraestructura (añadido por Fable):** el avatar opt-in choca con el
+  bug pendiente de fotos-a-Storage (backlog 2026-07-12: rutas legacy vs uuid, policies rotas).
+  NO montar avatares sobre esa base rota: o Fase 1 arranca con avatar de iniciales/color (cero
+  fotos, cero moderación), o primero se paga la deuda de Storage. Recomiendo iniciales en Fase 1.
 
 ---
 
-*Siguiente paso: Camilo responde las 6 decisiones del §9 → Fable estipula la Fase 1 (esquema +
+*Siguiente paso: Camilo responde las 7 decisiones del §9 → Fable estipula la Fase 1 (esquema +
 RLS en proyecto de PRUEBA primero) → Opus ejecuta con harness de RLS → Fable verifica.*
