@@ -301,6 +301,61 @@ sigue blindada).
    o el cliente aceptando que es inflable (opción B — solo válida si NUNCA rankeamos)? Esta
    decisión define media arquitectura y NO es diferible a Fase 2.
 
+### ✅ §9 RESUELTO — decisiones del PO (Camilo, 2026-07-18, vía AskUserQuestion)
+| # | Decisión | Elección |
+|---|---|---|
+| 1 | Identidad | **Apodo que elige** (default nombre de pila, editable) |
+| 2 | Alcance | **Solo amigos por código** (sin directorio ni sugerencias) |
+| 3 | Coach | **Solo asesorados** (el coach no participa en Fase 1) |
+| 4 | Avatar | **Foto opt-in desde YA** ⚠️ contra recomendación de Fable — ver condición §9.4 |
+| 5 | Ranking | **Constancia + fuerza relativa** (kg/peso corporal como stat secundaria, Fase 2; ranking = constancia) |
+| 6 | Alcance arranque | **Fase 1 sola**, evaluar antes de Fase 2 |
+| 7 | Snapshot | **SERVER-SIDE** (edge function `refresh_snapshot`) |
+
+**§9.4 — condición técnica del avatar-foto (Fable, vinculante):** los avatares NO tocan la ruta
+rota de fotos-a-Storage (bug backlog 2026-07-12: carpetas por id legacy + subida por el coach).
+Van a un **bucket/carpeta NUEVO `avatars/{auth.uid()}/`** con subida SOLO por el dueño
+(`folder[1]=auth.uid()` sí matchea porque quien sube es el usuario autenticado — el bug viejo era
+el COACH subiendo por otros con ids legacy), policies INSERT+UPDATE+**SELECT** (gotcha upsert),
+límite de tamaño + compresión client-side (ya existe `compressImage`), y moderación = reportar
+(§5.4) + al bloquear no se ve. El bug legacy de fotos de progreso queda EXACTAMENTE igual de
+pendiente — no se "aprovecha" nada aquí (R1.1).
+**Nota #5:** fuerza relativa es de Fase 2 y su cálculo TAMBIÉN server-side (deriva de peso
+corporal = dato sensible; el snapshot publica solo el ratio, jamás el peso).
+
+---
+
+## 9-BIS. ESTIPULACIÓN DE FASE 1 (Fable → Opus; ejecutar bajo `docs/reglas-opus.md`)
+
+Cuatro sesiones, cada una su ciclo completo (Opus ejecuta → Fable verifica). NO avanzar a la
+siguiente con la anterior sin veredicto.
+
+**C1 — Cimientos de datos (en proyecto Supabase de PRUEBA primero, R0/Fase 0 del §8):**
+`community_profiles` (con `handle`, `share_code` ≥8 base32 aleatorio, `visible`, snapshot cols
+SOLO escribibles por service role — §9.7) · `friendships` (con `blocked_by` + transiciones §5.2
+por trigger) · `community_reactions` (UNIQUE §5.3) · `community_reports` · cascadas §5.6 · RPC
+`resolve_share_code` (§5.0, con rate-limit servidor). **Verificación C1 (harness SQL con dos
+uids de prueba):** no-amigo NO lee perfil · resolve devuelve solo mínimos · bloqueado NO puede
+des-bloquearse · des-bloqueo por `blocked_by` SÍ · doble-❤️ rechazado · DELETE perfil arrastra
+todo · `user_data` intacta (probar que un amigo NO puede leerla). Solo tras veredicto → migrar
+a producción.
+
+**C2 — Servidor:** edge function `refresh_snapshot` (lee historial PROPIO, calcula con la misma
+lógica pura de avi-core portada — `weekStreak`/`gxLevel`; escribe snapshot server-side) + bucket
+`avatars/` (§9.4) + integrar borrado comunitario a `delete-account`. Verificación: snapshot no
+falsificable desde cliente (intentar UPDATE directo → RLS rechaza), avatar sube/reemplaza/borra
+solo el dueño.
+
+**C3 — UI del asesorado (Fase 1 completa):** sección Comunidad con opt-in+consentimiento (§7,
+subir `LEGAL_V`), mi perfil (apodo/foto/código/pausar/salir), agregar por código, solicitudes,
+lista de amigos con tarjeta (racha/nivel/❤️), bloquear/reportar, degradación offline. Barra
+premium completa + harness E2E propio (`_verify-community.mjs`) con sabotajes.
+
+**C4 — Legal + cierre:** texto de consentimiento específico, actualización de `legal/`,
+revisión de tono (Sofía), radar de adopción (arrancar con el gym de Camilo). Los riesgos §11
+(patrones de actividad → granularidad día + toggle; menores → gate 18+/representante en el
+consentimiento, confirmar con abogado) se resuelven en C3/C4, no se difieren a Fase 2.
+
 ## 10. Lo que este doc NO propone (no-goals, para acotar expectativas)
 
 - ❌ Mensajería directa entre amigos (ya hay chat con el coach; DMs = moderación/abuso → fuera).
