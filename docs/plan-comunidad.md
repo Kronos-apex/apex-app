@@ -1,6 +1,7 @@
 # Plan de diseño — COMUNIDAD en AVI
 
-> **Estado:** DISEÑO v2 (sin código). Idea #5 del lote de Camilo (2026-07-17). Documento vivo.
+> **Estado:** CONSTRUCCIÓN Fase 1 en curso (2026-07-19) — C1 y C2 EN PROD y verificados por
+> Fable; **C3 ESTIPULADO** (ver §9-BIS → C3 detallado). Idea #5 del lote de Camilo (2026-07-17).
 > **Autor del borrador:** Opus 4.8 (2026-07-18). **Endurecido por Fable (auditoría 2026-07-18):**
 > se cerraron 4 huecos de arquitectura (§5.0, §5.2, §5.3, §5.6) y se añadió la **decisión #7**
 > (integridad del snapshot) — la v1 era inconstruible tal cual (el flujo "agregar por código"
@@ -392,6 +393,105 @@ subir `LEGAL_V`), mi perfil (apodo/foto/código/pausar/salir), agregar por códi
 lista de amigos con tarjeta (racha/nivel/❤️), bloquear/reportar, degradación offline. Barra
 premium completa + harness E2E propio (`_verify-community.mjs`) con sabotajes.
 
+### C3 — ESTIPULACIÓN DETALLADA (Fable → Opus, 2026-07-19; ejecutar bajo `docs/reglas-opus.md`)
+
+**Decisión de superficie del PO (2026-07-19, AskUserQuestion):** la Comunidad vive como **6ª
+pestaña «Comunidad»** en la barra del asesorado (Hoy · Rutinas · Mensajes · Progreso · Perfil ·
+Comunidad). Razón: la Fase 1 es una PRUEBA de adopción; esconderla sesgaría el resultado. La
+barra queda más apretada — verificar a 360px con letra grande (data-fs xl) que las 6 caben sin
+recorte. **Gratis para TODOS los tiers (§4.6): sin `premiumLockHTML`, el tier libre entra igual.**
+
+Un deploy = **avi-v373** (bump PAR ?v/CACHE_NAME + `_prodcheck 373`). Un commit por bloque
+(C3.1 migración → C3.2 motor puro → C3.3 capa de datos+UI → C3.4 harness/QA pueden agruparse
+según tamaño real, pero migración y frontend JAMÁS en el mismo commit). Suite antes y después.
+Antes de tocar código: leer `c1_community_foundations.sql` (grants reales) y
+`supabase/functions/refresh_snapshot/index.ts` (contrato de la edge) — no asumir de memoria.
+
+**C3.1 Migración `c3_community_consent_avatar` (prod; tablas verificadas VACÍAS 0/0/0 el
+2026-07-19 → columnas pueden nacer NOT NULL sin backfill):**
+- `consent_v text not null` + `consent_at timestamptz not null default now()` en
+  `community_profiles` — evidencia Habeas Data del opt-in (patrón `consentEvidence`/`LEGAL_V`
+  del registro, app-3:756-812). **Grant INSERT sí, grant UPDATE NO** (columnas de evidencia
+  inmutables para el cliente; recordar que los grants de C1 son POR COLUMNA — extender el
+  `grant insert (…)` existente, no reemplazarlo por uno de tabla completa).
+- `show_today boolean not null default true` — toggle «mostrar si entrené hoy» (riesgo 🔴 §11
+  patrones de actividad). Grant INSERT+UPDATE al cliente (es preferencia, no stat). La edge
+  `refresh_snapshot` (v2) lo LEE y si es false escribe `trained_today=false` — el ocultamiento
+  es SERVER-SIDE, no cosmético (una policy no oculta columnas; el dato jamás debe llegar).
+- CHECK del avatar (requisito 🟡 de la auditoría C2): `avatar_url is null or avatar_url like
+  'https://eoebhrxbokyllqalyecj.supabase.co/storage/v1/object/public/avatars/%'` → el cliente
+  no puede apuntar el `<img>` de sus amigos a una URL externa (logging de IP).
+- Verificación en vivo tras aplicar: INSERT con avatar externo → rechazado; consentimiento
+  UPDATE por authenticated → rechazado; advisor security sin regresiones.
+
+**C3.2 Motor puro (avi-core.js + tests en avi.test.js; deterministas, reciben `now`):**
+- Constantes `CMTY_REFRESH_MIN_MS` (30 min — debounce del refresh, requisito 🟢: la edge no
+  tiene rate-limit propio) y `CMTY_STALE_MS` (48 h — snapshot viejo se marca desactualizado).
+- `cmtyHandleValid(h)` (trim, 1-30 — espejo del CHECK de DB) · `cmtyCodeNormalize(s)`
+  (mayúsculas, sin espacios/guiones; el código es 10 hex-upper) · `cmtyShouldRefresh(lastTs,
+  now)` · `cmtyFreshness(snapshotAt, now)` → `{fresh, daysOld}` · `cmtyAvatarOk(url)`
+  (prefijo del bucket, defensa DOBLE del CHECK antes de tocar un `<img>`) ·
+  `cmtyInitials(handle)` (fallback de avatar sin foto).
+
+**C3.3 Capa de datos `CMTY` + UI (módulo ÚNICO en el app-N que corresponda — confirmar
+leyendo dónde viven las secciones `cn-*` del asesorado; probable app-5/app-6):**
+- **Toda operación vía `AUTH.client()`** (`.from()/.rpc()/.functions.invoke()/.storage`) —
+  JAMÁS fetch crudo con token extraído (gotcha v323). Operaciones: cargar todo (mi perfil +
+  amistades + perfiles de amigos + ❤️ dados/recibidos, mínimo de queries) · crear perfil
+  (INSERT con handle+consent_v+consent_at → primer `refresh_snapshot`) · editar
+  handle/bio/visible/show_today · subir avatar (`compressImage` → Storage
+  `avatars/{auth.uid()}/avatar.jpg` upsert → setear `avatar_url`) · salir (DELETE del perfil;
+  la cascada del servidor arrastra el resto — confirmación fuerte que explica el borrado) ·
+  agregar por código (`rpc('resolve_share_code')` → tarjeta de confirmación handle+avatar →
+  INSERT friendship) · aceptar/rechazar/bloquear/desbloquear/eliminar amistad · ❤️
+  poner/quitar (INSERT/DELETE, el UNIQUE de DB lo hace idempotente) · reportar (+ ofrecer
+  bloquear en el mismo gesto) · `refreshSnapshot()` con debounce en `ax_cmty_refresh`
+  (LOCAL) — se invoca al ABRIR la pestaña y al FINALIZAR un entreno, SOLO si hay opt-in.
+- **NADA de comunidad entra a `SB_KEYS`** (no es parte del sync offline-first; vive en sus
+  tablas). Caché de última vista en `ax_cmty_cache` (LOCAL, por dispositivo) SOLO para el
+  estado offline, marcada «puede estar desactualizado».
+- **SELLO DE NUBE (lección Samuel 2026-07-08, NO negociable):** en localhost las escrituras
+  de CMTY quedan selladas igual que `cloudWriteSealed` sella `UD.*` — extender el sello o
+  replicar el mecanismo, y PROBARLO en el harness (un write con el sello puesto NO llega).
+- **UI — pestaña `#cn-community`** (ícono `users` de aviIcon) con estados:
+  (a) **Sin opt-in** → bienvenida: qué se comparte (apodo, avatar, stats de constancia —
+  NUNCA peso/fotos/salud/kilos), con quién (solo amigos que aceptaste), consentimiento
+  específico con checkbox + gate 18+/representante (§11) + apodo prellenado con el nombre de
+  pila (decisión #1) + CTA «Crear mi perfil». Al crear → `LEGAL_V` NUEVO queda registrado en
+  `consent_v`. (b) **Con opt-in** → Mi perfil (avatar/iniciales, apodo, bio, mi código
+  GRANDE con copiar + compartir por `navigator.share`/`wa.me` reusando el patrón `shareApp`,
+  toggles pausar/`show_today`, salir) · Solicitudes (recibidas: aceptar/rechazar; enviadas:
+  «pendiente») · Agregar por código (input → resolver → confirmar → enviar; errores del RPC
+  con mensaje humano, incluido el rate-limit) · Amigos (tarjeta: avatar, apodo, racha,
+  nivel, punto «entrenó hoy», ❤️, menú ⋯ bloquear/reportar/eliminar; tocar = tarjeta
+  ampliada). (c) **Offline** → «Conéctate para ver a tu gente» + caché marcada. (d) **Sin
+  amigos** → empty state con CTA de compartir el código. (e) Perfil pausado → aviso.
+- **`esc()` en handle y bio en TODO innerHTML** (requisito 🟡 — texto de OTRO usuario).
+  Avatar solo se pinta si `cmtyAvatarOk(url)`. La comunidad JAMÁS bloquea entrenar: toda
+  falla degrada a mensaje accionable, nunca pantalla rota ni error sin catch.
+- Barra premium completa (360px, táctil ≥36px, ambos temas con tokens, tono Sofía, letra
+  grande, reduced-motion) + entrada `AVI_NEWS` (v373, `coach:false`) con poda + correr
+  `_verify-news`.
+
+**C3.4 QA / verificación (cinturón completo):**
+- Suite: tests nuevos de C3.2 (verde antes y después). Hook 11/11.
+- Harness NUEVO `_verify-community.mjs` (CDP, sin login o cuenta QA, cloud sellado, CMTY
+  stubbeado con fixtures): opt-in visible y gate de consentimiento (sin checkbox NO crea) ·
+  control XSS (handle `<img onerror>`/`<script>` NO ejecuta, se pinta escapado) · avatar con
+  URL externa NO se pinta (cae a iniciales) · tarjetas de amigos renderizan las stats ·
+  ❤️ toggle · offline degradado (stub de red caída) · shots claro/oscuro verificados.
+- Regresión de zona tocada: `_guiado-suite` (si se tocó `renderClientToday`/navegación),
+  harnesses previos de la pestaña Hoy si aplica.
+- **Sabotajes mínimos (reglas-opus §C):** (1) quitar `esc()` del handle → harness rojo;
+  (2) quitar el gate de consentimiento → harness rojo; (3) romper `cmtyShouldRefresh`
+  (debounce) → test rojo. Árbol limpio antes de cada sabotaje.
+- Deploy: bump par 373 (python sin BOM) → push → curl Pages → `_prodcheck 373` verde.
+
+**PROHIBIDO en C3:** tocar `user_data` o cualquier RLS/policy existente · construir feed o
+ranking (Fase 2) · aflojar grants «para que sea más fácil» · claves de sesión · SB_KEYS
+nuevos · DMs. Si algo del spec resulta inconstruible contra el esquema real, PARAR y
+documentar para Fable — no improvisar arquitectura (reglas-opus §A).
+
 **C4 — Legal + cierre:** texto de consentimiento específico, actualización de `legal/`,
 revisión de tono (Sofía), radar de adopción (arrancar con el gym de Camilo). Los riesgos §11
 (patrones de actividad → granularidad día + toggle; menores → gate 18+/representante en el
@@ -433,5 +533,5 @@ consentimiento, confirmar con abogado) se resuelven en C3/C4, no se difieren a F
 
 ---
 
-*Siguiente paso: Camilo responde las 7 decisiones del §9 → Fable estipula la Fase 1 (esquema +
-RLS en proyecto de PRUEBA primero) → Opus ejecuta con harness de RLS → Fable verifica.*
+*Siguiente paso (2026-07-19): Opus ejecuta la ESTIPULACIÓN DETALLADA de C3 (§9-BIS) bajo
+`docs/reglas-opus.md` → deploy avi-v373 → Fable verifica (sabotajes propios + prod) → C4.*
