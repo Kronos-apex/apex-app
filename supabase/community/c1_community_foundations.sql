@@ -55,11 +55,17 @@ create table public.community_reactions (
   created_at timestamptz not null default now(),
   unique nulls not distinct (from_user, to_user, kind, context)   -- PG15+; bloquea ❤️ duplicado aun con context NULL
 );
+-- OBSERVACIÓN (Fable 2026-07-19, aceptada): un ❤️ sobrevive a la desamistad/bloqueo (re_sel no
+-- re-chequea amistad) → queda huérfano pero es inocuo (el destinatario ya lo recibió; nuevas
+-- reacciones sí exigen amistad). NO se añade trigger de limpieza (R1.1, evitar complejidad); si
+-- molesta en producción, un trigger AFTER DELETE/UPDATE-to-blocked en friendships lo purga.
 
 create table public.community_reports (
   id         uuid primary key default gen_random_uuid(),
-  reporter   uuid not null references auth.users(id) on delete cascade,
-  reported   uuid not null references auth.users(id) on delete cascade,   -- referencia auth.users → sobrevive a "salir de comunidad"
+  -- Fable 2026-07-19: SET NULL (no CASCADE) → el historial de moderación SOBREVIVE aunque el
+  -- reportado (o el reportante) borre su cuenta; queda anonimizado (§5.4). CASCADE lo borraba.
+  reporter   uuid references auth.users(id) on delete set null,
+  reported   uuid references auth.users(id) on delete set null,
   reason     text,
   created_at timestamptz not null default now()
 );
@@ -154,7 +160,11 @@ create policy cp_del on public.community_profiles for delete using (user_id = au
 create policy fr_sel on public.friendships for select using (auth.uid() in (user_a, user_b));
 create policy fr_ins on public.friendships for insert with check (auth.uid() in (user_a, user_b) and requested_by = auth.uid() and status='pending');
 create policy fr_upd on public.friendships for update using (auth.uid() in (user_a, user_b)) with check (auth.uid() in (user_a, user_b));
-create policy fr_del on public.friendships for delete using (auth.uid() in (user_a, user_b));
+-- ⚠️ FIX de verificación (Fable 2026-07-19): el trigger blinda el UPDATE, pero un DELETE dejaba al
+-- BLOQUEADO borrar la fila 'blocked' y re-solicitar (evasión del candado §5.2). Reproducido y corregido:
+-- una amistad 'blocked' SOLO la puede borrar quien bloqueó; pending/accepted, cualquiera del par.
+create policy fr_del on public.friendships for delete
+  using (auth.uid() in (user_a, user_b) and (status <> 'blocked' or blocked_by = auth.uid()));
 
 -- reactions: reacciono como yo, solo a un amigo; veo las que me tocan; borro las mías
 create policy re_sel on public.community_reactions for select using (auth.uid() in (from_user, to_user));

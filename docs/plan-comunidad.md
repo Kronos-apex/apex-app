@@ -337,8 +337,12 @@ Banco de prueba = **AVI-GYM** (la org Free tope 2 proyectos → no se pudo crear
 elegido por el PO, aislado, se hizo DROP de todo al terminar). **Harness 14/14 PASS** (extraño no
 lee ajeno, snapshot solo-servidor, RPC resuelve solo mínimos + rate-limit, bloqueado no se
 desbloquea, doble ❤️ y no-amigo rechazados, cascada al salir, normalización + no-auto-aceptar,
-reportes ilegibles, anon sin acceso). **AL RETOMAR: Fable re-verifica C1 → si aprueba, Opus aplica
-`c1_community_foundations.sql` a producción (eoebhrxbokyllqalyecj) → luego C2.**
+reportes ilegibles, anon sin acceso). **✅ VERIFICADO por Fable (2026-07-19) — APROBADO CON CORRECCIÓN APLICADA.** Confirmé los 14
+resultados en vivo + corrí sondas adversariales propias: **1 HALLAZGO real** (el bloqueado evadía
+el bloqueo con DELETE+re-INSERT — el trigger solo cubría UPDATE) → fix `fr_del` vetado end-to-end;
++2 endurecimientos de diseño (reports `ON DELETE SET NULL` para conservar moderación; nota de ❤️
+huérfano). Snapshot blindado también en INSERT. **AL RETOMAR: Opus aplica `c1_community_foundations.sql`
+(ya con los fixes) a producción (eoebhrxbokyllqalyecj) → luego C2 (edge `refresh_snapshot`+avatars+delete-account).**
 
 **C1 (spec original) — Cimientos de datos (en proyecto Supabase de PRUEBA primero, R0/Fase 0 del §8):**
 `community_profiles` (con `handle`, `share_code` ≥8 base32 aleatorio, `visible`, snapshot cols

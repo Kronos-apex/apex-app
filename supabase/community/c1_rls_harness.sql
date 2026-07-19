@@ -25,6 +25,12 @@
 --   T11/12 reportes: lectura NEGADA a authenticated + no-suplantable · share_code inmutable    [§5.4]
 --   T13    rate-limit del RPC dispara (>30/día)                                                [§5.0]
 --   T14    anon (sin login) sin acceso a nada de comunidad                                     [opt-in]
+--   ── Sondas adversariales de Fable (2026-07-19), NO cubiertas por T1-T14 ──
+--   SA (HALLAZGO, corregido): el BLOQUEADO borraba la fila 'blocked' (fr_del) y re-solicitaba →
+--          evasión del candado §5.2 por DELETE+INSERT. FIX: fr_del niega borrar 'blocked' salvo
+--          blocked_by=auth.uid(). Re-vetado: bloqueado NO borra · bloqueador SÍ suelta · accepted OK.
+--   SC (PASA): el cliente tampoco puede sembrar el snapshot en el INSERT inicial (default 0).
+--   SB (observación aceptada): un ❤️ sobrevive a la desamistad (huérfano inocuo; ver DDL).
 --
 -- Nota user_data: la comunidad NO referencia `user_data` en ninguna tabla/policy → aislamiento
 -- por construcción; el snapshot es la ÚNICA vía y la escribe el servidor (C2).
