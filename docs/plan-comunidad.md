@@ -341,8 +341,12 @@ reportes ilegibles, anon sin acceso). **✅ VERIFICADO por Fable (2026-07-19) �
 resultados en vivo + corrí sondas adversariales propias: **1 HALLAZGO real** (el bloqueado evadía
 el bloqueo con DELETE+re-INSERT — el trigger solo cubría UPDATE) → fix `fr_del` vetado end-to-end;
 +2 endurecimientos de diseño (reports `ON DELETE SET NULL` para conservar moderación; nota de ❤️
-huérfano). Snapshot blindado también en INSERT. **AL RETOMAR: Opus aplica `c1_community_foundations.sql`
-(ya con los fixes) a producción (eoebhrxbokyllqalyecj) → luego C2 (edge `refresh_snapshot`+avatars+delete-account).**
+huérfano). Snapshot blindado también en INSERT. **✅ C1 APLICADO A PRODUCCIÓN (Opus, 2026-07-19)** — migración `c1_community_foundations` +
+endurecimiento `c1_community_hardening` (advisor: `_are_friends` a schema `private` no expuesto,
+`search_path=''` en todas las funciones). Verificado en prod: 5 tablas, RLS×5, 12 policies, RPC,
+`fr_del` con el fix. Advisor security = solo ítems intencionales (`resolve_share_code` definer =
+la feature; `community_resolve_attempts` sin policy = blindada) + pre-existentes. **AL RETOMAR: C2
+(edge `refresh_snapshot` server-side + bucket `avatars/` §9.4 + integrar borrado a `delete-account`).**
 
 **C1 (spec original) — Cimientos de datos (en proyecto Supabase de PRUEBA primero, R0/Fase 0 del §8):**
 `community_profiles` (con `handle`, `share_code` ≥8 base32 aleatorio, `visible`, snapshot cols

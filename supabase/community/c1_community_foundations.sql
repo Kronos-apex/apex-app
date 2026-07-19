@@ -1,9 +1,12 @@
 -- ============================================================================
 -- C1 · CIMIENTOS DE DATOS DE COMUNIDAD (idea #5, Fase 1) — migración lista para PROD
 -- ============================================================================
--- Estado: VETADO en el banco de prueba AVI-GYM (2026-07-18), harness 14/14 verde
--- (ver c1_rls_harness.sql). ⚠️ NO aplicar a producción (AVI-ENTRENAMIENTO
--- eoebhrxbokyllqalyecj) hasta el VEREDICTO de Fable (regla R4.2 de reglas-opus.md).
+-- Estado: ✅ APLICADO A PRODUCCIÓN (AVI-ENTRENAMIENTO eoebhrxbokyllqalyecj, 2026-07-19) tras el
+-- veredicto de Fable (APROBADO CON CORRECCIÓN) + endurecimiento por advisor (schema private para
+-- _are_friends, search_path='' en todas las funciones). Vetado antes en AVI-GYM (harness 14/14 +
+-- sondas de Fable). Este archivo refleja el estado REAL en prod (migraciones c1_community_foundations
+-- + c1_community_hardening). Advisor security: solo quedan ítems intencionales (ver notas abajo) +
+-- pre-existentes de Camilo.
 -- Decisiones del PO (§9 de docs/plan-comunidad.md): apodo · solo-código · solo-asesorados ·
 -- foto opt-in (bucket aparte, §9.4) · constancia+fuerza relativa (F2) · Fase 1 sola ·
 -- SNAPSHOT SERVER-SIDE (#7 → columnas de stats sin grant al cliente; las escribe la edge fn de C2).
@@ -11,8 +14,13 @@
 -- Para el test se antepusieron DROPs idempotentes; en PROD se aplica create-only (esto).
 -- ============================================================================
 
+-- schema privado (NO expuesto por PostgREST) para helpers internos de RLS (endurecimiento Fable/advisor)
+create schema if not exists private;
+grant usage on schema private to authenticated, service_role;
+
 -- código de amigo: 10 hex-upper aleatorio (no secuencial). Endurecible a base32 en el futuro.
-create function public.gen_share_code() returns text language sql volatile as $$
+-- search_path='' fijo (advisor 0011): sin refs a tablas, solo built-ins de pg_catalog.
+create function public.gen_share_code() returns text language sql volatile set search_path = '' as $$
   select upper(substr(replace(gen_random_uuid()::text,'-',''),1,10));
 $$;
 
@@ -77,17 +85,20 @@ create table public.community_resolve_attempts (   -- rate-limit del RPC (solo l
   primary key (uid, day)
 );
 
--- ---------- helper anti-recursión (owner-run → bypassa RLS de friendships) ----------
-create function public._are_friends(u1 uuid, u2 uuid) returns boolean
-  language sql stable security definer set search_path = public as $$
+-- ---------- helper interno (schema PRIVATE → NO expuesto como RPC; evita fuga del grafo de amistades) ----------
+-- Advisor 0028/0029: en public quedaba callable vía /rpc/_are_friends (anon+auth podían enumerar amistades).
+create function private._are_friends(u1 uuid, u2 uuid) returns boolean
+  language sql stable security definer set search_path = '' as $$
   select exists(
     select 1 from public.friendships f
     where f.status='accepted' and f.user_a = least(u1,u2) and f.user_b = greatest(u1,u2)
   );
 $$;
+revoke all on function private._are_friends(uuid,uuid) from public;
+grant execute on function private._are_friends(uuid,uuid) to authenticated, service_role;
 
 -- ---------- triggers de friendships ----------
-create function public._community_norm_friendship() returns trigger language plpgsql as $$
+create function public._community_norm_friendship() returns trigger language plpgsql set search_path = '' as $$
 declare lo uuid; hi uuid;
 begin
   lo := least(new.user_a, new.user_b);
@@ -102,7 +113,7 @@ end $$;
 create trigger trg_norm_friendship before insert on public.friendships
   for each row execute function public._community_norm_friendship();
 
-create function public._community_check_transition() returns trigger language plpgsql as $$
+create function public._community_check_transition() returns trigger language plpgsql set search_path = '' as $$
 declare me uuid := auth.uid();
 begin
   -- columnas inmutables
@@ -127,20 +138,23 @@ create trigger trg_check_transition before update on public.friendships
 -- ---------- RPC de resolución de código (§5.0: SECURITY DEFINER + rate-limit en servidor) ----------
 create function public.resolve_share_code(p_code text)
   returns table(user_id uuid, handle text, avatar_url text)   -- SOLO mínimos; jamás snapshot
-  language plpgsql security definer set search_path = public as $$
+  language plpgsql security definer set search_path = '' as $$   -- '' + refs calificadas (advisor 0011)
 declare me uuid := auth.uid(); n int; d date := (now() at time zone 'utc')::date;
 begin
   if me is null then raise exception 'auth required'; end if;
-  insert into community_resolve_attempts(uid, day, count) values (me, d, 1)
-    on conflict (uid, day) do update set count = community_resolve_attempts.count + 1
+  insert into public.community_resolve_attempts(uid, day, count) values (me, d, 1)
+    on conflict (uid, day) do update set count = public.community_resolve_attempts.count + 1
     returning count into n;
   if n > 30 then raise exception 'rate limit exceeded'; end if;   -- anti-enumeración de códigos
   return query
     select p.user_id, p.handle, p.avatar_url
-    from community_profiles p
+    from public.community_profiles p
     where p.share_code = p_code and p.visible = true   -- invisible → no resuelve (no filtra existencia)
     limit 1;
 end $$;
+-- NOTA advisor (aceptado): resolve_share_code queda como WARN 0029 (definer ejecutable por authenticated)
+-- — es la feature (resolver un código pre-amistad); se auto-protege (auth + rate-limit + solo visibles).
+-- community_resolve_attempts: RLS on + SIN policy ni grant a authenticated/anon = blindada (INFO 0008 esperado).
 
 -- ---------- RLS ----------
 alter table public.community_profiles         enable row level security;
@@ -151,7 +165,7 @@ alter table public.community_resolve_attempts enable row level security;
 
 -- profiles: leo el mío o el de un amigo aceptado; escribo solo el mío
 create policy cp_sel on public.community_profiles for select
-  using (user_id = auth.uid() or public._are_friends(user_id, auth.uid()));
+  using (user_id = auth.uid() or private._are_friends(user_id, auth.uid()));
 create policy cp_ins on public.community_profiles for insert with check (user_id = auth.uid());
 create policy cp_upd on public.community_profiles for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy cp_del on public.community_profiles for delete using (user_id = auth.uid());
@@ -168,7 +182,7 @@ create policy fr_del on public.friendships for delete
 
 -- reactions: reacciono como yo, solo a un amigo; veo las que me tocan; borro las mías
 create policy re_sel on public.community_reactions for select using (auth.uid() in (from_user, to_user));
-create policy re_ins on public.community_reactions for insert with check (from_user = auth.uid() and from_user <> to_user and public._are_friends(from_user, to_user));
+create policy re_ins on public.community_reactions for insert with check (from_user = auth.uid() and from_user <> to_user and private._are_friends(from_user, to_user));
 create policy re_del on public.community_reactions for delete using (from_user = auth.uid());
 
 -- reports: inserto el mío; SIN policy de SELECT (authenticated ni siquiera puede leer — moderación = servidor)
@@ -199,4 +213,4 @@ grant all on public.community_resolve_attempts to service_role;
 
 revoke all on function public.resolve_share_code(text) from public, anon;
 grant execute on function public.resolve_share_code(text) to authenticated;
-grant execute on function public._are_friends(uuid,uuid) to authenticated, service_role;
+-- (_are_friends vive en el schema private; sus grants están junto a su definición, arriba)
