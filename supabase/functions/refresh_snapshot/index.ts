@@ -1,4 +1,6 @@
-// ══════════ refresh_snapshot (Comunidad C2) ══════════
+// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3) ══════════
+// v2 (C3): respeta show_today del perfil → si el usuario ocultó su actividad, trained_today se
+// escribe SIEMPRE false (§11 patrones de actividad; ocultamiento server-side, no cosmético).
 // Calcula el SNAPSHOT de constancia del PROPIO usuario y lo escribe en community_profiles.
 // Decisión #7: server-side → el cliente NO puede inflar sus números (racha/nivel/logros). Lee el
 // historial del CALLER (uid de SU access token), nunca de otros; escribe con service role las
@@ -91,17 +93,21 @@ Deno.serve(async (req) => {
   const uid = user.id;
 
   try {
-    // opt-in: solo refresca si el usuario YA tiene perfil de comunidad (no lo crea aquí)
+    // opt-in: solo refresca si el usuario YA tiene perfil de comunidad (no lo crea aquí).
+    // Leemos show_today: si el usuario ocultó su actividad, trained_today JAMÁS se publica true
+    // (§11 patrones de actividad → ocultamiento SERVER-SIDE, no cosmético). C3.1.
     const { data: prof, error: ep } = await admin
-      .from("community_profiles").select("user_id").eq("user_id", uid).limit(1);
+      .from("community_profiles").select("user_id,show_today").eq("user_id", uid).limit(1);
     if (ep) throw new Error("profile check: " + ep.message);
     if (!prof || !prof.length) return json({ ok: true, no_profile: true });
+    const showToday = prof[0].show_today !== false; // default true si null/undefined
 
     const { data: rows, error: e1 } = await admin
       .from("user_data").select("history,prs,routines,profile").eq("user_id", uid).limit(1);
     if (e1) throw new Error("user_data: " + e1.message);
 
     const snap = snapshot((rows && rows[0]) || {}, Date.now());
+    if (!showToday) snap.trained_today = false; // el amigo no ve CUÁNDO entrena
     const { error: e2 } = await admin
       .from("community_profiles")
       .update({ ...snap, snapshot_at: new Date().toISOString() })

@@ -38,6 +38,15 @@ const {
   weeklyMissed,
   myTrainingSummary,
   communitySnapshot,
+  CMTY_REFRESH_MIN_MS,
+  CMTY_STALE_MS,
+  CMTY_AVATAR_PREFIX,
+  cmtyHandleValid,
+  cmtyCodeNormalize,
+  cmtyShouldRefresh,
+  cmtyFreshness,
+  cmtyAvatarOk,
+  cmtyInitials,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1170,6 +1179,62 @@ test('communitySnapshot: logros por volumen y nivel; sin datos → cero honesto'
   assert.strictEqual(s.achievements, 7);
   const empty = communitySnapshot({ days: 3 }, [], {}, now);
   assert.deepStrictEqual(empty, { streak_weeks: 0, sessions_4w: 0, level: 1, achievements: 0, trained_today: false });
+});
+
+// ── Comunidad C3 — helpers puros de la UI ──
+test('cmtyHandleValid: 1-30 chars tras recortar; rechaza vacío/largo/no-string', () => {
+  assert.strictEqual(cmtyHandleValid('Cami'), true);
+  assert.strictEqual(cmtyHandleValid('  Cami  '), true);       // recorta
+  assert.strictEqual(cmtyHandleValid('   '), false);           // solo espacios
+  assert.strictEqual(cmtyHandleValid(''), false);
+  assert.strictEqual(cmtyHandleValid('a'.repeat(30)), true);
+  assert.strictEqual(cmtyHandleValid('a'.repeat(31)), false);
+  assert.strictEqual(cmtyHandleValid(null), false);
+  assert.strictEqual(cmtyHandleValid(123), false);
+});
+
+test('cmtyCodeNormalize: mayúsculas, solo [A-Z0-9], tolera espacios/guiones', () => {
+  assert.strictEqual(cmtyCodeNormalize('a1b2c3d4e5'), 'A1B2C3D4E5');
+  assert.strictEqual(cmtyCodeNormalize(' AB12-CD34 '), 'AB12CD34');
+  assert.strictEqual(cmtyCodeNormalize('ab_12!cd'), 'AB12CD');
+  assert.strictEqual(cmtyCodeNormalize(''), '');
+  assert.strictEqual(cmtyCodeNormalize(null), '');
+});
+
+test('cmtyShouldRefresh: nunca (falsy) o pasado el debounce de 30 min', () => {
+  const now = 1000 * CMTY_REFRESH_MIN_MS;
+  assert.strictEqual(cmtyShouldRefresh(0, now), true);         // nunca
+  assert.strictEqual(cmtyShouldRefresh(null, now), true);
+  assert.strictEqual(cmtyShouldRefresh(NaN, now), true);
+  assert.strictEqual(cmtyShouldRefresh(now - 1000, now), false);            // hace 1s
+  assert.strictEqual(cmtyShouldRefresh(now - CMTY_REFRESH_MIN_MS, now), true);   // justo 30 min
+  assert.strictEqual(cmtyShouldRefresh(now - CMTY_REFRESH_MIN_MS + 1, now), false);
+});
+
+test('cmtyFreshness: <48h fresco; ≥48h desactualizado; fecha inválida → no fresco', () => {
+  const now = +D(2026, 6, 10, 12);
+  assert.deepStrictEqual(cmtyFreshness(new Date(now - 3600000).toISOString(), now), { fresh: true, daysOld: 0 });
+  const stale = cmtyFreshness(new Date(now - 3 * 86400000).toISOString(), now);
+  assert.strictEqual(stale.fresh, false);
+  assert.strictEqual(stale.daysOld, 3);
+  assert.deepStrictEqual(cmtyFreshness(null, now), { fresh: false, daysOld: null });
+  assert.deepStrictEqual(cmtyFreshness('basura', now), { fresh: false, daysOld: null });
+});
+
+test('cmtyAvatarOk: solo URLs del bucket propio; externa/null/vacía → false', () => {
+  assert.strictEqual(cmtyAvatarOk(CMTY_AVATAR_PREFIX + 'uid/avatar.jpg'), true);
+  assert.strictEqual(cmtyAvatarOk('https://evil.example.com/x.png'), false);
+  assert.strictEqual(cmtyAvatarOk('javascript:alert(1)'), false);
+  assert.strictEqual(cmtyAvatarOk(null), false);
+  assert.strictEqual(cmtyAvatarOk(''), false);
+});
+
+test('cmtyInitials: 1-2 letras del handle en mayúsculas', () => {
+  assert.strictEqual(cmtyInitials('Camilo'), 'CA');
+  assert.strictEqual(cmtyInitials('Ana María'), 'AM');
+  assert.strictEqual(cmtyInitials('x'), 'X');
+  assert.strictEqual(cmtyInitials('   '), '?');
+  assert.strictEqual(cmtyInitials(null), '?');
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

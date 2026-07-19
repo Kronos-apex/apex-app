@@ -2107,6 +2107,68 @@ function communitySnapshot(client, sessions, prs, now) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// COMUNIDAD C3 — helpers PUROS de la UI del asesorado (Fase 1)
+// ──────────────────────────────────────────────────────────────────────
+// Deterministas, sin DOM/localStorage. La capa CMTY (app-N) delega en estos.
+// El snapshot lo calcula el SERVIDOR (edge refresh_snapshot, decisión #7); aquí
+// solo va la lógica de presentación/validación del cliente.
+
+// Debounce del refresh del snapshot: la edge NO tiene rate-limit propio (requisito 🟢 de
+// la auditoría C2) → el cliente no la invoca más de una vez cada 30 min.
+const CMTY_REFRESH_MIN_MS = 30 * 60 * 1000;
+// Un snapshot con más de 48 h se marca "puede estar desactualizado".
+const CMTY_STALE_MS = 48 * 3600 * 1000;
+// Prefijo público del bucket 'avatars' del proyecto (espejo del CHECK cp_avatar_url_bucket en DB):
+// defensa DOBLE — antes de pintar un <img> con avatar de OTRO usuario, se exige este prefijo.
+const CMTY_AVATAR_PREFIX = 'https://eoebhrxbokyllqalyecj.supabase.co/storage/v1/object/public/avatars/';
+
+// Handle válido: 1-30 chars tras recortar (espejo del CHECK char_length(handle) between 1 and 30).
+function cmtyHandleValid(h) {
+  if (typeof h !== 'string') return false;
+  const t = h.trim();
+  return t.length >= 1 && t.length <= 30;
+}
+
+// Normaliza un código pegado por el usuario: mayúsculas, solo [A-Z0-9] (el share_code es
+// 10 hex-upper). Tolera espacios/guiones/minúsculas que el usuario copie de más.
+function cmtyCodeNormalize(s) {
+  if (typeof s !== 'string') return '';
+  return s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// ¿Toca refrescar el snapshot? true si nunca (lastTs falsy/no numérico) o pasó el debounce.
+function cmtyShouldRefresh(lastTs, now) {
+  const n = (typeof now === 'number') ? now : +new Date(now || Date.now());
+  const last = Number(lastTs);
+  if (!last || isNaN(last)) return true;
+  return (n - last) >= CMTY_REFRESH_MIN_MS;
+}
+
+// Frescura del snapshot para el aviso "desactualizado". snapshotAt = ISO string, ms o Date.
+function cmtyFreshness(snapshotAt, now) {
+  const n = (typeof now === 'number') ? now : +new Date(now || Date.now());
+  const t = snapshotAt ? +new Date(snapshotAt) : NaN;
+  if (isNaN(t)) return { fresh: false, daysOld: null };
+  const age = n - t;
+  return { fresh: age < CMTY_STALE_MS, daysOld: Math.floor(age / 86400000) };
+}
+
+// ¿Es un avatar seguro de pintar? Solo si es una URL del bucket propio (no externa).
+// null/vacío/externa → false → el caller cae a iniciales.
+function cmtyAvatarOk(url) {
+  return typeof url === 'string' && url.indexOf(CMTY_AVATAR_PREFIX) === 0;
+}
+
+// Iniciales para el avatar sin foto: 1-2 letras del handle, mayúsculas.
+function cmtyInitials(handle) {
+  if (typeof handle !== 'string') return '?';
+  const words = handle.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
 // Agrega el historial en una serie por ejercicio: un punto por día entrenado
@@ -2808,6 +2870,15 @@ if (typeof module !== 'undefined' && module.exports) {
     GX_LEVELS,
     gxLevel,
     communitySnapshot,
+    CMTY_REFRESH_MIN_MS,
+    CMTY_STALE_MS,
+    CMTY_AVATAR_PREFIX,
+    cmtyHandleValid,
+    cmtyCodeNormalize,
+    cmtyShouldRefresh,
+    cmtyFreshness,
+    cmtyAvatarOk,
+    cmtyInitials,
     computeExerciseProgress,
     coachInsight,
     coachPulse,
