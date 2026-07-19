@@ -2071,6 +2071,41 @@ function gxLevel(total) {
   return { cur, next, pct, rem };
 }
 
+// ── Snapshot de constancia para la COMUNIDAD (idea #5, C2) — PURA, fuente de verdad ──
+// Destila el historial/prs/plan de un usuario en las 5 cifras públicas que ven sus amigos:
+// racha de semanas, días entrenados en las últimas 4 semanas, nivel, nº de logros y si entrenó
+// hoy. Reusa weekStreak/gxLevel/planDays/localDayStart (ya testeadas). La lógica de logros calca
+// las 8 medallas de renderGamification (app-4). **La edge function `refresh_snapshot` la PORTA a
+// TS y la corre server-side (decisión #7): el cliente NO puede inflar estos números.** Nota TZ:
+// aquí usa la zona local (= Colombia en los dispositivos reales); la edge la fija a America/Bogota.
+function communitySnapshot(client, sessions, prs, now) {
+  const hist = sessions || [];
+  const total = hist.length;
+  const totalVol = hist.reduce((s, h) => s + ((h && h.totalVol) || 0), 0);
+  const lvl = gxLevel(total).cur.n;
+  const prsCount = prs ? Object.keys(prs).length : 0;
+  const streakWeeks = weekStreak(hist, planDays(client), now).weeks;
+  const today = localDayStart(now || new Date());
+  const cutoff = today - 27 * 86400000; // hoy + 27 días previos = ventana de 4 semanas
+  const days4w = new Set();
+  let trainedToday = false;
+  hist.forEach(h => {
+    const d = new Date(h && h.date); if (isNaN(d.getTime())) return;
+    const ds = localDayStart(d);
+    if (ds >= cutoff) days4w.add(ds);
+    if (ds === today) trainedToday = true;
+  });
+  // Las 8 medallas de renderGamification (app-4): PR, 10/30 entrenos, 10k/20k/50k kg, nivel 3/4.
+  const badges = [prsCount >= 1, total >= 10, total >= 30, totalVol >= 10000, totalVol >= 50000, totalVol >= 20000, lvl >= 3, lvl >= 4];
+  return {
+    streak_weeks: streakWeeks,
+    sessions_4w: days4w.size,
+    level: lvl,
+    achievements: badges.filter(Boolean).length,
+    trained_today: trainedToday,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -2772,6 +2807,7 @@ if (typeof module !== 'undefined' && module.exports) {
     rowToClient,
     GX_LEVELS,
     gxLevel,
+    communitySnapshot,
     computeExerciseProgress,
     coachInsight,
     coachPulse,

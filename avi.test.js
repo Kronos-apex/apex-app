@@ -37,6 +37,7 @@ const {
   planDays,
   weeklyMissed,
   myTrainingSummary,
+  communitySnapshot,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1140,6 +1141,35 @@ test('shareBannerEligible: solo tras ≥3 sesiones FINALIZADAS y respetando el s
   assert.strictEqual(shareBannerEligible(fin(5), now, +now - 86400000), true);
   // sin sesiones → no
   assert.strictEqual(shareBannerEligible([], now, 0), false);
+});
+
+test('communitySnapshot: destila racha/semana/nivel/logros/hoy (server-side, no inflable)', () => {
+  const now = D(2026, 6, 3, 15); // miércoles; semana lun 1 → dom 7
+  // 3 entrenos: hoy (lun-vol alto), martes, y uno de hace 40 días (fuera de las 4 semanas)
+  const hist = [
+    { date: D(2026, 6, 1), totalVol: 6000 },
+    { date: D(2026, 6, 2), totalVol: 6000 },
+    { date: D(2026, 6, 3), totalVol: 6000 },
+    { date: D(2026, 4, 24), totalVol: 3000 }, // ~40 días atrás
+  ];
+  const s = communitySnapshot({ days: 2 }, hist, { e1: {}, e2: {} }, now);
+  assert.strictEqual(s.trained_today, true);         // hay sesión de hoy (mié 3)
+  assert.strictEqual(s.sessions_4w, 3);              // lun/mar/mié dentro de 28d; el de abril NO
+  assert.strictEqual(s.level, 1);                    // 4 entrenos < 10 → nivel 1
+  assert.strictEqual(s.streak_weeks, 1);             // meta 2: esta semana lun+mar+mié = 3 días ≥ 2 → cumple
+  assert.strictEqual(s.achievements, 3);             // PR(2≥1) + 10k(21k) + 20k(21k); NO 50k, NO 10/30 entrenos, NO nivel3
+});
+
+test('communitySnapshot: logros por volumen y nivel; sin datos → cero honesto', () => {
+  const now = D(2026, 6, 3, 12);
+  // 30 entrenos (nivel 3) con 60k kg totales → medallas: 10 entrenos, 30 entrenos, 10k, 20k, 50k, nivel3
+  const hist = Array.from({ length: 30 }, (_, i) => ({ date: D(2026, 6, 1), totalVol: 2000 }));
+  const s = communitySnapshot({ days: 3 }, hist, { e1: {} }, now);
+  assert.strictEqual(s.level, 3);                    // 30 ≥ 30 (GX_LEVELS)
+  // medallas on: PR(1) + 10ent + 30ent + 10k + 20k + 50k + nivel3 = 7  (falta 50k? 60k≥50k sí; nivel4 no)
+  assert.strictEqual(s.achievements, 7);
+  const empty = communitySnapshot({ days: 3 }, [], {}, now);
+  assert.deepStrictEqual(empty, { streak_weeks: 0, sessions_4w: 0, level: 1, achievements: 0, trained_today: false });
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

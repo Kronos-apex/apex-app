@@ -88,7 +88,19 @@ Deno.serve(async (req) => {
       .eq("client_id", uid);
     if (e2) throw new Error("push_subscriptions: " + e2.message);
 
-    // 3. Cuenta de auth (irreversible).
+    // 2.5 Comunidad (C2): las TABLAS cascadean solas al borrar auth.users (community_profiles.user_id
+    // → auth.users ON DELETE CASCADE → arrastra friendships/reactions; reports quedan anonimizados
+    // por ON DELETE SET NULL). El cascade NO cubre: (a) los archivos de avatar en Storage, (b) las
+    // filas de rate-limit del resolver (sin FK). Los limpiamos aquí. No bloquea el borrado si fallan.
+    try {
+      const { data: files } = await admin.storage.from("avatars").list(uid);
+      if (files && files.length) {
+        await admin.storage.from("avatars").remove(files.map((f) => `${uid}/${f.name}`));
+      }
+    } catch (_e) { /* Storage best-effort: no debe impedir el borrado de la cuenta */ }
+    await admin.from("community_resolve_attempts").delete().eq("uid", uid);
+
+    // 3. Cuenta de auth (irreversible). Aquí cascadea la comunidad en las tablas.
     const { error: e3 } = await admin.auth.admin.deleteUser(uid);
     if (e3) throw new Error("auth.deleteUser: " + e3.message);
 

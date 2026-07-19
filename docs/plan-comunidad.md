@@ -358,11 +358,22 @@ des-bloquearse · des-bloqueo por `blocked_by` SÍ · doble-❤️ rechazado · 
 todo · `user_data` intacta (probar que un amigo NO puede leerla). Solo tras veredicto → migrar
 a producción.
 
-**C2 — Servidor:** edge function `refresh_snapshot` (lee historial PROPIO, calcula con la misma
+**C2 — ✅ EJECUTADO EN PRODUCCIÓN (Opus, 2026-07-19; PENDIENTE veredicto de Fable).**
+(a) Edge function `refresh_snapshot` (supabase/functions/, v1, verify_jwt): lee el historial PROPIO
+del caller (uid de su token), calcula el snapshot server-side y lo escribe con service role → el
+cliente NO puede inflar sus números (decisión #7). Port FIEL de `communitySnapshot` (avi-core,
+NUEVO, testeado en avi.test.js — reusa weekStreak/gxLevel/planDays + las 8 medallas de
+renderGamification), con zona America/Bogota. Opt-in: solo refresca si ya hay perfil.
+(b) Bucket `avatars` (supabase/community/c2_avatars_bucket.sql): público en lectura por URL,
+escritura solo del dueño en `avatars/{uid}/`, límite 2 MB + imágenes; SIN policy SELECT amplia
+(advisor 0025 — evita enumerar). Probe RLS: A no escribe en carpeta ajena.
+(c) `delete-account` (v4): limpia avatares en Storage + rate-limit; las TABLAS de comunidad
+cascadean solas al borrar auth.users. Advisor security limpio salvo intencionales. **AL RETOMAR: C3
+(UI del asesorado: opt-in+consentimiento, perfil, agregar por código, lista de amigos, ❤️, offline).**
+
+**C2 (spec original) — Servidor:** edge function `refresh_snapshot` (lee historial PROPIO, calcula con la misma
 lógica pura de avi-core portada — `weekStreak`/`gxLevel`; escribe snapshot server-side) + bucket
-`avatars/` (§9.4) + integrar borrado comunitario a `delete-account`. Verificación: snapshot no
-falsificable desde cliente (intentar UPDATE directo → RLS rechaza), avatar sube/reemplaza/borra
-solo el dueño.
+`avatars/` (§9.4) + integrar borrado comunitario a `delete-account`.
 
 **C3 — UI del asesorado (Fase 1 completa):** sección Comunidad con opt-in+consentimiento (§7,
 subir `LEGAL_V`), mi perfil (apodo/foto/código/pausar/salir), agregar por código, solicitudes,
