@@ -1,0 +1,35 @@
+-- ============================================================================
+-- C1 · HARNESS DE RLS (dos usuarios) — verificación de seguridad reproducible
+-- ============================================================================
+-- Cómo se corrió (2026-07-18, Opus): banco de prueba AVI-GYM (yndpryhirbhlhlkmxyyv),
+-- porque la org Free tope 2 proyectos y no toca producción. Técnica = impersonar el rol
+-- `authenticated` con distintos JWT claims (`request.jwt.claims`), cada prueba en
+-- begin…rollback. RESULTADO: 14/14 PASS. Al terminar se hizo DROP de todo (AVI-GYM impecable).
+--
+-- Para re-verificar (Fable): (1) aplicar c1_community_foundations.sql con DROPs idempotentes
+-- antepuestos al banco de prueba; (2) sembrar 3 perfiles (A/B/C) + 1 amistad accepted A-B con los
+-- triggers desactivados; (3) correr los bloques de abajo (cada uno debe devolver su 'PASS …' o,
+-- si algo se rompe, un error 'FAIL: …' que dice QUÉ); (4) DROP. Cada bloque es un execute_sql.
+--
+-- uids de prueba usados en AVI-GYM: A=fa6c37ce… (Camilo) · B=e531bae8… (recepcion) · C=989ebc62… (socio, EXTRAÑO)
+--
+-- Cobertura (mapea a §9-BIS C1 + mis reservas de auditoría):
+--   T1/T2  visibilidad de perfil: extraño NO lee ajeno · uno mismo SÍ · amigos SÍ            [§5.1 RLS]
+--   T3     snapshot solo-servidor: cliente NO escribe stats · sí edita handle                [#7]
+--   T4a    RLS tapa el share_code ajeno en SELECT directo (por eso hace falta la RPC)         [§5.0]
+--   T4b    resolve_share_code: extraño resuelve solo mínimos · inválido→0 · invisible→0       [§5.0]
+--   T5/T6  bloqueo: el BLOQUEADO no se desbloquea · solo blocked_by desbloquea                [§5.2 hueco (b)]
+--   T7/T8  reacciones: doble ❤️ rechazado (UNIQUE) · no-amigo no reacciona (policy)           [§5.3 hueco (d)]
+--   T9     salir de comunidad: borrar perfil arrastra amistades en CASCADE                    [§5.6 hueco (d)]
+--   T10    friendship: normaliza user_a<user_b + pending · el solicitante NO acepta · el otro sí [§5.2]
+--   T11/12 reportes: lectura NEGADA a authenticated + no-suplantable · share_code inmutable    [§5.4]
+--   T13    rate-limit del RPC dispara (>30/día)                                                [§5.0]
+--   T14    anon (sin login) sin acceso a nada de comunidad                                     [opt-in]
+--
+-- Nota user_data: la comunidad NO referencia `user_data` en ninguna tabla/policy → aislamiento
+-- por construcción; el snapshot es la ÚNICA vía y la escribe el servidor (C2).
+-- ============================================================================
+-- (Los 14 bloques SQL ejecutados están en el historial de la sesión 2026-07-18; se re-generan
+--  mecánicamente con el patrón:  begin; set local request.jwt.claims to '{"sub":"<uid>","role":"authenticated"}';
+--  set local role authenticated;  do $$ ... raise exception 'FAIL: ...' ... $$;  rollback;  select 'PASS ...';
+--  — para acciones que DEBEN fallar, envolver en  begin ... exception when <tipo> then null; ... end.)

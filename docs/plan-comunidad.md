@@ -330,7 +330,17 @@ corporal = dato sensible; el snapshot publica solo el ratio, jamás el peso).
 Cuatro sesiones, cada una su ciclo completo (Opus ejecuta → Fable verifica). NO avanzar a la
 siguiente con la anterior sin veredicto.
 
-**C1 — Cimientos de datos (en proyecto Supabase de PRUEBA primero, R0/Fase 0 del §8):**
+**C1 — ✅ EJECUTADO Y VETADO en banco de prueba (Opus, 2026-07-18; PENDIENTE veredicto de Fable
+antes de migrar a prod).** Artefactos en `supabase/community/`: `c1_community_foundations.sql`
+(migración lista para prod) + `c1_rls_harness.sql` (harness de 2 usuarios, cobertura documentada).
+Banco de prueba = **AVI-GYM** (la org Free tope 2 proyectos → no se pudo crear uno dedicado;
+elegido por el PO, aislado, se hizo DROP de todo al terminar). **Harness 14/14 PASS** (extraño no
+lee ajeno, snapshot solo-servidor, RPC resuelve solo mínimos + rate-limit, bloqueado no se
+desbloquea, doble ❤️ y no-amigo rechazados, cascada al salir, normalización + no-auto-aceptar,
+reportes ilegibles, anon sin acceso). **AL RETOMAR: Fable re-verifica C1 → si aprueba, Opus aplica
+`c1_community_foundations.sql` a producción (eoebhrxbokyllqalyecj) → luego C2.**
+
+**C1 (spec original) — Cimientos de datos (en proyecto Supabase de PRUEBA primero, R0/Fase 0 del §8):**
 `community_profiles` (con `handle`, `share_code` ≥8 base32 aleatorio, `visible`, snapshot cols
 SOLO escribibles por service role — §9.7) · `friendships` (con `blocked_by` + transiciones §5.2
 por trigger) · `community_reactions` (UNIQUE §5.3) · `community_reports` · cascadas §5.6 · RPC
