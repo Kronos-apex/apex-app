@@ -375,6 +375,18 @@ cascadean solas al borrar auth.users. Advisor security limpio salvo intencionale
 lógica pura de avi-core portada — `weekStreak`/`gxLevel`; escribe snapshot server-side) + bucket
 `avatars/` (§9.4) + integrar borrado comunitario a `delete-account`.
 
+**⚠️ REQUISITOS DE SEGURIDAD PARA C3 (hallazgos de la auditoría de Fable a C2, 2026-07-19 — NO opcionales):**
+- 🟡 **`avatar_url` es texto libre escribible por el cliente** (está en el grant de UPDATE). Si un
+  usuario lo apunta a una URL externa arbitraria, el navegador de sus amigos la carga como `<img>`
+  → logging de IP / contenido no deseado. C3 DEBE (a) subir la foto SOLO al bucket `avatars/{uid}/`
+  y setear `avatar_url` a esa URL, y (b) idealmente un CHECK/trigger en DB que exija que `avatar_url`,
+  si no es null, empiece por el prefijo público del bucket `avatars` del proyecto. No es explotable
+  hoy (sin UI), pero es bloqueante ANTES de que los avatares salgan.
+- 🟡 **`handle`/`bio` son texto de usuario mostrado a amigos** → `esc()` obligatorio en todo innerHTML.
+- 🟢 **Frescura del snapshot:** `trained_today`/racha son del último `refresh_snapshot`. C3 debe
+  invocarlo en los momentos correctos (al abrir la app, al terminar un entreno) con **debounce**
+  (la edge no tiene rate-limit propio → no spamear; guardar "último refresh < X" en el cliente).
+
 **C3 — UI del asesorado (Fase 1 completa):** sección Comunidad con opt-in+consentimiento (§7,
 subir `LEGAL_V`), mi perfil (apodo/foto/código/pausar/salir), agregar por código, solicitudes,
 lista de amigos con tarjeta (racha/nivel/❤️), bloquear/reportar, degradación offline. Barra
