@@ -676,3 +676,89 @@ NO se construye hasta cerrar el directorio y ver tracción.
 C3 (UI) + C4 (legal) con sabotajes propios + prod. Luego: revisión de abogado de los textos de
 `legal/` (backlog general) + arrancar la adopción con el gym de Camilo. Fase 2 (feed + ranking de
 constancia) SOLO si la Fase 1 tiene tracción real.*
+
+---
+
+## 13. COMUNIDAD v2 — RED SOCIAL (giro de visión del PO, 2026-07-20)
+
+> **Origen:** Camilo, tras cerrar C5, pidió ir más lejos: *"los mensajes en vivo sí o sí… quiero
+> que la comunidad sea tipo red social tipo Instagram, que se puedan seguir entre usuarios, que si
+> quieren publicar sus rutinas lo puedan hacer… mi perfil de coach también público… y no me gusta
+> eso de ver si entreno o no, mejor 'activo hace una hora / un día' y que sea a elección del
+> usuario."* Reconoció (correctamente) que veníamos conservadores. Este es un cambio de PRIVACIDAD
+> grande → **el ciclo se respeta: Opus diseña (esta sección) · Fable planifica la RLS ANTES de
+> construir · Opus construye · Fable verifica.** No se improvisa.
+
+### 13.0 Decisiones del PO (AskUserQuestion, 2026-07-20 — NO re-preguntar)
+- **Modelo de visibilidad = INSTAGRAM REAL:** perfil PÚBLICO por defecto, con **cuenta privada
+  opcional** (aprobar seguidores). **Menores → privados automáticos y NO descubribles** por
+  extraños. **Publicar rutina = opt-in por rutina.** **Última conexión = opt-in.** (Descartados:
+  "todo público para todos" = reabre el riesgo de menores/mujeres que el PO mismo vetó en C5;
+  "público solo entre conectados" = quedó como punto medio, no elegido.)
+- **Orden de construcción:** ① CHAT EN VIVO → ② última conexión opt-in (reemplaza `trained_today`)
+  → ③ perfil público del coach + SEGUIR → ④ publicar rutinas / feed.
+
+### 13.1 Cambio de eje respecto a Fase 1 (lo que hay que ver claro)
+Fase 1/C5 fue deliberadamente CERRADA (amigos por código + directorio del propio gym) por menores
+y mujeres. v2 abre a **seguir a cualquiera** y **perfiles públicos**. El modelo Instagram elegido
+TRAE el candado: cuenta privada + menores protegidos. La RLS deja de ser "solo mi gym / solo
+amigos aceptados" y pasa a **"público salvo cuenta privada; privado ⇒ solo seguidores aprobados;
+menor ⇒ privado forzado y fuera de descubrimiento"**. Esta es la pieza que Fable debe planificar
+con lupa (es un ensanchamiento de visibilidad, la dirección más peligrosa).
+
+### 13.2 FASE 0 — verificado contra el código real (2026-07-20)
+- **`supabase-js@2` YA cargado** (index.html) → Realtime (`.channel()`) disponible **sin nueva
+  dependencia** (respeta single-file/no-deps). Realtime se habilita por-tabla en Supabase.
+- **El chat coach↔asesorado de HOY NO es apto para tiempo real:** vive en `ax_m` (DB.msgs), un
+  BLOB del todo-en-uno `apex_data`, sondeado por `fetch` cada 15s (`pollMessages`, app-1-infra).
+  No hay filas por mensaje. Para instantáneo hace falta un **modelo NUEVO de mensajes por fila**.
+- **Ya existe base social:** `community_profiles` (opt-in, snapshot server-side), `friendships`
+  (pending/accepted/blocked, con `_are_friends`/`_is_blocked`), `community_reactions`,
+  `community_reports`, `community_gym_members`. v2 REUTILIZA esto; NO se tira nada.
+
+### 13.3 Diseño propuesto por slice (Opus — sujeto a plan de RLS de Fable)
+
+**① CHAT EN VIVO (Realtime).** Tabla nueva `community_messages` (id, from_user, to_user, text,
+created_at, read_at). RLS: leer/insertar SOLO si eres parte del hilo (`auth.uid() in (from,to)`) Y
+existe relación que permita DM (seguidor mutuo / amistad aceptada / coach↔su-asesorado — a definir
+con Fable). Suscripción `channel('dm:'+peer)` que apinta el hilo abierto al instante; push (ya
+existe) cubre app cerrada. **Decisión de arquitectura para Fable:** ¿capa de mensajería ÚNICA que
+sirva coach↔asesorado Y DMs de comunidad, o `community_messages` SOLO para comunidad y el chat
+coach sigue en `ax_m`? Migrar el chat coach del blob a filas es potente pero toca datos reales
+offline-first (riesgo). Recomendación inicial: `community_messages` nuevo para DMs de comunidad;
+el chat coach↔asesorado se MIGRA en un slice aparte, después, con su propio harness.
+
+**② ÚLTIMA CONEXIÓN opt-in (reemplaza `trained_today`).** Campo `last_active` (timestamptz,
+server-side, actualizado en el refresh de snapshot / al abrir) + flag `show_last_active` (opt-in).
+Se muestra como relativo ("activo hace 5 min / 1 h / 2 d") SOLO si el dueño lo comparte. `trained_today`
+se retira de la cara pública (era un patrón de actividad que el PO no quiere). Presentación pura en
+avi-core (`relativeLastSeen(ts, now)`), determinista.
+
+**③ PERFIL PÚBLICO + SEGUIR.** Tabla `follows` (follower, followee, created_at, state:
+'active'|'pending' — pending solo si la cuenta destino es privada). Flag `community_profiles.is_private`
+(default false) + `is_minor` (derivado/forzado privado). RLS de `community_profiles` se reescribe:
+visible si `not is_private` (y not menor-a-extraño) OR sigues-aprobado OR eres el dueño. El coach
+obtiene su `community_profiles` como cualquiera (perfil público del entrenador = vitrina). `follows`
+reemplaza conceptualmente a `friendships` para el eje social (friendships/bloqueo se conservan para
+bloquear/reportar).
+
+**④ PUBLICAR RUTINAS / FEED.** Tabla `community_posts` (autor, tipo='rutina', payload jsonb con la
+rutina — ejercicios/series, SIN datos de salud/peso, opt-in por rutina, `esc()` en todo texto).
+Feed = posts de a quien sigues (+ propios), server-side, paginado. Reacciones ❤️ reutilizan
+`community_reactions`. Moderación: reporte ya existe; evaluar límite de rate.
+
+### 13.4 Riesgos y candados (para el plan de Fable)
+- **Ensanchamiento de visibilidad** = la RLS de `community_profiles` pasa de restrictiva a
+  permisiva-por-defecto. Menores DEBEN quedar forzados a privado y fuera de descubrimiento —
+  verificar cómo se conoce la edad (gate 18 del consentimiento; ¿hay campo de edad confiable
+  server-side? posible hueco). **Sin un modo fiable de saber que es menor, NO se abre público.**
+- **DM abuse:** ¿quién puede escribir a quién? (seguidor mutuo vs cualquiera). Bloqueo debe cortar
+  DM y visibilidad (ya tenemos `_is_blocked`).
+- **Publicar rutina** no debe filtrar nada sensible (es solo ejercicios; validar el payload).
+- **Realtime** respeta la RLS de la tabla (Supabase la aplica a los eventos) — verificar que un
+  tercero no reciba eventos de un hilo ajeno.
+- **Offline-first:** la comunidad NO entra a SB_KEYS ni al blob; todo por `AUTH.client()` + Realtime.
+
+### 13.5 Siguiente paso
+Opus entrega este diseño → **Fable planifica la RLS del modelo Instagram (13.3③) y del chat en vivo
+(13.3①) ANTES de construir** (cambio de privacidad, como en C5). Se arranca por ① CHAT EN VIVO.
