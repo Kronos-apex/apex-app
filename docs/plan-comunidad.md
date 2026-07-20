@@ -749,9 +749,12 @@ Feed = posts de a quien sigues (+ propios), server-side, paginado. Reacciones �
 
 ### 13.4 Riesgos y candados (para el plan de Fable)
 - **Ensanchamiento de visibilidad** = la RLS de `community_profiles` pasa de restrictiva a
-  permisiva-por-defecto. Menores DEBEN quedar forzados a privado y fuera de descubrimiento —
-  verificar cómo se conoce la edad (gate 18 del consentimiento; ¿hay campo de edad confiable
-  server-side? posible hueco). **Sin un modo fiable de saber que es menor, NO se abre público.**
+  permisiva-por-defecto. Menores DEBEN quedar forzados a privado y fuera de descubrimiento.
+  **EDAD (confirmado por el PO 2026-07-20): SÍ se guarda la edad de los asesorados** (`client.age`
+  en la ficha). Hueco conocido: los **auto-registrados** pueden no tenerla → la salida limpia es
+  **pedir fecha de nacimiento al ACTIVAR el perfil público** y forzar a privado a los menores
+  (`is_minor` derivado server-side, no client-writable — lección F7/gotcha de campos client-writable).
+  La verificación de edad debe ser server-side; el gate 18 del consentimiento no basta como dato firme.
 - **DM abuse:** ¿quién puede escribir a quién? (seguidor mutuo vs cualquiera). Bloqueo debe cortar
   DM y visibilidad (ya tenemos `_is_blocked`).
 - **Publicar rutina** no debe filtrar nada sensible (es solo ejercicios; validar el payload).
