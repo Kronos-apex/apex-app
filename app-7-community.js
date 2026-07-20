@@ -91,6 +91,11 @@ async function cmtyLoad(opts){
       const rows = fr || [];
       const accepted = rows.filter(f => f.status === 'accepted');
       const friendIds = new Set(accepted.map(f => f.user_a === uid ? f.user_b : f.user_a));
+      // Bloqueados: JAMÁS en el directorio (ni gym ni amigos). El bloqueo debe ocultar también
+      // DENTRO del gym (reserva de Fable C5). La RLS ya excluye su perfil (_same_community mira el
+      // bloqueo tras c5_block_hides_in_gym); esto es defensa en profundidad por si un perfil
+      // bloqueado llegara igual (regresión de RLS o caché).
+      const blockedIds = new Set(rows.filter(f => f.status === 'blocked').map(f => f.user_a === uid ? f.user_b : f.user_a));
       const pendingIds = new Set(); // solicitudes en curso → se excluyen del directorio
       rows.filter(f => f.status === 'pending').forEach(f => {
         if(f.requested_by === uid){ const other = f.user_a === uid ? f.user_b : f.user_a; CMTY.outgoing.push({ fid: other, fr: f }); pendingIds.add(other); }
@@ -103,6 +108,7 @@ async function cmtyLoad(opts){
       if(ape) throw ape;
       const fprofiles = {};
       (allp || []).forEach(p => {
+        if(blockedIds.has(p.user_id)) return; // bloqueado → invisible aunque comparta gym
         if(friendIds.has(p.user_id)) fprofiles[p.user_id] = p;
         else if(!pendingIds.has(p.user_id)) CMTY.gym.push(p); // compañero de gym aún no conectado
       });

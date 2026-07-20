@@ -540,7 +540,17 @@ documentar para Fable — no improvisar arquitectura (reglas-opus §A).
 > **VEREDICTO: el directorio es seguro contra extraños (lo crítico) y funciona; queda la reserva del bloqueo
 > para el siguiente ciclo de Opus.**
 
-
+> ### ✅ RESERVA CERRADA por Opus (2026-07-20, avi-v376; PENDIENTE re-verificación de Fable)
+> El bloqueo ahora oculta también DENTRO del gym. **Raíz:** la rama `_same_community` de `cp_sel` no
+> miraba bloqueos (la rama `_are_friends` ya era segura: exige 'accepted'). **Reproducido en prod** (tx
+> con ROLLBACK, dos usuarios reales del mismo gym + amistad 'blocked'): `_same_community(a,b)=true`.
+> **(1) Backend** — migración `c5_block_hides_in_gym` (artefacto `c5b_block_hides_in_gym.sql`): helper
+> nuevo `private._is_blocked(u1,u2)` (simétrico, SECURITY DEFINER, private) + `_same_community` redefinida
+> a `exists(mismo gym) AND NOT _is_blocked`. Verificado con dientes (misma tx, rojo→verde): sin bloqueo
+> visible, con bloqueo oculto en ambas direcciones. Advisor de seguridad sin regresión.
+> **(2) Frontend** (defensa en profundidad) — `cmtyLoad` arma `blockedIds` y excluye a los bloqueados de
+> la partición del directorio, por si un perfil bloqueado llegara igual (regresión de RLS/caché).
+> **Harness `_verify-community` 13/13** (+CM13, con sabotaje demostrado). Suite 405/405.
 
 > **✅ CONSTRUIDO por Opus (2026-07-20, avi-v375; PENDIENTE re-verificación de Fable).** La corrección
 > de Fable (F7) se profundizó: **NI `coach_id` NI `tier` sirven** (ambos escribibles por el cliente,

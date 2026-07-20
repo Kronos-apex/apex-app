@@ -48,15 +48,16 @@ const INSTALL = `(()=>{try{
   DB.clients=[{id:'me',name:'Camila',sex:'F',level:'Intermedio',goal:'Salud general',days:3,routines:[],habits:{water:{},steps:{}}}];
   CUR.clientId='me'; CUR.loggedAs='client';
   window.__cmtyCalls=[]; window.__profileRow=null; window.__resolveRet=[]; window.__xss=0;
+  window.__frRows=[]; window.__allProfiles=[]; window.__rxRows=[];
   const rec=(table,op,p)=>window.__cmtyCalls.push({table,op,p});
   const builder=(table)=>{ let op='select';
     const b={ select(){return b;},
       insert(p){op='insert';rec(table,'insert',p);return b;},
       update(p){op='update';rec(table,'update',p);return b;},
       delete(){op='delete';rec(table,'delete',null);return b;},
-      eq(){return b;}, or(){return b;}, in(){return b;}, limit(){return b;},
+      eq(){return b;}, neq(){return b;}, or(){return b;}, in(){return b;}, limit(){return b;},
       maybeSingle(){return Promise.resolve({data:(table==='community_profiles')?window.__profileRow:null,error:null});},
-      then(resolve){ resolve({data:[],error:null}); } };
+      then(resolve){ const data = table==='friendships' ? (window.__frRows||[]) : table==='community_profiles' ? (window.__allProfiles||[]) : table==='community_reactions' ? (window.__rxRows||[]) : []; resolve({data,error:null}); } };
     return b; };
   AUTH.client=()=>({ from:builder,
     rpc:(n,args)=>{rec('rpc',n,args);return Promise.resolve({data:window.__resolveRet,error:null});},
@@ -167,6 +168,27 @@ await ev(`typeof showLegalDoc==='function' && showLegalDoc('politica')`); await 
 const cm10 = await ev(`(()=>{const m=document.getElementById('m-legal');const b=document.getElementById('legal-body');const t=b?b.innerText:'';return {open:!!(m&&m.classList.contains('on')),comunidad:/Comunidad/.test(t),noSensible:/Qué NO se comparte|nunca/i.test(t)};})()`);
 check('CM10 (C4) enlace legal en el opt-in abre la política CON la sección Comunidad', hasLink && cm10.open && cm10.comunidad && cm10.noSensible, JSON.stringify({hasLink}) + ' ' + JSON.stringify(cm10));
 await ev(`(()=>{const m=document.getElementById('m-legal');if(m)m.classList.remove('on');})()`);
+
+// CM13 (C5, reserva de Fable): un compañero de gym BLOQUEADO no aparece en «Tu gimnasio».
+// Drive del cmtyLoad REAL contra el cliente falso: __allProfiles trae dos compañeros de gym
+// (uno bloqueado, uno normal) y __frRows trae la amistad 'blocked'. El directorio debe listar
+// SOLO al normal. (Espejo frontend de la RLS c5_block_hides_in_gym; defensa en profundidad.)
+const GYMBLK = '00000000-0000-0000-0000-0000000000b1';
+const GYMOK  = '00000000-0000-0000-0000-0000000000a1';
+await ev(`(()=>{
+  window.__profileRow = {user_id:'${MYUID}',handle:'Camila',avatar_url:null,bio:'',share_code:'ABCD1234EF',visible:true,show_today:true,streak_weeks:3,level:2,achievements:4};
+  window.__frRows = [{id:'fr-blk',user_a:'${MYUID}',user_b:'${GYMBLK}',requested_by:'${GYMBLK}',status:'blocked'}];
+  window.__allProfiles = [
+    {user_id:'${GYMBLK}',handle:'Bloqueado',avatar_url:null,bio:'',streak_weeks:9,level:4,sessions_4w:9,achievements:9,trained_today:true,snapshot_at:new Date().toISOString()},
+    {user_id:'${GYMOK}',handle:'CompaGym',avatar_url:null,bio:'',streak_weeks:4,level:2,sessions_4w:6,achievements:3,trained_today:false,snapshot_at:new Date().toISOString()}
+  ];
+  window.__rxRows = [];
+  CMTY.busy=false; CMTY.loaded=false;
+  return 'ok';
+})()`);
+await ev(`cmtyLoad()`); await sleep(600);
+const cm13 = await ev(`(()=>{const g=(CMTY.gym||[]).map(p=>p.user_id);return {gymIds:g,hasOK:g.includes('${GYMOK}'),hasBlk:g.includes('${GYMBLK}'),friendBlk:(CMTY.friends||[]).some(f=>f.fid==='${GYMBLK}')};})()`);
+check('CM13 (C5 reserva) compañero de gym BLOQUEADO oculto del directorio (normal SÍ aparece)', cm13.hasOK && !cm13.hasBlk && !cm13.friendBlk, JSON.stringify(cm13));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
