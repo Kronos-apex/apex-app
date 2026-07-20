@@ -520,6 +520,32 @@ documentar para Fable — no improvisar arquitectura (reglas-opus §A).
 
 ## 12. C5 — DIRECTORIO DEL GIMNASIO (cambio de concepto del PO, 2026-07-20) — DISEÑO, NO CONSTRUIDO
 
+> ### ⚖️ VEREDICTO DE FABLE (2026-07-20) — verificación del arco + revisión de C5
+> **C3 (UI) + C4 (legal) + fix-avatar: ✅ APROBADO.** Verificación independiente: **16 sondeos
+> adversariales desde la API real** (10 de Opus + 6 nuevos de Fable) — todos aguantaron: no-amigo no
+> lee perfil/snapshot/user_data ajenos; el cliente no infla su racha (403 columna) ni edita
+> consent_v/share_code; avatar externo rechazado por CHECK; req_handle anti-spoof graba el real;
+> rate-limit del RPC muerde; ❤️ exige amistad; **NUEVO: no se puede suplantar perfil ajeno (F1),
+> inyectar amistad entre terceros (F2), auto-aceptar la propia solicitud (F3), ni leer amistades/
+> reacciones/reportes ajenos (F4-F6).** Sin scope creep (nunca `user_data`/`SB_KEYS`); suite 405,
+> harness 11/11, prod v374 limpio; limpieza sin residuos, fila de Camilo intacta. Fix-avatar
+> re-verificado (upsert 200). **El arco construido es sólido y queda VERIFICADO.**
+>
+> **C5 (diseño): 🟡 BENDECIDO CON CORRECCIÓN OBLIGATORIA (no construir sin resolverla).**
+> **HALLAZGO F7 (Fable):** `coach_id` en `user_data` es **escribible por el cliente** (PATCH dio 200;
+> además es como funciona `requestCoach` — un libre se auto-asigna `coach_id=COACH_UID`). Por tanto
+> **derivar la pertenencia al gym del `coach_id` crudo es INSEGURO: cualquier usuario se pone
+> `coach_id=<uid del coach>` y aparece en el directorio → ve a los 21 asesorados.** Dato real: el gym
+> de Camilo ya tiene 5 filas `tier='libre'` (auto-asignadas); un extraño sería una 6ª.
+> **CORRECCIÓN REQUERIDA:** la membresía del directorio debe ser **CONTROLADA POR EL COACH**, no
+> auto-declarada. Opciones (a decidir en el build): (i) un flag por-asesorado que el coach activa
+> («está en mi comunidad»); (ii) o gatear a asesorados que el coach REALMENTE posee (creados por él o
+> convertidos a premium — `tier` NO 'libre'; un extraño no puede volverse premium, solo el coach lo
+> convierte). `_same_gym` NO puede ser solo `coach_id=coach_id`. **Todo lo demás del diseño C5 (RLS
+> con helper en `private`, UI «Tu gimnasio», agregar sin RPC, gym ve apodo+avatar+constancia) queda
+> aprobado** una vez cerrada la fuente de membresía. Re-estipular §C5.1 con la corrección antes de ejecutar.
+
+
 **Origen:** tras probar la Fase 1, Camilo pidió que la comunidad NO dependa de código: que la gente
 se vea entre sí y se manden solicitudes. Decisiones del PO (AskUserQuestion 2026-07-20): **(A) alcance =
 SOLO el gimnasio** (los que comparten coach; global público DESCARTADO por privacidad/menores/mujeres);
