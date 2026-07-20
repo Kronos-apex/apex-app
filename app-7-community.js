@@ -28,6 +28,7 @@ const CMTY = {
   uid: null,
   profile: null,     // mi fila community_profiles (o null si no hice opt-in)
   friends: [],       // [{fid, fr, prof}] amistades aceptadas con perfil del amigo
+  gym: [],           // [perfil] compañeros de gym (mismo coach) aún NO conectados — directorio (C5)
   incoming: [],      // [{fid, fr, handle}] solicitudes recibidas (pendientes)
   outgoing: [],      // [{fid, fr}] solicitudes que envié (pendientes)
   heartsGiven: {},   // {toUserId: true} ❤️ que YO di
@@ -83,28 +84,31 @@ async function cmtyLoad(opts){
     if(pe) throw pe;
     CMTY.offline = false;
     CMTY.profile = prof || null;
-    CMTY.friends = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0;
+    CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0;
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
       const rows = fr || [];
       const accepted = rows.filter(f => f.status === 'accepted');
-      const friendIds = accepted.map(f => f.user_a === uid ? f.user_b : f.user_a);
+      const friendIds = new Set(accepted.map(f => f.user_a === uid ? f.user_b : f.user_a));
+      const pendingIds = new Set(); // solicitudes en curso → se excluyen del directorio
+      rows.filter(f => f.status === 'pending').forEach(f => {
+        if(f.requested_by === uid){ const other = f.user_a === uid ? f.user_b : f.user_a; CMTY.outgoing.push({ fid: other, fr: f }); pendingIds.add(other); }
+        else { CMTY.incoming.push({ fid: f.requested_by, fr: f, handle: f.req_handle || '' }); pendingIds.add(f.requested_by); }
+      });
+      // TODOS los perfiles VISIBLES por RLS = propio (excluido con neq) + amigos + compañeros de gym.
+      const { data: allp, error: ape } = await cli.from('community_profiles')
+        .select('user_id,handle,avatar_url,bio,streak_weeks,sessions_4w,level,achievements,trained_today,snapshot_at')
+        .neq('user_id', uid);
+      if(ape) throw ape;
       const fprofiles = {};
-      if(friendIds.length){
-        const { data: fps, error: fpe } = await cli.from('community_profiles')
-          .select('user_id,handle,avatar_url,bio,streak_weeks,sessions_4w,level,achievements,trained_today,snapshot_at')
-          .in('user_id', friendIds);
-        if(fpe) throw fpe;
-        (fps || []).forEach(p => { fprofiles[p.user_id] = p; });
-      }
+      (allp || []).forEach(p => {
+        if(friendIds.has(p.user_id)) fprofiles[p.user_id] = p;
+        else if(!pendingIds.has(p.user_id)) CMTY.gym.push(p); // compañero de gym aún no conectado
+      });
       CMTY.friends = accepted
         .map(f => { const fid = f.user_a === uid ? f.user_b : f.user_a; return { fid: fid, fr: f, prof: fprofiles[fid] || null }; })
         .filter(x => x.prof); // si el perfil no vino (el amigo salió), lo omito
-      rows.filter(f => f.status === 'pending').forEach(f => {
-        if(f.requested_by === uid){ const other = f.user_a === uid ? f.user_b : f.user_a; CMTY.outgoing.push({ fid: other, fr: f }); }
-        else { CMTY.incoming.push({ fid: f.requested_by, fr: f, handle: f.req_handle || '' }); }
-      });
       const { data: rx } = await cli.from('community_reactions').select('from_user,to_user,kind').or('from_user.eq.' + uid + ',to_user.eq.' + uid);
       (rx || []).forEach(r => { if(r.from_user === uid) CMTY.heartsGiven[r.to_user] = true; if(r.to_user === uid) CMTY.heartsRecv++; });
     }
@@ -163,6 +167,7 @@ function _cmtyPaint(){
     _cmtyMyProfileHtml() +
     _cmtyAddHtml() +
     _cmtyRequestsHtml() +
+    _cmtyGymHtml() +
     _cmtyFriendsHtml();
 }
 
@@ -465,6 +470,36 @@ async function cmtyReject(id){
     const cli = _cmtyClient(); if(!cli) return;
     const { error } = await cli.from('friendships').delete().eq('id', id);
     if(error) throw error;
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
+// ── Directorio del gimnasio (C5) — compañeros de gym aún no conectados ──
+function _cmtyGymHtml(){
+  if(!CMTY.gym.length) return '';
+  let h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">Tu gimnasio</div>' +
+    '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Personas de tu gym en AVI. Agrega a quien quieras seguir.</div>';
+  CMTY.gym.forEach(p => {
+    h += '<div style="display:flex;align-items:center;gap:11px;padding:7px 0">' +
+      _cmtyAvatarHtml(p, 42) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + '</div>' +
+      '</div>' +
+      '<button class="btn bp bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyGymAdd(\'' + p.user_id + '\')">Agregar</button>' +
+    '</div>';
+  });
+  return h + '</div>';
+}
+async function cmtyGymAdd(userId){
+  if(_cmtySealed()){ toast('🔒 (dev) solicitud sellada'); return; }
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+    const lo = uid < userId ? uid : userId, hi = uid < userId ? userId : uid;
+    const { error } = await cli.from('friendships').insert({ user_a: lo, user_b: hi, requested_by: uid, status: 'pending' });
+    if(error) throw error;
+    toast('✅ Solicitud enviada');
     await cmtyLoad();
   }catch(e){ toast(_cmtyErr(e)); }
 }

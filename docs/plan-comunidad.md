@@ -518,7 +518,21 @@ documentar para Fable — no improvisar arquitectura (reglas-opus §A).
 
 ---
 
-## 12. C5 — DIRECTORIO DEL GIMNASIO (cambio de concepto del PO, 2026-07-20) — DISEÑO, NO CONSTRUIDO
+## 12. C5 — DIRECTORIO DEL GIMNASIO (cambio de concepto del PO, 2026-07-20) — ✅ EJECUTADO (avi-v375)
+
+> **✅ CONSTRUIDO por Opus (2026-07-20, avi-v375; PENDIENTE re-verificación de Fable).** La corrección
+> de Fable (F7) se profundizó: **NI `coach_id` NI `tier` sirven** (ambos escribibles por el cliente,
+> verificado PATCH→200) → membresía en tabla nueva `community_gym_members`, escrita SOLO por el coach.
+> Backend verificado adversarialmente por Opus (infiltración cerrada G1-G5, directorio funciona,
+> advisor sin regresión). **Coach:** tarjeta «Comunidad de mi gym» en su Inicio → modal `#m-gym`
+> (`openGymMgr`/`toggleGymMember`/`_renderGymMgr` en app-3) con switch por asesorado + «Yo participo»;
+> `member_id` = auth uid (`DB.clients[].id` en modo auth). **Asesorado:** sección «Tu gimnasio» en
+> `#cn-community` (`CMTY.gym` + `_cmtyGymHtml`/`cmtyGymAdd`) lista compañeros aún no conectados con
+> «Agregar» (INSERT friendship directo, sin RPC). Escrituras por `AUTH.client()` + selladas en
+> localhost. Harness `_verify-community` +CM11/CM12 (13/13). **Fase B (DMs en vivo) sigue pendiente.**
+> Detalle original del diseño abajo (ya implementado).
+
+
 
 > ### ⚖️ VEREDICTO DE FABLE (2026-07-20) — verificación del arco + revisión de C5
 > **C3 (UI) + C4 (legal) + fix-avatar: ✅ APROBADO.** Verificación independiente: **16 sondeos

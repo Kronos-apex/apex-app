@@ -142,6 +142,18 @@ const cm8b = await ev(`(()=>{const del=window.__cmtyCalls.filter(c=>c.table==='c
 check('CM8 ❤️ toggle: 1º da (insert + estado on), 2º quita (delete + estado off)', cm8a.ins === 1 && cm8a.given === true && cm8b.del === 1 && cm8b.given === false, JSON.stringify(cm8a) + ' / ' + JSON.stringify(cm8b));
 await ev(`delete window.AVI_ALLOW_CLOUD_WRITE;`);
 
+// CM11 (C5): directorio del gym muestra a los compañeros con botón «Agregar»
+await ev(`(()=>{ CMTY.gym=[{user_id:'gymA',handle:'CompaGym',avatar_url:null,streak_weeks:4,level:2,sessions_4w:6,trained_today:false}]; _cmtyPaint(); return 'ok'; })()`); await sleep(200);
+const cm11 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');const btn=[...h.querySelectorAll('button')].some(b=>/Agregar/.test(b.textContent)&&/gymA/.test(b.getAttribute('onclick')||''));return {gym:/Tu gimnasio/.test(t),compa:/CompaGym/.test(t),agregar:btn};})()`);
+check('CM11 (C5) directorio del gym: sección + compañero + botón Agregar', cm11.gym && cm11.compa && cm11.agregar, JSON.stringify(cm11));
+
+// CM12 (C5): «Agregar» del directorio envía solicitud (INSERT friendship) — permitido contra el stub
+await ev(`window.AVI_ALLOW_CLOUD_WRITE=true; window.__cmtyCalls=[];`);
+await ev(`cmtyGymAdd('gymA')`); await sleep(300);
+const cm12 = await ev(`window.__cmtyCalls.filter(c=>c.table==='friendships'&&c.op==='insert').length`);
+check('CM12 (C5) «Agregar» del gym inserta una solicitud de amistad', cm12 === 1, 'inserts=' + cm12);
+await ev(`delete window.AVI_ALLOW_CLOUD_WRITE;`);
+
 // CM9: offline sin perfil → "Conéctate para ver a tu gente"
 await ev(`CMTY.profile=null; CMTY.offline=true; CMTY.loaded=true; CMTY.loading=false; _cmtyPaint();`); await sleep(250);
 const cm9 = await ev(`/Conéctate para ver a tu gente/.test(document.getElementById('cn-community').innerText)`);

@@ -805,6 +805,47 @@ async function showLegalDoc(which){
   }
 }
 
+// ══════════ COMUNIDAD DEL GYM (C5) — el COACH controla la membresía ══════════
+// La pertenencia al directorio vive en community_gym_members, escrita SOLO por el coach
+// (ni coach_id ni tier sirven: el cliente los escribe — hallazgo Fable). member_id = auth uid
+// del asesorado (= DB.clients[].id en modo auth). Todo por AUTH.client() y sellado en localhost.
+let _gymMembers = null;   // Set de member_ids en mi comunidad
+let _gymCoachUid = null;  // mi uid (coach)
+async function openGymMgr(){
+  om('m-gym');
+  const body=document.getElementById('gym-mgr-body'); if(body)body.innerHTML='Cargando…';
+  try{
+    const cli=AUTH.client(); const u=await AUTH.getUser(); if(!cli||!u){ if(body)body.innerHTML='Conéctate para gestionar tu comunidad.'; return; }
+    _gymCoachUid=u.id;
+    const {data,error}=await cli.from('community_gym_members').select('member_id').eq('coach_id',u.id);
+    if(error)throw error;
+    _gymMembers=new Set((data||[]).map(r=>r.member_id));
+    _renderGymMgr();
+  }catch(e){ if(body)body.innerHTML='<div style="color:var(--rd);font-size:13px">No se pudo cargar. Revisa tu conexión.</div>'; }
+}
+function _gymSwitch(id,on){
+  return '<button class="cmty-sw'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" onclick="toggleGymMember(\''+id+'\')" style="flex:0 0 auto;width:46px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;background:'+(on?'var(--g2)':'var(--br2)')+';transition:background var(--dur,220ms) var(--ease-out,ease)"><span style="position:absolute;top:3px;left:'+(on?'21px':'3px')+';width:22px;height:22px;border-radius:50%;background:#fff;transition:left var(--dur,220ms) var(--ease-out,ease)"></span></button>';
+}
+function _renderGymMgr(){
+  const body=document.getElementById('gym-mgr-body'); if(!body||!_gymMembers)return;
+  const row=(id,name,sub)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--br)"><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--t1);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+esc(sub)+'</div>':'')+'</div>'+_gymSwitch(id,_gymMembers.has(id))+'</div>';
+  let h=row(_gymCoachUid,'Yo (mi perfil)','Participas como uno más de tu gym');
+  const cls=(DB.clients||[]).filter(c=>c&&c.id);
+  if(!cls.length) h+='<div style="font-size:12px;color:var(--t3);padding:12px 0">Aún no tienes asesorados que agregar.</div>';
+  cls.forEach(c=>{ h+=row(c.id, c.name||'Asesorado', ''); });
+  body.innerHTML=h;
+}
+async function toggleGymMember(memberId){
+  const on=_gymMembers&&_gymMembers.has(memberId);
+  if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){ if(_gymMembers){ on?_gymMembers.delete(memberId):_gymMembers.add(memberId); _renderGymMgr(); } return; }
+  try{
+    const cli=AUTH.client(); const u=await AUTH.getUser(); if(!cli||!u)return;
+    if(on){ const {error}=await cli.from('community_gym_members').delete().eq('coach_id',u.id).eq('member_id',memberId); if(error)throw error; _gymMembers.delete(memberId); }
+    else { const {error}=await cli.from('community_gym_members').insert({coach_id:u.id,member_id:memberId}); if(error)throw error; _gymMembers.add(memberId); }
+    _renderGymMgr();
+  }catch(e){ toast('No se pudo actualizar. Intenta de nuevo.'); }
+}
+
 // Lee las 3 casillas y arma la evidencia (o null si falta alguna). La usan los DOS
 // caminos de registro: email (signupClient) y Google (wzGoogle).
 function _wzConsent(){

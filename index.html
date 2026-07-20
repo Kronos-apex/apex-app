@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=374">
+<link rel="stylesheet" href="styles.css?v=375">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -401,6 +401,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
       <!-- Mi entrenamiento (v369): stats del propio entreno del coach (cuenta marcada como "mi cuenta") -->
       <div id="h-mytraining" style="display:none;margin-bottom:13px"></div>
+      <!-- Comunidad del gym (C5): el coach controla quién de su gym se ve en la comunidad -->
+      <div class="card" style="margin-bottom:13px">
+        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="users">👥</span> Comunidad de mi gym</div></div>
+        <div class="cb" style="padding:12px 14px">
+          <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:10px">Elige qué asesorados se ven entre sí en la comunidad de AVI. Solo aparecen los que tú actives.</div>
+          <button class="btn bg" style="width:100%;min-height:40px" onclick="openGymMgr()">Gestionar</button>
+        </div>
+      </div>
       <!-- Banner: quién entrenó hoy (con nombre) -->
       <div id="h-today-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Banner de vencimientos próximos -->
@@ -1117,19 +1125,29 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=374"></script>
-<script src="muscle-map.js?v=374"></script>
-<script src="exercise-muscles.js?v=374"></script>
+<!-- Comunidad del gym (C5): el coach activa qué asesorados se ven entre sí -->
+<div class="mdbg" id="m-gym">
+  <div class="md mdlg" style="max-height:82vh;display:flex;flex-direction:column">
+    <div class="mdtitle">👥 Comunidad de mi gym</div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:10px">Activa a quién quieres que aparezca en la comunidad. Solo tus asesorados salen, y solo si tú los activas — nadie se mete solo.</div>
+    <div id="gym-mgr-body" style="overflow-y:auto;flex:1;min-height:80px">Cargando…</div>
+    <div class="mdfooter"><button class="btn bp" onclick="cm('m-gym')">Listo</button></div>
+  </div>
+</div>
+
+<script src="avi-core.js?v=375"></script>
+<script src="muscle-map.js?v=375"></script>
+<script src="exercise-muscles.js?v=375"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=374"></script>
-<script src="app-2-login.js?v=374"></script>
-<script src="app-3-coach.js?v=374"></script>
-<script src="app-4-entreno.js?v=374"></script>
-<script src="app-5-salud.js?v=374"></script>
-<script src="app-6-extra.js?v=374"></script>
-<script src="app-7-community.js?v=374"></script>
+<script src="app-1-infra.js?v=375"></script>
+<script src="app-2-login.js?v=375"></script>
+<script src="app-3-coach.js?v=375"></script>
+<script src="app-4-entreno.js?v=375"></script>
+<script src="app-5-salud.js?v=375"></script>
+<script src="app-6-extra.js?v=375"></script>
+<script src="app-7-community.js?v=375"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
