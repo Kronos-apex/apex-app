@@ -147,6 +147,15 @@ await ev(`CMTY.profile=null; CMTY.offline=true; CMTY.loaded=true; CMTY.loading=f
 const cm9 = await ev(`/Conéctate para ver a tu gente/.test(document.getElementById('cn-community').innerText)`);
 check('CM9 offline sin perfil → mensaje "Conéctate para ver a tu gente" (nunca pantalla rota)', cm9 === true, 'ok=' + cm9);
 
+// CM10 (C4): en el opt-in, el enlace "política de tratamiento de datos" abre el documento legal
+// y ese documento trae la sección Comunidad (consentimiento específico cableado).
+await ev(setState); await sleep(250);
+const hasLink = await ev(`(()=>{const a=[...document.querySelectorAll('#cn-community a')].find(x=>/política de tratamiento/i.test(x.textContent));return !!a;})()`);
+await ev(`typeof showLegalDoc==='function' && showLegalDoc('politica')`); await sleep(1200);
+const cm10 = await ev(`(()=>{const m=document.getElementById('m-legal');const b=document.getElementById('legal-body');const t=b?b.innerText:'';return {open:!!(m&&m.classList.contains('on')),comunidad:/Comunidad/.test(t),noSensible:/Qué NO se comparte|nunca/i.test(t)};})()`);
+check('CM10 (C4) enlace legal en el opt-in abre la política CON la sección Comunidad', hasLink && cm10.open && cm10.comunidad && cm10.noSensible, JSON.stringify({hasLink}) + ' ' + JSON.stringify(cm10));
+await ev(`(()=>{const m=document.getElementById('m-legal');if(m)m.classList.remove('on');})()`);
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
 console.log('\n──── RESULTADOS COMUNIDAD (C3) ────');

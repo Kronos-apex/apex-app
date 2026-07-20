@@ -70,7 +70,28 @@ comprometemos a actuar con diligencia y a notificar incidentes según la ley.
 [DECISIÓN CON ABOGADO] El modo libre público está dirigido a **mayores de 18 años**. No
 recolectamos conscientemente datos de menores sin autorización de su representante legal.
 
-## 9. Vigencia
+## 9. Comunidad (función opcional)
+AVI incluye una función de **Comunidad** para que te motives con amigos. Es **totalmente
+opcional** y está **apagada por defecto**: solo se activa si tú creas tu perfil de comunidad y
+das tu autorización.
+
+- **Qué se comparte, y solo con tus amigos aceptados:** el **apodo** que elijas, tu **avatar**
+  (si subes uno) y un **resumen de tu constancia** (tu racha, tu nivel, tus logros y, de forma
+  opcional, si entrenaste hoy). Ese resumen lo calcula nuestro servidor a partir de tu actividad;
+  **nunca se comparten tus datos crudos**.
+- **Qué NO se comparte NUNCA:** tu peso, medidas, fotos de progreso, notas de salud o lesiones,
+  tus kilos levantados ni tus mensajes con el entrenador. Esos datos sensibles **jamás** salen de
+  tu cuenta.
+- **Cómo te conectas:** solo por **código** que tú compartes; ambas personas deben aceptar. No hay
+  directorio ni buscador de personas.
+- **Actividad diaria:** puedes **ocultar** si entrenaste hoy con un interruptor, en cualquier momento.
+- **Control y revocación:** puedes pausar tu perfil, bloquear o reportar a alguien, y **salir de la
+  comunidad** cuando quieras. Salir **borra** tu perfil público y todas tus amistades (derecho de
+  supresión). Eliminar tu cuenta también borra todo lo de comunidad.
+- **Menores de edad:** para usar la Comunidad debes ser **mayor de 18 años** o contar con la
+  autorización de tu representante legal.
+
+## 10. Vigencia
 Esta política rige desde [FECHA] y la base de datos se conservará mientras tengas una cuenta
 activa o exista un deber legal de conservación. Podremos actualizar esta política; te
 informaremos de cambios sustanciales.

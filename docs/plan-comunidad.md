@@ -1,7 +1,7 @@
 # Plan de diseño — COMUNIDAD en AVI
 
-> **Estado:** CONSTRUCCIÓN Fase 1 en curso (2026-07-19) — C1 y C2 EN PROD y verificados por
-> Fable; **C3 ESTIPULADO** (ver §9-BIS → C3 detallado). Idea #5 del lote de Camilo (2026-07-17).
+> **Estado:** Fase 1 COMPLETA EN PROD (2026-07-20, avi-v374) — C1+C2 verificados por Fable;
+> **C3+C4 EJECUTADOS por Opus, PENDIENTES de re-verificación de Fable.** Idea #5 (Camilo 2026-07-17).
 > **Autor del borrador:** Opus 4.8 (2026-07-18). **Endurecido por Fable (auditoría 2026-07-18):**
 > se cerraron 4 huecos de arquitectura (§5.0, §5.2, §5.3, §5.6) y se añadió la **decisión #7**
 > (integridad del snapshot) — la v1 era inconstruible tal cual (el flujo "agregar por código"
@@ -492,10 +492,29 @@ ranking (Fase 2) · aflojar grants «para que sea más fácil» · claves de ses
 nuevos · DMs. Si algo del spec resulta inconstruible contra el esquema real, PARAR y
 documentar para Fable — no improvisar arquitectura (reglas-opus §A).
 
-**C4 — Legal + cierre:** texto de consentimiento específico, actualización de `legal/`,
-revisión de tono (Sofía), radar de adopción (arrancar con el gym de Camilo). Los riesgos §11
-(patrones de actividad → granularidad día + toggle; menores → gate 18+/representante en el
-consentimiento, confirmar con abogado) se resuelven en C3/C4, no se difieren a Fase 2.
+**C4 — Legal + cierre — ✅ EJECUTADO (Opus, 2026-07-20, avi-v374; PENDIENTE veredicto de Fable).**
+- **Texto legal:** nueva **sección 9 «Comunidad (función opcional)»** en `legal/politica-tratamiento-datos.md`
+  (opt-in apagado por defecto; qué se comparte = apodo/avatar/resumen de constancia server-side y NUNCA
+  datos crudos; qué NO se comparte jamás = peso/fotos/medidas/salud/kilos/mensajes; conexión solo por
+  código mutuo; `show_today` ocultable; salir = borrado real del perfil+amistades; menores 18+/representante).
+  Sigue siendo BORRADOR pendiente de abogado (mismo estatus que el resto de `legal/`, backlog legal general).
+- **`LEGAL_V` subido** `2026-07-07-borrador`→`2026-07-20-borrador` (regla: cambió un doc de `legal/`).
+  `CMTY_CONSENT_V` = `comunidad-2026-07-20-borrador` (evidencia del opt-in en `community_profiles.consent_v`
+  + `consent_at`; el opt-in exige las 2 casillas → si hay fila, ambas se marcaron en esa versión).
+- **Cableado:** en el opt-in, «política de tratamiento de datos» es un ENLACE real → `showLegalDoc('politica')`
+  (abre `#m-legal` con la sección Comunidad). Harness `_verify-community` +CM10 (verifica el enlace end-to-end).
+- **Tono (Sofía):** repaso de todo el texto visible = cálido, español colombiano, cero jerga (ya venía limpio de C3).
+- **Riesgos §11 resueltos (no diferidos a Fase 2):** (a) patrones de actividad → `trained_today` con
+  granularidad de DÍA (jamás hora) + toggle `show_today` server-side (la edge fuerza `false`); (b) menores →
+  gate 18+/representante en el opt-in (casilla obligatoria) + cláusula en la política; **confirmar ambos con
+  abogado** en la revisión legal pendiente. (c) avatares = bucket nuevo `avatars/{uid}/` con CHECK de prefijo
+  (no toca la deuda de fotos-a-Storage legacy).
+- **Radar de adopción (arrancar con el gym de Camilo):** medir con dos números sobre `community_profiles`
+  (nº de perfiles opt-in) y `friendships` (nº de amistades `accepted`) a lo largo del tiempo; arrancar
+  invitando a los asesorados activos de Camilo con su código. Métrica de éxito de la Fase 1 = ¿la gente crea
+  perfil y se conecta? Si pega → Fase 2 (feed + ranking de constancia). Nota: consulta admin simple
+  `select count(*) from community_profiles` / `select count(*) from friendships where status='accepted'`.
+- **QA:** suite 405, hook 11/11, `_verify-community` 11/11 (+CM10), `_prodcheck 374`. Deploy avi-v374.
 
 ## 10. Lo que este doc NO propone (no-goals, para acotar expectativas)
 
@@ -533,5 +552,7 @@ consentimiento, confirmar con abogado) se resuelven en C3/C4, no se difieren a F
 
 ---
 
-*Siguiente paso (2026-07-19): Opus ejecuta la ESTIPULACIÓN DETALLADA de C3 (§9-BIS) bajo
-`docs/reglas-opus.md` → deploy avi-v373 → Fable verifica (sabotajes propios + prod) → C4.*
+*Siguiente paso (2026-07-20): **Fase 1 COMPLETA en prod (avi-v374).** Fable re-verifica el arco
+C3 (UI) + C4 (legal) con sabotajes propios + prod. Luego: revisión de abogado de los textos de
+`legal/` (backlog general) + arrancar la adopción con el gym de Camilo. Fase 2 (feed + ranking de
+constancia) SOLO si la Fase 1 tiene tracción real.*

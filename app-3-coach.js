@@ -758,7 +758,7 @@ async function backToCoachPanel(){
 // documentos de legal/ para que la evidencia guardada diga QUÉ versión se aceptó.
 // Los textos son BORRADORES pendientes de revisión de abogado (legal/LEEME-IMPORTANTE.md);
 // Camilo decidió conectarlos tal cual mientras tanto (2026-07-06).
-const LEGAL_V='2026-07-07-borrador';
+const LEGAL_V='2026-07-20-borrador'; // 2026-07-20: +sección 9 «Comunidad» en la política (C4)
 const LEGAL_DOCS={
   politica:{file:'politica-tratamiento-datos.md',title:'Política de Tratamiento de Datos'},
   terminos:{file:'terminos-y-condiciones.md',title:'Términos y Condiciones'},

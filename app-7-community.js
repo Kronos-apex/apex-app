@@ -20,8 +20,9 @@
 // ══════════════════════════════════════════════════════════════════════
 
 // Versión del consentimiento ESPECÍFICO de la comunidad (evidencia Habeas Data del opt-in).
-// Distinta del LEGAL_V general del registro; C4 formaliza el texto legal + esta versión.
-const CMTY_CONSENT_V = 'comunidad-2026-07-19-borrador';
+// Ata a la sección 9 «Comunidad» de legal/politica-tratamiento-datos.md (C4). Sube este valor
+// si cambia ese texto. Sigue siendo BORRADOR pendiente de revisión de abogado (legal/LEEME).
+const CMTY_CONSENT_V = 'comunidad-2026-07-20-borrador';
 
 const CMTY = {
   uid: null,
@@ -193,7 +194,7 @@ function _cmtyOptInHtml(){
     '<input class="inp" id="cmty-handle" maxlength="30" placeholder="Ej: Cami" value="' + defName + '" style="margin-bottom:12px">' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:9px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-consent" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
-      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con los amigos que yo acepte, según la <b>política de tratamiento de datos</b>.</span></label>' +
+      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con los amigos que yo acepte, según la <a href="#" onclick="showLegalDoc(\'politica\');return false" style="color:var(--g);font-weight:700;text-decoration:underline">política de tratamiento de datos</a>.</span></label>' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:12px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-age" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
       '<span>Soy mayor de 18 años, o cuento con la autorización de mi representante.</span></label>' +
