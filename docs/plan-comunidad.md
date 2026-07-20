@@ -520,6 +520,28 @@ documentar para Fable — no improvisar arquitectura (reglas-opus §A).
 
 ## 12. C5 — DIRECTORIO DEL GIMNASIO (cambio de concepto del PO, 2026-07-20) — ✅ EJECUTADO (avi-v375)
 
+> ### ⚖️ RE-VERIFICACIÓN DE FABLE de C5 (2026-07-20) — 🟢 APROBADO CON RESERVA
+> **Núcleo de seguridad: SÓLIDO (verificación independiente).** Re-corrí la infiltración (G1-G5, todo
+> 403/0-filas) + ataques NUEVOS que Opus no probó: **RV2 un miembro NO puede enumerar el roster** del gym
+> (solo ve su propia fila) · **RV3 al remover a un miembro, la visibilidad se revoca al instante**
+> (`_same_community`→false) · RV1 el directorio funciona para miembros reales. Membresía imposible de
+> falsificar (ni `coach_id` ni `tier`, ambos client-writable, sirven). Prod v375 limpio; datos de prueba
+> purgados, fila de Camilo intacta.
+>
+> **🟡 HALLAZGO (RESERVA, cerrar antes de dar C5 por terminado): el BLOQUEO no oculta dentro del gym.**
+> `cp_sel = propio OR _are_friends(aceptado) OR _same_community` — la rama de gym NO mira bloqueos. Dos
+> compañeros de gym **se ven el perfil aunque uno bloquee al otro** (regresión: antes de C5, bloquear
+> quitaba la visibilidad). Además, en el frontend `cmtyLoad`, un bloqueado (status 'blocked', ni accepted
+> ni pending) **reaparece en «Tu gimnasio»** como «Agregar»-able (y re-agregar falla con error confuso por
+> el UNIQUE). Relevante para el riesgo §11 (una asesorada que bloquea a un compañero espera desaparecer de
+> él y NO desaparece). **Corrección recomendada:** (1) `_same_community`/`cp_sel` deben EXCLUIR pares con
+> una amistad 'blocked' entre ellos; (2) `cmtyLoad` debe filtrar de `CMTY.gym` a quien tenga status
+> 'blocked'. No es infiltración (el bloqueado ya era del mismo gym), pero sí un hueco de expectativa/seguridad.
+> **VEREDICTO: el directorio es seguro contra extraños (lo crítico) y funciona; queda la reserva del bloqueo
+> para el siguiente ciclo de Opus.**
+
+
+
 > **✅ CONSTRUIDO por Opus (2026-07-20, avi-v375; PENDIENTE re-verificación de Fable).** La corrección
 > de Fable (F7) se profundizó: **NI `coach_id` NI `tier` sirven** (ambos escribibles por el cliente,
 > verificado PATCH→200) → membresía en tabla nueva `community_gym_members`, escrita SOLO por el coach.
