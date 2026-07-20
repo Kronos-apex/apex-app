@@ -154,6 +154,9 @@ function cnTab(id,el,_silent){
   if(id==='cn-messages'&&CUR.clientId){
     renderClientMsgs(CUR.clientId);
   }
+  if(id==='cn-community'&&typeof renderCommunity==='function'){
+    renderCommunity();
+  }
 }
 
 // PROFILE
@@ -1681,6 +1684,7 @@ function showWorkoutFinish(routine,stats){
   _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
   renderWfPushNudge(); // v325: ofrecer activar notificaciones en el momento de máximo compromiso
+  if(typeof cmtyOnWorkoutFinished==='function')cmtyOnWorkoutFinished(); // C3: refresca el snapshot de comunidad (debounced) al terminar
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
   document.body.style.overflow='hidden';

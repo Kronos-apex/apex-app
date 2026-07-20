@@ -2365,8 +2365,6 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  {v:314, icon:'trend', t:'Tu Progreso, de un toque', d:'Se acabó el scroll infinito: salta directo a lo que quieres ver.',
-   steps:['Entra a la pestaña Progreso','Arriba verás Nivel · Constancia · Números · Historial','Tócalos para saltar directo — te acompañan mientras bajas']},
   {v:316, icon:'chat', t:'Respuestas rápidas en el chat', d:'Escribirle a tu coach ahora toma UN toque.',
    steps:['Entra a Mensajes','Toca una respuesta lista: "¡Entrenamiento hecho!", "Tengo una duda" o "Algo me dolió"','Tu coach la recibe al instante — y te responde'],
    cta:{label:'Probarlas ahora',run:'ntGoMsgs'}, coach:true}, // solo con coach (aviso Lucas: al libre le prometía un chat que no tiene)
@@ -2378,6 +2376,8 @@ const AVI_NEWS=[
    steps:['Termina tu entrenamiento como siempre','La pantalla "Hoy" se despeja: verás "¡Ya entrenaste hoy!"','¿Quieres más? Toca "Entrenar otra vez" para una segunda sesión']}, // coach:false → para todos
   {v:368, icon:'repeat', t:'¿Se te corrió un día?', d:'Si te faltó una rutina de esta semana, "Hoy" te lo recuerda y te deja recuperarla sin enredos.',
    steps:['En "Hoy" verás "Te quedó pendiente esta semana" si te saltaste una rutina','Toca "Entrenar hoy" para hacerla ahora — tu plan no se toca','O "Mover a hoy en mi plan" para reacomodar tus días de una vez']}, // coach:false → para todos
+  {v:373, icon:'users', t:'Llegó la Comunidad', d:'Comparte tu constancia con amigos que tú elijas y motívense juntos. Es opcional y muy privado.',
+   steps:['Entra a la nueva pestaña "Comunidad"','Crea tu perfil (apodo + avatar) — nadie ve tu peso, fotos ni salud','Comparte tu código o pega el de un amigo, y véanse la racha con un ❤️']}, // coach:false → para todos
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).

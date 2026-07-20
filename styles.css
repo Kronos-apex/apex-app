@@ -1703,3 +1703,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .rv-note b{color:#E9C46A}
 @keyframes rvUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){#plan-reveal *{animation:none!important;opacity:1!important;transform:none!important}}
+/* Comunidad (C3): pulir el marcador nativo de <details> en la gestión de amigos. */
+#cn-community details summary{list-style:none;outline:none}
+#cn-community details summary::-webkit-details-marker{display:none}
+/* Con 6 pestañas la barra queda más apretada: labels un punto más chicos para no recortar
+   "Comunidad"/"Progreso"/"Mensajes" a 360px. La primitiva táctil sigue ≥40px por el padding. */
+.cntab{font-size:10px}
+.cntab .ctico svg{width:22px;height:22px}
+@media (prefers-reduced-motion:reduce){.cmty-sw span,.cmty-sw{transition:none!important}}
