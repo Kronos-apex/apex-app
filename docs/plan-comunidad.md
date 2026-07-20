@@ -526,8 +526,9 @@ SOLO el gimnasio** (los que comparten coach; global público DESCARTADO por priv
 **(B) mensajería en vivo = FASE POSTERIOR** (primero el directorio, DMs después con su propio diseño).
 Esto **revisa las decisiones #2 y #3** (el coach SÍ participa; hay directorio, pero acotado al gym).
 
-**⚠️ Toca la RLS más sensible (visibilidad de `community_profiles`) → CANDIDATO A ESTIPULACIÓN/VERIFICACIÓN
-DE FABLE antes de construir (igual que C1).** Diseño validado contra datos reales (read-only): la «gym key»
+**⚠️ Toca la RLS más sensible (visibilidad de `community_profiles`) → el PO decidió (2026-07-20) que
+FABLE VERIFICA C3+C4+fix-avatar Y ESTIPULA/BENDICE este diseño C5 ANTES de que Opus lo construya (igual
+que C1).** Diseño validado contra datos reales (read-only): la «gym key»
 = `coalesce(user_data.coach_id, uid si role='coach')` agrupa correctamente el gym de Camilo = **22 personas**
 (él + 21 asesorados). Un usuario libre sin coach → sin gym → no ve directorio (el código sigue disponible).
 
@@ -538,8 +539,9 @@ DE FABLE antes de construir (igual que C1).** Diseño validado contra datos real
   → un compañero de gym puede LEER tu perfil (apodo, avatar, snapshot) ANTES de ser amigos. `share_code` sigue
   SIN grant al cliente (no se filtra). **Exposición nueva:** el snapshot (racha/nivel/`trained_today`) queda
   visible a TODO el gym; `trained_today` lo mitiga el toggle `show_today` (ya server-side). Racha/nivel = baja
-  sensibilidad. **Decisión abierta para Fable/PO:** ¿mostrar stats a todo el gym, o solo apodo+avatar en el
-  directorio y stats solo tras amistad? (lo 2º exige grants por columna — más trabajo).
+  sensibilidad. **✅ RESUELTO por el PO (2026-07-20): el gym ve apodo+avatar+CONSTANCIA (racha/nivel)** — no se
+  restringen columnas; `show_today` cubre la actividad diaria. (La opción de ocultar stats hasta la amistad se
+  descartó: más trabajo y un directorio menos motivador.)
 - `friendships`: sin cambio de esquema. Agregar desde el directorio = INSERT normal (ya tenemos su `user_id`,
   no hace falta `resolve_share_code`). El trigger y las policies de C1 siguen igual.
 
