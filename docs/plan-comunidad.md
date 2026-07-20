@@ -306,8 +306,8 @@ sigue blindada).
 | # | Decisión | Elección |
 |---|---|---|
 | 1 | Identidad | **Apodo que elige** (default nombre de pila, editable) |
-| 2 | Alcance | **Solo amigos por código** (sin directorio ni sugerencias) |
-| 3 | Coach | **Solo asesorados** (el coach no participa en Fase 1) |
+| 2 | Alcance | ~~Solo amigos por código~~ → **REVISADA 2026-07-20: DIRECTORIO DEL GIMNASIO** (los que comparten coach se ven y se agregan sin código; el código sigue para invitar de fuera). Global público DESCARTADO por el PO (privacidad). Ver C5. |
+| 3 | Coach | ~~Solo asesorados~~ → **REVISADA 2026-07-20: el coach SÍ participa** (es su gym; Camilo ya creó su perfil). Ver C5. |
 | 4 | Avatar | **Foto opt-in desde YA** ⚠️ contra recomendación de Fable — ver condición §9.4 |
 | 5 | Ranking | **Constancia + fuerza relativa** (kg/peso corporal como stat secundaria, Fase 2; ranking = constancia) |
 | 6 | Alcance arranque | **Fase 1 sola**, evaluar antes de Fase 2 |
@@ -515,6 +515,52 @@ documentar para Fable — no improvisar arquitectura (reglas-opus §A).
   perfil y se conecta? Si pega → Fase 2 (feed + ranking de constancia). Nota: consulta admin simple
   `select count(*) from community_profiles` / `select count(*) from friendships where status='accepted'`.
 - **QA:** suite 405, hook 11/11, `_verify-community` 11/11 (+CM10), `_prodcheck 374`. Deploy avi-v374.
+
+---
+
+## 12. C5 — DIRECTORIO DEL GIMNASIO (cambio de concepto del PO, 2026-07-20) — DISEÑO, NO CONSTRUIDO
+
+**Origen:** tras probar la Fase 1, Camilo pidió que la comunidad NO dependa de código: que la gente
+se vea entre sí y se manden solicitudes. Decisiones del PO (AskUserQuestion 2026-07-20): **(A) alcance =
+SOLO el gimnasio** (los que comparten coach; global público DESCARTADO por privacidad/menores/mujeres);
+**(B) mensajería en vivo = FASE POSTERIOR** (primero el directorio, DMs después con su propio diseño).
+Esto **revisa las decisiones #2 y #3** (el coach SÍ participa; hay directorio, pero acotado al gym).
+
+**⚠️ Toca la RLS más sensible (visibilidad de `community_profiles`) → CANDIDATO A ESTIPULACIÓN/VERIFICACIÓN
+DE FABLE antes de construir (igual que C1).** Diseño validado contra datos reales (read-only): la «gym key»
+= `coalesce(user_data.coach_id, uid si role='coach')` agrupa correctamente el gym de Camilo = **22 personas**
+(él + 21 asesorados). Un usuario libre sin coach → sin gym → no ve directorio (el código sigue disponible).
+
+**C5.1 — RLS (migración):**
+- Helper `private._same_gym(v uuid, t uuid)` SECURITY DEFINER (schema `private`, NO expuesto — patrón
+  `_are_friends`): true si `gym_key(v)=gym_key(t)` y no es null. `gym_key(x)=coalesce(coach_id, uid si coach)`.
+- Extender `cp_sel`: `using (user_id=auth.uid() OR _are_friends(...) OR private._same_gym(auth.uid(), user_id))`.
+  → un compañero de gym puede LEER tu perfil (apodo, avatar, snapshot) ANTES de ser amigos. `share_code` sigue
+  SIN grant al cliente (no se filtra). **Exposición nueva:** el snapshot (racha/nivel/`trained_today`) queda
+  visible a TODO el gym; `trained_today` lo mitiga el toggle `show_today` (ya server-side). Racha/nivel = baja
+  sensibilidad. **Decisión abierta para Fable/PO:** ¿mostrar stats a todo el gym, o solo apodo+avatar en el
+  directorio y stats solo tras amistad? (lo 2º exige grants por columna — más trabajo).
+- `friendships`: sin cambio de esquema. Agregar desde el directorio = INSERT normal (ya tenemos su `user_id`,
+  no hace falta `resolve_share_code`). El trigger y las policies de C1 siguen igual.
+
+**C5.2 — Frontend (`app-7-community.js`):** sección «Tu gimnasio» en `#cn-community` (con perfil): lista de
+compañeros de gym que NO son ya amigos ni tienen solicitud pendiente, cada uno con apodo+avatar+(stats) y botón
+«Agregar». `cmtyLoadGym()` = `select ... from community_profiles` (RLS devuelve gym-mates+amigos) menos los ya
+conectados. «Agregar» → `cmtyAddFriendDirect(userId)` (INSERT friendship, sin RPC). Reusa tarjeta/estilos. El
+código para invitar de fuera se conserva. Barra premium + estados (gym vacío, offline).
+
+**C5.3 — QA:** harness RLS con dos uids del MISMO gym y uno de OTRO gym: gym-mate LEE perfil, extraño NO,
+`user_data` sigue blindada, amistad desde directorio funciona, `share_code` no se filtra. `_verify-community`
++ checks de la sección gym (lista, botón agregar, no muestra a extraños). Sabotajes: quitar `_same_gym` del
+policy → gym-mate deja de verse (o al revés, extraño se ve = rojo).
+
+**C5.4 — Actualizar:** decisiones #2/#3 (hecho arriba), no-goals §10 (el directorio deja de ser no-goal; DMs
+sigue siendo no-goal HASTA la Fase B), footer.
+
+**FASE B (posterior, su propio diseño): DMs en vivo entre amigos.** Tabla `community_messages` (RLS: solo entre
+amigos aceptados), UI de conversación, **tiempo real con Supabase Realtime** (postgres_changes → el mensaje
+llega sin recargar), no-leídos. Reusa patrones del chat coach↔asesorado (v321). Bloquear/reportar ya existen.
+NO se construye hasta cerrar el directorio y ver tracción.
 
 ## 10. Lo que este doc NO propone (no-goals, para acotar expectativas)
 
