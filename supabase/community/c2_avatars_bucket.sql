@@ -27,3 +27,14 @@ create policy avatars_delete on storage.objects for delete to authenticated
 
 -- Verificado con dientes (probe RLS, 2026-07-19): un usuario NO puede escribir en la carpeta de otro,
 -- sí en la suya (WITH CHECK folder[1]=auth.uid()).
+
+-- ⚠️ FIX 2026-07-20 (bug reportado por Camilo: "no me dejó subir la foto" → POST 400 storage):
+-- el cliente sube con x-upsert:true (sobrescribe avatars/{uid}/avatar.jpg), pero un UPSERT necesita
+-- LEER la fila para resolver el conflicto → SIN policy SELECT, RLS la oculta y RECHAZA con
+-- "new row violates row-level security policy" (HTTP 400). MISMA CLASE que el bug de push 2026-07-12:
+-- todo upsert exige INSERT+UPDATE+SELECT. Reproducido con cuenta QA (x-upsert=400, sin upsert=200) y
+-- corregido: SELECT ACOTADA a la carpeta propia → arregla el upsert SIN habilitar enumeración (el
+-- dueño solo lista SU carpeta; los avatares de amigos se ven por URL pública, no por esta policy).
+create policy avatars_select_own on storage.objects for select to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+-- Re-verificado: con la policy, la subida con x-upsert de la app da 200 (antes 400).
