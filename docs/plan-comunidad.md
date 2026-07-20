@@ -765,3 +765,501 @@ Feed = posts de a quien sigues (+ propios), server-side, paginado. Reacciones �
 ### 13.5 Siguiente paso
 Opus entrega este diseño → **Fable planifica la RLS del modelo Instagram (13.3③) y del chat en vivo
 (13.3①) ANTES de construir** (cambio de privacidad, como en C5). Se arranca por ① CHAT EN VIVO.
+
+---
+
+## 13-BIS. ESTIPULACIÓN RLS — COMUNIDAD v2 (Fable → Opus; planificación de seguridad ANTES de construir)
+
+> **Autor:** Fable, 2026-07-20. Verificado contra el esquema REAL (MCP Supabase read-only, proyecto
+> `eoebhrxbokyllqalyecj`) y contra datos reales: `community_profiles` tiene **2 filas existentes**
+> (opt-in de Fase 1, ya en prod — un default nuevo NO puede exponerlas retroactivamente); `user_data`
+> tiene **asesorados reales de 16, 17 y 18 años** (Santiago Santos 17, Valery Valbuena 16, Sharith
+> Sofía 16, Felipe/Sofía/Cristian/Hernan/jhojan a los 18 — frontera legal) y varios con `age: null`
+> (auto-registrados: Stevan Guerrero). La publicación `supabase_realtime` existe pero **con CERO
+> tablas añadidas** — Realtime no está habilitado en NADA todavía. `c1_community_foundations.sql`
+> hoy da `grant select on community_profiles to authenticated` **de TABLA COMPLETA** (no por columna)
+> — esto importa mucho para §13-BIS.3. Este documento ejecuta la regla del proyecto: *Fable planifica
+> → Opus ejecuta → Fable verifica.* NADA de esto se aplica a producción sin que Opus lo construya bajo
+> `docs/reglas-opus.md` y sin el veredicto de Fable después.
+
+### 13-BIS.0 Alcance de esta sesión de planificación
+Se estipula en DETALLE: **① `community_messages`** (chat en vivo, primer slice que Opus construye) y
+**③ el modelo de visibilidad** (`community_profiles` público/privado + `follows` + menores). **②**
+(`last_active` opt-in) y **④** (`community_posts`) van más ligeros, como pidió el PO indirectamente
+(orden de construcción ①→②→③→④, pero el candado de visibilidad de ③ es el que hace seguro a TODO lo
+demás, así que se especifica ya). **NO se construye ② line, ③ ni ④ todavía** — el primer commit de
+Opus es SOLO ①. El resto de esta estipulación es el mapa para cuando lleguen esas sesiones, para que
+Opus no diseñe la RLS de menores/visibilidad sobre la marcha cuando construya ③.
+
+### 13-BIS.1 Corrección de arquitectura, ANTES de las tablas (2 cambios que Opus debe adoptar)
+
+**(a) `is_private` en la migración de columnas nuevas SIEMPRE nace `default true` (privado), NUNCA
+`false`.** El giro de producto ("público por defecto") es una decisión de **UX para el formulario de
+alta** (el checkbox de "hacer mi perfil público" puede venir pre-marcado para un usuario NUEVO que
+recién activa su perfil) — **no es una instrucción para el `ALTER TABLE`**. Si la columna nace con
+`default false` (=pública), las **2 filas que ya existen hoy en prod** (gente que activó su perfil bajo
+el modelo "solo amigos/gym" de Fase 1/C5) quedarían **públicas de un día para otro sin haberlo
+consentido nunca** — viola §4.1 del propio doc ("por defecto, TODO privado") y es una regresión de
+privacidad real, no hipotética, con datos reales de por medio. Opus expone "público" como opción en la
+UI de alta; el dato en DB arranca conservador siempre.
+
+**(b) El GRANT de SELECT de `community_profiles` deja de ser de tabla completa.** Hoy (`c1_community_foundations.sql`
+línea 198) es `grant select on public.community_profiles to authenticated` — **toda columna, para
+cualquier fila que la RLS deje pasar**. Bajo Fase 1/C5 esto solo importaba entre amigos/gym-mates
+(círculo ya de confianza). **En v2, la rama nueva de `cp_sel` abre filas a "cualquier desconocido con
+perfil público"** (es literalmente lo que pidió el PO) — con el grant actual, ESE desconocido lee
+también `share_code` (destruye el rate-limit/anti-enumeración que existe *solo* para proteger
+`resolve_share_code`), `consent_v`/`consent_at` (metadata de evidencia legal, sin necesidad de ser
+pública) y, peor, **`birth_date` nuevo (§13-BIS.3) — la fecha de nacimiento exacta de un menor, en
+texto plano, para cualquier desconocido autenticado.** Esto es inaceptable con la población real de
+AVI (adolescentes reales, algunos sin coach directo verificándolos). Corrección obligatoria:
+
+```sql
+-- reemplaza el grant de tabla completa por uno de columnas (las mismas que hoy consulta
+-- app-7-community.js:105-106 explícitamente + is_private + role, nada nuevo sensible):
+revoke select on public.community_profiles from authenticated;
+grant select (user_id, handle, avatar_url, bio, visible, is_private,
+              streak_weeks, sessions_4w, level, achievements, role, created_at)
+  on public.community_profiles to authenticated;
+-- share_code, consent_v, consent_at, birth_date, last_active (crudo) quedan FUERA del grant general.
+```
+`trained_today`/`snapshot_at` se retiran del grant general por decisión del PO (§13.0, "no me gusta
+ver si entrenó") — dejan de estar en la lista; el cliente YA NO puede leerlos ajenos (siguen
+escribiéndose server-side por si `refresh_snapshot` los sigue usando internamente, pero nadie los lee
+por API). Para que el DUEÑO siga viendo su propio `share_code`/`consent_v`/`consent_at` (la app hoy se
+los muestra: "mi código para compartir"), una función chica en vez de reabrir el grant:
+```sql
+create function public.cmty_my_secrets()
+  returns table(share_code text, consent_v text, consent_at timestamptz)
+  language sql stable security invoker set search_path = '' as $$
+  select share_code, consent_v, consent_at from public.community_profiles where user_id = auth.uid();
+$$;
+grant execute on function public.cmty_my_secrets() to authenticated;
+```
+`security invoker` (default, explícito por claridad) → sigue pasando por `cp_sel`, que ya permite
+`user_id = auth.uid()`; no hace falta `security definer`. Opus debe actualizar la carga del **propio**
+perfil (`app-7-community.js:83`, hoy `select('*')`) a la lista de columnas seguras + un llamado a
+`cmty_my_secrets()` para pintar el código/evidencia. Las cargas de amigos/gym (líneas 105-106, ya
+explícitas por columna) casi no cambian — solo pierden `trained_today`.
+
+### 13-BIS.2 ① `community_messages` — chat en vivo (PRIMER slice, el que Opus construye ahora)
+
+**Candado de "quién puede escribirle a quién" — reutiliza lo que YA existe, cero relación nueva:**
+en este slice ③ (follows) todavía no existe, así que el único universo seguro de pares que pueden
+tener DM es el mismo que ya está *server-verificado* hoy: **amistad `accepted`** (`private._are_friends`)
+**O compañeros del mismo gym** (`private._same_community`, que desde `c5b` ya excluye bloqueados en
+ambas direcciones). Ninguna de las dos depende de `coach_id`/`tier` client-writable (la lección F7).
+Cuando ③ llegue, la ampliación a "seguidor mutuo" se decide aparte (ver nota al final) — **no se abre
+DM a "cualquiera que te sigue"** de entrada, es superficie de acoso demasiado grande con adolescentes
+reales en la base.
+
+```sql
+create table public.community_messages (
+  id         uuid primary key default gen_random_uuid(),
+  from_user  uuid not null references auth.users(id) on delete cascade,
+  to_user    uuid not null references auth.users(id) on delete cascade,
+  text       text not null check (char_length(text) between 1 and 2000),
+  created_at timestamptz not null default now(),
+  read_at    timestamptz
+);
+alter table public.community_messages enable row level security;
+alter table public.community_messages replica identity full;  -- Realtime necesita la fila vieja completa en UPDATE (marcar leído)
+
+-- helper reutilizado, en private (no expuesto), mismo patrón que _are_friends/_same_community:
+create function private._can_dm(a uuid, b uuid) returns boolean
+  language sql stable security definer set search_path = '' as $$
+  select private._are_friends(a,b) or private._same_community(a,b);
+$$;
+revoke all on function private._can_dm(uuid,uuid) from public;
+grant execute on function private._can_dm(uuid,uuid) to authenticated, service_role;
+
+-- anti-flood: tope simple, cuenta mensajes propios en la última ventana
+create table public._cm_rate (uid uuid not null, minute timestamptz not null, count int not null default 0, primary key(uid, minute));
+create function public._community_msg_rate_limit() returns trigger language plpgsql set search_path = '' as $$
+declare m timestamptz := date_trunc('minute', now()); n int;
+begin
+  insert into public._cm_rate(uid, minute, count) values (new.from_user, m, 1)
+    on conflict (uid, minute) do update set count = public._cm_rate.count + 1 returning count into n;
+  if n > 30 then raise exception 'rate limit exceeded'; end if;   -- 30 mensajes/minuto/usuario, generoso para chat real, corta flood de script
+  return new;
+end $$;
+create trigger trg_cm_rate before insert on public.community_messages
+  for each row execute function public._community_msg_rate_limit();
+
+create policy cm_sel on public.community_messages for select
+  using (auth.uid() in (from_user, to_user));
+create policy cm_ins on public.community_messages for insert with check (
+  from_user = auth.uid() and from_user <> to_user and private._can_dm(from_user, to_user)
+);
+-- SOLO el destinatario marca leído; nada más es mutable (el emisor no puede reescribir su propio texto)
+create policy cm_upd on public.community_messages for update
+  using (to_user = auth.uid()) with check (to_user = auth.uid());
+
+revoke all on public.community_messages from anon, authenticated;
+grant select, insert on public.community_messages to authenticated;
+grant update (read_at) on public.community_messages to authenticated;   -- columna ÚNICA escribible por el cliente
+grant all on public.community_messages to service_role;
+
+-- Realtime: la tabla no está en la publicación (verificado — CERO tablas hoy). Sin esto no llega nada.
+alter publication supabase_realtime add table public.community_messages;
+```
+**No hay DELETE** (nadie "desmanda" un mensaje en Fase 1 de chat; si se quiere luego, política aparte).
+**No es un upsert** — usar `.insert()` para enviar y `.update({read_at:...})` (nunca `.upsert()`) para
+marcar leído, así el gotcha "upsert exige SELECT" ni aplica aquí (ya hay SELECT de sobra, pero mejor
+evitar el patrón por completo cuando no hace falta resolver conflicto).
+
+**Cómo Realtime respeta la RLS (y qué debe probar Opus, no asumir):** Supabase Realtime evalúa la
+policy SELECT de la tabla **por cada suscriptor, por cada fila cambiada**, usando el JWT de la sesión
+del cliente (no la anon key) — un evento de INSERT/UPDATE solo se entrega a un socket cuyo `auth.uid()`
+pasaría `cm_sel` para esa fila. Esto es automático en cuanto la tabla está en `supabase_realtime` y RLS
+está activo (ya lo está) — **pero "debería funcionar así" no es un veredicto; Opus lo demuestra**:
+1. Dos sesiones autenticadas SIN relación entre sí (ni amigos ni mismo gym): sesión A se suscribe
+   **sin filtro** (`channel('any').on('postgres_changes',{event:'*',schema:'public',table:'community_messages'},cb)`)
+   — la config más laxa posible del lado cliente. Sesión B (amiga de una C cualquiera) inserta un
+   mensaje a C. **Assert: A recibe CERO eventos.**
+2. A y B SÍ son amigos/gym-mates: A se suscribe (con o sin filtro), B inserta → A recibe el evento.
+   Confirma que no quedó sobre-restringido por accidente.
+3. Verificar que el cliente pasa el JWT de sesión al canal Realtime (no la anon key) — `supabase-js@2`
+   lo hace automático al usar el cliente autenticado ya existente (`AUTH.client()`), pero probarlo con
+   una sesión real, no asumirlo de la documentación.
+4. Sabotaje del rate-limit: 40 inserts en <60s desde una cuenta → el #31 en adelante debe rechazar.
+
+### 13-BIS.3 ③ Modelo de visibilidad — `community_profiles` público/privado + menores
+
+**Columnas nuevas:**
+```sql
+alter table public.community_profiles
+  add column is_private        boolean not null default true,   -- §13-BIS.1(a): SIEMPRE privado por default
+  add column birth_date        date,                             -- SOLO la escribe la edge (ver abajo); NUNCA client-writable
+  add column last_active       timestamptz,                      -- server-set (② , ver 13-BIS.4-ligero)
+  add column show_last_active  boolean not null default false,   -- opt-in, SÍ client-writable (preferencia)
+  add column role              text not null default 'client' check (role in ('coach','client'));  -- para el "perfil de coach público" (③)
+```
+`role` se fija SOLO en el `INSERT` (trigger que lee `user_data.role` para `new.user_id` — es una
+lectura de la PROPIA fila del que se está registrando, `auth.uid()=user_id` ya se lo permite la RLS de
+`user_data` sin necesitar `security definer`); no lleva grant de UPDATE al cliente — nadie se auto-nombra
+coach.
+
+**Detección de menor — infalsificable, sin columna `is_minor` que pueda quedar obsoleta:** en vez de
+guardar un booleano que hay que mantener sincronizado (y que puede quedar "congelado" en `true` para
+alguien que ya cumplió 18, o peor, mal escrito una vez y nunca corregido), la minoría de edad se
+**calcula en el momento**, siempre desde `birth_date`:
+```sql
+create function private._is_minor(u uuid) returns boolean
+  language sql stable security definer set search_path = '' as $$
+  select coalesce(
+    (select date_part('year', age(now(), cp.birth_date)) < 18 from public.community_profiles cp where cp.user_id = u),
+    true    -- SIN fecha de nacimiento confirmada = tratar como menor (fail-safe, nunca fail-open)
+  );
+$$;
+revoke all on function private._is_minor(uuid) from public;
+grant execute on function private._is_minor(uuid) to authenticated, service_role;
+```
+**El candado real (que no depende de que la app lo respete) es un TRIGGER, no la app:**
+```sql
+create function public._community_enforce_minor_privacy() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.birth_date is null or date_part('year', age(now(), new.birth_date)) < 18 then
+    new.is_private := true;   -- pisa lo que haya mandado el cliente, SIEMPRE, en INSERT y en UPDATE
+  end if;
+  return new;
+end $$;
+create trigger trg_enforce_minor_privacy before insert or update on public.community_profiles
+  for each row execute function public._community_enforce_minor_privacy();
+```
+Corre en TODO insert/update (incluso los del `service_role`, incluida la propia edge) — la invariante
+"sin fecha o menor ⇒ privado forzado" no tiene forma de saltarse. El cliente puede seguir teniendo
+`grant update (is_private)`, porque el trigger es la autoridad final, no el grant.
+
+**`birth_date` — de dónde sale, sin dejarlo client-writable directo:** una edge function NUEVA
+`activate_public_profile` (verify_jwt, mismo patrón que `refresh_snapshot`):
+- recibe `birth_date` del propio usuario (autoafirmado — **igual que Instagram/Meta, no hay verificación
+  de identidad mejor disponible**; esto es un riesgo residual de PRODUCTO/LEGAL, no un hueco técnico —
+  ya está anotado en §11 y debe confirmarlo el abogado en la revisión pendiente);
+- **rechaza si `community_profiles.birth_date` YA tiene valor** (escritura única — nadie "recalibra" su
+  edad después de construir seguidores para intentar zafarse de `is_minor`);
+- escribe `birth_date` con `service_role` (el cliente NUNCA tiene grant de columna sobre `birth_date`,
+  ni INSERT ni UPDATE — cero excepciones);
+- el trigger de arriba corre igual sobre esta escritura y fuerza `is_private` según corresponda.
+- El toggle "quiero que mi perfil sea público" en la UI simplemente llama esta edge (si aún no hay
+  `birth_date`) y LUEGO intenta `update({is_private:false})` normal — si es menor, el trigger lo
+  revierte a `true` en silencio; la UI debe releer la fila tras el update y reflejar el valor REAL
+  (nunca asumir que lo que mandó es lo que quedó).
+
+**RLS de `community_profiles` v2 — reemplaza `cp_sel` de C5:**
+```sql
+drop policy cp_sel on public.community_profiles;
+create policy cp_sel on public.community_profiles for select
+  using (
+    user_id = auth.uid()
+    or private._are_friends(user_id, auth.uid())
+    or private._same_community(auth.uid(), user_id)
+    or (is_private = false and not private._is_minor(user_id))   -- rama NUEVA: público real
+  );
+```
+La rama nueva es defensa en 2 capas a propósito: `is_private=false` ya es imposible para un menor
+(trigger), y el `not private._is_minor(...)` es un cinturón adicional por si el trigger tuviera un bug
+algún día — barato, y es exactamente el tipo de "candado que sobrevive al siguiente refactor" que pide
+la doctrina del proyecto.
+
+**Esto abre enumeración pública — es SABIDO y ACEPTADO, no un hallazgo:** con esta policy, cualquier
+autenticado puede hacer `select` sin `where` y recibir TODAS las filas con `is_private=false` (columnas
+seguras del grant de §13-BIS.1b). Eso es literalmente lo que el PO pidió ("tipo Instagram", perfiles
+públicos descubribles) — no se re-decide producto. Lo único que Fable exige es que esa lista NUNCA
+incluya `share_code`/`consent_*`/`birth_date`/`last_active` crudo (ya resuelto en §13-BIS.1b) y que
+NINGÚN menor pueda entrar jamás a esa lista (ya resuelto arriba, con doble candado).
+
+### 13-BIS.4 `follows` (③, forma completa porque gatea DM futuro) y ② `last_active` (ligero)
+
+```sql
+create table public.follows (
+  follower   uuid not null references auth.users(id) on delete cascade,
+  followee   uuid not null references auth.users(id) on delete cascade,
+  state      text not null default 'pending' check (state in ('active','pending')),
+  created_at timestamptz not null default now(),
+  primary key (follower, followee),
+  check (follower <> followee)
+);
+alter table public.follows enable row level security;
+
+create function public._community_follow_state() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+declare tgt_private boolean;
+begin
+  if private._is_blocked(new.follower, new.followee) then raise exception 'blocked'; end if;
+  select is_private into tgt_private from public.community_profiles where user_id = new.followee;
+  if tgt_private is null then raise exception 'no target profile'; end if;
+  new.state := case when tgt_private then 'pending' else 'active' end;   -- SECURITY DEFINER: puede leer is_private de un privado sin que cp_sel se lo permita al cliente
+  return new;
+end $$;
+create trigger trg_follow_state before insert on public.follows
+  for each row execute function public._community_follow_state();
+
+create function public._community_follow_accept() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if old.state = 'pending' and new.state = 'active' then
+    if auth.uid() <> old.followee then raise exception 'only followee accepts'; end if;   -- el solicitante no se auto-aprueba
+    return new;
+  end if;
+  raise exception 'invalid transition';
+end $$;
+create trigger trg_follow_accept before update on public.follows
+  for each row execute function public._community_follow_accept();
+
+create policy fo_sel on public.follows for select using (auth.uid() in (follower, followee));  -- NO enumeración de red ajena
+create policy fo_ins on public.follows for insert with check (follower = auth.uid());
+create policy fo_upd on public.follows for update using (auth.uid() in (follower, followee)) with check (auth.uid() in (follower, followee));
+create policy fo_del on public.follows for delete using (auth.uid() in (follower, followee));  -- unfollow o rechazar/quitar seguidor
+
+revoke all on public.follows from anon, authenticated;
+grant select, insert, update, delete on public.follows to authenticated;
+grant all on public.follows to service_role;
+```
+`fo_sel` deliberadamente NO deja ver la red de un tercero (ni siquiera de un perfil público) — sabes a
+quién sigues tú y quién te sigue a ti, no el grafo ajeno completo (evita el mismo tipo de fuga que
+`_are_friends` ya evitaba para amistades). Si el producto quiere mostrar "1.2k seguidores" en un perfil
+público, eso es un **conteo agregado** vía una función `security definer` que devuelve solo el número,
+nunca la lista — se agrega cuando haga falta, no antes.
+
+**② `last_active` — más ligero, pero con una nota de seguridad que Opus debe respetar:** un timestamp
+CRUDO expuesto en tiempo real reintroduce el MISMO riesgo por el que se retiró `trained_today` (§11:
+"patrones de actividad") — y potencialmente peor, porque es de grano fino ("hace 4 minutos" delata que
+la persona está con el teléfono en la mano AHORA MISMO), mientras que `trained_today` era un booleano
+diario. **Recomendación:** no exponer `last_active` crudo en el grant general en absoluto (ya excluido
+en §13-BIS.1b); en vez de eso, una función chica que devuelve una etiqueta YA redondeada:
+```sql
+create function public.cmty_activity_label(target uuid) returns text
+  language sql stable security invoker set search_path = '' as $$
+  select case
+    when not show_last_active then null
+    when last_active > now() - interval '30 minutes' then 'ahora'
+    when last_active > now() - interval '1 day'       then 'hoy'
+    when last_active > now() - interval '7 days'       then 'esta semana'
+    else 'hace tiempo'
+  end
+  from public.community_profiles where user_id = target;
+$$;  -- security invoker → sigue pasando por cp_sel; si no puedes ver el perfil, tampoco esto
+grant execute on function public.cmty_activity_label(uuid) to authenticated;
+```
+`last_active` en sí lo escribe server-side (la edge `refresh_snapshot` o un `touch` liviano al abrir la
+pestaña — decisión de Opus, sin exponerlo jamás crudo al cliente).
+
+### 13-BIS.5 ④ `community_posts` — ligero, reusa el candado de visibilidad de ③
+
+```sql
+create table public.community_posts (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.community_profiles(user_id) on delete cascade,
+  kind       text not null default 'routine' check (kind in ('routine')),
+  payload    jsonb not null,
+  visible    boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.community_posts enable row level security;
+```
+**Regla de oro: NO se re-inventa la visibilidad.** Extraer la condición de `cp_sel` a un helper
+reusable `private._profile_visible(viewer uuid, owner uuid)` (mismo cuerpo que la `using` de §13-BIS.3)
+y usarlo TAMBIÉN en `community_posts` (`select` permitido si `_profile_visible(auth.uid(), user_id) and
+visible=true`) — si algún día cambia la regla de quién ve a quién, cambia en un solo lugar, no en dos
+policies que se puedan desincronizar (exactamente la clase de bug que la doctrina del proyecto pide
+matar de raíz, no parchar en cada tabla nueva por separado).
+**Validación de payload — allow-list, no deny-list:** un trigger `BEFORE INSERT OR UPDATE` que rechaza
+si `payload` trae cualquier clave fuera de `{name, days, exercises}` y dentro de `exercises[]` cualquier
+clave fuera de `{name, muscle, sets, reps, type}` — nunca intentar bloquear "palabras prohibidas" como
+`peso`/`kg`/`salud` (se evade trivial); solo lo explícitamente permitido puede pasar. `esc()` en `name`
+y en cualquier texto libre al pintarlo (mismo requisito que `handle`/`bio` en C3).
+**Reacciones sobre posts:** reusan `community_reactions.context = post.id::text`; **decisión abierta
+para cuando se construya ④ (no la resuelvo ahora, la marco):** ¿cualquiera que VE el post puede
+reaccionar (más viral, más superficie de spam/acoso) o solo quien sigue al autor / es su amigo/gym-mate
+(más conservador)? Recomiendo lo segundo para el arranque — se puede aflojar después con datos, aflojar
+una policy es reversible y barato; apretarla después de que ya hubo abuso, no tanto.
+
+### 13-BIS.6 Bloqueo corta DM y visibilidad — resumen explícito
+Ya está resuelto por reutilización, no por código nuevo: `private._are_friends` exige `status='accepted'`
+(un bloqueo nunca es `accepted`) y `private._same_community` (desde `c5b`) ya excluye pares con
+`_is_blocked=true` en ambas direcciones. Como `_can_dm` (§13-BIS.2) y la rama de amistad de `cp_sel`
+se apoyan en esos dos helpers, **un bloqueo corta DM Y visibilidad automáticamente, sin condición
+adicional que Opus tenga que acordarse de escribir.** La única rama que el bloqueo NO toca es la
+"pública real" (`is_private=false`) — es decir, si dos desconocidos con perfiles públicos se bloquean,
+el bloqueo NO los hace invisibles entre sí en un directorio público (nadie "oculta" un perfil público
+de un usuario específico sin un mecanismo nuevo). Si el PO quiere que un bloqueo oculte también en la
+rama pública, es una función `private._is_blocked` adicional en esa rama del `cp_sel` — trivial de
+añadir, pero es una decisión de producto ("¿el bloqueo debe ganarle a 'soy público'?") que dejo
+marcada, no resuelta unilateralmente.
+
+### 13-BIS.7 Recordatorio anti-upsert / vías sancionadas (regla del proyecto, repetida a propósito)
+Ninguna tabla de este documento usa `.upsert()` desde el cliente (todas usan INSERT+UPDATE separados
+explícitos), así que el gotcha "upsert exige política SELECT" no aplica hoy — **pero si Opus decide en
+la implementación real usar `.upsert()` en cualquier punto** (por ejemplo, para "marcar todos los
+mensajes de un hilo como leídos" de una vez), esa tabla necesita policies INSERT+UPDATE+**SELECT**, las
+tres, sin excepción (bug real de `push_subscriptions`, 2026-07-12; bug real de `avatars` Storage,
+2026-07-20 — ambos en GOTCHAS VIGENTES). Toda escritura, sin excepción, por `AUTH.client()` — jamás
+`fetch` crudo con `Bearer` extraído a mano (el token se vence y PostgREST lo trata como anónimo).
+
+### 13-BIS.8 Checklist de sabotaje adversarial — Opus DEBE pasar todos antes de declarar ① o ③ "hecho"
+1. Extraño (sin amistad/gym/seguimiento) lee `community_profiles` de alguien con `is_private=true` →
+   0 filas.
+2. Extraño lee el perfil de un MENOR conocido por `user_id` (perfil forzado privado) → 0 filas, aunque
+   el atacante intente forzar `is_private=false` desde su lado (no aplica: RLS es del dueño de la fila).
+3. Cliente intenta `UPDATE`/`INSERT` directo de `birth_date` vía PostgREST → rechazado (sin grant de
+   columna); solo la edge `activate_public_profile` (service_role) escribe esa columna, y solo una vez.
+4. Cliente llama la edge dos veces con fechas de nacimiento distintas (intento de "recalibrarse" adulto
+   después de fijarse menor) → la 2ª llamada rechaza (columna ya no-null).
+5. Cliente intenta `UPDATE is_private=false` en su propia fila siendo menor (o con `birth_date` null) →
+   el trigger lo revierte a `true`; verificar con un `SELECT` posterior, no confiar en la respuesta del
+   `UPDATE`.
+6. Cliente lee `share_code`/`consent_v`/`consent_at`/`birth_date`/`last_active` crudo de OTRO usuario
+   (amigo, gym-mate o desconocido con perfil público) → siempre ausente (columna no seleccionable),
+   incluso pidiendo `select('*')` explícito.
+7. Extraño sin amistad ni gym intenta `INSERT` en `community_messages` hacia cualquiera → rechazado por
+   `_can_dm`. Repetir para el caso "amistad `pending`, no `accepted`" (también debe rechazar).
+8. Usuario A intenta `SELECT` un hilo ajeno (B↔C, sin relación con A) por consulta directa → 0 filas.
+9. **Realtime:** sesión A suscrita SIN FILTRO a `community_messages`; B y C (relacionados entre sí, sin
+   relación con A) intercambian mensajes → A recibe CERO eventos. Repetir con A relacionado con B (SÍ
+   debe recibir) para confirmar que no quedó sobre-restringido.
+10. Usuario bloqueado por su contraparte ya no puede `INSERT` mensajes nuevos hacia quien lo bloqueó,
+    aunque el historial viejo del hilo se conserve legible para ambos.
+11. Receptor de un mensaje intenta `UPDATE` de `text`/`from_user`/`to_user` (no solo `read_at`) →
+    rechazado por grant de columna, aunque `to_user=auth.uid()` pase la policy `using`.
+12. Flood: 40 `INSERT` en <60s desde una cuenta → los últimos rechazan por el trigger de rate-limit.
+13. `follows`: solicitud hacia un perfil privado nace `pending`; el SOLICITANTE no puede pasarla a
+    `active` él mismo (solo el `followee`); usuario bloqueado no puede `INSERT` un follow hacia quien lo
+    bloqueó.
+14. `follows`: A intenta `SELECT` la lista de seguidores/seguidos de un B cualquiera (no A) → 0 filas
+    (ni siquiera si B es público — solo tu propia red).
+15. (cuando exista ④) `community_posts`: extraño sin relación con el autor de un post cuyo perfil es
+    privado → 0 filas; post con `visible=false` → invisible para todos salvo el autor; `INSERT`/`UPDATE`
+    con una clave de payload fuera del allow-list → rechazado por el trigger de validación.
+
+Cada sabotaje se demuestra con dientes (R2.1): romper el candado a propósito, ver el harness/prueba caer
+en rojo, restaurar, ver verde — y REPORTARLO, no solo afirmarlo.
+
+### 13-BIS.9 Veredicto sobre el diseño de Opus (§13.3)
+
+**Apruebo tal cual:**
+- El orden de construcción ①→②→③→④ y que ③ (visibilidad) sea el candado que hace segura a toda la
+  torre — coincide con mi propio análisis.
+- Reutilizar `community_profiles`/`friendships`/`community_reactions`/`community_reports`/
+  `community_gym_members` sin tirar nada — la base de Fase 1/C5 es sólida y sus helpers (`_are_friends`,
+  `_same_community`, `_is_blocked`) son exactamente las piezas correctas para construir `_can_dm` encima
+  sin inventar una relación de confianza nueva.
+- `is_minor` derivado server-side desde fecha de nacimiento, nunca de un campo client-writable — el
+  planteamiento del propio Opus en §13.4 ya apuntaba bien; lo que faltaba era el CÓMO exacto (trigger +
+  función `_is_minor` calculada en vivo, no un booleano estático — ver §13-BIS.3).
+- La recomendación de NO migrar el chat coach↔asesorado ahora (ver §13-BIS.10).
+
+**Corrijo (huecos reales que el borrador de §13.3/13.4 no cerraba):**
+1. **El GRANT de columnas de `community_profiles` no estaba en el radar de Opus** — §13.3③ solo hablaba
+   de la policy de filas (`cp_sel`), pero un grant de tabla completa expone `share_code`/`consent_*`/
+   `birth_date` a cualquier desconocido en cuanto la fila es pública. Esto es el hallazgo más importante
+   de esta sesión (§13-BIS.1b) — sin él, el modelo Instagram filtra la fecha de nacimiento de menores a
+   cualquiera con perfil público visible.
+2. **`is_private default false`** habría sido el error natural al escribir el `ALTER TABLE` sin pensar
+   en las 2 filas ya existentes — corregido a `default true` (§13-BIS.1a).
+3. **`is_minor` como columna estática** (implícito en la redacción de §13.4, "flag `is_minor`
+   (derivado/forzado privado)") se vuelve obsoleta con el tiempo (alguien cumple 18 y queda congelado
+   en `true` para siempre, o un bug la deja en `false`) — reemplazada por cálculo en vivo desde
+   `birth_date` + trigger que es la ÚNICA autoridad sobre `is_private` (§13-BIS.3).
+4. **`last_active` crudo** tal como está descrito en §13.3② (timestamp expuesto, aunque sea "opt-in")
+   reintroduce el riesgo de §11 en versión MÁS fina que `trained_today` — corregido a etiqueta
+   pre-redondeada server-side, nunca el timestamp exacto (§13-BIS.4).
+5. **`follows` sin candado explícito de enumeración** — §13.4 no especificaba quién puede leer la LISTA
+   de seguidores de un tercero; sin restringirlo, cualquiera con perfil público expone su red social
+   completa a cualquier desconocido, lo cual NO fue pedido por el PO (pidió perfiles públicos y seguir,
+   no un grafo social público). `fo_sel` restringido a "tu propia fila del grafo" (§13-BIS.4).
+6. **DM gateado por relación existente, no por "cualquiera te puede escribir"** — §13.3① lo dejaba como
+   pregunta abierta para mí ("a definir con Fable"); la respondo: para el slice ① (sin follows aún) el
+   único universo seguro es amistad-aceptada O mismo-gym. Cuando ③ construya `follows`, la ampliación a
+   DM-por-seguimiento debe ser **seguimiento MUTUO** (ambos se siguen activamente), nunca "cualquiera
+   que te sigue" — con adolescentes reales de 16-17 años en la base, un modelo de "cualquier seguidor te
+   puede escribir" es una superficie de acoso que no hace falta abrir; MUTUO da casi todo el valor social
+   con mucho menos riesgo. Esta ampliación específica se re-estipula cuando llegue la sesión de ③, no se
+   decide sola en la implementación.
+7. **`role` en `community_profiles`** no existía en el diseño de Opus, pero "perfil de coach público"
+   (③) es imposible de renderizar correctamente sin él: `user_data.role` no es legible por un
+   desconocido (RLS de `user_data` es estrictamente `auth.uid()=user_id OR =coach_id`), así que sin una
+   copia denormalizada y server-set en `community_profiles`, Opus habría tenido que inventar una fuente
+   de verdad insegura (o el cliente autodeclarándose "coach", que es exactamente la clase de bug F7).
+   Añadida como columna server-set-only (§13-BIS.3).
+
+**Ninguna parte del diseño del PO es "peligrosa sin candado" tal como está escrito en §13.0** — el
+modelo elegido (público-por-defecto + privado opcional + menor forzado-privado-no-descubrible +
+publicar-rutina-opt-in + última-conexión-opt-in) es exactamente la forma correcta de dar lo que pidió
+sin reabrir los riesgos que el propio PO vetó en C5 (mujeres/menores). El trabajo de esta sesión fue
+cerrar los huecos de EJECUCIÓN de ese modelo (grant de columnas, default seguro, candado de menor
+infalsificable-y-no-obsoleto, alcance de `last_active`, alcance de `follows`), no cambiar la decisión.
+
+### 13-BIS.10 Recomendación explícita — el chat coach↔asesorado (`ax_m`) NO se migra ahora
+
+**NO migrar** el chat existente (blob `ax_m` dentro de `apex_data`/`user_data.msgs`, sondeado cada 15s
+por `pollMessages` en `app-1-infra.js`) al modelo nuevo de filas (`community_messages`) en este ciclo.
+Razones, en orden de peso:
+1. **Es zona caliente con usuarios reales dependiendo de ella HOY** (21 asesorados + el coach, canal
+   primario de comunicación). `community_messages` es código nuevo sin historial en producción — mezclar
+   la migración de un sistema que YA funciona con la construcción de uno nuevo multiplica el radio de
+   una falla en el peor lugar posible (mensajería).
+2. **Viola R1.1 (`docs/reglas-opus.md`): "un feature = un commit... cero refactors de paso en zonas
+   calientes"** — migrar el chat del coach es un refactor de una feature que YA está terminada y en uso,
+   no parte del pedido del PO (que pidió comunidad tipo red social, no "arreglar el chat del coach").
+3. **El chat coach↔asesorado tiene semántica distinta** (1 coach : muchos asesorados, ligado a
+   membresía/`coach_id`, offline-first con el resto de `apex_data`) que no encaja limpio en un modelo
+   par-a-par simétrico como `community_messages` (pensado para amigos/gym-mates, sin noción de
+   coach/cliente ni de plan). Forzar ambos en la misma tabla ahora obligaría a re-derivar la RLS del
+   chat del coach — la superficie más usada de la app — dentro del mismo ciclo que abre la RLS más
+   ancha que el proyecto ha tocado. Dos cambios de alto riesgo en un commit es exactamente lo que la
+   doctrina prohíbe.
+4. Migrar DESPUÉS, con su propio harness dedicado y su propio ciclo Fable-planifica/Opus-ejecuta/
+   Fable-verifica, es reversible y de bajo riesgo comparado con hacerlo ahora. La recomendación de Opus
+   en el propio §13.3① coincidía con esto — la confirmo como la decisión técnica correcta, no una que
+   necesite reabrirse.
+
+### 13-BIS.11 Próximo paso de Opus
+Un commit de MIGRACIÓN (`c6_community_messages` o similar) con exactamente el DDL de §13-BIS.2, en
+proyecto de PRUEBA primero si hay uno disponible (si no, aplicar en prod con las tablas verificadas
+vacías — `community_messages` nace vacía por definición, cero riesgo de backfill). Un commit de FRONTEND
+separado (UI del chat + suscripción Realtime + `AUTH.client()`, nunca fetch crudo) — **migración y
+frontend NUNCA en el mismo commit** (patrón ya establecido en C3.1 de este mismo doc). Harness NUEVO
+dedicado con los sabotajes 1-12 de §13-BIS.8 que aplican a ①. Suite antes y después. **NO tocar
+`community_profiles`/`follows`/`community_posts` en este ciclo** — esos son de la sesión de ③, que
+Fable ya dejó estipulada arriba para cuando llegue, pero que Opus NO debe adelantar sin que esa sesión
+tenga su propio veredicto de Fable después de construida (mismo patrón que C1→C2→C3→C4→C5).
