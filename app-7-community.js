@@ -39,6 +39,12 @@ const CMTY = {
   offline: false,
   _resolved: null,   // perfil resuelto por código, a la espera de "enviar solicitud"
   _confirmLeave: false,
+  // ① CHAT EN VIVO (DMs Realtime, community_messages)
+  dmThreads: [],     // bandeja: [{uid, prof, last, at, unread, lastFromMe}] orden por reciente
+  dmUnread: 0,       // total de mensajes sin leer (badge de la bandeja)
+  dmOpen: null,      // uid del hilo abierto (o null)
+  dmMsgs: [],        // mensajes del hilo abierto (asc por fecha)
+  dmSub: null,       // canal Realtime (una sola suscripción)
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -117,13 +123,14 @@ async function cmtyLoad(opts){
         .filter(x => x.prof); // si el perfil no vino (el amigo salió), lo omito
       const { data: rx } = await cli.from('community_reactions').select('from_user,to_user,kind').or('from_user.eq.' + uid + ',to_user.eq.' + uid);
       (rx || []).forEach(r => { if(r.from_user === uid) CMTY.heartsGiven[r.to_user] = true; if(r.to_user === uid) CMTY.heartsRecv++; });
+      await _cmtyLoadDMs(cli, uid); // ① bandeja de mensajes (community_messages)
     }
     CMTY.loaded = true;
     _cmtySaveCache();
   }catch(e){ _cw()('cmtyLoad:', e && e.message); CMTY.offline = true; _cmtyLoadCache(); }
   finally{
     CMTY.busy = false; CMTY.loading = false; _cmtyPaint();
-    if(CMTY.profile && !CMTY.offline) cmtyMaybeRefresh();
+    if(CMTY.profile && !CMTY.offline){ cmtyMaybeRefresh(); cmtyDmSubscribe(); }
   }
 }
 
@@ -171,6 +178,7 @@ function _cmtyPaint(){
   host.innerHTML = _cmtyHead() +
     (CMTY.offline ? _cmtyStaleBanner() : '') +
     _cmtyMyProfileHtml() +
+    _cmtyInboxHtml() +
     _cmtyAddHtml() +
     _cmtyRequestsHtml() +
     _cmtyGymHtml() +
@@ -386,6 +394,8 @@ async function cmtyLeave(){
     const { error } = await cli.from('community_profiles').delete().eq('user_id', uid);
     if(error) throw error;
     try{ localStorage.removeItem('ax_cmty_cache'); }catch(e){}
+    cmtyDmUnsubscribe();
+    CMTY.dmThreads = []; CMTY.dmUnread = 0; CMTY.dmOpen = null; CMTY.dmMsgs = [];
     toast('Saliste de la comunidad.');
     await cmtyLoad();
   }catch(e){ toast('No se pudo salir. Intenta de nuevo.'); }
@@ -493,6 +503,8 @@ function _cmtyGymHtml(){
         '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + '</div>' +
       '</div>' +
+      '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + p.user_id + '\')" title="Chatear" aria-label="Chatear">' +
+        (typeof aviIcon === 'function' ? aviIcon('chat', 15) : '💬') + '</button>' +
       '<button class="btn bp bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyGymAdd(\'' + p.user_id + '\')">Agregar</button>' +
     '</div>';
   });
@@ -536,6 +548,8 @@ function _cmtyFriendCard(f){
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem</div>' +
         '<div style="font-size:11.5px;margin-top:1px">' + today + (fresh.fresh ? '' : ' <span style="color:var(--t3)">· dato viejo</span>') + '</div>' +
       '</div>' +
+      '<button class="btn bg bsm" style="min-height:38px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + f.fid + '\')" title="Chatear" aria-label="Chatear">' +
+        (typeof aviIcon === 'function' ? aviIcon('chat', 16) : '💬') + '</button>' +
       '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:38px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyHeart(\'' + f.fid + '\')" title="Enviar ❤️">' +
         (typeof aviIcon === 'function' ? aviIcon('heart', 16) : '❤️') + '</button>' +
     '</div>' +
@@ -595,4 +609,225 @@ async function cmtyReport(userId, frId){
     toast('Gracias. Lo revisaremos y bloqueamos a esta persona.');
     await cmtyLoad();
   }catch(e){ toast(_cmtyErr(e)); }
+}
+
+// ══════════ ① CHAT EN VIVO (DMs Realtime) ══════════
+// Backend: community_messages. La RLS (cm_sel) solo deja ver/recibir hilos donde soy from/to;
+// cm_ins exige _can_dm (amistad 'accepted' O mismo gym). Realtime evalúa cm_sel POR suscriptor
+// → un extraño no recibe eventos de hilos ajenos (probado a nivel DB, §13-BIS.8 #8/#9). Toda
+// escritura por AUTH.client() (JWT real, se refresca solo) y SELLADA en localhost (_cmtySealed).
+
+// Universo de DM (amigos + compañeros de gym) → lookup uid→perfil para pintar hilos.
+function _cmtyProfById(){
+  const m = {};
+  CMTY.friends.forEach(f => { if(f.prof) m[f.fid] = f.prof; });
+  CMTY.gym.forEach(p => { if(p && p.user_id) m[p.user_id] = p; });
+  if(CMTY.profile && CMTY.uid) m[CMTY.uid] = CMTY.profile;
+  return m;
+}
+
+// Carga la BANDEJA: agrupa mis mensajes por interlocutor (último + no leídos). Determinista.
+async function _cmtyLoadDMs(cli, uid){
+  CMTY.dmThreads = []; CMTY.dmUnread = 0;
+  const { data, error } = await cli.from('community_messages')
+    .select('id,from_user,to_user,text,created_at,read_at')
+    .or('from_user.eq.' + uid + ',to_user.eq.' + uid)
+    .order('created_at', { ascending: false }).limit(300);
+  if(error){ _cw()('cmty dm load:', error && error.message); return; }
+  const byPeer = {};
+  (data || []).forEach(m => {
+    const peer = m.from_user === uid ? m.to_user : m.from_user;
+    if(!byPeer[peer]) byPeer[peer] = { uid: peer, last: m.text, at: m.created_at, unread: 0, lastFromMe: m.from_user === uid };
+    if(m.to_user === uid && !m.read_at) byPeer[peer].unread++;
+  });
+  const prof = _cmtyProfById();
+  CMTY.dmThreads = Object.keys(byPeer).map(p => Object.assign(byPeer[p], { prof: prof[p] || null }))
+    .sort((a, b) => (a.at < b.at ? 1 : -1));
+  CMTY.dmUnread = CMTY.dmThreads.reduce((s, t) => s + t.unread, 0);
+}
+
+// Bandeja (card en la pestaña Comunidad, tras mi perfil).
+function _cmtyInboxHtml(){
+  const n = CMTY.dmThreads.length;
+  let h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (n ? '10px' : '3px') + '">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px">' +
+        (typeof aviIcon === 'function' ? aviIcon('chat', 16) : '💬') + ' Mensajes</div>' +
+      (CMTY.dmUnread ? '<span style="background:var(--g);color:#fff;font-size:11px;font-weight:800;border-radius:10px;padding:1px 8px">' + CMTY.dmUnread + ' sin leer</span>' : '') +
+    '</div>';
+  if(!n){
+    return h + '<div style="font-size:12px;color:var(--t3);line-height:1.5">Aún no tienes conversaciones. Toca a un amigo o a alguien de tu gym para escribirle.</div></div>';
+  }
+  CMTY.dmThreads.forEach(t => {
+    const name = esc((t.prof && t.prof.handle) || 'Alguien');
+    const prev = esc((t.lastFromMe ? 'Tú: ' : '') + (t.last || '').slice(0, 46));
+    h += '<div class="tap" style="display:flex;align-items:center;gap:11px;padding:8px 0;cursor:pointer" onclick="cmtyChatOpen(\'' + t.uid + '\')">' +
+      _cmtyAvatarHtml(t.prof || {}, 42) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:' + (t.unread ? '800' : '700') + ';color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</div>' +
+        '<div style="font-size:12px;color:' + (t.unread ? 'var(--t1)' : 'var(--t2)') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + prev + '</div>' +
+      '</div>' +
+      (t.unread ? '<span style="background:var(--g);width:9px;height:9px;border-radius:50%;flex:0 0 auto"></span>' : '<span style="color:var(--t3);flex:0 0 auto">›</span>') +
+    '</div>';
+  });
+  return h + '</div>';
+}
+
+// Avatar del encabezado del chat (div .cchat-av): imagen si hay, si no iniciales.
+function _cmtyChatBarAvatar(el, prof){
+  if(!el) return;
+  const url = prof && prof.avatar_url;
+  if(typeof cmtyAvatarOk === 'function' && cmtyAvatarOk(url)){
+    el.style.backgroundImage = 'url("' + encodeURI(url) + '")';
+    el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = '';
+  }else{
+    el.style.backgroundImage = 'none';
+    el.textContent = (typeof cmtyInitials === 'function' ? cmtyInitials(prof && prof.handle) : '?');
+  }
+}
+
+// Abre el hilo con un interlocutor (amigo o compañero de gym).
+async function cmtyChatOpen(peerUid){
+  if(!peerUid) return;
+  const prof = _cmtyProfById()[peerUid] || null;
+  CMTY.dmOpen = peerUid;
+  _cmtyChatBarAvatar(document.getElementById('cmtychat-av'), prof);
+  const nm = document.getElementById('cmtychat-name'); if(nm) nm.textContent = (prof && prof.handle) || 'Chat'; // textContent → sin XSS
+  const sub = document.getElementById('cmtychat-sub'); if(sub) sub.textContent = prof ? ('Racha ' + (prof.streak_weeks || 0) + ' sem · Nivel ' + (prof.level || 1)) : '';
+  const con = document.getElementById('cmtychat-thread'); if(con) con.innerHTML = '<div class="cchat-empty">Cargando…</div>';
+  const el = document.getElementById('cmty-chat');
+  if(el){ if(!el.classList.contains('on')) navOpenLayer(); el.classList.add('on'); }
+  const ta = document.getElementById('cmtychat-in'); if(ta){ ta.value = ''; ta.style.height = 'auto'; }
+  await _cmtyChatLoadThread(peerUid, true);
+}
+
+async function _cmtyChatLoadThread(peerUid, toBottom){
+  const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid();
+  if(!cli || !uid){ const con = document.getElementById('cmtychat-thread'); if(con) con.innerHTML = '<div class="cchat-empty">Conéctate para ver este chat.</div>'; return; }
+  const { data, error } = await cli.from('community_messages')
+    .select('id,from_user,to_user,text,created_at,read_at')
+    .or('and(from_user.eq.' + uid + ',to_user.eq.' + peerUid + '),and(from_user.eq.' + peerUid + ',to_user.eq.' + uid + ')')
+    .order('created_at', { ascending: true }).limit(500);
+  if(error){ _cw()('cmty thread:', error && error.message); }
+  CMTY.dmMsgs = data || [];
+  _cmtyChatRender(toBottom);
+  _cmtyChatMarkRead();
+}
+
+function _cmtyChatRender(toBottom){
+  const con = document.getElementById('cmtychat-thread'); if(!con) return;
+  const uid = CMTY.uid;
+  const nearBottom = toBottom || con.scrollHeight <= con.clientHeight || (con.scrollHeight - con.clientHeight - con.scrollTop) <= 48;
+  const prevTop = con.scrollTop;
+  if(!CMTY.dmMsgs.length){ con.innerHTML = '<div class="cchat-empty">Aún no hay mensajes.<br>Escríbele el primero 👇</div>'; return; }
+  con.innerHTML = '';
+  CMTY.dmMsgs.forEach(m => {
+    const mine = m.from_user === uid;
+    const b = document.createElement('div'); b.className = 'mb ' + (mine ? 'cs' : 'cl'); b.textContent = m.text || ''; con.appendChild(b); // textContent → sin XSS
+    const t = document.createElement('div'); t.className = 'mt' + (mine ? ' r' : '');
+    let meta = (typeof fmtD === 'function' ? fmtD(m.created_at) : '') + ' ' + (typeof fmtT === 'function' ? fmtT(m.created_at) : '');
+    if(mine && m.read_at) meta += ' · leído';
+    t.textContent = meta; con.appendChild(t);
+  });
+  con.scrollTop = nearBottom ? con.scrollHeight : prevTop;
+}
+
+// Marca como leídos los mensajes entrantes del hilo abierto (única columna client-writable: read_at).
+async function _cmtyChatMarkRead(){
+  const uid = CMTY.uid; const peer = CMTY.dmOpen; if(!peer || !uid) return;
+  const unreadIds = CMTY.dmMsgs.filter(m => m.to_user === uid && !m.read_at).map(m => m.id);
+  if(!unreadIds.length) return;
+  if(_cmtySealed()) return;
+  try{
+    const cli = _cmtyClient(); if(!cli) return;
+    const now = new Date().toISOString();
+    const { error } = await cli.from('community_messages').update({ read_at: now }).in('id', unreadIds);
+    if(error) throw error;
+    CMTY.dmMsgs.forEach(m => { if(unreadIds.indexOf(m.id) >= 0) m.read_at = now; });
+    const th = CMTY.dmThreads.find(t => t.uid === peer);
+    if(th){ CMTY.dmUnread -= th.unread; if(CMTY.dmUnread < 0) CMTY.dmUnread = 0; th.unread = 0; }
+  }catch(e){ _cw()('cmty markread:', e && e.message); }
+}
+
+async function cmtyChatSend(){
+  const ta = document.getElementById('cmtychat-in'); const text = (ta && ta.value || '').trim();
+  const peer = CMTY.dmOpen; if(!text || !peer) return;
+  if(text.length > 2000){ toast('Mensaje muy largo (máx. 2000 caracteres).'); return; }
+  if(_cmtySealed()){ toast('🔒 (dev) chat sellado en localhost'); return; }
+  const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+  if(ta) ta.disabled = true;
+  try{
+    const { data, error } = await cli.from('community_messages').insert({ from_user: uid, to_user: peer, text: text }).select().single();
+    if(error) throw error;
+    if(ta){ ta.value = ''; ta.style.height = 'auto'; }
+    if(data){ CMTY.dmMsgs.push(data); _cmtyChatRender(true); _cmtyDmBumpInbox(data); }
+  }catch(e){ toast(_cmtyErr(e)); }
+  finally{ if(ta){ ta.disabled = false; ta.focus(); } }
+}
+
+function cmtyChatClose(){ navCloseLayer(_cmtyChatClose); }
+function _cmtyChatClose(){
+  const el = document.getElementById('cmty-chat'); if(el) el.classList.remove('on');
+  CMTY.dmOpen = null; CMTY.dmMsgs = [];
+  _cmtyPaint(); // refresca la bandeja (no leídos actualizados)
+}
+
+// ── Realtime ──────────────────────────────────────────────────────────────
+// Actualiza estado/UI con un evento. Puro sobre CMTY + repinta lo visible. La RLS ya filtró
+// (solo llegan filas donde soy from/to); el guard de uid es defensa en profundidad.
+function cmtyDmRealtime(payload){
+  try{
+    const uid = CMTY.uid; if(!uid || !payload) return;
+    const ev = payload.eventType || payload.type;
+    const row = payload.new || payload.old; if(!row) return;
+    if(row.from_user !== uid && row.to_user !== uid) return;
+    const peer = row.from_user === uid ? row.to_user : row.from_user;
+    if(ev === 'INSERT'){
+      if(CMTY.dmOpen === peer){
+        if(!CMTY.dmMsgs.some(m => m.id === row.id)){ CMTY.dmMsgs.push(row); _cmtyChatRender(); }
+        if(row.to_user === uid) _cmtyChatMarkRead();
+      }else{
+        _cmtyDmBumpInbox(row);
+      }
+      if(!CMTY.dmOpen) _cmtyPaint(); // en la lista: refresca bandeja + badge
+    }else if(ev === 'UPDATE'){
+      // acuse de leído de un mensaje MÍO
+      if(CMTY.dmOpen === peer){
+        const m = CMTY.dmMsgs.find(x => x.id === row.id);
+        if(m){ m.read_at = row.read_at; _cmtyChatRender(); }
+      }
+    }
+  }catch(e){ _cw()('cmty rt:', e && e.message); }
+}
+
+// Sube un mensaje a la parte alta de la bandeja (sin re-consultar la nube).
+function _cmtyDmBumpInbox(row){
+  const uid = CMTY.uid; const peer = row.from_user === uid ? row.to_user : row.from_user;
+  let th = CMTY.dmThreads.find(t => t.uid === peer);
+  if(!th){ th = { uid: peer, prof: _cmtyProfById()[peer] || null, last: '', at: row.created_at, unread: 0, lastFromMe: false }; CMTY.dmThreads.push(th); }
+  th.last = row.text; th.at = row.created_at; th.lastFromMe = row.from_user === uid;
+  if(!th.prof) th.prof = _cmtyProfById()[peer] || null;
+  if(row.to_user === uid && CMTY.dmOpen !== peer){ th.unread++; CMTY.dmUnread++; }
+  CMTY.dmThreads.sort((a, b) => (a.at < b.at ? 1 : -1));
+}
+
+function cmtyDmSubscribe(){
+  if(CMTY.dmSub || !CMTY.profile) return;
+  const cli = _cmtyClient(); if(!cli || !cli.channel) return;
+  try{
+    CMTY.dmSub = cli.channel('cmty-dm-' + (CMTY.uid || 'me'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_messages' }, cmtyDmRealtime)
+      .subscribe();
+  }catch(e){ _cw()('cmty subscribe:', e && e.message); }
+}
+function cmtyDmUnsubscribe(){
+  try{ if(CMTY.dmSub){ const cli = _cmtyClient(); if(cli && cli.removeChannel) cli.removeChannel(CMTY.dmSub); CMTY.dmSub = null; } }catch(e){}
+}
+
+// Exports para el harness (Node no carga este archivo, pero CDP evalúa contra window).
+if(typeof window !== 'undefined'){
+  window.cmtyChatOpen = cmtyChatOpen; window.cmtyChatSend = cmtyChatSend;
+  window.cmtyChatClose = cmtyChatClose; window._cmtyChatClose = _cmtyChatClose;
+  window.cmtyDmRealtime = cmtyDmRealtime; window._cmtyLoadDMs = _cmtyLoadDMs;
+  window._cmtyInboxHtml = _cmtyInboxHtml; window._cmtyDmBumpInbox = _cmtyDmBumpInbox;
 }

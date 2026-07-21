@@ -735,6 +735,11 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
    (showScreen quita .on del login), donde sí tiene sentido sobre el bottom-nav.
    #install-banner/#ios-install-banner van DESPUÉS de #s-login en el DOM → hermano ~. */
 #s-login.on~#install-banner,#s-login.on~#ios-install-banner{display:none!important}
+/* Con un chat de pantalla completa abierto (.cchat.on = chat del coach O DMs de comunidad ①),
+   la píldora flotante se encimaba sobre el hilo/composer. Ocultarla mientras haya un .cchat
+   abierto; reaparece sola al cerrarlo. Arregla ambos chats de una (defecto preexistente del
+   chat del coach + el nuevo de comunidad). */
+body:has(.cchat.on) #install-banner,body:has(.cchat.on) #ios-install-banner{display:none!important}
 .sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
 .sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg);border-bottom:1px solid var(--br)}

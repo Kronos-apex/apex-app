@@ -1151,6 +1151,9 @@ function _aviCloseTopOverlay(){
   // Chat de pantalla completa del coach (v321): overlay de tope del lado coach → se cierra primero.
   const cch=document.getElementById('coach-chat');
   if(cch&&cch.classList.contains('on')){ if(typeof _closeCoachChat==='function')_closeCoachChat(); else cch.classList.remove('on'); return true; }
+  // Chat en vivo de comunidad (① DMs, lado asesorado) — overlay de tope, se cierra primero.
+  const cmc=document.getElementById('cmty-chat');
+  if(cmc&&cmc.classList.contains('on')){ if(typeof _cmtyChatClose==='function')_cmtyChatClose(); else cmc.classList.remove('on'); return true; }
   // El lightbox (foto/video ampliado) se abre ENCIMA de la ficha de ejercicio → se cierra
   // PRIMERO. Regresión cazada en la auditoría 2026-07-01: al mover la ficha al tope
   // (caso ficha-sobre-habitación) el atrás cerraba la ficha POR DEBAJO del lightbox y
