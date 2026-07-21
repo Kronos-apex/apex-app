@@ -1557,3 +1557,251 @@ extraño) y vi la fuga real del timestamp, luego confirmé que revertir el grant
 en cada paso. Frontend sin scope creep, columnas explícitas completas, opt-in default OFF respetado.
 Sin correcciones pendientes — nada que devolver a Opus en este slice. Orden restante de Comunidad v2:
 ③ perfil de coach + seguir → ④ feed.
+
+---
+
+## 16. VEREDICTO DE FABLE — ARCO ③ COMPLETO: PERFIL PÚBLICO + PROTECCIÓN DE MENORES + SEGUIR (avi-v381)
+
+Verificación adversarial independiente de los 5 commits del arco ③ (`20391a1` ③a · `12054ce` ③b ·
+`bdb3571` ③c-1 · `396c100` ③c-2 · `45568cf` ③c-3), sondeada desde cero contra la base real de
+producción (`eoebhrxbokyllqalyecj`), sin confiar en lo reportado por Opus. Fuente del encargo:
+`docs/plan-comunidad.md` §13-BIS.1a/.1b/.3/.4/.5. Este es el ensanchamiento de visibilidad más grande
+del proyecto ("solo amigos/gym" → "público salvo cuenta privada; menor ⇒ forzado privado y no
+descubrible") y hay **menores reales de 16-17 años** en la base — la barra de esta verificación fue la
+más alta posible.
+
+### 16.1 Desviación F7 (`role` NO se deriva de `user_data.role`) — reconfirmada, no solo releída
+
+Repetí la prueba de Opus por mi cuenta: `user_data.role` acepta `UPDATE` desde el cliente sin ninguna
+restricción de columna adicional (confirmado leyendo `user_data_update` — `qual`/`with_check` solo
+exigen `auth.uid() IN (user_id, coach_id)`, sin cláusula sobre la columna `role`) — cualquier asesorado
+puede auto-nombrarse `'coach'` con un PATCH directo. Reconfirmado que **ninguna vía de cliente** puede
+tocar `community_profiles.role`: el grant de columnas de `c10_grant_hardening` (verificado contra
+`information_schema.column_privileges` en vivo) da `SELECT` sobre `role` a `authenticated` pero
+**ningún `UPDATE`** — solo `is_private` tiene grant de escritura para el cliente. Verifiqué con dientes
+en la prueba viva de la edge (§16.4): un usuario QA desechable **sin asesorados** activó su perfil y
+recibió `role:'client'`; luego intenté `PATCH community_profiles?role=eq.coach` directo con su propio
+token → **rechazado** (sin grant de columna, ni siquiera error de RLS de fila — error de permiso de
+columna, más fuerte). Y un usuario QA **con un asesorado real** (`user_data.coach_id` apuntando a él
+desde otra fila, sembrado vía el propio patrón client-writable de F7 — el "asesorado" se auto-asignó
+ese `coach_id`, que es legítimamente client-writable para *esa* columna, no para `role`) recibió
+`role:'coach'` de la edge. Los tres puntos que pedía el encargo — (a) reconfirmar client-writable, (b)
+ninguna vía cliente obtiene `role='coach'`, (c) la edge da `'coach'`/`'client'` correctamente — quedan
+probados con actores reales y con un usuario QA desechable de punta a punta.
+
+### 16.2 `cmty_my_secrets` DEFINER — acotada, no una puerta trasera
+
+Función `security definer` con `where user_id = auth.uid()` como única condición — no hay parámetro de
+entrada que un cliente pueda variar para pedir el secreto de otro (a diferencia de
+`resolve_share_code(code)`, que sí recibe un argumento pero está limitado por su propio rate-limit).
+Leí el cuerpo: no hay forma de inyectar un `user_id` distinto porque la función no lo acepta como
+parámetro, lo toma de `auth.uid()` de la sesión que la invoca. Confirmé en la matriz de sabotaje
+(§16.3, extraño intentando leer `share_code`/`consent_*` de F1) que la ruta cruda (`select share_code
+from community_profiles`) da `permission denied`; la RPC `cmty_my_secrets()` invocada por un extraño
+solo puede devolver SUS PROPIOS secretos (o fila vacía si no tiene perfil) — nunca los de otro, porque
+la cláusula `where` está fija en el cuerpo de la función, no es una entrada del cliente.
+
+### 16.3 `_profile_visible` unificado — ② no se rompió
+
+Releí `cmty_activity_labels` post-③a: el `left join ... and private._profile_visible(auth.uid(),
+t.target)` reemplazó el chequeo inline (self/amigo/gym) por el helper nuevo, que es ese MISMO chequeo
+más la rama pública nueva (`is_private=false and not is_minor`). Esto **añade** casos donde antes daba
+`null` (perfiles públicos ahora sí revelan su etiqueta de última conexión a un desconocido, si
+`show_last_active=true`) pero **no quita** ninguno de los casos que el ② ya garantizaba (self/amigo/gym
+siguen intactos porque son los primeros 3 términos del `OR`, idénticos a antes). Re-corrí
+`_verify-lastactive.mjs` completo → **14/14**, sin regresión. Esto es el comportamiento correcto y
+esperado del giro "tipo Instagram": si un perfil se hace público, su última conexión (si optó por
+mostrarla) también se vuelve visible a cualquiera — coherente con que su handle/racha/nivel ya lo son.
+
+### 16.4 ★ PRUEBA VIVA de `activate_public_profile` — la que Opus no pudo hacer
+
+Monté sesiones reales de punta a punta: 4 usuarios QA desechables creados vía Admin API
+(`auth.admin.createUser`, service_role de `~/.avi/service-role.key`) + password grant real +
+PostgREST + invocación real del endpoint `https://eoebhrxbokyllqalyecj.functions.supabase.co/
+activate_public_profile`. Los 14 checks, contra la edge VIVA en producción (no un mock):
+
+| Prueba | Resultado |
+|---|---|
+| Adulto, sin fecha aún | `needs_birthdate:true` ✅ |
+| Adulto, fecha 1990-06-15 | `is_minor:false` ✅ |
+| Adulto sin asesorados | `role:'client'` ✅ |
+| Cliente hace `PATCH is_private=false` tras la edge | 200, releído en DB confirma `is_private=false` ✅ |
+| **WRITE-ONCE:** 2ª llamada con fecha DISTINTA (2015) | `already:true`, `is_minor` sigue el ORIGINAL (false) ✅ |
+| `birth_date` en DB tras la 2ª llamada | **sigue siendo `1990-06-15`** (no se recalibró) ✅ |
+| Menor, fecha 2012-01-01 (~13-14 años) | `is_minor:true` ✅ |
+| Trigger ya dejó `is_private=true` tras la edge (antes de que el cliente intente nada) | ✅ |
+| Menor hace `PATCH is_private=false` | el PATCH en sí no da error, pero el **SELECT posterior** confirma `is_private` **sigue `true`** (no confié en la respuesta del PATCH, como exige la doctrina) ✅ |
+| Usuario QA con 1 asesorado real (`user_data.coach_id` apuntando a él) | edge devuelve `role:'coach'` ✅ |
+| Usuario QA sin asesorados | edge devuelve `role:'client'` ✅ |
+| Cliente intenta `PATCH role=eq.coach` directo | rechazado (sin grant de columna) ✅ |
+
+**14/14.** Limpieza: los 4 usuarios QA (`fable-qa-*@apex-test.invalid`) borrados vía Admin API al
+cerrar; confirmado en DB `select count(*) from community_profiles where handle like 'QA %'` → **0**
+residuos, y `user_data` sin filas huérfanas (cascada `on delete cascade` de `auth.users` limpió
+`community_profiles`; la fila `user_data` del "lead" se borró junto con su propio usuario, liberando la
+FK `no action` de `coach_id` antes de borrar al "coach" QA — orden de borrado verificado sin error).
+
+### 16.5 Matriz de sabotajes DB (tx→rollback única, actores reales + 1 menor real + 1 extraño real)
+
+Actores: F1=Camilo (`0a6484ed…`, coach real, perfil público adulto real en prod) · F2=Samuel
+(`31bf6d19…`, amigo `accepted` de F1, perfil privado) · extraño=nataly (`6e54e22b…`, se le quitó su
+membresía real de `community_gym_members` con F1 **dentro de la misma tx** para que quedara extraña de
+verdad, como exigía el encargo — sin esto comparte gym con F1 y con F2) · menor=Sharith Sofía
+(`1f4f6a74…`, 16 años reales, asesorada real de Camilo; recibió una fila `community_profiles` temporal
+solo para esta transacción). Todo en **una sola** transacción con `ROLLBACK` final.
+
+| # | Prueba | Resultado |
+|---|---|---|
+| #1 | Extraño lee perfil PRIVADO (Samuel) | 0 filas ✅ |
+| #2 | Extraño lee perfil de MENOR (Sharith) | 0 filas ✅ |
+| #3 | Extraño lee `birth_date` crudo de perfil PÚBLICO (F1) | `permission denied` ✅ |
+| #6a | Extraño lee `share_code` crudo (perfil público) | `permission denied` ✅ |
+| #6b | Extraño lee `consent_v`/`consent_at` crudos | `permission denied` ✅ |
+| #6c | Extraño hace `select(*)` explícito sobre perfil público | `permission denied` (columnas ocultas, ni con `*`) ✅ |
+| #5 | Menor hace `UPDATE is_private=false` | el UPDATE no da error, pero el **SELECT posterior** confirma `is_private` sigue `true` ✅ |
+| #13a | Extraño sigue a un PRIVADO (Samuel) | nace `pending` ✅ |
+| #13b | El SOLICITANTE (extraño) intenta pasar su propia solicitud a `active` | rechazado (`only followee accepts`) ✅ |
+| control | El FOLLOWEE real (Samuel) SÍ aprueba `pending→active` | ✅ (positivo, no quedó sobre-restringido) |
+| #13c | Un BLOQUEADO (F1 bloquea al extraño, sembrado en la misma tx) intenta `INSERT` un follow hacia F1 | rechazado (`blocked`) ✅ |
+| #14 | Extraño lee un par `follows` REAL sembrado (F1→F2, no es parte) | 0 filas — confirmado que la fila SÍ existía (control vía `postgres`, para que el 0 no sea un falso-positivo de tabla vacía) ✅ |
+| EXTRA | Trigger de menor **con dientes**: deshabilitado, la menor SÍ logra ponerse pública (`is_private=false` real) → confirma que la protección depende de verdad del trigger, no es decorativa | ✅ (reactivado después, vuelve a forzar `true`) |
+| EXTRA | Grant hardening **con dientes**: re-otorgado el SELECT ancho de tabla completa → el AMIGO (Samuel, quien SÍ ve la fila por `cp_sel`) leyó `birth_date`/`share_code` de F1 reales | ✅ fuga reproducida, confirmando que el grant de `c10` es load-bearing; grant restaurado → el mismo amigo vuelve a recibir `permission denied` |
+
+**18/18.** Prod confirmada limpia tras el `ROLLBACK`: `community_profiles` sin filas de prueba (`handle
+like '%fable-test%'` → 0), membresía de gym de nataly restaurada (`community_gym_members` → 23 filas,
+la suya presente), `friendships` sin fila `blocked` residual, `follows` de vuelta a como estaba, grant
+de columnas idéntico al de `c10` (verificado columna por columna post-rollback), `is_private`/`role`/
+`birth_date` de F1 y F2 en su valor real original. **Nota metodológica:** a mitad de la verificación
+encontré `community_profiles` con 3 filas en vez de las 2 esperadas y, antes de investigarlo a fondo,
+parecía un leak de mi transacción — resultó ser actividad REAL y concurrente (una asesorada real,
+Natalia Martínez, `78ea069c…`, activó su perfil y siguió a Camilo mientras yo probaba). Lo distinguí
+confirmando que su UUID no coincidía con ningún actor mío y que su cuenta existe desde el 3 de junio —
+lo documento porque la duda y su resolución son parte de la evidencia, no un detalle a omitir.
+
+### 16.6 Grant hardening — la tabla completa vs. columnas seguras (estado final verificado)
+
+`information_schema.column_privileges` confirma el grant EXACTO de `c10_grant_hardening`: `user_id,
+handle, avatar_url, bio, visible, is_private, role, streak_weeks, sessions_4w, level, achievements,
+created_at, show_today, show_last_active` — 14 columnas, `SELECT` únicamente salvo `avatar_url, bio,
+handle, is_private, show_last_active, show_today, visible` que además tienen `UPDATE`/`INSERT` propios
+del dueño. **`role` NO tiene `UPDATE` para el cliente** (confirmado, §16.1). Fuera del grant, sin
+excepción: `share_code, consent_v, consent_at, birth_date, last_active, trained_today, snapshot_at`.
+
+### 16.7 Advisors
+
+`get_advisors(security)` — exactamente los 3 `0029` esperados (`cmty_activity_labels`,
+`cmty_my_secrets`, `resolve_share_code`, todos DEFINER acotados e intencionales) + `auth_leaked_
+password_protection` (Pro-only, ignorado por decisión ya tomada) + el ruido preexistente ajeno a este
+arco (`rls_enabled_no_policy` en tablas legacy, `extension_in_public` de `pg_net`,
+`rls_policy_always_true` en `app_errors_insert`). **Los triggers de `follows` y de menor NO aparecen**
+— confirmé sus grantees directamente (`_community_follow_state`/`_community_follow_accept` solo
+`postgres`/`service_role`; `_community_enforce_minor_privacy` es `SECURITY INVOKER`, por lo que el
+advisor 0029 — que solo vigila DEFINER — no aplica de todos modos). Cero regresiones nuevas.
+
+### 16.8 QA re-corrido independientemente
+
+`node avi.test.js` → **405/405**. `node scripts/e2e/_verify-community.mjs` → **13/13**. `node
+scripts/e2e/_verify-dm.mjs` → **22/22**. `node scripts/e2e/_verify-lastactive.mjs` → **14/14**. `node
+scripts/e2e/_verify-public.mjs` → **10/10**. `node scripts/e2e/_verify-follow.mjs` → **11/11**. `node
+scripts/e2e/_prodcheck.mjs 381` → **verde** (`avi-v381` servida, boot real confirmado, cero
+`jsErrors`). Ningún harness falló por entorno; todos corrieron completos.
+
+### 16.9 Scope / frontend — diff de los 5 commits
+
+Nada en `SB_KEYS`/`user_data` en ninguno de los 5 commits (grep confirmado). Toda escritura nueva
+(`cmtyFollow`/`cmtyUnfollow`/`cmtyApproveFollow`/`cmtyRejectFollow`/`cmtyTogglePublic`/
+`cmtySubmitBirthdate`) pasa por `_cmtyClient()` → `AUTH.client()`, y todas están selladas en localhost
+(`_cmtySealed()`) antes de tocar la nube — confirmado en el código, no solo en el nombre de la función.
+La re-partición descubrir/gym en `cmtyLoad` usa `p.is_private === false` (estricta, no `!p.is_private`
+que trataría `undefined` como público) para decidir "Descubrir" vs. "gimnasio" — correcto porque
+`is_private` es `NOT NULL` en DB, así que nunca llega `undefined` desde una fila real, pero la
+comparación estricta es defensa en profundidad igual. El cambio de `select('*')` a columnas explícitas
+(③c-1) no dejó ninguna columna usada por la UI fuera de la lista — grep de `p.trained_today`/
+`p.snapshot_at`/`cmtyFreshness` tras el diff confirma que solo quedan COMENTARIOS explicando el retiro,
+cero referencias funcionales activas al dato retirado (no hay un `undefined.algo` esperando a romper en
+producción). Chat coach↔asesorado (`ax_m`) sin tocar en ninguno de los 5 commits.
+
+### 16.10 Riesgo residual anotado (no es hallazgo — confirmado, no ignorado)
+
+`birth_date` es **autoafirmado** (§11, pendiente de abogado): un menor podría mentir su fecha de
+nacimiento y la app no tiene forma técnica de verificarla (igual que Instagram/Meta). El candado que
+esta arquitectura garantiza es más angosto y es el correcto para lo que la ingeniería puede prometer:
+**con la fecha que el usuario registró, <18 = privado forzado, siempre, infalsificable por ninguna vía
+de cliente.** Si alguien miente su edad, el problema es de veracidad del dato de entrada, no un hueco
+en el candado — y ese riesgo ya estaba anotado y aceptado por el PO antes de construir. No lo reabro
+como hallazgo nuevo.
+
+### 16.11 Decisión abierta — ¿un seguidor APROBADO de una cuenta PRIVADA ve su perfil? (ESTIPULADA)
+
+Opus dejó la pregunta marcada a propósito (es ensanchamiento de visibilidad, terreno de Fable). Hoy
+`private._profile_visible` no tiene rama de `follows` — aprobar un seguidor no otorga ver el perfil,
+solo dispara el DM (no, ni siquiera eso: `_can_dm` sigue = amigo O gym, el follow no abre chat). Esto
+significa que "aprobar una solicitud" hoy es un botón que no le da nada visible al seguidor —
+funcionalmente incompleto de cara a ④ (feed), pero **no es un hueco de seguridad mientras no se
+construya** ④.
+
+**Estipulación para cuando se construya ④:**
+
+1. **Para cuentas de ADULTOS:** un seguidor con `state='active'` **SÍ debe ver** el perfil/posts de la
+   cuenta que sigue, aunque sea privada. Es el contrato que el propio mecanismo de "aprobar" promete —
+   dejarlo sin efecto sería una feature a medias (Camilo lo notaría de inmediato: "acepté a alguien y
+   sigue sin ver nada"). Implementación: añadir una rama a `private._profile_visible` — `OR
+   (private._is_approved_follower(viewer, owner) AND NOT private._is_minor(owner))` — con un helper
+   nuevo `_is_approved_follower(viewer,owner)` que verifica `exists(select 1 from follows where
+   follower=viewer and followee=owner and state='active')`. La cláusula `NOT _is_minor(owner)` es
+   deliberada, ver el punto 2.
+
+2. **Para cuentas de MENORES: el follow NUNCA debe otorgar visibilidad, ni siquiera aprobado.** Con
+   población real de 16-17 años en la base, "aprobar" es una decisión que un adolescente puede tomar
+   bajo presión social o manipulación (exactamente el vector de grooming que estas protecciones
+   existen para cerrar) — y a diferencia de una amistad (que exige que AMBOS ya se conocieran por
+   código, con más fricción) o el gym (verificado por el coach), un follow lo puede *solicitar*
+   cualquier desconocido de la app sin relación previa. Que el mecanismo de moderación de un menor
+   (aceptar/rechazar) sea también, sin que él lo sepa, un interruptor de "ahora te ve todo mi
+   contenido" es exactamente el tipo de superficie que la doctrina del proyecto pide cerrar de raíz. La
+   visibilidad de un menor debe seguir dependiendo **solo** de amistad-aceptada o mismo-gym (canales
+   que ya tienen verificación humana de por medio: código compartido en persona o coach real), nunca de
+   follows. En código, esto ya sale gratis de la cláusula `NOT _is_minor(owner)` del punto 1 — no hace
+   falta lógica adicional, solo no omitirla al implementar.
+
+3. **Hallazgo colateral para anotar antes de ④, no para resolver ahora:** hoy `_community_follow_state`
+   NO revisa `_is_minor(followee)` — es decir, **cualquier desconocido ya puede enviarle una solicitud
+   de seguimiento a un menor** (nace `pending`, el menor la ve en "Solicitudes para seguirte" y decide).
+   Con el punto 2 aplicado, aprobar esa solicitud seguiría sin dar visibilidad — así que hoy esto no es
+   una fuga de datos. Pero sigue siendo un canal de contacto directo hacia un menor desde cualquier
+   desconocido (la lista de "quiere seguirte" es, en sí, una superficie social). Antes de ④, evaluar si
+   conviene además **bloquear el `INSERT` de un follow hacia un menor que no sea ya amigo o gym-mate**
+   del solicitante (extender el trigger `_community_follow_state` con `if private._is_minor(new.
+   followee) and not (private._are_friends OR private._same_community) then raise exception`) — no lo
+   resuelvo aquí porque es una decisión de producto (¿se pierde la posibilidad legítima de que un
+   desconocido adulto interesado en la comunidad quiera seguir a un adolescente que compite, por
+   ejemplo? probablemente sí se pierde, y probablemente está bien perderla). Lo marco para que Opus no
+   lo decida sobre la marcha cuando construya ④, igual que hizo conmigo con el punto que sí resolví
+   arriba.
+
+### 16.12 Veredicto por slice
+
+- **③a (`20391a1`, visibilidad + menores):** 🟢 **APROBADO.** Fundación correcta, nace todo privado,
+  trigger infalsificable confirmado con dientes, helper único sin duplicar lógica.
+- **③b (`12054ce`, follows backend):** 🟢 **APROBADO.** Estados correctos, enumeración cerrada,
+  bloqueo corta el follow, higiene de advisor correcta (execute revocado de las funciones-trigger).
+- **③c-1 (`bdb3571`, grant hardening):** 🟢 **APROBADO.** Grant exacto verificado columna por columna,
+  `cmty_my_secrets` acotada de verdad a `auth.uid()`, sin regresión de columnas usadas por la UI.
+- **③c-2 (`396c100`, activar público + edge):** 🟢 **APROBADO.** Edge probada VIVA de punta a punta
+  (14/14): write-once real, `is_minor`/`role` correctos, trigger de menor gana siempre al cliente.
+- **③c-3 (`45568cf`, descubrir + seguir + perfil coach):** 🟢 **APROBADO.** Re-partición
+  descubrir/gym correcta, handlers sellados, sin scope creep, harness nuevo 11/11.
+
+### 16.13 Veredicto global del arco ③
+
+**🟢 APROBADO — sin correcciones pendientes para Opus.** Las 4 desviaciones declaradas (F7 en `role`,
+`cmty_my_secrets` DEFINER, unificación de `_profile_visible` en ②, triggers con execute revocado) son
+todas correctas y quedaron re-verificadas con pruebas propias, no releídas de lo reportado. La prueba
+viva de la edge — la única pieza que Opus no pudo cerrar por falta de sesión real — corrió de punta a
+punta contra producción con 14/14 verdes, incluyendo el caso más delicado (write-once) y el más
+importante para el negocio (role=coach sin ser forgeable). Los 18 sabotajes de la matriz muerden todos,
+incluidos los 2 "con dientes" que exige la doctrina (trigger de menor deshabilitado → fuga real
+confirmada → restaurado; grant ancho re-otorgado → fuga real a un amigo confirmada → restaurado). Prod
+queda limpia, verificada dato por dato tras el rollback. La decisión abierta queda estipulada en
+§16.11 para que Opus no la improvise al construir ④. Orden restante de Comunidad v2: **④ feed** (con
+la estipulación de §16.11 ya en mano antes de empezar).

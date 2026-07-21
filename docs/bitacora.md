@@ -380,6 +380,60 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-21 (parte 100 — VEREDICTO DE FABLE: ARCO ③ COMPLETO, 🟢 APROBADO). Verificación
+adversarial independiente de los 5 commits del arco ③ (`20391a1` ③a · `12054ce` ③b · `bdb3571` ③c-1 ·
+`396c100` ③c-2 · `45568cf` ③c-3, avi-v381) — sondeada desde cero contra prod real
+(`eoebhrxbokyllqalyecj`), sin confiar en lo reportado por Opus. Este es el ensanchamiento de
+visibilidad más grande del proyecto ("solo amigos/gym" → "público salvo cuenta privada; menor ⇒
+forzado privado y no descubrible") con menores reales de 16-17 en la base. **Las 4 desviaciones
+declaradas, todas reconfirmadas con pruebas propias:** (1) F7 en `role` — reconfirmé que
+`user_data.role` sigue client-writable y que NINGUNA vía de cliente toca `community_profiles.role`
+(sin grant de `UPDATE`, verificado en `information_schema`), y que la edge da `role:'coach'` SOLO a
+quien posee asesorados reales; (2) `cmty_my_secrets` DEFINER acotada a `auth.uid()` sin parámetro
+inyectable, no una puerta trasera; (3) `_profile_visible` unificado con ② sin quitarle ningún caso
+(re-corrí `_verify-lastactive` 14/14); (4) triggers de follows/menor sin `EXECUTE` para `authenticated`
+(confirmado en `pg_proc`/grantees), cero advisor nuevo. **★ PRUEBA VIVA de la edge
+`activate_public_profile`** (lo que Opus no pudo hacer sin sesión real): 4 usuarios QA desechables
+(Admin API + password grant real + PostgREST + invocación real del endpoint en producción) —
+**14/14**: adulto activa (`is_minor:false`) → se hace público y se relee real; **WRITE-ONCE
+confirmado** (2ª llamada con fecha distinta → `already:true`, `birth_date` en DB NO cambió); menor
+activa (`is_minor:true`) → el trigger ya lo deja privado antes de que el cliente intente nada, y un
+`PATCH is_private=false` del propio menor no se sostiene (verificado con SELECT posterior, no con la
+respuesta del PATCH); `role:'coach'` SOLO con asesorados reales, `role:'client'` sin ellos, y un
+`PATCH role=eq.coach` directo rechazado por falta de grant. Limpieza completa (0 residuos). **Matriz de
+18 sabotajes en una sola tx→rollback** con actores reales (F1=Camilo, F2=Samuel amigo, extraño=nataly
+con su membresía de gym real quitada EN LA TX, menor=Sharith Sofía 16 años real con fila temporal):
+#1/#2 extraño no ve privado/menor · #3/#6a/#6b/#6c `birth_date`/`share_code`/`consent_*`/`select(*)`
+crudos siempre `permission denied` · #5 menor fuerza `is_private=false` → el trigger lo revierte
+(verificado con SELECT posterior) · #13a/#13b/control follow a privado nace `pending`, el solicitante
+no se auto-aprueba, el followee real sí puede · #13c bloqueado no puede seguir · #14 extraño no
+enumera un par `follows` real ajeno (con control que prueba que la fila sí existía, para que el 0 no
+fuera un falso-positivo de tabla vacía) · **2 pruebas "con dientes"**: trigger de menor deshabilitado →
+la menor SÍ logra hacerse pública (confirma que la protección depende de verdad del trigger, restaurado
+después) y grant ancho re-otorgado → el AMIGO real (no un extraño — la trampa del ② ya cazada) SÍ leyó
+`birth_date`/`share_code` de F1 (confirma que el grant de `c10` es load-bearing, restaurado después).
+**18/18.** Prod confirmada limpia dato-por-dato tras el rollback (una discrepancia inicial resultó ser
+actividad REAL concurrente de una asesorada real activando su perfil durante la verificación, no un
+leak de mi transacción — distinguido por UUID y antigüedad de cuenta, documentado como parte de la
+evidencia). **Advisors:** exactamente los 3 `0029` esperados + `auth_leaked_password_protection`
+(Pro-only, ignorado) + ruido preexistente ajeno; cero regresión. **QA:** suite 405/405,
+`_verify-community` 13/13, `_verify-dm` 22/22, `_verify-lastactive` 14/14, `_verify-public` 10/10,
+`_verify-follow` 11/11, `_prodcheck 381` verde. **Scope:** nada en SB_KEYS/user_data en los 5 commits,
+`AUTH.client()` en toda escritura nueva, todas selladas en localhost, re-partición descubrir/gym con
+comparación estricta (`=== false`), retiro de `trained_today`/`snapshot_at` sin dejar referencias
+funcionales huérfanas, chat coach↔asesorado sin tocar. **Riesgo residual confirmado, no reabierto:**
+`birth_date` autoafirmado (§11, pendiente de abogado) — el candado garantiza que CON la fecha
+registrada, <18=privado siempre; no puede verificar que la fecha sea verdad. **DECISIÓN ABIERTA
+ESTIPULADA (§16.11):** un seguidor `active` de un ADULTO privado SÍ debe ver su perfil (agregar rama a
+`_profile_visible` cuando se construya ④); un seguidor `active` de un MENOR **NUNCA** debe ganar
+visibilidad por esa vía (con menores reales en la base, "aprobar" es una decisión bajo presión social —
+la visibilidad de un menor sigue dependiendo solo de amistad/gym, canales con verificación humana de
+por medio); marcado además, sin resolver, si conviene bloquear que un desconocido pueda siquiera
+*solicitar* seguir a un menor. **Veredicto por slice: ③a/③b/③c-1/③c-2/③c-3 = 🟢 APROBADO cada uno.
+Veredicto global: 🟢 APROBADO, sin correcciones pendientes para Opus.** Completo en
+`docs/plan-comunidad.md` §16. Orden restante de Comunidad v2: **④ feed** (con la decisión de §16.11 ya
+en mano).*
+
 *Hitos sesión 2026-07-21 (parte 99 — COMUNIDAD v2 ③c-3: DESCUBRIR + SEGUIR + perfil de coach, avi-v381 — CIERRA EL ARCO ③). Frontend puro sobre el backend ya en prod (follows ③b, rama pública ③a). **Re-partición de la carga:** ahora que cp_sel incluye públicos, el neq-all trae también perfiles públicos → se reparten con is_private: privado-no-amigo = compañero de gym (única vía de visibilidad privada por cp_sel); público-no-amigo = «Descubrir». **Carga de follows** en cmtyLoad: `following` (a quién sigo, active/pending) + `followerReqs` (solicitudes de seguidores entrantes, yo privado). **UI (app-7):** sección «Descubrir» (perfiles públicos + botón Seguir/Siguiendo✓/Pendiente + insignia COACH + última conexión ②); sección «Solicitudes para seguirte» (aceptar→update state=active / rechazar→delete, handle vía CMTY.profById con fallback «Alguien»). Handlers cmtyFollow (insert)/cmtyUnfollow (delete)/cmtyApproveFollow (update)/cmtyRejectFollow (delete), todos sellados en localhost + relee. **QA:** harness NUEVO `_verify-follow.mjs` **11/11** (partición descubrir/gym/amigos, following cargado, botones por estado, seguir/aprobar/rechazar, sellado) + e2e real contra prod (extraño ve público en descubrir + seguir→active). `_verify-community` 13/13, `_verify-public` 10/10, `_verify-dm` 22/22, `_verify-lastactive` 14/14, suite 405/405. Bump ?v=381. **ARCO ③ COMPLETO EN PROD** (③a visibilidad+menores · ③b follows · ③c-1 grant hardening · ③c-2 activar público+edge · ③c-3 descubrir+seguir). **PENDIENTE: verificación de Fable de TODO el arco ③** (sabotajes §13-BIS.8 #1-6 + #13-14 + la edge activate_public_profile viva) Y estipular la DECISIÓN ABIERTA (¿seguidor aprobado de cuenta privada ve su perfil? — `_profile_visible` sin rama follows) antes de ④ feed. Deuda menor: perfil de coach como vitrina = cards con insignia (sin pantalla de perfil dedicada); solicitud de seguidor de un privado no-visible muestra «Alguien» (sin req_handle como friendships).*
 
 *Hitos sesión 2026-07-21 (parte 98 — COMUNIDAD v2 ③c-2: ACTIVAR PERFIL PÚBLICO + fecha nac. + coach server-side, avi-v380). Slice ③c-2 (§13-BIS.3). Migración `c11_activate_public` (`grant update(is_private)` — el cliente alterna público/privado; el trigger de menor de ③a es la autoridad final). **Edge NUEVA `activate_public_profile`** (`supabase/functions/activate_public_profile/`, v2): escribe `birth_date` (WRITE-ONCE, §13-BIS.8 #4 — si ya hay, devuelve estado sin cambiar) + `role` con service_role (el cliente no tiene grant). `role='coach'` SOLO si POSEE asesorados (`user_data.coach_id` apuntando a él desde OTRAS filas — verificado Camilo=22, Samuel=0; **NO desde `user_data.role`, CLIENT-WRITABLE, F7**). Valida fecha (formato/no-futura/edad 5-100); sin fecha y sin una guardada → `needs_birthdate` (la UI pide). El trigger corre sobre la escritura y fuerza `is_private` si <18. **birth_date AUTOAFIRMADO** = riesgo residual de producto/legal (§11, para el abogado; un menor podría mentir — el candado garantiza que CON la fecha registrada <18=privado). **Frontend (app-7):** bloque «Perfil público» en el perfil (toggle is_private + insignia «Perfil de coach» con `role`); al hacerse público sin fecha → input de fecha inline (una vez, «nadie la ve»); confirmar → edge → si menor: marca local + queda privado + mensaje; si adulto: `is_private=false` + RELEE (§13-BIS.3). `_cmtySetPrivate` relee el valor REAL tras cada cambio. Menor con marca → render «Perfil privado 🔒» bloqueado. **QA:** harness NUEVO `_verify-public.mjs` **10/10** (privado/needs_birthdate/adulto→público/menor→privado+marca/bloqueo/coach/sellado); `_verify-community` 13/13, `_verify-dm` 22/22, `_verify-lastactive` 14/14, suite 405/405. Bump ?v=380. **SIGUE ③c-3 (cierra ③):** descubrir perfiles públicos + seguir/aprobar UI + perfil de coach como vitrina. Al cerrar ③ → verificación de Fable (§13-BIS.8 #1-6 + #13-14). **Edge = prueba viva de Fable** (no se pudo invocar end-to-end sin sesión real; componentes verificados: grant, role SQL, trigger de ③a).*
