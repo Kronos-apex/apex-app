@@ -1427,3 +1427,133 @@ advisors en el mismo turno.
 reales para los sabotajes noté que el gym de F1 (Camilo) sigue con ~23 miembros y la reserva de C5
 (bloqueo oculta dentro del gym, `avi-v376`) sigue con su propia re-verificación pendiente por separado
 — la dejo anotada, no la re-audito aquí (el PO pidió verificar el ① específicamente).
+
+## 15. VEREDICTO DE FABLE — ② ÚLTIMA CONEXIÓN (commit `d0389df`, avi-v378)
+
+Verificación adversarial independiente de la parte 93 (bitácora) — sondeo desde cero contra la base
+real de producción (`eoebhrxbokyllqalyecj`), sin confiar en lo reportado por Opus. Fuente del
+encargo: `docs/plan-comunidad.md` §13-BIS.4 (mi propia estipulación).
+
+### 15.1 Desviación #1 (DEFINER en vez de INVOKER) — justificación verificada, no solo leída
+
+El sketch de §13-BIS.4 proponía `security invoker` confiando en que `cp_sel` filtrara la fila. Opus
+cambió a `security definer` con chequeo propio, alegando que el grant de columna (§13-BIS.1b, ya
+vigente antes de este slice) le impide a una función INVOKER leer `last_active` — correría con los
+privilegios del cliente, que no tiene grant sobre esa columna. **Reproduje la alternativa rechazada**
+en una transacción con rollback: reescribí `cmty_activity_labels` a `security invoker` (spot-check,
+no aplicado) y confirmé que el `select last_active` interno de la función revienta con
+`insufficient_privilege` exactamente como predice Opus — la alternativa del sketch, tal cual, no
+compila en runtime dado el esquema de grants ya vigente. DEFINER era la única vía sin aflojar nada.
+**Verifiqué las 3 garantías que pidió el encargo:**
+- **(a) el chequeo de visibilidad SÍ bloquea a un extraño real.** Sembré `last_active=now()` +
+  `show_last_active=true` en F1 (Camilo, `0a6484ed…`) y, en la misma tx, borré la fila de
+  `community_gym_members` del extraño real `6e54e22b…` (para que `_same_community`=false — sin esto
+  Camilo tiene casi todo su gym adentro y no queda un extraño real). Como ese extraño, la RPC devolvió
+  **`null`**, no el timestamp ni error — visibilidad negada limpiamente.
+- **(b) `revoke all ... from public, anon` + `grant execute ... to authenticated` se cumple en prod**
+  tal cual el archivo: confirmado leyendo `pg_class`/el propio código de `c7_last_active.sql` aplicado
+  (migración `c7_last_active`, `list_migrations` lo confirma en prod) — es la lección de la reserva
+  §14.2 del ①, esta vez aplicada desde el primer commit, no como corrección posterior.
+- **(c) el `left join` no oculta filas, las deja con `label=null`.** Con el extraño consultando a F1
+  (que SÍ tiene perfil), la fila vino presente con `label=NULL` explícito — nunca cero filas — que es
+  justo el contrato que el frontend (`_cmtyLoadActivity`) espera para poder distinguir "no lo vi" de
+  "no me contestó".
+Equivalencia algebraica de `_are_friends`/`_same_community` confirmada por lectura: ambos helpers son
+simétricos (`least/greatest` en `_are_friends`; auto-join simétrico bajo bloqueo en `_same_community`
+tras C5b) → el orden de argumentos invertido entre el chequeo inline de la RPC y `cp_sel` no cambia el
+resultado. El chequeo replicado es **exactamente** `cp_sel` vigente hoy (self OR amigo-aceptado OR
+mismo-gym-sin-bloqueo).
+
+### 15.2 Hallazgo #2 (`c7b`, el SELECT era table-level) — reproducido CON DIENTES, no solo leído
+
+Repetí el ataque que Opus dice haber encontrado y cerrado: en una tx con rollback, **re-otorgué
+`grant select on public.community_profiles to authenticated`** (exactamente el estado pre-`c7b`) y
+consulté `last_active` crudo como **F2 (Samuel, amigo aceptado de F1 — alguien que SÍ puede ver la
+fila vía `cp_sel`)**. Resultado: **fuga real, devolvió el timestamp `2026-07-21 09:00:00+00`
+sembrado.** Revoqué el grant de tabla (dejando solo los grants de columna del fix) y repetí la misma
+consulta: **`permission denied`.** Esto prueba que `c7b` no es cosmético — es la única barrera real
+entre "amigo ve tu perfil" y "amigo ve tu timestamp crudo al minuto". (Mi primer intento de esta
+prueba usó al extraño en vez de un amigo y dio un falso "no bug" porque la RLS de fila ya lo bloqueaba
+antes de llegar al chequeo de columna — lo detecté y repetí con el actor correcto; documento el error
+propio porque es exactamente la clase de falso-negativo que la doctrina pide cazar, no solo el
+resultado final.)
+
+### 15.3 Matriz de sabotajes DB (todo en tx→rollback, prod verificada limpia antes/después de cada bloque)
+
+| Prueba | Resultado |
+|---|---|
+| F1 opt-in (`show_last_active=true`) + F2 amigo consulta | `'ahora'` ✅ |
+| Extraño real (gym quitado en la tx) consulta a F1 | `null` ✅ (fila presente, no cero filas) |
+| F1 se pone opt-out (`show_last_active=false`) + F2 amigo consulta | `null` ✅ |
+| `select last_active` crudo de OTRO usuario, como authenticated | `permission denied` ✅ |
+| `update last_active` como el propio dueño (F1), authenticated | `permission denied` ✅ (server-set únicamente) |
+| `select *` crudo como authenticated (`EXECUTE 'SELECT * FROM ...'`) | `permission denied` ✅ |
+| R2.1 con dientes: re-grant tabla + amigo lee crudo | **fuga reproducida**, luego revert → denegado de nuevo ✅ |
+
+Prod confirmada limpia tras cada bloque (`last_active`/`show_last_active` de F1 y F2 en su valor real
+original, membresía de gym del extraño restaurada, `relacl` de `community_profiles` sin SELECT de
+tabla para `authenticated`, temp tables descartadas). Los actores reales usados fueron F1=Camilo
+(`0a6484ed…`) y F2=Samuel (`31bf6d19…`, amistad `accepted` verificada antes de empezar); el extraño
+`6e54e22b…` es miembro real del gym de F1, por eso su fila de `community_gym_members` se quitó y
+restauró dentro de la misma transacción (gotcha del encargo, confirmado necesario: sin este paso no
+queda un extraño real en los datos de Camilo).
+
+### 15.4 Edge `refresh_snapshot` v3 — código leído, comportamiento confirmado
+
+`last_active` se estampa **siempre** (vía cliente `service_role`, que ignora RLS) en cada refresh,
+**independiente** del opt-in — correcto: `show_last_active` gatea solo la LECTURA (vía la RPC), nunca
+la escritura, tal como documenta el propio comentario del código. `show_today` sigue gobernando
+`trained_today` exactamente como en C3/① (`if (!showToday) snap.trained_today = false;` intacto,
+sin tocar) — cero regresión al snapshot existente. No tuve sesión real para invocar la edge en vivo;
+me basé en lectura de código (`get_edge_function`, versión 3 activa en prod) más el hecho de que la
+columna `last_active` de F1 en prod trae un timestamp reciente real (`2026-07-21 12:44:59`, de uso
+normal de la app, no de mis pruebas) — evidencia indirecta de que la edge SÍ está estampando en
+producción.
+
+### 15.5 Frontend — scope, columnas, XSS, sellado
+
+Diff de `d0389df` revisado completo: **nada en `SB_KEYS`/`user_data`**, toda escritura por
+`AUTH.client()` (`_cmtyPatch`, ya sellado en localhost desde antes), toggle opt-in nace en `false`
+(coincide con el default de la columna). El cambio de `select('*')` a columnas explícitas en el
+perfil propio pide **exactamente** las 17 columnas del grant de `c7b` (conté ambas listas — SQL y JS
+— coinciden 1:1); grep de `CMTY.profile.*` confirma que ningún campo usado en la UI (`share_code`,
+`visible`, `show_today`, `show_last_active`) quedó fuera de esa lista, o sea que el recorte de
+columnas no rompió nada. `_cmtyActivityHtml` pasa el texto por `esc()` antes de insertar aunque el
+universo de valores posibles ya está acotado por el `CASE` de la RPC (defensa en profundidad, no
+hueco). Chat coach↔asesorado sin tocar; ③ (`follows`)/④ (`community_posts`) confirmados NO
+construidos — `list_tables` en prod no los tiene, `list_migrations` no tiene entradas después de
+`c7b_lock_last_active_select`.
+
+### 15.6 Advisors
+
+`get_advisors(security)` muestra **exactamente un** 0029 nuevo (`cmty_activity_labels`, mismo patrón
+intencional que `resolve_share_code`, ya aceptado). Los WARN de `_community_msg_rate_limit` de la
+reserva del ① **no reaparecieron** (la parte 92 los cerró y siguen cerrados). Resto de la lista =
+preexistente y ajeno a este slice (`auth_leaked_password_protection` Pro-only ignorado por decisión
+ya tomada; `rls_enabled_no_policy` en tablas legacy; `extension_in_public` pg_net;
+`rls_policy_always_true` en `app_errors_insert`). **Nota aparte, fuera de esta verificación:**
+`list_tables` marca `public._cm_rate` (del ①) con RLS deshabilitada como advisory "critical" — leí su
+`relacl` y no tiene NINGÚN grant a `anon`/`authenticated` (solo `postgres`/`service_role`), así que no
+hay exposición real pese a la etiqueta; es ruido del linter genérico, preexistente al ②, no lo re-abro
+aquí.
+
+### 15.7 QA re-corrido independientemente
+
+`node avi.test.js` → **405/405**. `node scripts/e2e/_verify-lastactive.mjs` → **14/14** (LA1-LA7 +
+shots light/dark, cero jsErrors). `node scripts/e2e/_verify-community.mjs` → **13/13** (sin regresión
+de C3/C5). `node scripts/e2e/_verify-dm.mjs` → **22/22** (sin regresión del ①). `node
+scripts/e2e/_prodcheck.mjs 378` → **verde**, `avi-v378` servida, boot real confirmado, cero
+`jsErrors`.
+
+### 15.8 Veredicto
+
+**🟢 APROBADO.** Las dos desviaciones que Opus declaró son ambas correctas y quedaron verificadas con
+pruebas propias, no releídas: la DEFINER es la única opción viable dado el esquema de grants de
+columna ya vigente (reproduje por qué INVOKER truena), y el chequeo de visibilidad replicado es
+algebraicamente idéntico a `cp_sel`. El hallazgo `c7b` es real y su fix es load-bearing — lo probé
+reintroduciendo el bug original con un actor que SÍ tiene visibilidad de fila (un amigo, no un
+extraño) y vi la fuga real del timestamp, luego confirmé que revertir el grant vuelve a cerrarla. Los
+7 puntos de la matriz de sabotaje pasan contra datos reales de producción, con la base quedando limpia
+en cada paso. Frontend sin scope creep, columnas explícitas completas, opt-in default OFF respetado.
+Sin correcciones pendientes — nada que devolver a Opus en este slice. Orden restante de Comunidad v2:
+③ perfil de coach + seguir → ④ feed.
