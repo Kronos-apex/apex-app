@@ -69,6 +69,12 @@ begin
 end $$;
 create trigger trg_cm_rate before insert on public.community_messages
   for each row execute function public._community_msg_rate_limit();
+-- RESERVA de Fable (§14.2, cerrada por Opus 2026-07-21, migración `c6b_rate_limit_revoke_execute`):
+-- Postgres otorga EXECUTE a PUBLIC en toda función nueva; el DDL original no lo revocó (a diferencia
+-- de _can_dm) → advisors 0029 `{anon,authenticated}_security_definer_function_executable`. NO explotable
+-- (una función RETURNS TRIGGER no se puede invocar directo; probado por Fable) pero el advisor lo marca.
+-- Revocar deja la misma higiene que _can_dm y limpia el advisor sin romper el disparo del trigger.
+revoke execute on function public._community_msg_rate_limit() from public, anon, authenticated;
 
 -- ── RLS ────────────────────────────────────────────────────────────────────
 create policy cm_sel on public.community_messages for select
