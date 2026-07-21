@@ -46,6 +46,11 @@ const CMTY = {
   dmMsgs: [],        // mensajes del hilo abierto (asc por fecha)
   dmSub: null,       // canal Realtime (una sola suscripción)
   activity: {},      // ② última conexión: {uid: 'ahora'|'hoy'|'esta semana'|'hace tiempo'} (etiqueta redondeada, opt-in)
+  // ③c-3 descubrir + seguir
+  discover: [],      // [perfil] perfiles PÚBLICOS (no amigos) para descubrir/seguir
+  following: {},     // {uid: 'active'|'pending'} a quién sigo yo
+  followerReqs: [],  // [uid] solicitudes de seguidores entrantes (yo privado)
+  profById: {},      // uid→perfil de todo lo visible (para pintar solicitudes por handle)
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -101,6 +106,7 @@ async function cmtyLoad(opts){
     CMTY.offline = false;
     CMTY.profile = prof || null;
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
+    CMTY.discover = []; CMTY.following = {}; CMTY.followerReqs = []; CMTY.profById = {};
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
@@ -123,16 +129,26 @@ async function cmtyLoad(opts){
         .neq('user_id', uid);
       if(ape) throw ape;
       const fprofiles = {};
+      CMTY.profById = {}; // uid→perfil de TODO visible (para pintar solicitudes de seguidores por handle)
       (allp || []).forEach(p => {
+        CMTY.profById[p.user_id] = p;
         if(blockedIds.has(p.user_id)) return; // bloqueado → invisible aunque comparta gym
         if(friendIds.has(p.user_id)) fprofiles[p.user_id] = p;
-        else if(!pendingIds.has(p.user_id)) CMTY.gym.push(p); // compañero de gym aún no conectado
+        else if(pendingIds.has(p.user_id)) return; // solicitud de AMISTAD en curso
+        else if(p.is_private === false) CMTY.discover.push(p); // público (no amigo) → descubrir/seguir
+        else CMTY.gym.push(p); // privado no-amigo VISIBLE = solo puede ser compañero de gym (cp_sel)
       });
       CMTY.friends = accepted
         .map(f => { const fid = f.user_a === uid ? f.user_b : f.user_a; return { fid: fid, fr: f, prof: fprofiles[fid] || null }; })
         .filter(x => x.prof); // si el perfil no vino (el amigo salió), lo omito
       const { data: rx } = await cli.from('community_reactions').select('from_user,to_user,kind').or('from_user.eq.' + uid + ',to_user.eq.' + uid);
       (rx || []).forEach(r => { if(r.from_user === uid) CMTY.heartsGiven[r.to_user] = true; if(r.to_user === uid) CMTY.heartsRecv++; });
+      // ③b/③c: follows — a quién sigo (active/pending) + solicitudes de seguidores entrantes (yo privado)
+      const { data: fol } = await cli.from('follows').select('follower,followee,state').or('follower.eq.' + uid + ',followee.eq.' + uid);
+      (fol || []).forEach(f => {
+        if(f.follower === uid) CMTY.following[f.followee] = f.state;
+        else if(f.followee === uid && f.state === 'pending') CMTY.followerReqs.push(f.follower);
+      });
       await _cmtyLoadDMs(cli, uid); // ① bandeja de mensajes (community_messages)
       await _cmtyLoadActivity(cli, uid); // ② etiquetas de última conexión (opt-in, redondeadas)
     }
@@ -192,8 +208,10 @@ function _cmtyPaint(){
     _cmtyInboxHtml() +
     _cmtyAddHtml() +
     _cmtyRequestsHtml() +
+    _cmtyFollowReqsHtml() +
     _cmtyGymHtml() +
-    _cmtyFriendsHtml();
+    _cmtyFriendsHtml() +
+    _cmtyDiscoverHtml();
 }
 
 function _cmtyOfflineCard(){
@@ -948,8 +966,98 @@ async function cmtySubmitBirthdate(){
   }catch(e){ toast(_cmtyErr(e)); }
 }
 
+// ══════════ ③c-3 DESCUBRIR + SEGUIR ══════════
+// La rama pública de cp_sel (③a) hace que la carga «todos los visibles» traiga también perfiles
+// PÚBLICOS. Se reparten con is_private: privado-no-amigo = compañero de gym (única vía de visibilidad
+// privada); público-no-amigo = descubrir. Seguir usa `follows` (③b): a un público = active al instante;
+// a un privado = pending hasta que apruebe. Un bloqueo corta (trigger). NO abre DM.
+
+function _cmtyFollowBtn(uid){
+  const s = CMTY.following[uid];
+  if(s === 'active') return '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyUnfollow(\'' + uid + '\')">Siguiendo ✓</button>';
+  if(s === 'pending') return '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyUnfollow(\'' + uid + '\')">Pendiente</button>';
+  return '<button class="btn bp bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyFollow(\'' + uid + '\')">Seguir</button>';
+}
+function _cmtyCoachTag(p){
+  return p && p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--gt);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '';
+}
+
+function _cmtyDiscoverHtml(){
+  if(!CMTY.discover.length) return '';
+  let h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">Descubrir</div>' +
+    '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Perfiles públicos en AVI. Sigue a quien te inspire.</div>';
+  CMTY.discover.forEach(p => {
+    h += '<div style="display:flex;align-items:center;gap:11px;padding:7px 0">' +
+      _cmtyAvatarHtml(p, 42) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + _cmtyCoachTag(p) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) +
+          (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
+      '</div>' +
+      _cmtyFollowBtn(p.user_id) +
+    '</div>';
+  });
+  return h + '</div>';
+}
+
+function _cmtyFollowReqsHtml(){
+  if(!CMTY.followerReqs.length) return '';
+  let h = '<div class="card" style="padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:9px">Solicitudes para seguirte</div>';
+  CMTY.followerReqs.forEach(uid => {
+    const p = CMTY.profById[uid];
+    const name = p ? esc(p.handle) : 'Alguien';
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0">' +
+      _cmtyAvatarHtml(p || {}, 38) +
+      '<div style="flex:1;min-width:0;font-size:13.5px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>' + name + '</b>' + _cmtyCoachTag(p) + ' quiere seguirte</div>' +
+      '<button class="btn bp bsm" style="min-height:36px" onclick="cmtyApproveFollow(\'' + uid + '\')">Aceptar</button>' +
+      '<button class="btn bg bsm" style="min-height:36px;padding:0 10px" onclick="cmtyRejectFollow(\'' + uid + '\')">✕</button></div>';
+  });
+  return h + '</div>';
+}
+
+async function cmtyFollow(uid){
+  if(_cmtySealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli = _cmtyClient(); const me = CMTY.uid || await _cmtyUid(); if(!cli || !me) return;
+    const { error } = await cli.from('follows').insert({ follower: me, followee: uid });
+    if(error) throw error;
+    toast('✅ Siguiendo'); await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+async function cmtyUnfollow(uid){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); const me = CMTY.uid || await _cmtyUid(); if(!cli || !me) return;
+    const { error } = await cli.from('follows').delete().eq('follower', me).eq('followee', uid);
+    if(error) throw error;
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+async function cmtyApproveFollow(uid){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); const me = CMTY.uid || await _cmtyUid(); if(!cli || !me) return;
+    const { error } = await cli.from('follows').update({ state: 'active' }).eq('follower', uid).eq('followee', me);
+    if(error) throw error;
+    toast('🤝 Aceptaste el seguidor'); await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+async function cmtyRejectFollow(uid){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); const me = CMTY.uid || await _cmtyUid(); if(!cli || !me) return;
+    const { error } = await cli.from('follows').delete().eq('follower', uid).eq('followee', me);
+    if(error) throw error;
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
 // Exports para el harness (Node no carga este archivo, pero CDP evalúa contra window).
 if(typeof window !== 'undefined'){
+  window.cmtyFollow = cmtyFollow; window.cmtyUnfollow = cmtyUnfollow;
+  window.cmtyApproveFollow = cmtyApproveFollow; window.cmtyRejectFollow = cmtyRejectFollow;
+  window._cmtyDiscoverHtml = _cmtyDiscoverHtml; window._cmtyFollowReqsHtml = _cmtyFollowReqsHtml;
   window.cmtyTogglePublic = cmtyTogglePublic; window.cmtySubmitBirthdate = cmtySubmitBirthdate;
   window._cmtyPublicBlockHtml = _cmtyPublicBlockHtml; window._cmtyShowBdBox = _cmtyShowBdBox;
   window.cmtyChatOpen = cmtyChatOpen; window.cmtyChatSend = cmtyChatSend;
