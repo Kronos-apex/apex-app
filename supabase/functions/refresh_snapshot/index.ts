@@ -108,9 +108,13 @@ Deno.serve(async (req) => {
 
     const snap = snapshot((rows && rows[0]) || {}, Date.now());
     if (!showToday) snap.trained_today = false; // el amigo no ve CUÁNDO entrena
+    // ② última conexión: last_active se estampa SIEMPRE server-side (el cliente no tiene grant para
+    // escribirlo). El opt-in show_last_active solo gatea la LECTURA (cmty_activity_labels devuelve
+    // null si el dueño no optó). Nunca se expone el timestamp crudo — solo la etiqueta redondeada.
+    const nowIso = new Date().toISOString();
     const { error: e2 } = await admin
       .from("community_profiles")
-      .update({ ...snap, snapshot_at: new Date().toISOString() })
+      .update({ ...snap, snapshot_at: nowIso, last_active: nowIso })
       .eq("user_id", uid);
     if (e2) throw new Error("update: " + e2.message);
 

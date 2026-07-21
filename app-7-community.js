@@ -45,6 +45,7 @@ const CMTY = {
   dmOpen: null,      // uid del hilo abierto (o null)
   dmMsgs: [],        // mensajes del hilo abierto (asc por fecha)
   dmSub: null,       // canal Realtime (una sola suscripción)
+  activity: {},      // ② última conexión: {uid: 'ahora'|'hoy'|'esta semana'|'hace tiempo'} (etiqueta redondeada, opt-in)
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -86,11 +87,15 @@ async function cmtyLoad(opts){
     const cli = _cmtyClient(); const uid = await _cmtyUid();
     if(!cli || !uid){ CMTY.offline = true; _cmtyLoadCache(); return; }
     CMTY.uid = uid;
-    const { data: prof, error: pe } = await cli.from('community_profiles').select('*').eq('user_id', uid).maybeSingle();
+    // Columnas EXPLÍCITAS (no `*`): last_active NO tiene grant de SELECT (nunca crudo, §13-BIS.4) →
+    // un `select('*')` daría permission denied. Pedimos solo lo otorgado (incl. show_last_active).
+    const { data: prof, error: pe } = await cli.from('community_profiles')
+      .select('user_id,handle,avatar_url,bio,share_code,visible,streak_weeks,sessions_4w,level,achievements,trained_today,snapshot_at,created_at,consent_v,consent_at,show_today,show_last_active')
+      .eq('user_id', uid).maybeSingle();
     if(pe) throw pe;
     CMTY.offline = false;
     CMTY.profile = prof || null;
-    CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0;
+    CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
@@ -124,6 +129,7 @@ async function cmtyLoad(opts){
       const { data: rx } = await cli.from('community_reactions').select('from_user,to_user,kind').or('from_user.eq.' + uid + ',to_user.eq.' + uid);
       (rx || []).forEach(r => { if(r.from_user === uid) CMTY.heartsGiven[r.to_user] = true; if(r.to_user === uid) CMTY.heartsRecv++; });
       await _cmtyLoadDMs(cli, uid); // ① bandeja de mensajes (community_messages)
+      await _cmtyLoadActivity(cli, uid); // ② etiquetas de última conexión (opt-in, redondeadas)
     }
     CMTY.loaded = true;
     _cmtySaveCache();
@@ -285,6 +291,7 @@ function _cmtyMyProfileHtml(){
     '<div style="margin-top:12px;display:flex;flex-direction:column;gap:9px">' +
       _cmtyToggleRow('cmty-tg-visible', 'Perfil activo', 'Si lo pausas, tus amigos no te ven.', !paused, 'cmtyToggleVisible()') +
       _cmtyToggleRow('cmty-tg-today', 'Mostrar si entrené hoy', 'Apágalo si prefieres no compartir tu actividad diaria.', p.show_today !== false, 'cmtyToggleToday()') +
+      _cmtyToggleRow('cmty-tg-lastactive', 'Mostrar mi última conexión', 'Verán «en línea» o «activo hoy», nunca la hora exacta.', p.show_last_active === true, 'cmtyToggleLastActive()') +
     '</div>' +
     // Editar apodo/bio + salir
     '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
@@ -501,7 +508,8 @@ function _cmtyGymHtml(){
       _cmtyAvatarHtml(p, 42) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
-        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) +
+          (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + p.user_id + '\')" title="Chatear" aria-label="Chatear">' +
         (typeof aviIcon === 'function' ? aviIcon('chat', 15) : '💬') + '</button>' +
@@ -547,6 +555,7 @@ function _cmtyFriendCard(f){
         '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem</div>' +
         '<div style="font-size:11.5px;margin-top:1px">' + today + (fresh.fresh ? '' : ' <span style="color:var(--t3)">· dato viejo</span>') + '</div>' +
+        (_cmtyActivityHtml(f.fid) ? '<div style="font-size:11px;margin-top:1px">' + _cmtyActivityHtml(f.fid) + '</div>' : '') +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:38px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + f.fid + '\')" title="Chatear" aria-label="Chatear">' +
         (typeof aviIcon === 'function' ? aviIcon('chat', 16) : '💬') + '</button>' +
@@ -693,7 +702,9 @@ async function cmtyChatOpen(peerUid){
   CMTY.dmOpen = peerUid;
   _cmtyChatBarAvatar(document.getElementById('cmtychat-av'), prof);
   const nm = document.getElementById('cmtychat-name'); if(nm) nm.textContent = (prof && prof.handle) || 'Chat'; // textContent → sin XSS
-  const sub = document.getElementById('cmtychat-sub'); if(sub) sub.textContent = prof ? ('Racha ' + (prof.streak_weeks || 0) + ' sem · Nivel ' + (prof.level || 1)) : '';
+  const actTxt = _cmtyActivityText(CMTY.activity && CMTY.activity[peerUid]);
+  const sub = document.getElementById('cmtychat-sub');
+  if(sub) sub.textContent = (prof ? ('Racha ' + (prof.streak_weeks || 0) + ' sem · Nivel ' + (prof.level || 1)) : '') + (actTxt ? ' · ' + actTxt : '');
   const con = document.getElementById('cmtychat-thread'); if(con) con.innerHTML = '<div class="cchat-empty">Cargando…</div>';
   const el = document.getElementById('cmty-chat');
   if(el){ if(!el.classList.contains('on')) navOpenLayer(); el.classList.add('on'); }
@@ -824,10 +835,49 @@ function cmtyDmUnsubscribe(){
   try{ if(CMTY.dmSub){ const cli = _cmtyClient(); if(cli && cli.removeChannel) cli.removeChannel(CMTY.dmSub); CMTY.dmSub = null; } }catch(e){}
 }
 
+// ══════════ ② ÚLTIMA CONEXIÓN (etiqueta redondeada, opt-in) ══════════
+// El servidor estampa last_active (edge refresh_snapshot); el cliente NUNCA lo ve crudo. La RPC
+// cmty_activity_labels (DEFINER, chequeo de visibilidad propio) devuelve solo la etiqueta y solo si
+// el dueño hizo opt-in (show_last_active). Ver supabase/community/c7_last_active.sql.
+
+function _cmtyActivityText(bucket){
+  return bucket === 'ahora' ? 'En línea'
+    : bucket === 'hoy' ? 'Activo hoy'
+    : bucket === 'esta semana' ? 'Activo esta semana'
+    : bucket === 'hace tiempo' ? 'Hace tiempo' : '';
+}
+function _cmtyActivityHtml(uid){
+  const b = CMTY.activity && CMTY.activity[uid]; if(!b) return '';
+  const txt = esc(_cmtyActivityText(b));
+  if(b === 'ahora') return '<span style="color:var(--g);font-weight:700">● ' + txt + '</span>';
+  return '<span style="color:var(--t3)">' + txt + '</span>';
+}
+
+// Carga las etiquetas de última conexión de mis amigos + compañeros de gym en UNA llamada.
+async function _cmtyLoadActivity(cli, uid){
+  CMTY.activity = {};
+  const ids = [];
+  CMTY.friends.forEach(f => { if(f.fid) ids.push(f.fid); });
+  CMTY.gym.forEach(p => { if(p && p.user_id) ids.push(p.user_id); });
+  if(!ids.length) return;
+  try{
+    const { data, error } = await cli.rpc('cmty_activity_labels', { targets: ids });
+    if(error){ _cw()('cmty activity:', error.message); return; }
+    (data || []).forEach(r => { if(r && r.label) CMTY.activity[r.uid] = r.label; });
+  }catch(e){ _cw()('cmty activity:', e && e.message); }
+}
+
+async function cmtyToggleLastActive(){
+  const next = !(CMTY.profile.show_last_active === true);
+  await _cmtyPatch({ show_last_active: next });
+}
+
 // Exports para el harness (Node no carga este archivo, pero CDP evalúa contra window).
 if(typeof window !== 'undefined'){
   window.cmtyChatOpen = cmtyChatOpen; window.cmtyChatSend = cmtyChatSend;
   window.cmtyChatClose = cmtyChatClose; window._cmtyChatClose = _cmtyChatClose;
   window.cmtyDmRealtime = cmtyDmRealtime; window._cmtyLoadDMs = _cmtyLoadDMs;
   window._cmtyInboxHtml = _cmtyInboxHtml; window._cmtyDmBumpInbox = _cmtyDmBumpInbox;
+  window.cmtyToggleLastActive = cmtyToggleLastActive; window._cmtyLoadActivity = _cmtyLoadActivity;
+  window._cmtyActivityHtml = _cmtyActivityHtml; window._cmtyActivityText = _cmtyActivityText;
 }
