@@ -87,12 +87,17 @@ async function cmtyLoad(opts){
     const cli = _cmtyClient(); const uid = await _cmtyUid();
     if(!cli || !uid){ CMTY.offline = true; _cmtyLoadCache(); return; }
     CMTY.uid = uid;
-    // Columnas EXPLÍCITAS (no `*`): last_active NO tiene grant de SELECT (nunca crudo, §13-BIS.4) →
-    // un `select('*')` daría permission denied. Pedimos solo lo otorgado (incl. show_last_active).
+    // Columnas SEGURAS (§13-BIS.1b): share_code/consent/birth_date/last_active/trained_today/snapshot_at
+    // salieron del grant general → un `select('*')` o pedirlas daría permission denied. El dueño lee sus
+    // propios secretos (código/consentimiento) por la RPC dedicada cmty_my_secrets.
     const { data: prof, error: pe } = await cli.from('community_profiles')
-      .select('user_id,handle,avatar_url,bio,share_code,visible,streak_weeks,sessions_4w,level,achievements,trained_today,snapshot_at,created_at,consent_v,consent_at,show_today,show_last_active')
+      .select('user_id,handle,avatar_url,bio,visible,is_private,role,streak_weeks,sessions_4w,level,achievements,created_at,show_today,show_last_active')
       .eq('user_id', uid).maybeSingle();
     if(pe) throw pe;
+    if(prof){
+      try{ const { data: sec } = await cli.rpc('cmty_my_secrets'); if(sec && sec[0]) Object.assign(prof, sec[0]); }
+      catch(e){ _cw()('cmty secrets:', e && e.message); }
+    }
     CMTY.offline = false;
     CMTY.profile = prof || null;
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
@@ -114,7 +119,7 @@ async function cmtyLoad(opts){
       });
       // TODOS los perfiles VISIBLES por RLS = propio (excluido con neq) + amigos + compañeros de gym.
       const { data: allp, error: ape } = await cli.from('community_profiles')
-        .select('user_id,handle,avatar_url,bio,streak_weeks,sessions_4w,level,achievements,trained_today,snapshot_at')
+        .select('user_id,handle,avatar_url,bio,is_private,role,streak_weeks,sessions_4w,level,achievements')
         .neq('user_id', uid);
       if(ape) throw ape;
       const fprofiles = {};
@@ -544,17 +549,14 @@ function _cmtyFriendsHtml(){
 function _cmtyFriendCard(f){
   const p = f.prof;
   const given = !!CMTY.heartsGiven[f.fid];
-  const fresh = (typeof cmtyFreshness === 'function') ? cmtyFreshness(p.snapshot_at, Date.now()) : { fresh: true };
-  const today = p.trained_today
-    ? '<span style="color:var(--g);font-weight:700">● Entrenó hoy</span>'
-    : '<span style="color:var(--t3)">○ Hoy no ha entrenado</span>';
+  // trained_today/snapshot_at salieron del grant (§13-BIS.1b, §13.0 «no me gusta ver si entrenó») → la
+  // «última conexión» (②, opt-in) reemplaza el «entrenó hoy» en la cara pública.
   return '<div class="card" style="padding:12px;margin-bottom:9px">' +
     '<div style="display:flex;align-items:center;gap:11px">' +
       _cmtyAvatarHtml(p, 46) +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem</div>' +
-        '<div style="font-size:11.5px;margin-top:1px">' + today + (fresh.fresh ? '' : ' <span style="color:var(--t3)">· dato viejo</span>') + '</div>' +
         (_cmtyActivityHtml(f.fid) ? '<div style="font-size:11px;margin-top:1px">' + _cmtyActivityHtml(f.fid) + '</div>' : '') +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:38px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + f.fid + '\')" title="Chatear" aria-label="Chatear">' +

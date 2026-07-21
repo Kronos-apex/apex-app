@@ -123,8 +123,8 @@ const cm6 = await ev(`(()=>{const h=document.getElementById('cn-community');cons
 check('CM6 avatar externo NO se pinta (cae a iniciales)', cm6.ext === false, JSON.stringify(cm6));
 
 // CM7: tarjetas de amigos con stats + solicitud entrante escapada
-const cm7 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');return {racha:/Racha 5 sem/.test(t),nivel:/Nivel 3/.test(t),hoy:/Entren[oó] hoy/.test(t),req:/quiere ser tu amigo/.test(t),code:/ABCD1234EF/.test(t)};})()`);
-check('CM7 amigos: stats (racha/nivel/hoy) + solicitud entrante + mi código', cm7.racha && cm7.nivel && cm7.hoy && cm7.req && cm7.code, JSON.stringify(cm7));
+const cm7 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');return {racha:/Racha 5 sem/.test(t),nivel:/Nivel 3/.test(t),noTrainedToday:!/Entren[oó] hoy/.test(t),req:/quiere ser tu amigo/.test(t),code:/ABCD1234EF/.test(t)};})()`);
+check('CM7 amigos: stats (racha/nivel) + «entrenó hoy» RETIRADO (§13-BIS.1b) + solicitud entrante + mi código', cm7.racha && cm7.nivel && cm7.noTrainedToday && cm7.req && cm7.code, JSON.stringify(cm7));
 
 // Shots del estado con perfil+amigos
 await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250); await shot('community-claro');
