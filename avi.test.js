@@ -47,6 +47,7 @@ const {
   cmtyFreshness,
   cmtyAvatarOk,
   cmtyInitials,
+  communityPostPayload,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1235,6 +1236,43 @@ test('cmtyInitials: 1-2 letras del handle en mayúsculas', () => {
   assert.strictEqual(cmtyInitials('x'), 'X');
   assert.strictEqual(cmtyInitials('   '), '?');
   assert.strictEqual(cmtyInitials(null), '?');
+});
+
+test('communityPostPayload: solo claves allow-list, descarta pesos/salud/ids', () => {
+  const routine = {
+    id: 'r1', name: 'Full body A', day: 'Lunes', restSec: 90, note: 'peso 100kg, cuidado rodilla',
+    warmup: 'movilidad',
+    exercises: [
+      { id: 'e1', name: 'Sentadilla', muscle: 'piernas', type: 'peso_reps', sets: 3, reps: '8-12',
+        icon: 'x', desc: 'baja', descSimple: 'baja', imgUrl: 'http://img', kg: 80 },
+      { id: 'e2', name: 'Press banca', muscle: 'pecho', sets: 4, reps: 10 }
+    ]
+  };
+  const p = communityPostPayload(routine);
+  // top-level: SOLO name, days, exercises
+  assert.deepStrictEqual(Object.keys(p).sort(), ['days', 'exercises', 'name']);
+  assert.strictEqual(p.name, 'Full body A');
+  assert.strictEqual(p.days, 'Lunes'); // day → days
+  // ejercicio 1: SOLO name/muscle/type/sets/reps (kg/id/icon/desc/imgUrl descartados)
+  assert.deepStrictEqual(Object.keys(p.exercises[0]).sort(), ['muscle', 'name', 'reps', 'sets', 'type']);
+  assert.strictEqual(p.exercises[0].sets, '3'); // stringificado
+  assert.strictEqual(p.exercises[0].reps, '8-12');
+  assert.ok(!('kg' in p.exercises[0]) && !('imgUrl' in p.exercises[0]) && !('id' in p.exercises[0]));
+  // ejercicio 2 sin type → clave ausente, no vacía
+  assert.ok(!('type' in p.exercises[1]));
+  assert.strictEqual(p.exercises[1].muscle, 'pecho');
+});
+
+test('communityPostPayload: caps (40 ejercicios, 80 chars) y defaults defensivos', () => {
+  const many = { name: 'x'.repeat(200), exercises: Array.from({ length: 60 }, (_, i) => ({ name: 'E' + i })) };
+  const p = communityPostPayload(many);
+  assert.strictEqual(p.name.length, 80);
+  assert.strictEqual(p.exercises.length, 40);
+  assert.ok(!('days' in p)); // sin day → sin days
+  // objeto vacío → nombre por defecto, sin ejercicios (la UI impide publicar así)
+  const empty = communityPostPayload({});
+  assert.strictEqual(empty.name, 'Mi rutina');
+  assert.deepStrictEqual(empty.exercises, []);
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

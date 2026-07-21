@@ -51,6 +51,11 @@ const CMTY = {
   following: {},     // {uid: 'active'|'pending'} a quién sigo yo
   followerReqs: [],  // [uid] solicitudes de seguidores entrantes (yo privado)
   profById: {},      // uid→perfil de todo lo visible (para pintar solicitudes por handle)
+
+  posts: [],         // ④ muro: [{id,user_id,payload,created_at}] de a quien sigo (active) + míos
+  postHearts: {},    // {postId: conteo de ❤️}
+  postHeartMine: {}, // {postId: true} si YO le di ❤️
+  composeOpen: false,// picker de "publicar mi rutina" abierto
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -107,6 +112,7 @@ async function cmtyLoad(opts){
     CMTY.profile = prof || null;
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
     CMTY.discover = []; CMTY.following = {}; CMTY.followerReqs = []; CMTY.profById = {};
+    CMTY.posts = []; CMTY.postHearts = {}; CMTY.postHeartMine = {};
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
@@ -151,6 +157,7 @@ async function cmtyLoad(opts){
       });
       await _cmtyLoadDMs(cli, uid); // ① bandeja de mensajes (community_messages)
       await _cmtyLoadActivity(cli, uid); // ② etiquetas de última conexión (opt-in, redondeadas)
+      await _cmtyLoadFeed(cli, uid); // ④ muro: posts de a quien sigo (active) + míos, con ❤️
     }
     CMTY.loaded = true;
     _cmtySaveCache();
@@ -211,7 +218,8 @@ function _cmtyPaint(){
     _cmtyFollowReqsHtml() +
     _cmtyGymHtml() +
     _cmtyFriendsHtml() +
-    _cmtyDiscoverHtml();
+    _cmtyDiscoverHtml() +
+    _cmtyFeedHtml();
 }
 
 function _cmtyOfflineCard(){
@@ -1053,6 +1061,174 @@ async function cmtyRejectFollow(uid){
   }catch(e){ toast(_cmtyErr(e)); }
 }
 
+// ══════════ ④ MURO (FEED) — publicar rutinas + ver las de a quien sigo ══════════
+// La RLS (cpost_sel + _profile_visible) es el candado real; esto solo pinta lo que el servidor
+// deja ver. Cargo posts de a quien sigo ACTIVO + los míos (defensa en profundidad: la RLS igual
+// filtra). Nada de datos sensibles: el payload ya viene acotado por el trigger (solo rutina).
+async function _cmtyLoadFeed(cli, uid){
+  const authors = Object.keys(CMTY.following).filter(u => CMTY.following[u] === 'active');
+  authors.push(uid); // mis propias publicaciones también salen en el muro
+  const { data: posts, error } = await cli.from('community_posts')
+    .select('id,user_id,payload,created_at')
+    .in('user_id', authors)
+    .eq('visible', true)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if(error){ _cw()('cmty feed:', error.message); return; }
+  CMTY.posts = posts || [];
+  const ids = CMTY.posts.map(p => p.id);
+  if(ids.length){
+    // ❤️ de estos posts (RLS re_sel: solo los que puedo ver = estos). context = post.id.
+    const { data: rx } = await cli.from('community_reactions').select('from_user,context').in('context', ids);
+    (rx || []).forEach(r => {
+      if(!r.context) return;
+      CMTY.postHearts[r.context] = (CMTY.postHearts[r.context] || 0) + 1;
+      if(r.from_user === uid) CMTY.postHeartMine[r.context] = true;
+    });
+  }
+}
+
+// Perfil del autor de un post (para avatar/handle): reusa lo ya cargado (amigos/gym/discover/profById/propio).
+function _cmtyAuthorProf(userId){
+  if(userId === CMTY.uid) return CMTY.profile;
+  const f = CMTY.friends.find(x => x.fid === userId); if(f && f.prof) return f.prof;
+  return CMTY.profById[userId] || null;
+}
+
+// Mis rutinas propias (el asesorado logueado) para el picker de publicar.
+function _cmtyMyRoutines(){
+  try{
+    const cid = (typeof CUR !== 'undefined' && CUR.clientId) ? CUR.clientId : null;
+    const me = cid && Array.isArray(DB.clients) ? DB.clients.find(c => c.id === cid) : null;
+    return (me && Array.isArray(me.routines)) ? me.routines : [];
+  }catch(e){ return []; }
+}
+
+function _cmtyFeedHtml(){
+  let h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:14px 2px 9px">Muro de rutinas</div>';
+  h += _cmtyComposeHtml();
+  if(!CMTY.posts.length){
+    return h + '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('clipboard', 30) : '📋') + '</div>' +
+      '<div class="etxt">Tu muro está tranquilo por ahora</div>' +
+      '<div class="esub">Sigue a alguien o publica tu rutina para empezar.</div></div>';
+  }
+  CMTY.posts.forEach(p => { h += _cmtyPostCard(p); });
+  return h;
+}
+
+function _cmtyComposeHtml(){
+  const routines = _cmtyMyRoutines();
+  let h = '<div class="card" style="padding:12px;margin-bottom:10px">';
+  h += '<button class="btn bp" style="width:100%;min-height:44px" onclick="cmtyComposeToggle()">' +
+    (typeof aviIcon === 'function' ? aviIcon('clipboard', 16) : '📋') + ' Publicar una de mis rutinas</button>';
+  if(CMTY.composeOpen){
+    if(!routines.length){
+      h += '<div style="font-size:12.5px;color:var(--t2);margin-top:10px;text-align:center">Aún no tienes rutinas para compartir. Crea una en «Rutinas».</div>';
+    }else{
+      h += '<div style="font-size:11.5px;color:var(--t3);margin:10px 2px 8px">Se comparten solo el nombre, el día y los ejercicios (series y reps). Nunca tus pesos ni datos de salud.</div>';
+      routines.forEach((r, i) => {
+        const nex = Array.isArray(r.exercises) ? r.exercises.length : 0;
+        h += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--br)">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:13.5px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r.name || 'Rutina') + '</div>' +
+            '<div style="font-size:11.5px;color:var(--t2)">' + esc(r.day || 'Sin día') + ' · ' + nex + ' ejercicio' + (nex === 1 ? '' : 's') + '</div>' +
+          '</div>' +
+          '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto"' + (nex ? '' : ' disabled') + ' onclick="cmtyPublish(' + i + ')">Publicar</button>' +
+        '</div>';
+      });
+    }
+  }
+  return h + '</div>';
+}
+
+function _cmtyPostCard(post){
+  const pl = post.payload || {};
+  const prof = _cmtyAuthorProf(post.user_id);
+  const mine = post.user_id === CMTY.uid;
+  const name = esc(pl.name || 'Rutina');
+  const days = pl.days ? esc(Array.isArray(pl.days) ? pl.days.join(', ') : pl.days) : '';
+  const exs = Array.isArray(pl.exercises) ? pl.exercises : [];
+  const hearts = CMTY.postHearts[post.id] || 0;
+  const given = !!CMTY.postHeartMine[post.id];
+  let exHtml = exs.slice(0, 8).map(e => {
+    const sr = [e.sets, e.reps].filter(x => x != null && x !== '').join('×');
+    return '<div style="font-size:12px;color:var(--t2);padding:2px 0;display:flex;justify-content:space-between;gap:10px">' +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.name || 'Ejercicio') + '</span>' +
+      (sr ? '<span style="color:var(--t3);flex:0 0 auto">' + esc(sr) + '</span>' : '') + '</div>';
+  }).join('');
+  if(exs.length > 8) exHtml += '<div style="font-size:11px;color:var(--t3);padding-top:2px">y ' + (exs.length - 8) + ' más…</div>';
+  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  return '<div class="card" style="padding:13px;margin-bottom:10px">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
+      _cmtyAvatarHtml(prof || {}, 40) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t3)">compartió una rutina</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:14px;font-weight:800;color:var(--t1)">' + name + '</div>' +
+    (days ? '<div style="font-size:11.5px;color:var(--g);font-weight:700;margin-bottom:6px">' + days + '</div>' : '<div style="height:4px"></div>') +
+    exHtml +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
+      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Me gusta">' +
+        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
+      (mine ? '<button class="btn bg bsm" style="min-height:36px;margin-left:auto;color:var(--t2)" onclick="cmtyDeletePost(\'' + post.id + '\')">Eliminar</button>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+function cmtyComposeToggle(){ CMTY.composeOpen = !CMTY.composeOpen; _cmtyPaint(); }
+
+async function cmtyPublish(idx){
+  if(_cmtySealed()){ toast('🔒 (dev) publicar sellado en localhost'); return; }
+  const routines = _cmtyMyRoutines();
+  const r = routines[idx];
+  if(!r){ toast('No encontré esa rutina.'); return; }
+  if(!Array.isArray(r.exercises) || !r.exercises.length){ toast('Esa rutina no tiene ejercicios.'); return; }
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+    const payload = (typeof communityPostPayload === 'function') ? communityPostPayload(r) : null;
+    if(!payload){ toast('No pude preparar la rutina.'); return; }
+    const { error } = await cli.from('community_posts').insert({ user_id: uid, kind: 'routine', payload: payload });
+    if(error) throw error;
+    CMTY.composeOpen = false;
+    toast('✅ Rutina publicada en tu muro');
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
+async function cmtyPostHeart(postId, authorId){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  if(authorId === CMTY.uid){ toast('No puedes reaccionar a tu propia rutina.'); return; }
+  const given = !!CMTY.postHeartMine[postId];
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+    if(given){
+      const { error } = await cli.from('community_reactions').delete().eq('from_user', uid).eq('context', postId).eq('kind', 'heart');
+      if(error) throw error;
+      CMTY.postHeartMine[postId] = false;
+      CMTY.postHearts[postId] = Math.max(0, (CMTY.postHearts[postId] || 1) - 1);
+    }else{
+      const { error } = await cli.from('community_reactions').insert({ from_user: uid, to_user: authorId, kind: 'heart', context: postId });
+      if(error) throw error;
+      CMTY.postHeartMine[postId] = true;
+      CMTY.postHearts[postId] = (CMTY.postHearts[postId] || 0) + 1;
+    }
+    _cmtyPaint();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
+async function cmtyDeletePost(postId){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); if(!cli) return;
+    const { error } = await cli.from('community_posts').delete().eq('id', postId);
+    if(error) throw error;
+    toast('Rutina retirada del muro');
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
 // Exports para el harness (Node no carga este archivo, pero CDP evalúa contra window).
 if(typeof window !== 'undefined'){
   window.cmtyFollow = cmtyFollow; window.cmtyUnfollow = cmtyUnfollow;
@@ -1066,4 +1242,9 @@ if(typeof window !== 'undefined'){
   window._cmtyInboxHtml = _cmtyInboxHtml; window._cmtyDmBumpInbox = _cmtyDmBumpInbox;
   window.cmtyToggleLastActive = cmtyToggleLastActive; window._cmtyLoadActivity = _cmtyLoadActivity;
   window._cmtyActivityHtml = _cmtyActivityHtml; window._cmtyActivityText = _cmtyActivityText;
+  window._cmtyLoadFeed = _cmtyLoadFeed; window._cmtyFeedHtml = _cmtyFeedHtml;
+  window._cmtyComposeHtml = _cmtyComposeHtml; window._cmtyPostCard = _cmtyPostCard;
+  window.cmtyComposeToggle = cmtyComposeToggle; window.cmtyPublish = cmtyPublish;
+  window.cmtyPostHeart = cmtyPostHeart; window.cmtyDeletePost = cmtyDeletePost;
+  window._cmtyMyRoutines = _cmtyMyRoutines; window._cmtyAuthorProf = _cmtyAuthorProf;
 }

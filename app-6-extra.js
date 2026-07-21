@@ -2378,6 +2378,8 @@ const AVI_NEWS=[
    steps:['En "Hoy" verás "Te quedó pendiente esta semana" si te saltaste una rutina','Toca "Entrenar hoy" para hacerla ahora — tu plan no se toca','O "Mover a hoy en mi plan" para reacomodar tus días de una vez']}, // coach:false → para todos
   {v:373, icon:'users', t:'Llegó la Comunidad', d:'Comparte tu constancia con amigos que tú elijas y motívense juntos. Es opcional y muy privado.',
    steps:['Entra a la nueva pestaña "Comunidad"','Crea tu perfil (apodo + avatar) — nadie ve tu peso, fotos ni salud','Comparte tu código o pega el de un amigo, y véanse la racha con un ❤️']}, // coach:false → para todos
+  {v:382, icon:'clipboard', t:'Publica tus rutinas', d:'Ahora puedes compartir una rutina en tu muro de la Comunidad y ver las de la gente que sigues. Solo el nombre y los ejercicios — nunca tus pesos ni tu salud.',
+   steps:['Entra a "Comunidad" y baja hasta "Muro de rutinas"','Toca "Publicar una de mis rutinas" y elige cuál compartir','Dale ❤️ a las rutinas que te inspiren de quienes sigues']}, // coach:false → para todos
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).

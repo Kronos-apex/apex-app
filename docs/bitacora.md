@@ -380,6 +380,42 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-21 (parte 101 — COMUNIDAD v2 ④ MURO / FEED, avi-v382, PENDIENTE re-verificación
+de Fable). Cierra el orden v2 (①chat→②última conexión→③perfil+seguir→④feed). Cada quien PUBLICA una
+rutina (solo nombre/días/ejercicios con series-reps) y ve un MURO con las de a quien sigue (active) +
+las propias, con ❤️. **Backend (migración `c12_posts_feed`, aplicada a prod):** (1) helper
+`private._is_approved_follower(viewer,owner)` (SECURITY DEFINER); (2) `private._profile_visible` v2 —
+AÑADE la rama de seguidor aprobado SOLO para adultos: `OR (_is_approved_follower AND NOT _is_minor)` —
+que ejecuta al pie las 2 estipulaciones de Fable §16.11 (pto1 adulto privado aprobado SÍ ve; pto2 menor
+JAMÁS, ni aprobado); (3) tabla `community_posts` (user_id→community_profiles, kind='routine', payload
+jsonb, visible, RLS cpost_sel/ins/upd/del reusando el helper único); (4) trigger `_community_post_validate`
+ALLOW-LIST (solo `{name,days,exercises:[{name,muscle,sets,reps,type}]}`, rechaza note/kg/imgUrl/peso/salud,
+caps de tamaño); (5) reacciones ❤️ sobre posts reusando `community_reactions.context=post.id` + índice
+único parcial (un ❤️ por post) + helper `private._post_author_if_visible` (evita RLS anidada); re_ins/re_sel
+v2 con rama de post. **DECISIÓN PO (2026-07-21, `AskUserQuestion`):** (a) reacciones = *cualquiera que VE
+el post* puede darle ❤️ (desviación documentada vs la recomendación conservadora de Fable §13-BIS.5 — la
+visibilidad sigue con candado, reaccionar solo se suma a poder ver); (b) §16.11 pto3 = NO bloquear el
+INSERT de un follow hacia un menor (el menor decide; aprobar sigue sin dar visibilidad → sin fuga) → la
+migración NO toca `_community_follow_state`. **Frontend (`app-7-community.js`):** `_cmtyLoadFeed` (posts de
+following-active + míos + conteo/mi-❤️), `_cmtyFeedHtml`/`_cmtyPostCard`/`_cmtyComposeHtml` (muro + picker
+de publicar inline), `cmtyComposeToggle`/`cmtyPublish`/`cmtyPostHeart`/`cmtyDeletePost`; sección al final de
+`#cn-community`. Mapeador PURO `communityPostPayload(routine)` en avi-core (allow-list espejo del trigger:
+day→days, descarta id/note/desc/imgUrl/kg; caps 40 ex / 80 chars) + 2 tests → suite **407**. Escrituras por
+`AUTH.client()`, selladas en localhost, NADA en SB_KEYS; `esc()` en nombre/handle/días/ejercicios; avatares
+solo `cmtyAvatarOk`. AVI_NEWS v382 (clipboard). **VERIFICACIÓN de Opus (con dientes, todo en tx con rollback
+contra prod real):** matriz de visibilidad 11/11 con actores 100% sintéticos SIN relación previa (el 1er
+intento con actores reales dio falso-positivo: `0a64`↔menores YA eran amigos+gym → visibilidad legítima, no
+fuga; se rehízo con sintéticos); candado de menor probado LOAD-BEARING (saboteo: quitar `AND NOT _is_minor`
+→ el seguidor aprobado VE al menor = fuga reproducida → restaurado); allow-list 11/11 (acepta rutina limpia,
+rechaza note/peso/kg/imgUrl/weight/sin-nombre/no-array/vacío/nombre-largo); reacciones 5/5 impersonadas
+(extraño↛privado, seguidor✓, doble❤️✗índice, extraño✓público=decisión PO, autor-falso✗); advisor de
+seguridad = **0 warnings nuevos** (mis funciones `private.*` no se exponen por API; el trigger tiene execute
+revocado). Harness NUEVO `_verify-feed.mjs` **15/15** (FD1-FD9 + XSS + sellado). Harness de comunidad sin
+regresión (follow 11/11, community OK, public 10/10). GOTCHA nuevo: `community_reactions.from_user/to_user`
+tienen FK a `community_profiles` → para reaccionar hay que ser MIEMBRO (tener perfil); un test de reacción
+con actor sin perfil falla por FK, no por policy (enmascara el resultado). Deploy avi-v382. **PENDIENTE
+re-verificación de Fable.** Radar al cierre.*
+
 *Hitos sesión 2026-07-21 (parte 100 — VEREDICTO DE FABLE: ARCO ③ COMPLETO, 🟢 APROBADO). Verificación
 adversarial independiente de los 5 commits del arco ③ (`20391a1` ③a · `12054ce` ③b · `bdb3571` ③c-1 ·
 `396c100` ③c-2 · `45568cf` ③c-3, avi-v381) — sondeada desde cero contra prod real

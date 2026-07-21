@@ -2168,6 +2168,28 @@ function cmtyInitials(handle) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+// ④ FEED — mapea una rutina propia al payload ALLOW-LIST que acepta `community_posts`
+// (trigger _community_post_validate): SOLO {name, days, exercises:[{name,muscle,sets,reps,type}]}.
+// TODO lo demás (note/desc/imgUrl/icon/id/kg/peso/salud…) se DESCARTA aquí — nunca sale del
+// dispositivo. Pura y determinista: sin DOM, sin localStorage. Caps espejo del trigger.
+function communityPostPayload(routine) {
+  routine = routine || {};
+  const out = { name: String(routine.name || 'Mi rutina').slice(0, 80) };
+  const day = routine.day;
+  if (day != null && String(day) !== '') out.days = String(day).slice(0, 60);
+  const exs = Array.isArray(routine.exercises) ? routine.exercises : [];
+  out.exercises = exs.slice(0, 40).map(function (e) {
+    e = e || {};
+    const o = { name: String(e.name || 'Ejercicio').slice(0, 80) };
+    if (e.muscle != null && String(e.muscle) !== '') o.muscle = String(e.muscle).slice(0, 40);
+    if (e.type != null && String(e.type) !== '') o.type = String(e.type).slice(0, 20);
+    if (e.sets != null && String(e.sets) !== '') o.sets = String(e.sets).slice(0, 20);
+    if (e.reps != null && String(e.reps) !== '') o.reps = String(e.reps).slice(0, 20);
+    return o;
+  });
+  return out;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -2879,6 +2901,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyFreshness,
     cmtyAvatarOk,
     cmtyInitials,
+    communityPostPayload,
     computeExerciseProgress,
     coachInsight,
     coachPulse,
