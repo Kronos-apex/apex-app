@@ -292,6 +292,8 @@ function _cmtyMyProfileHtml(){
       '<button class="btn bg bsm" style="min-height:36px" onclick="cmtyCopyCode()">Copiar</button>' +
       '<button class="btn bp bsm" style="min-height:36px" onclick="cmtyShareCode()">Compartir</button>' +
     '</div>' +
+    // Cuenta pública / privada (③c-2)
+    _cmtyPublicBlockHtml(p) +
     // Toggles
     '<div style="margin-top:12px;display:flex;flex-direction:column;gap:9px">' +
       _cmtyToggleRow('cmty-tg-visible', 'Perfil activo', 'Si lo pausas, tus amigos no te ven.', !paused, 'cmtyToggleVisible()') +
@@ -874,8 +876,82 @@ async function cmtyToggleLastActive(){
   await _cmtyPatch({ show_last_active: next });
 }
 
+// ══════════ ③c-2 CUENTA PÚBLICA / PRIVADA + activación (fecha de nacimiento, menores) ══════════
+// El cliente alterna is_private (el trigger de menor es la autoridad final, §13-BIS.3). Hacerse público
+// como ADULTO exige que la edge activate_public_profile fije birth_date (server-side, write-once) — sin
+// fecha = fail-safe menor = privado forzado. `role` (insignia coach) lo fija la edge verificando que
+// POSEE asesorados (NO user_data.role, client-writable, F7). La UI RELEE el valor real tras cada cambio.
+
+function _cmtyMinorFlag(){ try{ return localStorage.getItem('ax_cmty_minor_' + (CMTY.uid || '')) === '1'; }catch(e){ return false; } }
+function _cmtySetMinorFlag(){ try{ localStorage.setItem('ax_cmty_minor_' + (CMTY.uid || ''), '1'); }catch(e){} }
+
+function _cmtyPublicBlockHtml(p){
+  const isPublic = p.is_private === false;
+  const coachTag = p.role === 'coach'
+    ? '<div style="font-size:11px;font-weight:800;color:var(--gt);margin-bottom:7px;display:flex;align-items:center;gap:5px">' + (typeof aviIcon === 'function' ? aviIcon('crown', 13) : '👑') + ' Perfil de coach</div>'
+    : '';
+  if(_cmtyMinorFlag() && !isPublic){
+    return '<div class="card" style="margin-top:12px;padding:11px 13px;background:var(--surface)">' + coachTag +
+      '<div><div style="font-size:13px;font-weight:600;color:var(--t1)">Perfil privado 🔒</div>' +
+      '<div style="font-size:11.5px;color:var(--t3);line-height:1.4">Las cuentas de menores de 18 años son privadas por tu seguridad.</div></div></div>';
+  }
+  const sub = isPublic ? 'Cualquiera en AVI puede encontrarte y seguirte.' : 'Solo tus amigos y tu gym te ven. Ábrelo para que te descubran.';
+  return '<div class="card" style="margin-top:12px;padding:11px 13px;background:var(--surface)">' + coachTag +
+    _cmtyToggleRow('cmty-tg-public', 'Perfil público', sub, isPublic, 'cmtyTogglePublic()') +
+    '<div id="cmty-bd-box" style="display:none;margin-top:10px"></div>' +
+    '</div>';
+}
+
+async function _cmtySetPrivate(val){
+  const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+  const { error } = await cli.from('community_profiles').update({ is_private: val }).eq('user_id', uid);
+  if(error) throw error;
+  await cmtyLoad(); // RELEE el valor REAL (el trigger de menor pudo forzarlo, §13-BIS.3)
+}
+
+async function cmtyTogglePublic(){
+  if(_cmtySealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  if(CMTY.profile.is_private === false){
+    try{ await _cmtySetPrivate(true); toast('🔒 Tu perfil ahora es privado'); }catch(e){ toast(_cmtyErr(e)); }
+    return;
+  }
+  const cli = _cmtyClient(); if(!cli) return;
+  try{
+    const { data, error } = await cli.functions.invoke('activate_public_profile', { body: {} });
+    if(error) throw error;
+    if(data && data.needs_birthdate){ _cmtyShowBdBox(); return; }
+    if(data && data.is_minor){ _cmtySetMinorFlag(); toast('Tu cuenta queda privada por tu seguridad (menor de 18).'); await cmtyLoad(); return; }
+    await _cmtySetPrivate(false); toast('🌎 Tu perfil ahora es público');
+  }catch(e){ toast(_cmtyErr(e)); _cmtyPaint(); }
+}
+
+function _cmtyShowBdBox(){
+  const box = document.getElementById('cmty-bd-box'); if(!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:7px">Para proteger a los menores, confirma tu fecha de nacimiento. Es <b>solo una vez</b> y <b>nadie</b> la ve.</div>' +
+    '<input class="inp" id="cmty-bd-input" type="date" style="margin-bottom:8px">' +
+    '<div style="display:flex;gap:8px"><button class="btn bg bsm" style="flex:1;min-height:38px" onclick="_cmtyHideBdBox()">Cancelar</button>' +
+    '<button class="btn bp bsm" style="flex:1;min-height:38px" onclick="cmtySubmitBirthdate()">Confirmar</button></div>';
+}
+function _cmtyHideBdBox(){ const box = document.getElementById('cmty-bd-box'); if(box){ box.style.display = 'none'; box.innerHTML = ''; } _cmtyPaint(); }
+
+async function cmtySubmitBirthdate(){
+  const el = document.getElementById('cmty-bd-input'); const bd = el ? el.value : '';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(bd)){ toast('Elige una fecha válida.'); return; }
+  if(_cmtySealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  const cli = _cmtyClient(); if(!cli) return;
+  try{
+    const { data, error } = await cli.functions.invoke('activate_public_profile', { body: { birth_date: bd } });
+    if(error) throw error;
+    if(data && data.is_minor){ _cmtySetMinorFlag(); toast('Gracias. Por tu seguridad, tu cuenta de menor queda privada.'); await cmtyLoad(); return; }
+    await _cmtySetPrivate(false); toast('🌎 ¡Listo! Tu perfil ahora es público');
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
 // Exports para el harness (Node no carga este archivo, pero CDP evalúa contra window).
 if(typeof window !== 'undefined'){
+  window.cmtyTogglePublic = cmtyTogglePublic; window.cmtySubmitBirthdate = cmtySubmitBirthdate;
+  window._cmtyPublicBlockHtml = _cmtyPublicBlockHtml; window._cmtyShowBdBox = _cmtyShowBdBox;
   window.cmtyChatOpen = cmtyChatOpen; window.cmtyChatSend = cmtyChatSend;
   window.cmtyChatClose = cmtyChatClose; window._cmtyChatClose = _cmtyChatClose;
   window.cmtyDmRealtime = cmtyDmRealtime; window._cmtyLoadDMs = _cmtyLoadDMs;
