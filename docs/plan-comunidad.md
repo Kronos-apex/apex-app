@@ -1263,3 +1263,167 @@ dedicado con los sabotajes 1-12 de §13-BIS.8 que aplican a ①. Suite antes y d
 `community_profiles`/`follows`/`community_posts` en este ciclo** — esos son de la sesión de ③, que
 Fable ya dejó estipulada arriba para cuando llegue, pero que Opus NO debe adelantar sin que esa sesión
 tenga su propio veredicto de Fable después de construida (mismo patrón que C1→C2→C3→C4→C5).
+
+---
+
+## 14. VEREDICTO DE FABLE — ① CHAT EN VIVO (backend `37792ad` + frontend `a77989c`, avi-v377)
+
+**🟡 APROBADO CON RESERVA** (una corrección de una línea, no bloqueante, para Opus).
+
+Verificación adversarial independiente contra prod real (`eoebhrxbokyllqalyecj`), sin confiar en lo
+que Opus reportó — cada sabotaje se rehizo desde cero, con datos reales (única amistad `accepted`
+F1=`0a6484ed…`↔F2=`31bf6d19…`, gym de F1 con ~23 miembros poblado en vivo por Camilo).
+
+### 14.1 DDL vs §13-BIS.2 — coincide, desviación única correcta
+
+`supabase/community/c6_community_messages.sql` implementa el DDL literal (tabla, índice de hilo,
+`_can_dm`, `_cm_rate`, trigger anti-flood, `cm_sel`/`cm_ins`/`cm_upd`, grants de columna, Realtime).
+La única desviación declarada por Opus —`_community_msg_rate_limit()` como **SECURITY DEFINER** en vez
+de INVOKER— la verifiqué en los dos frentes que pedí:
+- **(a) el argumento es correcto:** confirmado con dientes — revertí la función a INVOKER en una
+  transacción de prueba (`rollback` después) y un INSERT normal de mensaje SÍ falla con
+  `permission denied for table _cm_rate`; con DEFINER (el estado real de prod), el mismo INSERT
+  funciona y el trigger cuenta correctamente.
+- **(b) DEFINER no abre un hueco nuevo:** `_cm_rate` tiene `rowsecurity=false` PERO **cero grants** a
+  `anon`/`authenticated` (solo `service_role`/`postgres`) — confirmado con `SELECT`/`INSERT` directos
+  como `authenticated`: ambos devuelven `permission denied for table _cm_rate` (el chequeo de
+  privilegio de tabla ocurre ANTES de evaluar RLS, así que la ausencia de RLS es inofensiva aquí, no
+  un descuido). Intenté invocar `_community_msg_rate_limit()` directamente vía RPC como `authenticated`
+  (la ruta que preocupaba el pedido): Postgres la rechaza a nivel de compilación —
+  `ERROR: trigger functions can only be called as triggers` — una función `RETURNS TRIGGER` en
+  PL/pgSQL **no se puede invocar fuera de un trigger, sin importar qué GRANT tenga**. `search_path=''`
+  está fijado en ambas funciones nuevas (`_can_dm` y `_community_msg_rate_limit`), igual que el resto
+  del proyecto.
+
+### 14.2 Hallazgo real (la reserva) — advisor SÍ regresó, aunque es inofensivo
+
+Pedí explícitamente verificar "que el advisor de seguridad no regrese". **Sí regresó:** `get_advisors`
+(security) muestra 2 WARN nuevos que no existían antes de esta migración —
+`anon_security_definer_function_executable` y `authenticated_security_definer_function_executable`,
+ambos apuntando a `public._community_msg_rate_limit()`. Causa: el DDL nunca hizo
+`revoke execute ... from public` sobre esa función (a diferencia de `_can_dm`, que sí lo hizo
+correctamente — `revoke all on function private._can_dm(uuid,uuid) from public;`). Por defecto Postgres
+otorga `EXECUTE` a `PUBLIC` en toda función nueva; como quedó sin revocar, `anon` y `authenticated`
+técnicamente tienen el grant.
+
+**Por qué NO es un hueco explotable (probado, no asumido):** confirmado en 14.1(b) — Postgres bloquea
+la invocación directa de una función `RETURNS TRIGGER` sin importar el grant. Aun así **revoqué el
+grant en una transacción de prueba y reinserté un mensaje real como `authenticated`** para confirmar
+que el trigger **sigue disparando igual sin el grant** (`rate_row_created_by_trigger=1`) — la
+revocación no rompe nada, porque el mecanismo de disparo de un trigger no pasa por el chequeo de
+`EXECUTE` del rol que emite el DML. Es decir: el fix es gratis, no hay ningún trade-off.
+
+**Corrección exacta para Opus** (no bloqueante, aplicar en el próximo commit de comunidad o suelto):
+```sql
+revoke execute on function public._community_msg_rate_limit() from public, anon, authenticated;
+```
+Un `ALTER FUNCTION ... SET search_path` no hace falta (ya está en `''`). Con esto los 2 WARN
+desaparecen y la función queda con la misma higiene que `_can_dm`.
+
+### 14.3 Sabotajes DB #7/#8/#10/#11/#12 — re-hechos desde cero, todos verdes
+
+Impersonación por JWT (`set local role authenticated` + `set_config('request.jwt.claims',...)`) en
+transacciones `BEGIN…ROLLBACK`, actores reales (F1, F2, un compañero de gym de F2 sin amistad —
+Astrid `c52b90af…` vía gym de F1— y un extraño real sin relación, `qa-harness` `9418640a…`):
+- **#7a** extraño→F1 sin relación: rechazado por RLS (`new row violates row-level security policy`).
+- **#7b** con amistad `pending` (creada real en la tx): sigue rechazado — `_are_friends` exige
+  `accepted`, `pending` no cuenta.
+- **#8** extraño hace `SELECT` del hilo F1↔F2 por filtro directo: 0 filas. `SELECT *` sin `where`
+  sobre toda la tabla: también 0 filas (RLS, no solo el filtro de la app).
+- **positivo (control):** compañero de gym SIN amistad (Astrid→F2, solo `_same_community`) SÍ puede
+  insertar — confirma que la vía "mismo gym" del candado funciona, no solo la de amistad.
+- **#10** F2 bloquea a F1 (`status='blocked'`): el INSERT posterior de F1→F2 se rechaza; el hilo VIEJO
+  sigue legible para AMBOS (`n=1` en las dos direcciones) — el bloqueo corta DM nuevo, no borra
+  historial, tal como especifica §13-BIS.6.
+- **#11** receptor intenta `UPDATE text=...`: `permission denied for table community_messages` (grant
+  de columna, ni siquiera llega a evaluar la policy). Receptor marca `read_at`: confirmé con
+  `GET DIAGNOSTICS row_count` que realmente afecta **1 fila** (no un falso-verde por ausencia de
+  excepción). El EMISOR intenta marcar `read_at` de un mensaje que él mismo envió: **0 filas
+  afectadas** y `read_at` sigue `NULL` tras el intento — la policy `using(to_user=auth.uid())` lo
+  filtra en silencio (esto lo detecté como falso-positivo en mi primer intento de prueba, que solo
+  miraba si había excepción; un `UPDATE` sin filas que matcheen NO lanza error en Postgres — corregido
+  re-verificando con `row_count` explícito).
+- **#12** 40 inserts en <60s desde un mismo usuario (contador ya en 1 por un insert previo en la misma
+  transacción — `now()` es constante por transacción): 29 pasan, 11 rechazan con `rate limit exceeded`
+  — el trigger corta antes de superar el tope generosamente (>30).
+
+Toda esta batería corrió en transacciones con `rollback` explícito; verifiqué después con consultas
+directas que prod quedó en cero (`community_messages`, `_cm_rate`, `friendships.status='accepted'`
+intacto, `community_profiles`=2 filas, sin residuos).
+
+### 14.4 Sabotaje #9 (Realtime respeta RLS entre DOS sesiones reales) — LA PRUEBA VIVA QUE FALTABA
+
+Opus no pudo cerrar esto (una sola sesión no puede DMearse a sí misma) y lo dejó pendiente
+explícitamente para mí. **La hice**, con 2+ sesiones `supabase-js` reales, no simuladas:
+- Creé 3 usuarios QA **desechables** (`admin.auth.admin.createUser`, email confirmado, contraseña
+  aleatoria por ejecución) — A, B, C — vía `SERVICE_ROLE_KEY` (`~/.avi/service-role.key`, nunca en el
+  repo). Los relacioné con `community_gym_members` (tabla sin los triggers de `friendships`, más
+  simple para el fixture): C hace de "coach" de sí mismo y de B (B y C quedan same-gym); A queda
+  AFUERA por completo (ni amigo ni gym-mate de nadie).
+- **Fase 1:** A abre un canal Realtime **sin filtro** (`event:'*'` sobre toda `community_messages`) con
+  su JWT real de sesión (`signInWithPassword`, no la anon key). B inserta un mensaje real a C (B y C sí
+  están relacionados). Ventana de espera 3.5s. **Resultado: A recibió 0 eventos.**
+- **Fase 2:** agregué A al mismo gym que B (ahora sí relacionados). B envía un mensaje DIRECTO a A (no
+  a C — la policy de Realtime filtra por FILA, no por "estás relacionado con alguien en general"). El
+  mismo canal de A, sin reconectar, sin cambiar el filtro: **A recibió el evento en <4s**, con el `id`
+  exacto del mensaje nuevo.
+- Limpieza: borré los mensajes y filas de `community_gym_members` de los 3 UIDs y los 3 usuarios de
+  `auth.users` vía `admin.auth.admin.deleteUser`. Verifiqué después: `community_messages`=0,
+  `community_gym_members` de los fixtures=0, usuarios fixture=0. Quedó 1 fila huérfana en `_cm_rate`
+  (esa tabla no tiene FK a `auth.users`, así que el borrado de B no la arrastra — inofensiva, la limpié
+  a mano). **Nota para el radar:** cualquier borrado real de cuenta (`delete-account` edge) puede dejar
+  el mismo tipo de fila huérfana en `_cm_rate`; no es un problema de seguridad (nadie la lee), es
+  housekeeping — el propio trigger la poda cuando pasan >10 min y alguien más manda un mensaje, así que
+  se autolimpia con el uso normal.
+
+Script: `realtime9.mjs` (ejecutado en el scratchpad de esta sesión, no forma parte del repo — un
+harness E2E persistente para este caso necesitaría credenciales de servicio en el entorno de CI, que
+hoy no están disponibles ahí; queda como script ad-hoc de verificación, reproducible manualmente).
+
+### 14.5 Frontend — vías sancionadas, XSS, sellado, scope
+
+- **`AUTH.client()` siempre:** `_cmtyClient()` = `AUTH.client()`, cero `fetch` crudo con `Bearer`
+  extraído a mano en todo `app-7-community.js`.
+- **XSS:** `_cmtyInboxHtml` usa `esc()` en handle y preview del último mensaje; las burbujas del hilo
+  (`_cmtyChatRender`) usan `textContent`, no `innerHTML` — un mensaje con `<img onerror=...>` nunca se
+  interpreta como HTML. Re-corrí `_verify-dm.mjs` (DM6) que lo prueba con control negativo: 22/22 verde.
+- **Sellado en localhost:** `_cmtySealed()` reusa `cloudWriteSealed` (el mecanismo estándar del
+  proyecto) — confirmado por DM7/DM8 del harness.
+- **No-upsert:** `cmtyChatSend` usa `.insert()`, `_cmtyChatMarkRead` usa `.update({read_at}).in('id',…)`
+  — nunca `.upsert()`, tal como pedía §13-BIS.7.
+- **Scope:** revisé el diff completo de ambos commits. Backend (`37792ad`) toca solo la migración SQL +
+  bitácora. Frontend (`a77989c`) toca `app-7-community.js` (el feature), `index.html` (markup del
+  overlay + bump `?v=377` ×11, pareado con `sw.js` `CACHE_NAME`), `styles.css` (una regla nueva,
+  documentada, que oculta la píldora de instalar con CUALQUIER `.cchat` abierto — arregla de paso el
+  chat del coach, no es un refactor no pedido, es la causa raíz del mismo defecto de clase),
+  `app-2-login.js` (3 líneas: registra `#cmty-chat` en la pila de cierre de overlays — necesario para
+  que el botón atrás/hardware cierre el chat nuevo primero, no toca lógica del chat del coach),
+  `scripts/hooks/pre-commit` (agrega `app-7-community.js` a `APP_JS` — corrige que el módulo de
+  comunidad NUNCA se auditaba, hallazgo real y bien puesto), CLAUDE.md/bitácora (documentación) y el
+  harness nuevo. **Nada en `SB_KEYS`, nada en `user_data`, el chat coach↔asesorado (`ax_m`) no se tocó**
+  — cumple §13-BIS.10 al pie de la letra.
+
+### 14.6 QA re-corrido independientemente
+
+`node avi.test.js` → **405/405**. `node scripts/e2e/_verify-dm.mjs` → **22/22**.
+`node scripts/e2e/_verify-community.mjs` → **13/13** (CM1-CM13, sin regresión de C3/C5).
+`node scripts/e2e/_prodcheck.mjs 377` → **verde**, `avi-v377` servida, cero `jsErrors`.
+
+### 14.7 Veredicto
+
+**🟡 APROBADO CON RESERVA.** El diseño, el DDL, los 11 sabotajes de nivel-DB y — lo más importante —
+la prueba viva de Realtime con 2 sesiones reales (#9, el punto que Opus no pudo cerrar) pasan todos,
+verificados desde cero por mí, no solo releídos. La única corrección pendiente es de higiene
+(2 advisores WARN nuevos, cero riesgo real, fix de una línea):
+```sql
+revoke execute on function public._community_msg_rate_limit() from public, anon, authenticated;
+```
+Que Opus la aplique como migración suelta (`c6b_revoke_ratelimit_execute` o similar) y confirme con
+`get_advisors` que los 2 WARN desaparecen — no hace falta otra ronda mía para esto, es mecánico, pero
+si Opus prefiere que yo la aplique directamente lo hago con una migración de una línea y re-corro
+advisors en el mismo turno.
+
+**Comunidad de gym (C5) — nota al margen, NO es parte de esta verificación:** al poblar los actores
+reales para los sabotajes noté que el gym de F1 (Camilo) sigue con ~23 miembros y la reserva de C5
+(bloqueo oculta dentro del gym, `avi-v376`) sigue con su propia re-verificación pendiente por separado
+— la dejo anotada, no la re-audito aquí (el PO pidió verificar el ① específicamente).
