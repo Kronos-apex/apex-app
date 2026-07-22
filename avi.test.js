@@ -48,6 +48,7 @@ const {
   cmtyAvatarOk,
   cmtyInitials,
   communityPostPayload,
+  communityEmptyState,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1273,6 +1274,34 @@ test('communityPostPayload: caps (40 ejercicios, 80 chars) y defaults defensivos
   const empty = communityPostPayload({});
   assert.strictEqual(empty.name, 'Mi rutina');
   assert.deepStrictEqual(empty.exercises, []);
+});
+
+test('communityEmptyState: un solo vacío — publicaciones > gente conectada > solo', () => {
+  // con publicaciones no hay vacío, aunque no tenga a nadie más
+  assert.strictEqual(communityEmptyState({ posts: 3 }), 'none');
+  assert.strictEqual(communityEmptyState({ posts: 1, friends: 0, gym: 0, discover: 0 }), 'none');
+  // sin publicaciones pero CON gente (cualquiera de las vías cuenta) → «tranquilo», empuja a publicar
+  assert.strictEqual(communityEmptyState({ posts: 0, friends: 2 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, gym: 1 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, following: 1 }), 'quiet');
+  // una solicitud pendiente ya es «tiene gente en camino»: no se le dice que está solo
+  assert.strictEqual(communityEmptyState({ posts: 0, outgoing: 1 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, incoming: 1 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, followerReqs: 1 }), 'quiet');
+  // sin nada de nada → 'lonely' (el único mensaje que resuelve el caso: conectar)
+  assert.strictEqual(communityEmptyState({ posts: 0, friends: 0, gym: 0, discover: 0, following: 0 }), 'lonely');
+  assert.strictEqual(communityEmptyState({}), 'lonely');
+  assert.strictEqual(communityEmptyState(), 'lonely');
+});
+
+test('communityEmptyState: valores basura cuentan como 0 (no inventan gente)', () => {
+  assert.strictEqual(communityEmptyState({ posts: null, friends: NaN, gym: undefined }), 'lonely');
+  assert.strictEqual(communityEmptyState({ posts: 0, friends: -3 }), 'lonely');
+  assert.strictEqual(communityEmptyState({ posts: 'x', friends: 'y' }), 'lonely');
+  // pero un conteo numérico en string sí cuenta (viene de un length, pero defensivo)
+  assert.strictEqual(communityEmptyState({ posts: 0, friends: '2' }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: '2' }), 'none');
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

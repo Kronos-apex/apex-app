@@ -149,10 +149,13 @@ const cm8b = await ev(`(()=>{const del=window.__cmtyCalls.filter(c=>c.table==='c
 check('CM8 ❤️ toggle: 1º da (insert + estado on), 2º quita (delete + estado off)', cm8a.ins === 1 && cm8a.given === true && cm8b.del === 1 && cm8b.given === false, JSON.stringify(cm8a) + ' / ' + JSON.stringify(cm8b));
 await ev(`delete window.AVI_ALLOW_CLOUD_WRITE;`);
 
-// CM11 (C5): directorio del gym muestra a los compañeros con botón «Agregar»
+// CM11 (C5): directorio del gym muestra a los compañeros con el botón de conectar.
+// R3 (2026-07-22): el verbo pasó de «Agregar» a «Conectar» — la acción inserta una AMISTAD mutua
+// (cmtyGymAdd → friendships pending), así que el copy viejo «agrega a quien quieras seguir» mentía
+// sobre la mecánica. Lo que se verifica sigue siendo lo mismo: el botón existe y apunta al compañero.
 await ev(`(()=>{ CMTY.gym=[{user_id:'gymA',handle:'CompaGym',avatar_url:null,streak_weeks:4,level:2,sessions_4w:6,trained_today:false}]; _cmtyPaint(); return 'ok'; })()`); await sleep(200);
-const cm11 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');const btn=[...h.querySelectorAll('button')].some(b=>/Agregar/.test(b.textContent)&&/gymA/.test(b.getAttribute('onclick')||''));return {gym:/Tu gimnasio/.test(t),compa:/CompaGym/.test(t),agregar:btn};})()`);
-check('CM11 (C5) directorio del gym: sección + compañero + botón Agregar', cm11.gym && cm11.compa && cm11.agregar, JSON.stringify(cm11));
+const cm11 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');const btn=[...h.querySelectorAll('button')].some(b=>/Conectar/.test(b.textContent)&&/cmtyGymAdd/.test(b.getAttribute('onclick')||'')&&/gymA/.test(b.getAttribute('onclick')||''));return {gym:/Tu gimnasio/.test(t),compa:/CompaGym/.test(t),conectar:btn};})()`);
+check('CM11 (C5) directorio del gym: sección + compañero + botón Conectar', cm11.gym && cm11.compa && cm11.conectar, JSON.stringify(cm11));
 
 // CM12 (C5): «Agregar» del directorio envía solicitud (INSERT friendship) — permitido contra el stub
 await ev(`window.AVI_ALLOW_CLOUD_WRITE=true; window.__cmtyCalls=[];`);

@@ -2190,6 +2190,23 @@ function communityPostPayload(routine) {
   return out;
 }
 
+// R3 (re-forma) — ESTADO VACÍO ÚNICO del muro. Antes se apilaban dos vacíos («tu muro está
+// tranquilo» + «aún no tienes amigos aquí») que decían lo mismo dos veces y ninguno resolvía
+// el caso real: no tener a NADIE todavía. Esta función decide cuál (y solo uno) corresponde:
+//   'none'   → hay publicaciones: se pinta el muro, ningún vacío
+//   'quiet'  → ya tiene gente conectada, pero nadie ha publicado todavía → empuja a PUBLICAR
+//   'lonely' → todavía no tiene a nadie (ni amigos, ni gym, ni seguidos, ni solicitudes) →
+//              empuja a CONECTAR, que es lo único que destraba el muro
+// Pura y defensiva: valores raros (null/NaN/negativos/strings) cuentan como 0.
+function communityEmptyState(counts) {
+  const c = counts || {};
+  const n = v => { const x = Number(v); return (isFinite(x) && x > 0) ? x : 0; };
+  if (n(c.posts) > 0) return 'none';
+  const people = n(c.friends) + n(c.gym) + n(c.discover) + n(c.following) +
+    n(c.incoming) + n(c.outgoing) + n(c.followerReqs);
+  return people > 0 ? 'quiet' : 'lonely';
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -2902,6 +2919,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyAvatarOk,
     cmtyInitials,
     communityPostPayload,
+    communityEmptyState,
     computeExerciseProgress,
     coachInsight,
     coachPulse,

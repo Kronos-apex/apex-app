@@ -73,10 +73,22 @@ en el SERVIDOR, igual que el snapshot de constancia (decisión #7, no inflable).
 - Puntos abiertos para Fable: tabla vs kind en posts · RLS INSERT service_role-only · dedupe ·
   qué hitos · flag opt-in · poda. Flujo: **Fable planifica RLS → Opus ejecuta → Fable verifica.**
 
-### R3 — Pulido
-- Estado vacío UNIFICADO (un solo mensaje accionable, no tres vacíos apilados).
-- Fix del banner "Instalar app" que tapa el muro (misma clase que `#s-login~#install-banner`).
-- "Seguir por código" (renombrar la entrada de "amigos por código" hacia el verbo único).
+### R3 — Pulido — ✅ HECHO (avi-v384, 2026-07-22, PENDIENTE re-verificación de Fable)
+- **Estado vacío UNIFICADO — hecho.** Motor puro `communityEmptyState(counts)` en avi-core
+  (`'none'|'quiet'|'lonely'`) + `_cmtyCounts()`/`_cmtyEmptyHtml(state)` en app-7; `_cmtyFriendsHtml`
+  ya no pinta vacío propio. 'lonely' trae sus 2 acciones (compartir código / pegar código).
+  +2 tests (suite 409) y +3 checks en `_verify-feed` (24/24).
+- **Banner "Instalar app" — DESCARTADO con evidencia, no había bug.** Repro con medición real
+  (banner visible, scroller al fondo, 390×844): última tarjeta y=700 vs banner y=710 → **10px de
+  aire**. `.cnbody` ya reserva `padding-bottom:64px` con el banner visible desde v335 y
+  `#cn-community` vive dentro de ese scroller. No se agregó código.
+- **Verbo único — hecho con DESVIACIÓN documentada.** «Seguir por código» habría MENTIDO: esa
+  entrada inserta una AMISTAD mutua (`friendships`), no un follow. Quedan dos verbos honestos:
+  **Conectar** (mutuo: código + gym) y **Seguir** (una vía: descubrir). Copy: «Agregar un amigo»
+  → «Conectar por código» (+ «Se conectan los dos…»); gym «Agrega a quien quieras seguir» (mentía)
+  → «Conéctate con quien quieras», botón «Agregar» → «Conectar». `_verify-community` CM11 al día.
+  ⚠️ **Abierto para Fable/PO:** unificar de verdad a «seguir» exige cambiar la MECÁNICA
+  (friendship→follow en el flujo del código) = backend, no copy.
 
 ## Lo que se decidió y lo que NO se hace
 - ✅ Muro = hitos + rutinas compartidas (D1 del PO).

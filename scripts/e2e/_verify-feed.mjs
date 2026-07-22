@@ -47,7 +47,10 @@ const INSTALL = `(()=>{try{
   ]}]; CUR.clientId='me'; CUR.loggedAs='client';
   window.__calls=[];
   window.__myprofile={user_id:'${ME}',handle:'Camila',visible:true,is_private:false,role:'client',streak_weeks:2,level:2,show_today:true,show_last_active:false};
-  window.__allp=[{user_id:'${PUB}',handle:'<b>Publi</b>',is_private:false,role:'coach',streak_weeks:5,level:3,sessions_4w:12}];
+  // PUB = público no-amigo → «Descubrir» (seguir). GYM = privado no-amigo visible → solo puede ser
+  // compañero de gym (cp_sel) → sección «Tu gimnasio», donde el verbo correcto es CONECTAR (amistad mutua).
+  window.__allp=[{user_id:'${PUB}',handle:'<b>Publi</b>',is_private:false,role:'coach',streak_weeks:5,level:3,sessions_4w:12},
+                 {user_id:'gym-1',handle:'Compa',is_private:true,role:'client',streak_weeks:1,level:1,sessions_4w:4}];
   window.__fr=[];
   window.__fol=[{follower:'${ME}',followee:'${PUB}',state:'active'}];
   window.__posts=[
@@ -94,10 +97,45 @@ const fd9 = await ev(`(()=>{ const h=_cmtyFeedHtml(); return JSON.stringify({
 const d9 = JSON.parse(fd9);
 ok('FD9 XSS: nombre y handle maliciosos escapados', d9.noRawScript && d9.noRawB);
 
-// ── FD3: muro vacío ──
+// ── FD3: muro vacío CON gente conectada → un solo vacío, orientado a publicar ──
 const fd3 = await ev(`(()=>{ const saved=CMTY.posts; CMTY.posts=[]; const h=_cmtyFeedHtml(); CMTY.posts=saved;
-  return JSON.stringify({ empty:/tranquilo|publica/i.test(h) }); })()`);
-ok('FD3 muro vacío → estado vacío accionable', JSON.parse(fd3).empty);
+  return JSON.stringify({ quiet:/nadie ha publicado/i.test(h), publica:/Publica una de tus rutinas/i.test(h),
+    noLonely:!/Comparte tu código o pega el de un amigo/i.test(h) }); })()`);
+const d3 = JSON.parse(fd3);
+ok('FD3 muro vacío con gente conectada → vacío «nadie ha publicado» (empuja a publicar)',
+  d3.quiet && d3.publica && d3.noLonely);
+
+// ── R3: ESTADO VACÍO ÚNICO — sin nadie conectado, UN solo mensaje en toda la vista ──
+const r3a = await ev(`(()=>{
+  const sv={posts:CMTY.posts,friends:CMTY.friends,gym:CMTY.gym,discover:CMTY.discover,following:CMTY.following,
+    incoming:CMTY.incoming,outgoing:CMTY.outgoing,followerReqs:CMTY.followerReqs};
+  CMTY.posts=[];CMTY.friends=[];CMTY.gym=[];CMTY.discover=[];CMTY.following={};CMTY.incoming=[];CMTY.outgoing=[];CMTY.followerReqs=[];
+  CMTY.view='feed'; _cmtyPaint();
+  const host=document.getElementById('cn-community').innerHTML;
+  const nEmpty=(host.match(/class="empty"/g)||[]).length;
+  const r={ nEmpty, lonely:/Aquí verás a tu gente/.test(host),
+    ctaShare:/cmtyShareCode\\(\\)/.test(host), ctaPaste:/cmtyGoView\\('settings'\\)/.test(host),
+    noFriendsEmpty:!/no tienes amigos/i.test(host), state:communityEmptyState(_cmtyCounts()),
+    friendsHtmlEmpty:_cmtyFriendsHtml()==='' };
+  Object.assign(CMTY,sv); _cmtyPaint();
+  return JSON.stringify(r); })()`);
+const dr3 = JSON.parse(r3a);
+ok('R3 sin nadie conectado → estado ÚNICO (un solo .empty en toda la vista)', dr3.nEmpty === 1);
+ok('R3 el mensaje es el de conectar + sus 2 acciones (compartir / pegar código)',
+  dr3.lonely && dr3.ctaShare && dr3.ctaPaste && dr3.state === 'lonely');
+ok('R3 la sección de amigos ya NO apila su propio vacío', dr3.noFriendsEmpty && dr3.friendsHtmlEmpty);
+
+// ── R3: verbo honesto — el código y el gym CONECTAN (mutuo), no «siguen» ──
+const r3b = await ev(`(()=>{ const add=_cmtyAddHtml(); const gym=_cmtyGymHtml();
+  return JSON.stringify({ conectar:/Conectar por código/.test(add), noAgregarAmigo:!/Agregar un amigo/.test(add),
+    explica:/Se conectan los dos/.test(add),
+    gymConectar:/Conéctate con quien quieras/.test(gym) && />Conectar</.test(gym),
+    gymNoSeguir:!/quieras seguir/.test(gym) }); })()`);
+const dr3b = JSON.parse(r3b);
+ok('R3 «Conectar por código» explica que es mutuo (ya no dice «Agregar un amigo»)',
+  dr3b.conectar && dr3b.noAgregarAmigo && dr3b.explica);
+ok('R3 el gym dice CONECTAR (antes decía «seguir», pero inserta amistad mutua)',
+  dr3b.gymConectar && dr3b.gymNoSeguir);
 
 // ── FD4: compose lista rutinas; vacía deshabilitada ──
 const fd4 = await ev(`(()=>{ CMTY.composeOpen=true; const h=_cmtyComposeHtml(); CMTY.composeOpen=false;

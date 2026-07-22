@@ -380,6 +380,44 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 103 — COMUNIDAD RE-FORMA R3: pulido, avi-v384, PENDIENTE re-verificación
+de Fable). Cierra la fase R3 de `docs/plan-comunidad-reforma.md` (R2 = hitos server-side sigue siendo
+HANDOFF a Fable). Tres ítems, uno de ellos DESCARTADO con evidencia:*
+***(1) ESTADO VACÍO ÚNICO — hecho.** La pestaña apilaba DOS vacíos que decían lo mismo («Tu muro está
+tranquilo por ahora» + «Aún no tienes amigos aquí») y ninguno resolvía el caso real de un recién llegado:
+no tener a NADIE. Motor PURO `communityEmptyState({posts,friends,gym,discover,following,incoming,outgoing,
+followerReqs})` en avi-core → `'none'` (hay publicaciones) | `'quiet'` (ya tiene gente, nadie publicó →
+empuja a PUBLICAR) | `'lonely'` (no tiene a nadie → empuja a CONECTAR, único mensaje que destraba el muro).
+Defensiva: null/NaN/negativos/strings cuentan 0. UI: `_cmtyCounts()` + `_cmtyEmptyHtml(state)` en app-7;
+el vacío 'lonely' trae sus 2 acciones («Compartir mi código» → `cmtyShareCode` · «Pegar un código» →
+`cmtyGoView('settings')`); `_cmtyFriendsHtml` ya NO pinta vacío propio (devuelve '' sin amigos). +2 tests
+(suite 409) + 3 checks nuevos en `_verify-feed` (24/24).*
+***(2) BANNER «Instalar app» que tapa el muro — NO SE TOCÓ, el problema no existe.** Antes de escribir
+un fix, repro con medición geométrica real (banner visible + scroller al fondo, 390×844): última tarjeta
+del muro termina en y=700, el banner empieza en y=710 → **10px de aire, cero solape**. La causa: `.cnbody`
+ya reserva `padding-bottom:64px` cuando el banner está visible (regla `:has(#install-banner[style*="flex"])`,
+v335) y `#cn-community` vive dentro de ese scroller. El ítem del plan venía del backlog de diseño de julio,
+resuelto desde entonces. Se descarta con evidencia en vez de agregar un `display:none` innecesario.*
+***(3) VERBO ÚNICO — hecho, pero DESVIADO del plan (documentado).** El plan decía renombrar «amigos por
+código» → «seguir por código». **Se desvió a propósito:** esa entrada NO crea un follow, inserta una
+AMISTAD mutua (`friendships` pending → el otro acepta → DM + visibilidad completa). Llamarla «seguir»
+mentiría sobre la mecánica y confundiría con el follow de una vía de «Descubrir». Quedan DOS verbos
+honestos: **Conectar** (mutuo: código + gym) y **Seguir** (una vía: descubrir). Copy: «Agregar un amigo»
+→ «Conectar por código» + línea «Se conectan los dos: cuando acepte, podrán escribirse y verse»; el gym
+decía «Agrega a quien quieras seguir» (MENTÍA — inserta amistad) → «Conéctate con quien quieras» y su
+botón «Agregar» → «Conectar». `_verify-community` CM11 actualizado al verbo nuevo (cambio de copy
+intencional, no enmascaramiento: sigue exigiendo botón + onclick al compañero). **Unificar de verdad el
+verbo a «seguir» exigiría cambiar la MECÁNICA del código (friendship→follow) = backend → decisión de
+Fable/PO, no de un pulido de copy.***
+*QA: suite 407→409 (sabotaje demostrado rojo→verde: forzar `communityEmptyState` a 'quiet' siempre tumba
+2 tests); `_verify-feed` 24/24 (sabotaje: restaurar el vacío de amigos tumba los 2 checks del vacío único);
+`_verify-community` 13/13, `_verify-follow` 11/11, `_verify-public` 10/10, `_verify-dm` 22/22,
+`_verify-lastactive` 14/14. Verificación visual claro+oscuro del vacío nuevo (CTAs 40px, cero jsErrors).
+NO lleva AVI_NEWS (pulido de copy y estado vacío, se explica solo). Bump ?v×11 + CACHE_NAME → avi-v384.
+**DEUDA AJENA ARREGLADA APARTE (commit `acea886`):** `_verify-lastactive` LA4 llevaba 2 checks ROJOS desde
+R1/v383 (R1 movió el toggle a Ajustes y actualizó CM7/P2 pero se saltó este harness; confirmado corriéndolo
+contra el árbol limpio). **PENDIENTE re-verificación de Fable de ④ + R1 + R3.***
+
 *Hitos sesión 2026-07-21 (parte 102 — COMUNIDAD RE-FORMA R1: dar vuelta la pestaña, avi-v383, PENDIENTE
 re-verificación de Fable). Nace del informe de benchmark (Symmetry/Hevy/Strava/JEFIT/Strong) y del feedback
 del PO: la pestaña Comunidad estaba armada como panel de configuración (perfil gigante + código + 4 toggles

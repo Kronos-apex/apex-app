@@ -482,7 +482,8 @@ async function cmtyLeave(){
 // ── Agregar por código ──
 function _cmtyAddHtml(){
   return '<div class="card" style="padding:14px;margin-bottom:12px">' +
-    '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:9px">Agregar un amigo</div>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">Conectar por código</div>' +
+    '<div style="font-size:11.5px;color:var(--t3);margin-bottom:9px">Se conectan los dos: cuando acepte, podrán escribirse y verse.</div>' +
     '<div style="display:flex;gap:8px">' +
       '<input class="inp" id="cmty-code-in" maxlength="20" placeholder="Pega su código" style="flex:1;text-transform:uppercase;font-family:monospace;letter-spacing:1px">' +
       '<button class="btn bp bsm" style="min-height:40px;flex:0 0 auto" onclick="cmtyResolve()">Buscar</button>' +
@@ -573,7 +574,7 @@ function _cmtyGymHtml(){
   if(!CMTY.gym.length) return '';
   let h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
     '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">Tu gimnasio</div>' +
-    '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Personas de tu gym en AVI. Agrega a quien quieras seguir.</div>';
+    '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Personas de tu gym en AVI. Conéctate con quien quieras.</div>';
   CMTY.gym.forEach(p => {
     h += '<div style="display:flex;align-items:center;gap:11px;padding:7px 0">' +
       _cmtyAvatarHtml(p, 42) +
@@ -584,7 +585,7 @@ function _cmtyGymHtml(){
       '</div>' +
       '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + p.user_id + '\')" title="Chatear" aria-label="Chatear">' +
         (typeof aviIcon === 'function' ? aviIcon('chat', 15) : '💬') + '</button>' +
-      '<button class="btn bp bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyGymAdd(\'' + p.user_id + '\')">Agregar</button>' +
+      '<button class="btn bp bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyGymAdd(\'' + p.user_id + '\')">Conectar</button>' +
     '</div>';
   });
   return h + '</div>';
@@ -603,11 +604,9 @@ async function cmtyGymAdd(userId){
 
 // ── Amigos ──
 function _cmtyFriendsHtml(){
-  if(!CMTY.friends.length){
-    return '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('users', 30) : '👥') + '</div>' +
-      '<div class="etxt">Aún no tienes amigos aquí</div>' +
-      '<div class="esub">Comparte tu código o pega el de alguien para conectarse.</div></div>';
-  }
+  // Sin amigos NO se pinta un vacío propio: el muro ya muestra el estado vacío ÚNICO (R3,
+  // `communityEmptyState`) y apilar dos mensajes que dicen lo mismo era ruido, no ayuda.
+  if(!CMTY.friends.length) return '';
   let h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:4px 2px 9px">Mis amigos (' + CMTY.friends.length + ')</div>';
   CMTY.friends.forEach(f => { h += _cmtyFriendCard(f); });
   return h;
@@ -1142,13 +1141,37 @@ function _cmtyMyRoutines(){
   }catch(e){ return []; }
 }
 
+// Conteos que alimentan el estado vacío ÚNICO (la decisión vive pura en avi-core).
+function _cmtyCounts(){
+  return {
+    posts: CMTY.posts.length, friends: CMTY.friends.length, gym: CMTY.gym.length,
+    discover: CMTY.discover.length, following: Object.keys(CMTY.following || {}).length,
+    incoming: CMTY.incoming.length, outgoing: CMTY.outgoing.length, followerReqs: CMTY.followerReqs.length
+  };
+}
+// R3 — UN SOLO vacío accionable. Antes se apilaban dos («muro tranquilo» + «no tienes amigos»)
+// que repetían el mismo mensaje sin resolver el caso real: no tener a nadie todavía.
+function _cmtyEmptyHtml(state){
+  if(state === 'lonely'){
+    return '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('users', 30) : '👥') + '</div>' +
+      '<div class="etxt">Aquí verás a tu gente</div>' +
+      '<div class="esub">Conéctate con alguien y sus rutinas aparecerán en este muro. Comparte tu código o pega el de un amigo.</div>' +
+      '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">' +
+        '<button class="btn bp" style="min-height:40px" onclick="cmtyShareCode()">Compartir mi código</button>' +
+        '<button class="btn bg" style="min-height:40px" onclick="cmtyGoView(\'settings\')">Pegar un código</button>' +
+      '</div></div>';
+  }
+  return '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('clipboard', 30) : '📋') + '</div>' +
+    '<div class="etxt">Todavía nadie ha publicado</div>' +
+    '<div class="esub">Publica una de tus rutinas y anima a los demás a mostrar la suya.</div></div>';
+}
+
 function _cmtyFeedHtml(){
   let h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:14px 2px 9px">Muro de rutinas</div>';
   h += _cmtyComposeHtml();
   if(!CMTY.posts.length){
-    return h + '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('clipboard', 30) : '📋') + '</div>' +
-      '<div class="etxt">Tu muro está tranquilo por ahora</div>' +
-      '<div class="esub">Sigue a alguien o publica tu rutina para empezar.</div></div>';
+    const st = (typeof communityEmptyState === 'function') ? communityEmptyState(_cmtyCounts()) : 'quiet';
+    return h + _cmtyEmptyHtml(st);
   }
   CMTY.posts.forEach(p => { h += _cmtyPostCard(p); });
   return h;
@@ -1286,4 +1309,5 @@ if(typeof window !== 'undefined'){
   window.cmtyPostHeart = cmtyPostHeart; window.cmtyDeletePost = cmtyDeletePost;
   window._cmtyMyRoutines = _cmtyMyRoutines; window._cmtyAuthorProf = _cmtyAuthorProf;
   window.cmtyGoView = cmtyGoView; window._cmtyHeadMain = _cmtyHeadMain; window._cmtyHeadSub = _cmtyHeadSub;
+  window._cmtyCounts = _cmtyCounts; window._cmtyEmptyHtml = _cmtyEmptyHtml; window._cmtyFriendsHtml = _cmtyFriendsHtml;
 }
