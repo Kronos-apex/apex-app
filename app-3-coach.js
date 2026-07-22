@@ -2046,3 +2046,90 @@ function coachInviteOpenApp(){
 function closeCoachChat(){ navCloseLayer(_closeCoachChat); }
 function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; }
 function coachChatOpenProfile(){ const id=_cchatId; if(!id)return; closeCoachChat(); setTimeout(()=>{ if(typeof openDetail==='function')openDetail(id); },60); }
+
+// ══════════ MODERACIÓN — BANDEJA DE REPORTES (lote v3-a #1, backend c14) ══════════
+// El coach-moderador ve los reportes de la comunidad y actúa. La autoridad vive en la tabla
+// community_moderators (solo service_role escribe) y TODO pasa por RPCs DEFINER gateadas por
+// _is_moderator: cmty_mod_reports (bandeja) / cmty_mod_resolve (marcar resuelto) /
+// cmty_mod_delete_post (borrar el post reportado por id). El cliente JAMÁS lee community_reports
+// crudo. Un no-moderador recibe 0 filas de la RPC → la tarjeta ni aparece (no hace falta saber
+// client-side "soy moderador"). Escrituras selladas en localhost como el resto de comunidad.
+let _modReports=[];
+function _modSealed(){ return typeof cloudWriteSealed==='function' && cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE); }
+async function renderReportsCard(){
+  const el=document.getElementById('h-reports'); if(!el) return;
+  let cli=null; try{ cli=(typeof AUTH!=='undefined'&&AUTH.client)?AUTH.client():null; }catch(e){}
+  if(!cli){ el.style.display='none'; el.innerHTML=''; return; }
+  try{
+    const { data, error } = await cli.rpc('cmty_mod_reports');
+    if(error) throw error;
+    _modReports=(data||[]).filter(r=>r.rstatus==='open');
+    if(!_modReports.length){ el.style.display='none'; el.innerHTML=''; return; }
+    const n=_modReports.length;
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:3px solid var(--rd);padding:12px 14px;cursor:pointer" onclick="openReportsInbox()">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:12px;font-weight:800;color:var(--rd);flex:1">' +
+          (typeof aviIcon==='function'?aviIcon('flag',13):'🚩') + ' ' + n + (n>1?' reportes por revisar':' reporte por revisar') + '</span>' +
+        '<span style="font-size:11px;color:var(--t3)">Ver ›</span>' +
+      '</div></div>';
+  }catch(e){ el.style.display='none'; el.innerHTML=''; if(typeof warn==='function')warn('mod reports:', e&&e.message); }
+}
+// Extracto humano de un reporte (motivo + a quién + contenido). esc() en TODO lo de usuario.
+function _modReportRow(r){
+  const rep=r.reporter_handle?esc(r.reporter_handle):'Alguien';
+  const tgt=r.reported_handle?esc(r.reported_handle):'Ya no está en la comunidad';
+  const motivo=r.rreason?esc(r.rreason):'Sin motivo';
+  const cuando=r.rcreated_at?new Date(r.rcreated_at).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):'';
+  const excerpt=r.excerpt?('<div style="font-size:12px;color:var(--t2);background:var(--surface);border-radius:var(--rsm);padding:8px 10px;margin-top:7px">'+esc(r.excerpt)+'</div>'):'';
+  const isPost=typeof r.rcontext==='string' && r.rcontext.indexOf('post:')===0;
+  const delBtn=isPost?('<button class="btn bg bsm" style="min-height:36px;color:var(--rd)" onclick="modDeletePost(\''+esc(r.rid)+'\')">Eliminar publicación</button>'):'';
+  return '<div class="card" style="padding:12px;margin-bottom:9px">' +
+    '<div style="font-size:13px;color:var(--t1);line-height:1.5"><b>'+rep+'</b> reportó a <b>'+tgt+'</b></div>' +
+    '<div style="font-size:11.5px;color:var(--t3);margin-top:2px">'+motivo+' · '+esc(cuando)+'</div>' +
+    excerpt +
+    '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<button class="btn bp bsm" style="min-height:36px;flex:1" onclick="modResolve(\''+esc(r.rid)+'\')">Marcar resuelto</button>' +
+      delBtn +
+    '</div></div>';
+}
+function openReportsInbox(){
+  const host=document.getElementById('reports-body'); const scr=document.getElementById('s-reports');
+  if(!host||!scr){ toast('No pude abrir los reportes.'); return; }
+  if(!_modReports.length){
+    host.innerHTML='<div class="empty"><div class="etxt">Sin reportes por revisar</div><div class="esub">Cuando alguien reporte contenido, aparecerá aquí.</div></div>';
+  }else{
+    host.innerHTML=_modReports.map(_modReportRow).join('');
+  }
+  if(!scr.classList.contains('on')){ if(typeof navOpenLayer==='function')navOpenLayer(); scr.classList.add('on'); scr.scrollTop=0; }
+}
+function closeReportsInbox(){ navCloseLayer(_closeReportsInbox); }
+function _closeReportsInbox(){ const s=document.getElementById('s-reports'); if(s)s.classList.remove('on'); }
+async function modResolve(rid){
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { error } = await cli.rpc('cmty_mod_resolve', { p_report: rid });
+    if(error) throw error;
+    _modReports=_modReports.filter(r=>r.rid!==rid);
+    toast('✅ Reporte resuelto');
+    openReportsInbox(); renderReportsCard();
+  }catch(e){ toast('No pude resolver el reporte.'); if(typeof warn==='function')warn('mod resolve:',e&&e.message); }
+}
+async function modDeletePost(rid){
+  const r=_modReports.find(x=>x.rid===rid); if(!r)return;
+  const pid=(typeof r.rcontext==='string')?r.rcontext.split(':')[1]:null;
+  if(!pid){ toast('Este reporte no apunta a una publicación.'); return; }
+  if(!confirm('¿Eliminar la publicación reportada? No se puede deshacer.')) return;
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { error } = await cli.rpc('cmty_mod_delete_post', { p_post: pid });
+    if(error) throw error;
+    // borrar el post cierra el reporte también
+    await cli.rpc('cmty_mod_resolve', { p_report: rid });
+    _modReports=_modReports.filter(x=>x.rid!==rid);
+    toast('🗑️ Publicación eliminada');
+    openReportsInbox(); renderReportsCard();
+  }catch(e){ toast('No pude eliminar la publicación.'); if(typeof warn==='function')warn('mod delete:',e&&e.message); }
+}

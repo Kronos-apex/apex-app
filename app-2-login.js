@@ -1536,6 +1536,8 @@ function renderHome(){
   if(typeof renderPulse==='function')renderPulse();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
+  // 🛡️ Reportes de comunidad (lote v3-a #1): async, se pinta sola solo si hay reportes abiertos.
+  if(typeof renderReportsCard==='function')renderReportsCard();
 }
 
 // ── El pulso del coach (v353): tarjeta en Inicio con los motivos positivos/técnicos para

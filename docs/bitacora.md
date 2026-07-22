@@ -380,6 +380,32 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 108 — LOTE v3-a ÍTEM #1: BANDEJA DE REPORTES para el coach, avi-v388 +
+migraciones `c14`/`c14b`. Estipulación de Fable §8.1). Cierra la deuda: `community_reports` se llenaba
+(reportar existe desde C3) pero el coach no tenía dónde verlos. **Backend `c14`:** tabla
+`community_moderators` (solo service_role escribe — la autoridad NO cuelga de `role='coach'`, que es
+cosmético/falsificable F7), seed por consulta (dueño de ≥5 asesorados → Camilo; verificado 1 fila = su
+UID real, el coach QA de 1 asesorado NO pasa); `private._is_moderator`; `community_reports` gana
+`status`/`resolved_at`/`resolved_by`/`context` (check `^(post|comment):<uuid>$`, reason ≤300); RPCs
+DEFINER gateadas: `cmty_mod_reports` (bandeja con handles + excerpt del post, `left join` → cuenta
+borrada da handle null), `cmty_mod_resolve`, `cmty_mod_delete_post`. La tabla `community_reports` sigue
+SELLADA para authenticated. **DESVIACIÓN documentada de §8.1 (migración `c14b`):** Fable estipuló que el
+moderador borra con un DELETE normal del cliente vía rama en `cpost_del` — NO FUNCIONA: en Postgres un
+DELETE cuyo WHERE referencia columnas aplica TAMBIÉN `cpost_sel`, y el moderador no ve el post de un
+extraño → 0 filas justo en el caso de moderación (reproducido con dientes). Fix más SEGURO: borrar por
+RPC DEFINER `cmty_mod_delete_post` (mínimo privilegio — solo el id que ya vio en la bandeja, sin darle
+lectura de todo el muro); `cpost_del` vuelve a solo-dueño. **Frontend:** tarjeta `#h-reports` en el
+Inicio del coach (aparece SOLO si la RPC devuelve reportes abiertos → el no-moderador ni la ve, sin saber
+client-side «soy moderador») + overlay `#s-reports` (reusa `.cchat`) con reportero→reportado, motivo,
+excerpt, «Marcar resuelto» y «Eliminar publicación»; `renderReportsCard`/`openReportsInbox`/`modResolve`/
+`modDeletePost` en app-3, `esc()` en todo, sellado en localhost. **Sabotajes:** matriz DB R1-R10 verde
+(incl. R5 load-bearing: quitar la fila de moderators → 0 filas; R9 moderador borra por RPC un post que NO
+ve, QA bloqueado); harness NUEVO `_verify-reports.mjs` MR1-MR7 (11/11, sabotaje rojo→verde: quitar el
+filtro de abiertos tumba 3). Suite 416, community/feed/coach-back sin regresión, advisors solo 3 0029
+intencionales nuevos. Visual claro+oscuro. Bump ?v×11 → avi-v388. **PENDIENTE verificación de Fable.**
+NOTA: «banear de comunidad» quedó FUERA (Fable §8.1: hacerlo a medias = teatro; se difiere al 1er
+reincidente real). Sigue el lote: #2+3 entreno+nota → #4 comentarios → #5 perfil rico.*
+
 *Hitos sesión 2026-07-22 (parte 107 — HOTFIX DE SEGURIDAD `c13c`: hito falso por la puerta del UPDATE.
 Solo nube, sin bump). **Hallazgo de Fable** al estipular el lote Comunidad v3 (`plan-comunidad-v3.md`
 §8.0). **El agujero (reproducido contra prod, tx+rollback):** `cpost_ins` (c13) exige `kind='routine'`
