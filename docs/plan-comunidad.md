@@ -1805,3 +1805,135 @@ confirmada → restaurado; grant ancho re-otorgado → fuga real a un amigo conf
 queda limpia, verificada dato por dato tras el rollback. La decisión abierta queda estipulada en
 §16.11 para que Opus no la improvise al construir ④. Orden restante de Comunidad v2: **④ feed** (con
 la estipulación de §16.11 ya en mano antes de empezar).
+
+---
+
+## 17. VEREDICTO DE FABLE — ④ MURO / FEED (avi-v382, commit `8ce7df1`, migración `c12_posts_feed`)
+
+Verificación adversarial independiente del backend de ④, contra la base REAL de producción
+(`eoebhrxbokyllqalyecj`), en una única transacción impersonada con `ROLLBACK` final — nunca se
+escribió a producción. Prioridad #1 del encargo: el candado de visibilidad de §16.11 probado
+LOAD-BEARING, no solo releído. Actores **100% sintéticos sin relación previa** (lección propia
+documentada en GOTCHAS VIGENTES: el primer intento de Opus con actores reales dio un falso-positivo
+porque ya eran amigos+gym) — 5 perfiles nuevos (`V` seguidor, `Ap` adulto privado, `Mn` menor,
+`X` extraño total, `Pu` adulto público), `auth.users` con solo `id` + `community_profiles` con
+`handle`/`consent_v`/`birth_date` propios, confirmado con un check de "cero relación previa" antes
+de tocar nada.
+
+### 17.1 Candado de visibilidad (§16.11) — matriz + sabotaje con dientes
+
+35 aserciones en una sola transacción con `ROLLBACK`, todas verdes:
+
+| # | Prueba | Resultado |
+|---|---|---|
+| Setup | Cero relación previa (friendships/gym/follows) entre los 5 actores sintéticos | ✅ 0/0/0 |
+| — | `V` sigue a `Ap` (privado) → nace `pending`; `Ap` aprueba → `active` | ✅ |
+| — | `V` sigue a `Mn` (menor, forzado privado) → nace `pending`; `Mn` aprueba → `active` | ✅ |
+| pto3 | `X` (extraño total) SÍ puede pedir seguir a `Mn` — decisión PO, no bloqueado | ✅ |
+| **pto1** | **`V` (seguidor `active`) VE a `Ap` (adulto privado)** | ✅ `true` |
+| **pto2** | **`V` (seguidor `active`) NO ve a `Mn` (menor)** | ✅ `false` |
+| — | `X` (extraño, sin follow) NO ve a `Ap` (privado) | ✅ `false` |
+| — | `X` (extraño) SÍ ve a `Pu` (público adulto) | ✅ `true` |
+| — | `X` (extraño) NO ve a `Mn` (menor, ni por la rama pública) | ✅ `false` |
+| **CPOST_SEL** | `V` VE el post de `Ap`; `V` NO ve el post de `Mn`; `X` NO ve el de `Ap`; `X` SÍ ve el de `Pu` | ✅ (4/4) |
+| — | `X` (no-dueño) no puede `UPDATE`/`DELETE` el post de `Ap` (0 filas afectadas, post intacto) | ✅ |
+| **SABOTAJE** | Redefinida `_profile_visible` quitando `AND NOT _is_minor(owner)` de la rama de seguidor aprobado → **`V` SÍ ve a `Mn` (FUGA reproducida)**, y `cpost_sel` también fuga (`V` ve el post de `Mn`) | ✅ fuga confirmada en `_profile_visible` **y** en la policy que lo consume |
+| **RESTAURADO** | Función devuelta a su cuerpo exacto (el de `c12_posts_feed.sql`) → `V` deja de ver a `Mn`, `cpost_sel` vuelve a 0 filas | ✅ candado de vuelta |
+
+**El candado es load-bearing, no decorativo.** Quitar la cláusula que Fable exigió en §16.11 pto 2
+produce la fuga exacta que se quería impedir (un seguidor aprobado viendo a un menor), y cascadea
+correctamente a `community_posts` porque `cpost_sel` reusa el mismo helper (regla de oro de
+§13-BIS.5: "no se re-inventa la visibilidad" — confirmado, un solo lugar cambia y todo se sincroniza).
+
+### 17.2 Allow-list del `trigger` — no solo el mapeador del cliente
+
+Probado insertando payloads CRUDOS por PostgREST (impersonado), sin pasar por `communityPostPayload`
+(que es del cliente y no es el candado real):
+
+- Rechaza `kg` en un ejercicio (`forbidden exercise key: kg`), una clave top-level `note`
+  (`forbidden payload key: note`), `exercises` vacío (`exercises count out of range`) y un nombre de
+  rutina >80 caracteres (`name length out of range`). 4/4.
+- **Sabotaje:** `ALTER TABLE ... DISABLE TRIGGER trg_community_post_validate` → el mismo payload con
+  `kg:999` **SÍ se inserta** (confirma que el trigger es real, no cosmético) → `ENABLE TRIGGER` →
+  el mismo intento vuelve a rechazar. Candado load-bearing confirmado con dientes.
+
+### 17.3 Reacciones sobre posts — políticas + gotcha de la FK evitado
+
+- **Caso que DEBE pasar** (control positivo, para no confundir "todo falla por FK" con "la policy
+  bloquea" — gotcha propio de GOTCHAS VIGENTES): `V` (que SÍ ve el post de `Ap` vía follow aprobado)
+  hearts el post → inserta OK.
+- Duplicado del mismo `❤️` por el mismo usuario/post → rechazado (constraint único; nota
+  metodológica: mordió la constraint PRE-EXISTENTE `(from_user,to_user,kind,context)` de C3, no
+  todavía el índice NUEVO `community_reactions_post_uq (from_user,context)` de c12 — confirmé por
+  separado que el índice nuevo existe con la definición exacta del artefacto y es una guarda
+  ADICIONAL real: bloquea también la variante "mismo post, `kind` distinto" que la constraint vieja
+  dejaría pasar; no es una decoración redundante).
+- `V` intenta reaccionar al post de `Mn` (no puede verlo) → rechazado por RLS.
+- `X` (extraño) hearts el post PÚBLICO de `Pu` → **inserta OK** (decisión del PO: cualquiera que VE
+  reacciona).
+- `X` (extraño) intenta reaccionar al post PRIVADO de `Ap` (no lo ve) → rechazado.
+- **Spoof:** `X` ve el post de `Pu` pero intenta insertar `to_user=Mn` con `context` del post de `Pu`
+  (atribuir la reacción a otra persona) → rechazado (`_post_author_if_visible` exige que `to_user`
+  coincida con el autor REAL del post visible, no cualquier UUID que el cliente mande).
+
+Los 5 actores sintéticos tienen `community_profiles` desde el setup — el gotcha de la FK
+(`community_reactions.from_user/to_user → community_profiles`, que hace fallar TODO insert de un
+actor sin perfil ANTES de evaluar la policy) queda evitado por diseño del test, y el caso
+"debe-pasar" de arriba confirma que no estoy midiendo un falso-bloqueo uniforme.
+
+### 17.4 Advisors — sin regresión
+
+`get_advisors(security)` tras el rollback: exactamente los 3 `0029` esperados
+(`cmty_activity_labels`, `cmty_my_secrets`, `resolve_share_code`, DEFINER acotados e intencionales) +
+`auth_leaked_password_protection` (Pro-only, ignorado por decisión cerrada) + ruido preexistente ajeno
+(`rls_enabled_no_policy` en 3 tablas legacy, `extension_in_public` de `pg_net`,
+`rls_policy_always_true` en `app_errors_insert`). **Cero advisors nuevos** por `_is_approved_follower`,
+`_profile_visible` v2, `community_posts` o sus triggers/policies — confirmado que
+`_community_post_validate` mantiene `execute` revocado de `public/anon/authenticated`.
+
+### 17.5 Las 2 decisiones del PO que se desvían de mi recomendación conservadora
+
+1. **Reacciones = cualquiera que VE el post, no solo amigo/seguidor/gym.** Mi recomendación en
+   §13-BIS.5 era más conservadora. Verificado que la desviación **no ensancha la visibilidad** — un
+   extraño solo puede reaccionar a lo que YA podía ver por `_profile_visible` (probado arriba: `X`
+   reacciona a `Pu` público, pero NO puede a `Ap` privado). Es una decisión de producto razonable
+   (más viral, el candado real —quién ve qué— sigue intacto) y la acepto sin reserva.
+2. **No se bloquea el `INSERT` de un follow hacia un menor** (§16.11 pto 3, dejado abierto por mí a
+   propósito). Verificado que `X` puede efectivamente pedir seguir a `Mn` sin error. Como quedó
+   estipulado en pto 3, esto por sí solo NO es una fuga porque aprobar un follow nunca otorga
+   visibilidad a un menor (pto 2, reprobado con dientes arriba) — el PO decidió conservar la
+   posibilidad de que un adulto legítimo interesado en la comunidad pueda seguir a un adolescente que
+   compite, aceptando el costo (la bandeja de "quiere seguirte" sigue siendo un canal de contacto
+   hacia el menor, ya anotado como riesgo residual en pto 3, no una fuga de datos). Decisión de
+   producto informada, no la reabro.
+
+### 17.6 Scope / frontend
+
+`git show 8ce7df1 -- app-7-community.js | grep -iE "rpc|\.from\(|\.insert\(|\.update\(|\.delete\("`
+sobre las líneas añadidas confirma que toda escritura nueva pasa por `AUTH.client()` (patrón
+sancionado); nada en `SB_KEYS`/`user_data`. `communityPostPayload` (avi-core) es un espejo honesto
+del allow-list del trigger (mismo conjunto de claves), correcto como capa de UX pero — como pide el
+encargo — el candado real verificado es el trigger server-side (§17.2), no este mapeador.
+
+### 17.7 QA re-corrido
+
+`node --test avi.test.js` → **409/409**. `node scripts/e2e/_verify-feed.mjs` → **24/24**. `node
+scripts/e2e/_verify-community.mjs` → **13/13** (incl. CM11 con el verbo nuevo). `node
+scripts/e2e/_verify-public.mjs` → **10/10**. `node scripts/e2e/_verify-follow.mjs` → **11/11**. `node
+scripts/e2e/_verify-lastactive.mjs` → **14/14** (LA4 confirmado ya no rojo). `node
+scripts/e2e/_prodcheck.mjs 384` → verde (`avi-v384` servida, boot real, cero `jsErrors`). Prod
+confirmada limpia tras el rollback: 0 perfiles/posts sintéticos residuales, `follows`=3/
+`community_posts`=1/`community_reactions`=3 (idénticos a antes de la prueba), `_profile_visible`
+restaurada byte a byte al cuerpo del artefacto, trigger `trg_community_post_validate` reactivado
+(`tgenabled='O'`).
+
+### 17.8 Veredicto ④
+
+**🟢 APROBADO — sin correcciones pendientes.** El candado más importante del proyecto hasta ahora
+(quién ve el muro de quién, con menores reales en la base) se probó LOAD-BEARING con sabotaje real en
+transacción con rollback, no solo leído del código. El allow-list del payload se probó al nivel del
+trigger (no del mapeador cliente), también con sabotaje. Las reacciones se probaron con el gotcha de
+la FK neutralizado a propósito y un caso "debe-pasar" de control. Las 2 desviaciones de producto del
+PO están bien fundadas y no abren ningún hueco de seguridad nuevo. Cero regresión de advisors, cero
+scope creep. Sigue el orden: **R1/R3 (re-forma de presentación) → ver veredicto en
+`docs/plan-comunidad-reforma.md`.**
