@@ -380,6 +380,26 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 107 — HOTFIX DE SEGURIDAD `c13c`: hito falso por la puerta del UPDATE.
+Solo nube, sin bump). **Hallazgo de Fable** al estipular el lote Comunidad v3 (`plan-comunidad-v3.md`
+§8.0). **El agujero (reproducido contra prod, tx+rollback):** `cpost_ins` (c13) exige `kind='routine'`
+al INSERT del cliente, pero `authenticated` tenía `grant update` sobre TODAS las columnas de
+`community_posts` y `cpost_upd` solo pedía `user_id=auth.uid()` → un asesorado publicaba una rutina
+legítima y luego `UPDATE ... SET kind='streak', payload='{"weeks":52}'` se fabricaba un hito falso
+«Cumplió 52 semanas» (el trigger valida `{weeks:52}` como hito bien formado y lo acepta). La misma
+puerta inflaba un hito ya emitido (weeks 2→52). **Exactamente lo que el candado de R2 prometió
+imposible.** **Fix de CLASE:** el frontend solo inserta/borra posts (cero `.update()` en
+app-7-community.js) → se recorta el grant: `revoke update on community_posts from authenticated` +
+`grant update(visible)` (ocultar/mostrar lo propio, revalidado por el trigger). service_role no pasa
+por estos grants → la edge sigue emitiendo hitos. Sabotajes M0 (§8.0): exploit reproducido SIN el fix
+(PASÓ, hito falso creado) → con el fix M0.1/M0.2 `permission denied`, M0.3a visible propio OK, M0.3b
+visible ajeno 0 filas, M0.4 service_role emite OK; control de regresión publicar+borrar del cliente
+PASAN. Artefacto `supabase/community/c13c_posts_update_lockdown.sql`. GOTCHA nuevo en CLAUDE.md: una
+policy de INSERT restrictiva NO basta si el grant de UPDATE es amplio (el cliente edita la fila al
+estado prohibido); recortar el grant de UPDATE por columna en paralelo. **PENDIENTE verificación de
+Fable.** Sigue el lote v3-a (§8): #1 bandeja de reportes → #2+3 entreno+nota → #4 comentarios → #5
+perfil rico.*
+
 *Hitos sesión 2026-07-22 (parte 106 — LEADS PEGADOS «quiere coach», avi-v387. Bug reportado por el
 PO). **Síntoma:** Hernán Camacho (6 jul) y Cristian Sneyder Luna Reyes (11 jul) seguían apareciendo
 como «🙋 Quiere coach» meses después de haberlos atendido. **Forense (Supabase read-only):** son los

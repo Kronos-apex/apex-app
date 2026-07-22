@@ -1,0 +1,32 @@
+-- ============================================================================
+-- c13c · HOTFIX DE SEGURIDAD — el cliente podía FABRICARSE UN HITO por el UPDATE
+-- ============================================================================
+-- HALLAZGO de Fable al estipular el lote v3 (docs/plan-comunidad-v3.md §8.0).
+-- Aplicado a prod 2026-07-22 (solo nube, sin bump de versión: no cambia JS).
+--
+-- EL AGUJERO (reproducido contra la base viva, tx+rollback): `cpost_ins` (c13)
+-- exige kind='routine' al INSERT del cliente, pero `cpost_upd` solo pedía
+-- user_id=auth.uid() Y authenticated tenía grant UPDATE sobre TODAS las columnas.
+-- Ruta: el cliente publica una rutina legítima (pasa cpost_ins) y luego
+--   UPDATE community_posts SET kind='streak', payload='{"weeks":52}' WHERE id=<suyo>
+-- La policy pasa (es su fila) y el trigger _community_post_validate valida
+-- '{"weeks":52}' como un hito bien formado y lo ACEPTA → hito falso «Cumplió 52
+-- semanas», justo lo que el candado de R2 (c13) prometió imposible. La misma
+-- puerta permitía inflar un hito ya emitido (weeks: 2 -> 52) editando payload.
+--
+-- FIX (mata la CLASE, no el síntoma): el cliente NO necesita editar posts — el
+-- frontend solo inserta y borra (verificado: cero .update() sobre community_posts
+-- en app-7-community.js). Se le quita el UPDATE de todo salvo `visible`
+-- (ocultar/mostrar lo propio; inofensivo y revalidado por el trigger igual).
+-- cpost_upd queda igual (user_id=auth.uid()): con el grant recortado, el único
+-- UPDATE posible del cliente es `visible` de SU fila. kind/payload/user_id/
+-- created_at = intocables para authenticated. service_role no pasa por estos
+-- grants → la edge sigue emitiendo hitos sin cambios.
+--
+-- Sabotajes verificados (checklist M0 de §8.0): exploit reproducido SIN el fix
+-- (routine->streak weeks=52 PASÓ) → con el fix M0.1/M0.2 denied, M0.3a visible
+-- propio OK, M0.3b visible ajeno 0 filas, M0.4 service_role emite OK; control de
+-- regresión: publicar + borrar del cliente siguen PASANDO.
+
+revoke update on public.community_posts from authenticated;
+grant update (visible) on public.community_posts to authenticated;
