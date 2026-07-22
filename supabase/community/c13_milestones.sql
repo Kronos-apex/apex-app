@@ -105,3 +105,10 @@ grant execute on function public._community_post_validate() to service_role;
 -- mismo día: el índice único + ON CONFLICT DO NOTHING hacen la emisión idempotente.
 create unique index community_posts_streak_uq on public.community_posts(user_id, (payload->>'weeks')) where kind = 'streak';
 create unique index community_posts_level_uq  on public.community_posts(user_id, (payload->>'level')) where kind = 'level';
+
+-- ── HOTFIX c13b (2026-07-22) ───────────────────────────────────────────────────
+-- La versión original de este archivo dio grant update(show_milestones) pero NO el
+-- SELECT. El SELECT de community_profiles es a nivel de COLUMNA (c10_grant_hardening),
+-- así que el cliente recibía permission denied al pedirla y cmtyLoad lanzaba → TODA la
+-- pestaña Comunidad caía a «Conéctate para ver a tu gente». Migración c13b:
+grant select(show_milestones) on public.community_profiles to authenticated;
