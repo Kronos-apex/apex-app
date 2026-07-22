@@ -125,6 +125,20 @@ ok('R3 el mensaje es el de conectar + sus 2 acciones (compartir / pegar código)
   dr3.lonely && dr3.ctaShare && dr3.ctaPaste && dr3.state === 'lonely');
 ok('R3 la sección de amigos ya NO apila su propio vacío', dr3.noFriendsEmpty && dr3.friendsHtmlEmpty);
 
+// ── R3-bis (reserva de Fable): ver desconocidos en «Descubrir» NO es tener gente ──
+const r3c = await ev(`(()=>{
+  const sv={posts:CMTY.posts,friends:CMTY.friends,gym:CMTY.gym,following:CMTY.following,
+    incoming:CMTY.incoming,outgoing:CMTY.outgoing,followerReqs:CMTY.followerReqs};
+  CMTY.posts=[];CMTY.friends=[];CMTY.gym=[];CMTY.following={};CMTY.incoming=[];CMTY.outgoing=[];CMTY.followerReqs=[];
+  // CMTY.discover SE DEJA POBLADO a propósito: es el caso de la reserva.
+  const st=communityEmptyState(_cmtyCounts()); const h=_cmtyFeedHtml();
+  const r={ discover:CMTY.discover.length, st, lonely:/Aquí verás a tu gente/.test(h), noPublicaNudge:!/Publica una de tus rutinas/.test(h) };
+  Object.assign(CMTY,sv); _cmtyPaint();
+  return JSON.stringify(r); })()`);
+const dr3c = JSON.parse(r3c);
+ok('R3-bis solo con «Descubrir» (desconocidos) → sigue siendo «conéctate», NO «publica»',
+  dr3c.discover > 0 && dr3c.st === 'lonely' && dr3c.lonely && dr3c.noPublicaNudge);
+
 // ── R3: verbo honesto — el código y el gym CONECTAN (mutuo), no «siguen» ──
 const r3b = await ev(`(()=>{ const add=_cmtyAddHtml(); const gym=_cmtyGymHtml();
   return JSON.stringify({ conectar:/Conectar por código/.test(add), noAgregarAmigo:!/Agregar un amigo/.test(add),

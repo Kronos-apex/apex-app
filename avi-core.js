@@ -2198,11 +2198,14 @@ function communityPostPayload(routine) {
 //   'lonely' → todavía no tiene a nadie (ni amigos, ni gym, ni seguidos, ni solicitudes) →
 //              empuja a CONECTAR, que es lo único que destraba el muro
 // Pura y defensiva: valores raros (null/NaN/negativos/strings) cuentan como 0.
+// ⚠️ `discover` (perfiles PÚBLICOS de desconocidos) NO cuenta como gente — RESERVA de Fable
+// (§veredicto R3, 2026-07-22): ver desconocidos en «Descubrir» no es tener una relación, y
+// contarlos empujaba a PUBLICAR a alguien cuyo post no vería nadie. Es 'lonely' → conectar.
 function communityEmptyState(counts) {
   const c = counts || {};
   const n = v => { const x = Number(v); return (isFinite(x) && x > 0) ? x : 0; };
   if (n(c.posts) > 0) return 'none';
-  const people = n(c.friends) + n(c.gym) + n(c.discover) + n(c.following) +
+  const people = n(c.friends) + n(c.gym) + n(c.following) +
     n(c.incoming) + n(c.outgoing) + n(c.followerReqs);
   return people > 0 ? 'quiet' : 'lonely';
 }

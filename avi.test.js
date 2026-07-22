@@ -1283,7 +1283,6 @@ test('communityEmptyState: un solo vacío — publicaciones > gente conectada > 
   // sin publicaciones pero CON gente (cualquiera de las vías cuenta) → «tranquilo», empuja a publicar
   assert.strictEqual(communityEmptyState({ posts: 0, friends: 2 }), 'quiet');
   assert.strictEqual(communityEmptyState({ posts: 0, gym: 1 }), 'quiet');
-  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5 }), 'quiet');
   assert.strictEqual(communityEmptyState({ posts: 0, following: 1 }), 'quiet');
   // una solicitud pendiente ya es «tiene gente en camino»: no se le dice que está solo
   assert.strictEqual(communityEmptyState({ posts: 0, outgoing: 1 }), 'quiet');
@@ -1293,6 +1292,18 @@ test('communityEmptyState: un solo vacío — publicaciones > gente conectada > 
   assert.strictEqual(communityEmptyState({ posts: 0, friends: 0, gym: 0, discover: 0, following: 0 }), 'lonely');
   assert.strictEqual(communityEmptyState({}), 'lonely');
   assert.strictEqual(communityEmptyState(), 'lonely');
+});
+
+test('communityEmptyState: «Descubrir» NO es tener gente (reserva de Fable, veredicto R3)', () => {
+  // Ver perfiles públicos de desconocidos no es una relación: si publica, su post no lo ve nadie.
+  // Debe seguir empujando a CONECTAR ('lonely'), no a publicar ('quiet').
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5 }), 'lonely');
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 99, friends: 0, gym: 0, following: 0 }), 'lonely');
+  // pero en cuanto SÍ hay una relación real (aunque además haya desconocidos) → 'quiet'
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5, following: 1 }), 'quiet');
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5, friends: 1 }), 'quiet');
+  // seguir a alguien de «Descubrir» es lo que crea la relación → cuenta por `following`, no por `discover`
+  assert.strictEqual(communityEmptyState({ posts: 0, discover: 5, outgoing: 1 }), 'quiet');
 });
 
 test('communityEmptyState: valores basura cuentan como 0 (no inventan gente)', () => {

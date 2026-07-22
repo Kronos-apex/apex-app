@@ -380,6 +380,25 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 104 — CIERRE DE LA RESERVA de Fable sobre R3, avi-v385). Fable verificó
+④+R1+R3 (veredictos: `plan-comunidad.md` §17 y `plan-comunidad-reforma.md`; commit `070de89`): **④ 🟢
+APROBADO, R1 🟢 APROBADO, R3 🟡 APROBADO CON RESERVA MENOR** — 35 sabotajes suyos, todos mordieron, en una
+tx con rollback contra prod real (candado de menor de §16.11 reproducido como fuga al quitarlo y cascadeando
+a `cpost_sel`; allow-list del trigger probado desactivándolo → `kg:999` pasó → reactivado y rechazó; re-midió
+él mismo la geometría del banner y confirmó los 10px de aire; auditó los 4 ajustes de harness de R1/R3 y los
+declaró legítimos, no enmascaramiento). **RESERVA CERRADA AQUÍ:** `communityEmptyState` contaba `discover`
+(perfiles PÚBLICOS de DESCONOCIDOS) como «gente conectada» → un usuario sin ninguna relación real recibía el
+empujón «publica tu rutina» aunque su post no lo vería NADIE — contradecía justo lo que R3 venía a resolver.
+Fix: `discover` sale de la suma de `people` (sigue viajando en `_cmtyCounts` como dato honesto, pero no
+decide). +1 test con dientes (410; sabotaje demostrado: devolver `discover` a la suma tumba el test) + check
+`R3-bis` en `_verify-feed` (25/25) que prueba el caso end-to-end: con SOLO desconocidos en «Descubrir» el
+muro sigue diciendo «conéctate», nunca «publica». Bump ?v×11 + CACHE_NAME → avi-v385. **Fable dejó ESTIPULADO
+R2** (hitos server-side) en `plan-comunidad-reforma.md`: misma tabla `community_posts` con kinds
+`streak`/`level`, candado en `cpost_ins` (`with check ... kind='routine'` → el cliente JAMÁS inserta un hito),
+emisión dentro de `refresh_snapshot` comparando antes/después, opt-in `show_milestones`, dedupe y poda;
+**`'pr'` queda FUERA de v1** (el peso es autoreportado — misma clase de riesgo que ④ excluyó del payload).
+**DECISIÓN DEL PO (2026-07-22): umbrales de racha = 2, 4, 8, 12, 24, 52 semanas.** Siguiente: ejecutar R2.*
+
 *Hitos sesión 2026-07-22 (parte 103 — COMUNIDAD RE-FORMA R3: pulido, avi-v384, PENDIENTE re-verificación
 de Fable). Cierra la fase R3 de `docs/plan-comunidad-reforma.md` (R2 = hitos server-side sigue siendo
 HANDOFF a Fable). Tres ítems, uno de ellos DESCARTADO con evidencia:*
