@@ -85,6 +85,10 @@ ok('LA3 html sin label = vacío', d3.hG1 === '');
 
 // ── LA4: toggle opt-in refleja show_last_active ──
 const la4 = await ev(`(()=>{
+  // R1 (re-forma, v383): el toggle vive en la vista AJUSTES (⚙️), no en el muro. El harness se
+  // quedó pintando la vista por defecto ('feed') → LA4 llevaba rojo desde ese deploy. Se entra a
+  // Ajustes antes de buscarlo (mismo ajuste que R1 aplicó a _verify-community CM7 y _verify-public P2).
+  CMTY.view='settings';
   CMTY.profile.show_last_active=false; _cmtyPaint();
   const off=document.getElementById('cmty-tg-lastactive');
   const offState=off && off.getAttribute('aria-checked');
