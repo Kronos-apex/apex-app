@@ -57,7 +57,32 @@ Descubrir en tu gym                          →   ← compacto, colapsable
 - "Tu gente" = amigos + gym + seguidos presentados juntos (misma tarjeta compacta), badges de DM.
 - Ejecuta Opus, verifica Fable. Harness: extender `_verify-feed`/`_verify-community` para el nuevo orden.
 
-### R2 — Hitos en el muro (SERVER-SIDE, no inflable) — ESTIPULADO por Fable (2026-07-22), listo para que Opus ejecute
+### R2 — Hitos en el muro (SERVER-SIDE, no inflable) — ✅ EJECUTADO por Opus (avi-v386, 2026-07-22), PENDIENTE verificación de Fable
+> **Ejecutado tal cual la estipulación de abajo**, con 3 desviaciones documentadas (ver artefacto
+> `supabase/community/c13_milestones.sql` y la cabecera de la edge):
+> 1. **§R2(e) sintaxis:** `jsonb_object_keys(...) is distinct from array[...]` no es SQL válido
+>    (es set-returning) → misma regla implementada con conteo de claves + `?`. Intención idéntica.
+> 2. **§R2(d) varios umbrales de golpe:** si un recálculo cruza 2/4 a la vez (alguien que ya lleva
+>    5 semanas y recién enciende el opt-in), se emite **solo el más alto** — la regla literal habría
+>    publicado 2-3 tarjetas del mismo usuario a la vez, justo el "muro repentino" que §R2(f) evita.
+> 3. **Nivel de arranque:** no se celebra la "subida" a nivel 1 de un perfil recién creado
+>    (`prevLevel === 0` = nunca calculado) — sería un hito falso el día del opt-in.
+>
+> **Decisiones del PO cerradas:** umbrales `{2,4,8,12,24,52}` · poda 90 días · `show_milestones`
+> como toggle en Ajustes (NO se agrega a la pantalla de consentimiento inicial: no ensancha el
+> consentimiento ya firmado). **Sabotajes de Opus (checklist §R2, todos en tx con rollback contra
+> prod real, actores sintéticos):** 1 y 1b ✅ el cliente NO puede insertar `kind='streak'`/`'level'`
+> (+ control positivo: la rutina legítima SÍ pasa) · 2a-d ✅ payload con clave extra/equivocada/tipo
+> malo/kind inventado rechazados por el trigger · 3 ✅ `service_role` SÍ emite (el bloqueo es del
+> cliente, no total) · 4 ✅ doble emisión del mismo umbral = 1 post · 6 ✅ seguidor aprobado ve el hito
+> del ADULTO (1) y JAMÁS el del MENOR (0). **Trampa cazada en el propio test:** el primer intento dio
+> "no ve al adulto" — era el fixture (el trigger `_community_follow_state` fuerza `pending` al seguir
+> a un privado; hay que APROBAR con un update). De paso quedó probado que un seguidor `pending`
+> tampoco ve nada. Advisors: cero nuevos. Frontend: `communityMilestoneText` (pura) + `_cmtyMilestoneCard`
+> + toggle; harness `_verify-feed` 29/29 (+4, sabotaje rojo→verde demostrado); suite 412; AVI_NEWS v386
+> (`_verify-news` verde en la misma sesión). **Queda para Fable re-correr el checklist.**
+
+<details><summary>Estipulación original de Fable (referencia)</summary>
 
 El punto crítico sigue siendo el mismo: un hito NO lo publica el cliente (si no, alguien falsea
 "rompí un récord"). Este es el diseño concreto — Opus ejecuta tal cual bajo `docs/reglas-opus.md`;
@@ -173,6 +198,7 @@ si `show_milestones` nace visible en el opt-in inicial de la cuenta o requiere u
 después, y cuándo (si alguna vez) se retoma `'pr'` con su propio diseño anti-cheat. Flujo: **Fable ya
 planificó la RLS arriba → Opus ejecuta tal cual → Fable verifica con sabotaje antes de declarar R2
 cerrado.**
+</details>
 
 ### R3 — Pulido — ✅ HECHO (avi-v384, 2026-07-22, PENDIENTE re-verificación de Fable)
 - **Estado vacío UNIFICADO — hecho.** Motor puro `communityEmptyState(counts)` en avi-core

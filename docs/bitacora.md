@@ -380,6 +380,50 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 105 — R2 HITOS EN EL MURO, avi-v386 + migración `c13_milestones` +
+edge `refresh_snapshot` v4. PENDIENTE verificación de Fable). Cierra la re-forma de Comunidad
+(R1 layout + R3 pulido + R2 contenido). **El problema que resuelve:** el muro dependía de que
+alguien publicara una rutina a mano — un acto raro → muro casi siempre vacío. Ahora CELEBRA
+constancia: «Cumplió 4 semanas seguidas entrenando 🔥», «Subiste al nivel 3 ⭐». **El candado:** un
+hito NO lo publica el cliente. `cpost_ins` pasa a exigir `kind='routine'` en el `with check` → un
+asesorado autenticado NO puede insertarse un hito ni con su propio `user_id`; los emite la edge
+`refresh_snapshot` con service_role (que no pasa por RLS), comparando streak/level ANTES vs DESPUÉS
+del recálculo. Misma tabla `community_posts` (no una paralela) → hereda `cpost_sel`/`_profile_visible`
+y las reacciones (`context=post.id`) sin duplicar reglas. Allow-list del trigger extendida por kind:
+un hito solo admite `{weeks}` o `{level}`, numérico y acotado — jamás pesos, ejercicios ni texto libre.
+Índices únicos parciales + `on conflict do nothing` = emisión idempotente. Opt-in NUEVO
+`show_milestones` (default FALSE, toggle en Ajustes, client-writable como `show_last_active`); no
+publica retroactivo. Poda 90 días (los posts de rutina NO se podan). **DECISIONES DEL PO:** umbrales
+de racha `{2,4,8,12,24,52}` semanas; `'pr'` (récord) FUERA de v1 por decisión de Fable §R2(c) — el
+peso es autoreportado y celebrar eso sería publicar un logro basado en un número tecleado por el
+propio usuario. **3 DESVIACIONES documentadas:** (1) la DDL literal de §R2(e) usaba
+`jsonb_object_keys(...) is distinct from array[...]`, que no es SQL válido (set-returning) → misma
+regla por conteo de claves; (2) si un recálculo cruza VARIOS umbrales de golpe se emite solo el MÁS
+ALTO (la regla literal habría publicado 2-3 tarjetas juntas = el «muro repentino» que §R2(f) evita);
+(3) no se celebra el «nivel 1» de un perfil recién creado (`prevLevel===0`) = hito falso el día del
+opt-in. **SABOTAJES (checklist de Fable, tx→rollback contra prod real, actores sintéticos):** cliente
+inserta `kind='streak'`/`'level'` → BLOQUEADO (+ control positivo: la rutina legítima SÍ pasa, la
+policy no bloquea de más) · payload con clave extra (`kg`)/equivocada/tipo malo/kind inventado →
+BLOQUEADOS por el trigger · `service_role` SÍ emite → el bloqueo es del CLIENTE, no total · doble
+emisión del mismo umbral → 1 solo post · seguidor aprobado ve el hito del ADULTO (1) y JAMÁS el del
+MENOR (0). **TRAMPA CAZADA EN EL PROPIO TEST (gotcha nuevo):** el primer intento del sabotaje 6 dio
+«el seguidor no ve al adulto» y parecía un bug — era el FIXTURE: el trigger `_community_follow_state`
+fuerza `pending` al seguir a un privado, así que un `insert ... state='active'` NO crea un seguidor
+aprobado; hay que APROBAR con un UPDATE (lo que hace `cmtyApproveFollow`). De paso quedó probado que
+un seguidor `pending` tampoco ve nada. Advisors: CERO nuevos. **Frontend:** `communityMilestoneText`
+(PURA, en avi-core: `{text,emoji}` en voz de AVI, persona según sea mío/ajeno, `null` si el hito es
+ilegible → jamás una tarjeta rota) + `_cmtyMilestoneCard` (borde `--g2`, ❤️ para felicitar, SIN
+«Eliminar»: lo emite el servidor) + toggle «Celebrar mis logros en el muro» + `kind` en el select del
+feed + encabezado «Muro de rutinas» → «El muro» (ya no es solo de rutinas). QA: suite 410→412 (+2
+tests con dientes), `_verify-feed` 29/29 (+4; sabotaje demostrado: quitar la rama de `kind` en
+`_cmtyPostCard` tumba 3 checks), community 13/13, lastactive 14/14, public 10/10, follow 11/11,
+`_verify-news` verde EN LA MISMA SESIÓN (AVI_NEWS v386 «Tus logros, celebrados» + corregida la
+entrada v382, que seguía diciendo «baja hasta Muro de rutinas» cuando R1 ya lo había subido arriba).
+Verificación visual claro+oscuro. GOTCHA de harness: un fixture de `CMTY.friends` sin `fr.id` hace
+throw a `_cmtyFriendCard` → `_cmtyPaint` muere y el panel queda EN BLANCO sin `Runtime.exceptionThrown`
+(el error vive dentro del `evaluate`) — si un shot sale vacío, envolver el paint en try/catch y leer
+el mensaje. Bump ?v×11 + CACHE_NAME → avi-v386.*
+
 *Hitos sesión 2026-07-22 (parte 104 — CIERRE DE LA RESERVA de Fable sobre R3, avi-v385). Fable verificó
 ④+R1+R3 (veredictos: `plan-comunidad.md` §17 y `plan-comunidad-reforma.md`; commit `070de89`): **④ 🟢
 APROBADO, R1 🟢 APROBADO, R3 🟡 APROBADO CON RESERVA MENOR** — 35 sabotajes suyos, todos mordieron, en una

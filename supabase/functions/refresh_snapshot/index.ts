@@ -1,4 +1,14 @@
-// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3) ══════════
+// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3 · v4 en R2 hitos) ══════════
+// v4 (R2, 2026-07-22): además del snapshot, EMITE HITOS al muro (`community_posts`
+// kind='streak'/'level') comparando el estado ANTES vs DESPUÉS del recálculo. El cliente
+// NO puede publicarlos (policy `cpost_ins` exige kind='routine') → un hito es SIEMPRE
+// server-side, igual que el snapshot: no se infla. Opt-in propio `show_milestones`
+// (default false); si está apagado, se calcula el snapshot igual pero no se publica nada.
+// Umbrales de racha FIJOS aquí (decisión del PO): 2, 4, 8, 12, 24, 52 semanas.
+// DESVIACIÓN documentada vs Fable §R2(d): si un mismo recálculo cruza VARIOS umbrales de
+// golpe (p.ej. el primer refresh de alguien que ya lleva 5 semanas), se emite SOLO EL MÁS
+// ALTO — la regla literal habría publicado 2 o 3 tarjetas del mismo usuario a la vez, justo
+// el "muro repentino de historia vieja" que el propio §R2(f) quiere evitar.
 // v2 (C3): respeta show_today del perfil → si el usuario ocultó su actividad, trained_today se
 // escribe SIEMPRE false (§11 patrones de actividad; ocultamiento server-side, no cosmético).
 // Calcula el SNAPSHOT de constancia del PROPIO usuario y lo escribe en community_profiles.
@@ -24,6 +34,16 @@ function json(obj: unknown, status = 200) {
 
 const BOGOTA_OFFSET_MS = 5 * 3600 * 1000; // UTC-5, sin DST
 const GX_MINS = [0, 10, 30, 60, 120];     // umbrales de nivel 1..5 (GX_LEVELS en avi-core)
+const STREAK_MILESTONES = [2, 4, 8, 12, 24, 52]; // semanas — decisión del PO 2026-07-22
+const MILESTONE_KEEP_DAYS = 90;                  // poda de hitos (los posts de rutina NO se podan)
+
+// Umbral MÁS ALTO cruzado en este recálculo (antes < umbral <= después). null = ninguno.
+// Solo el más alto: cruzar varios de golpe no debe llenar el muro de tarjetas del mismo usuario.
+function crossedStreak(before: number, after: number): number | null {
+  let hit: number | null = null;
+  for (const m of STREAK_MILESTONES) if (before < m && after >= m) hit = m;
+  return hit;
+}
 
 function bogotaDayStart(t: number): number {
   const s = new Date(t - BOGOTA_OFFSET_MS); s.setUTCHours(0, 0, 0, 0);
@@ -96,11 +116,17 @@ Deno.serve(async (req) => {
     // opt-in: solo refresca si el usuario YA tiene perfil de comunidad (no lo crea aquí).
     // Leemos show_today: si el usuario ocultó su actividad, trained_today JAMÁS se publica true
     // (§11 patrones de actividad → ocultamiento SERVER-SIDE, no cosmético). C3.1.
+    // R2: se leen TAMBIÉN streak_weeks/level ACTUALES (el "antes" con el que se compara para
+    // decidir si se cruzó un hito) y el opt-in show_milestones.
     const { data: prof, error: ep } = await admin
-      .from("community_profiles").select("user_id,show_today").eq("user_id", uid).limit(1);
+      .from("community_profiles").select("user_id,show_today,show_milestones,streak_weeks,level")
+      .eq("user_id", uid).limit(1);
     if (ep) throw new Error("profile check: " + ep.message);
     if (!prof || !prof.length) return json({ ok: true, no_profile: true });
     const showToday = prof[0].show_today !== false; // default true si null/undefined
+    const showMilestones = prof[0].show_milestones === true; // default FALSE (opt-in explícito)
+    const prevStreak = Number(prof[0].streak_weeks) || 0;
+    const prevLevel = Number(prof[0].level) || 0;
 
     const { data: rows, error: e1 } = await admin
       .from("user_data").select("history,prs,routines,profile").eq("user_id", uid).limit(1);
@@ -118,7 +144,32 @@ Deno.serve(async (req) => {
       .eq("user_id", uid);
     if (e2) throw new Error("update: " + e2.message);
 
-    return json({ ok: true, snapshot: snap });
+    // ── R2 · HITOS ────────────────────────────────────────────────────────────
+    // Se emiten DESPUÉS de persistir el snapshot y solo con opt-in. El índice único
+    // (community_posts_streak_uq / _level_uq) hace la emisión idempotente: si el mismo
+    // umbral ya se publicó, el insert choca con 23505 y se ignora en silencio.
+    // Un fallo aquí NUNCA debe tumbar el refresh del snapshot (que ya quedó guardado).
+    const milestones: string[] = [];
+    if (showMilestones) {
+      const emit = async (kind: string, payload: Record<string, number>) => {
+        const { error } = await admin.from("community_posts").insert({ user_id: uid, kind, payload });
+        if (!error) { milestones.push(kind + ":" + JSON.stringify(payload)); return; }
+        if (String((error as any).code) !== "23505") console.error("milestone " + kind + ": " + error.message);
+      };
+      const st = crossedStreak(prevStreak, snap.streak_weeks);
+      if (st !== null) await emit("streak", { weeks: st });
+      if (snap.level > prevLevel && prevLevel > 0) await emit("level", { level: snap.level });
+      // prevLevel === 0 = perfil recién creado (nunca calculado): no se celebra el "nivel 1"
+      // de arranque como si fuera una subida — sería un hito falso el día del opt-in.
+    }
+
+    // Poda de hitos viejos (los posts de RUTINA no se podan: son contenido del usuario).
+    const cutoff = new Date(Date.now() - MILESTONE_KEEP_DAYS * 86400000).toISOString();
+    const { error: e3 } = await admin.from("community_posts").delete()
+      .eq("user_id", uid).neq("kind", "routine").lt("created_at", cutoff);
+    if (e3) console.error("milestone prune: " + e3.message);
+
+    return json({ ok: true, snapshot: snap, milestones });
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
   }

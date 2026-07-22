@@ -2190,6 +2190,28 @@ function communityPostPayload(routine) {
   return out;
 }
 
+// R2 (re-forma) — TEXTO de una tarjeta de HITO del muro. Puro: recibe el kind y el payload que
+// EMITIÓ EL SERVIDOR (la edge `refresh_snapshot`; el cliente no puede insertarlos — candado
+// `cpost_ins`) y devuelve `{text, emoji}` en voz de AVI, o null si el hito no es reconocible
+// (nunca una tarjeta rota: el caller no pinta). `mine` cambia la persona gramatical.
+// Solo dos tipos en v1: racha de semanas y subida de nivel. El «récord personal» quedó FUERA
+// a propósito (Fable §R2(c)): el peso es autoreportado y no se celebra un número autoafirmado.
+function communityMilestoneText(kind, payload, mine) {
+  const p = payload || {};
+  if (kind === 'streak') {
+    const w = Math.floor(Number(p.weeks));
+    if (!isFinite(w) || w <= 0) return null;
+    const semanas = w === 1 ? '1 semana seguida' : w + ' semanas seguidas';
+    return { emoji: '🔥', text: (mine ? 'Cumpliste ' : 'Cumplió ') + semanas + ' entrenando' };
+  }
+  if (kind === 'level') {
+    const l = Math.floor(Number(p.level));
+    if (!isFinite(l) || l <= 0) return null;
+    return { emoji: '⭐', text: (mine ? 'Subiste al nivel ' : 'Subió al nivel ') + l };
+  }
+  return null;
+}
+
 // R3 (re-forma) — ESTADO VACÍO ÚNICO del muro. Antes se apilaban dos vacíos («tu muro está
 // tranquilo» + «aún no tienes amigos aquí») que decían lo mismo dos veces y ninguno resolvía
 // el caso real: no tener a NADIE todavía. Esta función decide cuál (y solo uno) corresponde:
@@ -2923,6 +2945,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyInitials,
     communityPostPayload,
     communityEmptyState,
+    communityMilestoneText,
     computeExerciseProgress,
     coachInsight,
     coachPulse,

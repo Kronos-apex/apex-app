@@ -49,6 +49,7 @@ const {
   cmtyInitials,
   communityPostPayload,
   communityEmptyState,
+  communityMilestoneText,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1274,6 +1275,34 @@ test('communityPostPayload: caps (40 ejercicios, 80 chars) y defaults defensivos
   const empty = communityPostPayload({});
   assert.strictEqual(empty.name, 'Mi rutina');
   assert.deepStrictEqual(empty.exercises, []);
+});
+
+test('communityMilestoneText: racha y nivel en voz de AVI, persona según sea mío o ajeno', () => {
+  assert.deepStrictEqual(communityMilestoneText('streak', { weeks: 4 }, false),
+    { emoji: '🔥', text: 'Cumplió 4 semanas seguidas entrenando' });
+  assert.deepStrictEqual(communityMilestoneText('streak', { weeks: 4 }, true),
+    { emoji: '🔥', text: 'Cumpliste 4 semanas seguidas entrenando' });
+  // NUNCA se filtra un dato de salud: el payload de un hito solo trae el número del servidor
+  assert.ok(!/kg|peso|\d+\s*kg/i.test(communityMilestoneText('streak', { weeks: 8 }, false).text));
+  // concordancia en singular (los umbrales arrancan en 2, pero la función no debe decir barbaridades)
+  assert.strictEqual(communityMilestoneText('streak', { weeks: 1 }, false).text, 'Cumplió 1 semana seguida entrenando');
+  assert.deepStrictEqual(communityMilestoneText('level', { level: 3 }, false),
+    { emoji: '⭐', text: 'Subió al nivel 3' });
+  assert.deepStrictEqual(communityMilestoneText('level', { level: 3 }, true),
+    { emoji: '⭐', text: 'Subiste al nivel 3' });
+});
+
+test('communityMilestoneText: hito no reconocible → null (jamás una tarjeta rota)', () => {
+  // kind desconocido, payload vacío, números inválidos o negativos: el caller no pinta nada
+  assert.strictEqual(communityMilestoneText('pr', { kg: 100 }, false), null);
+  assert.strictEqual(communityMilestoneText('routine', { name: 'x' }, false), null);
+  assert.strictEqual(communityMilestoneText('streak', {}, false), null);
+  assert.strictEqual(communityMilestoneText('streak', { weeks: 0 }, false), null);
+  assert.strictEqual(communityMilestoneText('streak', { weeks: -4 }, false), null);
+  assert.strictEqual(communityMilestoneText('streak', { weeks: 'cuatro' }, false), null);
+  assert.strictEqual(communityMilestoneText('level', { level: null }, false), null);
+  assert.strictEqual(communityMilestoneText('streak', null, false), null);
+  assert.strictEqual(communityMilestoneText(undefined, undefined, false), null);
 });
 
 test('communityEmptyState: un solo vacío — publicaciones > gente conectada > solo', () => {

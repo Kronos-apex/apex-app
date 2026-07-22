@@ -218,6 +218,46 @@ ok('R1 engranaje → Ajustes (código + salir + volver), sin muro', dr1.setHasCo
 ok('R1 sobre → Mensajes (con volver)', dr1.inbHasMsgs);
 ok('R1 volver → regresa al muro', dr1.backToFeed);
 
+// ── R2: HITOS en el muro (emitidos por el servidor; el cliente solo los PINTA) ──
+const r2 = await ev(`(()=>{
+  const sv = CMTY.posts;
+  CMTY.posts = [
+    {id:'ms-1',user_id:'${PUB}',kind:'streak',payload:{weeks:4},created_at:'2026-07-22T10:00:00Z'},
+    {id:'ms-2',user_id:'${ME}',kind:'level',payload:{level:3},created_at:'2026-07-22T09:00:00Z'},
+    {id:'ms-x',user_id:'${PUB}',kind:'streak',payload:{weeks:'basura'},created_at:'2026-07-22T08:00:00Z'}
+  ];
+  CMTY.postHearts={'ms-1':2}; CMTY.postHeartMine={};
+  const h=_cmtyFeedHtml();
+  const r={
+    racha:/Cumplió 4 semanas seguidas entrenando/.test(h),
+    nivel:/Subiste al nivel 3/.test(h),
+    corrupto:!/basura/.test(h),                       // hito ilegible → no se pinta, no rompe
+    hearts:/>2</.test(h),                              // se puede felicitar
+    sinRutina:!/compartió una rutina/.test(h),         // no se pinta como si fuera rutina
+    sinEliminar:!/cmtyDeletePost\\('ms-2'\\)/.test(h) // un hito no se borra a mano (lo emite el server)
+  };
+  CMTY.posts = sv; CMTY.postHearts={}; CMTY.postHeartMine={};
+  return JSON.stringify(r); })()`);
+const dr2 = JSON.parse(r2);
+ok('R2 hito de RACHA se pinta en voz de AVI (ajeno) y de NIVEL (propio)', dr2.racha && dr2.nivel);
+ok('R2 hito corrupto NO se pinta (tarjeta rota jamás) y no se confunde con una rutina', dr2.corrupto && dr2.sinRutina);
+ok('R2 un hito se puede felicitar con ❤️ y no ofrece «Eliminar»', dr2.hearts && dr2.sinEliminar);
+
+// ── R2: el toggle de opt-in vive en Ajustes y refleja show_milestones ──
+const r2b = await ev(`(()=>{
+  CMTY.view='settings'; CMTY.profile.show_milestones=false; _cmtyPaint();
+  const off=document.getElementById('cmty-tg-milestones');
+  const offState=off && off.getAttribute('aria-checked');
+  CMTY.profile.show_milestones=true; _cmtyPaint();
+  const on=document.getElementById('cmty-tg-milestones');
+  const txt=document.getElementById('cn-community').textContent;
+  CMTY.view='feed'; _cmtyPaint();
+  return JSON.stringify({present:!!off, off:offState, on:on&&on.getAttribute('aria-checked'),
+    copy:/Celebrar mis logros en el muro/.test(txt)}); })()`);
+const dr2b = JSON.parse(r2b);
+ok('R2 toggle «Celebrar mis logros» en Ajustes, aria-checked sigue a show_milestones',
+  dr2b.present && dr2b.copy && dr2b.off === 'false' && dr2b.on === 'true');
+
 ok('sin errores JS', jsErrors.length === 0);
 if (jsErrors.length) console.log('  jsErrors:', jsErrors.slice(0, 4));
 

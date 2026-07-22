@@ -102,7 +102,7 @@ async function cmtyLoad(opts){
     // salieron del grant general → un `select('*')` o pedirlas daría permission denied. El dueño lee sus
     // propios secretos (código/consentimiento) por la RPC dedicada cmty_my_secrets.
     const { data: prof, error: pe } = await cli.from('community_profiles')
-      .select('user_id,handle,avatar_url,bio,visible,is_private,role,streak_weeks,sessions_4w,level,achievements,created_at,show_today,show_last_active')
+      .select('user_id,handle,avatar_url,bio,visible,is_private,role,streak_weeks,sessions_4w,level,achievements,created_at,show_today,show_last_active,show_milestones')
       .eq('user_id', uid).maybeSingle();
     if(pe) throw pe;
     if(prof){
@@ -363,6 +363,7 @@ function _cmtyMyProfileHtml(){
       _cmtyToggleRow('cmty-tg-visible', 'Perfil activo', 'Si lo pausas, tus amigos no te ven.', !paused, 'cmtyToggleVisible()') +
       _cmtyToggleRow('cmty-tg-today', 'Mostrar si entrené hoy', 'Apágalo si prefieres no compartir tu actividad diaria.', p.show_today !== false, 'cmtyToggleToday()') +
       _cmtyToggleRow('cmty-tg-lastactive', 'Mostrar mi última conexión', 'Verán «en línea» o «activo hoy», nunca la hora exacta.', p.show_last_active === true, 'cmtyToggleLastActive()') +
+      _cmtyToggleRow('cmty-tg-milestones', 'Celebrar mis logros en el muro', 'Cuando cumplas semanas seguidas o subas de nivel, aparece en el muro de tu gente.', p.show_milestones === true, 'cmtyToggleMilestones()') +
     '</div>' +
     // Editar apodo/bio + salir
     '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
@@ -939,6 +940,15 @@ async function cmtyToggleLastActive(){
   await _cmtyPatch({ show_last_active: next });
 }
 
+// R2 — opt-in de HITOS (default false). Solo habilita/deshabilita la PUBLICACIÓN: el hito lo
+// emite la edge `refresh_snapshot` con service_role (el cliente no puede insertar kind≠'routine',
+// candado `cpost_ins`). Encenderlo NO publica retroactivamente: solo el próximo umbral que cruce.
+async function cmtyToggleMilestones(){
+  const next = !(CMTY.profile.show_milestones === true);
+  await _cmtyPatch({ show_milestones: next });
+  if(next) toast('🎉 Tus logros aparecerán en el muro');
+}
+
 // ══════════ ③c-2 CUENTA PÚBLICA / PRIVADA + activación (fecha de nacimiento, menores) ══════════
 // El cliente alterna is_private (el trigger de menor es la autoridad final, §13-BIS.3). Hacerse público
 // como ADULTO exige que la edge activate_public_profile fije birth_date (server-side, write-once) — sin
@@ -1106,7 +1116,7 @@ async function _cmtyLoadFeed(cli, uid){
   const authors = Object.keys(CMTY.following).filter(u => CMTY.following[u] === 'active');
   authors.push(uid); // mis propias publicaciones también salen en el muro
   const { data: posts, error } = await cli.from('community_posts')
-    .select('id,user_id,payload,created_at')
+    .select('id,user_id,kind,payload,created_at')
     .in('user_id', authors)
     .eq('visible', true)
     .order('created_at', { ascending: false })
@@ -1167,7 +1177,7 @@ function _cmtyEmptyHtml(state){
 }
 
 function _cmtyFeedHtml(){
-  let h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:14px 2px 9px">Muro de rutinas</div>';
+  let h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:14px 2px 9px">El muro</div>'; // R2: ya no es «de rutinas» — también trae hitos
   h += _cmtyComposeHtml();
   if(!CMTY.posts.length){
     const st = (typeof communityEmptyState === 'function') ? communityEmptyState(_cmtyCounts()) : 'quiet';
@@ -1202,7 +1212,35 @@ function _cmtyComposeHtml(){
   return h + '</div>';
 }
 
+// R2 — tarjeta de HITO (racha / nivel). El texto lo arma `communityMilestoneText` (puro, avi-core);
+// el número viene del servidor (no inflable) y JAMÁS trae pesos ni datos de salud (allow-list del
+// trigger: solo {weeks} o {level}). Misma fila de ❤️ que una rutina — se celebra igual.
+function _cmtyMilestoneCard(post){
+  const prof = _cmtyAuthorProf(post.user_id);
+  const mine = post.user_id === CMTY.uid;
+  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const m = (typeof communityMilestoneText === 'function')
+    ? communityMilestoneText(post.kind, post.payload, mine) : null;
+  if(!m) return ''; // hito desconocido/corrupto → no se pinta (nunca una tarjeta rota)
+  const hearts = CMTY.postHearts[post.id] || 0;
+  const given = !!CMTY.postHeartMine[post.id];
+  return '<div class="card" style="padding:13px;margin-bottom:10px;border-color:var(--g2)">' +
+    '<div style="display:flex;align-items:center;gap:10px">' +
+      _cmtyAvatarHtml(prof || {}, 40) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
+        '<div style="font-size:13px;color:var(--gt);font-weight:700;margin-top:1px">' + esc(m.text) + ' ' + m.emoji + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
+      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Felicitar">' +
+        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
+    '</div>' +
+  '</div>';
+}
+
 function _cmtyPostCard(post){
+  if(post.kind === 'streak' || post.kind === 'level') return _cmtyMilestoneCard(post);
   const pl = post.payload || {};
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
@@ -1310,4 +1348,5 @@ if(typeof window !== 'undefined'){
   window._cmtyMyRoutines = _cmtyMyRoutines; window._cmtyAuthorProf = _cmtyAuthorProf;
   window.cmtyGoView = cmtyGoView; window._cmtyHeadMain = _cmtyHeadMain; window._cmtyHeadSub = _cmtyHeadSub;
   window._cmtyCounts = _cmtyCounts; window._cmtyEmptyHtml = _cmtyEmptyHtml; window._cmtyFriendsHtml = _cmtyFriendsHtml;
+  window.cmtyToggleMilestones = cmtyToggleMilestones; window._cmtyMilestoneCard = _cmtyMilestoneCard;
 }
