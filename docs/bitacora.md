@@ -380,6 +380,36 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 106 — LEADS PEGADOS «quiere coach», avi-v387. Bug reportado por el
+PO). **Síntoma:** Hernán Camacho (6 jul) y Cristian Sneyder Luna Reyes (11 jul) seguían apareciendo
+como «🙋 Quiere coach» meses después de haberlos atendido. **Forense (Supabase read-only):** son los
+ÚNICOS 2 con `profile.wantsCoach='true'` en toda la base; ambos en tier `app`. **Causa raíz:**
+`setClientPlan` apagaba el flag SOLO en la rama `plan==='coach'` (app-3:1086) — atenderlos con
+«Premium app» los dejaba marcados para siempre. **Causa raíz 2 (la de fondo, clase F7):**
+`wantsCoach` vive en la fila del ASESORADO, que SU dispositivo sincroniza → aunque el coach lo
+apague, el celular del asesorado puede re-subirlo; un flag client-writable NO puede ser el estado
+de «ya lo atendí». **Fix:** el estado de atención se muda al lado del COACH — `ax_leadsdone`
+`{clientId: iso}` conectado por las TRES vías obligatorias (SB_KEYS + `_COACH_SETTINGS_KEYS` +
+`_coachSettingsObj().ld` + hidratación con fusión por-asesorado, lección v321) → viaja entre sus
+dispositivos y el asesorado no puede revivirlo. Motor PURO `leadPending(client, leadsDone)` en
+avi-core: pendiente si pidió y no hay marca posterior; **si vuelve a pedir DESPUÉS de ser atendido,
+reaparece** (una solicitud nueva es una solicitud nueva); marca ilegible → se MUESTRA (fail-visible:
+perder un lead cuesta plata, mostrar uno de más cuesta un toque); pidió-sin-fecha + atendido →
+resuelto (no se inventa fecha, lección v359). `clientAttentionRank` lo usa vía `opts.leadsDone` (el
+tier 3 deja de ocupar el tope). Consumidores actualizados: badge de `#p-clients`, `_wantsTag` de la
+ficha, bloque «Pidió un coach» del control de plan, y la notificación de lead del poll. **UX nueva:**
+botón «Ya lo atendí — quitar el aviso» (`markLeadDone`) en el bloque del lead, para los casos que se
+resuelven hablando; y AHORA cualquier cambio de plan marca la solicitud como atendida, no solo
+«Premium + Coach». QA: suite 412→416 (+4 tests, sabotaje demostrado rojo→verde: devolver la decisión
+al flag del asesorado tumba los 4), `_verify-v317` (orden por atención) OK, `_test-coach-back` OK,
+`_verify-coachlead` OK. Bump ?v×11 + CACHE_NAME → avi-v387. **NOTA para el PO:** Hernán y Cristian
+requieren UN toque en «Ya lo atendí» (o un cambio de plan) — a propósito NO se les marcó por detrás:
+declarar resueltas dos solicitudes reales es decisión suya, no mía. **PENDIENTE verificación de
+Fable.** **NO CERRADO:** el PO reporta que los avisos le llegan como PUSH AL CELULAR — eso NO lo
+explica este bug (esta vía solo pinta avisos dentro de la app). Descartado `daily-notifs` (no manda
+nada de leads); hallazgo colateral: hay 2 dispositivos registrados como `_coach` → todo push al coach
+le llega DUPLICADO. Falta la captura de la notificación (texto + hora) para rastrear el emisor real.*
+
 *Hitos sesión 2026-07-22 (parte 105 — R2 HITOS EN EL MURO, avi-v386 + migración `c13_milestones` +
 edge `refresh_snapshot` v4. PENDIENTE verificación de Fable). Cierra la re-forma de Comunidad
 (R1 layout + R3 pulido + R2 contenido). **El problema que resuelve:** el muro dependía de que

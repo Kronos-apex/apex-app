@@ -1840,7 +1840,7 @@ function clientAttentionRank(c, history, now, opts) {
   // 3) 🙋 PIDIÓ COACH — lead libre que quiere coach = conversión a Premium enterrada. sev = días
   //    desde wantsCoachAt (el más antiguo primero). Sin wantsCoachAt VÁLIDO → sev 0, al FINAL del
   //    tier: JAMÁS inventar una fecha para adelantarlo (lección del bug v359).
-  if (c.wantsCoach) {
+  if (leadPending(c, opts.leadsDone)) {
     const at = c.wantsCoachAt != null ? Date.parse(c.wantsCoachAt) : NaN;
     if (isFinite(at)) {
       const d = Math.max(0, Math.floor((nowTs - at) / MS_DAY));
@@ -2188,6 +2188,27 @@ function communityPostPayload(routine) {
     return o;
   });
   return out;
+}
+
+// LEAD «quiere coach» — ¿sigue PENDIENTE de atender?
+// El flag `wantsCoach` vive en la fila del ASESORADO (su propio dispositivo la sincroniza), así
+// que NO sirve como estado de "ya lo atendí": el coach lo apaga y el celular del asesorado puede
+// volver a subirlo (misma clase que el hallazgo F7: jamás decidir con un campo que el cliente
+// escribe). Por eso el "atendido" vive en `ax_leadsdone`, que SOLO escribe el coach.
+//   leadsDone = { [clientId]: ISO de cuando el coach lo atendió }
+// Si el asesorado vuelve a pedir coach DESPUÉS de esa fecha, reaparece (una solicitud nueva es
+// una solicitud nueva). Marca corrupta/ilegible → se muestra: perder un lead cuesta plata,
+// mostrar uno de más solo cuesta un toque.
+function leadPending(client, leadsDone) {
+  const c = client || {};
+  if (!c.wantsCoach) return false;
+  const done = (leadsDone || {})[c.id];
+  if (done == null) return true;                       // nunca atendido → pendiente
+  const doneTs = Date.parse(done);
+  if (!isFinite(doneTs)) return true;                  // marca ilegible → fail-visible
+  const askTs = c.wantsCoachAt != null ? Date.parse(c.wantsCoachAt) : NaN;
+  if (!isFinite(askTs)) return false;                  // pidió sin fecha y ya fue atendido → resuelto
+  return askTs > doneTs;                               // volvió a pedir después de atenderlo
 }
 
 // R2 (re-forma) — TEXTO de una tarjeta de HITO del muro. Puro: recibe el kind y el payload que
@@ -2946,6 +2967,7 @@ if (typeof module !== 'undefined' && module.exports) {
     communityPostPayload,
     communityEmptyState,
     communityMilestoneText,
+    leadPending,
     computeExerciseProgress,
     coachInsight,
     coachPulse,

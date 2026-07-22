@@ -50,6 +50,7 @@ const {
   communityPostPayload,
   communityEmptyState,
   communityMilestoneText,
+  leadPending,
   shareBannerEligible,
   weekStreak,
   longestWeekStreak,
@@ -1275,6 +1276,50 @@ test('communityPostPayload: caps (40 ejercicios, 80 chars) y defaults defensivos
   const empty = communityPostPayload({});
   assert.strictEqual(empty.name, 'Mi rutina');
   assert.deepStrictEqual(empty.exercises, []);
+});
+
+test('leadPending: el lead atendido por el coach NO reaparece (caso Hernán/Cristian)', () => {
+  const hernan = { id: 'h1', wantsCoach: true, wantsCoachAt: '2026-07-06T19:33:26.070Z' };
+  // sin registro de atención → pendiente (conducta vieja)
+  assert.strictEqual(leadPending(hernan, {}), true);
+  assert.strictEqual(leadPending(hernan, null), true);
+  // el coach lo atiende DESPUÉS de que pidió → deja de aparecer, pase lo que pase con su flag
+  assert.strictEqual(leadPending(hernan, { h1: '2026-07-08T12:00:00.000Z' }), false);
+  // …y sigue sin aparecer aunque el dispositivo del asesorado re-suba wantsCoach:true (clase F7)
+  const resucitado = { ...hernan, wantsCoach: true };
+  assert.strictEqual(leadPending(resucitado, { h1: '2026-07-08T12:00:00.000Z' }), false);
+  // quien nunca pidió, nunca es lead
+  assert.strictEqual(leadPending({ id: 'x', wantsCoach: false }, {}), false);
+  assert.strictEqual(leadPending({ id: 'x' }, { x: '2026-07-08T12:00:00.000Z' }), false);
+});
+
+test('leadPending: una solicitud NUEVA tras ser atendido SÍ reaparece', () => {
+  const done = { c1: '2026-07-08T12:00:00.000Z' };
+  // volvió a pedir el 20 de julio, después de la atención del 8 → es un lead nuevo, debe verse
+  assert.strictEqual(leadPending({ id: 'c1', wantsCoach: true, wantsCoachAt: '2026-07-20T10:00:00.000Z' }, done), true);
+  // pidió ANTES de la atención → sigue resuelto
+  assert.strictEqual(leadPending({ id: 'c1', wantsCoach: true, wantsCoachAt: '2026-07-01T10:00:00.000Z' }, done), false);
+});
+
+test('leadPending: datos raros fallan del lado VISIBLE (perder un lead cuesta plata)', () => {
+  // marca de atención ilegible → se muestra igual
+  assert.strictEqual(leadPending({ id: 'c1', wantsCoach: true, wantsCoachAt: '2026-07-20T10:00:00.000Z' }, { c1: 'basura' }), true);
+  // pidió SIN fecha pero ya fue atendido → resuelto (no se inventa una fecha para adelantarlo, lección v359)
+  assert.strictEqual(leadPending({ id: 'c1', wantsCoach: true }, { c1: '2026-07-08T12:00:00.000Z' }), false);
+  // pidió sin fecha y nunca fue atendido → pendiente
+  assert.strictEqual(leadPending({ id: 'c1', wantsCoach: true }, {}), true);
+  assert.strictEqual(leadPending(null, {}), false);
+  assert.strictEqual(leadPending(undefined, undefined), false);
+});
+
+test('clientAttentionRank: un lead atendido deja de ocupar el tier 3', () => {
+  const now = D(2026, 6, 22, 10);
+  const c = { id: 'h1', name: 'Hernán', selfReg: true, wantsCoach: true, wantsCoachAt: '2026-07-06T19:33:26.070Z',
+    payments: [{ date: '2026-07-20', dueDate: '2026-08-20', amount: 1 }] };
+  const pendiente = clientAttentionRank(c, [], now, {});
+  assert.strictEqual(pendiente.reason, 'lead');
+  const atendido = clientAttentionRank(c, [], now, { leadsDone: { h1: '2026-07-08T12:00:00.000Z' } });
+  assert.notStrictEqual(atendido.reason, 'lead');
 });
 
 test('communityMilestoneText: racha y nivel en voz de AVI, persona según sea mío o ajeno', () => {

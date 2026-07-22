@@ -43,10 +43,14 @@ function renderClients(){
   // (ax_msgreads, v321) para que un 💬 mensaje sin responder suba (tier 2) y un 🙋 lead persista
   // (tier 3). La función es PURA — el estado de lectura entra por aquí, no lo lee ella.
   const _reads=(typeof _coachReads==='function')?_coachReads():{};
+  const _ldone=_leadsDone(); // leads ya atendidos (registro del coach) → no vuelven a subir al tope
   const _optsById={};
   DB.clients.forEach(c=>{
     const ms=DB.msgs[c.id];
-    if(ms&&ms.length){ const iso=_reads[c.id]; _optsById[c.id]={msgs:ms,lastReadTs:iso?Date.parse(iso):null}; }
+    const o={};
+    if(ms&&ms.length){ const iso=_reads[c.id]; o.msgs=ms; o.lastReadTs=iso?Date.parse(iso):null; }
+    if(_ldone[c.id]) o.leadsDone=_ldone;
+    if(Object.keys(o).length) _optsById[c.id]=o;
   });
   sortClientsByAttention(DB.clients,DB.history,undefined,_optsById).forEach(({c,r})=>{
     const ms=DB.msgs[c.id]||[];const last=ms[ms.length-1];
@@ -78,7 +82,7 @@ function renderClients(){
     // atención (reason==='lead'), NO repetimos el "🙋 Quiere coach" (dos píldoras 🙋 idénticas se
     // veían redundantes) — el chip de atención lo supersede y además trae la antigüedad. El badge
     // 🆓 Libre (para libres que NO piden coach) se conserva igual.
-    const selfBadge=c.selfReg?(c.wantsCoach?(r.reason==='lead'?'':'<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>'):`<span class="tag" style="background:var(--bll);color:var(--bl)">${_coIco('leaf',12,'🆓')} Libre</span>`):'';
+    const selfBadge=c.selfReg?(_leadPending(c)?(r.reason==='lead'?'':'<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>'):`<span class="tag" style="background:var(--bll);color:var(--bl)">${_coIco('leaf',12,'🆓')} Libre</span>`):'';
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
     // v360: unread → azul info (💬); lead → naranja (🙋, coherente con "Quiere coach").
@@ -698,6 +702,14 @@ async function _enterCoachAuth(authUser, ownRow){
         Object.keys(_cs.mr).forEach(id=>{ if(!merged[id]||new Date(_cs.mr[id])>new Date(merged[id]))merged[id]=_cs.mr[id]; });
         localStorage.setItem('ax_msgreads',JSON.stringify(merged));
       }
+      // Leads ya atendidos (mismo patrón de fusión: gana la marca más reciente por asesorado)
+      // → «ya lo atendí» viaja entre los dispositivos del coach y no lo revive el del asesorado.
+      if(_cs.ld && typeof _cs.ld==='object'){
+        const locL=(function(){try{return JSON.parse(localStorage.getItem('ax_leadsdone')||'{}')||{};}catch(e){return {};}})();
+        const mergedL={...locL};
+        Object.keys(_cs.ld).forEach(id=>{ if(!mergedL[id]||new Date(_cs.ld[id])>new Date(mergedL[id]))mergedL[id]=_cs.ld[id]; });
+        localStorage.setItem('ax_leadsdone',JSON.stringify(mergedL));
+      }
     }catch(e){ warn('AVI: hidratar coach_settings falló (no bloquea):',e&&e.message); }
   }
   await _loadCoachClientsIntoDB();
@@ -1057,7 +1069,8 @@ function planControlHTML(c){
       <div class="planopt-sub">${sub}</div>
     </button>`;
   }).join('');
-  const wants=(cur!=='coach'&&c.wantsCoach)?`<div class="plan-wants">🙋 <b>Pidió un coach.</b> Súbelo a <b>Premium + Coach</b> cuando confirmes el pago.</div>`:'';
+  const wants=(cur!=='coach'&&_leadPending(c))?`<div class="plan-wants">🙋 <b>Pidió un coach.</b> Súbelo a <b>Premium + Coach</b> cuando confirmes el pago.` +
+    `<button class="btn bg bsm" style="margin-top:8px;min-height:36px;width:100%" onclick="markLeadDone('${esc(c.id)}')">Ya lo atendí — quitar el aviso</button></div>`:'';
   // Colapsable (progressive disclosure): el nivel rara vez cambia → colapsado muestra el tier
   // ACTUAL en el encabezado; se expande con un toque para cambiarlo. El aviso "Pidió un coach"
   // (lead caliente) se mantiene visible aunque esté colapsado.
@@ -1077,12 +1090,33 @@ function planControlHTML(c){
 }
 // Cambia el nivel del cliente. 'coach' se persiste como tier='premium' (compatibilidad
 // con datos existentes; clientHasCoach lo trata como coacheado).
+// ¿Este lead sigue pendiente? Lee el registro del COACH (ax_leadsdone), no el flag del asesorado.
+// El motor está en avi-core (`leadPending`, puro y testeado); esto solo le pasa el mapa local.
+function _leadsDone(){ try{ return JSON.parse(localStorage.getItem('ax_leadsdone')||'{}')||{}; }catch(e){ return {}; } }
+function _leadPending(c){ return (typeof leadPending==='function') ? leadPending(c,_leadsDone()) : !!(c&&c.wantsCoach); }
+// Marca un lead como ATENDIDO. Vía sancionada: sv() sobre una clave que está en SB_KEYS +
+// _COACH_SETTINGS_KEYS + _coachSettingsObj (las tres, lección v321) → viaja a la nube y a sus
+// otros dispositivos. Si el asesorado vuelve a pedir coach MÁS TARDE, reaparece solo.
+function markLeadDone(cid){
+  const c=DB.clients.find(x=>x.id===cid); if(!c)return;
+  const done=_leadsDone(); done[cid]=new Date().toISOString();
+  sv('ax_leadsdone',done);
+  toast(`✅ ${c.name.split(' ')[0]}: solicitud marcada como atendida`);
+  if(typeof openDetail==='function')openDetail(cid);
+  if(typeof renderClients==='function')renderClients();
+  if(typeof renderHome==='function')renderHome();
+}
 function setClientPlan(cid,plan){
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
   if(clientPlan(c)===plan)return;
   const labels={libre:'Libre (gratis)',app:'Premium app (sin coach)',coach:'Premium + Coach'};
   if(!confirm(`¿Cambiar a ${c.name.split(' ')[0]} al nivel "${labels[plan]}"?`))return;
   c.tier = plan==='coach' ? 'premium' : plan;
+  // Cambiar el plan ES atender la solicitud, sea cual sea el plan elegido (el bug de Hernán y
+  // Cristian: se los pasó a "Premium app" y la marca quedó encendida para siempre porque solo
+  // la rama 'coach' la apagaba). El registro del coach es el que manda; el flag del asesorado se
+  // apaga además en su fila cuando aplica, pero ya no es quien decide.
+  if(_leadPending(c)){ const d=_leadsDone(); d[cid]=new Date().toISOString(); sv('ax_leadsdone',d); }
   if(plan==='coach'){ c.wantsCoach=false; if(!c.coach_id)c.coach_id=COACH_UID; }
   c.updatedAt=new Date().toISOString();
   svNow('ax_c',DB.clients);
@@ -1115,7 +1149,7 @@ async function openDetail(id,_silent){
   const _plan=clientPlan(c);
   const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
   const _planIco={libre:_coIco('leaf',12,'🆓'),app:_coIco('star',12,'⭐'),coach:_coIco('crown',12,'👑')}[_plan];
-  const _wantsTag=(_plan!=='coach'&&c.wantsCoach)?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
+  const _wantsTag=(_plan!=='coach'&&_leadPending(c))?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
   document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
   if(freeLead) freeLead.innerHTML=planControlHTML(c);

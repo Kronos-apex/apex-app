@@ -104,19 +104,21 @@ function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',mo
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi','ax_msgreads'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi','ax_msgreads','ax_leadsdone'];
 // Ajustes GLOBALES del coach (no per-cliente, no secretos): ejercicios custom, nº Nequi para
 // cobrar, nombre/email/sitio. En AUTH_MODE viven en SU fila (columna `coach_settings` jsonb),
 // igual que las plantillas (ax_tpl→templates). Antes caían al vacío en _persistCoachWrite →
 // se perdían al recargar (bug #1 auditoría 2026-06-30). ax_cph NO va aquí: la clave real del
 // coach es la de Supabase Auth (lo cubre saveCoachPass→updateUser, bug #2).
-const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site','ax_msgreads'];
+const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site','ax_msgreads','ax_leadsdone'];
 // Construye el objeto completo coach_settings desde el estado local (sv ya espejó cada clave a
 // localStorage antes de persistir) → un upsert idempotente que no pisa las demás claves.
 // `mr` (v321) = mapa {clientId: iso} de leído del chat → el estado de leído persiste entre
 // dispositivos (antes coach_read_<id> era solo-local y re-notificaba mensajes ya leídos).
 function _coachSettingsObj(){
-  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site',''), mr:ld('ax_msgreads',{}) };
+  // `ld` = leads ya ATENDIDOS {clientId: iso}. Vive del lado del COACH a propósito: el flag
+  // `wantsCoach` está en la fila del asesorado y su dispositivo puede re-subirlo (clase F7).
+  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site',''), mr:ld('ax_msgreads',{}), ld:ld('ax_leadsdone',{}) };
 }
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
@@ -697,7 +699,10 @@ async function _pollAuthCoach(){
     // Date.now(): con Date.now() burlaba este guard y re-notificaba a CADA sesión (bug: "me siguen
     // llegando los 21 asesorados pidiendo coach", 2026-07-16). requestCoach SIEMPRE fija la fecha, así
     // que un lead genuinamente nuevo la trae; los viejos sin fecha ya salen en la lista con su etiqueta.
-    leads.forEach(c=>{ const at=c.wantsCoachAt?new Date(c.wantsCoachAt).getTime():0; if(at>_msgNotifSince && typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
+    // ...y ADEMÁS: si el coach ya lo atendió (`ax_leadsdone`, registro suyo), no se vuelve a
+    // avisar aunque el dispositivo del asesorado re-suba `wantsCoach` (clase F7).
+    leads.forEach(c=>{ const at=c.wantsCoachAt?new Date(c.wantsCoachAt).getTime():0;
+      if(at>_msgNotifSince && (typeof _leadPending!=='function'||_leadPending(c)) && typeof notifNewMessage==='function')notifNewMessage('AVI — nuevo interesado',`${c.name} quiere un coach 🙋`); });
   }
 }
 
