@@ -380,6 +380,22 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Nota 2026-07-22 — VERIFICACIÓN TÉCNICA DE OPUS del bloque v386-v388 (NO es el veredicto vinculante de
+Fable). Fable se lanzó a verificar los 6 cambios pendientes pero se cortó a mitad por límite mensual de
+gasto del modelo Fable 5 (no dejó nada en el repo). El PO pidió que Opus corriera los sabotajes como
+verificación técnica provisional. Re-corridos DESDE CERO contra prod real (impersonación en tx→rollback,
+actores sintéticos frescos): **HITOS/PUERTA-UPDATE 7/7** (V1 cliente no INSERTA hito · V2 no EDITA
+rutina→hito [c13c] · V3 no toca payload · V4 sí oculta visible propio · V5 publica rutina legítima · V6
+trigger rechaza kg en hito · V7 edge emite hito válido). **MENORES 4/4** (seguidor aprobado ve hito del
+adulto=1, del menor=0; `_profile_visible` true/false). **REPORTES R1-R10 + load-bearing 16/16** (QA no lee
+reports crudo/RPC 0 filas/resolve+auto-moderar+borrar-por-RPC denegados; moderador ve bandeja+excerpt+handle
+null, resuelve con su uid, borra por RPC un post que NO ve; context válido pasa/malformado bloqueado; R5
+load-bearing: quitar la fila de moderators → 0 filas; R10 seed prod = 1 = Camilo). **LEADS** suite 416/416
+(los 3 `leadPending` con dientes). **HARNESSES:** `_verify-reports` 11/11, `_verify-feed` 29/29,
+`_verify-v317` OK, `_verify-community` OK. Advisors: solo 3 0029 nuevos intencionales (moderación).
+**CONCLUSIÓN de Opus: técnicamente todo verde, cero fugas — pero el veredicto formal 🟢/🟡/🔴 de Fable
+SIGUE PENDIENTE** (Opus no se auto-aprueba, R4.1). Retomar la verificación de Fable al recargar créditos.*
+
 *Hitos sesión 2026-07-22 (parte 108 — LOTE v3-a ÍTEM #1: BANDEJA DE REPORTES para el coach, avi-v388 +
 migraciones `c14`/`c14b`. Estipulación de Fable §8.1). Cierra la deuda: `community_reports` se llenaba
 (reportar existe desde C3) pero el coach no tenía dónde verlos. **Backend `c14`:** tabla
