@@ -26,7 +26,7 @@ const ev = async e => { const r = await send('Runtime.evaluate', { expression: e
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
 await new Promise(r => ws.on('open', r)); await send('Page.enable'); await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
-await waitFor(`!!document.getElementById('s-login') && typeof cmtyTogglePublic==='function' && typeof _cmtyPublicBlockHtml==='function' && !document.getElementById('avi-loading')`);
+await waitFor(`!!document.getElementById('s-login') && typeof showScreen==='function' && typeof cmtyTogglePublic==='function' && typeof _cmtyPublicBlockHtml==='function' && !document.getElementById('avi-loading')`);
 await sleep(1200);
 
 const MYUID = 'me-uid-0001';
@@ -66,7 +66,7 @@ ok('P1 privado: toggle público OFF + copy «que te descubran»', d1.hasToggle &
 // ── P2: activar sin fecha → needs_birthdate → aparece input de fecha ──
 const p2 = await ev(`(async()=>{
   window.AVI_ALLOW_CLOUD_WRITE=true; window.__calls=[]; window.__edge={ok:true,needs_birthdate:true};
-  _cmtyPaint(); // pinta el perfil (con el bloque + #cmty-bd-box)
+  CMTY.view='settings'; _cmtyPaint(); // R1: el perfil (bloque público + #cmty-bd-box) vive ahora en la vista Ajustes
   await cmtyTogglePublic();
   await new Promise(r=>setTimeout(r,60));
   const box=document.getElementById('cmty-bd-box');

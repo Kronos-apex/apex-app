@@ -380,6 +380,28 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-21 (parte 102 — COMUNIDAD RE-FORMA R1: dar vuelta la pestaña, avi-v383, PENDIENTE
+re-verificación de Fable). Nace del informe de benchmark (Symmetry/Hevy/Strava/JEFIT/Strong) y del feedback
+del PO: la pestaña Comunidad estaba armada como panel de configuración (perfil gigante + código + 4 toggles
++ «Salir» ARRIBA; el muro enterrado al fondo). Plan escrito en `docs/plan-comunidad-reforma.md` (D1 del PO:
+muro = HITOS/logros server-side + rutinas; R2 hitos = handoff a Fable). **R1 (solo frontend, cero backend):**
+router de vistas `CMTY.view` ('feed'|'settings'|'inbox') en `_cmtyPaint`; header `_cmtyHeadMain` (título +
+✉️ bandeja con badge de no-leídos + ⚙️ ajustes) / `_cmtyHeadSub` (‹ Volver); `cmtyGoView(v)`; `renderCommunity`
+aterriza en 'feed' al entrar. La vista MURO abre en CONTENIDO: solicitudes (condicionales) → muro
+(`_cmtyFeedHtml`) → gym → amigos → descubrir. Todo lo de configuración (perfil, código, 4 toggles, editar,
+salir, agregar por código) se fue detrás del ⚙️; la bandeja de DMs detrás del ✉️. **Reúso total:** cero
+backend, cero handlers nuevos; solo se reorganizó el render (los 3 backends de relación siguen intactos, solo
+se presentan). GOTCHA nuevo: las clases `.ph`/`.ptitle` NO producen una fila horizontal (el 1er intento apiló
+✉️/⚙️ en vertical) → el header usa flex EXPLÍCITO auto-contenido, sin depender de esas clases. QA: harness
+`_verify-feed` +4 aserciones de router (19/19); ajustados `_verify-community` CM7 (el código se busca ahora en
+Ajustes) y `_verify-public` P2 (el perfil vive en Ajustes) — cambios de layout intencionales, no enmascaramiento
+(R2.2), + waitFor de public reforzado con `showScreen` (flake preexistente: la app no booteaba por un
+`python.exe` zombi ocupando el puerto 8803 — gotcha de puertos). Suite 407, community/follow/public verdes,
+verificado VISUAL claro+oscuro (header correcto, muro arriba, sin tarjeta de perfil en la vista principal).
+NO lleva AVI_NEWS (re-organización que se explica sola). Bump ?v×11 + CACHE_NAME → avi-v383. **PENDIENTE
+re-verificación de Fable. Sigue R2 (hitos server-side, lo planea Fable) y R3 (pulido: estado vacío único, fix
+banner Instalar, «seguir por código»).***
+
 *Hitos sesión 2026-07-21 (parte 101 — COMUNIDAD v2 ④ MURO / FEED, avi-v382, PENDIENTE re-verificación
 de Fable). Cierra el orden v2 (①chat→②última conexión→③perfil+seguir→④feed). Cada quien PUBLICA una
 rutina (solo nombre/días/ejercicios con series-reps) y ve un MURO con las de a quien sigue (active) +

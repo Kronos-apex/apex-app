@@ -122,9 +122,15 @@ check('CM5 XSS: handle malicioso escapado (sin <img src=x>, onerror no corre, te
 const cm6 = await ev(`(()=>{const h=document.getElementById('cn-community');const ext=[...h.querySelectorAll('img')].some(i=>/evil\\.example\\.com/.test(i.getAttribute('src')||''));return {ext:ext,imgs:h.querySelectorAll('img').length};})()`);
 check('CM6 avatar externo NO se pinta (cae a iniciales)', cm6.ext === false, JSON.stringify(cm6));
 
-// CM7: tarjetas de amigos con stats + solicitud entrante escapada
-const cm7 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');return {racha:/Racha 5 sem/.test(t),nivel:/Nivel 3/.test(t),noTrainedToday:!/Entren[oó] hoy/.test(t),req:/quiere ser tu amigo/.test(t),code:/ABCD1234EF/.test(t)};})()`);
-check('CM7 amigos: stats (racha/nivel) + «entrenó hoy» RETIRADO (§13-BIS.1b) + solicitud entrante + mi código', cm7.racha && cm7.nivel && cm7.noTrainedToday && cm7.req && cm7.code, JSON.stringify(cm7));
+// CM7: tarjetas de amigos con stats + solicitud entrante escapada (vista MURO) + mi código (vista AJUSTES tras R1)
+const cm7 = await ev(`(()=>{
+  const h=document.getElementById('cn-community');
+  const feed=h.innerText.replace(/\\s+/g,' '); // vista muro (default): amigos + solicitud
+  cmtyGoView('settings'); const set=h.innerText.replace(/\\s+/g,' '); // R1: el código vive en Ajustes
+  cmtyGoView('feed');
+  return {racha:/Racha 5 sem/.test(feed),nivel:/Nivel 3/.test(feed),noTrainedToday:!/Entren[oó] hoy/.test(feed),req:/quiere ser tu amigo/.test(feed),code:/ABCD1234EF/.test(set)};
+})()`);
+check('CM7 amigos: stats (racha/nivel) + «entrenó hoy» RETIRADO (§13-BIS.1b) + solicitud entrante (muro) + mi código (ajustes)', cm7.racha && cm7.nivel && cm7.noTrainedToday && cm7.req && cm7.code, JSON.stringify(cm7));
 
 // Shots del estado con perfil+amigos
 await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250); await shot('community-claro');

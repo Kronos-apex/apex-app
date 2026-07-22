@@ -141,6 +141,31 @@ const fd8 = await ev(`(async()=>{ window.AVI_ALLOW_CLOUD_WRITE=false; window.__c
   return JSON.stringify({ sealed: window.__calls.length===0 }); })()`);
 ok('FD8 sellado en localhost → cero escrituras', JSON.parse(fd8).sealed);
 
+// ── R1 re-forma: router de vistas (muro / ajustes / bandeja) ──
+const r1 = await ev(`(()=>{
+  CMTY.view='feed'; _cmtyPaint();
+  const host=document.getElementById('cn-community'); const feed=host.innerHTML;
+  const feedHasCompose=/Publicar una de mis rutinas/.test(feed);
+  const feedHasGear=/cmtyGoView\\('settings'\\)/.test(feed);
+  const feedHasInbox=/cmtyGoView\\('inbox'\\)/.test(feed);
+  const feedNoProfile=!/Tu código/.test(feed) && !/Salir de la comunidad/.test(feed);
+  cmtyGoView('settings'); const set=document.getElementById('cn-community').innerHTML;
+  const setHasCode=/Tu código/.test(set) && /Salir de la comunidad/.test(set);
+  const setHasBack=/cmtyGoView\\('feed'\\)/.test(set);
+  const setNoFeed=!/Publicar una de mis rutinas/.test(set);
+  cmtyGoView('inbox'); const inb=document.getElementById('cn-community').innerHTML;
+  const inbHasMsgs=/Mensajes/.test(inb) && /cmtyGoView\\('feed'\\)/.test(inb);
+  cmtyGoView('feed'); const back=document.getElementById('cn-community').innerHTML;
+  const backToFeed=/Publicar una de mis rutinas/.test(back) && !/Tu código/.test(back);
+  return JSON.stringify({feedHasCompose,feedHasGear,feedHasInbox,feedNoProfile,setHasCode,setHasBack,setNoFeed,inbHasMsgs,backToFeed});
+})()`);
+const dr1 = JSON.parse(r1);
+ok('R1 vista MURO por defecto: muro + engranaje + sobre, SIN tarjeta de perfil',
+  dr1.feedHasCompose && dr1.feedHasGear && dr1.feedHasInbox && dr1.feedNoProfile);
+ok('R1 engranaje → Ajustes (código + salir + volver), sin muro', dr1.setHasCode && dr1.setHasBack && dr1.setNoFeed);
+ok('R1 sobre → Mensajes (con volver)', dr1.inbHasMsgs);
+ok('R1 volver → regresa al muro', dr1.backToFeed);
+
 ok('sin errores JS', jsErrors.length === 0);
 if (jsErrors.length) console.log('  jsErrors:', jsErrors.slice(0, 4));
 

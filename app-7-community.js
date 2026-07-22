@@ -56,6 +56,7 @@ const CMTY = {
   postHearts: {},    // {postId: conteo de ❤️}
   postHeartMine: {}, // {postId: true} si YO le di ❤️
   composeOpen: false,// picker de "publicar mi rutina" abierto
+  view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -189,13 +190,41 @@ function cmtyOnWorkoutFinished(){
 // ══════════ RENDER ══════════
 function renderCommunity(){
   const host = document.getElementById('cn-community'); if(!host) return;
+  CMTY.view = 'feed'; // al ENTRAR a la pestaña siempre aterriza en el muro (los polls repintan con _cmtyPaint, no aquí)
   if(!CMTY.loaded && !CMTY.loading && !CMTY.busy){ cmtyLoad(); return; } // primera vez: carga y repinta
   _cmtyPaint();
 }
 
+// Encabezado simple (sin perfil todavía: carga / offline / opt-in).
 function _cmtyHead(){
   return '<div class="ph"><div class="ptitle">' + (typeof aviIcon === 'function' ? aviIcon('users', 20) : '👥') +
     ' Comunidad</div><div class="psub">Tu gente, tu constancia. Solo tus amigos te ven.</div></div>';
+}
+// Encabezado de la vista MURO: título + bandeja (✉️, badge no-leídos) + ajustes (⚙️).
+// Flex explícito y auto-contenido (no reusa .ph/.ptitle, que en esta zona no dan la fila horizontal).
+function _cmtyHeadMain(){
+  const unread = CMTY.dmUnread || 0;
+  return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0 14px">' +
+    '<div style="flex:1;min-width:0;font-size:20px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:7px">' +
+      (typeof aviIcon === 'function' ? aviIcon('users', 20) : '👥') + '<span>Comunidad</span></div>' +
+    '<button class="btn bg bsm" aria-label="Mensajes" title="Mensajes" style="min-height:40px;flex:0 0 auto;position:relative" onclick="cmtyGoView(\'inbox\')">' +
+      (typeof aviIcon === 'function' ? aviIcon('chat', 18) : '💬') +
+      (unread ? '<span style="position:absolute;top:-5px;right:-5px;background:var(--g);color:#fff;font-size:10px;font-weight:800;border-radius:10px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px">' + (unread > 9 ? '9+' : unread) + '</span>' : '') +
+    '</button>' +
+    '<button class="btn bg bsm" aria-label="Ajustes de la comunidad" title="Ajustes" style="min-height:40px;flex:0 0 auto;font-size:17px" onclick="cmtyGoView(\'settings\')">⚙️</button>' +
+  '</div>';
+}
+// Encabezado de una sub-vista (ajustes / bandeja): volver + título.
+function _cmtyHeadSub(title){
+  return '<div style="display:flex;align-items:center;gap:10px;margin:4px 0 14px">' +
+    '<button class="btn bg bsm" aria-label="Volver al muro" style="min-height:40px;flex:0 0 auto" onclick="cmtyGoView(\'feed\')">‹ Volver</button>' +
+    '<div style="flex:1;min-width:0;font-size:19px;font-weight:800;color:var(--t1)">' + esc(title) + '</div></div>';
+}
+// Cambia de vista dentro de la pestaña (no toca la nav global). Sube el scroll para no quedar a mitad.
+function cmtyGoView(v){
+  CMTY.view = v; _cmtyPaint();
+  const h = document.getElementById('cn-community'); if(h && h.scrollTo){ try{ h.scrollTo(0, 0); }catch(e){} }
+  try{ window.scrollTo(0, 0); }catch(e){}
 }
 
 function _cmtyPaint(){
@@ -209,17 +238,26 @@ function _cmtyPaint(){
     return;
   }
   if(!CMTY.profile){ host.innerHTML = _cmtyHead() + _cmtyOptInHtml(); _cmtyBindOptIn(); return; }
-  host.innerHTML = _cmtyHead() +
+  const view = CMTY.view || 'feed';
+  // AJUSTES: todo lo de configuración (perfil, código, toggles, editar, salir) + agregar por código.
+  if(view === 'settings'){
+    host.innerHTML = _cmtyHeadSub('Tu perfil y ajustes') + _cmtyMyProfileHtml() + _cmtyAddHtml();
+    return;
+  }
+  // BANDEJA: los mensajes directos.
+  if(view === 'inbox'){
+    host.innerHTML = _cmtyHeadSub('Mensajes') + _cmtyInboxHtml();
+    return;
+  }
+  // MURO (default): contenido primero. Solicitudes arriba (ya son condicionales), luego el muro, tu gente y descubrir.
+  host.innerHTML = _cmtyHeadMain() +
     (CMTY.offline ? _cmtyStaleBanner() : '') +
-    _cmtyMyProfileHtml() +
-    _cmtyInboxHtml() +
-    _cmtyAddHtml() +
     _cmtyRequestsHtml() +
     _cmtyFollowReqsHtml() +
+    _cmtyFeedHtml() +
     _cmtyGymHtml() +
     _cmtyFriendsHtml() +
-    _cmtyDiscoverHtml() +
-    _cmtyFeedHtml();
+    _cmtyDiscoverHtml();
 }
 
 function _cmtyOfflineCard(){
@@ -1247,4 +1285,5 @@ if(typeof window !== 'undefined'){
   window.cmtyComposeToggle = cmtyComposeToggle; window.cmtyPublish = cmtyPublish;
   window.cmtyPostHeart = cmtyPostHeart; window.cmtyDeletePost = cmtyDeletePost;
   window._cmtyMyRoutines = _cmtyMyRoutines; window._cmtyAuthorProf = _cmtyAuthorProf;
+  window.cmtyGoView = cmtyGoView; window._cmtyHeadMain = _cmtyHeadMain; window._cmtyHeadSub = _cmtyHeadSub;
 }
