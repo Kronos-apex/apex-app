@@ -375,6 +375,33 @@ Preguntas de PRODUCTO (no técnicas), con mi recomendación marcada:
 
 ---
 
+## 6-BIS. DECISIONES DEL PO (AskUserQuestion, 2026-07-22) — cerradas, NO re-preguntar
+
+Sobre las 6 preguntas de §6 (las #4 y #6 tenían respuesta obvia y se adoptó la recomendación
+de Fable sin preguntar: **volumen total de kilos DESCARTADO del todo**, y **a un menor NI SE LE
+MUESTRA el toggle de PRs**):
+
+1. **Publicar el entreno = OPT-IN POR PUBLICACIÓN** (recomendación aceptada): botón «Compartir
+   este entreno» al terminar; nada sale al muro sin un toque del usuario.
+2. **Comentarios = CUALQUIERA QUE VE el post** — ⚠️ **DESVIACIÓN de la recomendación de Fable**
+   (que era solo-con-relación). Decisión del PO con el riesgo en la mesa, coherente con la que ya
+   tomó para los ❤️ en ④ («si puedes verlo, puedes reaccionar»). CONSECUENCIA vinculante: la vista
+   de reportes (#1 de §5) y el rate-limit de comentarios NO son opcionales — son el contrapeso de
+   esta apertura. Fable decide en su estipulación de RLS si añade candados extra (p.ej. un menor
+   autor = comentarios solo de su gente, aunque el post sea visible).
+3. **PRs con kilos = PILOTO SOLO COACH** (recomendación aceptada): Camilo publica sus récords
+   primero; se abre a los demás adultos solo tras observar el efecto. El cambio legal de §7 aplica
+   desde el piloto (el dato ya se publica, aunque sea de una sola cuenta).
+4. **Grupos/clanes = AGENDADO APARTE** (recomendación aceptada): propia sesión de planificación
+   cuando #1-#6 de §5 estén en producción y verificados. No se descarta.
+
+**Flujo desde aquí:** Fable estipula la RLS del lote #1-#5 de §5 (vista de reportes ·
+`kind='workout'` con nota corta · comentarios con las decisiones de arriba) → Opus ejecuta →
+Fable verifica. El #6 (PR piloto) lleva su PROPIA sesión de RLS después del lote, junto con el
+cambio legal de §7.
+
+---
+
 ## 7. Lo legal
 
 - **`legal/politica-tratamiento-datos.md` §9 DEBE cambiar** antes de que (B)/(C) salgan, no
