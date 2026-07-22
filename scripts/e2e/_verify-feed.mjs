@@ -258,6 +258,30 @@ const dr2b = JSON.parse(r2b);
 ok('R2 toggle «Celebrar mis logros» en Ajustes, aria-checked sigue a show_milestones',
   dr2b.present && dr2b.copy && dr2b.off === 'false' && dr2b.on === 'true');
 
+// ── v3-a #2: tarjeta de ENTRENO TERMINADO (kind='workout') ──
+const wk = await ev(`(()=>{
+  const sv = CMTY.posts;
+  CMTY.posts = [
+    {id:'wk-1',user_id:'${PUB}',kind:'workout',created_at:'2026-07-22T10:00:00Z',payload:{name:'Pierna y glúteo',duration_min:52,exercises_count:6,note:'Hoy sí pude 💪 <script>'}},
+    {id:'wk-2',user_id:'${ME}',kind:'workout',created_at:'2026-07-22T09:00:00Z',payload:{name:'Espalda',exercises_count:4}}
+  ];
+  CMTY.postHearts={'wk-1':3}; CMTY.postHeartMine={};
+  const h=_cmtyFeedHtml();
+  const r={
+    name:/Pierna y glúteo/.test(h), terminó:/terminó su entreno/.test(h),
+    dur:/52 min/.test(h), exs:/6 ejercicios/.test(h),
+    racha:/5 sem/.test(h),                          // PUB tiene streak_weeks:5 en el perfil → la lee de ahí, NO del payload
+    noDurWk2:!/undefined min/.test(h),              // wk-2 sin duración → no pinta chip roto
+    hearts:/>3</.test(h),
+    noteEsc: !/Hoy sí pude 💪 <script>/.test(h) && /&lt;script&gt;/.test(h)  // nota XSS-safe
+  };
+  CMTY.posts = sv; CMTY.postHearts={}; CMTY.postHeartMine={};
+  return JSON.stringify(r); })()`);
+const dwk = JSON.parse(wk);
+ok('WK1 tarjeta de entreno: nombre + «terminó su entreno» + chips min/ejercicios', dwk.name && dwk.terminó && dwk.dur && dwk.exs);
+ok('WK2 racha leída del PERFIL del autor (no del payload) + sin chip roto sin duración', dwk.racha && dwk.noDurWk2);
+ok('WK3 nota del entreno escapada (XSS) + se puede felicitar con ❤️', dwk.noteEsc && dwk.hearts);
+
 ok('sin errores JS', jsErrors.length === 0);
 if (jsErrors.length) console.log('  jsErrors:', jsErrors.slice(0, 4));
 

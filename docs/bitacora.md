@@ -380,6 +380,31 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-22 (parte 109 — LOTE v3-a ÍTEMS #2+#3: ENTRENO TERMINADO como post + NOTA CORTA,
+avi-v389 + migración `c15_workout_posts`. Estipulación de Fable §8.2). El muro deja de depender de que
+alguien publique una rutina a mano: cada quien puede compartir su ENTRENO recién terminado. **Backend
+`c15`:** kind `'workout'` (cliente lo inserta; `cpost_ins` pasa a `kind in ('routine','workout')`, hitos
+siguen server-only); rama `workout` del trigger `_community_post_validate` (allow-list `{name,
+duration_min?, exercises_count, note?}` — JAMÁS kilos/series/salud; note ≤140); **rate-limit de posts
+NUEVO** (`_cpost_rate`+trigger, 5/min, la edge exenta vía `auth.uid() null` — deuda de c12 que Fable
+cerró de su cosecha). **avi-core:** `communityWorkoutPayload(session, routineName, note)` PURA (null si no
+finalizada [clase v367] o sin nombre; clamps espejo del trigger; `duration_min` solo con startedAt/finishedAt
+sanos 1-600; la RACHA NO va en el payload — la tarjeta la lee del perfil server-side del autor, cero
+falsificación). **Frontend:** tarjeta «Compártelo con tu gente» en la pantalla de fin (`renderWfCmtyShare`/
+`wfShareToCommunity` en app-4, opt-in POR publicación — nada automático, solo si es miembro; input de nota
+≤140 con contador; `.wf-cshare` CSS) → `cmtyShareWorkout` en app-7 (insert sellado); tarjeta del muro
+`_cmtyWorkoutCard` (chips min/ejercicios omitibles + racha del perfil + nota en esc() + ❤️). **Legal:** §9
+de la política amplía «publicar entreno+nota+comentarios» + mantiene «los kilos NUNCA se comparten»;
+`LEGAL_V`+`CMTY_CONSENT_V` a `2026-07-22-borrador` (sigue PENDIENTE de abogado). AVI_NEWS v388. **Sabotajes
+DB W1-W8 (tx→rollback, sintéticos): allow-list workout (nombre/dur/exs/note ok; kg/streak/clave-extra/dur
+0·601·string/note-141 rechazados; sin-dur opcional pasa) · W6 cliente-inserta-streak rechazado · W7 rate-limit
+(5 pasan, 6º cae) · W8 edge emite 8 hitos exenta. W9/W10 (visibilidad workout) heredados de cpost_sel
+(agnóstico al kind, ya verificado V8-V11).** Harness NUEVO `_verify-workoutshare` W11 8/8 (sin botón cero
+inserts, con botón payload EXACTO deep-equal, XSS de nota, sellado; sabotaje rojo→verde: pintar-publica
+tumba WS3) + `_verify-feed` +3 (32/32). Suite 419, `_verify-news` verde, cinturón del fin (`_shot-trained`,
+`_fable-repro-midsession`) sin regresión, community OK. Visual claro/oscuro. Bump ?v×11 → avi-v389.
+**PENDIENTE verificación de Fable.** Sigue el lote: #4 comentarios → #5 perfil rico.*
+
 *Nota 2026-07-22 — VERIFICACIÓN TÉCNICA DE OPUS del bloque v386-v388 (NO es el veredicto vinculante de
 Fable). Fable se lanzó a verificar los 6 cambios pendientes pero se cortó a mitad por límite mensual de
 gasto del modelo Fable 5 (no dejó nada en el repo). El PO pidió que Opus corriera los sabotajes como

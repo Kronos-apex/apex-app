@@ -2211,6 +2211,39 @@ function leadPending(client, leadsDone) {
   return askTs > doneTs;                               // volvió a pedir después de atenderlo
 }
 
+// ④/v3-a — mapea una SESIÓN TERMINADA al payload allow-list de un post `kind='workout'`
+// (trigger `_community_post_validate` rama workout): SOLO {name, duration_min?, exercises_count, note?}.
+// PURA y determinista. Devuelve null si la sesión NO está finalizada (clase v367: una parcial en
+// curso jamás se publica) o no tiene nombre. TODO lo demás (kilos, series, salud, ids) se DESCARTA
+// aquí — nunca sale del dispositivo. Clamps espejo EXACTO del trigger (name 80 · dur 1-600 · exs 1-60
+// · note 140). `duration_min` solo si startedAt/finishedAt dan 1-600 min (sesión legacy sin startedAt
+// sano → se OMITE, la tarjeta no pinta el chip). La RACHA NO va aquí: la tarjeta la lee del perfil
+// server-side del autor (un solo origen de verdad, cero falsificación).
+function communityWorkoutPayload(session, routineName, note) {
+  const s = session || {};
+  if (!sessionFinished(s)) return null;
+  const nm = String(routineName || s.routineName || '').trim();
+  if (!nm) return null;
+  const exs = Array.isArray(s.exercises) ? s.exercises : [];
+  // ejercicios con al menos una serie hecha; si ninguno lo marca pero la sesión finalizó, cuenta los presentes
+  let count = exs.filter(function (e) {
+    return e && Array.isArray(e.sets) && e.sets.some(function (st) { return st && st.done; });
+  }).length;
+  if (count === 0) count = exs.length;
+  if (count < 1) return null;                 // sin ejercicios no hay entreno que compartir
+  const out = { name: nm.slice(0, 80), exercises_count: Math.min(60, count) };
+  const st = +new Date(s.startedAt), fi = +new Date(s.finishedAt || s.date);
+  if (isFinite(st) && isFinite(fi) && fi > st) {
+    const mins = Math.round((fi - st) / 60000);
+    if (mins >= 1 && mins <= 600) out.duration_min = mins;
+  }
+  if (note != null) {
+    const t = String(note).trim();
+    if (t.length >= 1 && t.length <= 140) out.note = t;
+  }
+  return out;
+}
+
 // R2 (re-forma) — TEXTO de una tarjeta de HITO del muro. Puro: recibe el kind y el payload que
 // EMITIÓ EL SERVIDOR (la edge `refresh_snapshot`; el cliente no puede insertarlos — candado
 // `cpost_ins`) y devuelve `{text, emoji}` en voz de AVI, o null si el hito no es reconocible
@@ -2965,6 +2998,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyAvatarOk,
     cmtyInitials,
     communityPostPayload,
+    communityWorkoutPayload,
     communityEmptyState,
     communityMilestoneText,
     leadPending,

@@ -75,13 +75,21 @@ AVI incluye una función de **Comunidad** para que te motives con amigos. Es **t
 opcional** y está **apagada por defecto**: solo se activa si tú creas tu perfil de comunidad y
 das tu autorización.
 
-- **Qué se comparte, y solo con tus amigos aceptados:** el **apodo** que elijas, tu **avatar**
-  (si subes uno) y un **resumen de tu constancia** (tu racha, tu nivel, tus logros y, de forma
-  opcional, si entrenaste hoy). Ese resumen lo calcula nuestro servidor a partir de tu actividad;
-  **nunca se comparten tus datos crudos**.
-- **Qué NO se comparte NUNCA:** tu peso, medidas, fotos de progreso, notas de salud o lesiones,
-  tus kilos levantados ni tus mensajes con el entrenador. Esos datos sensibles **jamás** salen de
-  tu cuenta.
+- **Qué se comparte** (según tu configuración de privacidad y con quien tú autorizas): el **apodo**
+  que elijas, tu **avatar** (si subes uno) y un **resumen de tu constancia** (tu racha, tu nivel,
+  tus logros, cuántos entrenos llevas y, de forma opcional, si entrenaste hoy o tu última conexión).
+  Ese resumen lo calcula nuestro servidor a partir de tu actividad; **nunca se comparten tus datos crudos**.
+- **Publicaciones en el muro (opcionales, una por una):** puedes **compartir una rutina** (nombre,
+  día y ejercicios con sus series y repeticiones) o **compartir un entreno terminado** (nombre de la
+  rutina, duración aproximada, número de ejercicios y una **nota corta opcional** que tú escribes).
+  Cada publicación es una acción tuya, explícita; nada se publica automáticamente.
+- **Comentarios:** las publicaciones aceptan **comentarios** de las personas que pueden ver esa
+  publicación. Tus comentarios son visibles para ese público. Puedes **borrar** los comentarios de
+  tus propias publicaciones y los tuyos, y **reportar** cualquier comentario o publicación; el
+  entrenador que modera la comunidad puede retirar contenido reportado.
+- **Qué NO se comparte NUNCA:** tu peso corporal, medidas, fotos de progreso, notas de salud o
+  lesiones, **los kilos que levantas** ni tus mensajes con el entrenador. Esos datos sensibles
+  **jamás** salen de tu cuenta ni aparecen en ninguna publicación.
 - **Cómo te conectas:** solo por **código** que tú compartes; ambas personas deben aceptar. No hay
   directorio ni buscador de personas.
 - **Actividad diaria:** puedes **ocultar** si entrenaste hoy con un interruptor, en cualquier momento.

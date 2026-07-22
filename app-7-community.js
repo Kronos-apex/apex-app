@@ -22,7 +22,7 @@
 // Versión del consentimiento ESPECÍFICO de la comunidad (evidencia Habeas Data del opt-in).
 // Ata a la sección 9 «Comunidad» de legal/politica-tratamiento-datos.md (C4). Sube este valor
 // si cambia ese texto. Sigue siendo BORRADOR pendiente de revisión de abogado (legal/LEEME).
-const CMTY_CONSENT_V = 'comunidad-2026-07-20-borrador';
+const CMTY_CONSENT_V = 'comunidad-2026-07-22-borrador';
 
 const CMTY = {
   uid: null,
@@ -1239,8 +1239,47 @@ function _cmtyMilestoneCard(post){
   '</div>';
 }
 
+// v3-a — tarjeta de ENTRENO TERMINADO (kind='workout'). Chips duración/ejercicios (omite el que
+// falte), racha leída del PERFIL server-side del autor (NO del payload, cero falsificación), nota
+// en esc(). Misma fila de ❤️ que las demás. JAMÁS kilos (el payload ni los trae — allow-list del trigger).
+function _cmtyWorkoutCard(post){
+  const pl = post.payload || {};
+  const prof = _cmtyAuthorProf(post.user_id);
+  const mine = post.user_id === CMTY.uid;
+  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const name = esc(pl.name || 'Entreno');
+  const hearts = CMTY.postHearts[post.id] || 0;
+  const given = !!CMTY.postHeartMine[post.id];
+  const streak = prof && prof.streak_weeks > 0 ? prof.streak_weeks : 0;
+  const chips = [];
+  if(pl.duration_min != null && !isNaN(pl.duration_min)) chips.push(esc(String(pl.duration_min)) + ' min');
+  const nex = Number(pl.exercises_count) || 0;
+  if(nex) chips.push(nex + ' ejercicio' + (nex === 1 ? '' : 's'));
+  if(streak) chips.push(streak + ' sem 🔥');
+  const chipHtml = chips.length ? '<div style="display:flex;gap:14px;margin:8px 0 2px">' + chips.map(function(c){
+    return '<span style="font-size:12px;color:var(--t2);font-weight:600">' + c + '</span>'; }).join('') + '</div>' : '';
+  const note = pl.note ? '<div style="font-size:13px;color:var(--t1);margin-top:7px">' + esc(pl.note) + '</div>' : '';
+  return '<div class="card" style="padding:13px;margin-bottom:10px">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
+      _cmtyAvatarHtml(prof || {}, 40) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t3)">terminó su entreno</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:15px;font-weight:800;color:var(--t1)">' + name + '</div>' +
+    chipHtml + note +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
+      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Me gusta">' +
+        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
+      (mine ? '<button class="btn bg bsm" style="min-height:36px;margin-left:auto;color:var(--t2)" onclick="cmtyDeletePost(\'' + post.id + '\')">Eliminar</button>' : '') +
+    '</div>' +
+  '</div>';
+}
+
 function _cmtyPostCard(post){
   if(post.kind === 'streak' || post.kind === 'level') return _cmtyMilestoneCard(post);
+  if(post.kind === 'workout') return _cmtyWorkoutCard(post);
   const pl = post.payload || {};
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
@@ -1296,6 +1335,25 @@ async function cmtyPublish(idx){
   }catch(e){ toast(_cmtyErr(e)); }
 }
 
+// v3-a #2+#3 — publica una SESIÓN TERMINADA como post `kind='workout'`. La llama la pantalla de fin
+// (app-4). `session` = la entrada de historial recién finalizada; `note` = texto opcional del usuario.
+// El payload lo arma el mapeador PURO `communityWorkoutPayload` (allow-list, jamás kilos). Devuelve
+// true si publicó (para que la UI muestre «✓ Compartido»). Sellado en localhost. Solo si es miembro.
+async function cmtyShareWorkout(session, routineName, note){
+  if(!CMTY.profile){ toast('Únete a la comunidad para compartir.'); return false; }
+  const payload = (typeof communityWorkoutPayload === 'function') ? communityWorkoutPayload(session, routineName, note) : null;
+  if(!payload){ toast('Este entreno aún no se puede compartir.'); return false; }
+  if(_cmtySealed()){ toast('🔒 (dev) compartir sellado en localhost'); return false; }
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return false;
+    const { error } = await cli.from('community_posts').insert({ user_id: uid, kind: 'workout', payload: payload });
+    if(error) throw error;
+    toast('✅ Compartiste tu entreno');
+    try{ if(CMTY.loaded) await cmtyLoad({ silent: true }); }catch(e){}
+    return true;
+  }catch(e){ toast(_cmtyErr(e)); return false; }
+}
+
 async function cmtyPostHeart(postId, authorId){
   if(_cmtySealed()){ toast('🔒 (dev)'); return; }
   if(authorId === CMTY.uid){ toast('No puedes reaccionar a tu propia rutina.'); return; }
@@ -1349,4 +1407,5 @@ if(typeof window !== 'undefined'){
   window.cmtyGoView = cmtyGoView; window._cmtyHeadMain = _cmtyHeadMain; window._cmtyHeadSub = _cmtyHeadSub;
   window._cmtyCounts = _cmtyCounts; window._cmtyEmptyHtml = _cmtyEmptyHtml; window._cmtyFriendsHtml = _cmtyFriendsHtml;
   window.cmtyToggleMilestones = cmtyToggleMilestones; window._cmtyMilestoneCard = _cmtyMilestoneCard;
+  window._cmtyWorkoutCard = _cmtyWorkoutCard; window.cmtyShareWorkout = cmtyShareWorkout;
 }

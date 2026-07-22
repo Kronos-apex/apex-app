@@ -2382,6 +2382,8 @@ const AVI_NEWS=[
    steps:['Entra a "Comunidad": el muro es lo primero que ves','Toca "Publicar una de mis rutinas" y elige cuál compartir','Dale ❤️ a las rutinas que te inspiren de quienes sigues']}, // coach:false → para todos
   {v:386, icon:'star', t:'Tus logros, celebrados', d:'Cuando cumplas semanas seguidas entrenando o subas de nivel, puede aparecer en el muro de tu gente para que te feliciten. Tú decides si lo enciendes.',
    steps:['En "Comunidad" toca el engranaje ⚙️ arriba a la derecha','Enciende "Celebrar mis logros en el muro" (viene apagado)','Los calcula AVI con tus entrenos: nadie puede inventarse un logro']}, // coach:false → para todos
+  {v:388, icon:'dumbbell', t:'Comparte tu entreno terminado', d:'Al terminar de entrenar puedes compartirlo con tu gente: el nombre, cuánto duró y cuántos ejercicios hiciste — nunca tus pesos. Con una nota corta si quieres.',
+   steps:['Termina tu entreno como siempre','En la pantalla de "¡Buen trabajo!" toca "Compartir este entreno"','Escribe una nota si quieres y publícalo — o simplemente sigue, es opcional']}, // coach:false → para todos
 ];
 const _NEWS_SEEN_KEY='ax_news_seen';
 // Deep-links permitidos desde las slides (allowlist — nada de window[string] arbitrario).

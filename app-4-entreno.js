@@ -1684,6 +1684,7 @@ function showWorkoutFinish(routine,stats){
   _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
   renderWfPushNudge(); // v325: ofrecer activar notificaciones en el momento de máximo compromiso
+  _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro (opt-in)
   if(typeof cmtyOnWorkoutFinished==='function')cmtyOnWorkoutFinished(); // C3: refresca el snapshot de comunidad (debounced) al terminar
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
@@ -1709,6 +1710,43 @@ function renderWfPushNudge(){
     <div class="wf-push-btns"><button type="button" class="wf-push-on" onclick="aviAskPush().then(renderWfPushNudge)">Activar recordatorios</button><button type="button" class="wf-push-later" onclick="aviSnoozePush();renderWfPushNudge()">Ahora no</button></div>
   </div>`;
 }
+// ── Compartir el ENTRENO en el MURO de comunidad (v3-a #2+#3) ──
+// Distinto de wfShare (imagen a WhatsApp): publica un post kind='workout' en el muro. Opt-in POR
+// publicación (decisión PO): nada automático, botón explícito. Solo si el asesorado es MIEMBRO de la
+// comunidad (CMTY.profile). Se comparte nombre + duración + nº de ejercicios + nota opcional (≤140);
+// JAMÁS kilos (el mapeador puro communityWorkoutPayload los descarta, el trigger los rechaza).
+let _wfCmtyRoutineName='';
+function renderWfCmtyShare(){
+  const el=document.getElementById('wf-cmty-share'); if(!el) return;
+  el.innerHTML='';
+  // Solo miembros de comunidad, y solo si la sesión se puede compartir (finalizada, con nombre).
+  if(typeof CMTY==='undefined' || !CMTY.profile) return;
+  if(typeof communityWorkoutPayload!=='function') return;
+  const pl=communityWorkoutPayload(_wfEntry, _wfCmtyRoutineName);
+  if(!pl) return;
+  const dur=pl.duration_min!=null?(' · '+pl.duration_min+' min'):'';
+  const resumen=esc(pl.name)+dur+' · '+pl.exercises_count+' ejercicio'+(pl.exercises_count===1?'':'s');
+  el.innerHTML='<div class="wf-cshare">' +
+    '<div class="wf-cshare-h">Compártelo con tu gente</div>' +
+    '<div class="wf-cshare-sum">'+resumen+'</div>' +
+    '<textarea id="wf-cshare-note" class="wf-cshare-note" rows="2" maxlength="140" placeholder="Cuéntale algo a tu gente (opcional)" oninput="_wfCshareCount()"></textarea>' +
+    '<div class="wf-cshare-count"><span id="wf-cshare-n">0</span>/140</div>' +
+    '<button type="button" class="wf-cshare-btn" onclick="wfShareToCommunity()">Compartir este entreno</button>' +
+    '</div>';
+}
+function _wfCshareCount(){ const t=document.getElementById('wf-cshare-note'), n=document.getElementById('wf-cshare-n'); if(t&&n)n.textContent=String(t.value.length); }
+async function wfShareToCommunity(){
+  const el=document.getElementById('wf-cmty-share'); if(!el) return;
+  const ta=document.getElementById('wf-cshare-note');
+  const note=ta?ta.value:'';
+  const btn=el.querySelector('.wf-cshare-btn'); if(btn){ btn.disabled=true; btn.textContent='Compartiendo…'; }
+  let okShare=false;
+  try{ okShare=(typeof cmtyShareWorkout==='function') ? await cmtyShareWorkout(_wfEntry, _wfCmtyRoutineName, note) : false; }
+  catch(e){ okShare=false; }
+  if(okShare){ el.innerHTML='<div class="wf-cshare wf-cshare-done">'+(typeof aviIcon==='function'?aviIcon('check',15):'✓')+' Compartido con tu gente</div>'; }
+  else if(btn){ btn.disabled=false; btn.textContent='Compartir este entreno'; }
+}
+
 // ── Compartir el cierre (v313, estudio de interfaz mejora 2, aprobada por Camilo) ──
 // Imagen 1080×1920 (formato historia/estado de WhatsApp) dibujada en canvas con la marca:
 // gradiente esmeralda, números grandes, récords y el sitio del coach. navigator.share con

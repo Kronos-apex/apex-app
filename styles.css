@@ -1142,6 +1142,17 @@ body:has(.cchat.on) #install-banner,body:has(.cchat.on) #ios-install-banner{disp
 .wf-push-btns button{flex:1;min-height:38px;padding:9px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;border:0}
 .wf-push-on{background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D}
 .wf-push-later{background:rgba(255,255,255,.12);color:rgba(242,245,244,.85);border:1px solid rgba(255,255,255,.2)!important}
+/* Compartir el entreno en el MURO de comunidad (v3-a #2+#3) — sobre el fondo oscuro de la pantalla de fin */
+.wf-cshare{width:100%;max-width:420px;margin:0 0 12px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:13px 14px;text-align:left;display:flex;flex-direction:column;gap:9px;backdrop-filter:blur(6px)}
+.wf-cshare-h{font-size:13.5px;font-weight:800;color:#fff}
+.wf-cshare-sum{font-size:12.5px;color:rgba(242,245,244,.85);line-height:1.35}
+.wf-cshare-note{width:100%;box-sizing:border-box;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:9px 11px;color:#fff;font-family:inherit;font-size:13px;line-height:1.4;resize:none}
+.wf-cshare-note::placeholder{color:rgba(242,245,244,.5)}
+.wf-cshare-count{font-size:11px;color:rgba(242,245,244,.6);text-align:right;margin-top:-4px}
+.wf-cshare-btn{width:100%;min-height:42px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;transition:transform .1s}
+.wf-cshare-btn:active{transform:scale(.98)} .wf-cshare-btn:disabled{opacity:.6;cursor:default}
+.wf-cshare-done{flex-direction:row;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#22F0AE}
+.wf-cshare-done svg{stroke:#22F0AE;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;width:16px;height:16px}
 .wf-btn{width:100%;max-width:420px;padding:16px;background:linear-gradient(135deg,#22F0AE,#068F66);color:#04130D;border:none;border-radius:15px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:transform .1s;box-shadow:0 12px 34px rgba(16,224,160,.34),inset 0 1px 0 rgba(255,255,255,.4)}
 .wf-btn:active{transform:scale(.985)}
 /* v313 (estudio, mejora 2): compartir — secundario sobre la foto, no compite con Continuar */

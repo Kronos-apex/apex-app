@@ -50,6 +50,7 @@ const {
   communityPostPayload,
   communityEmptyState,
   communityMilestoneText,
+  communityWorkoutPayload,
   leadPending,
   shareBannerEligible,
   weekStreak,
@@ -1320,6 +1321,46 @@ test('clientAttentionRank: un lead atendido deja de ocupar el tier 3', () => {
   assert.strictEqual(pendiente.reason, 'lead');
   const atendido = clientAttentionRank(c, [], now, { leadsDone: { h1: '2026-07-08T12:00:00.000Z' } });
   assert.notStrictEqual(atendido.reason, 'lead');
+});
+
+test('communityWorkoutPayload: sesión terminada → allow-list {name, duration_min, exercises_count}', () => {
+  const s = {
+    routineName: 'Pierna y glúteo', finishedAt: '2026-07-22T11:00:00Z', startedAt: '2026-07-22T10:08:00Z',
+    totalVol: 9999, doneSets: 12, totalSets: 12,
+    exercises: [
+      { name: 'Sentadilla', muscle: 'piernas', sets: [{ kg: 80, reps: 10, done: true }] },
+      { name: 'Peso muerto', sets: [{ kg: 100, reps: 5, done: true }] }
+    ]
+  };
+  const p = communityWorkoutPayload(s, 'Pierna y glúteo');
+  assert.deepStrictEqual(Object.keys(p).sort(), ['duration_min', 'exercises_count', 'name']);
+  assert.strictEqual(p.name, 'Pierna y glúteo');
+  assert.strictEqual(p.exercises_count, 2);
+  assert.strictEqual(p.duration_min, 52); // 11:00 - 10:08
+  assert.ok(!('kg' in p) && !('note' in p) && !('streak' in p)); // jamás kilos ni racha
+});
+
+test('communityWorkoutPayload: parcial en curso → null (clase v367, no pisa un entreno a medias)', () => {
+  const parcial = { routineName: 'X', startedAt: '2026-07-22T10:00:00Z', doneSets: 1, totalSets: 12, exercises: [{ name: 'A', sets: [{ done: true }] }] };
+  assert.strictEqual(communityWorkoutPayload(parcial, 'X'), null); // sin finishedAt y no 100%
+  assert.strictEqual(communityWorkoutPayload(null, 'X'), null);
+  assert.strictEqual(communityWorkoutPayload({ finishedAt: 'x', exercises: [] }, ''), null); // sin nombre
+});
+
+test('communityWorkoutPayload: duración omitida si no hay startedAt sano; nota validada 1-140', () => {
+  const sinInicio = { routineName: 'X', finishedAt: '2026-07-22T11:00:00Z', doneSets: 6, totalSets: 6, exercises: [{ name: 'A', sets: [{ done: true }] }] };
+  const p = communityWorkoutPayload(sinInicio, 'X');
+  assert.ok(!('duration_min' in p)); // sin startedAt → sin chip de duración
+  assert.strictEqual(p.exercises_count, 1);
+  // nota dentro de rango
+  assert.strictEqual(communityWorkoutPayload(sinInicio, 'X', '  ¡vamos! 💪  ').note, '¡vamos! 💪');
+  // nota vacía tras trim → se omite; nota de 141 → se omite (el trigger igual la rechazaría)
+  assert.ok(!('note' in communityWorkoutPayload(sinInicio, 'X', '   ')));
+  assert.ok(!('note' in communityWorkoutPayload(sinInicio, 'X', 'a'.repeat(141))));
+  assert.strictEqual(communityWorkoutPayload(sinInicio, 'X', 'a'.repeat(140)).note.length, 140);
+  // duración fuera de rango (0 o >600) se omite, no revienta
+  const larga = { routineName: 'X', startedAt: '2026-07-22T10:00:00Z', finishedAt: '2026-07-23T02:00:00Z', doneSets: 6, totalSets: 6, exercises: [{ name: 'A', sets: [{ done: true }] }] };
+  assert.ok(!('duration_min' in communityWorkoutPayload(larga, 'X'))); // 960 min > 600
 });
 
 test('communityMilestoneText: racha y nivel en voz de AVI, persona según sea mío o ajeno', () => {
