@@ -380,6 +380,45 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-23 (parte 113 — PERFIL DE OTRA PERSONA + FOTO EN GRANDE, avi-v393 + migración
+`c19_follow_counts`). **Pedido REPETIDO del PO que NO se había atendido:** tocar a un amigo (Samuel,
+Natalia) → entrar a SU perfil; tocar su foto → verla en grande. Se habían construido comentarios/récord/
+perfil-rico (plomería) pero NO la pantalla que él pedía — las tarjetas eran planas, sin destino. HECHO.
+**Diagnóstico primero:** el PO decía «en mis amigos no aparece nada» → verifiqué su fila real (uid coach
+`0a64`): SÍ tiene 2 amigos visibles (Samuel Cifuentes, Natalia Martinez), 2 solicitudes, 3 seguidores; él
+mismo confirmó luego que los amigos SÍ aparecen. El hueco real era el PERFIL clicable, no la lista.
+**Frontend (app-7):** `_cmtyAvatarHtml(prof,size,opts)` gana `opts.open`=uid (tocar avatar → su perfil) y
+`opts.zoom` (tocar foto → visor grande); `_cmtyNameLink(uid,inner)` hace el nombre clicable. Aplicado a las
+tarjetas de amigo/gym/descubrir Y a los autores de las publicaciones del muro (rutina/entreno/hito/récord).
+Vista NUEVA `CMTY.view='profile'` (+`profileUid`/`profileProf`/`profilePosts`/`profileCounts`/`profileFrom`):
+`cmtyOpenProfile(uid)` → carga sus publicaciones (community_posts, RLS cpost_sel filtra) + ❤️/comentarios +
+conteo de seguidores; `_cmtyProfileHtml` pinta avatar grande (zoom si tiene foto), handle, insignia coach,
+bio, última conexión, rejilla de cifras (racha/nivel/entrenos/logros/seguidores/sigue-a), «Entrena desde
+<mes año>» y «Sus publicaciones» (reusa `_cmtyPostCard`). `cmtyProfileBack` vuelve a la vista de origen.
+**Visor de foto** `cmtyZoomAvatar(url)`/`cmtyCloseZoom` — overlay full-screen, SOLO fotos del bucket propio
+(`cmtyAvatarOk`, defensa anti-URL-externa), toca fuera o ✕ para cerrar. Mi propia foto en Ajustes también
+es ampliable. **Backend `c19`:** RPC DEFINER `cmty_follow_counts(target)` gateada por `_profile_visible` —
+la RLS de `follows` (fo_sel) SOLO deja ver filas donde estás tú, así que NADIE contaba los seguidores de
+OTRO; la RPC devuelve SOLO conteos (jamás la LISTA de quién sigue a quién = grafo social de un tercero,
+decisión NO tomada aquí), 0 filas si no puedo ver ese perfil. Verificada contra prod (Camilo ve sus 3
+seguidores; Samuel amigo → 0/0). **DECISIÓN de producto pendiente para el PO:** «ver la lista de seguidores
+de cada usuario» (no solo el número) — expone el grafo social de terceros; se dejó en conteos, la lista es
+una decisión suya.
+
+**QA:** harness NUEVO `_verify-profile.mjs` **12/12** (nombre/avatar abren perfil, encabezado, conteos de la
+RPC, perfil rico, sus publicaciones, XSS del handle escapado, visor abre/cierra, URL externa NO abre, volver,
+mi propio perfil no navega) con **sabotaje** del name-link. Suite 423, `_verify-community` (con avatares/
+nombres ahora clicables) OK, `_verify-feed` 32/32. GOTCHAS reafirmados en el harness: (1) `innerText` aplica
+`text-transform` → la etiqueta «Seguidores» sale «SEGUIDORES» en innerText (buscar en innerHTML o
+case-insensitive); (2) un `cmtyLoad` de fondo puede pisar los fixtures del harness → neutralizarlo
+(`window.cmtyLoad=async()=>{}`) en un harness que setea CMTY a mano. Capturas claro/oscuro MIRADAS.
+**PENDIENTE verificación de Fable.**
+
+**Nota al PO (honesta):** este perfil es la VISTA DE PERFIL DEDICADA que se venía difiriendo — ahora que
+existe, es el lugar natural para (a) los HITOS-en-perfil diferidos de #5 y (b) el toggle persistente de PR
+cuando el piloto se abra. Grupos/clanes sigue siendo arco aparte.*
+
+
 *Hitos sesión 2026-07-23 (parte 112 — ÍTEM #6: PR PILOTO, avi-v392 + migración `c18_pr_posts`).
 Compartir un RÉCORD de peso en el muro («Sentadilla — 100 kg»), **PILOTO SOLO COACH** (decisión del
 PO §6-BIS.3). Fable reservó su sesión de RLS para este ítem y está sin créditos → **Opus escribió la

@@ -61,6 +61,12 @@ const CMTY = {
   cmtDraft: {},      // {postId: borrador} — sobrevive a un repintado (un DM entrante repinta el panel)
   isModerator: false,// #6 PR piloto: ¿soy el coach moderador? (community_moderators, mod_sel_self)
   prConfirm: null,   // {key,name,val} récord a punto de publicarse (confirmación activa abierta)
+  profileUid: null,  // perfil de OTRA persona abierto (tocar nombre/avatar → su perfil)
+  profileFrom: 'feed',// vista a la que volver al cerrar el perfil
+  profileProf: null, // perfil de esa persona (de lo ya cargado)
+  profilePosts: [],  // sus publicaciones (muro/hitos/récords) visibles para mí
+  profileCounts: null,// {followers, following} (RPC segura cmty_follow_counts)
+  profileLoading: false,
   view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
 };
 
@@ -259,6 +265,14 @@ function _cmtyPaint(){
     host.innerHTML = _cmtyHeadSub('Mensajes') + _cmtyInboxHtml();
     return;
   }
+  // PERFIL de otra persona (tocar su nombre/avatar).
+  if(view === 'profile'){
+    host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin:4px 0 14px">' +
+        '<button class="btn bg bsm" aria-label="Volver" style="min-height:40px;flex:0 0 auto" onclick="cmtyProfileBack()">‹ Volver</button>' +
+        '<div style="flex:1;min-width:0;font-size:19px;font-weight:800;color:var(--t1)">Perfil</div></div>' +
+      _cmtyProfileHtml();
+    return;
+  }
   // MURO (default): contenido primero. Solicitudes arriba (ya son condicionales), luego el muro, tu gente y descubrir.
   host.innerHTML = _cmtyHeadMain() +
     (CMTY.offline ? _cmtyStaleBanner() : '') +
@@ -331,14 +345,25 @@ async function cmtyCreateProfile(){
 }
 
 // ── Mi perfil (con código, avatar, toggles, salir) ──
-function _cmtyAvatarHtml(prof, size){
-  size = size || 46;
+// `opts.zoom`=true → si hay foto, tocarla la abre en grande (visor). `opts.open`=uid → tocar el
+// avatar abre el perfil de esa persona. Solo uno de los dos por avatar.
+function _cmtyAvatarHtml(prof, size, opts){
+  size = size || 46; opts = opts || {};
   const url = prof && prof.avatar_url;
-  if(typeof cmtyAvatarOk === 'function' && cmtyAvatarOk(url)){
-    return '<img src="' + esc(url) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--gl)" onerror="this.style.visibility=\'hidden\'">';
+  const hasPhoto = typeof cmtyAvatarOk === 'function' && cmtyAvatarOk(url);
+  let click = '', cursor = '';
+  if(opts.zoom && hasPhoto){ click = ' onclick="event.stopPropagation();cmtyZoomAvatar(\'' + esc(url) + '\')"'; cursor = 'cursor:zoom-in;'; }
+  else if(opts.open){ click = ' onclick="event.stopPropagation();cmtyOpenProfile(\'' + esc(opts.open) + '\')"'; cursor = 'cursor:pointer;'; }
+  if(hasPhoto){
+    return '<img src="' + esc(url) + '" alt=""' + click + ' style="' + cursor + 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--gl)" onerror="this.style.visibility=\'hidden\'">';
   }
   const ini = esc(typeof cmtyInitials === 'function' ? cmtyInitials(prof && prof.handle) : '?');
-  return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:' + Math.round(size * 0.36) + 'px;flex:0 0 auto">' + ini + '</div>';
+  return '<div' + (opts.open ? ' onclick="event.stopPropagation();cmtyOpenProfile(\'' + esc(opts.open) + '\')" style="cursor:pointer;' : ' style="') + 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:' + Math.round(size * 0.36) + 'px;flex:0 0 auto">' + ini + '</div>';
+}
+
+// Nombre clicable que abre el perfil de esa persona (tocar el nombre → su perfil).
+function _cmtyNameLink(uid, inner){
+  return '<span onclick="event.stopPropagation();cmtyOpenProfile(\'' + esc(uid) + '\')" style="cursor:pointer">' + inner + '</span>';
 }
 
 function _cmtyMyProfileHtml(){
@@ -349,7 +374,7 @@ function _cmtyMyProfileHtml(){
   const paused = p.visible === false;
   return '<div class="card" style="padding:14px;margin-bottom:12px">' +
     '<div style="display:flex;gap:12px;align-items:center">' +
-      _cmtyAvatarHtml(p, 54) +
+      _cmtyAvatarHtml(p, 54, { zoom: true }) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:15px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) +
@@ -595,9 +620,9 @@ function _cmtyGymHtml(){
     '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Personas de tu gym en AVI. Conéctate con quien quieras.</div>';
   CMTY.gym.forEach(p => {
     h += '<div style="display:flex;align-items:center;gap:11px;padding:7px 0">' +
-      _cmtyAvatarHtml(p, 42) +
+      _cmtyAvatarHtml(p, 42, { open: p.user_id }) +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
+        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmtyNameLink(p.user_id, esc(p.handle)) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + _cmtyStatsSuffix(p) +
           (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
       '</div>' +
@@ -636,9 +661,9 @@ function _cmtyFriendCard(f){
   // «última conexión» (②, opt-in) reemplaza el «entrenó hoy» en la cara pública.
   return '<div class="card" style="padding:12px;margin-bottom:9px">' +
     '<div style="display:flex;align-items:center;gap:11px">' +
-      _cmtyAvatarHtml(p, 46) +
+      _cmtyAvatarHtml(p, 46, { open: f.fid }) +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmtyNameLink(f.fid, esc(p.handle)) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem' + _cmtyStatsSuffix(p) + '</div>' +
         (_cmtyActivityHtml(f.fid) ? '<div style="font-size:11px;margin-top:1px">' + _cmtyActivityHtml(f.fid) + '</div>' : '') +
       '</div>' +
@@ -1061,9 +1086,9 @@ function _cmtyDiscoverHtml(){
     '<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Perfiles públicos en AVI. Sigue a quien te inspire.</div>';
   CMTY.discover.forEach(p => {
     h += '<div style="display:flex;align-items:center;gap:11px;padding:7px 0">' +
-      _cmtyAvatarHtml(p, 42) +
+      _cmtyAvatarHtml(p, 42, { open: p.user_id }) +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + _cmtyCoachTag(p) + '</div>' +
+        '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmtyNameLink(p.user_id, esc(p.handle)) + _cmtyCoachTag(p) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + _cmtyStatsSuffix(p) +
           (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
       '</div>' +
@@ -1277,12 +1302,12 @@ function _cmtyPrCard(post){
   const pl = post.payload || {};
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
-  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const who = mine ? (prof ? esc(prof.handle) : 'Tú') : _cmtyNameLink(post.user_id, prof ? esc(prof.handle) : 'Alguien');
   const name = esc(pl.exercise_name || 'Ejercicio');
   const val = (pl.value_kg != null && !isNaN(pl.value_kg)) ? esc(String(pl.value_kg)) : '';
   return '<div class="card" style="padding:13px;margin-bottom:10px;border-color:var(--g2)">' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
-      _cmtyAvatarHtml(prof || {}, 40) +
+      _cmtyAvatarHtml(prof || {}, 40, mine ? {} : { open: post.user_id }) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t3)">marcó un récord</div>' +
@@ -1293,6 +1318,115 @@ function _cmtyPrCard(post){
     _cmtyActionsHtml(post, { canDelete: mine, heartTitle: 'Felicitar' }) +
   '</div>';
 }
+
+// ══════════ PERFIL DE OTRA PERSONA (tocar nombre/avatar → su perfil) ══════════
+// Reusa TODO lo ya cargado: el perfil del amigo/gym/descubrir (con su avatar/racha/nivel/entrenos/
+// antigüedad) + sus publicaciones (community_posts, la RLS filtra) + conteo de seguidores (RPC
+// segura c19). NO expone nada que la RLS no deje ver. La foto se puede tocar para verla en grande.
+
+async function cmtyOpenProfile(uid){
+  if(!uid || uid === CMTY.uid){ return; } // el propio perfil vive en Ajustes
+  CMTY.profileFrom = (CMTY.view === 'profile') ? CMTY.profileFrom : (CMTY.view || 'feed');
+  CMTY.profileUid = uid;
+  CMTY.profileProf = _cmtyAuthorProf(uid) || CMTY.profById[uid] || null;
+  CMTY.profilePosts = []; CMTY.profileCounts = null; CMTY.profileLoading = true;
+  CMTY.view = 'profile';
+  _cmtyPaint();
+  const h = document.getElementById('cn-community'); if(h){ try{ window.scrollTo(0, 0); }catch(e){} }
+  await _cmtyLoadProfile(uid);
+  CMTY.profileLoading = false;
+  if(CMTY.view === 'profile' && CMTY.profileUid === uid) _cmtyPaint();
+}
+
+function cmtyProfileBack(){
+  const to = CMTY.profileFrom || 'feed';
+  CMTY.profileUid = null; CMTY.profileProf = null; CMTY.profilePosts = []; CMTY.profileCounts = null;
+  cmtyGoView(to);
+}
+
+async function _cmtyLoadProfile(uid){
+  try{
+    const cli = _cmtyClient(); if(!cli) return;
+    // sus publicaciones visibles para mí (la RLS cpost_sel decide; el .eq es alcance, no seguridad)
+    const { data: posts } = await cli.from('community_posts')
+      .select('id,user_id,kind,payload,created_at').eq('user_id', uid).eq('visible', true)
+      .order('created_at', { ascending: false }).limit(40);
+    if(CMTY.profileUid !== uid) return; // el usuario ya navegó a otro lado
+    CMTY.profilePosts = posts || [];
+    // ❤️ de esos posts (para pintar el estado del corazón como en el muro)
+    const ids = CMTY.profilePosts.map(p => p.id);
+    if(ids.length){
+      const { data: rx } = await cli.from('community_reactions').select('from_user,context').in('context', ids);
+      (rx || []).forEach(r => { if(!r.context) return; CMTY.postHearts[r.context] = (CMTY.postHearts[r.context] || 0) + 1; if(r.from_user === CMTY.uid) CMTY.postHeartMine[r.context] = true; });
+      await _cmtyLoadComments(cli, ids); // que el contador 💬 salga bien también aquí
+    }
+    // conteo de seguidores (RPC segura; 0 filas si no puedo ver ese perfil)
+    try{ const { data: fc } = await cli.rpc('cmty_follow_counts', { target: uid }); if(fc && fc[0]) CMTY.profileCounts = fc[0]; }
+    catch(e){ _cw()('cmty follow counts:', e && e.message); }
+  }catch(e){ _cw()('cmty profile:', e && e.message); }
+}
+
+function _cmtyProfileHtml(){
+  const p = CMTY.profileProf;
+  if(!p){
+    return '<div class="empty"><div class="eico">' + (typeof aviIcon === 'function' ? aviIcon('users', 30) : '👥') + '</div>' +
+      '<div class="etxt">No pudimos abrir este perfil</div>' +
+      '<div class="esub">Puede que esta persona ya no esté en tu comunidad.</div></div>';
+  }
+  const isCoach = p.role === 'coach';
+  const act = (typeof _cmtyActivityHtml === 'function') ? _cmtyActivityHtml(CMTY.profileUid) : '';
+  const since = (typeof communityTrainingSinceText === 'function') ? communityTrainingSinceText(p.training_since) : null;
+  // Encabezado: avatar grande (tocar = ver en grande si hay foto) + nombre + insignia coach + bio
+  let h = '<div class="card" style="padding:16px;margin-bottom:12px;text-align:center">' +
+    '<div style="display:flex;justify-content:center;margin-bottom:10px">' + _cmtyAvatarHtml(p, 92, { zoom: true }) + '</div>' +
+    '<div style="font-size:19px;font-weight:800;color:var(--t1)">' + esc(p.handle || 'Alguien') + '</div>' +
+    (isCoach ? '<div style="font-size:11px;font-weight:800;color:var(--gt);margin-top:3px;display:inline-flex;align-items:center;gap:4px">' + (typeof aviIcon === 'function' ? aviIcon('crown', 13) : '👑') + ' Perfil de coach</div>' : '') +
+    (p.bio ? '<div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.5">' + esc(p.bio) + '</div>' : '') +
+    (act ? '<div style="font-size:11.5px;margin-top:7px">' + act + '</div>' : '') +
+  '</div>';
+  // Rejilla de cifras (server-side, no inflables)
+  const cells = [];
+  cells.push(['Racha', (p.streak_weeks || 0) + ' sem']);
+  cells.push(['Nivel', String(p.level || 1)]);
+  if(Number(p.total_sessions) > 0) cells.push(['Entrenos', String(p.total_sessions)]);
+  if(Number(p.achievements) > 0) cells.push(['Logros', String(p.achievements)]);
+  if(CMTY.profileCounts){
+    cells.push(['Seguidores', String(CMTY.profileCounts.followers || 0)]);
+    cells.push(['Sigue a', String(CMTY.profileCounts.following || 0)]);
+  }
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">';
+  cells.forEach(c => {
+    h += '<div class="card" style="padding:11px 6px;text-align:center;margin:0">' +
+      '<div style="font-size:17px;font-weight:800;color:var(--t1)">' + esc(c[1]) + '</div>' +
+      '<div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px">' + esc(c[0]) + '</div>' +
+    '</div>';
+  });
+  h += '</div>';
+  if(since) h += '<div style="font-size:12px;color:var(--t3);text-align:center;margin-bottom:12px">' + esc(since) + '</div>';
+  // Sus publicaciones
+  h += '<div style="font-size:13px;font-weight:700;color:var(--t1);margin:6px 2px 9px">Sus publicaciones</div>';
+  if(CMTY.profileLoading){
+    h += '<div class="card" style="padding:16px;text-align:center;color:var(--t2)">Cargando…</div>';
+  }else if(!CMTY.profilePosts.length){
+    h += '<div class="empty"><div class="etxt">Aún no ha publicado nada</div>' +
+      '<div class="esub">Cuando comparta una rutina, un entreno o un logro, aparecerá aquí.</div></div>';
+  }else{
+    CMTY.profilePosts.forEach(post => { h += _cmtyPostCard(post); });
+  }
+  return h;
+}
+
+// Visor de foto en grande (tocar el avatar con foto). Overlay a pantalla completa; toca para cerrar.
+function cmtyZoomAvatar(url){
+  if(typeof cmtyAvatarOk === 'function' && !cmtyAvatarOk(url)) return; // solo fotos del bucket propio
+  let ov = document.getElementById('cmty-avatar-zoom');
+  if(!ov){ ov = document.createElement('div'); ov.id = 'cmty-avatar-zoom'; document.body.appendChild(ov); }
+  ov.setAttribute('style', 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:20px');
+  ov.innerHTML = '<img src="' + esc(url) + '" alt="" style="max-width:94vw;max-height:88vh;border-radius:14px;object-fit:contain" onerror="cmtyCloseZoom()">' +
+    '<button aria-label="Cerrar" onclick="cmtyCloseZoom()" style="position:absolute;top:16px;right:16px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer">✕</button>';
+  ov.onclick = function(e){ if(e.target === ov) cmtyCloseZoom(); };
+}
+function cmtyCloseZoom(){ const ov = document.getElementById('cmty-avatar-zoom'); if(ov){ ov.remove(); } }
 
 // Mis rutinas propias (el asesorado logueado) para el picker de publicar.
 function _cmtyMyRoutines(){
@@ -1404,7 +1538,7 @@ function _cmtyThreadHtml(post){
   list.forEach(c => {
     const prof = _cmtyAuthorProf(c.user_id);
     const mine = c.user_id === uid;
-    const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+    const who = mine ? (prof ? esc(prof.handle) : 'Tú') : _cmtyNameLink(post.user_id, prof ? esc(prof.handle) : 'Alguien');
     const when = (typeof fmtD === 'function' && c.created_at) ? fmtD(c.created_at) : '';
     h += '<div style="padding:6px 0;border-top:1px solid var(--br)">' +
       '<div style="display:flex;align-items:baseline;gap:7px">' +
@@ -1493,13 +1627,13 @@ async function cmtyReportComment(commentId, authorId){
 function _cmtyMilestoneCard(post){
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
-  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const who = mine ? (prof ? esc(prof.handle) : 'Tú') : _cmtyNameLink(post.user_id, prof ? esc(prof.handle) : 'Alguien');
   const m = (typeof communityMilestoneText === 'function')
     ? communityMilestoneText(post.kind, post.payload, mine) : null;
   if(!m) return ''; // hito desconocido/corrupto → no se pinta (nunca una tarjeta rota)
   return '<div class="card" style="padding:13px;margin-bottom:10px;border-color:var(--g2)">' +
     '<div style="display:flex;align-items:center;gap:10px">' +
-      _cmtyAvatarHtml(prof || {}, 40) +
+      _cmtyAvatarHtml(prof || {}, 40, mine ? {} : { open: post.user_id }) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
         '<div style="font-size:13px;color:var(--gt);font-weight:700;margin-top:1px">' + esc(m.text) + ' ' + m.emoji + '</div>' +
@@ -1516,7 +1650,7 @@ function _cmtyWorkoutCard(post){
   const pl = post.payload || {};
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
-  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const who = mine ? (prof ? esc(prof.handle) : 'Tú') : _cmtyNameLink(post.user_id, prof ? esc(prof.handle) : 'Alguien');
   const name = esc(pl.name || 'Entreno');
   const streak = prof && prof.streak_weeks > 0 ? prof.streak_weeks : 0;
   const chips = [];
@@ -1529,7 +1663,7 @@ function _cmtyWorkoutCard(post){
   const note = pl.note ? '<div style="font-size:13px;color:var(--t1);margin-top:7px">' + esc(pl.note) + '</div>' : '';
   return '<div class="card" style="padding:13px;margin-bottom:10px">' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
-      _cmtyAvatarHtml(prof || {}, 40) +
+      _cmtyAvatarHtml(prof || {}, 40, mine ? {} : { open: post.user_id }) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t3)">terminó su entreno</div>' +
@@ -1558,10 +1692,10 @@ function _cmtyPostCard(post){
       (sr ? '<span style="color:var(--t3);flex:0 0 auto">' + esc(sr) + '</span>' : '') + '</div>';
   }).join('');
   if(exs.length > 8) exHtml += '<div style="font-size:11px;color:var(--t3);padding-top:2px">y ' + (exs.length - 8) + ' más…</div>';
-  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const who = mine ? (prof ? esc(prof.handle) : 'Tú') : _cmtyNameLink(post.user_id, prof ? esc(prof.handle) : 'Alguien');
   return '<div class="card" style="padding:13px;margin-bottom:10px">' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
-      _cmtyAvatarHtml(prof || {}, 40) +
+      _cmtyAvatarHtml(prof || {}, 40, mine ? {} : { open: post.user_id }) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
         '<div style="font-size:11.5px;color:var(--t3)">compartió una rutina</div>' +
@@ -1676,4 +1810,8 @@ if(typeof window !== 'undefined'){
   window._cmtyMyKgPrs = _cmtyMyKgPrs; window._cmtyPrShareHtml = _cmtyPrShareHtml;
   window.cmtyPrAsk = cmtyPrAsk; window.cmtyPrCancel = cmtyPrCancel;
   window.cmtyPublishPr = cmtyPublishPr; window._cmtyPrCard = _cmtyPrCard;
+  window.cmtyOpenProfile = cmtyOpenProfile; window.cmtyProfileBack = cmtyProfileBack;
+  window._cmtyProfileHtml = _cmtyProfileHtml; window._cmtyLoadProfile = _cmtyLoadProfile;
+  window.cmtyZoomAvatar = cmtyZoomAvatar; window.cmtyCloseZoom = cmtyCloseZoom;
+  window._cmtyNameLink = _cmtyNameLink;
 }
