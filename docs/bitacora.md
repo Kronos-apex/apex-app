@@ -380,6 +380,58 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-23 (parte 112 — ÍTEM #6: PR PILOTO, avi-v392 + migración `c18_pr_posts`).
+Compartir un RÉCORD de peso en el muro («Sentadilla — 100 kg»), **PILOTO SOLO COACH** (decisión del
+PO §6-BIS.3). Fable reservó su sesión de RLS para este ítem y está sin créditos → **Opus escribió la
+estipulación** (§8-BIS del plan-comunidad-v3.md) DESDE el análisis (C) de Fable + las decisiones del
+PO, la ejecutó, y queda **PENDIENTE de la verificación vinculante de Fable** (no la reemplaza).
+**Backend `c18`:** `kind='pr'` nuevo; `cpost_ins` permite `pr` SOLO si `_is_moderator(auth.uid()) AND
+NOT _is_minor` (gate server-side por la tabla `community_moderators` = Camilo, NO falsificable, a
+diferencia de role/tier F7); rama `pr` del validador (allow-list ESTRICTA `{exercise_name, value_kg}`,
+nombre 1-80, value en (0,1000]) + candado explícito `_is_minor(new.user_id)` (D2: redundante hoy con el
+gate de moderador —el coach es adulto— pero load-bearing para cuando el piloto se abra, patrón c8).
+streak/level siguen server-only (la edge con service_role BYPASA RLS). **avi-core:** `communityPrPayload
+(prEntry)` PURA — anti-cheat de UX HONESTO: el valor se LEE de un PR ya registrado (`ax_pr`, unit 'kg'),
+NO se teclea → no puedes publicar un récord que nunca entrenaste; solo peso (reps/seg → null); caps
+espejo del trigger. Declarado como candado de UX, NO de servidor (el trigger no puede leer user_data).
+**Frontend (app-7):** `CMTY.isModerator` (una lectura de `community_moderators` de MI uid en `cmtyLoad`,
+policy mod_sel_self); sección «Comparte un récord» en Ajustes SOLO si moderador → lista mis PRs de peso
+(`DB.prs[CUR.clientId]`, más pesado primero) con «Compartir» → confirmación ACTIVA («Vas a mostrar
+«Peso muerto — 140 kg» a quien vea tu perfil… ¿Publicarlo?») → `cmtyPublishPr` (insert kind='pr'
+sellado). Tarjeta del muro `_cmtyPrCard` (trofeo + «Ejercicio — N kg», misma fila `_cmtyActionsHtml`:
+felicitar/comentar/borrar). Acceso de Camilo: entra por «Mi entrenamiento» (`openMyTraining` → vista de
+asesorado con SU fila y su perfil de comunidad real; verificado en datos: uid 0a64, role coach, 22
+asesorados, su user_data propio con sus PRs). **Legal §9:** mantiene «los kilos NO se comparten por
+defecto» + añade la excepción del récord opt-in (acción activa, solo un PR ya registrado, NO para
+menores). `LEGAL_V`/`CMTY_CONSENT_V` → `2026-07-23-borrador` (pendiente de abogado — §7 lo hace más
+urgente por ser dato sensible-adyacente).
+
+**2 DESVIACIONES declaradas (§8-BIS):** D1 — sin toggle persistente `show_pr` (a diferencia de
+`show_milestones`): para un piloto de UNA cuenta, una confirmación ACTIVA por publicación (muestra el
+número exacto antes de exponerlo) es MÁS fuerte que un set-and-forget; se re-evalúa el toggle cuando el
+piloto se abra (candidato: la sesión de la VISTA DE PERFIL, junto con los hitos-en-perfil diferidos de
+#5). D2 — el candado de menor del trigger es hoy redundante con el gate de moderador, incluido a
+propósito para cuando se abra.
+
+**QA:** suite **423** (+1 `communityPrPayload` con dientes: reps/seg/rango/nombre → null). Sabotajes PR
+contra la BASE REAL (tx+rollback, actores sintéticos): **PR1** moderador publica válido → OK · **PR2**
+no-moderador → `cpost_ins` · **PR3a** menor no-moderador bloqueado, **PR3b** menor FORZADO moderador →
+el trigger `_is_minor` MUERDE solo (candado explícito load-bearing) · **PR4a-f** clave extra/tipo/rango
+0·1001/nombre vacío·81 → trigger · **PR5** user_id ajeno → `cpost_ins` · **PR6** un tercero VE el pr del
+coach (cpost_sel). Nota: un caso PR6b que escribí esperando «extraño no lo ve» salió visible = CORRECTO
+(el perfil del coach es PÚBLICO → cualquier adulto lo ve por diseño; mi expectativa estaba mal, no el
+código). Harness NUEVO `_verify-pr.mjs` **10/10** (sección solo-moderador, solo PRs de peso, orden,
+confirmación activa, insert exacto, cancelar, tarjeta, XSS, sellado) con **sabotaje rojo→verde ×2**
+(quitar el gate de moderador → cae P1; quitar el filtro kg → cae P2). Advisor: CERO WARN nuevos.
+Capturas claro/oscuro de Ajustes MIRADAS (sección «Comparte un récord» con trofeo, «Peso muerto 140 kg»/
+«Sentadilla 100 kg», ordenados, solo visible al coach). **PENDIENTE verificación de Fable.**
+
+**CON ESTO el lote v3 (ítems 0-6) queda ejecutado completo.** Fuera de cola solo: grupos/clanes (§8.4
+del análisis = arco nuevo, sesión aparte con su propio ciclo Fable) y el abogado para los textos legales
+borrador. La VISTA DE PERFIL dedicada (para colgar los hitos-en-perfil diferidos de #5 y quizá el toggle
+persistente de PR) es el siguiente candidato natural cuando el PO lo decida.*
+
+
 *Hitos sesión 2026-07-23 (parte 111 — LOTE v3-a ÍTEM #5: PERFIL RICO, avi-v391 + migración
 `c17_profile_rich` + edge `refresh_snapshot` v5. Estipulación de Fable §8.4). CIERRA el lote v3-a.
 Agregados seguros en la cara pública: «N entrenos» en las tarjetas (amigo/gym/descubrir) y «Entrena

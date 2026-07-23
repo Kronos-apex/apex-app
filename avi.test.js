@@ -52,6 +52,7 @@ const {
   communityEmptyState,
   communityMilestoneText,
   communityCommentText,
+  communityPrPayload,
   communityWorkoutPayload,
   leadPending,
   shareBannerEligible,
@@ -1312,6 +1313,30 @@ test('communityPostPayload: caps (40 ejercicios, 80 chars) y defaults defensivos
   const empty = communityPostPayload({});
   assert.strictEqual(empty.name, 'Mi rutina');
   assert.deepStrictEqual(empty.exercises, []);
+});
+
+test('communityPrPayload: solo récords de PESO ya registrados, anti-cheat de UX', () => {
+  // un PR de peso real → payload exacto {exercise_name, value_kg}
+  assert.deepStrictEqual(
+    communityPrPayload({ name: 'Sentadilla', unit: 'kg', val: 100, reps: 3 }),
+    { exercise_name: 'Sentadilla', value_kg: 100 });
+  // PR legacy que solo trae kg (sin val) → se lee de kg
+  assert.deepStrictEqual(
+    communityPrPayload({ name: 'Peso muerto', unit: 'kg', kg: 140 }),
+    { exercise_name: 'Peso muerto', value_kg: 140 });
+  // NO es de peso (reps/seg/rondas) → null: no es un «Sentadilla 100 kg»
+  assert.strictEqual(communityPrPayload({ name: 'Plancha', unit: 's', val: 90 }), null);
+  assert.strictEqual(communityPrPayload({ name: 'Dominadas', unit: 'reps', val: 15 }), null);
+  // nombre vacío / sin nombre → null
+  assert.strictEqual(communityPrPayload({ name: '', unit: 'kg', val: 100 }), null);
+  assert.strictEqual(communityPrPayload({ unit: 'kg', val: 100 }), null);
+  // fuera de rango (0 / >1000 / NaN) → null (espejo del trigger)
+  assert.strictEqual(communityPrPayload({ name: 'x', unit: 'kg', val: 0 }), null);
+  assert.strictEqual(communityPrPayload({ name: 'x', unit: 'kg', val: 1001 }), null);
+  assert.strictEqual(communityPrPayload({ name: 'x', unit: 'kg', val: NaN }), null);
+  assert.strictEqual(communityPrPayload(null), null);
+  // nombre largo → recortado a 80
+  assert.strictEqual(communityPrPayload({ name: 'y'.repeat(200), unit: 'kg', val: 50 }).exercise_name.length, 80);
 });
 
 test('leadPending: el lead atendido por el coach NO reaparece (caso Hernán/Cristian)', () => {

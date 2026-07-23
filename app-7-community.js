@@ -22,7 +22,7 @@
 // Versión del consentimiento ESPECÍFICO de la comunidad (evidencia Habeas Data del opt-in).
 // Ata a la sección 9 «Comunidad» de legal/politica-tratamiento-datos.md (C4). Sube este valor
 // si cambia ese texto. Sigue siendo BORRADOR pendiente de revisión de abogado (legal/LEEME).
-const CMTY_CONSENT_V = 'comunidad-2026-07-22-borrador';
+const CMTY_CONSENT_V = 'comunidad-2026-07-23-borrador';
 
 const CMTY = {
   uid: null,
@@ -59,6 +59,8 @@ const CMTY = {
   postComments: {},  // v3-a #4: {postId: [{id,user_id,text,created_at}]} — la RLS ya filtra
   threadOpen: null,  // postId del hilo de comentarios abierto (uno a la vez)
   cmtDraft: {},      // {postId: borrador} — sobrevive a un repintado (un DM entrante repinta el panel)
+  isModerator: false,// #6 PR piloto: ¿soy el coach moderador? (community_moderators, mod_sel_self)
+  prConfirm: null,   // {key,name,val} récord a punto de publicarse (confirmación activa abierta)
   view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
 };
 
@@ -112,6 +114,11 @@ async function cmtyLoad(opts){
       try{ const { data: sec } = await cli.rpc('cmty_my_secrets'); if(sec && sec[0]) Object.assign(prof, sec[0]); }
       catch(e){ _cw()('cmty secrets:', e && e.message); }
     }
+    // #6 PR piloto: ¿soy el coach moderador? (community_moderators, policy mod_sel_self deja leer
+    // MI propia fila). Gatea la UI de publicar récords; el candado REAL es la RLS (cpost_ins).
+    CMTY.isModerator = false;
+    try{ const { data: md } = await cli.from('community_moderators').select('user_id').eq('user_id', uid).maybeSingle(); CMTY.isModerator = !!md; }
+    catch(e){ _cw()('cmty mod:', e && e.message); }
     CMTY.offline = false;
     CMTY.profile = prof || null;
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
@@ -373,6 +380,8 @@ function _cmtyMyProfileHtml(){
       _cmtyToggleRow('cmty-tg-lastactive', 'Mostrar mi última conexión', 'Verán «en línea» o «activo hoy», nunca la hora exacta.', p.show_last_active === true, 'cmtyToggleLastActive()') +
       _cmtyToggleRow('cmty-tg-milestones', 'Celebrar mis logros en el muro', 'Cuando cumplas semanas seguidas o subas de nivel, aparece en el muro de tu gente.', p.show_milestones === true, 'cmtyToggleMilestones()') +
     '</div>' +
+    // #6 PR piloto: «Comparte un récord» — SOLO el coach moderador (piloto). El candado real es la RLS.
+    _cmtyPrShareHtml() +
     // Editar apodo/bio + salir
     '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn bg bsm" style="min-height:36px;flex:1" onclick="cmtyEditOpen()">Editar apodo / bio</button>' +
@@ -1180,6 +1189,111 @@ function _cmtyStatsSuffix(p){
   return (n > 0) ? ' · ' + n + ' entreno' + (n === 1 ? '' : 's') : '';
 }
 
+// ══════════ #6 · PR PILOTO — compartir un récord de PESO (SOLO el coach moderador) ══════════
+// Piloto solo-coach (§6-BIS.3). El candado REAL es la RLS (cpost_ins → _is_moderator + no menor);
+// esta UI solo se ofrece si CMTY.isModerator. El valor NO se teclea: se LEE de un PR ya registrado
+// (anti-cheat de UX, communityPrPayload). Opt-in ACTIVO por publicación: cada récord pasa por una
+// confirmación explícita que dice que ESTO SÍ muestra un número de peso a quien vea tu perfil.
+
+// Mis récords de PESO (unit kg) del perfil que estoy usando (COACH_SELF → DB.prs[CUR.clientId]).
+function _cmtyMyKgPrs(){
+  try{
+    const cid = (typeof CUR !== 'undefined' && CUR.clientId) ? CUR.clientId : null;
+    const map = (cid && DB.prs && DB.prs[cid]) ? DB.prs[cid] : {};
+    const out = [];
+    Object.keys(map).forEach(key => {
+      const pr = map[key];
+      const payload = (typeof communityPrPayload === 'function') ? communityPrPayload(pr) : null;
+      if(payload) out.push({ key: key, name: payload.exercise_name, val: payload.value_kg });
+    });
+    return out.sort((a, b) => b.val - a.val); // el más pesado primero
+  }catch(e){ return []; }
+}
+
+function _cmtyPrShareHtml(){
+  if(!CMTY.isModerator) return ''; // piloto: la opción ni aparece si no eres el coach
+  const prs = _cmtyMyKgPrs();
+  let h = '<div class="card" style="margin-top:12px;padding:12px 13px;background:var(--surface)">' +
+    '<div style="font-size:13px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:6px">' +
+      (typeof aviIcon === 'function' ? aviIcon('trophy', 15) : '🏆') + 'Comparte un récord</div>' +
+    '<div style="font-size:11.5px;color:var(--t2);margin:5px 0 4px;line-height:1.5">Elige un récord de peso para mostrarlo en tu muro. Es una acción tuya: se publica solo cuando tú lo confirmas, y muestra ese número a quien vea tu perfil.</div>';
+  if(CMTY.prConfirm){
+    const c = CMTY.prConfirm;
+    h += '<div class="card" style="margin-top:8px;padding:11px;border-color:var(--g2)">' +
+      '<div style="font-size:13px;color:var(--t1);line-height:1.5">Vas a mostrar <b>' + esc(c.name) + ' — ' + esc(String(c.val)) + ' kg</b> a quien vea tu perfil. ¿Publicarlo?</div>' +
+      '<div style="display:flex;gap:8px;margin-top:9px">' +
+        '<button class="btn bg bsm" style="flex:1;min-height:38px" onclick="cmtyPrCancel()">Cancelar</button>' +
+        '<button class="btn bp bsm" style="flex:1;min-height:38px" onclick="cmtyPublishPr()">Sí, publicar</button>' +
+      '</div></div>';
+    return h + '</div>';
+  }
+  if(!prs.length){
+    h += '<div style="font-size:12px;color:var(--t3);margin-top:6px">Aún no tienes récords de peso registrados. Entrena y quedarán aquí.</div>';
+    return h + '</div>';
+  }
+  prs.slice(0, 12).forEach((pr, i) => {
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--br)">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(pr.name) + '</div>' +
+        '<div style="font-size:12px;color:var(--g);font-weight:700">' + esc(String(pr.val)) + ' kg</div>' +
+      '</div>' +
+      '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyPrAsk(' + i + ')">Compartir</button>' +
+    '</div>';
+  });
+  return h + '</div>';
+}
+
+// Abre la confirmación para el récord #i (por índice → ningún dato de usuario entra a un atributo).
+function cmtyPrAsk(i){
+  const prs = _cmtyMyKgPrs();
+  const pr = prs[i]; if(!pr) return;
+  CMTY.prConfirm = { key: pr.key, name: pr.name, val: pr.val };
+  _cmtyPaint();
+}
+function cmtyPrCancel(){ CMTY.prConfirm = null; _cmtyPaint(); }
+
+async function cmtyPublishPr(){
+  const c = CMTY.prConfirm; if(!c) return;
+  // Re-derivo el payload del PR REAL (no del estado de confirmación) → el valor sale de ax_pr, no
+  // de nada editable. communityPrPayload vuelve a validar unit/rango (espejo del trigger).
+  const cid = (typeof CUR !== 'undefined' && CUR.clientId) ? CUR.clientId : null;
+  const pr = (cid && DB.prs && DB.prs[cid]) ? DB.prs[cid][c.key] : null;
+  const payload = (typeof communityPrPayload === 'function') ? communityPrPayload(pr) : null;
+  if(!payload){ toast('No pude preparar ese récord.'); CMTY.prConfirm = null; _cmtyPaint(); return; }
+  if(_cmtySealed()){ toast('🔒 (dev) publicar récord sellado en localhost'); return; }
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+    const { error } = await cli.from('community_posts').insert({ user_id: uid, kind: 'pr', payload: payload });
+    if(error) throw error;
+    CMTY.prConfirm = null;
+    toast('🏆 Récord publicado en tu muro');
+    await cmtyLoad();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
+// Tarjeta del muro para un récord (kind='pr'): «Ejercicio — N kg» + felicitar/comentar. JAMÁS más
+// que el número que el dueño eligió publicar (allow-list del trigger: solo exercise_name/value_kg).
+function _cmtyPrCard(post){
+  const pl = post.payload || {};
+  const prof = _cmtyAuthorProf(post.user_id);
+  const mine = post.user_id === CMTY.uid;
+  const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+  const name = esc(pl.exercise_name || 'Ejercicio');
+  const val = (pl.value_kg != null && !isNaN(pl.value_kg)) ? esc(String(pl.value_kg)) : '';
+  return '<div class="card" style="padding:13px;margin-bottom:10px;border-color:var(--g2)">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">' +
+      _cmtyAvatarHtml(prof || {}, 40) +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + who + _cmtyCoachTag(prof) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--t3)">marcó un récord</div>' +
+      '</div>' +
+      '<div style="flex:0 0 auto">' + (typeof aviIcon === 'function' ? aviIcon('trophy', 22) : '🏆') + '</div>' +
+    '</div>' +
+    '<div style="font-size:16px;font-weight:800;color:var(--t1)">' + name + (val ? ' — <span style="color:var(--g)">' + val + ' kg</span>' : '') + '</div>' +
+    _cmtyActionsHtml(post, { canDelete: mine, heartTitle: 'Felicitar' }) +
+  '</div>';
+}
+
 // Mis rutinas propias (el asesorado logueado) para el picker de publicar.
 function _cmtyMyRoutines(){
   try{
@@ -1430,6 +1544,7 @@ function _cmtyWorkoutCard(post){
 function _cmtyPostCard(post){
   if(post.kind === 'streak' || post.kind === 'level') return _cmtyMilestoneCard(post);
   if(post.kind === 'workout') return _cmtyWorkoutCard(post);
+  if(post.kind === 'pr') return _cmtyPrCard(post);
   const pl = post.payload || {};
   const prof = _cmtyAuthorProf(post.user_id);
   const mine = post.user_id === CMTY.uid;
@@ -1558,4 +1673,7 @@ if(typeof window !== 'undefined'){
   window.cmtyCommentDraft = cmtyCommentDraft; window.cmtyDeleteComment = cmtyDeleteComment;
   window.cmtyReportComment = cmtyReportComment;
   window._cmtyStatsSuffix = _cmtyStatsSuffix;
+  window._cmtyMyKgPrs = _cmtyMyKgPrs; window._cmtyPrShareHtml = _cmtyPrShareHtml;
+  window.cmtyPrAsk = cmtyPrAsk; window.cmtyPrCancel = cmtyPrCancel;
+  window.cmtyPublishPr = cmtyPublishPr; window._cmtyPrCard = _cmtyPrCard;
 }

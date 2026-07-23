@@ -2225,6 +2225,23 @@ function communityPostPayload(routine) {
   return out;
 }
 
+// #6 PR PILOTO — mapea un récord de PESO YA REGISTRADO al payload allow-list `{exercise_name,
+// value_kg}` que acepta `community_posts` (rama 'pr' del trigger, c18). ANTI-CHEAT DE UX, honesto:
+// el valor NO se teclea, se LEE de una entrada de `ax_pr` del usuario (`DB.prs[cid][key]`), así que
+// no puedes publicar un récord que nunca registraste entrenando. Es un candado de UX, NO de servidor
+// (el trigger no puede leer user_data sin abrir superficie) — declarado como tal (§8-BIS.3), mismo
+// patrón que el allow-list de nombres de rutina. SOLO récords de PESO (unit 'kg'): un PR de reps/seg/
+// rondas → null (no es «Sentadilla 100 kg»). Caps espejo del trigger: nombre 1-80, value en (0,1000].
+function communityPrPayload(prEntry) {
+  const p = prEntry || {};
+  if (p.unit !== 'kg') return null;                 // solo récords de peso
+  const name = String(p.name || '').trim();
+  if (!name) return null;
+  const v = Number(p.val != null ? p.val : p.kg);
+  if (!isFinite(v) || v <= 0 || v > 1000) return null;
+  return { exercise_name: name.slice(0, 80), value_kg: v };
+}
+
 // LEAD «quiere coach» — ¿sigue PENDIENTE de atender?
 // El flag `wantsCoach` vive en la fila del ASESORADO (su propio dispositivo la sincroniza), así
 // que NO sirve como estado de "ya lo atendí": el coach lo apaga y el celular del asesorado puede
@@ -3046,6 +3063,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyAvatarOk,
     cmtyInitials,
     communityPostPayload,
+    communityPrPayload,
     communityWorkoutPayload,
     communityEmptyState,
     communityMilestoneText,

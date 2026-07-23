@@ -770,7 +770,7 @@ async function backToCoachPanel(){
 // documentos de legal/ para que la evidencia guardada diga QUÉ versión se aceptó.
 // Los textos son BORRADORES pendientes de revisión de abogado (legal/LEEME-IMPORTANTE.md);
 // Camilo decidió conectarlos tal cual mientras tanto (2026-07-06).
-const LEGAL_V='2026-07-22-borrador'; // 2026-07-22: §9 amplía publicar entreno+nota+comentarios (v3-a #2-4); PENDIENTE de abogado
+const LEGAL_V='2026-07-23-borrador'; // 2026-07-23: §9 añade récord de peso opt-in (v3 #6 PR piloto); PENDIENTE de abogado
 const LEGAL_DOCS={
   politica:{file:'politica-tratamiento-datos.md',title:'Política de Tratamiento de Datos'},
   terminos:{file:'terminos-y-condiciones.md',title:'Términos y Condiciones'},

@@ -1147,3 +1147,90 @@ grant select (total_sessions, training_since) on public.community_profiles to au
    `_community_norm_friendship` fuerza `pending` y `requested_by := auth.uid()` (montar amistades
    BAJO JWT impersonado de una parte, transicionar como la parte correcta, y **SELECT del estado
    real** antes de concluir nada).
+
+---
+
+## §8-BIS · ÍTEM #6 — PR PILOTO (kind='pr', SOLO COACH) — estipulación escrita por OPUS
+
+> **Origen y estado:** Fable reservó este ítem para «su propia sesión de RLS después del lote»
+> (§6-BIS «Flujo»). Con Fable sin créditos y a pedido explícito del PO («dale con el PR piloto»),
+> Opus escribe la estipulación DESDE el análisis (C) + las decisiones cerradas del PO (§6-BIS.3),
+> ejecuta, y la marca **PENDIENTE de la verificación vinculante de Fable** (R4.1) — este texto NO
+> reemplaza su veredicto. Se ciñe a las condiciones NO NEGOCIABLES de (C); cualquier apartamiento
+> se declara abajo. El texto legal es BORRADOR pendiente de abogado (§7).
+
+### Decisiones (heredadas de (C) + §6-BIS.3, no re-preguntar)
+
+1. **PILOTO = SOLO COACH.** Solo Camilo publica récords por ahora. El gate es la TABLA
+   `community_moderators` (solo `service_role` escribe; = el dueño de ≥5 asesorados, 1 fila
+   verificada) vía `private._is_moderator(auth.uid())` — server-enforced, NO falsificable (a
+   diferencia de `role`/`tier`, hallazgo F7). Acceso de Camilo a la UI: entra por «Mi
+   entrenamiento» (`openMyTraining` → vista de asesorado con SU fila, `#cn-community` con su
+   perfil de comunidad real). Abrir a los demás adultos = cambiar UNA condición del gate, sin
+   tocar el resto (se hará tras observar el efecto — decisión del PO).
+2. **El dato = UN PR de PESO puntual**, no historial ni gráfica. Payload allow-list estricta
+   `{exercise_name, value_kg}` — nada más. Un solo número + el nombre del ejercicio.
+3. **Anti-cheat = de UX, honesto (NO de servidor).** El valor se LEE de un PR YA REGISTRADO en
+   `ax_pr` del usuario (unit `'kg'`), no se teclea → no puedes publicar un récord que nunca
+   entrenaste. Vive en el MAPEADOR cliente `communityPrPayload` (mismo patrón y misma honestidad
+   declarada que el allow-list de nombres de rutina): el servidor NO puede verificarlo contra
+   `user_data` sin abrir superficie nueva, y no se finge que sea un candado de servidor.
+4. **Opt-in ACTIVO por publicación, explícito e informado.** Nada automático ni retroactivo. Cada
+   publicación abre una confirmación que dice, en español claro, que ESTO SÍ muestra un número de
+   peso a quien vea tu perfil. Es la forma más fuerte del «opt-in explícito» de (C) para un piloto
+   de una sola cuenta (ver DESVIACIÓN D1).
+5. **JAMÁS un menor** — doble candado: (a) el gate de moderador ya lo excluye en el piloto; (b) el
+   trigger de validación rechaza `kind='pr'` si `private._is_minor(new.user_id)` (load-bearing para
+   cuando el piloto se abra); (c) la UI del botón no aparece si no es moderador. El coach es adulto,
+   así que (b) es defensa a futuro, exactamente como pidió (C).
+6. **Visibilidad = el helper único de siempre.** `cpost_sel`/`_profile_visible` sin cambios (regla
+   de oro §13-BIS.5). Un PR se ve, se felicita con corazon y se comenta igual que cualquier post.
+
+### DDL (`c18_pr_posts.sql`)
+
+- `kind='pr'` añadido al check de `community_posts_kind_check`.
+- `cpost_ins` reescrita: `kind in ('routine','workout')` **o** `kind='pr' AND _is_moderator AND NOT
+  _is_minor`. routine/workout intactos; streak/level siguen entrando solo por la edge (service_role
+  BYPASA RLS → esta policy no los gobierna).
+- Rama `'pr'` del validador (`create or replace` del cuerpo COMPLETO de c15, ramas previas byte a
+  byte, + esta rama): rechaza si `_is_minor(new.user_id)`; allow-list `{exercise_name, value_kg}`;
+  exercise_name string 1-80; value_kg number en (0, 1000].
+
+### avi-core + frontend
+
+- `communityPrPayload(prEntry)` PURA → `{exercise_name, value_kg}` o null (solo `unit==='kg'`,
+  `val` en (0,1000], nombre 1-80; caps espejo del trigger). Testeada, exportada.
+- app-7: `CMTY.isModerator` (una lectura de `community_moderators` de MI uid en `cmtyLoad`;
+  policy `mod_sel_self` deja leer la propia fila). Sección «Comparte un récord» en Ajustes SOLO
+  si `CMTY.isModerator` → lista los PRs de peso propios (`DB.prs[CUR.clientId]`, unit kg) con
+  «Compartir»; el toque abre confirmación → `cmtyPublishPr`. Tarjeta del muro `_cmtyPrCard`
+  (trofeo + «Ejercicio — N kg», misma fila `_cmtyActionsHtml`). Escrituras selladas en localhost.
+- Legal §9: mantiene «los kilos NUNCA se comparten POR DEFECTO» + añade la excepción del récord
+  opt-in (acción activa, no para menores). `LEGAL_V`/`CMTY_CONSENT_V` → `2026-07-23-borrador`.
+
+### DESVIACIONES declaradas (R4.2)
+
+- **D1 — sin toggle persistente `show_pr` (a diferencia de `show_milestones`).** (C) sugería un
+  interruptor separado que ENCIENDE la función. Para un piloto de UNA cuenta (el coach), un
+  set-and-forget es MÁS débil que una confirmación activa por publicación que muestra el número
+  exacto antes de exponerlo. Se implementa el opt-in como confirmación por-evento (más fuerte:
+  explícito, informado, nunca automático). Cuando el piloto se abra a más adultos, se re-evalúa si
+  conviene además el toggle persistente (candidato: la sesión de la VISTA DE PERFIL, junto con los
+  hitos-en-perfil diferidos de #5).
+- **D2 — el gate de menor del trigger (`_is_minor(new.user_id)`) es hoy redundante** con el gate de
+  moderador de `cpost_ins` (el moderador es adulto). Se incluye A PROPÓSITO (patrón c8/K3): cuando
+  el piloto se abra quitando `_is_moderator`, el candado de menor ya está en su lugar y no se
+  ensancha en silencio.
+
+### Checklist de sabotajes PR (tx + rollback, actores sintéticos con perfil)
+
+- **PR1 debe-PASAR:** el MODERADOR (adulto) inserta `kind='pr'` con `{exercise_name,value_kg}` → OK.
+- **PR2 debe-BLOQUEAR:** un NO-moderador (asesorado normal adulto) inserta `kind='pr'` → `cpost_ins`.
+- **PR3 debe-BLOQUEAR:** un MENOR (forzado moderador en tx) inserta `kind='pr'` → bloqueado; probar
+  que el candado del trigger MUERDE solo (dar `_is_moderator` al menor → sigue rechazando por `_is_minor`).
+- **PR4 debe-BLOQUEAR:** el moderador inserta `pr` con clave extra / `value_kg` string / 0 / 1001 /
+  nombre vacío / nombre 81 → cada uno rechazado por el trigger.
+- **PR5 debe-BLOQUEAR:** el moderador inserta `pr` con `user_id` de OTRO → `cpost_ins`.
+- **PR6 debe-PASAR:** un tercero que VE el perfil del coach ve su post `pr` (`cpost_sel`), lo comenta
+  (c16) y lo felicita; el coach lo borra (`cpost_del`).
+- **PR7 mapeador:** `communityPrPayload` de un PR no-kg → null; de un kg válido → payload exacto.

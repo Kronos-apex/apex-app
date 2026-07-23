@@ -87,9 +87,17 @@ das tu autorización.
   publicación. Tus comentarios son visibles para ese público. Puedes **borrar** los comentarios de
   tus propias publicaciones y los tuyos, y **reportar** cualquier comentario o publicación; el
   entrenador que modera la comunidad puede retirar contenido reportado.
+- **Récords de peso (opcional, uno por uno, solo tú los publicas):** puedes elegir mostrar un
+  **récord** tuyo en tu muro (por ejemplo, «Sentadilla — 100 kg»): el nombre del ejercicio y ese
+  número de peso. **Por defecto NO se comparte ningún kilo**; un récord aparece **solo** cuando tú
+  tocas «Compartir» y **confirmas** esa publicación en particular — nunca de forma automática, y solo
+  se puede publicar un récord que **ya registraste entrenando**. Esta opción **no existe para
+  menores de edad**. Al publicar un récord aceptas específicamente que ese número de peso quede
+  visible para quien pueda ver tu perfil, y puedes retirarlo cuando quieras borrando la publicación.
 - **Qué NO se comparte NUNCA:** tu peso corporal, medidas, fotos de progreso, notas de salud o
-  lesiones, **los kilos que levantas** ni tus mensajes con el entrenador. Esos datos sensibles
-  **jamás** salen de tu cuenta ni aparecen en ninguna publicación.
+  lesiones ni tus mensajes con el entrenador **jamás** salen de tu cuenta ni aparecen en ninguna
+  publicación. **Los kilos que levantas tampoco se comparten**, salvo que tú publiques un récord
+  concreto de forma activa, como se explica arriba.
 - **Cómo te conectas:** solo por **código** que tú compartes; ambas personas deben aceptar. No hay
   directorio ni buscador de personas.
 - **Actividad diaria:** puedes **ocultar** si entrenaste hoy con un interruptor, en cualquier momento.
