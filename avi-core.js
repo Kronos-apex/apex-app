@@ -2266,6 +2266,18 @@ function communityMilestoneText(kind, payload, mine) {
   return null;
 }
 
+// v3-a #4 — TEXTO de un comentario, saneado. Espejo EXACTO del CHECK de la tabla
+// (`char_length between 1 and 280 and btrim(text) <> ''`, c16): recorta los extremos, corta a
+// 280 y devuelve null cuando no queda nada que publicar. Puro: la UI no decide, solo delega —
+// y así el cliente NUNCA manda un insert que el servidor va a rebotar por longitud o por vacío.
+// El candado REAL de quién puede comentar vive en la RLS (_can_comment), no aquí.
+function communityCommentText(raw) {
+  if (raw == null) return null;
+  const t = String(raw).trim();
+  if (!t) return null;
+  return t.slice(0, 280).trim() || null;
+}
+
 // R3 (re-forma) — ESTADO VACÍO ÚNICO del muro. Antes se apilaban dos vacíos («tu muro está
 // tranquilo» + «aún no tienes amigos aquí») que decían lo mismo dos veces y ninguno resolvía
 // el caso real: no tener a NADIE todavía. Esta función decide cuál (y solo uno) corresponde:
@@ -3001,6 +3013,7 @@ if (typeof module !== 'undefined' && module.exports) {
     communityWorkoutPayload,
     communityEmptyState,
     communityMilestoneText,
+    communityCommentText,
     leadPending,
     computeExerciseProgress,
     coachInsight,

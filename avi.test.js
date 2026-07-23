@@ -50,6 +50,7 @@ const {
   communityPostPayload,
   communityEmptyState,
   communityMilestoneText,
+  communityCommentText,
   communityWorkoutPayload,
   leadPending,
   shareBannerEligible,
@@ -1389,6 +1390,23 @@ test('communityMilestoneText: hito no reconocible → null (jamás una tarjeta r
   assert.strictEqual(communityMilestoneText('level', { level: null }, false), null);
   assert.strictEqual(communityMilestoneText('streak', null, false), null);
   assert.strictEqual(communityMilestoneText(undefined, undefined, false), null);
+});
+
+test('communityCommentText: espejo del CHECK de c16 — recorta, corta a 280, vacío → null', () => {
+  assert.strictEqual(communityCommentText('  ¡vas durísimo! 💪  '), '¡vas durísimo! 💪');
+  // el servidor rechaza vacío y solo-espacios (btrim <> ''): el cliente ni lo intenta
+  assert.strictEqual(communityCommentText(''), null);
+  assert.strictEqual(communityCommentText('   '), null);
+  assert.strictEqual(communityCommentText('\n\t  \n'), null);
+  assert.strictEqual(communityCommentText(null), null);
+  assert.strictEqual(communityCommentText(undefined), null);
+  // 280 es el tope duro; lo que pasa de ahí se corta, nunca rebota el insert
+  assert.strictEqual(communityCommentText('a'.repeat(280)).length, 280);
+  assert.strictEqual(communityCommentText('a'.repeat(500)).length, 280);
+  // cortar a 280 no puede dejar espacios en la cola (volvería a fallar el btrim del servidor)
+  assert.strictEqual(communityCommentText('a'.repeat(279) + '   b'), 'a'.repeat(279));
+  // no sanea HTML: eso es trabajo de esc() al pintar, aquí el texto viaja íntegro
+  assert.strictEqual(communityCommentText('<img src=x onerror=alert(1)>'), '<img src=x onerror=alert(1)>');
 });
 
 test('communityEmptyState: un solo vacío — publicaciones > gente conectada > solo', () => {

@@ -56,6 +56,9 @@ const CMTY = {
   postHearts: {},    // {postId: conteo de ❤️}
   postHeartMine: {}, // {postId: true} si YO le di ❤️
   composeOpen: false,// picker de "publicar mi rutina" abierto
+  postComments: {},  // v3-a #4: {postId: [{id,user_id,text,created_at}]} — la RLS ya filtra
+  threadOpen: null,  // postId del hilo de comentarios abierto (uno a la vez)
+  cmtDraft: {},      // {postId: borrador} — sobrevive a un repintado (un DM entrante repinta el panel)
   view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
 };
 
@@ -113,7 +116,7 @@ async function cmtyLoad(opts){
     CMTY.profile = prof || null;
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
     CMTY.discover = []; CMTY.following = {}; CMTY.followerReqs = []; CMTY.profById = {};
-    CMTY.posts = []; CMTY.postHearts = {}; CMTY.postHeartMine = {};
+    CMTY.posts = []; CMTY.postHearts = {}; CMTY.postHeartMine = {}; CMTY.postComments = {};
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
@@ -1132,7 +1135,30 @@ async function _cmtyLoadFeed(cli, uid){
       CMTY.postHearts[r.context] = (CMTY.postHearts[r.context] || 0) + 1;
       if(r.from_user === uid) CMTY.postHeartMine[r.context] = true;
     });
+    await _cmtyLoadComments(cli, ids); // #4 comentarios de esos mismos posts
   }
+}
+
+// v3-a #4 — comentarios de los posts del muro. El `.in(post_id)` es ALCANCE, no seguridad: la RLS
+// (cc_sel → _can_see_post) ya decide qué puede leer este usuario. Mismo patrón que las reacciones.
+async function _cmtyLoadComments(cli, ids){
+  const { data, error } = await cli.from('community_comments')
+    .select('id,post_id,user_id,text,created_at')
+    .in('post_id', ids)
+    .order('created_at', { ascending: true })
+    .limit(400);
+  if(error){ _cw()('cmty comments:', error.message); return; }
+  CMTY.postComments = {};
+  (data || []).forEach(c => { (CMTY.postComments[c.post_id] = CMTY.postComments[c.post_id] || []).push(c); });
+}
+
+// Recarga SOLO un hilo (tras comentar/borrar): no repinta media pestaña ni redescarga el muro.
+async function _cmtyReloadThread(cli, postId){
+  const { data, error } = await cli.from('community_comments')
+    .select('id,post_id,user_id,text,created_at')
+    .eq('post_id', postId).order('created_at', { ascending: true }).limit(200);
+  if(error){ _cw()('cmty thread:', error.message); return; }
+  CMTY.postComments[postId] = data || [];
 }
 
 // Perfil del autor de un post (para avatar/handle): reusa lo ya cargado (amigos/gym/discover/profById/propio).
@@ -1212,6 +1238,129 @@ function _cmtyComposeHtml(){
   return h + '</div>';
 }
 
+// ══════════ v3-a #4 · COMENTARIOS ══════════
+// Regla del PO: comenta CUALQUIERA QUE VE la publicación. El candado real vive en la RLS
+// (`_can_comment`, c16) con los dos candados de menores; aquí solo se pinta y se delega.
+// El input se muestra SIEMPRE que se ve el post: el cliente no puede saber si el otro es menor
+// (la fecha vive server-side) → si el insert rebota, se maneja con un mensaje honesto en vez de
+// adivinar (fail-visible, no fail-broken). Nadie EDITA: se borra y se reescribe.
+
+// Fila de acciones común a las 3 tarjetas del muro (rutina, entreno, hito): ❤️ + 💬 + eliminar.
+// Antes vivía copiada en cada tarjeta; el contador de comentarios habría sido la tercera copia.
+function _cmtyActionsHtml(post, opts){
+  opts = opts || {};
+  const hearts = CMTY.postHearts[post.id] || 0;
+  const given = !!CMTY.postHeartMine[post.id];
+  const n = (CMTY.postComments[post.id] || []).length;
+  const open = CMTY.threadOpen === post.id;
+  return '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
+    '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="' + (opts.heartTitle || 'Me gusta') + '">' +
+      (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
+    '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="cmtyToggleThread(\'' + post.id + '\')" title="Comentarios">' +
+      (typeof aviIcon === 'function' ? aviIcon('chat', 15) : '💬') + (n ? ' <span style="font-size:12px;font-weight:700">' + n + '</span>' : '') + '</button>' +
+    (opts.canDelete ? '<button class="btn bg bsm" style="min-height:36px;margin-left:auto;color:var(--t2)" onclick="cmtyDeletePost(\'' + post.id + '\')">Eliminar</button>' : '') +
+  '</div>' + _cmtyThreadHtml(post);
+}
+
+// Hilo expandido bajo la tarjeta. Handle y texto SIEMPRE por esc() (texto de otra persona).
+// Si el autor de un comentario no es visible para mí (por ejemplo, una cuenta privada que comenta
+// el post público de un tercero), su handle NO se inventa: sale «Alguien» — la RLS de perfiles
+// manda, y aquí no se filtra por la puerta de atrás.
+function _cmtyThreadHtml(post){
+  if(CMTY.threadOpen !== post.id) return '';
+  const list = CMTY.postComments[post.id] || [];
+  const uid = CMTY.uid;
+  const iOwnPost = post.user_id === uid;
+  let h = '<div style="border-top:1px solid var(--br);margin-top:10px;padding-top:9px">';
+  if(!list.length){
+    h += '<div style="font-size:12.5px;color:var(--t3);padding:2px 0 8px">Todavía nadie ha comentado. Anímalo tú.</div>';
+  }
+  list.forEach(c => {
+    const prof = _cmtyAuthorProf(c.user_id);
+    const mine = c.user_id === uid;
+    const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
+    const when = (typeof fmtD === 'function' && c.created_at) ? fmtD(c.created_at) : '';
+    h += '<div style="padding:6px 0;border-top:1px solid var(--br)">' +
+      '<div style="display:flex;align-items:baseline;gap:7px">' +
+        '<span style="font-size:12.5px;font-weight:800;color:var(--t1)">' + who + '</span>' +
+        (when ? '<span style="font-size:11px;color:var(--t3)">' + esc(when) + '</span>' : '') +
+        '<span style="flex:1"></span>' +
+        ((mine || iOwnPost) ? '<button class="btn bg bsm" style="min-height:36px;font-size:11.5px;padding:0 9px;color:var(--t2)" onclick="cmtyDeleteComment(\'' + c.id + '\',\'' + post.id + '\')">Borrar</button>' : '') +
+        (!mine ? '<button class="btn bg bsm" style="min-height:36px;font-size:11.5px;padding:0 9px;color:var(--t2)" onclick="cmtyReportComment(\'' + c.id + '\',\'' + c.user_id + '\')">Reportar</button>' : '') +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--t1);line-height:1.45;margin-top:2px;white-space:pre-wrap;word-break:break-word">' + esc(c.text || '') + '</div>' +
+    '</div>';
+  });
+  const draft = CMTY.cmtDraft[post.id] || '';
+  h += '<div style="display:flex;gap:7px;margin-top:9px">' +
+    '<input class="inp" id="cmt-in-' + post.id + '" maxlength="280" placeholder="Escribe un comentario…" value="' + esc(draft) + '" ' +
+      'style="flex:1;min-width:0;min-height:40px;font-size:13px" oninput="cmtyCommentDraft(\'' + post.id + '\',this.value)" ' +
+      'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cmtyComment(\'' + post.id + '\')}">' +
+    '<button class="btn bp bsm" style="min-height:40px;flex:0 0 auto" onclick="cmtyComment(\'' + post.id + '\')">Enviar</button>' +
+  '</div>';
+  return h + '</div>';
+}
+
+function cmtyCommentDraft(postId, v){ CMTY.cmtDraft[postId] = v; }
+
+function cmtyToggleThread(postId){
+  CMTY.threadOpen = (CMTY.threadOpen === postId) ? null : postId;
+  _cmtyPaint();
+  if(CMTY.threadOpen === postId){
+    const el = document.getElementById('cmt-in-' + postId);
+    if(el && el.scrollIntoView){ try{ el.scrollIntoView({ block: 'nearest' }); }catch(e){} }
+  }
+}
+
+async function cmtyComment(postId){
+  const el = document.getElementById('cmt-in-' + postId);
+  const raw = el ? el.value : (CMTY.cmtDraft[postId] || '');
+  const text = (typeof communityCommentText === 'function') ? communityCommentText(raw) : String(raw || '').trim();
+  if(!text){ toast('Escribe algo primero.'); return; }
+  if(_cmtySealed()){ toast('🔒 (dev) comentar sellado en localhost'); return; }
+  try{
+    const cli = _cmtyClient(); const uid = CMTY.uid || await _cmtyUid(); if(!cli || !uid) return;
+    if(el) el.disabled = true;
+    const { error } = await cli.from('community_comments').insert({ post_id: postId, user_id: uid, text: text });
+    if(el) el.disabled = false;
+    if(error){
+      // El rebote esperable es el candado de menores (yo o el autor): la RLS es la autoridad y el
+      // cliente no adivina la edad de nadie. Mensaje honesto, sin culpar al usuario ni mentirle.
+      if(/row-level security|violates/i.test(error.message || '')){ toast('Esta publicación no acepta tus comentarios.'); return; }
+      throw error;
+    }
+    CMTY.cmtDraft[postId] = '';
+    await _cmtyReloadThread(cli, postId);
+    _cmtyPaint();
+  }catch(e){ const el2 = document.getElementById('cmt-in-' + postId); if(el2) el2.disabled = false; toast(_cmtyErr(e)); }
+}
+
+// Borra el mío o, si el post es mío, el de otro (mi espacio). El moderador borra desde su bandeja
+// (RPC `cmty_mod_delete_comment`) — un DELETE de cliente NO le sirve: no ve el post ajeno (c16 D1).
+async function cmtyDeleteComment(commentId, postId){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); if(!cli) return;
+    const { error } = await cli.from('community_comments').delete().eq('id', commentId);
+    if(error) throw error;
+    await _cmtyReloadThread(cli, postId);
+    _cmtyPaint();
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
+// Reportar un comentario NO bloquea automáticamente a su autor (a diferencia del reporte de perfil):
+// un comentario puede ser un malentendido. Queda en la bandeja del moderador; bloquear es aparte.
+async function cmtyReportComment(commentId, authorId){
+  if(_cmtySealed()){ toast('🔒 (dev)'); return; }
+  try{
+    const cli = _cmtyClient(); if(!cli) return;
+    const { error } = await cli.from('community_reports')
+      .insert({ reported: authorId, reason: 'comentario reportado desde la app', context: 'comment:' + commentId });
+    if(error) throw error;
+    toast('Gracias. Lo revisaremos.');
+  }catch(e){ toast(_cmtyErr(e)); }
+}
+
 // R2 — tarjeta de HITO (racha / nivel). El texto lo arma `communityMilestoneText` (puro, avi-core);
 // el número viene del servidor (no inflable) y JAMÁS trae pesos ni datos de salud (allow-list del
 // trigger: solo {weeks} o {level}). Misma fila de ❤️ que una rutina — se celebra igual.
@@ -1222,8 +1371,6 @@ function _cmtyMilestoneCard(post){
   const m = (typeof communityMilestoneText === 'function')
     ? communityMilestoneText(post.kind, post.payload, mine) : null;
   if(!m) return ''; // hito desconocido/corrupto → no se pinta (nunca una tarjeta rota)
-  const hearts = CMTY.postHearts[post.id] || 0;
-  const given = !!CMTY.postHeartMine[post.id];
   return '<div class="card" style="padding:13px;margin-bottom:10px;border-color:var(--g2)">' +
     '<div style="display:flex;align-items:center;gap:10px">' +
       _cmtyAvatarHtml(prof || {}, 40) +
@@ -1232,10 +1379,7 @@ function _cmtyMilestoneCard(post){
         '<div style="font-size:13px;color:var(--gt);font-weight:700;margin-top:1px">' + esc(m.text) + ' ' + m.emoji + '</div>' +
       '</div>' +
     '</div>' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
-      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Felicitar">' +
-        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
-    '</div>' +
+    _cmtyActionsHtml(post, { heartTitle: 'Felicitar' }) +  // el hito lo emite el servidor: nadie lo borra
   '</div>';
 }
 
@@ -1248,8 +1392,6 @@ function _cmtyWorkoutCard(post){
   const mine = post.user_id === CMTY.uid;
   const who = prof ? esc(prof.handle) : (mine ? 'Tú' : 'Alguien');
   const name = esc(pl.name || 'Entreno');
-  const hearts = CMTY.postHearts[post.id] || 0;
-  const given = !!CMTY.postHeartMine[post.id];
   const streak = prof && prof.streak_weeks > 0 ? prof.streak_weeks : 0;
   const chips = [];
   if(pl.duration_min != null && !isNaN(pl.duration_min)) chips.push(esc(String(pl.duration_min)) + ' min');
@@ -1269,11 +1411,7 @@ function _cmtyWorkoutCard(post){
     '</div>' +
     '<div style="font-size:15px;font-weight:800;color:var(--t1)">' + name + '</div>' +
     chipHtml + note +
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
-      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Me gusta">' +
-        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
-      (mine ? '<button class="btn bg bsm" style="min-height:36px;margin-left:auto;color:var(--t2)" onclick="cmtyDeletePost(\'' + post.id + '\')">Eliminar</button>' : '') +
-    '</div>' +
+    _cmtyActionsHtml(post, { canDelete: mine }) +
   '</div>';
 }
 
@@ -1286,8 +1424,6 @@ function _cmtyPostCard(post){
   const name = esc(pl.name || 'Rutina');
   const days = pl.days ? esc(Array.isArray(pl.days) ? pl.days.join(', ') : pl.days) : '';
   const exs = Array.isArray(pl.exercises) ? pl.exercises : [];
-  const hearts = CMTY.postHearts[post.id] || 0;
-  const given = !!CMTY.postHeartMine[post.id];
   let exHtml = exs.slice(0, 8).map(e => {
     const sr = [e.sets, e.reps].filter(x => x != null && x !== '').join('×');
     return '<div style="font-size:12px;color:var(--t2);padding:2px 0;display:flex;justify-content:space-between;gap:10px">' +
@@ -1307,11 +1443,7 @@ function _cmtyPostCard(post){
     '<div style="font-size:14px;font-weight:800;color:var(--t1)">' + name + '</div>' +
     (days ? '<div style="font-size:11.5px;color:var(--g);font-weight:700;margin-bottom:6px">' + days + '</div>' : '<div style="height:4px"></div>') +
     exHtml +
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
-      '<button class="btn ' + (given ? 'bp' : 'bg') + ' bsm" style="min-height:36px;flex:0 0 auto" aria-pressed="' + (given ? 'true' : 'false') + '" onclick="cmtyPostHeart(\'' + post.id + '\',\'' + post.user_id + '\')" title="Me gusta">' +
-        (typeof aviIcon === 'function' ? aviIcon('heart', 15) : '❤️') + (hearts ? ' <span style="font-size:12px;font-weight:700">' + hearts + '</span>' : '') + '</button>' +
-      (mine ? '<button class="btn bg bsm" style="min-height:36px;margin-left:auto;color:var(--t2)" onclick="cmtyDeletePost(\'' + post.id + '\')">Eliminar</button>' : '') +
-    '</div>' +
+    _cmtyActionsHtml(post, { canDelete: mine }) +
   '</div>';
 }
 
@@ -1408,4 +1540,9 @@ if(typeof window !== 'undefined'){
   window._cmtyCounts = _cmtyCounts; window._cmtyEmptyHtml = _cmtyEmptyHtml; window._cmtyFriendsHtml = _cmtyFriendsHtml;
   window.cmtyToggleMilestones = cmtyToggleMilestones; window._cmtyMilestoneCard = _cmtyMilestoneCard;
   window._cmtyWorkoutCard = _cmtyWorkoutCard; window.cmtyShareWorkout = cmtyShareWorkout;
+  window._cmtyActionsHtml = _cmtyActionsHtml; window._cmtyThreadHtml = _cmtyThreadHtml;
+  window._cmtyLoadComments = _cmtyLoadComments; window._cmtyReloadThread = _cmtyReloadThread;
+  window.cmtyToggleThread = cmtyToggleThread; window.cmtyComment = cmtyComment;
+  window.cmtyCommentDraft = cmtyCommentDraft; window.cmtyDeleteComment = cmtyDeleteComment;
+  window.cmtyReportComment = cmtyReportComment;
 }

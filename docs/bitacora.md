@@ -380,6 +380,66 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-23 (parte 110 — LOTE v3-a ÍTEM #4: COMENTARIOS en el muro, avi-v390 + migración
+`c16_comments`. Estipulación de Fable §8.3). Un ❤️ no alcanza: ahora las publicaciones del muro (rutina,
+entreno E hito) se comentan. **Regla del PO (§6-BIS.2):** comenta CUALQUIERA QUE VE la publicación —
+implementada literal para adultos, con el contrapeso ya en pie (bandeja de reportes c14 + rate-limit).
+**Backend `c16`:** tabla `community_comments` (texto 1-280) + helpers DEFINER `_post_owner`, `_can_see_post`
+(espejo EXACTO de `cpost_sel`) y `_can_comment`; RLS `cc_sel`/`cc_ins`/`cc_del`; **sin UPDATE ni policy ni
+grant → un comentario NO se edita, se borra y se reescribe**; rate-limit `_cc_rate` 10/min. **Los DOS candados
+de menores, en ambas direcciones:** post de autor MENOR → solo su gente (candado explícito hoy redundante con
+`_profile_visible`, A PROPÓSITO: patrón c8, para que re-ensanchar la visibilidad mañana no ensanche los
+comentarios en silencio); COMENTARISTA menor → solo comenta a su gente (candado NUEVO y load-bearing HOY: sin
+él, un menor comentando el post público de un desconocido expondría su handle ante extraños, justo lo que c8
+le niega a su perfil). **avi-core:** `communityCommentText(raw)` PURA, espejo del CHECK (recorta, corta a 280,
+vacío/solo-espacios → null → el cliente ni molesta al servidor con lo que va a rebotar). **Frontend (app-7):**
+fila de acciones COMÚN a las 3 tarjetas (`_cmtyActionsHtml`, ❤️ + 💬 con contador + Eliminar — antes estaba
+copiada tres veces y el contador habría sido la tercera copia) + hilo `_cmtyThreadHtml` (handle y texto en
+`esc()`, fecha `fmtD`, Borrar donde `cc_del` lo permitiría, Reportar en los ajenos, input 280 + Enviar);
+`cmtyComment`/`cmtyDeleteComment`/`cmtyReportComment`/`cmtyToggleThread`; borrador por post (`CMTY.cmtDraft`)
+que SOBREVIVE a un repintado — un DM entrante repinta el panel y borraba lo escrito. El input se muestra
+siempre que se ve el post: el cliente NO puede saber si el otro es menor (la fecha vive server-side) → si el
+insert rebota, mensaje honesto «Esta publicación no acepta tus comentarios.» (fail-visible, no fail-broken).
+Reportar un comentario NO auto-bloquea al autor (a diferencia del reporte de perfil §5.4): puede ser un
+malentendido; queda en la bandeja y bloquear es una acción aparte. AVI_NEWS v390.
+
+**2 DESVIACIONES documentadas de §8.3 (R4.2):** **D1 (🔴 hallazgo)** — Fable estipuló que el moderador borrara
+un comentario con la rama `_is_moderator` de `cc_del`. NO FUNCIONA, y es la MISMA trampa ya reproducida en
+c14b: un DELETE cuyo WHERE referencia columnas aplica TAMBIÉN la policy de SELECT, y el moderador no ve el
+comentario de un post ajeno (`cc_sel`→`_can_see_post`) → borraría 0 filas justo en el caso de moderación.
+Reproducido con dientes (K10b: 0 filas) → RPC DEFINER `cmty_mod_delete_comment` (mínimo privilegio, solo el id
+que ya vio en la bandeja) y la rama muerta se OMITE de `cc_del` en vez de dejar superficie engañosa.
+**D2** — el CHECK exige además `btrim(text) <> ''`: un comentario de puros espacios pasaba el `between 1 and
+280`. Estrictamente más restrictivo. Además la RPC `cmty_mod_reports` gana la rama de excerpt de comentario.
+
+**QA:** matriz K contra la BASE REAL (tx + rollback, actores 100% sintéticos con perfil) **36/36**, incluidas
+las dos con dientes: **K3** re-ensancha `_profile_visible` para que el extraño SÍ VEA el post del menor y el
+candado explícito lo bloquea IGUAL (muerde solo), con restauración y re-verificación del estado sano; **D1a-d**
+el moderador borra 0 filas por DELETE de cliente, la RPC sí, y un no-moderador recibe `not allowed`. También
+K1 (regla del PO: extraño→post público PASA), K2, K4-K7, K8 (10 pasan, el 11º rebota), K9 (281/vacío/espacios),
+K10 matriz de borrado, K11 SELECT, K12 reporte+excerpt, K14 cascadas. Trampa 3 de fixtures otra vez viva: los
+triggers de `friendships` reescriben el estado (`pending` + `requested_by=auth.uid()`) → se desactivan para
+montar el fixture y se LEE el estado real antes de concluir. Harness NUEVO `_verify-comments.mjs` **17/17**
+(incl. K13 XSS pintado escapado, saneo, rebote de RLS, sellado, borrador tras repintado) con **sabotaje
+rojo→verde ×2** (quitar `esc()` → cae K13; quitar el borrador → cae C11). Suite **420** (+1
+`communityCommentText`, saboteada a rojo y restaurada). Cinturón: `_verify-feed` 32/32, `_verify-workoutshare`
+8/8, `_verify-community` OK, `_verify-news` OK. Advisor: 1 WARN nuevo = la RPC del moderador (misma clase
+intencional de `cmty_mod_*`, gateada por `_is_moderator`, probada en D1d). Capturas claro/oscuro a 390px
+MIRADAS; los botones del comentario se subieron de 30 a 36px al verlas (barra premium: táctil ≥36px).
+**PENDIENTE verificación de Fable.***
+
+*Nota de higiene (misma sesión): se versionaron los artefactos de `c13b` y `c15`, aplicados a prod el
+2026-07-22 pero nunca commiteados (commit `ac88fe3`). Recuperados de `supabase_migrations.schema_migrations`.*
+
+**RADAR de la sesión** — (1) 🟡 **un adulto que nunca declaró su fecha de nacimiento cuenta como MENOR**
+(`_is_minor` es fail-safe: sin fecha → true), así que solo puede comentar a su gente; y hoy la ÚNICA vía de
+declarar la edad es hacerse público (edge `activate_public_profile`). Hoy 4 de 5 miembros no tienen fecha.
+Impacto real BAJO (todos son amigos/gym entre sí) pero crece con la comunidad: decisión de producto para el
+PO/Fable, no se tomó por cuenta propia. (2) 🟡 los comentarios NO tienen Realtime (decisión explícita de
+§8.3.6): cargan con el muro y al abrir el hilo. (3) 🟢 el handle de un comentarista que no me es visible se
+pinta «Alguien» — correcto (la RLS de perfiles manda), pero conviene verlo con datos reales.*
+
+
 *Hitos sesión 2026-07-22 (parte 109 — LOTE v3-a ÍTEMS #2+#3: ENTRENO TERMINADO como post + NOTA CORTA,
 avi-v389 + migración `c15_workout_posts`. Estipulación de Fable §8.2). El muro deja de depender de que
 alguien publique una rutina a mano: cada quien puede compartir su ENTRENO recién terminado. **Backend
