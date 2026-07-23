@@ -380,6 +380,47 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-23 (parte 111 — LOTE v3-a ÍTEM #5: PERFIL RICO, avi-v391 + migración
+`c17_profile_rich` + edge `refresh_snapshot` v5. Estipulación de Fable §8.4). CIERRA el lote v3-a.
+Agregados seguros en la cara pública: «N entrenos» en las tarjetas (amigo/gym/descubrir) y «Entrena
+desde <mes año>» en el perfil propio. **Mismo régimen server-only que streak/level** (decisión #7): dos
+columnas NUEVAS de snapshot, `total_sessions` (int) y `training_since` (date), que SOLO estampa la edge
+con service_role — el cliente tiene únicamente SELECT (jamás UPDATE), así no infla ni sus entrenos ni su
+antigüedad. **Backend `c17`:** `add column ... + grant select(total_sessions, training_since)` en el MISMO
+commit (lección c13b EN el DDL, no en un «acordarse después»: sin el grant, `cmtyLoad` lanzaría
+`permission denied` al pedir la columna y toda la pestaña caería). No reabre nada de c10 (las columnas
+sensibles siguen fuera). **Edge v5:** `snapshot()` añade `total_sessions = hist.length` y `training_since`
+= día Bogota del `min(date)` VÁLIDO (null sin historial), en el MISMO update; hitos y poda sin cambios.
+**avi-core:** `communitySnapshot` gana los dos campos; helper puro NUEVO `communityTrainingSinceText(dateStr,
+now)` → «Entrena desde marzo de 2026» o null si falta/ilegible/FUTURA/día-imposible (fail-visible-nada,
+jamás «Invalid Date» — clase «Hace -1d»). **Frontend (app-7):** `cmtyLoad` pide las 2 columnas en los DOS
+selects; `_cmtyStatsSuffix(p)` = « · N entrenos» (omitido si 0 → nunca « · 0 entrenos»); la tarjeta propia
+de Ajustes suma la frase de antigüedad. Letra pequeña, sin gráfica, sin kilos. Sin AVI_NEWS (se explica
+sola, R3.3). **DESVIACIÓN §8.4.2 (de mi propio análisis B, documentada):** «hitos ganados en el perfil»
+se DIFIERE — hoy no existe una pantalla de perfil-ajeno donde colgarlos (solo tarjetas de lista) y el muro
+ya los celebra; se retoma con la vista de perfil (sesión del PR piloto). El `achievements` ya visible cubre
+el hueco.
+
+**🔴 BUG DE CLASE cazado al escribir:** `new Date(null)` devuelve EPOCH (1970), NO `NaN` — una sesión con
+`date:null` habría dado «Entrena desde diciembre de 1969». El guard `isNaN(getTime())` no lo ataja; hay que
+atajar `raw == null || raw === ''` ANTES de `new Date`. Aplicado en avi-core, la edge y el parity port
+(inofensivo para sessions_4w/trained_today — epoch nunca cae en la ventana ni es hoy; correcto para el
+mínimo). Test dedicado con `{date:null}`+`{date:'basura'}`.
+
+**QA:** suite avi-core **422** (+2 tests de snapshot ampliados con dientes: training_since ignora ilegibles
+y toma el mínimo; +1 test de `communityTrainingSinceText` con futura/imposible/formato inválido → null).
+**Paridad core↔edge TOTAL** (`c2_parity_snapshot.cjs` extendido con los 2 campos; el caso `racha3+basura`
+ya ejercía null+basura). Sabotajes P contra la BASE REAL (tx+rollback): **P2/P2b** cliente `UPDATE
+total_sessions=999`/`training_since` → `permission denied` (column-level, sin grant UPDATE), valor intacto
+en 42; **P5** `birth_date` crudo sigue denegado (c7b/c10 intactos); **P0** el dueño SÍ lee sus columnas;
+**P1** write-path de la edge (service_role) escribe 87/'2026-03-02' sin problema de tipos. `_verify-community`
++CM13 (17→18 checks: «N entrenos» en amigo con 120, OMITIDO en el de 0, «Entrena desde marzo de 2026» propio
+en Ajustes) con **sabotaje rojo→verde** (quitar la omisión del 0 → cae CM13). Capturas claro/oscuro MIRADAS:
+la tarjeta de Ana muestra «… · 120 entrenos». Advisor: cero WARN nuevos. **P3 (contra PROD) tras el deploy.**
+**PENDIENTE verificación de Fable. Con esto el lote v3-a (ítems 0-5) queda ejecutado; falta el PR piloto
+(§8 aparte) y el cambio legal de kilos (§7).***
+
+
 *Hitos sesión 2026-07-23 (parte 110 — LOTE v3-a ÍTEM #4: COMENTARIOS en el muro, avi-v390 + migración
 `c16_comments`. Estipulación de Fable §8.3). Un ❤️ no alcanza: ahora las publicaciones del muro (rutina,
 entreno E hito) se comentan. **Regla del PO (§6-BIS.2):** comenta CUALQUIERA QUE VE la publicación —

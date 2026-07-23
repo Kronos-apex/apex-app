@@ -1,4 +1,8 @@
-// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3 · v4 en R2 hitos) ══════════
+// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3 · v4 en R2 hitos · v5 en #5 perfil rico) ══════════
+// v5 (#5 perfil rico, 2026-07-23): el snapshot añade total_sessions (= hist.length) y training_since
+// (día Bogota del PRIMER entreno válido, 'YYYY-MM-DD', null sin historial). Van en el MISMO update,
+// con el mismo régimen server-only que streak_weeks/level — el cliente solo tiene SELECT (c17). La
+// emisión de hitos y la poda no cambian.
 // v4 (R2, 2026-07-22): además del snapshot, EMITE HITOS al muro (`community_posts`
 // kind='streak'/'level') comparando el estado ANTES vs DESPUÉS del recálculo. El cliente
 // NO puede publicarlos (policy `cpost_ins` exige kind='routine') → un hito es SIEMPRE
@@ -54,6 +58,14 @@ function bogotaWeekStart(t: number): number { // lunes 00:00 Bogota
   const dow = s.getUTCDay(); s.setUTCDate(s.getUTCDate() - ((dow + 6) % 7));
   return s.getTime() + BOGOTA_OFFSET_MS;
 }
+// #5: 'YYYY-MM-DD' del día Bogota de un timestamp ya anclado por bogotaDayStart (equivalente
+// a _ymdLocal de avi-core en un dispositivo UTC-5; paridad en c2_parity_snapshot.cjs).
+function ymdBogota(dayStart: number): string {
+  const x = new Date(dayStart - BOGOTA_OFFSET_MS);
+  const mm = String(x.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(x.getUTCDate()).padStart(2, "0");
+  return x.getUTCFullYear() + "-" + mm + "-" + dd;
+}
 function planDays(routines: any[], days: any): number {
   const fromR = (routines || []).filter((r: any) => r && r.day && r.day !== "Libre").length;
   const d = fromR || parseInt(days) || 3;
@@ -87,15 +99,21 @@ function snapshot(row: any, nowT: number) {
   const streak_weeks = weekStreakWeeks(hist, tgt, nowT);
   const today = bogotaDayStart(nowT);
   const cutoff = today - 27 * 86400000;
-  const days4w = new Set<number>(); let trained_today = false;
+  const days4w = new Set<number>(); let trained_today = false; let minDay: number | null = null;
   for (const h of hist) {
-    const t = new Date(h && h.date).getTime(); if (isNaN(t)) continue;
+    const raw = h && h.date;
+    if (raw == null || raw === "") continue; // new Date(null) === epoch, NO NaN — atajarlo (#5)
+    const t = new Date(raw).getTime(); if (isNaN(t)) continue;
     const ds = bogotaDayStart(t);
     if (ds >= cutoff) days4w.add(ds);
     if (ds === today) trained_today = true;
+    if (minDay === null || ds < minDay) minDay = ds;
   }
   const badges = [prsCount >= 1, total >= 10, total >= 30, totalVol >= 10000, totalVol >= 50000, totalVol >= 20000, lvl >= 3, lvl >= 4];
-  return { streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today };
+  return {
+    streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today,
+    total_sessions: total, training_since: minDay === null ? null : ymdBogota(minDay),
+  };
 }
 
 Deno.serve(async (req) => {

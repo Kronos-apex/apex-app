@@ -2089,11 +2089,15 @@ function communitySnapshot(client, sessions, prs, now) {
   const cutoff = today - 27 * 86400000; // hoy + 27 días previos = ventana de 4 semanas
   const days4w = new Set();
   let trainedToday = false;
+  let minDay = null; // #5: día de la PRIMERA sesión válida (antigüedad) — ignora fechas ilegibles
   hist.forEach(h => {
-    const d = new Date(h && h.date); if (isNaN(d.getTime())) return;
+    const raw = h && h.date;
+    if (raw == null || raw === '') return; // OJO: new Date(null) === epoch (1970), NO NaN — hay que atajarlo
+    const d = new Date(raw); if (isNaN(d.getTime())) return;
     const ds = localDayStart(d);
     if (ds >= cutoff) days4w.add(ds);
     if (ds === today) trainedToday = true;
+    if (minDay === null || ds < minDay) minDay = ds;
   });
   // Las 8 medallas de renderGamification (app-4): PR, 10/30 entrenos, 10k/20k/50k kg, nivel 3/4.
   const badges = [prsCount >= 1, total >= 10, total >= 30, totalVol >= 10000, totalVol >= 50000, totalVol >= 20000, lvl >= 3, lvl >= 4];
@@ -2103,7 +2107,38 @@ function communitySnapshot(client, sessions, prs, now) {
     level: lvl,
     achievements: badges.filter(Boolean).length,
     trained_today: trainedToday,
+    // #5 perfil rico (agregados seguros, mismo régimen server-side que streak/level):
+    total_sessions: total,                                 // Nº de entrenos del historial
+    training_since: minDay === null ? null : _ymdLocal(minDay), // 'YYYY-MM-DD' del primer entreno, o null
   };
+}
+
+// 'YYYY-MM-DD' del día de calendario LOCAL de un timestamp ya anclado a medianoche
+// (localDayStart). La edge produce el equivalente en Bogota; en un dispositivo colombiano
+// (UTC-5) coinciden — la paridad se prueba en c2_parity_snapshot.cjs.
+function _ymdLocal(ts) {
+  const x = new Date(ts);
+  const mm = String(x.getMonth() + 1).padStart(2, '0');
+  const dd = String(x.getDate()).padStart(2, '0');
+  return x.getFullYear() + '-' + mm + '-' + dd;
+}
+
+// #5 — FRASE de antigüedad para el perfil: «Entrena desde marzo de 2026». Pinta MES y AÑO,
+// nunca el día exacto (patrón «etiqueta redondeada» de ②: menos precisión = menos patrón
+// reconstruible). Pura y fail-visible-nada: fecha faltante/ilegible/FUTURA → null (el caller
+// omite la frase; jamás «desde Invalid Date» — clase «Hace -1d»/«Infinity días»).
+const CMTY_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function communityTrainingSinceText(dateStr, now) {
+  if (typeof dateStr !== 'string') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, mo - 1, d);
+  if (isNaN(dt.getTime()) || dt.getMonth() !== mo - 1) return null; // '2026-02-31' → normaliza a marzo → rechazo
+  const nTs = (typeof now === 'number') ? now : +new Date(now || Date.now());
+  if (isNaN(nTs) || dt.getTime() > nTs) return null; // futura → nada (no se inventa una fecha por venir)
+  return 'Entrena desde ' + CMTY_MESES[mo - 1] + ' de ' + y;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -3000,6 +3035,7 @@ if (typeof module !== 'undefined' && module.exports) {
     GX_LEVELS,
     gxLevel,
     communitySnapshot,
+    communityTrainingSinceText,
     CMTY_REFRESH_MIN_MS,
     CMTY_STALE_MS,
     CMTY_AVATAR_PREFIX,

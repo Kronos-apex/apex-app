@@ -7,6 +7,7 @@ const BOGOTA_OFFSET_MS = 5 * 3600 * 1000;
 const GX_MINS = [0, 10, 30, 60, 120];
 function bogotaDayStart(t){ const s=new Date(t-BOGOTA_OFFSET_MS); s.setUTCHours(0,0,0,0); return s.getTime()+BOGOTA_OFFSET_MS; }
 function bogotaWeekStart(t){ const s=new Date(t-BOGOTA_OFFSET_MS); s.setUTCHours(0,0,0,0); const dow=s.getUTCDay(); s.setUTCDate(s.getUTCDate()-((dow+6)%7)); return s.getTime()+BOGOTA_OFFSET_MS; }
+function ymdBogota(dayStart){ const x=new Date(dayStart-BOGOTA_OFFSET_MS); const mm=String(x.getUTCMonth()+1).padStart(2,'0'); const dd=String(x.getUTCDate()).padStart(2,'0'); return x.getUTCFullYear()+'-'+mm+'-'+dd; }
 function planDays(routines, days){ const fromR=(routines||[]).filter(r=>r&&r.day&&r.day!=='Libre').length; const d=fromR||parseInt(days)||3; return Math.max(1,Math.min(7,d)); }
 function gxLevelN(total){ let n=1; for(let i=0;i<GX_MINS.length;i++){ if(total>=GX_MINS[i]) n=i+1; } return n; }
 function weekStreakWeeks(hist,tgt,nowT){ const byWeek={}; for(const h of (hist||[])){ const t=new Date(h&&h.date).getTime(); if(isNaN(t))continue; const wk=bogotaWeekStart(t); (byWeek[wk]=byWeek[wk]||new Set()).add(bogotaDayStart(t)); } const WEEK=7*86400000; const curWk=bogotaWeekStart(nowT); const met=((byWeek[curWk]&&byWeek[curWk].size)||0)>=tgt; let weeks=0; let cur=met?curWk:curWk-WEEK; while(byWeek[cur]&&byWeek[cur].size>=tgt){ weeks++; cur-=WEEK; } return weeks; }
@@ -21,10 +22,10 @@ function edgeSnapshot(row,nowT){
   const streak_weeks=weekStreakWeeks(hist,tgt,nowT);
   const today=bogotaDayStart(nowT);
   const cutoff=today-27*86400000;
-  const days4w=new Set(); let trained_today=false;
-  for(const h of hist){ const t=new Date(h&&h.date).getTime(); if(isNaN(t))continue; const ds=bogotaDayStart(t); if(ds>=cutoff)days4w.add(ds); if(ds===today)trained_today=true; }
+  const days4w=new Set(); let trained_today=false; let minDay=null;
+  for(const h of hist){ const raw=h&&h.date; if(raw==null||raw==='')continue; const t=new Date(raw).getTime(); if(isNaN(t))continue; const ds=bogotaDayStart(t); if(ds>=cutoff)days4w.add(ds); if(ds===today)trained_today=true; if(minDay===null||ds<minDay)minDay=ds; }
   const badges=[prsCount>=1,total>=10,total>=30,totalVol>=10000,totalVol>=50000,totalVol>=20000,lvl>=3,lvl>=4];
-  return { streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today };
+  return { streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today, total_sessions: total, training_since: minDay===null?null:ymdBogota(minDay) };
 }
 
 // ---- fixtures difíciles ----

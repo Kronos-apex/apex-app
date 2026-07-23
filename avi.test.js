@@ -38,6 +38,7 @@ const {
   weeklyMissed,
   myTrainingSummary,
   communitySnapshot,
+  communityTrainingSinceText,
   CMTY_REFRESH_MIN_MS,
   CMTY_STALE_MS,
   CMTY_AVATAR_PREFIX,
@@ -1173,6 +1174,8 @@ test('communitySnapshot: destila racha/semana/nivel/logros/hoy (server-side, no 
   assert.strictEqual(s.level, 1);                    // 4 entrenos < 10 → nivel 1
   assert.strictEqual(s.streak_weeks, 1);             // meta 2: esta semana lun+mar+mié = 3 días ≥ 2 → cumple
   assert.strictEqual(s.achievements, 3);             // PR(2≥1) + 10k(21k) + 20k(21k); NO 50k, NO 10/30 entrenos, NO nivel3
+  assert.strictEqual(s.total_sessions, 4);           // #5: todos los entrenos cuentan (incl. el de abril)
+  assert.strictEqual(s.training_since, '2026-04-24'); // #5: el primero es el de hace ~40 días
 });
 
 test('communitySnapshot: logros por volumen y nivel; sin datos → cero honesto', () => {
@@ -1183,8 +1186,39 @@ test('communitySnapshot: logros por volumen y nivel; sin datos → cero honesto'
   assert.strictEqual(s.level, 3);                    // 30 ≥ 30 (GX_LEVELS)
   // medallas on: PR(1) + 10ent + 30ent + 10k + 20k + 50k + nivel3 = 7  (falta 50k? 60k≥50k sí; nivel4 no)
   assert.strictEqual(s.achievements, 7);
+  assert.strictEqual(s.total_sessions, 30);
+  assert.strictEqual(s.training_since, '2026-06-01');
   const empty = communitySnapshot({ days: 3 }, [], {}, now);
-  assert.deepStrictEqual(empty, { streak_weeks: 0, sessions_4w: 0, level: 1, achievements: 0, trained_today: false });
+  assert.deepStrictEqual(empty, { streak_weeks: 0, sessions_4w: 0, level: 1, achievements: 0, trained_today: false, total_sessions: 0, training_since: null });
+});
+
+test('communitySnapshot: training_since ignora fechas ilegibles y toma el mínimo válido', () => {
+  const now = D(2026, 6, 10, 12);
+  const hist = [
+    { date: 'basura' }, { date: null },
+    { date: D(2026, 6, 5), totalVol: 1 },
+    { date: D(2026, 3, 2), totalVol: 1 }, // marzo → es el más antiguo válido
+    { date: D(2026, 6, 8), totalVol: 1 },
+  ];
+  const s = communitySnapshot({ days: 2 }, hist, {}, now);
+  assert.strictEqual(s.total_sessions, 5);            // cuenta TODAS las filas (como hist.length en la edge)
+  assert.strictEqual(s.training_since, '2026-03-02'); // el mínimo IGNORANDO las ilegibles
+});
+
+test('communityTrainingSinceText: mes+año en español, o null en todo caso raro', () => {
+  const now = D(2026, 7, 23, 12);
+  assert.strictEqual(communityTrainingSinceText('2026-03-02', now), 'Entrena desde marzo de 2026');
+  assert.strictEqual(communityTrainingSinceText('2025-12-31', now), 'Entrena desde diciembre de 2025');
+  assert.strictEqual(communityTrainingSinceText('2026-01-01', now), 'Entrena desde enero de 2026');
+  // futura → null (no se inventa una antigüedad por venir — clase «Hace -1d»)
+  assert.strictEqual(communityTrainingSinceText('2027-01-01', now), null);
+  // faltante / ilegible / formato inválido → null (jamás «Invalid Date»)
+  assert.strictEqual(communityTrainingSinceText(null, now), null);
+  assert.strictEqual(communityTrainingSinceText('', now), null);
+  assert.strictEqual(communityTrainingSinceText('2026-13-01', now), null);
+  assert.strictEqual(communityTrainingSinceText('2026-02-31', now), null); // día imposible, no se corre a marzo
+  assert.strictEqual(communityTrainingSinceText('marzo 2026', now), null);
+  assert.strictEqual(communityTrainingSinceText('2026-03', now), null);
 });
 
 // ── Comunidad C3 — helpers puros de la UI ──

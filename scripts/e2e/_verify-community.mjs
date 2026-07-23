@@ -102,13 +102,13 @@ await ev(`delete window.AVI_ALLOW_CLOUD_WRITE;`);
 // Estado CON perfil + amigos (para el resto). Un amigo con handle MALICIOSO y avatar EXTERNO.
 const withFriends = `(()=>{
   CMTY.uid='${MYUID}';
-  CMTY.profile={user_id:'${MYUID}',handle:'Camila',avatar_url:null,bio:'Entreno 5am',share_code:'ABCD1234EF',visible:true,show_today:true,streak_weeks:3,level:2,achievements:4};
+  CMTY.profile={user_id:'${MYUID}',handle:'Camila',avatar_url:null,bio:'Entreno 5am',share_code:'ABCD1234EF',visible:true,show_today:true,streak_weeks:3,level:2,achievements:4,total_sessions:87,training_since:'2026-03-02'};
   CMTY.heartsRecv=2; CMTY.heartsGiven={};
   CMTY.incoming=[{fid:'req1',fr:{id:'fr-inc'},handle:'<b>Hacker</b>'}];
   CMTY.outgoing=[];
   CMTY.friends=[
-    {fid:'fA',fr:{id:'fr-A'},prof:{user_id:'fA',handle:'<img src=x onerror="window.__xss=1">Ana',avatar_url:'https://evil.example.com/track.png',bio:'',streak_weeks:5,level:3,sessions_4w:8,achievements:6,trained_today:true,snapshot_at:new Date().toISOString()}},
-    {fid:'fB',fr:{id:'fr-B'},prof:{user_id:'fB',handle:'Beto',avatar_url:'${PREFIX}fB/avatar.jpg',bio:'',streak_weeks:1,level:1,sessions_4w:2,achievements:1,trained_today:false,snapshot_at:new Date(Date.now()-5*86400000).toISOString()}}
+    {fid:'fA',fr:{id:'fr-A'},prof:{user_id:'fA',handle:'<img src=x onerror="window.__xss=1">Ana',avatar_url:'https://evil.example.com/track.png',bio:'',streak_weeks:5,level:3,sessions_4w:8,achievements:6,trained_today:true,snapshot_at:new Date().toISOString(),total_sessions:120,training_since:'2025-11-10'}},
+    {fid:'fB',fr:{id:'fr-B'},prof:{user_id:'fB',handle:'Beto',avatar_url:'${PREFIX}fB/avatar.jpg',bio:'',streak_weeks:1,level:1,sessions_4w:2,achievements:1,trained_today:false,snapshot_at:new Date(Date.now()-5*86400000).toISOString(),total_sessions:0}}
   ];
   CMTY.loaded=true; CMTY.offline=false; _cmtyPaint(); return 'ok';
 })()`;
@@ -132,9 +132,24 @@ const cm7 = await ev(`(()=>{
 })()`);
 check('CM7 amigos: stats (racha/nivel) + «entrenó hoy» RETIRADO (§13-BIS.1b) + solicitud entrante (muro) + mi código (ajustes)', cm7.racha && cm7.nivel && cm7.noTrainedToday && cm7.req && cm7.code, JSON.stringify(cm7));
 
+// CM13-rich (#5): «N entrenos» en la tarjeta del amigo (>0), OMITIDO si 0; «Entrena desde» propio en Ajustes
+const cmRich = await ev(`(()=>{
+  const h=document.getElementById('cn-community');
+  const feed=h.innerText.replace(/\\s+/g,' '); // muro: amigos fA(120)/fB(0)
+  const anaConEntrenos=/120 entrenos/.test(feed);
+  const betoSinCero=!/\\b0 entrenos/.test(feed); // \\b evita el falso match dentro de «12·0· entrenos»
+  cmtyGoView('settings'); const set=h.innerText.replace(/\\s+/g,' ');
+  cmtyGoView('feed');
+  return {anaConEntrenos, betoSinCero, desde:/Entrena desde marzo de 2026/.test(set), mios:/87 entrenos/.test(set)};
+})()`);
+check('CM13 perfil rico (#5): «N entrenos» en amigo (>0), omitido si 0, «Entrena desde <mes año>» propio en Ajustes',
+  cmRich.anaConEntrenos && cmRich.betoSinCero && cmRich.desde && cmRich.mios, JSON.stringify(cmRich));
+
 // Shots del estado con perfil+amigos
 await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250); await shot('community-claro');
 await ev(`typeof setTheme==='function'&&setTheme('dark')`); await sleep(250); await shot('community-oscuro');
+// La frase «Entrena desde …» del perfil propio (vista Ajustes) queda cubierta por la aserción DURA
+// de CM13 (cmtyGoView('settings') + innerText) — el shot() re-hace click en la pestaña y resetea a muro.
 await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250);
 // Shot del opt-in
 await ev(setState); await sleep(250); await shot('community-optin');

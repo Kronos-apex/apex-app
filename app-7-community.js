@@ -105,7 +105,7 @@ async function cmtyLoad(opts){
     // salieron del grant general → un `select('*')` o pedirlas daría permission denied. El dueño lee sus
     // propios secretos (código/consentimiento) por la RPC dedicada cmty_my_secrets.
     const { data: prof, error: pe } = await cli.from('community_profiles')
-      .select('user_id,handle,avatar_url,bio,visible,is_private,role,streak_weeks,sessions_4w,level,achievements,created_at,show_today,show_last_active,show_milestones')
+      .select('user_id,handle,avatar_url,bio,visible,is_private,role,streak_weeks,sessions_4w,level,achievements,created_at,show_today,show_last_active,show_milestones,total_sessions,training_since')
       .eq('user_id', uid).maybeSingle();
     if(pe) throw pe;
     if(prof){
@@ -135,7 +135,7 @@ async function cmtyLoad(opts){
       });
       // TODOS los perfiles VISIBLES por RLS = propio (excluido con neq) + amigos + compañeros de gym.
       const { data: allp, error: ape } = await cli.from('community_profiles')
-        .select('user_id,handle,avatar_url,bio,is_private,role,streak_weeks,sessions_4w,level,achievements')
+        .select('user_id,handle,avatar_url,bio,is_private,role,streak_weeks,sessions_4w,level,achievements,total_sessions,training_since')
         .neq('user_id', uid);
       if(ape) throw ape;
       const fprofiles = {};
@@ -352,6 +352,11 @@ function _cmtyMyProfileHtml(){
     '</div>' +
     '<input type="file" id="cmty-avatar-input" accept="image/*" style="display:none" onchange="cmtyAvatarChosen(this)">' +
     (bio ? '<div style="font-size:12.5px;color:var(--t2);margin-top:9px;line-height:1.5">' + bio + '</div>' : '') +
+    // #5 perfil rico — antigüedad (mes+año, nunca el día); se omite si aún no hay historial (fail-visible-nada)
+    (function(){ var t = (typeof communityTrainingSinceText === 'function') ? communityTrainingSinceText(p.training_since) : null;
+      var n = Number(p.total_sessions) || 0;
+      var frag = t || (n > 0 ? (n + ' entreno' + (n === 1 ? '' : 's')) : '');
+      return frag ? '<div style="font-size:11.5px;color:var(--t3);margin-top:7px">' + esc(frag) + (t && n > 0 ? ' · ' + n + ' entreno' + (n === 1 ? '' : 's') : '') + '</div>' : ''; })() +
     // Código para compartir
     '<div class="card" style="margin-top:12px;padding:11px 13px;background:var(--surface);display:flex;align-items:center;gap:10px">' +
       '<div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Tu código</div>' +
@@ -584,7 +589,7 @@ function _cmtyGymHtml(){
       _cmtyAvatarHtml(p, 42) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + '</div>' +
-        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) +
+        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + _cmtyStatsSuffix(p) +
           (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + p.user_id + '\')" title="Chatear" aria-label="Chatear">' +
@@ -625,7 +630,7 @@ function _cmtyFriendCard(f){
       _cmtyAvatarHtml(p, 46) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
-        '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem</div>' +
+        '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem' + _cmtyStatsSuffix(p) + '</div>' +
         (_cmtyActivityHtml(f.fid) ? '<div style="font-size:11px;margin-top:1px">' + _cmtyActivityHtml(f.fid) + '</div>' : '') +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:38px;flex:0 0 auto" onclick="cmtyChatOpen(\'' + f.fid + '\')" title="Chatear" aria-label="Chatear">' +
@@ -1050,7 +1055,7 @@ function _cmtyDiscoverHtml(){
       _cmtyAvatarHtml(p, 42) +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.handle) + _cmtyCoachTag(p) + '</div>' +
-        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) +
+        '<div style="font-size:11.5px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + _cmtyStatsSuffix(p) +
           (_cmtyActivityHtml(p.user_id) ? ' · ' + _cmtyActivityHtml(p.user_id) : '') + '</div>' +
       '</div>' +
       _cmtyFollowBtn(p.user_id) +
@@ -1166,6 +1171,13 @@ function _cmtyAuthorProf(userId){
   if(userId === CMTY.uid) return CMTY.profile;
   const f = CMTY.friends.find(x => x.fid === userId); if(f && f.prof) return f.prof;
   return CMTY.profById[userId] || null;
+}
+
+// #5 perfil rico — sufijo « · N entrenos» para la línea de stats de una tarjeta (amigo/gym/descubrir).
+// Solo si N>0 (perfil sin snapshot todavía → nada, jamás « · 0 entrenos»). Server-side, no inflable.
+function _cmtyStatsSuffix(p){
+  const n = p && Number(p.total_sessions);
+  return (n > 0) ? ' · ' + n + ' entreno' + (n === 1 ? '' : 's') : '';
 }
 
 // Mis rutinas propias (el asesorado logueado) para el picker de publicar.
@@ -1545,4 +1557,5 @@ if(typeof window !== 'undefined'){
   window.cmtyToggleThread = cmtyToggleThread; window.cmtyComment = cmtyComment;
   window.cmtyCommentDraft = cmtyCommentDraft; window.cmtyDeleteComment = cmtyDeleteComment;
   window.cmtyReportComment = cmtyReportComment;
+  window._cmtyStatsSuffix = _cmtyStatsSuffix;
 }
