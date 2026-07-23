@@ -1,0 +1,15 @@
+-- ============================================================================
+-- c13b · FIX DE RAIZ de la regresion de c13 (aplicado a prod 2026-07-22)
+-- ============================================================================
+-- Artefacto recuperado de la historia de migraciones el 2026-07-23 (se aplico por MCP
+-- pero no se habia versionado en el repo, contra la convencion de supabase/community/).
+--
+-- c13 agrego show_milestones con `grant update(...)` pero SIN `grant select(...)`. Como
+-- c10_grant_hardening dejo el SELECT de community_profiles a nivel de COLUMNA, pedir esa
+-- columna desde el cliente daba permission denied -> cmtyLoad lanzaba -> toda la pestana
+-- Comunidad caia al estado "sin conexion" para TODOS los usuarios (~20 min en produccion).
+-- REGLA (clase del bug, ya en GOTCHAS de CLAUDE.md): toda columna nueva de
+-- community_profiles que el cliente deba LEER necesita su grant SELECT explicito; el grant
+-- de UPDATE no implica lectura. Y se prueba contra la BASE REAL: los harness stubbean
+-- AUTH.client() y por eso nunca cazan un grant faltante.
+grant select(show_milestones) on public.community_profiles to authenticated;
