@@ -50,6 +50,7 @@ const {
   cmtyInitials,
   communityPostPayload,
   communityEmptyState,
+  communityPeersLine,
   communityMilestoneText,
   communityCommentText,
   communityPrPayload,
@@ -1505,6 +1506,54 @@ test('communityEmptyState: valores basura cuentan como 0 (no inventan gente)', (
   // pero un conteo numérico en string sí cuenta (viene de un length, pero defensivo)
   assert.strictEqual(communityEmptyState({ posts: 0, friends: '2' }), 'quiet');
   assert.strictEqual(communityEmptyState({ posts: '2' }), 'none');
+});
+
+// ── A1 adopción — prueba social del opt-in (dato real: 23 en el gym, 6 con perfil) ──
+test('communityPeersLine: nombra a la gente del gym, en orden estable, con «y N más»', () => {
+  const gym = h => ({ handle: h, is_private: true });
+  const l = communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Kathe'), gym('Luz'), gym('Natalia')]);
+  assert.strictEqual(l.scope, 'gym');
+  assert.strictEqual(l.total, 5);
+  assert.deepStrictEqual(l.names, ['Astrid', 'Kathe']); // alfabético: el repintado no baraja nombres
+  assert.strictEqual(l.extra, 3);
+  assert.strictEqual(l.text, 'Astrid, Kathe y 3 más de tu gym ya están aquí');
+  // el mismo insumo en otro orden da EXACTAMENTE la misma línea (determinismo)
+  const l2 = communityPeersLine([gym('Luz'), gym('Natalia'), gym('Kathe'), gym('Samuel'), gym('Astrid')]);
+  assert.strictEqual(l2.text, l.text);
+  // `picked` son los perfiles ORIGINALES (la UI pinta esos avatares, sin re-filtrar por su cuenta)
+  assert.strictEqual(l.picked.length, 2);
+  assert.strictEqual(l.picked[0].handle, 'Astrid');
+});
+
+test('communityPeersLine: concordancia y conteos exactos (1, 2 y 3 personas)', () => {
+  const gym = h => ({ handle: h, is_private: true });
+  assert.strictEqual(communityPeersLine([gym('Samuel')]).text, 'Samuel de tu gym ya está aquí');
+  assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid')]).text, 'Astrid y Samuel de tu gym ya están aquí');
+  assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Luz')]).text, 'Astrid, Luz y 1 más de tu gym ya están aquí');
+});
+
+test('communityPeersLine: sin nadie a quién nombrar → null (la bienvenida queda intacta)', () => {
+  assert.strictEqual(communityPeersLine([]), null);
+  assert.strictEqual(communityPeersLine(null), null);
+  assert.strictEqual(communityPeersLine(), null);
+  // basura que no se puede nombrar NO cuenta: nunca «2 más» fantasma ni un avatar sin nombre
+  assert.strictEqual(communityPeersLine([{ handle: '' }, { handle: '   ' }, { handle: null }, null, {}]), null);
+  const l = communityPeersLine([{ handle: 'Samuel', is_private: true }, { handle: '  ' }, null]);
+  assert.strictEqual(l.total, 1);
+  assert.strictEqual(l.text, 'Samuel de tu gym ya está aquí');
+});
+
+test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI», no «de tu gym»)', () => {
+  // privado visible sin perfil propio = compañero de gym (no puede haber amistad todavía)
+  const mixto = [{ handle: 'Publico', is_private: false }, { handle: 'Samuel', is_private: true }];
+  const l = communityPeersLine(mixto);
+  assert.strictEqual(l.scope, 'gym');
+  assert.strictEqual(l.total, 1);                    // el público NO se cuenta dentro del gym
+  assert.strictEqual(l.text, 'Samuel de tu gym ya está aquí');
+  // solo públicos → se los nombra, pero como gente de AVI
+  const p = communityPeersLine([{ handle: 'Ana', is_private: false }, { handle: 'Beto', is_private: false }]);
+  assert.strictEqual(p.scope, 'avi');
+  assert.strictEqual(p.text, 'Ana y Beto ya están en AVI');
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

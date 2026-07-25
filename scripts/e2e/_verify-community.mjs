@@ -214,6 +214,71 @@ await ev(`cmtyLoad()`); await sleep(600);
 const cm13 = await ev(`(()=>{const g=(CMTY.gym||[]).map(p=>p.user_id);return {gymIds:g,hasOK:g.includes('${GYMOK}'),hasBlk:g.includes('${GYMBLK}'),friendBlk:(CMTY.friends||[]).some(f=>f.fid==='${GYMBLK}')};})()`);
 check('CM13 (C5 reserva) compañero de gym BLOQUEADO oculto del directorio (normal SÍ aparece)', cm13.hasOK && !cm13.hasBlk && !cm13.friendBlk, JSON.stringify(cm13));
 
+// ── A1 ADOPCIÓN: prueba social de la bienvenida (23 en el gym, 6 con perfil → el opt-in no
+// mostraba una sola cara conocida). CM14 prueba la CARGA real (rama else de cmtyLoad, que antes
+// no existía: sin perfil no se cargaba nada), CM15 el pintado, CM16 que sin gente no hay hueco.
+const P1 = '00000000-0000-0000-0000-0000000000c1';
+const P2 = '00000000-0000-0000-0000-0000000000c2';
+await ev(`(()=>{
+  window.__profileRow = null;                     // NO tengo perfil todavía (el caso de los 17)
+  window.__frRows = []; window.__rxRows = [];
+  window.__allProfiles = [
+    {user_id:'${P1}',handle:'Samuel',avatar_url:null,is_private:true},
+    {user_id:'${P2}',handle:'<img src=x onerror="window.__xss=1">Astrid',avatar_url:'https://evil.example.com/t.png',is_private:true}
+  ];
+  window.__xss=0; CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false;
+  return 'ok';
+})()`);
+await ev(`cmtyLoad()`); await sleep(600);
+const cm14 = await ev(`(()=>({peers:(CMTY.peers||[]).length, prof:!!CMTY.profile})) ()`);
+check('CM14 (A1) sin perfil propio, cmtyLoad SÍ carga a los compañeros visibles (prueba social)', cm14.peers === 2 && cm14.prof === false, JSON.stringify(cm14));
+
+const cm15 = await ev(`(()=>{
+  const h=document.getElementById('cn-community'); const t=h.innerText.replace(/\\s+/g,' ');
+  // 2 compañeros → ambos nombrados, sin «y N más». El handle hostil ordena antes (empieza por '<')
+  // y por eso aparece primero: lo que importa es que salga como TEXTO, no como etiqueta.
+  return {linea:/de tu gym ya están aquí/.test(t) && /Samuel/.test(t) && /onerror/.test(t) && !/y 1 más/.test(t),
+          optin:!!document.getElementById('cmty-optin-btn'),
+          xss:window.__xss, badImg:!!h.querySelector('img[src="x"]'),
+          ext:[...h.querySelectorAll('img')].some(i=>/evil\\.example\\.com/.test(i.getAttribute('src')||''))};
+})()`);
+check('CM15 (A1) la bienvenida nombra a la gente del gym, sin perder el opt-in y con el handle escapado',
+  cm15.linea && cm15.optin && cm15.xss === 0 && !cm15.badImg && !cm15.ext, JSON.stringify(cm15));
+
+// Shots de la bienvenida CON prueba social (R2.6: se miran, no solo se generan)
+await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250); await shot('community-optin-social-claro');
+await ev(`typeof setTheme==='function'&&setTheme('dark')`); await sleep(250); await shot('community-optin-social-oscuro');
+await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250);
+
+// CM17 (A1) — HIT-TEST del CTA: el banner flotante «Instalar app» NO puede tapar «Crear mi
+// perfil». Es la clase del bug v348 (el banner encima del recuadro del login) y aquí caería
+// justo sobre el botón que destraba la adopción. Se mide con elementFromPoint en el viewport
+// REAL (una captura full-page miente con position:fixed), con el scroller abajo del todo.
+const cm17 = await ev(`(()=>{
+  const body=document.querySelector('#s-client .cnbody')||document.scrollingElement;
+  try{ body.scrollTop = body.scrollHeight; }catch(e){}
+  const b=document.getElementById('cmty-optin-btn'); if(!b) return {err:'sin boton'};
+  const r=b.getBoundingClientRect();
+  const cx=Math.round(r.left+r.width/2), cy=Math.round(r.top+r.height/2);
+  const hit=document.elementFromPoint(cx,cy);
+  const bn=document.getElementById('install-banner');
+  const br=bn?bn.getBoundingClientRect():null;
+  const visible=bn?getComputedStyle(bn).display!=='none':false;
+  const solapa=!!(br&&visible&&br.top<r.bottom&&br.bottom>r.top&&br.left<r.right&&br.right>r.left);
+  return {hitEsBoton:!!(hit&&(hit===b||b.contains(hit))), solapa, visible,
+          btn:[Math.round(r.top),Math.round(r.bottom)], banner:br?[Math.round(br.top),Math.round(br.bottom)]:null,
+          hit:hit?(hit.id||hit.tagName):null};
+})()`);
+check('CM17 (A1) el banner «Instalar app» NO tapa el botón «Crear mi perfil» (hit-test real)',
+  cm17.hitEsBoton === true && cm17.solapa === false, JSON.stringify(cm17));
+
+// Sin nadie visible: NI un hueco NI un «0 personas» — la pantalla queda como estaba siempre.
+await ev(`(()=>{ CMTY.peers=[]; CMTY.profile=null; CMTY.loaded=true; CMTY.offline=false; _cmtyPaint(); return 'ok'; })()`); await sleep(250);
+const cm16 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');
+  return {sinLinea:!/ya están aquí|ya está aquí|ya están en AVI/.test(t), optin:!!document.getElementById('cmty-optin-btn'), unete:/Únete a la comunidad/.test(t)};})()`);
+check('CM16 (A1) sin compañeros visibles: ninguna línea vacía ni «0 personas», la bienvenida intacta',
+  cm16.sinLinea && cm16.optin && cm16.unete, JSON.stringify(cm16));
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
 console.log('\n──── RESULTADOS COMUNIDAD (C3) ────');

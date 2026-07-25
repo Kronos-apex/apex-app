@@ -68,6 +68,7 @@ const CMTY = {
   profileCounts: null,// {followers, following} (RPC segura cmty_follow_counts)
   profileLoading: false,
   view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
+  peers: [],         // A1 adopción: perfiles ya visibles ANTES de tener perfil propio (prueba social del opt-in)
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -130,6 +131,7 @@ async function cmtyLoad(opts){
     CMTY.friends = []; CMTY.gym = []; CMTY.incoming = []; CMTY.outgoing = []; CMTY.heartsGiven = {}; CMTY.heartsRecv = 0; CMTY.activity = {};
     CMTY.discover = []; CMTY.following = {}; CMTY.followerReqs = []; CMTY.profById = {};
     CMTY.posts = []; CMTY.postHearts = {}; CMTY.postHeartMine = {}; CMTY.postComments = {};
+    CMTY.peers = [];
     if(prof){
       const { data: fr, error: fe } = await cli.from('friendships').select('*').or('user_a.eq.' + uid + ',user_b.eq.' + uid);
       if(fe) throw fe;
@@ -175,6 +177,17 @@ async function cmtyLoad(opts){
       await _cmtyLoadDMs(cli, uid); // ① bandeja de mensajes (community_messages)
       await _cmtyLoadActivity(cli, uid); // ② etiquetas de última conexión (opt-in, redondeadas)
       await _cmtyLoadFeed(cli, uid); // ④ muro: posts de a quien sigo (active) + míos, con ❤️
+    } else {
+      // A1 adopción — SIN perfil propio la pantalla de bienvenida mostraba cero caras conocidas.
+      // La RLS ya deja ver a los compañeros de gym aunque no hayas hecho opt-in (`_same_community`
+      // mira `community_gym_members`, no exige perfil — verificado por impersonación 2026-07-25),
+      // así que esto NO abre ningún dato nuevo: es el mismo `cp_sel` que ya rige todo lo demás.
+      // Falla en silencio a propósito: sin prueba social el opt-in sigue funcionando igual.
+      try{
+        const { data: peers } = await cli.from('community_profiles')
+          .select('user_id,handle,avatar_url,is_private').neq('user_id', uid).limit(24);
+        CMTY.peers = peers || [];
+      }catch(e){ _cw()('cmty peers:', e && e.message); }
     }
     CMTY.loaded = true;
     _cmtySaveCache();
@@ -214,7 +227,7 @@ function renderCommunity(){
 // Encabezado simple (sin perfil todavía: carga / offline / opt-in).
 function _cmtyHead(){
   return '<div class="ph"><div class="ptitle">' + (typeof aviIcon === 'function' ? aviIcon('users', 20) : '👥') +
-    ' Comunidad</div><div class="psub">Tu gente, tu constancia. Solo tus amigos te ven.</div></div>';
+    ' Comunidad</div><div class="psub">Tu constancia con tu gente. Nunca tu peso, tus fotos ni tus kilos.</div></div>';
 }
 // Encabezado de la vista MURO: título + bandeja (✉️, badge no-leídos) + ajustes (⚙️).
 // Flex explícito y auto-contenido (no reusa .ph/.ptitle, que en esta zona no dan la fila horizontal).
@@ -295,15 +308,33 @@ function _cmtyStaleBanner(){
 }
 
 // ── Opt-in (bienvenida + consentimiento) ──
+// A1 adopción: prueba social ARRIBA de todo. Caras conocidas primero, política después (patrón
+// Strava/Hevy del informe de benchmark). Sin nadie a quién nombrar devuelve '' y la pantalla
+// queda EXACTAMENTE como estaba — nunca un hueco ni un «0 personas».
+function _cmtyPeersHtml(){
+  const line = (typeof communityPeersLine === 'function') ? communityPeersLine(CMTY.peers) : null;
+  if(!line) return '';
+  const avatars = line.picked.map((p, i) =>
+    '<span style="display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px var(--w)' + (i ? ';margin-left:-9px' : '') + '">' +
+      _cmtyAvatarHtml(p, 30) + '</span>').join('');
+  return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);background:var(--gl);margin-bottom:13px">' +
+    '<span style="display:flex;flex:0 0 auto">' + avatars + '</span>' +
+    '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--gt);line-height:1.4">' + esc(line.text) + '</span>' +
+  '</div>';
+}
+
 function _cmtyOptInHtml(){
   const me = (typeof DB !== 'undefined' && DB.clients) ? DB.clients.find(x => x.id === (typeof CUR !== 'undefined' && CUR.clientId)) : null;
   const defName = me ? esc((me.name || '').slice(0, 30)) : '';
   return '<div class="card" style="padding:16px">' +
+    _cmtyPeersHtml() +
     '<div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:6px">Únete a la comunidad 💚</div>' +
-    '<div style="font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:12px">Comparte tu <b>constancia</b> con amigos que tú elijas y motívense juntos. ' +
-    'Es <b>opcional</b> y privado: te conectas solo por código, y ambos aceptan.</div>' +
+    // Honestidad del consentimiento (A1): decía «te conectas solo por código» y desde el directorio
+    // del gym (C5) eso ya NO es cierto — tus compañeros de gym te ven apenas creas el perfil.
+    '<div style="font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:12px">Comparte tu <b>constancia</b> con tu gente y motívense juntos. ' +
+    'Es <b>opcional</b>: te ven las personas de tu gimnasio y quien tú aceptes por código.</div>' +
     '<div class="card" style="padding:11px 13px;margin-bottom:13px;background:var(--surface)">' +
-      '<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:5px">Tus amigos verán:</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:5px">Tu gente verá:</div>' +
       '<div style="font-size:12px;color:var(--t2);line-height:1.6">✓ Tu apodo y avatar (los que elijas)<br>✓ Tu racha, tu nivel y tus logros<br>✓ Si entrenaste hoy (lo puedes ocultar)</div>' +
       '<div style="font-size:12px;font-weight:700;color:var(--t1);margin:8px 0 5px">Nunca verán:</div>' +
       '<div style="font-size:12px;color:var(--t2);line-height:1.6">✗ Tu peso, fotos, medidas ni notas de salud<br>✗ Tus kilos ni tus mensajes con el coach</div>' +

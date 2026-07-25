@@ -2350,6 +2350,47 @@ function communityEmptyState(counts) {
   return people > 0 ? 'quiet' : 'lonely';
 }
 
+// ADOPCIÓN A1 — PRUEBA SOCIAL de la pantalla de bienvenida. Dato real 2026-07-25: 23 personas
+// en el directorio del gym, 6 con perfil → 17 nunca pasaron del opt-in, que hasta hoy era un
+// explicador de privacidad SIN una sola cara conocida. Los referentes (Strava/Hevy) ponen
+// primero a la gente que ya conoces y la política después. Esta función arma esa línea.
+// Pura: recibe los perfiles que la RLS ya deja ver (sin perfil propio eso es exactamente el
+// directorio del gym + los públicos) y devuelve `null` cuando no hay a quién nombrar.
+//   scope 'gym' → privados visibles: SIN perfil propio no puede haber amistad, así que un
+//                 privado visible SOLO puede ser compañero de gym (misma regla de `cmtyLoad`).
+//   scope 'avi' → no hay nadie del gym todavía; se nombra a los públicos sin mentir el origen.
+// Orden alfabético estable a propósito: el mismo repintado no puede barajar los nombres.
+const CMTY_PEERS_NAMES = 2; // cuántos nombres se dicen antes del «y N más»
+function communityPeersLine(profiles, opts) {
+  const max = (opts && Number(opts.max) > 0) ? Math.floor(opts.max) : CMTY_PEERS_NAMES;
+  const clean = (profiles || [])
+    .filter(p => p && typeof p.handle === 'string' && p.handle.trim())
+    .map(p => ({ handle: p.handle.trim(), gym: p.is_private === true, prof: p }));
+  const gym = clean.filter(p => p.gym);
+  const pool = gym.length ? gym : clean;
+  if (!pool.length) return null;
+  const sorted = pool.slice().sort((a, b) => {
+    const x = a.handle.toLowerCase(), y = b.handle.toLowerCase();
+    return x < y ? -1 : (x > y ? 1 : 0);
+  });
+  const picked = sorted.slice(0, max);
+  const names = picked.map(p => p.handle);
+  const total = sorted.length;
+  const extra = total - names.length;
+  const parts = extra > 0 ? names.concat([extra + ' más']) : names.slice();
+  const joined = parts.length > 1
+    ? parts.slice(0, -1).join(', ') + ' y ' + parts[parts.length - 1]
+    : parts[0];
+  const scope = gym.length ? 'gym' : 'avi';
+  const verb = total === 1 ? 'ya está' : 'ya están';
+  const text = scope === 'gym'
+    ? joined + ' de tu gym ' + verb + ' aquí'
+    : joined + ' ' + verb + ' en AVI';
+  // `picked` devuelve los perfiles ORIGINALES (no copias) para que la UI pinte sus avatares
+  // sin repetir aquí el filtrado/orden — una sola fuente de verdad para nombres y caras.
+  return { scope: scope, names: names, picked: picked.map(p => p.prof), extra: extra, total: total, text: text };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -3066,6 +3107,8 @@ if (typeof module !== 'undefined' && module.exports) {
     communityPrPayload,
     communityWorkoutPayload,
     communityEmptyState,
+    communityPeersLine,
+    CMTY_PEERS_NAMES,
     communityMilestoneText,
     communityCommentText,
     leadPending,
