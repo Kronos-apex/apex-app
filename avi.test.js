@@ -54,6 +54,8 @@ const {
   communityNudgeEligible,
   communityProbeStale,
   CMTY_NUDGE_MIN_SESSIONS,
+  communityGymAdoption,
+  communityInviteMsg,
   communityMilestoneText,
   communityCommentText,
   communityPrPayload,
@@ -1608,6 +1610,44 @@ test('communityProbeStale: pega a la red 1×/día, y ante una fecha ilegible pre
   assert.strictEqual(communityProbeStale({ at: null }, now), true);
   assert.strictEqual(communityProbeStale({ at: '' }, now), true);
   assert.strictEqual(communityProbeStale({ at: 'ayer por la tarde' }, now), true);
+});
+
+test('communityGymAdoption: solo cuenta como activo a quien está en MI gym', () => {
+  const a = communityGymAdoption(['u1', 'u2', 'u3'], ['u1', 'u9']);
+  assert.deepStrictEqual(a, { total: 3, active: 1, pending: 2 });
+  // un perfil que NO es de mi gym no infla la cifra (u9 se ignora)
+  assert.strictEqual(communityGymAdoption(['u1'], ['u9']).active, 0);
+  // duplicados no cuentan doble ni inflan el total
+  assert.deepStrictEqual(communityGymAdoption(['u1', 'u1', 'u2'], ['u1', 'u1']), { total: 2, active: 1, pending: 1 });
+  // basura fuera: ni ids vacíos ni nulos entran al conteo
+  assert.deepStrictEqual(communityGymAdoption(['u1', '', null, 7], ['u1', null]), { total: 1, active: 1, pending: 0 });
+  assert.deepStrictEqual(communityGymAdoption(null, null), { total: 0, active: 0, pending: 0 });
+});
+
+test('communityInviteMsg: texto plano, honesto y con el nombre de pila', () => {
+  const m = communityInviteMsg('Samuel Cifuentes', 7);
+  assert.ok(/^Hola Samuel 👋/.test(m), m);
+  assert.ok(/Ya somos 7 del gym/.test(m), m);
+  // dice lo que se ve Y lo que no (la corrección de copy que salió en A1)
+  assert.ok(/apodo y tu constancia/.test(m), m);
+  assert.ok(/nunca tu peso, tus fotos ni tus kilos/.test(m), m);
+  assert.ok(m.indexOf('https://kronos-apex.github.io/apex-app/') > 0, m);
+  // va por WhatsApp: TEXTO PLANO, sin una sola etiqueta
+  assert.ok(!/[<>]/.test(m), m);
+});
+
+test('communityInviteMsg: concuerda el número y no inventa una comunidad que no existe', () => {
+  assert.ok(/Ya hay alguien del gym/.test(communityInviteMsg('Luz', 1)));
+  assert.ok(/Ya somos 2 del gym/.test(communityInviteMsg('Luz', 2)));
+  // sin nadie todavía NO dice «ya somos 0»: cambia el ángulo, no miente
+  const cero = communityInviteMsg('Luz', 0);
+  assert.ok(/Abrimos la comunidad del gym/.test(cero), cero);
+  assert.ok(!/0/.test(cero), cero);
+  assert.ok(/Abrimos la comunidad del gym/.test(communityInviteMsg('Luz')), 'sin dato de conteo se comporta como cero');
+  // sin nombre no queda un «Hola  👋» cojo
+  assert.ok(/^¡Hola! 👋/.test(communityInviteMsg('', 3)));
+  assert.ok(/^¡Hola! 👋/.test(communityInviteMsg(null, 3)));
+  assert.ok(/^¡Hola! 👋/.test(communityInviteMsg('   ', 3)));
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

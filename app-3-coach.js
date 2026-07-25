@@ -823,6 +823,7 @@ async function showLegalDoc(which){
 // del asesorado (= DB.clients[].id en modo auth). Todo por AUTH.client() y sellado en localhost.
 let _gymMembers = null;   // Set de member_ids en mi comunidad
 let _gymCoachUid = null;  // mi uid (coach)
+let _gymActive = null;    // A3: Set de member_ids que YA crearon su perfil de comunidad
 async function openGymMgr(){
   om('m-gym');
   const body=document.getElementById('gym-mgr-body'); if(body)body.innerHTML='Cargando…';
@@ -832,20 +833,71 @@ async function openGymMgr(){
     const {data,error}=await cli.from('community_gym_members').select('member_id').eq('coach_id',u.id);
     if(error)throw error;
     _gymMembers=new Set((data||[]).map(r=>r.member_id));
+    // A3: quién de mi directorio YA activó su perfil. La RLS (`cp_sel` vía `_same_community`) deja
+    // al coach ver el perfil de sus miembros de gym — verificado por impersonación 2026-07-25 (los
+    // 7 perfiles del gym vuelven). Falla en silencio: sin este dato el modal sigue funcionando
+    // igual, solo sin las etiquetas ni el botón de invitar.
+    // CLAVE: `_gymActive` queda en NULL si no se pudo leer. Un Set VACÍO diría «nadie activó» y
+    // el modal ofrecería invitar a los que YA están — inventarle un estado al coach es peor que
+    // no mostrarlo. null = «no sé» y la UI se calla; Set = dato real.
+    _gymActive=null;
+    try{
+      const ids=[..._gymMembers];
+      if(ids.length){
+        const {data:profs,error:perr}=await cli.from('community_profiles').select('user_id').in('user_id',ids);
+        if(perr)throw perr;
+        _gymActive=new Set((profs||[]).map(p=>p.user_id));
+      }else{ _gymActive=new Set(); }
+    }catch(e){ _gymActive=null; }
     _renderGymMgr();
   }catch(e){ if(body)body.innerHTML='<div style="color:var(--rd);font-size:13px">No se pudo cargar. Revisa tu conexión.</div>'; }
 }
 function _gymSwitch(id,on){
   return '<button class="cmty-sw'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" onclick="toggleGymMember(\''+id+'\')" style="flex:0 0 auto;width:46px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;background:'+(on?'var(--g2)':'var(--br2)')+';transition:background var(--dur,220ms) var(--ease-out,ease)"><span style="position:absolute;top:3px;left:'+(on?'21px':'3px')+';width:22px;height:22px;border-radius:50%;background:#fff;transition:left var(--dur,220ms) var(--ease-out,ease)"></span></button>';
 }
+// A3: etiqueta de estado por miembro. Solo tiene sentido para quien YA está en el directorio
+// (a quien no está no se le invita: abriría Comunidad y no vería a nadie — mismo candado del
+// "cuarto vacío" de A2). Sin el dato de perfiles (falló la consulta) no se pinta nada.
+function _gymStatusHtml(id){
+  if(!_gymActive||!_gymMembers||!_gymMembers.has(id)) return '';
+  if(_gymActive.has(id)) return '<span style="font-size:11px;font-weight:700;color:var(--gt);background:var(--gl);padding:2px 7px;border-radius:99px">✓ Ya está</span>';
+  return '<button class="btn bg bsm" style="min-height:32px;padding:0 10px;font-size:12px" onclick="gymInvite(\''+esc(id)+'\')">Invitar</button>';
+}
 function _renderGymMgr(){
   const body=document.getElementById('gym-mgr-body'); if(!body||!_gymMembers)return;
-  const row=(id,name,sub)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--br)"><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--t1);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+esc(sub)+'</div>':'')+'</div>'+_gymSwitch(id,_gymMembers.has(id))+'</div>';
-  let h=row(_gymCoachUid,'Yo (mi perfil)','Participas como uno más de tu gym');
+  const row=(id,name,sub,status)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--br)"><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--t1);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+esc(sub)+'</div>':'')+'</div>'+(status||'')+_gymSwitch(id,_gymMembers.has(id))+'</div>';
+  // A3: la cifra que le importa al coach — cuántos de su gym ya activaron. Motor puro.
+  let h='';
+  if(_gymActive&&typeof communityGymAdoption==='function'){
+    const a=communityGymAdoption([..._gymMembers],[..._gymActive]);
+    if(a.total){
+      h+='<div style="font-size:12px;color:var(--t2);background:var(--gl);border-radius:var(--rsm);padding:9px 11px;margin-bottom:10px;line-height:1.45">'+
+        '<b style="color:var(--gt)">'+a.active+' de '+a.total+'</b> ya crearon su perfil.'+
+        (a.pending===1?' Al que falta puedes invitarlo por WhatsApp desde esta lista.'
+         :a.pending?' A los otros '+a.pending+' puedes invitarlos por WhatsApp desde esta lista.'
+         :' Tu comunidad está completa 🎉')+
+      '</div>';
+    }
+  }
+  h+=row(_gymCoachUid,'Yo (mi perfil)','Participas como uno más de tu gym','');
   const cls=(DB.clients||[]).filter(c=>c&&c.id);
   if(!cls.length) h+='<div style="font-size:12px;color:var(--t3);padding:12px 0">Aún no tienes asesorados que agregar.</div>';
-  cls.forEach(c=>{ h+=row(c.id, c.name||'Asesorado', ''); });
+  cls.forEach(c=>{ h+=row(c.id, c.name||'Asesorado', '', _gymStatusHtml(c.id)); });
   body.innerHTML=h;
+}
+
+// A3: abre WhatsApp con la invitación PRELLENADA. Como en v364, el mensaje lo revisa y lo envía
+// el coach — AVI nunca le escribe sola a un asesorado. `waPhone` normaliza el móvil colombiano
+// (sin +57 el enlace de wa.me es inválido, bug de clase v365); sin teléfono cae a `wa.me/?text=`
+// para elegir contacto, igual que el banner de compartir.
+function gymInvite(memberId){
+  const c=(DB.clients||[]).find(x=>x&&x.id===memberId);
+  const peers=_gymActive?_gymActive.size:0;
+  const msg=(typeof communityInviteMsg==='function')?communityInviteMsg(c&&c.name,peers):'';
+  if(!msg)return;
+  const phone=(typeof waPhone==='function')?waPhone(c&&c.phone):'';
+  window.open('https://wa.me/'+(phone||'')+'?text='+encodeURIComponent(msg),'_blank');
+  toast(phone?'📲 Invitación lista en WhatsApp':'📲 Elige a quién enviarle la invitación');
 }
 async function toggleGymMember(memberId){
   const on=_gymMembers&&_gymMembers.has(memberId);

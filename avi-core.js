@@ -2425,6 +2425,41 @@ function communityProbeStale(probe, now, ttlHours) {
   return (+new Date(now == null ? Date.now() : now)) - at >= ttl;
 }
 
+// ADOPCIÓN A3 — EL COACH INVITA. A1 y A2 trabajan sobre quien ya abre la app; el canal que de
+// verdad mueve a la gente del gym es Camilo escribiéndoles (misma lección de v364: el chat interno
+// solo alcanza a quien ya entra, WhatsApp alcanza a quien no). Estas dos funciones son PURAS.
+//
+// Cuántos de mi gym ya activaron su perfil. `memberIds` = mi directorio (community_gym_members),
+// `profileIds` = los que tienen fila en community_profiles Y me son visibles. Deduplica y solo
+// cuenta como activo a quien esté en AMBAS listas: un perfil que no es de mi gym no infla la cifra.
+function communityGymAdoption(memberIds, profileIds) {
+  const members = new Set((memberIds || []).filter(x => typeof x === 'string' && x));
+  const withProf = new Set((profileIds || []).filter(x => typeof x === 'string' && x));
+  let active = 0;
+  members.forEach(id => { if (withProf.has(id)) active++; });
+  const total = members.size;
+  return { total: total, active: active, pending: total - active };
+}
+
+// El mensaje de invitación. Se manda por WhatsApp, así que es TEXTO PLANO (nada de HTML) y lo
+// revisa el coach antes de enviarlo — AVI nunca escribe sola a un asesorado.
+// El texto dice la verdad de lo que se verá (apodo + constancia) y de lo que NO (peso/fotos/kilos),
+// que es exactamente la corrección de copy que salió en A1: el gym también te ve.
+const CMTY_INVITE_URL = 'https://kronos-apex.github.io/apex-app/';
+function communityInviteMsg(name, peers, url) {
+  const first = (typeof name === 'string' ? name.trim().split(/\s+/)[0] : '') || '';
+  const saludo = first ? 'Hola ' + first + ' 👋' : '¡Hola! 👋';
+  const n = Number(peers);
+  const cuantos = (n > 0)
+    ? (n === 1 ? ' Ya hay alguien del gym en la comunidad de AVI.' : ' Ya somos ' + n + ' del gym en la comunidad de AVI.')
+    : ' Abrimos la comunidad del gym en AVI.';
+  return saludo + cuantos +
+    ' Puedes ver en qué van tus compañeros y darles ánimo.' +
+    ' Se ve tu apodo y tu constancia — nunca tu peso, tus fotos ni tus kilos.' +
+    ' Si te suena, entra a AVI y toca la pestaña Comunidad: ' +
+    ((typeof url === 'string' && url) ? url : CMTY_INVITE_URL);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -3148,6 +3183,9 @@ if (typeof module !== 'undefined' && module.exports) {
     CMTY_NUDGE_MIN_SESSIONS,
     CMTY_NUDGE_SNOOZE_DAYS,
     CMTY_NUDGE_PROBE_TTL_H,
+    communityGymAdoption,
+    communityInviteMsg,
+    CMTY_INVITE_URL,
     communityMilestoneText,
     communityCommentText,
     leadPending,
