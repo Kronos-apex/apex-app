@@ -104,12 +104,17 @@ async function main() {
     const logErrors = events.filter(e => e.method === 'Log.entryAdded' && e.params.entry?.level === 'error')
       .map(e => e.params.entry.text);
 
+    // Sonda de app-6-extra.js: era `openGuidedMode`, BORRADO en avi-v350 (auditoría 2026-07-13,
+    // commit 6f8af92) → desde entonces este check fallaba SIEMPRE, también en HEAD limpio y en
+    // producción; no se está silenciando nada, se apunta al sucesor vivo (`openGuidedEmbedded`,
+    // app-6-extra.js:214). Un error de sintaxis en el archivo sigue dejándolo indefinido, que es
+    // lo único que este check quiere detectar.
     const checks = await send('Runtime.evaluate', { returnByValue: true, expression: `({
       hasLogin: !!document.getElementById('s-login'),
       coreLoaded: typeof generarRutinas === 'function',
       uiLoaded: typeof renderClientToday === 'function',
       saludLoaded: typeof renderNutritionCoach === 'function',
-      extraLoaded: typeof openGuidedMode === 'function',
+      extraLoaded: typeof openGuidedEmbedded === 'function',
       bodyKids: document.body ? document.body.children.length : 0
     })` });
     const r = checks.result.value;
@@ -127,7 +132,7 @@ async function main() {
     console.log('  core cargado      :', r.coreLoaded, '(generarRutinas)');
     console.log('  UI cargada        :', r.uiLoaded, '(renderClientToday)');
     console.log('  salud cargado     :', r.saludLoaded, '(renderNutritionCoach)');
-    console.log('  extra cargado     :', r.extraLoaded, '(openGuidedMode)');
+    console.log('  extra cargado     :', r.extraLoaded, '(openGuidedEmbedded)');
     console.log('  hijos en <body>   :', r.bodyKids);
     if (consoleErrors.length) console.log('  ⚠️ console.error :', consoleErrors.length, '→', consoleErrors.slice(0,5));
     if (logErrors.length)     console.log('  ⚠️ errores de log:', logErrors.length, '→', logErrors.slice(0,5));
@@ -138,7 +143,7 @@ async function main() {
     if (!r.coreLoaded) problems.push('avi-core.js no cargó (generarRutinas indefinido) — ¿error de sintaxis?');
     if (!r.uiLoaded)   problems.push('módulo de entreno no cargó (renderClientToday indefinido) — ¿error de sintaxis?');
     if (!r.saludLoaded) problems.push('módulo de salud no cargó (renderNutritionCoach indefinido) — ¿error de sintaxis?');
-    if (!r.extraLoaded) problems.push('módulo extra no cargó (openGuidedMode indefinido) — ¿error de sintaxis?');
+    if (!r.extraLoaded) problems.push('módulo extra no cargó (openGuidedEmbedded indefinido) — ¿error de sintaxis?');
     if (!r.bodyKids)   problems.push('<body> vacío');
     if (problems.length) fail = problems;
 

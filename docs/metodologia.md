@@ -54,7 +54,7 @@ Ninguna reemplaza a la otra; cada una atrapa una clase distinta de fallo.
 |---|---|---|---|
 | **1. Unitaria** (`node avi.test.js`) | lógica pura rota (core, rank, agregados, membresía) | siempre, antes Y después de editar | 297/297 — el hook check 11 falla si baja |
 | **2. Hook pre-commit** (`python scripts/hooks/pre-commit`, 11 checks) | secretos, IDs duplicados, bump par `?v`/`CACHE_NAME`, SB_KEYS, sintaxis | automático en cada commit | bloquea el commit si falla; **JAMÁS** `--no-verify` |
-| **3. Smoke** (`scripts/smoke.mjs`) | "¿carga la app? ¿están los módulos?" gate rápido | antes del harness | ojo: usa `openGuidedMode` como sonda — no lo borres sin actualizar el smoke |
+| **3. Smoke** (`scripts/smoke.mjs`) | "¿carga la app? ¿están los módulos?" gate rápido | antes del harness | usa una FUNCIÓN VIVA de cada módulo como sonda (app-6 → `openGuidedEmbedded`) — si borras una función que es sonda, actualiza el smoke en el MISMO commit o el gate queda rojo para siempre y se vuelve ruido que se ignora (pasó de v350 a v393) |
 | **4. Suite guiada** (53 checks) | regresión en la ZONA CALIENTE (entreno guiado, timers, navegación) | **si el cambio toca CSS/JS del guiado** | 53/53 |
 | **5. Harness por feature** (`scripts/e2e/_verify-vNNN.mjs`) | **el bug específico de ESTA feature**, con shots revisados a ojo | uno nuevo por cada feature | verde + shots mirados, no solo "corrió" |
 | **6. Subagentes QA** (Julián estático + Lucas funcional) | lo que un humano crítico ve y un script no: sobrepromesas, edge cases de UX, código huérfano | **antes de todo deploy** (§🤖 pipeline) | ambos 🟢 o no se despliega |
