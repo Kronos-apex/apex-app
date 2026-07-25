@@ -380,6 +380,52 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-25 · CIERRE (parte 115 — **VERIFICACIÓN DEL LOTE DE ADOPCIÓN: RECHAZADO** +
+**BUG P0 REPORTADO POR EL PO, REPRODUCIDO**). Camilo pidió que la verificación la hiciera Opus
+«como la haría Fable», con agentes. Se hizo: contrato `reglas-opus.md` releído, 4 revisores
+adversariales independientes (uno por área, solo lectura), sabotaje contra la base REAL, y
+comprobación PROPIA de cada hallazgo grave antes de darlo por bueno. **Plan completo y ordenado en
+`docs/plan-correcciones-adopcion.md` — es lo que se ejecuta la próxima sesión.** Nada corregido aún;
+A1-A4 siguen EN PRODUCCIÓN (v394→v397 + edge v6) y RECHAZADOS.*
+
+***P0 — «en el perfil de Astrid aparecía el MÍO arriba» (Camilo).** REPRODUCIDO en navegador →
+`scripts/e2e/_repro-cmty-identity.mjs` (exit 1 mientras viva). La vista «Tu perfil y ajustes» de la
+SEGUNDA cuenta pinta: `AN Andres · Racha 3 sem · Nivel 2 · Entrena desde enero de 2026 · TU CÓDIGO…`.
+**No es del servidor** (`.eq('user_id',uid)` + RLS). Es identidad PEGADA en el cliente por DOS vías:
+(1) **memoria** — `logout()` limpia `ax_session` y `_pushCtx` (y comenta que lo hace por esta misma
+clase) pero NO toca `CMTY`; en todo el repo no existe un solo `CMTY.profile=null` / `CMTY.uid=null` /
+`CMTY.loaded=false`, y `renderCommunity()` corta con `if(!CMTY.loaded) cmtyLoad()` → con `loaded`
+heredado NO recarga y pinta lo de la cuenta anterior (y `logout()` no recarga la página);
+(2) **disco** — `ax_cmty_cache` sin namespace por usuario, cargado por `_cmtyLoadCache()` en
+CUALQUIER fallo de `cmtyLoad`, tampoco borrado en `logout()`. **Alcance mayor que el perfil:** queda
+pegado `friends`, `heartsRecv`, `posts`, `peers` y **`dmThreads` (bandeja de DMs ajenos: apodo +
+último mensaje)** — el repro confirma `dm:1` arrastrado. **PREEXISTENTE (módulo C3), NO del lote de
+adopción** — pero A2 amplió la clase con `ax_cmty_probe`, que ahora pinta datos de terceros en «Hoy».
+Fix de raíz estipulado en §P0 del plan: `cmtyResetIdentity()` + llamada desde `logout()` + candado
+por uid dentro de `cmtyLoad` + namespacing de las claves locales.*
+
+***Veredicto por área:** smoke fix 🟢 · **A1 🟡** (la prueba social se desarma cuando alguien del gym
+se hace público: `is_private` NO es señal de pertenencia — 5 públicos + 1 privado dan «Zulma de tu
+gym ya está aquí», singular, escondiendo a 5; y un test consagra el error) · **A2 🔴** (la sonda
+filtra apodos y caras entre cuentas; la puerta no se cierra al cruzarla; una sonda corrupta impide
+pintar el entreno; un fallo parcial la desactiva 24h en silencio) · **A3 🟡** (`_gymActive` rancio
+tras togglear membresía → invitas a quien ya está; «A los otros N» cuenta al coach y a archivados
+sin botón; botón de 32px < 36; `waPhone` con fijo de Bogotá apunta a **Malasia**) · **A4 🔴** (la
+tarjeta NO se pinta en la sesión típica porque exige haber abierto Comunidad en esa misma carga —
+`renderCommunity()` tiene UN llamador; y la pantalla de fin no scrollea: medido `maxScroll:0`, con
+las 3 tarjetas a 360×640 el trofeo queda en −194 y «¡Lo lograste!» en −99). **14 hallazgos serios +
+6 huecos de harness propios** (N6 prueba el harness y no el código; CM17/N11 pasan en vacío si el
+banner está oculto; el test de paridad de umbrales da falso verde si se AGREGA un umbral).*
+
+***Lo que SÍ aguantó:** 6 sabotajes contra prod real (el cliente no puede insertarse un hito ni
+escribir su racha — 403 ambos; el catch-up no publica sin opt-in ni sin umbral; 5 cuerpos hostiles
+no tumban la edge; 15 llamadas no duplican), edge desplegada == repo, prod sirviendo v397 en las 11
+referencias, cero scope creep en los 6 commits, `esc()` sin huecos, R1.6 literal verificado con
+`_fable-repro-midsession`. **Hallazgo aparte PREEXISTENTE:** manipulando el propio `user_data.history`
+(client-writable) el servidor publica «52 semanas» y «nivel 5» por el camino NORMAL → la frase de la
+doc «decisión #7: el cliente no puede inflar sus números» está sobredimensionada (no elige el
+RESULTADO, pero sí el INSUMO).*
+
 *Hitos sesión 2026-07-25 (parte 114 — LOTE DE ADOPCIÓN, ítem A1: PRUEBA SOCIAL EN LA BIENVENIDA,
 avi-v394; + fix del smoke que llevaba 43 versiones en rojo). **La sesión NO arrancó construyendo:**
 se midió el embudo real contra prod → 23 personas en el directorio del gym, **6 con perfil** (26%),
