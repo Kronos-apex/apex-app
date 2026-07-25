@@ -380,6 +380,49 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-25 (parte 114 — LOTE DE ADOPCIÓN, ítem A1: PRUEBA SOCIAL EN LA BIENVENIDA,
+avi-v394; + fix del smoke que llevaba 43 versiones en rojo). **La sesión NO arrancó construyendo:**
+se midió el embudo real contra prod → 23 personas en el directorio del gym, **6 con perfil** (26%),
+**1 sola publicación** en el muro. Recomendé al PO NO construir grupos/clanes encima de un muro con
+un post (construir sobre el vacío) y él eligió **adopción**: hacer que se USE lo que ya está hecho.
+Alcance aprobado = 4 ítems, un commit cada uno (A1 prueba social · A2 puerta desde «Hoy» · A3 el
+coach invita por WhatsApp · A4 pedir el opt-in de logros en el momento del hito).*
+
+***A1 — por qué 17 personas se quedaron en la puerta.** La pantalla de bienvenida de Comunidad
+pedía crear un perfil para «ver a tu gente» sin mostrar UNA cara conocida: pedía fe. Causa raíz en
+`cmtyLoad`: TODO el cargue de perfiles vivía dentro de `if(prof)` → sin perfil propio no se pedía
+nada. Pero la RLS ya lo permitía: `_same_community` mira `community_gym_members`, **no exige
+perfil**. Verificado por impersonación en tx con rollback (`set local role authenticated` +
+`request.jwt.claims`): un miembro del gym SIN perfil ya cuenta **6 perfiles visibles** → **A1 no
+abre ni un dato nuevo**, solo muestra lo que la RLS ya autorizaba. Motor PURO
+`communityPeersLine(profiles,opts)` en avi-core: «Samuel, Natalia y 3 más de tu gym ya están aquí»;
+prioriza gym y **si no hay gym cae a «ya están en AVI»** (no le miente a nadie diciéndole «de tu
+gym»); concuerda verbo 1/2/3+; orden alfabético estable (el repintado no salta); `null` sin nadie →
+la franja no se pinta. UI `_cmtyPeersHtml` (avatares encimados + frase) arriba del opt-in.
+**Copy corregido de camino:** decía «solo tus amigos» y el gym TAMBIÉN te ve → ahora «te ven las
+personas de tu gimnasio y quien tú aceptes por código». El **checkbox legal NO se tocó a propósito**
+(cambiarlo obliga a subir `CMTY_CONSENT_V` y ese bloque está pendiente del abogado) → queda en el
+radar: el checkbox sigue diciendo «con los amigos que yo acepte» y omite el gym. Verificación: +4
+tests (suite 423→427), `_verify-community` 13→17 (CM14 rama else carga peers · CM15 nombra al del
+gym, conserva el opt-in y ESCAPA un handle hostil · CM16 sin peers no queda hueco · **CM17 hit-test
+real a 390×844**: el banner «Instalar app» NO tapa `#cmty-optin-btn`, botón 651-695 vs banner
+710-760 — no me fié del screenshot full-page, que miente con `position:fixed`). CM15 se ajustó UNA
+vez y NO para que pasara: mi aserción asumía «y 1 más» con 2 personas y que el fixture XSS ordenaba
+último (empieza por «<» → ordena primero); el código no se tocó. Shots claro/oscuro. `f465479`,
+curl v394 + `_prodcheck 394` verde. **PENDIENTE re-verificación de Fable.***
+
+***Fix del smoke (commit aparte `bd1a3a5`) — un gate en rojo permanente es un gate muerto.**
+`scripts/smoke.mjs` sondeaba `typeof openGuidedMode === 'function'` para afirmar que app-6-extra
+había cargado, pero esa función se BORRÓ en la auditoría del 2026-07-13 (avi-v350, `6f8af92`).
+Desde entonces el smoke fallaba SIEMPRE — **probado en un worktree limpio en `fd0d27f` (v393, la
+que estaba en producción)**, así que no era regresión de A1. No se silenció nada: la sonda apunta
+al sucesor VIVO del mismo módulo (`openGuidedEmbedded`) y **se probó por sabotaje** (error de
+sintaxis en app-6-extra → `extra cargado:false` → smoke rojo). El `404` que imprime el smoke es
+`/favicon.ico` (el server de pruebas no lo sirve); no entra en `problems`. `docs/metodologia.md`
+decía literalmente «no borres `openGuidedMode` sin actualizar el smoke» — pasó igual; la regla
+quedó genérica y con el costo explicado. **Lección:** al borrar una función, `grep` en `scripts/`
+antes — una sonda de QA rota no avisa, solo se vuelve ruido que todo el mundo aprende a ignorar.*
+
 *Hitos sesión 2026-07-23 (parte 113 — PERFIL DE OTRA PERSONA + FOTO EN GRANDE, avi-v393 + migración
 `c19_follow_counts`). **Pedido REPETIDO del PO que NO se había atendido:** tocar a un amigo (Samuel,
 Natalia) → entrar a SU perfil; tocar su foto → verla en grande. Se habían construido comentarios/récord/
