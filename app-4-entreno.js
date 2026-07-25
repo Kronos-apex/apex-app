@@ -1694,6 +1694,7 @@ function showWorkoutFinish(routine,stats){
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
   renderWfPushNudge(); // v325: ofrecer activar notificaciones en el momento de máximo compromiso
   _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro (opt-in)
+  if(typeof renderWfMilestoneAsk==='function')renderWfMilestoneAsk(); // A4: pedir el opt-in de logros EN el hito
   if(typeof cmtyOnWorkoutFinished==='function')cmtyOnWorkoutFinished(); // C3: refresca el snapshot de comunidad (debounced) al terminar
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día

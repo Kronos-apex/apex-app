@@ -56,6 +56,9 @@ const {
   CMTY_NUDGE_MIN_SESSIONS,
   communityGymAdoption,
   communityInviteMsg,
+  highestStreakMilestone,
+  milestoneAskEligible,
+  STREAK_MILESTONES,
   communityMilestoneText,
   communityCommentText,
   communityPrPayload,
@@ -1648,6 +1651,37 @@ test('communityInviteMsg: concuerda el número y no inventa una comunidad que no
   assert.ok(/^¡Hola! 👋/.test(communityInviteMsg('', 3)));
   assert.ok(/^¡Hola! 👋/.test(communityInviteMsg(null, 3)));
   assert.ok(/^¡Hola! 👋/.test(communityInviteMsg('   ', 3)));
+});
+
+test('highestStreakMilestone: el umbral que YA ostenta, no el siguiente', () => {
+  assert.strictEqual(highestStreakMilestone(1), null);
+  assert.strictEqual(highestStreakMilestone(2), 2);
+  assert.strictEqual(highestStreakMilestone(3), 2);   // sigue ostentando el de 2
+  assert.strictEqual(highestStreakMilestone(4), 4);
+  assert.strictEqual(highestStreakMilestone(11), 8);
+  assert.strictEqual(highestStreakMilestone(99), 52); // el tope no se pasa de largo
+  assert.strictEqual(highestStreakMilestone(0), null);
+  assert.strictEqual(highestStreakMilestone(-5), null);
+  assert.strictEqual(highestStreakMilestone(null), null);
+  assert.strictEqual(highestStreakMilestone('cuatro'), null);
+  // los umbrales son los que decidió el PO; si cambian aquí, cambian en la edge
+  assert.deepStrictEqual(STREAK_MILESTONES, [2, 4, 8, 12, 24, 52]);
+});
+
+test('milestoneAskEligible: se pregunta una vez por umbral, nunca a quien ya dijo que sí', () => {
+  const sinOptIn = { show_milestones: false };
+  assert.strictEqual(milestoneAskEligible(sinOptIn, 4, {}), 4);
+  // ya dijo que sí → jamás se le vuelve a preguntar
+  assert.strictEqual(milestoneAskEligible({ show_milestones: true }, 4, {}), null);
+  // sin perfil de comunidad no hay nada que celebrar ni dónde publicarlo
+  assert.strictEqual(milestoneAskEligible(null, 52, {}), null);
+  // aún no llega a ningún umbral
+  assert.strictEqual(milestoneAskEligible(sinOptIn, 1, {}), null);
+  // dijo «ahora no» en 4 → callado hasta el siguiente umbral, y ahí sí vuelve
+  assert.strictEqual(milestoneAskEligible(sinOptIn, 5, { 4: true }), null);
+  assert.strictEqual(milestoneAskEligible(sinOptIn, 8, { 4: true }), 8);
+  // el perfil sin la columna (caché vieja) NO cuenta como opt-in dado
+  assert.strictEqual(milestoneAskEligible({}, 4, {}), 4);
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {
@@ -4032,6 +4066,25 @@ test('ningún módulo tiene el patrón `?? \'${` (interpolación a medias en onc
     src.split('\n').forEach((ln, i) => { if (re.test(ln)) offenders.push(`${f}:${i + 1}`); });
   }
   assert.strictEqual(offenders.length, 0, 'patron de interpolacion a medias encontrado en: ' + offenders.join(', '));
+});
+
+// ── A4 (adopción 2026-07-25): los umbrales de racha viven DUPLICADOS ──
+// `STREAK_MILESTONES` está en avi-core.js (para decidir cuándo preguntar el opt-in) y en la edge
+// `refresh_snapshot` (que es quien EMITE el hito). No se pueden importar entre sí: uno corre en el
+// navegador y el otro en Deno. Si se separan, la app le promete al asesorado un logro que el
+// servidor nunca publica. Este check estático es el candado de esa duplicación.
+test('A4: los umbrales de racha de avi-core y de la edge refresh_snapshot son idénticos', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'supabase/functions/refresh_snapshot/index.ts'), 'utf8');
+  const m = src.match(/const\s+STREAK_MILESTONES\s*=\s*\[([^\]]*)\]/);
+  assert.ok(m, 'no se encontró STREAK_MILESTONES en la edge refresh_snapshot');
+  const edge = m[1].split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
+  assert.deepStrictEqual(edge, STREAK_MILESTONES, 'los umbrales de la edge y de avi-core se separaron');
+  // y el catch-up del opt-in (A4) tiene que seguir existiendo: sin él, decir «sí, celébralo» no
+  // publica nada (crossedStreak exige `antes < umbral` y el snapshot ya guardó la racha nueva)
+  assert.ok(/catchup/.test(src), 'la edge perdió el catch-up del opt-in de logros');
+  assert.ok(/function\s+highestStreak\s*\(/.test(src), 'la edge perdió highestStreak (el umbral vigente)');
 });
 
 // ── C4 (auditoría 2026-07-13): el mapa EX_IMG_NAME debe ser null-proto ──

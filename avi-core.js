@@ -2318,6 +2318,37 @@ function communityMilestoneText(kind, payload, mine) {
   return null;
 }
 
+// ADOPCIÓN A4 — PEDIR EL OPT-IN DE LOGROS EN EL MOMENTO DEL HITO. Hasta hoy `show_milestones`
+// vivía como un interruptor en Ajustes de Comunidad: quien nunca entra a Ajustes nunca lo
+// enciende, y su constancia no se celebra nunca. Se pregunta cuando el logro acaba de pasar.
+// ESPEJO EXACTO de STREAK_MILESTONES en la edge `refresh_snapshot` (decisión del PO 2026-07-22).
+// Si estos números cambian, cambian en los DOS lados o la app promete un hito que el servidor
+// no emite.
+const STREAK_MILESTONES = [2, 4, 8, 12, 24, 52];
+// El umbral más alto que YA ostenta con esa racha (no el que cruzó ahora): es lo que el servidor
+// publicaría si el usuario dice que sí. PURA. null si aún no llega a ninguno.
+function highestStreakMilestone(weeks) {
+  const w = Math.floor(Number(weeks));
+  if (!isFinite(w) || w <= 0) return null;
+  let hit = null;
+  STREAK_MILESTONES.forEach(m => { if (w >= m) hit = m; });
+  return hit;
+}
+// ¿Le preguntamos AHORA? PURA. Candados:
+//   1. sin perfil de comunidad no hay nada que celebrar (ni dónde publicarlo).
+//   2. si ya dijo que sí (`show_milestones === true`), no se vuelve a preguntar. Nunca.
+//   3. tiene que haber un umbral alcanzado de verdad.
+//   4. una sola pregunta por umbral: si dijo «ahora no» en las 4 semanas, no se le repite hasta
+//      las 8. `asked` es el mapa local {umbral: true} — vive en el dispositivo, como los mutes.
+function milestoneAskEligible(profile, weeks, asked) {
+  if (!profile) return null;
+  if (profile.show_milestones === true) return null;
+  const m = highestStreakMilestone(weeks);
+  if (m === null) return null;
+  if (asked && asked[m]) return null;
+  return m;
+}
+
 // v3-a #4 — TEXTO de un comentario, saneado. Espejo EXACTO del CHECK de la tabla
 // (`char_length between 1 and 280 and btrim(text) <> ''`, c16): recorta los extremos, corta a
 // 280 y devuelve null cuando no queda nada que publicar. Puro: la UI no decide, solo delega —
@@ -3187,6 +3218,9 @@ if (typeof module !== 'undefined' && module.exports) {
     communityInviteMsg,
     CMTY_INVITE_URL,
     communityMilestoneText,
+    highestStreakMilestone,
+    milestoneAskEligible,
+    STREAK_MILESTONES,
     communityCommentText,
     leadPending,
     computeExerciseProgress,

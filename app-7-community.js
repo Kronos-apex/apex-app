@@ -1855,6 +1855,9 @@ if(typeof window !== 'undefined'){
   window._cmtyProbeWrite = _cmtyProbeWrite; window.renderCommunityNudge = renderCommunityNudge;
   window.cmtyNudgeGo = cmtyNudgeGo; window.dismissCmtyNudge = dismissCmtyNudge;
   window._cmtyNudgeHtml = _cmtyNudgeHtml;
+  window.renderWfMilestoneAsk = renderWfMilestoneAsk; window.cmtyMilestoneYes = cmtyMilestoneYes;
+  window.cmtyMilestoneNo = cmtyMilestoneNo; window._cmtyLocalStreak = _cmtyLocalStreak;
+  window._cmtyAskedRead = _cmtyAskedRead; window._cmtyAskedMark = _cmtyAskedMark;
 }
 
 // ══════════════ ADOPCIÓN A2 — LA PUERTA desde «Hoy» ══════════════
@@ -1947,6 +1950,70 @@ function renderCommunityNudge(client){
   el.style.display = 'block';
   el.innerHTML = _cmtyNudgeHtml(line);
   CMTY.nudgeOn = true;
+}
+
+// ══════════════ ADOPCIÓN A4 — LOS LOGROS SE PREGUNTAN EN SU MOMENTO ══════════════
+// `show_milestones` vivía como un interruptor en Ajustes de Comunidad: quien nunca entra a
+// Ajustes nunca lo enciende y su constancia no se celebra jamás (hoy: 1 de 7 perfiles lo tiene).
+// Se pregunta al TERMINAR el entreno que completa el hito, que es cuando significa algo.
+// Una sola pregunta por umbral: un «ahora no» en las 4 semanas no se repite hasta las 8.
+function _cmtyAskKey(){ return 'ax_cmty_msask_' + (CMTY.uid || CUR.clientId || ''); }
+function _cmtyAskedRead(){ try{ return JSON.parse(localStorage.getItem(_cmtyAskKey()) || '{}') || {}; }catch(e){ return {}; } }
+function _cmtyAskedMark(m){ try{ const a = _cmtyAskedRead(); a[m] = true; localStorage.setItem(_cmtyAskKey(), JSON.stringify(a)); }catch(e){} }
+
+// Racha de SEMANAS del asesorado, con la misma función pura que usa todo lo demás. El servidor
+// recalcula la suya al publicar (es él quien decide el número real); esto solo decide si preguntar.
+function _cmtyLocalStreak(){
+  try{
+    const c = (DB.clients || []).find(x => x && x.id === CUR.clientId); if(!c) return 0;
+    const sess = (DB.history && DB.history[c.id]) || [];
+    if(typeof weekStreak !== 'function' || typeof planDays !== 'function') return 0;
+    // OJO: `weekStreak` devuelve un OBJETO {weeks,thisWeekDays,target,metThisWeek}, no un número
+    // (cazado por el harness M1: pasarlo entero daba NaN y la pregunta no salía nunca).
+    const ws = weekStreak(sess, planDays(c), new Date());
+    return (ws && Number(ws.weeks)) || 0;
+  }catch(e){ return 0; }
+}
+
+function renderWfMilestoneAsk(){
+  const el = document.getElementById('wf-milestone-ask'); if(!el) return;
+  el.innerHTML = '';
+  if(typeof CMTY === 'undefined' || typeof milestoneAskEligible !== 'function') return;
+  const m = milestoneAskEligible(CMTY.profile, _cmtyLocalStreak(), _cmtyAskedRead());
+  if(m === null) return;
+  const t = (typeof communityMilestoneText === 'function') ? communityMilestoneText('streak', { weeks: m }, true) : null;
+  const titulo = t ? (t.text + ' ' + t.emoji) : (m + ' semanas seguidas 🔥');
+  el.innerHTML = '<div class="wf-push">' +
+    '<div class="wf-push-txt"><b>' + esc(titulo) + '</b>' +
+      'Eso es constancia de verdad. ¿Quieres que tu gente de la comunidad lo vea? ' +
+      'Se publica el logro — nunca tus kilos, tu peso ni tus fotos. Lo puedes apagar cuando quieras.</div>' +
+    '<div class="wf-push-btns">' +
+      '<button type="button" class="wf-push-on" onclick="cmtyMilestoneYes(' + m + ')">Sí, celébralo</button>' +
+      '<button type="button" class="wf-push-later" onclick="cmtyMilestoneNo(' + m + ')">No, gracias</button>' +
+    '</div></div>';
+}
+
+// «Sí»: enciende el opt-in Y pide al servidor el catch-up. Sin el catch-up el «sí» no publicaría
+// NADA: la edge solo emite cuando la racha CRUZA el umbral (`antes < umbral`) y el snapshot ya
+// guardó la racha nueva antes de que existiera el permiso. El servidor calcula el hito con su
+// propio historial — el cliente no manda el número, solo pide la revisión.
+async function cmtyMilestoneYes(m){
+  const el = document.getElementById('wf-milestone-ask');
+  _cmtyAskedMark(m);
+  if(!CMTY.profile) return;
+  await _cmtyPatch({ show_milestones: true });
+  if(CMTY.profile.show_milestones !== true) return; // el patch falló → no prometer nada
+  if(!_cmtySealed()){
+    try{ const cli = _cmtyClient(); if(cli) await cli.functions.invoke('refresh_snapshot', { body: { catchup: true } }); }
+    catch(e){ _cw()('cmty catchup:', e && e.message); }
+  }
+  if(el) el.innerHTML = '<div class="wf-push"><div class="wf-push-txt"><b>' +
+    (typeof aviIcon === 'function' ? aviIcon('check', 15) : '✓') + ' Listo, tu gente lo va a ver</b>' +
+    'Tus próximos logros también se celebran solos.</div></div>';
+}
+function cmtyMilestoneNo(m){
+  _cmtyAskedMark(m);
+  const el = document.getElementById('wf-milestone-ask'); if(el) el.innerHTML = '';
 }
 
 function cmtyNudgeGo(){

@@ -1,4 +1,9 @@
-// ══════════ refresh_snapshot (Comunidad C2 · v2 en C3 · v4 en R2 hitos · v5 en #5 perfil rico) ══════════
+// ══════════ refresh_snapshot (C2 · v2 C3 · v4 R2 hitos · v5 #5 perfil rico · v6 A4 catch-up) ══════════
+// v6 (A4 adopción, 2026-07-25): acepta `{catchup:true}` en el cuerpo. Se usa UNA vez, justo
+// después de que el usuario enciende `show_milestones` desde la pregunta del momento del hito:
+// publica el umbral de racha que YA ostenta, que el camino normal (`crossedStreak`, que exige
+// `antes < umbral`) nunca habría emitido porque el snapshot ya guardaba la racha nueva. El
+// cliente no manda el número — solo pide la revisión; el servidor la calcula con el historial.
 // v5 (#5 perfil rico, 2026-07-23): el snapshot añade total_sessions (= hist.length) y training_since
 // (día Bogota del PRIMER entreno válido, 'YYYY-MM-DD', null sin historial). Van en el MISMO update,
 // con el mismo régimen server-only que streak_weeks/level — el cliente solo tiene SELECT (c17). La
@@ -46,6 +51,14 @@ const MILESTONE_KEEP_DAYS = 90;                  // poda de hitos (los posts de 
 function crossedStreak(before: number, after: number): number | null {
   let hit: number | null = null;
   for (const m of STREAK_MILESTONES) if (before < m && after >= m) hit = m;
+  return hit;
+}
+// v6 (A4 adopción): el umbral que el usuario YA OSTENTA con esa racha. Solo lo usa el catch-up
+// del opt-in (ver más abajo); el camino normal sigue siendo `crossedStreak`.
+// Espejo de `highestStreakMilestone` en avi-core.js.
+function highestStreak(weeks: number): number | null {
+  let hit: number | null = null;
+  for (const m of STREAK_MILESTONES) if (weeks >= m) hit = m;
   return hit;
 }
 
@@ -129,6 +142,11 @@ Deno.serve(async (req) => {
   const user = userData?.user;
   if (userErr || !user) return json({ error: "Unauthorized" }, 401);
   const uid = user.id;
+  // v6 (A4): único parámetro que acepta esta función. `catchup` NO trae datos — solo pide revisar
+  // si el usuario ostenta un hito sin publicar, y el servidor lo calcula con su propio historial.
+  // Cuerpo ilegible o ausente = comportamiento de siempre.
+  let catchup = false;
+  try { const b = await req.json(); catchup = !!(b && b.catchup === true); } catch (_e) { /* sin cuerpo */ }
 
   try {
     // opt-in: solo refresca si el usuario YA tiene perfil de comunidad (no lo crea aquí).
@@ -176,6 +194,18 @@ Deno.serve(async (req) => {
       };
       const st = crossedStreak(prevStreak, snap.streak_weeks);
       if (st !== null) await emit("streak", { weeks: st });
+      else if (catchup) {
+        // v6 (A4): el usuario ACABA de decir «sí, celébralo» en el momento de su hito. Sin esto,
+        // ese hito no se publicaría JAMÁS: `crossedStreak` exige `antes < umbral` y el snapshot
+        // ya había guardado la racha nueva antes de que existiera el opt-in → el «sí» no haría
+        // nada y la pregunta sería una promesa vacía. Publica SOLO el umbral que ostenta HOY,
+        // calculado por el servidor con su propio historial (el cliente no manda el número, solo
+        // pide la revisión), y el índice único lo hace idempotente.
+        // NO es retroactivo en el sentido de la decisión del PO (§R2(f)): no rellena el historial
+        // de hitos pasados — publica UNO, el vigente, y solo por acción explícita del usuario.
+        const cur = highestStreak(snap.streak_weeks);
+        if (cur !== null) await emit("streak", { weeks: cur });
+      }
       if (snap.level > prevLevel && prevLevel > 0) await emit("level", { level: snap.level });
       // prevLevel === 0 = perfil recién creado (nunca calculado): no se celebra el "nivel 1"
       // de arranque como si fuera una subida — sería un hito falso el día del opt-in.
