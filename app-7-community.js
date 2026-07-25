@@ -69,6 +69,11 @@ const CMTY = {
   profileLoading: false,
   view: 'feed',      // R1 re-forma: 'feed' (muro, default) | 'settings' (perfil/ajustes) | 'inbox' (mensajes)
   peers: [],         // A1 adopción: perfiles ya visibles ANTES de tener perfil propio (prueba social del opt-in)
+  // A2 adopción: la puerta desde «Hoy». `nudgeOn` deja que el banner «Comparte AVI» ceda el turno
+  // (dos pedidos apilados en la misma pantalla se anulan entre sí); los `_probe*` son de sesión.
+  nudgeOn: false,
+  _probing: false,
+  _probeNextTry: 0,
 };
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
@@ -191,6 +196,7 @@ async function cmtyLoad(opts){
     }
     CMTY.loaded = true;
     _cmtySaveCache();
+    _cmtyProbeSync(); // A2: esta carga es la VERDAD → refresca la sonda que decide la tarjeta de «Hoy»
   }catch(e){ _cw()('cmtyLoad:', e && e.message); CMTY.offline = true; _cmtyLoadCache(); }
   finally{
     CMTY.busy = false; CMTY.loading = false; _cmtyPaint();
@@ -1845,4 +1851,111 @@ if(typeof window !== 'undefined'){
   window._cmtyProfileHtml = _cmtyProfileHtml; window._cmtyLoadProfile = _cmtyLoadProfile;
   window.cmtyZoomAvatar = cmtyZoomAvatar; window.cmtyCloseZoom = cmtyCloseZoom;
   window._cmtyNameLink = _cmtyNameLink;
+  window.cmtyAdoptionProbe = cmtyAdoptionProbe; window._cmtyProbeRead = _cmtyProbeRead;
+  window._cmtyProbeWrite = _cmtyProbeWrite; window.renderCommunityNudge = renderCommunityNudge;
+  window.cmtyNudgeGo = cmtyNudgeGo; window.dismissCmtyNudge = dismissCmtyNudge;
+  window._cmtyNudgeHtml = _cmtyNudgeHtml;
+}
+
+// ══════════════ ADOPCIÓN A2 — LA PUERTA desde «Hoy» ══════════════
+// La prueba social de A1 solo la ve quien YA abrió esta pestaña; las 17 personas sin perfil no
+// tienen por qué abrirla. Esta tarjeta las invita desde «Hoy», que sí visitan a diario.
+// La decisión de mostrarla es del motor PURO `communityNudgeEligible` (avi-core); aquí solo vive
+// la SONDA (una consulta al día: ¿ya tengo perfil? ¿a cuánta gente vería?) y el pintado.
+// Nada de esto entra a SB_KEYS: la sonda y el silencio son LOCALES por dispositivo.
+const CMTY_PROBE_KEY = 'ax_cmty_probe';
+const CMTY_NUDGE_SNOOZE_KEY = 'ax_cmtynudge';
+
+function _cmtyProbeRead(){ try{ return JSON.parse(localStorage.getItem(CMTY_PROBE_KEY) || 'null'); }catch(e){ return null; } }
+function _cmtyProbeWrite(p){ try{ localStorage.setItem(CMTY_PROBE_KEY, JSON.stringify(p)); }catch(e){} }
+// La sonda se REESCRIBE cada vez que `cmtyLoad` averigua la verdad (abrir la pestaña, hacer opt-in,
+// salirse). Sin esto, alguien que acaba de crear su perfil seguiría viendo «únete» hasta 24h.
+function _cmtyProbeSync(){
+  const prof = CMTY.profile;
+  if(prof){ _cmtyProbeWrite({ hasProfile: true, peers: 0, list: [], at: Date.now() }); return; }
+  _cmtyProbeWrite(_cmtyProbeFrom(CMTY.peers));
+}
+function _cmtyProbeFrom(peers){
+  const list = (peers || []).map(p => ({ handle: p.handle, avatar_url: p.avatar_url, is_private: p.is_private }));
+  return { hasProfile: false, peers: list.length, list: list, at: Date.now() };
+}
+
+// Consulta ligera para quien NUNCA abre la pestaña (justo el público de A2). Dos SELECT como
+// máximo, 1×/día (TTL de `communityProbeStale`). Si falla (sin red, sin sesión) NO escribe nada y
+// se reintenta más tarde con un respiro en memoria — un «Hoy» offline no puede pegarle a la red
+// en cada repintado (el poll del coach re-renderiza cada 15s).
+async function cmtyAdoptionProbe(client){
+  if(CMTY._probing) return;
+  if(CMTY._probeNextTry && Date.now() < CMTY._probeNextTry) return;
+  CMTY._probing = true;
+  try{
+    const cli = _cmtyClient(); const uid = await _cmtyUid();
+    if(!cli || !uid){ CMTY._probeNextTry = Date.now() + 1800000; return; }
+    const { data: mine, error: me } = await cli.from('community_profiles').select('user_id').eq('user_id', uid).maybeSingle();
+    if(me) throw me;
+    if(mine){ _cmtyProbeWrite({ hasProfile: true, peers: 0, list: [], at: Date.now() }); }
+    else{
+      // Mismo `cp_sel` de siempre: sin perfil propio esto es el directorio del gym + los públicos.
+      const { data: peers, error: pe } = await cli.from('community_profiles')
+        .select('handle,avatar_url,is_private').neq('user_id', uid).limit(24);
+      if(pe) throw pe;
+      _cmtyProbeWrite(_cmtyProbeFrom(peers));
+    }
+    CMTY._probeNextTry = 0;
+    // Ya con la verdad en mano, repintar «Hoy» (la tarjeta puede aparecer o desaparecer).
+    if(client){
+      if(typeof renderCommunityNudge === 'function') renderCommunityNudge(client);
+      if(typeof renderShareBanner === 'function') renderShareBanner(client);
+    }
+  }catch(e){ CMTY._probeNextTry = Date.now() + 1800000; _cw()('cmty probe:', e && e.message); }
+  finally{ CMTY._probing = false; }
+}
+
+function _cmtyNudgeHtml(line){
+  const avatars = line.picked.map((p, i) =>
+    '<span style="display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px var(--w)' + (i ? ';margin-left:-9px' : '') + '">' +
+      _cmtyAvatarHtml(p, 28) + '</span>').join('');
+  return '<div class="card" style="padding:12px 14px">' +
+    '<div style="display:flex;align-items:center;gap:10px">' +
+      '<span style="display:flex;flex:0 0 auto">' + avatars + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:800;color:var(--t1)">Tu gente ya está en la Comunidad</div>' +
+        '<div style="font-size:12px;color:var(--t2);line-height:1.45">' + esc(line.text) + '.</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<button class="btn bp bsm" style="flex:1;min-height:36px" onclick="cmtyNudgeGo()">Ver a mi gente</button>' +
+      '<button class="btn bg bsm" style="flex:0 0 auto;min-height:36px;padding:0 12px" aria-label="Ahora no" onclick="dismissCmtyNudge()">Ahora no</button>' +
+    '</div>' +
+  '</div>';
+}
+
+// Pinta (o borra) la tarjeta. SÍNCRONA a propósito: decide con la sonda ya cacheada, para que
+// `renderShareBanner` — que corre después — sepa si esta ya ocupó el turno del día. El refresco
+// de la sonda va aparte, en segundo plano.
+function renderCommunityNudge(client){
+  const el = document.getElementById('cn-cmty-nudge'); if(!el) return;
+  el.innerHTML = ''; el.style.display = 'none'; CMTY.nudgeOn = false;
+  if(!client || typeof communityNudgeEligible !== 'function') return;
+  const probe = _cmtyProbeRead();
+  if(typeof communityProbeStale !== 'function' || communityProbeStale(probe, Date.now())) cmtyAdoptionProbe(client);
+  let snooze = 0; try{ snooze = parseInt(localStorage.getItem(CMTY_NUDGE_SNOOZE_KEY)) || 0; }catch(e){}
+  const sess = (typeof DB !== 'undefined' && DB.history && DB.history[client.id]) || [];
+  if(!communityNudgeEligible(sess, Date.now(), snooze, probe)) return;
+  const line = (typeof communityPeersLine === 'function') ? communityPeersLine(probe.list) : null;
+  if(!line) return;  // sin nadie a quien nombrar no hay invitación honesta que hacer
+  el.style.display = 'block';
+  el.innerHTML = _cmtyNudgeHtml(line);
+  CMTY.nudgeOn = true;
+}
+
+function cmtyNudgeGo(){
+  const tab = document.querySelector('.cntab[onclick*="cn-community"]');
+  if(typeof cnTab === 'function') cnTab('cn-community', tab || null);
+}
+function dismissCmtyNudge(){
+  const days = (typeof CMTY_NUDGE_SNOOZE_DAYS !== 'undefined') ? CMTY_NUDGE_SNOOZE_DAYS : 30;
+  try{ localStorage.setItem(CMTY_NUDGE_SNOOZE_KEY, String(Date.now() + days * 86400000)); }catch(e){}
+  const el = document.getElementById('cn-cmty-nudge'); if(el){ el.style.display = 'none'; el.innerHTML = ''; }
+  CMTY.nudgeOn = false;
 }

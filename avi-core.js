@@ -2391,6 +2391,40 @@ function communityPeersLine(profiles, opts) {
   return { scope: scope, names: names, picked: picked.map(p => p.prof), extra: extra, total: total, text: text };
 }
 
+// ADOPCIÓN A2 — LA PUERTA. La prueba social de A1 solo la ve quien ya ABRIÓ la pestaña Comunidad;
+// las 17 personas sin perfil no tienen motivo para abrirla. Esta es la invitación desde «Hoy»,
+// que es la pantalla que sí visitan a diario. Mismo molde que `shareBannerEligible` (v370): pedir
+// algo SOLO después de que la app ya le dio valor, y posponer de verdad al descartar.
+// PURA. `probe` = sonda cacheada (¿tengo perfil? ¿a cuánta gente vería?) que arma la capa de red.
+// Cuatro candados, en este orden:
+//   1. sonda ausente/indecisa → NO (nunca invitar a ciegas: sin saber si ya tiene perfil, callar).
+//   2. ya tiene perfil → NO, jamás. El objetivo es activar a quien no está, no molestar a quien sí.
+//   3. cero personas visibles → NO. Es la misma lección de la reserva de Fable en R3: no empujar a
+//      alguien a un cuarto vacío. Sin gente, la invitación es una promesa que la pestaña no cumple.
+//   4. poco entreno / silenciada hace poco → NO.
+const CMTY_NUDGE_MIN_SESSIONS = 3;   // espejo de SHARE_MIN_SESSIONS: primero valor, después el pedido
+const CMTY_NUDGE_SNOOZE_DAYS = 30;
+const CMTY_NUDGE_PROBE_TTL_H = 24;   // la sonda pega a la red 1×/día, no en cada render de «Hoy»
+function communityNudgeEligible(sessions, now, snoozeUntil, probe) {
+  if (!probe || probe.hasProfile !== false) return false;   // 1 y 2
+  if (!(Number(probe.peers) > 0)) return false;             // 3
+  const t = +new Date(now == null ? Date.now() : now);
+  if (snoozeUntil && t < +snoozeUntil) return false;
+  let finished = 0;
+  (sessions || []).forEach(s => { if (sessionFinished(s)) finished++; });
+  return finished >= CMTY_NUDGE_MIN_SESSIONS;
+}
+// ¿Toca volver a preguntarle al servidor? PURA. Sin sonda o con fecha ilegible → sí (y como
+// `communityNudgeEligible` exige sonda, mientras tanto la tarjeta simplemente no se pinta).
+// Ojo `new Date(null)` = epoch, no NaN (gotcha de `training_since`) → se ataja el null antes.
+function communityProbeStale(probe, now, ttlHours) {
+  if (!probe || probe.at == null || probe.at === '') return true;
+  const at = +new Date(probe.at);
+  if (isNaN(at)) return true;
+  const ttl = (Number(ttlHours) > 0 ? Number(ttlHours) : CMTY_NUDGE_PROBE_TTL_H) * 3600000;
+  return (+new Date(now == null ? Date.now() : now)) - at >= ttl;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
@@ -3109,6 +3143,11 @@ if (typeof module !== 'undefined' && module.exports) {
     communityEmptyState,
     communityPeersLine,
     CMTY_PEERS_NAMES,
+    communityNudgeEligible,
+    communityProbeStale,
+    CMTY_NUDGE_MIN_SESSIONS,
+    CMTY_NUDGE_SNOOZE_DAYS,
+    CMTY_NUDGE_PROBE_TTL_H,
     communityMilestoneText,
     communityCommentText,
     leadPending,

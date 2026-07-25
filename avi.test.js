@@ -51,6 +51,9 @@ const {
   communityPostPayload,
   communityEmptyState,
   communityPeersLine,
+  communityNudgeEligible,
+  communityProbeStale,
+  CMTY_NUDGE_MIN_SESSIONS,
   communityMilestoneText,
   communityCommentText,
   communityPrPayload,
@@ -1554,6 +1557,57 @@ test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI»,
   const p = communityPeersLine([{ handle: 'Ana', is_private: false }, { handle: 'Beto', is_private: false }]);
   assert.strictEqual(p.scope, 'avi');
   assert.strictEqual(p.text, 'Ana y Beto ya están en AVI');
+});
+
+test('communityNudgeEligible: a quien YA tiene perfil no se le insiste, jamás', () => {
+  const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 7, i + 1), finishedAt: D(2026, 7, i + 1) }));
+  const conGente = { hasProfile: false, peers: 5, at: D(2026, 7, 25) };
+  assert.strictEqual(communityNudgeEligible(fin(3), D(2026, 7, 25), 0, conGente), true);
+  // ya activó su perfil → la tarjeta desaparece para siempre (no es un recordatorio, es una puerta)
+  assert.strictEqual(communityNudgeEligible(fin(30), D(2026, 7, 25), 0, { hasProfile: true, peers: 5, at: D(2026, 7, 25) }), false);
+  // sonda ausente o a medias → callar, nunca invitar a ciegas
+  assert.strictEqual(communityNudgeEligible(fin(30), D(2026, 7, 25), 0, null), false);
+  assert.strictEqual(communityNudgeEligible(fin(30), D(2026, 7, 25), 0, {}), false);
+  assert.strictEqual(communityNudgeEligible(fin(30), D(2026, 7, 25), 0, { peers: 9 }), false);
+});
+
+test('communityNudgeEligible: sin gente visible NO se invita (no se manda a nadie a un cuarto vacío)', () => {
+  const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 7, i + 1), finishedAt: D(2026, 7, i + 1) }));
+  const base = { hasProfile: false, at: D(2026, 7, 25) };
+  assert.strictEqual(communityNudgeEligible(fin(10), D(2026, 7, 25), 0, Object.assign({}, base, { peers: 0 })), false);
+  assert.strictEqual(communityNudgeEligible(fin(10), D(2026, 7, 25), 0, base), false);            // sin el dato
+  assert.strictEqual(communityNudgeEligible(fin(10), D(2026, 7, 25), 0, Object.assign({}, base, { peers: 'muchos' })), false);
+  assert.strictEqual(communityNudgeEligible(fin(10), D(2026, 7, 25), 0, Object.assign({}, base, { peers: 1 })), true);
+});
+
+test('communityNudgeEligible: exige entreno real (finalizado) y respeta el silencio', () => {
+  const probe = { hasProfile: false, peers: 4, at: D(2026, 7, 25) };
+  const now = D(2026, 7, 25);
+  const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 7, i + 1), finishedAt: D(2026, 7, i + 1) }));
+  assert.strictEqual(communityNudgeEligible(fin(2), now, 0, probe), false);   // 2 < CMTY_NUDGE_MIN_SESSIONS
+  assert.strictEqual(communityNudgeEligible(fin(3), now, 0, probe), true);
+  assert.strictEqual(communityNudgeEligible([], now, 0, probe), false);
+  assert.strictEqual(communityNudgeEligible(null, now, 0, probe), false);
+  // sesiones ABIERTAS (sin finishedAt) no cuentan — el mismo criterio de shareBannerEligible
+  const abiertas = [{ date: D(2026, 7, 1) }, { date: D(2026, 7, 2) }, { date: D(2026, 7, 3) }];
+  assert.strictEqual(communityNudgeEligible(abiertas, now, 0, probe), false);
+  // silenciada: callada hasta que vence, y vuelve sola después
+  assert.strictEqual(communityNudgeEligible(fin(9), now, +D(2026, 7, 26), probe), false);
+  assert.strictEqual(communityNudgeEligible(fin(9), now, +D(2026, 7, 24), probe), true);
+});
+
+test('communityProbeStale: pega a la red 1×/día, y ante una fecha ilegible pregunta de nuevo', () => {
+  const now = D(2026, 7, 25, 12);
+  assert.strictEqual(communityProbeStale({ at: D(2026, 7, 25, 11) }, now), false);   // 1h
+  assert.strictEqual(communityProbeStale({ at: D(2026, 7, 24, 11) }, now), true);    // 25h
+  assert.strictEqual(communityProbeStale({ at: D(2026, 7, 25, 11) }, now, 0.5), true); // TTL a medida
+  assert.strictEqual(communityProbeStale(null, now), true);
+  assert.strictEqual(communityProbeStale({}, now), true);
+  // `new Date(null)` es EPOCH, no NaN (gotcha training_since): sin este guard una sonda con
+  // at:null se leería como "de 1970" → stale igual, pero por accidente. Aquí es explícito.
+  assert.strictEqual(communityProbeStale({ at: null }, now), true);
+  assert.strictEqual(communityProbeStale({ at: '' }, now), true);
+  assert.strictEqual(communityProbeStale({ at: 'ayer por la tarde' }, now), true);
 });
 
 test('myTrainingSummary: racha de semanas consecutivas cumplidas', () => {

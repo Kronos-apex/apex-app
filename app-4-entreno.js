@@ -574,9 +574,11 @@ function _todayOrder(training){
   // (ahí es el contenido principal del día).
   // v368: #cn-missday (día que se corrió) — en día de entreno va tras el entreno (no empuja el
   // guiado bajo el pliegue) y en descanso/sin rutina arriba, junto a las tarjetas de coaching.
+  // A2 (adopción, 2026-07-25): #cn-cmty-nudge va al FINAL, junto a #cn-share — es una invitación,
+  // no una tarea del día; jamás debe empujar el entreno bajo el pliegue (regla R1.6).
   const ids=training
-    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-share']
-    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-share'];
+    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
+    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-cmty-nudge','cn-share'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -636,6 +638,10 @@ function renderClientToday(client, overrideRoutine){
   // override para callarse cuando el asesorado ya está enfocado en un entreno concreto.
   if(typeof renderMissedDayCard==='function')renderMissedDayCard(client, overrideRoutine);
   // 💚 Comparte AVI (v370): banner ocasional de crecimiento orgánico, solo tras engagement real.
+  // 🌐 Comunidad — la puerta (A2, adopción 2026-07-25): invita a activar el perfil a quien nunca
+  // lo hizo Y ya tiene gente a quien ver. Va ANTES del banner de compartir a propósito: si esta
+  // sale, aquel cede el turno (dos pedidos apilados en la misma pantalla se anulan entre sí).
+  if(typeof renderCommunityNudge==='function')renderCommunityNudge(client);
   if(typeof renderShareBanner==='function')renderShareBanner(client);
   // ✨ Novedades (v302): una vez por tanda, descartable.
   if(typeof renderNewsCard==='function')renderNewsCard();
@@ -913,6 +919,9 @@ function renderShareBanner(client){
   const el=document.getElementById('cn-share'); if(!el)return;
   el.innerHTML='';
   if(typeof shareBannerEligible!=='function'||!client){ el.style.display='none'; return; }
+  // A2: si la tarjeta de Comunidad ya está pidiendo algo en esta misma pantalla, este banner
+  // se calla (dos pedidos apilados se anulan entre sí). Vuelve solo cuando aquella se va.
+  if(typeof CMTY!=='undefined'&&CMTY.nudgeOn){ el.style.display='none'; return; }
   let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_sharesnooze'))||0; }catch(e){}
   if(!shareBannerEligible((DB.history&&DB.history[client.id])||[],Date.now(),snooze)){ el.style.display='none'; return; }
   el.style.display='block';
