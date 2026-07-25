@@ -411,6 +411,62 @@ vez y NO para que pasara: mi aserción asumía «y 1 más» con 2 personas y que
 último (empieza por «<» → ordena primero); el código no se tocó. Shots claro/oscuro. `f465479`,
 curl v394 + `_prodcheck 394` verde. **PENDIENTE re-verificación de Fable.***
 
+***A2 — LA PUERTA desde «Hoy» (avi-v395, `9179629`).** La prueba social de A1 solo la ve quien YA
+abrió la pestaña; los 17 sin perfil no tienen por qué abrirla. Tarjeta en «Hoy» (que sí visitan a
+diario) con el mismo molde de «Comparte AVI» (v370): pedir SOLO después de que la app dio valor.
+Motor PURO `communityNudgeEligible(sessions,now,snoozeUntil,probe)` con 4 candados en orden: sin
+sonda no se invita a ciegas · **a quien ya tiene perfil JAMÁS** (es una puerta, no un recordatorio)
+· cero personas visibles → nada (misma lección de la reserva de Fable en R3: no empujar a nadie a
+un cuarto vacío) · <3 sesiones finalizadas o silenciada → nada. Y `communityProbeStale` (ataja
+`at:null` ANTES de `new Date` — gotcha `training_since`). SONDA `cmtyAdoptionProbe`: 1×/día, 2
+SELECT, cachea en `ax_cmty_probe` (LOCAL, nada en SB_KEYS); `cmtyLoad` la reescribe cada vez que
+sabe la verdad (`_cmtyProbeSync`) → quien acaba de crear su perfil deja de ver la invitación al
+instante; si falla, respiro de 30 min EN MEMORIA (un «Hoy» offline no puede pegarle a la red en
+cada repintado — el poll re-renderiza cada 15s). Tarjeta al FINAL de `_todayOrder` (R1.6: jamás
+empuja el entreno bajo el pliegue) y **los dos pedidos de la pantalla no se apilan**: si la puerta
+sale, «Comparte AVI» cede el turno (`CMTY.nudgeOn`) y lo recupera cuando ella se va. Harness NUEVO
+`_verify-cmtynudge` **13/13** (N1-N11 + jsErrors vacío), incluido **N11 hit-test real 390×844** del
+banner «Instalar app» sobre el CTA (663-699 vs 710-760). 4 sabotajes, los 4 mordieron.*
+
+***A3 — EL COACH INVITA (avi-v396, `4869c47`).** A1 y A2 trabajan sobre quien ya abre la app; el
+canal que mueve al gym es Camilo escribiéndoles (lección v364). **Verificado ANTES de construir**
+por impersonación en tx con rollback: el coach SÍ ve el perfil de sus miembros de gym (`cp_sel` vía
+`_same_community`) → la consulta acotada a su directorio dice exactamente quién activó. (De paso, la
+cifra real subió a **7 perfiles de 23 miembros**.) `communityGymAdoption(memberIds,profileIds)` PURA
+(solo cuenta a quien está en AMBAS listas; un perfil ajeno no infla la cifra) y
+`communityInviteMsg(name,peers,url)` PURA: saludo por nombre de pila, conteo concordado (1/N/ninguno
+— nunca «ya somos 0»), dice qué se ve (apodo y constancia) y qué NO (peso/fotos/kilos), texto plano.
+UI: el modal `#m-gym` abre con «3 de 4 ya crearon su perfil» y cada asesorado muestra «✓ Ya está» o
+«Invitar» → `gymInvite` abre WhatsApp PRELLENADO (lo envía el coach; AVI nunca escribe sola), con
+`waPhone` (bug de clase v365) y caída a «elige contacto» sin teléfono. Solo se invita a quien YA
+está en el directorio (mismo candado del cuarto vacío). **Defecto REAL cazado por su propio harness
+(G9) y corregido en el CÓDIGO, no en la aserción:** si la consulta de perfiles fallaba, `_gymActive`
+quedaba como Set VACÍO → el modal le habría dicho a Camilo «0 de 4 activaron» y ofrecido invitar a
+los que ya estaban; ahora `null` = «no sé» y la UI se calla. Harness NUEVO `_verify-gyminvite`
+**11/11**, 2 sabotajes. El shot corrigió el copy «A los otros 1» → «Al que falta».*
+
+***A4 — LOS LOGROS SE PREGUNTAN EN SU MOMENTO (avi-v397 `829679a` + edge `refresh_snapshot` v6).**
+`show_milestones` era un interruptor escondido en Ajustes: hoy solo 1 de 7 perfiles lo tiene. Ahora
+se pregunta al TERMINAR el entreno que completa el hito. **HALLAZGO que cambió el diseño (leer la
+edge ANTES de escribir): activar el toggle DESPUÉS del hito no publicaba ese hito** — `crossedStreak`
+exige `antes < umbral` y el snapshot ya había guardado la racha nueva → la pregunta habría sido una
+PROMESA VACÍA. De ahí el **catch-up**: la edge v6 acepta `{catchup:true}`, se manda UNA vez tras
+encender el opt-in y publica el umbral que el usuario ostenta HOY; el cliente NO manda el número
+(pide la revisión, el servidor calcula con su historial → el candado «un hito jamás lo fabrica el
+cliente» sigue intacto) y el índice único lo hace idempotente. Puras: `highestStreakMilestone` +
+`milestoneAskEligible` (sin perfil no se pregunta · a quien ya dijo que sí NUNCA más · una sola
+pregunta por umbral, memoria local). **Defecto REAL cazado por el harness (M1): `weekStreak`
+devuelve un OBJETO `{weeks,…}`, no un número** — pasarlo entero daba NaN y la pregunta no habría
+salido NUNCA en producción, en silencio. **PRUEBA VIVA end-to-end con usuario sintético contra prod
+(y limpieza verificada):** (1) sin opt-in → sin hito; (2) **opt-in ON por el camino normal →
+publica NADA** (el problema, reproducido); (3) con `catchup` → publica `streak {weeks:4}`; (4)
+repetido → no duplica. Harness NUEVO `_verify-milestoneask` **13/13** + **check ESTÁTICO en la
+suite** que compara los umbrales de avi-core con los de la edge (están duplicados por fuerza:
+navegador vs Deno) y exige que el catch-up siga existiendo. 3 sabotajes, los 3 mordieron.
+**DESVIACIÓN a revisar por Fable:** la decisión del PO en R2 fue «sin retroactivo»; el catch-up NO
+rellena el historial de hitos pasados — publica UNO, el vigente, y solo por acción explícita del
+usuario. La llamada final es de Fable/PO.*
+
 ***Fix del smoke (commit aparte `bd1a3a5`) — un gate en rojo permanente es un gate muerto.**
 `scripts/smoke.mjs` sondeaba `typeof openGuidedMode === 'function'` para afirmar que app-6-extra
 había cargado, pero esa función se BORRÓ en la auditoría del 2026-07-13 (avi-v350, `6f8af92`).
