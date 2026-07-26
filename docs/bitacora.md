@@ -380,6 +380,46 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 (parte 117 — **F2 + F11: la pregunta de logros por fin EXISTE en la sesión
+típica, y solo promete lo que de verdad pasó**, avi-v399). Segundo punto del
+`plan-correcciones-adopcion.md`.*
+
+***F2 — la ironía de A4.** La tarjeta exigía `CMTY.profile`, que solo se llena al abrir la pestaña
+Comunidad en ESA MISMA carga (`renderCommunity` tiene un llamador). En la sesión real —abrir,
+entrenar, cerrar— el perfil es null: la feature que nació porque «quien no entra a Ajustes nunca lo
+enciende» quedó dependiendo de entrar a Comunidad. Fix: `communityMe(profile, probe, cache)` PURA en
+avi-core resuelve «quién soy» por la mejor fuente disponible —perfil cargado → sonda de A2 (1×/día
+desde «Hoy», que ahora también lleva `showMilestones`) → caché de disco— y devuelve **null cuando
+ninguna sabe**, que es el mismo candado de A2: no se pregunta a ciegas. En app-7, `_cmtyMe()` es el
+único acceso permitido fuera de la pestaña.*
+
+***Lo más silencioso del hallazgo:** `cmtyOnWorkoutFinished()` tenía el MISMO guard. A quien no abre
+la pestaña, el servidor **nunca le recalculaba el snapshot** → no veía crecer su racha → sus logros
+no se emitían jamás, con opt-in o sin él. Eso no estaba en el plan; se encontró al cablear F2 y se
+cerró aquí (M10 lo cubre). Colateral del plan también cerrado: `renderWfCmtyShare` y
+`cmtyShareWorkout` («Compártelo con tu gente») sufrían lo mismo.*
+
+***F11 — no prometer lo que no pasó.** `_cmtyPatch` hacía `.update()` sin `.select()`: PostgREST
+responde 204 sin error aunque no toque ninguna fila (perfil borrado, RLS), y la tarjeta confirmaba
+«Listo, tu gente lo va a ver» sin haber publicado nada. Ahora pide la fila de vuelta, devuelve
+true/false y el «Sí» solo confirma con la fila en la mano; si no, dice que no se pudo y adónde ir.
+De paso `_cmtyPatch` ya no asume `CMTY.profile` (en la pantalla de fin no existe) y mantiene la
+sonda al día para que la pregunta no reaparezca en el siguiente entreno del mismo día.*
+
+***QA.** `_verify-milestoneask` 13→**19**: M9/M9-bis/M9-ter/M9-quater (sesión típica sin
+`CMTY.profile`, con sonda nueva, sonda que dice «no hay perfil», y sonda vieja resuelta por caché),
+M10 (snapshot al terminar sin abrir la pestaña) y M11 (update de 0 filas). Su cliente falso ahora
+IMITA a PostgREST devolviendo las filas afectadas — sin eso, F11 no se puede probar. **3 sabotajes,
+los 3 mordieron:** volver a `CMTY.profile` en la tarjeta → M9 y M9-quater rojos; en
+`cmtyOnWorkoutFinished` → M10 rojo; quitar el chequeo de filas → M11 rojo mostrando exactamente el
+bug («Listo, tu gente lo va a ver» + catch-up pedido sin haber actualizado nada). Suite 438→**439**
+(`communityMe` con 6 grupos de casos). Verde: `_verify-workoutshare` 8, `_verify-cmtynudge` 13,
+`_repro-cmty-identity` 6, `_guiado-suite`. **Gotcha reafirmado:** una corrida que crashea deja
+python y Chrome zombis; la siguiente se conecta a ELLOS y da fallos fantasma («showScreen is not
+defined» con la app sana) — matar puerto y procesos antes de sacar conclusiones.*
+
+***PENDIENTE de verificación de Fable (R4.1).** Siguen abiertos F3, F4-F10, F12-F14 y §P3.*
+
 *Hitos sesión 2026-07-26 (parte 116 — **P0 CERRADO: la identidad de Comunidad ya no se hereda entre
 cuentas**, avi-v398). Primer punto del `plan-correcciones-adopcion.md`, en su orden. Es el bug que
 reportó Camilo («vi la pantalla de comunidad de Astrid y en el perfil de ella aparecía el MÍO»).

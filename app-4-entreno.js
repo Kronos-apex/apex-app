@@ -1730,7 +1730,9 @@ function renderWfCmtyShare(){
   const el=document.getElementById('wf-cmty-share'); if(!el) return;
   el.innerHTML='';
   // Solo miembros de comunidad, y solo si la sesión se puede compartir (finalizada, con nombre).
-  if(typeof CMTY==='undefined' || !CMTY.profile) return;
+  // F2: `_cmtyMe()` en vez de `CMTY.profile` — este bloque sufría el mismo mal que A4 y no salía
+  // nunca en la sesión típica (hay que haber abierto la pestaña Comunidad en ESA carga).
+  if(typeof CMTY==='undefined' || typeof _cmtyMe!=='function' || !_cmtyMe()) return;
   if(typeof communityWorkoutPayload!=='function') return;
   const pl=communityWorkoutPayload(_wfEntry, _wfCmtyRoutineName);
   if(!pl) return;

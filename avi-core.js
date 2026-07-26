@@ -2470,6 +2470,28 @@ function communityProbeStale(probe, now, ttlHours) {
   return (+new Date(now == null ? Date.now() : now)) - at >= ttl;
 }
 
+// F2 (2026-07-26) — ¿QUIÉN SOY en la comunidad, sin haber abierto la pestaña?
+// A4 preguntaba por los logros solo si `CMTY.profile` estaba cargado, y eso exige haber entrado a
+// Comunidad en ESA MISMA carga (`renderCommunity` tiene un solo llamador). En la sesión típica
+// —abrir, entrenar, cerrar— el perfil era null y la pregunta NO se pintaba nunca: la ironía de una
+// feature que nació justo porque «quien no entra a Ajustes nunca lo enciende». Lo mismo tapaba
+// «Compártelo con tu gente» y, peor, el refresco del snapshot al terminar el entreno (sin él el
+// servidor nunca recalcula la racha de quien no abre la pestaña → sus logros no se emiten jamás).
+// PURA. Fuentes de más fresca a menos: perfil cargado → sonda de A2 (1×/día desde «Hoy») → caché
+// de la última vez que se abrió la pestaña en este aparato.
+// Devuelve null cuando NINGUNA fuente sabe: no se pregunta a ciegas (mismo candado que A2).
+function communityMe(profile, probe, cache) {
+  if (profile && typeof profile === 'object') return profile;
+  if (probe && probe.hasProfile === false) return null;   // la sonda SABE que no hay perfil
+  if (probe && probe.hasProfile === true && typeof probe.showMilestones === 'boolean') {
+    return { show_milestones: probe.showMilestones };
+  }
+  // Sonda vieja (sin el campo) o ausente → la caché de disco, que sí trae el perfil completo.
+  const cp = cache && cache.profile;
+  if (cp && typeof cp === 'object') return cp;
+  return null;
+}
+
 // ADOPCIÓN A3 — EL COACH INVITA. A1 y A2 trabajan sobre quien ya abre la app; el canal que de
 // verdad mueve a la gente del gym es Camilo escribiéndoles (misma lección de v364: el chat interno
 // solo alcanza a quien ya entra, WhatsApp alcanza a quien no). Estas dos funciones son PURAS.
@@ -3226,6 +3248,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CMTY_PEERS_NAMES,
     communityNudgeEligible,
     communityProbeStale,
+    communityMe,
     CMTY_NUDGE_MIN_SESSIONS,
     CMTY_NUDGE_SNOOZE_DAYS,
     CMTY_NUDGE_PROBE_TTL_H,

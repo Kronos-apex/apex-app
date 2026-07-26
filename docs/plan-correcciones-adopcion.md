@@ -82,6 +82,13 @@ gente del gym de A. Reproducido. Misma raíz que P0 → **se cierra con el mismo
 `ax_cmtynudge` (silencio de 30 días) también se hereda.
 
 ### F2 · A4 — La pregunta de los logros es inerte en la sesión típica
+
+> **✅ HECHO — avi-v399 (2026-07-26), junto con F11.** `communityMe(profile,probe,cache)` PURA en
+> avi-core + `_cmtyMe()` en app-7; la sonda de A2 ahora lleva `showMilestones`. Cubre también el
+> colateral (`renderWfCmtyShare`/`cmtyShareWorkout`) y **un hallazgo que este plan no tenía:**
+> `cmtyOnWorkoutFinished()` tenía el mismo guard, así que a quien no abre la pestaña el servidor
+> NUNCA le recalculaba el snapshot — sus logros no se emitían jamás. `_verify-milestoneask` 13→19,
+> 3 sabotajes. Pendiente de Fable.
 `renderWfMilestoneAsk` exige `CMTY.profile`, que solo se llena en `cmtyLoad()`. Verificado:
 `renderCommunity()` tiene **UN solo llamador** (`cnTab('cn-community')`, `app-4:158`) y `cmtyLoad`
 no se invoca en el arranque ni en ningún poll. En la sesión normal (abrir → entrenar → cerrar)
@@ -117,7 +124,7 @@ apuntando al blanco equivocado; hay que corregir el test, no solo el código.
 | F8 | A2 | **Un fallo parcial de `cmtyLoad` escribe una sonda MENTIROSA**: la consulta de peers tiene su propio `catch` que la traga → `peers:0` con `at` fresco → la puerta queda desactivada 24h sin señal. Fix: no escribir sonda cuando no se pudo leer (dejar `null` = «no sé», como se hizo bien en A3). |
 | F9 | A2 | **Sonda con forma corrupta rompe «Hoy»**: `renderCommunityNudge` corre ANTES de pintar el entreno y sin `try/catch`; un `list` no-array lanza y **el entreno no se pinta**. Fix: `Array.isArray(probe.list)` en el candado + try/catch en el caller. |
 | F10 | A4 | **Un «Sí» sin conexión quema la pregunta para siempre**: `_cmtyAskedMark(m)` corre ANTES del patch. Fix: marcar después de confirmar, o solo en el «No». |
-| F11 | A4 | **`_cmtyPatch` no distingue «actualicé» de «0 filas»** (`.update()` sin `.select()`): PostgREST devuelve 204 sin error aunque no exista la fila → se confirma «Listo, tu gente lo va a ver» sin haber publicado nada. |
+| F11 | A4 | **`_cmtyPatch` no distingue «actualicé» de «0 filas»** (`.update()` sin `.select()`): PostgREST devuelve 204 sin error aunque no exista la fila → se confirma «Listo, tu gente lo va a ver» sin haber publicado nada. | **✅ HECHO avi-v399:** `.select()` + devuelve true/false; el «Sí» solo confirma con la fila en la mano.
 | F12 | A4 | **Ignorar la tarjeta no la calla**: solo «Sí»/«No» marcan. Cerrar la pantalla la deja reapareciendo en CADA entreno hasta el umbral siguiente; en 52 semanas, **para siempre**. Es el candado anti-molestia de R1.6. |
 | F13 | A4 | **La pantalla de fin no scrollea** (`maxScroll:0` medido en todos los casos) y con las 3 tarjetas apiladas a 360×640 el trofeo (−194) y «¡Lo lograste!» (−99) quedan fuera y no se pueden alcanzar. El apilado es previo (push+share ya deja el trofeo en −35), pero A4 es el que empuja el título fuera. Falta coordinación de turnos entre las 3 tarjetas (A2 sí la tiene). |
 | F14 | A3 | **`waPhone` manda la invitación a un número equivocado** con teléfonos reales: fijo de Bogotá `6012345678` → `wa.me/6012345678` = **+60 Malasia**; móvil de EE.UU. sin +1 `3055551234` → **+57 …, un colombiano REAL distinto**. Clase preexistente (v365), pero A3 es el primer sitio que empuja a invitar en tanda. Fix: validar el formato antes de construir el enlace y no abrir WhatsApp si el número no es plausible. |

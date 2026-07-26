@@ -44,18 +44,25 @@ const INSTALL = weeks => `(()=>{try{
     hist.push({id:'h'+w+'-'+k,sessionId:'s'+w+'-'+k,routineId:'rX',routineName:'Full',date:iso,startedAt:iso,finishedAt:iso,totalVol:3000,doneSets:9,totalSets:9,exercises:[]});
   }}
   DB.history={me:hist};
-  window.__calls=[]; window.__invokes=[]; window.__patchFail=false;
-  const builder=(table)=>{ const b={ select(){return b;}, insert(){return b;},
-    update(p){window.__calls.push({table,p});return b;}, delete(){return b;},
+  window.__calls=[]; window.__invokes=[]; window.__patchFail=false; window.__patchZero=false;
+  // El cliente falso IMITA a PostgREST: un update con select devuelve LAS FILAS afectadas
+  // (F11 depende de eso — 0 filas significa «no actualicé nada» aunque no haya error).
+  const builder=(table)=>{ let op=''; const b={ select(){return b;}, insert(){op='insert';return b;},
+    update(p){op='update';window.__calls.push({table,p});return b;}, delete(){return b;},
     eq(){return b;}, neq(){return b;}, or(){return b;}, in(){return b;}, limit(){return b;},
     maybeSingle(){return Promise.resolve({data:null,error:null});},
-    then(resolve){ resolve(window.__patchFail?{data:null,error:{message:'boom'}}:{data:[],error:null}); } };
+    then(resolve){ if(window.__patchFail)return resolve({data:null,error:{message:'boom'}});
+      if(op==='update')return resolve({data:window.__patchZero?[]:[{user_id:'${MYUID}'}],error:null});
+      resolve({data:[],error:null}); } };
     return b; };
   AUTH.client=()=>({from:builder,rpc:()=>Promise.resolve({data:[],error:null}),
     functions:{invoke:async(n,o)=>{window.__invokes.push({n,body:o&&o.body});return {data:{ok:true},error:null};}}});
   AUTH.getUser=async()=>({id:'${MYUID}'});
-  CMTY.uid='${MYUID}';
-  try{ localStorage.removeItem('ax_cmty_msask_${MYUID}'); }catch(e){}
+  CMTY.uid='${MYUID}'; _authUid='${MYUID}';
+  // Claves LOCALES de esta persona (P0: van con uid). Se limpian para que cada escenario parta de
+  // cero — si no, la sonda de un caso anterior decidiría el siguiente.
+  try{ ['ax_cmty_msask_${MYUID}','ax_cmty_probe_${MYUID}','ax_cmty_cache_${MYUID}','ax_cmty_refresh_${MYUID}']
+    .forEach(k=>localStorage.removeItem(k)); }catch(e){}
   return 'ok';
 }catch(e){return 'err:'+e.message+' | '+((e.stack||'').split('\\n')[1]||'');}})()`;
 
@@ -145,6 +152,54 @@ const m8 = await ev(`(()=>({invokes:window.__invokes.length,perfil:(CMTY.profile
   txt:(document.getElementById('wf-milestone-ask')||{}).innerText||''}))()`);
 check('M8 si no se pudo guardar el opt-in, no se pide catch-up ni se confirma nada',
   m8.invokes === 0 && m8.perfil !== true && !/va a ver/.test(m8.txt), JSON.stringify(m8));
+
+// ── F2 (2026-07-26): LA SESIÓN TÍPICA — abrir, entrenar, cerrar, SIN pasar por Comunidad.
+// Es el 100% del público de A4 y era justo donde la tarjeta no se pintaba nunca: exigía
+// `CMTY.profile`, que solo se llena al abrir la pestaña en esa misma carga. Estos casos NO tocan
+// `CMTY.profile` a propósito (el harness viejo lo asignaba a mano y por eso no lo cazó).
+console.log('  install(4) sesión típica:', await ev(INSTALL(4))); await sleep(300);
+await ev(`(()=>{CMTY.profile=null;localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:false,peers:0,list:[],at:Date.now()}));renderWfMilestoneAsk();})()`); await sleep(250);
+const m9 = await ev(askState);
+check('M9 sin abrir Comunidad (perfil NO cargado) la pregunta SÍ aparece, leyendo la sonda',
+  /4 semanas seguidas/.test(m9.txt) && m9.btns.some(b => /Sí, celébralo/.test(b)), JSON.stringify({ txt: m9.txt.slice(0, 70), btns: m9.btns }));
+
+await ev(`(()=>{CMTY.profile=null;localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:true,peers:0,list:[],at:Date.now()}));renderWfMilestoneAsk();})()`); await sleep(250);
+const m9b = await ev(askState);
+check('M9-bis si la sonda dice que YA los tiene encendidos, no se pregunta', m9b.len === 0, JSON.stringify(m9b));
+
+await ev(`(()=>{CMTY.profile=null;localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:false,peers:3,list:[],at:Date.now()}));renderWfMilestoneAsk();})()`); await sleep(250);
+const m9c = await ev(askState);
+check('M9-ter si la sonda dice que NO hay perfil, no se pregunta (no hay dónde publicarlo)', m9c.len === 0, JSON.stringify(m9c));
+
+// Sonda del formato ANTERIOR al fix (sin `showMilestones`) → cae a la caché de disco, que sí trae
+// el perfil completo de la última vez que se abrió la pestaña en este aparato.
+await ev(`(()=>{CMTY.profile=null;localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,peers:0,list:[],at:Date.now()}));
+  localStorage.setItem('ax_cmty_cache_${MYUID}',JSON.stringify({profile:{handle:'Camila',show_milestones:false},friends:[],heartsRecv:0,at:Date.now()}));renderWfMilestoneAsk();})()`); await sleep(250);
+const m9d = await ev(askState);
+check('M9-quater con una sonda vieja (sin el campo) se resuelve por la caché de disco',
+  /4 semanas seguidas/.test(m9d.txt), JSON.stringify({ txt: m9d.txt.slice(0, 70) }));
+
+// M10 (F2, lo más silencioso del bug): el refresco del snapshot al terminar el entreno también
+// exigía `CMTY.profile`. Sin él, el servidor NUNCA ve crecer la racha de quien no abre la pestaña
+// → sus logros no se emiten jamás, opt-in o no.
+await ev(`(()=>{window.AVI_ALLOW_CLOUD_WRITE=true;window.__invokes=[];CMTY.profile=null;
+  localStorage.removeItem('ax_cmty_refresh_${MYUID}');
+  localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:true,peers:0,list:[],at:Date.now()}));
+  cmtyOnWorkoutFinished();})()`); await sleep(500);
+const m10 = await ev(`window.__invokes`);
+check('M10 al terminar el entreno se refresca el snapshot aunque no se haya abierto Comunidad',
+  m10.some(i => i.n === 'refresh_snapshot'), JSON.stringify(m10));
+
+// M11 (F11): PostgREST responde 204 sin error aunque el UPDATE no toque ninguna fila (perfil
+// borrado, RLS). Antes se confirmaba «Listo, tu gente lo va a ver» sin haber publicado nada.
+console.log('  install(8) update de 0 filas:', await ev(INSTALL(8))); await sleep(300);
+await ev(`(()=>{window.AVI_ALLOW_CLOUD_WRITE=true;window.__patchZero=true;window.__invokes=[];CMTY.profile=null;
+  localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:false,peers:0,list:[],at:Date.now()}));
+  renderWfMilestoneAsk();})()`); await sleep(250);
+await ev(`cmtyMilestoneYes(8)`); await sleep(500);
+const m11 = await ev(`(()=>({invokes:window.__invokes.length,txt:(document.getElementById('wf-milestone-ask')||{}).innerText||''}))()`);
+check('M11 si el UPDATE no cambió ninguna fila, no se promete ni se pide catch-up',
+  m11.invokes === 0 && !/va a ver/.test(m11.txt) && /No se pudo activar/.test(m11.txt), JSON.stringify(m11));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

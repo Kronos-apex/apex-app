@@ -54,6 +54,7 @@ const {
   communityPeersLine,
   communityNudgeEligible,
   communityProbeStale,
+  communityMe,
   CMTY_NUDGE_MIN_SESSIONS,
   communityGymAdoption,
   communityInviteMsg,
@@ -1614,6 +1615,27 @@ test('communityProbeStale: pega a la red 1×/día, y ante una fecha ilegible pre
   assert.strictEqual(communityProbeStale({ at: null }, now), true);
   assert.strictEqual(communityProbeStale({ at: '' }, now), true);
   assert.strictEqual(communityProbeStale({ at: 'ayer por la tarde' }, now), true);
+});
+
+test('communityMe: sé quién soy sin haber abierto la pestaña (F2), o no pregunto', () => {
+  const prof = { handle: 'Camilo', show_milestones: false };
+  const cache = { profile: { handle: 'Camilo-viejo', show_milestones: true } };
+  // 1. el perfil cargado manda sobre todo lo demás
+  assert.strictEqual(communityMe(prof, { hasProfile: true, showMilestones: true }, cache), prof);
+  // 2. sin perfil cargado, la sonda de A2 responde (es lo que hace que A4 exista en la práctica)
+  assert.deepStrictEqual(communityMe(null, { hasProfile: true, showMilestones: false }, null), { show_milestones: false });
+  assert.deepStrictEqual(communityMe(null, { hasProfile: true, showMilestones: true }, null), { show_milestones: true });
+  // 3. la sonda SABE que no hay perfil → null, aunque la caché tenga uno viejo (no se resucita)
+  assert.strictEqual(communityMe(null, { hasProfile: false, peers: 3 }, cache), null);
+  // 4. sonda vieja (sin el campo, formato anterior al fix) → cae a la caché de disco
+  assert.strictEqual(communityMe(null, { hasProfile: true, peers: 0 }, cache), cache.profile);
+  // 5. nadie sabe → null: no se pregunta a ciegas
+  assert.strictEqual(communityMe(null, null, null), null);
+  assert.strictEqual(communityMe(null, { hasProfile: true }, { profile: null }), null);
+  assert.strictEqual(communityMe(undefined, undefined, undefined), null);
+  // 6. basura no se cuela como perfil
+  assert.strictEqual(communityMe('si', null, null), null);
+  assert.strictEqual(communityMe(null, { hasProfile: true, showMilestones: 'true' }, null), null);
 });
 
 test('cmtyLocalKey: ninguna clave de comunidad sin dueño (P0 identidad pegada)', () => {

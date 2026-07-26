@@ -149,11 +149,20 @@ function _cmtySaveCache(){
     profile: CMTY.profile, friends: CMTY.friends, heartsRecv: CMTY.heartsRecv, at: Date.now()
   }));
 }
+function _cmtyReadCache(){
+  try{ return JSON.parse(_cmtyLdGet(CMTY_CACHE_KEY) || 'null'); }catch(e){ return null; }
+}
 function _cmtyLoadCache(){
-  try{
-    const c = JSON.parse(_cmtyLdGet(CMTY_CACHE_KEY) || 'null');
-    if(c){ CMTY.profile = c.profile || null; CMTY.friends = c.friends || []; CMTY.heartsRecv = c.heartsRecv || 0; }
-  }catch(e){}
+  const c = _cmtyReadCache();
+  if(c){ CMTY.profile = c.profile || null; CMTY.friends = c.friends || []; CMTY.heartsRecv = c.heartsRecv || 0; }
+}
+
+// F2 — MI perfil (aunque no haya abierto la pestaña en esta carga). Todo lo que decida «¿soy de
+// la comunidad?» fuera de la pestaña pasa por aquí, jamás por `CMTY.profile` a secas: ese está
+// null en la sesión típica (abrir → entrenar → cerrar) y por eso A4 no aparecía nunca.
+function _cmtyMe(){
+  if(typeof communityMe !== 'function') return CMTY.profile || null;
+  return communityMe(CMTY.profile, _cmtyProbeRead(), _cmtyReadCache());
 }
 
 // ── Carga (perfil + amistades + perfiles de amigos + ❤️) ──
@@ -274,7 +283,10 @@ async function cmtyMaybeRefresh(force){
 // El corazón del ciclo: refrescar el snapshot al TERMINAR un entreno (lo llama el flujo de fin).
 function cmtyOnWorkoutFinished(){
   // Solo si el usuario está en la comunidad; fuerza (el debounce evita spam de todas formas).
-  try{ if(CMTY.profile) cmtyMaybeRefresh(true); }catch(e){}
+  // F2: se pregunta por `_cmtyMe()`, NO por `CMTY.profile`. Con el guard viejo, a quien no abría
+  // la pestaña no se le refrescaba NUNCA el snapshot → el servidor no veía crecer su racha y sus
+  // logros no se emitían jamás. Justo el usuario que A4 quería alcanzar.
+  try{ if(_cmtyMe()) cmtyMaybeRefresh(true); }catch(e){}
 }
 
 // ══════════ RENDER ══════════
@@ -564,15 +576,29 @@ async function cmtyToggleToday(){
   await _cmtyPatch({ show_today: next });
   if(next) cmtyMaybeRefresh(true); // volver a mostrar hoy → recalcular en servidor
 }
+// Devuelve TRUE solo si el servidor confirmó que cambió una fila (F11). Un `.update()` sin
+// `.select()` responde 204 sin error aunque no exista la fila: con eso, un opt-in sobre un perfil
+// que ya no existe (o que la RLS no deja tocar) se anunciaba como «Listo, tu gente lo va a ver»
+// sin haber publicado nada. Ahora se pide la fila de vuelta y se exige que venga.
+// `CMTY.profile` puede ser null aquí: la pantalla de fin decide con la sonda, sin cargar el perfil.
 async function _cmtyPatch(patch){
-  if(_cmtySealed()){ toast('🔒 (dev)'); Object.assign(CMTY.profile, patch); _cmtyPaint(); return; }
+  if(_cmtySealed()){ toast('🔒 (dev)'); if(CMTY.profile) Object.assign(CMTY.profile, patch); _cmtyPaint(); return true; }
   try{
-    const cli = _cmtyClient(); const uid = await _cmtyUid(); if(!cli || !uid) return;
-    const { error } = await cli.from('community_profiles').update(patch).eq('user_id', uid);
+    const cli = _cmtyClient(); const uid = await _cmtyUid(); if(!cli || !uid) return false;
+    const { data, error } = await cli.from('community_profiles').update(patch).eq('user_id', uid).select('user_id');
     if(error) throw error;
-    Object.assign(CMTY.profile, patch);
+    if(!data || !data.length) return false; // 0 filas: no hay nada que prometer
+    if(CMTY.profile) Object.assign(CMTY.profile, patch);
+    if(patch.show_milestones !== undefined) _cmtyProbeSyncPatch(patch);
     _cmtySaveCache(); _cmtyPaint();
-  }catch(e){ toast(_cmtyErr(e)); }
+    return true;
+  }catch(e){ toast(_cmtyErr(e)); return false; }
+}
+// Mantiene la sonda al día cuando el cambio ocurre FUERA de la pestaña (el opt-in del hito), para
+// que la pregunta no reaparezca en el siguiente entreno del mismo día.
+function _cmtyProbeSyncPatch(patch){
+  const p = _cmtyProbeRead();
+  if(p && p.hasProfile === true) _cmtyProbeWrite(_cmtyProbeMine(patch.show_milestones === true));
 }
 
 function cmtyEditOpen(){
@@ -1830,7 +1856,7 @@ async function cmtyPublish(idx){
 // El payload lo arma el mapeador PURO `communityWorkoutPayload` (allow-list, jamás kilos). Devuelve
 // true si publicó (para que la UI muestre «✓ Compartido»). Sellado en localhost. Solo si es miembro.
 async function cmtyShareWorkout(session, routineName, note){
-  if(!CMTY.profile){ toast('Únete a la comunidad para compartir.'); return false; }
+  if(!_cmtyMe()){ toast('Únete a la comunidad para compartir.'); return false; } // F2: idem el botón
   const payload = (typeof communityWorkoutPayload === 'function') ? communityWorkoutPayload(session, routineName, note) : null;
   if(!payload){ toast('Este entreno aún no se puede compartir.'); return false; }
   if(_cmtySealed()){ toast('🔒 (dev) compartir sellado en localhost'); return false; }
@@ -1923,6 +1949,7 @@ if(typeof window !== 'undefined'){
   window.cmtyResetIdentity = cmtyResetIdentity; window._cmtyBlank = _cmtyBlank;
   window._cmtyKey = _cmtyKey; window._cmtyUidNow = _cmtyUidNow;
   window._cmtyIdentityGuard = _cmtyIdentityGuard; window._cmtySessionUid = _cmtySessionUid;
+  window._cmtyMe = _cmtyMe; window._cmtyReadCache = _cmtyReadCache; window._cmtyProbeMine = _cmtyProbeMine;
 }
 
 // ══════════════ ADOPCIÓN A2 — LA PUERTA desde «Hoy» ══════════════
@@ -1943,8 +1970,14 @@ function _cmtyProbeWrite(p){ _cmtyLdSet(CMTY_PROBE_KEY, JSON.stringify(p)); }
 // salirse). Sin esto, alguien que acaba de crear su perfil seguiría viendo «únete» hasta 24h.
 function _cmtyProbeSync(){
   const prof = CMTY.profile;
-  if(prof){ _cmtyProbeWrite({ hasProfile: true, peers: 0, list: [], at: Date.now() }); return; }
+  if(prof){ _cmtyProbeWrite(_cmtyProbeMine(prof.show_milestones === true)); return; }
   _cmtyProbeWrite(_cmtyProbeFrom(CMTY.peers));
+}
+// F2: la sonda también lleva `showMilestones`. Es lo único que A4 necesita saber del perfil para
+// decidir si preguntar, y así la pregunta funciona sin abrir la pestaña. Una sonda del formato
+// viejo (sin el campo) NO se interpreta: `communityMe` cae a la caché o calla.
+function _cmtyProbeMine(showMilestones){
+  return { hasProfile: true, showMilestones: !!showMilestones, peers: 0, list: [], at: Date.now() };
 }
 function _cmtyProbeFrom(peers){
   const list = (peers || []).map(p => ({ handle: p.handle, avatar_url: p.avatar_url, is_private: p.is_private }));
@@ -1967,9 +2000,9 @@ async function cmtyAdoptionProbe(client){
     // para que el render SÍNCRONO de «Hoy» sepa de quién es la clave que tiene que leer.
     if(CMTY.uid && CMTY.uid !== uid) cmtyResetIdentity();
     CMTY.uid = uid;
-    const { data: mine, error: me } = await cli.from('community_profiles').select('user_id').eq('user_id', uid).maybeSingle();
+    const { data: mine, error: me } = await cli.from('community_profiles').select('user_id,show_milestones').eq('user_id', uid).maybeSingle();
     if(me) throw me;
-    if(mine){ _cmtyProbeWrite({ hasProfile: true, peers: 0, list: [], at: Date.now() }); }
+    if(mine){ _cmtyProbeWrite(_cmtyProbeMine(mine.show_milestones === true)); }
     else{
       // Mismo `cp_sel` de siempre: sin perfil propio esto es el directorio del gym + los públicos.
       const { data: peers, error: pe } = await cli.from('community_profiles')
@@ -2053,7 +2086,9 @@ function renderWfMilestoneAsk(){
   const el = document.getElementById('wf-milestone-ask'); if(!el) return;
   el.innerHTML = '';
   if(typeof CMTY === 'undefined' || typeof milestoneAskEligible !== 'function') return;
-  const m = milestoneAskEligible(CMTY.profile, _cmtyLocalStreak(), _cmtyAskedRead());
+  // F2: el perfil se resuelve con `_cmtyMe()` (perfil cargado → sonda → caché). Con `CMTY.profile`
+  // a secas esta tarjeta NO se pintaba en la sesión típica, que es exactamente la que A4 buscaba.
+  const m = milestoneAskEligible(_cmtyMe(), _cmtyLocalStreak(), _cmtyAskedRead());
   if(m === null) return;
   const t = (typeof communityMilestoneText === 'function') ? communityMilestoneText('streak', { weeks: m }, true) : null;
   const titulo = t ? (t.text + ' ' + t.emoji) : (m + ' semanas seguidas 🔥');
@@ -2074,9 +2109,12 @@ function renderWfMilestoneAsk(){
 async function cmtyMilestoneYes(m){
   const el = document.getElementById('wf-milestone-ask');
   _cmtyAskedMark(m);
-  if(!CMTY.profile) return;
-  await _cmtyPatch({ show_milestones: true });
-  if(CMTY.profile.show_milestones !== true) return; // el patch falló → no prometer nada
+  if(!_cmtyMe()) return;
+  // F11: `_cmtyPatch` ahora responde si el servidor cambió una fila DE VERDAD. Antes se leía
+  // `CMTY.profile.show_milestones`, que en la pantalla de fin es null (no hay perfil cargado).
+  const ok = await _cmtyPatch({ show_milestones: true });
+  if(!ok){ if(el) el.innerHTML = '<div class="wf-push"><div class="wf-push-txt"><b>No se pudo activar</b>' +
+    'Inténtalo desde la pestaña Comunidad cuando tengas señal.</div></div>'; return; }
   if(!_cmtySealed()){
     try{ const cli = _cmtyClient(); if(cli) await cli.functions.invoke('refresh_snapshot', { body: { catchup: true } }); }
     catch(e){ _cw()('cmty catchup:', e && e.message); }
