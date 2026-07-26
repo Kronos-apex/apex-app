@@ -157,6 +157,29 @@ function _cmtyLoadCache(){
   if(c){ CMTY.profile = c.profile || null; CMTY.friends = c.friends || []; CMTY.heartsRecv = c.heartsRecv || 0; }
 }
 
+// F3 — ¿QUIÉNES SON DE MI GYM? La señal REAL: la RPC `cmty_gym_peers` (c20), que devuelve el mismo
+// conjunto que usa la RLS (`_same_community`, con el bloqueo ya excluido). Antes se deducía de
+// `is_private`, y un compañero que se hacía PÚBLICO dejaba de contar — en prod ese era el COACH.
+// Devuelve un Set, o `null` si no se pudo preguntar: null = «no sé», y cada llamador decide su
+// caída (nunca inventa pertenencia).
+async function _cmtyGymPeerIds(cli){
+  try{
+    const { data, error } = await cli.rpc('cmty_gym_peers');
+    if(error) throw error;
+    return new Set((data || []).map(r => (r && r.cmty_gym_peers) || r).filter(x => typeof x === 'string'));
+  }catch(e){ _cw()('cmty gym peers:', e && e.message); return null; }
+}
+// Marca la pertenencia sobre una lista de perfiles. La RPC es ADITIVA, nunca resta: el proxy viejo
+// («un privado que veo sin ser amigo solo puede ser del gym») es SANO en su dirección, así que se
+// conserva como piso. Así una RPC caída —o que responde vacío— degrada a la conducta de siempre en
+// vez de mandar a los compañeros privados a «Descubrir», que sería una regresión.
+// Lo que la RPC agrega es justo lo que el proxy no puede ver: el compañero que se hizo PÚBLICO.
+function _cmtyMarkGym(profiles, gymIds){
+  return (profiles || []).map(p => Object.assign({}, p, {
+    gym: (gymIds && gymIds.has(p.user_id)) || p.is_private === true
+  }));
+}
+
 // F2 — MI perfil (aunque no haya abierto la pestaña en esta carga). Todo lo que decida «¿soy de
 // la comunidad?» fuera de la pestaña pasa por aquí, jamás por `CMTY.profile` a secas: ese está
 // null en la sesión típica (abrir → entrenar → cerrar) y por eso A4 no aparecía nunca.
@@ -224,13 +247,16 @@ async function cmtyLoad(opts){
       if(ape) throw ape;
       const fprofiles = {};
       CMTY.profById = {}; // uid→perfil de TODO visible (para pintar solicitudes de seguidores por handle)
+      // F3: la pertenencia al gym la dice el SERVIDOR. Antes se deducía de `is_private`, así que un
+      // compañero que se hacía público aparecía en «Descubrir» como si fuera un desconocido.
+      const gymIds = await _cmtyGymPeerIds(cli);
       (allp || []).forEach(p => {
         CMTY.profById[p.user_id] = p;
         if(blockedIds.has(p.user_id)) return; // bloqueado → invisible aunque comparta gym
         if(friendIds.has(p.user_id)) fprofiles[p.user_id] = p;
         else if(pendingIds.has(p.user_id)) return; // solicitud de AMISTAD en curso
-        else if(p.is_private === false) CMTY.discover.push(p); // público (no amigo) → descubrir/seguir
-        else CMTY.gym.push(p); // privado no-amigo VISIBLE = solo puede ser compañero de gym (cp_sel)
+        else if((gymIds && gymIds.has(p.user_id)) || p.is_private !== false) CMTY.gym.push(p);
+        else CMTY.discover.push(p); // público que NO es de mi gym → descubrir/seguir
       });
       CMTY.friends = accepted
         .map(f => { const fid = f.user_a === uid ? f.user_b : f.user_a; return { fid: fid, fr: f, prof: fprofiles[fid] || null }; })
@@ -255,7 +281,7 @@ async function cmtyLoad(opts){
       try{
         const { data: peers } = await cli.from('community_profiles')
           .select('user_id,handle,avatar_url,is_private').neq('user_id', uid).limit(24);
-        CMTY.peers = peers || [];
+        CMTY.peers = _cmtyMarkGym(peers, await _cmtyGymPeerIds(cli)); // F3: pertenencia real, no `is_private`
       }catch(e){ _cw()('cmty peers:', e && e.message); }
     }
     CMTY.loaded = true;
@@ -1950,6 +1976,7 @@ if(typeof window !== 'undefined'){
   window._cmtyKey = _cmtyKey; window._cmtyUidNow = _cmtyUidNow;
   window._cmtyIdentityGuard = _cmtyIdentityGuard; window._cmtySessionUid = _cmtySessionUid;
   window._cmtyMe = _cmtyMe; window._cmtyReadCache = _cmtyReadCache; window._cmtyProbeMine = _cmtyProbeMine;
+  window._cmtyGymPeerIds = _cmtyGymPeerIds; window._cmtyMarkGym = _cmtyMarkGym;
 }
 
 // ══════════════ ADOPCIÓN A2 — LA PUERTA desde «Hoy» ══════════════
@@ -1979,8 +2006,11 @@ function _cmtyProbeSync(){
 function _cmtyProbeMine(showMilestones){
   return { hasProfile: true, showMilestones: !!showMilestones, peers: 0, list: [], at: Date.now() };
 }
+// `gym` viaja en cada entrada (F3): la sonda es lo único que tiene «Hoy» para decidir, y sin ese
+// dato la línea volvería a deducir la pertenencia de la privacidad. `user_id` NO se guarda: la
+// tarjeta solo necesita nombre, cara y si es del gym.
 function _cmtyProbeFrom(peers){
-  const list = (peers || []).map(p => ({ handle: p.handle, avatar_url: p.avatar_url, is_private: p.is_private }));
+  const list = (peers || []).map(p => ({ handle: p.handle, avatar_url: p.avatar_url, is_private: p.is_private, gym: p.gym === true }));
   return { hasProfile: false, peers: list.length, list: list, at: Date.now() };
 }
 
@@ -2006,9 +2036,9 @@ async function cmtyAdoptionProbe(client){
     else{
       // Mismo `cp_sel` de siempre: sin perfil propio esto es el directorio del gym + los públicos.
       const { data: peers, error: pe } = await cli.from('community_profiles')
-        .select('handle,avatar_url,is_private').neq('user_id', uid).limit(24);
+        .select('user_id,handle,avatar_url,is_private').neq('user_id', uid).limit(24);
       if(pe) throw pe;
-      _cmtyProbeWrite(_cmtyProbeFrom(peers));
+      _cmtyProbeWrite(_cmtyProbeFrom(_cmtyMarkGym(peers, await _cmtyGymPeerIds(cli)))); // F3
     }
     CMTY._probeNextTry = 0;
     // Ya con la verdad en mano, repintar «Hoy» (la tarjeta puede aparecer o desaparecer).

@@ -57,6 +57,7 @@ const {
   communityMe,
   CMTY_NUDGE_MIN_SESSIONS,
   communityGymAdoption,
+  communityGymHint,
   communityInviteMsg,
   highestStreakMilestone,
   milestoneAskEligible,
@@ -1520,7 +1521,7 @@ test('communityEmptyState: valores basura cuentan como 0 (no inventan gente)', (
 
 // ── A1 adopción — prueba social del opt-in (dato real: 23 en el gym, 6 con perfil) ──
 test('communityPeersLine: nombra a la gente del gym, en orden estable, con «y N más»', () => {
-  const gym = h => ({ handle: h, is_private: true });
+  const gym = h => ({ handle: h, is_private: true, gym: true }); // gym = señal REAL del servidor (F3)
   const l = communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Kathe'), gym('Luz'), gym('Natalia')]);
   assert.strictEqual(l.scope, 'gym');
   assert.strictEqual(l.total, 5);
@@ -1536,7 +1537,7 @@ test('communityPeersLine: nombra a la gente del gym, en orden estable, con «y N
 });
 
 test('communityPeersLine: concordancia y conteos exactos (1, 2 y 3 personas)', () => {
-  const gym = h => ({ handle: h, is_private: true });
+  const gym = h => ({ handle: h, is_private: true, gym: true }); // gym = señal REAL del servidor (F3)
   assert.strictEqual(communityPeersLine([gym('Samuel')]).text, 'Samuel de tu gym ya está aquí');
   assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid')]).text, 'Astrid y Samuel de tu gym ya están aquí');
   assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Luz')]).text, 'Astrid, Luz y 1 más de tu gym ya están aquí');
@@ -1548,23 +1549,42 @@ test('communityPeersLine: sin nadie a quién nombrar → null (la bienvenida que
   assert.strictEqual(communityPeersLine(), null);
   // basura que no se puede nombrar NO cuenta: nunca «2 más» fantasma ni un avatar sin nombre
   assert.strictEqual(communityPeersLine([{ handle: '' }, { handle: '   ' }, { handle: null }, null, {}]), null);
-  const l = communityPeersLine([{ handle: 'Samuel', is_private: true }, { handle: '  ' }, null]);
+  const l = communityPeersLine([{ handle: 'Samuel', is_private: true, gym: true }, { handle: '  ' }, null]);
   assert.strictEqual(l.total, 1);
   assert.strictEqual(l.text, 'Samuel de tu gym ya está aquí');
 });
 
 test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI», no «de tu gym»)', () => {
-  // privado visible sin perfil propio = compañero de gym (no puede haber amistad todavía)
-  const mixto = [{ handle: 'Publico', is_private: false }, { handle: 'Samuel', is_private: true }];
-  const l = communityPeersLine(mixto);
+  // F3 (2026-07-26) — ESTE TEST CONSAGRABA EL BUG. Afirmaba `total === 1` con el comentario «el
+  // público NO se cuenta dentro del gym», deduciendo la pertenencia de `is_private`. Con datos
+  // reales de prod el ÚNICO perfil público del gym es el COACH: la línea lo escondía justo a él.
+  // La pertenencia ya no se deduce de la privacidad — la marca el servidor (`cmty_gym_peers`).
+  const publicoDelGym = { handle: 'Publico', is_private: false, gym: true };
+  const privadoDelGym = { handle: 'Samuel', is_private: true, gym: true };
+  const l = communityPeersLine([publicoDelGym, privadoDelGym]);
   assert.strictEqual(l.scope, 'gym');
-  assert.strictEqual(l.total, 1);                    // el público NO se cuenta dentro del gym
-  assert.strictEqual(l.text, 'Samuel de tu gym ya está aquí');
-  // solo públicos → se los nombra, pero como gente de AVI
+  assert.strictEqual(l.total, 2);                    // el público del gym SÍ es del gym
+  assert.strictEqual(l.text, 'Publico y Samuel de tu gym ya están aquí');  // plural correcto
+  // 5 públicos del gym + 1 privado: antes decía «Zulma de tu gym ya está aquí» (singular, 5 ocultos)
+  const cinco = ['Ana', 'Beto', 'Caro', 'Dani', 'Eva'].map(h => ({ handle: h, is_private: false, gym: true }));
+  const l5 = communityPeersLine(cinco.concat([{ handle: 'Zulma', is_private: true, gym: true }]));
+  assert.strictEqual(l5.total, 6);
+  assert.strictEqual(l5.text, 'Ana, Beto y 4 más de tu gym ya están aquí');
+  // un DESCONOCIDO público (no marcado) no se cuela en el gym, aunque se le pueda ver
+  const conExtrano = communityPeersLine([{ handle: 'Extrano', is_private: false }, privadoDelGym]);
+  assert.strictEqual(conExtrano.total, 1);
+  assert.strictEqual(conExtrano.text, 'Samuel de tu gym ya está aquí');
+  // nadie del gym → se nombra a los públicos, pero como gente de AVI (no se miente el origen)
   const p = communityPeersLine([{ handle: 'Ana', is_private: false }, { handle: 'Beto', is_private: false }]);
   assert.strictEqual(p.scope, 'avi');
   assert.strictEqual(p.text, 'Ana y Beto ya están en AVI');
+  // sin la señal del servidor (RPC caída) un privado visible NO se pierde: el llamador cae al proxy
+  // viejo y lo marca; sin marca, la línea sigue siendo cierta, solo que dice «en AVI».
+  const sinSenal = communityPeersLine([{ handle: 'Samuel', is_private: true }]);
+  assert.strictEqual(sinSenal.scope, 'avi');
+  assert.strictEqual(sinSenal.text, 'Samuel ya está en AVI');
 });
+
 
 test('communityNudgeEligible: a quien YA tiene perfil no se le insiste, jamás', () => {
   const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 7, i + 1), finishedAt: D(2026, 7, i + 1) }));

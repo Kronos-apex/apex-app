@@ -2401,16 +2401,23 @@ function communityEmptyState(counts) {
 // primero a la gente que ya conoces y la política después. Esta función arma esa línea.
 // Pura: recibe los perfiles que la RLS ya deja ver (sin perfil propio eso es exactamente el
 // directorio del gym + los públicos) y devuelve `null` cuando no hay a quién nombrar.
-//   scope 'gym' → privados visibles: SIN perfil propio no puede haber amistad, así que un
-//                 privado visible SOLO puede ser compañero de gym (misma regla de `cmtyLoad`).
+//   scope 'gym' → los que el SERVIDOR dice que son del gym (`p.gym === true`).
 //   scope 'avi' → no hay nadie del gym todavía; se nombra a los públicos sin mentir el origen.
 // Orden alfabético estable a propósito: el mismo repintado no puede barajar los nombres.
+//
+// F3 (2026-07-26): antes la pertenencia se deducía de `is_private === true` («si lo veo y es
+// privado solo puede ser del gym»). Es cierto en un sentido pero NO en el otro: un compañero que
+// se hace PÚBLICO (c11_activate_public) deja de contarse. Con datos reales de prod eso escondía
+// justo al COACH —el único perfil público del gym— y con 5 públicos + 1 privado la línea decía
+// «Zulma de tu gym ya está aquí», en singular, escondiendo a cinco. Ahora la señal la pone el
+// llamador con la RPC `cmty_gym_peers` (la misma que usa la RLS); si esa consulta no responde, el
+// llamador cae al proxy viejo, que subcuenta pero nunca miente. Esta función ya no adivina.
 const CMTY_PEERS_NAMES = 2; // cuántos nombres se dicen antes del «y N más»
 function communityPeersLine(profiles, opts) {
   const max = (opts && Number(opts.max) > 0) ? Math.floor(opts.max) : CMTY_PEERS_NAMES;
   const clean = (profiles || [])
     .filter(p => p && typeof p.handle === 'string' && p.handle.trim())
-    .map(p => ({ handle: p.handle.trim(), gym: p.is_private === true, prof: p }));
+    .map(p => ({ handle: p.handle.trim(), gym: p.gym === true, prof: p }));
   const gym = clean.filter(p => p.gym);
   const pool = gym.length ? gym : clean;
   if (!pool.length) return null;
@@ -2499,6 +2506,9 @@ function communityMe(profile, probe, cache) {
 // Cuántos de mi gym ya activaron su perfil. `memberIds` = mi directorio (community_gym_members),
 // `profileIds` = los que tienen fila en community_profiles Y me son visibles. Deduplica y solo
 // cuenta como activo a quien esté en AMBAS listas: un perfil que no es de mi gym no infla la cifra.
+// Cuántos de mi gym ya activaron su perfil. `memberIds` = mi directorio (community_gym_members),
+// `profileIds` = los que tienen fila en community_profiles Y me son visibles. Deduplica y solo
+// cuenta como activo a quien esté en AMBAS listas: un perfil que no es de mi gym no infla la cifra.
 function communityGymAdoption(memberIds, profileIds) {
   const members = new Set((memberIds || []).filter(x => typeof x === 'string' && x));
   const withProf = new Set((profileIds || []).filter(x => typeof x === 'string' && x));
@@ -2507,6 +2517,7 @@ function communityGymAdoption(memberIds, profileIds) {
   const total = members.size;
   return { total: total, active: active, pending: total - active };
 }
+
 
 // El mensaje de invitación. Se manda por WhatsApp, así que es TEXTO PLANO (nada de HTML) y lo
 // revisa el coach antes de enviarlo — AVI nunca escribe sola a un asesorado.

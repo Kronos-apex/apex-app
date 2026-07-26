@@ -68,7 +68,10 @@ const RESET = (n, probe) => `(()=>{try{
   return 'ok';
 }catch(e){return 'err:'+e.message+' | '+((e.stack||'').split('\\n')[1]||'');}})()`;
 
-const gym = (h) => ({ handle: h, avatar_url: null, is_private: true });
+// F3: la pertenencia la marca el SERVIDOR (`gym`), ya no se deduce de `is_private`.
+const gym = (h) => ({ handle: h, avatar_url: null, is_private: true, gym: true });
+const gymPublico = (h) => ({ handle: h, avatar_url: null, is_private: false, gym: true });
+const extranoPublico = (h) => ({ handle: h, avatar_url: null, is_private: false });
 const FRESH = list => ({ hasProfile: false, peers: list.length, list, at: Date.now() });
 const PEERS3 = FRESH([gym('Samuel'), gym('Astrid'), gym('Natalia')]);
 
@@ -183,6 +186,16 @@ const n11 = await ev(`(()=>{
           hitEsBoton:!!(hit&&(hit===btn||btn.contains(hit))), solapa:!!(br&&br.top<r.bottom&&br.bottom>r.top)};})()`);
 check('N11 el banner «Instalar app» no tapa «Ver a mi gente» (hit-test real 390×844)',
   n11.hitEsBoton === true && n11.solapa === false, JSON.stringify(n11));
+
+// N12 (F3): un compañero de gym que se hizo PÚBLICO cuenta como del gym. En prod ese es el CASO
+// REAL: el único perfil público del gimnasio es el coach, y la línea lo escondía. Y un público que
+// NO es del gym sigue sin colarse.
+console.log('  setup(9, publico del gym + privado + extraño):',
+  await ev(RESET(9, FRESH([gymPublico('Andres'), gym('Samuel'), extranoPublico('Desconocido')])))); await sleep(400);
+const n12 = await ev(cardState);
+check('N12 el compañero PÚBLICO del gym cuenta, y el desconocido público no se cuela',
+  n12.disp === 'block' && /Andres/.test(n12.txt) && /Samuel/.test(n12.txt) &&
+  !/Desconocido/.test(n12.txt) && /de tu gym ya están aquí/.test(n12.txt), JSON.stringify(n12));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

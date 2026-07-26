@@ -60,7 +60,9 @@ const INSTALL = `(()=>{try{
       then(resolve){ const data = table==='friendships' ? (window.__frRows||[]) : table==='community_profiles' ? (window.__allProfiles||[]) : table==='community_reactions' ? (window.__rxRows||[]) : []; resolve({data,error:null}); } };
     return b; };
   AUTH.client=()=>({ from:builder,
-    rpc:(n,args)=>{rec('rpc',n,args);return Promise.resolve({data:window.__resolveRet,error:null});},
+    rpc:(n,args)=>{rec('rpc',n,args);
+      if(n==='cmty_gym_peers')return Promise.resolve({data:(window.__gymPeers||[]),error:window.__gymPeersErr||null});
+      return Promise.resolve({data:window.__resolveRet,error:null});},
     functions:{invoke:async()=>({data:{ok:true},error:null})},
     storage:{from:()=>({upload:async()=>({data:{},error:null}),getPublicUrl:(p)=>({data:{publicUrl:'${PREFIX}'+p}})})} });
   AUTH.getUser=async()=>({id:'${MYUID}'});
@@ -244,6 +246,39 @@ const cm15 = await ev(`(()=>{
 })()`);
 check('CM15 (A1) la bienvenida nombra a la gente del gym, sin perder el opt-in y con el handle escapado',
   cm15.linea && cm15.optin && cm15.xss === 0 && !cm15.badImg && !cm15.ext, JSON.stringify(cm15));
+
+// CM18 (F3) — el compañero de gym que se hizo PÚBLICO. `is_private` NO puede decidir la
+// pertenencia: en prod el único perfil público del gimnasio es EL COACH, y la línea lo escondía.
+// Aquí entra por la RPC `cmty_gym_peers` (señal real), y un público AJENO al gym no se cuela.
+const P3 = '00000000-0000-0000-0000-0000000000c3';
+const P4 = '00000000-0000-0000-0000-0000000000c4';
+await ev(`(()=>{
+  window.__allProfiles = [
+    {user_id:'${P1}',handle:'Samuel',avatar_url:null,is_private:true},
+    {user_id:'${P3}',handle:'AndresCoach',avatar_url:null,is_private:false},
+    {user_id:'${P4}',handle:'Desconocido',avatar_url:null,is_private:false}
+  ];
+  window.__gymPeers = ['${P1}','${P3}'];   // el servidor dice: Samuel y el coach son de mi gym
+  CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false; return 'ok';
+})()`);
+await ev(`cmtyLoad()`); await sleep(600);
+const cm18 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');
+  const l=(typeof communityPeersLine==='function')?communityPeersLine(CMTY.peers):null;
+  return {total:l&&l.total,scope:l&&l.scope,texto:l&&l.text,pintado:/de tu gym ya están aquí/.test(t),
+          nombraCoach:/AndresCoach/.test(t),nombraExtrano:/Desconocido/.test(t)};})()`);
+check('CM18 (F3) el compañero PÚBLICO del gym cuenta como del gym; el público ajeno no',
+  cm18.total === 2 && cm18.scope === 'gym' && cm18.pintado && cm18.nombraCoach && !cm18.nombraExtrano, JSON.stringify(cm18));
+
+// CM18-bis: si la RPC FALLA, no se pierde el gym privado (la señal es aditiva, nunca resta)
+await ev(`(()=>{ window.__gymPeersErr={message:'boom'}; CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; return 'ok'; })()`);
+await ev(`cmtyLoad()`); await sleep(600);
+const cm18b = await ev(`(()=>{const l=(typeof communityPeersLine==='function')?communityPeersLine(CMTY.peers):null;
+  const marcados=(CMTY.peers||[]).filter(p=>p.gym).map(p=>p.handle);
+  return {total:l&&l.total,scope:l&&l.scope,marcados:marcados};})()`);
+check('CM18-bis con la RPC caída se conserva la conducta de siempre (el privado sigue siendo del gym)',
+  cm18b.total === 1 && cm18b.scope === 'gym' && cm18b.marcados.length === 1 && cm18b.marcados[0] === 'Samuel',
+  JSON.stringify(cm18b));
+await ev(`(()=>{ window.__gymPeersErr=null; window.__gymPeers=[]; return 'ok'; })()`);
 
 // Shots de la bienvenida CON prueba social (R2.6: se miran, no solo se generan)
 await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250); await shot('community-optin-social-claro');
