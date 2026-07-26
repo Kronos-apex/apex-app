@@ -907,7 +907,10 @@ function gymInvite(memberId){
   if(!msg)return;
   const phone=(typeof waPhone==='function')?waPhone(c&&c.phone):'';
   window.open('https://wa.me/'+(phone||'')+'?text='+encodeURIComponent(msg),'_blank');
-  toast(phone?'📲 Invitación lista en WhatsApp':'📲 Elige a quién enviarle la invitación');
+  // F14: sin número plausible se elige el contacto a mano — y se explica por qué (un fijo de
+  // Bogotá guardado sin indicativo abría chat con Malasia).
+  const nota=(!phone&&typeof waPhoneNote==='function')?waPhoneNote(c&&c.phone):'';
+  toast(phone?'📲 Invitación lista en WhatsApp':(nota?('📲 '+nota+' Elige el contacto.'):'📲 Elige a quién enviarle la invitación'));
 }
 async function toggleGymMember(memberId){
   const on=_gymMembers&&_gymMembers.has(memberId);
@@ -2111,7 +2114,10 @@ function coachInviteOpenApp(){
   const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   if(phone){ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank'); toast('📲 Invitación lista en WhatsApp'); return; }
   const ta=document.getElementById('cchat-in'); if(ta){ ta.value=msg; if(typeof _cchatGrow==='function')_cchatGrow(ta); ta.focus(); }
-  toast('✍️ Revísalo y envíaselo para invitarlo');
+  // F14: `waPhone` ya no devuelve un número dudoso (abría chat con un desconocido). Si el teléfono
+  // no sirve se dice por qué, en vez de dejar al coach creyendo que WhatsApp «no funcionó».
+  const nota=(typeof waPhoneNote==='function')?waPhoneNote(c.phone):'';
+  toast(nota?('✍️ '+nota+' Te lo dejé listo en el chat'):'✍️ Revísalo y envíaselo para invitarlo');
 }
 function closeCoachChat(){ navCloseLayer(_closeCoachChat); }
 function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; }

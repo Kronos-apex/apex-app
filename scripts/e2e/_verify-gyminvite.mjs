@@ -182,6 +182,21 @@ const g12 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
   return {h:Math.round(r.height),w:Math.round(r.width)};})()`);
 check('G12 (F6) el botón «Invitar» cumple el mínimo táctil de 36px', g12.h >= 36, JSON.stringify(g12));
 
+// ── G13 (F14): un FIJO de Bogotá guardado sin indicativo. `wa.me/6012345678` NO es un enlace
+// roto: WhatsApp lo lee como E.164 y abre chat con **+60 = Malasia**. Debe caer a elegir contacto.
+await ev(`(()=>{DB.clients.find(c=>c.id==='u-luz').phone='6012345678';window.__opened=null;window.__toast=null;
+  if(typeof toast==='function'){const t=toast;window.toast=(m)=>{window.__toast=m;return t(m);};}
+  gymInvite('u-luz');})()`); await sleep(300);
+const g13 = await ev(`(()=>({url:(window.__opened||'').split('?')[0],tieneTexto:/text=/.test(window.__opened||''),toast:window.__toast}))()`);
+check('G13 (F14) un fijo NO abre chat con un número extranjero: cae a elegir contacto y lo explica',
+  g13.url === 'https://wa.me/' && g13.tieneTexto && /fijo/.test(g13.toast || ''), JSON.stringify(g13));
+
+// G13-bis: un internacional con indicativo EXPLÍCITO sí se respeta (no se rompe lo que servía).
+await ev(`(()=>{DB.clients.find(c=>c.id==='u-luz').phone='+1 305 555 1234';window.__opened=null;gymInvite('u-luz');})()`); await sleep(300);
+const g13b = await ev(`(()=>((window.__opened||'').split('?')[0]))()`);
+check('G13-bis un número internacional con indicativo se respeta tal cual',
+  g13b === 'https://wa.me/13055551234', JSON.stringify({ url: g13b }));
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
 console.log('\n──── RESULTADOS «EL COACH INVITA AL GYM» (A3, adopción) ────');

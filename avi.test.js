@@ -113,6 +113,7 @@ const {
   stepsAdd,
   stepsWeek,
   waPhone,
+  waPhoneNote,
   clampQwHiit,
   newsToShow,
   isFreeClient,
@@ -2068,7 +2069,7 @@ test('waterAdd/waterToday: suma por día local, clamp [0..30], inmutable', () =>
 });
 
 test('waPhone: móvil CO sin indicativo → +57; ya con indicativo se respeta; vacío → ""', () => {
-  // EL BUG: móvil de 10 dígitos que empieza por 3 (formatos variados) → anteponer 57
+  // EL BUG ORIGINAL (v365): móvil de 10 dígitos que empieza por 3 (formatos variados) → anteponer 57
   assert.strictEqual(waPhone('300 123 4567'), '573001234567');
   assert.strictEqual(waPhone('3001234567'), '573001234567');
   assert.strictEqual(waPhone('310-555-0000'), '573105550000');
@@ -2086,9 +2087,38 @@ test('waPhone: móvil CO sin indicativo → +57; ya con indicativo se respeta; v
   assert.strictEqual(waPhone(null), '');
   assert.strictEqual(waPhone(undefined), '');
   assert.strictEqual(waPhone('  '), '');
-  // fijo CO (no empieza por 3) → NO adivinamos país, se deja
-  assert.strictEqual(waPhone('6012345678'), '6012345678');
+  assert.strictEqual(waPhone('no tiene'), '');
 });
+
+test('waPhone: un número no plausible NO abre chat con un desconocido (F14)', () => {
+  // ESTE TEST CONSAGRABA EL BUG. Afirmaba waPhone('6012345678') === '6012345678' con el comentario
+  // «no adivinamos país, se deja». Pero `wa.me/6012345678` NO es neutral: WhatsApp lo lee como
+  // E.164 → **+60 = Malasia**. Un fijo de Bogotá abría chat con un desconocido en otro continente.
+  assert.strictEqual(waPhone('6012345678'), '');        // fijo de Bogotá (nuevo formato 60x)
+  assert.strictEqual(waPhone('601 234 5678'), '');
+  assert.strictEqual(waPhone('576012345678'), '');      // el mismo fijo CON indicativo 57
+  assert.strictEqual(waPhone('4441234567'), '');        // 10 dígitos que no son móvil CO
+  assert.strictEqual(waPhone('1234567'), '');           // fijo viejo de 7 dígitos
+  assert.strictEqual(waPhone('300123'), '');            // incompleto
+  assert.strictEqual(waPhone('3001234567890123456'), ''); // absurdamente largo
+  // el internacional EXPLÍCITO sí se respeta (quien escribe «+» sabe su indicativo)
+  assert.strictEqual(waPhone('+60 12 345 678'), '6012345678'); // Malasia de verdad
+  assert.strictEqual(waPhone('+1 305 555 1234'), '13055551234');
+  // sesgo DECLARADO: 10 dígitos que empiezan por 3 se asumen CO aunque puedan ser de EE.UU.
+  assert.strictEqual(waPhone('3055551234'), '573055551234');
+});
+
+test('waPhoneNote: al coach se le dice POR QUÉ no se pudo usar el teléfono (F14)', () => {
+  assert.strictEqual(waPhoneNote('3001234567'), '');
+  assert.strictEqual(waPhoneNote('+1 305 555 1234'), '');
+  assert.match(waPhoneNote(''), /No tienes su tel/);
+  assert.match(waPhoneNote(null), /No tienes su tel/);
+  assert.match(waPhoneNote('6012345678'), /parece un fijo/);
+  assert.match(waPhoneNote('576012345678'), /parece un fijo/);
+  assert.match(waPhoneNote('300123'), /incompleto/);
+  assert.match(waPhoneNote('3001234567890123456'), /indicativo/);
+});
+
 
 test('waterAdd: poda entradas con más de 30 días', () => {
   const now = new Date(2026, 6, 9);

@@ -3163,11 +3163,38 @@ function stripFixtureSessions(history) {
 // anteponer 57. Un número que YA trae indicativo (12 dígitos con 57, o cualquier otro largo) se
 // respeta tal cual. Vacío/no reconocible → '' (el caller cae a `wa.me/?text=` para elegir contacto).
 // Solo se toca el móvil CO pelón: NO adivinamos país de fijos ni de números internacionales.
+// F14 (2026-07-26) — «devolver los dígitos tal cual» NO es neutral: `wa.me/<n>` interpreta el
+// número como E.164, así que un FIJO de Bogotá guardado sin indicativo (6012345678) abría chat con
+// **+60 12 345 678 = Malasia**. Un número equivocado no es un enlace roto: es escribirle a un
+// desconocido de otro país. Ahora, si el número no es plausible como celular, se devuelve '' y el
+// llamador cae a `wa.me/?text=` (elegir contacto), que ya estaba implementado en los 4 sitios.
+//
+// Sesgo declarado: la base de usuarios es colombiana. Un móvil de 10 dígitos que empieza por 3 se
+// asume CO (+57). Un celular de OTRO país con esa forma (EE.UU. «305…») es indistinguible → hay
+// que guardarlo con indicativo (+1 305…). `waPhoneNote` se lo dice al coach en vez de callar.
 function waPhone(raw) {
-  const d = String(raw == null ? '' : raw).replace(/\D/g, '');
+  const s = String(raw == null ? '' : raw).trim();
+  const plus = s.charAt(0) === '+';
+  const d = s.replace(/\D/g, '');
   if (!d) return '';
-  if (d.length === 10 && d[0] === '3') return '57' + d; // móvil CO sin indicativo → +57
-  return d; // ya trae indicativo (12 con 57, o internacional) → respetar
+  // Colombia explícita (con o sin «+»): 57 + 10 dígitos. El móvil empieza por 3; 60x… es fijo.
+  if (d.length === 12 && d.slice(0, 2) === '57') return d[2] === '3' ? d : '';
+  if (plus) return (d.length >= 8 && d.length <= 15) ? d : ''; // otro país con indicativo EXPLÍCITO
+  if (d.length === 10) return d[0] === '3' ? '57' + d : '';    // local CO: móvil sí, fijo NO
+  if (d.length >= 11 && d.length <= 15) return d;              // largo sin «+»: ya trae indicativo
+  return ''; // corto, incompleto o ambiguo → mejor elegir el contacto que escribirle a un extraño
+}
+
+// Por qué no se pudo usar el teléfono, en cristiano y accionable (R1.5: estados no felices con
+// mensaje útil). '' = el número sirve. PURA.
+function waPhoneNote(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return 'No tienes su teléfono guardado.';
+  if (waPhone(s)) return '';
+  const d = s.replace(/\D/g, '');
+  if (d.length === 10 || (d.length === 12 && d.slice(0, 2) === '57')) return 'Ese número parece un fijo, no un celular.';
+  if (d.length < 10) return 'Ese teléfono está incompleto.';
+  return 'No reconozco ese número. Si es de otro país, guárdalo con indicativo (+1, +34…).';
 }
 
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
@@ -3176,6 +3203,7 @@ if (typeof module !== 'undefined' && module.exports) {
     MOOD_STATES,
     applyMood,
     waPhone,
+    waPhoneNote,
     MS,
     fmtMetric,
     fmtDuration,
