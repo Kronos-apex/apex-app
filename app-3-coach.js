@@ -840,17 +840,23 @@ async function openGymMgr(){
     // CLAVE: `_gymActive` queda en NULL si no se pudo leer. Un Set VACÍO diría «nadie activó» y
     // el modal ofrecería invitar a los que YA están — inventarle un estado al coach es peor que
     // no mostrarlo. null = «no sé» y la UI se calla; Set = dato real.
-    _gymActive=null;
-    try{
-      const ids=[..._gymMembers];
-      if(ids.length){
-        const {data:profs,error:perr}=await cli.from('community_profiles').select('user_id').in('user_id',ids);
-        if(perr)throw perr;
-        _gymActive=new Set((profs||[]).map(p=>p.user_id));
-      }else{ _gymActive=new Set(); }
-    }catch(e){ _gymActive=null; }
+    await _gymLoadActive(cli);
     _renderGymMgr();
   }catch(e){ if(body)body.innerHTML='<div style="color:var(--rd);font-size:13px">No se pudo cargar. Revisa tu conexión.</div>'; }
+}
+// F4: se consulta CADA VEZ que cambia el directorio, no solo al abrir el modal. Antes el Set se
+// calculaba una sola vez con los miembros de ese momento: al AGREGAR a alguien que ya tenía perfil,
+// su id no estaba en la consulta previa → el modal lo marcaba como «no activado» y empujaba a
+// invitarlo a algo donde ya estaba.
+async function _gymLoadActive(cli){
+  _gymActive=null;
+  try{
+    const ids=_gymMembers?[..._gymMembers]:[];
+    if(!ids.length){ _gymActive=new Set(); return; }
+    const {data:profs,error:perr}=await cli.from('community_profiles').select('user_id').in('user_id',ids);
+    if(perr)throw perr;
+    _gymActive=new Set((profs||[]).map(p=>p.user_id));
+  }catch(e){ _gymActive=null; } // null = «no sé» (la UI se calla); Set vacío = «nadie activó»
 }
 function _gymSwitch(id,on){
   return '<button class="cmty-sw'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" onclick="toggleGymMember(\''+id+'\')" style="flex:0 0 auto;width:46px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;background:'+(on?'var(--g2)':'var(--br2)')+';transition:background var(--dur,220ms) var(--ease-out,ease)"><span style="position:absolute;top:3px;left:'+(on?'21px':'3px')+';width:22px;height:22px;border-radius:50%;background:#fff;transition:left var(--dur,220ms) var(--ease-out,ease)"></span></button>';
@@ -861,26 +867,30 @@ function _gymSwitch(id,on){
 function _gymStatusHtml(id){
   if(!_gymActive||!_gymMembers||!_gymMembers.has(id)) return '';
   if(_gymActive.has(id)) return '<span style="font-size:11px;font-weight:700;color:var(--gt);background:var(--gl);padding:2px 7px;border-radius:99px">✓ Ya está</span>';
-  return '<button class="btn bg bsm" style="min-height:32px;padding:0 10px;font-size:12px" onclick="gymInvite(\''+esc(id)+'\')">Invitar</button>';
+  // F6: 36px es el mínimo táctil (R1.5) y aquí importa el doble — el botón vive pegado al switch
+  // que da o quita la membresía, así que un dedo impreciso cambia el directorio sin querer.
+  return '<button class="btn bg bsm" style="min-height:36px;padding:0 10px;font-size:12px" onclick="gymInvite(\''+esc(id)+'\')">Invitar</button>';
 }
 function _renderGymMgr(){
   const body=document.getElementById('gym-mgr-body'); if(!body||!_gymMembers)return;
   const row=(id,name,sub,status)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--br)"><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--t1);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+esc(sub)+'</div>':'')+'</div>'+(status||'')+_gymSwitch(id,_gymMembers.has(id))+'</div>';
   // A3: la cifra que le importa al coach — cuántos de su gym ya activaron. Motor puro.
+  const cls=(DB.clients||[]).filter(c=>c&&c.id);
+  // F5: la frase se deriva de lo que la lista REALMENTE ofrece. Con botón solo salen los
+  // asesorados con fila (el coach nunca lo tiene, y un archivado ni siquiera aparece).
   let h='';
   if(_gymActive&&typeof communityGymAdoption==='function'){
-    const a=communityGymAdoption([..._gymMembers],[..._gymActive]);
+    const a=communityGymAdoption([..._gymMembers],[..._gymActive],cls.map(c=>c.id));
     if(a.total){
+      const hint=(typeof communityGymHint==='function')
+        ? communityGymHint(a,{coachPending:!!(_gymCoachUid&&_gymMembers.has(_gymCoachUid)&&!_gymActive.has(_gymCoachUid))})
+        : '';
       h+='<div style="font-size:12px;color:var(--t2);background:var(--gl);border-radius:var(--rsm);padding:9px 11px;margin-bottom:10px;line-height:1.45">'+
-        '<b style="color:var(--gt)">'+a.active+' de '+a.total+'</b> ya crearon su perfil.'+
-        (a.pending===1?' Al que falta puedes invitarlo por WhatsApp desde esta lista.'
-         :a.pending?' A los otros '+a.pending+' puedes invitarlos por WhatsApp desde esta lista.'
-         :' Tu comunidad está completa 🎉')+
+        '<b style="color:var(--gt)">'+a.active+' de '+a.total+'</b> ya crearon su perfil. '+esc(hint)+
       '</div>';
     }
   }
   h+=row(_gymCoachUid,'Yo (mi perfil)','Participas como uno más de tu gym','');
-  const cls=(DB.clients||[]).filter(c=>c&&c.id);
   if(!cls.length) h+='<div style="font-size:12px;color:var(--t3);padding:12px 0">Aún no tienes asesorados que agregar.</div>';
   cls.forEach(c=>{ h+=row(c.id, c.name||'Asesorado', '', _gymStatusHtml(c.id)); });
   body.innerHTML=h;
@@ -901,11 +911,19 @@ function gymInvite(memberId){
 }
 async function toggleGymMember(memberId){
   const on=_gymMembers&&_gymMembers.has(memberId);
-  if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){ if(_gymMembers){ on?_gymMembers.delete(memberId):_gymMembers.add(memberId); _renderGymMgr(); } return; }
+  if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){
+    // Sellado = no se ESCRIBE a la nube, pero leer sí se puede: el simulacro local debe
+    // comportarse como producción, incluida la relectura de estados de F4.
+    if(_gymMembers){ on?_gymMembers.delete(memberId):_gymMembers.add(memberId);
+      const c=AUTH.client(); if(c) await _gymLoadActive(c);
+      _renderGymMgr(); }
+    return;
+  }
   try{
     const cli=AUTH.client(); const u=await AUTH.getUser(); if(!cli||!u)return;
     if(on){ const {error}=await cli.from('community_gym_members').delete().eq('coach_id',u.id).eq('member_id',memberId); if(error)throw error; _gymMembers.delete(memberId); }
     else { const {error}=await cli.from('community_gym_members').insert({coach_id:u.id,member_id:memberId}); if(error)throw error; _gymMembers.add(memberId); }
+    await _gymLoadActive(cli); // F4: el directorio cambió → el estado «ya activó» hay que releerlo
     _renderGymMgr();
   }catch(e){ toast('No se pudo actualizar. Intenta de nuevo.'); }
 }

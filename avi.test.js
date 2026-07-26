@@ -1673,6 +1673,40 @@ test('cmtyLocalKey: ninguna clave de comunidad sin dueño (P0 identidad pegada)'
   assert.strictEqual(cmtyLocalKey('ax_cmty_minor', 'u-a'), 'ax_cmty_minor_u-a');
 });
 
+test('communityGymAdoption: `invitable` cuenta solo a quien la lista puede invitar (F5)', () => {
+  // Caso REAL del modal: 4 miembros = el coach + 3 asesorados, de los cuales uno está archivado
+  // (ya no aparece en DB.clients) y otro ya activó. `pending` dice 2; invitables hay UNO.
+  const miembros = ['coach', 'ana', 'beto', 'archivado'];
+  const conPerfil = ['coach', 'ana'];
+  const enLista = ['ana', 'beto'];               // el coach no lleva botón; el archivado no tiene fila
+  const a = communityGymAdoption(miembros, conPerfil, enLista);
+  assert.strictEqual(a.total, 4);
+  assert.strictEqual(a.active, 2);
+  assert.strictEqual(a.pending, 2);              // beto + archivado
+  assert.strictEqual(a.invitable, 1);            // solo beto tiene botón en pantalla
+  // sin `listedIds` se comporta EXACTAMENTE como antes (nada que romper en otros llamadores)
+  assert.deepStrictEqual(communityGymAdoption(miembros, conPerfil), { total: 4, active: 2, pending: 2 });
+  // una lista con gente que NO es del gym no infla invitable
+  assert.strictEqual(communityGymAdoption(['ana'], [], ['ana', 'zoe']).invitable, 1);
+});
+
+test('communityGymHint: la frase del modal nunca promete botones que no existen (F5)', () => {
+  const A = (o) => Object.assign({ total: 5, active: 2, pending: 3, invitable: 3 }, o || {});
+  assert.match(communityGymHint(A({ invitable: 3 })), /A los otros 3 puedes invitarlos/);
+  assert.match(communityGymHint(A({ invitable: 1 })), /Al que falta puedes invitarlo/);
+  assert.strictEqual(communityGymHint(A({ pending: 0, invitable: 0 })), 'Tu comunidad está completa 🎉');
+  // EL BUG: faltaba 1, no había ni un botón → decía «al que falta puedes invitarlo desde esta lista»
+  assert.match(communityGymHint(A({ pending: 1, invitable: 0 })), /no puedes invitarlo desde aquí/);
+  assert.match(communityGymHint(A({ pending: 2, invitable: 0 })), /A los 2 que faltan no puedes invitarlos/);
+  // el único que falta es el propio coach → no se le dice que se invite a sí mismo
+  assert.match(communityGymHint(A({ pending: 1, invitable: 0 }), { coachPending: true }), /El que falta eres tú/);
+  // el coach pendiente NO se cuenta entre los «fuera de la lista»
+  assert.match(communityGymHint(A({ pending: 2, invitable: 0 }), { coachPending: true }), /A quien falta no puedes invitarlo/);
+  // defensivo: valores raros no producen frases absurdas («NaN que faltan»)
+  assert.strictEqual(communityGymHint(null), 'Tu comunidad está completa 🎉');
+  assert.strictEqual(communityGymHint({ pending: 'x', invitable: null }), 'Tu comunidad está completa 🎉');
+});
+
 test('communityGymAdoption: solo cuenta como activo a quien está en MI gym', () => {
   const a = communityGymAdoption(['u1', 'u2', 'u3'], ['u1', 'u9']);
   assert.deepStrictEqual(a, { total: 3, active: 1, pending: 2 });

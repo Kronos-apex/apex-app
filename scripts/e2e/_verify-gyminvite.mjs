@@ -36,21 +36,27 @@ const INSTALL = `(()=>{try{
     {id:'u-sam',name:'Samuel Cifuentes',phone:'3001234567'},
     {id:'u-nat',name:'Natalia Martinez',phone:'+57 310 000 1111'},
     {id:'u-luz',name:'Luz Rodríguez',phone:'3009998877'},
-    {id:'u-out',name:'<img src=x onerror=window.__xss=1>',phone:''}
+    {id:'u-out',name:'<img src=x onerror=window.__xss=1>',phone:''},
+    {id:'u-kat',name:'Kathe Beltran',phone:'3005556677'}
   ];
   window.__xss=0; window.__opened=null; window.__profErr=false; window.__calls=[];
   window.__gymRows=[{member_id:'${COACH}'},{member_id:'u-sam'},{member_id:'u-nat'},{member_id:'u-luz'}];
-  window.__profRows=[{user_id:'${COACH}'},{user_id:'u-sam'},{user_id:'u-nat'}];
+  // u-kat: asesorado que YA tiene perfil de comunidad pero AÚN NO está en el gym (F4).
+  window.__profRows=[{user_id:'${COACH}'},{user_id:'u-sam'},{user_id:'u-nat'},{user_id:'u-kat'}];
   const builder=(table)=>{ const b={
       select(){return b;}, insert(){return b;}, update(){return b;}, delete(){return b;},
-      eq(){return b;}, neq(){return b;}, or(){return b;}, in(){return b;}, limit(){return b;},
+      eq(){return b;}, neq(){return b;}, or(){return b;}, limit(){return b;},
+      // §P3: antes in() IGNORABA sus argumentos, así que la consulta de perfiles devolvía
+      // siempre lo mismo aunque perdiera el filtro — por eso F4 pasó desapercibido.
+      in(col,ids){ b.__in=(ids||[]).slice(); window.__lastIn={col:col,ids:b.__in}; return b; },
       maybeSingle(){return Promise.resolve({data:null,error:null});},
       then(resolve){
         window.__calls.push(table);
         if(table==='community_gym_members')return resolve({data:window.__gymRows,error:null});
         if(table==='community_profiles'){
           if(window.__profErr)return resolve({data:null,error:{message:'boom'}});
-          return resolve({data:window.__profRows,error:null});
+          const rows=b.__in?window.__profRows.filter(r=>b.__in.indexOf(r.user_id)>=0):window.__profRows;
+          return resolve({data:rows,error:null});
         }
         resolve({data:[],error:null}); } };
     return b; };
@@ -124,6 +130,57 @@ const g9 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
   return {sw:b.querySelectorAll('.cmty-sw').length,chips:/Ya está/.test(b.innerText),inv:[...b.querySelectorAll('button')].some(x=>/Invitar/.test(x.textContent)),cifra:/ya crearon su perfil/.test(b.innerText)};})()`);
 check('G9 si no se puede saber quién activó, el modal sigue sirviendo y no inventa estados',
   g9.sw >= 5 && !g9.chips && !g9.inv && !g9.cifra, JSON.stringify(g9));
+
+// ── G10 (F4): agregar al gym a alguien que YA tiene perfil no puede marcarlo como «no activado».
+// El Set de activos se calculaba UNA vez con los miembros de ese momento; el recién agregado nunca
+// estaba en esa consulta → el modal empujaba a invitarlo a algo donde ya estaba. Repro en 2 toques.
+await ev(`(()=>{window.__profErr=false;})()`);
+await ev(`openGymMgr()`); await sleep(700);
+await ev(`toggleGymMember('u-kat')`); await sleep(600);
+const g10 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
+  const r=[...b.children].find(d=>d.innerText&&d.innerText.indexOf('Kathe')>=0);
+  return r?{chip:/Ya está/.test(r.innerText),inv:[...r.querySelectorAll('button')].some(x=>/Invitar/.test(x.textContent))}:null;})()`);
+check('G10 (F4) al agregar al gym a quien YA tiene perfil, se marca «Ya está» (no «Invitar»)',
+  !!(g10 && g10.chip && !g10.inv), JSON.stringify(g10));
+
+// G10-bis: la consulta de perfiles se hace con los ids REALES del directorio (si perdiera el
+// filtro, este harness ya no lo notaría — por eso el cliente falso honra `.in()`).
+const g10b = await ev(`window.__lastIn`);
+check('G10-bis la consulta de activos filtra por los miembros del directorio',
+  !!(g10b && g10b.col === 'user_id' && g10b.ids.indexOf('u-kat') >= 0 && g10b.ids.indexOf('u-out') < 0), JSON.stringify(g10b));
+
+// ── G11 (F5): la frase debe contar SOLO lo que la lista ofrece. Se agrega un miembro ARCHIVADO
+// (está en el gym pero ya no en DB.clients → no tiene fila ni botón). Antes se le contaba y el
+// modal podía prometer invitaciones que no existen en pantalla.
+await ev(`(()=>{window.__gymRows.push({member_id:'u-archivado'});})()`);
+await ev(`openGymMgr()`); await sleep(700);
+const g11 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');const t=b.innerText.replace(/\\s+/g,' ');
+  const botones=[...b.querySelectorAll('button')].filter(x=>/Invitar/.test(x.textContent)).length;
+  return {txt:t.slice(0,190),botones:botones,
+          promete2:/A los otros 2 puedes invitarlos/.test(t),
+          prometeUno:/Al que falta puedes invitarlo/.test(t),
+          fuera:/no puedes invitarlo desde aquí/.test(t)};})()`);
+check('G11 (F5) la frase no promete más invitaciones que botones hay en pantalla',
+  g11.botones === 1 && g11.prometeUno && !g11.promete2, JSON.stringify(g11));
+
+// G11-bis: si NO queda nadie invitable pero sí pendientes, lo dice sin mentir.
+await ev(`(()=>{window.__profRows.push({user_id:'u-luz'});})()`);
+await ev(`openGymMgr()`); await sleep(700);
+const g11b = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');const t=b.innerText.replace(/\\s+/g,' ');
+  return {botones:[...b.querySelectorAll('button')].filter(x=>/Invitar/.test(x.textContent)).length,
+          fuera:/no puedes invitarlo desde aquí/.test(t),completa:/está completa/.test(t),txt:t.slice(0,180)};})()`);
+check('G11-bis sin nadie a quien invitar, no dice «invítalos» ni «completa» en falso',
+  g11b.botones === 0 && g11b.fuera && !g11b.completa, JSON.stringify(g11b));
+
+// ── G12 (F6): el botón «Invitar» vive pegado al switch que da/quita membresía → mínimo táctil 36px.
+await ev(`(()=>{window.__profRows=window.__profRows.filter(r=>r.user_id!=='u-luz');})()`);
+await ev(`openGymMgr()`); await sleep(700);
+const g12 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
+  const btn=[...b.querySelectorAll('button')].find(x=>/Invitar/.test(x.textContent));
+  if(!btn)return {err:'sin boton'};
+  const r=btn.getBoundingClientRect();
+  return {h:Math.round(r.height),w:Math.round(r.width)};})()`);
+check('G12 (F6) el botón «Invitar» cumple el mínimo táctil de 36px', g12.h >= 36, JSON.stringify(g12));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

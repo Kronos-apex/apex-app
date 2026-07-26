@@ -2506,18 +2506,46 @@ function communityMe(profile, probe, cache) {
 // Cuántos de mi gym ya activaron su perfil. `memberIds` = mi directorio (community_gym_members),
 // `profileIds` = los que tienen fila en community_profiles Y me son visibles. Deduplica y solo
 // cuenta como activo a quien esté en AMBAS listas: un perfil que no es de mi gym no infla la cifra.
-// Cuántos de mi gym ya activaron su perfil. `memberIds` = mi directorio (community_gym_members),
-// `profileIds` = los que tienen fila en community_profiles Y me son visibles. Deduplica y solo
-// cuenta como activo a quien esté en AMBAS listas: un perfil que no es de mi gym no infla la cifra.
-function communityGymAdoption(memberIds, profileIds) {
+// F5 (2026-07-26): `pending` NO es cuántos puede invitar. El modal decía «A los otros N puedes
+// invitarlos desde esta lista» contando al PROPIO COACH (su fila nunca lleva botón) y a miembros
+// que ya no están en `DB.clients` (archivados: no tienen fila en la lista) → podía decir «al que
+// falta» con CERO botones en pantalla. `listedIds` = los que la lista realmente ofrece invitar;
+// cuando se pasa, `invitable` es la cifra honesta para esa frase. Sin él, se comporta como antes.
+function communityGymAdoption(memberIds, profileIds, listedIds) {
   const members = new Set((memberIds || []).filter(x => typeof x === 'string' && x));
   const withProf = new Set((profileIds || []).filter(x => typeof x === 'string' && x));
   let active = 0;
   members.forEach(id => { if (withProf.has(id)) active++; });
   const total = members.size;
-  return { total: total, active: active, pending: total - active };
+  const out = { total: total, active: active, pending: total - active };
+  if (listedIds != null) {
+    const listed = new Set((listedIds || []).filter(x => typeof x === 'string' && x));
+    let invitable = 0;
+    members.forEach(id => { if (!withProf.has(id) && listed.has(id)) invitable++; });
+    out.invitable = invitable;
+  }
+  return out;
 }
 
+// F5 — la SEGUNDA frase del modal («…y a los otros los invitas desde esta lista»). Pura, porque
+// tiene cuatro casos con significados distintos y ninguno puede mentirle al coach:
+//   · hay a quién invitar        → se dice cuántos (los que TIENEN botón en pantalla)
+//   · no falta nadie             → celebración
+//   · el único que falta es ÉL   → no se invita a sí mismo; se le dice dónde crear su perfil
+//   · faltan, pero fuera de la lista (asesorados archivados) → se dice que desde aquí no se puede
+// `opts.coachPending` = el coach está en su propio gym y todavía no tiene perfil de comunidad.
+function communityGymHint(adoption, opts) {
+  const a = adoption || {}, o = opts || {};
+  const invitable = Number(a.invitable) > 0 ? Number(a.invitable) : 0;
+  const pending = Number(a.pending) > 0 ? Number(a.pending) : 0;
+  if (invitable === 1) return 'Al que falta puedes invitarlo por WhatsApp desde esta lista.';
+  if (invitable > 1) return 'A los otros ' + invitable + ' puedes invitarlos por WhatsApp desde esta lista.';
+  if (pending === 0) return 'Tu comunidad está completa 🎉';
+  const fuera = pending - (o.coachPending ? 1 : 0);
+  if (fuera <= 0) return 'El que falta eres tú: crea tu perfil desde «Mi entrenamiento» → Comunidad.';
+  if (fuera === 1) return 'A quien falta no puedes invitarlo desde aquí: ya no está en tu lista de asesorados.';
+  return 'A los ' + fuera + ' que faltan no puedes invitarlos desde aquí: ya no están en tu lista de asesorados.';
+}
 
 // El mensaje de invitación. Se manda por WhatsApp, así que es TEXTO PLANO (nada de HTML) y lo
 // revisa el coach antes de enviarlo — AVI nunca escribe sola a un asesorado.
@@ -3264,6 +3292,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CMTY_NUDGE_SNOOZE_DAYS,
     CMTY_NUDGE_PROBE_TTL_H,
     communityGymAdoption,
+    communityGymHint,
     communityInviteMsg,
     CMTY_INVITE_URL,
     communityMilestoneText,

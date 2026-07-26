@@ -380,6 +380,49 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 (parte 118 — **F3 + el modal del gym (F4-F6)**, avi-v400 + migraciones
+`c20_gym_peers`/`c20b`). Puntos 3 y 4 del `plan-correcciones-adopcion.md`.*
+
+***F3 — la pertenencia al gym ya no se deduce de la privacidad.** A1 usaba `is_private===true` como
+señal de «es de mi gym». Verificado contra prod ANTES de tocar código (R0.1): de los 7 perfiles, el
+ÚNICO público es **el coach dueño del gym** → la prueba social escondía justo la cara que más empuja
+a activar el perfil; y con 5 públicos + 1 privado la línea decía «Zulma de tu gym ya está aquí»,
+singular. Hacía falta backend: `gm_sel` (c5) solo deja leer TU propia fila del roster, a propósito.
+Migración `c20_gym_peers` → RPC DEFINER `cmty_gym_peers()` que devuelve `{x : _same_community(yo,x)}`
+—la misma rama de `cp_sel`, no abre nada nuevo— y `c20b` la acota a miembros CON perfil (los 16 del
+directorio que nunca se unieron no salen: no aceptaron nada). `communityPeersLine` ya no adivina: lee
+`p.gym`. La señal es **ADITIVA**: si la RPC falla se conserva el proxy viejo, que subcuenta pero no
+miente — sin eso una RPC caída mandaba a los compañeros privados a «Descubrir» (regresión que cazó el
+propio harness antes de producción). `cmtyLoad` clasifica «Tu gimnasio» con la misma señal: tenía el
+mismo defecto. **El test que CONSAGRABA el error** («el público NO se cuenta dentro del gym»)
+corregido con su porqué (R2.2). Matriz contra prod con impersonación+rollback G1-G5 (incluido el
+bloqueo, con el fixture creado como la app porque `trg_norm_friendship` reescribe el status) y anon
+rechazado. Sabotaje: volver a `is_private` → suite roja + CM18 con el bug literal.*
+
+***F4 — el estado «ya activó» quedaba rancio.** `_gymActive` se calculaba UNA vez con los miembros de
+ese momento; al AGREGAR al gym a alguien que YA tenía perfil, su id no estaba en esa consulta → el
+modal lo marcaba «no activado» y empujaba a invitarlo a algo donde ya estaba (repro en 2 toques).
+Extraído `_gymLoadActive(cli)`, invocado también desde `toggleGymMember` — incluida la rama SELLADA,
+para que el simulacro local se comporte como producción.*
+
+***F5 — la frase mentía.** «A los otros N puedes invitarlos desde esta lista» contaba al PROPIO COACH
+(su fila nunca lleva botón) y a miembros archivados (sin fila): podía decir «al que falta» con CERO
+botones en pantalla. `communityGymAdoption` gana `listedIds` → `invitable`, y la frase sale de
+`communityGymHint` (pura, 4 ramas: hay a quién invitar / completa / **el único que falta eres tú** →
+se le dice dónde crear su perfil, sin invitarse a sí mismo / faltan pero fuera de la lista).*
+
+***F6** — botón «Invitar» de 32px → 36px. Vive pegado al switch que da o quita la membresía, así que
+un dedo impreciso cambiaba el directorio sin querer.*
+
+***QA.** Suite 439→**441** (`invitable` y las 4 ramas de la frase). `_verify-gyminvite` 11→**16**
+(G10/G10-bis F4 · G11/G11-bis F5 · G12 F6 con medición real del botón). Su cliente falso ahora
+**honra `.in(col, ids)`** — antes los ignoraba y por eso F4 pasó desapercibido (§P3). **Sabotajes
+aislados, los 3 mordieron:** sin la relectura → G10 con «Invitar» sobre quien ya tiene perfil; la
+frase contando pendientes → «A los otros 2 puedes invitarlos» con UN botón en pantalla; 32px → G12
+mide 32. Verde: `_verify-community` 19, `_verify-cmtynudge` 14, `_test-coach-back`.*
+
+***PENDIENTE de verificación de Fable (R4.1).** Del plan quedan F7-F10, F12-F14 y §P3.*
+
 *Hitos sesión 2026-07-26 (parte 117 — **F2 + F11: la pregunta de logros por fin EXISTE en la sesión
 típica, y solo promete lo que de verdad pasó**, avi-v399). Segundo punto del
 `plan-correcciones-adopcion.md`.*

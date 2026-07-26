@@ -101,6 +101,12 @@ tiene el mismo guard → «Compártelo con tu gente» sufre lo mismo, y `cmtyOnW
 tampoco refresca el snapshot en esas sesiones.
 
 ### F3 · A1 — La prueba social se desarma cuando alguien se hace público
+
+> **✅ HECHO — avi-v400 (2026-07-26)** + migraciones `c20_gym_peers` y `c20b`. RPC DEFINER
+> `cmty_gym_peers()` (misma rama de `cp_sel`, no abre nada nuevo; acotada a miembros CON perfil).
+> `communityPeersLine` lee `p.gym`; la señal es ADITIVA (si la RPC cae se conserva el proxy, que
+> subcuenta pero no miente). `cmtyLoad` clasifica «Tu gimnasio» igual. Test que consagraba el error
+> corregido. Matriz G1-G5 contra prod + sabotaje. Pendiente de Fable.
 `communityPeersLine` usa `is_private === true` como señal de «es de mi gym», y eso no es lo mismo
 (`c11_activate_public` existe justamente para que un adulto se haga público). Con 5 públicos + 1
 privado la línea dice **«Zulma de tu gym ya está aquí»**: esconde a 5 y usa singular. Con todos
@@ -117,9 +123,9 @@ apuntando al blanco equivocado; hay que corregir el test, no solo el código.
 
 | # | Área | Qué pasa |
 |---|---|---|
-| F4 | A3 | **`_gymActive` queda rancio tras `toggleGymMember`**: agregas al gym a alguien que YA tiene perfil → te lo marca como no activado y te empuja a invitarlo a algo donde ya está. Repro en 2 toques. Fix: refrescar `_gymActive` (o re-consultar) dentro de `toggleGymMember`. |
-| F5 | A3 | **La frase miente**: «A los otros N puedes invitarlos desde esta lista» cuenta al COACH (su fila nunca tiene botón, `_renderGymMgr` le pasa `''`) y a miembros del gym que ya no están en `DB.clients` (archivados, sin fila). Puede decir «al que falta» con **0 botones** en pantalla. Fix: derivar el conteo de lo que la lista realmente ofrece. |
-| F6 | A3 | **Botón «Invitar» de 32px**, bajo el mínimo de 36 (R1.5), pegado al switch que da/quita membresía. Fix: `min-height:36px`. |
+| F4 | A3 | **`_gymActive` queda rancio tras `toggleGymMember`**: agregas al gym a alguien que YA tiene perfil → te lo marca como no activado y te empuja a invitarlo a algo donde ya está. Repro en 2 toques. Fix: refrescar `_gymActive` (o re-consultar) dentro de `toggleGymMember`. | **✅ HECHO avi-v400:** `_gymLoadActive` se invoca también desde `toggleGymMember` (incluida la rama sellada).
+| F5 | A3 | **La frase miente**: «A los otros N puedes invitarlos desde esta lista» cuenta al COACH (su fila nunca tiene botón, `_renderGymMgr` le pasa `''`) y a miembros del gym que ya no están en `DB.clients` (archivados, sin fila). Puede decir «al que falta» con **0 botones** en pantalla. Fix: derivar el conteo de lo que la lista realmente ofrece. | **✅ HECHO avi-v400:** `communityGymAdoption` gana `listedIds`→`invitable` y la frase sale de `communityGymHint` (pura, 4 ramas).
+| F6 | A3 | **Botón «Invitar» de 32px**, bajo el mínimo de 36 (R1.5), pegado al switch que da/quita membresía. Fix: `min-height:36px`. | **✅ HECHO avi-v400:** 36px, medido en el harness (G12).
 | F7 | A2 | **La puerta no se cierra al cruzarla**: tras crear el perfil la tarjeta sigue visible porque nada repinta «Hoy» (`cnTodayGuard` devuelve false el mismo día). El mensaje del commit afirmaba lo contrario. Fix: repintar «Hoy» tras el opt-in, o que `renderCommunityNudge` re-lea la sonda al volver a la pestaña. |
 | F8 | A2 | **Un fallo parcial de `cmtyLoad` escribe una sonda MENTIROSA**: la consulta de peers tiene su propio `catch` que la traga → `peers:0` con `at` fresco → la puerta queda desactivada 24h sin señal. Fix: no escribir sonda cuando no se pudo leer (dejar `null` = «no sé», como se hizo bien en A3). |
 | F9 | A2 | **Sonda con forma corrupta rompe «Hoy»**: `renderCommunityNudge` corre ANTES de pintar el entreno y sin `try/catch`; un `list` no-array lanza y **el entreno no se pinta**. Fix: `Array.isArray(probe.list)` en el candado + try/catch en el caller. |
