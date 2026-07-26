@@ -33,12 +33,22 @@ await ev(`(()=>{window.__probes=0;window.cmtyAdoptionProbe=async()=>{window.__pr
 
 // Base: asesorado con historial en días PASADOS (para que «Hoy» no colapse en «ya entrenaste»).
 // n = sesiones FINALIZADAS. probe = la sonda cacheada tal cual la escribiría la capa de red.
+// P0 (2026-07-26): la sonda y el silencio son de UNA PERSONA, no del aparato — sus claves llevan
+// el uid del dueño (`cmtyLocalKey`). El uid de sesión lo fija `_enterAuthSession` en el login real;
+// aquí se fija igual, porque «Hoy» lo lee de forma SÍNCRONA para saber qué sonda le corresponde.
+// Los nombres van literales a propósito: si el esquema de claves cambia, este harness debe ponerse
+// ROJO y obligar a pensarlo, no seguirle la corriente al código.
+const QAUID = 'u-qa-nudge';
+const K_PROBE = 'ax_cmty_probe_' + QAUID;
+const K_SNOOZE = 'ax_cmtynudge_' + QAUID;
+
 const RESET = (n, probe) => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   if(typeof setTheme==='function')setTheme('light');
   if(typeof AVI_NEWS!=='undefined')localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,x)=>Math.max(m,x.v),0)));
-  try{ localStorage.removeItem('ax_cmtynudge'); localStorage.removeItem('ax_sharesnooze'); }catch(e){}
-  localStorage.setItem('ax_cmty_probe', ${JSON.stringify(JSON.stringify(probe))});
+  _authUid='${QAUID}'; if(typeof CMTY!=='undefined')CMTY.uid=null;
+  try{ localStorage.removeItem('${K_SNOOZE}'); localStorage.removeItem('ax_sharesnooze'); }catch(e){}
+  localStorage.setItem('${K_PROBE}', ${JSON.stringify(JSON.stringify(probe))});
   window.__probes=0;
   showScreen('s-client');
   document.querySelectorAll('#s-client .cnp').forEach(p=>p.classList.remove('on'));
@@ -117,7 +127,7 @@ check('N5 sin nadie a quien ver, la tarjeta NO sale (cuarto vacío)', n5.disp ==
 console.log('  setup(9, 3 peers):', await ev(RESET(9, PEERS3))); await sleep(400);
 await ev(`dismissCmtyNudge(); renderShareBanner(DB.clients[0]);`); await sleep(250);
 const n6 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');const sh=document.getElementById('cn-share');
-  const s=parseInt(localStorage.getItem('ax_cmtynudge'))||0;return {disp:el?el.style.display:'?',len:el?el.innerHTML.trim().length:-1,
+  const s=parseInt(localStorage.getItem('${K_SNOOZE}'))||0;return {disp:el?el.style.display:'?',len:el?el.innerHTML.trim().length:-1,
   days:Math.round((s-Date.now())/86400000),share:sh?sh.style.display:'?'};})()`);
 check('N6 «Ahora no» oculta, pospone ~30 días y devuelve el turno a «Comparte AVI»',
   n6.disp === 'none' && n6.len === 0 && n6.days >= 29 && n6.days <= 31 && n6.share === 'block', JSON.stringify(n6));
@@ -125,7 +135,7 @@ check('N6 «Ahora no» oculta, pospone ~30 días y devuelve el turno a «Compart
 // N6-bis: el silencio se respeta en el siguiente render, y se vence solo.
 await ev(`renderClientToday(DB.clients[0]);`); await sleep(300);
 const n6b = await ev(cardState);
-await ev(`(()=>{localStorage.setItem('ax_cmtynudge',String(Date.now()-86400000));renderClientToday(DB.clients[0]);})()`); await sleep(300);
+await ev(`(()=>{localStorage.setItem('${K_SNOOZE}',String(Date.now()-86400000));renderClientToday(DB.clients[0]);})()`); await sleep(300);
 const n6c = await ev(cardState);
 check('N6-bis el silencio persiste al repintar y vence solo al expirar', n6b.disp === 'none' && n6c.disp === 'block', JSON.stringify({ silencio: n6b.disp, vencido: n6c.disp }));
 
@@ -148,12 +158,12 @@ check('N8 «Ver a mi gente» abre la pestaña Comunidad (panel + pestaña marcad
 // N9: la sonda pega a la red 1×/día — fresca no dispara, vieja sí.
 console.log('  setup(9, sonda fresca):', await ev(RESET(9, PEERS3))); await sleep(400);
 const p1 = await ev(`window.__probes`);
-await ev(`(()=>{const p=JSON.parse(localStorage.getItem('ax_cmty_probe'));p.at=Date.now()-30*3600000;localStorage.setItem('ax_cmty_probe',JSON.stringify(p));renderClientToday(DB.clients[0]);})()`); await sleep(400);
+await ev(`(()=>{const p=JSON.parse(localStorage.getItem('${K_PROBE}'));p.at=Date.now()-30*3600000;localStorage.setItem('${K_PROBE}',JSON.stringify(p));renderClientToday(DB.clients[0]);})()`); await sleep(400);
 const p2 = await ev(`window.__probes`);
 check('N9 la sonda no pega a la red con caché fresca y sí cuando caduca (24h)', p1 === 0 && p2 >= 1, JSON.stringify({ fresca: p1, caducada: p2 }));
 
 // N10: sin sonda (primer arranque) → nada se pinta y se pide la sonda; nunca se invita a ciegas.
-await ev(`(()=>{localStorage.removeItem('ax_cmty_probe');window.__probes=0;renderClientToday(DB.clients[0]);})()`); await sleep(400);
+await ev(`(()=>{localStorage.removeItem('${K_PROBE}');window.__probes=0;renderClientToday(DB.clients[0]);})()`); await sleep(400);
 const n10 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');return {disp:el?el.style.display:'?',probes:window.__probes};})()`);
 check('N10 sin sonda no se invita a ciegas, pero se va a buscar el dato', n10.disp === 'none' && n10.probes >= 1, JSON.stringify(n10));
 

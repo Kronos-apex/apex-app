@@ -48,6 +48,7 @@ const {
   cmtyFreshness,
   cmtyAvatarOk,
   cmtyInitials,
+  cmtyLocalKey,
   communityPostPayload,
   communityEmptyState,
   communityPeersLine,
@@ -1613,6 +1614,21 @@ test('communityProbeStale: pega a la red 1×/día, y ante una fecha ilegible pre
   assert.strictEqual(communityProbeStale({ at: null }, now), true);
   assert.strictEqual(communityProbeStale({ at: '' }, now), true);
   assert.strictEqual(communityProbeStale({ at: 'ayer por la tarde' }, now), true);
+});
+
+test('cmtyLocalKey: ninguna clave de comunidad sin dueño (P0 identidad pegada)', () => {
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', 'u-astrid'), 'ax_cmty_probe_u-astrid');
+  // dos cuentas del MISMO aparato NUNCA comparten clave — esto es el bug del PO, en una línea
+  assert.notStrictEqual(cmtyLocalKey('ax_cmty_cache', 'u-a'), cmtyLocalKey('ax_cmty_cache', 'u-b'));
+  // sin uid no hay clave: se prefiere no leer nada antes que leer lo del anterior
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', ''), null);
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', null), null);
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', undefined), null);
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', 123), null);
+  assert.strictEqual(cmtyLocalKey('', 'u-a'), null);
+  assert.strictEqual(cmtyLocalKey(null, 'u-a'), null);
+  // el formato que YA usaban las claves namespacadas se respeta (no invalida datos existentes)
+  assert.strictEqual(cmtyLocalKey('ax_cmty_minor', 'u-a'), 'ax_cmty_minor_u-a');
 });
 
 test('communityGymAdoption: solo cuenta como activo a quien está en MI gym', () => {

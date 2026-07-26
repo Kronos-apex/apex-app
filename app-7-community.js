@@ -24,7 +24,11 @@
 // si cambia ese texto. Sigue siendo BORRADOR pendiente de revisión de abogado (legal/LEEME).
 const CMTY_CONSENT_V = 'comunidad-2026-07-23-borrador';
 
-const CMTY = {
+// ESTADO INICIAL en una FÁBRICA, no en un literal suelto: `cmtyResetIdentity()` vuelve a pedirlo
+// entero, así que un campo nuevo que se agregue aquí queda limpiado al cambiar de cuenta SIN que
+// nadie tenga que acordarse de añadirlo al reset. El bug P0 (identidad pegada) nació justo de lo
+// contrario: un objeto con 30 campos y ni un solo sitio que los devolviera a cero.
+function _cmtyBlank(){ return {
   uid: null,
   profile: null,     // mi fila community_profiles (o null si no hice opt-in)
   friends: [],       // [{fid, fr, prof}] amistades aceptadas con perfil del amigo
@@ -74,7 +78,55 @@ const CMTY = {
   nudgeOn: false,
   _probing: false,
   _probeNextTry: 0,
-};
+}; }
+
+const CMTY = _cmtyBlank();
+
+// ── IDENTIDAD: claves locales SIEMPRE atadas al dueño (P0) ──────────────────────────────
+// `_authUid` (app-3) es el uid de la sesión y está disponible de forma SÍNCRONA — «Hoy» pinta la
+// tarjeta de A2 sin poder esperar un `await`. Sin uid no hay clave: no se lee ni se escribe nada.
+function _cmtySessionUid(){
+  try{ if(typeof _authUid !== 'undefined' && _authUid) return _authUid; }catch(e){}
+  return '';
+}
+// La sesión manda sobre lo que el módulo tenga guardado: si discrepan, quien está adentro AHORA
+// es el de la sesión (lo fija `_enterAuthSession` antes de que se pinte nada).
+function _cmtyUidNow(){ return _cmtySessionUid() || CMTY.uid || ''; }
+
+// Candado SÍNCRONO para las dos superficies que pintan sin poder esperar un `await`: la pestaña
+// Comunidad (corta con `if(!CMTY.loaded)`, así que sin esto repinta al anterior tal cual) y la
+// tarjeta de «Hoy». Un cambio de cuenta que no pasó por `logout()` se detecta aquí.
+function _cmtyIdentityGuard(){
+  const s = _cmtySessionUid();
+  if(s && CMTY.uid && CMTY.uid !== s){ cmtyResetIdentity(); return true; }
+  return false;
+}
+function _cmtyKey(base){
+  return (typeof cmtyLocalKey === 'function') ? cmtyLocalKey(base, _cmtyUidNow()) : null;
+}
+function _cmtyLdGet(base){ const k = _cmtyKey(base); if(!k) return null; try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function _cmtyLdSet(base, v){ const k = _cmtyKey(base); if(!k) return; try{ localStorage.setItem(k, v); }catch(e){} }
+function _cmtyLdDel(base){ const k = _cmtyKey(base); if(!k) return; try{ localStorage.removeItem(k); }catch(e){} }
+
+// Claves GLOBALES de versiones anteriores (sin uid). Ya nadie las lee; se borran al salir para
+// que los dispositivos que vienen de v397 no se queden con el perfil ajeno guardado en disco.
+const CMTY_LEGACY_KEYS = ['ax_cmty_cache', 'ax_cmty_probe', 'ax_cmtynudge', 'ax_cmty_refresh'];
+const CMTY_REFRESH_KEY = 'ax_cmty_refresh'; // debounce del snapshot: es DE ESTA persona, no del aparato
+
+// Devuelve la comunidad a su estado de recién arrancada. La llama `logout()` — y el candado de
+// uid de `cmtyLoad`/`cmtyAdoptionProbe` por si alguien cambia de cuenta sin pasar por ahí.
+// Borra TODO campo del objeto (incluso los que alguien haya colgado en caliente), no solo los
+// del molde: la identidad pegada no puede depender de una lista que se desactualiza.
+function cmtyResetIdentity(){
+  try{ if(typeof cmtyDmUnsubscribe === 'function') cmtyDmUnsubscribe(); }catch(e){}
+  const blank = _cmtyBlank();
+  try{ Object.keys(CMTY).forEach(k => { if(!(k in blank)) delete CMTY[k]; }); }catch(e){}
+  Object.assign(CMTY, blank);
+  // Disco: las claves de ESTA persona se conservan (van con su uid y guardan cosas que deben
+  // sobrevivir a un logout: el silencio de 30 días del nudge, el «ya te pregunté por el hito»
+  // y la marca de menor de edad). Lo que se borra es la basura global heredada.
+  CMTY_LEGACY_KEYS.forEach(k => { try{ localStorage.removeItem(k); }catch(e){} });
+}
 
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
 function _cmtyClient(){ return (typeof AUTH !== 'undefined' && AUTH.client) ? AUTH.client() : null; }
@@ -91,16 +143,15 @@ function _cmtyErr(e){
 }
 
 // ── Caché de lectura (solo para el estado offline; marcada "puede estar desactualizada") ──
+const CMTY_CACHE_KEY = 'ax_cmty_cache';
 function _cmtySaveCache(){
-  try{
-    localStorage.setItem('ax_cmty_cache', JSON.stringify({
-      profile: CMTY.profile, friends: CMTY.friends, heartsRecv: CMTY.heartsRecv, at: Date.now()
-    }));
-  }catch(e){}
+  _cmtyLdSet(CMTY_CACHE_KEY, JSON.stringify({
+    profile: CMTY.profile, friends: CMTY.friends, heartsRecv: CMTY.heartsRecv, at: Date.now()
+  }));
 }
 function _cmtyLoadCache(){
   try{
-    const c = JSON.parse(localStorage.getItem('ax_cmty_cache') || 'null');
+    const c = JSON.parse(_cmtyLdGet(CMTY_CACHE_KEY) || 'null');
     if(c){ CMTY.profile = c.profile || null; CMTY.friends = c.friends || []; CMTY.heartsRecv = c.heartsRecv || 0; }
   }catch(e){}
 }
@@ -114,6 +165,10 @@ async function cmtyLoad(opts){
   try{
     const cli = _cmtyClient(); const uid = await _cmtyUid();
     if(!cli || !uid){ CMTY.offline = true; _cmtyLoadCache(); return; }
+    // CANDADO DE IDENTIDAD (P0): si quien está autenticado NO es de quien tenemos datos, se tira
+    // todo antes de pintar. Cubre el cambio de cuenta que no pasa por `logout()` (sesión que
+    // expira y entra otro, OAuth de vuelta, recuperar la pestaña) — defensa en profundidad.
+    if(CMTY.uid && CMTY.uid !== uid){ cmtyResetIdentity(); CMTY.busy = true; CMTY.loading = !opts.silent; }
     CMTY.uid = uid;
     // Columnas SEGURAS (§13-BIS.1b): share_code/consent/birth_date/last_active/trained_today/snapshot_at
     // salieron del grant general → un `select('*')` o pedirlas daría permission denied. El dueño lee sus
@@ -207,12 +262,12 @@ async function cmtyLoad(opts){
 // ── Refresh del snapshot server-side, con debounce (la edge no tiene rate-limit propio) ──
 async function cmtyMaybeRefresh(force){
   if(_cmtySealed()) return;
-  let last = 0; try{ last = parseInt(localStorage.getItem('ax_cmty_refresh')) || 0; }catch(e){}
+  let last = 0; try{ last = parseInt(_cmtyLdGet(CMTY_REFRESH_KEY)) || 0; }catch(e){}
   if(!force && typeof cmtyShouldRefresh === 'function' && !cmtyShouldRefresh(last, Date.now())) return;
   try{
     const cli = _cmtyClient(); if(!cli) return;
     await cli.functions.invoke('refresh_snapshot', { body: {} });
-    try{ localStorage.setItem('ax_cmty_refresh', String(Date.now())); }catch(e){}
+    _cmtyLdSet(CMTY_REFRESH_KEY, String(Date.now()));
   }catch(e){ _cw()('cmty refresh:', e && e.message); }
 }
 
@@ -225,6 +280,7 @@ function cmtyOnWorkoutFinished(){
 // ══════════ RENDER ══════════
 function renderCommunity(){
   const host = document.getElementById('cn-community'); if(!host) return;
+  _cmtyIdentityGuard(); // ANTES del corte por `loaded`: si cambió la cuenta, no hay nada que reusar
   CMTY.view = 'feed'; // al ENTRAR a la pestaña siempre aterriza en el muro (los polls repintan con _cmtyPaint, no aquí)
   if(!CMTY.loaded && !CMTY.loading && !CMTY.busy){ cmtyLoad(); return; } // primera vez: carga y repinta
   _cmtyPaint();
@@ -375,7 +431,7 @@ async function cmtyCreateProfile(){
     if(!cli || !uid){ showErr('Conéctate para unirte a la comunidad.'); return; }
     const { error } = await cli.from('community_profiles').insert({ user_id: uid, handle: handle, consent_v: CMTY_CONSENT_V, show_today: true });
     if(error) throw error;
-    try{ localStorage.removeItem('ax_cmty_refresh'); }catch(e){} // fuerza el primer cálculo del snapshot
+    _cmtyLdDel(CMTY_REFRESH_KEY); // fuerza el primer cálculo del snapshot
     toast('🎉 ¡Ya eres parte de la comunidad!');
     await cmtyLoad();
   }catch(e){ showErr(_cmtyErr(e)); }
@@ -551,7 +607,7 @@ async function cmtyLeave(){
     const cli = _cmtyClient(); const uid = await _cmtyUid(); if(!cli || !uid) return;
     const { error } = await cli.from('community_profiles').delete().eq('user_id', uid);
     if(error) throw error;
-    try{ localStorage.removeItem('ax_cmty_cache'); }catch(e){}
+    _cmtyLdDel(CMTY_CACHE_KEY);
     cmtyDmUnsubscribe();
     CMTY.dmThreads = []; CMTY.dmUnread = 0; CMTY.dmOpen = null; CMTY.dmMsgs = [];
     toast('Saliste de la comunidad.');
@@ -1034,8 +1090,12 @@ async function cmtyToggleMilestones(){
 // fecha = fail-safe menor = privado forzado. `role` (insignia coach) lo fija la edge verificando que
 // POSEE asesorados (NO user_data.role, client-writable, F7). La UI RELEE el valor real tras cada cambio.
 
-function _cmtyMinorFlag(){ try{ return localStorage.getItem('ax_cmty_minor_' + (CMTY.uid || '')) === '1'; }catch(e){ return false; } }
-function _cmtySetMinorFlag(){ try{ localStorage.setItem('ax_cmty_minor_' + (CMTY.uid || ''), '1'); }catch(e){} }
+// Ya iba con uid; ahora por el MISMO helper que el resto (sin uid no se escribe una marca de
+// menor que acabaría siendo de cualquiera). El candado real es server-side: birth_date write-once
+// + trigger; esta marca solo decide qué mensaje se pinta.
+const CMTY_MINOR_KEY = 'ax_cmty_minor';
+function _cmtyMinorFlag(){ return _cmtyLdGet(CMTY_MINOR_KEY) === '1'; }
+function _cmtySetMinorFlag(){ _cmtyLdSet(CMTY_MINOR_KEY, '1'); }
 
 function _cmtyPublicBlockHtml(p){
   const isPublic = p.is_private === false;
@@ -1858,6 +1918,11 @@ if(typeof window !== 'undefined'){
   window.renderWfMilestoneAsk = renderWfMilestoneAsk; window.cmtyMilestoneYes = cmtyMilestoneYes;
   window.cmtyMilestoneNo = cmtyMilestoneNo; window._cmtyLocalStreak = _cmtyLocalStreak;
   window._cmtyAskedRead = _cmtyAskedRead; window._cmtyAskedMark = _cmtyAskedMark;
+  // P0 — la llama `logout()` (app-2). Va por window a propósito: app-2 se parsea antes que este
+  // archivo, así que el guard `typeof` de allá necesita el símbolo colgado, no una const suelta.
+  window.cmtyResetIdentity = cmtyResetIdentity; window._cmtyBlank = _cmtyBlank;
+  window._cmtyKey = _cmtyKey; window._cmtyUidNow = _cmtyUidNow;
+  window._cmtyIdentityGuard = _cmtyIdentityGuard; window._cmtySessionUid = _cmtySessionUid;
 }
 
 // ══════════════ ADOPCIÓN A2 — LA PUERTA desde «Hoy» ══════════════
@@ -1869,8 +1934,11 @@ if(typeof window !== 'undefined'){
 const CMTY_PROBE_KEY = 'ax_cmty_probe';
 const CMTY_NUDGE_SNOOZE_KEY = 'ax_cmtynudge';
 
-function _cmtyProbeRead(){ try{ return JSON.parse(localStorage.getItem(CMTY_PROBE_KEY) || 'null'); }catch(e){ return null; } }
-function _cmtyProbeWrite(p){ try{ localStorage.setItem(CMTY_PROBE_KEY, JSON.stringify(p)); }catch(e){} }
+// Guardan apodos y caras de OTRAS personas → clave con uid, obligatorio (P0/F1: sin el uid, la
+// cuenta B veía en su «Hoy» a la gente del gym de A). Sin uid conocido no hay sonda: `null` =
+// «no sé», y `communityNudgeEligible` calla la tarjeta hasta que sí se sepa.
+function _cmtyProbeRead(){ try{ return JSON.parse(_cmtyLdGet(CMTY_PROBE_KEY) || 'null'); }catch(e){ return null; } }
+function _cmtyProbeWrite(p){ _cmtyLdSet(CMTY_PROBE_KEY, JSON.stringify(p)); }
 // La sonda se REESCRIBE cada vez que `cmtyLoad` averigua la verdad (abrir la pestaña, hacer opt-in,
 // salirse). Sin esto, alguien que acaba de crear su perfil seguiría viendo «únete» hasta 24h.
 function _cmtyProbeSync(){
@@ -1894,6 +1962,11 @@ async function cmtyAdoptionProbe(client){
   try{
     const cli = _cmtyClient(); const uid = await _cmtyUid();
     if(!cli || !uid){ CMTY._probeNextTry = Date.now() + 1800000; return; }
+    // Mismo candado de identidad que `cmtyLoad`: esta es la otra puerta por donde se resuelve un
+    // uid, y la sonda que escribe abajo lleva gente de por medio. Además deja `CMTY.uid` fijado
+    // para que el render SÍNCRONO de «Hoy» sepa de quién es la clave que tiene que leer.
+    if(CMTY.uid && CMTY.uid !== uid) cmtyResetIdentity();
+    CMTY.uid = uid;
     const { data: mine, error: me } = await cli.from('community_profiles').select('user_id').eq('user_id', uid).maybeSingle();
     if(me) throw me;
     if(mine){ _cmtyProbeWrite({ hasProfile: true, peers: 0, list: [], at: Date.now() }); }
@@ -1940,9 +2013,10 @@ function renderCommunityNudge(client){
   const el = document.getElementById('cn-cmty-nudge'); if(!el) return;
   el.innerHTML = ''; el.style.display = 'none'; CMTY.nudgeOn = false;
   if(!client || typeof communityNudgeEligible !== 'function') return;
+  _cmtyIdentityGuard(); // la sonda trae caras y apodos: jamás los de la cuenta anterior (F1)
   const probe = _cmtyProbeRead();
   if(typeof communityProbeStale !== 'function' || communityProbeStale(probe, Date.now())) cmtyAdoptionProbe(client);
-  let snooze = 0; try{ snooze = parseInt(localStorage.getItem(CMTY_NUDGE_SNOOZE_KEY)) || 0; }catch(e){}
+  let snooze = 0; try{ snooze = parseInt(_cmtyLdGet(CMTY_NUDGE_SNOOZE_KEY)) || 0; }catch(e){}
   const sess = (typeof DB !== 'undefined' && DB.history && DB.history[client.id]) || [];
   if(!communityNudgeEligible(sess, Date.now(), snooze, probe)) return;
   const line = (typeof communityPeersLine === 'function') ? communityPeersLine(probe.list) : null;
@@ -2022,7 +2096,7 @@ function cmtyNudgeGo(){
 }
 function dismissCmtyNudge(){
   const days = (typeof CMTY_NUDGE_SNOOZE_DAYS !== 'undefined') ? CMTY_NUDGE_SNOOZE_DAYS : 30;
-  try{ localStorage.setItem(CMTY_NUDGE_SNOOZE_KEY, String(Date.now() + days * 86400000)); }catch(e){}
+  _cmtyLdSet(CMTY_NUDGE_SNOOZE_KEY, String(Date.now() + days * 86400000));
   const el = document.getElementById('cn-cmty-nudge'); if(el){ el.style.display = 'none'; el.innerHTML = ''; }
   CMTY.nudgeOn = false;
 }

@@ -2361,6 +2361,20 @@ function communityCommentText(raw) {
   return t.slice(0, 280).trim() || null;
 }
 
+// P0 (2026-07-25) — NOMBRE de una clave local de comunidad, SIEMPRE atada a su dueño.
+// El bug que reportó el PO («en el perfil de Astrid aparecía el mío») tenía dos vías: el objeto
+// CMTY en memoria y las claves de disco GLOBALES del dispositivo (`ax_cmty_cache`,
+// `ax_cmty_probe`, `ax_cmtynudge`, `ax_cmty_refresh`), que guardan apodos y caras de OTRAS
+// personas y sobrevivían al cambio de cuenta. Una clave con datos ajenos sin uid en el nombre es
+// un cruce de identidades esperando ocurrir: la 2ª cuenta lee lo de la 1ª.
+// PURA. Sin uid devuelve null = «no sé de quién sería esto» → el llamador NI lee NI escribe.
+// Callar es correcto: mejor la tarjeta sin datos que la tarjeta con los datos del anterior.
+function cmtyLocalKey(base, uid) {
+  if (typeof base !== 'string' || !base) return null;
+  if (typeof uid !== 'string' || !uid) return null;
+  return base + '_' + uid;
+}
+
 // R3 (re-forma) — ESTADO VACÍO ÚNICO del muro. Antes se apilaban dos vacíos («tu muro está
 // tranquilo» + «aún no tienes amigos aquí») que decían lo mismo dos veces y ninguno resolvía
 // el caso real: no tener a NADIE todavía. Esta función decide cuál (y solo uno) corresponde:
@@ -3203,6 +3217,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cmtyFreshness,
     cmtyAvatarOk,
     cmtyInitials,
+    cmtyLocalKey,
     communityPostPayload,
     communityPrPayload,
     communityWorkoutPayload,

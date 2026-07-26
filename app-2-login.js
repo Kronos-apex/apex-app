@@ -335,6 +335,15 @@ function logout(){
   // 2º asesorado hereda _pushCtx/flags del 1º → se salta su self-heal o reintenta con id ajeno
   // (RLS lo rechaza, pero desperdicia). Mata la clase de bug de contexto stale entre cuentas.
   try{ _pushCtx=null; _clientPushHealed=false; _clientPushPending=false; _coachPushHealed=false; }catch(_e){}
+  // P0 (bug reportado por el PO, 2026-07-25): MISMA clase, un módulo más. El objeto CMTY guarda
+  // el perfil, el código, los amigos y la BANDEJA DE MENSAJES de quien acaba de salir, y como
+  // `renderCommunity()` corta con `if(!CMTY.loaded) cmtyLoad()`, la siguiente cuenta de esta
+  // pestaña NO recargaba: veía la identidad de la anterior («en el perfil de Astrid aparecía el
+  // mío»). Aquí no se recarga la página, así que el estado hay que devolverlo a cero a mano.
+  try{ if(typeof cmtyResetIdentity==='function') cmtyResetIdentity(); }catch(_e){}
+  // El uid de la sesión también es identidad: si sobrevive, las claves namespacadas de la
+  // siguiente cuenta podrían escribirse con el uid del anterior antes de que entre.
+  try{ _authUid=null; }catch(_e){}
   stopMsgPolling();
   // Si estábamos en modo auth: cerrar la sesión Supabase y restaurar el estado legacy
   // en memoria (la próxima cuenta legacy necesita el DB global, no el del usuario auth).

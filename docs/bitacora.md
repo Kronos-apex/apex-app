@@ -380,6 +380,49 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 (parte 116 — **P0 CERRADO: la identidad de Comunidad ya no se hereda entre
+cuentas**, avi-v398). Primer punto del `plan-correcciones-adopcion.md`, en su orden. Es el bug que
+reportó Camilo («vi la pantalla de comunidad de Astrid y en el perfil de ella aparecía el MÍO»).
+Cierra de paso **F1** (la sonda de A2 mostraba en «Hoy» de la cuenta B a la gente del gym de A).*
+
+***Causa raíz, no síntoma.** Dos vías independientes, ambas cerradas: (1) MEMORIA — `logout()`
+limpiaba `ax_session` y `_pushCtx` pero no existía en todo el repo un solo `CMTY.profile=null`;
+ahora el estado inicial vive en una FÁBRICA (`_cmtyBlank()`) y `cmtyResetIdentity()` lo vuelve a
+pedir entero, borrando incluso campos colgados en caliente → un campo nuevo del módulo queda
+cubierto sin que nadie se acuerde de añadirlo al reset. (2) DISCO — `ax_cmty_cache`, `ax_cmty_probe`,
+`ax_cmtynudge` y `ax_cmty_refresh` eran claves GLOBALES del aparato con datos de terceros; ahora
+llevan el uid del dueño vía `cmtyLocalKey(base,uid)` (PURA, avi-core, +1 test): sin uid devuelve
+null y el llamador NI lee NI escribe (callar > mostrar lo del anterior). `logout()` además borra las
+globales heredadas de v397 y pone `_authUid=null` (misma clase: el uid de sesión también es identidad).*
+
+***Hueco que el plan no tenía y apareció al verificar:** `renderCommunity()` corta con
+`if(!CMTY.loaded)`, así que en un cambio de cuenta que NO pasa por `logout()` (sesión que expira,
+vuelta de OAuth, otra pestaña) seguía pintando lo anterior sin llegar nunca a `cmtyLoad`. Se agregó
+un candado SÍNCRONO `_cmtyIdentityGuard()` (compara el uid de sesión contra el guardado) en las dos
+superficies que pintan sin poder esperar un `await`: la pestaña Comunidad y la tarjeta de «Hoy». El
+candado asíncrono por uid va además dentro de `cmtyLoad` y de `cmtyAdoptionProbe`.*
+
+***Desviación del plan (documentada):** §P0 pedía borrar también `ax_cmty_msask_<uid>` y
+`ax_cmty_minor_<uid>` al salir. NO se hace: ya van con uid (no filtran a nadie) y borrarlas
+DEBILITA — la primera es el candado anti-molestia de R1.6 (volvería a preguntar por el hito en cada
+logout) y la segunda es la marca de menor de edad. Lo que se borra es lo global, que es lo que
+filtraba.*
+
+***QA (rojo→verde demostrado).** El repro `_repro-cmty-identity.mjs` pasó de repro a HARNESS DE
+REGRESIÓN: P2 afirmaba el bug como conducta esperada y ahora afirma lo contrario (motivo explícito,
+R2.2), y se le agregaron P5 (cambio de cuenta SIN «Salir») y P6 (cada cuenta escribe en SU clave) →
+**6/6**. **3 sabotajes, los 3 mordieron:** sin el reset en `logout()` → P2 rojo con `dm:1` (la
+bandeja de DMs ajena sobrevivía); sin el candado síncrono → P5 rojo pintando a Astrid al volver el
+coach; con `cmtyLocalKey` devolviendo la clave global → P6 rojo (perfil del coach en la clave
+compartida) + la suite roja. Suite **437→438**. Cinturón verde: `_verify-cmtynudge` 13/13,
+`_verify-community`, `_verify-dm` 22, `_verify-milestoneask`, `_verify-feed` 32, `_verify-profile`
+12, `_test-coach-back`, `_shot-trained`, smoke (su único 404 es PREEXISTENTE — comprobado contra
+HEAD con `git stash`). `_verify-cmtynudge` se actualizó para fijar `_authUid` como hace el login
+real y usar las claves con uid, con los nombres LITERALES: si el esquema cambia, debe ponerse rojo.*
+
+***PENDIENTE de verificación de Fable (R4.1).** Siguen abiertos F2 (A4 inerte en la sesión típica),
+F3 (A1 con `is_private` como señal de gym), F4-F14 y los huecos de harness del §P3.*
+
 *Hitos sesión 2026-07-25 · CIERRE (parte 115 — **VERIFICACIÓN DEL LOTE DE ADOPCIÓN: RECHAZADO** +
 **BUG P0 REPORTADO POR EL PO, REPRODUCIDO**). Camilo pidió que la verificación la hiciera Opus
 «como la haría Fable», con agentes. Se hizo: contrato `reglas-opus.md` releído, 4 revisores

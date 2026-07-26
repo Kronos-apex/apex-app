@@ -1,6 +1,6 @@
 # Plan de correcciones — verificación del lote de ADOPCIÓN (A1-A4) + bug de identidad
 
-> **Estado:** ESCRITO 2026-07-25 al cierre de la sesión. **NADA DE ESTO ESTÁ CORREGIDO.**
+> **Estado:** escrito 2026-07-25. **P0 (+F1) CORREGIDO en avi-v398 el 2026-07-26; el resto sigue abierto.**
 > El lote A1-A4 está EN PRODUCCIÓN (avi-v394→v397 + edge `refresh_snapshot` v6) y **RECHAZADO**
 > por la verificación. Este documento es lo que se ejecuta en la siguiente sesión, en orden.
 >
@@ -13,6 +13,16 @@
 ---
 
 ## 🔥 P0 — BUG REPORTADO POR EL PO: la identidad de Comunidad queda PEGADA entre cuentas
+
+> **✅ HECHO — avi-v398 (2026-07-26).** Cierra también **F1**. `_cmtyBlank()` + `cmtyResetIdentity()`
+> (app-7) llamada desde `logout()` (que además pone `_authUid=null`), claves locales con uid vía
+> `cmtyLocalKey` (avi-core, PURA, +1 test) y candado de identidad: asíncrono en `cmtyLoad` /
+> `cmtyAdoptionProbe` **y SÍNCRONO** (`_cmtyIdentityGuard`) en `renderCommunity` y en la tarjeta de
+> «Hoy» — hueco que este plan no tenía: `renderCommunity()` corta ANTES de `cmtyLoad`, así que el
+> cambio de cuenta sin `logout()` seguía pintando lo anterior. `_repro-cmty-identity.mjs` pasó a
+> harness de REGRESIÓN: 6/6, con 3 sabotajes que mordieron. **Desviación:** NO se borran
+> `ax_cmty_msask_<uid>` ni `ax_cmty_minor_<uid>` al salir — ya van con uid (no filtran) y borrarlas
+> debilitaría el candado anti-molestia de R1.6 y la marca de menor de edad. Pendiente de Fable.
 
 **Reporte (Camilo, 2026-07-25):** *«vi la pantalla de comunidad de Astrid y en el perfil de ella
 aparecía el MÍO en la parte superior»*.

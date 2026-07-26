@@ -15,9 +15,17 @@
 // ALCANCE: no es solo el perfil. Lo que queda pegado incluye amigos, ❤️ recibidos, publicaciones
 // y la BANDEJA DE MENSAJES (`dmThreads`: apodos y último mensaje de conversaciones ajenas).
 //
-// Este archivo NO arregla nada: documenta el bug con evidencia ejecutable. Debe seguir en ROJO
-// hasta que se corrija, y pasar a verde con el fix (limpiar CMTY + claves locales en `logout`).
-// Sin login real ni red: cliente Supabase falso por cuenta. Sale con exit 1 si el bug SIGUE vivo.
+// ESTADO: ARREGLADO (2026-07-26). Nació como repro en rojo; ahora es el HARNESS DE REGRESIÓN del
+// bug — debe quedarse en verde para siempre. El fix: `cmtyResetIdentity()` (app-7) devuelve el
+// objeto CMTY entero a su molde y borra las claves globales heredadas, `logout()` la llama, las
+// claves locales llevan el uid del dueño (`cmtyLocalKey`, avi-core), y un candado de identidad
+// corta tanto en `cmtyLoad`/`cmtyAdoptionProbe` (uid resuelto ≠ uid guardado) como en el render
+// SÍNCRONO de la pestaña y de «Hoy» (cambio de cuenta que no pasa por `logout()`).
+//
+// P2 afirmaba el bug como conducta esperada («la identidad queda pegada»); con el fix afirma lo
+// contrario: que al salir NO queda nada. P5 y P6 son nuevos: cambio de cuenta SIN `logout()` y
+// separación real de las claves en disco.
+// Sin login real ni red: cliente Supabase falso por cuenta. Sale con exit 1 si el bug REVIVE.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -63,6 +71,7 @@ const ENTRAR = (uid, handle, dmCon) => `(()=>{try{
     functions:{invoke:async()=>({data:{ok:true},error:null})},
     channel:()=>({on(){return this;},subscribe(){return this;}}), removeChannel(){}});
   AUTH.getUser=async()=>({id:'${uid}'});
+  _authUid='${uid}'; // lo que hace _enterAuthSession en el login real (uid de sesión, síncrono)
   return 'ok';
 }catch(e){return 'err:'+e.message;}})()`;
 
@@ -77,9 +86,11 @@ check('P1 el coach ve SU propio perfil (estado de partida sano)', p1.perfil === 
 
 // ── PASO 2: CIERRA SESIÓN (como lo hace cualquiera, sin recargar la página)
 await ev(`logout()`); await sleep(500);
-const p2 = await ev(`(()=>({sesion:localStorage.getItem('ax_session'),uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,loaded:CMTY.loaded,dm:(CMTY.dmThreads||[]).length,cache:!!localStorage.getItem('ax_cmty_cache')}))()`);
-check('P2 tras «Salir» la sesión se borra PERO la identidad de comunidad queda pegada',
-  p2.sesion === null && p2.perfil === 'Andres' && p2.loaded === true, JSON.stringify(p2));
+const p2 = await ev(`(()=>({sesion:localStorage.getItem('ax_session'),uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,loaded:CMTY.loaded,dm:(CMTY.dmThreads||[]).length,friends:(CMTY.friends||[]).length,posts:(CMTY.posts||[]).length,cache:!!localStorage.getItem('ax_cmty_cache'),authUid:(typeof _authUid!=='undefined'?_authUid:'n/a')}))()`);
+check('P2 al «Salir» no queda NADA de la cuenta anterior (ni perfil, ni DMs, ni caché global)',
+  p2.sesion === null && p2.uid === null && !p2.perfil && p2.loaded === false &&
+  p2.dm === 0 && p2.friends === 0 && p2.posts === 0 && p2.cache === false && !p2.authUid,
+  JSON.stringify(p2));
 
 // ── PASO 3: entra ASTRID en la misma pestaña y abre Comunidad
 console.log('  3) entra Astrid:', await ev(ENTRAR(UID_ASTRID, 'Astrid', 'hola astrid')));
@@ -102,13 +113,35 @@ const p4 = await ev(`(()=>{ const c=JSON.parse(localStorage.getItem('ax_cmty_cac
 check('🔴 P4 la caché de disco no debe conservar el perfil de la cuenta anterior',
   !p4.hay || p4.deQuien === 'Astrid', JSON.stringify(p4));
 
+// ── PASO 5: cambio de cuenta SIN pasar por `logout()` (sesión que expira y entra otro, vuelta de
+// OAuth, otra pestaña que cerró sesión). Aquí `renderCommunity()` NO recarga —corta por
+// `CMTY.loaded`— así que el candado síncrono de identidad es lo único que separa a las cuentas.
+console.log('  5) vuelve el coach SIN logout:', await ev(ENTRAR(UID_COACH, 'Andres', 'hola coach')));
+await ev(`(()=>{ const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent)); if(t)t.click(); })()`); await sleep(1400);
+await ev(`cmtyGoView('settings')`); await sleep(600);
+const p5 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=(h.innerText||'').replace(/\\s+/g,' ');
+  return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,saleAstrid:/Astrid/.test(t),saleElCoach:/Andres/.test(t),txt:t.slice(0,110)};})()`);
+check('🔴 P5 cambio de cuenta SIN «Salir»: no se hereda la identidad anterior',
+  p5.perfil === 'Andres' && p5.uid === UID_COACH && p5.saleAstrid === false && p5.saleElCoach === true,
+  JSON.stringify(p5));
+await shot('repro-cmty-identidad-sin-logout');
+
+// ── PASO 6: las claves de disco van por dueño. Cada cuenta tiene la suya y la global no se usa.
+const p6 = await ev(`(()=>{const g=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return (v&&v.profile&&v.profile.handle)||null;}catch(e){return 'ilegible';}};
+  return {global:localStorage.getItem('ax_cmty_cache'),
+    coach:g('ax_cmty_cache_${UID_COACH}'), astrid:g('ax_cmty_cache_${UID_ASTRID}'),
+    sondaGlobal:localStorage.getItem('ax_cmty_probe'), nudgeGlobal:localStorage.getItem('ax_cmtynudge')};})()`);
+check('🔴 P6 cada cuenta escribe en SU clave (y las globales del dispositivo quedaron muertas)',
+  p6.global === null && p6.sondaGlobal === null && p6.nudgeGlobal === null &&
+  p6.coach === 'Andres' && p6.astrid === 'Astrid', JSON.stringify(p6));
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
-console.log('\n──── REPRO: identidad de Comunidad pegada entre cuentas ────');
+console.log('\n──── REGRESIÓN: identidad de Comunidad entre cuentas (bug P0, arreglado) ────');
 results.forEach(r => console.log('  ' + r));
 const failed = results.filter(r => r.startsWith('❌'));
 console.log('\njsErrors: ' + JSON.stringify(jsErrors));
-console.log(failed.length ? `\n🔴 BUG VIVO — ${failed.length} check(s) en rojo (esperado hasta el fix)` : '\n✅ ARREGLADO');
+console.log(failed.length ? `\n🔴 REGRESIÓN — ${failed.length} check(s) en rojo: la identidad volvió a pegarse` : '\n✅ TODO OK — la identidad NO se hereda entre cuentas');
 console.log('shots en:', OUT);
 try { ws.close(); } catch {}
 try { chrome.kill(); } catch {}
