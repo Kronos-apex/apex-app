@@ -157,6 +157,9 @@ function cnTab(id,el,_silent){
   if(id==='cn-community'&&typeof renderCommunity==='function'){
     renderCommunity();
   }
+  // Cambiar de pestaña no dispara scroll: la píldora «Instalar app» debe re-evaluarse aquí
+  // o se quedaría escondida al salir del entreno (o encimada al volver). Ver app-6-extra.
+  if(typeof window._aviPillGuard==='function') window._aviPillGuard();
 }
 
 // PROFILE

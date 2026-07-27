@@ -167,6 +167,56 @@ function initPWA(){
     try{sessionStorage.setItem('avi_install_dismissed','1');}catch(e){}
   };
 
+  // ── La píldora no se queda con los toques de nadie (estudio de interfaz, 2026-07-27) ──
+  // Se aparta SOLO si de verdad está encima de un control que se toca (regla pura
+  // `pillStealsTap`, control por control) y SOLO en las pantallas donde se entrena: «Hoy»
+  // (campos KG/REPS de cada serie) y «Rutinas» («Hacer esta rutina ahora»). En Progreso,
+  // Perfil, Mensajes y Comunidad se queda siempre: instalar la app es el problema nº1 de
+  // adopción y no se sacrifica por precaución.
+  // Se engancha al SCROLL con requestAnimationFrame — nada de setInterval; si el navegador no
+  // trae rAF no se hace nada y la píldora sigue como siempre (degradación silenciosa).
+  const _PILL_ZONAS='#cn-today.on,#cn-routines.on';
+  let _pillTick=false;
+  const _pillGuard=()=>{
+    _pillTick=false;
+    try{
+      const body=document.body; if(!body) return;
+      const pill=document.getElementById('install-banner');
+      const pr=pill&&pill.getBoundingClientRect();
+      // Lecturas primero y UNA sola escritura al final: no se alterna leer/escribir layout.
+      let choca=false;
+      if(pr&&typeof pillStealsTap==='function'){
+        const zonas=document.querySelectorAll(_PILL_ZONAS);
+        for(let z=0;z<zonas.length&&!choca;z++){
+          const ctrls=zonas[z].querySelectorAll('input,button,select,textarea');
+          for(let i=0;i<ctrls.length;i++){
+            if(pillStealsTap(pr,ctrls[i].getBoundingClientRect())){ choca=true; break; }
+          }
+        }
+      }
+      body.classList.toggle('avi-train-onscreen',choca);
+    }catch(e){}
+  };
+  const _pillSched=()=>{
+    if(_pillTick||typeof requestAnimationFrame!=='function') return;
+    _pillTick=true; requestAnimationFrame(_pillGuard);
+  };
+  window._aviPillGuard=_pillGuard;   // lo llaman cnTab y el guiado al repintar
+  ['scroll','resize','orientationchange'].forEach(evt=>{
+    window.addEventListener(evt,_pillSched,{passive:true,capture:true});
+  });
+  // Un toque además puede ANIMAR la altura (la tarjeta de rutina se despliega en ~250ms): una
+  // sola medición al vuelo leería la geometría a medio camino, así que se remide al terminar.
+  // Sin esto la píldora se quedaba encima de «Hacer esta rutina ahora» hasta que la persona
+  // moviera la pantalla (lo cazó la CAPTURA del harness, no una aserción).
+  let _pillTrail=null;
+  window.addEventListener('click',()=>{
+    _pillSched();
+    if(_pillTrail) clearTimeout(_pillTrail);
+    _pillTrail=setTimeout(_pillGuard,320);
+  },{passive:true,capture:true});
+  _pillSched();
+
   window.dismissIOSBanner=function dismissIOSBanner(){
     const b=document.getElementById('ios-install-banner');
     if(b)b.style.display='none';
@@ -229,6 +279,9 @@ function openGuidedEmbedded(routine){
   document.body.style.overflow=''; // embebido NO bloquea el scroll de la app
   gmRebuild();
   _gmDeferScrollToCurrent(120);
+  // Acaban de aparecer campos que se tocan: re-evaluar la píldora «Instalar app» sin esperar
+  // a que la persona haga scroll (si no, el primer toque en la primera serie sigue en riesgo).
+  if(typeof window._aviPillGuard==='function'){ window._aviPillGuard(); setTimeout(window._aviPillGuard,220); }
   return true;
 }
 function _gmIsEmbedded(){ const g=document.getElementById('guided-mode'); return !!(g&&g.classList.contains('gm-embedded')); }

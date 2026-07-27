@@ -150,6 +150,7 @@ const {
   isBetterPR,
   muscleHuman,
   exMuscleText,
+  pillStealsTap,
   muscleVolume,
   pushPullBalance,
   clientHasCoach,
@@ -3151,6 +3152,34 @@ test('exMuscleText: JAMÁS devuelve jerga de modalidad ni el tipo del catálogo'
     assert.ok(!/Compuesto|Aislamiento|Bodyweight|peso_reps|Isométrico/i.test(txt),
       'se coló jerga en «' + txt + '»');
   });
+});
+
+// La píldora «Instalar app» no puede quedarse con un toque del entreno (medido con
+// hit-testing 2026-07-27: se paraba sobre los campos KG/REPS de una serie).
+const rect = (top, bottom, left = 99, right = 291) => ({ top, bottom, left, right });
+test('pillStealsTap: encimada sobre el entreno → hay que apagarla', () => {
+  // El caso REAL medido: píldora en y 710-760, cuerpo del entreno ocupando la pantalla.
+  assert.strictEqual(pillStealsTap(rect(710, 760), rect(-1200, 2400, 0, 390)), true);
+});
+test('pillStealsTap: el entreno por encima o por debajo de la píldora → se queda', () => {
+  assert.strictEqual(pillStealsTap(rect(710, 760), rect(0, 600, 0, 390)), false);   // entreno arriba
+  assert.strictEqual(pillStealsTap(rect(710, 760), rect(800, 1400, 0, 390)), false); // entreno abajo (día 1: bajo la portada)
+});
+test('pillStealsTap: sin caja (oculta / día de descanso) NO se apaga nada', () => {
+  // El caso con dientes: la píldora ya está oculta (rect todo en cero) y el entreno está
+  // SCROLLEADO, así que su rect se sale por arriba y por la izquierda del origen. Sin el
+  // candado de "caja vacía", el cero cae DENTRO de ese rectángulo y la regla diría que hay
+  // encimado donde no hay ni píldora.
+  assert.strictEqual(pillStealsTap(rect(0, 0, 0, 0), rect(-1200, 2400, -8, 398)), false);
+  assert.strictEqual(pillStealsTap(rect(0, 0, 0, 0), rect(0, 800, 0, 390)), false);
+  assert.strictEqual(pillStealsTap(rect(710, 760), rect(-5, -5, -5, -5)), false);   // entreno sin pintar
+  assert.strictEqual(pillStealsTap(null, rect(0, 800, 0, 390)), false);
+  assert.strictEqual(pillStealsTap(rect(710, 760), null), false);
+  assert.strictEqual(pillStealsTap({}, {}), false);
+});
+test('pillStealsTap: solo se cruzan en vertical pero no en horizontal → se queda', () => {
+  // Entreno en una columna estrecha a la izquierda; la píldora va centrada.
+  assert.strictEqual(pillStealsTap(rect(710, 760, 200, 380), rect(600, 900, 0, 90)), false);
 });
 
 test('prFromSets: peso_reps → kg máx con sus reps', () => {

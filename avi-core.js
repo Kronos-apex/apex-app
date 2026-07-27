@@ -3181,6 +3181,31 @@ function exMuscleText(ex) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// LA PÍLDORA «INSTALAR APP» NO PUEDE QUEDARSE CON UN TOQUE
+// ──────────────────────────────────────────────────────────────────────
+// Medido con hit-testing a 390×844 (2026-07-27): el botón flotante se paraba
+// sobre los campos KG/REPS de una serie — tocar para anotar el peso abría el
+// instalador. No es que "tape": se lleva el toque, en LA tarea de la app. El
+// mismo encimado le pasaba a «Hacer esta rutina ahora» en la pestaña Rutinas.
+// La regla es de GEOMETRÍA y va CONTROL POR CONTROL, no por pantalla: la
+// píldora solo se aparta si de verdad está encima de algo que se toca. Así
+// sigue visible el resto del tiempo — instalar la app es el problema nº1 de
+// adopción (a 15 de 16 no se les puede notificar) y no se sacrifica de gratis.
+// PURA: recibe dos rectángulos tipo DOMRect; sin alguno de los dos → false
+// (ante la duda la píldora se queda: esconderla de más cuesta instalaciones).
+function pillStealsTap(pill, ctrl) {
+  if (!pill || !ctrl) return false;
+  const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+  const pt = num(pill.top), pb = num(pill.bottom), pl = num(pill.left), pr = num(pill.right);
+  const ct = num(ctrl.top), cb = num(ctrl.bottom), cl = num(ctrl.left), cr = num(ctrl.right);
+  if (pt === null || pb === null || pl === null || pr === null) return false;
+  if (ct === null || cb === null || cl === null || cr === null) return false;
+  if (pb <= pt || pr <= pl) return false;   // píldora sin caja (display:none) → nada que robar
+  if (cb <= ct || cr <= cl) return false;   // control sin caja (oculto / aún sin pintar)
+  return pt < cb && pb > ct && pl < cr && pr > cl;
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // TELEMETRÍA DE ERRORES — limitador puro (v282)
 // ──────────────────────────────────────────────────────────────────────
 // Decide si un error JS se reporta a la nube (tabla app_errors). Reglas:
@@ -3423,6 +3448,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isBetterPR,
     muscleHuman,
     exMuscleText,
+    pillStealsTap,
     MUSCLE_GROUP_CAT,
     MUSCLE_GROUP_LABEL,
     muscleVolume,

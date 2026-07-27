@@ -748,6 +748,22 @@ body:has(.cchat.on) #install-banner,body:has(.cchat.on) #ios-install-banner{disp
    entreno» (visto en la captura a 360x640 del harness: el ✕ del banner asomaba sobre el botón).
    Misma clase que el login y los chats. Reaparece sola al cerrar el cierre. */
 body:has(#workout-finish.on) #install-banner,body:has(#workout-finish.on) #ios-install-banner{display:none!important}
+/* 2026-07-27 (estudio de interfaz, defecto 3 — MEDIDO con hit-testing, no supuesto): mientras
+   el asesorado tiene el ENTRENO en pantalla, la píldora flotante no "tapaba" los campos: se
+   quedaba con el TOQUE. A 390×844 se paraba sobre los campos KG/REPS de una serie (y sobre
+   «Ver cómo se hace» / reordenar) → tocar para anotar el peso abría el instalador. Es el peor
+   sitio posible: el registro de series es LA tarea de la app. El mismo encimado le pasaba a
+   «Hacer esta rutina ahora» en la pestaña «Rutinas».
+   La clase la pone/quita el guardián de app-6-extra CONTROL POR CONTROL (regla pura
+   `pillStealsTap`) y solo en «Hoy» y «Rutinas»: instalar la app es el problema nº1 de adopción
+   (a 15 de 16 no se les puede notificar), así que la píldora se conserva en el resto de «Hoy»,
+   en Progreso, Perfil, Mensajes y Comunidad, y vuelve en cuanto deja de estorbar.
+   Se oculta con visibility (no display) A PROPÓSITO: así conserva su caja y el guardián puede
+   seguir midiendo dónde caería — con display:none el rect se vuelve 0 y la regla se apagaría a
+   sí misma en bucle. `visibility:hidden` además la saca del hit-testing, que es justo el punto.
+   El banner de iOS NO entra aquí: ese es una guía que el usuario ABRE a propósito. */
+#install-banner{transition:opacity var(--dur) var(--ease-out)}
+body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 .sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
 .sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg);border-bottom:1px solid var(--br)}
