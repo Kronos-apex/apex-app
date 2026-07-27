@@ -380,6 +380,45 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 · CIERRE (parte 121 — **ESTUDIO DE INTERFAZ FASE 1 + variante C EN PROD**,
+avi-v403). Cierra una sesión larguísima: plan de correcciones completo (v398→v401), 3 decisiones del
+PO (v402), radar de adopción medido y el estudio de interfaz con su primera implementación.*
+
+***El radar de adopción cambió el diagnóstico.** Perfiles 6→7 y publicaciones 1→2 desde el lote: una
+persona en 24h, **no es señal**. Pero al medir el embudo completo apareció lo importante: de los 16
+del gimnasio sin perfil de comunidad, **8 NUNCA completaron un entreno**, 7 entrenaron y se fueron y
+solo 1 está activa (Claudia). Los 7 CON perfil están los 7 activos. **Quien usa la app entra a la
+Comunidad; quien no la usa, no.** La puerta de A2 (exige 3 entrenos) tiene hoy un techo de UNA
+persona. Y el canal que sí alcanza a quien no abre la app —WhatsApp de A3— está desarmado: **15 de
+16 sin teléfono guardado**. Verificado además que **a 15 de 16 es IMPOSIBLE notificarlos** (sin
+suscripción push; 0 eventos de telemetría) y que la app **no registra si está instalada**.*
+
+***ESTUDIO DE INTERFAZ FASE 1** (`docs/estudio-interfaz-primera-sesion.md` +
+`docs/preview-primera-sesion.html`). Harness propio `_verify-firstrun` (nació como capturas)
+reprodujo el día 1 real: la app pedía primero AUTOEVALUARSE (chooser de ánimo) y dejaba bajo el
+pliegue qué entrena hoy y cómo empieza; 3.565 px de contenido con 729 visibles. Benchmark: Hevy
+vende «empezar en 2 toques»; la literatura dice que estas apps fallan por exigir esfuerzo antes de
+dar valor y que su activación es CONDUCTUAL. **Diagnóstico: el problema es de ORDEN, no de
+estética.** Contexto honesto escrito en el doc: la industria activa 20-30% en la 1ª semana, AVI va
+en 65% — pero son clientes del coach, no descargas frías.*
+
+***Variante C (elegida por el PO viendo las 3 maquetas en Chrome) EN PROD:** portada del día 1 con
+UNA sola salida; ese día se apagan todas las tarjetas secundarias y el chooser de ánimo (por CSS,
+sin tocar el motor del guiado). `firstSessionMode` PURA es true SOLO sin NINGUNA sesión —ni parcial—
+= candado anti-v367 (D4 lo prueba con sabotaje). `estimateWorkoutMinutes` PURA calcula con el
+descanso real y **devuelve null antes que inventar** un número. Suite 445→447, `_verify-firstrun`
+8/8. **Bug propio cazado por el harness (D5):** apagar con `display:none` obliga a encender de
+vuelta — sin eso, hábitos desaparecía tras el primer entreno.*
+
+***Skills:** se buscó en el ecosistema por pedido del PO y la conclusión fue **no instalar ninguna**
+— las de Anthropic/Vercel ya instaladas superan lo que devolvió la búsqueda (nada por encima de 852
+instalaciones, casi todo de autores desconocidos).*
+
+***AL RETOMAR:** (1) los 3 defectos del §2 del estudio (jerga `peso_reps`, banner tapando el campo de
+la 1ª serie, jerarquía de «+ Nueva rutina»); (2) FASE 2 = auditoría general; (3) después la
+biblioteca de ejercicios. Del PO: cargar los teléfonos y escribirle a Claudia. Y sigue pendiente el
+**veredicto de Fable** sobre v386→v403 + el abogado.*
+
 *Hitos sesión 2026-07-26 (parte 120 — **las 3 DECISIONES DE PRODUCTO del PO, ejecutadas**,
 avi-v402). Cierran el §⚖ del `plan-correcciones-adopcion.md`; el plan queda cerrado del todo.*
 
