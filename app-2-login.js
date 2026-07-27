@@ -454,7 +454,7 @@ function renderTemplates(){
           (tpl.exercises||[]).map(e=>`
             <div class="exrow">
               <div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div>
-              <div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(e.muscle)} · ${esc(e.type)}</div></div>
+              <div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)}</div></div>
               <div class="exsets">${exSetsCellHTML(e)}</div>
             </div>`).join('')}
         <div style="padding-top:10px;border-top:1px solid var(--br);margin-top:4px">

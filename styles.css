@@ -514,7 +514,11 @@ html[data-theme="light"] .mta {
 .gx-badge.gold .gx-bic .avic{color:#C9962B}
 .gx-badge.lock .gx-bic .avic{color:#8a8a8a}
 .exname{font-size:14px;font-weight:700;line-height:1.2}
-.exmet{font-size:11px;color:var(--t2);margin-top:3px;text-transform:capitalize}
+/* Sin `text-transform:capitalize` (quitado 2026-07-27): existía como parche para que el SLUG
+   crudo del músculo («pecho») no se viera en minúscula. Ahora el texto ya viene escrito para
+   humanos desde `exMuscleText` (avi-core) y el capitalize lo estropeaba: «Cuádriceps y glúteo»
+   salía como «Cuádriceps Y Glúteo». Se arregla el dato, no la vitrina. */
+.exmet{font-size:11px;color:var(--t2);margin-top:3px}
 /* Indicador de biserie (🔗) — antes heredaba los 11px diminutos de .exmet; se ve apretado y
    cuesta leerlo en plena rutina. Más grande, más peso y más contraste. Camilo 2026-06-29. */
 .biset-tag{color:#A855F7;font-weight:800;font-size:13.5px;text-transform:none}

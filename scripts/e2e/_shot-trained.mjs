@@ -40,7 +40,7 @@ const setup = await ev(`(()=>{try{
   document.querySelectorAll('#s-client .cnp').forEach(p=>p.classList.remove('on'));
   const tod=document.getElementById('cn-today'); if(tod)tod.classList.add('on');
   const client={id:'ct1',name:'Camilo',sex:'M',level:'Intermedio',goal:'Ganar músculo',days:4,
-    routines:[{id:'r1',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'peso_reps',sets:4,reps:'10'}]}],
+    routines:[{id:'r1',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'}]}],
     habits:{water:{},steps:{}}};
   DB.clients=[client];
   const iso=new Date().toISOString(); // sesión FINALIZADA de HOY (finishedAt), rutina de OTRO día (Espalda),

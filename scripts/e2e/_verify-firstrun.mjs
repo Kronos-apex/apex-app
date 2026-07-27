@@ -31,7 +31,7 @@ const NUEVO = `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const hoy=days[new Date().getDay()];
-  const ex=(id,n,m,s,r)=>({id:id,name:n,muscle:m,type:'peso_reps',sets:s,reps:r});
+  const ex=(id,n,m,s,r)=>({id:id,name:n,muscle:m,type:'Compuesto',sets:s,reps:r});
   const rut=(id,n,d,exs)=>({id:id,name:n,day:d,restSec:90,exercises:exs});
   const client={id:'nuevo',name:'Santiago',sex:'M',level:'Principiante',goal:'Bajar de peso',days:3,
     createdAt:new Date().toISOString(),

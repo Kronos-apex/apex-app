@@ -148,6 +148,8 @@ const {
   exTrack,
   prFromSets,
   isBetterPR,
+  muscleHuman,
+  exMuscleText,
   muscleVolume,
   pushPullBalance,
   clientHasCoach,
@@ -3110,6 +3112,45 @@ test('exTrack: track explícito manda; si no, lo infiere del tipo', () => {
   assert.strictEqual(exTrack({ type: 'Bodyweight' }), 'reps');
   assert.strictEqual(exTrack({ type: 'Compuesto' }), 'peso_reps');
   assert.strictEqual(exTrack({}), 'peso_reps');
+});
+
+// Lo que lee el ASESORADO bajo el nombre del ejercicio (2026-07-27). El caso real medido
+// en prod: 8 personas con rutinas viejas sin `muscleLabel` leían el slug crudo.
+test('muscleHuman: el slug crudo se escribe como lo lee una persona (con tilde)', () => {
+  assert.strictEqual(muscleHuman('biceps'), 'Bíceps');
+  assert.strictEqual(muscleHuman('triceps'), 'Tríceps');
+  assert.strictEqual(muscleHuman('gluteo'), 'Glúteo');
+  assert.strictEqual(muscleHuman('piernas'), 'Piernas');
+  assert.strictEqual(muscleHuman('core'), 'Abdomen');
+});
+test('muscleHuman: «otro» no se pinta, y un músculo desconocido nunca sale en minúscula', () => {
+  assert.strictEqual(muscleHuman('otro'), '');
+  assert.strictEqual(muscleHuman('antebrazo'), 'Antebrazo');   // custom del coach
+  assert.strictEqual(muscleHuman(''), '');
+  assert.strictEqual(muscleHuman(null), '');
+  assert.strictEqual(muscleHuman(undefined), '');
+});
+test('exMuscleText: manda la etiqueta del catálogo; sin ella, el slug humanizado', () => {
+  assert.strictEqual(exMuscleText({ muscle: 'piernas', muscleLabel: 'Cuádriceps y glúteo' }), 'Cuádriceps y glúteo');
+  assert.strictEqual(exMuscleText({ muscle: 'biceps' }), 'Bíceps');
+  assert.strictEqual(exMuscleText({ muscle: 'biceps', muscleLabel: '   ' }), 'Bíceps'); // etiqueta vacía no cuenta
+  assert.strictEqual(exMuscleText({}), '');
+  assert.strictEqual(exMuscleText(null), '');
+});
+test('exMuscleText: JAMÁS devuelve jerga de modalidad ni el tipo del catálogo', () => {
+  // El defecto que motivó el cambio: la línea del asesorado mostraba «pecho · Compuesto»
+  // (y en 8 personas, «biceps · Bodyweight»). El tipo NO debe colarse por ningún campo.
+  const casos = [
+    { muscle: 'pecho', type: 'Compuesto' },
+    { muscle: 'core', type: 'Bodyweight', track: 'reps' },
+    { muscle: 'piernas', type: 'peso_reps' },          // forma inventada por fixtures viejos
+    { muscle: 'espalda', type: 'Aislamiento', muscleLabel: 'Espalda media' }
+  ];
+  casos.forEach(ex => {
+    const txt = exMuscleText(ex);
+    assert.ok(!/Compuesto|Aislamiento|Bodyweight|peso_reps|Isométrico/i.test(txt),
+      'se coló jerga en «' + txt + '»');
+  });
 });
 
 test('prFromSets: peso_reps → kg máx con sus reps', () => {

@@ -41,7 +41,7 @@ const INSTALL = `(()=>{try{
   // Rutinas propias para el picker de publicar: una VÁLIDA (con basura a descartar) + una VACÍA
   DB.clients=[{id:'me',name:'Camila',habits:{water:{},steps:{}},routines:[
     {id:'r1',name:'Full body A',day:'Lunes',restSec:90,note:'peso 100kg dolor rodilla',
-     exercises:[{id:'e1',name:'Sentadilla',muscle:'piernas',type:'peso_reps',sets:3,reps:'8-12',imgUrl:'http://x',kg:80},
+     exercises:[{id:'e1',name:'Sentadilla',muscle:'piernas',type:'Compuesto',sets:3,reps:'8-12',imgUrl:'http://x',kg:80},
                 {id:'e2',name:'Press banca',muscle:'pecho',sets:4,reps:10}]},
     {id:'r2',name:'Rutina vacía',day:'Martes',exercises:[]}
   ]}]; CUR.clientId='me'; CUR.loggedAs='client';

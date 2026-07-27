@@ -3145,6 +3145,42 @@ function isBetterPR(val, reps, unit, prev) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// LO QUE LEE EL ASESORADO BAJO EL NOMBRE DEL EJERCICIO (2026-07-27)
+// ──────────────────────────────────────────────────────────────────────
+// Hasta ahora esa línea decía «músculo · tipo» tal cual salía del dato:
+//   · 8 personas con rutinas viejas (163 ejercicios, medido en prod) no tienen
+//     `muscleLabel` y leían el SLUG crudo, en minúscula y sin tilde: «biceps»,
+//     «gluteo», «triceps».
+//   · Y al lado, vocabulario de entrenador: «Compuesto», «Aislamiento» y hasta
+//     «Bodyweight», en inglés. A quien nunca ha entrenado no le dice nada
+//     (regla de tono del proyecto: cero jerga técnica para el asesorado).
+// Decisión del PO (2026-07-27): el asesorado ve SOLO el músculo, bien escrito.
+// El panel del coach conserva «músculo · tipo» — ahí sí significa algo.
+// PURA: recibe el ejercicio, devuelve texto ya listo (nunca null; '' = no pintar
+// la línea, que es mejor que pintar «otro»).
+const MUSCLE_HUMAN = {
+  pecho: 'Pecho', espalda: 'Espalda', hombros: 'Hombros', biceps: 'Bíceps',
+  triceps: 'Tríceps', piernas: 'Piernas', gluteo: 'Glúteo', core: 'Abdomen',
+  cardio: 'Cardio', otro: ''
+};
+function muscleHuman(slug) {
+  const k = String(slug == null ? '' : slug).trim().toLowerCase();
+  if (!k) return '';
+  if (Object.prototype.hasOwnProperty.call(MUSCLE_HUMAN, k)) return MUSCLE_HUMAN[k];
+  // Músculo que no está en el catálogo (custom del coach): al menos con mayúscula
+  // inicial, jamás el slug crudo en minúscula.
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+// La línea completa para el asesorado. `muscleLabel` del catálogo ya viene escrito
+// para humanos («Cuádriceps y glúteo») y manda; si falta, se humaniza el slug.
+function exMuscleText(ex) {
+  const e = ex || {};
+  const label = String(e.muscleLabel == null ? '' : e.muscleLabel).trim();
+  if (label) return label;
+  return muscleHuman(e.muscle);
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // TELEMETRÍA DE ERRORES — limitador puro (v282)
 // ──────────────────────────────────────────────────────────────────────
 // Decide si un error JS se reporta a la nube (tabla app_errors). Reglas:
@@ -3385,6 +3421,8 @@ if (typeof module !== 'undefined' && module.exports) {
     exTrack,
     prFromSets,
     isBetterPR,
+    muscleHuman,
+    exMuscleText,
     MUSCLE_GROUP_CAT,
     MUSCLE_GROUP_LABEL,
     muscleVolume,

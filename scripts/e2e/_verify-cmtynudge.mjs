@@ -55,7 +55,7 @@ const RESET = (n, probe) => `(()=>{try{
   const tod=document.getElementById('cn-today'); if(tod)tod.classList.add('on');
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const client={id:'ct1',name:'Camilo',sex:'M',level:'Intermedio',goal:'Ganar músculo',days:3,
-    routines:[{id:'r1',day:days[new Date().getDay()],name:'Empuje',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'peso_reps',sets:4,reps:'10'}]}],
+    routines:[{id:'r1',day:days[new Date().getDay()],name:'Empuje',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'}]}],
     habits:{water:{},steps:{}}};
   DB.clients=[client];
   const mk=(daysAgo)=>{const d=new Date();d.setDate(d.getDate()-daysAgo);d.setHours(18,0,0,0);const iso=d.toISOString();

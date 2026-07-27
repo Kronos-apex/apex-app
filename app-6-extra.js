@@ -453,7 +453,7 @@ function gmRender(){
       <div class="gm-ex-icon" style="background:${color}18;border:1.5px solid ${color}30;overflow:hidden">${exIcon(ex)}</div>
       <div class="gm-ex-nm">
         <div class="gm-ex-name">${esc(ex.name)}</div>
-        <div class="gm-ex-meta">${esc(ex.muscleLabel||ex.muscle)} · ${esc(ex.type)}</div>
+        <div class="gm-ex-meta">${esc(typeof exMuscleText==='function'?exMuscleText(ex):(ex.muscleLabel||ex.muscle))}</div>
       </div>
       <div class="gm-ex-tools">
         ${exAllDone?'<span style="color:var(--g)">'+_gmIco('check',20,'✅')+'</span>':''}
@@ -2057,7 +2057,7 @@ function _showExSheet(ex, isCoach, editable){
 
   // Name & muscle label
   document.getElementById('exd-name').textContent = ex.name;
-  document.getElementById('exd-muscle').textContent = ex.muscleLabel || ex.muscle;
+  document.getElementById('exd-muscle').textContent = (typeof exMuscleText==='function') ? exMuscleText(ex) : (ex.muscleLabel || ex.muscle);
 
   // Mapa muscular anatómico (sub-región por ejercicio). Solo si hay datos del músculo.
   const muscWrap = document.getElementById('exd-muscles-wrap');

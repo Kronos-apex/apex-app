@@ -47,8 +47,8 @@ const RESET = `(()=>{try{
   const todayName=days[new Date().getDay()];
   const client={id:'ct1',name:'Camilo',sex:'M',level:'Intermedio',goal:'Ganar músculo',days:4,
     routines:[
-      {id:'rLeg',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'peso_reps',sets:4,reps:'10'}]},
-      {id:'rToday',day:todayName,name:'Empuje',restSec:90,exercises:[{id:'e2',name:'PressBanca',muscle:'Pecho',type:'peso_reps',sets:4,reps:'10'}]}
+      {id:'rLeg',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'}]},
+      {id:'rToday',day:todayName,name:'Empuje',restSec:90,exercises:[{id:'e2',name:'PressBanca',muscle:'Pecho',type:'Compuesto',sets:4,reps:'10'}]}
     ],
     habits:{water:{},steps:{}}};
   DB.clients=[client];

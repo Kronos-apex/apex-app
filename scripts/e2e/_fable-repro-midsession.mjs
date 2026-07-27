@@ -38,8 +38,8 @@ const setup = await ev(`(()=>{try{
   Object.keys(localStorage).filter(k=>k.includes('rMid')).forEach(k=>localStorage.removeItem(k));
   const client={id:'ct9',name:'Repro',sex:'M',level:'Intermedio',goal:'Ganar músculo',days:4,
     routines:[{id:'rMid',day:todayName,name:'Rutina Hoy',restSec:90,exercises:[
-      {id:'e1',name:'Sentadilla',muscle:'Pierna',type:'peso_reps',sets:3,reps:'10'},
-      {id:'e2',name:'Prensa',muscle:'Pierna',type:'peso_reps',sets:3,reps:'10'}]}],
+      {id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:3,reps:'10'},
+      {id:'e2',name:'Prensa',muscle:'Pierna',type:'Compuesto',sets:3,reps:'10'}]}],
     habits:{water:{},steps:{}}};
   DB.clients=[client]; DB.history={ct9:[]}; DB.msgs=DB.msgs||{};
   CUR.clientId='ct9'; CUR.loggedAs='client'; CUR.trainAgain=false; CUR.todayOverride=null; CUR.todayWorking=null; CUR.todayDirty=false;
