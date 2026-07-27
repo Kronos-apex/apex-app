@@ -98,8 +98,16 @@ das tu autorización.
   lesiones ni tus mensajes con el entrenador **jamás** salen de tu cuenta ni aparecen en ninguna
   publicación. **Los kilos que levantas tampoco se comparten**, salvo que tú publiques un récord
   concreto de forma activa, como se explica arriba.
-- **Cómo te conectas:** solo por **código** que tú compartes; ambas personas deben aceptar. No hay
-  directorio ni buscador de personas.
+- **Quién te ve y cómo te conectas** (hay tres caminos, todos bajo tu control o el de tu entrenador):
+  1. **Por código:** compartes tu código y ambas personas deben aceptar. Es mutuo.
+  2. **Tu gimnasio:** tu entrenador arma el directorio de su gimnasio. Si te incluye, tus
+     compañeros de ese gimnasio ven tu perfil de comunidad apenas lo creas (y tú los ves a ellos).
+     Solo tu entrenador puede agregarte o sacarte de ese directorio.
+  3. **Perfil público (opcional, apagado por defecto):** si TÚ lo enciendes, cualquier persona en
+     AVI puede encontrarte en «Descubrir» y seguirte. Mientras esté apagado, tu perfil es privado
+     y solo lo ven las personas de los puntos 1 y 2. **Las cuentas de menores de edad son siempre
+     privadas** y no pueden hacerse públicas.
+  Puedes **bloquear** a cualquiera: quien te bloquea deja de verte, incluso dentro del gimnasio.
 - **Actividad diaria:** puedes **ocultar** si entrenaste hoy con un interruptor, en cualquier momento.
 - **Control y revocación:** puedes pausar tu perfil, bloquear o reportar a alguien, y **salir de la
   comunidad** cuando quieras. Salir **borra** tu perfil público y todas tus amistades (derecho de

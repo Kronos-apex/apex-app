@@ -70,6 +70,8 @@ const RESET = (n, probe) => `(()=>{try{
 
 // F3: la pertenencia la marca el SERVIDOR (`gym`), ya no se deduce de `is_private`.
 const gym = (h) => ({ handle: h, avatar_url: null, is_private: true, gym: true });
+const AV = 'https://eoebhrxbokyllqalyecj.supabase.co/storage/v1/object/public/avatars/x/a.jpg';
+const gymConFoto = (h) => ({ handle: h, avatar_url: AV, is_private: true, gym: true });
 const gymPublico = (h) => ({ handle: h, avatar_url: null, is_private: false, gym: true });
 const extranoPublico = (h) => ({ handle: h, avatar_url: null, is_private: false });
 const FRESH = list => ({ hasProfile: false, peers: list.length, list, at: Date.now() });
@@ -263,6 +265,16 @@ const n15 = await ev(`(()=>{const body=document.getElementById('cn-today-body');
   return {entreno:!!(body&&body.innerHTML.trim().length>200),tarjeta:el?el.style.display:'?'};})()`);
 check('N15 (F9) con la sonda corrupta el ENTRENO se pinta igual y la tarjeta simplemente no sale',
   n15.entreno === true && n15.tarjeta === 'none', JSON.stringify(n15));
+
+// N16 (decisión del PO 2026-07-26): la tarjeta de «Hoy» la ve alguien que todavía NO creó su
+// perfil → apodos sí, CARAS no (6 de los 7 perfiles reales se tratan como menores). Los datos
+// TRAEN foto a propósito: si alguien quita el candado, este check lo canta.
+console.log('  setup(9, con foto):', await ev(RESET(9, FRESH([gymConFoto('Samuel'), gymConFoto('Astrid')])))); await sleep(400);
+const n16 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');
+  const fotos=[...el.querySelectorAll('img')].filter(i=>(i.getAttribute('src')||'').indexOf('/object/public/avatars')>=0).length;
+  return {disp:el.style.display,nombra:/Astrid/.test(el.innerText),fotos:fotos,iniciales:/AS|SA/.test(el.innerText)};})()`);
+check('N16 (PO) la tarjeta de «Hoy» nombra sin pintar caras (aunque las tengan)',
+  n16.disp === 'block' && n16.nombra === true && n16.fotos === 0 && n16.iniciales === true, JSON.stringify(n16));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

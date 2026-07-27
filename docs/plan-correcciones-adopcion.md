@@ -166,6 +166,19 @@ apuntando al blanco equivocado; hay que corregir el test, no solo el código.
 
 ## ⚖️ Decisiones que son del PO / Fable, no de implementación
 
+> **✅ LAS TRES TOMADAS POR EL PO (2026-07-26) y ejecutadas en avi-v402:**
+> 1. **Apodos sí, caras no** antes del opt-in (bienvenida y tarjeta de «Hoy»). El apodo basta para
+>    reconocer a un compañero de gimnasio; la foto es el dato más identificable y 6 de los 7
+>    perfiles se tratan como MENORES. Las caras aparecen al entrar, no antes.
+> 2. **El catch-up se queda.** Publica UN hito — el vigente — solo por acción explícita del usuario.
+>    Sin él, decir «sí, celébralo» no publicaría NADA y la pregunta sería una promesa vacía.
+> 3. **Casilla corregida + `CMTY_CONSENT_V` arriba**, sin pedir re-aceptación a los 7 que ya
+>    entraron (su evidencia conserva la versión que se les mostró, que es la verdad de cada uno).
+>    **Hallazgo al ejecutarla:** la política legal decía «solo por código… no hay directorio ni
+>    buscador de personas» — FALSO desde el directorio del gimnasio (C5) y «Descubrir» (③c-3).
+>    Reescrita §9 con los tres caminos + el bloqueo; `LEGAL_V` a `2026-07-26-borrador`.
+>    Sigue PENDIENTE la revisión del abogado (ambos textos son borrador).
+
 1. **A1 muestra nombres y caras del gym —incluidos MENORES— a quien todavía no aceptó nada.**
    La RLS lo autoriza (verificado con un miembro real sin perfil: el servidor ya le entrega los 7
    handles), pero *autorizado por RLS ≠ que el producto deba mostrarlo*. Antes, ver la identidad de

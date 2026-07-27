@@ -247,6 +247,25 @@ const cm15 = await ev(`(()=>{
 check('CM15 (A1) la bienvenida nombra a la gente del gym, sin perder el opt-in y con el handle escapado',
   cm15.linea && cm15.optin && cm15.xss === 0 && !cm15.badImg && !cm15.ext, JSON.stringify(cm15));
 
+// CM19 (decisión del PO 2026-07-26) — ANTES del opt-in se muestran APODOS, NUNCA CARAS. La
+// bienvenida la ve alguien que todavía no aceptó nada, y 6 de los 7 perfiles reales se tratan como
+// MENORES (sin fecha de nacimiento). El apodo basta para reconocer a un compañero de gimnasio; la
+// foto es el dato más identificable y aparece solo cuando la persona entra a la comunidad.
+await ev(`(()=>{
+  window.__allProfiles = [
+    {user_id:'${P1}',handle:'Samuel',avatar_url:'${PREFIX}${P1}/avatar.jpg',is_private:true},
+    {user_id:'${P2}',handle:'Astrid',avatar_url:'${PREFIX}${P2}/avatar.jpg',is_private:true}
+  ];
+  window.__gymPeers = []; CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false; return 'ok';
+})()`);
+await ev(`cmtyLoad()`); await sleep(600);
+const cm19 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');
+  const conFoto=[...h.querySelectorAll('img')].filter(i=>(i.getAttribute('src')||'').indexOf('/object/public/avatars')>=0);
+  return {nombra:/Astrid/.test(t)&&/Samuel/.test(t), fotos:conFoto.length,
+          iniciales:/AS|SA/.test(h.innerText), avatarUrlEnDatos:(CMTY.peers||[]).filter(p=>p.avatar_url).length};})()`);
+check('CM19 (PO) la bienvenida nombra a la gente pero NO pinta sus fotos (aunque las tengan)',
+  cm19.nombra === true && cm19.avatarUrlEnDatos === 2 && cm19.fotos === 0, JSON.stringify(cm19));
+
 // CM18 (F3) — el compañero de gym que se hizo PÚBLICO. `is_private` NO puede decidir la
 // pertenencia: en prod el único perfil público del gimnasio es EL COACH, y la línea lo escondía.
 // Aquí entra por la RPC `cmty_gym_peers` (señal real), y un público AJENO al gym no se cuela.

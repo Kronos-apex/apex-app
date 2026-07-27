@@ -22,7 +22,7 @@
 // Versión del consentimiento ESPECÍFICO de la comunidad (evidencia Habeas Data del opt-in).
 // Ata a la sección 9 «Comunidad» de legal/politica-tratamiento-datos.md (C4). Sube este valor
 // si cambia ese texto. Sigue siendo BORRADOR pendiente de revisión de abogado (legal/LEEME).
-const CMTY_CONSENT_V = 'comunidad-2026-07-23-borrador';
+const CMTY_CONSENT_V = 'comunidad-2026-07-26-borrador';
 
 // ESTADO INICIAL en una FÁBRICA, no en un literal suelto: `cmtyResetIdentity()` vuelve a pedirlo
 // entero, así que un campo nuevo que se agregue aquí queda limpiado al cambiar de cuenta SIN que
@@ -418,7 +418,7 @@ function _cmtyPeersHtml(){
   if(!line) return '';
   const avatars = line.picked.map((p, i) =>
     '<span style="display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px var(--w)' + (i ? ';margin-left:-9px' : '') + '">' +
-      _cmtyAvatarHtml(p, 30) + '</span>').join('');
+      _cmtyAvatarHtml(p, 30, { noPhoto: true }) + '</span>').join('');
   return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);background:var(--gl);margin-bottom:13px">' +
     '<span style="display:flex;flex:0 0 auto">' + avatars + '</span>' +
     '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--gt);line-height:1.4">' + esc(line.text) + '</span>' +
@@ -445,7 +445,7 @@ function _cmtyOptInHtml(){
     '<input class="inp" id="cmty-handle" maxlength="30" placeholder="Ej: Cami" value="' + defName + '" style="margin-bottom:12px">' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:9px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-consent" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
-      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con los amigos que yo acepte, según la <a href="#" onclick="showLegalDoc(\'politica\');return false" style="color:var(--g);font-weight:700;text-decoration:underline">política de tratamiento de datos</a>.</span></label>' +
+      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con las personas de mi gimnasio y con quien yo acepte por código, según la <a href="#" onclick="showLegalDoc(\'politica\');return false" style="color:var(--g);font-weight:700;text-decoration:underline">política de tratamiento de datos</a>.</span></label>' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:12px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-age" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
       '<span>Soy mayor de 18 años, o cuento con la autorización de mi representante.</span></label>' +
@@ -485,10 +485,15 @@ async function cmtyCreateProfile(){
 // ── Mi perfil (con código, avatar, toggles, salir) ──
 // `opts.zoom`=true → si hay foto, tocarla la abre en grande (visor). `opts.open`=uid → tocar el
 // avatar abre el perfil de esa persona. Solo uno de los dos por avatar.
+// `opts.noPhoto` (decisión del PO, 2026-07-26): pinta SIEMPRE la inicial, nunca la foto. Se usa en
+// las dos superficies que ve alguien que TODAVÍA no creó su perfil ni aceptó nada (la bienvenida y
+// la tarjeta de «Hoy»): el apodo basta para reconocer a un compañero de gimnasio, y la cara es el
+// dato más identificable — importa sobre todo porque 6 de los 7 perfiles se tratan como MENORES
+// (sin fecha de nacimiento, fail-safe). Las caras aparecen al entrar, no antes.
 function _cmtyAvatarHtml(prof, size, opts){
   size = size || 46; opts = opts || {};
   const url = prof && prof.avatar_url;
-  const hasPhoto = typeof cmtyAvatarOk === 'function' && cmtyAvatarOk(url);
+  const hasPhoto = !opts.noPhoto && typeof cmtyAvatarOk === 'function' && cmtyAvatarOk(url);
   let click = '', cursor = '';
   if(opts.zoom && hasPhoto){ click = ' onclick="event.stopPropagation();cmtyZoomAvatar(\'' + esc(url) + '\')"'; cursor = 'cursor:zoom-in;'; }
   else if(opts.open){ click = ' onclick="event.stopPropagation();cmtyOpenProfile(\'' + esc(opts.open) + '\')"'; cursor = 'cursor:pointer;'; }
@@ -2084,7 +2089,7 @@ function _cmtyRepaintToday(){
 function _cmtyNudgeHtml(line){
   const avatars = line.picked.map((p, i) =>
     '<span style="display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px var(--w)' + (i ? ';margin-left:-9px' : '') + '">' +
-      _cmtyAvatarHtml(p, 28) + '</span>').join('');
+      _cmtyAvatarHtml(p, 28, { noPhoto: true }) + '</span>').join('');
   return '<div class="card" style="padding:12px 14px">' +
     '<div style="display:flex;align-items:center;gap:10px">' +
       '<span style="display:flex;flex:0 0 auto">' + avatars + '</span>' +

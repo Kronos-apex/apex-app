@@ -380,6 +380,36 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 (parte 120 — **las 3 DECISIONES DE PRODUCTO del PO, ejecutadas**,
+avi-v402). Cierran el §⚖ del `plan-correcciones-adopcion.md`; el plan queda cerrado del todo.*
+
+***D1 — apodos sí, caras no antes del opt-in.** La bienvenida y la tarjeta de «Hoy» las ve alguien
+que TODAVÍA no aceptó nada (16 personas del gym hoy), y **6 de los 7 perfiles se tratan como
+menores** (sin fecha de nacimiento, fail-safe). El PO eligió conservar los apodos —son compañeros
+que ya conoce del gimnasio— y quitar las fotos hasta que la persona entre. `_cmtyAvatarHtml` gana
+`opts.noPhoto` (pinta la inicial siempre); lo usan las DOS superficies pre-opt-in. Checks CM19 y
+N16 con datos que SÍ traen foto (si alguien quita el candado, cantan). Sabotaje: quitar `noPhoto`
+→ CM19 rojo con 2 fotos.*
+
+***D2 — el catch-up de A4 se queda.** Publica UN hito, el vigente, y solo cuando el usuario dice
+«sí, celébralo». Sin él ese «sí» no publicaría nada (`crossedStreak` exige `antes < umbral` y el
+snapshot ya guardó la racha nueva). Sin cambio de código: queda registrado como decisión del PO.*
+
+***D3 — consentimiento honesto.** La casilla decía «con los amigos que yo acepte» y omitía al
+gimnasio, que es justo quien te ve desde C5 — y la casilla ES la evidencia que se guarda. Corregida
++ `CMTY_CONSENT_V` → `2026-07-26-borrador`. Sin re-aceptación para los 7 que ya entraron: su
+evidencia conserva el texto que se les mostró. **HALLAZGO al ejecutarla:** la política legal §9
+afirmaba «solo por código… **No hay directorio ni buscador de personas**», falso desde C5 y desde
+«Descubrir». Reescrita con los tres caminos (código · directorio del gimnasio que arma el coach ·
+perfil público opcional, jamás para menores) + el bloqueo; `LEGAL_V` → `2026-07-26-borrador`.
+Ambos textos siguen siendo BORRADOR pendiente de abogado.*
+
+***QA.** Suite 445. `_verify-community` 19→20 (CM19), `_verify-cmtynudge` 17→18 (N16),
+`_verify-milestoneask` 23, `_verify-gyminvite` 19. Verificación visual MIRADA (R2.6). **GOTCHA
+operativo nuevo:** una corrida que crashea deja python y Chrome vivos y la siguiente se conecta a
+ELLOS → fallos fantasma («showScreen is not defined» con la app sana). Añadido
+`scripts/e2e/_freeports.ps1` para liberar puertos antes de correr un harness.*
+
 *Hitos sesión 2026-07-26 (parte 119 — **F14 + F7-F13 + §P3: el `plan-correcciones-adopcion.md`
 queda EJECUTADO COMPLETO**, avi-v401).*
 
