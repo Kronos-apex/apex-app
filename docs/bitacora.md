@@ -380,6 +380,61 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-27 · PARTE 2 (parte 123 — **AUDITORÍA FASE 2: LAS 12 PANTALLAS**,
+avi-v405). Cuatro commits: `435b927` recorrido asertivo + doc · `54cf3c1` z-index de la píldora ·
+`69a9cab` táctil 36px · `13de4b5` buscador de la biblioteca. Doc:
+`docs/auditoria-interfaz-fase2.md`. PENDIENTE re-verificación de Fable.*
+
+***La auditoría empezó construyendo el instrumento que faltaba.** `_audit-pantallas.mjs` abre las
+6 pestañas del asesorado y los 6 paneles del coach con datos de forma real y AFIRMA: que ninguna
+lance, que ninguna quede vacía, que nada se salga de 390px, que la píldora no le robe el toque a
+nadie —ni en las pantallas ni en lo que se abre ENCIMA— y cero errores JS; además mide alto de
+contenido y área táctil EFECTIVA por hit-testing. Nace de la deuda que dejó pasar el bug de v403:
+**9 de los 13 harnesses `_shot*` son de solo capturas** y seguían generando PNG de pantallas rotas.*
+
+***TRES MEDICIONES MÍAS SALIERON FALSAS y hubo que tumbarlas antes de concluir:** (1) contaba como
+desbordamiento lo que vive en un carrusel horizontal (`.mquick` es `overflow-x:auto` a propósito);
+(2) sumaba el alto del botón al alcance medido DESDE SU CENTRO —lo contaba dos veces— y un botón
+de 27px daba 53 y pasaba el filtro; (3) medía controles pegados al borde de la pantalla, donde los
+puntos de prueba caen fuera del viewport y dan un falso «no responde». Misma lección que el falso
+`peso_reps` de la FASE 1.*
+
+***F1 🔴 LA PÍLDORA FLOTABA POR ENCIMA DE TODO LO QUE SE ABRE ENCIMA.** `#install-banner` estaba en
+`z-index:8000` y los overlays viven entre 700 y 1600 (tour 800, asistente de datos 900, modales
+1000, sala de rutina 1400) → medido con hit-testing, se quedaba con el toque de **«Empezar · 2
+min»** (asistente) y **«Siguiente →»** (tour): **los dos primeros botones que pulsa alguien nuevo**,
+justo el embudo donde se pierden los 8 que nunca entrenaron. Fix de CAPAS, no de casos: bajarla a
+`z-index:690` —por encima del contenido y de la barra de pestañas (200), por debajo de cualquier
+overlay presente o futuro—. Complementa el fix de v404, que era geometría DENTRO de la pantalla.*
+
+***F2 🟠 LOS BOTONES PEQUEÑOS MEDÍAN 27px** (los chips de Progreso, 22) cuando la doctrina propia
+exige 36. En 11 de las 12 pantallas. Decisión del PO: subirlos en toda la app → el mínimo va en
+`.btn` (lo hereda `.bsm` y de paso arregla los normales, que daban 34), más `.adv-pill` y
+`.collapse-more`. **De 41 controles bajo el mínimo a 1.** Se descartó `justify-content:center` en
+`.btn` porque cambiaba la alineación de los botones de ancho completo. **La excepción que queda,
+sin maquillar:** la ✕ de «Eliminar registro de peso» tiene `.hit40` pero su alcance real es 26×32
+porque las filas vecinas interceptan el overlay; el intento de subirla con z-index NO cambió nada y
+se revirtió en vez de dejar código inerte.*
+
+***F3 🟠 LA BIBLIOTECA DE EJERCICIOS: 30.752 px = 42 PANTALLAS, sin buscador.** 212 ejercicios con
+foto dibujados de golpe; para hallar uno había que filtrar por músculo y bajar a pulso (la lista de
+asesorados sí tiene buscador). Decisión del PO: buscador + pintar de a poco. `searchExercises`
+pura —sin tildes («biceps» encuentra «Bíceps») y por palabras sueltas («press banca»)—, filtro de
+músculo y texto JUNTOS, 30 por tanda con «Ver 182 más (30 de 212)», y estado vacío que sabe por qué
+está vacío. **De 30.752 px a 4.308 px.** Harness NUEVO `_verify-exlib` 8/8.*
+
+***F4 🟡 y F5 🟡 SIN TOCAR, para decidir:** cuatro pantallas «flacas» (Mensajes 0,4 pantallas ·
+Comunidad 0,5 · Plantillas 0,5 · Mensajes del coach 0,4) — no están rotas, están vacías a medias, y
+eso es decisión de producto. Y quedan 10 harnesses `_shot*` sin aserciones.*
+
+***QA:** suite 455 → **460**. **4 sabotajes** rojo→verde (z-index a 8000 → vuelve a cazar los dos
+botones robados · búsqueda literal sin tildes ni palabras → caen 3 tests · más los dos del bloque
+anterior). Cinturón COMPLETO por ser CSS global: `_guiado-suite` verde, `_verify-modals` 12/12,
+`_verify-estudio-defectos`, `_verify-firstrun`, `_shot-trained`, `_shot-profile`, `_verify-missday`,
+`_verify-share`, `_test-coach-back`, `_verify-exlib` 8/8, `_audit-pantallas` 12/12 + overlays, hook
+11/11. **Sin AVI_NEWS a propósito:** el buscador es del coach y lo táctil es pulido, no una función
+nueva que haya que enseñarle al asesorado.*
+
 *Hitos sesión 2026-07-27 (parte 122 — **LOS 3 DEFECTOS DEL §2 DEL ESTUDIO + 1 REGRESIÓN PROPIA
 CAZADA**, avi-v404). Cinco commits: `1d521a7` P0 perfil · `ec9f7bb` jerga · `9fa9171` píldora ·
 `000e2fd` jerarquía de Rutinas · `fe5d1f5` harness. PENDIENTE re-verificación de Fable.*

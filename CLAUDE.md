@@ -781,7 +781,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-07-26 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v404** (edge `refresh_snapshot` **v6**) · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **455/455** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app, `_shot-trained` = ya entrenaste hoy, `_fable-repro-midsession` = regresión tarjeta a media sesión, `_verify-missday` = día que se corrió, `_verify-selftraining` = mi entrenamiento del coach, `_verify-share` = comparte AVI, `_verify-community` = comunidad C3+C5 + A1 prueba social (20, +CM18 gym real, CM19 sin caras pre-opt-in), `_verify-cmtynudge` = A2 puerta a Comunidad desde «Hoy» (18), `_verify-gyminvite` = A3 el coach invita al gym por WhatsApp (19, +F4/F5/F6/F14), `_verify-milestoneask` = A4 opt-in de logros en el hito (23, +sesión típica, 0 filas, scroll del cierre), `_verify-dm` = comunidad v2 ① chat en vivo (22), `_verify-lastactive` = comunidad v2 ② última conexión (14), `_verify-public` = ③c-2 cuenta pública (10), `_verify-follow` = ③c-3 descubrir+seguir (11), `_verify-feed` = comunidad v2 ④ muro/feed + re-forma + R2 hitos + entreno terminado (32), `_verify-workoutshare` = compartir entreno (8), `_verify-reports` = bandeja de reportes del coach (11), `_verify-comments` = comentarios del muro v3-a #4 (17), `_repro-cmty-identity` = la identidad de Comunidad NO se hereda entre cuentas (6, P0), `_verify-firstrun` = portada del día 1 / variante C (8, +candado v367), `_verify-estudio-defectos` = los 3 defectos del §2 del estudio de interfaz (10, con hit-testing de la píldora), `_shot-profile` = perfil del asesorado (2, AHORA afirma)) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
+*Última actualización: 2026-07-27 · Marca: **AVI** · **v2.x (auth real + RLS + guiado único, EN PRODUCCIÓN)** · **avi-v405** (edge `refresh_snapshot` **v6**) · Catálogo **212 ejercicios** (e1–e214, todos con foto) · Suite **460/460** verde · QA: hook 11 checks (`scripts/hooks/`, `core.hooksPath`) + CI + harnesses `scripts/e2e/` (`_verify-water` = agua+pasos, `_verify-news` = tour de novedades, `_verify-chatunified` = chat unificado + invitar a abrir la app, `_shot-trained` = ya entrenaste hoy, `_fable-repro-midsession` = regresión tarjeta a media sesión, `_verify-missday` = día que se corrió, `_verify-selftraining` = mi entrenamiento del coach, `_verify-share` = comparte AVI, `_verify-community` = comunidad C3+C5 + A1 prueba social (20, +CM18 gym real, CM19 sin caras pre-opt-in), `_verify-cmtynudge` = A2 puerta a Comunidad desde «Hoy» (18), `_verify-gyminvite` = A3 el coach invita al gym por WhatsApp (19, +F4/F5/F6/F14), `_verify-milestoneask` = A4 opt-in de logros en el hito (23, +sesión típica, 0 filas, scroll del cierre), `_verify-dm` = comunidad v2 ① chat en vivo (22), `_verify-lastactive` = comunidad v2 ② última conexión (14), `_verify-public` = ③c-2 cuenta pública (10), `_verify-follow` = ③c-3 descubrir+seguir (11), `_verify-feed` = comunidad v2 ④ muro/feed + re-forma + R2 hitos + entreno terminado (32), `_verify-workoutshare` = compartir entreno (8), `_verify-reports` = bandeja de reportes del coach (11), `_verify-comments` = comentarios del muro v3-a #4 (17), `_repro-cmty-identity` = la identidad de Comunidad NO se hereda entre cuentas (6, P0), `_verify-firstrun` = portada del día 1 / variante C (8, +candado v367), `_verify-estudio-defectos` = los 3 defectos del §2 del estudio de interfaz (10, con hit-testing de la píldora), `_shot-profile` = perfil del asesorado (2, AHORA afirma), `_audit-pantallas` = FASE 2, recorrido asertivo de las 12 pantallas + overlays (6 aserciones, mide táctil por hit-testing), `_verify-exlib` = buscador y tandas de la biblioteca (8)) · repo local: `Desktop/AVI/apex-app` · Tagline: "Entrenamiento con nombre propio" · PO: Camilo Andrés*
 
 *COMUNIDAD v3-a #4 COMENTARIOS EN PROD (avi-v390, migración `c16_comments`, PENDIENTE verif Fable): las 3 tarjetas del muro (rutina/entreno/hito) se comentan (regla PO: cualquiera-que-VE; candados de menor en AMBAS direcciones vía `_can_comment`, patrón c8). Sin UPDATE (no se edita). `communityCommentText` pura (espejo del CHECK). Fila común `_cmtyActionsHtml` (❤️+💬+eliminar). Borrador por post sobrevive al repintado. **2 desviaciones:** D1 = el moderador borra por RPC `cmty_mod_delete_comment` (un DELETE de cliente ve 0 filas — misma trampa de c14b, reproducida K10b); D2 = CHECK `btrim<>''`. Matriz K 36/36 contra prod + harness `_verify-comments` 17/17 (sabotaje ×2). Reportar comentario = `context='comment:<id>'`, NO auto-bloquea.*
 
@@ -804,14 +804,19 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 > (apodos sí/caras no antes del opt-in · el catch-up se queda · casilla y política legal corregidas,
 > `CMTY_CONSENT_V`+`LEGAL_V` a `2026-07-26-borrador`, sin re-aceptación) — falta el ABOGADO.
 
-> 🚨 **AL RETOMAR (cierre 2026-07-27) → FASE 2 del estudio de interfaz.** Los **3 defectos del
-> §2 están CERRADOS en avi-v404** (jerga · píldora que robaba el toque · «+ Nueva rutina»), y en el
-> camino se cazó y arregló una **regresión propia de v403: «Perfil» del asesorado no se pintaba en
-> producción**. **Sigue, en este orden: (1) FASE 2 = auditoría general** de las 6 pantallas del
-> asesorado y los 6 paneles del coach; **(2) solo después, repoblar la biblioteca de ejercicios**
-> (decisión del PO: todo terminado antes). Del PO siguen pendientes: cargar los teléfonos de los 16
-> y escribirle a Claudia. Ojo con el defecto 2: el `peso_reps` que denunciaba el estudio **no existe
-> en datos reales** — era un fixture nuestro (ver GOTCHAS VIGENTES).
+> 🚨 **AL RETOMAR (cierre 2026-07-27) → `docs/auditoria-interfaz-fase2.md`.** El estudio de
+> interfaz está **COMPLETO: FASE 1 (v403+v404) y FASE 2 (v405)**. La FASE 2 auditó las 12
+> superficies con un recorrido que AFIRMA (`_audit-pantallas`) y cerró 3 hallazgos: la píldora
+> «Instalar app» flotaba por encima del asistente y del tour y **les robaba el toque a los dos
+> primeros botones que pulsa alguien nuevo** (z-index 8000 → 690) · los botones pequeños medían
+> 27px con una regla propia de 36 (**41 controles bajo el mínimo → 1**) · la Biblioteca de
+> Ejercicios medía **42 pantallas sin buscador** (ahora busca sin tildes y pinta de a 30: 30.752 px
+> → 4.308 px). **Lo siguiente, en este orden: (1) repoblar la biblioteca de ejercicios** (era la
+> condición del PO: todo terminado antes — y ya tiene buscador y paginación para aguantarlo);
+> **(2) decidir sobre F4** (4 pantallas «flacas»: Mensajes, Comunidad, Plantillas, Mensajes del
+> coach) y **F5** (quedan 10 harnesses `_shot*` sin aserciones, la deuda que dejó pasar el bug de
+> v403). Candidata a FASE 3: contraste y letra grande, que esta auditoría NO midió. Del PO siguen
+> pendientes: cargar los teléfonos de los 16 y escribirle a Claudia.
 
 > 📌 **CONTEXTO ANTERIOR (2026-07-26) → `docs/estudio-interfaz-primera-sesion.md`.** El radar de
 > adopción mostró que **8 de las 23 personas del gimnasio tienen rutina y NUNCA completaron un
