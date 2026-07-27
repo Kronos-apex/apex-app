@@ -380,6 +380,43 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-27 · PARTE 3 (parte 124 — **VERIFICACIÓN ADVERSARIAL del bloque v404+v405
+y CIERRE DE SU RESERVA**, avi-v406). El PO pidió «re verifica tú como lo haría Fable».*
+
+***Método:** diff completo del bloque (11 commits) buscando scope creep — limpio; **prueba de que
+producción es byte a byte idéntica a HEAD** (sha256 de index/styles/avi-core/app-4/app-6/sw), que
+es lo que legitima verificar en local con el sello de escrituras puesto; y un harness NUEVO
+`_fable-verif-v405` que **no re-corre lo que ya pasó: ataca lo que la verificación propia NO probó**.*
+
+***🔴 HALLAZGO REAL, MÍO Y DE ESTE MISMO DÍA: un ejercicio recién creado quedaba INVISIBLE.** El
+pintado por tandas de v405 dejó un agujero que la verificación propia no vio: `saveEx` hacía `push`
+→ el ejercicio nuevo caía en la posición **213 de 213** y quedaba detrás de «Ver 182 más», con el
+toast diciendo «✅ añadido». **Pasaba incluso SIN búsqueda**; con una búsqueda puesta, peor. Antes
+de v405 no ocurría (se pintaban los 212). **Fix de raíz en dos piezas, ambas necesarias y probadas
+por sabotaje independiente:** (1) lo nuevo va **al principio** del catálogo (`unshift`) → se ve en
+la primera tanda sin abrir nada; (2) `exReveal(id)` garantiza que lo guardado se vea aunque los
+filtros lo excluyan (los limpia) y lo lleva a la vista — cubre también el caso de EDITAR un
+ejercicio hasta que deje de coincidir. El primer intento de arreglo era peor: abría las 8 tandas,
+repintaba los 213 y dejaba la paginación apagada el resto de la sesión.*
+
+***Lo que SÍ resistió el ataque:** (V1) la píldora **no quedó enterrada** al bajarla a z-index 690
+— se probó con hit-testing SOBRE ELLA en Progreso, Perfil, Comunidad y el Inicio del coach, 3 de 3
+puntos alcanzables en cada una; era el riesgo grande del fix, porque `computedStyle.visibility` no
+detecta un elemento tapado y habríamos matado el CTA de instalación en silencio. (V3) todo lo que
+invoca un onclick inline existe en `window` (gotcha «let no es window»). (V4) el mínimo táctil
+re-medido **con otro método** (CSS computado en vez de hit-testing): 73 controles, ninguno bajo 36.
+(V5) el fix de la jerga sigue en pie.*
+
+***DOS ASERCIONES MÍAS ESTABAN MAL Y SE CORRIGIERON, no se aflojaron:** V1-bis exigía que la
+píldora se escondiera SIEMPRE en «Hoy» — eso es justo lo que el PO decidió NO hacer; se reescribió
+como condicional (si hay un control debajo, se aparta; si no, se queda). Y V2 simulaba un `push` al
+arreglo, **una vía que la app no tiene**: pasarla por `saveEx` es lo que la vuelve una prueba.*
+
+***QA:** suite 460/460 · `_verify-exlib` 8→**11** (E6, E6-bis, E6-ter) · `_fable-verif-v405` 9/9 ·
+`_audit-pantallas` verde · `_verify-estudio-defectos` 10/10 · hook 11/11. 2 sabotajes nuevos
+rojo→verde. **VEREDICTO: 🟡 APROBADO CON RESERVA, y la reserva queda CERRADA en este mismo deploy.**
+Esto NO reemplaza el veredicto vinculante de Fable (R4.1/R4.2).*
+
 *Hitos sesión 2026-07-27 · PARTE 2 (parte 123 — **AUDITORÍA FASE 2: LAS 12 PANTALLAS**,
 avi-v405). Cuatro commits: `435b927` recorrido asertivo + doc · `54cf3c1` z-index de la píldora ·
 `69a9cab` táctil 36px · `13de4b5` buscador de la biblioteca. Doc:

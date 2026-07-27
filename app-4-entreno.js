@@ -73,9 +73,37 @@ function saveEx(){
   // Config por modalidad
   data.hiit=type==='HIIT'?{work:parseInt(document.getElementById('ex-hiit-work').value)||30,rest:parseInt(document.getElementById('ex-hiit-rest').value)||15}:null;
   data.holdSecs=type==='Isométrico'?(parseInt(document.getElementById('ex-hold-secs').value)||60):null;
+  let guardadoId=CUR.editExId;
   if(CUR.editExId){const i=DB.exercises.findIndex(e=>e.id===CUR.editExId);if(i!==-1)DB.exercises[i]={...DB.exercises[i],...data};toast(`✅ "${name}" actualizado`)}
-  else{DB.exercises.push({id:uid(),...data});toast(`✅ "${name}" añadido`)}
-  sv('ax_e',DB.exercises);cm('m-ex');renderExercises();renderHome();
+  // El ejercicio nuevo va AL PRINCIPIO, no al final. Con la biblioteca entera pintada daba
+  // igual; con el pintado por tandas, al final caía en la posición 213 y para enseñárselo al
+  // coach había que abrir las 8 tandas —o sea volver a dibujar los 213 y perder la mejora el
+  // resto de la sesión—. Arriba se ve solo, sin abrir nada. Y de paso es lo natural: lo último
+  // que creaste, de primero.
+  else{guardadoId=uid();DB.exercises.unshift({id:guardadoId,...data});toast(`✅ "${name}" añadido`)}
+  sv('ax_e',DB.exercises);cm('m-ex');exReveal(guardadoId);renderHome();
+}
+// El ejercicio que el coach acaba de guardar TIENE que verse. Con la biblioteca entera pintada
+// daba igual; desde el pintado por tandas (v405) un ejercicio nuevo cae al final del catálogo
+// —posición 213 de 213— y quedaba escondido tras «Ver más» mientras el toast decía «añadido».
+// Lo mismo si lo edita y deja de coincidir con la búsqueda o el filtro que tenga puestos.
+// Regla: si con los filtros actuales NO se vería, se quitan (no se le miente al coach), y se
+// abren tandas hasta incluirlo. Cazado en la verificación adversarial de v405, no por un usuario.
+function exReveal(id){
+  const _pos=()=>((typeof searchExercises==='function')?searchExercises(DB.exercises,exQ,exF):DB.exercises)
+    .findIndex(e=>e&&e.id===id);
+  let i=_pos();
+  if(i===-1){
+    exQ=''; exF='all';
+    const inp=document.getElementById('ex-search'); if(inp)inp.value='';
+    const todos=document.querySelector('#exf button'); if(todos&&typeof styleFilterBtns==='function')styleFilterBtns('exf',todos);
+    i=_pos();
+  }
+  if(i>=0)exPage=Math.max(1,Math.ceil((i+1)/EX_PAGE));
+  renderExercises();
+  // Y se lleva a la vista: verlo es la confirmación de verdad, no el toast.
+  if(i>=0)setTimeout(()=>{const c=document.querySelectorAll('#ex-grid .exc')[i];
+    if(c&&c.scrollIntoView)c.scrollIntoView({behavior:'smooth',block:'center'});},80);
 }
 
 // ══════════════════════ CLIENT VIEW ══════════════════════

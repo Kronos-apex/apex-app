@@ -6,13 +6,13 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-const PORT = 8835, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-exlib';
+const PORT = 8863, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-exlib';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const srv = spawn('python', ['-m', 'http.server', String(PORT)], { cwd: 'C:/Users/KRONOS/Desktop/AVI/apex-app' });
 await sleep(1200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9355', '--user-data-dir=' + process.env.TEMP + '/exlib-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
-async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9355/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
+const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9383', '--user-data-dir=' + process.env.TEMP + '/exlib-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
+async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9383/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { pend.get(m.id).resolve(m.result); pend.delete(m.id); } if (m.method === 'Runtime.exceptionThrown') jsErrors.push(m.params?.exceptionDetails?.exception?.description || 'exception'); });
@@ -78,6 +78,47 @@ const e5 = await ev(`(()=>{const g=document.getElementById('ex-grid');
           q:document.getElementById('ex-search').value};})()`);
 check('E5 el filtro de músculo NO borra la búsqueda: se aplican los dos',
   e5.n > 0 && e5.q === 'press' && e5.txt.includes('press'), JSON.stringify({ n: e5.n, q: e5.q }));
+
+// E6 — LO QUE CAZÓ LA VERIFICACIÓN ADVERSARIAL: el ejercicio recién guardado tiene que VERSE.
+// Con el pintado por tandas, uno nuevo cae al final del catálogo (posición 213 de 213) y quedaba
+// escondido tras «Ver más» mientras el toast decía «añadido». Y con una búsqueda puesta, peor.
+await ev(escribir('')); await sleep(400);
+await ev(`(()=>{const b=[...document.querySelectorAll('#exf button')].find(x=>/Todos/.test(x.textContent)); if(b)b.click();})()`);
+await sleep(500);
+const e6 = await ev(`(()=>{try{
+  const antes=document.querySelectorAll('#ex-grid .exc').length;
+  // Vía REAL: el formulario que usa el coach, no un push a mano al arreglo.
+  openAddEx();
+  document.getElementById('ex-n').value='Zancada Bulgara E6';
+  document.getElementById('ex-m').value='piernas';
+  saveEx();
+  const g=document.getElementById('ex-grid');
+  const primera=g.querySelector('.exc');
+  return {antes, despues:g.querySelectorAll('.exc').length,
+          aparece:/Zancada Bulgara E6/.test(g.innerText||''),
+          pagina:exPage, total:DB.exercises.length,
+          primero:primera?(primera.textContent||'').trim().slice(0,26):''};
+}catch(e){return {err:String(e.message)};}})()`);
+check('E6 un ejercicio recién creado SE VE, y sin volver a dibujar el catálogo entero',
+  e6.aparece === true && e6.pagina === 1 && e6.despues <= 31, JSON.stringify(e6));
+check('E6-ter lo último creado queda de primero', /Zancada Bulgara E6/.test(e6.primero || ''), JSON.stringify(e6.primero));
+
+// E6-bis — y si el coach tenía una búsqueda puesta que lo excluye, los filtros se quitan solos
+// en vez de dejarlo mirando una lista donde su ejercicio no está.
+await ev(escribir('press')); await sleep(500);
+const e6b = await ev(`(()=>{try{
+  openAddEx();
+  document.getElementById('ex-n').value='Zancada Bulgara OTRA';
+  document.getElementById('ex-m').value='piernas';
+  saveEx();
+  const g=document.getElementById('ex-grid');
+  return {aparece:/Zancada Bulgara OTRA/.test(g.innerText||''),
+          buscador:document.getElementById('ex-search').value, exF};
+}catch(e){return {err:String(e.message)};}})()`);
+check('E6-bis con una búsqueda que lo excluye, los filtros se limpian y el ejercicio aparece',
+  e6b.aparece === true && e6b.buscador === '' && e6b.exF === 'all', JSON.stringify(e6b));
+await ev(`(()=>{DB.exercises=DB.exercises.filter(e=>!/Zancada Bulgara (E6|OTRA)/.test(e.name||''));exQ='';exPage=1;exF='all';renderExercises();})()`);
+await sleep(400);
 
 // Capturas para mirarlas.
 await ev(escribir('')); await sleep(400);
