@@ -2020,15 +2020,10 @@ function renderClientAllRoutines(client){
     regen.onclick=clientSelfGenerate;
     con.appendChild(regen);
   }
-  // Coach en su entreno o cliente libre: puede crear/gestionar sus propias rutinas.
-  if(canEdit){
-    const nb=document.createElement('button');
-    nb.className='btn bp bsm';
-    nb.style.cssText='width:100%;margin-bottom:10px';
-    nb.textContent='+ Nueva rutina';
-    nb.onclick=openNewRoutine;
-    con.appendChild(nb);
-  }
+  // (El botón «+ Nueva rutina» va DESPUÉS de la lista — ver más abajo. Estudio de interfaz
+  //  2026-07-27, defecto 4: era el botón más llamativo de la pantalla, verde y de ancho
+  //  completo, ENCIMA del plan. A alguien a quien su entrenador ya le armó la semana, lo que
+  //  más le gritaba «Rutinas» era que se creara otra.)
   routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const isRest=r.day==='Libre';
@@ -2041,6 +2036,16 @@ function renderClientAllRoutines(client){
     div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')">${ph?`<div class="rc-photo" style="background-image:url('${ph}')"></div>`:''}<div class="rcthumb${isRest?' rest':''}">${dayAb}</div><div class="rci"><div class="rcname">${esc(r.name)}${isToday?'<span class="rc-today-tag">Hoy</span>':''}</div><div class="rcpills"><span class="rcpill">${esc(r.day)}</span><span class="rcpill">${exN} ejercicio${exN!==1?'s':''}</span><span class="rcpill">${totS} series</span></div></div><div class="rcchev">▾</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):(e.muscle||''))} · ${typeof aviIcon==='function'?aviIcon('timer',11):'⏱'}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?` · <span class="biset-tag">${typeof aviIcon==='function'?aviIcon('link',10):'🔗'} biserie</span>`:''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}<button onclick="startRoutineNow('${r.id}')" style="margin-top:12px;width:100%;padding:12px;background:linear-gradient(135deg,var(--g),var(--g2));color:white;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">${typeof aviIcon==='function'?aviIcon('play',14):'▶'} Hacer esta rutina ahora</button>${!isRest?`<button class="btn bg bsm" style="width:100%;margin-top:8px" onclick="event.stopPropagation();openRoutineRoom('${client.id}','${r.id}')">${typeof aviIcon==='function'?aviIcon('chart',14):'📊'} Mi progreso con esta rutina</button>`:''}${canEdit?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bg bsm" style="flex:1" onclick="event.stopPropagation();openEditRoutine('${client.id}',${ri})">${typeof aviIcon==='function'?aviIcon('pencil',13):'✏️'} Editar</button><button class="btn bd bsm" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${client.id}',${ri})">${typeof aviIcon==='function'?aviIcon('trash',14):'🗑️'}</button></div>`:''}</div>`;
     con.appendChild(div);
   });
+  // Crear rutinas propias sigue disponible (decisión de Camilo 2026-06-25, Opción B) pero ya no
+  // compite con el plan: va al FINAL y como acción secundaria, no como el botón principal.
+  if(canEdit){
+    const nb=document.createElement('button');
+    nb.className='btn bg bsm';
+    nb.style.cssText='width:100%;margin-top:14px';
+    nb.textContent='+ Nueva rutina';
+    nb.onclick=openNewRoutine;
+    con.appendChild(nb);
+  }
 }
 
 function renderVolChart(sessions){
