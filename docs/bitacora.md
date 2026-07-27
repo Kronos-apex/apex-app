@@ -380,6 +380,55 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-27 · PARTE 4 (parte 125 — **REPOBLADO DEL CATÁLOGO: 212 → 225**,
+avi-v407). El PO pidió «dale con lo de repoblar la biblioteca» y luego «revisa las apps de
+entrenamiento, no asumas ni inventes nada».*
+
+***PRIMERO SE MIDIÓ, Y LA MEDICIÓN CONTRADECÍA EL PEDIDO.** En producción el coach usa **120 de
+los 212** ejercicios y en toda la historia ha creado **2 propios**: al catálogo no le faltaba
+tamaño. Se le dijo al PO con los números y **él eligió igual añadir ejercicios** — decisión suya,
+ejecutada completa. Lo que la medición SÍ encontró fue dónde: cruzando catálogo y uso real, **pecho
+estaba al 93% de agotamiento (13 de 14 ya asignados)** y tríceps al 75%, mientras piernas iba al
+48%. Ese fue el criterio, no el gusto.*
+
+***BENCHMARK CONTRA APPS REALES (no de memoria):** Hevy declara **400+ ejercicios**, cada uno con
+**una animación**, y filtros por **músculo y equipo**; sus ejercicios personalizados guardan imagen,
+equipo requerido, músculo primario/secundario y tipo de registro. El filtro por EQUIPO es universal
+(Hevy, WorkoutLabs, VisualBody) y **AVI no lo tiene** — solo `env` (lugar), y 95 de 212 sin declarar.
+AVI va por delante en: instrucciones en dos registros (técnica + `descSimple`), variante
+hombre/mujer y 5 modalidades de registro. Fuentes en `docs/auditoria-interfaz-fase2.md`.*
+
+***EL EQUIPO SE DEDUJO DE SUS PROPIAS RUTINAS, no de un supuesto:** polea (91 asignaciones),
+máquina (90), mancuerna (72), barra (45), banda (7) y **cero kettlebell** → no se añadió nada de
+kettlebell ni TRX. Lo que no se podía deducir (banco declinado, barra Z, máquina de fondos
+asistidos) **se le preguntó**: tiene los tres.*
+
+***13 EJERCICIOS NUEVOS (e215-e227), pecho 14→21 y tríceps 12→16.** Pecho: le faltaba **toda la
+familia declinada** (barra, mancuernas, aperturas), el press de pecho de pie en polea, el floor
+press, el pullover y la flexión con **pies elevados** —tenía la progresión fácil y no la difícil—.
+Tríceps: faltaba el **press de banca agarre cerrado**, que es el compuesto de tríceps más estándar
+que existe, la extensión sobre la cabeza en polea, el press francés con barra Z y los fondos
+asistidos (la puerta de entrada a los fondos para quien no puede con su peso). Y **e226 = «Peso
+Muerto Rumano con Mancuernas», que es literalmente el ejercicio que el coach tuvo que crearse a
+mano** por no encontrarlo. Todos con nivel EXPLÍCITO en `EX_LEVEL`. Verificado en el generador: usa
+los nuevos y da 0 ejercicios fuera de nivel en los tres perfiles.*
+
+***🔴 EL GUARDIÁN DEL CATÁLOGO LLEVABA TIEMPO EN VERDE SOBRE NADA.** Antes de añadir nada se
+descubrió que `scripts/audit-catalog.mjs` —el **check 9 del pre-commit**— leía SOLO `index.html`, y
+el catálogo vive en `app-1-infra.js` desde que la app se partió en módulos: reportaba «**0
+ejercicios · sin problemas**». **Tercera vez la misma clase** (la sonda muerta del smoke v350-v393;
+los harnesses de solo-capturas). Arreglado a leer todos los módulos + **candado permanente**: si lee
+menos de 100 ejercicios, BLOQUEA en vez de dar un verde vacío. Al revivir cazó solo el defecto que
+se había medido aparte (e159 sin foto) y ahora reporta también **50 ejercicios sin nivel explícito**
+—que caen a 'Intermedio' por defecto y un principiante NUNCA recibe— para que esa deuda no crezca
+callada.*
+
+***QA:** suite 460 → **461** · `audit-catalog` 225 ejercicios, 0 BLOCK · `_verify-exlib` 11/11 ·
+`_audit-pantallas` verde · `_verify-estudio-defectos` 10/10 · hook 11/11. **3 sabotajes rojo→verde:**
+sacar el catálogo de las fuentes del guardián → BLOQUEA; quitar el nivel de los nuevos → cae el test
+y el guardián sube de 50 a 63. Verificación visual: los 13 nuevos entran **sin foto** y caen al
+emoji de respaldo (`hayImg:false`, comprobado en el DOM) — **las fotos son el follow-up**.*
+
 *Hitos sesión 2026-07-27 · PARTE 3 (parte 124 — **VERIFICACIÓN ADVERSARIAL del bloque v404+v405
 y CIERRE DE SU RESERVA**, avi-v406). El PO pidió «re verifica tú como lo haría Fable».*
 

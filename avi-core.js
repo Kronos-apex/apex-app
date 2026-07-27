@@ -466,6 +466,14 @@ const EX_LEVEL = {
   e17:'P',e18:'P',e47:'A',e48:'A',e49:'P',e62:'P',e63:'I',e72:'P',e81:'I',e131:'P',e132:'P',e133:'P',e134:'P',
   e20:'P',e64:'P',e65:'P',e66:'I',e67:'P',e74:'A',e75:'A',e76:'I',e135:'P',
   e68:'I',e69:'A',e136:'P',
+  // NUEVOS 2026-07-27 (e215-e227). Se declaran EXPLÍCITAMENTE: un id que no esté aquí y no traiga
+  // `level` propio cae a 'I' por el default de exLevel(), y entonces un PRINCIPIANTE no lo recibe
+  // JAMÁS. (Medido: 50 ejercicios del catálogo están hoy en esa situación sin que nadie lo
+  // decidiera — pendiente aparte.) Criterio: 'P' lo que un novato puede hacer sin técnica previa
+  // ni riesgo (polea de pie, floor press, máquina asistida, curl en banco); 'I' lo que exige
+  // banco declinado, barra libre sobre la cara o una base de fuerza (flexión con pies elevados).
+  e215:'I',e216:'I',e217:'I',e218:'P',e219:'P',e220:'I',e221:'I',
+  e222:'I',e223:'I',e224:'I',e225:'P',e226:'I',e227:'P',
 };
 const _LVL_RANK = { P: 0, I: 1, A: 2 };
 function exLevel(ex) {
