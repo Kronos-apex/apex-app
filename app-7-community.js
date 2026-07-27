@@ -193,6 +193,7 @@ async function cmtyLoad(opts){
   opts = opts || {};
   if(CMTY.busy) return;
   CMTY.busy = true;
+  let peersOk = true; // F8: ¿se pudo leer de verdad a los compañeros? Si no, la sonda no se toca.
   if(!opts.silent){ CMTY.loading = true; _cmtyPaint(); }
   try{
     const cli = _cmtyClient(); const uid = await _cmtyUid();
@@ -279,14 +280,15 @@ async function cmtyLoad(opts){
       // así que esto NO abre ningún dato nuevo: es el mismo `cp_sel` que ya rige todo lo demás.
       // Falla en silencio a propósito: sin prueba social el opt-in sigue funcionando igual.
       try{
-        const { data: peers } = await cli.from('community_profiles')
+        const { data: peers, error: perr } = await cli.from('community_profiles')
           .select('user_id,handle,avatar_url,is_private').neq('user_id', uid).limit(24);
+        if(perr) throw perr;
         CMTY.peers = _cmtyMarkGym(peers, await _cmtyGymPeerIds(cli)); // F3: pertenencia real, no `is_private`
-      }catch(e){ _cw()('cmty peers:', e && e.message); }
+      }catch(e){ peersOk = false; _cw()('cmty peers:', e && e.message); } // F8: sin dato NO se escribe sonda
     }
     CMTY.loaded = true;
     _cmtySaveCache();
-    _cmtyProbeSync(); // A2: esta carga es la VERDAD → refresca la sonda que decide la tarjeta de «Hoy»
+    _cmtyProbeSync(peersOk); // A2: esta carga es la VERDAD → refresca la sonda de «Hoy» (F8: salvo si falló)
   }catch(e){ _cw()('cmtyLoad:', e && e.message); CMTY.offline = true; _cmtyLoadCache(); }
   finally{
     CMTY.busy = false; CMTY.loading = false; _cmtyPaint();
@@ -470,8 +472,13 @@ async function cmtyCreateProfile(){
     const { error } = await cli.from('community_profiles').insert({ user_id: uid, handle: handle, consent_v: CMTY_CONSENT_V, show_today: true });
     if(error) throw error;
     _cmtyLdDel(CMTY_REFRESH_KEY); // fuerza el primer cálculo del snapshot
+    // F7: el insert YA ocurrió, así que la sonda puede afirmarlo sin esperar a `cmtyLoad` — si esa
+    // carga falla a medias (offline, una subconsulta caída), su catch se salta el sync y la puerta
+    // se quedaba abierta invitando a algo ya hecho.
+    _cmtyProbeWrite(_cmtyProbeMine(false));
     toast('🎉 ¡Ya eres parte de la comunidad!');
     await cmtyLoad();
+    _cmtyRepaintToday(); // F7: la puerta debe cerrarse al cruzarla
   }catch(e){ showErr(_cmtyErr(e)); }
 }
 
@@ -662,8 +669,12 @@ async function cmtyLeave(){
     _cmtyLdDel(CMTY_CACHE_KEY);
     cmtyDmUnsubscribe();
     CMTY.dmThreads = []; CMTY.dmUnread = 0; CMTY.dmOpen = null; CMTY.dmMsgs = [];
+    _cmtyLdDel(CMTY_PROBE_KEY); // la sonda decía «tengo perfil» y ya no es cierto → «no sé», se re-sondea
+    // Se sale por decisión propia: la puerta NO puede reaparecer el mismo día invitando a volver.
+    _cmtyLdSet(CMTY_NUDGE_SNOOZE_KEY, String(Date.now() + (typeof CMTY_NUDGE_SNOOZE_DAYS !== 'undefined' ? CMTY_NUDGE_SNOOZE_DAYS : 30) * 86400000));
     toast('Saliste de la comunidad.');
     await cmtyLoad();
+    _cmtyRepaintToday(); // F7
   }catch(e){ toast('No se pudo salir. Intenta de nuevo.'); }
 }
 
@@ -1995,9 +2006,14 @@ function _cmtyProbeRead(){ try{ return JSON.parse(_cmtyLdGet(CMTY_PROBE_KEY) || 
 function _cmtyProbeWrite(p){ _cmtyLdSet(CMTY_PROBE_KEY, JSON.stringify(p)); }
 // La sonda se REESCRIBE cada vez que `cmtyLoad` averigua la verdad (abrir la pestaña, hacer opt-in,
 // salirse). Sin esto, alguien que acaba de crear su perfil seguiría viendo «únete» hasta 24h.
-function _cmtyProbeSync(){
+// F8: `peersOk === false` significa «la consulta de compañeros falló» → NO se escribe sonda.
+// Antes, un fallo parcial (la consulta de peers tiene su propio catch) dejaba una sonda MENTIROSA
+// con `peers:0` y fecha fresca: la puerta quedaba desactivada 24h sin que nada lo delatara.
+// Sin dato, `communityProbeStale` la considera vieja y se vuelve a intentar en el próximo render.
+function _cmtyProbeSync(peersOk){
   const prof = CMTY.profile;
   if(prof){ _cmtyProbeWrite(_cmtyProbeMine(prof.show_milestones === true)); return; }
+  if(peersOk === false) return;
   _cmtyProbeWrite(_cmtyProbeFrom(CMTY.peers));
 }
 // F2: la sonda también lleva `showMilestones`. Es lo único que A4 necesita saber del perfil para
@@ -2048,6 +2064,20 @@ async function cmtyAdoptionProbe(client){
     }
   }catch(e){ CMTY._probeNextTry = Date.now() + 1800000; _cw()('cmty probe:', e && e.message); }
   finally{ CMTY._probing = false; }
+}
+
+// F7 — la puerta tiene que CERRARSE al cruzarla. Tras el opt-in la sonda ya dice «tengo perfil»,
+// pero «Hoy» no se repinta: `cnTodayGuard` solo deja re-renderizar UNA vez al día, así que la
+// tarjeta «Tu gente ya está en la Comunidad» seguía ahí invitando a algo ya hecho. Se repintan
+// solo las dos tarjetas afectadas (no la pantalla entera: repintar «Hoy» a media sesión es la
+// clase de bug de v367). Al salirse de la comunidad pasa lo contrario y también se repinta.
+function _cmtyRepaintToday(){
+  try{
+    const c = (typeof DB !== 'undefined' && DB.clients || []).find(x => x && x.id === CUR.clientId);
+    if(!c) return;
+    if(typeof renderCommunityNudge === 'function') renderCommunityNudge(c);
+    if(typeof renderShareBanner === 'function') renderShareBanner(c); // recupera su turno
+  }catch(e){}
 }
 
 function _cmtyNudgeHtml(line){

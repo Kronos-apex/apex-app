@@ -1544,6 +1544,15 @@ test('communityPeersLine: concordancia y conteos exactos (1, 2 y 3 personas)', (
   assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Luz')]).text, 'Astrid, Luz y 1 más de tu gym ya están aquí');
 });
 
+test('communityPeersLine: una sonda CORRUPTA no puede tumbar «Hoy» (F9)', () => {
+  // La lista sale de localStorage y esto se pinta ANTES del entreno: si `.filter` lanza, el
+  // asesorado se queda sin su rutina en pantalla. Cualquier forma que no sea lista → null.
+  assert.strictEqual(communityPeersLine('Samuel'), null);
+  assert.strictEqual(communityPeersLine(42), null);
+  assert.strictEqual(communityPeersLine({ handle: 'Samuel' }), null);
+  assert.strictEqual(communityPeersLine(true), null);
+});
+
 test('communityPeersLine: sin nadie a quién nombrar → null (la bienvenida queda intacta)', () => {
   assert.strictEqual(communityPeersLine([]), null);
   assert.strictEqual(communityPeersLine(null), null);

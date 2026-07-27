@@ -2414,6 +2414,10 @@ function communityEmptyState(counts) {
 // llamador cae al proxy viejo, que subcuenta pero nunca miente. Esta función ya no adivina.
 const CMTY_PEERS_NAMES = 2; // cuántos nombres se dicen antes del «y N más»
 function communityPeersLine(profiles, opts) {
+  // F9: la lista viene de una clave de localStorage; si está corrupta (un string, un objeto) el
+  // `.filter` de abajo LANZA, y esto se pinta en «Hoy» ANTES del entreno → pantalla sin entreno.
+  // Un dato podrido de la comunidad no puede tumbar lo único que la app tiene que hacer siempre.
+  if (profiles != null && !Array.isArray(profiles)) return null;
   const max = (opts && Number(opts.max) > 0) ? Math.floor(opts.max) : CMTY_PEERS_NAMES;
   const clean = (profiles || [])
     .filter(p => p && typeof p.handle === 'string' && p.handle.trim())

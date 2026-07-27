@@ -641,8 +641,13 @@ function renderClientToday(client, overrideRoutine){
   // 🌐 Comunidad — la puerta (A2, adopción 2026-07-25): invita a activar el perfil a quien nunca
   // lo hizo Y ya tiene gente a quien ver. Va ANTES del banner de compartir a propósito: si esta
   // sale, aquel cede el turno (dos pedidos apilados en la misma pantalla se anulan entre sí).
-  if(typeof renderCommunityNudge==='function')renderCommunityNudge(client);
-  if(typeof renderShareBanner==='function')renderShareBanner(client);
+  // F9: NADA de comunidad puede impedir que se pinte el entreno. Estas dos tarjetas corren ANTES
+  // del cuerpo de «Hoy» y leen datos de localStorage que pueden venir corruptos; un throw aquí
+  // dejaba la pantalla sin entreno. El fallo se traga a propósito (la tarjeta simplemente no sale).
+  try{
+    if(typeof renderCommunityNudge==='function')renderCommunityNudge(client);
+    if(typeof renderShareBanner==='function')renderShareBanner(client);
+  }catch(_e){ if(typeof warn==='function')warn('tarjetas de comunidad en Hoy:', _e&&_e.message); }
   // ✨ Novedades (v302): una vez por tanda, descartable.
   if(typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);

@@ -197,6 +197,66 @@ check('N12 el compañero PÚBLICO del gym cuenta, y el desconocido público no s
   n12.disp === 'block' && /Andres/.test(n12.txt) && /Samuel/.test(n12.txt) &&
   !/Desconocido/.test(n12.txt) && /de tu gym ya están aquí/.test(n12.txt), JSON.stringify(n12));
 
+// ── N13 (F7): la puerta se CIERRA al cruzarla. Antes, tras crear el perfil la tarjeta seguía en
+// pantalla invitando a algo ya hecho: nada repinta «Hoy» (cnTodayGuard solo deja una vez al día).
+console.log('  setup(9, 3 peers) para F7:', await ev(RESET(9, PEERS3))); await sleep(400);
+const n13a = await ev(cardState);
+// Se ejecuta el opt-in REAL (`cmtyCreateProfile`), no un atajo: se inyecta el formulario que la
+// función lee y un cliente falso que acepta el insert y luego devuelve el perfil. Si alguien
+// quita el repintado de esa función, este check DEBE ponerse rojo (§P3: probar el código, no el harness).
+await ev(`(()=>{
+  const mk=(id,tag)=>{let e=document.getElementById(id); if(!e){e=document.createElement(tag||'input');e.id=id;document.body.appendChild(e);} return e;};
+  const h=mk('cmty-handle'); h.value='YoMismo';
+  mk('cmty-ck-consent').type='checkbox'; document.getElementById('cmty-ck-consent').checked=true;
+  mk('cmty-ck-age').type='checkbox'; document.getElementById('cmty-ck-age').checked=true;
+  mk('cmty-optin-err','div');
+  window.AVI_ALLOW_CLOUD_WRITE=true;   // el sello bloquea escrituras en localhost; aquí se prueba el flujo
+  window.__perfil=null;
+  const b={select(){return b;},insert(){window.__perfil={user_id:'${QAUID}',handle:'YoMismo',show_milestones:false};return b;},
+    update(){return b;},delete(){return b;},eq(){return b;},neq(){return b;},or(){return b;},in(){return b;},limit(){return b;},
+    maybeSingle(){return Promise.resolve({data:window.__perfil,error:null});},
+    then(r){ r({data:window.__perfil?[]:[],error:null}); }};
+  AUTH.client=()=>({from:()=>b,rpc:()=>Promise.resolve({data:[],error:null}),
+    functions:{invoke:async()=>({data:{},error:null})},
+    channel:()=>({on(){return this;},subscribe(){return this;}}),removeChannel(){}});
+  AUTH.getUser=async()=>({id:'${QAUID}'});
+  CMTY.busy=false; CMTY.loaded=false; CMTY.uid=null; CMTY.profile=null;
+})()`);
+await ev(`cmtyCreateProfile()`); await sleep(900);
+const n13b = await ev(cardState);
+check('N13 (F7) tras crear el perfil la tarjeta desaparece sola y «Comparte AVI» recupera su turno',
+  n13a.disp === 'block' && n13b.disp === 'none' && n13b.len === 0 && n13b.share === 'block',
+  JSON.stringify({ antes: n13a.disp, despues: n13b.disp, share: n13b.share }));
+
+// ── N14 (F8): si la consulta de compañeros FALLA, no se escribe una sonda que diga «no hay nadie».
+// Antes, un fallo parcial dejaba `peers:0` con fecha fresca → la puerta muerta 24h sin señal.
+await ev(`(()=>{CMTY.profile=null;})()`);
+const n14 = await ev(`(async()=>{
+  localStorage.removeItem('${K_PROBE}');
+  const antes = localStorage.getItem('${K_PROBE}');
+  AUTH.getUser=async()=>({id:'${QAUID}'});
+  AUTH.client=()=>({from:()=>{const b={select(){return b;},eq(){return b;},neq(){return b;},or(){return b;},in(){return b;},limit(){return b;},
+      maybeSingle(){return Promise.resolve({data:null,error:null});},
+      then(r){ r({data:null,error:{message:'red caida'}}); }};return b;},
+    rpc:()=>Promise.resolve({data:[],error:null}),
+    functions:{invoke:async()=>({data:{},error:null})},
+    channel:()=>({on(){return this;},subscribe(){return this;}}),removeChannel(){}});
+  CMTY.busy=false; CMTY.loaded=false; CMTY.uid=null;
+  await cmtyLoad();
+  return {antes:antes, despues:localStorage.getItem('${K_PROBE}')};
+})()`); await sleep(300);
+check('N14 (F8) si falla la consulta, NO se escribe una sonda mentirosa («no sé» ≠ «no hay nadie»)',
+  n14.antes === null && n14.despues === null, JSON.stringify(n14));
+
+// ── N15 (F9): una sonda con forma corrupta no puede dejar «Hoy» sin entreno.
+console.log('  setup(9) sonda corrupta:', await ev(RESET(9, PEERS3))); await sleep(300);
+await ev(`(()=>{localStorage.setItem('${K_PROBE}',JSON.stringify({hasProfile:false,peers:3,list:'esto-no-es-una-lista',at:Date.now()}));
+  renderClientToday(DB.clients[0]);})()`); await sleep(500);
+const n15 = await ev(`(()=>{const body=document.getElementById('cn-today-body');const el=document.getElementById('cn-cmty-nudge');
+  return {entreno:!!(body&&body.innerHTML.trim().length>200),tarjeta:el?el.style.display:'?'};})()`);
+check('N15 (F9) con la sonda corrupta el ENTRENO se pinta igual y la tarjeta simplemente no sale',
+  n15.entreno === true && n15.tarjeta === 'none', JSON.stringify(n15));
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
 console.log('\n──── RESULTADOS «PUERTA A COMUNIDAD» (A2, adopción) ────');
