@@ -380,6 +380,64 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-27 (parte 122 — **LOS 3 DEFECTOS DEL §2 DEL ESTUDIO + 1 REGRESIÓN PROPIA
+CAZADA**, avi-v404). Cinco commits: `1d521a7` P0 perfil · `ec9f7bb` jerga · `9fa9171` píldora ·
+`000e2fd` jerarquía de Rutinas · `fe5d1f5` harness. PENDIENTE re-verificación de Fable.*
+
+***🔴 LO PRIMERO NO ESTABA EN LA LISTA: v403 rompió «Perfil» del asesorado en producción.** El
+harness nuevo lo delató con un `ReferenceError: _dia1 is not defined`. La portada del día 1 (ayer)
+metió el guard `if(!_dia1)` delante de `renderCoachUpsell` **dentro de `renderClientProfile`**, y
+`_dia1` es una `const` de `renderClientToday`: otro ámbito → la función lanzaba en su PRIMERA línea
+y la pantalla entera dejaba de pintarse (sin peso, sin récords, sin fotos, sin medidas) para
+TODOS, desde el deploy de ayer. Fix: cada función calcula su propio estado del día 1; una local no
+se comparte por nombre. **Por qué nadie lo cazó:** `_shot-profile.mjs` SÍ abre esa pantalla, pero
+era un harness de solo capturas — seguía sacando sus dos PNG con la pantalla rota. Ahora afirma
+(exit 1) que el perfil arranca y llega a pintar el peso corporal, que va después del punto donde se
+caía; con el bug restaurado a mano cae (347 caracteres contra 1536). **Misma familia que el smoke
+en rojo permanente de v350-v393: un gate que no puede fallar no es un gate.***
+
+***DEFECTO 2 (jerga): el `peso_reps` del estudio NO EXISTE en producción — era mi propio fixture.**
+Consulta a prod (21 personas, 578 ejercicios en rutinas reales): `type` vale Aislamiento (261),
+Compuesto (168), Bodyweight (64), Cardio (29), Isométrico (22), Funcional (13), HIIT (2) y
+`peso_reps` **cero veces**. La captura del estudio venía de `_verify-firstrun`, cuyo fixture metía
+el *track* en el campo `type`. **Lo que sí es real:** 8 personas con rutinas viejas (163 ejercicios
+sin `muscleLabel`) leen el slug crudo sin tilde («biceps», «gluteo», «triceps»), y al lado
+vocabulario de entrenador («Bodyweight» en inglés, 64 veces en 20 personas). Decisión del PO: el
+asesorado ve SOLO el músculo, bien escrito; el coach conserva «músculo · tipo». `muscleHuman` +
+`exMuscleText` puras. **De paso murió el parche que lo escondía:** `.exmet` tenía
+`text-transform:capitalize` para maquillar el slug, y con el texto ya humano lo estropeaba
+(«Cuádriceps Y Glúteo»). Los 7 harnesses con fixtures irreales, corregidos.*
+
+***DEFECTO 3 (píldora «Instalar app»): no tapaba, ROBABA EL TOQUE.** Medido con hit-testing a
+390×844: la píldora ocupa y=710-760 · x=99-291 y ahí caían los campos KG y REPS de una serie, «Ver
+cómo se hace» y los botones de reordenar — 5 controles robados. Quien iba a anotar su peso abría
+el instalador. Mismo encimado sobre «Hacer esta rutina ahora» en «Rutinas». **Se midió porque hay
+precedente en contra:** en v384 un reclamo idéntico sobre este banner se DESCARTÓ al medirlo (10px
+de aire). Decisión del PO: apartarla solo mientras estorba — instalar es el problema nº1 de
+adopción (15 de 16 no son notificables) y apagarla «por si acaso» cuesta dinero. `pillStealsTap`
+pura (geometría, control por control) + guardián en app-6 acotado a «Hoy» y «Rutinas», con rAF y
+una sola escritura de clase. **Se oculta con `visibility`, no con `display`:** con display:none el
+rect se vuelve 0 y la regla se apagaría a sí misma en bucle. **Hueco cazado por la CAPTURA, no por
+una aserción:** desplegar una tarjeta de rutina es un toque y anima la altura → hacía falta
+remedir tras el click (y a los 320ms), no solo en scroll.*
+
+***DEFECTO 4 (jerarquía): «+ Nueva rutina» era el botón más llamativo de «Rutinas»** — verde,
+primario, ancho completo y encima del plan que el coach acababa de armar. Pasa al final y a
+secundario; se conserva la capacidad de crear (Opción B, Camilo 2026-06-25).*
+
+***QA:** suite 447 → **455** (12 tests nuevos). **6 sabotajes con dientes**, todos reportados
+rojo→verde: `exMuscleText` a la conducta vieja (2 tests caen) · regla CSS de la píldora quitada (5
+controles robados) · píldora escondida siempre (cae la aserción de que no la matamos) · eje
+horizontal ignorado en la función pura · candado de caja vacía anulado · bug de v403 restaurado
+(cae `_shot-profile`). **Un sabotaje NO mordió al primer intento** y eso corrigió un test: el del
+rect en cero pasaba por casualidad (un rectángulo de área cero no puede solapar), no por el
+candado; se reescribió con el caso real (píldora oculta + entreno scrolleado con rect negativo) y
+entonces sí cayó. Harness nuevo `_verify-estudio-defectos` 10/10. Cinturón: `_guiado-suite` verde,
+`_verify-firstrun` 8/8, `_shot-trained`, `_verify-missday`, `_verify-share`, `_verify-cmtynudge`,
+`_fable-repro-midsession`, `_verify-feed` 32, `_verify-modals` 12/12, `_test-coach-back`, hook 11/11.
+**Sin AVI_NEWS a propósito:** son arreglos, no funciones nuevas — no hay nada que enseñarle al
+asesorado.*
+
 *Hitos sesión 2026-07-26 · CIERRE (parte 121 — **ESTUDIO DE INTERFAZ FASE 1 + variante C EN PROD**,
 avi-v403). Cierra una sesión larguísima: plan de correcciones completo (v398→v401), 3 decisiones del
 PO (v402), radar de adopción medido y el estudio de interfaz con su primera implementación.*

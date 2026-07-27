@@ -5,7 +5,11 @@
 > corrigió el enfoque del muro de Comunidad). Escrito 2026-07-26. **Fase 1 = de abrir la app a
 > terminar el PRIMER entreno.** La auditoría general del resto de la interfaz es la Fase 2.
 >
-> **Nada de esto está implementado.** El entregable es: diagnóstico + camino + maquetas para elegir.
+> **Estado (actualizado 2026-07-27):** el estudio ya se ejecutó. La **variante C** (portada del día
+> 1) está en producción desde **avi-v403**, y los **defectos concretos del §2 quedaron cerrados en
+> avi-v404** — con una corrección importante al punto 2, anotada ahí mismo: el `peso_reps` que
+> denunciaba este documento **no existía en datos reales**, salía del fixture del harness con el que
+> se tomó la captura. **Lo que sigue es la FASE 2:** la auditoría general del resto de la interfaz.
 
 ---
 
@@ -60,18 +64,31 @@ de empezar. El bloque «ENTRENAMIENTO DE HOY · Full body A · 4 ejercicios · 1
 1. 🔴 **La primera acción que la app pide no es entrenar, es autoevaluarse.** El chooser de ánimo
    está por encima de todo. Para quien ya entrena es una función querida (adapta la rutina); para
    quien nunca ha entrenado es un peaje emocional antes del valor.
-2. 🔴 **Jerga técnica visible al asesorado:** bajo «Sentadilla» dice literalmente **`Pierna ·
-   peso_reps`**. `peso_reps` es un identificador interno. La investigación de referentes marca la
+2. 🔴 **Jerga técnica visible al asesorado.** ⚠️ **CORRECCIÓN (2026-07-27, al ir a arreglarlo):**
+   este punto estaba **mal medido**. La captura decía «Pierna · `peso_reps`», pero `peso_reps`
+   **no existe en ningún dato de producción** — lo verifiqué contra la base (21 personas, 578
+   ejercicios en rutinas reales): los valores son Aislamiento, Compuesto, Bodyweight, Cardio,
+   Isométrico, Funcional y HIIT. El `peso_reps` salía del **fixture del harness** con el que se
+   tomó la captura, que metía el *track* en el campo `type`. Lección en GOTCHAS VIGENTES: un
+   fixture que no se parece a producción fabrica defectos que no existen.
+   **La jerga real, que sí estaba y sí se corrigió (avi-v404):** 8 personas con rutinas viejas
+   (163 ejercicios sin `muscleLabel`) leían el slug crudo, en minúscula y sin tilde — «biceps»,
+   «gluteo», «triceps» —, y al lado vocabulario de entrenador: «Bodyweight» (en inglés, 64
+   apariciones en 20 personas), «Compuesto», «Aislamiento». La investigación de referentes marca la
    jerga sin explicar como una de las cinco barreras principales para principiantes (solo 13 de 50
    apps la evitan, [Medium/50 apps](https://medium.com/@trainrboost/why-73-of-fitness-apps-fail-beginners-i-analyzed-50-apps-6817a6cb23b2)).
    Viola además la regla de tono del propio proyecto («cero jerga técnica»).
-3. 🔴 **La píldora «Instalar app» tapa el primer campo de serie.** En la captura se ve encima de la
-   fila donde se anota el primer peso. Ya la escondimos en login, chats y cierre de entreno; en
-   «Hoy» sigue encima del contenido.
+3. 🔴 **La píldora «Instalar app» tapa el primer campo de serie.** ✅ **CONFIRMADO Y AGRAVADO al
+   medirlo con hit-testing (2026-07-27):** no lo tapa, se queda con el **toque**. La píldora ocupa
+   y=710-760 · x=99-291 y ahí caen los campos KG y REPS de una serie, «Ver cómo se hace» y los
+   botones de reordenar — 5 controles robados. Quien iba a anotar su peso abría el instalador.
+   El mismo encimado le pasaba a «Hacer esta rutina ahora» en «Rutinas». Corregido en avi-v404.
 
 **Un cuarto, de jerarquía:** en «Rutinas», el botón más llamativo de toda la pantalla es
 **«+ Nueva rutina»** (verde, ancho completo). A un principiante al que su entrenador ya le armó el
 plan, lo que más grita la pantalla es que se cree otro.
+✅ **Corregido en avi-v404:** pasa al final de la lista y a acción secundaria; se conserva la
+capacidad de crear rutinas propias (Opción B, decisión de Camilo 2026-06-25).
 
 ---
 
@@ -125,8 +142,11 @@ bienvenida —«Tu plan está listo. Hoy: Full body A · 4 ejercicios · ~35 min
 más; el resto de tarjetas aparece a partir del segundo entreno. Es la más agresiva contra la
 fricción y la que más se parece a lo que recomienda la literatura de activación.
 
-Los tres defectos concretos del §2 (jerga `peso_reps`, banner encima del campo, jerarquía de
-«+ Nueva rutina») se corrigen en cualquiera de los caminos: no dependen de la variante.
+Los tres defectos concretos del §2 se corrigen en cualquiera de los caminos: no dependen de la
+variante. **Estado: los tres CERRADOS en avi-v404 (2026-07-27)**, con el matiz del punto 2 (el
+`peso_reps` era un fixture; la jerga real era el slug crudo y el vocabulario de entrenador).
+Harness de regresión: `scripts/e2e/_verify-estudio-defectos.mjs` (10 checks, con hit-testing).
+**Sigue la FASE 2: la auditoría general** de las 6 pantallas del asesorado y los 6 paneles del coach.
 
 **Maqueta comparable:** `docs/preview-primera-sesion.html` — se abre en el celular y se comparan las
 tres, una al lado de la otra, sin tocar la app.
