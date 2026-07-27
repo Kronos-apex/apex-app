@@ -1,5 +1,9 @@
 // ══════════════════════ EXERCISES ══════════════════════
 let exF='all';
+// Estado del buscador y del pintado por tandas de la biblioteca (auditoría FASE 2). LOCAL a la
+// sesión a propósito: es un filtro de vista, no un ajuste del coach — nada que sincronizar.
+let exQ='', exPage=1;
+const EX_PAGE=30;   // primera tanda; «Ver más» suma otra
 function buildFilterBtns(containerId,handler){
   const cats=['all','pecho','espalda','hombros','biceps','triceps','piernas','gluteo','core','cardio','otro'];
   const labels={all:'Todos',pecho:'Pecho',espalda:'Espalda',hombros:'Hombros',biceps:'Bíceps',triceps:'Tríceps',piernas:'Piernas',gluteo:'Glúteo',core:'Core',cardio:'Cardio',otro:'Otro'};
@@ -15,17 +19,42 @@ function styleFilterBtns(containerId,activeEl){
   con.querySelectorAll('.btn').forEach(b=>{b.style.background='';b.style.color='';b.style.borderColor=''});
   activeEl.style.background='var(--gl)';activeEl.style.color='var(--gt)';activeEl.style.borderColor='var(--g2)';
 }
-function exFilter(muscle,el){exF=muscle;styleFilterBtns('exf',el);renderExercises()}
+function exFilter(muscle,el){exF=muscle;exPage=1;styleFilterBtns('exf',el);renderExercises()}
+// Buscador y pintado por tandas (auditoría FASE 2, 2026-07-27). La biblioteca medía 30.752 px
+// —42 pantallas— con los 212 ejercicios dibujados de golpe (cada uno con su foto) y sin forma
+// de buscar por nombre. Al escribir se vuelve a la primera tanda: si no, el «ver más» de la
+// búsqueda anterior dejaría resultados nuevos escondidos.
+function exSearch(term){ exQ=String(term||''); exPage=1; renderExercises(); }
+function exMore(){ exPage++; renderExercises(); }
 function renderExercises(){
   const grid=document.getElementById('ex-grid');
-  const filtered=DB.exercises.filter(e=>exF==='all'||e.muscle===exF);
+  const filtered=(typeof searchExercises==='function')
+    ? searchExercises(DB.exercises,exQ,exF)
+    : DB.exercises.filter(e=>exF==='all'||e.muscle===exF);
+  const tope=EX_PAGE*exPage;
+  const visibles=filtered.slice(0,tope);
   grid.innerHTML='';
-  filtered.forEach(ex=>{
+  visibles.forEach(ex=>{
     const color=MC[ex.muscle]||'#6B6B6B';const div=document.createElement('div');div.className='exc';
     div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${ex.muscleLabel||ex.muscle} · ${ex.type}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Ver detalle" aria-label="Ver detalle del ejercicio" onclick="openExDetail('${ex.id}',true)">${typeof aviIcon==='function'?aviIcon('eye',15):'👁'}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar ejercicio" aria-label="Editar ejercicio" onclick="openEditEx('${ex.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button></div></div><span class="tag" style="background:${color}15;color:${color};border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
     grid.appendChild(div);
   });
-  if(!filtered.length)grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="eico">'+(typeof aviIcon==='function'?aviIcon('dumbbell',34):'🏋️')+'</div><div class="etxt">Sin ejercicios aquí</div><div class="esub">Añade uno con el botón de arriba</div></div>';
+  // Estado vacío consciente de POR QUÉ está vacío: no es lo mismo un músculo sin ejercicios
+  // que una búsqueda sin resultados (ahí lo accionable es borrar la búsqueda, no crear uno).
+  if(!filtered.length){
+    grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="eico">'+(typeof aviIcon==='function'?aviIcon('dumbbell',34):'🏋️')+'</div>'
+      +(exQ.trim()
+        ? '<div class="etxt">Ningún ejercicio se llama así</div><div class="esub">Revisa cómo lo escribiste o borra la búsqueda para ver todos.</div>'
+        : '<div class="etxt">Sin ejercicios aquí</div><div class="esub">Añade uno con el botón de arriba</div>')
+      +'</div>';
+  }
+  const more=document.getElementById('ex-more');
+  if(more){
+    const faltan=filtered.length-visibles.length;
+    more.innerHTML=faltan>0
+      ? `<button class="btn bg" style="width:100%" onclick="exMore()">Ver ${faltan} más (${visibles.length} de ${filtered.length})</button>`
+      : (filtered.length>EX_PAGE?`<div style="text-align:center;font-size:12px;color:var(--t3);padding:4px 0">${filtered.length} ejercicios</div>`:'');
+  }
 }
 function openAddEx(){CUR.editExId=null;document.getElementById('m-ex-title').textContent='Nuevo ejercicio';['ex-n','ex-d','ex-i'].forEach(id=>document.getElementById(id).value='');document.getElementById('ex-s').value='3';document.getElementById('ex-r').value='12';document.getElementById('ex-m').value='pecho';document.getElementById('ex-t').value='Compuesto';['ex-hiit-work','ex-hiit-rest','ex-hold-secs'].forEach(id=>document.getElementById(id).value='');exFormSync();om('m-ex')}
 function openEditEx(id){

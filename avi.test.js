@@ -150,6 +150,7 @@ const {
   isBetterPR,
   muscleHuman,
   exMuscleText,
+  searchExercises,
   pillStealsTap,
   muscleVolume,
   pushPullBalance,
@@ -3180,6 +3181,42 @@ test('pillStealsTap: sin caja (oculta / día de descanso) NO se apaga nada', () 
 test('pillStealsTap: solo se cruzan en vertical pero no en horizontal → se queda', () => {
   // Entreno en una columna estrecha a la izquierda; la píldora va centrada.
   assert.strictEqual(pillStealsTap(rect(710, 760, 200, 380), rect(600, 900, 0, 90)), false);
+});
+
+// Buscador de la biblioteca (auditoría FASE 2): 212 ejercicios, 42 pantallas y sin búsqueda.
+const LIB_BUSCA = [
+  { id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', muscleLabel: 'Pecho', type: 'Compuesto' },
+  { id: 'e2', name: 'Curl de Bíceps', muscle: 'biceps', type: 'Aislamiento' },
+  { id: 'e3', name: 'Sentadilla', muscle: 'piernas', muscleLabel: 'Cuádriceps y glúteo', type: 'Compuesto' },
+  { id: 'e4', name: 'Press Inclinado con Mancuernas', muscle: 'pecho', muscleLabel: 'Pecho superior', type: 'Compuesto' }
+];
+test('searchExercises: sin texto ni músculo devuelve la biblioteca entera', () => {
+  assert.strictEqual(searchExercises(LIB_BUSCA, '', 'all').length, 4);
+  assert.strictEqual(searchExercises(LIB_BUSCA, '', '').length, 4);
+  assert.strictEqual(searchExercises(LIB_BUSCA).length, 4);
+});
+test('searchExercises: encuentra AUNQUE se escriba sin tildes (así teclea la gente)', () => {
+  const r = searchExercises(LIB_BUSCA, 'biceps');
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].name, 'Curl de Bíceps');
+});
+test('searchExercises: palabras sueltas, no la frase literal', () => {
+  // «press banca» debe encontrar «Press de Banca con Barra» sin escribir el «de».
+  const r = searchExercises(LIB_BUSCA, 'press banca');
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].id, 'e1');
+  assert.strictEqual(searchExercises(LIB_BUSCA, 'press').length, 2);
+});
+test('searchExercises: el filtro de músculo y el texto se aplican JUNTOS', () => {
+  assert.strictEqual(searchExercises(LIB_BUSCA, '', 'pecho').length, 2);
+  assert.strictEqual(searchExercises(LIB_BUSCA, 'inclinado', 'pecho').length, 1);
+  assert.strictEqual(searchExercises(LIB_BUSCA, 'inclinado', 'piernas').length, 0);
+});
+test('searchExercises: busca también por la etiqueta del músculo, y aguanta basura', () => {
+  assert.strictEqual(searchExercises(LIB_BUSCA, 'gluteo')[0].name, 'Sentadilla');   // por muscleLabel
+  assert.strictEqual(searchExercises(LIB_BUSCA, 'zzz').length, 0);
+  assert.strictEqual(searchExercises(null, 'press').length, 0);
+  assert.strictEqual(searchExercises([null, undefined], 'press').length, 0);
 });
 
 test('prFromSets: peso_reps → kg máx con sus reps', () => {

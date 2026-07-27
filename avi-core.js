@@ -3181,6 +3181,36 @@ function exMuscleText(ex) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// BUSCAR EN LA BIBLIOTECA DE EJERCICIOS (auditoría FASE 2, 2026-07-27)
+// ──────────────────────────────────────────────────────────────────────
+// La biblioteca del coach medía 30.752 px —42 pantallas de scroll— con los
+// 212 ejercicios pintados de golpe y SIN buscador: para hallar uno había que
+// filtrar por músculo y bajar a pulso. Y va a crecer al repoblarla.
+// Busca por nombre y por músculo a la vez, sin distinguir mayúsculas NI
+// TILDES («biceps» encuentra «Bíceps», que es como la gente teclea de afán).
+// PURA: recibe la lista y devuelve otra; el render solo pinta.
+function _exNorm(s) {
+  return String(s == null ? '' : s).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita tildes
+    .trim();
+}
+function searchExercises(lib, term, muscle) {
+  const list = Array.isArray(lib) ? lib : [];
+  const m = String(muscle == null ? '' : muscle);
+  const porMusculo = (!m || m === 'all') ? list : list.filter(e => e && e.muscle === m);
+  const q = _exNorm(term);
+  if (!q) return porMusculo;
+  // Todas las palabras que escribió tienen que aparecer en algún lado del ejercicio:
+  // «press banca» encuentra «Press de Banca con Barra» aunque no sea literal.
+  const palabras = q.split(/\s+/).filter(Boolean);
+  return porMusculo.filter(e => {
+    if (!e) return false;
+    const heno = _exNorm([e.name, e.muscleLabel, e.muscle, e.type].filter(Boolean).join(' '));
+    return palabras.every(p => heno.indexOf(p) !== -1);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // LA PÍLDORA «INSTALAR APP» NO PUEDE QUEDARSE CON UN TOQUE
 // ──────────────────────────────────────────────────────────────────────
 // Medido con hit-testing a 390×844 (2026-07-27): el botón flotante se paraba
@@ -3448,6 +3478,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isBetterPR,
     muscleHuman,
     exMuscleText,
+    searchExercises,
     pillStealsTap,
     MUSCLE_GROUP_CAT,
     MUSCLE_GROUP_LABEL,
