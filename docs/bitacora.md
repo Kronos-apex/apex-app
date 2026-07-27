@@ -380,6 +380,50 @@ De las 43 fotos de `fotos-seleccionadas/`, procesadas las 27 `Gemini_*` (delogo 
 
 ## Hitos por sesión (crudos, más reciente primero)
 
+*Hitos sesión 2026-07-26 (parte 119 — **F14 + F7-F13 + §P3: el `plan-correcciones-adopcion.md`
+queda EJECUTADO COMPLETO**, avi-v401).*
+
+***F14 — el más peligroso.** `waPhone` devolvía «los dígitos tal cual» si no reconocía el formato, y
+`wa.me/<n>` los lee como E.164: un FIJO de Bogotá guardado sin indicativo (6012345678) abría chat
+con **+60 = Malasia**, y un móvil de EE.UU. sin +1 con **un colombiano REAL distinto**. No es un
+enlace roto: es escribirle a un desconocido con el nombre del asesorado en el mensaje. Ahora valida
+antes de construir el enlace y devuelve '' cuando el número no es plausible → los 4 call sites ya
+caían a «elegir contacto». `waPhoneNote` (pura) dice POR QUÉ. **Otro test que consagraba el error**
+(`waPhone('6012345678') === '6012345678'`, «no adivinamos país, se deja») corregido con su motivo.*
+
+***F7-F9 (A2).** La puerta no se cerraba al cruzarla (nada repinta «Hoy»: `cnTodayGuard` deja una
+vez al día) → `_cmtyRepaintToday`, y la sonda afirma el perfil justo tras el INSERT (si `cmtyLoad`
+falla a medias, su catch se saltaba el sync). Al SALIRSE se borra la sonda y se pospone la
+invitación 30 días. F8: un fallo parcial escribía `peers:0` con fecha fresca = sonda MENTIROSA que
+mataba la puerta 24h → sin dato no se escribe («no sé» ≠ «no hay nadie»). F9: una sonda corrupta
+lanzaba ANTES del cuerpo de «Hoy» y dejaba al asesorado SIN ENTRENO → guard en la función pura +
+try/catch en el caller (dos capas, ambas probadas por sabotaje).*
+
+***F10-F13 (A4).** F10: la marca del «Sí» iba ANTES del patch → un «Sí» sin señal quemaba la
+pregunta para siempre; ahora va después de la confirmación del servidor. F12: ignorar la tarjeta no
+la callaba (reaparecía en CADA entreno; en las 52 semanas, para siempre) → se cuenta cada vez que se
+MUESTRA y a la tercera calla ese umbral (R1.6). F13: la pantalla de fin no scrolleaba —
+`justify-content:flex-end` manda el desbordamiento ARRIBA, adonde el scroll no llega (medido
+`maxScroll:0`) → `margin-top:auto`; más TURNOS entre las 3 tarjetas del cierre (hito > push >
+compartir), con el turno guardando QUIÉN lo tiene (un booleano congelaba el repintado del push tras
+conceder permiso — lo cazó `_verify-workoutshare` en rojo). **Hallazgo de MIRAR la captura:** la
+píldora «Instalar app» tapaba «Compartir mi entreno» en el cierre → regla CSS `:has()`.*
+
+***§P3 — los huecos de los propios harnesses.** (1) N6 EJECUTABA el paso que le faltaba a la app
+(`renderShareBanner`): ahora lo hace `dismissCmtyNudge` y el check quedó con dientes (probado: sin
+eso, `share:none`). (2) CM17 y N11 pasaban EN VACÍO si el banner estaba oculto → se fuerza visible y
+se afirma que existe. (3) `_verify-gyminvite`: su cliente falso ignoraba los argumentos de `.in()`
+(eso ocultó F4) y `window.__calls` no se asserteaba nunca → G14; borrado `rowsOf`, muerto. (4) El
+test de paridad de umbrales daba **falso verde si se AGREGABA** un umbral (`.filter(!isNaN)` los
+descartaba) → ahora exige que TODOS los tokens parseen; **probado agregando 104 a la edge: rojo**.
+(5) Puertos propios para los 3 harnesses que chocaban (8811/8812/8813). RADAR: quedan ~15 puertos
+compartidos entre harnesses viejos, inofensivo en serie pero impide correr el cinturón en paralelo.*
+
+***QA total del bloque.** Suite 441→**445**. `_verify-milestoneask` 19→**23**, `_verify-cmtynudge`
+14→**17**, `_verify-gyminvite` 16→**19**, `_verify-community` 19, `_verify-workoutshare` 8,
+`_shot-trained`, `_guiado-suite`. **11 sabotajes en este tramo, los 11 mordieron.**
+**El plan de correcciones queda EJECUTADO COMPLETO — PENDIENTE el veredicto de Fable (R4.1).***
+
 *Hitos sesión 2026-07-26 (parte 118 — **F3 + el modal del gym (F4-F6)**, avi-v400 + migraciones
 `c20_gym_peers`/`c20b`). Puntos 3 y 4 del `plan-correcciones-adopcion.md`.*
 

@@ -9,13 +9,13 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-const PORT = 8799, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
+const PORT = 8811, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const srv = spawn('python', ['-m', 'http.server', String(PORT)], { cwd: 'C:/Users/KRONOS/Desktop/AVI/apex-app' });
 await sleep(1200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9309', '--user-data-dir=' + process.env.TEMP + '/cmtynudge-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
-async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9309/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
+const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9329', '--user-data-dir=' + process.env.TEMP + '/cmtynudge-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
+async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9329/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } if (m.method === 'Runtime.exceptionThrown') jsErrors.push(m.params?.exceptionDetails?.exception?.description || m.params?.exceptionDetails?.text || 'exception'); });
@@ -128,7 +128,9 @@ check('N5 sin nadie a quien ver, la tarjeta NO sale (cuarto vacío)', n5.disp ==
 
 // N6: «Ahora no» oculta, pospone ~30 días y devuelve el turno al banner de compartir.
 console.log('  setup(9, 3 peers):', await ev(RESET(9, PEERS3))); await sleep(400);
-await ev(`dismissCmtyNudge(); renderShareBanner(DB.clients[0]);`); await sleep(250);
+// §P3: antes esta línea llamaba TAMBIÉN a `renderShareBanner`, o sea ejecutaba el paso que le
+// faltaba a la app — el check habría pasado con el bug vivo. Ahora solo se toca «Ahora no».
+await ev(`dismissCmtyNudge();`); await sleep(250);
 const n6 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');const sh=document.getElementById('cn-share');
   const s=parseInt(localStorage.getItem('${K_SNOOZE}'))||0;return {disp:el?el.style.display:'?',len:el?el.innerHTML.trim().length:-1,
   days:Math.round((s-Date.now())/86400000),share:sh?sh.style.display:'?'};})()`);
@@ -175,6 +177,10 @@ check('N10 sin sonda no se invita a ciegas, pero se va a buscar el dato', n10.di
 // miente con `captureBeyondViewport` y ya generó una falsa alarma en A1.
 console.log('  setup(9, 3 peers) hit-test:', await ev(RESET(9, PEERS3))); await sleep(400);
 const n11 = await ev(`(()=>{
+  // §P3: si el banner estuviera oculto, este check pasaría EN VACÍO (nada que pudiera tapar).
+  // Se fuerza visible y se afirma que existe, para que la prueba sea de verdad.
+  const bn0=document.getElementById('install-banner');
+  if(bn0){ bn0.classList.remove('hide'); bn0.style.display='flex'; }
   const c=document.getElementById('cn-cmty-nudge'); if(c)c.scrollIntoView({block:'center'});
   const btn=[...document.querySelectorAll('#cn-cmty-nudge button')].find(b=>/Ver a mi gente/.test(b.textContent));
   if(!btn) return {err:'sin boton'};
@@ -182,10 +188,11 @@ const n11 = await ev(`(()=>{
   const hit=document.elementFromPoint(Math.round(r.left+r.width/2), Math.round(r.top+r.height/2));
   const bn=document.getElementById('install-banner');
   const br=(bn&&getComputedStyle(bn).display!=='none')?bn.getBoundingClientRect():null;
-  return {btn:[Math.round(r.top),Math.round(r.bottom)], banner:br?[Math.round(br.top),Math.round(br.bottom)]:null,
+  return {hayBanner:!!bn, bannerVisible:!!br, btn:[Math.round(r.top),Math.round(r.bottom)],
+          banner:br?[Math.round(br.top),Math.round(br.bottom)]:null,
           hitEsBoton:!!(hit&&(hit===btn||btn.contains(hit))), solapa:!!(br&&br.top<r.bottom&&br.bottom>r.top)};})()`);
-check('N11 el banner «Instalar app» no tapa «Ver a mi gente» (hit-test real 390×844)',
-  n11.hitEsBoton === true && n11.solapa === false, JSON.stringify(n11));
+check('N11 el banner «Instalar app» no tapa «Ver a mi gente» (hit-test real, banner VISIBLE)',
+  n11.hayBanner === true && n11.bannerVisible === true && n11.hitEsBoton === true && n11.solapa === false, JSON.stringify(n11));
 
 // N12 (F3): un compañero de gym que se hizo PÚBLICO cuenta como del gym. En prod ese es el CASO
 // REAL: el único perfil público del gimnasio es el coach, y la línea lo escondía. Y un público que

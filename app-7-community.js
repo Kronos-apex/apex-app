@@ -2217,4 +2217,9 @@ function dismissCmtyNudge(){
   _cmtyLdSet(CMTY_NUDGE_SNOOZE_KEY, String(Date.now() + days * 86400000));
   const el = document.getElementById('cn-cmty-nudge'); if(el){ el.style.display = 'none'; el.innerHTML = ''; }
   CMTY.nudgeOn = false;
+  // §P3: este paso lo SIMULABA el harness (N6 llamaba a `renderShareBanner` por su cuenta, así que
+  // habría pasado con el bug vivo). El turno lo devuelve el código: al descartar la puerta,
+  // «Comparte AVI» ocupa su lugar en el mismo repintado, sin esperar al día siguiente.
+  try{ const c = (typeof DB !== 'undefined' && DB.clients || []).find(x => x && x.id === CUR.clientId);
+    if(c && typeof renderShareBanner === 'function') renderShareBanner(c); }catch(e){}
 }

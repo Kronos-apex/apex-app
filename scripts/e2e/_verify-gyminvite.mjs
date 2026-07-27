@@ -7,13 +7,13 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-const PORT = 8801, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
+const PORT = 8812, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const srv = spawn('python', ['-m', 'http.server', String(PORT)], { cwd: 'C:/Users/KRONOS/Desktop/AVI/apex-app' });
 await sleep(1200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9311', '--user-data-dir=' + process.env.TEMP + '/gyminv-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
-async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9311/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
+const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9330', '--user-data-dir=' + process.env.TEMP + '/gyminv-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
+async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9330/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } if (m.method === 'Runtime.exceptionThrown') jsErrors.push(m.params?.exceptionDetails?.exception?.description || m.params?.exceptionDetails?.text || 'exception'); });
@@ -70,12 +70,6 @@ console.log('  install:', await ev(INSTALL)); await sleep(300);
 
 const results = [];
 const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
-const rowsOf = `(()=>{const b=document.getElementById('gym-mgr-body');
-  return [...b.querySelectorAll('div')].filter(d=>d.parentElement===b).map(d=>({
-    txt:d.innerText.replace(/\\s+/g,' ').trim(),
-    chip:/Ya está/.test(d.innerText),
-    invitar:[...d.querySelectorAll('button')].some(x=>/Invitar/.test(x.textContent))}));})()`;
-
 await ev(`openGymMgr()`); await sleep(700);
 
 // G1: la cifra que le importa al coach — cuántos de su gym ya activaron.
@@ -196,6 +190,14 @@ await ev(`(()=>{DB.clients.find(c=>c.id==='u-luz').phone='+1 305 555 1234';windo
 const g13b = await ev(`(()=>((window.__opened||'').split('?')[0]))()`);
 check('G13-bis un número internacional con indicativo se respeta tal cual',
   g13b === 'https://wa.me/13055551234', JSON.stringify({ url: g13b }));
+
+// §P3: `window.__calls` se poblaba y no se afirmaba nunca. El modal DEBE leer las dos tablas
+// (el directorio y los perfiles): si alguien borra la segunda consulta, las etiquetas desaparecen
+// en silencio y ningún check lo notaba.
+const tablas = await ev(`window.__calls`);
+check('G14 (§P3) el modal consulta el directorio Y los perfiles (no solo uno)',
+  Array.isArray(tablas) && tablas.indexOf('community_gym_members') >= 0 && tablas.indexOf('community_profiles') >= 0,
+  JSON.stringify({ tablas: [...new Set(tablas || [])] }));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

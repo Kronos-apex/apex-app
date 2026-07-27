@@ -9,13 +9,13 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-const PORT = 8803, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
+const PORT = 8813, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const srv = spawn('python', ['-m', 'http.server', String(PORT)], { cwd: 'C:/Users/KRONOS/Desktop/AVI/apex-app' });
 await sleep(1200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9313', '--user-data-dir=' + process.env.TEMP + '/msask-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
-async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9313/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
+const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9331', '--user-data-dir=' + process.env.TEMP + '/msask-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
+async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9331/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } if (m.method === 'Runtime.exceptionThrown') jsErrors.push(m.params?.exceptionDetails?.exception?.description || m.params?.exceptionDetails?.text || 'exception'); });

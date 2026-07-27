@@ -4228,7 +4228,12 @@ test('A4: los umbrales de racha de avi-core y de la edge refresh_snapshot son id
   const src = fs.readFileSync(path.join(__dirname, 'supabase/functions/refresh_snapshot/index.ts'), 'utf8');
   const m = src.match(/const\s+STREAK_MILESTONES\s*=\s*\[([^\]]*)\]/);
   assert.ok(m, 'no se encontró STREAK_MILESTONES en la edge refresh_snapshot');
-  const edge = m[1].split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
+  // §P3: el `.filter(n => !isNaN(n))` de antes DESCARTABA los tokens no numéricos, así que si
+  // alguien AGREGABA un umbral a la edge (…,52,104) el test pasaba en VERDE. Ahora se exige que
+  // TODOS los tokens parseen: agregar, quitar o reordenar rompe el check, que es su razón de ser.
+  const tokens = m[1].split(',').map(x => x.trim()).filter(x => x.length);
+  const edge = tokens.map(Number);
+  assert.ok(edge.every(n => Number.isFinite(n)), 'umbrales de la edge con algo que no es número: ' + tokens.join('|'));
   assert.deepStrictEqual(edge, STREAK_MILESTONES, 'los umbrales de la edge y de avi-core se separaron');
   // y el catch-up del opt-in (A4) tiene que seguir existiendo: sin él, decir «sí, celébralo» no
   // publica nada (crossedStreak exige `antes < umbral` y el snapshot ya guardó la racha nueva)

@@ -1,6 +1,7 @@
 # Plan de correcciones — verificación del lote de ADOPCIÓN (A1-A4) + bug de identidad
 
-> **Estado:** escrito 2026-07-25. **P0 (+F1) CORREGIDO en avi-v398 el 2026-07-26; el resto sigue abierto.**
+> **Estado:** escrito 2026-07-25. **✅ EJECUTADO COMPLETO el 2026-07-26** (v398 P0+F1 · v399 F2+F11 ·
+> v400 F3+F4-F6 · v401 F14+F7-F13+§P3). Pendiente SOLO el veredicto de Fable y las 3 decisiones de producto.
 > El lote A1-A4 está EN PRODUCCIÓN (avi-v394→v397 + edge `refresh_snapshot` v6) y **RECHAZADO**
 > por la verificación. Este documento es lo que se ejecuta en la siguiente sesión, en orden.
 >
@@ -126,18 +127,25 @@ apuntando al blanco equivocado; hay que corregir el test, no solo el código.
 | F4 | A3 | **`_gymActive` queda rancio tras `toggleGymMember`**: agregas al gym a alguien que YA tiene perfil → te lo marca como no activado y te empuja a invitarlo a algo donde ya está. Repro en 2 toques. Fix: refrescar `_gymActive` (o re-consultar) dentro de `toggleGymMember`. | **✅ HECHO avi-v400:** `_gymLoadActive` se invoca también desde `toggleGymMember` (incluida la rama sellada).
 | F5 | A3 | **La frase miente**: «A los otros N puedes invitarlos desde esta lista» cuenta al COACH (su fila nunca tiene botón, `_renderGymMgr` le pasa `''`) y a miembros del gym que ya no están en `DB.clients` (archivados, sin fila). Puede decir «al que falta» con **0 botones** en pantalla. Fix: derivar el conteo de lo que la lista realmente ofrece. | **✅ HECHO avi-v400:** `communityGymAdoption` gana `listedIds`→`invitable` y la frase sale de `communityGymHint` (pura, 4 ramas).
 | F6 | A3 | **Botón «Invitar» de 32px**, bajo el mínimo de 36 (R1.5), pegado al switch que da/quita membresía. Fix: `min-height:36px`. | **✅ HECHO avi-v400:** 36px, medido en el harness (G12).
-| F7 | A2 | **La puerta no se cierra al cruzarla**: tras crear el perfil la tarjeta sigue visible porque nada repinta «Hoy» (`cnTodayGuard` devuelve false el mismo día). El mensaje del commit afirmaba lo contrario. Fix: repintar «Hoy» tras el opt-in, o que `renderCommunityNudge` re-lea la sonda al volver a la pestaña. |
-| F8 | A2 | **Un fallo parcial de `cmtyLoad` escribe una sonda MENTIROSA**: la consulta de peers tiene su propio `catch` que la traga → `peers:0` con `at` fresco → la puerta queda desactivada 24h sin señal. Fix: no escribir sonda cuando no se pudo leer (dejar `null` = «no sé», como se hizo bien en A3). |
-| F9 | A2 | **Sonda con forma corrupta rompe «Hoy»**: `renderCommunityNudge` corre ANTES de pintar el entreno y sin `try/catch`; un `list` no-array lanza y **el entreno no se pinta**. Fix: `Array.isArray(probe.list)` en el candado + try/catch en el caller. |
-| F10 | A4 | **Un «Sí» sin conexión quema la pregunta para siempre**: `_cmtyAskedMark(m)` corre ANTES del patch. Fix: marcar después de confirmar, o solo en el «No». |
+| F7 | A2 | **La puerta no se cierra al cruzarla**: tras crear el perfil la tarjeta sigue visible porque nada repinta «Hoy» (`cnTodayGuard` devuelve false el mismo día). El mensaje del commit afirmaba lo contrario. Fix: repintar «Hoy» tras el opt-in, o que `renderCommunityNudge` re-lea la sonda al volver a la pestaña. | **✅ avi-v401:** `_cmtyRepaintToday` + la sonda se afirma tras el INSERT; al salirse se borra y se pospone 30 días.
+| F8 | A2 | **Un fallo parcial de `cmtyLoad` escribe una sonda MENTIROSA**: la consulta de peers tiene su propio `catch` que la traga → `peers:0` con `at` fresco → la puerta queda desactivada 24h sin señal. Fix: no escribir sonda cuando no se pudo leer (dejar `null` = «no sé», como se hizo bien en A3). | **✅ avi-v401:** `peersOk=false` → no se escribe sonda («no sé» ≠ «no hay nadie»).
+| F9 | A2 | **Sonda con forma corrupta rompe «Hoy»**: `renderCommunityNudge` corre ANTES de pintar el entreno y sin `try/catch`; un `list` no-array lanza y **el entreno no se pinta**. Fix: `Array.isArray(probe.list)` en el candado + try/catch en el caller. | **✅ avi-v401:** guard en `communityPeersLine` + try/catch en el caller (dos capas).
+| F10 | A4 | **Un «Sí» sin conexión quema la pregunta para siempre**: `_cmtyAskedMark(m)` corre ANTES del patch. Fix: marcar después de confirmar, o solo en el «No». | **✅ avi-v401:** la marca va DESPUÉS de la confirmación del servidor.
 | F11 | A4 | **`_cmtyPatch` no distingue «actualicé» de «0 filas»** (`.update()` sin `.select()`): PostgREST devuelve 204 sin error aunque no exista la fila → se confirma «Listo, tu gente lo va a ver» sin haber publicado nada. | **✅ HECHO avi-v399:** `.select()` + devuelve true/false; el «Sí» solo confirma con la fila en la mano.
-| F12 | A4 | **Ignorar la tarjeta no la calla**: solo «Sí»/«No» marcan. Cerrar la pantalla la deja reapareciendo en CADA entreno hasta el umbral siguiente; en 52 semanas, **para siempre**. Es el candado anti-molestia de R1.6. |
-| F13 | A4 | **La pantalla de fin no scrollea** (`maxScroll:0` medido en todos los casos) y con las 3 tarjetas apiladas a 360×640 el trofeo (−194) y «¡Lo lograste!» (−99) quedan fuera y no se pueden alcanzar. El apilado es previo (push+share ya deja el trofeo en −35), pero A4 es el que empuja el título fuera. Falta coordinación de turnos entre las 3 tarjetas (A2 sí la tiene). |
-| F14 | A3 | **`waPhone` manda la invitación a un número equivocado** con teléfonos reales: fijo de Bogotá `6012345678` → `wa.me/6012345678` = **+60 Malasia**; móvil de EE.UU. sin +1 `3055551234` → **+57 …, un colombiano REAL distinto**. Clase preexistente (v365), pero A3 es el primer sitio que empuja a invitar en tanda. Fix: validar el formato antes de construir el enlace y no abrir WhatsApp si el número no es plausible. |
+| F12 | A4 | **Ignorar la tarjeta no la calla**: solo «Sí»/«No» marcan. Cerrar la pantalla la deja reapareciendo en CADA entreno hasta el umbral siguiente; en 52 semanas, **para siempre**. Es el candado anti-molestia de R1.6. | **✅ avi-v401:** se cuenta cada vez que se MUESTRA; a la tercera calla ese umbral.
+| F13 | A4 | **La pantalla de fin no scrollea** (`maxScroll:0` medido en todos los casos) y con las 3 tarjetas apiladas a 360×640 el trofeo (−194) y «¡Lo lograste!» (−99) quedan fuera y no se pueden alcanzar. El apilado es previo (push+share ya deja el trofeo en −35), pero A4 es el que empuja el título fuera. Falta coordinación de turnos entre las 3 tarjetas (A2 sí la tiene). | **✅ avi-v401:** `margin-top:auto` (el scroll no llega al desbordamiento de arriba) + turnos entre las 3 tarjetas + el banner «Instalar app» ya no tapa «Compartir».
+| F14 | A3 | **`waPhone` manda la invitación a un número equivocado** con teléfonos reales: fijo de Bogotá `6012345678` → `wa.me/6012345678` = **+60 Malasia**; móvil de EE.UU. sin +1 `3055551234` → **+57 …, un colombiano REAL distinto**. Clase preexistente (v365), pero A3 es el primer sitio que empuja a invitar en tanda. Fix: validar el formato antes de construir el enlace y no abrir WhatsApp si el número no es plausible. | **✅ avi-v401:** `waPhone` valida antes de construir el enlace; `waPhoneNote` explica.
 
 ---
 
 ## 🟢 P3 — Huecos de los propios harnesses (R2.3: aserciones sin dientes)
+
+> **✅ HECHO — avi-v401 (2026-07-26).** N6 ya no ejecuta el paso que le faltaba a la app (lo hace
+> `dismissCmtyNudge`) · CM17/N11 fuerzan el banner VISIBLE y afirman que existe · el cliente falso de
+> `_verify-gyminvite` honra `.in()` y `window.__calls` se assertea (G14); borrado `rowsOf` · el test
+> de paridad de umbrales exige que TODOS los tokens parseen (probado agregando 104 a la edge: rojo)
+> · puertos propios 8811/8812/8813. **Queda en el radar:** ~15 puertos siguen compartidos entre
+> harnesses viejos — inofensivo en serie, impide correr el cinturón en paralelo.
 
 - `_verify-cmtynudge` **N6 prueba el harness, no el código**: la línea del check ejecuta
   `dismissCmtyNudge(); renderShareBanner(...)` — el paso que falta en la app. Pasaría con el bug.

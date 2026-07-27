@@ -292,6 +292,9 @@ await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(250);
 const cm17 = await ev(`(()=>{
   const body=document.querySelector('#s-client .cnbody')||document.scrollingElement;
   try{ body.scrollTop = body.scrollHeight; }catch(e){}
+  // §P3: con el banner oculto este check pasaba EN VACÍO. Se fuerza visible y se afirma que existe.
+  const bn0=document.getElementById('install-banner');
+  if(bn0){ bn0.classList.remove('hide'); bn0.style.display='flex'; }
   const b=document.getElementById('cmty-optin-btn'); if(!b) return {err:'sin boton'};
   const r=b.getBoundingClientRect();
   const cx=Math.round(r.left+r.width/2), cy=Math.round(r.top+r.height/2);
@@ -300,12 +303,12 @@ const cm17 = await ev(`(()=>{
   const br=bn?bn.getBoundingClientRect():null;
   const visible=bn?getComputedStyle(bn).display!=='none':false;
   const solapa=!!(br&&visible&&br.top<r.bottom&&br.bottom>r.top&&br.left<r.right&&br.right>r.left);
-  return {hitEsBoton:!!(hit&&(hit===b||b.contains(hit))), solapa, visible,
+  return {hayBanner:!!bn, hitEsBoton:!!(hit&&(hit===b||b.contains(hit))), solapa, visible,
           btn:[Math.round(r.top),Math.round(r.bottom)], banner:br?[Math.round(br.top),Math.round(br.bottom)]:null,
           hit:hit?(hit.id||hit.tagName):null};
 })()`);
 check('CM17 (A1) el banner «Instalar app» NO tapa el botón «Crear mi perfil» (hit-test real)',
-  cm17.hitEsBoton === true && cm17.solapa === false, JSON.stringify(cm17));
+  cm17.hayBanner === true && cm17.visible === true && cm17.hitEsBoton === true && cm17.solapa === false, JSON.stringify(cm17));
 
 // Sin nadie visible: NI un hueco NI un «0 personas» — la pantalla queda como estaba siempre.
 await ev(`(()=>{ CMTY.peers=[]; CMTY.profile=null; CMTY.loaded=true; CMTY.offline=false; _cmtyPaint(); return 'ok'; })()`); await sleep(250);
