@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AVI · Primera sesión — 3 variantes</title>
+<!--
+  MAQUETA DE ESTUDIO — NO es la app. Compara qué ve el día 1 alguien con rutina asignada y CERO
+  entrenos (el caso de 8 de las 23 personas del gimnasio). Cada marco muestra EXACTAMENTE lo que
+  cabe en una pantalla de celular sin desplazar: ese es el punto de la comparación.
+  Ver docs/estudio-interfaz-primera-sesion.md
+-->
+<style>
+  :root{
+    --bg:#F4F4F0; --w:#FFF; --br:#E5E5DF; --br2:#D0D0C8; --surface:#F9F9F6;
+    --t1:#1A1A1A; --t2:#6A6A6A; --t3:#B0B0B0;
+    --g:#0A7C5B; --g2:#13B583; --gl:#D3F4E8; --gt:#06402E;
+    --or:#E76F51; --yl:#E9C46A; --r:12px; --rsm:8px; --rlg:18px;
+    --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#20232B;color:#fff;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:18px 14px 60px}
+  h1{font-size:19px;margin:0 0 4px;letter-spacing:-.3px}
+  .sub{font-size:13px;color:#A9B0BD;line-height:1.5;margin:0 0 16px;max-width:640px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{flex:1;min-width:96px;min-height:44px;border-radius:11px;border:1px solid #39404E;background:#2A2E38;color:#D7DCE5;font-size:13px;font-weight:700;cursor:pointer;padding:8px 10px;line-height:1.25}
+  .tab.on{background:var(--g);border-color:var(--g2);color:#fff}
+  .nota{font-size:12.5px;line-height:1.55;color:#C2C9D4;background:#2A2E38;border-left:3px solid var(--g2);border-radius:0 10px 10px 0;padding:10px 12px;margin:0 0 14px;max-width:640px}
+  .nota b{color:#fff}
+  /* Marco de celular: 390 de ancho y 730 de alto = lo que se ve SIN desplazar */
+  .frame{width:390px;max-width:100%;height:730px;margin:0 auto;background:var(--bg);border-radius:20px;
+         box-shadow:0 10px 40px rgba(0,0,0,.45);overflow:hidden;position:relative;border:1px solid #444B59}
+  .top{background:linear-gradient(180deg,#0d2f24,#0A7C5B);height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+  .top b{color:#fff;font-size:17px;letter-spacing:.5px}
+  .top span{background:rgba(255,255,255,.16);color:#fff;font-size:11.5px;padding:6px 11px;border-radius:99px}
+  .body{height:calc(730px - 54px - 62px);overflow:auto;padding:12px 14px 16px;-webkit-overflow-scrolling:touch}
+  .nav{position:absolute;bottom:0;left:0;right:0;height:62px;background:var(--w);border-top:1px solid var(--br);
+       display:flex;align-items:center;justify-content:space-around;font-size:10.5px;color:var(--t3)}
+  .nav i{font-style:normal;display:block;text-align:center;font-size:15px;margin-bottom:2px}
+  .nav .a{color:var(--g);font-weight:700}
+  .card{background:var(--w);border:1px solid var(--br2);border-radius:var(--r);box-shadow:var(--sh);padding:13px;margin-bottom:11px}
+  .hi{font-size:13px;color:var(--t2)}
+  .hi b{display:block;font-size:22px;color:var(--t1);letter-spacing:-.4px}
+  .pill{display:inline-block;background:var(--w);border:1px solid var(--br2);border-radius:99px;padding:5px 11px;font-size:11.5px;color:var(--t2)}
+  .mood{display:flex;gap:7px;margin-top:9px}
+  .mood div{flex:1;background:var(--surface);border:1px solid var(--br);border-radius:11px;padding:9px 3px;text-align:center;font-size:9.5px;color:var(--t2)}
+  .mood span{display:block;font-size:19px;margin-bottom:3px}
+  .hero{position:relative;border-radius:var(--r);overflow:hidden;height:150px;margin-bottom:11px;
+        background:linear-gradient(160deg,#123,#0A7C5B 120%);display:flex;flex-direction:column;justify-content:flex-end;padding:13px}
+  .hero .eyebrow{font-size:10.5px;letter-spacing:2px;color:#7CF3C6;font-weight:800}
+  .hero h2{margin:3px 0 7px;font-size:23px;color:#fff;letter-spacing:-.5px}
+  .hero .chips span{display:inline-block;background:rgba(255,255,255,.18);color:#fff;font-size:11px;padding:4px 9px;border-radius:99px;margin-right:5px}
+  .cta{display:block;width:100%;min-height:52px;border:none;border-radius:14px;background:var(--g);color:#fff;
+       font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(10,124,91,.32)}
+  .cta.sec{background:var(--w);color:var(--g);border:1.5px solid var(--g)}
+  .ttl{font-size:13px;font-weight:800;color:var(--t1);margin:0 0 6px}
+  .txt{font-size:12.5px;color:var(--t2);line-height:1.5}
+  .ex{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br)}
+  .ex:last-child{border-bottom:none}
+  .ex .n{width:34px;height:34px;border-radius:9px;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto}
+  .ex b{display:block;font-size:13.5px;color:var(--t1)}
+  .ex small{color:var(--t3);font-size:11.5px}
+  .prog{height:5px;background:var(--br);border-radius:99px;margin:9px 0 3px}
+  .banner{background:var(--g);color:#fff;border-radius:var(--r);padding:11px 13px;font-size:12.5px;line-height:1.5;margin-bottom:11px}
+  .fold{border-top:2px dashed #E76F51;margin:0 -14px;padding:6px 14px 0;position:relative}
+  .fold::before{content:"⌄ lo de abajo exige desplazar";position:absolute;top:-9px;left:14px;background:var(--bg);color:#E76F51;font-size:10px;font-weight:800;padding:0 6px}
+  .tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.4px;padding:3px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
+  .tag.bad{background:#FCE4E6;color:#E63946}
+  .tag.ok{background:var(--gl);color:var(--gt)}
+  @media(max-width:430px){ body{padding:12px 8px 40px} .frame{height:640px} .body{height:calc(640px - 54px - 62px)} }
+</style>
+</head>
+<body>
+
+<h1>El día 1, según tres caminos</h1>
+<p class="sub">Cada marco es una pantalla de celular real. <b>Solo se ve lo que cabe sin desplazar</b> —
+la línea naranja marca dónde empieza lo que hay que buscar. El caso: alguien con rutina asignada
+y cero entrenos (8 de las 23 personas de tu gimnasio).</p>
+
+<div class="tabs">
+  <button class="tab on" onclick="ver('a',this)">A · Como está hoy</button>
+  <button class="tab" onclick="ver('b',this)">B · Empezar primero</button>
+  <button class="tab" onclick="ver('c',this)">C · Primera vez</button>
+</div>
+
+<div id="nota" class="nota"></div>
+
+<div class="frame">
+  <div class="top"><b>AVI</b><span>Ayuda · Salir</span></div>
+  <div class="body" id="body"></div>
+  <div class="nav">
+    <div class="a"><i>▮</i>Hoy</div><div><i>☰</i>Rutinas</div><div><i>◌</i>Mensajes</div>
+    <div><i>▥</i>Progreso</div><div><i>◍</i>Perfil</div><div><i>◎</i>Comunidad</div>
+  </div>
+</div>
+
+<script>
+const HERO = `<div class="hero">
+    <div class="eyebrow">⚡ ENTRENAMIENTO DE HOY · DOMINGO</div>
+    <h2>Full body A</h2>
+    <div class="chips"><span>4 ejercicios</span><span>12 series</span><span>~35 min</span></div>
+  </div>`;
+
+const LISTA = `<div class="card">
+    <p class="ttl">Lo de hoy</p>
+    <div class="ex"><div class="n">1</div><div><b>Sentadilla</b><small>Pierna · 3 series de 12</small></div></div>
+    <div class="ex"><div class="n">2</div><div><b>Press banca</b><small>Pecho · 3 series de 10</small></div></div>
+    <div class="ex"><div class="n">3</div><div><b>Remo con barra</b><small>Espalda · 3 series de 10</small></div></div>
+    <div class="ex"><div class="n">4</div><div><b>Plancha</b><small>Core · 3 series de 30s</small></div></div>
+  </div>`;
+
+const MOOD = `<div class="card">
+    <p class="ttl">¿Cómo te sientes hoy?</p>
+    <div class="txt">Ajustamos tu entrenamiento a cómo amaneciste.</div>
+    <div class="mood">
+      <div><span>🙂</span>Bien</div><div><span>🔥</span>Con energía</div><div><span>😮‍💨</span>Cansado</div>
+      <div><span>😤</span>Estresado</div><div><span>🤕</span>Con dolor</div>
+    </div>
+  </div>`;
+
+const V = {
+  a: {
+    nota: `<b>Como está hoy.</b> Lo primero que la app pide no es entrenar: es autoevaluarse.
+      Qué entrena hoy y cómo empieza quedan debajo del pliegue. Medido en la app real:
+      <b>3.565 px de contenido con 729 visibles</b> — casi 5 pantallas. Además se cuela
+      <b>«peso_reps»</b> <span class="tag bad">jerga</span> y la píldora «Instalar app» tapa el
+      primer campo de serie.`,
+    html: `<div class="hi">Buenas noches,<b>Santiago 👋</b></div>
+      <div class="prog"></div>
+      <div class="txt" style="margin-bottom:11px">Sentadilla · Serie 1/3 — 0%</div>
+      ${MOOD}
+      <div class="fold"></div>
+      ${HERO}
+      <div class="card"><p class="ttl">⚡ Calentamiento — Cuerpo completo <span style="float:right;color:var(--t3)">0/8</span></p></div>
+      <div class="banner">👆 Toca el ⓘ de un ejercicio para ver el <b>video</b>.</div>
+      <div class="card">
+        <div class="ex"><div class="n">1</div><div><b>Sentadilla</b><small>Pierna · peso_reps <span class="tag bad">jerga</span></small></div></div>
+      </div>`
+  },
+  b: {
+    nota: `<b>Empezar primero.</b> El entreno de hoy y el botón <b>EMPEZAR</b> caben sin desplazar.
+      El ánimo se pregunta <b>después</b> de tocar empezar —donde sigue sirviendo para adaptar la
+      rutina— y se puede saltar. Es el patrón de Hevy («empezar en 2 toques») pero conservando la
+      ventaja de AVI: el plan ya viene armado por su entrenador.
+      <span class="tag ok">conserva todo</span> nada se elimina, todo baja de lugar.`,
+    html: `<div class="hi" style="margin-bottom:11px">Buenas noches,<b>Santiago 👋</b></div>
+      ${HERO}
+      <button class="cta">Empezar mi entreno →</button>
+      <div style="height:9px"></div>
+      <button class="cta sec" style="min-height:44px;font-size:14px">Ver los 4 ejercicios</button>
+      <div class="fold"></div>
+      ${MOOD}
+      <div class="card"><p class="ttl">💧 Tus hábitos de hoy</p><div class="txt">Agua y pasos</div></div>`
+  },
+  c: {
+    nota: `<b>Primera vez.</b> Solo para quien tiene <b>cero entrenos</b>: una sola pantalla, un solo
+      botón, cero tarjetas compitiendo. El resto (ánimo, hábitos, racha, comunidad) aparece a partir
+      del segundo entreno. Es la más agresiva contra la fricción y la que más se acerca a lo que
+      recomienda la literatura de activación: <b>quitar todo esfuerzo antes del primer valor</b>.
+      El riesgo: quien vuelva el día 2 ve una pantalla distinta a la del día 1.`,
+    html: `<div style="text-align:center;padding:14px 4px 4px">
+        <div style="font-size:34px">💪</div>
+        <div style="font-size:20px;font-weight:800;color:var(--t1);letter-spacing:-.4px;margin:6px 0 4px">Santiago, tu plan está listo</div>
+        <div class="txt" style="max-width:280px;margin:0 auto 13px">Andrés te armó 3 días de entreno.
+          Hoy empiezas con el primero — son unos 35 minutos.</div>
+      </div>
+      ${HERO}
+      <button class="cta">Empezar mi primer entreno →</button>
+      <div style="height:10px"></div>
+      ${LISTA}
+      <div class="fold"></div>
+      <div class="txt" style="text-align:center;padding-top:8px">Nada más. Lo demás aparece cuando
+        termines el primero.</div>`
+  }
+};
+
+function ver(k, btn){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  document.getElementById('nota').innerHTML = V[k].nota;
+  const b = document.getElementById('body');
+  b.innerHTML = V[k].html;
+  b.scrollTop = 0;
+}
+ver('a', document.querySelector('.tab'));
+</script>
+</body>
+</html>
