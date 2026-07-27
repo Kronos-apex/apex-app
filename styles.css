@@ -361,12 +361,17 @@ html[data-theme="light"] .mta {
 #s-coach .ptitle{font-size:21px;letter-spacing:-.4px}
 
 /* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--rsm);font-family:inherit;font-size:var(--fs-base);font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);border:1.5px solid transparent;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;min-width:36px;padding:8px 14px;border-radius:var(--rsm);font-family:inherit;font-size:var(--fs-base);font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);border:1.5px solid transparent;white-space:nowrap}
 .btn:active{transform:scale(.97)}
 .bp{background:var(--g);color:white;border-color:var(--g)}.bp:hover{background:var(--g2)}
 .bg{background:transparent;color:var(--t2);border-color:var(--br2)}.bg:hover{background:var(--bg);color:var(--t1)}
 .bo{background:var(--or);color:white;border-color:var(--or)}.bo:hover{background:#d4624a}
 .bd{background:var(--rdl);color:var(--rd);border-color:var(--rd)44}.bd:hover{background:var(--rd);color:white}
+/* Auditoría FASE 2 (2026-07-27): el botón pequeño medía 27px de alto — por debajo de los 36px
+   que la propia doctrina del proyecto exige para cualquier cosa que se toque con el dedo, y
+   aparecía así en 11 de las 12 pantallas («Entrenar otra vez», «Enviar», «Editar», «+ Registrar
+   pago», «Suspender», los filtros de músculo…). Se mide con hit-testing en `_audit-pantallas`.
+   Decisión del PO: subirlo en TODA la app. El ancho ya era amplio; solo faltaba alto. */
 .bsm{padding:5px 11px;font-size:var(--fs-sm)}
 /* Zona táctil mínima (FASE 0 · primitiva #4, avi-v332; renombrada .tap→.hit40 en v333 para
    NO colisionar con `.profav.tap`, un marcador viejo de cursor:pointer del avatar).
@@ -681,7 +686,7 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .adv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
 .adv-head .streak-title{margin-bottom:0}
 .adv-win{display:flex;gap:4px;flex-shrink:0}
-.adv-pill{border:1.5px solid var(--br2);background:var(--bg);color:var(--t2);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.adv-pill{border:1.5px solid var(--br2);background:var(--bg);color:var(--t2);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;min-height:36px;display:inline-flex;align-items:center;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
 .adv-pill.on{background:var(--g);border-color:var(--g);color:#EAFBF4}
 .adv-sub{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:14px}
 .adv-sub b{color:var(--t1)}
@@ -1018,7 +1023,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .pr-ex-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-ex-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--g)}
 .pr-ex-date{font-size:10px;color:var(--t3);margin-top:1px;text-align:right}
-.collapse-more{display:block;width:100%;margin-top:8px;padding:8px;background:transparent;border:none;border-top:1px dashed var(--br2);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s}
+.collapse-more{display:block;width:100%;margin-top:8px;padding:8px;min-height:36px;background:transparent;border:none;border-top:1px dashed var(--br2);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s}
 .collapse-more:hover{color:var(--gt)}
 /* Tarjetas de macros tocables → abren la ficha educativa (openNutriInfo) */
 .nutri-card{position:relative;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
