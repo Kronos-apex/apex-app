@@ -1,5 +1,11 @@
 // Captura del PERFIL del asesorado (#cn-profile) para auditoría de diseño — sin login,
 // 390px, claro+oscuro, página COMPLETA. Datos fake realistas (perfil moderadamente lleno).
+//
+// 2026-07-27 — AHORA AFIRMA (exit 1). Nació como harness de capturas y por eso no cazó nada:
+// v403 metió en `renderClientProfile` un `if(!_dia1)` que reusaba una const de OTRA función
+// → abrir «Perfil» lanzaba ReferenceError en su primera línea y la pantalla dejaba de pintarse
+// EN PRODUCCIÓN, mientras este harness seguía sacando sus dos PNG tan tranquilo. Un harness que
+// solo captura no es una prueba (R2.3): abre la pantalla, así que tiene que exigir que arranque.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -11,7 +17,8 @@ await sleep(1200);
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9297', '--user-data-dir=' + process.env.TEMP + '/prof-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
 async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9297/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
-let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } });
+let id = 1; const pend = new Map(); const jsErrors = [];
+ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } if (m.method === 'Runtime.exceptionThrown') jsErrors.push(m.params?.exceptionDetails?.exception?.description || m.params?.exceptionDetails?.text || 'exception'); });
 const send = (m, p = {}) => new Promise(res => { const i = id++; pend.set(i, { resolve: res }); ws.send(JSON.stringify({ id: i, method: m, params: p })); });
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; };
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
@@ -54,5 +61,22 @@ console.log('  setup:', setup);
 await sleep(900);
 await ev(`typeof setTheme==='function' && setTheme('light')`); await sleep(500); await shotFull('profile-claro');
 await ev(`typeof setTheme==='function' && setTheme('dark')`); await sleep(500); await shotFull('profile-oscuro');
+
+// ══════════ ASERCIONES ══════════
+const results = [];
+const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
+check('El perfil abre sin lanzar (nada de ReferenceError a media función)', jsErrors.length === 0, jsErrors.join(' | ').slice(0, 300));
+// La primera línea de renderClientProfile decide el upsell y la segunda pinta el enlace de
+// Google: si la función se cae ahí, el peso corporal (que va después) nunca se escribe.
+const pintado = await ev(`(()=>{const p=document.getElementById('cn-profile');
+  const txt=p?p.innerText.replace(/\\s+/g,' '):'';
+  return {largo:txt.length, peso:/78[.,]2/.test(txt), nombre:/Samuel/.test(txt)};})()`);
+check('El perfil se pintó de verdad (llega hasta el peso corporal, que va después del punto que fallaba)',
+  pintado.largo > 200 && pintado.peso === true, JSON.stringify(pintado));
+console.log('\n──── PERFIL DEL ASESORADO ────');
+results.forEach(r => console.log('  ' + r));
+const failed = results.filter(r => r.startsWith('❌'));
+console.log('\njsErrors: ' + JSON.stringify(jsErrors).slice(0, 400));
+console.log(failed.length ? `\n❌ ${failed.length} FALLARON` : '\n✅ TODO OK');
 console.log('OUT:', OUT);
-chrome.kill(); srv.kill(); process.exit(0);
+chrome.kill(); srv.kill(); process.exit(failed.length ? 1 : 0);

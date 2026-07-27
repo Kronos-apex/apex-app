@@ -334,6 +334,12 @@ const _SROOM_IC={'📅':'calendar','🏆':'trophy','🔁':'repeat','📊':'chart
 function _sroomIc(e){const n=_SROOM_IC[e];return (n&&typeof aviIcon==='function')?aviIcon(n,18):e;}
 
 function renderClientProfile(client){
+  // 🔴 v403 metió aquí `if(!_dia1)` reusando una `const` que vive DENTRO de renderClientToday:
+  // desde ese deploy, abrir «Perfil» lanzaba ReferenceError en la PRIMERA línea y la pantalla
+  // entera dejaba de pintarse. Cada función calcula su propio estado del día 1 — jamás se
+  // comparte una local por nombre entre funciones (fix 2026-07-27).
+  const _dia1 = (typeof firstSessionMode==='function')
+    && firstSessionMode((typeof DB!=='undefined'&&DB.history&&DB.history[client.id])||[]);
   if(!_dia1) renderCoachUpsell(client);
   renderGoogleLink();
   // Current weight from bodyweight log (most recent entry)
