@@ -553,8 +553,15 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div><div class="ptitle">Biblioteca de Ejercicios</div><div class="psub">Ejercicios disponibles para tus rutinas</div></div>
         <button class="btn bp" onclick="openAddEx()">+ Nuevo ejercicio</button>
       </div>
+      <!-- Buscador (auditoría FASE 2, 2026-07-27): 212 ejercicios y 42 pantallas de scroll sin
+           forma de buscar por nombre. Mismo patrón que el buscador de asesorados. -->
+      <div style="position:relative;margin-bottom:10px">
+        <span class="t-ic plain" data-ic="search" data-ic-size="18" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none;display:flex;align-items:center">🔍</span>
+        <input type="search" class="inp" id="ex-search" placeholder="Buscar ejercicio por nombre..." oninput="exSearch(this.value)" style="padding-left:40px">
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px" id="exf"></div>
       <div class="exgrid" id="ex-grid"></div>
+      <div id="ex-more" style="margin-top:12px"></div>
     </div>
 
     <!-- MESSAGES -->
@@ -1052,7 +1059,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 </div>
 
 <!-- Botón flotante de instalación PWA — un toque instala en Android; en iPhone abre la guía -->
-<div id="install-banner" class="hide" style="position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:8000;display:none;align-items:center;gap:9px">
+<!-- z-index 690 (bajado desde 8000 el 2026-07-27, auditoría FASE 2): a 8000 flotaba por ENCIMA
+     de TODO lo que se abre encima —tour educativo (800), asistente de datos (900), modales
+     (1000), sala de rutina (1400)— y ahí no tapaba: se quedaba con el toque. Medido: le robaba
+     el toque a «Empezar · 2 min» del asistente y a «Siguiente →» del tour, que son literalmente
+     los dos primeros botones que pulsa alguien nuevo. 690 la deja por encima del contenido y de
+     la barra de pestañas (200) pero por DEBAJO de cualquier overlay, presente o futuro — arregla
+     la clase entera sin una regla por caso. El toast (9999) sigue por encima de ella. -->
+<div id="install-banner" class="hide" style="position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:690;display:none;align-items:center;gap:9px">
   <button onclick="window._aviInstall&&window._aviInstall()" aria-label="Instalar AVI" style="display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#13B583,#0A7C5B);border:none;border-radius:999px;color:#fff;font-size:14px;font-weight:800;padding:13px 22px;cursor:pointer;font-family:inherit;box-shadow:0 10px 30px rgba(10,124,91,.45);animation:aviInstallPulse 2.2s ease-in-out infinite">
     <span style="font-size:18px">📲</span> Instalar app
   </button>
