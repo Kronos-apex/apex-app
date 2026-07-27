@@ -2340,12 +2340,19 @@ function highestStreakMilestone(weeks) {
 //   3. tiene que haber un umbral alcanzado de verdad.
 //   4. una sola pregunta por umbral: si dijo «ahora no» en las 4 semanas, no se le repite hasta
 //      las 8. `asked` es el mapa local {umbral: true} — vive en el dispositivo, como los mutes.
+// F12 (2026-07-26): `asked[umbral]` ya no es solo `true`/ausente. Ahora también puede ser un
+// NÚMERO = cuántas veces se mostró sin que el usuario tocara nada. Ignorar es una respuesta:
+// a la tercera, ese umbral se calla. Antes, cerrar la pantalla dejaba la tarjeta reapareciendo en
+// CADA entreno hasta el umbral siguiente — y en las 52 semanas, para siempre (R1.6).
+const MILESTONE_ASK_MAX_SHOWS = 3;
 function milestoneAskEligible(profile, weeks, asked) {
   if (!profile) return null;
   if (profile.show_milestones === true) return null;
   const m = highestStreakMilestone(weeks);
   if (m === null) return null;
-  if (asked && asked[m]) return null;
+  const seen = asked ? asked[m] : null;
+  if (seen === true) return null;                              // ya dijo sí o no
+  if (Number(seen) >= MILESTONE_ASK_MAX_SHOWS) return null;    // la ignoró tres veces = no
   return m;
 }
 
@@ -3330,6 +3337,7 @@ if (typeof module !== 'undefined' && module.exports) {
     communityMilestoneText,
     highestStreakMilestone,
     milestoneAskEligible,
+    MILESTONE_ASK_MAX_SHOWS,
     STREAK_MILESTONES,
     communityCommentText,
     leadPending,

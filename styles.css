@@ -740,6 +740,10 @@ body.sroom-open #install-banner,body.sroom-open #ios-install-banner{display:none
    abierto; reaparece sola al cerrarlo. Arregla ambos chats de una (defecto preexistente del
    chat del coach + el nuevo de comunidad). */
 body:has(.cchat.on) #install-banner,body:has(.cchat.on) #ios-install-banner{display:none!important}
+/* F13 (2026-07-26): en la PANTALLA DE FIN la píldora flotante se encimaba sobre «Compartir mi
+   entreno» (visto en la captura a 360x640 del harness: el ✕ del banner asomaba sobre el botón).
+   Misma clase que el login y los chats. Reaparece sola al cerrar el cierre. */
+body:has(#workout-finish.on) #install-banner,body:has(#workout-finish.on) #ios-install-banner{display:none!important}
 .sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
 .sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg);border-bottom:1px solid var(--br)}
@@ -1112,7 +1116,13 @@ body:has(.cchat.on) #install-banner,body:has(.cchat.on) #ios-install-banner{disp
 @keyframes wfFade{from{opacity:0}to{opacity:1}}
 .wf-photo{position:absolute;inset:0;background-size:cover;background-position:center top;background-color:#04080A}
 .wf-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,10,.35) 0%,rgba(4,8,10,.05) 26%,rgba(4,8,10,.55) 56%,rgba(4,8,10,.97) 100%)}
-.wf-inner{position:absolute;inset:0;z-index:2;padding:60px 26px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;color:#fff;overflow-y:auto}
+/* F13: con `justify-content:flex-end` el desbordamiento se va por ARRIBA, y ahí el scroll no
+   llega (scrollTop no puede ser negativo): a 360x640 con las 3 tarjetas apiladas, el trofeo y
+   «¡Lo lograste!» quedaban fuera de alcance (medido: maxScroll 0). Con `margin-top:auto` en el
+   primer hijo se conserva el mismo aspecto cuando SOBRA espacio (el bloque se pega abajo) y el
+   margen se colapsa a 0 cuando FALTA, así el contenido desborda hacia abajo y sí se puede leer. */
+.wf-inner{position:absolute;inset:0;z-index:2;padding:60px 26px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;color:#fff;overflow-y:auto;overscroll-behavior:contain}
+.wf-inner>.wf-trophy{margin-top:auto}
 .wf-trophy{font-size:46px;margin-bottom:8px;filter:drop-shadow(0 6px 20px rgba(16,224,160,.5));animation:wfPop .5s cubic-bezier(.3,1.4,.5,1) both}
 @keyframes wfPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .wf-eyebrow{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2.6px;text-transform:uppercase;color:#10E0A0;margin-bottom:6px;text-shadow:0 2px 12px rgba(0,0,0,.6)}

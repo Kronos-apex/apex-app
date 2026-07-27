@@ -201,6 +201,65 @@ const m11 = await ev(`(()=>({invokes:window.__invokes.length,txt:(document.getEl
 check('M11 si el UPDATE no cambió ninguna fila, no se promete ni se pide catch-up',
   m11.invokes === 0 && !/va a ver/.test(m11.txt) && /No se pudo activar/.test(m11.txt), JSON.stringify(m11));
 
+// ── M12 (F10): un «Sí» que NO llega al servidor no puede quemar la pregunta para siempre.
+console.log('  install(8) para F10:', await ev(INSTALL(8))); await sleep(300);
+await ev(`(()=>{window.AVI_ALLOW_CLOUD_WRITE=true;window.__patchZero=true;CMTY.profile=null;
+  localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:false,peers:0,list:[],at:Date.now()}));
+  renderWfMilestoneAsk();})()`); await sleep(250);
+await ev(`cmtyMilestoneYes(8)`); await sleep(500);
+const m12 = await ev(`(()=>{const a=JSON.parse(localStorage.getItem('ax_cmty_msask_${MYUID}')||'{}');
+  return {marca:a[8]===true,mapa:a};})()`);
+check('M12 (F10) si el «Sí» no se pudo guardar, el umbral NO queda marcado (se puede reintentar)',
+  m12.marca === false, JSON.stringify(m12));
+
+// ── M13 (F12): ignorar la tarjeta también es una respuesta. Se cuenta cada vez que se MUESTRA y a
+// la tercera se calla ese umbral — antes reaparecía en CADA entreno hasta el umbral siguiente, y
+// en las 52 semanas (el último) para siempre.
+console.log('  install(8) para F12:', await ev(INSTALL(8))); await sleep(300);
+const verVeces = async (n) => { const out=[]; for(let i=0;i<n;i++){
+  await ev(`(()=>{CMTY.profile=null;localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:false,peers:0,list:[],at:Date.now()}));renderWfMilestoneAsk();})()`);
+  await sleep(200); out.push(await ev(`(()=>((document.getElementById('wf-milestone-ask')||{}).innerHTML||'').trim().length)()`)); } return out; };
+const m13 = await verVeces(4);
+check('M13 (F12) la tarjeta se muestra 3 veces y a la cuarta se calla sola',
+  m13[0] > 0 && m13[1] > 0 && m13[2] > 0 && m13[3] === 0, JSON.stringify(m13));
+
+// ── M14 (F13): la pantalla de fin DEBE poder scrollearse a 360×640, y solo un pedido a la vez.
+await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 2, mobile: true });
+console.log('  install(4) para F13:', await ev(INSTALL(4))); await sleep(300);
+await ev(`(()=>{CMTY.profile=null;
+  localStorage.setItem('ax_cmty_probe_${MYUID}',JSON.stringify({hasProfile:true,showMilestones:false,peers:0,list:[],at:Date.now()}));
+  const wf=document.getElementById('workout-finish'); if(wf)wf.classList.add('on');
+  _wfAskShown=false; renderWfMilestoneAsk(); renderWfPushNudge();
+  if(typeof renderWfCmtyShare==='function')renderWfCmtyShare();})()`); await sleep(500);
+const m14 = await ev(`(()=>{const inner=document.querySelector('#workout-finish .wf-inner');
+  const maxScroll=inner?(inner.scrollHeight-inner.clientHeight):-1;
+  const pedidos=['wf-milestone-ask','wf-cmty-share','wf-push-nudge'].filter(id=>{const e=document.getElementById(id);return e&&e.innerHTML.trim().length>0;});
+  inner.scrollTop=0;
+  const tr=document.querySelector('#workout-finish .wf-trophy').getBoundingClientRect();
+  const ti=document.getElementById('wf-title').getBoundingClientRect();
+  return {maxScroll:maxScroll,pedidos:pedidos,trofeo:Math.round(tr.top),titulo:Math.round(ti.top)};})()`);
+check('M14 (F13) la pantalla de fin scrollea y el trofeo/título quedan alcanzables a 360×640',
+  m14.maxScroll > 0 && m14.trofeo >= 0 && m14.titulo >= 0, JSON.stringify(m14));
+check('M14-bis (F13) solo UN pedido por cierre (el hito manda; push y compartir ceden)',
+  m14.pedidos.length === 1 && m14.pedidos[0] === 'wf-milestone-ask', JSON.stringify(m14.pedidos));
+// M15 (F13, hallazgo de la captura): la píldora «Instalar app» NO puede taparle el botón de
+// compartir en el cierre. Hit-test REAL, y primero se comprueba que el banner EXISTE (si no, el
+// check pasaría en vacío — el hueco que el §P3 señala en CM17/N11).
+const m15 = await ev(`(()=>{const b=document.getElementById('install-banner');
+  if(b){b.classList.remove('hide');b.style.display='flex';}
+  const btn=document.querySelector('#workout-finish .wf-share');
+  if(!b||!btn)return {err:'falta elemento',hayBanner:!!b,hayBtn:!!btn};
+  const r=btn.getBoundingClientRect(); const rb=b.getBoundingClientRect();
+  const vis=getComputedStyle(b).display!=='none';
+  const hit=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+  return {hayBanner:true,bannerVisible:vis,hitEsBoton:!!(hit&&(hit===btn||btn.contains(hit))),
+          btn:[Math.round(r.top),Math.round(r.bottom)],banner:[Math.round(rb.top),Math.round(rb.bottom)]};})()`);
+check('M15 (F13) el banner «Instalar app» no tapa «Compartir mi entreno» en el cierre',
+  m15.hayBanner === true && m15.bannerVisible === false && m15.hitEsBoton === true, JSON.stringify(m15));
+
+await shot('milestone-finish-360');
+await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
 console.log('\n──── RESULTADOS «LOGROS EN SU MOMENTO» (A4, adopción) ────');

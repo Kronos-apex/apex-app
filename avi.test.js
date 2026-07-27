@@ -61,6 +61,7 @@ const {
   communityInviteMsg,
   highestStreakMilestone,
   milestoneAskEligible,
+  MILESTONE_ASK_MAX_SHOWS,
   STREAK_MILESTONES,
   communityMilestoneText,
   communityCommentText,
@@ -1768,6 +1769,23 @@ test('highestStreakMilestone: el umbral que YA ostenta, no el siguiente', () => 
   assert.strictEqual(highestStreakMilestone('cuatro'), null);
   // los umbrales son los que decidió el PO; si cambian aquí, cambian en la edge
   assert.deepStrictEqual(STREAK_MILESTONES, [2, 4, 8, 12, 24, 52]);
+});
+
+test('milestoneAskEligible: ignorar la tarjeta tres veces también es un «no» (F12)', () => {
+  const prof = { show_milestones: false };
+  assert.strictEqual(milestoneAskEligible(prof, 4, {}), 4);
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: 1 }), 4);
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: 2 }), 4);
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: MILESTONE_ASK_MAX_SHOWS }), null);
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: 9 }), null);
+  // haber respondido (true) sigue callando ESE umbral para siempre
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: true }), null);
+  // …pero el SIGUIENTE umbral vuelve a preguntar (el silencio es por hito, no global)
+  assert.strictEqual(milestoneAskEligible(prof, 8, { 4: true, 8: 1 }), 8);
+  assert.strictEqual(milestoneAskEligible(prof, 8, { 4: 9 }), 8);
+  // basura en el mapa no calla la pregunta por accidente
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: 'x' }), 4);
+  assert.strictEqual(milestoneAskEligible(prof, 4, { 4: null }), 4);
 });
 
 test('milestoneAskEligible: se pregunta una vez por umbral, nunca a quien ya dijo que sí', () => {

@@ -1697,9 +1697,15 @@ function showWorkoutFinish(routine,stats){
   // v313 (estudio, mejora 2): datos para la imagen compartible del cierre.
   _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
-  renderWfPushNudge(); // v325: ofrecer activar notificaciones en el momento de máximo compromiso
-  _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro (opt-in)
-  if(typeof renderWfMilestoneAsk==='function')renderWfMilestoneAsk(); // A4: pedir el opt-in de logros EN el hito
+  // F13 — TURNOS: la pantalla de fin llegó a apilar TRES pedidos (logro + compartir + activar
+  // notificaciones) y eso empujaba el trofeo y «¡Lo lograste!» fuera de la pantalla. Se muestra UNO
+  // por cierre, por rareza y valor: el hito manda (solo cae en 2/4/8/12/24/52 semanas), luego el
+  // push (que ya trae su propio silencio de 7 días) y por último compartir, que se puede hacer
+  // después desde el muro. Mismo criterio que A2 cediéndole el turno a «Comparte AVI» en «Hoy».
+  _wfAskOwner=null;
+  if(typeof renderWfMilestoneAsk==='function')renderWfMilestoneAsk(); // A4: el opt-in de logros EN el hito
+  renderWfPushNudge(); // v325: activar notificaciones en el momento de máximo compromiso
+  _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro
   if(typeof cmtyOnWorkoutFinished==='function')cmtyOnWorkoutFinished(); // C3: refresca el snapshot de comunidad (debounced) al terminar
   document.getElementById('workout-finish').classList.add('on');
   _wfShownFor=key; // la pantalla YA está visible — ahora sí vale el anti re-pop del día
@@ -1714,12 +1720,17 @@ function showWorkoutFinish(routine,stats){
 function renderWfPushNudge(){
   const el=document.getElementById('wf-push-nudge'); if(!el) return;
   el.innerHTML='';
+  // F13: si el turno era MÍO se suelta antes de recalcular (idempotente: repintarme no me
+  // bloquea a mí mismo); si lo tiene otro, cedo.
+  if(_wfAskOwner==='push') _wfAskOwner=null;
+  if(_wfAskOwner) return;
   const cid=_pushCtx&&_pushCtx.clientId;
   if(!cid||cid==='_coach'||typeof Notification==='undefined'||!('PushManager' in window)) return;
   if(Notification.permission!=='default') return;
   let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze_'+cid)||'0',10)||0; }catch(_e){}
   if(Date.now()-snooze<7*86400000) return;
   const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
+  _wfAskOwner='push';
   el.innerHTML=`<div class="wf-push">
     <div class="wf-push-txt"><b>${bell} No te pierdas tu próximo entreno</b>Te aviso en tus días, con tips de hidratación y recuperación. Sin spam — cuando quieras lo apagas.</div>
     <div class="wf-push-btns"><button type="button" class="wf-push-on" onclick="aviAskPush().then(renderWfPushNudge)">Activar recordatorios</button><button type="button" class="wf-push-later" onclick="aviSnoozePush();renderWfPushNudge()">Ahora no</button></div>
@@ -1731,9 +1742,17 @@ function renderWfPushNudge(){
 // comunidad (CMTY.profile). Se comparte nombre + duración + nº de ejercicios + nota opcional (≤140);
 // JAMÁS kilos (el mapeador puro communityWorkoutPayload los descarta, el trigger los rechaza).
 let _wfCmtyRoutineName='';
+// F13: QUIÉN tiene el turno en esta pantalla de fin ('milestone'|'push'|'share'|null). No es un
+// booleano a propósito: la tarjeta que ya lo tiene debe poder repintarse a sí misma (el push se
+// re-renderiza tras conceder el permiso), y solo cede cuando deja de aplicar.
+let _wfAskOwner=null;
 function renderWfCmtyShare(){
   const el=document.getElementById('wf-cmty-share'); if(!el) return;
   el.innerHTML='';
+  // F13: si el turno era MÍO se suelta antes de recalcular (idempotente: repintarme no me
+  // bloquea a mí mismo); si lo tiene otro, cedo.
+  if(_wfAskOwner==='share') _wfAskOwner=null;
+  if(_wfAskOwner) return;
   // Solo miembros de comunidad, y solo si la sesión se puede compartir (finalizada, con nombre).
   // F2: `_cmtyMe()` en vez de `CMTY.profile` — este bloque sufría el mismo mal que A4 y no salía
   // nunca en la sesión típica (hay que haber abierto la pestaña Comunidad en ESA carga).
@@ -1743,6 +1762,7 @@ function renderWfCmtyShare(){
   if(!pl) return;
   const dur=pl.duration_min!=null?(' · '+pl.duration_min+' min'):'';
   const resumen=esc(pl.name)+dur+' · '+pl.exercises_count+' ejercicio'+(pl.exercises_count===1?'':'s');
+  _wfAskOwner='share';
   el.innerHTML='<div class="wf-cshare">' +
     '<div class="wf-cshare-h">Compártelo con tu gente</div>' +
     '<div class="wf-cshare-sum">'+resumen+'</div>' +

@@ -1981,6 +1981,7 @@ if(typeof window !== 'undefined'){
   window.renderWfMilestoneAsk = renderWfMilestoneAsk; window.cmtyMilestoneYes = cmtyMilestoneYes;
   window.cmtyMilestoneNo = cmtyMilestoneNo; window._cmtyLocalStreak = _cmtyLocalStreak;
   window._cmtyAskedRead = _cmtyAskedRead; window._cmtyAskedMark = _cmtyAskedMark;
+  window._cmtyAskedBump = _cmtyAskedBump;
   // P0 — la llama `logout()` (app-2). Va por window a propósito: app-2 se parsea antes que este
   // archivo, así que el guard `typeof` de allá necesita el símbolo colgado, no una const suelta.
   window.cmtyResetIdentity = cmtyResetIdentity; window._cmtyBlank = _cmtyBlank;
@@ -2127,6 +2128,18 @@ function renderCommunityNudge(client){
 function _cmtyAskKey(){ return 'ax_cmty_msask_' + (CMTY.uid || CUR.clientId || ''); }
 function _cmtyAskedRead(){ try{ return JSON.parse(localStorage.getItem(_cmtyAskKey()) || '{}') || {}; }catch(e){ return {}; } }
 function _cmtyAskedMark(m){ try{ const a = _cmtyAskedRead(); a[m] = true; localStorage.setItem(_cmtyAskKey(), JSON.stringify(a)); }catch(e){} }
+// F12 — IGNORAR también es una respuesta. Antes solo «Sí»/«No» marcaban: cerrar la pantalla dejaba
+// la tarjeta reapareciendo en CADA entreno hasta el umbral siguiente, y en las 52 semanas, para
+// siempre. Se cuenta cuántas veces se ha MOSTRADO; a la tercera se calla ese umbral (R1.6).
+// `true` (ya respondió) nunca se degrada a número.
+function _cmtyAskedBump(m){
+  try{
+    const a = _cmtyAskedRead();
+    if(a[m] === true) return;
+    a[m] = (Number(a[m]) || 0) + 1;
+    localStorage.setItem(_cmtyAskKey(), JSON.stringify(a));
+  }catch(e){}
+}
 
 // Racha de SEMANAS del asesorado, con la misma función pura que usa todo lo demás. El servidor
 // recalcula la suya al publicar (es él quien decide el número real); esto solo decide si preguntar.
@@ -2145,6 +2158,8 @@ function _cmtyLocalStreak(){
 function renderWfMilestoneAsk(){
   const el = document.getElementById('wf-milestone-ask'); if(!el) return;
   el.innerHTML = '';
+  // F13: mismo contrato de turnos que las otras dos tarjetas del cierre (idempotente).
+  try{ if(_wfAskOwner === 'milestone') _wfAskOwner = null; if(_wfAskOwner) return; }catch(e){}
   if(typeof CMTY === 'undefined' || typeof milestoneAskEligible !== 'function') return;
   // F2: el perfil se resuelve con `_cmtyMe()` (perfil cargado → sonda → caché). Con `CMTY.profile`
   // a secas esta tarjeta NO se pintaba en la sesión típica, que es exactamente la que A4 buscaba.
@@ -2152,6 +2167,8 @@ function renderWfMilestoneAsk(){
   if(m === null) return;
   const t = (typeof communityMilestoneText === 'function') ? communityMilestoneText('streak', { weeks: m }, true) : null;
   const titulo = t ? (t.text + ' ' + t.emoji) : (m + ' semanas seguidas 🔥');
+  _cmtyAskedBump(m);   // F12: se cuenta cada vez que se MUESTRA, no solo cuando se responde
+  try{ _wfAskOwner = 'milestone'; }catch(e){}  // F13: turno tomado — push y compartir ceden en este cierre
   el.innerHTML = '<div class="wf-push">' +
     '<div class="wf-push-txt"><b>' + esc(titulo) + '</b>' +
       'Eso es constancia de verdad. ¿Quieres que tu gente de la comunidad lo vea? ' +
@@ -2168,13 +2185,16 @@ function renderWfMilestoneAsk(){
 // propio historial — el cliente no manda el número, solo pide la revisión.
 async function cmtyMilestoneYes(m){
   const el = document.getElementById('wf-milestone-ask');
-  _cmtyAskedMark(m);
+  // F10: la marca va DESPUÉS de que el servidor confirme. Marcarla antes quemaba la pregunta para
+  // siempre si el «Sí» no llegaba (sin señal, sesión vencida): el usuario dijo que sí y su logro
+  // no se publicaba nunca, sin manera de reintentar.
   if(!_cmtyMe()) return;
   // F11: `_cmtyPatch` ahora responde si el servidor cambió una fila DE VERDAD. Antes se leía
   // `CMTY.profile.show_milestones`, que en la pantalla de fin es null (no hay perfil cargado).
   const ok = await _cmtyPatch({ show_milestones: true });
   if(!ok){ if(el) el.innerHTML = '<div class="wf-push"><div class="wf-push-txt"><b>No se pudo activar</b>' +
-    'Inténtalo desde la pestaña Comunidad cuando tengas señal.</div></div>'; return; }
+    'Inténtalo desde la pestaña Comunidad cuando tengas señal.</div></div>'; return; } // F10: sin marcar → se puede reintentar
+  _cmtyAskedMark(m);
   if(!_cmtySealed()){
     try{ const cli = _cmtyClient(); if(cli) await cli.functions.invoke('refresh_snapshot', { body: { catchup: true } }); }
     catch(e){ _cw()('cmty catchup:', e && e.message); }
