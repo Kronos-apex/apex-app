@@ -334,7 +334,7 @@ const _SROOM_IC={'📅':'calendar','🏆':'trophy','🔁':'repeat','📊':'chart
 function _sroomIc(e){const n=_SROOM_IC[e];return (n&&typeof aviIcon==='function')?aviIcon(n,18):e;}
 
 function renderClientProfile(client){
-  renderCoachUpsell(client);
+  if(!_dia1) renderCoachUpsell(client);
   renderGoogleLink();
   // Current weight from bodyweight log (most recent entry)
   const bwEntries=DB.bodyweight[client.id]||[];
@@ -567,6 +567,49 @@ function renderTodayHead(client){
 // va PRIMERO (arriba del pliegue) y agua/rápidos/recordatorios/upsell después; en descanso
 // o sin rutinas se mantiene el orden clásico. appendChild re-ancla en secuencia (idempotente,
 // no duplica). Corre en cada render de Hoy — nunca con timer vivo (ese render se salta antes).
+// ══════════ PORTADA DEL DÍA 1 — variante C del estudio de interfaz (PO, 2026-07-26) ══════════
+// 8 de las 23 personas del gimnasio tienen rutina asignada y NUNCA completaron un entreno. El día 1
+// «Hoy» les pedía primero autoevaluarse (ánimo) y dejaba bajo el pliegue lo único que importa: qué
+// entrenan hoy y cómo empiezan. Esta portada ocupa la primera pantalla y solo tiene una salida.
+// Se apaga SOLA en cuanto existe una sesión, aunque sea parcial (`firstSessionMode` — clase v367).
+function renderFirstRun(client, routine){
+  const el=document.getElementById('cn-firstrun'); if(!el) return false;
+  el.innerHTML='';
+  if(!client||!routine) return false;
+  if(typeof firstSessionMode!=='function') return false;
+  const sess=(typeof DB!=='undefined'&&DB.history&&DB.history[client.id])||[];
+  if(!firstSessionMode(sess)) return false;
+  const nombre=((client.name||'').trim().split(' ')[0])||'';
+  const exN=(routine.exercises||[]).length;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(routine):null;
+  const chips=[exN+' ejercicio'+(exN===1?'':'s')]
+    .concat(mins?['~'+mins+' min']:[])   // sin estimación fiable NO se inventa un número
+    .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
+  // «Mi Coach» es el valor POR DEFECTO de `getCoachName` (app-2): usarlo aquí sonaría a plantilla
+  // sin rellenar («Mi Coach te armó tu plan»). Sin nombre real, la frase se dice sin nombre.
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te armó tu plan. '):'';  // sin nombre, no se repite el título
+  el.innerHTML='<div class="fr-wrap">'+
+    '<div class="fr-emoji" aria-hidden="true">💪</div>'+
+    '<h2 class="fr-h">'+(nombre?esc(nombre)+', tu plan está listo':'Tu plan está listo')+'</h2>'+
+    '<p class="fr-sub">'+quien+'Hoy empiezas con el primero — tómate tu tiempo, lo importante es terminarlo.</p>'+
+    '<div class="fr-card">'+
+      '<div class="fr-eyebrow">'+(typeof aviIcon==='function'?aviIcon('dumbbell',12):'⚡')+' TU PRIMER ENTRENO</div>'+
+      '<div class="fr-name">'+esc(routine.name||'Entrenamiento')+'</div>'+
+      '<div class="fr-chips">'+chips+'</div>'+
+    '</div>'+
+    '<button type="button" class="fr-cta" onclick="firstRunGo()">Empezar mi primer entreno →</button>'+
+    '<div class="fr-foot">Lo demás aparece cuando termines este.</div>'+
+  '</div>';
+  return true;
+}
+// El entreno YA está montado debajo (el guiado embebido ES el cuerpo de «Hoy»): el botón no
+// "arranca" nada, lleva hasta él. Así no se toca el motor del guiado, que es zona caliente.
+function firstRunGo(){
+  const b=document.getElementById('cn-today-body');
+  if(b&&b.scrollIntoView) b.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function _todayOrder(training){
   const panel=document.getElementById('cn-today'); if(!panel)return;
   // v352: la tarjeta del Coach Inteligente (#cn-coach-card) va DESPUÉS del entreno en día de
@@ -576,9 +619,11 @@ function _todayOrder(training){
   // guiado bajo el pliegue) y en descanso/sin rutina arriba, junto a las tarjetas de coaching.
   // A2 (adopción, 2026-07-25): #cn-cmty-nudge va al FINAL, junto a #cn-share — es una invitación,
   // no una tarea del día; jamás debe empujar el entreno bajo el pliegue (regla R1.6).
+  // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
+  // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
   const ids=training
-    ? ['cn-today-head','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
-    : ['cn-today-head','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-cmty-nudge','cn-share'];
+    ? ['cn-today-head','cn-firstrun','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
+    : ['cn-today-head','cn-firstrun','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-cmty-nudge','cn-share'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -623,20 +668,31 @@ function renderClientToday(client, overrideRoutine){
   // 🔔 Recordatorio de notificaciones (2026-07-11): antes se pintaba UNA vez (4s tras login);
   // ahora en cada render de Hoy, para que persista si el permiso sigue en 'default'. La propia
   // renderPushNudge decide (permiso/snooze/_pushCtx) — barato y sin efectos si no aplica.
-  if(typeof renderPushNudge==='function')renderPushNudge();
+  // DÍA 1 (variante C): quien no ha empezado NI UN entreno ve una portada y nada más. Las tarjetas
+  // secundarias se apagan enteras — no compiten con lo único que tiene que pasar hoy. En cuanto
+  // exista una sesión (aunque sea parcial) esto es false y «Hoy» vuelve a ser lo de siempre.
+  const _dia1 = (typeof firstSessionMode==='function')
+    && firstSessionMode((typeof DB!=='undefined'&&DB.history&&DB.history[client.id])||[]);
+  // OJO: apagar con `display:none` obliga a ENCENDER de vuelta. Sin esta restauración, al terminar
+  // el primer entreno la portada se apaga pero hábitos/coach/novedades quedaban invisibles el resto
+  // de la sesión (lo cazó `_verify-firstrun` D5 antes de salir de aquí).
+  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
+  _DIA1_OFF.forEach(id=>{ const e=document.getElementById(id); if(!e) return;
+    if(_dia1){ e.innerHTML=''; e.style.display='none'; } else if(e.style.display==='none'){ e.style.display=''; } });
+  if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
   // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
   // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.
   if(typeof ensureClientPush==='function')ensureClientPush();
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
-  if(typeof renderHabitsCard==='function')renderHabitsCard(client);
+  if(!_dia1 && typeof renderHabitsCard==='function')renderHabitsCard(client);
   // 🧠 Coach Inteligente (v352): 1 insight priorizado (récord/racha/inactividad/…). Antes de los
   // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
-  if(typeof renderCoachCard==='function')renderCoachCard(client);
+  if(!_dia1 && typeof renderCoachCard==='function')renderCoachCard(client);
   // 🔁 Día que se corrió (v368, idea Camilo 2026-07-17): rutina de un día ya pasado esta
   // semana sin entrenar → tarjeta para recuperarla hoy o moverla en el plan. Recibe el
   // override para callarse cuando el asesorado ya está enfocado en un entreno concreto.
-  if(typeof renderMissedDayCard==='function')renderMissedDayCard(client, overrideRoutine);
+  if(!_dia1 && typeof renderMissedDayCard==='function')renderMissedDayCard(client, overrideRoutine);
   // 💚 Comparte AVI (v370): banner ocasional de crecimiento orgánico, solo tras engagement real.
   // 🌐 Comunidad — la puerta (A2, adopción 2026-07-25): invita a activar el perfil a quien nunca
   // lo hizo Y ya tiene gente a quien ver. Va ANTES del banner de compartir a propósito: si esta
@@ -645,11 +701,11 @@ function renderClientToday(client, overrideRoutine){
   // del cuerpo de «Hoy» y leen datos de localStorage que pueden venir corruptos; un throw aquí
   // dejaba la pantalla sin entreno. El fallo se traga a propósito (la tarjeta simplemente no sale).
   try{
-    if(typeof renderCommunityNudge==='function')renderCommunityNudge(client);
-    if(typeof renderShareBanner==='function')renderShareBanner(client);
+    if(!_dia1 && typeof renderCommunityNudge==='function')renderCommunityNudge(client);
+    if(!_dia1 && typeof renderShareBanner==='function')renderShareBanner(client);
   }catch(_e){ if(typeof warn==='function')warn('tarjetas de comunidad en Hoy:', _e&&_e.message); }
   // ✨ Novedades (v302): una vez por tanda, descartable.
-  if(typeof renderNewsCard==='function')renderNewsCard();
+  if(!_dia1 && typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
   const routines=client.routines||[];
   if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
@@ -700,6 +756,8 @@ function renderClientToday(client, overrideRoutine){
   // si no puede embeber (throw por SW/index desincronizado), tarjeta de error con
   // Reintentar — NUNCA pantalla en blanco (blindaje F4, adaptado).
   CUR.activeRoutine=todayR;
+  // Portada del día 1 (variante C): se pinta ANTES del entreno y decide ella sola si aplica.
+  if(typeof renderFirstRun==='function') renderFirstRun(client, todayR);
   _todayOrder(true); // v313: el entreno arriba del pliegue
   con.innerHTML='';
   try{ if(typeof openGuidedEmbedded==='function' && openGuidedEmbedded(todayR)) return; }

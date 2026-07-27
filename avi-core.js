@@ -2488,6 +2488,37 @@ function communityProbeStale(probe, now, ttlHours) {
   return (+new Date(now == null ? Date.now() : now)) - at >= ttl;
 }
 
+// ══════════ PRIMERA SESIÓN (estudio de interfaz, variante C elegida por el PO 2026-07-26) ══════════
+// Dato que lo motiva: de las 23 personas del gimnasio, **8 tienen rutina asignada y NUNCA
+// completaron un entreno**. Abrieron la app, vieron el plan y no terminaron ni uno. El día 1, «Hoy»
+// muestra primero lo que sirve a quien YA entrena (ánimo, hábitos, racha, comunidad) y deja bajo el
+// pliegue lo único que le importa a quien nunca entrenó: qué hace hoy y cómo empieza.
+//
+// PURA. `true` SOLO si no hay NI UNA sesión registrada — ni siquiera parcial. Esa dureza es
+// deliberada y es el candado anti-v367: el auto-guardado de la 1ª serie ya deja una sesión sin
+// `finishedAt`, así que en cuanto alguien EMPIEZA su primer entreno esto devuelve false y la
+// portada desaparece. Jamás puede taparle el entreno a alguien que está entrenando.
+function firstSessionMode(sessions) {
+  if (!Array.isArray(sessions)) return false;   // dato ilegible → conducta de siempre
+  return sessions.length === 0;
+}
+
+// Estimación honesta de cuánto dura una rutina, en minutos. PURA. `null` si no se puede calcular
+// (sin ejercicios, sin series legibles) → la UI omite el dato en vez de inventar un número: decirle
+// «~35 min» a alguien que va a tardar 70 quema la confianza en el primer día, que es justo lo que
+// se está intentando ganar. Series × (trabajo + descanso), con el descanso real de la rutina.
+const SET_WORK_SECONDS = 45;   // una serie de fuerza típica, de pie a última repetición
+function estimateWorkoutMinutes(routine) {
+  const exs = (routine && routine.exercises) || [];
+  if (!exs.length) return null;
+  const rest = Number(routine.restSec) > 0 ? Number(routine.restSec) : 90;
+  let sets = 0;
+  exs.forEach(e => { const n = Number(e && e.sets); if (isFinite(n) && n > 0) sets += Math.min(n, 20); });
+  if (!sets) return null;
+  const mins = Math.round((sets * (SET_WORK_SECONDS + rest)) / 60);
+  return mins > 0 ? mins : null;
+}
+
 // F2 (2026-07-26) — ¿QUIÉN SOY en la comunidad, sin haber abierto la pestaña?
 // A4 preguntaba por los logros solo si `CMTY.profile` estaba cargado, y eso exige haber entrado a
 // Comunidad en ESA MISMA carga (`renderCommunity` tiene un solo llamador). En la sesión típica
@@ -3327,6 +3358,8 @@ if (typeof module !== 'undefined' && module.exports) {
     communityNudgeEligible,
     communityProbeStale,
     communityMe,
+    firstSessionMode,
+    estimateWorkoutMinutes,
     CMTY_NUDGE_MIN_SESSIONS,
     CMTY_NUDGE_SNOOZE_DAYS,
     CMTY_NUDGE_PROBE_TTL_H,

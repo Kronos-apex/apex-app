@@ -55,6 +55,8 @@ const {
   communityNudgeEligible,
   communityProbeStale,
   communityMe,
+  firstSessionMode,
+  estimateWorkoutMinutes,
   CMTY_NUDGE_MIN_SESSIONS,
   communityGymAdoption,
   communityGymHint,
@@ -1646,6 +1648,35 @@ test('communityProbeStale: pega a la red 1×/día, y ante una fecha ilegible pre
   assert.strictEqual(communityProbeStale({ at: null }, now), true);
   assert.strictEqual(communityProbeStale({ at: '' }, now), true);
   assert.strictEqual(communityProbeStale({ at: 'ayer por la tarde' }, now), true);
+});
+
+test('firstSessionMode: la portada del día 1 JAMÁS tapa a quien ya empezó (clase v367)', () => {
+  assert.strictEqual(firstSessionMode([]), true);
+  // una sesión PARCIAL (sin finishedAt) ya significa que empezó → se apaga la portada
+  assert.strictEqual(firstSessionMode([{ date: '2026-07-26' }]), false);
+  assert.strictEqual(firstSessionMode([{ date: '2026-07-26', finishedAt: '2026-07-26' }]), false);
+  // dato ilegible → conducta de siempre, nunca portada
+  assert.strictEqual(firstSessionMode(null), false);
+  assert.strictEqual(firstSessionMode(undefined), false);
+  assert.strictEqual(firstSessionMode('nada'), false);
+  assert.strictEqual(firstSessionMode({ length: 0 }), false);
+});
+
+test('estimateWorkoutMinutes: estima con el descanso real, o calla si no puede', () => {
+  // 12 series × (45s de trabajo + 90s de descanso) = 27 min
+  const r = { restSec: 90, exercises: [{ sets: 3 }, { sets: 3 }, { sets: 3 }, { sets: 3 }] };
+  assert.strictEqual(estimateWorkoutMinutes(r), 27);
+  // el descanso de la rutina manda (60s → 21 min)
+  assert.strictEqual(estimateWorkoutMinutes({ restSec: 60, exercises: [{ sets: 3 }, { sets: 3 }, { sets: 3 }, { sets: 3 }] }), 21);
+  // sin descanso declarado usa 90s
+  assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 4 }] }), 9);
+  // NUNCA inventa: sin ejercicios, sin series o basura → null (la UI omite el chip)
+  assert.strictEqual(estimateWorkoutMinutes({ exercises: [] }), null);
+  assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 0 }] }), null);
+  assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 'x' }] }), null);
+  assert.strictEqual(estimateWorkoutMinutes(null), null);
+  // una serie absurda (999) no dispara una promesa de 20 horas
+  assert.ok(estimateWorkoutMinutes({ restSec: 90, exercises: [{ sets: 999 }] }) <= 45);
 });
 
 test('communityMe: sé quién soy sin haber abierto la pestaña (F2), o no pregunto', () => {

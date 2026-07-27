@@ -1,4 +1,5 @@
-// _shot-day1.mjs — EL DÍA 1 DE UN ASESORADO NUEVO (insumo del estudio de interfaz, 2026-07-26).
+// _verify-firstrun.mjs — LA PORTADA DEL DÍA 1 (variante C del estudio, 2026-07-26).
+// Nació como harness de CAPTURA para el estudio; ahora además AFIRMA (exit 1).
 // Nace de un dato de producción, no de una idea: de los 23 del gimnasio, **8 tienen rutina
 // asignada y NUNCA completaron un entreno**. No abandonan a la semana: no llegan a terminar el
 // primero. Este harness reproduce EXACTAMENTE ese estado (rutinas sí, historial cero) y captura
@@ -85,14 +86,70 @@ await ev(`(()=>{ if(typeof startRoutineNow==='function'){ const c=DB.clients[0];
 await shot('3-entreno', 'light', 0);
 await shot('3-entreno', 'light', 1);
 
-const estado = await ev(`(()=>{const gm=document.getElementById('gm-embed')||document.querySelector('.gm-wrap');
+// ══════════ ASERCIONES ══════════
+const results = [];
+const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
+
+await ev(`(()=>{const t=[...document.querySelectorAll('.cntab')].find(x=>/Hoy/.test(x.textContent)); if(t)t.click();})()`); await sleep(400);
+await ev(`(()=>{DB.history={nuevo:[]}; renderClientToday(DB.clients[0]);})()`); await sleep(700);
+
+// D1: con CERO sesiones y rutina de hoy → portada con el entreno y UNA sola salida.
+const d1 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');
+  const btn=el?el.querySelector('.fr-cta'):null; const r=btn?btn.getBoundingClientRect():null;
+  return {pintada:!!(el&&el.innerHTML.trim()), txt:el?el.innerText.replace(/\\s+/g,' ').trim():'',
+          rutina:/Full body A/.test(el?el.innerText:''), botones:el?el.querySelectorAll('button').length:-1,
+          altoBoton:r?Math.round(r.height):0};})()`);
+check('D1 con cero entrenos se pinta la portada, con la rutina de hoy y UNA sola acción',
+  d1.pintada && d1.rutina && d1.botones === 1 && d1.altoBoton >= 44,
+  JSON.stringify({ btns: d1.botones, alto: d1.altoBoton, txt: d1.txt.slice(0, 80) }));
+
+// D1-bis: la duración sale del motor puro, no de un número inventado (12 series, 90s → ~27 min).
+check('D1-bis dice cuántos ejercicios y una duración estimada honesta',
+  /4 ejercicios/.test(d1.txt) && /~27 min/.test(d1.txt), JSON.stringify({ txt: d1.txt.slice(0, 120) }));
+
+// D2: NINGUNA tarjeta secundaria compite ese día.
+const d2 = await ev(`(()=>{const ids=['cn-habits','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','cn-push-nudge'];
+  return ids.filter(id=>{const e=document.getElementById(id); return e && e.innerHTML.trim().length>0 && e.style.display!=='none';});})()`);
+check('D2 el día 1 no hay tarjetas secundarias compitiendo', Array.isArray(d2) && d2.length === 0, JSON.stringify(d2));
+
+// D3: el ánimo no aparece antes del primer entreno; el entreno SÍ está montado debajo.
+const d3 = await ev(`(()=>{const mc=document.querySelector('#cn-today-body .checkin-card');
   const body=document.getElementById('cn-today-body');
-  return {guiadoVisible:!!(gm&&gm.offsetHeight>0), largoHoy:body?body.innerText.length:0,
-          titulo:(document.querySelector('#cn-today-head')||{}).innerText||''};})()`);
-console.log('\n  estado tras arrancar:', JSON.stringify(estado));
-console.log('  jsErrors:', JSON.stringify(jsErrors));
-console.log('\n  capturas en:', OUT);
+  return {moodVisible:!!(mc&&mc.offsetHeight>0), entrenoMontado:!!(body&&body.innerHTML.trim().length>200)};})()`);
+check('D3 el ánimo no compite el día 1, y el entreno SÍ está montado debajo',
+  d3.moodVisible === false && d3.entrenoMontado === true, JSON.stringify(d3));
+
+// D4 — EL CANDADO (clase v367): una sesión PARCIAL (la que deja el auto-guardado de la 1ª serie)
+// significa que YA empezó → la portada debe desaparecer y jamás taparle el entreno.
+await ev(`(()=>{const hoy=new Date().toISOString();
+  DB.history={nuevo:[{id:'p1',sessionId:'s1',routineId:'r1',routineName:'Full body A',date:hoy,startedAt:hoy,doneSets:1,totalSets:12,exercises:[]}]};
+  renderClientToday(DB.clients[0]);})()`); await sleep(700);
+const d4 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');const body=document.getElementById('cn-today-body');
+  return {portada:!!(el&&el.innerHTML.trim()), entreno:!!(body&&body.innerHTML.trim().length>200)};})()`);
+check('D4 (v367) con una sesión PARCIAL la portada desaparece y el entreno se pinta igual',
+  d4.portada === false && d4.entreno === true, JSON.stringify(d4));
+
+// D5: las tarjetas normales vuelven en cuanto la portada se apaga.
+const d5 = await ev(`(()=>{const h=document.getElementById('cn-habits');
+  return {habitos:!!(h&&h.innerHTML.trim()&&h.style.display!=='none')};})()`);
+check('D5 apagada la portada, «Hoy» vuelve a ser el de siempre (hábitos de vuelta)', d5.habitos === true, JSON.stringify(d5));
+
+// D6: día de DESCANSO → la portada no se inventa un entreno que no existe.
+await ev(`(()=>{DB.history={nuevo:[]};
+  DB.clients[0].routines=DB.clients[0].routines.map(r=>Object.assign({},r,{day:'Miércoles'}));
+  renderClientToday(DB.clients[0]);})()`); await sleep(700);
+const d6 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');return !!(el&&el.innerHTML.trim());})()`);
+check('D6 sin entreno hoy la portada NO se pinta', d6 === false, JSON.stringify({ pintada: d6 }));
+
+check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
+
+console.log('\n──── PORTADA DEL DÍA 1 (variante C) ────');
+results.forEach(r => console.log('  ' + r));
+const failed = results.filter(r => r.startsWith('❌'));
+console.log('\njsErrors: ' + JSON.stringify(jsErrors));
+console.log(failed.length ? `\n❌ ${failed.length} FALLARON` : '\n✅ TODO OK');
+console.log('  capturas en:', OUT);
 try { ws.close(); } catch {}
 try { chrome.kill(); } catch {}
 try { srv.kill(); } catch {}
-process.exit(0);
+process.exit(failed.length ? 1 : 0);
