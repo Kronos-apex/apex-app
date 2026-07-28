@@ -468,12 +468,27 @@ const EX_LEVEL = {
   e68:'I',e69:'A',e136:'P',
   // NUEVOS 2026-07-27 (e215-e227). Se declaran EXPLÍCITAMENTE: un id que no esté aquí y no traiga
   // `level` propio cae a 'I' por el default de exLevel(), y entonces un PRINCIPIANTE no lo recibe
-  // JAMÁS. (Medido: 50 ejercicios del catálogo están hoy en esa situación sin que nadie lo
-  // decidiera — pendiente aparte.) Criterio: 'P' lo que un novato puede hacer sin técnica previa
+  // JAMÁS. Criterio: 'P' lo que un novato puede hacer sin técnica previa
   // ni riesgo (polea de pie, floor press, máquina asistida, curl en banco); 'I' lo que exige
   // banco declinado, barra libre sobre la cara o una base de fuerza (flexión con pies elevados).
   e215:'I',e216:'I',e217:'I',e218:'P',e219:'P',e220:'I',
   e222:'I',e223:'I',e225:'P',e226:'I',
+  // ── LOTE DE JUNIO (e165-e214): entró SIN nivel y llevaba un mes cayendo a 'I' por el default.
+  // No fue una decisión de nadie: 48 ejercicios de último recurso para un principiante (el gate
+  // agota lo de nivel P antes de tocar lo 'I') y, peor, con el riesgo al revés — el burpee
+  // completo y el salto al cajón quedaban ANTES que un salto de patinador, porque nadie dijo
+  // que fueran avanzados.
+  // Criterio aplicado (2026-07-28): 'P' movilidad/estiramiento completo, cardio de bajo impacto,
+  // agarre y antebrazo; 'I' lo que pide sostener una plancha, saltar con caída controlada o
+  // llevar peso sobre la cabeza; 'A' impacto alto o movimiento encadenado (thruster, man maker,
+  // burpee completo, salto al cajón, zancada con salto, salto agrupado) — mismo listón que ya
+  // tenían e75 Burpees y e74 HIIT.
+  e165:'P',e166:'P',e167:'P',e168:'P',e169:'P',e170:'P',e171:'P',e172:'P',
+  e173:'P',e174:'P',e175:'P',e176:'P',e177:'P',e178:'P',e179:'P',e180:'P',
+  e182:'P',e183:'P',e184:'I',e185:'A',e186:'I',e187:'A',e188:'I',e189:'I',
+  e190:'I',e191:'A',e192:'I',e193:'P',e194:'I',e195:'P',e196:'I',e197:'P',
+  e198:'P',e199:'P',e200:'A',e201:'I',e202:'A',e203:'I',e204:'A',e205:'I',
+  e206:'P',e207:'P',e209:'P',e210:'P',e211:'P',e212:'I',e213:'P',e214:'P',
 };
 const _LVL_RANK = { P: 0, I: 1, A: 2 };
 function exLevel(ex) {
@@ -507,6 +522,14 @@ function _genPick(lib, muscle, type, st, slotOpts) {
   const ok = e => e.muscle === muscle && !st.exclude(e)
     && !(st.excludeIds && st.excludeIds.has(e.id)) // 🚫 lista negra manual del coach (Fase C)
     && !(avoidFn && avoidFn(e))                    // 🚫 predicado a evitar en este slot (Camilo 2026-06-25)
+    // La MOVILIDAD no es un ejercicio de entreno: es calentamiento. Los slots `[músculo, null]`
+    // (core, cardio) aceptaban cualquier tipo, así que en casa/parque —donde el pool del tipo se
+    // agota— el plan salía con «Postura del Niño» o «Círculos de Brazos» ocupando el sitio de una
+    // plancha, con series y repeticiones. Medido: pasaba en 60 de 384 planes al darle nivel P a
+    // la movilidad (2026-07-28). Su lugar es el calentamiento (WARMUP_LIBRARY) y la sesión rápida
+    // «Movilidad & Estiramiento». Un slot que la pidiera por su nombre sí la recibe.
+    && !(e.type === 'Movilidad' && type !== 'Movilidad')
+
     && exLevelRank(e) <= cap // gate por nivel: el ejercicio no puede exceder el tope del cliente
     && (!st.tier || (e.tier || 'premium') === st.tier)
     && (e.env || ['gym']).includes(st.place); // entorno: el ejercicio debe ser realizable ahí

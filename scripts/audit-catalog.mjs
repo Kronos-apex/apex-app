@@ -91,16 +91,19 @@ exVidBoth.forEach(id => { if (!has(`${exDir}/${id}.mp4`) || !has(`${exDir}/${id}
 exImgHide.forEach(id => { if (!catIds.has(id)) P('MINOR', `EX_IMG_HIDE id inexistente: ${id}`); });
 
 // Nivel explícito: un ejercicio sin entrada en EX_LEVEL y sin `level:` propio cae a 'Intermedio'
-// por el default de exLevel() — y entonces un PRINCIPIANTE no lo recibe JAMÁS. No es una decisión,
-// es un descuido silencioso. Se reporta el CONTEO en una sola línea (hoy hay deuda heredada) para
-// que sea visible y no pueda crecer sin que nadie se entere.
+// por el default de exLevel(). CORRECCIÓN (2026-07-28, medida contra el generador): eso NO es
+// «un principiante no lo recibe jamás» —como decía antes esta línea—; el principiante agota
+// primero todo lo de nivel P y solo entonces echa mano de lo 'I', así que un ejercicio sin nivel
+// queda de ÚLTIMO recurso. Lo que sí se bloquea de verdad es 'A'. Sigue siendo un descuido: el
+// nivel lo decide el entrenador, no el default. Se reporta el CONTEO en una línea para que sea
+// visible y no pueda crecer sin que nadie se entere.
 const lvlIds = new Set([...html.matchAll(/(e[0-9]+):'[PIA]'/g)].map(m => m[1]));
 const sinNivel = cat.filter(e => {
   if (lvlIds.has(e.id)) return false;
   const line = lines.find(l => l.includes(`id:'${e.id}',name:`)) || '';
   return !/level:'[PIA]'/.test(line);
 });
-if (sinNivel.length) P('MAJOR', `${sinNivel.length} ejercicios sin nivel explícito → caen a 'Intermedio' por defecto y un principiante NUNCA los recibe (${sinNivel.slice(0,5).map(e=>e.id).join(', ')}…)`);
+if (sinNivel.length) P('MAJOR', `${sinNivel.length} ejercicios sin nivel explícito → caen a 'Intermedio' por defecto: un principiante solo los recibe cuando se le acaban los de su nivel (${sinNivel.slice(0,5).map(e=>e.id).join(', ')}…)`);
 
 // Cobertura de foto
 cat.forEach(e => { if (!has(`${exDir}/${e.id}.jpg`)) P('MAJOR', `${e.id} (${e.name}) sin foto`); });

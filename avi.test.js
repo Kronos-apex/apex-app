@@ -572,6 +572,23 @@ test('gate: Principiante NUNCA recibe ejercicios Avanzados (y no cuela el único
   assert.ok(!all.some(e => e.id === 'z_esp_A'), 'No debe colar Dominadas (la única opción de espalda era Avanzada)');
 });
 
+// La MOVILIDAD entró al catálogo en junio (16 ejercicios) y los slots `[músculo, null]` aceptan
+// cualquier tipo: en casa/parque, donde el pool del tipo se agota, el plan salía con «Postura del
+// Niño» ocupando el sitio de una plancha, con series y repeticiones. Medido el 2026-07-28: 60 de
+// 384 planes. Estirar no es entrenar — su sitio es el calentamiento y la sesión de movilidad.
+test('el generador NUNCA pone movilidad en un slot de entreno (estirar no es entrenar)', () => {
+  const lib = [
+    { id: 'z_core_mov', name: 'Postura del Niño', muscle: 'core', type: 'Movilidad', sets: 2, reps: 30, icon: 'x', level: 'P' },
+    { id: 'z_core_iso', name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 30, icon: 'x', level: 'I' },
+    { id: 'z_pie_P', name: 'Sentadilla Silla', muscle: 'piernas', type: 'Bodyweight', sets: 3, reps: 12, icon: 'x', level: 'P' },
+  ];
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo' }, lib, FIXED);
+  const all = routines.flatMap(r => r.exercises);
+  assert.ok(!all.some(e => e.id === 'z_core_mov'), 'La movilidad no puede ocupar un slot de entreno');
+  // Y el slot no se queda vacío por el filtro: la plancha (nivel I, respaldo del principiante) entra.
+  assert.ok(all.some(e => e.id === 'z_core_iso'), 'Al excluir la movilidad el slot de core debe cubrirse igual');
+});
+
 test('gate: Principiante PREFIERE nivel P sobre I cuando hay ambos', () => {
   const lib = [
     { id: 'z_pec_P', name: 'Flexión Inclinada', muscle: 'pecho', type: 'Bodyweight', sets: 3, reps: 12, icon: 'x', level: 'P' },
