@@ -108,6 +108,20 @@ if (sinNivel.length) P('MAJOR', `${sinNivel.length} ejercicios sin nivel explíc
 // Cobertura de foto
 cat.forEach(e => { if (!has(`${exDir}/${e.id}.jpg`)) P('MAJOR', `${e.id} (${e.name}) sin foto`); });
 
+// MAPA MUSCULAR: la ficha del ejercicio pinta el muñeco con MM_EX (exercise-muscles.js). Los 13
+// del repoblado entraron SIN entrada ahí y nadie se dio cuenta —la ficha simplemente no mostraba
+// qué músculo trabaja—, igual que el lote de junio con las fotos. Los de `muscle:'cardio'` no
+// llevan muñeco a propósito (correr no tiene músculo objetivo que pintar).
+if (has('exercise-muscles.js')) {
+  const mm = fs.readFileSync('exercise-muscles.js', 'utf8');
+  const mmIds = new Set([...mm.matchAll(/"(e\d+)":\{/g)].map(m => m[1]));
+  cat.forEach(e => {
+    const line = catLines.find(l => l.includes(`id:'${e.id}',name:`)) || '';
+    if (/muscle:'cardio'/.test(line) || mmIds.has(e.id)) return;
+    P('MAJOR', `${e.id} (${e.name}) sin mapa muscular en MM_EX → la ficha no dice qué músculo trabaja`);
+  });
+}
+
 // FOTO QUE NO SE VE: exImgSrc solo resuelve por id si el id está en EX_IMG_IDS (que se arma con
 // los valores de EX_IMG_NAME + las listas sueltas de abajo). Tener el archivo NO basta — ya pasó
 // con e97, con e126 y con los 50 del lote de junio, que estuvieron subidos sin mostrarse. Aquí
