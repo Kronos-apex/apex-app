@@ -3,13 +3,15 @@ import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { EMAIL, PASS } from './_creds.mjs';
+import { afirmador, afirmaPantalla, salir } from './_afirma.mjs';
+const A = afirmador('guiado embebido');
 const srv = spawn('python',['-m','http.server','8777'],{cwd:'C:/Users/KRONOS/Desktop/AVI/apex-app'});
 await new Promise(r=>setTimeout(r,1200));
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--disable-gpu','--remote-debugging-port=9277','--user-data-dir='+process.env.TEMP+'/cdp-shotf4-'+Date.now(),'--no-first-run','--window-size=390,844','http://localhost:8777/']);
 let p; for(let i=0;i<120;i++){try{const t=await(await fetch('http://localhost:9277/json/list')).json();p=t.find(x=>x.type==='page'&&x.url.includes('localhost'));if(p?.webSocketDebuggerUrl)break;}catch{}await new Promise(r=>setTimeout(r,500));}
 const ws=new WebSocket(p.webSocketDebuggerUrl,{maxPayload:200*1024*1024});
 let id=1;const pend=new Map();
-ws.on('message',d=>{const m=JSON.parse(d);if(m.id&&pend.has(m.id)){pend.get(m.id)(m.result);pend.delete(m.id);}});
+ws.on('message',d=>{const m=JSON.parse(d);A.verError(m);if(m.id&&pend.has(m.id)){pend.get(m.id)(m.result);pend.delete(m.id);}});
 const send=(method,params={})=>new Promise(res=>{const i=id++;pend.set(i,res);ws.send(JSON.stringify({id:i,method,params}));});
 const ev=async e=>{const r=await send('Runtime.evaluate',{expression:e,returnByValue:true,awaitPromise:true});return r?.result?.value;};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -38,9 +40,9 @@ await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}
   renderClientToday(c);})()`);
 await sleep(1200);
 const shot=async n=>{const r=await send('Page.captureScreenshot',{format:'png'});writeFileSync(process.env.TEMP.replace(/\\/g,'/')+'/'+n+'.png',Buffer.from(r.data,'base64'));console.log('shot '+n);};
+await afirmaPantalla(ev, A, { nombre: 'guiado', sel: '#gm-body,#cn-today', minTxt: 60 });
 await shot('f4-guiado');
 await ev(`(()=>{const b=[...document.querySelectorAll('#gm-body button')].find(x=>/Mostrar/.test(x.textContent));if(b)b.click();})()`);
 await sleep(400);
 await shot('f4-guiado-warm');
-console.log('OK');
-chrome.kill();srv.kill();
+salir(A, { chrome, srv });

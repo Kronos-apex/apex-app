@@ -4,6 +4,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 const PORT = 8785, APP = `http://localhost:${PORT}/`;
 import { EMAIL, PASS } from './_creds.mjs';
+import { afirmador, salir } from './_afirma.mjs';
+const A = afirmador('habitaciones del asesorado');
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PROFILE = process.env.TEMP + '/cdp-shots-' + Date.now();
 const OUT = process.env.ROOMS_OUT || (process.env.TEMP || '.').replace(/\\/g, '/') + '/avi-rooms-shots';
@@ -16,7 +18,7 @@ async function findPage() { for (let i = 0; i < 40; i++) { try { const r = await
 const page = await findPage();
 const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 1e8 });
 let id = 1; const pend = new Map();
-ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
+ws.on('message', d => { const m = JSON.parse(d); A.verError(m); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
 const send = (method, params = {}) => new Promise((res, rej) => { const i = id++; pend.set(i, { res, rej }); ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async e => { try { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; } catch (x) { return 'ERR:' + x.message; } };
 const waitFor = async (e, ms = 15000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await ev(e)) return true; } catch {} await sleep(300); } return false; };
@@ -76,6 +78,7 @@ const cap = async (name, openExpr) => {
   await ev(`document.fonts.ready`);              // asegurar fuentes pintadas
   await ev(`void document.body.offsetHeight`);   // forzar reflow
   await sleep(700);
+  A.ok(open, name + ': la habitacion abre (.sroom.on)', open);
   await shot(name + (open ? '' : '_FAIL'));
   await ev(`document.querySelectorAll('.sroom.on').forEach(r=>r.classList.remove('on'));AVINAV.layers=0;`);
   await sleep(250);
@@ -99,5 +102,5 @@ for (const theme of ['dark', 'light']) {
 }
 await ev(`setTheme('dark')`); await sleep(200);
 
-ws.close(); try { chrome.kill(); } catch {} try { srv.kill(); } catch {}
-process.exit(0);
+ws.close();
+salir(A, { chrome, srv, out: OUT });

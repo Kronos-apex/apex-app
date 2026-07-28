@@ -4379,6 +4379,29 @@ test('stripFixtureSessions: entrada no-array → array vacío sin lanzar', () =>
 // CRUDO en el atributo (se evalúa en scope global donde no existe) → ReferenceError
 // silencioso ANTES de que el ?? actúe. Fue el bug del botón "Aplicar →" de plantillas.
 // Este test escanea los módulos de la app y prohíbe la CLASE entera.
+// ── F5 (2026-07-28): NINGÚN harness de captura puede terminar siempre en éxito ──
+// Durante v403 la pestaña «Perfil» estuvo ROTA en producción un día entero mientras su harness
+// seguía generando PNG y saliendo con código 0: capturaba una pantalla muerta. Diez harnesses
+// `_shot*` estaban igual. La regla adoptada es que un harness que abre una pantalla tiene que
+// EXIGIR que arranque, y los dientes viven en `scripts/e2e/_afirma.mjs`.
+// Este check es el candado: si mañana nace un `_shot*` nuevo sin importar `_afirma`, la suite
+// lo caza aquí — que es más barato que descubrirlo cuando ya se coló un bug a producción.
+section('Estático — F5: los harnesses de captura tienen dientes');
+test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const dir = path.join(__dirname, 'scripts/e2e');
+  const files = fs.readdirSync(dir).filter(f => /^_shots?[-.].*\.mjs$/.test(f));
+  assert.ok(files.length >= 10, `esperaba al menos 10 harnesses de captura, encontré ${files.length}`);
+  const sinDientes = files.filter(f => {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    // Vale con importar los dientes compartidos O traer los suyos propios (salida != 0).
+    return !/_afirma\.mjs/.test(src) && !/process\.exit\(\s*(fallos|[a-zA-Z_$][\w$]*\.length|1)/.test(src);
+  });
+  assert.strictEqual(sinDientes.length, 0,
+    'harnesses de captura que siempre salen en verde: ' + sinDientes.join(', '));
+});
+
 section('Estático — anti-clase (onclick con ?? antes de interpolar)');
 test('ningún módulo tiene el patrón `?? \'${` (interpolación a medias en onclick)', () => {
   const fs = require('fs');

@@ -3,6 +3,8 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { afirmador, afirmaPantalla, afirmaCaptura, salir } from './_afirma.mjs';
+const A = afirmador('pantallas de entrada');
 
 const PORT = 8787, APP = `http://localhost:${PORT}/`;
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
@@ -17,7 +19,7 @@ async function findPage() { for (let i = 0; i < 40; i++) { try { const r = await
 const page = await findPage();
 const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 1e8 });
 let id = 1; const pend = new Map();
-ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
+ws.on('message', d => { const m = JSON.parse(d); A.verError(m); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
 const send = (method, params = {}) => new Promise((res, rej) => { const i = id++; pend.set(i, { res, rej }); ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async e => { try { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; } catch (x) { return 'ERR:' + x.message; } };
 const waitFor = async (e, ms = 15000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await ev(e)) return true; } catch {} await sleep(300); } return false; };
@@ -44,7 +46,7 @@ await sleep(300);
 
 // 2) Bienvenida (2 CTAs) — estado por defecto. Forzar el banner flotante de instalar visible.
 await ev(`(()=>{const b=document.getElementById('install-banner');if(b){b.classList.remove('hide');b.style.display='flex';}})()`);
-await sleep(500); await shot('1-welcome-with-banner');
+await sleep(500); await afirmaPantalla(ev, A, { nombre: 'bienvenida', sel: '#s-login', minTxt: 60 }); await shot('1-welcome-with-banner');
 
 // 3) Bienvenida SIN banner flotante (para ver el diseño limpio)
 await ev(`(()=>{const b=document.getElementById('install-banner');if(b)b.style.display='none';})()`);
@@ -52,7 +54,7 @@ await sleep(400); await shot('2-welcome-clean');
 
 // 4) Form de login
 await ev(`(()=>{const c=document.getElementById('cin-cta');if(c)c.style.display='none';const card=document.getElementById('cin-card');if(card)card.style.display='block';})()`);
-await sleep(500); await shot('3-login-form');
+await sleep(500); await afirmaPantalla(ev, A, { nombre: 'formulario de entrar', sel: '#cin-card', minTxt: 20 }); await shot('3-login-form');
 
 // 5) Wizard registro paso 1
 await ev(`(()=>{const card=document.getElementById('cin-card');if(card)card.style.display='none';const s=document.getElementById('cin-signup');if(s)s.style.display='block';if(window.WZ&&WZ.open)try{WZ.open()}catch(e){}})()`);
@@ -74,5 +76,5 @@ const check = await ev(`(()=>{
 })()`);
 console.log('  banner display →', check, '(esperado: onLogin=none, onCoach=flex)');
 
-ws.close(); try { chrome.kill(); } catch {} try { srv.kill(); } catch {}
-process.exit(0);
+ws.close();
+salir(A, { chrome, srv, out: OUT });

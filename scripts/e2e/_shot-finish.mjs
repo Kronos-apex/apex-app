@@ -3,6 +3,8 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { afirmador, afirmaPantalla, afirmaCaptura, salir } from './_afirma.mjs';
+const A = afirmador('cierre de entreno');
 const PORT = 8798, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -11,7 +13,7 @@ await sleep(1200);
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9299', '--user-data-dir=' + process.env.TEMP + '/fin-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
 async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9299/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
-let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } });
+let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse(d); A.verError(m); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } });
 const send = (m, p = {}) => new Promise(res => { const i = id++; pend.set(i, { resolve: res }); ws.send(JSON.stringify({ id: i, method: m, params: p })); });
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; };
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
@@ -45,7 +47,7 @@ const setup = await ev(`(()=>{try{
 }catch(e){return 'err:'+e.message+' | '+(e.stack||'').split('\\n')[1];}})()`);
 console.log('  setup:', setup);
 await sleep(700);
+await afirmaPantalla(ev, A, { nombre: 'cierre de entreno', sel: '#workout-finish', minTxt: 40, setup });
 await ev(`typeof setTheme==='function' && setTheme('light')`); await sleep(500); await shotFull('finish-claro');
 await ev(`typeof setTheme==='function' && setTheme('dark')`); await sleep(500); await shotFull('finish-oscuro');
-console.log('OUT:', OUT);
-chrome.kill(); srv.kill(); process.exit(0);
+salir(A, { chrome, srv, out: OUT });

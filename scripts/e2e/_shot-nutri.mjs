@@ -4,6 +4,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 const PORT = 8786, APP = `http://localhost:${PORT}/`;
 import { EMAIL, PASS } from './_creds.mjs';
+import { afirmador, afirmaPantalla, salir } from './_afirma.mjs';
+const A = afirmador('habitacion de nutricion');
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PROFILE = process.env.TEMP + '/cdp-nutri-' + Date.now();
 const OUT = process.env.TEMP + '/claude/C--Windows-system32/56434f7d-f330-463f-a375-4ada2bdd773f/scratchpad/nutri';
@@ -16,7 +18,7 @@ async function findPage() { for (let i = 0; i < 40; i++) { try { const r = await
 const page = await findPage();
 const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 1e8 });
 let id = 1; const pend = new Map();
-ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
+ws.on('message', d => { const m = JSON.parse(d); A.verError(m); if (m.id && pend.has(m.id)) { const p = pend.get(m.id); pend.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } });
 const send = (method, params = {}) => new Promise((res, rej) => { const i = id++; pend.set(i, { res, rej }); ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async e => { try { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; } catch (x) { return 'ERR:' + x.message; } };
 const waitFor = async (e, ms = 15000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await ev(e)) return true; } catch {} await sleep(300); } return false; };
@@ -45,6 +47,8 @@ await ev(`void document.body.offsetHeight`); await sleep(500);
 console.log('A open?', await ev(`!!document.querySelector('.sroom.on')`));
 console.log('A has guide?', await ev(`!!document.querySelector('#nutroom-body') && /Cómo repartir tu día/.test(document.getElementById('nutroom-body').textContent)`));
 console.log('A scrollH/clientH', await ev(`(()=>{const b=document.getElementById('nutroom-body');return b?b.scrollHeight+'/'+b.clientHeight:'no'})()`));
+A.ok(await ev(`!!document.querySelector('.sroom.on')`), 'nutricion: la habitacion abre');
+A.ok(await ev(`(()=>{const b=document.getElementById('nutroom-body');return !!b&&(b.innerText||'').trim().length>150})()`), 'nutricion: pinta contenido real');
 await shot('A-estimacion-top');
 // scroll abajo para ver las secciones nuevas
 await ev(`(()=>{const b=document.getElementById('nutrition-room');if(b)b.scrollTop=b.scrollHeight*0.42;})()`); await sleep(500);
@@ -62,6 +66,5 @@ await shot('B-coach-top');
 await ev(`(()=>{const b=document.getElementById('nutrition-room');if(b)b.scrollTop=b.scrollHeight;})()`); await sleep(500);
 await shot('B-coach-bottom');
 
-ws.close(); try { chrome.kill(); } catch {} try { srv.kill(); } catch {}
-console.log('OUT', OUT);
-process.exit(0);
+ws.close();
+salir(A, { chrome, srv, out: OUT });

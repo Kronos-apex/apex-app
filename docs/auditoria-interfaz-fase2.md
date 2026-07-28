@@ -140,12 +140,33 @@ exactamente F1 otra vez. La lista de pantallas donde la píldora se aparta (`_PI
 escribió cuando el compositor estaba a media pantalla; **al mover un control a la zona de abajo
 hay que revisar esa lista.** Harness: `scripts/e2e/_verify-f4-chat.mjs` (17 aserciones, 4 estados).
 
-### F5 🟡 Nueve harnesses de captura sin aserciones — PARCIALMENTE CERRADO
+### F5 ✅ CERRADO (2026-07-28) — los diez harnesses de captura ya muerden
 
-Es la deuda que dejó pasar el bug de v403. `_shot-profile` ya afirma (FASE 1) y este recorrido
-cubre las 12 pantallas de una. Siguen sin dientes: `_shot-design-audit`, `_shot-f4`, `_shot-f5`,
-`_shot-finish`, `_shot-history`, `_shot-nutri`, `_shot-routines`, `_shots-login`, `_shots-modals`,
-`_shots-rooms`. **Regla adoptada: un harness que abre una pantalla tiene que exigir que arranque.**
+Era la deuda que dejó pasar el bug de v403: la pestaña «Perfil» estuvo ROTA en producción un día
+entero mientras su harness seguía generando PNG **y saliendo con código 0**. Diez estaban igual.
+
+**Los dientes viven en UN sitio, no repetidos diez veces:** `scripts/e2e/_afirma.mjs`. Exige lo
+mínimo que le faltaba a todos — que el montaje no devuelva error, que la pantalla exista, esté
+visible, **pinte contenido real** y no se salga del ancho; que las capturas no sean PNG vacíos; y
+que **cualquier excepción no capturada haga fallar la corrida**. Antes terminaban en éxito pasara
+lo que pasara.
+
+| Harness | Qué exige ahora |
+|---|---|
+| `_shot-routines` · `_shot-history` · `_shot-finish` | la pantalla arranca y pinta (`#cn-routines`, `#cn-history`, `#workout-finish`) |
+| `_shots-modals` | cada uno de los 4 modales **abre de verdad** y pinta, en los dos temas |
+| `_shots-login` · `_shot-design-audit` | la bienvenida y el formulario existen; el panel del coach se monta |
+| `_shots-rooms` | las 7 habitaciones abren — antes renombraba el PNG a `_FAIL` y **salía en verde igual** |
+| `_shot-nutri` | la habitación de nutrición abre y trae la guía |
+| `_shot-f4` · `_shot-f5` | el guiado, el home del coach y la ficha arrancan (`_shot-f5` es de escritorio: se le exige su ancho, 1180px, no el del teléfono) |
+
+**Probado con sabotaje, no de palabra:** con `renderClientAllRoutines` lanzando a propósito,
+`_shot-routines` pasó de «✅ + PNG bonito» a **exit 1** señalando que la pantalla pintó 17
+caracteres. Es exactamente el escenario de v403.
+
+**CANDADO en la suite** (`avi.test.js`, sección estática): si mañana nace un `_shot*` que no
+importe `_afirma.mjs` ni tenga salida propia distinta de cero, la suite lo caza. Verificado
+creando un harness de mentira: la suite falló y lo nombró.
 
 ---
 

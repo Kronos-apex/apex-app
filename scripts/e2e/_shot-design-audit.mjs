@@ -2,6 +2,8 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { afirmador, afirmaPantalla, afirmaCaptura, salir } from './_afirma.mjs';
+const A = afirmador('auditoria de diseno');
 const PORT = 8794;
 const OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-design';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
@@ -11,7 +13,7 @@ await sleep(1200);
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--remote-debugging-port=9296', '--user-data-dir=' + process.env.TEMP + '/design-' + Date.now(), '--no-first-run', '--window-size=390,844', `http://localhost:${PORT}/`]);
 async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9296/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
-let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } });
+let id = 1; const pend = new Map(); ws.on('message', d => { const m = JSON.parse(d); A.verError(m); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } });
 const send = (m, p = {}) => new Promise(res => { const i = id++; pend.set(i, { resolve: res }); ws.send(JSON.stringify({ id: i, method: m, params: p })); });
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; };
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
@@ -24,6 +26,7 @@ const theme = async t => { await ev(`typeof setTheme==='function' && setTheme('$
 
 // 1) LOGIN claro + oscuro (primera impresión / marca)
 await theme('light'); await shot('01-login-claro');
+await afirmaPantalla(ev, A, { nombre: 'login', sel: '#s-login', minTxt: 60 });
 await theme('dark'); await shot('02-login-oscuro');
 await theme('light');
 
@@ -50,5 +53,5 @@ const coachOK = await ev(`(()=>{try{
 if (coachOK === true) { await sleep(700); await theme('light'); await shot('04-coach-home-claro'); await theme('dark'); await shot('05-coach-home-oscuro'); await theme('light'); }
 else console.log('  coach-home no capturado:', coachOK);
 
-console.log('OUT:', OUT);
-chrome.kill(); srv.kill(); process.exit(0);
+A.ok(coachOK === true, 'el panel del coach se monta', coachOK);
+salir(A, { chrome, srv, out: OUT });
