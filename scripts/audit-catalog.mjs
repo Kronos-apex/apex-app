@@ -108,6 +108,18 @@ if (sinNivel.length) P('MAJOR', `${sinNivel.length} ejercicios sin nivel explíc
 // Cobertura de foto
 cat.forEach(e => { if (!has(`${exDir}/${e.id}.jpg`)) P('MAJOR', `${e.id} (${e.name}) sin foto`); });
 
+// FOTO QUE NO SE VE: exImgSrc solo resuelve por id si el id está en EX_IMG_IDS (que se arma con
+// los valores de EX_IMG_NAME + las listas sueltas de abajo). Tener el archivo NO basta — ya pasó
+// con e97, con e126 y con los 50 del lote de junio, que estuvieron subidos sin mostrarse. Aquí
+// se cruza al revés: si el .jpg existe y el id no está registrado, la foto es invisible.
+const idsRegistrados = new Set(imgNameVals);
+for (const m of html.matchAll(/\[([^\]]*)\]\.forEach\(\s*id\s*=>\s*EX_IMG_IDS\.add\(id\)\s*\)/g))
+  for (const x of m[1].matchAll(/'(e\d+)'/g)) idsRegistrados.add(x[1]);
+cat.forEach(e => {
+  if (!has(`${exDir}/${e.id}.jpg`) || idsRegistrados.has(e.id)) return;
+  P('MAJOR', `${e.id} (${e.name}) TIENE foto pero no está registrado en EX_IMG_IDS → no se muestra`);
+});
+
 // ── Reporte ──
 const order = { BLOCK: 0, MAJOR: 1, MINOR: 2 };
 out.sort((a, b) => order[a.sev] - order[b.sev]);

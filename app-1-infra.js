@@ -1086,6 +1086,12 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // Lote 50 ejercicios nuevos (e165–e214, 2026-06-29): cobertura de huecos del catálogo. Imágenes
 // generadas e integradas en media/exercises; faltaba registrar los ids aquí para que se muestren.
 ['e165','e166','e167','e168','e169','e170','e171','e172','e173','e174','e175','e176','e177','e178','e179','e180','e182','e183','e184','e185','e186','e187','e188','e189','e190','e191','e192','e193','e194','e195','e196','e197','e198','e199','e200','e201','e202','e203','e204','e205','e206','e207','e209','e210','e211','e212','e213','e214'].forEach(id=>EX_IMG_IDS.add(id));
+// Repoblado 2026-07-27 (e215-e226) + e159, el único viejo que se había quedado sin foto.
+// Generadas con el atleta canon del catálogo y revisadas una por una. e217 (aperturas
+// declinadas) sigue SIN foto a propósito: cuatro intentos y en ninguno quedó la técnica bien
+// (o el banco salía inclinado en vez de declinado, o los brazos asimétricos) — antes que
+// enseñar mal la técnica, se queda con el ícono. Pendiente: foto real del gimnasio.
+['e159','e215','e216','e218','e219','e220','e222','e223','e225','e226'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
