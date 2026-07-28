@@ -444,7 +444,7 @@ function renderTemplates(){
     const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${tpl.tag}</span>`:'';
     div.innerHTML=`
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">
-        <div class="rcnum" style="background:var(--bll);color:var(--bl)">${typeof aviIcon==='function'?aviIcon('folder',16):'📂'}</div>
+        <div class="rcnum" style="background:var(--bll);color:var(--blt)">${typeof aviIcon==='function'?aviIcon('folder',16):'📂'}</div>
         <div class="rci">
           <div class="rcname">${esc(tpl.name)} ${tagHtml}</div>
           <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${typeof aviIcon==='function'?aviIcon('timer',11):'⏱'}${tpl.restSec||60}s</div>
@@ -509,13 +509,13 @@ function renderTfExList(){
   let html=`<div style="display:flex;align-items:center;padding:0 11px 4px;gap:9px">
     <div style="flex:1;font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px">EJERCICIO</div>
     <div style="display:flex;gap:5px;align-items:center">
-      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--bl);letter-spacing:.4px">SERIES</div>
+      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--blt);letter-spacing:.4px">SERIES</div>
       <div style="width:8px"></div>
-      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--bl);letter-spacing:.4px">REPS</div>
+      <div style="width:52px;text-align:center;font-size:10px;font-weight:700;color:var(--blt);letter-spacing:.4px">REPS</div>
       <div style="width:28px"></div>
     </div>
   </div>`;
-  const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--bl);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--bl)`;
+  const inpSt=`width:52px;padding:6px 4px;border:1.5px solid var(--bl);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--blt)`;
   tplExs.forEach((e,i)=>{
     html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--bl)'};border-radius:var(--rsm);margin-bottom:6px">
       ${muscleIcon(e.muscle,20)}
@@ -530,7 +530,7 @@ function renderTfExList(){
         <input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999"
           onchange="tplExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=tplExs[${i}].reps" onfocus="this.select()">
         <button onclick="tplExs.splice(${i},1);renderTfExList()"
-          style="width:26px;height:26px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+          style="width:26px;height:26px;border-radius:50%;border:none;background:var(--rdl);color:var(--rdt);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
       </div>
     </div>`;
   });
@@ -575,7 +575,7 @@ function renderPickerForTarget(){
     filtered.forEach(ex=>{
       const div=document.createElement('div');
       div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
-      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:var(--g)">→</span>`;
+      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:var(--gt)">→</span>`;
       div.onclick=()=>_applySubstitute(ex);
       list.appendChild(div);
     });
@@ -655,7 +655,7 @@ function openTemplateClientSelector(tplId){
   DB.clients.forEach(c=>{
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
-    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Aplicar →</span>`;
+    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Aplicar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
@@ -671,7 +671,7 @@ function openTemplateClientSelector(tplId){
 function openNewRoutineFromTemplate(tpl){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   CUR.editRoutineIdx=null;
-  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
   document.getElementById('rf-name').value=tpl.name.replace(' (plantilla)','');
   document.getElementById('rf-note').value=tpl.note||'';
@@ -698,7 +698,7 @@ function openTemplatePicker(){
     const exN=(tpl.exercises||[]).length;
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out);margin-bottom:4px';
-    div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--bl)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--g);font-size:13px;font-weight:700">Usar →</span>`;
+    div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--blt)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Usar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
@@ -791,7 +791,7 @@ function renderExerciseProgressInto(con, clientId){
     const pr=Math.max(...pts.map(p=>p.maxKg));
     const first=pts[0].maxKg;const last=pts[pts.length-1].maxKg;
     const trend=last-first;
-    const trendColor=trend>0?'var(--g)':trend<0?'var(--or)':'var(--t3)';
+    const trendColor=trend>0?'var(--gt)':trend<0?'var(--ort)':'var(--t3)';
     const trendStr=trend===0?'estable':(trend>0?'+':'')+fmtMetric(trend,unit);
     const color=MC[ex.muscle]||'#0A7C5B';
     const cardId=`epc_${clientId}_${idx}`;
@@ -822,7 +822,7 @@ function renderExerciseProgressInto(con, clientId){
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--t2)">
           <span>Inicio: <strong>${fmtMetric(first,unit)}</strong></span>
           <span>Actual: <strong style="color:${color}">${fmtMetric(last,unit)}</strong></span>
-          <span>Récord: <strong style="color:var(--g)">${fmtMetric(pr,unit)}</strong></span>
+          <span>Récord: <strong style="color:var(--gt)">${fmtMetric(pr,unit)}</strong></span>
         </div>
       </div>`;
     con.appendChild(card);
@@ -910,7 +910,7 @@ function renderProgressPanel(){
       const lastKg=pts[pts.length-1].maxKg;
       const firstKg=pts[0].maxKg;
       const trend=lastKg-firstKg;
-      const trendColor=trend>0?'var(--g)':trend<0?'var(--rd)':'var(--t3)';
+      const trendColor=trend>0?'var(--gt)':trend<0?'var(--rdt)':'var(--t3)';
       const trendStr=trend===0?'↔ estable':trend>0?`↑ +${fmtMetric(trend,unit)}`:`↓ ${fmtMetric(trend,unit)}`;
       const color=MC[ex.muscle]||'#0A7C5B';
       const chartId=`plch_${c.id}_${idx}`;
@@ -969,10 +969,10 @@ function toggleAdjForm(adjId,cid){
       <span style="font-size:11px;font-weight:600;color:var(--gt);min-width:80px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(m.rName)}">${esc(m.rName)}</span>
       <span style="font-size:11px;color:var(--t3)">Series</span>
       <input type="number" inputmode="numeric" id="ads_${adjId}_${mi}" value="${m.eSets}" min="1" max="20"
-        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)">
+        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--gt)">
       <span style="font-size:11px;color:var(--t3)">× Reps</span>
       <input type="number" inputmode="numeric" id="adr_${adjId}_${mi}" value="${m.eReps}" min="1" max="999"
-        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)">
+        style="width:46px;padding:5px 3px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;text-align:center;background:white;outline:none;color:var(--gt)">
       <button class="btn bp bsm" style="padding:5px 10px;font-size:11px" onclick="saveAdjLoad('${adjId}','${cid}',${m.ri},${m.ei},${mi})">Guardar</button>
     </div>`;
   });
@@ -1381,7 +1381,7 @@ function renderHome(){
     if(hoy.length){
       todayBanner.style.display='block';
       todayBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('check',13):'✅'} ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('check',13):'✅'} ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
         ${hoy.map(({client:c,sessions:sess})=>{
           const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ');
           const hora=new Date(sess[0].date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
@@ -1408,7 +1408,7 @@ function renderHome(){
   const vencEl=document.getElementById('h-venc');
   if(vencEl){
     vencEl.textContent=inactivos;
-    vencEl.style.color=inactivos>0?'var(--rd)':'var(--g)';
+    vencEl.style.color=inactivos>0?'var(--rdt)':'var(--gt)';
   }
 
   // ── Retención semanal (barras SVG por día) ──
@@ -1451,7 +1451,7 @@ function renderHome(){
     if(expiring.length){
       banner.style.display='block';
       banner.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} ${expiring.length} plan${expiring.length>1?'es':''} vence${expiring.length>1?'n':''} en 5 días</div>
+        <div style="font-size:12px;font-weight:700;color:var(--ort);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} ${expiring.length} plan${expiring.length>1?'es':''} vence${expiring.length>1?'n':''} en 5 días</div>
         ${expiring.map(c=>{
           const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
           const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
@@ -1496,7 +1496,7 @@ function renderHome(){
       const shown=dormidos.slice(0,6), extra=dormidos.length-shown.length;
       adhBanner.style.display='block';
       adhBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--rd);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:6px">💤 ${dormidos.length} ${dormidos.length>1?'asesorados necesitan':'asesorado necesita'} un empujón</div>
+        <div style="font-size:12px;font-weight:700;color:var(--rdt);margin-bottom:6px">💤 ${dormidos.length} ${dormidos.length>1?'asesorados necesitan':'asesorado necesita'} un empujón</div>
         ${shown.map(({c,dd})=>{
           const estado=dd===null?'Aún no empieza':dd===1?'Hace 1 día':'Hace '+dd+' días';
           const col=dd===null||dd>=7?'var(--rd)':'var(--or)';
@@ -1534,7 +1534,7 @@ function renderHome(){
     let trainStr='';
     if(lastS){
       const dd=Math.floor((Date.now()-new Date(lastS.date))/(86400000));
-      const col=dd<=0?'var(--g)':dd<=2?'var(--bl)':dd<=5?'var(--or)':'var(--rd)';
+      const col=dd<=0?'var(--gt)':dd<=2?'var(--blt)':dd<=5?'var(--ort)':'var(--rdt)';
       trainStr=`<span style="color:${col};font-size:11px">${typeof aviIcon==='function'?aviIcon('dumbbell',12):'🏋️'} ${dd<=0?'Hoy':dd===1?'Ayer':'Hace '+dd+'d'}</span>`;
     }
     const d=document.createElement('div');d.className='cli';
@@ -1584,7 +1584,7 @@ function renderMyTrainingCard(){
   const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;
   el.style.display='block';
   el.innerHTML=`<div class="card" style="padding:12px 14px;cursor:pointer" onclick="openMyTraining()">
-    <div style="font-size:12px;font-weight:700;color:var(--g);display:flex;align-items:center;gap:6px;margin-bottom:8px">${ic('dumbbell',14)} Mi entrenamiento</div>
+    <div style="font-size:12px;font-weight:700;color:var(--gt);display:flex;align-items:center;gap:6px;margin-bottom:8px">${ic('dumbbell',14)} Mi entrenamiento</div>
     <div style="display:flex;gap:6px">
       ${stat(s.streakWeeks+' sem','Racha')}
       ${stat(s.thisWeekDays+'/'+s.target,'Esta semana')}
@@ -1604,7 +1604,7 @@ function renderPulse(){
   if(!rows.length){el.style.display='none';el.innerHTML='';return;}
   el.style.display='block';
   el.innerHTML=`<div class="card" style="padding:10px 14px">
-    <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('bolt',13):'⚡'} El pulso de tus asesorados</div>
+    <div style="font-size:12px;font-weight:700;color:var(--gt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('bolt',13):'⚡'} El pulso de tus asesorados</div>
     ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
       <div style="min-width:0;flex:1;cursor:pointer" onclick="_pulseGo('${esc(r.id)}','${esc(r.type)}')">
         <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
@@ -1691,7 +1691,7 @@ function openCoachStat(kind){
         const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short'})).join(', ');
         const nota=pm.map(p=>p.note).filter(Boolean)[0]||'';
         const meta=`${pm.length>1?pm.length+' pagos: ':''}${fechas}${nota?' · '+esc(nota):''}`;
-        return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--g)">$${sub.toLocaleString('es-CO')}</span>`);
+        return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--gt)">$${sub.toLocaleString('es-CO')}</span>`);
       }).join('');
     } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`);
   }
@@ -1731,7 +1731,7 @@ function openCoachStat(kind){
         const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
         const last=sess.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
         const lastStr=new Date(last.date).toLocaleDateString('es-CO',{weekday:'short',day:'2-digit',month:'short'});
-        return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--or)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
+        return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--ort)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
       }).join('');
     } else html+=empty('🏋️','Nadie ha entrenado esta semana todavía.');
   }

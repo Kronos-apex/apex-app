@@ -490,6 +490,22 @@ const EX_LEVEL = {
   e198:'P',e199:'P',e200:'A',e201:'I',e202:'A',e203:'I',e204:'A',e205:'I',
   e206:'P',e207:'P',e209:'P',e210:'P',e211:'P',e212:'I',e213:'P',e214:'P',
 };
+// ── TINTA LEGIBLE PARA LOS COLORES DE MÚSCULO (FASE 3, 2026-07-28) ──────────────────────
+// El código de colores por músculo (MC) pinta a la vez el TINTE de fondo de una etiqueta y su
+// TEXTO. Medido: 7 de los 10 colores no llegan al mínimo de lectura usados así sobre su propio
+// tinte en tema claro (piernas 2.14:1, gluteo 2.33, tríceps 2.47, pecho 2.80…). Oscurecer solo
+// el TEXTO respeta el código de colores —el ojo sigue leyendo «naranja = pecho»— y lo sube a
+// 6:1 o más. En tema oscuro el tinte es oscuro y el color crudo ya se lee: no se toca.
+// Puro y sin DOM para poder probarlo en la suite.
+function mcInk(hex, factor) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+  const f = factor == null ? 0.55 : factor;
+  const p2 = n => n.toString(16).padStart(2, '0');
+  const c = [0, 2, 4].map(i => Math.max(0, Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * f))));
+  return '#' + c.map(p2).join('');
+}
+
 const _LVL_RANK = { P: 0, I: 1, A: 2 };
 function exLevel(ex) {
   const v = (ex && (ex.level || EX_LEVEL[ex.id])) || 'I';
@@ -3393,6 +3409,7 @@ if (typeof module !== 'undefined' && module.exports) {
     generarRutinas,
     EX_LEVEL,
     exLevel,
+  mcInk,
     exLevelRank,
     parseLimitations,
     genSchemeFor,

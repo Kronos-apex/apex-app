@@ -447,7 +447,7 @@ function gmRoutineHeaderHTML(){
   const _today=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
   const dayLabel=CUR.todayOverride?'📋 RUTINA SELECCIONADA':'⚡ ENTRENAMIENTO DE HOY · '+_today.toUpperCase();
   const pills=`<span class="wopill">${nEx} ejercicios</span><span class="wopill">${nSets} series</span>${r.restSec?`<span class="wopill">⏱ ${r.restSec}s descanso</span>`:''}`;
-  const override=CUR.todayOverride?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--bl)"><span>📋 Elegiste esta rutina manualmente</span></div>`:'';
+  const override=CUR.todayOverride?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--blt)"><span>📋 Elegiste esta rutina manualmente</span></div>`:'';
   const note=r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.35);border-radius:var(--rsm);padding:9px 12px;font-size:12.5px;color:var(--t1);margin-bottom:8px;line-height:1.5">💡 <strong style="color:#E9C46A">Nota:</strong> ${esc(r.note)}</div>`:'';
   const why=r.why?`<div style="background:var(--gl);border-left:3px solid var(--g2);border-radius:var(--rsm);padding:9px 12px;margin-bottom:8px;font-size:12.5px;color:var(--gt);line-height:1.55"><div style="font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:3px;opacity:.7">POR QUÉ ESTA RUTINA</div>${esc(r.why)}</div>`:'';
   return `<div class="gm-routine-head" style="margin:0 0 10px">
@@ -515,7 +515,7 @@ function gmRender(){
         <div class="gm-ex-meta">${esc(typeof exMuscleText==='function'?exMuscleText(ex):(ex.muscleLabel||ex.muscle))}</div>
       </div>
       <div class="gm-ex-tools">
-        ${exAllDone?'<span style="color:var(--g)">'+_gmIco('check',20,'✅')+'</span>':''}
+        ${exAllDone?'<span style="color:var(--gt)">'+_gmIco('check',20,'✅')+'</span>':''}
         <button class="exinfo-btn" aria-label="Ver cómo se hace: guía y video" title="Ver cómo se hace" onclick="openExDetail('${ex.id}')">${_gmIco('help',15,'❓')}</button>
         <div class="cex-reorder" onclick="event.stopPropagation()">
           <button onclick="gmMoveEx(${ei},-1)" ${ei===0?'disabled':''} title="Subir" aria-label="Subir ejercicio">↑</button>
@@ -530,7 +530,7 @@ function gmRender(){
     if(_pw){
       const w=document.createElement('div');
       w.className='pain-exchip';
-      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--g);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo ${_gmIco('repeat',12,'🔄')}</button>`;
+      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--gt);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo ${_gmIco('repeat',12,'🔄')}</button>`;
       card.appendChild(w);
     }
     const setsEl = document.createElement('div');
@@ -834,7 +834,7 @@ function gmStartHiit(ei, rounds, work, rest){
   const paint=()=>{
     disp.textContent=String(left).padStart(2,'0');
     phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
-    phaseEl.style.color=phase==='work'?'var(--rd)':'var(--g2)';
+    phaseEl.style.color=phase==='work'?'var(--rdt)':'var(--gt)';
     roundsEl.textContent=`Ronda ${Math.min(round+1,rounds)} de ${rounds}`;
   };
   paint(); playRestTick();
@@ -847,7 +847,7 @@ function gmStartHiit(ei, rounds, work, rest){
         setDone(GM.routine.id,ei,round,true); round++;
         gmUpdateProgress(); updateClientProgress(GM.routine);
         if(round>=rounds){
-          disp.textContent='✓'; phaseEl.textContent='¡Completado!'; phaseEl.style.color='var(--g)';
+          disp.textContent='✓'; phaseEl.textContent='¡Completado!'; phaseEl.style.color='var(--gt)';
           roundsEl.textContent=`${rounds}/${rounds} rondas`;
           clearInterval(GM.hiit); GM.hiit=null; relWake(); playRestEndBeep();
           gmAfterHiit(ei); return;
@@ -1918,12 +1918,12 @@ function updateWarmupProgress(){
   if(done===total&&total>0){
     badge.textContent='✅ ¡Listo para entrenar!';
     badge.style.background='var(--gl)';
-    badge.style.color='var(--g)';
+    badge.style.color='var(--gt)';
     badge.style.borderColor='var(--g)';
   } else {
     badge.textContent='⚡ Calentar antes de empezar';
     badge.style.background='var(--orl)';
-    badge.style.color='var(--or)';
+    badge.style.color='var(--ort)';
     badge.style.borderColor='var(--or)';
   }
 }
@@ -2257,7 +2257,7 @@ function renderDetailMembership(id){
     dueStr=due.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
     const daysLeft=Math.ceil((due-Date.now())/86400000);
     if(daysLeft>=0) daysLeftStr=`<span style="font-size:11px;color:var(--t2)">${daysLeft} día${daysLeft!==1?'s':''} restante${daysLeft!==1?'s':''}</span>`;
-    else daysLeftStr=`<span style="font-size:11px;color:var(--rd)">${Math.abs(daysLeft)} día${Math.abs(daysLeft)!==1?'s':''} vencido${Math.abs(daysLeft)!==1?'s':''}</span>`;
+    else daysLeftStr=`<span style="font-size:11px;color:var(--rdt)">${Math.abs(daysLeft)} día${Math.abs(daysLeft)!==1?'s':''} vencido${Math.abs(daysLeft)!==1?'s':''}</span>`;
   }
 
   // (El descuento por adherencia que se mostraba aquí se ELIMINÓ el 2026-07-06 —
@@ -2278,7 +2278,7 @@ function renderDetailMembership(id){
           <div style="font-size:12px;color:var(--t2);margin-top:2px">Pagado: ${d} · Vence: ${dd}</div>
           ${p.note?`<div style="font-size:11px;color:var(--t3);font-style:italic;margin-top:2px">${esc(p.note)}</div>`:''}
         </div>
-        <div style="background:var(--gl);color:var(--g2);border-radius:8px;padding:6px 8px;flex-shrink:0;display:flex;align-items:center">${_gmIco('card',18,'💳')}</div>
+        <div style="background:var(--gl);color:var(--gt);border-radius:8px;padding:6px 8px;flex-shrink:0;display:flex;align-items:center">${_gmIco('card',18,'💳')}</div>
       </div>`;
     });
   }else{

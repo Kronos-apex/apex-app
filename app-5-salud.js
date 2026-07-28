@@ -97,16 +97,16 @@ function renderNutritionCoach(clientId){
   let html='';
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
-      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
+      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(String(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
+      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
       ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
-      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
+      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
   if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${esc(String(nut.meals))} comidas/d\u00eda</div>`;
   if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${esc(String(nut.water))} vasos de agua/d\u00eda</div>`;
   if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${esc(nut.plan)}</div>`;
-  if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f Evitar: ${esc(nut.avoid)}</div>`;
+  if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rdt)">\u26a0\ufe0f Evitar: ${esc(nut.avoid)}</div>`;
   con.innerHTML=html;
 }
 
@@ -179,7 +179,7 @@ function openNutriInfo(key){
   body.innerHTML=`<div style="text-align:center;margin-bottom:16px;padding-top:6px">
       <div style="font-size:42px;line-height:1">${d.emoji}</div>
       <div class="mdtitle" style="margin:6px 0 2px">${d.title}</div>
-      <div style="font-size:12px;color:var(--g);font-weight:700">${d.tag}</div>
+      <div style="font-size:12px;color:var(--gt);font-weight:700">${d.tag}</div>
     </div>
     <div class="nutri-sec"><div class="nutri-h">¿Qué es?</div><div class="nutri-p">${d.what}</div></div>
     <div class="nutri-sec"><div class="nutri-h">¿Para qué te sirve?</div><div class="nutri-p">${d.why}</div></div>
@@ -213,13 +213,13 @@ function nutCalcHTML(c){
     <div style="font-size:11px;color:var(--t2);margin-bottom:9px">¿Qué tan activo eres en tu día a día?</div>
     <div style="display:flex;gap:5px;margin-bottom:16px">${actBtns}</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
-      <div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--g)">${est.kcalObj}</div><div style="font-size:11px;color:var(--t2);font-weight:600">KCAL / DÍA</div></div>
-      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--bl)">${est.water||'—'}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>
+      <div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--gt)">${est.kcalObj}</div><div style="font-size:11px;color:var(--t2);font-weight:600">KCAL / DÍA</div></div>
+      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--blt)">${est.water||'—'}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--bl)">${m.prot_g}g</div><div style="font-size:10px;color:var(--t2)">Proteína</div><div style="font-size:10px;color:var(--bl);font-weight:600">${m.prot_g*4} kcal</div></div>
+      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${m.prot_g}g</div><div style="font-size:10px;color:var(--t2)">Proteína</div><div style="font-size:10px;color:var(--blt);font-weight:600">${m.prot_g*4} kcal</div></div>
       <div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${m.carb_g}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${m.carb_g*4} kcal</div></div>
-      <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--or)">${m.fat_g}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${m.fat_g*9} kcal</div></div>
+      <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${m.fat_g}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${m.fat_g*9} kcal</div></div>
     </div>
     <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
 }
@@ -244,14 +244,14 @@ function renderNutritionClient(clientId){
   // Macros grid
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
-    if(nut.kcal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--g)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
-    if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--bl)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
+    if(nut.kcal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--bl)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--bl);font-weight:600">${nut.prot*4} kcal</div></div>`;
+      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${nut.prot*4} kcal</div></div>`;
       if(nut.carbs)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${nut.carbs*4} kcal</div></div>`;
-      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--or)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--or);font-weight:600">${nut.fat*9} kcal</div></div>`;
+      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
@@ -272,7 +272,7 @@ function renderNutritionClient(clientId){
       if(colonIdx>0){
         const label=line.slice(0,colonIdx).trim();
         const content=line.slice(colonIdx+1).trim();
-        return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
+        return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--gt);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
       }
       return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--t1)">${esc(line)}</div>`;
     };
@@ -285,7 +285,7 @@ function renderNutritionClient(clientId){
   // Plan libre
   if(nut.plan)html+=`<div style="background:var(--gl);border-radius:var(--rsm);padding:12px;margin-bottom:12px;white-space:pre-line;font-size:13px;line-height:1.7;color:var(--gt)">\ud83d\udccb ${esc(nut.plan)}</div>`;
   // Evitar
-  if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rd)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
+  if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rdt)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
   con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:14px" onclick="openNutritionRoom('${clientId}')">${typeof aviIcon==='function'?aviIcon('utensils',15):'\ud83c\udf7d\ufe0f'} Ver mi plan en grande</button>`+html;
 }
 
@@ -518,7 +518,7 @@ function renderMedidasClient(clientId){
     const cur=latest[f.key];const ini=first[f.key];
     if(!cur&&!ini)return;
     const delta=(cur&&ini)?(cur-ini).toFixed(1):null;
-    const dc=delta===null?'':parseFloat(delta)<0?'var(--g)':parseFloat(delta)>0?'var(--or)':'var(--t3)';
+    const dc=delta===null?'':parseFloat(delta)<0?'var(--gt)':parseFloat(delta)>0?'var(--ort)':'var(--t3)';
     html+=`<tr style="border-bottom:1px solid var(--br)">
       <td style="padding:7px 8px;font-weight:600">${f.label}</td>
       <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${cur?cur+' cm':'\u2014'}</td>
@@ -541,7 +541,7 @@ function renderMedidasCoach(clientId){
     const cur=latest[f.key];if(!cur)return;
     const ini=first[f.key];
     const delta=ini?(cur-ini).toFixed(1):null;
-    const dc=delta!==null&&parseFloat(delta)<0?'var(--g)':delta!==null&&parseFloat(delta)>0?'var(--or)':'var(--t3)';
+    const dc=delta!==null&&parseFloat(delta)<0?'var(--gt)':delta!==null&&parseFloat(delta)>0?'var(--ort)':'var(--t3)';
     html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px;text-align:center;box-shadow:var(--sh)">
       <div style="font-size:10px;color:var(--t2);margin-bottom:3px">${f.label}</div>
       <div style="font-size:18px;font-weight:800">${cur}cm</div>
@@ -778,15 +778,15 @@ function openNotifModal(){
   // Renderizar estado actual de permisos de notificación
   const st=document.getElementById('notif-status');
   if(!('Notification' in window)){
-    if(st){st.textContent='Este navegador no soporta notificaciones push.';st.style.color='var(--rd)';}
+    if(st){st.textContent='Este navegador no soporta notificaciones push.';st.style.color='var(--rdt)';}
   } else if(Notification.permission==='granted'){
-    if(st){st.innerHTML='<span style="color:var(--g);font-weight:600">Notificaciones activas</span> — los pushes llegarán a los asesorados.';st.style.color='';}
+    if(st){st.innerHTML='<span style="color:var(--gt);font-weight:600">Notificaciones activas</span> — los pushes llegarán a los asesorados.';st.style.color='';}
   } else if(Notification.permission==='denied'){
-    if(st){st.innerHTML='<span style="color:var(--rd);font-weight:600">Permiso denegado.</span> Activa las notificaciones en la configuracion del navegador y recarga la app.';st.style.color='';}
+    if(st){st.innerHTML='<span style="color:var(--rdt);font-weight:600">Permiso denegado.</span> Activa las notificaciones en la configuracion del navegador y recarga la app.';st.style.color='';}
   } else {
     // permission === 'default': todavía no se ha pedido o no se ha decidido
     if(st){
-      st.innerHTML='<button class="btn bp bsm" style="font-size:12px;padding:5px 12px" onclick="Notification.requestPermission().then(p=>{ const s=document.getElementById(\'notif-status\'); if(p===\'granted\'){s.innerHTML=\'<span style=\\"color:var(--g);font-weight:600\\">Notificaciones activas</span> — los pushes llegaran a los asesorados.\';subscribePush(\'_coach\');restoreNotifications();}else{s.innerHTML=\'<span style=\\"color:var(--rd);font-weight:600\\">Permiso denegado.</span> Activalas en la configuracion del navegador.\';} })">Activar notificaciones</button>';
+      st.innerHTML='<button class="btn bp bsm" style="font-size:12px;padding:5px 12px" onclick="Notification.requestPermission().then(p=>{ const s=document.getElementById(\'notif-status\'); if(p===\'granted\'){s.innerHTML=\'<span style=\\"color:var(--gt);font-weight:600\\">Notificaciones activas</span> — los pushes llegaran a los asesorados.\';subscribePush(\'_coach\');restoreNotifications();}else{s.innerHTML=\'<span style=\\"color:var(--rdt);font-weight:600\\">Permiso denegado.</span> Activalas en la configuracion del navegador.\';} })">Activar notificaciones</button>';
       st.style.color='';
     }
   }

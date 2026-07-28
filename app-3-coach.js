@@ -34,7 +34,7 @@ function renderClients(){
   const searchEl=document.getElementById('cli-search');
   const _term=searchEl?searchEl.value:'';
   document.getElementById('cli-lbl').textContent=`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
-  if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--g2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">${_coIco('users',26,'👥')}</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
+  if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">${_coIco('users',26,'👥')}</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
   // Orden inteligente (mejora 7 + v360): quién necesita atención primero. sortClientsByAttention
   // (avi-core, puro/testeado) NO muta DB.clients — home y otras vistas conservan su orden.
@@ -66,15 +66,15 @@ function renderClients(){
     // Estado del día → color (verde entrenó · coral pendiente · rojo sin rutinas · azul mañana · gris descanso)
     let st;
     if(_trained){
-      st={ring:'var(--g2)',bg:'var(--gl)',col:'var(--g)',ico:_coIco('check',12,'✓'),txt:'Entrenó hoy'};
+      st={ring:'var(--g2)',bg:'var(--gl)',col:'var(--gt)',ico:_coIco('check',12,'✓'),txt:'Entrenó hoy'};
     } else if(_todayR){
-      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--or)',ico:_coIco('timer',12,'⏳'),txt:`${esc(_todayR.name)} · hoy`};
+      st={ring:'var(--or)',bg:'var(--orl)',col:'var(--ort)',ico:_coIco('timer',12,'⏳'),txt:`${esc(_todayR.name)} · hoy`};
     } else if(_tomorrowR){
-      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--bl)',ico:_coIco('calendar',12,'📅'),txt:`${esc(_tomorrowR.name)} · mañana`};
+      st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--blt)',ico:_coIco('calendar',12,'📅'),txt:`${esc(_tomorrowR.name)} · mañana`};
     } else if(_ruts.length){
       st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
     } else {
-      st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rd)',ico:_coIco('flag',12,'🚩'),txt:'Sin rutinas asignadas'};
+      st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rdt)',ico:_coIco('flag',12,'🚩'),txt:'Sin rutinas asignadas'};
     }
     const lvlCls=c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to';
     const spark=miniSparkline(c.id);
@@ -82,11 +82,11 @@ function renderClients(){
     // atención (reason==='lead'), NO repetimos el "🙋 Quiere coach" (dos píldoras 🙋 idénticas se
     // veían redundantes) — el chip de atención lo supersede y además trae la antigüedad. El badge
     // 🆓 Libre (para libres que NO piden coach) se conserva igual.
-    const selfBadge=c.selfReg?(_leadPending(c)?(r.reason==='lead'?'':'<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>'):`<span class="tag" style="background:var(--bll);color:var(--bl)">${_coIco('leaf',12,'🆓')} Libre</span>`):'';
+    const selfBadge=c.selfReg?(_leadPending(c)?(r.reason==='lead'?'':'<span class="tag" style="background:var(--orl);color:var(--ort)">🙋 Quiere coach</span>'):`<span class="tag" style="background:var(--bll);color:var(--blt)">${_coIco('leaf',12,'🆓')} Libre</span>`):'';
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
     // v360: unread → azul info (💬); lead → naranja (🙋, coherente con "Quiere coach").
-    const _ATN={pain:['--rdl','--rd'],overdue:['--rdl','--rd'],unread:['--bll','--bl'],lead:['--orl','--or'],expiring:['--orl','--or'],idle:['--br','--t2'],nostart:['--br','--t2']};
+    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
     const _ac=_ATN[r.reason];
     const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
     const d=document.createElement('div');d.className='cli';
@@ -844,7 +844,7 @@ async function openGymMgr(){
     // no mostrarlo. null = «no sé» y la UI se calla; Set = dato real.
     await _gymLoadActive(cli);
     _renderGymMgr();
-  }catch(e){ if(body)body.innerHTML='<div style="color:var(--rd);font-size:13px">No se pudo cargar. Revisa tu conexión.</div>'; }
+  }catch(e){ if(body)body.innerHTML='<div style="color:var(--rdt);font-size:13px">No se pudo cargar. Revisa tu conexión.</div>'; }
 }
 // F4: se consulta CADA VEZ que cambia el directorio, no solo al abrir el modal. Antes el Set se
 // calculaba una sola vez con los miembros de ese momento: al AGREGAR a alguien que ya tenía perfil,
@@ -1224,7 +1224,7 @@ async function openDetail(id,_silent){
   const _plan=clientPlan(c);
   const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
   const _planIco={libre:_coIco('leaf',12,'🆓'),app:_coIco('star',12,'⭐'),coach:_coIco('crown',12,'👑')}[_plan];
-  const _wantsTag=(_plan!=='coach'&&_leadPending(c))?`<span class="tag" style="background:var(--orl);color:var(--or)">🙋 Quiere coach</span>`:'';
+  const _wantsTag=(_plan!=='coach'&&_leadPending(c))?`<span class="tag" style="background:var(--orl);color:var(--ort)">🙋 Quiere coach</span>`:'';
   document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
   if(freeLead) freeLead.innerHTML=planControlHTML(c);
@@ -1316,7 +1316,7 @@ function renderValoracion(c){
   const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
   const macros = calcMacrosFromKcal(kcalObj, w, goal);
   // Resumen visible cuando la tarjeta está colapsada: el dato clave (objetivo calórico).
-  if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--g2)'; }
+  if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--gt)'; }
 
   // ── Render ──
   const statBox = (icon, label, val, sub, color) =>
@@ -1491,7 +1491,7 @@ function renderShockCard(c){
     el.innerHTML=`<div class="card" style="padding:12px 14px">
       <div class="ctitle" style="margin-bottom:4px">${_shockBolt()} ${tg.count} estancados — pero es por constancia</div>
       <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:8px">${esc(tg.names.join(', '))} llevan rato sin subir, pero <strong>no ha venido entrenando parejo</strong>. Antes de tocar el plan, lo que más mueve la aguja es <strong>afianzar el ritmo</strong> — cuando sostenga la constancia unas semanas, revisamos si algo se estancó de verdad. (Una descarga ahora bajaría aún más el volumen: no es lo que necesita.)</div>
-      <div style="background:var(--bll);border-radius:var(--rsm);padding:7px 10px;margin-bottom:10px;font-size:12px;color:var(--bl);line-height:1.5">${typeof aviIcon==='function'?aviIcon('calendar',13):'📅'} ${_cadLine}</div>
+      <div style="background:var(--bll);border-radius:var(--rsm);padding:7px 10px;margin-bottom:10px;font-size:12px;color:var(--blt);line-height:1.5">${typeof aviIcon==='function'?aviIcon('calendar',13):'📅'} ${_cadLine}</div>
       <div style="display:flex;gap:6px">
         <button class="btn bp bsm" style="flex:1;min-height:36px" onclick="shockWriteRebuild()">${_coIco('pencil',13,'✍️')} Escribirle</button>
         <button class="btn bg bsm" style="min-height:36px" onclick="dismissShockGlobal()">Descartar</button>
@@ -1673,7 +1673,7 @@ function renderDetailRoutines(c){
 function openNewRoutine(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   CUR.editRoutineIdx=null;
-  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
   document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';document.getElementById('rf-shift').value='';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
   CUR.routineExs=[];CUR.restSec=60;CUR.routineWarmup=null;
@@ -1706,7 +1706,7 @@ function openGenRutinas(){
   // Poblar el selector de estilos; default = el que corresponde al entorno del cliente.
   const def=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
   document.getElementById('mg-style').innerHTML=TRAINING_STYLES.map(s=>`<option value="${s.id}"${s.id===def?' selected':''}>${s.icon} ${esc(s.name)}</option>`).join('');
-  document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   CUR.genDeload=false; const dl=document.getElementById('mg-deload'); if(dl)dl.checked=false;
   _updateGenPrefBtns(c);
   if(!genWithStyle(def))return;
@@ -1760,7 +1760,7 @@ function openEditRoutine(cid,ri){
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
   const r=c.routines[ri];if(!r)return;
   CUR.clientId=cid;CUR.editRoutineIdx=ri;
-  document.getElementById('mr-title').innerHTML=`Editar rutina — <span style="color:var(--g)">${esc(c.name)}</span>`;
+  document.getElementById('mr-title').innerHTML=`Editar rutina — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar cambios';
   document.getElementById('rf-name').value=r.name;
   document.getElementById('rf-note').value=r.note||'';
@@ -1798,7 +1798,7 @@ function unlinkBiset(i){ if(CUR.routineExs[i]){delete CUR.routineExs[i].ssNext;r
 // Una fila de ejercicio del constructor. abMark: 'A'|'B' si va dentro de una biserie.
 function rfExRow(i,n,abMark){
   const e=CUR.routineExs[i];
-  const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--g)`;
+  const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--gt)`;
   const upDis=i===0; const dnDis=i===n-1;
   const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
   // Botón de unir en biserie: solo si i no está ya en pareja, hay un siguiente, y el siguiente tampoco está en pareja.
@@ -1815,7 +1815,7 @@ function rfExRow(i,n,abMark){
   const lbl = t => `<span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">${t}</span>`;
   const restCtl = `<span title="Descanso entre series — por defecto según el tipo de ejercicio; edítalo para fijarlo" style="font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;margin-right:2px">⏱</span>`
     + `<input type="number" inputmode="numeric" style="${inpSt};width:58px;color:var(--t2);border-color:var(--br2)" value="${restForExercise(e,{restSec:CUR.restSec})}" min="0" max="600" step="5" onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()" onfocus="this.select()"><span style="color:var(--t3);font-size:11px;font-weight:600">seg</span>`;
-  const delCtl = `<button onclick="rfDelEx(${i})" style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rd);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>`;
+  const delCtl = `<button onclick="rfDelEx(${i})" style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rdt);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>`;
   const setsIn = `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20" onchange="CUR.routineExs[${i}].sets=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].sets" onfocus="this.select()">`;
   let ctl;
   if(track==='cardio'){
@@ -2032,7 +2032,7 @@ function renderMsgs(){
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--bl);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
   renderMsgsSinConversar(con);
@@ -2180,7 +2180,7 @@ async function renderReportsCard(){
     el.style.display='block';
     el.innerHTML='<div class="card" style="border-left:3px solid var(--rd);padding:12px 14px;cursor:pointer" onclick="openReportsInbox()">' +
       '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:12px;font-weight:800;color:var(--rd);flex:1">' +
+        '<span style="font-size:12px;font-weight:800;color:var(--rdt);flex:1">' +
           (typeof aviIcon==='function'?aviIcon('flag',13):'🚩') + ' ' + n + (n>1?' reportes por revisar':' reporte por revisar') + '</span>' +
         '<span style="font-size:11px;color:var(--t3)">Ver ›</span>' +
       '</div></div>';
@@ -2194,7 +2194,7 @@ function _modReportRow(r){
   const cuando=r.rcreated_at?new Date(r.rcreated_at).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):'';
   const excerpt=r.excerpt?('<div style="font-size:12px;color:var(--t2);background:var(--surface);border-radius:var(--rsm);padding:8px 10px;margin-top:7px">'+esc(r.excerpt)+'</div>'):'';
   const isPost=typeof r.rcontext==='string' && r.rcontext.indexOf('post:')===0;
-  const delBtn=isPost?('<button class="btn bg bsm" style="min-height:36px;color:var(--rd)" onclick="modDeletePost(\''+esc(r.rid)+'\')">Eliminar publicación</button>'):'';
+  const delBtn=isPost?('<button class="btn bg bsm" style="min-height:36px;color:var(--rdt)" onclick="modDeletePost(\''+esc(r.rid)+'\')">Eliminar publicación</button>'):'';
   return '<div class="card" style="padding:12px;margin-bottom:9px">' +
     '<div style="font-size:13px;color:var(--t1);line-height:1.5"><b>'+rep+'</b> reportó a <b>'+tgt+'</b></div>' +
     '<div style="font-size:11.5px;color:var(--t3);margin-top:2px">'+motivo+' · '+esc(cuando)+'</div>' +

@@ -4386,6 +4386,36 @@ test('stripFixtureSessions: entrada no-array → array vacío sin lanzar', () =>
 // EXIGIR que arranque, y los dientes viven en `scripts/e2e/_afirma.mjs`.
 // Este check es el candado: si mañana nace un `_shot*` nuevo sin importar `_afirma`, la suite
 // lo caza aquí — que es más barato que descubrirlo cuando ya se coló un bug a producción.
+// ── FASE 3 (2026-07-28): la tinta legible de los colores de músculo ──
+// El código de colores por músculo pinta el tinte de la etiqueta Y su texto. Medido: 7 de los 10
+// colores no llegan al mínimo de lectura usados así en tema claro. `mcInk` oscurece SOLO el
+// texto, así que el color sigue identificando al músculo pero se lee.
+section('FASE 3 — tinta legible (mcInk)');
+test('mcInk oscurece el color y mantiene el formato #rrggbb', () => {
+  assert.strictEqual(core.mcInk('#00BFA5'), '#00695b');
+  assert.strictEqual(core.mcInk('#E76F51'), '#7f3d2d');
+  assert.strictEqual(core.mcInk('#FFFFFF', 0.5), '#808080');
+});
+test('mcInk deja pasar lo que no es un color hexadecimal (no rompe el render)', () => {
+  ['var(--g)', '', null, undefined, '#abc', 'rgb(1,2,3)'].forEach(v => {
+    assert.strictEqual(core.mcInk(v), v, 'no debe tocar ' + String(v));
+  });
+});
+test('mcInk sube de verdad el contraste de los 10 colores de músculo sobre su tinte', () => {
+  // Mismo cálculo de WCAG 2.1 que usa la auditoría de lectura, aquí sobre el tinte al 9%.
+  const hex = h => { h = h.replace('#',''); return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4); };
+    return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b); };
+  const ratio = (a, b) => { const L1 = lum(a), L2 = lum(b); const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); };
+  const sobreBlanco = (c, a) => ({ r: c.r*a + 255*(1-a), g: c.g*a + 255*(1-a), b: c.b*a + 255*(1-a) });
+  const MUSCULOS = ['#E76F51','#457B9D','#A855F7','#0A7C5B','#C77DFF','#00BFA5','#F4845F','#E63946','#FF6B6B','#6B6B6B'];
+  MUSCULOS.forEach(col => {
+    const tinte = sobreBlanco(hex(col), 0.094);
+    const conTinta = ratio(hex(core.mcInk(col)), tinte);
+    assert.ok(conTinta >= 4.5, `${col}: con la tinta legible da ${conTinta.toFixed(2)}:1 y hace falta 4.5`);
+  });
+});
+
 section('Estático — F5: los harnesses de captura tienen dientes');
 test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
   const fs = require('fs');

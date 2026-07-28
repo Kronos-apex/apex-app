@@ -178,3 +178,58 @@ creando un harness de mentira: la suite falló y lo nombró.
   biblioteca haya bajado de 30 752 a 4 308 px debería notarse, pero no está medido en un aparato.
 - **Contraste y lectura con letra grande.** El recorrido no mide ratio de contraste ni prueba
   `data-fs="xl"` en las 12 pantallas. Candidato claro para una FASE 3.
+
+
+---
+
+## FASE 3 — ¿SE LEE? (2026-07-28)
+
+Lo que la FASE 2 dejó dicho que NO respondía: **contraste y letra grande**. Le importa a la mitad
+del gimnasio — quien entrena de noche mirando el celular con el brazo estirado, y quien tiene el
+teléfono con la letra subida porque no ve de cerca. Harness: `scripts/e2e/_audit-lectura.mjs`
+(las 12 superficies × 2 temas, cálculo WCAG 2.1 sobre el color REALMENTE pintado).
+
+**La sonda se validó antes de creerle**: texto blanco sobre negro tiene que dar 21 y el gris
+límite `#767676` sobre blanco tiene que dar 4.54. Da exactamente eso.
+
+### El hallazgo: un token con dos oficios que se pisan
+
+Los colores semánticos (`--or` naranja, `--bl` azul, `--rd` rojo) hacen dos trabajos a la vez:
+pintan **texto** sobre un tinte claro y **rellenan** botones y badges. En tema oscuro se aclaran
+para poder leerse como texto… y entonces la letra blanca encima deja de leerse.
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| «Entrenar otra vez», «+ Rutina», «WhatsApp» (botón naranja) | **2.19:1** | 5.5–7.8:1 |
+| «+1» del vaso de agua (botón azul) | **2.23:1** | 7.7:1 |
+| Badge de mensajes sin leer (rojo, 9px) | 4.17:1 | 6.2:1 |
+| Etiquetas de estado del asesorado, macros, deltas de peso | 2.4–2.9:1 | ≥4.5:1 |
+| Etiqueta de series con el color del músculo | 2.14–2.84:1 (7 de 10 colores) | ≥6:1 |
+
+**La regla que queda escrita en el CSS:** los tokens de color son para **rellenos y bordes**; para
+**texto** va su variante legible (`--gt` ya existía y por eso el verde era el único que pasaba;
+ahora existen `--ort`, `--blt`, `--rdt`), y **todo relleno declara su tinta** (`--on-or`,
+`--on-bl`, `--on-rd`). Los colores de músculo conservan su identidad: el tinte y el borde siguen
+siendo el color del código, solo el **texto** se oscurece (`mcInk`, función pura con tests).
+
+### Letra grande (`data-fs="xl"`)
+
+- **Texto cortado: 0.** Nada queda partido por un alto fijo.
+- **Desbordamiento: 16 → 0.** La ficha del asesorado se iba a 406px en un teléfono de 390 por el
+  reventón clásico de CSS Grid (una columna `1fr` tiene `min-width:auto`, así que un nombre largo
+  la hace crecer). `.g2>*{min-width:0}` lo cierra sin tocar el diseño de dos columnas.
+- Quedan **3 controles por debajo de 36px** con letra grande, en «Perfil» (los mismos que ya
+  reportaba la FASE 2).
+
+### Marcador
+
+| | Antes | Ahora |
+|---|---|---|
+| Textos por debajo del mínimo WCAG | 96 | **45** |
+| El peor contraste de la app | **2.19:1** | **3.04:1** |
+| Se sale de la pantalla con letra grande | 16 | **0** |
+
+**Lo que NO se hizo, a propósito:** los 45 que quedan están entre 3.0 y 4.5 y son casi todos
+**texto secundario** (metadatos en gris `--t3`, subtítulos). Bajarlos a 4.5 es cambiar el gris de
+toda la app: es una decisión de DISEÑO del PO, no un defecto que se arregle de tapadillo. El
+harness falla por debajo de 3:1 —lo indefendible— y reporta el resto como número.

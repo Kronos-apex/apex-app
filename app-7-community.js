@@ -445,11 +445,11 @@ function _cmtyOptInHtml(){
     '<input class="inp" id="cmty-handle" maxlength="30" placeholder="Ej: Cami" value="' + defName + '" style="margin-bottom:12px">' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:9px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-consent" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
-      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con las personas de mi gimnasio y con quien yo acepte por código, según la <a href="#" onclick="showLegalDoc(\'politica\');return false" style="color:var(--g);font-weight:700;text-decoration:underline">política de tratamiento de datos</a>.</span></label>' +
+      '<span>Autorizo compartir mi apodo, avatar y estadísticas de constancia con las personas de mi gimnasio y con quien yo acepte por código, según la <a href="#" onclick="showLegalDoc(\'politica\');return false" style="color:var(--gt);font-weight:700;text-decoration:underline">política de tratamiento de datos</a>.</span></label>' +
     '<label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:12px;cursor:pointer">' +
       '<input type="checkbox" id="cmty-ck-age" style="margin-top:2px;flex:0 0 auto;width:17px;height:17px">' +
       '<span>Soy mayor de 18 años, o cuento con la autorización de mi representante.</span></label>' +
-    '<div id="cmty-optin-err" style="display:none;font-size:12px;color:var(--rd);margin-bottom:9px"></div>' +
+    '<div id="cmty-optin-err" style="display:none;font-size:12px;color:var(--rdt);margin-bottom:9px"></div>' +
     '<button class="btn bp" id="cmty-optin-btn" style="width:100%;min-height:44px" onclick="cmtyCreateProfile()">Crear mi perfil</button>' +
     '</div>';
 }
@@ -535,7 +535,7 @@ function _cmtyMyProfileHtml(){
     // Código para compartir
     '<div class="card" style="margin-top:12px;padding:11px 13px;background:var(--surface);display:flex;align-items:center;gap:10px">' +
       '<div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Tu código</div>' +
-        '<div style="font-size:19px;font-weight:800;color:var(--g);letter-spacing:2px;font-family:monospace">' + code + '</div></div>' +
+        '<div style="font-size:19px;font-weight:800;color:var(--gt);letter-spacing:2px;font-family:monospace">' + code + '</div></div>' +
       '<button class="btn bg bsm" style="min-height:36px" onclick="cmtyCopyCode()">Copiar</button>' +
       '<button class="btn bp bsm" style="min-height:36px" onclick="cmtyShareCode()">Compartir</button>' +
     '</div>' +
@@ -660,7 +660,7 @@ async function cmtyEditSave(){
 
 function cmtyConfirmLeave(){
   const box = document.getElementById('cmty-leave-box'); if(!box) return;
-  box.innerHTML = '<div class="card" style="padding:11px 13px;background:var(--rdl);border-color:var(--rd)">' +
+  box.innerHTML = '<div class="card" style="padding:11px 13px;background:var(--rdl);border-color:var(--rdt)">' +
     '<div style="font-size:12.5px;color:var(--t1);line-height:1.5;margin-bottom:9px">Esto borra tu perfil público y todas tus amistades. Tu entrenamiento y tus datos NO se tocan. ¿Seguro?</div>' +
     '<div style="display:flex;gap:8px"><button class="btn bg bsm" style="flex:1;min-height:36px" onclick="_cmtyPaint()">Cancelar</button>' +
     '<button class="btn bd bsm" style="flex:1;min-height:36px" onclick="cmtyLeave()">Sí, salir</button></div></div>';
@@ -824,7 +824,7 @@ function _cmtyFriendCard(f){
     '<div style="display:flex;align-items:center;gap:11px">' +
       _cmtyAvatarHtml(p, 46, { open: f.fid }) +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmtyNameLink(f.fid, esc(p.handle)) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmtyNameLink(f.fid, esc(p.handle)) + (p.role === 'coach' ? ' <span style="font-size:10px;font-weight:700;color:var(--gt);background:var(--gl);border-radius:6px;padding:1px 6px;vertical-align:middle">COACH</span>' : '') + '</div>' +
         '<div style="font-size:12px;color:var(--t2)">Racha ' + (p.streak_weeks || 0) + ' sem · Nivel ' + (p.level || 1) + ' · ' + (p.sessions_4w || 0) + ' días/4sem' + _cmtyStatsSuffix(p) + '</div>' +
         (_cmtyActivityHtml(f.fid) ? '<div style="font-size:11px;margin-top:1px">' + _cmtyActivityHtml(f.fid) + '</div>' : '') +
       '</div>' +
@@ -1120,7 +1120,7 @@ function _cmtyActivityText(bucket){
 function _cmtyActivityHtml(uid){
   const b = CMTY.activity && CMTY.activity[uid]; if(!b) return '';
   const txt = esc(_cmtyActivityText(b));
-  if(b === 'ahora') return '<span style="color:var(--g);font-weight:700">● ' + txt + '</span>';
+  if(b === 'ahora') return '<span style="color:var(--gt);font-weight:700">● ' + txt + '</span>';
   return '<span style="color:var(--t3)">' + txt + '</span>';
 }
 
@@ -1425,7 +1425,7 @@ function _cmtyPrShareHtml(){
     h += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--br)">' +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:13.5px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(pr.name) + '</div>' +
-        '<div style="font-size:12px;color:var(--g);font-weight:700">' + esc(String(pr.val)) + ' kg</div>' +
+        '<div style="font-size:12px;color:var(--gt);font-weight:700">' + esc(String(pr.val)) + ' kg</div>' +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyPrAsk(' + i + ')">Compartir</button>' +
     '</div>';
@@ -1479,7 +1479,7 @@ function _cmtyPrCard(post){
       '</div>' +
       '<div style="flex:0 0 auto">' + (typeof aviIcon === 'function' ? aviIcon('trophy', 22) : '🏆') + '</div>' +
     '</div>' +
-    '<div style="font-size:16px;font-weight:800;color:var(--t1)">' + name + (val ? ' — <span style="color:var(--g)">' + val + ' kg</span>' : '') + '</div>' +
+    '<div style="font-size:16px;font-weight:800;color:var(--t1)">' + name + (val ? ' — <span style="color:var(--gt)">' + val + ' kg</span>' : '') + '</div>' +
     _cmtyActionsHtml(post, { canDelete: mine, heartTitle: 'Felicitar' }) +
   '</div>';
 }
@@ -1867,7 +1867,7 @@ function _cmtyPostCard(post){
       '</div>' +
     '</div>' +
     '<div style="font-size:14px;font-weight:800;color:var(--t1)">' + name + '</div>' +
-    (days ? '<div style="font-size:11.5px;color:var(--g);font-weight:700;margin-bottom:6px">' + days + '</div>' : '<div style="height:4px"></div>') +
+    (days ? '<div style="font-size:11.5px;color:var(--gt);font-weight:700;margin-bottom:6px">' + days + '</div>' : '<div style="height:4px"></div>') +
     exHtml +
     _cmtyActionsHtml(post, { canDelete: mine }) +
   '</div>';

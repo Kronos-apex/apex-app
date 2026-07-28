@@ -36,7 +36,7 @@ function renderExercises(){
   grid.innerHTML='';
   visibles.forEach(ex=>{
     const color=MC[ex.muscle]||'#6B6B6B';const div=document.createElement('div');div.className='exc';
-    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${ex.muscleLabel||ex.muscle} · ${ex.type}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Ver detalle" aria-label="Ver detalle del ejercicio" onclick="openExDetail('${ex.id}',true)">${typeof aviIcon==='function'?aviIcon('eye',15):'👁'}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar ejercicio" aria-label="Editar ejercicio" onclick="openEditEx('${ex.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button></div></div><span class="tag" style="background:${color}15;color:${color};border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${ex.muscleLabel||ex.muscle} · ${ex.type}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Ver detalle" aria-label="Ver detalle del ejercicio" onclick="openExDetail('${ex.id}',true)">${typeof aviIcon==='function'?aviIcon('eye',15):'👁'}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar ejercicio" aria-label="Editar ejercicio" onclick="openEditEx('${ex.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button></div></div><span class="tag mc-chip" style="--mc:${color};--mct:${(typeof mcInk==='function'?mcInk(color):color)};background:${color}15;border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
     grid.appendChild(div);
   });
   // Estado vacío consciente de POR QUÉ está vacío: no es lo mismo un músculo sin ejercicios
@@ -290,7 +290,7 @@ function renderBodyWeightSection(clientId){
   listEl.innerHTML=recents.map((e,i)=>{
     const delta=e.kg-first;
     const isToday=e.date===new Date().toISOString().split('T')[0];
-    const deltaStr=i===recents.length-1?'':(delta===0?'':`<span class="wlog-delta" style="background:${delta<0?'var(--gl)':'var(--orl)'};color:${delta<0?'var(--g)':'var(--or)'}">${delta>0?'+':''}${delta.toFixed(1)}</span>`);
+    const deltaStr=i===recents.length-1?'':(delta===0?'':`<span class="wlog-delta" style="background:${delta<0?'var(--gl)':'var(--orl)'};color:${delta<0?'var(--gt)':'var(--ort)'}">${delta>0?'+':''}${delta.toFixed(1)}</span>`);
     return `<div class="wlog-row">
       <div class="wlog-date">${isToday?'<strong>Hoy</strong>':new Date(e.date+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
       <div class="wlog-kg">${e.kg} kg</div>
@@ -440,7 +440,7 @@ function renderAccountActions(client){
     <div class="ch"><div class="ctitle">Cuenta</div></div>
     <div class="cb">
       <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px">Eliminar tu cuenta borra de forma permanente tu perfil, rutinas, progreso, medidas y fotos. No se puede deshacer.</div>
-      <button class="btn bsm" onclick="openDeleteAccount()" style="background:transparent;color:var(--rd);border:1.5px solid var(--rd);font-weight:700">🗑️ Eliminar mi cuenta</button>
+      <button class="btn bsm" onclick="openDeleteAccount()" style="background:transparent;color:var(--rdt);border:1.5px solid var(--rd);font-weight:700">🗑️ Eliminar mi cuenta</button>
     </div>
   </div>`;
 }
@@ -2173,7 +2173,7 @@ function _sessionExercisesHTML(s,clientId){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"${door}>
           ${muscleIcon(ex.muscle,18)}
           <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
-          ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
+          ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
           ${clientId?`<span style="${exVol>0?'':'margin-left:auto;'}color:var(--t3);font-size:16px;flex-shrink:0">›</span>`:''}
         </div>
         ${volBar}
@@ -2383,7 +2383,7 @@ function openExerciseRoom(clientId,exId,exName){
   const first=pts.length?pts[0].maxKg:null,last=pts.length?pts[pts.length-1].maxKg:null;
   const trend=(first!=null&&last!=null)?last-first:0;
   const trendStr=!pts.length?'':trend>0?`↑ +${fmtMetric(trend,unit)}`:trend<0?`↓ ${fmtMetric(trend,unit)}`:'↔ estable';
-  const trendCol=trend>0?'var(--g)':trend<0?'var(--or)':'var(--t3)';
+  const trendCol=trend>0?'var(--gt)':trend<0?'var(--ort)':'var(--t3)';
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const statsHTML=[
     stat('🏆','Récord',recordVal!=null?fmtMetric(recordVal,unit):'—','#e0a72e'),
@@ -2898,7 +2898,7 @@ function renderClientHistory(clientId){
     const div=document.createElement('div');
     if(s.id)div.id='sescard-'+s.id;
     const pct=s.totalSets>0?Math.round((s.doneSets/s.totalSets)*100):0;
-    const pcol=pct===100?'var(--g)':'var(--or)';
+    const pcol=pct===100?'var(--gt)':'var(--ort)';
     div.className='sescard door'+(pct===100?' done':'');
     // La tarjeta es una "puerta": al tocarla entra a la habitación de esa sesión.
     div.innerHTML=`
@@ -2944,7 +2944,7 @@ function renderCoachClientHistory(clientId){
     const feel=s.feeling?` <span title="${esc(feelingLabel(s.feeling))}">${feelingEmoji(s.feeling)}</span>`:'';
     const meta=[s.durationSec?fmtDuration(s.durationSec):'',s.kcal?`${s.kcal} kcal`:''].filter(Boolean).join(' · ');
     const hasDetail=(s.exercises||[]).length>0;
-    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--g)':'var(--or)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
+    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--gt)':'var(--ort)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
     con.appendChild(div);
   });
   if(sessions.length>3){
@@ -3181,7 +3181,7 @@ function openBackup(){
     if(el){
       const pct=Math.round(kb/5120*100);
       el.textContent=`${kb} KB / ~5 MB (${pct}%)`;
-      el.style.color=kb>3500?'var(--rd)':kb>2000?'var(--or)':'var(--g)';
+      el.style.color=kb>3500?'var(--rdt)':kb>2000?'var(--ort)':'var(--gt)';
     }
   }catch(e){}
   om('m-backup');
