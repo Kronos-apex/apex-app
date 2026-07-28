@@ -437,6 +437,20 @@ html[data-theme="light"] .mta {
 .rcpills{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
 .rcpill{font-size:10.5px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--br);border-radius:20px;padding:3px 9px;white-space:nowrap}
 .rcchev{color:var(--t3);transition:transform .2s;font-size:12px}
+/* PLANTILLAS a 390px (F4, 2026-07-28): la fila lleva ícono + nombre + 3 botones + chevron, y al
+   nombre le quedaba una columna de ~140px. Con los nombres REALES del coach («Brazo y abdomen
+   (plantilla)», 27 caracteres) el título salía partido en tres renglones. Los botones bajan a su
+   propia línea y el nombre recupera el ancho entero. Solo aquí: la misma fila en las rutinas del
+   asesorado lleva títulos cortos y quedó pulida en v339, no se toca.
+   Queda: [📂 Nombre de la plantilla ▼] arriba, [Aplicar · editar · borrar] debajo. */
+@media (max-width:430px){
+  #tpl-list .rch{flex-wrap:wrap;row-gap:10px}
+  #tpl-list .rch>.rcnum{order:0}
+  #tpl-list .rch>.rci{order:1;flex:1 1 0;min-width:0}
+  #tpl-list .rch>.rcchev{order:2}
+  #tpl-list .rch>.tplacts{order:3;flex:1 1 100%;margin-right:0!important}
+  #tpl-list .rch>.tplacts .btn:first-child{flex:1}
+}
 .rc.open .rcchev{transform:rotate(180deg)}
 .rcbody{display:none;border-top:1px solid var(--br);padding:12px 14px;background:var(--bg)}
 .rc.open .rcbody{display:block}
@@ -550,6 +564,26 @@ html[data-theme="light"] .mta {
 .mquick button{flex-shrink:0;min-height:36px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--gt);background:var(--gl);border:1px solid var(--g2);border-radius:99px;padding:7px 13px;cursor:pointer}
 .mquick button:active{transform:scale(.96)}
 .mquick~.mrow{border-top:none}
+/* ── El chat del asesorado OCUPA la pantalla (F4, 2026-07-28) ──────────────────────────────
+   Medido a 390×844: la pestaña «Mensajes» ocupaba 0,4 pantallas — la conversación arriba en una
+   cajita de 380px y el campo de escribir flotando a media pantalla, con el 60% de abajo vacío.
+   Y no es un caso raro: de 23 asesorados, 11 no han cruzado NUNCA un mensaje y la mediana de los
+   otros son 5. O sea, casi todos ven la pantalla flaca. Ahora la tarjeta se estira hasta abajo,
+   el hilo scrollea por dentro y el compositor queda al pie, como en cualquier chat (y como el de
+   pantalla completa del coach, .cchat, que ya funcionaba así). Los mensajes se apoyan ABAJO
+   (margin-top:auto en el primero) para que la conversación crezca hacia arriba. */
+/* height (no min-height): con min-height el panel CRECÍA con los mensajes y el que scrolleaba
+   era el cuerpo entero — medido con 30 mensajes: el panel se iba a 2289px y el compositor se
+   perdía abajo del todo. Con altura fija, el que scrollea es el hilo, que es lo que debe pasar. */
+#cn-messages.on{display:flex;flex-direction:column;height:100%}
+#cn-messages>.card{flex:1;display:flex;flex-direction:column;min-height:0}
+#cn-msg-thread{flex:1;min-height:0}
+#cn-msg-thread>:first-child{margin-top:auto}
+/* Estado sin mensajes: se centra en el hueco en vez de quedar pegado arriba. */
+.mempty{margin:auto;text-align:center;padding:22px 18px}
+.mempty .eico{color:var(--g2);margin-bottom:10px}
+.mempty .etxt{font-size:14.5px;font-weight:800;color:var(--t1);margin-bottom:5px}
+.mempty .esub{font-size:12.5px;color:var(--t3);line-height:1.5;max-width:30ch;margin:0 auto}
 .mta{flex:1;padding:8px 12px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:13px;color:var(--t1);background:var(--w);outline:none;resize:none;transition:border-color .15s;max-height:90px;line-height:1.4}
 .mta:focus{border-color:var(--g2)}
 

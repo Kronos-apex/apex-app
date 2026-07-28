@@ -169,13 +169,19 @@ function initPWA(){
 
   // ── La píldora no se queda con los toques de nadie (estudio de interfaz, 2026-07-27) ──
   // Se aparta SOLO si de verdad está encima de un control que se toca (regla pura
-  // `pillStealsTap`, control por control) y SOLO en las pantallas donde se entrena: «Hoy»
-  // (campos KG/REPS de cada serie) y «Rutinas» («Hacer esta rutina ahora»). En Progreso,
-  // Perfil, Mensajes y Comunidad se queda siempre: instalar la app es el problema nº1 de
-  // adopción y no se sacrifica por precaución.
+  // `pillStealsTap`, control por control) y SOLO en las pantallas que tienen controles ahí
+  // abajo: «Hoy» (campos KG/REPS de cada serie), «Rutinas» («Hacer esta rutina ahora») y, desde
+  // F4 (2026-07-28), «Mensajes». En Progreso, Perfil y Comunidad se queda siempre: instalar la
+  // app es el problema nº1 de adopción y no se sacrifica por precaución.
+  // POR QUÉ ENTRÓ «Mensajes»: hasta F4 el compositor flotaba a media pantalla y la píldora no
+  // lo alcanzaba nunca. Al bajarlo al pie —que es donde va el compositor de un chat— pasó a
+  // vivir EN la franja de la píldora, y con letra grande (data-fs="xl") la píldora se paraba
+  // encima del campo de escribir: tocar para escribirle al coach abría el instalador. Lo cazó
+  // el hit-testing de `_verify-f4-chat`, no la vista. La premisa vieja dejó de ser cierta en
+  // cuanto se movió el control: al mover algo a la zona de abajo, hay que revisar esta lista.
   // Se engancha al SCROLL con requestAnimationFrame — nada de setInterval; si el navegador no
   // trae rAF no se hace nada y la píldora sigue como siempre (degradación silenciosa).
-  const _PILL_ZONAS='#cn-today.on,#cn-routines.on';
+  const _PILL_ZONAS='#cn-today.on,#cn-routines.on,#cn-messages.on';
   let _pillTick=false;
   const _pillGuard=()=>{
     _pillTick=false;

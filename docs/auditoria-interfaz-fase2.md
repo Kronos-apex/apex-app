@@ -102,12 +102,43 @@ encuentra «Bíceps», que es como se teclea de afán) y por palabras sueltas (�
 «Press de Banca con Barra»). La vista pinta 30 y ofrece «Ver 182 más (30 de 212)». **El alto pasó
 de 30 752 px a 4 308 px.**
 
-### F4 🟡 Cuatro pantallas casi vacías — SIN TOCAR, para decidir
+### F4 ✅ CERRADO (2026-07-28) — y **tres de las cuatro no estaban flacas**
 
-Mensajes del asesorado (0,4 pantallas), Comunidad (0,5), Plantillas del coach (0,5) y Mensajes del
-coach (0,4). No están rotas: están **flacas**. Media pantalla de contenido y media de vacío. No se
-tocó nada porque no es un defecto, es una decisión de producto: o se les da más razón de ser, o se
-acepta que son pantallas de paso.
+**Lo que decía esta sección:** Mensajes del asesorado (0,4 pantallas), Comunidad (0,5), Plantillas
+del coach (0,5) y Mensajes del coach (0,4) estaban medio vacías y había que decidir qué hacer.
+
+**Lo que apareció al ir a arreglarlas: la medición de tres de ellas era un espejismo del
+harness**, no de la app. Van con nombre propio porque es la MISMA clase de error que ya nos costó
+dos falsos hallazgos en la FASE 1:
+
+| Pantalla | Por qué medía 0,5 | Veredicto |
+|---|---|---|
+| Comunidad | El recorrido corre **sin red**: lo que se midió fue el estado «Conéctate para ver a tu gente», no la pantalla | **Falso.** No se toca |
+| Mensajes del coach | El fixture tenía **2 asesorados**. En producción hay 23, con 12 conversaciones abiertas | **Falso** como problema de alto |
+| Plantillas | El fixture tenía 2 plantillas; el coach tiene 4 | **Falso** como problema de alto, pero apareció otro defecto REAL (abajo) |
+| Mensajes del asesorado | **Verdadero.** Y peor de lo medido | **Arreglado** |
+
+**El único defecto de alto real — el chat del asesorado.** La conversación vivía en una cajita de
+380px arriba y el campo de escribir flotaba a media pantalla con el 60% de abajo vacío. Y no es un
+caso de borde: contra el backup del 2026-07-27, **11 de los 23 no han cruzado NUNCA un mensaje** y
+la mediana de los otros son **5**. Casi todos ven la pantalla flaca. Ahora la tarjeta se estira, el
+hilo scrollea por dentro, los mensajes se apoyan abajo y el compositor queda al pie, como en
+cualquier chat. **0,4 → 0,9 pantallas.**
+
+**Lo que sí valía la pena de las otras dos:**
+- **Bandeja del coach:** el hueco no se rellenó con decoración sino con **quién no ha recibido
+  nunca un mensaje** (11 de 23), a un toque de escribirle. La pantalla gana razón de ser y ataca
+  el problema nº1 de la app, que es que la gente no arranca.
+- **Plantillas:** el alto era falso pero al mirar la fila apareció otro defecto: con los nombres
+  REALES del coach («Brazo y abdomen (plantilla)») al título le quedaba una columna de ~140px y
+  salía partido en tres renglones. Los botones bajaron a su propia línea.
+
+**Y el arreglo trajo un defecto propio, cazado por hit-testing:** al bajar el compositor al pie,
+el chat pasó a vivir en la franja de la píldora «Instalar app», y **con letra grande la píldora se
+paraba encima del campo de escribir** — tocar para escribirle al coach abría el instalador. Es
+exactamente F1 otra vez. La lista de pantallas donde la píldora se aparta (`_PILL_ZONAS`) se
+escribió cuando el compositor estaba a media pantalla; **al mover un control a la zona de abajo
+hay que revisar esa lista.** Harness: `scripts/e2e/_verify-f4-chat.mjs` (17 aserciones, 4 estados).
 
 ### F5 🟡 Nueve harnesses de captura sin aserciones — PARCIALMENTE CERRADO
 

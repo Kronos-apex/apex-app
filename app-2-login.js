@@ -449,7 +449,7 @@ function renderTemplates(){
           <div class="rcname">${esc(tpl.name)} ${tagHtml}</div>
           <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${typeof aviIcon==='function'?aviIcon('timer',11):'⏱'}${tpl.restSec||60}s</div>
         </div>
-        <div style="display:flex;gap:4px;margin-right:4px">
+        <div class="tplacts" style="display:flex;gap:4px;margin-right:4px">
           <button class="btn bp bsm" style="padding:0 12px;min-height:36px;font-size:11px" onclick="event.stopPropagation();applyTemplateToClient('${tpl.id}')">Aplicar →</button>
           <button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar plantilla" aria-label="Editar plantilla" onclick="event.stopPropagation();openEditTemplate('${tpl.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button>
           <button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar plantilla" aria-label="Eliminar plantilla" onclick="event.stopPropagation();delTemplate('${tpl.id}')">${typeof aviIcon==='function'?aviIcon('trash',14):'🗑️'}</button>

@@ -2984,7 +2984,16 @@ function renderClientMsgs(clientId){
   }
   if(composer)composer.style.display='';
   if(quick)quick.style.display='flex';
-  if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Tu coach todavía no te ha escrito.<br>Puedes escribirle tú primero 👇</div>';return}
+  // Sin mensajes NO es un caso raro: 11 de los 23 del gimnasio no han cruzado uno nunca (medido
+  // 2026-07-28). Es la primera impresión de la pestaña, así que dice para qué sirve y qué hacer,
+  // y las respuestas rápidas de abajo ya le dan el primer toque sin escribir nada.
+  if(!msgs.length){
+    const nom=(DB.clients.find(x=>x.id===clientId)?.name||'').split(' ')[0];
+    con.innerHTML='<div class="mempty"><div class="eico">'+(typeof aviIcon==='function'?aviIcon('chat',34):'💬')+'</div>'
+      +'<div class="etxt">Aquí hablas con tu coach</div>'
+      +'<div class="esub">Cuéntale cómo te fue, pregúntale una duda o avísale si algo te dolió'+(nom?', '+esc(nom):'')+'. Te responde por acá mismo.</div></div>';
+    return;
+  }
   msgs.forEach(m=>{
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
     const mine=m.from!=='coach';

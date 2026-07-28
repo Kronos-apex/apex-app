@@ -2025,8 +2025,8 @@ function renderMsgs(){
   }).length;
   const sbBdg=document.getElementById('sb-msgs-bdg');
   if(sbBdg){sbBdg.textContent=unreadClients;sbBdg.style.display=unreadClients>0?'inline-flex':'none';}
-  if(!list.length){con.innerHTML='<div class="empty" style="padding:50px"><div class="eico" style="color:var(--g2)">'+_coIco('chat',34,'💬')+'</div><div class="etxt">Sin mensajes todavía</div><div class="esub">Ve a un asesorado y escríbele</div></div>';return}
   con.innerHTML='';
+  if(!list.length)con.innerHTML='<div class="empty" style="padding:28px 20px"><div class="eico" style="color:var(--g2)">'+_coIco('chat',34,'💬')+'</div><div class="etxt">Todavía no hay conversaciones</div><div class="esub">Toca a cualquiera de abajo y escríbele el primer mensaje</div></div>';
   list.forEach(({c,last,count})=>{
     const lastClientMsg=(DB.msgs[c.id]||[]).filter(m=>m.from==='client').slice(-1)[0];
     const lastRead=_coachReadOf(c.id);
@@ -2035,6 +2035,39 @@ function renderMsgs(){
     div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--bl);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
+  renderMsgsSinConversar(con);
+}
+
+// ══════════ LOS QUE NUNCA HAN ESCRITO (F4, 2026-07-28) ══════════
+// La bandeja mostraba SOLO las conversaciones existentes y dejaba media pantalla en blanco.
+// Lo que falta ahí no es decoración: medido contra el backup del 2026-07-27, **11 de los 23
+// asesorados no han cruzado NUNCA un mensaje con el coach** — y el problema nº1 de la app es
+// justo que la gente no arranca. Así que el hueco lo ocupa la lista de a quién le falta el
+// primer mensaje, a un toque de escribirle. Sin flujo nuevo: reusa openCoachChat.
+// Los suspendidos no aparecen (no son un pendiente, son bajas).
+function _sinConversar(){
+  return (DB.clients||[]).filter(c=>c&&!c.suspended&&!((DB.msgs[c.id]||[]).length));
+}
+function renderMsgsSinConversar(con){
+  const pend=_sinConversar();
+  if(!pend.length)return;
+  const wrap=document.createElement('div');
+  wrap.id='msgs-sinconv';
+  wrap.innerHTML=`<div style="display:flex;align-items:baseline;gap:7px;margin:18px 2px 9px">
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">Sin conversación</div>
+      <div style="font-size:12px;color:var(--t3)">${pend.length} de ${(DB.clients||[]).filter(c=>c&&!c.suspended).length}</div>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin:0 2px 10px;line-height:1.45">Nunca han cruzado un mensaje contigo. Un «¿cómo vas?» suele ser lo que los devuelve a entrenar.</div>`;
+  pend.forEach(c=>{
+    const div=document.createElement('div');div.className='cli';
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div>`
+      +`<div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div>`
+      +`<div class="cm" style="color:var(--t3)">Todavía no se han escrito</div></div>`
+      +`<div class="btn bg bsm" style="pointer-events:none;padding:0 12px;min-height:36px;font-size:11px">Escribir</div>`;
+    div.onclick=()=>openCoachChat(c.id);
+    wrap.appendChild(div);
+  });
+  con.appendChild(wrap);
 }
 
 // ══════════ ESTADO DE LEÍDO DEL COACH — sincronizado a la nube (v321) ══════════
