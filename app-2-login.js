@@ -26,7 +26,15 @@ function migrateExercises(){
 // (2) FANTASMAS: ejercicios con id NO-catálogo cuyo nombre DUPLICA a uno del catálogo
 //     (ej. una "Prensa de Pierna" custom que reaparece). Remapea las rutinas al id bueno.
 // Los customs legítimos (nombre único, ej. "Remo Australiano") se conservan.
-const REMOVED_EXERCISES={'e38':'e15','e32':'e19'};
+// 2026-07-28: los dos repoblados del catálogo metieron el MISMO ejercicio con otro nombre.
+// Se retira el duplicado y se remapea al original (que conserva nivel, foto y mapa muscular);
+// al original se le añadió el nombre alterno para que siga saliendo al buscarlo.
+//   e181 «Escaladores» = e81 (ahora «Escaladores (Mountain Climbers)»)
+//   e208 «Caminata del Granjero» = e136 «Caminata del Granjero (Farmers Walk)»
+//   e221 «Pullover con Mancuerna» = e137 «Pullover con Mancuerna en Banco»
+//   e224 «Press Francés con Barra Z» = e12 (ahora «Press Francés con Barra Z (Skull Crushers)»)
+//   e227 «Curl de Bíceps en Banco Inclinado» = e121 (ahora «Curl en Banco Inclinado con Mancuernas»)
+const REMOVED_EXERCISES={'e38':'e15','e32':'e19','e181':'e81','e208':'e136','e221':'e137','e224':'e12','e227':'e121'};
 // Fantasmas por PATRÓN de nombre: el match exacto no caza variantes ("Prensa" a secas
 // vs "Prensa de Pierna" del catálogo — por eso sobrevivió la prensa fantasma). Cualquier
 // ejercicio NO-catálogo cuyo nombre matchee se elimina y sus rutinas van al id bueno.

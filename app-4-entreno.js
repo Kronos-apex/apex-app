@@ -1102,7 +1102,7 @@ const QUICK_WORKOUTS=[
    items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
   {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
-   items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e181',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
+   items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e81',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
   {id:'qw_abs_casa', emoji:'💥', ic:'burst', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
    desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
    items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},

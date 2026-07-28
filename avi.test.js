@@ -3195,7 +3195,7 @@ const LIB_BUSCA = [
 // Sin él, exLevel() los manda a 'Intermedio' por defecto y un PRINCIPIANTE no los recibe jamás —
 // que es exactamente lo que le pasó a 50 ejercicios del catálogo sin que nadie lo decidiera.
 test('los ejercicios nuevos (e215+) tienen nivel explícito, no heredado del default', () => {
-  const nuevos = ['e215','e216','e217','e218','e219','e220','e221','e222','e223','e224','e225','e226','e227'];
+  const nuevos = ['e215','e216','e217','e218','e219','e220','e222','e223','e225','e226'];
   nuevos.forEach(id => {
     assert.ok(EX_LEVEL[id], `${id} sin nivel en EX_LEVEL → caería a 'Intermedio' por defecto`);
     assert.ok(['P','I','A'].includes(EX_LEVEL[id]), `${id} con nivel inválido: ${EX_LEVEL[id]}`);
@@ -3203,6 +3203,12 @@ test('los ejercicios nuevos (e215+) tienen nivel explícito, no heredado del def
   // Y al menos uno tiene que ser de principiante: si todos fueran 'I', repoblar el catálogo no
   // le habría dado NADA nuevo a los principiantes, que son la mayoría del gimnasio.
   assert.ok(nuevos.filter(id => EX_LEVEL[id] === 'P').length >= 3);
+  // Los duplicados retirados el 2026-07-28 no pueden reaparecer por la puerta de atrás: si un
+  // día vuelve a haber nivel para uno de estos ids es que alguien lo volvió a meter al catálogo
+  // (e227 = e121 · e224 = e12 · e221 = e137 · e181 = e81 · e208 = e136).
+  ['e181','e208','e221','e224','e227'].forEach(id => {
+    assert.ok(!EX_LEVEL[id], `${id} fue RETIRADO por duplicar a otro ejercicio: no debe volver`);
+  });
 });
 
 test('searchExercises: sin texto ni músculo devuelve la biblioteca entera', () => {

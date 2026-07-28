@@ -20,6 +20,7 @@ const out = [];
 const P = (sev, msg) => out.push({ sev, msg });
 
 // ── Catálogo: ids + names ──
+const catLines = html.split('\n');
 const cat = [];
 for (const m of html.matchAll(/\{id:'(e\d+)',name:'([^']+)'/g)) cat.push({ id: m[1], name: m[2] });
 const catIds = new Set(cat.map(e => e.id));
@@ -31,6 +32,43 @@ Object.entries(idc).filter(([, v]) => v > 1).forEach(([k, v]) => P('BLOCK', `ID 
 // Nombres duplicados (caza e15/e38)
 const nm = {}; cat.forEach(e => { const n = nf(e.name); (nm[n] = nm[n] || []).push(e.id); });
 Object.entries(nm).filter(([, v]) => v.length > 1).forEach(([k, v]) => P('MAJOR', `Nombre duplicado: "${k}" → ${v.join(', ')}`));
+
+// ── DUPLICADOS DE MOVIMIENTO ─────────────────────────────────────────────────────────────
+// El catálogo se repobló dos veces (e165-e214 en junio, e215-e227 el 2026-07-27) y las dos
+// veces entró el MISMO ejercicio con otro nombre: «Escaladores» = «Mountain Climbers»,
+// «Curl de Bíceps en Banco Inclinado» = «Curl Inclinado con Mancuernas», «Caminata del
+// Granjero» × 2. El check de nombre EXACTO no los vio, y medir parecido de nombres tampoco
+// sirve: 140 pares del catálogo comparten palabras siendo variantes legítimas («Elevaciones
+// Laterales» con banda / en polea / con botellas). Un check así viviría en rojo y dejaría de
+// ser señal. Estos dos SÍ son deterministas y dieron CERO falsos positivos sobre el catálogo
+// real (2026-07-28). Son un piso, no un techo: al añadir ejercicios hay que comparar por
+// MOVIMIENTO+EQUIPO contra el catálogo entero, no fiarse de esto.
+const sinParen = s => nf(s.replace(/\([^)]*\)/g, ''));
+// (a) Mismo nombre una vez quitado el paréntesis aclaratorio: «Caminata del Granjero
+//     (Farmers Walk)» y «Caminata del Granjero» son el mismo ejercicio dos veces.
+const nmp = {}; cat.forEach(e => { const n = sinParen(e.name); (nmp[n] = nmp[n] || []).push(e); });
+Object.entries(nmp).forEach(([k, v]) => {
+  if (v.length < 2) return;
+  // Si TODOS tienen además el mismo nombre exacto, el check de arriba ya lo dijo: no repetir.
+  if (new Set(v.map(e => nf(e.name))).size < 2) return;
+  P('MAJOR', `Mismo ejercicio con paréntesis distinto: "${k}" → ${v.map(e => e.id).join(', ')}`);
+});
+// (b) El ytQuery de A menciona el nombre COMPLETO de B y A no se declara variante de B (su
+//     propio nombre no contiene el de B). Ahí el ytQuery está confesando que buscan el mismo
+//     video: «Escaladores» → yt «escaladores mountain climbers».
+const ytOf = {};
+cat.forEach(e => { const l = catLines.find(x => x.includes(`id:'${e.id}',name:`)) || ''; ytOf[e.id] = (l.match(/ytQuery:'([^']*)'/) || [])[1] || ''; });
+const vistos = new Set();
+cat.forEach(a => cat.forEach(b => {
+  if (a.id === b.id) return;
+  const bn = sinParen(b.name);
+  if (bn.split(' ').length < 2) return;
+  if (!nf(ytOf[a.id]).includes(bn)) return;
+  if (nf(a.name).includes(bn)) return;            // «... con Banda» declara que es variante
+  const par = [a.id, b.id].sort().join('+');
+  if (vistos.has(par)) return; vistos.add(par);
+  P('MAJOR', `Posible duplicado: ${a.id} (${a.name}) busca el mismo video que ${b.id} (${b.name})`);
+}));
 
 // Campos obligatorios por ejercicio
 const lines = html.split('\n');

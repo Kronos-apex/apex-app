@@ -472,8 +472,8 @@ const EX_LEVEL = {
   // decidiera — pendiente aparte.) Criterio: 'P' lo que un novato puede hacer sin técnica previa
   // ni riesgo (polea de pie, floor press, máquina asistida, curl en banco); 'I' lo que exige
   // banco declinado, barra libre sobre la cara o una base de fuerza (flexión con pies elevados).
-  e215:'I',e216:'I',e217:'I',e218:'P',e219:'P',e220:'I',e221:'I',
-  e222:'I',e223:'I',e224:'I',e225:'P',e226:'I',e227:'P',
+  e215:'I',e216:'I',e217:'I',e218:'P',e219:'P',e220:'I',
+  e222:'I',e223:'I',e225:'P',e226:'I',
 };
 const _LVL_RANK = { P: 0, I: 1, A: 2 };
 function exLevel(ex) {
