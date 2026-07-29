@@ -4416,6 +4416,45 @@ test('mcInk sube de verdad el contraste de los 10 colores de músculo sobre su t
   });
 });
 
+// ── FASE 3 · fuga (2026-07-29): el badge de membresía ──
+// La FASE 3 barrió el CSS, pero este badge lo arma JS (`MS.badge` devuelve color+bg como texto
+// inline) y se quedó con los tokens de RELLENO encima de su propio tinte: «Por vencer» 2.62:1,
+// «Vencido» 3.45 y «Sin pago» 1.55 — el peor de toda la app, y es la señal de PLATA que el coach
+// lee en su Inicio y en la ficha. Se escapó porque el fixture de la auditoría tenía la fecha de
+// vencimiento FIJA y solo llegaba a pintar «Al día», el único que ya pasaba.
+// Este test lee los hex REALES de styles.css: si mañana alguien cambia un token o vuelve a poner
+// el crudo en el badge, muerde aquí sin depender de que la auditoría alcance a pintar ese estado.
+section('FASE 3 — el badge de membresía se lee');
+test('todo badge de MS.badge llega a 4.5:1 sobre su propio fondo (tema claro)', () => {
+  const fs = require('fs');
+  const css = fs.readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  // Los tokens del tema CLARO viven en el primer bloque `:root{...}` del archivo.
+  const raiz = css.slice(css.indexOf(':root {'), css.indexOf('/* dark mode automático'));
+  const token = t => {
+    const m = raiz.match(new RegExp('--' + t + '\\s*:\\s*(#[0-9A-Fa-f]{6})'));
+    assert.ok(m, `no encontré el token --${t} en el :root claro de styles.css`);
+    return m[1];
+  };
+  const hex = h => { h = h.replace('#',''); return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4); };
+    return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b); };
+  const ratio = (a, b) => { const L1 = lum(hex(a)), L2 = lum(hex(b)); const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); };
+  // La sonda se valida ANTES de creerle (regla de la FASE 3).
+  assert.strictEqual(Number(ratio('#FFFFFF','#000000').toFixed(2)), 21, 'la sonda de contraste está rota');
+  assert.strictEqual(Number(ratio('#767676','#FFFFFF').toFixed(2)), 4.54, 'la sonda de contraste está rota');
+  const resuelve = v => token(String(v).replace(/^var\(--|\)$/g, ''));
+  // Los dos estados APAGADOS a propósito (gris --t2 sobre --br) miden 4.28: no son un descuido,
+  // son el gris secundario que está esperando decisión del PO. Se anotan con su número para que
+  // empeorarlos sí muerda; el resto no tiene excusa.
+  const APAGADOS = { inactive: 4.2, suspended: 4.2 };
+  ['active','expiring','overdue','pending','inactive','suspended'].forEach(estado => {
+    const b = MS.badge(estado);
+    const r = ratio(resuelve(b.color), resuelve(b.bg));
+    const min = APAGADOS[estado] || 4.5;
+    assert.ok(r >= min, `«${b.label}» (${estado}): ${b.color} sobre ${b.bg} da ${r.toFixed(2)}:1 y hace falta ${min}`);
+  });
+});
+
 section('Estático — F5: los harnesses de captura tienen dientes');
 test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
   const fs = require('fs');

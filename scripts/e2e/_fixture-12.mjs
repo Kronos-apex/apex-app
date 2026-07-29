@@ -24,13 +24,21 @@ export const FIXTURE = `(()=>{try{
   const cli={id:'cA',name:'Santiago Rivera',email:'santiago.rivera@gmail.com',goal:'Ganar músculo',level:'Intermedio',
     days:3,weight:78,height:176,age:29,sex:'M',phone:'3001234567',tier:'premium',
     notes:'Cuida la zona lumbar en peso muerto.',
-    payments:[{date:'2026-06-15',dueDate:'2026-08-05',amount:120000,note:'Mensualidad julio'}],
+    payments:[{date:_dk(44),dueDate:_dk(-20),amount:120000,note:'Mensualidad julio'}],
     routines:[rut('r1','Full body A',hoy),rut('r2','Full body B','Miércoles'),rut('r3','Full body C','Viernes')],
     habits:{water:{[_dk(0)]:6,[_dk(1)]:8,[_dk(2)]:4,[_dk(3)]:8},steps:{[_dk(0)]:6200,[_dk(1)]:9100}}};
   const otro=(id,nm,due,sex,goal)=>({id,name:nm,email:nm.toLowerCase().replace(/ /g,'.')+'@gmail.com',goal,level:'Principiante',
     days:3,weight:70,height:170,age:31,sex,phone:'3009876543',tier:'premium',
-    payments:[{date:'2026-06-15',dueDate:due,amount:120000}],routines:[rut('r9','Full body A','Lunes')]});
-  DB.clients=[cli, otro('cB','Andrea Molina','2026-07-16','F','Bajar de peso'), otro('cC','Julián Restrepo','2026-07-02','M','Fuerza')];
+    payments:[{date:_dk(44),dueDate:due,amount:120000}],routines:[rut('r9','Full body A','Lunes')]});
+  // Las cuatro membresías que el coach ve de verdad, cada una en un asesorado y con fechas
+  // RELATIVAS a hoy. Antes eran fechas fijas ('2026-08-05'): el estado se movía solo con el
+  // calendario y la auditoría medía una app distinta cada día — el 28-jul cA salía «Al día»
+  // (el único badge que ya se leía) y al día siguiente amaneció «Por vencer» a 2.62:1.
+  const sinPago=otro('cD','Laura Ospina',_dk(0),'F','Tonificar'); sinPago.payments=[];
+  DB.clients=[cli,                                              // cA · al día      (vence en 20 días)
+    otro('cB','Andrea Molina',_dk(-3),'F','Bajar de peso'),      // cB · por vencer  (vence en 3 días)
+    otro('cC','Julián Restrepo',_dk(10),'M','Fuerza'),           // cC · vencido     (venció hace 10)
+    sinPago];                                                    // cD · sin pago    (nunca pagó)
   DB.history={cA:[ses('cA',0,4800),ses('cA',2,4600),ses('cA',5,4400),ses('cA',7,4200),ses('cA',9,4000)],cB:[ses('cB',1,3200)]};
   DB.prs={cA:{e1:{name:'Sentadilla',kg:120,reps:5,date:'2026-07-20',val:120,unit:'kg'},e2:{name:'Press de Banca con Barra',kg:85,reps:5,date:'2026-07-10',val:85,unit:'kg'}}};
   DB.bodyweight={cA:[{date:_dk(0),kg:78.2},{date:_dk(7),kg:78.9},{date:_dk(14),kg:79.4}]};

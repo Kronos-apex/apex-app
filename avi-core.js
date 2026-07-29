@@ -1816,14 +1816,21 @@ const MS = {
   // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
   // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
   canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending'; },
+  // El color va como TEXTO sobre `bg`, así que aquí manda la regla de lectura de la FASE 3:
+  // los tokens crudos (--or/--rd/--yl) son para RELLENAR, y encima de su propio tinte no se
+  // leen (medido en claro: «Por vencer» daba 2.62:1, «Vencido» 3.45 y «Sin pago» 1.55, contra
+  // el 4.5 que pide WCAG). Van sus variantes legibles. El amarillo no tiene variante propia
+  // porque ya había precedente: la clase `.ty` pinta sobre --yll con --t1.
+  // Esto se le escapó a la FASE 3 porque el badge lo arma JS (no CSS) y el fixture de la
+  // auditoría solo llegaba a pintar el estado «Al día», el único que ya pasaba (--gt).
   badge(s) {
     return ({
-      active:   { label: 'Al día',      color: 'var(--gt)', bg: 'var(--gl)' },
-      expiring: { label: 'Por vencer',  color: 'var(--or)', bg: 'var(--orl)' },
-      overdue:  { label: 'Vencido',     color: 'var(--rd)', bg: 'var(--rdl)' },
-      pending:  { label: 'Sin pago',    color: 'var(--yl)', bg: 'var(--yll)' },
-      inactive: { label: 'Inactivo',    color: 'var(--t2)', bg: 'var(--br)' },
-      suspended:{ label: 'Suspendido',  color: 'var(--t2)', bg: 'var(--br)' },
+      active:   { label: 'Al día',      color: 'var(--gt)',  bg: 'var(--gl)' },
+      expiring: { label: 'Por vencer',  color: 'var(--ort)', bg: 'var(--orl)' },
+      overdue:  { label: 'Vencido',     color: 'var(--rdt)', bg: 'var(--rdl)' },
+      pending:  { label: 'Sin pago',    color: 'var(--t1)',  bg: 'var(--yll)' },
+      inactive: { label: 'Inactivo',    color: 'var(--t2)',  bg: 'var(--br)' },
+      suspended:{ label: 'Suspendido',  color: 'var(--t2)',  bg: 'var(--br)' },
     }[s]) || { label: 'Sin pago', color: 'var(--t2)', bg: 'var(--br)' };
   }
 };

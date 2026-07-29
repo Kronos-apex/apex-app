@@ -159,6 +159,19 @@ await ev(`(()=>{CUR.loggedAs='coach';showScreen('s-coach');if(typeof renderAll==
 await sleep(1200);
 for (const [nombre, sel, abrir] of PANELES) await auditar(nombre, sel, abrir);
 
+// ══════════ CANDADO · que los cuatro estados de membresía se hayan PINTADO ══════════
+// El 28-jul esta auditoría salió verde sobre un solo badge («Al día», el único que ya se leía):
+// la fecha de vencimiento del fixture era FIJA, así que los otros tres estados nunca llegaron a
+// la pantalla y sus 2.62 / 3.45 / 1.55 no los vio nadie. Un gate que aprueba lo que no pintó no
+// es un gate. Ahora el fixture trae los cuatro y esto EXIGE que se hayan medido de verdad.
+await ev(`(()=>{gp('p-home',document.getElementById('sbi-home'),'Inicio');renderHome();return 1})()`);
+await sleep(700);
+const badges = await ev(`(()=>{const t=(document.getElementById('p-home')||document).innerText||'';
+  return ['Al día','Por vencer','Vencido','Sin pago'].filter(x=>t.includes(x));})()`);
+A.ok((badges || []).length === 4,
+  `los 4 estados de membresía se pintaron y por tanto se midieron (${(badges || []).join(', ')})`,
+  { pintados: badges, faltan: ['Al día', 'Por vencer', 'Vencido', 'Sin pago'].filter(x => !(badges || []).includes(x)) });
+
 // ══════════ REPORTE ══════════
 console.log('\n════ CONTRASTE (WCAG 2.1 · 4.5:1, o 3:1 si la letra es grande) ════');
 console.log('pantalla                tema    medidos  sin-medir  bajos  el peor');
