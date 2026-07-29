@@ -94,7 +94,9 @@ const CONTRASTE = sel => `(()=>{
     }
   });
   out.sort((a,b)=>a.ratio-b.ratio);
-  return {medidos, noMedibles, malos:out.length, peor:out[0]?out[0].ratio:null, lista:out.slice(0,8)};
+  // La lista va COMPLETA (antes se cortaba en 8 por pantalla): la consola sigue mostrando solo
+  // los peores, pero el volcado a disco tiene que poder responder «¿dónde está el bulto?».
+  return {medidos, noMedibles, malos:out.length, peor:out[0]?out[0].ratio:null, lista:out};
 })()`;
 
 // ══════════ SONDA 2 · LETRA GRANDE ══════════
@@ -187,6 +189,13 @@ if (totalBajos) {
   const todos = resContraste.flatMap(r => (r.lista || []).map(x => ({ ...x, pantalla: r.nombre, tema: r.tema })));
   todos.sort((a, b) => a.ratio - b.ratio).slice(0, 14).forEach(x =>
     console.log(`   ${String(x.ratio).padStart(5)} / ${x.pide}  ${x.pantalla}/${x.tema}  «${x.txt}»  .${x.cls} ${x.px}px/${x.peso}`));
+  // La lista COMPLETA a disco: la consola solo muestra los peores, y el resto es justo lo que
+  // hace falta para decidir con datos (qué clases se repiten) en vez de por corazonada.
+  writeFileSync(`${OUT}/contraste-bajos.json`, JSON.stringify(todos.sort((a, b) => a.ratio - b.ratio), null, 1));
+  const porClase = {};
+  todos.forEach(x => { const k = '.' + x.cls; porClase[k] = (porClase[k] || 0) + 1; });
+  console.log('\n  agrupados por clase (para decidir dónde está el bulto):');
+  Object.entries(porClase).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => console.log(`   ${String(n).padStart(3)} × ${k}`));
 }
 
 console.log('\n════ LETRA GRANDE (data-fs="xl") ════');
