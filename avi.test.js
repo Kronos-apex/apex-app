@@ -4443,15 +4443,13 @@ test('todo badge de MS.badge llega a 4.5:1 sobre su propio fondo (tema claro)', 
   assert.strictEqual(Number(ratio('#FFFFFF','#000000').toFixed(2)), 21, 'la sonda de contraste está rota');
   assert.strictEqual(Number(ratio('#767676','#FFFFFF').toFixed(2)), 4.54, 'la sonda de contraste está rota');
   const resuelve = v => token(String(v).replace(/^var\(--|\)$/g, ''));
-  // Los dos estados APAGADOS a propósito (gris --t2 sobre --br) miden 4.28: no son un descuido,
-  // son el gris secundario que está esperando decisión del PO. Se anotan con su número para que
-  // empeorarlos sí muerda; el resto no tiene excusa.
-  const APAGADOS = { inactive: 4.2, suspended: 4.2 };
+  // Los dos estados APAGADOS (gris --t2 sobre --br) llevaban una excepción a 4.2 mientras el gris
+  // secundario esperaba decisión del PO. La decisión se tomó el 2026-07-29 y --t2 bajó a #636363:
+  // ahora dan 4.75 y la excepción sobra. Umbral uniforme, sin exenciones — que es como debe estar.
   ['active','expiring','overdue','pending','inactive','suspended'].forEach(estado => {
     const b = MS.badge(estado);
     const r = ratio(resuelve(b.color), resuelve(b.bg));
-    const min = APAGADOS[estado] || 4.5;
-    assert.ok(r >= min, `«${b.label}» (${estado}): ${b.color} sobre ${b.bg} da ${r.toFixed(2)}:1 y hace falta ${min}`);
+    assert.ok(r >= 4.5, `«${b.label}» (${estado}): ${b.color} sobre ${b.bg} da ${r.toFixed(2)}:1 y hace falta 4.5`);
   });
 });
 
@@ -4502,6 +4500,27 @@ test('mcInkUp hace legibles los 10 colores de músculo sobre el chip en tema osc
 });
 test('mcInkUp deja pasar lo que no es un color hexadecimal', () => {
   ['var(--g)', '', null, undefined, '#abc'].forEach(v => assert.strictEqual(core.mcInkUp(v), v));
+});
+// CANDADO (auditoría del 2026-07-29): el barrido que migró los avatares buscó el patrón de
+// PLANTILLA (`background:${avc(nombre)}`) y por eso se le escaparon DOS sitios que pintan
+// mutando el DOM (`av.style.background=avc(...)`) — el avatar grande de la ficha y el del chat
+// del coach. Quedaron con el `color:white` fijo del CSS, que es justo el defecto que el lote
+// decía haber cerrado. La suite no podía cazarlo porque no es una función pura: este check
+// estático sí. Regla: todo sitio que pinte con `avc(` declara su tinta en el MISMO sitio.
+test('todo avatar pintado con avc() declara su tinta (avcStyle o inkOn)', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d.*\.js$/.test(f)).forEach(f => {
+    fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n').forEach((linea, i) => {
+      if (!/\bavc\(/.test(linea)) return;
+      if (/^\s*(\/\/|\*)/.test(linea)) return;                       // comentarios
+      if (/function avc\b|function avcStyle\b|const AVC\s*=/.test(linea)) return; // definiciones
+      if (/avcStyle\(/.test(linea) || /inkOn\(/.test(linea)) return; // ya declara su tinta
+      malos.push(`${f}:${i + 1}`);
+    });
+  });
+  assert.deepStrictEqual(malos, [],
+    'estos sitios pintan un avatar sin declarar su tinta (usa avcStyle o pon .style.color=inkOn(...)): ' + malos.join(', '));
 });
 
 section('Estático — F5: los harnesses de captura tienen dientes');

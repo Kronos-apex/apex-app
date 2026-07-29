@@ -85,6 +85,15 @@ const CONTRASTE = sel => `(()=>{
     // (<0.15) y por eso SUBESTIMABA: los días futuros del calendario van a opacity .45 y salían
     // reportados con el contraste del texto opaco. Se acumula por la cadena de padres porque
     // opacity NO se hereda como valor: se multiplica al componer.
+    //
+    // ⚠️ ES UNA APROXIMACIÓN, y está medida (auditoría 2026-07-29). Aquí el opacity se aplica
+    // SOLO al texto; en el navegador, cuando el opacity está en el elemento que TAMBIÉN lleva el
+    // fondo, se desvanecen los dos juntos sobre lo que haya detrás. Comprobado leyendo el píxel
+    // real de Chrome en el caso de la app (chip gris sobre tarjeta blanca): la sonda decía 1.75 y
+    // la realidad era 1.74. En un caso extremo construido a mano (chip CLARO desvanecido sobre
+    // página OSCURA) la sonda dice 1.76 y la realidad 2.39 — o sea que se equivoca del lado
+    // PESIMISTA: acusa, no absuelve. Aceptable para un gate. Si algún día un valor JUSTO en el
+    // límite viene de un elemento con opacity<1, hay que confirmarlo leyendo el píxel.
     let op=1; for(let n=el;n&&n!==document.documentElement;n=n.parentElement) op*=parseFloat(getComputedStyle(n).opacity||'1');
     const alfa=Math.max(0,Math.min(1,(fg.a==null?1:fg.a)*op));
     const col = alfa<0.99 ? mezcla({...fg,a:alfa},f.color) : fg;

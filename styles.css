@@ -432,8 +432,11 @@ html[data-theme="light"] .mta {
 /* Etiqueta con el color del MÚSCULO: el tinte y el borde llevan el color del código (naranja =
    pecho, etc.) y el TEXTO lleva su versión oscurecida, que es la única que se lee sobre ese
    tinte en tema claro (medido: 7 de los 10 colores no llegaban al mínimo). En oscuro el tinte
-   es oscuro y el color crudo sí se lee, así que ahí se usa tal cual. Las dos variables las
-   escribe el render (--mc = color del músculo, --mct = su tinta). */
+   es oscuro y el color crudo PARECÍA leerse — pero medido no: se queda en 2.66-4.46 sobre el
+   tinte al 8% encima de la tarjeta oscura, así que ahí va `--mcu` (mcInkUp, el color mezclado
+   con blanco). Corregido el 2026-07-29; la nota anterior afirmaba lo contrario.
+   Las TRES variables las escribe el render: --mc = color del músculo · --mct = su tinta oscura
+   para claro · --mcu = su tinta aclarada para oscuro. */
 .mc-chip{color:var(--mct)}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .mc-chip{color:var(--mcu,var(--mc))} }
 :root[data-theme="dark"] .mc-chip{color:var(--mcu,var(--mc))}

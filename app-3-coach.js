@@ -72,7 +72,7 @@ function renderClients(){
     } else if(_tomorrowR){
       st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--blt)',ico:_coIco('calendar',12,'📅'),txt:`${esc(_tomorrowR.name)} · mañana`};
     } else if(_ruts.length){
-      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t2)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
+      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
     } else {
       st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rdt)',ico:_coIco('flag',12,'🚩'),txt:'Sin rutinas asignadas'};
     }
@@ -86,7 +86,7 @@ function renderClients(){
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
     // v360: unread → azul info (💬); lead → naranja (🙋, coherente con "Quiere coach").
-    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--bg','--t2'],nostart:['--bg','--t2']};
+    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
     const _ac=_ATN[r.reason];
     const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
     const d=document.createElement('div');d.className='cli';
@@ -1205,7 +1205,7 @@ async function openDetail(id,_silent){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
   const av=document.getElementById('d-av');
   if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
-  else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.backgroundImage='';}
+  else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.color=inkOn(avc(c.name));av.style.backgroundImage='';}
   document.getElementById('d-name').textContent=c.name;
   // Identidad y datos organizados en grupos (skill: agrupar por whitespace, jerarquía):
   // (1) CORREO en su propia línea con ícono de sobre — contacto, separado de las medidas.
@@ -2092,7 +2092,7 @@ function _cchatGrow(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scr
 function openCoachChat(clientId){
   const c=DB.clients.find(x=>x.id===clientId); if(!c)return;
   _cchatId=clientId;
-  const av=document.getElementById('cchat-av'); if(av){ av.style.background=avc(c.name); av.textContent=ini(c.name); }
+  const av=document.getElementById('cchat-av'); if(av){ av.style.background=avc(c.name); av.style.color=inkOn(avc(c.name)); av.textContent=ini(c.name); }
   const nm=document.getElementById('cchat-name'); if(nm)nm.textContent=c.name; // textContent → sin XSS
   renderCoachChatThread(clientId,true); // al abrir SIEMPRE al final
   markCoachRead(clientId);
