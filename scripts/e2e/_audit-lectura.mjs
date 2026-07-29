@@ -80,7 +80,14 @@ const CONTRASTE = sel => `(()=>{
     const fg=rgb(cs.color); if(!fg) return;
     const f=fondoDe(el);
     if(f.noMedible){ noMedibles++; return; }
-    const col = fg.a<0.99 ? mezcla(fg,f.color) : fg;
+    // El \`opacity\` del elemento (y de sus padres) desvanece el texto CONTRA su fondo, así que
+    // cuenta igual que un alfa en el color. La sonda solo lo usaba para descartar lo invisible
+    // (<0.15) y por eso SUBESTIMABA: los días futuros del calendario van a opacity .45 y salían
+    // reportados con el contraste del texto opaco. Se acumula por la cadena de padres porque
+    // opacity NO se hereda como valor: se multiplica al componer.
+    let op=1; for(let n=el;n&&n!==document.documentElement;n=n.parentElement) op*=parseFloat(getComputedStyle(n).opacity||'1');
+    const alfa=Math.max(0,Math.min(1,(fg.a==null?1:fg.a)*op));
+    const col = alfa<0.99 ? mezcla({...fg,a:alfa},f.color) : fg;
     const px=parseFloat(cs.fontSize)||14, peso=parseInt(cs.fontWeight)||400;
     const grande = px>=24 || (px>=18.66 && peso>=700);
     const req = grande?3:4.5;
@@ -89,8 +96,12 @@ const CONTRASTE = sel => `(()=>{
     if(cr < req){
       const clave=(el.className||el.tagName)+'|'+propio.slice(0,20);
       if(vistos.has(clave)) return; vistos.add(clave);
+      // col/fondo van al volcado para poder decir QUÉ token hay que mover, en vez de adivinarlo
+      // leyendo CSS a ojo (fue lo que hizo falta para decidir el gris secundario).
+      const hx=c=>'#'+[c.r,c.g,c.b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
       out.push({txt:propio.slice(0,40), cls:String(el.className||el.tagName).slice(0,28),
-        px:Math.round(px), peso, ratio:Math.round(cr*100)/100, pide:req});
+        px:Math.round(px), peso, ratio:Math.round(cr*100)/100, pide:req,
+        col:hx(col), fondo:hx(f.color), op:Math.round(op*100)/100});
     }
   });
   out.sort((a,b)=>a.ratio-b.ratio);
@@ -177,11 +188,11 @@ A.ok((badges || []).length === 4,
 // ══════════ REPORTE ══════════
 console.log('\n════ CONTRASTE (WCAG 2.1 · 4.5:1, o 3:1 si la letra es grande) ════');
 console.log('pantalla                tema    medidos  sin-medir  bajos  el peor');
-let peorGlobal = 99, totalBajos = 0, bajo3 = [];
+let peorGlobal = null, totalBajos = 0, bajo3 = [];
 for (const r of resContraste) {
   console.log(`  ${r.nombre.padEnd(20)} ${r.tema.padEnd(7)} ${String(r.medidos).padStart(6)} ${String(r.noMedibles).padStart(9)} ${String(r.malos).padStart(6)}   ${r.peor ?? '—'}`);
   totalBajos += r.malos;
-  if (r.peor != null && r.peor < peorGlobal) peorGlobal = r.peor;
+  if (r.peor != null && (peorGlobal == null || r.peor < peorGlobal)) peorGlobal = r.peor;
   (r.lista || []).forEach(x => { if (x.ratio < 3) bajo3.push({ ...x, pantalla: r.nombre, tema: r.tema }); });
 }
 if (totalBajos) {
@@ -209,7 +220,9 @@ for (const r of resLetra) {
 }
 
 console.log('\n──── VEREDICTO ────');
-A.ok(peorGlobal >= 3, `nada por debajo de 3:1 (el peor mide ${peorGlobal})`, bajo3.slice(0, 5));
+A.ok(peorGlobal == null || peorGlobal >= 3,
+  peorGlobal == null ? `nada por debajo de 3:1 (de hecho no queda NINGÚN texto bajo el umbral, y se midieron ${resContraste.reduce((n, r) => n + r.medidos, 0)})`
+                     : `nada por debajo de 3:1 (el peor de los que fallan mide ${peorGlobal})`, bajo3.slice(0, 5));
 A.ok(totalCortados === 0, `con letra grande no se corta ningún texto (${totalCortados})`, resLetra.filter(r => r.cortados.length).map(r => r.nombre));
 A.ok(totalFuera === 0, `con letra grande nada se sale del teléfono (${totalFuera})`, resLetra.filter(r => r.fuera.length).map(r => r.nombre));
 console.log(`  · textos por debajo del umbral WCAG: ${totalBajos} (informativo — el fallo es por debajo de 3:1)`);

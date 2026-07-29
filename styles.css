@@ -22,7 +22,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
   --rdt:#A3121F;     /* texto rojo SOBRE --rdl → 6.52 */
-  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#757575;
+  --t1:#1A1A1A; --t2:#636363; --t3:#6C6C6C;
   --g:#0A7C5B; --g2:#13B583; --gl:#D3F4E8; --gt:#06402E;
   --emerald-hdr:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);
   --or:#E76F51; --orl:#FDE8E0; --bl:#457B9D; --bll:#E0EBF4;
@@ -141,7 +141,7 @@ html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
   --rdt:#A3121F;     /* texto rojo SOBRE --rdl → 6.52 */
-  --t1:#1A1A1A; --t2:#6A6A6A; --t3:#757575;
+  --t1:#1A1A1A; --t2:#636363; --t3:#6C6C6C;
   --gl:#D3F4E8; --gt:#06402E;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
 }
@@ -583,7 +583,8 @@ html[data-theme="light"] .mta {
 .gx-badge{background:var(--w);border:1px solid var(--br);border-radius:13px;padding:11px 5px;text-align:center}
 .gx-bic{width:38px;height:38px;margin:0 auto 6px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,rgba(16,224,160,.18),rgba(16,224,160,.06));border:1.5px solid rgba(16,224,160,.3)}
 .gx-bn{font-size:9px;font-weight:700;line-height:1.2;color:var(--t1)}
-.gx-badge.lock{opacity:.5}.gx-badge.lock .gx-bic{background:#f0f0ec;border-color:var(--br);filter:grayscale(1)}
+.gx-badge.lock .gx-bn{color:var(--t3)}
+.gx-badge.lock .gx-bic{background:#f0f0ec;border-color:var(--br);filter:grayscale(1);opacity:.6}
 .gx-badge.gold .gx-bic{background:linear-gradient(135deg,rgba(232,197,71,.25),rgba(232,197,71,.08));border-color:rgba(232,197,71,.45)}
 /* Medallas de marca (v312): glifo de línea tintado según el chip */
 .gx-bic .avic{color:#0FBF8A}
@@ -762,7 +763,7 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .cal-cell{min-width:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border-radius:7px;color:var(--t3);background:var(--bg)}
 .cal-cell.empty{background:transparent}
-.cal-cell.future{opacity:.45}
+.cal-cell.future{background:transparent}
 .cal-cell.trained{background:var(--g);color:#EAFBF4;font-weight:800}
 .cal-cell.trained.t2{background:var(--g2);color:#06231a}
 .cal-cell.today{outline:2px solid var(--or);outline-offset:1px}

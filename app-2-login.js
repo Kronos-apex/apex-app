@@ -1499,7 +1499,7 @@ function renderHome(){
         <div style="font-size:12px;font-weight:700;color:var(--rdt);margin-bottom:6px">💤 ${dormidos.length} ${dormidos.length>1?'asesorados necesitan':'asesorado necesita'} un empujón</div>
         ${shown.map(({c,dd})=>{
           const estado=dd===null?'Aún no empieza':dd===1?'Hace 1 día':'Hace '+dd+' días';
-          const col=dd===null||dd>=7?'var(--rd)':'var(--or)';
+          const col=dd===null||dd>=7?'var(--rdt)':'var(--ort)';
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
             <div style="min-width:0;flex:1;cursor:pointer" onclick="openDetail('${esc(c.id)}')">
               <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>

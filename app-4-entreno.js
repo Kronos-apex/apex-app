@@ -2229,7 +2229,7 @@ function renderClientStreak(clientId){
     <div class="cal-month cal-month-door" onclick="openMonthRoom('${clientId}',${cal.year},${cal.month})" title="Ver el resumen del mes">${mes.charAt(0).toUpperCase()+mes.slice(1)} <span class="cal-month-chev">›</span></div>
     <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
     <div class="cal-grid">${grid}</div>
-    <div class="cal-legend"><i></i> Días que entrenaste · <span style="opacity:.6">toca un día para ver ese entreno</span></div>
+    <div class="cal-legend"><i></i> Días que entrenaste · <span>toca un día para ver ese entreno</span></div>
   </div>`;
 }
 
