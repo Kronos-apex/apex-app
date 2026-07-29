@@ -655,7 +655,7 @@ function openTemplateClientSelector(tplId){
   DB.clients.forEach(c=>{
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
-    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Aplicar →</span>`;
+    div.innerHTML=`<div class="cav" style="width:36px;height:36px;font-size:13px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:var(--t2)">${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Aplicar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
@@ -891,7 +891,7 @@ function renderProgressPanel(){
     card.className='pload-card';
     const bodyId=`plb_${c.id}`;
     card.innerHTML=`<div class="pload-hd" onclick="this.closest('.pload-card').classList.toggle('open')">
-      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${esc(ini(c.name))}</div>
+      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0;${avcStyle(c.name)}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:1px">${filtered.length} ejercicio${filtered.length!==1?'s':''} con historial</div>
@@ -1538,7 +1538,7 @@ function renderHome(){
       trainStr=`<span style="color:${col};font-size:11px">${typeof aviIcon==='function'?aviIcon('dumbbell',12):'🏋️'} ${dd<=0?'Hoy':dd===1?'Ayer':'Hace '+dd+'d'}</span>`;
     }
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div>
+    d.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div class="cn">${esc(c.name)}</div>
         <div class="cm">${esc(c.goal||'')} · ${trainStr||'<span style="color:var(--t3);font-size:11px">Sin sesiones</span>'}</div>
@@ -1635,7 +1635,7 @@ function dismissPulse(id,type){
 // Cada tarjeta de stat del panel (ingresos/activos/sesiones/sin entrenar) abre una
 // habitación .sroom con su desglose: de dónde sale el número y de qué asesorados.
 // Toda fila es tocable → salta a la ficha del asesorado (openDetail).
-function _crepAv(name){ return `<div class="crep-av" style="background:${avc(name)}">${esc(ini(name))}</div>`; }
+function _crepAv(name){ return `<div class="crep-av" style="${avcStyle(name)}">${esc(ini(name))}</div>`; }
 // La habitación es un overlay .sroom; abrir la ficha directamente la dejaría DEBAJO.
 // history.back() dispara el manejador que cierra la sala y descuenta su capa; abrimos
 // la ficha en el siguiente tick, ya sin el overlay encima.

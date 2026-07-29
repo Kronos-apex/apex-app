@@ -346,7 +346,7 @@ html[data-theme="light"] .mta {
 .hb-num{flex:1;min-width:0;height:42px;border-radius:11px;border:1.5px solid var(--br2);background:var(--surface);color:var(--t1);font-size:15px;font-weight:700;font-family:inherit;padding:0 12px;-moz-appearance:textfield}
 .hb-num::-webkit-outer-spin-button,.hb-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .hb-num:focus{outline:none;border-color:var(--g2)}
-.hb-plus.st{background:var(--g);border-color:var(--g);width:auto;min-width:54px;padding:0 14px;white-space:nowrap}
+.hb-plus.st{background:var(--g);border-color:var(--g);color:white;width:auto;min-width:54px;padding:0 14px;white-space:nowrap}
 /* Config de HIIT rápido (v301): el modal va ENCIMA de la biblioteca (.sroom z1400) */
 #m-qwcfg{z-index:1500}
 /* ── Íconos SVG de marca (v303, F1 — docs/plan-iconos-svg.md) ── */
@@ -410,7 +410,7 @@ html[data-theme="light"] .mta {
 .bp{background:var(--g);color:white;border-color:var(--g)}.bp:hover{background:var(--g2)}
 .bg{background:transparent;color:var(--t2);border-color:var(--br2)}.bg:hover{background:var(--bg);color:var(--t1)}
 .bo{background:var(--or);color:var(--on-or);border-color:var(--or)}.bo:hover{background:#d4624a}
-.bd{background:var(--rdl);color:var(--rd);border-color:var(--rd)44}.bd:hover{background:var(--rd-fill);color:var(--on-rd)}
+.bd{background:var(--rdl);color:var(--rdt);border-color:var(--rd)44}.bd:hover{background:var(--rd-fill);color:var(--on-rd)}
 /* Auditoría FASE 2 (2026-07-27): el botón pequeño medía 27px de alto — por debajo de los 36px
    que la propia doctrina del proyecto exige para cualquier cosa que se toque con el dedo, y
    aparecía así en 11 de las 12 pantallas («Entrenar otra vez», «Enviar», «Editar», «+ Registrar
@@ -435,8 +435,8 @@ html[data-theme="light"] .mta {
    es oscuro y el color crudo sí se lee, así que ahí se usa tal cual. Las dos variables las
    escribe el render (--mc = color del músculo, --mct = su tinta). */
 .mc-chip{color:var(--mct)}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .mc-chip{color:var(--mc)} }
-:root[data-theme="dark"] .mc-chip{color:var(--mc)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .mc-chip{color:var(--mcu,var(--mc))} }
+:root[data-theme="dark"] .mc-chip{color:var(--mcu,var(--mc))}
 :root[data-theme="light"] .mc-chip{color:var(--mct)}
 .tg{background:var(--gl);color:var(--gt)}
 .to{background:var(--orl);color:var(--ort)}
@@ -458,6 +458,10 @@ html[data-theme="light"] .mta {
 .cli:active{transform:scale(.985)}
 /* Press-feedback FASE 0 (avi-v329): respeta a quien pidió menos movimiento. */
 @media (prefers-reduced-motion:reduce){.btn:active{transform:none}.cli:active{transform:none}}
+/* El `color:white` es solo el RESPALDO: la tinta de verdad la pone `avcStyle(nombre)` en línea,
+   porque depende del color del avatar (6 de los 8 de la paleta no se leen con blanco). Un sitio
+   que pinte un avatar sin `avcStyle` hereda este blanco y, si tampoco pone fondo, queda
+   invisible — pasó en las tarjetas de carga corporal. Al pintar un avatar: `avcStyle`, siempre. */
 .cav{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:white;flex-shrink:0}
 .cn{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cm{font-size:12px;color:var(--t2);margin-top:2px}

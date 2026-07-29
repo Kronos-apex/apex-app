@@ -495,8 +495,15 @@ const EX_LEVEL = {
 // TEXTO. Medido: 7 de los 10 colores no llegan al mínimo de lectura usados así sobre su propio
 // tinte en tema claro (piernas 2.14:1, gluteo 2.33, tríceps 2.47, pecho 2.80…). Oscurecer solo
 // el TEXTO respeta el código de colores —el ojo sigue leyendo «naranja = pecho»— y lo sube a
-// 6:1 o más. En tema oscuro el tinte es oscuro y el color crudo ya se lee: no se toca.
+// 6:1 o más.
 // Puro y sin DOM para poder probarlo en la suite.
+//
+// ⚠️ CORRECCIÓN (2026-07-29): la nota original decía que «en tema oscuro el color crudo ya se
+// lee, no se toca». Medido con la lista completa, es FALSO — sobre el tinte al 8% encima de una
+// tarjeta oscura el crudo se queda en 2.66-4.46 (la etiqueta de series salía a 3.04). Ahí hay
+// que ir al otro lado: ACLARAR el texto mezclándolo con blanco, que es lo que hace `mcInkUp`.
+// Mezclar hacia blanco (no multiplicar) es lo que conserva el tono: multiplicar por un factor
+// >1 satura y clipa los canales que ya venían altos, y el color deja de identificar al músculo.
 function mcInk(hex, factor) {
   const h = String(hex || '').replace('#', '');
   if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
@@ -504,6 +511,38 @@ function mcInk(hex, factor) {
   const p2 = n => n.toString(16).padStart(2, '0');
   const c = [0, 2, 4].map(i => Math.max(0, Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * f))));
   return '#' + c.map(p2).join('');
+}
+// Gemela de `mcInk` para el TEMA OSCURO: mezcla el color con blanco en vez de oscurecerlo.
+// Con t=0.35 los 10 colores de músculo pasan de 2.66-4.46 a 5.14 o más sobre su propio tinte
+// encima de la tarjeta oscura, y siguen siendo el mismo tono (versión pastel, no otro color).
+function mcInkUp(hex, t) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+  const k = t == null ? 0.35 : Math.max(0, Math.min(1, t));
+  const p2 = n => n.toString(16).padStart(2, '0');
+  const c = [0, 2, 4].map(i => { const v = parseInt(h.slice(i, i + 2), 16); return Math.round(v + (255 - v) * k); });
+  return '#' + c.map(p2).join('');
+}
+// ── TINTA SOBRE UN RELLENO SATURADO (2026-07-29) ─────────────────────────────────────────
+// Las iniciales del avatar iban en `color:white` fijo sobre una paleta de 8 colores: medido,
+// **6 de los 8 no llegaban** al mínimo y el amarillo daba 1.67:1 (prácticamente invisible). La
+// auditoría solo cazó uno (3.96) porque el color sale de un hash del NOMBRE — con los nombres
+// del fixture nunca salieron los peores. En vez de embarrar la paleta oscureciéndola entera,
+// cada relleno declara su tinta, que es el patrón que AVI ya usa (`--on-or`, `--on-bl`, mcInk):
+// se elige blanco o tinta oscura, la que contraste MÁS con ese color.
+const INK_DARK = '#1A1A1A';
+function _relLum(h) {
+  const v = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+function inkOn(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return '#FFFFFF';
+  const L = _relLum(h);
+  const conBlanco = 1.05 / (L + 0.05);
+  const conOscuro = (L + 0.05) / (_relLum(INK_DARK.slice(1)) + 0.05);
+  return conBlanco >= conOscuro ? '#FFFFFF' : INK_DARK;
 }
 
 const _LVL_RANK = { P: 0, I: 1, A: 2 };
@@ -3417,6 +3456,8 @@ if (typeof module !== 'undefined' && module.exports) {
     EX_LEVEL,
     exLevel,
   mcInk,
+    mcInkUp,
+    inkOn,
     exLevelRank,
     parseLimitations,
     genSchemeFor,

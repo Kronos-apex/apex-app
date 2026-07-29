@@ -72,7 +72,7 @@ function renderClients(){
     } else if(_tomorrowR){
       st={ring:'var(--bl)',bg:'var(--bll)',col:'var(--blt)',ico:_coIco('calendar',12,'📅'),txt:`${esc(_tomorrowR.name)} · mañana`};
     } else if(_ruts.length){
-      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t3)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
+      st={ring:'var(--br2)',bg:'var(--bg)',col:'var(--t2)',ico:_coIco('moon',12,'💤'),txt:'Descanso hoy'};
     } else {
       st={ring:'var(--rd)',bg:'var(--rdl)',col:'var(--rdt)',ico:_coIco('flag',12,'🚩'),txt:'Sin rutinas asignadas'};
     }
@@ -86,11 +86,11 @@ function renderClients(){
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
     // v360: unread → azul info (💬); lead → naranja (🙋, coherente con "Quiere coach").
-    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
+    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--bg','--t2'],nostart:['--bg','--t2']};
     const _ac=_ATN[r.reason];
     const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
     const d=document.createElement('div');d.className='cli';
-    d.innerHTML=`<div class="cav ring" style="background:${avc(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
+    d.innerHTML=`<div class="cav ring" style="${avcStyle(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:7px;min-width:0">
           <span class="cn">${esc(c.name)}</span>
@@ -1222,10 +1222,10 @@ async function openDetail(id,_silent){
   if(_stats.length){ _statsEl.style.display='flex'; _statsEl.textContent=_stats.join(' · '); }
   else { _statsEl.style.display='none'; }
   const _plan=clientPlan(c);
-  const _planStyle={libre:'background:var(--bll);color:#1a4a7a',app:'background:var(--gl);color:var(--gt)',coach:'background:#FBF4DC;color:#9A7B16'}[_plan];
+  const _planCls={libre:'tb',app:'tg',coach:'ty'}[_plan]||'';
   const _planIco={libre:_coIco('leaf',12,'🆓'),app:_coIco('star',12,'⭐'),coach:_coIco('crown',12,'👑')}[_plan];
   const _wantsTag=(_plan!=='coach'&&_leadPending(c))?`<span class="tag" style="background:var(--orl);color:var(--ort)">🙋 Quiere coach</span>`:'';
-  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag" style="${_planStyle}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
+  document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag ${_planCls}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
   if(freeLead) freeLead.innerHTML=planControlHTML(c);
   const dn=document.getElementById('d-notes');
@@ -2032,7 +2032,7 @@ function renderMsgs(){
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
   renderMsgsSinConversar(con);
@@ -2060,7 +2060,7 @@ function renderMsgsSinConversar(con){
     <div style="font-size:12px;color:var(--t3);margin:0 2px 10px;line-height:1.45">Nunca han cruzado un mensaje contigo. Un «¿cómo vas?» suele ser lo que los devuelve a entrenar.</div>`;
   pend.forEach(c=>{
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;background:${avc(c.name)}">${esc(ini(c.name))}</div>`
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div>`
       +`<div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}</div>`
       +`<div class="cm" style="color:var(--t3)">Todavía no se han escrito</div></div>`
       +`<div class="btn bg bsm" style="pointer-events:none;padding:0 12px;min-height:36px;font-size:11px">Escribir</div>`;

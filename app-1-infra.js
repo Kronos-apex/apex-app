@@ -95,10 +95,19 @@ function muscleIcon(muscle,size){
   }
   return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true" style="display:block"><g fill="var(--t3)" opacity="0.42">${_BODY}</g><g fill="${col}">${MH[m]}</g></svg>`;
 }
-const AVC=['#0A7C5B','#457B9D','#E76F51','#A855F7','#00BFA5','#E9C46A','#E63946','#FF6B6B'];
+// Paleta de avatares. Las iniciales las pinta `avcInk` con la tinta que contraste con cada
+// color (`inkOn`, avi-core): con `color:white` fijo, 6 de los 8 no llegaban al mínimo de lectura
+// y el amarillo daba 1.67:1. Dos colores se nudgearon lo justo para que el BLANCO les sirva —
+// morado y rojo caían en la franja donde ni el blanco ni la tinta oscura alcanzaban (4.40/4.18);
+// el tono es el mismo a ojo y así el conjunto no queda con mitad de iniciales blancas y mitad
+// oscuras por un pelo de luminancia.
+const AVC=['#0A7C5B','#457B9D','#E76F51','#994DE1','#00BFA5','#E9C46A','#D83642','#FF6B6B'];
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function ini(n){return n.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
 function avc(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%AVC.length;return AVC[Math.abs(h)]}
+// Estilo completo del avatar: el relleno y SU tinta, para que ningún sitio vuelva a escribir
+// `background:${avc(x)}` a secas y heredar el blanco fijo de `.cav`.
+function avcStyle(n){const c=avc(n);return `background:${c};color:${typeof inkOn==='function'?inkOn(c):'#FFFFFF'}`}
 function fmtT(d){return new Date(d).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
 function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}
 // ══════════ SUPABASE SYNC ══════════

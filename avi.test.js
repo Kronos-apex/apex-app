@@ -4455,6 +4455,55 @@ test('todo badge de MS.badge llega a 4.5:1 sobre su propio fondo (tema claro)', 
   });
 });
 
+// ── FASE 3 · segunda pasada (2026-07-29): las iniciales del avatar y el chip en oscuro ──
+// Dos cosas que la auditoría NO podía cazar sola, porque el color no está en el CSS:
+//   · el color del avatar sale de un hash del NOMBRE → con los nombres del fixture nunca
+//     salieron los peores de la paleta (el amarillo con blanco encima daba 1.67:1).
+//   · la etiqueta de músculo en tema OSCURO usaba el color crudo, que ahí se queda en 2.66-4.46
+//     (la nota de la FASE 3 afirmaba lo contrario; se corrigió midiendo).
+// Estos tests recorren la paleta ENTERA, que es lo que un fixture no puede prometer.
+section('FASE 3 — tinta sobre rellenos de color (avatares y chips en oscuro)');
+const _wcag = (() => {
+  const hex = h => { h = h.replace('#',''); return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4); };
+    return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b); };
+  const ratio = (a, b) => { const L1 = lum(hex(a)), L2 = lum(hex(b)); const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); };
+  // La sonda se valida antes de creerle, como en la FASE 3.
+  assert.strictEqual(Number(ratio('#FFFFFF','#000000').toFixed(2)), 21);
+  assert.strictEqual(Number(ratio('#767676','#FFFFFF').toFixed(2)), 4.54);
+  const mezcla = (fg, bg, a) => { const f = hex(fg), b = hex(bg);
+    return '#' + [0,1,2].map(i => Math.round([f.r,f.g,f.b][i]*a + [b.r,b.g,b.b][i]*(1-a)).toString(16).padStart(2,'0')).join(''); };
+  return { ratio, mezcla };
+})();
+test('inkOn elige una tinta legible para los 8 colores de avatar', () => {
+  // La paleta se lee del módulo real, no se copia: si mañana entra un color nuevo, entra al test.
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  const AVC = src.match(/const AVC\s*=\s*\[([^\]]+)\]/)[1].split(',').map(s => s.trim().replace(/['"`]/g, ''));
+  assert.ok(AVC.length >= 8, `esperaba la paleta de avatares, encontré ${AVC.length}`);
+  AVC.forEach(col => {
+    const r = _wcag.ratio(core.inkOn(col), col);
+    assert.ok(r >= 4.5, `avatar ${col}: la tinta ${core.inkOn(col)} da ${r.toFixed(2)}:1 y hace falta 4.5`);
+  });
+});
+test('inkOn no revienta con basura (cae a blanco, nunca a undefined)', () => {
+  ['', null, undefined, '#abc', 'var(--g)', 'rgb(1,2,3)'].forEach(v =>
+    assert.strictEqual(core.inkOn(v), '#FFFFFF', 'debe caer a blanco con ' + String(v)));
+});
+test('mcInkUp hace legibles los 10 colores de músculo sobre el chip en tema oscuro', () => {
+  // El chip pinta el color al 8% (`${color}15`) sobre la tarjeta oscura --w #152A1E.
+  const MUSCULOS = ['#E76F51','#457B9D','#A855F7','#0A7C5B','#C77DFF','#00BFA5','#F4845F','#E63946','#FF6B6B','#6B6B6B'];
+  MUSCULOS.forEach(col => {
+    const fondo = _wcag.mezcla(col, '#152A1E', 0x15/255);
+    const crudo = _wcag.ratio(col, fondo);
+    const claro = _wcag.ratio(core.mcInkUp(col), fondo);
+    assert.ok(claro >= 4.5, `${col}: aclarado da ${claro.toFixed(2)}:1 y hace falta 4.5`);
+    assert.ok(claro > crudo, `${col}: aclarar tiene que MEJORAR sobre el crudo (${crudo.toFixed(2)})`);
+  });
+});
+test('mcInkUp deja pasar lo que no es un color hexadecimal', () => {
+  ['var(--g)', '', null, undefined, '#abc'].forEach(v => assert.strictEqual(core.mcInkUp(v), v));
+});
+
 section('Estático — F5: los harnesses de captura tienen dientes');
 test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
   const fs = require('fs');
