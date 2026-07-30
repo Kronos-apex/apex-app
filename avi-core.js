@@ -1074,6 +1074,25 @@ function planDays(client) {
   return Math.max(1, Math.min(7, d));
 }
 
+// ── TOPE DE LO QUE SE REGISTRA EN UNA SERIE (2026-07-30) ─────────────────────────────
+// MEDIDO en producción: hay **800.000.090 kg** guardados en un curl femoral y 200.000 en un
+// pullover. Sin tope, un dedo gordo en el teclado entra tal cual al historial y de ahí contamina
+// para SIEMPRE: el récord personal de ese ejercicio, la gráfica de progreso y el `totalVol` que
+// alimenta las medallas (había una sesión con volumen de 12 mil millones).
+// Los topes son generosos a propósito — el récord mundial de peso muerto ronda los 500 kg, así
+// que 1.000 no le estorba a nadie real y sí ataja el error de digitación.
+const LOG_MAX = { kg: 1000, lastre: 1000, reps: 999, min: 600, dist: 999 };
+function clampLogValue(field, val) {
+  const max = LOG_MAX[field];
+  if (max == null) return val;                    // campo sin tope definido → intacto
+  if (val === '' || val == null) return val;      // borrar el campo sigue siendo válido
+  const n = parseFloat(val);
+  if (!isFinite(n)) return val;                   // basura → la deja pasar, no es lo nuestro
+  if (n < 0) return '0';
+  if (n > max) return String(max);
+  return val;                                     // dentro de rango → literal, sin reformatear
+}
+
 // Lunes 00:00 local de la semana de `d`, como timestamp.
 function weekStartTs(d) {
   const x = new Date(d); x.setHours(0, 0, 0, 0);
@@ -3487,6 +3506,8 @@ if (typeof module !== 'undefined' && module.exports) {
     workoutStreak,
     longestStreak,
     planDays,
+    clampLogValue,
+    LOG_MAX,
     weekStreak,
     longestWeekStreak,
     adherenceMonth,

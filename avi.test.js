@@ -4644,6 +4644,35 @@ test('migratePhotosToStorage se llama con guarda typeof (revienta el arranque si
     'la llamada perdió su guarda typeof: ' + linea.trim());
 });
 
+section('Tope de lo que se registra en una serie (2026-07-30)');
+
+// POR QUÉ: hay 800.000.090 kg guardados en producción en un curl femoral. Sin tope, un dedo gordo
+// entra al historial y contamina el récord, la gráfica y el volumen para siempre.
+test('clampLogValue topa el peso y deja pasar lo razonable', () => {
+  assert.strictEqual(core.clampLogValue('kg', '800000090'), '1000');
+  assert.strictEqual(core.clampLogValue('kg', '200000'), '1000');
+  assert.strictEqual(core.clampLogValue('kg', '-5'), '0');
+  // lo normal pasa LITERAL: no se reformatea ni se pierde el decimal
+  ['0', '2.5', '60', '100.5', '999.5', '1000'].forEach(v =>
+    assert.strictEqual(core.clampLogValue('kg', v), v, 'el tope estropeó un valor legítimo: ' + v));
+  // borrar el campo sigue siendo válido (si no, no se puede corregir un dato)
+  ['', null, undefined].forEach(v => assert.strictEqual(core.clampLogValue('kg', v), v));
+  // el lastre es peso y también se topa; un campo sin tope definido pasa intacto
+  assert.strictEqual(core.clampLogValue('lastre', '99999'), '1000');
+  assert.strictEqual(core.clampLogValue('loquesea', '99999'), '99999');
+  // reps/minutos/distancia tienen su propio techo
+  assert.strictEqual(core.clampLogValue('reps', '100000'), '999');
+  assert.strictEqual(core.clampLogValue('min', '99999'), '600');
+});
+
+test('setLog es la única vía de escritura de una serie y aplica el tope', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const m = src.match(/function setLog\([^)]*\)\{[^\n]*/);
+  assert.ok(m, 'no se encontró setLog');
+  assert.ok(/clampLogValue/.test(m[0]), 'setLog volvió a guardar el valor crudo: ' + m[0]);
+});
+
 // ── A4 (adopción 2026-07-25): los umbrales de racha viven DUPLICADOS ──
 // `STREAK_MILESTONES` está en avi-core.js (para decidir cuándo preguntar el opt-in) y en la edge
 // `refresh_snapshot` (que es quien EMITE el hito). No se pueden importar entre sí: uno corre en el

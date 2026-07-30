@@ -1201,7 +1201,9 @@ function _qwGo(spec,cfg){
 // Key helpers for session log
 function logKey(routineId,ei,si,field){return `log_${routineId}_${ei}_${si}_${field}`}
 function getLog(routineId,ei,si,field){return localStorage.getItem(logKey(routineId,ei,si,field))||''}
-function setLog(routineId,ei,si,field,val){localStorage.setItem(logKey(routineId,ei,si,field),val)}
+// El tope vive en avi-core (clampLogValue): esta es la ÚNICA vía por la que un peso entra al
+// historial, así que atajarlo aquí lo ataja en el guiado, en la clásica y en los dropsets.
+function setLog(routineId,ei,si,field,val){localStorage.setItem(logKey(routineId,ei,si,field),(typeof clampLogValue==='function')?clampLogValue(field,val):val)}
 function getDoneKey(routineId,ei,si){return `done_${routineId}_${ei}_${si}`}
 function isDone(routineId,ei,si){return localStorage.getItem(getDoneKey(routineId,ei,si))==='1'}
 function setDone(routineId,ei,si,val){localStorage.setItem(getDoneKey(routineId,ei,si),val?'1':'0')}
