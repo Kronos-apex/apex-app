@@ -1062,7 +1062,10 @@ async function syncFromCloud(){
   DB.photos=ld('ax_photos',{});
   DB.nequi=ld('ax_nequi','');
   setP(100,'¡Listo!');
-  setTimeout(()=>migratePhotosToStorage(),3000);
+  // La función vive en app-5-salud.js: si ese módulo no alcanzó a cargar, esto lanzaba y
+  // reventaba el arranque. Pasó 3 veces en Android real (24/26/27-jul, v375/v393/v403). Era el
+  // ÚNICO llamado de esta zona sin el `typeof` que usa todo el código de alrededor.
+  setTimeout(()=>{ if(typeof migratePhotosToStorage==='function') migratePhotosToStorage(); },3000);
   // Mantener la pantalla de carga unos segundos para que se vea la marca y se lea
   // el mensaje (antes se quitaba en 100-350ms y no daba tiempo). Un poco menos si ya
   // hay sesión guardada (no es registro nuevo), pero igual visible.

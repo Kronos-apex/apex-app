@@ -4631,6 +4631,19 @@ test('ningún módulo tiene el patrón `?? \'${` (interpolación a medias en onc
   assert.strictEqual(offenders.length, 0, 'patron de interpolacion a medias encontrado en: ' + offenders.join(', '));
 });
 
+section('Arranque — la guarda que faltaba (2026-07-30)');
+
+// CANDADO del arranque: la llamada que reventó 3 veces en Android real (24/26/27-jul) por invocar
+// una función de OTRO módulo sin comprobar que existiera.
+test('migratePhotosToStorage se llama con guarda typeof (revienta el arranque sin ella)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const linea = src.split('\n').find(l => /migratePhotosToStorage\(\)/.test(l) && !/^\s*\/\//.test(l));
+  assert.ok(linea, 'no se encontró la llamada a migratePhotosToStorage');
+  assert.ok(/typeof\s+migratePhotosToStorage\s*===\s*'function'/.test(linea),
+    'la llamada perdió su guarda typeof: ' + linea.trim());
+});
+
 // ── A4 (adopción 2026-07-25): los umbrales de racha viven DUPLICADOS ──
 // `STREAK_MILESTONES` está en avi-core.js (para decidir cuándo preguntar el opt-in) y en la edge
 // `refresh_snapshot` (que es quien EMITE el hito). No se pueden importar entre sí: uno corre en el
