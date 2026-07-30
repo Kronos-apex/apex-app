@@ -4523,6 +4523,84 @@ test('todo avatar pintado con avc() declara su tinta (avcStyle o inkOn)', () => 
     'estos sitios pintan un avatar sin declarar su tinta (usa avcStyle o pon .style.color=inkOn(...)): ' + malos.join(', '));
 });
 
+// ══ CANDADO DE CLASE (lote de la auditoría, 2026-07-30) ══════════════════════════════════════
+// El «0 textos bajo el umbral» de v413 era 0 en las 12 superficies AUDITADAS, no en la app.
+// Fuera de ellas quedaban DOS patrones, y los dos nacen de lo mismo: la regla de tokens legibles
+// (--ort/--blt/--rdt) se aplicó donde YA había tokens y no donde el color estaba escrito de otra
+// forma. Esta pareja de checks es el grep que la propia auditoría dijo que «los caza todos de
+// una» — y a diferencia de un recorrido de pantallas, no depende de que el estado llegue a
+// pintarse: mira el código, así que no puede salir verde sobre lo que no vio.
+section('Estático — texto sobre tinte: la variante legible, no el token crudo');
+
+// (A) En el CSS: una regla que pinta el FONDO con un tinte (--orl/--bll/--rdl/--yll) y el TEXTO
+//     con el token CRUDO del mismo color. Falla solo en tema claro (2.62-3.45), que es por lo que
+//     sobrevivió: quien lo revisó en oscuro lo vio bien —ahí --ort es alias del crudo—.
+test('ninguna regla de styles.css usa el token CRUDO como texto sobre su propio tinte', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const PAREJAS = { orl: 'or', bll: 'bl', rdl: 'rd', yll: 'yl' };
+  const malas = [];
+  // Regla a regla (selector + bloque). Basta con mirar dentro de cada bloque: el defecto es
+  // declarar las dos cosas juntas.
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim().replace(/\s+/g, ' '), cuerpo = m[2];
+    for (const [tinte, crudo] of Object.entries(PAREJAS)) {
+      if (!new RegExp(`background(-color)?\\s*:\\s*var\\(--${tinte}\\)`).test(cuerpo)) continue;
+      if (!new RegExp(`(^|[;{\\s])color\\s*:\\s*var\\(--${crudo}\\)`).test(cuerpo)) continue;
+      malas.push(`${sel.slice(0, 40)} → color:var(--${crudo}) sobre var(--${tinte}); usa var(--${crudo}t)`);
+    }
+  }
+  assert.deepStrictEqual(malas, [],
+    'texto con el token crudo sobre su propio tinte (ilegible en tema CLARO):\n  ' + malas.join('\n  '));
+});
+
+// (B) En el JS/HTML: un hex ESCRITO A MANO sobre uno de esos mismos tintes. Es el caso inverso y
+//     más traicionero — el hex se eligió mirando el tema claro (5.79 ✔) y nunca cambia, así que
+//     el que se rompe es el tema OSCURO (2.45 y 1.67), donde el tinte sí se invierte.
+test('ningún estilo inline pinta texto con un hex a mano sobre un tinte que cambia de tema', () => {
+  const fs = require('fs'), path = require('path');
+  const TINTES = ['yll', 'orl', 'bll', 'rdl'];
+  const malas = [];
+  fs.readdirSync(__dirname)
+    .filter(f => /^app-\d.*\.js$/.test(f) || f === 'index.html')
+    .forEach(f => {
+      fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n').forEach((linea, i) => {
+        // El defecto exige las DOS cosas en el mismo atributo style; buscar por línea alcanza
+        // porque estos banners se escriben en una sola línea (y si alguien los parte, el check
+        // deja de verlos — por eso existe ADEMÁS la auditoría de lectura, que mide lo pintado).
+        if (!TINTES.some(t => linea.includes(`var(--${t})`))) return;
+        const m = linea.match(/color\s*:\s*(#[0-9A-Fa-f]{3,8})/);
+        if (!m) return;
+        malas.push(`${f}:${i + 1} → color:${m[1]} sobre un tinte de tema; usa var(--ylt/--ort/--blt/--rdt)`);
+      });
+    });
+  assert.deepStrictEqual(malas, [],
+    'hex a mano sobre un tinte que sí cambia de tema (ilegible en tema OSCURO):\n  ' + malas.join('\n  '));
+});
+
+// (C) El token que faltaba. --ort/--blt/--rdt existían desde la FASE 3; --ylt no, y por eso los
+//     tres banners amarillos llevaban el mismo #7a5c00 copiado a mano. Se mide igual que los
+//     otros para que nadie lo mueva a un valor que no se lee.
+test('--ylt se lee sobre --yll en tema claro (y existe en los cuatro bloques :root)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const hex = h => { h = h.replace('#', ''); return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4); };
+    return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b); };
+  const ratio = (a, b) => { const L1 = lum(hex(a)), L2 = lum(hex(b)); const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); };
+  assert.strictEqual(Number(ratio('#FFFFFF','#000000').toFixed(2)), 21, 'la sonda de contraste está rota');
+  assert.strictEqual(Number(ratio('#767676','#FFFFFF').toFixed(2)), 4.54, 'la sonda de contraste está rota');
+  // Los 4 bloques: 2 claros lo definen con hex, 2 oscuros lo alias al crudo (que ahí sí se lee).
+  const definiciones = css.match(/--ylt\s*:\s*[^;]+;/g) || [];
+  assert.strictEqual(definiciones.length, 4, `--ylt debe estar en los 4 bloques :root, encontré ${definiciones.length}`);
+  const claro = css.slice(css.indexOf(':root {'), css.indexOf('/* dark mode automático'));
+  const ylt = (claro.match(/--ylt\s*:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
+  const yll = (claro.match(/--yll\s*:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
+  assert.ok(ylt && yll, 'faltan --ylt o --yll en el :root claro');
+  const r = ratio(ylt, yll);
+  assert.ok(r >= 4.5, `--ylt (${ylt}) sobre --yll (${yll}) da ${r.toFixed(2)}:1 y hace falta 4.5`);
+});
+
 section('Estático — F5: los harnesses de captura tienen dientes');
 test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
   const fs = require('fs');
