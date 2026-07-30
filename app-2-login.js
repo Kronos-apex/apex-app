@@ -457,7 +457,7 @@ function renderTemplates(){
         <div class="rcchev">▼</div>
       </div>
       <div class="rcbody">
-        ${tpl.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:#7a5c00;margin-bottom:9px">💡 ${esc(tpl.note)}</div>`:''}
+        ${tpl.note?`<div style="background:var(--yll);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--ylt);margin-bottom:9px">💡 ${esc(tpl.note)}</div>`:''}
         ${!(tpl.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':
           (tpl.exercises||[]).map(e=>`
             <div class="exrow">

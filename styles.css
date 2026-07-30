@@ -22,6 +22,8 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
   --rdt:#A3121F;     /* texto rojo SOBRE --rdl → 6.52 */
+  --ylt:#7A5C00;     /* texto amarillo SOBRE --yll → 5.79 (faltaba: los 3 banners amarillos
+                        llevaban este mismo hex ESCRITO A MANO y por eso no cambiaban de tema) */
   --t1:#1A1A1A; --t2:#636363; --t3:#6C6C6C;
   --g:#0A7C5B; --g2:#13B583; --gl:#D3F4E8; --gt:#06402E;
   --emerald-hdr:linear-gradient(115deg,#0A1A12,#0E3A2C 58%,#10593F);
@@ -66,7 +68,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   /* En oscuro los tokens ya son claros: la tinta de los rellenos se invierte y el texto sobre
      tinte se lee bien con el token crudo (medido: 7.4 / 6.84 / 5.98). */
   --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --rd-fill:var(--rd);
-  --ort:var(--or); --blt:var(--bl); --rdt:var(--rd);
+  --ort:var(--or); --blt:var(--bl); --rdt:var(--rd); --ylt:var(--yl);
     --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
     --sh:  0 2px 10px rgba(0,0,0,.25);
     --sh2: 0 6px 28px rgba(0,0,0,.40);
@@ -107,7 +109,7 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   /* En oscuro los tokens ya son claros: la tinta de los rellenos se invierte y el texto sobre
      tinte se lee bien con el token crudo (medido: 7.4 / 6.84 / 5.98). */
   --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --rd-fill:var(--rd);
-  --ort:var(--or); --blt:var(--bl); --rdt:var(--rd);
+  --ort:var(--or); --blt:var(--bl); --rdt:var(--rd); --ylt:var(--yl);
   --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
   --sh:  0 2px 10px rgba(0,0,0,.25);
   --sh2: 0 6px 28px rgba(0,0,0,.40);
@@ -141,6 +143,8 @@ html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
   --rdt:#A3121F;     /* texto rojo SOBRE --rdl → 6.52 */
+  --ylt:#7A5C00;     /* texto amarillo SOBRE --yll → 5.79 (faltaba: los 3 banners amarillos
+                        llevaban este mismo hex ESCRITO A MANO y por eso no cambiaban de tema) */
   --t1:#1A1A1A; --t2:#636363; --t3:#6C6C6C;
   --gl:#D3F4E8; --gt:#06402E;
   --sh:0 2px 10px rgba(0,0,0,.06); --sh2:0 6px 28px rgba(0,0,0,.10);
