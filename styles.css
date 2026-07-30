@@ -941,7 +941,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 /* Habitación de RÉCORD/PR */
 .pr-row-door{cursor:pointer}
 .pr-row-door:active{transform:scale(.99)}
-.rr-hero-rec{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:26px;color:#e0a72e;line-height:1.1;margin:2px 0 4px}
+.rr-hero-rec{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:26px;color:var(--ylt);line-height:1.1;margin:2px 0 4px}
 .rr-hero-rec small{font-size:14px;color:var(--t2);font-weight:700}
 .rr-timeline{position:relative;margin:2px 0 16px;padding-left:2px}
 .rr-mile{display:flex;gap:12px;position:relative;padding-bottom:14px}
@@ -951,9 +951,9 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .rr-mile-body{flex:1;min-width:0;padding-top:1px}
 .rr-mile-top{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 .rr-mile-val{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;color:var(--t1)}
-.rr-mile.cur .rr-mile-val{color:#e0a72e}
+.rr-mile.cur .rr-mile-val{color:var(--ylt)}
 .rr-mile-tag{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
-.rr-mile.cur .rr-mile-tag{color:#e0a72e}
+.rr-mile.cur .rr-mile-tag{color:var(--ylt)}
 .rr-mile-date{font-size:11.5px;color:var(--t2);margin-top:2px}
 /* Habitación de RUTINA */
 .rtr-sess{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--w);border:1px solid var(--br);border-radius:12px;padding:11px 13px;margin-bottom:7px;cursor:pointer}
@@ -961,8 +961,8 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .rtr-sess-d{font-size:13px;font-weight:700;color:var(--t1)}
 .rtr-sess-r{display:flex;align-items:center;gap:9px}
 .rtr-sess-v{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--t1)}
-.rtr-up{font-size:11px;font-weight:700;color:#10b981}
-.rtr-dn{font-size:11px;font-weight:700;color:#e0772e}
+.rtr-up{font-size:11px;font-weight:700;color:var(--gt)}
+.rtr-dn{font-size:11px;font-weight:700;color:var(--ort)}
 .rtr-chev{color:var(--t3);font-size:16px;font-weight:800;line-height:1}
 .adv-row-door{cursor:pointer}
 .adv-row-door:active{transform:scale(.99)}
@@ -1083,7 +1083,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 /* ── Sets de calentamiento + Dropsets ── */
 /* Deslizar una serie a la derecha → revela "🔻 Dropset" detrás y, al soltar, lo añade */
 .setrow-wrap{position:relative;overflow:hidden}
-.drop-reveal{position:absolute;inset:0;display:flex;align-items:center;padding-left:18px;gap:6px;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(90deg,#3B82F6,#2563EB);opacity:0;transition:opacity .12s}
+.drop-reveal{position:absolute;inset:0;display:flex;align-items:center;padding-left:18px;gap:6px;font-size:12px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(90deg,#2563EB,#1D4ED8);opacity:0;transition:opacity .12s}
 .setrow-wrap.revealing .drop-reveal{opacity:1}
 
 .gm-rest-overlay.gm-hold #gm-rest-arc{stroke:#E8973A}
@@ -1395,14 +1395,14 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-check:hover{border-color:var(--g2)}
 .gm-check.checked{background:var(--g);border-color:var(--g);color:white;animation:checkDone .3s cubic-bezier(.4,0,.2,1)}
 /* Filas auxiliares del guiado: calentamiento (ámbar) + dropset (azul) */
-.gm-set-row.gm-warm .gm-set-num.warm{background:rgba(232,151,58,.16);color:#E8973A;font-size:15px}
+.gm-set-row.gm-warm .gm-set-num.warm{background:rgba(232,151,58,.16);color:var(--ylt);font-size:15px}
 .gm-set-row.gm-warm.set-done{background:rgba(232,151,58,.08);border-color:#E8973A55}
 .gm-check.warm:hover{border-color:#E8973A}
-.gm-check.warm.checked{background:#E8973A;border-color:#E8973A;color:white}
-.gm-set-row.gm-drop .gm-set-num.drop{background:rgba(59,130,246,.16);color:#3B82F6;font-size:15px}
+.gm-check.warm.checked{background:#E8973A;border-color:#E8973A;color:var(--on-or)}
+.gm-set-row.gm-drop .gm-set-num.drop{background:rgba(59,130,246,.16);color:var(--blt);font-size:15px}
 .gm-set-row.gm-drop.set-done{background:rgba(59,130,246,.08);border-color:#3B82F655}
 .gm-check.drop:hover{border-color:#3B82F6}
-.gm-check.drop.checked{background:#3B82F6;border-color:#3B82F6;color:white}
+.gm-check.drop.checked{background:#2563EB;border-color:#2563EB;color:white}
 /* Guiado: deslizar la serie → dropset (igual que la clásica). La fila debe quedar OPACA y
    por encima del reveal azul (que va detrás), revelándose solo al arrastrar. */
 .setrow-wrap .gm-set-row{position:relative;touch-action:pan-y;will-change:transform;background:var(--bg)}
