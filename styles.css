@@ -165,7 +165,7 @@ html[data-theme="light"] .mta {
 .llbl{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--t2);margin-bottom:5px}
 .li{width:100%;padding:10px 13px;border:1.5px solid var(--br);border-radius:var(--rsm);font-family:inherit;font-size:16px;color:var(--t1);outline:none;transition:border-color .15s;margin-bottom:12px;background:var(--w)}
 .li:focus{border-color:var(--g2)}
-.lerr{background:var(--rdl);color:var(--rd);border-radius:var(--rsm);padding:9px 13px;font-size:13px;font-weight:500;margin-bottom:12px;display:none}
+.lerr{background:var(--rdl);color:var(--rdt);border-radius:var(--rsm);padding:9px 13px;font-size:13px;font-weight:500;margin-bottom:12px;display:none}
 .lerr.on{display:block}
 .lbtn{width:100%;padding:12px;background:var(--g);color:white;border:none;border-radius:var(--rsm);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
 .lbtn:hover{background:var(--g2)}
@@ -226,7 +226,7 @@ html[data-theme="light"] .mta {
 .sbname{font-size:13px;font-weight:700}
 .sbrole{font-size:11px;color:var(--t3)}
 .sbout{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:var(--rsm);font-size:13px;color:var(--t3);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);margin-top:3px}
-.sbout:hover{background:var(--rdl);color:var(--rd)}
+.sbout:hover{background:var(--rdl);color:var(--rdt)}
 
 /* ── COACH BOTTOM NAV (mobile) ── */
 .coach-bottom-nav{
@@ -891,7 +891,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom-stat-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;margin:0 auto 7px;background:color-mix(in srgb,var(--sc,var(--g)) 14%,transparent)}
 .sroom-cmp{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;border-radius:var(--rsm);padding:9px 13px;margin-bottom:16px;line-height:1.35}
 .sroom-cmp.up{background:var(--gl);color:var(--gt);border:1px solid var(--g2)}
-.sroom-cmp.down{background:var(--orl);color:var(--or);border:1px solid color-mix(in srgb,var(--or) 35%,transparent)}
+.sroom-cmp.down{background:var(--orl);color:var(--ort);border:1px solid color-mix(in srgb,var(--or) 35%,transparent)}
 .sroom-cmp.flat{background:var(--bg);color:var(--t2);border:1px solid var(--br)}
 .sroom-cmp .sroom-cmp-ic{display:flex;align-items:center;flex-shrink:0}
 .sroom-cmp .sroom-cmp-d{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px}
@@ -990,7 +990,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .nutr-meal{background:var(--w);border:1px solid var(--br);border-radius:12px;padding:10px 13px;margin-bottom:7px}
 .nutr-meal-h{font-size:11px;font-weight:700;color:var(--gt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
 .nutr-meal-t{font-size:13px;color:var(--t1);line-height:1.5}
-.nutr-avoid{background:var(--rdl);border-radius:12px;padding:10px 13px;font-size:12.5px;color:var(--rd);margin-top:8px;line-height:1.5}
+.nutr-avoid{background:var(--rdl);border-radius:12px;padding:10px 13px;font-size:12.5px;color:var(--rdt);margin-top:8px;line-height:1.5}
 .sroom.on .sroom-body>*{animation:roomUp .5s cubic-bezier(.2,.7,.3,1) both}
 .sroom.on .sroom-body>*:nth-child(2){animation-delay:.05s}
 .sroom.on .sroom-body>*:nth-child(3){animation-delay:.1s}
@@ -1321,7 +1321,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wu-card{background:var(--w);border:1.5px solid var(--br);border-radius:var(--r);overflow:hidden}
 .wu-header{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 14px 10px;cursor:pointer;user-select:none}
 .wu-title{font-size:14px;font-weight:800;color:var(--t1);margin-bottom:5px}
-.wu-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--or);background:var(--orl);color:var(--or);transition:background var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out),color var(--dur) var(--ease-out)}
+.wu-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--or);background:var(--orl);color:var(--ort);transition:background var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out),color var(--dur) var(--ease-out)}
 .wu-prog-txt{font-size:13px;font-weight:700;color:var(--t2);font-family:'JetBrains Mono',monospace;min-width:36px;text-align:right}
 .wu-chev{font-size:12px;color:var(--t3);transition:transform .25s;margin-top:2px}
 .wu-prog-bar{height:3px;background:var(--br);margin:0 14px 0}
@@ -1787,7 +1787,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 /* Reporte de dolor: chips del modal + banner de cuidado + chip por tarjeta */
 .pain-chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 4px}
 .pain-chip{padding:8px 12px;border-radius:20px;border:1.5px solid var(--br2);background:var(--w);color:var(--t1);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .15s,background .15s}
-.pain-chip.on{border-color:var(--ort);background:var(--orl);color:var(--or)}
+.pain-chip.on{border-color:var(--ort);background:var(--orl);color:var(--ort)}
 .pain-chip.lvl.on{box-shadow:0 0 0 1px var(--or)}
 .pain-banner{background:var(--orl);border:1px solid var(--or);border-radius:var(--r);padding:11px 13px;margin:0 0 10px}
 .pain-exchip{font-size:12px;color:var(--t2);background:var(--orl);border:1px dashed var(--or);border-radius:var(--rsm);padding:7px 10px;margin:6px 0 2px;line-height:1.5}
