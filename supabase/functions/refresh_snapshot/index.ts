@@ -1,4 +1,10 @@
-// ══════════ refresh_snapshot (C2 · v2 C3 · v4 R2 hitos · v5 #5 perfil rico · v6 A4 catch-up) ══════════
+// ══════════ refresh_snapshot (C2 · v2 C3 · v4 R2 hitos · v5 #5 perfil rico · v6 A4 catch-up · v7 racha) ══════════
+// v7 (2026-07-30): la racha deja de exigir el plan ENTERO. Medido en producción, `streak_weeks`
+// estaba en 0 para las 8 personas con perfil —incluida quien lleva 31 sesiones y 10 semanas
+// seguidas entrenando— porque una semana solo contaba con `planDays` días (4-5) y la conducta real
+// es 2-3. Ni la racha ni los HITOS de esta función se disparaban jamás. Ahora `streakTargetN` topa
+// el umbral en STREAK_WEEK_MIN_DAYS=2, espejo exacto de `streakTarget` en avi-core (la paridad la
+// exige un test de la suite: si los dos se separan, la app promete un logro que esto no publica).
 // v6 (A4 adopción, 2026-07-25): acepta `{catchup:true}` en el cuerpo. Se usa UNA vez, justo
 // después de que el usuario enciende `show_milestones` desde la pregunta del momento del hito:
 // publica el umbral de racha que YA ostenta, que el camino normal (`crossedStreak`, que exige
