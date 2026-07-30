@@ -1346,33 +1346,39 @@ function renderValoracion(c){
   if(tdee) html += statBox(_coIco('bolt',12,'⚡'),'TDEE',tdee+' kcal','Con actividad','var(--g)');
   html += `</div>`;
 
-  if(kcalObj){
-    html += `<div style="background:linear-gradient(135deg,rgba(45,106,79,.15),rgba(82,183,136,.08));border:1.5px solid rgba(82,183,136,.3);border-radius:12px;padding:13px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:800;color:var(--g2);margin-bottom:8px">${_coIco('target',12,'🎯')} OBJETIVO: ${esc(goal).toUpperCase()}</div>
-      <div style="font-size:24px;font-weight:900;color:white;margin-bottom:4px">${kcalObj.toLocaleString()} kcal/día</div>
-      <div style="font-size:12px;color:var(--accent3,#5FE3B0)">${kcalLabel}</div>
-    </div>`;
-  }
-
-  if(macros){
-    html += `<div style="font-size:11px;font-weight:800;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Distribución de macronutrientes</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:#FF4757;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Proteína</div>
-        <div style="font-size:20px;font-weight:900;color:white">${macros.prot_g}g</div>
-        <div style="font-size:10px;color:var(--t3)">${macros.prot_g*4} kcal</div>
-      </div>
-      <div style="background:rgba(255,214,10,.1);border:1px solid rgba(255,214,10,.3);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:#FFD60A;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Carbos</div>
-        <div style="font-size:20px;font-weight:900;color:white">${macros.carb_g}g</div>
-        <div style="font-size:10px;color:var(--t3)">${macros.carb_g*4} kcal</div>
-      </div>
-      <div style="background:rgba(74,158,255,.1);border:1px solid rgba(74,158,255,.3);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:#4A9EFF;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Grasas</div>
-        <div style="font-size:20px;font-weight:900;color:white">${macros.fat_g}g</div>
-        <div style="font-size:10px;color:var(--t3)">${macros.fat_g*9} kcal</div>
-      </div>
-    </div>`;
+  // Tablero de macros: superficie OSCURA propia en los dos temas (decisión del PO 2026-07-30).
+  // Todos los colores viven en `.vmac` (styles.css) — aquí NO va color inline, justamente para
+  // que nadie vuelva a meter un `var(--t3)` que se rompa en tema claro.
+  if(kcalObj || macros){
+    html += `<div class="vmac">`;
+    if(kcalObj){
+      html += `<div class="vmac-obj">
+        <div class="vmac-obj-t">${_coIco('target',12,'🎯')} OBJETIVO: ${esc(goal).toUpperCase()}</div>
+        <div class="vmac-kcal">${kcalObj.toLocaleString()} kcal/día</div>
+        <div class="vmac-lbl">${kcalLabel}</div>
+      </div>`;
+    }
+    if(macros){
+      html += `<div class="vmac-h">Distribución de macronutrientes</div>
+      <div class="vmac-g">
+        <div class="vmac-c prot">
+          <div class="vmac-k">Proteína</div>
+          <div class="vmac-n">${macros.prot_g}g</div>
+          <div class="vmac-u">${macros.prot_g*4} kcal</div>
+        </div>
+        <div class="vmac-c carb">
+          <div class="vmac-k">Carbos</div>
+          <div class="vmac-n">${macros.carb_g}g</div>
+          <div class="vmac-u">${macros.carb_g*4} kcal</div>
+        </div>
+        <div class="vmac-c fat">
+          <div class="vmac-k">Grasas</div>
+          <div class="vmac-n">${macros.fat_g}g</div>
+          <div class="vmac-u">${macros.fat_g*9} kcal</div>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
   }
 
   // Datos base: Peso/Altura, Edad y Sexo ya viven en la CABECERA del asesorado (no repetir —

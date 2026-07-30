@@ -938,6 +938,35 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .mroom-top-fill{height:100%;border-radius:3px}
 .mroom-top-v{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--t1);flex-shrink:0}
 .mroom-top-v small{font-size:9px;color:var(--t3);margin-left:1px}
+/* ══ Panel de MACROS del generador (.vmac) — DECISIÓN DEL PO, 2026-07-30 ══
+   Es un TABLERO deliberadamente OSCURO en los DOS temas. Nació pintado para fondo oscuro
+   (`color:white` sobre tintes al 10%) y dentro de una .card BLANCA era ilegible: el valor de
+   Carbos medía 1.04:1 — invisible, no "poco legible". Se le ofreció al PO seguir el tema (como
+   ya hacen las barras de macros del asesorado, que miden 4.97-16.12) y eligió CONSERVAR el look
+   de tablero horneando su propia superficie.
+   ⚠️ POR ESO los colores de aquí NO son tokens y no deben "arreglarse" a tokens: el panel no
+   sigue el tema. Consecuencia obligatoria: TODO texto que caiga aquí dentro declara su color en
+   este bloque. Un `var(--t1/--t2/--t3)` heredado se rompe en tema claro, que es exactamente el
+   defecto que este panel viene a matar. El fondo es el mismo --w del tema oscuro (#152A1E), así
+   que en oscuro el panel se ve igual que siempre. */
+.vmac{background:#152A1E;border:1px solid #2D4F38;border-radius:14px;padding:12px;margin-bottom:14px}
+.vmac-obj{background:linear-gradient(135deg,rgba(45,106,79,.15),rgba(82,183,136,.08));border:1.5px solid rgba(82,183,136,.3);border-radius:12px;padding:13px 14px}
+.vmac-obj-t{font-size:12px;font-weight:800;color:#5FE3B0;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.vmac-kcal{font-size:24px;font-weight:900;color:#FFFFFF;margin-bottom:4px}
+.vmac-lbl{font-size:12px;color:#10E0A0}
+.vmac-obj+.vmac-h{margin-top:12px}
+.vmac-h{font-size:11px;font-weight:800;color:#8FAF98;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.vmac-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vmac-c{border-radius:10px;padding:10px;text-align:center}
+.vmac-k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.vmac-n{font-size:20px;font-weight:900;color:#FFFFFF}
+.vmac-u{font-size:10px;color:#A9C6B1}
+.vmac-c.prot{background:rgba(255,71,87,.14);border:1px solid rgba(255,71,87,.32)}
+.vmac-c.prot .vmac-k{color:#FF8A93}
+.vmac-c.carb{background:rgba(255,214,10,.14);border:1px solid rgba(255,214,10,.32)}
+.vmac-c.carb .vmac-k{color:#FFD60A}
+.vmac-c.fat{background:rgba(74,158,255,.14);border:1px solid rgba(74,158,255,.32)}
+.vmac-c.fat .vmac-k{color:#8FC4FF}
 /* Habitación de RÉCORD/PR */
 .pr-row-door{cursor:pointer}
 .pr-row-door:active{transform:scale(.99)}
