@@ -2155,7 +2155,7 @@ function _cmtyLocalStreak(){
     if(typeof weekStreak !== 'function' || typeof planDays !== 'function') return 0;
     // OJO: `weekStreak` devuelve un OBJETO {weeks,thisWeekDays,target,metThisWeek}, no un número
     // (cazado por el harness M1: pasarlo entero daba NaN y la pregunta no salía nunca).
-    const ws = weekStreak(sess, planDays(c), new Date());
+    const ws = weekStreak(sess, streakTarget(c), new Date());
     return (ws && Number(ws.weeks)) || 0;
   }catch(e){ return 0; }
 }

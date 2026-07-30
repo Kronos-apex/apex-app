@@ -1093,6 +1093,26 @@ function clampLogValue(field, val) {
   return val;                                     // dentro de rango → literal, sin reformatear
 }
 
+// ── UMBRAL DE LA RACHA (2026-07-30) ───────────────────────────────────────────
+// MEDIDO en producción: el plan del coach prescribe 4-5 días y la gente entrena 2-3. Como la
+// racha exigía cumplir `planDays` ENTERO, ninguna semana contaba: `streak_weeks` marcaba **0
+// para las 8 personas de la comunidad**, incluida quien lleva 31 sesiones y 10 semanas seguidas
+// entrenando. La gamificación estaba desplegada y no premiaba a nadie — y los hitos al muro
+// (`crossedStreak`) tampoco se disparaban nunca, porque nunca había cruce.
+//
+// La racha mide CONSTANCIA (¿volviste esta semana?), no CUMPLIMIENTO del plan (que es otra cosa
+// y la ve el coach). Por eso el umbral se topa: una semana cuenta con `STREAK_WEEK_MIN_DAYS`
+// días, o con `planDays` si el plan pide menos.
+//
+// ⚠️ NO usar esto para carga de entrenamiento. El detector de DESCARGA (`coachInsight` /
+// `coachPulse`) sigue con `planDays` a propósito: «semanas seguidas A TOPE» significa cumplir el
+// plan completo. Con el umbral topado, alguien que entrena 2 días se marcaría como necesitado de
+// descarga, que es el consejo contrario al correcto.
+const STREAK_WEEK_MIN_DAYS = 2;
+function streakTarget(client) {
+  return Math.max(1, Math.min(planDays(client), STREAK_WEEK_MIN_DAYS));
+}
+
 // Lunes 00:00 local de la semana de `d`, como timestamp.
 function weekStartTs(d) {
   const x = new Date(d); x.setHours(0, 0, 0, 0);
@@ -1390,13 +1410,19 @@ function shareBannerEligible(sessions, now, snoozeUntil) {
 function myTrainingSummary(client, sessions, now) {
   const ref = now ? new Date(now) : new Date();
   const sess = (sessions || []).filter(s => s && s.date && !isNaN(new Date(s.date).getTime()));
-  const ws = weekStreak(sess, planDays(client), ref);
+  // OJO: esta tarjeta mezcla DOS cosas y cada una lleva su umbral.
+  //  · `streakWeeks` es CONSTANCIA  → umbral topado (streakTarget).
+  //  · `target` es la META DEL PLAN que se MUESTRA («2 de 3 días esta semana») → planDays.
+  // Un test de la suite cazó justo esto: al migrar todo a streakTarget, la tarjeta del coach le
+  // decía que su plan era de 2 días cuando es de 3. `thisWeekDays` no depende del umbral (es el
+  // conteo de días distintos de la semana), así que sale igual de cualquiera de las dos.
+  const ws = weekStreak(sess, streakTarget(client), ref);
   const daysSince = daysSinceLastSession(sess, ref); // Infinity si nunca entrenó
   return {
     hasData: sess.length > 0,
     streakWeeks: ws.weeks,
     thisWeekDays: ws.thisWeekDays,
-    target: ws.target,
+    target: planDays(client),
     daysSince: daysSince,
   };
 }
@@ -2196,7 +2222,7 @@ function communitySnapshot(client, sessions, prs, now) {
   const totalVol = hist.reduce((s, h) => s + ((h && h.totalVol) || 0), 0);
   const lvl = gxLevel(total).cur.n;
   const prsCount = prs ? Object.keys(prs).length : 0;
-  const streakWeeks = weekStreak(hist, planDays(client), now).weeks;
+  const streakWeeks = weekStreak(hist, streakTarget(client), now).weeks;
   const today = localDayStart(now || new Date());
   const cutoff = today - 27 * 86400000; // hoy + 27 días previos = ventana de 4 semanas
   const days4w = new Set();
@@ -3506,6 +3532,8 @@ if (typeof module !== 'undefined' && module.exports) {
     workoutStreak,
     longestStreak,
     planDays,
+    streakTarget,
+    STREAK_WEEK_MIN_DAYS,
     clampLogValue,
     LOG_MAX,
     weekStreak,

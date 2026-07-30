@@ -4673,6 +4673,72 @@ test('setLog es la única vía de escritura de una serie y aplica el tope', () =
   assert.ok(/clampLogValue/.test(m[0]), 'setLog volvió a guardar el valor crudo: ' + m[0]);
 });
 
+section('Racha — el umbral topado (2026-07-30)');
+
+// POR QUÉ: MEDIDO en producción, `streak_weeks` marcaba **0 para las 8 personas de comunidad**,
+// incluida quien llevaba 31 sesiones y 10 semanas seguidas entrenando. Causa: la racha exigía
+// cumplir `planDays` ENTERO (4-5 días) y la conducta real es 2-3. La gamificación estaba
+// desplegada y no premiaba a nadie; los hitos al muro tampoco se disparaban nunca.
+test('streakTarget topa la meta del plan, sin inventar días a quien planea menos', () => {
+  const c5 = { routines: [{ day: 'Lunes' }, { day: 'Martes' }, { day: 'Miércoles' }, { day: 'Jueves' }, { day: 'Viernes' }] };
+  assert.strictEqual(core.planDays(c5), 5, 'el plan sigue siendo de 5 días');
+  assert.strictEqual(core.streakTarget(c5), 2, 'la racha se conforma con 2');
+  // quien planea MENOS que el tope no recibe una meta inventada más alta
+  assert.strictEqual(core.streakTarget({ routines: [{ day: 'Lunes' }] }), 1);
+  assert.strictEqual(core.streakTarget({ days: 1 }), 1);
+  // nunca 0 ni negativo, pase lo que pase
+  [null, undefined, {}, { days: 0 }, { days: -3 }].forEach(x =>
+    assert.ok(core.streakTarget(x) >= 1, 'streakTarget cayó por debajo de 1 con ' + JSON.stringify(x)));
+});
+
+// El caso REAL que motivó el cambio, con la forma exacta de los datos de producción: plan de 4
+// días, entrena 2 por semana, 6 semanas seguidas. Antes daba 0. Este test FALLA con la conducta
+// vieja (weekStreak contra planDays) — que es su razón de ser.
+test('quien entrena 2 días/semana con un plan de 4 SÍ acumula racha (antes daba 0)', () => {
+  const lunes = new Date('2026-07-27T10:00:00');
+  const sess = [];
+  for (let w = 0; w < 6; w++) {
+    for (const off of [0, 2]) {
+      const d = new Date(lunes); d.setDate(d.getDate() - w * 7 + off);
+      sess.push({ date: d.toISOString(), doneSets: 8, totalSets: 8 });
+    }
+  }
+  const cli = { routines: [{ day: 'Lunes' }, { day: 'Martes' }, { day: 'Jueves' }, { day: 'Viernes' }] };
+  const ref = new Date('2026-07-30T18:00:00');
+  assert.strictEqual(core.planDays(cli), 4);
+  const viejo = core.weekStreak(sess, core.planDays(cli), ref).weeks;
+  assert.strictEqual(viejo, 0, 'el escenario debe reproducir el bug: con planDays la racha era 0');
+  const nuevo = core.weekStreak(sess, core.streakTarget(cli), ref).weeks;
+  assert.ok(nuevo >= 6, 'con el umbral topado debe acumular las 6 semanas, dio ' + nuevo);
+});
+
+// CANDADO: el detector de DESCARGA NO puede usar el umbral topado — «semanas seguidas A TOPE»
+// significa cumplir el plan completo. Si alguien migra estos dos sitios por descuido, la app le
+// recomendaría una semana de descarga a quien entrena 2 días, que es el consejo contrario.
+test('el detector de descarga sigue midiendo contra planDays, NO contra streakTarget', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const deload = src.split('\n')
+    .map((l, i) => ({ l: l, n: i + 1 }))
+    .filter(x => /weekStreak\(/.test(x.l) && /nowTs/.test(x.l));
+  assert.strictEqual(deload.length, 2, 'esperaba los 2 sitios de carga (coachInsight/coachPulse), hay ' + deload.length);
+  deload.forEach(x => assert.ok(/planDays\(/.test(x.l),
+    'avi-core.js:' + x.n + ' usa el umbral de racha para medir CARGA: ' + x.l.trim()));
+});
+
+// PARIDAD: el umbral vive duplicado en avi-core y en la edge, y no se pueden importar entre sí.
+// Si se separan, la app le muestra una racha al asesorado y el servidor publica otra.
+test('el umbral de racha de avi-core y el de la edge refresh_snapshot son idénticos', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'supabase/functions/refresh_snapshot/index.ts'), 'utf8');
+  const m = src.match(/const\s+STREAK_WEEK_MIN_DAYS\s*=\s*(\d+)/);
+  assert.ok(m, 'la edge refresh_snapshot no declara STREAK_WEEK_MIN_DAYS');
+  assert.strictEqual(Number(m[1]), core.STREAK_WEEK_MIN_DAYS,
+    'el umbral de la edge y el de avi-core se separaron');
+  assert.ok(/streakTargetN\s*\(/.test(src), 'la edge perdió streakTargetN');
+  assert.ok(/tgt\s*=\s*streakTargetN\(/.test(src), 'la edge volvió a calcular la racha contra planDays');
+});
+
 // ── A4 (adopción 2026-07-25): los umbrales de racha viven DUPLICADOS ──
 // `STREAK_MILESTONES` está en avi-core.js (para decidir cuándo preguntar el opt-in) y en la edge
 // `refresh_snapshot` (que es quien EMITE el hito). No se pueden importar entre sí: uno corre en el

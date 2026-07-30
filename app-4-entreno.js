@@ -615,13 +615,13 @@ function renderTodayHead(client){
   const name=esc((client.name||'').split(' ')[0]||'');
   // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan — la racha
   // por días consecutivos castigaba al de 3/sem (vivía en "Empieza tu racha hoy").
-  const ws=weekStreak((DB.history&&DB.history[client.id])||[], planDays(client), new Date());
+  const ws=weekStreak((DB.history&&DB.history[client.id])||[], streakTarget(client), new Date());
   // Íconos SVG de marca (v306, F2): flame para racha encendida, target para la meta en curso.
   const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
   const chip=ws.weeks>=1
-    ? `<div class="streak-chip">${_ic('flame',15,'🔥')} <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} cumpliendo tu plan</div>`
+    ? `<div class="streak-chip">${_ic('flame',15,'🔥')} <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} seguida${ws.weeks!==1?'s':''} entrenando</div>`
     : ws.thisWeekDays>0
-      ? `<div class="streak-chip">${_ic('target',15,'💪')} Esta semana: <b>${ws.thisWeekDays}/${ws.target}</b> días</div>`
+      ? `<div class="streak-chip">${_ic('target',15,'💪')} Vas <b>${ws.thisWeekDays}</b> de <b>${ws.target}</b> para encender tu racha</div>`
       : `<div class="streak-chip streak-0">${_ic('target',15,'💪')} Empieza tu racha esta semana</div>`;
   el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
   // Botón de entrenamientos rápidos (HTML estático): el ⚡ emoji pasa a bolt SVG (F2).
@@ -2194,7 +2194,9 @@ function renderClientStreak(clientId){
   const sessions=(DB.history&&DB.history[clientId])||[];
   const now=new Date();
   // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan.
-  const tgt=planDays(c);
+  // El umbral de la racha se TOPA (streakTarget): mide que VUELVAS cada semana, no que
+  // cumplas el plan entero. Ver la nota de STREAK_WEEK_MIN_DAYS en avi-core.
+  const tgt=streakTarget(c);
   const ws=weekStreak(sessions,tgt,now);
   const record=longestWeekStreak(sessions,tgt);
   const cal=adherenceMonth(sessions,now);
@@ -2214,12 +2216,12 @@ function renderClientStreak(clientId){
   // Mensaje en lenguaje claro: explica qué es la racha y qué hacer ahora.
   const falta=Math.max(0,ws.target-ws.thisWeekDays);
   const msg = ws.weeks>=2
-    ? `Llevas <b>${ws.weeks} semanas seguidas</b> cumpliendo tu plan de ${ws.target} día${ws.target!==1?'s':''}. ¡Sigue así!${!ws.metThisWeek?` Esta semana vas <b>${ws.thisWeekDays}/${ws.target}</b>.`:''}`
+    ? `Llevas <b>${ws.weeks} semanas seguidas</b> entrenando. ¡Sigue así!${!ws.metThisWeek?` Esta semana vas <b>${ws.thisWeekDays}/${ws.target}</b>.`:''}`
     : ws.weeks===1
       ? `¡Semana cumplida! 🎉 Completa esta (${ws.thisWeekDays}/${ws.target}) para encadenar 2 seguidas.`
       : ws.thisWeekDays>0
         ? `Esta semana llevas <b>${ws.thisWeekDays} de ${ws.target}</b> día${ws.target!==1?'s':''}. Te ${falta===1?'falta':'faltan'} <b>${falta}</b> para encender tu racha 🔥`
-        : `Tu racha son las <b>semanas seguidas</b> cumpliendo tu meta de ${ws.target} día${ws.target!==1?'s':''}. ¡Esta semana cuenta!`;
+        : `Tu racha son las <b>semanas seguidas</b> en las que entrenas al menos ${ws.target} día${ws.target!==1?'s':''}. ¡Esta semana cuenta!`;
   con.innerHTML=`<div class="card streak-card">
     <div class="streak-title">${typeof aviIcon==='function'?aviIcon('flame',14):'🔥'} Tu constancia</div>
     <div class="streak-stats">

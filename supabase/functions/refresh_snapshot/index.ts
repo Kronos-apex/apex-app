@@ -84,6 +84,14 @@ function planDays(routines: any[], days: any): number {
   const d = fromR || parseInt(days) || 3;
   return Math.max(1, Math.min(7, d));
 }
+// ESPEJO de avi-core `STREAK_WEEK_MIN_DAYS`/`streakTarget` (2026-07-30). El plan pide 4-5 días y
+// la gente entrena 2-3 → exigir planDays entero dejaba `streak_weeks` en 0 para TODOS y los hitos
+// del muro no se disparaban nunca. La racha mide CONSTANCIA, no cumplimiento del plan.
+// ⚠️ Si cambias este valor, cambia también avi-core: la paridad la exige un test de la suite.
+const STREAK_WEEK_MIN_DAYS = 2;
+function streakTargetN(routines: any[], days: any): number {
+  return Math.max(1, Math.min(planDays(routines, days), STREAK_WEEK_MIN_DAYS));
+}
 function gxLevelN(total: number): number {
   let n = 1; for (let i = 0; i < GX_MINS.length; i++) { if (total >= GX_MINS[i]) n = i + 1; } return n;
 }
@@ -108,7 +116,7 @@ function snapshot(row: any, nowT: number) {
   const totalVol = hist.reduce((s: number, h: any) => s + ((h && h.totalVol) || 0), 0);
   const lvl = gxLevelN(total);
   const prsCount = Object.keys(prs).length;
-  const tgt = planDays(row && row.routines, row && row.profile && row.profile.days);
+  const tgt = streakTargetN(row && row.routines, row && row.profile && row.profile.days);
   const streak_weeks = weekStreakWeeks(hist, tgt, nowT);
   const today = bogotaDayStart(nowT);
   const cutoff = today - 27 * 86400000;
