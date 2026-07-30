@@ -1093,6 +1093,86 @@ function clampLogValue(field, val) {
   return val;                                     // dentro de rango → literal, sin reformatear
 }
 
+// ── AUTO-CURA DE VALORES ABSURDOS YA GUARDADOS (2026-07-30) ──────────────────────────────────
+// `clampLogValue` impide que entren nuevos, pero NO limpia los que ya están: en producción había
+// un «Curl Femoral Tumbado» con 800.000.090 kg y un «Pullover en Polea» con 200.000, más un
+// RÉCORD falso de 200.000 kg en el perfil de esa persona. Eso contamina la gráfica de progreso,
+// el volumen total y las medallas del snapshot de comunidad, para siempre.
+//
+// POR QUÉ VA EN EL CLIENTE Y NO SOLO EN LA NUBE: la app es offline-first y el dispositivo pisa al
+// servidor. Arreglar solo en Supabase no dura — el teléfono vuelve a empujar el valor viejo en el
+// siguiente sync. Mismo patrón que `stripFixtureSessions`: se sanea AL CARGAR y, si algo cambió,
+// se persiste. Así cada teléfono se cura solo la próxima vez que abra.
+//
+// QUÉ HACE, y qué NO: pone en BLANCO el valor imposible (la serie sigue contando como hecha, con
+// sus repeticiones) y recalcula el volumen de esa sesión. **NO inventa un peso.** Poner el tope
+// (1.000) sería afirmar que alguien levantó 1.000 kg, que es tan falso como el dato original.
+const _SANE_MAX = { kg: 1000, lastre: 1000, reps: 999, secs: 86400, min: 600, dist: 999 };
+function _saneNum(v, max) {
+  // true = hay que borrarlo. Solo toca lo que es un número FUERA de rango; el texto raro, el
+  // vacío y el 0 se dejan como están (no es asunto de esta función).
+  if (v === '' || v == null) return false;
+  const n = parseFloat(v);
+  if (!isFinite(n)) return false;
+  return n < 0 || n > max;
+}
+// Volumen de una sesión = Σ(kg × reps) de las series HECHAS. Espejo de `updateClientProgress`.
+function _volOf(sesion) {
+  let vol = 0;
+  ((sesion && sesion.exercises) || []).forEach(ex => {
+    ((ex && ex.sets) || []).forEach(s => {
+      if (!s || !s.done) return;
+      vol += (parseFloat(s.kg) || 0) * (parseFloat(s.reps) || 0);
+    });
+  });
+  return vol;
+}
+function sanitizeHistory(history) {
+  const arr = Array.isArray(history) ? history : [];
+  let fixed = 0;
+  const out = arr.map(h => {
+    if (!h || !Array.isArray(h.exercises)) return h;
+    let tocado = false;
+    const exercises = h.exercises.map(ex => {
+      if (!ex || !Array.isArray(ex.sets)) return ex;
+      let exTocado = false;
+      const sets = ex.sets.map(s => {
+        if (!s) return s;
+        let sTocado = false; const ns = { ...s };
+        Object.keys(_SANE_MAX).forEach(f => {
+          if (_saneNum(ns[f], _SANE_MAX[f])) { ns[f] = ''; sTocado = true; fixed++; }
+        });
+        if (!sTocado) return s;
+        exTocado = true; return ns;
+      });
+      if (!exTocado) return ex;
+      tocado = true; return { ...ex, sets: sets };
+    });
+    if (!tocado) return h;
+    const nh = { ...h, exercises: exercises };
+    // El volumen guardado se derivó del valor corrupto: se recalcula desde lo que queda.
+    nh.totalVol = _volOf(nh);
+    return nh;
+  });
+  return { history: fixed ? out : arr, fixed: fixed };
+}
+// Los RÉCORDS son un objeto {exId: {kg, val, reps, date, …}} y se guardan aparte del historial:
+// un récord imposible sobrevive aunque la sesión que lo originó ya esté limpia. Se ELIMINA el
+// récord entero (no se recorta): la app lo vuelve a registrar sola la próxima vez que la persona
+// haga ese ejercicio, y con su peso de verdad.
+function sanitizePrs(prs) {
+  const src = (prs && typeof prs === 'object') ? prs : {};
+  const out = {}; let removed = 0;
+  Object.keys(src).forEach(k => {
+    const p = src[k];
+    const malo = p && typeof p === 'object' &&
+      ['kg', 'val', 'reps', 'secs', 'min', 'dist'].some(f => _saneNum(p[f], _SANE_MAX[f] || 1000));
+    if (malo) { removed++; return; }
+    out[k] = p;
+  });
+  return { prs: removed ? out : src, removed: removed };
+}
+
 // ── UMBRAL DE LA RACHA (2026-07-30) ───────────────────────────────────────────
 // MEDIDO en producción: el plan del coach prescribe 4-5 días y la gente entrena 2-3. Como la
 // racha exigía cumplir `planDays` ENTERO, ninguna semana contaba: `streak_weeks` marcaba **0
@@ -3535,6 +3615,8 @@ if (typeof module !== 'undefined' && module.exports) {
     streakTarget,
     STREAK_WEEK_MIN_DAYS,
     clampLogValue,
+    sanitizeHistory,
+    sanitizePrs,
     LOG_MAX,
     weekStreak,
     longestWeekStreak,

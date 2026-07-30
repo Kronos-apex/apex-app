@@ -4673,6 +4673,104 @@ test('setLog es la única vía de escritura de una serie y aplica el tope', () =
   assert.ok(/clampLogValue/.test(m[0]), 'setLog volvió a guardar el valor crudo: ' + m[0]);
 });
 
+section('Auto-cura de valores imposibles ya guardados (2026-07-30)');
+
+// Los dos casos son LOS DE PRODUCCIÓN, con su forma exacta: kg como string, el de Natalia con
+// ceros a la izquierda (un teclado trabado, no un dedo), y el volumen guardado ya contaminado.
+test('sanitizeHistory borra el valor imposible y RECALCULA el volumen de esa sesión', () => {
+  const hist = [{
+    id: 'mrozcnp88cyw3jloxih', date: '2026-07-17T14:29:47.797Z',
+    totalVol: 12000002430, doneSets: 3, totalSets: 15,
+    exercises: [{
+      id: 'e40', name: 'Curl Femoral Tumbado', track: 'peso_reps',
+      sets: [
+        { kg: '00000800000090', reps: '15', done: true },
+        { kg: '30', reps: '15', done: true },
+        { kg: '30', reps: '12', done: true },
+      ],
+    }],
+  }];
+  const r = core.sanitizeHistory(hist);
+  assert.strictEqual(r.fixed, 1, 'debe tocar exactamente un valor');
+  const sets = r.history[0].exercises[0].sets;
+  assert.strictEqual(sets[0].kg, '', 'el valor imposible queda en blanco');
+  assert.strictEqual(sets[0].reps, '15', 'las repeticiones NO se tocan');
+  assert.strictEqual(sets[0].done, true, 'la serie sigue contando como hecha');
+  assert.strictEqual(sets[1].kg, '30', 'las series buenas quedan intactas');
+  // 30×15 + 30×12 = 450 + 360 = 810. El 12.000.002.430 se derivaba del dato corrupto.
+  assert.strictEqual(r.history[0].totalVol, 810, 'el volumen se recalcula desde lo que queda');
+  assert.notStrictEqual(r.history, hist, 'no muta el original (función pura)');
+  assert.strictEqual(hist[0].exercises[0].sets[0].kg, '00000800000090', 'el original quedó intacto');
+});
+
+test('sanitizeHistory NO toca un historial sano (ni lo copia)', () => {
+  const hist = [{
+    id: 'x', date: '2026-07-20T10:00:00.000Z', totalVol: 600,
+    exercises: [{ id: 'e1', sets: [{ kg: '20', reps: '12', done: true }, { kg: '', reps: '12', done: false }] }],
+  }];
+  const r = core.sanitizeHistory(hist);
+  assert.strictEqual(r.fixed, 0);
+  assert.strictEqual(r.history, hist, 'sin cambios debe devolver el MISMO array, no una copia');
+  assert.strictEqual(r.history[0].totalVol, 600, 'no recalcula el volumen de lo que no tocó');
+});
+
+test('sanitizeHistory aguanta basura sin reventar', () => {
+  [null, undefined, [], 'no soy un array', 42, [null], [{}], [{ exercises: null }],
+   [{ exercises: [{ sets: null }] }], [{ exercises: [{ sets: [null] }] }]].forEach(x => {
+    const r = core.sanitizeHistory(x);
+    assert.ok(r && Array.isArray(r.history), 'devolvió algo que no es historial con ' + JSON.stringify(x));
+    assert.strictEqual(typeof r.fixed, 'number');
+  });
+});
+
+// El récord vive APARTE del historial: limpiar la sesión no lo limpia a él.
+test('sanitizePrs retira el récord imposible y conserva los reales', () => {
+  const prs = {
+    e24: { kg: 200000, val: 200000, reps: 12, name: 'Pullover en Polea', date: '2026-07-29T22:21:35.110Z' },
+    e5:  { kg: 20, val: 20, reps: 10, name: 'Press de Banca con Barra', date: '2026-07-04T03:21:20.269Z' },
+    e9:  { kg: 35, val: 35, reps: 10, name: 'Press Inclinado con Mancuernas' },
+  };
+  const r = core.sanitizePrs(prs);
+  assert.strictEqual(r.removed, 1);
+  assert.strictEqual(r.prs.e24, undefined, 'el récord falso se va entero');
+  assert.strictEqual(r.prs.e5.kg, 20, 'los reales quedan intactos');
+  assert.strictEqual(r.prs.e9.kg, 35);
+  assert.ok(prs.e24, 'no muta el original (función pura)');
+});
+
+test('sanitizePrs no toca un conjunto sano ni revienta con basura', () => {
+  const sanos = { e5: { kg: 20, val: 20, reps: 10 } };
+  const r = core.sanitizePrs(sanos);
+  assert.strictEqual(r.removed, 0);
+  assert.strictEqual(r.prs, sanos, 'sin cambios devuelve el MISMO objeto');
+  [null, undefined, 'texto', 42, {}, { e1: null }, { e1: 'raro' }].forEach(x => {
+    const rr = core.sanitizePrs(x);
+    assert.ok(rr && typeof rr.prs === 'object', 'reventó con ' + JSON.stringify(x));
+  });
+});
+
+// CANDADO: la cura tiene que estar CABLEADA en la carga, no solo existir. Sin esto, el teléfono
+// vuelve a empujar el valor viejo en el siguiente sync (la app es offline-first) y el arreglo de
+// la nube no dura ni un día.
+test('la auto-cura está cableada en la carga del asesorado y persiste lo que arregla', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function _applyAuthClientDB');
+  assert.ok(i > -1, 'no se encontró _applyAuthClientDB');
+  const cuerpo = src.slice(i, i + 2600);
+  assert.ok(/sanitizeHistory\(/.test(cuerpo), 'la carga no sanea el historial');
+  assert.ok(/sanitizePrs\(/.test(cuerpo), 'la carga no sanea los récords');
+  // OJO: no basta con buscar `svNow('ax_hist')` en la zona — el auto-curado de fixtures (v298)
+  // ya tiene uno, así que el check pasaba por el motivo equivocado (lo descubrí saboteando: quité
+  // la persistencia del saneo y el test siguió verde). Se exige que el svNow esté DENTRO del
+  // bloque que dispara cada cura.
+  const tras = (marca, n) => { const j = cuerpo.indexOf(marca); return j < 0 ? '' : cuerpo.slice(j, j + n); };
+  assert.ok(/svNow\('ax_hist'/.test(tras('_sh.fixed>0', 220)),
+    'el saneo del historial no persiste dentro de su propio bloque (el teléfono lo volvería a pisar)');
+  assert.ok(/svNow\('ax_pr'/.test(tras('_sp.removed>0', 220)),
+    'el saneo de récords no persiste dentro de su propio bloque');
+});
+
 section('Racha — el umbral topado (2026-07-30)');
 
 // POR QUÉ: MEDIDO en producción, `streak_weeks` marcaba **0 para las 8 personas de comunidad**,

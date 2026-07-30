@@ -296,7 +296,15 @@ function _applyAuthClientDB(client, coll){
   const _hclean=(typeof stripFixtureSessions==='function')?stripFixtureSessions(coll.history):{history:coll.history||[],removed:0};
   DB.history   ={[id]: _hclean.history};
   if(_hclean.removed>0){ try{ svNow('ax_hist',DB.history); log&&log('AVI: purgadas '+_hclean.removed+' sesiones-fixture del historial'); }catch(_e){} }
-  DB.prs       ={[id]: coll.prs       ||{}};
+  // 🧹 Auto-cura (2026-07-30): borra valores IMPOSIBLES ya guardados (había 800.000.090 kg
+  // en un curl femoral) y recalcula el volumen de esa sesión. Va aquí y no solo en la nube porque
+  // la app es offline-first: si se arregla solo en Supabase, el teléfono lo vuelve a pisar.
+  const _sh=(typeof sanitizeHistory==='function')?sanitizeHistory(DB.history[id]):{history:DB.history[id],fixed:0};
+  if(_sh.fixed>0){ DB.history={[id]: _sh.history};
+    try{ svNow('ax_hist',DB.history); log&&log('AVI: saneados '+_sh.fixed+' valores imposibles del historial'); }catch(_e){} }
+  const _sp=(typeof sanitizePrs==='function')?sanitizePrs(coll.prs||{}):{prs:coll.prs||{},removed:0};
+  DB.prs       ={[id]: _sp.prs};
+  if(_sp.removed>0){ try{ svNow('ax_pr',DB.prs); log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }
   DB.bodyweight={[id]: coll.bodyweight||[]};
   DB.medidas   ={[id]: coll.medidas   ||[]};
   DB.nutrition ={[id]: coll.nutrition ||{}};
