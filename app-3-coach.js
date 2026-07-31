@@ -404,7 +404,9 @@ async function _provisionFreeClient(authUser, p){
     id:authUser.id, name:p.name, email:authUser.email||p.email,
     goal:p.goal, level:p.level, weight:p.weight, height:p.height,
     age:p.age, sex:p.sex, activityFactor:1.55, days:p.days, place:p.place,
-    notes:'', phone:'', selfReg:true, tier:'libre', routines:[],
+    // phone: llega del wizard (ya normalizado por waPhone). Antes iba vacío a la fuerza y por eso
+    // los 13 auto-registrados eran inalcanzables: sin push y sin número, no había CÓMO escribirles.
+    notes:'', phone:(p&&p.phone)||'', selfReg:true, tier:'libre', routines:[],
     consent:p.consent||null, // prueba de autorización (fecha + versión de los textos legales)
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
@@ -1019,6 +1021,9 @@ async function signupClient(){
     age:parseInt(g('su-age').value)||null,
     weight:parseFloat(g('su-weight').value)||null,
     height:parseFloat(g('su-height').value)||null,
+    // Normalizado YA aquí con waPhone (avi-core): un móvil colombiano sin +57 da un wa.me roto
+    // — gotcha vigente del fix v365. Vacío se queda vacío: el campo es opcional.
+    phone:(typeof waPhone==='function')?waPhone(g('su-phone')&&g('su-phone').value||''):'',
   };
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
@@ -1029,7 +1034,7 @@ async function signupClient(){
   if(btn){btn.disabled=true;}
   try{
     // 1. Crear cuenta en Supabase Auth (la contraseña la maneja Auth; el perfil va en metadata)
-    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,selfReg:true,consent};
+    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,selfReg:true,consent};
     let res;
     try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
     catch(e){ err.textContent='No se pudo crear la cuenta. Intenta de nuevo.';err.classList.add('on');return; }
@@ -2125,8 +2130,27 @@ function renderCoachChatThread(clientId, forceBottom){
   const nearBottom=forceBottom||con.scrollHeight<=con.clientHeight||(con.scrollHeight-con.clientHeight-con.scrollTop)<=48;
   const prevTop=con.scrollTop;
   const msgs=DB.msgs[clientId]||[]; con.innerHTML='';
-  const first=((DB.clients.find(x=>x.id===clientId)||{}).name||'Asesorado').split(' ')[0];
-  if(!msgs.length){ con.innerHTML='<div class="cchat-empty">Aún no hay mensajes.<br>Escríbele el primero 👇</div>'; return; }
+  const cli=DB.clients.find(x=>x.id===clientId)||{};
+  const first=(cli.name||'Asesorado').split(' ')[0];
+  // Aviso de NO-ENTREGA: el chat es solo-coach, así que a un plan 'libre'/'app' el mensaje se
+  // guarda y nunca se ve. Antes esto era mudo (20 mensajes reales en el aire, ver avi-core).
+  // No bloqueamos escribir — decisión del PO: avisar al coach y ofrecerle subir el plan.
+  const blk=(typeof chatDeliveryBlock==='function')?chatDeliveryBlock(cli):null;
+  if(blk){
+    const w=document.createElement('div'); w.className='cchat-noliv';
+    const t=document.createElement('div'); t.className='cchat-noliv-t';
+    t.textContent=`${first} tiene plan «${blk.label}», que no incluye chat: lo que escribas aquí se guarda, pero no le llega.`;
+    w.appendChild(t); // textContent → el nombre nunca entra como HTML
+    const b=document.createElement('button'); b.type='button'; b.className='btn bp bsm';
+    b.textContent='Activar Premium + Coach';
+    b.onclick=()=>{ if(typeof setClientPlan==='function')setClientPlan(clientId,'coach'); };
+    w.appendChild(b); con.appendChild(w);
+  }
+  if(!msgs.length){
+    const e=document.createElement('div'); e.className='cchat-empty';
+    e.textContent='Aún no hay mensajes. Escríbele el primero 👇';
+    con.appendChild(e); con.scrollTop=nearBottom?con.scrollHeight:prevTop; return;
+  }
   msgs.forEach(m=>{
     const isC=m.from==='coach';
     const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
@@ -2159,7 +2183,10 @@ function coachInviteOpenApp(){
   const id=_cchatId; const c=DB.clients.find(x=>x.id===id); if(!c)return;
   const nombre=(c.name||'').split(' ')[0]||'';
   const saludo=nombre?`Hola ${nombre} 👋 `:'¡Hola! 👋 ';
-  const msg=`${saludo}Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus rutinas ni tu progreso 💪`;
+  // El enlace NO es opcional: el mensaje pedía «abre AVI» sin decir DÓNDE, así que el asesorado
+  // recibía la orden sin la puerta (hallazgo 2026-07-31). Mismo patrón defensivo que app-7.
+  const url=(typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://kronos-apex.github.io/apex-app/';
+  const msg=`${saludo}Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus rutinas ni tu progreso 💪\n\n${url}`;
   const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   if(phone){ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank'); toast('📲 Invitación lista en WhatsApp'); return; }
   const ta=document.getElementById('cchat-in'); if(ta){ ta.value=msg; if(typeof _cchatGrow==='function')_cchatGrow(ta); ta.focus(); }

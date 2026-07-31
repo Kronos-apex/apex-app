@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=417">
+<link rel="stylesheet" href="styles.css?v=418">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -269,6 +269,14 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
             <input id="su-height" class="wz-num" type="number" inputmode="numeric" min="100" max="250" placeholder="—"><span class="wz-unit">cm</span>
             <button type="button" class="wz-pm" onclick="WZ.step('su-height',1,100,250)">+</button></div>
         </div>
+        <!-- Teléfono (2026-07-31): 15 de 22 asesorados eran IMPOSIBLES de contactar por no
+             tenerlo. WhatsApp es el único canal que alcanza a quien no activó notificaciones.
+             OPCIONAL a propósito: exigirlo en el registro espanta más de lo que suma. -->
+        <div class="wz-row">
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-chat"/></svg></span>WhatsApp <span class="wz-opt">(opcional)</span></span>
+          <div class="ctl"><input id="su-phone" class="wz-tel" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="300 123 4567"></div>
+        </div>
+        <p class="wz-help">Tu coach lo usa para escribirte si algo no te llega a la app. No se comparte con nadie más.</p>
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
 
@@ -1155,19 +1163,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=417"></script>
-<script src="muscle-map.js?v=417"></script>
-<script src="exercise-muscles.js?v=417"></script>
+<script src="avi-core.js?v=418"></script>
+<script src="muscle-map.js?v=418"></script>
+<script src="exercise-muscles.js?v=418"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=417"></script>
-<script src="app-2-login.js?v=417"></script>
-<script src="app-3-coach.js?v=417"></script>
-<script src="app-4-entreno.js?v=417"></script>
-<script src="app-5-salud.js?v=417"></script>
-<script src="app-6-extra.js?v=417"></script>
-<script src="app-7-community.js?v=417"></script>
+<script src="app-1-infra.js?v=418"></script>
+<script src="app-2-login.js?v=418"></script>
+<script src="app-3-coach.js?v=418"></script>
+<script src="app-4-entreno.js?v=418"></script>
+<script src="app-5-salud.js?v=418"></script>
+<script src="app-6-extra.js?v=418"></script>
+<script src="app-7-community.js?v=418"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

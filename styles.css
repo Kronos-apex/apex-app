@@ -1570,6 +1570,12 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
 .cchat-thread{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column}
 .cchat-thread .mt{margin-bottom:8px}
 .cchat-empty{margin:auto;text-align:center;color:var(--t3);font-size:13px;padding:20px}
+/* Aviso «este plan no recibe el chat» (solo lo ve el coach). Tinte amarillo con --t1 encima:
+   el token crudo --yl no se lee sobre su propio tinte y no tiene variante legible propia
+   (mismo precedente que la clase .ty y que el badge «Sin pago» de MS.badge). */
+.cchat-noliv{background:var(--yll);border:1px solid var(--br2);border-radius:var(--rsm);
+  padding:10px 12px;margin:0 0 12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.cchat-noliv-t{color:var(--t1);font-size:13px;line-height:1.45}
 .cchat-composer{display:flex;align-items:flex-end;gap:8px;padding:8px 12px calc(env(safe-area-inset-bottom) + 8px);background:var(--w);border-top:1px solid var(--br);flex-shrink:0}
 .cchat-composer textarea{flex:1;resize:none;max-height:120px;border:1.5px solid var(--br);border-radius:20px;padding:9px 14px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--t1);line-height:1.35}
 .cchat-send{width:44px;height:44px;border-radius:50%;border:none;background:var(--g);color:#fff;font-size:17px;cursor:pointer;flex-shrink:0}
@@ -1799,6 +1805,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-stepper .ctl{display:flex;align-items:center;gap:9px}
 .wz-pm{width:40px;height:40px;border-radius:12px;border:1.5px solid rgba(16,224,160,.35);background:rgba(16,224,160,.08);color:#10E0A0;font-size:23px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;font-family:inherit;transition:transform .1s,background .15s}
 .wz-pm:active{transform:scale(.92);background:rgba(16,224,160,.18)}
+/* Teléfono del registro: es texto, no una cifra que se sube con +/− como peso o altura,
+   así que NO reusa .wz-num (Anton 30px, pensado para dígitos grandes). Mismo lienzo oscuro. */
+.wz-tel{width:170px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;color:#fff;font-size:16px;padding:9px 12px;outline:none;text-align:left;
+  min-height:40px}
+.wz-tel::placeholder{color:rgba(242,245,244,.45)}
+.wz-tel:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(19,181,131,.25)}
+.wz-opt{font-weight:400;color:rgba(242,245,244,.6);font-size:.85em}
 .wz-num{width:58px;background:transparent;border:none;color:#fff;font-family:'Anton',sans-serif;font-size:30px;font-weight:400;text-align:center;outline:none;-moz-appearance:textfield;letter-spacing:.5px}
 .wz-num::-webkit-outer-spin-button,.wz-num::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-unit{font-size:13px;color:rgba(242,245,244,.5);font-weight:600;min-width:30px}

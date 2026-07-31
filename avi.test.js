@@ -156,6 +156,7 @@ const {
   muscleVolume,
   pushPullBalance,
   clientHasCoach,
+  chatDeliveryBlock,
   clientPlan,
   submuscleVolume,
 } = core;
@@ -2414,6 +2415,57 @@ test('clientHasCoach / clientPlan: split de 3 niveles sin quitar capacidades', (
   // Nulos seguros.
   assert.strictEqual(clientHasCoach(null), false);
   assert.strictEqual(clientPlan(null), 'libre');
+});
+
+test('ESTÁTICO: la invitación «Abre AVI» lleva el enlace de la app', () => {
+  // El mensaje pedía «abre AVI» y NO decía dónde: la persona recibía la orden sin la puerta.
+  // Es el canal de rescate de quien no tiene push, así que sin enlace no rescata a nadie.
+  const fs = require('fs');
+  const coach = fs.readFileSync(__dirname + '/app-3-coach.js', 'utf8');
+  const fn = coach.slice(coach.indexOf('function coachInviteOpenApp()'));
+  const cuerpo = fn.slice(0, fn.indexOf('\n}'));
+  assert.ok(/AVI_SHARE_URL/.test(cuerpo), 'la invitación no incluye la URL de la app');
+  assert.ok(/\$\{url\}/.test(cuerpo), 'la URL se calcula pero no entra en el mensaje');
+});
+
+test('ESTÁTICO: el teléfono del registro llega entero hasta la ficha (4 eslabones)', () => {
+  // 15 de 22 asesorados eran imposibles de contactar porque el registro no pedía el número
+  // y `_provisionFreeClient` lo escribía vacío A LA FUERZA. El dato cruza 4 manos y ningún
+  // test unitario lo cubre: si alguien corta un eslabón, el teléfono deja de llegar EN
+  // SILENCIO y solo se nota meses después, cuando hay que escribirle a alguien y no se puede.
+  const fs = require('fs');
+  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+  const coach = fs.readFileSync(__dirname + '/app-3-coach.js', 'utf8');
+
+  // 1) el campo existe en el wizard
+  assert.ok(/id="su-phone"/.test(html), 'falta el campo su-phone en el registro');
+  // 2) se recoge YA normalizado (sin waPhone, wa.me sale roto — gotcha v365)
+  assert.ok(/phone:\s*\(typeof waPhone==='function'\)/.test(coach),
+    'el registro debe normalizar el teléfono con waPhone al recogerlo');
+  // 3) viaja en la metadata de la cuenta nueva
+  assert.ok(/const meta=\{[^}]*phone:data\.phone/.test(coach),
+    'el teléfono no viaja en la metadata del signup');
+  // 4) y aterriza en la ficha (NO vacío a la fuerza, que era el bug)
+  assert.ok(/notes:'',\s*phone:\(p&&p\.phone\)\|\|''/.test(coach),
+    '_provisionFreeClient volvió a escribir el teléfono vacío');
+  assert.ok(!/notes:'',\s*phone:'',/.test(coach),
+    'quedó el phone:"" a la fuerza en _provisionFreeClient');
+});
+
+test('chatDeliveryBlock: avisa cuando el mensaje del coach NO le va a llegar', () => {
+  // Caso real medido 2026-07-31: 5 personas de plan 'app' con 20 mensajes del coach que
+  // ninguna podía leer. El chat es solo-coach y escribirle a 'app'/'libre' era MUDO.
+  const app = chatDeliveryBlock({ tier: 'app' });
+  assert.ok(app, 'plan app: el mensaje NO llega → tiene que avisar');
+  assert.strictEqual(app.plan, 'app');
+  assert.strictEqual(app.label, 'Premium app');       // el texto que lee el coach
+  const libre = chatDeliveryBlock({ tier: 'libre' });
+  assert.ok(libre, 'plan libre: tampoco llega');
+  assert.strictEqual(libre.plan, 'libre');
+  // Y NO debe avisar donde el chat sí funciona — un aviso de más asusta al coach sin motivo.
+  assert.strictEqual(chatDeliveryBlock({ tier: 'premium' }), null);
+  assert.strictEqual(chatDeliveryBlock({}), null);    // creado por coach, sin tier: sí tiene chat
+  assert.strictEqual(chatDeliveryBlock(null), null);  // sin cliente no hay nada que avisar
 });
 
 // ══════════════════════════════════════════════════════

@@ -1763,6 +1763,18 @@ function isFreeClient(client) {
 function clientHasCoach(client) {
   return !!client && !isFreeClient(client) && client.tier !== 'app';
 }
+// El chat es SOLO-COACH (`clientHasCoach`): el asesorado de plan 'libre' o 'app' NO tiene la
+// pestaña de mensajes. Escribirle igual NO falla ni avisa — el mensaje se guarda en su fila y
+// se queda ahí para siempre. Medido en producción el 2026-07-31: **20 mensajes del coach a 5
+// personas de plan 'app'** que ninguna podía leer, el más reciente ese mismo día, a alguien con
+// 15 sesiones. El código hacía lo que dice; lo que mentía era la interfaz del coach, que pinta
+// un chat normal. Esto devuelve el motivo para que ESA pantalla lo diga.
+// Puro: la UI solo pinta lo que esto devuelva. null = el mensaje sí llega.
+function chatDeliveryBlock(client) {
+  if (!client || clientHasCoach(client)) return null;
+  const plan = clientPlan(client);
+  return { plan, label: PLAN_LABEL[plan] || plan };
+}
 // Nivel normalizado del cliente para etiquetas/UI.
 function clientPlan(client) {
   if (!client || isFreeClient(client)) return 'libre';
@@ -3648,6 +3660,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pushNudgeDecision,
     isFreeClient,
     clientHasCoach,
+    chatDeliveryBlock,
     clientPlan,
     PLAN_LABEL,
     USER_DATA_COLLECTIONS,
