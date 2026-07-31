@@ -6,7 +6,7 @@ const VAPID_PUBLIC  = Deno.env.get("VAPID_PUBLIC")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@apex.app";
 // Llave pública del proyecto — misma que usa el frontend y los cron jobs
-const APEX_ANON_KEY = "sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8";
+// (la anon key ya no vive aquí: era el candado y es PÚBLICA. Ver la comprobación de abajo.)
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
@@ -206,9 +206,37 @@ const cors = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
+  // ── Autorización ──────────────────────────────────────────────────────────
+  // El candado ERA la anon key, que es PÚBLICA (va en el JS servido y en un repo público):
+  // probado con curl el 2026-07-31, cualquiera desde internet disparaba la ronda de pushes.
+  // Ahora manda un secreto de 32 bytes que vive en la BASE (`private.fn_secrets`), se lee por
+  // una RPC que solo puede llamar `service_role`, y viaja en el comando del cron —que no es
+  // legible por el público—. Nunca está en el código, ni en el repo, ni en un log.
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!APEX_ANON_KEY || token !== APEX_ANON_KEY) {
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  let notifSecret = "";
+  try {
+    const { data, error } = await supabase.rpc("fn_notif_secret");
+    if (error) throw new Error(error.message);
+    notifSecret = String(data ?? "");
+  } catch (e) {
+    // FALLA CERRADA, pero con código propio: un 503 en los logs dice «no pude leer el secreto»
+    // y no se confunde con «alguien tocó la puerta sin credencial» (401).
+    console.error("[daily-notifs] 503 — no se pudo leer el secreto:", e);
+    return new Response(JSON.stringify({ error: "secret_unavailable" }), {
+      status: 503, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+
+  // Los 3 cron ya mandan el secreto (verificado end-to-end antes de cerrar): la anon key
+  // pública YA NO abre esta puerta. La transición se retiró el 2026-07-31.
+  if (notifSecret.length === 0 || token !== notifSecret) {
     console.log("[daily-notifs] 401 — Authorization inválido");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...cors, "Content-Type": "application/json" },
@@ -232,14 +260,16 @@ serve(async (req) => {
     const todayName = COLOMBIA_DAYS[dayIndex];
     const msgIndex = dayIndex % 7;
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    // (el cliente de service role se crea arriba, junto a la comprobación del secreto)
 
+    // El coach NO recibe los avisos de asesorado (decisión del PO, 2026-07-31). Su fila '_coach'
+    // no tiene `user_data` propia, así que `st` era null y caía en las ramas genéricas: llevaba
+    // meses recibiendo los 3 turnos diarios ×2 dispositivos. Los pushes que SÍ son suyos
+    // (mensajes, leads) van por `send-push`, que no pasa por aquí.
     const { data: subs, error } = await supabase
       .from("push_subscriptions")
-      .select("client_id, subscription, training_days, training_shift");
+      .select("client_id, subscription, training_days, training_shift")
+      .neq("client_id", "_coach");
 
     if (error) throw new Error(error.message);
 
