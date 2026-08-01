@@ -3891,20 +3891,30 @@ test('🔴 la proteína es un PISO: el plato no la sacrifica aunque el carbohidr
   const r = core.nutSolveMeal({ prot_g: 34, carb_g: 120, fat_g: 14 }, { prot: 'atun', carb: 'pasta', fat: 'aceite' });
   const atun = r.items.find(i => i.id === 'atun');
   assert.ok(atun, 'el atún desapareció del plato');
-  const minimo = 34 * core.NUT_PROT_MIN_SHARE / core.NUT_FOOD_BY_ID.atun.p * 100;
-  assert.ok(atun.grams >= minimo * 0.85, `la ración de atún quedó en ${atun.grams} g, por debajo del piso (~${Math.round(minimo)} g)`);
+  // ⚠️ El mínimo va ESCRITO A MANO, no derivado de NUT_PROT_MIN_SHARE: si se calculara
+  // con la constante, bajarla a 0 bajaría también el listón y el test pasaría siempre
+  // (se comprobó saboteando: no mordía). Un control que se mueve con lo que vigila no
+  // es un control. 100 g de atún ≈ 26 g de proteína para una meta de 34.
+  assert.ok(atun.grams >= 100, `la ración de atún quedó en ${atun.grams} g: el plato sacrificó la proteína`);
 });
 
 test('ninguna ración se vuelve irreal: los alimentos diluidos tienen tope', () => {
   // Sin tope, la leche (3,3 g de proteína por 100 g) pedía 1.000 g para una merienda.
-  const r = core.nutSolveMeal({ prot_g: 40, carb_g: 30, fat_g: 10 }, { prot: 'leche', carb: 'banano', fat: 'mani' });
-  const leche = r.items.find(i => i.id === 'leche');
-  if (leche) assert.ok(leche.grams <= core.NUT_FOOD_BY_ID.leche.maxG, `${leche.grams} g de leche en una comida`);
-  // y ningún alimento con tope puede superarlo, en ninguna combinación
-  core.NUT_FOODS.filter(f => f.maxG).forEach(f => {
-    const x = core.nutSolveMeal({ prot_g: 200, carb_g: 300, fat_g: 100 }, { prot: f.id, carb: 'arroz', fat: 'aceite' });
-    const it = x.items.find(i => i.id === f.id);
-    if (it) assert.ok(it.grams <= f.maxG * 1.05, `${f.name}: ${it.grams} g supera su tope de ${f.maxG}`);
+  // ⚠️ La lista va ESCRITA A MANO y con su tope máximo tolerable. Antes el test recorría
+  // `NUT_FOODS.filter(f => f.maxG)`: al quitarle el tope a un alimento, ese alimento
+  // salía del recorrido y el test seguía verde (se comprobó saboteando — no mordía).
+  // Igual que el caso del piso de proteína: el alcance de un test no puede depender de
+  // lo que el test vigila.
+  const TOPES = { leche: 400, yogur_griego: 400, clara: 200, cuajada: 150, queso_campesino: 90, lenteja: 350, frijol: 350, garbanzo: 300 };
+  Object.entries(TOPES).forEach(([id, tope]) => {
+    const f = core.NUT_FOOD_BY_ID[id];
+    assert.ok(f, `${id} desapareció de la tabla`);
+    assert.ok(f.maxG > 0 && f.maxG <= tope, `${f.name} se quedó sin ración máxima (o subió por encima de ${tope} g)`);
+    // y pedirle una barbaridad no puede producir una ración irreal
+    const x = core.nutSolveMeal({ prot_g: 200, carb_g: 300, fat_g: 100 }, { prot: id, carb: 'arroz', fat: 'aceite' });
+    const it = x.items.find(i => i.id === id);
+    assert.ok(it, `${f.name} desapareció del plato`);
+    assert.ok(it.grams <= tope, `${f.name}: ${it.grams} g supera la ración creíble de ${tope} g`);
   });
 });
 
