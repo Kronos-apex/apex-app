@@ -3885,6 +3885,95 @@ test('las cantidades se escriben como habla una persona, en español correcto', 
   assert.ok(!/\d\.\d/.test(core.nutPortionText(f('arroz'), 395).text), 'no debe quedar un decimal suelto');
 });
 
+test('🔴 la proteína es un PISO: el plato no la sacrifica aunque el carbohidrato la aporte', () => {
+  // Con pasta (6 g de proteína por 100 g) el solver dejaba «20 g de atún con 490 g de
+  // pasta»: cuadraba en macros y era absurdo en la mesa.
+  const r = core.nutSolveMeal({ prot_g: 34, carb_g: 120, fat_g: 14 }, { prot: 'atun', carb: 'pasta', fat: 'aceite' });
+  const atun = r.items.find(i => i.id === 'atun');
+  assert.ok(atun, 'el atún desapareció del plato');
+  const minimo = 34 * core.NUT_PROT_MIN_SHARE / core.NUT_FOOD_BY_ID.atun.p * 100;
+  assert.ok(atun.grams >= minimo * 0.85, `la ración de atún quedó en ${atun.grams} g, por debajo del piso (~${Math.round(minimo)} g)`);
+});
+
+test('ninguna ración se vuelve irreal: los alimentos diluidos tienen tope', () => {
+  // Sin tope, la leche (3,3 g de proteína por 100 g) pedía 1.000 g para una merienda.
+  const r = core.nutSolveMeal({ prot_g: 40, carb_g: 30, fat_g: 10 }, { prot: 'leche', carb: 'banano', fat: 'mani' });
+  const leche = r.items.find(i => i.id === 'leche');
+  if (leche) assert.ok(leche.grams <= core.NUT_FOOD_BY_ID.leche.maxG, `${leche.grams} g de leche en una comida`);
+  // y ningún alimento con tope puede superarlo, en ninguna combinación
+  core.NUT_FOODS.filter(f => f.maxG).forEach(f => {
+    const x = core.nutSolveMeal({ prot_g: 200, carb_g: 300, fat_g: 100 }, { prot: f.id, carb: 'arroz', fat: 'aceite' });
+    const it = x.items.find(i => i.id === f.id);
+    if (it) assert.ok(it.grams <= f.maxG * 1.05, `${f.name}: ${it.grams} g supera su tope de ${f.maxG}`);
+  });
+});
+
+test('las fracciones concuerdan en género: «medio puñado», no «media puñado»', () => {
+  const f = id => core.NUT_FOOD_BY_ID[id];
+  assert.strictEqual(core.nutPortionText(f('mani'), 15).text, 'medio puñado (15 g)');
+  assert.strictEqual(core.nutPortionText(f('huevo'), 25).text, 'medio huevo (25 g)');
+  assert.strictEqual(core.nutPortionText(f('arepa'), 40).text, 'media arepa (40 g)');
+  // sintagma de dos palabras: manda el núcleo, no el adjetivo
+  assert.strictEqual(core.nutPortionText(f('platano_maduro'), 40).text, 'media tajada grande (40 g)');
+  assert.strictEqual(core.nutPortionText(f('papa'), 75).text, 'media papa mediana (75 g)');
+});
+
+test('el plan del día trae las 5 comidas y ninguna sale vacía', () => {
+  const base = nutritionEstimate(NUT_BASE);
+  const p = core.nutDayPlan(base, 'pierna', 3, 1, 0);
+  assert.strictEqual(p.meals.length, 5);
+  assert.deepStrictEqual(p.meals.map(m => m.name),
+    ['Desayuno', 'Media mañana', 'Almuerzo', 'Media tarde', 'Cena']);
+  p.meals.forEach(m => assert.ok(m.items.length > 0, `${m.name} salió sin comida`));
+});
+
+test('🔴 la semana NO es el mismo plato repetido', () => {
+  // Misma clase de defecto que el generador de rutinas: un banco de UNO obliga a repetir.
+  const base = nutritionEstimate(NUT_BASE);
+  const porComida = [0, 2, 4].map(() => new Set());
+  for (let d = 0; d < 7; d++) {
+    const p = core.nutDayPlan(base, d < 3 ? 'entreno' : 'descanso', 3, 1, d);
+    [0, 2, 4].forEach((mi, k) => porComida[k].add(p.meals[mi].items.map(i => i.id).join('+')));
+  }
+  porComida.forEach((s, k) => assert.ok(s.size >= 4,
+    `la comida ${[0, 2, 4][k]} sólo tuvo ${s.size} variantes distintas en 7 días`));
+});
+
+test('el plan del día es determinista y no inventa sin datos', () => {
+  const base = nutritionEstimate(NUT_BASE);
+  assert.deepStrictEqual(core.nutDayPlan(base, 'entreno', 3, 1, 2), core.nutDayPlan(base, 'entreno', 3, 1, 2));
+  assert.strictEqual(core.nutDayPlan(null, 'entreno', 3, 1, 0), null);
+});
+
+test('la revisión del coach señala el riesgo REAL para el objetivo de la persona', () => {
+  // Caso real de producción: Luz quiere perder grasa y su plan la tiene 670 kcal por
+  // encima; Samuel quiere ganar y está 806 por debajo.
+  const luz = { sex: 'F', age: 39, weight: 82, height: 156, goal: 'Perder grasa', activityFactor: 1.55 };
+  const rl = core.nutPlanReview(luz, { kcal: 2400 }, 82);
+  assert.strictEqual(rl.status, 'desviado');
+  assert.ok(rl.gap > 0);
+  assert.strictEqual(rl.riesgo, 'come_de_mas_para_bajar');
+
+  const samuel = { sex: 'M', age: 28, weight: 78, height: 176, goal: 'Ganar músculo', activityFactor: 1.725 };
+  const rs = core.nutPlanReview(samuel, { kcal: 2554 }, 78);
+  assert.strictEqual(rs.riesgo, 'come_de_menos_para_subir');
+});
+
+test('sin peso ni talla la revisión PIDE EL DATO, no inventa un plan', () => {
+  // Astrid, caso real: no tiene peso ni estatura guardados.
+  const astrid = { sex: 'F', age: 33, goal: 'Ganar músculo', activityFactor: 1.55 };
+  const r = core.nutPlanReview(astrid, { kcal: 2400 }, null);
+  assert.strictEqual(r.status, 'sin_datos');
+  assert.ok(r.falta.includes('peso') && r.falta.includes('estatura'));
+  assert.strictEqual(r.sugerido, undefined, 'no debe sugerir kcal sin datos del cuerpo');
+});
+
+test('un plan que ya está bien NO genera alarma', () => {
+  const c = { sex: 'M', age: 37, weight: 90, height: 175, goal: 'Ganar músculo', activityFactor: 1.55 };
+  const r = core.nutPlanReview(c, { kcal: 3200 }, 90);   // Andrés: +38 kcal, está bien
+  assert.strictEqual(r.status, 'ok');
+});
+
 test('nutDayKind lee el día del plan de entreno', () => {
   assert.strictEqual(core.nutDayKind(null), 'descanso');
   assert.strictEqual(core.nutDayKind({ exercises: [] }), 'descanso');

@@ -2350,16 +2350,16 @@ const NUT_FOODS = [
   { id: 'res_molida', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
   { id: 'cerdo_lomo', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
   { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, un: { label: 'huevo', g: 50 } },
-  { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, un: { label: 'clara', g: 33 } },
+  { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
   { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 120 } },
-  { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, un: { label: 'tajada', g: 30 } },
-  { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, un: { label: 'porción', g: 60 } },
-  { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, un: { label: 'vaso', g: 200 } },
-  { id: 'leche', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, un: { label: 'vaso', g: 200 } },
-  { id: 'lenteja', name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, un: { label: 'taza', g: 200 } },
-  { id: 'frijol', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, un: { label: 'taza', g: 180 } },
-  { id: 'garbanzo', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, un: { label: 'taza', g: 165 } },
+  { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
+  { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
+  { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
+  { id: 'leche', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, maxG: 400, un: { label: 'vaso', g: 200 } },
+  { id: 'lenteja', name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, maxG: 350, un: { label: 'taza', g: 200 } },
+  { id: 'frijol', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, maxG: 350, un: { label: 'taza', g: 180 } },
+  { id: 'garbanzo', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, maxG: 300, un: { label: 'taza', g: 165 } },
   // ── CARBOHIDRATO ──
   { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, un: { label: 'taza', g: 158 } },
   { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, un: { label: 'papa mediana', g: 150 } },
@@ -2477,11 +2477,19 @@ function _nutPlural(label) {
   if (/s$/.test(l)) return l;
   return /[aeiou]$/i.test(l) ? l + 's' : l + 'es';
 }
+// Género de una medida, para concordar «medio puñado» / «media arepa». Se mira el
+// núcleo del sintagma —la PRIMERA palabra—, porque en «tajada grande» el género lo
+// pone «tajada» y no «grande». Femenino: termina en -a, o es de las terminaciones
+// que siempre lo son (-ción, -sión, -dad). Todo lo demás, masculino.
+function _nutFem(label) {
+  const nucleo = String(label || '').trim().split(/\s+/)[0].toLowerCase();
+  return /a$/.test(nucleo) || /(ción|sión|dad)$/.test(nucleo);
+}
 // Cantidad escrita como la serviría una persona: «2 huevos», «1½ tazas», «media
-// porción». Los medios van en fracción y no en decimal — «0.5 porción» no es como
-// habla nadie. Si el alimento no tiene medida casera, gramos redondeados a 5.
-function _nutNumText(rn) {
-  if (rn === 0.5) return 'media';
+// arepa», «medio puñado». Los medios van en fracción y no en decimal — «0.5 porción»
+// no es como habla nadie. Sin medida casera, gramos redondeados a 5.
+function _nutNumText(rn, label) {
+  if (rn === 0.5) return _nutFem(label) ? 'media' : 'medio';
   const ent = Math.floor(rn);
   return rn === ent ? String(ent) : String(ent) + '½';
 }
@@ -2492,14 +2500,18 @@ function nutPortionText(food, grams) {
     const n = grams / un.g;
     // Hasta 4 unidades se permite medio; de ahí en adelante, enteras.
     const paso = n <= 4 ? 0.5 : 1;
-    const rn = Math.round(n / paso) * paso;
-    if (rn >= paso) {
+    let rn = Math.round(n / paso) * paso;
+    // El tope se aplica DESPUÉS de redondear, o el redondeo lo burla: 350 g de lentejas
+    // caían en «2 tazas» = 400 g, por encima de su ración máxima. Se baja un escalón.
+    if (food.maxG > 0) while (rn > paso && rn * un.g > food.maxG) rn -= paso;
+    if (rn >= paso && !(food.maxG > 0 && rn * un.g > food.maxG)) {
       const label = rn > 1 ? _nutPlural(un.label) : un.label;
-      const txt = _nutNumText(rn) + ' ' + label;
+      const txt = _nutNumText(rn, un.label) + ' ' + label;
       return { n: rn, grams: Math.round(rn * un.g), text: txt + ' (' + Math.round(rn * un.g) + ' g)' };
     }
   }
-  const g = Math.max(5, Math.round(grams / 5) * 5);
+  let g = Math.max(5, Math.round(grams / 5) * 5);
+  if (food.maxG > 0) g = Math.min(g, Math.round(food.maxG / 5) * 5);
   return { n: null, grams: g, text: g + ' g' };
 }
 
@@ -2521,6 +2533,12 @@ function nutPortionText(food, grams) {
 // Las verduras acompañan y NO se ajustan (aportan poco y nadie pesa la lechuga).
 // Puro y determinista: mismos ingredientes + mismos macros = mismo resultado.
 const NUT_SOLVE_PASSES = 4;
+// 🔴 La PROTEÍNA es un PISO, no un techo: uno quiere comer AL MENOS X gramos, mientras
+// que el carbohidrato y la grasa son «alrededor de». Descontarla igual que los otros dos
+// deja platos que cuadran en macros y son absurdos en la mesa: medido 2026-08-01, con
+// pasta (6 g de proteína por 100 g) el solver dejaba «20 g de atún con 490 g de pasta».
+// Por eso el alimento proteico nunca baja de esta fracción de la meta de la comida.
+const NUT_PROT_MIN_SHARE = 0.7;
 function nutSolveMeal(target, pick) {
   target = target || {};
   const prot = NUT_FOOD_BY_ID[pick && pick.prot] || null;
@@ -2533,9 +2551,13 @@ function nutSolveMeal(target, pick) {
   let gP = 0, gC = 0, gF = 0;
   const ap = (food, g, macro) => (food ? food[macro] * g / 100 : 0);
   for (let i = 0; i < NUT_SOLVE_PASSES; i++) {
-    // proteína: la que falta después de la que traen el carbohidrato y la grasa
+    // proteína: la que falta después de la que traen el carbohidrato y la grasa, pero
+    // NUNCA por debajo del piso (arriba) ni por encima de una ración creíble (`maxG`):
+    // sin tope, la leche —3,3 g por 100 g— pedía 1.000 g para cubrir una merienda.
     if (prot && prot.p > 0 && tP > 0) {
-      gP = Math.max(0, (tP - ap(carb, gC, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
+      const piso = tP * NUT_PROT_MIN_SHARE / prot.p * 100;
+      gP = Math.max(piso, (tP - ap(carb, gC, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
+      if (prot.maxG > 0) gP = Math.min(gP, prot.maxG);
     }
     // carbohidrato: descontando el que traen la proteína y la grasa
     if (carb && carb.c > 0 && tC > 0) {
@@ -2562,6 +2584,121 @@ function nutSolveMeal(target, pick) {
     items,
     real: { prot_g: Math.round(gotP), carb_g: Math.round(gotC), fat_g: Math.round(gotF), kcal: Math.round(gotP * 4 + gotC * 4 + gotF * 9) },
   };
+}
+
+// ── MENÚS: qué se combina en cada comida ────────────────────────────────
+// Combinaciones que un colombiano reconoce como una comida, no como una lista de
+// macros. Cada una declara su proteína, su carbohidrato y su grasa; las verduras y
+// frutas acompañan (`acomp`) y no se ajustan.
+// Hay VARIAS por comida a propósito: la lección del generador de rutinas (2026-08-01)
+// es que un pool de UNO obliga a repetir, y un plan que sirve el mismo desayuno los 7
+// días es exactamente el mismo defecto en otra pantalla.
+const NUT_MENUS = {
+  desayuno: [
+    { pick: { prot: 'huevo', carb: 'arepa', fat: 'aguacate' }, acomp: ['tomate'] },
+    { pick: { prot: 'huevo', carb: 'pan_integral', fat: 'aguacate' }, acomp: ['tomate', 'cebolla'] },
+    { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'mani' }, acomp: ['banano'] },
+    { pick: { prot: 'queso_campesino', carb: 'arepa', fat: 'aguacate' }, acomp: ['papaya'] },
+    { pick: { prot: 'clara', carb: 'avena', fat: 'almendra' }, acomp: ['fresa'] },
+  ],
+  media: [
+    { pick: { prot: 'yogur_griego', carb: null, fat: 'almendra' }, acomp: ['mango'] },
+    { pick: { prot: 'yogur_griego', carb: 'banano', fat: 'mani' }, acomp: [] },
+    { pick: { prot: 'queso_campesino', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },
+    { pick: { prot: 'huevo', carb: null, fat: 'mani' }, acomp: ['mandarina'] },
+    { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'crema_mani' }, acomp: ['pina'] },
+  ],
+  almuerzo: [
+    { pick: { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' }, acomp: ['ensalada', 'zanahoria'] },
+    { pick: { prot: 'res_magra', carb: 'papa', fat: 'aguacate' }, acomp: ['habichuela'] },
+    { pick: { prot: 'tilapia', carb: 'yuca', fat: 'aceite' }, acomp: ['tomate', 'cebolla'] },
+    { pick: { prot: 'lenteja', carb: 'arroz', fat: 'aguacate' }, acomp: ['ensalada'] },
+    { pick: { prot: 'cerdo_lomo', carb: 'platano_maduro', fat: 'aceite' }, acomp: ['brocoli'] },
+    { pick: { prot: 'pollo_muslo', carb: 'papa_criolla', fat: 'aguacate' }, acomp: ['ahuyama'] },
+    { pick: { prot: 'frijol', carb: 'arroz', fat: 'aguacate' }, acomp: ['tomate'] },
+  ],
+  cena: [
+    { pick: { prot: 'tilapia', carb: 'papa', fat: 'aguacate' }, acomp: ['ensalada'] },
+    { pick: { prot: 'pollo_pechuga', carb: 'platano_verde', fat: 'aceite' }, acomp: ['habichuela'] },
+    { pick: { prot: 'huevo', carb: 'arepa', fat: 'aguacate' }, acomp: ['tomate'] },
+    { pick: { prot: 'atun', carb: 'pasta', fat: 'aceite' }, acomp: ['brocoli'] },
+    { pick: { prot: 'res_molida', carb: 'arroz', fat: 'aguacate' }, acomp: ['zanahoria', 'habichuela'] },
+  ],
+};
+
+// Reparto del día en 5 tomas (decisión del PO 2026-08-01). La proteína se reparte
+// EN PARTES IGUALES —se sintetiza mejor distribuida— y el resto sigue estos pesos.
+const NUT_MEALS_5 = [
+  { key: 'desayuno', name: 'Desayuno', w: 0.25 },
+  { key: 'media', name: 'Media mañana', w: 0.10 },
+  { key: 'almuerzo', name: 'Almuerzo', w: 0.30 },
+  { key: 'media', name: 'Media tarde', w: 0.10 },
+  { key: 'cena', name: 'Cena', w: 0.25 },
+];
+
+// ── EL PLAN DEL DÍA, con comida de verdad ───────────────────────────────
+// Compone todo: objetivo del día (ciclado según se entrene o no) → reparto en 5
+// tomas → cada toma resuelta en cantidades servibles.
+// `dayIndex` (0-6) rota los menús para que la semana no sea el mismo plato repetido;
+// las dos medias del día se desfasan entre sí para no repetir merienda.
+// Puro y determinista. Sin base (faltan peso/talla/edad/sexo) → null: no se inventa.
+function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
+  const t = nutDayTarget(base, kind, trainDays, legDays);
+  if (!t) return null;
+  const di = ((parseInt(dayIndex) || 0) % 7 + 7) % 7;
+  const protEach = t.prot_g / NUT_MEALS_5.length;   // proteína repartida por igual
+  const meals = NUT_MEALS_5.map((slot, i) => {
+    const banco = NUT_MENUS[slot.key] || [];
+    // desfase por comida para que Media mañana y Media tarde no coincidan
+    const menu = banco.length ? banco[(di + i * 2) % banco.length] : null;
+    const sub = {
+      prot_g: Math.round(protEach),
+      carb_g: Math.round(t.carb_g * slot.w),
+      fat_g: Math.round(t.fat_g * slot.w),
+    };
+    const solved = menu ? nutSolveMeal(sub, menu.pick) : { items: [], real: { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 } };
+    return {
+      name: slot.name,
+      target: sub,
+      items: solved.items,
+      acomp: menu ? (menu.acomp || []).map(a => (NUT_FOOD_BY_ID[a] ? NUT_FOOD_BY_ID[a].name : a)) : [],
+      real: solved.real,
+    };
+  });
+  const real = meals.reduce((a, m) => ({
+    prot_g: a.prot_g + m.real.prot_g, carb_g: a.carb_g + m.real.carb_g, fat_g: a.fat_g + m.real.fat_g,
+  }), { prot_g: 0, carb_g: 0, fat_g: 0 });
+  real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
+  return { kind: t.kind, target: t, meals, real };
+}
+
+// ── LA REVISIÓN PARA EL COACH ───────────────────────────────────────────
+// «AVI propone, el coach aprueba» (decisión del PO 2026-08-01, mismo candado que el
+// plan de choque): esto NO cambia nada, sólo dice qué tan lejos está el plan que la
+// persona tiene hoy de lo que su cuerpo necesita. El coach decide.
+// Devuelve null si no hay con qué comparar — jamás una alarma sin sustento.
+const NUT_REVIEW_MIN_GAP = 300;   // kcal de diferencia para que valga la pena avisar
+function nutPlanReview(client, currentPlan, weightKg) {
+  const base = nutritionEstimate(client, weightKg);
+  if (!base || !base.kcalObj) {
+    // Sin peso/talla/edad/sexo no se puede opinar: se pide el dato, no se inventa el plan.
+    return { status: 'sin_datos', falta: ['peso', 'estatura', 'edad', 'sexo'].filter(k => {
+      if (k === 'peso') return !(parseFloat(weightKg != null && weightKg !== '' ? weightKg : (client || {}).weight) > 0);
+      if (k === 'estatura') return !((client || {}).height > 0);
+      if (k === 'edad') return !((client || {}).age > 0);
+      return (client || {}).sex !== 'M' && (client || {}).sex !== 'F';
+    }) };
+  }
+  const actual = parseFloat(currentPlan && currentPlan.kcal);
+  if (!actual) return { status: 'sin_plan', sugerido: base.kcalObj, base };
+  const gap = Math.round(actual - base.kcalObj);
+  if (Math.abs(gap) < NUT_REVIEW_MIN_GAP) return { status: 'ok', gap, actual, sugerido: base.kcalObj, base };
+  // Qué significa la desviación PARA SU OBJETIVO — es lo que le importa al coach.
+  const g = _norm((client || {}).goal || '');
+  let riesgo = null;
+  if (gap > 0 && (g.includes('perd') || g.includes('grasa') || g.includes('defin'))) riesgo = 'come_de_mas_para_bajar';
+  else if (gap < 0 && (g.includes('gan') || g.includes('musc') || g.includes('masa'))) riesgo = 'come_de_menos_para_subir';
+  return { status: 'desviado', gap, actual, sugerido: base.kcalObj, riesgo, base };
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -3873,6 +4010,12 @@ if (typeof module !== 'undefined' && module.exports) {
     nutSolveMeal,
     NUT_DAY_W,
     NUT_SOLVE_PASSES,
+    NUT_PROT_MIN_SHARE,
+    NUT_MENUS,
+    NUT_MEALS_5,
+    nutDayPlan,
+    nutPlanReview,
+    NUT_REVIEW_MIN_GAP,
     nutMealSplit,
     getSexCode,
     calcMacrosSugeridos,
