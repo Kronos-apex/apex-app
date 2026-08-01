@@ -1836,6 +1836,80 @@ const USER_DATA_COLLECTIONS = ['history', 'prs', 'bodyweight', 'medidas', 'nutri
 // Cliente → fila user_data. Separa el perfil (escalares) de las rutinas y el id.
 // La contraseña NO viaja: Supabase Auth la maneja → se omite del perfil.
 // opts: {coachId, role, userId}. coach_id = opts.coachId (null = libre/sin coach).
+// ══════════════════════════════════════════════════════════════════════
+// EL COACH TAMBIÉN ENTRENA — su perfil es un asesorado más (2026-08-01)
+// ──────────────────────────────────────────────────────────────────────
+// Pedido repetido del PO, y hasta hoy contestado a medias: primero con una
+// tarjeta de resumen en su Inicio («lo mejor que hiciste fue poner un feo banner»).
+// Lo que pidió es otra cosa: «que mi perfil sea como cualquier perfil de asesorado»
+// — que aparezca en las estadísticas, en la lista, y que pueda EDITARLO desde su
+// propio panel igual que edita a los demás.
+//
+// El dato que lo justifica (medido 2026-08-01 contra producción): su fila propia
+// tiene 53 sesiones, 6 de ellas en la última semana y 27 en el último mes, y el
+// panel no cuenta NINGUNA. Su tablero dice 30 sesiones semanales cuando son 36.
+//
+// CÓMO: su fila entra a la lista de asesorados como un cliente sintético con id
+// reservado. Así los ~200 sitios que hacen `DB.clients.find(...)` lo encuentran
+// solos, sin tocarlos uno por uno.
+//
+// 🔴 EL CANDADO QUE NO SE PUEDE QUITAR: `_persistCoachWrite` recorre `DB.clients` y
+// llama `UD.updateClientRow(id, …)` por cada uno. Si el coach entra a esa lista sin
+// blindaje, la app le CREA UN ASESORADO FANTASMA en la nube con su propio
+// entrenamiento dentro. Todo lo suyo se guarda en SU fila (`upsertOwn`), jamás como
+// fila de cliente. `isSelfClient` existe para que ese filtro sea una sola pregunta
+// y no una comparación de strings repartida por el código.
+const SELF_CLIENT_ID = '_self';
+function isSelfClient(c) {
+  const id = c && typeof c === 'object' ? c.id : c;
+  return id === SELF_CLIENT_ID;
+}
+
+// Construye el asesorado sintético a partir de la fila propia del coach.
+// `row` = fila `user_data` del coach (profile/routines/…). Sin fila → null: el
+// coach que nunca entrenó no aparece como asesorado vacío.
+// NO lleva `payments` ni `tier` a propósito: no se cobra a sí mismo, y `MS.getStatus`
+// sobre un cliente sin pagos da 'pending', que es justo «no me molestes con plata».
+function selfClientFromRow(row, opts) {
+  if (!row || typeof row !== 'object') return null;
+  const p = (row.profile && typeof row.profile === 'object') ? row.profile : {};
+  const nombre = (opts && opts.name) || p.name || 'Yo';
+  return {
+    id: SELF_CLIENT_ID,
+    isSelf: true,                 // bandera explícita, además del id
+    name: nombre,
+    // datos de ENTRENAMIENTO: son los que hacen que el generador y la nutrición
+    // funcionen igual que con cualquier otro
+    sex: p.sex || '', age: p.age != null ? p.age : null,
+    weight: p.weight != null ? p.weight : null,
+    height: p.height != null ? p.height : null,
+    goal: p.goal || '', level: p.level || 'Principiante',
+    days: p.days != null ? p.days : 3, place: p.place || 'gym',
+    activityFactor: p.activityFactor != null ? p.activityFactor : 1.55,
+    notes: p.notes || '', habits: p.habits || null,
+    startDate: p.startDate || null,
+    routines: Array.isArray(row.routines) ? row.routines : [],
+    // NADA de negocio: sin payments, sin tier, sin suspended, sin wantsCoach.
+  };
+}
+
+// ¿Este cliente puede recibir cobros, recordatorios, chat o push? El coach NO:
+// no se cobra, no se escribe ni se notifica a sí mismo. Un solo lugar donde
+// preguntarlo, para que ninguna superficie nueva se olvide.
+function clientIsBillable(c) { return !!c && !isSelfClient(c); }
+function clientIsContactable(c) { return !!c && !isSelfClient(c); }
+
+// Separa la lista para persistir: el coach JAMÁS va como fila de cliente.
+// Devuelve { clients, self } — `clients` es lo que se puede mandar a
+// `updateClientRow`, `self` lo que va a `upsertOwn`. Pura y sin sorpresas.
+function splitSelfFromClients(list) {
+  const arr = Array.isArray(list) ? list : [];
+  return {
+    clients: arr.filter(c => !isSelfClient(c)),
+    self: arr.find(isSelfClient) || null,
+  };
+}
+
 function clientToRow(client, opts) {
   client = client || {};
   opts = opts || {};
@@ -4099,6 +4173,12 @@ if (typeof module !== 'undefined' && module.exports) {
     PLAN_LABEL,
     USER_DATA_COLLECTIONS,
     clientToRow,
+    SELF_CLIENT_ID,
+    isSelfClient,
+    selfClientFromRow,
+    clientIsBillable,
+    clientIsContactable,
+    splitSelfFromClients,
     rowToClient,
     GX_LEVELS,
     gxLevel,

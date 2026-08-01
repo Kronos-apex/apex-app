@@ -954,9 +954,24 @@ function _primeCoachSnap(){
     Object.keys(_COACH_COL).forEach(k=>{ const src=DB[_COACH_COL[k]]; _coachSnap[k+':'+id]=JSON.stringify((src&&src[id])||null); });
   });
 }
+// 🔴 CANDADO DE LA FILA PROPIA: el coach entra a `DB.clients` como asesorado sintético
+// (`_self`) para salir en sus propias estadísticas y poder editarse desde el panel. Pero
+// esta función escribe UNA FILA DE CLIENTE por cada elemento de la lista: sin este filtro
+// la app le CREA EN LA NUBE UN ASESORADO FANTASMA con su entrenamiento adentro, y encima
+// `updateClientRow` no toca su fila real, así que además perdería lo que guarde.
+// Todo lo suyo va a SU fila (`upsertOwn`), jamás por `updateClientRow`.
 async function _persistCoachWrite(k,v){
   if(k==='ax_c'){
-    for(const c of (DB.clients||[])){
+    const _sp=splitSelfFromClients(DB.clients||[]);
+    if(_sp.self){
+      const val=_coachClientJSON(_sp.self), sk='ax_c:'+SELF_CLIENT_ID;
+      if(_coachSnap[sk]!==val){
+        const row=clientToRow(_sp.self,{});
+        try{ await UD.upsertOwn({profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; }
+        catch(e){ _setAuthDirty(true); warn('AVI: persistir mi propio perfil falló:',e&&e.message); }
+      }
+    }
+    for(const c of _sp.clients){
       const id=c.id; if(!id)continue;
       const val=_coachClientJSON(c), sk='ax_c:'+id;
       if(_coachSnap[sk]===val)continue; // ese cliente no cambió
@@ -967,7 +982,19 @@ async function _persistCoachWrite(k,v){
     return;
   }
   const col=_COACH_COL[k]; if(!col)return; // ax_e/ax_tpl/ax_cn/…: nivel coach, fuera de alcance 2.2e-2
-  for(const c of (DB.clients||[])){
+  const _sp2=splitSelfFromClients(DB.clients||[]);
+  if(_sp2.self){
+    // historial, récords, peso, medidas, fotos y nutrición PROPIOS → su fila, misma columna
+    const slice=v&&v[SELF_CLIENT_ID];
+    if(slice!==undefined){
+      const val=JSON.stringify(slice), sk=k+':'+SELF_CLIENT_ID;
+      if(_coachSnap[sk]!==val){
+        try{ await UD.upsertOwn({[col]:slice}); _coachSnap[sk]=val; }
+        catch(e){ _setAuthDirty(true); warn('AVI: persistir mis propios datos falló ('+k+'):',e&&e.message); }
+      }
+    }
+  }
+  for(const c of _sp2.clients){
     const id=c.id; if(!id)continue;
     const slice=v&&v[id]; if(slice===undefined)continue;
     const val=JSON.stringify(slice), sk=k+':'+id;

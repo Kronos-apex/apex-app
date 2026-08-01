@@ -3776,6 +3776,72 @@ test('nutMealSplit: sin kcal/proteína → ceros sin romper', () => {
 // ══════════════════════════════════════════════════════════════════════
 // Plan de alimentación con CANTIDADES REALES (2026-08-01)
 // ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// El coach también entrena: su perfil es un asesorado más (2026-08-01)
+// ══════════════════════════════════════════════════════════════════════
+section('El coach como asesorado (perfil propio en el panel)');
+
+const OWN_ROW = {
+  profile: { name: 'Andres Martínez', sex: 'M', age: 37, weight: 90, height: 175,
+    goal: 'Ganar músculo', level: 'Avanzado', days: 5, activityFactor: 1.55 },
+  routines: [{ id: 'r1', name: 'Empuje', day: 'Lunes', exercises: [] }],
+};
+
+test('la fila propia del coach se vuelve un asesorado con sus datos de entreno', () => {
+  const s = core.selfClientFromRow(OWN_ROW);
+  assert.strictEqual(s.id, core.SELF_CLIENT_ID);
+  assert.strictEqual(s.isSelf, true);
+  assert.strictEqual(s.weight, 90);
+  assert.strictEqual(s.level, 'Avanzado');
+  assert.strictEqual(s.days, 5);
+  assert.strictEqual(s.routines.length, 1);
+});
+
+test('el coach NO se cobra a sí mismo: su perfil no lleva nada de negocio', () => {
+  const s = core.selfClientFromRow(OWN_ROW);
+  ['payments', 'tier', 'suspended', 'wantsCoach', 'password'].forEach(k => {
+    assert.strictEqual(s[k], undefined, `el perfil propio no debe traer ${k}`);
+  });
+  assert.strictEqual(core.clientIsBillable(s), false);
+  assert.strictEqual(core.clientIsContactable(s), false);
+  // y un asesorado de verdad sí
+  assert.strictEqual(core.clientIsBillable({ id: 'c1' }), true);
+  assert.strictEqual(core.clientIsContactable({ id: 'c1' }), true);
+});
+
+test('sin fila propia no se inventa un asesorado vacío', () => {
+  assert.strictEqual(core.selfClientFromRow(null), null);
+  assert.strictEqual(core.selfClientFromRow('x'), null);
+});
+
+test('🔴 el coach JAMÁS puede salir en la lista que se guarda como filas de cliente', () => {
+  // `_persistCoachWrite` escribe una fila de cliente por elemento de DB.clients: si el
+  // coach se cuela, la app le crea un asesorado FANTASMA en la nube con su entrenamiento
+  // adentro, y encima su fila real no recibe nada.
+  const lista = [{ id: 'c1' }, core.selfClientFromRow(OWN_ROW), { id: 'c2' }];
+  const { clients, self } = core.splitSelfFromClients(lista);
+  assert.deepStrictEqual(clients.map(c => c.id), ['c1', 'c2']);
+  assert.ok(self && self.id === core.SELF_CLIENT_ID);
+  assert.ok(!clients.some(core.isSelfClient), 'el coach quedó entre los clientes a persistir');
+});
+
+test('isSelfClient reconoce tanto el objeto como el id suelto, y no confunde a nadie', () => {
+  assert.strictEqual(core.isSelfClient(core.SELF_CLIENT_ID), true);
+  assert.strictEqual(core.isSelfClient({ id: core.SELF_CLIENT_ID }), true);
+  assert.strictEqual(core.isSelfClient({ id: 'c1' }), false);
+  assert.strictEqual(core.isSelfClient(null), false);
+  assert.strictEqual(core.isSelfClient({ id: '_selfie' }), false);
+});
+
+test('el perfil propio sirve para el generador y para la nutrición como cualquier otro', () => {
+  // Es el punto del pedido: «que mi perfil sea como cualquier perfil de asesorado».
+  const s = core.selfClientFromRow(OWN_ROW);
+  const est = nutritionEstimate(s);
+  assert.ok(est && est.kcalObj > 0, 'no se le puede calcular el plan de alimentación');
+  const { routines } = generarRutinas(s, LIB, { idFn: () => 'r', now: '2026-08-01T00:00:00.000Z' });
+  assert.strictEqual(routines.length, 5, 'no se le generan sus 5 días');
+});
+
 section('Plan de alimentación — tabla de alimentos y porciones');
 
 const NUT_BASE = { sex: 'F', age: 40, weight: 56, height: 162, goal: 'Ganar músculo', activityFactor: 1.55 };
