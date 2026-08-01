@@ -2524,7 +2524,7 @@ test('ESTÁTICO: la invitación «Abre AVI» lleva el enlace de la app', () => {
   assert.ok(/\$\{url\}/.test(cuerpo), 'la URL se calcula pero no entra en el mensaje');
 });
 
-test('ESTÁTICO: el teléfono del registro llega entero hasta la ficha (4 eslabones)', () => {
+test('ESTÁTICO + VIVO: el teléfono del registro llega entero hasta la ficha (6 eslabones)', () => {
   // 15 de 22 asesorados eran imposibles de contactar porque el registro no pedía el número
   // y `_provisionFreeClient` lo escribía vacío A LA FUERZA. El dato cruza 4 manos y ningún
   // test unitario lo cubre: si alguien corta un eslabón, el teléfono deja de llegar EN
@@ -2542,10 +2542,59 @@ test('ESTÁTICO: el teléfono del registro llega entero hasta la ficha (4 eslabo
   assert.ok(/const meta=\{[^}]*phone:data\.phone/.test(coach),
     'el teléfono no viaja en la metadata del signup');
   // 4) y aterriza en la ficha (NO vacío a la fuerza, que era el bug)
-  assert.ok(/notes:'',\s*phone:\(p&&p\.phone\)\|\|''/.test(coach),
+  assert.ok(/phone:\(p&&p\.phone\)\|\|''/.test(coach),
     '_provisionFreeClient volvió a escribir el teléfono vacío');
-  assert.ok(!/notes:'',\s*phone:'',/.test(coach),
+  assert.ok(!/phone:'',/.test(coach),
     'quedó el phone:"" a la fuerza en _provisionFreeClient');
+
+  // 🔴 EL ESLABÓN QUE FALTABA. Los checks de arriba son REGEX sobre el código: miran 4 puntos
+  // de una cadena de 6 y por eso dieron verde mientras el teléfono se perdía de verdad. Entre
+  // «viaja en la metadata» y «aterriza en la ficha» está `_profileFromMeta`, que NO devolvía
+  // `phone` — así que `_provisionFreeClient` leía undefined y guardaba "". Probado ejecutando
+  // la función el 2026-08-01: el arreglo de v418 no guardaba nada.
+  // Este check EJECUTA la función real en vez de mirarla: un regex no puede volver a taparlo.
+  const cuerpo = (nombre) => {
+    const i = coach.indexOf('function ' + nombre + '(');
+    assert.ok(i >= 0, 'no existe ' + nombre);
+    let d = 0, j = coach.indexOf('{', i);
+    for (; j < coach.length; j++) { const c = coach[j]; if (c === '{') d++; else if (c === '}') { d--; if (!d) break; } }
+    return coach.slice(i, j + 1);
+  };
+  const _pendingWizard = () => ({});
+  const profileFromMeta = eval('(' + cuerpo('_profileFromMeta') + ')');
+  const prof = profileFromMeta({ id: 'u', email: 'a@b.c', user_metadata: {
+    name: 'N', goal: 'Ganar músculo', level: 'Principiante', days: 3,
+    phone: '573001234567', notes: 'hernia discal' } });
+  assert.strictEqual(prof.phone, '573001234567', 'el teléfono se pierde entre la metadata y la ficha');
+  assert.strictEqual(prof.notes, 'hernia discal', 'las lesiones se pierden entre la metadata y la ficha');
+});
+
+test('🔴 el registro PREGUNTA por lesiones, y llegan hasta la ficha', () => {
+  // Sin esto el motor de exclusiones es CÓDIGO MUERTO para quien se registra solo: `notes:''`
+  // iba a pelo y `parseLimitations` no tenía qué leer. Y el consentimiento ya le decía al
+  // usuario que autorizaba el tratamiento de sus «lesiones» — texto que afirmaba algo que el
+  // código no hacía.
+  const fs = require('fs');
+  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+  const coach = fs.readFileSync(__dirname + '/app-3-coach.js', 'utf8');
+  assert.ok(/id="su-notes"/.test(html), 'falta el campo de lesiones en el registro');
+  assert.ok(/notes:\(g\('su-notes'\)/.test(coach), 'el registro no recoge las lesiones');
+  assert.ok(/notes:data\.notes/.test(coach), 'las lesiones no viajan en la metadata');
+  assert.ok(/notes:\(p&&p\.notes\)\|\|''/.test(coach), 'las lesiones no aterrizan en la ficha');
+  // y lo declarado en el wizard alimenta de verdad el motor de exclusiones
+  const lim = parseLimitations('hernia discal');
+  assert.ok(lim.detected, 'una hernia declarada en el registro no activa las exclusiones');
+});
+
+test('todo ícono que el registro usa EXISTE en el sprite', () => {
+  // El campo de WhatsApp (v418) apuntaba a `#i-chat`, que nunca se definió: salía un hueco.
+  // Es por lo que quedó pendiente «ver renderizado el campo del teléfono».
+  const fs = require('fs');
+  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+  const definidos = new Set([...html.matchAll(/<symbol id="(i-[a-z0-9-]+)"/g)].map(m => m[1]));
+  const usados = new Set([...html.matchAll(/href="#(i-[a-z0-9-]+)"/g)].map(m => m[1]));
+  const faltan = [...usados].filter(x => !definidos.has(x));
+  assert.deepStrictEqual(faltan, [], 'íconos usados que no existen en el sprite');
 });
 
 test('chatDeliveryBlock: avisa cuando el mensaje del coach NO le va a llegar', () => {

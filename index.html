@@ -89,6 +89,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   <symbol id="i-scale" viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M4 14h16M12 14l4.5-3.5"/></symbol>
   <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M7 4h5v16H7zM12 8H9M12 12H8.5M12 16H9"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <!-- i-chat lo usa el campo de WhatsApp desde v418 y NUNCA existio: el icono salia vacio,
+       que es por lo que faltaba ver renderizado el campo del telefono. i-alert es el de
+       lesiones (2026-08-01). De trazo, como los demas del sprite. -->
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.2A7 7 0 0 1 4 12a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.5 2.8 20h18.4zM12 10v4M12 17h.01"/></symbol>
 </svg>
 
 <!-- ══ LOADING OVERLAY ══ -->
@@ -277,6 +282,15 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           <div class="ctl"><input id="su-phone" class="wz-tel" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="300 123 4567"></div>
         </div>
         <p class="wz-help">Tu coach lo usa para escribirte si algo no te llega a la app. No se comparte con nadie más.</p>
+        <!-- Lesiones (2026-08-01): el registro NUNCA las preguntaba (`notes:''` a pelo), así que
+             el motor de exclusiones era CÓDIGO MUERTO para los 13 que se registraron solos. Y el
+             consentimiento ya le decía al usuario que autorizaba el tratamiento de sus «lesiones»
+             — texto que afirmaba algo que el código no hacía. OPCIONAL, como el teléfono. -->
+        <div class="wz-row">
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-alert"/></svg></span>Lesiones <span class="wz-opt">(opcional)</span></span>
+          <div class="ctl"><input id="su-notes" class="wz-tel" type="text" maxlength="200" placeholder="Ej: hernia discal, dolor de rodilla"></div>
+        </div>
+        <p class="wz-help">Si tienes alguna molestia o lesión, escríbela: tu plan evita los ejercicios que puedan agravarla.</p>
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
 

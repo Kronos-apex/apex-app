@@ -418,6 +418,14 @@ function _profileFromMeta(authUser){
     email:authUser&&authUser.email,
     goal:goal||'Salud general', level:level||'Principiante', days:parseInt(m.days||w.days)||3,
     sex:m.sex||w.sex||null, age:m.age||w.age||null, weight:m.weight||w.weight||null, height:m.height||w.height||null, place:m.place||w.place||'gym',
+    // 🔴 ESTE ERA EL ESLABÓN ROTO. El teléfono se recogía en el wizard y viajaba en la
+    // metadata de la cuenta, pero esta función NO lo devolvía, así que `_provisionFreeClient`
+    // leía `p.phone` = undefined y la ficha quedaba con el teléfono VACÍO. O sea: el arreglo
+    // de v418 —«convierte 13 inalcanzables en alcanzables»— no guardaba nada. Probado
+    // ejecutando la función el 2026-08-01. El candado estático de entonces revisaba 4 eslabones
+    // y la cadena tiene 6: se le escapó justo el del medio.
+    phone:m.phone||w.phone||'',
+    notes:m.notes||w.notes||'',
     consent:m.consent||w.consent||null, // evidencia Habeas Data (email: metadata; Google: ax_wz_pending)
     _complete:!!(goal&&level), // email trae estos del form; Google los toma del wizard guardado
   };
@@ -433,7 +441,7 @@ async function _provisionFreeClient(authUser, p){
     age:p.age, sex:p.sex, activityFactor:1.55, days:p.days, place:p.place,
     // phone: llega del wizard (ya normalizado por waPhone). Antes iba vacío a la fuerza y por eso
     // los 13 auto-registrados eran inalcanzables: sin push y sin número, no había CÓMO escribirles.
-    notes:'', phone:(p&&p.phone)||'', selfReg:true, tier:'libre', routines:[],
+    notes:(p&&p.notes)||'', phone:(p&&p.phone)||'', selfReg:true, tier:'libre', routines:[],
     consent:p.consent||null, // prueba de autorización (fecha + versión de los textos legales)
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
@@ -1079,6 +1087,9 @@ async function signupClient(){
     // Normalizado YA aquí con waPhone (avi-core): un móvil colombiano sin +57 da un wa.me roto
     // — gotcha vigente del fix v365. Vacío se queda vacío: el campo es opcional.
     phone:(typeof waPhone==='function')?waPhone(g('su-phone')&&g('su-phone').value||''):'',
+    // Lesiones: alimentan `parseLimitations`, que hasta hoy era código muerto para quien se
+    // registraba solo. Va como texto libre, igual que las notas que escribe el coach.
+    notes:(g('su-notes')&&g('su-notes').value||'').trim(),
   };
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
@@ -1089,7 +1100,7 @@ async function signupClient(){
   if(btn){btn.disabled=true;}
   try{
     // 1. Crear cuenta en Supabase Auth (la contraseña la maneja Auth; el perfil va en metadata)
-    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,selfReg:true,consent};
+    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,notes:data.notes,selfReg:true,consent};
     let res;
     try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
     catch(e){ err.textContent='No se pudo crear la cuenta. Intenta de nuevo.';err.classList.add('on');return; }
@@ -1130,6 +1141,10 @@ function wzGoogle(){
       name, goal:g('su-goal')||null, place:g('su-place')||'gym', level:g('su-level')||'Principiante',
       days:parseInt(g('su-days'))||3, sex:g('su-sex')||null,
       age:parseInt(g('su-age'))||null, weight:parseFloat(g('su-weight'))||null, height:parseFloat(g('su-height'))||null,
+      // 🔴 El teléfono y las lesiones también por aquí: quien entra con Google no pasa por la
+      // metadata del signup, y sin esto se perdían igual que se perdían por el otro camino.
+      phone:(typeof waPhone==='function')?waPhone(g('su-phone')||''):(g('su-phone')||''),
+      notes:(g('su-notes')||'').trim(),
       consent,
       ts:Date.now()
     }));
