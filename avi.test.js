@@ -3773,6 +3773,126 @@ test('nutMealSplit: sin kcal/proteína → ceros sin romper', () => {
   assert.ok(s.every(m => m.kcal === 0 && m.prot === 0));
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// Plan de alimentación con CANTIDADES REALES (2026-08-01)
+// ══════════════════════════════════════════════════════════════════════
+section('Plan de alimentación — tabla de alimentos y porciones');
+
+const NUT_BASE = { sex: 'F', age: 40, weight: 56, height: 162, goal: 'Ganar músculo', activityFactor: 1.55 };
+
+test('la tabla de alimentos es coherente: las kcal declaradas cuadran con sus macros (4/4/9)', () => {
+  // Audita MI PROPIA tabla: un número mal tecleado aquí se propaga a todos los planes
+  // de todo el mundo y nadie lo vería nunca.
+  // Los alimentos que MUEVEN el plan (proteína, carbohidrato, grasa) deben cuadrar al 12%.
+  // En verduras y frutas la regla 4/4/9 SOBREESTIMA a propósito: buena parte de su
+  // carbohidrato es FIBRA, que aporta ~0 kcal en vez de 4 (medido: espinaca +29%,
+  // brócoli +26%, lechuga +27%). Aflojar ahí la tolerancia sin más sería callar el test,
+  // así que en su lugar se les exige la DIRECCIÓN: la fibra sólo puede hacer que la
+  // cuenta sobre, jamás que falte. Si un kcal quedara por ENCIMA de sus macros, es un
+  // error de tecleo y este test lo caza igual.
+  const altos = [], bajos = [];
+  core.NUT_FOODS.forEach(f => {
+    const calc = f.p * 4 + f.c * 4 + f.f * 9;
+    if (!f.kcal) { altos.push(f.name + ' (sin kcal)'); return; }
+    const detalle = f.name + ' (declara ' + f.kcal + ', macros dan ' + Math.round(calc) + ')';
+    // La banda es ASIMÉTRICA y cada lado tiene su motivo físico:
+    //  · por arriba, poco margen (8%): el 4/4/9 es una aproximación —en carnes la proteína
+    //    rinde ~4,27 kcal/g— y las fuentes redondean los macros. Más que eso es tecleo.
+    //  · por abajo, mucho (35%): la fibra cuenta como carbohidrato pero casi no aporta kcal.
+    if (calc < f.kcal * 0.92) altos.push(detalle);
+    if (calc > f.kcal * 1.35) bajos.push(detalle);
+  });
+  assert.deepStrictEqual(altos, [], 'declara MÁS kcal de las que dan sus macros de lo que explica el redondeo: revisar el tecleo');
+  assert.deepStrictEqual(bajos, [], 'el hueco es demasiado grande para ser fibra: revisar el alimento');
+});
+
+test('la tabla no tiene ids repetidos y toda medida casera pesa algo', () => {
+  const ids = core.NUT_FOODS.map(f => f.id);
+  assert.strictEqual(new Set(ids).size, ids.length, 'hay ids duplicados');
+  const sinPeso = core.NUT_FOODS.filter(f => f.un && !(f.un.g > 0));
+  assert.deepStrictEqual(sinPeso.map(f => f.id), []);
+  const rolesOk = ['prot', 'carb', 'fat', 'verd', 'fruta'];
+  assert.deepStrictEqual(core.NUT_FOODS.filter(f => !rolesOk.includes(f.rol)).map(f => f.id), []);
+});
+
+test('🔴 el ciclado NO cambia el total de la semana (la regla que no se puede romper)', () => {
+  // Bajarle el carbohidrato al descanso sin devolvérselo a los días de entreno dejaría
+  // a la persona comiendo de menos TODA la semana, en silencio. Medido antes del fix:
+  // con todos los días de pierna la semana se pasaba +5,1%.
+  const base = nutritionEstimate(NUT_BASE);
+  for (const d of [2, 3, 4, 5]) {
+    for (let L = 0; L <= d; L++) {
+      let semana = 0;
+      for (let i = 0; i < d; i++) semana += core.nutDayTarget(base, i < L ? 'pierna' : 'entreno', d, L).carb_g;
+      for (let i = 0; i < 7 - d; i++) semana += core.nutDayTarget(base, 'descanso', d, L).carb_g;
+      const plano = base.macros.carb_g * 7;
+      const desvio = Math.abs(semana - plano) / plano;
+      assert.ok(desvio <= 0.01, `días=${d} pierna=${L}: la semana se desvió ${(desvio * 100).toFixed(1)}% (${semana} vs ${plano})`);
+    }
+  }
+});
+
+test('el día de pierna trae MÁS carbohidrato que el normal, y el descanso menos', () => {
+  const base = nutritionEstimate(NUT_BASE);
+  const p = core.nutDayTarget(base, 'pierna', 3, 1).carb_g;
+  const e = core.nutDayTarget(base, 'entreno', 3, 1).carb_g;
+  const r = core.nutDayTarget(base, 'descanso', 3, 1).carb_g;
+  assert.ok(p > e && e > r, `orden equivocado: pierna=${p} entreno=${e} descanso=${r}`);
+});
+
+test('el ciclado mueve SOLO el carbohidrato: proteína y grasa no se tocan', () => {
+  // La proteína sostiene el músculo y la grasa tiene un mínimo hormonal: ninguna
+  // puede bajar porque ese día no se entrene.
+  const base = nutritionEstimate(NUT_BASE);
+  const dias = ['pierna', 'entreno', 'descanso'].map(k => core.nutDayTarget(base, k, 3, 1));
+  assert.strictEqual(new Set(dias.map(d => d.prot_g)).size, 1, 'la proteína cambió con el día');
+  assert.strictEqual(new Set(dias.map(d => d.fat_g)).size, 1, 'la grasa cambió con el día');
+});
+
+test('sin datos del cuerpo NO se inventa un plan', () => {
+  assert.strictEqual(core.nutDayTarget(null, 'entreno', 3, 1), null);
+  assert.strictEqual(core.nutDayTarget(nutritionEstimate({ weight: 80 }), 'entreno', 3, 1), null);
+});
+
+test('🔴 el plato descuenta los aportes CRUZADOS y no se pasa del objetivo', () => {
+  // El arroz aporta proteína y la carne aporta grasa. Sin descontarlo, los platos
+  // salían +12% a +17% y la proteína de una persona real llegaba a 176 g con meta 123.
+  const base = nutritionEstimate(NUT_BASE);
+  const t = core.nutDayTarget(base, 'pierna', 3, 1);
+  const r = core.nutSolveMeal({ prot_g: t.prot_g, carb_g: t.carb_g, fat_g: t.fat_g },
+    { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' });
+  for (const [k, obj] of [['prot_g', t.prot_g], ['carb_g', t.carb_g], ['fat_g', t.fat_g]]) {
+    const desvio = Math.abs(r.real[k] - obj) / obj;
+    assert.ok(desvio <= 0.08, `${k}: pedía ${obj} y el plato da ${r.real[k]} (${(desvio * 100).toFixed(1)}%)`);
+  }
+});
+
+test('el plato es determinista: mismos ingredientes y macros → mismo resultado', () => {
+  const pedido = { prot_g: 40, carb_g: 80, fat_g: 15 };
+  const pick = { prot: 'huevo', carb: 'arepa', fat: 'aguacate' };
+  const a = core.nutSolveMeal(pedido, pick), b = core.nutSolveMeal(pedido, pick);
+  assert.deepStrictEqual(a, b);
+});
+
+test('las cantidades se escriben como habla una persona, en español correcto', () => {
+  const f = id => core.NUT_FOOD_BY_ID[id];
+  assert.strictEqual(core.nutPortionText(f('huevo'), 100).text, '2 huevos (100 g)');
+  // plural irregular: «porcións» y «papa medianas» son los que salían con un + 's' a secas
+  assert.strictEqual(core.nutPortionText(f('pollo_pechuga'), 180).text, '1½ porciones (180 g)');
+  assert.strictEqual(core.nutPortionText(f('papa'), 300).text, '2 papas medianas (300 g)');
+  // los medios en fracción, no en decimal
+  assert.strictEqual(core.nutPortionText(f('arepa'), 40).text, 'media arepa (40 g)');
+  assert.ok(!/\d\.\d/.test(core.nutPortionText(f('arroz'), 395).text), 'no debe quedar un decimal suelto');
+});
+
+test('nutDayKind lee el día del plan de entreno', () => {
+  assert.strictEqual(core.nutDayKind(null), 'descanso');
+  assert.strictEqual(core.nutDayKind({ exercises: [] }), 'descanso');
+  assert.strictEqual(core.nutDayKind({ name: 'Full Body', exercises: [{ muscle: 'pecho' }] }), 'pierna');
+  assert.strictEqual(core.nutDayKind({ name: 'Día A', exercises: [{ muscle: 'piernas' }, { muscle: 'gluteo' }] }), 'pierna');
+  assert.strictEqual(core.nutDayKind({ name: 'Empuje', exercises: [{ muscle: 'pecho' }, { muscle: 'hombros' }] }), 'entreno');
+});
+
 // ══════════════════════════════════════════════════════
 section('Racha semanal (planDays / weekStreak / longestWeekStreak)');
 

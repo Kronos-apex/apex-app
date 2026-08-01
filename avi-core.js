@@ -2320,6 +2320,251 @@ function nutMealSplit(kcal, protG, n) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// PLAN DE ALIMENTACIÓN CON CANTIDADES REALES (2026-08-01)
+// ──────────────────────────────────────────────────────────────────────
+// Pedido del PO: «que sea un conjunto con su plan de entrenamiento y sus
+// objetivos», con comida colombiana y cantidades de verdad — cuántos huevos,
+// cuántos gramos de arroz. Hasta hoy el plan decía «Desayuno: 600 kcal, 40 g
+// de proteína» (nutMealSplit) y NO tenía una sola cantidad de comida.
+//
+// Decisiones de producto del PO, ya tomadas (2026-07-31):
+//   1. La tabla de alimentos la arma AVI con criterio de nutrición deportiva
+//      y comida colombiana; el PO la aprueba. «Si mandas aguacate que sea
+//      aguacate, no nombres raros de otros países.»
+//   2. El plan de comida va PEGADO AL DÍA DE ENTRENO: más carbohidrato el día
+//      de pierna, menos el día de descanso.
+//
+// NO es una base de datos de alimentos (eso se descartó el 2026-07-09 por ser
+// «un hueco sin fondo»): es una lista CERRADA y curada para RECETAR, no un
+// buscador donde el usuario registra lo que come. No crece con el uso.
+//
+// Macros por 100 g del alimento LISTO PARA COMER (cocido cuando aplica), que es
+// como lo pesa una persona en su cocina. `un` = medida casera y sus gramos, para
+// poder decir «2 huevos» o «1 taza de arroz» en vez de «104 g».
+// ──────────────────────────────────────────────────────────────────────
+const NUT_FOODS = [
+  // ── PROTEÍNA ──
+  { id: 'pollo_pechuga', name: 'Pechuga de pollo', rol: 'prot', kcal: 165, p: 31.0, c: 0, f: 3.6, un: { label: 'porción', g: 120 } },
+  { id: 'pollo_muslo', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, un: { label: 'muslo', g: 95 } },
+  { id: 'res_magra', name: 'Carne de res magra (posta)', rol: 'prot', kcal: 187, p: 30.0, c: 0, f: 7.0, un: { label: 'porción', g: 120 } },
+  { id: 'res_molida', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
+  { id: 'cerdo_lomo', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
+  { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, un: { label: 'huevo', g: 50 } },
+  { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, un: { label: 'clara', g: 33 } },
+  { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
+  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 120 } },
+  { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, un: { label: 'tajada', g: 30 } },
+  { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, un: { label: 'porción', g: 60 } },
+  { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, un: { label: 'vaso', g: 200 } },
+  { id: 'leche', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, un: { label: 'vaso', g: 200 } },
+  { id: 'lenteja', name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, un: { label: 'taza', g: 200 } },
+  { id: 'frijol', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, un: { label: 'taza', g: 180 } },
+  { id: 'garbanzo', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, un: { label: 'taza', g: 165 } },
+  // ── CARBOHIDRATO ──
+  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, un: { label: 'taza', g: 158 } },
+  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, un: { label: 'papa mediana', g: 150 } },
+  { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, un: { label: 'porción', g: 100 } },
+  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 160, p: 1.4, c: 38.0, f: 0.3, un: { label: 'trozo', g: 100 } },
+  { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, un: { label: 'tajada grande', g: 80 } },
+  { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, un: { label: 'trozo', g: 80 } },
+  { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, un: { label: 'arepa', g: 80 } },
+  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, un: { label: 'tajada', g: 28 } },
+  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'cucharada', g: 15 } },
+  { id: 'pasta', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
+  { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, un: { label: 'mazorca', g: 130 } },
+  // ── GRASA ──
+  { id: 'aguacate', name: 'Aguacate', rol: 'fat', kcal: 160, p: 2.0, c: 9.0, f: 15.0, un: { label: 'octavo', g: 30 } },
+  { id: 'aceite', name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
+  { id: 'mani', name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 } },
+  { id: 'almendra', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 } },
+  { id: 'crema_mani', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
+  // ── VERDURA (libre: acompañan, no se cuentan al ajustar macros) ──
+  { id: 'tomate', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, un: { label: 'tomate', g: 120 } },
+  { id: 'cebolla', name: 'Cebolla', rol: 'verd', kcal: 40, p: 1.1, c: 9.0, f: 0.1, un: { label: 'porción', g: 60 } },
+  { id: 'zanahoria', name: 'Zanahoria', rol: 'verd', kcal: 41, p: 0.9, c: 10.0, f: 0.2, un: { label: 'zanahoria', g: 80 } },
+  { id: 'espinaca', name: 'Espinaca', rol: 'verd', kcal: 23, p: 2.9, c: 3.6, f: 0.4, un: { label: 'taza', g: 30 } },
+  { id: 'brocoli', name: 'Brócoli', rol: 'verd', kcal: 34, p: 2.8, c: 7.0, f: 0.4, un: { label: 'taza', g: 90 } },
+  { id: 'habichuela', name: 'Habichuela', rol: 'verd', kcal: 31, p: 1.8, c: 7.0, f: 0.2, un: { label: 'taza', g: 100 } },
+  { id: 'pepino', name: 'Pepino', rol: 'verd', kcal: 15, p: 0.7, c: 3.6, f: 0.1, un: { label: 'porción', g: 100 } },
+  { id: 'lechuga', name: 'Lechuga', rol: 'verd', kcal: 15, p: 1.4, c: 2.9, f: 0.2, un: { label: 'taza', g: 50 } },
+  { id: 'ahuyama', name: 'Ahuyama', rol: 'verd', kcal: 26, p: 1.0, c: 6.5, f: 0.1, un: { label: 'taza', g: 120 } },
+  // ── FRUTA ──
+  { id: 'banano', name: 'Banano', rol: 'fruta', kcal: 89, p: 1.1, c: 23.0, f: 0.3, un: { label: 'banano', g: 118 } },
+  { id: 'mango', name: 'Mango', rol: 'fruta', kcal: 60, p: 0.8, c: 15.0, f: 0.4, un: { label: 'taza', g: 165 } },
+  { id: 'papaya', name: 'Papaya', rol: 'fruta', kcal: 43, p: 0.5, c: 11.0, f: 0.3, un: { label: 'taza', g: 145 } },
+  { id: 'guayaba', name: 'Guayaba', rol: 'fruta', kcal: 68, p: 2.6, c: 14.0, f: 1.0, un: { label: 'guayaba', g: 90 } },
+  { id: 'naranja', name: 'Naranja', rol: 'fruta', kcal: 47, p: 0.9, c: 12.0, f: 0.1, un: { label: 'naranja', g: 130 } },
+  { id: 'mandarina', name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, un: { label: 'mandarina', g: 90 } },
+  { id: 'pina', name: 'Piña', rol: 'fruta', kcal: 50, p: 0.5, c: 13.0, f: 0.1, un: { label: 'taza', g: 165 } },
+  { id: 'fresa', name: 'Fresa', rol: 'fruta', kcal: 32, p: 0.7, c: 7.7, f: 0.3, un: { label: 'taza', g: 150 } },
+  { id: 'maracuya', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, un: { label: 'unidad', g: 60 } },
+];
+
+// Índice por id, null-proto para que un id raro NO herede del prototipo
+// (misma clase de bug que EX_IMG_NAME, hallazgo C4 de la auditoría 2026-07-13).
+const NUT_FOOD_BY_ID = NUT_FOODS.reduce((a, f) => { a[f.id] = f; return a; }, Object.create(null));
+
+// ── Tipo de día: el plan de comida se pega al de entreno ────────────────
+// 'pierna'  = el día trae trabajo de pierna o full body → el que más carga
+// 'entreno' = día de entreno sin pierna
+// 'descanso'= sin rutina ese día
+// Puro: recibe la rutina del día ya resuelta, no la busca.
+function nutDayKind(routine) {
+  if (!routine || !(routine.exercises || []).length) return 'descanso';
+  const musculos = (routine.exercises || []).map(e => _norm(e.muscle || ''));
+  const pierna = musculos.filter(m => m === 'piernas' || m === 'gluteo').length;
+  // Full body y día de pierna piden más combustible. Umbral: 2+ ejercicios de
+  // tren inferior, o que el nombre del día lo diga.
+  const nm = _norm(routine.name || '');
+  if (pierna >= 2 || /pierna|full body|inferior/.test(nm)) return 'pierna';
+  return 'entreno';
+}
+
+// PESOS del carbohidrato por tipo de día. La PROTEÍNA no se toca (va por kg de peso
+// y es la que sostiene el músculo) y la GRASA tampoco (mínimo hormonal).
+// Son pesos RELATIVOS que después se normalizan: lo que importa es la forma de la
+// semana, no el número. Medido 2026-08-01: con un corte del 25% y un extra de pierna
+// suelto, a una mujer de 56 kg le salían 467 g de carbohidrato en el día de pierna
+// (+45%) — «6 tazas de arroz y 6 papas». Nadie come eso. Con estos pesos el swing
+// real queda en −8% / +18%, que es un ciclado que una persona puede sostener.
+const NUT_DAY_W = { descanso: 0.85, entreno: 1.00, pierna: 1.10 };
+
+// ── Objetivo del DÍA ────────────────────────────────────────────────────
+// 🔴 REGLA QUE NO SE PUEDE ROMPER: el TOTAL DE LA SEMANA no cambia. Lo que se le
+// quita al día de descanso se le devuelve a los de entreno, ni un gramo más. Bajar
+// el carbohidrato del descanso sin devolverlo dejaría a la persona comiendo menos de
+// lo que necesita TODA la semana, en silencio — y en nutrición deportiva el que manda
+// es el total semanal, no el día suelto.
+// Se consigue NORMALIZANDO: se reparte el presupuesto semanal (7 × carbohidrato base)
+// según los pesos de los días que la persona realmente tiene. Por eso hacen falta
+// `trainDays` Y `legDays`: sin saber cuántos días son de pierna, el extra de pierna
+// se agregaba sin financiar y la semana se pasaba un 5,1% (medido con el caso real).
+//
+// base = macros de nutritionEstimate · trainDays = días de entreno (1-7) · legDays =
+// cuántos de esos son de pierna/full body (0..trainDays).
+// Devuelve null si no hay base (faltan peso/talla/edad/sexo) — nunca inventa.
+function nutDayTarget(base, kind, trainDays, legDays) {
+  if (!base || !base.macros) return null;
+  const m = base.macros;
+  const d = Math.max(1, Math.min(7, parseInt(trainDays) || 3));
+  const L = Math.max(0, Math.min(d, parseInt(legDays) || 0));
+  const rest = 7 - d;
+  const C = m.carb_g;
+  if (!C || kind === undefined || kind === null) {
+    return { kind: kind || 'entreno', kcal: m.kcal, prot_g: m.prot_g, fat_g: m.fat_g, carb_g: C || 0 };
+  }
+  // Suma de pesos de la semana REAL de esta persona → factor que conserva el total.
+  const suma = rest * NUT_DAY_W.descanso + (d - L) * NUT_DAY_W.entreno + L * NUT_DAY_W.pierna;
+  const k = suma > 0 ? 7 / suma : 1;
+  const w = NUT_DAY_W[kind] != null ? NUT_DAY_W[kind] : NUT_DAY_W.entreno;
+  let carb = Math.round(C * w * k);
+  const kcal = Math.round(m.prot_g * 4 + carb * 4 + m.fat_g * 9);
+  return { kind, kcal, prot_g: m.prot_g, fat_g: m.fat_g, carb_g: carb };
+}
+
+// Plural en español de una medida casera. Un `+ 's'` a secas escribe «1.5 porcións»
+// y «2 papa medianas» — lo lee el asesorado y rompe la barra de tono. Las irregulares
+// y las de dos palabras se declaran; el resto sigue la regla (vocal → +s, si no → +es).
+const NUT_PLURAL = Object.assign(Object.create(null), {
+  'porción': 'porciones',
+  'unidad': 'unidades',
+  'papa mediana': 'papas medianas',
+  'tajada grande': 'tajadas grandes',
+});
+function _nutPlural(label) {
+  const l = String(label || '');
+  if (NUT_PLURAL[l]) return NUT_PLURAL[l];
+  if (/s$/.test(l)) return l;
+  return /[aeiou]$/i.test(l) ? l + 's' : l + 'es';
+}
+// Cantidad escrita como la serviría una persona: «2 huevos», «1½ tazas», «media
+// porción». Los medios van en fracción y no en decimal — «0.5 porción» no es como
+// habla nadie. Si el alimento no tiene medida casera, gramos redondeados a 5.
+function _nutNumText(rn) {
+  if (rn === 0.5) return 'media';
+  const ent = Math.floor(rn);
+  return rn === ent ? String(ent) : String(ent) + '½';
+}
+function nutPortionText(food, grams) {
+  if (!food || !(grams > 0)) return null;
+  const un = food.un;
+  if (un && un.g) {
+    const n = grams / un.g;
+    // Hasta 4 unidades se permite medio; de ahí en adelante, enteras.
+    const paso = n <= 4 ? 0.5 : 1;
+    const rn = Math.round(n / paso) * paso;
+    if (rn >= paso) {
+      const label = rn > 1 ? _nutPlural(un.label) : un.label;
+      const txt = _nutNumText(rn) + ' ' + label;
+      return { n: rn, grams: Math.round(rn * un.g), text: txt + ' (' + Math.round(rn * un.g) + ' g)' };
+    }
+  }
+  const g = Math.max(5, Math.round(grams / 5) * 5);
+  return { n: null, grams: g, text: g + ' g' };
+}
+
+// ── De macros a COMIDA de verdad ────────────────────────────────────────
+// Resuelve una comida en cantidades concretas de comida colombiana.
+//
+// 🔴 EL ALIMENTO NO ES PURO: el arroz aporta proteína, la carne aporta grasa y el
+// aguacate aporta carbohidrato. Un reparto ingenuo —tanta carne para la proteína,
+// tanto arroz para el carbohidrato— IGNORA esos aportes cruzados y el plato se pasa.
+// Medido 2026-08-01 con las 3 personas reales: los platos salían entre +12% y +17%
+// por encima del objetivo, y la proteína de Nataly llegaba a 176 g cuando su meta
+// eran 123 g (+43%). Un plan que se pasa un 15% todos los días es un plan que no
+// cumple el objetivo, y nadie lo habría notado mirando la pantalla.
+//
+// Se resuelve por ITERACIÓN de punto fijo: cada pasada recalcula la cantidad de cada
+// alimento descontando lo que YA aportan los otros dos. Converge en 2-3 pasadas
+// (`NUT_SOLVE_PASSES`); se redondea a medidas caseras sólo AL FINAL, porque redondear
+// en cada pasada mete el error del redondeo dentro del bucle y ya no converge.
+// Las verduras acompañan y NO se ajustan (aportan poco y nadie pesa la lechuga).
+// Puro y determinista: mismos ingredientes + mismos macros = mismo resultado.
+const NUT_SOLVE_PASSES = 4;
+function nutSolveMeal(target, pick) {
+  target = target || {};
+  const prot = NUT_FOOD_BY_ID[pick && pick.prot] || null;
+  const carb = NUT_FOOD_BY_ID[pick && pick.carb] || null;
+  const fat = NUT_FOOD_BY_ID[pick && pick.fat] || null;
+  const tP = target.prot_g > 0 ? target.prot_g : 0;
+  const tC = target.carb_g > 0 ? target.carb_g : 0;
+  const tF = target.fat_g > 0 ? target.fat_g : 0;
+  // gramos de cada alimento, en crudo (sin redondear) durante la iteración
+  let gP = 0, gC = 0, gF = 0;
+  const ap = (food, g, macro) => (food ? food[macro] * g / 100 : 0);
+  for (let i = 0; i < NUT_SOLVE_PASSES; i++) {
+    // proteína: la que falta después de la que traen el carbohidrato y la grasa
+    if (prot && prot.p > 0 && tP > 0) {
+      gP = Math.max(0, (tP - ap(carb, gC, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
+    }
+    // carbohidrato: descontando el que traen la proteína y la grasa
+    if (carb && carb.c > 0 && tC > 0) {
+      gC = Math.max(0, (tC - ap(prot, gP, 'c') - ap(fat, gF, 'c')) / carb.c * 100);
+    }
+    // grasa: descontando la que traen la proteína y el carbohidrato
+    if (fat && fat.f > 0 && tF > 0) {
+      gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f')) / fat.f * 100);
+    }
+  }
+  const items = [];
+  let gotP = 0, gotC = 0, gotF = 0;
+  const poner = (food, g, rol) => {
+    if (!food || !(g > 0)) return;
+    const por = nutPortionText(food, g);
+    if (!por) return;
+    items.push({ id: food.id, name: food.name, rol, grams: por.grams, text: por.text });
+    gotP += food.p * por.grams / 100; gotC += food.c * por.grams / 100; gotF += food.f * por.grams / 100;
+  };
+  poner(prot, gP, 'prot');
+  poner(carb, gC, 'carb');
+  poner(fat, gF, 'fat');
+  return {
+    items,
+    real: { prot_g: Math.round(gotP), carb_g: Math.round(gotC), fat_g: Math.round(gotF), kcal: Math.round(gotP * 4 + gotC * 4 + gotF * 9) },
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // GAMIFICACIÓN — nivel permanente
 // ──────────────────────────────────────────────────────────────────────
 // Lógica pura sin DOM ni DB. El nivel premia el TOTAL histórico de entrenos
@@ -3620,6 +3865,14 @@ if (typeof module !== 'undefined' && module.exports) {
     kcalTargetFor,
     calcMacrosFromKcal,
     nutritionEstimate,
+    NUT_FOODS,
+    NUT_FOOD_BY_ID,
+    nutDayKind,
+    nutDayTarget,
+    nutPortionText,
+    nutSolveMeal,
+    NUT_DAY_W,
+    NUT_SOLVE_PASSES,
     nutMealSplit,
     getSexCode,
     calcMacrosSugeridos,
