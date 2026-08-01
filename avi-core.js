@@ -1871,8 +1871,11 @@ function isSelfClient(c) {
 }
 
 // Construye el asesorado sintético a partir de la fila propia del coach.
-// `row` = fila `user_data` del coach (profile/routines/…). Sin fila → null: el
-// coach que nunca entrenó no aparece como asesorado vacío.
+// `row` = fila `user_data` del coach (profile/routines/…). Sin fila → null.
+// ⚠️ Un coach CON fila pero sin entrenar SÍ aparece, con los valores por defecto: es su
+// puerta de entrada para armarse su propio plan, no un error. (La versión anterior de este
+// comentario decía que no aparecía — falso, y es justo la clase de defecto que la auditoría
+// persigue: texto que afirma algo que el código no hace.)
 // NO lleva `payments` ni `tier` a propósito: no se cobra a sí mismo, y `MS.getStatus`
 // sobre un cliente sin pagos da 'pending', que es justo «no me molestes con plata».
 function selfClientFromRow(row, opts) {
