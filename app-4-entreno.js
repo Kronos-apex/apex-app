@@ -688,8 +688,8 @@ function _todayOrder(training){
   // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
   // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
   const ids=training
-    ? ['cn-today-head','cn-firstrun','cn-today-body','cn-missday','cn-coach-card','cn-habits','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
-    : ['cn-today-head','cn-firstrun','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-today-body','cn-cmty-nudge','cn-share'];
+    ? ['cn-today-head','cn-firstrun','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
+    : ['cn-today-head','cn-firstrun','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -742,7 +742,7 @@ function renderClientToday(client, overrideRoutine){
   // OJO: apagar con `display:none` obliga a ENCENDER de vuelta. Sin esta restauración, al terminar
   // el primer entreno la portada se apaga pero hábitos/coach/novedades quedaban invisibles el resto
   // de la sesión (lo cazó `_verify-firstrun` D5 antes de salir de aquí).
-  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
+  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
   _DIA1_OFF.forEach(id=>{ const e=document.getElementById(id); if(!e) return;
     if(_dia1){ e.innerHTML=''; e.style.display='none'; } else if(e.style.display==='none'){ e.style.display=''; } });
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
@@ -752,6 +752,7 @@ function renderClientToday(client, overrideRoutine){
   // 💧 Hábitos de hoy (v300): antes de los early-returns — la tarjeta también sale
   // en día de descanso y sin rutinas (el agua es diaria). Guard por caché vieja.
   if(!_dia1 && typeof renderHabitsCard==='function')renderHabitsCard(client);
+  if(!_dia1 && typeof renderMealsToday==='function')renderMealsToday(client);
   // 🧠 Coach Inteligente (v352): 1 insight priorizado (récord/racha/inactividad/…). Antes de los
   // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
   if(!_dia1 && typeof renderCoachCard==='function')renderCoachCard(client);

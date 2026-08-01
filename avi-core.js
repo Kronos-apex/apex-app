@@ -2728,13 +2728,20 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const t = nutDayTarget(base, kind, trainDays, legDays);
   if (!t) return null;
   const di = ((parseInt(dayIndex) || 0) % 7 + 7) % 7;
-  const protEach = t.prot_g / NUT_MEALS_5.length;   // proteína repartida por igual
+  // 🔴 La proteína NI se reparte por igual NI sigue el tamaño de la comida: va a MITAD DE
+  // CAMINO. Repartirla por igual tiene su razón nutricional (se sintetiza mejor distribuida),
+  // pero produce platos absurdos: medido 2026-08-01 sobre un plan de 180 g, la media mañana
+  // cargaba los mismos 36 g que el almuerzo — «6 huevos» a las diez de la mañana, visible en
+  // la captura y que el texto del harness no delataba. Seguir sólo el tamaño la dejaría
+  // demasiado floja en las meriendas. La mezcla da comidas creíbles sin perder el reparto.
+  const nM = NUT_MEALS_5.length;
   const meals = NUT_MEALS_5.map((slot, i) => {
     const banco = NUT_MENUS[slot.key] || [];
     // desfase por comida para que Media mañana y Media tarde no coincidan
     const menu = banco.length ? banco[(di + i * 2) % banco.length] : null;
+    const wProt = (slot.w + 1 / nM) / 2;   // mezcla: mitad tamaño de la comida, mitad reparto parejo
     const sub = {
-      prot_g: Math.round(protEach),
+      prot_g: Math.round(t.prot_g * wProt),
       carb_g: Math.round(t.carb_g * slot.w),
       fat_g: Math.round(t.fat_g * slot.w),
     };
@@ -2752,6 +2759,35 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   }), { prot_g: 0, carb_g: 0, fat_g: 0 });
   real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
   return { kind: t.kind, target: t, meals, real };
+}
+
+// ── De dónde salen los macros del día ───────────────────────────────────
+// 🔴 EL PLAN DEL COACH MANDA. Si él escribió kcal y macros, esos son los números y
+// AVI solo los REPARTE según el día y los convierte en comida. Recalcularlos por
+// nuestra cuenta sería pisarle el criterio a quien conoce a la persona — y el PO fue
+// explícito: «AVI propone, el coach aprueba».
+// Sin plan del coach (o incompleto) se cae a la estimación automática, y si tampoco
+// hay datos del cuerpo → null: no se inventa un plan.
+function nutBaseFor(client, nut, weightKg) {
+  const k = parseFloat(nut && nut.kcal);
+  const p = parseFloat(nut && nut.prot);
+  const c = parseFloat(nut && nut.carbs);
+  const f = parseFloat(nut && nut.fat);
+  if (k > 0 && p > 0 && c > 0 && f > 0) {
+    return { origen: 'coach', kcalObj: Math.round(k), macros: { prot_g: Math.round(p), carb_g: Math.round(c), fat_g: Math.round(f), kcal: Math.round(k) } };
+  }
+  const est = nutritionEstimate(client, weightKg);
+  if (!est || !est.macros) return null;
+  return { origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee };
+}
+
+// Cuenta los días del plan y cuántos son de pierna/full body — lo que `nutDayTarget`
+// necesita para repartir el carbohidrato SIN cambiar el total de la semana.
+function nutWeekShape(routines) {
+  const rs = Array.isArray(routines) ? routines.filter(r => r && (r.exercises || []).length) : [];
+  let leg = 0;
+  rs.forEach(r => { if (nutDayKind(r) === 'pierna') leg++; });
+  return { trainDays: rs.length || 3, legDays: leg };
 }
 
 // ── LA REVISIÓN PARA EL COACH ───────────────────────────────────────────
@@ -4097,6 +4133,8 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_MEALS_5,
     nutDayPlan,
     nutPlanReview,
+    nutBaseFor,
+    nutWeekShape,
     NUT_REVIEW_MIN_GAP,
     nutMealSplit,
     getSexCode,

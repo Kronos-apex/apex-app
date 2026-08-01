@@ -224,6 +224,84 @@ function nutCalcHTML(c){
     <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// LA COMIDA DE HOY, PEGADA AL DÍA DE ENTRENO (2026-08-01)
+// ──────────────────────────────────────────────────────────────────────
+// Decisión del PO: «que sea un conjunto con su plan de entrenamiento y sus objetivos»,
+// con comida colombiana y CANTIDADES de verdad, y más carbohidrato el día de pierna que
+// el de descanso. Hasta hoy el plan decía «Desayuno: 600 kcal, 40 g de proteína» y no
+// tenía una sola cantidad de comida.
+// El motor vive en avi-core (puro y testeado); aquí solo se pinta.
+// Regla que se respeta: si el coach escribió un plan, esos son los números — AVI solo
+// los reparte por día y los convierte en comida.
+function _mealsDayLabel(kind){
+  return kind==='pierna' ? 'Hoy entrenas fuerte' : kind==='entreno' ? 'Hoy entrenas' : 'Hoy descansas';
+}
+function renderMealsToday(client){
+  const con=document.getElementById('cn-meals'); if(!con)return;
+  con.innerHTML='';
+  if(!client)return;
+  if(typeof isFreeClient==='function'&&isFreeClient(client))return; // el plan de comida es Premium
+  if(typeof nutDayPlan!=='function')return;
+  try{
+    const nut=(DB.nutrition||{})[client.id];
+    // peso más reciente si lo hay (el del perfil puede estar viejo)
+    let peso=client.weight;
+    const bw=(DB.bodyweight||{})[client.id];
+    if(Array.isArray(bw)&&bw.length){ const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg); }
+    const base=nutBaseFor(client,nut,peso);
+    if(!base){
+      // Sin datos del cuerpo NO se inventa un plan: se pide el dato que falta.
+      const faltan=[];
+      if(!(parseFloat(peso)>0))faltan.push('tu peso');
+      if(!(parseFloat(client.height)>0))faltan.push('tu estatura');
+      if(!(parseInt(client.age)>0))faltan.push('tu edad');
+      if(client.sex!=='M'&&client.sex!=='F')faltan.push('tu sexo');
+      if(!faltan.length)return;
+      con.innerHTML=`<div class="card" style="padding:12px 14px">
+        <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu plan de comida</div>
+        <div style="font-size:12px;color:var(--t2)">Para armarlo necesito ${esc(faltan.join(', ').replace(/, ([^,]*)$/,' y $1'))}. Pídele a tu coach que los complete.</div>
+      </div>`;
+      return;
+    }
+    const shape=nutWeekShape(client.routines);
+    const hoy=new Date();
+    const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const rHoy=(client.routines||[]).find(r=>r.day===dias[hoy.getDay()])||null;
+    const kind=nutDayKind(rHoy);
+    const plan=nutDayPlan(base,kind,shape.trainDays,shape.legDays,hoy.getDay());
+    if(!plan)return;
+    const t=plan.target;
+    const abierto=_mealsOpen;
+    const filas=plan.meals.map((m,i)=>{
+      const comida=m.items.map(it=>`${esc(it.name)} <b style="color:var(--t1)">${esc(it.text)}</b>`).join(' + ');
+      const acomp=m.acomp.length?`<div style="font-size:11px;color:var(--t3);margin-top:2px">con ${esc(m.acomp.join(', ').toLowerCase())}</div>`:'';
+      return `<div style="padding:9px 0;${i?'border-top:1px solid var(--br)':''}">
+        <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px">${esc(m.name)}</div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:3px;line-height:1.5">${comida}</div>${acomp}
+      </div>`;
+    }).join('');
+    con.innerHTML=`<div class="card" style="padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleMealsToday()">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:800;color:var(--t1)">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu comida de hoy</div>
+          <div style="font-size:11.5px;color:var(--t2);margin-top:2px">${esc(_mealsDayLabel(kind))} · ${t.kcal} kcal</div>
+        </div>
+        <button class="btn bg bsm" style="flex-shrink:0;min-height:36px" aria-expanded="${abierto?'true':'false'}">${abierto?'Ocultar':'Ver'}</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+        <span class="tag tb">Proteína ${t.prot_g} g</span>
+        <span class="tag" style="background:var(--yll);color:var(--ort)">Carbohidrato ${t.carb_g} g</span>
+        <span class="tag to">Grasa ${t.fat_g} g</span>
+      </div>
+      ${abierto?`<div style="margin-top:8px">${filas}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Son cantidades ya listas para comer. Puedes cambiar un alimento por otro parecido — lo que importa es acercarte a esos números.</div>`:''}
+    </div>`;
+  }catch(e){ warn('AVI: pintar la comida de hoy falló (no bloquea el día):',e&&e.message); con.innerHTML=''; }
+}
+let _mealsOpen=false;
+function toggleMealsToday(){ _mealsOpen=!_mealsOpen; const c=DB.clients.find(x=>x.id===CUR.clientId); if(c)renderMealsToday(c); }
+
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
   if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}

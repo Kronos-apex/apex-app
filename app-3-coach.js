@@ -1307,6 +1307,7 @@ async function openDetail(id,_silent){
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
   renderShockCard(c);
+  renderNutReviewCard(c);
   renderCoachHabitsCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
@@ -1319,6 +1320,7 @@ async function openDetail(id,_silent){
     await _ensureClientHeavy(id);
     if(CUR.clientId!==id) return; // el coach abrió otro cliente mientras cargaba → no pisar
     renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+    renderNutReviewCard(c);   // la nutrición llega con los datos pesados: recién ahí se puede revisar
     renderCoachHabitsCard(c); // la meta puede afinarse con el plan nutricional recién cargado
   }
 }
@@ -1534,6 +1536,55 @@ function _shockAnalysisLine(a){
   const _flat=a.flatPoints>0?` · ${a.flatPoints} ${a.flatPoints===1?'sesión':'sesiones'} sin superarlo`:'';
   return `<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Plantado en <strong>${esc(String(a.bestKg))} kg</strong>${_since}${_flat}.</div>`;
 }
+// ── REVISIÓN DEL PLAN DE ALIMENTACIÓN (2026-08-01) ─────────────────────
+// «AVI propone, el coach aprueba» — decisión del PO, mismo candado que el plan de choque:
+// esto NO cambia nada por su cuenta, solo avisa cuando el plan que la persona tiene se
+// aleja de lo que su cuerpo necesita, y dice QUÉ SIGNIFICA para SU objetivo.
+// Nace de medir los 9 planes reales: 5 de 8 calculables estaban desviados ≥300 kcal, y a
+// dos mujeres que querían perder grasa el plan las tenía comiendo por encima de su
+// mantenimiento — o sea, les impedía su objetivo.
+// El motor (`nutPlanReview`) es puro y vive en avi-core.
+function renderNutReviewCard(c){
+  const el=document.getElementById('d-nutreview'); if(!el)return;
+  el.innerHTML='';el.style.display='none';
+  if(typeof nutPlanReview!=='function'||!c)return;
+  // El coach también se revisa a sí mismo: su plan es uno más y puede estar igual de desviado.
+  try{
+    let peso=c.weight;
+    const bw=(DB.bodyweight||{})[c.id];
+    if(Array.isArray(bw)&&bw.length){ const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg); }
+    const r=nutPlanReview(c,(DB.nutrition||{})[c.id],peso);
+    if(!r||r.status==='ok')return;                 // plan sano → sin ruido
+    let tono='--yll', tinta='--ort', titulo='', cuerpo='';
+    if(r.status==='sin_datos'){
+      if(!r.falta||!r.falta.length)return;
+      titulo='Faltan datos para calcularle el plan';
+      cuerpo=`Sin ${esc(r.falta.join(', ').replace(/, ([^,]*)$/,' y $1'))} no puedo estimar sus calorías. Complétalos en su perfil.`;
+      tono='--bll'; tinta='--blt';
+    } else if(r.status==='sin_plan'){
+      titulo='No tiene plan de alimentación';
+      cuerpo=`Según su cuerpo y su objetivo le corresponden <b>${r.sugerido} kcal</b> al día.`;
+      tono='--bll'; tinta='--blt';
+    } else {
+      const sobra=r.gap>0;
+      titulo=`Su plan está ${sobra?'por encima':'por debajo'} en ${Math.abs(r.gap)} kcal`;
+      const riesgo=r.riesgo==='come_de_mas_para_bajar'
+        ? ' Quiere <b>perder grasa</b> y está comiendo por encima de su mantenimiento: así no va a bajar.'
+        : r.riesgo==='come_de_menos_para_subir'
+        ? ' Quiere <b>ganar músculo</b> y está comiendo por debajo de lo que necesita: así no va a subir.'
+        : '';
+      cuerpo=`Tiene <b>${r.actual} kcal</b> y le corresponden <b>${r.sugerido}</b>.${riesgo}`;
+      if(r.riesgo){ tono='--rdl'; tinta='--rdt'; }
+    }
+    el.style.display='';
+    el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(${tono});border-left:3px solid var(${tinta})">
+      <div style="font-size:13px;font-weight:800;color:var(${tinta});margin-bottom:5px">${_coIco('alert',13,'⚠️')} ${esc(titulo)}</div>
+      <div style="font-size:12.5px;color:var(--t1);line-height:1.5">${cuerpo}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:8px">AVI no cambia nada por su cuenta. Abre <b>Nutrición</b> para ajustarlo tú.</div>
+    </div>`;
+  }catch(e){ warn('AVI: revisión del plan de alimentación falló (no bloquea la ficha):',e&&e.message); }
+}
+
 function renderShockCard(c){
   const el=document.getElementById('d-shock'); if(!el)return;
   el.innerHTML='';el.style.display='none';CUR.shock=null;
