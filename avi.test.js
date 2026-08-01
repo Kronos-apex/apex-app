@@ -780,6 +780,72 @@ test('methodBias="calistenia" (vía opts/estilo) → prefiere peso corporal cuan
   assert.ok(pechos.length && pechos.every(e => e.type === 'Bodyweight'), `Con calistenia el pecho debería ser peso corporal, fue ${pechos.map(e => e.name)}`);
 });
 
+// ── Variedad en la semana (2026-08-01) ──────────────────────────────────
+// El Principiante recibe Full Body los 3 días (mismos slots). Cuando el pool de su nivel
+// para un slot tenía UN solo ejercicio, ese caía los 3 días en toda semilla: medido en el
+// catálogo real, hombro compuesto en gym = 1 opción, y 660 de 1.440 planes (45,8%) repetían
+// un ejercicio TODOS los días. Es el origen del reclamo del PO «a nadie le gustan las rutinas».
+// Biblioteca mínima que reproduce la situación: UN solo hombro de nivel P, dos de nivel I.
+const VARLIB = [
+  { id: 'v1', name: 'Sentadilla Máquina', muscle: 'piernas', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v2', name: 'Prensa', muscle: 'piernas', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v3', name: 'Sentadilla Hack', muscle: 'piernas', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v4', name: 'Press Pecho Máquina', muscle: 'pecho', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v5', name: 'Press Pecho Polea', muscle: 'pecho', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v6', name: 'Press Pecho Suelo', muscle: 'pecho', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v7', name: 'Jalón Polea', muscle: 'espalda', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v8', name: 'Jalón Neutro', muscle: 'espalda', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v9', name: 'Remo Polea', muscle: 'espalda', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  // hombros: UN solo compuesto de nivel P → sin el fix se repite los 3 días
+  { id: 'v10', name: 'Press Militar en Máquina', muscle: 'hombros', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
+  { id: 'v11', name: 'Press Militar con Barra', muscle: 'hombros', type: 'Compuesto', sets: 3, reps: 8, level: 'I', env: ['gym'] },
+  { id: 'v12', name: 'Press Militar con Mancuernas', muscle: 'hombros', type: 'Compuesto', sets: 3, reps: 10, level: 'I', env: ['gym'] },
+  { id: 'v13', name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento', sets: 3, reps: 15, level: 'P', env: ['gym'] },
+  { id: 'v14', name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 60, level: 'P', env: ['gym'] },
+  { id: 'v15', name: 'Crunch', muscle: 'core', type: 'Bodyweight', sets: 3, reps: 15, level: 'P', env: ['gym'] },
+  { id: 'v16', name: 'Dead Bug', muscle: 'core', type: 'Bodyweight', sets: 3, reps: 12, level: 'P', env: ['gym'] },
+];
+const hombrosDe = routines => routines.flatMap(r => r.exercises).filter(e => e.muscle === 'hombros');
+
+test('el principiante NO recibe el mismo ejercicio los 3 días cuando hay alternativa', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+  const hom = hombrosDe(routines);
+  assert.strictEqual(hom.length, 3, 'los 3 días deben traer un hombro');
+  const distintos = new Set(hom.map(e => e.name));
+  assert.strictEqual(distintos.size, 3, `el hombro se repitió en la semana: ${hom.map(e => e.name).join(' / ')}`);
+});
+
+test('al variar NO se pierde el patrón del slot: el hombro sigue siendo compuesto', () => {
+  // El relleno afloja el NIVEL antes que el TIPO: si aflojara el tipo, entrarían las
+  // elevaciones laterales (aislamiento, nivel P) y el principiante perdería el press.
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+  const hom = hombrosDe(routines);
+  assert.ok(hom.every(e => e.type === 'Compuesto'), `entró un aislamiento donde el slot pide compuesto: ${hom.map(e => `${e.name}(${e.type})`).join(' / ')}`);
+});
+
+test('la variedad JAMÁS supera el tope de nivel: a un principiante no le llega un Avanzado', () => {
+  const AV = VARLIB.concat([{ id: 'v99', name: 'Press Militar Estricto de Pie', muscle: 'hombros', type: 'Compuesto', sets: 5, reps: 3, level: 'A', env: ['gym'] }]);
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, AV, FIXED);
+  const nombres = routines.flatMap(r => r.exercises).map(e => e.name);
+  assert.ok(!nombres.includes('Press Militar Estricto de Pie'), `un ejercicio Avanzado llegó a un principiante: ${nombres.join(' / ')}`);
+});
+
+test('SEGURIDAD: el menor sigue sin carga axial con barra aunque la variedad abra el nivel', () => {
+  // El fix hace alcanzable «Press Militar con Barra» (nivel I) para un principiante. Para un
+  // MENOR eso está prohibido (§2.2): el excluder debe seguir mordiendo por encima de la variedad.
+  const { routines } = generarRutinas({ sex: 'M', age: 14, level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+  const nombres = routines.flatMap(r => r.exercises).map(e => e.name);
+  assert.ok(!nombres.some(n => /militar con barra/i.test(n)), `un menor recibió carga axial con barra: ${nombres.join(' / ')}`);
+});
+
+test('la INTENCIÓN explícita manda sobre la variedad: calistenia repite antes que desobedecer', () => {
+  // Con estilo calistenia y UN solo ejercicio de pecho corporal, repetirlo los 3 días es lo
+  // correcto; meter un press de banca para «variar» sería desobedecer lo que pidió el coach.
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, { ...FIXED, methodBias: 'calistenia' });
+  const pechos = routines.flatMap(r => r.exercises).filter(e => e.muscle === 'pecho');
+  assert.ok(pechos.length && pechos.every(e => e.type === 'Bodyweight'), `la variedad pisó el estilo pedido: ${pechos.map(e => e.name).join(' / ')}`);
+});
+
 function routinesIncludeMuscle(routines, m) {
   return routines.flatMap(r => r.exercises).some(e => e.muscle === m);
 }

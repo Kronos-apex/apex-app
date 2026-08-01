@@ -594,31 +594,63 @@ function _genPick(lib, muscle, type, st, slotOpts) {
   if (st.preferIds && st.preferIds.size) {
     const pref = lib.find(e => st.preferIds.has(e.id) && e.muscle === muscle
       && (type ? e.type === type : true) && ok(e) && !st.usedInDay.has(e.id));
-    if (pref) { st.usedInDay.add(pref.id); const fm=_genMoveFamily(pref); if(fm&&st.usedFamiliesInDay)st.usedFamiliesInDay.add(fm); return pref; }
+    if (pref) { st.usedInDay.add(pref.id); if(st.usedInWeek)st.usedInWeek.add(pref.id); const fm=_genMoveFamily(pref); if(fm&&st.usedFamiliesInDay)st.usedFamiliesInDay.add(fm); return pref; }
   }
   // Pools en orden de prioridad. Se usa el primero que tenga algo sin usar hoy:
   //  1) methodBias (ej. calistenia → peso corporal) ANTES que el tipo del slot,
   //  2) tipo exacto del slot, 3) fallback solo-músculo (cuando el tipo está agotado/vacío).
   // `extra` permite anteponer una tanda más estricta (ej. solo-Principiante) antes de la normal.
-  const addTier = extra => {
-    if (st.preferType) pools.push(lib.filter(e => ok(e) && e.type === st.preferType && extra(e)));
+  // `loose` = la tanda que SUELTA el tipo del slot y se queda solo con el músculo.
+  //
+  // Se separan en DOS grupos, y la distinción importa (ver la elección del pool, abajo):
+  //   · `prefPools` = INTENCIÓN EXPLÍCITA de quien pidió el plan (estilo calistenia/funcional,
+  //     perfil de carga alto, `prefer` del slot). La variedad NUNCA los puede saltar: si el
+  //     coach pidió peso corporal y sólo hay un ejercicio de pecho corporal, ese va los 3 días
+  //     — repetirlo es correcto; meterle un press de banca sería desobedecer lo que pidió.
+  //   · `tierPools` = escalones de RELLENO (nivel, tipo del slot). Aquí sí manda la variedad.
+  const prefPools = [], tierPools = [];
+  const addTier = (extra, loose) => {
+    if (loose) { tierPools.push(lib.filter(e => ok(e) && extra(e))); return; }
+    if (st.preferType) prefPools.push(lib.filter(e => ok(e) && e.type === st.preferType && extra(e)));
     // Perfil de carga 'high' (IMC/cintura altos): prioriza variantes guiadas/asistidas
     // (máquina, polea, prensa…) DENTRO del tipo del slot, antes de las libres.
-    if (st.preferName) pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && st.preferName.test(_norm(e.name)) && extra(e)));
-    pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && extra(e)));
-    pools.push(lib.filter(e => ok(e) && extra(e)));
+    if (st.preferName) prefPools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && st.preferName.test(_norm(e.name)) && extra(e)));
+    tierPools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && extra(e)));
   };
-  const pools = [];
   // `prefer` del slot: predicado cuyos ejercicios van PRIMERO (ej. los posteriores en el día
   // de TRACCIÓN), respetando nivel/entorno/tier y el tipo del slot.
   if (slotOpts && slotOpts.prefer) {
-    pools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && slotOpts.prefer(e)));
+    prefPools.push(lib.filter(e => ok(e) && (type ? e.type === type : true) && slotOpts.prefer(e)));
   }
-  // Principiante: agota TODAS las opciones de nivel P antes de permitir Intermedio.
-  if (st.preferP) addTier(e => exLevelRank(e) === 0);
-  addTier(() => true);
-  let pool = null;
-  for (const p of pools) { if (p.some(e => !st.usedInDay.has(e.id))) { pool = p; break; } }
+  // ORDEN DE DESCARTES: se afloja el NIVEL antes que el TIPO DE MOVIMIENTO.
+  // El slot pide un patrón (empuje vertical, tracción, sentadilla); rellenarlo con un
+  // aislamiento del mismo músculo cambia el entrenamiento, mientras que subir un escalón de
+  // dificultad NO sale del tope ya sancionado (`levelCap`: un principiante siempre pudo
+  // recibir Intermedio; Avanzado sigue fuera). Con el orden anterior —nivel primero— el
+  // principiante de gym perdía el press por encima de la cabeza 2 de 3 días y en su lugar
+  // le caían elevaciones laterales, y en casa el compuesto de espalda lo ocupaban unos
+  // encogimientos (trapecio). Medido 2026-08-01 sobre 1.440 planes.
+  if (st.preferP) addTier(e => exLevelRank(e) === 0, false);
+  addTier(() => true, false);
+  if (st.preferP) addTier(e => exLevelRank(e) === 0, true);
+  addTier(() => true, true);
+  // ── Elección del POOL ────────────────────────────────────────────────
+  // El cursor (`st.cursors`) ya rota entre días, así que un pool de 2+ sale variado solo.
+  // Lo que NO se puede rotar es un pool de UNO: el Principiante recibe Full Body los 3 días
+  // (mismos slots), y si el nivel P sólo tiene un compuesto para ese músculo en ese entorno,
+  // ese ejercicio caía los 3 días, en TODA semilla. Medido 2026-08-01: hombro compuesto en
+  // gym = 1 opción («Press Militar en Máquina» lunes/martes/miércoles) · pecho en casa = 1 ·
+  // espalda en casa/parque = 1. Es el origen de «a nadie le gustan las rutinas».
+  // Fix: si la tanda estricta (solo nivel P) ya se agotó ESTA SEMANA, se cede a la siguiente,
+  // que para un principiante incluye Intermedio — permitido desde siempre por `levelCap`
+  // (_levelGate: cap 1 = P+I); `preferP` era una PREFERENCIA, no un tope. Avanzado sigue fuera.
+  // La variedad se busca DENTRO de cada grupo, nunca saltando del de intención al de relleno:
+  // se agota lo explícito (fresco, y si no, repitiendo) antes de tocar los escalones.
+  const libreHoy = e => !st.usedInDay.has(e.id);
+  const libreEstaSemana = e => libreHoy(e) && !(st.usedInWeek && st.usedInWeek.has(e.id));
+  const primero = (lista, regla) => { for (const p of lista) if (p.some(regla)) return p; return null; };
+  const pool = primero(prefPools, libreEstaSemana) || primero(prefPools, libreHoy)
+    || primero(tierPools, libreEstaSemana) || primero(tierPools, libreHoy);
   if (!pool) {
     // Sin NINGUNA opción de este músculo en este entorno → hueco real (lo reporta al coach).
     if (st.envShortfall && !lib.some(ok)) st.envShortfall.add(muscle);
@@ -626,26 +658,30 @@ function _genPick(lib, muscle, type, st, slotOpts) {
   }
   const key = muscle + '|' + (type || '*');
   const start = st.cursors[key] != null ? st.cursors[key] : (st.seed % pool.length);
+  const tomar = idx => {
+    const cand = pool[idx];
+    st.cursors[key] = (idx + 1) % pool.length;
+    st.usedInDay.add(cand.id);
+    if (st.usedInWeek) st.usedInWeek.add(cand.id);
+    const fam = _genMoveFamily(cand);
+    if (fam && st.usedFamiliesInDay) st.usedFamiliesInDay.add(fam);
+    return cand;
+  };
   let fb = -1; // fallback: primer candidato libre cuya FAMILIA ya se usó hoy (último recurso)
+  let fw = -1; // fallback: primer candidato libre que ya salió ESTA SEMANA (antes que fb)
   for (let i = 0; i < pool.length; i++) {
     const idx = (start + i) % pool.length;
     const cand = pool[idx];
     if (st.usedInDay.has(cand.id)) continue;
     const fam = _genMoveFamily(cand);
     if (fam && st.usedFamiliesInDay && st.usedFamiliesInDay.has(fam)) { if (fb < 0) fb = idx; continue; }
-    st.cursors[key] = (idx + 1) % pool.length;
-    st.usedInDay.add(cand.id);
-    if (fam && st.usedFamiliesInDay) st.usedFamiliesInDay.add(fam);
-    return cand;
+    if (st.usedInWeek && st.usedInWeek.has(cand.id)) { if (fw < 0) fw = idx; continue; }
+    return tomar(idx);
   }
-  // Solo quedaban repetidos del mismo patrón (familia) → tomar el fallback antes que dejar el
-  // slot vacío (la dedup por patrón es una preferencia, no debe romper la generación).
-  if (fb >= 0) {
-    const cand = pool[fb];
-    st.cursors[key] = (fb + 1) % pool.length;
-    st.usedInDay.add(cand.id);
-    return cand;
-  }
+  // Repetir un ejercicio de la semana es menos malo que repetir el PATRÓN dentro del mismo día
+  // (eso desbalancea la sesión), y las dos cosas son mejores que dejar el slot vacío.
+  if (fw >= 0) return tomar(fw);
+  if (fb >= 0) return tomar(fb);
   return null; // todo el pool ya está usado en este día
 }
 
@@ -705,7 +741,9 @@ function generarRutinas(client, lib, opts) {
     levelCap: _gate.cap, preferP: _gate.preferP,
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
     preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
-    scheme, usedInDay: new Set(), usedFamiliesInDay: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad, place), envShortfall: new Set(),
+    // usedInDay/usedFamiliesInDay se reinician CADA día; usedInWeek NO — es la memoria que
+    // evita que el mismo ejercicio caiga los 3 días cuando su pool de nivel es de uno solo.
+    scheme, usedInDay: new Set(), usedFamiliesInDay: new Set(), usedInWeek: new Set(), exclude: _genMakeExcluder(lim, minor, highLoad, place), envShortfall: new Set(),
     excludeIds: new Set(opts.excludeIds || []), // 🚫 lista negra manual (Fase C)
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
