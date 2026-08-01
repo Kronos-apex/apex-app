@@ -69,7 +69,12 @@ function shouldPostPush(storedEndpoint, newEndpoint) {
 // ── delClient: guard de confirmación ──
 // true solo si hay cliente Y el usuario confirma.
 function delClientGuard(client, confirmFn) {
-  if (!client || !confirmFn()) return false;
+  if (!client) return false;
+  // 🔴 La fila propia del coach aparece en la lista como un asesorado más, así que el botón
+  // de borrar la alcanza. Borrarla se llevaría su entrenamiento, sus rutinas y su cuenta.
+  // Nunca se pide confirmación siquiera: no es una acción disponible.
+  if (isSelfClient(client)) return false;
+  if (!confirmFn()) return false;
   return true;
 }
 

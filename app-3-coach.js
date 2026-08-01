@@ -33,7 +33,10 @@ function renderClients(){
   // coach filtraba. Ahora navegar limpia (gp→p-clients); render sólo reconstruye y re-aplica.
   const searchEl=document.getElementById('cli-search');
   const _term=searchEl?searchEl.value:'';
-  document.getElementById('cli-lbl').textContent=`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
+  // El coach aparece en la lista (marcado «Yo») pero NO cuenta como asesorado registrado:
+  // esa cifra es de negocio y no puede subir porque él también entrene.
+  const _nReales=DB.clients.filter(clientIsBillable).length;
+  document.getElementById('cli-lbl').textContent=`${_nReales} asesorado${_nReales!==1?'s':''} registrado${_nReales!==1?'s':''}`;
   if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">${_coIco('users',26,'👥')}</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
   // Orden inteligente (mejora 7 + v360): quién necesita atención primero. sortClientsByAttention
@@ -82,6 +85,8 @@ function renderClients(){
     // atención (reason==='lead'), NO repetimos el "🙋 Quiere coach" (dos píldoras 🙋 idénticas se
     // veían redundantes) — el chip de atención lo supersede y además trae la antigüedad. El badge
     // 🆓 Libre (para libres que NO piden coach) se conserva igual.
+    // El coach se distingue de un asesorado a simple vista; lo demás de su fila se ve igual.
+    const yoBadge=isSelfClient(c)?'<span class="tag" style="background:var(--gl);color:var(--gt)">Yo</span>':'';
     const selfBadge=c.selfReg?(_leadPending(c)?(r.reason==='lead'?'':'<span class="tag" style="background:var(--orl);color:var(--ort)">🙋 Quiere coach</span>'):`<span class="tag" style="background:var(--bll);color:var(--blt)">${_coIco('leaf',12,'🆓')} Libre</span>`):'';
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
@@ -95,7 +100,7 @@ function renderClients(){
         <div style="display:flex;align-items:center;gap:7px;min-width:0">
           <span class="cn">${esc(c.name)}</span>
           <span class="tag ${lvlCls}" style="flex-shrink:0">${c.level||'—'}</span>
-          ${selfBadge}
+          ${yoBadge}${selfBadge}
         </div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span>${atn}</div>
         <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
@@ -112,10 +117,20 @@ function renderClients(){
   if(_term&&typeof filterClients==='function')filterClients(_term);
 }
 
-function openAddClient(){CUR.editClientId=null;document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
+function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
 
+// Muestra u oculta los campos que solo tienen sentido para un ASESORADO (correo y clave de
+// acceso, WhatsApp). En mi propio perfil no aplican: entro como coach y no me escribo.
+function _mcToggleAccountFields(show){
+  const email=document.getElementById('cf-email'), pass=document.getElementById('cf-pass'), tel=document.getElementById('cf-phone');
+  [[email,2],[pass,3],[tel,1]].forEach(([el,up])=>{
+    if(!el)return; let box=el; for(let i=0;i<up&&box&&box.parentElement;i++)box=box.parentElement;
+    if(box)box.style.display=show?'':'none';
+  });
+}
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  _mcToggleAccountFields(!isSelfClient(c));
   CUR.editClientId=c.id;document.getElementById('mc-title').textContent='Editar asesorado';document.getElementById('save-cli-btn').textContent='Guardar cambios';
   const ps=c.name.split(' ');document.getElementById('cf-name').value=ps[0]||'';document.getElementById('cf-last').value=ps.slice(1).join(' ')||'';
   document.getElementById('cf-email').value=c.email||'';
@@ -199,7 +214,7 @@ async function saveClient(){
   if(!fn){toast('⚠️ El nombre es obligatorio');return}
   if(!CUR.editClientId&&(!email||!pass)){toast('⚠️ Email y contraseña son obligatorios');return}
   const _pp=pass?passwordProblem(pass):null; if(_pp){toast('⚠️ '+_pp);return}
-  const dup=DB.clients.find(c=>c.email&&c.email.toLowerCase()===email&&c.id!==CUR.editClientId);
+  const dup=DB.clients.find(c=>clientIsBillable(c)&&c.email&&c.email.toLowerCase()===email&&c.id!==CUR.editClientId);
   if(dup){toast('⚠️ Ya existe un asesorado con ese email');return}
   const clientId=CUR.editClientId||uid();
   const hashedPass=pass?await hashClientPass(pass,clientId):null;
@@ -226,6 +241,10 @@ async function saveClient(){
     if(i!==-1){
       const existing=DB.clients[i];
       _oldEmail=(existing.email||'').toLowerCase();
+      // MI PROPIO perfil: el correo y la clave son los de MI cuenta de coach, no los de un
+      // asesorado. Sin esto, guardar con el campo vacío me borraría el correo y más abajo la
+      // app intentaría CREARME una cuenta de acceso de asesorado sobre mi propia fila.
+      if(isSelfClient(existing)){ delete data.email; delete data.password; delete data.phone; }
       if(document.getElementById('cf-pass').dataset.unchanged==='1') data.password=existing.password;
       // ¿Cambiaron datos que afectan la rutina de un usuario LIBRE (auto-generada)?
       const trainingChanged=isFreeClient(existing)&&(existing.place!==data.place||existing.goal!==data.goal||existing.level!==data.level||existing.days!==data.days);
@@ -246,7 +265,9 @@ async function saveClient(){
   // vinculado. Re-vincula su id al de la cuenta. Camilo 2026-06-29 (Claudia no podía entrar
   // porque el form creaba un cliente LOCAL sin cuenta de acceso).
   const _target=DB.clients.find(x=>x.id===(CUR.editClientId||clientId));
-  if(_target && AUTH_MODE && _target.email && pass && !_isAuthId(_target.id)){
+  // Mi propia fila NO lleva cuenta de acceso de asesorado: ya entro como coach.
+  if(_target && isSelfClient(_target)){ /* sin provisión ni cambio de credenciales */ }
+  else if(_target && AUTH_MODE && _target.email && pass && !_isAuthId(_target.id)){
     const _pr=await _provisionClientAccount(_target,pass);
     if(_pr){ toast(`🔑 ${_target.name} ya puede ingresar con ${_target.email}`); if(CUR.editClientId)CUR.editClientId=_pr; _removePending(_target); }
     else if(_pr===null){ _addPending(_target,pass); toast('📴 Guardé el alta; crearé el acceso de '+_target.name+' al reconectar'); } // #8: transitorio, no se pierde
@@ -655,8 +676,36 @@ function _hydrateCoachFromRows(rows){
     // Pesadas: vacías hasta abrir el cliente (_ensureClientHeavy las llena).
     DB.prs[id]={};DB.medidas[id]=[];DB.nutrition[id]={};DB.photos[id]=[];
   });
+  _hydrateSelfClient(); // el coach también entrena: su fila entra como un asesorado más
   _mergePendingIntoDB(); // #8: no perder altas offline aún no provisionadas
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
+}
+
+// ── El coach como asesorado (`_self`) ──────────────────────────────────
+// Pedido del PO: «que mi perfil sea como cualquier perfil de asesorado». Su fila propia
+// tiene su entrenamiento (53 sesiones medidas en producción) y el panel no lo veía.
+// Se inyecta como un cliente más para que los ~200 `DB.clients.find(...)` y las
+// estadísticas lo tomen sin tocarlos uno por uno.
+// Va ANTES de `_primeCoachSnap` a propósito: así entra en la foto base y no se
+// re-escribe solo en el primer guardado.
+// ⚠️ Idempotente: se llama en las dos vías de carga (red y caché offline).
+function _hydrateSelfClient(){
+  try{
+    const row=COACH_OWN_ROW||_readAuthRow(_authUid);
+    const self=(typeof selfClientFromRow==='function')?selfClientFromRow(row):null;
+    if(!self)return;                                   // coach sin fila propia → no aparece
+    DB.clients=(DB.clients||[]).filter(c=>!isSelfClient(c));
+    DB.clients.push(self);
+    const id=SELF_CLIENT_ID;
+    DB.history[id]   =Array.isArray(row.history)?row.history:[];
+    DB.bodyweight[id]=Array.isArray(row.bodyweight)?row.bodyweight:[];
+    DB.prs[id]       =(row.prs&&typeof row.prs==='object')?row.prs:{};
+    DB.medidas[id]   =Array.isArray(row.medidas)?row.medidas:[];
+    DB.nutrition[id] =(row.nutrition&&typeof row.nutrition==='object')?row.nutrition:{};
+    DB.photos[id]    =Array.isArray(row.photos)?row.photos:[];
+    DB.msgs[id]      =[];                              // nadie se escribe a sí mismo
+    _heavyLoaded[id] =true;                            // su fila ya viene completa: no hay que re-pedirla
+  }catch(e){ warn('AVI: hidratar mi propio perfil falló (no bloquea el panel):',e&&e.message); }
 }
 async function _loadCoachClientsIntoDB(){
   const rows=await UD.loadCoachClients();

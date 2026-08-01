@@ -3825,6 +3825,18 @@ test('🔴 el coach JAMÁS puede salir en la lista que se guarda como filas de c
   assert.ok(!clients.some(core.isSelfClient), 'el coach quedó entre los clientes a persistir');
 });
 
+test('🔴 mi propia fila no se puede BORRAR desde la lista', () => {
+  // Aparece como un asesorado más, así que el botón de eliminar la alcanza. Borrarla se
+  // llevaría el entrenamiento y las rutinas del coach. Ni siquiera se pregunta.
+  let preguntó = false;
+  const confirmFn = () => { preguntó = true; return true; };
+  assert.strictEqual(core.delClientGuard({ id: core.SELF_CLIENT_ID }, confirmFn), false);
+  assert.strictEqual(preguntó, false, 'no debe ni pedir confirmación para la fila propia');
+  // y un asesorado de verdad sí se borra, con confirmación
+  assert.strictEqual(core.delClientGuard({ id: 'c1' }, () => true), true);
+  assert.strictEqual(core.delClientGuard({ id: 'c1' }, () => false), false);
+});
+
 test('isSelfClient reconoce tanto el objeto como el id suelto, y no confunde a nadie', () => {
   assert.strictEqual(core.isSelfClient(core.SELF_CLIENT_ID), true);
   assert.strictEqual(core.isSelfClient({ id: core.SELF_CLIENT_ID }), true);

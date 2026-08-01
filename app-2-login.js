@@ -1354,8 +1354,11 @@ function renderHome(){
   const weekAgo=new Date(Date.now()-7*24*60*60*1000);
 
   // ── Ingresos del mes ──
+  // El coach entrena en su propio panel (`_self`) pero NO se cobra a sí mismo: las cifras
+  // de PLATA lo excluyen siempre. Las de ENTRENAMIENTO (sesiones, entrenaron hoy,
+  // retención, dormidos) sí lo cuentan — es lo que pidió el PO.
   let ingr=0;
-  DB.clients.forEach(c=>{
+  DB.clients.filter(clientIsBillable).forEach(c=>{
     (c.payments||[]).forEach(p=>{
       const d=new Date(p.date);
       if(d.getFullYear()===y&&d.getMonth()===mo) ingr+=(parseFloat(p.amount)||0);
@@ -1363,8 +1366,8 @@ function renderHome(){
   });
   const elIngr=document.getElementById('h-ingr');if(elIngr)elIngr.textContent='$'+ingr.toLocaleString('es-CO');
 
-  // ── Activos ──
-  const activos=DB.clients.filter(c=>{ const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
+  // ── Activos ── (métrica de NEGOCIO: asesorados con membresía al día → sin el coach)
+  const activos=DB.clients.filter(c=>{ if(!clientIsBillable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
   const elActv=document.getElementById('h-actv');if(elActv)elActv.textContent=activos;
 
   // ── Sesiones esta semana ──
@@ -1441,7 +1444,7 @@ function renderHome(){
   const banner=document.getElementById('h-expiry-banner');
   if(banner){
     const in5days=new Date(Date.now()+5*24*60*60*1000);
-    const expiring=DB.clients.filter(c=>{
+    const expiring=DB.clients.filter(clientIsBillable).filter(c=>{
       const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
       if(!pays.length)return false;
       const due=new Date(pays[0].dueDate);
@@ -1675,7 +1678,7 @@ function openCoachStat(kind){
     const cap=mesName.charAt(0).toUpperCase()+mesName.slice(1);
     title='Ingresos de '+cap;
     const rows=[]; let total=0, nPagos=0;
-    DB.clients.forEach(c=>{
+    DB.clients.filter(clientIsBillable).forEach(c=>{
       const pm=(c.payments||[]).filter(p=>{const d=new Date(p.date);return d.getFullYear()===y&&d.getMonth()===mo;});
       if(!pm.length)return;
       const sub=pm.reduce((t,p)=>t+(parseFloat(p.amount)||0),0);
@@ -1698,7 +1701,7 @@ function openCoachStat(kind){
 
   else if(kind==='activos'){
     title='Asesorados activos';
-    const act=DB.clients.map(c=>({c,st:MS.getStatus(c)})).filter(x=>x.st==='active'||x.st==='expiring');
+    const act=DB.clients.filter(clientIsBillable).map(c=>({c,st:MS.getStatus(c)})).filter(x=>x.st==='active'||x.st==='expiring');
     act.sort((a,b)=>{ if(a.st!==b.st)return a.st==='expiring'?-1:1; return _dueMs(a.c)-_dueMs(b.c); });
     const nAl=act.filter(x=>x.st==='active').length, nPv=act.filter(x=>x.st==='expiring').length;
     html=_crepHero('🟢','#3a86c8',String(act.length),`${act.length===1?'asesorado':'asesorados'} al día o por vencer`);
