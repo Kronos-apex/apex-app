@@ -103,6 +103,33 @@ function _norm(s) {
 
 // Etiquetas de día (1..6) y nombres legibles de cada bloque.
 const GEN_DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+// Los 7 días arrancando en LUNES (índice 0 = Lunes … 6 = Domingo). Ojo: NO es el orden de
+// `Date.getDay()`, que empieza en domingo — `genDayIdxFromDate` hace la conversión.
+const GEN_WEEK_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+function genDayIdxFromDate(d) { const n = (d instanceof Date ? d : new Date(d)).getDay(); return (n + 6) % 7; }
+
+// ── EN QUÉ DÍAS CAE EL PLAN ─────────────────────────────────────────────
+// Dos defectos que arreglaba esta función, medidos el 2026-08-01 sobre 864 planes:
+//
+// 1. 🔴 **Todos los planes arrancaban el LUNES — el 100%.** Quien se registraba un sábado o un
+//    domingo veía «hoy es tu día de descanso» el mismo día que se inscribió (el 100% de las
+//    veces; viernes 75%, jueves 50%), justo en el momento de más ganas. Ocho personas tienen
+//    rutina y nunca completaron un entreno.
+// 2. 🔴 **Los días iban CONSECUTIVOS** (`GEN_DAY_LABELS` es Lunes·Martes·Miércoles…): un
+//    principiante de 3 días entrenaba lunes, martes y miércoles y después descansaba cuatro.
+//    Amontonar no es programar; el trabajo se distribuye para que haya recuperación entre
+//    sesiones.
+//
+// Reparte `n` días a lo ancho de la semana con huecos parejos, empezando en `startIdx`
+// (0 = Lunes … 6 = Domingo). Pura y determinista. n=3 → huecos de 2-3 días.
+function genWeekDays(n, startIdx) {
+  const d = Math.max(1, Math.min(7, parseInt(n) || 3));
+  const s = ((parseInt(startIdx) || 0) % 7 + 7) % 7;
+  const out = [];
+  for (let i = 0; i < d; i++) out.push(GEN_WEEK_DAYS[(s + Math.round(i * 7 / d)) % 7]);
+  return out;
+}
+
 
 // Deltoides POSTERIOR (face pull, pájaro, pec deck inverso, Y-T-W…) = músculo de TRACCIÓN
 // aunque su etiqueta de catálogo sea "hombros". No debe caer en día de EMPUJE; pertenece al
@@ -754,6 +781,11 @@ function generarRutinas(client, lib, opts) {
   };
 
   const codes = _genResolveSplit(sexKey, days, level);
+  // En qué días de la semana cae el plan. `opts.startDay` = nombre del día en que la persona
+  // ARRANCA (lo usa el auto-registro para que el día 1 tenga entreno). Sin él, lunes: es lo que
+  // el coach espera al generar desde su panel.
+  const _startIdx = opts.startDay ? Math.max(0, GEN_WEEK_DAYS.indexOf(opts.startDay)) : 0;
+  const _genDays = genWeekDays(codes.length, _startIdx);
   const nameCount = {};
   const routines = codes.map((code, idx) => {
     const tpl = GEN_DAYS[code] || GEN_DAYS.FULL_BODY;
@@ -788,7 +820,7 @@ function generarRutinas(client, lib, opts) {
       ? '🔄 Semana de descarga (deload): −1 serie por ejercicio. Baja la carga ~10-20% respecto a tu semana normal — la meta es recuperar, no exigir.'
       : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
     return {
-      id: idFn(), name: nm, day: GEN_DAY_LABELS[idx] || ('Día ' + (idx + 1)), shift: null,
+      id: idFn(), name: nm, day: _genDays[idx] || ('Día ' + (idx + 1)), shift: null,
       note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
       // needsReview también si el día quedó VACÍO (lib/entorno sin match) — el coach no
       // debe poder aprobar un día en blanco sin alerta. Auditoría 2026-06-21.
@@ -4144,6 +4176,9 @@ if (typeof module !== 'undefined' && module.exports) {
     delClientGuard,
     cnTodayGuard,
     generarRutinas,
+    GEN_WEEK_DAYS,
+    genDayIdxFromDate,
+    genWeekDays,
     EX_LEVEL,
     exLevel,
   mcInk,

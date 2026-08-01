@@ -387,7 +387,37 @@ const FIXED = { idFn: () => 'rid', now: '2026-05-30T00:00:00.000Z' };
 test('nº de rutinas = días (mujer, 4 días)', () => {
   const { routines } = generarRutinas({ sex: 'F', level: 'Intermedio', days: 4, goal: 'Ganar músculo' }, LIB, FIXED);
   assert.strictEqual(routines.length, 4);
-  assert.deepStrictEqual(routines.map(r => r.day), ['Lunes', 'Martes', 'Miércoles', 'Jueves']);
+  // ⚠️ Este test afirmaba ['Lunes','Martes','Miércoles','Jueves'] — los días CONSECUTIVOS que
+  // producía el generador. No se cambió la aserción para que pasara: se cambió el COMPORTAMIENTO
+  // a propósito (2026-08-01) porque amontonar 4 entrenos seguidos y descansar 3 no es programar.
+  // Ahora el plan se reparte a lo ancho de la semana. Ver `genWeekDays`.
+  assert.deepStrictEqual(routines.map(r => r.day), ['Lunes', 'Miércoles', 'Viernes', 'Sábado']);
+});
+
+test('🔴 el plan se REPARTE en la semana, no se amontona en días seguidos', () => {
+  // Un principiante de 3 días entrenaba lunes, martes y miércoles y descansaba cuatro.
+  const dias = core.genWeekDays(3, 0);
+  assert.deepStrictEqual(dias, ['Lunes', 'Miércoles', 'Sábado']);
+  // ninguna pareja de días de entreno puede quedar pegada cuando hay hueco de sobra
+  const idx = dias.map(d => core.GEN_WEEK_DAYS.indexOf(d));
+  idx.slice(1).forEach((v, i) => assert.ok(v - idx[i] >= 2, `quedaron días seguidos: ${dias.join(', ')}`));
+});
+
+test('🔴 el día 1 tiene entreno: el plan arranca el día que la persona empieza', () => {
+  // Medido 2026-08-01: el 100% de los planes arrancaba el LUNES, así que quien se registraba
+  // sábado o domingo veía «hoy es tu día de descanso» el mismo día que se inscribió — el 100%
+  // de las veces, en el momento de más ganas. Ocho personas tenían rutina y nunca entrenaron.
+  core.GEN_WEEK_DAYS.forEach((dia, i) => {
+    const dias = core.genWeekDays(3, i);
+    assert.strictEqual(dias[0], dia, `arrancando en ${dia} el primer entreno cayó en ${dias[0]}`);
+    const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, startDay: dia });
+    assert.ok(routines.some(r => r.day === dia), `el plan que empieza el ${dia} no tiene entreno ese día`);
+  });
+});
+
+test('sin startDay el plan sigue arrancando el lunes (lo que el coach espera)', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+  assert.strictEqual(routines[0].day, 'Lunes');
 });
 
 test('mujer Intermedio → primer día es de glúteo/piernas (regla de Andrés)', () => {

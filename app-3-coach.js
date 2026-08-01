@@ -297,7 +297,13 @@ function _autoGenerateWeek(c){
   const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
   const _p=genPrefs(c);
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
+  // 🔴 El plan arranca HOY, no el lunes. Esta es la vía del que se registra solo: si empezara
+  // siempre en lunes, quien se inscribe un sábado o un domingo vería «hoy es tu día de descanso»
+  // el mismo día que se anotó — medido, el 100% de las veces (viernes 75%, jueves 50%), justo en
+  // el momento de más ganas. Ocho personas tienen rutina y nunca completaron un entreno.
+  // El coach que genera desde su panel NO manda `startDay` y sigue viendo lunes, que es lo que espera.
+  const _hoy=GEN_WEEK_DAYS[genDayIdxFromDate(new Date())];
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,startDay:_hoy,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
   if(res.routines&&res.routines.length){
     c.routines=sortRoutinesByDay(res.routines.map(r=>({...r,reviewed:true})));
   }
