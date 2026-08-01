@@ -60,6 +60,41 @@ await sleep(500); await afirmaPantalla(ev, A, { nombre: 'formulario de entrar', 
 await ev(`(()=>{const card=document.getElementById('cin-card');if(card)card.style.display='none';const s=document.getElementById('cin-signup');if(s)s.style.display='block';if(window.WZ&&WZ.open)try{WZ.open()}catch(e){}})()`);
 await sleep(600); await shot('4-signup-step1');
 
+// 5-bis) Paso «Tu cuerpo»: es donde viven WhatsApp y Lesiones. Quedó pendiente de v418
+// «ver renderizado el campo del teléfono» — y con razón: su ícono `#i-chat` NUNCA existió en
+// el sprite, así que salía un hueco. Se AFIRMA que los dos campos se pintan y que sus íconos
+// resuelven de verdad (un <use> a un símbolo inexistente no dibuja nada y no da error).
+const cuerpo = await ev(`(()=>{
+  document.querySelectorAll('#cin-signup .wz-step').forEach(x=>x.classList.remove('on'));
+  const b=document.getElementById('wz-s-body'); if(b)b.classList.add('on');
+  const vis=el=>{ if(!el)return false; const r=el.getBoundingClientRect(); return r.width>0&&r.height>0; };
+  const ico=sel=>{ const u=document.querySelector(sel); if(!u)return null;
+    const id=(u.getAttribute('href')||'').replace('#',''); return !!document.getElementById(id); };
+  return {
+    telefono: vis(document.getElementById('su-phone')),
+    lesiones: vis(document.getElementById('su-notes')),
+    icoTelefono: ico('#wz-s-body use[href="#i-chat"]'),
+    icoLesiones: ico('#wz-s-body use[href="#i-alert"]'),
+    placeholderLesiones: (document.getElementById('su-notes')||{}).placeholder||'',
+    // 🔴 Que el símbolo exista no basta: sin la regla CSS el <svg> toma su tamaño POR DEFECTO
+    // (300x150) y relleno negro — un bloque enorme en medio del formulario. Se mide la caja real.
+    tamIconos: [...document.querySelectorAll('#wz-s-body .wz-row .lic .ic')].map(el=>{
+      const r=el.getBoundingClientRect(); return Math.round(r.width)+'x'+Math.round(r.height); }),
+  };
+})()`);
+A.ok(cuerpo.telefono, 'el campo de WhatsApp se ve en el wizard', cuerpo);
+A.ok(cuerpo.lesiones, 'el campo de LESIONES se ve en el wizard', cuerpo);
+A.ok(cuerpo.icoTelefono, 'el ícono del teléfono EXISTE en el sprite (no un hueco)', cuerpo);
+A.ok(cuerpo.icoLesiones, 'el ícono de lesiones EXISTE en el sprite', cuerpo);
+A.ok(/hernia|rodilla/i.test(cuerpo.placeholderLesiones), 'las lesiones traen un ejemplo que se entiende', cuerpo);
+A.ok(cuerpo.tamIconos.length >= 2 && cuerpo.tamIconos.every(t => t === '19x19'),
+  'los íconos de esas filas miden lo que deben (no un bloque de 300x150)', cuerpo.tamIconos);
+console.log('  paso «Tu cuerpo»:', JSON.stringify(cuerpo));
+// La tarjeta del wizard tiene scroll PROPIO: sin bajarlo, la captura corta antes de los
+// campos y no se ve lo que se quiere revisar (fue justo lo que pasó la primera vez).
+await ev(`(()=>{const n=document.getElementById('su-notes'); if(n)n.scrollIntoView({block:'center'});})()`);
+await sleep(300); await shot('4b-signup-cuerpo');
+
 // VERIFICACIÓN: el banner flotante debe estar OCULTO con el login activo y VISIBLE al
 // entrar a una pantalla interna (regla `#s-login.on ~ #install-banner`).
 const check = await ev(`(()=>{

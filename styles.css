@@ -1801,7 +1801,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-gchip.on .s{color:#10E0A0}
 .wz-stepper{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:17px;padding:12px 14px;margin-bottom:12px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1.5px solid rgba(255,255,255,.08)}
 .wz-stepper .lab{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:rgba(242,245,244,.7)}
-.wz-stepper .lic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 38%,transparent)}
+/* Las filas `wz-row` (WhatsApp, Lesiones) reusan la caja del ícono de los steppers. Sin esta
+   regla el SVG no tenía NI tamaño NI fill:none: salía un bloque negro de 300x150. Estuvo
+   oculto desde v418 sólo porque el símbolo `#i-chat` no existía y no había nada que pintar. */
+.wz-row{--c:#10E0A0}
+.wz-stepper .lic,.wz-row .lic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 38%,transparent)}
 .wz-stepper .ctl{display:flex;align-items:center;gap:9px}
 .wz-pm{width:40px;height:40px;border-radius:12px;border:1.5px solid rgba(16,224,160,.35);background:rgba(16,224,160,.08);color:#10E0A0;font-size:23px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;font-family:inherit;transition:transform .1s,background .15s}
 .wz-pm:active{transform:scale(.92);background:rgba(16,224,160,.18)}
@@ -1850,7 +1854,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @media (prefers-reduced-motion:reduce){.wz-prog-fill::after{display:none}}
 /* Íconos AVI dentro de las fichas (heredan el color de la ficha vía --c) */
 .wz-ic .ic{width:24px;height:24px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.wz-stepper .lic .ic{width:19px;height:19px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wz-stepper .lic .ic,.wz-row .lic .ic{width:19px;height:19px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ══ REVEAL DEL PLAN · pantalla cumbre post-registro (identidad Aurora) ══ */
 #plan-reveal{position:fixed;inset:0;z-index:9990;display:none;flex-direction:column;align-items:center;overflow-y:auto;

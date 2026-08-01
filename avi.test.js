@@ -2578,7 +2578,13 @@ test('🔴 el registro PREGUNTA por lesiones, y llegan hasta la ficha', () => {
   const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
   const coach = fs.readFileSync(__dirname + '/app-3-coach.js', 'utf8');
   assert.ok(/id="su-notes"/.test(html), 'falta el campo de lesiones en el registro');
-  assert.ok(/notes:\(g\('su-notes'\)/.test(coach), 'el registro no recoge las lesiones');
+  // ⚠️ Las DOS vías por separado. Un `notes:(g('su-notes')` a secas hace match con la de
+  // Google y con la de correo indistintamente: al sabotear la de correo el test seguía verde
+  // porque la otra lo tapaba. Cada camino se afirma con su forma propia.
+  assert.ok(/notes:\(g\('su-notes'\)&&g\('su-notes'\)\.value\|\|''\)\.trim\(\)/.test(coach),
+    'el registro por CORREO no recoge las lesiones');
+  assert.ok(/notes:\(g\('su-notes'\)\|\|''\)\.trim\(\)/.test(coach),
+    'el registro por GOOGLE no recoge las lesiones');
   assert.ok(/notes:data\.notes/.test(coach), 'las lesiones no viajan en la metadata');
   assert.ok(/notes:\(p&&p\.notes\)\|\|''/.test(coach), 'las lesiones no aterrizan en la ficha');
   // y lo declarado en el wizard alimenta de verdad el motor de exclusiones
