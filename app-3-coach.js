@@ -2033,13 +2033,27 @@ function _effWarmIds(){
   const w=buildWarmup(CUR.routineExs||[],_c?parseLimitations(_c.notes||'').keys:null);
   return [...w.articulares,...w.activaciones].map(e=>e.id);
 }
+// Limitaciones del asesorado que se está editando + si es el entrenamiento PROPIO del coach.
+// El calentamiento manual NO se filtra (ahí decide él); esto es lo que se lo hace VER.
+function _rfWarmLim(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  return {keys:c?parseLimitations(c.notes||'').keys:[], propio:CUR.clientId==='_self', nombre:c?(c.name||'').split(' ')[0]:''};
+}
+// Chip naranja de aviso para una fila de calentamiento. Naranja y no rojo: rojo significa
+// roto/bloqueado y esto no lo está — el coach lo puede poner igual. Tinta `--ort` (la variante
+// legible), NUNCA el token crudo como letra ni `opacity` sobre el texto.
+function _rfWarmChip(ex,lim){
+  const z=warmupWarnZones(ex,lim.keys); if(!z.length) return '';
+  return `<div style="font-size:10.5px;font-weight:700;color:var(--ort);margin-top:2px">⚠️ ${esc(warmupWarnText(z,lim.propio))}</div>`;
+}
 function renderRfWarmup(){
   const con=document.getElementById('rf-warmup'); if(!con) return;
   const isCustom=!!CUR.routineWarmup;
+  const lim=_rfWarmLim();
   const items=_effWarmIds().map(id=>findWarmupEx(id)).filter(Boolean);
   const rows=items.map(ex=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg);border:1px solid var(--br);border-radius:9px;margin-bottom:6px">
       <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
-      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
       <button onclick="rfWarmDel('${ex.id}')" title="Quitar" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0">✕</button>
     </div>`).join('');
   con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Auto-sugerido según los músculos. Quitá o agregá para personalizarlo.</div>'}`
@@ -2047,10 +2061,22 @@ function renderRfWarmup(){
     +`<button class="btn bg bsm" onclick="openWarmPicker()" style="margin-top:2px">+ Agregar movimiento</button>`;
 }
 function rfWarmDel(id){ CUR.routineWarmup=_effWarmIds().filter(x=>x!==id); renderRfWarmup(); }
-function rfWarmAdd(id){ const cur=_effWarmIds(); if(!cur.includes(id))cur.push(id); CUR.routineWarmup=cur; renderRfWarmup(); cm('m-warmpick'); }
+function rfWarmAdd(id){
+  // El chip solo es pasivo: se agrega de un toque sin haberlo leído. La confirmación garantiza
+  // que lo leyó y NO le quita la decisión (Laura: «si lo estás poniendo a propósito, dale»).
+  const lim=_rfWarmLim(); const ex=findWarmupEx(id);
+  const z=ex?warmupWarnZones(ex,lim.keys):[];
+  if(z.length){
+    const quien=lim.propio?'tus notas':`las notas de ${lim.nombre||'esta persona'}`;
+    const suTu=lim.propio?'tu':'su';
+    if(!confirm(`${ex.name}\n\nEn ${quien} está una molestia en ${suTu} ${z.join(' y ')}, y este movimiento es de los que la app le quita solita a su plan.\n\nSi lo estás poniendo a propósito, dale.`))return;
+  }
+  const cur=_effWarmIds(); if(!cur.includes(id))cur.push(id); CUR.routineWarmup=cur; renderRfWarmup(); cm('m-warmpick');
+}
 function openWarmPicker(){
   const body=document.getElementById('wp-body'); if(!body) return;
   const have=new Set(_effWarmIds());
+  const lim=_rfWarmLim();
   const labels={hombros:'Hombro',cadera:'Cadera',rodillas:'Rodilla',tobillos:'Tobillo',munecas:'Muñeca',espalda:'Espalda / columna',activacion_superior:'Activación — tren superior',activacion_inferior:'Activación — tren inferior',activacion_core:'Activación — core'};
   let html='';
   for(const area in WARMUP_LIBRARY){
@@ -2058,7 +2084,7 @@ function openWarmPicker(){
     html+=`<div style="font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin:10px 0 5px">${esc(labels[area]||area)}</div>`;
     html+=pool.map(ex=>{const used=have.has(ex.id);return `<div onclick="${used?'':`rfWarmAdd('${ex.id}')`}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--br);border-radius:9px;margin-bottom:5px;cursor:${used?'default':'pointer'};opacity:${used?'.45':'1'}">
         <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
-        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
         <span style="font-size:13px;font-weight:800;color:${used?'var(--g)':'var(--g2)'};flex-shrink:0">${used?'✓':'+'}</span>
       </div>`;}).join('');
   }

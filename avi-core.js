@@ -215,11 +215,35 @@ const GEN_ZONE_EXCL = {
 //  · por NOMBRE con el mismo GEN_ZONE_EXCL del entreno (atrapa lo de hoy y lo que se agregue);
 //  · por ID para los que el nombre NO delata — «Apertura de cadena posterior» no dice «flexión»
 //    y es la postura de mayor presión intradiscal medida en humanos.
+// `wac3` añadido el 2026-08-02 por segundo veredicto de Laura: «Rotación de cadera tumbado» se
+// ejecuta con las RODILLAS AL PECHO (flexión lumbar de rango final) y desde ahí rota — flexión +
+// rotación es el mecanismo de cizalla del anillo en L4-L5. Estar tumbado quita la carga, no el
+// rango. HOY no cambia ni un plan (es el 3.º de 3 en `activacion_core` y el motor toma 2): entra
+// precisamente por eso, porque es una trampa que se armaría sola el día que alguien reordene el
+// array. `wc2` «Estocada con rotación» NO entra: la estocada bloquea la pelvis, así que la
+// rotación es TORÁCICA y sin carga — es tratamiento, no riesgo (mismo criterio que salvó las
+// sentadillas terapéuticas).
 const WARMUP_ZONE_EXCL_IDS = {
-  lumbar: ['we3', 'we5', 'wai3'],
+  lumbar: ['we3', 'we5', 'wai3', 'wac3'],
   rodilla: ['wr2', 'wai1', 'wai2'],
   hombro: ['wh3'],
 };
+// Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
+// Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
+// filtra nada (ahí decide una persona, y hacer desaparecer opciones en silencio sería peor), pero
+// tiene que VERLO. Misma fuente que el generador — jamás una segunda lista, que se separan.
+function warmupWarnZones(wu, limKeys) {
+  return (limKeys || []).filter(z => warmupContraindicated(wu, [z])).map(z => GEN_ZONE_LABEL[z]).filter(Boolean);
+}
+// «Ojo con su zona lumbar y rodilla». `propio` = el coach editando SU propio entrenamiento.
+// Enuncia un HECHO (qué declaró la persona), nunca un consejo clínico ni un permiso: cero jerga
+// («contraindicado», «L4-L5», «flexión») en algo que ve un entrenador, no un médico.
+function warmupWarnText(zonas, propio) {
+  zonas = zonas || [];
+  if (!zonas.length) return '';
+  const l = zonas.length === 1 ? zonas[0] : zonas.slice(0, -1).join(', ') + ' y ' + zonas[zonas.length - 1];
+  return 'Ojo con ' + (propio ? 'tu ' : 'su ') + l;
+}
 // PURA. ¿este calentamiento está contraindicado para estas zonas? `limKeys` = parseLimitations().keys
 function warmupContraindicated(wu, limKeys) {
   if (!wu || !limKeys || !limKeys.length) return false;
@@ -4244,6 +4268,8 @@ if (typeof module !== 'undefined' && module.exports) {
     exLevelRank,
     parseLimitations,
     warmupContraindicated,
+    warmupWarnZones,
+    warmupWarnText,
     WARMUP_ZONE_EXCL_IDS,
     GEN_ZONE_EXCL,
     genSchemeFor,

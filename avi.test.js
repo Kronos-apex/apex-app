@@ -810,6 +810,37 @@ test('🔴 el CALENTAMIENTO también respeta la lesión (ejecutado, no leído)',
     assert.ok(todos.has(id), `WARMUP_ZONE_EXCL_IDS apunta a "${id}", que no existe en WARMUP_LIBRARY`));
 });
 
+test('🔴 wac3 fuera del lumbar, wc2 dentro (2.º veredicto de Laura, 2026-08-02)', () => {
+  const wac3 = { id: 'wac3', name: 'Rotación de cadera tumbado' };
+  const wc2 = { id: 'wc2', name: 'Estocada con rotación' };
+  const lum = parseLimitations('hernia discal L4-L5').keys;
+  const rod = parseLimitations('operado de menisco, rodilla').keys;
+  // wac3 se hace con las RODILLAS AL PECHO y desde ahí rota: flexión + rotación en rango final.
+  assert.ok(core.warmupContraindicated(wac3, lum), 'wac3 debe salir del calentamiento lumbar');
+  // wc2: la estocada bloquea la pelvis → la rotación es TORÁCICA y sin carga. Es tratamiento.
+  assert.ok(!core.warmupContraindicated(wc2, lum), 'wc2 es terapéutica para lumbar y NO puede salir');
+  assert.ok(core.warmupContraindicated(wc2, rod), 'wc2 sí sale en rodilla (la estocada)');
+  // Sin carga y sin flexión: estos se quedan a propósito para un lumbar.
+  [{ id: 'wr2', name: 'Sentadilla de movilidad lenta' }, { id: 'wai1', name: 'Sentadilla con peso corporal' }]
+    .forEach(w => assert.ok(!core.warmupContraindicated(w, lum), `${w.id} no debe salir en lumbar`));
+});
+
+test('la marca del selector manual nombra SOLO las zonas que esa persona declaró', () => {
+  const we3 = { id: 'we3', name: 'Apertura de cadena posterior' };
+  const lum = parseLimitations('dolor lumbar').keys;
+  assert.deepStrictEqual(core.warmupWarnZones(we3, lum), ['zona lumbar']);
+  assert.strictEqual(core.warmupWarnText(core.warmupWarnZones(we3, lum), false), 'Ojo con su zona lumbar');
+  assert.strictEqual(core.warmupWarnText(['zona lumbar', 'rodilla'], false), 'Ojo con su zona lumbar y rodilla');
+  assert.strictEqual(core.warmupWarnText(['zona lumbar'], true), 'Ojo con tu zona lumbar', 'el coach editando lo PROPIO');
+  // Sin limitación declarada NO hay marca: una señal que sale siempre deja de ser señal.
+  assert.deepStrictEqual(core.warmupWarnZones(we3, []), []);
+  assert.strictEqual(core.warmupWarnText([], false), '');
+  // Una limitación GENÉRICA (sin zona con reglas) tampoco inventa una marca.
+  assert.deepStrictEqual(core.warmupWarnZones(we3, parseLimitations('cirugía reciente').keys), []);
+  // Y un calentamiento seguro nunca se marca.
+  assert.deepStrictEqual(core.warmupWarnZones({ id: 'we1', name: 'Cat-Cow (Gato-Vaca)' }, lum), []);
+});
+
 test('síntoma de nervio (ciática) → la app pide valoración médica y NO se hace la clínica', () => {
   const lim = parseLimitations('Hernia lumbar con ciática, el dolor me baja por la pierna');
   assert.strictEqual(lim.nerve, true, 'debe detectar el compromiso nervioso');

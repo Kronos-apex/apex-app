@@ -1749,7 +1749,9 @@ const WARMUP_LIBRARY = {
 
   cadera:[
     {id:'wc1',name:'Círculos de cadera de pie',icon:'⭕',reps:'10 c/dirección',desc:'Pies separados al ancho de hombros, manos en la cadera. Traza círculos grandes con la pelvis como si movieras un hula-hoop.',ytQuery:'círculos de cadera de pie movilidad'},
-    {id:'wc2',name:'Estocada con rotación',icon:'🔃',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, rota el torso hacia la pierna delantera y levanta el brazo al techo.',ytQuery:'estocada con rotación torácica movilidad'},
+    // Texto corregido por Laura (2026-08-02): «rota el torso» invitaba a girar DESDE LA CINTURA.
+    // El giro es torácico y la pelvis queda quieta — así es tratamiento para un lumbar, no riesgo.
+    {id:'wc2',name:'Estocada con rotación',icon:'🔃',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, gira desde el pecho —la cadera y la pelvis quedan quietas— y levanta el brazo al techo. Si la espalda baja se queja, gira menos.',ytQuery:'estocada con rotación torácica movilidad'},
     {id:'wc3',name:'Apertura de cadera (90/90)',icon:'🦋',reps:'8 c/lado',desc:'Sentado en el suelo, una pierna hacia adelante y otra hacia afuera formando 90°. Inclínate suavemente sobre la pierna delantera.',ytQuery:'movilidad de cadera 90 90 ejercicio'},
     {id:'wc4',name:'Puente de glúteo activación',icon:'🌉',reps:'15 reps',desc:'Acostado boca arriba, rodillas dobladas. Sube las caderas apretando el glúteo. Aguanta 1 segundo arriba. Baja lento.',ytQuery:'puente de glúteo activación tutorial'},
     {id:'wc5',name:'Patada lateral de pie',icon:'↔️',reps:'12 c/lado',desc:'De pie apoyado en una pared. Lleva la pierna al lado lo más alto posible controlado, luego al frente y atrás. Activa el glúteo medio.',ytQuery:'patada lateral de cadera glúteo medio de pie'},

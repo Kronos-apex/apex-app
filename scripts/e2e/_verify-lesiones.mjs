@@ -133,6 +133,31 @@ await ev(`(()=>{const e=document.querySelector('#d-routines .wupchev'); if(e) e.
 await shot('4-calentamiento-hernia-claro');
 await ev(`typeof setTheme==='function'&&setTheme('dark')`); await sleep(400); await shot('5-calentamiento-hernia-oscuro');
 
+// ── 4) El selector MANUAL del coach: no filtra, pero MARCA (2.º veredicto de Laura) ──
+await ev(`typeof setTheme==='function'&&setTheme('light')`); await sleep(300);
+const pick = JSON.parse(await ev(`JSON.stringify((()=>{try{
+  CUR.clientId='cLes'; CUR.routineExs=[{id:'x1',name:'Plancha Frontal',muscle:'core',type:'Isométrico'}];
+  CUR.routineWarmup=null; openWarmPicker();
+  const body=document.getElementById('wp-body');
+  const filas=[...body.querySelectorAll('div[onclick^="rfWarmAdd"]')];
+  const marcadas=filas.filter(f=>/Ojo con/.test(f.innerText||'')).map(f=>(f.innerText||'').replace(/\\s+/g,' ').trim());
+  return {filas:filas.length, marcadas, total:marcadas.length};
+}catch(e){return {err:e.message}}})())`));
+const DEBEN_MARCARSE = ['Apertura de cadena posterior', 'Rollitos sobre colchoneta', 'Peso muerto con peso corporal', 'Rotación de cadera tumbado'];
+check('el selector manual pinta TODOS los calentamientos (no filtra)', pick.filas >= 25, pick.filas + ' filas' + (pick.err || ''));
+DEBEN_MARCARSE.forEach(nm => check('marca "' + nm + '"', pick.marcadas.some(m => m.includes(nm)), ''));
+check('NO marca lo terapéutico (Estocada con rotación, Cat-Cow)',
+  !pick.marcadas.some(m => /Estocada con rotación|Cat-Cow/.test(m)), JSON.stringify(pick.marcadas.slice(0, 3)));
+check('el texto de la marca nombra la zona declarada', pick.marcadas.every(m => /Ojo con su zona lumbar/.test(m)), '');
+await ev(`(()=>{const f=[...document.querySelectorAll('#wp-body div[onclick^="rfWarmAdd"]')].find(x=>/Ojo con/.test(x.innerText||'')); if(f)f.scrollIntoView({block:'center'});})()`);
+await sleep(400); await shot('6-selector-marcado-claro');
+await ev(`typeof setTheme==='function'&&setTheme('dark')`); await sleep(400); await shot('7-selector-marcado-oscuro');
+// Sin lesión declarada NO puede salir ni un chip: una señal que sale siempre deja de ser señal.
+const pickSano = JSON.parse(await ev(`JSON.stringify((()=>{CUR.clientId='cSano';CUR.routineWarmup=null;openWarmPicker();
+  const b=document.getElementById('wp-body');
+  return {marcadas:[...b.querySelectorAll('div[onclick^="rfWarmAdd"]')].filter(f=>/Ojo con/.test(f.innerText||'')).length};})())`));
+check('sin lesión declarada NO sale ninguna marca', pickSano.marcadas === 0, String(pickSano.marcadas));
+
 console.log('\n  errores JS:', jsErrors.length ? jsErrors.join(' | ') : 'ninguno');
 const fails = results.filter(r => !r.c);
 console.log('\n  ' + (results.length - fails.length) + '/' + results.length + ' aserciones OK · shots en ' + OUT);
