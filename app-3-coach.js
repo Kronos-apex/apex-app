@@ -1781,13 +1781,14 @@ function renderDetailRoutines(c){
   const con=document.getElementById('d-routines');
   if(!(c.routines||[]).length){con.innerHTML='<div class="empty" style="padding:18px 0"><div class="eico" style="color:var(--g2)">'+_coIco('clipboard',34,'📋')+'</div><div class="etxt">Sin rutinas todavía</div><div class="esub">Crea la primera para este asesorado</div></div>';return}
   con.innerHTML='';
+  const _limKeys=parseLimitations(c.notes||'').keys; // el calentamiento respeta sus lesiones
   c.routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;
     const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const div=document.createElement('div');div.className='rc';
 
     // Build warmup preview for coach
-    const wu = exN ? buildWarmup(r.exercises) : null;
+    const wu = exN ? buildWarmup(r.exercises,_limKeys) : null;
     const wuPreview = wu ? `
       <div style="margin-top:10px;background:var(--bg);border:1px solid var(--br);border-radius:var(--rsm);overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--br);cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.wupchev').style.transform=this.nextElementSibling.classList.contains('open')?'rotate(180deg)':'rotate(0deg)'">
@@ -1797,7 +1798,7 @@ function renderDetailRoutines(c){
             <span class="wupchev" style="font-size:10px;color:var(--t3);transition:transform .2s">▼</span>
           </div>
         </div>
-        <div style="display:none;padding:10px 12px">
+        <div class="wup-body">
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:6px">🦴 Movilidad articular</div>
           ${wu.articulares.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`).join('')}
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:8px 0 6px">⚡ Activación</div>
@@ -1870,7 +1871,12 @@ function genWithStyle(styleId){
 }
 const PLACE_LABELS={gym:'🏋️ Gym completo',casa:'🏠 Casa (bandas/mancuernas)',corporal:'🤸 Solo peso corporal',parque:'🌳 Aire libre / parque'};
 function renderGenPreview(c,res){
-  const warn=res.needsReview?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(res.limitations.zones.join(', '))}). Se excluyeron ejercicios contraindicados, pero <b>revisa cada día antes de aprobar</b>. Un algoritmo no conoce el detalle clínico — tú sí.</div>`:'';
+  // El banner se gatilla con la LIMITACIÓN, no con needsReview: needsReview también es true por
+  // huecos de entorno o días vacíos, y entonces salía «⚠️ Limitación detectada ()» con la lista
+  // de zonas VACÍA a quien no había declarado nada (defecto visto al tocar esta línea 2026-08-02).
+  const _lim=res.limitations||{};
+  const _nerve=_lim.nerve?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--rd)"><b>🚑 Ojo:</b> ${esc(_lim.nerveAdvice)}</div>`:'';
+  const warn=_lim.detected?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(_lim.zones.join(', '))}). ${esc(_lim.advice)} <b>Revisa cada día antes de aprobar</b> — un algoritmo no conoce el detalle clínico, tú sí.${_nerve}</div>`:'';
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ylt);margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
   const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
   const loadBanner=res.loadProfile==='high'?`<div style="background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--blt);margin-bottom:12px"><b>⚖️ Perfil de carga alto</b> (IMC/cintura) — el borrador prioriza <b>máquinas y movimientos guiados/asistidos</b> y evita saltos/pliométricos, para cuidar articulaciones mientras gana base. Ajústalo según veas a la persona.</div>`:'';
@@ -2021,7 +2027,10 @@ function renderRfExList(){
 // auto-sugiere. Resuelto por id con findWarmupEx (app-6-extra.js). Pedido de Camilo 2026-06-23.
 function _effWarmIds(){
   if(CUR.routineWarmup) return CUR.routineWarmup.slice();
-  const w=buildWarmup(CUR.routineExs||[]); // auto-sugerido según músculos
+  // Auto-sugerido según músculos, respetando las lesiones del asesorado. Si el coach ARMÓ su
+  // propia lista (CUR.routineWarmup) se respeta tal cual: ahí decidió una persona, no el filtro.
+  const _c=DB.clients.find(x=>x.id===CUR.clientId);
+  const w=buildWarmup(CUR.routineExs||[],_c?parseLimitations(_c.notes||'').keys:null);
   return [...w.articulares,...w.activaciones].map(e=>e.id);
 }
 function renderRfWarmup(){

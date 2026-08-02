@@ -1361,6 +1361,11 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wu-prog-fill{height:100%;background:var(--g);border-radius:2px;width:0%;transition:width .3s}
 .wu-body{display:none;padding:12px 14px 14px}
 .wu-body.open{display:block}
+/* Vista previa del calentamiento en la ficha del coach (renderDetailRoutines). Su cuerpo llevaba
+   `display:none` EN LÍNEA y el toggle solo añade la clase `.open`: el estilo inline gana siempre,
+   así que el coach hacía clic, la flecha giraba y NO se abría nada. Mismo patrón que .wu-body. */
+.wup-body{display:none;padding:10px 12px}
+.wup-body.open{display:block}
 .wu-section-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
 .wu-ex-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);cursor:pointer;transition:opacity .2s}
 .wu-ex-row:last-of-type{border-bottom:none}
