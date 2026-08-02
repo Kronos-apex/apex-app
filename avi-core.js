@@ -171,20 +171,66 @@ const GEN_SPLITS = {
 };
 
 // Detección de limitaciones físicas en `notes` (lo que hace Laura, codificado).
+// `lumbar` ampliada 2026-08-02 con las formas que la gente SÍ escribe (lumbago, espondilo-,
+// protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1). Nota de Laura sobre
+// `hernia`: atrapa también la inguinal y NO se corrige — también desaconseja Valsalva y carga
+// axial alta, así que el error va hacia el lado seguro.
 const GEN_LIMIT_KWS = [
   { zone: 'rodilla', re: /rodilla|menisco|patela|rotula|ligamento|\blca\b|\blcl\b/ },
-  { zone: 'lumbar', re: /lumbar|espalda baja|lumbalgia|hernia|ciatic|disco|escolios/ },
+  { zone: 'lumbar', re: /lumbar|lumbago|espalda baja|lumbalgia|hernia|ciatic|disco|escolios|espondil|protusi|protrusi|estenosis|sacroil|dolor de espalda|me duele la espalda|\bl4\b|\bl5\b|\bs1\b/ },
   { zone: 'hombro', re: /hombro|manguito|rotador|deltoid/ },
   { zone: 'generic', re: /lesion|operad|postoperat|posoperat|tendon|cirugia|protesis|fractura/ },
 ];
 const GEN_ZONE_LABEL = { rodilla: 'rodilla', lumbar: 'zona lumbar', hombro: 'hombro', generic: 'lesión/postoperatorio' };
+// Síntomas que sugieren compromiso NERVIOSO (radiculopatía). No cambian qué se excluye —
+// cambian lo que la app le dice al coach: esto es criterio de DERIVACIÓN médica antes de
+// cargar, no de sustituir un ejercicio por otro. (Veredicto de Laura, fisio, 2026-08-02.)
+const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerza|debilidad/;
 // Ejercicios a EXCLUIR por zona (match contra nombre normalizado). Preferimos variantes seguras
 // dejando que el fallback elija otras del mismo músculo.
+//
+// ⚕️ Listas dictadas por Laura (fisioterapeuta) el 2026-08-02 — veredicto VINCULANTE, no se
+// tocan sin ella. Nacen de una medición: con «hernia discal» declarada el generador entregaba
+// las MISMAS 1.246 flexiones de columna que sin declarar nada (Russian Twist 462 veces, Crunch
+// 448) mientras el texto le prometía al coach que había excluido lo contraindicado.
+//  · lumbar  — antes solo cubría bisagra e hiperextensión: NADA de flexión, rotación cargada ni
+//              impacto, que es el 100% del hueco de core de cada día. `sentadilla` a secas se
+//              ESTRECHÓ a las variantes con barra: borraba el wall-sit y el sit-to-stand, que
+//              son terapéuticos. En rodilla, en cambio, se conserva ancho A PROPÓSITO (ahí el
+//              riesgo está en rango y alineación, y el sistema no controla ninguno de los dos).
+//  · rodilla — se le iba `extension de cuadriceps`: extensión terminal bajo carga es el pico de
+//              estrés femoropatelar, el ejercicio nº1 de su columna «Evitar».
+//  · hombro  — cubría 3 patrones de ~10: se colaba TODO el press por encima de la cabeza que no
+//              fuera con barra (mancuernas, máquina, banda, mochila, pike, Arnold).
 const GEN_ZONE_EXCL = {
-  rodilla: /sentadilla|zancada|estocada|salto|pistol|bulgara/,
-  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla/,
-  hombro: /tras ?nuca|trasnuca|fondos|militar con barra/,
+  rodilla: /sentadilla|zancada|estocada|desplante|salto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas/,
+  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint/,
+  hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra/,
 };
+
+// Calentamientos contraindicados por zona (ids de WARMUP_LIBRARY, en app-6-extra).
+// Hasta hoy el filtro limpiaba el entreno y dejaba el calentamiento intacto: a quien declaraba
+// hernia L4-L5 se le seguía pidiendo «dobla el cuerpo hacia adelante y RELAJA la espalda
+// completamente» (we3) antes de entrenar. Se filtra por DOS vías porque ninguna basta sola:
+//  · por NOMBRE con el mismo GEN_ZONE_EXCL del entreno (atrapa lo de hoy y lo que se agregue);
+//  · por ID para los que el nombre NO delata — «Apertura de cadena posterior» no dice «flexión»
+//    y es la postura de mayor presión intradiscal medida en humanos.
+const WARMUP_ZONE_EXCL_IDS = {
+  lumbar: ['we3', 'we5', 'wai3'],
+  rodilla: ['wr2', 'wai1', 'wai2'],
+  hombro: ['wh3'],
+};
+// PURA. ¿este calentamiento está contraindicado para estas zonas? `limKeys` = parseLimitations().keys
+function warmupContraindicated(wu, limKeys) {
+  if (!wu || !limKeys || !limKeys.length) return false;
+  const n = _norm(wu.name);
+  return limKeys.some(z => {
+    const ids = WARMUP_ZONE_EXCL_IDS[z];
+    if (ids && ids.indexOf(wu.id) >= 0) return true;
+    const re = GEN_ZONE_EXCL[z];
+    return !!re && re.test(n);
+  });
+}
 
 // Parsea las notas del cliente → limitaciones detectadas. Exportada para tests.
 function parseLimitations(notes) {
@@ -197,14 +243,25 @@ function parseLimitations(notes) {
   // (p.ej. "operado", "cirugía" sin nombrar zona) se DETECTA pero NO excluye nada:
   // el mensaje no debe prometer una exclusión que no ocurrió (lo arregla la auditoría 2026-06-01).
   const hasExclusions = uniq.some(z => GEN_ZONE_EXCL[z]);
+  // Compromiso nervioso: solo se anuncia si además hay algo detectado (un texto suelto con
+  // "debilidad" hablando de otra cosa no debe disparar una derivación médica).
+  const nerve = detected && GEN_NERVE_RE.test(n);
   return {
     detected,
     keys: uniq,
     zones: [...new Set(uniq.map(z => GEN_ZONE_LABEL[z]))],
     hasExclusions,
+    nerve,
+    // El texto dice QUÉ SE QUITÓ; jamás que lo que queda esté bien para esa persona. La versión
+    // vieja ("Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras")
+    // afirmaba una revisión clínica que nunca ocurrió y le bajaba la guardia a quien revisa.
     advice: !detected ? ''
-      : hasExclusions ? 'Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras.'
+      // Sin repetir «revisa cada día»: el banner del coach ya cierra con eso (se vio MIRANDO
+      // la captura, no leyendo el texto — el string suelto no delata la redundancia).
+      : hasExclusions ? 'Quitamos lo que suele molestar ahí: flexión y carga sobre la columna, giros cargados e impacto. Es un filtro automático por lo que escribió, NO una valoración clínica: ajusta cargas y rangos, y confírmale qué hace hoy sin dolor.'
       : 'Limitación sin zona específica: NO se excluyó ningún ejercicio automáticamente. Revísala y ajústala a mano antes de aprobar.',
+    nerveAdvice: !nerve ? ''
+      : 'Menciona síntomas que pueden venir del nervio (dolor que baja por la pierna, hormigueo o falta de fuerza). Antes de cargar, que lo valore un profesional de la salud: este plan es un borrador y no reemplaza esa valoración.',
   };
 }
 
@@ -813,7 +870,7 @@ function generarRutinas(client, lib, opts) {
     const note = exs.length === 0
       ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
       : lim.detected
-      ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice} Ajusta antes de aprobar.`
+      ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice}${lim.nerve ? ' 🚑 ' + lim.nerveAdvice : ''} Ajusta antes de aprobar.`
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
       : scheme.deload
@@ -4186,6 +4243,9 @@ if (typeof module !== 'undefined' && module.exports) {
     inkOn,
     exLevelRank,
     parseLimitations,
+    warmupContraindicated,
+    WARMUP_ZONE_EXCL_IDS,
+    GEN_ZONE_EXCL,
     genSchemeFor,
     restForType,
     restForExercise,

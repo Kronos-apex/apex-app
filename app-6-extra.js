@@ -1816,8 +1816,18 @@ const MUSCLE_WARMUP_MAP = {
   otro:     {articular:['hombros','cadera'],activacion:['activacion_superior','activacion_inferior']},
 };
 
-// Detecta el tipo de sesión y construye el calentamiento ideal
-function buildWarmup(exercises){
+// Detecta el tipo de sesión y construye el calentamiento ideal.
+// `limKeys` (parseLimitations().keys) filtra los calentamientos contraindicados: hasta 2026-08-02
+// el filtro de lesiones limpiaba el ENTRENO y dejaba el calentamiento intacto — una puerta
+// cerrada con la ventana abierta (hallazgo de Laura). El filtro va ANTES del slice(0,2) para no
+// quedarnos cortos. Si una zona quedara SIN NADA, se queda vacía: NUNCA se cae al pool sin
+// filtrar — un calentamiento de menos no le hace daño a nadie, uno contraindicado sí.
+function buildWarmup(exercises,limKeys){
+  const _lim=(limKeys&&limKeys.length&&typeof warmupContraindicated==='function')?limKeys:null;
+  const wuPool=area=>{
+    const pool=WARMUP_LIBRARY[area]||[];
+    return _lim?pool.filter(ex=>!warmupContraindicated(ex,_lim)):pool;
+  };
   const muscleCount={};
   (exercises||[]).forEach(e=>{
     const m=e.muscle||'otro';
@@ -1855,7 +1865,7 @@ function buildWarmup(exercises){
     (map.articular||[]).forEach(area=>{
       if(!articularSets.has(area)){
         articularSets.add(area);
-        const pool=WARMUP_LIBRARY[area]||[];
+        const pool=wuPool(area);
         // Take 1-2 exercises per area
         pool.slice(0,2).forEach(ex=>articulares.push(ex));
       }
@@ -1870,7 +1880,7 @@ function buildWarmup(exercises){
     (map.activacion||[]).forEach(area=>{
       if(!activacionSets.has(area)){
         activacionSets.add(area);
-        const pool=WARMUP_LIBRARY[area]||[];
+        const pool=wuPool(area);
         pool.slice(0,2).forEach(ex=>{
           if(activaciones.length<4)activaciones.push(ex);
         });
@@ -1932,7 +1942,10 @@ function renderWarmup(exercises){
   const con=document.getElementById('wu-wrap');
   if(!con)return;
   const rid=CUR.activeRoutine&&CUR.activeRoutine.id;
-  const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises);
+  // Limitaciones del asesorado que está entrenando → el calentamiento auto-derivado las respeta.
+  const _wuCli=(typeof DB!=='undefined'&&DB.clients)?DB.clients.find(x=>x.id===CUR.clientId):null;
+  const _wuLim=(_wuCli&&typeof parseLimitations==='function')?parseLimitations(_wuCli.notes||'').keys:null;
+  const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises,_wuLim);
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;

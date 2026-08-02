@@ -1,4 +1,11 @@
 // Verificación 4 — barrido ANCHO: ¿el generador programa core/abdomen alguna vez?
+//
+// ⚠️ ARTEFACTO HISTÓRICO (2026-07-31). Queda como registro de la medición que destapó el
+// defecto (flexión 1.246 → 1.246). Corrido HOY, la flexión da 0 pero el "CONTROL" ya NO da 0:
+// su regex usa `sentadilla` a secas, y avi-v424 la estrechó a las variantes con barra por
+// veredicto de Laura — las sentadillas terapéuticas (wall-sit, sit-to-stand, goblet) vuelven
+// al plan A PROPÓSITO. El candado vivo es la suite: «hernia declarada → CERO flexión de
+// columna en el catálogo real». No ajustes este archivo: mira allá.
 const fs = require('fs');
 const core = require('C:/Users/KRONOS/Desktop/AVI/apex-app/avi-core.js');
 const path = 'C:/Users/KRONOS/Desktop/AVI/apex-app/';

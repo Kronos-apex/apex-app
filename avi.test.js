@@ -654,10 +654,17 @@ test('parseLimitations sin limitaciones → detected false', () => {
   assert.strictEqual(parseLimitations('').detected, false);
 });
 
-test('limitación con zona (rodilla) → hasExclusions true y promete exclusión', () => {
+// (2026-08-02) El aserto viejo exigía «Se excluyeron ejercicios contraindicados y se priorizaron
+// variantes seguras» — texto RETIRADO por veredicto de Laura: afirmaba una revisión clínica que
+// nunca ocurrió y le bajaba la guardia a quien revisa. El contrato nuevo: la app dice QUÉ QUITÓ,
+// nunca que lo que queda esté bien para esa persona.
+test('limitación con zona (rodilla) → hasExclusions true, dice qué quitó y NO se hace pasar por clínica', () => {
   const lim = parseLimitations('Operación de menisco en la rodilla');
   assert.strictEqual(lim.hasExclusions, true);
-  assert.ok(/Se excluyeron/.test(lim.advice));
+  assert.ok(/Quitamos/.test(lim.advice), 'debe decir qué quitó');
+  assert.ok(/NO una valoración clínica/i.test(lim.advice), 'debe declarar que NO es valoración clínica');
+  assert.ok(!/variantes seguras|contraindicados/i.test(lim.advice),
+    'PROHIBIDO volver a prometer que lo que queda es seguro/está revisado');
 });
 
 test('limitación GENÉRICA (sin zona) → NO promete exclusión que no ocurrió', () => {
@@ -675,6 +682,149 @@ test('notas con "lumbar" → rutina marcada needsReview + ⚠️ en la nota', ()
     assert.strictEqual(r.needsReview, true);
     assert.ok(r.note.includes('⚠️'), 'La nota debe llevar ⚠️ de revisión');
   });
+});
+
+// ── 🔴 El filtro lumbar entregaba flexión de columna a quien declara hernia (2026-08-02) ──
+// Medición previa al arreglo, 5.040 planes con y sin la nota: la flexión de columna entregada era
+// IDÉNTICA (1.246 → 1.246) mientras el texto le prometía al coach que había excluido lo
+// contraindicado. Estos tests corren contra el CATÁLOGO REAL (220 ejercicios leídos de
+// app-1-infra.js), no contra el fixture: un fixture no tiene Russian Twist y habría dado verde
+// sobre algo que nunca pasó. Listas dictadas por Laura (fisio) — su veredicto es vinculante.
+const _LIB_REAL = (() => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  const open = src.indexOf('[', src.indexOf('const defaultExercises=['));
+  let depth = 0, q = null, end = -1;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i], p = src[i - 1];
+    if (q) { if (c === q && p !== '\\') q = null; continue; }
+    if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+    if (c === '[') depth++; else if (c === ']') { depth--; if (!depth) { end = i; break; } }
+  }
+  return eval(src.slice(open, end + 1));
+})();
+
+test('🔴 hernia declarada → CERO flexión de columna en el catálogo real (barrido de 5.040 planes)', () => {
+  assert.ok(_LIB_REAL.length > 200, `esperaba el catálogo real, leí ${_LIB_REAL.length}`);
+  // Los 5 que se colaban 1.246 veces + el control que YA se excluía bien (no debe romperse).
+  const FLEX = /crunch|russian|hollow|rueda abdominal|elevacion de piernas|oruga|superman/i;
+  const CONTROL = /peso muerto|remo con barra|buenos dias|hiperexten/i;
+  const NOTA = 'Hernia discal L4-L5 diagnosticada, dolor lumbar al flexionar';
+  let planes = 0, flex = 0, control = 0, diasVacios = 0;
+  const colados = {};
+  for (const level of ['Principiante', 'Intermedio', 'Avanzado'])
+    for (const goal of ['Ganar músculo', 'Perder grasa', 'Mantener', 'Fuerza', 'Resistencia'])
+      for (const sex of ['M', 'F']) for (const days of [2, 3, 4, 5, 6])
+        // Entornos REALES (los del selector). Ojo: un `place` inventado deja el plan vacío —
+        // el barrido de la auditoría usaba 'gimnasio' y por eso medía 1.800 días en blanco.
+        for (const place of ['gym', 'casa', 'parque', 'corporal']) for (const seed of [1, 7, 42]) {
+          const c = { id: 'v', name: 'P', sex, age: 30, weight: 80, height: 172, goal, level, days, place, notes: NOTA };
+          const out = generarRutinas(c, _LIB_REAL, { seed, now: '2026-07-31T12:00:00Z', idFn: () => 'r' });
+          if (!out || !out.routines) continue;
+          planes++;
+          out.routines.forEach(r => {
+            const exs = r.exercises || [];
+            if (!exs.length) diasVacios++;
+            exs.forEach(e => {
+              const nm = e.name || '';
+              if (FLEX.test(nm)) { flex++; colados[nm] = (colados[nm] || 0) + 1; }
+              if (CONTROL.test(nm)) control++;
+            });
+          });
+        }
+  assert.ok(planes > 1000, `esperaba miles de planes, generé ${planes}`);
+  assert.strictEqual(flex, 0, 'se le sigue entregando flexión de columna a quien declara hernia: ' + JSON.stringify(colados));
+  assert.strictEqual(control, 0, 'el control (peso muerto/remo con barra) dejó de excluirse — se rompió lo que YA funcionaba');
+  assert.strictEqual(diasVacios, 0, 'la lista de exclusión vació algún día: el pool se quedó sin candidatos');
+});
+
+test('🔴 el filtro NO puede vaciar el core: quedan alternativas anti-flexión para la hernia', () => {
+  // Laura exige que el plan conserve trabajo de core seguro. Si excluir deja el músculo sin
+  // candidatos, el arreglo es peor que el bug.
+  const SEGUROS = /plancha|dead bug|bird dog|pallof|caminata del oso|caminata del cangrejo/i;
+  const excl = core.GEN_ZONE_EXCL.lumbar;
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const coreLibres = _LIB_REAL.filter(e => e.muscle === 'core' && !excl.test(norm(e.name)));
+  assert.ok(coreLibres.length >= 8, `el core quedó con ${coreLibres.length} ejercicios; hacen falta alternativas`);
+  assert.ok(coreLibres.filter(e => SEGUROS.test(e.name)).length >= 5,
+    'no quedan suficientes ejercicios anti-flexión/anti-rotación (plancha, dead bug, bird dog, pallof)');
+});
+
+test('🔴 lumbar: se van las sentadillas CON BARRA, se quedan las terapéuticas', () => {
+  // `sentadilla` a secas (lo que había hasta el 2026-08-02) borraba también el wall-sit y el
+  // sit-to-stand, que están en la columna «seguro» del protocolo de Laura: levantarse de una
+  // silla es una actividad que esa persona hace 20 veces al día. En RODILLA, en cambio, se
+  // conserva ancho a propósito — ahí el riesgo está en el rango y la alineación.
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const cae = (re, n) => re.test(norm(n));
+  const L = core.GEN_ZONE_EXCL.lumbar, R = core.GEN_ZONE_EXCL.rodilla;
+  ['Sentadilla con Barra', 'Sentadilla Frontal con Barra', 'Sentadilla Hack', 'Sentadilla en Smith', 'Sentadilla Sumo']
+    .forEach(n => assert.ok(cae(L, n), `"${n}" carga la columna y debe excluirse en lumbar`));
+  ['Sentadilla Isométrica en Pared (Wall Sit)', 'Sentadilla a Silla (Sit-to-Stand)', 'Sentadilla Goblet', 'Sentadilla de Peso Corporal']
+    .forEach(n => assert.ok(!cae(L, n), `"${n}" es terapéutica y NO puede desaparecer del plan lumbar`));
+  ['Sentadilla con Barra', 'Sentadilla a Silla (Sit-to-Stand)', 'Sentadilla Goblet']
+    .forEach(n => assert.ok(cae(R, n), `en RODILLA la lista es ancha a propósito y "${n}" sí sale`));
+  // Los huecos que Laura señaló zona por zona, cada uno con su forma propia.
+  assert.ok(cae(R, norm('Extensión de Cuádriceps en Máquina')), 'rodilla: extensión terminal bajo carga');
+  ['Press Militar con Mancuernas', 'Press de Hombro con Banda', 'Press Arnold con Mancuernas', 'Pike Push-up (Flexión Pica)', 'Jalón al Pecho Agarre Amplio']
+    .forEach(n => assert.ok(cae(core.GEN_ZONE_EXCL.hombro, n), `hombro: "${n}" es press sobre la cabeza / compresión subacromial`));
+  ['Jalón al Pecho Agarre Neutro', 'Face Pull en Polea', 'Remo Sentado en Máquina']
+    .forEach(n => assert.ok(!cae(core.GEN_ZONE_EXCL.hombro, n), `"${n}" es de la columna segura de hombro`));
+});
+
+test('🔴 el CALENTAMIENTO también respeta la lesión (ejecutado, no leído)', () => {
+  // El filtro limpiaba el entreno y dejaba el calentamiento intacto: a quien declaraba hernia se
+  // le pedía «dobla el cuerpo hacia adelante y RELAJA la espalda completamente» (we3) antes de
+  // entrenar. Este test EJECUTA el buildWarmup real de app-6-extra.js — un candado que sólo
+  // MIRARA el código tendría los huecos que ya nos costaron el teléfono de v418.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
+  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
+  const cierre = src.indexOf('\n}', fin);
+  const sandbox = new Function('warmupContraindicated',
+    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated);
+  const { WARMUP_LIBRARY, buildWarmup } = sandbox;
+
+  const rutina = [{ name: 'Plancha Frontal', muscle: 'core' }, { name: 'Jalón al Pecho', muscle: 'espalda' }];
+  const sinLim = buildWarmup(rutina, null);
+  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id);
+  assert.ok(ids(sinLim).includes('we5'), 'sin limitación el calentamiento sigue igual que siempre (we5 presente)');
+
+  const lim = parseLimitations('Hernia discal L4-L5, dolor lumbar al flexionar').keys;
+  assert.ok(lim.includes('lumbar'), 'la nota debe detectarse como lumbar');
+  const conLim = buildWarmup(rutina, lim);
+  ['we3', 'we5', 'wai3'].forEach(id =>
+    assert.ok(!ids(conLim).includes(id), `${id} está contraindicado en lumbar y sigue en el calentamiento`));
+  assert.ok(ids(conLim).length >= 2, 'el calentamiento no puede quedar vacío tras filtrar');
+
+  // La rodilla tiene su propia lista, y el nombre solo no delata a we3: por eso se filtra por id.
+  const limR = parseLimitations('Operación de menisco en la rodilla').keys;
+  ['wr2', 'wai1', 'wai2'].forEach(id => assert.ok(
+    !ids(buildWarmup([{ name: 'Prensa de Pierna', muscle: 'piernas' }], limR)).includes(id),
+    `${id} está contraindicado en rodilla y sigue en el calentamiento`));
+
+  // Y el catálogo de calentamiento no puede tener ids fantasma en la lista de exclusión.
+  const todos = new Set(Object.keys(WARMUP_LIBRARY).flatMap(k => WARMUP_LIBRARY[k].map(e => e.id)));
+  Object.values(core.WARMUP_ZONE_EXCL_IDS).flat().forEach(id =>
+    assert.ok(todos.has(id), `WARMUP_ZONE_EXCL_IDS apunta a "${id}", que no existe en WARMUP_LIBRARY`));
+});
+
+test('síntoma de nervio (ciática) → la app pide valoración médica y NO se hace la clínica', () => {
+  const lim = parseLimitations('Hernia lumbar con ciática, el dolor me baja por la pierna');
+  assert.strictEqual(lim.nerve, true, 'debe detectar el compromiso nervioso');
+  assert.ok(/valore un profesional de la salud/i.test(lim.nerveAdvice), 'debe pedir derivación');
+  const sin = parseLimitations('Dolor lumbar al levantar peso');
+  assert.strictEqual(sin.nerve, false, 'sin síntoma de nervio no se alarma a nadie');
+  assert.strictEqual(sin.nerveAdvice, '');
+  // Y sin limitación alguna no se dispara por una palabra suelta.
+  assert.strictEqual(parseLimitations('Siente debilidad los lunes por la mañana').nerve, false);
+});
+
+test('las formas que la gente SÍ escribe se detectan como lumbar', () => {
+  ['Lumbago recurrente', 'Espondilolistesis L5-S1', 'Protrusión discal', 'Estenosis del canal',
+   'Dolor sacroilíaco', 'me duele la espalda al agacharme', 'Problema en L4'].forEach(n =>
+    assert.ok(parseLimitations(n).keys.includes('lumbar'), `no detectó lumbar en: "${n}"`));
 });
 
 test('biblioteca sin ejercicios → día vacío marca needsReview + ⚠️ en la nota', () => {
