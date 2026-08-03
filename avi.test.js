@@ -5681,8 +5681,54 @@ function _kcalRealmenteServidas(plan) {
       p += food.p * g / 100; c += food.c * g / 100; f += food.f * g / 100;
     });
   });
-  return Math.round(p * 4 + c * 4 + f * 9);
+  return { kcal: Math.round(p * 4 + c * 4 + f * 9), prot_g: Math.round(p), carb_g: Math.round(c), fat_g: Math.round(f) };
 }
+
+// Recorre un conjunto de perfiles × 7 días y devuelve el peor desvío de kcal y el peor
+// hueco de CARBOHIDRATO. El de carbohidrato existe por un aviso de Andrés que salió de medir:
+// con topes de ración puestos, el desvío de kcal del día se veía PERFECTO (0,2%) mientras el
+// carbohidrato caía un 42% — el exceso de las meriendas compensaba el déficit y el promedio
+// mentía. **Un test que solo mira las kcal del día deja pasar un macro roto.**
+function _peorDesvioPlan(perfiles) {
+  let peorKcal = -Infinity, quienKcal = '', peorCarb = Infinity, quienCarb = '';
+  perfiles.forEach(p => {
+    const base = nutritionEstimate(p);
+    if (!base) return;
+    for (let d = 0; d < 7; d++) {
+      const plan = nutDayPlan(base, d % 2 ? 'pierna' : 'torso', 4, 2, d);
+      if (!plan) continue;
+      const real = _kcalRealmenteServidas(plan);
+      const dk = 100 * (real.kcal - plan.target.kcal) / plan.target.kcal;
+      const dc = 100 * (real.carb_g - plan.target.carb_g) / plan.target.carb_g;
+      const quien = `${p.sex} ${p.weight}kg ${p.height}cm af${p.activityFactor} ${p.goal} día ${d}`;
+      if (dk > peorKcal) { peorKcal = dk; quienKcal = quien; }
+      if (dc < peorCarb) { peorCarb = dc; quienCarb = quien; }
+    }
+  });
+  return { peorKcal, quienKcal, peorCarb, quienCarb };
+}
+
+// Los 8 perfiles TÍPICOS: calcados de gente real de producción + el caso límite que disparó
+// el arreglo del piso calórico. Aquí el guardián va apretado.
+const _PERFILES_TIPICOS = [
+  { sex: 'F', age: 39, weight: 82, height: 156, activityFactor: 1.55, goal: 'Perder grasa' },
+  { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' },
+  { sex: 'F', age: 34, weight: 74, height: 156, activityFactor: 1.55, goal: 'Recomposición' },
+  { sex: 'F', age: 40, weight: 56, height: 162, activityFactor: 1.55, goal: 'Ganar músculo' },
+  { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' },
+  { sex: 'M', age: 26, weight: 82, height: 175, activityFactor: 1.55, goal: 'Recomposición' },
+  { sex: 'M', age: 22, weight: 60, height: 172, activityFactor: 1.725, goal: 'Ganar músculo' },
+  { sex: 'F', age: 50, weight: 48, height: 150, activityFactor: 1.2, goal: 'Perder grasa' },
+];
+
+// La ESQUINA MALA, encontrada barriendo 5.040 días: mujer liviana, alta, SEDENTARIA y en
+// déficit — objetivo calórico chiquito donde el redondeo a media ración pesa muchísimo.
+// Va en el test a propósito: un guardián que solo mira los casos cómodos no es un guardián.
+const _PERFILES_EXTREMOS = _PERFILES_TIPICOS.concat([
+  { sex: 'F', age: 30, weight: 55, height: 170, activityFactor: 1.2, goal: 'Perder grasa' },
+  { sex: 'F', age: 30, weight: 45, height: 160, activityFactor: 1.2, goal: 'Perder grasa' },
+  { sex: 'M', age: 30, weight: 65, height: 160, activityFactor: 1.55, goal: 'Ganar músculo' },
+]);
 
 test('el plan de comida CUENTA los acompañantes en lo que dice servir', () => {
   const base = nutritionEstimate({ sex: 'F', age: 39, weight: 82, height: 156, activityFactor: 1.55, goal: 'Perder grasa' });
@@ -5691,35 +5737,59 @@ test('el plan de comida CUENTA los acompañantes en lo que dice servir', () => {
   const servidoDeVerdad = _kcalRealmenteServidas(plan);
   // Lo que la app REPORTA tiene que coincidir con lo que de verdad se come (±2% por redondeos).
   // Con el defecto, la app reportaba ~11% menos de lo que ponía en el plato.
-  const brecha = Math.abs(100 * (plan.real.kcal - servidoDeVerdad) / servidoDeVerdad);
+  const brecha = Math.abs(100 * (plan.real.kcal - servidoDeVerdad.kcal) / servidoDeVerdad.kcal);
   assert.ok(brecha <= 2,
-    `la app dice servir ${plan.real.kcal} kcal y en el plato hay ${servidoDeVerdad}: se está callando ${brecha.toFixed(1)}%`);
+    `la app dice servir ${plan.real.kcal} kcal y en el plato hay ${servidoDeVerdad.kcal}: se está callando ${brecha.toFixed(1)}%`);
 });
 
-test('el plan de comida no sirve más de un 22% por encima de lo que promete', () => {
-  // Umbral DERIVADO midiendo los DOS estados con el oráculo, no elegido a ojo:
-  //   · con los acompañantes fuera del presupuesto (el defecto): máximo diario **+28,6%**
-  //   · con el arreglo:                                          máximo diario **+19,1%**
-  // 22% queda entre los dos: cae si vuelve el defecto y aguanta el estado bueno.
-  // El exceso que queda vive en las MERIENDAS —se les pide el 10% de las calorías y el 15%
-  // de la proteína, y con huevo entero esa proteína arrastra su propia grasa— y eso es
-  // decisión de Andrés (macros), no del ingeniero. Cuando la cierre, este umbral BAJA.
-  const perfiles = [
-    { sex: 'F', age: 39, weight: 82, height: 156, activityFactor: 1.55, goal: 'Perder grasa' },
-    { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' },
-    { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' },
-  ];
-  let peor = -Infinity, quien = '';
-  perfiles.forEach(p => {
-    const base = nutritionEstimate(p);
-    for (let d = 0; d < 7; d++) {
-      const plan = nutDayPlan(base, d % 2 ? 'pierna' : 'torso', 4, 2, d);
-      if (!plan) continue;
-      const dev = 100 * (_kcalRealmenteServidas(plan) - plan.target.kcal) / plan.target.kcal;
-      if (dev > peor) { peor = dev; quien = p.goal + ' ' + p.weight + 'kg, día ' + d; }
-    }
-  });
-  assert.ok(peor <= 22, `el plan sirve ${peor.toFixed(1)}% más de lo que promete (${quien}) — el tope es 22%`);
+// 🔴 VALORES VERIFICADOS CONTRA FUENTE — no los cambies "a ojo".
+// Estos tres se corrigieron el 2026-08-03 porque estaban mal y el error llegaba al plato de
+// una persona. Un valor equivocado NO se detecta desde dentro del sistema: la yuca cruda es
+// internamente coherente (160 ≈ 1,4×4 + 38×4 + 0,3×9), así que ningún test de cuadre la caza.
+// El único candado posible es AFIRMAR el valor verificado y obligar a re-verificar contra la
+// fuente para cambiarlo. Si este test te estorba, la respuesta no es aflojarlo: es traer la
+// fuente nueva y actualizar el comentario.
+test('los 3 valores de la tabla verificados contra fuente siguen puestos', () => {
+  const by = core.NUT_FOOD_BY_ID;
+  // Yuca COCIDA (ICBF/tablas de composición, verificado 2026-08-03). Antes traía los valores
+  // de yuca CRUDA (USDA cassava raw 160/1,36/38,1) con el nombre "cocida": +28% de
+  // carbohidrato → el motor recetaba ~22% MENOS yuca de la que la persona necesitaba.
+  assert.strictEqual(by.yuca.kcal, 112, 'yuca cocida = 112 kcal/100 g, no los 160 de la cruda');
+  assert.strictEqual(by.yuca.c, 26.7, 'yuca cocida = 26,7 g de carbohidrato, no los 38 de la cruda');
+  // Avena: una CUCHARADA de hojuelas pesa ~5,6 g, no 15 (verificado 2026-08-03). Con 15 g la
+  // persona servía un TERCIO de lo recetado, y es el alimento más denso de la tabla.
+  assert.strictEqual(by.avena.un.label, 'taza', 'la avena se mide en taza: la cucharada mentía por 3x');
+  assert.strictEqual(by.avena.un.g, 80);
+  // Atún: la lata colombiana de 160 g netos escurre ~104 g (Van Camp's, verificado 2026-08-03).
+  assert.strictEqual(by.atun.un.g, 100, 'la lata escurrida son ~100 g, no 120');
+});
+
+test('en gente TÍPICA el plan no se pasa del 16% ni deja el carbohidrato bajo -12%', () => {
+  // Umbrales DERIVADOS midiendo, no elegidos a ojo. Con las meriendas magras + los 3 valores
+  // corregidos de la tabla, el máximo medido sobre estos 8 perfiles es **+13,2% en kcal** y
+  // **−7,9% en carbohidrato**. 16% y −12% dejan margen sin dejar de morder.
+  const r = _peorDesvioPlan(_PERFILES_TIPICOS);
+  assert.ok(r.peorKcal <= 16,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 16%`);
+  // 🔴 La aserción de CARBOHIDRATO existe por un aviso de Andrés que salió de medir: con topes
+  // de ración, el desvío de kcal del día se veía perfecto (0,2%) mientras el carbohidrato caía
+  // un 42% para un hombre en volumen. El promedio mentía. Un test que solo mira kcal no lo ve.
+  assert.ok(r.peorCarb >= -12,
+    `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -12%`);
+});
+
+test('ni en los casos EXTREMOS el plan se pasa del 26%', () => {
+  // La esquina mala salió de barrer 5.040 días: mujer liviana, alta, sedentaria y en déficit
+  // (objetivo chiquito → el redondeo a media ración pesa muchísimo). Medido: **+24,7%**.
+  // Ese resto NO vive en los menús sino en `nutPortionText` (el paso de media unidad, que se
+  // dimensionó para tazas de almuerzo y no para una merienda de 150 kcal). Es el próximo lote
+  // y es de UNA función; cuando se toque, este tope y el de arriba BAJAN.
+  // Va aquí a propósito: un guardián que solo mira los casos cómodos no es un guardián.
+  const r = _peorDesvioPlan(_PERFILES_EXTREMOS);
+  assert.ok(r.peorKcal <= 26,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 26%`);
+  assert.ok(r.peorCarb >= -13,
+    `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -13%`);
 });
 
 // ══════════════════════════════════════════════════════

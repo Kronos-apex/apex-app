@@ -2605,7 +2605,9 @@ const NUT_FOODS = [
   { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, un: { label: 'huevo', g: 50 } },
   { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
-  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 120 } },
+  // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
+  // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
+  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 100 } },
   { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
   { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
   { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
@@ -2617,12 +2619,20 @@ const NUT_FOODS = [
   { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, un: { label: 'taza', g: 158 } },
   { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, un: { label: 'papa mediana', g: 150 } },
   { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, un: { label: 'porción', g: 100 } },
-  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 160, p: 1.4, c: 38.0, f: 0.3, un: { label: 'trozo', g: 100 } },
+  // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
+  // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
+  // 2026-08-03). El error de +28% en carbohidrato hacía que el motor recetara ~22% MENOS yuca
+  // de la que la persona necesitaba. Hallazgo de Andrés Hyp, verificado contra fuente.
+  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, un: { label: 'trozo', g: 100 } },
   { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, un: { label: 'tajada grande', g: 80 } },
   { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, un: { label: 'trozo', g: 80 } },
   { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, un: { label: 'arepa', g: 80 } },
   { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, un: { label: 'tajada', g: 28 } },
-  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'cucharada', g: 15 } },
+  // 🔴 Decía «cucharada = 15 g» y una cucharada de hojuelas pesa **~5,6 g** (verificado
+  // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
+  // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
+  // lee «media taza (40 g)» en vez de «4 cucharadas» que nadie mide igual.
+  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 } },
   { id: 'pasta', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
   { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, un: { label: 'mazorca', g: 130 } },
   // ── GRASA ──
@@ -2854,11 +2864,20 @@ const NUT_MENUS = {
     { pick: { prot: 'queso_campesino', carb: 'arepa', fat: 'aguacate' }, acomp: ['papaya'] },
     { pick: { prot: 'clara', carb: 'avena', fat: 'almendra' }, acomp: ['fresa'] },
   ],
+  // 🔴 MERIENDAS MAGRAS (Andrés Hyp, 2026-08-03). A la merienda se le pide el 10% de las
+  // calorías del día pero el 15% de la proteína (`wProt`), así que la fuente que cubra esa
+  // proteína NO puede traer su propia grasa encima: con queso campesino (17 g/100 g) y huevo
+  // entero (9,9 g/100 g) las dos meriendas se iban +33% y +31%, y eran TODO el exceso del día
+  // (desayuno, almuerzo y cena cuadraban). Se midieron 4 caminos sobre 8 perfiles × 7 días;
+  // los otros tres (bajar wProt, subir el peso calórico de la merienda, y ambos) mejoraban el
+  // promedio y EMPEORABAN el peor día. Cambiar la FUENTE es el único que mejora los dos.
+  // No se toca `wProt` ni los pesos de NUT_MEALS_5: el reparto de proteína en 5 tomas de
+  // 25-30 g clava el umbral de leucina y es correcto.
   media: [
     { pick: { prot: 'yogur_griego', carb: null, fat: 'almendra' }, acomp: ['mango'] },
     { pick: { prot: 'yogur_griego', carb: 'banano', fat: 'mani' }, acomp: [] },
-    { pick: { prot: 'queso_campesino', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },
-    { pick: { prot: 'huevo', carb: null, fat: 'mani' }, acomp: ['mandarina'] },
+    { pick: { prot: 'atun', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },      // era queso_campesino (17 g grasa/100 g → 1)
+    { pick: { prot: 'clara', carb: 'avena', fat: 'mani' }, acomp: ['mandarina'] },        // era huevo entero (9,9 g grasa/100 g → 0,2)
     { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'crema_mani' }, acomp: ['pina'] },
   ],
   almuerzo: [
