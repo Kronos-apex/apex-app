@@ -13,6 +13,7 @@ const {
   getSexCode,
   calcMacrosSugeridos,
   nutritionEstimate,
+  loadStep,
   kgOutlier,
   sanitizeHistory,
   sanitizePrs,
@@ -5901,6 +5902,56 @@ test('sanitizePrs retira el récord FANTASMA que nadie podría volver a batir', 
   assert.strictEqual(sanitizePrs(prsOk, hist).removed, 0, 'un récord real, apenas por encima de lo suyo, se respeta');
   // CONTROL: sin historial se comporta como antes (solo el tope absoluto)
   assert.strictEqual(sanitizePrs(prs).removed, 0, 'sin historial no hay base relativa: no se inventa');
+});
+
+// ── EL PESO SUGERIDO TIENE QUE SUBIR (bucle cerrado, medido 2026-08-03) ──
+// Estimaba el 1RM desde el récord y devolvía el 95% para ESAS MISMAS reps = exactamente el
+// peso que la persona ya levanta. PR 10 kg × 12 → 1RM 14 → 14/1,4 × 0,95 = 9,5 → redondea a
+// **10**. El peso sugerido no sube ⇒ el récord no sube ⇒ el detector lo llama estancamiento.
+// Caso real: 10 sesiones en 2 meses remando con 10 kg mientras hacía hip thrust con 100.
+test('🔴 suggestFromPR: si ya cumpliste las reps objetivo, el peso SUBE (doble progresión)', () => {
+  // El caso exacto que estaba en producción
+  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12);
+  assert.ok(r > 10, `sugirió ${r} kg cuando ya levanta 10: el peso sugerido nunca subiría`);
+  assert.strictEqual(r, 12.5);
+  // Y no se calla por encima de 15 reps: ahí es JUSTO cuando se ganó el salto de mancuerna
+  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15);
+  assert.ok(luz != null, 'con 20 reps la app se callaba (estimate1RM devuelve null > 15 reps)');
+  assert.ok(luz > 2.5, `sugirió ${luz} tras 20 repeticiones con 2,5 kg`);
+});
+
+test('suggestFromPR: si el récord es a MENOS reps que el objetivo, sigue estimando hacia abajo', () => {
+  // CONTROL: la regla nueva no puede convertirse en «sumar siempre».
+  const r = suggestFromPR({ kg: 60, reps: 5, unit: 'kg' }, 12);
+  assert.ok(r != null && r < 60, `para 12 reps debe sugerir MENOS de 60, sugirió ${r}`);
+  // CONTROLES de borde: sin PR, PR que no es de peso, PR sin kg
+  assert.strictEqual(suggestFromPR(null, 12), null);
+  assert.strictEqual(suggestFromPR({ val: 30, reps: 1, unit: 'reps' }, 12), null);
+  assert.strictEqual(suggestFromPR({ kg: 0, reps: 12, unit: 'kg' }, 12), null);
+});
+
+test('loadStep: el escalón es proporcional — 2,5 kg sobre una mancuerna de 2,5 es +100%', () => {
+  assert.strictEqual(loadStep(2.5), 1, 'quien arranca liviano no puede saltar el doble');
+  assert.strictEqual(loadStep(10), 2.5);
+  assert.strictEqual(loadStep(100), 5);
+  assert.ok(loadStep(2.5) < loadStep(100), 'el escalón crece con la carga');
+});
+
+// ── EL ÁNIMO DECLARADO TIENE QUE SOBREVIVIR A LA MEDIANOCHE ──
+// Vivía solo en localStorage (`mood_<cid>_<fecha>`): la persona declaraba dolor, la app le
+// bajaba la carga ese día y después la penalizaba por no haber levantado peso — un falso
+// estancamiento fabricado por la propia app. app-4 no es requerible en Node (usa globals de
+// browser), así que se verifica en la fuente, en las DOS ramas que escriben la sesión.
+test('🔴 el ánimo declarado se guarda EN LA SESIÓN (no solo en el teléfono)', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const rama1 = /already\.mood\s*=\s*\(typeof getTodayMood/.test(src);
+  const rama2 = /unshift\(\{\s*mood:\s*\(typeof getTodayMood/.test(src);
+  assert.ok(rama1, 'la rama que ACTUALIZA una sesión en curso perdió el ánimo');
+  assert.ok(rama2, 'la rama que CREA la entrada del historial perdió el ánimo');
+  // Las dos: si solo estuviera en la que crea, una sesión que declara el ánimo DESPUÉS de
+  // empezar lo perdería — y esa es justo la sesión que interesa (la que salió mal).
+  assert.ok(rama1 && rama2, 'el ánimo debe guardarse en las DOS ramas');
 });
 
 // ══════════════════════════════════════════════════════

@@ -1690,12 +1690,19 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     sid=startNewSession(routine.id);
     already=DB.history[clientId].find(h=>!h.sessionId&&h.routineId===routine.id&&new Date(h.date).toDateString()===today&&(h.doneSets||0)<(h.totalSets||0));
   }
-  if(already){already.sessionId=sid;already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();if(finished&&!already.finishedAt)already.finishedAt=new Date().toISOString();}
+  if(already){already.sessionId=sid;already.mood=(typeof getTodayMood==='function'?getTodayMood(clientId):'')||already.mood||'';already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();if(finished&&!already.finishedAt)already.finishedAt=new Date().toISOString();}
   else{
+    // 🔴 `mood` = el ánimo que la persona declaró HOY («cansada», «con dolor», «en mi periodo»).
+    // Hasta el 2026-08-03 vivía SOLO en localStorage (`mood_<cid>_<fecha>`) y se borraba a
+    // medianoche: ningún motor podía verlo nunca. Consecuencia real: alguien declara dolor, la
+    // app le BAJA la carga ese día (`applyMood`) y después la penaliza por no haber levantado
+    // peso — un falso estancamiento fabricado por la propia app. Ahora viaja en la sesión, que
+    // ya sincroniza (`ax_hist` está en SB_KEYS). Se guarda en las DOS ramas: si solo estuviera
+    // en la que crea la entrada, una sesión que arranca sin ánimo y lo declara después lo perdería.
     // startedAt = primera serie marcada (este else corre la 1ª vez de la sesión) → duración real.
     // finishedAt: solo si esta llamada viene de un flujo de FIN (100% o "Finalizar temprano") — es
     // lo que distingue una sesión TERMINADA de una parcial en curso (fix tarjeta "ya entrenaste" v367).
-    DB.history[clientId].unshift({id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
+    DB.history[clientId].unshift({mood:(typeof getTodayMood==='function'?getTodayMood(clientId):'')||'',id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada

@@ -489,13 +489,42 @@ function suggestLoad(e1rm, targetReps, opts) {
   const kg = Math.round(raw / step) * step;
   return kg > 0 ? kg : null;
 }
+// ── Escalón de carga: cuánto se sube, proporcional a lo que se levanta ──
+// 🔴 El paso fijo de 2,5 kg está calibrado para quien levanta 40: sobre una mancuerna de
+// 2,5 kg es un **+100%**, un salto que ninguna principiante puede dar. Por eso quien arranca
+// liviano se queda liviano para siempre.
+function loadStep(kg) {
+  kg = parseFloat(kg) || 0;
+  if (kg < 10) return 1;
+  if (kg < 30) return 2.5;
+  return 5;
+}
+
 // Desde un PR guardado ({val|kg, reps, unit:'kg'}) → kg sugeridos para targetReps.
 // Solo aplica a modalidad de peso; PRs en reps/seg/min no estiman 1RM.
+// 🔴 BUCLE CERRADO, medido en producción 2026-08-03 (hallazgo de Valery): estimaba el 1RM
+// desde el récord y devolvía el 95% para ESAS MISMAS repeticiones — que da exactamente el
+// peso que la persona ya levanta. Caso real: PR de 10 kg × 12 → 1RM 14 → 14/1,4 × 0,95 = 9,5
+// → redondea a **10**. El peso sugerido no sube ⇒ el récord no sube ⇒ el detector lo lee como
+// estancamiento. Una asesorada llevaba **10 sesiones en 2 meses remando con 10 kg** mientras
+// hacía hip thrust con 100: no estaba fatigada, estaba INFRACARGADA por el propio consejo.
+// Y con más de 15 reps devolvía `null` (`estimate1RM`), o sea que la app se CALLABA justo
+// cuando alguien llega a 20 repeticiones y se ganó el salto de mancuerna.
+// Regla nueva = doble progresión, la de toda la vida: si ya cumpliste las reps objetivo con
+// ese peso, lo siguiente es SUBIR.
 function suggestFromPR(pr, targetReps, opts) {
   if (!pr || (pr.unit || 'kg') !== 'kg') return null;
-  const kg = pr.val != null ? pr.val : pr.kg;
-  const e1 = estimate1RM(kg, pr.reps || 1);
-  return e1 ? suggestLoad(e1, targetReps, opts) : null;
+  const kg = parseFloat(pr.val != null ? pr.val : pr.kg);
+  if (!(kg > 0)) return null;
+  const reps = parseInt(pr.reps) || 1;
+  const tgt = parseInt(targetReps) || 10;
+  if (reps >= tgt) {
+    const paso = (opts && opts.step) || loadStep(kg);
+    return Math.round((kg + paso) * 2) / 2;   // a medio kilo: es una sugerencia, no un disco
+  }
+  // El récord es a MENOS reps que el objetivo → sí hay que estimar (más reps = menos peso).
+  const e1 = estimate1RM(kg, Math.min(reps, 15));
+  return e1 ? suggestLoad(e1, tgt, opts) : null;
 }
 
 // ── Calentamiento + dropset: peso derivado del peso de trabajo ──
@@ -4523,6 +4552,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isInAdaptation,
     estimate1RM,
     suggestLoad,
+    loadStep,
     suggestFromPR,
     warmupLoad,
     dropLoad,
