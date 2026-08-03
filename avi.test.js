@@ -5557,6 +5557,45 @@ test('C4: EX_IMG_NAME es null-proto (lookup por nombre no hereda del prototipo)'
   assert.ok(nulled, 'EX_IMG_NAME debe blindarse (Object.setPrototypeOf(...,null) u Object.create(null)) — C4');
 });
 
+// ── H1 (auditoría BD 2026-07-31): send-push no puede depender de una llave PÚBLICA ──
+// La anon key se sirve en el JS de Pages y está en el repo: usarla de Bearer NO es un
+// candado. El control real es el JWT del usuario (`auth.getUser(token)`) + comprobar que
+// ese usuario tenga derecho a pushear a ese destinatario. Estas dos afirmaciones son
+// estáticas porque el camino vive entre el navegador y Deno (no se puede requerir ninguno
+// de los dos en Node), pero muerden: cualquiera de las dos regresiones las tumba.
+test('H1: pushToClient manda el JWT del usuario (functions.invoke), no la anon key', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const m = src.match(/async function pushToClient\([\s\S]*?\n\}/);
+  assert.ok(m, 'no se encontró pushToClient en app-1-infra.js');
+  const fn = m[0];
+  assert.ok(/functions\.invoke\(\s*['"]send-push['"]/.test(fn),
+    'pushToClient debe invocar send-push por el cliente auth (functions.invoke)');
+  assert.ok(!/fetch\(/.test(fn),
+    'pushToClient volvió al fetch crudo: ese camino manda la anon key PÚBLICA de Bearer (H1)');
+  assert.ok(!/SB_KEY/.test(fn),
+    'pushToClient no debe tocar SB_KEY: la autorización es el JWT de la sesión (H1)');
+  assert.ok(/cloudWriteSealed\(/.test(fn),
+    'pushToClient perdió el sello: un harness no le manda notificaciones reales a nadie');
+});
+
+test('H1: la edge send-push resuelve al usuario por su token y autoriza el destinatario', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'supabase/functions/send-push/index.ts'), 'utf8');
+  assert.ok(/auth\.getUser\(\s*token\s*\)/.test(src),
+    'send-push debe resolver al usuario con auth.getUser(token) — la anon key no tiene usuario');
+  assert.ok(!/sb_publishable_/.test(src),
+    'send-push volvió a llevar la anon key hardcodeada como candado (H1)');
+  assert.ok(/_authorize\(/.test(src),
+    'send-push perdió la comprobación de a QUIÉN puede pushear el que llama');
+  // El permiso del destinatario asesorado sale de la fila del DESTINATARIO (su coach_id),
+  // nunca de un campo que el que llama pueda escribirse a sí mismo (clase F7).
+  assert.ok(/eq\("user_id",\s*target\)/.test(src),
+    'la titularidad del destinatario debe leerse de SU fila (user_data.user_id = target)');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

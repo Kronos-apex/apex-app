@@ -484,15 +484,23 @@ async function ensureCoachPush(){
   renderCoachPushNudge();
 }
 
-// Enviar push via Edge Function de Supabase
+// Enviar push via Edge Function de Supabase.
+// Va por el CLIENTE de Supabase (functions.invoke), que adjunta el JWT de la sesión y lo
+// refresca solo — NUNCA por fetch crudo con la anon key de Bearer. Esa era la puerta abierta
+// que cazó la auditoría de base de datos (H1, 2026-07-31): la anon key es PÚBLICA (está en el
+// JS que sirve Pages), así que cualquiera con `curl` le mandaba un push con el texto que
+// quisiera al celular del coach. Ahora la edge resuelve al usuario por su token y comprueba
+// que tenga derecho a pushear a ese destinatario. Misma clase de bug que `subscribePush` (v323).
 async function pushToClient(clientId,title,body,extras={}){
   try{
-    const res=await fetch(`${SB_URL}/functions/v1/send-push`,{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json'},
-      body:JSON.stringify({clientId,title,body,...extras})
-    });
-    return await res.json();
+    // Un harness JAMÁS le manda una notificación real al celular de una persona (mismo
+    // criterio que el sello de escrituras a la nube).
+    if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))return null;
+    const c=(typeof AUTH!=='undefined'&&AUTH.client)?AUTH.client():null;
+    if(!c){warn('AVI Push: sin sesión auth — no se envía');return null;}
+    const {data,error}=await c.functions.invoke('send-push',{body:{clientId,title,body,...extras}});
+    if(error){warn('AVI Push send error:',error&&error.message);return null;}
+    return data;
   }catch(e){warn('AVI Push send error:',e);return null;}
 }
 
