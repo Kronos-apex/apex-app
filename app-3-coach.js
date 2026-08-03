@@ -1399,7 +1399,10 @@ function renderValoracion(c){
   // ── Calorías objetivo y macros sugeridos → avi-core.js ──
   const _kcalT = kcalTargetFor(goal, tdee);
   const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
-  const macros = calcMacrosFromKcal(kcalObj, w, goal);
+  // `h` (estatura) va SIEMPRE: sin ella no hay IMC y la proteína/grasa se dosifican sobre el
+  // peso total, que es lo que dejaba sin espacio al carbohidrato. Misma función que el
+  // asesorado — la valoración del coach no puede dar números distintos a los suyos.
+  const macros = calcMacrosFromKcal(kcalObj, w, goal, h);
   // Resumen visible cuando la tarjeta está colapsada: el dato clave (objetivo calórico).
   if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--gt)'; }
 

@@ -15,6 +15,7 @@ const {
   nutritionEstimate,
   nutAcompMacros,
   nutDayPlan,
+  nutRefWeight,
   nutMealSplit,
   migrateRoutineIds,
   shouldPostPush,
@@ -3388,9 +3389,44 @@ test('calcMacrosFromKcal: sin kcal o sin peso → null', () => {
   assert.strictEqual(calcMacrosFromKcal(null, 80, 'Fuerza'), null);
   assert.strictEqual(calcMacrosFromKcal(2000, 0, 'Fuerza'), null);
 });
-test('calcMacrosFromKcal: carbohidratos nunca negativos', () => {
-  // kcal absurdamente bajas → carbs colapsan a 0, no negativo
-  assert.strictEqual(calcMacrosFromKcal(100, 80, 'Fuerza').carb_g, 0);
+test('calcMacrosFromKcal: el carbohidrato tiene PISO, no colapsa a 0', () => {
+  // ⚠️ ASERCIÓN CAMBIADA A PROPÓSITO el 2026-08-03, declarado en el commit (R2.2).
+  // La versión vieja exigía `carb_g === 0` con kcal absurdamente bajas — y ESO ERA EL BUG:
+  // el `Math.max(0, …)` se tragaba el desbordamiento en silencio y entregaba una dieta con
+  // CERO carbohidratos (medido en producción: mujer de 48 kg, sedentaria, perder grasa →
+  // 708 kcal y 0 g de carbohidrato). El contrato correcto no es «no seas negativo», es
+  // «el carbohidrato es un piso: si no cabe, sube la caloría objetivo».
+  const m = calcMacrosFromKcal(100, 80, 'Fuerza');
+  assert.ok(m.carb_g > 0, 'el carbohidrato ya no puede colapsar a 0');
+  assert.strictEqual(m.carb_g, Math.round(80 * core.NUT_CARB_MIN_G_KG), 'debe quedar exactamente en el piso');
+  assert.ok(m.kcal > 100, 'si el piso no cabía en 100 kcal, la caloría objetivo SUBE (no se recorta el macro)');
+  assert.strictEqual(m.kcal, m.prot_g * 4 + m.carb_g * 4 + m.fat_g * 9, 'las kcal devueltas deben ser las de sus macros');
+});
+
+test('el objetivo calórico nunca baja del metabolismo basal', () => {
+  // El caso REAL que disparó el arreglo: nadie debe recibir 708 kcal con 0 g de carbohidrato.
+  const r = nutritionEstimate({ sex: 'F', age: 50, weight: 48, height: 150, activityFactor: 1.2, goal: 'Perder grasa' });
+  assert.ok(r.kcalObj >= r.tmb, `${r.kcalObj} kcal está por debajo de su basal (${r.tmb})`);
+  assert.ok(r.kcalObj >= 1200, 'piso absoluto para mujer');
+  assert.ok(r.macros.carb_g > 0, 'jamás una dieta de cero carbohidratos');
+  assert.ok(r.floored === true, 'si se tocó el piso, el resultado debe declararlo');
+  assert.ok(!/Déficit/.test(r.label),
+    'si se tocó el piso, el texto NO puede seguir prometiendo un déficit: sería cambiar el número y dejar la mentira');
+  // CONTROL: alguien normal no debe verse afectado por el piso
+  const ok = nutritionEstimate({ sex: 'M', age: 30, weight: 80, height: 175, activityFactor: 1.55, goal: 'Ganar músculo' });
+  assert.strictEqual(ok.floored, false, 'un perfil normal no toca ningún piso');
+  assert.ok(/Superávit/.test(ok.label), 'y conserva su etiqueta real');
+});
+
+test('nutRefWeight: por encima de IMC 30 dosifica sobre peso de referencia, no el total', () => {
+  // Luz: 82 kg / 156 cm = IMC 33,7. Con peso total, proteína+grasa no dejaban espacio al
+  // carbohidrato. Con peso ajustado sí.
+  const ref = nutRefWeight(82, 156);
+  assert.ok(ref < 82, 'con IMC 33,7 el peso de referencia debe ser menor que el total');
+  assert.ok(ref > 54, 'pero no puede desplomarse al peso "ideal": es ideal + 25% del exceso');
+  // CONTROL: peso normal → no se ajusta nada
+  assert.strictEqual(nutRefWeight(70, 175), 70, 'con IMC normal el peso de referencia es el real');
+  assert.strictEqual(nutRefWeight(82, null), 82, 'sin estatura no hay IMC: se queda como estaba');
 });
 
 // ══════════════════════════════════════════════════════

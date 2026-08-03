@@ -2454,14 +2454,57 @@ function kcalTargetFor(goal, tdee) {
 // Macros desde las calorías objetivo: proteína por kg (2.2 g si músculo/fuerza,
 // si no 1.8), grasa 0.9 g/kg, el resto a carbohidratos (mínimo 0). Sin kcal o
 // sin peso → null. Devuelve { prot_g, fat_g, carb_g, kcal }.
-function calcMacrosFromKcal(kcalObj, weightKg, goal) {
+// ── PISOS FISIOLÓGICOS de una recomendación calórica (Andrés Hyp, 2026-08-03) ──
+// Nadie recibe un objetivo por debajo de su metabolismo basal ni del mínimo por sexo.
+const NUT_KCAL_FLOOR_F = 1200;
+const NUT_KCAL_FLOOR_M = 1500;
+const NUT_CARB_MIN_G_KG = 2.0;   // el carbohidrato es un PISO de rendimiento, no un residuo
+const NUT_BMI_ADJUST = 30;       // desde aquí, proteína y grasa van sobre peso de REFERENCIA
+const NUT_BMI_IDEAL = 22.5;
+
+function nutKcalFloor(tmb, sex) {
+  const abs = sex === 'M' ? NUT_KCAL_FLOOR_M : NUT_KCAL_FLOOR_F;
+  return Math.max(abs, Math.round(parseFloat(tmb) || 0));
+}
+
+// Peso de REFERENCIA para dosificar proteína y grasa. Por encima de IMC 30, dosificar sobre el
+// peso TOTAL dispara los dos macros hasta que no queda espacio para el carbohidrato — es lo que
+// dejaba a una mujer de 82 kg con 0 g de carbohidrato. Peso ajustado = ideal + 0,25 × exceso.
+function nutRefWeight(weightKg, heightCm) {
+  const w = parseFloat(weightKg);
+  if (!(w > 0)) return null;
+  const h = parseFloat(heightCm);
+  if (!(h > 0)) return w;                       // sin estatura no hay IMC: se queda como estaba
+  const m = h / 100, imc = w / (m * m);
+  if (imc < NUT_BMI_ADJUST) return w;
+  const ideal = NUT_BMI_IDEAL * m * m;
+  return Math.round((ideal + 0.25 * (w - ideal)) * 10) / 10;
+}
+
+// Macros desde las calorías objetivo: proteína por kg (2.2 g si músculo/fuerza, si no 1.8) y
+// grasa 0.9 g/kg sobre el peso de REFERENCIA; el carbohidrato tiene PISO propio.
+// 🔴 Antes el carbohidrato era «lo que sobre, mínimo 0», y ese `Math.max(0, …)` se tragaba el
+// desbordamiento EN SILENCIO: medido el 2026-08-03, una mujer de 50 años, 48 kg, 150 cm,
+// sedentaria y con objetivo «Perder grasa» recibía **708 kcal/día con 0 g de carbohidrato** —
+// el 70% de su propio metabolismo basal. Ninguna persona real cayó ahí (todas tienen factor
+// 1.55), pero 3 de las 10 mujeres de producción quedaban a UN TOQUE: basta que se marquen
+// «sedentaria». `heightCm` es opcional — sin ella se dosifica sobre el peso total, como antes.
+function calcMacrosFromKcal(kcalObj, weightKg, goal, heightCm) {
   const w = parseFloat(weightKg);
   if (!kcalObj || !w) return null;
-  const prot_g = Math.round(w * (goal === 'Ganar músculo' || goal === 'Fuerza' ? 2.2 : 1.8));
-  const fat_g = Math.round(w * 0.9);
-  const carb_kcal = Math.max(0, kcalObj - prot_g * 4 - fat_g * 9);
-  const carb_g = Math.round(carb_kcal / 4);
-  return { prot_g, fat_g, carb_g, kcal: kcalObj };
+  const ref = nutRefWeight(w, heightCm);
+  const prot_g = Math.round(ref * (goal === 'Ganar músculo' || goal === 'Fuerza' ? 2.2 : 1.8));
+  const fat_g = Math.round(ref * 0.9);
+  const carbMin = Math.round(ref * NUT_CARB_MIN_G_KG);
+  let kcal = kcalObj;
+  let carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
+  if (carb_g < carbMin) {
+    // No cabe el piso de carbohidrato → SUBE la caloría objetivo. Poner 0 g y callarse era
+    // entregar una dieta sin carbohidratos sin que nadie se enterara.
+    carb_g = carbMin;
+    kcal = prot_g * 4 + fat_g * 9 + carb_g * 4;
+  }
+  return { prot_g, fat_g, carb_g, kcal };
 }
 
 // ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
@@ -2482,9 +2525,24 @@ function nutritionEstimate(client, weightKg) {
   const af = parseFloat(client.activityFactor) || 1.55;
   const tdee = calcTDEE(tmb, af);
   const t = kcalTargetFor(client.goal, tdee);
-  const macros = calcMacrosFromKcal(t.kcalObj, w, client.goal);
+  // El objetivo NUNCA baja del piso fisiológico. Y si lo tocó, el texto tiene que decir la
+  // verdad: seguir anunciando «Déficit de 500 kcal/día» mientras se entrega el basal sería
+  // cambiar el número y dejar la mentira.
+  const piso = nutKcalFloor(tmb, sx);
+  const tocoPiso = t.kcalObj != null && t.kcalObj < piso;
+  const kcalPiso = tocoPiso ? piso : t.kcalObj;
+  const macros = calcMacrosFromKcal(kcalPiso, w, client.goal, client.height);
+  const kcalObj = macros ? macros.kcal : kcalPiso;
+  const ajustado = tocoPiso || (kcalPiso != null && kcalObj > kcalPiso);
+  const label = ajustado
+    ? 'Mínimo seguro para tu cuerpo (no bajamos de lo que gastas en reposo)'
+    : t.label;
   const water = w ? Math.round(w * 35 / 250) : null; // ~35 ml/kg en vasos de 250 ml
-  return { tmb, tdee, af, kcalObj: t.kcalObj, label: t.label, deficit: t.deficit, macros, water };
+  return {
+    tmb, tdee, af, kcalObj, label,
+    deficit: kcalObj != null && tdee ? Math.round(kcalObj - tdee) : t.deficit,
+    floored: !!ajustado, macros, water,
+  };
 }
 
 // ── Reparto del día en comidas: distribuye las kcal objetivo por comida según
@@ -4272,6 +4330,9 @@ if (typeof module !== 'undefined' && module.exports) {
     calcTDEE,
     kcalTargetFor,
     calcMacrosFromKcal,
+    NUT_CARB_MIN_G_KG,
+    nutKcalFloor,
+    nutRefWeight,
     nutritionEstimate,
     NUT_FOODS,
     NUT_FOOD_BY_ID,
