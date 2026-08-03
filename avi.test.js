@@ -5594,6 +5594,10 @@ test('H1: la edge send-push resuelve al usuario por su token y autoriza el desti
   // nunca de un campo que el que llama pueda escribirse a sí mismo (clase F7).
   assert.ok(/eq\("user_id",\s*target\)/.test(src),
     'la titularidad del destinatario debe leerse de SU fila (user_data.user_id = target)');
+  // '_coach' son las suscripciones del teléfono de Camilo: un asesorado de OTRO coach
+  // (existe el coach QA de los harness) no puede hacérselo sonar.
+  assert.ok(/coach_id\s*===\s*COACH_UID/.test(src),
+    'la rama _coach debe exigir que el coach del que llama sea COACH_UID, no un coach cualquiera');
 });
 
 // ══════════════════════════════════════════════════════

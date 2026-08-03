@@ -16,7 +16,7 @@
 //
 // Quién puede pushear a quién (`_authorize`):
 //   · a sí mismo            → siempre (el uid del token es el destinatario)
-//   · a '_coach'            → cualquier asesorado del coach, y el propio coach
+//   · a '_coach'            → los asesorados DE ESE coach (coach_id = COACH_UID), y él mismo
 //   · a un asesorado (uuid) → SOLO su coach (user_data.coach_id del destinatario = quien llama)
 // `user_data.coach_id` del DESTINATARIO no es forjable desde fuera: la RLS solo deja
 // escribir esa fila a su dueño o a quien YA figura como su coach (gotcha F7 al revés).
@@ -62,9 +62,12 @@ async function _authorize(
     if (uid === COACH_UID) return "coach_self";
     // Un asesorado le escribe a su coach (mensaje, dolor, aviso de pago). Su propia fila
     // dice de quién es asesorado; nadie más puede escribir esa fila.
+    // Se exige que su coach sea COACH_UID, no "cualquier coach": las suscripciones de
+    // '_coach' son el TELÉFONO DE CAMILO, así que un asesorado de otro coach (hoy existe
+    // el coach QA de los harness) no tiene por qué poder hacérselo sonar.
     const { data } = await admin
       .from("user_data").select("coach_id").eq("user_id", uid).maybeSingle();
-    return (data && data.coach_id) ? "client_to_coach" : null;
+    return (data && data.coach_id === COACH_UID) ? "client_to_coach" : null;
   }
 
   // Destinatario asesorado: solo su coach. La titularidad la dice la fila del DESTINATARIO.
