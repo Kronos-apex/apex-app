@@ -2837,6 +2837,29 @@ const NUT_MEALS_5 = [
 // `dayIndex` (0-6) rota los menús para que la semana no sea el mismo plato repetido;
 // las dos medias del día se desfasan entre sí para no repetir merienda.
 // Puro y determinista. Sin base (faltan peso/talla/edad/sexo) → null: no se inventa.
+// ── Macros de los ACOMPAÑANTES de una comida ────────────────────────────
+// 🔴 Los acompañantes SE COMEN. Hasta el 2026-08-03 se mapeaban solo a NOMBRE para
+// pintarlos ("con guayaba, tomate") y sus macros no entraban ni en el presupuesto de la
+// comida ni en la cuenta del día → el plan SERVÍA hasta un 22% más de lo que PROMETÍA en
+// su propia tarjeta, y el error pegaba más fuerte justo en quien está en déficit: medido
+// sobre perfiles reales, +22,1% en Luz (perder grasa) y +11,4% en Samuel (ganar músculo).
+// A ella el motor le calculó 500 kcal de déficit y el plato escrito se lo dejaba en ~110.
+// Varios acompañantes son FRUTA (guayaba 61 kcal, banano 105), no lechuga.
+// Un id que no esté en la tabla (p.ej. 'ensalada', que no es un alimento) aporta 0 — no se
+// inventa nada, pero queda anotado en el radar.
+// PURA: recibe ids, devuelve macros. `un.g` es la ración con la que se le habla a la persona.
+function nutAcompMacros(ids) {
+  let p = 0, c = 0, f = 0;
+  (ids || []).forEach(id => {
+    const food = NUT_FOOD_BY_ID[id];
+    if (!food) return;
+    const g = (food.un && food.un.g > 0) ? food.un.g : 100;
+    p += food.p * g / 100; c += food.c * g / 100; f += food.f * g / 100;
+  });
+  const prot_g = Math.round(p), carb_g = Math.round(c), fat_g = Math.round(f);
+  return { prot_g, carb_g, fat_g, kcal: Math.round(prot_g * 4 + carb_g * 4 + fat_g * 9) };
+}
+
 function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const t = nutDayTarget(base, kind, trainDays, legDays);
   if (!t) return null;
@@ -2853,18 +2876,35 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
     // desfase por comida para que Media mañana y Media tarde no coincidan
     const menu = banco.length ? banco[(di + i * 2) % banco.length] : null;
     const wProt = (slot.w + 1 / nM) / 2;   // mezcla: mitad tamaño de la comida, mitad reparto parejo
-    const sub = {
+    const meta = {
       prot_g: Math.round(t.prot_g * wProt),
       carb_g: Math.round(t.carb_g * slot.w),
       fat_g: Math.round(t.fat_g * slot.w),
     };
+    // Lo que traen los acompañantes se DESCUENTA del presupuesto del plato: si la comida
+    // viene con guayaba, el arroz baja. Antes el plato se calculaba como si la fruta no
+    // existiera y luego la fruta se servía igual, encima.
+    const ac = nutAcompMacros(menu ? (menu.acomp || []) : []);
+    const sub = {
+      prot_g: Math.max(0, meta.prot_g - ac.prot_g),
+      carb_g: Math.max(0, meta.carb_g - ac.carb_g),
+      fat_g: Math.max(0, meta.fat_g - ac.fat_g),
+    };
     const solved = menu ? nutSolveMeal(sub, menu.pick) : { items: [], real: { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 } };
+    // `real` = lo que la persona SE COME de verdad: el plato MÁS los acompañantes.
+    const real = {
+      prot_g: solved.real.prot_g + ac.prot_g,
+      carb_g: solved.real.carb_g + ac.carb_g,
+      fat_g: solved.real.fat_g + ac.fat_g,
+    };
+    real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
     return {
       name: slot.name,
-      target: sub,
+      target: meta,          // lo que esa comida DEBE aportar (acompañantes incluidos)
       items: solved.items,
       acomp: menu ? (menu.acomp || []).map(a => (NUT_FOOD_BY_ID[a] ? NUT_FOOD_BY_ID[a].name : a)) : [],
-      real: solved.real,
+      acompReal: ac,
+      real,
     };
   });
   const real = meals.reduce((a, m) => ({
@@ -4244,6 +4284,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_PROT_MIN_SHARE,
     NUT_MENUS,
     NUT_MEALS_5,
+    nutAcompMacros,
     nutDayPlan,
     nutPlanReview,
     nutBaseFor,

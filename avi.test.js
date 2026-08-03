@@ -13,6 +13,8 @@ const {
   getSexCode,
   calcMacrosSugeridos,
   nutritionEstimate,
+  nutAcompMacros,
+  nutDayPlan,
   nutMealSplit,
   migrateRoutineIds,
   shouldPostPush,
@@ -5598,6 +5600,90 @@ test('H1: la edge send-push resuelve al usuario por su token y autoriza el desti
   // (existe el coach QA de los harness) no puede hacérselo sonar.
   assert.ok(/coach_id\s*===\s*COACH_UID/.test(src),
     'la rama _coach debe exigir que el coach del que llama sea COACH_UID, no un coach cualquiera');
+});
+
+// ── Los ACOMPAÑANTES del plan de comida se COMEN: entran al presupuesto y a la cuenta ──
+// Hasta el 2026-08-03 se mapeaban solo a nombre para pintarlos y sus macros no entraban en
+// ningún lado → el plan servía hasta un 22% más de lo que prometía en su propia tarjeta, y
+// pegaba más fuerte en quien está en déficit (Luz, perder grasa: prometía 1.768 kcal y
+// servía 2.160; su déficit de 500 quedaba en ~110).
+test('nutAcompMacros: un acompañante conocido aporta sus macros, uno inventado aporta 0', () => {
+  const conFruta = nutAcompMacros(['guayaba']);
+  assert.ok(conFruta.kcal > 0, 'la guayaba debe aportar calorías: es fruta, no aire');
+  assert.ok(conFruta.carb_g > 0, 'la guayaba debe aportar carbohidrato');
+  // 'ensalada' NO es un alimento de la tabla (se usa como acompañante en 3 menús)
+  assert.deepStrictEqual(nutAcompMacros(['ensalada']), { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 },
+    'un id que no está en la tabla no debe inventar macros');
+  assert.deepStrictEqual(nutAcompMacros([]), { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 });
+  assert.deepStrictEqual(nutAcompMacros(null), { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 });
+});
+
+// 🔴 ORÁCULO INDEPENDIENTE — no le preguntes a la app cuánto sirve.
+// Primer intento de estos tests: comparar `plan.target` contra `plan.real`. **El sabotaje salió
+// VERDE** y por una razón que vale más que el test: con el defecto puesto, `plan.real` NO cuenta
+// los acompañantes, así que la app REPORTA 9,6% mientras SIRVE 22%. Un test que le pregunta a la
+// app cuánto sirve recibe la misma mentira que el usuario. Por eso este ayudante recalcula lo
+// servido desde la tabla de alimentos y los gramos escritos en el plato: es la comida REAL.
+function _kcalRealmenteServidas(plan) {
+  let p = 0, c = 0, f = 0;
+  (plan.meals || []).forEach(m => {
+    (m.items || []).forEach(it => {
+      const food = core.NUT_FOOD_BY_ID[it.id];
+      if (!food) return;
+      p += food.p * it.grams / 100; c += food.c * it.grams / 100; f += food.f * it.grams / 100;
+    });
+  });
+  // los acompañantes SE COMEN, los cuente la app o no. Se recuperan por NOMBRE, que es lo
+  // único que el plan expone de ellos para pintarlos.
+  const porNombre = {};
+  core.NUT_FOODS.forEach(x => { porNombre[x.name] = x; });
+  (plan.meals || []).forEach(m => {
+    (m.acomp || []).forEach(nombre => {
+      const food = porNombre[nombre];
+      if (!food) return;                       // 'ensalada' no es alimento de la tabla
+      const g = (food.un && food.un.g > 0) ? food.un.g : 100;
+      p += food.p * g / 100; c += food.c * g / 100; f += food.f * g / 100;
+    });
+  });
+  return Math.round(p * 4 + c * 4 + f * 9);
+}
+
+test('el plan de comida CUENTA los acompañantes en lo que dice servir', () => {
+  const base = nutritionEstimate({ sex: 'F', age: 39, weight: 82, height: 156, activityFactor: 1.55, goal: 'Perder grasa' });
+  const plan = nutDayPlan(base, 'pierna', 4, 2, 1);
+  assert.ok(plan && plan.meals.length, 'el plan del día debe traer comidas');
+  const servidoDeVerdad = _kcalRealmenteServidas(plan);
+  // Lo que la app REPORTA tiene que coincidir con lo que de verdad se come (±2% por redondeos).
+  // Con el defecto, la app reportaba ~11% menos de lo que ponía en el plato.
+  const brecha = Math.abs(100 * (plan.real.kcal - servidoDeVerdad) / servidoDeVerdad);
+  assert.ok(brecha <= 2,
+    `la app dice servir ${plan.real.kcal} kcal y en el plato hay ${servidoDeVerdad}: se está callando ${brecha.toFixed(1)}%`);
+});
+
+test('el plan de comida no sirve más de un 22% por encima de lo que promete', () => {
+  // Umbral DERIVADO midiendo los DOS estados con el oráculo, no elegido a ojo:
+  //   · con los acompañantes fuera del presupuesto (el defecto): máximo diario **+28,6%**
+  //   · con el arreglo:                                          máximo diario **+19,1%**
+  // 22% queda entre los dos: cae si vuelve el defecto y aguanta el estado bueno.
+  // El exceso que queda vive en las MERIENDAS —se les pide el 10% de las calorías y el 15%
+  // de la proteína, y con huevo entero esa proteína arrastra su propia grasa— y eso es
+  // decisión de Andrés (macros), no del ingeniero. Cuando la cierre, este umbral BAJA.
+  const perfiles = [
+    { sex: 'F', age: 39, weight: 82, height: 156, activityFactor: 1.55, goal: 'Perder grasa' },
+    { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' },
+    { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' },
+  ];
+  let peor = -Infinity, quien = '';
+  perfiles.forEach(p => {
+    const base = nutritionEstimate(p);
+    for (let d = 0; d < 7; d++) {
+      const plan = nutDayPlan(base, d % 2 ? 'pierna' : 'torso', 4, 2, d);
+      if (!plan) continue;
+      const dev = 100 * (_kcalRealmenteServidas(plan) - plan.target.kcal) / plan.target.kcal;
+      if (dev > peor) { peor = dev; quien = p.goal + ' ' + p.weight + 'kg, día ' + d; }
+    }
+  });
+  assert.ok(peor <= 22, `el plan sirve ${peor.toFixed(1)}% más de lo que promete (${quien}) — el tope es 22%`);
 });
 
 // ══════════════════════════════════════════════════════
