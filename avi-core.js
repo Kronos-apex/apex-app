@@ -141,7 +141,19 @@ const _isRearDelt = ex => /posterior|face pull|pajaro/.test(_norm(((ex && ex.mus
 // Plantillas de bloque: cada slot = [muscle, type|null, n] (4º opcional = {avoid|prefer:RegExp}
 // para filtrar por nombre dentro del slot). type null = cualquiera de ese músculo.
 const GEN_DAYS = {
-  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
+  // 🔴 PUESTO DE GLÚTEO (2026-08-03, decisión del PO validada por Valery). El Full Body —lo que
+  // recibe TODO principiante, y también quien entrena ≤2 días— no tenía puesto dedicado de
+  // glúteo: el estímulo llegaba solo indirecto por sentadilla/zancada (9 de 10 compuestos de
+  // pierna lo reclutan), pero cero trabajo dirigido. De las 9 principiantes de producción, 6
+  // son mujeres. Va SEGUNDO, y `_genRank` lo baja solo a la posición 5 en gym (detrás de los
+  // compuestos) y lo deja arriba en casa/corporal, donde sus vecinos tienen el mismo rango.
+  // **`Aislamiento`, NO `Compuesto`:** medido, `Compuesto` entregaba Hip Thrust Unilateral el
+  // 24,6% de los días (su propia ficha lo llama «progresión avanzada») y, con lumbar declarada,
+  // el filtro borra sumo y peso muerto y CONCENTRA el pool en barra sobre la cadera (24 → 128
+  // apariciones). `Aislamiento` entrega 100% nivel P en los 4 entornos. Para TODOS, sin
+  // condicionar por sexo: el hombre intermedio ya tiene su glúteo en PIERNA, y `sexKey` cae a
+  // 'M' cuando no se declaró sexo → colgar el beneficio de un campo opcional fabrica un defecto.
+  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
   GP_A:           { name: 'Glúteo y Piernas A', slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
   GP_B:           { name: 'Glúteo y Piernas B', slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
   TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
@@ -598,9 +610,15 @@ const EX_LEVEL = {
   // tenían e75 Burpees y e74 HIIT.
   e165:'P',e166:'P',e167:'P',e168:'P',e169:'P',e170:'P',e171:'P',e172:'P',
   e173:'P',e174:'P',e175:'P',e176:'P',e177:'P',e178:'P',e179:'P',e180:'P',
-  e182:'P',e183:'P',e184:'I',e185:'A',e186:'I',e187:'A',e188:'I',e189:'I',
+  // e186 «Salto del Patinador» → 'A' (2026-08-03, Valery): es pliometría de alto impacto, igual
+  // que sus hermanas e185 «Zancadas con Salto» y e187 «Salto al Cajón», que sí estaban en 'A'.
+  // El criterio escrito seis líneas más arriba dice 'A' = impacto alto; esta contradecía el
+  // propio criterio y era alcanzable por una principiante EN FASE DE ADAPTACIÓN, donde el
+  // impacto está explícitamente prohibido.
+  e182:'P',e183:'P',e184:'I',e185:'A',e186:'A',e187:'A',e188:'I',e189:'I',
   e190:'I',e191:'A',e192:'I',e193:'P',e194:'I',e195:'P',e196:'I',e197:'P',
-  e198:'P',e199:'P',e200:'A',e201:'I',e202:'A',e203:'I',e204:'A',e205:'I',
+  // e205 «Zancada Lateral con Salto» → 'A' por el mismo motivo que e186.
+  e198:'P',e199:'P',e200:'A',e201:'I',e202:'A',e203:'I',e204:'A',e205:'A',
   e206:'P',e207:'P',e209:'P',e210:'P',e211:'P',e212:'I',e213:'P',e214:'P',
 };
 // ── TINTA LEGIBLE PARA LOS COLORES DE MÚSCULO (FASE 3, 2026-07-28) ──────────────────────

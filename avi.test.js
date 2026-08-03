@@ -956,6 +956,11 @@ const ENVLIB = [
   { id: 'x7', name: 'Pike Push-up', muscle: 'hombros', type: 'Bodyweight', sets: 3, reps: 10, icon: '🔻', env: ['corporal', 'casa', 'parque', 'gym'] },
   { id: 'x8', name: 'Press Militar Barra', muscle: 'hombros', type: 'Compuesto', sets: 4, reps: 8, icon: '⬆️', env: ['gym'] },
   { id: 'x9', name: 'Plancha', muscle: 'core', type: 'Isométrico', sets: 3, reps: 60, icon: '🧱', env: ['corporal', 'casa', 'parque', 'gym'] },
+  // Glúteo: lo pide el Full Body desde 2026-08-03. El fixture representa una biblioteca
+  // realista, así que tiene que cubrir los músculos que el split pide — sin esto los tests de
+  // `envGaps` reportarían un hueco que es del FIXTURE, no del motor. (No se aflojó ninguna
+  // aserción: se completó el fixture, que es lo que estaba incompleto.)
+  { id: 'x10', name: 'Puente de Glúteo', muscle: 'gluteo', type: 'Aislamiento', sets: 3, reps: 15, icon: '🍑', env: ['corporal', 'casa', 'parque', 'gym'] },
 ];
 
 test('place="corporal" → ningún ejercicio sin "corporal" en su env', () => {
@@ -5790,6 +5795,62 @@ test('ni en los casos EXTREMOS el plan se pasa del 26%', () => {
     `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 26%`);
   assert.ok(r.peorCarb >= -13,
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -13%`);
+});
+
+// ── EL PUESTO DE GLÚTEO DEL FULL BODY (validado por Valery, 2026-08-03) ──
+// El Full Body —lo que recibe TODO principiante y también quien entrena ≤2 días— no tenía
+// puesto dedicado de glúteo. Corre contra el CATÁLOGO REAL, no un fixture: los tres defectos
+// que este test vigila (el aductor disfrazado de glúteo, las pliometrías en nivel de
+// principiante y el hip thrust unilateral) son datos del catálogo y un fixture no los tiene.
+test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.016 días)', () => {
+  const EXL = core.EX_LEVEL;
+  let dias = 0, conGluteo = 0;
+  const avanzados = [], saltos = [], prohibidos = [];
+  ['F', 'M', ''].forEach(sex => {
+    ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Salud general'].forEach(goal => {
+      ['gym', 'casa', 'corporal', 'parque'].forEach(place => {
+        [2, 3, 4, 5].forEach(days => {
+          // con y sin lesión declarada: el filtro de lesiones NO puede vaciar este puesto
+          ['', 'hernia discal L4-L5', 'menisco operado rodilla derecha'].forEach(notes => {
+            const r = generarRutinas({ sex, age: 30, level: 'Principiante', days, goal, place, weight: 70, height: 168, notes },
+              _LIB_REAL, { seed: 42, now: '2026-08-03T10:00:00Z' });
+            (r.routines || []).forEach(rt => {
+              dias++;
+              const g = (rt.exercises || []).filter(e => e.muscle === 'gluteo');
+              if (g.length) conGluteo++;
+              g.forEach(e => {
+                const lv = e.level || EXL[e.id] || 'I';
+                // 'I' es el respaldo previsto del gate (cap 1, preferP) cuando un entorno no
+                // tiene opción 'P'; medido, solo ocurre en `corporal`. 'A' JAMÁS.
+                if (lv === 'A') avanzados.push(`${e.id} ${e.name} en ${place}`);
+                if (e.type === 'HIIT' || /salto|patinador/i.test(e.name)) saltos.push(`${e.id} ${e.name} en ${place}`);
+                // e60 = ADUCTOR (estaba etiquetado glúteo) · e92 = Hip Thrust Unilateral,
+                // que su propia ficha llama «progresión avanzada»
+                if (e.id === 'e60' || e.id === 'e92') prohibidos.push(`${e.id} ${e.name} en ${place}`);
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+  assert.ok(dias > 1900, `esperaba el barrido completo, generé ${dias} días`);
+  assert.strictEqual(conGluteo, dias,
+    `${dias - conGluteo} de ${dias} días de principiante quedaron SIN trabajo dirigido de glúteo`);
+  assert.deepStrictEqual(avanzados, [], 'a un principiante no le puede caer un glúteo de nivel avanzado');
+  assert.deepStrictEqual(saltos, [], 'pliometría de impacto en el puesto de glúteo de un principiante');
+  assert.deepStrictEqual(prohibidos, [], 'e60 es ADUCTOR y e92 es progresión avanzada: no van en este puesto');
+});
+
+test('e60 es aductor (no glúteo) y las pliometrías de salto son nivel avanzado', () => {
+  // Los tres son datos del catálogo y no se detectan generando planes si el slot cambia:
+  // se afirman aquí. e60 lo delata su propia descripción y el mapa muscular (`adductors`).
+  const e60 = _LIB_REAL.find(e => e.id === 'e60');
+  assert.strictEqual(e60.muscle, 'piernas', 'e60 «Aducción de Cadera» trabaja el aductor, no el glúteo');
+  // e186/e205 contra sus hermanas idénticas, que siempre estuvieron en 'A'
+  ['e185', 'e186', 'e187', 'e205'].forEach(id => {
+    assert.strictEqual(core.EX_LEVEL[id], 'A', `${id} es pliometría de alto impacto: va en nivel A`);
+  });
 });
 
 // ══════════════════════════════════════════════════════
