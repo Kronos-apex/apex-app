@@ -13,6 +13,9 @@ const {
   getSexCode,
   calcMacrosSugeridos,
   nutritionEstimate,
+  kgOutlier,
+  sanitizeHistory,
+  sanitizePrs,
   nutAcompMacros,
   nutDayPlan,
   nutRefWeight,
@@ -5851,6 +5854,53 @@ test('e60 es aductor (no glúteo) y las pliometrías de salto son nivel avanzado
   ['e185', 'e186', 'e187', 'e205'].forEach(id => {
     assert.strictEqual(core.EX_LEVEL[id], 'A', `${id} es pliometría de alto impacto: va en nivel A`);
   });
+});
+
+// ── CORDURA RELATIVA: el cero de más que el tope absoluto no ve ──
+// El tope de 1.000 kg de v417 atrapó el 800.000.090 pero dejó pasar **200 kg × 12** sellados
+// como récord en producción (5 fechas), con las otras dos series de ESE día en 20 kg.
+// 🔴 El primer criterio que escribí (4× la mediana de TODA su historia en ese ejercicio) marcó
+// 21 series y **la mayoría era PROGRESO REAL** — alguien que pasó de 2,5 a 10 kg. Por eso la
+// regla mira DENTRO de la sesión: un cero de más convive con valores normales el mismo día;
+// progresar hace que el valor nuevo SEA el normal en todas las series.
+test('kgOutlier: caza el cero de más y deja en paz al progreso, dropsets y calentamientos', () => {
+  assert.strictEqual(kgOutlier([20, 20, 200], 2), true, 'el 200 entre 20 y 20 es un cero de más');
+  assert.strictEqual(kgOutlier([10, 10, 10], 2), false, 'subir de peso en TODAS las series es progresar');
+  assert.strictEqual(kgOutlier([2.5, 52.5], 1), false, 'con 2 series no hay con qué comparar: no se acusa');
+  assert.strictEqual(kgOutlier([40, 30, 20], 0), false, 'un dropset baja de peso a propósito');
+  assert.strictEqual(kgOutlier([5, 40, 40], 1), false, 'una serie de calentamiento no vuelve outlier a las de trabajo');
+  assert.strictEqual(kgOutlier([], 0), false);
+  assert.strictEqual(kgOutlier(null, 0), false);
+});
+
+test('sanitizeHistory borra el kg imposible de la sesión y RECALCULA su volumen', () => {
+  const ses = [{
+    date: '2026-06-10T12:00:00Z', totalVol: 11280,
+    exercises: [{ id: 'e46', name: 'Peso Muerto con Piernas Rígidas', sets: [
+      { kg: '20', reps: '12', done: true }, { kg: '20', reps: '12', done: true }, { kg: '200', reps: '12', done: true },
+    ] }],
+  }];
+  const r = sanitizeHistory(ses);
+  assert.strictEqual(r.fixed, 1, 'debe sanear exactamente la serie imposible');
+  const sets = r.history[0].exercises[0].sets;
+  assert.strictEqual(sets[2].kg, '', 'el valor imposible va en BLANCO, jamás recortado (recortar afirma algo falso)');
+  assert.strictEqual(sets[0].kg, '20', 'las series buenas no se tocan');
+  assert.strictEqual(r.history[0].totalVol, 480, 'el volumen se recalcula desde lo que queda (20×12 + 20×12)');
+});
+
+test('sanitizePrs retira el récord FANTASMA que nadie podría volver a batir', () => {
+  // Caso real: PR de 200 kg cuando lo más pesado que sobrevive en su historial son 40.
+  // Mientras siga ahí, ese ejercicio le queda «estancado» de por vida.
+  const hist = [{ date: '2026-07-29T12:00:00Z', exercises: [
+    { id: 'e46', name: 'Peso Muerto con Piernas Rígidas', sets: [{ kg: '40', reps: '5' }, { kg: '40', reps: '5' }] },
+  ] }];
+  const prs = { e46: { kg: 200, val: 200, reps: 12, name: 'Peso Muerto con Piernas Rígidas' } };
+  assert.strictEqual(sanitizePrs(prs, hist).removed, 1, 'el récord fantasma debe retirarse');
+  // CONTROL: un récord legítimo (aunque sea el mejor de su vida) NO se toca
+  const prsOk = { e46: { kg: 45, val: 45, reps: 5, name: 'Peso Muerto con Piernas Rígidas' } };
+  assert.strictEqual(sanitizePrs(prsOk, hist).removed, 0, 'un récord real, apenas por encima de lo suyo, se respeta');
+  // CONTROL: sin historial se comporta como antes (solo el tope absoluto)
+  assert.strictEqual(sanitizePrs(prs).removed, 0, 'sin historial no hay base relativa: no se inventa');
 });
 
 // ══════════════════════════════════════════════════════

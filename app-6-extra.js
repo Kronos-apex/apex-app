@@ -718,6 +718,30 @@ function gmToggleAux(ei,tok,rid,cid){
   }
 }
 
+// 🔴 Aviso de peso que desentona, EN EL MOMENTO DE ANOTAR (2026-08-03). Nace de un caso real:
+// una asesorada tiene 200 kg × 12 en peso muerto piernas rígidas en 5 fechas, con sus otras dos
+// series del mismo día en 20 kg — un cero de más. Ese fantasma le bloqueó el récord para
+// siempre, le infló la gráfica ×4 y envenenó el peso que la app le sugiere.
+// AVISA, NO BLOQUEA (decisión del PO): un día pesado de verdad se anota igual, solo confirma.
+// Va en `onchange` y no en `oninput` — si no, avisaría al teclear el «2» de «200».
+function kgSanityHint(rid, ei, si){
+  try{
+    if(typeof kgOutlier!=='function') return;
+    const kgs=[]; let mio=-1;
+    for(let k=0;k<12;k++){
+      const v=getLog(rid,ei,k,'kg');
+      if(v==='' || v==null) continue;
+      if(String(k)===String(si)) mio=kgs.length;
+      kgs.push(v);
+    }
+    if(mio<0) return;
+    if(kgOutlier(kgs,mio)){
+      const v=getLog(rid,ei,si,'kg');
+      toast('¿'+v+' kg? Revisa el número — tus otras series de hoy van mucho más abajo');
+    }
+  }catch(_e){}
+}
+
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
 function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
@@ -725,7 +749,7 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   const g=f=>getLog(GM.routine.id,ei,si,f);
   const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
     <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
-      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)">
+      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si})"`:''}>
     <div class="gm-sinput-label">${label}</div></div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.

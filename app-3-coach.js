@@ -329,7 +329,9 @@ function _applyAuthClientDB(client, coll){
   const _sh=(typeof sanitizeHistory==='function')?sanitizeHistory(DB.history[id]):{history:DB.history[id],fixed:0};
   if(_sh.fixed>0){ DB.history={[id]: _sh.history};
     try{ svNow('ax_hist',DB.history); log&&log('AVI: saneados '+_sh.fixed+' valores imposibles del historial'); }catch(_e){} }
-  const _sp=(typeof sanitizePrs==='function')?sanitizePrs(coll.prs||{}):{prs:coll.prs||{},removed:0};
+  // El historial YA saneado va como 2.º argumento: sin él, un récord fantasma (200 kg cuando lo
+  // más pesado real son 40) sobrevive y deja ese ejercicio imposible de superar para siempre.
+  const _sp=(typeof sanitizePrs==='function')?sanitizePrs(coll.prs||{}, _sh.history):{prs:coll.prs||{},removed:0};
   DB.prs       ={[id]: _sp.prs};
   if(_sp.removed>0){ try{ svNow('ax_pr',DB.prs); log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }
   DB.bodyweight={[id]: coll.bodyweight||[]};

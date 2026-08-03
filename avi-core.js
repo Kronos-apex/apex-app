@@ -1290,6 +1290,49 @@ function _saneNum(v, max) {
   if (!isFinite(n)) return false;
   return n < 0 || n > max;
 }
+// ── Cordura RELATIVA: el cero de más que el tope absoluto no ve ────────────
+// 🔴 El tope de `_SANE_MAX.kg` (1.000) atrapa el 800.000.090 de v417 pero deja pasar los
+// **200 kg × 12** que una asesorada tiene sellados como récord de peso muerto piernas rígidas
+// (medido en producción 2026-08-03, en 5 fechas). 200 es un número «posible» en abstracto; lo
+// que lo delata es que **sus otras dos series de ESE MISMO día fueron de 20 kg**.
+// La regla es relativa a la propia persona y DENTRO de la sesión, no un absoluto:
+//   · un cero de más CONVIVE con valores normales el mismo día (20 / 20 / 200)
+//   · progresar hace que el valor nuevo SEA el normal (todas las series suben a la vez)
+// Medido sobre la base real: con el criterio absoluto se marcaban 21 series y **la mayoría era
+// PROGRESO REAL** (alguien que pasó de 2,5 a 10 kg). Con este, 9 series y ninguna es progreso.
+const _SANE_REL_FACTOR = 4;    // veces la mediana de las OTRAS series del ejercicio ese día
+const _SANE_REL_MIN_SETS = 3;  // por debajo de 3 no hay con qué comparar: no se acusa a nadie
+function _medianOf(nums) {
+  const s = nums.slice().sort((a, b) => a - b);
+  const n = s.length;
+  if (!n) return 0;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
+// ¿El kg de la serie `i` es imposible frente a las otras series del mismo ejercicio ese día?
+function _saneRelKg(sets, i) {
+  const kgs = (sets || []).map(s => parseFloat(s && s.kg)).map(k => (isFinite(k) && k > 0 ? k : null));
+  if (kgs.filter(k => k != null).length < _SANE_REL_MIN_SETS) return false;
+  const mio = kgs[i];
+  if (mio == null) return false;
+  const otros = kgs.filter((k, j) => j !== i && k != null);
+  if (otros.length < _SANE_REL_MIN_SETS - 1) return false;
+  const m = _medianOf(otros);
+  return m > 0 && mio >= _SANE_REL_FACTOR * m;
+}
+
+// Versión para el MOMENTO DE ANOTAR: recibe los kg que ya lleva ese ejercicio hoy y dice si el
+// de la posición `i` desentona. Misma regla que la auto-cura, para que la app no avise de algo
+// que después no limpia (ni al revés). AVISA, no bloquea: un día pesado de verdad se confirma.
+function kgOutlier(kgs, i) {
+  const nums = (kgs || []).map(k => { const n = parseFloat(k); return isFinite(n) && n > 0 ? n : null; });
+  const mio = nums[i];
+  if (mio == null) return false;
+  const otros = nums.filter((k, j) => j !== i && k != null);
+  if (otros.length < _SANE_REL_MIN_SETS - 1) return false;
+  const m = _medianOf(otros);
+  return m > 0 && mio >= _SANE_REL_FACTOR * m;
+}
+
 // Volumen de una sesión = Σ(kg × reps) de las series HECHAS. Espejo de `updateClientProgress`.
 function _volOf(sesion) {
   let vol = 0;
@@ -1310,12 +1353,16 @@ function sanitizeHistory(history) {
     const exercises = h.exercises.map(ex => {
       if (!ex || !Array.isArray(ex.sets)) return ex;
       let exTocado = false;
-      const sets = ex.sets.map(s => {
+      const sets = ex.sets.map((s, i) => {
         if (!s) return s;
         let sTocado = false; const ns = { ...s };
         Object.keys(_SANE_MAX).forEach(f => {
           if (_saneNum(ns[f], _SANE_MAX[f])) { ns[f] = ''; sTocado = true; fixed++; }
         });
+        // Cordura relativa: el kg que no cuadra con las OTRAS series de ese día. Se pone en
+        // BLANCO, jamás se recorta: recortar 200 a 100 afirmaría que levantó 100, tan falso
+        // como el original (lección de v417).
+        if (!sTocado && _saneRelKg(ex.sets, i)) { ns.kg = ''; sTocado = true; fixed++; }
         if (!sTocado) return s;
         exTocado = true; return ns;
       });
@@ -1334,14 +1381,34 @@ function sanitizeHistory(history) {
 // un récord imposible sobrevive aunque la sesión que lo originó ya esté limpia. Se ELIMINA el
 // récord entero (no se recorta): la app lo vuelve a registrar sola la próxima vez que la persona
 // haga ese ejercicio, y con su peso de verdad.
-function sanitizePrs(prs) {
+// `history` (opcional, YA saneado) permite la cordura RELATIVA: un récord de 200 kg cuando lo
+// más pesado que queda en todo su historial de ese ejercicio son 40 kg es el fantasma del cero
+// de más, y **mientras siga ahí esa persona no puede volver a batir ese récord nunca** — el
+// ejercicio le queda «estancado» de por vida y su gráfica inflada (medido: ×4). Sin `history`
+// se comporta exactamente como antes.
+function sanitizePrs(prs, history) {
   const src = (prs && typeof prs === 'object') ? prs : {};
+  // Mejor kg que SOBREVIVE en el historial, por id de ejercicio.
+  const mejor = {};
+  (Array.isArray(history) ? history : []).forEach(h => {
+    ((h && h.exercises) || []).forEach(ex => {
+      if (!ex || !ex.id) return;
+      ((ex.sets) || []).forEach(s => {
+        const kg = parseFloat(s && s.kg);
+        if (isFinite(kg) && kg > 0 && kg > (mejor[ex.id] || 0)) mejor[ex.id] = kg;
+      });
+    });
+  });
   const out = {}; let removed = 0;
   Object.keys(src).forEach(k => {
     const p = src[k];
     const malo = p && typeof p === 'object' &&
       ['kg', 'val', 'reps', 'secs', 'min', 'dist'].some(f => _saneNum(p[f], _SANE_MAX[f] || 1000));
-    if (malo) { removed++; return; }
+    // Relativo: el récord dice X pero en el historial limpio no hay nada que se le acerque.
+    const kgPR = p && parseFloat(p.kg);
+    const tope = mejor[k];
+    const fantasma = !malo && isFinite(kgPR) && kgPR > 0 && tope > 0 && kgPR >= _SANE_REL_FACTOR * tope;
+    if (malo || fantasma) { removed++; return; }
     out[k] = p;
   });
   return { prs: removed ? out : src, removed: removed };
@@ -4441,6 +4508,7 @@ if (typeof module !== 'undefined' && module.exports) {
     streakTarget,
     STREAK_WEEK_MIN_DAYS,
     clampLogValue,
+    kgOutlier,
     sanitizeHistory,
     sanitizePrs,
     LOG_MAX,
