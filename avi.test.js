@@ -11,7 +11,6 @@ const core = require('./avi-core.js');
 const {
   getIccLabel,
   getSexCode,
-  calcMacrosSugeridos,
   nutritionEstimate,
   loadStep,
   kgOutlier,
@@ -293,36 +292,40 @@ test('getSexCode: cualquier valor distinto de "M" → "F"', () => {
   assert.strictEqual(getSexCode(undefined), 'F');
 });
 
-section('2. Macros — activityFactor → kcalPerKg');
+section('2. Macros — el formulario del coach calcula con el MISMO motor que la app (v436)');
+// 🔴 `calcMacrosSugeridos` era una CUARTA cuenta: la que rellenaba «Editar plan». Hacía sobre el
+// PESO TOTAL lo que el motor corrige desde v428 (sobre IMC 30, proteína y grasa van sobre peso de
+// REFERENCIA). Medido sobre la base real el 2026-08-04: a Kathe (IMC 32) le proponía 2.710 kcal
+// cuando le corresponden 1.930, y a Luz (IMC 33,7) 2.602 contra 1.730 — a las dos, con objetivo de
+// PERDER GRASA, les proponía comer POR ENCIMA de su propio gasto. Se borró; el formulario usa
+// `nutritionEstimate`, que es lo que la app entrega de verdad.
 
-test('activityFactor=1.55, goal="salud", peso 70kg → kcalPerKg=36, kcal=2520', () => {
-  const result = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
-  // 'salud' no contiene 'gan/perd/etc' → sin ajuste → 70 * 36 = 2520
-  assert.strictEqual(result.kcal, 2520,
-    `Esperaba 2520 (70kg × 36 kcal/kg). Recibió ${result.kcal}`);
+test('🔴 v436 · a quien quiere perder grasa NUNCA se le propone comer por encima de su gasto', () => {
+  // Los dos casos reales que lo destaparon.
+  const casos = [
+    { name: 'Kathe', sex: 'F', age: 28, height: 163, weight: 85, activityFactor: 1.55, goal: 'Perder grasa' },
+    { name: 'Luz', sex: 'F', age: 39, height: 156, weight: 82, activityFactor: 1.55, goal: 'Perder grasa' },
+  ];
+  for (const c of casos) {
+    const est = nutritionEstimate(c, c.weight);
+    assert.ok(est && est.macros, c.name + ': tiene que poder estimarse');
+    assert.ok(est.kcalObj < est.tdee, `${c.name}: le propone ${est.kcalObj} con un gasto de ${est.tdee} — eso es superávit con objetivo de perder grasa`);
+    // Y el déficit es MODERADO: ni de adorno ni salvaje.
+    const deficit = est.tdee - est.kcalObj;
+    assert.ok(deficit >= 300 && deficit <= 800, `${c.name}: déficit de ${deficit} kcal fuera de rango razonable`);
+    // Y la propiedad de fondo: con IMC>30 la dosificación va sobre peso de REFERENCIA, no sobre la
+    // báscula (v428). Se afirma sobre `nutRefWeight` directamente — una aserción del tipo
+    // «proteína < 2 g por kilo» es demasiado floja y deja pasar el defecto (lo demostró el sabotaje).
+    const ref = core.nutRefWeight(c.weight, c.height);
+    assert.ok(ref < c.weight - 5, `${c.name}: peso de referencia ${ref} para ${c.weight} kg — no se está ajustando`);
+    assert.ok(est.macros.prot_g <= Math.round(ref * 2.2), `${c.name}: ${est.macros.prot_g} g de proteína sale del peso total, no del de referencia`);
+    assert.ok(est.macros.carb_g > 0, `${c.name}: nadie puede quedarse en cero carbohidratos`);
+  }
 });
 
-test('goal="bajar de peso" → déficit de 350 kcal', () => {
-  const base = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
-  const cut = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'bajar de peso' });
-  assert.strictEqual(cut.kcal, base.kcal - 350);
-});
-
-test('goal="ganar masa muscular" → superávit de 250 kcal y proteína 2.2g/kg', () => {
-  const base = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'salud' });
-  const bulk = calcMacrosSugeridos({ weight: 70, activityFactor: 1.55, goal: 'ganar masa muscular' });
-  assert.strictEqual(bulk.kcal, base.kcal + 250);
-  assert.strictEqual(bulk.prot, Math.round(70 * 2.2));
-});
-
-test('sin activityFactor → kcalPerKg fallback=33', () => {
-  const result = calcMacrosSugeridos({ weight: 70, goal: 'salud' });
-  assert.strictEqual(result.kcal, 70 * 33);
-});
-
-test('sin peso → fallback 70kg', () => {
-  const result = calcMacrosSugeridos({ activityFactor: 1.2, goal: 'salud' });
-  assert.strictEqual(result.kcal, 70 * 30);
+test('🔒 v436 · la cuenta vieja del formulario ya no existe (una sola fuente)', () => {
+  assert.strictEqual(typeof core.calcMacrosSugeridos, 'undefined',
+    'calcMacrosSugeridos era una cuarta verdad: se borró, no se dejó "por si acaso"');
 });
 
 section('3. routine.id migration');

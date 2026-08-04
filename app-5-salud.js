@@ -1,6 +1,5 @@
 // ══════════════ PLAN NUTRICIONAL ══════════════
 
-// calcMacrosSugeridos → avi-core.js (fuente única de verdad)
 
 const NUT_TEMPLATES=[
   {label:'Cutting 🔻',goal:'cutting',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
@@ -50,20 +49,53 @@ function openNutModal(){
   document.getElementById('nut-avoid').value=nut.avoid||'';
   document.getElementById('nut-water').value=nut.water||'';
   document.getElementById('nut-examples').value=nut.examples||'';
-  if(!nut.kcal && !nut.plan){
-    const sug=calcMacrosSugeridos(c);
-    document.getElementById('nut-kcal').value=sug.kcal;
-    document.getElementById('nut-prot').value=sug.prot;
-    document.getElementById('nut-carbs').value=sug.carbs;
-    document.getElementById('nut-fat').value=sug.fat;
-    document.getElementById('nut-water').value=sug.water;
-    const nota=document.getElementById('nut-calc-nota');
-    if(nota){nota.style.display='block';nota.innerHTML='&#128161; Valores calculados para <strong>'+esc(c.name)+'</strong> ('+Math.round(parseFloat(c.weight)||0)+'kg &middot; '+(c.activity||'actividad media')+' &middot; objetivo: '+(c.goal||'general')+'). Ajusta seg&uacute;n tu criterio.';}
-  } else {
+  if(!nut.kcal && !nut.plan) nutFillSuggested(c,true);
+  else {
     const nota=document.getElementById('nut-calc-nota');
     if(nota)nota.style.display='none';
   }
   om('m-nut');
+}
+
+// ── v436: EL FORMULARIO CALCULA CON EL MISMO MOTOR QUE LA APP ──────────────────
+// 🔴 `calcMacrosSugeridos` era una CUARTA cuenta, distinta de la que la app entrega, y hacía sobre
+// el PESO TOTAL lo que el motor ya corrige desde v428 (por encima de IMC 30 la proteína y la grasa
+// van sobre peso de REFERENCIA, o no queda espacio para nada más). Medido 2026-08-04: a Kathe
+// (IMC 32) le proponía 2.710 kcal cuando le corresponden 1.930, y a Luz (IMC 33,7) 2.602 contra
+// 1.730 — a las dos, con objetivo de PERDER GRASA, les proponía comer POR ENCIMA de su gasto.
+// El prefill pasa a `nutritionEstimate`, que es exactamente lo que come quien no tiene plan escrito.
+function nutFillSuggested(c,silencioso){
+  const est=(typeof nutritionEstimate==='function')?nutritionEstimate(c,_nutPesoDe(c)):null;
+  const nota=document.getElementById('nut-calc-nota');
+  if(!est||!est.macros){
+    if(nota){nota.style.display='block';nota.innerHTML='&#9888;&#65039; Faltan datos del cuerpo (peso, estatura, edad o sexo) para calcularle el plan. Compl&eacute;talos en su perfil.';}
+    return false;
+  }
+  const m=est.macros;
+  document.getElementById('nut-kcal').value=est.kcalObj;
+  document.getElementById('nut-prot').value=m.prot_g;
+  document.getElementById('nut-carbs').value=m.carb_g;
+  document.getElementById('nut-fat').value=m.fat_g;
+  if(est.water)document.getElementById('nut-water').value=est.water;
+  if(nota){
+    nota.style.display='block';
+    nota.innerHTML='&#128161; Calculado para <strong>'+esc(c.name)+'</strong>: gasta ~<strong>'+est.tdee+' kcal</strong> al d&iacute;a y su objetivo es <strong>'+esc(c.goal||'salud general')+'</strong>. Revisa y ajusta antes de guardar &mdash; AVI propone, t&uacute; apruebas.';
+  }
+  if(!silencioso&&typeof toast==='function')toast('Plan propuesto — revísalo y guarda');
+  return true;
+}
+// El peso que manda es el ÚLTIMO registrado, no el del perfil (que envejece).
+function _nutPesoDe(c){
+  let peso=c&&c.weight;
+  const bw=(DB.bodyweight||{})[c&&c.id];
+  if(Array.isArray(bw)&&bw.length){const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg);}
+  return peso;
+}
+// «✨ Generar plan»: rellena el formulario con lo que le corresponde a ESTA persona, aunque ya
+// tenga plan. No guarda nada — el coach revisa y aprueba, igual que con las rutinas.
+function nutGenerate(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  nutFillSuggested(c,false);
 }
 
 function saveNutrition(){

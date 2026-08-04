@@ -26,25 +26,10 @@ function getSexCode(sex) {
   return sex === 'M' ? 'M' : 'F';
 }
 
-// ── Macros sugeridos a partir del cliente ──
-function calcMacrosSugeridos(client) {
-  const kg = parseFloat(client.weight) || 70;
-  const actMap = { 1.2: 30, 1.375: 33, 1.55: 36, 1.725: 40, 1.9: 44 };
-  const kcalPerKg = actMap[client.activityFactor] || 33;
-  let kcal = Math.round(kg * kcalPerKg);
-  const g = (client.goal || '').toLowerCase();
-  if (g.includes('perd') || g.includes('baj') || g.includes('defin')) kcal -= 350;
-  else if (g.includes('gan') || g.includes('masa') || g.includes('volum') || g.includes('musc')) kcal += 250;
-  const protG = g.includes('gan') || g.includes('masa') || g.includes('musc')
-    ? Math.round(kg * 2.2)
-    : g.includes('perd') || g.includes('baj')
-      ? Math.round(kg * 2.0)
-      : Math.round(kg * 1.8);
-  const fatG = Math.round(kg * 0.9);
-  const carbsG = Math.max(0, Math.round((kcal - protG * 4 - fatG * 9) / 4));
-  const water = Math.max(6, Math.round(kg * 0.035 / 0.25));
-  return { kcal, prot: protG, carbs: carbsG, fat: fatG, water };
-}
+// ⛔ `calcMacrosSugeridos` BORRADA en v436: era una CUARTA cuenta (la que rellenaba «Editar
+// plan») que dosificaba sobre el PESO TOTAL — a quien tiene IMC>30 le proponía comer por encima
+// de su gasto con objetivo de perder grasa. El formulario usa `nutritionEstimate`, que es lo que
+// la app entrega de verdad y ya corrige el peso de referencia (v428).
 
 // ── Migración: asigna .id a rutinas que no lo tengan ──
 // idFn: generador de ids (el navegador pasa uid(); fallback incluido para tests).
@@ -4840,7 +4825,6 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_REVIEW_MIN_GAP,
     nutMealSplit,
     getSexCode,
-    calcMacrosSugeridos,
     migrateRoutineIds,
     shouldPostPush,
     delClientGuard,
