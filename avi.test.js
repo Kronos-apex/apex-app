@@ -149,6 +149,15 @@ const {
   coachInsight,
   coachPulse,
   shockTargets,
+  perfIndex,
+  exercisePerfSeries,
+  stallGateReason,
+  stallReport,
+  stalledExercises,
+  deloadFloorReason,
+  PERF_CLAMP_REPS,
+  STALL_BEGINNER_MIN_WEEKS,
+  STALL_DELOAD_REGRESSION,
   shockPlan,
   applyShockOption,
   weekEditorial,
@@ -4452,6 +4461,31 @@ const ciEx = (name, kg) => ({ name, track: 'peso_reps', sets: [{ done: true, kg:
 // Ejercicio sin carga (no cuenta para estancamiento kg).
 const ciBW = name => ({ name, track: 'reps', sets: [{ done: true, reps: '15' }] });
 
+// ── Historial EVALUABLE por el detector de estancamiento (v433) ──
+// El detector pide ≥8 semanas de datos, ≥7 sesiones del ejercicio (6 dentro de la ventana + 1
+// antes como referencia) y que no sea un principiante en adaptación. Los fixtures viejos eran de
+// 6 sesiones en 15 días: representaban las reglas VIEJAS (ventana de 4 puntos, sin tiempo, sin
+// compuertas), no un estancamiento de verdad. Este generador arma un historial que sí lo es.
+const ST_N = 25; // 25 sesiones × 3 días = 72 días = 10,3 semanas (pasa también los pisos de la descarga)
+// Serie de kg: `peak` en el índice 1 (zona de REFERENCIA, antes de la ventana), `base` el resto de
+// la referencia y `tail` desde ST_WIN_I, que es donde empieza la ventana con el espaciado por
+// defecto (3 días). Si el `tail` se colara en la referencia, el techo dejaría de ser `peak` y el
+// patrón mediría otra cosa — pasó al alargar el fixture de 20 a 25 sesiones.
+const ST_WIN_I = 13;
+const stKgs = (peak, base, tail) => Array.from({ length: ST_N }, (_, i) => i === 1 ? peak : (i >= ST_WIN_I ? tail : base));
+const KG_MESETA = stKgs(62, 60, 62); // iguala su techo y no lo supera → estancado, SIN regresión
+const KG_PLANO = stKgs(62, 60, 60);  // se queda 2 kg por debajo de su techo → estancado, −3% (no llega a regresión)
+const KG_CAIDA = stKgs(62, 60, 52);  // el índice cae ~16% → estancado Y en regresión (→ descarga)
+const KG_SUBE = stKgs(62, 60, 70);   // supera su techo → NO estancado
+// Historial nuevo→viejo con esos patrones. exs = [{name, muscle, kgs}].
+// `offsetsChrono` = días hacia atrás de cada sesión, de la más VIEJA a la más nueva.
+const stHistAt = (exs, offsetsChrono) => offsetsChrono.map((off, i) => ({
+  date: new Date(CI_NOW - off * 86400000).toISOString(),
+  exercises: exs.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
+})).reverse();
+const stHist = (exs, spacingDays = 3, endOffsetDays = 0) =>
+  stHistAt(exs, Array.from({ length: ST_N }, (_, i) => endOffsetDays + (ST_N - 1 - i) * spacingDays));
+
 test('coachInsight: sin argumentos → null (no lanza)', () => {
   assert.strictEqual(coachInsight(), null);
 });
@@ -4489,24 +4523,20 @@ test('coachInsight "racha": ≥2 semanas de plan cumplidas dispara', () => {
   assert.ok(/semanas/.test(r.title));
 });
 
-test('coachInsight "estancado": premium sí, free no (gating)', () => {
+test('🔒 v433 · a la asesorada NUNCA se le dice que se estancó', () => {
+  // Decisión del PO (2026-08-04) + petición de Valery: ni la palabra ni el CTA «hablar con tu
+  // coach». El aviso es SOLO del coach. Un estancamiento REAL y evaluable no le pinta nada a ella.
   const c = { level: 'Intermedio', days: 7 }; // days 7 → weekStreak no llega a 2 (evita racha)
-  // 6 sesiones de 'Press' en kg: los últimos 4 no superan el máx previo (62).
-  const kgs = [60, 62, 62, 60, 61, 62];
-  const s = kgs.map((kg, i) => ciDay(i, [ciEx('Press', kg)])); // i=0 es hoy → no inactivo
-  const prem = coachInsight(c, s, {}, CI_NOW, { isFree: false });
-  assert.ok(prem && prem.type === 'estancado', 'premium ve el estancamiento');
-  assert.ok(/Press/.test(prem.title));
-  assert.ok(prem.cta && prem.cta.action === 'msgs');
-  const free = coachInsight(c, s, {}, CI_NOW, { isFree: true });
-  assert.ok(!free || free.type !== 'estancado', 'free NO ve el estancamiento');
-});
-
-test('coachInsight "estancado": 5 puntos (< mínimo) no dispara', () => {
-  const c = { level: 'Intermedio', days: 7 };
-  const s = [62, 62, 61, 60, 62].map((kg, i) => ciDay(i, [ciEx('Press', kg)]));
-  const r = coachInsight(c, s, {}, CI_NOW, { isFree: false });
-  assert.ok(!r || r.type !== 'estancado', 'con 5 puntos no evalúa estancamiento');
+  const s = stHist([{ name: 'Press', muscle: 'pecho', kgs: KG_MESETA }]);
+  assert.ok(stalledExercises(c, s, CI_NOW).some(x => x.name === 'Press'), 'el estancamiento SÍ existe (control)');
+  for (const isFree of [false, true]) {
+    const r = coachInsight(c, s, {}, CI_NOW, { isFree });
+    assert.ok(!r || r.type !== 'estancado', 'no existe la tarjeta de estancamiento (isFree=' + isFree + ')');
+    if (r) {
+      assert.ok(!/estanc/i.test(r.title + ' ' + r.msg), 'la palabra «estancado» no aparece en ninguna tarjeta');
+      assert.ok(!r.cta || r.cta.action !== 'msgs' || r.type === 'deload', 'sin CTA de «hablar con mi coach» por estancamiento');
+    }
+  }
 });
 
 test('coachInsight "adaptacion": principiante nuevo con ≥1 sesión; intermedio no', () => {
@@ -4549,15 +4579,28 @@ test('coachInsight: historial vacío + sin datos → null', () => {
 const ciWaterKey = off => { const d = new Date(CI_NOW - off * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 // 4 semanas de plan cumplidas (days:2 → target 2): esta semana + 3 previas, 2 días c/u.
 const ci4weeks = [0, 2, 7, 9, 14, 16, 21, 23].map(o => ciDay(o, [ciBW('A')]));
+// v433: la tarjeta de descarga de la asesorada pasa por los MISMOS pisos que la del coach
+// (180 días entrenando + 10 semanas de datos), así que el cliente de prueba los cumple.
+const ciVeterana = { level: 'Intermedio', days: 2, startDate: new Date(CI_NOW - 200 * 86400000).toISOString() };
+const ci4weeksLargo = [0, 2, 7, 9, 14, 16, 21, 23, 75].map(o => ciDay(o, [ciBW('A')])); // +1 sesión vieja = 10,7 semanas de datos
 
 test('coachInsight "deload": ≥4 semanas premium dispara; 3 → racha; free → racha', () => {
-  const c = { level: 'Intermedio', days: 2 };
-  const r = coachInsight(c, ci4weeks, {}, CI_NOW, { isFree: false });
+  const c = ciVeterana;
+  const r = coachInsight(c, ci4weeksLargo, {}, CI_NOW, { isFree: false });
   assert.ok(r && r.type === 'deload', 'a 4 semanas premium sugiere descarga');
   assert.ok(r.cta && r.cta.action === 'msgs');
-  const s3 = [0, 2, 7, 9, 14, 16].map(o => ciDay(o, [ciBW('A')]));
+  const s3 = [0, 2, 7, 9, 14, 16, 75].map(o => ciDay(o, [ciBW('A')]));
   assert.strictEqual(coachInsight(c, s3, {}, CI_NOW, { isFree: false }).type, 'racha', '3 semanas → racha, no deload');
-  assert.strictEqual(coachInsight(c, ci4weeks, {}, CI_NOW, { isFree: true }).type, 'racha', 'free no ve deload');
+  assert.strictEqual(coachInsight(c, ci4weeksLargo, {}, CI_NOW, { isFree: true }).type, 'racha', 'free no ve deload');
+});
+
+test('🔒 v433 · a quien lleva 2 meses entrenando NO se le sugiere una descarga', () => {
+  // Las dos descargas tienen que hablar el mismo idioma: no puede la app decirle «pídele una
+  // semana suave a tu coach» mientras la herramienta del coach se niega a proponérsela.
+  const novata = { level: 'Intermedio', days: 2 }; // sin startDate → antigüedad = 1ª sesión (~3 sem)
+  const r = coachInsight(novata, ci4weeks, {}, CI_NOW, { isFree: false });
+  assert.ok(!r || r.type !== 'deload', 'sin los meses detrás no se habla de descarga');
+  assert.strictEqual(r.type, 'racha', 'lo que sí merece es que le celebren la constancia');
 });
 
 test('coachInsight "agua": ≥3 días registrados y casi nunca cumple → dispara; 2 días → NO (anti-regaño)', () => {
@@ -4591,7 +4634,7 @@ test('coachInsight récord legacy: PR con solo kg (sin val) → msg con el núme
 test('coachInsight prioridad v353: deload > record; peso > agua', () => {
   const c = { level: 'Intermedio', days: 2 };
   const pr = { k: { val: 100, unit: 'kg', name: 'X', date: new Date(CI_NOW - 3600000).toISOString() } };
-  assert.strictEqual(coachInsight(c, ci4weeks, pr, CI_NOW, { isFree: false }).type, 'deload', 'deload gana a record');
+  assert.strictEqual(coachInsight(ciVeterana, ci4weeksLargo, pr, CI_NOW, { isFree: false }).type, 'deload', 'deload gana a record');
   const w = {}; [1, 2, 3, 4].forEach(o => w[ciWaterKey(o)] = 2);
   const cp = { level: 'Intermedio', days: 3, goal: 'perder grasa', habits: { water: w } };
   const bw = [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: 80 }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: 79 }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: 78.5 }];
@@ -4611,7 +4654,9 @@ test('coachPulse: mezcla de señales → orden por tipo luego nombre, tope 5, su
     { id: 'f', name: 'Eva', days: 2, suspended: true }, // excluida
   ];
   const prs = { a: ciRecentPr('Press'), b: ciRecentPr('Sentadilla') };
-  const stall = [62, 62, 61, 60, 62, 62].map((kg, i) => ciDay(i, [ciEx('Press', kg)]));
+  // 'Beto' es Intermedio (el default del fixture no lo es → se lo damos) con un estancamiento real.
+  clients[2].level = 'Intermedio';
+  const stall = stHist([{ name: 'Press', muscle: 'pecho', kgs: KG_MESETA }]);
   const wk4 = [0, 2, 7, 9, 14, 16, 21, 23].map(o => ciDay(o, [ciBW('A')]));
   const wk3 = [0, 2, 7, 9, 14, 16].map(o => ciDay(o, [ciBW('A')]));
   const history = { c: stall, d: wk4, e: wk3, f: wk4 };
@@ -4646,6 +4691,108 @@ test('coachPulse: sin datos → []; determinista (mismos args → mismo resultad
 });
 
 // ══════════════════════════════════════════════════════
+section('Detector de estancamiento (perfIndex / stallReport, v433)');
+// Los números de estos tests salen de la MEDICIÓN sobre los datos reales del gimnasio
+// (2026-08-04, docs/plan-estancamiento-descarga.md §1): el detector viejo marcaba 41 ejercicios en
+// 6 personas y disparaba 4 semanas de descarga.
+
+test('perfIndex: las REPETICIONES cuentan, y con más de 15 no se calla', () => {
+  assert.ok(perfIndex(80, 15) > perfIndex(80, 10), 'mismo peso y más reps = más rendimiento');
+  assert.ok(perfIndex(90, 8) > perfIndex(80, 8), 'mismas reps y más peso = más rendimiento');
+  // Es un ÍNDICE para comparar a alguien consigo mismo, no una estimación de 1RM: la fórmula es
+  // la misma para todo el rango (sin el caso especial de 1 repetición de estimate1RM).
+  assert.strictEqual(perfIndex(60, 1), 60 * (1 + 1 / 30));
+  // El motivo de no reusar estimate1RM: devuelve null con reps>15, justo cuando alguien progresa
+  // subiendo repeticiones (que es como progresa una principiante).
+  assert.strictEqual(estimate1RM(80, 18), null, 'estimate1RM se calla (control)');
+  assert.ok(perfIndex(80, 18) > 0, 'perfIndex no');
+  // Tope: 30 repeticiones de calentamiento no pueden leerse como un récord.
+  assert.strictEqual(perfIndex(50, 30), perfIndex(50, PERF_CLAMP_REPS), 'las reps se topan en ' + PERF_CLAMP_REPS);
+  assert.strictEqual(perfIndex(0, 10), null);
+  assert.strictEqual(perfIndex(50, 0), null);
+  assert.strictEqual(perfIndex('', ''), null);
+});
+
+test('🔴 v433 · CONSOLIDAR UN RÉCORD NO ES ESTANCARSE (caso Astrid, medido en producción)', () => {
+  // Subió el hip thrust 90 → 100 kg y lo afianzó a 4×12. El detector viejo la marcaba porque su
+  // récord caía DENTRO de la ventana `prior` (los últimos 4 puntos no lo superaban) — castigaba
+  // terminar bien una progresión. Con ella la app disparó una SEMANA DE DESCARGA.
+  const kgs = [90, 90, 70, 90, 90, 70, 90, 90, 90, 100, 100, 100, 100, 100]; // sus 14 sesiones reales
+  const h = stHistAt([{ name: 'Hip Thrust con Barra', muscle: 'gluteo', kgs }],
+    kgs.map((_, i) => 66 - i * 5)); // ~10 semanas de datos, una sesión cada 5 días
+  const c = { level: 'Intermedio', days: 3 };
+  const it = stallReport(c, h, CI_NOW).items.find(x => x.name === 'Hip Thrust con Barra');
+  assert.ok(it, 'el ejercicio SÍ se evalúa (si no, este test no prueba nada)');
+  assert.strictEqual(it.stalled, false, 'consolidar 100 kg no es una meseta');
+  assert.ok(it.delta > 0.05, 'lee la mejora real, no un empate: ' + Math.round(it.delta * 100) + '%');
+});
+
+test('🔴 v433 · SUBIR REPETICIONES CON EL MISMO PESO NO ES ESTANCARSE (caso Nataly)', () => {
+  // 80 kg fijos en el hip thrust, pero de 10 a 19 repeticiones por serie. El detector viejo solo
+  // miraba `maxKg` → «se estancó». El índice de rendimiento ve el progreso que hay.
+  const reps = [10, 12, 13, 14, 16, 17, 18, 19, 19, 19];
+  const h = reps.map((r, i) => ({
+    date: new Date(CI_NOW - (66 - i * 6) * 86400000).toISOString(),
+    exercises: [{ name: 'Hip Thrust con Barra', muscle: 'gluteo', track: 'peso_reps', sets: [{ done: true, kg: '80', reps: String(r) }] }],
+  })).reverse();
+  const it = stallReport({ level: 'Intermedio', days: 3 }, h, CI_NOW).items.find(x => x.name === 'Hip Thrust con Barra');
+  assert.ok(it, 'se evalúa');
+  assert.strictEqual(it.stalled, false, 'de 10 a 19 repeticiones es progreso, no meseta');
+});
+
+test('🔴 v433 · UN ESTANCAMIENTO REAL SÍ SE DETECTA (caso Astrid, remo con barra)', () => {
+  // El control que impide que el arreglo convierta el detector en un mudo: 10 kg × 12 repeticiones
+  // quieto dos meses es una meseta de verdad, y su coach no la había visto.
+  const h = Array.from({ length: 12 }, (_, i) => ({
+    date: new Date(CI_NOW - (66 - i * 6) * 86400000).toISOString(),
+    exercises: [{ name: 'Remo con Barra', muscle: 'espalda', track: 'peso_reps', sets: [{ done: true, kg: '10', reps: '12' }] }],
+  })).reverse();
+  const it = stallReport({ level: 'Intermedio', days: 3 }, h, CI_NOW).items.find(x => x.name === 'Remo con Barra');
+  assert.ok(it && it.stalled, 'esto SÍ es un estancamiento y tiene que salir');
+});
+
+test('🔒 v433 · una PRINCIPIANTE en adaptación no se estanca nunca (caso Luz)', () => {
+  // Llevaba 5 semanas y la app le decía que se había estancado en el curl femoral.
+  const h = Array.from({ length: 12 }, (_, i) => ({
+    date: new Date(CI_NOW - (34 - i * 3) * 86400000).toISOString(),
+    exercises: [{ name: 'Curl Femoral Tumbado', muscle: 'piernas', track: 'peso_reps', sets: [{ done: true, kg: '5', reps: '15' }] }],
+  })).reverse();
+  assert.strictEqual(stallGateReason({ level: 'Principiante', days: 4 }, h, CI_NOW), 'principiante en adaptación');
+  assert.deepStrictEqual(stalledExercises({ level: 'Principiante', days: 4 }, h, CI_NOW), []);
+  // Y la compuerta es por ANTIGÜEDAD, no por la etiqueta: con 6 meses de `startDate` ya no la
+  // frena el ser principiante (la frena el otro piso, el de semanas de datos en la app).
+  const veterana = { level: 'Principiante', days: 4, startDate: new Date(CI_NOW - 180 * 86400000).toISOString() };
+  assert.strictEqual(stallGateReason(veterana, h, CI_NOW), 'pocas semanas de datos',
+    'ya no la para el ser principiante, sino la falta de historial');
+});
+
+test('🔒 v433 · con menos de 8 semanas de datos no se opina', () => {
+  const h = Array.from({ length: 10 }, (_, i) => ({
+    date: new Date(CI_NOW - (40 - i * 4) * 86400000).toISOString(),
+    exercises: [{ name: 'Press', muscle: 'pecho', track: 'peso_reps', sets: [{ done: true, kg: '40', reps: '10' }] }],
+  })).reverse();
+  assert.strictEqual(stallGateReason({ level: 'Intermedio' }, h, CI_NOW), 'pocas semanas de datos');
+});
+
+test('🔒 v433 · la ventana es ELÁSTICA: un ejercicio de 1 vez por semana también se evalúa', () => {
+  // Trampa que casi entra: con «6 puntos en 5 semanas» FIJOS, un ejercicio que solo sale una vez
+  // por semana nunca junta 6 puntos y queda invisible PARA SIEMPRE. Medido, 31 de los 41 casos se
+  // «salvaban» por ahí y no por haber mejorado: eso no es un detector más listo, es uno mudo.
+  // Cada 9 días: dentro de 5 semanas fijas solo caben 4 sesiones, así que con la ventana fija este
+  // ejercicio NUNCA se evaluaría. La elástica la estira hasta juntar los 6 puntos.
+  const h = Array.from({ length: 10 }, (_, i) => ({
+    date: new Date(CI_NOW - (81 - i * 9) * 86400000).toISOString(),
+    exercises: [{ name: 'Sentadilla', muscle: 'piernas', track: 'peso_reps', sets: [{ done: true, kg: i < 3 ? '60' : '58', reps: '8' }] }],
+  })).reverse();
+  const enCincoSemanas = h.filter(s => new Date(s.date).getTime() >= CI_NOW - 35 * 86400000).length;
+  assert.ok(enCincoSemanas < 6, 'control: en 5 semanas fijas solo hay ' + enCincoSemanas + ' sesiones');
+  const it = stallReport({ level: 'Intermedio', days: 3 }, h, CI_NOW).items.find(x => x.name === 'Sentadilla');
+  assert.ok(it, 'se evalúa igual: la ventana se estira, el ejercicio no queda invisible');
+  assert.ok(it.weeks > 5, 'la ventana se estiró para juntar 6 puntos: ' + it.weeks.toFixed(1) + ' semanas');
+  assert.strictEqual(it.stalled, true);
+});
+
+// ══════════════════════════════════════════════════════
 section('Plan de choque contra estancamientos (shockPlan / applyShockOption, v354)');
 
 // Una sesión con un ejercicio de carga que SÍ trae músculo (shockPlan busca variantes por músculo).
@@ -4653,14 +4800,11 @@ const spSess = (offsetDays, name, muscle, kg) => ({
   date: new Date(CI_NOW - offsetDays * 86400000).toISOString(),
   exercises: [{ name, muscle, track: 'peso_reps', sets: [{ done: true, kg: String(kg), reps: '8' }] }],
 });
-// Historial ESTANCADO en "Jalón al Pecho": cronológico 60,62,61,60,61,61 → máx previo 62 (2º punto),
-// y los últimos 4 (61,60,61,61) no lo superan. bestKg=62, 4 sesiones planas desde el récord.
-// El historial de la app va nuevo→viejo, por eso el reverse().
-const spStalled = [60, 62, 61, 60, 61, 61]
-  .map((kg, i) => spSess((5 - i) * 3, 'Jalón al Pecho', 'espalda', kg)).reverse();
-// Historial que PROGRESA (el último punto supera el máx previo) → no hay meseta.
-const spProgress = [60, 61, 62, 63, 64, 65]
-  .map((kg, i) => spSess((5 - i) * 3, 'Jalón al Pecho', 'espalda', kg)).reverse();
+// Historial ESTANCADO en "Jalón al Pecho", evaluable por el detector v433: techo de 62 kg en la
+// zona de referencia (2ª sesión de 20) y todo lo demás por debajo. bestKg=62, 18 sesiones planas.
+const spStalled = stHist([{ name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_PLANO }]);
+// Historial que PROGRESA (la ventana supera el techo previo) → no hay meseta.
+const spProgress = stHist([{ name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_SUBE }]);
 // Catálogo de prueba. Orden deliberado: "Remo con Barra" (P) es la 1ª candidata de espalda…
 // …pero la excluye una limitación lumbar (GEN_ZONE_EXCL.lumbar) → cae en "Dominada" (I).
 const spLib = [
@@ -4685,7 +4829,7 @@ test('shockPlan: con estancamiento → análisis con el kg plantado y las sesion
   assert.strictEqual(p.ex.name, 'Jalón al Pecho');
   assert.strictEqual(p.ex.muscle, 'espalda');
   assert.strictEqual(p.analysis.bestKg, 62, 'el mejor kg es el techo real, no el último');
-  assert.strictEqual(p.analysis.flatPoints, 4, 'sesiones desde el récord sin superarlo');
+  assert.strictEqual(p.analysis.flatPoints, ST_N - 2, 'sesiones desde el récord (2ª de 20) sin superarlo');
   assert.ok(p.analysis.sinceStr, 'trae la fecha del récord para el coach');
 });
 
@@ -4830,35 +4974,20 @@ test('applyShockOption: entradas raras no lanzan ni pierden datos', () => {
   assert.strictEqual(out[0].exercises[0].name, 'Jalón al Pecho', 'un swap a un id inexistente no borra el ejercicio');
 });
 
-// ── shockTargets (v355, Fase 4.1: múltiples estancamientos) ──
-// Construye un historial (nuevo→viejo, como en la app) de 6 sesiones donde cada ejercicio dado
-// sigue su propio patrón de kg. exs = [{name, muscle, kgs:[6 valores cronológicos]}].
-const stHist = (exs, spacingDays = 3) => {
-  const N = 6;
-  const out = [];
-  for (let i = 0; i < N; i++) { // i=0 = la más vieja
-    out.push({
-      date: new Date(CI_NOW - (N - 1 - i) * spacingDays * 86400000).toISOString(),
-      exercises: exs.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
-    });
-  }
-  return out.reverse();
-};
+// ── shockTargets (v355, Fase 4.1: múltiples estancamientos · disparo v433) ──
 // Cliente de prueba para el gate de constancia (planDays = client.days = 3 sin rutinas con día).
-const stClient = { level: 'Intermedio', days: 3 };
-// Patrones que ESTANCAN (techo en los 2 primeros puntos, últimos 4 no lo superan). El techo más
-// temprano = MÁS puntos planos: idx0 → flatPoints 5, idx1 → flatPoints 4.
-const KG_FLAT5 = [62, 60, 60, 60, 60, 60]; // techo 62 en idx0 → flatPoints 5
-const KG_FLAT4 = [60, 62, 60, 60, 60, 60]; // techo 62 en idx1 → flatPoints 4
+// `startDate` de hace 200 días: pasa el piso de antigüedad de la DESCARGA (180). Sin él, los
+// casos de descarga no se pueden probar — y ese piso es justo lo que hoy la apaga en el gimnasio.
+const stClient = { level: 'Intermedio', days: 3, startDate: new Date(CI_NOW - 200 * 86400000).toISOString() };
 
 test('shockTargets: 0 estancados → null', () => {
-  assert.strictEqual(shockTargets(spProgress), null, 'un ejercicio que progresa no dispara nada');
-  assert.strictEqual(shockTargets([]), null, 'sin historial');
+  assert.strictEqual(shockTargets(spProgress, stClient, CI_NOW), null, 'un ejercicio que progresa no dispara nada');
+  assert.strictEqual(shockTargets([], stClient, CI_NOW), null, 'sin historial');
   assert.strictEqual(shockTargets(), null, 'sin argumentos no lanza');
 });
 
 test('shockTargets: 1 estancado → multi con 1 target sin also', () => {
-  const r = shockTargets(stHist([{ name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 }]));
+  const r = shockTargets(stHist([{ name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA }]), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'multi');
   assert.strictEqual(r.targets.length, 1);
   assert.strictEqual(r.targets[0].name, 'Jalón al Pecho');
@@ -4866,13 +4995,13 @@ test('shockTargets: 1 estancado → multi con 1 target sin also', () => {
   assert.deepStrictEqual(r.targets[0].also, [], 'un solo estancado no tiene hermanos');
 });
 
-test('shockTargets: 2 del MISMO músculo → 1 target, gana el de MÁS puntos planos, el otro va en also', () => {
-  // 'Jalón' va primero y alfabéticamente antes que 'Remo', PERO 'Remo' está más clavado (flat5) →
-  // debe ganar por flatPoints, aislado del orden de inserción Y del desempate por nombre.
+test('shockTargets: 2 del MISMO músculo → 1 target, gana el que MÁS cayó, el otro va en also', () => {
+  // 'Jalón' va primero y alfabéticamente antes que 'Remo', PERO 'Remo' viene CAYENDO mientras el
+  // jalón solo está en meseta → debe ganar el que más cayó, aislado del orden y del nombre.
   const r = shockTargets(stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT4 }, // flatPoints 4
-    { name: 'Remo con Barra', muscle: 'espalda', kgs: KG_FLAT5 }, // flatPoints 5 (más clavado)
-  ]));
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA }, // meseta (delta 0)
+    { name: 'Remo con Barra', muscle: 'espalda', kgs: KG_CAIDA },  // en caída (más clavado)
+  ]), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'multi');
   assert.strictEqual(r.targets.length, 1, 'mismo músculo = un solo problema → una sección');
   assert.strictEqual(r.targets[0].name, 'Remo con Barra', 'ataca primero el más plantado, no el 1º ni el alfabético');
@@ -4881,42 +5010,80 @@ test('shockTargets: 2 del MISMO músculo → 1 target, gana el de MÁS puntos pl
 
 test('shockTargets: 2 músculos DISTINTOS → 2 targets (recuperación independiente → en paralelo)', () => {
   const r = shockTargets(stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
-  ]));
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+  ]), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'multi');
   assert.strictEqual(r.targets.length, 2);
   assert.deepStrictEqual(r.targets.map(t => t.muscle).sort(), ['espalda', 'pecho']);
   r.targets.forEach(t => assert.deepStrictEqual(t.also, [], 'cada músculo tiene un solo estancado'));
 });
 
-test('shockTargets: 3 estancados (aunque sean de 3 músculos distintos) → global con los nombres', () => {
+test('shockTargets: 3 EN REGRESIÓN (aunque sean de 3 músculos distintos) → global con los nombres', () => {
   const r = shockTargets(stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
-    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_FLAT4 },
-  ]));
-  assert.strictEqual(r.mode, 'global', '3+ a la vez = fatiga sistémica, no N planes');
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_CAIDA },
+  ], 3, 2), stClient, CI_NOW);
+  assert.strictEqual(r.mode, 'global', '3+ CAYENDO a la vez = fatiga sistémica, no N planes');
   assert.strictEqual(r.count, 3);
   assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
 });
 
-// ── Gate de constancia (v356): 3+ estancados → descarga SOLO si viene entrenando parejo ──
+test('🔒 v433 · 3 en MESETA (sin caída) NO son una descarga — es el caso de Astrid', () => {
+  // El disparo viejo contaba ejercicios PLANTADOS: un conteo absoluto que ignora cuántos van
+  // subiendo. Medido en producción, Astrid tenía 3 planos y 7 MEJORANDO y la app le mandaba una
+  // semana de descarga. Meseta ≠ fatiga sistémica: eso pide regresión real (criterio de Andrés).
+  const meseta3 = [
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_MESETA },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_MESETA },
+  ];
+  const r = shockTargets(stHist(meseta3), stClient, CI_NOW);
+  assert.strictEqual(stalledExercises(stClient, stHist(meseta3), CI_NOW).length, 3, 'los 3 SÍ están estancados (control)');
+  assert.strictEqual(r.mode, 'multi', 'planes por ejercicio, NO una descarga');
+  assert.ok(r.targets.length <= 2, 'la tarjeta atiende lo peor primero, no lista todo: ' + r.targets.length);
+});
+
+// ── Gate de constancia (v356): 3+ en regresión → descarga SOLO si viene entrenando parejo ──
 const stall3 = [
-  { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-  { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
-  { name: 'Sentadilla', muscle: 'pierna', kgs: KG_FLAT4 },
+  { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+  { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+  { name: 'Sentadilla', muscle: 'pierna', kgs: KG_CAIDA },
 ];
 
-test('shockTargets: 3+ estancados ENTRENANDO PAREJO (cadencia alta) → global (descarga)', () => {
-  // 6 sesiones cada 3 días = ~2.8 días/sem sobre su lapso → constante (bar planDays*0.7 = 2.1).
-  const r = shockTargets(stHist(stall3, 3), stClient, CI_NOW);
+test('shockTargets: 3+ en regresión ENTRENANDO PAREJO (cadencia alta) → global (descarga)', () => {
+  // Sesiones cada 3 días = ~2.5 días/sem en la ventana de constancia → constante (bar 3*0.8 = 2.4).
+  const r = shockTargets(stHist(stall3, 3, 2), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'global', 'fatiga real → semana de descarga');
   assert.strictEqual(r.count, 3);
 });
 
-test('🔒 shockTargets: 3+ estancados pero A SALTOS (cadencia baja) → rebuild, NO descarga', () => {
-  // Mismos 3 estancados, pero 1 sesión cada 8 días → ~1.2 días/sem → por debajo del bar → rebuild.
+test('🔒 v433 · los PISOS de la descarga: sin meses de entreno detrás, no se propone', () => {
+  // Decisión del PO (2026-08-04) con el criterio de Andrés: 180 días entrenando + 10 semanas de
+  // datos. Medido, hoy NADIE del gimnasio los cumple → la descarga automática queda apagada hasta
+  // ~noviembre, y el coach la sigue generando a mano cuando quiera.
+  const h = stHist(stall3, 3, 2);
+  assert.strictEqual(shockTargets(h, stClient, CI_NOW).mode, 'global', 'con los pisos cumplidos SÍ (control)');
+  const novato = { level: 'Intermedio', days: 3 }; // sin startDate → antigüedad = 1ª sesión (~10 sem)
+  assert.strictEqual(deloadFloorReason(novato, h, CI_NOW), 'lleva poco entrenando');
+  assert.strictEqual(shockTargets(h, novato, CI_NOW).mode, 'multi', 'sin los meses detrás: planes por ejercicio, no descarga');
+});
+
+test('🔒 v433 · DOLOR RECIENTE = PARADA de la descarga (Laura, vinculante)', () => {
+  // `shockTargets` era CIEGA AL DOLOR mientras `shockPlan` sí lo miraba — al revés de como debía
+  // ser, porque esta es la que reescribe la rutina entera.
+  const h = stHist(stall3, 3, 2);
+  const conDolor = { ...stClient, painCare: [{ area: 'zona lumbar', at: new Date(CI_NOW - 2 * 86400000).toISOString() }] };
+  assert.strictEqual(deloadFloorReason(conDolor, h, CI_NOW), 'dolor reciente');
+  assert.strictEqual(shockTargets(h, conDolor, CI_NOW).mode, 'multi', 'con dolor activo NUNCA se rehace la semana');
+  // Un dolor ya descartado («ya estoy bien») no bloquea.
+  const ok = { ...stClient, painCare: [{ area: 'zona lumbar', at: new Date(CI_NOW - 2 * 86400000).toISOString(), cleared: true }] };
+  assert.strictEqual(shockTargets(h, ok, CI_NOW).mode, 'global');
+});
+
+test('🔒 shockTargets: 3+ en regresión pero A SALTOS (cadencia baja) → rebuild, NO descarga', () => {
+  // Mismos 3, pero 1 sesión cada 8 días → ~1.2 días/sem → por debajo del bar → rebuild.
   const r = shockTargets(stHist(stall3, 8), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'rebuild', 'se estancó por faltas: recuperar ritmo, no bajar volumen');
   assert.strictEqual(r.count, 3);
@@ -4925,47 +5092,37 @@ test('🔒 shockTargets: 3+ estancados pero A SALTOS (cadencia baja) → rebuild
   assert.strictEqual(r.plan, 3, 'reporta el plan (días/sem) para mostrar la evidencia en la tarjeta');
 });
 
-test('shockTargets: sin `now` (contrato base) → asume global aunque haya sido a saltos', () => {
-  // La UI SIEMPRE pasa now; sin él no se puede evaluar constancia → comportamiento base agnóstico.
-  assert.strictEqual(shockTargets(stHist(stall3, 8)).mode, 'global');
-  assert.strictEqual(shockTargets(stHist(stall3, 8), stClient).mode, 'global', 'sin now tampoco evalúa');
+test('🔒 v433 · sin `client`/`now` NO se evalúa a nadie (mejor callar que inventar)', () => {
+  // Cambió el contrato base: el detector necesita el NIVEL y la ANTIGÜEDAD para sus compuertas.
+  // Sin ellos no puede saber si es una principiante en adaptación → no dice nada, en vez de
+  // asumir «global» como hacía antes (que era la conclusión más agresiva posible sin datos).
+  assert.strictEqual(shockTargets(stHist(stall3, 8)), null, 'sin perfil: silencio');
+  assert.strictEqual(stallGateReason(null, stHist(stall3, 8), CI_NOW), 'sin perfil');
+  assert.deepStrictEqual(stallReport(null, stHist(stall3, 8), CI_NOW).items, [], 'ni un solo ejercicio evaluado');
 });
 
 test('🔒 shockTargets: PARÓN RECIENTE (entrenó DENSO pero paró hace 3 semanas) → rebuild, no descarga', () => {
-  // Bloque denso (cada 2 días) que TERMINÓ hace 21 días → la cadencia medida HASTA now queda baja
-  // aunque en su momento entrenara parejo. Blinda que _recentCadence use el span hasta `now` y no el
-  // que hay entre 1ª y última sesión (eso daría cadencia alta = descarga FALSA a un retornante).
-  const paron = [];
-  for (let i = 0; i < 6; i++) { // i=5 = la más reciente (a 21 días); i=0 = a 31 días
-    paron.push({
-      date: new Date(CI_NOW - (21 + (5 - i) * 2) * 86400000).toISOString(),
-      exercises: stall3.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[i]), reps: '8' }] })),
-    });
-  }
-  paron.reverse(); // nuevo→viejo como la app
+  // Bloque denso que TERMINÓ hace 21 días → la cadencia medida HASTA now queda baja aunque en su
+  // momento entrenara parejo. Blinda que _recentCadence use el span hasta `now` y no el que hay
+  // entre 1ª y última sesión (eso daría cadencia alta = descarga FALSA a un retornante).
+  const paron = stHist(stall3, 3, 21);
   assert.strictEqual(shockTargets(paron, stClient, CI_NOW).mode, 'rebuild', 'un parón reciente NO es fatiga: recuperar ritmo');
 });
 
 test('🔒 shockTargets: RETORNANTE (faltó semanas y vuelve DENSO su 1ª semana) → rebuild, no descarga', () => {
-  // Meseta vieja (>4 semanas atrás, fuera de la ventana) + esta semana entrenando fuerte. Sin el
-  // candado «no cuenta la 1ª semana», la semana densa infla la cadencia (span≈1) y clasificaría
-  // GLOBAL (descarga) por error a alguien que apenas volvió. Debe caer en rebuild.
-  const offsets = [41, 38, 35, 5, 3, 1]; // nuevo→viejo se arma con reverse; 3 viejos + 3 de esta semana
-  const ret = offsets.map((off, k) => ({
-    date: new Date(CI_NOW - off * 86400000).toISOString(),
-    // kgs por orden CRONOLÓGICO (viejo→nuevo): mapear el índice cronológico i=5-k... construimos
-    // directo: como offsets va de más viejo (41) a más nuevo (1), k es ya el índice cronológico.
-    exercises: stall3.map(e => ({ name: e.name, muscle: e.muscle, track: 'peso_reps', sets: [{ done: true, kg: String(e.kgs[k]), reps: '8' }] })),
-  }));
-  // ret está de viejo→nuevo (offset 41 primero); la app va nuevo→viejo → reverse.
-  assert.strictEqual(shockTargets(ret.slice().reverse(), stClient, CI_NOW).mode, 'rebuild', 'un retornante NO recibe descarga por su 1ª semana');
+  // Historial viejo (fuera de la ventana de constancia) + esta semana entrenando fuerte. Sin el
+  // candado «no cuenta la 1ª semana», la semana densa infla la cadencia y clasificaría GLOBAL
+  // (descarga) por error a alguien que apenas volvió. Debe caer en rebuild.
+  const viejas = Array.from({ length: ST_N - 3 }, (_, k) => 35 + (ST_N - 4 - k) * 3); // 98…35 días atrás
+  const ret = stHistAt(stall3, viejas.concat([5, 3, 1]));
+  assert.strictEqual(shockTargets(ret, stClient, CI_NOW).mode, 'rebuild', 'un retornante NO recibe descarga por su 1ª semana');
 });
 
 test('shockTargets: el gate de constancia NO afecta al modo multi (1-2 estancados)', () => {
-  // Con <3 estancados, entrenar a saltos NO cambia nada: los planes por-ejercicio siguen válidos.
+  // Con <3 en regresión, entrenar a saltos NO cambia nada: los planes por-ejercicio siguen válidos.
   const r = shockTargets(stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_MESETA },
   ], 8), stClient, CI_NOW);
   assert.strictEqual(r.mode, 'multi');
   assert.strictEqual(r.targets.length, 2);
@@ -4973,18 +5130,18 @@ test('shockTargets: el gate de constancia NO afecta al modo multi (1-2 estancado
 
 test('shockTargets: determinista — mismo historial, mismo resultado', () => {
   const h = stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_PLANO },
   ]);
-  assert.strictEqual(JSON.stringify(shockTargets(h)), JSON.stringify(shockTargets(h)));
+  assert.strictEqual(JSON.stringify(shockTargets(h, stClient, CI_NOW)), JSON.stringify(shockTargets(h, stClient, CI_NOW)));
 });
 
 test('shockTargets: shockPlan de cada target sigue funcionando (la firma no se tocó)', () => {
   const h = stHist([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: KG_FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_PLANO },
   ]);
-  const r = shockTargets(h);
+  const r = shockTargets(h, spClient, CI_NOW);
   r.targets.forEach(t => {
     const p = shockPlan(spClient, t.name, h, spLib, CI_NOW);
     assert.ok(p && p.options.length, t.name + ': cada target sigue produciendo su plan de choque');

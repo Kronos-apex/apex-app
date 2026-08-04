@@ -920,7 +920,7 @@ function notifyCoachMood(client){
 // Lee el insight priorizado de avi-core.coachInsight (motor de REGLAS puro) y lo pinta como una
 // tarjeta ligera. "Entendido" silencia ese tipo por unos días — localStorage por asesorado+tipo,
 // LOCAL a propósito (no sincroniza: es preferencia efímera de UI, no dato del asesorado).
-const _INSIGHT_MUTE_DAYS={inactivo:2,record:2,racha:3,estancado:7,adaptacion:5,deload:21,peso:5,agua:3};
+const _INSIGHT_MUTE_DAYS={inactivo:2,record:2,racha:3,adaptacion:5,deload:21,peso:5,agua:3};
 function _coachMuteKey(cid,type){return 'coachmute_'+cid+'_'+type;}
 function _coachMuteMap(cid){
   const m={};
@@ -944,7 +944,7 @@ function renderCoachCard(client){
   const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:isFreeClient(client),muted:_coachMuteMap(cid),bw:_bw,waterGoal:_wg});
   if(!ins){el.innerHTML='';return;} // sin señal (o todas silenciadas) → la tarjeta desaparece sola
   const ic=typeof aviIcon==='function'?aviIcon(ins.icon,20):'';
-  // El cta solo llega en insights premium (estancado); premium sí tiene chat → coherente.
+  // El cta solo llega en insights premium (deload); premium sí tiene chat → coherente.
   const ctaBtn=(ins.cta&&ins.cta.action==='msgs')
     ?`<button class="btn bp bsm" onclick="cnTab('cn-messages',document.getElementById('tab-msgs'))" style="flex:1;min-height:36px">${esc(ins.cta.label)}</button>`
     :'';

@@ -3780,8 +3780,6 @@ function computeExerciseProgress(history) {
 const INSIGHT_INACTIVE_DAYS = 4;   // días sin entrenar → "te extrañamos"
 const INSIGHT_RECORD_HOURS = 48;   // ventana de un PR "reciente"
 const INSIGHT_STREAK_WEEKS = 2;    // semanas de plan cumplidas → celebrar racha
-const INSIGHT_STALL_POINTS = 6;    // mínimo de puntos de un ejercicio para evaluar estancamiento
-const INSIGHT_STALL_RECENT = 4;    // últimos N puntos que NO superan el máx previo → estancado
 const INSIGHT_DELOAD_WEEKS = 4;      // semanas de plan a tope → sugerir descarga (premium, v353)
 const INSIGHT_WATER_MIN_LOGGED = 3;  // días con agua registrada para evaluar el hábito (v353)
 const INSIGHT_WATER_MET_MAX = 1;     // si cumplió la meta en ≤1 de esos días → anduvo flojo
@@ -3803,21 +3801,131 @@ function _insRecordOf(prs, nowTs) {
   });
   return best;
 }
-// _isStalledEx: ¿una entrada de progreso (computeExerciseProgress) está estancada? kg, ≥6 puntos,
-// y el máx de los últimos 4 no supera el máx de los anteriores. Predicado compartido.
-function _isStalledEx(e) {
-  if (!e || e.unit !== 'kg' || e.points.length < INSIGHT_STALL_POINTS) return false;
-  const n = e.points.length;
-  const prior = e.points.slice(0, n - INSIGHT_STALL_RECENT);
-  const recent = e.points.slice(n - INSIGHT_STALL_RECENT);
-  if (!prior.length) return false;
-  const priorMax = Math.max.apply(null, prior.map(p => p.maxKg));
-  const recentMax = Math.max.apply(null, recent.map(p => p.maxKg));
-  return recentMax <= priorMax;
+// ══════════════════════════════════════════════════════════════════════
+// DETECTOR DE ESTANCAMIENTO (v433) — ver docs/plan-estancamiento-descarga.md
+// ──────────────────────────────────────────────────────────────────────
+// El detector viejo miraba SOLO `p.maxKg`, con una ventana de 4 PUNTOS y `recent <= prior`.
+// Consecuencias medidas sobre los datos reales (2026-08-04): marcaba 41 ejercicios en 6 personas
+// y disparaba 4 semanas de descarga. **Castigaba terminar bien una progresión**: Astrid subió el
+// hip thrust 90→100 kg y lo consolidó, su récord quedó DENTRO de la ventana `prior` y la app le
+// dijo «se estancó»; Nataly subió de 40 a 57 repeticiones con 80 kg fijos y también.
+// Lo nuevo, con los criterios de Andrés Hyp:
+//   · índice de rendimiento = Epley con TOPE de 20 reps (las repeticiones cuentan)
+//   · ventana ELÁSTICA: dura ≥5-6 semanas Y contiene ≥6 puntos, lo que resulte más largo
+//   · la referencia es lo de ANTES de la ventana (un récord reciente ya no condena)
+//   · compuertas: principiante <12 semanas entrenando JAMÁS; <8 semanas de datos no se evalúa
+const PERF_CLAMP_REPS = 20;          // tope de reps del índice: 30 reps de calentamiento no son un récord
+const STALL_WIN_WEEKS = 5;           // ventana mínima; el principiante lleva una más (abajo)
+const STALL_WIN_WEEKS_BEGINNER = 6;
+const STALL_MIN_POINTS = 6;          // sesiones del ejercicio DENTRO de la ventana (Andrés)
+const STALL_MIN_BEFORE = 1;          // puntos ANTES de la ventana que hacen de referencia
+const STALL_MIN_DATA_WEEKS = 8;      // semanas de historial en AVI para siquiera evaluar
+const STALL_BEGINNER_MIN_WEEKS = 12; // principiante con menos que esto: nunca estancado
+const STALL_DELOAD_REGRESSION = 0.05; // caída del índice que cuenta como REGRESIÓN (no meseta)
+
+// perfIndex: índice de rendimiento de una serie. Epley (`kg·(1+reps/30)`) con las reps topadas.
+// ⚠️ NO se reusa `estimate1RM`: devuelve null con reps>15, justo el caso de quien progresa
+// subiendo repeticiones — que es como progresa una principiante (aviso de Andrés).
+function perfIndex(kg, reps) {
+  kg = parseFloat(kg); reps = parseInt(reps);
+  if (!(kg > 0) || !(reps >= 1)) return null;
+  return kg * (1 + Math.min(reps, PERF_CLAMP_REPS) / 30);
 }
-// _insStallOf: el PRIMER ejercicio de carga estancado del historial, o null.
-function _insStallOf(sessions) {
-  return computeExerciseProgress(sessions || []).find(_isStalledEx) || null;
+
+// exercisePerfSeries: una serie de puntos {t, day, perf, kg} por ejercicio de CARGA (peso_reps).
+// El punto de un día es el MEJOR índice de sus series hechas. Pura; recibe el historial tal como
+// se guarda (nuevo→viejo) y devuelve cada serie ordenada viejo→nuevo.
+function exercisePerfSeries(history) {
+  const map = {};
+  const sessions = (history || []).slice().reverse();
+  sessions.forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    if (isNaN(t)) return;
+    const day = new Date(t).setHours(0, 0, 0, 0);
+    (s.exercises || []).forEach(ex => {
+      if ((ex.track || 'peso_reps') !== 'peso_reps') return;
+      let best = null, bestKg = 0;
+      (ex.sets || []).forEach(st => {
+        if (!st || !st.done) return;
+        const v = perfIndex(st.kg, st.reps);
+        if (v != null && (best == null || v > best)) best = v;
+        const k = parseFloat(st.kg);
+        if (k > bestKg) bestKg = k;
+      });
+      if (best == null) return;
+      const m = (map[ex.name] = map[ex.name] || { name: ex.name, muscle: ex.muscle, icon: ex.icon || '💪', points: [] });
+      const prev = m.points.find(p => p.day === day);
+      if (prev) { prev.perf = Math.max(prev.perf, best); prev.kg = Math.max(prev.kg, bestKg); }
+      else m.points.push({ t, day, perf: best, kg: bestKg });
+    });
+  });
+  return Object.keys(map).map(k => map[k]);
+}
+
+// stallGateReason: por qué NO se puede evaluar a esta persona, o '' si sí se puede. Puro.
+function stallGateReason(client, sessions, now) {
+  // Sin perfil no se sabe el NIVEL, y sin nivel no se puede aplicar la compuerta que protege a la
+  // principiante en adaptación. Callar es la única respuesta segura: decirle «te estancaste» a
+  // quien lleva tres semanas entrenando es el daño que este detector existe para evitar.
+  if (!client) return 'sin perfil';
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const ts = (sessions || []).map(s => new Date(s && s.date).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
+  if (!ts.length) return 'sin sesiones';
+  // Antigüedad: startDate si la hay, si no la primera sesión. `raw == null` ANTES de new Date()
+  // (gotcha: new Date(null) es EPOCH, no Invalid Date).
+  const raw = client.startDate;
+  const sd = (raw == null || raw === '') ? NaN : new Date(raw).getTime();
+  const desde = isNaN(sd) ? ts[0] : sd;
+  const semEntrenando = (nowTs - desde) / (7 * 86400000);
+  const esPrincipiante = !/avanz|interm/i.test(client.level || '');
+  if (esPrincipiante && semEntrenando < STALL_BEGINNER_MIN_WEEKS) return 'principiante en adaptación';
+  if ((nowTs - ts[0]) / (7 * 86400000) < STALL_MIN_DATA_WEEKS) return 'pocas semanas de datos';
+  return '';
+}
+
+// stallReport(client, sessions, now) → PURA. El veredicto por ejercicio de carga:
+//   { evaluable:bool, reason:'', items:[{name,muscle,icon,stalled,delta,before,after,sessions,weeks}] }
+// `delta` = variación relativa del índice (negativa = regresión). `items` solo trae los ejercicios
+// que SE PUDIERON evaluar; el orden es determinista (el poll de 15 s del coach no debe saltar).
+function stallReport(client, sessions, now) {
+  const reason = stallGateReason(client, sessions, now);
+  if (reason) return { evaluable: false, reason, items: [] };
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const esPrincipiante = !/avanz|interm/i.test((client || {}).level || '');
+  const winMs = (esPrincipiante ? STALL_WIN_WEEKS_BEGINNER : STALL_WIN_WEEKS) * 7 * 86400000;
+  const items = [];
+  exercisePerfSeries(sessions).forEach(e => {
+    const pts = e.points.slice().sort((a, b) => a.t - b.t);
+    if (pts.length < STALL_MIN_POINTS + STALL_MIN_BEFORE) return;
+    // La ventana dura AL MENOS `winMs` y contiene AL MENOS STALL_MIN_POINTS puntos: se toma el
+    // corte más ANTIGUO de los dos. Con ventana fija de 5 semanas, un ejercicio que solo sale
+    // 1 vez por semana nunca junta 6 puntos y quedaría invisible para siempre (medido: 31 de 41
+    // se salvaban por ahí, no por haber mejorado).
+    const cut = Math.min(nowTs - winMs, pts[pts.length - STALL_MIN_POINTS].t);
+    const dentro = pts.filter(p => p.t >= cut);
+    const antes = pts.filter(p => p.t < cut);
+    if (antes.length < STALL_MIN_BEFORE) return;
+    const before = Math.max.apply(null, antes.map(p => p.perf));
+    const after = Math.max.apply(null, dentro.map(p => p.perf));
+    if (!(before > 0)) return;
+    items.push({
+      name: e.name, muscle: e.muscle || '', icon: e.icon,
+      stalled: after <= before, delta: after / before - 1,
+      before, after, sessions: dentro.length, weeks: (nowTs - cut) / (7 * 86400000),
+    });
+  });
+  items.sort((a, b) => (a.delta - b.delta) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { evaluable: true, reason: '', items };
+}
+
+// stalledExercises(client, sessions, now) → solo los estancados, el más plantado primero. Puro.
+function stalledExercises(client, sessions, now) {
+  return stallReport(client, sessions, now).items.filter(x => x.stalled);
+}
+// _insStallOf: el ejercicio de carga MÁS plantado, o null. Predicado compartido por el pulso del
+// coach y el plan de choque (la asesorada ya no recibe este aviso — decisión del PO 2026-08-04).
+function _insStallOf(sessions, client, now) {
+  return stalledExercises(client, sessions, now)[0] || null;
 }
 // _flatPointsOf: nº de sesiones desde el ÚLTIMO récord de kg de un ejercicio sin superarlo.
 // Extraído de shockPlan para que shockTargets ordene por "el más plantado" sin duplicar el cálculo.
@@ -3839,8 +3947,8 @@ function coachInsight(client, sessions, prs, now, opts) {
   const isFree = !!opts.isFree;
   const isMuted = type => muted[type] != null && nowTs < muted[type];
 
-  // Candidatos en ORDEN de prioridad (v353):
-  //   inactivo > deload > récord > racha > estancado > adaptación > peso > agua.
+  // Candidatos en ORDEN de prioridad (v353; el «estancado» salió en v433):
+  //   inactivo > deload > récord > racha > adaptación > peso > agua.
   // Se construyen todos y luego se devuelve el primero NO silenciado (así, si el de mayor
   // prioridad está en "Entendido", aparece el siguiente).
   const candidates = [];
@@ -3856,8 +3964,11 @@ function coachInsight(client, sessions, prs, now, opts) {
   }
 
   // 2) Descarga (deload) — SOLO premium. Muchas semanas seguidas a tope → recuperar para crecer.
+  // v433: pasa por los MISMOS pisos que la descarga del coach. Si no, la app le decía a alguien con
+  // dos meses entrenando «pídele una semana suave a tu coach» mientras la herramienta del coach se
+  // negaba a proponérsela — las dos descargas tienen que hablar el mismo idioma.
   const ws = weekStreak(sessions, planDays(client), nowTs);
-  if (!isFree && ws.weeks >= INSIGHT_DELOAD_WEEKS) {
+  if (!isFree && ws.weeks >= INSIGHT_DELOAD_WEEKS && !deloadFloorReason(client, sessions, nowTs)) {
     candidates.push({
       type: 'deload', icon: 'wind',
       title: 'Vas duro hace semanas',
@@ -3887,19 +3998,12 @@ function coachInsight(client, sessions, prs, now, opts) {
     });
   }
 
-  // 5) Estancamiento por ejercicio — SOLO premium (coherente con la analítica gateada).
-  //    kg, ≥6 puntos, y el máx de los últimos 4 no supera el máx de los anteriores.
-  if (!isFree) {
-    const stalled = _insStallOf(sessions);
-    if (stalled) {
-      candidates.push({
-        type: 'estancado', icon: 'flat',
-        title: stalled.name + ' se estancó un poquito',
-        msg: 'Llevas varias sesiones en la misma marca. Un cambio de reps o de técnica lo destraba — coméntalo con tu coach.',
-        cta: { label: 'Hablar con mi coach', action: 'msgs' },
-      });
-    }
-  }
+  // 5) ⛔ EL ESTANCAMIENTO YA NO SE LE MUESTRA A LA ASESORADA (v433, decisión del PO 2026-08-04).
+  //    Era la tarjeta «X se estancó un poquito» + «Hablar con mi coach». Valery pidió las dos cosas:
+  //    a ella NUNCA la palabra «estancada», y fuera ese CTA — le anuncia un problema que no puede
+  //    resolver sola y la manda a pedirle explicaciones a su coach. El detector NO se borra: el
+  //    aviso es ahora SOLO del coach (`coachPulse` + la tarjeta de choque de la ficha), y siempre
+  //    con la acción concreta. Ella se entera cuando él le escribe o le cambia la rutina.
 
   // 6) Fase de adaptación — con ≥1 sesión (sin sesiones el onboarding ya habla).
   if (sessions.length >= 1 && isInAdaptation(client, sessions, nowTs)) {
@@ -3983,7 +4087,7 @@ function coachPulse(clients, history, prs, now, opts) {
     if (rec) {
       item = { type: 'record', label: '🏆 Rompió récord en ' + (rec.name || 'un ejercicio') };
     } else {
-      const stall = _insStallOf(sessions);
+      const stall = _insStallOf(sessions, c, nowTs);
       if (stall) {
         item = { type: 'estancado', label: 'Se estancó en ' + stall.name };
       } else {
@@ -4014,14 +4118,22 @@ const SHOCK_PESADO_SETS = 5;        // bloque de fuerza 5×5
 const SHOCK_PESADO_REPS = 5;
 const SHOCK_PESADO_REST_PLUS = 30;  // + descanso para el trabajo pesado
 const SHOCK_MUTE_DAYS = 21;         // tras aplicar/descartar, no re-proponer por ~un mesociclo
-const SHOCK_GLOBAL_MIN = 3;         // ≥3 ejercicios plantados a la vez = fatiga sistémica → descarga global
+const SHOCK_GLOBAL_MIN = 3;         // ≥3 ejercicios EN REGRESIÓN a la vez = fatiga sistémica → descarga global
+const SHOCK_MULTI_MAX = 2;          // secciones por-ejercicio que muestra la tarjeta (el resto vuelve luego)
 const SHOCK_GLOBAL_MUTE_DAYS = 7;   // re-chequear antes que los 21d: si está fundido, una semana después hay que volver a mirar
 // «3+ estancados = descarga» SOLO vale si viene entrenando parejo (fatiga de tanto exigir). Si se
 // estancó por FALTAS (poca frecuencia / huecos por trabajo), una descarga es el consejo equivocado
 // —ya entrena poco— y toca RECUPERAR EL RITMO. Los separa la constancia reciente (decisión de
 // Camilo con el caso real de Astrid, 2026-07-16). Ver [[avi-coach-inteligente-plan]].
 const SHOCK_CONSISTENCY_DAYS = 28;       // ventana para medir la constancia reciente
-const SHOCK_CONSISTENCY_MIN_RATIO = 0.7; // fracción del plan (días/sem) para llamarla "constante"
+const SHOCK_CONSISTENCY_MIN_RATIO = 0.8; // fracción del plan (días/sem) para llamarla "constante"
+// (v433: sube de 0,7 a 0,8 — criterio de Andrés Hyp para la descarga)
+// Pisos de ANTIGÜEDAD de la descarga (Andrés). Una semana de descarga es una herramienta de
+// periodización para quien lleva meses acumulando fatiga; a quien lleva 8 semanas entrenando no le
+// sobra volumen, le falta. DECISIÓN DEL PO (2026-08-04): van tal cual, con su consecuencia medida
+// —hoy NADIE del gimnasio califica— porque el coach puede generar una descarga a mano cuando quiera.
+const DELOAD_MIN_TRAINING_DAYS = 180;
+const DELOAD_MIN_DATA_WEEKS = 10;
 const SHOCK_RETURN_WEEK_DAYS = 7;        // la "primera semana de vuelta" NO cuenta: un retornante que
 // entrena denso su 1ª semana tras faltar NO es constancia establecida (decisión de Camilo, radar de
 // Fable §24). La constancia se juzga por lo SOSTENIDO (semanas anteriores a esta), no por el arranque.
@@ -4052,42 +4164,67 @@ const _PAIN_ZONE_TO_EXCL = { hombro: 'hombro', 'zona lumbar': 'lumbar', rodilla:
 // global… PERO solo si viene entrenando parejo — si se estancó por FALTAS, toca recuperar el ritmo,
 // no bajar aún más el volumen. Devuelve:
 //   null                                              → 0 estancados
-//   { mode:'global', count, names }                   → ≥SHOCK_GLOBAL_MIN estancados y constante → descarga
-//   { mode:'rebuild', count, names, cadence }         → ≥SHOCK_GLOBAL_MIN pero entrenó a saltos → recuperar ritmo
-//   { mode:'multi', targets:[{name,muscle,also}] }    → 1-2 músculos (uno por músculo)
-// `client`/`now` solo hacen falta para el gate de constancia del modo 3+; sin `now` se asume el
-// modo `global` (contrato base). La UI SIEMPRE los pasa.
+//   { mode:'global', count, names }                   → ≥SHOCK_GLOBAL_MIN en REGRESIÓN y constante → descarga
+//   { mode:'rebuild', count, names, cadence }         → ≥SHOCK_GLOBAL_MIN en regresión pero entrenó a saltos
+//   { mode:'multi', targets:[{name,muscle,also}] }    → el resto (uno por músculo)
+// `client`/`now` hacen falta para las compuertas del detector; sin ellos no hay veredicto.
+// v433 — el disparo de DESCARGA cambió: antes bastaban 3 ejercicios PLANTADOS y eso es un conteo
+// absoluto que ignora cuántos van subiendo (medido: Astrid tenía 3 planos y 7 mejorando, y la app
+// le mandaba una descarga). Ahora pide 3 en REGRESIÓN real (índice cayendo ≥5%), que es lo que
+// significa fatiga sistémica — una meseta no lo es (criterio de Andrés Hyp).
+// deloadFloorReason: por qué esta persona NO puede recibir una semana de descarga, o '' si puede.
+// Pura. Los pisos son de Andrés (antigüedad e historial) y la PARADA por dolor es de Laura, cuyo
+// veredicto es vinculante: `shockTargets` era CIEGA AL DOLOR mientras `shockPlan` sí lo miraba —
+// justo al revés de como debía ser, porque esta es la que reescribe la rutina.
+function deloadFloorReason(client, sessions, now) {
+  client = client || {};
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  if (painCareActive(client.painCare, nowTs).length > 0) return 'dolor reciente';
+  const ts = (sessions || []).map(s => new Date(s && s.date).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
+  if (!ts.length) return 'sin sesiones';
+  const raw = client.startDate;
+  const sd = (raw == null || raw === '') ? NaN : new Date(raw).getTime();
+  const desde = isNaN(sd) ? ts[0] : sd;
+  if ((nowTs - desde) / 86400000 < DELOAD_MIN_TRAINING_DAYS) return 'lleva poco entrenando';
+  if ((nowTs - ts[0]) / (7 * 86400000) < DELOAD_MIN_DATA_WEEKS) return 'poco historial en AVI';
+  return '';
+}
+
 function shockTargets(sessions, client, now) {
-  const stalled = computeExerciseProgress(sessions || []).filter(_isStalledEx);
+  const stalled = stalledExercises(client, sessions, now);
   if (!stalled.length) return null;
-  // 3+ ejercicios plantados = ya no es por-ejercicio (el umbral es por Nº de ejercicios, aunque sean
-  // de músculos distintos). ¿Fatiga (→ descarga) o faltas (→ ritmo)? Lo separa la constancia reciente.
-  if (stalled.length >= SHOCK_GLOBAL_MIN) {
-    const names = stalled.map(e => e.name);
+  const enRegresion = stalled.filter(e => e.delta <= -STALL_DELOAD_REGRESSION);
+  if (enRegresion.length >= SHOCK_GLOBAL_MIN && !deloadFloorReason(client, sessions, now)) {
+    const names = enRegresion.map(e => e.name);
     if (now != null) {
       const cadence = _recentCadence(sessions, now, SHOCK_CONSISTENCY_DAYS, SHOCK_RETURN_WEEK_DAYS);
       const plan = planDays(client);
       if (cadence < plan * SHOCK_CONSISTENCY_MIN_RATIO) {
         // Se estancó entrenando a saltos → una descarga sería consejo equivocado. Recuperar ritmo.
         // Devuelve la cadencia y el plan para que la tarjeta muestre la evidencia («~1,2 de 3 días»).
-        return { mode: 'rebuild', count: stalled.length, names, cadence: Math.round(cadence * 10) / 10, plan };
+        return { mode: 'rebuild', count: enRegresion.length, names, cadence: Math.round(cadence * 10) / 10, plan };
       }
     }
-    return { mode: 'global', count: stalled.length, names };
+    return { mode: 'global', count: enRegresion.length, names };
   }
-  // 1-2 músculos: por cada músculo gana la entrada con MÁS puntos planos (la más clavada); las
-  // hermanas del mismo músculo van en `also` («X también se plantó — destrabemos este primero»).
+  // Por cada músculo gana el ejercicio que MÁS cayó (el más clavado); las hermanas del mismo
+  // músculo van en `also` («X también se plantó — destrabemos este primero»).
   // Desempate por nombre asc = determinista (el poll de 15s del coach no debe reordenar).
   const byMuscle = {};
   stalled.forEach(e => { const m = e.muscle || ''; (byMuscle[m] = byMuscle[m] || []).push(e); });
   const targets = Object.keys(byMuscle).map(m => {
     const group = byMuscle[m].slice().sort((a, b) =>
-      (_flatPointsOf(b) - _flatPointsOf(a)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    return { name: group[0].name, muscle: m, also: group.slice(1).map(e => e.name) };
+      (a.delta - b.delta) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return { name: group[0].name, muscle: m, also: group.slice(1).map(e => e.name), delta: group[0].delta };
   });
-  // Orden estable de las secciones por nombre del ganador (con <3 estancados hay ≤2 targets).
-  targets.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  return { mode: 'multi', targets };
+  // La tarjeta muestra como mucho SHOCK_MULTI_MAX secciones: se atiende lo que MÁS cayó y el resto
+  // vuelve a salir la próxima vez. Antes esto se cumplía solo (con <3 estancados había ≤2 targets);
+  // ahora que la descarga pide REGRESIÓN, el modo multi puede recibir muchos más y hay que topar.
+  targets.sort((a, b) => (a.delta - b.delta) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const top = targets.slice(0, SHOCK_MULTI_MAX);
+  // Orden estable de las secciones por nombre del ganador (el poll de 15 s no debe reordenarlas).
+  top.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { mode: 'multi', targets: top };
 }
 
 // shockPlan(client, exName, sessions, lib, now) → null si ESE ejercicio no está estancado, o el plan.
@@ -4095,8 +4232,11 @@ function shockPlan(client, exName, sessions, lib, now) {
   client = client || {};
   lib = lib || [];
   const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  // El veredicto lo da el detector (v433); la GRÁFICA de kg sigue saliendo de computeExerciseProgress,
+  // que es de donde el coach lee «se plantó en N kg desde tal fecha».
+  if (!stalledExercises(client, sessions, now).some(x => x.name === exName)) return null;
   const e = computeExerciseProgress(sessions || []).find(x => x.name === exName);
-  if (!_isStalledEx(e)) return null;
+  if (!e || !e.points || !e.points.length) return null;
 
   const bestKg = Math.max.apply(null, e.points.map(p => p.maxKg));
   let lastBestIdx = 0;
@@ -4627,6 +4767,21 @@ if (typeof module !== 'undefined' && module.exports) {
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,
+    perfIndex,
+    exercisePerfSeries,
+    stallGateReason,
+    stallReport,
+    stalledExercises,
+    deloadFloorReason,
+    DELOAD_MIN_TRAINING_DAYS,
+    DELOAD_MIN_DATA_WEEKS,
+    PERF_CLAMP_REPS,
+    STALL_WIN_WEEKS,
+    STALL_WIN_WEEKS_BEGINNER,
+    STALL_MIN_POINTS,
+    STALL_MIN_DATA_WEEKS,
+    STALL_BEGINNER_MIN_WEEKS,
+    STALL_DELOAD_REGRESSION,
     shockTargets,
     shockPlan,
     applyShockOption,

@@ -53,13 +53,19 @@ const shockCard = `(()=>{const el=document.getElementById('d-shock');
     warns:[...card.querySelectorAll('div')].filter(d=>/--orl/.test(d.getAttribute('style')||'')).length,
     text:el.innerText};})()`;
 
-// Astrid, estancada en "Jalón al Pecho": cronológico 60,62,61,60,61,61 → techo 62 kg y 4 sesiones
-// sin superarlo. El historial de la app va nuevo→viejo (de ahí el reverse).
+// Astrid, estancada en "Jalón al Pecho". v433: el detector pide ≥8 semanas de datos y ≥7 sesiones
+// del ejercicio, así que el fixture son 25 sesiones cada 3 días con el techo de 62 kg en la 2ª
+// (zona de referencia) y el resto por debajo. El historial de la app va nuevo→viejo (de ahí el
+// reverse). `startDate` de hace 200 días = pasa también los pisos de la DESCARGA.
+const ST_N = 25, ST_WIN_I = 13;
+const stKgsJs = `(p,b,t)=>Array.from({length:${ST_N}},(_,i)=>i===1?p:(i>=${ST_WIN_I}?t:b))`;
 const fixture = (extra) => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const sess=[60,62,61,60,61,61].map((kg,i)=>({date:new Date(Date.now()-(5-i)*3*86400000).toISOString(),routineName:'Espalda',
+  const kgs=(${stKgsJs})(62,60,60);
+  const sess=kgs.map((kg,i)=>({date:new Date(Date.now()-(${ST_N}-1-i)*3*86400000).toISOString(),routineName:'Espalda',
     exercises:[{name:'Jalón al Pecho',muscle:'espalda',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]})).reverse();
   const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+    startDate:new Date(Date.now()-200*86400000).toISOString(),
     payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
     routines:[{id:'r1',name:'Espalda A',day:'Lunes',restSec:60,exercises:[
         {id:'e0',name:'Jalón al Pecho',muscle:'espalda',sets:4,reps:8,restSec:90},
@@ -79,21 +85,23 @@ const fixture = (extra) => `(()=>{try{
   return true;
 }catch(e){return 'err:'+e.message+' | '+e.stack;}})()`;
 
-// Fase 4.1: historial con VARIOS ejercicios plantados. specs=[{name,muscle,kgs:[6 cronológicos]}].
-// Patrones que estancan: techo en los 2 primeros puntos; FLAT5 (techo idx0) tiene MÁS puntos planos
-// que FLAT4 (techo idx1). `spacingDays` controla la CADENCIA (cada cuántos días entrena) → separa
-// «grindeando» (denso, spacing 3) de «a saltos» (spacing 8). 3 rutinas con día → planDays=3 (bar 2.1).
-const multiFixture = (specs, spacingDays = 3) => `(()=>{try{
+// Fase 4.1: historial con VARIOS ejercicios plantados. specs=[{name,muscle,kgs}] con kgs de ST_N
+// valores cronológicos (usa KG_MESETA/KG_CAIDA). `spacingDays` controla la CADENCIA (cada cuántos
+// días entrena) → separa «grindeando» (denso, spacing 3) de «a saltos» (spacing 8). 3 rutinas con
+// día → planDays=3 (bar de constancia 3×0,8 = 2,4 desde v433). `endOffset` corre el bloque entero.
+const multiFixture = (specs, spacingDays = 3, endOffset = 2, extraClient = '') => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const specs=${JSON.stringify(specs)}; const SP=${spacingDays};
-  const N=6, out=[];
-  for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(N-1-i)*SP*86400000).toISOString(),routineName:'R',
+  const specs=${JSON.stringify(specs)}; const SP=${spacingDays}; const EO=${endOffset};
+  const N=${ST_N}, out=[];
+  for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(EO+(N-1-i)*SP)*86400000).toISOString(),routineName:'R',
     exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[i]),reps:'8'}]}))}); }
   const sess=out.reverse();
   const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+    startDate:new Date(Date.now()-200*86400000).toISOString(),
     payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
     routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))},
       {id:'r2',name:'B',day:'Miércoles',restSec:60,exercises:[]},{id:'r3',name:'C',day:'Viernes',restSec:60,exercises:[]}]};
+  ${extraClient}
   DB.clients=[c]; DB.history={a1:sess}; DB.prs={}; DB.msgs={};
   for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&(kk.indexOf('shockmute_')===0||kk.indexOf('coachpulse_')===0))localStorage.removeItem(kk);}
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
@@ -105,7 +113,11 @@ const multiFixture = (specs, spacingDays = 3) => `(()=>{try{
   const _el=document.getElementById('d-shock'); if(_el&&_el.style.display!=='none')_el.scrollIntoView();
   return true;
 }catch(e){return 'err:'+e.message+' | '+e.stack;}})()`;
-const FLAT5=[62,60,60,60,60,60], FLAT4=[60,62,60,60,60,60];
+// Patrones de ST_N valores cronológicos (mismo molde que avi.test.js): el techo va en la 2ª
+// sesión (zona de REFERENCIA) y la cola desde ST_WIN_I (dentro de la ventana).
+const stKgs=(p,base,t)=>Array.from({length:ST_N},(_,i)=>i===1?p:(i>=ST_WIN_I?t:base));
+const KG_MESETA=stKgs(62,60,62); // iguala el techo → estancado SIN regresión
+const KG_CAIDA=stKgs(62,60,52);  // el índice cae ~16% → estancado Y en regresión (→ descarga)
 
 try {
   await waitFor(`!!document.getElementById('s-login') && typeof showScreen==='function' && !document.getElementById('avi-loading')`);
@@ -200,9 +212,10 @@ try {
   await ev(`window.__XSS=undefined`);
   await ev(`(()=>{try{
     const P='<img src=x onerror=window.__XSS=1>';
-    const sess=[60,62,61,60,61,61].map((kg,i)=>({date:new Date(Date.now()-(5-i)*3*86400000).toISOString(),
+    const sess=${JSON.stringify(KG_MESETA)}.map((kg,i)=>({date:new Date(Date.now()-(${ST_N}-1-i)*3*86400000).toISOString(),
       exercises:[{name:P,muscle:'espalda',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]})).reverse();
     const c={id:'a1',name:'<b>XSS</b>',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',
+      startDate:new Date(Date.now()-200*86400000).toISOString(),
       notes:'hernia lumbar "><script>window.__XSS=1</script>',
       payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:1}],
       routines:[{id:'r1',name:'R',restSec:60,exercises:[{id:'e0',name:P,muscle:'espalda',sets:4,reps:8}]}]};
@@ -226,7 +239,7 @@ try {
   // ── S9: sin estancamiento → la tarjeta no existe ──
   const sin = await evj(`(()=>{
     const c=DB.clients[0];
-    DB.history={a1:[60,61,62,63,64,65].map((kg,i)=>({date:new Date(Date.now()-(5-i)*3*86400000).toISOString(),
+    DB.history={a1:${JSON.stringify(stKgs(62,60,70))}.map((kg,i)=>({date:new Date(Date.now()-(${ST_N}-1-i)*3*86400000).toISOString(),
       exercises:[{name:'Jalón al Pecho',muscle:'espalda',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]})).reverse()};
     renderShockCard(c);
     return {display:getComputedStyle(document.getElementById('d-shock')).display, shock:CUR.shock};})()`);
@@ -235,8 +248,8 @@ try {
   // ══════════════ FASE 4.1 — MÚLTIPLES ESTANCAMIENTOS ══════════════
   // ── S10: 2 del MISMO músculo → 1 sección + nota "también se plantó" (gana el más clavado) ──
   const s10 = await ev(multiFixture([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT4 }, // menos clavado
-    { name: 'Remo con Barra', muscle: 'espalda', kgs: FLAT5 }, // MÁS clavado → gana
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA }, // solo meseta
+    { name: 'Remo con Barra', muscle: 'espalda', kgs: KG_CAIDA }, // en CAÍDA = más clavado → gana
   ]));
   if (s10 !== true) throw new Error('S10 setup: ' + s10);
   await sleep(400);
@@ -248,8 +261,8 @@ try {
 
   // ── S11: 2 músculos DISTINTOS → 2 secciones; aplicar la 1ª NO oculta la 2ª ──
   const s11 = await ev(multiFixture([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
   ]));
   if (s11 !== true) throw new Error('S11 setup: ' + s11);
   await sleep(400);
@@ -269,9 +282,9 @@ try {
   // ── S12 (CANDADO GLOBAL): 3 estancados ENTRENANDO PAREJO (spacing 3 = cadencia alta) → tarjeta
   // global SIN Aplicar de protocolo + CTA descarga ──
   const s12 = await ev(multiFixture([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
-    { name: 'Sentadilla', muscle: 'pierna', kgs: FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_CAIDA },
   ], 3));
   if (s12 !== true) throw new Error('S12 setup: ' + s12);
   await sleep(400);
@@ -292,8 +305,8 @@ try {
 
   // ── S13: mute independiente — silenciar (aplicar) el target 1 deja visible el 2 al re-render ──
   const s13 = await ev(multiFixture([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
   ]));
   if (s13 !== true) throw new Error('S13 setup: ' + s13);
   await sleep(400);
@@ -309,9 +322,9 @@ try {
   // ── S14 (CANDADO CONSTANCIA): 3 estancados pero A SALTOS (spacing 8 = cadencia baja) → REBUILD,
   // NO descarga. La descarga a quien ya entrena poco es el consejo equivocado (caso real de Astrid). ──
   const s14 = await ev(multiFixture([
-    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: FLAT5 },
-    { name: 'Press Banca', muscle: 'pecho', kgs: FLAT4 },
-    { name: 'Sentadilla', muscle: 'pierna', kgs: FLAT4 },
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_CAIDA },
   ], 8));
   if (s14 !== true) throw new Error('S14 setup: ' + s14);
   await sleep(400);
@@ -338,12 +351,15 @@ try {
   // falsa a quien apenas volvió. Historial con offsets a medida (3 viejos >28d + 3 de esta semana). ──
   const s15 = await ev(`(()=>{try{
     ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-    const specs=[{name:'Jalón al Pecho',muscle:'espalda',kgs:[62,60,60,60,60,60]},
-      {name:'Press Banca',muscle:'pecho',kgs:[60,62,60,60,60,60]},{name:'Sentadilla',muscle:'pierna',kgs:[60,62,60,60,60,60]}];
-    const offs=[41,38,35,5,3,1]; // viejo→nuevo; 3 de hace >4 semanas + 3 de esta semana
+    const K=${JSON.stringify(KG_CAIDA)};
+    const specs=[{name:'Jalón al Pecho',muscle:'espalda',kgs:K},
+      {name:'Press Banca',muscle:'pecho',kgs:K},{name:'Sentadilla',muscle:'pierna',kgs:K}];
+    // viejo→nuevo: ${ST_N - 3} sesiones de hace >4 semanas + 3 de esta semana
+    const offs=Array.from({length:${ST_N - 3}},(_,k)=>35+(${ST_N - 4}-k)*3).concat([5,3,1]);
     const sess=offs.map((off,k)=>({date:new Date(Date.now()-off*86400000).toISOString(),routineName:'R',
       exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[k]),reps:'8'}]}))})).reverse();
     const c={id:'a1',name:'Retornante Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+      startDate:new Date(Date.now()-200*86400000).toISOString(),
       payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:1}],
       routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))},
         {id:'r2',name:'B',day:'Miércoles',restSec:60,exercises:[]},{id:'r3',name:'C',day:'Viernes',restSec:60,exercises:[]}]};
@@ -358,6 +374,22 @@ try {
   const s15mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
   check('🔒 S15 retornante (vuelve denso su 1ª semana) → rebuild, NO descarga', s15mode === 'rebuild' && s.deload === false && s.opts === 0, 'mode=' + s15mode + ' deload=' + s.deload);
   check('S15b la tarjeta no miente con "~0": frase digna cuando casi no entrenó antes', s.rebuild === true && /(casi no entren|no ha venido entrenando parejo)/i.test(s.text), (s.text.match(/casi no[^.]*\.|viene entrenando[^)]*\)/i) || [''])[0]);
+
+  // ── S16 (CANDADO DE LAURA, v433): con DOLOR reciente la tarjeta NUNCA ofrece rehacer la semana.
+  // `shockTargets` era ciega al dolor mientras `shockPlan` sí lo miraba — y esta es la que
+  // reescribe la rutina entera. Mismo historial que S12 (que sí daba descarga), solo cambia el dolor. ──
+  const s16 = await ev(multiFixture([
+    { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
+    { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },
+    { name: 'Sentadilla', muscle: 'pierna', kgs: KG_CAIDA },
+  ], 3, 2, `c.painCare=[{area:'zona lumbar',at:new Date(Date.now()-2*86400000).toISOString()}];`));
+  if (s16 !== true) throw new Error('S16 setup: ' + s16);
+  await sleep(400);
+  s = await evj(shockCard);
+  await shot('S16-dolor-sin-descarga');
+  const s16mode = await ev(`(CUR.shock&&CUR.shock.mode)||'?'`);
+  check('🔒 S16 con dolor reciente NO se ofrece la semana de descarga (Laura)', s16mode !== 'global' && s.deload === false, 'mode=' + s16mode + ' deload=' + s.deload);
+  check('S16b sigue proponiendo trabajo por ejercicio (no se calla del todo)', s.shown && s.opts > 0, 'shown=' + s.shown + ' opts=' + s.opts);
 
   // ── Shots ambos temas ──
   await ev(fixture());
