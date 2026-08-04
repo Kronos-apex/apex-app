@@ -156,10 +156,41 @@ el CTA «hablar con tu coach»): la tarjeta desaparece en lugar de suavizarse.
 - El **ánimo previo (`mood`)** empezó a guardarse en la sesión con v432: 50% en la semana del 3-ago,
   0% antes.
 
-## 6. ESTADO
+## 6. QUÉ HACE LA DESCARGA — implementado en avi-v434
+
+**Deja de ser una rutina nueva y pasa a ser un MODO TEMPORAL de 7 días** sobre el plan que la
+persona ya tiene. No pasa por el generador: el checkbox `#mg-deload` y `opts.deload` se **borraron**
+(no puede haber dos formas de hacer una descarga, una de ellas mala).
+
+| | qué pasa | quién lo pidió |
+|---|---|---|
+| Ejercicios · días · **repeticiones** | **intactos** | Laura (vinculante) + Andrés |
+| Series | **× 0,6**, piso 2 (`deloadSets`) | Andrés |
+| Carga | **−10%** en el peso sugerido (`deloadLoadFactor` en `_suggestKg`) | Andrés |
+| Duración | **7 días** | Andrés · PO |
+
+Medido sobre planes reales: **Kathe 91 → 54 series (−41%)**, **Astrid 113 → 64 (−43%)**.
+
+- **La vuelta:** `startDeload` guarda las series originales por posición, con el id y el nombre como
+  testigo. `endDeload` las devuelve exactas — y si el coach cambió un ejercicio durante la semana,
+  **se respeta SU cambio** en vez de pisarlo.
+- **No se quita sola** (decisión del PO: sin temporizador). La contrapartida es `deloadOverdue` →
+  aviso en el Inicio del coach: «Kathe · terminó hace 3 días — devuélvele el plan completo».
+- **La asesorada lo ve explicado** (`deloadCardText` → `#cn-deload`, ARRIBA del entreno): «Esta
+  semana bajamos revoluciones… Quedan 7 días». Sin jerga. Si no se explica, se lee como un error de
+  la app o como que la están descuidando.
+- **Manual siempre disponible** en la ficha, con `deloadWarnings` que AVISA (sin bloquear: la
+  decisión es del coach) cuando hay dolor reciente o poca historia detrás.
+- Quien está en descarga **no recibe planes de choque**: sería pedirle esfuerzo justo la semana en
+  que la consigna es recuperar.
+
+## 7. ESTADO
 
 - [x] Diagnóstico medido (2026-08-03) + medición del prototipo contra la gente real (2026-08-04)
-- [ ] **Deploy A — el detector** (`perfIndex`, `exercisePerfSeries`, `stallReport`; re-cableo de
-      `coachPulse`/`shockTargets`/`shockPlan`; fuera la tarjeta de la asesorada)
-- [ ] **Deploy B — la descarga** (misma rutina + snapshot + reactivar con un toque + pisos + parada
-      por dolor)
+- [x] **Deploy A — el detector** (avi-v433): 41 → 21 ejercicios · 6 → 4 personas · 4 → 0 descargas
+- [x] **Deploy B — la descarga** (avi-v434): misma rutina + snapshot + reactivar con un toque
+- [ ] Pendiente de **Andrés**: el estado `carga_liviana` («listo para subir peso», `repsTop>=18`) —
+      quien llega a 18+ repeticiones no necesita descargar, necesita SUBIR. Se dejó fuera a propósito.
+- [ ] Pendiente: la señal de recuperación de Laura como **gate del disparo automático** (hoy solo
+      están los pisos + la parada por dolor). Con `feeling` al 12% hay que sostenerla con volumen y
+      `doneSets/totalSets`.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v433';
+const CACHE_NAME = 'avi-v434';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.

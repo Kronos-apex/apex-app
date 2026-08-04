@@ -1330,6 +1330,7 @@ async function openDetail(id,_silent){
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);
   renderShockCard(c);
+  renderDeloadPanel(c);
   renderNutReviewCard(c);
   renderCoachHabitsCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
@@ -1539,7 +1540,7 @@ function delClient(){
 //   · 1-2 músculos → tarjeta multi-sección (uno por músculo, el más plantado; el hermano en `also`).
 //     Aplicar/Escribirle POR sección; mute POR ejercicio → aplicar a uno NO oculta al otro.
 //   · 3+ ejercicios a la vez → fatiga sistémica → tarjeta GLOBAL: no propone protocolos por
-//     ejercicio, sino una SEMANA DE DESCARGA (cablea el generador ya existente con #mg-deload).
+//     ejercicio, sino una SEMANA DE DESCARGA sobre el plan que ya tiene (v434: ya no se genera).
 function _shockMuteKey(cid,exName){ return 'shockmute_'+cid+'_'+(typeof _norm==='function'?_norm(exName):exName); }
 function _shockMuted(cid,exName){ const v=parseInt(localStorage.getItem(_shockMuteKey(cid,exName))); return !!v&&Date.now()<v; }
 // Mute LOCAL (no va a SB_KEYS a propósito: es ruido de UI de ESTE dispositivo, no dato del negocio).
@@ -1611,10 +1612,62 @@ function renderNutReviewCard(c){
   }catch(e){ warn('AVI: revisión del plan de alimentación falló (no bloquea la ficha):',e&&e.message); }
 }
 
+// ══ SEMANA DE DESCARGA (v434) ══
+// La descarga NO se genera: se ACTIVA sobre el plan que el asesorado ya tiene. Mismos ejercicios,
+// mismos días, mismas repeticiones; bajan las series (×0,6, piso 2) y el peso sugerido (−10%).
+// Las series originales quedan guardadas para que «Volver al plan normal» las devuelva exactas.
+function renderDeloadPanel(c){
+  const el=document.getElementById('d-deload'); if(!el)return;
+  el.innerHTML='';
+  if(!c||typeof deloadState!=='function')return;
+  const st=deloadState(c,Date.now());
+  if(st){
+    const hasta=new Date(st.until).toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+    const linea=st.over
+      ? `<b>La semana de descarga ya terminó</b> (hace ${st.daysOver===0?'hoy':st.daysOver+(st.daysOver===1?' día':' días')}). Devuélvele el plan completo cuando lo revises.`
+      : `En <b>semana de descarga</b> hasta el <b>${esc(hasta)}</b> — ${st.daysLeft===1?'queda 1 día':'quedan '+st.daysLeft+' días'}.`;
+    el.innerHTML=`<div class="card" style="padding:11px 13px;background:var(--yll);border-left:3px solid var(--yl)">
+      <div style="font-size:12.5px;color:var(--t1);line-height:1.5;margin-bottom:8px">${_coIco('wind',13,'🍃')} ${linea}</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.45;margin-bottom:9px">Mismos ejercicios y mismas repeticiones; menos series y ~10% menos peso sugerido.</div>
+      <button class="btn bp bsm" style="width:100%;min-height:36px" onclick="endDeloadFor('${esc(c.id)}')">Volver al plan normal</button>
+    </div>`;
+    return;
+  }
+  if(!(c.routines||[]).length)return; // sin plan no hay nada que descargar
+  el.innerHTML=`<button class="btn bg bsm" style="width:100%" onclick="startDeloadFor('${esc(c.id)}')" title="Baja el volumen 7 días sobre el plan actual, sin cambiarle los ejercicios">🍃 Semana de descarga</button>`;
+}
+
+// Activa la descarga. AVISA (sin bloquear: la decisión es del coach) cuando no le cuadra a esa
+// persona — dolor reciente o poca historia detrás.
+function startDeloadFor(cid){
+  const c=DB.clients.find(x=>x.id===cid); if(!c)return;
+  if(typeof startDeload!=='function')return;
+  const avisos=(typeof deloadWarnings==='function')?deloadWarnings(c,DB.history[cid]||[],Date.now()):[];
+  const cuerpo='Durante 7 días: mismos ejercicios, mismos días y mismas repeticiones; menos series y ~10% menos peso sugerido. Al terminar se lo devuelves con un toque.';
+  if(!confirm((avisos.length?avisos.join('\n\n')+'\n\n':'')+cuerpo+'\n\n¿Activar la semana de descarga de '+(c.name||'')+'?'))return;
+  const res=startDeload(c,Date.now());
+  c.routines=res.routines; c.deload=res.deload;
+  sv('ax_c',DB.clients);
+  renderDeloadPanel(c); renderDetailRoutines(c); renderShockCard(c);
+  if(typeof toast==='function')toast('Semana de descarga activada');
+}
+function endDeloadFor(cid){
+  const c=DB.clients.find(x=>x.id===cid); if(!c)return;
+  if(typeof endDeload!=='function')return;
+  const res=endDeload(c);
+  c.routines=res.routines; delete c.deload;
+  sv('ax_c',DB.clients);
+  renderDeloadPanel(c); renderDetailRoutines(c); renderShockCard(c);
+  if(typeof toast==='function')toast('Plan normal restaurado');
+}
+
 function renderShockCard(c){
   const el=document.getElementById('d-shock'); if(!el)return;
   el.innerHTML='';el.style.display='none';CUR.shock=null;
   if(typeof shockTargets!=='function'||typeof shockPlan!=='function'||!c)return;
+  // Quien YA está en descarga no recibe planes de choque: sería pedirle esfuerzo justo en la
+  // semana en que la consigna es recuperar.
+  if(typeof deloadState==='function'&&deloadState(c,Date.now()))return;
   const sessions=(DB.history[c.id]||[]);
   const tg=shockTargets(sessions,c,Date.now()); if(!tg)return;
 
@@ -1754,15 +1807,12 @@ function dismissShock(){
   if(c)renderShockCard(c);
 }
 // ── Modo global: descarga / escribir / descartar ──
-// Cablea el generador YA existente: abre m-gen, marca #mg-deload y regenera con descarga. El
-// borrador sigue teniendo el candado del coach (él aprueba antes de asignar) — no se toca.
+// v434: ya NO abre el generador. Antes marcaba #mg-deload y regeneraba la semana → el asesorado
+// recibía OTRA rutina (queja del PO). Ahora activa la descarga sobre el plan que YA tiene.
 function shockDeload(){
   const S=CUR.shock; if(!S||S.mode!=='global')return;
-  if(typeof openGenRutinas!=='function')return;
   CUR.clientId=S.cid;
-  openGenRutinas();
-  const dl=document.getElementById('mg-deload'); if(dl)dl.checked=true;
-  if(typeof toggleGenDeload==='function')toggleGenDeload(true); // marca CUR.genDeload + re-genera
+  startDeloadFor(S.cid);
 }
 function shockWriteGlobal(){
   const S=CUR.shock; if(!S||S.mode!=='global')return;
@@ -1841,7 +1891,6 @@ const PLACE_DEFAULT_STYLE={gym:'gym_hipertrofia',casa:'casa_equipo',corporal:'ca
 // igual que sus rutinas. El deload 🔄 es por-sesión de generación (no se persiste).
 function genPrefs(c){ if(!c.genPrefs)c.genPrefs={exclude:[],prefer:[]}; c.genPrefs.exclude=c.genPrefs.exclude||[]; c.genPrefs.prefer=c.genPrefs.prefer||[]; return c.genPrefs; }
 function _updateGenPrefBtns(c){ const p=genPrefs(c); const eb=document.getElementById('mg-excl-btn'),pb=document.getElementById('mg-pref-btn'); if(eb)eb.textContent=`🚫 Excluidos (${p.exclude.length})`; if(pb)pb.textContent=`⭐ Priorizados (${p.prefer.length})`; }
-function toggleGenDeload(v){ CUR.genDeload=!!v; if(CUR.genStyleId)genWithStyle(CUR.genStyleId); }
 function openGenPrefsPicker(kind){
   pickerTarget=kind; CUR.pkFilter='all'; CUR.pkEnv='all';
   const es=document.getElementById('pk-env'); if(es)es.value='all';
@@ -1853,7 +1902,6 @@ function openGenRutinas(){
   const def=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
   document.getElementById('mg-style').innerHTML=TRAINING_STYLES.map(s=>`<option value="${s.id}"${s.id===def?' selected':''}>${s.icon} ${esc(s.name)}</option>`).join('');
   document.getElementById('mg-title').innerHTML=`✨ Borrador de la semana — <span style="color:var(--gt)">${esc(c.name)}</span>`;
-  CUR.genDeload=false; const dl=document.getElementById('mg-deload'); if(dl)dl.checked=false;
   _updateGenPrefBtns(c);
   if(!genWithStyle(def))return;
   om('m-gen');
@@ -1867,7 +1915,7 @@ function genWithStyle(styleId){
   const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist);
   const _p=genPrefs(c);
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer,deload:!!CUR.genDeload});
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
   if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}
   CUR.genDraft=res;CUR.genStyleId=style.id;
   _updateGenPrefBtns(c);
@@ -1885,14 +1933,13 @@ function renderGenPreview(c,res){
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ylt);margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
   const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
   const loadBanner=res.loadProfile==='high'?`<div style="background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--blt);margin-bottom:12px"><b>⚖️ Perfil de carga alto</b> (IMC/cintura) — el borrador prioriza <b>máquinas y movimientos guiados/asistidos</b> y evita saltos/pliométricos, para cuidar articulaciones mientras gana base. Ajústalo según veas a la persona.</div>`:'';
-  const deloadBanner=res.deload?`<div style="background:rgba(232,151,58,.12);border:1px solid #E8973A;border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#8a5a14;margin-bottom:12px"><b>🔄 Semana de descarga</b> — volumen reducido (−1 serie por ejercicio). Recuérdale <b>bajar la carga ~10-20%</b>: la meta de esta semana es recuperar, no exigir.</div>`:'';
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
-  document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+deloadBanner+intro+cards;
+  document.getElementById('mg-body').innerHTML=warn+gaps+adaptBanner+loadBanner+intro+cards;
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;

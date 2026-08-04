@@ -96,6 +96,8 @@ try {
     if(cfg.tier!==undefined)c.tier=cfg.tier; else c.tier=undefined;
     c.days=cfg.days||3;
     if(cfg.goal!==undefined)c.goal=cfg.goal;
+    if(cfg.startDate!==undefined)c.startDate=cfg.startDate; else delete c.startDate;
+    if(cfg.level!==undefined)c.level=cfg.level;
     c.habits=cfg.habits||{};
     if(cfg.clearRoutines)c.routines=[];
     Object.keys(window.__mutes||{}).forEach(k=>localStorage.removeItem('coachmute_'+c.id+'_'+k));
@@ -150,26 +152,36 @@ try {
   check('D "Entendido" silencia inactivo → aparece la 2ª señal (record) y no reaparece inactivo', d0 === 'inactivo' && d1 === 'record' && d2 === 'record', JSON.stringify({ d0, d1, d2 }));
   await ev(`(()=>{['inactivo','record'].forEach(k=>localStorage.removeItem('coachmute_'+window.__CID+'_'+k));})()`);
 
-  // E: estancamiento → premium SÍ, free NO (gating).
-  const stall = `[60,62,62,60,61,62].map((kg,i)=>({date:new Date(Date.now()-i*86400000).toISOString(),exercises:[{name:'Press',muscle:'pecho',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]}))`;
+  // E (v433): a la asesorada NUNCA se le dice que se estancó. La tarjeta se ELIMINÓ (decisión del
+  // PO + petición de Valery: ni la palabra ni el CTA «hablar con tu coach»). El aviso es del coach.
+  // Fixture con un estancamiento REAL y evaluable: 25 sesiones en ~10 semanas, techo en la 2ª.
+  const stall = `(()=>{const k=Array.from({length:25},(_,i)=>i===1?62:(i>=13?60:61));
+    return k.map((kg,i)=>({date:new Date(Date.now()-(24-i)*3*86400000).toISOString(),
+      exercises:[{name:'Press',muscle:'pecho',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]})).reverse();})()`;
   await ev(`window.__stall=${stall};`);
   // planDays lee c.routines PRIMERO; con la rutina de hoy (day real) target=1 y la racha taparía
-  // el estancamiento. Vaciamos routines → planDays cae a c.days=7 → weekStreak nunca cumple → aísla.
+  // la señal. Vaciamos routines → planDays cae a c.days=7 → weekStreak nunca cumple → aísla.
   const rutBak = await ev(`(()=>{const b=window.__C.routines;window.__C.routines=[];return JSON.stringify(b);})()`);
-  let ePrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__stall,prs:{},tier:undefined,days:7}))`));
-  let eFree = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__stall,prs:{},tier:'libre',days:7}))`));
-  await shot('E-estancado-premium');
-  check('E estancamiento: premium ve type=estancado (con CTA), free NO', ePrem.type === 'estancado' && ePrem.hasCta && eFree.type !== 'estancado', JSON.stringify({ ePrem: ePrem.type, eFree: eFree.type }));
+  const eReal = await ev(`(()=>{const c=window.__C;const l=c.level;c.level='Intermedio';
+    const n=(typeof stalledExercises==='function')?stalledExercises(c,window.__stall,Date.now()).length:-1;c.level=l;return n;})()`);
+  let ePrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__stall,prs:{},tier:undefined,days:7,level:'Intermedio'}))`));
+  let eFree = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__stall,prs:{},tier:'libre',days:7,level:'Intermedio'}))`));
+  await shot('E-sin-estancado');
+  check('🔒 E el estancamiento EXISTE en el motor (control: si no, este check no prueba nada)', eReal >= 1, 'estancados=' + eReal);
+  check('🔒 E v433: a la asesorada NO se le pinta ninguna tarjeta de estancamiento', ePrem.type !== 'estancado' && eFree.type !== 'estancado', JSON.stringify({ ePrem: ePrem.type, eFree: eFree.type }));
   await ev(`window.__C.tier=undefined;window.__C.routines=${JSON.stringify(rutBak)}?JSON.parse(${JSON.stringify(rutBak)}):[];`);
 
   // ═══════════ FASE 3 — señales nuevas (v353) ═══════════
   // Fixture de 4 semanas de plan cumplidas, ROBUSTO al día de la semana: 2 sesiones por cada una
   // de las últimas 4 semanas de calendario (ancladas al lunes de cada semana). clearRoutines +
   // days:2 → planDays cae a 2 → weekStreak cuenta 4 semanas.
-  await ev(`window.__wk4=(()=>{const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));const mon=x.getTime();const out=[];for(let i=0;i<4;i++){[0,2].forEach(d=>out.push({date:new Date(mon-i*7*86400000+d*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]}));}return out;})();`);
+  // v433: la tarjeta de descarga pasa por los MISMOS pisos que la del coach (180 días entrenando
+  // + 10 semanas de datos), así que el fixture añade una sesión vieja y `startDate` de hace 200 días.
+  await ev(`window.__wk4=(()=>{const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));const mon=x.getTime();const out=[];for(let i=0;i<4;i++){[0,2].forEach(d=>out.push({date:new Date(mon-i*7*86400000+d*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]}));}out.push({date:new Date(mon-75*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]});return out;})();
+    window.__vet=new Date(Date.now()-200*86400000).toISOString();`);
   // G: deload → premium con ≥4 semanas; free ve racha (deload es premium).
-  let gPrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:undefined,days:2,clearRoutines:true}))`));
-  let gFree = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:'libre',days:2,clearRoutines:true}))`));
+  let gPrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:undefined,days:2,clearRoutines:true,startDate:window.__vet}))`));
+  let gFree = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:'libre',days:2,clearRoutines:true,startDate:window.__vet}))`));
   await shot('G-deload-premium');
   check('G deload: premium ve type=deload (con CTA); free ve racha', gPrem.type === 'deload' && gPrem.hasCta && gFree.type === 'racha', JSON.stringify({ gPrem: gPrem.type, gFree: gFree.type }));
 
@@ -187,7 +199,7 @@ try {
   check('I peso: baja con objetivo bajar → type=peso; sube (contrario) → NUNCA peso', iPos.type === 'peso' && iNeg.type !== 'peso', JSON.stringify({ iPos: iPos.type, iNeg: iNeg.type }));
 
   // J: prioridad deload > record (ambos presentes → gana deload).
-  let jP = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{k:{val:100,unit:'kg',name:'X',date:new Date(Date.now()-3600000).toISOString()}},tier:undefined,days:2,clearRoutines:true}))`));
+  let jP = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{k:{val:100,unit:'kg',name:'X',date:new Date(Date.now()-3600000).toISOString()}},tier:undefined,days:2,clearRoutines:true,startDate:window.__vet}))`));
   check('J prioridad: deload gana a record', jP.type === 'deload', JSON.stringify(jP));
   await ev(`window.__C.goal='';DB.bodyweight[window.__CID]=[];`);
 

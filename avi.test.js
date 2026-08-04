@@ -155,6 +155,16 @@ const {
   stallReport,
   stalledExercises,
   deloadFloorReason,
+  deloadSets,
+  startDeload,
+  endDeload,
+  deloadState,
+  deloadLoadFactor,
+  deloadCardText,
+  deloadWarnings,
+  deloadOverdue,
+  DELOAD_DAYS,
+  DELOAD_LOAD_FACTOR,
   PERF_CLAMP_REPS,
   STALL_BEGINNER_MIN_WEEKS,
   STALL_DELOAD_REGRESSION,
@@ -535,23 +545,6 @@ test('Fase C priorizar: un ejercicio marcado ⭐ entra primero en su músculo/ti
 test('Fase C: excluir gana sobre priorizar (no se fuerza un ejercicio vetado)', () => {
   const { routines } = generarRutinas({ sex: 'M', level: 'Avanzado', days: 5, goal: 'Ganar músculo' }, LIB, { ...FIXED, preferIds: ['p1'], excludeIds: ['p1'] });
   assert.ok(!routines.flatMap(r => r.exercises).some(e => e.id === 'p1'), 'p1 vetado no debe aparecer aunque esté priorizado');
-});
-
-test('Fase C deload: −1 serie por ejercicio + flag deload + nota de descarga', () => {
-  const normal = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
-  const pesoNormal = normal.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico')[0];
-  const res = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, deload: true });
-  assert.strictEqual(res.deload, true);
-  const peso = res.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico');
-  peso.forEach(e => assert.strictEqual(e.sets, pesoNormal.sets - 1, `deload debe bajar 1 serie (${pesoNormal.sets}→${pesoNormal.sets - 1})`));
-  assert.ok(res.routines.every(r => /descarga|deload/i.test(r.note)), 'la nota debe mencionar la descarga');
-});
-
-test('Fase C deload: piso de 2 series (no baja de ahí)', () => {
-  // Principiante Ganar músculo = 3 series → deload 2; un segundo deload no baja de 2.
-  const res = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, deload: true });
-  res.routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico')
-    .forEach(e => assert.ok(e.sets >= 2, `deload no debe bajar de 2 series, fue ${e.sets}`));
 });
 
 test('< 16 años INTERMEDIO → split de gym (no full body) PERO sin carga axial con barra', () => {
@@ -4790,6 +4783,151 @@ test('🔒 v433 · la ventana es ELÁSTICA: un ejercicio de 1 vez por semana tam
   assert.ok(it, 'se evalúa igual: la ventana se estira, el ejercicio no queda invisible');
   assert.ok(it.weeks > 5, 'la ventana se estiró para juntar 6 puntos: ' + it.weeks.toFixed(1) + ' semanas');
   assert.strictEqual(it.stalled, true);
+});
+
+// ══════════════════════════════════════════════════════
+section('La semana de descarga (startDeload / endDeload, v434)');
+// El PO reportó que la descarga «le manda una rutina totalmente distinta»: era cierto, el botón
+// vivía dentro del generador y regeneraba la semana. Ahora es un modo temporal sobre el plan que
+// la persona YA tiene.
+
+const dlClient = () => ({
+  id: 'c1', name: 'Kathe', level: 'Intermedio', days: 4,
+  routines: [
+    { id: 'r1', name: 'Glúteo A', day: 'Lunes', restSec: 90, exercises: [
+      { id: 'e1', name: 'Hip Thrust en Máquina', muscle: 'gluteo', sets: 4, reps: 15 },
+      { id: 'e2', name: 'Peso Muerto Rumano', muscle: 'piernas', sets: 3, reps: 12 },
+      { id: 'e3', name: 'Plancha', muscle: 'core', track: 'tiempo' },
+    ] },
+    { id: 'r2', name: 'Tren Superior', day: 'Martes', restSec: 60, exercises: [
+      { id: 'e4', name: 'Jalón al Pecho', muscle: 'espalda', sets: 5, reps: 10 },
+      { id: 'e5', name: 'Curl Concentrado', muscle: 'biceps', sets: 2, reps: 15 },
+    ] },
+  ],
+});
+const DL_NOW = new Date('2026-08-04T10:00:00').getTime();
+
+test('deloadSets: ×0,6 con piso de 2 — y lo que no es un número de series no se toca', () => {
+  assert.strictEqual(deloadSets(5), 3);
+  assert.strictEqual(deloadSets(4), 2);
+  assert.strictEqual(deloadSets(3), 2);
+  assert.strictEqual(deloadSets(2), 2, 'quien ya está en 2 no baja más');
+  assert.strictEqual(deloadSets(undefined), undefined, 'un isométrico/cardio sin series pasa igual');
+  assert.strictEqual(deloadSets(0), 0);
+});
+
+test('🔴 v434 · la descarga NO cambia los ejercicios, ni los días, ni las repeticiones', () => {
+  // Es la queja del PO y el criterio VINCULANTE de Laura. Lo único que baja son las series.
+  const c = dlClient();
+  const antes = JSON.parse(JSON.stringify(c.routines));
+  const r = startDeload(c, DL_NOW);
+  assert.strictEqual(r.routines.length, antes.length, 'mismo número de rutinas');
+  r.routines.forEach((rt, i) => {
+    assert.strictEqual(rt.day, antes[i].day, 'mismo día');
+    assert.strictEqual(rt.name, antes[i].name, 'misma rutina');
+    assert.strictEqual(rt.exercises.length, antes[i].exercises.length, 'mismos ejercicios');
+    rt.exercises.forEach((e, j) => {
+      assert.strictEqual(e.name, antes[i].exercises[j].name, 'mismo ejercicio y en el mismo orden');
+      assert.strictEqual(e.reps, antes[i].exercises[j].reps, 'MISMAS repeticiones');
+    });
+  });
+  // Y las series sí bajan: 4→2, 3→2, 5→3, 2→2.
+  assert.deepStrictEqual(r.routines[0].exercises.map(e => e.sets), [2, 2, undefined]);
+  assert.deepStrictEqual(r.routines[1].exercises.map(e => e.sets), [3, 2]);
+});
+
+test('🔒 v434 · startDeload es PURA: no muta el plan del asesorado', () => {
+  const c = dlClient();
+  startDeload(c, DL_NOW);
+  assert.strictEqual(c.routines[0].exercises[0].sets, 4, 'el original queda intacto hasta que se guarde');
+  assert.strictEqual(c.deload, undefined);
+});
+
+test('🔴 v434 · «volver al plan normal» devuelve las series EXACTAS (antes era imposible)', () => {
+  // No existía ningún snapshot del plan anterior, así que volver no se podía. Ahora sí.
+  const c = dlClient();
+  const original = c.routines.map(r => r.exercises.map(e => e.sets));
+  const r = startDeload(c, DL_NOW);
+  const enDescarga = Object.assign({}, c, { routines: r.routines, deload: r.deload });
+  const vuelta = endDeload(enDescarga);
+  assert.deepStrictEqual(vuelta.routines.map(x => x.exercises.map(e => e.sets)), original);
+});
+
+test('🔒 v434 · si el coach cambia un ejercicio DURANTE la descarga, al volver se respeta su cambio', () => {
+  const c = dlClient();
+  const r = startDeload(c, DL_NOW);
+  const enDescarga = Object.assign({}, c, { routines: JSON.parse(JSON.stringify(r.routines)), deload: r.deload });
+  // El coach cambia el 1.º de la rutina 1 por otro ejercicio, con sus propias series.
+  // Ojo con el fixture: las series del ejercicio NUEVO tienen que ser DISTINTAS de las que guarda
+  // el snapshot (4), o restaurar y no restaurar dan el mismo número y el test no prueba nada.
+  enDescarga.routines[0].exercises[0] = { id: 'e9', name: 'Hip Thrust con Barra', muscle: 'gluteo', sets: 3, reps: 12 };
+  const vuelta = endDeload(enDescarga);
+  assert.strictEqual(vuelta.routines[0].exercises[0].name, 'Hip Thrust con Barra', 'no se le pisa el cambio');
+  assert.strictEqual(vuelta.routines[0].exercises[0].sets, 3, 'ni sus series (el snapshot decía 4)');
+  assert.strictEqual(vuelta.routines[0].exercises[1].sets, 3, 'los que no tocó sí se restauran');
+});
+
+test('deloadState: 7 días, cuenta lo que queda y avisa cuando se pasó', () => {
+  const c = dlClient();
+  const r = startDeload(c, DL_NOW);
+  const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
+  assert.strictEqual(deloadState(c, DL_NOW), null, 'sin descarga → null');
+  const d0 = deloadState(en, DL_NOW);
+  assert.strictEqual(d0.daysLeft, DELOAD_DAYS);
+  assert.strictEqual(d0.over, false);
+  assert.strictEqual(deloadState(en, DL_NOW + 6 * 86400000).daysLeft, 1);
+  const fin = deloadState(en, DL_NOW + 9 * 86400000);
+  assert.strictEqual(fin.over, true, 'a los 9 días ya se pasó');
+  assert.strictEqual(fin.daysOver, 2);
+  assert.strictEqual(fin.daysLeft, 0);
+  assert.strictEqual(deloadState({ deload: { until: 'basura' } }, DL_NOW), null, 'fecha ilegible → no inventa');
+});
+
+test('🔒 v434 · la descarga NO se quita sola: sigue puesta hasta que el coach la cierre', () => {
+  // Decisión del PO: sin temporizador. La contrapartida es el aviso al coach (deloadOverdue).
+  const c = dlClient();
+  const r = startDeload(c, DL_NOW);
+  const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
+  const tarde = DL_NOW + 30 * 86400000;
+  assert.ok(deloadState(en, tarde), 'a los 30 días sigue activa');
+  assert.strictEqual(deloadLoadFactor(en, tarde), DELOAD_LOAD_FACTOR, 'y el peso sugerido sigue bajado');
+  assert.deepStrictEqual(deloadOverdue([en], tarde).map(x => x.name), ['Kathe'], 'pero el coach lo ve en su Inicio');
+  assert.strictEqual(deloadOverdue([en], DL_NOW + 86400000).length, 0, 'dentro de los 7 días no molesta');
+});
+
+test('deloadLoadFactor: −10% solo durante la descarga', () => {
+  const c = dlClient();
+  assert.strictEqual(deloadLoadFactor(c, DL_NOW), 1);
+  const r = startDeload(c, DL_NOW);
+  assert.strictEqual(deloadLoadFactor(Object.assign({}, c, { deload: r.deload }), DL_NOW), 0.9);
+});
+
+test('🔒 v434 · a la asesorada se le EXPLICA por qué tiene menos series', () => {
+  // Si no se explica, lo lee como un error de la app o como que la están descuidando.
+  const c = dlClient();
+  const r = startDeload(c, DL_NOW);
+  const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
+  assert.strictEqual(deloadCardText(c, DL_NOW), null, 'sin descarga no hay tarjeta');
+  const t = deloadCardText(en, DL_NOW);
+  assert.ok(t && t.title && t.msg);
+  assert.ok(/7 días|quedan/i.test(t.msg), 'dice hasta cuándo: ' + t.msg);
+  assert.ok(!/deload|descarga programada|estanc/i.test(t.title + ' ' + t.msg), 'sin jerga: ' + t.title);
+  const fin = deloadCardText(en, DL_NOW + 9 * 86400000);
+  assert.ok(/termin/i.test(fin.title), 'cuando se pasó, el texto no miente con los días: ' + fin.title);
+});
+
+test('🔒 v434 · el coach recibe AVISO (no un bloqueo) cuando la descarga no le cuadra a esa persona', () => {
+  const ses = n => Array.from({ length: n }, (_, i) => ({ date: new Date(DL_NOW - i * 3 * 86400000).toISOString(), exercises: [] }));
+  const novata = dlClient();
+  const w = deloadWarnings(novata, ses(4), DL_NOW);
+  assert.ok(w.length >= 1 && /construyendo/i.test(w.join(' ')), 'avisa de la poca historia: ' + JSON.stringify(w));
+  const conDolor = Object.assign(dlClient(), {
+    startDate: new Date(DL_NOW - 300 * 86400000).toISOString(),
+    painCare: [{ area: 'zona lumbar', at: new Date(DL_NOW - 2 * 86400000).toISOString() }],
+  });
+  assert.ok(deloadWarnings(conDolor, ses(40), DL_NOW).some(x => /dolor/i.test(x)), 'y del dolor reciente');
+  const veterana = Object.assign(dlClient(), { startDate: new Date(DL_NOW - 300 * 86400000).toISOString() });
+  assert.deepStrictEqual(deloadWarnings(veterana, ses(40), DL_NOW), [], 'a quien le cuadra, sin ruido');
 });
 
 // ══════════════════════════════════════════════════════

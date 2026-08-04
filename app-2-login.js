@@ -1553,6 +1553,7 @@ function renderHome(){
   // 🫀 El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles. Al final para no
   // competir con los banners de urgencia (vencimientos/adherencia). Guard por caché vieja de core.
   if(typeof renderMyTrainingCard==='function')renderMyTrainingCard();
+  if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
@@ -1594,6 +1595,26 @@ function renderMyTrainingCard(){
       ${stat(lastTxt,'Último')}
     </div>
     <div style="margin-top:10px"><button class="btn bg bsm" style="width:100%;min-height:36px" onclick="event.stopPropagation();openMyTraining()">Ver mi entrenamiento →</button></div>
+  </div>`;
+}
+// 🍃 Descargas VENCIDAS (v434). La descarga no se quita sola: el coach la cierra con un toque
+// (decisión del PO, sin temporizador). Este aviso existe para que no se le olvide y alguien se
+// quede semanas al 60% de su volumen. Va arriba del pulso porque es una tarea, no una sugerencia.
+function renderDeloadAlerts(){
+  const el=document.getElementById('h-deload'); if(!el)return;
+  if(typeof deloadOverdue!=='function'){el.style.display='none';return;}
+  const rows=deloadOverdue(DB.clients,Date.now());
+  if(!rows.length){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:10px 14px;background:var(--yll);border-left:3px solid var(--yl)">
+    <div style="font-size:12px;font-weight:700;color:var(--ylt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('wind',13):'🍃'} Semana de descarga terminada</div>
+    ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br);cursor:pointer" onclick="openDetail('${esc(r.id)}')">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
+        <div style="font-size:11px;color:var(--t2)">${r.daysOver===0?'terminó hoy':'terminó hace '+r.daysOver+(r.daysOver===1?' día':' días')} — devuélvele el plan completo</div>
+      </div>
+      <div style="font-size:12px;color:var(--t3);flex-shrink:0">›</div>
+    </div>`).join('')}
   </div>`;
 }
 function renderPulse(){

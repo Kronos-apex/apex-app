@@ -304,7 +304,7 @@ function parseLimitations(notes) {
 // Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
 // `adaptation`: si es true (principiante en sus primeras semanas) sobrescribe el
 // esquema del objetivo por una FASE DE ADAPTACIÓN ANATÓMICA — ver isInAdaptation().
-function genSchemeFor(goal, level, adaptation, deload) {
+function genSchemeFor(goal, level, adaptation) {
   const g = _norm(goal);
   let base;
   if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { reps: 14, sets: [3, 4], rest: 55, cardioClose: true };
@@ -325,13 +325,10 @@ function genSchemeFor(goal, level, adaptation, deload) {
     scheme.restSec = 60;
     scheme.adaptation = true;
   }
-  // Semana de descarga (deload, Fase C): baja el VOLUMEN (−1 serie por ejercicio, piso 2)
-  // sobre el esquema que toque. La carga (kg) no la fija el generador, así que la baja se
-  // comunica como NOTA (~10-20% menos). Recuperación planificada, no castigo.
-  if (deload) {
-    scheme.setsN = Math.max(2, scheme.setsN - 1);
-    scheme.deload = true;
-  }
+  // ⛔ La SEMANA DE DESCARGA ya NO pasa por aquí (v434). Pasaba: `opts.deload` bajaba una serie
+  // dentro del generador, y el generador VUELVE A ELEGIR EJERCICIOS — por eso el PO recibía «una
+  // rutina totalmente distinta». Ahora la descarga es un modo temporal sobre el plan que la persona
+  // YA tiene (`startDeload`/`endDeload`), sin tocar la selección. Ver §3 del plan vivo.
   scheme.goalBucket = _restGoalBucket(goal); // cubeta para el descanso por tipo de ejercicio
   return scheme;
 }
@@ -889,7 +886,7 @@ function generarRutinas(client, lib, opts) {
   const age = parseInt(client.age) || null;
   const minor = age != null && age < 16;
   const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
-  const scheme = genSchemeFor(client.goal || '', level, opts.adaptation, opts.deload);
+  const scheme = genSchemeFor(client.goal || '', level, opts.adaptation);
   const lim = parseLimitations(client.notes || '');
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
@@ -944,8 +941,6 @@ function generarRutinas(client, lib, opts) {
       ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice}${lim.nerve ? ' 🚑 ' + lim.nerveAdvice : ''} Ajusta antes de aprobar.`
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
-      : scheme.deload
-      ? '🔄 Semana de descarga (deload): −1 serie por ejercicio. Baja la carga ~10-20% respecto a tu semana normal — la meta es recuperar, no exigir.'
       : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
     return {
       id: idFn(), name: nm, day: _genDays[idx] || ('Día ' + (idx + 1)), shift: null,
@@ -959,7 +954,7 @@ function generarRutinas(client, lib, opts) {
   // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
   // lo hacían las limitaciones, así que un plan a medio cubrir pasaba sin bandera).
   const anyEmpty = routines.some(r => !(r.exercises || []).length);
-  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, deload: !!scheme.deload, loadProfile };
+  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, loadProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -4190,6 +4185,157 @@ function deloadFloorReason(client, sessions, now) {
   return '';
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// LA SEMANA DE DESCARGA (v434) — ver docs/plan-estancamiento-descarga.md §3
+// ──────────────────────────────────────────────────────────────────────
+// El PO reportó que la descarga «le manda una rutina totalmente distinta»: era cierto — el botón
+// vivía DENTRO del generador y marcarlo llamaba a `generarRutinas`, que vuelve a ELEGIR ejercicios.
+// Y no se guardaba el plan anterior, así que volver era imposible.
+// La descarga deja de ser una rutina nueva y pasa a ser un MODO TEMPORAL de 7 días sobre el plan
+// que la persona YA tiene. Lo único que cambia son las SERIES y la carga sugerida:
+//   · ejercicios, días y REPETICIONES: intactos  (Laura, vinculante — y Andrés)
+//   · series × 0,6 con piso de 2                 (Andrés)
+//   · carga −10% en el peso sugerido             (Andrés)
+//   · 7 días                                     (Andrés · decisión del PO 2026-08-04)
+// Medido sobre planes reales: Kathe 91 → 54 series (−41%), Astrid 113 → 64 (−43%).
+const DELOAD_DAYS = 7;
+const DELOAD_SETS_FACTOR = 0.6;
+const DELOAD_SETS_MIN = 2;
+const DELOAD_LOAD_FACTOR = 0.9;
+// Piso de Laura para AVISAR al coach cuando la activa a mano (no bloquea: él manda).
+const DELOAD_WARN_DAYS = 56;
+const DELOAD_WARN_SESSIONS = 12;
+
+// deloadSets: las series de un ejercicio durante la descarga. Puro. Lo que no es un número de
+// series se devuelve tal cual (cardio/HIIT traen su propia configuración).
+function deloadSets(sets) {
+  const n = parseInt(sets);
+  if (!(n > 0)) return sets;
+  return Math.max(DELOAD_SETS_MIN, Math.round(n * DELOAD_SETS_FACTOR));
+}
+
+// startDeload(client, now) → { routines, deload } NUEVOS. PURA: no muta al cliente.
+// El snapshot guarda las series originales POR POSICIÓN, con el id y el nombre como testigo: si el
+// coach cambia un ejercicio durante la semana, al volver se respeta SU cambio en vez de pisarlo.
+function startDeload(client, now) {
+  client = client || {};
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const snapshot = {};
+  const routines = (client.routines || []).map(r => {
+    const entries = [];
+    const exercises = (r.exercises || []).map((e, i) => {
+      const n = parseInt(e && e.sets);
+      if (!(n > 0)) return e;
+      entries.push({ i, id: (e.id || ''), name: (e.name || ''), sets: n });
+      return Object.assign({}, e, { sets: deloadSets(n) });
+    });
+    if (entries.length) snapshot[r.id] = entries;
+    return Object.assign({}, r, { exercises });
+  });
+  return {
+    routines,
+    deload: {
+      from: new Date(nowTs).toISOString(),
+      until: new Date(nowTs + DELOAD_DAYS * 86400000).toISOString(),
+      sets: snapshot,
+    },
+  };
+}
+
+// endDeload(client) → { routines } con las series ORIGINALES devueltas. PURA.
+function endDeload(client) {
+  client = client || {};
+  const snap = (client.deload || {}).sets || {};
+  const routines = (client.routines || []).map(r => {
+    const entries = snap[r.id];
+    if (!Array.isArray(entries) || !entries.length) return r;
+    const exercises = (r.exercises || []).slice();
+    entries.forEach(en => {
+      const e = exercises[en.i];
+      if (!e) return;
+      // Testigo: si en esa posición ya no está el mismo ejercicio, el coach lo cambió → no se toca.
+      if ((e.id || '') !== (en.id || '') || (e.name || '') !== (en.name || '')) return;
+      exercises[en.i] = Object.assign({}, e, { sets: en.sets });
+    });
+    return Object.assign({}, r, { exercises });
+  });
+  return { routines };
+}
+
+// deloadState(client, now) → null si no está en descarga, o el estado. Puro.
+// `over` = ya pasaron los 7 días y el coach todavía no la ha cerrado. NO se cierra sola: fue
+// decisión del PO (el coach reactiva con un toque). El aviso de `over` existe para que no se olvide.
+function deloadState(client, now) {
+  const d = (client || {}).deload;
+  if (!d || !d.until) return null;
+  const until = new Date(d.until).getTime();
+  if (isNaN(until)) return null;
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const ms = until - nowTs;
+  return {
+    from: d.from || '',
+    until: d.until,
+    daysLeft: ms > 0 ? Math.ceil(ms / 86400000) : 0,
+    daysOver: ms < 0 ? Math.floor(-ms / 86400000) : 0,
+    over: ms <= 0,
+  };
+}
+// deloadLoadFactor: cuánto se multiplica el peso sugerido. 0,9 en descarga, 1 el resto del tiempo.
+function deloadLoadFactor(client, now) {
+  return deloadState(client, now) ? DELOAD_LOAD_FACTOR : 1;
+}
+
+// deloadCardText(client, now) → el texto que ve la ASESORADA, o null. Voz AVI: la descarga es una
+// decisión de entrenamiento, no un castigo ni un error de la app — si no se explica, se lee como
+// que alguien se equivocó o la están descuidando.
+function deloadCardText(client, now) {
+  const st = deloadState(client, now);
+  if (!st) return null;
+  if (st.over) return {
+    title: 'Tu semana suave ya terminó',
+    msg: 'Descansaste lo que había que descansar. Tu coach te devuelve el plan completo en cuanto lo revise.',
+  };
+  const d = st.daysLeft;
+  return {
+    title: 'Esta semana bajamos revoluciones',
+    msg: 'Menos series y un poquito menos peso, a propósito: así el cuerpo termina de recuperarse y vuelves más fuerte. '
+      + (d === 1 ? 'Queda un día.' : 'Quedan ' + d + ' días.'),
+  };
+}
+
+// deloadWarnings(client, sessions, now) → avisos para el COACH al activarla a mano. NO bloquean:
+// la decisión es suya. Pero AVI no se calla cuando la descarga no le cuadra a esa persona.
+function deloadWarnings(client, sessions, now) {
+  client = client || {};
+  sessions = sessions || [];
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const out = [];
+  if (painCareActive(client.painCare, nowTs).length > 0) {
+    out.push('🤕 Reportó dolor hace poco. Bajarle el volumen no atiende un dolor — revisa su estado primero.');
+  }
+  const ts = sessions.map(s => new Date(s && s.date).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
+  const raw = client.startDate;
+  const sd = (raw == null || raw === '') ? NaN : new Date(raw).getTime();
+  const desde = !isNaN(sd) ? sd : (ts.length ? ts[0] : nowTs);
+  const dias = Math.round((nowTs - desde) / 86400000);
+  if (dias < DELOAD_WARN_DAYS || ts.length < DELOAD_WARN_SESSIONS) {
+    out.push('Lleva ' + Math.max(0, Math.round(dias / 7)) + ' semanas y ' + ts.length +
+      ' sesiones. Una descarga baja volumen a quien todavía está construyendo — ¿seguro?');
+  }
+  return out;
+}
+
+// deloadOverdue(clients, now) → los que llevan la descarga vencida, para el Inicio del coach.
+// Determinista (el poll de 15 s no debe reordenar): por días vencidos desc, luego nombre.
+function deloadOverdue(clients, now) {
+  return (clients || [])
+    .filter(c => c && !c.suspended)
+    .map(c => ({ c, st: deloadState(c, now) }))
+    .filter(x => x.st && x.st.over)
+    .map(x => ({ id: x.c.id, name: x.c.name || '', daysOver: x.st.daysOver }))
+    .sort((a, b) => (b.daysOver - a.daysOver) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
 function shockTargets(sessions, client, now) {
   const stalled = stalledExercises(client, sessions, now);
   if (!stalled.length) return null;
@@ -4775,6 +4921,18 @@ if (typeof module !== 'undefined' && module.exports) {
     deloadFloorReason,
     DELOAD_MIN_TRAINING_DAYS,
     DELOAD_MIN_DATA_WEEKS,
+    DELOAD_DAYS,
+    DELOAD_SETS_FACTOR,
+    DELOAD_SETS_MIN,
+    DELOAD_LOAD_FACTOR,
+    deloadSets,
+    startDeload,
+    endDeload,
+    deloadState,
+    deloadLoadFactor,
+    deloadCardText,
+    deloadWarnings,
+    deloadOverdue,
     PERF_CLAMP_REPS,
     STALL_WIN_WEEKS,
     STALL_WIN_WEEKS_BEGINNER,

@@ -294,14 +294,33 @@ try {
   check('S12 3+ estancados → modo global (fatiga sistémica)', s12mode === 'global', 'mode=' + s12mode);
   check('S12b la tarjeta NO ofrece protocolos por ejercicio (0 botones Aplicar)', s.shown && s.opts === 0, 'opts=' + s.opts);
   check('S12c ofrece la CTA de semana de descarga (y NO es rebuild)', s.deload === true && s.rebuild === false && /descarga/i.test(s.text), 'deload=' + s.deload + ' rebuild=' + s.rebuild);
-  // Click real en "Generar semana de descarga" → abre m-gen con #mg-deload marcado.
+  // 🔴 v434: el click ya NO abre el generador (eso reescribía la semana entera — la queja del PO).
+  // Activa la descarga SOBRE el plan que ya tiene: mismos ejercicios, mismos días, mismas reps.
   const s12d = await evj(`(()=>{
+    const c=DB.clients.find(x=>x.id==='a1');
+    const antes=c.routines.map(r=>r.exercises.map(e=>({n:e.name,s:e.sets,r:e.reps})));
+    window.confirm=()=>true; // el diálogo de confirmación del coach
     document.querySelector('#d-shock button[onclick*="shockDeload"]').click();
     const mg=document.getElementById('m-gen');
-    return {gopen:!!(mg&&mg.classList.contains('on')), deloadChk:!!(document.getElementById('mg-deload')||{}).checked, curDeload:!!CUR.genDeload};})()`);
-  check('🔒 S12d el click abre el generador (m-gen) con la descarga marcada', s12d.gopen && s12d.deloadChk && s12d.curDeload, JSON.stringify(s12d));
-  await shot('S12-gen-deload');
-  await ev(`(()=>{const m=document.getElementById('m-gen');if(m)m.classList.remove('on');})()`);
+    const d=c.routines.map(r=>r.exercises.map(e=>({n:e.name,s:e.sets,r:e.reps})));
+    return {gopen:!!(mg&&mg.classList.contains('on')),
+      mismosEjercicios:JSON.stringify(antes.map(r=>r.map(e=>e.n)))===JSON.stringify(d.map(r=>r.map(e=>e.n))),
+      mismasReps:JSON.stringify(antes.map(r=>r.map(e=>e.r)))===JSON.stringify(d.map(r=>r.map(e=>e.r))),
+      seriesAntes:antes[0].map(e=>e.s), seriesDespues:d[0].map(e=>e.s),
+      tieneSnapshot:!!(c.deload&&c.deload.sets&&Object.keys(c.deload.sets).length),
+      panel:(document.getElementById('d-deload')||{}).innerHTML.indexOf('Volver al plan normal')>=0};})()`);
+  check('🔒 S12d el click NO abre el generador ni le cambia los ejercicios ni las reps',
+    !s12d.gopen && s12d.mismosEjercicios && s12d.mismasReps, JSON.stringify({ gen: s12d.gopen, ex: s12d.mismosEjercicios, reps: s12d.mismasReps }));
+  check('🔒 S12e bajan las SERIES y queda el snapshot para volver', s12d.tieneSnapshot && s12d.panel &&
+    JSON.stringify(s12d.seriesAntes) !== JSON.stringify(s12d.seriesDespues), JSON.stringify({ antes: s12d.seriesAntes, despues: s12d.seriesDespues, snap: s12d.tieneSnapshot }));
+  await shot('S12-descarga-activa');
+  // Vuelta al plan normal: las series originales, exactas.
+  const s12f = await evj(`(()=>{
+    const c=DB.clients.find(x=>x.id==='a1');
+    endDeloadFor('a1');
+    return {series:c.routines[0].exercises.map(e=>e.sets), sinDeload:!c.deload};})()`);
+  check('🔒 S12f «Volver al plan normal» devuelve las series exactas', s12f.sinDeload &&
+    JSON.stringify(s12f.series) === JSON.stringify(s12d.seriesAntes), JSON.stringify(s12f));
 
   // ── S13: mute independiente — silenciar (aplicar) el target 1 deja visible el 2 al re-render ──
   const s13 = await ev(multiFixture([

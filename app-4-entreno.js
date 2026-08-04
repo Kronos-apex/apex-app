@@ -688,8 +688,8 @@ function _todayOrder(training){
   // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
   // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
   const ids=training
-    ? ['cn-today-head','cn-firstrun','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
-    : ['cn-today-head','cn-firstrun','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share'];
+    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
+    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
@@ -742,7 +742,7 @@ function renderClientToday(client, overrideRoutine){
   // OJO: apagar con `display:none` obliga a ENCENDER de vuelta. Sin esta restauración, al terminar
   // el primer entreno la portada se apaga pero hábitos/coach/novedades quedaban invisibles el resto
   // de la sesión (lo cazó `_verify-firstrun` D5 antes de salir de aquí).
-  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
+  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-deload','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
   _DIA1_OFF.forEach(id=>{ const e=document.getElementById(id); if(!e) return;
     if(_dia1){ e.innerHTML=''; e.style.display='none'; } else if(e.style.display==='none'){ e.style.display=''; } });
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
@@ -755,6 +755,7 @@ function renderClientToday(client, overrideRoutine){
   if(!_dia1 && typeof renderMealsToday==='function')renderMealsToday(client);
   // 🧠 Coach Inteligente (v352): 1 insight priorizado (récord/racha/inactividad/…). Antes de los
   // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
+  if(!_dia1 && typeof renderDeloadCard==='function')renderDeloadCard(client);
   if(!_dia1 && typeof renderCoachCard==='function')renderCoachCard(client);
   // 🔁 Día que se corrió (v368, idea Camilo 2026-07-17): rutina de un día ya pasado esta
   // semana sin entrenar → tarjeta para recuperarla hoy o moverla en el plan. Recibe el
@@ -933,6 +934,27 @@ function dismissCoachInsight(type){
   localStorage.setItem(_coachMuteKey(c.id,type),String(Date.now()+days*86400000));
   renderCoachCard(c); // se oculta o muestra el siguiente insight
 }
+// 🍃 SEMANA DE DESCARGA (v434) — la asesorada tiene que saber POR QUÉ tiene menos series esta
+// semana. Sin esto lo lee como un error de la app o como que la están descuidando. Va ARRIBA del
+// entreno a propósito: explica el plan que está a punto de hacer, no es una invitación (R1.6).
+function renderDeloadCard(client){
+  const el=document.getElementById('cn-deload'); if(!el)return;
+  el.innerHTML='';
+  if(typeof deloadCardText!=='function')return;
+  const t=deloadCardText(client,Date.now());
+  if(!t)return;
+  const ic=typeof aviIcon==='function'?aviIcon('wind',20):'🍃';
+  el.innerHTML=`<div class="card" data-deload="1" style="padding:14px 15px;margin-bottom:12px;background:var(--yll);border-left:3px solid var(--yl)">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="color:var(--ylt);flex:0 0 auto;margin-top:1px">${ic}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:3px">${esc(t.title)}</div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.55">${esc(t.msg)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderCoachCard(client){
   const el=document.getElementById('cn-coach-card');if(!el)return;
   const cid=client&&client.id;
@@ -1287,7 +1309,14 @@ function _suggestKg(ex){
     const c=_curClient();if(!c)return null;
     if(isInAdaptation(c,DB.history,new Date()))return null;
     const pr=(DB.prs[c.id]||{})[ex.id||ex.name];
-    return suggestFromPR(pr,parseInt(ex.reps)||10);
+    const kg=suggestFromPR(pr,parseInt(ex.reps)||10);
+    // Semana de descarga (v434): la carga baja ~10%. Es la mitad de la receta de Andrés (la otra
+    // son las series, que ya vienen bajadas en el plan). Redondeo a medio kilo, como la sugerencia.
+    if(kg&&typeof deloadLoadFactor==='function'){
+      const f=deloadLoadFactor(c,Date.now());
+      if(f!==1)return Math.round(kg*f*2)/2;
+    }
+    return kg;
   }catch(e){return null;}
 }
 // Peso ligero sugerido para el calentamiento ≈ 50% del peso de trabajo, redondeado a
