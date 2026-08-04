@@ -3107,17 +3107,80 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
 // explícito: «AVI propone, el coach aprueba».
 // Sin plan del coach (o incompleto) se cae a la estimación automática, y si tampoco
 // hay datos del cuerpo → null: no se inventa un plan.
+// Las calorías que de verdad suman unos macros. Es la CUENTA, no el titular.
+function nutMacroKcal(macros) {
+  const m = macros || {};
+  const p = parseFloat(m.prot_g != null ? m.prot_g : m.prot) || 0;
+  const c = parseFloat(m.carb_g != null ? m.carb_g : m.carbs) || 0;
+  const f = parseFloat(m.fat_g != null ? m.fat_g : m.fat) || 0;
+  return Math.round(p * 4 + c * 4 + f * 9);
+}
+const NUT_KCAL_MISMATCH = 25; // desfase que ya no es redondeo y hay que avisarle al coach
+
 function nutBaseFor(client, nut, weightKg) {
   const k = parseFloat(nut && nut.kcal);
   const p = parseFloat(nut && nut.prot);
   const c = parseFloat(nut && nut.carbs);
   const f = parseFloat(nut && nut.fat);
   if (k > 0 && p > 0 && c > 0 && f > 0) {
-    return { origen: 'coach', kcalObj: Math.round(k), macros: { prot_g: Math.round(p), carb_g: Math.round(c), fat_g: Math.round(f), kcal: Math.round(k) } };
+    // 🔴 El titular que escribió el coach y la suma de SUS PROPIOS macros no siempre cuadran
+    // (medido 2026-08-04: 6 de 10 planes, y el de Nataly por 240 kcal/día). El plato se arma con
+    // los MACROS, así que el titular escrito es el número que miente: se muestra el DERIVADO y el
+    // desfase viaja para que el coach lo vea y arregle uno de los dos. Cambiar el número y dejar
+    // el titular viejo sería el mismo error de v428 (anunciar un déficit mientras se sirve otra cosa).
+    const macros = { prot_g: Math.round(p), carb_g: Math.round(c), fat_g: Math.round(f) };
+    macros.kcal = nutMacroKcal(macros);
+    return {
+      origen: 'coach', kcalObj: macros.kcal, macros,
+      kcalEscrito: Math.round(k), desfase: macros.kcal - Math.round(k),
+    };
   }
   const est = nutritionEstimate(client, weightKg);
   if (!est || !est.macros) return null;
   return { origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// UNA SOLA VERDAD PARA LAS DOS PANTALLAS (v435)
+// ──────────────────────────────────────────────────────────────────────
+// El PO reportó «hay dos planes de nutrición y son diferentes». Medido el 2026-08-04 sobre los 21
+// asesorados: el kcal BASE sí coincide, pero «Hoy» muestra el objetivo DEL DÍA (que se mueve con
+// el tipo de entreno) y «Perfil» muestra el número FIJO de la semana. A Kathe le salían 2.227 el
+// domingo, 2.395 el martes y 2.507 el lunes contra los 2.400 del perfil: hasta 173 kcal de
+// diferencia, sin una sola línea que explicara por qué. Está bien calculado y aun así, en pantalla,
+// son dos números que se contradicen.
+// `nutWeekTargets` es el reparto COMPLETO de la semana. Las dos pantallas leen de aquí: «Hoy» toma
+// su día y «Perfil» pinta los siete. Puro.
+const NUT_WEEK_DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+function nutWeekTargets(base, routines) {
+  if (!base || !base.macros) return null;
+  const shape = nutWeekShape(routines);
+  const rs = Array.isArray(routines) ? routines : [];
+  const days = NUT_WEEK_DAYS.map((name, i) => {
+    const rut = rs.find(r => r && r.day === name) || null;
+    const kind = nutDayKind(rut);
+    return { dayIndex: i, day: name, kind, routineName: (rut && rut.name) || '', target: nutDayTarget(base, kind, shape.trainDays, shape.legDays) };
+  });
+  // El total de la semana NO cambia con el reparto: es la promesa que sostiene todo esto.
+  const semana = days.reduce((t, d) => t + ((d.target && d.target.kcal) || 0), 0);
+  return { days, shape, baseKcal: base.kcalObj, semanaKcal: semana, promedioKcal: Math.round(semana / 7) };
+}
+
+// nutDayNote: la línea que explica por qué HOY el número no es el de la semana. Sin esto, las dos
+// pantallas se contradicen a la vista aunque por dentro estén bien. Pura; devuelve '' si no hay
+// nada que explicar (el día que coincide con la base no necesita disculpa).
+function nutDayNote(kind, dayKcal, baseKcal) {
+  const d = Math.round(parseFloat(dayKcal) || 0);
+  const b = Math.round(parseFloat(baseKcal) || 0);
+  if (!d || !b) return '';
+  const dif = d - b;
+  if (Math.abs(dif) < 25) return ''; // ruido de redondeo: no vale la pena explicarlo
+  const cuanto = Math.abs(dif) + ' kcal';
+  if (kind === 'pierna') return 'Hoy entrenas pierna, así que llevas ' + cuanto + ' más de carbohidrato. En la semana comes lo mismo.';
+  if (kind === 'entreno') return dif > 0
+    ? 'Hoy entrenas, así que llevas ' + cuanto + ' más de carbohidrato. En la semana comes lo mismo.'
+    : 'Hoy llevas ' + cuanto + ' menos que tu promedio: el carbohidrato se corre a los días de pierna. En la semana comes lo mismo.';
+  return 'Hoy descansas, así que llevas ' + cuanto + ' menos de carbohidrato. En la semana comes lo mismo.';
 }
 
 // Cuenta los días del plan y cuántos son de pierna/full body — lo que `nutDayTarget`
@@ -4768,7 +4831,12 @@ if (typeof module !== 'undefined' && module.exports) {
     nutDayPlan,
     nutPlanReview,
     nutBaseFor,
+    nutMacroKcal,
+    NUT_KCAL_MISMATCH,
     nutWeekShape,
+    nutWeekTargets,
+    nutDayNote,
+    NUT_WEEK_DAYS,
     NUT_REVIEW_MIN_GAP,
     nutMealSplit,
     getSexCode,

@@ -1580,7 +1580,25 @@ function renderNutReviewCard(c){
     let peso=c.weight;
     const bw=(DB.bodyweight||{})[c.id];
     if(Array.isArray(bw)&&bw.length){ const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg); }
-    const r=nutPlanReview(c,(DB.nutrition||{})[c.id],peso);
+    const _nut=(DB.nutrition||{})[c.id];
+    // v435: el titular escrito y la suma de SUS PROPIOS macros pueden no cuadrar (medido
+    // 2026-08-04: 6 de 10 planes; el de Nataly por 240 kcal/día). El plato se arma con los MACROS,
+    // así que el asesorado come lo que suman ellos — y el coach tiene que enterarse de que el
+    // número que escribió no es el que se está entregando.
+    if(typeof nutMacroKcal==='function'&&_nut&&parseFloat(_nut.kcal)>0){
+      const _real=nutMacroKcal({prot_g:_nut.prot,carb_g:_nut.carbs,fat_g:_nut.fat});
+      const _dif=_real-Math.round(parseFloat(_nut.kcal));
+      const _tope=(typeof NUT_KCAL_MISMATCH==='number')?NUT_KCAL_MISMATCH:25;
+      if(_real>0&&Math.abs(_dif)>=_tope){
+        el.style.display='';
+        el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(--yll);border-left:3px solid var(--yl)">
+          <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(String(Math.round(parseFloat(_nut.kcal))))} kcal, pero sus macros suman ${_real}</div>
+          <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${_real} kcal</b> — ${Math.abs(_dif)} ${_dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
+        </div>`;
+        return;
+      }
+    }
+    const r=nutPlanReview(c,_nut,peso);
     if(!r||r.status==='ok')return;                 // plan sano → sin ruido
     let tono='--yll', tinta='--ort', titulo='', cuerpo='';
     if(r.status==='sin_datos'){

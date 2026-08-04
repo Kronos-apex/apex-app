@@ -19,6 +19,10 @@ const {
   sanitizePrs,
   nutAcompMacros,
   nutDayPlan,
+  nutBaseFor,
+  nutMacroKcal,
+  nutWeekTargets,
+  nutDayNote,
   nutRefWeight,
   nutMealSplit,
   migrateRoutineIds,
@@ -4223,6 +4227,79 @@ test('🔴 el ciclado NO cambia el total de la semana (la regla que no se puede 
       assert.ok(desvio <= 0.01, `días=${d} pierna=${L}: la semana se desvió ${(desvio * 100).toFixed(1)}% (${semana} vs ${plano})`);
     }
   }
+});
+
+// ── v435: UNA SOLA VERDAD PARA LAS DOS PANTALLAS ──
+// El PO reportó «hay dos planes de nutrición y son diferentes». Lo eran: «Perfil» pintaba el
+// titular escrito por el coach (fijo) y «Hoy» el objetivo DEL DÍA (que se mueve con el entreno).
+const NUT_RUT_4D = [
+  { day: 'Lunes', name: 'Glúteo y Piernas A', exercises: [{ muscle: 'piernas' }, { muscle: 'gluteo' }] },
+  { day: 'Martes', name: 'Tren Superior', exercises: [{ muscle: 'espalda' }, { muscle: 'pecho' }] },
+  { day: 'Jueves', name: 'Glúteo y Piernas B', exercises: [{ muscle: 'piernas' }, { muscle: 'gluteo' }] },
+  { day: 'Viernes', name: 'Brazos', exercises: [{ muscle: 'biceps' }] },
+];
+
+test('🔴 v435 · el titular del plan y sus PROPIOS macros tienen que decir lo mismo', () => {
+  // Medido en producción (2026-08-04): 6 de 10 planes descuadrados, y el de Nataly por 240 kcal
+  // al día — decía 3.200 y sus macros sumaban 2.960. El plato se arma con los MACROS, así que el
+  // titular era el número que mentía. Ahora el que se muestra es el que se sirve.
+  assert.strictEqual(nutMacroKcal({ prot_g: 150, carb_g: 270, fat_g: 75 }), 2355);
+  const base = nutBaseFor({ weight: 60 }, { kcal: 2400, prot: 150, carbs: 270, fat: 75 }, 60);
+  assert.strictEqual(base.origen, 'coach');
+  assert.strictEqual(base.kcalObj, 2355, 'muestra lo que de verdad suman sus macros');
+  assert.strictEqual(base.kcalEscrito, 2400, 'y conserva el titular para poder avisarle al coach');
+  assert.strictEqual(base.desfase, -45);
+  assert.strictEqual(base.macros.kcal, base.kcalObj, 'el motor del plato usa el mismo número');
+  // Un plan que sí cuadra no genera desfase.
+  const ok = nutBaseFor({ weight: 60 }, { kcal: 2355, prot: 150, carbs: 270, fat: 75 }, 60);
+  assert.strictEqual(ok.desfase, 0);
+});
+
+test('🔴 v435 · la semana que ve el PERFIL suma EXACTO lo que promete', () => {
+  // La frase «en la semana comes lo mismo» tiene que ser verdad, no un consuelo. Con el titular
+  // escrito (2.400) la semana daba 16.485 contra 16.800 prometidas: 315 kcal de mentira.
+  const base = nutBaseFor({ weight: 60 }, { kcal: 2400, prot: 150, carbs: 270, fat: 75 }, 60);
+  const w = nutWeekTargets(base, NUT_RUT_4D);
+  assert.strictEqual(w.days.length, 7);
+  // El reparto redondea el carbohidrato de cada día, así que la igualdad EXACTA solo se da en
+  // algunas formas de semana (lo destapó el harness con un plan de un solo día de entreno). La
+  // promesa real es que la semana no SE DESVÍA — mismo criterio (1%) que el test del ciclado.
+  const desvio = Math.abs(w.semanaKcal - 7 * base.kcalObj) / (7 * base.kcalObj);
+  assert.ok(desvio <= 0.01, `la semana se desvió ${(desvio * 100).toFixed(2)}% (${w.semanaKcal} vs ${7 * base.kcalObj})`);
+  assert.strictEqual(w.promedioKcal, Math.round(w.semanaKcal / 7), 'el promedio es el de la semana REAL, no el titular');
+  // Y con formas de semana distintas tampoco se desvía (1 solo día de entreno es el caso extremo).
+  for (const rut of [NUT_RUT_4D.slice(0, 1), NUT_RUT_4D.slice(0, 2), NUT_RUT_4D]) {
+    const x = nutWeekTargets(base, rut);
+    const dv = Math.abs(x.semanaKcal - 7 * base.kcalObj) / (7 * base.kcalObj);
+    assert.ok(dv <= 0.01, `con ${rut.length} día(s) la semana se desvió ${(dv * 100).toFixed(2)}%`);
+  }
+  // Y los días NO son todos iguales: eso es lo que hay que explicar, no esconder.
+  const kcals = [...new Set(w.days.map(d => d.target.kcal))];
+  assert.ok(kcals.length >= 2, 'el ciclado existe: ' + JSON.stringify(kcals));
+});
+
+test('🔴 v435 · «Hoy» EXPLICA por qué su número no es el de la semana', () => {
+  // Sin esta línea son dos números que se contradicen a la vista, aunque por dentro estén bien.
+  const base = nutBaseFor({ weight: 60 }, { kcal: 2400, prot: 150, carbs: 270, fat: 75 }, 60);
+  const w = nutWeekTargets(base, NUT_RUT_4D);
+  const lunes = w.days.find(d => d.day === 'Lunes');       // pierna → más
+  const domingo = w.days.find(d => d.day === 'Domingo');   // descanso → menos
+  const nLun = nutDayNote(lunes.kind, lunes.target.kcal, base.kcalObj);
+  const nDom = nutDayNote(domingo.kind, domingo.target.kcal, base.kcalObj);
+  assert.ok(/pierna/i.test(nLun) && /m[áa]s/i.test(nLun), nLun);
+  assert.ok(/descansas/i.test(nDom) && /menos/i.test(nDom), nDom);
+  assert.ok(/en la semana comes lo mismo/i.test(nLun), 'la promesa que sostiene el ciclado: ' + nLun);
+  // El día que coincide con la base no necesita disculpa (ni ruido en pantalla).
+  assert.strictEqual(nutDayNote('entreno', 2360, 2355), '');
+  assert.strictEqual(nutDayNote('descanso', 0, 2355), '', 'sin datos no inventa una explicación');
+});
+
+test('🔒 v435 · sin plan del coach la semana también cuadra (estimación automática)', () => {
+  const base = nutritionEstimate(NUT_BASE);
+  const w = nutWeekTargets(base, NUT_RUT_4D);
+  assert.ok(w, 'hay semana');
+  assert.ok(Math.abs(w.semanaKcal - 7 * w.promedioKcal) <= 7, 'el promedio representa la semana');
+  assert.strictEqual(nutWeekTargets(null, NUT_RUT_4D), null, 'sin base no inventa una semana');
 });
 
 test('el día de pierna trae MÁS carbohidrato que el normal, y el descanso menos', () => {

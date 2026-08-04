@@ -45,6 +45,7 @@ const setTheme = async t => { await ev(`(()=>{document.documentElement.setAttrib
 const fixture = (offDays) => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const c={id:'a1',name:'Kathe Prueba',level:'Intermedio',days:4,tier:'premium',goal:'Ganar músculo',notes:'',
+    weight:62,height:165,age:29,sex:'F',activityFactor:1.55,
     payments:[{date:'2026-06-15',dueDate:'2026-12-01',amount:120000}],
     routines:[{id:'r1',name:'Glúteo A',day:['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][(new Date().getDay()+6)%7],restSec:90,exercises:[
       {id:'e1',name:'Hip Thrust en Máquina',muscle:'gluteo',type:'Compuesto',sets:4,reps:15},
@@ -115,6 +116,59 @@ try {
   if (await ev(fixture(2)) !== true) throw new Error('fixture 2');
   const d5 = await ev(`(()=>{renderDeloadAlerts();return document.getElementById('h-deload').style.display;})()`);
   check('D5 dentro de la semana el Inicio del coach NO se llena de avisos', d5 === 'none', 'display=' + d5);
+
+  // ── D7 (v435): las DOS pantallas de nutrición dicen lo mismo ──
+  // El PO reportó «hay dos planes y son diferentes»: «Perfil» pintaba el titular escrito y «Hoy»
+  // el objetivo DEL DÍA. Ahora las dos leen del mismo motor y «Hoy» explica la diferencia del día.
+  if (await ev(fixture(0)) !== true) throw new Error('fixture D7');
+  await ev(`(()=>{const c=DB.clients[0];
+    DB.nutrition={a1:{kcal:2400,prot:150,carbs:270,fat:75,water:9,meals:3,plan:'Plan de prueba',avoid:'Fritos'}};
+    delete c.deload; CUR.loggedAs='client'; CUR.clientId='a1'; showScreen('s-client');})()`);
+  // ALCANCE DECLARADO: afirma lo que cada función PINTA (innerHTML), no que la pestaña esté
+  // visible — eso lo cubre `_shot-profile`. Todo en UNA llamada y devolviendo las cadenas
+  // directamente: repartirlo en varias evaluaciones daba cero sin decir por qué.
+  const d7 = await evj(`(()=>{try{
+    const txt=el=>String((document.getElementById(el)||{}).innerHTML||'').replace(/<[^>]*>/g,' ');
+    renderClientToday(DB.clients[0]);
+    const hoy=txt('cn-meals');
+    renderNutritionClient('a1');
+    const perf=txt('cn-nut-body');
+    const c=DB.clients[0];
+    const base=nutBaseFor(c,DB.nutrition.a1,c.weight);
+    const w=nutWeekTargets(base,c.routines);
+    const desvio=Math.abs(w.semanaKcal-7*base.kcalObj)/(7*base.kcalObj);
+    // Se devuelven CONCLUSIONES, no las cadenas: el innerHTML del perfil pasa de 7 KB y al
+    // serializarlo entero la evaluación devolvía undefined sin decir por qué.
+    return {lenHoy:hoy.length, lenPerf:perf.length,
+      perfTieneSemana:/semana de comida/i.test(perf)&&perf.indexOf(String(w.promedioKcal))>=0,
+      // El titular y las tarjetas de macros que van debajo tienen que decir lo MISMO.
+      titularCuadra:perf.indexOf(String(base.kcalObj))>=0&&base.kcalObj===nutMacroKcal(base.macros),
+      perfSinTitularFalso:perf.indexOf(String(base.kcalEscrito)+' ')<0||base.desfase===0,
+      hoyExplica:/en la semana comes lo mismo/i.test(hoy),
+      real:base.kcalObj, escrito:base.kcalEscrito, promedio:w.promedioKcal,
+      desvio:Math.round(desvio*10000)/100, muestra:hoy.replace(/\s+/g,' ').slice(0,110)};
+  }catch(e){return {err:e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1]};}})()`);
+  if (d7.err) throw new Error('D7: ' + d7.err);
+  // Para MIRAR la tarjeta nueva hay que forzar la pestaña: el poll del cliente devuelve la vista
+  // a «Hoy» a los segundos y la captura salía del entreno.
+  await ev(`(()=>{document.querySelectorAll('.cnp').forEach(p=>{p.classList.remove('on');p.style.display='none';});
+    const p=document.getElementById('cn-profile'); p.classList.add('on'); p.style.display='block';})()`);
+  await sleep(300);
+  await setTheme('light'); await shot('D7-perfil-semana', '#cn-nut-body');
+  await setTheme('dark'); await shot('D7-perfil-semana-oscuro', '#cn-nut-body'); await setTheme('light');
+  await ev(`(()=>{document.querySelectorAll('.cnp').forEach(p=>{p.style.display='';});})()`);
+  check('🔒 D7-control las dos pantallas PINTARON algo (si no, lo demás no prueba nada)',
+    d7.lenHoy > 50 && d7.lenPerf > 50, 'hoy=' + d7.lenHoy + ' perfil=' + d7.lenPerf);
+  check('🔒 D7 el PERFIL muestra la semana con el número que de verdad se sirve',
+    d7.perfTieneSemana, 'promedio=' + d7.promedio + ' escrito=' + d7.escrito);
+  check('🔒 D7b el titular escrito ya no manda, y el que se muestra CUADRA con sus macros',
+    d7.escrito === 2400 && d7.real === 2355 && d7.perfSinTitularFalso && d7.titularCuadra, 'real=' + d7.real + ' escrito=' + d7.escrito + ' cuadra=' + d7.titularCuadra);
+  check('🔒 D7c «Hoy» EXPLICA por qué su número no es el de la semana', d7.hoyExplica, d7.muestra);
+  check('D7d la semana no se desvía de lo que promete (≤1%)', d7.desvio <= 1, 'desvío=' + d7.desvio + '%');
+
+  // D7 dejó al cliente FUERA de descarga: se re-monta el fixture antes de probar la vuelta.
+  if (await ev(fixture(2)) !== true) throw new Error('fixture D6');
+  await ev(`(()=>{CUR.loggedAs='coach';showScreen('s-coach');})()`);
 
   // ── D6: el panel de la ficha y la vuelta al plan normal ──
   const d6 = await evj(`(()=>{

@@ -272,6 +272,9 @@ function renderMealsToday(client){
     const plan=nutDayPlan(base,kind,shape.trainDays,shape.legDays,hoy.getDay());
     if(!plan)return;
     const t=plan.target;
+    // v435: el número de HOY se mueve con el tipo de entreno y el del perfil es el de la semana.
+    // Sin esta línea son dos números que se contradicen a la vista (reporte del PO 2026-08-04).
+    const nota=(typeof nutDayNote==='function')?nutDayNote(kind,t.kcal,base.kcalObj):'';
     const abierto=_mealsOpen;
     const filas=plan.meals.map((m,i)=>{
       const comida=m.items.map(it=>`${esc(it.name)} <b style="color:var(--t1)">${esc(it.text)}</b>`).join(' + ');
@@ -294,6 +297,7 @@ function renderMealsToday(client){
         <span class="tag" style="background:var(--yll);color:var(--ort)">Carbohidrato ${t.carb_g} g</span>
         <span class="tag to">Grasa ${t.fat_g} g</span>
       </div>
+      ${nota?`<div style="font-size:11.5px;color:var(--t2);background:var(--bg);border-radius:var(--rsm);padding:8px 10px;margin-top:9px;line-height:1.5">${esc(nota)}</div>`:''}
       ${abierto?`<div style="margin-top:8px">${filas}</div>
       <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Son cantidades ya listas para comer. Puedes cambiar un alimento por otro parecido — lo que importa es acercarte a esos números.</div>`:''}
     </div>`;
@@ -319,10 +323,50 @@ function renderNutritionClient(clientId){
     return;
   }
   let html='';
+  // ── v435: LA MISMA VERDAD QUE «HOY» ──────────────────────────────────────────
+  // El PO reportó «hay dos planes y son diferentes». Lo eran: aquí se pintaba el titular escrito
+  // por el coach (fijo) y en «Hoy» el objetivo DEL DÍA (que se mueve con el entreno) — a Kathe le
+  // salían 2.227 el domingo contra 2.400 aquí. Ahora esta pantalla lee del MISMO motor y muestra
+  // la semana entera, para que el número de «Hoy» tenga dónde encajar.
+  const _c=DB.clients.find(x=>x.id===clientId);
+  let _sem=null;
+  try{
+    if(_c && typeof nutBaseFor==='function' && typeof nutWeekTargets==='function'){
+      let _peso=_c.weight;
+      const _bw=(DB.bodyweight||{})[clientId];
+      if(Array.isArray(_bw)&&_bw.length){const u=_bw[_bw.length-1]; if(u&&parseFloat(u.kg)>0)_peso=parseFloat(u.kg);}
+      const _base=nutBaseFor(_c,nut,_peso);
+      if(_base)_sem=nutWeekTargets(_base,_c.routines);
+    }
+  }catch(e){ warn('AVI: la semana de nutrición no se pudo armar (no bloquea el perfil):',e&&e.message); }
+  if(_sem){
+    const hoyIdx=new Date().getDay();
+    const filas=_sem.days.map(d=>{
+      const esHoy=d.dayIndex===hoyIdx;
+      const et=d.kind==='pierna'?'Pierna':d.kind==='entreno'?'Entreno':'Descanso';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;${d.dayIndex?'border-top:1px solid var(--br)':''}${esHoy?';font-weight:800':''}">
+        <div style="font-size:12.5px;color:var(--t1);min-width:0">${esc(d.day)}${esHoy?' <span style="color:var(--gt);font-size:11px">· hoy</span>':''}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--t3)">${esc(et)}</span>
+          <span style="font-size:12.5px;color:var(--t1);min-width:62px;text-align:right">${d.target.kcal} kcal</span>
+        </div>
+      </div>`;}).join('');
+    html+=`<div class="card" style="padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu semana de comida</div>
+      <div style="font-size:11.5px;color:var(--t2);margin-bottom:8px">Promedio <b>${_sem.promedioKcal} kcal al día</b>. Los días que entrenas comes un poco más y los de descanso un poco menos — en la semana comes lo mismo.</div>
+      ${filas}
+    </div>`;
+  }
   // Macros grid
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
-    if(nut.kcal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(nut.kcal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    // v435: el número que se muestra es el que suman SUS PROPIOS macros — que es lo que el plato
+    // entrega. El titular escrito puede no cuadrar (medido: 6 de 10 planes; Nataly por 240 kcal).
+    // El titular tiene que cuadrar con las tarjetas de macros que van justo debajo (P×4+C×4+G×9);
+    // el PROMEDIO de la semana puede diferir en 1-2 kcal por el redondeo del reparto diario y lo
+    // dice la tarjeta de la semana. Dos números distintos a la vista es justo el bug que se arregla.
+    const _kcalReal=_sem?_sem.baseKcal:(parseInt(nut.kcal)||0);
+    if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
     if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
