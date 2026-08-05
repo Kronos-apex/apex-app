@@ -19,6 +19,7 @@ const {
   nutAcompMacros,
   nutDayPlan,
   nutBaseFor,
+  workoutStartCollapsed,
   nutMacroKcal,
   nutWeekTargets,
   nutDayNote,
@@ -3736,6 +3737,39 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
 });
+// ── v447: el entreno de «Hoy» llega colapsado ──
+// Medido: «Hoy» eran 4.709 px (5,6 pantallas) y el entreno el 79%.
+test('workoutStartCollapsed: por defecto llega colapsado', () => {
+  assert.strictEqual(workoutStartCollapsed({}), true);
+  assert.strictEqual(workoutStartCollapsed(), true);
+});
+// 🔴 EL CANDADO. Colapsar encima de alguien que va en la serie 3 le esconde su propio entreno.
+// Es el bug de v366 que Fable rechazó, con otra cara.
+test('🔴 workoutStartCollapsed: una sesión EN CURSO nunca se colapsa', () => {
+  assert.strictEqual(workoutStartCollapsed({ hasProgress: true }), false);
+  // …ni siquiera si además pidió otra rutina o entrenar de nuevo.
+  assert.strictEqual(workoutStartCollapsed({ hasProgress: true, isOverride: true }), false);
+});
+test('workoutStartCollapsed: si ya tocó «Empezar», eligió rutina o pidió entrenar otra vez, va abierto', () => {
+  assert.strictEqual(workoutStartCollapsed({ expanded: true }), false);
+  assert.strictEqual(workoutStartCollapsed({ isOverride: true }), false);
+  assert.strictEqual(workoutStartCollapsed({ trainAgain: true }), false);
+});
+test('🔴 «Hoy» está cableada a la tarjeta de arranque y respeta la sesión en curso', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.ok(/function _startCardHTML/.test(src) && /function expandTodayWorkout/.test(src));
+  assert.ok(/hasProgress: _todayHasProgress\(todayR\)/.test(src),
+    'la decisión de colapsar no está mirando si hay una sesión a medias');
+  // El progreso se lee de la MISMA clave donde el entreno lo guarda, no de un espejo.
+  assert.ok(/localStorage\.getItem\(getDoneKey\(routine\.id,ei,si\)\)==='1'/.test(src),
+    '_todayHasProgress no lee las banderas reales de serie hecha');
+  // Y el colapso va ANTES de embeber el guiado, o se pinta el entreno igual.
+  const iCol = src.indexOf('workoutStartCollapsed({');
+  const iEmb = src.indexOf('openGuidedEmbedded(todayR)');
+  assert.ok(iCol > 0 && iEmb > iCol, 'el guiado se embebe antes de decidir si colapsar');
+});
+
 // 🔴 LAS TRES PANTALLAS DE NUTRICIÓN MUESTRAN EL MISMO NÚMERO. Reporte del PO (2026-08-05):
 // «ver mi plan en grande no sigue los parámetros de las otras pantallas». Medido: la habitación
 // pintaba el titular ESCRITO (2.900) y el Perfil el derivado de sus macros (2.805) — 95 kcal/día

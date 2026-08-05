@@ -4065,6 +4065,25 @@ function estimateWorkoutMinutes(routine) {
   return mins > 0 ? mins : null;
 }
 
+// ── ¿El entreno de hoy llega COLAPSADO? (v447) ────────────────────────────────
+// Medido el 2026-08-05: «Hoy» pesaba 4.709 px = 5,6 pantallas de celular, y el entreno era
+// el 79% de eso (3.736 px). El PO propuso mudarlo a «Rutinas»; se midió y se descartó — eso
+// dejaría a «Hoy» sin acción principal y pondría entrenar a un toque más, justo cuando 8 de 22
+// asesorados nunca han completado una sesión. En vez de mudarlo, llega como tarjeta de arranque.
+//
+// 🔴 EL CANDADO QUE IMPORTA: si hay una sesión EN CURSO, NO se colapsa. Es exactamente el bug
+// de v366 (`.trained-card` tapando un entreno a medias) que costó un rechazo de Fable: colapsar
+// encima de alguien que va en la serie 3 le esconde su propio entreno y le hace perder el hilo.
+// PURA: recibe el estado ya leído; quien lee localStorage es la vista.
+function workoutStartCollapsed(o) {
+  o = o || {};
+  if (o.expanded) return false;      // ya tocó «Empezar» en esta visita
+  if (o.hasProgress) return false;   // 🔴 sesión a medias: jamás se colapsa encima
+  if (o.isOverride) return false;    // eligió una rutina a mano: la quiere abierta
+  if (o.trainAgain) return false;    // pidió «entrenar otra vez»
+  return true;
+}
+
 // F2 (2026-07-26) — ¿QUIÉN SOY en la comunidad, sin haber abierto la pestaña?
 // A4 preguntaba por los logros solo si `CMTY.profile` estaba cargado, y eso exige haber entrado a
 // Comunidad en ESA MISMA carga (`renderCommunity` tiene un solo llamador). En la sesión típica
@@ -5364,6 +5383,7 @@ if (typeof module !== 'undefined' && module.exports) {
     communityMe,
     firstSessionMode,
     estimateWorkoutMinutes,
+    workoutStartCollapsed,
     CMTY_NUDGE_MIN_SESSIONS,
     CMTY_NUDGE_SNOOZE_DAYS,
     CMTY_NUDGE_PROBE_TTL_H,

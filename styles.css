@@ -346,6 +346,16 @@ html[data-theme="light"] .mta {
 .hb-fill.st{background:var(--g2)}
 .hb-dot.st.some{background:var(--g2);opacity:.45}
 .hb-dot.st.full{background:var(--g2)}
+/* Tarjeta de arranque del entreno (v447): «Hoy» llega colapsada y esto es lo primero que se ve.
+   Tokens del sistema, nada hardcodeado; el botón usa la primitiva .btn del sistema. */
+.start-card{padding:20px 18px;text-align:center}
+.start-card-k{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.start-card-t{font-size:23px;font-weight:800;color:var(--t1);line-height:1.2;margin-bottom:5px}
+.start-card-m{font-size:13px;color:var(--t2);margin-bottom:12px}
+.start-card-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:16px}
+.start-card-tags span{font-size:11px;font-weight:600;color:var(--gt);background:var(--gl);border-radius:99px;padding:4px 10px}
+.start-card-go{width:100%;min-height:50px;font-size:16px}
+.start-card-alt{width:100%;margin-top:8px}
 /* Hábitos parte 3 (v442): 🍽️ comida — acento NARANJA, el tercer color de la tarjeta (agua azul,
    pasos verde). Mismos tokens del sistema, ninguno nuevo. */
 .hb-ic.fl{background:var(--orl);color:var(--ort)}

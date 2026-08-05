@@ -718,6 +718,44 @@ function todayTrainAgain(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   if(c){ renderClientToday(c,CUR.todayOverride); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; }
 }
+// ¿Hay una sesión de HOY a medias en esta rutina? Cualquier serie marcada cuenta. Se lee del
+// mismo sitio donde el entreno guarda su progreso (`done_<rid>_<ei>_<si>`), no de un espejo:
+// un espejo se desincroniza y el candado dejaría de proteger justo cuando hace falta.
+function _todayHasProgress(routine){
+  if(!routine||!Array.isArray(routine.exercises))return false;
+  try{
+    for(let ei=0;ei<routine.exercises.length;ei++){
+      const ex=routine.exercises[ei]; if(!ex)continue;
+      const sets=parseInt(ex.sets)||3;
+      for(let si=0;si<sets;si++){ if(localStorage.getItem(getDoneKey(routine.id,ei,si))==='1')return true; }
+    }
+  }catch(e){ return false; }
+  return false;
+}
+// Tarjeta de arranque: lo que hay que saber ANTES de empezar (qué toca, cuánto dura) y un solo
+// botón grande. Antes el «Empezar» estaba enterrado dentro de la primera serie.
+function _startCardHTML(client,r){
+  const n=(r.exercises||[]).filter(Boolean).length;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r):null;
+  const musculos=[...new Set((r.exercises||[]).filter(Boolean).map(e=>e.muscle).filter(Boolean))].slice(0,4);
+  return `<div class="card start-card">
+    <div class="start-card-k">Tu entreno de hoy</div>
+    <div class="start-card-t">${esc(r.name||'Entrenamiento')}</div>
+    <div class="start-card-m">${n} ejercicio${n!==1?'s':''}${mins?` \u00b7 ~${mins} min`:''}</div>
+    ${musculos.length?`<div class="start-card-tags">${musculos.map(m=>`<span>${esc(m)}</span>`).join('')}</div>`:''}
+    <button class="btn bp start-card-go" onclick="expandTodayWorkout()">${typeof aviIcon==='function'?aviIcon('play',16):'\u25b6'} Empezar</button>
+    <button class="btn bg bsm start-card-alt" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver otra rutina</button>
+  </div>`;
+}
+// Despliega el entreno. El estado vive en CUR (no en disco): al volver a «Hoy» mañana arranca
+// otra vez colapsado, que es lo que se quiere.
+function expandTodayWorkout(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  CUR.todayExpanded=(CUR.activeRoutine&&CUR.activeRoutine.id)||null;
+  renderClientToday(c,CUR.todayOverride||undefined);
+  const b=document.getElementById('cn-today-body');
+  if(b&&b.scrollIntoView)b.scrollIntoView({block:'start',behavior:'smooth'});
+}
 function renderClientToday(client, overrideRoutine){
   const con=document.getElementById('cn-today-body');
   // F2 sub-3: si el guiado embebido está montado con un timer vivo (descanso/HIIT/isométrico),
@@ -827,6 +865,17 @@ function renderClientToday(client, overrideRoutine){
   // Portada del día 1 (variante C): se pinta ANTES del entreno y decide ella sola si aplica.
   if(typeof renderFirstRun==='function') renderFirstRun(client, todayR);
   _todayOrder(true); // v313: el entreno arriba del pliegue
+  // ── El entreno llega COLAPSADO hasta que toque «Empezar» (v447) ────────────────────────
+  // Medido: «Hoy» eran 5,6 pantallas y el entreno el 79%. Ver `workoutStartCollapsed` en
+  // avi-core para el porqué y para el candado de la sesión en curso.
+  if(typeof workoutStartCollapsed==='function' && workoutStartCollapsed({
+      expanded: CUR.todayExpanded===todayR.id,
+      hasProgress: _todayHasProgress(todayR),
+      isOverride: isOverride,
+      trainAgain: !!CUR.trainAgain })){
+    con.innerHTML=_startCardHTML(client,todayR);
+    return;
+  }
   con.innerHTML='';
   try{ if(typeof openGuidedEmbedded==='function' && openGuidedEmbedded(todayR)) return; }
   catch(err){ console.error('[AVI] el guiado embebido lanzó', err); }
