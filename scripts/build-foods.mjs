@@ -42,7 +42,8 @@ const FUENTES = {
   tcac2018: {
     nombre: 'ICBF — Tabla de Composición de Alimentos Colombianos, 2018',
     url: 'https://www.icbf.gov.co/tabla-de-composicion-de-alimentos-colombianos-tcac-2018',
-    nota: '773 alimentos, incluidas preparaciones típicas colombianas. Pendiente confirmar por escrito las condiciones de reúso con el ICBF (E14). Entra por el mismo punto que la USDA cuando llegue el permiso.',
+    cita: 'Instituto Colombiano de Bienestar Familiar (ICBF). Tabla de Composición de Alimentos Colombianos (TCAC), 2018. Bogotá, Colombia.',
+    nota: 'Fuente OFICIAL del Estado colombiano: es la que trae nuestras frutas y preparaciones. Decisión del PO (2026-08-05): se usa CITANDO LA FUENTE como obra oficial, sin esperar respuesta al derecho de petición (opción (a) de E14; la solicitud sigue su curso). Cada alimento guarda su código y su página para poder re-verificarlo. Transcrito a mano desde el PDF publicado: el documento son 147 páginas ESCANEADAS COMO IMAGEN (sin texto) y la API del portal de consulta exige cuenta de usuario, así que no hay ruta automática — por eso entra por lotes revisados uno por uno, no en bloque.',
   },
   off: {
     nombre: 'Open Food Facts',
@@ -63,13 +64,18 @@ function desdeNutFoods() {
   }));
 }
 
-// ── Capa (b): ingesta externa (TCAC en F1b). Hoy no hay insumo y el catálogo son los 50.
-// Cuando llegue, este es el ÚNICO punto donde entra, y pasa por las mismas validaciones.
+// ── Capa (b): ingestas externas. Cada fuente trae su archivo y TODAS pasan por las mismas
+// validaciones. Agregar una fuente nueva = agregar un archivo aquí, nada más.
+const INGESTAS = ['foods-usda.json', 'foods-tcac.json'];
 function desdeIngesta() {
-  try {
-    const crudo = JSON.parse(readFileSync(join(RAIZ, 'scripts', 'foods-ingesta.json'), 'utf8'));
-    return Array.isArray(crudo) ? crudo : [];
-  } catch { return []; }              // sin insumo todavía: no es un error, es F1b sin empezar
+  const out = [];
+  for (const f of INGESTAS) {
+    try {
+      const crudo = JSON.parse(readFileSync(join(RAIZ, 'scripts', f), 'utf8'));
+      if (Array.isArray(crudo)) out.push(...crudo);
+    } catch { /* archivo aún no existe: no es un error, es una fuente sin ingerir */ }
+  }
+  return out;
 }
 
 // ── Validación: lo que NO cumple no entra, y se reporta. Nada se corrige en silencio ──

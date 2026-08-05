@@ -3407,8 +3407,13 @@ test('🔴 todo alimento importado dice de qué registro oficial salió', () => 
   assert.ok(_foodsJson);
   const importados = _foodsJson.foods.filter(f => f.src !== 'avi50');
   assert.ok(importados.length >= 80, `se esperaban ~89 importados, hay ${importados.length}`);
+  // Cada fuente identifica su registro a su manera; lo que NO se negocia es que se pueda volver
+  // a la fuente original: la USDA por su fdc_id, el ICBF por su código y su página del PDF.
+  const PATRON = { usda_sr: /FDC \d+/, tcac2018: /TCAC 2018 \(ICBF\) [A-Z]\d{3}, pág\. \d+/ };
   importados.forEach(f => {
-    assert.ok(f.ref && /FDC \d+/.test(f.ref),
+    const pat = PATRON[f.src];
+    assert.ok(pat, `«${f.id}» viene de una fuente sin patrón de referencia declarado: ${f.src}`);
+    assert.ok(f.ref && pat.test(f.ref),
       `«${f.id}» no dice de qué registro salió — sin eso no se puede re-verificar contra la fuente`);
   });
 });
@@ -3420,6 +3425,24 @@ test('🔴 ningún nombre repetido: el buscador no puede mostrar dos filas igual
     assert.ok(!vistos.has(k), `«${f.name}» aparece dos veces (${vistos.get(k)} y ${f.id})`);
     vistos.set(k, f.id);
   });
+});
+// La razón de existir de la tabla del ICBF: nuestras frutas, que ninguna base extranjera trae.
+test('🔴 el catálogo tiene las frutas colombianas (lo que solo da la TCAC del ICBF)', () => {
+  const cat = foodCatalog(_foodsJson);
+  ['lulo', 'curuba', 'tomate de arbol', 'uchuva', 'guanabana', 'granadilla', 'chontaduro',
+    'feijoa', 'mangostino', 'zapote', 'pitahaya', 'mora de castilla', 'queso costeno'].forEach(t => {
+      assert.ok(foodSearch(cat, t).total > 0, `falta «${t}» — la tabla colombiana es justo para esto`);
+    });
+});
+test('🔴 cada alimento del ICBF cita su código y su página (re-verificable)', () => {
+  assert.ok(_foodsJson);
+  const tcac = _foodsJson.foods.filter(f => f.src === 'tcac2018');
+  assert.ok(tcac.length >= 40, `se esperaban ~42 del ICBF, hay ${tcac.length}`);
+  tcac.forEach(f => assert.ok(/TCAC 2018 \(ICBF\) [A-Z]\d{3}, pág\. \d+/.test(f.ref || ''),
+    `«${f.id}» no dice de qué código y página salió: «${f.ref}»`));
+  // Y la cita formal de la fuente viaja en el propio archivo, no en la cabeza de nadie.
+  assert.ok(/Instituto Colombiano de Bienestar Familiar/.test(_foodsJson.fuentes.tcac2018.cita || ''),
+    'falta la cita formal del ICBF en foods.json');
 });
 test('🔴 el catálogo responde en ESPAÑOL a lo que come la gente aquí', () => {
   // La base de la USDA viene en inglés: importarla cruda dejaba «huevo» y «plátano» en CERO
