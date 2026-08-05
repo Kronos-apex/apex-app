@@ -344,6 +344,40 @@ completo de detalle**, más de lo que revisa de una sentada. Nada se pierde: lo 
 resumen mensual. Acotados también el nombre (48) y la marca (24) del snapshot.
 **Queda a confirmación de Fable en su verificación de F0.**
 
-## Lo siguiente (orden de §8.3): **F1a** — esquema de `foods.json`, pipeline y buscador sobre los 50
-Cero bloqueo externo. La ingesta de la TCAC (F1b) entra en paralelo cuando lleguen el permiso del
-ICBF y el visto bueno de Andrés Hyp.
+# §11 · F1a EJECUTADA — avi-v439, en producción el 2026-08-05
+
+Catálogo de búsqueda, su generador y sus candados. Suite **592 → 604**, hook **11 → 12 checks**,
+`_prodcheck 439` verde, `foods.json` servido y precacheado.
+
+| Estipulación | Cómo quedó |
+|---|---|
+| **E5** | `scripts/build-foods.mjs` **lee** `NUT_FOODS` y genera `foods.json`; no lo toca. Dos capas reales: el generador de platos nunca lee el catálogo de búsqueda. |
+| **E7** | Cada alimento lleva su `src`, y las fuentes van documentadas dentro del propio archivo (incluida la prohibición ODbL de E13, escrita ahí para quien lo abra en 6 meses). Un macro no numérico se rechaza; el 0 solo se acepta como valor real. |
+| **E8** | `foods.json` entra al precache del SW con `?v=` **en el mismo commit**. Pesa **10,9 KB** con 50 alimentos (muy por debajo del límite de 300 KB; la TCAC lo subirá y se re-mide en F1b). |
+| **E9** | `foodCatalog(null)` → los 50 de avi-core. Probado con `null`, `{}`, lista vacía, tipo equivocado y basura. |
+| **buscador** | `foodSearch` por tandas de 30, sin tildes, tolerando paréntesis del nombre («posta», «escurrido»), ranking empieza-por → palabra → contiene, determinista. |
+| **candado nuevo** | **Check 12 del hook**: `foods.json` tiene que coincidir con su generador. Muerde si alguien edita el catálogo a mano o toca `NUT_FOODS` sin regenerar (probado saboteándolo). |
+
+## Dos correcciones que salieron de MEDIR, no de suponer
+
+**1. El cuadre kcal ↔ macros necesita dos umbrales, no uno.** Con solo el relativo (15%) el
+validador rechazó **8 verduras sanas**: Atwater (4/4/9) sobreestima cuando hay fibra, así que la
+espinaca se desvía **29% por solo 6,6 kcal** y las almendras **43 kcal por solo 7%** — un único
+umbral siempre deja fuera a uno de los dos lados. Se rechaza solo si falla en los dos
+(rel > 15% **y** abs > 25 kcal/100 g). 🔴 **Y queda escrito el límite honesto del candado:** NO
+caza la clase de la yuca (cruda etiquetada «cocida» traía 160 kcal *con los macros de la cruda* —
+cuadre perfecto). Esa clase solo la caza verificar contra la FUENTE, que es la muestra de E7 en F1b.
+
+**2. Mi primer test del enganche con el recetario SALIÓ VERDE al sabotearlo.** Construía la lista
+de ids referenciados **cruzándola contra lo que estaba probando**, así que al renombrar «huevo» el
+id roto simplemente desaparecía de la lista. Reescrito leyendo la **estructura** de `NUT_MENUS`
+(`pick`/`acomp`). Al arreglarlo destapó que el recetario referencia **`ensalada`, que no es un
+alimento** — deliberado y ya documentado en `nutAcompMacros`, ahora es una **excepción explícita**
+para que cualquier otro id colgado sí haga fallar el test.
+
+## Deuda declarada de F1a (va en F2, no se olvida)
+El **fetch** de `foods.json` y el harness que lo **bloquea por red** (E9) llegan con F2: hoy no hay
+pantalla que degradar. La degradación pura ya está probada en la suite.
+
+## Lo siguiente: **F2 — registrar el día** (E10, E11, E15)
+Y en paralelo **F1b** (ingesta TCAC) en cuanto lleguen el permiso del ICBF y el visto de Andrés Hyp.
