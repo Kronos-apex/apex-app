@@ -507,25 +507,30 @@ function openNutritionRoom(clientId){
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
 
-  const stat=(ic,l,v,c2)=>`<div class="sroom-stat" style="--sc:${c2}"><div class="sroom-stat-ic">${typeof _sroomIc==='function'?_sroomIc(ic):ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
-  const stats=[
-    stat('🔥','Kcal / día',d.kcal||'—','#10b981'),
-    d.water?stat('💧','Vasos de agua',d.water,'#3a86c8'):null,
-    d.meals?stat('🍽️','Comidas',d.meals,'#e0a72e'):null,
-  ].filter(Boolean).join('');
+  // MISMAS tarjetas que el Perfil (`.nutri-card` + tokens del sistema): el asesorado pasa de
+  // una pantalla a otra con UN toque, y el mismo dato tiene que verse igual. Antes esta
+  // habitacion usaba `.sroom-stat` (aro y brillo) y colores escritos a mano.
+  const tile=(bg,col,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="text-align:center;background:var(${bg});border-radius:var(--rsm);padding:12px 4px">${info?'<span class="nutri-i">ⓘ</span>':''}<div style="font-size:22px;font-weight:800;color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
+  const _st=[
+    tile('--gl','--gt',d.kcal||'—','CALORÍAS / DÍA','kcal'),
+    d.water?tile('--bll','--blt',d.water,'VASOS DE AGUA','water'):null,
+    d.meals?tile('--yll','--t1',d.meals,'COMIDAS',null):null,
+  ].filter(Boolean);
+  const stats=`<div style="display:grid;grid-template-columns:repeat(${_st.length},1fr);gap:10px">${_st.join('')}</div>`;
 
+  const macroTile=(bg,col,g,lab,kc,info)=>`<div class="nutri-card" onclick="openNutriInfo('${info}')" style="text-align:center;background:var(${bg});border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">ⓘ</span><div style="font-size:18px;font-weight:800;color:var(${col})">${g}g</div><div style="font-size:10px;color:var(--t2)">${esc(lab)}</div><div style="font-size:10px;color:var(${col});font-weight:600">${kc} kcal</div></div>`;
   let macroHTML='';
   if(d.prot||d.carb||d.fat){
     macroHTML=`<div class="sroom-sec">Tus macros</div>
       <div class="nutr-bar">
-        <div class="nutr-seg" style="width:${pp}%;background:#3a86c8">${pp>=12?pp+'%':''}</div>
-        <div class="nutr-seg" style="width:${cp}%;background:#e0a72e">${cp>=12?cp+'%':''}</div>
-        <div class="nutr-seg" style="width:${fp}%;background:#e0772e">${fp>=12?fp+'%':''}</div>
+        <div class="nutr-seg" style="width:${pp}%;background:var(--bl)">${pp>=12?pp+'%':''}</div>
+        <div class="nutr-seg" style="width:${cp}%;background:var(--yl)">${cp>=12?cp+'%':''}</div>
+        <div class="nutr-seg" style="width:${fp}%;background:var(--or)">${fp>=12?fp+'%':''}</div>
       </div>
-      <div class="nutr-cards">
-        <div class="nutr-card" style="--nc:#3a86c8"><div class="nutr-card-g">${d.prot}g</div><div class="nutr-card-l">Proteína</div><div class="nutr-card-k">${pk} kcal</div></div>
-        <div class="nutr-card" style="--nc:#e0a72e"><div class="nutr-card-g">${d.carb}g</div><div class="nutr-card-l">Carbos</div><div class="nutr-card-k">${ck} kcal</div></div>
-        <div class="nutr-card" style="--nc:#e0772e"><div class="nutr-card-g">${d.fat}g</div><div class="nutr-card-l">Grasas</div><div class="nutr-card-k">${fk} kcal</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        ${macroTile('--bll','--blt',d.prot,'Proteína',pk,'prot')}
+        ${macroTile('--yll','--t1',d.carb,'Carbos',ck,'carbs')}
+        ${macroTile('--orl','--ort',d.fat,'Grasas',fk,'fat')}
       </div>`;
   }
 
@@ -579,7 +584,7 @@ function openNutritionRoom(clientId){
         <div class="exroom-tags"><span>${d.isEst?'Estimación automática':'Plan de tu coach'}</span>${d.label?`<span>${esc(d.label)}</span>`:''}</div>
       </div>
     </div>
-    <div class="sroom-stats">${stats}</div>
+    ${stats}
     ${macroHTML}
     ${actHTML}
     ${whyHTML}

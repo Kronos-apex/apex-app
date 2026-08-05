@@ -1017,11 +1017,6 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 /* Habitación de NUTRICIÓN */
 .nutr-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:11px;background:var(--bg)}
 .nutr-seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;min-width:0}
-.nutr-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.nutr-card{text-align:center;background:var(--w);border:1px solid var(--br);border-top:3px solid var(--nc,var(--g));border-radius:12px;padding:11px 4px}
-.nutr-card-g{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:800;color:var(--nc,var(--t1))}
-.nutr-card-l{font-size:11px;color:var(--t2);font-weight:600;margin-top:1px}
-.nutr-card-k{font-size:10px;color:var(--t3);margin-top:2px}
 .nutr-acts{display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap}
 .nutr-act{flex:1;min-width:60px;padding:9px 4px;border:1.5px solid var(--br2);border-radius:10px;background:transparent;color:var(--t2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
 .nutr-act.on{border-color:var(--gt);background:var(--gl);color:var(--gt)}
