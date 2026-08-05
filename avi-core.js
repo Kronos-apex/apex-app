@@ -1952,6 +1952,198 @@ function stepsWeek(habits, now) {
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// REGISTRO DE ALIMENTOS — F0: MODELO DE DATOS (estipulaciones E1-E4 de Fable)
+// ──────────────────────────────────────────────────────────────────────
+// Todo PURO: sin DOM, sin DB, `now` siempre por parámetro. La UI llega en F2.
+//
+// E1 — DÓNDE VIVE: en el perfil propio del asesorado (`client.foodlog`), el mismo vehículo
+// probado de `habits`/`painCare` → viaja en `clientToRow` a su fila de `user_data`. NUNCA en
+// una clave suelta de localStorage (lo que solo vive en el teléfono no existe para ningún
+// motor) y NUNCA dentro del `ax_c` del coach.
+//
+// FORMA:  { d: { 'YYYY-MM-DD': [entrada, …] }, m: { 'YYYY-MM': {dias,kcal,p,c,f} } }
+// Claves cortas a propósito: `sv()` hace REPLACE TOTAL del objeto en cada escritura, así que
+// cada byte se re-sube 3-5 veces al día.
+//
+// E2 — LA ENTRADA ES UN SNAPSHOT, no una referencia:
+//   { id, ts, meal, src:'tcac2018'|'avi50'|'off', foodId, name, g, kcal, p, c, f[, barcode, brand] }
+// Los macros se copian al momento de anotar. Corregir el catálogo después NO reescribe el
+// pasado de nadie (ya corregimos la yuca, la avena y el atún: sin snapshot, esas correcciones
+// habrían cambiado en silencio lo que la gente ya tenía registrado).
+// E3 — RETENCIÓN DEL DETALLE. Fable estipuló 90 días con el número «a confirmar midiendo, no de
+// memoria». Medido el 2026-08-05 y la medición manda: 90 días × 5 comidas pesan 78 KB (106 KB si
+// todo viene de código de barras), y los perfiles REALES de producción pesan ~600 bytes (Luz 600,
+// Kathe 619) con el historial completo de meses de entreno en 10-18 KB. A 90 días el registro de
+// comida multiplicaría el perfil por más de 100 y sería, de lejos, lo más pesado de la fila — y
+// ese objeto se re-sube ENTERO en cada una de las 3-5 anotaciones del día.
+// A 30 días (la misma retención que ya usan agua y pasos) el detalle pesa ~26 KB, proporcionado
+// al historial, y el coach conserva un mes completo — más de lo que revisa de una sentada.
+// Lo anterior NO se pierde: se agrega al resumen mensual. Desviación de E3 documentada en el plan.
+const FOODLOG_KEEP_DAYS = 30;
+const FOODLOG_MAX_G = 5000;      // tope de cordura por entrada (5 kg de un alimento)
+// El nombre del snapshot es para RELEER una entrada pasada, no para identificar el alimento
+// (para eso está `foodId`). Medido el 2026-08-05: sin acotarlo, 90 días de productos de código
+// de barras («Galletas Festival Sabor a Vainilla Paquete x 12 unidades») pesan 109 KB contra
+// 78 KB de comida normal, y ese objeto se re-sube ENTERO en cada anotación.
+const FOODLOG_NAME_MAX = 48;
+const FOODLOG_BRAND_MAX = 24;
+function _flCut(s, max) { s = String(s == null ? '' : s).trim(); return s.length > max ? s.slice(0, max - 1) + '…' : s; }
+const FOODLOG_MEALS = ['desayuno', 'media_m', 'almuerzo', 'media_t', 'cena'];
+
+// Objeto vacío por FÁBRICA, no literal suelto: un campo nuevo queda cubierto solo (lección
+// del reset de Comunidad, v398).
+function foodLogBlank() { return { d: {}, m: {} }; }
+function _flNorm(fl) {
+  const o = foodLogBlank();
+  if (fl && typeof fl === 'object') {
+    if (fl.d && typeof fl.d === 'object') o.d = Object.assign({}, fl.d);
+    if (fl.m && typeof fl.m === 'object') o.m = Object.assign({}, fl.m);
+  }
+  return o;
+}
+// Un macro puede faltar en la fuente: se conserva `null` («sin dato»), JAMÁS 0 — un 0 es una
+// afirmación nutricional falsa, un null es honestidad (E7).
+function _flMacro(per100, g) {
+  if (per100 == null || per100 === '') return null;
+  const n = parseFloat(per100);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * g) / 100;
+}
+// Construye la entrada-snapshot desde un alimento del catálogo (macros por 100 g) y los gramos
+// servidos. Devuelve null si el alimento o la cantidad no son utilizables — el llamador decide
+// qué decirle a la persona; aquí no se inventa nada.
+function foodLogEntry(food, grams, meal, now, idFn) {
+  if (!food || !food.id) return null;
+  const g = parseFloat(grams);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  const gg = Math.min(FOODLOG_MAX_G, Math.round(g));   // tope en el punto ÚNICO de escritura
+  const t = now ? now.getTime() : Date.now();
+  const e = {
+    id: (typeof idFn === 'function' ? idFn() : 'fl' + t + Math.random().toString(36).slice(2, 7)),
+    ts: t,
+    meal: FOODLOG_MEALS.indexOf(meal) !== -1 ? meal : 'almuerzo',
+    src: food.src || 'avi50',
+    foodId: food.id,
+    name: _flCut(food.name, FOODLOG_NAME_MAX),
+    g: gg,
+    kcal: _flMacro(food.kcal, gg),
+    p: _flMacro(food.p, gg),
+    c: _flMacro(food.c, gg),
+    f: _flMacro(food.f, gg),
+  };
+  if (food.barcode) e.barcode = String(food.barcode);
+  if (food.brand) e.brand = _flCut(food.brand, FOODLOG_BRAND_MAX);
+  return e;
+}
+// Las entradas de un día (orden estable por ts y luego por id: el render no debe saltar).
+function foodLogDay(foodlog, now) {
+  const d = (foodlog && foodlog.d) || {};
+  const arr = d[habitDayKey(now)] || [];
+  return arr.slice().sort((a, b) => (a.ts - b.ts) || String(a.id).localeCompare(String(b.id)));
+}
+// Suma del día POR MACRO, no solo el total: un total bueno puede tapar un macro roto (lección
+// del plan de comida). `parcial` avisa que algún alimento no traía ese macro, para que la
+// pantalla no presente como completo lo que no lo está.
+function foodLogTotals(entries) {
+  const out = { kcal: 0, p: 0, c: 0, f: 0, n: 0, parcial: false };
+  (entries || []).forEach(e => {
+    if (!e) return;
+    out.n++;
+    ['kcal', 'p', 'c', 'f'].forEach(k => {
+      const v = e[k];
+      if (v == null || !Number.isFinite(parseFloat(v))) { out.parcial = true; return; }
+      out[k] += parseFloat(v);
+    });
+  });
+  ['kcal', 'p', 'c', 'f'].forEach(k => { out[k] = Math.round(out[k] * 10) / 10; });
+  return out;
+}
+// E3 — PODA con memoria: lo que sale del detalle NO se pierde, se agrega al resumen del mes.
+// Sin esto la fila del asesorado crece sin techo y cada anotación re-sube el objeto entero.
+function foodLogPrune(foodlog, now) {
+  const o = _flNorm(foodlog);
+  const base = now ? now.getTime() : Date.now();
+  const cutoff = habitDayKey(new Date(base - FOODLOG_KEEP_DAYS * 86400000));
+  Object.keys(o.d).forEach(dk => {
+    if (dk >= cutoff) return;                       // 'YYYY-MM-DD' ordena lexicográfico
+    const tot = foodLogTotals(o.d[dk]);
+    if (tot.n > 0) {
+      const mk = dk.slice(0, 7);
+      const m = o.m[mk] || { dias: 0, kcal: 0, p: 0, c: 0, f: 0 };
+      o.m[mk] = {
+        dias: m.dias + 1,
+        kcal: Math.round(m.kcal + tot.kcal),
+        p: Math.round(m.p + tot.p),
+        c: Math.round(m.c + tot.c),
+        f: Math.round(m.f + tot.f),
+      };
+    }
+    delete o.d[dk];
+  });
+  return o;
+}
+// Agregar / editar / borrar. Inmutables (nunca mutan lo que reciben) y siempre podan.
+function foodLogAdd(foodlog, entry, now) {
+  if (!entry || !entry.id) return _flNorm(foodlog);
+  const o = _flNorm(foodlog);
+  const k = habitDayKey(now);
+  o.d = Object.assign({}, o.d);
+  o.d[k] = (o.d[k] || []).filter(e => e && e.id !== entry.id).concat([entry]);
+  return foodLogPrune(o, now);
+}
+function foodLogRemove(foodlog, dayKey, entryId) {
+  const o = _flNorm(foodlog);
+  if (!o.d[dayKey]) return o;
+  o.d = Object.assign({}, o.d);
+  const rest = o.d[dayKey].filter(e => e && e.id !== entryId);
+  if (rest.length) o.d[dayKey] = rest; else delete o.d[dayKey];
+  return o;
+}
+// E4 — MERGE MULTI-DISPOSITIVO. La app es offline-first: el teléfono PISA la nube con un
+// replace total. Sin esto, anotar el almuerzo en el celular y abrir la app en otro aparato
+// BORRA el almuerzo — «la app me borró lo que comí» en el módulo que pide 3-5 toques de fe
+// al día. Regla: unión por `id` dentro de cada día; si la misma entrada existe en los dos
+// lados (se editó), gana el `ts` mayor. Los resúmenes mensuales toman el MÁXIMO de cada lado
+// (los dos vienen del mismo pasado; sumarlos lo duplicaría).
+function foodLogMerge(a, b) {
+  const A = _flNorm(a), B = _flNorm(b);
+  const out = foodLogBlank();
+  const dias = new Set(Object.keys(A.d).concat(Object.keys(B.d)));
+  dias.forEach(dk => {
+    const porId = new Map();
+    (A.d[dk] || []).concat(B.d[dk] || []).forEach(e => {
+      if (!e || !e.id) return;
+      const prev = porId.get(e.id);
+      if (!prev || (parseFloat(e.ts) || 0) > (parseFloat(prev.ts) || 0)) porId.set(e.id, e);
+    });
+    const arr = Array.from(porId.values()).sort((x, y) => (x.ts - y.ts) || String(x.id).localeCompare(String(y.id)));
+    if (arr.length) out.d[dk] = arr;
+  });
+  const meses = new Set(Object.keys(A.m).concat(Object.keys(B.m)));
+  meses.forEach(mk => {
+    const x = A.m[mk] || {}, y = B.m[mk] || {};
+    out.m[mk] = {
+      dias: Math.max(x.dias || 0, y.dias || 0),
+      kcal: Math.max(x.kcal || 0, y.kcal || 0),
+      p: Math.max(x.p || 0, y.p || 0),
+      c: Math.max(x.c || 0, y.c || 0),
+      f: Math.max(x.f || 0, y.f || 0),
+    };
+  });
+  return out;
+}
+// Días DISTINTOS con al menos una comida guardada en los últimos N días. Es la métrica del
+// criterio de corte (§8.4) y la usa `scripts/nut-adherencia.mjs`: se DERIVA del propio
+// registro, sin tabla de telemetría ni dato personal nuevo.
+function foodLogActiveDays(foodlog, now, ventanaDias) {
+  const o = _flNorm(foodlog);
+  const base = now ? now.getTime() : Date.now();
+  const desde = habitDayKey(new Date(base - (ventanaDias || 21) * 86400000));
+  const hasta = habitDayKey(now);
+  return Object.keys(o.d).filter(dk => dk >= desde && dk <= hasta && (o.d[dk] || []).length > 0).length;
+}
+
 // ── Config de HIIT rápido (v301): el usuario elige rondas/trabajo/descanso ──
 // Clamps de cordura: rondas 1-20, trabajo 10-180s, descanso 5-180s. Basura/NaN → el
 // default del preset. Puro (lo usa el mini-modal de Entrenamientos rápidos).
@@ -4823,6 +5015,18 @@ if (typeof module !== 'undefined' && module.exports) {
     WF_FEELINGS,
     feelingEmoji,
     feelingLabel,
+    FOODLOG_KEEP_DAYS,
+    FOODLOG_MAX_G,
+    FOODLOG_MEALS,
+    foodLogBlank,
+    foodLogEntry,
+    foodLogDay,
+    foodLogTotals,
+    foodLogPrune,
+    foodLogAdd,
+    foodLogRemove,
+    foodLogMerge,
+    foodLogActiveDays,
     inferNutGoal,
     nutGoalForClient,
     nutKcalDirection,

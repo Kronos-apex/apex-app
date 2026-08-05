@@ -140,6 +140,19 @@ const {
   fmtDuration,
   feelingEmoji,
   feelingLabel,
+  habitDayKey,
+  FOODLOG_KEEP_DAYS,
+  FOODLOG_MAX_G,
+  FOODLOG_MEALS,
+  foodLogBlank,
+  foodLogEntry,
+  foodLogDay,
+  foodLogTotals,
+  foodLogPrune,
+  foodLogAdd,
+  foodLogRemove,
+  foodLogMerge,
+  foodLogActiveDays,
   inferNutGoal,
   nutGoalForClient,
   nutKcalDirection,
@@ -3341,6 +3354,131 @@ test('inferNutGoal: infiere del texto del plan', () => {
 test('inferNutGoal: sin pista → null', () => {
   assert.strictEqual(inferNutGoal({ plan: 'come sano' }), null);
   assert.strictEqual(inferNutGoal(null), null);
+});
+
+// ══════════════════════════════════════════════════════
+section('Registro de alimentos — F0: modelo de datos (E1-E4 de Fable)');
+
+const _comida = { id: 'arroz_blanco_cocido', name: 'Arroz blanco cocido', src: 'tcac2018', kcal: 130, p: 2.7, c: 28.2, f: 0.3 };
+const _hoyFL = new Date('2026-08-05T12:00:00');
+let _flSeq = 0;
+const _flId = () => 'fl' + (++_flSeq);
+
+test('foodLogEntry: la entrada es un SNAPSHOT con los macros ya calculados a los gramos', () => {
+  const e = foodLogEntry(_comida, 180, 'almuerzo', _hoyFL, _flId);
+  assert.strictEqual(e.foodId, 'arroz_blanco_cocido');
+  assert.strictEqual(e.g, 180);
+  assert.strictEqual(e.kcal, 234);          // 130 × 1.8
+  assert.strictEqual(e.p, 4.86);
+  assert.strictEqual(e.src, 'tcac2018');
+  // Si mañana se corrige el catálogo, esta entrada NO cambia: los macros ya están dentro.
+  assert.ok(Object.prototype.hasOwnProperty.call(e, 'kcal'));
+});
+test('foodLogEntry: un macro que la fuente no trae queda en null, JAMÁS en 0', () => {
+  const sinGrasa = { id: 'x', name: 'X', kcal: 100, p: 5, c: 10, f: null };
+  const e = foodLogEntry(sinGrasa, 100, 'cena', _hoyFL, _flId);
+  assert.strictEqual(e.f, null, 'un 0 afirmaría que no tiene grasa; null dice que no se sabe');
+  assert.strictEqual(e.c, 10);
+});
+test('foodLogEntry: tope de cordura y cantidades imposibles', () => {
+  assert.strictEqual(foodLogEntry(_comida, 999999, 'cena', _hoyFL, _flId).g, FOODLOG_MAX_G);
+  assert.strictEqual(foodLogEntry(_comida, 0, 'cena', _hoyFL, _flId), null);
+  assert.strictEqual(foodLogEntry(_comida, -50, 'cena', _hoyFL, _flId), null);
+  assert.strictEqual(foodLogEntry(null, 100, 'cena', _hoyFL, _flId), null);
+  // Una comida que no existe no rompe: cae al almuerzo, no a undefined.
+  assert.strictEqual(foodLogEntry(_comida, 100, 'brunch', _hoyFL, _flId).meal, 'almuerzo');
+});
+test('foodLogTotals: suma POR MACRO y avisa cuando algún alimento no traía el dato', () => {
+  const a = foodLogEntry(_comida, 100, 'desayuno', _hoyFL, _flId);
+  const b = foodLogEntry({ id: 'y', name: 'Y', kcal: 200, p: 10, c: null, f: 5 }, 100, 'cena', _hoyFL, _flId);
+  const t = foodLogTotals([a, b]);
+  assert.strictEqual(t.kcal, 330);
+  assert.strictEqual(t.p, 12.7);
+  assert.strictEqual(t.n, 2);
+  assert.ok(t.parcial, 'con un macro faltante el total no puede presentarse como completo');
+  assert.strictEqual(foodLogTotals([]).parcial, false);
+});
+test('foodLogAdd / foodLogRemove: inmutables, no mutan lo que reciben', () => {
+  const fl0 = foodLogBlank();
+  const e = foodLogEntry(_comida, 150, 'almuerzo', _hoyFL, _flId);
+  const fl1 = foodLogAdd(fl0, e, _hoyFL);
+  assert.strictEqual(Object.keys(fl0.d).length, 0, 'el original quedó tocado');
+  assert.strictEqual(foodLogDay(fl1, _hoyFL).length, 1);
+  const fl2 = foodLogRemove(fl1, habitDayKey(_hoyFL), e.id);
+  assert.strictEqual(foodLogDay(fl2, _hoyFL).length, 0);
+  assert.strictEqual(foodLogDay(fl1, _hoyFL).length, 1, 'borrar mutó el objeto anterior');
+});
+// 🔴 E3 — la poda NO puede perder el pasado: lo que sale del detalle queda agregado por mes.
+test('🔴 foodLogPrune: lo que pasa de 30 días se resume por mes, no se borra', () => {
+  let fl = foodLogBlank();
+  const viejo = new Date('2026-06-01T12:00:00');
+  fl = foodLogAdd(fl, foodLogEntry(_comida, 100, 'cena', viejo, _flId), viejo);
+  assert.strictEqual(foodLogDay(fl, viejo).length, 1);
+  // Al anotar algo HOY, lo de junio ya cayó fuera de la ventana.
+  fl = foodLogAdd(fl, foodLogEntry(_comida, 100, 'cena', _hoyFL, _flId), _hoyFL);
+  assert.strictEqual(foodLogDay(fl, viejo).length, 0, 'el detalle viejo debía podarse');
+  assert.ok(fl.m['2026-06'], 'el mes viejo TIENE que quedar resumido, no desaparecer');
+  assert.strictEqual(fl.m['2026-06'].dias, 1);
+  assert.strictEqual(fl.m['2026-06'].kcal, 130);
+});
+// 🔴 E3 — el umbral se DERIVÓ MIDIENDO (2026-08-05), no de memoria: un año de uso diario
+// (5 comidas/día, todo de código de barras = peor caso) pesa 37,6 KB y se mantiene ESTABLE.
+// Los perfiles reales de producción pesan ~600 bytes y el historial de meses, 10-18 KB.
+test('🔴 el registro no crece sin techo: un AÑO de uso diario queda estable y acotado', () => {
+  const largo = { id: 'off_7702001139903', name: 'Galletas Festival Sabor a Vainilla Paquete x 12 unidades', src: 'off', kcal: 470, p: 6.2, c: 70.1, f: 18.4, barcode: '7702001139903', brand: 'Noel' };
+  let fl = foodLogBlank();
+  const fin = new Date('2026-08-05T12:00:00');
+  for (let d = 364; d >= 0; d--) {                       // del más viejo al más nuevo = uso real
+    const dia = new Date(fin.getTime() - d * 86400000);
+    for (let m = 0; m < 5; m++) fl = foodLogAdd(fl, foodLogEntry(largo, 60, FOODLOG_MEALS[m], dia, _flId), dia);
+  }
+  const kb = Buffer.byteLength(JSON.stringify(fl), 'utf8') / 1024;
+  assert.ok(kb < 60, `un año de registro pesa ${kb.toFixed(1)} KB — la poda dejó de contener el objeto`);
+  assert.ok(Object.keys(fl.d).length <= FOODLOG_KEEP_DAYS + 1, 'quedó detalle fuera de la ventana');
+  assert.ok(Object.keys(fl.m).length >= 11, 'los meses viejos se perdieron en vez de resumirse');
+});
+// 🔴 E4 — EL BUG QUE MATA EL MÓDULO SI NO SE ATAJA. La app es offline-first y el teléfono pisa
+// la nube con un replace total: sin merge, anotar el almuerzo en el celular y abrir la app en
+// otro aparato BORRA el almuerzo. «La app me borró lo que comí» en el módulo que pide 3-5
+// toques de fe al día.
+test('🔴 foodLogMerge: dos dispositivos anotando el MISMO día no se pisan', () => {
+  const celular = foodLogAdd(foodLogBlank(), foodLogEntry(_comida, 150, 'almuerzo', _hoyFL, () => 'A1'), _hoyFL);
+  const tablet = foodLogAdd(foodLogBlank(), foodLogEntry(_comida, 200, 'cena', _hoyFL, () => 'B1'), _hoyFL);
+  const uni = foodLogMerge(celular, tablet);
+  const dia = foodLogDay(uni, _hoyFL);
+  assert.strictEqual(dia.length, 2, 'una de las dos comidas se perdió en el merge');
+  assert.deepStrictEqual(dia.map(e => e.id).sort(), ['A1', 'B1']);
+});
+test('foodLogMerge: la misma entrada editada en los dos lados → gana la más reciente', () => {
+  const vieja = { id: 'X', ts: 1000, meal: 'cena', foodId: 'a', name: 'A', g: 100, kcal: 100, p: 1, c: 1, f: 1 };
+  const nueva = Object.assign({}, vieja, { ts: 2000, g: 250, kcal: 250 });
+  const A = { d: { '2026-08-05': [vieja] }, m: {} };
+  const B = { d: { '2026-08-05': [nueva] }, m: {} };
+  assert.strictEqual(foodLogMerge(A, B).d['2026-08-05'][0].g, 250);
+  assert.strictEqual(foodLogMerge(B, A).d['2026-08-05'][0].g, 250, 'el merge debe dar igual en cualquier orden');
+  assert.strictEqual(foodLogMerge(A, B).d['2026-08-05'].length, 1, 'la entrada quedó duplicada');
+});
+test('foodLogMerge: los resúmenes mensuales no se duplican al unir', () => {
+  const A = { d: {}, m: { '2026-06': { dias: 20, kcal: 40000, p: 100, c: 200, f: 50 } } };
+  const B = { d: {}, m: { '2026-06': { dias: 20, kcal: 40000, p: 100, c: 200, f: 50 } } };
+  assert.strictEqual(foodLogMerge(A, B).m['2026-06'].kcal, 40000, 'sumarlos duplicaría el pasado');
+});
+test('foodLogActiveDays: días distintos con al menos una comida (métrica del criterio de corte)', () => {
+  let fl = foodLogBlank();
+  [0, 1, 5, 40].forEach(d => {
+    const dia = new Date(_hoyFL.getTime() - d * 86400000);
+    fl = foodLogAdd(fl, foodLogEntry(_comida, 100, 'cena', dia, _flId), dia);
+  });
+  assert.strictEqual(foodLogActiveDays(fl, _hoyFL, 21), 3, 'el día de hace 40 no entra en la ventana de 21');
+  assert.strictEqual(foodLogActiveDays(foodLogBlank(), _hoyFL, 21), 0);
+});
+test('el registro tolera basura sin romperse (fila corrupta, campo de otro tipo)', () => {
+  [null, undefined, 'texto', 42, [], { d: 'no-es-objeto' }].forEach(basura => {
+    const fl = foodLogPrune(basura, _hoyFL);
+    assert.deepStrictEqual(Object.keys(fl).sort(), ['d', 'm']);
+    assert.strictEqual(foodLogDay(basura, _hoyFL).length, 0);
+    assert.strictEqual(foodLogTotals(foodLogDay(basura, _hoyFL)).n, 0);
+  });
 });
 
 // ── v437: el RÓTULO del plan tiene que cuadrar con sus propios números ──
