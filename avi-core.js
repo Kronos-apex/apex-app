@@ -2742,7 +2742,14 @@ const NUT_GOAL_BY_CLIENT = {
   'Recomposición': 'mantenimiento',
   'Resistencia': 'mantenimiento',
 };
-function nutGoalForClient(goal) { return NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento'; }
+// `client` es opcional y sirve para UNA cosa: si es menor de edad y su objetivo implicaría
+// déficit, el rótulo tiene que decir MANTENIMIENTO — porque eso es lo que el motor le entrega
+// (ver `nutritionEstimate`). Cambiar el número y dejar el rótulo viejo es el defecto de v437.
+function nutGoalForClient(goal, client) {
+  const g = NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento';
+  if (client && isMenor(client) && (g === 'cutting' || g === 'definicion')) return 'mantenimiento';
+  return g;
+}
 
 // ── ¿El RÓTULO del plan contradice sus propios números? Un plan rotulado «mantenimiento» que
 // entrega 500 kcal MENOS de lo que la persona gasta le explica al asesorado que «está comiendo
@@ -2776,11 +2783,30 @@ function nutGoalMismatch(nutGoal, kcal, tdee) {
 
 // TMB — gasto basal por Mifflin-St Jeor. Requiere peso, altura, edad y sexo;
 // si falta alguno → null (no se puede estimar). Redondeado a entero (kcal/día).
+// 🔴 MENORES DE 18: Mifflin-St Jeor NO está validado por debajo de esa edad — no incluye el
+// costo energético del crecimiento y SUBESTIMA. Medido en una asesorada real (F, 15 años, 52 kg,
+// 161 cm): Mifflin da 1.290 kcal de basal y Schofield 1.389, y con su factor de actividad eso son
+// ~136 kcal/día que la app le estaba quitando **a una niña en crecimiento**, bajo un rótulo que
+// decía «mantenimiento». Para 10-18 años se usa **Schofield (FAO/OMS/UNU, 1985)**, que es la
+// ecuación de referencia en esa franja. Veredicto de Andrés Hyp, 2026-08-05.
+const TMB_MENOR_EDAD = 18;
 function calcTMB(weightKg, heightCm, age, sex) {
   const w = parseFloat(weightKg), h = parseFloat(heightCm), a = parseInt(age);
   if (!w || !h || !a || !sex) return null;
+  if (a < TMB_MENOR_EDAD) {
+    // Schofield 10-18 años (por peso). Debajo de 10 usa la banda 3-10, por si acaso.
+    const b = a >= 10
+      ? (sex === 'M' ? 17.686 * w + 658.2 : 13.384 * w + 692.6)
+      : (sex === 'M' ? 22.706 * w + 504.3 : 20.315 * w + 485.9);
+    return Math.round(b);
+  }
   const base = 10 * w + 6.25 * h - 5 * a;
   return Math.round(sex === 'M' ? base + 5 : base - 161);
+}
+// ¿Es menor de edad? Una sola definición para todo el motor.
+function isMenor(client) {
+  const a = parseInt(client && client.age);
+  return Number.isFinite(a) && a > 0 && a < TMB_MENOR_EDAD;
 }
 
 // TDEE — gasto total = TMB × factor de actividad. Sin TMB → null.
@@ -2914,6 +2940,16 @@ function nutritionEstimate(client, weightKg) {
   const af = parseFloat(client.activityFactor) || 1.55;
   const tdee = calcTDEE(tmb, af);
   const t = kcalTargetFor(client.goal, tdee);
+  // 🔴 UN MENOR NUNCA LLEVA DÉFICIT. Ni con objetivo «Perder grasa», ni con «Recomposición».
+  // Está creciendo: restarle energía no es un plan, es un riesgo — y además «recomposición» en
+  // alguien de peso normal no es un objetivo. Se le entrega su mantenimiento y el TEXTO lo dice
+  // (si se cambiara el número y se dejara el rótulo, sería la mentira de v437 otra vez).
+  // Regla de Andrés Hyp (2026-08-05), sobre 5 menores reales en la base.
+  if (isMenor(client) && t.deficit < 0) {
+    t.kcalObj = tdee;
+    t.deficit = 0;
+    t.label = 'Mantenimiento: estás creciendo, así que tu plan no baja de lo que gastas';
+  }
   // El objetivo NUNCA baja del piso fisiológico. Y si lo tocó, el texto tiene que decir la
   // verdad: seguir anunciando «Déficit de 500 kcal/día» mientras se entrega el basal sería
   // cambiar el número y dejar la mentira.
@@ -5222,6 +5258,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getRctLabel,
     getGoalMsg,
     calcTMB,
+    isMenor,
+    TMB_MENOR_EDAD,
     calcTDEE,
     kcalTargetFor,
     calcMacrosFromKcal,

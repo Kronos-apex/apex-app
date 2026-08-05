@@ -85,7 +85,7 @@ function nutFillSuggested(c,silencioso){
   // medido en producción el 2026-08-05, Kathe y Luz (objetivo «Perder grasa») quedaron con el
   // rótulo «mantenimiento» de una plantilla vieja y su pantalla les decía «estás comiendo en
   // balance: lo que gastas» encima de un déficit real de 500 kcal/día.
-  const goalKey=nutGoalForClient(c.goal);
+  const goalKey=nutGoalForClient(c.goal,c);
   document.getElementById('nut-goal').value=goalKey;
   _nutSwapTemplateText(goalKey);
   if(nota){
@@ -279,7 +279,11 @@ function setNutActivity(f){
   if(nr&&nr.classList.contains('on'))openNutritionRoom(c.id);
 }
 function nutCalcHTML(c){
-  const est=nutritionEstimate(c);
+  // El peso que manda es el ULTIMO registrado, no el de la ficha (que envejece). Estas tres
+  // superficies se quedaron llamando sin peso: en Samuel eran 78 kg de ficha contra 86 reales,
+  // o sea 138 kcal y 17 g de proteina de diferencia ENTRE PANTALLAS DE LA MISMA APP.
+  // Cuarta superficie de la familia de v435/v444 (hallazgo de Andres Hyp, 2026-08-05).
+  const est=nutritionEstimate(c,_nutPesoDe(c));
   if(!est){
     return `<div style="text-align:center;padding:22px 14px">
       <div style="margin-bottom:8px;color:var(--g2)">${typeof aviIcon==='function'?aviIcon('apple',34):'🍎'}</div>
@@ -495,14 +499,14 @@ function openNutritionRoom(clientId){
     const _kcal=(_base&&_base.kcalObj)?_base.kcalObj:nut.kcal;
     d={kcal:_kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
   } else {
-    const est=nutritionEstimate(c);
+    const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){
       body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155">🥗</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">Nutrición</div></div></div>
         <div class="exroom-note">Completa tu <b>peso, estatura, edad y sexo</b> en tu Perfil y aquí verás tu estimación automática de calorías y macros para tu objetivo 🍎</div><div style="height:30px"></div>`;
       body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
     }
     const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
-    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal)]};
+    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal,c)]};
   }
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
@@ -626,7 +630,7 @@ function shareNutWhatsapp(){
   } else {
     // Self-serve (Premium sin plan del coach): comparte la ESTIMACIÓN automática. Antes decía
     // "tu coach aún no ha asignado un plan" aunque la app mostraba kcal+macros. Bug #9 auditoría 2026-06-30.
-    const est=cl?nutritionEstimate(cl):null;
+    const est=cl?nutritionEstimate(cl,_nutPesoDe(cl)):null;
     if(!est){toast('Completa tu peso, estatura, edad y sexo en tu Perfil para ver tu estimación');return;}
     const m=est.macros||{};
     msg+=`🔥 *Calorías diarias:* ${est.kcalObj} kcal _(estimación automática)_\n`;

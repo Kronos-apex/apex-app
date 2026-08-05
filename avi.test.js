@@ -170,6 +170,7 @@ const {
   nutKcalDirection,
   nutGoalMismatch,
   calcTMB,
+  isMenor,
   calcTDEE,
   getRctLabel,
   getGoalMsg,
@@ -3737,6 +3738,69 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
 });
+// ══════════════════════════════════════════════════════
+section('Menores de edad y peso real (dictamen de Andrés Hyp, 2026-08-05)');
+
+// 🔴 Mifflin-St Jeor NO está validado por debajo de 18 y SUBESTIMA (no cuenta el crecimiento).
+test('🔴 calcTMB usa Schofield en menores y Mifflin en adultos', () => {
+  // Valery, real: F, 15 años, 52 kg, 161 cm. Schofield 10-18 F = 13,384·P + 692,6 = 1.389
+  assert.strictEqual(calcTMB(52, 161, 15, 'F'), 1389);
+  // La misma persona a los 18 pasa a Mifflin: 520 + 1006,25 − 90 − 161 = 1.275
+  assert.strictEqual(calcTMB(52, 161, 18, 'F'), 1275);
+  // Y con Mifflin a los 15 habría dado 1.290: 99 kcal de basal MENOS que Schofield.
+  assert.ok(calcTMB(52, 161, 15, 'F') > 10 * 52 + 6.25 * 161 - 5 * 15 - 161,
+    'Schofield tiene que dar MÁS que Mifflin en una menor, no menos');
+  // Hombre menor: 17,686·P + 658,2
+  assert.strictEqual(calcTMB(64, 170, 17, 'M'), Math.round(17.686 * 64 + 658.2));
+});
+test('isMenor: solo con edad válida y menor de 18', () => {
+  assert.strictEqual(isMenor({ age: 15 }), true);
+  assert.strictEqual(isMenor({ age: 17 }), true);
+  assert.strictEqual(isMenor({ age: 18 }), false);
+  assert.strictEqual(isMenor({ age: 34 }), false);
+  assert.strictEqual(isMenor({}), false);          // sin edad no se asume nada
+  assert.strictEqual(isMenor({ age: 0 }), false);
+});
+// 🔴 LA REGLA QUE PROTEGE A 5 PERSONAS REALES DE LA BASE.
+test('🔴 un menor NUNCA recibe déficit, ni con objetivo «Perder grasa»', () => {
+  const v = { age: 15, sex: 'F', height: 161, weight: 52, activityFactor: 1.375 };
+  ['Perder grasa', 'Recomposición'].forEach(goal => {
+    const e = nutritionEstimate(Object.assign({}, v, { goal }), 52);
+    assert.strictEqual(e.deficit, 0, `«${goal}» le está restando energía a una menor`);
+    assert.strictEqual(e.kcalObj, e.tdee, 'un menor recibe su mantenimiento completo');
+  });
+  // Y el TEXTO lo dice: cambiar el número y dejar el rótulo viejo es el defecto de v437.
+  const e = nutritionEstimate(Object.assign({}, v, { goal: 'Perder grasa' }), 52);
+  assert.ok(/creciendo/.test(e.label), `la etiqueta no explica por qué no baja: «${e.label}»`);
+  assert.strictEqual(nutGoalForClient('Perder grasa', v), 'mantenimiento',
+    'el rótulo diría «cutting» sobre un plan que NO es déficit');
+});
+test('control: una ADULTA con los mismos datos SÍ lleva déficit', () => {
+  const a = { age: 25, sex: 'F', height: 161, weight: 52, activityFactor: 1.375, goal: 'Perder grasa' };
+  const e = nutritionEstimate(a, 52);
+  assert.ok(e.deficit < 0, 'la regla de menores se está aplicando a una adulta');
+  assert.strictEqual(nutGoalForClient('Perder grasa', a), 'cutting');
+});
+// 🔴 El peso que manda es el ÚLTIMO registrado. Tres superficies llamaban sin peso y usaban el
+// de la ficha: en un asesorado real eran 78 kg contra 86, o sea 138 kcal y 17 g de proteína de
+// diferencia ENTRE PANTALLAS DE LA MISMA APP. Cuarta superficie de la familia v435/v444.
+test('🔴 ninguna pantalla estima con el peso de la ficha en vez del último registrado', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8');
+  const sinPeso = src.match(/nutritionEstimate\((c|cl)\)/g) || [];
+  assert.deepStrictEqual(sinPeso, [], `hay ${sinPeso.length} llamada(s) sin peso: usarían la ficha, que envejece`);
+  // Y las que hay pasan por el helper que lee el último peso registrado.
+  const conPeso = (src.match(/nutritionEstimate\((c|cl),_nutPesoDe\(\1\)\)/g) || []).length;
+  assert.ok(conPeso >= 5, `solo ${conPeso} llamadas usan _nutPesoDe; se esperaban 5`);
+});
+test('el peso de la ficha y el último registrado dan planes distintos (por eso importa)', () => {
+  const s = { age: 28, sex: 'M', height: 176, weight: 78, activityFactor: 1.725, goal: 'Ganar músculo' };
+  const ficha = nutritionEstimate(s);           // sin peso → usa client.weight
+  const real = nutritionEstimate(s, 86);        // último registrado
+  assert.strictEqual(real.kcalObj - ficha.kcalObj, 138);
+  assert.strictEqual(real.macros.prot_g - ficha.macros.prot_g, 17);
+});
+
 // ── v447: el entreno de «Hoy» llega colapsado ──
 // Medido: «Hoy» eran 4.709 px (5,6 pantallas) y el entreno el 79%.
 test('workoutStartCollapsed: por defecto llega colapsado', () => {
