@@ -133,3 +133,167 @@ alimento, cuántos días seguidos, y en qué punto lo abandonan.
 revisa el enfoque con el dato en la mano.
 
 *Escrito el 2026-08-05 · avi-v437 en producción · autor: sesión de Opus con el PO*
+
+---
+
+# §8 · ESTIPULACIÓN DE FABLE (2026-08-05) — VINCULANTE (R4.2)
+
+> Pedida por el PO antes de arrancar: *«es muy complejo y necesitamos que todo quede bien
+> organizado antes de iniciar»*. Ciclo de `docs/reglas-opus.md`: **Fable planifica → Opus ejecuta
+> → Fable verifica.** Desviarse de E1–E18 exige documentar la desviación y su porqué.
+>
+> **Verificado por Opus antes de pegar (2026-08-05):** el hallazgo H2 es REAL, no teórico —
+> **41 de los 50 alimentos están referenciados por id desde `NUT_MENUS`**, el recetario que arma
+> los platos en producción. Una «fusión» que renombre o pise ids rompe `nutSolveMeal`/`nutDayPlan`
+> para todo el mundo.
+
+## VEREDICTO: **APROBADO CON RESERVAS**
+
+El plan acierta en lo difícil (fuentes verificadas, instinto correcto con ODbL, instrumentación con
+criterio de corte, reuso del motor) y **calla lo que más caro cuesta después**: no define dónde vive
+el registro diario ni cómo se poda, no separa el catálogo de registro del pool de recetario que ya
+corre en producción, y encadena todo el módulo detrás de dos bloqueos externos (ICBF y Andrés Hyp)
+que no dependen de nosotros. Nada de eso es podredumbre arquitectónica: todo es estipulable.
+**Aprobado condicionado a ejecutar E1–E18 tal como están escritas y con el orden corregido de §8.3.**
+
+## 8.1 · Los huecos, priorizados
+
+### 🔴 H1 — El modelo de datos del registro diario NO existe en el plan
+«El registro va en el historial que ya sincroniza» es una intención, no un modelo. Falta:
+- **Vehículo.** Un registro de 3–5 entradas/día con snapshot de macros es **~2 órdenes de magnitud
+  más grande** que `{water:{fecha:n}}`. Sin poda declarada la fila `user_data` crece sin techo, y
+  **cada escritura re-sube el objeto completo** (`sv()` hace replace total, no append).
+- **Merge de dos dispositivos.** La app es «localStorage pisa a Supabase». Dos dispositivos el mismo
+  día = el almuerzo anotado en el teléfono A desaparece cuando sincroniza el B. **Va a pasar**, y se
+  lee como «la app me borró lo que comí» — justo en el módulo que pide 3–5 toques diarios de fe.
+- **Retroactividad.** Si la entrada solo referencia el `id` y luego se corrige un valor del catálogo
+  (ya pasó: yuca, avena, atún), **el pasado de la persona cambia solo**. Las entradas van snapshot.
+
+### 🔴 H2 — «Fusionar con los 50 actuales» es la frase más peligrosa del plan
+Los 50 no son una tabla cualquiera: son el **pool del recetario**, referenciados **por id** desde
+`NUT_MENUS` (41 de 50, verificado), con valores ya corregidos contra fuente externa. Una fusión
+ingenua puede (a) pisar esos valores verificados con la variante cruda de la TCAC —reintroduciendo
+la clase «un dato equivocado es internamente coherente y el sabotaje sale verde»—, o (b) meter 773
+alimentos al pool del generador, donde `rol` y `maxG` son decisiones de nutrición deportiva que la
+TCAC **no trae** (¿el sancocho es 'prot'? nadie lo decidió). → **Dos capas, no una fusión.**
+
+### 🔴 H3 — El orden serializa todo detrás de dos bloqueos externos
+F1, la fase más cara, está bloqueada por el ICBF **y** por Andrés Hyp: hasta que un tercero conteste
+no se escribe nada, y la medición que gobierna F5 arranca semanas tarde. Además F3 (barras: mayor
+riesgo técnico, sin iPhone, online-only) iba antes que F4 (el coach, **que es quien paga la app**).
+
+### 🟠 H4 — Las decisiones del PO bloquean fases y no están atadas a un momento
+La #2 (¿el coach ve el detalle íntimo?) bloquea F4 **y el modelo de datos**: si el coach no debe ver
+el detalle, hay que decidirlo antes de que el detalle viaje a donde el coach lee.
+
+### 🟠 H5 — Legal: arquitectura correcta, incompleta en un punto
+- **ODbL:** no fusionar es correcto y suficiente para consultar y mostrar con atribución. Punto
+  ciego: el caché de escaneados + el snapshot en el registro hacen que datos ODbL vivan en nuestro
+  Supabase. Eso es uso interno y está bien **mientras nunca se re-sirva como base consultable a
+  otros usuarios** — un «caché comunitario de productos escaneados» SÍ dispararía el compartir-igual.
+  Queda **prohibido por escrito**, porque es la optimización «obvia» que alguien propondrá en 6 meses.
+- **ICBF:** «confirmar por escrito» no tiene plazo ni plan B → bloqueo indefinido de un tercero.
+- **XSS que el plan no vio:** los nombres de producto de Open Food Facts son **contenido escrito por
+  desconocidos** entrando a nuestro `innerHTML`. `esc()` obligatorio.
+
+### 🟡 H6 — Instrumentación bien concebida, sin mecánica
+Si termina en tabla nueva arrastra toda la clase RLS. Salida barata: **el propio registro ES la
+instrumentación**, derivada con un script read-only. Sin tabla nueva, sin telemetría personal.
+
+### 🟡 H7 — `foods.json` y el protocolo de deploy
+Entra al precache del SW, al par de bump `?v=`+`CACHE_NAME` y al hook. Y si no cargó (primera visita
+sin red) la app **arranca igual** y el registro degrada con mensaje, jamás pantalla rota.
+
+## 8.2 · Estipulaciones — se ejecutan tal como están escritas
+
+**Modelo de datos (antes de una línea de F2):**
+- **E1.** El registro vive en el **perfil propio del asesorado** (vehículo probado de `habits`/
+  `painCare` → fila propia de `user_data`), clave nueva `foodlog`. PROHIBIDO en claves sueltas de
+  `localStorage` y PROHIBIDO inflar `ax_c` del coach con el detalle.
+- **E2.** Entrada = `{id, ts, meal, src:'tcac2018|avi50|off', foodId, name, grams, kcal, p, c, f}`,
+  **snapshot denormalizado**: corregir el catálogo NO cambia lo ya registrado. Para `src:'off'`,
+  además `barcode` y marca.
+- **E3.** **Poda declarada y testeada:** detalle 90 días; antes de eso, resumen mensual agregado.
+  Candado: test con 90 días × 5 comidas que **afirma el tamaño serializado del perfil** (umbral
+  derivado midiendo, no de memoria).
+- **E4.** **Merge multi-dispositivo:** función pura en avi-core que une por `id` dentro de cada día
+  (unión de conjuntos; misma entrada editada = gana el `ts` mayor). Test: «dos dispositivos, mismo
+  día, entradas distintas → quedan todas». Sin ella, el replace total borra comidas en silencio.
+
+**Catálogo (F1):**
+- **E5.** **Dos capas, no una fusión.** (a) `NUT_FOODS` en avi-core = pool del RECETARIO: los 50
+  curados, **intactos, ids intactos**. (b) `foods.json` = catálogo de REGISTRO/búsqueda: los 50
+  (mismos ids y valores) + la TCAC. **El generador de platos jamás lee `foods.json`; el buscador lee
+  ambas capas.** Con esto la migración que rompe producción deja de existir por diseño.
+- **E6.** En conflicto de valores, **mandan los 50 curados**. Todo conflicto >10 % en cualquier macro
+  se lista en un archivo y lo revisa Andrés Hyp — nunca se resuelve en silencio.
+- **E7.** Cada alimento declara `id`, macros por **100 g listo para comer** (si la TCAC da crudo se
+  marca `prep:'crudo'` y el buscador lo dice — la clase yuca-cruda no vuelve disfrazada), `src` con
+  referencia localizable, y medida casera **solo si la fuente la da**. Macro faltante = `null` y la
+  UI dice «sin dato», **jamás 0** (0 es una afirmación; null es honestidad). Candados: muestra de
+  ≥15 alimentos afirmados contra el PDF · propiedad `|kcal − (4p+4c+9f)| ≤ 15 %` sobre TODA la tabla ·
+  ids únicos y los 50 legacy presentes (sabotaje: renombrar `arroz` → cae).
+- **E8.** `foods.json` entra al precache, al par de bump y al hook **en el mismo commit** que lo crea.
+  Peso máximo medido y anotado (>300 KB se discute compresión antes de desplegar).
+- **E9.** Si `foods.json` no cargó: la app arranca, el registro degrada accionable y los 50 siguen
+  disponibles. Harness que lo afirma **bloqueando el archivo por red**.
+
+**Registro (F2):**
+- **E10.** La suma del día se afirma **por macro, no solo por total**, y el test la **recalcula desde
+  foods + gramos como oráculo independiente** — prohibido comparar `app.total` contra `app.total`.
+  Sabotaje obligatorio: que una entrada no se cuente → el test por macro cae.
+- **E11.** Estados no-felices con test: día sin registro · cantidad absurda (tope en el punto único
+  de escritura, valor imposible en blanco, nunca recortado) · alimento cuyo id ya no existe (el
+  snapshot pinta igual) · edición y borrado. Harness E2E nuevo y dedicado.
+
+**Barras (F3):**
+- **E12.** `esc()` en **todo** campo de Open Food Facts. La atribución «Datos de producto: Open Food
+  Facts (ODbL)» se afirma **en el DOM pintado y mirando la captura**. Harness con `BarcodeDetector`
+  stubbeado + degradación afirmada sin soporte (iPhone) y sin red.
+- **E13.** **Prohibición ODbL por escrito:** los datos OFF viven solo como snapshots del usuario que
+  escaneó y caché **local por dispositivo**. PROHIBIDO promoverlos a cualquier base compartida entre
+  cuentas sin re-evaluar ODbL. Esta estipulación se copia como comentario en el código del caché.
+
+**Legal:**
+- **E14.** La solicitud al ICBF sale **esta semana** con plazo de **3 semanas**. Sin respuesta, el PO
+  decide entre (a) publicar citando la fuente como obra oficial, o (b) plan B con fuente de licencia
+  explícita (USDA FoodData Central, dominio público) perdiendo preparaciones típicas. El bloqueo
+  indefinido no es una opción — E5 garantiza que mientras tanto se construye.
+
+**Instrumentación:**
+- **E15.** Sin tabla nueva: la adherencia se deriva del registro con `scripts/nut-adherencia.mjs`
+  (read-only, versionado, escrito **en F2**). Si alguna vez se propone tabla nueva: policies
+  INSERT+UPDATE+SELECT las tres y grants auditados.
+- **E16.** Ver §8.4.
+
+**Proceso:**
+- **E17.** Antes de F2 se le piden al PO las decisiones **#1 (tier)** y **#2 (privacidad del coach)**
+  con recomendación marcada. No se re-preguntan después.
+- **E18.** Cada fase termina con veredicto de Fable antes de abrir la siguiente; barra premium
+  completa por superficie; AVI_NEWS evaluado y declarado en F2; un feature = un commit; toda lógica
+  nueva nace pura en avi-core.
+
+## 8.3 · Orden corregido de ejecución
+
+| Orden | Fase | Por qué cambia |
+|---|---|---|
+| 0 | **F0 — Modelo de datos + decisiones #1/#2** (E1–E4, E17) | Es lo que después cuesta 10×. Una sesión. |
+| 1 | **F1a — Esquema `foods.json` + pipeline + buscador sobre los 50** | Cero bloqueo externo: esquema, SW, buscador y candados se construyen YA. |
+| 2 | **F2 — Registro + instrumentación** | El flujo completo en producción con los 50; la fontanería no depende del ICBF. |
+| ∥ | **F1b — Ingesta TCAC** (en PARALELO, desde que lleguen permiso + visto de Andrés) | El bloqueo externo bloquea la ingesta, no el módulo. Fix de raíz de H3. |
+| 3 | **F4 — Vista del coach** | El coach paga la app: va antes que la pieza de mayor riesgo. |
+| 4 | **F3 — Código de barras** | Online-only, sin Safari, riesgo alto: lo último que se ancla al esqueleto probado. |
+| 5 | **F5 — Aceleradores** | Solo si §8.4 lo autoriza. |
+
+## 8.4 · Criterio de corte (E16)
+
+- **Reloj:** los 21 días se cuentan desde el deploy que deja **F2 + F1b juntos** en producción —
+  medir adherencia con 50 alimentos castigaría al módulo por un catálogo que aún no llega
+  («no encuentro sancocho» no es falta de adherencia). Lo registrado antes es señal, **no** el gate.
+- **Métrica:** personas con **≥3 días distintos con ≥1 comida guardada** en 21 días, medida con
+  `scripts/nut-adherencia.mjs`, no a ojo.
+- **Corte:** `<3` → **F5 congelada** y sesión con el PO con el número en la mano. `≥3` → F5 procede.
+- **Alarma temprana:** si a los 10 días **cero** personas guardaron siquiera una comida, no se espera
+  al día 21: se le muestra al PO de inmediato.
+
+*Estipulado por Fable, 2026-08-05. Nada de este módulo está «hecho» sin veredicto de Fable por fase.*
