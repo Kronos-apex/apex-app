@@ -1270,10 +1270,16 @@ function closeFoodLogRoom(){
 // PO (§9.2): la protección es la transparencia, no esconder el dato. La aceptación viaja en su
 // perfil (sincroniza), no en una clave suelta del teléfono.
 function _flAvisoHtml(c){
+  // En SU PROPIO entrenamiento el coach es el dueño del dato: decirle «lo ve tu coach» no tiene
+  // sentido y suena a que alguien más lo está mirando. Mismo patrón que el resto de COACH_SELF.
+  const propio=(typeof COACH_SELF!=='undefined'&&COACH_SELF);
+  const cuerpo=propio
+    ? `Este es <b>tu propio registro</b>: lo que anotes aquí es tuyo y nadie más lo ve. Sirve para llevar la cuenta de tu día contra tu plan.<br><br>Puedes dejar de registrar cuando quieras.`
+    : `Lo que registres aquí <b>lo ve tu coach</b>, con el detalle de cada comida. Es justamente para que pueda ayudarte: sin ver qué comiste, un «no cumpliste» no le dice si fue el pan de la noche o que te saltaste el desayuno.<br><br>Puedes dejar de registrar cuando quieras.`;
   return `<div style="background:var(--bll);border-left:3px solid var(--bl);border-radius:var(--rsm);padding:14px;margin-bottom:14px">
     <div style="font-size:14px;font-weight:800;color:var(--blt);margin-bottom:6px">Antes de empezar</div>
-    <div style="font-size:13px;line-height:1.6;color:var(--blt)">Lo que registres aquí <b>lo ve tu coach</b>, con el detalle de cada comida. Es justamente para que pueda ayudarte: sin ver qué comiste, un «no cumpliste» no le dice si fue el pan de la noche o que te saltaste el desayuno.<br><br>Puedes dejar de registrar cuando quieras.</div>
-    <button class="btn bp bsm" style="width:100%;margin-top:12px" onclick="flAceptarAviso()">Entendido, quiero registrar</button>
+    <div style="font-size:13px;line-height:1.6;color:var(--blt)">${cuerpo}</div>
+    <button class="btn bp bsm" style="width:100%;margin-top:12px" onclick="flAceptarAviso()">${propio?'Empezar a registrar':'Entendido, quiero registrar'}</button>
   </div>`;
 }
 function flAceptarAviso(){

@@ -3720,6 +3720,12 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   assert.ok(/c\.foodlog=foodLogRemove[\s\S]{0,80}sv\('ax_c'/.test(src), 'borrar no persiste por la vía sancionada');
   // El aviso de privacidad es obligatorio ANTES de registrar (decisión #2 del PO).
   assert.ok(/if\(!c\.foodlogOk\)/.test(src), 'se puede registrar sin haber visto el aviso de que el coach lo ve');
+  // …y en el entrenamiento PROPIO del coach el aviso no puede decirle que «lo ve tu coach»:
+  // ahí el dueño del dato es él (verificado en el camino de guardado: COACH_SELF escribe en su
+  // propia fila vía clientToRow, que copia todo el perfil, así que su registro es suyo).
+  assert.ok(/const propio=\(typeof COACH_SELF!=='undefined'&&COACH_SELF\)/.test(src),
+    'el aviso no distingue el entrenamiento propio del coach');
+  assert.ok(/tu propio registro/.test(src), 'falta el texto del caso COACH_SELF');
   // Y el registro es Premium: al tier libre no se le pinta el bloque.
   // Dos aserciones separadas y exactas: de dónde sale el gate, y que el bloque dependa de él.
   assert.ok(/const conComida=!\(typeof isFreeClient==='function'&&isFreeClient\(client\)\)/.test(src),
