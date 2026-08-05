@@ -379,5 +379,48 @@ para que cualquier otro id colgado sí haga fallar el test.
 El **fetch** de `foods.json` y el harness que lo **bloquea por red** (E9) llegan con F2: hoy no hay
 pantalla que degradar. La degradación pura ya está probada en la suite.
 
+# §12 · F1b CON LA BASE DE EE.UU. — avi-v440, en producción el 2026-08-05
+
+**Decisión del PO (2026-08-05):** arrancar con **USDA FoodData Central** y complementar con el ICBF
+cuando llegue el permiso. El catálogo pasó de **50 a 139 alimentos**. Suite **604 → 607**.
+
+## Por qué CURADA y no en bloque
+SR Legacy trae 7.793 registros y **están en inglés**. Medido antes de importar nada: buscar
+**«huevo» → 0 resultados** y **«plátano» → 0**. Volcarla cruda habría dejado el buscador **peor**
+que con los 50. Además **345 son comida de bebé, 312 cadenas gringas, 954 cortes de res** que aquí
+no se venden. Se importaron **89 seleccionados y traducidos**, los que llenan huecos reales de los
+50 (salmón, quinua, champiñones, manzana, lácteos, semillas, embutidos…).
+
+## Cómo queda, y por qué es re-ejecutable
+- `scripts/usda-curada.mjs` — la lista curada: nombre en español + cómo se localiza el registro
+  oficial + qué medida casera usar. **Editable sin tocar código.**
+- `scripts/usda-resolver.mjs` — resuelve contra el volcado de la USDA.
+- `scripts/foods-ingesta.json` — el resultado, que entra por el punto ÚNICO que ya existía. **La
+  TCAC entrará por ahí mismo**, sin tocar nada más.
+- Cada importado guarda **`FDC <id> — <descripción original>`**: se puede re-verificar contra la
+  fuente en cualquier momento (E7).
+- Los **gramos de cada medida casera los publica la USDA**. Si un alimento no trae la medida
+  pedida, se queda **SIN medida** antes que pegarle un gramaje que no es — la clase exacta del bug
+  de la avena (15 g declarados contra 5,6 g reales: la persona servía un tercio).
+- Validador nuevo: **nombres repetidos**, porque dos filas idénticas en el buscador no se pueden
+  distinguir.
+
+## 🔴 Tres cosas que el proceso cazó y que yo no habría visto
+1. **«Ala de pollo» resolvía a GALLINA DE GUISAR.** El filtro buscaba subcadenas y **«ste-wing»
+   contiene «wing»**. Un sustantivo dentro de otro es un falso positivo silencioso — y aquí un
+   falso positivo es un alimento equivocado en el plato de alguien. Ahora busca por PALABRA.
+2. **«Tocineta» resolvía a manteca de cerdo (898 kcal)** y **«gaseosa» a soda de chocolate.** Por
+   eso las 91 elecciones se revisaron una por una en vez de confiar en el automático.
+3. **La CERVEZA la rechazó el cuadre kcal↔macros por 63%** — y tenía razón: sus calorías vienen
+   del **etanol** (7 kcal/g), que no es proteína, carbohidrato ni grasa. **Nuestro modelo de datos
+   no puede representarlas** y las contaría de menos sin avisar. Quedan FUERA, con el porqué
+   escrito en la lista. **Limitación conocida:** quien tome cerveza el fin de semana va a
+   registrar menos de lo que consumió. Si eso importa, hay que decidir si el modelo gana un campo
+   para el alcohol — **es decisión de producto, no la tomo yo.**
+
+## Lo que sigue faltando del ICBF
+Las frutas y preparaciones nuestras que la USDA no tiene: **lulo, curuba, tomate de árbol,
+granadilla, feijoa, borojó, sancocho, ajiaco, tamal, changua**. Por eso la carta al ICBF sigue
+siendo la que completa el catálogo, aunque ya no bloquea nada.
+
 ## Lo siguiente: **F2 — registrar el día** (E10, E11, E15)
-Y en paralelo **F1b** (ingesta TCAC) en cuanto lleguen el permiso del ICBF y el visto de Andrés Hyp.
