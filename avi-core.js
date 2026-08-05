@@ -2152,6 +2152,56 @@ function foodLogProgress(totals, target) {
   });
   return out;
 }
+// ── F4: lo que ve el COACH ────────────────────────────────────────────────────
+// Últimos N días con su total (hoy de último), como `waterWeek`. `n` = cuántos alimentos anotó.
+function foodLogWeek(foodlog, now, dias) {
+  const base = now ? now.getTime() : Date.now();
+  const N = Math.max(1, parseInt(dias) || 7);
+  const out = [];
+  for (let i = N - 1; i >= 0; i--) {
+    const d = new Date(base - i * 86400000);
+    const tot = foodLogTotals(foodLogDay(foodlog, d));
+    out.push({ day: habitDayKey(d), dayIndex: d.getDay(), n: tot.n, kcal: tot.kcal, p: tot.p, c: tot.c, f: tot.f, parcial: tot.parcial });
+  }
+  return out;
+}
+// Adherencia y desvío por macro para la ficha del coach.
+// 🔴 EL PROMEDIO SOLO CUENTA LOS DÍAS QUE REGISTRÓ. Un día sin registrar NO es «comió cero»: es
+// «no sabemos». Promediarlo contra 0 haría ver a todo el mundo en déficit brutal y el coach
+// tomaría decisiones sobre un dato inventado — la peor forma de mentir es con un promedio.
+// `targetsPorDia` = mapa dayIndex(0..6) → objetivo de ese día (el que ya da `nutWeekTargets`).
+function foodLogAdherence(foodlog, targetsPorDia, now, dias) {
+  const week = foodLogWeek(foodlog, now, dias);
+  const conRegistro = week.filter(d => d.n > 0);
+  const out = {
+    dias: week.length, registrados: conRegistro.length, week,
+    parcial: conRegistro.some(d => d.parcial),
+    prom: null, meta: null, desvio: null,
+  };
+  if (!conRegistro.length) return out;
+  const suma = { kcal: 0, p: 0, c: 0, f: 0 }, metaSuma = { kcal: 0, p: 0, c: 0, f: 0 };
+  let conMeta = 0;
+  conRegistro.forEach(d => {
+    ['kcal', 'p', 'c', 'f'].forEach(k => { suma[k] += d[k] || 0; });
+    const t = targetsPorDia && targetsPorDia[d.dayIndex];
+    if (t) {
+      conMeta++;
+      metaSuma.kcal += parseFloat(t.kcal) || 0;
+      metaSuma.p += parseFloat(t.prot_g) || 0;
+      metaSuma.c += parseFloat(t.carb_g) || 0;
+      metaSuma.f += parseFloat(t.fat_g) || 0;
+    }
+  });
+  const n = conRegistro.length;
+  out.prom = { kcal: Math.round(suma.kcal / n), p: Math.round(suma.p / n), c: Math.round(suma.c / n), f: Math.round(suma.f / n) };
+  if (!conMeta) return out;                       // sin plan no hay contra qué comparar: no se opina
+  out.meta = { kcal: Math.round(metaSuma.kcal / conMeta), p: Math.round(metaSuma.p / conMeta), c: Math.round(metaSuma.c / conMeta), f: Math.round(metaSuma.f / conMeta) };
+  out.desvio = {};
+  ['kcal', 'p', 'c', 'f'].forEach(k => {
+    out.desvio[k] = out.meta[k] > 0 ? Math.round((out.prom[k] - out.meta[k]) / out.meta[k] * 100) : null;
+  });
+  return out;
+}
 // Días DISTINTOS con al menos una comida guardada en los últimos N días. Es la métrica del
 // criterio de corte (§8.4) y la usa `scripts/nut-adherencia.mjs`: se DERIVA del propio
 // registro, sin tabla de telemetría ni dato personal nuevo.
@@ -5142,6 +5192,8 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogRemove,
     foodLogMerge,
     foodLogProgress,
+    foodLogWeek,
+    foodLogAdherence,
     foodLogActiveDays,
     inferNutGoal,
     nutGoalForClient,

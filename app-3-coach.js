@@ -1333,6 +1333,7 @@ async function openDetail(id,_silent){
   renderDeloadPanel(c);
   renderNutReviewCard(c);
   renderCoachHabitsCard(c);
+  renderCoachFoodLogCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
@@ -1788,6 +1789,101 @@ function renderCoachHabitsCard(c){
     <div style="font-size:12.5px;color:var(--t2);line-height:1.5">${done} · meta ${goal} vaso${goal!==1?'s':''}/día</div>
   </div>`;
 }
+// ══════════════════════════════════════════════════════════════════════
+// F4 — LO QUE VE EL COACH DEL REGISTRO DE COMIDA
+// ──────────────────────────────────────────────────────────────────────
+// Decisión del PO (§9.2 del plan): ve el DETALLE completo, y el asesorado lo sabe desde antes de
+// registrar nada. Sin ver QUÉ comió, un «no cumplió» no dice si fue el pan de la noche o que se
+// saltó el desayuno — y entonces el coach no puede corregir nada.
+let _flDiaAbierto=null;   // qué día tiene el detalle desplegado (null = ninguno)
+function _flCoachTargets(c){
+  // Los objetivos POR DÍA salen del mismo motor que ve el asesorado (`nutWeekTargets`), no de
+  // una cuenta paralela: si se separan, coach y asesorado ven planes distintos (lección v435).
+  try{
+    if(typeof nutBaseFor!=='function'||typeof nutWeekTargets!=='function')return null;
+    let peso=c.weight;
+    const bw=(DB.bodyweight||{})[c.id];
+    if(Array.isArray(bw)&&bw.length){const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg);}
+    const base=nutBaseFor(c,(DB.nutrition||{})[c.id],peso);
+    const sem=base?nutWeekTargets(base,c.routines):null;
+    if(!sem)return null;
+    const map={}; sem.days.forEach(d=>{map[d.dayIndex]=d.target;});
+    return map;
+  }catch(e){ return null; }
+}
+function _flDesvioChip(et,pct,unidad,prom,meta){
+  if(pct==null)return `<div style="flex:1;text-align:center;font-size:11px;color:var(--t3)">${et}<br>sin plan</div>`;
+  const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>=12;
+  const col=grave?'var(--rdt)':(medio?'var(--ort)':'var(--gt)');
+  const bg=grave?'var(--rdl)':(medio?'var(--orl)':'var(--gl)');
+  return `<div style="flex:1;min-width:0;text-align:center;background:${bg};border-radius:var(--rsm);padding:7px 3px">
+    <div style="font-size:14px;font-weight:800;color:${col}">${pct>0?'+':''}${pct}%</div>
+    <div style="font-size:10px;color:var(--t2)">${et}</div>
+    <div style="font-size:9.5px;color:var(--t3)">${prom}${unidad} de ${meta}${unidad}</div>
+  </div>`;
+}
+function renderCoachFoodLogCard(c){
+  const el=document.getElementById('d-foodlog'); if(!el)return;
+  el.innerHTML='';el.style.display='none';
+  if(!c||typeof foodLogAdherence!=='function')return;
+  const a=foodLogAdherence(c.foodlog,_flCoachTargets(c),new Date(),7);
+  if(!a.registrados)return;             // nada registrado → sin tarjeta vacía
+  const dots=a.week.map(d=>{
+    const lleno=d.n>0;
+    const abierto=_flDiaAbierto===d.day;
+    return `<button type="button" title="${d.day}${lleno?': '+d.kcal+' kcal':': sin registrar'}" onclick="flCoachDia('${d.day}')"
+      style="width:22px;height:22px;border-radius:50%;box-sizing:border-box;padding:0;cursor:pointer;font-size:9px;font-weight:800;
+      ${lleno?'background:var(--or);color:#fff;border:none':'background:transparent;color:var(--t3);border:2px solid var(--br2)'}
+      ${abierto?';outline:2px solid var(--t1);outline-offset:1px':''}">${lleno?'':'·'}</button>`;
+  }).join('');
+  let html=`<div class="card" style="padding:12px 14px">
+    <div class="ctitle" style="margin-bottom:9px">${_coIco('utensils',15,'🍽️')} Su comida</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:9px">${dots}</div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:${a.desvio?'10px':'0'}">
+      Registró <b>${a.registrados}</b> de los últimos ${a.dias} días</div>`;
+  if(a.desvio){
+    html+=`<div style="display:flex;gap:5px;margin-bottom:8px">
+      ${_flDesvioChip('calorías',a.desvio.kcal,'',a.prom.kcal,a.meta.kcal)}
+      ${_flDesvioChip('proteína',a.desvio.p,'g',a.prom.p,a.meta.p)}
+      ${_flDesvioChip('carbos',a.desvio.c,'g',a.prom.c,a.meta.c)}
+      ${_flDesvioChip('grasas',a.desvio.f,'g',a.prom.f,a.meta.f)}
+    </div>
+    <div style="font-size:11px;color:var(--t3);line-height:1.5">Promedio de los <b>${a.registrados} días que registró</b>, contra su plan. Los días sin registrar no cuentan.</div>`;
+  }else{
+    html+=`<div style="font-size:11.5px;color:var(--t3);line-height:1.5">Todavía no tiene plan nutricional con el cual comparar.</div>`;
+  }
+  if(a.parcial)html+=`<div style="font-size:11px;color:var(--ort);margin-top:6px">Algún alimento no trae todos sus datos: el promedio va incompleto.</div>`;
+  if(_flDiaAbierto)html+=_flCoachDetalleHtml(c,_flDiaAbierto);
+  else html+=`<div style="font-size:11px;color:var(--t3);margin-top:8px">Toca un día para ver qué comió.</div>`;
+  html+=`</div>`;
+  el.style.display='block';
+  el.innerHTML=html;
+}
+function _flCoachDetalleHtml(c,dayKey){
+  const arr=(((c.foodlog||{}).d)||{})[dayKey]||[];
+  if(!arr.length)return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br);font-size:12px;color:var(--t3)">${esc(dayKey)} — no registró nada ese día.</div>`;
+  const orden=arr.slice().sort((a,b)=>(a.ts-b.ts));
+  let html=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">
+    <div style="font-size:12px;font-weight:800;color:var(--t1);margin-bottom:7px">${esc(dayKey)}</div>`;
+  FOODLOG_MEALS.forEach(m=>{
+    const items=orden.filter(e=>e.meal===m); if(!items.length)return;
+    const kc=Math.round(items.reduce((a,e)=>a+(parseFloat(e.kcal)||0),0));
+    html+=`<div style="margin-bottom:7px">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${esc(FOODLOG_MEAL_LABEL_COACH[m]||m)} · ${kc} kcal</div>`;
+    items.forEach(e=>{
+      html+=`<div style="font-size:12px;color:var(--t1);padding:3px 0">• ${esc(e.name||'Alimento')} <span style="color:var(--t3)">${e.g} g${e.kcal==null?'':' · '+e.kcal+' kcal'}</span></div>`;
+    });
+    html+=`</div>`;
+  });
+  return html+`</div>`;
+}
+const FOODLOG_MEAL_LABEL_COACH={desayuno:'Desayuno',media_m:'Media mañana',almuerzo:'Almuerzo',media_t:'Media tarde',cena:'Cena'};
+function flCoachDia(dayKey){
+  _flDiaAbierto=(_flDiaAbierto===dayKey)?null:dayKey;
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(c)renderCoachFoodLogCard(c);
+}
+
 // Abre el chat con el mensaje YA ESCRITO — el coach lo edita y lo envía. Jamás se envía solo.
 function _shockChat(cid,msg){
   if(typeof openCoachChat!=='function')return;

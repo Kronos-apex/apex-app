@@ -161,6 +161,8 @@ const {
   foodLogRemove,
   foodLogMerge,
   foodLogProgress,
+  foodLogWeek,
+  foodLogAdherence,
   foodLogActiveDays,
   inferNutGoal,
   nutGoalForClient,
@@ -3727,6 +3729,66 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   // El botón de atrás tiene que cerrar la habitación (si no, se sale de la app).
   const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
+});
+// ── F4 · lo que ve el coach ──
+const _metas7 = (() => { const m = {}; for (let i = 0; i < 7; i++) m[i] = { kcal: 1200, prot_g: 62, carb_g: 120, fat_g: 30 }; return m; })();
+function _flTresDias() {
+  const comida = { id: 'x', name: 'X', kcal: 200, p: 10, c: 20, f: 5 };
+  let fl = foodLogBlank();
+  [0, 1, 3].forEach(d => {
+    const dia = new Date(_hoyFL.getTime() - d * 86400000);
+    fl = foodLogAdd(fl, foodLogEntry(comida, 500, 'almuerzo', dia, _flId), dia);
+  });
+  return fl;
+}
+test('foodLogWeek: los últimos 7 días, hoy de último, con su total', () => {
+  const w = foodLogWeek(_flTresDias(), _hoyFL, 7);
+  assert.strictEqual(w.length, 7);
+  assert.strictEqual(w[6].day, habitDayKey(_hoyFL), 'hoy debe ir de último');
+  assert.strictEqual(w.filter(d => d.n > 0).length, 3);
+  assert.strictEqual(w[6].kcal, 1000);
+});
+// 🔴 LA TRAMPA DEL PROMEDIO. Un día sin registrar NO es «comió cero», es «no sabemos». Contarlo
+// como cero haría ver a cualquiera en déficit brutal y el coach decidiría sobre un dato inventado.
+test('🔴 el promedio del coach SOLO cuenta los días que la persona registró', () => {
+  const a = foodLogAdherence(_flTresDias(), _metas7, _hoyFL, 7);
+  assert.strictEqual(a.registrados, 3);
+  assert.strictEqual(a.prom.kcal, 1000, 'el promedio debe ser sobre los 3 días con registro');
+  assert.strictEqual(a.desvio.kcal, -17);
+  // Con los días vacíos contando como cero el desvío daría -64%: casi cuatro veces peor, y falso.
+  const falso = Math.round((1000 * 3 / 7 - 1200) / 1200 * 100);
+  assert.strictEqual(falso, -64);
+  assert.notStrictEqual(a.desvio.kcal, falso, 'está promediando contra los días sin registrar');
+});
+test('foodLogAdherence: el desvío se calcula por macro, no solo en calorías', () => {
+  const a = foodLogAdherence(_flTresDias(), _metas7, _hoyFL, 7);
+  assert.strictEqual(a.desvio.p, -19);   // la proteína va PEOR que el total: ese es el punto
+  assert.strictEqual(a.desvio.c, -17);
+  assert.strictEqual(a.desvio.f, -17);
+});
+test('foodLogAdherence: sin registro y sin plan no inventa nada', () => {
+  const vacio = foodLogAdherence(foodLogBlank(), _metas7, _hoyFL, 7);
+  assert.strictEqual(vacio.registrados, 0);
+  assert.strictEqual(vacio.prom, null);
+  assert.strictEqual(vacio.desvio, null);
+  // Con registro pero SIN plan: promedia, pero no opina sobre desvío.
+  const sinPlan = foodLogAdherence(_flTresDias(), null, _hoyFL, 7);
+  assert.strictEqual(sinPlan.registrados, 3);
+  assert.ok(sinPlan.prom.kcal > 0);
+  assert.strictEqual(sinPlan.desvio, null, 'sin plan no hay contra qué comparar');
+});
+test('🔴 la ficha del coach está cableada y respeta la fuente única del plan', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
+  const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="d-foodlog"/.test(html), 'falta el contenedor en la ficha del asesorado');
+  assert.ok(/renderCoachFoodLogCard\(c\);/.test(src), 'la tarjeta no se pinta al abrir la ficha');
+  assert.ok(/function renderCoachFoodLogCard/.test(src) && /function flCoachDia/.test(src));
+  // Los objetivos por día salen de nutWeekTargets, el MISMO motor que ve el asesorado.
+  assert.ok(/_flCoachTargets[\s\S]{0,600}nutWeekTargets/.test(src),
+    'el coach estaría comparando contra una cuenta distinta de la que ve su asesorado');
+  // El detalle de cada día se pinta con esc(): son datos que escribió otra persona.
+  assert.ok(/esc\(e\.name\|\|'Alimento'\)/.test(src), 'el nombre del alimento entra sin escapar');
 });
 test('el registro tolera basura sin romperse (fila corrupta, campo de otro tipo)', () => {
   [null, undefined, 'texto', 42, [], { d: 'no-es-objeto' }].forEach(basura => {

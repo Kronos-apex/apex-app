@@ -35,6 +35,10 @@ async function shotFull(n) {
 await new Promise(r => ws.on('open', r)); await send('Page.enable'); await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await waitFor(`!!document.getElementById('s-login') && typeof showScreen==='function' && !document.getElementById('avi-loading')`);
+// Esperar el SÍMBOLO REAL post-boot, no solo el DOM: en una corrida lenta el setup arrancaba
+// antes de que existiera `DB` y fallaba entero con «DB is not defined» — un rojo que no era del
+// código sino del arranque. (Misma clase que el boot-check de prod de 2026-07-12.)
+await waitFor(`typeof DB!=='undefined' && !!DB && typeof gp==='function'`, 45000);
 await sleep(2500);
 
 const setup = await ev(`(()=>{try{
@@ -56,7 +60,12 @@ const setup = await ev(`(()=>{try{
   // I2: adherencia de agua para la ficha (#d-habits). c1 tiene registro (tarjeta VISIBLE);
   // c2/c3/c4 sin habits → tarjeta OCULTA (progressive disclosure). Plan del coach: 8 vasos.
   const _dk=off=>{const d=new Date();d.setDate(d.getDate()-off);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-  DB.nutrition={c1:{water:8}};
+  DB.nutrition={c1:{water:8,kcal:2400,prot:150,carbs:270,fat:75}};
+  // F4: registro de comida de c1 — 3 de los ultimos 7 dias, para que la tarjeta #d-foodlog salga
+  // con adherencia y desvio. Los otros no registran → su tarjeta queda OCULTA.
+  const _mkE=(i,g,kc)=>({id:'fe'+i,ts:Date.now()-i*1000,meal:i%2?'cena':'almuerzo',src:'avi50',
+    foodId:'arroz',name:'Arroz blanco cocido',g,kcal:kc,p:2.4,c:26,f:0.2});
+  DB.clients[0].foodlog={d:{[_dk(0)]:[_mkE(1,200,260),_mkE(2,150,195)],[_dk(1)]:[_mkE(3,300,390)],[_dk(3)]:[_mkE(4,250,325)]},m:{}};
   DB.clients[0].habits={water:{[_dk(0)]:8,[_dk(1)]:10,[_dk(2)]:4,[_dk(3)]:8,[_dk(5)]:6,[_dk(6)]:8}}; // metDays=4, loggedDays=6, día -4 sin registro
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
   if(typeof COACH_NAME!=='undefined'){}
@@ -92,6 +101,26 @@ await sleep(1000);
 if (PANEL === 'detail') {
   const hab = await ev(`(()=>{const el=document.getElementById('d-habits');const dots=el?[...el.querySelectorAll('.card span[title]')]:[];return {disp:el?el.style.display:'?',txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'',dots:dots.length,full:dots.filter(s=>(s.getAttribute('style')||'').includes('var(--bl)')&&!(s.getAttribute('style')||'').includes('transparent')).length};})()`);
   console.log('  #d-habits (c1, con datos):', JSON.stringify(hab));
+  // F4 — la tarjeta «Su comida»: tiene que PINTARSE, traer los 7 puntos, decir cuantos dias
+  // registro y mostrar el desvio por macro. Y al tocar un dia, abrir el detalle de lo que comio.
+  const fl = await ev(`(()=>{const el=document.getElementById('d-foodlog');
+    const btns=el?[...el.querySelectorAll('button[title]')]:[];
+    return {disp:el?el.style.display:'?', txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'', puntos:btns.length,
+      conRegistro:btns.filter(b=>(b.getAttribute('style')||'').includes('var(--or)')).length};})()`);
+  console.log('  #d-foodlog (c1):', JSON.stringify(fl));
+  let flOk = fl.disp === 'block' && fl.puntos === 7 && fl.conRegistro === 3 && /Registr/.test(fl.txt) && /%/.test(fl.txt);
+  const flBad = [];
+  if (!flOk) flBad.push(`#d-foodlog no pinto la adherencia: ${JSON.stringify(fl)}`);
+  // Tocar un dia abre el detalle de esa fecha con los alimentos.
+  const flDet = await ev(`(()=>{const el=document.getElementById('d-foodlog');
+    const b=[...el.querySelectorAll('button[title]')].reverse().find(x=>(x.getAttribute('style')||'').includes('var(--or)'));
+    if(!b)return {err:'sin dia con registro'}; b.click();
+    const t=(document.getElementById('d-foodlog').innerText||'').replace(/\\s+/g,' ');
+    return {arroz:/Arroz blanco cocido/.test(t), almuerzo:/almuerzo|cena/i.test(t)};})()`);
+  console.log('  #d-foodlog detalle del dia:', JSON.stringify(flDet));
+  if (!(flDet.arroz && flDet.almuerzo)) flBad.push(`el detalle del dia no muestra lo que comio: ${JSON.stringify(flDet)}`);
+  if (flBad.length) { console.error('❌ #d-foodlog FALLÓ:\n  - ' + flBad.join('\n  - ')); chrome.kill(); srv.kill(); process.exit(1); }
+  console.log('  ✅ #d-foodlog: 3 de 7 dias, desvio por macro y detalle del dia');
   const empty = await ev(`(()=>{try{DB.clients[1].habits={};openDetail('c2');const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?'};}catch(e){return 'err:'+e.message;}})()`);
   console.log('  #d-habits (c2, 0 días → debe ocultar):', JSON.stringify(empty));
   // ASERCIONES CON DIENTES (Fable, verificación Sesión I): el fixture de c1 produce metDays=4
