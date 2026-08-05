@@ -34,10 +34,15 @@ const FUENTES = {
     nombre: 'Catálogo curado de AVI',
     nota: 'Macros por 100 g del alimento LISTO PARA COMER. Valores verificados contra fuente externa y revisados en el lote del 2026-08-03 (yuca cocida, avena por taza, lata de atún escurrida).',
   },
+  usda_sr: {
+    nombre: 'USDA FoodData Central — SR Legacy (abril 2018)',
+    url: 'https://fdc.nal.usda.gov/download-datasets',
+    nota: 'Datos del gobierno federal de EE.UU., de dominio público. Se importó una selección CURADA con nombre en español (scripts/usda-curada.mjs): de los 7.793 registros, la mayoría son cortes de res, comida de bebé o cadenas gringas que no le sirven a nadie aquí. Los macros son por 100 g y los gramos de cada medida casera los publica la propia USDA — no se inventó ninguno.',
+  },
   tcac2018: {
     nombre: 'ICBF — Tabla de Composición de Alimentos Colombianos, 2018',
     url: 'https://www.icbf.gov.co/tabla-de-composicion-de-alimentos-colombianos-tcac-2018',
-    nota: '773 alimentos, incluidas preparaciones típicas colombianas. Pendiente confirmar por escrito las condiciones de reúso con el ICBF (E14).',
+    nota: '773 alimentos, incluidas preparaciones típicas colombianas. Pendiente confirmar por escrito las condiciones de reúso con el ICBF (E14). Entra por el mismo punto que la USDA cuando llegue el permiso.',
   },
   off: {
     nombre: 'Open Food Facts',
@@ -71,6 +76,7 @@ function desdeIngesta() {
 function validar(foods) {
   const problemas = [];
   const vistos = new Map();
+  const porNombre = new Map();
   const ok = [];
   for (const f of foods) {
     const donde = `${f && f.id || '(sin id)'} «${f && f.name || ''}»`;
@@ -89,6 +95,15 @@ function validar(foods) {
       problemas.push(`${donde}: las kcal (${f.kcal}) no cuadran con sus macros — ${g.abs} kcal de desfase (${Math.round(g.rel * 100)}%). Revisar contra la fuente antes de incluirlo.`);
       continue;
     }
+    // Dos alimentos con el MISMO nombre son un buscador que confunde: la persona ve dos filas
+    // idénticas con macros distintos y no puede elegir. Los ids no chocan (la capa USDA lleva
+    // prefijo), así que el duplicado que importa es el de NOMBRE.
+    const clave = f.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    if (porNombre.has(clave)) {
+      problemas.push(`${donde}: NOMBRE repetido — ya existe como «${porNombre.get(clave)}». El buscador mostraría dos filas iguales.`);
+      continue;
+    }
+    porNombre.set(clave, f.id);
     vistos.set(f.id, f.src);
     ok.push(f);
   }

@@ -1,0 +1,1248 @@
+[
+ {
+  "id": "u_salmon",
+  "name": "Salmón",
+  "src": "usda_sr",
+  "ref": "FDC 173686 — Fish, salmon, Atlantic, wild, raw",
+  "kcal": 142,
+  "p": 19.84,
+  "c": 0,
+  "f": 6.34,
+  "un": {
+   "label": "filete",
+   "g": 198
+  }
+ },
+ {
+  "id": "u_sardina_en_aceite_escurrida",
+  "name": "Sardina en aceite (escurrida)",
+  "src": "usda_sr",
+  "ref": "FDC 175139 — Fish, sardine, Atlantic, canned in oil, drained solids with bone",
+  "kcal": 208,
+  "p": 24.62,
+  "c": 0,
+  "f": 11.45,
+  "un": {
+   "label": "lata",
+   "g": 149
+  }
+ },
+ {
+  "id": "u_camaron_cocido",
+  "name": "Camarón cocido",
+  "src": "usda_sr",
+  "ref": "FDC 175180 — Crustaceans, shrimp, cooked",
+  "kcal": 99,
+  "p": 23.98,
+  "c": 0.2,
+  "f": 0.28,
+  "un": {
+   "label": "porción",
+   "g": 85
+  }
+ },
+ {
+  "id": "u_bagre",
+  "name": "Bagre",
+  "src": "usda_sr",
+  "ref": "FDC 174186 — Fish, catfish, channel, wild, raw",
+  "kcal": 95,
+  "p": 16.38,
+  "c": 0,
+  "f": 2.82,
+  "un": {
+   "label": "filete",
+   "g": 159
+  }
+ },
+ {
+  "id": "u_trucha",
+  "name": "Trucha",
+  "src": "usda_sr",
+  "ref": "FDC 175153 — Fish, trout, mixed species, raw",
+  "kcal": 148,
+  "p": 20.77,
+  "c": 0,
+  "f": 6.61,
+  "un": {
+   "label": "filete",
+   "g": 79
+  }
+ },
+ {
+  "id": "u_pechuga_de_pavo",
+  "name": "Pechuga de pavo",
+  "src": "usda_sr",
+  "ref": "FDC 171098 — Turkey, whole, breast, meat only, raw",
+  "kcal": 114,
+  "p": 23.66,
+  "c": 0.14,
+  "f": 1.48,
+  "un": {
+   "label": "porción",
+   "g": 113
+  }
+ },
+ {
+  "id": "u_higado_de_res",
+  "name": "Hígado de res",
+  "src": "usda_sr",
+  "ref": "FDC 169451 — Beef, variety meats and by-products, liver, raw",
+  "kcal": 135,
+  "p": 20.36,
+  "c": 3.89,
+  "f": 3.63,
+  "un": {
+   "label": "porción",
+   "g": 113
+  }
+ },
+ {
+  "id": "u_costilla_de_cerdo",
+  "name": "Costilla de cerdo",
+  "src": "usda_sr",
+  "ref": "FDC 167853 — Pork, fresh, spareribs, separable lean and fat, raw",
+  "kcal": 277,
+  "p": 15.47,
+  "c": 0,
+  "f": 23.4,
+  "un": {
+   "label": "porción",
+   "g": 113
+  }
+ },
+ {
+  "id": "u_chuleta_de_cerdo",
+  "name": "Chuleta de cerdo",
+  "src": "usda_sr",
+  "ref": "FDC 167839 — Pork, fresh, loin, top loin (chops), boneless, separable lean and fat, raw",
+  "kcal": 155,
+  "p": 21.55,
+  "c": 0,
+  "f": 6.94,
+  "un": {
+   "label": "chuleta",
+   "g": 113
+  }
+ },
+ {
+  "id": "u_tocineta",
+  "name": "Tocineta",
+  "src": "usda_sr",
+  "ref": "FDC 167914 — Pork, cured, bacon, cooked, baked",
+  "kcal": 548,
+  "p": 35.73,
+  "c": 1.35,
+  "f": 43.27,
+  "un": {
+   "label": "tajada",
+   "g": 8
+  }
+ },
+ {
+  "id": "u_jamon",
+  "name": "Jamón",
+  "src": "usda_sr",
+  "ref": "FDC 173864 — Ham, sliced, regular (approximately 11% fat)",
+  "kcal": 164,
+  "p": 16.6,
+  "c": 3.63,
+  "f": 8.8,
+  "un": {
+   "label": "tajada",
+   "g": 28
+  }
+ },
+ {
+  "id": "u_salchicha",
+  "name": "Salchicha",
+  "src": "usda_sr",
+  "ref": "FDC 174614 — Frankfurter, beef, heated",
+  "kcal": 322,
+  "p": 11.69,
+  "c": 2.66,
+  "f": 29.36,
+  "un": {
+   "label": "salchicha",
+   "g": 48
+  }
+ },
+ {
+  "id": "u_chorizo",
+  "name": "Chorizo",
+  "src": "usda_sr",
+  "ref": "FDC 173859 — Sausage, pork, chorizo, link or ground, raw",
+  "kcal": 296,
+  "p": 13.63,
+  "c": 3.78,
+  "f": 25.1,
+  "un": {
+   "label": "chorizo",
+   "g": 60
+  }
+ },
+ {
+  "id": "u_atun_en_aceite_escurrido",
+  "name": "Atún en aceite (escurrido)",
+  "src": "usda_sr",
+  "ref": "FDC 173708 — Fish, tuna, light, canned in oil, drained solids",
+  "kcal": 198,
+  "p": 29.13,
+  "c": 0,
+  "f": 8.21,
+  "un": {
+   "label": "lata",
+   "g": 146
+  }
+ },
+ {
+  "id": "u_queso_mozzarella",
+  "name": "Queso mozzarella",
+  "src": "usda_sr",
+  "ref": "FDC 170845 — Cheese, mozzarella, whole milk",
+  "kcal": 299,
+  "p": 22.17,
+  "c": 2.4,
+  "f": 22.14,
+  "un": {
+   "label": "porción",
+   "g": 28
+  }
+ },
+ {
+  "id": "u_queso_cheddar",
+  "name": "Queso cheddar",
+  "src": "usda_sr",
+  "ref": "FDC 170899 — Cheese, cheddar, sharp, sliced",
+  "kcal": 410,
+  "p": 24.25,
+  "c": 2.13,
+  "f": 33.82,
+  "un": {
+   "label": "tajada",
+   "g": 19
+  }
+ },
+ {
+  "id": "u_requeson",
+  "name": "Requesón",
+  "src": "usda_sr",
+  "ref": "FDC 170851 — Cheese, ricotta, whole milk",
+  "kcal": 150,
+  "p": 7.54,
+  "c": 7.27,
+  "f": 10.18,
+  "un": {
+   "label": "porción",
+   "g": 124
+  }
+ },
+ {
+  "id": "u_leche_entera",
+  "name": "Leche entera",
+  "src": "usda_sr",
+  "ref": "FDC 171265 — Milk, whole, 3.25% milkfat, with added vitamin D",
+  "kcal": 61,
+  "p": 3.15,
+  "c": 4.8,
+  "f": 3.25,
+  "un": {
+   "label": "vaso",
+   "g": 244
+  }
+ },
+ {
+  "id": "u_leche_descremada",
+  "name": "Leche descremada",
+  "src": "usda_sr",
+  "ref": "FDC 169868 — Milk, fluid, nonfat, calcium fortified (fat free or skim)",
+  "kcal": 35,
+  "p": 3.4,
+  "c": 4.85,
+  "f": 0.18,
+  "un": {
+   "label": "vaso",
+   "g": 247
+  }
+ },
+ {
+  "id": "u_yogur_natural_entero",
+  "name": "Yogur natural entero",
+  "src": "usda_sr",
+  "ref": "FDC 171284 — Yogurt, plain, whole milk",
+  "kcal": 61,
+  "p": 3.47,
+  "c": 4.66,
+  "f": 3.25,
+  "un": {
+   "label": "vaso",
+   "g": 245
+  }
+ },
+ {
+  "id": "u_kumis_o_yogur_de_beber",
+  "name": "Kumis o yogur de beber",
+  "src": "usda_sr",
+  "ref": "FDC 172225 — Milk, buttermilk, fluid, whole",
+  "kcal": 62,
+  "p": 3.21,
+  "c": 4.88,
+  "f": 3.31,
+  "un": {
+   "label": "vaso",
+   "g": 245
+  }
+ },
+ {
+  "id": "u_mantequilla",
+  "name": "Mantequilla",
+  "src": "usda_sr",
+  "ref": "FDC 173410 — Butter, salted",
+  "kcal": 717,
+  "p": 0.85,
+  "c": 0.06,
+  "f": 81.11,
+  "un": {
+   "label": "cucharada",
+   "g": 14
+  }
+ },
+ {
+  "id": "u_crema_de_leche",
+  "name": "Crema de leche",
+  "src": "usda_sr",
+  "ref": "FDC 170859 — Cream, fluid, heavy whipping",
+  "kcal": 340,
+  "p": 2.84,
+  "c": 2.84,
+  "f": 36.08,
+  "un": {
+   "label": "cucharada",
+   "g": 15
+  }
+ },
+ {
+  "id": "u_huevo_cocido",
+  "name": "Huevo cocido",
+  "src": "usda_sr",
+  "ref": "FDC 173424 — Egg, whole, cooked, hard-boiled",
+  "kcal": 155,
+  "p": 12.58,
+  "c": 1.12,
+  "f": 10.61,
+  "un": {
+   "label": "huevo",
+   "g": 50
+  }
+ },
+ {
+  "id": "u_huevo_frito",
+  "name": "Huevo frito",
+  "src": "usda_sr",
+  "ref": "FDC 173423 — Egg, whole, cooked, fried",
+  "kcal": 196,
+  "p": 13.61,
+  "c": 0.83,
+  "f": 14.84,
+  "un": {
+   "label": "huevo",
+   "g": 46
+  }
+ },
+ {
+  "id": "u_arveja_verde_cocida",
+  "name": "Arveja verde cocida",
+  "src": "usda_sr",
+  "ref": "FDC 170102 — Peas, green, cooked, boiled, drained, with salt",
+  "kcal": 84,
+  "p": 5.36,
+  "c": 15.63,
+  "f": 0.22,
+  "un": {
+   "label": "taza",
+   "g": 160
+  }
+ },
+ {
+  "id": "u_frijol_blanco_cocido",
+  "name": "Fríjol blanco cocido",
+  "src": "usda_sr",
+  "ref": "FDC 175249 — Beans, white, mature seeds, cooked, boiled, with salt",
+  "kcal": 139,
+  "p": 9.73,
+  "c": 25.09,
+  "f": 0.35,
+  "un": {
+   "label": "taza",
+   "g": 179
+  }
+ },
+ {
+  "id": "u_frijol_negro_cocido",
+  "name": "Fríjol negro cocido",
+  "src": "usda_sr",
+  "ref": "FDC 175237 — Beans, black, mature seeds, cooked, boiled, with salt",
+  "kcal": 132,
+  "p": 8.86,
+  "c": 23.71,
+  "f": 0.54,
+  "un": {
+   "label": "taza",
+   "g": 172
+  }
+ },
+ {
+  "id": "u_haba_cocida",
+  "name": "Haba cocida",
+  "src": "usda_sr",
+  "ref": "FDC 173798 — Broadbeans (fava beans), mature seeds, cooked, boiled, with salt",
+  "kcal": 110,
+  "p": 7.6,
+  "c": 19.65,
+  "f": 0.4,
+  "un": {
+   "label": "taza",
+   "g": 170
+  }
+ },
+ {
+  "id": "u_soya_cocida",
+  "name": "Soya cocida",
+  "src": "usda_sr",
+  "ref": "FDC 174271 — Soybeans, mature cooked, boiled, without salt",
+  "kcal": 172,
+  "p": 18.21,
+  "c": 8.36,
+  "f": 8.97,
+  "un": {
+   "label": "taza",
+   "g": 172
+  }
+ },
+ {
+  "id": "u_tofu",
+  "name": "Tofu",
+  "src": "usda_sr",
+  "ref": "FDC 172475 — Tofu, raw, firm, prepared with calcium sulfate",
+  "kcal": 144,
+  "p": 17.27,
+  "c": 2.78,
+  "f": 8.72,
+  "un": {
+   "label": "porción",
+   "g": 126
+  }
+ },
+ {
+  "id": "u_arroz_integral_cocido",
+  "name": "Arroz integral cocido",
+  "src": "usda_sr",
+  "ref": "FDC 169704 — Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)",
+  "kcal": 123,
+  "p": 2.74,
+  "c": 25.58,
+  "f": 0.97,
+  "un": {
+   "label": "taza",
+   "g": 202
+  }
+ },
+ {
+  "id": "u_quinua_cocida",
+  "name": "Quinua cocida",
+  "src": "usda_sr",
+  "ref": "FDC 168917 — Quinoa, cooked",
+  "kcal": 120,
+  "p": 4.4,
+  "c": 21.3,
+  "f": 1.92,
+  "un": {
+   "label": "taza",
+   "g": 185
+  }
+ },
+ {
+  "id": "u_pan_blanco_tajado",
+  "name": "Pan blanco tajado",
+  "src": "usda_sr",
+  "ref": "FDC 174924 — Bread, white, commercially prepared (includes soft bread crumbs)",
+  "kcal": 266,
+  "p": 8.85,
+  "c": 49.42,
+  "f": 3.33,
+  "un": {
+   "label": "tajada",
+   "g": 29
+  }
+ },
+ {
+  "id": "u_tortilla_de_maiz",
+  "name": "Tortilla de maíz",
+  "src": "usda_sr",
+  "ref": "FDC 175036 — Tortillas, ready-to-bake or -fry, corn",
+  "kcal": 218,
+  "p": 5.7,
+  "c": 44.64,
+  "f": 2.85,
+  "un": {
+   "label": "tortilla",
+   "g": 24
+  }
+ },
+ {
+  "id": "u_galleta_de_soda",
+  "name": "Galleta de soda",
+  "src": "usda_sr",
+  "ref": "FDC 172746 — Crackers, saltines (includes oyster, soda, soup)",
+  "kcal": 418,
+  "p": 9.46,
+  "c": 74.05,
+  "f": 8.64,
+  "un": {
+   "label": "porción (5 galletas)",
+   "g": 15
+  }
+ },
+ {
+  "id": "u_harina_de_maiz_precocida",
+  "name": "Harina de maíz precocida",
+  "src": "usda_sr",
+  "ref": "FDC 169694 — Corn flour, masa, enriched, white",
+  "kcal": 363,
+  "p": 8.46,
+  "c": 76.59,
+  "f": 3.69,
+  "un": {
+   "label": "taza",
+   "g": 114
+  }
+ },
+ {
+  "id": "u_harina_de_trigo",
+  "name": "Harina de trigo",
+  "src": "usda_sr",
+  "ref": "FDC 169761 — Wheat flour, white, all-purpose, unenriched",
+  "kcal": 364,
+  "p": 10.33,
+  "c": 76.31,
+  "f": 0.98,
+  "un": {
+   "label": "taza",
+   "g": 125
+  }
+ },
+ {
+  "id": "u_batata_o_camote_cocido",
+  "name": "Batata o camote cocido",
+  "src": "usda_sr",
+  "ref": "FDC 168484 — Sweet potato, cooked, boiled, without skin",
+  "kcal": 76,
+  "p": 1.37,
+  "c": 17.72,
+  "f": 0.14,
+  "un": {
+   "label": "unidad",
+   "g": 151
+  }
+ },
+ {
+  "id": "u_name_cocido",
+  "name": "Ñame cocido",
+  "src": "usda_sr",
+  "ref": "FDC 170551 — Yam, cooked, boiled, drained, or baked, with salt",
+  "kcal": 114,
+  "p": 1.49,
+  "c": 26.99,
+  "f": 0.14,
+  "un": {
+   "label": "taza",
+   "g": 136
+  }
+ },
+ {
+  "id": "u_patacon_platano_verde_frito",
+  "name": "Patacón (plátano verde frito)",
+  "src": "usda_sr",
+  "ref": "FDC 168199 — Plantains, green, fried",
+  "kcal": 309,
+  "p": 1.5,
+  "c": 49.17,
+  "f": 11.81,
+  "un": {
+   "label": "porción",
+   "g": 118
+  }
+ },
+ {
+  "id": "u_papa_frita",
+  "name": "Papa frita",
+  "src": "usda_sr",
+  "ref": "FDC 170452 — Potatoes, french fried, shoestring, salt added in processing, frozen, oven-heated",
+  "kcal": 194,
+  "p": 2.9,
+  "c": 31.66,
+  "f": 6.76,
+  "un": {
+   "label": "porción (10 papas)",
+   "g": 21
+  }
+ },
+ {
+  "id": "u_granola",
+  "name": "Granola",
+  "src": "usda_sr",
+  "ref": "FDC 171646 — Cereals ready-to-eat, granola, homemade",
+  "kcal": 489,
+  "p": 13.67,
+  "c": 53.88,
+  "f": 24.31,
+  "un": {
+   "label": "porción",
+   "g": 122
+  }
+ },
+ {
+  "id": "u_palomitas_de_maiz",
+  "name": "Palomitas de maíz",
+  "src": "usda_sr",
+  "ref": "FDC 167959 — Snacks, popcorn, air-popped",
+  "kcal": 387,
+  "p": 12.94,
+  "c": 77.78,
+  "f": 4.54,
+  "un": {
+   "label": "taza",
+   "g": 8
+  }
+ },
+ {
+  "id": "u_aceite_de_girasol",
+  "name": "Aceite de girasol",
+  "src": "usda_sr",
+  "ref": "FDC 171025 — Oil, sunflower, linoleic, (approx. 65%)",
+  "kcal": 884,
+  "p": 0,
+  "c": 0,
+  "f": 100,
+  "un": {
+   "label": "cucharada",
+   "g": 14
+  }
+ },
+ {
+  "id": "u_aceite_de_coco",
+  "name": "Aceite de coco",
+  "src": "usda_sr",
+  "ref": "FDC 171412 — Oil, coconut",
+  "kcal": 892,
+  "p": 0,
+  "c": 0,
+  "f": 99.06,
+  "un": {
+   "label": "cucharada",
+   "g": 14
+  }
+ },
+ {
+  "id": "u_margarina",
+  "name": "Margarina",
+  "src": "usda_sr",
+  "ref": "FDC 172346 — Margarine, regular, 80% fat, composite, stick, with salt",
+  "kcal": 717,
+  "p": 0.16,
+  "c": 0.7,
+  "f": 80.71,
+  "un": {
+   "label": "cucharada",
+   "g": 14
+  }
+ },
+ {
+  "id": "u_mayonesa",
+  "name": "Mayonesa",
+  "src": "usda_sr",
+  "ref": "FDC 171009 — Salad dressing, mayonnaise, regular",
+  "kcal": 680,
+  "p": 0.96,
+  "c": 0.57,
+  "f": 74.85,
+  "un": {
+   "label": "cucharada",
+   "g": 14
+  }
+ },
+ {
+  "id": "u_nueces",
+  "name": "Nueces",
+  "src": "usda_sr",
+  "ref": "FDC 170187 — Nuts, walnuts, english",
+  "kcal": 654,
+  "p": 15.23,
+  "c": 13.71,
+  "f": 65.21,
+  "un": {
+   "label": "puñado",
+   "g": 28
+  }
+ },
+ {
+  "id": "u_maranon_o_anacardo",
+  "name": "Marañón o anacardo",
+  "src": "usda_sr",
+  "ref": "FDC 170162 — Nuts, cashew nuts, raw",
+  "kcal": 553,
+  "p": 18.22,
+  "c": 30.19,
+  "f": 43.85,
+  "un": {
+   "label": "puñado",
+   "g": 28
+  }
+ },
+ {
+  "id": "u_semillas_de_girasol",
+  "name": "Semillas de girasol",
+  "src": "usda_sr",
+  "ref": "FDC 170562 — Seeds, sunflower seed kernels, dried",
+  "kcal": 584,
+  "p": 20.78,
+  "c": 20,
+  "f": 51.46,
+  "un": {
+   "label": "taza",
+   "g": 140
+  }
+ },
+ {
+  "id": "u_chia",
+  "name": "Chía",
+  "src": "usda_sr",
+  "ref": "FDC 170554 — Seeds, chia seeds, dried",
+  "kcal": 486,
+  "p": 16.54,
+  "c": 42.12,
+  "f": 30.74,
+  "un": {
+   "label": "cucharada",
+   "g": 28
+  }
+ },
+ {
+  "id": "u_linaza",
+  "name": "Linaza",
+  "src": "usda_sr",
+  "ref": "FDC 169414 — Seeds, flaxseed",
+  "kcal": 534,
+  "p": 18.29,
+  "c": 28.88,
+  "f": 42.16,
+  "un": {
+   "label": "cucharada",
+   "g": 10
+  }
+ },
+ {
+  "id": "u_ajonjoli",
+  "name": "Ajonjolí",
+  "src": "usda_sr",
+  "ref": "FDC 170150 — Seeds, sesame seeds, whole, dried",
+  "kcal": 573,
+  "p": 17.73,
+  "c": 23.45,
+  "f": 49.67,
+  "un": {
+   "label": "cucharada",
+   "g": 9
+  }
+ },
+ {
+  "id": "u_coco",
+  "name": "Coco",
+  "src": "usda_sr",
+  "ref": "FDC 170169 — Nuts, coconut meat, raw",
+  "kcal": 354,
+  "p": 3.33,
+  "c": 15.23,
+  "f": 33.49,
+  "un": {
+   "label": "taza",
+   "g": 80
+  }
+ },
+ {
+  "id": "u_pimenton_rojo",
+  "name": "Pimentón rojo",
+  "src": "usda_sr",
+  "ref": "FDC 170108 — Peppers, sweet, red, raw",
+  "kcal": 26,
+  "p": 0.99,
+  "c": 6.03,
+  "f": 0.3,
+  "un": {
+   "label": "taza",
+   "g": 149
+  }
+ },
+ {
+  "id": "u_calabacin",
+  "name": "Calabacín",
+  "src": "usda_sr",
+  "ref": "FDC 169291 — Squash, summer, zucchini, includes skin, raw",
+  "kcal": 17,
+  "p": 1.21,
+  "c": 3.11,
+  "f": 0.32,
+  "un": {
+   "label": "taza",
+   "g": 124
+  }
+ },
+ {
+  "id": "u_coliflor",
+  "name": "Coliflor",
+  "src": "usda_sr",
+  "ref": "FDC 169986 — Cauliflower, raw",
+  "kcal": 25,
+  "p": 1.92,
+  "c": 4.97,
+  "f": 0.28,
+  "un": {
+   "label": "taza",
+   "g": 107
+  }
+ },
+ {
+  "id": "u_repollo",
+  "name": "Repollo",
+  "src": "usda_sr",
+  "ref": "FDC 169975 — Cabbage, raw",
+  "kcal": 25,
+  "p": 1.28,
+  "c": 5.8,
+  "f": 0.1,
+  "un": {
+   "label": "taza",
+   "g": 89
+  }
+ },
+ {
+  "id": "u_apio",
+  "name": "Apio",
+  "src": "usda_sr",
+  "ref": "FDC 169988 — Celery, raw",
+  "kcal": 14,
+  "p": 0.69,
+  "c": 2.97,
+  "f": 0.17,
+  "un": {
+   "label": "taza",
+   "g": 101
+  }
+ },
+ {
+  "id": "u_remolacha",
+  "name": "Remolacha",
+  "src": "usda_sr",
+  "ref": "FDC 169145 — Beets, raw",
+  "kcal": 43,
+  "p": 1.61,
+  "c": 9.56,
+  "f": 0.17,
+  "un": {
+   "label": "taza",
+   "g": 136
+  }
+ },
+ {
+  "id": "u_berenjena",
+  "name": "Berenjena",
+  "src": "usda_sr",
+  "ref": "FDC 169228 — Eggplant, raw",
+  "kcal": 25,
+  "p": 0.98,
+  "c": 5.88,
+  "f": 0.18,
+  "un": {
+   "label": "taza",
+   "g": 82
+  }
+ },
+ {
+  "id": "u_champinones",
+  "name": "Champiñones",
+  "src": "usda_sr",
+  "ref": "FDC 169251 — Mushrooms, white, raw",
+  "kcal": 22,
+  "p": 3.09,
+  "c": 3.26,
+  "f": 0.34,
+  "un": {
+   "label": "taza",
+   "g": 70
+  }
+ },
+ {
+  "id": "u_acelga",
+  "name": "Acelga",
+  "src": "usda_sr",
+  "ref": "FDC 169991 — Chard, swiss, raw",
+  "kcal": 19,
+  "p": 1.8,
+  "c": 3.74,
+  "f": 0.2,
+  "un": {
+   "label": "taza",
+   "g": 36
+  }
+ },
+ {
+  "id": "u_ajo",
+  "name": "Ajo",
+  "src": "usda_sr",
+  "ref": "FDC 169230 — Garlic, raw",
+  "kcal": 149,
+  "p": 6.36,
+  "c": 33.06,
+  "f": 0.5,
+  "un": {
+   "label": "diente",
+   "g": 3
+  }
+ },
+ {
+  "id": "u_cilantro",
+  "name": "Cilantro",
+  "src": "usda_sr",
+  "ref": "FDC 169997 — Coriander (cilantro) leaves, raw",
+  "kcal": 23,
+  "p": 2.13,
+  "c": 3.67,
+  "f": 0.52,
+  "un": {
+   "label": "manojo",
+   "g": 4
+  }
+ },
+ {
+  "id": "u_arveja_seca_cocida",
+  "name": "Arveja seca cocida",
+  "src": "usda_sr",
+  "ref": "FDC 175257 — Peas, split, mature seeds, cooked, boiled, with salt",
+  "kcal": 116,
+  "p": 8.34,
+  "c": 20.51,
+  "f": 0.39,
+  "un": {
+   "label": "taza",
+   "g": 196
+  }
+ },
+ {
+  "id": "u_manzana",
+  "name": "Manzana",
+  "src": "usda_sr",
+  "ref": "FDC 168202 — Apples, raw, golden delicious, with skin",
+  "kcal": 57,
+  "p": 0.28,
+  "c": 13.6,
+  "f": 0.15,
+  "un": {
+   "label": "manzana",
+   "g": 169
+  }
+ },
+ {
+  "id": "u_pera",
+  "name": "Pera",
+  "src": "usda_sr",
+  "ref": "FDC 169118 — Pears, raw",
+  "kcal": 57,
+  "p": 0.36,
+  "c": 15.23,
+  "f": 0.14,
+  "un": {
+   "label": "pera",
+   "g": 178
+  }
+ },
+ {
+  "id": "u_uvas",
+  "name": "Uvas",
+  "src": "usda_sr",
+  "ref": "FDC 174683 — Grapes, red or green (European type, such as Thompson seedless), raw",
+  "kcal": 69,
+  "p": 0.72,
+  "c": 18.1,
+  "f": 0.16,
+  "un": {
+   "label": "taza",
+   "g": 151
+  }
+ },
+ {
+  "id": "u_sandia",
+  "name": "Sandía",
+  "src": "usda_sr",
+  "ref": "FDC 167765 — Watermelon, raw",
+  "kcal": 30,
+  "p": 0.61,
+  "c": 7.55,
+  "f": 0.15,
+  "un": {
+   "label": "taza",
+   "g": 154
+  }
+ },
+ {
+  "id": "u_melon",
+  "name": "Melón",
+  "src": "usda_sr",
+  "ref": "FDC 169092 — Melons, cantaloupe, raw",
+  "kcal": 34,
+  "p": 0.84,
+  "c": 8.16,
+  "f": 0.19,
+  "un": {
+   "label": "taza",
+   "g": 177
+  }
+ },
+ {
+  "id": "u_mora",
+  "name": "Mora",
+  "src": "usda_sr",
+  "ref": "FDC 173946 — Blackberries, raw",
+  "kcal": 43,
+  "p": 1.39,
+  "c": 9.61,
+  "f": 0.49,
+  "un": {
+   "label": "taza",
+   "g": 144
+  }
+ },
+ {
+  "id": "u_durazno",
+  "name": "Durazno",
+  "src": "usda_sr",
+  "ref": "FDC 169928 — Peaches, yellow, raw",
+  "kcal": 39,
+  "p": 0.91,
+  "c": 9.54,
+  "f": 0.25,
+  "un": {
+   "label": "durazno",
+   "g": 150
+  }
+ },
+ {
+  "id": "u_ciruela",
+  "name": "Ciruela",
+  "src": "usda_sr",
+  "ref": "FDC 169949 — Plums, raw",
+  "kcal": 46,
+  "p": 0.7,
+  "c": 11.42,
+  "f": 0.28,
+  "un": {
+   "label": "ciruela",
+   "g": 66
+  }
+ },
+ {
+  "id": "u_limon",
+  "name": "Limón",
+  "src": "usda_sr",
+  "ref": "FDC 167746 — Lemons, raw, without peel",
+  "kcal": 29,
+  "p": 1.1,
+  "c": 9.32,
+  "f": 0.3,
+  "un": {
+   "label": "limón",
+   "g": 58
+  }
+ },
+ {
+  "id": "u_kiwi",
+  "name": "Kiwi",
+  "src": "usda_sr",
+  "ref": "FDC 168153 — Kiwifruit, green, raw",
+  "kcal": 61,
+  "p": 1.14,
+  "c": 14.66,
+  "f": 0.52,
+  "un": {
+   "label": "kiwi",
+   "g": 69
+  }
+ },
+ {
+  "id": "u_arandanos",
+  "name": "Arándanos",
+  "src": "usda_sr",
+  "ref": "FDC 171711 — Blueberries, raw",
+  "kcal": 57,
+  "p": 0.74,
+  "c": 14.49,
+  "f": 0.33,
+  "un": {
+   "label": "taza",
+   "g": 148
+  }
+ },
+ {
+  "id": "u_ciruela_pasa",
+  "name": "Ciruela pasa",
+  "src": "usda_sr",
+  "ref": "FDC 168162 — Plums, dried (prunes), uncooked",
+  "kcal": 240,
+  "p": 2.18,
+  "c": 63.88,
+  "f": 0.38,
+  "un": {
+   "label": "taza",
+   "g": 174
+  }
+ },
+ {
+  "id": "u_pasas",
+  "name": "Pasas",
+  "src": "usda_sr",
+  "ref": "FDC 168165 — Raisins, dark, seedless (Includes foods for USDA's Food Distribution Program)",
+  "kcal": 299,
+  "p": 3.3,
+  "c": 79.32,
+  "f": 0.25,
+  "un": {
+   "label": "taza",
+   "g": 165
+  }
+ },
+ {
+  "id": "u_jugo_de_naranja_natural",
+  "name": "Jugo de naranja natural",
+  "src": "usda_sr",
+  "ref": "FDC 169098 — Orange juice, raw (Includes foods for USDA's Food Distribution Program)",
+  "kcal": 45,
+  "p": 0.7,
+  "c": 10.4,
+  "f": 0.2,
+  "un": {
+   "label": "vaso",
+   "g": 248
+  }
+ },
+ {
+  "id": "u_azucar",
+  "name": "Azúcar",
+  "src": "usda_sr",
+  "ref": "FDC 169655 — Sugars, granulated",
+  "kcal": 387,
+  "p": 0,
+  "c": 99.98,
+  "f": 0,
+  "un": {
+   "label": "cucharadita",
+   "g": 4
+  }
+ },
+ {
+  "id": "u_miel",
+  "name": "Miel",
+  "src": "usda_sr",
+  "ref": "FDC 169640 — Honey",
+  "kcal": 304,
+  "p": 0.3,
+  "c": 82.4,
+  "f": 0,
+  "un": {
+   "label": "cucharada",
+   "g": 21
+  }
+ },
+ {
+  "id": "u_panela_o_azucar_morena",
+  "name": "Panela o azúcar morena",
+  "src": "usda_sr",
+  "ref": "FDC 168833 — Sugars, brown",
+  "kcal": 380,
+  "p": 0.12,
+  "c": 98.09,
+  "f": 0,
+  "un": {
+   "label": "cucharadita",
+   "g": 3
+  }
+ },
+ {
+  "id": "u_chocolatina_de_leche",
+  "name": "Chocolatina de leche",
+  "src": "usda_sr",
+  "ref": "FDC 167587 — Candies, milk chocolate",
+  "kcal": 535,
+  "p": 7.65,
+  "c": 59.4,
+  "f": 29.66,
+  "un": {
+   "label": "porción",
+   "g": 44
+  }
+ },
+ {
+  "id": "u_helado_de_vainilla",
+  "name": "Helado de vainilla",
+  "src": "usda_sr",
+  "ref": "FDC 167575 — Ice creams, vanilla",
+  "kcal": 207,
+  "p": 3.5,
+  "c": 23.6,
+  "f": 11,
+  "un": {
+   "label": "porción",
+   "g": 66
+  }
+ },
+ {
+  "id": "u_gaseosa",
+  "name": "Gaseosa",
+  "src": "usda_sr",
+  "ref": "FDC 174852 — Beverages, carbonated, cola, regular",
+  "kcal": 42,
+  "p": 0,
+  "c": 10.36,
+  "f": 0.25,
+  "un": {
+   "label": "lata",
+   "g": 370
+  }
+ },
+ {
+  "id": "u_cafe_negro",
+  "name": "Café negro",
+  "src": "usda_sr",
+  "ref": "FDC 171890 — Beverages, coffee, brewed, prepared with tap water",
+  "kcal": 1,
+  "p": 0.12,
+  "c": 0,
+  "f": 0.02,
+  "un": {
+   "label": "pocillo",
+   "g": 237
+  }
+ },
+ {
+  "id": "u_proteina_en_polvo_whey",
+  "name": "Proteína en polvo (whey)",
+  "src": "usda_sr",
+  "ref": "FDC 173180 — Beverages, Protein powder whey based",
+  "kcal": 352,
+  "p": 78.13,
+  "c": 6.25,
+  "f": 1.56,
+  "un": {
+   "label": "medida",
+   "g": 32
+  }
+ }
+]

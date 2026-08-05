@@ -3402,6 +3402,33 @@ test('🔴 foods.json conserva los ids y los valores del pool del recetario', ()
       `«${orig.id}» tiene ${k}=${cat[k]} en el catálogo y ${orig[k]} en el recetario: dos verdades para el mismo alimento`));
   });
 });
+// F1b (USDA) — trazabilidad y limpieza del catálogo importado.
+test('🔴 todo alimento importado dice de qué registro oficial salió', () => {
+  assert.ok(_foodsJson);
+  const importados = _foodsJson.foods.filter(f => f.src !== 'avi50');
+  assert.ok(importados.length >= 80, `se esperaban ~89 importados, hay ${importados.length}`);
+  importados.forEach(f => {
+    assert.ok(f.ref && /FDC \d+/.test(f.ref),
+      `«${f.id}» no dice de qué registro salió — sin eso no se puede re-verificar contra la fuente`);
+  });
+});
+test('🔴 ningún nombre repetido: el buscador no puede mostrar dos filas iguales', () => {
+  assert.ok(_foodsJson);
+  const vistos = new Map();
+  _foodsJson.foods.forEach(f => {
+    const k = foodNormText(f.name);
+    assert.ok(!vistos.has(k), `«${f.name}» aparece dos veces (${vistos.get(k)} y ${f.id})`);
+    vistos.set(k, f.id);
+  });
+});
+test('🔴 el catálogo responde en ESPAÑOL a lo que come la gente aquí', () => {
+  // La base de la USDA viene en inglés: importarla cruda dejaba «huevo» y «plátano» en CERO
+  // resultados (medido el 2026-08-05 sobre los 7.793 registros). Por eso se importa curada y
+  // traducida. Este test es el que se rompe si alguien vuelve a volcar nombres en inglés.
+  const cat = foodCatalog(_foodsJson);
+  ['huevo', 'platano', 'arroz', 'frijol', 'queso', 'pollo', 'manzana', 'aguacate', 'yuca', 'avena']
+    .forEach(t => assert.ok(foodSearch(cat, t).total > 0, `buscar «${t}» no devuelve nada`));
+});
 test('foods.json: ids únicos y toda fuente declarada', () => {
   assert.ok(_foodsJson);
   const vistos = new Set();
