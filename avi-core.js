@@ -2471,6 +2471,40 @@ function inferNutGoal(nut) {
   return null;
 }
 
+// ── El objetivo del PLAN que le corresponde al objetivo del ASESORADO. Fuente ÚNICA: la usa
+// «✨ Generar» para ROTULAR lo que acaba de calcular y la habitación de nutrición para explicar
+// el «por qué» de la estimación automática (antes era un mapa suelto en app-5). ──
+const NUT_GOAL_BY_CLIENT = {
+  'Perder grasa': 'cutting',
+  'Ganar músculo': 'volumen',
+  'Fuerza': 'volumen',
+  'Recomposición': 'mantenimiento',
+  'Resistencia': 'mantenimiento',
+};
+function nutGoalForClient(goal) { return NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento'; }
+
+// ── ¿El RÓTULO del plan contradice sus propios números? Un plan rotulado «mantenimiento» que
+// entrega 500 kcal MENOS de lo que la persona gasta le explica al asesorado que «está comiendo
+// en balance: lo que gastas» encima de un déficit. Devuelve null si concuerdan, o
+// {dice, real} con la dirección que anuncia el rótulo y la que hacen los números.
+// Tolerancia ±5% del gasto: redondeos y ciclado calórico no son una contradicción. ──
+const NUT_GOAL_DIR = { cutting: 'deficit', definicion: 'deficit', volumen: 'superavit', mantenimiento: 'balance' };
+const NUT_DIR_TOL = 0.05;
+function nutKcalDirection(kcal, tdee) {
+  const k = parseFloat(kcal), t = parseFloat(tdee);
+  if (!k || !t) return null;
+  if (k < t * (1 - NUT_DIR_TOL)) return 'deficit';
+  if (k > t * (1 + NUT_DIR_TOL)) return 'superavit';
+  return 'balance';
+}
+function nutGoalMismatch(nutGoal, kcal, tdee) {
+  const dice = NUT_GOAL_DIR[nutGoal];
+  if (!dice) return null;                       // sin rótulo legible no hay contradicción que marcar
+  const real = nutKcalDirection(kcal, tdee);
+  if (!real) return null;                       // sin gasto (faltan datos del cuerpo) no se opina
+  return real === dice ? null : { dice, real };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // VALORACIÓN NUTRICIONAL / COMPOSICIÓN (panel del coach)
 // ──────────────────────────────────────────────────────────────────────
@@ -4790,6 +4824,9 @@ if (typeof module !== 'undefined' && module.exports) {
     feelingEmoji,
     feelingLabel,
     inferNutGoal,
+    nutGoalForClient,
+    nutKcalDirection,
+    nutGoalMismatch,
     getIccLabel,
     getRctLabel,
     getGoalMsg,

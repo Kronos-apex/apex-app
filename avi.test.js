@@ -141,6 +141,9 @@ const {
   feelingEmoji,
   feelingLabel,
   inferNutGoal,
+  nutGoalForClient,
+  nutKcalDirection,
+  nutGoalMismatch,
   calcTMB,
   calcTDEE,
   getRctLabel,
@@ -3338,6 +3341,75 @@ test('inferNutGoal: infiere del texto del plan', () => {
 test('inferNutGoal: sin pista → null', () => {
   assert.strictEqual(inferNutGoal({ plan: 'come sano' }), null);
   assert.strictEqual(inferNutGoal(null), null);
+});
+
+// ── v437: el RÓTULO del plan tiene que cuadrar con sus propios números ──
+test('nutGoalForClient: cada objetivo del asesorado tiene su rótulo de plan', () => {
+  assert.strictEqual(nutGoalForClient('Perder grasa'), 'cutting');
+  assert.strictEqual(nutGoalForClient('Ganar músculo'), 'volumen');
+  assert.strictEqual(nutGoalForClient('Fuerza'), 'volumen');
+  assert.strictEqual(nutGoalForClient('Recomposición'), 'mantenimiento');
+  assert.strictEqual(nutGoalForClient('Resistencia'), 'mantenimiento');
+  // Sin objetivo declarado NO se inventa un déficit ni un superávit.
+  assert.strictEqual(nutGoalForClient(''), 'mantenimiento');
+  assert.strictEqual(nutGoalForClient(undefined), 'mantenimiento');
+});
+test('nutKcalDirection: déficit / superávit / balance con tolerancia del 5%', () => {
+  assert.strictEqual(nutKcalDirection(1730, 2230), 'deficit');
+  assert.strictEqual(nutKcalDirection(2600, 2230), 'superavit');
+  assert.strictEqual(nutKcalDirection(2230, 2230), 'balance');
+  assert.strictEqual(nutKcalDirection(2300, 2230), 'balance');   // +3,1% = ciclado, no contradicción
+  assert.strictEqual(nutKcalDirection(0, 2230), null);
+  assert.strictEqual(nutKcalDirection(1730, null), null);
+});
+// 🔴 REGRESIÓN — el caso REAL medido en producción el 2026-08-05: «✨ Generar» corrigió las
+// calorías de Luz (1.730 sobre un gasto de 2.230, déficit de 500) pero dejó el rótulo
+// «mantenimiento» de una plantilla vieja, así que su pantalla le explicaba «estás comiendo en
+// balance: lo que gastas» encima de un déficit. Con el defecto puesto NADIE avisaba.
+test('🔴 nutGoalMismatch: rótulo «mantenimiento» sobre un déficit real se MARCA (caso Luz)', () => {
+  const mm = nutGoalMismatch('mantenimiento', 1730, 2230);
+  assert.ok(mm, 'un plan de mantenimiento que entrega 500 kcal menos del gasto debe marcarse');
+  assert.strictEqual(mm.dice, 'balance');
+  assert.strictEqual(mm.real, 'deficit');
+  // Caso Kathe, mismo defecto con otras cifras.
+  assert.ok(nutGoalMismatch('mantenimiento', 1930, 2430));
+});
+test('nutGoalMismatch: rótulo que SÍ cuadra con los números no molesta', () => {
+  assert.strictEqual(nutGoalMismatch('cutting', 1730, 2230), null);
+  assert.strictEqual(nutGoalMismatch('definicion', 1730, 2230), null);
+  assert.strictEqual(nutGoalMismatch('volumen', 2600, 2230), null);
+  assert.strictEqual(nutGoalMismatch('mantenimiento', 2230, 2230), null);
+});
+test('nutGoalMismatch: también caza el superávit rotulado como pérdida de grasa', () => {
+  // Es exactamente lo que el formulario proponía antes de v436 (Kathe: 2.710 con gasto 2.430).
+  const mm = nutGoalMismatch('cutting', 2710, 2430);
+  assert.ok(mm);
+  assert.strictEqual(mm.real, 'superavit');
+});
+test('nutGoalMismatch: sin rótulo o sin gasto NO opina', () => {
+  assert.strictEqual(nutGoalMismatch('', 1730, 2230), null);
+  assert.strictEqual(nutGoalMismatch('xxx', 1730, 2230), null);
+  assert.strictEqual(nutGoalMismatch('cutting', 1730, null), null);
+});
+// El aviso solo sirve si el formulario LO LLAMA y si «Generar» fija el rótulo. Los dos son
+// código con DOM (no puro) → se afirman en la fuente, que es donde puede volver a perderse.
+test('🔴 «✨ Generar» fija el objetivo del plan, no solo las cifras', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8');
+  assert.ok(/nut-goal'\)\.value\s*=\s*goalKey/.test(src),
+    'nutFillSuggested debe fijar #nut-goal con nutGoalForClient — si no, el rótulo queda del plan anterior');
+  assert.ok(/_nutSwapTemplateText\(goalKey\)/.test(src),
+    'el texto de plantilla de otro objetivo debe cambiarse con el rótulo');
+  // Y las tres puertas que dejan un plan escrito tienen que pasar por el aviso.
+  const puertas = (src.match(/nutGoalCheck\(\)/g) || []).length;
+  assert.ok(puertas >= 4, `nutGoalCheck debe llamarse desde generar/abrir/plantilla/onchange (encontradas ${puertas})`);
+});
+test('🔴 el formulario cablea el aviso de contradicción', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="nut-goal-nota"/.test(html), 'falta el contenedor del aviso');
+  assert.ok(/id="nut-goal"[^>]*onchange="nutGoalCheck\(\)"/.test(html), 'el selector de objetivo no re-chequea');
+  assert.ok(/id="nut-kcal"[^>]*onchange="nutGoalCheck\(\)"/.test(html), 'las calorías no re-chequean');
 });
 
 // ══════════════════════════════════════════════════════

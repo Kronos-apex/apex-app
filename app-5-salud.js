@@ -33,6 +33,7 @@ function applyNutTemplate(idx){
   document.getElementById('nut-examples').value=t.examples;
   document.getElementById('nut-avoid').value=t.avoid;
   document.getElementById('nut-calc-nota').style.display='none';
+  nutGoalCheck();   // una plantilla genérica sobre una persona concreta puede contradecirla
 }
 
 function openNutModal(){
@@ -53,6 +54,7 @@ function openNutModal(){
   else {
     const nota=document.getElementById('nut-calc-nota');
     if(nota)nota.style.display='none';
+    nutGoalCheck();   // un plan YA guardado que se contradice se delata al abrirlo
   }
   om('m-nut');
 }
@@ -77,12 +79,62 @@ function nutFillSuggested(c,silencioso){
   document.getElementById('nut-carbs').value=m.carb_g;
   document.getElementById('nut-fat').value=m.fat_g;
   if(est.water)document.getElementById('nut-water').value=est.water;
+  // ── v437: EL RÓTULO VA CON LOS NÚMEROS ──────────────────────────────────────────────────
+  // «Generar» calculó para el objetivo de ESTA persona, así que el objetivo del PLAN —el que le
+  // explica el «por qué» al asesorado— se fija aquí mismo. Antes solo se tocaban las cifras:
+  // medido en producción el 2026-08-05, Kathe y Luz (objetivo «Perder grasa») quedaron con el
+  // rótulo «mantenimiento» de una plantilla vieja y su pantalla les decía «estás comiendo en
+  // balance: lo que gastas» encima de un déficit real de 500 kcal/día.
+  const goalKey=nutGoalForClient(c.goal);
+  document.getElementById('nut-goal').value=goalKey;
+  _nutSwapTemplateText(goalKey);
   if(nota){
     nota.style.display='block';
     nota.innerHTML='&#128161; Calculado para <strong>'+esc(c.name)+'</strong>: gasta ~<strong>'+est.tdee+' kcal</strong> al d&iacute;a y su objetivo es <strong>'+esc(c.goal||'salud general')+'</strong>. Revisa y ajusta antes de guardar &mdash; AVI propone, t&uacute; apruebas.';
   }
   if(!silencioso&&typeof toast==='function')toast('Plan propuesto — revísalo y guarda');
+  nutGoalCheck();
   return true;
+}
+// Los textos de plantilla (plan / ejemplos / evitar) son NUESTROS, no del coach: si quedaron de
+// una plantilla de OTRO objetivo, se cambian por los del objetivo que corresponde. Lo que él
+// escribió a mano (cualquier texto que no sea verbatim de una plantilla) NO se toca — se le
+// AVISA con `nutGoalCheck` y decide él. Filtrar y marcar son cosas distintas.
+function _nutSwapTemplateText(goalKey){
+  const t=NUT_TEMPLATES.find(x=>x.goal===goalKey); if(!t)return false;
+  let cambio=false;
+  [['nut-plan','plan'],['nut-examples','examples'],['nut-avoid','avoid']].forEach(function(par){
+    const el=document.getElementById(par[0]); if(!el)return;
+    const v=(el.value||'').trim();
+    const esNuestro=(v==='')||NUT_TEMPLATES.some(x=>(x[par[1]]||'').trim()===v);
+    if(!esNuestro)return;
+    const nuevo=t[par[1]]||'';
+    if(v!==nuevo.trim()){el.value=nuevo;cambio=true;}
+  });
+  return cambio;
+}
+// ⚠️ MARCAR, no filtrar: si el rótulo del plan contradice las calorías escritas, se avisa —
+// nadie le quita opciones al coach. El oráculo es `inferNutGoal`, la MISMA función que decide
+// qué explicación ve el asesorado, así que el aviso dice exactamente lo que él va a leer.
+function nutGoalCheck(){
+  const nota=document.getElementById('nut-goal-nota'); if(!nota)return;
+  const apagar=function(){nota.style.display='none';nota.innerHTML='';};
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return apagar();
+  const est=(typeof nutritionEstimate==='function')?nutritionEstimate(c,_nutPesoDe(c)):null;
+  if(!est||!est.tdee)return apagar();
+  const kcal=parseInt(document.getElementById('nut-kcal').value)||0;
+  const efectivo=inferNutGoal({
+    goal:document.getElementById('nut-goal').value,
+    plan:document.getElementById('nut-plan').value,
+    avoid:document.getElementById('nut-avoid').value
+  });
+  const mm=nutGoalMismatch(efectivo,kcal,est.tdee); if(!mm)return apagar();
+  const DIR={deficit:'un d&eacute;ficit',superavit:'un super&aacute;vit',balance:'un balance'};
+  const titulo=(GOAL_WHY[efectivo]||{}).title||efectivo;
+  nota.style.display='block';
+  nota.innerHTML='&#9888;&#65039; A '+esc(c.name)+' la app le va a explicar <strong>'+esc(titulo)+
+    '</strong>, pero gasta ~<strong>'+est.tdee+' kcal</strong> al d&iacute;a y el plan le da <strong>'+
+    kcal+'</strong> &mdash; eso es <strong>'+DIR[mm.real]+'</strong>. Ajusta el objetivo o las calor&iacute;as.';
 }
 // El peso que manda es el ÚLTIMO registrado, no el del perfil (que envejece).
 function _nutPesoDe(c){
@@ -183,9 +235,8 @@ const GOAL_WHY={
 };
 // inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
-// Mapa del objetivo del cliente (client.goal) a la clave de GOAL_WHY, para mostrar
-// el "por qué" educativo también en la estimación automática (sin plan del coach).
-const GOAL_WHY_KEY={'Perder grasa':'cutting','Ganar músculo':'volumen','Fuerza':'volumen','Recomposición':'mantenimiento','Resistencia':'mantenimiento'};
+// El mapa objetivo-del-cliente → clave de GOAL_WHY vive en avi-core (`nutGoalForClient`), que es
+// la MISMA que usa «✨ Generar» para rotular el plan. Estaba duplicado aquí como GOAL_WHY_KEY.
 // ¿El coach guardó un plan nutricional? Fuente ÚNICA para card/room/share — antes cada uno
 // usaba una definición distinta y un plan SOLO con macros (sin kcal/plan/examples) se trataba
 // como "sin plan" → se mostraba la estimación automática encima del plan real del coach.
@@ -465,7 +516,7 @@ function openNutritionRoom(clientId){
       body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
     }
     const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
-    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[GOAL_WHY_KEY[c.goal]||'mantenimiento']};
+    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal)]};
   }
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
