@@ -2907,9 +2907,12 @@ function nutMealSplit(kcal, protG, n) {
 //   2. El plan de comida va PEGADO AL DÍA DE ENTRENO: más carbohidrato el día
 //      de pierna, menos el día de descanso.
 //
-// NO es una base de datos de alimentos (eso se descartó el 2026-07-09 por ser
-// «un hueco sin fondo»): es una lista CERRADA y curada para RECETAR, no un
-// buscador donde el usuario registra lo que come. No crece con el uso.
+// 🔴 Esta lista es el POOL DEL RECETARIO: cerrada, curada, con `rol` y `maxG` de nutrición
+// deportiva, y **referenciada POR ID desde `NUT_MENUS`** (41 de sus 50, verificado 2026-08-05).
+// NO crece con el uso y NO se fusiona con nada. El registro de alimentos que el PO aprobó el
+// 2026-08-04 —revirtiendo la decisión del 2026-07-09— vive en la OTRA capa (`foods.json`, ver
+// `foodCatalog` más abajo): ahí sí entra la TCAC del ICBF y ahí busca el usuario. Mezclarlas
+// rompería los platos que la app ya recomienda. Estipulación E5 de Fable.
 //
 // Macros por 100 g del alimento LISTO PARA COMER (cocido cuando aplica), que es
 // como lo pesa una persona en su cocina. `un` = medida casera y sus gramos, para
@@ -2986,6 +2989,99 @@ const NUT_FOODS = [
 // Índice por id, null-proto para que un id raro NO herede del prototipo
 // (misma clase de bug que EX_IMG_NAME, hallazgo C4 de la auditoría 2026-07-13).
 const NUT_FOOD_BY_ID = NUT_FOODS.reduce((a, f) => { a[f.id] = f; return a; }, Object.create(null));
+
+// ══════════════════════════════════════════════════════════════════════
+// CATÁLOGO DE BÚSQUEDA — F1a del registro de alimentos (E5, E7, E9 de Fable)
+// ──────────────────────────────────────────────────────────────────────
+// 🔴 DOS CAPAS, NUNCA UNA FUSIÓN. `NUT_FOODS` (arriba) es el pool del RECETARIO: lista cerrada,
+// curada, con `rol` y `maxG` decididos por nutrición deportiva, y **referenciada POR ID desde
+// `NUT_MENUS`** — 41 de sus 50 alimentos (verificado 2026-08-05). Meterle encima los 773 de la
+// TCAC rompería los platos que la app ya recomienda y pisaría valores verificados contra fuente.
+// `foods.json` es la OTRA capa: el catálogo de BÚSQUEDA y REGISTRO, que sí crece. El generador
+// de platos jamás lo lee; el buscador lee las dos.
+const FOOD_PAGE = 30;                       // tandas, como la biblioteca de ejercicios (v405)
+// Cuadre kcal ↔ macros: caza un número mal tecleado en UN campo. Hace falta el umbral RELATIVO
+// **y** el ABSOLUTO, medido sobre los 50 el 2026-08-05: 4/4/9 (Atwater) sobreestima cuando hay
+// fibra, así que la espinaca (23 kcal declaradas, 29,6 según sus macros) se desvía **29%** por
+// 6,6 kcal, y las almendras 43 kcal por solo 7%. Con un solo umbral, cualquiera de los dos lados
+// da falsos positivos. Se rechaza solo si falla EN LOS DOS. Máximo real medido: mazorca, 16% y
+// 15,1 kcal — dentro.
+// 🔴 LÍMITE HONESTO DE ESTE CANDADO: NO caza la clase de error que ya nos mordió. La yuca cruda
+// etiquetada «cocida» traía 160 kcal *con los macros de la cruda*: internamente coherente, cuadre
+// perfecto. Eso solo lo caza verificar contra la FUENTE (la muestra de E7), no una fórmula.
+const FOOD_KCAL_TOL = 0.15;
+const FOOD_KCAL_TOL_ABS = 25;               // kcal por 100 g
+// Normaliza para buscar: sin tildes, sin signos, minúsculas. Buscar «platano» encuentra «plátano»
+// (nadie escribe tildes en un buscador desde el celular).
+// Reusa `_norm` (minúsculas + sin tildes) y le añade lo que ESTE caso necesita y los otros no:
+// los nombres de alimento traen paréntesis y comas —«Carne de res magra (posta)», «Atún en agua
+// (escurrido)»— que romperían el match por palabra.
+function foodNormText(s) {
+  return _norm(String(s == null ? '' : s)).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// E9 — DEGRADACIÓN: si `foods.json` no cargó (primera visita sin red, fetch caído, archivo
+// corrupto), la app NO se queda sin catálogo: cae a los 50 de `NUT_FOODS`, que viajan dentro del
+// propio avi-core. Devuelve SIEMPRE un array usable — nunca null, nunca lanza.
+function foodCatalog(json) {
+  const base = NUT_FOODS.map(f => Object.assign({}, f, { src: 'avi50' }));
+  const arr = json && Array.isArray(json.foods) ? json.foods : null;
+  if (!arr || !arr.length) return base;
+  const vistos = Object.create(null);
+  const out = [];
+  arr.forEach(f => {
+    if (!f || !f.id || vistos[f.id]) return;      // sin id no se puede registrar ni deduplicar
+    vistos[f.id] = 1;
+    out.push(f);
+  });
+  return out.length ? out : base;
+}
+// Desfase entre las kcal declaradas y las que dan sus propios macros. null si falta algún macro
+// (no se puede opinar) — el candado de la tabla lo usa para cazar errores de transcripción, que
+// es la clase de defecto que NINGÚN test de cuadre ve porque el dato malo es coherente consigo.
+function foodKcalGap(food) {
+  if (!food) return null;
+  const k = parseFloat(food.kcal), p = parseFloat(food.p), c = parseFloat(food.c), f = parseFloat(food.f);
+  if (![k, p, c, f].every(Number.isFinite) || k <= 0) return null;
+  const abs = Math.abs(k - (4 * p + 4 * c + 9 * f));
+  return { abs: Math.round(abs * 10) / 10, rel: abs / k };
+}
+// ¿Este alimento huele a número mal tecleado? Solo si se pasa de los DOS umbrales (ver arriba).
+function foodKcalSuspect(food) {
+  const g = foodKcalGap(food);
+  if (!g) return false;
+  return g.rel > FOOD_KCAL_TOL && g.abs > FOOD_KCAL_TOL_ABS;
+}
+// Búsqueda por tandas. Ranking: empieza-por > palabra-que-empieza-por > contiene. Determinista
+// (desempate por nombre) para que la lista no salte entre repintados.
+function foodSearch(foods, q, opts) {
+  opts = opts || {};
+  const lista = Array.isArray(foods) ? foods : [];
+  const offset = Math.max(0, parseInt(opts.offset) || 0);
+  const limit = Math.max(1, parseInt(opts.limit) || FOOD_PAGE);
+  const t = foodNormText(q);
+  let hits;
+  if (!t) {
+    hits = lista.map(f => ({ f, r: 3 }));
+  } else {
+    hits = [];
+    lista.forEach(f => {
+      const n = foodNormText(f && f.name);
+      if (!n) return;
+      let r = -1;
+      if (n.indexOf(t) === 0) r = 0;
+      else if (n.split(' ').some(w => w.indexOf(t) === 0)) r = 1;
+      else if (n.indexOf(t) !== -1) r = 2;
+      if (r >= 0) hits.push({ f, r });
+    });
+  }
+  hits.sort((a, b) => (a.r - b.r) || String(a.f.name).localeCompare(String(b.f.name), 'es'));
+  return {
+    total: hits.length,
+    offset: offset,
+    items: hits.slice(offset, offset + limit).map(h => h.f),
+    hayMas: offset + limit < hits.length,
+  };
+}
 
 // ── Tipo de día: el plan de comida se pega al de entreno ────────────────
 // 'pierna'  = el día trae trabajo de pierna o full body → el que más carga
@@ -5044,6 +5140,14 @@ if (typeof module !== 'undefined' && module.exports) {
     nutritionEstimate,
     NUT_FOODS,
     NUT_FOOD_BY_ID,
+    FOOD_PAGE,
+    FOOD_KCAL_TOL,
+    FOOD_KCAL_TOL_ABS,
+    foodNormText,
+    foodCatalog,
+    foodKcalGap,
+    foodKcalSuspect,
+    foodSearch,
     nutDayKind,
     nutDayTarget,
     nutPortionText,

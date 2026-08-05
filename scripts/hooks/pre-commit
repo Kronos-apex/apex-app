@@ -258,8 +258,33 @@ else:
     else:
         ok(f'{suite_count} tests (= baseline)')
 
+# ── 12. foods.json COINCIDE CON SU GENERADOR ──────────────────────────────────
+# El catálogo de búsqueda del registro de alimentos es GENERADO (scripts/build-foods.mjs),
+# no escrito a mano: si alguien lo edita directo, el próximo build le pisa el cambio en
+# silencio. Y si se toca NUT_FOODS sin regenerar, el buscador sirve valores viejos.
+print(f'\n{BOLD}[12] foods.json vs su generador{RESET}')
+gen_foods = os.path.join(ROOT, 'scripts', 'build-foods.mjs')
+if not os.path.exists(gen_foods):
+    warn('scripts/build-foods.mjs no encontrado — check saltado')
+elif not os.path.exists(os.path.join(ROOT, 'foods.json')):
+    warn('foods.json no existe todavía — corre node scripts/build-foods.mjs')
+else:
+    r_f = subprocess.run(['node', gen_foods, '--check'], cwd=ROOT, capture_output=True, text=True)
+    salida_f = (r_f.stdout or '') + (r_f.stderr or '')
+    if r_f.returncode != 0:
+        fail('foods.json está desfasado de scripts/build-foods.mjs — corre: node scripts/build-foods.mjs\n' + salida_f.strip())
+    else:
+        # Nada de matchear caracteres no-ASCII: la salida del subproceso llega con la
+        # codificación de la consola de Windows y el '·' del reporte no sobrevive.
+        m_nf = re.search(r'(\d+) alimentos', salida_f)
+        m_rech = re.search(r'(\d+) alimento\(s\) RECHAZADO', salida_f)
+        if m_rech:
+            warn(f'{m_rech.group(1)} alimento(s) RECHAZADOS por el validador — no entran al '
+                 f'catálogo. Corre: node scripts/build-foods.mjs para ver cuáles y por qué')
+        ok(f'foods.json coincide con el generador ({m_nf.group(1) if m_nf else "?"} alimentos)')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 11
+total = 12
 failed = len(errors)
 warned = len(warnings)
 

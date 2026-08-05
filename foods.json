@@ -1,0 +1,723 @@
+{
+ "v": 1,
+ "generado": "2026-08-05",
+ "nota": "Catálogo de BÚSQUEDA y REGISTRO. NO es el pool del recetario (ese es NUT_FOODS en avi-core.js, referenciado por id desde NUT_MENUS). Generado por scripts/build-foods.mjs — no editar a mano.",
+ "fuentes": {
+  "avi50": {
+   "nombre": "Catálogo curado de AVI",
+   "nota": "Macros por 100 g del alimento LISTO PARA COMER. Valores verificados contra fuente externa y revisados en el lote del 2026-08-03 (yuca cocida, avena por taza, lata de atún escurrida)."
+  },
+  "tcac2018": {
+   "nombre": "ICBF — Tabla de Composición de Alimentos Colombianos, 2018",
+   "url": "https://www.icbf.gov.co/tabla-de-composicion-de-alimentos-colombianos-tcac-2018",
+   "nota": "773 alimentos, incluidas preparaciones típicas colombianas. Pendiente confirmar por escrito las condiciones de reúso con el ICBF (E14)."
+  },
+  "off": {
+   "nombre": "Open Food Facts",
+   "url": "https://world.openfoodfacts.org/data",
+   "nota": "Licencia ODbL. Se CONSULTA en línea por código de barras y se muestra con atribución. 🔴 PROHIBIDO fusionar estos datos en este archivo: haría de foods.json una base derivada y obligaría a publicarla como datos abiertos (E13)."
+  }
+ },
+ "foods": [
+  {
+   "id": "aceite",
+   "name": "Aceite de oliva o canola",
+   "src": "avi50",
+   "kcal": 884,
+   "p": 0,
+   "c": 0,
+   "f": 100,
+   "un": {
+    "label": "cucharada",
+    "g": 14
+   },
+   "rol": "fat"
+  },
+  {
+   "id": "aguacate",
+   "name": "Aguacate",
+   "src": "avi50",
+   "kcal": 160,
+   "p": 2,
+   "c": 9,
+   "f": 15,
+   "un": {
+    "label": "octavo",
+    "g": 30
+   },
+   "rol": "fat"
+  },
+  {
+   "id": "ahuyama",
+   "name": "Ahuyama",
+   "src": "avi50",
+   "kcal": 26,
+   "p": 1,
+   "c": 6.5,
+   "f": 0.1,
+   "un": {
+    "label": "taza",
+    "g": 120
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "almendra",
+   "name": "Almendras",
+   "src": "avi50",
+   "kcal": 579,
+   "p": 21,
+   "c": 22,
+   "f": 50,
+   "un": {
+    "label": "puñado",
+    "g": 30
+   },
+   "rol": "fat"
+  },
+  {
+   "id": "arepa",
+   "name": "Arepa de maíz asada",
+   "src": "avi50",
+   "kcal": 218,
+   "p": 4.5,
+   "c": 44,
+   "f": 2.5,
+   "un": {
+    "label": "arepa",
+    "g": 80
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "arroz",
+   "name": "Arroz blanco cocido",
+   "src": "avi50",
+   "kcal": 130,
+   "p": 2.7,
+   "c": 28,
+   "f": 0.3,
+   "un": {
+    "label": "taza",
+    "g": 158
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "atun",
+   "name": "Atún en agua (escurrido)",
+   "src": "avi50",
+   "kcal": 116,
+   "p": 26,
+   "c": 0,
+   "f": 1,
+   "un": {
+    "label": "lata",
+    "g": 100
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "avena",
+   "name": "Avena en hojuelas",
+   "src": "avi50",
+   "kcal": 389,
+   "p": 17,
+   "c": 66,
+   "f": 7,
+   "un": {
+    "label": "taza",
+    "g": 80
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "banano",
+   "name": "Banano",
+   "src": "avi50",
+   "kcal": 89,
+   "p": 1.1,
+   "c": 23,
+   "f": 0.3,
+   "un": {
+    "label": "banano",
+    "g": 118
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "brocoli",
+   "name": "Brócoli",
+   "src": "avi50",
+   "kcal": 34,
+   "p": 2.8,
+   "c": 7,
+   "f": 0.4,
+   "un": {
+    "label": "taza",
+    "g": 90
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "cebolla",
+   "name": "Cebolla",
+   "src": "avi50",
+   "kcal": 40,
+   "p": 1.1,
+   "c": 9,
+   "f": 0.1,
+   "un": {
+    "label": "porción",
+    "g": 60
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "cerdo_lomo",
+   "name": "Lomo de cerdo",
+   "src": "avi50",
+   "kcal": 174,
+   "p": 28,
+   "c": 0,
+   "f": 6,
+   "un": {
+    "label": "porción",
+    "g": 120
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "clara",
+   "name": "Clara de huevo",
+   "src": "avi50",
+   "kcal": 52,
+   "p": 11,
+   "c": 0.7,
+   "f": 0.2,
+   "un": {
+    "label": "clara",
+    "g": 33
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "crema_mani",
+   "name": "Mantequilla de maní",
+   "src": "avi50",
+   "kcal": 588,
+   "p": 25,
+   "c": 20,
+   "f": 50,
+   "un": {
+    "label": "cucharada",
+    "g": 16
+   },
+   "rol": "fat"
+  },
+  {
+   "id": "cuajada",
+   "name": "Cuajada",
+   "src": "avi50",
+   "kcal": 180,
+   "p": 15,
+   "c": 3,
+   "f": 12,
+   "un": {
+    "label": "porción",
+    "g": 60
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "espinaca",
+   "name": "Espinaca",
+   "src": "avi50",
+   "kcal": 23,
+   "p": 2.9,
+   "c": 3.6,
+   "f": 0.4,
+   "un": {
+    "label": "taza",
+    "g": 30
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "fresa",
+   "name": "Fresa",
+   "src": "avi50",
+   "kcal": 32,
+   "p": 0.7,
+   "c": 7.7,
+   "f": 0.3,
+   "un": {
+    "label": "taza",
+    "g": 150
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "frijol",
+   "name": "Fríjol cocido",
+   "src": "avi50",
+   "kcal": 127,
+   "p": 9,
+   "c": 23,
+   "f": 0.5,
+   "un": {
+    "label": "taza",
+    "g": 180
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "garbanzo",
+   "name": "Garbanzo cocido",
+   "src": "avi50",
+   "kcal": 164,
+   "p": 9,
+   "c": 27,
+   "f": 2.6,
+   "un": {
+    "label": "taza",
+    "g": 165
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "guayaba",
+   "name": "Guayaba",
+   "src": "avi50",
+   "kcal": 68,
+   "p": 2.6,
+   "c": 14,
+   "f": 1,
+   "un": {
+    "label": "guayaba",
+    "g": 90
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "habichuela",
+   "name": "Habichuela",
+   "src": "avi50",
+   "kcal": 31,
+   "p": 1.8,
+   "c": 7,
+   "f": 0.2,
+   "un": {
+    "label": "taza",
+    "g": 100
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "huevo",
+   "name": "Huevo entero",
+   "src": "avi50",
+   "kcal": 143,
+   "p": 13,
+   "c": 1.1,
+   "f": 9.9,
+   "un": {
+    "label": "huevo",
+    "g": 50
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "leche",
+   "name": "Leche semidescremada",
+   "src": "avi50",
+   "kcal": 47,
+   "p": 3.3,
+   "c": 5,
+   "f": 1.5,
+   "un": {
+    "label": "vaso",
+    "g": 200
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "lechuga",
+   "name": "Lechuga",
+   "src": "avi50",
+   "kcal": 15,
+   "p": 1.4,
+   "c": 2.9,
+   "f": 0.2,
+   "un": {
+    "label": "taza",
+    "g": 50
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "lenteja",
+   "name": "Lentejas cocidas",
+   "src": "avi50",
+   "kcal": 116,
+   "p": 9,
+   "c": 20,
+   "f": 0.4,
+   "un": {
+    "label": "taza",
+    "g": 200
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "mandarina",
+   "name": "Mandarina",
+   "src": "avi50",
+   "kcal": 53,
+   "p": 0.8,
+   "c": 13,
+   "f": 0.3,
+   "un": {
+    "label": "mandarina",
+    "g": 90
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "mango",
+   "name": "Mango",
+   "src": "avi50",
+   "kcal": 60,
+   "p": 0.8,
+   "c": 15,
+   "f": 0.4,
+   "un": {
+    "label": "taza",
+    "g": 165
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "mani",
+   "name": "Maní",
+   "src": "avi50",
+   "kcal": 567,
+   "p": 26,
+   "c": 16,
+   "f": 49,
+   "un": {
+    "label": "puñado",
+    "g": 30
+   },
+   "rol": "fat"
+  },
+  {
+   "id": "maracuya",
+   "name": "Maracuyá",
+   "src": "avi50",
+   "kcal": 97,
+   "p": 2.2,
+   "c": 23,
+   "f": 0.7,
+   "un": {
+    "label": "unidad",
+    "g": 60
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "mazorca",
+   "name": "Mazorca (maíz tierno)",
+   "src": "avi50",
+   "kcal": 96,
+   "p": 3.4,
+   "c": 21,
+   "f": 1.5,
+   "un": {
+    "label": "mazorca",
+    "g": 130
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "naranja",
+   "name": "Naranja",
+   "src": "avi50",
+   "kcal": 47,
+   "p": 0.9,
+   "c": 12,
+   "f": 0.1,
+   "un": {
+    "label": "naranja",
+    "g": 130
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "pan_integral",
+   "name": "Pan integral tajado",
+   "src": "avi50",
+   "kcal": 247,
+   "p": 13,
+   "c": 41,
+   "f": 3.4,
+   "un": {
+    "label": "tajada",
+    "g": 28
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "papa",
+   "name": "Papa cocida",
+   "src": "avi50",
+   "kcal": 87,
+   "p": 2,
+   "c": 20,
+   "f": 0.1,
+   "un": {
+    "label": "papa mediana",
+    "g": 150
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "papa_criolla",
+   "name": "Papa criolla cocida",
+   "src": "avi50",
+   "kcal": 95,
+   "p": 2,
+   "c": 22,
+   "f": 0.1,
+   "un": {
+    "label": "porción",
+    "g": 100
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "papaya",
+   "name": "Papaya",
+   "src": "avi50",
+   "kcal": 43,
+   "p": 0.5,
+   "c": 11,
+   "f": 0.3,
+   "un": {
+    "label": "taza",
+    "g": 145
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "pasta",
+   "name": "Pasta cocida",
+   "src": "avi50",
+   "kcal": 158,
+   "p": 6,
+   "c": 31,
+   "f": 0.9,
+   "un": {
+    "label": "taza",
+    "g": 140
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "pepino",
+   "name": "Pepino",
+   "src": "avi50",
+   "kcal": 15,
+   "p": 0.7,
+   "c": 3.6,
+   "f": 0.1,
+   "un": {
+    "label": "porción",
+    "g": 100
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "pina",
+   "name": "Piña",
+   "src": "avi50",
+   "kcal": 50,
+   "p": 0.5,
+   "c": 13,
+   "f": 0.1,
+   "un": {
+    "label": "taza",
+    "g": 165
+   },
+   "rol": "fruta"
+  },
+  {
+   "id": "platano_maduro",
+   "name": "Plátano maduro cocido",
+   "src": "avi50",
+   "kcal": 116,
+   "p": 0.8,
+   "c": 31,
+   "f": 0.2,
+   "un": {
+    "label": "tajada grande",
+    "g": 80
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "platano_verde",
+   "name": "Plátano verde cocido",
+   "src": "avi50",
+   "kcal": 122,
+   "p": 1.2,
+   "c": 32,
+   "f": 0.4,
+   "un": {
+    "label": "trozo",
+    "g": 80
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "pollo_muslo",
+   "name": "Muslo de pollo sin piel",
+   "src": "avi50",
+   "kcal": 209,
+   "p": 26,
+   "c": 0,
+   "f": 11,
+   "un": {
+    "label": "muslo",
+    "g": 95
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "pollo_pechuga",
+   "name": "Pechuga de pollo",
+   "src": "avi50",
+   "kcal": 165,
+   "p": 31,
+   "c": 0,
+   "f": 3.6,
+   "un": {
+    "label": "porción",
+    "g": 120
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "queso_campesino",
+   "name": "Queso campesino",
+   "src": "avi50",
+   "kcal": 230,
+   "p": 17,
+   "c": 2,
+   "f": 17,
+   "un": {
+    "label": "tajada",
+    "g": 30
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "res_magra",
+   "name": "Carne de res magra (posta)",
+   "src": "avi50",
+   "kcal": 187,
+   "p": 30,
+   "c": 0,
+   "f": 7,
+   "un": {
+    "label": "porción",
+    "g": 120
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "res_molida",
+   "name": "Carne molida de res",
+   "src": "avi50",
+   "kcal": 176,
+   "p": 26,
+   "c": 0,
+   "f": 8,
+   "un": {
+    "label": "porción",
+    "g": 120
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "tilapia",
+   "name": "Mojarra o tilapia",
+   "src": "avi50",
+   "kcal": 128,
+   "p": 26,
+   "c": 0,
+   "f": 2.7,
+   "un": {
+    "label": "porción",
+    "g": 130
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "tomate",
+   "name": "Tomate",
+   "src": "avi50",
+   "kcal": 18,
+   "p": 0.9,
+   "c": 3.9,
+   "f": 0.2,
+   "un": {
+    "label": "tomate",
+    "g": 120
+   },
+   "rol": "verd"
+  },
+  {
+   "id": "yogur_griego",
+   "name": "Yogur griego natural",
+   "src": "avi50",
+   "kcal": 59,
+   "p": 10,
+   "c": 3.6,
+   "f": 0.4,
+   "un": {
+    "label": "vaso",
+    "g": 200
+   },
+   "rol": "prot"
+  },
+  {
+   "id": "yuca",
+   "name": "Yuca cocida",
+   "src": "avi50",
+   "kcal": 112,
+   "p": 1,
+   "c": 26.7,
+   "f": 0.2,
+   "un": {
+    "label": "trozo",
+    "g": 100
+   },
+   "rol": "carb"
+  },
+  {
+   "id": "zanahoria",
+   "name": "Zanahoria",
+   "src": "avi50",
+   "kcal": 41,
+   "p": 0.9,
+   "c": 10,
+   "f": 0.2,
+   "un": {
+    "label": "zanahoria",
+    "g": 80
+   },
+   "rol": "verd"
+  }
+ ]
+}

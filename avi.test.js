@@ -141,6 +141,14 @@ const {
   feelingEmoji,
   feelingLabel,
   habitDayKey,
+  NUT_MENUS,
+  NUT_FOODS,
+  NUT_FOOD_BY_ID,
+  FOOD_PAGE,
+  foodNormText,
+  foodCatalog,
+  foodKcalSuspect,
+  foodSearch,
   FOODLOG_KEEP_DAYS,
   FOODLOG_MAX_G,
   FOODLOG_MEALS,
@@ -3354,6 +3362,126 @@ test('inferNutGoal: infiere del texto del plan', () => {
 test('inferNutGoal: sin pista → null', () => {
   assert.strictEqual(inferNutGoal({ plan: 'come sano' }), null);
   assert.strictEqual(inferNutGoal(null), null);
+});
+
+// ══════════════════════════════════════════════════════
+section('Registro de alimentos — F1a: catálogo de búsqueda (E5, E7, E9 de Fable)');
+
+const _foodsJson = (() => {
+  try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'foods.json'), 'utf8')); }
+  catch { return null; }
+})();
+
+// 🔴 E5 — LA RAZÓN DE LAS DOS CAPAS. `NUT_MENUS` referencia alimentos POR ID: si el catálogo de
+// búsqueda pisara o renombrara esos ids, los platos que la app YA recomienda se romperían.
+test('🔴 los ids que usa el recetario existen en NUT_FOODS (por eso no se fusiona)', () => {
+  // ⚠️ La lista de referencias se lee de la ESTRUCTURA de NUT_MENUS (`pick` y `acomp`), NUNCA
+  // cruzándola contra NUT_FOODS: la primera versión de este test hacía eso y un sabotaje que
+  // renombraba «huevo» salió VERDE — el id roto simplemente desaparecía de la lista que el
+  // propio test construía. Una aserción que el defecto puede satisfacer no es un candado.
+  // Excepción DOCUMENTADA, no un agujero: 'ensalada' no es un alimento de la tabla, aporta 0 a
+  // propósito (ver el comentario de `nutAcompMacros`). Se lista aquí para que CUALQUIER otro id
+  // colgado sí haga fallar el test. Un `pick` en null es un puesto que esa comida no usa.
+  const NO_SON_ALIMENTO = ['ensalada'];
+  const refs = new Set();
+  Object.values(NUT_MENUS).forEach(banco => (banco || []).forEach(m => {
+    Object.values((m && m.pick) || {}).forEach(id => { if (id) refs.add(id); });
+    ((m && m.acomp) || []).forEach(id => { if (id) refs.add(id); });
+  }));
+  assert.ok(refs.size >= 40, `el recetario referencia ${refs.size} alimentos por id — se esperaban 41`);
+  const rotos = [...refs].filter(id => !NUT_FOOD_BY_ID[id] && NO_SON_ALIMENTO.indexOf(id) === -1);
+  assert.deepStrictEqual(rotos, [], `NUT_MENUS receta alimentos que ya no existen: ${rotos.join(', ')}`);
+});
+test('🔴 foods.json conserva los ids y los valores del pool del recetario', () => {
+  assert.ok(_foodsJson, 'foods.json no se pudo leer');
+  const porId = new Map(_foodsJson.foods.map(f => [f.id, f]));
+  NUT_FOODS.forEach(orig => {
+    const cat = porId.get(orig.id);
+    assert.ok(cat, `el catálogo perdió «${orig.id}» — el buscador dejaría de encontrar lo que el plan receta`);
+    ['kcal', 'p', 'c', 'f'].forEach(k => assert.strictEqual(cat[k], orig[k],
+      `«${orig.id}» tiene ${k}=${cat[k]} en el catálogo y ${orig[k]} en el recetario: dos verdades para el mismo alimento`));
+  });
+});
+test('foods.json: ids únicos y toda fuente declarada', () => {
+  assert.ok(_foodsJson);
+  const vistos = new Set();
+  _foodsJson.foods.forEach(f => {
+    assert.ok(!vistos.has(f.id), `id duplicado: ${f.id}`);
+    vistos.add(f.id);
+    assert.ok(_foodsJson.fuentes[f.src], `«${f.id}» declara una fuente que no está documentada: ${f.src}`);
+  });
+});
+// E7 — el cuadre kcal ↔ macros, con los DOS umbrales derivados midiendo.
+test('🔴 ningún alimento del catálogo tiene las kcal peleadas con sus propios macros', () => {
+  assert.ok(_foodsJson);
+  const malos = _foodsJson.foods.filter(f => foodKcalSuspect(f)).map(f => f.id);
+  assert.deepStrictEqual(malos, [], `alimentos con kcal sospechosas: ${malos.join(', ')}`);
+});
+test('foodKcalSuspect: caza el dígito mal tecleado y NO castiga a la fibra', () => {
+  // Un número mal copiado se pasa de los dos umbrales.
+  assert.ok(foodKcalSuspect({ kcal: 43, p: 13, c: 1.1, f: 9.9 }), 'huevo con un dígito de menos debería caer');
+  assert.ok(foodKcalSuspect({ kcal: 165, p: 310, c: 0, f: 3.6 }), 'proteína ×10 debería caer');
+  // Atwater (4/4/9) sobreestima cuando hay fibra: la espinaca se desvía 29% por SOLO 6,6 kcal,
+  // y las almendras 43 kcal por solo 7%. Con un único umbral, uno de los dos sale falso positivo.
+  assert.ok(!foodKcalSuspect({ kcal: 23, p: 2.9, c: 3.6, f: 0.4 }), 'la espinaca real no es un error');
+  assert.ok(!foodKcalSuspect({ kcal: 579, p: 21, c: 22, f: 50 }), 'las almendras reales no son un error');
+  // 🔴 LÍMITE HONESTO, afirmado a propósito: este candado NO caza la clase de error que ya nos
+  // mordió. La yuca cruda etiquetada «cocida» traía 160 kcal CON los macros de la cruda — cuadre
+  // perfecto. Esa clase solo la caza verificar contra la FUENTE, no una fórmula.
+  assert.ok(!foodKcalSuspect({ kcal: 160, p: 1.4, c: 38, f: 0.3 }),
+    'si algún día esto cambia, revisa el comentario: el candado no promete cazar el dato coherente-pero-falso');
+});
+// E9 — degradación: sin catálogo la app no se queda sin alimentos.
+test('🔴 foodCatalog: sin foods.json (sin red, archivo corrupto) cae a los 50 de avi-core', () => {
+  [null, undefined, {}, { foods: [] }, { foods: 'no-es-lista' }, 'basura'].forEach(malo => {
+    const cat = foodCatalog(malo);
+    assert.strictEqual(cat.length, NUT_FOODS.length, 'la degradación debe dejar un catálogo usable');
+    assert.ok(cat.every(f => f.id && f.name), 'el catálogo degradado trae alimentos completos');
+  });
+  assert.strictEqual(foodCatalog(_foodsJson).length, _foodsJson.foods.length);
+});
+test('foodCatalog: descarta lo que no se puede registrar y deduplica por id', () => {
+  const cat = foodCatalog({ foods: [{ id: 'a', name: 'A' }, { id: 'a', name: 'A otra vez' }, { name: 'sin id' }, null] });
+  assert.strictEqual(cat.length, 1);
+  assert.strictEqual(cat[0].name, 'A');
+});
+// Buscador: la gente teclea sin tildes y de afán.
+test('foodSearch: encuentra sin tildes y sin importar mayúsculas', () => {
+  const cat = foodCatalog(_foodsJson);
+  assert.ok(foodSearch(cat, 'platano').total > 0, '«platano» debe encontrar «Plátano»');
+  assert.ok(foodSearch(cat, 'PLÁTANO').total > 0);
+  assert.ok(foodSearch(cat, 'pina').total > 0, '«pina» debe encontrar «Piña»');
+  assert.ok(foodSearch(cat, 'atun').total > 0);
+});
+test('foodSearch: los paréntesis del nombre no rompen el match por palabra', () => {
+  const cat = foodCatalog(_foodsJson);
+  // «Carne de res magra (posta)» y «Atún en agua (escurrido)».
+  assert.ok(foodSearch(cat, 'posta').total > 0, 'buscar dentro del paréntesis debe funcionar');
+  assert.ok(foodSearch(cat, 'escurrido').total > 0);
+});
+test('foodSearch: primero lo que EMPIEZA por lo tecleado', () => {
+  const cat = foodCatalog(_foodsJson);
+  const r = foodSearch(cat, 'arroz');
+  assert.ok(r.total > 0);
+  assert.ok(foodNormText(r.items[0].name).indexOf('arroz') === 0, `el primero fue «${r.items[0].name}»`);
+});
+test('foodSearch: tandas — no devuelve el catálogo entero de un golpe', () => {
+  const cat = foodCatalog(_foodsJson);
+  const p1 = foodSearch(cat, '', { limit: FOOD_PAGE });
+  assert.strictEqual(p1.items.length, Math.min(FOOD_PAGE, cat.length));
+  assert.strictEqual(p1.total, cat.length);
+  const p2 = foodSearch(cat, '', { limit: FOOD_PAGE, offset: FOOD_PAGE });
+  assert.strictEqual(p2.hayMas, cat.length > FOOD_PAGE * 2);
+  // Sin solapamiento: una tanda no repite lo de la anterior.
+  const ids1 = new Set(p1.items.map(f => f.id));
+  assert.ok(p2.items.every(f => !ids1.has(f.id)), 'la segunda tanda repite alimentos de la primera');
+});
+test('foodSearch: sin resultados y con basura no revienta', () => {
+  const cat = foodCatalog(_foodsJson);
+  assert.strictEqual(foodSearch(cat, 'zzzzqx').total, 0);
+  assert.deepStrictEqual(foodSearch(cat, 'zzzzqx').items, []);
+  assert.strictEqual(foodSearch(null, 'arroz').total, 0);
+  assert.ok(foodSearch(cat, null).total > 0, 'sin término se lista todo (primera apertura)');
 });
 
 // ══════════════════════════════════════════════════════

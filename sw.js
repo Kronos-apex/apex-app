@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v438';
+const CACHE_NAME = 'avi-v439';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -7,7 +7,10 @@ const V = CACHE_NAME.replace('avi-v', '');
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
 const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png']
-  .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js']
+  // `foods.json` = catálogo de búsqueda del registro de alimentos (E8). Va precacheado con
+  // ?v= como los módulos: sin él, la primera visita sin red se quedaría sin buscador. Si aun
+  // así falta, `foodCatalog(null)` cae a los 50 que viajan dentro de avi-core (E9).
+  .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js', 'foods.json']
     .map(f => '/apex-app/' + f + '?v=' + V));
 self.addEventListener('install', e => {
   // SIN skipWaiting automático (v325): el SW nuevo ESPERA en 'waiting' hasta que la página
