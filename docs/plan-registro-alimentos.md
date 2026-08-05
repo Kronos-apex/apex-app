@@ -490,6 +490,37 @@ en modo degradado), `_prodcheck 442` verde.
    Quien registra lo que come es alguien que YA entrena: el fixture ahora le da historial. *Un
    fixture que no se parece a producción fabrica defectos que no existen.*
 
+# §15 · F4 — EL COACH YA VE LO QUE COME SU ASESORADO — avi-v443, en producción el 2026-08-05
+
+Tarjeta **«Su comida»** en la ficha del asesorado: 7 puntos (uno por día), cuántos días registró,
+**desvío por macro** contra su plan, y al tocar un día se abre **el detalle**, comida por comida.
+Se oculta sola si la persona no ha registrado nada. Suite **614 → 619**; `_shot-coach detail`
+ahora **afirma** la tarjeta y su detalle.
+
+## 🔴 La trampa del promedio, y por qué está encodada en un test
+**El promedio SOLO cuenta los días que la persona registró.** Un día sin registrar no es «comió
+cero»: es «no sabemos». Medido con el fixture: contando los días vacíos, el desvío daría **−64%
+en vez de −17%** — casi cuatro veces peor, y falso. El coach estaría tomando decisiones sobre un
+dato inventado por nosotros. *La peor forma de mentir es con un promedio.*
+
+Los objetivos por día salen de **`nutWeekTargets`**, el mismo motor que ve el asesorado: si se
+separan, coach y asesorado ven planes distintos (lección de v435). Y el nombre de cada alimento
+se pinta con `esc()` — lo escribió otra persona.
+
+## Lecciones del harness (todas sobre errores míos)
+- Mis aserciones traían la **regex mal escapada** y borraban las eses del texto («Regi tró»). Un
+  template literal convierte `\s` en `s`: hay que escribir `\\s`.
+- Otra fallaba porque **`innerText` APLICA `text-transform`**, así que la etiqueta de la comida
+  llega en MAYÚSCULAS. Gotcha ya documentado en CLAUDE.md… y volví a caer.
+- El harness dio «DB is not defined» por **cuatro servidores zombis en el puerto 8798**, de mis
+  propias corridas cortadas con `head`. También documentado. Se le agregó espera del **símbolo
+  real post-boot** para que un arranque lento no vuelva a dar un rojo falso.
+
 ## Lo que sigue
-**F4 — la vista del coach** (es quien paga la app y hoy no ve nada de esto), luego **F3** (código
-de barras) y **F5** solo si lo autoriza la medición del §8.4. Y los lotes que faltan de la TCAC.
+**F3** (código de barras) y **F5** solo si lo autoriza la medición del §8.4. Y los lotes que
+faltan de la TCAC: tubérculos nativos y las preparaciones típicas (sancocho, ajiaco, tamal).
+
+## ⏳ Reloj del ICBF
+El PO **envió la carta el 2026-08-05**. El plazo de E14 vence el **~2026-08-26**. Falta el número
+de radicado. Si contestan la pregunta 4 (¿CSV/Excel?), los 731 alimentos que faltan entran de una
+vez en lugar de por lotes transcritos.
