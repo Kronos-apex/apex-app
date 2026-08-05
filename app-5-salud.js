@@ -195,8 +195,6 @@ function renderNutritionCoach(clientId){
 }
 
 // Estado de los "Ejemplos de alimentación" colapsables (dentro de la sesión).
-let _nutExOpen=false;
-function toggleNutEx(){_nutExOpen=!_nutExOpen;renderNutritionClient(CUR.clientId);}
 
 // Fichas educativas de cada nutriente. Lenguaje simple, enfocado al entrenamiento
 // (audiencia = asesorado no técnico). Se abren al tocar una tarjeta del plan.
@@ -412,7 +410,7 @@ function renderNutritionClient(clientId){
   // salían 2.227 el domingo contra 2.400 aquí. Ahora esta pantalla lee del MISMO motor y muestra
   // la semana entera, para que el número de «Hoy» tenga dónde encajar.
   const _c=DB.clients.find(x=>x.id===clientId);
-  let _sem=null;
+  let _sem=null, _semanaHtml='';
   try{
     if(_c && typeof nutBaseFor==='function' && typeof nutWeekTargets==='function'){
       let _peso=_c.weight;
@@ -434,7 +432,7 @@ function renderNutritionClient(clientId){
           <span style="font-size:12.5px;color:var(--t1);min-width:62px;text-align:right">${d.target.kcal} kcal</span>
         </div>
       </div>`;}).join('');
-    html+=`<div class="card" style="padding:12px 14px;margin-bottom:16px">
+    _semanaHtml=`<div class="card" style="padding:12px 14px;margin-bottom:16px">
       <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu semana de comida</div>
       <div style="font-size:11.5px;color:var(--t2);margin-bottom:8px">Promedio <b>${_sem.promedioKcal} kcal al día</b>. Los días que entrenas comes un poco más y los de descanso un poco menos — en la semana comes lo mismo.</div>
       ${filas}
@@ -460,38 +458,18 @@ function renderNutritionClient(clientId){
       html+=`</div>`;
     }
   }
-  // \u00bfPor qu\u00e9 este plan? \u2014 explicaci\u00f3n seg\u00fan el objetivo (encima del plan)
-  const _gw=GOAL_WHY[inferNutGoal(nut)];
-  if(_gw)html+=`<div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:12px 14px;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:800;color:var(--gt);margin-bottom:5px">${_gw.title} \u00b7 \u00bfPor qu\u00e9 este plan?</div>
-      <div style="font-size:13px;line-height:1.6;color:var(--gt)">${esc(_gw.text)}</div>
-    </div>`;
-  // Comidas por d\u00eda
-  if(nut.meals)html+=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--rsm);padding:10px 12px;margin-bottom:12px;font-size:13px"><span style="font-size:16px">\uD83C\uDF7D\ufe0f</span><span><strong>${esc(String(nut.meals))} comidas por d\u00eda</strong> \u2014 distribuye tus calor\u00edas de manera uniforme</span></div>`;
-  // Ejemplos de comidas
-  if(nut.examples){
-    html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">\ud83d\udca1 Ejemplos de alimentaci\u00f3n</div>`;
-    const lines=nut.examples.split('\n').filter(l=>l.trim());
-    const exRow=line=>{
-      const colonIdx=line.indexOf(':');
-      if(colonIdx>0){
-        const label=line.slice(0,colonIdx).trim();
-        const content=line.slice(colonIdx+1).trim();
-        return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--gt);text-transform:uppercase;margin-bottom:3px">${esc(label)}</div><div style="font-size:13px;color:var(--t1)">${esc(content)}</div></div>`;
-      }
-      return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--t1)">${esc(line)}</div>`;
-    };
-    // Pocos (≤3): se muestran todos. Largos: asoman 2 y se expanden con el botón.
-    const shown=(lines.length>3 && !_nutExOpen)?lines.slice(0,2):lines;
-    shown.forEach(line=>{html+=exRow(line);});
-    if(lines.length>3)html+=`<button class="collapse-more" onclick="toggleNutEx()">${_nutExOpen?'Ver menos ▴':'Ver los '+lines.length+' ejemplos ▾'}</button>`;
-    html+=`</div>`;
-  }
-  // Plan libre
-  if(nut.plan)html+=`<div style="background:var(--gl);border-radius:var(--rsm);padding:12px;margin-bottom:12px;white-space:pre-line;font-size:13px;line-height:1.7;color:var(--gt)">\ud83d\udccb ${esc(nut.plan)}</div>`;
-  // Evitar
-  if(nut.avoid)html+=`<div style="background:var(--rdl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--rdt)">\u26a0\ufe0f <strong>Evitar:</strong> ${esc(nut.avoid)}</div>`;
-  con.innerHTML=`<button class="btn bp bsm" style="width:100%;margin-bottom:14px" onclick="openNutritionRoom('${clientId}')">${typeof aviIcon==='function'?aviIcon('utensils',15):'\ud83c\udf7d\ufe0f'} Ver mi plan en grande</button>`+html;
+  html+=_semanaHtml;   // la semana va DESPUES del numero grande, no antes
+  // ── PERFIL = RESUMEN. El DETALLE vive en la habitación «Ver mi plan completo» ──
+  // Antes esta tarjeta repetía casi entera la habitación: el «por qué», los ejemplos, el plan
+  // escrito y el «evitar» salían en las DOS superficies, y el Perfil quedaba larguísimo con dos
+  // bloques seguidos diciendo casi lo mismo (reporte del PO, 2026-08-05: «se siente muy larga…
+  // quiero que se vea organizado, no en ese desorden»). Ahora hay UNA jerarquía:
+  //   Perfil     → los NÚMEROS (kcal, agua, macros) + su semana + la puerta al detalle
+  //   Habitación → el «por qué», los ejemplos, el plan escrito y qué evitar
+  // Nada se pierde: todo lo que se quitó de aquí YA lo pintaba la habitación.
+  const _pistas=[nut.examples?'ejemplos de comidas':null,nut.plan?'el plan de tu coach':null,nut.avoid?'qu\u00e9 evitar':null].filter(Boolean);
+  con.innerHTML=html+`<button class="btn bp bsm" style="width:100%;margin-top:4px" onclick="openNutritionRoom('${clientId}')">${typeof aviIcon==='function'?aviIcon('utensils',15):'\ud83c\udf7d\ufe0f'} Ver mi plan completo</button>`
+    +(_pistas.length?`<div style="font-size:11.5px;color:var(--t3);text-align:center;margin-top:7px;line-height:1.5">Adentro: ${esc(_pistas.join(' \u00b7 '))}</div>`:'');
 }
 
 // ── HABITACIÓN DE NUTRICIÓN: versión inmersiva del plan (se entra desde la tarjeta
@@ -507,7 +485,15 @@ function openNutritionRoom(clientId){
   const hasPlan=_hasCoachNutPlan(nut);
   let d;
   if(hasPlan){
-    d={kcal:nut.kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
+    // 🔴 EL MISMO NÚMERO QUE LAS OTRAS DOS PANTALLAS. Esta habitación se quedó pintando el
+    // titular ESCRITO por el coach (`nut.kcal`) mientras «Hoy» y «Perfil» ya pintan el derivado
+    // de sus propios macros desde v435. Medido con un plan real: la habitación decía **2.900**
+    // y el Perfil **2.805** — 95 kcal/día de diferencia para el MISMO plan, a un toque de
+    // distancia. Es exactamente el defecto que v435 arregló… en las otras dos superficies.
+    // El titular se DERIVA de sus componentes, nunca se guarda aparte.
+    const _base=(typeof nutBaseFor==='function')?nutBaseFor(c,nut,_nutPesoDe(c)):null;
+    const _kcal=(_base&&_base.kcalObj)?_base.kcalObj:nut.kcal;
+    d={kcal:_kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
   } else {
     const est=nutritionEstimate(c);
     if(!est){

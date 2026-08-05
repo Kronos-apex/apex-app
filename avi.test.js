@@ -3730,6 +3730,24 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
 });
+// 🔴 LAS TRES PANTALLAS DE NUTRICIÓN MUESTRAN EL MISMO NÚMERO. Reporte del PO (2026-08-05):
+// «ver mi plan en grande no sigue los parámetros de las otras pantallas». Medido: la habitación
+// pintaba el titular ESCRITO (2.900) y el Perfil el derivado de sus macros (2.805) — 95 kcal/día
+// de diferencia para el MISMO plan, a un toque de distancia. v435 arregló esto en «Hoy» y
+// «Perfil» y se dejó viva la tercera superficie.
+test('🔴 la habitación del plan usa el MISMO kcal que Perfil (derivado de los macros)', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8');
+  const room = src.slice(src.indexOf('function openNutritionRoom'), src.indexOf('function closeNutritionRoom'));
+  assert.ok(/nutBaseFor\(c,nut,_nutPesoDe\(c\)\)/.test(room),
+    'la habitación no está derivando el kcal del mismo motor que las otras pantallas');
+  assert.ok(!/d=\{kcal:nut\.kcal,/.test(room),
+    'la habitación volvió a pintar el titular escrito en vez del derivado');
+  // Y el motor confirma la diferencia que el PO vio: 2.900 escritos, 2.805 reales.
+  const nut = { kcal: 2900, prot: 170, carbs: 340, fat: 85 };
+  assert.strictEqual(nutMacroKcal(nut), 2805);
+});
+
 // ── F4 · lo que ve el coach ──
 const _metas7 = (() => { const m = {}; for (let i = 0; i < 7; i++) m[i] = { kcal: 1200, prot_g: 62, carb_g: 120, fat_g: 30 }; return m; })();
 function _flTresDias() {
