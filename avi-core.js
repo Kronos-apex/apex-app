@@ -2133,6 +2133,25 @@ function foodLogMerge(a, b) {
   });
   return out;
 }
+// Progreso del día contra el objetivo, POR MACRO y no solo en el total (un total bueno puede
+// tapar un macro roto: lección del plan de comida). `target` es el objetivo del día que ya
+// calcula `nutWeekTargets` — aquí no se recalcula nada, se compara. Devuelve, por cada macro,
+// lo hecho, la meta, el porcentaje y lo que falta (nunca negativo: el exceso se lee en `pct`).
+const FOODLOG_MACROS = [['kcal', 'kcal'], ['p', 'prot_g'], ['c', 'carb_g'], ['f', 'fat_g']];
+function foodLogProgress(totals, target) {
+  const t = totals || {};
+  const out = { parcial: !!t.parcial, n: t.n || 0 };
+  FOODLOG_MACROS.forEach(([k, tk]) => {
+    const hecho = Math.round((parseFloat(t[k]) || 0) * 10) / 10;
+    const meta = Math.round(parseFloat(target && target[tk]) || 0);
+    out[k] = {
+      hecho, meta,
+      pct: meta > 0 ? Math.round(hecho / meta * 100) : null,
+      falta: meta > 0 ? Math.max(0, Math.round((meta - hecho) * 10) / 10) : null,
+    };
+  });
+  return out;
+}
 // Días DISTINTOS con al menos una comida guardada en los últimos N días. Es la métrica del
 // criterio de corte (§8.4) y la usa `scripts/nut-adherencia.mjs`: se DERIVA del propio
 // registro, sin tabla de telemetría ni dato personal nuevo.
@@ -5122,6 +5141,7 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogAdd,
     foodLogRemove,
     foodLogMerge,
+    foodLogProgress,
     foodLogActiveDays,
     inferNutGoal,
     nutGoalForClient,

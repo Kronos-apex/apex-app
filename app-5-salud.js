@@ -1180,14 +1180,237 @@ function _stepsBlockHtml(client){
     </div>
     <div class="hb-week" aria-hidden="true">${dots}</div>`;
 }
+// ══════════════════════════════════════════════════════════════════════
+// REGISTRO DE ALIMENTOS — F2 (E9, E10, E11, E15 de Fable)
+// ──────────────────────────────────────────────────────────────────────
+// El motor (snapshot, poda, merge, totales) vive PURO en avi-core desde F0. Aquí va solo lo
+// que toca el DOM. Decisiones del PO ya tomadas (§9 del plan): SOLO PREMIUM · el coach ve el
+// DETALLE completo, y por eso al asesorado se le AVISA antes de registrar nada.
+let _foodCat=null;          // catálogo en memoria (una sola carga por sesión)
+let _foodCatCargando=null;
+// E9 — DEGRADACIÓN: si `foods.json` no carga (primera visita sin red, archivo caído), NO se
+// queda sin catálogo: `foodCatalog(null)` devuelve los 50 que viajan dentro de avi-core.
+function foodCatalogLoad(){
+  if(_foodCat)return Promise.resolve(_foodCat);
+  if(_foodCatCargando)return _foodCatCargando;
+  // El `?v=` tiene que ser el MISMO con el que el Service Worker precacheó el archivo, o la
+  // petición no matchea el precache y la primera visita sin red se queda sin catálogo. No hay
+  // constante de versión en runtime: se lee del propio `<script>` que cargó avi-core.
+  let v='';
+  try{ const s=document.querySelector('script[src*="avi-core.js?v="]');
+       const m=s&&s.getAttribute('src').match(/\?v=(\d+)/); if(m)v='?v='+m[1]; }catch(e){}
+  _foodCatCargando=fetch('foods.json'+v)
+    .then(r=>r.ok?r.json():null)
+    .catch(()=>null)
+    .then(j=>{ _foodCat=foodCatalog(j); _foodCatCargando=null; return _foodCat; });
+  return _foodCatCargando;
+}
+const FOODLOG_MEAL_LABEL={desayuno:'Desayuno',media_m:'Media mañana',almuerzo:'Almuerzo',media_t:'Media tarde',cena:'Cena'};
+// La semana de nutrición de UNA persona. Extraída de `renderNutritionClient`, que la calculaba
+// inline: ahora las dos superficies leen de aquí y no se pueden separar (regla de v435).
+function _nutSemanaDe(clientId){
+  try{
+    const c=(DB.clients||[]).find(x=>x.id===clientId);
+    if(!c||typeof nutBaseFor!=='function'||typeof nutWeekTargets!=='function')return null;
+    const base=nutBaseFor(c,(DB.nutrition||{})[clientId],_nutPesoDe(c));
+    return base?nutWeekTargets(base,c.routines):null;
+  }catch(e){ warn('AVI: la semana de nutrición no se pudo armar:',e&&e.message); return null; }
+}
+function _foodLogTargetHoy(clientId){
+  const sem=_nutSemanaDe(clientId);
+  if(!sem)return null;
+  const d=sem.days.find(x=>x.dayIndex===new Date().getDay());
+  return d?d.target:null;
+}
+// ── Tarjeta en «Hoy»: tercer bloque de hábitos, al lado del agua y los pasos ──
+function _foodLogBlockHtml(client){
+  const hoy=foodLogDay(client.foodlog);
+  const tot=foodLogTotals(hoy);
+  const meta=_foodLogTargetHoy(client.id);
+  const pr=foodLogProgress(tot,meta);
+  const pct=pr.kcal.pct==null?0:Math.min(100,pr.kcal.pct);
+  const sub=!meta
+    ? (tot.n?`<b>${tot.kcal}</b> kcal registradas hoy`:'Anota lo que comes y llévalo claro')
+    : (tot.n
+        ? `<b>${pr.kcal.hecho}</b> de ${pr.kcal.meta} kcal${pr.kcal.falta?` · te faltan ${pr.kcal.falta}`:' · meta cumplida 🎉'}`
+        : `Tu meta de hoy: <b>${pr.kcal.meta}</b> kcal`);
+  return `<div class="hb-sep"></div>
+    <div class="hb-row">
+      <span class="hb-ic fl" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('utensils',21):'🍽️'}</span>
+      <div class="hb-info">
+        <div class="hb-title">Comida de hoy</div>
+        <div class="hb-sub" aria-live="polite">${sub}</div>
+        <div class="hb-bar"><div class="hb-fill fl${pct>=100?' met':''}" style="width:${pct}%"></div></div>
+      </div>
+      <button type="button" class="hb-btn hb-plus fl" aria-label="Registrar lo que comí" onclick="openFoodLogRoom()">+</button>
+    </div>`;
+}
 function renderHabitsCard(client){
   const el=document.getElementById('cn-habits'); if(!el)return;
   if(!client){ el.innerHTML=''; return; }
+  // El registro es PREMIUM (decisión del PO): al tier libre no se le muestra ni el bloque, para
+  // no ofrecerle una puerta que no puede abrir.
+  const conComida=!(typeof isFreeClient==='function'&&isFreeClient(client));
   el.innerHTML=`<div class="hb-card" role="group" aria-label="Tus hábitos de hoy">
     ${_waterBlockHtml(client)}
     ${_stepsBlockHtml(client)}
+    ${conComida?_foodLogBlockHtml(client):''}
   </div>`;
 }
+// ── La habitación del registro ────────────────────────────────────────────────
+// Estado de la vista, NO de los datos (los datos viven en client.foodlog).
+let _flView={modo:'dia',meal:'desayuno',q:'',offset:0,sel:null};
+function openFoodLogRoom(meal){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  if(typeof isFreeClient==='function'&&isFreeClient(c))return;
+  _flView={modo:'dia',meal:meal||_flView.meal||'desayuno',q:'',offset:0,sel:null};
+  const room=document.getElementById('foodlog-room'); if(!room)return;
+  renderFoodLogRoom();
+  const body=document.getElementById('flroom-body'); if(body)body.scrollTop=0;
+  _roomFront(room); _syncRoomBodyClass();
+  foodCatalogLoad().then(()=>{ if(_flView.modo==='buscar')renderFoodLogRoom(); });
+}
+function closeFoodLogRoom(){
+  const room=document.getElementById('foodlog-room');
+  if(room)room.classList.remove('on');
+  _syncRoomBodyClass();
+}
+// El asesorado tiene que SABER que su coach ve el detalle antes de escribir nada. Decisión del
+// PO (§9.2): la protección es la transparencia, no esconder el dato. La aceptación viaja en su
+// perfil (sincroniza), no en una clave suelta del teléfono.
+function _flAvisoHtml(c){
+  return `<div style="background:var(--bll);border-left:3px solid var(--bl);border-radius:var(--rsm);padding:14px;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;color:var(--blt);margin-bottom:6px">Antes de empezar</div>
+    <div style="font-size:13px;line-height:1.6;color:var(--blt)">Lo que registres aquí <b>lo ve tu coach</b>, con el detalle de cada comida. Es justamente para que pueda ayudarte: sin ver qué comiste, un «no cumpliste» no le dice si fue el pan de la noche o que te saltaste el desayuno.<br><br>Puedes dejar de registrar cuando quieras.</div>
+    <button class="btn bp bsm" style="width:100%;margin-top:12px" onclick="flAceptarAviso()">Entendido, quiero registrar</button>
+  </div>`;
+}
+function flAceptarAviso(){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  c.foodlogOk=new Date().toISOString();
+  sv('ax_c',DB.clients);
+  renderFoodLogRoom();
+}
+function _flMacroChip(et,o,unidad){
+  const pct=o.pct==null?null:Math.min(100,o.pct);
+  return `<div style="flex:1;min-width:0;text-align:center;background:var(--bg);border-radius:var(--rsm);padding:8px 4px">
+    <div style="font-size:15px;font-weight:800;color:var(--t1)">${o.hecho}${unidad}</div>
+    <div style="font-size:10px;color:var(--t2)">${et}${o.meta?' de '+o.meta+unidad:''}</div>
+    ${pct==null?'':`<div style="height:3px;background:var(--br);border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${o.pct>110?'var(--or)':'var(--g)'}"></div></div>`}
+  </div>`;
+}
+function renderFoodLogRoom(){
+  const body=document.getElementById('flroom-body'); if(!body)return;
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c){body.innerHTML='';return;}
+  if(!c.foodlogOk){ body.innerHTML=_flAvisoHtml(c)+'<div style="height:30px"></div>'; return; }
+  body.innerHTML=(_flView.modo==='buscar'?_flBuscarHtml(c):_flDiaHtml(c))+'<div style="height:40px"></div>';
+}
+function _flDiaHtml(c){
+  const hoy=foodLogDay(c.foodlog);
+  const tot=foodLogTotals(hoy);
+  const pr=foodLogProgress(tot,_foodLogTargetHoy(c.id));
+  let html=`<div style="display:flex;gap:6px;margin-bottom:6px">
+      ${_flMacroChip('kcal',pr.kcal,'')}${_flMacroChip('prot',pr.p,'g')}${_flMacroChip('carbs',pr.c,'g')}${_flMacroChip('grasas',pr.f,'g')}
+    </div>`;
+  if(pr.parcial)html+=`<div style="font-size:11.5px;color:var(--t2);margin-bottom:10px">Alguno de estos alimentos no trae todos sus datos, así que el total va incompleto.</div>`;
+  else html+=`<div style="height:8px"></div>`;
+  FOODLOG_MEALS.forEach(m=>{
+    const items=hoy.filter(e=>e.meal===m);
+    const kc=Math.round(items.reduce((a,e)=>a+(parseFloat(e.kcal)||0),0));
+    html+=`<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:800;color:var(--t1)">${FOODLOG_MEAL_LABEL[m]}${items.length?` <span style="font-weight:600;color:var(--t2)">· ${kc} kcal</span>`:''}</div>
+        <button class="btn bg bsm" style="min-height:32px;padding:0 12px" onclick="flBuscar('${m}')">+ Agregar</button>
+      </div>`;
+    if(!items.length){
+      html+=`<div style="font-size:12px;color:var(--t3);padding:8px 10px;background:var(--bg);border-radius:var(--rsm)">Sin registrar</div>`;
+    }else{
+      items.forEach(e=>{
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name||'Alimento')}</div>
+            <div style="font-size:11px;color:var(--t2)">${e.g} g · ${e.kcal==null?'sin datos':e.kcal+' kcal'}</div>
+          </div>
+          <button class="btn bg bsm" style="min-height:34px;min-width:38px;padding:0 10px" aria-label="Quitar ${esc(e.name||'alimento')}" onclick="flQuitar('${esc(e.id)}')">✕</button>
+        </div>`;
+      });
+    }
+    html+=`</div>`;
+  });
+  return html;
+}
+function _flBuscarHtml(c){
+  const cat=_foodCat||[];
+  const r=foodSearch(cat,_flView.q,{limit:FOOD_PAGE,offset:0});
+  let html=`<div style="margin-bottom:12px">
+      <button class="btn bg bsm" style="margin-bottom:10px" onclick="flVolverDia()">‹ ${FOODLOG_MEAL_LABEL[_flView.meal]}</button>
+      <input class="inp" id="fl-q" type="search" inputmode="search" placeholder="Busca un alimento (arroz, huevo, lulo…)"
+        value="${esc(_flView.q)}" aria-label="Buscar alimento" oninput="flQ(this.value)">
+    </div>`;
+  if(!cat.length)return html+`<div class="empty" style="padding:24px"><div class="etxt">Cargando alimentos…</div></div>`;
+  if(_flView.sel)return html+_flCantidadHtml(_flView.sel);
+  if(!r.total)return html+`<div class="empty" style="padding:24px"><div class="etxt">No encontramos ese alimento</div><div class="esub">Prueba con otro nombre — la lista tiene ${cat.length} alimentos.</div></div>`;
+  html+=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${r.total} resultado${r.total!==1?'s':''}${r.hayMas?' · mostrando los primeros '+r.items.length:''}</div>`;
+  r.items.forEach(f=>{
+    html+=`<button type="button" style="display:block;width:100%;text-align:left;padding:10px 12px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px;cursor:pointer" onclick="flElegir('${esc(f.id)}')">
+      <div style="font-size:13px;color:var(--t1);font-weight:600">${esc(f.name)}</div>
+      <div style="font-size:11px;color:var(--t2)">${f.kcal==null?'sin datos':f.kcal+' kcal por 100 g'}${f.un?` · ${esc(f.un.label)} ${f.un.g} g`:''}</div>
+    </button>`;
+  });
+  return html;
+}
+function _flCantidadHtml(f){
+  const un=f.un&&f.un.g>0?f.un:null;
+  return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px">
+    <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:2px">${esc(f.name)}</div>
+    <div style="font-size:11.5px;color:var(--t2);margin-bottom:12px">${f.kcal==null?'sin datos':f.kcal+' kcal por 100 g'}</div>
+    ${un?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${[0.5,1,2].map(n=>`<button class="btn bg bsm" onclick="flGuardar('${esc(f.id)}',${Math.round(un.g*n)})">${n===0.5?'½':n} ${esc(un.label)} · ${Math.round(un.g*n)} g</button>`).join('')}
+    </div>`:''}
+    <label class="ilbl">O escribe los gramos</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input class="inp" id="fl-g" type="number" inputmode="numeric" min="1" max="${FOODLOG_MAX_G}" placeholder="Ej: 150" style="flex:1">
+      <button class="btn bp" onclick="flGuardarInput('${esc(f.id)}')">Agregar</button>
+    </div>
+    <button class="btn bg bsm" style="width:100%;margin-top:10px" onclick="flCancelarSel()">Elegir otro alimento</button>
+  </div>`;
+}
+function flBuscar(meal){ _flView.modo='buscar'; _flView.meal=meal||_flView.meal; _flView.q=''; _flView.sel=null; renderFoodLogRoom(); foodCatalogLoad().then(()=>renderFoodLogRoom()); }
+function flVolverDia(){ _flView.modo='dia'; _flView.sel=null; renderFoodLogRoom(); }
+function flCancelarSel(){ _flView.sel=null; renderFoodLogRoom(); }
+function flQ(v){
+  _flView.q=v||'';
+  const foco=document.activeElement===document.getElementById('fl-q');
+  renderFoodLogRoom();
+  if(foco){ const i=document.getElementById('fl-q'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+}
+function flElegir(id){
+  const f=(_foodCat||[]).find(x=>x.id===id); if(!f)return;
+  _flView.sel=f; renderFoodLogRoom();
+}
+function flGuardarInput(id){
+  const i=document.getElementById('fl-g');
+  flGuardar(id,i?i.value:0);
+}
+function flGuardar(id,gramos){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  const f=(_foodCat||[]).find(x=>x.id===id); if(!f)return;
+  const e=foodLogEntry(f,gramos,_flView.meal);
+  if(!e){ toast('Escribe cuántos gramos comiste'); return; }
+  c.foodlog=foodLogAdd(c.foodlog,e);
+  sv('ax_c',DB.clients);
+  _flView.modo='dia'; _flView.sel=null; _flView.q='';
+  renderFoodLogRoom(); renderHabitsCard(c);
+  if(navigator.vibrate)navigator.vibrate(15);
+  toast('🍽️ '+f.name+' agregado');
+}
+function flQuitar(entryId){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  c.foodlog=foodLogRemove(c.foodlog,habitDayKey(),entryId);
+  sv('ax_c',DB.clients);
+  renderFoodLogRoom(); renderHabitsCard(c);
+}
+
 function waterTap(delta){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
   const goal=_waterGoalFor(c);

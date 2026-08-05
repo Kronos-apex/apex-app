@@ -1196,6 +1196,10 @@ function _aviCloseTopOverlay(){
   if(rtr&&rtr.classList.contains('on')){closeRoutineRoom();return true;}
   const mscr=document.getElementById('muscle-room');
   if(mscr&&mscr.classList.contains('on')){closeMuscleRoom();return true;}
+  // El registro de comida se abre DESDE «Hoy», nunca sobre la habitación de nutrición, así que
+  // va al mismo nivel que ella en la pila.
+  const flr=document.getElementById('foodlog-room');
+  if(flr&&flr.classList.contains('on')){closeFoodLogRoom();return true;}
   const nutr=document.getElementById('nutrition-room');
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
   const csr=document.getElementById('coach-stat-room');

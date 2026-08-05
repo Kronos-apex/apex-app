@@ -160,6 +160,7 @@ const {
   foodLogAdd,
   foodLogRemove,
   foodLogMerge,
+  foodLogProgress,
   foodLogActiveDays,
   inferNutGoal,
   nutGoalForClient,
@@ -3649,6 +3650,83 @@ test('foodLogActiveDays: días distintos con al menos una comida (métrica del c
   });
   assert.strictEqual(foodLogActiveDays(fl, _hoyFL, 21), 3, 'el día de hace 40 no entra en la ventana de 21');
   assert.strictEqual(foodLogActiveDays(foodLogBlank(), _hoyFL, 21), 0);
+});
+// ── F2 · E10 — la suma del día se afirma POR MACRO, con ORÁCULO INDEPENDIENTE ──
+// 🔴 El test NO le pregunta a la app cuánto sirvió: recalcula desde el catálogo y los gramos.
+// Cuando el defecto es «el sistema no sabe lo que hizo», la aserción no puede leer el reporte
+// del sistema (lección del plan de comida, que reportaba 9,6% mientras servía 22%).
+test('🔴 el total del día cuadra con un cálculo INDEPENDIENTE desde el catálogo', () => {
+  const cat = foodCatalog(_foodsJson);
+  const elegidos = ['arroz', 'huevo', 'pollo_pechuga', 't_lulo', 'u_salmon']
+    .map(id => cat.find(f => f.id === id)).filter(Boolean);
+  assert.ok(elegidos.length >= 4, 'el fixture necesita alimentos de las tres fuentes');
+  const gramos = [180, 100, 150, 120, 90];
+  let fl = foodLogBlank();
+  elegidos.forEach((f, i) => {
+    fl = foodLogAdd(fl, foodLogEntry(f, gramos[i], FOODLOG_MEALS[i % FOODLOG_MEALS.length], _hoyFL, _flId), _hoyFL);
+  });
+  const tot = foodLogTotals(foodLogDay(fl, _hoyFL));
+  // Oráculo: los macros del CATÁLOGO por los gramos servidos. Nada de leerle el total a la app.
+  const esperado = { kcal: 0, p: 0, c: 0, f: 0 };
+  elegidos.forEach((f, i) => {
+    ['kcal', 'p', 'c', 'f'].forEach(k => { esperado[k] += (parseFloat(f[k]) || 0) * gramos[i] / 100; });
+  });
+  ['kcal', 'p', 'c', 'f'].forEach(k => {
+    const dif = Math.abs(tot[k] - esperado[k]);
+    assert.ok(dif <= 1, `${k}: la app suma ${tot[k]} y el cálculo independiente da ${Math.round(esperado[k] * 10) / 10}`);
+  });
+});
+test('foodLogProgress: compara POR MACRO contra el objetivo del día', () => {
+  const tot = { kcal: 900, p: 60, c: 90, f: 30, n: 3, parcial: false };
+  const meta = { kcal: 1800, prot_g: 120, carb_g: 200, fat_g: 60 };
+  const pr = foodLogProgress(tot, meta);
+  assert.strictEqual(pr.kcal.pct, 50);
+  assert.strictEqual(pr.kcal.falta, 900);
+  assert.strictEqual(pr.p.pct, 50);
+  assert.strictEqual(pr.c.pct, 45);   // el carbohidrato va MÁS atrasado que el total: eso es el punto
+  assert.strictEqual(pr.f.pct, 50);
+});
+test('foodLogProgress: pasarse no deja «falta» negativo, y sin meta no inventa porcentaje', () => {
+  const pr = foodLogProgress({ kcal: 2500, p: 0, c: 0, f: 0, n: 1 }, { kcal: 1800 });
+  assert.strictEqual(pr.kcal.falta, 0);
+  assert.ok(pr.kcal.pct > 100, 'el exceso se lee en el porcentaje');
+  const sinMeta = foodLogProgress({ kcal: 500, p: 0, c: 0, f: 0, n: 1 }, null);
+  assert.strictEqual(sinMeta.kcal.pct, null);
+  assert.strictEqual(sinMeta.kcal.falta, null);
+});
+// E11 — estados no-felices del registro.
+test('🔴 un alimento borrado del catálogo NO rompe lo ya registrado (el snapshot pinta igual)', () => {
+  const cat = foodCatalog(_foodsJson);
+  const f = cat.find(x => x.id === 'arroz');
+  let fl = foodLogAdd(foodLogBlank(), foodLogEntry(f, 200, 'almuerzo', _hoyFL, _flId), _hoyFL);
+  // Mañana ese id ya no existe en el catálogo: la entrada sigue completa por sí sola.
+  const e = foodLogDay(fl, _hoyFL)[0];
+  assert.strictEqual(e.name, 'Arroz blanco cocido');
+  assert.ok(e.kcal > 0 && e.g === 200);
+  assert.strictEqual(foodLogTotals([e]).kcal, e.kcal);
+});
+test('🔴 el formulario del registro está cableado a las funciones que guardan', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8');
+  const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="foodlog-room"/.test(html), 'falta la habitación del registro');
+  assert.ok(/id="flroom-body"/.test(html), 'falta el cuerpo de la habitación');
+  ['openFoodLogRoom', 'closeFoodLogRoom', 'flGuardar', 'flQuitar', 'flAceptarAviso', 'foodCatalogLoad']
+    .forEach(f => assert.ok(new RegExp('function ' + f + '\\b').test(src), `falta ${f}()`));
+  // Guardar y borrar pasan por sv('ax_c'), la vía sancionada que ya usan agua y pasos.
+  assert.ok(/c\.foodlog=foodLogAdd[\s\S]{0,80}sv\('ax_c'/.test(src), 'agregar no persiste por la vía sancionada');
+  assert.ok(/c\.foodlog=foodLogRemove[\s\S]{0,80}sv\('ax_c'/.test(src), 'borrar no persiste por la vía sancionada');
+  // El aviso de privacidad es obligatorio ANTES de registrar (decisión #2 del PO).
+  assert.ok(/if\(!c\.foodlogOk\)/.test(src), 'se puede registrar sin haber visto el aviso de que el coach lo ve');
+  // Y el registro es Premium: al tier libre no se le pinta el bloque.
+  // Dos aserciones separadas y exactas: de dónde sale el gate, y que el bloque dependa de él.
+  assert.ok(/const conComida=!\(typeof isFreeClient==='function'&&isFreeClient\(client\)\)/.test(src),
+    'el gate Premium del registro no sale de isFreeClient');
+  assert.ok(/\$\{conComida\?_foodLogBlockHtml\(client\):''\}/.test(src),
+    'el bloque de comida se pinta sin pasar por el gate Premium');
+  // El botón de atrás tiene que cerrar la habitación (si no, se sale de la app).
+  const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
 });
 test('el registro tolera basura sin romperse (fila corrupta, campo de otro tipo)', () => {
   [null, undefined, 'texto', 42, [], { d: 'no-es-objeto' }].forEach(basura => {

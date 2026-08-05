@@ -2475,6 +2475,9 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  {v:442, icon:'utensils', t:'Ya puedes registrar lo que comes', d:'Anota tus comidas del día y mira cómo vas contra tu plan, en calorías y en cada macro. La lista trae comida colombiana de verdad: lulo, curuba, arepa, sancocho de a poco.',
+   steps:['En "Hoy", baja a tu tarjeta de hábitos y toca + en "Comida de hoy"','Busca el alimento (funciona sin tildes) y di cuánto comiste','Ve tu día completo: lo que llevas y lo que te falta'],
+   coach:true}, // solo con coach: el registro es Premium y su valor es que el coach lo lea
   {v:316, icon:'chat', t:'Respuestas rápidas en el chat', d:'Escribirle a tu coach ahora toma UN toque.',
    steps:['Entra a Mensajes','Toca una respuesta lista: "¡Entrenamiento hecho!", "Tengo una duda" o "Algo me dolió"','Tu coach la recibe al instante — y te responde'],
    cta:{label:'Probarlas ahora',run:'ntGoMsgs'}, coach:true}, // solo con coach (aviso Lucas: al libre le prometía un chat que no tiene)

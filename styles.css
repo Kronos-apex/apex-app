@@ -346,6 +346,11 @@ html[data-theme="light"] .mta {
 .hb-fill.st{background:var(--g2)}
 .hb-dot.st.some{background:var(--g2);opacity:.45}
 .hb-dot.st.full{background:var(--g2)}
+/* Hábitos parte 3 (v442): 🍽️ comida — acento NARANJA, el tercer color de la tarjeta (agua azul,
+   pasos verde). Mismos tokens del sistema, ninguno nuevo. */
+.hb-ic.fl{background:var(--orl);color:var(--ort)}
+.hb-fill.fl{background:var(--or)}
+.hb-btn.fl{background:var(--orl);color:var(--ort);border-color:var(--or)}
 .hb-entry{display:flex;gap:8px;margin-top:9px;padding-left:48px}
 .hb-num{flex:1;min-width:0;height:42px;border-radius:11px;border:1.5px solid var(--br2);background:var(--surface);color:var(--t1);font-size:15px;font-weight:700;font-family:inherit;padding:0 12px;-moz-appearance:textfield}
 .hb-num::-webkit-outer-spin-button,.hb-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
