@@ -297,3 +297,53 @@ sin red) la app **arranca igual** y el registro degrada con mensaje, jamás pant
   al día 21: se le muestra al PO de inmediato.
 
 *Estipulado por Fable, 2026-08-05. Nada de este módulo está «hecho» sin veredicto de Fable por fase.*
+
+---
+
+# §9 · DECISIONES DEL PO — respondidas el 2026-08-05 (E17 cumplida, NO re-preguntar)
+
+1. **¿Quién puede usar el registro?** → **SOLO PREMIUM.** Coherente con que la nutrición completa
+   ya está bloqueada para el tier libre; es el módulo más caro de construir y mantener; y el dato
+   manda: las 13 cuentas auto-registradas dieron 8 sesiones y **cero** activos.
+2. **¿Qué ve el coach?** → **DETALLE COMPLETO, avisado al asesorado desde el inicio.** Sin ver QUÉ
+   comió, un «no cumplió» no dice si fue el pan de la noche o que no desayunó. El coach ya ve peso,
+   medidas y fotos de progreso, más íntimos que un almuerzo. **La protección es la transparencia,
+   no esconder el dato:** el aviso va en el momento de activar el registro, con lenguaje claro, y
+   entra en el texto legal (`LEGAL_V`) — **eso es parte de F2, no un extra.**
+3. **Solicitud escrita al ICBF** → pendiente del PO esta semana (E14 le pone plazo de 3 semanas).
+
+# §10 · F0 EJECUTADA — avi-v438, en producción el 2026-08-05
+
+Motor puro en `avi-core.js`, sin UI (código inerte hasta F2). Suite **580 → 592**, 2 sabotajes
+aplicados (merge de un solo lado · poda sin resumen) que tumbaron 4 tests, `_prodcheck 438` verde.
+
+| Estipulación | Cómo quedó |
+|---|---|
+| **E1** | `client.foodlog` = `{d:{'YYYY-MM-DD':[…]}, m:{'YYYY-MM':{…}}}`, en el perfil propio. Claves cortas a propósito: `sv()` re-sube el objeto ENTERO en cada anotación. |
+| **E2** | `foodLogEntry()` produce el snapshot con macros ya calculados a los gramos. Corregir el catálogo NO reescribe el pasado. Macro que la fuente no trae → **`null`, jamás 0**. |
+| **E3** | `foodLogPrune()` agrega al resumen mensual antes de borrar el detalle. |
+| **E4** | `foodLogMerge()` une por `id` dentro de cada día; entrada editada en ambos lados → gana el `ts` mayor; resúmenes por MÁXIMO (sumarlos duplicaría el pasado). |
+| **E15** | `foodLogActiveDays()` = la métrica del criterio de corte, derivada del propio registro. Sin tabla nueva. |
+
+## 🔴 DESVIACIÓN DE E3, documentada (R4.2) — retención de 90 a 30 días
+
+**Lo estipulado:** detalle 90 días, con el umbral de tamaño «a confirmar midiendo, no de memoria».
+**Lo medido el 2026-08-05, que es lo que manda:**
+
+| | 90 días | 30 días |
+|---|---|---|
+| Comida normal (5/día) | 78,0 KB | 26,0 KB |
+| Peor caso, todo de código de barras | 106,6 KB | 35,5 KB |
+| Tras **un año** de uso diario | — | **27,8 KB** (37,6 peor caso), estable |
+
+Contraste con producción: **los perfiles reales pesan ~600 bytes** (Luz 600, Kathe 619) y el
+historial completo de meses de entreno, 10-18 KB. A 90 días el registro multiplicaría el perfil por
+más de 100 y sería, de lejos, lo más pesado de la fila — re-subido entero 3-5 veces al día.
+A 30 días (misma retención que agua y pasos) queda proporcionado y **el coach conserva un mes
+completo de detalle**, más de lo que revisa de una sentada. Nada se pierde: lo anterior queda en el
+resumen mensual. Acotados también el nombre (48) y la marca (24) del snapshot.
+**Queda a confirmación de Fable en su verificación de F0.**
+
+## Lo siguiente (orden de §8.3): **F1a** — esquema de `foods.json`, pipeline y buscador sobre los 50
+Cero bloqueo externo. La ingesta de la TCAC (F1b) entra en paralelo cuando lleguen el permiso del
+ICBF y el visto bueno de Andrés Hyp.
