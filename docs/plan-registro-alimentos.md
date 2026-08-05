@@ -467,4 +467,29 @@ Verduras y tubérculos nativos (arracacha, cubios, ibias, ulluco, ñame, achira)
 leguminosas locales, y las **preparaciones típicas** (sancocho, ajiaco, tamal, changua), que son
 las que más valor agregan y no están en ninguna otra base. Va por lotes revisados, no en bloque.
 
-## Lo siguiente: **F2 — registrar el día** (E10, E11, E15)
+# §14 · F2 — EL ASESORADO YA REGISTRA LO QUE COME — avi-v442, en producción el 2026-08-05
+
+Primera fase con pantalla. Suite **609 → 614**, harness nuevo `_verify-foodlog` **10/10** (y **7/7**
+en modo degradado), `_prodcheck 442` verde.
+
+| Estipulación | Cómo quedó |
+|---|---|
+| **E9** | `foodCatalogLoad()` pide `foods.json` con el MISMO `?v=` con que lo precacheó el SW. Probado **bloqueando el archivo por red**: la app arranca, el registro sigue usable con los 50 de avi-core. |
+| **E10** | `foodLogProgress` compara **por macro**, no solo el total. El test lo verifica con **oráculo independiente**: recalcula desde el catálogo y los gramos, sin preguntarle a la app cuánto sirvió. |
+| **E11** | Estados no-felices con test: día sin registro · cantidad 0/negativa/absurda · alimento borrado del catálogo (el snapshot pinta igual) · borrar. |
+| **E15** | `scripts/nut-adherencia.mjs`, read-only, **deriva** la adherencia del propio registro. Sin tabla nueva, sin telemetría personal. |
+| **E17** | Decisiones del PO aplicadas: **solo Premium** (al tier libre no se le pinta el bloque) y **el coach ve el detalle**, con aviso claro ANTES de registrar; la aceptación viaja en el perfil. |
+| **E18** | Lógica pura en avi-core · un feature, un commit · tokens del sistema (naranja, el tercer acento de la tarjeta) · AVI_NEWS v442 declarado. |
+
+## 🔴 Dos lecciones del harness, las dos sobre mis propios errores
+1. **Mi primera sonda de FL1 llamaba a `renderHabitsCard` y se fabricaba su propio verde.** Al
+   corregirla para que solo OBSERVE lo que la app pinta sola, falló de inmediato. *Un gate que no
+   puede fallar no es un gate* — y esta vez el que lo escribió fui yo, sabiéndolo.
+2. **Fallaba porque el fixture no se parecía a producción.** La cuenta QA no tiene sesiones, así
+   que la app la trata como **«día 1» (v403) y OCULTA toda la tarjeta de hábitos a propósito**.
+   Quien registra lo que come es alguien que YA entrena: el fixture ahora le da historial. *Un
+   fixture que no se parece a producción fabrica defectos que no existen.*
+
+## Lo que sigue
+**F4 — la vista del coach** (es quien paga la app y hoy no ve nada de esto), luego **F3** (código
+de barras) y **F5** solo si lo autoriza la medición del §8.4. Y los lotes que faltan de la TCAC.
