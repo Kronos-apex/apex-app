@@ -423,4 +423,48 @@ Las frutas y preparaciones nuestras que la USDA no tiene: **lulo, curuba, tomate
 granadilla, feijoa, borojó, sancocho, ajiaco, tamal, changua**. Por eso la carta al ICBF sigue
 siendo la que completa el catálogo, aunque ya no bloquea nada.
 
+# §13 · LA TABLA DEL ICBF, CITANDO LA FUENTE — avi-v441, en producción el 2026-08-05
+
+**Decisión del PO (2026-08-05):** *«utiliza la lista del ICBF y cita la fuente»* — es la **opción
+(a) de E14**, que Fable dejó prevista: usarla como obra oficial citándola, sin esperar la respuesta
+al derecho de petición. **La carta sigue su curso** (`docs/carta-icbf-tcac.md`) y su respuesta
+puede simplificar el resto del trabajo. Catálogo **139 → 181 alimentos**.
+
+## 🔴 No hay ruta automática, y esto cambia el ritmo del trabajo
+Dos hallazgos medidos antes de transcribir nada:
+1. **El PDF oficial son 147 páginas ESCANEADAS COMO IMAGEN.** No tiene capa de texto: `pdftotext`
+   devuelve 147 páginas vacías. Extraer los 773 alimentos automáticamente exigiría OCR, y **un
+   dígito mal leído por OCR es un número falso en el plan de alguien** — exactamente la clase de
+   dato que ningún test caza porque es internamente coherente (lección de la yuca).
+2. **La API del portal de consulta del ICBF responde 401: exige cuenta de usuario.** Ahí me
+   detuve; no se buscó forma de saltarlo.
+
+**Consecuencia:** la tabla entra **por lotes transcritos y revisados**, leyendo las páginas. Cada
+alimento guarda su **código y su página** (`TCAC 2018 (ICBF) C045, pág. 58`) para poder
+re-verificarlo contra el original, y la **cita formal viaja dentro de `foods.json`**.
+
+## Lo que entró (42, lote 1: frutas + lácteos y cerdo típicos)
+Lulo · curuba · tomate de árbol · uchuva · guanábana · granadilla · chontaduro · feijoa ·
+mangostino · zapote · pitahaya (amarilla y roja) · mora de Castilla · gulupa · badea · guama ·
+mamoncillo · mamey · madroño · icaco · chirimoya · anón · papayuela · piñuela · pomarrosa ·
+tamarindo · noni · granada · banano bocadillo · harina de banano · harina de chontaduro ·
+**queso costeño · queso doble crema · suero costeño · kumis · chicharrón · pernil · costilla de
+cerdo cocida · hígado de cerdo** · manteca de cerdo · aceite de palma.
+
+**Nada de esto existe en la base de EE.UU.** — es exactamente para lo que sirve la tabla
+colombiana. Los 42 pasaron el cuadre kcal↔macros **sin una sola excepción**.
+
+## Cambios de infraestructura
+- El pipeline lee **varias fuentes** (`foods-usda.json` + `foods-tcac.json`): agregar una fuente
+  nueva es agregar un archivo, nada más.
+- La TCAC **no publica medidas caseras**, así que estos alimentos entran **sin `un`** — antes que
+  inventar un gramaje (E7). El registro pedirá gramos para ellos hasta que haya fuente.
+- Suite **607 → 609**, con sabotajes que verifican que nadie pueda perder el código/página ni
+  volver a nombres extranjeros.
+
+## Lo que falta de la TCAC (lotes siguientes)
+Verduras y tubérculos nativos (arracacha, cubios, ibias, ulluco, ñame, achira), cereales y
+leguminosas locales, y las **preparaciones típicas** (sancocho, ajiaco, tamal, changua), que son
+las que más valor agregan y no están en ninguna otra base. Va por lotes revisados, no en bloque.
+
 ## Lo siguiente: **F2 — registrar el día** (E10, E11, E15)
