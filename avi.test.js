@@ -3984,6 +3984,65 @@ test('nutGoalForClient: cada objetivo del asesorado tiene su rótulo de plan', (
   // y una adulta con el mismo objetivo SÍ recibe el rótulo real (control del candado)
   assert.strictEqual(nutGoalForClient('Recomposición', { age: 30, sex: 'F' }), 'recomposicion');
 });
+
+// 🔴 EL CANDADO DE MENORES TIENE QUE CUBRIR **LAS DOS** RUTAS QUE ELIGEN EL TEXTO.
+// Hallazgo de Sofía auditando v449 ANTES de publicarla: `nutGoalForClient` (estimación
+// automática) guardaba, pero la habitación de nutrición usa el rótulo del plan GUARDADO por el
+// coach, que salía de `inferNutGoal(nut)` — una función que ni siquiera recibe al cliente. Con un
+// toque del botón nuevo «Recomposición 🔄» sobre el plan de la asesorada de 15 años, la app le
+// explicaba «que cambie de qué está hecho ese peso: menos grasa y más músculo».
+// Puerta cerrada, ventana abierta: la misma familia que el filtro de lesiones y el calentamiento.
+test('🔴 a una menor no le llega lenguaje de composición por NINGUNA de las dos rutas', () => {
+  const menor = { age: 15, sex: 'F', goal: 'Recomposición' };
+  const adulta = { age: 30, sex: 'F', goal: 'Recomposición' };
+  // ruta A — sin plan del coach (estimación automática)
+  assert.strictEqual(nutGoalForClient(menor.goal, menor), 'mantenimiento');
+  // ruta B — CON plan guardado por el coach, que es la que estaba abierta
+  ['recomposicion', 'cutting', 'definicion'].forEach(g => {
+    assert.strictEqual(core.nutWhyKey({ goal: g }, menor), 'mantenimiento',
+      `un plan rotulado «${g}» le llega a una menor con su lenguaje de composición corporal`);
+    // CONTROL: a una adulta el rótulo NO se toca, o el candado sería un apagón
+    assert.strictEqual(core.nutWhyKey({ goal: g }, adulta), g);
+  });
+  // y el rótulo inferido del TEXTO libre del coach pasa por el mismo filtro
+  assert.strictEqual(core.nutWhyKey({ plan: 'Plan de recomposición con proteína alta' }, menor), 'mantenimiento');
+  assert.strictEqual(core.nutWhyKey({ plan: 'Déficit para perder grasa' }, menor), 'mantenimiento');
+  // sin pista no se inventa rótulo (ni para menor ni para adulta)
+  assert.strictEqual(core.nutWhyKey({ plan: 'come sano' }, menor), null);
+});
+
+test('🔴 la habitación de nutrición pasa por el candado, no por inferNutGoal a secas', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const crudas = (src.match(/GOAL_WHY\[inferNutGoal\(/g) || []);
+  assert.deepStrictEqual(crudas, [],
+    'elegir el texto con inferNutGoal a secas se salta el candado de menores: usa nutWhyKey(nut, cliente)');
+  assert.ok(/GOAL_WHY\[nutWhyKey\(nut,c\)\]/.test(src), 'la ruta del plan guardado debe resolver con nutWhyKey');
+  // El aviso al coach se calcula con la MISMA función que pinta lo que ve el destinatario (v437).
+  assert.ok(/const efectivo=nutWhyKey\(/.test(src),
+    'el aviso del coach no puede usar un oráculo distinto al que decide lo que lee su asesorada');
+});
+
+// 🔴 El editorial semanal vive en la pantalla de ENTRENO del asesorado, no en nutrición — y
+// también le hablaba de composición corporal a las menores: las dos de 15 y 16 años con objetivo
+// «Recomposición» leían «RECOMPOSICIÓN · Más fuerte y más definido» encima de sus rutinas, todas
+// las semanas, y el de 17 con «Perder grasa», «cada gota cuenta · encender tu metabolismo».
+test('🔴 el editorial semanal tampoco le habla de grasa ni de recomposición a un menor', () => {
+  const eMenor = core.weekEditorial({ age: 15, sex: 'F', goal: 'Recomposición', routines: [] });
+  assert.ok(!/RECOMPOSICI|definid/i.test(eMenor.kick + eMenor.title + eMenor.body),
+    `una menor lee «${eMenor.kick} · ${eMenor.title}»`);
+  const eMenorGrasa = core.weekEditorial({ age: 17, sex: 'M', goal: 'Perder grasa', routines: [] });
+  assert.ok(!/QUEMA|gota|metabolismo|grasa/i.test(eMenorGrasa.kick + eMenorGrasa.title + eMenorGrasa.body),
+    `un menor lee «${eMenorGrasa.kick} · ${eMenorGrasa.title}»`);
+  // CONTROL 1: a una ADULTA con el mismo objetivo sí le llega su editorial (si no, esto no
+  // sería un candado, sería haber borrado la feature).
+  const eAdulta = core.weekEditorial({ age: 30, sex: 'F', goal: 'Recomposición', routines: [] });
+  assert.ok(/RECOMPOSICI/i.test(eAdulta.kick), 'a una adulta el editorial de recomposición SÍ le llega');
+  // CONTROL 2: «Ganar músculo» se CONSERVA en un menor — habla de entrenar, no de cómo se ve el
+  // cuerpo. Son 2 de los 5 menores reales; quitárselo sería dejarlos sin editorial por nada.
+  const eMenorMusculo = core.weekEditorial({ age: 16, sex: 'F', goal: 'Ganar músculo', routines: [] });
+  assert.ok(/FUERZA Y CRECIMIENTO/.test(eMenorMusculo.kick), 'a un menor con objetivo de músculo no hay por qué quitarle su editorial');
+});
 // 🔴 El rótulo NO puede quedarse a medias: `nutGoalForClient` devuelve `recomposicion` y si no
 // existe la explicación, la plantilla de texto y la opción del formulario, «✨ Generar» deja el
 // texto del objetivo ANTERIOR — que es exactamente la mentira de v437 con otra cara.

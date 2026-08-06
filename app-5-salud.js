@@ -130,11 +130,15 @@ function nutGoalCheck(){
   const est=(typeof nutritionEstimate==='function')?nutritionEstimate(c,_nutPesoDe(c)):null;
   if(!est||!est.tdee)return apagar();
   const kcal=parseInt(document.getElementById('nut-kcal').value)||0;
-  const efectivo=inferNutGoal({
+  // El oráculo pasa por el MISMO candado que la pantalla de ella: si es menor, el rótulo de
+  // composición corporal no le llega, y el aviso al coach tiene que decir lo que ella VA A LEER
+  // — calcularlo con otra función es cómo el coach acaba aprobando una cosa y su asesorada
+  // leyendo otra (lección de v437).
+  const efectivo=nutWhyKey({
     goal:document.getElementById('nut-goal').value,
     plan:document.getElementById('nut-plan').value,
     avoid:document.getElementById('nut-avoid').value
-  });
+  },c);
   const mm=nutGoalMismatch(efectivo,kcal,est.tdee); if(!mm)return apagar();
   const DIR={deficit:'un d&eacute;ficit',superavit:'un super&aacute;vit',balance:'un balance'};
   const titulo=(GOAL_WHY[efectivo]||{}).title||efectivo;
@@ -240,8 +244,13 @@ const GOAL_WHY={
   // `mantenimiento`, cuyo texto dice «el objetivo no es subir ni bajar, sino SOSTENER tu
   // composición» — la negación exacta de lo que es una recomposición, que existe justamente para
   // cambiarla. Redactado por Sofía sobre el contenido que firmó Andrés; no agregar promesas.
-  recomposicion:{title:'🔄 Recomposición',
-    text:'Comes lo que gastas: ni más ni menos. Lo que sube es la proteína, porque aquí el objetivo no es que la balanza baje — es que cambie de qué está hecho ese peso: menos grasa y más músculo con el mismo número en la pesa. Por eso la balanza sola te va a confundir; lo que sí te va a mostrar el cambio es la cintura. Mídetela cada 3 semanas y compárala, no te peses todos los días.'},
+  // El título sigue el patrón «término / traducción» de sus cuatro hermanas — y era el único que
+  // no lo hacía, siendo la palabra más difícil de las cinco. Y el cuerpo dice «PUEDE quedarse
+  // igual», que es lo que firmó Andrés: la versión anterior («con el mismo número en la pesa»)
+  // lo afirmaba como un hecho y además se contradecía con el texto de la plantilla dos líneas
+  // más abajo, en la misma pantalla. Las dos correcciones son de Sofía.
+  recomposicion:{title:'🔄 Recomposición / Cambiar grasa por músculo',
+    text:'Comes lo que gastas: ni más ni menos. Lo que sube es la proteína, porque aquí el objetivo no es que la balanza baje — es que cambie de qué está hecho ese peso: menos grasa y más músculo. Tu peso puede quedarse igual, y eso está bien. Por eso la balanza sola te va a confundir; lo que sí te va a mostrar el cambio es la cintura: mídetela cada 3 semanas y compárala, en vez de pesarte todos los días.'},
 };
 // inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
@@ -504,7 +513,7 @@ function openNutritionRoom(clientId){
     // El titular se DERIVA de sus componentes, nunca se guarda aparte.
     const _base=(typeof nutBaseFor==='function')?nutBaseFor(c,nut,_nutPesoDe(c)):null;
     const _kcal=(_base&&_base.kcalObj)?_base.kcalObj:nut.kcal;
-    d={kcal:_kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[inferNutGoal(nut)]};
+    d={kcal:_kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c)]};
   } else {
     const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){

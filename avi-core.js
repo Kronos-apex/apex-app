@@ -2753,9 +2753,27 @@ const NUT_GOAL_BY_CLIENT = {
 //      recomponer, y el texto de una recomposición es lenguaje de composición corporal, que es
 //      exactamente lo que no debe leer una niña de 15 años. Se le habla de salud general.
 function nutGoalForClient(goal, client) {
-  const g = NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento';
-  if (client && isMenor(client) && (g === 'cutting' || g === 'definicion' || g === 'recomposicion')) return 'mantenimiento';
-  return g;
+  return nutMinorSafeGoal(NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento', client);
+}
+
+// 🔴 EL CANDADO DE MENORES VIVE AQUÍ, en un solo sitio, porque hay DOS caminos por los que se
+// elige qué explicación lee el asesorado y el candado solo estaba en uno: cuando el coach TIENE
+// un plan guardado, el rótulo salía de `inferNutGoal(nut)`, que ni siquiera recibe al cliente
+// (`app-5-salud.js`, la habitación de nutrición). Hallazgo de Sofía al auditar v449 antes de
+// publicarla: con un toque del botón «Recomposición 🔄» sobre el plan de una niña de 15 años, la
+// app le explicaba «que cambie de qué está hecho ese peso: menos grasa y más músculo» — el
+// lenguaje de composición corporal que el dictamen prohíbe justamente en lo que ella lee.
+// La regla: el candado va donde se ELIGE EL TEXTO, no donde se infiere el objetivo.
+const NUT_GOALS_COMPOSICION = ['cutting', 'definicion', 'recomposicion'];
+function nutMinorSafeGoal(goalKey, client) {
+  if (!goalKey) return goalKey;
+  if (client && isMenor(client) && NUT_GOALS_COMPOSICION.indexOf(goalKey) !== -1) return 'mantenimiento';
+  return goalKey;
+}
+// El rótulo de un plan YA GUARDADO por el coach. Es la ruta hermana de `nutGoalForClient` (que
+// sirve a la estimación automática) y pasa por el MISMO candado.
+function nutWhyKey(nut, client) {
+  return nutMinorSafeGoal(inferNutGoal(nut), client);
 }
 
 // ── ¿El RÓTULO del plan contradice sus propios números? Un plan rotulado «mantenimiento» que
@@ -5055,7 +5073,15 @@ function applyShockOption(routines, exName, option, lib) {
 function weekEditorial(client) {
   client = client || {};
   const trainDays = (client.routines || []).filter(r => r.day !== 'Libre').length;
-  const g = (client.goal || '').toLowerCase();
+  // 🔴 A un MENOR no se le habla de grasa ni de recomposición: cae en la rama neutra. Las dos
+  // asesoradas de 15 y 16 años con objetivo «Recomposición» leían cada semana «RECOMPOSICIÓN ·
+  // Más fuerte y más definido» encima de sus rutinas, y el de 17 con objetivo de perder grasa,
+  // «cada gota cuenta · encender tu metabolismo». Es la misma regla del dictamen que ya rige la
+  // nutrición (cero lenguaje de composición corporal en lo que lee una menor), aplicada al texto
+  // que la app pinta en su pantalla de entreno. «Ganar músculo» se conserva: habla de entrenar,
+  // no de cómo se ve el cuerpo. Andrés dejó la revisión de los textos marcada como pendiente.
+  const _g = (client.goal || '').toLowerCase();
+  const g = (isMenor(client) && /grasa|perder|baj|adelgaz|recompos/.test(_g)) ? '' : _g;
   let kick, title, body;
   if (/grasa|perder|baj|adelgaz/.test(g)) {
     kick = 'QUEMA Y CONSTANCIA'; title = 'Esta semana, cada gota cuenta';
@@ -5333,6 +5359,8 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogActiveDays,
     inferNutGoal,
     nutGoalForClient,
+    nutMinorSafeGoal,
+    nutWhyKey,
     nutKcalDirection,
     nutGoalMismatch,
     getIccLabel,
