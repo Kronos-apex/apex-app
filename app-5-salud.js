@@ -2,26 +2,26 @@
 
 
 const NUT_TEMPLATES=[
-  {label:'Cutting 🔻',goal:'cutting',kcal:1800,prot:160,carbs:160,fat:55,water:10,meals:'4',
+  {label:'Cutting 🔻',goal:'cutting',prot:160,carbs:160,fat:55,water:10,meals:'4',
    plan:'Déficit calórico moderado para perder grasa preservando músculo.\nPrioriza proteína en cada comida.',
    examples:'Desayuno: 3 claras + 1 huevo revuelto con avena y fruta\nAlmuerzo: Arroz integral, pechuga a la plancha y ensalada\nMerienda: Yogur griego con frutas\nCena: Sopa de verduras con atún al natural',
    avoid:'Azúcares simples, frituras, bebidas azucaradas, alcohol'},
-  {label:'Volumen 💪',goal:'volumen',kcal:3200,prot:180,carbs:380,fat:80,water:12,meals:'5',
+  {label:'Volumen 💪',goal:'volumen',prot:180,carbs:380,fat:80,water:12,meals:'5',
    plan:'Superávit calórico limpio para ganar masa muscular con mínima grasa.\nDistribuye las comidas cada 3-4 horas.',
    examples:'Desayuno: Avena con leche, banano y 3 huevos revueltos\nMerienda AM: Batido de proteína con avena y mantequilla de maní\nAlmuerzo: Arroz, pasta o papa + carne roja o pollo + aguacate\nMerienda PM: Yogur griego con granola y frutas\nCena: Pollo o atún con camote y brócoli',
    avoid:'Comida chatarra, azúcares procesados en exceso'},
-  {label:'Mantenimiento ⚖️',goal:'mantenimiento',kcal:2400,prot:150,carbs:270,fat:75,water:9,meals:'3',
+  {label:'Mantenimiento ⚖️',goal:'mantenimiento',prot:150,carbs:270,fat:75,water:9,meals:'3',
    plan:'Balance calórico para mantener el peso y la composición corporal actual.\nCome variado y equilibrado.',
    examples:'Desayuno: Huevos, tostadas integrales y fruta\nAlmuerzo: Proteína + carbohidrato complejo + vegetales\nCena: Proteína ligera con ensalada abundante',
    avoid:'Exceso de ultraprocesados y azúcares refinados'},
-  {label:'Definición 🔥',goal:'definicion',kcal:2000,prot:175,carbs:185,fat:60,water:11,meals:'4',
+  {label:'Definición 🔥',goal:'definicion',prot:175,carbs:185,fat:60,water:11,meals:'4',
    plan:'Déficit moderado con alta proteína para definir músculo y perder grasa.\nIdeal para quienes ya tienen base muscular.',
    examples:'Desayuno: Claras de huevo, avena y café sin azúcar\nAlmuerzo: Pollo o pescado, arroz integral y vegetales al vapor\nMerienda: Atún con galletas de arroz\nCena: Ensalada grande con proteína magra',
    avoid:'Sodio en exceso, alcohol, azúcares, grasas saturadas'},
   // La recomposición NECESITA su propia plantilla, no solo su rótulo: `_nutSwapTemplateText`
   // busca los textos por clave de objetivo, y sin esta entrada un plan de recomposición se
   // quedaba con el texto de «mantenimiento» — el defecto de v437 con otra cara.
-  {label:'Recomposición 🔄',goal:'recomposicion',kcal:2350,prot:180,carbs:250,fat:70,water:10,meals:'4',
+  {label:'Recomposición 🔄',goal:'recomposicion',prot:180,carbs:250,fat:70,water:10,meals:'4',
    plan:'Mantenimiento calórico con la proteína alta: comes lo que gastas.\nEl peso puede quedarse igual — lo que cambia es de qué está hecho.\nMide la cintura cada 3 semanas, no la balanza todos los días.',
    examples:'Desayuno: Huevos con arepa y fruta\nAlmuerzo: Arroz, carne o pollo, fríjol y ensalada\nMerienda: Yogur griego con maní\nCena: Proteína magra con verduras y un carbohidrato pequeño',
    avoid:'Saltarse comidas, alcohol en exceso, ultraprocesados'},
@@ -29,7 +29,16 @@ const NUT_TEMPLATES=[
 
 function applyNutTemplate(idx){
   const t=NUT_TEMPLATES[idx];if(!t)return;
-  document.getElementById('nut-kcal').value=t.kcal;
+  // 🔴 El titular se DERIVA de sus macros, NUNCA se guarda aparte (regla de v435/v444).
+  // Las plantillas cargaban su propio `kcal` y cuatro de las cinco no cuadraban con sus
+  // propios gramos: la de Volumen por **240 kcal**, que es EXACTAMENTE el desfase del plan
+  // de Nataly que se cazo en v435. O sea que la causa raiz nunca fue su plan: era este
+  // boton. Y el remate: como el plato se arma con los MACROS, el asesorado leia 2.960
+  // mientras el coach habia escrito 3.200, y encima la ficha le saltaba al coach con
+  // «tu plan dice 3.200 pero sus macros suman 2.960» — la app culpandolo de haber pulsado
+  // nuestro propio boton. Los gramos NO se tocan (esos son de Andres); se borra el numero
+  // que sobraba. Hallazgo de Isabella auditando v449.
+  document.getElementById('nut-kcal').value=nutMacroKcal(t);
   document.getElementById('nut-prot').value=t.prot;
   document.getElementById('nut-carbs').value=t.carbs;
   document.getElementById('nut-fat').value=t.fat;

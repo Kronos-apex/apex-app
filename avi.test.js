@@ -4068,6 +4068,25 @@ test('🔴 «recomposicion» tiene explicación, plantilla y opción, y NO dice 
   opciones.forEach(k => assert.ok(new RegExp("goal:'" + k + "'").test(salud), `el objetivo «${k}» no tiene plantilla de texto`));
 });
 
+// 🔴 UNA PLANTILLA NO PUEDE TRAER SU PROPIO TITULAR. Es la regla de v435/v444 («el titular se
+// DERIVA de sus componentes, nunca se guarda aparte») aplicada al último sitio donde quedaba una
+// segunda verdad. Medido el 2026-08-06: 4 de las 5 plantillas tenían un `kcal` que no cuadraba con
+// sus propios gramos, y la de Volumen se desviaba **240 kcal** — el mismo número exacto del plan
+// de Nataly que se cazó en v435. La causa raíz nunca fue su plan: era este botón.
+test('🔴 ninguna plantilla de nutrición guarda un titular aparte de sus macros', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const conKcal = src.match(/goal:'\w+',kcal:\d+/g) || [];
+  assert.deepStrictEqual(conKcal, [],
+    'una plantilla con `kcal` propio es una segunda verdad que acaba contradiciendo a sus gramos');
+  assert.ok(/nut-kcal'\)\.value=nutMacroKcal\(t\)/.test(src),
+    'aplicar una plantilla debe DERIVAR el titular de sus macros, no copiar un número guardado');
+  // Y la aritmética de la que depende, con el control de que de verdad suma.
+  assert.strictEqual(core.nutMacroKcal({ prot: 180, carbs: 380, fat: 80 }), 2960);
+  assert.notStrictEqual(core.nutMacroKcal({ prot: 180, carbs: 380, fat: 80 }), 3200,
+    'los 3.200 escritos a mano eran 240 kcal más de lo que entregan esos gramos');
+});
+
 test('nutKcalDirection: déficit / superávit / balance con tolerancia del 5%', () => {
   assert.strictEqual(nutKcalDirection(1730, 2230), 'deficit');
   assert.strictEqual(nutKcalDirection(2600, 2230), 'superavit');
