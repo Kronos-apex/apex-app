@@ -1545,9 +1545,21 @@ html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; le
    arriba-izquierda (zoom rompe el centrado del flex en legacy) van SOLO en motores legacy. */
 html[data-fs="lg"] .md{ zoom:1.18; }
 html[data-fs="xl"] .md{ zoom:1.40; }
+/* 🔴 LA ALTURA SE COMPENSA SIEMPRE, EL ANCHO SOLO EN LEGACY — son dos ejes distintos y estaban
+   metidos en el mismo guard. Como el `zoom` va SIEMPRE pero `max-height:calc(90vh/N)` vivía solo
+   bajo [data-zoomw="scale"], en un motor estandarizado el modal se pintaba a 90vh × 1.40 = 126vh:
+   medido a 360×800 con data-fs="xl", 1008 px de alto en un viewport de 800, recortado 104 arriba y
+   104 abajo. Y como .mdbg centra con flex y NO tiene scroll propio, lo que desborda es
+   INALCANZABLE: «💾 Guardar» quedaba fuera de la pantalla en los CUATRO modales de trabajo — el
+   coach con letra grande no podía crear un asesorado, ni una rutina, ni guardar un plan ni sus
+   ajustes. El ancho sí es específico del motor (está verificado arriba: compensarlo en un motor
+   estandarizado dejaba 50% de hueco), la altura no lo es. Regresión: `_repro-modal-xl.mjs`.
+   Hallazgo de Diego en la auditoría de diseño del 2026-08-06. */
+html[data-fs="lg"] .md{ max-height:calc(90vh/1.18); }
+html[data-fs="xl"] .md{ max-height:calc(90vh/1.40); }
 html[data-zoomw="scale"][data-fs="lg"] .mdbg.on, html[data-zoomw="scale"][data-fs="xl"] .mdbg.on{ align-items:flex-start; justify-content:flex-start; }
-html[data-zoomw="scale"][data-fs="lg"] .md{ width:calc(100%/1.18); transform-origin:left top; max-height:calc(90vh/1.18); }
-html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-origin:left top; max-height:calc(90vh/1.40); }
+html[data-zoomw="scale"][data-fs="lg"] .md{ width:calc(100%/1.18); transform-origin:left top; }
+html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-origin:left top; }
 
 /* Accesibilidad: respetar preferencia de reducir movimiento */
 @media(prefers-reduced-motion:reduce){
