@@ -1578,9 +1578,7 @@ function renderNutReviewCard(c){
   if(typeof nutPlanReview!=='function'||!c)return;
   // El coach también se revisa a sí mismo: su plan es uno más y puede estar igual de desviado.
   try{
-    let peso=c.weight;
-    const bw=(DB.bodyweight||{})[c.id];
-    if(Array.isArray(bw)&&bw.length){ const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg); }
+    const peso=nutWeightFor(c,(DB.bodyweight||{})[c.id]);
     const _nut=(DB.nutrition||{})[c.id];
     // v435: el titular escrito y la suma de SUS PROPIOS macros pueden no cuadrar (medido
     // 2026-08-04: 6 de 10 planes; el de Nataly por 240 kcal/día). El plato se arma con los MACROS,
@@ -1801,9 +1799,7 @@ function _flCoachTargets(c){
   // una cuenta paralela: si se separan, coach y asesorado ven planes distintos (lección v435).
   try{
     if(typeof nutBaseFor!=='function'||typeof nutWeekTargets!=='function')return null;
-    let peso=c.weight;
-    const bw=(DB.bodyweight||{})[c.id];
-    if(Array.isArray(bw)&&bw.length){const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg);}
+    const peso=nutWeightFor(c,(DB.bodyweight||{})[c.id]);
     const base=nutBaseFor(c,(DB.nutrition||{})[c.id],peso);
     const sem=base?nutWeekTargets(base,c.routines):null;
     if(!sem)return null;

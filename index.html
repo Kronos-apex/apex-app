@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=448">
+<link rel="stylesheet" href="styles.css?v=449">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1183,19 +1183,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=448"></script>
-<script src="muscle-map.js?v=448"></script>
-<script src="exercise-muscles.js?v=448"></script>
+<script src="avi-core.js?v=449"></script>
+<script src="muscle-map.js?v=449"></script>
+<script src="exercise-muscles.js?v=449"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=448"></script>
-<script src="app-2-login.js?v=448"></script>
-<script src="app-3-coach.js?v=448"></script>
-<script src="app-4-entreno.js?v=448"></script>
-<script src="app-5-salud.js?v=448"></script>
-<script src="app-6-extra.js?v=448"></script>
-<script src="app-7-community.js?v=448"></script>
+<script src="app-1-infra.js?v=449"></script>
+<script src="app-2-login.js?v=449"></script>
+<script src="app-3-coach.js?v=449"></script>
+<script src="app-4-entreno.js?v=449"></script>
+<script src="app-5-salud.js?v=449"></script>
+<script src="app-6-extra.js?v=449"></script>
+<script src="app-7-community.js?v=449"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1292,6 +1292,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <button type="button" class="btn bg bsm" onclick="applyNutTemplate(1)">Volumen 💪</button>
         <button type="button" class="btn bg bsm" onclick="applyNutTemplate(2)">Mantenimiento ⚖️</button>
         <button type="button" class="btn bg bsm" onclick="applyNutTemplate(3)">Definición 🔥</button>
+        <button type="button" class="btn bg bsm" onclick="applyNutTemplate(4)">Recomposición 🔄</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
@@ -1311,6 +1312,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <option value="definicion">Definición 🔥</option>
         <option value="cutting">Cutting / Pérdida de grasa 🔻</option>
         <option value="mantenimiento">Mantenimiento / Salud ⚖️</option>
+        <option value="recomposicion">Recomposición 🔄</option>
       </select>
       <div id="nut-goal-nota" style="display:none;background:var(--orl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ort);margin-top:8px;line-height:1.5"></div>
     </div>

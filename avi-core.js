@@ -2719,11 +2719,14 @@ function feelingLabel(n) { const f = WF_FEELINGS.find(x => x.v === n); return f 
 
 // ── Objetivo del plan nutricional: usa nut.goal si está fijado; si no, lo infiere
 // del texto (planes guardados antes del campo). Devuelve null si no hay pista. ──
-const _NUT_GOALS = ['volumen', 'definicion', 'cutting', 'mantenimiento'];
+const _NUT_GOALS = ['volumen', 'definicion', 'cutting', 'mantenimiento', 'recomposicion'];
 function inferNutGoal(nut) {
   if (!nut) return null;
   if (nut.goal && _NUT_GOALS.indexOf(nut.goal) !== -1) return nut.goal;
   const t = ((nut.plan || '') + ' ' + (nut.avoid || '')).toLowerCase();
+  // «recomposición» va ANTES que mantenimiento: su texto habla de mantener las calorías y
+  // caería en el cubo equivocado, que es justo el que NIEGA lo que es una recomposición.
+  if (/recomposici/.test(t)) return 'recomposicion';
   if (/cutting/.test(t)) return 'cutting';
   if (/definici|definir/.test(t)) return 'definicion';
   if (/super[áa]vit|volumen|ganar m[áa]sa|masa muscular|ganancia/.test(t)) return 'volumen';
@@ -2739,15 +2742,19 @@ const NUT_GOAL_BY_CLIENT = {
   'Perder grasa': 'cutting',
   'Ganar músculo': 'volumen',
   'Fuerza': 'volumen',
-  'Recomposición': 'mantenimiento',
+  'Recomposición': 'recomposicion',
   'Resistencia': 'mantenimiento',
 };
-// `client` es opcional y sirve para UNA cosa: si es menor de edad y su objetivo implicaría
-// déficit, el rótulo tiene que decir MANTENIMIENTO — porque eso es lo que el motor le entrega
-// (ver `nutritionEstimate`). Cambiar el número y dejar el rótulo viejo es el defecto de v437.
+// `client` es opcional y sirve para dos cosas, las dos del dictamen de Andrés Hyp:
+//  (1) si es menor de edad y su objetivo implicaría déficit, el rótulo dice MANTENIMIENTO —
+//      porque eso es lo que el motor le entrega (ver `nutritionEstimate`). Cambiar el número y
+//      dejar el rótulo viejo es el defecto de v437.
+//  (2) «Recomposición» en un menor de peso normal NO es un objetivo: no tiene nada que
+//      recomponer, y el texto de una recomposición es lenguaje de composición corporal, que es
+//      exactamente lo que no debe leer una niña de 15 años. Se le habla de salud general.
 function nutGoalForClient(goal, client) {
   const g = NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento';
-  if (client && isMenor(client) && (g === 'cutting' || g === 'definicion')) return 'mantenimiento';
+  if (client && isMenor(client) && (g === 'cutting' || g === 'definicion' || g === 'recomposicion')) return 'mantenimiento';
   return g;
 }
 
@@ -2756,7 +2763,9 @@ function nutGoalForClient(goal, client) {
 // en balance: lo que gastas» encima de un déficit. Devuelve null si concuerdan, o
 // {dice, real} con la dirección que anuncia el rótulo y la que hacen los números.
 // Tolerancia ±5% del gasto: redondeos y ciclado calórico no son una contradicción. ──
-const NUT_GOAL_DIR = { cutting: 'deficit', definicion: 'deficit', volumen: 'superavit', mantenimiento: 'balance' };
+// La dirección calórica de una RECOMPOSICIÓN es 0 (Andrés Hyp, punto 2 del dictamen): el ±200
+// desaparece dentro del error de la propia estimación. Lo que la dirige es la proteína alta.
+const NUT_GOAL_DIR = { cutting: 'deficit', definicion: 'deficit', volumen: 'superavit', mantenimiento: 'balance', recomposicion: 'balance' };
 const NUT_DIR_TOL = 0.05;
 function nutKcalDirection(kcal, tdee) {
   const k = parseFloat(kcal), t = parseFloat(tdee);
@@ -2858,7 +2867,10 @@ function kcalTargetFor(goal, tdee) {
   switch (goal) {
     case 'Perder grasa':  deficit = -500; label = 'Déficit de 500 kcal/día (aprox. 0.5 kg/sem)'; break;
     case 'Ganar músculo': deficit = +350; label = 'Superávit de 350 kcal/día (ganancia limpia)'; break;
-    case 'Recomposición': deficit = 0;    label = 'Mantenimiento + ciclado calórico'; break;
+    // Recomposición = mantenimiento calórico con la proteína arriba. NO lleva ±200: ese ajuste
+    // desaparece dentro del error de la propia estimación (Mifflin × factor es ±10-15%). Lo que
+    // la dirige es la proteína y la medición de cintura cada 3-4 semanas (dictamen, punto 2).
+    case 'Recomposición': deficit = 0;    label = 'Mantenimiento calórico con proteína alta'; break;
     case 'Fuerza':        deficit = +200; label = 'Superávit moderado para rendimiento'; break;
     case 'Resistencia':   deficit = 0;    label = 'Mantenimiento con foco en carbohidratos'; break;
     default:              deficit = 0;    label = 'Mantenimiento calórico'; break;
@@ -2866,15 +2878,16 @@ function kcalTargetFor(goal, tdee) {
   return { kcalObj: tdee ? tdee + deficit : null, label, deficit };
 }
 
-// Macros desde las calorías objetivo: proteína por kg (2.2 g si músculo/fuerza,
-// si no 1.8), grasa 0.9 g/kg, el resto a carbohidratos (mínimo 0). Sin kcal o
-// sin peso → null. Devuelve { prot_g, fat_g, carb_g, kcal }.
+// Macros desde las calorías objetivo: proteína por kg (`nutProtPerKg`), grasa
+// 0.9 g/kg, el resto a carbohidratos con piso propio. Sin kcal o sin peso →
+// null. Devuelve { prot_g, fat_g, carb_g, kcal }.
 // ── PISOS FISIOLÓGICOS de una recomendación calórica (Andrés Hyp, 2026-08-03) ──
 // Nadie recibe un objetivo por debajo de su metabolismo basal ni del mínimo por sexo.
 const NUT_KCAL_FLOOR_F = 1200;
 const NUT_KCAL_FLOOR_M = 1500;
 const NUT_CARB_MIN_G_KG = 2.0;   // el carbohidrato es un PISO de rendimiento, no un residuo
-const NUT_BMI_ADJUST = 30;       // desde aquí, proteína y grasa van sobre peso de REFERENCIA
+const NUT_BMI_RAMPA_LO = 28;     // debajo de aquí se dosifica sobre el peso real
+const NUT_BMI_RAMPA_HI = 32;     // desde aquí, el ajuste completo (ideal + 0,25 × exceso)
 const NUT_BMI_IDEAL = 22.5;
 
 function nutKcalFloor(tmb, sex) {
@@ -2882,22 +2895,54 @@ function nutKcalFloor(tmb, sex) {
   return Math.max(abs, Math.round(parseFloat(tmb) || 0));
 }
 
-// Peso de REFERENCIA para dosificar proteína y grasa. Por encima de IMC 30, dosificar sobre el
-// peso TOTAL dispara los dos macros hasta que no queda espacio para el carbohidrato — es lo que
-// dejaba a una mujer de 82 kg con 0 g de carbohidrato. Peso ajustado = ideal + 0,25 × exceso.
+// Peso de REFERENCIA para dosificar proteína y grasa. Dosificar sobre el peso TOTAL a partir de
+// cierta grasa corporal dispara los dos macros hasta que no queda espacio para el carbohidrato
+// — es lo que dejaba a una mujer de 82 kg con 0 g de carbohidrato. El ajuste completo es
+// `ideal + 0,25 × exceso`, con el ideal en IMC 22,5.
+// 🔴 Ese ajuste NO puede entrar de golpe en un umbral. Verificado el 2026-08-05: con el corte
+// seco en IMC 30, **200 gramos de báscula cambiaban 30 g de proteína** — una mujer de 156 cm a
+// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y muerde al revés de como debería: Claudia está en
+// IMC 30,4, y si baja 1,1 kg —que es el propósito de su plan— su proteína SALTA de 131 a 160 sin
+// ninguna razón que ella pueda ver. Al PO ya le pasó cruzando de 90 a 92 kg en julio.
+// La rampa lo hace CONTINUO entre IMC 28 y 32 (146→145 al cruzar, en vez de 160→130). Es
+// idéntica a la fórmula anterior por encima de 32 y por debajo de 28: solo cambia la franja que
+// estaba rota. Regla de Andrés Hyp, punto 6 del dictamen.
 function nutRefWeight(weightKg, heightCm) {
   const w = parseFloat(weightKg);
   if (!(w > 0)) return null;
   const h = parseFloat(heightCm);
   if (!(h > 0)) return w;                       // sin estatura no hay IMC: se queda como estaba
   const m = h / 100, imc = w / (m * m);
-  if (imc < NUT_BMI_ADJUST) return w;
+  const t = Math.max(0, Math.min(1, (imc - NUT_BMI_RAMPA_LO) / (NUT_BMI_RAMPA_HI - NUT_BMI_RAMPA_LO)));
+  if (t <= 0) return w;                         // debajo de IMC 28: el peso real, sin tocar
   const ideal = NUT_BMI_IDEAL * m * m;
-  return Math.round((ideal + 0.25 * (w - ideal)) * 10) / 10;
+  const ajustado = ideal + 0.25 * (w - ideal);  // el ajuste COMPLETO (la fórmula de v428)
+  // Los dos extremos se devuelven TAL CUAL, no como resultado de la interpolación: `w - 1×(w-a)`
+  // es `a` en álgebra pero no bit a bit en punto flotante, y esa diferencia de última cifra caía
+  // del otro lado del redondeo a 0,1 kg en IMC ~48-54. La identidad fuera de la franja tiene que
+  // ser por construcción, no por suerte.
+  if (t >= 1) return Math.round(ajustado * 10) / 10;
+  return Math.round((w - t * (w - ajustado)) * 10) / 10;
 }
 
-// Macros desde las calorías objetivo: proteína por kg (2.2 g si músculo/fuerza, si no 1.8) y
-// grasa 0.9 g/kg sobre el peso de REFERENCIA; el carbohidrato tiene PISO propio.
+// ── Cuánta proteína por kilo de peso de REFERENCIA ────────────────────────────────────────────
+// 🔴 Regla de Andrés Hyp (punto 1 del dictamen, 2026-08-05): **2,2 g/kg si el objetivo depende de
+// construir o CONSERVAR músculo; 1,8 si no.** Antes el 2,2 se daba solo a «músculo» y «fuerza», lo
+// que metía a «Perder grasa» en el cubo bajo — que es donde la proteína alta importa MÁS, porque
+// ahí hay un déficit de 500 kcal tirando del músculo. Y encima la app le decía a esa persona
+// «mantenemos la proteína alta para no perder lo ganado» encima de la dosis más baja del motor:
+// la mentira de v437 otra vez. «Recomposición» estaba en el mismo hueco.
+// No 2,4 (aunque las tablas lo permitan): el carbohidrato paga la diferencia y es el combustible
+// del estímulo; entre 2,2 y 2,4 se gana poco y en esta población nadie pesa al gramo.
+const NUT_PROT_ALTA = ['Ganar músculo', 'Fuerza', 'Recomposición', 'Perder grasa'];
+const NUT_PROT_G_KG_ALTA = 2.2;
+const NUT_PROT_G_KG_BASE = 1.8;   // se queda con Resistencia y Salud general
+function nutProtPerKg(goal) {
+  return NUT_PROT_ALTA.indexOf(goal) !== -1 ? NUT_PROT_G_KG_ALTA : NUT_PROT_G_KG_BASE;
+}
+
+// Macros desde las calorías objetivo: proteína (`nutProtPerKg`) y grasa 0.9 g/kg sobre el peso
+// de REFERENCIA (`nutRefWeight`); el carbohidrato tiene PISO propio.
 // 🔴 Antes el carbohidrato era «lo que sobre, mínimo 0», y ese `Math.max(0, …)` se tragaba el
 // desbordamiento EN SILENCIO: medido el 2026-08-03, una mujer de 50 años, 48 kg, 150 cm,
 // sedentaria y con objetivo «Perder grasa» recibía **708 kcal/día con 0 g de carbohidrato** —
@@ -2908,7 +2953,7 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal, heightCm) {
   const w = parseFloat(weightKg);
   if (!kcalObj || !w) return null;
   const ref = nutRefWeight(w, heightCm);
-  const prot_g = Math.round(ref * (goal === 'Ganar músculo' || goal === 'Fuerza' ? 2.2 : 1.8));
+  const prot_g = Math.round(ref * nutProtPerKg(goal));
   const fat_g = Math.round(ref * 0.9);
   const carbMin = Math.round(ref * NUT_CARB_MIN_G_KG);
   let kcal = kcalObj;
@@ -2920,6 +2965,42 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal, heightCm) {
     kcal = prot_g * 4 + fat_g * 9 + carb_g * 4;
   }
   return { prot_g, fat_g, carb_g, kcal };
+}
+
+// ── El peso VIGENTE de una persona ────────────────────────────────────────────────────────────
+// 🔴 Fuente ÚNICA de «cuánto pesa hoy». Existía repetida en 5 sitios como `bw[bw.length-1]`, y
+// ese índice es EL EXTREMO EQUIVOCADO: `saveBodyweight` guarda con `unshift` + `sort` DESCENDENTE
+// (app-4-entreno.js), así que el último elemento del arreglo es el registro MÁS VIEJO. Medido
+// contra producción el 2026-08-06: los 5 historiales con más de un registro están en orden
+// descendente y 4 personas recibían un plan calculado sobre un peso que ya no era el suyo —
+// Nataly con 54 kg cuando pesa 59,5 (85 kcal y 12 g de proteína de diferencia), Kathe con los
+// 85 kg de mayo cuando ya bajó a 83, Samuel con 88 en vez de 86. O sea: **pesarse no movía el
+// plan**, que es justo lo que el plan promete. La app leía el primer peso de la persona, para
+// siempre. Quinta superficie de la familia v435/v444/v448.
+// Se decide por FECHA, no por posición, para no depender del orden en que llegue el arreglo.
+// Si ningún registro trae fecha usable, gana el índice 0 (el convenio de escritura).
+function lastBodyweightKg(bwList) {
+  if (!Array.isArray(bwList) || !bwList.length) return null;
+  let kgGanador = null, tGanador = -Infinity, kgSinFecha = null;
+  for (const e of bwList) {
+    if (!e) continue;
+    const kg = parseFloat(e.kg);
+    if (!(kg > 0)) continue;
+    if (kgSinFecha == null) kgSinFecha = kg;
+    // `new Date(null)` devuelve EPOCH, no Invalid Date: hay que atajar el nulo ANTES de parsear.
+    if (e.date == null || e.date === '') continue;
+    const t = new Date(e.date).getTime();
+    if (!Number.isFinite(t)) continue;
+    if (t > tGanador) { tGanador = t; kgGanador = kg; }
+  }
+  return kgGanador != null ? kgGanador : kgSinFecha;
+}
+
+// El peso con el que se le calcula el plan a alguien: el último que registró y, si nunca
+// registró ninguno, el de su ficha (que envejece — por eso es el respaldo, no la fuente).
+function nutWeightFor(client, bwList) {
+  const ultimo = lastBodyweightKg(bwList);
+  return ultimo != null ? ultimo : (client && client.weight);
 }
 
 // ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
@@ -5266,6 +5347,9 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_CARB_MIN_G_KG,
     nutKcalFloor,
     nutRefWeight,
+    nutProtPerKg,
+    lastBodyweightKg,
+    nutWeightFor,
     nutritionEstimate,
     NUT_FOODS,
     NUT_FOOD_BY_ID,

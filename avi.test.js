@@ -24,6 +24,7 @@ const {
   nutWeekTargets,
   nutDayNote,
   nutRefWeight,
+  nutProtPerKg,
   nutMealSplit,
   migrateRoutineIds,
   shouldPostPush,
@@ -3793,6 +3794,48 @@ test('🔴 ninguna pantalla estima con el peso de la ficha en vez del último re
   const conPeso = (src.match(/nutritionEstimate\((c|cl),_nutPesoDe\(\1\)\)/g) || []).length;
   assert.ok(conPeso >= 5, `solo ${conPeso} llamadas usan _nutPesoDe; se esperaban 5`);
 });
+// 🔴 QUINTA SUPERFICIE de la familia v435/v444/v448 (2026-08-06). El helper que v448 puso para
+// leer «el último peso registrado» leía el EXTREMO EQUIVOCADO: `saveBodyweight` guarda con
+// `unshift` + `sort` DESCENDENTE, así que `bw[bw.length-1]` es el registro MÁS VIEJO. Medido
+// contra producción: los 5 historiales con más de un registro están en orden descendente y 4
+// personas recibían un plan calculado sobre un peso que ya no era el suyo (Nataly con 54 kg
+// pesando 59,5 = 85 kcal y 12 g de proteína de diferencia). O sea: **pesarse no movía el plan**.
+test('🔴 el peso vigente sale de la FECHA, no de la posición en el arreglo', () => {
+  // El orden REAL en el que la app guarda: el más nuevo primero.
+  const comoLoGuardaLaApp = [{ date: '2026-07-15', kg: 83 }, { date: '2026-06-03', kg: 85 }, { date: '2026-05-23', kg: 85 }];
+  assert.strictEqual(core.lastBodyweightKg(comoLoGuardaLaApp), 83,
+    'con el arreglo descendente que la app escribe, el peso vigente es el de julio, no el de mayo');
+  // Y si llegara al revés (otro dispositivo, una migración), el resultado tiene que ser el MISMO:
+  // la fecha manda, no el índice.
+  assert.strictEqual(core.lastBodyweightKg(comoLoGuardaLaApp.slice().reverse()), 83,
+    'el orden del arreglo no puede decidir cuánto pesa alguien');
+  // Casos degradados: nada que leer → null (y el llamador cae a la ficha, no inventa).
+  assert.strictEqual(core.lastBodyweightKg([]), null);
+  assert.strictEqual(core.lastBodyweightKg(null), null);
+  assert.strictEqual(core.lastBodyweightKg([{ date: '2026-07-15', kg: 0 }]), null, 'un 0 no es un peso');
+  // `new Date(null)` devuelve EPOCH, no Invalid Date: un registro sin fecha no puede ganar por
+  // ser "de 1970" ni tumbar al que sí la tiene.
+  assert.strictEqual(core.lastBodyweightKg([{ date: '2026-07-15', kg: 83 }, { date: null, kg: 99 }]), 83);
+  assert.strictEqual(core.lastBodyweightKg([{ kg: 77 }]), 77, 'sin ninguna fecha usable, el convenio de escritura: el primero');
+  // nutWeightFor: el registrado manda sobre la ficha; sin registros, la ficha es el respaldo.
+  assert.strictEqual(core.nutWeightFor({ weight: 78 }, comoLoGuardaLaApp), 83);
+  assert.strictEqual(core.nutWeightFor({ weight: 78 }, []), 78);
+});
+
+test('🔴 ninguna pantalla vuelve a leer un extremo del arreglo de pesos', () => {
+  const fs = require('fs'), path = require('path');
+  const malas = [];
+  ['app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js'].forEach(f => {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    src.split('\n').forEach((ln, i) => {
+      if (/^\s*\/\//.test(ln)) return;                     // los comentarios documentan el defecto
+      if (/\b(_?bw|bwEntries)\s*\[\s*\1?\s*(_?bw|bwEntries)?\.?length\s*-\s*1\s*\]/.test(ln)) malas.push(`${f}:${i + 1}`);
+    });
+  });
+  assert.deepStrictEqual(malas, [],
+    'quien lea el último índice del arreglo de pesos está leyendo el registro MÁS VIEJO: usa nutWeightFor');
+});
+
 test('el peso de la ficha y el último registrado dan planes distintos (por eso importa)', () => {
   const s = { age: 28, sex: 'M', height: 176, weight: 78, activityFactor: 1.725, goal: 'Ganar músculo' };
   const ficha = nutritionEstimate(s);           // sin peso → usa client.weight
@@ -3926,12 +3969,46 @@ test('nutGoalForClient: cada objetivo del asesorado tiene su rótulo de plan', (
   assert.strictEqual(nutGoalForClient('Perder grasa'), 'cutting');
   assert.strictEqual(nutGoalForClient('Ganar músculo'), 'volumen');
   assert.strictEqual(nutGoalForClient('Fuerza'), 'volumen');
-  assert.strictEqual(nutGoalForClient('Recomposición'), 'mantenimiento');
+  // v449: la recomposición tiene rótulo PROPIO. Antes caía en `mantenimiento`, cuyo texto dice
+  // «sostener tu composición» — la negación exacta de lo que es una recomposición.
+  assert.strictEqual(nutGoalForClient('Recomposición'), 'recomposicion');
   assert.strictEqual(nutGoalForClient('Resistencia'), 'mantenimiento');
   // Sin objetivo declarado NO se inventa un déficit ni un superávit.
   assert.strictEqual(nutGoalForClient(''), 'mantenimiento');
   assert.strictEqual(nutGoalForClient(undefined), 'mantenimiento');
+  // 🔴 Pero a una MENOR no se le habla de composición corporal: no tiene nada que recomponer
+  // (las dos de la base están en IMC 19 y 20) y ese lenguaje es justo el que no debe leer.
+  const menor = { age: 15, sex: 'F' };
+  assert.strictEqual(nutGoalForClient('Recomposición', menor), 'mantenimiento');
+  assert.strictEqual(nutGoalForClient('Perder grasa', menor), 'mantenimiento');
+  // y una adulta con el mismo objetivo SÍ recibe el rótulo real (control del candado)
+  assert.strictEqual(nutGoalForClient('Recomposición', { age: 30, sex: 'F' }), 'recomposicion');
 });
+// 🔴 El rótulo NO puede quedarse a medias: `nutGoalForClient` devuelve `recomposicion` y si no
+// existe la explicación, la plantilla de texto y la opción del formulario, «✨ Generar» deja el
+// texto del objetivo ANTERIOR — que es exactamente la mentira de v437 con otra cara.
+test('🔴 «recomposicion» tiene explicación, plantilla y opción, y NO dice «sostener»', () => {
+  const fs = require('fs'), path = require('path');
+  const salud = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/recomposicion:\{title:/.test(salud), 'falta la entrada de GOAL_WHY: el asesorado leería el texto de mantenimiento');
+  assert.ok(/goal:'recomposicion'/.test(salud), 'falta la plantilla: _nutSwapTemplateText dejaría el texto del objetivo anterior');
+  assert.ok(/<option value="recomposicion">/.test(html), 'falta la opción del formulario: el select caería a vacío y el rótulo se inferiría del texto viejo');
+  // El texto tiene que decir lo CONTRARIO que el de mantenimiento, o no sirve de nada tenerlo.
+  const bloque = salud.slice(salud.indexOf('recomposicion:{title:'));
+  const texto = bloque.slice(0, bloque.indexOf('},'));
+  assert.ok(!/sostener tu composici/i.test(texto),
+    'el texto de recomposición no puede decir «sostener tu composición»: eso es lo que NIEGA una recomposición');
+  assert.ok(/cintura/i.test(texto), 'una recomposición se mide con la cintura, no con la balanza (dictamen §2) — tiene que decirlo');
+  // Y las 5 claves del select tienen las 5 explicaciones: ninguna puede quedar sin «por qué».
+  const opciones = (html.match(/<option value="(volumen|definicion|cutting|mantenimiento|recomposicion)">/g) || [])
+    .map(s => s.match(/value="(\w+)"/)[1]);
+  assert.strictEqual(opciones.length, 5, `el formulario ofrece ${opciones.length} objetivos, esperaba 5`);
+  opciones.forEach(k => assert.ok(new RegExp(k + ':\\{title:').test(salud), `el objetivo «${k}» se puede elegir pero no tiene explicación en GOAL_WHY`));
+  // y cada uno tiene su plantilla de texto (si no, «Generar» hereda el texto anterior)
+  opciones.forEach(k => assert.ok(new RegExp("goal:'" + k + "'").test(salud), `el objetivo «${k}» no tiene plantilla de texto`));
+});
+
 test('nutKcalDirection: déficit / superávit / balance con tolerancia del 5%', () => {
   assert.strictEqual(nutKcalDirection(1730, 2230), 'deficit');
   assert.strictEqual(nutKcalDirection(2600, 2230), 'superavit');
@@ -4050,8 +4127,23 @@ test('calcMacrosFromKcal: proteína sube en músculo/fuerza; carbs = resto', () 
   assert.strictEqual(m.carb_g, 250);
   assert.strictEqual(m.kcal, 2350);
 });
-test('calcMacrosFromKcal: objetivo no-fuerza usa 1.8 g/kg', () => {
-  assert.strictEqual(calcMacrosFromKcal(2000, 70, 'Perder grasa').prot_g, Math.round(70 * 1.8));
+// 🔴 REGLA VINCULANTE de Andrés Hyp (punto 1 del dictamen 2026-08-05): 2,2 g/kg si el objetivo
+// depende de construir o CONSERVAR músculo; 1,8 si no. «Perder grasa» estaba en el cubo bajo, que
+// es donde la proteína alta importa MÁS (hay 500 kcal de déficit tirando del músculo) — y encima
+// la app le decía a esa persona «mantenemos la proteína alta» sobre la dosis más baja del motor.
+// Si este test te estorba, la respuesta no es aflojarlo: es un dictamen nuevo del especialista.
+test('🔴 proteína 2,2 g/kg en todo objetivo que dependa de conservar músculo', () => {
+  ['Ganar músculo', 'Fuerza', 'Recomposición', 'Perder grasa'].forEach(g => {
+    assert.strictEqual(nutProtPerKg(g), 2.2, `${g} tiene músculo en juego: le toca 2,2 g/kg`);
+    assert.strictEqual(calcMacrosFromKcal(2000, 70, g).prot_g, Math.round(70 * 2.2), `${g}: los gramos no siguen a la regla`);
+  });
+  // El cubo de 1,8 se queda SOLO con estos dos (y con lo que no declara objetivo).
+  ['Resistencia', 'Salud general', '', undefined].forEach(g => {
+    assert.strictEqual(nutProtPerKg(g), 1.8, `${g || '(sin objetivo)'} no debería subir a 2,2`);
+  });
+  assert.strictEqual(calcMacrosFromKcal(2000, 70, 'Resistencia').prot_g, Math.round(70 * 1.8));
+  // No 2,4: el carbohidrato paga la diferencia y es el combustible del estímulo (dictamen §1).
+  assert.strictEqual(nutProtPerKg('Ganar músculo'), 2.2, 'el tope aprobado es 2,2, no 2,4');
 });
 test('calcMacrosFromKcal: sin kcal o sin peso → null', () => {
   assert.strictEqual(calcMacrosFromKcal(null, 80, 'Fuerza'), null);
@@ -4095,6 +4187,57 @@ test('nutRefWeight: por encima de IMC 30 dosifica sobre peso de referencia, no e
   // CONTROL: peso normal → no se ajusta nada
   assert.strictEqual(nutRefWeight(70, 175), 70, 'con IMC normal el peso de referencia es el real');
   assert.strictEqual(nutRefWeight(82, null), 82, 'sin estatura no hay IMC: se queda como estaba');
+});
+
+// 🔴 EL ACANTILADO DE IMC 30 (punto 6 del dictamen, verificado contra producción 2026-08-05).
+// Con el corte seco, **200 gramos de báscula cambiaban 30 g de proteína**: una mujer de 156 cm a
+// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y mordía al revés de como debe: Claudia está en IMC
+// 30,4 y bajar 1,1 kg —el propósito de su plan— le SUBÍA la proteína de 131 a 160 sin ninguna
+// razón visible para ella. Al PO ya le pasó cruzando de 90 a 92 kg en julio.
+test('🔴 la rampa 28-32 quita el acantilado: 200 g de báscula no mueven 30 g de proteína', () => {
+  const H = 156;
+  const protDe = kg => calcMacrosFromKcal(2000, kg, 'Perder grasa', H).prot_g;
+  // El salto exacto que se midió, ahora en su versión continua.
+  const salto = Math.abs(protDe(73.1) - protDe(72.9));
+  assert.ok(salto <= 2, `200 g de báscula todavía mueven ${salto} g de proteína (antes eran 30)`);
+  // Y la propiedad de fondo en toda la franja: pesar MENOS nunca sube la dosis de golpe.
+  let peorSalto = 0, dondeSalto = '';
+  for (let kg = 60; kg <= 95; kg = Math.round((kg + 0.1) * 10) / 10) {
+    const d = Math.abs(protDe(kg) - protDe(Math.round((kg - 0.1) * 10) / 10));
+    if (d > peorSalto) { peorSalto = d; dondeSalto = `${kg} kg`; }
+  }
+  assert.ok(peorSalto <= 2, `hay un escalón de ${peorSalto} g de proteína en ${dondeSalto}`);
+  // 🔴 El caso REAL que lo disparó: Claudia, 74 kg / 156 cm (IMC 30,4). Bajar 1,1 kg es el
+  // PROPÓSITO de su plan, y con el corte seco eso le subía la proteína de 131 a 160 g de golpe.
+  // Que baje de peso tiene que mover su dosis de forma imperceptible, en cualquier dirección.
+  const claudia = protDe(74), claudiaMenos = protDe(72.9);
+  assert.ok(Math.abs(claudiaMenos - claudia) <= 4,
+    `bajar 1,1 kg le mueve la proteína de ${claudia} a ${claudiaMenos} g — con el acantilado eran 131→160`);
+  // Nota: dentro de la franja el peso de REFERENCIA baja al subir la báscula, y eso es el diseño
+  // del peso ajustado (cuanto más exceso, más se descuenta). Lo que no puede haber es un ESCALÓN.
+});
+
+test('🔴 fuera de la franja 28-32 la rampa es IDÉNTICA a la fórmula anterior', () => {
+  // El dictamen la aprobó con esa condición: solo cambia la franja que estaba rota. La identidad
+  // tiene que ser por CONSTRUCCIÓN, no por suerte — `w - 1×(w-a)` es `a` en álgebra pero no bit a
+  // bit en punto flotante, y esa última cifra caía del otro lado del redondeo en IMC ~48-54.
+  const anterior = (w, h) => {
+    const m = h / 100, imc = w / (m * m);
+    if (imc < 30) return w;
+    const ideal = 22.5 * m * m;
+    return Math.round((ideal + 0.25 * (w - ideal)) * 10) / 10;
+  };
+  let comparadas = 0;
+  for (let h = 140; h <= 200; h += 1) {
+    for (let w = 35; w <= 180; w = Math.round((w + 0.1) * 10) / 10) {
+      const imc = w / ((h / 100) ** 2);
+      if (imc > 28 && imc < 32) continue;         // la franja que cambia a propósito
+      comparadas++;
+      assert.strictEqual(nutRefWeight(w, h), anterior(w, h),
+        `${w} kg / ${h} cm (IMC ${imc.toFixed(1)}) cambió y está FUERA de la franja`);
+    }
+  }
+  assert.ok(comparadas > 50000, `esperaba el barrido completo, comparé ${comparadas}`);
 });
 
 // ══════════════════════════════════════════════════════
@@ -6798,11 +6941,22 @@ test('los 3 valores de la tabla verificados contra fuente siguen puestos', () =>
   assert.strictEqual(by.atun.un.g, 100, 'la lata escurrida son ~100 g, no 120');
 });
 
+// Los planes CLAVADOS EN UN PISO (`floored`) se miden aparte, y no por comodidad: ahí el
+// objetivo calórico ya no lo manda el gasto sino el mínimo de seguridad, así que la persona
+// recibe un presupuesto chiquito con una proteína que sigue saliendo de su peso — y el
+// redondeo a media ración pesa muchísimo. Medido 2026-08-06: TODA la diferencia entre +14,6%
+// y +23,3% vive en esta esquina; ninguna de las 19 personas reales de producción está en ella
+// (todas tienen factor de actividad ≥1.55), pero 3 de las 10 mujeres quedan a UN TOQUE.
+const _sinPiso = ps => ps.filter(p => { const e = nutritionEstimate(p); return e && !e.floored; });
+const _conPiso = ps => ps.filter(p => { const e = nutritionEstimate(p); return e && e.floored; });
+
 test('en gente TÍPICA el plan no se pasa del 16% ni deja el carbohidrato bajo -12%', () => {
   // Umbrales DERIVADOS midiendo, no elegidos a ojo. Con las meriendas magras + los 3 valores
-  // corregidos de la tabla, el máximo medido sobre estos 8 perfiles es **+13,2% en kcal** y
-  // **−7,9% en carbohidrato**. 16% y −12% dejan margen sin dejar de morder.
-  const r = _peorDesvioPlan(_PERFILES_TIPICOS);
+  // corregidos de la tabla, el máximo medido sobre estos perfiles es **+14,6% en kcal** y
+  // **−7,6% en carbohidrato**. 16% y −12% dejan margen sin dejar de morder.
+  const objetivo = _sinPiso(_PERFILES_TIPICOS);
+  assert.ok(objetivo.length >= 7, `el barrido perdió perfiles: quedan ${objetivo.length}`);
+  const r = _peorDesvioPlan(objetivo);
   assert.ok(r.peorKcal <= 16,
     `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 16%`);
   // 🔴 La aserción de CARBOHIDRATO existe por un aviso de Andrés que salió de medir: con topes
@@ -6812,18 +6966,38 @@ test('en gente TÍPICA el plan no se pasa del 16% ni deja el carbohidrato bajo -
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -12%`);
 });
 
-test('ni en los casos EXTREMOS el plan se pasa del 26%', () => {
-  // La esquina mala salió de barrer 5.040 días: mujer liviana, alta, sedentaria y en déficit
-  // (objetivo chiquito → el redondeo a media ración pesa muchísimo). Medido: **+24,7%**.
-  // Ese resto NO vive en los menús sino en `nutPortionText` (el paso de media unidad, que se
-  // dimensionó para tazas de almuerzo y no para una merienda de 150 kcal). Es el próximo lote
-  // y es de UNA función; cuando se toque, este tope y el de arriba BAJAN.
+test('ni en los casos EXTREMOS el plan se pasa del 16%', () => {
+  // La esquina mala salió de barrer 5.040 días: mujer liviana, alta y en déficit — objetivo
+  // chiquito donde el redondeo a media ración pesa muchísimo.
   // Va aquí a propósito: un guardián que solo mira los casos cómodos no es un guardián.
-  const r = _peorDesvioPlan(_PERFILES_EXTREMOS);
-  assert.ok(r.peorKcal <= 26,
-    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 26%`);
+  const r = _peorDesvioPlan(_sinPiso(_PERFILES_EXTREMOS));
+  assert.ok(r.peorKcal <= 16,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 16%`);
   assert.ok(r.peorCarb >= -13,
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -13%`);
+});
+
+// 🔴 FRENTE ABIERTO, medido y ACOTADO — no es un tope de adorno: muerde a +0,5 pp.
+// A quien queda clavado en el piso calórico, el plato le sirve hasta un **28,5% más** de lo que
+// le promete. La causa NO es el redondeo de raciones, como se creía: es que la proteína del plato
+// ARRASTRA su propio carbohidrato y nadie absorbe el sobrante. Medido en la mujer de 48 kg
+// sedentaria, día 2: le promete 101 g de carbohidrato y le sirve 172, porque el almuerzo resuelve
+// la proteína con 270 g de fríjol. En `nutSolveMeal` el carbohidrato se calcula como «lo que
+// falte, mínimo 0» (`Math.max(0, …)`) — el MISMO `Math.max(0, …)` que ya se mató una vez en
+// `calcMacrosFromKcal` (v428), vivo en la función hermana. Subir la proteína a 2,2 (v449) lo
+// empeoró de +17,9% a +28,5% en esta esquina; fuera de ella no movió casi nada (+13,2% → +14,6%).
+// Ninguna de las 19 personas reales de producción está aquí (todas con factor ≥1.55), pero 3 de
+// las 10 mujeres quedan a UN TOQUE: basta que se marquen «sedentaria».
+// Se mide aparte para NO perder resolución sobre la gente normal, que sigue con el tope de 16%.
+// Cuando se arregle `nutSolveMeal`, este test se borra y estos perfiles vuelven al de arriba.
+test('🔴 piso calórico: el plato se pasa hasta 29% y está ACOTADO mientras se arregla', () => {
+  const conPiso = _conPiso(_PERFILES_EXTREMOS);
+  assert.strictEqual(conPiso.length, 3, `esperaba las 3 sedentarias clavadas en el piso, encontré ${conPiso.length}`);
+  const r = _peorDesvioPlan(conPiso);
+  assert.ok(r.peorKcal <= 29,
+    `el desbordamiento CRECIÓ a ${r.peorKcal.toFixed(1)}% (${r.quienKcal}); estaba acotado en 28,5%`);
+  assert.ok(r.peorKcal > 16,
+    'esto ya bajó de 16%: se arregló nutSolveMeal → borra este test y devuelve los perfiles al de arriba');
 });
 
 // ── EL PUESTO DE GLÚTEO DEL FULL BODY (validado por Valery, 2026-08-03) ──

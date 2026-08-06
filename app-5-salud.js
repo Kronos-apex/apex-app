@@ -18,6 +18,13 @@ const NUT_TEMPLATES=[
    plan:'Déficit moderado con alta proteína para definir músculo y perder grasa.\nIdeal para quienes ya tienen base muscular.',
    examples:'Desayuno: Claras de huevo, avena y café sin azúcar\nAlmuerzo: Pollo o pescado, arroz integral y vegetales al vapor\nMerienda: Atún con galletas de arroz\nCena: Ensalada grande con proteína magra',
    avoid:'Sodio en exceso, alcohol, azúcares, grasas saturadas'},
+  // La recomposición NECESITA su propia plantilla, no solo su rótulo: `_nutSwapTemplateText`
+  // busca los textos por clave de objetivo, y sin esta entrada un plan de recomposición se
+  // quedaba con el texto de «mantenimiento» — el defecto de v437 con otra cara.
+  {label:'Recomposición 🔄',goal:'recomposicion',kcal:2350,prot:180,carbs:250,fat:70,water:10,meals:'4',
+   plan:'Mantenimiento calórico con la proteína alta: comes lo que gastas.\nEl peso puede quedarse igual — lo que cambia es de qué está hecho.\nMide la cintura cada 3 semanas, no la balanza todos los días.',
+   examples:'Desayuno: Huevos con arepa y fruta\nAlmuerzo: Arroz, carne o pollo, fríjol y ensalada\nMerienda: Yogur griego con maní\nCena: Proteína magra con verduras y un carbohidrato pequeño',
+   avoid:'Saltarse comidas, alcohol en exceso, ultraprocesados'},
 ];
 
 function applyNutTemplate(idx){
@@ -136,12 +143,11 @@ function nutGoalCheck(){
     '</strong>, pero gasta ~<strong>'+est.tdee+' kcal</strong> al d&iacute;a y el plan le da <strong>'+
     kcal+'</strong> &mdash; eso es <strong>'+DIR[mm.real]+'</strong>. Ajusta el objetivo o las calor&iacute;as.';
 }
-// El peso que manda es el ÚLTIMO registrado, no el del perfil (que envejece).
+// El peso que manda es el ÚLTIMO registrado, no el del perfil (que envejece). Quién es «el
+// último» lo decide `nutWeightFor` (avi-core) POR FECHA — aquí vivía un `bw[bw.length-1]` que
+// leía el registro MÁS VIEJO, porque el arreglo se guarda en orden descendente.
 function _nutPesoDe(c){
-  let peso=c&&c.weight;
-  const bw=(DB.bodyweight||{})[c&&c.id];
-  if(Array.isArray(bw)&&bw.length){const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg);}
-  return peso;
+  return nutWeightFor(c,(DB.bodyweight||{})[c&&c.id]);
 }
 // «✨ Generar plan»: rellena el formulario con lo que le corresponde a ESTA persona, aunque ya
 // tenga plan. No guarda nada — el coach revisa y aprueba, igual que con las rutinas.
@@ -230,6 +236,12 @@ const GOAL_WHY={
     text:'El objetivo es perder grasa cuidando tu músculo. Comes algo menos de lo que gastas (déficit), pero mantenemos la proteína alta para no perder lo ganado y para llegar más lleno a cada comida. El entrenamiento de fuerza le dice a tu cuerpo "conserva este músculo"; la dieta hace el resto.'},
   mantenimiento:{title:'⚖️ Mantenimiento / Salud general',
     text:'Estás comiendo en balance: lo que gastas. El objetivo no es subir ni bajar, sino sostener tu composición, sentirte con energía y crear hábitos sostenibles. Comida variada, suficiente proteína para cuidar el músculo y carbohidratos para rendir en el día a día.'},
+  // 🔴 Rótulo PROPIO de la recomposición (dictamen de Andrés Hyp, punto 4). Antes caía en
+  // `mantenimiento`, cuyo texto dice «el objetivo no es subir ni bajar, sino SOSTENER tu
+  // composición» — la negación exacta de lo que es una recomposición, que existe justamente para
+  // cambiarla. Redactado por Sofía sobre el contenido que firmó Andrés; no agregar promesas.
+  recomposicion:{title:'🔄 Recomposición',
+    text:'Comes lo que gastas: ni más ni menos. Lo que sube es la proteína, porque aquí el objetivo no es que la balanza baje — es que cambie de qué está hecho ese peso: menos grasa y más músculo con el mismo número en la pesa. Por eso la balanza sola te va a confundir; lo que sí te va a mostrar el cambio es la cintura. Mídetela cada 3 semanas y compárala, no te peses todos los días.'},
 };
 // inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
@@ -331,9 +343,7 @@ function renderMealsToday(client){
   try{
     const nut=(DB.nutrition||{})[client.id];
     // peso más reciente si lo hay (el del perfil puede estar viejo)
-    let peso=client.weight;
-    const bw=(DB.bodyweight||{})[client.id];
-    if(Array.isArray(bw)&&bw.length){ const u=bw[bw.length-1]; if(u&&parseFloat(u.kg)>0)peso=parseFloat(u.kg); }
+    const peso=_nutPesoDe(client);
     const base=nutBaseFor(client,nut,peso);
     if(!base){
       // Sin datos del cuerpo NO se inventa un plan: se pide el dato que falta.
@@ -417,10 +427,7 @@ function renderNutritionClient(clientId){
   let _sem=null, _semanaHtml='';
   try{
     if(_c && typeof nutBaseFor==='function' && typeof nutWeekTargets==='function'){
-      let _peso=_c.weight;
-      const _bw=(DB.bodyweight||{})[clientId];
-      if(Array.isArray(_bw)&&_bw.length){const u=_bw[_bw.length-1]; if(u&&parseFloat(u.kg)>0)_peso=parseFloat(u.kg);}
-      const _base=nutBaseFor(_c,nut,_peso);
+      const _base=nutBaseFor(_c,nut,_nutPesoDe(_c));
       if(_base)_sem=nutWeekTargets(_base,_c.routines);
     }
   }catch(e){ warn('AVI: la semana de nutrición no se pudo armar (no bloquea el perfil):',e&&e.message); }
