@@ -7258,6 +7258,30 @@ test('e60 es aductor (no glúteo) y las pliometrías de salto son nivel avanzado
 // 21 series y **la mayoría era PROGRESO REAL** — alguien que pasó de 2,5 a 10 kg. Por eso la
 // regla mira DENTRO de la sesión: un cero de más convive con valores normales el mismo día;
 // progresar hace que el valor nuevo SEA el normal en todas las series.
+// Tope relativo a la propia persona. El umbral se DERIVÓ midiendo 1.258 series reales: la regla
+// completa dispara en 9 (0,7%). Estos casos son los que decidieron la forma de la regla.
+test('🔴 kgNeedsConfirm: pide confirmar el disparate y NO estorba al progreso real', () => {
+  // El caso del PO: Samuel, mejor prensa 90 kg, escribe 800 → límite 180, se le pide confirmar.
+  assert.strictEqual(core.kgNeedsConfirm(800, 90, 90), true);
+  assert.strictEqual(core.kgConfirmLimit(90, 90), 180);
+  // 🔴 LA RAZÓN DE QUE HAGAN FALTA LAS DOS CONDICIONES: doblar un peso PEQUEÑO es normal.
+  // De 5 a 12 kg en un accesorio es progreso real (2,4× pero solo +7 kg) → NO molesta.
+  assert.strictEqual(core.kgNeedsConfirm(12, 5, 40), false, 'estorbaría a quien sube de 5 a 12 kg');
+  // …y doblar uno GRANDE es imposible: de 100 a 220 (2,2× y +120) → sí pregunta.
+  assert.strictEqual(core.kgNeedsConfirm(220, 100, 100), true);
+  // Progresión normal: subir 5 kg sobre 100 no pregunta nunca.
+  assert.strictEqual(core.kgNeedsConfirm(105, 100, 100), false);
+  // Sin referencia en ESE ejercicio (28,6% de las series reales) cae a su mejor marca global…
+  assert.strictEqual(core.kgConfirmLimit(0, 90), 180);
+  // …y con alguien sin ningún historial, al piso, para que el primer día no sea un interrogatorio.
+  assert.strictEqual(core.kgConfirmLimit(0, 0), 120);
+  assert.strictEqual(core.kgNeedsConfirm(160, 0, 0), true);
+  assert.strictEqual(core.kgNeedsConfirm(100, 0, 0), false);
+  // Vacíos y basura no preguntan nada (se anota en blanco todo el tiempo).
+  [null, undefined, '', 0, -5, 'abc'].forEach(v =>
+    assert.strictEqual(core.kgNeedsConfirm(v, 90, 90), false, 'preguntó por un valor vacío: ' + v));
+});
+
 test('kgOutlier: caza el cero de más y deja en paz al progreso, dropsets y calentamientos', () => {
   assert.strictEqual(kgOutlier([20, 20, 200], 2), true, 'el 200 entre 20 y 20 es un cero de más');
   assert.strictEqual(kgOutlier([10, 10, 10], 2), false, 'subir de peso en TODAS las series es progresar');

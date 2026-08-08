@@ -112,5 +112,39 @@ await ev(`prfixDelete()`); await sleep(300);
 const borrado = await ev(`(()=>({queda: !!(DB.prs.cQA&&DB.prs.cQA.e44), card:(document.getElementById('d-prs')||{}).style.display}))()`);
 A.ok(!borrado.queda, 'borrar quita el récord', borrado);
 
+// ── TOPE RELATIVO AL ANOTAR (mismo frente: lee el récord que el coach acaba de poder corregir) ──
+// El PO: «a este niño le parece muy divertido poner un millón de kilos». El tope duro de 1.000 kg
+// lo deja pasar y `kgOutlier` tampoco salta si lo pone en TODAS las series. Aquí se comprueba que
+// el candado CIERRA de verdad: que el valor NO se queda en el campo mientras no lo confirme.
+const guard = await ev(`(()=>{try{
+  DB.prs={cQA:{e36:{val:90,kg:90,unit:'kg',reps:12,name:'Prensa de Pierna',muscle:'piernas',date:'2026-05-23T10:00:00.000Z'}}};
+  CUR.clientId='cQA';
+  window.GM=window.GM||{}; GM.routine={id:'rQA'}; GM.exercises=[{id:'e36',name:'Prensa de Pierna',muscle:'piernas'}];
+  const fake={value:'800'};
+  setLog('rQA',0,0,'kg','800');
+  const salto=kgConfirmGuard('rQA',0,0,fake);
+  const bg=document.getElementById('m-kgconf');
+  return {salto, enCampo:getLog('rQA',0,0,'kg'), inputVaciado:fake.value,
+          modal: !!bg && bg.classList.contains('on'),
+          dice:(document.getElementById('kgconf-txt')||{}).innerText||''};
+}catch(e){return {err:String(e&&e.message)}}})()`);
+A.ok(guard.salto === true, '800 kg sobre una mejor marca de 90 dispara la confirmación', guard);
+A.ok(guard.enCampo === '' && guard.inputVaciado === '',
+  '🔒 el valor NO se queda anotado mientras no confirme (si no, el candado sería decorativo)', guard);
+A.ok(guard.modal, 'el modal de confirmación abre', guard);
+A.ok(/90/.test(guard.dice || ''), 'le dice cuál es su mejor marca ahí, para que compare', guard.dice);
+
+// Confirmar lo devuelve tal cual: un día pesado de verdad se anota igual, con un toque.
+const conf = await ev(`(()=>{kgConfOk();return {enCampo:getLog('rQA',0,0,'kg'), cerrado:!document.getElementById('m-kgconf').classList.contains('on')};})()`);
+A.ok(conf.enCampo === '800' && conf.cerrado, 'al confirmar, el peso queda anotado tal cual', conf);
+
+// CONTROL: una progresión normal NO molesta a nadie. Sin esto, el test no distinguiría un candado
+// de un apagón — que es el error espejo que ya nos costó una vez.
+const normal = await ev(`(()=>{const fake={value:'95'};setLog('rQA',0,1,'kg','95');
+  const salto=kgConfirmGuard('rQA',0,1,fake);
+  return {salto, enCampo:getLog('rQA',0,1,'kg')};})()`);
+A.ok(normal.salto === false && normal.enCampo === '95',
+  'CONTROL: subir de 90 a 95 kg no pregunta nada y se anota directo', normal);
+
 ws.close();
 salir(A, { chrome, srv });

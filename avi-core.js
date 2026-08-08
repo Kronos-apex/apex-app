@@ -1387,6 +1387,37 @@ function _saneRelKg(sets, i) {
 // Versión para el MOMENTO DE ANOTAR: recibe los kg que ya lleva ese ejercicio hoy y dice si el
 // de la posición `i` desentona. Misma regla que la auto-cura, para que la app no avise de algo
 // que después no limpia (ni al revés). AVISA, no bloquea: un día pesado de verdad se confirma.
+// ── Tope RELATIVO A LA PROPIA PERSONA (pedido del PO, 2026-08-08) ────────────────────────────
+// El tope duro de 1.000 kg (v417) atrapa el disparate absoluto y `kgOutlier` atrapa el cero de más
+// comparando con las OTRAS series de ese día. Entre los dos queda un hueco por el que se cuela
+// justo lo que el PO reporta: «a este niño le parece muy divertido poner un millón de kilos».
+//   · 1.000 kg es «posible» en abstracto, así que 800 en una prensa pasa el tope.
+//   · Y si lo pone en TODAS las series, la mediana del día también es 800 → `kgOutlier` no salta.
+// Aquí la referencia es **su propia mejor marca en ESE ejercicio**, que es la única que sabe que
+// 200 kg en una patada de glúteo es imposible aunque en un peso muerto no lo sea.
+//
+// 🔬 UMBRAL DERIVADO MIDIENDO, no escrito de memoria (1.258 series reales de la nube):
+//   · solo `> 2×` marcaba 14 series, y muchas eran progreso REAL — doblar de 5 a 10 kg en un
+//     accesorio es normal; doblar de 100 a 200 es imposible. Por eso hacen falta LAS DOS
+//     condiciones: el múltiplo Y un salto absoluto de +20 kg.
+//   · sin referencia previa en ese ejercicio (28,6% de las series), cae a su mejor marca GLOBAL.
+//   Con la regla completa dispara en **9 de 1.258 (0,7%)**, una cada 140 series.
+const KG_CONFIRM_FACTOR = 2, KG_CONFIRM_SALTO = 20, KG_CONFIRM_PISO = 120;
+function kgConfirmLimit(bestEx, bestGlobal) {
+  const be = parseFloat(bestEx) || 0;
+  if (be > 0) return Math.max(KG_CONFIRM_FACTOR * be, be + KG_CONFIRM_SALTO);
+  const bg = parseFloat(bestGlobal) || 0;
+  return Math.max(KG_CONFIRM_FACTOR * bg, KG_CONFIRM_PISO);
+}
+// ¿Hay que pedirle que confirme este peso? PURA. No bloquea nada por sí sola: quien la llama
+// decide, y la decisión del PO es que no se acepte hasta confirmar (un día pesado de verdad se
+// confirma una vez y sigue; el que está jugando se topa siempre, aunque lo ponga en todas las series).
+function kgNeedsConfirm(kg, bestEx, bestGlobal) {
+  const v = parseFloat(kg);
+  if (!isFinite(v) || v <= 0) return false;
+  return v > kgConfirmLimit(bestEx, bestGlobal);
+}
+
 function kgOutlier(kgs, i) {
   const nums = (kgs || []).map(k => { const n = parseFloat(k); return isFinite(n) && n > 0 ? n : null; });
   const mio = nums[i];
@@ -5517,6 +5548,8 @@ if (typeof module !== 'undefined' && module.exports) {
     STREAK_WEEK_MIN_DAYS,
     clampLogValue,
     kgOutlier,
+    kgConfirmLimit,
+    kgNeedsConfirm,
     sanitizeHistory,
     sanitizePrs,
     LOG_MAX,

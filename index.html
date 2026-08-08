@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=457">
+<link rel="stylesheet" href="styles.css?v=458">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1184,19 +1184,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=457"></script>
-<script src="muscle-map.js?v=457"></script>
-<script src="exercise-muscles.js?v=457"></script>
+<script src="avi-core.js?v=458"></script>
+<script src="muscle-map.js?v=458"></script>
+<script src="exercise-muscles.js?v=458"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=457"></script>
-<script src="app-2-login.js?v=457"></script>
-<script src="app-3-coach.js?v=457"></script>
-<script src="app-4-entreno.js?v=457"></script>
-<script src="app-5-salud.js?v=457"></script>
-<script src="app-6-extra.js?v=457"></script>
-<script src="app-7-community.js?v=457"></script>
+<script src="app-1-infra.js?v=458"></script>
+<script src="app-2-login.js?v=458"></script>
+<script src="app-3-coach.js?v=458"></script>
+<script src="app-4-entreno.js?v=458"></script>
+<script src="app-5-salud.js?v=458"></script>
+<script src="app-6-extra.js?v=458"></script>
+<script src="app-7-community.js?v=458"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1226,6 +1226,21 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 <!-- MODAL NOTIFICACIONES COACH -->
+<!-- «¿Seguro que fueron N kg?» — tope RELATIVO a la propia persona (pedido del PO, 2026-08-08).
+     No bloquea a nadie que progrese de verdad: se confirma una vez y sigue. Medido, dispara en
+     9 de 1.258 series reales (0,7%). Va por modal y no por `confirm()` nativo: esto salta a
+     mitad de un entreno y un diálogo del navegador ahí es lo peor que se puede hacer. -->
+<div class="mdbg" id="m-kgconf">
+  <div class="md" style="max-width:400px">
+    <div class="mdtitle"><span class="t-ic plain" data-ic="alert" data-ic-size="15">⚠️</span> ¿Ese peso está bien?</div>
+    <div id="kgconf-txt" style="font-size:13.5px;color:var(--t1);line-height:1.6;margin-bottom:14px"></div>
+    <div class="mdfooter">
+      <button class="btn bp bsm" onclick="kgConfCorregir()">Lo corrijo</button>
+      <button class="btn bg bsm" onclick="kgConfOk()">Sí, fue así</button>
+    </div>
+  </div>
+</div>
+
 <!-- Corregir un récord mal anotado (pedido del PO, 2026-08-08). SOLO el coach: si el asesorado
      pudiera editar su propio récord podría inflarlo, y de ahí cuelgan las medallas y el muro. -->
 <div class="mdbg" id="m-prfix">

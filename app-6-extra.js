@@ -724,8 +724,61 @@ function gmToggleAux(ei,tok,rid,cid){
 // siempre, le infló la gráfica ×4 y envenenó el peso que la app le sugiere.
 // AVISA, NO BLOQUEA (decisión del PO): un día pesado de verdad se anota igual, solo confirma.
 // Va en `onchange` y no en `oninput` — si no, avisaría al teclear el «2» de «200».
-function kgSanityHint(rid, ei, si){
+// Mejor marca de esta persona en ESE ejercicio, y su mejor marca global. Salen de sus récords
+// (`ax_pr`), que es donde vive «lo máximo que ha levantado». Si el récord estaba mal anotado, el
+// coach ya puede corregirlo (v457) y el tope se corrige con él.
+function _kgBests(exId){
+  const prs=(typeof DB!=='undefined'&&DB.prs&&DB.prs[CUR.clientId])||{};
+  let ex=0, glob=0;
+  Object.entries(prs).forEach(([k,p])=>{
+    if(!p||(p.unit||'kg')!=='kg')return;
+    const v=parseFloat(p.val!=null?p.val:p.kg)||0;
+    if(v>glob)glob=v;
+    if(exId&&k===exId&&v>ex)ex=v;
+  });
+  return {ex,glob};
+}
+// 🔴 «No se lo acepta hasta que lo confirme» (decisión del PO). El valor se BORRA del campo
+// mientras decide: si se quedara puesto y la persona ignora el modal, el 800 entra igual — y el
+// candado sería decorativo. Al confirmar se vuelve a escribir tal cual.
+// `el` es el propio input, que llega desde el `onchange` (`this`). Se pasa en vez de buscarlo por
+// selector: las celdas del guiado no tienen id ni clave propia, y un selector inventado habría
+// fallado en silencio dejando el valor puesto — o sea, un candado que no cierra.
+let _kgConf=null;
+function kgConfirmGuard(rid, ei, si, el){
   try{
+    if(typeof kgNeedsConfirm!=='function') return false;
+    const ex=(GM.exercises||[])[ei]; if(!ex) return false;
+    const v=getLog(rid,ei,si,'kg');
+    const n=parseFloat(v); if(!isFinite(n)||n<=0) return false;
+    const b=_kgBests(ex.id);
+    if(!kgNeedsConfirm(n,b.ex,b.glob)) return false;
+    _kgConf={rid,ei,si,val:v,el:el||null};
+    setLog(rid,ei,si,'kg','');                 // fuera del campo mientras decide
+    if(el)el.value='';
+    const t=document.getElementById('kgconf-txt');
+    if(t)t.innerHTML=b.ex>0
+      ? `Anotaste <b>${esc(String(n))} kg</b> en <b>${esc(ex.name||'este ejercicio')}</b>, y tu mejor marca ahí es de <b>${esc(String(b.ex))} kg</b>.<br><br>Si de verdad fue así, confírmalo y seguimos.`
+      : `Anotaste <b>${esc(String(n))} kg</b> en <b>${esc(ex.name||'este ejercicio')}</b>, que es la primera vez que lo registras.<br><br>Si de verdad fue así, confírmalo y seguimos.`;
+    om('m-kgconf');
+    return true;
+  }catch(_e){ return false; }
+}
+function kgConfOk(){
+  if(!_kgConf){ cm('m-kgconf'); return; }
+  const {rid,ei,si,val,el}=_kgConf;
+  setLog(rid,ei,si,'kg',val);
+  if(el)el.value=val;
+  _kgConf=null; cm('m-kgconf');
+}
+function kgConfCorregir(){
+  const f=_kgConf; _kgConf=null; cm('m-kgconf');
+  if(f&&f.el){ try{ f.el.focus(); }catch(_e){} }
+}
+function kgSanityHint(rid, ei, si, el){
+  try{
+    // El tope relativo va PRIMERO: si hay que confirmar, el aviso blando sobra.
+    if(kgConfirmGuard(rid,ei,si,el)) return;
     if(typeof kgOutlier!=='function') return;
     const kgs=[]; let mio=-1;
     for(let k=0;k<12;k++){
@@ -749,7 +802,7 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   const g=f=>getLog(GM.routine.id,ei,si,f);
   const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
     <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
-      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si})"`:''}>
+      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si},this)"`:''}>
     <div class="gm-sinput-label">${label}</div></div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.
