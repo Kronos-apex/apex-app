@@ -350,10 +350,10 @@ const _gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
 // le avisa al coach por el chat (que ya dispara push). Nivel 🔴 ("no puedo hacerlo")
 // abre de una el selector de sustitución. La lógica pura (normalización, expiración
 // 14 días, tips por zona) vive en avi-core (painCareAdd/painCareActive/painTipFor).
-let PAIN={ei:null,exId:null,exName:'',area:null,level:null};
+let PAIN={ei:null,exId:null,exName:'',area:null,side:null,level:null};
 function gmReportPain(ei){
   const ex=GM.exercises&&GM.exercises[ei]; if(!ex)return;
-  PAIN={ei,exId:ex.id||null,exName:ex.name||'',area:null,level:null};
+  PAIN={ei,exId:ex.id||null,exName:ex.name||'',area:null,side:null,level:null};
   const exEl=document.getElementById('pain-ex');
   if(exEl)exEl.innerHTML=`Con: <b>${esc(ex.name||'este ejercicio')}</b>. Cuéntanos y le avisamos a tu coach — sin pena, esto nos ayuda a cuidarte.`;
   const note=document.getElementById('pain-note'); if(note)note.value='';
@@ -363,19 +363,25 @@ function gmReportPain(ei){
 function _painRenderChips(){
   const ar=document.getElementById('pain-areas');
   if(ar)ar.innerHTML=PAIN_AREAS.map(a=>`<button type="button" class="pain-chip${PAIN.area===a?' on':''}" onclick="painPick('area','${esc(a)}')">${esc(a)}</button>`).join('');
+  const sd=document.getElementById('pain-sides');
+  if(sd)sd.innerHTML=PAIN_SIDES.map(s=>`<button type="button" class="pain-chip${PAIN.side===s?' on':''}" onclick="painPick('side','${esc(s)}')">${esc(s.charAt(0).toUpperCase()+s.slice(1))}</button>`).join('');
   const lv=document.getElementById('pain-levels');
   if(lv)lv.innerHTML=PAIN_LEVELS.map(l=>`<button type="button" class="pain-chip lvl${PAIN.level===l.v?' on':''}" onclick="painPick('level',${l.v})">${l.emoji} ${esc(l.label)}</button>`).join('');
 }
 function painPick(field,val){ PAIN[field]=val; _painRenderChips(); }
 function painSubmit(){
-  if(!PAIN.area||!PAIN.level){ toast('Marca dónde y qué tanto te duele 🙏'); return; }
+  // El LADO es obligatorio como el resto: «ninguna pregunta opcional» (§1.1 del dictamen). Un dato
+  // opcional en esta app no existe — `feeling` se registra en el 12% de las sesiones.
+  if(!PAIN.area||!PAIN.side||!PAIN.level){ toast('Marca dónde, de qué lado y qué tanto te duele 🙏'); return; }
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
   const note=(document.getElementById('pain-note')||{value:''}).value.trim();
-  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,level:PAIN.level,exId:PAIN.exId,exName:PAIN.exName,note});
+  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,side:PAIN.side,level:PAIN.level,exId:PAIN.exId,exName:PAIN.exName,note});
   svNow('ax_c',DB.clients);
-  // Aviso al coach por el chat (mismo camino que sendClientMsg → le llega push)
+  // Aviso al coach por el chat (mismo camino que sendClientMsg → le llega push). El LADO va en el
+  // mensaje: es lo primero que él necesita para decidir si el trabajo unilateral sigue en pie.
   const lvl=PAIN_LEVELS.find(l=>l.v===PAIN.level)||PAIN_LEVELS[0];
-  const txt=`⚠️ Reporte de dolor: ${lvl.emoji} ${lvl.label} en ${PAIN.area} con ${PAIN.exName||'un ejercicio'}.${note?' Nota: '+note:''}`;
+  const _lado=PAIN.side?` (${PAIN.side})`:'';
+  const txt=`⚠️ Reporte de dolor: ${lvl.emoji} ${lvl.label} en ${PAIN.area}${_lado} con ${PAIN.exName||'un ejercicio'}.${note?' Nota: '+note:''}`;
   try{
     if(!DB.msgs[c.id])DB.msgs[c.id]=[];
     DB.msgs[c.id].push({from:'client',text:txt,date:new Date().toISOString()});

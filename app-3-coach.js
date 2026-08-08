@@ -1322,7 +1322,7 @@ async function openDetail(id,_silent){
     if(_act.length){
       const _lv={1:'🟡 leve',2:'🟠 molesto',3:'🔴 no pudo hacerlo'};
       _painHTML='<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6">🩹 <strong>Dolor reportado:</strong> '+
-        _act.slice(-3).map(p=>`${esc(p.area)} (${_lv[p.level]||p.level}) con ${esc(p.exName||'—')} · ${fmtD(p.at)}${p.note?` — “${esc(p.note)}”`:''}`).join('<br>')+
+        _act.slice(-3).map(p=>`${esc(p.area)}${p.side?` <b>(${esc(p.side)})</b>`:''} (${_lv[p.level]||p.level}) con ${esc(p.exName||'—')} · ${fmtD(p.at)}${p.note?` — “${esc(p.note)}”`:''}`).join('<br>')+
         '</div>';
     }
   }catch(_e){}

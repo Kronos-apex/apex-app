@@ -199,11 +199,46 @@ const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerz
 //              estrés femoropatelar, el ejercicio nº1 de su columna «Evitar».
 //  · hombro  — cubría 3 patrones de ~10: se colaba TODO el press por encima de la cabeza que no
 //              fuera con barra (mancuernas, máquina, banda, mochila, pike, Arnold).
+//  · 2026-08-08 (ADENDA de Laura, `docs/dictamen-laura-dolor-2026-08-08.md`): entran las 4 zonas
+//    que faltaban —aductor, abductor, cuello, tobillo— y se parchean 3 huecos VIVOS que encontró
+//    Coach Pro. Los tres se colaban porque **el filtro mira el NOMBRE y no la descripción**:
+//    `e212 «Paseo del Camarero»` es un acarreo con la mancuerna SOBRE LA CABEZA, `e211 «Colgarse
+//    de la Barra»` es tracción pura, y el patrón de ESCALÓN (e41/e107/e145/e199) es carga
+//    unilateral sobre una rodilla. Van como REGEX y no como lista de ids a propósito: son
+//    familias nombrables, y una lista solo atrapa lo que ya existe.
+//    🔒 `e211` sale de `hombro` pero SE QUEDA en `lumbar`: ahí la descompresión sí es útil y no
+//    hay articulación irritada colgando. Criterio de Laura, no simetría automática.
 const GEN_ZONE_EXCL = {
-  rodilla: /sentadilla|zancada|estocada|desplante|salto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas/,
-  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint/,
-  hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra/,
+  rodilla: /sentadilla|zancada|estocada|desplante|salto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla/,
+  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
+  hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra|paseo del camarero|camarero|colgarse/,
+  // 🔒 ADUCTOR — ANCHO en lateral/apertura/explosivo, ESTRECHO en sentadilla (solo `sumo`). El
+  // mecanismo de lesión es el cambio de dirección y la base abierta, no la sentadilla: la
+  // sentadilla estrecha, la prensa y el wall-sit son EL CAMINO DE VUELTA. Si `sentadilla` entrara
+  // a secas se repetiría el error que borraba el sit-to-stand.
+  aductor: /aduccion|abduccion|sumo|clamshell|concha|hidrante|fire hydrant|frog|rana|patinador|tijera|90\/90|estiramiento del mundo|zancada con giro|balanceo de piernas|(zancada|paseo|paso|patada|estocada|desplante|abduccion|balanceo) lateral|salto|saltarin|burpee|sprawl|sprint/,
+  // 🔒 ABDUCTOR — ANCHO en abducción/lateral/UNILATERAL DE PIE. El glúteo medio se provoca
+  // sosteniendo la pelvis sobre UNA pierna: por eso caen búlgara, step-up y las variantes a una
+  // pierna. La zancada bilateral con apoyo sobrevive (es 🟡, no ❌).
+  abductor: /abduccion|aduccion|clamshell|concha|hidrante|fire hydrant|patinador|90\/90|(zancada|paseo|paso|patada|estocada|desplante|balanceo) lateral|zancada caminando|bulgara|step ?-?up|escalon|subida con rodilla|sentadilla a una pierna|rumano a una pierna|salto|saltarin|burpee|sprawl|sprint|tijera/,
+  // 🔒 CUELLO — MEDIO-ANCHO. Cae lo que carga por encima de la cabeza, lo que cuelga, lo que mete
+  // al cuello en el crunch y el impacto; NO cae lo que se hace sentado con respaldo.
+  // ⚠️ `buenos dias con barra` y no `buenos dias`: el segundo se comía `e148 Patrón de Bisagra
+  // (sin peso)`, que es la versión terapéutica. Igual `elevacion de piernas colgado` y no a secas,
+  // que se comía `e132` (tumbado, cuello apoyado). Los dos los cazó Laura midiendo.
+  cuello: /encogimiento|press militar|press de hombro|arnold|push press|thruster|clean|sobre la cabeza|tras ?nuca|pike|dominada|chin ?-?up|colgarse|crunch|hollow|russian twist|elevacion de piernas colgado|rueda abdominal|ab wheel|peso muerto convencional|remo con barra|buenos dias con barra|hiperexten|caminata del granjero|farmer|paseo del camarero|camarero|cuerdas de batalla|azote|man maker|burpee|sprawl|salto|saltarin|sprint|superman|nadador/,
+  // 🔒 TOBILLO — ANCHO en impacto y carga en pie, ESTRECHO en movilidad. `e177` y `wt1` NO se
+  // excluyen: son el tratamiento. La fase aguda la cubre el NIVEL del reporte, que para todo — el
+  // regex codifica «qué agrava esta zona», el nivel codifica «cuánto movimiento se permite».
+  // ⚠️ Sin `cuerda`: se comía `e11 Extensión de Tríceps con Cuerda en Polea`.
+  tobillo: /salto|saltarin|burpee|sprawl|sprint|carrera|trote|tijera|rodillas altas|talones al gluteo|patinador|escalador|mountain climber|elevacion de talones|escalon|step ?-?up|escaladora|subida con rodilla|caminata del granjero|farmer|zancada caminando|perro boca abajo|paso lateral|talones atras|oruga|caminata del oso|caminata del cangrejo/,
 };
+// Ejercicios que el NOMBRE genuinamente no delata. En todo el dictamen es UN solo caso, y por eso
+// esto no es una lista paralela sino la excepción documentada: `e93 «Sentadilla con Banda de
+// Resistencia»` es trabajo directo de abductor disfrazado de sentadilla (su descripción dice que
+// «la banda fuerza la activación del glúteo medio»). 🔒 NO va en `aductor`: la banda RESISTE
+// abducción, así que el aductor no se estira — Laura lo tenía en las dos y lo corrigió al medir.
+const GEN_EXCL_IDS = { abductor: ['e93'] };
 
 // Calentamientos contraindicados por zona (ids de WARMUP_LIBRARY, en app-6-extra).
 // Hasta hoy el filtro limpiaba el entreno y dejaba el calentamiento intacto: a quien declaraba
@@ -220,10 +255,21 @@ const GEN_ZONE_EXCL = {
 // array. `wc2` «Estocada con rotación» NO entra: la estocada bloquea la pelvis, así que la
 // rotación es TORÁCICA y sin carga — es tratamiento, no riesgo (mismo criterio que salvó las
 // sentadillas terapéuticas).
+// Zonas nuevas (adenda de Laura, 2026-08-08) y por qué cada id hace falta —el nombre no delata—:
+// `wc2` «Estocada con rotación» no dice apertura de cadera · `wai2` «Desplante alterno» no dice
+// zancada · `we4» «Plancha de hombros» y `wa1` «Flexión de pecho» no dicen que el cuello queda
+// colgando · `wac1` «Plancha isométrica corta» no dice que el cuello sostiene la cabeza ·
+// `wt2` «Movilidad tobillo en pared» no dice que es dorsiflexión BAJO CARGA.
+// 🔒 `wt1` «Círculos de tobillo» se queda DENTRO a propósito: sin carga y sentado, es el
+// tratamiento y no el riesgo. Mismo criterio que salvó al wall-sit y al sit-to-stand.
 const WARMUP_ZONE_EXCL_IDS = {
   lumbar: ['we3', 'we5', 'wai3', 'wac3'],
   rodilla: ['wr2', 'wai1', 'wai2'],
   hombro: ['wh3'],
+  aductor: ['wc2', 'wc3', 'wc5', 'wai2'],
+  abductor: ['wc2', 'wc3', 'wc5', 'wai2'],
+  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1'],
+  tobillo: ['wai1', 'wai2', 'wai4', 'wt2'],
 };
 // Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
 // Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
@@ -251,7 +297,12 @@ function warmupWarnText(zonas, propio) {
 function exerciseContraindicated(ex, limKeys) {
   if (!ex || !limKeys || !limKeys.length) return false;
   const n = _norm(ex.name);
-  return limKeys.some(z => { const re = GEN_ZONE_EXCL[z]; return !!re && re.test(n); });
+  return limKeys.some(z => {
+    const ids = GEN_EXCL_IDS[z];
+    if (ids && ex.id && ids.indexOf(ex.id) >= 0) return true;
+    const re = GEN_ZONE_EXCL[z];
+    return !!re && re.test(n);
+  });
 }
 
 function warmupContraindicated(wu, limKeys) {
@@ -278,7 +329,14 @@ function warmupContraindicated(wu, limKeys) {
 // calentamiento, v424: puerta cerrada, ventana abierta).
 function painZoneKeys(client, nowTs) {
   const act = painCareActive(client && client.painCare, nowTs) || [];
-  return [...new Set(act.map(p => _PAIN_ZONE_TO_EXCL[p && p.area]).filter(Boolean))];
+  const out = [];
+  act.forEach(p => {
+    // Una zona puede mapear a DOS reglas («cadera o ingle» → aductor + abductor).
+    const z = _PAIN_ZONE_TO_EXCL[p && p.area];
+    if (!z) return;
+    (Array.isArray(z) ? z : [z]).forEach(k => out.push(k));
+  });
+  return [...new Set(out)];
 }
 
 // Limitaciones EFECTIVAS de una persona = lo que escribió el coach ∪ lo que ella declaró que le
@@ -895,7 +953,15 @@ function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   if (avoidHighImpact) res.push(GEN_HIIMPACT_RE);
   if (place === 'gym') res.push(/banda|elastic|\bliga\b/); // gym completo: bandas no como principal
   lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) res.push(GEN_ZONE_EXCL[z]); });
-  return ex => { const n = _norm(ex.name); return res.some(re => re.test(n)); };
+  // Los ids de `GEN_EXCL_IDS` van por la MISMA puerta que las regex: si el generador solo mirase
+  // el nombre, `e93` («Sentadilla con Banda» = abductor disfrazado) se colaría y la lista sería
+  // decorativa. Es el caso que el nombre genuinamente no delata.
+  const ids = new Set();
+  lim.keys.forEach(z => (GEN_EXCL_IDS[z] || []).forEach(i => ids.add(i)));
+  return ex => {
+    if (ex && ex.id && ids.has(ex.id)) return true;
+    const n = _norm(ex.name); return res.some(re => re.test(n));
+  };
 }
 
 // Resuelve la lista de bloques (split). Full Body para Principiante o ≤2 días (poco margen
@@ -1881,7 +1947,21 @@ function validateSignup(data, clients, coachEmail) {
 // en client.painCare (perfil → sincroniza a user_data → el coach lo ve) y expira a los
 // 14 días. Los tips son CONSERVADORES a propósito: la app no es un médico — la UI
 // SIEMPRE añade el aviso de consultar a un profesional si persiste.
-const PAIN_AREAS = ['hombro','pecho','codo','muñeca','espalda alta','zona lumbar','cadera','rodilla','tobillo','otra zona'];
+// 🔴 LAS ZONAS LAS DICTA LAURA (§1.2 de `docs/dictamen-laura-dolor-2026-08-08.md`), no el código.
+// La lista vieja tenía 10 y le faltaban las que la gente realmente reporta: el PO marcó dolor «en
+// los abductores de la pierna izquierda» y **esa zona no existía** → cayó en «otra zona», consejo
+// genérico y CERO exclusión. Tampoco existían aductores, cuello, muslo ni pantorrilla.
+// ⚠️ Tener la zona NO implica que se excluya algo: `_PAIN_ZONE_TO_EXCL` mapea solo las que tienen
+// lista clínica firmada por Laura. Declarar una zona sin regla es mejor que no poder declararla
+// (el coach se entera), pero la app NO debe prometer una exclusión que no ocurrió.
+const PAIN_AREAS = [
+  'cuello','hombro','pecho','codo','muñeca o mano','espalda alta','zona lumbar',
+  'cadera o ingle','muslo por delante','muslo por detrás','muslo por dentro (aductores)',
+  'cara externa del muslo o glúteo (abductores)','rodilla','pantorrilla','tobillo o pie','otra zona',
+];
+// El LADO es el dato que decide si el trabajo unilateral sigue siendo posible y el que permite
+// medir simetría al dar el alta (§5.4). No se preguntaba.
+const PAIN_SIDES = ['izquierda','derecha','ambos','centro'];
 const PAIN_LEVELS = [
   { v: 1, label: 'Leve', emoji: '🟡' },
   { v: 2, label: 'Molesto', emoji: '🟠' },
@@ -1891,12 +1971,20 @@ const PAIN_TIPS = {
   'hombro': 'Evita por ahora las cargas por encima de la cabeza y los rangos que duelan. Prueba agarres neutros (palmas enfrentadas) y baja el peso — como te pasó: a veces cambiar de mancuerna a barra (o al revés) cambia todo.',
   'pecho': 'Reduce el rango de bajada y el peso en los presses. Si un ángulo duele (inclinado), prueba plano o máquinas con recorrido guiado mientras pasa.',
   'codo': 'Baja el peso en empujes y jalones, y evita bloquear el codo con fuerza al final del movimiento. Agarres neutros suelen ayudar.',
-  'muñeca': 'Revisa que la muñeca vaya RECTA bajo la carga. Agarres neutros o straps pueden ayudar mientras se calma.',
+  'muñeca o mano': 'Revisa que la muñeca vaya RECTA bajo la carga. Agarres neutros o straps pueden ayudar mientras se calma.',
   'espalda alta': 'Calienta más tiempo la zona antes de jalones/remos y baja el peso. Evita encoger los hombros al remar.',
   'zona lumbar': 'Evita por ahora cargar peso con la columna flexionada (peso muerto, remo con barra) y prefiere ejercicios con apoyo (máquinas, poleas). El core firme es tu protección.',
-  'cadera': 'Reduce la profundidad en sentadillas/zancadas al rango que NO duela y trabaja movilidad suave de cadera en el calentamiento.',
+  'cadera o ingle': 'Reduce la profundidad en sentadillas/zancadas al rango que NO duela y trabaja movilidad suave de cadera en el calentamiento.',
   'rodilla': 'Controla la bajada (no rebotes), reduce profundidad y carga. Las extensiones/prensas con rango corto suelen tolerarse mejor mientras pasa.',
-  'tobillo': 'Evita impacto (saltos, trote) mientras duela; la bici estática y ejercicios sentado son buena alternativa.',
+  'tobillo o pie': 'Evita impacto (saltos, trote) mientras duela; la bici estática y ejercicios sentado son buena alternativa.',
+  // Zonas nuevas (§1.2 de Laura). Mismo criterio conservador: qué bajar y qué evitar, sin nombrar
+  // ninguna lesión y sin prometer que lo demás sea seguro.
+  'cuello': 'Evita por ahora lo que va por encima de la cabeza y los encogimientos de hombros. Trabaja sentado con respaldo, con el peso bajo y los hombros sueltos.',
+  'muslo por dentro (aductores)': 'Evita por ahora abrir las piernas bajo carga (sentadilla sumo, aducción en máquina) y todo lo lateral o explosivo. Mantén los pies al ancho de la cadera.',
+  'cara externa del muslo o glúteo (abductores)': 'Evita por ahora los movimientos que llevan la pierna hacia afuera con carga o banda, y los saltos laterales. El empuje de cadera en línea recta suele tolerarse mejor.',
+  'muslo por delante': 'Reduce profundidad y carga en sentadillas y prensas, y quédate en el rango que NO duele. Evita la extensión de cuádriceps mientras pase.',
+  'muslo por detrás': 'Baja la carga en peso muerto rumano y curl femoral, y NO lo estires buscando el tirón: eso suele empeorarlo. Quédate en el rango que no molesta.',
+  'pantorrilla': 'Evita impacto (saltos, trote) y las elevaciones de talón mientras duela. La bici con sillín alto y el trabajo sentado suelen tolerarse mejor.',
   '_default': 'Baja la carga y quédate en el rango de movimiento que NO duele. Si un ejercicio puntual molesta, cámbialo por una variante — para eso está el botón 🔄.',
 };
 function painTipFor(area) {
@@ -1908,6 +1996,9 @@ function painCareAdd(list, rep, nowIso) {
   const entry = {
     id: 'p' + Math.random().toString(36).slice(2, 9),
     area: PAIN_AREAS.includes(rep.area) ? rep.area : 'otra zona',
+    // Lado: sin él no se puede prescribir trabajo unilateral ni medir simetría al dar el alta
+    // (§5.4 del dictamen). `null` cuando no se marcó — NUNCA se inventa un lado.
+    side: PAIN_SIDES.includes(rep.side) ? rep.side : null,
     level: Math.min(3, Math.max(1, parseInt(rep.level) || 1)),
     exId: rep.exId || null,
     exName: String(rep.exName || '').slice(0, 80),
@@ -4829,7 +4920,32 @@ function _recentCadence(sessions, now, windowDays, skipRecentDays) {
 }
 // Área de dolor (PAIN_AREAS) → zona con reglas de exclusión (GEN_ZONE_EXCL). Solo estas 3 tienen
 // exclusiones; un dolor de codo/muñeca no filtra variantes (no hay regla), pero SÍ genera warning.
-const _PAIN_ZONE_TO_EXCL = { hombro: 'hombro', 'zona lumbar': 'lumbar', rodilla: 'rodilla' };
+// Mapa dictado por Laura (adenda 2026-08-08 §2). Una zona puede apuntar a DOS reglas.
+// 🔒 `pecho`, `codo`, `muñeca o mano` y `otra zona` NO tienen regla, y NO se les inventa una:
+//  · pecho — excluirlo borraría todo el patrón de empuje, y el dolor torácico que de verdad
+//    importa lo cubre la bandera roja de urgencias, no un filtro de ejercicios. Un filtro aquí
+//    daría falsa seguridad sobre lo único que no la admite.
+//  · codo y muñeca — son de CARGA y AGARRE, no de patrón: la misma dominada duele o no según el
+//    agarre, y el agarre no está en el nombre. Un regex acertaría por azar.
+//  · otra zona — por definición no sabemos qué es, y filtrar sobre lo desconocido es inventar.
+// En esos casos la app hace todo lo demás (aviso al coach, consejo, bloqueo del ejercicio
+// reportado) pero NO excluye por zona **y no dice que lo hizo** — mismo criterio y mismas palabras
+// que `parseLimitations` con una limitación sin zona.
+const _PAIN_ZONE_TO_EXCL = {
+  'cuello': 'cuello',
+  'hombro': 'hombro',
+  'espalda alta': 'cuello',            // comparten trapecio, escápula y lo que va sobre la cabeza
+  'zona lumbar': 'lumbar',
+  'cadera o ingle': ['aductor', 'abductor'],  // 🔒 las DOS: sin exploración no se separa una ingle de un trocánter
+  'muslo por delante': 'rodilla',      // cuádriceps y rodilla comparten el aparato extensor
+  'muslo por detrás': 'lumbar',        // 🔒 isquios + lumbar son una cadena, y «detrás del muslo» es
+                                       //    lo más parecido a una ciática que escribe alguien sin formación
+  'muslo por dentro (aductores)': 'aductor',
+  'cara externa del muslo o glúteo (abductores)': 'abductor',
+  'rodilla': 'rodilla',
+  'pantorrilla': 'tobillo',            // tríceps sural y Aquiles son la misma unidad
+  'tobillo o pie': 'tobillo',
+};
 
 // shockTargets(sessions, client, now) → PURA. Decide CÓMO atacar cuando hay varios ejercicios
 // plantados a la vez (v355 Fase 4.1; gate de constancia v356). Criterio del coach profesional
@@ -5575,6 +5691,7 @@ if (typeof module !== 'undefined' && module.exports) {
     passwordProblem,
     consentEvidence,
     PAIN_AREAS,
+    PAIN_SIDES,
     PAIN_LEVELS,
     painTipFor,
     painCareAdd,

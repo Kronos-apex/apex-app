@@ -743,6 +743,102 @@ test('🔴 la sustitución no ofrece MÁS de lo que duele (exerciseContraindicat
   assert.strictEqual(core.exerciseContraindicated({ name: 'Sentadilla en Smith' }, []), false);
 });
 
+// 🔴 EL CANDADO DE LAS LISTAS NUEVAS (adenda de Laura, 2026-08-08). Lo que se afirma aquí no es
+// que las regex existan: es que **no se lleven por delante lo terapéutico** y que **ningún pool
+// quede vacío**. Son las dos trampas que la propia doctrina tiene escritas — `sentadilla` a secas
+// borraba el wall-sit y el sit-to-stand, y una lista que vacía un puesto es peor que no filtrar.
+test('🔴 las listas de zona NO borran lo terapéutico (wall-sit, sit-to-stand, movilidad…)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  // Catálogo REAL, no un fixture cómodo: el defecto vive en los nombres de verdad.
+  const cat = [...src.matchAll(/\{\s*id:\s*'(e\d+)'\s*,\s*name:\s*'([^']+)'/g)].map(m => ({ id: m[1], name: m[2] }));
+  assert.ok(cat.length > 180, 'no se pudo leer el catálogo real, encontré ' + cat.length);
+  const fuera = (z, id) => core.exerciseContraindicated(cat.find(e => e.id === id) || {}, [z]);
+  // TERAPÉUTICOS que tienen que SOBREVIVIR a su propia zona.
+  // ⚠️ OJO CON LA ASIMETRÍA, que es deliberada y me equivoqué al escribir este test la primera
+  // vez: el wall-sit y el sit-to-stand sobreviven a LUMBAR (ahí `sentadilla` se estrechó a las
+  // variantes con barra justo para salvarlos) pero **caen con RODILLA**, donde la regla se dejó
+  // ANCHA a propósito porque el riesgo está en rango y alineación y el sistema no controla
+  // ninguno de los dos. Está escrito en el comentario del propio `GEN_ZONE_EXCL`.
+  [['lumbar', 'e128'], ['lumbar', 'e158'], ['lumbar', 'e133'], // wall-sit, sit-to-stand, press pallof
+   ['cuello', 'e148'],                                   // bisagra SIN peso: el 1er regex de cuello se lo comía
+   ['tobillo', 'e177'],                                  // movilidad de tobillo: es el tratamiento
+   ['cuello', 'e11'],                                    // tríceps con cuerda (el regex de tobillo se lo comía)
+   ['cuello', 'e132'],                                   // elevación de piernas TUMBADO
+   ['aductor', 'e128'], ['aductor', 'e42'],              // wall-sit y hip thrust
+   ['abductor', 'e42'], ['abductor', 'e73'],             // empuje de cadera en línea recta
+  ].forEach(([z, id]) => assert.strictEqual(fuera(z, id), false,
+    `la regla de ${z} se llevó por delante ${id} (${(cat.find(e => e.id === id) || {}).name}), que es terapéutico o de otra zona`));
+  // Y lo que SÍ tiene que caer — si no cayera, la lista sería decorativa (control positivo).
+  [['aductor', 'e60'], ['aductor', 'e61'], ['abductor', 'e45'], ['abductor', 'e93'],
+   ['cuello', 'e115'], ['tobillo', 'e20'], ['hombro', 'e212'], ['hombro', 'e211'],
+   ['rodilla', 'e41'], ['lumbar', 'e136'],
+  ].forEach(([z, id]) => assert.strictEqual(fuera(z, id), true,
+    `la regla de ${z} NO atrapa ${id} (${(cat.find(e => e.id === id) || {}).name})`));
+  // 🔒 `e211` fuera de hombro pero DENTRO de lumbar: criterio explícito de Laura, no simetría.
+  assert.strictEqual(fuera('lumbar', 'e211'), false, 'e211 debe seguir permitido en lumbar (descompresión)');
+  // 🔒 `e93` solo en abductor: la banda RESISTE abducción, el aductor no se estira.
+  assert.strictEqual(fuera('aductor', 'e93'), false, 'e93 no debe excluirse por aductor');
+});
+
+test('🔴 ninguna zona deja un músculo sin ejercicios (un pool vacío es peor que no filtrar)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  // ⚠️ La ventana para leer `env` es FIJA y no «hasta el primer `}`»: con la versión lazy la
+  // sonda leía 13 de 220 ejercicios y reportaba 40 pools en cero que eran suyos, no de la app.
+  const cat = [];
+  const re = /\{\s*id:\s*'(e\d+)'\s*,\s*name:\s*'([^']+)'\s*,\s*muscle:\s*'([^']+)'/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const envM = /env:\s*\[([^\]]*)\]/.exec(src.slice(m.index, m.index + 700));
+    cat.push({ id: m[1], name: m[2], muscle: m[3],
+      env: envM ? envM[1].split(',').map(s => s.replace(/['\s]/g, '')).filter(Boolean) : ['gym'] });
+  }
+  // CONTROL de la sonda: sin esto, un catálogo mal leído da un verde que no significa nada.
+  assert.ok(cat.length > 180, 'catálogo no leído: ' + cat.length);
+  const musculos = [...new Set(cat.map(e => e.muscle))];
+  const zonas = ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo'];
+  const vacios = [];
+  // Por músculo Y POR ENTORNO: el hueco que importa no es «no queda cardio», es «no queda cardio
+  // EN CASA» — lo pidió Laura al firmar las listas (medido: con tobillo en casa sobreviven 2).
+  zonas.forEach(z => musculos.forEach(mu => ['gym', 'casa', 'corporal', 'parque'].forEach(en => {
+    const tot = cat.filter(e => e.muscle === mu && e.env.includes(en));
+    if (tot.length < 2) return;   // con 1 solo, el hueco es del catálogo y no lo causa la zona
+    const quedan = tot.filter(e => !core.exerciseContraindicated(e, [z]));
+    if (!quedan.length) vacios.push(`${z} × ${en} deja «${mu}» SIN ejercicios (${tot.length} → 0)`);
+  })));
+  assert.deepStrictEqual(vacios, [], vacios.join('\n  '));
+});
+
+test('🔴 las zonas de dolor son las que dictó Laura, e incluyen las que faltaban', () => {
+  const A = core.PAIN_AREAS;
+  // El caso del PO: marcó «abductores» y esa zona NO EXISTÍA → caía en «otra zona».
+  assert.ok(A.some(z => /abductores/i.test(z)), 'sigue sin poder declararse abductores');
+  assert.ok(A.some(z => /aductores/i.test(z)), 'sigue sin poder declararse aductores');
+  ['cuello', 'pantorrilla', 'muslo por delante', 'muslo por detrás'].forEach(z =>
+    assert.ok(A.includes(z), 'falta la zona ' + z));
+  // Las 3 que SÍ tienen lista clínica no pueden cambiar de nombre: `_PAIN_ZONE_TO_EXCL` las mapea
+  // por string, así que renombrarlas rompería el filtro EN SILENCIO.
+  ['hombro', 'zona lumbar', 'rodilla'].forEach(z =>
+    assert.ok(A.includes(z), 'se renombró una zona con regla de exclusión: ' + z));
+  ['hombro', 'zona lumbar', 'rodilla'].forEach(z =>
+    assert.deepStrictEqual(core.painZoneKeys({ painCare: [{ area: z, level: 2, at: new Date().toISOString() }] }, Date.now()).length, 1,
+      'la zona ' + z + ' dejó de mapear a su regla'));
+  // Toda zona declarable tiene consejo propio o cae al genérico, nunca a `undefined`.
+  A.forEach(z => assert.ok(typeof core.painTipFor(z) === 'string' && core.painTipFor(z).length > 20,
+    'la zona ' + z + ' no tiene consejo'));
+});
+
+test('el reporte de dolor guarda el LADO, y no se lo inventa', () => {
+  const now = '2026-08-08T12:00:00.000Z';
+  const con = core.painCareAdd(null, { area: 'rodilla', side: 'izquierda', level: 2 }, now);
+  assert.strictEqual(con[0].side, 'izquierda');
+  // Sin lado marcado queda null: nunca se rellena con un valor por defecto.
+  assert.strictEqual(core.painCareAdd(null, { area: 'rodilla', level: 2 }, now)[0].side, null);
+  // Un lado inventado no entra.
+  assert.strictEqual(core.painCareAdd(null, { area: 'rodilla', side: 'arriba', level: 2 }, now)[0].side, null);
+});
+
 test('painZoneKeys ignora los reportes ya vencidos y los cerrados', () => {
   const hoy = Date.now();
   const viejo = new Date(hoy - 40 * 24 * 3600 * 1000).toISOString();
@@ -2734,7 +2830,12 @@ test('newsToShow: solo lo más nuevo que lo visto, reciente primero, tope 3', ()
 test('painTipFor: tip por área con fallback conservador', () => {
   assert.ok(/encima de la cabeza/.test(painTipFor('hombro')));
   assert.ok(/rango de movimiento que NO duele/.test(painTipFor('zona inventada')));
-  assert.strictEqual(PAIN_AREAS.length, 10);
+  // 10 → 16 el 2026-08-08: la lista la dictó Laura (§1.2 de su dictamen) porque a la vieja le
+  // faltaban las zonas que la gente realmente reporta — el PO marcó dolor en los ABDUCTORES y esa
+  // zona no existía, así que cayó en «otra zona» y no excluyó nada. No es aflojar el test: el
+  // número se sube porque cambió el dato clínico, y quién lo dictó está escrito al lado.
+  assert.strictEqual(PAIN_AREAS.length, 16);
+  assert.strictEqual(core.PAIN_SIDES.length, 4);
   assert.strictEqual(PAIN_LEVELS[2].v, 3);
 });
 
