@@ -240,6 +240,49 @@ const GEN_ZONE_EXCL = {
 // abducción, así que el aductor no se estira — Laura lo tenía en las dos y lo corrigió al medir.
 const GEN_EXCL_IDS = { abductor: ['e93'] };
 
+// ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
+// 🔴 HASTA AQUÍ TODO EL MOTOR SABÍA EXCLUIR Y NO SABÍA PRESCRIBIR. Lo destapó el propio PO: «me
+// duelen los codos al hacer extensión de tríceps y necesito fortalecer el manguito rotador, ¿eso
+// está cubierto?». Lo primero sí (se le quita); lo segundo NO existía — la app puede sacarte lo
+// que te hace daño pero no tenía forma de ponerte lo que te hace falta. Quien tiene una molestia
+// necesita las dos cosas.
+// Los ejercicios salen de los bloques que armó Coach Pro dentro de los límites de Laura.
+//
+// 🔒 REGLA QUE NO SE PUEDE ROMPER: un correctivo NUNCA puede ser algo que el filtro de SU PROPIA
+// zona excluya — sería prescribir lo que se acaba de prohibir. Se verificó midiendo, y la trampa
+// era real: `e163 Abducción Tumbado` y `e89 Clamshell` los excluye la regla de abductor (aunque
+// Coach Pro los proponga a partir de las 72 h). Hay un test que lo afirma zona por zona.
+// Se dan CANDIDATOS y no un id fijo para poder respetar el entorno: `e73 Puente de Glúteo` solo
+// declara `gym`, así que en casa hace falta la alternativa.
+const GEN_CORRECTIVE = {
+  hombro:   { ids: ['e138', 'e100', 'e109'], sets: 2, reps: 15, why: 'para el manguito rotador' },
+  cuello:   { ids: ['e100', 'e109'],         sets: 2, reps: 15, why: 'para descargar el trapecio' },
+  lumbar:   { ids: ['e133', 'e134'],         sets: 2, reps: 10, why: 'para el control del core' },
+  rodilla:  { ids: ['e89', 'e73', 'e134'],   sets: 2, reps: 15, why: 'para el glúteo medio, que controla la rodilla' },
+  aductor:  { ids: ['e73', 'e134', 'e106'],  sets: 2, reps: 12, why: 'para la cadera, sin abrir las piernas' },
+  abductor: { ids: ['e73', 'e134', 'e106'],  sets: 2, reps: 12, why: 'para la cadera, en línea recta' },
+  tobillo:  { ids: ['e177', 'e171'],         sets: 2, reps: 10, why: 'para recuperar el movimiento del tobillo' },
+};
+// PURA. Devuelve UN ejercicio correctivo (el primer candidato viable) o null. Null es una
+// respuesta válida y correcta: mejor un hueco que un ejercicio equivocado.
+function correctiveFor(limKeys, lib, place) {
+  const zonas = (limKeys || []).filter(z => GEN_CORRECTIVE[z]);
+  if (!zonas.length) return null;
+  const env = place || 'gym';
+  for (const z of zonas) {
+    const cfg = GEN_CORRECTIVE[z];
+    for (const id of cfg.ids) {
+      const ex = (lib || []).find(e => e && e.id === id);
+      if (!ex) continue;
+      if (!((ex.env || ['gym']).indexOf(env) >= 0)) continue;
+      // 🔒 El candado: si su propia zona lo excluye, no se prescribe.
+      if (exerciseContraindicated(ex, [z])) continue;
+      return { ex, zona: z, sets: cfg.sets, reps: cfg.reps, why: cfg.why };
+    }
+  }
+  return null;
+}
+
 // Calentamientos contraindicados por zona (ids de WARMUP_LIBRARY, en app-6-extra).
 // Hasta hoy el filtro limpiaba el entreno y dejaba el calentamiento intacto: a quien declaraba
 // hernia L4-L5 se le seguía pidiendo «dobla el cuerpo hacia adelante y RELAJA la espalda
@@ -1055,6 +1098,21 @@ function generarRutinas(client, lib, opts) {
       // debe poder aprobar un día en blanco sin alerta. Auditoría 2026-06-21.
       createdAt: now, generated: true, reviewed: false, needsReview: lim.detected || exs.length === 0,
     };
+  });
+  // 🔴 TRABAJO CORRECTIVO: la mitad que faltaba. El motor sabía quitar lo que hace daño y no
+  // sabía poner lo que hace falta (lo destapó el PO con «necesito fortalecer el manguito»).
+  // Va como accesorio AL FINAL de cada día —no reemplaza nada— y solo si hay una zona declarada
+  // con bloque. Lleva su propio `why` porque la persona tiene que saber por qué apareció: un
+  // ejercicio nuevo sin explicación se lee como un error de la app (regla de v434).
+  const _corr = correctiveFor(lim.keys, lib, place);
+  if (_corr) routines.forEach(r => {
+    if (!r.exercises || !r.exercises.length) return;          // un día vacío no se «arregla» con esto
+    if (r.exercises.some(e => e.id === _corr.ex.id)) return;  // ya lo tiene: no duplicar
+    r.exercises.push(Object.assign({}, _corr.ex, {
+      sets: _corr.sets, reps: _corr.reps,
+      corrective: true, correctiveZone: _corr.zona,
+      correctiveWhy: `Va aquí ${_corr.why}, por el dolor que reportaste. No lo cargues: busca sentirlo, no moverlo con peso.`,
+    }));
   });
   const envGaps = [...st.envShortfall];
   // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
@@ -5699,6 +5757,8 @@ if (typeof module !== 'undefined' && module.exports) {
     painZoneKeys,
     limitationsFor,
     exerciseContraindicated,
+    correctiveFor,
+    GEN_CORRECTIVE,
     clientAttentionRank,
     sortClientsByAttention,
     pushNudgeDecision,

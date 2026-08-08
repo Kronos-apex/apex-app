@@ -747,12 +747,81 @@ test('🔴 la sustitución no ofrece MÁS de lo que duele (exerciseContraindicat
 // que las regex existan: es que **no se lleven por delante lo terapéutico** y que **ningún pool
 // quede vacío**. Son las dos trampas que la propia doctrina tiene escritas — `sentadilla` a secas
 // borraba el wall-sit y el sit-to-stand, y una lista que vacía un puesto es peor que no filtrar.
+// Lector del catálogo REAL. 🔴 Se ancla SOLO en `{id:'eNN'` y saca el resto de una ventana, sin
+// exigir orden de campos: la versión que pedía `id,name,muscle` seguidos se dejaba fuera a `e89`
+// y a otros 3 que declaran `env` en medio — y con ellos, cualquier cifra que saliera de aquí.
+// El control de abajo (218+) es lo que hace que un parser roto no pase por verde.
+function _leerCatalogo(src) {
+  const cat = []; const re = /\{\s*id:\s*'(e\d+)'/g; let m;
+  while ((m = re.exec(src))) {
+    const w = src.slice(m.index, m.index + 900);
+    const nm = /name:\s*'([^']+)'/.exec(w), mu = /muscle:\s*'([^']+)'/.exec(w), en = /env:\s*\[([^\]]*)\]/.exec(w);
+    cat.push({ id: m[1], name: nm ? nm[1] : '', muscle: mu ? mu[1] : '',
+      env: en ? en[1].split(',').map(s => s.replace(/['\s]/g, '')).filter(Boolean) : ['gym'] });
+  }
+  return cat;
+}
+
+test('🔴 el trabajo CORRECTIVO nunca es algo que su propia zona excluya', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  assert.ok(cat.length >= 218, 'catálogo no leído entero: ' + cat.length);
+  const malos = [];
+  Object.entries(core.GEN_CORRECTIVE).forEach(([z, cfg]) => {
+    // Todo candidato tiene que EXISTIR (Coach Pro citó ids y uno hay que comprobarlo siempre)…
+    cfg.ids.forEach(id => {
+      const ex = cat.find(e => e.id === id);
+      if (!ex) { malos.push(`${z}: el candidato ${id} NO EXISTE en el catálogo`); return; }
+      // …y el que se llegue a prescribir no puede estar prohibido por su propia zona.
+      if (core.exerciseContraindicated(ex, [z]) && cfg.ids.indexOf(id) === 0)
+        malos.push(`${z}: el 1er candidato ${id} (${ex.name}) lo EXCLUYE su propia zona`);
+    });
+    // Y en cada entorno tiene que salir algo, o salir null limpiamente (nunca algo prohibido).
+    ['gym', 'casa', 'parque', 'corporal'].forEach(en => {
+      const c = core.correctiveFor([z], cat, en);
+      if (c && core.exerciseContraindicated(c.ex, [z]))
+        malos.push(`${z}/${en}: prescribió ${c.ex.id}, que su propia zona excluye`);
+    });
+  });
+  assert.deepStrictEqual(malos, [], malos.join('\n  '));
+  // CONTROL: sin zonas no prescribe nada — esto es un añadido, no un impuesto para todos.
+  assert.strictEqual(core.correctiveFor([], cat, 'gym'), null);
+  assert.strictEqual(core.correctiveFor(['pecho'], cat, 'gym'), null, 'inventó correctivo para una zona sin bloque');
+});
+
+test('🔴 el generador AÑADE el correctivo a quien reportó dolor (y no a quien no)', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'))
+    .map(e => Object.assign({ type: 'Aislamiento' }, e));
+  const now = '2026-08-08T12:00:00.000Z';
+  const base = { days: 3, level: 'Intermedio', goal: 'ganar_musculo', sex: 'M', place: 'gym' };
+  const plan = c => generarRutinas(c, cat, { now, seed: 3 }).routines;
+  // CONTROL primero: sin dolor NO aparece ningún correctivo.
+  const sin = plan({ ...base, painCare: [] });
+  assert.ok(!sin.some(r => (r.exercises || []).some(e => e.corrective)),
+    'metió trabajo correctivo a alguien que no reportó nada');
+  // Con dolor de hombro → aparece, y es el del manguito.
+  const con = plan({ ...base, painCare: [{ area: 'hombro', side: 'derecha', level: 2, at: now }] });
+  const corr = con.flatMap(r => (r.exercises || []).filter(e => e.corrective));
+  assert.ok(corr.length > 0, 'no añadió trabajo correctivo pese al dolor declarado');
+  assert.strictEqual(corr[0].correctiveZone, 'hombro');
+  // Lleva su explicación: un ejercicio nuevo sin decir por qué se lee como un error de la app.
+  assert.ok(/reportaste/.test(corr[0].correctiveWhy || ''), 'el correctivo no explica por qué está ahí');
+  // Y NO puede ser algo prohibido para el hombro.
+  assert.strictEqual(core.exerciseContraindicated(corr[0], ['hombro']), false);
+  // Un día no puede llevarlo dos veces.
+  con.forEach(r => {
+    const n = (r.exercises || []).filter(e => e.corrective).length;
+    assert.ok(n <= 1, 'un día recibió ' + n + ' correctivos');
+  });
+});
+
 test('🔴 las listas de zona NO borran lo terapéutico (wall-sit, sit-to-stand, movilidad…)', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
   // Catálogo REAL, no un fixture cómodo: el defecto vive en los nombres de verdad.
-  const cat = [...src.matchAll(/\{\s*id:\s*'(e\d+)'\s*,\s*name:\s*'([^']+)'/g)].map(m => ({ id: m[1], name: m[2] }));
-  assert.ok(cat.length > 180, 'no se pudo leer el catálogo real, encontré ' + cat.length);
+  const cat = _leerCatalogo(src);
+  assert.ok(cat.length >= 218, 'no se pudo leer el catálogo real, encontré ' + cat.length);
   const fuera = (z, id) => core.exerciseContraindicated(cat.find(e => e.id === id) || {}, [z]);
   // TERAPÉUTICOS que tienen que SOBREVIVIR a su propia zona.
   // ⚠️ OJO CON LA ASIMETRÍA, que es deliberada y me equivoqué al escribir este test la primera
@@ -786,16 +855,9 @@ test('🔴 ninguna zona deja un músculo sin ejercicios (un pool vacío es peor 
   const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
   // ⚠️ La ventana para leer `env` es FIJA y no «hasta el primer `}`»: con la versión lazy la
   // sonda leía 13 de 220 ejercicios y reportaba 40 pools en cero que eran suyos, no de la app.
-  const cat = [];
-  const re = /\{\s*id:\s*'(e\d+)'\s*,\s*name:\s*'([^']+)'\s*,\s*muscle:\s*'([^']+)'/g;
-  let m;
-  while ((m = re.exec(src))) {
-    const envM = /env:\s*\[([^\]]*)\]/.exec(src.slice(m.index, m.index + 700));
-    cat.push({ id: m[1], name: m[2], muscle: m[3],
-      env: envM ? envM[1].split(',').map(s => s.replace(/['\s]/g, '')).filter(Boolean) : ['gym'] });
-  }
+  const cat = _leerCatalogo(src);
   // CONTROL de la sonda: sin esto, un catálogo mal leído da un verde que no significa nada.
-  assert.ok(cat.length > 180, 'catálogo no leído: ' + cat.length);
+  assert.ok(cat.length >= 218, 'catálogo no leído entero: ' + cat.length);
   const musculos = [...new Set(cat.map(e => e.muscle))];
   const zonas = ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo'];
   const vacios = [];
