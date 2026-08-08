@@ -552,9 +552,9 @@ function openNutritionRoom(clientId){
   if(d.prot||d.carb||d.fat){
     macroHTML=`<div class="sroom-sec">Tus macros</div>
       <div class="nutr-bar">
-        <div class="nutr-seg" style="width:${pp}%;background:var(--bl)">${pp>=12?pp+'%':''}</div>
-        <div class="nutr-seg" style="width:${cp}%;background:var(--yl)">${cp>=12?cp+'%':''}</div>
-        <div class="nutr-seg" style="width:${fp}%;background:var(--or)">${fp>=12?fp+'%':''}</div>
+        <div class="nutr-seg prot" style="width:${pp}%">${pp>=12?pp+'%':''}</div>
+        <div class="nutr-seg carb" style="width:${cp}%">${cp>=12?cp+'%':''}</div>
+        <div class="nutr-seg fat" style="width:${fp}%">${fp>=12?fp+'%':''}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
         ${macroTile('--bll','--blt',d.prot,'Proteína',pk,'prot')}

@@ -6575,6 +6575,56 @@ test('--ylt se lee sobre --yll en tema claro (y existe en los cuatro bloques :ro
   assert.ok(r >= 4.5, `--ylt (${ylt}) sobre --yll (${yll}) da ${r.toFixed(2)}:1 y hace falta 4.5`);
 });
 
+// (D) El caso HERMANO de (A) y (B), y el que se coló: texto BLANCO sobre el RELLENO saturado
+//     (--yl/--or/--bl), no sobre el tinte pálido. La barra de macros de la habitación de
+//     nutrición lo llevaba: `#fff` sobre los tres → carbos 1.67 (claro) y 1.59 (oscuro), grasa
+//     3.09/2.19 y proteína 2.23 en oscuro. Los tokens `--on-*` existían justamente para esto y
+//     esa barra nunca se migró — el patrón de siempre: la regla nueva se aplica donde ya había
+//     tokens, no donde había un hex a mano. Cazado el 2026-08-08.
+test('ninguna regla pinta texto BLANCO sobre un relleno saturado (--yl/--or/--bl/--rd)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const RELLENOS = ['yl', 'or', 'bl', 'rd'];
+  const malas = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim().replace(/\s+/g, ' '), cuerpo = m[2];
+    // Sólo el token EXACTO: `var(--yl)` sí, `var(--yll)` no (ese es el tinte pálido, caso A).
+    for (const t of RELLENOS) {
+      if (!new RegExp(`background(-color)?\\s*:\\s*var\\(--${t}\\)(?![a-z])`).test(cuerpo)) continue;
+      if (!/(^|[;{\s])color\s*:\s*(#fff(fff)?|white)\b/i.test(cuerpo)) continue;
+      malas.push(`${sel.slice(0, 44)} → color blanco sobre var(--${t}); usa var(--on-${t})`);
+    }
+  }
+  assert.deepStrictEqual(malas, [],
+    'texto blanco sobre un relleno saturado (ilegible en al menos un tema):\n  ' + malas.join('\n  '));
+});
+
+// (E) Los dos tokens nuevos del 2026-08-08, medidos igual que --ylt para que nadie los mueva a un
+//     valor que no se lee. `--sr-sec` es el que más importa: el dorado de la habitación se diseñó
+//     contra fondo oscuro y sobre `--bg` claro medía 1.92.
+test('--on-yl y --sr-sec existen en los 4 bloques :root y se leen en tema claro', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const hex = h => { h = h.replace('#', ''); return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4); };
+    return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b); };
+  const ratio = (a, b) => { const L1 = lum(hex(a)), L2 = lum(hex(b)); const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); };
+  assert.strictEqual(Number(ratio('#FFFFFF','#000000').toFixed(2)), 21, 'la sonda de contraste está rota');
+  assert.strictEqual(Number(ratio('#767676','#FFFFFF').toFixed(2)), 4.54, 'la sonda de contraste está rota');
+  for (const tok of ['--on-yl', '--sr-sec']) {
+    const defs = css.match(new RegExp(`${tok}\\s*:\\s*[^;]+;`, 'g')) || [];
+    assert.strictEqual(defs.length, 4, `${tok} debe estar en los 4 bloques :root, encontré ${defs.length}`);
+  }
+  const claro = css.slice(css.indexOf(':root {'), css.indexOf('/* dark mode automático'));
+  const val = t => (claro.match(new RegExp(`${t}\\s*:\\s*(#[0-9A-Fa-f]{6})`)) || [])[1];
+  const onYl = val('--on-yl'), yl = val('--yl'), srSec = val('--sr-sec'), bg = val('--bg');
+  assert.ok(onYl && yl && srSec && bg, 'faltan tokens en el :root claro');
+  const rYl = ratio(onYl, yl);
+  assert.ok(rYl >= 4.5, `--on-yl (${onYl}) sobre --yl (${yl}) da ${rYl.toFixed(2)}:1 y hace falta 4.5`);
+  const rSec = ratio(srSec, bg);
+  assert.ok(rSec >= 4.5, `--sr-sec (${srSec}) sobre --bg (${bg}) da ${rSec.toFixed(2)}:1 y hace falta 4.5`);
+});
+
 section('Estático — F5: los harnesses de captura tienen dientes');
 test('todo harness _shot*/_shots* exige que la pantalla arranque (_afirma.mjs)', () => {
   const fs = require('fs');

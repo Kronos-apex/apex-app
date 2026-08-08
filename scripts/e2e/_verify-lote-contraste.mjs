@@ -91,14 +91,37 @@ const SITIOS = [
   { n: 'vmac: Grasas etiqueta',       padre: '#p-home', card: 1, html: `<div class="vmac"><div class="vmac-g"><div class="vmac-c fat"><div class="vmac-k">Grasas</div></div></div></div>` },
   { n: 'vmac: Grasas valor',          padre: '#p-home', card: 1, html: `<div class="vmac"><div class="vmac-g"><div class="vmac-c fat"><div class="vmac-n">70g</div></div></div></div>` },
   { n: 'vmac: Grasas kcal',           padre: '#p-home', card: 1, html: `<div class="vmac"><div class="vmac-g"><div class="vmac-c fat"><div class="vmac-u">630 kcal</div></div></div></div>` },
+  // ── HABITACIÓN DE NUTRICIÓN (auditoría de diseño del 2026-08-06, hallazgos 3 y 4).
+  //    Se montan dentro de la habitación REAL (`#probe-sroom`, ver `montaje`), no sobre #p-home:
+  //    el fondo de `.sroom` es `var(--bg)`, no el `var(--w)` de una tarjeta, y la diferencia
+  //    cambia el número.
+  { n: '.sroom-sec (rótulo dorado)',  padre: '#probe-sroom', html: `<div class="sroom-sec">¿Por qué este plan?</div>` },
+  // Las tres etiquetas de la barra de macros. Van por separado porque cada una falla distinto y
+  // en un tema distinto. ⚠️ El marcado es el LITERAL que emite `app-5-salud.js` (clase por macro,
+  // sólo el ancho en línea): con el `style="background:var(--bl)"` de antes el harness medía un
+  // segmento SIN su clase, heredaba otra tinta y daba cuatro rojos que no eran de la app.
+  { n: '.nutr-seg proteína (--bl)',   padre: '#probe-sroom', html: `<div class="nutr-bar"><div class="nutr-seg prot" style="width:100%">30%</div></div>` },
+  { n: '.nutr-seg carbos (--yl)',     padre: '#probe-sroom', html: `<div class="nutr-bar"><div class="nutr-seg carb" style="width:100%">45%</div></div>` },
+  { n: '.nutr-seg grasas (--or)',     padre: '#probe-sroom', html: `<div class="nutr-bar"><div class="nutr-seg fat" style="width:100%">25%</div></div>` },
   // ── vecinos que se dejaron como estaban: van medidos para que el cero tenga alcance declarado
   { n: 'macros del asesorado',        padre: '#p-home', card: 1, html: `<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:10px;color:var(--t2)">Carbos</div></div>` },
   { n: '.gm-rest-sec (descanso)',     padre: '#p-home', html: `<div style="background:rgba(13,31,23,.96);padding:10px"><div style="color:#E8973A;font-size:40px;font-weight:800">45</div></div>` },
 ];
 
 const PROBE = `(sitio)=>{
-  const rgb=s=>{const m=String(s).match(/rgba?\\(([^)]+)\\)/);if(!m)return null;
-    const v=m[1].split(',').map(x=>parseFloat(x));return{r:v[0],g:v[1],b:v[2],a:v.length>3?v[3]:1};};
+  // 🔴 La sonda tiene que saber leer TODOS los formatos en los que Chrome serializa un color
+  // computado, no solo \`rgb()\`. \`color-mix(in srgb, …)\` —que usa \`.sroom-sec\`— sale como
+  // \`color(srgb 0.8 0.7 0.42)\`: con el parser viejo \`fg\` quedaba null, la sonda REVENTABA, y
+  // como el error se tragaba en el \`JSON.parse(r||'{}')\` el sitio salía impreso con ✅ y ratio
+  // \`undefined\`. Un caso que no puede fallar no es un caso (hermano del gotcha del degradado).
+  const rgb=s=>{const t=String(s);
+    let m=t.match(/rgba?\\(([^)]+)\\)/);
+    if(m){const v=m[1].split(/[ ,\\/]+/).filter(Boolean).map(x=>parseFloat(x));
+      return{r:v[0],g:v[1],b:v[2],a:v.length>3?v[3]:1};}
+    m=t.match(/color\\(srgb ([^)]+)\\)/);
+    if(m){const v=m[1].split(/[ \\/]+/).filter(Boolean).map(x=>parseFloat(x));
+      return{r:v[0]*255,g:v[1]*255,b:v[2]*255,a:v.length>3?v[3]:1};}
+    return null;};
   const lum=c=>{const f=x=>{x/=255;return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)};
     return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);};
   const mez=(fg,bg)=>({r:fg.r*fg.a+bg.r*(1-fg.a),g:fg.g*fg.a+bg.g*(1-fg.a),b:fg.b*fg.a+bg.b*(1-fg.a),a:1});
@@ -119,6 +142,7 @@ const PROBE = `(sitio)=>{
   if(!obj){caja.remove();return{err:'sin texto'};}
   if(sitio.forzar==='hover'){obj.style.background='var(--rdl)';obj.style.color='var(--rdt)';}
   const cs=getComputedStyle(obj); const fg=rgb(cs.color); const f=fondoDe(obj);
+  if(!fg){caja.remove();return{err:'color ilegible para la sonda: '+cs.color};}
   const hx=c=>'#'+[c.r,c.g,c.b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
   const px=parseFloat(cs.fontSize)||14, peso=parseInt(cs.fontWeight)||400;
   const grande=px>=24||(px>=18.66&&peso>=700);
@@ -129,12 +153,35 @@ const PROBE = `(sitio)=>{
   caja.remove(); return out;
 }`;
 
+// 🔴 DOS ARTEFACTOS DE MEDICIÓN QUE HAY QUE MATAR ANTES DE MEDIR EN UNA HABITACIÓN, o el harness
+// reporta 1.0 en todo y el rojo es del harness, no de la app:
+//   1. `.sroom` cerrada está a `opacity:0` (+ `visibility:hidden`), y la sonda COMPONE el opacity
+//      de toda la cadena de padres (lección de los días futuros del calendario) → alfa 0.
+//   2. `.sroom.on .sroom-body>*` lleva `animation:roomUp both`, que arranca en `opacity:0`; un
+//      hijo recién insertado se mide DENTRO de la animación de entrada.
+// Por eso se abre la habitación y se cuelga un contenedor propio con la animación desactivada.
+// No es maquillar el caso: a los 0,5 s la persona ve exactamente esto, opacity 1.
 const montaje = await ev(`(()=>{try{CUR.loggedAs='coach';showScreen('s-coach');
   ['cin-card','cin-signup'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='block';});
   const l=document.getElementById('s-login'); if(l){l.style.display='block';l.classList.add('on');}
+  const room=document.querySelector('.sroom'); if(!room) return 'sin .sroom';
+  room.classList.add('on');
+  const body=room.querySelector('.sroom-body'); if(!body) return 'sin .sroom-body';
+  const h=document.createElement('div'); h.id='probe-sroom';
+  h.style.animation='none'; h.style.opacity='1';
+  body.appendChild(h);
   return 'ok'}catch(e){return String(e&&e.message||e)}})()`);
-A.ok(montaje === 'ok', 'el montaje deja alcanzables el panel del coach y la tarjeta de login', montaje);
+A.ok(montaje === 'ok', 'el montaje deja alcanzables el panel del coach, la tarjeta de login y la habitación', montaje);
+// ⏱️ El sleep va ANTES del control: `.sroom` abre con `transition:opacity .24s`, así que medir
+// inmediatamente después del `classList.add('on')` devuelve el valor A MITAD de la transición
+// (se midió: 0). No es que la habitación no abra — es que la sonda miró demasiado pronto, la
+// misma clase de falso rojo que el boot-check de producción.
 await sleep(800);
+// CONTROL del montaje: si la habitación no quedó opaca de verdad, sus 4 medidas no valen nada.
+const opRoom = await ev(`(()=>{const h=document.getElementById('probe-sroom');if(!h)return -1;
+  let op=1; for(let n=h;n&&n!==document.documentElement;n=n.parentElement)op*=parseFloat(getComputedStyle(n).opacity||'1');
+  return op;})()`);
+A.ok(opRoom === 1, `la habitación quedó realmente opaca (opacity compuesta = ${opRoom}, no 0)`, { opRoom });
 await ev(`window.__probe = ${PROBE}`);
 
 const filas = [];
@@ -152,6 +199,9 @@ const bajos = [], sinMontar = [];
 let ctrl = 0;
 for (const f of filas) {
   if (f.err) { console.log(`  ⚠️  ${f.n.padEnd(30)} ${f.tema.padEnd(7)} ${f.err}`); sinMontar.push(`${f.n}/${f.tema}: ${f.err}`); continue; }
+  // Sin ratio NO se imprime ✅: un sitio que no se pudo medir es un sitio SIN medir, y darlo por
+  // bueno en silencio es exactamente el verde sobre lo que no se vio.
+  if (typeof f.ratio !== 'number') { console.log(`  ⚠️  ${f.n.padEnd(30)} ${f.tema.padEnd(7)} sin medida (la sonda no devolvió ratio)`); sinMontar.push(`${f.n}/${f.tema}: sin medida`); continue; }
   if (f.esperado != null) { if (Math.abs(f.ratio - f.esperado) <= 0.05) ctrl++; }
   const mal = f.ratio < f.pide;
   if (mal) bajos.push({ ...f });

@@ -18,6 +18,11 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --on-or:#0D1F17;   /* blanco sobre naranja da 3.09 en claro y 2.19 en oscuro: no sirve */
   --on-bl:#FFFFFF;   /* blanco sobre el azul claro-tema: 4.59 ✔ */
   --on-rd:#FFFFFF;
+  --on-yl:#0D1F17;   /* el amarillo es CLARO en los dos temas → tinta oscura siempre (10.26 y
+                        10.80). Blanco encima daba 1.67 y 1.59: el peor par de toda la app. */
+  --sr-sec:#856813;  /* rótulo de sección de las habitaciones («¿POR QUÉ ESTE PLAN?», «TUS
+                        MACROS») sobre --bg → 4.78. El dorado de la habitación OSCURA medía
+                        1.92 aquí: se diseñó para fondo oscuro y no tenía variante de tema. */
   --rd-fill:#C1121F; /* el rojo de marca con blanco encima da 4.17; este da 6.22 */
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
@@ -67,7 +72,10 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
     --accent3:#10E0A0; --surface:#152A1E;
   /* En oscuro los tokens ya son claros: la tinta de los rellenos se invierte y el texto sobre
      tinte se lee bien con el token crudo (medido: 7.4 / 6.84 / 5.98). */
-  --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --rd-fill:var(--rd);
+  --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --on-yl:#0D1F17; --rd-fill:var(--rd);
+  /* En oscuro el dorado SÍ se lee (9.52): este es el valor exacto que producía el
+     `color-mix(--sr-gold 78%, --t2)` de antes, medido con la sonda. Oscuro no cambia. */
+  --sr-sec:#D4C175;
   --ort:var(--or); --blt:var(--bl); --rdt:var(--rd); --ylt:var(--yl);
     --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
     --sh:  0 2px 10px rgba(0,0,0,.25);
@@ -108,7 +116,10 @@ html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; backgro
   --accent3:#10E0A0; --surface:#152A1E;
   /* En oscuro los tokens ya son claros: la tinta de los rellenos se invierte y el texto sobre
      tinte se lee bien con el token crudo (medido: 7.4 / 6.84 / 5.98). */
-  --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --rd-fill:var(--rd);
+  --on-or:#0D1F17; --on-bl:#0D1F17; --on-rd:#0D1F17; --on-yl:#0D1F17; --rd-fill:var(--rd);
+  /* En oscuro el dorado SÍ se lee (9.52): este es el valor exacto que producía el
+     `color-mix(--sr-gold 78%, --t2)` de antes, medido con la sonda. Oscuro no cambia. */
+  --sr-sec:#D4C175;
   --ort:var(--or); --blt:var(--bl); --rdt:var(--rd); --ylt:var(--yl);
   --chart-g:var(--gt); /* líneas de gráfica en menta brillante sobre fondo oscuro */
   --sh:  0 2px 10px rgba(0,0,0,.25);
@@ -139,6 +150,11 @@ html[data-theme="dark"] #avi-loading { background: linear-gradient(180deg,rgba(6
   --on-or:#0D1F17;   /* blanco sobre naranja da 3.09 en claro y 2.19 en oscuro: no sirve */
   --on-bl:#FFFFFF;   /* blanco sobre el azul claro-tema: 4.59 ✔ */
   --on-rd:#FFFFFF;
+  --on-yl:#0D1F17;   /* el amarillo es CLARO en los dos temas → tinta oscura siempre (10.26 y
+                        10.80). Blanco encima daba 1.67 y 1.59: el peor par de toda la app. */
+  --sr-sec:#856813;  /* rótulo de sección de las habitaciones («¿POR QUÉ ESTE PLAN?», «TUS
+                        MACROS») sobre --bg → 4.78. El dorado de la habitación OSCURA medía
+                        1.92 aquí: se diseñó para fondo oscuro y no tenía variante de tema. */
   --rd-fill:#C1121F; /* el rojo de marca con blanco encima da 4.17; este da 6.22 */
   --ort:#9A3412;     /* texto naranja SOBRE --orl → 6.19 (el token crudo daba 2.84) */
   --blt:#14507A;     /* texto azul SOBRE --bll → 7.06 */
@@ -782,8 +798,22 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .cal-month{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
 .cal-dows{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px}
 .cal-dows span{text-align:center;font-size:10px;color:var(--t3);font-weight:700}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.cal-cell{min-width:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border-radius:7px;color:var(--t3);background:var(--bg)}
+/* `minmax(0,1fr)` y no `1fr`: el mínimo automático de una pista `1fr` es su MIN-CONTENT, y las
+   celdas VACÍAS del calendario (las del hueco antes del día 1 y después del último) llevan
+   `aspect-ratio:1` sin contenido → su mínimo lo resuelve el navegador desde el ALTO de la fila y
+   engordan la pista. Medido: celdas vacías de 100,8 px donde las de día median 44,8, y las 7
+   columnas sumando 253,9 px dentro de una rejilla de 216,4. `min-width:0` en la celda NO alcanza:
+   acota el ítem, no la PISTA. A tamaño normal esto no se veía (la última caía en 386 de 390 px),
+   pero con letra grande la columna del DOMINGO quedaba cortada — días 2, 9, 16, 23 y 30 medio
+   fuera de la pantalla. Salió al aplicar el zoom a las habitaciones (2026-08-08); el defecto ya
+   estaba y solo le faltaban 4 px para asomar. */
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+/* `width:100%` es load-bearing: sin él, una celda SIN contenido (los huecos del mes) deja sus dos
+   ejes en `auto`, el grid la estira en alto y `aspect-ratio:1` le deriva el ANCHO del alto → se
+   sale de su columna (medido: 100,8 px en una pista de 26,6). Con el ancho fijado al de la pista,
+   el aspect-ratio deriva el ALTO, que es el orden correcto. Las celdas CON día nunca lo sufrieron
+   porque su texto les daba un ancho de referencia. */
+.cal-cell{width:100%;min-width:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border-radius:7px;color:var(--t3);background:var(--bg)}
 .cal-cell.empty{background:transparent}
 .cal-cell.future{background:transparent}
 .cal-cell.trained{background:var(--g);color:#EAFBF4;font-weight:800}
@@ -1026,7 +1056,17 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .msc-ex-v small{display:block;font-size:8.5px;color:var(--t3);font-weight:600}
 /* Habitación de NUTRICIÓN */
 .nutr-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:11px;background:var(--bg)}
-.nutr-seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;min-width:0}
+/* 🔴 CADA SEGMENTO DECLARA SU TINTA, y el relleno vive AQUÍ, no en un `style=` del JS.
+   `color:#fff` para los tres daba carbos 1.67/1.59, grasa 3.09/2.19 y proteína 2.23 en oscuro:
+   los porcentajes de la barra eran ilegibles justo en la pantalla cuyos números repinta el
+   dictamen de macros. Los tokens `--on-*` YA existían para esto (sus propios comentarios traen
+   estas mismas cifras) y esta barra nunca se migró — el patrón de siempre: la regla nueva se
+   aplicó donde ya había tokens y no donde había un hex escrito a mano.
+   Al juntar relleno y tinta en la misma regla, elegir un color sin su tinta deja de ser posible. */
+.nutr-seg{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;min-width:0}
+.nutr-seg.prot{background:var(--bl);color:var(--on-bl)}
+.nutr-seg.carb{background:var(--yl);color:var(--on-yl)}
+.nutr-seg.fat{background:var(--or);color:var(--on-or)}
 .nutr-acts{display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap}
 .nutr-act{flex:1;min-width:60px;padding:9px 4px;border:1.5px solid var(--br2);border-radius:10px;background:transparent;color:var(--t2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
 .nutr-act.on{border-color:var(--gt);background:var(--gl);color:var(--gt)}
@@ -1052,8 +1092,13 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
    Refina las clases .sroom* compartidas → sube las 7 habitaciones de una.
    Marca verde + DORADO, serif display Fraunces, profundidad/glow, vidrio.
    Reglas posteriores = ganan en cascada sobre las originales de arriba.        */
-:root{ --font-display:'Fraunces',Georgia,'Times New Roman',serif;
-  --sr-gold:#E7C66B; --sr-gold-2:#C9A227; --sr-gold-deep:#9A7B16; }
+/* El trío `--sr-gold` / `--sr-gold-2` / `--sr-gold-deep` se retiró el 2026-08-08: los dos
+   últimos NUNCA tuvieron un solo uso, y el primero solo alimentaba `.sroom-sec`, que ahora va
+   por `--sr-sec` (tinta con variante de tema). El dorado VISIBLE de la habitación no venía de
+   estos tokens sino de los `rgba(231,198,107,…)` horneados en el héroe, que siguen ahí.
+   Un token muerto no es inofensivo: yo mismo estuve a punto de construir sobre `--sr-gold-deep`
+   creyendo que estaba en uso. */
+:root{ --font-display:'Fraunces',Georgia,'Times New Roman',serif; }
 
 /* Barra superior: pill "Volver" más fina y con peso */
 .sroom-back{box-shadow:0 2px 9px rgba(0,0,0,.14);letter-spacing:.1px}
@@ -1091,8 +1136,13 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom-stat-ic{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sc,var(--g)) 28%, transparent), 0 0 13px color-mix(in srgb,var(--sc,var(--g)) 16%, transparent)}
 .sroom-stat-v{letter-spacing:-.01em}
 
-/* SECCIONES: acento dorado sutil en el título (sin pseudo-elemento → cero riesgo de layout) */
-.sroom-sec{color:color-mix(in srgb,var(--sr-gold) 78%, var(--t2))}
+/* SECCIONES: acento dorado sutil en el título (sin pseudo-elemento → cero riesgo de layout).
+   🔴 La tinta va por TOKEN DE TEMA (`--sr-sec`), no por una mezcla del dorado de la habitación
+   oscura: ese dorado se diseñó contra `#0D1F17` y aquí cae sobre `--bg`, que en tema CLARO es
+   `#F4F4F0` → medía 1.92:1. Y no es un rótulo decorativo: es «¿POR QUÉ ESTE PLAN?», «TUS
+   MACROS», «PLAN» y «EJEMPLOS» — los que dicen qué se está leyendo. Hallazgo de la auditoría
+   del 2026-08-06; medido con `_verify-lote-contraste`. */
+.sroom-sec{color:var(--sr-sec)}
 
 /* RESUMEN: filo verde-dorado sutil */
 .sroom-summary{box-shadow:0 6px 18px rgba(16,224,160,.10), inset 0 1px 0 rgba(255,255,255,.05)}
@@ -1541,6 +1591,25 @@ html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
 html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
+/* HABITACIONES (`.sroom`): el `zoom` va en el CONTENEDOR INTERNO, nunca en `.sroom`.
+   ⚠️ La auditoría lo reportó como «falta `.sroom` en la lista» y aplicarlo literal habría sido un
+   error: `.sroom` es `position:fixed;inset:0`, así que un `zoom` ahí multiplica una caja que YA
+   ocupa el viewport entero y la saca de la pantalla. Todo lo que está en la lista de arriba
+   (`.cnp`, `#s-coach .panel`, `.gm-body`) es un contenedor INTERNO — `.sroom-body` y `.sroom-bar`
+   son sus gemelos, y por eso el arreglo va ahí.
+   Sin esto, quien puso la letra en «Muy grande» seguía leyendo las 7 habitaciones a 13 px: el
+   ajuste de accesibilidad simplemente no llegaba (medido ×1.00 en lg y en xl, con `.cnp` de
+   control creciendo ×1.18/×1.40 en la misma corrida).
+   A diferencia de `.md` (v452) aquí NO hay que compensar la ALTURA: `.sroom` es un scroller
+   (`overflow-y:auto`), así que lo que crece se alcanza scrolleando; lo que no se puede alcanzar
+   es lo que desborda de un flex centrado sin scroll. El ANCHO sí es específico del motor y va con
+   los demás bajo [data-zoomw="scale"] — son dos ejes distintos, que es justo lo que costó v452.
+   Hallazgo 2 de la auditoría del 2026-08-06. Regresión: `_repro-sroom-fs.mjs`. */
+html[data-fs="lg"] .sroom-body, html[data-fs="lg"] .sroom-bar{ zoom:1.18; }
+html[data-fs="xl"] .sroom-body, html[data-fs="xl"] .sroom-bar{ zoom:1.40; }
+html[data-zoomw="scale"][data-fs="lg"] .sroom-body, html[data-zoomw="scale"][data-fs="lg"] .sroom-bar{ width:calc(100%/1.18); transform-origin:left top; }
+html[data-zoomw="scale"][data-fs="xl"] .sroom-body, html[data-zoomw="scale"][data-fs="xl"] .sroom-bar{ width:calc(100%/1.40); transform-origin:left top; }
+
 /* Modales: el `zoom` (factor) va siempre; la compensación de ancho + el anclaje del backdrop
    arriba-izquierda (zoom rompe el centrado del flex en legacy) van SOLO en motores legacy. */
 html[data-fs="lg"] .md{ zoom:1.18; }
