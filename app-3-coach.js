@@ -1326,6 +1326,18 @@ async function openDetail(id,_silent){
         '</div>';
     }
   }catch(_e){}
+  // 🔒 Aviso de REVISIÓN del correctivo (Laura): un correctivo que lleva un mes idéntico o ya
+  // funcionó o no está funcionando, y las dos cosas piden decisión humana. A las 8 semanas se
+  // acaba solo, así que él tiene que enterarse ANTES. Regla de v434: un estado que no expira por
+  // sí mismo necesita su aviso al responsable.
+  try{
+    const _rv=(typeof correctiveReview==='function')?correctiveReview(c):null;
+    if(_rv){
+      _painHTML+=`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6;color:var(--ylt)">`+
+        `⏳ <strong>Lleva ${_rv.semanas} semanas con el trabajo correctivo de ${esc(_rv.area)}${_rv.side?' ('+esc(_rv.side)+')':''}.</strong> `+
+        `¿Lo progresas, lo cambias o lo quitas? A las 8 semanas deja de ponerse solo.</div>`;
+    }
+  }catch(_e){}
   dn.style.display=(c.notes||_painHTML)?'block':'none';
   dn.innerHTML=_painHTML+(c.notes?`${_coIco('pencil',12,'📝')} <strong>Notas:</strong> ${esc(c.notes)}`:'');
   renderValoracion(c);

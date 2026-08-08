@@ -820,6 +820,47 @@ test('🔴 el trabajo CORRECTIVO nunca es algo que su propia zona excluya', () =
     assert.ok(c.when === 'final' || c.when === 'calentamiento', `${z}/${c.id} no declara dónde va`)));
 });
 
+// 🔴 «La más importante de las seis» (Laura, respuesta 4): el reporte de dolor es un EVENTO y
+// caduca a los 14 días; el déficit que el correctivo trabaja es una CONDICIÓN y tarda 6-8 semanas.
+// Si el correctivo muriera con el reporte, la app se lo quitaría a la persona justo cuando empieza
+// a servir — que es la receta de la recaída.
+test('🔴 el correctivo SOBREVIVE a que el dolor se pase (el déficit tarda semanas, no días)', () => {
+  const dia = 86400000, hoy = Date.now();
+  const rep = d => ({ painCare: [{ area: 'hombro', side: 'derecha', level: 2, at: new Date(hoy - d * dia).toISOString() }] });
+  // A los 20 días el REPORTE ya caducó (TTL 14) → el filtro deja de excluir…
+  assert.deepStrictEqual(core.painZoneKeys(rep(20), hoy), [], 'el filtro de dolor debería haber caducado');
+  // …pero el CORRECTIVO sigue puesto, que es justo el punto.
+  assert.deepStrictEqual(core.correctiveZoneKeys(rep(20), hoy), ['hombro'], 'el correctivo murió con el reporte');
+  // Y «Ya estoy bien ✓» tampoco lo mata: se fue el dolor, no el déficit.
+  const cerrado = { painCare: [{ area: 'hombro', level: 2, at: new Date(hoy - 20 * dia).toISOString(), cleared: true }] };
+  assert.deepStrictEqual(core.correctiveZoneKeys(cerrado, hoy), ['hombro'], 'cerrar el reporte mató el correctivo');
+  // A las 8 semanas SÍ se acaba — y el coach fue avisado a las 4.
+  assert.deepStrictEqual(core.correctiveZoneKeys(rep(60), hoy), [], 'el correctivo no se acaba nunca');
+  assert.strictEqual(core.correctiveReview(rep(10), hoy), null, 'avisó al coach antes de las 4 semanas');
+  const rv = core.correctiveReview(rep(35), hoy);
+  assert.ok(rv && rv.area === 'hombro' && rv.semanas === 5, 'no avisa al coach a las 4+ semanas: ' + JSON.stringify(rv));
+});
+
+test('🔴 el correctivo EXPLICA por qué sigue puesto cuando ya no duele', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'))
+    .map(e => Object.assign({ type: e.type || 'Aislamiento' }, e));
+  const dia = 86400000;
+  const now = new Date('2026-08-08T12:00:00.000Z').getTime();
+  const iso = d => new Date(now - d * dia).toISOString();
+  const base = { days: 3, level: 'Intermedio', goal: 'ganar_musculo', sex: 'M', place: 'gym' };
+  const corr = c => generarRutinas(c, cat, { now: new Date(now).toISOString(), seed: 7 }).routines
+    .flatMap(r => (r.exercises || []).filter(e => e.corrective));
+  // Reporte de hace 20 días: ya no duele, pero el correctivo sigue — y lo DICE.
+  const viejo = corr({ ...base, painCare: [{ area: 'hombro', side: 'derecha', level: 2, at: iso(20) }] });
+  assert.ok(viejo.length > 0, 'el correctivo desapareció al caducar el reporte');
+  assert.ok(/evita que vuelva/.test(viejo[0].correctiveWhy),
+    'no explica por qué sigue puesto cuando ya no duele — así lo abandona: ' + viejo[0].correctiveWhy);
+  // CONTROL: con el dolor vigente el texto sigue siendo el del reporte, no el de mantenimiento.
+  const fresco = corr({ ...base, painCare: [{ area: 'hombro', side: 'derecha', level: 2, at: iso(1) }] });
+  assert.ok(/reportaste/.test(fresco[0].correctiveWhy), fresco[0].correctiveWhy);
+});
+
 test('🔴 el correctivo dice de dónde salió la zona, y se apaga con dolor que impide entrenar', () => {
   const fs = require('fs'), path = require('path');
   const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'))

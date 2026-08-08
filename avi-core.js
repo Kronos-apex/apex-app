@@ -332,7 +332,11 @@ function correctiveFor(limKeys, lib, place, opts) {
         // 🔴 F3: la zona puede venir de la NOTA del coach y entonces nadie reportó nada. Decirle
         // «por el dolor que reportaste» a quien no reportó es afirmar algo falso — y es justo el
         // caso del PO, que preguntó por el manguito sin haber reportado ningún dolor.
-        fuente: pain.indexOf(z) >= 0 ? 'dolor' : 'nota',
+        // La fuente se decide POR ZONA, no globalmente: `dolor` si el reporte sigue vigente,
+        // `sigue` si lo hubo y ya caducó (mantenimiento), y `nota` si nunca hubo reporte y la
+        // zona viene de la ficha. Decidirlo global hacía que a quien solo tenía nota del coach se
+        // le dijera «aunque ya no te duela» — a alguien que nunca dijo que le doliera.
+        fuente: pain.indexOf(z) >= 0 ? 'dolor' : ((o.corrKeys || []).indexOf(z) >= 0 ? 'sigue' : 'nota'),
       };
     }
   }
@@ -426,6 +430,47 @@ function warmupContraindicated(wu, limKeys) {
 // UNA función por la que pasan TODAS las rutas: si mañana aparece otra superficie se le pide esto
 // y NO una segunda lista, que es exactamente como se separan (lección del filtro de lesiones y el
 // calentamiento, v424: puerta cerrada, ventana abierta).
+// ── VIDA DEL TRABAJO CORRECTIVO (auditoría de Laura, respuesta 4 — «la más importante») ───────
+// 🔴 EL REPORTE DE DOLOR ES UN EVENTO; EL DÉFICIT QUE LO CAUSÓ ES UNA CONDICIÓN. El reporte
+// caduca a los 14 días (`PAIN_TTL_MS`) y un manguito no se fortalece en 14 días: tarda 6-8
+// semanas. Si el correctivo muriera con el reporte, la app se lo quitaría a la persona **justo
+// cuando empieza a servir**, que es la receta exacta de la recaída — literalmente el patrón del
+// aductor, la lesión que más recae porque deja de doler mucho antes de estar curada.
+// Por eso el correctivo mira una ventana propia y MÁS LARGA, y **no le importa `cleared`**: haber
+// tocado «Ya estoy bien ✓» significa que se fue el dolor, no que se fue el déficit.
+const CORRECTIVE_TTL_MS = 56 * 86400000;   // 8 semanas
+const CORRECTIVE_REVIEW_MS = 28 * 86400000; // 4 semanas → aviso al coach
+function correctiveZoneKeys(client, nowTs) {
+  const now = nowTs || Date.now();
+  const out = [];
+  ((client && client.painCare) || []).forEach(p => {
+    if (!p || !p.at) return;
+    const dt = now - Date.parse(p.at);
+    if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
+    const z = _PAIN_ZONE_TO_EXCL[p.area];
+    if (!z) return;
+    (Array.isArray(z) ? z : [z]).forEach(k => out.push(k));
+  });
+  return [...new Set(out)];
+}
+// Lo que el COACH tiene que ver. 🔒 Un correctivo que lleva un mes idéntico o ya funcionó o no
+// está funcionando, y las dos cosas piden decisión humana; a las 8 semanas se acaba solo y él
+// tiene que saberlo ANTES. Es la regla de v434: un estado que no expira por sí mismo necesita su
+// aviso al responsable, o alguien se queda meses en él sin que nadie lo mire.
+function correctiveReview(client, nowTs) {
+  const now = nowTs || Date.now();
+  let peor = null;
+  ((client && client.painCare) || []).forEach(p => {
+    if (!p || !p.at || !_PAIN_ZONE_TO_EXCL[p.area]) return;
+    const dt = now - Date.parse(p.at);
+    if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
+    if (dt < CORRECTIVE_REVIEW_MS) return;
+    const semanas = Math.floor(dt / (7 * 86400000));
+    if (!peor || semanas > peor.semanas) peor = { area: p.area, semanas, side: p.side || null };
+  });
+  return peor;
+}
+
 function painZoneKeys(client, nowTs) {
   const act = painCareActive(client && client.painCare, nowTs) || [];
   const out = [];
@@ -1166,8 +1211,13 @@ function generarRutinas(client, lib, opts) {
   // 5 niveles, esto pasa a ser N3 y N4.)
   const _nowTs = Date.parse(now) || Date.now();
   const _bloquea = painCareActive(client.painCare, _nowTs).some(p => p && p.level === 3);
-  const _corr = _bloquea ? null : correctiveFor(lim.keys, lib, place, {
-    painKeys: painZoneKeys(client, _nowTs),   // el dolor de hoy manda sobre la nota vieja (F5)
+  // 🔴 Las zonas del CORRECTIVO no son las del filtro: viven 8 semanas y sobreviven a que el
+  // reporte caduque o a que la persona toque «Ya estoy bien». El filtro protege del dolor de HOY;
+  // el correctivo trabaja el déficit que lo causó, y ese tarda 6-8 semanas.
+  const _corrKeys = correctiveZoneKeys(client, _nowTs);
+  const _corr = _bloquea ? null : correctiveFor([...new Set([...lim.keys, ..._corrKeys])], lib, place, {
+    painKeys: painZoneKeys(client, _nowTs),   // dolor VIGENTE: manda sobre la nota vieja (F5)
+    corrKeys: _corrKeys,                      // reportes de hasta 8 semanas → texto de mantenimiento
     levelCap: _gate.cap,                      // el correctivo pasa el mismo gate que el resto (F4)
   });
   if (_corr) routines.forEach(r => {
@@ -1175,9 +1225,13 @@ function generarRutinas(client, lib, opts) {
     if (r.exercises.some(e => e.id === _corr.ex.id)) return;  // ya lo tiene: no duplicar
     // 🔴 F3: el texto dice de dónde salió la zona. «por el dolor que reportaste» a quien no
     // reportó nada (la zona venía de la nota del coach) es afirmar algo falso.
+    // 🔒 Tres textos, no dos. El tercero es el que evita que lo abandone: si ya no le duele y
+    // nadie le explica por qué sigue haciéndolo, lo deja — y ahí es justo cuando empieza a servir.
     const _porQue = _corr.fuente === 'dolor'
       ? 'por el dolor que reportaste'
-      : 'por lo que tu coach anotó en tu ficha';
+      : _corr.fuente === 'nota'
+      ? 'por lo que tu coach anotó en tu ficha'
+      : 'y se queda un tiempo aunque ya no te duela: esto es lo que evita que vuelva';
     const _dosis = _corr.porLado ? ' Hazlo por cada lado.' : '';
     r.exercises.push(Object.assign({}, _corr.ex, {
       sets: _corr.sets, reps: _corr.reps,
@@ -5829,6 +5883,8 @@ if (typeof module !== 'undefined' && module.exports) {
     limitationsFor,
     exerciseContraindicated,
     correctiveFor,
+    correctiveZoneKeys,
+    correctiveReview,
     GEN_CORRECTIVE,
     clientAttentionRank,
     sortClientsByAttention,
