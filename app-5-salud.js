@@ -611,7 +611,12 @@ function openNutritionRoom(clientId){
   }
 
   body.innerHTML=`
-    <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,#10b98118,#10b98108),var(--w);border-color:#10b98144">
+    <!-- Héroe de MARCA (verde profundo en los dos temas), no el tinte pálido. Decisión del PO
+         2026-08-08 sobre la comparativa A/B. Criterio de Isabella: el tinte se gana cuando NOMBRA
+         al sujeto — el oro de Récord nombra un récord, el lila de Músculo nombra un músculo, y el
+         verde de nutrición no nombraba nada que el verde de marca no dijera ya con más fuerza:
+         era el único de los cuatro que pagaba el ancla sin comprar identidad. -->
+    <div class="sroom-hero exroom-hero">
       <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98166">🥗</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">Mi nutrición</div>
@@ -1322,12 +1327,27 @@ function flAceptarAviso(){
   sv('ax_c',DB.clients);
   renderFoodLogRoom();
 }
+// Cada contador lleva el MISMO código de color de macros que el resto de la app (kcal verde,
+// proteína azul, carbos dorado, grasa naranja) y la clase compartida `.nutri-card`. Antes eran
+// texto negro sobre el fondo de la página con una rayita verde de 3 px: los cuatro iguales, sin
+// relación con la barra de macros que el asesorado acaba de ver en su plan, y sin despegarse del
+// papel. Es la misma causa que la habitación de nutrición — sin rango tonal no hay pantalla, hay
+// hoja. `--nc` alimenta el filo superior; el tinte de fondo lo da el par `--*l`.
+const _FL_MACRO_COL = {
+  kcal:   ['--gl', '--gt'],
+  prot:   ['--bll', '--blt'],
+  carbs:  ['--yll', '--ylt'],
+  grasas: ['--orl', '--ort'],
+};
 function _flMacroChip(et,o,unidad){
   const pct=o.pct==null?null:Math.min(100,o.pct);
-  return `<div style="flex:1;min-width:0;text-align:center;background:var(--bg);border-radius:var(--rsm);padding:8px 4px">
-    <div style="font-size:15px;font-weight:800;color:var(--t1)">${o.hecho}${unidad}</div>
+  const [bg,col]=_FL_MACRO_COL[et]||['--bg','--t1'];
+  // Pasarse es una señal distinta a ir corto: ahí el color lo dice el estado, no el macro.
+  const barra=o.pct>110?'var(--or)':`var(${col})`;
+  return `<div class="nutri-card" style="--nc:var(${col});flex:1;min-width:0;text-align:center;background:var(${bg});border-radius:var(--r);padding:10px 4px 9px">
+    <div style="font-size:15px;font-weight:800;color:var(${col})">${o.hecho}${unidad}</div>
     <div style="font-size:10px;color:var(--t2)">${et}${o.meta?' de '+o.meta+unidad:''}</div>
-    ${pct==null?'':`<div style="height:3px;background:var(--br);border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${o.pct>110?'var(--or)':'var(--g)'}"></div></div>`}
+    ${pct==null?'':`<div style="height:3px;background:color-mix(in srgb,var(${col}) 20%,transparent);border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barra}"></div></div>`}
   </div>`;
 }
 function renderFoodLogRoom(){
@@ -1340,7 +1360,20 @@ function _flDiaHtml(c){
   const hoy=foodLogDay(c.foodlog);
   const tot=foodLogTotals(hoy);
   const pr=foodLogProgress(tot,_foodLogTargetHoy(c.id));
-  let html=`<div style="display:flex;gap:6px;margin-bottom:6px">
+  // HÉROE: era la ÚNICA habitación que abría sin ninguno — pasaba de la barra directo a una fila
+  // de números sueltos. Mismo héroe de marca que las demás (decisión del PO, 2026-08-08), con el
+  // resumen del día dentro: lo primero que alguien quiere saber al abrir esto es cuánto le queda.
+  const _rest=Math.max(0,(pr.kcal.meta||0)-(pr.kcal.hecho||0));
+  const _sub=tot.n===0
+    ? 'Todavía no has anotado nada hoy'
+    : (pr.kcal.meta ? `Te quedan <b>${_rest}</b> kcal para tu meta de hoy` : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
+  let html=`<div class="sroom-hero exroom-hero" style="margin-bottom:14px">
+      <div class="sroom-hero-txt">
+        <div class="sroom-title">Comida de hoy</div>
+        <div class="sroom-hero-feel">${_sub}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
       ${_flMacroChip('kcal',pr.kcal,'')}${_flMacroChip('prot',pr.p,'g')}${_flMacroChip('carbs',pr.c,'g')}${_flMacroChip('grasas',pr.f,'g')}
     </div>`;
   if(pr.parcial)html+=`<div style="font-size:11.5px;color:var(--t2);margin-bottom:10px">Alguno de estos alimentos no trae todos sus datos, así que el total va incompleto.</div>`;
@@ -1351,10 +1384,13 @@ function _flDiaHtml(c){
     html+=`<div style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
         <div style="font-size:13px;font-weight:800;color:var(--t1)">${FOODLOG_MEAL_LABEL[m]}${items.length?` <span style="font-weight:600;color:var(--t2)">· ${kc} kcal</span>`:''}</div>
-        <button class="btn bg bsm" style="min-height:32px;padding:0 12px" onclick="flBuscar('${m}')">+ Agregar</button>
+        <button class="btn bp bsm" style="min-height:34px;padding:0 13px;flex-shrink:0" onclick="flBuscar('${m}')">+ Agregar</button>
       </div>`;
     if(!items.length){
-      html+=`<div style="font-size:12px;color:var(--t3);padding:8px 10px;background:var(--bg);border-radius:var(--rsm)">Sin registrar</div>`;
+      // Un hueco no se pinta como un bloque más: se marca con un borde punteado, que se lee como
+      // «acá falta algo» y no como una tarjeta vacía. Y `--t2`, no `--t3`: se repite hasta 3 veces
+      // en la pantalla y era de lo más apagado que había.
+      html+=`<div style="font-size:12px;color:var(--t2);padding:9px 10px;border:1px dashed var(--br2);border-radius:var(--rsm)">Sin registrar</div>`;
     }else{
       items.forEach(e=>{
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px">
