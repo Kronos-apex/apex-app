@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=456">
+<link rel="stylesheet" href="styles.css?v=457">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -506,6 +506,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="d-nutreview" style="display:none;margin-bottom:13px"></div>
       <div id="d-habits" style="display:none;margin-bottom:13px"></div>
       <div id="d-foodlog" style="display:none;margin-bottom:13px"></div>
+      <div id="d-prs" style="display:none;margin-bottom:13px"></div>
       <div class="g2">
         <div>
           <div style="font-size:14px;font-weight:700;margin-bottom:9px"><span class="t-ic" data-ic="clipboard">📋</span> Rutinas asignadas</div>
@@ -1183,19 +1184,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=456"></script>
-<script src="muscle-map.js?v=456"></script>
-<script src="exercise-muscles.js?v=456"></script>
+<script src="avi-core.js?v=457"></script>
+<script src="muscle-map.js?v=457"></script>
+<script src="exercise-muscles.js?v=457"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=456"></script>
-<script src="app-2-login.js?v=456"></script>
-<script src="app-3-coach.js?v=456"></script>
-<script src="app-4-entreno.js?v=456"></script>
-<script src="app-5-salud.js?v=456"></script>
-<script src="app-6-extra.js?v=456"></script>
-<script src="app-7-community.js?v=456"></script>
+<script src="app-1-infra.js?v=457"></script>
+<script src="app-2-login.js?v=457"></script>
+<script src="app-3-coach.js?v=457"></script>
+<script src="app-4-entreno.js?v=457"></script>
+<script src="app-5-salud.js?v=457"></script>
+<script src="app-6-extra.js?v=457"></script>
+<script src="app-7-community.js?v=457"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1225,6 +1226,25 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 <!-- MODAL NOTIFICACIONES COACH -->
+<!-- Corregir un récord mal anotado (pedido del PO, 2026-08-08). SOLO el coach: si el asesorado
+     pudiera editar su propio récord podría inflarlo, y de ahí cuelgan las medallas y el muro. -->
+<div class="mdbg" id="m-prfix">
+  <div class="md" style="max-width:440px">
+    <div class="mdtitle"><span class="t-ic plain" data-ic="trophy" data-ic-size="15">🏆</span> Corregir récord</div>
+    <div id="prfix-ex" style="font-size:13px;color:var(--t2);margin-bottom:14px"></div>
+    <div style="margin-bottom:12px">
+      <label class="flabel" for="prfix-val">Valor real</label>
+      <input id="prfix-val" type="number" step="0.5" min="0" max="1000" inputmode="decimal" class="inp" style="width:100%">
+      <div style="font-size:11.5px;color:var(--t2);margin-top:6px;line-height:1.5">De aquí sale el peso que la app le sugiere. La fecha del récord no cambia: sigue siendo el día en que ocurrió.</div>
+    </div>
+    <div class="mdfooter">
+      <button class="btn bd bsm" onclick="prfixDelete()">Borrar récord</button>
+      <button class="btn bg bsm" onclick="cm('m-prfix')">Cancelar</button>
+      <button class="btn bp bsm" onclick="prfixSave()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="mdbg" id="m-notif">
   <div class="md" style="max-width:520px">
     <div class="mdtitle"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones Push</div>

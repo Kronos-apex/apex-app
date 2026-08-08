@@ -1334,6 +1334,7 @@ async function openDetail(id,_silent){
   renderNutReviewCard(c);
   renderCoachHabitsCard(c);
   renderCoachFoodLogCard(c);
+  renderCoachPRsCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
@@ -1818,6 +1819,90 @@ function _flDesvioChip(et,pct,unidad,prom,meta){
     <div style="font-size:9.5px;color:var(--t3)">${prom}${unidad} de ${meta}${unidad}</div>
   </div>`;
 }
+// ── Corregir un récord (pedido del PO, 2026-08-08) ───────────────────────────────────────────
+// NACE DE UN CASO REAL: Nataly tenía «Patada de Glúteo en Polea 30 kg» y de verdad levantaba 15
+// (anotó el número de la placa de la máquina, no la carga). Hasta hoy NO HABÍA forma de corregir
+// un récord: solo se escriben solos cuando alguien supera su marca. Y un récord falso hace daño
+// por tres lados — nadie puede volver a superarlo, infla la gráfica de progreso y **envenena el
+// peso que la app le sugiere** (`suggestFromPR` sale del PR). Esto último es lo que el PO quiere
+// arreglar: «que los pesos sugeridos sean pesos de récords reales».
+//
+// 🔒 SOLO EL COACH. Si el asesorado pudiera editar su propio récord podría inflarlo, y de ahí
+// cuelgan el muro de comunidad y las medallas. Misma doctrina que el resto: AVI propone, el coach
+// aprueba. Por eso vive en `p-detail` y no en el perfil del asesorado.
+function renderCoachPRsCard(c){
+  const el=document.getElementById('d-prs'); if(!el)return;
+  const prs=(DB.prs&&DB.prs[c.id])||{};
+  const list=Object.entries(prs)
+    .filter(([,p])=>p&&typeof p==='object')
+    .sort((a,b)=>new Date(b[1].date||0)-new Date(a[1].date||0));
+  if(!list.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  const fila=([exId,p])=>{
+    const unit=p.unit||'kg';
+    const val=p.val!=null?p.val:p.kg;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--br)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name||exId)}</div>
+        <div style="font-size:11px;color:var(--t2)">${esc(String(val))} ${esc(unit)}${p.reps?' × '+esc(String(p.reps))+' reps':''}</div>
+      </div>
+      <button class="btn bg bsm" style="min-height:34px;padding:0 11px" onclick="coachEditPR('${esc(exId)}')">Corregir</button>
+    </div>`;
+  };
+  el.innerHTML=`<div class="card"><div class="ch"><div class="ctitle">${_coIco('trophy',15,'🏆')} Récords</div></div>
+    <div class="cb">
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:4px">De aquí sale el peso que la app le sugiere. Si una marca quedó mal anotada, corrígela y la sugerencia se corrige con ella.</div>
+      ${list.map(fila).join('')}
+    </div></div>`;
+}
+// Corregir = escribir el valor bueno, o borrar el récord si nunca existió. Borrar NO es destructivo
+// de verdad: si vuelve a levantar ese peso, el récord se vuelve a crear solo en la siguiente sesión.
+// Va por MODAL y no por `prompt()`: la app no usa diálogos nativos en ningún sitio, y además
+// bloquean cualquier harness (el CDP se queda esperando y no vuelve).
+let _prfixId=null;
+function coachEditPR(exId){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const p=((DB.prs||{})[c.id]||{})[exId]; if(!p)return;
+  _prfixId=exId;
+  const unit=p.unit||'kg';
+  const actual=p.val!=null?p.val:p.kg;
+  const ex=document.getElementById('prfix-ex');
+  if(ex)ex.innerHTML=`<b>${esc(p.name||exId)}</b> — hoy dice <b>${esc(String(actual))} ${esc(unit)}</b>${p.reps?` × ${esc(String(p.reps))} reps`:''}`;
+  const inp=document.getElementById('prfix-val');
+  if(inp)inp.value=String(actual);
+  om('m-prfix');
+}
+function prfixSave(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!_prfixId)return;
+  const p=((DB.prs||{})[c.id]||{})[_prfixId]; if(!p)return;
+  const inp=document.getElementById('prfix-val');
+  const n=parseFloat(String((inp&&inp.value)||'').replace(',','.'));
+  // Mismo tope de cordura que la entrada de series: un récord también entra al historial.
+  if(!isFinite(n)||n<=0||n>1000){ toast('Escribe un número entre 0 y 1000'); return; }
+  const unit=p.unit||'kg';
+  const actual=p.val!=null?p.val:p.kg;
+  DB.prs[c.id][_prfixId]=Object.assign({},p,{
+    val:n, kg:unit==='kg'?n:0,
+    // 🔴 La fecha NO se toca: es la fecha en que OCURRIÓ, no la de la corrección. Moverla haría
+    // que un récord viejo pareciera reciente y dispararía el «¡nuevo récord!» del pulso del coach.
+    corregido:new Date().toISOString(), corregidoDe:actual,
+  });
+  svNow('ax_pr',DB.prs);
+  cm('m-prfix'); _prfixId=null;
+  toast(`Récord corregido: ${n} ${unit}`);
+  renderCoachPRsCard(c);
+}
+function prfixDelete(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!_prfixId)return;
+  const p=((DB.prs||{})[c.id]||{})[_prfixId];
+  if(!confirm(`¿Borrar el récord de ${(p&&p.name)||_prfixId}?\n\nSi vuelve a levantar ese peso, se crea de nuevo solo.`))return;
+  delete DB.prs[c.id][_prfixId];
+  svNow('ax_pr',DB.prs);
+  cm('m-prfix'); _prfixId=null;
+  toast('Récord borrado');
+  renderCoachPRsCard(c);
+}
+
 function renderCoachFoodLogCard(c){
   const el=document.getElementById('d-foodlog'); if(!el)return;
   el.innerHTML='';el.style.display='none';
