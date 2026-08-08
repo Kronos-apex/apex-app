@@ -382,15 +382,25 @@ function painSubmit(){
   const lvl=PAIN_LEVELS.find(l=>l.v===PAIN.level)||PAIN_LEVELS[0];
   const _lado=PAIN.side?` (${PAIN.side})`:'';
   const txt=`⚠️ Reporte de dolor: ${lvl.emoji} ${lvl.label} en ${PAIN.area}${_lado} con ${PAIN.exName||'un ejercicio'}.${note?' Nota: '+note:''}`;
+  // 🔴 SI EL QUE ENTRENA ES EL COACH, NO HAY A QUIÉN AVISAR: es él mismo. El mensaje se guardaba
+  // en SU PROPIA fila y el panel del coach solo lee los hilos de las filas de CLIENTE, así que
+  // desaparecía — es el bug que reportó el PO. Su reporte sale ahora en la tarjeta «Mi
+  // entrenamiento» de su Inicio, que es donde él mira. El `painCare` se guarda igual arriba, que
+  // es lo que de verdad filtra su plan.
+  const _propio=(typeof COACH_SELF!=='undefined'&&COACH_SELF);
   try{
-    if(!DB.msgs[c.id])DB.msgs[c.id]=[];
-    DB.msgs[c.id].push({from:'client',text:txt,date:new Date().toISOString()});
-    svNow('ax_m',DB.msgs);
-    pushToClient('_coach','⚠️ '+(c.name||'Asesorado').split(' ')[0]+' reportó dolor',txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+    if(!_propio){
+      if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+      DB.msgs[c.id].push({from:'client',text:txt,date:new Date().toISOString()});
+      svNow('ax_m',DB.msgs);
+      pushToClient('_coach','⚠️ '+(c.name||'Asesorado').split(' ')[0]+' reportó dolor',txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+    }
   }catch(_e){}
   cm('m-pain');
   const wasBlocking=PAIN.level===3, ei=PAIN.ei;
-  toast('🩹 Le avisamos a tu coach. Cuídate — te dejamos tips arriba.');
+  // El mensaje no puede prometer un aviso que no se manda (entrenando el propio coach no hay a
+  // quién avisar). Prometer una notificación que no ocurre es la clase de mentira de v437.
+  toast(_propio?'🩹 Anotado. Lo verás en tu Inicio — cuídate.':'🩹 Le avisamos a tu coach. Cuídate — te dejamos tips arriba.');
   a11ySay('Reporte enviado a tu coach.');
   gmRender(); // repinta: banner de cuidado + chip en la tarjeta
   gmScrollTop();

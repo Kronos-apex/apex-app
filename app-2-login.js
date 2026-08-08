@@ -1602,6 +1602,24 @@ function renderMyTrainingCard(){
   const ic=(nm,sz)=>(typeof aviIcon==='function'?aviIcon(nm,sz):'');
   const lastTxt=s.daysSince<=0?'Hoy':s.daysSince===1?'Ayer':('Hace '+s.daysSince+' días');
   const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;
+  // 🔴 EL DOLOR QUE REPORTA EL COACH EN SU PROPIO ENTRENO NO LLEGABA A NINGUNA PARTE.
+  // Reportado por el PO: «marqué dolor y le envié mensaje al coach —o sea, a mí mismo— pero no me
+  // llegó al panel, así que no pude hacer nada». Causa: entrenando con «Mi entrenamiento» él NO es
+  // un cliente (sus datos viven en su propia fila), y el panel del coach solo lee los hilos de las
+  // filas de CLIENTE — el aviso se guardaba donde ninguna pantalla lo muestra. Misma familia que
+  // el bug de v371, donde esta misma tarjeta leía de un cliente que no existía.
+  // Se resuelve donde él ya mira: su propio reporte sale AQUÍ, en la tarjeta de su entrenamiento.
+  let _misDolores='';
+  try{
+    const _act=(typeof painCareActive==='function')?painCareActive((row&&row.profile&&row.profile.painCare)||[]):[];
+    if(_act.length){
+      const _lv={1:'🟡 leve',2:'🟠 molesto',3:'🔴 no pude hacerlo'};
+      const _p=_act[_act.length-1];
+      _misDolores=`<div style="margin-top:9px;background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:7px 9px;font-size:11.5px;line-height:1.5;color:var(--ort)">`+
+        `🩹 <b>Reportaste dolor:</b> ${esc(_p.area)}${_p.side?' ('+esc(_p.side)+')':''} · ${_lv[_p.level]||_p.level}`+
+        `${_act.length>1?` <span style="opacity:.85">+${_act.length-1} más</span>`:''}</div>`;
+    }
+  }catch(_e){}
   el.style.display='block';
   el.innerHTML=`<div class="card" style="padding:12px 14px;cursor:pointer" onclick="openMyTraining()">
     <div style="font-size:12px;font-weight:700;color:var(--gt);display:flex;align-items:center;gap:6px;margin-bottom:8px">${ic('dumbbell',14)} Mi entrenamiento</div>
@@ -1610,6 +1628,7 @@ function renderMyTrainingCard(){
       ${stat(s.thisWeekDays+'/'+s.target,'Esta semana')}
       ${stat(lastTxt,'Último')}
     </div>
+    ${_misDolores}
     <div style="margin-top:10px"><button class="btn bg bsm" style="width:100%;min-height:36px" onclick="event.stopPropagation();openMyTraining()">Ver mi entrenamiento →</button></div>
   </div>`;
 }

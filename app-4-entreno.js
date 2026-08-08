@@ -941,7 +941,10 @@ function pickMood(mood){
   const flagCoach=applyMood({},mood,{}).adapt.flagCoach;
   if(flagCoach){
     notifyCoachMood(c);
-    toast('🩺 Le avisamos a tu coach. Cuídate hoy.');
+    // El texto no promete un aviso que no se manda cuando el que entrena es el propio coach.
+    toast((typeof COACH_SELF!=='undefined'&&COACH_SELF)
+      ? '🩺 Anotado. Ajustamos tu rutina — cuídate hoy.'
+      : '🩺 Le avisamos a tu coach. Cuídate hoy.');
   } else {
     toast('✓ Ajustamos tu rutina a cómo te sientes');
   }
@@ -956,6 +959,10 @@ function changeMood(){
 // día para no spamear si el cliente cambia/re-marca el estado.
 function notifyCoachMood(client){
   const cid=client.id;if(!cid)return;
+  // 🔴 Entrenando el propio coach no hay a quién avisar: el mensaje iba a SU fila y el panel solo
+  // lee hilos de filas de CLIENTE, así que se perdía (bug reportado por el PO). Su estado sale en
+  // la tarjeta «Mi entrenamiento» del Inicio.
+  if(typeof COACH_SELF!=='undefined'&&COACH_SELF)return;
   if(localStorage.getItem(moodAlertKey(cid)))return; // ya avisamos hoy
   localStorage.setItem(moodAlertKey(cid),'1');
   const name=client.name||'Tu asesorado';
