@@ -542,7 +542,19 @@ function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.
 function renderPickerForTarget(){
   const list=document.getElementById('pk-list');
   const env=CUR.pkEnv||'all';
-  const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env)));
+  // 🔴 EN UNA SUSTITUCIÓN SE FILTRA POR LA ZONA QUE DUELE, NO SOLO POR MÚSCULO.
+  // Este selector se abre solo tras un reporte de dolor de nivel 🔴 (`painSubmit` → `todaySubstitute`)
+  // y filtraba únicamente por `muscle`: a quien decía «me duele la rodilla con esta sentadilla» le
+  // ofrecía sentadilla en Smith y sentadilla hack. Hallazgo P0 de Laura.
+  // Solo en `substitute`: en el constructor manual del coach NO se filtra — ahí decide una persona
+  // y hacerle desaparecer opciones en silencio sería peor (se le MARCA, que es distinto).
+  let _pkLim=null;
+  if(pickerTarget==='substitute'&&typeof limitationsFor==='function'){
+    const _c=DB.clients.find(x=>x.id===CUR.clientId);
+    if(_c) _pkLim=limitationsFor(_c,Date.now()).keys;
+  }
+  const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env))
+    &&!(_pkLim&&typeof exerciseContraindicated==='function'&&exerciseContraindicated(e,_pkLim)));
   const titleEl=document.getElementById('pk-title');
   // Fase C: modos "excluir 🚫" / "priorizar ⭐" → togglean la lista en c.genPrefs.
   if(pickerTarget==='exclude'||pickerTarget==='prefer'){

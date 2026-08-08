@@ -1946,7 +1946,7 @@ function renderDetailRoutines(c){
   const con=document.getElementById('d-routines');
   if(!(c.routines||[]).length){con.innerHTML='<div class="empty" style="padding:18px 0"><div class="eico" style="color:var(--g2)">'+_coIco('clipboard',34,'📋')+'</div><div class="etxt">Sin rutinas todavía</div><div class="esub">Crea la primera para este asesorado</div></div>';return}
   con.innerHTML='';
-  const _limKeys=parseLimitations(c.notes||'').keys; // el calentamiento respeta sus lesiones
+  const _limKeys=limitationsFor(c,Date.now()).keys; // sus lesiones Y el dolor que reportó
   c.routines.forEach((r,ri)=>{
     const exN=(r.exercises||[]).length;
     const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
@@ -2192,14 +2192,14 @@ function _effWarmIds(){
   // Auto-sugerido según músculos, respetando las lesiones del asesorado. Si el coach ARMÓ su
   // propia lista (CUR.routineWarmup) se respeta tal cual: ahí decidió una persona, no el filtro.
   const _c=DB.clients.find(x=>x.id===CUR.clientId);
-  const w=buildWarmup(CUR.routineExs||[],_c?parseLimitations(_c.notes||'').keys:null);
+  const w=buildWarmup(CUR.routineExs||[],_c?limitationsFor(_c,Date.now()).keys:null);
   return [...w.articulares,...w.activaciones].map(e=>e.id);
 }
 // Limitaciones del asesorado que se está editando + si es el entrenamiento PROPIO del coach.
 // El calentamiento manual NO se filtra (ahí decide él); esto es lo que se lo hace VER.
 function _rfWarmLim(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
-  return {keys:c?parseLimitations(c.notes||'').keys:[], propio:CUR.clientId==='_self', nombre:c?(c.name||'').split(' ')[0]:''};
+  return {keys:c?limitationsFor(c,Date.now()).keys:[], propio:CUR.clientId==='_self', nombre:c?(c.name||'').split(' ')[0]:''};
 }
 // Chip naranja de aviso para una fila de calentamiento. Naranja y no rojo: rojo significa
 // roto/bloqueado y esto no lo está — el coach lo puede poner igual. Tinta `--ort` (la variante

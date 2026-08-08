@@ -1970,7 +1970,10 @@ function renderWarmup(exercises){
   const rid=CUR.activeRoutine&&CUR.activeRoutine.id;
   // Limitaciones del asesorado que está entrenando → el calentamiento auto-derivado las respeta.
   const _wuCli=(typeof DB!=='undefined'&&DB.clients)?DB.clients.find(x=>x.id===CUR.clientId):null;
-  const _wuLim=(_wuCli&&typeof parseLimitations==='function')?parseLimitations(_wuCli.notes||'').keys:null;
+  // `limitationsFor` (no `parseLimitations`): el calentamiento respeta TAMBIÉN el dolor que la
+  // persona reportó, no solo lo que escribió el coach. Es la ventana que quedó abierta en v424
+  // con otra cara — entonces el calentamiento ignoraba las notas; hasta hoy ignoraba el dolor.
+  const _wuLim=(_wuCli&&typeof limitationsFor==='function')?limitationsFor(_wuCli,Date.now()).keys:null;
   const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises,_wuLim);
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.

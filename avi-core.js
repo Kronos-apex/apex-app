@@ -242,6 +242,18 @@ function warmupWarnText(zonas, propio) {
   return 'Ojo con ' + (propio ? 'tu ' : 'su ') + l;
 }
 // PURA. ¿este calentamiento está contraindicado para estas zonas? `limKeys` = parseLimitations().keys
+// ¿Este EJERCICIO está contraindicado para estas zonas? PURA. Misma fuente que el generador
+// (`GEN_ZONE_EXCL`) — jamás una segunda lista, que se separan.
+// Nace del hallazgo más embarazoso del dictamen de Laura: el selector de sustitución filtraba por
+// MÚSCULO, así que a quien decía «no puedo con esta sentadilla, me duele la rodilla» la app le
+// ofrecía sentadilla en Smith y sentadilla hack. La reacción de la app al dolor era ofrecer más
+// de lo que duele.
+function exerciseContraindicated(ex, limKeys) {
+  if (!ex || !limKeys || !limKeys.length) return false;
+  const n = _norm(ex.name);
+  return limKeys.some(z => { const re = GEN_ZONE_EXCL[z]; return !!re && re.test(n); });
+}
+
 function warmupContraindicated(wu, limKeys) {
   if (!wu || !limKeys || !limKeys.length) return false;
   const n = _norm(wu.name);
@@ -250,6 +262,46 @@ function warmupContraindicated(wu, limKeys) {
     if (ids && ids.indexOf(wu.id) >= 0) return true;
     const re = GEN_ZONE_EXCL[z];
     return !!re && re.test(n);
+  });
+}
+
+// 🔴 EL DOLOR QUE REPORTA LA PERSONA PESA IGUAL QUE LA NOTA DEL COACH — y hasta v454 no pesaba
+// NADA. `generarRutinas` y `buildWarmup` leían SOLO `parseLimitations(client.notes)`, o sea lo que
+// escribió el COACH; `client.painCare` —lo que la persona declara con el ⚠️— no entraba por ningún
+// lado. Consecuencia medida: quien marcaba 🔴 «rodilla» recibía al día siguiente la semana entera
+// con sentadillas, y el calentamiento sin filtrar. El mapa `_PAIN_ZONE_TO_EXCL` existía desde
+// v355… usado SOLO para la propuesta que la app le hace al coach cuando alguien se estanca.
+// Hallazgo P0 del dictamen de Laura (`docs/dictamen-laura-dolor-2026-08-08.md` §0).
+//
+// UNA función por la que pasan TODAS las rutas: si mañana aparece otra superficie se le pide esto
+// y NO una segunda lista, que es exactamente como se separan (lección del filtro de lesiones y el
+// calentamiento, v424: puerta cerrada, ventana abierta).
+function painZoneKeys(client, nowTs) {
+  const act = painCareActive(client && client.painCare, nowTs) || [];
+  return [...new Set(act.map(p => _PAIN_ZONE_TO_EXCL[p && p.area]).filter(Boolean))];
+}
+
+// Limitaciones EFECTIVAS de una persona = lo que escribió el coach ∪ lo que ella declaró que le
+// duele. Misma forma que `parseLimitations` (es su superconjunto), para que ningún llamador tenga
+// que enterarse. `fromPain` deja por escrito qué zonas entraron por el reporte de dolor: el coach
+// tiene que poder ver QUÉ hizo la app, o va a contradecirla (§6.2 del dictamen).
+function limitationsFor(client, nowTs) {
+  const lim = parseLimitations((client && client.notes) || '');
+  const fromPain = painZoneKeys(client, nowTs);
+  if (!fromPain.length) return Object.assign({}, lim, { fromPain: [] });
+  const keys = [...new Set([...(lim.keys || []), ...fromPain])];
+  const hasExclusions = keys.some(z => GEN_ZONE_EXCL[z]);
+  const dolorTxt = fromPain.map(z => GEN_ZONE_LABEL[z]).filter(Boolean).join(', ');
+  return Object.assign({}, lim, {
+    detected: true,
+    keys,
+    zones: [...new Set(keys.map(z => GEN_ZONE_LABEL[z]).filter(Boolean))],
+    hasExclusions,
+    fromPain,
+    // El aviso DICE que el filtro salió de un reporte de la propia persona, no de sus notas. Y
+    // sigue sin afirmar que lo que queda sea seguro para ella — esa regla no se toca.
+    advice: (lim.advice ? lim.advice + ' ' : '') +
+      `Además, ${dolorTxt ? 'reportó dolor en ' + dolorTxt : 'reportó dolor'}: quitamos de su plan y de su calentamiento lo que suele molestar ahí. Es un filtro automático por lo que ELLA marcó, NO una valoración clínica.`,
   });
 }
 
@@ -872,7 +924,10 @@ function generarRutinas(client, lib, opts) {
   const minor = age != null && age < 16;
   const sexKey = client.sex === 'F' ? 'F' : 'M'; // sexo desconocido → PPL neutro (M)
   const scheme = genSchemeFor(client.goal || '', level, opts.adaptation);
-  const lim = parseLimitations(client.notes || '');
+  // `limitationsFor` y no `parseLimitations`: el dolor que declaró la persona excluye igual que la
+  // nota del coach (P0 del dictamen de Laura). Determinista — la ventana de vigencia se mide
+  // contra `opts.now`, no contra el reloj.
+  const lim = limitationsFor(client, Date.parse(now) || Date.now());
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
   const loadProfile = opts.loadProfile === 'high' ? 'high' : 'normal'; // por IMC/cintura (ver bodyLoadProfile)
@@ -5491,6 +5546,9 @@ if (typeof module !== 'undefined' && module.exports) {
     painTipFor,
     painCareAdd,
     painCareActive,
+    painZoneKeys,
+    limitationsFor,
+    exerciseContraindicated,
     clientAttentionRank,
     sortClientsByAttention,
     pushNudgeDecision,

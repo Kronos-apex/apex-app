@@ -689,6 +689,73 @@ test('gate: Avanzado SÍ puede recibir ejercicios Avanzados', () => {
 
 section('8. Generador — seguridad / limitaciones físicas');
 
+// 🔴 P0 del dictamen de Laura (docs/dictamen-laura-dolor-2026-08-08.md §0): hasta v454 el dolor
+// que reportaba la PERSONA no llegaba a ninguna de las superficies que ella toca. El generador y
+// el calentamiento solo miraban las notas del COACH. Estos tests afirman que ya llega.
+test('🔴 el dolor que reporta la persona excluye igual que la nota del coach', () => {
+  const hoy = Date.now();
+  // ⚠️ La forma REAL del dato: `painCareAdd` guarda la fecha en `at`, no en `date`. Un fixture con
+  // la forma cómoda hacía pasar el test por el motivo equivocado (lo cazó fallando).
+  const conDolor = { notes: '', painCare: [{ area: 'rodilla', level: 2, at: new Date(hoy).toISOString() }] };
+  const lim = core.limitationsFor(conDolor, hoy);
+  assert.ok(lim.keys.includes('rodilla'), 'el dolor de rodilla no llegó a las limitaciones');
+  assert.strictEqual(lim.hasExclusions, true, 'se detectó la zona pero no excluye nada');
+  assert.deepStrictEqual(lim.fromPain, ['rodilla'], 'no queda registrado que vino del reporte de dolor');
+  // CONTROL: sin dolor y sin notas, nada cambia — o esto no sería un filtro, sería un apagón.
+  const limpio = core.limitationsFor({ notes: '', painCare: [] }, hoy);
+  assert.strictEqual(limpio.detected, false);
+  assert.deepStrictEqual(limpio.keys, []);
+});
+
+test('🔴 el generador NO entrega sentadillas a quien reportó dolor de rodilla', () => {
+  const lib = [
+    { id: 'e13', name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', env: ['gym'] },
+    { id: 'e33', name: 'Sentadilla en Smith', muscle: 'piernas', type: 'Compuesto', env: ['gym'] },
+    { id: 'e36', name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', env: ['gym'] },
+    { id: 'e15', name: 'Curl Femoral Tumbado', muscle: 'piernas', type: 'Aislamiento', env: ['gym'] },
+    { id: 'e42', name: 'Hip Thrust con Barra', muscle: 'gluteo', type: 'Compuesto', env: ['gym'] },
+    { id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto', env: ['gym'] },
+    { id: 'e6', name: 'Jalón al Pecho', muscle: 'espalda', type: 'Compuesto', env: ['gym'] },
+    { id: 'e17', name: 'Plancha Frontal', muscle: 'core', type: 'Bodyweight', env: ['gym'] },
+  ];
+  const now = '2026-08-08T12:00:00.000Z';
+  const base = { days: 3, level: 'Intermedio', goal: 'ganar_musculo', sex: 'M', place: 'gym' };
+  const nombres = c => generarRutinas(c, lib, { now, seed: 1 }).routines
+    .flatMap(r => (r.exercises || []).map(e => e.name));
+  // CONTROL: sin dolor, la sentadilla SÍ aparece — si no, el test no probaría nada (estaría
+  // midiendo un pool vacío en vez de un filtro).
+  const sin = nombres({ ...base, painCare: [] });
+  assert.ok(sin.some(n => /Sentadilla/i.test(n)), 'CONTROL: sin dolor tampoco salía sentadilla — el fixture no sirve');
+  const con = nombres({ ...base, painCare: [{ area: 'rodilla', level: 2, at: now }] });
+  assert.ok(!con.some(n => /Sentadilla/i.test(n)),
+    'con dolor de rodilla declarado el generador sigue entregando sentadillas: ' + con.join(', '));
+  assert.ok(con.length > 0, 'el filtro vació el plan entero — un hueco es aceptable, un plan vacío no');
+});
+
+test('🔴 la sustitución no ofrece MÁS de lo que duele (exerciseContraindicated)', () => {
+  const zonas = ['rodilla'];
+  assert.strictEqual(core.exerciseContraindicated({ name: 'Sentadilla en Smith' }, zonas), true);
+  assert.strictEqual(core.exerciseContraindicated({ name: 'Sentadilla Hack' }, zonas), true);
+  // Lo terapéutico NO se puede llevar por delante — es la trampa que ya nos costó una vez.
+  assert.strictEqual(core.exerciseContraindicated({ name: 'Curl Femoral Tumbado' }, zonas), false);
+  assert.strictEqual(core.exerciseContraindicated({ name: 'Hip Thrust con Barra' }, zonas), false);
+  // Sin zonas no filtra nada.
+  assert.strictEqual(core.exerciseContraindicated({ name: 'Sentadilla en Smith' }, []), false);
+});
+
+test('painZoneKeys ignora los reportes ya vencidos y los cerrados', () => {
+  const hoy = Date.now();
+  const viejo = new Date(hoy - 40 * 24 * 3600 * 1000).toISOString();
+  // 🔒 CONTROL POSITIVO PRIMERO: sin esto el test afirma solo listas VACÍAS y pasaría igual con la
+  // función devolviendo [] siempre — un caso que no puede fallar no es un caso.
+  assert.deepStrictEqual(core.painZoneKeys({ painCare: [{ area: 'rodilla', level: 2, at: new Date(hoy).toISOString() }] }, hoy), ['rodilla'],
+    'CONTROL: un reporte VIGENTE tiene que excluir');
+  assert.deepStrictEqual(core.painZoneKeys({ painCare: [{ area: 'rodilla', level: 2, at: viejo }] }, hoy), [],
+    'un reporte vencido sigue excluyendo');
+  assert.deepStrictEqual(core.painZoneKeys({ painCare: [{ area: 'hombro', level: 2, at: new Date(hoy).toISOString(), cleared: true }] }, hoy), [],
+    'un reporte cerrado sigue excluyendo');
+});
+
 test('parseLimitations detecta lumbar y rodilla', () => {
   const lim = parseLimitations('Dolor lumbar crónico y operación de menisco en rodilla');
   assert.strictEqual(lim.detected, true);
