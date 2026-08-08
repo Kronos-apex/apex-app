@@ -210,7 +210,15 @@ const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerz
 //    hay articulación irritada colgando. Criterio de Laura, no simetría automática.
 const GEN_ZONE_EXCL = {
   rodilla: /sentadilla|zancada|estocada|desplante|salto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla/,
-  lumbar: /peso muerto|remo con barra|buenos dias|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
+  // ⚠️ `buenos dias CON BARRA` y no a secas (Laura, auditoría 2026-08-08): a secas se llevaba
+  // `e148 «Patrón de Bisagra (Buenos Días SIN PESO)»`, que es el ejercicio con el que se le enseña
+  // a alguien con lumbalgia a moverse desde la cadera y no desde la columna. No es un caso de
+  // «ancho a propósito» como rodilla: allí el riesgo vive en el rango y la alineación y el sistema
+  // no controla ninguno; aquí **el peso está en el nombre**, así que no hay ambigüedad.
+  // 🔒 `wai3` («Peso muerto con peso corporal») SIGUE fuera por id, y la razón no es el riesgo
+  // sino el PROPÓSITO: es un ensayo del peso muerto justo antes de una sesión de la que el filtro
+  // ya quitó todos los pesos muertos — no tiene beneficio que compense. `e148` sí lo tiene.
+  lumbar: /peso muerto|remo con barra|buenos dias con barra|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
   hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra|paseo del camarero|camarero|colgarse/,
   // 🔒 ADUCTOR — ANCHO en lateral/apertura/explosivo, ESTRECHO en sentadilla (solo `sumo`). El
   // mecanismo de lesión es el cambio de dirección y la base abierta, no la sentadilla: la
@@ -254,30 +262,78 @@ const GEN_EXCL_IDS = { abductor: ['e93'] };
 // Coach Pro los proponga a partir de las 72 h). Hay un test que lo afirma zona por zona.
 // Se dan CANDIDATOS y no un id fijo para poder respetar el entorno: `e73 Puente de Glúteo` solo
 // declara `gym`, así que en casa hace falta la alternativa.
+// 🔒 CADA CANDIDATO LLEVA SU PROPIO `why` — no lo hereda de la zona. Auditoría de Laura (F2): con
+// el `why` en la zona, el fallback conservaba el HUECO y perdía la PROMESA — en 3 de 4 entornos
+// entregaba `e134 Bird Dog` (que es CORE) diciendo «para el glúteo medio, que controla la
+// rodilla». Es la clase «rótulo que niega lo que rotula» que ya costó v437. Un candidato que no
+// sostiene su propia frase NO es candidato: se devuelve null y el puesto queda vacío.
+// ❌ ADUCTOR y ABDUCTOR RETIRADOS por Laura hasta que exista el triaje de niveles: el correctivo
+// real del abductor ES la abducción, y eso es justo lo que el filtro quita en fase aguda, con
+// razón. La misma cosa es el veneno a las 24 h y la medicina a las 72, y el motor no tiene noción
+// de fase — llenar el hueco con Bird Dog para no dejarlo vacío es fingir que sí.
 const GEN_CORRECTIVE = {
-  hombro:   { ids: ['e138', 'e100', 'e109'], sets: 2, reps: 15, why: 'para el manguito rotador' },
-  cuello:   { ids: ['e100', 'e109'],         sets: 2, reps: 15, why: 'para descargar el trapecio' },
-  lumbar:   { ids: ['e133', 'e134'],         sets: 2, reps: 10, why: 'para el control del core' },
-  rodilla:  { ids: ['e89', 'e73', 'e134'],   sets: 2, reps: 15, why: 'para el glúteo medio, que controla la rodilla' },
-  aductor:  { ids: ['e73', 'e134', 'e106'],  sets: 2, reps: 12, why: 'para la cadera, sin abrir las piernas' },
-  abductor: { ids: ['e73', 'e134', 'e106'],  sets: 2, reps: 12, why: 'para la cadera, en línea recta' },
-  tobillo:  { ids: ['e177', 'e171'],         sets: 2, reps: 10, why: 'para recuperar el movimiento del tobillo' },
+// 🔒 EL SITIO LO DICTA LA FUNCIÓN, y lo decide Laura — no se deriva del `type` del catálogo (mi
+// primera versión lo hacía y mandaba solo la movilidad al calentamiento):
+//  · ACTIVACIÓN → CALENTAMIENTO. «Activar el glúteo medio DESPUÉS de la sentadilla no protege la
+//    sentadilla que ya hizo.» Innegociable en rodilla y tobillo.
+//  · FORTALECIMIENTO → AL FINAL. Al principio fatigarían el estabilizador justo antes de exigirlo,
+//    que con el manguito es de manual y es peor que no hacer nada.
+  hombro: [
+    { id: 'e138', sets: 2, reps: 15, porLado: true, when: 'final', why: 'para el manguito rotador', extra: 'Con la banda más floja de lo que creas que necesitas: el manguito se arruina con exceso de carga, no con falta.' },
+    { id: 'e109', sets: 2, reps: 15, porLado: false, when: 'final', why: 'para el hombro de atrás y el trapecio bajo' },
+  ],
+  // ⚠️ Texto corregido por Laura: el face pull FORTALECE trapecio medio/bajo y rotadores; no
+  // «descarga» nada. Decir lo contrario es explicar al revés lo que la persona está haciendo.
+  cuello: [
+    { id: 'e100', sets: 2, reps: 15, porLado: false, when: 'final', why: 'para la espalda alta, que es la que sostiene el cuello' },
+    { id: 'e109', sets: 2, reps: 15, porLado: false, when: 'final', why: 'para la espalda alta, que es la que sostiene el cuello' },
+  ],
+  lumbar: [
+    { id: 'e133', sets: 2, reps: 10, porLado: true, when: 'calentamiento', why: 'para el control del core', extra: 'Aguanta 3 segundos en cada repetición: sin ese aguante es un movimiento de brazos y no entrena nada.' },
+  ],
+  rodilla: [
+    { id: 'e89', sets: 2, reps: 15, porLado: true, when: 'calentamiento', why: 'para el glúteo medio, que es el que controla la rodilla' },
+  ],
+  tobillo: [
+    { id: 'e177', sets: 2, reps: 10, porLado: true, when: 'calentamiento', why: 'para recuperar el movimiento del tobillo' },
+  ],
 };
-// PURA. Devuelve UN ejercicio correctivo (el primer candidato viable) o null. Null es una
-// respuesta válida y correcta: mejor un hueco que un ejercicio equivocado.
-function correctiveFor(limKeys, lib, place) {
-  const zonas = (limKeys || []).filter(z => GEN_CORRECTIVE[z]);
+// PURA. Devuelve UN ejercicio correctivo o null. Null es una respuesta válida y CORRECTA.
+// `limKeys` = TODAS las zonas de la persona · `painKeys` = las que vienen de un reporte suyo
+// (para el texto) · `orden` = las zonas por prioridad (el dolor de hoy antes que la nota vieja).
+function correctiveFor(limKeys, lib, place, opts) {
+  const todas = limKeys || [];
+  const o = opts || {};
+  // 🔴 F5: el dolor VIGENTE va antes que la nota del coach. `limitationsFor` compone
+  // [...notas, ...dolor], así que sin esto una nota de hace ocho meses le gana a un reporte de
+  // esta semana y la persona recibe el correctivo de la zona equivocada.
+  const pain = o.painKeys || [];
+  const zonas = [...new Set([...pain, ...todas])].filter(z => GEN_CORRECTIVE[z]);
   if (!zonas.length) return null;
   const env = place || 'gym';
   for (const z of zonas) {
-    const cfg = GEN_CORRECTIVE[z];
-    for (const id of cfg.ids) {
-      const ex = (lib || []).find(e => e && e.id === id);
+    for (const cand of GEN_CORRECTIVE[z]) {
+      const ex = (lib || []).find(e => e && e.id === cand.id);
       if (!ex) continue;
       if (!((ex.env || ['gym']).indexOf(env) >= 0)) continue;
-      // 🔒 El candado: si su propia zona lo excluye, no se prescribe.
-      if (exerciseContraindicated(ex, [z])) continue;
-      return { ex, zona: z, sets: cfg.sets, reps: cfg.reps, why: cfg.why };
+      // 🔴 F1 (P0 de la auditoría): el candado pregunta por TODAS las zonas declaradas, no por la
+      // del propio correctivo. Con `[z]` a secas, alguien con rodilla en notas + abductor
+      // reportado recibía `e89 Clamshell` todos los días — el ejercicio que la regla de abductor
+      // le acababa de borrar de todo el plan. La puerta cerrada con la ventana abierta, otra vez,
+      // esta vez DENTRO de la misma función.
+      if (exerciseContraindicated(ex, todas)) continue;
+      // 🔒 F4: el correctivo pasa por el mismo gate de nivel que el resto del plan, o el día que
+      // alguien reordene la lista se cuela un avanzado a un principiante.
+      if (o.levelCap != null && exLevelRank(ex) > o.levelCap) continue;
+      return {
+        ex, zona: z, sets: cand.sets, reps: cand.reps, porLado: !!cand.porLado,
+        why: cand.why, extra: cand.extra || '',
+        cuando: cand.when || 'final',
+        // 🔴 F3: la zona puede venir de la NOTA del coach y entonces nadie reportó nada. Decirle
+        // «por el dolor que reportaste» a quien no reportó es afirmar algo falso — y es justo el
+        // caso del PO, que preguntó por el manguito sin haber reportado ningún dolor.
+        fuente: pain.indexOf(z) >= 0 ? 'dolor' : 'nota',
+      };
     }
   }
   return null;
@@ -1104,14 +1160,29 @@ function generarRutinas(client, lib, opts) {
   // Va como accesorio AL FINAL de cada día —no reemplaza nada— y solo si hay una zona declarada
   // con bloque. Lleva su propio `why` porque la persona tiene que saber por qué apareció: un
   // ejercicio nuevo sin explicación se lee como un error de la app (regla de v434).
-  const _corr = correctiveFor(lim.keys, lib, place);
+  // 🔒 CON DOLOR QUE IMPIDE HACER EL EJERCICIO (nivel 3) NO SE PRESCRIBE NADA. Laura: con ese
+  // nivel la sesión no debería existir, y añadirle un ejercicio a quien acabamos de decirle que
+  // pare es contradecirnos en la misma pantalla. (Mapeo provisional: cuando exista el triaje de
+  // 5 niveles, esto pasa a ser N3 y N4.)
+  const _nowTs = Date.parse(now) || Date.now();
+  const _bloquea = painCareActive(client.painCare, _nowTs).some(p => p && p.level === 3);
+  const _corr = _bloquea ? null : correctiveFor(lim.keys, lib, place, {
+    painKeys: painZoneKeys(client, _nowTs),   // el dolor de hoy manda sobre la nota vieja (F5)
+    levelCap: _gate.cap,                      // el correctivo pasa el mismo gate que el resto (F4)
+  });
   if (_corr) routines.forEach(r => {
     if (!r.exercises || !r.exercises.length) return;          // un día vacío no se «arregla» con esto
     if (r.exercises.some(e => e.id === _corr.ex.id)) return;  // ya lo tiene: no duplicar
+    // 🔴 F3: el texto dice de dónde salió la zona. «por el dolor que reportaste» a quien no
+    // reportó nada (la zona venía de la nota del coach) es afirmar algo falso.
+    const _porQue = _corr.fuente === 'dolor'
+      ? 'por el dolor que reportaste'
+      : 'por lo que tu coach anotó en tu ficha';
+    const _dosis = _corr.porLado ? ' Hazlo por cada lado.' : '';
     r.exercises.push(Object.assign({}, _corr.ex, {
       sets: _corr.sets, reps: _corr.reps,
-      corrective: true, correctiveZone: _corr.zona,
-      correctiveWhy: `Va aquí ${_corr.why}, por el dolor que reportaste. No lo cargues: busca sentirlo, no moverlo con peso.`,
+      corrective: true, correctiveZone: _corr.zona, correctiveWhen: _corr.cuando,
+      correctiveWhy: `Va aquí ${_corr.why}, ${_porQue}. No lo cargues: busca sentirlo, no moverlo con peso.${_dosis}${_corr.extra ? ' ' + _corr.extra : ''}`,
     }));
   });
   const envGaps = [...st.envShortfall];

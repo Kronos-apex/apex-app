@@ -767,26 +767,82 @@ test('🔴 el trabajo CORRECTIVO nunca es algo que su propia zona excluya', () =
   const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
   assert.ok(cat.length >= 218, 'catálogo no leído entero: ' + cat.length);
   const malos = [];
-  Object.entries(core.GEN_CORRECTIVE).forEach(([z, cfg]) => {
-    // Todo candidato tiene que EXISTIR (Coach Pro citó ids y uno hay que comprobarlo siempre)…
-    cfg.ids.forEach(id => {
-      const ex = cat.find(e => e.id === id);
-      if (!ex) { malos.push(`${z}: el candidato ${id} NO EXISTE en el catálogo`); return; }
-      // …y el que se llegue a prescribir no puede estar prohibido por su propia zona.
-      if (core.exerciseContraindicated(ex, [z]) && cfg.ids.indexOf(id) === 0)
-        malos.push(`${z}: el 1er candidato ${id} (${ex.name}) lo EXCLUYE su propia zona`);
+  const zonasConBloque = Object.keys(core.GEN_CORRECTIVE);
+  zonasConBloque.forEach(z => {
+    core.GEN_CORRECTIVE[z].forEach(cand => {
+      const ex = cat.find(e => e.id === cand.id);
+      if (!ex) { malos.push(`${z}: el candidato ${cand.id} NO EXISTE en el catálogo`); return; }
+      if (core.exerciseContraindicated(ex, [z]))
+        malos.push(`${z}: el candidato ${cand.id} (${ex.name}) lo EXCLUYE su propia zona`);
+      // F2: cada candidato trae SU frase; sin ella el fallback explicaría otra cosa.
+      if (!cand.why) malos.push(`${z}: el candidato ${cand.id} no trae su propio «why»`);
     });
-    // Y en cada entorno tiene que salir algo, o salir null limpiamente (nunca algo prohibido).
     ['gym', 'casa', 'parque', 'corporal'].forEach(en => {
       const c = core.correctiveFor([z], cat, en);
       if (c && core.exerciseContraindicated(c.ex, [z]))
         malos.push(`${z}/${en}: prescribió ${c.ex.id}, que su propia zona excluye`);
     });
   });
+
+  // 🔴 EL REPRO DE LAURA (F1, P0) — UNA PERSONA CON DOS ZONAS.
+  // El test anterior probaba de a UNA zona y por eso NO PODÍA cazar esto: `correctiveFor`
+  // preguntaba por la zona del propio correctivo, no por las de la persona. Alguien con
+  // «operada de rodilla» en notas Y dolor de abductores reportado recibía `e89 Clamshell` todos
+  // los días — el ejercicio que la regla de abductor le acababa de borrar de todo el plan.
+  const pares = [];
+  zonasConBloque.forEach(a => ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo']
+    .forEach(b => { if (a !== b) pares.push([a, b]); }));
+  pares.forEach(([a, b]) => ['gym', 'casa', 'parque', 'corporal'].forEach(en => {
+    const c = core.correctiveFor([a, b], cat, en);
+    if (!c) return;                       // null es respuesta válida
+    if (core.exerciseContraindicated(c.ex, [a, b]))
+      malos.push(`zonas [${a}+${b}]/${en}: prescribió ${c.ex.id} (${c.ex.name}), que UNA DE LAS DOS excluye`);
+  }));
   assert.deepStrictEqual(malos, [], malos.join('\n  '));
+
   // CONTROL: sin zonas no prescribe nada — esto es un añadido, no un impuesto para todos.
   assert.strictEqual(core.correctiveFor([], cat, 'gym'), null);
   assert.strictEqual(core.correctiveFor(['pecho'], cat, 'gym'), null, 'inventó correctivo para una zona sin bloque');
+  // 🔒 Aductor y abductor RETIRADOS por Laura hasta que exista el triaje: el correctivo real de
+  // esas zonas es justo lo que el filtro quita en fase aguda, y el motor no sabe de fases.
+  assert.strictEqual(core.correctiveFor(['aductor'], cat, 'gym'), null, 'aductor debe estar retirado');
+  assert.strictEqual(core.correctiveFor(['abductor'], cat, 'gym'), null, 'abductor debe estar retirado');
+  // 🔒 El SITIO lo dicta la función y lo decide Laura: la ACTIVACIÓN va al calentamiento (activar
+  // el glúteo medio después de la sentadilla no protege la sentadilla que ya hizo) y el
+  // FORTALECIMIENTO al final (al principio fatigaría el estabilizador justo antes de exigirlo).
+  assert.strictEqual(core.correctiveFor(['tobillo'], cat, 'gym').cuando, 'calentamiento');
+  assert.strictEqual(core.correctiveFor(['rodilla'], cat, 'gym').cuando, 'calentamiento');
+  assert.strictEqual(core.correctiveFor(['lumbar'], cat, 'gym').cuando, 'calentamiento');
+  assert.strictEqual(core.correctiveFor(['hombro'], cat, 'gym').cuando, 'final');
+  assert.strictEqual(core.correctiveFor(['cuello'], cat, 'gym').cuando, 'final');
+  // Todo candidato declara su sitio: si falta, cae a «final» sin que nadie lo haya decidido.
+  Object.entries(core.GEN_CORRECTIVE).forEach(([z, arr]) => arr.forEach(c =>
+    assert.ok(c.when === 'final' || c.when === 'calentamiento', `${z}/${c.id} no declara dónde va`)));
+});
+
+test('🔴 el correctivo dice de dónde salió la zona, y se apaga con dolor que impide entrenar', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'))
+    .map(e => Object.assign({ type: e.type || 'Aislamiento' }, e));
+  const now = '2026-08-08T12:00:00.000Z';
+  const base = { days: 3, level: 'Intermedio', goal: 'ganar_musculo', sex: 'M', place: 'gym' };
+  const corrDe = c => generarRutinas(c, cat, { now, seed: 5 }).routines
+    .flatMap(r => (r.exercises || []).filter(e => e.corrective));
+  // (F3) Zona por NOTA del coach → el texto NO puede decir «reportaste».
+  const porNota = corrDe({ ...base, notes: 'Operada de hombro hace un año', painCare: [] });
+  assert.ok(porNota.length > 0, 'no añadió correctivo por la nota del coach');
+  assert.ok(/tu coach anotó/.test(porNota[0].correctiveWhy), 'dice «reportaste» a quien no reportó nada: ' + porNota[0].correctiveWhy);
+  assert.ok(!/reportaste/.test(porNota[0].correctiveWhy));
+  // Zona por REPORTE → sí dice «reportaste».
+  const porDolor = corrDe({ ...base, notes: '', painCare: [{ area: 'hombro', side: 'derecha', level: 2, at: now }] });
+  assert.ok(/reportaste/.test(porDolor[0].correctiveWhy), porDolor[0].correctiveWhy);
+  // 🔒 Nivel 3 («No puedo hacerlo») → NO se prescribe nada: con ese dolor la sesión no existe.
+  const n3 = corrDe({ ...base, notes: '', painCare: [{ area: 'hombro', side: 'derecha', level: 3, at: now }] });
+  assert.strictEqual(n3.length, 0, 'prescribió un correctivo a quien no puede ni hacer el ejercicio');
+  // (F5) El dolor de HOY manda sobre la nota vieja: hombro en notas + rodilla reportada → rodilla.
+  const cruce = corrDe({ ...base, notes: 'Molestia de hombro antigua',
+    painCare: [{ area: 'rodilla', side: 'izquierda', level: 1, at: now }] });
+  assert.strictEqual(cruce[0].correctiveZone, 'rodilla', 'la nota vieja le ganó al dolor de esta semana');
 });
 
 test('🔴 el generador AÑADE el correctivo a quien reportó dolor (y no a quien no)', () => {
