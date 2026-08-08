@@ -1213,11 +1213,41 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .pr-ex-date{font-size:10px;color:var(--t3);margin-top:1px;text-align:right}
 .collapse-more{display:block;width:100%;margin-top:8px;padding:8px;min-height:36px;background:transparent;border:none;border-top:1px dashed var(--br2);color:var(--gt);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s}
 .collapse-more:hover{color:var(--gt)}
-/* Tarjetas de macros tocables → abren la ficha educativa (openNutriInfo) */
-.nutri-card{position:relative;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
-.nutri-card:hover{box-shadow:0 4px 14px -6px rgba(0,0,0,.18)}
+/* Tarjetas de macros tocables → abren la ficha educativa (openNutriInfo).
+   🔴 POR QUÉ TIENEN FILO Y RELIEVE (2026-08-08, dictamen de Isabella): el PO reportó la
+   habitación de nutrición como «una hoja de bloc». Medido, tenía razón y la causa no era el
+   color sino el RANGO TONAL: las diez superficies de esa pantalla caían entre 1,02:1 y 1,10:1
+   contra el fondo — nada se despegaba del papel. La habitación de Sesión abre con un bloque de
+   13,66:1 contra ese mismo fondo, y por eso se lee como app.
+   La corrección va en la clase COMPARTIDA con el Perfil (no en un estilo en línea de una sola
+   pantalla): así las dos suben juntas y la cohesión queda por CONSTRUCCIÓN, no por copia — que
+   es la razón por la que estas tarjetas se aplanaron en su día.
+   El relleno pastel NO se toca: ese relleno es el color que el PO pide.
+   `--nc` = acento del dato, lo declara cada tarjeta; si falta, cae al verde de marca. */
+.nutri-card{position:relative;overflow:hidden;cursor:pointer;
+  border:1px solid color-mix(in srgb, var(--nc,var(--g)) 26%, transparent);
+  box-shadow:0 6px 18px -9px rgba(0,0,0,.22),
+             inset 0 1px 0 color-mix(in srgb, var(--w) 55%, transparent);
+  transition:transform .12s ease,box-shadow .12s ease}
+/* `overflow:hidden` es obligatorio o el filo de 3px se sale del radio. */
+.nutri-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--nc,var(--g)) 22%,var(--nc,var(--g)) 78%,transparent)}
+/* El hover SUMA a la sombra base en vez de reemplazarla; si no, parece encogerse al tocar. */
+.nutri-card:hover{box-shadow:0 9px 24px -9px rgba(0,0,0,.28),
+             inset 0 1px 0 color-mix(in srgb, var(--w) 55%, transparent)}
 .nutri-card:active{transform:scale(.97)}
-.nutri-i{position:absolute;top:5px;right:6px;font-size:11px;color:var(--t3);line-height:1;opacity:.8}
+/* Círculo de ícono — SOLO la fila titular de la habitación (el Perfil no lo lleva: sus tarjetas
+   son la mitad de altas y el círculo las desbalancea). */
+.nutri-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;margin:1px auto 6px;
+  background:color-mix(in srgb, var(--nc,var(--g)) 16%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--nc,var(--g)) 30%, transparent)}
+.nutri-ic .avic{color:var(--nc,var(--g))}
+/* 🔴 `--t2` sin `opacity`: la ⓘ es una AFORDANCIA (abre la ficha educativa) y medía 3,06-3,29
+   en claro sobre los cuatro tintes, por debajo del mínimo. Con --t2 sube a 4,97-5,56 sin costo
+   visual. Defecto anterior, en 8 tarjetas de DOS pantallas. Y `opacity` no es forma de apagar
+   texto — eso ya está escrito en los gotchas. */
+.nutri-i{position:absolute;top:5px;right:6px;font-size:11px;color:var(--t2);line-height:1}
 .nutri-sec{margin-bottom:14px}
 .nutri-h{font-size:12px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .nutri-p{font-size:13.5px;color:var(--t1);line-height:1.6}

@@ -476,14 +476,14 @@ function renderNutritionClient(clientId){
     // el PROMEDIO de la semana puede diferir en 1-2 kcal por el redondeo del reparto diario y lo
     // dice la tarjeta de la semana. Dos números distintos a la vista es justo el bug que se arregla.
     const _kcalReal=_sem?_sem.baseKcal:(parseInt(nut.kcal)||0);
-    if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
-    if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
+    if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="--nc:var(--gt);text-align:center;background:var(--gl);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(nut.prot||nut.carbs||nut.fat){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${nut.prot*4} kcal</div></div>`;
-      if(nut.carbs)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${nut.carbs*4} kcal</div></div>`;
-      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${nut.fat*9} kcal</div></div>`;
+      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${nut.prot*4} kcal</div></div>`;
+      if(nut.carbs)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="--nc:var(--ylt);text-align:center;background:var(--yll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ylt)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--ylt);font-weight:600">${nut.carbs*4} kcal</div></div>`;
+      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="--nc:var(--ort);text-align:center;background:var(--orl);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${nut.fat*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
@@ -539,15 +539,20 @@ function openNutritionRoom(clientId){
   // MISMAS tarjetas que el Perfil (`.nutri-card` + tokens del sistema): el asesorado pasa de
   // una pantalla a otra con UN toque, y el mismo dato tiene que verse igual. Antes esta
   // habitacion usaba `.sroom-stat` (aro y brillo) y colores escritos a mano.
-  const tile=(bg,col,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="text-align:center;background:var(${bg});border-radius:var(--rsm);padding:12px 4px">${info?'<span class="nutri-i">ⓘ</span>':''}<div style="font-size:22px;font-weight:800;color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
+  // `col` es SIEMPRE la variante legible del tinte (--gt/--blt/--ylt/--ort) y de ella se deriva
+  // el filo con `--nc`. Antes «Comidas» iba con `--t1`: el filo habría salido NEGRO y, peor, la
+  // fila de tarjetas pintaba azul/NEGRO/coral debajo de una barra de macros azul/ámbar/coral —
+  // una leyenda que no coincidía con su propia gráfica.
+  const tile=(bg,col,ic,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:13px 4px 12px">${info?'<span class="nutri-i">ⓘ</span>':''}<div class="nutri-ic">${typeof aviIcon==='function'?aviIcon(ic,17):''}</div><div style="font-size:22px;font-weight:800;color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
   const _st=[
-    tile('--gl','--gt',d.kcal||'—','CALORÍAS / DÍA','kcal'),
-    d.water?tile('--bll','--blt',d.water,'VASOS DE AGUA','water'):null,
-    d.meals?tile('--yll','--t1',d.meals,'COMIDAS',null):null,
+    tile('--gl','--gt','flame',d.kcal||'—','CALORÍAS / DÍA','kcal'),
+    d.water?tile('--bll','--blt','droplet',d.water,'VASOS DE AGUA','water'):null,
+    d.meals?tile('--yll','--ylt','utensils',d.meals,'COMIDAS',null):null,
   ].filter(Boolean);
   const stats=`<div style="display:grid;grid-template-columns:repeat(${_st.length},1fr);gap:10px">${_st.join('')}</div>`;
 
-  const macroTile=(bg,col,g,lab,kc,info)=>`<div class="nutri-card" onclick="openNutriInfo('${info}')" style="text-align:center;background:var(${bg});border-radius:var(--rsm);padding:10px 4px"><span class="nutri-i">ⓘ</span><div style="font-size:18px;font-weight:800;color:var(${col})">${g}g</div><div style="font-size:10px;color:var(--t2)">${esc(lab)}</div><div style="font-size:10px;color:var(${col});font-weight:600">${kc} kcal</div></div>`;
+  // Sin círculo de ícono: la barra de macros de arriba ya es su leyenda.
+  const macroTile=(bg,col,g,lab,kc,info)=>`<div class="nutri-card" onclick="openNutriInfo('${info}')" style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">ⓘ</span><div style="font-size:18px;font-weight:800;color:var(${col})">${g}g</div><div style="font-size:10px;color:var(--t2)">${esc(lab)}</div><div style="font-size:10px;color:var(${col});font-weight:600">${kc} kcal</div></div>`;
   let macroHTML='';
   if(d.prot||d.carb||d.fat){
     macroHTML=`<div class="sroom-sec">Tus macros</div>
@@ -558,7 +563,7 @@ function openNutritionRoom(clientId){
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
         ${macroTile('--bll','--blt',d.prot,'Proteína',pk,'prot')}
-        ${macroTile('--yll','--t1',d.carb,'Carbos',ck,'carbs')}
+        ${macroTile('--yll','--ylt',d.carb,'Carbos',ck,'carbs')}
         ${macroTile('--orl','--ort',d.fat,'Grasas',fk,'fat')}
       </div>`;
   }
