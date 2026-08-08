@@ -4018,6 +4018,43 @@ test('foodLogProgress: compara POR MACRO contra el objetivo del día', () => {
   assert.strictEqual(pr.c.pct, 45);   // el carbohidrato va MÁS atrasado que el total: eso es el punto
   assert.strictEqual(pr.f.pct, 50);
 });
+// 🔴 REPORTADO POR EL PO (2026-08-08): en el héroe de «Comida de hoy» le salió
+// «Te quedan 36.799999999999955 kcal». Lo metí yo en v456 recalculando a mano una resta que la
+// función pura YA daba redondeada (`falta`). Nunca se rehace fuera un cálculo que la función pura
+// expone: se rehace peor. Este test afirma la CLASE — que ninguna cifra que llegue a pantalla
+// arrastre basura de coma flotante — con los números reales que la producen.
+test('🔴 ningún número de «Comida de hoy» sale con basura de coma flotante', () => {
+  // Estos son los valores que lo reproducen: gramos escalados dan totales con un decimal.
+  const tot = { kcal: 1827.2, p: 96.3, c: 210.7, f: 51.9, n: 5, parcial: false };
+  const meta = { kcal: 1864, prot_g: 160, carb_g: 171, fat_g: 60 };
+  const pr = foodLogProgress(tot, meta);
+  const sucio = v => String(v).replace('-', '').split('.')[1] && String(v).split('.')[1].length > 1;
+  ['kcal', 'p', 'c', 'f'].forEach(k => {
+    assert.ok(!sucio(pr[k].hecho), `«hecho» de ${k} sale sucio: ${pr[k].hecho}`);
+    assert.ok(!sucio(pr[k].falta), `«falta» de ${k} sale sucio: ${pr[k].falta}`);
+    assert.ok(!sucio(pr[k].meta), `«meta» de ${k} sale sucia: ${pr[k].meta}`);
+  });
+  // Y el número EXACTO del reporte: restarlo a mano da basura; `falta` da 36.8.
+  assert.strictEqual(1864 - 1827.2 > 36.79 && 1864 - 1827.2 < 36.81, true);
+  assert.ok(sucio(1864 - 1827.2), 'el repro dejó de reproducir: la resta a mano ya no da basura');
+  assert.strictEqual(pr.kcal.falta, 36.8, 'foodLogProgress dejó de redondear «falta»');
+  assert.strictEqual(Math.round(pr.kcal.falta), 37, 'lo que se pinta en el héroe debe ser entero');
+});
+
+// Candado ESTÁTICO de la misma clase: el defecto no fue de la función pura (que redondeaba bien)
+// sino de la PANTALLA, que se puso a recalcular por su cuenta. Un test sobre la función pura no
+// lo habría visto nunca — por eso este mira el código que pinta.
+test('🔴 la pantalla de «Comida de hoy» NO recalcula lo que la función pura ya da', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function _flDiaHtml');
+  assert.ok(i > -1, 'no se encontró _flDiaHtml');
+  const cuerpo = src.slice(i, i + 2600);
+  assert.ok(/pr\.kcal\.falta/.test(cuerpo), 'el héroe dejó de usar `falta` (la cifra ya redondeada)');
+  assert.ok(!/\.meta\s*\|\|\s*0\s*\)\s*-\s*\(/.test(cuerpo),
+    'volvió a restar meta-hecho a mano: eso es lo que sacaba «36.799999999999955» en pantalla');
+});
+
 test('foodLogProgress: pasarse no deja «falta» negativo, y sin meta no inventa porcentaje', () => {
   const pr = foodLogProgress({ kcal: 2500, p: 0, c: 0, f: 0, n: 1 }, { kcal: 1800 });
   assert.strictEqual(pr.kcal.falta, 0);

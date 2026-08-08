@@ -1345,7 +1345,7 @@ function _flMacroChip(et,o,unidad){
   // Pasarse es una señal distinta a ir corto: ahí el color lo dice el estado, no el macro.
   const barra=o.pct>110?'var(--or)':`var(${col})`;
   return `<div class="nutri-card" style="--nc:var(${col});flex:1;min-width:0;text-align:center;background:var(${bg});border-radius:var(--r);padding:10px 4px 9px">
-    <div style="font-size:15px;font-weight:800;color:var(${col})">${o.hecho}${unidad}</div>
+    <div style="font-size:15px;font-weight:800;color:var(${col})">${et==='kcal'?Math.round(o.hecho||0):o.hecho}${unidad}</div>
     <div style="font-size:10px;color:var(--t2)">${et}${o.meta?' de '+o.meta+unidad:''}</div>
     ${pct==null?'':`<div style="height:3px;background:color-mix(in srgb,var(${col}) 20%,transparent);border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barra}"></div></div>`}
   </div>`;
@@ -1363,10 +1363,13 @@ function _flDiaHtml(c){
   // HÉROE: era la ÚNICA habitación que abría sin ninguno — pasaba de la barra directo a una fila
   // de números sueltos. Mismo héroe de marca que las demás (decisión del PO, 2026-08-08), con el
   // resumen del día dentro: lo primero que alguien quiere saber al abrir esto es cuánto le queda.
-  const _rest=Math.max(0,(pr.kcal.meta||0)-(pr.kcal.hecho||0));
+  // 🔴 `pr.kcal.falta` — NO se recalcula aquí. `foodLogProgress` ya lo da redondeado, y al
+  // restarlo a mano salía la resta en coma flotante de un número con decimal: el PO vio
+  // «Te quedan 36.799999999999955 kcal». Nunca se rehace fuera un cálculo que la función pura
+  // ya expone: se rehace peor. Y en kcal se redondea a entero, que medias calorías no existen.
   const _sub=tot.n===0
     ? 'Todavía no has anotado nada hoy'
-    : (pr.kcal.meta ? `Te quedan <b>${_rest}</b> kcal para tu meta de hoy` : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
+    : (pr.kcal.meta ? `Te quedan <b>${Math.round(pr.kcal.falta||0)}</b> kcal para tu meta de hoy` : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
   let html=`<div class="sroom-hero exroom-hero" style="margin-bottom:14px">
       <div class="sroom-hero-txt">
         <div class="sroom-title">Comida de hoy</div>
