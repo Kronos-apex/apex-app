@@ -4184,6 +4184,76 @@ function nutAcompMacros(ids) {
   return { prot_g, carb_g, fat_g, kcal: Math.round(prot_g * 4 + carb_g * 4 + fat_g * 9) };
 }
 
+// ── ELEGIR EL MENÚ QUE DE VERDAD CABE EN LA COMIDA ──────────────────────
+// 🔴 EL PLATO SOLO SABE SUMAR, NUNCA RESTAR, y ahí estaba el desbordamiento. `nutSolveMeal`
+// resuelve tres alimentos con la proteína como PISO (`NUT_PROT_MIN_SHARE`): cuando la proteína
+// obligatoria y la grasa **ya se pasan** del presupuesto, poner el carbohidrato en cero es lo
+// único que puede hacer — y no alcanza. Nadie absorbe el sobrante y la comida se sirve de más.
+//
+// Medido (mujer de 45 kg sedentaria, día 2): el almuerzo pide 29 g de carbohidrato al plato y
+// le sirve 69, **172 kcal de más en un solo plato**. La razón no es un error de cuentas: la
+// proteína de ese menú es **fríjol, que trae 2,56 g de carbohidrato por cada gramo de proteína**.
+// Para darle sus 24 g de proteína hay que servirle 270 g de fríjol, y eso son 62 g de
+// carbohidrato **haga lo que haga el solver**. Ese menú es INFACTIBLE con ese presupuesto, y
+// ninguna aritmética lo arregla: el fríjol es así. Lo mismo con lenteja (2,22) y, más suave,
+// con el yogur griego (0,36) en los desayunos chicos.
+//
+// 🔒 Por eso el arreglo NO va en el solver sino en QUIÉN ELIGE EL MENÚ: se evalúa el banco
+// entero, se separan los que CABEN, y la rotación de siempre corre **sobre esos**. Se conserva
+// todo lo que ya funcionaba —variedad a lo largo de la semana, el desfase entre Media mañana y
+// Media tarde, y que el resultado sea determinista— y solo cambia la elección cuando la de hoy
+// MIENTE.
+// Se compara la comida COMPLETA (plato + acompañantes) contra lo que esa comida prometió, que
+// es lo que la persona se lleva a la boca; comparar solo el plato dejaría fuera la fruta, que
+// es justo el otro sitio por donde se colaba (una taza de piña son 91 kcal).
+// ⚠️ LA ROTACIÓN VA SOBRE LOS FACTIBLES, y hay que decir la verdad sobre eso: **es forma, no
+// fondo.** Escribí primero «el primero que cabe recorriendo desde donde apunta el día», creí que
+// esa era la causa de que la variedad cayera, la cambié por esto… y el SABOTAJE SALIÓ VERDE. Las
+// dos son equivalentes en cobertura, y la razón es de una línea: `start` recorre TODOS los
+// índices, así que cualquier menú factible `j` sale elegido el día que `start` vale `j`. Lo que
+// cambia es solo QUÉ día le toca cada uno. **La variedad la arregló el UMBRAL, no esta forma.**
+// Se conserva porque es la que no se degrada si algún día se aprieta el tope, pero ningún test la
+// protege y no se le puede atribuir un mérito que no tiene.
+// 🔒 Y si NINGUNO cabe, se devuelve el que menos se pasa: un plan feo es mejor que ningún plan,
+// y quedarse con el de la rotación sería preferir el azar al mejor disponible.
+// 🔴 EL UMBRAL LO ELIGIÓ EL PO (2026-08-09) SOBRE UNA CURVA MEDIDA EN LAS 21 PERSONAS REALES,
+// no sobre perfiles de laboratorio. Están en tensión dos cosas y no hay punto que gane las dos:
+// cuánto se pasa el plato · cuántos platos distintos ve en la semana la persona PEOR SERVIDA
+// (desayuno/almuerzo/cena — el mínimo de las 21, no el promedio, que aquí esconde el caso malo):
+//    sin filtro (lo de antes) → peor +14,8% · promedio +8,9%              · 5/7/5
+//    20% → peor +12,1% · prom +7,7% · mejoran 14, empeoran 7             · 3/7/4
+//  ▶ 15% → peor +12,1% · prom +5,9% · mejoran 17, empeoran 3             · 2/5/3   ← ELEGIDO
+//    10% → peor  +8,0% · prom +3,7% · mejoran 21, empeoran 0             · 1/3/2
+// 🔴 Y por eso NO se apretó más, aunque al 10% mejoren las 21 sin excepción: ahí alguien
+// (Hernán Camacho, medido) comería **EL MISMO DESAYUNO LOS 7 DÍAS**. Un plan que repite es un
+// plan que se abandona — el defecto del banco de UNO que ya costó una versión en el generador de
+// rutinas, y un plan abandonado sirve 0% de lo que promete, no el 96%.
+// ⚠️ Que 3 personas empeoren 1-2 puntos es real y va dicho: la elección es POR COMIDA contra el
+// presupuesto de esa comida, así que un día puede acumular varias comidas cerca del tope. Sale a
+// cuenta (el promedio de las 21 baja de 8,9% a 5,9%) pero no es una mejora persona a persona.
+const NUT_MENU_MAX_OVER = 0.15;
+function nutPickMenu(banco, start, meta) {
+  if (!banco || !banco.length) return null;
+  const kMeta = (meta.prot_g || 0) * 4 + (meta.carb_g || 0) * 4 + (meta.fat_g || 0) * 9;
+  const evaluar = menu => {
+    const ac = nutAcompMacros(menu.acomp || []);
+    const sub = {
+      prot_g: Math.max(0, (meta.prot_g || 0) - ac.prot_g),
+      carb_g: Math.max(0, (meta.carb_g || 0) - ac.carb_g),
+      fat_g: Math.max(0, (meta.fat_g || 0) - ac.fat_g),
+    };
+    const solved = nutSolveMeal(sub, menu.pick);
+    const kReal = (solved.real.prot_g + ac.prot_g) * 4 + (solved.real.carb_g + ac.carb_g) * 4
+      + (solved.real.fat_g + ac.fat_g) * 9;
+    return { menu, ac, sub, solved, over: kMeta > 0 ? (kReal - kMeta) / kMeta : 0 };
+  };
+  const todos = banco.map(evaluar);
+  const caben = todos.filter(c => c.over <= NUT_MENU_MAX_OVER);
+  const pool = caben.length ? caben : todos;
+  const i = ((parseInt(start, 10) || 0) % pool.length + pool.length) % pool.length;
+  // Sin ninguno factible manda el que MENOS se pasa; con factibles, la rotación de siempre.
+  return caben.length ? pool[i] : pool.reduce((a, b) => (b.over < a.over ? b : a));
+}
 function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const t = nutDayTarget(base, kind, trainDays, legDays);
   if (!t) return null;
@@ -4197,24 +4267,21 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const nM = NUT_MEALS_5.length;
   const meals = NUT_MEALS_5.map((slot, i) => {
     const banco = NUT_MENUS[slot.key] || [];
-    // desfase por comida para que Media mañana y Media tarde no coincidan
-    const menu = banco.length ? banco[(di + i * 2) % banco.length] : null;
     const wProt = (slot.w + 1 / nM) / 2;   // mezcla: mitad tamaño de la comida, mitad reparto parejo
     const meta = {
       prot_g: Math.round(t.prot_g * wProt),
       carb_g: Math.round(t.carb_g * slot.w),
       fat_g: Math.round(t.fat_g * slot.w),
     };
+    // El menú se elige entre los que CABEN en el presupuesto de esta comida, empezando por el
+    // que le tocaba a este día (el desfase `i * 2` mantiene distintas Media mañana y Media tarde).
     // Lo que traen los acompañantes se DESCUENTA del presupuesto del plato: si la comida
     // viene con guayaba, el arroz baja. Antes el plato se calculaba como si la fruta no
     // existiera y luego la fruta se servía igual, encima.
-    const ac = nutAcompMacros(menu ? (menu.acomp || []) : []);
-    const sub = {
-      prot_g: Math.max(0, meta.prot_g - ac.prot_g),
-      carb_g: Math.max(0, meta.carb_g - ac.carb_g),
-      fat_g: Math.max(0, meta.fat_g - ac.fat_g),
-    };
-    const solved = menu ? nutSolveMeal(sub, menu.pick) : { items: [], real: { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 } };
+    const elegido = banco.length ? nutPickMenu(banco, di + i * 2, meta) : null;
+    const menu = elegido ? elegido.menu : null;
+    const ac = elegido ? elegido.ac : nutAcompMacros([]);
+    const solved = elegido ? elegido.solved : { items: [], real: { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 } };
     // `real` = lo que la persona SE COME de verdad: el plato MÁS los acompañantes.
     const real = {
       prot_g: solved.real.prot_g + ac.prot_g,
@@ -6045,6 +6112,8 @@ if (typeof module !== 'undefined' && module.exports) {
     nutDayTarget,
     nutPortionText,
     nutSolveMeal,
+    nutPickMenu,
+    NUT_MENU_MAX_OVER,
     NUT_DAY_W,
     NUT_SOLVE_PASSES,
     NUT_PROT_MIN_SHARE,

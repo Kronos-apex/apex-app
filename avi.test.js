@@ -7811,38 +7811,71 @@ test('en gente TÍPICA el plan no se pasa del 16% ni deja el carbohidrato bajo -
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -12%`);
 });
 
-test('ni en los casos EXTREMOS el plan se pasa del 16%', () => {
+// 🟢 EL FRENTE DEL PISO CALÓRICO, CERRADO (2026-08-09). Aquí vivía un test aparte que ACOTABA el
+// defecto en 29% «mientras se arregla», y con él las 3 sedentarias sacadas del barrido por
+// `_sinPiso`. Ya no hacen falta ninguno de los dos: **las 3 vuelven al guardián de todos**, que es
+// donde debieron estar siempre. Su propio mensaje decía qué hacer el día que bajara de 16%, y lo
+// dice el commit de v470: no lo decidí yo, lo decidió la medición.
+test('ni en los casos EXTREMOS el plan se pasa del 13%', () => {
   // La esquina mala salió de barrer 5.040 días: mujer liviana, alta y en déficit — objetivo
-  // chiquito donde el redondeo a media ración pesa muchísimo.
-  // Va aquí a propósito: un guardián que solo mira los casos cómodos no es un guardián.
-  const r = _peorDesvioPlan(_sinPiso(_PERFILES_EXTREMOS));
-  assert.ok(r.peorKcal <= 16,
-    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 16%`);
+  // chiquito donde el redondeo a media ración pesa muchísimo. Va aquí a propósito: un guardián
+  // que solo mira los casos cómodos no es un guardián. Y ahora **incluye a las 3 del piso**, que
+  // son las que llegaban a +28,6%.
+  const r = _peorDesvioPlan(_PERFILES_EXTREMOS);
+  assert.strictEqual(_conPiso(_PERFILES_EXTREMOS).length, 3,
+    'el barrido perdió las sedentarias del piso: son ellas las que destapaban el defecto');
+  // 13% y no 16%: medido, el peor es +12,1%. Un tope con 4 puntos de aire deja de morder, y el
+  // punto de este test es que muerda.
+  assert.ok(r.peorKcal <= 13,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 13%`);
   assert.ok(r.peorCarb >= -13,
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -13%`);
 });
 
-// 🔴 FRENTE ABIERTO, medido y ACOTADO — no es un tope de adorno: muerde a +0,5 pp.
-// A quien queda clavado en el piso calórico, el plato le sirve hasta un **28,5% más** de lo que
-// le promete. La causa NO es el redondeo de raciones, como se creía: es que la proteína del plato
-// ARRASTRA su propio carbohidrato y nadie absorbe el sobrante. Medido en la mujer de 48 kg
-// sedentaria, día 2: le promete 101 g de carbohidrato y le sirve 172, porque el almuerzo resuelve
-// la proteína con 270 g de fríjol. En `nutSolveMeal` el carbohidrato se calcula como «lo que
-// falte, mínimo 0» (`Math.max(0, …)`) — el MISMO `Math.max(0, …)` que ya se mató una vez en
-// `calcMacrosFromKcal` (v428), vivo en la función hermana. Subir la proteína a 2,2 (v449) lo
-// empeoró de +17,9% a +28,5% en esta esquina; fuera de ella no movió casi nada (+13,2% → +14,6%).
-// Ninguna de las 19 personas reales de producción está aquí (todas con factor ≥1.55), pero 3 de
-// las 10 mujeres quedan a UN TOQUE: basta que se marquen «sedentaria».
-// Se mide aparte para NO perder resolución sobre la gente normal, que sigue con el tope de 16%.
-// Cuando se arregle `nutSolveMeal`, este test se borra y estos perfiles vuelven al de arriba.
-test('🔴 piso calórico: el plato se pasa hasta 29% y está ACOTADO mientras se arregla', () => {
-  const conPiso = _conPiso(_PERFILES_EXTREMOS);
-  assert.strictEqual(conPiso.length, 3, `esperaba las 3 sedentarias clavadas en el piso, encontré ${conPiso.length}`);
-  const r = _peorDesvioPlan(conPiso);
-  assert.ok(r.peorKcal <= 29,
-    `el desbordamiento CRECIÓ a ${r.peorKcal.toFixed(1)}% (${r.quienKcal}); estaba acotado en 28,5%`);
-  assert.ok(r.peorKcal > 16,
-    'esto ya bajó de 16%: se arregló nutSolveMeal → borra este test y devuelve los perfiles al de arriba');
+// 🔴 LA FUNCIÓN QUE CERRÓ EL FRENTE. Lo que se afirma no es que elija «bien» —eso lo miden los
+// dos guardianes de arriba— sino las dos cosas que puede romper alguien tocándola sin querer:
+// que NO deje de rotar (variedad) y que NO se quede callada cuando no hay nada que quepa.
+test('🔴 el menú se elige entre los que CABEN, y la rotación sigue viva', () => {
+  const banco = core.NUT_MENUS.almuerzo;
+  // Presupuesto normal: la rotación manda y días distintos dan menús distintos.
+  const meta = { prot_g: 41, carb_g: 138, fat_g: 20 };
+  const vistos = new Set();
+  for (let d = 0; d < 7; d++) vistos.add(core.nutPickMenu(banco, d, meta).menu.pick.prot);
+  assert.ok(vistos.size >= 4, `la rotación se aplanó a ${vistos.size} menús distintos en 7 días`);
+  // Determinista: mismo día + mismo presupuesto = mismo menú, siempre.
+  assert.strictEqual(core.nutPickMenu(banco, 3, meta).menu, core.nutPickMenu(banco, 3, meta).menu);
+  // 🔒 CON EL BANCO PARCIALMENTE FACTIBLE NO SE PIERDE NINGUNO. Con este presupuesto caben los
+  // índices [0,1,2,4,5] (la lenteja y el fríjol se caen) y la semana tiene que visitarlos TODOS:
+  // quedarse con un subconjunto es el defecto del banco de UNO que ya costó una versión en el
+  // generador de rutinas.
+  // ⚠️ Lo que este test NO prueba, y conviene que quede escrito: no distingue «rotar sobre los
+  // factibles» de «el primero que quepa desde donde apunta el día». Se comprobó saboteando y salió
+  // VERDE — las dos formas cubren lo mismo porque `start` recorre todos los índices. Lo que se
+  // afirma es la COBERTURA, que es lo que le importa a quien come.
+  const apretado = { prot_g: 28, carb_g: 45, fat_g: 14 };
+  const factibles = banco.filter(m => core.nutPickMenu([m], 0, apretado).over <= core.NUT_MENU_MAX_OVER);
+  assert.ok(factibles.length > 1 && factibles.length < banco.length,
+    `este presupuesto dejó de discriminar (caben ${factibles.length} de ${banco.length}) — busca otro o el test no prueba nada`);
+  const visitados = new Set();
+  for (let d = 0; d < banco.length; d++) visitados.add(core.nutPickMenu(banco, d, apretado).menu);
+  assert.strictEqual(visitados.size, factibles.length,
+    `la rotación visitó ${visitados.size} de los ${factibles.length} menús que sí cabían`);
+  factibles.forEach(m => assert.ok(visitados.has(m),
+    `un menú que CABÍA nunca le tocó a nadie: ${m.pick.prot}`));
+  // 🔒 Presupuesto IMPOSIBLE (nadie cabe): NO devuelve null ni el de la rotación a ciegas —
+  // devuelve el que MENOS se pasa. Un plan feo es mejor que ningún plan.
+  const enano = { prot_g: 2, carb_g: 2, fat_g: 1 };
+  const peorCaso = core.nutPickMenu(banco, 0, enano);
+  assert.ok(peorCaso && peorCaso.menu, 'con un presupuesto imposible se quedó sin menú');
+  const overs = banco.map(m => core.nutPickMenu([m], 0, enano).over);
+  assert.ok(peorCaso.over <= Math.min(...overs) + 1e-9,
+    `con nada factible eligió uno que se pasa ${peorCaso.over.toFixed(2)} habiendo uno de ${Math.min(...overs).toFixed(2)}`);
+  // 🔒 Y el que elige en condiciones normales CABE de verdad.
+  assert.ok(core.nutPickMenu(banco, 0, meta).over <= core.NUT_MENU_MAX_OVER,
+    'eligió un menú que se pasa del tope habiendo alternativas');
+  // Banco vacío no revienta.
+  assert.strictEqual(core.nutPickMenu([], 0, meta), null);
+  assert.strictEqual(core.nutPickMenu(null, 0, meta), null);
 });
 
 // ── EL PUESTO DE GLÚTEO DEL FULL BODY (validado por Valery, 2026-08-03) ──
