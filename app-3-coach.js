@@ -1342,7 +1342,7 @@ async function openDetail(id,_silent){
     if(_rv){
       _painHTML+=`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6;color:var(--ylt)">`+
         `⏳ <strong>Lleva ${_rv.semanas} semanas con el trabajo correctivo de ${esc(_rv.area)}${_rv.side?' ('+esc(_rv.side)+')':''}.</strong> `+
-        `¿Lo progresas, lo cambias o lo quitas? A las 8 semanas deja de ponerse solo.</div>`;
+        `¿Lo progresas, lo cambias o lo quitas? <b>Si no haces nada, se deja de poner solo a las 8 semanas.</b></div>`;
     }
   }catch(_e){}
   dn.style.display=(c.notes||_painHTML)?'block':'none';

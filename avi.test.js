@@ -1103,6 +1103,46 @@ test('🔴 los textos que lee la persona no rompen las reglas del dictamen', () 
   assert.ok(!/agujetas/i.test(txt), '«agujetas» es de España; acá no se dice');
 });
 
+// 🔴 P0 de la auditoría de Laura (v468): el triaje se calculaba bien y NO SOBREVIVÍA a la capa que
+// lo guarda. `painCareAdd` era una lista blanca de 7 campos. La aserción que faltaba no es «el
+// motor devuelve 4» —eso ya pasaba— sino **que la bandera llegue guardada**, que es de donde la
+// ficha del coach la lee.
+test('🔴 el triaje SOBREVIVE al guardado: la bandera roja llega a la ficha del coach', () => {
+  const now = '2026-08-08T12:00:00.000Z';
+  const tri = core.painTriage({ area: 'zona lumbar', side: 'izquierda', limita: 'normal', inicio: 'progresivo', flags: ['R2'] });
+  assert.strictEqual(tri.nivel, 4);
+  const lista = core.painCareAdd(null, { area: 'zona lumbar', side: 'izquierda', level: 3,
+    triaje: tri.nivel, motivo: tri.motivo, flags: tri.flags, limita: 'normal', inicio: 'progresivo' }, now);
+  const p = lista[0];
+  assert.deepStrictEqual(p.flags, ['R2'], 'la bandera NO se guardó — la ficha del coach no puede pintarla');
+  assert.strictEqual(p.triaje, 4, 'el nivel de triaje no se guardó: N3 y N4 quedan indistinguibles');
+  assert.strictEqual(p.limita, 'normal');
+  assert.strictEqual(p.inicio, 'progresivo');
+  // Banderas inventadas no entran (se normalizan igual que en painTriage).
+  assert.deepStrictEqual(core.painCareAdd(null, { area: 'rodilla', flags: ['XX', 'R4'] }, now)[0].flags, ['R4']);
+});
+
+test('🔴 un trauma con pérdida funcional es URGENCIAS, aunque no marque la casilla', () => {
+  const t = core.painTriage;
+  // Los dos hechos de U3 ya están en P2 y P3: pedirle marcarlos otra vez es el mismo «ya lo dije».
+  const r = t({ area: 'tobillo o pie', side: 'derecha', limita: 'no_puedo', inicio: 'traumatismo', flags: [] });
+  assert.strictEqual(r.urgente, true, 'un trauma con pérdida funcional se quedó en «pide cita»');
+  assert.strictEqual(r.texto, 'U');
+  assert.ok(r.flags.includes('U3'));
+  assert.strictEqual(t({ area: 'rodilla', limita: 'reposo', inicio: 'traumatismo', flags: [] }).urgente, true);
+  // CONTROL: trauma SIN pérdida funcional sigue siendo derivación, no urgencias.
+  const leve = t({ area: 'rodilla', limita: 'normal', inicio: 'traumatismo', flags: [] });
+  assert.strictEqual(leve.urgente, false, 'inventó una urgencia sin pérdida funcional');
+  assert.strictEqual(leve.nivel, 4);
+});
+
+test('N0 no se abre con dolor de UN SOLO lado (las agujetas son parejas)', () => {
+  const base = { area: 'muslo por delante', limita: 'normal', inicio: 'agujetas', flags: [] };
+  assert.strictEqual(core.painTriage({ ...base, side: 'ambos' }).nivel, 0);
+  assert.strictEqual(core.painTriage({ ...base, side: 'izquierda' }).nivel, 1,
+    'llamó agujetas a un dolor de un solo lado');
+});
+
 test('🔴 «me equivoqué» corrige UNA vez y el coach ve LAS DOS respuestas', () => {
   const now = '2026-08-08T12:00:00.000Z';
   // Reporte original: bandera roja marcada sin querer.

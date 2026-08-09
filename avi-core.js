@@ -2224,6 +2224,14 @@ function painTriage(rep) {
   // dije»— y el nivel N4 depende de las casillas de P4, no de P3. O sea: contestar bien la
   // pregunta anterior APAGABA una bandera roja. Se marca sola.
   if (r.inicio === 'traumatismo' && flags.indexOf('R5') < 0) flags.push('R5');
+  // 🔴 Y LA MISMA FUGA UN NIVEL MÁS ABAJO, que es la que importa (Laura, v468): los dos hechos que
+  // componen **U3** —«fue por un golpe o una caída» y «no puedo apoyar el peso o mover esa parte»—
+  // YA están los dos en P3 y P2. Pedirle que los vuelva a marcar en P4 es el mismo «ya lo dije», y
+  // el precio es que un trauma con pérdida funcional recibía «pide cita» en vez de «urgencias
+  // hoy». Eso es una fractura hasta que se demuestre lo contrario.
+  // No crea urgencias falsas: trauma + pérdida funcional es exactamente el umbral de imagen.
+  if (r.inicio === 'traumatismo' && (r.limita === 'no_puedo' || r.limita === 'reposo')
+      && flags.indexOf('U3') < 0) flags.push('U3');
   const urg = flags.filter(f => (PAIN_FLAGS.find(x => x.id === f) || {}).urg);
   // 🔒 REGLA 2 — la bandera roja se evalúa PRIMERO y gana sobre cualquier intensidad.
   if (urg.length) return { nivel: 4, urgente: true, flags, motivo: 'bandera_urgente', texto: 'U' };
@@ -2247,7 +2255,10 @@ function painTriage(rep) {
 
   // N0 sólo con TODO a favor: se mueve normal, es de ayer, parejo en los dos lados, sin banderas,
   // y en vientre muscular. Cualquier duda cae a N1.
-  if (inicio === 'agujetas' && PAIN_N0_ZONAS.indexOf(r.area) >= 0)
+  // 🔒 Y no se abre con UN SOLO LADO: `agujetas` significa «parejo en los dos lados», así que
+  // marcarlo junto a `side:'izquierda'` es la misma contradicción que motivó crear `unilateral`.
+  const _unLado = r.side === 'izquierda' || r.side === 'derecha';
+  if (inicio === 'agujetas' && !_unLado && PAIN_N0_ZONAS.indexOf(r.area) >= 0)
     return { nivel: 0, urgente: false, flags, motivo: 'agujetas', texto: 'N0' };
   return { nivel: 1, urgente: false, flags, motivo: 'leve', texto: 'N1' };
 }
@@ -2269,6 +2280,24 @@ function painCareAdd(list, rep, nowIso) {
     exName: String(rep.exName || '').slice(0, 80),
     note: String(rep.note || '').slice(0, 300),
     at: nowIso || new Date().toISOString(),
+    // 🔴 P0 QUE CAZÓ LAURA AUDITANDO (v468): esto era una LISTA BLANCA de 7 campos y **se comía el
+    // triaje entero**. `painSubmit` calculaba bien y pasaba {triaje, motivo, flags, limita,
+    // inicio}, y aquí se tiraban en silencio. Tres consecuencias, las tres reales:
+    //  1. Las BANDERAS ROJAS no se persistían nunca. La ficha del coach está escrita para
+    //     pintarlas (`p.flags`, `p.triaje`) y no pintaba ninguna — la interfaz era correcta y la
+    //     capa que guarda la vaciaba.
+    //  2. N3 y N4 eran indistinguibles en disco (los dos `level:3`).
+    //  3. 🔴 **La salvaguarda de v466 no existía.** Su comentario dice que el coach viendo la
+    //     respuesta original «es la única razón por la que esto es seguro» — y `previo.flags`
+    //     siempre venía `[]`. Alguien marcaba hormigueo, la app lo mandaba a N4, se arrepentía, y
+    //     el coach leía la corrección SIN la bandera. Justo el escenario que decía prevenir.
+    // Misma familia que ya nos mordió tres veces: un dato que se calcula bien y NO SOBREVIVE a la
+    // capa que lo guarda. Las banderas se normalizan aquí igual que en `painTriage`.
+    triaje: rep.triaje == null ? null : Math.min(4, Math.max(0, parseInt(rep.triaje) || 0)),
+    motivo: rep.motivo || null,
+    flags: Array.isArray(rep.flags) ? rep.flags.filter(f => PAIN_FLAGS.some(x => x.id === f)) : [],
+    limita: PAIN_LIMITA.indexOf(rep.limita) >= 0 ? rep.limita : null,
+    inicio: PAIN_INICIO.indexOf(rep.inicio) >= 0 ? rep.inicio : null,
   };
   return (list || []).concat([entry]).slice(-20);
 }
