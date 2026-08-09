@@ -478,13 +478,12 @@ function painSubmit(){
   // 🔒 EL RESULTADO SE MUESTRA EN PANTALLA, no en un toast que se va. Con una bandera roja no se
   // puede confiar en que alcance a leer un aviso de 3 segundos.
   painShowResult(tri, _propio);
-  // 🔒 N3 y N4 PARAN. Antes, con nivel 🔴 la app abría el selector de sustitución — que además
-  // filtraba por MÚSCULO, así que a quien decía «no puedo con esta sentadilla» le ofrecía otras
-  // sentadillas. Ahora no se ofrece NADA: proponer una alternativa automática es afirmar que esa
-  // alternativa es segura para esa persona, y eso está prohibido (§7 del dictamen).
-  if(!painStopsSession(tri.nivel)&&PAIN.limita==='cambia'&&typeof todaySubstitute==='function'){
-    setTimeout(()=>{ try{ todaySubstitute(ei); }catch(_e){} },600);
-  }
+  // 🔒 LA APP NO ABRE UN SELECTOR DE ALTERNATIVAS EN NINGÚN NIVEL. Antes, con dolor 🔴 lo abría
+  // sola — y encima filtraba por MÚSCULO, así que a quien decía «no puedo con esta sentadilla» le
+  // ofrecía otras sentadillas. Proponer una alternativa automática es afirmar que esa alternativa
+  // es segura para esa persona, y eso está prohibido (§7.6 del dictamen).
+  // Quien quiera cambiar el ejercicio tiene su botón 🔄 en la tarjeta, y ese sí filtra la zona
+  // desde v455. La diferencia es quién decide.
 }
 // Textos EXACTOS del §2.4 del dictamen de Laura. 🔒 No los reescribe nadie sin ella: los de
 // urgencia y derivación pueden ganar calidez pero NO pueden perder la palabra «urgencias» ni el

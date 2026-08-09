@@ -62,6 +62,21 @@ try {
     navReset('cn-today');cnTab('cn-today',_cnTabEl('cn-today'),true);renderClientToday(c);})()`);
   await sleep(600);
 
+  // 🔴 MONTAJE RECONSTRUIDO (v467). Este harness llevaba meses en rojo con `btns:0` y la causa era
+  // suya: buscaba los botones en `#gm-body` —que es el MODO GUIADO— pero nunca lo abría. Desde
+  // v447 «Hoy» colapsa el entreno en una tarjeta de arranque, así que renderizar el día NO pinta
+  // las tarjetas de ejercicio. Un fixture que no monta el estado no prueba nada: sus 6 aserciones
+  // fallaban por el montaje, no por la app, y por eso el gate dejó de avisar de nada.
+  const abierto = await ev(`(()=>{try{
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const r=(c.routines||[]).find(x=>x.id==='rTest');
+    return typeof openGuidedEmbedded==='function' ? !!openGuidedEmbedded(r) : false;
+  }catch(e){return 'ERR '+(e&&e.message)}})()`);
+  await sleep(700);
+  // CONTROL DEL MONTAJE: si el guiado no abrió, ninguna cifra de abajo vale. Antes esto salía como
+  // «btns:0» y parecía un defecto de la app.
+  check('P0b el modo guiado ABRE (control del montaje)', abierto === true, 'openGuidedEmbedded=' + abierto);
+
   // P1: botón ⚠️ presente en las tarjetas
   let s = JSON.parse(await ev(`JSON.stringify({btns:document.querySelectorAll('#gm-body button[onclick^="gmReportPain"]').length})`));
   check('P1 botón ⚠️ en cada tarjeta del guiado', s.btns >= 2, JSON.stringify(s));
@@ -69,7 +84,7 @@ try {
   // P2: abre el modal con el nombre del ejercicio y chips
   await ev(`gmReportPain(0)`);
   s = JSON.parse(await ev(`JSON.stringify({on:document.getElementById('m-pain').classList.contains('on'),ex:document.getElementById('pain-ex').textContent.slice(0,60),areas:document.querySelectorAll('#pain-areas .pain-chip').length,levels:document.querySelectorAll('#pain-levels .pain-chip').length})`));
-  check('P2 modal abre con ejercicio + 16 zonas + 3 niveles', s.on && s.areas === 16 && s.levels === 3 && s.ex.length > 4, JSON.stringify(s));
+  check('P2 modal abre con ejercicio + 16 zonas + 4 opciones de P2', s.on && s.areas === 16 && s.levels === 4 && s.ex.length > 4, JSON.stringify(s));
 
   // P3: sin zona/nivel no envía
   await ev(`painSubmit()`);

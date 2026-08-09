@@ -68,9 +68,22 @@ try {
   })()`);
   await sleep(300);
 
+  // 🔴 CONTROL DEL MONTAJE (v467). Este harness llevaba en rojo desde v448 con `care:false`, y la
+  // causa era suya: el bloque «Para cuidarte hoy» se pinta DENTRO del modo guiado
+  // (`app-6-extra`), y aquí solo se renderizaba «Hoy» — que desde v447 colapsa el entreno en una
+  // tarjeta de arranque. El motor estaba bien todo este tiempo; fallaba la sonda.
+  // Sin este control, un fixture que deja de montar vuelve a parecer un defecto de la app.
+  {
+    const abre = await ev(`(()=>{try{const c=window.__C;const r=(c.routines||[]).find(x=>x.id==='rHoy');
+      return typeof openGuidedEmbedded==='function' ? !!openGuidedEmbedded(r) : false;}catch(e){return 'ERR '+(e&&e.message)}})()`);
+    await sleep(400);
+    check('A0 el modo guiado ABRE (control del montaje)', abre === true, 'openGuidedEmbedded=' + abre);
+  }
+
   // ═══════════ CAPA A — bienestar por ánimo ═══════════
   // A1: ánimo "cansado" → el banner muestra "Para cuidarte hoy" con ≥2 consejos.
-  await ev(`(()=>{const c=window.__C;setTodayMood(c.id,'cansado');renderClientToday(c);})()`);
+  await ev(`(()=>{const c=window.__C;setTodayMood(c.id,'cansado');renderClientToday(c);`+
+  `const r=(c.routines||[]).find(x=>x.id==='rHoy'); if(typeof openGuidedEmbedded==='function')openGuidedEmbedded(r);})()`);
   await sleep(500);
   // OJO: innerText en Chrome aplica text-transform → el header sale en MAYÚSCULAS ("PARA CUIDARTE
   // HOY"). Comparamos case-insensitive; los consejos (sin transform) van tal cual.
@@ -82,7 +95,8 @@ try {
   check('A1 ánimo cansado → bloque "Para cuidarte hoy" con ≥2 consejos en el DOM', s.care && s.lines >= 2, JSON.stringify(s));
 
   // A2: ánimo "dolor" → el consejo de SEGURIDAD (empuja a PARAR) aparece.
-  await ev(`(()=>{const c=window.__C;setTodayMood(c.id,'dolor');renderClientToday(c);})()`);
+  await ev(`(()=>{const c=window.__C;setTodayMood(c.id,'dolor');renderClientToday(c);`+
+  `const r=(c.routines||[]).find(x=>x.id==='rHoy'); if(typeof openGuidedEmbedded==='function')openGuidedEmbedded(r);})()`);
   await sleep(500);
   s = JSON.parse(await ev(`JSON.stringify((()=>{const t=(document.getElementById('cn-today')||{}).innerText||'';
     return {care:/para cuidarte hoy/i.test(t),para:/si algo duele de verdad, para/i.test(t)};})())`));
