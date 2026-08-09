@@ -90,8 +90,22 @@ async function setR(name, mkExs, extra = '') {
     CUR.todayWorking=null; CUR.todayOverride=null; CUR.todayRenderedDay=null;
     navReset('cn-today'); cnTab('cn-today',_cnTabEl('cn-today'),true);
     renderClientToday(c);
+    // 🔴 CONTROL DE MONTAJE (2026-08-09) — ESTE HARNESS LLEVABA MUERTO DESDE v447, y es la TERCERA
+    // vez que la misma clase de defecto se come un gate entero (ver v467 con _verify-pain y
+    // _verify-coach). Desde v447 «Hoy» llega COLAPSADO en una tarjeta de arranque: setR pintaba
+    // esa tarjeta, el guiado nunca se abría, y 28 de 53 checks fallaban con embedded:false.
+    // Se leían como defectos del motor de entreno y el motor estaba PERFECTO — con el montaje
+    // correcto pasan los 53.
+    // 🔒 Se monta como lo hace una PERSONA: expandTodayWorkout() es lo que corre el botón
+    // «Empezar», y deja CUR.todayExpanded puesto. Llamar a openGuidedEmbedded() a pelo también
+    // abre el guiado, pero NO deja ese estado: el siguiente re-render (elegir ánimo, reordenar…)
+    // vuelve a colapsar y quedan 5 checks rojos que tampoco eran del motor. Un fixture que fuerza
+    // la pantalla en vez de montar el estado prueba otra cosa.
+    if(typeof expandTodayWorkout==='function')expandTodayWorkout();
     const g=document.getElementById('guided-mode');
-    return JSON.stringify({today, tracks:exs.map(e=>exTrack(e)), embedded:g.classList.contains('gm-embedded'), hidden:g.classList.contains('hidden')});
+    const emb=g.classList.contains('gm-embedded')&&!g.classList.contains('hidden');
+    return JSON.stringify({today, tracks:exs.map(e=>exTrack(e)), embedded:g.classList.contains('gm-embedded'), hidden:g.classList.contains('hidden'),
+      montaje: emb?'ok':'EL GUIADO NO ABRE — es el fixture, no el motor (ver v447: «Hoy» llega colapsado)'});
   }catch(e){return JSON.stringify({err:String(e&&e.stack||e)});}})()`);
 }
 const clean = () => ev(`(()=>{try{clearTodayMood(CUR.clientId);}catch(e){}if(DB.history&&DB.history[CUR.clientId])DB.history[CUR.clientId]=DB.history[CUR.clientId].filter(h=>h.routineId!=='rTest');Object.keys(localStorage).filter(k=>k.includes('rTest')).forEach(k=>localStorage.removeItem(k));['workout-finish','wf','m-wf'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on','show');e.style.display='none';}});})()`);
