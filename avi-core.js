@@ -267,10 +267,25 @@ const GEN_EXCL_IDS = { abductor: ['e93'] };
 // entregaba `e134 Bird Dog` (que es CORE) diciendo «para el glúteo medio, que controla la
 // rodilla». Es la clase «rótulo que niega lo que rotula» que ya costó v437. Un candidato que no
 // sostiene su propia frase NO es candidato: se devuelve null y el puesto queda vacío.
-// ❌ ADUCTOR y ABDUCTOR RETIRADOS por Laura hasta que exista el triaje de niveles: el correctivo
-// real del abductor ES la abducción, y eso es justo lo que el filtro quita en fase aguda, con
-// razón. La misma cosa es el veneno a las 24 h y la medicina a las 72, y el motor no tiene noción
-// de fase — llenar el hueco con Bird Dog para no dejarlo vacío es fingir que sí.
+// ✅ ADUCTOR y ABDUCTOR REACTIVADOS (Laura, 2026-08-09) — y por eso existe `fase`.
+// Estuvieron RETIRADOS desde v461 con una razón que sigue siendo cierta: el correctivo real del
+// abductor ES la abducción, y eso es justo lo que el filtro quita en fase aguda, con razón. «La
+// misma cosa es el veneno a las 24 h y la medicina a las 72, y el motor no tiene noción de fase».
+// Ahora el triaje existe, así que el motor SÍ puede saber en qué fase está y las dos zonas vuelven
+// en DOS ESCALONES:
+//  · 🔴 AGUDO (<72 h, o nivel 3, o bandera roja, o sin reporte que lo diga) → `e73`/`e106` Puente
+//    de Glúteo: extensión de cadera en línea recta, cero apertura. No lo excluye ninguna regla.
+//  · 🟢 SUBAGUDO (≥72 h, nivel ≤2 y sin bandera) → `e163`/`e89`, que SÍ son abducción — y por eso
+//    son el único sitio de todo el motor donde un correctivo puede saltarse el filtro de su
+//    propia zona (`saltaSuZona`). Los TRES candados de Laura, y ninguno es opcional:
+//      1. Salta SOLO su zona. Las demás siguen filtrando: quien reporta «cadera o ingle» mapea a
+//         aductor **y** abductor a la vez, así que la otra zona lo bloquea y no progresa nunca —
+//         que es exactamente lo que ella quiere («sin exploración no se separa una ingle de un
+//         trocánter»).
+//      2. CARGA CERO. `e89` se llama «Clamshell con Banda» y aquí va SIN banda; el texto lo dice
+//         con esas palabras, porque el nombre del ejercicio afirma lo contrario.
+//      3. Un reporte nuevo lo devuelve al escalón agudo — sale gratis: un reporte nuevo tiene
+//         menos de 72 h.
 const GEN_CORRECTIVE = {
 // 🔒 EL SITIO LO DICTA LA FUNCIÓN, y lo decide Laura — no se deriva del `type` del catálogo (mi
 // primera versión lo hacía y mandaba solo la movilidad al calentamiento):
@@ -295,7 +310,44 @@ const GEN_CORRECTIVE = {
     { id: 'e89', sets: 2, reps: 15, porLado: true, when: 'calentamiento', why: 'para el glúteo medio, que es el que controla la rodilla' },
   ],
   tobillo: [
-    { id: 'e177', sets: 2, reps: 10, porLado: true, when: 'calentamiento', why: 'para recuperar el movimiento del tobillo' },
+    // 🔒 EN TIEMPO, NO EN REPETICIONES (Laura, 2026-08-09): la movilidad se dosifica sosteniendo el
+    // rango, y 10 repeticiones rápidas no son lo mismo que 30 segundos ahí metido. El catálogo lo
+    // declara `track:'reps'` y NO se toca — es un ejercicio con vida propia fuera del correctivo;
+    // aquí se sobrescribe en la COPIA, que es lo único que se prescribe.
+    { id: 'e177', sets: 2, reps: 30, track: 'tiempo', porLado: true, when: 'calentamiento', why: 'para recuperar el movimiento del tobillo' },
+  ],
+  // ── Las dos zonas con FASE. Ver el bloque de arriba: el escalón subagudo es el único sitio del
+  // motor donde un correctivo se salta el filtro de su propia zona.
+  aductor: [
+    { id: 'e163', fase: 'subagudo', saltaSuZona: true, cargaCero: true, sets: 1, reps: 12, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo medio, que sostiene la pelvis cuando apoyas una pierna',
+      extra: 'Sin banda y sin peso: solo el peso de la pierna, y hasta donde NO duela.' },
+    { id: 'e89', fase: 'subagudo', saltaSuZona: true, cargaCero: true, sets: 2, reps: 15, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo medio, que sostiene la pelvis cuando apoyas una pierna',
+      extra: 'Sin banda, aunque el nombre la mencione: por ahora va solo con el peso de la pierna.' },
+    { id: 'e73', fase: 'agudo', sets: 2, reps: 12, porLado: false, when: 'calentamiento',
+      why: 'para el glúteo, que trabaja sin que tengas que abrir las piernas',
+      extra: 'Con la pelvis firme y sin llevar la pierna hacia afuera. Sube lento y baja lento.' },
+    // ⚠️ `e106` no está en la tabla de Coach Pro: es el RESPALDO de entorno de `e73` (que solo
+    // declara gym). Dosis 2×10 por lado —más corta que el bilateral— porque es unilateral. Si
+    // Laura la quiere distinta, es una línea.
+    { id: 'e106', fase: 'agudo', sets: 2, reps: 10, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo, que trabaja sin que tengas que abrir las piernas',
+      extra: 'Con la pelvis firme y sin llevar la pierna hacia afuera. Sube lento y baja lento.' },
+  ],
+  abductor: [
+    { id: 'e163', fase: 'subagudo', saltaSuZona: true, cargaCero: true, sets: 1, reps: 12, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo medio, que es el que te duele y el que hay que volver a poner a trabajar',
+      extra: 'Sin banda y sin peso: solo el peso de la pierna, y hasta donde NO duela.' },
+    { id: 'e89', fase: 'subagudo', saltaSuZona: true, cargaCero: true, sets: 2, reps: 15, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo medio, que es el que te duele y el que hay que volver a poner a trabajar',
+      extra: 'Sin banda, aunque el nombre la mencione: por ahora va solo con el peso de la pierna.' },
+    { id: 'e73', fase: 'agudo', sets: 2, reps: 12, porLado: false, when: 'calentamiento',
+      why: 'para el glúteo mayor, que empuja en línea recta y no te pide abrir la pierna',
+      extra: 'Con la pelvis firme y sin llevar la pierna hacia afuera. Sube lento y baja lento.' },
+    { id: 'e106', fase: 'agudo', sets: 2, reps: 10, porLado: true, when: 'calentamiento',
+      why: 'para el glúteo mayor, que empuja en línea recta y no te pide abrir la pierna',
+      extra: 'Con la pelvis firme y sin llevar la pierna hacia afuera. Sube lento y baja lento.' },
   ],
 };
 // PURA. Devuelve UN ejercicio correctivo o null. Null es una respuesta válida y CORRECTA.
@@ -311,8 +363,17 @@ function correctiveFor(limKeys, lib, place, opts) {
   const zonas = [...new Set([...pain, ...todas])].filter(z => GEN_CORRECTIVE[z]);
   if (!zonas.length) return null;
   const env = place || 'gym';
+  const fases = o.fases || {};
   for (const z of zonas) {
-    for (const cand of GEN_CORRECTIVE[z]) {
+    // 🔒 EL DEFAULT ES EL ESCALÓN AGUDO. Sin fase declarada (una zona que viene de la NOTA del
+    // coach no tiene reporte del que sacarla) se prescribe lo que es seguro para cualquiera.
+    // Los candidatos sin `fase` son de las zonas de siempre y valen en las dos.
+    const fase = fases[z] === 'subagudo' ? 'subagudo' : 'agudo';
+    const cands = GEN_CORRECTIVE[z].filter(c => !c.fase || c.fase === fase || c.fase === 'agudo');
+    // En subagudo se prefiere la progresión, pero si no cabe (entorno, nivel, otra zona que la
+    // bloquea) se CAE al escalón agudo en vez de dejar el puesto vacío.
+    if (fase === 'subagudo') cands.sort((a, b) => (a.fase === 'subagudo' ? 0 : 1) - (b.fase === 'subagudo' ? 0 : 1));
+    for (const cand of cands) {
       const ex = (lib || []).find(e => e && e.id === cand.id);
       if (!ex) continue;
       if (!((ex.env || ['gym']).indexOf(env) >= 0)) continue;
@@ -321,7 +382,13 @@ function correctiveFor(limKeys, lib, place, opts) {
       // reportado recibía `e89 Clamshell` todos los días — el ejercicio que la regla de abductor
       // le acababa de borrar de todo el plan. La puerta cerrada con la ventana abierta, otra vez,
       // esta vez DENTRO de la misma función.
-      if (exerciseContraindicated(ex, todas)) continue;
+      // 🔒 CANDADO 1 DE LAURA: `saltaSuZona` exime de la regla de SU PROPIA zona y de ninguna más,
+      // y solo en el escalón subagudo. Es la única excepción de todo el motor a «un correctivo
+      // nunca es algo que su zona excluya», y existe porque en abductor el correctivo real ES la
+      // abducción. Se comprueban DOS cosas antes de eximir (`cand.fase === fase`), o el día que
+      // alguien reordene la lista el escalón agudo hereda la excepción.
+      const _exime = !!cand.saltaSuZona && cand.fase === 'subagudo' && fase === 'subagudo';
+      if (exerciseContraindicated(ex, _exime ? todas.filter(k => k !== z) : todas)) continue;
       // 🔒 F4: el correctivo pasa por el mismo gate de nivel que el resto del plan, o el día que
       // alguien reordene la lista se cuela un avanzado a un principiante.
       if (o.levelCap != null && exLevelRank(ex) > o.levelCap) continue;
@@ -329,6 +396,7 @@ function correctiveFor(limKeys, lib, place, opts) {
         ex, zona: z, sets: cand.sets, reps: cand.reps, porLado: !!cand.porLado,
         why: cand.why, extra: cand.extra || '',
         cuando: cand.when || 'final',
+        fase, track: cand.track || null, cargaCero: !!cand.cargaCero,
         // 🔴 F3: la zona puede venir de la NOTA del coach y entonces nadie reportó nada. Decirle
         // «por el dolor que reportaste» a quien no reportó es afirmar algo falso — y es justo el
         // caso del PO, que preguntó por el manguito sin haber reportado ningún dolor.
@@ -452,6 +520,39 @@ function correctiveZoneKeys(client, nowTs) {
     (Array.isArray(z) ? z : [z]).forEach(k => out.push(k));
   });
   return [...new Set(out)];
+}
+// ── FASE de cada zona (Laura, 2026-08-09) — lo que faltaba para devolver aductor y abductor ────
+// 🔴 «La misma cosa es el veneno a las 24 h y la medicina a las 72.» El motor no tenía forma de
+// saber en cuál de las dos estaba y por eso las dos zonas quedaron retiradas en v461. Con el
+// triaje ya construido, sí la tiene.
+// SUBAGUDO exige las TRES cosas a la vez, sobre TODOS los reportes vigentes de esa zona:
+//   ≥72 h · nivel ≤2 · sin bandera roja.
+// Cualquier otra cosa —incluido no tener reporte ninguno, que es el caso de una zona que viene de
+// la nota del coach— es AGUDO. 🔒 El default cae del lado seguro, como la regla 3 del triaje: un
+// dato que falta es una señal, no un permiso.
+// ⚠️ LECTURA LITERAL A PROPÓSITO: un reporte de nivel 3 mantiene la zona en agudo durante las 8
+// semanas de la ventana, aunque ya haya pasado el tiempo. Es lo que ella escribió («<72 h **o**
+// nivel 3») y el precio de equivocarse hacia el otro lado es peor. Si quiere que el nivel 3 caduque
+// con el reporte (14 días), es una condición más.
+const CORRECTIVE_ACUTE_MS = 72 * 3600000;
+function correctivePhases(client, nowTs) {
+  const now = nowTs || Date.now();
+  const out = {};
+  ((client && client.painCare) || []).forEach(p => {
+    if (!p || !p.at) return;
+    const dt = now - Date.parse(p.at);
+    if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
+    const z = _PAIN_ZONE_TO_EXCL[p.area];
+    if (!z) return;
+    const agudo = dt < CORRECTIVE_ACUTE_MS
+      || (parseInt(p.level, 10) || 0) >= 3
+      || (parseInt(p.triaje, 10) || 0) >= 3
+      || ((p.flags || []).length > 0);
+    (Array.isArray(z) ? z : [z]).forEach(k => {
+      if (out[k] !== 'agudo') out[k] = agudo ? 'agudo' : 'subagudo';
+    });
+  });
+  return out;
 }
 // Lo que el COACH tiene que ver. 🔒 Un correctivo que lleva un mes idéntico o ya funcionó o no
 // está funcionando, y las dos cosas piden decisión humana; a las 8 semanas se acaba solo y él
@@ -1219,6 +1320,7 @@ function generarRutinas(client, lib, opts) {
     painKeys: painZoneKeys(client, _nowTs),   // dolor VIGENTE: manda sobre la nota vieja (F5)
     corrKeys: _corrKeys,                      // reportes de hasta 8 semanas → texto de mantenimiento
     levelCap: _gate.cap,                      // el correctivo pasa el mismo gate que el resto (F4)
+    fases: correctivePhases(client, _nowTs),  // agudo/subagudo por zona (aductor y abductor)
   });
   if (_corr) routines.forEach(r => {
     if (!r.exercises || !r.exercises.length) return;          // un día vacío no se «arregla» con esto
@@ -1235,9 +1337,15 @@ function generarRutinas(client, lib, opts) {
     const _dosis = _corr.porLado ? ' Hazlo por cada lado.' : '';
     r.exercises.push(Object.assign({}, _corr.ex, {
       sets: _corr.sets, reps: _corr.reps,
+      // 🔒 El `track` de la COPIA manda sobre el del catálogo: `e177` se dosifica en TIEMPO como
+      // correctivo (30 s por lado) y en repeticiones cuando el coach lo pone a mano. Sin esto,
+      // `reps:30` se leería como 30 repeticiones de movilidad, que es otra cosa.
+      // (Sin `track` propio no se toca la clave: el ejercicio conserva la del catálogo.)
       corrective: true, correctiveZone: _corr.zona, correctiveWhen: _corr.cuando,
+      correctiveFase: _corr.fase,
       correctiveWhy: `Va aquí ${_corr.why}, ${_porQue}. No lo cargues: busca sentirlo, no moverlo con peso.${_dosis}${_corr.extra ? ' ' + _corr.extra : ''}`,
     }));
+    if (_corr.track) r.exercises[r.exercises.length - 1].track = _corr.track;
   });
   const envGaps = [...st.envShortfall];
   // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
@@ -2145,6 +2253,20 @@ const PAIN_AREAS = [
 // El LADO es el dato que decide si el trabajo unilateral sigue siendo posible y el que permite
 // medir simetría al dar el alta (§5.4). No se preguntaba.
 const PAIN_SIDES = ['izquierda','derecha','ambos','centro'];
+// 🔴 «CENTRO» NO SIGNIFICA NADA EN UN HOMBRO Y «AMBOS» NO SIGNIFICA NADA EN LA LUMBAR (Laura,
+// 2026-08-09). Ofrecer los cuatro siempre no es neutral: obliga a elegir entre opciones que no
+// aplican, y quien tiene dolor lumbar central marcaba «ambos» —que en una estructura de la línea
+// media es literalmente lo mismo que «centro»— y el dato quedaba sucio para siempre.
+// · LÍNEA MEDIA (cuello, lumbar, espalda alta, pecho): izquierda/derecha/centro. Sin «ambos»:
+//   una estructura central no tiene dos ejemplares.
+// · PAREADAS (el resto): izquierda/derecha/ambos. Sin «centro»: no hay centro de un hombro.
+// · `otra zona`: los cuatro, porque no sabemos qué marcó.
+const PAIN_AREAS_MEDIA = ['cuello', 'zona lumbar', 'espalda alta', 'pecho'];
+function painSidesFor(area) {
+  if (area === 'otra zona' || !PAIN_AREAS.includes(area)) return PAIN_SIDES.slice();
+  if (PAIN_AREAS_MEDIA.indexOf(area) >= 0) return ['izquierda', 'derecha', 'centro'];
+  return ['izquierda', 'derecha', 'ambos'];
+}
 const PAIN_LEVELS = [
   { v: 1, label: 'Leve', emoji: '🟡' },
   { v: 2, label: 'Molesto', emoji: '🟠' },
@@ -2274,7 +2396,11 @@ function painCareAdd(list, rep, nowIso) {
     area: PAIN_AREAS.includes(rep.area) ? rep.area : 'otra zona',
     // Lado: sin él no se puede prescribir trabajo unilateral ni medir simetría al dar el alta
     // (§5.4 del dictamen). `null` cuando no se marcó — NUNCA se inventa un lado.
-    side: PAIN_SIDES.includes(rep.side) ? rep.side : null,
+    // 🔒 Se valida contra los lados QUE APLICAN A ESA ZONA, la misma función que pinta los chips.
+    // Con `PAIN_SIDES` a secas, un «centro» en un hombro entraba y quedaba guardado: la pantalla
+    // dejaba de ofrecerlo y la capa que guarda seguía aceptándolo. Es la clase de v468 (un dato
+    // que la UI calcula bien y la capa de abajo no respeta), esta vez al revés.
+    side: painSidesFor(PAIN_AREAS.includes(rep.area) ? rep.area : 'otra zona').includes(rep.side) ? rep.side : null,
     level: Math.min(3, Math.max(1, parseInt(rep.level) || 1)),
     exId: rep.exId || null,
     exName: String(rep.exName || '').slice(0, 80),
@@ -6016,6 +6142,7 @@ if (typeof module !== 'undefined' && module.exports) {
     consentEvidence,
     PAIN_AREAS,
     PAIN_SIDES,
+    painSidesFor,
     PAIN_LEVELS,
     PAIN_LIMITA,
     PAIN_INICIO,
@@ -6033,6 +6160,7 @@ if (typeof module !== 'undefined' && module.exports) {
     correctiveFor,
     correctiveZoneKeys,
     correctiveReview,
+    correctivePhases,
     GEN_CORRECTIVE,
     clientAttentionRank,
     sortClientsByAttention,

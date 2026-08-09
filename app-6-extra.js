@@ -387,8 +387,11 @@ function gmReportPain(ei){
 function _painRenderChips(){
   const ar=document.getElementById('pain-areas');
   if(ar)ar.innerHTML=PAIN_AREAS.map(a=>`<button type="button" class="pain-chip${PAIN.area===a?' on':''}" onclick="painPick('area','${esc(a)}')">${esc(a)}</button>`).join('');
+  // Los lados que APLICAN a la zona marcada: «centro» no significa nada en un hombro y «ambos» no
+  // significa nada en la lumbar (Laura). Mientras no haya zona se muestran los cuatro.
   const sd=document.getElementById('pain-sides');
-  if(sd)sd.innerHTML=PAIN_SIDES.map(s=>`<button type="button" class="pain-chip${PAIN.side===s?' on':''}" onclick="painPick('side','${esc(s)}')">${esc(s.charAt(0).toUpperCase()+s.slice(1))}</button>`).join('');
+  const _lados=PAIN.area?painSidesFor(PAIN.area):PAIN_SIDES;
+  if(sd)sd.innerHTML=_lados.map(s=>`<button type="button" class="pain-chip${PAIN.side===s?' on':''}" onclick="painPick('side','${esc(s)}')">${esc(s.charAt(0).toUpperCase()+s.slice(1))}</button>`).join('');
   // P2 sustituye a la escala vieja: conducta observable, no «qué tanto duele».
   const lv=document.getElementById('pain-levels');
   if(lv)lv.innerHTML=PAIN_LIMITA_LBL.map(([v,t])=>`<button type="button" class="pain-chip${PAIN.limita===v?' on':''}" style="text-align:left" onclick="painPick('limita','${v}')">${esc(t)}</button>`).join('');
@@ -415,7 +418,15 @@ function painFixAnswers(){
   _painRenderChips();
   om('m-pain');
 }
-function painPick(field,val){ PAIN[field]=val; _painRenderChips(); }
+// 🔒 Al cambiar de ZONA se cae el lado si ya no aplica. Sin esto, quien marca «hombro → ambos» y
+// luego se corrige a «cuello» arrastra un «ambos» que la pantalla ya no muestra: `painSubmit` lo da
+// por respondido (es truthy), deja pasar el reporte, y `painCareAdd` lo guarda como `side:null`.
+// El lado se perdería EN SILENCIO — y es el dato con el que se prescribe lo unilateral (§5.4).
+function painPick(field,val){
+  PAIN[field]=val;
+  if(field==='area'&&PAIN.side&&painSidesFor(val).indexOf(PAIN.side)<0)PAIN.side=null;
+  _painRenderChips();
+}
 // Marcar una bandera y «Nada de esto» son excluyentes: no se puede decir las dos cosas.
 function painFlag(id){
   if(id==='_none'){ PAIN.sinFlags=!PAIN.sinFlags; if(PAIN.sinFlags)PAIN.flags=[]; }
@@ -504,8 +515,13 @@ const PAIN_RESULT_TXT={
   U:{t:'Para ahora mismo y busca atención médica hoy.',
      c:'Lo que marcaste no es para esperar en casa: es de ir a <b>urgencias</b> hoy, no de pedir cita para la otra semana.<br><br>Si estás solo, llama a alguien para que te acompañe.',
      coach:'aviso'},
+  // 🔒 «PIDE ESA CITA ESTA SEMANA», con esas palabras (Laura, 2026-08-09). No contradice la
+  // prohibición de plazos: los plazos prohibidos son los de RECUPERACIÓN («en dos semanas estás
+  // bien»), que la app no puede saber. Este es un plazo de CONSULTA — algo que la persona SÍ
+  // controla— y ella lo distingue explícitamente. Sin él, «que alguien te revise» no tiene cuándo,
+  // y una derivación sin cuándo se aplaza hasta que duela más.
   A:{t:'Hoy paramos aquí. No es un castigo, es cuidarte.',
-     c:'Lo que nos contaste necesita que alguien te revise en persona — un médico o un fisioterapeuta — antes de que vuelvas a cargar peso. Desde la app no podemos revisarte, y no vamos a adivinar contigo.<br><br><b>Tu racha no se rompe y el día te cuenta igual.</b><br><br>Cuando te valoren, cuéntanos qué te dijeron y armamos tu regreso con eso en la mano.',
+     c:'Lo que nos contaste necesita que alguien te revise en persona — un médico o un fisioterapeuta — antes de que vuelvas a cargar peso. Desde la app no podemos revisarte, y no vamos a adivinar contigo.<br><br><b>Pide esa cita esta semana.</b> No es que en una semana se arregle: es que esto no se puede quedar sin mirar.<br><br><b>Tu racha no se rompe y el día te cuenta igual.</b><br><br>Cuando te valoren, cuéntanos qué te dijeron y armamos tu regreso con eso en la mano.',
      coach:'aviso'},
   C:{t:'Hoy no entrenamos. Paramos aquí.',
      c:'Con un dolor así no podemos saber qué está pasando desde la app, y seguir es lo que más caro sale.<br><br>Si te provoca, camina suave y respira. Nada más por hoy.<br><br><b>Tu racha no se rompe y el día te cuenta igual.</b><br><br>Si en 3 días sigue igual o va peor, que te valore un médico o un fisioterapeuta.',

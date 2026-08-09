@@ -772,8 +772,20 @@ test('🔴 el trabajo CORRECTIVO nunca es algo que su propia zona excluya', () =
     core.GEN_CORRECTIVE[z].forEach(cand => {
       const ex = cat.find(e => e.id === cand.id);
       if (!ex) { malos.push(`${z}: el candidato ${cand.id} NO EXISTE en el catálogo`); return; }
-      if (core.exerciseContraindicated(ex, [z]))
+      // 🔒 LA ÚNICA EXCEPCIÓN DE TODO EL MOTOR, y va acotada aquí para que siga siendo una:
+      // el escalón SUBAGUDO de aductor/abductor prescribe abducción a propósito (es el correctivo
+      // real de esa zona) y por eso se exime del filtro de SU zona. Exigimos las tres marcas
+      // juntas: `saltaSuZona` + `fase:'subagudo'` + `cargaCero`. Ninguna otra zona puede usarla.
+      if (cand.saltaSuZona) {
+        if (['aductor', 'abductor'].indexOf(z) < 0)
+          malos.push(`${z}: la excepción «saltaSuZona» se extendió a una zona que Laura no firmó`);
+        if (cand.fase !== 'subagudo')
+          malos.push(`${z}/${cand.id}: se salta su zona FUERA del escalón subagudo`);
+        if (!cand.cargaCero)
+          malos.push(`${z}/${cand.id}: se salta su zona sin el candado de carga cero`);
+      } else if (core.exerciseContraindicated(ex, [z])) {
         malos.push(`${z}: el candidato ${cand.id} (${ex.name}) lo EXCLUYE su propia zona`);
+      }
       // F2: cada candidato trae SU frase; sin ella el fallback explicaría otra cosa.
       if (!cand.why) malos.push(`${z}: el candidato ${cand.id} no trae su propio «why»`);
     });
@@ -803,10 +815,15 @@ test('🔴 el trabajo CORRECTIVO nunca es algo que su propia zona excluya', () =
   // CONTROL: sin zonas no prescribe nada — esto es un añadido, no un impuesto para todos.
   assert.strictEqual(core.correctiveFor([], cat, 'gym'), null);
   assert.strictEqual(core.correctiveFor(['pecho'], cat, 'gym'), null, 'inventó correctivo para una zona sin bloque');
-  // 🔒 Aductor y abductor RETIRADOS por Laura hasta que exista el triaje: el correctivo real de
-  // esas zonas es justo lo que el filtro quita en fase aguda, y el motor no sabe de fases.
-  assert.strictEqual(core.correctiveFor(['aductor'], cat, 'gym'), null, 'aductor debe estar retirado');
-  assert.strictEqual(core.correctiveFor(['abductor'], cat, 'gym'), null, 'abductor debe estar retirado');
+  // 🔒 Aductor y abductor ya NO están retirados (Laura los reactivó con el triaje construido),
+  // pero SIN fase declarada el motor tiene que dar el escalón AGUDO — el que no abre la pierna.
+  ['aductor', 'abductor'].forEach(z => {
+    const c = core.correctiveFor([z], cat, 'gym');
+    assert.ok(c, z + ' volvió a quedarse sin correctivo');
+    assert.strictEqual(c.fase, 'agudo', z + ': sin reporte que lo diga, el default no fue el lado seguro');
+    assert.strictEqual(c.ex.id, 'e73', z + ': el escalón agudo debe ser el puente de glúteo');
+    assert.ok(!core.exerciseContraindicated(c.ex, [z]), z + ': el escalón agudo se saltó su propio filtro');
+  });
   // 🔒 El SITIO lo dicta la función y lo decide Laura: la ACTIVACIÓN va al calentamiento (activar
   // el glúteo medio después de la sentadilla no protege la sentadilla que ya hizo) y el
   // FORTALECIMIENTO al final (al principio fatigaría el estabilizador justo antes de exigirlo).
@@ -839,6 +856,90 @@ test('🔴 el correctivo SOBREVIVE a que el dolor se pase (el déficit tarda sem
   assert.strictEqual(core.correctiveReview(rep(10), hoy), null, 'avisó al coach antes de las 4 semanas');
   const rv = core.correctiveReview(rep(35), hoy);
   assert.ok(rv && rv.area === 'hombro' && rv.semanas === 5, 'no avisa al coach a las 4+ semanas: ' + JSON.stringify(rv));
+});
+
+// 🔴 LA REACTIVACIÓN DE ADUCTOR Y ABDUCTOR (Laura, 2026-08-09). Estuvieron retirados desde v461
+// porque «la misma cosa es el veneno a las 24 h y la medicina a las 72, y el motor no sabe de
+// fases». Ahora sí sabe. Lo que se afirma aquí NO es que existan los dos escalones: es que el
+// escalón subagudo —el único sitio del motor que se salta el filtro de su propia zona— no se
+// pueda alcanzar por ninguna de las puertas por las que Laura no lo autorizó.
+test('🔴 aductor/abductor: el escalón SUBAGUDO no se alcanza sin cumplir las tres condiciones', () => {
+  const h = 3600000, hoy = Date.parse('2026-08-08T12:00:00.000Z');
+  const cli = p => ({ painCare: [Object.assign({ area: 'cara externa del muslo o glúteo (abductores)',
+    side: 'izquierda', level: 2, at: new Date(hoy - (p.horas != null ? p.horas : 96) * h).toISOString() }, p.rep || {})] });
+  const fase = p => core.correctivePhases(cli(p), hoy).abductor;
+  // ≥72 h + nivel ≤2 + sin bandera = las TRES → subagudo.
+  assert.strictEqual(fase({ horas: 96 }), 'subagudo');
+  // 1) Antes de las 72 h, agudo. Y esto es también el candado 3: un reporte NUEVO devuelve al
+  //    escalón agudo sin que haga falta ninguna regla extra — un reporte nuevo tiene 0 horas.
+  assert.strictEqual(fase({ horas: 71 }), 'agudo', 'progresó antes de las 72 h');
+  assert.strictEqual(fase({ horas: 0 }), 'agudo', 'un reporte recién hecho no volvió al escalón agudo');
+  // 2) Nivel 3 → agudo, aunque hayan pasado semanas.
+  assert.strictEqual(fase({ horas: 24 * 20, rep: { level: 3 } }), 'agudo', 'un nivel 3 progresó solo con el tiempo');
+  // 3) Bandera roja → agudo, aunque el nivel sea leve.
+  assert.strictEqual(fase({ horas: 24 * 20, rep: { level: 1, flags: ['R2'] } }), 'agudo', 'una bandera roja progresó');
+  assert.strictEqual(fase({ horas: 24 * 20, rep: { level: 1, triaje: 4 } }), 'agudo', 'un N4 progresó');
+  // 🔒 EL PEOR REPORTE MANDA: dos reportes de la misma zona, uno viejo y uno de hoy → agudo.
+  const dos = { painCare: [
+    { area: 'cara externa del muslo o glúteo (abductores)', level: 2, at: new Date(hoy - 96 * h).toISOString() },
+    { area: 'cara externa del muslo o glúteo (abductores)', level: 2, at: new Date(hoy - 2 * h).toISOString() }] };
+  assert.strictEqual(core.correctivePhases(dos, hoy).abductor, 'agudo',
+    'un reporte nuevo NO tumbó la progresión que había ganado el viejo');
+  // Sin reporte no hay fase: el default (agudo) lo pone `correctiveFor`, no esta función.
+  assert.deepStrictEqual(core.correctivePhases({ painCare: [] }, hoy), {});
+  // Fuera de la ventana de 8 semanas ya no hay correctivo, así que tampoco fase.
+  assert.deepStrictEqual(core.correctivePhases(cli({ horas: 24 * 60 }), hoy), {});
+});
+
+test('🔴 el subagudo se salta el filtro de SU zona y de ninguna otra (los 3 candados de Laura)', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  // SUBAGUDO: prescribe abducción, que es justo lo que la regla de abductor borra del plan. Ese es
+  // el punto — el correctivo real de esa zona ES la abducción.
+  const sub = core.correctiveFor(['abductor'], cat, 'gym', { fases: { abductor: 'subagudo' } });
+  assert.strictEqual(sub.ex.id, 'e163', 'el escalón subagudo no llegó a la abducción');
+  assert.strictEqual(sub.fase, 'subagudo');
+  assert.strictEqual(core.exerciseContraindicated(sub.ex, ['abductor']), true,
+    'si su propia zona ya NO lo excluye, esta excepción dejó de hacer falta y sobra');
+  // 🔒 CANDADO 1 — solo SU zona. Con rodilla también declarada, el filtro de rodilla sigue vivo.
+  //    (`e163` no lo excluye rodilla, así que el que prueba de verdad el candado es el de abajo.)
+  // 🔒 EL CASO QUE MÁS IMPORTA: «cadera o ingle» mapea a aductor Y abductor a la vez, y cada una
+  //    excluye la abducción. Aunque las DOS estén en subagudo, la otra zona lo bloquea → cae al
+  //    escalón agudo. Es exactamente lo que Laura quiere: sin exploración no se separa una ingle
+  //    de un trocánter, así que a esa persona no se le prescribe abducción nunca.
+  const ingle = core.correctiveFor(['aductor', 'abductor'], cat, 'gym',
+    { fases: { aductor: 'subagudo', abductor: 'subagudo' } });
+  assert.strictEqual(ingle.ex.id, 'e73', 'con las dos zonas de la ingle declaradas prescribió abducción');
+  assert.strictEqual(ingle.fase, 'subagudo', 'la fase que informa al texto se perdió');
+  // 🔒 CANDADO 2 — carga cero, DICHA con esas palabras. `e89` se llama «Clamshell con Banda»: si
+  //    el texto no dice «sin banda», el nombre del ejercicio afirma lo contrario de la indicación.
+  core.GEN_CORRECTIVE.abductor.concat(core.GEN_CORRECTIVE.aductor)
+    .filter(c => c.cargaCero)
+    .forEach(c => assert.ok(/sin banda/i.test(c.extra || ''),
+      c.id + ': el candado de carga cero no llega al texto que lee la persona'));
+  // 🔒 En AGUDO la excepción no existe: ni con la fase puesta a mano en la otra zona.
+  const ag = core.correctiveFor(['abductor'], cat, 'gym', { fases: { abductor: 'agudo' } });
+  assert.strictEqual(core.exerciseContraindicated(ag.ex, ['abductor']), false,
+    'el escalón agudo heredó la excepción del subagudo');
+});
+
+test('🔴 e177 se dosifica en TIEMPO como correctivo, sin tocar el catálogo', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const cat = _leerCatalogo(src).map(e => Object.assign({ type: 'Aislamiento' }, e));
+  const now = '2026-08-08T12:00:00.000Z';
+  const plan = generarRutinas({ days: 3, level: 'Intermedio', goal: 'ganar_musculo', sex: 'M', place: 'gym',
+    painCare: [{ area: 'tobillo o pie', side: 'derecha', level: 2, at: now }] }, cat, { now, seed: 3 }).routines;
+  const c = plan.flatMap(r => (r.exercises || []).filter(e => e.corrective))[0];
+  assert.ok(c && c.id === 'e177', 'el correctivo de tobillo dejó de ser e177: ' + (c && c.id));
+  // La movilidad se sostiene, no se repite: 30 s por lado, no 30 repeticiones.
+  assert.strictEqual(c.track, 'tiempo', 'e177 sigue prescribiéndose en repeticiones');
+  assert.strictEqual(c.reps, 30);
+  assert.ok(/por cada lado/.test(c.correctiveWhy), 'no dice que es por lado');
+  // 🔒 Y el CATÁLOGO no se toca: fuera del correctivo `e177` sigue siendo un ejercicio de reps que
+  //    el coach puede poner a mano. La copia manda sobre la fuente, no al revés.
+  assert.ok(/\{id:'e177'[^}]*track:'reps'/.test(src),
+    'se cambió el catálogo para arreglar el correctivo: eso mueve el ejercicio para todo el mundo');
 });
 
 test('🔴 el correctivo EXPLICA por qué sigue puesto cuando ya no duele', () => {
@@ -1101,6 +1202,11 @@ test('🔴 los textos que lee la persona no rompen las reglas del dictamen', () 
     'los textos de parada no dicen que la racha no se rompe — si calla, la persona asume que pierde');
   // «agujetas» no es palabra colombiana.
   assert.ok(!/agujetas/i.test(txt), '«agujetas» es de España; acá no se dice');
+  // 🔒 EL TEXTO A LLEVA SU PLAZO DE CONSULTA, con las palabras de Laura. Una derivación sin cuándo
+  // se aplaza hasta que duela más. No choca con la prohibición de plazos: los prohibidos son los de
+  // RECUPERACIÓN, que la app no puede saber; este es de CONSULTA, y la persona sí lo controla.
+  assert.ok(/[Pp]ide esa cita esta semana/.test(txt),
+    'el texto de derivación no dice CUÁNDO pedir la cita');
 });
 
 // 🔴 P0 de la auditoría de Laura (v468): el triaje se calculaba bien y NO SOBREVIVÍA a la capa que
@@ -1196,6 +1302,43 @@ test('🔴 las zonas de dolor son las que dictó Laura, e incluyen las que falta
   // Toda zona declarable tiene consejo propio o cae al genérico, nunca a `undefined`.
   A.forEach(z => assert.ok(typeof core.painTipFor(z) === 'string' && core.painTipFor(z).length > 20,
     'la zona ' + z + ' no tiene consejo'));
+});
+
+// 🔴 «Centro» no significa nada en un hombro y «ambos» no significa nada en la lumbar (Laura,
+// 2026-08-09). Ofrecer los cuatro siempre obliga a elegir entre opciones que no aplican, y el dato
+// con el que se prescribe lo unilateral queda sucio.
+test('🔴 los lados que se ofrecen dependen del TIPO de zona (línea media vs pareada)', () => {
+  const F = core.painSidesFor;
+  // Línea media: no hay dos cuellos, así que «ambos» sobra; sí hay un centro.
+  ['cuello', 'zona lumbar', 'espalda alta', 'pecho'].forEach(z => {
+    assert.deepStrictEqual(F(z), ['izquierda', 'derecha', 'centro'], 'lados mal en ' + z);
+  });
+  // Pareadas: no hay centro de un hombro; sí puede dolerle los dos.
+  ['hombro', 'rodilla', 'codo', 'tobillo o pie', 'muslo por dentro (aductores)',
+   'cara externa del muslo o glúteo (abductores)', 'cadera o ingle', 'pantorrilla'].forEach(z => {
+    assert.deepStrictEqual(F(z), ['izquierda', 'derecha', 'ambos'], 'lados mal en ' + z);
+  });
+  // «otra zona» los cuatro: no sabemos qué marcó, y ahí sí no podemos descartar ninguno.
+  assert.deepStrictEqual(F('otra zona'), core.PAIN_SIDES);
+  assert.deepStrictEqual(F('marciano'), core.PAIN_SIDES, 'una zona desconocida perdió opciones');
+  // 🔒 Toda zona declarable ofrece al menos dos lados: ninguna puede quedarse sin respuesta posible.
+  core.PAIN_AREAS.forEach(z => assert.ok(F(z).length >= 2, 'la zona ' + z + ' se quedó sin lados'));
+  // 🔒 Y LA CAPA QUE GUARDA RESPETA LA MISMA LISTA. Con `PAIN_SIDES` a secas, un «centro» en un
+  // hombro entraba aunque la pantalla ya no lo ofreciera (la clase de v468, al revés).
+  const now = '2026-08-08T12:00:00.000Z';
+  assert.strictEqual(core.painCareAdd(null, { area: 'hombro', side: 'centro', level: 2 }, now)[0].side, null,
+    'guardó un «centro» en un hombro');
+  assert.strictEqual(core.painCareAdd(null, { area: 'zona lumbar', side: 'ambos', level: 2 }, now)[0].side, null,
+    'guardó un «ambos» en la lumbar');
+  assert.strictEqual(core.painCareAdd(null, { area: 'zona lumbar', side: 'centro', level: 2 }, now)[0].side, 'centro');
+  assert.strictEqual(core.painCareAdd(null, { area: 'otra zona', side: 'centro', level: 2 }, now)[0].side, 'centro');
+  // 🔒 La PANTALLA usa esta misma función: dos listas se separan (lección del filtro de lesiones).
+  const fs = require('fs'), path = require('path');
+  const ui = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  assert.ok(/painSidesFor\(PAIN\.area\)/.test(ui), 'los chips de lado volvieron a pintarse desde una lista fija');
+  // Y al cambiar de zona el lado que ya no aplica se cae, o se guardaría como null en silencio.
+  assert.ok(/function painPick[\s\S]{0,300}painSidesFor\(val\)[\s\S]{0,80}PAIN\.side=null/.test(ui),
+    'cambiar de zona deja seleccionado un lado que la pantalla ya no muestra');
 });
 
 test('el reporte de dolor guarda el LADO, y no se lo inventa', () => {
