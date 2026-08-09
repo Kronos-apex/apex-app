@@ -1103,6 +1103,32 @@ test('🔴 los textos que lee la persona no rompen las reglas del dictamen', () 
   assert.ok(!/agujetas/i.test(txt), '«agujetas» es de España; acá no se dice');
 });
 
+test('🔴 «me equivoqué» corrige UNA vez y el coach ve LAS DOS respuestas', () => {
+  const now = '2026-08-08T12:00:00.000Z';
+  // Reporte original: bandera roja marcada sin querer.
+  let lista = core.painCareAdd(null, { area: 'rodilla', side: 'derecha', level: 3 }, now);
+  lista[0].triaje = 4; lista[0].flags = ['R2']; lista[0].limita = 'normal'; lista[0].inicio = 'progresivo';
+  const id = lista[0].id;
+  assert.strictEqual(core.painCanCorrect(lista, id), true, 'un reporte nuevo debe poder corregirse');
+  // Corrige a algo más leve.
+  lista = core.painCareCorrect(lista, id, { area: 'rodilla', side: 'derecha', level: 1, triaje: 1, flags: [], limita: 'normal', inicio: 'progresivo' }, now);
+  assert.strictEqual(lista.length, 1, 'la corrección creó un reporte NUEVO en vez de corregir el suyo');
+  assert.strictEqual(lista[0].id, id, 'cambió el id: ya no es el mismo reporte');
+  assert.strictEqual(lista[0].triaje, 1, 'no aplicó la corrección');
+  // 🔒 LO QUE HACE QUE ESTO SEA SEGURO: lo que dijo la primera vez queda guardado.
+  assert.ok(lista[0].previo, 'se perdió la respuesta original — sin ella, corregir es bajarse una bandera en silencio');
+  assert.strictEqual(lista[0].previo.triaje, 4);
+  assert.deepStrictEqual(lista[0].previo.flags, ['R2']);
+  // 🔒 UNA SOLA VEZ: si no, es el botón de saltarse el triaje.
+  assert.strictEqual(core.painCanCorrect(lista, id), false, 'quedó corregible una segunda vez');
+  const otra = core.painCareCorrect(lista, id, { triaje: 0, flags: [] }, now);
+  assert.strictEqual(otra[0].triaje, 1, 'aceptó una segunda corrección');
+  assert.strictEqual(otra[0].previo.triaje, 4, 'la segunda corrección pisó la respuesta original');
+  // Un id que no existe no rompe ni inventa nada.
+  assert.strictEqual(core.painCareCorrect(lista, 'nope', { triaje: 0 }).length, 1);
+  assert.strictEqual(core.painCanCorrect(lista, 'nope'), false);
+});
+
 test('la lista de banderas rojas está completa y es cerrada (U1-U3 + R1-R9)', () => {
   const ids = core.PAIN_FLAGS.map(f => f.id);
   ['U1', 'U2', 'U3', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'].forEach(i =>

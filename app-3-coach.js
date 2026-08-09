@@ -1322,7 +1322,14 @@ async function openDetail(id,_silent){
     if(_act.length){
       const _lv={1:'🟡 leve',2:'🟠 molesto',3:'🔴 no pudo hacerlo'};
       _painHTML='<div style="background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6">🩹 <strong>Dolor reportado:</strong> '+
-        _act.slice(-3).map(p=>`${esc(p.area)}${p.side?` <b>(${esc(p.side)})</b>`:''} (${_lv[p.level]||p.level}) con ${esc(p.exName||'—')} · ${fmtD(p.at)}${p.note?` — “${esc(p.note)}”`:''}`).join('<br>')+
+        _act.slice(-3).map(p=>{
+          const _fl=(p.flags||[]).map(id=>(typeof PAIN_FLAGS!=='undefined'?(PAIN_FLAGS.find(f=>f.id===id)||{}).txt:null)).filter(Boolean);
+          // 🔒 SI CORRIGIÓ SU RESPUESTA, EL COACH VE LAS DOS. Es lo único que hace seguro dejarle
+          // corregir: sin esto, alguien podría bajarse una bandera roja en silencio.
+          const _prev=p.previo?`<br><span style="opacity:.9">↩️ <b>Antes había marcado:</b> ${esc(p.previo.area||'—')}${p.previo.side?' ('+esc(p.previo.side)+')':''}${p.previo.triaje!=null?` · N${p.previo.triaje}`:''}${(p.previo.flags||[]).length?' · 🚩 '+(p.previo.flags||[]).join(', '):''}</span>`:'';
+          return `${esc(p.area)}${p.side?` <b>(${esc(p.side)})</b>`:''}${p.triaje!=null?` · <b>N${p.triaje}</b>`:` (${_lv[p.level]||p.level})`} con ${esc(p.exName||'—')} · ${fmtD(p.at)}`+
+            `${_fl.length?`<br>🚩 ${esc(_fl.join(' · '))}`:''}${p.note?` — “${esc(p.note)}”`:''}${_prev}`;
+        }).join('<br>')+
         '</div>';
     }
   }catch(_e){}

@@ -86,11 +86,18 @@ try {
   check('P4 chat al coach + push espiado + banner de cuidado + chip en tarjeta', /Reporte de dolor/.test(s.msg) && s.push >= 1 && s.banner && s.chip, JSON.stringify({msg:s.msg,push:s.push,banner:s.banner,chip:s.chip}));
   check('P4 nivel 🟠 NO abre sustitución automática', s.picker, 'picker cerrado=' + s.picker);
 
-  // P5: reporte 🔴 en el 2º ejercicio → abre el selector de sustitución solo
+  // 🔴 P5 — SE DIO LA VUELTA A PROPÓSITO (v465). Este check exigía que con dolor 🔴 la app abriera
+  // el selector de sustitución. Laura lo PROHIBIÓ: con N3 la sesión se para y no se ofrece NADA,
+  // porque proponer una alternativa automática es afirmar que esa alternativa es segura para esa
+  // persona. Y encima el selector filtraba por MÚSCULO, así que a quien decía «no puedo con esta
+  // sentadilla» le ofrecía otras sentadillas. Un test que exige lo prohibido es peor que uno roto:
+  // empuja a restaurar el defecto. Ahora afirma la parada.
   await ev(`(()=>{gmReportPain(1);painPick('area','hombro');painPick('side','derecha');painPick('limita','no_puedo');painPick('inicio','progresivo');painFlag('_none');painSubmit();})()`);
   await sleep(1200);
-  s = JSON.parse(await ev(`JSON.stringify({pickerOpen:!!document.querySelector('.mdbg.on #picker-list, #m-picker.on'),care:(DB.clients.find(x=>x.id===CUR.clientId).painCare||[]).length})`));
-  check('P5 nivel 🔴 abre el cambio de ejercicio automáticamente', s.pickerOpen && s.care === 2, JSON.stringify(s));
+  s = JSON.parse(await ev(`JSON.stringify({pickerOpen:!!document.querySelector('#m-picker.on'),res:!!document.querySelector('#m-painres.on'),txt:(document.getElementById('painres-body')||{}).innerText||'',care:(DB.clients.find(x=>x.id===CUR.clientId).painCare||[]).length})`));
+  check('P5 nivel 🔴 PARA la sesión y NO ofrece cambio de ejercicio', !s.pickerOpen && s.res && /Paramos aquí|no entrenamos/i.test(s.txt), JSON.stringify({pickerOpen:s.pickerOpen,res:s.res,txt:s.txt.slice(0,80)}));
+  check('P5 la parada NO cuesta la racha, y se lo dice', /racha no se rompe/i.test(s.txt), s.txt.slice(0,120));
+  await ev(`(()=>{document.querySelectorAll('.mdbg.on').forEach(m=>m.classList.remove('on'));})()`);
   await ev(`(()=>{const m=document.querySelector('.mdbg.on');if(m)m.classList.remove('on');})()`);
 
   // P6: "Ya estoy bien ✓" limpia banner y chips (los reportes quedan en historial cleared)

@@ -400,6 +400,21 @@ function _painRenderChips(){
     // el silencio y el «no me pasa nada» serían indistinguibles.
     `<button type="button" class="pain-chip${PAIN.sinFlags?' on':''}" style="text-align:left;font-weight:800" onclick="painFlag('_none')">Nada de esto ✓</button>`;
 }
+// Reabre el cuestionario con lo que ya marcó, para que corrija en vez de re-teclear todo.
+function painFixAnswers(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!_painLastId)return;
+  const p=(c.painCare||[]).find(x=>x&&x.id===_painLastId);
+  if(!p||!painCanCorrect(c.painCare,_painLastId))return;
+  cm('m-painres');
+  PAIN={ei:PAIN.ei,exId:p.exId||null,exName:p.exName||'',area:p.area||null,side:p.side||null,
+    level:null,limita:p.limita||null,inicio:p.inicio||null,
+    flags:(p.flags||[]).slice(),sinFlags:!(p.flags||[]).length,fixId:_painLastId};
+  const exEl=document.getElementById('pain-ex');
+  if(exEl)exEl.innerHTML='Corrige lo que marcaste mal. <b>Esto se puede hacer una sola vez</b>, y tu coach va a ver las dos respuestas.';
+  const nt=document.getElementById('pain-note'); if(nt)nt.value=p.note||'';
+  _painRenderChips();
+  om('m-pain');
+}
 function painPick(field,val){ PAIN[field]=val; _painRenderChips(); }
 // Marcar una bandera y «Nada de esto» son excluyentes: no se puede decir las dos cosas.
 function painFlag(id){
@@ -423,8 +438,18 @@ function painSubmit(){
   // Se conserva `level` 1-3 para todo lo que ya lo lee (banner, ficha del coach, correctivo):
   // N0/N1→1, N2→2, N3/N4→3. El nivel FINO va aparte, sin romper nada de lo anterior.
   const lvlCompat=tri.nivel<=1?1:tri.nivel===2?2:3;
-  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,side:PAIN.side,level:lvlCompat,exId:PAIN.exId,exName:PAIN.exName,note,
-    triaje:tri.nivel,motivo:tri.motivo,flags:tri.flags,limita:PAIN.limita,inicio:PAIN.inicio});
+  const datos={area:PAIN.area,side:PAIN.side,level:lvlCompat,exId:PAIN.exId,exName:PAIN.exName,note,
+    triaje:tri.nivel,motivo:tri.motivo,flags:tri.flags,limita:PAIN.limita,inicio:PAIN.inicio};
+  if(PAIN.fixId){
+    // Corrección de un reporte ya enviado: NO crea uno nuevo (sería contar dos veces el mismo
+    // dolor) y guarda lo que dijo la primera vez para que el coach compare.
+    c.painCare=painCareCorrect(c.painCare,PAIN.fixId,datos);
+    _painLastId=PAIN.fixId;
+  }else{
+    c.painCare=painCareAdd(c.painCare,datos);
+    const _ult=(c.painCare||[])[c.painCare.length-1];
+    _painLastId=_ult&&_ult.id;
+  }
   svNow('ax_c',DB.clients);
   // Aviso al coach. Ahora lleva el NIVEL de triaje y las banderas TEXTUALES: es lo que decide si
   // él ajusta la rutina o levanta el teléfono (§6.2 del dictamen).
@@ -496,9 +521,17 @@ const PAIN_RESULT_TXT={
       c:'Es el músculo respondiendo a lo que hiciste. Calienta un poquito más hoy y baja algo el peso: moverse lo quita más rápido que quedarse quieto.<br><br>Si en vez de aflojar va empeorando, o se concentra en una sola coyuntura (la rodilla, el hombro, el codo), vuelve y cuéntanos.',
       coach:null},
 };
+// Id del reporte que se acaba de crear: es al que apunta «Me equivoqué».
+let _painLastId=null;
 function painShowResult(tri,propio){
   const d=PAIN_RESULT_TXT[tri.texto]||PAIN_RESULT_TXT.N2;
   const el=document.getElementById('painres-body');
+  // El botón solo sale si a ESE reporte le queda su única corrección.
+  try{
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const fix=document.getElementById('painres-fix');
+    if(fix)fix.style.display=(c&&_painLastId&&painCanCorrect(c.painCare,_painLastId))?'':'none';
+  }catch(_e){}
   // El aviso dice lo que DE VERDAD pasa: «le avisamos» solo cuando le suena el teléfono.
   const avisado=!d.coach?''
     :propio?'Queda anotado en tu Inicio.'

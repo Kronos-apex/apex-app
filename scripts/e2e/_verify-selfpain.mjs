@@ -58,7 +58,9 @@ const mont = await ev(`(()=>{try{
   gmReportPain(0);
   painPick('area','cara externa del muslo o glúteo (abductores)');
   painPick('side','izquierda');
-  painPick('level',2);
+  painPick('limita','cambia');
+  painPick('inicio','progresivo');
+  painFlag('_none');
   painSubmit();
   return 'ok';
 }catch(e){return 'ERR '+(e&&e.message)}})()`);
@@ -102,7 +104,7 @@ const real = await ev(`(()=>{try{
   DB.clients=[{id:'cReal',name:'Nataly',tier:'premium'}];
   CUR.clientId='cReal'; DB.msgs={}; window._pushSpy=0;
   GM.exercises=[{id:'e45',name:'Abducción de Cadera en Máquina',muscle:'gluteo'}];
-  gmReportPain(0); painPick('area','rodilla'); painPick('side','derecha'); painPick('level',2); painSubmit();
+  gmReportPain(0); painPick('area','rodilla'); painPick('side','derecha'); painPick('limita','cambia'); painPick('inicio','progresivo'); painFlag('_none'); painSubmit();
   const hilo=(DB.msgs['cReal']||[]);
   return {msgs:hilo.length, texto:hilo[0]&&hilo[0].text, push:window._pushSpy};
 }catch(e){return {err:String(e&&e.message)}}})()`);

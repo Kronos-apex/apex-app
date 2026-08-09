@@ -2272,6 +2272,36 @@ function painCareAdd(list, rep, nowIso) {
   };
   return (list || []).concat([entry]).slice(-20);
 }
+// ── «Me equivoqué al responder» (Sofía, 2026-08-08) ──────────────────────────────────────────
+// 🔴 POR QUÉ EXISTE: sin esto, quien marca una casilla sin querer y se le cae la sesión entera
+// aprende una sola cosa — **la próxima vez reporta menos**. Es el mismo modo de falla que Laura
+// describe para N0 («un triaje que sobre-reacciona se apaga solo»), entrando por otra puerta.
+// ⚠️ NO es la «confirmación disuasoria» que prohíbe el dictamen: esa empuja a seguir entrenando;
+// esto permite corregir un dato mal marcado.
+// 🔒 UNA SOLA VEZ, y el COACH VE LAS DOS RESPUESTAS. Sin el límite se vuelve el botón de saltarse
+// el triaje; sin que el coach vea la original, alguien puede bajarse una bandera roja en silencio
+// — y esa es la única razón por la que esto es seguro.
+function painCareCorrect(list, entryId, nuevo, nowIso) {
+  const arr = (list || []).slice();
+  const i = arr.findIndex(p => p && p.id === entryId);
+  if (i < 0) return arr;
+  const viejo = arr[i];
+  if (viejo.corregido) return arr;          // ya se usó su única corrección
+  arr[i] = Object.assign({}, viejo, nuevo, {
+    id: viejo.id, at: viejo.at,             // sigue siendo el MISMO reporte, no uno nuevo
+    corregido: true, corregidoAt: nowIso || new Date().toISOString(),
+    // Lo que dijo la primera vez queda guardado: es lo que el coach tiene que poder comparar.
+    previo: { area: viejo.area, side: viejo.side, limita: viejo.limita, inicio: viejo.inicio,
+              flags: viejo.flags || [], triaje: viejo.triaje, level: viejo.level },
+  });
+  return arr;
+}
+// ¿A este reporte le queda su corrección? Puro, para que la UI no adivine.
+function painCanCorrect(list, entryId) {
+  const p = (list || []).find(x => x && x.id === entryId);
+  return !!p && !p.corregido;
+}
+
 // Reportes vigentes: menos de 14 días y no descartados por el usuario ("Ya estoy bien").
 const PAIN_TTL_MS = 14 * 86400000;
 function painCareActive(list, nowTs) {
@@ -5963,6 +5993,8 @@ if (typeof module !== 'undefined' && module.exports) {
     PAIN_FLAGS,
     painTriage,
     painStopsSession,
+    painCareCorrect,
+    painCanCorrect,
     painTipFor,
     painCareAdd,
     painCareActive,
