@@ -77,7 +77,7 @@ try {
   check('P3 sin zona+nivel no envía (modal sigue abierto)', s.on && s.care === 0, JSON.stringify(s));
 
   // P4: reporte 🟠 hombro con nota → painCare + chat + SIN sustitución automática
-  await ev(`(()=>{painPick('area','hombro');painPick('side','derecha');painPick('level',2);document.getElementById('pain-note').value='me duele al bajar la mancuerna';painSubmit();})()`);
+  await ev(`(()=>{painPick('area','hombro');painPick('side','derecha');painPick('limita','cambia');painPick('inicio','progresivo');painFlag('_none');document.getElementById('pain-note').value='me duele al bajar la mancuerna';painSubmit();})()`);
   await sleep(700);
   s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);const care=c.painCare||[];const msgs=(DB.msgs[c.id]||[]).slice(-1);
     return {closed:!document.getElementById('m-pain').classList.contains('on'),n:care.length,area:care[0]&&care[0].area,level:care[0]&&care[0].level,exName:care[0]&&care[0].exName.slice(0,20),
@@ -87,7 +87,7 @@ try {
   check('P4 nivel 🟠 NO abre sustitución automática', s.picker, 'picker cerrado=' + s.picker);
 
   // P5: reporte 🔴 en el 2º ejercicio → abre el selector de sustitución solo
-  await ev(`(()=>{gmReportPain(1);painPick('area','hombro');painPick('side','derecha');painPick('level',3);painSubmit();})()`);
+  await ev(`(()=>{gmReportPain(1);painPick('area','hombro');painPick('side','derecha');painPick('limita','no_puedo');painPick('inicio','progresivo');painFlag('_none');painSubmit();})()`);
   await sleep(1200);
   s = JSON.parse(await ev(`JSON.stringify({pickerOpen:!!document.querySelector('.mdbg.on #picker-list, #m-picker.on'),care:(DB.clients.find(x=>x.id===CUR.clientId).painCare||[]).length})`));
   check('P5 nivel 🔴 abre el cambio de ejercicio automáticamente', s.pickerOpen && s.care === 2, JSON.stringify(s));

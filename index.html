@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=464">
+<link rel="stylesheet" href="styles.css?v=465">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -815,6 +815,16 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODALS -->
 <!-- Add/Edit Client -->
+<!-- Resultado del triaje. Va en PANTALLA y no en un toast: con una bandera roja no se puede
+     confiar en que alcance a leer un aviso de 3 segundos. 🔒 Un solo botón, «Entendido», sin
+     confirmación disuasoria ni nada que empuje a seguir entrenando (§2.5 del dictamen). -->
+<div class="mdbg" id="m-painres">
+  <div class="md" style="max-width:420px">
+    <div id="painres-body"></div>
+    <div class="mdfooter"><button class="btn bp" onclick="cm('m-painres')">Entendido</button></div>
+  </div>
+</div>
+
 <!-- Reporte de dolor (⚠️ en la tarjeta del guiado): el asesorado marca dónde y qué tanto;
      painSubmit guarda en client.painCare (el coach lo ve) y le avisa por el chat. -->
 <div class="mdbg" id="m-pain">
@@ -827,12 +837,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
          simetría al dar el alta (§5.4 del dictamen de Laura). No se preguntaba. -->
     <label class="ilbl" style="margin-top:10px">¿De qué lado?</label>
     <div id="pain-sides" class="pain-chips"></div>
-    <label class="ilbl" style="margin-top:10px">¿Qué tanto duele?</label>
+    <!-- 🔒 P2 — CONDUCTA OBSERVABLE, no una escala 0-10: «un 6 para uno es un 3 para otro». -->
+    <label class="ilbl" style="margin-top:10px">¿Qué tanto te limita ahora mismo?</label>
     <div id="pain-levels" class="pain-chips"></div>
-    <label class="ilbl" style="margin-top:10px">Cuéntale más a tu coach (opcional)</label>
+    <!-- 🔒 P3 — separa agujetas de lesión, que es lo que más le cuesta a alguien sin formación. -->
+    <label class="ilbl" style="margin-top:10px">¿Cuándo empezó?</label>
+    <div id="pain-inicio" class="pain-chips"></div>
+    <!-- 🔒 P4 — lista CERRADA de banderas rojas. Va SOLA y con «Nada de esto» explícito: marcarlo
+         es un acto positivo, nunca un valor por defecto. La bandera gana sobre la intensidad. -->
+    <label class="ilbl" style="margin-top:10px">Marca todo lo que te esté pasando</label>
+    <div id="pain-flags" class="pain-chips" style="flex-direction:column;align-items:stretch"></div>
+    <label class="ilbl" style="margin-top:10px">Cuéntanos más (opcional)</label>
     <textarea class="tarea" id="pain-note" maxlength="300" placeholder="Ej: me duele al bajar la mancuerna, con barra no me molesta..."></textarea>
-    <div style="font-size:11px;color:var(--t3);line-height:1.5;margin-top:8px">⚠️ Si el dolor es agudo, punzante o lleva varios días, consúltalo con un profesional de la salud.</div>
-    <div class="mdfooter"><button class="btn bg" onclick="cm('m-pain')">Cancelar</button><button class="btn bp" onclick="painSubmit()">Avisar a mi coach</button></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-pain')">Cancelar</button><button class="btn bp" onclick="painSubmit()">Enviar</button></div>
   </div>
 </div>
 
@@ -1188,19 +1205,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=464"></script>
-<script src="muscle-map.js?v=464"></script>
-<script src="exercise-muscles.js?v=464"></script>
+<script src="avi-core.js?v=465"></script>
+<script src="muscle-map.js?v=465"></script>
+<script src="exercise-muscles.js?v=465"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=464"></script>
-<script src="app-2-login.js?v=464"></script>
-<script src="app-3-coach.js?v=464"></script>
-<script src="app-4-entreno.js?v=464"></script>
-<script src="app-5-salud.js?v=464"></script>
-<script src="app-6-extra.js?v=464"></script>
-<script src="app-7-community.js?v=464"></script>
+<script src="app-1-infra.js?v=465"></script>
+<script src="app-2-login.js?v=465"></script>
+<script src="app-3-coach.js?v=465"></script>
+<script src="app-4-entreno.js?v=465"></script>
+<script src="app-5-salud.js?v=465"></script>
+<script src="app-6-extra.js?v=465"></script>
+<script src="app-7-community.js?v=465"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

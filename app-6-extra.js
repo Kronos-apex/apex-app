@@ -350,10 +350,34 @@ const _gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
 // le avisa al coach por el chat (que ya dispara push). Nivel 🔴 ("no puedo hacerlo")
 // abre de una el selector de sustitución. La lógica pura (normalización, expiración
 // 14 días, tips por zona) vive en avi-core (painCareAdd/painCareActive/painTipFor).
-let PAIN={ei:null,exId:null,exName:'',area:null,side:null,level:null};
+// 🔴 SIN SEMÁFORO (🟢🟡🟠🔴). Lo quitó Sofía y tiene razón: el color enseña cuál es «la respuesta
+// mala» ANTES de leerla. Quien quiere entrenar hoy ve el rojo, entiende que ahí se le acaba la
+// sesión, y marca amarillo. Eso no es un problema de tono — es el triaje clasificando mal por
+// diseño nuestro. El color le sirve al COACH en su ficha, no a quien responde. Por lo mismo,
+// jamás poner al lado de una opción lo que va a pasar si la marca.
+// 🔴 «Lo siento, pero me muevo normal» → «Me molesta»: «lo siento» se lee como disculpa, y es la
+// PRIMERA opción, la que decide entre N0/N1 y todo lo demás.
+const PAIN_LIMITA_LBL=[
+  ['normal','Me molesta, pero me muevo normal'],
+  ['cambia','Me hace moverme distinto, o dejo de hacer cosas por ese dolor'],
+  ['no_puedo','No puedo cargar peso, apoyarme o mover bien esa parte'],
+  ['reposo','Me duele incluso quieto, sin moverme'],
+];
+// 🔴 La 1ª opción tenía TRES condiciones (cuándo + después de entrenar + simetría) y es la puerta
+// del único nivel donde la app NO hace nada. A quien entrenó ayer y le duele UNA sola pierna no le
+// quedaba dónde caer y marcaba esa igual. Partida en dos, que cuesta cero toques.
+const PAIN_INICIO_LBL=[
+  ['agujetas','Hoy o ayer, después de entrenar — y lo siento parejo en los dos lados'],
+  ['unilateral','Hoy o ayer, después de entrenar — pero solo en un lado'],
+  ['golpe_seco','De golpe, durante un ejercicio: un tirón, un pinchazo, sentí que algo sonó'],
+  ['progresivo','De a poquitos, entrenando — no sabría decir qué día'],
+  ['traumatismo','Después de un golpe, una caída o un accidente'],
+  ['cronico','Llevo más de dos semanas así'],
+];
+let PAIN={ei:null,exId:null,exName:'',area:null,side:null,level:null,limita:null,inicio:null,flags:[],sinFlags:false};
 function gmReportPain(ei){
   const ex=GM.exercises&&GM.exercises[ei]; if(!ex)return;
-  PAIN={ei,exId:ex.id||null,exName:ex.name||'',area:null,side:null,level:null};
+  PAIN={ei,exId:ex.id||null,exName:ex.name||'',area:null,side:null,level:null,limita:null,inicio:null,flags:[],sinFlags:false};
   const exEl=document.getElementById('pain-ex');
   if(exEl)exEl.innerHTML=`Con: <b>${esc(ex.name||'este ejercicio')}</b>. Cuéntanos y le avisamos a tu coach — sin pena, esto nos ayuda a cuidarte.`;
   const note=document.getElementById('pain-note'); if(note)note.value='';
@@ -365,23 +389,49 @@ function _painRenderChips(){
   if(ar)ar.innerHTML=PAIN_AREAS.map(a=>`<button type="button" class="pain-chip${PAIN.area===a?' on':''}" onclick="painPick('area','${esc(a)}')">${esc(a)}</button>`).join('');
   const sd=document.getElementById('pain-sides');
   if(sd)sd.innerHTML=PAIN_SIDES.map(s=>`<button type="button" class="pain-chip${PAIN.side===s?' on':''}" onclick="painPick('side','${esc(s)}')">${esc(s.charAt(0).toUpperCase()+s.slice(1))}</button>`).join('');
+  // P2 sustituye a la escala vieja: conducta observable, no «qué tanto duele».
   const lv=document.getElementById('pain-levels');
-  if(lv)lv.innerHTML=PAIN_LEVELS.map(l=>`<button type="button" class="pain-chip lvl${PAIN.level===l.v?' on':''}" onclick="painPick('level',${l.v})">${l.emoji} ${esc(l.label)}</button>`).join('');
+  if(lv)lv.innerHTML=PAIN_LIMITA_LBL.map(([v,t])=>`<button type="button" class="pain-chip${PAIN.limita===v?' on':''}" style="text-align:left" onclick="painPick('limita','${v}')">${esc(t)}</button>`).join('');
+  const ini=document.getElementById('pain-inicio');
+  if(ini)ini.innerHTML=PAIN_INICIO_LBL.map(([v,t])=>`<button type="button" class="pain-chip${PAIN.inicio===v?' on':''}" style="text-align:left" onclick="painPick('inicio','${v}')">${esc(t)}</button>`).join('');
+  const fl=document.getElementById('pain-flags');
+  if(fl)fl.innerHTML=PAIN_FLAGS.map(f=>`<button type="button" class="pain-chip${PAIN.flags.indexOf(f.id)>=0?' on':''}" style="text-align:left" onclick="painFlag('${f.id}')">${esc(f.txt)}</button>`).join('')+
+    // «Nada de esto» es un acto POSITIVO, no un valor por defecto: si se pudiera dejar en blanco,
+    // el silencio y el «no me pasa nada» serían indistinguibles.
+    `<button type="button" class="pain-chip${PAIN.sinFlags?' on':''}" style="text-align:left;font-weight:800" onclick="painFlag('_none')">Nada de esto ✓</button>`;
 }
 function painPick(field,val){ PAIN[field]=val; _painRenderChips(); }
+// Marcar una bandera y «Nada de esto» son excluyentes: no se puede decir las dos cosas.
+function painFlag(id){
+  if(id==='_none'){ PAIN.sinFlags=!PAIN.sinFlags; if(PAIN.sinFlags)PAIN.flags=[]; }
+  else { const i=PAIN.flags.indexOf(id); if(i>=0)PAIN.flags.splice(i,1); else { PAIN.flags.push(id); PAIN.sinFlags=false; } }
+  _painRenderChips();
+}
 function painSubmit(){
   // El LADO es obligatorio como el resto: «ninguna pregunta opcional» (§1.1 del dictamen). Un dato
   // opcional en esta app no existe — `feeling` se registra en el 12% de las sesiones.
-  if(!PAIN.area||!PAIN.side||!PAIN.level){ toast('Marca dónde, de qué lado y qué tanto te duele 🙏'); return; }
+  // 🔒 LAS CUATRO PREGUNTAS SON OBLIGATORIAS, ninguna con «saltar» (§1.1 del dictamen). Un dato
+  // opcional en esta app no existe: `feeling` se registra en el 12% de las sesiones.
+  // «Nada de esto» cuenta como respondida — marcarlo es un acto positivo, no un silencio.
+  if(!PAIN.area||!PAIN.side||!PAIN.limita||!PAIN.inicio||!(PAIN.flags.length||PAIN.sinFlags)){
+    toast('Respóndenos las cuatro: dónde, de qué lado, cuánto te limita y cuándo empezó 🙏'); return;
+  }
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
   const note=(document.getElementById('pain-note')||{value:''}).value.trim();
-  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,side:PAIN.side,level:PAIN.level,exId:PAIN.exId,exName:PAIN.exName,note});
+  // El TRIAJE lo decide la función pura de avi-core, no esta pantalla.
+  const tri=painTriage({area:PAIN.area,side:PAIN.side,limita:PAIN.limita,inicio:PAIN.inicio,flags:PAIN.flags,note});
+  // Se conserva `level` 1-3 para todo lo que ya lo lee (banner, ficha del coach, correctivo):
+  // N0/N1→1, N2→2, N3/N4→3. El nivel FINO va aparte, sin romper nada de lo anterior.
+  const lvlCompat=tri.nivel<=1?1:tri.nivel===2?2:3;
+  c.painCare=painCareAdd(c.painCare,{area:PAIN.area,side:PAIN.side,level:lvlCompat,exId:PAIN.exId,exName:PAIN.exName,note,
+    triaje:tri.nivel,motivo:tri.motivo,flags:tri.flags,limita:PAIN.limita,inicio:PAIN.inicio});
   svNow('ax_c',DB.clients);
-  // Aviso al coach por el chat (mismo camino que sendClientMsg → le llega push). El LADO va en el
-  // mensaje: es lo primero que él necesita para decidir si el trabajo unilateral sigue en pie.
-  const lvl=PAIN_LEVELS.find(l=>l.v===PAIN.level)||PAIN_LEVELS[0];
+  // Aviso al coach. Ahora lleva el NIVEL de triaje y las banderas TEXTUALES: es lo que decide si
+  // él ajusta la rutina o levanta el teléfono (§6.2 del dictamen).
   const _lado=PAIN.side?` (${PAIN.side})`:'';
-  const txt=`⚠️ Reporte de dolor: ${lvl.emoji} ${lvl.label} en ${PAIN.area}${_lado} con ${PAIN.exName||'un ejercicio'}.${note?' Nota: '+note:''}`;
+  const _fl=tri.flags.map(id=>(PAIN_FLAGS.find(f=>f.id===id)||{}).txt).filter(Boolean);
+  const txt=`⚠️ Reporte de dolor (N${tri.nivel}${tri.urgente?' · URGENCIAS':''}): ${PAIN.area}${_lado} con ${PAIN.exName||'un ejercicio'}.`+
+    `${_fl.length?' 🚩 '+_fl.join(' · '):''}${note?' Nota: '+note:''}`;
   // 🔴 SI EL QUE ENTRENA ES EL COACH, NO HAY A QUIÉN AVISAR: es él mismo. El mensaje se guardaba
   // en SU PROPIA fila y el panel del coach solo lee los hilos de las filas de CLIENTE, así que
   // desaparecía — es el bug que reportó el PO. Su reporte sale ahora en la tarjeta «Mi
@@ -397,15 +447,68 @@ function painSubmit(){
     }
   }catch(_e){}
   cm('m-pain');
-  const wasBlocking=PAIN.level===3, ei=PAIN.ei;
-  // El mensaje no puede prometer un aviso que no se manda (entrenando el propio coach no hay a
-  // quién avisar). Prometer una notificación que no ocurre es la clase de mentira de v437.
-  toast(_propio?'🩹 Anotado. Lo verás en tu Inicio — cuídate.':'🩹 Le avisamos a tu coach. Cuídate — te dejamos tips arriba.');
-  a11ySay('Reporte enviado a tu coach.');
+  const ei=PAIN.ei;
   gmRender(); // repinta: banner de cuidado + chip en la tarjeta
   gmScrollTop();
-  // Nivel 🔴: que no siga con ese ejercicio — se le abre el cambio de una
-  if(wasBlocking&&typeof todaySubstitute==='function'){ setTimeout(()=>{ try{ todaySubstitute(ei); }catch(_e){} },600); }
+  // 🔒 EL RESULTADO SE MUESTRA EN PANTALLA, no en un toast que se va. Con una bandera roja no se
+  // puede confiar en que alcance a leer un aviso de 3 segundos.
+  painShowResult(tri, _propio);
+  // 🔒 N3 y N4 PARAN. Antes, con nivel 🔴 la app abría el selector de sustitución — que además
+  // filtraba por MÚSCULO, así que a quien decía «no puedo con esta sentadilla» le ofrecía otras
+  // sentadillas. Ahora no se ofrece NADA: proponer una alternativa automática es afirmar que esa
+  // alternativa es segura para esa persona, y eso está prohibido (§7 del dictamen).
+  if(!painStopsSession(tri.nivel)&&PAIN.limita==='cambia'&&typeof todaySubstitute==='function'){
+    setTimeout(()=>{ try{ todaySubstitute(ei); }catch(_e){} },600);
+  }
+}
+// Textos EXACTOS del §2.4 del dictamen de Laura. 🔒 No los reescribe nadie sin ella: los de
+// urgencia y derivación pueden ganar calidez pero NO pueden perder la palabra «urgencias» ni el
+// «para» — eso no es tono, es la instrucción clínica.
+// Redacción final: Laura pone la instrucción clínica, Sofía el idioma. Sus cambios de fondo:
+//  · 🔴 «Hoy no entrenamos ESA ZONA» contradecía lo que la app hace: N3 para la sesión ENTERA.
+//    El título prometía tren superior y no lo hay.
+//  · 🔴 «perder dos semanas» FUERA: es un plazo de recuperación, y los plazos están prohibidos.
+//  · 🔴 «es la cuenta que hemos visto mil veces» FUERA: invoca una experiencia clínica que nadie
+//    tuvo mirando ESE caso. Es lo que ya nos costó el texto viejo del filtro de lesiones en v424.
+//  · 🔴 FALTABA decir que parar no cuesta la racha. Si el texto calla, la persona asume que pierde
+//    — y si parar cuesta algo, nadie para. Decirlo DESPUÉS de parar no es empujar a seguir: es
+//    justo lo contrario.
+//  · «agujetas» FUERA: es de España; acá no se dice. Igual «articulación» → «coyuntura» + ejemplos.
+//  · «Ya le avisamos a tu coach» SOLO donde de verdad le suena el teléfono (N3/N4). En N1/N2 el
+//    coach lo ve en la ficha, y prometer un aviso que no llega hace que no vuelva a reportar.
+const PAIN_RESULT_TXT={
+  U:{t:'Para ahora mismo y busca atención médica hoy.',
+     c:'Lo que marcaste no es para esperar en casa: es de ir a <b>urgencias</b> hoy, no de pedir cita para la otra semana.<br><br>Si estás solo, llama a alguien para que te acompañe.',
+     coach:'aviso'},
+  A:{t:'Hoy paramos aquí. No es un castigo, es cuidarte.',
+     c:'Lo que nos contaste necesita que alguien te revise en persona — un médico o un fisioterapeuta — antes de que vuelvas a cargar peso. Desde la app no podemos revisarte, y no vamos a adivinar contigo.<br><br><b>Tu racha no se rompe y el día te cuenta igual.</b><br><br>Cuando te valoren, cuéntanos qué te dijeron y armamos tu regreso con eso en la mano.',
+     coach:'aviso'},
+  C:{t:'Hoy no entrenamos. Paramos aquí.',
+     c:'Con un dolor así no podemos saber qué está pasando desde la app, y seguir es lo que más caro sale.<br><br>Si te provoca, camina suave y respira. Nada más por hoy.<br><br><b>Tu racha no se rompe y el día te cuenta igual.</b><br><br>Si en 3 días sigue igual o va peor, que te valore un médico o un fisioterapeuta.',
+     coach:'aviso'},
+  N2:{t:'Esa zona la dejamos quieta por ahora.',
+      c:'Sacamos de tu sesión lo que carga esa zona, hoy y en los próximos entrenos. El resto de la sesión sigue igual. No es todo o nada.<br><br>Te vamos a preguntar cómo va antes de cada entreno. Si en 5 días no mejora, te vamos a pedir que te valore un médico o un fisioterapeuta.',
+      coach:'ficha'},
+  N1:{t:'Listo, anotado. Seguimos, pero cuidando eso.',
+      c:'Sacamos lo que más suele molestar ahí —hoy y en los próximos entrenos— y bajamos un poco la carga en el resto.<br><br>Quédate en el rango que <b>no</b> duele: si duele, ese no es tu rango hoy.<br><br>Te vamos a preguntar cómo va antes de cada entreno.',
+      coach:'ficha'},
+  N0:{t:'Eso es el dolor normal de después de entrenar, y es buena señal.',
+      c:'Es el músculo respondiendo a lo que hiciste. Calienta un poquito más hoy y baja algo el peso: moverse lo quita más rápido que quedarse quieto.<br><br>Si en vez de aflojar va empeorando, o se concentra en una sola coyuntura (la rodilla, el hombro, el codo), vuelve y cuéntanos.',
+      coach:null},
+};
+function painShowResult(tri,propio){
+  const d=PAIN_RESULT_TXT[tri.texto]||PAIN_RESULT_TXT.N2;
+  const el=document.getElementById('painres-body');
+  // El aviso dice lo que DE VERDAD pasa: «le avisamos» solo cuando le suena el teléfono.
+  const avisado=!d.coach?''
+    :propio?'Queda anotado en tu Inicio.'
+    :d.coach==='aviso'?'Ya le avisamos a tu coach.'
+    :'Tu coach ya lo tiene en tu ficha.';
+  if(el)el.innerHTML=`<div style="font-size:15px;font-weight:800;color:var(--t1);line-height:1.4;margin-bottom:10px">${d.t}</div>`+
+    `<div style="font-size:13.5px;color:var(--t1);line-height:1.65">${d.c}</div>`+
+    (avisado?`<div style="font-size:13px;color:var(--t2);line-height:1.6;margin-top:12px">${avisado}</div>`:'');
+  om('m-painres');
+  a11ySay(d.t);
 }
 // "Ya estoy bien ✓" del banner: descarta los reportes vigentes (quedan en el historial
 // del perfil para el coach, pero dejan de pintar banner/chips).

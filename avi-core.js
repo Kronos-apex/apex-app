@@ -2173,6 +2173,88 @@ const PAIN_TIPS = {
 function painTipFor(area) {
   return PAIN_TIPS[area] || PAIN_TIPS._default;
 }
+// ── TRIAJE DE DOLOR (§1 del dictamen VINCULANTE de Laura, 2026-08-08) ────────────────────────
+// 5 niveles, de agujetas a bandera roja. Reglas suyas que gobiernan TODO lo de abajo:
+//  1. 🔒 NADA DE ESCALAS 0-10: «un 6 para uno es un 3 para otro». Todo se ancla a CONDUCTA
+//     OBSERVABLE — qué puede o no puede hacer ahora mismo.
+//  2. 🔒 LA BANDERA ROJA GANA SOBRE LA INTENSIDAD, siempre. «Leve» + «se me duerme el pie» es N4,
+//     no N1. Se evalúa la bandera ANTES que el nivel.
+//  3. 🔒 EL DEFAULT ES EL LADO SEGURO: un reporte incompleto se trata como N2, nunca como N1. Un
+//     reporte a medias es una señal, no un silencio.
+//  4. 🔒 N0 (agujetas) existe para que el triaje NO se apague solo: si la app declara protocolo de
+//     lesión por unas agujetas, la gente aprende que reportar es un fastidio y DEJA DE REPORTAR —
+//     y el día que sea de verdad no nos enteramos. Un triaje que sobre-reacciona se suicida.
+const PAIN_LIMITA = ['normal', 'cambia', 'no_puedo', 'reposo'];   // P2, en orden de gravedad
+// P3. `unilateral` = «ayer, después de entrenar, pero solo en un lado»: NO es agujetas (las
+// agujetas son parejas en los dos lados) y por eso no abre la puerta de N0.
+const PAIN_INICIO = ['agujetas', 'unilateral', 'golpe_seco', 'progresivo', 'traumatismo', 'cronico'];
+// P4 — lista CERRADA. `U` = urgencias hoy · `R` = valoración en 24-72 h. Textos exactos de Laura.
+const PAIN_FLAGS = [
+  // ⚠️ Redacción revisada por Sofía (2026-08-08). Sus cambios NO son de tono, son de seguridad:
+  //  · 🔴 U3 decía «no puedo apoyar el peso NI mover esa parte» → exigía LAS DOS cosas. Quien no
+  //    puede apoyar pero sí mueve el pie no la marcaba, y U3 es fractura hasta que se demuestre lo
+  //    contrario. **Un conector de dos letras apagaba una urgencia.**
+  //  · 🔴 U1 cubría incontinencia pero NO retención: quien «no logra orinar» no se reconocía, y esa
+  //    es la urgencia real de la columna lumbar. (Pendiente del visto de Laura.)
+  //  · «articulación» fuera (es anatomía), «mandíbula» con «quijada» al lado, «6 semanas» → «mes y
+  //    medio» porque obligaba a hacer una cuenta que con dolor viejo nadie sabe.
+  { id: 'U1', urg: true, txt: 'Desde que empezó: se me sale el pipí o la popó, o no logro orinar, o siento dormida la zona de entre las piernas (como cuando se le duerme a uno un pie)' },
+  { id: 'U2', urg: true, txt: 'Me duele el pecho, el brazo o la mandíbula (la quijada) y además me falta el aire, tengo sudor frío o mareo' },
+  { id: 'U3', urg: true, txt: 'Fue por un golpe o una caída fuerte y no puedo apoyar el peso, o no puedo mover esa parte' },
+  { id: 'R1', urg: false, txt: 'El dolor se corre por el brazo o por la pierna, y pasa del codo o de la rodilla' },
+  { id: 'R2', urg: false, txt: 'Siento hormigueo, corrientazos, o se me duerme una parte del brazo, la pierna o el pie' },
+  { id: 'R3', urg: false, txt: 'Se me afloja o no me responde: se me cae lo que agarro, se me vence la rodilla, no levanto bien el pie' },
+  { id: 'R4', urg: false, txt: 'Me duele en la noche o me despierta el dolor' },
+  { id: 'R5', urg: false, txt: 'Empezó con un golpe, una caída o un tirón fuerte' },
+  { id: 'R6', urg: false, txt: 'La zona está hinchada, caliente o morada' },
+  { id: 'R7', urg: false, txt: 'Se me traba: no la puedo estirar o doblar del todo' },
+  { id: 'R8', urg: false, txt: 'Además del dolor, tengo fiebre o me siento enfermo (escalofrío, malestar)' },
+  { id: 'R9', urg: false, txt: 'Llevo más de mes y medio con esto y no mejora' },
+];
+// Zonas donde unas agujetas son plausibles: VIENTRE MUSCULAR. Nunca una articulación ni la lumbar.
+const PAIN_N0_ZONAS = ['pecho', 'espalda alta', 'muslo por delante', 'muslo por detrás',
+  'muslo por dentro (aductores)', 'cara externa del muslo o glúteo (abductores)', 'pantorrilla'];
+
+// PURA. Devuelve el nivel y por qué. `rep` = {area, side, limita, inicio, flags[], note}.
+function painTriage(rep) {
+  const r = rep || {};
+  const flags = Array.isArray(r.flags) ? r.flags.filter(f => PAIN_FLAGS.some(x => x.id === f)) : [];
+  // 🔴 FUGA QUE CAZÓ SOFÍA: P3 «Después de un golpe, una caída o un accidente» es PALABRA POR
+  // PALABRA la bandera R5 de P4. Quien ya lo contestó en P3 no vuelve a marcarlo en P4 —«ya lo
+  // dije»— y el nivel N4 depende de las casillas de P4, no de P3. O sea: contestar bien la
+  // pregunta anterior APAGABA una bandera roja. Se marca sola.
+  if (r.inicio === 'traumatismo' && flags.indexOf('R5') < 0) flags.push('R5');
+  const urg = flags.filter(f => (PAIN_FLAGS.find(x => x.id === f) || {}).urg);
+  // 🔒 REGLA 2 — la bandera roja se evalúa PRIMERO y gana sobre cualquier intensidad.
+  if (urg.length) return { nivel: 4, urgente: true, flags, motivo: 'bandera_urgente', texto: 'U' };
+  if (flags.length) return { nivel: 4, urgente: false, flags, motivo: 'bandera_roja', texto: 'A' };
+  // 🔒 La MISMA regex de compromiso nervioso que ya usa el generador, ahora sobre lo que escribe
+  // LA PERSONA. Existía y solo miraba las notas del coach: describir el síntoma con palabras
+  // propias y no reconocerlo en una lista es lo más normal del mundo (§2.3).
+  if (r.note && GEN_NERVE_RE.test(_norm(r.note)))
+    return { nivel: 4, urgente: false, flags, motivo: 'nervio_en_la_nota', texto: 'A' };
+
+  const limita = PAIN_LIMITA.indexOf(r.limita);
+  // 🔒 REGLA 3 — incompleto ⇒ N2, jamás N1. El default cae del lado seguro.
+  if (limita < 0) return { nivel: 2, urgente: false, flags, motivo: 'incompleto', texto: 'N2' };
+  if (limita >= 2) return { nivel: 3, urgente: false, flags, motivo: 'no_puede', texto: 'C' };
+
+  const inicio = r.inicio;
+  // Un tirón seco es N2 aunque hoy se sienta poco: el mecanismo manda sobre la sensación.
+  if (inicio === 'golpe_seco' || inicio === 'traumatismo' || inicio === 'cronico')
+    return { nivel: 2, urgente: false, flags, motivo: 'mecanismo', texto: 'N2' };
+  if (limita === 1) return { nivel: 2, urgente: false, flags, motivo: 'limita', texto: 'N2' };
+
+  // N0 sólo con TODO a favor: se mueve normal, es de ayer, parejo en los dos lados, sin banderas,
+  // y en vientre muscular. Cualquier duda cae a N1.
+  if (inicio === 'agujetas' && PAIN_N0_ZONAS.indexOf(r.area) >= 0)
+    return { nivel: 0, urgente: false, flags, motivo: 'agujetas', texto: 'N0' };
+  return { nivel: 1, urgente: false, flags, motivo: 'leve', texto: 'N1' };
+}
+// ¿Este nivel PARA la sesión? N3 y N4. Con dolor en reposo o bandera roja la app no propone nada:
+// ofrecer una alternativa automática es afirmar que esa alternativa es segura, y eso está prohibido.
+function painStopsSession(nivel) { return nivel >= 3; }
+
 // Agrega un reporte normalizado a la lista de cuidado (inmutable). Cap 20 (los más recientes).
 function painCareAdd(list, rep, nowIso) {
   rep = rep || {};
@@ -5876,6 +5958,11 @@ if (typeof module !== 'undefined' && module.exports) {
     PAIN_AREAS,
     PAIN_SIDES,
     PAIN_LEVELS,
+    PAIN_LIMITA,
+    PAIN_INICIO,
+    PAIN_FLAGS,
+    painTriage,
+    painStopsSession,
     painTipFor,
     painCareAdd,
     painCareActive,

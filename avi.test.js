@@ -969,6 +969,150 @@ test('🔴 ninguna zona deja un músculo sin ejercicios (un pool vacío es peor 
   assert.deepStrictEqual(vacios, [], vacios.join('\n  '));
 });
 
+// ── TRIAJE DE DOLOR (§1 del dictamen de Laura) ────────────────────────────────────────────────
+test('🔴 la BANDERA ROJA gana sobre la intensidad, siempre', () => {
+  const t = core.painTriage;
+  // Su ejemplo literal: «leve» + «se me duerme el pie» es N4, no N1.
+  const leve = { area: 'rodilla', limita: 'normal', inicio: 'progresivo', flags: ['R2'] };
+  assert.strictEqual(t(leve).nivel, 4, 'una bandera roja se quedó en nivel bajo por la intensidad');
+  assert.strictEqual(t(leve).texto, 'A', 'no manda a valoración');
+  // Urgencia manda sobre bandera normal Y sobre todo lo demás.
+  assert.strictEqual(t({ area: 'pecho', limita: 'normal', inicio: 'agujetas', flags: ['U2'] }).nivel, 4);
+  assert.strictEqual(t({ area: 'pecho', limita: 'normal', inicio: 'agujetas', flags: ['U2'] }).urgente, true);
+  assert.strictEqual(t({ area: 'pecho', limita: 'normal', inicio: 'agujetas', flags: ['U2'] }).texto, 'U');
+  // Una bandera inventada NO cuenta (la lista es cerrada).
+  assert.notStrictEqual(t({ area: 'rodilla', limita: 'normal', inicio: 'progresivo', flags: ['XX'] }).nivel, 4);
+});
+
+test('🔴 un reporte INCOMPLETO cae del lado seguro (N2), nunca en leve', () => {
+  const t = core.painTriage;
+  // Si alguien abandona el flujo a mitad, lo que alcanzó a marcar se trata como N2.
+  assert.strictEqual(t({ area: 'rodilla' }).nivel, 2);
+  assert.strictEqual(t({ area: 'rodilla', inicio: 'agujetas' }).nivel, 2, 'sin P2 se clasificó como agujetas');
+  assert.strictEqual(t({}).nivel, 2);
+  assert.strictEqual(t(null).nivel, 2);
+  assert.strictEqual(t({ area: 'rodilla', limita: 'inventado', inicio: 'agujetas' }).nivel, 2);
+});
+
+test('🔴 la nota LIBRE con síntomas de nervio sube a bandera roja (la regex ya existía y miraba al otro lado)', () => {
+  const t = core.painTriage;
+  const base = { area: 'zona lumbar', limita: 'normal', inicio: 'progresivo', flags: [] };
+  // Describirlo con sus palabras y no reconocerlo en la lista es lo más normal del mundo.
+  ['me baja un hormigueo por la pierna', 'siento que se me duerme el pie', 'me irradia hacia abajo',
+   'siento debilidad al subir escaleras'].forEach(note =>
+    assert.strictEqual(t({ ...base, note }).nivel, 4, 'no detectó nervio en: ' + note));
+  // CONTROL: una nota normal NO dispara una derivación médica.
+  assert.strictEqual(t({ ...base, note: 'me molesta al agacharme a recoger algo' }).nivel, 1);
+  assert.strictEqual(t({ ...base, note: '' }).nivel, 1);
+});
+
+test('🔴 N0 (agujetas) sólo con TODO a favor — si no, el triaje se apaga solo', () => {
+  const t = core.painTriage;
+  const ok = { area: 'muslo por delante', limita: 'normal', inicio: 'agujetas', flags: [] };
+  assert.strictEqual(t(ok).nivel, 0, 'no reconoce unas agujetas de manual');
+  // 🔒 Nunca en una ARTICULACIÓN ni en la lumbar, aunque todo lo demás cuadre.
+  ['rodilla', 'hombro', 'zona lumbar', 'tobillo o pie', 'codo'].forEach(area =>
+    assert.notStrictEqual(t({ ...ok, area }).nivel, 0, 'llamó agujetas a un dolor de ' + area));
+  // Y no si empezó de otra forma, o si hay bandera.
+  assert.notStrictEqual(t({ ...ok, inicio: 'progresivo' }).nivel, 0);
+  assert.notStrictEqual(t({ ...ok, flags: ['R4'] }).nivel, 0);
+  // POR QUÉ EXISTE N0: si esto no fuera 0, la app abriría protocolo de lesión por unas agujetas,
+  // la gente aprendería que reportar es un fastidio y dejaría de reportar. Un triaje que
+  // sobre-reacciona se apaga solo — y el día que sea de verdad no nos enteramos.
+  assert.strictEqual(t(ok).texto, 'N0');
+});
+
+test('🔴 N3 y N4 PARAN la sesión; N0-N2 no', () => {
+  assert.strictEqual(core.painStopsSession(0), false);
+  assert.strictEqual(core.painStopsSession(1), false);
+  assert.strictEqual(core.painStopsSession(2), false);
+  assert.strictEqual(core.painStopsSession(3), true);
+  assert.strictEqual(core.painStopsSession(4), true);
+  // «No puedo cargar/apoyar» y «me duele en reposo» son parada.
+  assert.strictEqual(core.painTriage({ area: 'rodilla', limita: 'no_puedo', inicio: 'progresivo' }).nivel, 3);
+  assert.strictEqual(core.painTriage({ area: 'rodilla', limita: 'reposo', inicio: 'progresivo' }).nivel, 3);
+});
+
+test('el mecanismo manda sobre la sensación: un tirón seco es N2 aunque hoy duela poco', () => {
+  const t = core.painTriage;
+  const base = { area: 'muslo por detrás', limita: 'normal', flags: [] };
+  assert.strictEqual(t({ ...base, inicio: 'golpe_seco' }).nivel, 2);
+  // ⚠️ `traumatismo` pasó de N2 a N4 al arreglar la fuga que cazó Sofía: «después de un golpe o
+  // una caída» ES la bandera R5, y Laura la clasifica como derivación. Antes, decirlo en P3 en vez
+  // de marcarlo en P4 lo dejaba en N2 — o sea, el mismo hecho daba dos niveles distintos según en
+  // qué pregunta lo contaras. No es aflojar el test: es que el nivel correcto era el alto.
+  assert.strictEqual(t({ ...base, inicio: 'traumatismo' }).nivel, 4, 'un golpe o caída es bandera roja');
+  assert.strictEqual(t({ ...base, inicio: 'cronico' }).nivel, 2, 'más de dos semanas ya no es leve');
+});
+
+// 🔴 LO QUE CAZÓ SOFÍA REVISANDO EL TONO, y que resultaron ser fugas del triaje, no redacción.
+test('🔴 contestar P3 no puede APAGAR una bandera roja (P3 y P4 se pisaban)', () => {
+  const t = core.painTriage;
+  // «Después de un golpe, una caída o un accidente» (P3) es palabra por palabra R5 (P4). Quien ya
+  // lo dijo en P3 no lo vuelve a marcar en P4 —«ya lo dije»— y el nivel depende de P4.
+  const r = t({ area: 'rodilla', limita: 'normal', inicio: 'traumatismo', flags: [] });
+  assert.strictEqual(r.nivel, 4, 'un traumatismo sin marcar R5 se quedó por debajo de bandera roja');
+  assert.ok(r.flags.includes('R5'), 'no se marcó R5 sola');
+  // CONTROL: sin traumatismo no se inventa la bandera.
+  assert.ok(!t({ area: 'rodilla', limita: 'normal', inicio: 'progresivo', flags: [] }).flags.includes('R5'));
+});
+
+test('🔴 U3 pide UNA de las dos cosas, no las dos (un «ni» apagaba una urgencia)', () => {
+  const u3 = core.PAIN_FLAGS.find(f => f.id === 'U3');
+  assert.ok(!/peso ni /.test(u3.txt), 'U3 volvió a exigir las dos cosas con un «ni»: ' + u3.txt);
+  assert.ok(/apoyar el peso, o no puedo mover/.test(u3.txt), 'U3 perdió la disyunción: ' + u3.txt);
+  // U1 tiene que cubrir también la RETENCIÓN, no solo la incontinencia.
+  const u1 = core.PAIN_FLAGS.find(f => f.id === 'U1');
+  assert.ok(/no logro orinar/.test(u1.txt), 'U1 volvió a cubrir solo incontinencia: ' + u1.txt);
+});
+
+test('🔴 «ayer, pero solo en un lado» NO son agujetas', () => {
+  const t = core.painTriage;
+  const base = { area: 'muslo por delante', limita: 'normal', flags: [] };
+  assert.strictEqual(t({ ...base, inicio: 'agujetas' }).nivel, 0, 'parejo en los dos lados sí es N0');
+  assert.strictEqual(t({ ...base, inicio: 'unilateral' }).nivel, 1,
+    'un dolor de UN SOLO lado se clasificó como agujetas — la opción existía para eso');
+});
+
+test('🔴 los textos que lee la persona no rompen las reglas del dictamen', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('const PAIN_RESULT_TXT');
+  assert.ok(i > -1, 'no se encontró la tabla de textos');
+  const txt = src.slice(i, src.indexOf('function painShowResult'));
+  // Prohibido nombrar una lesión.
+  [/contractura/i, /tendinitis/i, /desgarro/i, /\bhernia/i, /esguince/i, /pinzamiento/i, /ciática/i]
+    .forEach(re => assert.ok(!re.test(txt), 'un texto nombra una lesión: ' + re));
+  // Prohibido poner plazos de RECUPERACIÓN («perder dos semanas»).
+  assert.ok(!/perder dos semanas/.test(txt), 'volvió el plazo de recuperación');
+  // Prohibido invocar experiencia clínica que nadie tuvo sobre ese caso.
+  assert.ok(!/hemos visto mil veces/.test(txt), 'volvió el «hemos visto mil veces»');
+  // Prohibido empujar a seguir.
+  [/no pierdas tu racha/i, /solo te faltan/i, /¿seguro que quieres/i]
+    .forEach(re => assert.ok(!re.test(txt), 'un texto empuja a seguir: ' + re));
+  // Prohibido sugerir medicamentos.
+  [/ibuprofeno/i, /analg[eé]sic/i, /medicament/i].forEach(re =>
+    assert.ok(!re.test(txt), 'un texto menciona medicamentos: ' + re));
+  // 🔒 U conserva «urgencias»; U y C conservan su verbo de parada.
+  assert.ok(/urgencias/.test(txt), 'el texto de urgencia perdió la palabra «urgencias»');
+  assert.ok(/Para ahora mismo/.test(txt), 'el texto de urgencia perdió el «Para»');
+  // 🔒 Parar no puede costar la racha, y hay que DECIRLO o la persona asume que sí.
+  assert.ok((txt.match(/racha no se rompe/g) || []).length >= 2,
+    'los textos de parada no dicen que la racha no se rompe — si calla, la persona asume que pierde');
+  // «agujetas» no es palabra colombiana.
+  assert.ok(!/agujetas/i.test(txt), '«agujetas» es de España; acá no se dice');
+});
+
+test('la lista de banderas rojas está completa y es cerrada (U1-U3 + R1-R9)', () => {
+  const ids = core.PAIN_FLAGS.map(f => f.id);
+  ['U1', 'U2', 'U3', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'].forEach(i =>
+    assert.ok(ids.includes(i), 'falta la bandera ' + i));
+  assert.strictEqual(core.PAIN_FLAGS.length, 12, 'alguien añadió o quitó una bandera sin decirlo');
+  assert.strictEqual(core.PAIN_FLAGS.filter(f => f.urg).length, 3, 'las de URGENCIAS deben ser exactamente 3');
+  // Ninguna puede quedarse sin su texto, que es lo que la persona lee para marcarla.
+  core.PAIN_FLAGS.forEach(f => assert.ok(f.txt && f.txt.length > 25, 'bandera sin texto: ' + f.id));
+});
+
 test('🔴 las zonas de dolor son las que dictó Laura, e incluyen las que faltaban', () => {
   const A = core.PAIN_AREAS;
   // El caso del PO: marcó «abductores» y esa zona NO EXISTÍA → caía en «otra zona».
