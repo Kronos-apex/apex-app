@@ -191,7 +191,15 @@ try {
   // days:2 → planDays cae a 2 → weekStreak cuenta 4 semanas.
   // v433: la tarjeta de descarga pasa por los MISMOS pisos que la del coach (180 días entrenando
   // + 10 semanas de datos), así que el fixture añade una sesión vieja y `startDate` de hace 200 días.
-  await ev(`window.__wk4=(()=>{const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));const mon=x.getTime();const out=[];for(let i=0;i<4;i++){[0,2].forEach(d=>out.push({date:new Date(mon-i*7*86400000+d*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]}));}out.push({date:new Date(mon-75*86400000).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]});return out;})();
+  // 🔴 EL FIXTURE SE PONÍA ROJO SOLO LOS DOMINGOS (arreglado 2026-08-09, tercera vez que muerde la
+  // misma clase — ver v467). Las sesiones se anclaban al LUNES de cada semana en los días 0 y 2, así
+  // que la más fresca era el MIÉRCOLES: el domingo eso son 4 días sin entrenar, que es justo
+  // `INSIGHT_INACTIVE_DAYS`, y la tarjeta «Te extrañamos» —que tiene MÁS prioridad que la descarga—
+  // se comía G y J. La app estaba perfecta y el mensaje se leía como un defecto suyo.
+  // Se añade una sesión de HOY: la racha de 4 semanas se conserva (esta semana pasa de 2 a 3 días
+  // sobre un plan de 2) y el reloj de inactividad queda en cero, que es lo que estos dos checks
+  // necesitan tener montado para probar lo que dicen probar.
+  await ev(`window.__wk4=(()=>{const x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));const mon=x.getTime();const out=[];const S=t=>({date:new Date(t).toISOString(),exercises:[{name:'A',track:'reps',sets:[{done:true,reps:'15'}]}]});for(let i=0;i<4;i++){[0,2].forEach(d=>out.push(S(mon-i*7*86400000+d*86400000)));}out.push(S(Date.now()));out.push(S(mon-75*86400000));return out;})();
     window.__vet=new Date(Date.now()-200*86400000).toISOString();`);
   // G: deload → premium con ≥4 semanas; free ve racha (deload es premium).
   let gPrem = JSON.parse(await ev(`JSON.stringify(window.__inject({sessions:window.__wk4,prs:{},tier:undefined,days:2,clearRoutines:true,startDate:window.__vet}))`));
