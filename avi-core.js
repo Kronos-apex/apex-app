@@ -4065,6 +4065,27 @@ function nutSolveMeal(target, pick) {
     // NUNCA por debajo del piso (arriba) ni por encima de una ración creíble (`maxG`):
     // sin tope, la leche —3,3 g por 100 g— pedía 1.000 g para cubrir una merienda.
     if (prot && prot.p > 0 && tP > 0) {
+      // ⚠️ NO ACREDITAR AQUÍ la proteína que traen el carbohidrato y la grasa. Se probó en v471
+      // (`Math.max(0, tP*SHARE - ap(carb,gC,'p') - ap(fat,gF,'p')) / prot.p * 100`, la línea que
+      // dejó escrita la auditoría diciendo que «no toca la doctrina de Andrés») y **sí la toca**:
+      // este piso no mide GRAMOS DEL DÍA, mide que el plato sea creíble en la mesa. Medido sobre
+      // las 21 personas reales (735 comidas): las comidas donde el alimento proteico aporta menos
+      // de la mitad de la proteína de su propia comida pasan de **26 a 136**, y la peor ración
+      // queda en **«5 g de clara de huevo»** — que no es una ración, es un redondeo en un plato.
+      // Y ni siquiera compra lo que prometía: el peor hueco de proteína del día EMPEORA (−3,3% →
+      // −5,0%). Es exactamente el caso que hizo nacer esta constante («20 g de atún con 490 g de
+      // pasta») y hay un test que lo afirma.
+      // ⚠️ CORRECCIÓN (Andrés, dictamen v471): el caso que la línea quería arreglar —«9 tajadas
+      // de pan con 4 huevos encima»— **SÍ se reproduce en gente real**, al revés de lo que dijo
+      // la auditoría anterior («era un perfil sintético»). Medido por la ruta de producción
+      // (`nutBaseFor`, 22 personas, 770 comidas): **51 comidas sirven más del 130% de la proteína
+      // de su propia comida**, p.ej. «clara 132 g + avena 120 g» para una meta de 23 g. No era el
+      // PAN: es la **AVENA (17 g de proteína/100 g)**, que este piso no descuenta. O sea que el
+      // diagnóstico era bueno y el remedio no. **Y el sitio donde se arregla es el MENÚ** —no
+      // emparejar un carbohidrato de 17 g/100 g con una proteína atada a un piso—, no el solver.
+      // Si algún día se toca esto, Andrés dice que el lever es BAJAR la constante (0,70 → 0,60),
+      // nunca acreditar; y no antes de ampliar el banco de menús, porque a 0,60 la suite cae
+      // 680/681 por VARIEDAD (`el menú se elige entre los que CABEN`), no por doctrina.
       const piso = tP * NUT_PROT_MIN_SHARE / prot.p * 100;
       gP = Math.max(piso, (tP - ap(carb, gC, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
       if (prot.maxG > 0) gP = Math.min(gP, prot.maxG);
@@ -4110,6 +4131,21 @@ const NUT_MENUS = {
     { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'mani' }, acomp: ['banano'] },
     { pick: { prot: 'queso_campesino', carb: 'arepa', fat: 'aguacate' }, acomp: ['papaya'] },
     { pick: { prot: 'clara', carb: 'avena', fat: 'almendra' }, acomp: ['fresa'] },
+    // 🔴 LOS 3 DE ABAJO LOS AÑADIÓ ANDRÉS (dictamen v471) Y SON EL ARREGLO DE FONDO DE LA
+    // VARIEDAD. El banco decía 5 y en la práctica eran 3: medido sobre los 154 presupuestos de
+    // desayuno REALES (22 personas × 7 días), `huevo+pan_integral` cabe **31 veces** y
+    // `queso_campesino+arepa` **22** — y el del queso no es mala suerte, es estructural: su
+    // `maxG` de 90 g lo topa en 15 g de proteína cuando el piso le pide ~23, así que NUNCA llega.
+    // La causa de que los otros se pasen: los carbohidratos del banco eran los más densos de la
+    // tabla (avena 389 kcal/100 g, arepa 218, pan 247) **y la avena trae 17 g de proteína por
+    // 100 g**, que se suman al piso del alimento proteico y disparan las calorías.
+    // Por eso los nuevos traen carbohidratos de BAJA densidad (papa 87 kcal/100 g, plátano 116)
+    // y rompen el monopolio de la avena en la rama del yogur.
+    // Cobertura medida al añadirlos: los presupuestos con UNA SOLA opción pasan de **15 a 0** y
+    // el promedio de opciones de **2,55 a 5,12**.
+    { pick: { prot: 'huevo', carb: 'papa', fat: null }, acomp: ['cebolla'] },               // 140/154
+    { pick: { prot: 'huevo', carb: 'platano_maduro', fat: null }, acomp: ['tomate'] },      // 122/154
+    { pick: { prot: 'yogur_griego', carb: 'pan_integral', fat: 'almendra' }, acomp: ['banano'] }, // 135/154
   ],
   // 🔴 MERIENDAS MAGRAS (Andrés Hyp, 2026-08-03). A la merienda se le pide el 10% de las
   // calorías del día pero el 15% de la proteína (`wProt`), así que la fuente que cubra esa
@@ -4126,6 +4162,14 @@ const NUT_MENUS = {
     { pick: { prot: 'atun', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },      // era queso_campesino (17 g grasa/100 g → 1)
     { pick: { prot: 'clara', carb: 'avena', fat: 'mani' }, acomp: ['mandarina'] },        // era huevo entero (9,9 g grasa/100 g → 0,2)
     { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'crema_mani' }, acomp: ['pina'] },
+    // 🔴 Y LA MERIENDA ESTABA IGUAL DE ESTRECHA (Andrés, dictamen v471). Luz no era un caso
+    // aislado: medido sobre los 154 presupuestos reales, **37 se quedaban con UNA sola opción**.
+    // Con estos dos bajan a 22 y el promedio sube de 2,55 a 3,68.
+    // ⚠️ Queda un hueco CONOCIDO y sin cerrar: **10 presupuestos no tienen NINGÚN menú factible**
+    // y esos dos no los arreglan (caen al respaldo, que sirve el que menos incumple). Es la
+    // esquina del piso calórico; la salida es más banco, no aflojar el filtro.
+    { pick: { prot: 'yogur_griego', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },  // 92/154
+    { pick: { prot: 'clara', carb: 'pan_integral', fat: null }, acomp: ['mandarina'] },       // 81/154
   ],
   almuerzo: [
     { pick: { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' }, acomp: ['ensalada', 'zanahoria'] },
@@ -4232,7 +4276,11 @@ function nutAcompMacros(ids) {
 // presupuesto de esa comida, así que un día puede acumular varias comidas cerca del tope. Sale a
 // cuenta (el promedio de las 21 baja de 8,9% a 5,9%) pero no es una mejora persona a persona.
 const NUT_MENU_MAX_OVER = 0.15;
-function nutPickMenu(banco, start, meta) {
+// Cuanto puede QUEDARSE CORTO un menu (v470 no tenia piso: aceptaba uno que servia -13,9%).
+const NUT_MENU_MAX_UNDER = 0.10;
+// 🔒 Y la PROTEINA aparte, mas estrecha que las calorias: es el macro que Andres protege.
+const NUT_MENU_PROT_UNDER = 0.10;
+function nutPickMenu(banco, start, meta, evitar) {
   if (!banco || !banco.length) return null;
   const kMeta = (meta.prot_g || 0) * 4 + (meta.carb_g || 0) * 4 + (meta.fat_g || 0) * 9;
   const evaluar = menu => {
@@ -4245,14 +4293,86 @@ function nutPickMenu(banco, start, meta) {
     const solved = nutSolveMeal(sub, menu.pick);
     const kReal = (solved.real.prot_g + ac.prot_g) * 4 + (solved.real.carb_g + ac.carb_g) * 4
       + (solved.real.fat_g + ac.fat_g) * 9;
-    return { menu, ac, sub, solved, over: kMeta > 0 ? (kReal - kMeta) / kMeta : 0 };
+    const pReal = solved.real.prot_g + ac.prot_g;
+    return { menu, ac, sub, solved,
+      over: kMeta > 0 ? (kReal - kMeta) / kMeta : 0,
+      protRatio: (meta.prot_g || 0) > 0 ? pReal / meta.prot_g : 1 };
   };
   const todos = banco.map(evaluar);
-  const caben = todos.filter(c => c.over <= NUT_MENU_MAX_OVER);
-  const pool = caben.length ? caben : todos;
-  const i = ((parseInt(start, 10) || 0) % pool.length + pool.length) % pool.length;
-  // Sin ninguno factible manda el que MENOS se pasa; con factibles, la rotación de siempre.
-  return caben.length ? pool[i] : pool.reduce((a, b) => (b.over < a.over ? b : a));
+  // 🔴 «CABER» ES BILATERAL Y POR MACRO — v470 lo miraba solo en kcal y por eso salió RECHAZADA.
+  // Dos agujeros que costaron caro y los dos son de la misma familia (un total que tapa un macro):
+  //  1. Sin PISO, `over <= tope` aceptaba menús que se quedan CORTOS: con 1.400 kcal de
+  //     presupuesto «cabían» los 7 menús, incluido uno que servía 1.206 (−13,9%).
+  //     ⚠️ ALCANCE de la cifra, que antes iba sin él: el «32 → 677 días» sale de la MALLA
+  //     SINTÉTICA (136.080 días), no de nadie real. En las 22 personas reales el piso **no mueve
+  //     el total del día** (−1,41% con y sin, idéntico) y por eso Andrés lo dio por inerte — pero
+  //     NO lo es: muerde **por COMIDA**, que es donde vive el defecto. Quitarlo lleva las comidas
+  //     servidas 10% por debajo de su propio presupuesto de **10 a 34 de 770**, y la peor comida
+  //     de −12,9% a −22,9%. **El total del día TAPA la comida rota** — la misma lección del
+  //     promedio que escondía el carbohidrato, y la razón de que su test sea por comida.
+  //  2. Sin mirar los MACROS, un menú que cuadra en calorías y entrega 20 g menos de proteína
+  //     «cabía». **A Kathe le quitaba 22 g de proteína en su peor día** — y Kathe es exactamente
+  //     la persona por la que Andrés peleó +26 g (119→145) en `dictamen-andres-macros-2026-08-05`.
+  //     Las personas bajo −20% de proteína pasaron de 116 a 1.482.
+  // 🔒 LA PROTEÍNA NO SE NEGOCIA (dictamen de Andrés §1): tiene su propio mínimo y es más estrecho
+  // que el de las calorías. Es el gotcha que ya estaba escrito en el repo —«toda aserción sobre un
+  // total lleva su hermana POR MACRO»— y que este filtro nació ignorando.
+  const cabe = c => c.over <= NUT_MENU_MAX_OVER && c.over >= -NUT_MENU_MAX_UNDER
+    && c.protRatio >= 1 - NUT_MENU_PROT_UNDER;
+  const caben = todos.filter(cabe);
+  // 🔴 `evitar` = lo que YA se sirvió hoy de ESTE MISMO banco. Sin esto, v470 le mandaba a la
+  // persona **la misma merienda a media mañana y a media tarde el 60,4% de los días** (medido en
+  // 1.260 días-plan; el control en v469 daba 0,0%). Lo cazaron DOS auditorías, no yo.
+  // La causa era mía y es sutil: las dos meriendas comparten banco y se separaban con un desfase
+  // FIJO de 4 índices (`i * 2`), que funcionaba porque el banco SIEMPRE tenía 5. Al rotar sobre el
+  // subconjunto FACTIBLE el tamaño cambia, y con un pool de 1, 2 o 4 un desfase de 4 es un
+  // **no-op**: las dos comidas caen en la misma casilla, los 7 días.
+  // **Un desfase constante solo separa si el módulo es constante — y desde v470 no lo es.**
+  // 🔒 Y es el MISMO defecto por el que se rechazó apretar el umbral al 10% («comería el mismo
+  // desayuno los 7 días»), colado por la puerta de al lado: la curva que aprobó el PO medía
+  // desayuno/almuerzo/cena, y las que colisionan son las dos `media`. **Una métrica que no mira la
+  // superficie afectada no es un control.**
+  // 🔴 CUÁNTO INCUMPLE un menú: la PEOR de las tres condiciones, medida en la misma unidad
+  // (fracción de su objetivo). Sin pesos inventados, y ninguna condición puede ignorar a las
+  // otras. Aquí vivía el MISMO defecto que se arregla arriba: el desempate era `|over|`, o sea
+  // CALORÍAS PURAS, así que el respaldo podía entregar el menú que peor lleva la proteína con tal
+  // de cuadrar el total — puerta cerrada, ventana abierta, otra vez. Medido en la malla de 5.200
+  // perfiles × 7 días contra el desempate por kcal: peor hueco de proteína del día **−13,4% →
+  // −9,3%** y días bajo −10% de proteína **0,16% → 0**, pagando 15,3% → 16,7% de exceso de kcal.
+  // (El desempate «la proteína a cualquier precio» que probé primero lo disparaba a 23,6%: por eso
+  // NO se pondera un macro sobre otro, se minimiza el peor incumplimiento.)
+  const incumple = c => Math.max(
+    c.over - NUT_MENU_MAX_OVER,               // se pasa de calorías
+    -NUT_MENU_MAX_UNDER - c.over,             // se queda corto de calorías
+    (1 - NUT_MENU_PROT_UNDER) - c.protRatio,  // se queda corto de proteína
+  );
+  const menosMalo = pool => pool.reduce((a, b) => (incumple(b) < incumple(a) ? b : a));
+  const usados = evitar || [];
+  const noUsado = c => usados.indexOf(c.menu) < 0;
+  if (!caben.length) {
+    // Ninguno cabe (5,9% de las comidas, medido sobre 182.000): manda el que menos incumple,
+    // pero primero entre los que HOY no se han servido. Un plan feo es mejor que ningún plan.
+    const libres = todos.filter(noUsado);
+    return menosMalo(libres.length ? libres : todos);
+  }
+  const libres = caben.filter(noUsado);
+  if (libres.length) {
+    const i = ((parseInt(start, 10) || 0) % libres.length + libres.length) % libres.length;
+    return libres[i];
+  }
+  // 🔴 TODOS LOS QUE CABEN YA SE SIRVIERON HOY. Antes se repetía uno, y ahí seguía viva la mitad
+  // del P0 que reportaron las dos auditorías: a quien el presupuesto le deja UN SOLO menú de
+  // merienda factible, `evitar` no tiene nada que evitar y le caía **la misma merienda a media
+  // mañana y a media tarde, los 7 días**. Le pasa a gente real (Luz, medida en el respaldo del
+  // 9-ago), no a un perfil sintético.
+  // Se prefiere un menú DISTINTO que se sale un poco antes que el MISMO plato dos veces el mismo
+  // día. Medido sobre las 21 personas reales: **merienda repetida 27,2% → 0,0%**, pagando peor
+  // proteína −2,6% → −3,3% y peor exceso de kcal +10,9% → +12,6%. Los dos siguen MUY dentro de
+  // sus topes, y en producción (v470) esto era 55,1% con la proteína en −20,1%.
+  const otros = todos.filter(noUsado);
+  if (otros.length) return menosMalo(otros);
+  // Ya se sirvió el banco ENTERO hoy: repetir antes que dejarla sin comer.
+  return caben[((parseInt(start, 10) || 0) % caben.length + caben.length) % caben.length];
 }
 function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const t = nutDayTarget(base, kind, trainDays, legDays);
@@ -4265,6 +4385,8 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   // la captura y que el texto del harness no delataba. Seguir sólo el tamaño la dejaría
   // demasiado floja en las meriendas. La mezcla da comidas creíbles sin perder el reparto.
   const nM = NUT_MEALS_5.length;
+  // Menus ya servidos hoy, POR BANCO: las dos meriendas comparten el de `media`.
+  const _usados = {};
   const meals = NUT_MEALS_5.map((slot, i) => {
     const banco = NUT_MENUS[slot.key] || [];
     const wProt = (slot.w + 1 / nM) / 2;   // mezcla: mitad tamaño de la comida, mitad reparto parejo
@@ -4278,7 +4400,8 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
     // Lo que traen los acompañantes se DESCUENTA del presupuesto del plato: si la comida
     // viene con guayaba, el arroz baja. Antes el plato se calculaba como si la fruta no
     // existiera y luego la fruta se servía igual, encima.
-    const elegido = banco.length ? nutPickMenu(banco, di + i * 2, meta) : null;
+    const elegido = banco.length ? nutPickMenu(banco, di + i * 2, meta, _usados[slot.key]) : null;
+    if (elegido) (_usados[slot.key] = _usados[slot.key] || []).push(elegido.menu);
     const menu = elegido ? elegido.menu : null;
     const ac = elegido ? elegido.ac : nutAcompMacros([]);
     const solved = elegido ? elegido.solved : { items: [], real: { prot_g: 0, carb_g: 0, fat_g: 0, kcal: 0 } };
@@ -6114,6 +6237,8 @@ if (typeof module !== 'undefined' && module.exports) {
     nutSolveMeal,
     nutPickMenu,
     NUT_MENU_MAX_OVER,
+    NUT_MENU_MAX_UNDER,
+    NUT_MENU_PROT_UNDER,
     NUT_DAY_W,
     NUT_SOLVE_PASSES,
     NUT_PROT_MIN_SHARE,
