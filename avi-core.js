@@ -3785,18 +3785,18 @@ const NUT_FOODS = [
   // (invisible y peor), que es la misma clase de defecto que se mató en v471, en espejo.
   // ✅ LA SALIDA es una SEGUNDA fuente de carbohidrato en el menú (arroz + tajada, arepa + papa),
   // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
-  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, un: { label: 'taza', g: 158 } },
-  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, un: { label: 'papa mediana', g: 150 } },
-  { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, un: { label: 'porción', g: 100 } },
+  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 } },
+  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, un: { label: 'papa mediana', g: 150 } },
+  { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
   // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
   // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
   // 2026-08-03). El error de +28% en carbohidrato hacía que el motor recetara ~22% MENOS yuca
   // de la que la persona necesitaba. Hallazgo de Andrés Hyp, verificado contra fuente.
-  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, un: { label: 'trozo', g: 100 } },
-  { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, un: { label: 'tajada grande', g: 80 } },
-  { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, un: { label: 'trozo', g: 80 } },
+  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
+  { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
+  { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
   { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, un: { label: 'arepa', g: 80 } },
-  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, un: { label: 'tajada', g: 28 } },
+  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, un: { label: 'tajada', g: 28 } },
   // 🔴 Decía «cucharada = 15 g» y una cucharada de hojuelas pesa **~5,6 g** (verificado
   // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
   // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
@@ -4064,16 +4064,42 @@ const NUT_SOLVE_PASSES = 4;
 // pasta (6 g de proteína por 100 g) el solver dejaba «20 g de atún con 490 g de pasta».
 // Por eso el alimento proteico nunca baja de esta fracción de la meta de la comida.
 const NUT_PROT_MIN_SHARE = 0.7;
+// 🔴 SEGUNDA FUENTE DE CARBOHIDRATO (`pick.carb2`, dictamen de Andrés 2026-08-10).
+// Un plato colombiano casi nunca trae un solo carbohidrato: es arroz + tajada, arepa + papa.
+// Con UNO solo, cubrir el objetivo obliga a raciones que nadie sirve —«800 g de papa criolla»,
+// «9 tajadas de pan»— y **topar el alimento no lo arregla: RECORTA** (medido: los 11 topes dejan
+// el plato entregando −20,9% y las porciones feas igual, porque el menú deja de CABER, sale del
+// pool factible y el selector se va a otro con raciones mayores). Repartir sí lo arregla.
+// El objetivo de carbohidrato de la comida se parte 60/40 entre el principal y el segundo.
+const NUT_CARB2_SHARE = 0.4;
+// 🔒 Y LLEVA PISO: si al segundo no le toca ni MEDIA medida casera, no se parte el plato (todo
+// al principal). Sin este piso salen «5 g de plátano» — exactamente la ración-que-no-es-ración
+// que se rechazó en v471 («5 g de clara de huevo»). Medido: 14 de 349 segundas raciones.
+const NUT_CARB2_MIN_UN = 0.5;
 function nutSolveMeal(target, pick) {
   target = target || {};
   const prot = NUT_FOOD_BY_ID[pick && pick.prot] || null;
   const carb = NUT_FOOD_BY_ID[pick && pick.carb] || null;
+  const carb2 = NUT_FOOD_BY_ID[pick && pick.carb2] || null;
   const fat = NUT_FOOD_BY_ID[pick && pick.fat] || null;
   const tP = target.prot_g > 0 ? target.prot_g : 0;
   const tC = target.carb_g > 0 ? target.carb_g : 0;
   const tF = target.fat_g > 0 ? target.fat_g : 0;
   // gramos de cada alimento, en crudo (sin redondear) durante la iteración
-  let gP = 0, gC = 0, gF = 0;
+  let gP = 0, gC = 0, gC2 = 0, gF = 0;
+  // 🔒 ¿SE PARTE EL PLATO? Se decide ANTES de iterar, no después.
+  // Si al segundo carbohidrato no le toca ni MEDIA medida casera, no se parte: todo al principal.
+  // ⚠️ Y la decisión va aquí arriba a propósito. Al principio esto era un arreglo POSTERIOR
+  // (resolver partido y devolver los gramos al principal si el segundo salía muy chico) y eso
+  // rompió a una persona real: **Andrés Martínez pasó de 6 desayunos distintos a 1**. Su desayuno
+  // pide mucha proteína y poco carbohidrato (36 g / 41 g), así que al partir, el principal se
+  // encogía, el plato cambiaba de calorías y **dejaba de CABER en el filtro de menús** — devolver
+  // los gramos al final ya no deshacía eso, porque la proteína y la grasa ya se habían resuelto
+  // contra el reparto. **Una decisión que cambia el resultado del solver no puede tomarse después
+  // de correrlo.**
+  const _c2raw = (carb2 && carb2.c > 0 && tC > 0) ? tC * NUT_CARB2_SHARE / carb2.c * 100 : 0;
+  const _c2min = (carb2 && carb2.un && carb2.un.g > 0) ? carb2.un.g * NUT_CARB2_MIN_UN : 0;
+  const usaDos = !!(carb2 && carb2.c > 0 && _c2raw >= _c2min);
   const ap = (food, g, macro) => (food ? food[macro] * g / 100 : 0);
   for (let i = 0; i < NUT_SOLVE_PASSES; i++) {
     // proteína: la que falta después de la que traen el carbohidrato y la grasa, pero
@@ -4102,12 +4128,24 @@ function nutSolveMeal(target, pick) {
       // nunca acreditar; y no antes de ampliar el banco de menús, porque a 0,60 la suite cae
       // 680/681 por VARIEDAD (`el menú se elige entre los que CABEN`), no por doctrina.
       const piso = tP * NUT_PROT_MIN_SHARE / prot.p * 100;
-      gP = Math.max(piso, (tP - ap(carb, gC, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
+      // ⚠️ `carb2` también aporta proteína (la arepa 4,5 g/100 g, el arroz 2,7) y hay que restarla
+      // aquí o el plato la sirve DOS veces — el mismo aporte cruzado que esta línea ya descuenta
+      // del principal.
+      gP = Math.max(piso, (tP - ap(carb, gC, 'p') - ap(carb2, gC2, 'p') - ap(fat, gF, 'p')) / prot.p * 100);
       if (prot.maxG > 0) gP = Math.min(gP, prot.maxG);
     }
-    // carbohidrato: descontando el que traen la proteína y la grasa
-    if (carb && carb.c > 0 && tC > 0) {
-      gC = Math.max(0, (tC - ap(prot, gP, 'c') - ap(fat, gF, 'c')) / carb.c * 100);
+    // carbohidrato: el que falta después del que traen la proteína y la grasa, REPARTIDO entre
+    // las dos fuentes si hay segunda.
+    // 🔴 EL APORTE CRUZADO SE DESCUENTA UNA SOLA VEZ, y luego se reparte. La primera versión lo
+    // restaba en LAS DOS ramas —cada una del objetivo de su parte— y eso descuenta dos veces el
+    // mismo gramo: medido, hundía la entrega de carbohidrato del peor día a **−14,2%** (era
+    // −6,8%) y hacía fallar el guardián de los extremos. Es la misma clase de defecto que este
+    // solver existe para evitar («el plato descuenta los aportes CRUZADOS»), reintroducida al
+    // partir el plato en dos.
+    if ((carb && carb.c > 0) && tC > 0) {
+      const falta = Math.max(0, tC - ap(prot, gP, 'c') - ap(fat, gF, 'c'));
+      gC = falta * (usaDos ? 1 - NUT_CARB2_SHARE : 1) / carb.c * 100;
+      gC2 = usaDos ? falta * NUT_CARB2_SHARE / carb2.c * 100 : 0;
       // ⚠️ NO AÑADIR AQUÍ UN `if (carb.maxG > 0) gC = Math.min(gC, carb.maxG)`. Se probó y es
       // REDUNDANTE: `nutPortionText` YA aplica `maxG` a cualquier alimento que lo declare (en dos
       // sitios: la rama de medidas caseras, que es la que manda, y el clamp final). El tope de un
@@ -4116,9 +4154,9 @@ function nutSolveMeal(target, pick) {
       // 💎 Se supo porque el sabotaje que quitaba la línea salía VERDE. Un cambio que no mueve
       // ninguna cifra no es un arreglo, es una línea más que mantener.
     }
-    // grasa: descontando la que traen la proteína y el carbohidrato
+    // grasa: descontando la que traen la proteína y LOS DOS carbohidratos
     if (fat && fat.f > 0 && tF > 0) {
-      gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f')) / fat.f * 100);
+      gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f') - ap(carb2, gC2, 'f')) / fat.f * 100);
     }
   }
   const items = [];
@@ -4132,6 +4170,7 @@ function nutSolveMeal(target, pick) {
   };
   poner(prot, gP, 'prot');
   poner(carb, gC, 'carb');
+  poner(carb2, gC2, 'carb');
   poner(fat, gF, 'fat');
   return {
     items,
@@ -4149,10 +4188,10 @@ function nutSolveMeal(target, pick) {
 const NUT_MENUS = {
   desayuno: [
     { pick: { prot: 'huevo', carb: 'arepa', fat: 'aguacate' }, acomp: ['tomate'] },
-    { pick: { prot: 'huevo', carb: 'pan_integral', fat: 'aguacate' }, acomp: ['tomate', 'cebolla'] },
-    { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'mani' }, acomp: ['banano'] },
+    { pick: { prot: 'huevo', carb: 'pan_integral', carb2: 'banano', fat: 'aguacate' }, acomp: ['tomate', 'cebolla'] },
+    { pick: { prot: 'yogur_griego', carb: 'avena', carb2: 'banano', fat: 'mani' }, acomp: [] },
     { pick: { prot: 'queso_campesino', carb: 'arepa', fat: 'aguacate' }, acomp: ['papaya'] },
-    { pick: { prot: 'clara', carb: 'avena', fat: 'almendra' }, acomp: ['fresa'] },
+    { pick: { prot: 'clara', carb: 'avena', carb2: 'banano', fat: 'almendra' }, acomp: ['fresa'] },
     // 🔴 LOS 3 DE ABAJO LOS AÑADIÓ ANDRÉS (dictamen v471) Y SON EL ARREGLO DE FONDO DE LA
     // VARIEDAD. El banco decía 5 y en la práctica eran 3: medido sobre los 154 presupuestos de
     // desayuno REALES (22 personas × 7 días), `huevo+pan_integral` cabe **31 veces** y
@@ -4165,9 +4204,9 @@ const NUT_MENUS = {
     // y rompen el monopolio de la avena en la rama del yogur.
     // Cobertura medida al añadirlos: los presupuestos con UNA SOLA opción pasan de **15 a 0** y
     // el promedio de opciones de **2,55 a 5,12**.
-    { pick: { prot: 'huevo', carb: 'papa', fat: null }, acomp: ['cebolla'] },               // 140/154
-    { pick: { prot: 'huevo', carb: 'platano_maduro', fat: null }, acomp: ['tomate'] },      // 122/154
-    { pick: { prot: 'yogur_griego', carb: 'pan_integral', fat: 'almendra' }, acomp: ['banano'] }, // 135/154
+    { pick: { prot: 'huevo', carb: 'papa', carb2: 'arepa', fat: null }, acomp: ['cebolla'] },       // 140/154
+    { pick: { prot: 'huevo', carb: 'platano_maduro', carb2: 'arepa', fat: null }, acomp: ['tomate'] }, // 122/154
+    { pick: { prot: 'yogur_griego', carb: 'pan_integral', carb2: 'banano', fat: 'almendra' }, acomp: [] }, // 135/154
   ],
   // 🔴 MERIENDAS MAGRAS (Andrés Hyp, 2026-08-03). A la merienda se le pide el 10% de las
   // calorías del día pero el 15% de la proteína (`wProt`), así que la fuente que cubra esa
@@ -4194,20 +4233,20 @@ const NUT_MENUS = {
     { pick: { prot: 'clara', carb: 'pan_integral', fat: null }, acomp: ['mandarina'] },       // 81/154
   ],
   almuerzo: [
-    { pick: { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' }, acomp: ['ensalada', 'zanahoria'] },
-    { pick: { prot: 'res_magra', carb: 'papa', fat: 'aguacate' }, acomp: ['habichuela'] },
-    { pick: { prot: 'tilapia', carb: 'yuca', fat: 'aceite' }, acomp: ['tomate', 'cebolla'] },
-    { pick: { prot: 'lenteja', carb: 'arroz', fat: 'aguacate' }, acomp: ['ensalada'] },
-    { pick: { prot: 'cerdo_lomo', carb: 'platano_maduro', fat: 'aceite' }, acomp: ['brocoli'] },
-    { pick: { prot: 'pollo_muslo', carb: 'papa_criolla', fat: 'aguacate' }, acomp: ['ahuyama'] },
-    { pick: { prot: 'frijol', carb: 'arroz', fat: 'aguacate' }, acomp: ['tomate'] },
+    { pick: { prot: 'pollo_pechuga', carb: 'arroz', carb2: 'platano_maduro', fat: 'aceite' }, acomp: ['ensalada', 'zanahoria'] },
+    { pick: { prot: 'res_magra', carb: 'papa', carb2: 'arroz', fat: 'aguacate' }, acomp: ['habichuela'] },
+    { pick: { prot: 'tilapia', carb: 'yuca', carb2: 'arroz', fat: 'aceite' }, acomp: ['tomate', 'cebolla'] },
+    { pick: { prot: 'lenteja', carb: 'arroz', carb2: 'platano_maduro', fat: 'aguacate' }, acomp: ['ensalada'] },
+    { pick: { prot: 'cerdo_lomo', carb: 'platano_maduro', carb2: 'arroz', fat: 'aceite' }, acomp: ['brocoli'] },
+    { pick: { prot: 'pollo_muslo', carb: 'papa_criolla', carb2: 'arroz', fat: 'aguacate' }, acomp: ['ahuyama'] },
+    { pick: { prot: 'frijol', carb: 'arroz', carb2: 'platano_maduro', fat: 'aguacate' }, acomp: ['tomate'] },
   ],
   cena: [
-    { pick: { prot: 'tilapia', carb: 'papa', fat: 'aguacate' }, acomp: ['ensalada'] },
-    { pick: { prot: 'pollo_pechuga', carb: 'platano_verde', fat: 'aceite' }, acomp: ['habichuela'] },
+    { pick: { prot: 'tilapia', carb: 'papa', carb2: 'arroz', fat: 'aguacate' }, acomp: ['ensalada'] },
+    { pick: { prot: 'pollo_pechuga', carb: 'platano_verde', carb2: 'arroz', fat: 'aceite' }, acomp: ['habichuela'] },
     { pick: { prot: 'huevo', carb: 'arepa', fat: 'aguacate' }, acomp: ['tomate'] },
     { pick: { prot: 'atun', carb: 'pasta', fat: 'aceite' }, acomp: ['brocoli'] },
-    { pick: { prot: 'res_molida', carb: 'arroz', fat: 'aguacate' }, acomp: ['zanahoria', 'habichuela'] },
+    { pick: { prot: 'res_molida', carb: 'arroz', carb2: 'platano_maduro', fat: 'aguacate' }, acomp: ['zanahoria', 'habichuela'] },
   ],
 };
 
@@ -6264,6 +6303,8 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_DAY_W,
     NUT_SOLVE_PASSES,
     NUT_PROT_MIN_SHARE,
+    NUT_CARB2_SHARE,
+    NUT_CARB2_MIN_UN,
     NUT_MENUS,
     NUT_MEALS_5,
     nutAcompMacros,

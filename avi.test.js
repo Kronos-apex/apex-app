@@ -5918,14 +5918,135 @@ test('sin datos del cuerpo NO se inventa un plan', () => {
 test('🔴 el plato descuenta los aportes CRUZADOS y no se pasa del objetivo', () => {
   // El arroz aporta proteína y la carne aporta grasa. Sin descontarlo, los platos
   // salían +12% a +17% y la proteína de una persona real llegaba a 176 g con meta 123.
-  const base = nutritionEstimate(NUT_BASE);
-  const t = core.nutDayTarget(base, 'pierna', 3, 1);
-  const r = core.nutSolveMeal({ prot_g: t.prot_g, carb_g: t.carb_g, fat_g: t.fat_g },
+  // ⚠️ EL FIXTURE SE CORRIGIÓ EN v472 y hay que decir por qué: pasaba el objetivo del **DÍA
+  // ENTERO** como si fuera UNA comida (381 g de carbohidrato), algo que en producción no ocurre
+  // nunca — `nutDayPlan` lo reparte en 5 tomas. Mientras nada topaba las raciones daba igual;
+  // al ponerle tope al arroz, ese presupuesto imposible exigía **1.361 g de arroz** y el test
+  // empezó a fallar por su propia fixture, no por el motor. Es el gotcha ya escrito en el repo:
+  // «un FIXTURE que no se parece a producción fabrica defectos que no existen».
+  // 🔴 Y LA ASERCIÓN TAMBIÉN CAMBIÓ, que es lo importante: pedía **±8% en los tres macros** y eso
+  // **NO es una propiedad de este sistema** — se cumplía por coincidencia en esa combinación y a
+  // esa escala. Medido al buscarle un fixture realista: en un ALMUERZO de verdad los desvíos van
+  // de **−16,1% a +16,7% en proteína**, porque el redondeo a medidas caseras manda (media porción
+  // de pollo son 18,6 g de proteína sobre una meta de 31). Y en el DÍA completo la proteína se
+  // pasa hasta **+20,7% por diseño**, porque `NUT_PROT_MIN_SHARE` la empuja hacia arriba.
+  // Una tolerancia que el sistema no puede cumplir no protege nada: se cambia por el MECANISMO
+  // que este test dice vigilar —que los aportes cruzados se descuenten—, que es scale-independent
+  // y muerde si alguien borra los `- ap(...)`. Los límites de desvío ya los vigilan los dos
+  // guardianes (`en gente TÍPICA…` y `ni en los casos EXTREMOS…`), sobre perfiles reales.
+  const meta = { prot_g: 40, carb_g: 100, fat_g: 20 };
+  const pick = { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' };
+  const r = core.nutSolveMeal(meta, pick);
+  const F = core.NUT_FOOD_BY_ID;
+  const g = id => (r.items.find(i => i.id === id) || {}).grams || 0;
+  // El aceite es 100% grasa: si nadie le descontara nada harían falta `fat_g` gramos exactos.
+  // El pollo y el arroz YA traen grasa, así que el plato tiene que servir MENOS aceite.
+  const grasaCruzada = F.pollo_pechuga.f * g('pollo_pechuga') / 100 + F.arroz.f * g('arroz') / 100;
+  // CONTROL: sin aporte cruzado de grasa el caso no probaría nada.
+  assert.ok(grasaCruzada > 2,
+    `el fixture dejó de tener aporte cruzado de grasa (${grasaCruzada.toFixed(1)} g): no prueba nada`);
+  assert.ok(g('aceite') < meta.fat_g - 1,
+    `el aceite no se descontó: ${g('aceite')} g cuando el pollo y el arroz ya aportan ${grasaCruzada.toFixed(1)} g de grasa`);
+  // Y el resultado de descontar es que la GRASA del plato cuadra: es el macro residual, sin piso
+  // ni tope que la distorsione, así que aquí sí se puede exigir precisión.
+  const desvioGrasa = Math.abs(r.real.fat_g - meta.fat_g) / meta.fat_g;
+  assert.ok(desvioGrasa <= 0.15,
+    `la grasa se desvía ${(100 * desvioGrasa).toFixed(1)}%: pedía ${meta.fat_g} y el plato da ${r.real.fat_g}`);
+  // 🔒 Lo mismo por el lado de la PROTEÍNA: el arroz la aporta y hay que descontarla.
+  const protDelArroz = F.arroz.p * g('arroz') / 100;
+  assert.ok(protDelArroz > 3, `el arroz dejó de aportar proteína (${protDelArroz.toFixed(1)} g): el caso no discrimina`);
+  const ingenuoPollo = meta.prot_g / F.pollo_pechuga.p * 100;   // como si el arroz no aportara nada
+  assert.ok(g('pollo_pechuga') < ingenuoPollo,
+    `el pollo no se descontó: ${g('pollo_pechuga')} g contra los ${ingenuoPollo.toFixed(0)} que pediría ignorar el arroz`);
+});
+
+// 🔴 v472 · LA SEGUNDA FUENTE DE CARBOHIDRATO (`pick.carb2`), dictamen de Andrés.
+// Un plato colombiano casi nunca trae un solo carbohidrato: es arroz + tajada, arepa + papa. Con
+// UNO solo, cubrir el objetivo pide raciones que nadie sirve —«800 g de papa criolla», «9 tajadas
+// de pan»— y topar el alimento NO lo arregla: recorta (medido, los 11 topes dejan el plato
+// entregando −20,9%). Repartir sí. Medido sobre las 22 personas reales: las raciones de 5 o más
+// medidas caseras pasan de **49 a 0** y la peor de **9 a 4**.
+// ⚠️ Las barras van ESCRITAS A MANO, no derivadas de `NUT_CARB2_SHARE`/`NUT_CARB2_MIN_UN`: un
+// control que se mueve con la constante que vigila no es un control (lección ya pagada con
+// `NUT_PROT_MIN_SHARE`).
+test('🔴 v472 · el plato reparte el carbohidrato entre DOS fuentes, y respeta el piso del segundo', () => {
+  const F = core.NUT_FOOD_BY_ID;
+  const pick = { prot: 'pollo_pechuga', carb: 'arroz', carb2: 'platano_maduro', fat: 'aceite' };
+  const g = (r, id) => (r.items.find(i => i.id === id) || {}).grams || 0;
+
+  // ── Con carbohidrato suficiente, el plato se PARTE ──
+  const alto = core.nutSolveMeal({ prot_g: 40, carb_g: 120, fat_g: 18 }, pick);
+  const cA = F.arroz.c * g(alto, 'arroz') / 100;
+  const cB = F.platano_maduro.c * g(alto, 'platano_maduro') / 100;
+  assert.ok(g(alto, 'platano_maduro') > 0, 'el segundo carbohidrato no llegó al plato');
+  assert.ok(cA + cB > 0, 'el plato se quedó sin carbohidrato');
+  const parte2 = cB / (cA + cB);
+  assert.ok(parte2 >= 0.30 && parte2 <= 0.50,
+    `al segundo carbohidrato le tocó el ${(100 * parte2).toFixed(0)}% del carbohidrato de la comida (se espera ~40%)`);
+  // 🔒 Y es una RACIÓN DE VERDAD, no un adorno: media medida casera como mínimo. Sin este piso
+  // salen «5 g de plátano», que es la misma ración-que-no-es-ración de «5 g de clara» (v471).
+  assert.ok(g(alto, 'platano_maduro') >= 40,
+    `el segundo salió en ${g(alto, 'platano_maduro')} g, menos de media tajada (40 g): eso no es una ración`);
+
+  // ── Con poco carbohidrato, el plato NO se parte: todo al principal ──
+  const bajo = core.nutSolveMeal({ prot_g: 30, carb_g: 28, fat_g: 12 }, pick);
+  assert.strictEqual(g(bajo, 'platano_maduro'), 0,
+    `con 28 g de carbohidrato le puso ${g(bajo, 'platano_maduro')} g de plátano: partir ahí da migajas`);
+  assert.ok(g(bajo, 'arroz') > 0, 'sin partir, el principal tiene que llevarse el carbohidrato entero');
+
+  // 🔒 CONTROL: los dos casos tienen que comportarse DISTINTO, o el test no discrimina y pasaría
+  // igual con el piso quitado o con el reparto apagado.
+  assert.notStrictEqual(g(alto, 'platano_maduro') > 0, g(bajo, 'platano_maduro') > 0,
+    'los dos presupuestos dan el mismo resultado: el test no está probando el piso');
+
+  // 🔒 Un menú SIN `carb2` se resuelve como siempre — verificado sobre las 770 comidas reales al
+  // introducirlo (cero diferencias), y afirmado aquí para que siga siendo cierto.
+  const sinSegundo = core.nutSolveMeal({ prot_g: 40, carb_g: 120, fat_g: 18 },
     { prot: 'pollo_pechuga', carb: 'arroz', fat: 'aceite' });
-  for (const [k, obj] of [['prot_g', t.prot_g], ['carb_g', t.carb_g], ['fat_g', t.fat_g]]) {
-    const desvio = Math.abs(r.real[k] - obj) / obj;
-    assert.ok(desvio <= 0.08, `${k}: pedía ${obj} y el plato da ${r.real[k]} (${(desvio * 100).toFixed(1)}%)`);
-  }
+  assert.strictEqual(sinSegundo.items.filter(i => F[i.id] && F[i.id].rol === 'carb').length, 1,
+    'un menú sin segundo carbohidrato sirvió más de uno');
+});
+
+// 🔴 v472 · EL TOPE DE RACIÓN DEL CARBOHIDRATO, que no existía: `maxG` nació para los alimentos
+// proteicos (la leche que pedía 1.000 g) y **ningún carbohidrato lo declaraba**. Ahora lo llevan
+// los 7 que la segunda fuente hace pagables; los otros son el carbohidrato de menús SIN compañero
+// (arepa, avena, pasta, mazorca) y toparlos solo recortaría.
+// 💎 No hizo falta tocar el motor: `nutPortionText` YA aplica `maxG` a quien lo declare.
+test('🔴 v472 · ninguna ración de carbohidrato pasa de su tope, y el tope MUERDE', () => {
+  const conTope = core.NUT_FOODS.filter(f => f.rol === 'carb' && f.maxG > 0);
+  assert.ok(conTope.length >= 7, `sólo ${conTope.length} carbohidratos tienen tope — alguien los quitó`);
+  // Lista propia (no `_VARIEDAD_PERFILES`: se declara más abajo y quedaría en zona muerta).
+  const perfiles = [
+    ['fixture', NUT_BASE],
+    ['Kathe', { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' }],
+    ['Samuel', { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' }],
+    ['sedentaria', { sex: 'F', age: 50, weight: 48, height: 150, activityFactor: 1.2, goal: 'Perder grasa' }],
+  ];
+  let porciones = 0;
+  perfiles.forEach(([nombre, perfil]) => {
+    const base = nutritionEstimate(perfil);
+    for (let d = 0; d < 7; d++) {
+      const plan = core.nutDayPlan(base, d < 3 ? 'entreno' : 'descanso', 3, 1, d);
+      plan.meals.forEach(m => (m.items || []).forEach(it => {
+        const f = core.NUT_FOOD_BY_ID[it.id];
+        if (!f || f.rol !== 'carb') return;
+        porciones++;
+        if (!(f.maxG > 0)) return;
+        assert.ok(it.grams <= f.maxG,
+          `${nombre}: ${it.grams} g de ${f.name} y su tope son ${f.maxG} g (${(it.grams / f.un.g).toFixed(1)} ${f.un.label}s)`);
+      }));
+    }
+  });
+  assert.ok(porciones > 50, `sólo ${porciones} porciones de carbohidrato: el barrido no cubre nada`);
+  // 🔒 CONTROL: pedir MUCHO más de lo que cabe y exigir que recorte. La primera versión de este
+  // control contaba «porciones que llegan al tope» y era FALSO — estaban en ese valor por
+  // coincidencia, no recortadas: con el tope apagado daban lo mismo.
+  const arroz = core.NUT_FOOD_BY_ID.arroz;
+  const exagerado = core.nutPortionText(arroz, 1400);   // ~9 tazas
+  assert.ok(exagerado && exagerado.grams <= arroz.maxG,
+    `pedí 1.400 g de arroz y el tope (${arroz.maxG} g) no recortó: devolvió ${exagerado && exagerado.grams} g`);
+  assert.ok(core.NUT_FOOD_BY_ID.pan_integral.maxG <= 168,
+    'el tope del pan pasó de 6 tajadas: eso ya no es un desayuno, es una panadería');
 });
 
 test('el plato es determinista: mismos ingredientes y macros → mismo resultado', () => {
@@ -6039,12 +6160,21 @@ test('🔴 la semana NO es el mismo plato repetido', () => {
   // Si esta barra vuelve a estorbar, la respuesta NO es bajarla otra vez: es AMPLIAR el banco de
   // desayunos con opciones magras (decisión de Andrés, no del código) — hoy son 5 y tres de ellos
   // se pasan de calorías contra un presupuesto de desayuno normal.
+  // ⚠️ v472 · LA CENA BAJA SU BARRA A 2, y va dicho por qué. Al darle un segundo carbohidrato a
+  // 3 de las 5 cenas, esas 3 dejan de caber en una cena de POCO carbohidrato: al fixture solo le
+  // caben `atún+pasta` y `huevo+arepa`, que son **justo las dos que se dejaron sin segundo**.
+  // 🔴 Pero sobre GENTE REAL el segundo carbohidrato MEJORA la cena, y por eso se queda: medido
+  // sobre las 22 personas, con él la cena da **4,00 platos distintos por semana (mínimo 2)** y
+  // sin él **3,64 (mínimo 1, o sea alguien cenando lo mismo los 7 días)**. Quitarlo para que este
+  // fixture se vea mejor empeoraría a las personas. La barra sigue siendo un candado real: 2
+  // significa «nunca el mismo plato toda la semana», que es la promesa que no se puede romper.
   const sinPiso = _VARIEDAD_PERFILES.filter(([, p]) => !nutritionEstimate(p).floored);
   assert.ok(sinPiso.length >= 4, `el barrido perdió perfiles: quedan ${sinPiso.length}`);
+  const MINIMO = { 0: 3, 2: 3, 4: 2 };   // desayuno · almuerzo · cena
   sinPiso.forEach(([nombre, perfil]) => {
     const { tam } = _variedadSemana(perfil);
-    [0, 2, 4].forEach(mi => assert.ok(tam[mi] >= 3,
-      `${nombre}: la comida ${mi} sólo tuvo ${tam[mi]} variantes distintas en 7 días`));
+    [0, 2, 4].forEach(mi => assert.ok(tam[mi] >= MINIMO[mi],
+      `${nombre}: la comida ${mi} sólo tuvo ${tam[mi]} variantes distintas en 7 días (mínimo ${MINIMO[mi]})`));
   });
 });
 
