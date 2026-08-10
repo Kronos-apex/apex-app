@@ -3770,6 +3770,21 @@ const NUT_FOODS = [
   { id: 'frijol', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, maxG: 350, un: { label: 'taza', g: 180 } },
   { id: 'garbanzo', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, maxG: 300, un: { label: 'taza', g: 165 } },
   // ── CARBOHIDRATO ──
+  // ⚠️ AQUÍ NO HAY `maxG` A PROPÓSITO, Y SE INTENTÓ (2026-08-10). Léelo antes de volver a ponerlo.
+  // EL PROBLEMA ES REAL: `maxG` nació para los alimentos proteicos (la leche que pedía 1.000 g) y
+  // ningún carbohidrato lo declara, así que —medido sobre 770 comidas reales— **170 sirven ≥3
+  // raciones caseras**: «252 g de pan integral» son 9 tajadas y «800 g de papa criolla» son 8
+  // porciones. Pero **topar NO lo arregla**, y esto está medido por alimento sobre las 22 personas:
+  //   · los 5 topes «baratos» juntos → carbohidrato entregado **−6,8% → −11,1%** y las porciones
+  //     sobre 3 raciones se quedan **igual (139 → 140)**. Dos de ellos las AUMENTAN, porque al
+  //     recortar un alimento el selector se va a otro menú con porciones más grandes.
+  //   · topar los 11 → **−20,9%** de carbohidrato y rompe el guardián de −13% que ya existe.
+  //   · `mazorca` no cambia NADA (idéntico con y sin).
+  // 🔑 LA CAUSA: **cada menú tiene UN SOLO carbohidrato**, así que topar no reparte — RECORTA. Se
+  // cambiaría una ración fea (visible pero inocua) por un plato que no entrega lo que promete
+  // (invisible y peor), que es la misma clase de defecto que se mató en v471, en espejo.
+  // ✅ LA SALIDA es una SEGUNDA fuente de carbohidrato en el menú (arroz + tajada, arepa + papa),
+  // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
   { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, un: { label: 'taza', g: 158 } },
   { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, un: { label: 'papa mediana', g: 150 } },
   { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, un: { label: 'porción', g: 100 } },
@@ -4093,6 +4108,13 @@ function nutSolveMeal(target, pick) {
     // carbohidrato: descontando el que traen la proteína y la grasa
     if (carb && carb.c > 0 && tC > 0) {
       gC = Math.max(0, (tC - ap(prot, gP, 'c') - ap(fat, gF, 'c')) / carb.c * 100);
+      // ⚠️ NO AÑADIR AQUÍ UN `if (carb.maxG > 0) gC = Math.min(gC, carb.maxG)`. Se probó y es
+      // REDUNDANTE: `nutPortionText` YA aplica `maxG` a cualquier alimento que lo declare (en dos
+      // sitios: la rama de medidas caseras, que es la que manda, y el clamp final). El tope de un
+      // alimento se pone DECLARÁNDOLO en la tabla, no tocando el solver — medido, con la línea y
+      // sin ella los resultados son idénticos en las 770 comidas reales.
+      // 💎 Se supo porque el sabotaje que quitaba la línea salía VERDE. Un cambio que no mueve
+      // ninguna cifra no es un arreglo, es una línea más que mantener.
     }
     // grasa: descontando la que traen la proteína y el carbohidrato
     if (fat && fat.f > 0 && tF > 0) {
