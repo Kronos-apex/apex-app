@@ -4,6 +4,69 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛑 2026-08-10 — avi-v471: el menú se elegía solo por calorías y le quitaba proteína a la gente
+
+**Producción en `avi-v471`, verificada** (`?v=471` + `avi-v471` en sw.js + `_prodcheck 471` verde,
+`jsErrors: []`). Suite 677 → **681/681**, hook 12/12, **5 de 5 sabotajes muerden**.
+
+Responde al rechazo de v470 por parte de Fable. Medido por la **ruta de producción**
+(`nutBaseFor`) sobre las **22 personas reales** del respaldo del 9-ago, 154 días-plan:
+
+| | v470 | v471 |
+|---|---|---|
+| peor día de proteína | −18,2% (Kathe) | **−1,7%** (Astrid) |
+| días bajo −10% de proteína | **18 de 154** | **0** |
+| misma merienda dos veces el mismo día | 49,4% | **0,0%** |
+| peor exceso de kcal | +10,7% | **+9,0%** |
+| desayunos distintos/semana | 3,64 (1 persona con ≤2) | **4,64** (0) |
+| meriendas distintas/semana | 3,86 | 3,41 ⬇ |
+
+### Los 3 P0
+1. **El filtro miraba SOLO kcal.** Ahora es bilateral y POR MACRO: techo (`NUT_MENU_MAX_OVER`),
+   piso (`NUT_MENU_MAX_UNDER`) y **piso propio de proteína** (`NUT_MENU_PROT_UNDER=0.10`,
+   firmado por Andrés: 0,10 domina a 0,15 en proteína **y** en peor caso de calorías).
+2. **Las dos meriendas caían en la misma casilla.** El desfase `i*2` es FIJO y desde v470 el pool
+   factible cambia de tamaño → con 1, 2 o 4 es un **no-op**. *Un desfase constante solo separa si
+   el módulo es constante.* Ahora la comida sabe qué se sirvió ya hoy de su banco (`evitar`), y
+   ante un pool de UNO prefiere un menú distinto que se salga un poco antes que repetir plato.
+3. **El respaldo desempataba por `|over|`** — calorías puras, el MISMO defecto que se estaba
+   matando, en la puerta de al lado. Ahora minimiza la PEOR de las tres violaciones. Sin ponderar:
+   el desempate «proteína a cualquier precio» disparaba las kcal de 15,3% a 23,6%.
+
+### 🎓 Lo que enseñó, y no estaba en el guion
+- 🔴 **Mi hipótesis de la variedad era FALSA y la medición la tumbó.** Culpé al respaldo → es el
+  **5,9%** de las comidas. La causa real: **el banco de 5 desayunos eran 3** (`huevo+pan_integral`
+  cabía 31/154, `queso_campesino+arepa` 22 **por imposibilidad estructural**: su `maxG` lo topa en
+  15 g de proteína cuando el piso pide ~23). **La disyuntiva «proteína contra variedad» que le
+  planteé al PO era un artefacto del tamaño del banco, no una ley.**
+- 🔴 **DOS candados nacieron SIN DIENTES y los cazó el sabotaje, no yo.** Quitar el piso de kcal y
+  devolver el desempate a kcal dejaban la suite **VERDE**. El primero porque **el total del día
+  TAPA la comida rota** (quitarlo no mueve el día; las comidas cortas van de 10 a 34 de 770) → la
+  aserción va **POR COMIDA**. El segundo porque mi presupuesto de prueba era uno donde **los dos
+  criterios coinciden**: el defecto satisfacía la aserción.
+- 🔴 **Medí 21 personas cuando eran 22.** Astrid tiene peso pero no talla: `nutritionEstimate` la
+  descarta, `nutBaseFor` (producción) la resuelve por el plan del coach — y era **la peor
+  servida**. → GOTCHAS VIGENTES.
+- 🔴 **Se RECHAZÓ la línea del piso de proteína que dejó la auditoría anterior** (acreditar en
+  `nutSolveMeal` lo que traen carbo y grasa, marcada como «no toca la doctrina de Andrés»).
+  **Sí la toca** y lo cazó un test viejo: deja **27 raciones de ≤40 g** («5 g de huevo entero») y
+  **EMPEORA** el peor día de proteína. Andrés lo confirmó y midió peor. ⚠️ Pero **el caso que
+  quería arreglar SÍ se reproduce**: **51 de 770 comidas** sirven >130% de su propia proteína —
+  y es la **AVENA (17 g/100 g)**, no el pan. Se arregla en el MENÚ, no en el solver.
+
+### Dictamen de Andrés (v471): ✅ APROBADO, con orden
+Añadidos **3 desayunos + 2 meriendas** con carbohidrato de baja densidad. Presupuestos de desayuno
+con UNA sola opción: **15 → 0**. Su orden para lo siguiente: (1) banco, (2) **re-medir**, (3) recién
+ahí evaluar `0,10 → 0,05` y el tope de ración de los carbohidratos.
+
+### ⏭️ Abierto
+- **Meriendas: 3,86 → 3,41**, único indicador por debajo de v470. Los 2 menús nuevos recuperan
+  2,91 → 3,41 pero no todo, y **10 de 154 días no tienen NINGÚN menú de merienda factible**.
+  ⚠️ Andrés midió que subían a 5,09; **mi medición no lo reproduce**. Re-medir antes de decidir.
+- 🟡 **`maxG` solo existe en media tabla**: 170 de 770 comidas sirven ≥3 raciones caseras de un
+  carbohidrato («400 g de plátano maduro»). Preexistente (v470: 155). → GOTCHAS VIGENTES.
+- Siguen sin llegar: **Fable · dolor (v469)** y la auditoría de **fixtures (R2.2)**.
+
 ## Roadmap histórico (v1.0 → v1.5, bloques ✅)
 
 ### ✅ v1.0 — Base (2025)
