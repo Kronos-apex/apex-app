@@ -1229,10 +1229,12 @@ function foodCatalogLoad(){
   let v='';
   try{ const s=document.querySelector('script[src*="avi-core.js?v="]');
        const m=s&&s.getAttribute('src').match(/\?v=(\d+)/); if(m)v='?v='+m[1]; }catch(e){}
+  // F5 — TERCERA fuente: lo escaneado que este teléfono ya vio. Se SUMA a las otras dos (nunca
+  // las sustituye) y por eso sigue estando aunque `foods.json` no cargue.
   _foodCatCargando=fetch('foods.json'+v)
     .then(r=>r.ok?r.json():null)
     .catch(()=>null)
-    .then(j=>{ _foodCat=foodCatalog(j); _foodCatCargando=null; return _foodCat; });
+    .then(j=>{ _foodCat=foodCatalog(j,_bcFoods()); _foodCatCargando=null; return _foodCat; });
   return _foodCatCargando;
 }
 const FOODLOG_MEAL_LABEL={desayuno:'Desayuno',media_m:'Media mañana',almuerzo:'Almuerzo',media_t:'Media tarde',cena:'Cena'};
@@ -1293,7 +1295,8 @@ let _flView={modo:'dia',meal:'desayuno',q:'',offset:0,sel:null};
 function openFoodLogRoom(meal){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
   if(typeof isFreeClient==='function'&&isFreeClient(c))return;
-  _flView={modo:'dia',meal:meal||_flView.meal||'desayuno',q:'',offset:0,sel:null};
+  _flScanStop();
+  _flView={modo:'dia',meal:meal||_flView.meal||'desayuno',q:'',offset:0,sel:null,ean:'',err:'',errores:{},aviso:null,base:'porcion',draft:null};
   const room=document.getElementById('foodlog-room'); if(!room)return;
   renderFoodLogRoom();
   const body=document.getElementById('flroom-body'); if(body)body.scrollTop=0;
@@ -1301,6 +1304,7 @@ function openFoodLogRoom(meal){
   foodCatalogLoad().then(()=>{ if(_flView.modo==='buscar')renderFoodLogRoom(); });
 }
 function closeFoodLogRoom(){
+  _flScanStop();   // 🔒 salir de la habitación apaga la cámara — incluido el botón «‹ Volver»
   const room=document.getElementById('foodlog-room');
   if(room)room.classList.remove('on');
   _syncRoomBodyClass();
@@ -1350,11 +1354,20 @@ function _flMacroChip(et,o,unidad){
     ${pct==null?'':`<div style="height:3px;background:color-mix(in srgb,var(${col}) 20%,transparent);border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barra}"></div></div>`}
   </div>`;
 }
+const _FL_VISTAS={buscar:_flBuscarHtml,escanear:_flEscanearHtml,buscando:_flBuscandoHtml,nuevo:_flNuevoHtml};
 function renderFoodLogRoom(){
   const body=document.getElementById('flroom-body'); if(!body)return;
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c){body.innerHTML='';return;}
   if(!c.foodlogOk){ body.innerHTML=_flAvisoHtml(c)+'<div style="height:30px"></div>'; return; }
-  body.innerHTML=(_flView.modo==='buscar'?_flBuscarHtml(c):_flDiaHtml(c))+'<div style="height:40px"></div>';
+  const vista=_FL_VISTAS[_flView.modo]||_flDiaHtml;
+  body.innerHTML=vista(c)+'<div style="height:40px"></div>';
+  // 🔴 El `<video>` se destruye en cada repintado (todo esto es `innerHTML`), así que el stream
+  // se re-engancha DESPUÉS de pintar. Sin esto, cualquier re-render deja la cámara encendida
+  // detrás de un recuadro negro: prendida y sin servir para nada.
+  if(_flView.modo==='escanear'&&_flScan.stream){
+    const v=document.getElementById('fl-video');
+    if(v&&v.srcObject!==_flScan.stream){ v.srcObject=_flScan.stream; v.play().catch(()=>{}); }
+  }
 }
 function _flDiaHtml(c){
   const hoy=foodLogDay(c.foodlog);
@@ -1416,6 +1429,7 @@ function _flBuscarHtml(c){
       <button class="btn bg bsm" style="margin-bottom:10px" onclick="flVolverDia()">‹ ${FOODLOG_MEAL_LABEL[_flView.meal]}</button>
       <input class="inp" id="fl-q" type="search" inputmode="search" placeholder="Busca un alimento (arroz, huevo, lulo…)"
         value="${esc(_flView.q)}" aria-label="Buscar alimento" oninput="flQ(this.value)">
+      <button class="btn bg" style="width:100%;margin-top:8px" onclick="flEscanear()">📷 Escanear un empaque</button>
     </div>`;
   if(!cat.length)return html+`<div class="empty" style="padding:24px"><div class="etxt">Cargando alimentos…</div></div>`;
   if(_flView.sel)return html+_flCantidadHtml(_flView.sel);
@@ -1423,7 +1437,7 @@ function _flBuscarHtml(c){
   html+=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${r.total} resultado${r.total!==1?'s':''}${r.hayMas?' · mostrando los primeros '+r.items.length:''}</div>`;
   r.items.forEach(f=>{
     html+=`<button type="button" style="display:block;width:100%;text-align:left;padding:10px 12px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px;cursor:pointer" onclick="flElegir('${esc(f.id)}')">
-      <div style="font-size:13px;color:var(--t1);font-weight:600">${esc(f.name)}</div>
+      <div style="font-size:13px;color:var(--t1);font-weight:600">${esc(f.name)}${_flSinVerificarHtml(f)}</div>
       <div style="font-size:11px;color:var(--t2)">${f.kcal==null?'sin datos':f.kcal+' kcal por 100 g'}${f.un?` · ${esc(f.un.label)} ${f.un.g} g`:''}</div>
     </button>`;
   });
@@ -1432,8 +1446,9 @@ function _flBuscarHtml(c){
 function _flCantidadHtml(f){
   const un=f.un&&f.un.g>0?f.un:null;
   return `<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px">
-    <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:2px">${esc(f.name)}</div>
+    <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:2px">${esc(f.name)}${_flSinVerificarHtml(f)}</div>
     <div style="font-size:11.5px;color:var(--t2);margin-bottom:12px">${f.kcal==null?'sin datos':f.kcal+' kcal por 100 g'}</div>
+    ${f.src==='bc'&&!f.verified?`<div style="font-size:11.5px;line-height:1.5;color:var(--t2);background:var(--surface,var(--bg));border-radius:var(--rsm);padding:8px 10px;margin-bottom:12px">Estos datos los copió del empaque otra persona y tu coach todavía no los ha revisado.</div>`:''}
     ${un?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${[0.5,1,2].map(n=>`<button class="btn bg bsm" onclick="flGuardar('${esc(f.id)}',${Math.round(un.g*n)})">${n===0.5?'½':n} ${esc(un.label)} · ${Math.round(un.g*n)} g</button>`).join('')}
     </div>`:''}
@@ -1444,6 +1459,100 @@ function _flCantidadHtml(f){
     </div>
     <button class="btn bg bsm" style="width:100%;margin-top:10px" onclick="flCancelarSel()">Elegir otro alimento</button>
   </div>`;
+}
+// ── F5 · las tres vistas del escáner ──────────────────────────────────────────
+// Marca de «esto lo aportó alguien y nadie lo ha revisado». Va en TODAS las superficies donde
+// aparece un alimento escaneado (lista de resultados y pantalla de cantidad): un dato sin
+// revisar que se ve igual que uno verificado es peor que no tenerlo — la yuca «cocida» con los
+// valores de la cruda cuadraba perfecto consigo misma y el motor recetaba 22% de menos.
+function _flSinVerificarHtml(f){
+  if(!f||f.src!=='bc'||f.verified)return '';
+  return `<span style="display:inline-block;font-size:10px;font-weight:800;color:var(--ort);background:var(--orl);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle">sin revisar</span>`;
+}
+function _flVolverBuscarHtml(){
+  return `<button class="btn bg bsm" style="margin-bottom:12px" onclick="flSalirEscaner()">‹ Buscar alimento</button>`;
+}
+function _flEscanearHtml(){
+  const m=_flScan.motivo;
+  // Cuando la cámara no se puede usar se dice POR QUÉ y qué hacer. Nunca un botón que no
+  // responde: eso se lee como que la app está rota, y la persona no vuelve a intentarlo.
+  const excusa=m==='soporte'
+      ? 'Tu navegador no puede leer códigos con la cámara (le pasa al Safari del iPhone). Escribe los números y funciona igual.'
+    :m==='permiso'
+      ? 'No nos diste permiso para usar la cámara. Puedes dárselo desde los ajustes del navegador, o escribir los números del código.'
+    :m==='camara'
+      ? 'No pudimos encender la cámara. Escribe los números del código y seguimos.'
+    :null;
+  let html=_flVolverBuscarHtml();
+  if(!excusa&&_flScan.stream){
+    html+=`<div style="position:relative;border-radius:var(--r);overflow:hidden;background:#000;margin-bottom:10px">
+      <video id="fl-video" playsinline muted autoplay style="width:100%;display:block;max-height:46vh;object-fit:cover"></video>
+      <div aria-hidden="true" style="position:absolute;inset:18% 8%;border:2px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.28)"></div>
+    </div>
+    <div style="font-size:13px;color:var(--t2);text-align:center;margin-bottom:14px" aria-live="polite">Apunta al código de barras del empaque</div>`;
+  }else if(!excusa){
+    html+=`<div class="empty" style="padding:24px"><div class="etxt">Encendiendo la cámara…</div><div class="esub">Si te pregunta, dale permiso para usarla.</div></div>`;
+  }else{
+    html+=`<div style="background:var(--bll);border-left:3px solid var(--bl);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.55;color:var(--blt)">${esc(excusa)}</div>`;
+  }
+  if(_flView.err)html+=`<div style="background:var(--orl);border-left:3px solid var(--or);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.55;color:var(--ort)">${esc(_flView.err)}</div>`;
+  html+=`<label class="ilbl" for="fl-ean">O escribe los números que están debajo del código</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input class="inp" id="fl-ean" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej: 7702001008926" style="flex:1" value="${esc(_flView.ean||'')}">
+      <button class="btn bp" onclick="flBuscarEan(document.getElementById('fl-ean').value)">Buscar</button>
+    </div>`;
+  return html;
+}
+function _flBuscandoHtml(){
+  return _flVolverBuscarHtml()+`<div class="empty" style="padding:28px"><div class="etxt">Buscando ese producto…</div><div class="esub">Miramos si alguien ya lo agregó.</div></div>`;
+}
+function _flNuevoHtml(){
+  const e=_flView.errores||{}, d=_flView.draft||{};
+  const porcion=_flView.base==='porcion';
+  const v=(k,def)=>esc(d[k]==null?(def==null?'':def):d[k]);
+  const err=k=>e[k]?`<div style="font-size:11.5px;color:var(--ort);margin-top:4px">${esc(e[k])}</div>`:'';
+  const num=(id,k,ph,lbl)=>`<div style="flex:1;min-width:96px">
+      <label class="ilbl" for="${id}">${lbl}</label>
+      <input class="inp" id="${id}" type="number" inputmode="decimal" step="0.1" min="0" placeholder="${ph}" value="${v(k)}">
+      ${err(k)}</div>`;
+  const tab=(base,txt)=>`<button type="button" class="btn ${_flView.base===base?'bp':'bg'} bsm" style="flex:1" onclick="flBase('${base}')" aria-pressed="${_flView.base===base}">${txt}</button>`;
+  return _flVolverBuscarHtml()+`
+    <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:800;color:var(--gt);margin-bottom:4px">Este producto todavía no está</div>
+      <div style="font-size:13px;line-height:1.55;color:var(--gt)">Cópiale los datos a la tabla nutricional del empaque y queda para todos: nadie más va a tener que escribirlo.</div>
+      <div style="font-size:11.5px;color:var(--t2);margin-top:8px">Código: <b>${esc(_flView.ean||'')}</b></div>
+    </div>
+    ${e._red?`<div style="background:var(--orl);border-left:3px solid var(--or);border-radius:var(--rsm);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--ort)">${esc(e._red)}</div>`:''}
+    <label class="ilbl" for="bc-name">¿Qué es?</label>
+    <input class="inp" id="bc-name" type="text" placeholder="Ej: Yogur griego natural" value="${v('name')}">${err('name')}
+    <label class="ilbl" for="bc-brand" style="margin-top:10px">Marca <span style="font-weight:600;color:var(--t3)">(si quieres)</span></label>
+    <input class="inp" id="bc-brand" type="text" placeholder="Ej: Alpina" value="${v('brand')}">${err('brand')}
+
+    <div style="margin-top:16px;font-size:13px;font-weight:800;color:var(--t1)">Los números del empaque, ¿de qué cantidad hablan?</div>
+    <div style="font-size:11.5px;color:var(--t2);margin:3px 0 8px">Mira arriba de la tabla: casi siempre dice «por porción».</div>
+    <div style="display:flex;gap:6px;margin-bottom:${porcion?'10px':'14px'}">${tab('porcion','Por porción')}${tab('g100','Por 100 g')}</div>
+    ${porcion?`<div style="margin-bottom:14px">
+      <label class="ilbl" for="bc-porcion">¿De cuántos gramos es esa porción?</label>
+      <input class="inp" id="bc-porcion" type="number" inputmode="decimal" step="0.1" min="1" placeholder="Ej: 30" value="${v('porcionG')}">
+      ${err('porcionG')}</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${num('bc-kcal','kcal','Ej: 120','Calorías')}
+      ${num('bc-p','p','Ej: 8','Proteína (g)')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      ${num('bc-c','c','Ej: 25','Carbohidratos (g)')}
+      ${num('bc-f','f','Ej: 3','Grasa (g)')}
+    </div>
+    ${e.suma?`<div style="font-size:12px;color:var(--ort);background:var(--orl);border-radius:var(--rsm);padding:10px 12px;margin-top:10px">${esc(e.suma)}</div>`:''}
+    ${_flView.aviso?`<div style="font-size:12px;color:var(--ylt);background:var(--yll);border-radius:var(--rsm);padding:10px 12px;margin-top:10px">${esc(_flView.aviso)}</div>`:''}
+    ${porcion?'':`<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="flex:2;min-width:140px"><label class="ilbl" for="bc-unlabel">Medida casera <span style="font-weight:600;color:var(--t3)">(opcional)</span></label>
+        <input class="inp" id="bc-unlabel" type="text" placeholder="Ej: tarrina" value="${v('un_label')}">${err('un_label')}</div>
+      <div style="flex:1;min-width:96px"><label class="ilbl" for="bc-ung">¿Cuánto pesa?</label>
+        <input class="inp" id="bc-ung" type="number" inputmode="decimal" step="0.1" min="1" placeholder="g" value="${v('un_g')}">${err('un_g')}</div>
+    </div>`}
+    <button class="btn bp" id="bc-save" style="width:100%;margin-top:16px" onclick="flGuardarProducto()">Guardar y agregar</button>
+    <div style="font-size:11.5px;color:var(--t3);text-align:center;margin-top:8px">Tu coach lo revisa después. Mientras tanto ya lo puedes usar.</div>`;
 }
 function flBuscar(meal){ _flView.modo='buscar'; _flView.meal=meal||_flView.meal; _flView.q=''; _flView.sel=null; renderFoodLogRoom(); foodCatalogLoad().then(()=>renderFoodLogRoom()); }
 function flVolverDia(){ _flView.modo='dia'; _flView.sel=null; renderFoodLogRoom(); }
@@ -1479,6 +1588,191 @@ function flQuitar(entryId){
   c.foodlog=foodLogRemove(c.foodlog,habitDayKey(),entryId);
   sv('ax_c',DB.clients);
   renderFoodLogRoom(); renderHabitsCard(c);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// F5 · ESCÁNER DE CÓDIGOS DE BARRAS — lo que toca cámara, red y DOM
+// ──────────────────────────────────────────────────────────────────────
+// Pedido del PO (2026-08-10): «que cualquier usuario pueda escanear cualquier alimento y ese
+// quede guardado en nuestra base de datos, y así no tener que estar escaneando siempre».
+// La parte que se puede decidir sin cámara vive PURA en avi-core (`barcodeDraft`, `eanValid`,
+// `labelPer100`, `foodFromBarcode`); aquí va lo demás.
+//
+// 🔴 CERO DEPENDENCIAS: `BarcodeDetector` es NATIVO del navegador (Chrome/Android). No entra
+// ninguna librería de lectura de códigos — la restricción del proyecto no se negocia por una
+// feature. En iOS Safari NO existe: ahí se teclea el número, y se dice POR QUÉ, sin fingir que
+// el botón está roto.
+// 🔴 EL CATÁLOGO ESCANEADO ES PÚBLICO Y NO ES DATO PERSONAL: son empaques. Por eso su caché
+// local (`ax_bccache`) NO va en SB_KEYS — no es del usuario, es del catálogo, y sincronizarlo
+// haría que el yogur de uno viajara en la fila de datos personales de otro.
+
+const BC_CACHE_KEY='ax_bccache';
+const BC_CACHE_MAX=200;      // lo que una persona escanea de verdad son sus 20-30 de siempre
+let _bcCache=null;
+
+// Caché de lo YA visto en este teléfono. No es un lujo: es lo que hace que el yogur de todos los
+// días aparezca al teclear «yogur» aunque no haya red, y que no haya que volver a escanearlo.
+function _bcCacheGet(){
+  if(_bcCache)return _bcCache;
+  try{ const raw=JSON.parse(localStorage.getItem(BC_CACHE_KEY)||'[]'); _bcCache=Array.isArray(raw)?raw:[]; }
+  catch(e){ _bcCache=[]; }
+  return _bcCache;
+}
+// Guarda la fila y la pone de primera (recientes arriba), sin duplicar por código.
+function _bcCachePut(row){
+  if(!row||!row.ean)return;
+  const ean=(typeof eanNormalize==='function')?eanNormalize(row.ean):String(row.ean);
+  const lista=_bcCacheGet().filter(r=>r&&r.ean!==ean);
+  lista.unshift(Object.assign({},row,{ean:ean}));
+  _bcCache=lista.slice(0,BC_CACHE_MAX);
+  try{ localStorage.setItem(BC_CACHE_KEY,JSON.stringify(_bcCache)); }catch(e){}
+  _foodCat=null; _foodCatCargando=null;   // el catálogo en memoria se rearma con la fuente nueva
+}
+function _bcFoods(){
+  return _bcCacheGet().map(r=>(typeof foodFromBarcode==='function')?foodFromBarcode(r):null).filter(Boolean);
+}
+function _bcClient(){ return (typeof AUTH!=='undefined'&&AUTH.client)?AUTH.client():null; }
+function _bcSellado(){ return typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE); }
+const BC_COLS='ean,name,brand,kcal,p,c,f,un_label,un_g,verified';
+
+// ── Estado del escaneo (cámara). Vive fuera de `_flView` a propósito: `_flView` se reescribe
+// entero en cada navegación y la cámara TIENE que sobrevivir a eso para poder apagarse. ──
+const _flScan={on:false,stream:null,timer:null,motivo:null};
+function _flScanSoportado(){ return typeof window!=='undefined'&&'BarcodeDetector' in window; }
+// 🔒 Apagar la cámara es obligación, no cortesía: un stream vivo deja la luz del celular
+// encendida y es lo que la gente lee (con razón) como «esta app me está grabando». Se llama
+// desde TODAS las salidas: cerrar la habitación, volver atrás, elegir producto, error.
+function _flScanStop(){
+  _flScan.on=false;
+  if(_flScan.timer){ clearInterval(_flScan.timer); _flScan.timer=null; }
+  if(_flScan.stream){ try{ _flScan.stream.getTracks().forEach(t=>t.stop()); }catch(e){} _flScan.stream=null; }
+}
+async function _flScanStart(){
+  if(_flScan.on)return;
+  _flScan.motivo=null;
+  if(!_flScanSoportado()){ _flScan.motivo='soporte'; renderFoodLogRoom(); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    // Mientras pedíamos permiso la persona pudo haberse ido de la pantalla. Si ya no está en el
+    // escáner, se suelta la cámara de inmediato en vez de dejarla prendida en segundo plano.
+    if(_flView.modo!=='escanear'){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} return; }
+    _flScan.stream=stream; _flScan.on=true;
+    renderFoodLogRoom();
+    const det=new window.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','itf','code_128']});
+    _flScan.timer=setInterval(async()=>{
+      const v=document.getElementById('fl-video');
+      if(!v||!_flScan.on){ _flScanStop(); return; }
+      if(v.readyState<2)return;
+      try{
+        const hits=await det.detect(v);
+        const bueno=(hits||[]).map(h=>h.rawValue).find(x=>typeof eanValid==='function'&&eanValid(x));
+        if(bueno){ _flScanStop(); if(navigator.vibrate)navigator.vibrate(30); flBuscarEan(bueno); }
+      }catch(e){ /* un frame que no se pudo leer no es un error: el siguiente sí */ }
+    },350);
+  }catch(e){
+    // NotAllowedError = dijo que no (o el navegador lo bloqueó). Todo lo demás = no hay cámara.
+    _flScan.motivo=(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))?'permiso':'camara';
+    renderFoodLogRoom();
+  }
+}
+function flEscanear(meal){
+  _flView.modo='escanear'; _flView.meal=meal||_flView.meal; _flView.sel=null; _flView.ean=''; _flView.err='';
+  renderFoodLogRoom();
+  _flScanStart();
+}
+function flSalirEscaner(){ _flScanStop(); _flView.modo='buscar'; renderFoodLogRoom(); }
+
+// ── Buscar el código: primero aquí, después en la nube, y si no está, se aporta ──
+async function flBuscarEan(raw){
+  const ean=(typeof eanNormalize==='function')?eanNormalize(raw):String(raw||'');
+  _flView.ean=ean; _flView.err='';
+  if(typeof eanValid!=='function'||!eanValid(ean)){
+    _flView.modo='escanear'; _flView.err='Ese código no cuadra. Revisa si falta o sobra un número.';
+    renderFoodLogRoom(); return;
+  }
+  // 1) Lo que este teléfono ya vio: instantáneo y sin red.
+  const local=_bcCacheGet().find(r=>r&&r.ean===ean);
+  if(local){ _flAbrirBc(local); return; }
+  // 2) Lo que aportó cualquier otra persona. Este paso ES la feature: que no haya que volver a
+  //    escribir lo que alguien ya escribió.
+  _flView.modo='buscando'; renderFoodLogRoom();
+  try{
+    const cli=_bcClient();
+    if(!cli)throw new Error('sin sesión');
+    const {data,error}=await cli.from('food_barcodes').select(BC_COLS).eq('ean',ean).maybeSingle();
+    if(error)throw error;
+    if(data){ _bcCachePut(data); _flAbrirBc(data); return; }
+    flNuevoProducto(ean);                      // 3) no está: lo aporta quien lo tiene en la mano
+  }catch(e){
+    // Sin red no se puede saber si el producto existe. Decirlo, y dejar la puerta abierta a
+    // escribirlo igual — nunca dejar a alguien mirando una pantalla que no hace nada.
+    _flView.modo='escanear';
+    _flView.err='No pudimos consultar el catálogo (revisa tu conexión). Puedes escribir el producto tú.';
+    renderFoodLogRoom();
+  }
+}
+// Un producto encontrado entra por la MISMA puerta que cualquier alimento del catálogo: la
+// pantalla de cantidad. Sin flujo paralelo, sin segunda forma de registrar lo mismo.
+function _flAbrirBc(row){
+  _bcCachePut(row);
+  const f=(typeof foodFromBarcode==='function')?foodFromBarcode(row):null;
+  if(!f){ _flView.modo='buscar'; renderFoodLogRoom(); return; }
+  foodCatalogLoad().then(()=>{
+    _flView.modo='buscar'; _flView.q=''; _flView.sel=f;
+    renderFoodLogRoom();
+  });
+}
+function flNuevoProducto(ean){
+  _flScanStop();
+  _flView.modo='nuevo'; _flView.ean=(typeof eanNormalize==='function')?eanNormalize(ean):String(ean||'');
+  _flView.errores={}; _flView.aviso=null; _flView.base='porcion';
+  renderFoodLogRoom();
+}
+// Cambiar entre «por porción» y «por 100 g» conserva lo tecleado: se lee del DOM antes de
+// repintar, o la persona pierde los seis números que acaba de copiar del empaque.
+function flBase(base){
+  _flView.base=base==='g100'?'g100':'porcion';
+  _flView.draft=_flLeerForm();
+  renderFoodLogRoom();
+}
+// Qué campo del formulario alimenta qué dato del borrador. Explícito a propósito: es la tabla
+// que hay que mirar al agregar un campo, y una sola fuente para leerlos todos.
+const _FL_CAMPOS={name:'bc-name',brand:'bc-brand',porcionG:'bc-porcion',kcal:'bc-kcal',p:'bc-p',c:'bc-c',f:'bc-f',un_label:'bc-unlabel',un_g:'bc-ung'};
+function _flLeerForm(){
+  // 🔴 Si el campo no está pintado (la medida casera se oculta en «por porción»), se conserva lo
+  // que la persona ya había escrito. Cambiar de pestaña no puede borrarle seis números que
+  // acaba de copiar del empaque.
+  const prev=_flView.draft||{};
+  const d={ean:_flView.ean,base:_flView.base};
+  Object.keys(_FL_CAMPOS).forEach(k=>{
+    const el=document.getElementById(_FL_CAMPOS[k]);
+    d[k]=el?el.value:(prev[k]||'');
+  });
+  return d;
+}
+async function flGuardarProducto(){
+  const d=_flLeerForm();
+  _flView.draft=d;
+  const r=(typeof barcodeDraft==='function')?barcodeDraft(d):{ok:false,errores:{},aviso:null,fila:null};
+  _flView.errores=r.errores||{}; _flView.aviso=r.aviso||null;
+  if(!r.ok){ renderFoodLogRoom(); toast('Revisa los campos marcados'); return; }
+  if(_bcSellado()){ toast('🔒 (dev) el aporte al catálogo está sellado en localhost'); return; }
+  const btn=document.getElementById('bc-save'); if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+  try{
+    const cli=_bcClient(); if(!cli)throw new Error('sin sesión');
+    const {error}=await cli.from('food_barcodes').insert(r.fila);
+    // Si otra persona lo aportó en el mismo minuto, no es un error para quien está aquí: es que
+    // el producto YA existe. Se lee el de ella y se sigue — nadie quiere ver «clave duplicada».
+    if(error&&String(error.code)!=='23505')throw error;
+    const {data}=await cli.from('food_barcodes').select(BC_COLS).eq('ean',r.fila.ean).maybeSingle();
+    const fila=data||Object.assign({verified:false},r.fila);
+    toast('🙌 Gracias — lo agregaste al catálogo');
+    _flAbrirBc(fila);
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='Guardar y agregar'; }
+    _flView.errores={_red:'No se pudo guardar (revisa tu conexión). Vuelve a intentar en un momento.'};
+    renderFoodLogRoom();
+  }
 }
 
 function waterTap(delta){

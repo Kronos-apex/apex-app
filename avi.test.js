@@ -151,6 +151,12 @@ const {
   foodCatalog,
   foodKcalSuspect,
   foodSearch,
+  eanNormalize,
+  eanCheckDigit,
+  eanValid,
+  labelPer100,
+  barcodeDraft,
+  foodFromBarcode,
   FOODLOG_KEEP_DAYS,
   FOODLOG_MAX_G,
   FOODLOG_MEALS,
@@ -4221,6 +4227,199 @@ test('foodSearch: sin resultados y con basura no revienta', () => {
 });
 
 // ══════════════════════════════════════════════════════
+section('F5 · Escáner de códigos de barras — la parte pura');
+
+// Códigos REALES con dígito de control verificado a mano (no salidos de `eanCheckDigit`, que es
+// justo lo que se está probando — un oráculo que se calcula con la función bajo prueba no prueba
+// nada). Fuentes: ejemplos canónicos de EAN-13 / EAN-8 / UPC-A / ITF-14.
+const _EAN_OK = {
+  '5901234123457': 13,   // EAN-13
+  '4006381333931': 13,   // EAN-13 (Staedtler)
+  '96385074': 8,         // EAN-8
+  '036000291452': 12,    // UPC-A
+  '10614141000415': 14,  // ITF-14
+};
+const _bcOk = { ean: '5901234123457', name: 'Galleta de avena', brand: 'Noel', base: 'g100', kcal: 450, p: 7, c: 65, f: 18 };
+test('eanValid: acepta los códigos reales y caza el dígito cambiado', () => {
+  Object.keys(_EAN_OK).forEach(ean => {
+    assert.ok(eanValid(ean), `${ean} es un código válido de verdad`);
+    assert.strictEqual(eanCheckDigit(ean), parseInt(ean[ean.length - 1], 10));
+  });
+  // El caso que esto existe para cazar: alguien lo TECLEA del empaque y se equivoca en un dígito.
+  // Se prueban TODAS las posiciones, no una — un control que solo mira el final no es control.
+  let cazados = 0, probados = 0;
+  Object.keys(_EAN_OK).forEach(ean => {
+    for (let i = 0; i < ean.length; i++) {
+      for (let d = 0; d <= 9; d++) {
+        if (String(d) === ean[i]) continue;
+        probados++;
+        if (!eanValid(ean.slice(0, i) + d + ean.slice(i + 1))) cazados++;
+      }
+    }
+  });
+  assert.ok(probados > 500, `control: se probaron ${probados} códigos con un dígito cambiado`);
+  // El mod-10 caza CUALQUIER dígito cambiado (es su propiedad, no una estadística): 100% o hay bug.
+  assert.strictEqual(cazados, probados, `${probados - cazados} códigos con un dígito mal pasaron el control`);
+});
+test('eanValid: rechaza lo que no es un código, y no opina de las longitudes sin control', () => {
+  ['', '123', '1234567', '123456789012345', 'abcdefgh', null, undefined]
+    .forEach(malo => assert.ok(!eanValid(malo), `«${malo}» no puede pasar por código`));
+  // ⚠️ LÍMITE DECLARADO, no descuido: se NORMALIZA antes de validar, así que la basura que no es
+  // dígito se cae por el camino. `EAN 590-1234 123457` es un código válido para esta app, y tiene
+  // que serlo: así viene escrito en los empaques y así lo pega la gente. Lo que se guarda son los
+  // dígitos, nunca lo tecleado en bruto — por eso la tolerancia no ensucia la tabla.
+  assert.ok(eanValid('EAN 590-1234 123457'), 'el código como se lee del empaque tiene que pasar');
+  assert.strictEqual(eanNormalize('EAN 590-1234 123457'), '5901234123457');
+  assert.strictEqual(barcodeDraft(Object.assign({}, _bcOk, { ean: 'EAN 590-1234 123457' })).fila.ean, '5901234123457',
+    'y lo que llega a la tabla son solo los dígitos');
+  // 9, 10 y 11 dígitos NO son GS1: la tabla los acepta (códigos internos de tienda) y aquí no se
+  // puede decir si sobra un dígito. `eanCheckDigit` devuelve null = «no se sabe», no «está mal».
+  ['123456789', '1234567890', '12345678901'].forEach(s => {
+    assert.strictEqual(eanCheckDigit(s), null, 'sin dígito de control no se puede opinar');
+    assert.ok(eanValid(s), 'y sin poder opinar, no se bloquea a nadie');
+  });
+});
+test('eanNormalize: el código leído a ojo viene con espacios y guiones', () => {
+  assert.strictEqual(eanNormalize(' 590 1234-123457 '), '5901234123457');
+  assert.ok(eanValid('7 590123 412345 7'.replace(/^7 /, '')));
+  assert.strictEqual(eanNormalize(null), '');
+});
+
+// ⚠️ EL PUNTO ENTERO DE PREGUNTAR «¿por 100 g o por porción?»
+test('🔴 labelPer100: la etiqueta que habla por porción es OTRO alimento si no se convierte', () => {
+  // Cereal real de caja: 120 kcal por porción de 30 g. Sin convertir entra como 120 kcal/100 g
+  // (un alimento liviano); convertido son 400. Un factor de 3,3 en lo que la persona registra.
+  assert.strictEqual(labelPer100(120, 30), 400);
+  assert.strictEqual(labelPer100(2.4, 30), 8);
+  // Leche en vaso de 200 ml: 130 kcal por porción → 65 por 100.
+  assert.strictEqual(labelPer100(130, 200), 65);
+  assert.strictEqual(labelPer100(5, 0), null, 'una porción de 0 g no se puede convertir');
+  assert.strictEqual(labelPer100(null, 30), null);
+  assert.strictEqual(labelPer100('no', 30), null);
+});
+
+test('barcodeDraft: el camino bueno deja una fila lista para la tabla', () => {
+  const r = barcodeDraft(_bcOk);
+  assert.ok(r.ok, JSON.stringify(r.errores));
+  assert.deepStrictEqual(r.fila, {
+    ean: '5901234123457', name: 'Galleta de avena', brand: 'Noel',
+    kcal: 450, p: 7, c: 65, f: 18, un_label: null, un_g: null,
+  });
+  assert.strictEqual(r.aviso, null, '450 kcal cuadra con esos macros');
+});
+test('🔴 barcodeDraft: «por porción» convierte, y de paso regala la medida casera', () => {
+  const r = barcodeDraft({ ean: '96385074', name: 'Cereal', base: 'porcion', porcionG: 30, kcal: 120, p: 2.4, c: 25.5, f: 1.2 });
+  assert.ok(r.ok, JSON.stringify(r.errores));
+  assert.strictEqual(r.fila.kcal, 400);
+  assert.strictEqual(r.fila.p, 8);
+  assert.strictEqual(r.fila.c, 85);
+  assert.strictEqual(r.fila.f, 4);
+  // La porción del empaque ES una medida casera: sin esto, comerse la barra pide pesarla.
+  assert.strictEqual(r.fila.un_label, 'porción');
+  assert.strictEqual(r.fila.un_g, 30);
+  // Control: los MISMOS números declarados como «por 100 g» dan otro alimento. Si esto empatara,
+  // la pregunta de la pantalla no estaría haciendo nada.
+  const plano = barcodeDraft({ ean: '96385074', name: 'Cereal', base: 'g100', kcal: 120, p: 2.4, c: 25.5, f: 1.2 });
+  assert.ok(plano.ok);
+  assert.notStrictEqual(plano.fila.kcal, r.fila.kcal);
+  assert.strictEqual(plano.fila.un_label, null, 'sin porción no hay medida casera que regalar');
+});
+test('barcodeDraft: sin el tamaño de la porción, el error señala la porción y no los macros', () => {
+  const r = barcodeDraft({ ean: '96385074', name: 'Cereal', base: 'porcion', kcal: 120, p: 2.4, c: 25.5, f: 1.2 });
+  assert.ok(!r.ok);
+  assert.ok(r.errores.porcionG, 'tiene que pedir el tamaño de la porción');
+  // 🔴 Lo que esto protege: la persona SÍ escribió las calorías. Decirle «escribe las calorías»
+  // sobre un campo lleno la manda a buscar un error que no cometió.
+  assert.ok(!r.errores.kcal && !r.errores.p, `no puede culpar a los macros: ${JSON.stringify(r.errores)}`);
+});
+test('🔴 barcodeDraft: espejo de los CHECK de la tabla — el mensaje es humano, no de Postgres', () => {
+  const suma = barcodeDraft(Object.assign({}, _bcOk, { p: 40, c: 40, f: 40 }));
+  assert.ok(!suma.ok && suma.errores.suma, 'p+c+f>100 es imposible en 100 g de producto');
+  assert.ok(/por porción/.test(suma.errores.suma), 'y le dice la causa más probable');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { kcal: 950 })).ok, 'kcal > 900 no existe');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { p: 120, c: 0, f: 0 })).ok, 'proteína > 100 g por 100 g');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { kcal: -5 })).ok, 'no hay macros negativos');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { name: '   ' })).ok, 'sin nombre no se puede buscar después');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { name: 'x'.repeat(81) })).ok);
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { brand: 'x'.repeat(61) })).ok);
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { ean: '5901234123456' })).ok, 'el código con un dígito mal');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { kcal: '' })).ok, 'un macro en blanco no es un 0');
+  // Una porción absurdamente chica dispara el tope al convertir → el mensaje apunta a la PORCIÓN,
+  // que es donde está el error de verdad, no a las calorías que copió bien del empaque.
+  const chica = barcodeDraft({ ean: '96385074', name: 'Cereal', base: 'porcion', porcionG: 2, kcal: 120, p: 2, c: 25, f: 1 });
+  assert.ok(!chica.ok && /porción/.test(chica.errores.kcal || ''), JSON.stringify(chica.errores));
+});
+test('barcodeDraft: la medida casera va completa o no va', () => {
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { un_label: 'tarrina' })).ok, 'una medida sin gramos no sirve');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { un_g: 125 })).ok, 'unos gramos sin nombre tampoco');
+  assert.ok(!barcodeDraft(Object.assign({}, _bcOk, { un_label: 'saco', un_g: 5000 })).ok);
+  const r = barcodeDraft(Object.assign({}, _bcOk, { un_label: 'tarrina', un_g: 125 }));
+  assert.ok(r.ok, JSON.stringify(r.errores));
+  assert.strictEqual(r.fila.un_g, 125);
+});
+test('🔴 barcodeDraft: el aviso de kcal AVISA, no bloquea — el empaque es el que manda', () => {
+  // Un empaque puede declarar calorías que no cuadran con sus macros (fibra, polioles, redondeo
+  // del fabricante). Bloquear ahí sería llamarle mentiroso al producto que la persona tiene en la
+  // mano, y dejarla sin poder registrar lo que come.
+  const r = barcodeDraft(Object.assign({}, _bcOk, { kcal: 200, p: 7, c: 65, f: 18 }));
+  assert.ok(r.ok, 'tiene que dejar guardar');
+  assert.ok(r.aviso && /200/.test(r.aviso), `debía avisar: ${r.aviso}`);
+  assert.ok(r.fila, 'y la fila sale igual');
+  // Control: el camino bueno NO avisa, o el aviso sería ruido que nadie lee.
+  assert.strictEqual(barcodeDraft(_bcOk).aviso, null);
+});
+test('foodFromBarcode: se viste de alimento del catálogo sin poder pisar a los otros dos', () => {
+  const f = foodFromBarcode({ ean: '5901234123457', name: 'Galleta de avena', brand: 'Noel', kcal: 450, p: 7, c: 65, f: 18, un_label: 'paquete', un_g: 40, verified: false });
+  assert.strictEqual(f.id, 'bc:5901234123457');
+  assert.ok(f.id.indexOf('bc:') === 0, 'el prefijo es lo que impide el choque de ids entre capas');
+  assert.strictEqual(f.name, 'Galleta de avena (Noel)', 'la marca se ve: hay tres arroces distintos');
+  assert.deepStrictEqual(f.un, { label: 'paquete', g: 40 });
+  assert.strictEqual(f.verified, false, 'la interfaz tiene que poder decir «esto nadie lo ha revisado»');
+  assert.strictEqual(f.src, 'bc');
+  // Ningún id de las otras dos capas empieza por `bc:` — se afirma, no se supone.
+  const otros = foodCatalog(_foodsJson).concat(NUT_FOODS);
+  assert.ok(otros.every(x => String(x.id).indexOf('bc:') !== 0), 'alguna capa ya usa el prefijo bc:');
+  assert.strictEqual(foodFromBarcode({ ean: '1', name: 'X', un_label: 'vaso' }).un, undefined, 'medida a medias = sin medida');
+  assert.strictEqual(foodFromBarcode(null), null);
+  assert.strictEqual(foodFromBarcode({ name: 'sin ean' }), null);
+});
+test('🔴 foodCatalog: lo escaneado SE SUMA — quedarse sin red no borra lo que aportó la persona', () => {
+  const bc = [foodFromBarcode({ ean: '5901234123457', name: 'Galleta', kcal: 450, p: 7, c: 65, f: 18 })];
+  const conJson = foodCatalog(_foodsJson, bc);
+  assert.strictEqual(conJson.length, _foodsJson.foods.length + 1);
+  // 🔴 El caso que importa: sin `foods.json` (sin red, archivo caído) la tercera fuente sigue ahí.
+  const sinJson = foodCatalog(null, bc);
+  assert.strictEqual(sinJson.length, NUT_FOODS.length + 1, 'la degradación no puede comerse lo escaneado');
+  assert.ok(sinJson.some(f => f.id === 'bc:5901234123457'));
+  assert.ok(foodSearch(sinJson, 'galleta').total > 0, 'y se puede encontrar buscando');
+  // Sin tercera fuente todo sigue exactamente como antes (compatibilidad de la firma vieja).
+  assert.strictEqual(foodCatalog(_foodsJson).length, _foodsJson.foods.length);
+  assert.strictEqual(foodCatalog(null, null).length, NUT_FOODS.length);
+  // Y no duplica: el mismo código escaneado dos veces es un alimento.
+  assert.strictEqual(foodCatalog(_foodsJson, bc.concat(bc)).length, _foodsJson.foods.length + 1);
+});
+test('🔴 F5: los límites del cliente son los MISMOS que los CHECK de la tabla', () => {
+  // Este test existe porque el espejo que miente es peor que no tener espejo: si el SQL se
+  // relaja y el cliente no (o al revés), o se bloquea a alguien sin motivo o el insert vuelve
+  // con un error de motor que nadie puede leer. Se lee el SQL de verdad, no una copia.
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'community', 'f5_food_barcodes.sql'), 'utf8');
+  assert.ok(sql.length > 1000, `control: se leyeron ${sql.length} caracteres del SQL`);
+  const { FOOD_BC_MAX, FOOD_BC_LEN, EAN_RE } = core;
+  assert.ok(sql.includes("ean ~ '^[0-9]{8,14}$'"), 'el rango del código cambió en la tabla');
+  assert.strictEqual(EAN_RE.source, '^[0-9]{8,14}$', 'y el del cliente tiene que ser el mismo');
+  assert.ok(sql.includes('kcal >= 0 and kcal <= ' + FOOD_BC_MAX.kcal), 'tope de kcal desalineado');
+  ['p', 'c', 'f'].forEach(m => {
+    assert.ok(sql.includes(m + ' >= 0 and ' + m + ' <= ' + FOOD_BC_MAX[m]), 'tope de ' + m + ' desalineado');
+  });
+  assert.ok(sql.includes('check (p + c + f <= 100)'), 'el candado de la suma cambió en la tabla');
+  assert.ok(sql.includes('un_g > 0 and un_g <= ' + FOOD_BC_MAX.un_g), 'tope de la medida casera desalineado');
+  assert.ok(sql.includes('length(name) <= ' + FOOD_BC_LEN.name), 'largo del nombre desalineado');
+  assert.ok(sql.includes('length(brand) <= ' + FOOD_BC_LEN.brand), 'largo de la marca desalineado');
+  assert.ok(sql.includes('length(un_label) <= ' + FOOD_BC_LEN.un_label), 'largo de la medida desalineado');
+});
+
+// ══════════════════════════════════════════════════════
 section('Registro de alimentos — F0: modelo de datos (E1-E4 de Fable)');
 
 const _comida = { id: 'arroz_blanco_cocido', name: 'Arroz blanco cocido', src: 'tcac2018', kcal: 130, p: 2.7, c: 28.2, f: 0.3 };
@@ -4435,6 +4634,17 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   assert.ok(/id="flroom-body"/.test(html), 'falta el cuerpo de la habitación');
   ['openFoodLogRoom', 'closeFoodLogRoom', 'flGuardar', 'flQuitar', 'flAceptarAviso', 'foodCatalogLoad']
     .forEach(f => assert.ok(new RegExp('function ' + f + '\\b').test(src), `falta ${f}()`));
+  // 🔴 CABLEADO, DERIVADO DEL PROPIO CÓDIGO en vez de una lista a mano: todo `onclick="algo(`
+  // que pinta esta pantalla tiene que existir como función global, o el botón no hace NADA y no
+  // hay error visible — la clase de defecto que solo se ve tocándolo en un teléfono. La lista se
+  // mantiene sola: al agregar un botón nuevo, este test ya lo cubre.
+  const llamados = new Set();
+  (src.match(/onclick="([A-Za-z_$][\w$]*)\(/g) || []).forEach(m => llamados.add(m.slice(9, -1)));
+  assert.ok(llamados.size > 10, `control: se encontraron ${llamados.size} manejadores en app-5-salud.js`);
+  const otros = ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-6-extra.js']
+    .map(n => fs.readFileSync(require('path').join(__dirname, n), 'utf8')).join('\n');
+  const huerfanos = [...llamados].filter(f => !new RegExp('(function|const|let|var) +' + f + '\\b').test(src + otros));
+  assert.deepStrictEqual(huerfanos, [], `botones que llaman a una función que no existe: ${huerfanos.join(', ')}`);
   // Guardar y borrar pasan por sv('ax_c'), la vía sancionada que ya usan agua y pasos.
   assert.ok(/c\.foodlog=foodLogAdd[\s\S]{0,80}sv\('ax_c'/.test(src), 'agregar no persiste por la vía sancionada');
   assert.ok(/c\.foodlog=foodLogRemove[\s\S]{0,80}sv\('ax_c'/.test(src), 'borrar no persiste por la vía sancionada');
@@ -4443,6 +4653,28 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   // …y en el entrenamiento PROPIO del coach el aviso no puede decirle que «lo ve tu coach»:
   // ahí el dueño del dato es él (verificado en el camino de guardado: COACH_SELF escribe en su
   // propia fila vía clientToRow, que copia todo el perfil, así que su registro es suyo).
+  // ── F5 · el escáner ──
+  // 🔒 LA CÁMARA SE APAGA POR TODAS LAS SALIDAS. Un stream vivo deja la luz del celular
+  // encendida y se lee (con razón) como «esta app me está grabando». No es un detalle de
+  // cortesía: es lo que hace que alguien desinstale.
+  assert.ok(/function closeFoodLogRoom\(\)\{\s*_flScanStop\(\);/.test(src),
+    'cerrar la habitación (incluido el botón «‹ Volver») tiene que apagar la cámara');
+  assert.ok(/function flSalirEscaner\(\)\{ _flScanStop\(\);/.test(src), 'salir del escáner apaga la cámara');
+  assert.ok(/function flNuevoProducto\(ean\)\{\s*_flScanStop\(\);/.test(src), 'pasar a escribir el producto apaga la cámara');
+  assert.ok(/function openFoodLogRoom\(meal\)\{[\s\S]{0,220}_flScanStop\(\);/.test(src), 'reabrir la habitación apaga lo que quedara prendido');
+  assert.ok(/getTracks\(\)\.forEach\(t=>t\.stop\(\)\)/.test(src), 'no hay ninguna llamada que suelte la cámara de verdad');
+  // Y la que se pide mientras la persona ya se fue de la pantalla también se suelta.
+  assert.ok(/if\(_flView\.modo!=='escanear'\)\{ try\{ stream\.getTracks/.test(src),
+    'si el permiso llega cuando ya salió de la pantalla, la cámara queda prendida en segundo plano');
+  // CERO DEPENDENCIAS: el lector es el NATIVO del navegador. Si algún día entra una librería de
+  // códigos de barras, este test lo dice — es una restricción del proyecto, no una preferencia.
+  assert.ok(/new window\.BarcodeDetector\(/.test(src), 'el lector tiene que ser el nativo');
+  assert.ok(!/quagga|zxing|html5-qrcode|jsqr/i.test(src), 'entró una librería de lectura de códigos');
+  // Lo escaneado NO se sincroniza como dato personal: son empaques, y su caché es del aparato.
+  const infra = fs.readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  assert.ok(/const BC_CACHE_KEY='ax_bccache'/.test(src), 'cambió la clave de la caché de códigos');
+  assert.ok(!/'ax_bccache'/.test(infra.match(/const SB_KEYS=\[[^\]]*\]/)[0]),
+    'ax_bccache no puede ir en SB_KEYS: el yogur de uno viajaría en la fila de datos de otro');
   assert.ok(/const propio=\(typeof COACH_SELF!=='undefined'&&COACH_SELF\)/.test(src),
     'el aviso no distingue el entrenamiento propio del coach');
   assert.ok(/tu propio registro/.test(src), 'falta el texto del caso COACH_SELF');

@@ -3868,18 +3868,24 @@ function foodNormText(s) {
 // E9 — DEGRADACIÓN: si `foods.json` no cargó (primera visita sin red, fetch caído, archivo
 // corrupto), la app NO se queda sin catálogo: cae a los 50 de `NUT_FOODS`, que viajan dentro del
 // propio avi-core. Devuelve SIEMPRE un array usable — nunca null, nunca lanza.
-function foodCatalog(json) {
+// 🔴 `extra` es la TERCERA fuente (F5, lo escaneado en `food_barcodes`). Se AÑADE, nunca
+// sustituye: si `foods.json` no cargó, el catálogo son los 50 de casa MÁS lo escaneado — quedarse
+// sin red no puede borrarle a nadie el producto que él mismo aportó. Sus ids llevan prefijo
+// `bc:` (ver `foodFromBarcode`), así que no pueden chocar con los de las otras dos capas.
+function foodCatalog(json, extra) {
   const base = NUT_FOODS.map(f => Object.assign({}, f, { src: 'avi50' }));
   const arr = json && Array.isArray(json.foods) ? json.foods : null;
-  if (!arr || !arr.length) return base;
   const vistos = Object.create(null);
   const out = [];
-  arr.forEach(f => {
+  const push = f => {
     if (!f || !f.id || vistos[f.id]) return;      // sin id no se puede registrar ni deduplicar
     vistos[f.id] = 1;
     out.push(f);
-  });
-  return out.length ? out : base;
+  };
+  (arr || []).forEach(push);
+  if (!out.length) base.forEach(push);            // degradación E9: el catálogo de casa
+  (Array.isArray(extra) ? extra : []).forEach(push);
+  return out;
 }
 // Desfase entre las kcal declaradas y las que dan sus propios macros. null si falta algún macro
 // (no se puede opinar) — el candado de la tabla lo usa para cazar errores de transcripción, que
@@ -3929,7 +3935,175 @@ function foodSearch(foods, q, opts) {
   };
 }
 
-// ── Tipo de día: el plan de comida se pega al de entreno ────────────────
+// ══════════════════════════════════════════════════════════════════════
+// F5 · ESCÁNER DE CÓDIGOS DE BARRAS — la parte pura
+// ──────────────────────────────────────────────────────────────────────
+// Tabla `public.food_barcodes` (ver `supabase/community/f5_food_barcodes.sql`). Aquí vive TODO lo
+// que se puede decidir sin cámara, sin red y sin DOM: validar el número, convertir una etiqueta
+// que habla «por porción» a los 100 g del resto del catálogo, y decir si lo que tecleó la persona
+// va a ser aceptado ANTES de mandarlo. Lo demás (getUserMedia, BarcodeDetector) vive en app-5.
+//
+// 🔴 POR QUÉ SE VALIDA AQUÍ Y NO SOLO EN LA BASE: los CHECK de Postgres son el candado real, pero
+// su mensaje de error es `new row violates check constraint "food_barcodes_p_check"`. Eso no se le
+// puede mostrar a nadie. Estas funciones son el ESPEJO de esos CHECK, para poder decir «la
+// proteína no puede pasar de 100 g por cada 100 g de producto» en vez de un error de motor.
+// La regla: si se relaja un CHECK en el SQL, se relaja aquí; el espejo que miente es peor que
+// ningún espejo.
+
+const EAN_RE = /^[0-9]{8,14}$/;              // el MISMO rango que el check de la tabla
+// Solo estas longitudes son GS1 con dígito de control (EAN-8, UPC-A, EAN-13, ITF-14). Las otras
+// (9, 10, 11) las acepta la tabla porque existen códigos internos de tienda, pero no traen
+// control: ahí no se puede opinar sobre si sobra o falta un dígito.
+const EAN_GS1_LEN = [8, 12, 13, 14];
+
+// Deja solo dígitos. Un código leído a ojo del empaque viene con espacios y guiones.
+function eanNormalize(raw) {
+  return String(raw == null ? '' : raw).replace(/[^0-9]/g, '');
+}
+// Dígito de control GS1 (mod 10, pesos 3-1 desde la derecha del cuerpo). Devuelve null si la
+// longitud no lo lleva — `null` NO es «malo», es «no se puede saber».
+function eanCheckDigit(ean) {
+  const s = eanNormalize(ean);
+  if (EAN_GS1_LEN.indexOf(s.length) === -1) return null;
+  let suma = 0;
+  const cuerpo = s.slice(0, -1);
+  for (let i = cuerpo.length - 1, peso = 3; i >= 0; i--, peso = peso === 3 ? 1 : 3) {
+    suma += parseInt(cuerpo[i], 10) * peso;
+  }
+  return (10 - (suma % 10)) % 10;
+}
+// ¿Este número puede ser un código de barras? El escáner nativo YA verifica el control, así que
+// esto muerde sobre todo cuando alguien lo teclea: un dígito de menos o cambiado se caza aquí y
+// no acaba siendo un producto fantasma que nadie vuelve a encontrar.
+function eanValid(raw) {
+  const s = eanNormalize(raw);
+  if (!EAN_RE.test(s)) return false;
+  const dc = eanCheckDigit(s);
+  return dc == null || dc === parseInt(s[s.length - 1], 10);
+}
+
+// ── La etiqueta colombiana habla «por porción», el catálogo habla «por 100 g» ──
+// ⚠️ Esto NO es un detalle de formato: es la diferencia entre 520 kcal y 156. La mayoría de los
+// empaques de D1/ARA declaran la tabla POR PORCIÓN (30 g de cereal, 200 ml de leche) y quien
+// transcribe copia lo que ve. Si la app no pregunta sobre qué cantidad son esos números, el dato
+// entra mal — y entra COHERENTE consigo mismo, que es la clase de error que ningún cuadre caza
+// (la yuca «cocida» con los valores de la cruda).
+// `porcion` en gramos; devuelve los cuatro macros llevados a 100 g. Puro, sin redondeo de más
+// que el de la tabla (numeric(x,1)).
+function labelPer100(v, porcionG) {
+  const x = parseFloat(v), g = parseFloat(porcionG);
+  if (!Number.isFinite(x) || !Number.isFinite(g) || g <= 0) return null;
+  return Math.round((x * 100 / g) * 10) / 10;
+}
+
+const FOOD_BC_MAX = { kcal: 900, p: 100, c: 100, f: 100, un_g: 2000 };
+const FOOD_BC_LEN = { name: 80, brand: 60, un_label: 24 };
+
+// Valida y NORMALIZA lo que tecleó quien escaneó. Devuelve siempre el mismo sobre:
+//   { ok, errores:{campo:'texto humano'}, aviso:'…'|null, fila:{…listo para insert}|null }
+// `errores` bloquea; `aviso` NO. La diferencia importa: un empaque puede declarar unas calorías
+// que no cuadran con sus propios macros (fibra, polioles, redondeo del fabricante) y eso es un
+// hecho de la etiqueta, no un error de la persona. Bloquear ahí sería llamarle mentiroso al
+// producto que tiene en la mano. Se avisa, se deja pasar, y la fila nace `verified=false` para
+// que un humano la mire.
+// `d.base`: 'g100' (los números ya son por 100 g) | 'porcion' (hay que convertirlos).
+function barcodeDraft(d) {
+  d = d || {};
+  const errores = {};
+  const ean = eanNormalize(d.ean);
+  if (!EAN_RE.test(ean)) errores.ean = 'El código tiene que ser de 8 a 14 números.';
+  else if (!eanValid(ean)) errores.ean = 'Ese código no cuadra — revisa si falta o sobra un número.';
+
+  const name = String(d.name == null ? '' : d.name).trim().replace(/\s+/g, ' ');
+  if (!name) errores.name = 'Escribe cómo se llama el producto.';
+  else if (name.length > FOOD_BC_LEN.name) errores.name = 'El nombre no puede pasar de ' + FOOD_BC_LEN.name + ' letras.';
+  const brand = String(d.brand == null ? '' : d.brand).trim().replace(/\s+/g, ' ');
+  if (brand.length > FOOD_BC_LEN.brand) errores.brand = 'La marca no puede pasar de ' + FOOD_BC_LEN.brand + ' letras.';
+
+  // 🔴 La porción se valida ANTES de convertir, no después: sin ella la conversión da `null` y el
+  // error que vería la persona sería «escribe las calorías» sobre un campo que SÍ llenó.
+  const porcion = parseFloat(d.porcionG);
+  const porBase = d.base === 'porcion';
+  if (porBase && !(Number.isFinite(porcion) && porcion > 0 && porcion <= FOOD_BC_MAX.un_g)) {
+    errores.porcionG = 'Escribe de cuántos gramos es la porción que dice el empaque.';
+  }
+  const conv = v => {
+    if (v == null || v === '') return null;
+    if (!porBase) { const x = parseFloat(v); return Number.isFinite(x) ? Math.round(x * 10) / 10 : null; }
+    return errores.porcionG ? null : labelPer100(v, porcion);
+  };
+  const macro = (campo, etiqueta) => {
+    const bruto = d[campo];
+    if (bruto == null || String(bruto).trim() === '') { errores[campo] = 'Falta ' + etiqueta + '.'; return null; }
+    const x = conv(bruto);
+    if (x == null) { if (!errores.porcionG) errores[campo] = 'Escribe ' + etiqueta + ' en números.'; return null; }
+    if (x < 0) { errores[campo] = etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1) + ' no puede ser negativa.'; return null; }
+    if (x > FOOD_BC_MAX[campo]) {
+      errores[campo] = porBase
+        ? 'Con esa porción, ' + etiqueta + ' daría ' + x + ' por cada 100 g, y eso no cabe en un alimento. Revisa el tamaño de la porción.'
+        : etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1) + ' no puede pasar de ' + FOOD_BC_MAX[campo] + ' por cada 100 g.';
+      return null;
+    }
+    return x;
+  };
+  const kcal = macro('kcal', 'las calorías');
+  const p = macro('p', 'la proteína');
+  const c = macro('c', 'los carbohidratos');
+  const f = macro('f', 'la grasa');
+  // Espejo del CHECK `p + c + f <= 100`. Sin este mensaje, el insert vuelve con un error de motor.
+  if (p != null && c != null && f != null && Math.round((p + c + f) * 10) / 10 > 100) {
+    errores.suma = 'Proteína, carbohidratos y grasa suman ' + (Math.round((p + c + f) * 10) / 10) +
+      ' g por cada 100 g de producto, y eso es imposible. Revisa si esos números son por porción.';
+  }
+
+  // Medida casera. Si la etiqueta venía «por porción», esa porción YA es una medida casera de
+  // verdad (1 tarrina, 1 vaso) → se ofrece sola, que es justo lo que evita que alguien tenga que
+  // pesar una barra de cereal.
+  let un_label = String(d.un_label == null ? '' : d.un_label).trim().replace(/\s+/g, ' ');
+  let un_g = parseFloat(d.un_g);
+  if (!un_label && !Number.isFinite(un_g) && porBase && Number.isFinite(porcion) && porcion > 0) {
+    un_label = 'porción'; un_g = porcion;
+  }
+  if (un_label && !(Number.isFinite(un_g) && un_g > 0)) errores.un_g = 'Escribe cuántos gramos pesa una ' + un_label + '.';
+  if (Number.isFinite(un_g) && un_g > 0 && !un_label) errores.un_label = 'Ponle nombre a esa medida (tarrina, vaso, cucharada…).';
+  if (un_label.length > FOOD_BC_LEN.un_label) errores.un_label = 'Ese nombre de medida es muy largo.';
+  if (Number.isFinite(un_g) && un_g > FOOD_BC_MAX.un_g) errores.un_g = 'Una medida casera no puede pesar más de ' + FOOD_BC_MAX.un_g + ' g.';
+
+  const hayError = Object.keys(errores).length > 0;
+  const fila = hayError ? null : {
+    ean: ean, name: name, brand: brand || null,
+    kcal: kcal, p: p, c: c, f: f,
+    un_label: un_label || null,
+    un_g: (un_label && Number.isFinite(un_g) && un_g > 0) ? Math.round(un_g * 10) / 10 : null,
+  };
+  // El aviso se calcula sobre la fila YA en 100 g, con el mismo detector de la tabla curada.
+  const aviso = (fila && foodKcalSuspect(fila))
+    ? 'Ojo: ' + fila.kcal + ' kcal no cuadra con esos macros (dan ' + Math.round(4 * fila.p + 4 * fila.c + 9 * fila.f) +
+      '). Puede ser del empaque, pero revísalo antes de guardar.'
+    : null;
+  return { ok: !hayError, errores: errores, aviso: aviso, fila: fila };
+}
+
+// Una fila de `food_barcodes` vestida de alimento del catálogo, para que el buscador y el
+// registro no tengan que saber de dónde salió. `bc:` delante del id: es lo que garantiza que la
+// tercera fuente no pise ni a los 50 del recetario ni a los 181 de `foods.json`.
+// `verified` viaja: la interfaz TIENE que poder decir «esto lo aportó alguien y nadie lo ha
+// revisado». Un dato sin revisar que se ve igual que uno verificado es peor que no tenerlo.
+function foodFromBarcode(row) {
+  if (!row || !row.ean) return null;
+  const num = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : null; };
+  const g = num(row.un_g);
+  const out = {
+    id: 'bc:' + eanNormalize(row.ean),
+    ean: eanNormalize(row.ean),
+    name: String(row.name || '').trim() + (row.brand ? ' (' + String(row.brand).trim() + ')' : ''),
+    kcal: num(row.kcal), p: num(row.p), c: num(row.c), f: num(row.f),
+    src: 'bc',
+    verified: !!row.verified,
+  };
+  if (row.un_label && g && g > 0) out.un = { label: String(row.un_label).trim(), g: g };
+  return out;
+}
 // 'pierna'  = el día trae trabajo de pierna o full body → el que más carga
 // 'entreno' = día de entreno sin pierna
 // 'descanso'= sin rutina ese día
@@ -6292,6 +6466,15 @@ if (typeof module !== 'undefined' && module.exports) {
     foodKcalGap,
     foodKcalSuspect,
     foodSearch,
+    EAN_RE,
+    FOOD_BC_MAX,
+    FOOD_BC_LEN,
+    eanNormalize,
+    eanCheckDigit,
+    eanValid,
+    labelPer100,
+    barcodeDraft,
+    foodFromBarcode,
     nutDayKind,
     nutDayTarget,
     nutPortionText,

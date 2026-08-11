@@ -13,6 +13,21 @@
 //   FL8  E9 — con foods.json BLOQUEADO por red, la app arranca y el registro sigue usable
 //   FL9  cantidad imposible no entra
 //   FL10 el botón atrás cierra la habitación (no se sale de la app)
+//
+// F5 · EL ESCÁNER DE CÓDIGOS (avi-v473). La cámara NO existe en headless, así que lo que aquí
+// se prueba es TODO lo demás: que el botón esté, que sin lector se diga por qué y se pueda
+// teclear igual, que un producto nuevo se pueda aportar, y —lo que de verdad importa— que la
+// conversión «por porción → por 100 g» sobreviva hasta lo que la persona acaba registrando.
+// La nube va STUBBEADA (`AUTH.client()`), como el resto de harnesses: nada sale de esta máquina.
+//   F5-1  el botón «Escanear un empaque» está en el buscador
+//   F5-2  sin lector nativo (el Safari del iPhone) se dice POR QUÉ y se puede teclear igual
+//   F5-3  un código mal tecleado avisa y no deja a nadie atascado
+//   F5-4  un código que no está en el catálogo abre «producto nuevo» con el código a la vista
+//   F5-5  el error de datos imposibles es HUMANO, no un error de motor de base de datos
+//   F5-6  guardar deja el producto listo, marcado «sin revisar»
+//   F5-7  🔴 lo registrado lleva los macros CONVERTIDOS, no los del empaque
+//   F5-8  al salir, la cámara queda apagada
+//   F5-9  el formulario cabe a 360px y con letra «Muy grande»
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 const PORT = 8779;
@@ -136,6 +151,132 @@ try {
       return JSON.stringify({n:(_foodCat||[]).length, arroz:!!(_foodCat||[]).find(x=>x.id==='arroz'),
         boot:typeof window._aviUpdateBusy!=='undefined'});})()`));
     check('FL8 sin foods.json la app arranca y quedan los 50 de avi-core', s.n >= 50 && s.arroz && s.boot, JSON.stringify(s));
+  }
+
+  // ══════════ F5 · EL ESCÁNER DE CÓDIGOS ══════════
+  if (!BLOQUEAR) {
+    // La nube, stubbeada: el catálogo de códigos arranca VACÍO y todo insert se queda aquí.
+    // Se instala ANTES de levantar el sello, o una escritura podría irse de verdad.
+    await ev(`(()=>{
+      window._bcFake={filas:[],inserts:0};
+      const tabla=()=>({
+        select:()=>({eq:(col,val)=>({maybeSingle:async()=>({data:window._bcFake.filas.find(r=>r.ean===val)||null,error:null})})}),
+        insert:async row=>{ window._bcFake.inserts++; window._bcFake.filas.push(Object.assign({verified:false},row)); return {error:null}; },
+      });
+      AUTH.client=()=>({from:()=>tabla()});
+      window.AVI_ALLOW_CLOUD_WRITE=true;   // el destino ya es el stub, no la nube
+      localStorage.removeItem('ax_bccache'); _bcCache=null; _foodCat=null; _foodCatCargando=null;
+    })()`);
+    await ev(`(()=>{if(!document.getElementById('foodlog-room').classList.contains('on'))openFoodLogRoom();flBuscar('almuerzo');})()`);
+    await sleep(500);
+
+    // F5-1 — el botón existe y está cableado
+    s = JSON.parse(await ev(`JSON.stringify((()=>{const b=[...document.querySelectorAll('#flroom-body button')].find(x=>/Escanear/.test(x.textContent));
+      return {hay:!!b, onclick:b?b.getAttribute('onclick'):'', alto:b?Math.round(b.getBoundingClientRect().height):0};})())`));
+    check('F5-1 el botón «Escanear un empaque» está y es táctil (≥36px)', s.hay && /flEscanear/.test(s.onclick) && s.alto >= 36, JSON.stringify(s));
+
+    // F5-2 — sin lector nativo: se dice POR QUÉ y queda el campo para teclear (el caso iPhone)
+    await ev(`(()=>{ window._bdReal=window.BarcodeDetector; delete window.BarcodeDetector; flEscanear(); })()`);
+    await sleep(500);
+    s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('flroom-body');
+      return {txt:b.textContent, campo:!!document.getElementById('fl-ean'), video:!!document.getElementById('fl-video')};})())`));
+    check('F5-2 sin lector se explica y se puede teclear igual (nunca un botón muerto)',
+      /Safari|navegador/i.test(s.txt) && s.campo && !s.video, JSON.stringify({ campo: s.campo, video: s.video, txt: (s.txt || '').slice(0, 90) }));
+
+    // F5-3 — código mal tecleado: avisa y sigue usable
+    await ev(`(()=>{document.getElementById('fl-ean').value='5901234123456';flBuscarEan(document.getElementById('fl-ean').value);})()`);
+    await sleep(400);
+    s = JSON.parse(await ev(`JSON.stringify({txt:document.getElementById('flroom-body').textContent,campo:!!document.getElementById('fl-ean'),inserts:window._bcFake.inserts})`));
+    check('F5-3 un código con un dígito mal avisa y no atasca a nadie',
+      /no cuadra/i.test(s.txt) && s.campo && s.inserts === 0, JSON.stringify({ campo: s.campo, inserts: s.inserts }));
+
+    // F5-4 — código válido que no está: se abre «producto nuevo»
+    await ev(`flBuscarEan('5901234123457')`);
+    await sleep(900);
+    s = JSON.parse(await ev(`JSON.stringify({modo:_flView.modo,txt:document.getElementById('flroom-body').textContent,name:!!document.getElementById('bc-name'),porcion:!!document.getElementById('bc-porcion')})`));
+    check('F5-4 un código que nadie ha aportado abre «producto nuevo» con el código a la vista',
+      s.modo === 'nuevo' && s.name && s.porcion && /5901234123457/.test(s.txt), JSON.stringify({ modo: s.modo, name: s.name, porcion: s.porcion }));
+
+    // F5-5 — datos imposibles: el mensaje es HUMANO y nada se guarda. Se prueban los DOS
+    // caminos, porque no dan el mismo error y los dos existen en la vida real:
+    //   (a) «por porción» con una porción chica → el tope salta al convertir, y el mensaje
+    //       tiene que apuntar a la PORCIÓN, que es donde está el error de verdad;
+    //   (b) «por 100 g» con macros que suman más de 100 → el espejo del CHECK de la tabla.
+    // La propiedad que se afirma no es una palabra concreta: es que NUNCA se le enseñe a nadie
+    // un error del motor de base de datos.
+    // ⚠️ Solo PALABRAS. La primera versión traía `23\d{3}` (los SQLSTATE de Postgres) y casaba
+    // dentro del CÓDIGO DE BARRAS que la propia pantalla muestra — dos rojos que eran de la
+    // sonda, no de la app. Un patrón numérico suelto sobre el texto de una pantalla que
+    // contiene números es un falso positivo esperando.
+    const MOTOR = /constraint|violates|null value|PGRST|duplicate key|permission denied/i;
+    await ev(`(()=>{const v=(id,x)=>{document.getElementById(id).value=x};
+      v('bc-name','Prueba');v('bc-porcion','2');v('bc-kcal','120');v('bc-p','40');v('bc-c','40');v('bc-f','40');})()`);
+    await ev(`flGuardarProducto()`); await sleep(600);
+    s = JSON.parse(await ev(`JSON.stringify({txt:document.getElementById('flroom-body').textContent,inserts:window._bcFake.inserts})`));
+    check('F5-5a con una porción imposible, el error apunta a la PORCIÓN y nada se guardó',
+      /Revisa el tamaño de la porción/i.test(s.txt) && !MOTOR.test(s.txt) && s.inserts === 0,
+      JSON.stringify({ inserts: s.inserts, txt: (s.txt || '').match(/Con esa porción[^]{0,80}/) }));
+    await ev(`flBase('g100')`); await sleep(300);
+    await ev(`(()=>{const v=(id,x)=>{document.getElementById(id).value=x};
+      v('bc-kcal','450');v('bc-p','40');v('bc-c','40');v('bc-f','40');})()`);
+    await ev(`flGuardarProducto()`); await sleep(600);
+    s = JSON.parse(await ev(`JSON.stringify({txt:document.getElementById('flroom-body').textContent,inserts:window._bcFake.inserts})`));
+    check('F5-5b macros que suman más de 100 g: se explica en español, y nada se guardó',
+      /imposible/i.test(s.txt) && !MOTOR.test(s.txt) && s.inserts === 0,
+      JSON.stringify({ inserts: s.inserts, txt: (s.txt || '').match(/suman[^]{0,80}/) }));
+    // Y volver a «por porción» NO borra lo que ya tenía tecleado (nombre y marca siguen ahí).
+    await ev(`flBase('porcion')`); await sleep(300);
+    s = JSON.parse(await ev(`JSON.stringify({name:document.getElementById('bc-name').value,kcal:document.getElementById('bc-kcal').value})`));
+    check('F5-5c cambiar de «por 100 g» a «por porción» conserva lo tecleado',
+      s.name === 'Prueba' && s.kcal === '450', JSON.stringify(s));
+
+    // F5-6 — el camino bueno: etiqueta POR PORCIÓN de un cereal real (120 kcal / 30 g)
+    await ev(`(()=>{const v=(id,x)=>{document.getElementById(id).value=x};
+      v('bc-name','Cereal de prueba');v('bc-brand','Marca X');v('bc-porcion','30');
+      v('bc-kcal','120');v('bc-p','2.4');v('bc-c','25.5');v('bc-f','1.2');})()`);
+    await ev(`flGuardarProducto()`); await sleep(1200);
+    s = JSON.parse(await ev(`JSON.stringify((()=>{const f=_flView.sel||{};const fila=window._bcFake.filas[0]||{};
+      return {inserts:window._bcFake.inserts, filaKcal:fila.kcal, filaP:fila.p, filaUn:fila.un_g,
+        sel:f.name, verificado:f.verified, txt:document.getElementById('flroom-body').textContent,
+        enCat:!!(_foodCat||[]).find(x=>x.id==='bc:5901234123457')};})())`));
+    check('F5-6 guardar deja el producto listo y marcado «sin revisar»',
+      s.inserts === 1 && /Cereal de prueba/.test(s.sel || '') && s.verificado === false && /sin revisar/i.test(s.txt) && s.enCat,
+      JSON.stringify({ inserts: s.inserts, sel: s.sel, verificado: s.verificado, enCat: s.enCat }));
+    // 🔴 F5-7 — LO QUE DE VERDAD IMPORTA: 120 kcal por porción de 30 g son 400 por 100 g. Si
+    // esto entrara sin convertir, la persona registraría un tercio de lo que se comió.
+    check('F5-7 lo que se guardó son los macros CONVERTIDOS a 100 g (400 kcal, no 120)',
+      s.filaKcal === 400 && s.filaP === 8 && s.filaUn === 30, JSON.stringify({ kcal: s.filaKcal, p: s.filaP, un_g: s.filaUn }));
+    // …y sobrevive hasta el plato: media porción (15 g) son 60 kcal, las del empaque partidas.
+    s = JSON.parse(await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+      flGuardar('bc:5901234123457',15);
+      const e=foodLogDay(c.foodlog).find(x=>/Cereal/.test(x.name))||{};
+      return JSON.stringify({kcal:e.kcal,g:e.g,name:e.name});})()`));
+    check('F5-7b y llega así al registro del día (15 g del cereal = 60 kcal)',
+      s.g === 15 && Math.abs(s.kcal - 60) <= 1, JSON.stringify(s));
+
+    // F5-9 — cabe a 360px y con letra «Muy grande» (barra premium)
+    await ev(`(()=>{flNuevoProducto('4006381333931');document.documentElement.setAttribute('data-fs','xl');})()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 780, deviceScaleFactor: 2, mobile: true });
+    await sleep(700);
+    s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('flroom-body');
+      const btn=document.getElementById('bc-save'); const r=btn?btn.getBoundingClientRect():null;
+      return {desborde:b.scrollWidth-b.clientWidth, docDesborde:document.documentElement.scrollWidth-window.innerWidth,
+        btnAlto:r?Math.round(r.height):0, btnDentro:!!r&&r.left>=0&&r.right<=360};})())`));
+    check('F5-9 el formulario cabe a 360px con letra «Muy grande», sin desborde horizontal',
+      s.desborde <= 1 && s.docDesborde <= 1 && s.btnAlto >= 36 && s.btnDentro, JSON.stringify(s));
+    await ev(`document.documentElement.removeAttribute('data-fs')`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+
+    // F5-8 — al salir, la cámara queda apagada. (En headless no hay cámara: lo que se afirma es
+    // que la SALIDA suelta el stream, montando uno falso a mano.)
+    s = JSON.parse(await ev(`(()=>{let parado=0;
+      _flScan.stream={getTracks:()=>[{stop:()=>{parado++}}]}; _flScan.on=true;
+      closeFoodLogRoom();
+      return JSON.stringify({parado, on:_flScan.on, stream:_flScan.stream===null, timer:_flScan.timer===null});})()`));
+    check('F5-8 salir de la habitación suelta la cámara de verdad',
+      s.parado === 1 && s.on === false && s.stream && s.timer, JSON.stringify(s));
+    await ev(`(()=>{if(window._bdReal)window.BarcodeDetector=window._bdReal;window.AVI_ALLOW_CLOUD_WRITE=false;
+      const c=DB.clients.find(x=>x.id===CUR.clientId); c.foodlog=foodLogBlank(); localStorage.removeItem('ax_bccache');})()`);
   }
 
   // FL10 — el botón atrás cierra la habitación
