@@ -4,6 +4,59 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛑 2026-08-11 — avi-v473: el escáner de códigos de barras, del empaque al registro
+
+**Producción en `avi-v473`, verificada** (`?v=473` + `avi-v473` en sw.js + `_prodcheck 473` verde,
+`jsErrors: []`). Suite 683 → **696/696**, hook 12/12, **13 de 13 sabotajes muerden**.
+Commit `c8c4caf`. La capa de datos (`food_barcodes`) ya estaba en producción desde `1c5444f`.
+
+### Qué recibe el asesorado
+Botón **«📷 Escanear un empaque»** en el buscador del registro de alimentos. El lector es
+**`BarcodeDetector`, NATIVO del navegador** (`ean_13`, `ean_8`, `upc_a`, `upc_e`, `itf`,
+`code_128`) → **cero dependencias nuevas**; la restricción del proyecto no se negoció por una
+feature. En el Safari del iPhone no existe: **se dice POR QUÉ y se teclea el número**, nunca un
+botón que no responde. Si el código no está en el catálogo, se aporta desde la etiqueta; la fila
+nace `verified=false` y se marca **«sin revisar»** en las dos superficies donde se ve.
+
+- `foodCatalog(json, extra)` — **la tercera fuente SE SUMA, no sustituye**: sin `foods.json`
+  (sin red, archivo caído) quedan los 50 de casa **más** lo escaneado. Ids con prefijo `bc:`,
+  que es lo que impide el choque entre las tres capas.
+- Caché por aparato `ax_bccache` (200 filas, recientes arriba): lo de siempre aparece al buscar
+  aunque no haya red. **NO va en SB_KEYS** — son empaques, no datos de una persona.
+
+### 🔴 Lo que de verdad importaba: la etiqueta habla POR PORCIÓN
+120 kcal por porción de 30 g **son 400 por cada 100 g**. Sin preguntarlo, la persona registra un
+tercio de lo que comió, con un dato coherente consigo mismo (la clase de la yuca «cocida»). La
+pantalla lo pregunta y `labelPer100` convierte; esa porción queda además como **medida casera**.
+Afirmado de punta a punta en el harness: 15 g del cereal = 60 kcal en el registro del día.
+
+### 🔴 Espejo de los CHECK, no un error de motor
+`barcodeDraft` replica en el cliente los CHECK del SQL para poder decir «suman 120 g por cada
+100 g de producto, y eso es imposible» en vez de `violates check constraint`. **Un test lee el
+`.sql` de verdad** y falla si los dos lados se desalinean. El aviso de kcal que no cuadra
+**AVISA, no bloquea**: un empaque puede no cerrar (fibra, redondeo del fabricante), y bloquear
+ahí dejaría sin registrar a quien tiene el producto en la mano.
+
+### 🔒 La cámara se apaga por TODAS las salidas
+Cerrar la habitación, el botón atrás, salir del escáner, pasar a escribir el producto, **y el
+permiso que se resuelve cuando la persona ya se fue de la pantalla**. Y como todo se pinta con
+`innerHTML`, el `<video>` se re-engancha DESPUÉS de pintar.
+
+### Verificación
+- **`scripts/e2e/_sabotaje-f5.mjs`: la primera matriz de sabotaje VERSIONADA del repo** (13/13,
+  9 de la capa pura y 4 de interfaz). Hasta hoy vivían en `scripts/_*`, que está en `.gitignore`.
+- `_verify-foodlog` de 10 → **22 aserciones** (F5-1..F5-9), con el formulario medido a 360px y
+  letra «Muy grande»: cero desborde.
+- Candado nuevo **derivado del código**: todo `onclick="algo("` de `app-5-salud.js` tiene que
+  existir como función. Se mantiene solo.
+- 🎓 Dos rojos de la sesión fueron **de la sonda, no de la app**: un patrón `23\d{3}` casaba
+  dentro del código de barras que la pantalla muestra (→ gotcha nuevo).
+
+### ⏭️ Falta
+La **cola de aprobación del coach** (promover a `verified` con la RPC `fb_verify`). Sin ella nada
+llega nunca a `verified`, así que el rótulo «sin revisar» sale en el 100%. Camilo es el único en
+`community_moderators` (verificado), así que la RPC ya le funciona.
+
 ## 🛑 2026-08-10 — avi-v471: el menú se elegía solo por calorías y le quitaba proteína a la gente
 
 **Producción en `avi-v471`, verificada** (`?v=471` + `avi-v471` en sw.js + `_prodcheck 471` verde,
