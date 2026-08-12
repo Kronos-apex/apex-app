@@ -2698,6 +2698,9 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  {v:478, icon:'check', t:'Tu meta ahora es una franja', d:'Ya no tienes que clavar un numero exacto: tienes un rango, y estar dentro es cumplir. Abajo veras tu semana completa de un vistazo.',
+   steps:['Abre «Comida de hoy»: veras entre que y que cifra te toca','Cuando entres en tu franja aparece un ✓ — eso es meta cumplida','La fila de 7 dias te dice si esto ya es un habito o fue un dia suelto'],
+   coach:true},
   {v:477, icon:'check', t:'Tu plan se marca con un toque', d:'Ya no tienes que volver a escribir lo que la app te acaba de decir que comas: si te comiste lo del plan, lo marcas y queda registrado con sus cantidades.',
    steps:['En "Hoy" abre "Tu comida de hoy" y toca "Ver"','Toca "✓ Me lo comí" en la comida que acabas de terminar','¿Cambiaste algo? Toca "Deshacer", o agrega lo que sí comiste'],
    coach:true}, // solo con coach: el plan de comida y el registro son Premium
@@ -2746,11 +2749,13 @@ function renderNewsCard(){
   if(!tour||!tour.classList.contains('hidden'))return; // ya abierto → no repintar encima
   if(!CUR.clientId)return; // sesión cerrada entre reintentos
   const seen=parseInt(localStorage.getItem(_NEWS_SEEN_KEY))||0;
-  let items=newsToShow(AVI_NEWS,seen);
-  // v316 (aviso Lucas): novedades marcadas coach:true no se muestran al modo libre —
-  // le prometían un chat que no tiene y el CTA lo estrellaba contra el candado.
+  // v316 (aviso Lucas): las novedades `coach:true` no se le muestran al modo libre — le prometían
+  // un chat que no tiene y el CTA lo estrellaba contra el candado.
+  // 🔴 v478: ese filtro se aplicaba DESPUÉS de que `newsToShow` recortara a 3, así que en cuanto
+  // las tres más nuevas fueron todas de Premium, al tier libre **no le quedaba ninguna y el tour
+  // dejaba de abrir**. Ahora el público entra en la función pura y el recorte va al final.
   const _nc=DB.clients.find(x=>x.id===CUR.clientId);
-  items=items.filter(n=>!n.coach||(typeof clientHasCoach==='function'&&clientHasCoach(_nc)));
+  const items=newsToShow(AVI_NEWS,seen,{coach:(typeof clientHasCoach==='function')?!!clientHasCoach(_nc):true});
   if(!items.length)return;
   // Visibilidad REAL de cada overlay: no todos se ocultan igual. #cwelcome y #onboarding
   // viven con display:flex y se ocultan con opacity:0 + pointer-events:none (el check

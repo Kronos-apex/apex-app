@@ -2779,6 +2779,58 @@ function foodLogProgress(totals, target) {
   });
   return out;
 }
+// ══════════════════════════════════════════════════════════════════════
+// LA FRANJA, NO LA CIFRA EXACTA (patrón 2 del estudio de Fitia/MFP)
+// ──────────────────────────────────────────────────────────────────────
+// Pedirle a alguien que clave «2.089 kcal» es pedirle una precisión que NI EL PROPIO PLAN
+// tiene: el plato sirve entre el 94,7% y el 110,2% de lo que promete. Una cifra al gramo finge
+// una exactitud que no existe y convierte cualquier día normal en un fracaso.
+//
+// 🔴 EL ANCHO ESTÁ MEDIDO, NO ESCRITO DE MEMORIA (2026-08-12, ruta `nutBaseFor` contra la nube):
+// 25 filas de asesorado → 21 resueltas → **17 que en producción SÍ ven el plan de comida**
+// (6 son `tier:'libre'` y nunca lo ven; 4 no resuelven), 119 días-plan. Lo que el plato SIRVE
+// como % de lo que promete: min 94,7% · mediana 102,8% · max 110,2%.
+//   franja ±5%  → 28 de 119 días-plan quedan fuera (10 personas)
+//   franja ±8%  →  6 de 119 (4 personas)
+//   franja ±10% →  1 de 119 (**Nataly**, cuyo plato entrega 110,2%)
+//   franja ±12% →  0 de 119   ← ELEGIDA
+// 🔒 La restricción es dura y no es de gusto: **una franja más estrecha de lo que el plato
+// entrega le diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó** — la misma
+// contradicción de v435/v444, servida por la pantalla que existe para dar tranquilidad.
+// Si algún día el plato entrega más fino, esta cifra se re-mide y se aprieta; no al revés.
+// ⚠️ Solo para CALORÍAS. Por macro el reparto es mucho más ancho (grasa 80,9%-129,2%) y una
+// franja de ±29% no dice nada: los macros siguen con su porcentaje.
+const FOODLOG_BAND = 0.12;
+function foodLogBandFor(meta, hecho) {
+  const m = Math.round(parseFloat(meta) || 0);
+  if (!(m > 0)) return null;
+  const lo = Math.round(m * (1 - FOODLOG_BAND));
+  const hi = Math.round(m * (1 + FOODLOG_BAND));
+  const h = Math.round((parseFloat(hecho) || 0) * 10) / 10;
+  return {
+    lo, hi, meta: m, hecho: h,
+    estado: h < lo ? 'bajo' : (h > hi ? 'alto' : 'dentro'),
+    // 🔴 Lo que falta para ENTRAR EN LA FRANJA, no para clavar el número exacto. Y se redondea
+    // AQUÍ, porque la pantalla que lo rehizo a mano sacó «36.799999999999955» (reporte del PO).
+    falta: Math.max(0, Math.round(lo - h)),
+    // Lo que sobra por encima del techo (0 si no se pasó). Sirve para no decir «te faltan 0».
+    sobra: Math.max(0, Math.round(h - hi)),
+  };
+}
+// ── LA SEMANA EN UNA FILA (patrón 3 del estudio) ──────────────────────────────
+// El dato ya existía y solo lo veía el coach. `estado` por día: 'vacio' (no registró — que NO
+// es «comió cero»: es «no sabemos», la misma regla que ya protege el promedio del coach),
+// 'bajo' | 'dentro' | 'alto', o 'sinmeta' si ese día no tiene plan contra el que comparar.
+function foodLogWeekStates(foodlog, targetsPorDia, now, dias) {
+  return foodLogWeek(foodlog, now, dias).map(d => {
+    const t = targetsPorDia && targetsPorDia[d.dayIndex];
+    const band = (d.n > 0 && t) ? foodLogBandFor(t.kcal, d.kcal) : null;
+    return Object.assign({}, d, {
+      band,
+      estado: d.n === 0 ? 'vacio' : (band ? band.estado : 'sinmeta'),
+    });
+  });
+}
 // ── F4: lo que ve el COACH ────────────────────────────────────────────────────
 // Últimos N días con su total (hoy de último), como `waterWeek`. `n` = cuántos alimentos anotó.
 function foodLogWeek(foodlog, now, dias) {
@@ -2860,10 +2912,18 @@ function clampQwHiit(cfg, def) {
 // ── Novedades de la app (v302): qué mostrarle al asesorado — puro, testeable ──
 // Devuelve las entradas MÁS NUEVAS que la última versión vista (seenV), de la más
 // reciente a la más vieja, tope 3 (una tarjeta digerible; lo viejo ya no es noticia).
-function newsToShow(list, seenV) {
+// 🔴 EL RECORTE VA DESPUÉS DEL FILTRO, NO ANTES. Cortaba a 3 y la pantalla filtraba las novedades
+// `coach:true` DESPUÉS: en cuanto las tres más nuevas fueron todas de Premium (pasó en v478), a
+// quien está en el tier libre **no le quedaba ninguna y el tour no abría nunca**. Nadie lo habría
+// notado — un tour que no sale no da error, y las novedades viejas ya se habían pasado de largo.
+// Puerta cerrada, ventana abierta: la misma familia del filtro de lesiones y el calentamiento.
+// `opts.coach === false` = no tiene coach. Sin `opts` se comporta como antes (compatibilidad).
+function newsToShow(list, seenV, opts) {
   const seen = parseInt(seenV) || 0;
+  const conCoach = !opts || opts.coach !== false;
   return (list || [])
     .filter(n => n && parseInt(n.v) > seen)
+    .filter(n => conCoach || !n.coach)
     .sort((a, b) => b.v - a.v)
     .slice(0, 3);
 }
@@ -6607,6 +6667,9 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogRemove,
     foodLogMerge,
     foodLogProgress,
+    foodLogBandFor,
+    foodLogWeekStates,
+    FOODLOG_BAND,
     foodLogWeek,
     foodLogAdherence,
     foodLogActiveDays,

@@ -1286,18 +1286,26 @@ function _foodLogBlockHtml(client){
   const meta=_foodLogTargetHoy(client.id);
   const pr=foodLogProgress(tot,meta);
   const pct=pr.kcal.pct==null?0:Math.min(100,pr.kcal.pct);
-  const sub=!meta
+  // LA FRANJA, NO LA CIFRA EXACTA. Ni el propio plato clava el número (sirve 94,7%-110,2% de lo
+  // que promete, medido), así que exigirle a la persona un valor al gramo la pone a fallar
+  // todos los días. Y se dice lo que le QUEDA, no lo que lleva.
+  const band=(typeof foodLogBandFor==='function')?foodLogBandFor(pr.kcal.meta,pr.kcal.hecho):null;
+  const sub=!meta||!band
     ? (tot.n?`<b>${tot.kcal}</b> kcal registradas hoy`:'Anota lo que comes y llévalo claro')
     : (tot.n
-        ? `<b>${pr.kcal.hecho}</b> de ${pr.kcal.meta} kcal${pr.kcal.falta?` · te faltan ${pr.kcal.falta}`:' · meta cumplida 🎉'}`
-        : `Tu meta de hoy: <b>${pr.kcal.meta}</b> kcal`);
+        ? (band.estado==='dentro'
+            ? `<b>${Math.round(band.hecho)}</b> kcal · ✓ vas en tu franja`
+            : band.estado==='bajo'
+              ? `<b>${Math.round(band.hecho)}</b> kcal · te quedan ${band.falta}`
+              : `<b>${Math.round(band.hecho)}</b> kcal · ${band.sobra} por encima`)
+        : `Hoy te toca entre <b>${band.lo}</b> y <b>${band.hi}</b> kcal`);
   return `<div class="hb-sep"></div>
     <div class="hb-row">
       <span class="hb-ic fl" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('utensils',21):'🍽️'}</span>
       <div class="hb-info">
         <div class="hb-title">Comida de hoy</div>
         <div class="hb-sub" aria-live="polite">${sub}</div>
-        <div class="hb-bar"><div class="hb-fill fl${pct>=100?' met':''}" style="width:${pct}%"></div></div>
+        <div class="hb-bar"><div class="hb-fill fl${band&&band.estado==='dentro'?' met':''}" style="width:${pct}%"></div></div>
       </div>
       <button type="button" class="hb-btn hb-plus fl" aria-label="Registrar lo que comí" onclick="openFoodLogRoom()">+</button>
     </div>`;
@@ -1394,6 +1402,50 @@ function renderFoodLogRoom(){
     if(v&&v.srcObject!==_flScan.stream){ v.srcObject=_flScan.stream; v.play().catch(()=>{}); }
   }
 }
+// ── LA SEMANA EN UNA FILA (patrón 3 del estudio) ─────────────────────────────
+// AVI ya calculaba esto para la ficha del coach y el asesorado nunca lo veía. Una sola fila de
+// 7 días dice de un vistazo si esto es un hábito o un día suelto — que es la pregunta que la
+// persona se hace y que un número de HOY no puede responder.
+// 🔴 Un día sin registrar NO es «comió cero»: es «no sabemos», y se pinta distinto (hueco, no
+// fallo). Es la misma regla que ya protege el promedio del coach de mentir.
+const _FL_DIA_INI=['D','L','M','M','J','V','S'];
+const _FL_ESTADO={
+  dentro:{bg:'--gl',fg:'--gt',t:'en tu franja'},
+  bajo:{bg:'--bll',fg:'--blt',t:'por debajo'},
+  alto:{bg:'--orl',fg:'--ort',t:'por encima'},
+  sinmeta:{bg:'--bg',fg:'--t2',t:'registrado'},
+  vacio:{bg:'--bg',fg:'--t3',t:'sin registrar'},
+};
+function _foodLogTargetsSemana(clientId){
+  const sem=_nutSemanaDe(clientId); if(!sem)return null;
+  const m={}; (sem.days||[]).forEach(d=>{ m[d.dayIndex]=d.target; });
+  return m;
+}
+function _flSemanaHtml(c){
+  if(typeof foodLogWeekStates!=='function')return '';
+  const dias=foodLogWeekStates(c.foodlog,_foodLogTargetsSemana(c.id),new Date(),7);
+  // Si no hay NADA registrado en la semana, la fila sería siete huecos: no se pinta (la
+  // pantalla ya dice qué hacer, y una fila vacía solo ocupa sitio el primer día).
+  if(!dias.some(d=>d.n>0))return '';
+  const enFranja=dias.filter(d=>d.estado==='dentro').length;
+  const conReg=dias.filter(d=>d.n>0).length;
+  const celdas=dias.map((d,i)=>{
+    const e=_FL_ESTADO[d.estado]||_FL_ESTADO.vacio;
+    const hoy=i===dias.length-1;
+    const marca=d.estado==='dentro'?'✓':(d.n>0?'·':'');
+    return `<div style="flex:1;min-width:0;text-align:center">
+      <div style="font-size:10px;color:var(--t2);margin-bottom:3px">${_FL_DIA_INI[d.dayIndex]}</div>
+      <div style="height:26px;border-radius:var(--rsm);background:var(${e.bg});color:var(${e.fg});
+        display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+        ${hoy?'box-shadow:0 0 0 2px var(--g2)':'border:1px solid var(--br)'}"
+        title="${esc(d.day)} · ${e.t}">${marca}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:11.5px;color:var(--t2);margin-bottom:7px">Tu semana · <b style="color:var(--t1)">${enFranja} de ${conReg}</b> ${conReg===1?'día registrado te quedó':'días registrados te quedaron'} en tu franja</div>
+    <div style="display:flex;gap:4px">${celdas}</div>
+  </div>`;
+}
 function _flDiaHtml(c){
   const hoy=foodLogDay(c.foodlog);
   const tot=foodLogTotals(hoy);
@@ -1401,19 +1453,27 @@ function _flDiaHtml(c){
   // HÉROE: era la ÚNICA habitación que abría sin ninguno — pasaba de la barra directo a una fila
   // de números sueltos. Mismo héroe de marca que las demás (decisión del PO, 2026-08-08), con el
   // resumen del día dentro: lo primero que alguien quiere saber al abrir esto es cuánto le queda.
-  // 🔴 `pr.kcal.falta` — NO se recalcula aquí. `foodLogProgress` ya lo da redondeado, y al
-  // restarlo a mano salía la resta en coma flotante de un número con decimal: el PO vio
-  // «Te quedan 36.799999999999955 kcal». Nunca se rehace fuera un cálculo que la función pura
-  // ya expone: se rehace peor. Y en kcal se redondea a entero, que medias calorías no existen.
+  // 🔴 `falta` — NO se recalcula aquí. La función pura ya lo da redondeado, y al restarlo a mano
+  // salía la resta en coma flotante de un número con decimal: el PO vio «Te quedan
+  // 36.799999999999955 kcal». Nunca se rehace fuera un cálculo que la función pura ya expone:
+  // se rehace peor. Y en kcal se redondea a entero, que medias calorías no existen.
+  // Desde v478 la referencia es la FRANJA, no la cifra exacta: se dice lo que falta para ENTRAR
+  // en ella. Exigir el número al gramo es exigir lo que ni el propio plato clava.
+  const _band=(typeof foodLogBandFor==='function')?foodLogBandFor(pr.kcal.meta,pr.kcal.hecho):null;
   const _sub=tot.n===0
-    ? 'Todavía no has anotado nada hoy'
-    : (pr.kcal.meta ? `Te quedan <b>${Math.round(pr.kcal.falta||0)}</b> kcal para tu meta de hoy` : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
+    ? (_band?`Hoy te toca entre <b>${_band.lo}</b> y <b>${_band.hi}</b> kcal`:'Todavía no has anotado nada hoy')
+    : (_band
+        ? (_band.estado==='dentro' ? `✓ Vas en tu franja de hoy (<b>${_band.lo}</b>-<b>${_band.hi}</b> kcal)`
+          : _band.estado==='bajo' ? `Te quedan <b>${_band.falta}</b> kcal para tu franja de hoy`
+          : `Vas <b>${_band.sobra}</b> kcal por encima de tu franja de hoy`)
+        : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
   let html=`<div class="sroom-hero exroom-hero" style="margin-bottom:14px">
       <div class="sroom-hero-txt">
         <div class="sroom-title">Comida de hoy</div>
         <div class="sroom-hero-feel">${_sub}</div>
       </div>
     </div>
+    ${_flSemanaHtml(c)}
     <div style="display:flex;gap:6px;margin-bottom:6px">
       ${_flMacroChip('kcal',pr.kcal,'')}${_flMacroChip('prot',pr.p,'g')}${_flMacroChip('carbs',pr.c,'g')}${_flMacroChip('grasas',pr.f,'g')}
     </div>`;

@@ -2,11 +2,24 @@
 // y exige que la suite se ponga ROJA. Misma doctrina que `_sabotaje-f5/f6`: un candado que no
 // muerde no es un candado, y en este repo un sabotaje ya salió VERDE cuatro veces — la última,
 // los tres descuentos cruzados de `carb2`, que llegaron a producción SIN UN SOLO TEST.
-// ⚠️ Los archivos del repo van con CRLF: un patrón con `\n` suelto NO SE APLICA NUNCA. Los
-// patrones se anclan en UNA sola línea, y el runner grita si el texto no aparece exactamente 1 vez.
+// ⚠️ FINALES DE LÍNEA: perseguirlos a mano es perder el tiempo. Este repo tiene los dos —y
+// además **git los REESCRIBE al commitear**: `app-5-salud.js` estaba con LF mientras se trabajaba
+// y amaneció con CRLF después del commit, así que un patrón multilínea que hoy casa mañana no.
+// Por eso el runner NORMALIZA: convierte el patrón en un regex donde cada salto es `\r?\n`.
+// Y sigue gritando si el texto no aparece EXACTAMENTE una vez — un «no se aplicó» se lee de
+// reojo igual que un ✅, y en un listado de 24 se pierde.
 // Corre: node scripts/e2e/_sabotaje-f7.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+
+// Busca `txt` sin que el final de línea importe. Devuelve {veces, aplicar(src)}.
+const buscador = txt => {
+  const re = new RegExp(txt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\r?\n/g, '\\r?\\n'), 'g');
+  return {
+    veces: (s) => (s.match(re) || []).length,
+    aplicar: (s, poner) => s.replace(re, () => poner),
+  };
+};
 
 const SABOTAJES = [
   // ── El corazón: qué se registra ──────────────────────────────────────────
@@ -62,8 +75,7 @@ const SABOTAJES = [
     '  if(!c.foodlogOk){ openFoodLogRoom(FOODLOG_MEALS[idx]); return; }',
     '  // sabotaje',
     'app-5-salud.js'],
-  // ⚠️ OJO: `avi-core.js` va con CRLF pero `app-5-salud.js` va con LF — el repo es MIXTO, no
-  // uniformemente CRLF como decía el gotcha. Los patrones multilínea de este archivo usan `\n`.
+  // Los saltos de línea de los patrones multilínea dan igual: el runner los normaliza (ver arriba).
   ['15· marcar el plan se salta el gate Premium',
     "  if(typeof isFreeClient==='function'&&isFreeClient(c))return;\n  if(typeof foodLogMarkPlanMeal!=='function')return;",
     "  if(typeof foodLogMarkPlanMeal!=='function')return;",
@@ -72,6 +84,46 @@ const SABOTAJES = [
     'function flTogglePlanMeal(idx){',
     'function flTogglePlanMealRenombrada(idx){',
     'app-5-salud.js'],
+
+  // ── La FRANJA y la SEMANA (patrones 2, 3 y 6 del estudio) ────────────────
+  ['17· la franja se aprieta por debajo de lo que el plato entrega (le diría «te pasaste» a quien comió su plan)',
+    'const FOODLOG_BAND = 0.12;',
+    'const FOODLOG_BAND = 0.08;'],
+  ['18· «lo que falta» vuelve a medirse contra la cifra EXACTA en vez de la franja',
+    '    falta: Math.max(0, Math.round(lo - h)),',
+    '    falta: Math.max(0, Math.round(m - h)),'],
+  ['19· la franja deja de decir en qué lado se cayó (todo «dentro»)',
+    "    estado: h < lo ? 'bajo' : (h > hi ? 'alto' : 'dentro'),",
+    "    estado: 'dentro',"],
+  ['20· un día SIN registrar se pinta como si hubiera comido cero (el promedio que miente)',
+    '    const band = (d.n > 0 && t) ? foodLogBandFor(t.kcal, d.kcal) : null;',
+    '    const band = t ? foodLogBandFor(t.kcal, d.kcal) : null;'],
+  // Ancla única: `targetsPorDia[d.dayIndex]` aparece también en `foodLogAdherence` (la ficha del
+  // coach), así que el patrón se ancla con la línea de al lado, que solo existe aquí.
+  ['21· la fila de la semana compara todos los días contra el objetivo del MISMO día',
+    '    const t = targetsPorDia && targetsPorDia[d.dayIndex];\n    const band = (d.n > 0 && t) ? foodLogBandFor(t.kcal, d.kcal) : null;',
+    '    const t = targetsPorDia && targetsPorDia[0];\n    const band = (d.n > 0 && t) ? foodLogBandFor(t.kcal, d.kcal) : null;'],
+  ['22· la pantalla se inventa su propio ancho de franja (segunda verdad)',
+    '  const _band=(typeof foodLogBandFor===',
+    '  const _band=(function(m,h){const lo=Math.round(m*0.88),hi=Math.round(m*1.12);return{lo,hi,meta:m,hecho:h,estado:h<lo?"bajo":(h>hi?"alto":"dentro"),falta:Math.max(0,Math.round(lo-h)),sobra:Math.max(0,Math.round(h-hi))};})(pr.kcal.meta,pr.kcal.hecho)||(typeof foodLogBandFor===',
+    'app-5-salud.js'],
+  ['23· desaparece la fila de los 7 días',
+    'function _flSemanaHtml(c){',
+    'function _flSemanaHtmlRenombrada(c){',
+    'app-5-salud.js'],
+
+  ['24· el coach juzga el mismo día con OTRA vara que la asesorada (él naranja, ella «vas bien»)',
+    "const _FL_DESVIO_MEDIO=(typeof FOODLOG_BAND==='number')?Math.round(FOODLOG_BAND*100):12;",
+    'const _FL_DESVIO_MEDIO=12;',
+    'app-3-coach.js'],
+  ['25· el chip del coach marca desvío JUSTO en el borde donde ella sigue dentro',
+    'const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>_FL_DESVIO_MEDIO;',
+    'const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>=_FL_DESVIO_MEDIO;',
+    'app-3-coach.js'],
+
+  ['26· el tour de novedades vuelve a recortar ANTES de filtrar (el tier libre se queda sin nada)',
+    '    .filter(n => conCoach || !n.coach)' + String.fromCharCode(10) + '    .sort((a, b) => b.v - a.v)',
+    '    .sort((a, b) => b.v - a.v)'],
 
   // ── CONTROL: un cambio inocuo NO debe poner la suite roja ────────────────
   // Sin esto no se sabe si los 16 de arriba muerden por lo que dicen morder o porque cualquier
@@ -82,7 +134,7 @@ const SABOTAJES = [
     'avi-core.js', 'verde'],
 ];
 
-const ARCHIVOS = ['avi-core.js', 'app-5-salud.js'];
+const ARCHIVOS = ['avi-core.js', 'app-5-salud.js', 'app-3-coach.js'];
 const RUTA = n => new URL('../../' + n, import.meta.url);
 const ORIGINAL = Object.fromEntries(ARCHIVOS.map(n => [n, readFileSync(RUTA(n), 'utf8')]));
 
@@ -90,13 +142,14 @@ let ok = 0, fallos = [];
 try {
   for (const [nombre, buscar, poner, archivo = 'avi-core.js', espera = 'rojo'] of SABOTAJES) {
     const original = ORIGINAL[archivo];
-    const veces = original.split(buscar).length - 1;
+    const b = buscador(buscar);
+    const veces = b.veces(original);
     if (veces !== 1) {
       console.log(`  ⚠️  ${nombre}\n      NO SE APLICÓ: el texto aparece ${veces} veces en ${archivo} (esperaba 1)`);
       fallos.push(nombre);
       continue;
     }
-    writeFileSync(RUTA(archivo), original.replace(buscar, poner), 'utf8');
+    writeFileSync(RUTA(archivo), b.aplicar(original, poner), 'utf8');
     let rojo = false, linea = '';
     try {
       const out = execSync('node --test avi.test.js', { cwd: new URL('../..', import.meta.url), encoding: 'utf8', stdio: 'pipe' });

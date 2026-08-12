@@ -1827,9 +1827,16 @@ function _flCoachTargets(c){
     return map;
   }catch(e){ return null; }
 }
+// 🔴 EL UMBRAL DE «SE ESTÁ DESVIANDO» ES EL MISMO ANCHO QUE LA FRANJA QUE VE EL ASESORADO.
+// Era un `12` escrito aquí y otro `0.12` en avi-core: dos números que significan lo mismo en dos
+// archivos distintos, o sea la contradicción de v435/v444 esperando su turno — el coach viendo
+// una alerta naranja por el mismo día en que la app le dice a ella «✓ vas en tu franja».
+// Se DERIVA del ancho, y hay un test que impide separarlos. `>` y no `>=`: justo en el borde la
+// persona está DENTRO, así que el coach no puede verlo como desvío.
+const _FL_DESVIO_MEDIO=(typeof FOODLOG_BAND==='number')?Math.round(FOODLOG_BAND*100):12;
 function _flDesvioChip(et,pct,unidad,prom,meta){
   if(pct==null)return `<div style="flex:1;text-align:center;font-size:11px;color:var(--t3)">${et}<br>sin plan</div>`;
-  const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>=12;
+  const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>_FL_DESVIO_MEDIO;
   const col=grave?'var(--rdt)':(medio?'var(--ort)':'var(--gt)');
   const bg=grave?'var(--rdl)':(medio?'var(--orl)':'var(--gl)');
   return `<div style="flex:1;min-width:0;text-align:center;background:${bg};border-radius:var(--rsm);padding:7px 3px">

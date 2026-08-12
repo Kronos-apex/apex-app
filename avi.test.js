@@ -25,6 +25,9 @@ const {
   foodLogMarkPlanMeal,
   foodLogUnmarkPlanMeal,
   foodLogPlanMealDone,
+  foodLogBandFor,
+  foodLogWeekStates,
+  FOODLOG_BAND,
   nutBaseFor,
   workoutStartCollapsed,
   nutMacroKcal,
@@ -3354,6 +3357,25 @@ test('newsToShow: solo lo más nuevo que lo visto, reciente primero, tope 3', ()
   assert.deepStrictEqual(newsToShow(null, 0), []);
 });
 
+// 🔴 EL RECORTE VA DESPUÉS DEL FILTRO. Antes se cortaba a 3 y la PANTALLA filtraba las novedades
+// de Premium después: en cuanto las tres más nuevas fueron todas `coach:true` —pasó de verdad al
+// publicar v477 y v478—, a quien está en el tier libre no le quedaba ninguna y **el tour dejaba
+// de abrir del todo**. Un tour que no sale no da error: nadie lo habría notado.
+test('🔴 newsToShow: al tier libre le quedan novedades aunque las 3 más nuevas sean de Premium', () => {
+  const list = [
+    { v: 470, t: 'vieja libre' }, { v: 471, t: 'otra libre' }, { v: 472, t: 'tercera libre' },
+    { v: 476, t: 'premium a', coach: true }, { v: 477, t: 'premium b', coach: true }, { v: 478, t: 'premium c', coach: true },
+  ];
+  // Con coach: las 3 más nuevas, que son las de Premium.
+  assert.deepStrictEqual(newsToShow(list, 0, { coach: true }).map(n => n.v), [478, 477, 476]);
+  // Sin coach: NO se queda sin nada — le llegan las 3 que sí son para él.
+  const libre = newsToShow(list, 0, { coach: false });
+  assert.deepStrictEqual(libre.map(n => n.v), [472, 471, 470]);
+  assert.ok(libre.every(n => !n.coach), 'se le coló una novedad de Premium a quien no tiene coach');
+  // Y sin `opts` se comporta EXACTAMENTE como antes (los llamadores viejos no cambian).
+  assert.deepStrictEqual(newsToShow(list, 0).map(n => n.v), [478, 477, 476]);
+});
+
 test('painTipFor: tip por área con fallback conservador', () => {
   assert.ok(/encima de la cabeza/.test(painTipFor('hombro')));
   assert.ok(/rango de movimiento que NO duele/.test(painTipFor('zona inventada')));
@@ -4679,9 +4701,15 @@ test('🔴 la pantalla de «Comida de hoy» NO recalcula lo que la función pura
   const i = src.indexOf('function _flDiaHtml');
   assert.ok(i > -1, 'no se encontró _flDiaHtml');
   const cuerpo = src.slice(i, i + 2600);
-  assert.ok(/pr\.kcal\.falta/.test(cuerpo), 'el héroe dejó de usar `falta` (la cifra ya redondeada)');
+  // La cifra que se pinta sale SIEMPRE de un `falta` que ya viene redondeado de una función pura
+  // —`foodLogProgress` desde v456, `foodLogBandFor` desde v478 (la franja)—, nunca de una resta
+  // hecha aquí. Se afirma la PROPIEDAD, no el nombre de la variable: el héroe cambió de
+  // referencia (de la cifra exacta a la franja) y la lección es la misma.
+  assert.ok(/(pr\.kcal|_band)\.falta/.test(cuerpo), 'el héroe dejó de usar un `falta` ya redondeado');
   assert.ok(!/\.meta\s*\|\|\s*0\s*\)\s*-\s*\(/.test(cuerpo),
     'volvió a restar meta-hecho a mano: eso es lo que sacaba «36.799999999999955» en pantalla');
+  assert.ok(!/(meta|hi|lo)\s*-\s*(hecho|tot\.kcal)/.test(cuerpo),
+    'una resta de la meta menos lo hecho, a mano, en la pantalla: eso vuelve a sacar coma flotante');
 });
 
 test('foodLogProgress: pasarse no deja «falta» negativo, y sin meta no inventa porcentaje', () => {
@@ -4929,6 +4957,148 @@ test('🔴 F7: las dos pantallas leen el plan de hoy de UNA sola función', () =
   const cuerpo = src.slice(src.indexOf('function flTogglePlanMeal'), src.indexOf('function flTogglePlanMeal') + 1400);
   assert.ok(/if\(!c\.foodlogOk\)/.test(cuerpo), 'marcar el plan se salta el aviso de privacidad');
   assert.ok(/isFreeClient/.test(cuerpo), 'marcar el plan se salta el gate Premium');
+});
+
+// ══════════════════════════════════════════════════════
+section('Registro de alimentos — la FRANJA y la SEMANA (patrones 2, 3 y 6 del estudio)');
+
+test('la franja es simétrica alrededor de la meta y dice en qué lado cae lo comido', () => {
+  const b = foodLogBandFor(2000, 1900);
+  assert.strictEqual(b.lo, 1760);
+  assert.strictEqual(b.hi, 2240);
+  assert.strictEqual(b.estado, 'dentro');
+  assert.strictEqual(b.falta, 0, 'dentro de la franja no falta nada');
+  assert.strictEqual(b.sobra, 0);
+  assert.strictEqual(foodLogBandFor(2000, 1500).estado, 'bajo');
+  assert.strictEqual(foodLogBandFor(2000, 1500).falta, 260, 'lo que falta es para entrar a la FRANJA, no para clavar la meta');
+  assert.strictEqual(foodLogBandFor(2000, 2400).estado, 'alto');
+  assert.strictEqual(foodLogBandFor(2000, 2400).sobra, 160);
+  // Sin meta no se inventa una franja (y la pantalla cae al texto sin objetivo).
+  assert.strictEqual(foodLogBandFor(0, 500), null);
+  assert.strictEqual(foodLogBandFor(null, 500), null);
+});
+
+test('🔴 ninguna cifra de la franja sale con basura de coma flotante', () => {
+  const b = foodLogBandFor(1864, 1827.2);
+  const sucio = v => String(v).split('.')[1] && String(v).split('.')[1].length > 1;
+  ['lo', 'hi', 'falta', 'sobra'].forEach(k => assert.ok(!sucio(b[k]), `${k} sale sucio: ${b[k]}`));
+});
+
+// 🔴 LA RESTRICCIÓN QUE DEFINE EL ANCHO, y la única que importa: una franja más estrecha de lo
+// que el PLATO entrega le diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó.
+// Medido 2026-08-12 por la ruta `nutBaseFor` contra la nube: de 25 filas, 21 resuelven y **17
+// ven el plan en producción** (6 son tier 'libre'), 119 días-plan. El plato sirve 94,7%-110,2%
+// de lo que promete → a ±10% se sale 1 día (Nataly, 110,2%); a ±12%, ninguno.
+// Aquí se re-deriva con una malla, que es lo que la suite puede correr sin red.
+test('🔴 la franja NUNCA es más estrecha de lo que el propio plato entrega', () => {
+  let dias = 0, peor = 100, mejor = 100, fuera = 0, caso = null;
+  [1400, 1800, 2200, 2600, 3200].forEach(kcal => {
+    [0.25, 0.30, 0.35].forEach(pk => {
+      const prot_g = Math.round(kcal * pk / 4);
+      const fat_g = Math.round(kcal * 0.25 / 9);
+      const carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
+      if (carb_g <= 0) return;
+      const base = { origen: 'coach', kcalObj: kcal, macros: { prot_g, carb_g, fat_g, kcal } };
+      ['pierna', 'entreno', 'descanso'].forEach(kind => {
+        for (let di = 0; di < 7; di++) {
+          const plan = nutDayPlan(base, kind, 4, 1, di);
+          if (!plan || !(plan.target.kcal > 0)) continue;
+          dias++;
+          const r = plan.real.kcal / plan.target.kcal * 100;
+          if (r < peor) { peor = r; }
+          if (r > mejor) { mejor = r; caso = `${kcal} kcal · ${kind} · día ${di}`; }
+          // Lo que de verdad se afirma: comerse el plan ENTERO cae DENTRO de la franja.
+          const b = foodLogBandFor(plan.target.kcal, plan.real.kcal);
+          if (b.estado !== 'dentro') { fuera++; if (!caso) caso = `${kcal}/${kind}/${di}`; }
+        }
+      });
+    });
+  });
+  assert.ok(dias >= 300, `el barrido solo resolvió ${dias} días: no prueba nada`);
+  assert.strictEqual(fuera, 0,
+    `${fuera} de ${dias} días-plan: comerse el plan ENTERO cae FUERA de la franja (${caso}). ` +
+    `La franja (±${FOODLOG_BAND * 100}%) es más estrecha que lo que el plato entrega ` +
+    `(${peor.toFixed(1)}%-${mejor.toFixed(1)}%) → la app le diría «te pasaste» a quien comió lo que le mandó.`);
+  // Y el control al revés: una franja de ±5% NO puede pasar este test, o el test no prueba nada.
+  const estrecha = (m, h) => { const lo = Math.round(m * 0.95), hi = Math.round(m * 1.05); return h >= lo && h <= hi; };
+  let fueraEstrecha = 0;
+  [1400, 2200, 3200].forEach(kcal => {
+    const prot_g = Math.round(kcal * 0.30 / 4), fat_g = Math.round(kcal * 0.25 / 9);
+    const carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
+    const base = { origen: 'coach', kcalObj: kcal, macros: { prot_g, carb_g, fat_g, kcal } };
+    for (let di = 0; di < 7; di++) {
+      const plan = nutDayPlan(base, 'entreno', 4, 1, di);
+      if (plan && !estrecha(plan.target.kcal, plan.real.kcal)) fueraEstrecha++;
+    }
+  });
+  assert.ok(fueraEstrecha > 0, 'CONTROL: con ±5% tampoco se sale nadie → este test no discrimina nada');
+});
+
+// 🔴 UN DÍA SIN REGISTRAR NO ES «COMIÓ CERO»: es «no sabemos». Pintarlo como fallo es la misma
+// mentira que promediar contra 0, que ya está prohibida en la ficha del coach.
+test('🔴 la fila de la semana: sin registro es «no sabemos», no un cero', () => {
+  const hoy = new Date('2026-08-12T12:00:00');   // miércoles → getDay() 3
+  // 🔴 UNA META DISTINTA POR DÍA, que es como son de verdad (el día de pierna se come más). Con
+  // los 7 días iguales el fixture NO PUEDE FALLAR: se comprobó saboteando `targetsPorDia[d.dayIndex]`
+  // a `[0]` y la suite seguía VERDE, porque comparar contra el día equivocado daba lo mismo.
+  const metas = {};
+  for (let i = 0; i < 7; i++) metas[i] = { kcal: 1600 + i * 200, prot_g: 150, carb_g: 200, fat_g: 55 };
+  let fl = foodLogBlank();
+  const ayer = new Date(hoy.getTime() - 86400000);   // martes → getDay() 2, meta 2000
+  // Los dos días caen DENTRO de su propia franja… y FUERA de la del domingo (meta 1600, techo 1792).
+  fl = foodLogAdd(fl, foodLogEntry({ id: 'a', name: 'A', kcal: 1900, p: 150, c: 200, f: 55 }, 100, 'cena', ayer, () => 'e1'), ayer);
+  fl = foodLogAdd(fl, foodLogEntry({ id: 'b', name: 'B', kcal: 2100, p: 150, c: 200, f: 55 }, 100, 'cena', hoy, () => 'e2'), hoy);
+  const sem = foodLogWeekStates(fl, metas, hoy, 7);
+  assert.strictEqual(sem.length, 7);
+  assert.strictEqual(sem[6].dayIndex, 3, 'el fixture dejó de caer en miércoles: revisa la fecha');
+  assert.strictEqual(sem[6].band.meta, 2200, 'hoy se comparó contra la meta de OTRO día');
+  assert.strictEqual(sem[5].band.meta, 2000, 'ayer se comparó contra la meta de OTRO día');
+  assert.strictEqual(sem[6].estado, 'dentro', 'hoy (2.100 sobre meta 2.200) quedó dentro de su franja');
+  assert.strictEqual(sem[5].estado, 'dentro', 'ayer (1.900 sobre meta 2.000) quedó dentro de su franja');
+  assert.strictEqual(sem.filter(d => d.estado === 'vacio').length, 5, 'los días sin registro son huecos, no fallos');
+  sem.filter(d => d.estado === 'vacio').forEach(d => {
+    assert.strictEqual(d.band, null, 'un día sin registro NO puede traer veredicto: no se sabe qué comió');
+  });
+  // Sin plan contra el que comparar tampoco se opina.
+  const sinMeta = foodLogWeekStates(fl, null, hoy, 7);
+  assert.strictEqual(sinMeta[6].estado, 'sinmeta');
+});
+
+// Candado ESTÁTICO: la pantalla no puede volver a la cifra exacta por su cuenta.
+test('🔴 la pantalla habla de FRANJA, y no se inventa el ancho por su lado', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  assert.ok(/franja/i.test(src), 'desapareció la palabra «franja» de lo que lee la persona');
+  // 🔴 EL ANCHO VIVE EN avi-core Y EN NINGÚN OTRO SITIO. Prohibir el literal `0.12` NO basta:
+  // se comprobó saboteándolo —la pantalla se calculaba la franja con `0.88`/`1.12` y el test
+  // seguía VERDE—. Lo que se afirma es la FORMA EXACTA de dónde sale la franja en cada una de
+  // las dos superficies, que es lo que de verdad impide una segunda verdad (familia v435/v444).
+  const deLaFuente = src.match(/const _?band\s*=\s*\(typeof foodLogBandFor==='function'\)\?foodLogBandFor\(/g) || [];
+  assert.strictEqual(deLaFuente.length, 2,
+    `la franja tiene que salir de foodLogBandFor en las DOS superficies (héroe del registro y bloque de hábitos); encontradas ${deLaFuente.length}`);
+  // Y no puede haber una segunda función que fabrique una franja por su cuenta.
+  assert.ok(!/lo\s*:\s*Math\.round|Math\.round\([^)]*\*\s*1\.\d\d\)/.test(src),
+    'hay aritmética de franja en la pantalla: el ancho se duplicó');
+  assert.ok(/function _flSemanaHtml\(/.test(src), 'desapareció la fila de los 7 días');
+  assert.ok(/_foodLogTargetsSemana/.test(src), 'la fila de la semana dejó de comparar contra el plan de cada día');
+});
+
+// 🔴 EL COACH Y LA ASESORADA NO PUEDEN JUZGAR EL MISMO DÍA CON DOS VARAS DISTINTAS. La ficha del
+// coach pintaba naranja a partir de un `12` escrito a mano, y la franja del asesorado es un
+// `0.12` en avi-core: dos números con el mismo significado en dos archivos. Es la contradicción
+// de v435/v444 esperando su turno — ella leyendo «✓ vas en tu franja» y él una alerta por ese día.
+test('🔴 el umbral de desvío del coach SALE del ancho de la franja, no de un número suelto', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/_FL_DESVIO_MEDIO\s*=\s*\(typeof FOODLOG_BAND==='number'\)\?Math\.round\(FOODLOG_BAND\*100\)/.test(src),
+    'el umbral del coach dejó de derivarse del ancho de la franja');
+  assert.ok(/const grave=Math\.abs\(pct\)>=25, medio=Math\.abs\(pct\)>_FL_DESVIO_MEDIO;/.test(src),
+    'el chip de desvío volvió a un umbral propio (o a `>=`, que marca desvío justo en el borde de la franja)');
+  // Y el borde exacto: a +12% ella está DENTRO, así que él NO puede verlo como desvío.
+  const borde = Math.round(FOODLOG_BAND * 100);
+  assert.strictEqual(foodLogBandFor(1000, 1000 + borde * 10).estado, 'dentro',
+    `a +${borde}% el asesorado está dentro de su franja`);
+  assert.ok(!(borde > borde), 'el chip del coach marcaría desvío justo donde ella está dentro');
 });
 
 // ══════════════════════════════════════════════════════

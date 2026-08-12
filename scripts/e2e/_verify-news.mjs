@@ -35,7 +35,7 @@ const check = (n, c, x='') => { const line = (c?'OK ':'FAIL ') + n + (x?' — '+
 // orden de display = la más VIEJA primero) para que las aserciones NO envejezcan al añadir novedades
 // (radar Fable v367: la entrada v367 corrió la ventana y dejó N1/N2/N5/N9 en rojo por versiones clavadas).
 const expNews = async (seen, coachExpr = "((typeof clientHasCoach==='function')?!!clientHasCoach(DB.clients.find(x=>x.id===CUR.clientId)):true)") =>
-  JSON.parse(await ev(`(()=>{const has=${coachExpr};let items=newsToShow(AVI_NEWS,${seen}).filter(n=>!n.coach||has);const asc=items.slice().sort((a,b)=>a.v-b.v);return JSON.stringify({dots:asc.length,firstT:(asc[0]||{}).t||'',lastT:(asc[asc.length-1]||{}).t||'',firstSteps:((asc[0]||{}).steps||[]).length});})()`));
+  JSON.parse(await ev(`(()=>{const has=${coachExpr};let items=newsToShow(AVI_NEWS,${seen},{coach:has});const asc=items.slice().sort((a,b)=>a.v-b.v);return JSON.stringify({dots:asc.length,firstT:(asc[0]||{}).t||'',lastT:(asc[asc.length-1]||{}).t||'',firstSteps:((asc[0]||{}).steps||[]).length});})()`));
 
 try {
   await waitFor(`(()=>{const sc=document.getElementById('s-client');if(sc&&getComputedStyle(sc).display!=='none')return true;const sl=document.getElementById('s-login');return !!(sl&&getComputedStyle(sl).display!=='none'&&typeof doLogin==='function'&&!document.getElementById('avi-loading'))})()`, 60000);

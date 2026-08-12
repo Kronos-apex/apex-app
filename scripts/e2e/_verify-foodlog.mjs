@@ -328,10 +328,14 @@ try {
     const tot=foodLogTotals(foodLogDay(c.foodlog));
     const hab=document.getElementById('cn-habits').textContent||'';
     const meals=document.getElementById('cn-meals').textContent||'';
-    return {kcal:tot.kcal, barra:/de \\d+ kcal/.test(hab), comido:/comido/.test(meals),
-      deshacer:/Deshacer/.test(meals)};})())`));
-  check('F7-3 marcar mueve el contador de hábitos y la tarjeta dice «comido» + «Deshacer»',
-    s.kcal > 0 && s.barra && s.comido && s.deshacer, JSON.stringify(s));
+    // El bloque de hábitos habla en FRANJA desde v478 (antes decía «X de Y kcal»): lo que se
+    // afirma es que la cifra registrada aparece Y que el veredicto es uno de los tres de la
+    // franja — nunca el texto viejo, que fingía una precisión que el plato no tiene.
+    return {kcal:tot.kcal, cifra:hab.includes(String(Math.round(tot.kcal))),
+      veredicto:/vas en tu franja|te quedan \\d+|\\d+ por encima/i.test(hab),
+      comido:/comido/.test(meals), deshacer:/Deshacer/.test(meals)};})())`));
+  check('F7-3 marcar mueve el contador de hábitos (en lenguaje de franja) y la tarjeta dice «comido» + «Deshacer»',
+    s.kcal > 0 && s.cifra && s.veredicto && s.comido && s.deshacer, JSON.stringify(s));
 
   // F7-4 — se puede DESHACER, y no se lleva por delante lo que la persona anotó a mano.
   s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
@@ -394,6 +398,77 @@ try {
       dentro:rs.every(r=>r.left>=-1&&r.right<=361)};})())`));
   check('F7-8 cabe a 360px con letra «Muy grande», táctil y sin desborde horizontal',
     s.n === 5 && s.desborde <= 1 && s.docDesborde <= 1 && s.minAlto >= 36 && s.dentro, JSON.stringify(s));
+  await ev(`document.documentElement.removeAttribute('data-fs')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();delete DB.nutrition[CUR.clientId];})()`);
+
+  // ── LA FRANJA Y LA SEMANA (patrones 2, 3 y 6 del estudio) ──────────────────
+  // Se re-monta el plan (el bloque de F7 lo borró al terminar) y se deja el día VACÍO.
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    c.foodlog=foodLogBlank();
+    DB.nutrition=DB.nutrition||{}; DB.nutrition[CUR.clientId]={kcal:2100,prot:150,carbs:210,fat:60};
+    renderHabitsCard(c); renderFoodLogRoom();})()`);
+  await sleep(500);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const meta=_foodLogTargetHoy(c.id); const b=foodLogBandFor(meta.kcal,0);
+    return {hab:document.getElementById('cn-habits').textContent||'',
+      room:document.getElementById('flroom-body').textContent||'', lo:b.lo, hi:b.hi, meta:b.meta};})())`));
+  check('FR1 sin nada anotado, las dos pantallas dan la FRANJA del día, no una cifra exacta',
+    s.hab.includes(String(s.lo)) && s.hab.includes(String(s.hi)) &&
+    s.room.includes(String(s.lo)) && s.room.includes(String(s.hi)) && s.lo < s.meta && s.hi > s.meta,
+    JSON.stringify({ lo: s.lo, meta: s.meta, hi: s.hi, hab: s.hab.slice(0, 90) }));
+
+  // FR2 — comerse el plan ENTERO tiene que caer DENTRO y decirlo con un ✓, no «te faltan 200».
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const ph=_nutPlanHoy(c);
+    for(let i=0;i<5;i++)c.foodlog=foodLogMarkPlanMeal(c.foodlog,ph.plan,i);
+    renderHabitsCard(c); renderFoodLogRoom();
+    const tot=foodLogTotals(foodLogDay(c.foodlog));
+    const b=foodLogBandFor(ph.plan.target.kcal,tot.kcal);
+    return {estado:b.estado, hecho:Math.round(b.hecho), lo:b.lo, hi:b.hi,
+      hab:document.getElementById('cn-habits').textContent||'',
+      room:document.getElementById('flroom-body').textContent||''};})())`));
+  check('FR2 comerse el plan ENTERO cae DENTRO de la franja y la app lo dice con ✓ (no «te faltan»)',
+    s.estado === 'dentro' && /✓/.test(s.hab) && /franja/i.test(s.hab) &&
+    /✓ Vas en tu franja/.test(s.room) && !/te faltan/i.test(s.hab),
+    JSON.stringify({ estado: s.estado, hecho: s.hecho, lo: s.lo, hi: s.hi, hab: s.hab.slice(0, 100) }));
+
+  // FR3 — «te quedan X»: el número es para entrar en la FRANJA, no para clavar la meta.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    c.foodlog=foodLogBlank();
+    const ph=_nutPlanHoy(c); c.foodlog=foodLogMarkPlanMeal(c.foodlog,ph.plan,0);
+    renderHabitsCard(c); renderFoodLogRoom();
+    const tot=foodLogTotals(foodLogDay(c.foodlog));
+    const b=foodLogBandFor(ph.plan.target.kcal,tot.kcal);
+    const hastaMeta=Math.round(b.meta-b.hecho);
+    return {falta:b.falta, hastaMeta, estado:b.estado,
+      room:document.getElementById('flroom-body').textContent||''};})())`));
+  check('FR3 «te quedan X» cuenta hasta la FRANJA, no hasta la cifra exacta',
+    s.estado === 'bajo' && s.falta < s.hastaMeta && s.room.includes('Te quedan ' + s.falta),
+    JSON.stringify({ falta: s.falta, hastaMeta: s.hastaMeta }));
+
+  // FR4 — la fila de los 7 días, con el dato que el asesorado nunca veía.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const dias=foodLogWeekStates(c.foodlog,_foodLogTargetsSemana(c.id),new Date(),7);
+    const b=document.getElementById('flroom-body');
+    const celdas=[...b.querySelectorAll('[title]')].filter(e=>/sin registrar|franja|por (debajo|encima)|registrado/.test(e.getAttribute('title')||''));
+    return {n:celdas.length, vacios:dias.filter(d=>d.estado==='vacio').length,
+      dice:/Tu semana/.test(b.textContent||''), titles:celdas.map(e=>e.getAttribute('title')).join(' | ')};})())`));
+  check('FR4 la fila de los 7 días se pinta y los días sin registrar salen como hueco, no como cero',
+    s.n === 7 && s.dice && s.vacios === 6 && /sin registrar/.test(s.titles),
+    JSON.stringify({ n: s.n, vacios: s.vacios, dice: s.dice }));
+
+  // FR5 — 360px + letra «Muy grande»: la fila de 7 días es lo que más riesgo tiene de desbordar.
+  await ev(`document.documentElement.setAttribute('data-fs','xl')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 780, deviceScaleFactor: 2, mobile: true });
+  await ev(`renderFoodLogRoom()`); await sleep(500);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('flroom-body');
+    const celdas=[...b.querySelectorAll('[title]')].filter(e=>/sin registrar|franja|por (debajo|encima)|registrado/.test(e.getAttribute('title')||''));
+    const rs=celdas.map(e=>e.getBoundingClientRect());
+    return {desborde:b.scrollWidth-b.clientWidth, docDesborde:document.documentElement.scrollWidth-window.innerWidth,
+      n:celdas.length, dentro:rs.every(r=>r.left>=-1&&r.right<=361), minAncho:rs.length?Math.round(Math.min(...rs.map(r=>r.width))):0};})())`));
+  check('FR5 la fila de 7 días cabe a 360px con letra «Muy grande», sin desborde horizontal',
+    s.n === 7 && s.desborde <= 1 && s.docDesborde <= 1 && s.dentro && s.minAncho >= 12, JSON.stringify(s));
   await ev(`document.documentElement.removeAttribute('data-fs')`);
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();delete DB.nutrition[CUR.clientId];})()`);
