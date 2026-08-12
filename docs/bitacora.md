@@ -4,6 +4,75 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛑 2026-08-12 — avi-v474: la cola de aprobación del coach (F6)
+
+**Producción en `avi-v474`, verificada** (`?v=474` + `avi-v474` en sw.js + `_prodcheck 474` verde,
+`jsErrors: []`). Suite 696 → **699/699**, hook 12/12. Commit `16472ec`.
+Sabotajes: **`_sabotaje-f6` 15/15** (9 de la capa pura y el `.sql`, 6 de interfaz) ·
+**`_sabotaje-f6.sql` 13/13** contra producción en tx con rollback, con 5 casos «debe PASAR» ·
+`_sabotaje-f5` 13/13 siguen mordiendo. Harness nuevo **`_verify-fbqueue` 16/16**, con control de
+montaje. `_verify-foodlog` 22/22.
+
+### Por qué existía el hueco
+`fb_verify` estaba en la base desde el 10-ago **y no había pantalla que la llamara**. Así que
+nada llegaba nunca a `verified` y el rótulo «sin revisar» salía en el **100%** de los productos
+aportados. Una marca de calidad que nadie puede quitar no informa de nada: es ruido que la gente
+aprende a ignorar.
+
+### F6 — dos RPC y por qué no bastaba un SELECT
+`fb_sel` deja a cualquier autenticado leer la tabla, así que un `select ... where verified=false`
+habría funcionado. Pero entonces la cola le aparecería a **cualquier** coach y al pulsar «Aprobar»
+recibiría `not a moderator`. Con **`fb_pending()`** la autoridad y la vista salen de la MISMA
+fuente: un no-moderador recibe 0 filas, en silencio, y la tarjeta ni se pinta — el patrón ya
+estipulado en `cmty_mod_reports` (c14), y la razón de fondo es la lección F7.
+**`fb_delete(ean)`** es la salida para la basura, y se **niega sobre una fila ya aprobada**: hay
+que quitarle la aprobación primero. Dos actos deliberados, no uno.
+
+### Las tres salidas, y por qué hacen falta las tres
+Aprobar · Corregir y aprobar · Descartar (más deshacer una aprobación). **Una bandeja que no se
+puede vaciar es una bandeja muerta**: con solo «aprobar», una fila de basura se queda para siempre
+y el contador nunca baja. El contador cuenta **solo lo pendiente** por la misma razón.
+Corregir reusa **`barcodeDraft`**, el mismo validador del asesorado — no una copia: el coach puede
+teclear un 500 igual que cualquiera, y los CHECK del servidor son los mismos.
+
+### 🔴 El hallazgo que cambió el alcance: la corrección no llegaba a nadie
+`flBuscarEan` miraba `ax_bccache` primero y, si el producto estaba, **ni consultaba la nube**; la
+caché no tiene vencimiento. Un dato corregido por el coach **no alcanzaba nunca** a quien ya lo
+tenía cacheado — justo la gente a la que la cola pretende servir. Ahora se pinta al instante con
+lo cacheado (el offline-first no se toca) y se **revalida por detrás**, repintando solo si el dato
+cambió de verdad y la persona sigue mirando ese producto.
+
+### Lo que `fbReviewNotes` NO hace, a propósito
+Solo afirma lo que es **aritméticamente imposible** (kcal que no cuadran con sus macros, energía
+sin un gramo que la explique, una «medida casera» de más de un kilo). **No lleva detector del
+error que de verdad importa** —copiar la etiqueta «por porción» como si fuera por 100 g—, porque
+ese dato es coherente consigo mismo y **la tabla tiene 0 filas con qué calibrar un umbral**.
+Un umbral inventado sin datos es un detector mudo. Hay un test que se pone rojo si alguien mete
+uno, y obliga a respaldarlo midiendo. **Fable lo confirmó midiendo**: escalar los cuatro macros
+por el mismo factor conserva `kcal ≈ 4p+4c+9f`, así que `foodKcalSuspect` es **estructuralmente
+incapaz** de cazarlo (barrió factores 0,25 · 0,33 · 0,5 · 2 · 3,33 → `false` en todos).
+
+### 🎓 Dos candados nacieron sin dientes, y los cazó el sabotaje
+1. El del `search_path` decía «**alguna** DEFINER lo tiene» y con una de las dos saboteada seguía
+   **verde**, porque la otra lo tenía. Se afirma por **CONTEO**.
+2. Un patrón de sabotaje con `
+` **no se aplicó nunca**: los archivos del repo van con **CRLF**.
+   «No se aplicó» se lee de reojo igual que un ✅ — y en una lista de 15, se pierde.
+
+### 🔴 Un comentario con una razón falsa (hallazgo P2-4 de Fable)
+El `.sql` de F5 negaba el DELETE al cliente alegando que «rompería los registros que lo
+referencian». **Falso**: `foodLogEntry` COPIA `name/kcal/p/c/f` ya escalados dentro de la entrada
+del registro, y no hay **ni una FK entrante** hacia `food_barcodes` (comprobado contra producción).
+La decisión es correcta igual, pero por otra razón —**vandalismo**: un catálogo compartido donde
+cualquiera borra filas se vacía con un `curl`— y esa es la que quedó escrita. Una razón falsa es
+lo que hace que dentro de seis meses alguien «arregle» el candado.
+
+### ⏭️ Lo que sigue abierto de este frente
+- **La cámara real sigue sin probarse** (el navegador de prueba no tiene). Es lo único del escáner
+  sin verificar.
+- **El catálogo sigue con 0 filas**: la cola nace vacía y no se ha ejercitado con datos reales.
+- Faltan las **fotos de etiquetas de D1/ARA** que trae el PO para sembrarlo.
+
 ## 🛑 2026-08-11 — avi-v473: el escáner de códigos de barras, del empaque al registro
 
 **Producción en `avi-v473`, verificada** (`?v=473` + `avi-v473` en sw.js + `_prodcheck 473` verde,
