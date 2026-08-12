@@ -4,6 +4,64 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-12 (6ª parte) — avi-v479: la lista del mercado (el estudio queda CERRADO)
+
+**Producción en `avi-v479`, verificada** (`_prodcheck 479` verde, `jsErrors: []`). Suite
+**715 → 722**, hook 12/12, `_verify-foodlog` **36 → 41**, **`_sabotaje-f7` 34/34**.
+Commit `4f524dd`. **Patrón 4 del estudio de Fitia/MyFitnessPal, el último que faltaba.**
+
+### 1 · Qué es
+Fitia **cobra** por su lista de compras. AVI ya tenía todo lo necesario —los 7 días resueltos, con
+sus alimentos y sus gramos— así que esto era sumar y agrupar. `nutShoppingList(base, routines)`
+recorre la semana y devuelve las secciones del mercado; `nutShoppingText` arma la versión para
+WhatsApp **desde la lista ya hecha**, no de un segundo cálculo. Vive en «Ver mi plan en grande»,
+con acceso directo desde «Tu comida de hoy», y se comparte con quien haga el mercado en la casa.
+
+### 2 · 🔴 Lo que se COMPRA no es lo que se SIRVE — tres problemas, ninguno obvio
+**(a) `maxG` no se aplica.** Es el tope de UNA ración («no le sirvas 400 g de clara de una
+sentada»), no de la compra de la semana. El reflejo obvio —reusar `nutPortionText`, que ya existe
+y está testeada— habría dejado la lista pidiendo **200 g de clara para siete días**. Hay test, con
+su control: la misma cantidad por `nutPortionText` SÍ queda topada, o el test no discrimina nada.
+
+**(b) La medida de RACIÓN no es la de COMPRA.** `un` existe para decirle a la persona cuánto
+servirse, y sumada a la semana produce cantidades que en un mercado no significan nada: **«13
+octavos de aguacate», «32 claras», «13 vasos de yogur»**. Al mercado se va con el **peso**, salvo
+en lo que de verdad se compra por unidad (huevos, latas, arepas, tomates, bananos…). Y eso es una
+propiedad del ALIMENTO, no algo deducible de su etiqueta → se declara en la tabla
+(**`compra:'un'`, 14 alimentos**), donde el PO y Andrés pueden revisarla.
+⚠️ Y el remate, que salió del harness: la cuenta de raciones **volvía por la línea de ayuda**
+(«375 g» con «13 octavos» debajo). Es el mismo ruido, más pequeño. **Cada línea, UN número con el
+que actuar**: la ayuda solo se pinta en lo que se compra por unidad («12 huevos · 575 g»).
+
+**(c) La tabla habla de comida LISTA PARA COMER.** 1 kg de arroz cocido no es 1 kg de arroz crudo.
+**Aquí NO se inventa el factor de conversión**: no hay fuente citable por alimento, y un factor
+inventado es un número falso internamente coherente — la clase de la yuca, que ya costó que el
+motor recetara un 22% de menos. Lo que se hace es MARCARLO (derivado del propio nombre del
+alimento, no de una lista a mano) y decirlo en pantalla.
+⏭️ **Cerrarlo de verdad = traer los factores con fuente. Decisión de Andrés.**
+
+### 3 · 🔴 EL CANDADO NUEVO ENCONTRÓ UN DEFECTO VIVO EN PRODUCCIÓN
+`aviIcon` cae a **SPARKLES** cuando el nombre no existe, así que un nombre mal escrito **no falla:
+pinta ✨ y nadie se entera**. Se descubrió al escribir esta pantalla con `aviIcon('share')`… y al
+ponerle el candado apareció que **`aviIcon('nutrition')` tampoco existe**: las TRES cabeceras de
+comida del asesorado —«Tu plan de comida», «Tu comida de hoy», «Tu semana de comida»— llevaban
+**✨ en producción** en lugar del icono de comida. Corregidas a `utensils`.
+El candado barre los 7 módulos, extrae cada `aviIcon('x')` y exige que `x` exista — **derivado del
+código, no de una lista a mano**, igual que el candado de `onclick` de v473.
+
+### 4 · 🎓 Lo que enseñó del método
+- **Volví a pisar un gotcha escrito desde julio:** los heredocs de Git Bash manglan las barras
+  invertidas, y los patrones multilínea de la matriz de sabotaje llegaron al archivo con saltos de
+  línea REALES — el `.mjs` dejó de compilar. Los scripts con barras van a ARCHIVO. Y la trampa se
+  repite un piso arriba: escribir la propia bitácora con un script inline las mangla igual.
+- **Un candado escrito para una cosa encontró otra**: el de los iconos nació de mi propio error
+  (`share`) y lo que cobró fue un defecto ajeno y vivo (`nutrition`, 3 superficies).
+
+### ⏭️ CON ESTO EL ESTUDIO DE COMPETENCIA QUEDA CERRADO
+Los 6 patrones a traer están en producción: (1) el plan se marca · (2) la franja · (3) la semana
+en una fila · (4) la lista del mercado · (5) el sello «revisado» (ya iba por delante con F6) ·
+(6) decir lo que queda.
+
 ## 🟢 2026-08-12 (5ª parte) — avi-v478: la FRANJA, «te quedan X» y la semana en una fila
 
 **Producción en `avi-v478`, verificada** (`_prodcheck 478` verde, `jsErrors: []`). Suite
