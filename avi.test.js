@@ -18,6 +18,13 @@ const {
   sanitizePrs,
   nutAcompMacros,
   nutDayPlan,
+  NUT_MEALS_5,
+  nutAcompGrams,
+  nutPlanMealEntries,
+  foodLogIsPlanEntry,
+  foodLogMarkPlanMeal,
+  foodLogUnmarkPlanMeal,
+  foodLogPlanMealDone,
   nutBaseFor,
   workoutStartCollapsed,
   nutMacroKcal,
@@ -4758,6 +4765,172 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   const nav = fs.readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   assert.ok(/foodlog-room[\s\S]{0,120}closeFoodLogRoom/.test(nav), 'el botón atrás no cierra el registro');
 });
+
+// ══════════════════════════════════════════════════════
+section('Registro de alimentos — F7: el plan se MARCA, no se re-escribe');
+// Patrón 1 del estudio de Fitia/MyFitnessPal. El dato que lo decide: el vaso de agua, que es UN
+// toque, lo usan 6 de 24 — así que un plan que pide 3-5 anotaciones al día no se registra nunca.
+
+const _planBase = { origen: 'coach', kcalObj: 2200, macros: { prot_g: 165, carb_g: 220, fat_g: 61, kcal: 2089 } };
+const _planF7 = nutDayPlan(_planBase, 'entreno', 4, 1, 3);
+const _hoyF7 = new Date('2026-08-12T12:00:00');
+
+test('F7: el plan se convierte en entradas NORMALES del registro (mismo snapshot de macros)', () => {
+  const ents = nutPlanMealEntries(_planF7, 0, _hoyF7);
+  assert.ok(ents.length >= 2, 'un desayuno del plan tiene al menos dos alimentos');
+  ents.forEach(e => {
+    assert.strictEqual(e.meal, 'desayuno');
+    assert.ok(e.foodId && e.g > 0, 'toda entrada lleva su alimento y sus gramos');
+    assert.ok(Object.prototype.hasOwnProperty.call(e, 'kcal'), 'los macros van DENTRO de la entrada');
+  });
+});
+
+// 🔴 EL ORDEN. `plan.meals` y `FOODLOG_MEALS` van en paralelo por construcción (NUT_MEALS_5).
+// Si alguien reordena UNO de los dos, el desayuno se registraría como cena y nadie lo notaría:
+// los totales del día seguirían cuadrando. Esto es lo único que lo impide.
+test('🔴 F7: el orden del plan y el del registro NO se pueden separar', () => {
+  assert.strictEqual(NUT_MEALS_5.length, FOODLOG_MEALS.length, 'los dos arreglos dejaron de tener el mismo tamaño');
+  const esperado = ['desayuno', 'media_m', 'almuerzo', 'media_t', 'cena'];
+  assert.deepStrictEqual(FOODLOG_MEALS, esperado);
+  _planF7.meals.forEach((m, i) => {
+    nutPlanMealEntries(_planF7, i, _hoyF7).forEach(e => {
+      assert.strictEqual(e.meal, FOODLOG_MEALS[i], `«${m.name}» se estaría registrando como ${e.meal}`);
+    });
+  });
+});
+
+// 🔴 LOS ACOMPAÑANTES CUENTAN. Es el bug que costó v470 pero al revés: allá el plato servía 22%
+// de más porque la guayaba se pintaba y no se sumaba. Si aquí se registrara solo el plato, el
+// registro quedaría por debajo de lo que el propio plan dice que la persona come.
+// Se afirma POR CONTEO, no con un «alguna lo cumple» (lección del search_path de F6).
+test('🔴 F7: los acompañantes también se registran', () => {
+  let conAcomp = 0, verificadas = 0;
+  _planF7.meals.forEach((m, i) => {
+    const reales = (m.acompIds || []).filter(id => NUT_FOOD_BY_ID[id]);
+    if (!reales.length) return;
+    conAcomp++;
+    const ents = nutPlanMealEntries(_planF7, i, _hoyF7);
+    const ids = ents.map(e => e.foodId);
+    reales.forEach(id => assert.ok(ids.indexOf(id) > -1, `${m.name}: falta el acompañante ${id}`));
+    assert.strictEqual(ents.length, (m.items || []).length + reales.length, `${m.name}: sobran o faltan entradas`);
+    verificadas++;
+  });
+  assert.ok(conAcomp > 0, 'el fixture no tiene ni un acompañante: no prueba nada');
+  assert.strictEqual(verificadas, conAcomp);
+});
+
+// 🔴 EL ORÁCULO INDEPENDIENTE: lo registrado se recalcula desde NUT_FOOD_BY_ID y los gramos, no
+// se le pregunta a la app cuánto sirvió (lección del plato que reportaba 9,6% sirviendo 22%).
+test('🔴 F7: lo registrado es lo que el plan dice que se come, recalculado desde el catálogo', () => {
+  _planF7.meals.forEach((m, i) => {
+    const ents = nutPlanMealEntries(_planF7, i, _hoyF7);
+    const esp = { p: 0, c: 0, f: 0 };
+    (m.items || []).forEach(it => {
+      const f = NUT_FOOD_BY_ID[it.id]; if (!f) return;
+      ['p', 'c', 'f'].forEach(k => { esp[k] += f[k] * it.grams / 100; });
+    });
+    (m.acompIds || []).forEach(id => {
+      const f = NUT_FOOD_BY_ID[id]; if (!f) return;
+      // 🔴 La ración se lee de la TABLA, no de `nutAcompGrams`. Llamar aquí a la función bajo
+      // prueba haría que el oráculo se moviera con el defecto: se comprobó saboteándola —el
+      // sabotaje 3 de `_sabotaje-f7` salía VERDE— porque el plan y el registro se equivocaban
+      // juntos y quedaban de acuerdo. Un oráculo que usa la función que audita no audita nada.
+      const g = (f.un && f.un.g > 0) ? f.un.g : 100;
+      ['p', 'c', 'f'].forEach(k => { esp[k] += f[k] * g / 100; });
+    });
+    const tot = foodLogTotals(ents);
+    ['p', 'c', 'f'].forEach(k => {
+      assert.ok(Math.abs(tot[k] - esp[k]) <= 0.5,
+        `${m.name} · ${k}: registrado ${tot[k]}, cálculo independiente ${Math.round(esp[k] * 10) / 10}`);
+    });
+  });
+});
+
+// 🔴 IDEMPOTENCIA. El id es determinista justamente para esto. Con un id aleatorio, tocar dos
+// veces —o dos teléfonos marcando la misma comida— serviría el desayuno dos veces.
+test('🔴 F7: marcar dos veces NO duplica, y dos teléfonos tampoco', () => {
+  let fl = foodLogMarkPlanMeal(foodLogBlank(), _planF7, 0, _hoyF7);
+  const n1 = foodLogDay(fl, _hoyF7).length;
+  fl = foodLogMarkPlanMeal(fl, _planF7, 0, _hoyF7);
+  assert.strictEqual(foodLogDay(fl, _hoyF7).length, n1, 'marcar dos veces duplicó el desayuno');
+  // Dos aparatos distintos, minutos distintos: el merge tiene que unirlos, no sumarlos.
+  const a = foodLogMarkPlanMeal(foodLogBlank(), _planF7, 2, _hoyF7);
+  const b = foodLogMarkPlanMeal(foodLogBlank(), _planF7, 2, new Date(_hoyF7.getTime() + 6e4));
+  assert.ok(foodLogDay(a, _hoyF7).length > 0, 'el fixture no marcó nada');
+  assert.strictEqual(foodLogDay(foodLogMerge(a, b), _hoyF7).length, foodLogDay(a, _hoyF7).length,
+    'el merge multi-dispositivo duplicó el almuerzo');
+});
+
+// 🔴 DESMARCAR RESPETA LO ANOTADO A MANO. Una marca que se lleva por delante el café que la
+// persona escribió ella misma es peor que no poder desmarcar.
+test('🔴 F7: desmarcar quita SOLO lo del plan', () => {
+  let fl = foodLogMarkPlanMeal(foodLogBlank(), _planF7, 0, _hoyF7);
+  const cafe = foodLogEntry({ id: 'x_cafe', name: 'Café', kcal: 2, p: 0.1, c: 0.3, f: 0 }, 200, 'desayuno', _hoyF7, () => 'fl_manual');
+  fl = foodLogAdd(fl, cafe, _hoyF7);
+  assert.ok(foodLogPlanMealDone(fl, 0, _hoyF7), 'el detector no ve la comida marcada');
+  fl = foodLogUnmarkPlanMeal(fl, 0, _hoyF7);
+  const quedan = foodLogDay(fl, _hoyF7);
+  assert.strictEqual(quedan.length, 1, 'desmarcar se llevó por delante lo que anotó la persona');
+  assert.strictEqual(quedan[0].id, 'fl_manual');
+  assert.strictEqual(foodLogPlanMealDone(fl, 0, _hoyF7), false);
+  // Y desmarcar una comida NO toca a las vecinas.
+  let fl2 = foodLogMarkPlanMeal(foodLogBlank(), _planF7, 0, _hoyF7);
+  fl2 = foodLogMarkPlanMeal(fl2, _planF7, 2, _hoyF7);
+  fl2 = foodLogUnmarkPlanMeal(fl2, 0, _hoyF7);
+  assert.strictEqual(foodLogPlanMealDone(fl2, 2, _hoyF7), true, 'desmarcar el desayuno borró el almuerzo');
+});
+
+// 🔴 LA PROPIEDAD DE FONDO, no una consecuencia holgada: con el DÍA ENTERO marcado, lo que lee
+// la persona en su barra tiene que caer dentro de la franja que la app ya declara (±10%). Si no,
+// la app se contradice a un toque de distancia — la familia v435/v444.
+// Presupuesto buscado a BARRIDO, no escrito de memoria.
+test('🔴 F7: con el plan ENTERO marcado, la barra del registro no acusa un hueco falso', () => {
+  let dias = 0, peorBajo = 100, peorAlto = 100, casoBajo = null, casoAlto = null;
+  [1400, 1800, 2200, 2600, 3200].forEach(kcal => {
+    [0.25, 0.30, 0.35].forEach(pk => {
+      const prot_g = Math.round(kcal * pk / 4);
+      const fat_g = Math.round(kcal * 0.25 / 9);
+      const carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
+      if (carb_g <= 0) return;
+      const base = { origen: 'coach', kcalObj: kcal, macros: { prot_g, carb_g, fat_g, kcal } };
+      ['pierna', 'entreno', 'descanso'].forEach(kind => {
+        for (let di = 0; di < 7; di++) {
+          const plan = nutDayPlan(base, kind, 4, 1, di);
+          if (!plan) continue;
+          let fl = foodLogBlank();
+          for (let i = 0; i < plan.meals.length; i++) fl = foodLogMarkPlanMeal(fl, plan, i, _hoyF7);
+          const pr = foodLogProgress(foodLogTotals(foodLogDay(fl, _hoyF7)), plan.target);
+          dias++;
+          if (pr.kcal.pct < peorBajo) { peorBajo = pr.kcal.pct; casoBajo = `${kcal} kcal · ${kind} · día ${di}`; }
+          if (pr.kcal.pct > peorAlto) { peorAlto = pr.kcal.pct; casoAlto = `${kcal} kcal · ${kind} · día ${di}`; }
+        }
+      });
+    });
+  });
+  assert.ok(dias >= 300, `el barrido solo resolvió ${dias} días: no prueba nada`);
+  // Medido 2026-08-12 sobre 315 días: min 93%, mediana 101%, max 111%. Los topes van 3 puntos
+  // por fuera de lo medido, y la cifra medida queda escrita aquí con su fecha — contra aflojar
+  // un tope NO protege una matriz de sabotaje, solo el número al lado (lección de v476).
+  assert.ok(peorBajo >= 90, `con el plan entero marcado la barra baja al ${peorBajo}% (${casoBajo}): la app diría que se quedó corta comiendo justo lo que le mandó`);
+  assert.ok(peorAlto <= 114, `con el plan entero marcado la barra sube al ${peorAlto}% (${casoAlto})`);
+});
+
+// Candado ESTÁTICO: las DOS superficies que ofrecen marcar tienen que leer el plan de la MISMA
+// función. Dos cálculos paralelos del mismo plan acabarían contradiciéndose (regla de v435).
+test('🔴 F7: las dos pantallas leen el plan de hoy de UNA sola función', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  assert.ok(/function _nutPlanHoy\(client\)/.test(src), 'desapareció la función única del plan de hoy');
+  // Ni la tarjeta de «Hoy» ni la habitación del registro pueden volver a llamar a nutDayPlan.
+  const llamadas = (src.match(/[^_]nutDayPlan\(/g) || []).length;
+  assert.strictEqual(llamadas, 1, `nutDayPlan se llama ${llamadas} veces en la pantalla: solo _nutPlanHoy puede hacerlo`);
+  assert.ok(/function flTogglePlanMeal\(idx\)/.test(src), 'no existe la acción de marcar');
+  // 🔒 Marcar el plan ES registrar: no puede saltarse el aviso de que el coach ve el detalle.
+  const cuerpo = src.slice(src.indexOf('function flTogglePlanMeal'), src.indexOf('function flTogglePlanMeal') + 1400);
+  assert.ok(/if\(!c\.foodlogOk\)/.test(cuerpo), 'marcar el plan se salta el aviso de privacidad');
+  assert.ok(/isFreeClient/.test(cuerpo), 'marcar el plan se salta el gate Premium');
+});
+
 // ══════════════════════════════════════════════════════
 section('Menores de edad y peso real (dictamen de Andrés Hyp, 2026-08-05)');
 

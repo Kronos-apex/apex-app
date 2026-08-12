@@ -2698,6 +2698,9 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  {v:477, icon:'check', t:'Tu plan se marca con un toque', d:'Ya no tienes que volver a escribir lo que la app te acaba de decir que comas: si te comiste lo del plan, lo marcas y queda registrado con sus cantidades.',
+   steps:['En "Hoy" abre "Tu comida de hoy" y toca "Ver"','Toca "✓ Me lo comí" en la comida que acabas de terminar','¿Cambiaste algo? Toca "Deshacer", o agrega lo que sí comiste'],
+   coach:true}, // solo con coach: el plan de comida y el registro son Premium
   {v:442, icon:'utensils', t:'Ya puedes registrar lo que comes', d:'Anota tus comidas del día y mira cómo vas contra tu plan, en calorías y en cada macro. La lista trae comida colombiana de verdad: lulo, curuba, arepa, sancocho de a poco.',
    steps:['En "Hoy", baja a tu tarjeta de hábitos y toca + en "Comida de hoy"','Busca el alimento (funciona sin tildes) y di cuánto comiste','Ve tu día completo: lo que llevas y lo que te falta'],
    coach:true}, // solo con coach: el registro es Premium y su valor es que el coach lo lea

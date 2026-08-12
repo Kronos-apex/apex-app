@@ -4549,12 +4549,16 @@ const NUT_MEALS_5 = [
 // Un id que no esté en la tabla (p.ej. 'ensalada', que no es un alimento) aporta 0 — no se
 // inventa nada, pero queda anotado en el radar.
 // PURA: recibe ids, devuelve macros. `un.g` es la ración con la que se le habla a la persona.
+// La ración con la que se sirve un acompañante. Vive en UNA función porque la usan dos sitios
+// —los macros de aquí y las entradas que escribe `nutPlanMealEntries`— y si se separan, el
+// registro diría una guayaba distinta de la que el plato contó.
+function nutAcompGrams(food) { return (food && food.un && food.un.g > 0) ? food.un.g : 100; }
 function nutAcompMacros(ids) {
   let p = 0, c = 0, f = 0;
   (ids || []).forEach(id => {
     const food = NUT_FOOD_BY_ID[id];
     if (!food) return;
-    const g = (food.un && food.un.g > 0) ? food.un.g : 100;
+    const g = nutAcompGrams(food);
     p += food.p * g / 100; c += food.c * g / 100; f += food.f * g / 100;
   });
   const prot_g = Math.round(p), carb_g = Math.round(c), fat_g = Math.round(f);
@@ -4750,6 +4754,10 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
       target: meta,          // lo que esa comida DEBE aportar (acompañantes incluidos)
       items: solved.items,
       acomp: menu ? (menu.acomp || []).map(a => (NUT_FOOD_BY_ID[a] ? NUT_FOOD_BY_ID[a].name : a)) : [],
+      // Los NOMBRES son para pintar; los IDS son para poder registrarlos (F7). `acomp` los perdía
+      // por el camino, y sin ellos «me lo comí» habría anotado el plato sin la fruta — justo el
+      // 22% de más que costó v470, pero al revés.
+      acompIds: menu ? (menu.acomp || []).slice() : [],
       acompReal: ac,
       real,
     };
@@ -4759,6 +4767,76 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   }), { prot_g: 0, carb_g: 0, fat_g: 0 });
   real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
   return { kind: t.kind, target: t, meals, real };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// EL PLAN SE MARCA, NO SE RE-ESCRIBE (F7 · patrón 1 del estudio Fitia/MFP)
+// ──────────────────────────────────────────────────────────────────────
+// Hasta hoy el plan de comida y el registro eran DOS MUNDOS: la app le decía a la persona qué
+// comer y con cuántos gramos, y acto seguido le pedía buscarlo y teclearlo otra vez, 3-5 veces
+// al día. El dato que lo decide: **el vaso de agua, que es UN toque, lo usan 6 de 24** — nada
+// que pida más esfuerzo que eso se sostiene. En Fitia el plan del día ES el registro.
+// Aquí la comida del plan se convierte en entradas NORMALES del registro (el mismo
+// `foodLogEntry`, el mismo snapshot de macros) para que todo lo de aguas abajo —totales,
+// progreso, la ficha del coach, la poda, el merge— siga funcionando sin enterarse de nada.
+//
+// 🔒 LOS TRES CANDADOS, y cada uno paga un bug ya conocido de este repo:
+//  1. **El id es DETERMINISTA** (`pl-<día>-<comida>-<n>`). Marcar dos veces no duplica —
+//     `foodLogAdd` reemplaza por id— y dos teléfonos que marcan la misma comida producen las
+//     MISMAS entradas, así que `foodLogMerge` las une en vez de servir el desayuno dos veces.
+//     Un id aleatorio habría convertido el merge multi-dispositivo (E4) en un duplicador.
+//  2. **Los acompañantes CUENTAN.** Es el bug que costó v470 al revés: el plato servía 22% de
+//     más porque la guayaba se pintaba y no se sumaba. Si aquí se registrara solo el plato, el
+//     registro quedaría por debajo de lo que el propio plan dice que la persona se está comiendo.
+//  3. **Se puede DESMARCAR.** Una marca que no se puede deshacer obliga a quien tocó por error a
+//     borrar cuatro entradas a mano — la misma lección de la bandeja que no se puede vaciar.
+const FOODLOG_PLAN_PREFIX = 'pl-';
+// Los ids que escribe el registro a mano empiezan por `fl`; los del plan, por `pl-`. Distinguirlos
+// permite decir en pantalla de dónde salió cada entrada Y desmarcar solo lo que puso el plan,
+// sin tocar lo que la persona anotó ella misma en esa misma comida.
+function foodLogIsPlanEntry(e) { return !!e && String(e.id || '').indexOf(FOODLOG_PLAN_PREFIX) === 0; }
+function _flPlanId(dayKey, mealKey, n) { return FOODLOG_PLAN_PREFIX + dayKey + '-' + mealKey + '-' + n; }
+// Las entradas de registro que corresponden a UNA comida del plan. PURA.
+// `idx` es la posición de la comida en el plan (0..4) y también en `FOODLOG_MEALS`: los dos
+// arreglos van en el mismo orden por construcción (`NUT_MEALS_5`) y **hay un test que lo afirma**
+// — si alguien reordena uno solo de los dos, el desayuno se registraría como cena.
+function nutPlanMealEntries(plan, idx, now) {
+  const m = ((plan && plan.meals) || [])[idx];
+  const mealKey = FOODLOG_MEALS[idx];
+  if (!m || !mealKey) return [];
+  const dayKey = habitDayKey(now);
+  const out = [];
+  const add = (foodId, grams) => {
+    const food = NUT_FOOD_BY_ID[foodId];
+    if (!food) return;                       // un id que no está en la tabla no se inventa
+    const e = foodLogEntry(food, grams, mealKey, now, () => _flPlanId(dayKey, mealKey, out.length));
+    if (e) out.push(e);
+  };
+  (m.items || []).forEach(it => add(it.id, it.grams));
+  (m.acompIds || []).forEach(id => { const f = NUT_FOOD_BY_ID[id]; if (f) add(id, nutAcompGrams(f)); });
+  return out;
+}
+function foodLogMarkPlanMeal(foodlog, plan, idx, now) {
+  let fl = _flNorm(foodlog);
+  nutPlanMealEntries(plan, idx, now).forEach(e => { fl = foodLogAdd(fl, e, now); });
+  return fl;
+}
+// Desmarcar quita SOLO lo que puso el plan en esa comida: si la persona añadió un café a mano,
+// el café se queda.
+function foodLogUnmarkPlanMeal(foodlog, idx, now) {
+  const o = _flNorm(foodlog);
+  const mealKey = FOODLOG_MEALS[idx];
+  const dayKey = habitDayKey(now);
+  if (!mealKey || !o.d[dayKey]) return o;
+  o.d = Object.assign({}, o.d);
+  const rest = o.d[dayKey].filter(e => !(foodLogIsPlanEntry(e) && e.meal === mealKey));
+  if (rest.length) o.d[dayKey] = rest; else delete o.d[dayKey];
+  return o;
+}
+function foodLogPlanMealDone(foodlog, idx, now) {
+  const mealKey = FOODLOG_MEALS[idx];
+  if (!mealKey) return false;
+  return foodLogDay(foodlog, now).some(e => foodLogIsPlanEntry(e) && e.meal === mealKey);
 }
 
 // ── De dónde salen los macros del día ───────────────────────────────────
@@ -6591,7 +6669,14 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_MENUS,
     NUT_MEALS_5,
     nutAcompMacros,
+    nutAcompGrams,
     nutDayPlan,
+    nutPlanMealEntries,
+    foodLogIsPlanEntry,
+    foodLogMarkPlanMeal,
+    foodLogUnmarkPlanMeal,
+    foodLogPlanMealDone,
+    FOODLOG_PLAN_PREFIX,
     nutPlanReview,
     nutBaseFor,
     nutMacroKcal,

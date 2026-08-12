@@ -352,6 +352,27 @@ function nutCalcHTML(c){
 function _mealsDayLabel(kind){
   return kind==='pierna' ? 'Hoy entrenas fuerte' : kind==='entreno' ? 'Hoy entrenas' : 'Hoy descansas';
 }
+// EL PLAN DE HOY, EN UNA SOLA FUNCIÓN. Lo leen la tarjeta de «Hoy» y la habitación del registro:
+// desde que el plan se puede MARCAR (F7) son dos superficies sobre el mismo dato, y dos cálculos
+// paralelos del mismo plan acabarían contradiciéndose — la regla que dejó v435.
+// Devuelve `{base, kind, plan}`; `base` puede venir sin `plan` (faltan datos del cuerpo) y el
+// llamador decide qué decir. Nunca lanza: un fallo aquí no puede tumbar el día de nadie.
+function _nutPlanHoy(client){
+  if(!client)return null;
+  if(typeof isFreeClient==='function'&&isFreeClient(client))return null; // el plan es Premium
+  if(typeof nutDayPlan!=='function'||typeof nutBaseFor!=='function')return null;
+  try{
+    // peso más reciente si lo hay (el del perfil puede estar viejo)
+    const base=nutBaseFor(client,(DB.nutrition||{})[client.id],_nutPesoDe(client));
+    if(!base)return {base:null,kind:null,plan:null};
+    const shape=nutWeekShape(client.routines);
+    const hoy=new Date();
+    const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const rHoy=(client.routines||[]).find(r=>r.day===dias[hoy.getDay()])||null;
+    const kind=nutDayKind(rHoy);
+    return {base,kind,plan:nutDayPlan(base,kind,shape.trainDays,shape.legDays,hoy.getDay())};
+  }catch(e){ warn('AVI: el plan de comida de hoy no se pudo armar (no bloquea el día):',e&&e.message); return null; }
+}
 function renderMealsToday(client){
   const con=document.getElementById('cn-meals'); if(!con)return;
   con.innerHTML='';
@@ -359,11 +380,10 @@ function renderMealsToday(client){
   if(typeof isFreeClient==='function'&&isFreeClient(client))return; // el plan de comida es Premium
   if(typeof nutDayPlan!=='function')return;
   try{
-    const nut=(DB.nutrition||{})[client.id];
-    // peso más reciente si lo hay (el del perfil puede estar viejo)
-    const peso=_nutPesoDe(client);
-    const base=nutBaseFor(client,nut,peso);
+    const ph=_nutPlanHoy(client); if(!ph)return;
+    const base=ph.base;
     if(!base){
+      const peso=_nutPesoDe(client);
       // Sin datos del cuerpo NO se inventa un plan: se pide el dato que falta.
       const faltan=[];
       if(!(parseFloat(peso)>0))faltan.push('tu peso');
@@ -377,23 +397,28 @@ function renderMealsToday(client){
       </div>`;
       return;
     }
-    const shape=nutWeekShape(client.routines);
-    const hoy=new Date();
-    const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-    const rHoy=(client.routines||[]).find(r=>r.day===dias[hoy.getDay()])||null;
-    const kind=nutDayKind(rHoy);
-    const plan=nutDayPlan(base,kind,shape.trainDays,shape.legDays,hoy.getDay());
+    const kind=ph.kind, plan=ph.plan;
     if(!plan)return;
     const t=plan.target;
     // v435: el número de HOY se mueve con el tipo de entreno y el del perfil es el de la semana.
     // Sin esta línea son dos números que se contradicen a la vista (reporte del PO 2026-08-04).
     const nota=(typeof nutDayNote==='function')?nutDayNote(kind,t.kcal,base.kcalObj):'';
     const abierto=_mealsOpen;
+    // F7 — CADA COMIDA SE MARCA CON UN TOQUE. Antes esto era una lista para leer y el registro
+    // vivía en otra habitación: la persona veía «Huevo 2 huevos + Pan 2 tajadas» y tenía que ir a
+    // buscar el huevo y el pan y teclear los gramos que la app acababa de decirle.
+    const marcado=i=>(typeof foodLogPlanMealDone==='function')&&foodLogPlanMealDone(client.foodlog,i);
     const filas=plan.meals.map((m,i)=>{
       const comida=m.items.map(it=>`${esc(it.name)} <b style="color:var(--t1)">${esc(it.text)}</b>`).join(' + ');
       const acomp=m.acomp.length?`<div style="font-size:11px;color:var(--t3);margin-top:2px">con ${esc(m.acomp.join(', ').toLowerCase())}</div>`:'';
+      const ok=marcado(i);
       return `<div style="padding:9px 0;${i?'border-top:1px solid var(--br)':''}">
-        <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px">${esc(m.name)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px;min-width:0">${esc(m.name)}${ok?' <span style="color:var(--g2)">· comido</span>':''}</div>
+          <button type="button" class="btn ${ok?'bg':'bp'} bsm" style="flex-shrink:0;min-height:36px;padding:0 12px"
+            aria-pressed="${ok?'true':'false'}"
+            onclick="flTogglePlanMeal(${i})">${ok?'Deshacer':'✓ Me lo comí'}</button>
+        </div>
         <div style="font-size:12.5px;color:var(--t2);margin-top:3px;line-height:1.5">${comida}</div>${acomp}
       </div>`;
     }).join('');
@@ -1394,25 +1419,42 @@ function _flDiaHtml(c){
     </div>`;
   if(pr.parcial)html+=`<div style="font-size:11.5px;color:var(--t2);margin-bottom:10px">Alguno de estos alimentos no trae todos sus datos, así que el total va incompleto.</div>`;
   else html+=`<div style="height:8px"></div>`;
-  FOODLOG_MEALS.forEach(m=>{
+  // F7 — el plan de hoy, para poder ofrecer «me comí lo del plan» justo donde está el hueco.
+  const _ph=(typeof _nutPlanHoy==='function')?_nutPlanHoy(c):null;
+  const _plan=_ph&&_ph.plan;
+  FOODLOG_MEALS.forEach((m,mi)=>{
     const items=hoy.filter(e=>e.meal===m);
     const kc=Math.round(items.reduce((a,e)=>a+(parseFloat(e.kcal)||0),0));
+    const pm=_plan&&_plan.meals[mi];
+    const marcada=typeof foodLogPlanMealDone==='function'&&foodLogPlanMealDone(c.foodlog,mi);
     html+=`<div style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
         <div style="font-size:13px;font-weight:800;color:var(--t1)">${FOODLOG_MEAL_LABEL[m]}${items.length?` <span style="font-weight:600;color:var(--t2)">· ${kc} kcal</span>`:''}</div>
         <button class="btn bp bsm" style="min-height:34px;padding:0 13px;flex-shrink:0" onclick="flBuscar('${m}')">+ Agregar</button>
       </div>`;
+    // El plan se ofrece SOLO si no está ya marcado. Deshacer se hace desde la tarjeta de «Hoy» o
+    // quitando las entradas una a una con su ✕ — igual que cualquier otra entrada.
+    const ofrecePlan=pm&&!marcada&&pm.items&&pm.items.length;
     if(!items.length){
       // Un hueco no se pinta como un bloque más: se marca con un borde punteado, que se lee como
       // «acá falta algo» y no como una tarjeta vacía. Y `--t2`, no `--t3`: se repite hasta 3 veces
       // en la pantalla y era de lo más apagado que había.
-      html+=`<div style="font-size:12px;color:var(--t2);padding:9px 10px;border:1px dashed var(--br2);border-radius:var(--rsm)">Sin registrar</div>`;
+      // Y si hay plan para esa comida, el hueco deja de ser un cartel y pasa a ser una ACCIÓN: lo
+      // que la app ya sabe que le tocaba comer, a un toque de quedar registrado.
+      html+=ofrecePlan
+        ? `<div style="padding:10px 12px;border:1px dashed var(--br2);border-radius:var(--rsm)">
+            <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Tu plan</div>
+            <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:9px">${pm.items.map(it=>`${esc(it.name)} <b style="color:var(--t1)">${esc(it.text)}</b>`).join(' + ')}${pm.acomp&&pm.acomp.length?`<div style="font-size:11px;color:var(--t2);margin-top:2px">con ${esc(pm.acomp.join(', ').toLowerCase())}</div>`:''}</div>
+            <button type="button" class="btn bp bsm" style="width:100%;min-height:38px" onclick="flTogglePlanMeal(${mi})">✓ Me comí esto</button>
+          </div>`
+        : `<div style="font-size:12px;color:var(--t2);padding:9px 10px;border:1px dashed var(--br2);border-radius:var(--rsm)">Sin registrar</div>`;
     }else{
+      if(ofrecePlan)html+=`<button type="button" class="btn bg bsm" style="width:100%;min-height:36px;margin-bottom:6px" onclick="flTogglePlanMeal(${mi})">✓ Agregar también lo del plan</button>`;
       items.forEach(e=>{
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name||'Alimento')}</div>
-            <div style="font-size:11px;color:var(--t2)">${e.g} g · ${e.kcal==null?'sin datos':e.kcal+' kcal'}</div>
+            <div style="font-size:11px;color:var(--t2)">${e.g} g · ${e.kcal==null?'sin datos':e.kcal+' kcal'}${(typeof foodLogIsPlanEntry==='function'&&foodLogIsPlanEntry(e))?' · <span style="color:var(--gt)">de tu plan</span>':''}</div>
           </div>
           <button class="btn bg bsm" style="min-height:34px;min-width:38px;padding:0 10px" aria-label="Quitar ${esc(e.name||'alimento')}" onclick="flQuitar('${esc(e.id)}')">✕</button>
         </div>`;
@@ -1588,6 +1630,29 @@ function flQuitar(entryId){
   c.foodlog=foodLogRemove(c.foodlog,habitDayKey(),entryId);
   sv('ax_c',DB.clients);
   renderFoodLogRoom(); renderHabitsCard(c);
+}
+// ── F7 · MARCAR EL PLAN COMO COMIDO ──────────────────────────────────────────
+// Un toque por comida, en vez de buscar y teclear 3-4 alimentos que la app ACABA de dictarle.
+// La cuenta la hace `avi-core` (puro y testeado); aquí solo se decide y se repinta.
+function flTogglePlanMeal(idx){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  if(typeof isFreeClient==='function'&&isFreeClient(c))return;
+  if(typeof foodLogMarkPlanMeal!=='function')return;
+  // 🔒 Marcar el plan ES registrar. Quien no ha leído todavía que su coach ve el detalle no puede
+  // saltarse ese aviso por la puerta de al lado — lo llevamos a la habitación, que es donde vive.
+  if(!c.foodlogOk){ openFoodLogRoom(FOODLOG_MEALS[idx]); return; }
+  const ph=_nutPlanHoy(c); const plan=ph&&ph.plan; if(!plan)return;
+  const hecho=foodLogPlanMealDone(c.foodlog,idx);
+  const m=plan.meals[idx];
+  c.foodlog=hecho?foodLogUnmarkPlanMeal(c.foodlog,idx):foodLogMarkPlanMeal(c.foodlog,plan,idx);
+  sv('ax_c',DB.clients);
+  // Las DOS superficies que muestran esto se repintan juntas, siempre: la tarjeta del plan, el
+  // bloque de hábitos y —si está abierta— la habitación del registro.
+  renderMealsToday(c); renderHabitsCard(c);
+  const room=document.getElementById('foodlog-room');
+  if(room&&room.classList.contains('on'))renderFoodLogRoom();
+  if(navigator.vibrate)navigator.vibrate(15);
+  if(typeof toast==='function')toast(hecho?'Listo, lo quité':'🍽️ '+(m&&m.name?m.name:'Comida')+' registrado');
 }
 
 // ══════════════════════════════════════════════════════════════════════

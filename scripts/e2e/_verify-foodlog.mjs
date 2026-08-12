@@ -279,6 +279,125 @@ try {
       const c=DB.clients.find(x=>x.id===CUR.clientId); c.foodlog=foodLogBlank(); localStorage.removeItem('ax_bccache');})()`);
   }
 
+  // ── F7 · EL PLAN SE MARCA, NO SE RE-ESCRIBE ────────────────────────────────
+  // 🔒 CONTROL DE MONTAJE primero: sin plan de comida no hay nada que marcar, y un harness que
+  // mide sobre una pantalla vacía sale verde sin haber probado nada (lección de `_guiado-suite`,
+  // que llevó muerto desde v447, y de los modales que medían cuatro líneas).
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    c.foodlog=foodLogBlank(); c.foodlogOk=new Date().toISOString();
+    c.sex='F'; c.age=32; c.height=163; c.weight=62;
+    DB.nutrition=DB.nutrition||{}; DB.nutrition[CUR.clientId]={kcal:2100,prot:150,carbs:210,fat:60};
+    navReset('cn-today');cnTab('cn-today',_cnTabEl('cn-today'),true);renderClientToday(c);})()`);
+  await sleep(700);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const ph=_nutPlanHoy(c); const plan=ph&&ph.plan;
+    return {hayPlan:!!plan, comidas:plan?plan.meals.length:0,
+      conItems:plan?plan.meals.filter(m=>m.items&&m.items.length).length:0,
+      conAcomp:plan?plan.meals.filter(m=>(m.acompIds||[]).length).length:0};})())`));
+  check('F7-0 CONTROL DE MONTAJE: hay un plan de comida real con sus 5 comidas',
+    s.hayPlan && s.comidas === 5 && s.conItems === 5 && s.conAcomp > 0, JSON.stringify(s));
+  if (!s.hayPlan) throw new Error('sin plan de comida no se puede probar F7: el fixture no montó');
+
+  // F7-1 — el botón está DONDE la persona lee su plan, y la tarjeta se abre sola al tocar «Ver»
+  await ev(`(()=>{_mealsOpen=true;renderMealsToday(DB.clients.find(x=>x.id===CUR.clientId));})()`);
+  await sleep(400);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const con=document.getElementById('cn-meals');
+    const btns=[...con.querySelectorAll('button[onclick^="flTogglePlanMeal"]')];
+    const r=btns.length?btns[0].getBoundingClientRect():null;
+    return {n:btns.length, txt:btns.map(b=>b.textContent.trim()).join('|'),
+      alto:r?Math.round(r.height):0, dentro:!!r&&r.left>=0&&r.right<=390};})())`));
+  check('F7-1 cada comida del plan tiene su botón de marcar, táctil y dentro de la pantalla',
+    s.n === 5 && /Me lo comí/.test(s.txt) && s.alto >= 36 && s.dentro, JSON.stringify(s));
+
+  // F7-2 — UN TOQUE registra la comida entera. Es el corazón de la feature: lo que antes eran
+  // 3-4 búsquedas con sus gramos tecleados.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const ph=_nutPlanHoy(c); const m=ph.plan.meals[0];
+    const antes=foodLogDay(c.foodlog).length;
+    document.querySelector('#cn-meals button[onclick="flTogglePlanMeal(0)"]').click();
+    const dia=foodLogDay(c.foodlog);
+    const esperados=(m.items||[]).length+(m.acompIds||[]).filter(id=>NUT_FOOD_BY_ID[id]).length;
+    return {antes, despues:dia.length, esperados,
+      todasDesayuno:dia.every(e=>e.meal==='desayuno'),
+      delPlan:dia.filter(e=>foodLogIsPlanEntry(e)).length};})())`));
+  check('F7-2 un toque registra la comida ENTERA (plato + acompañantes)',
+    s.antes === 0 && s.despues === s.esperados && s.despues >= 2 && s.todasDesayuno && s.delPlan === s.despues, JSON.stringify(s));
+
+  // F7-3 — el número que la persona LEE se mueve. Sin esto la marca es un gesto sin efecto.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const tot=foodLogTotals(foodLogDay(c.foodlog));
+    const hab=document.getElementById('cn-habits').textContent||'';
+    const meals=document.getElementById('cn-meals').textContent||'';
+    return {kcal:tot.kcal, barra:/de \\d+ kcal/.test(hab), comido:/comido/.test(meals),
+      deshacer:/Deshacer/.test(meals)};})())`));
+  check('F7-3 marcar mueve el contador de hábitos y la tarjeta dice «comido» + «Deshacer»',
+    s.kcal > 0 && s.barra && s.comido && s.deshacer, JSON.stringify(s));
+
+  // F7-4 — se puede DESHACER, y no se lleva por delante lo que la persona anotó a mano.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const cafe=foodLogEntry({id:'x_cafe',name:'Cafe',kcal:2,p:0.1,c:0.3,f:0},200,'desayuno',null,()=>'fl_manual_h');
+    c.foodlog=foodLogAdd(c.foodlog,cafe);
+    renderMealsToday(c);
+    document.querySelector('#cn-meals button[onclick="flTogglePlanMeal(0)"]').click();
+    const dia=foodLogDay(c.foodlog);
+    return {quedan:dia.length, ids:dia.map(e=>e.id).join(','),
+      vuelveElBoton:/Me lo comí/.test(document.getElementById('cn-meals').textContent||'')};})())`));
+  check('F7-4 deshacer quita SOLO lo del plan (el café escrito a mano sobrevive)',
+    s.quedan === 1 && s.ids === 'fl_manual_h' && s.vuelveElBoton, JSON.stringify(s));
+
+  // F7-5 — la SEGUNDA superficie: la habitación del registro ofrece el plan donde está el hueco.
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();openFoodLogRoom();})()`);
+  await sleep(700);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('flroom-body');
+    const btns=[...b.querySelectorAll('button[onclick^="flTogglePlanMeal"]')];
+    return {n:btns.length, dice:/Tu plan/.test(b.textContent||''),
+      txt:btns.map(x=>x.textContent.trim()).join('|')};})())`));
+  check('F7-5 la habitación del registro ofrece «Me comí esto» en cada hueco del plan',
+    s.n === 5 && s.dice && /Me comí esto/.test(s.txt), JSON.stringify(s));
+
+  // F7-6 — marcar desde la habitación deja la entrada ROTULADA, para que no aparezcan
+  // cuatro alimentos de la nada.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{
+    document.querySelector('#flroom-body button[onclick="flTogglePlanMeal(2)"]').click();
+    const b=document.getElementById('flroom-body').textContent||'';
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const alm=foodLogDay(c.foodlog).filter(e=>e.meal==='almuerzo');
+    return {n:alm.length, rotulo:/de tu plan/.test(b),
+      yaNoOfrece:!document.querySelector('#flroom-body button[onclick="flTogglePlanMeal(2)"]')};})())`));
+  check('F7-6 marcado desde la habitación: entradas rotuladas «de tu plan» y ya no se re-ofrece',
+    s.n >= 2 && s.rotulo && s.yaNoOfrece, JSON.stringify(s));
+
+  // F7-7 — con el DÍA ENTERO marcado, la barra NO acusa un hueco falso. Es la propiedad que
+  // decide si la feature es honesta: si dijera «te faltan 400 kcal» a quien comió exactamente lo
+  // que le mandaron, la app se contradiría a un toque de distancia (familia v435/v444).
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    c.foodlog=foodLogBlank();
+    const ph=_nutPlanHoy(c);
+    for(let i=0;i<5;i++)c.foodlog=foodLogMarkPlanMeal(c.foodlog,ph.plan,i);
+    const pr=foodLogProgress(foodLogTotals(foodLogDay(c.foodlog)),ph.plan.target);
+    renderFoodLogRoom(); renderHabitsCard(c);
+    return {pct:pr.kcal.pct, prot:pr.p.pct, n:foodLogDay(c.foodlog).length,
+      texto:(document.getElementById('flroom-body').textContent||'').slice(0,120)};})())`));
+  check('F7-7 con el plan ENTERO marcado la barra cae dentro de la franja declarada (90-114%)',
+    s.pct >= 90 && s.pct <= 114 && s.n >= 10, JSON.stringify(s));
+
+  // F7-8 — 360px y letra «Muy grande»: la barra premium del proyecto.
+  await ev(`document.documentElement.setAttribute('data-fs','xl')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 780, deviceScaleFactor: 2, mobile: true });
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();renderFoodLogRoom();})()`);
+  await sleep(600);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('flroom-body');
+    const btns=[...b.querySelectorAll('button[onclick^="flTogglePlanMeal"]')];
+    const rs=btns.map(x=>x.getBoundingClientRect());
+    return {desborde:b.scrollWidth-b.clientWidth, docDesborde:document.documentElement.scrollWidth-window.innerWidth,
+      n:btns.length, minAlto:rs.length?Math.round(Math.min(...rs.map(r=>r.height))):0,
+      dentro:rs.every(r=>r.left>=-1&&r.right<=361)};})())`));
+  check('F7-8 cabe a 360px con letra «Muy grande», táctil y sin desborde horizontal',
+    s.n === 5 && s.desborde <= 1 && s.docDesborde <= 1 && s.minAlto >= 36 && s.dentro, JSON.stringify(s));
+  await ev(`document.documentElement.removeAttribute('data-fs')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();delete DB.nutrition[CUR.clientId];})()`);
+
   // FL10 — el botón atrás cierra la habitación
   await ev(`(()=>{if(!document.getElementById('foodlog-room').classList.contains('on'))openFoodLogRoom();})()`); await sleep(400);
   await ev(`history.back()`); await sleep(700);
