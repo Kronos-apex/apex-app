@@ -4,6 +4,68 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-12 (5ª parte) — avi-v478: la FRANJA, «te quedan X» y la semana en una fila
+
+**Producción en `avi-v478`, verificada** (`_prodcheck 478` verde, `jsErrors: []`). Suite
+**708 → 715**, hook 12/12, `_verify-foodlog` **31 → 36**, **`_sabotaje-f7` 27/27**,
+`_verify-news` 10/10. Commit `6d07804`.
+Patrones **2, 3 y 6** del estudio de competencia, en un lote de PANTALLA: no tocan el motor.
+
+### 1 · La franja, y por qué mide ±12% y no ±10%
+Pedirle a alguien que clave «2.089 kcal» es pedirle una precisión que **ni el propio plan tiene**.
+Ahora la app dice «hoy te toca entre 1.830 y 2.330» y pone un ✓ cuando entra ahí.
+🔴 **El ancho se MIDIÓ, no se escribió de memoria** (ruta `nutBaseFor` contra la nube, 12-ago):
+**25 filas de asesorado → 21 resuelven → 17 que en producción SÍ ven el plan de comida** (6 son
+`tier:'libre'` y nunca lo ven; 4 no resuelven), **119 días-plan**. El plato sirve entre el
+**94,7% y el 110,2%** de lo que promete:
+
+| franja | días-plan fuera de 119 | personas |
+|---|---|---|
+| ±5%  | 28 | 10 |
+| ±8%  |  6 | 4 |
+| ±10% |  1 | **Nataly** (su plato entrega 110,2%) |
+| **±12%** | **0** | — ← elegida |
+
+**La restricción es dura y no es de gusto: una franja más estrecha de lo que el plato entrega le
+diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó** — la contradicción de
+v435/v444, servida justo por la pantalla que existe para dar tranquilidad. Si algún día el plato
+entrega más fino, la cifra se re-mide y se aprieta; no al revés.
+⚠️ **Solo para calorías.** Por macro el reparto es mucho más ancho (grasa **80,9%-129,2%**) y una
+franja de ±29% no dice nada: los macros siguen con su porcentaje.
+
+### 2 · «Te quedan X» cuenta hasta la FRANJA
+No hasta la cifra exacta. Y se redondea dentro de la función pura, que es la lección de v456
+(el PO vio «Te quedan 36.799999999999955 kcal» cuando la pantalla rehizo la resta a mano).
+
+### 3 · La semana en una fila
+AVI ya calculaba esto para la ficha del coach y **el asesorado nunca lo veía**. Siete días con su
+estado y un ✓ por día en franja. 🔴 **Un día sin registrar es un HUECO, no un cero**: es «no
+sabemos», la misma regla que ya impide que el promedio del coach mienta.
+
+### 4 · 🔴 DOS DEFECTOS REALES QUE APARECIERON HACIÉNDOLO, ninguno buscado
+**(a) El coach y la asesorada juzgaban el mismo día con DOS VARAS.** Su ficha pintaba el chip
+naranja desde un `12` escrito a mano en `app-3-coach.js`, y la franja es un `0.12` en `avi-core`:
+dos números con el mismo significado en dos archivos. Podía ver una alerta por el mismo día en que
+la app le decía a ella «✓ vas en tu franja». El umbral ahora se **deriva** del ancho
+(`_FL_DESVIO_MEDIO`) y hay test que impide separarlos — y `>` en vez de `>=`, porque justo en el
+borde ella está DENTRO.
+**(b) El tier libre se quedó sin tour de novedades.** `newsToShow` recortaba a 3 y la PANTALLA
+filtraba las `coach:true` DESPUÉS. Al publicar v477 y v478 —las dos de Premium— las tres más
+nuevas quedaron todas de Premium → **a quien no tiene coach no le quedaba ninguna y el tour dejaba
+de abrir del todo**. Un tour que no sale **no da error**: no lo habría notado nadie. El público
+entra ahora en la función pura y el recorte va al final.
+
+### 5 · 🎓 Lo que enseñó del método
+- **Dos tests míos NO mordían, y los dos se supieron saboteándolos:** el de la fila de la semana
+  le daba **la misma meta a los 7 días**, así que comparar contra el día equivocado no cambiaba
+  nada; y el del ancho prohibía el literal `0.12` mientras la pantalla se lo calculaba
+  tranquilamente con `0.88`/`1.12`. **Un fixture uniforme y una prohibición por literal son la
+  misma trampa: una aserción que el defecto puede satisfacer.**
+- **Los finales de línea NO son estables:** `app-5-salud.js` pasó de LF a CRLF *entre v477 y v478*
+  porque git los reescribe al commitear. La solución es del RUNNER (normalizar a `?
+`), no
+  adivinar cuál toca hoy.
+
 ## 🟢 2026-08-12 (4ª parte) — avi-v477: el plan de comida se MARCA, no se re-escribe (F7)
 
 **Producción en `avi-v477`, verificada** (`?v=477` + `avi-v477` en sw.js + `_prodcheck 477` verde,
