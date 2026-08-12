@@ -3761,7 +3761,7 @@ const NUT_FOODS = [
   { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
   // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
   // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
-  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 100 } },
+  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
   { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
   { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
   { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
@@ -3785,7 +3785,7 @@ const NUT_FOODS = [
   // (invisible y peor), que es la misma clase de defecto que se mató en v471, en espejo.
   // ✅ LA SALIDA es una SEGUNDA fuente de carbohidrato en el menú (arroz + tajada, arepa + papa),
   // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
-  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 } },
+  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 }, un2: { label: 'cucharada', g: 20 } },
   { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, un: { label: 'papa mediana', g: 150 } },
   { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
   // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
@@ -3801,14 +3801,14 @@ const NUT_FOODS = [
   // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
   // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
   // lee «media taza (40 g)» en vez de «4 cucharadas» que nadie mide igual.
-  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 } },
+  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 }, un2: { label: 'cucharada', g: 10 } },
   { id: 'pasta', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
   { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, un: { label: 'mazorca', g: 130 } },
   // ── GRASA ──
   { id: 'aguacate', name: 'Aguacate', rol: 'fat', kcal: 160, p: 2.0, c: 9.0, f: 15.0, un: { label: 'octavo', g: 30 } },
   { id: 'aceite', name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
-  { id: 'mani', name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 } },
-  { id: 'almendra', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 } },
+  { id: 'mani', name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 }, un2: { label: 'cucharada', g: 10 } },
+  { id: 'almendra', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 }, un2: { label: 'almendra', g: 1.2 } },
   { id: 'crema_mani', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
   // ── VERDURA (libre: acompañan, no se cuentan al ajustar macros) ──
   { id: 'tomate', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, un: { label: 'tomate', g: 120 } },
@@ -4242,8 +4242,19 @@ function _nutNumText(rn, label) {
 }
 function nutPortionText(food, grams) {
   if (!food || !(grams > 0)) return null;
-  const un = food.un;
-  if (un && un.g) {
+  // 🔴 DOS ESCALONES DE MEDIDA CASERA, GRANDE Y CHICO (v476). El plato escribía «avena 15 g»,
+  // «maní 5 g», «almendras 5 g» — medido sobre las 22 personas reales, **78 de 2.310 raciones**
+  // salían en gramos-polvo, y 40 de ellas eran la avena. La cantidad NO estaba mal: 15 g de avena
+  // en hojuelas son **una cucharada y media**, y 5 g de maní **media cucharada**. Lo que estaba mal
+  // era que cada alimento declaraba UNA sola medida casera y era demasiado grande para las
+  // cantidades chicas (una TAZA de avena son 80 g, un PUÑADO de maní son 30).
+  // ⚠️ Esto NO cambia lo que se sirve —ni un gramo, ni una caloría—, solo cómo se escribe. Por eso
+  // es el arreglo correcto y no subir la ración a media medida: eso sí infla el plato, y ya rompió
+  // el guardián de los extremos cuando se intentó en `carb2` (14,2% sobre una mujer de 55 kg).
+  // La medida chica solo se usa cuando la grande NO alcanza; si alcanza, manda la grande, o se
+  // leería «8 cucharadas de avena» donde cabe decir «1 taza».
+  const escalon = (un) => {
+    if (!un || !un.g) return null;
     const n = grams / un.g;
     // Hasta 4 unidades se permite medio; de ahí en adelante, enteras.
     const paso = n <= 4 ? 0.5 : 1;
@@ -4256,7 +4267,12 @@ function nutPortionText(food, grams) {
       const txt = _nutNumText(rn, un.label) + ' ' + label;
       return { n: rn, grams: Math.round(rn * un.g), text: txt + ' (' + Math.round(rn * un.g) + ' g)' };
     }
-  }
+    return null;
+  };
+  const grande = escalon(food.un);
+  if (grande) return grande;
+  const chica = escalon(food.un2);
+  if (chica) return chica;
   let g = Math.max(5, Math.round(grams / 5) * 5);
   if (food.maxG > 0) g = Math.min(g, Math.round(food.maxG / 5) * 5);
   return { n: null, grams: g, text: g + ' g' };

@@ -6421,6 +6421,33 @@ test('el plato es determinista: mismos ingredientes y macros → mismo resultado
   assert.deepStrictEqual(a, b);
 });
 
+test('🔴 v476 · una cantidad chica se dice con la medida CHICA, no en gramos-polvo', () => {
+  const f = id => core.NUT_FOOD_BY_ID[id];
+  // Medido sobre las 22 personas reales (2.310 raciones servidas): **78 salían en gramos sueltos**
+  // —«avena 15 g», «maní 5 g», «almendras 5 g»— y 40 de ellas eran la avena. La cantidad NO estaba
+  // mal: 15 g de avena en hojuelas son una cucharada y media. Lo que faltaba era el escalón chico,
+  // porque una TAZA de avena son 80 g y un PUÑADO de maní son 30. Con `un2`: **78 → 6** (0,3%).
+  assert.strictEqual(core.nutPortionText(f('avena'), 15).text, '1½ cucharadas (15 g)');
+  assert.strictEqual(core.nutPortionText(f('mani'), 5).text, 'media cucharada (5 g)');
+  assert.strictEqual(core.nutPortionText(f('almendra'), 5).text, '4 almendras (5 g)');
+  assert.strictEqual(core.nutPortionText(f('arroz'), 20).text, '1 cucharada (20 g)');
+  // 🔒 CONTROL 1 — la medida GRANDE sigue mandando cuando alcanza, o se leería «8 cucharadas de
+  // avena» donde cabe decir «1 taza». Sin esto el arreglo sería un empeoramiento disfrazado.
+  assert.strictEqual(core.nutPortionText(f('avena'), 80).text, '1 taza (80 g)');
+  assert.strictEqual(core.nutPortionText(f('avena'), 120).text, '1½ tazas (120 g)');
+  assert.strictEqual(core.nutPortionText(f('mani'), 30).text, '1 puñado (30 g)');
+  assert.strictEqual(core.nutPortionText(f('arroz'), 158).text, '1 taza (158 g)');
+  // 🔒 CONTROL 2 — y NO cambia ni un gramo de lo que se sirve: `un2` es un escalón de ESCRITURA.
+  // Es justamente lo que lo hace seguro, frente a la otra salida posible (subir la ración a media
+  // medida), que infla el plato y ya rompió el guardián de los extremos cuando se probó en `carb2`.
+  [['avena', 15], ['mani', 5], ['almendra', 5], ['arroz', 20], ['atun', 25]].forEach(([id, g]) => {
+    assert.strictEqual(core.nutPortionText(f(id), g).grams,
+      core.nutPortionText(Object.assign({}, f(id), { un2: null }), g).grams,
+      `la submedida de ${id} cambió los gramos servidos: tiene que ser solo texto`);
+  });
+  // Un alimento sin `un2` se comporta exactamente como antes.
+  assert.strictEqual(core.nutPortionText(f('huevo'), 12).text, '10 g');
+});
 test('las cantidades se escriben como habla una persona, en español correcto', () => {
   const f = id => core.NUT_FOOD_BY_ID[id];
   assert.strictEqual(core.nutPortionText(f('huevo'), 100).text, '2 huevos (100 g)');
@@ -8410,16 +8437,20 @@ test('ni en los casos EXTREMOS el plan se pasa del 13%', () => {
   const r = _peorDesvioPlan(_PERFILES_EXTREMOS);
   assert.strictEqual(_conPiso(_PERFILES_EXTREMOS).length, 3,
     'el barrido perdió las sedentarias del piso: son ellas las que destapaban el defecto');
-  // ⚠️ EL TOPE SUBIÓ DE 13% A 14% EN v471, y va dicho POR QUÉ (no se aflojó para ver verde):
-  // el peor medido pasó de **+12,08% a +13,04%**, y ese punto de kcal es el PRECIO de dos cosas
-  // que se compraron en la misma versión — el piso de proteína por menú y la regla de no repetir
-  // plato el mismo día. Lo que compró, en estos mismos perfiles:
+  // 🔴 EL TOPE VOLVIÓ A 13% (2026-08-12). En v471 se subió de 13 a 14 alegando que «el peor medido
+  // pasó de +12,08% a **+13,04%**» — y ese 13,04% **NO EXISTE**: no lo reproduce ni Fable
+  // verificando v471/v472 (mide 12,55%) ni esta medición sobre v475, que da **+12,6%**. O sea que
+  // el guardián se aflojó un punto entero para dejar sitio a una cifra que nadie ha vuelto a ver.
+  // Aflojar un guardián sobre un número que no se reproduce es el modo de fallo que este repo
+  // tiene registrado, y esta vez lo cometí yo.
+  // Lo que v471 SÍ compró en estos mismos perfiles, y sigue en pie:
   //     proteína  −23,8% → **−9,2%**   ·   carbohidrato  −11,0% → **−9,4%**
-  // Un punto de exceso calórico por 14,6 puntos de proteína es un cambio que Andrés firma; el
-  // que NO se firma es al revés. El tope queda con ~1 punto de aire sobre lo medido, igual que
-  // cuando se derivó el 13 desde el 12,1: si sube más, es un defecto nuevo, no este cambio.
-  assert.ok(r.peorKcal <= 14,
-    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 14%`);
+  // ⚠️ El aire sobre lo medido queda en **0,4 puntos**, menos que el ~1 punto con que se derivó el
+  // 13 desde el 12,1. Es apretado A PROPÓSITO: el 14 sobraba, y un guardián con holgura de más no
+  // avisa de nada. Si esto se pone rojo, PRIMERO se mide (`r.peorKcal` sale en el mensaje) y se
+  // averigua qué lo movió; el tope solo se toca con la cifra nueva escrita aquí y su razón.
+  assert.ok(r.peorKcal <= 13,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 13%`);
   assert.ok(r.peorCarb >= -13,
     `al plan le falta ${Math.abs(r.peorCarb).toFixed(1)}% del carbohidrato prometido (${r.quienCarb}) — el tope es -13%`);
   // 🔒 Y su hermana POR MACRO, que es la razón de ser de todo el cambio.

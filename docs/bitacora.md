@@ -4,6 +4,46 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛑 2026-08-12 (3ª parte) — avi-v476: «avena 15 g» se dice como se dice, y el guardián vuelve a 13
+
+**Producción en `avi-v476`, verificada.** Suite **700/700**, hook 12/12,
+**`_sabotaje-carb2` 8/8 muerden**. Cierra **P2-1 y P2-5** del veredicto de Fable.
+
+### 1 · El guardián de los extremos vuelve a 13% (P2-1)
+En v471 se subió de 13 a 14 alegando que «el peor medido pasó de +12,08% a **+13,04%**».
+**Ese 13,04% no existe:** no lo reproduce Fable verificando v471/v472 (mide 12,55%) ni esta
+medición sobre v475, que da **+12,6%** (11 perfiles extremos × 7 días, cifra leída del propio
+test). Se aflojó un guardián un punto entero para hacerle sitio a un número que nadie ha vuelto
+a ver — el modo de fallo que este repo ya tenía registrado, cometido esta vez por mí.
+Vuelve a **13**, con **0,4 puntos de aire** (menos que el ~1 punto con que se derivó el 13 desde
+el 12,1) y la razón escrita: el 14 sobraba, y un guardián con holgura de más no avisa de nada.
+
+### 2 · El escalón CHICO de medida casera (P2-5) — `un2`
+Medido sobre las 22 personas reales, **2.310 raciones servidas: 78 salían en gramos-polvo**
+(«avena 15 g», «maní 5 g», «almendras 5 g»), y **40 de ellas eran la avena**.
+🔴 **La cantidad no estaba mal: 15 g de avena en hojuelas SON una cucharada y media.** Lo que
+estaba mal es que cada alimento declaraba **una sola** medida casera y era demasiado grande para
+las cantidades chicas — una TAZA de avena son 80 g, un PUÑADO de maní son 30. Nunca iba a caber.
+
+`nutPortionText` gana un segundo escalón (`un2`), que **solo se usa si el grande no alcanza**.
+Cinco alimentos lo declaran, los que la medición señaló: avena (cucharada 10 g), maní (cucharada
+10 g), almendras (unidad 1,2 g), arroz (cucharada 20 g), atún (cucharada 20 g).
+
+| 22 personas · 2.310 raciones | v475 | v476 |
+|---|---|---|
+| raciones en gramos sueltos | **78** (3,4%) | **6** (0,3%) |
+| peor día de proteína / carbohidrato / kcal | −5,0% / −11,5% / +9,1% | **idénticos** |
+| variedad desayuno / almuerzo | 5,55 / 4,45 | **idénticas** |
+
+🔒 **No cambia ni un gramo de lo que se sirve: `un2` es un escalón de ESCRITURA**, y hay un test
+que lo afirma comparando los gramos con y sin submedida. Eso es lo que lo hace seguro frente a la
+otra salida posible —subir la ración a media medida—, que **infla el plato** y ya rompió el
+guardián de los extremos cuando se probó en `carb2` (14,2% sobre una mujer de 55 kg en déficit).
+🔒 Y su control: la medida GRANDE sigue mandando cuando alcanza, o se leería «8 cucharadas de
+avena» donde cabe decir «1 taza». Sin ese control el arreglo sería un empeoramiento disfrazado.
+⏭️ Quedan **6 residuales** (banano ×2, pan ×2, avena ×2) — cantidades tan pequeñas que ninguna
+medida casera las mejora. No se persiguen.
+
 ## 🛑 2026-08-12 (2ª parte) — avi-v475: el «5 g de plátano», y los tres candados que faltaban
 
 **Producción en `avi-v475`, verificada.** Suite **699/699**, hook 12/12,

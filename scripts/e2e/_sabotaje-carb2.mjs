@@ -27,7 +27,18 @@ const SABOTAJES = [
   ['6· la grasa deja de descontar lo que aporta el segundo carbohidrato',
     "      gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f') - ap(carb2, gC2, 'f')) / fat.f * 100);",
     "      gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f')) / fat.f * 100);"],
+  // ── El escalón chico de medida casera (v476) ──
+  ['7· desaparece la medida CHICA: vuelven «avena 15 g» y «maní 5 g»',
+    '  const chica = escalon(food.un2);',
+    '  const chica = null;'],
+  ['8· la medida chica MANDA sobre la grande («8 cucharadas de avena» en vez de «1 taza»)',
+    '  const grande = escalon(food.un);',
+    '  const grande = food.un2 ? null : escalon(food.un);'],
 ];
+// ⚠️ NO se pone aquí un «sabotaje» que afloje el tope del guardián de extremos: aflojar un tope
+// deja la suite VERDE por definición, así que nunca mordería. Contra eso no protege una matriz de
+// sabotaje sino la razón escrita en el test — y el precedente de que el 14 se puso sobre un
+// +13,04% que nadie ha vuelto a reproducir.
 
 const ARCHIVO = 'avi-core.js';
 const RUTA = new URL('../../' + ARCHIVO, import.meta.url);
