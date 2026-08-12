@@ -1628,6 +1628,34 @@ function _bcCachePut(row){
   try{ localStorage.setItem(BC_CACHE_KEY,JSON.stringify(_bcCache)); }catch(e){}
   _foodCat=null; _foodCatCargando=null;   // el catálogo en memoria se rearma con la fuente nueva
 }
+// Saca una fila de la caché (el coach la descartó del catálogo). No se toca el registro que la
+// persona YA hizo: esa entrada lleva los macros copiados dentro y es suya.
+function _bcCacheDrop(ean){
+  const lista=_bcCacheGet().filter(r=>r&&r.ean!==ean);
+  if(lista.length===_bcCacheGet().length)return;
+  _bcCache=lista;
+  try{ localStorage.setItem(BC_CACHE_KEY,JSON.stringify(_bcCache)); }catch(e){}
+  _foodCat=null; _foodCatCargando=null;
+}
+// 🔴 REVALIDACIÓN EN SEGUNDO PLANO. La caché de este teléfono no tiene vencimiento a propósito
+// (es lo que hace que el yogur de todos los días aparezca sin red), pero eso la volvía DEFINITIVA:
+// una corrección del coach no llegaba nunca a quien ya había escaneado el producto. Se consulta
+// detrás, sin bloquear ni mostrar «cargando», y solo se repinta si el dato REALMENTE cambió y la
+// persona sigue mirando ese mismo producto. Sin red no pasa nada: se queda con lo que tenía.
+async function _bcRevalidar(ean,local){
+  try{
+    const cli=_bcClient(); if(!cli)return;
+    const {data,error}=await cli.from('food_barcodes').select(BC_COLS).eq('ean',ean).maybeSingle();
+    if(error)return;
+    if(!data){ _bcCacheDrop(ean); return; }          // lo descartaron del catálogo
+    const igual=BC_COLS.split(',').every(k=>String(data[k])===String(local&&local[k]));
+    if(igual)return;
+    _bcCachePut(data);
+    // Solo si sigue en pantalla con ESE producto: repintar por debajo de otra cosa sería peor.
+    const f=(typeof foodFromBarcode==='function')?foodFromBarcode(data):null;
+    if(f&&_flView&&_flView.sel&&_flView.sel.id===f.id){ _flView.sel=f; renderFoodLogRoom(); }
+  }catch(e){ /* sin red: se queda con lo cacheado, que es el punto de tenerlo */ }
+}
 function _bcFoods(){
   return _bcCacheGet().map(r=>(typeof foodFromBarcode==='function')?foodFromBarcode(r):null).filter(Boolean);
 }
@@ -1691,8 +1719,12 @@ async function flBuscarEan(raw){
     renderFoodLogRoom(); return;
   }
   // 1) Lo que este teléfono ya vio: instantáneo y sin red.
+  // 🔴 Y se REVALIDA por detrás. Sin esto la caché es definitiva: quien escaneó un producto antes
+  // de que el coach lo revisara se quedaba con el dato malo PARA SIEMPRE — que es justo lo que la
+  // cola de aprobación existe para arreglar. Se pinta al instante con lo cacheado (el offline-first
+  // no se toca) y la nube corrige detrás si cambió.
   const local=_bcCacheGet().find(r=>r&&r.ean===ean);
-  if(local){ _flAbrirBc(local); return; }
+  if(local){ _flAbrirBc(local); _bcRevalidar(ean,local); return; }
   // 2) Lo que aportó cualquier otra persona. Este paso ES la feature: que no haya que volver a
   //    escribir lo que alguien ya escribió.
   _flView.modo='buscando'; renderFoodLogRoom();

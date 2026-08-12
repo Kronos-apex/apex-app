@@ -157,6 +157,8 @@ const {
   labelPer100,
   barcodeDraft,
   foodFromBarcode,
+  fbReviewNotes,
+  fbQueueSplit,
   FOODLOG_KEEP_DAYS,
   FOODLOG_MAX_G,
   FOODLOG_MEALS,
@@ -4397,6 +4399,74 @@ test('🔴 foodCatalog: lo escaneado SE SUMA — quedarse sin red no borra lo qu
   assert.strictEqual(foodCatalog(null, null).length, NUT_FOODS.length);
   // Y no duplica: el mismo código escaneado dos veces es un alimento.
   assert.strictEqual(foodCatalog(_foodsJson, bc.concat(bc)).length, _foodsJson.foods.length + 1);
+});
+
+// ── F6 · la cola de aprobación del coach ──────────────────────────────────
+test('🔴 fbQueueSplit: el contador cuenta SOLO lo pendiente', () => {
+  // Un contador que incluyera lo ya aprobado no bajaría nunca, y una bandeja cuyo número no baja
+  // es una bandeja que se aprende a ignorar. Este proyecto ya perdió gates así.
+  const filas = [
+    { ean: '1', verified: false }, { ean: '2', verified: true },
+    { ean: '3', verified: false }, { ean: '4', verified: true },
+  ];
+  const s = fbQueueSplit(filas);
+  assert.strictEqual(s.porRevisar, 2);
+  assert.strictEqual(s.pendientes.length, 2);
+  assert.strictEqual(s.verificados.length, 2, 'lo aprobado se sigue viendo, para poder deshacer');
+  assert.deepStrictEqual(s.pendientes.map(r => r.ean), ['1', '3'], 'conserva el orden del servidor');
+  // Basura sin código no cuenta como nada: no se puede aprobar lo que no se puede identificar.
+  assert.strictEqual(fbQueueSplit([{ verified: false }, null]).porRevisar, 0);
+  assert.strictEqual(fbQueueSplit(null).porRevisar, 0);
+});
+test('🔴 fbReviewNotes: solo afirma lo que es ARITMÉTICAMENTE imposible', () => {
+  const ok = { ean: '1', name: 'Galleta', kcal: 450, p: 7, c: 65, f: 18 };
+  assert.deepStrictEqual(fbReviewNotes(ok), [], 'un producto sano no lleva ni un aviso, o son ruido');
+  // Energía sin un solo gramo que la explique.
+  const vacio = fbReviewNotes({ ean: '1', name: 'X', kcal: 300, p: 0, c: 0, f: 0 });
+  assert.strictEqual(vacio.length, 2, 'descuadre + los tres en cero');
+  assert.ok(vacio.some(t => /cero/.test(t)), JSON.stringify(vacio));
+  // Gramos que no pesan nada en energía.
+  assert.ok(fbReviewNotes({ ean: '1', name: 'X', kcal: 0, p: 10, c: 10, f: 5 }).some(t => /0 calor/.test(t)));
+  // Una «medida casera» de más de un kilo es el paquete entero.
+  assert.ok(fbReviewNotes(Object.assign({}, ok, { un_label: 'vaso', un_g: 1500 })).some(t => /kilo/.test(t)));
+  assert.deepStrictEqual(fbReviewNotes(Object.assign({}, ok, { un_label: 'vaso', un_g: 250 })), [], '250 g es un vaso normal');
+  // 🔴 CONTROL DE ALCANCE — lo que esta capa NO puede ver, y hay que dejarlo escrito:
+  // un cereal cuya etiqueta hablaba «por porción» (120 kcal / 30 g) tecleado como si fuera por
+  // 100 g es COHERENTE consigo mismo, y por eso no sale ni un aviso. No es un descuido: es el
+  // límite real. Si algún día se inventa un umbral de densidad calórica, este test lo caza y
+  // obliga a justificarlo con datos medidos, que hoy no existen (la tabla tiene 0 filas).
+  assert.deepStrictEqual(fbReviewNotes({ ean: '1', name: 'Cereal', kcal: 120, p: 2.4, c: 25.5, f: 1.2 }), [],
+    'si esto deja de estar vacío, alguien metió un umbral inventado — que lo respalde midiendo');
+  assert.deepStrictEqual(fbReviewNotes(null), []);
+});
+test('🔴 F6: el cliente NUNCA puede mover `verified` — el .sql de verdad lo dice', () => {
+  // Espejo del test de F5: se lee el archivo, no una copia. Si alguien afloja el permiso en el
+  // SQL, esto se pone rojo y hay que decidirlo a propósito.
+  const fs = require('fs'), path = require('path');
+  const f5 = fs.readFileSync(path.join(__dirname, 'supabase/community/f5_food_barcodes.sql'), 'utf8');
+  const grants = f5.match(/grant (insert|update) \(([^)]+)\) on public\.food_barcodes/g) || [];
+  assert.strictEqual(grants.length, 2, 'los dos grants por columna siguen ahí');
+  grants.forEach(g => {
+    assert.ok(!/verified/.test(g), `un grant de cliente toca verified: ${g}`);
+  });
+  const f6 = fs.readFileSync(path.join(__dirname, 'supabase/community/f6_fb_moderation.sql'), 'utf8');
+  // Las dos RPCs nuevas son DEFINER y las dos están gateadas por moderador. Sin el gate, la de
+  // borrar deja a cualquier autenticado vaciar el catálogo.
+  ['fb_pending', 'fb_delete'].forEach(fn => {
+    assert.ok(new RegExp('function public\\.' + fn).test(f6), `falta ${fn}`);
+    assert.ok(new RegExp('revoke all on function public\\.' + fn).test(f6), `${fn} sin revoke a public/anon`);
+  });
+  assert.strictEqual((f6.match(/_is_moderator\(auth\.uid\(\)\)/g) || []).length, 2,
+    'las dos RPCs tienen que gatear por moderador, no una');
+  // 🔴 Esta aserción nació DÉBIL y lo cazó el sabotaje 8: decía `/search_path = ''/.test(f6)` y
+  // con una de las dos funciones saboteada seguía en verde, porque la OTRA lo tenía. Se afirma
+  // por conteo: toda DEFINER del archivo, no «alguna».
+  const definers = (f6.match(/security definer/g) || []).length;
+  assert.strictEqual(definers, 2, 'cambió el número de funciones DEFINER — revisa el archivo');
+  assert.strictEqual((f6.match(/security definer set search_path = ''/g) || []).length, definers,
+    'hay una DEFINER sin search_path fijo: es escalable por esquema');
+  // Y la de borrar se niega sobre una fila ya aprobada: dos actos deliberados, no uno.
+  assert.ok(/verified row: unverify first/.test(f6));
 });
 test('🔴 F5: los límites del cliente son los MISMOS que los CHECK de la tabla', () => {
   // Este test existe porque el espejo que miente es peor que no tener espejo: si el SQL se

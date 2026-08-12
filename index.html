@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=473">
+<link rel="stylesheet" href="styles.css?v=474">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -411,6 +411,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="h-push-nudge" style="margin-bottom:13px"></div>
       <!-- 🛡️ Reportes de comunidad (moderación, lote v3-a #1): solo si el moderador tiene reportes abiertos -->
       <div id="h-reports" style="display:none;margin-bottom:13px"></div>
+      <!-- 📷 Cola de aprobación de productos escaneados (F6): solo si el moderador tiene pendientes -->
+      <div id="h-fbqueue" style="display:none;margin-bottom:13px"></div>
       <!-- Stats de negocio -->
       <div class="g4" style="margin-bottom:16px">
         <button class="sm sm-tap" onclick="openCoachStat('ingresos')" aria-label="Ver reporte de ingresos del mes"><div class="smv" style="color:var(--gt)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div><span class="sm-chev">›</span></button>
@@ -1211,19 +1213,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=473"></script>
-<script src="muscle-map.js?v=473"></script>
-<script src="exercise-muscles.js?v=473"></script>
+<script src="avi-core.js?v=474"></script>
+<script src="muscle-map.js?v=474"></script>
+<script src="exercise-muscles.js?v=474"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=473"></script>
-<script src="app-2-login.js?v=473"></script>
-<script src="app-3-coach.js?v=473"></script>
-<script src="app-4-entreno.js?v=473"></script>
-<script src="app-5-salud.js?v=473"></script>
-<script src="app-6-extra.js?v=473"></script>
-<script src="app-7-community.js?v=473"></script>
+<script src="app-1-infra.js?v=474"></script>
+<script src="app-2-login.js?v=474"></script>
+<script src="app-3-coach.js?v=474"></script>
+<script src="app-4-entreno.js?v=474"></script>
+<script src="app-5-salud.js?v=474"></script>
+<script src="app-6-extra.js?v=474"></script>
+<script src="app-7-community.js?v=474"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1756,6 +1758,15 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="cchat-who"><div class="cchat-name">Reportes de comunidad</div><div class="cchat-sub">Modera lo que tu gente reporta</div></div>
   </div>
   <div class="cchat-thread" id="reports-body" style="padding:14px 15px"></div>
+</div>
+
+<!-- Cola de APROBACIÓN de productos escaneados (F6). Mismo overlay full-screen que los reportes. -->
+<div id="s-fbqueue" class="cchat">
+  <div class="cchat-bar">
+    <button class="cchat-back" onclick="closeFbQueue()" aria-label="Volver">‹</button>
+    <div class="cchat-who"><div class="cchat-name">Productos escaneados</div><div class="cchat-sub">Revisa lo que tu gente copió del empaque</div></div>
+  </div>
+  <div class="cchat-thread" id="fbqueue-body" style="padding:14px 15px"></div>
 </div>
 
 <!-- Habitación de ESTADÍSTICA DEL COACH: reporte de cada tarjeta del panel

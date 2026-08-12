@@ -1575,6 +1575,8 @@ function renderHome(){
   if(typeof ensureCoachPush==='function')ensureCoachPush();
   // 🛡️ Reportes de comunidad (lote v3-a #1): async, se pinta sola solo si hay reportes abiertos.
   if(typeof renderReportsCard==='function')renderReportsCard();
+  // 📷 Cola de productos escaneados (F6): igual — un no-moderador recibe 0 filas y no ve nada.
+  if(typeof renderFbQueueCard==='function')renderFbQueueCard();
 }
 
 // ── El pulso del coach (v353): tarjeta en Inicio con los motivos positivos/técnicos para

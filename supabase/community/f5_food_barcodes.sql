@@ -86,8 +86,17 @@ create policy fb_upd on public.food_barcodes for update to authenticated
     or exists (select 1 from public.community_moderators m where m.user_id = auth.uid())
   );
 
--- DELETE: nadie desde el cliente. Un alimento borrado rompería los registros que lo referencian.
--- La moderación se hace corrigiendo o marcando, no borrando.
+-- DELETE: nadie desde el cliente. La moderación se hace corrigiendo, marcando, o borrando desde
+-- la cola del coach (F6, RPC `fb_delete` solo-moderador).
+-- 🔴 CORREGIDO (2026-08-12, hallazgo de Fable P2-4): este comentario decía «un alimento borrado
+-- rompería los registros que lo referencian» y **eso es FALSO**. `foodLogEntry` (avi-core.js) COPIA
+-- `name/kcal/p/c/f` ya escalados dentro de la entrada del registro —`foodId` queda solo como
+-- referencia— y no hay ni una FK entrante hacia esta tabla (comprobado contra producción). Borrar
+-- una fila no toca el historial de nadie.
+-- La decisión de negarle el DELETE al cliente sigue siendo la correcta, pero por OTRA razón: un
+-- catálogo compartido donde cualquiera borra filas es vandalismo con un `curl`, y dejaría a
+-- cualquiera tirar la fila que un moderador acaba de aprobar. Se deja escrita la razón verdadera
+-- porque una razón falsa es lo que hace que dentro de seis meses alguien «arregle» el candado.
 
 -- ── VERIFICAR: solo por RPC, y solo un moderador ────────────────────────────
 -- SECURITY DEFINER porque `verified*` no tiene grant de UPDATE para nadie: es la única puerta.

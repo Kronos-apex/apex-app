@@ -4104,6 +4104,54 @@ function foodFromBarcode(row) {
   if (row.un_label && g && g > 0) out.un = { label: String(row.un_label).trim(), g: g };
   return out;
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// F6 · LA COLA DE APROBACIÓN DEL COACH — la parte pura
+// ──────────────────────────────────────────────────────────────────────
+// Sin esta cola nada llega nunca a `verified` y el rótulo «sin revisar» sale en el 100%: una
+// marca de calidad que nadie puede quitar es ruido que se aprende a ignorar.
+//
+// 🔴 QUÉ PUEDE AFIRMAR ESTA CAPA Y QUÉ NO. Lo que sigue son señales ARITMÉTICAS — cosas que no
+// pueden ser ciertas de ningún alimento del mundo. NO hay aquí ningún detector del error que de
+// verdad importa (copiar la etiqueta «por porción» como si fuera por 100 g), porque ese dato es
+// COHERENTE consigo mismo y solo se delata contra el producto real. Se intentó calibrar un umbral
+// de densidad calórica y **no hay con qué**: la tabla tiene 0 filas. Un umbral inventado sin datos
+// es la clase de detector mudo que ya costó caro en este repo. Lo que la cola hace es enseñarle al
+// coach el dato completo para que juzgue; cuando haya filas reales se podrá medir.
+function fbReviewNotes(row) {
+  const notas = [];
+  if (!row) return notas;
+  const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : null; };
+  const k = n(row.kcal), p = n(row.p), c = n(row.c), f = n(row.f), g = n(row.un_g);
+  const gap = foodKcalGap(row);
+  if (gap && foodKcalSuspect(row)) {
+    notas.push('Las calorías no cuadran con sus macros: dice ' + k + ' y sus gramos dan ' +
+      Math.round(4 * p + 4 * c + 9 * f) + '.');
+  }
+  // Un producto que declara energía sin un solo gramo de macro no existe: o falta lo que aporta
+  // esa energía, o las calorías son de otra cosa.
+  if (k != null && k > 0 && p === 0 && c === 0 && f === 0) {
+    notas.push('Declara ' + k + ' kcal pero proteína, carbohidratos y grasa están los tres en cero.');
+  }
+  // Y al revés: gramos que no pesan nada en energía.
+  if (k === 0 && (p || c || f)) {
+    notas.push('Dice 0 calorías pero sí declara macros. Alguno de los dos está mal.');
+  }
+  // Una medida casera que pesa más de un kilo no es una medida casera: es el peso del empaque
+  // entero metido donde va «1 vaso».
+  if (g != null && g > 1000) {
+    notas.push('Una «' + String(row.un_label || 'medida') + '» de ' + g + ' g es más de un kilo. Revisa si ese es el peso del paquete completo.');
+  }
+  return notas;
+}
+// Parte la cola en lo que espera revisión y lo ya aprobado. La tarjeta del panel cuenta SOLO lo
+// pendiente — un contador que incluya lo ya resuelto no baja nunca y deja de significar nada.
+function fbQueueSplit(rows) {
+  const lista = Array.isArray(rows) ? rows : [];
+  const pendientes = [], verificados = [];
+  lista.forEach(r => { if (r && r.ean) (r.verified ? verificados : pendientes).push(r); });
+  return { pendientes: pendientes, verificados: verificados, porRevisar: pendientes.length };
+}
 // 'pierna'  = el día trae trabajo de pierna o full body → el que más carga
 // 'entreno' = día de entreno sin pierna
 // 'descanso'= sin rutina ese día
@@ -6475,6 +6523,8 @@ if (typeof module !== 'undefined' && module.exports) {
     labelPer100,
     barcodeDraft,
     foodFromBarcode,
+    fbReviewNotes,
+    fbQueueSplit,
     nutDayKind,
     nutDayTarget,
     nutPortionText,

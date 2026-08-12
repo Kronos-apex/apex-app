@@ -2707,3 +2707,180 @@ async function modDeletePost(rid){
     openReportsInbox(); renderReportsCard();
   }catch(e){ toast('No pude eliminar la publicación.'); if(typeof warn==='function')warn('mod delete:',e&&e.message); }
 }
+
+// ══════════ F6 · COLA DE APROBACIÓN DE PRODUCTOS ESCANEADOS ══════════
+// Cierra lo que F5 dejó abierto: `fb_verify` existía desde el 10-ago pero no había pantalla que
+// la llamara, así que NADA llegaba a `verified` y el rótulo «sin revisar» salía en el 100%.
+// Toda la autoridad vive en el servidor (`fb_pending`/`fb_verify`/`fb_delete`, gateadas por
+// `community_moderators`): un no-moderador recibe 0 filas y la tarjeta ni se pinta — no hace falta
+// que el cliente sepa «soy moderador», que es exactamente el gate que NO se debe usar (clase F7).
+let _fbQueue=[];
+async function renderFbQueueCard(){
+  const el=document.getElementById('h-fbqueue'); if(!el) return;
+  let cli=null; try{ cli=(typeof AUTH!=='undefined'&&AUTH.client)?AUTH.client():null; }catch(e){}
+  if(!cli){ el.style.display='none'; el.innerHTML=''; return; }
+  try{
+    const { data, error } = await cli.rpc('fb_pending');
+    if(error) throw error;
+    _fbQueue=data||[];
+    const split=(typeof fbQueueSplit==='function')?fbQueueSplit(_fbQueue):{porRevisar:0};
+    const n=split.porRevisar;
+    // El contador cuenta SOLO lo pendiente: uno que incluyera lo ya aprobado no bajaría nunca.
+    if(!n){ el.style.display='none'; el.innerHTML=''; return; }
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:3px solid var(--bl);padding:12px 14px;cursor:pointer" onclick="openFbQueue()">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:12px;font-weight:800;color:var(--blt);flex:1">📷 ' + n +
+          (n>1?' productos por revisar':' producto por revisar') + '</span>' +
+        '<span style="font-size:11px;color:var(--t3)">Ver ›</span>' +
+      '</div></div>';
+  }catch(e){ el.style.display='none'; el.innerHTML=''; if(typeof warn==='function')warn('fb queue:', e&&e.message); }
+}
+// Los macros por 100 g, que es lo que el coach tiene que juzgar. Sin adornos: el dato tal cual,
+// más las señales aritméticas que `fbReviewNotes` puede afirmar con certeza.
+function _fbRow(r,i){
+  const nombre=esc(r.name||'(sin nombre)')+(r.brand?' <span style="color:var(--t3);font-weight:600">'+esc(r.brand)+'</span>':'');
+  const cuando=r.created_at?new Date(r.created_at).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):'';
+  const un=(r.un_label&&r.un_g)?(' · 1 '+esc(r.un_label)+' = '+esc(String(r.un_g))+' g'):'';
+  const notas=(typeof fbReviewNotes==='function')?fbReviewNotes(r):[];
+  const avisos=notas.length?('<div style="font-size:11.5px;line-height:1.5;color:var(--ort);background:var(--orl);border-radius:var(--rsm);padding:8px 10px;margin-top:8px">⚠️ '+notas.map(esc).join('<br>⚠️ ')+'</div>'):'';
+  const acciones=r.verified
+    ? '<button class="btn bg bsm" style="min-height:36px;flex:1" onclick="fbUnverify('+i+')">Quitar aprobación</button>'
+    : '<button class="btn bp bsm" style="min-height:36px;flex:1" onclick="fbApprove('+i+')">Aprobar</button>' +
+      '<button class="btn bg bsm" style="min-height:36px" onclick="fbEdit('+i+')">Corregir</button>' +
+      '<button class="btn bg bsm" style="min-height:36px;color:var(--rdt)" onclick="fbDiscard('+i+')">Descartar</button>';
+  const sello=r.verified
+    ? '<span style="font-size:10.5px;font-weight:800;color:var(--gt);background:var(--gl);border-radius:99px;padding:2px 8px">✓ Aprobado</span>'
+    : '<span style="font-size:10.5px;font-weight:800;color:var(--t3);background:var(--surface);border-radius:99px;padding:2px 8px">Sin revisar</span>';
+  return '<div class="card" style="padding:12px;margin-bottom:9px">' +
+    '<div style="display:flex;align-items:flex-start;gap:8px">' +
+      '<div style="flex:1;font-size:13.5px;color:var(--t1);line-height:1.45;font-weight:700">'+nombre+'</div>'+sello +
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--t3);margin-top:3px">'+esc(String(r.ean))+' · '+esc(cuando)+'</div>' +
+    '<div style="font-size:12.5px;color:var(--t2);margin-top:7px;line-height:1.6">Por cada 100 g: <b>'+esc(String(r.kcal))+' kcal</b> · '+
+      esc(String(r.p))+' g proteína · '+esc(String(r.c))+' g carbohidratos · '+esc(String(r.f))+' g grasa'+un+'</div>' +
+    avisos +
+    '<div id="fb-edit-'+i+'"></div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px">'+acciones+'</div></div>';
+}
+function openFbQueue(){
+  const host=document.getElementById('fbqueue-body'); const scr=document.getElementById('s-fbqueue');
+  if(!host||!scr){ toast('No pude abrir la cola.'); return; }
+  const split=(typeof fbQueueSplit==='function')?fbQueueSplit(_fbQueue):{pendientes:[],verificados:[]};
+  if(!_fbQueue.length){
+    host.innerHTML='<div class="empty"><div class="etxt">Nada por revisar</div><div class="esub">Cuando alguien escanee un producto que no está en el catálogo, aparecerá aquí para que lo apruebes.</div></div>';
+  }else{
+    // Los índices son sobre `_fbQueue` (la lista que devolvió el servidor), no sobre cada grupo:
+    // así el onclick apunta siempre a la misma fila aunque cambie el orden de presentación.
+    const idx=r=>_fbQueue.indexOf(r);
+    let html='';
+    if(split.pendientes.length){
+      html+='<div style="font-size:11.5px;font-weight:800;color:var(--t3);margin:2px 0 9px">POR REVISAR</div>';
+      html+=split.pendientes.map(r=>_fbRow(r,idx(r))).join('');
+    }
+    if(split.verificados.length){
+      html+='<div style="font-size:11.5px;font-weight:800;color:var(--t3);margin:16px 0 9px">YA APROBADOS</div>';
+      html+=split.verificados.map(r=>_fbRow(r,idx(r))).join('');
+    }
+    host.innerHTML=html;
+  }
+  if(!scr.classList.contains('on')){ if(typeof navOpenLayer==='function')navOpenLayer(); scr.classList.add('on'); scr.scrollTop=0; }
+}
+function closeFbQueue(){ navCloseLayer(_closeFbQueue); }
+function _closeFbQueue(){ const s=document.getElementById('s-fbqueue'); if(s)s.classList.remove('on'); }
+
+// Refresca desde el servidor tras cada acción: el estado de la cola es del servidor, no nuestro.
+async function _fbReload(){
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { data, error } = await cli.rpc('fb_pending');
+    if(!error) _fbQueue=data||[];
+  }catch(e){}
+  openFbQueue(); renderFbQueueCard();
+}
+async function fbApprove(i){
+  const r=_fbQueue[i]; if(!r)return;
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { error } = await cli.rpc('fb_verify',{ p_ean:r.ean, p_ok:true });
+    if(error) throw error;
+    toast('✅ Aprobado');
+    await _fbReload();
+  }catch(e){ toast('No pude aprobar el producto.'); if(typeof warn==='function')warn('fb approve:',e&&e.message); }
+}
+async function fbUnverify(i){
+  const r=_fbQueue[i]; if(!r)return;
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { error } = await cli.rpc('fb_verify',{ p_ean:r.ean, p_ok:false });
+    if(error) throw error;
+    toast('Le quitaste la aprobación');
+    await _fbReload();
+  }catch(e){ toast('No pude cambiar el producto.'); if(typeof warn==='function')warn('fb unverify:',e&&e.message); }
+}
+// 🔒 Descartar BORRA la fila, y por eso el servidor se niega si ya está aprobada (hay que
+// quitarle la aprobación primero). Borrar no rompe ningún registro: `foodLogEntry` COPIA los
+// macros dentro de la entrada del asesorado, así que su historial queda intacto — y el código
+// queda libre para que alguien vuelva a aportar el producto bien.
+async function fbDiscard(i){
+  const r=_fbQueue[i]; if(!r)return;
+  if(!confirm('¿Descartar «'+(r.name||r.ean)+'»? Se borra del catálogo. Lo que ya registró alguien con este producto NO se toca.')) return;
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    const { error } = await cli.rpc('fb_delete',{ p_ean:r.ean });
+    if(error) throw error;
+    toast('🗑️ Descartado');
+    await _fbReload();
+  }catch(e){ toast('No pude descartar el producto.'); if(typeof warn==='function')warn('fb delete:',e&&e.message); }
+}
+// Corregir usa el MISMO validador que la pantalla del asesorado (`barcodeDraft`), no una copia:
+// el coach puede teclear un 500 igual que cualquiera, y los CHECK del servidor son los mismos.
+// Aquí los números YA están por 100 g, así que la base es 'g100' — no se vuelve a convertir.
+const _FB_EDIT={name:'fbe-name',brand:'fbe-brand',kcal:'fbe-kcal',p:'fbe-p',c:'fbe-c',f:'fbe-f',un_label:'fbe-unlabel',un_g:'fbe-ung'};
+function fbEdit(i){
+  const r=_fbQueue[i]; if(!r)return;
+  const host=document.getElementById('fb-edit-'+i); if(!host)return;
+  if(host.innerHTML){ host.innerHTML=''; return; }      // segundo toque = cerrar
+  const v=x=>esc(x==null?'':String(x));
+  const campo=(id,lbl,val,tipo)=>'<div style="flex:1;min-width:78px"><label class="ilbl" style="font-size:10.5px">'+lbl+'</label>'+
+    '<input class="inp" id="'+id+'" value="'+v(val)+'"'+(tipo==='num'?' type="number" inputmode="decimal" step="0.1"':'')+' style="padding:7px 9px;font-size:13px"></div>';
+  host.innerHTML='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">' +
+    '<div style="display:flex;gap:7px;margin-bottom:7px">'+campo('fbe-name','Nombre',r.name)+'</div>' +
+    '<div style="display:flex;gap:7px;margin-bottom:7px">'+campo('fbe-brand','Marca',r.brand)+'</div>' +
+    '<div style="display:flex;gap:7px;margin-bottom:7px">'+campo('fbe-kcal','kcal/100g',r.kcal,'num')+campo('fbe-p','Proteína',r.p,'num')+'</div>' +
+    '<div style="display:flex;gap:7px;margin-bottom:7px">'+campo('fbe-c','Carbos',r.c,'num')+campo('fbe-f','Grasa',r.f,'num')+'</div>' +
+    '<div style="display:flex;gap:7px;margin-bottom:7px">'+campo('fbe-unlabel','Medida (taza…)',r.un_label)+campo('fbe-ung','Pesa (g)',r.un_g,'num')+'</div>' +
+    '<div id="fbe-err" style="font-size:11.5px;color:var(--rdt);line-height:1.5;margin-bottom:7px"></div>' +
+    '<button class="btn bp bsm" style="width:100%;min-height:36px" onclick="fbSaveEdit('+i+')">Guardar y aprobar</button>' +
+    '</div>';
+}
+async function fbSaveEdit(i){
+  const r=_fbQueue[i]; if(!r)return;
+  const d={ean:r.ean, base:'g100'};
+  Object.keys(_FB_EDIT).forEach(k=>{ const el=document.getElementById(_FB_EDIT[k]); d[k]=el?el.value:''; });
+  const res=(typeof barcodeDraft==='function')?barcodeDraft(d):{ok:false,errores:{_:'sin validador'},fila:null};
+  const err=document.getElementById('fbe-err');
+  if(!res.ok){
+    if(err)err.innerHTML=Object.keys(res.errores).map(k=>esc(res.errores[k])).join('<br>');
+    toast('Revisa los campos'); return;
+  }
+  if(err)err.innerHTML=res.aviso?esc(res.aviso):'';
+  if(_modSealed()){ toast('🔒 (dev) sellado en localhost'); return; }
+  try{
+    const cli=AUTH.client(); if(!cli)return;
+    // `ean` NO viaja en el update: es la clave primaria y el cliente no tiene grant sobre ella.
+    const fila=res.fila, cambios={name:fila.name,brand:fila.brand,kcal:fila.kcal,p:fila.p,c:fila.c,f:fila.f,un_label:fila.un_label,un_g:fila.un_g};
+    const { error } = await cli.from('food_barcodes').update(cambios).eq('ean',r.ean);
+    if(error) throw error;
+    const { error:e2 } = await cli.rpc('fb_verify',{ p_ean:r.ean, p_ok:true });
+    if(e2) throw e2;
+    toast('✅ Corregido y aprobado');
+    await _fbReload();
+  }catch(e){
+    if(err)err.textContent='No se pudo guardar (revisa tu conexión).';
+    if(typeof warn==='function')warn('fb edit:',e&&e.message);
+  }
+}
