@@ -790,6 +790,25 @@ git push origin main
 - **v2.0** (junio 2026, EN PROD): Supabase Auth real (email + Google) + RLS por usuario, SMTP propio, registro público.
 - **v2.x** (julio 2026): guiado embebido ÚNICO (plan F0→F5 cerrado; la clásica murió en avi-v291), racha semanal consciente del plan, telemetría `app_errors`, backup doble, push resucitado, consentimiento Habeas Data (v292), CI + hook de 11 checks, harnesses E2E versionados (`scripts/e2e/`).
 
+### 🔬 ESTUDIO DE COMPETENCIA — Fitia y MyFitnessPal (2026-08-12) → `docs/estudio-fitia-mfp-2026-08-12.md`
+Encargo del PO. **Tesis: AVI no puede ganarles en base de datos ni en IA, y no lo necesita — las dos
+gastan fortunas en SIMULAR lo que AVI tiene de verdad (un entrenador humano).** Lo que sí hay que
+copiarles es la mecánica del día a día. **6 patrones a traer**, por impacto÷costo: (1) **el plan se
+MARCA, no se re-escribe** — en Fitia el plan ES el registro, un toque por comida; hoy AVI pide 3-5
+anotaciones y *el vaso de agua, que es UN toque, lo usan 6 de 24*; (2) **el objetivo como FRANJA**
+con ✓ en vez de cifra exacta (nuestros márgenes son ±10% y están medidos); (3) **la semana en una
+fila** de 7 días (el dato ya existe, no se enseña); (4) **la lista del mercado** salida del plan
+—Fitia COBRA por ella y AVI ya tiene todo lo necesario—; (5) **el sello de «revisado» visible**
+(F6 ya va por delante: aquí el que revisa es SU entrenador, no un moderador anónimo); (6) **decir lo
+que QUEDA**, no lo que llevas. **NO copiar:** foto con IA (rompe las 3 restricciones y sus reseñas
+dicen que hay que corregir a mano), coach de IA (diluye lo único diferencial), micronutrientes (no
+tenemos fuente → clase de la yuca), **cobrar por lo ya dado gratis** (MFP movió el escáner a Premium
+= su queja nº1), medicamentos GLP-1. ⚠️ Y su trampa: kcal con precisión de unidad, que finge una
+exactitud que ningún plan tiene — si se trae, **con la franja**. **Dónde AVI ya gana:** coach real ·
+el plan completo sin pagar (Fitia lo cobra) · catálogo verificable (el de MFP lo escriben usuarios
+sin validar: *«validez pobre»*, estudio 2024) · **entrenamiento y comida en la misma app** (ellas no
+tienen la rutina).
+
 ### 🎯 Backlog vigente (2026-07-10)
 
 > 🗺️ **ARRANQUE DE SESIÓN: leer `docs/plan-sesiones.md`** — plan VIVO con las próximas
