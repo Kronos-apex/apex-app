@@ -4,6 +4,74 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-12 (4ª parte) — avi-v477: el plan de comida se MARCA, no se re-escribe (F7)
+
+**Producción en `avi-v477`, verificada** (`?v=477` + `avi-v477` en sw.js + `_prodcheck 477` verde,
+`jsErrors: []`). Suite **700 → 708**, hook 12/12, `_verify-foodlog` **22 → 31**,
+**`_sabotaje-f7` 17/17** (con su control en verde). Commits `fcaa77c` (test) y `3442bf4` (feat).
+
+Es el **patrón 1** del estudio de Fitia/MyFitnessPal y el que el propio estudio marcaba como «el
+que cambia el producto». Lo pidió el PO: *«seguimos con lo que arrojó el estudio»*.
+
+### 1 · El problema, con su dato
+Plan y registro eran **dos mundos**. La app le decía a la persona «Desayuno: Huevo entero 2 huevos
++ Pan integral 2 tajadas» y acto seguido le pedía ir a otra habitación, **buscar el huevo, teclear
+los gramos, buscar el pan, teclear los gramos** — 3-5 veces al día. En Fitia el plan del día ES el
+registro: un toque por comida. **El dato que lo decide: el vaso de agua, que es UN toque, lo usan
+6 de 24.** Nada que pida más esfuerzo que eso se sostiene en esta base de usuarios.
+
+### 2 · Qué se hizo
+`nutPlanMealEntries` (avi-core, pura) convierte una comida del plan en entradas **NORMALES** del
+registro — el mismo `foodLogEntry`, el mismo snapshot de macros — así que totales, progreso, la
+ficha del coach, la poda y el merge multi-dispositivo siguen funcionando **sin enterarse de que
+vinieron de otro sitio**. Encima van `foodLogMarkPlanMeal`, `foodLogUnmarkPlanMeal`,
+`foodLogPlanMealDone` y `foodLogIsPlanEntry`.
+En pantalla, las **dos** superficies (regla de v435: una función, `_nutPlanHoy`, y las dos LEEN de
+ella): la tarjeta «Tu comida de hoy» gana un botón por comida, y en la habitación del registro el
+hueco «Sin registrar» deja de ser un cartel y pasa a ser **una acción con el plan a la vista**.
+
+### 3 · Los tres candados, y qué bug paga cada uno
+1. **Id determinista `pl-<día>-<comida>-<n>`.** Marcar dos veces no duplica (`foodLogAdd` reemplaza
+   por id) y **dos teléfonos que marcan la misma comida producen las MISMAS entradas**, así que
+   `foodLogMerge` las une. Con un id aleatorio, el merge de E4 se habría vuelto un duplicador.
+2. **Los acompañantes CUENTAN.** `nutDayPlan` mapeaba sus ids a NOMBRES para pintarlos y los perdía
+   por el camino → ahora expone también `acompIds`. Registrar solo el plato habría dejado el
+   registro por debajo de lo que el propio plan dice que se come: **v470 al revés**.
+3. **Se puede DESMARCAR, y quita SOLO lo del plan.** El café que la persona anotó a mano sobrevive.
+Y marcar **ES registrar**: pasa por el aviso de que el coach ve el detalle y por el gate Premium.
+
+### 4 · La medición que decidía si la feature es honesta
+315 días × 5 comidas sobre una malla de presupuestos: con el plan **ENTERO** marcado, la barra del
+registro cae en **93-111%** de la meta (mediana **101%**) y **0 días bajo el 90%** — dentro de la
+franja ±10% que la app ya declara. Sin comprobarlo, la app le habría dicho «te faltan 400 kcal» a
+quien comió exactamente lo que le mandó, que es la familia de contradicciones v435/v444.
+
+### 5 · 🔴 Lo que enseñó, y no estaba en el guion
+- **Un sabotaje salió VERDE**: el que sirve todos los acompañantes a 100 g fijos. Mi oráculo
+  recalculaba lo esperado con `nutAcompGrams` —**la función saboteada**—, así que el plan y el
+  registro se equivocaban juntos y quedaban de acuerdo. Es el gotcha de «el oráculo tiene que ser
+  independiente» por un lado nuevo: **el del HELPER COMPARTIDO**. Cuanto más se comparte una
+  función para que dos superficies no se separen, menos puede usarla el test que las vigila.
+- **El repo NO va uniformemente con CRLF**, como decía el gotcha: `avi-core.js` sí (6.917), pero
+  `app-5-salud.js` va con **LF** (1.904, cero CRLF). Por eso el sabotaje 15 «no se aplicó».
+- **Comillas invertidas dentro de un template literal**, incluso en un comentario, rompen el
+  harness con un `SyntaxError` que apunta a la primera línea del bloque, no a la del comentario.
+
+### 6 · `_verify-news` estaba en ROJO, y no era de la app (commit aparte, test-only)
+N1 y N2 llevaban rojos **acusando a la app de no abrir el tour de novedades, con el tour perfecto**.
+`renderClientToday` solo llama a `renderNewsCard` si NO está en modo «día 1» (v403), y el fixture
+no le daba ni una sesión: la app entraba en ese modo y **suprimía el tour a propósito**. N5 y N8b
+pasaban porque llaman a `renderNewsCard()` a mano, **saltándose la puerta real** — por eso el
+harness parecía cubrir el flujo y no lo cubría. Reproducido en HEAD limpio antes de tocar nada.
+Misma clase que `_guiado-suite` (28 rojos del fixture) y los dos gates de v467. Ahora **10/10**.
+
+### ⚠️ DEUDA CONOCIDA que deja esta versión (no la causa, la hace visible)
+`foodLogTotals` suma el `kcal` **de la tabla de alimentos** (Atwater de la fuente) y el plan deriva
+el suyo como `4p+4c+9f`: el registro lee **0,4-5,7% por debajo** de lo que el plan dice servir.
+Hoy **no se ve** —las dos pantallas comparan contra la META, no entre sí— y el del registro es el
+más exacto de los dos. Pero son **dos definiciones de caloría vivas en la misma app**, que es
+exactamente la forma que tenían v435, v444 y v448 antes de aparecer.
+
 ## 🛑 2026-08-12 (3ª parte) — avi-v476: «avena 15 g» se dice como se dice, y el guardián vuelve a 13
 
 **Producción en `avi-v476`, verificada.** Suite **700/700**, hook 12/12,
