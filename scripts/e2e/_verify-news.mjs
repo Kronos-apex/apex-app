@@ -51,8 +51,20 @@ try {
   for (let k = 0; k < 6; k++) { await ev(`(()=>{try{if(typeof hideClientWelcome==='function')hideClientWelcome();}catch(e){}['data-ob','cwelcome','fsintro','m-fsintro','m-textsize'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on');e.style.display='none';}});const ob=document.getElementById('onboarding');if(ob)ob.style.display='none';})()`); await sleep(150); }
   await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}
     localStorage.removeItem('ax_news_seen');
-    const c=DB.clients.find(x=>x.id===CUR.clientId);renderClientToday(c);})()`);
-  await sleep(500);
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    // EL FIXTURE TIENE QUE DARLE HISTORIAL, y por eso N1/N2 llevaban en rojo acusando a la app
+    // de no abrir el tour con el tour PERFECTO: renderClientToday solo llama a renderNewsCard
+    // si NO esta en modo dia-1 (v403), y sin una sola sesion la app entra en ese modo y SUPRIME
+    // el tour a proposito — a quien estrena la app no se le ensenan doce novedades que no tuvo.
+    // N5/N8b pasaban porque llaman a renderNewsCard() a mano, saltandose la puerta real.
+    // Un fixture que no monta el estado no prueba nada, y sus mensajes se leen como bugs de la app.
+    // (Ojo: NADA de comillas invertidas aqui dentro — esto vive en un template literal.)
+    const _h=Date.now();
+    DB.history[CUR.clientId]=[0,2,4].map(d=>({id:'hnt'+d,routineId:'rnt',name:'Full Body',
+      date:new Date(_h-(d+1)*86400000).toISOString(), finishedAt:new Date(_h-(d+1)*86400000+3.6e6).toISOString(),
+      doneSets:12,totalSets:12,exercises:[]}));
+    renderClientToday(c);})()`);
+  await sleep(900);
 
   // N1: tour abierto con la slide 1 (la novedad más vieja sin ver), pasos y dots
   let s = JSON.parse(await ev(`JSON.stringify({open:!document.getElementById('news-tour').classList.contains('hidden'),
