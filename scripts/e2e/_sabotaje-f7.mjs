@@ -125,6 +125,30 @@ const SABOTAJES = [
     '    .filter(n => conCoach || !n.coach)' + String.fromCharCode(10) + '    .sort((a, b) => b.v - a.v)',
     '    .sort((a, b) => b.v - a.v)'],
 
+  // ── La LISTA DEL MERCADO (patrón 4 del estudio) ──────────────────────────
+  ['27· la lista del mercado se deja los acompañantes (manda a la persona sin la mitad de la compra)',
+    "      (m.acompIds || []).forEach(id => {\n        const f = NUT_FOOD_BY_ID[id];\n        if (f) acum[id] = (acum[id] || 0) + nutAcompGrams(f);\n      });",
+    '      // sabotaje'],
+  ['28· la lista cuenta solo UN día en vez de los siete',
+    '  NUT_WEEK_DAYS.forEach((name, i) => {\n    const rut = rs.find(r => r && r.day === name) || null;\n    const plan = nutDayPlan(base, nutDayKind(rut), shape.trainDays, shape.legDays, i);',
+    '  NUT_WEEK_DAYS.slice(0, 1).forEach((name, i) => {\n    const rut = rs.find(r => r && r.day === name) || null;\n    const plan = nutDayPlan(base, nutDayKind(rut), shape.trainDays, shape.legDays, i);'],
+  ['29· la compra de la semana queda recortada por el tope de UNA ración',
+    '  const g = Math.round(parseFloat(grams) || 0);\n  if (!food || !(g > 0)) return null;',
+    '  let g = Math.round(parseFloat(grams) || 0);\n  if (!food || !(g > 0)) return null;\n  if (food.maxG > 0) g = Math.min(g, food.maxG);'],
+  ['30· los huevos se piden por PESO en vez de por unidad',
+    "  const porUnidad = food.compra === 'un' && !!cuenta;",
+    '  const porUnidad = false;'],
+  ['31· la lista redondea los huevos hacia ABAJO (se queda corta el viernes)',
+    '  const n = (un && un.g > 0) ? Math.ceil(g / un.g) : null;',
+    '  const n = (un && un.g > 0) ? Math.floor(g / un.g) : null;'],
+  ['32· deja de avisar que lo servido es comida COCIDA (se compra el triple de arroz)',
+    "    cocido: /cocid[ao]s?|escurrido/i.test(String(food.name || '')),",
+    '    cocido: false,'],
+  ['33· un botón usa un icono que no existe (pinta ✨ en silencio)',
+    "aviIcon('utensils',21)",
+    "aviIcon('nutricion',21)",
+    'app-5-salud.js'],
+
   // ── CONTROL: un cambio inocuo NO debe poner la suite roja ────────────────
   // Sin esto no se sabe si los 16 de arriba muerden por lo que dicen morder o porque cualquier
   // toque en el archivo rompe algo. Un control que no puede pasar no es un control.

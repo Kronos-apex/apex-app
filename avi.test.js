@@ -28,6 +28,13 @@ const {
   foodLogBandFor,
   foodLogWeekStates,
   FOODLOG_BAND,
+  nutShoppingList,
+  nutShopQty,
+  nutShoppingText,
+  NUT_FOODS,
+  nutWeekShape,
+  nutDayKind,
+  nutPortionText,
   nutBaseFor,
   workoutStartCollapsed,
   nutMacroKcal,
@@ -154,7 +161,6 @@ const {
   feelingLabel,
   habitDayKey,
   NUT_MENUS,
-  NUT_FOODS,
   NUT_FOOD_BY_ID,
   FOOD_PAGE,
   foodNormText,
@@ -5099,6 +5105,141 @@ test('🔴 el umbral de desvío del coach SALE del ancho de la franja, no de un 
   assert.strictEqual(foodLogBandFor(1000, 1000 + borde * 10).estado, 'dentro',
     `a +${borde}% el asesorado está dentro de su franja`);
   assert.ok(!(borde > borde), 'el chip del coach marcaría desvío justo donde ella está dentro');
+});
+
+// ══════════════════════════════════════════════════════
+section('Registro de alimentos — la LISTA DEL MERCADO (patrón 4 del estudio)');
+
+const _shopBase = { origen: 'coach', kcalObj: 2100, macros: { prot_g: 150, carb_g: 210, fat_g: 60, kcal: 2100 } };
+const _shopRut = [
+  { day: 'Lunes', name: 'Pierna', exercises: [{ muscle: 'cuadriceps' }] },
+  { day: 'Miércoles', name: 'Torso', exercises: [{ muscle: 'pecho' }] },
+  { day: 'Viernes', name: 'Full', exercises: [{ muscle: 'espalda' }] },
+];
+
+test('la lista suma los 7 días del plan y los agrupa por sección del mercado', () => {
+  const l = nutShoppingList(_shopBase, _shopRut);
+  assert.strictEqual(l.dias, 7, 'la lista tiene que cubrir la semana entera');
+  assert.ok(l.items >= 15, `solo ${l.items} alimentos: el plan no se resolvió`);
+  assert.ok(l.grupos.length >= 4);
+  l.grupos.forEach(g => {
+    assert.ok(g.items.length > 0, 'un grupo vacío no se pinta');
+    g.items.forEach(i => {
+      assert.ok(i.grams > 0 && i.text, `${i.name} sin cantidad`);
+      assert.ok(NUT_FOOD_BY_ID[i.id], 'un id que no está en la tabla no puede entrar a la lista');
+    });
+  });
+  // Sin plan no se inventa una lista.
+  assert.strictEqual(nutShoppingList(null, _shopRut), null);
+});
+
+// 🔴 EL ORÁCULO INDEPENDIENTE: la suma se re-deriva recorriendo los 7 días a mano, sin creerle
+// nada a `nutShoppingList`. Si la lista se dejara un alimento (o lo contara dos veces), la
+// persona iría al mercado con la compra mal y NADA más en la app se enteraría.
+test('🔴 la lista es EXACTAMENTE lo que piden los 7 días, recalculado aparte', () => {
+  const l = nutShoppingList(_shopBase, _shopRut);
+  const esperado = Object.create(null);
+  const shape = nutWeekShape(_shopRut);
+  ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].forEach((nom, i) => {
+    const rut = _shopRut.find(r => r.day === nom) || null;
+    const plan = nutDayPlan(_shopBase, nutDayKind(rut), shape.trainDays, shape.legDays, i);
+    plan.meals.forEach(m => {
+      (m.items || []).forEach(it => { esperado[it.id] = (esperado[it.id] || 0) + it.grams; });
+      (m.acompIds || []).forEach(id => {
+        const f = NUT_FOOD_BY_ID[id]; if (!f) return;
+        esperado[id] = (esperado[id] || 0) + ((f.un && f.un.g > 0) ? f.un.g : 100);
+      });
+    });
+  });
+  const enLista = Object.create(null);
+  l.grupos.forEach(g => g.items.forEach(i => { enLista[i.id] = i.grams; }));
+  const ids = Object.keys(esperado).filter(id => NUT_FOOD_BY_ID[id]);
+  assert.strictEqual(Object.keys(enLista).length, ids.length, 'la lista y el plan no traen los mismos alimentos');
+  ids.forEach(id => {
+    assert.ok(Math.abs(enLista[id] - esperado[id]) <= 1,
+      `${id}: la lista pide ${enLista[id]} g y los 7 días suman ${Math.round(esperado[id])} g`);
+  });
+});
+
+// 🔴 `maxG` ES EL TOPE DE UNA RACIÓN, NO DE LA COMPRA DE LA SEMANA. `nutPortionText` sí lo aplica
+// —y el reflejo de reusarla aquí es fortísimo—, pero aplicarlo dejaría la lista pidiendo 200 g de
+// clara de huevo para siete días de plan.
+test('🔴 la lista del mercado NO aplica el tope de ración', () => {
+  const clara = NUT_FOOD_BY_ID['clara'];
+  assert.ok(clara.maxG > 0, 'el fixture necesita un alimento CON tope de ración');
+  const q = nutShopQty(clara, 900);
+  assert.strictEqual(q.grams, 900, `el tope de ración (${clara.maxG} g) recortó la compra de la semana`);
+  // Y el control: la MISMA cantidad por `nutPortionText` sí queda topada — o este test no prueba nada.
+  assert.ok(nutPortionText(clara, 900).grams <= clara.maxG,
+    'nutPortionText dejó de aplicar maxG: el control de este test ya no discrimina');
+});
+
+// La medida de RACIÓN no es la de COMPRA: sumada a la semana da «13 octavos de aguacate».
+test('🔴 al mercado se va con el peso, salvo lo que de verdad se compra por unidad', () => {
+  const huevo = nutShopQty(NUT_FOOD_BY_ID['huevo'], 575);
+  assert.strictEqual(huevo.porUnidad, true);
+  assert.strictEqual(huevo.text, '12 huevos', 'los huevos se cuentan, y se redondea HACIA ARRIBA');
+  assert.strictEqual(huevo.sub, '575 g');
+  const agua = nutShopQty(NUT_FOOD_BY_ID['aguacate'], 375);
+  assert.strictEqual(agua.porUnidad, false, '«13 octavos de aguacate» no es una cantidad de mercado');
+  assert.strictEqual(agua.text, '375 g');
+  // Y la cuenta de raciones NO vuelve por la línea de ayuda: sería el mismo ruido, más pequeño.
+  assert.strictEqual(agua.sub, null, 'la ayuda de al lado devolvió «13 octavos» debajo del peso');
+  assert.strictEqual(huevo.sub, '575 g', 'a lo que se compra por unidad sí le sirve saber el peso');
+  // El kilo es la unidad del mercado en cuanto se pasa de 1.000 g.
+  assert.strictEqual(nutShopQty(NUT_FOOD_BY_ID['yogur_griego'], 2600).text, '2,6 kg');
+  // Y todo lo marcado `compra:'un'` tiene que tener medida casera, o la marca no hace nada.
+  let marcados = 0;
+  NUT_FOODS.forEach(f => {
+    if (f.compra !== 'un') return;
+    marcados++;
+    assert.ok(f.un && f.un.g > 0, `${f.id} se declara de compra por unidad y no tiene medida casera`);
+  });
+  assert.ok(marcados >= 10, `solo ${marcados} alimentos se compran por unidad: revisa la tabla`);
+});
+
+test('🔴 lo que se sirve COCIDO se marca, porque no es lo que se compra', () => {
+  const l = nutShoppingList(_shopBase, _shopRut);
+  assert.ok(l.hayCocido, 'ningún alimento quedó marcado como cocido: la advertencia no saldría nunca');
+  const todos = [];
+  l.grupos.forEach(g => g.items.forEach(i => todos.push(i)));
+  const arroz = todos.find(i => i.id === 'arroz');
+  if (arroz) assert.strictEqual(arroz.cocido, true, 'el arroz del plan es COCIDO y la lista no lo dice');
+  const huevo = todos.find(i => i.id === 'huevo');
+  if (huevo) assert.strictEqual(huevo.cocido, false, 'el huevo no es un alimento «ya cocido»');
+});
+
+test('el texto para compartir sale de la lista YA armada, no de un segundo cálculo', () => {
+  const l = nutShoppingList(_shopBase, _shopRut);
+  const txt = nutShoppingText(l, 'Nataly');
+  assert.ok(txt.includes('Nataly') && txt.includes('lista del mercado'));
+  l.grupos.forEach(g => {
+    assert.ok(txt.includes(g.name.toUpperCase()), `falta la sección ${g.name}`);
+    g.items.forEach(i => assert.ok(txt.includes(i.name), `falta ${i.name} en el texto`));
+  });
+  assert.strictEqual(nutShoppingText(null), '');
+  assert.strictEqual(nutShoppingText({ grupos: [] }), '');
+});
+
+// Candado ESTÁTICO de una clase entera: `aviIcon` cae a SPARKLES cuando el nombre no existe, así
+// que un nombre mal escrito no falla — pinta ✨ en un botón de compartir y nadie se entera.
+// Se descubrió al escribir esta pantalla, con `aviIcon('share')`, que no existe.
+test('🔴 todo aviIcon(«nombre») usa un icono que EXISTE (o pinta ✨ en silencio)', () => {
+  const fs = require('fs'), path = require('path');
+  const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const bloque = infra.slice(infra.indexOf('const AVI_ICONS={'));
+  const validos = new Set((bloque.slice(0, bloque.indexOf('\n};')).match(/^\s{2}([a-zA-Z_]\w*)\s*:/gm) || [])
+    .map(s => s.trim().replace(/\s*:$/, '')));
+  assert.ok(validos.size > 30, `solo se leyeron ${validos.size} iconos: el parser no está viendo la tabla`);
+  const usados = new Set();
+  ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js']
+    .forEach(f => {
+      const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+      (src.match(/aviIcon\('([a-zA-Z_]\w*)'/g) || []).forEach(m => usados.add(m.replace(/aviIcon\('/, '').replace(/'$/, '')));
+    });
+  assert.ok(usados.size > 10, `solo se encontraron ${usados.size} usos: el parser no está viendo las llamadas`);
+  const rotos = [...usados].filter(n => !validos.has(n));
+  assert.deepStrictEqual(rotos, [], `estos nombres de icono no existen y pintan ✨ en silencio: ${rotos.join(', ')}`);
 });
 
 // ══════════════════════════════════════════════════════

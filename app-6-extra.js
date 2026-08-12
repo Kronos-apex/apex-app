@@ -2698,6 +2698,9 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  {v:479, icon:'clipboard', t:'Tu lista del mercado, lista', d:'AVI suma los 7 dias de tu plan y te arma la lista de todo lo que tienes que comprar, agrupada por seccion del mercado. La puedes compartir con quien haga el mercado en tu casa.',
+   steps:['En «Hoy» abre «Tu comida de hoy» y toca «🛒 Ver mi lista del mercado»','Ahi esta todo lo de la semana: proteina, granos, verduras, frutas y grasas','Toca «Compartir mi lista» para mandarla por WhatsApp'],
+   coach:true},
   {v:478, icon:'check', t:'Tu meta ahora es una franja', d:'Ya no tienes que clavar un numero exacto: tienes un rango, y estar dentro es cumplir. Abajo veras tu semana completa de un vistazo.',
    steps:['Abre «Comida de hoy»: veras entre que y que cifra te toca','Cuando entres en tu franja aparece un ✓ — eso es meta cumplida','La fila de 7 dias te dice si esto ya es un habito o fue un dia suelto'],
    coach:true},

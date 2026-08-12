@@ -3812,16 +3812,16 @@ function nutMealSplit(kcal, protG, n) {
 const NUT_FOODS = [
   // ── PROTEÍNA ──
   { id: 'pollo_pechuga', name: 'Pechuga de pollo', rol: 'prot', kcal: 165, p: 31.0, c: 0, f: 3.6, un: { label: 'porción', g: 120 } },
-  { id: 'pollo_muslo', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, un: { label: 'muslo', g: 95 } },
+  { id: 'pollo_muslo', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, compra: 'un', un: { label: 'muslo', g: 95 } },
   { id: 'res_magra', name: 'Carne de res magra (posta)', rol: 'prot', kcal: 187, p: 30.0, c: 0, f: 7.0, un: { label: 'porción', g: 120 } },
   { id: 'res_molida', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
   { id: 'cerdo_lomo', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
-  { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, un: { label: 'huevo', g: 50 } },
+  { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
   { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
   // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
   // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
-  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
+  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, compra: 'un', un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
   { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
   { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
   { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
@@ -3846,7 +3846,7 @@ const NUT_FOODS = [
   // ✅ LA SALIDA es una SEGUNDA fuente de carbohidrato en el menú (arroz + tajada, arepa + papa),
   // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
   { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 }, un2: { label: 'cucharada', g: 20 } },
-  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, un: { label: 'papa mediana', g: 150 } },
+  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, compra: 'un', un: { label: 'papa mediana', g: 150 } },
   { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
   // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
   // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
@@ -3855,15 +3855,15 @@ const NUT_FOODS = [
   { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
   { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
   { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
-  { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, un: { label: 'arepa', g: 80 } },
-  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, un: { label: 'tajada', g: 28 } },
+  { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, compra: 'un', un: { label: 'arepa', g: 80 } },
+  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, compra: 'un', un: { label: 'tajada', g: 28 } },
   // 🔴 Decía «cucharada = 15 g» y una cucharada de hojuelas pesa **~5,6 g** (verificado
   // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
   // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
   // lee «media taza (40 g)» en vez de «4 cucharadas» que nadie mide igual.
   { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 }, un2: { label: 'cucharada', g: 10 } },
   { id: 'pasta', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
-  { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, un: { label: 'mazorca', g: 130 } },
+  { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, compra: 'un', un: { label: 'mazorca', g: 130 } },
   // ── GRASA ──
   { id: 'aguacate', name: 'Aguacate', rol: 'fat', kcal: 160, p: 2.0, c: 9.0, f: 15.0, un: { label: 'octavo', g: 30 } },
   { id: 'aceite', name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
@@ -3871,9 +3871,9 @@ const NUT_FOODS = [
   { id: 'almendra', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 }, un2: { label: 'almendra', g: 1.2 } },
   { id: 'crema_mani', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
   // ── VERDURA (libre: acompañan, no se cuentan al ajustar macros) ──
-  { id: 'tomate', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, un: { label: 'tomate', g: 120 } },
+  { id: 'tomate', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, compra: 'un', un: { label: 'tomate', g: 120 } },
   { id: 'cebolla', name: 'Cebolla', rol: 'verd', kcal: 40, p: 1.1, c: 9.0, f: 0.1, un: { label: 'porción', g: 60 } },
-  { id: 'zanahoria', name: 'Zanahoria', rol: 'verd', kcal: 41, p: 0.9, c: 10.0, f: 0.2, un: { label: 'zanahoria', g: 80 } },
+  { id: 'zanahoria', name: 'Zanahoria', rol: 'verd', kcal: 41, p: 0.9, c: 10.0, f: 0.2, compra: 'un', un: { label: 'zanahoria', g: 80 } },
   { id: 'espinaca', name: 'Espinaca', rol: 'verd', kcal: 23, p: 2.9, c: 3.6, f: 0.4, un: { label: 'taza', g: 30 } },
   { id: 'brocoli', name: 'Brócoli', rol: 'verd', kcal: 34, p: 2.8, c: 7.0, f: 0.4, un: { label: 'taza', g: 90 } },
   { id: 'habichuela', name: 'Habichuela', rol: 'verd', kcal: 31, p: 1.8, c: 7.0, f: 0.2, un: { label: 'taza', g: 100 } },
@@ -3881,15 +3881,15 @@ const NUT_FOODS = [
   { id: 'lechuga', name: 'Lechuga', rol: 'verd', kcal: 15, p: 1.4, c: 2.9, f: 0.2, un: { label: 'taza', g: 50 } },
   { id: 'ahuyama', name: 'Ahuyama', rol: 'verd', kcal: 26, p: 1.0, c: 6.5, f: 0.1, un: { label: 'taza', g: 120 } },
   // ── FRUTA ──
-  { id: 'banano', name: 'Banano', rol: 'fruta', kcal: 89, p: 1.1, c: 23.0, f: 0.3, un: { label: 'banano', g: 118 } },
+  { id: 'banano', name: 'Banano', rol: 'fruta', kcal: 89, p: 1.1, c: 23.0, f: 0.3, compra: 'un', un: { label: 'banano', g: 118 } },
   { id: 'mango', name: 'Mango', rol: 'fruta', kcal: 60, p: 0.8, c: 15.0, f: 0.4, un: { label: 'taza', g: 165 } },
   { id: 'papaya', name: 'Papaya', rol: 'fruta', kcal: 43, p: 0.5, c: 11.0, f: 0.3, un: { label: 'taza', g: 145 } },
-  { id: 'guayaba', name: 'Guayaba', rol: 'fruta', kcal: 68, p: 2.6, c: 14.0, f: 1.0, un: { label: 'guayaba', g: 90 } },
-  { id: 'naranja', name: 'Naranja', rol: 'fruta', kcal: 47, p: 0.9, c: 12.0, f: 0.1, un: { label: 'naranja', g: 130 } },
-  { id: 'mandarina', name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, un: { label: 'mandarina', g: 90 } },
+  { id: 'guayaba', name: 'Guayaba', rol: 'fruta', kcal: 68, p: 2.6, c: 14.0, f: 1.0, compra: 'un', un: { label: 'guayaba', g: 90 } },
+  { id: 'naranja', name: 'Naranja', rol: 'fruta', kcal: 47, p: 0.9, c: 12.0, f: 0.1, compra: 'un', un: { label: 'naranja', g: 130 } },
+  { id: 'mandarina', name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, compra: 'un', un: { label: 'mandarina', g: 90 } },
   { id: 'pina', name: 'Piña', rol: 'fruta', kcal: 50, p: 0.5, c: 13.0, f: 0.1, un: { label: 'taza', g: 165 } },
   { id: 'fresa', name: 'Fresa', rol: 'fruta', kcal: 32, p: 0.7, c: 7.7, f: 0.3, un: { label: 'taza', g: 150 } },
-  { id: 'maracuya', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, un: { label: 'unidad', g: 60 } },
+  { id: 'maracuya', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, compra: 'un', un: { label: 'unidad', g: 60 } },
 ];
 
 // Índice por id, null-proto para que un id raro NO herede del prototipo
@@ -4963,6 +4963,106 @@ function nutWeekTargets(base, routines) {
   // El total de la semana NO cambia con el reparto: es la promesa que sostiene todo esto.
   const semana = days.reduce((t, d) => t + ((d.target && d.target.kcal) || 0), 0);
   return { days, shape, baseKcal: base.kcalObj, semanaKcal: semana, promedioKcal: Math.round(semana / 7) };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LA LISTA DEL MERCADO (patrón 4 del estudio de Fitia/MFP)
+// ──────────────────────────────────────────────────────────────────────
+// Fitia LA COBRA (está en su plan de pago) y AVI ya tiene todo lo necesario: los 7 días
+// resueltos, con sus alimentos y sus gramos. Esto es sumar y agrupar — la mejor relación
+// impresión/costo de lo que quedaba del estudio.
+//
+// 🔴 LO QUE SE COMPRA NO ES LO QUE SE SIRVE, y hay DOS diferencias que no se pueden callar:
+//  1. **`maxG` NO se aplica aquí.** Es el tope de UNA ración («no le sirvas 400 g de clara de
+//     huevo de una sentada»), no de la compra de la semana. Aplicarlo dejaría la lista pidiendo
+//     200 g de clara para siete días. Hay un test que lo afirma, porque el reflejo de reusar
+//     `nutPortionText` —que sí lo aplica— es fortísimo.
+//  2. **La tabla habla de comida LISTA PARA COMER** (cocida cuando aplica): 1 kg de arroz cocido
+//     no es 1 kg de arroz crudo. **Aquí NO se inventa el factor de conversión**: no hay fuente
+//     citable por alimento, y un factor inventado es un número falso internamente coherente — la
+//     clase de la yuca, que ya costó que el motor recetara un 22% de menos. Lo que se hace es
+//     MARCAR esos alimentos (se deriva de su propio nombre, no de una lista a mano) para que la
+//     pantalla lo diga. Cerrarlo de verdad es traer los factores con fuente → decisión de Andrés.
+const NUT_SHOP_GROUPS = [
+  ['prot', 'Proteína'],
+  ['carb', 'Harinas, granos y tubérculos'],
+  ['verd', 'Verduras'],
+  ['fruta', 'Frutas'],
+  ['fat', 'Grasas y frutos secos'],
+];
+function nutShopQty(food, grams) {
+  const g = Math.round(parseFloat(grams) || 0);
+  if (!food || !(g > 0)) return null;
+  // En el mercado el kilo es la unidad: «1,2 kg» se lee, «1.240 g» hay que traducirlo.
+  const peso = g >= 1000 ? String(Math.round(g / 100) / 10).replace('.', ',') + ' kg' : g + ' g';
+  const un = food.un;
+  // Se compran unidades ENTERAS y se redondea HACIA ARRIBA: nadie compra 11,3 huevos, y que
+  // sobre un huevo es un problema mucho menor que quedarse corto el viernes.
+  const n = (un && un.g > 0) ? Math.ceil(g / un.g) : null;
+  const cuenta = n ? String(n) + ' ' + (n > 1 ? _nutPlural(un.label) : un.label) : null;
+  // 🔴 LA MEDIDA DE RACIÓN NO ES LA MEDIDA DE COMPRA. `un` existe para decirle a la persona
+  // cuánto SERVIRSE («un octavo de aguacate»), y sumada a la semana produce cantidades que en
+  // un mercado no significan nada: «13 octavos de aguacate», «32 claras», «13 vasos de yogur».
+  // Al mercado se va con el peso, salvo en lo que de verdad se compra por unidad — y eso es
+  // una propiedad del ALIMENTO, no algo que se pueda deducir de su etiqueta, así que se declara
+  // en la tabla (`compra:'un'`, 14 alimentos) donde el PO y Andrés pueden revisarla.
+  const porUnidad = food.compra === 'un' && !!cuenta;
+  return {
+    grams: g, peso, n, porUnidad,
+    text: porUnidad ? cuenta : peso,      // lo que se lee grande: con lo que se actúa
+    // 🔴 La ayuda de al lado SOLO en lo que se compra por unidad («12 huevos · 575 g»). Al revés
+    // no sirve: poner «13 octavos» debajo de «375 g de aguacate» devuelve por la puerta de atrás
+    // el ruido que `compra:'un'` existe para quitar. Cada línea, UN número con el que actuar.
+    sub: porUnidad ? peso : null,
+    cocido: /cocid[ao]s?|escurrido/i.test(String(food.name || '')),
+  };
+}
+function nutShoppingList(base, routines) {
+  if (!base || !base.macros) return null;
+  const shape = nutWeekShape(routines);
+  const rs = Array.isArray(routines) ? routines : [];
+  const acum = Object.create(null);
+  let dias = 0;
+  NUT_WEEK_DAYS.forEach((name, i) => {
+    const rut = rs.find(r => r && r.day === name) || null;
+    const plan = nutDayPlan(base, nutDayKind(rut), shape.trainDays, shape.legDays, i);
+    if (!plan) return;
+    dias++;
+    plan.meals.forEach(m => {
+      (m.items || []).forEach(it => {
+        if (it && it.id && it.grams > 0) acum[it.id] = (acum[it.id] || 0) + it.grams;
+      });
+      // Los acompañantes se COMPRAN igual que el plato: es la misma lección de F7 (si la fruta
+      // no entra, la lista manda a la persona al mercado sin la mitad de lo que va a comer).
+      (m.acompIds || []).forEach(id => {
+        const f = NUT_FOOD_BY_ID[id];
+        if (f) acum[id] = (acum[id] || 0) + nutAcompGrams(f);
+      });
+    });
+  });
+  if (!dias) return null;
+  const grupos = NUT_SHOP_GROUPS.map(([rol, name]) => ({
+    rol, name,
+    items: Object.keys(acum)
+      .filter(id => NUT_FOOD_BY_ID[id] && NUT_FOOD_BY_ID[id].rol === rol)
+      .map(id => Object.assign({ id, name: NUT_FOOD_BY_ID[id].name, rol }, nutShopQty(NUT_FOOD_BY_ID[id], acum[id])))
+      .sort((a, b) => b.grams - a.grams || a.name.localeCompare(b.name)),
+  })).filter(g => g.items.length);
+  const items = grupos.reduce((a, g) => a + g.items.length, 0);
+  return { dias, grupos, items, hayCocido: grupos.some(g => g.items.some(i => i.cocido)) };
+}
+// El mismo contenido en texto plano, para mandarlo por WhatsApp o pegarlo donde sea. Pura:
+// recibe la lista ya armada, NO la vuelve a calcular (o serían dos verdades a un toque).
+function nutShoppingText(lista, nombre) {
+  if (!lista || !lista.grupos || !lista.grupos.length) return '';
+  const l = ['🛒 Mi lista del mercado' + (nombre ? ' — ' + nombre : ''), 'Para ' + lista.dias + ' días de plan', ''];
+  lista.grupos.forEach(g => {
+    l.push(g.name.toUpperCase());
+    g.items.forEach(i => l.push('• ' + i.name + ': ' + i.text + (i.sub ? ' (' + i.sub + ')' : '') + (i.cocido ? ' — ya listo' : '')));
+    l.push('');
+  });
+  if (lista.hayCocido) l.push('Ojo: lo marcado «ya listo» son cantidades de comida cocida; crudo pesa menos.');
+  return l.join('\n').trim();
 }
 
 // nutDayNote: la línea que explica por qué HOY el número no es el de la semana. Sin esto, las dos
@@ -6734,6 +6834,10 @@ if (typeof module !== 'undefined' && module.exports) {
     nutAcompMacros,
     nutAcompGrams,
     nutDayPlan,
+    nutShoppingList,
+    nutShopQty,
+    nutShoppingText,
+    NUT_SHOP_GROUPS,
     nutPlanMealEntries,
     foodLogIsPlanEntry,
     foodLogMarkPlanMeal,

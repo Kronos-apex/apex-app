@@ -392,7 +392,7 @@ function renderMealsToday(client){
       if(client.sex!=='M'&&client.sex!=='F')faltan.push('tu sexo');
       if(!faltan.length)return;
       con.innerHTML=`<div class="card" style="padding:12px 14px">
-        <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu plan de comida</div>
+        <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px">${typeof aviIcon==='function'?aviIcon('utensils',14):'🥗'} Tu plan de comida</div>
         <div style="font-size:12px;color:var(--t2)">Para armarlo necesito ${esc(faltan.join(', ').replace(/, ([^,]*)$/,' y $1'))}. Pídele a tu coach que los complete.</div>
       </div>`;
       return;
@@ -425,7 +425,7 @@ function renderMealsToday(client){
     con.innerHTML=`<div class="card" style="padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleMealsToday()">
         <div style="min-width:0">
-          <div style="font-size:13px;font-weight:800;color:var(--t1)">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu comida de hoy</div>
+          <div style="font-size:13px;font-weight:800;color:var(--t1)">${typeof aviIcon==='function'?aviIcon('utensils',14):'🥗'} Tu comida de hoy</div>
           <div style="font-size:11.5px;color:var(--t2);margin-top:2px">${esc(_mealsDayLabel(kind))} · ${t.kcal} kcal</div>
         </div>
         <button class="btn bg bsm" style="flex-shrink:0;min-height:36px" aria-expanded="${abierto?'true':'false'}">${abierto?'Ocultar':'Ver'}</button>
@@ -437,7 +437,8 @@ function renderMealsToday(client){
       </div>
       ${nota?`<div style="font-size:11.5px;color:var(--t2);background:var(--bg);border-radius:var(--rsm);padding:8px 10px;margin-top:9px;line-height:1.5">${esc(nota)}</div>`:''}
       ${abierto?`<div style="margin-top:8px">${filas}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Son cantidades ya listas para comer. Puedes cambiar un alimento por otro parecido — lo que importa es acercarte a esos números.</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Son cantidades ya listas para comer. Puedes cambiar un alimento por otro parecido — lo que importa es acercarte a esos números.</div>
+      <button class="btn bg bsm" style="width:100%;margin-top:9px;min-height:38px" onclick="openShopList()">🛒 Ver mi lista del mercado</button>`:''}
     </div>`;
   }catch(e){ warn('AVI: pintar la comida de hoy falló (no bloquea el día):',e&&e.message); con.innerHTML=''; }
 }
@@ -487,7 +488,7 @@ function renderNutritionClient(clientId){
         </div>
       </div>`;}).join('');
     _semanaHtml=`<div class="card" style="padding:12px 14px;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">${typeof aviIcon==='function'?aviIcon('nutrition',14):'🥗'} Tu semana de comida</div>
+      <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">${typeof aviIcon==='function'?aviIcon('utensils',14):'🥗'} Tu semana de comida</div>
       <div style="font-size:11.5px;color:var(--t2);margin-bottom:8px">Promedio <b>${_sem.promedioKcal} kcal al día</b>. Los días que entrenas comes un poco más y los de descanso un poco menos — en la semana comes lo mismo.</div>
       ${filas}
     </div>`;
@@ -654,9 +655,64 @@ function openNutritionRoom(clientId){
     ${whyHTML}
     ${mealsHTML}
     ${planHTML}
+    ${_shopListHtml(c)}
     ${guideHTML}
     <div style="height:30px"></div>`;
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+}
+// ── LA LISTA DEL MERCADO (patrón 4 del estudio) ──────────────────────────────
+// Fitia la COBRA y AVI ya tenía todo para generarla: los 7 días con sus alimentos y sus gramos.
+// La cuenta vive en `avi-core` (`nutShoppingList`, pura y testeada); aquí solo se pinta.
+function _shopListHtml(c){
+  if(typeof nutShoppingList!=='function'||!c)return '';
+  if(typeof isFreeClient==='function'&&isFreeClient(c))return '';
+  let lista=null;
+  try{
+    const base=nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c));
+    lista=base?nutShoppingList(base,c.routines):null;
+  }catch(e){ warn('AVI: la lista del mercado no se pudo armar (no bloquea el plan):',e&&e.message); return ''; }
+  if(!lista||!lista.grupos.length)return '';
+  const grupos=lista.grupos.map(g=>`
+    <div style="margin-top:10px">
+      <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px">${esc(g.name)}</div>
+      ${g.items.map(i=>`<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--br)">
+        <div style="font-size:13px;color:var(--t1);min-width:0">${esc(i.name)}${i.cocido?`<span style="font-size:10.5px;color:var(--t2)"> · ya cocido</span>`:''}</div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">${esc(i.text)}</div>
+          ${i.sub?`<div style="font-size:10.5px;color:var(--t2);white-space:nowrap">${esc(i.sub)}</div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>`).join('');
+  return `<div class="sroom-sec">🛒 Tu lista del mercado</div>
+    <div class="exroom-note" style="margin-bottom:2px">Todo lo que pide tu plan de los próximos <b>${lista.dias} días</b>, sumado. Son <b>${lista.items} cosas</b>.</div>
+    ${grupos}
+    ${lista.hayCocido?`<div class="exroom-note" style="margin-top:10px">Lo marcado <b>«ya cocido»</b> es la cantidad servida, no la que compras: el arroz, la pasta y los granos pesan bastante menos crudos y rinden más al cocinarlos.</div>`:''}
+    <button class="btn bp bsm" style="width:100%;margin-top:12px" onclick="shopListShare()">Compartir mi lista</button>`;
+}
+// Desde «Tu comida de hoy»: abre la habitación del plan y LLEVA hasta la lista. Sin el scroll,
+// el botón deja a la persona arriba del todo y con la lista cinco pantallas más abajo — que se
+// lee como que el botón no hizo nada.
+function openShopList(){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  openNutritionRoom(c.id);
+  setTimeout(()=>{
+    const body=document.getElementById('nutroom-body'); if(!body)return;
+    const sec=[...body.querySelectorAll('.sroom-sec')].find(e=>/lista del mercado/i.test(e.textContent||''));
+    if(sec&&sec.scrollIntoView)sec.scrollIntoView({behavior:'smooth',block:'start'});
+  },220);
+}
+// Compartir: `navigator.share` en el móvil, WhatsApp si no. Misma vía sancionada que `shareApp`.
+function shopListShare(){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
+  let txt='';
+  try{
+    const base=nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c));
+    const lista=base?nutShoppingList(base,c.routines):null;
+    txt=lista?nutShoppingText(lista,(c.name||'').split(' ')[0]):'';
+  }catch(e){ warn('AVI: no se pudo armar el texto de la lista:',e&&e.message); }
+  if(!txt){ if(typeof toast==='function')toast('Todavía no hay lista que compartir'); return; }
+  if(navigator.share){ navigator.share({title:'Mi lista del mercado',text:txt}).catch(()=>{}); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 function closeNutritionRoom(){
   const room=document.getElementById('nutrition-room');

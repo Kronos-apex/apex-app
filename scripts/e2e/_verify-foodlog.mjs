@@ -473,6 +473,73 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.foodlog=foodLogBlank();delete DB.nutrition[CUR.clientId];})()`);
 
+  // ── LA LISTA DEL MERCADO (patrón 4 del estudio) ────────────────────────────
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
+    DB.nutrition=DB.nutrition||{}; DB.nutrition[CUR.clientId]={kcal:2100,prot:150,carbs:210,fat:60};
+    c.routines=[{id:'r1',day:'Lunes',name:'Pierna',exercises:[{id:'e1',name:'Sentadilla',muscle:'cuadriceps'}]},
+                {id:'r2',day:'Miércoles',name:'Torso',exercises:[{id:'e2',name:'Press',muscle:'pecho'}]}];
+    closeFoodLogRoom(); openShopList();})()`);
+  await sleep(900);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('nutroom-body');
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const base=nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c));
+    const l=nutShoppingList(base,c.routines);
+    const txt=b.textContent||'';
+    const faltan=[]; l.grupos.forEach(g=>g.items.forEach(i=>{ if(txt.indexOf(i.name)<0)faltan.push(i.name); }));
+    return {abierta:document.getElementById('nutrition-room').classList.contains('on'),
+      dias:l.dias, items:l.items, grupos:l.grupos.length, faltan,
+      titulo:/Tu lista del mercado/.test(txt), boton:!!b.querySelector('button[onclick="shopListShare()"]')};})())`));
+  check('LM1 la lista del mercado se pinta con TODOS los alimentos de los 7 días',
+    s.abierta && s.dias === 7 && s.items >= 15 && s.grupos >= 4 && s.faltan.length === 0 && s.titulo && s.boton,
+    JSON.stringify({ dias: s.dias, items: s.items, grupos: s.grupos, faltan: s.faltan.slice(0, 3) }));
+
+  // 🔴 LM2 — el número que se lee tiene que ser el de la COMPRA: lo que se compra por unidad se
+  // cuenta («12 huevos») y lo demás va al peso, porque «13 octavos de aguacate» no es una cantidad.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('nutroom-body').textContent||'';
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const l=nutShoppingList(nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c)),c.routines);
+    const todos=[]; l.grupos.forEach(g=>g.items.forEach(i=>todos.push(i)));
+    const porUn=todos.filter(i=>i.porUnidad), porPeso=todos.filter(i=>!i.porUnidad);
+    return {nUn:porUn.length, nPeso:porPeso.length,
+      pintaUn:porUn.every(i=>b.indexOf(i.text)>=0), pintaPeso:porPeso.every(i=>b.indexOf(i.text)>=0),
+      sinOctavos:!/\\d{2,} octavos/.test(b), ejUn:(porUn[0]||{}).text, ejPeso:(porPeso[0]||{}).text};})())`));
+  check('LM2 lo que se compra por unidad se cuenta, y lo demás va por peso (nada de «13 octavos»)',
+    s.nUn > 0 && s.nPeso > 0 && s.pintaUn && s.pintaPeso && s.sinOctavos, JSON.stringify(s));
+
+  // LM3 — el aviso de «ya cocido» sale, que es la limitación honesta de esta lista.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('nutroom-body').textContent||'';
+    return {marca:/ya cocido/.test(b), aviso:/pesan bastante menos crudos/.test(b)};})())`));
+  check('LM3 la lista avisa de que lo «ya cocido» no es lo que se compra', s.marca && s.aviso, JSON.stringify(s));
+
+  // LM4 — compartir arma el texto SIN volver a calcular, y no revienta si no hay nada.
+  s = JSON.parse(await ev(`JSON.stringify((()=>{let compartido=null;
+    const real=navigator.share; navigator.share=async o=>{compartido=o;return true;};
+    shopListShare();
+    navigator.share=real;
+    const c=DB.clients.find(x=>x.id===CUR.clientId);
+    const l=nutShoppingList(nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c)),c.routines);
+    const t=(compartido&&compartido.text)||'';
+    const faltan=[]; l.grupos.forEach(g=>g.items.forEach(i=>{ if(t.indexOf(i.name)<0)faltan.push(i.name); }));
+    return {hay:!!compartido, largo:t.length, faltan:faltan.length, dice7:/7 días/.test(t)};})())`));
+  check('LM4 «Compartir mi lista» manda el texto completo (todos los alimentos, sin recalcular)',
+    s.hay && s.faltan === 0 && s.largo > 200 && s.dice7, JSON.stringify(s));
+
+  // LM5 — 360px + letra «Muy grande»: la lista es la pantalla más densa del módulo.
+  await ev(`document.documentElement.setAttribute('data-fs','xl')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 780, deviceScaleFactor: 2, mobile: true });
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);openNutritionRoom(c.id);})()`);
+  await sleep(700);
+  s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('nutroom-body');
+    const btn=b.querySelector('button[onclick="shopListShare()"]');
+    const r=btn?btn.getBoundingClientRect():null;
+    return {desborde:b.scrollWidth-b.clientWidth, docDesborde:document.documentElement.scrollWidth-window.innerWidth,
+      btnAlto:r?Math.round(r.height):0, btnDentro:!!r&&r.left>=-1&&r.right<=361};})())`));
+  check('LM5 la lista cabe a 360px con letra «Muy grande», sin desborde horizontal',
+    s.desborde <= 1 && s.docDesborde <= 1 && s.btnAlto >= 36 && s.btnDentro, JSON.stringify(s));
+  await ev(`document.documentElement.removeAttribute('data-fs')`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await ev(`(()=>{closeNutritionRoom();const c=DB.clients.find(x=>x.id===CUR.clientId);delete DB.nutrition[CUR.clientId];})()`);
+
   // FL10 — el botón atrás cierra la habitación
   await ev(`(()=>{if(!document.getElementById('foodlog-room').classList.contains('on'))openFoodLogRoom();})()`); await sleep(400);
   await ev(`history.back()`); await sleep(700);
