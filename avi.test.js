@@ -6290,6 +6290,69 @@ test('🔴 v472 · el plato reparte el carbohidrato entre DOS fuentes, y respeta
   assert.ok(g(alto, 'platano_maduro') >= 40,
     `el segundo salió en ${g(alto, 'platano_maduro')} g, menos de media tajada (40 g): eso no es una ración`);
 
+  // 🔴 EL CASO QUE EL PISO NO VEÍA (P1-1 de Fable, arreglado 2026-08-12): un alimento proteico que
+  // aporta MUCHO carbohidrato —fríjol, lenteja— deja un `falta` que es una fracción del objetivo
+  // bruto. La puerta miraba `tC` y el solver reparte `falta`: veía 116 g de plátano y servía 15.
+  // Medido sobre las 22 personas reales: 8 segundas raciones salían así («5 g», «10 g», «15 g»,
+  // «20 g» de plátano) en el almuerzo de 7 personas — Natalia, Luz, Valery, Nataly, Kathe, Astrid.
+  // ⚠️ Este test NO puede escribirse con `pollo_pechuga`: su aporte de carbohidrato es cero, así
+  // que `falta ≈ tC` y el defecto es invisible. Hace falta el aporte cruzado GRANDE.
+  const cruzado = { prot: 'frijol', carb: 'arroz', carb2: 'platano_maduro', fat: 'aguacate' };
+  const c2 = F.platano_maduro;
+  const pisoG = c2.un.g * core.NUT_CARB2_MIN_UN;
+  [80, 90, 100].forEach(tc => {
+    const r = core.nutSolveMeal({ prot_g: 30, carb_g: tc, fat_g: 15 }, cruzado);
+    const g2 = g(r, 'platano_maduro');
+    assert.ok(g2 === 0 || g2 >= pisoG,
+      `con ${tc} g de carbohidrato y fríjol (que ya aporta el suyo) sirvió ${g2} g de plátano: ` +
+      `menos de media tajada (${pisoG} g) no es una ración, es una migaja`);
+  });
+  // 🔒 CONTROL: con presupuesto de sobra el mismo menú SÍ parte, o el caso de arriba se estaría
+  // cumpliendo por haber apagado el reparto entero en vez de por respetar el piso.
+  assert.ok(g(core.nutSolveMeal({ prot_g: 30, carb_g: 130, fat_g: 15 }, cruzado), 'platano_maduro') >= pisoG,
+    'con presupuesto amplio el menú del fríjol tiene que seguir partiendo el carbohidrato');
+
+  // 🔴 LOS TRES DESCUENTOS CRUZADOS DE `carb2`, CADA UNO CON SU CANDADO.
+  // Nacieron en v472 SIN un solo test: la matriz de sabotaje `_sabotaje-carb2.mjs` los rompió uno
+  // a uno y **la suite siguió verde en los tres**. Y no son redundantes — medido sobre las 22
+  // personas reales, quitarlos hace daño: sin el de la proteína el peor exceso de kcal del día
+  // sube de +9,1% a +11,2%; sin el cruzado, el peor día de carbohidrato cae a −12,0% y la variedad
+  // de almuerzo baja de 4,45 a 4,18.
+  // Los presupuestos NO están escritos de memoria: salen de barrer 10.368 combinaciones
+  // (menú × prot 15-55 × carb 30-140 × grasa 8-28) y quedarse con aquella donde cada defecto se
+  // nota más. Y la aserción es **POR COMIDA**, nunca sobre el día: el total del día TAPA la comida
+  // rota, y esa lección ya se pagó aquí una vez.
+  const kcalDe = r => r.real.kcal;
+  const objKcal = t => t.prot_g * 4 + t.carb_g * 4 + t.fat_g * 9;
+  const exceso = (r, t) => (kcalDe(r) - objKcal(t)) / objKcal(t) * 100;
+
+  // (a) `carb2` acredita su propia PROTEÍNA (el arroz trae 2,7 g/100 g, la arepa 4,5).
+  //     Sin este descuento el plato la sirve DOS veces: medido, la comida pasa de −10,5% a +20,0%
+  //     y el pollo de 21 g a 35 g sobre una meta de 25.
+  const tA = { prot_g: 25, carb_g: 90, fat_g: 20 };
+  const rA = core.nutSolveMeal(tA, { prot: 'pollo_muslo', carb: 'papa_criolla', carb2: 'arroz', fat: 'aguacate' });
+  const protA = (rA.items.find(i => i.rol === 'prot') || {}).grams * core.NUT_FOOD_BY_ID.pollo_muslo.p / 100;
+  assert.ok(protA <= tA.prot_g * 1.25,
+    `el alimento proteico solo aporta ${protA.toFixed(0)} g para una meta de ${tA.prot_g}: ` +
+    'el segundo carbohidrato no está acreditando la suya y la comida la sirve dos veces');
+  assert.ok(exceso(rA, tA) <= 2, `esa comida se pasa ${exceso(rA, tA).toFixed(1)}% de sus propias kcal`);
+
+  // (b) El aporte cruzado se descuenta UNA vez y luego se reparte, no una vez por rama.
+  //     Es el defecto que ya ocurrió en v472 y hundió la entrega a −14,2%. Aquí, al revés,
+  //     restarlo dos veces sobre este presupuesto dispara la comida de −19,7% a +6,6%.
+  const tB = { prot_g: 35, carb_g: 60, fat_g: 8 };
+  const rB = core.nutSolveMeal(tB, { prot: 'yogur_griego', carb: 'avena', carb2: 'banano', fat: 'mani' });
+  assert.ok(rB.real.fat_g <= tB.fat_g * 1.3,
+    `la grasa servida (${rB.real.fat_g} g) se dispara sobre la meta de ${tB.fat_g} g`);
+  assert.ok(exceso(rB, tB) <= 2, `esa comida se pasa ${exceso(rB, tB).toFixed(1)}% de sus propias kcal`);
+
+  // (c) La GRASA descuenta la que aporta el segundo carbohidrato.
+  //     Sin él, 11 g de almendra se vuelven 19 sobre una meta de 16.
+  const tC = { prot_g: 30, carb_g: 70, fat_g: 16 };
+  const rC = core.nutSolveMeal(tC, { prot: 'clara', carb: 'avena', carb2: 'banano', fat: 'almendra' });
+  assert.ok(rC.real.fat_g <= tC.fat_g * 1.15,
+    `la grasa servida (${rC.real.fat_g} g) pasa la meta de ${tC.fat_g} g: el segundo carbohidrato no la está descontando`);
+
   // ── Con poco carbohidrato, el plato NO se parte: todo al principal ──
   const bajo = core.nutSolveMeal({ prot_g: 30, carb_g: 28, fat_g: 12 }, pick);
   assert.strictEqual(g(bajo, 'platano_maduro'), 0,

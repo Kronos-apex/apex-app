@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛑 2026-08-12 (2ª parte) — avi-v475: el «5 g de plátano», y los tres candados que faltaban
+
+**Producción en `avi-v475`, verificada.** Suite **699/699**, hook 12/12,
+**`_sabotaje-carb2` 6/6 muerden** (matriz nueva, versionada).
+Cierra el **P1-1 del veredicto de Fable** sobre v472.
+
+### El defecto: la puerta miraba el objetivo BRUTO y el solver reparte el NETO
+`NUT_CARB2_MIN_UN` («si al segundo carbohidrato no le toca ni media medida casera, no se parte el
+plato») se evaluaba contra `tC`, el objetivo de carbohidrato de la comida. Pero lo que el solver
+reparte es `falta` = `tC` **menos** el carbohidrato que ya traen la proteína y la grasa. Con un
+alimento proteico que aporta mucho carbohidrato —fríjol, lenteja, avena— `falta` es una fracción
+de `tC`: **la puerta veía 116 g de plátano y el plato servía 15.**
+
+**Medido sobre las 22 personas reales** (ruta `nutBaseFor`, 154 días, 770 comidas):
+**8 segundas raciones → 0**. Eran «5 g», «10 g», «15 g» y «20 g» de plátano maduro en el almuerzo
+de **7 personas**: Natalia, Luz, Valery Valbuena, Nataly, Kathe (×2), Astrid y Valery. Es la misma
+ración-que-no-es-ración («5 g de clara de huevo») que se rechazó en v471 — el criterio existía y
+no se volvió a medir después de partir el plato en dos.
+
+| 22 personas · 154 días | v474 | v475 |
+|---|---|---|
+| segundas raciones bajo media medida | **8** | **0** |
+| segundas raciones en gramos sueltos | **8** | **0** |
+| peor día de proteína | −5,0% | −5,0% |
+| peor día de carbohidrato | −11,5% | −11,5% |
+| peor exceso de kcal | +10,1% | **+9,1%** |
+| variedad de almuerzo | 4,36 | **4,45** |
+| variedad de desayuno | 5,59 | 5,55 |
+
+Precio: 22 comidas de 335 dejan de partirse — justo las que producían migajas.
+
+### 🎓 Dos caminos equivocados, los dos descartados MIDIENDO
+1. **Estimar `falta` con una pre-pasada sin partir** → **cierra de más**: en el menú del fríjol, a
+   `tC=100` dejaba de servir la media tajada que antes sí salía. Al partir, `carb2` aporta proteína
+   y grasa, así que `gP` y `gF` bajan y `falta` SUBE: la estimación sin partir es un PISO, no el
+   valor.
+2. **Preguntarle el piso a `nutPortionText`** (la función que pinta el plato, que redondea 25 g
+   crudos a «media tajada (40 g)») → parecía lo más honesto y **rompe el guardián de los extremos:
+   14,2% de exceso** sobre una mujer de 55 kg con objetivo de perder grasa. Ese redondeo es hacia
+   ARRIBA y sobre un presupuesto chico lo que añade es enorme. **El piso crudo no aproxima lo que
+   se sirve: impide que se parta un plato tan pequeño que el propio redondeo lo desborde.**
+
+La salida buena: **resolver el plato ENTERO en las dos configuraciones y quedarse con la que cumple
+el piso.** No es «decidir después de correr el solver» —la trampa que dejó a Andrés Martínez con un
+solo desayuno—, porque aquella parcheaba un resultado ya calculado contra el reparto; aquí cada
+configuración se calcula completa y coherente, y se descarta una entera.
+
+### 🔴 Y LOS TRES DESCUENTOS CRUZADOS DE `carb2` NO TENÍAN NI UN TEST
+La matriz nueva los rompió uno a uno y **la suite siguió verde en los tres**. No eran redundantes:
+sin el de la proteína el peor exceso de kcal sube de **+9,1% a +11,2%** (el plato la sirve dos
+veces); sin el cruzado, el peor día de carbohidrato cae a −12,0% y la variedad de almuerzo baja de
+4,45 a 4,18. Ahora cada uno tiene su candado, con el presupuesto **buscado a barrido** (10.368
+combinaciones) y la aserción **POR COMIDA**, nunca sobre el día — el total del día tapa la comida
+rota.
+
 ## 🛑 2026-08-12 — avi-v474: la cola de aprobación del coach (F6)
 
 **Producción en `avi-v474`, verificada** (`?v=474` + `avi-v474` en sw.js + `_prodcheck 474` verde,

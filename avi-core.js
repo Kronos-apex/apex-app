@@ -4307,8 +4307,6 @@ function nutSolveMeal(target, pick) {
   const tP = target.prot_g > 0 ? target.prot_g : 0;
   const tC = target.carb_g > 0 ? target.carb_g : 0;
   const tF = target.fat_g > 0 ? target.fat_g : 0;
-  // gramos de cada alimento, en crudo (sin redondear) durante la iteración
-  let gP = 0, gC = 0, gC2 = 0, gF = 0;
   // 🔒 ¿SE PARTE EL PLATO? Se decide ANTES de iterar, no después.
   // Si al segundo carbohidrato no le toca ni MEDIA medida casera, no se parte: todo al principal.
   // ⚠️ Y la decisión va aquí arriba a propósito. Al principio esto era un arreglo POSTERIOR
@@ -4319,10 +4317,38 @@ function nutSolveMeal(target, pick) {
   // los gramos al final ya no deshacía eso, porque la proteína y la grasa ya se habían resuelto
   // contra el reparto. **Una decisión que cambia el resultado del solver no puede tomarse después
   // de correrlo.**
-  const _c2raw = (carb2 && carb2.c > 0 && tC > 0) ? tC * NUT_CARB2_SHARE / carb2.c * 100 : 0;
-  const _c2min = (carb2 && carb2.un && carb2.un.g > 0) ? carb2.un.g * NUT_CARB2_MIN_UN : 0;
-  const usaDos = !!(carb2 && carb2.c > 0 && _c2raw >= _c2min);
+  //
+  // 🔴 Y LA PUERTA MIRA EL NÚMERO QUE DE VERDAD SE SIRVE, NO EL OBJETIVO BRUTO (hallazgo P1-1 de
+  // Fable, 2026-08-12). La primera versión abría con `tC * SHARE`, pero lo que el solver reparte
+  // es `falta` = tC MENOS el carbohidrato que ya traen la proteína y la grasa. Con un aporte
+  // cruzado grande —fríjol, lenteja, avena— `falta` es una fracción de `tC`: la puerta veía 116 g
+  // de plátano y el plato servía 15. Medido: 9 de 322 segundas raciones salían por debajo del piso
+  // que la puerta acababa de exigir, en el almuerzo de 7 personas reales.
+  //
+  // ⚠️ NO se arregla estimando `falta` con una pre-pasada sin partir: se probó y CIERRA DE MÁS
+  // (medido: en el menú del fríjol, a tC=100 dejaba de servir la media tajada que antes sí salía),
+  // porque al partir, `carb2` aporta proteína y grasa, así que `gP` y `gF` bajan y `falta` SUBE.
+  // La estimación sin partir es un PISO de `falta`, no su valor.
+  //
+  // Lo que se hace: resolver el plato ENTERO en las dos configuraciones y quedarse con la que
+  // cumple el piso. **Esto NO es «decidir después de correr el solver»** —la trampa de aquí
+  // arriba—: aquella devolvía los gramos del segundo al principal SOBRE un resultado ya calculado
+  // contra el reparto, y dejaba un plato híbrido que no era solución de nada. Aquí cada
+  // configuración se calcula completa y coherente consigo misma, y se DESCARTA una entera.
+  //
+  // ⚠️ Y EL PISO SIGUE MIDIÉNDOSE EN GRAMOS CRUDOS, no preguntándole a `nutPortionText`.
+  // Se probó lo segundo —parecía más honesto, porque `nutPortionText` es lo que la persona LEE, y
+  // redondea 25 g crudos de plátano a «media tajada (40 g)», una ración presentable que el umbral
+  // crudo rechaza— y **rompe el guardián de los extremos: 14,2% de exceso** (tope 14%) sobre una
+  // mujer de 55 kg con objetivo de perder grasa. La razón: ese redondeo es hacia ARRIBA, y sobre
+  // un presupuesto chico el gramaje que añade es proporcionalmente enorme. El piso crudo no está
+  // aproximando lo que se sirve: está impidiendo que se parta un plato tan pequeño que el propio
+  // redondeo del segundo lo desborde. **Son dos trabajos distintos y el crudo hace el que importa.**
   const ap = (food, g, macro) => (food ? food[macro] * g / 100 : 0);
+  const _c2min = (carb2 && carb2.un && carb2.un.g > 0) ? carb2.un.g * NUT_CARB2_MIN_UN : 0;
+  const resolver = (parte) => {
+  // gramos de cada alimento, en crudo (sin redondear) durante la iteración
+  let gP = 0, gC = 0, gC2 = 0, gF = 0;
   for (let i = 0; i < NUT_SOLVE_PASSES; i++) {
     // proteína: la que falta después de la que traen el carbohidrato y la grasa, pero
     // NUNCA por debajo del piso (arriba) ni por encima de una ración creíble (`maxG`):
@@ -4366,8 +4392,8 @@ function nutSolveMeal(target, pick) {
     // partir el plato en dos.
     if ((carb && carb.c > 0) && tC > 0) {
       const falta = Math.max(0, tC - ap(prot, gP, 'c') - ap(fat, gF, 'c'));
-      gC = falta * (usaDos ? 1 - NUT_CARB2_SHARE : 1) / carb.c * 100;
-      gC2 = usaDos ? falta * NUT_CARB2_SHARE / carb2.c * 100 : 0;
+      gC = falta * (parte ? 1 - NUT_CARB2_SHARE : 1) / carb.c * 100;
+      gC2 = parte ? falta * NUT_CARB2_SHARE / carb2.c * 100 : 0;
       // ⚠️ NO AÑADIR AQUÍ UN `if (carb.maxG > 0) gC = Math.min(gC, carb.maxG)`. Se probó y es
       // REDUNDANTE: `nutPortionText` YA aplica `maxG` a cualquier alimento que lo declare (en dos
       // sitios: la rama de medidas caseras, que es la que manda, y el clamp final). El tope de un
@@ -4381,6 +4407,14 @@ function nutSolveMeal(target, pick) {
       gF = Math.max(0, (tF - ap(prot, gP, 'f') - ap(carb, gC, 'f') - ap(carb2, gC2, 'f')) / fat.f * 100);
     }
   }
+    return { gP: gP, gC: gC, gC2: gC2, gF: gF };
+  };
+  // Se intenta partir; si al segundo no le toca ni media medida casera DE VERDAD (la que se va a
+  // leer en el plato), se resuelve otra vez ENTERO sin partir y se tira el primer resultado.
+  const _conDos = (carb2 && carb2.c > 0 && tC > 0) ? resolver(true) : null;
+  const usaDos = !!(_conDos && _conDos.gC2 >= _c2min);
+  const sol = usaDos ? _conDos : resolver(false);
+  const gP = sol.gP, gC = sol.gC, gC2 = sol.gC2, gF = sol.gF;
   const items = [];
   let gotP = 0, gotC = 0, gotF = 0;
   const poner = (food, g, rol) => {
