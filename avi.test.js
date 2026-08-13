@@ -2534,6 +2534,33 @@ test('communityCommentText: espejo del CHECK de c16 — recorta, corta a 280, va
   assert.strictEqual(communityCommentText('<img src=x onerror=alert(1)>'), '<img src=x onerror=alert(1)>');
 });
 
+test('🔴 c16: el espejo del comentario se DERIVA del .sql, no de un 280 escrito a mano', () => {
+  // Este test se llamaba «espejo del CHECK» y NO leía el .sql: el 280 estaba escrito a mano en
+  // los dos lados. Si el CHECK del servidor bajara a 200, el cliente seguiría dejando publicar
+  // 280 y la persona recibiría `violates check constraint` en la cara — exactamente lo que el
+  // espejo existe para evitar. Es la clase que Fable marcó en F5 (P2-3), un piso más abajo:
+  // allá el test leía el archivo y le faltaba el conteo; aquí no lo leía en absoluto.
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'community', 'c16_comments.sql'), 'utf8');
+  const tabla = sql.slice(sql.indexOf('create table public.community_comments'));
+  const cuerpo = tabla.slice(0, tabla.indexOf('\n);'));
+  assert.ok(/created_at/.test(cuerpo) && cuerpo.length > 200,
+    `control: se leyeron ${cuerpo.length} caracteres del cuerpo de la tabla`);
+  assert.ok(!/with\s+check/i.test(cuerpo), 'el recorte se comió una policy: el conteo ya no significa lo que dice');
+  // El tope sale del CHECK, y el cliente tiene que cortar EXACTAMENTE ahí.
+  const m = cuerpo.match(/char_length\(text\) between 1 and (\d+)/);
+  assert.ok(m, 'cambió la forma del CHECK de largo en c16 — el espejo del cliente quedó ciego');
+  const tope = Number(m[1]);
+  assert.strictEqual(communityCommentText('a'.repeat(tope)).length, tope, 'el cliente corta antes que el servidor');
+  assert.strictEqual(communityCommentText('a'.repeat(tope + 200)).length, tope, 'el cliente deja pasar más de lo que el servidor acepta');
+  // La otra mitad del mismo CHECK (D2): solo-espacios no se manda.
+  assert.ok(/btrim\(text\) <> ''/.test(cuerpo), 'se cayó el btrim del CHECK y el cliente sigue creyendo que existe');
+  assert.strictEqual(communityCommentText(' '.repeat(tope + 200)), null);
+  // Y un CHECK NUEVO en la tabla tiene que salir aquí, no en la cara de quien comenta.
+  assert.strictEqual((cuerpo.match(/check\s*\(/gi) || []).length, 1,
+    'cambió el número de CHECK de community_comments: si es uno nuevo, `communityCommentText` tiene que replicarlo');
+});
+
 test('communityEmptyState: un solo vacío — publicaciones > gente conectada > solo', () => {
   // con publicaciones no hay vacío, aunque no tenga a nadie más
   assert.strictEqual(communityEmptyState({ posts: 3 }), 'none');
@@ -4522,6 +4549,22 @@ test('🔴 F5: los límites del cliente son los MISMOS que los CHECK de la tabla
   assert.ok(sql.includes('length(name) <= ' + FOOD_BC_LEN.name), 'largo del nombre desalineado');
   assert.ok(sql.includes('length(brand) <= ' + FOOD_BC_LEN.brand), 'largo de la marca desalineado');
   assert.ok(sql.includes('length(un_label) <= ' + FOOD_BC_LEN.un_label), 'largo de la medida desalineado');
+  // 🔴 P2-3 de Fable (2026-08-12): hasta aquí el test solo afirmaba la lista de CHECK que YA
+  // CONOCE, así que un CHECK **nuevo** en la tabla no lo delataba nadie — y un CHECK sin espejo
+  // en `barcodeDraft` le sale en la cara a la persona como `new row violates check constraint
+  // "food_barcodes_x_check"`, que es justo lo que el espejo existe para evitar. Las aserciones de
+  // arriba cazan que se QUITE o se AFLOJE uno conocido; el conteo caza que se AGREGUE uno nuevo.
+  // Es la misma lección que el `search_path` de F6: «alguna lo cumple» no es un candado, se
+  // afirma por CONTEO.
+  const tabla = sql.slice(sql.indexOf('create table public.food_barcodes'));
+  const cuerpo = tabla.slice(0, tabla.indexOf('\n);'));   // solo el DDL de la tabla: las policies
+  assert.ok(/created_at/.test(cuerpo) && cuerpo.length > 400,  // traen `with check (` y no son espejo
+    `control: se leyeron ${cuerpo.length} caracteres del cuerpo de la tabla`);
+  assert.ok(!/with\s+check/i.test(cuerpo), 'el recorte se comió una policy: el conteo ya no significa lo que dice');
+  const nChecks = (cuerpo.match(/check\s*\(/gi) || []).length;
+  assert.strictEqual(nChecks, 10,
+    'cambió el número de CHECK de food_barcodes. Si es uno NUEVO, `barcodeDraft` tiene que ' +
+    'replicarlo con su mensaje humano, o el asesorado va a leer un error crudo de Postgres.');
 });
 
 // ══════════════════════════════════════════════════════
