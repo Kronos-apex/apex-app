@@ -27,6 +27,8 @@ const {
   foodLogPlanMealDone,
   foodLogBandFor,
   foodLogWeekStates,
+  FL_ESTADO_UI,
+  foodLogBandCount,
   FOODLOG_BAND,
   nutShoppingList,
   nutShopQty,
@@ -5111,6 +5113,94 @@ test('🔴 la fila de la semana: sin registro es «no sabemos», no un cero', ()
   // Sin plan contra el que comparar tampoco se opina.
   const sinMeta = foodLogWeekStates(fl, null, hoy, 7);
   assert.strictEqual(sinMeta[6].estado, 'sinmeta');
+});
+
+// ── EL COACH Y LA ASESORADA JUZGAN EL MISMO DÍA CON LA MISMA VARA ─────────────
+// v478 cerró esto para el UMBRAL del promedio (`_FL_DESVIO_MEDIO` derivado de `FOODLOG_BAND`) y
+// dejó la FILA sin cerrar: los puntos del coach eran binarios («registró / no registró») mientras
+// ella leía «✓ vas en tu franja» del mismo día. Estos tres candados son para que no se separen.
+test('🔴 la cuenta de días en franja es UNA, y el hueco no cuenta como fallo', () => {
+  // 🔴 META DISTINTA POR DÍA a propósito: con las 7 iguales, comparar contra el día equivocado
+  // no cambia nada y el test no muerde (el error exacto que se cometió en v478).
+  const hoy = new Date('2026-08-12T12:00:00');            // miércoles → getDay() 3
+  const metas = {};
+  for (let i = 0; i < 7; i++) metas[i] = { kcal: 1600 + i * 200, prot_g: 150, carb_g: 200, fat_g: 55 };
+  let fl = foodLogBlank();
+  const dia = off => new Date(hoy.getTime() - off * 86400000);
+  const meter = (off, kcal) => {
+    const d = dia(off);
+    fl = foodLogAdd(fl, foodLogEntry({ id: 'x' + off, name: 'X', kcal, p: 10, c: 10, f: 10 }, 100, 'cena', d, () => 'e' + off), d);
+  };
+  meter(0, 2200);   // mié, meta 2200 → dentro
+  meter(1, 1400);   // mar, meta 2000 → bajo  (−30%)
+  meter(2, 2700);   // lun, meta 1800 → alto  (+50%)
+  meter(3, 2000);   // dom, meta 1600 → alto
+  //  los otros 3 días quedan SIN registrar: son huecos
+  const sem = foodLogWeekStates(fl, metas, hoy, 7);
+  const cnt = foodLogBandCount(sem);
+  assert.strictEqual(cnt.registrados, 4, `control: el fixture registró ${cnt.registrados} días de 7`);
+  assert.strictEqual(cnt.dentro, 1);
+  assert.strictEqual(cnt.fuera, 3, 'bajo y alto son los únicos que cuentan como fuera');
+  // 🔒 LA REGLA DEL HUECO, por CONTEO: 3 días sin registrar y NINGUNO cuenta como desvío.
+  assert.strictEqual(sem.filter(d => d.estado === 'vacio').length, 3);
+  assert.strictEqual(cnt.dentro + cnt.fuera, cnt.registrados,
+    'algún día registrado no cayó ni dentro ni fuera, o un hueco se coló en la cuenta');
+  // Sin plan: se registra, pero no se puede opinar → ni dentro ni fuera.
+  const sinPlan = foodLogBandCount(foodLogWeekStates(fl, null, hoy, 7));
+  assert.strictEqual(sinPlan.registrados, 4);
+  assert.strictEqual(sinPlan.dentro, 0);
+  assert.strictEqual(sinPlan.fuera, 0, 'sin plan no hay franja: decir «se desvió» sería inventarla');
+  assert.strictEqual(foodLogBandCount(null).registrados, 0);
+});
+
+test('🔴 el vocabulario de estados cubre TODOS los que el motor produce — por CONTEO', () => {
+  // `aviIcon` enseñó que un fallback silencioso a un valor plausible no falla: PINTA algo. Si
+  // `foodLogWeekStates` gana un estado nuevo y el vocabulario no, el coach lo pinta como «vacio»
+  // (hueco gris) y nadie se entera: un día desviado se leería como «no registró».
+  const hoy = new Date('2026-08-12T12:00:00');
+  const metas = {}; for (let i = 0; i < 7; i++) metas[i] = { kcal: 2000, prot_g: 150, carb_g: 200, fat_g: 55 };
+  let fl = foodLogBlank();
+  [[0, 2000], [1, 1000], [2, 3000]].forEach(([off, kcal]) => {
+    const d = new Date(hoy.getTime() - off * 86400000);
+    fl = foodLogAdd(fl, foodLogEntry({ id: 'v' + off, name: 'V', kcal, p: 1, c: 1, f: 1 }, 100, 'cena', d, () => 'v' + off), d);
+  });
+  const producidos = new Set();
+  foodLogWeekStates(fl, metas, hoy, 7).forEach(d => producidos.add(d.estado));
+  foodLogWeekStates(fl, null, hoy, 7).forEach(d => producidos.add(d.estado));
+  // El barrido alcanza los CINCO estados alcanzables (con plan y sin plan), así que la cobertura
+  // se puede afirmar como IGUALDAD DE CONJUNTOS y no solo «alguno está» — que no sería candado.
+  assert.strictEqual(producidos.size, 5, `control: el barrido solo produjo ${producidos.size} estados distintos (${[...producidos]})`);
+  producidos.forEach(e => assert.ok(FL_ESTADO_UI[e], `el motor produce «${e}» y el vocabulario no lo tiene: el coach lo pintaría como hueco`));
+  // Y al revés: ni sobra vocabulario muerto ni se cuela un estado nuevo sin decidir su color.
+  assert.deepStrictEqual(Object.keys(FL_ESTADO_UI).sort(), [...producidos].sort(),
+    'el vocabulario y los estados que el motor produce dejaron de coincidir: si hay uno nuevo, decide qué color lleva Y si cuenta como fuera de franja');
+  ['dentro', 'sinmeta', 'vacio'].forEach(e => assert.strictEqual(FL_ESTADO_UI[e].fuera, false, `${e} no puede contar como desvío`));
+  ['bajo', 'alto'].forEach(e => assert.strictEqual(FL_ESTADO_UI[e].fuera, true));
+  // Las dos audiencias, un solo color: ella lee sobre sí misma y él sobre ella.
+  Object.keys(FL_ESTADO_UI).forEach(e => {
+    const v = FL_ESTADO_UI[e];
+    assert.ok(v.bg && v.fg && v.tu && v.su, `al estado «${e}» le falta color o texto`);
+  });
+});
+
+test('🔴 el coach NO puede volver a juzgar la semana por su cuenta (candado estático)', () => {
+  // Prohibir el literal `d.n>0` no serviría: se puede escribir de veinte formas. Lo que se
+  // afirma es la FORMA de dónde sale el veredicto —el mismo patrón que ya protege la franja en
+  // las dos superficies del asesorado—, que es lo que impide una segunda verdad (v435/v444).
+  const fs = require('fs'), path = require('path');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(coach.length > 1000, `control: se leyeron ${coach.length} caracteres de app-3-coach.js`);
+  assert.ok(/foodLogWeekStates\(c\.foodlog,targets,new Date\(\),7\)/.test(coach),
+    'la fila del coach dejó de salir de foodLogWeekStates: volvió a juzgar la semana por su cuenta');
+  assert.ok(/foodLogBandCount\(estados\)/.test(coach),
+    'el coach dejó de contar con foodLogBandCount: si cuenta aparte, vuelven las dos varas');
+  assert.ok(/FL_ESTADO_UI/.test(coach), 'el coach dejó de leer el vocabulario compartido');
+  // Y la asesorada tiene que seguir leyendo el MISMO, o la unificación duró una versión.
+  const cli = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  assert.ok(/FL_ESTADO_UI/.test(cli), 'la pantalla del asesorado se volvió a fabricar sus propios colores');
+  // El vocabulario NO puede estar definido en una pantalla: vive en avi-core y de ahí lo leen las dos.
+  assert.ok(!/const FL_ESTADO_UI\s*=/.test(coach) && !/const FL_ESTADO_UI\s*=/.test(cli),
+    'una pantalla se declaró su propio FL_ESTADO_UI: eso es la segunda verdad otra vez');
 });
 
 // Candado ESTÁTICO: la pantalla no puede volver a la cifra exacta por su cuenta.

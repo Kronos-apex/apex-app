@@ -1465,13 +1465,20 @@ function renderFoodLogRoom(){
 // 🔴 Un día sin registrar NO es «comió cero»: es «no sabemos», y se pinta distinto (hueco, no
 // fallo). Es la misma regla que ya protege el promedio del coach de mentir.
 const _FL_DIA_INI=['D','L','M','M','J','V','S'];
-const _FL_ESTADO={
-  dentro:{bg:'--gl',fg:'--gt',t:'en tu franja'},
-  bajo:{bg:'--bll',fg:'--blt',t:'por debajo'},
-  alto:{bg:'--orl',fg:'--ort',t:'por encima'},
-  sinmeta:{bg:'--bg',fg:'--t2',t:'registrado'},
-  vacio:{bg:'--bg',fg:'--t3',t:'sin registrar'},
-};
+// El vocabulario de estados vive en avi-core (`FL_ESTADO_UI`): el coach lee EL MISMO, y así su
+// fila y esta no pueden separarse. Aquí solo se elige la SEGUNDA persona (ella lee sobre sí
+// misma). Los colores no cambian ni un token respecto de v478.
+const _FL_ESTADO=(function(){
+  const src=(typeof FL_ESTADO_UI==='object'&&FL_ESTADO_UI)?FL_ESTADO_UI:{
+    dentro:{bg:'--gl',fg:'--gt',tu:'en tu franja'},
+    bajo:{bg:'--bll',fg:'--blt',tu:'por debajo'},
+    alto:{bg:'--orl',fg:'--ort',tu:'por encima'},
+    sinmeta:{bg:'--bg',fg:'--t2',tu:'registrado'},
+    vacio:{bg:'--bg',fg:'--t3',tu:'sin registrar'},
+  };
+  const o={}; Object.keys(src).forEach(k=>{ o[k]={bg:src[k].bg,fg:src[k].fg,t:src[k].tu}; });
+  return o;
+})();
 function _foodLogTargetsSemana(clientId){
   const sem=_nutSemanaDe(clientId); if(!sem)return null;
   const m={}; (sem.days||[]).forEach(d=>{ m[d.dayIndex]=d.target; });

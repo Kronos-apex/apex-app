@@ -1933,21 +1933,41 @@ function renderCoachFoodLogCard(c){
   const el=document.getElementById('d-foodlog'); if(!el)return;
   el.innerHTML='';el.style.display='none';
   if(!c||typeof foodLogAdherence!=='function')return;
-  const a=foodLogAdherence(c.foodlog,_flCoachTargets(c),new Date(),7);
+  const targets=_flCoachTargets(c);
+  const a=foodLogAdherence(c.foodlog,targets,new Date(),7);
   if(!a.registrados)return;             // nada registrado → sin tarjeta vacía
-  const dots=a.week.map(d=>{
+  // 🔴 LOS PUNTOS ERAN BINARIOS («registró / no registró») mientras ella leía «✓ vas en tu
+  // franja» del MISMO día: el coach no podía ver en qué días le sale bien. Y el promedio de
+  // abajo no lo dice, porque CANCELA — medido: una semana con un día a −30% y otro a +40% le
+  // sale al coach como «desvío 3%», que se lee como «va perfecta», y ella estuvo dentro de su
+  // franja 3 de 6 días. Son dos preguntas distintas y las dos valen, así que la fila pasa a
+  // franja y el promedio SE QUEDA.
+  // Sin plan con qué comparar, `estados` es null y se cae al binario de siempre: decir «está en
+  // su franja» sin franja sería inventarla.
+  const estados=(typeof foodLogWeekStates==='function'&&targets)
+    ? foodLogWeekStates(c.foodlog,targets,new Date(),7) : null;
+  const VOC=(typeof FL_ESTADO_UI==='object'&&FL_ESTADO_UI)?FL_ESTADO_UI:null;
+  const dots=(estados||a.week).map(d=>{
     const lleno=d.n>0;
     const abierto=_flDiaAbierto===d.day;
-    return `<button type="button" title="${d.day}${lleno?': '+d.kcal+' kcal':': sin registrar'}" onclick="flCoachDia('${d.day}')"
+    const e=(estados&&VOC)?(VOC[d.estado]||VOC.vacio):null;
+    const marca=e?(d.estado==='dentro'?'✓':(d.estado==='bajo'?'▼':(d.estado==='alto'?'▲':(lleno?'·':'')))):(lleno?'':'·');
+    const tip=e?`${d.day} · ${e.su}${lleno?' ('+d.kcal+' kcal)':''}`:`${d.day}${lleno?': '+d.kcal+' kcal':': sin registrar'}`;
+    const pinta=e
+      ? `background:var(${e.bg});color:var(${e.fg});border:1px solid var(--br)`
+      : (lleno?'background:var(--or);color:#fff;border:none':'background:transparent;color:var(--t3);border:2px solid var(--br2)');
+    return `<button type="button" title="${esc(tip)}" onclick="flCoachDia('${d.day}')"
       style="width:22px;height:22px;border-radius:50%;box-sizing:border-box;padding:0;cursor:pointer;font-size:9px;font-weight:800;
-      ${lleno?'background:var(--or);color:#fff;border:none':'background:transparent;color:var(--t3);border:2px solid var(--br2)'}
-      ${abierto?';outline:2px solid var(--t1);outline-offset:1px':''}">${lleno?'':'·'}</button>`;
+      ${pinta}
+      ${abierto?';outline:2px solid var(--t1);outline-offset:1px':''}">${marca}</button>`;
   }).join('');
+  // La misma cuenta que ella ve en su fila, con la MISMA función — no una resta paralela.
+  const cnt=(estados&&typeof foodLogBandCount==='function')?foodLogBandCount(estados):null;
   let html=`<div class="card" style="padding:12px 14px">
     <div class="ctitle" style="margin-bottom:9px">${_coIco('utensils',15,'🍽️')} Su comida</div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:9px">${dots}</div>
     <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:${a.desvio?'10px':'0'}">
-      Registró <b>${a.registrados}</b> de los últimos ${a.dias} días</div>`;
+      Registró <b>${a.registrados}</b> de los últimos ${a.dias} días${cnt?` · <b style="color:var(--t1)">${cnt.dentro} de ${cnt.registrados}</b> ${cnt.registrados===1?'le quedó':'le quedaron'} en su franja`:''}</div>`;
   if(a.desvio){
     html+=`<div style="display:flex;gap:5px;margin-bottom:8px">
       ${_flDesvioChip('calorías',a.desvio.kcal,'',a.prom.kcal,a.meta.kcal)}

@@ -103,24 +103,33 @@ if (PANEL === 'detail') {
   console.log('  #d-habits (c1, con datos):', JSON.stringify(hab));
   // F4 — la tarjeta «Su comida»: tiene que PINTARSE, traer los 7 puntos, decir cuantos dias
   // registro y mostrar el desvio por macro. Y al tocar un dia, abrir el detalle de lo que comio.
+  // 🔴 LA SONDA NO SE ACOPLA AL COLOR. Contaba los días registrados por `var(--or)` (el relleno
+  // naranja del punto BINARIO) y se rompió sola cuando la fila pasó a hablar en clave de franja
+  // — el color dejó de ser uno y pasó a ser el del estado. Un día registrado se reconoce por lo
+  // que la persona LEE en el tooltip (lleva sus kcal), no por con qué token está pintado.
   const fl = await ev(`(()=>{const el=document.getElementById('d-foodlog');
     const btns=el?[...el.querySelectorAll('button[title]')]:[];
     return {disp:el?el.style.display:'?', txt:el?(el.innerText||'').replace(/\\s+/g,' ').trim():'', puntos:btns.length,
-      conRegistro:btns.filter(b=>(b.getAttribute('style')||'').includes('var(--or)')).length};})()`);
+      conRegistro:btns.filter(b=>/kcal/.test(b.getAttribute('title')||'')).length,
+      sinRegistro:btns.filter(b=>/sin registrar/.test(b.getAttribute('title')||'')).length,
+      enFranja:btns.filter(b=>/en su franja/.test(b.getAttribute('title')||'')).length};})()`);
   console.log('  #d-foodlog (c1):', JSON.stringify(fl));
-  let flOk = fl.disp === 'block' && fl.puntos === 7 && fl.conRegistro === 3 && /Registr/.test(fl.txt) && /%/.test(fl.txt);
+  // El coach juzga la semana con la MISMA vara que ella: la fila dice en cuántos días le quedó
+  // en su franja, no solo si anotó. Si esto vuelve a ser binario, aquí se ve.
+  let flOk = fl.disp === 'block' && fl.puntos === 7 && fl.conRegistro === 3
+    && fl.sinRegistro === 4 && /de los últimos/.test(fl.txt) && /en su franja/.test(fl.txt) && /%/.test(fl.txt);
   const flBad = [];
   if (!flOk) flBad.push(`#d-foodlog no pinto la adherencia: ${JSON.stringify(fl)}`);
   // Tocar un dia abre el detalle de esa fecha con los alimentos.
   const flDet = await ev(`(()=>{const el=document.getElementById('d-foodlog');
-    const b=[...el.querySelectorAll('button[title]')].reverse().find(x=>(x.getAttribute('style')||'').includes('var(--or)'));
+    const b=[...el.querySelectorAll('button[title]')].reverse().find(x=>/kcal/.test(x.getAttribute('title')||''));
     if(!b)return {err:'sin dia con registro'}; b.click();
     const t=(document.getElementById('d-foodlog').innerText||'').replace(/\\s+/g,' ');
     return {arroz:/Arroz blanco cocido/.test(t), almuerzo:/almuerzo|cena/i.test(t)};})()`);
   console.log('  #d-foodlog detalle del dia:', JSON.stringify(flDet));
   if (!(flDet.arroz && flDet.almuerzo)) flBad.push(`el detalle del dia no muestra lo que comio: ${JSON.stringify(flDet)}`);
   if (flBad.length) { console.error('❌ #d-foodlog FALLÓ:\n  - ' + flBad.join('\n  - ')); chrome.kill(); srv.kill(); process.exit(1); }
-  console.log('  ✅ #d-foodlog: 3 de 7 dias, desvio por macro y detalle del dia');
+  console.log('  ✅ #d-foodlog: 3 de 7 dias EN CLAVE DE FRANJA, desvio por macro y detalle del dia');
   const empty = await ev(`(()=>{try{DB.clients[1].habits={};openDetail('c2');const el=document.getElementById('d-habits');return {disp:el?el.style.display:'?'};}catch(e){return 'err:'+e.message;}})()`);
   console.log('  #d-habits (c2, 0 días → debe ocultar):', JSON.stringify(empty));
   // ASERCIONES CON DIENTES (Fable, verificación Sesión I): el fixture de c1 produce metDays=4

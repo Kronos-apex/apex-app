@@ -2831,6 +2831,37 @@ function foodLogWeekStates(foodlog, targetsPorDia, now, dias) {
     });
   });
 }
+// ── EL VOCABULARIO DE LOS ESTADOS, EN UN SOLO SITIO ───────────────────────────
+// 🔴 Vivía suelto en app-5-salud.js (`_FL_ESTADO`) y el coach no lo tenía: su fila de 7 días
+// pintaba BINARIO («registró / no registró») mientras la asesorada leía «✓ vas en tu franja».
+// Duplicarlo en app-3 era fabricar la segunda verdad de v435/v444 a mano, así que vive aquí y
+// las DOS pantallas leen de esto. El TEXTO cambia por audiencia (`tu` / `su`) porque una lee
+// sobre sí misma y el otro sobre ella; lo que NO puede cambiar es qué estados hay y cuáles
+// cuentan como fuera.
+// 🔒 `fuera` es lo que hace posible el candado por CONTEO: los días que el coach ve como
+// desviados tienen que ser EXACTAMENTE los que ella ve fuera de su franja. Y ni `vacio` ni
+// `sinmeta` cuentan como fuera —«no sabemos» y «no hay con qué comparar» no son un fallo—,
+// que es la misma regla del hueco que protege el promedio.
+const FL_ESTADO_UI = {
+  dentro:  { bg: '--gl',  fg: '--gt',  tu: 'en tu franja',  su: 'en su franja',  fuera: false },
+  bajo:    { bg: '--bll', fg: '--blt', tu: 'por debajo',    su: 'por debajo',    fuera: true  },
+  alto:    { bg: '--orl', fg: '--ort', tu: 'por encima',    su: 'por encima',    fuera: true  },
+  sinmeta: { bg: '--bg',  fg: '--t2',  tu: 'registrado',    su: 'registrado',    fuera: false },
+  vacio:   { bg: '--bg',  fg: '--t3',  tu: 'sin registrar', su: 'sin registrar', fuera: false },
+};
+// Cuántos días de la semana caen dentro / fuera de franja. Fuente ÚNICA para las dos
+// superficies: si el coach contara por su lado, volvería la contradicción que esto cierra.
+function foodLogBandCount(semana) {
+  const out = { dentro: 0, fuera: 0, registrados: 0 };
+  (semana || []).forEach(d => {
+    if (!d) return;
+    if (d.n > 0) out.registrados++;
+    if (d.estado === 'dentro') out.dentro++;
+    const e = FL_ESTADO_UI[d.estado];
+    if (e && e.fuera) out.fuera++;
+  });
+  return out;
+}
 // ── F4: lo que ve el COACH ────────────────────────────────────────────────────
 // Últimos N días con su total (hoy de último), como `waterWeek`. `n` = cuántos alimentos anotó.
 function foodLogWeek(foodlog, now, dias) {
@@ -6769,6 +6800,8 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogProgress,
     foodLogBandFor,
     foodLogWeekStates,
+    FL_ESTADO_UI,
+    foodLogBandCount,
     FOODLOG_BAND,
     foodLogWeek,
     foodLogAdherence,
