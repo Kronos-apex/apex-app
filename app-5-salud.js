@@ -676,7 +676,7 @@ function _shopListHtml(c){
     <div style="margin-top:10px">
       <div style="font-size:11px;font-weight:800;color:var(--gt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px">${esc(g.name)}</div>
       ${g.items.map(i=>`<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--br)">
-        <div style="font-size:13px;color:var(--t1);min-width:0">${esc(i.name)}${i.cocido?`<span style="font-size:10.5px;color:var(--t2)"> · ya cocido</span>`:''}</div>
+        <div style="font-size:13px;color:var(--t1);min-width:0">${esc(i.name)}</div>
         <div style="flex-shrink:0;text-align:right">
           <div style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap">${esc(i.text)}</div>
           ${i.sub?`<div style="font-size:10.5px;color:var(--t2);white-space:nowrap">${esc(i.sub)}</div>`:''}
@@ -686,7 +686,7 @@ function _shopListHtml(c){
   return `<div class="sroom-sec">🛒 Tu lista del mercado</div>
     <div class="exroom-note" style="margin-bottom:2px">Todo lo que pide tu plan de los próximos <b>${lista.dias} días</b>, sumado. Son <b>${lista.items} cosas</b>.</div>
     ${grupos}
-    ${lista.hayCocido?`<div class="exroom-note" style="margin-top:10px">Lo marcado <b>«ya cocido»</b> es la cantidad servida, no la que compras: el arroz, la pasta y los granos pesan bastante menos crudos y rinden más al cocinarlos.</div>`:''}
+    <div class="exroom-note" style="margin-top:10px">${esc(lista.nota||'')}</div>
     <button class="btn bp bsm" style="width:100%;margin-top:12px" onclick="shopListShare()">Compartir mi lista</button>`;
 }
 // Desde «Tu comida de hoy»: abre la habitación del plan y LLEVA hasta la lista. Sin el scroll,

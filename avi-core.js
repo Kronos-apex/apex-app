@@ -3849,6 +3849,13 @@ const NUT_FOODS = [
   { id: 'cerdo_lomo', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
   { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
   { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
+  // ⏭️ PARA EL LOTE DE CONVERSIÓN (dictamen de Andrés Hyp + decisión del PO, 13-ago): estos
+  // macros son de pescado COCIDO (la TCAC E043 da la mojarra entera cruda en 96 kcal / 20,1 P).
+  // **El PO decidió que aquí se compra ENTERA**, así que el factor de compra es el peor de toda
+  // la tabla: 100 g listos ← 128 g de filete crudo (Bognár 2002, tabla 13, pescado magro
+  // hervido 0,77) ÷ 62% de parte comestible (TCAC 2018, E043, pág. 67) = **207 g comprados**.
+  // O sea que hoy la lista pide MENOS DE LA MITAD del pescado. No se convierte todavía porque
+  // la conversión va antes de repartir en unidades y eso toca los 14 `compra:'un'`.
   { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
   // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
   // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
@@ -3883,6 +3890,17 @@ const NUT_FOODS = [
   // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
   // 2026-08-03). El error de +28% en carbohidrato hacía que el motor recetara ~22% MENOS yuca
   // de la que la persona necesitaba. Hallazgo de Andrés Hyp, verificado contra fuente.
+  // 🔴 ABIERTO Y SIN RESOLVER (Andrés Hyp, 13-ago) — **NO TOCAR ESTOS NÚMEROS TODAVÍA.** El 112
+  // de arriba dice «verificado» pero **no cita contra qué**, y la TCAC 2018 (código B106, pág. 54,
+  // yuca blanca sin cáscara cocida sin sal) da **157 kcal / 33,9 g de carbohidrato disponible**:
+  // 29% más energía que lo que la app cree. Y la premisa con la que se dedujo el 112 —«cocida
+  // absorbe agua»— **no se sostiene en esa misma tabla**: B106 (cocida) tiene 61,6% de humedad y
+  // B107 (cruda) 60,9%, o sea que la yuca NO absorbe agua al hervirse. Si el 112 salió de una
+  // deducción y no de una fila, el arreglo del 3-ago cambió un número malo por otro número
+  // derivado — la clase de la yuca, otra vez en la yuca, con el signo al revés (hoy el motor la
+  // cree más floja de lo que es y por eso sirve de MÁS).
+  // ⏭️ Primer paso: encontrar contra qué fuente se verificó el 112. Hasta entonces no se mueve
+  // ni un dígito: cambiarlo por el número de otra fuente sin cerrar eso es repetir el error.
   { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
   { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
   { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
@@ -5011,9 +5029,33 @@ function nutWeekTargets(base, routines) {
 //  2. **La tabla habla de comida LISTA PARA COMER** (cocida cuando aplica): 1 kg de arroz cocido
 //     no es 1 kg de arroz crudo. **Aquí NO se inventa el factor de conversión**: no hay fuente
 //     citable por alimento, y un factor inventado es un número falso internamente coherente — la
-//     clase de la yuca, que ya costó que el motor recetara un 22% de menos. Lo que se hace es
-//     MARCAR esos alimentos (se deriva de su propio nombre, no de una lista a mano) para que la
-//     pantalla lo diga. Cerrarlo de verdad es traer los factores con fuente → decisión de Andrés.
+//     clase de la yuca, que ya costó que el motor recetara un 22% de menos.
+//     🔴 **CÓMO SE DECÍA ANTES, Y POR QUÉ ESTABA MAL (dictamen de Andrés Hyp, 13-ago).** Se
+//     MARCABA alimento por alimento derivando la marca de su propio NOMBRE (`/cocid[ao]s?/`). Eso
+//     parecía el candado derivado de siempre y era un colador, porque **la tabla entera es
+//     cocido-base y solo algunos alimentos lo dicen en el nombre**: las 6 carnes (pechuga 165 kcal
+//     y 31 g de proteína son valores COCIDOS — la cruda no llega, no cabe con 70-75% de agua)
+//     **no se marcaban**, así que la lista pedía 1,4 kg de pechuga para que quedara 1 kg servido:
+//     **~28% menos proteína de la semana, todas las semanas, sin un solo aviso.**
+//     Y el aviso que sí salía estaba **al revés para la mayoría**, porque no hay UN mecanismo
+//     sino TRES: ① ABSORCIÓN (arroz, pasta, granos: se compran secos y ganan agua → comprar
+//     MENOS), ② MERMA (las carnes: pierden 25-33% de agua → comprar MÁS) y ③ CÁSCARA (papa,
+//     yuca, plátano: la cocción es neutra —hervir papa pelada rinde 1,00— y lo que cambia el peso
+//     es la parte que se bota → comprar MÁS). El texto viejo decía «crudo pesa menos»: cierto
+//     para ①, **falso para ② y ③**. Acertaba en 5 de 17 alimentos.
+//     ✅ **DECISIÓN DEL PO (13-ago): se quita el marcado por alimento y va UNA frase completa.**
+//     Marcar 10 y dejar 6 sin marcar es peor que no marcar ninguno: el chip en el arroz le dice a
+//     la persona, sin decirlo, que la pechuga SÍ es peso de compra — puerta cerrada, ventana
+//     abierta. La frase es incondicional a propósito: si dependiera de detectar alimentos
+//     afectados, el alimento que el detector no vea vuelve a salir mudo, que es este mismo bug.
+//     ⏭️ Cerrarlo de verdad = CONVERTIR con los factores que ya trajo Andrés con fuente (TCAC
+//     2018 con página · USDA Cooking Yields R2 2014). ⚠️ Al hacerlo: `un.g` es unidad de RACIÓN,
+//     no de compra, así que la conversión va ANTES de dividir en unidades o la cuenta de «19
+//     papas» sale mal en silencio.
+// 🔴 EL TEXTO VIVE EN UNA SOLA CONSTANTE. Lo leen la pantalla Y el texto de WhatsApp: si cada
+// una escribe el suyo, se separan a la primera corrección (familia v435/v444).
+const NUT_SHOP_NOTA = 'Ojo: estos pesos son de la comida ya lista para comer. En el mercado el peso es otro: '
+  + 'el arroz, la pasta y los granos pesan menos crudos, y las carnes, la papa, la yuca y el plátano pesan más.';
 const NUT_SHOP_GROUPS = [
   ['prot', 'Proteína'],
   ['carb', 'Harinas, granos y tubérculos'],
@@ -5045,7 +5087,6 @@ function nutShopQty(food, grams) {
     // no sirve: poner «13 octavos» debajo de «375 g de aguacate» devuelve por la puerta de atrás
     // el ruido que `compra:'un'` existe para quitar. Cada línea, UN número con el que actuar.
     sub: porUnidad ? peso : null,
-    cocido: /cocid[ao]s?|escurrido/i.test(String(food.name || '')),
   };
 }
 function nutShoppingList(base, routines) {
@@ -5080,7 +5121,8 @@ function nutShoppingList(base, routines) {
       .sort((a, b) => b.grams - a.grams || a.name.localeCompare(b.name)),
   })).filter(g => g.items.length);
   const items = grupos.reduce((a, g) => a + g.items.length, 0);
-  return { dias, grupos, items, hayCocido: grupos.some(g => g.items.some(i => i.cocido)) };
+  // `nota` viaja CON la lista para que las dos superficies pinten la misma, sin poder elegir.
+  return { dias, grupos, items, nota: NUT_SHOP_NOTA };
 }
 // El mismo contenido en texto plano, para mandarlo por WhatsApp o pegarlo donde sea. Pura:
 // recibe la lista ya armada, NO la vuelve a calcular (o serían dos verdades a un toque).
@@ -5089,10 +5131,10 @@ function nutShoppingText(lista, nombre) {
   const l = ['🛒 Mi lista del mercado' + (nombre ? ' — ' + nombre : ''), 'Para ' + lista.dias + ' días de plan', ''];
   lista.grupos.forEach(g => {
     l.push(g.name.toUpperCase());
-    g.items.forEach(i => l.push('• ' + i.name + ': ' + i.text + (i.sub ? ' (' + i.sub + ')' : '') + (i.cocido ? ' — ya listo' : '')));
+    g.items.forEach(i => l.push('• ' + i.name + ': ' + i.text + (i.sub ? ' (' + i.sub + ')' : '')));
     l.push('');
   });
-  if (lista.hayCocido) l.push('Ojo: lo marcado «ya listo» son cantidades de comida cocida; crudo pesa menos.');
+  l.push(lista.nota || NUT_SHOP_NOTA);
   return l.join('\n').trim();
 }
 
@@ -6870,6 +6912,7 @@ if (typeof module !== 'undefined' && module.exports) {
     nutShoppingList,
     nutShopQty,
     nutShoppingText,
+    NUT_SHOP_NOTA,
     NUT_SHOP_GROUPS,
     nutPlanMealEntries,
     foodLogIsPlanEntry,

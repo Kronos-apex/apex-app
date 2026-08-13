@@ -33,6 +33,7 @@ const {
   nutShoppingList,
   nutShopQty,
   nutShoppingText,
+  NUT_SHOP_NOTA,
   NUT_FOODS,
   nutWeekShape,
   nutDayKind,
@@ -5331,15 +5332,49 @@ test('🔴 al mercado se va con el peso, salvo lo que de verdad se compra por un
   assert.ok(marcados >= 10, `solo ${marcados} alimentos se compran por unidad: revisa la tabla`);
 });
 
-test('🔴 lo que se sirve COCIDO se marca, porque no es lo que se compra', () => {
+// 🔴 ESTE TEST AFIRMABA EL COMPORTAMIENTO CONTRARIO Y SE CAMBIÓ A PROPÓSITO (13-ago). Decía «lo
+// que se sirve COCIDO se marca» y exigía `arroz.cocido === true` / `huevo.cocido === false`. Era
+// un candado sobre un mecanismo roto: la marca se deducía del NOMBRE del alimento, y como la
+// tabla entera es cocido-base pero solo algunos lo dicen en el nombre, **las 6 carnes no se
+// marcaban nunca** (la lista pedía 1,4 kg de pechuga para 1 kg servido: ~28% menos proteína, sin
+// aviso). El test pasaba en verde porque preguntaba por el arroz, que sí acierta.
+// Decisión del PO sobre el dictamen de Andrés Hyp: fuera el marcado por alimento, UNA frase.
+test('🔴 la lista NO clasifica alimento por alimento: una sola frase, y dice las DOS direcciones', () => {
   const l = nutShoppingList(_shopBase, _shopRut);
-  assert.ok(l.hayCocido, 'ningún alimento quedó marcado como cocido: la advertencia no saldría nunca');
   const todos = [];
   l.grupos.forEach(g => g.items.forEach(i => todos.push(i)));
-  const arroz = todos.find(i => i.id === 'arroz');
-  if (arroz) assert.strictEqual(arroz.cocido, true, 'el arroz del plan es COCIDO y la lista no lo dice');
-  const huevo = todos.find(i => i.id === 'huevo');
-  if (huevo) assert.strictEqual(huevo.cocido, false, 'el huevo no es un alimento «ya cocido»');
+  assert.ok(todos.length >= 10, `control: la lista trae ${todos.length} alimentos`);
+  // 🔒 Ni un alimento puede llevar su propia marca: marcar unos e implicar que los otros son
+  // peso de compra es el defecto que esto cierra (puerta cerrada, ventana abierta).
+  const marcados = todos.filter(i => 'cocido' in i);
+  assert.strictEqual(marcados.length, 0,
+    `${marcados.length} alimentos volvieron a llevar marca propia: un marcado parcial es peor que ninguno`);
+  // 🔒 La frase sale SIEMPRE, no cuando un detector crea que hace falta: el alimento que el
+  // detector no vea es exactamente este bug otra vez.
+  assert.strictEqual(l.nota, NUT_SHOP_NOTA, 'la lista dejó de traer su nota');
+  assert.ok(/menos/.test(l.nota) && /más/.test(l.nota),
+    'la frase tiene que decir las DOS direcciones: el texto viejo solo decía «crudo pesa menos», ' +
+    'que es falso para las carnes, la papa, la yuca y el plátano (pesan MÁS crudos)');
+  assert.ok(/carne/i.test(l.nota), 'la frase no nombra las carnes, que son el caso que se estaba callando');
+  // 🔒 Y la pantalla y el WhatsApp dicen lo MISMO, porque leen la misma constante.
+  assert.ok(nutShoppingText(l, 'X').includes(NUT_SHOP_NOTA), 'el texto para compartir dice otra cosa que la pantalla');
+});
+
+// 🔴 EL CONTROL DE POR QUÉ NO HAY MARCADO: la tabla es cocido-base, TAMBIÉN en las carnes. Si
+// alguien migra estos macros a valores crudos, la frase de arriba pasa a ser falsa y hay que
+// re-decidir — por eso se afirma aquí y no en un comentario. Ninguna carne CRUDA llega a 26 g de
+// proteína por 100 g: no cabe físicamente con 70-75% de agua (TCAC 2018: res magra cruda F099 =
+// 21,8 g · cerdo lomo crudo F019 = 21,6 g · tilapia entera cruda E043 = 20,1 g).
+test('🔴 las carnes de la tabla son valores COCIDOS — si dejan de serlo, la nota miente', () => {
+  const carnes = ['pollo_pechuga', 'pollo_muslo', 'res_magra', 'res_molida', 'cerdo_lomo', 'tilapia'];
+  let vistas = 0;
+  carnes.forEach(id => {
+    const f = NUT_FOODS.find(x => x.id === id);
+    assert.ok(f, `desapareció ${id} de la tabla`);
+    vistas++;
+    assert.ok(f.p >= 25, `${id} tiene ${f.p} g de proteína por 100 g: eso ya no es carne cocida, y la lista del mercado quedó mintiendo`);
+  });
+  assert.strictEqual(vistas, 6, `control: se revisaron ${vistas} carnes de 6`);
 });
 
 test('el texto para compartir sale de la lista YA armada, no de un segundo cálculo', () => {

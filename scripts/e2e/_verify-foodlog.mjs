@@ -506,10 +506,16 @@ try {
   check('LM2 lo que se compra por unidad se cuenta, y lo demás va por peso (nada de «13 octavos»)',
     s.nUn > 0 && s.nPeso > 0 && s.pintaUn && s.pintaPeso && s.sinOctavos, JSON.stringify(s));
 
-  // LM3 — el aviso de «ya cocido» sale, que es la limitación honesta de esta lista.
+  // LM3 — la limitación honesta de esta lista, en UNA frase y sin clasificar alimento por
+  // alimento. 🔴 Este check afirmaba lo contrario («ya cocido» pegado a cada alimento) y se
+  // cambió a propósito el 13-ago: la marca se deducía del NOMBRE y las 6 carnes —que también
+  // son cocido-base— no la llevaban nunca, así que la lista pedía ~28% menos carne sin avisar.
+  // Marcar unos e implicar que los otros son peso de compra es peor que no marcar ninguno.
   s = JSON.parse(await ev(`JSON.stringify((()=>{const b=document.getElementById('nutroom-body').textContent||'';
-    return {marca:/ya cocido/.test(b), aviso:/pesan bastante menos crudos/.test(b)};})())`));
-  check('LM3 la lista avisa de que lo «ya cocido» no es lo que se compra', s.marca && s.aviso, JSON.stringify(s));
+    return {sinMarca:!/ya cocido/.test(b), aviso:/ya lista para comer/.test(b),
+      dosDirecciones:/pesan menos crudos/.test(b)&&/pesan más/.test(b), nombraCarnes:/carnes/.test(b)};})())`));
+  check('LM3 la lista avisa en UNA frase, con las dos direcciones y sin marcar alimento por alimento',
+    s.sinMarca && s.aviso && s.dosDirecciones && s.nombraCarnes, JSON.stringify(s));
 
   // LM4 — compartir arma el texto SIN volver a calcular, y no revienta si no hay nada.
   s = JSON.parse(await ev(`JSON.stringify((()=>{let compartido=null;
