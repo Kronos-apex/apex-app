@@ -803,6 +803,47 @@ function isInAdaptation(client, history, now, adaptDays) {
   return (ref - start) < (adaptDays || ADAPT_DAYS) * 86400000;
 }
 
+// ── EJERCICIOS RETIRADOS: a dónde va lo que apuntaba a ellos ──────────────────────────────────
+// Vivía en app-2-login.js. Se subió a avi-core (v484) porque el remapeo hace falta en DOS
+// superficies —el arranque del coach y el del asesorado— y dos copias de este mapa serían dos
+// verdades sobre el mismo hecho.
+//   e38  «Curl Femoral Acostado en Máquina» = e15 (2026-06-10)
+//   e32  = e19
+//   e181 «Escaladores» = e81 · e208 «Caminata del Granjero» = e136
+//   e221 «Pullover con Mancuerna» = e137 · e224 «Press Francés con Barra Z» = e12
+//   e227 «Curl de Bíceps en Banco Inclinado» = e121                        (los 5 últimos, v408)
+const REMOVED_EXERCISES = { 'e38': 'e15', 'e32': 'e19', 'e181': 'e81', 'e208': 'e136', 'e221': 'e137', 'e224': 'e12', 'e227': 'e121' };
+
+// prsRemapRetired(prs, remap) → { prs, moved }. PURA.
+// 🔴 EL DEFECTO (v484): al retirar un ejercicio duplicado, `dedupeExercises` remapeaba el catálogo
+// y las RUTINAS… y dejaba los RÉCORDS apuntando al id muerto. La rutina pasaba a `e15` y el récord
+// se quedaba en `e38`, así que la app dejaba de encontrarlo. Puerta cerrada, ventana abierta — la
+// misma clase que el filtro de lesiones y el calentamiento (v424).
+// Medido contra producción el 14-ago: **3 récords varados en `e38`** (Kathe, Nataly, Miguel; ningún
+// otro id retirado tiene récords, y ni las rutinas ni el historial quedaron con huérfanos), y la
+// consecuencia real es **Miguel sin peso sugerido** en un ejercicio donde tiene marca de 30 kg.
+// 🔒 Cuando el id bueno YA tiene récord, se funden con `isBetterPR` — la ÚNICA definición de
+// récord de la app. Inventar aquí otra regla («se queda el más reciente») sería una segunda
+// definición de lo mismo, que es la forma exacta del bug de v435/v444.
+function prsRemapRetired(prs, remap) {
+  const src = (prs && typeof prs === 'object') ? prs : {};
+  const mapa = remap || REMOVED_EXERCISES;
+  const viejos = Object.keys(mapa).filter(k => src[k]);
+  if (!viejos.length) return { prs: src, moved: 0 };
+  const out = Object.assign({}, src);
+  let moved = 0;
+  viejos.forEach(viejo => {
+    const rec = out[viejo];
+    const nuevo = mapa[viejo];
+    delete out[viejo];              // el huérfano se va SIEMPRE: si no, queda duplicado en pantalla
+    if (!nuevo || !rec || typeof rec !== 'object') { moved++; return; }
+    const val = rec.val != null ? rec.val : rec.kg;
+    if (isBetterPR(val, rec.reps, rec.unit || 'kg', out[nuevo])) out[nuevo] = rec;
+    moved++;
+  });
+  return { prs: out, moved: moved };
+}
+
 // ── Peso sugerido por PR (estimación de 1RM, fórmula de Epley) ──
 // No se hacen tests de máximos (peligrosos para principiantes): el 1RM se ESTIMA
 // desde cualquier serie registrada (kg × reps). Epley: 1RM ≈ kg·(1 + reps/30).
@@ -7203,6 +7244,8 @@ if (typeof module !== 'undefined' && module.exports) {
     exTrack,
     prFromSets,
     isBetterPR,
+    prsRemapRetired,
+    REMOVED_EXERCISES,
     muscleHuman,
     exMuscleText,
     searchExercises,

@@ -34,7 +34,8 @@ function migrateExercises(){
 //   e221 «Pullover con Mancuerna» = e137 «Pullover con Mancuerna en Banco»
 //   e224 «Press Francés con Barra Z» = e12 (ahora «Press Francés con Barra Z (Skull Crushers)»)
 //   e227 «Curl de Bíceps en Banco Inclinado» = e121 (ahora «Curl en Banco Inclinado con Mancuernas»)
-const REMOVED_EXERCISES={'e38':'e15','e32':'e19','e181':'e81','e208':'e136','e221':'e137','e224':'e12','e227':'e121'};
+// REMOVED_EXERCISES vive en avi-core.js desde v484 — lo necesitan el arranque del coach Y el del
+// asesorado, y dos copias del mapa serían dos verdades sobre el mismo hecho.
 // Fantasmas por PATRÓN de nombre: el match exacto no caza variantes ("Prensa" a secas
 // vs "Prensa de Pierna" del catálogo — por eso sobrevivió la prensa fantasma). Cualquier
 // ejercicio NO-catálogo cuyo nombre matchee se elimina y sus rutinas van al id bueno.
@@ -71,8 +72,20 @@ function dedupeExercises(){
       if(cat){ex.name=cat.name;ex.icon=cat.icon;ex.muscle=cat.muscle;}
     }
   })));
-  try{ sv('ax_e',DB.exercises); sv('ax_c',DB.clients); }catch(e){}
-  log('AVI: dedupe — '+(drop.size+extra)+' ejercicio(s) fantasma/duplicado(s) eliminados');
+  // 🔴 v484 — LOS RÉCORDS TAMBIÉN SE REMAPEAN. Hasta aquí se movían el catálogo y las RUTINAS, y
+  // el récord se quedaba en el id muerto: la rutina pasaba a `e15` y su marca seguía en `e38`, así
+  // que la app dejaba de encontrarla. Medido el 14-ago: 3 récords varados y Miguel sin peso
+  // sugerido en un ejercicio donde tiene 30 kg. Puerta cerrada, ventana abierta (clase de v424).
+  let _prMoved=0;
+  if(typeof prsRemapRetired==='function'){
+    Object.keys(DB.prs||{}).forEach(cid=>{
+      const res=prsRemapRetired(DB.prs[cid],remap);
+      if(res.moved){ DB.prs[cid]=res.prs; _prMoved+=res.moved; }
+    });
+  }
+  try{ sv('ax_e',DB.exercises); sv('ax_c',DB.clients); if(_prMoved)sv('ax_pr',DB.prs); }catch(e){}
+  log('AVI: dedupe — '+(drop.size+extra)+' ejercicio(s) fantasma/duplicado(s) eliminados'
+    +(_prMoved?' · '+_prMoved+' récord(s) reasignados al ejercicio bueno':''));
 }
 
 // ══════════════════════════════════════════

@@ -347,9 +347,17 @@ function _applyAuthClientDB(client, coll){
   // La causa raíz se arregló donde de verdad estaba: el récord se escribe al GUARDAR la sesión
   // (app-4, `updateClientProgress`), no solo al cerrarla. El backlog se cura solo la próxima vez
   // que la persona haga ese ejercicio, que es la misma promesa que ya da el borrado del coach.
-  const _sp=(typeof sanitizePrs==='function')?sanitizePrs(coll.prs||{}, _sh.history):{prs:coll.prs||{},removed:0};
+  // 🧹 Auto-cura (v484): el récord que apunta a un ejercicio RETIRADO se muda al id bueno. El
+  // remapeo existía desde junio para el catálogo y las rutinas (`dedupeExercises`) pero NUNCA tocó
+  // los récords, y esa función solo corre en el arranque del COACH — el asesorado, que es quien
+  // escribe su propia fila, no la ejecutaba jamás. Por eso va también aquí: si solo se arreglara
+  // del lado del coach, el teléfono lo volvería a pisar (offline-first).
+  const _pr=(typeof prsRemapRetired==='function')?prsRemapRetired(coll.prs||{}):{prs:coll.prs||{},moved:0};
+  const _sp=(typeof sanitizePrs==='function')?sanitizePrs(_pr.prs, _sh.history):{prs:_pr.prs,removed:0};
   DB.prs       ={[id]: _sp.prs};
-  if(_sp.removed>0){ try{ svNow('ax_pr',DB.prs); log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }
+  if(_sp.removed>0||_pr.moved>0){ try{ svNow('ax_pr',DB.prs);
+    if(_pr.moved>0)log&&log('AVI: '+_pr.moved+' récord(s) reasignados desde un ejercicio retirado');
+    if(_sp.removed>0)log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }
   DB.bodyweight={[id]: coll.bodyweight||[]};
   DB.medidas   ={[id]: coll.medidas   ||[]};
   DB.nutrition ={[id]: coll.nutrition ||{}};

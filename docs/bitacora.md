@@ -4,6 +4,55 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-14 (3ª parte) — avi-v484: EL RÉCORD SE QUEDABA EN EL EJERCICIO RETIRADO
+
+**Producción en `avi-v484`.** Suite **735 → 742**, hook 12/12, `_verify-deload` TODO OK,
+**`_sabotaje-deload` 12/12**.
+
+### 1 · El pedido del PO y lo que resultó ser (otra vez)
+Pidió arreglar *«los récords guardados bajo nombre y bajo id»* — un punto que **yo mismo había
+puesto en el radar de v483, y estaba mal planteado**. Medido: de **257 récords, solo 2** tienen
+una clave que no es un id de catálogo, y **esos 2 son ejercicios PERSONALIZADOS del coach**, cuya
+clave ES su id. No hay problema de «nombre vs id».
+🔴 **Lo que sí había, y es otra cosa: récords varados en un ejercicio RETIRADO.**
+`REMOVED_EXERCISES` (`e38→e15`) existe desde **junio** y `dedupeExercises` remapea el catálogo y
+las **rutinas**… pero **nunca tocó los récords**. La rutina pasaba a `e15` y la marca se quedaba
+en `e38`, así que la app dejaba de encontrarla. **Puerta cerrada, ventana abierta** — la misma
+clase que el filtro de lesiones y el calentamiento (v424).
+Medido contra producción: **3 récords varados, todos en `e38`** (ningún otro id retirado tiene
+récords; ni las rutinas ni el historial quedaron con huérfanos — eso sí se migró en su día).
+
+| | antes | después |
+|---|---|---|
+| **Miguel** — el plan pide `e15`, su marca estaba en `e38` | **sin peso sugerido** | **35 kg** |
+| **Kathe** — fantasma de 3 kg junto a su récord real de 15 | 2 entradas del mismo ejercicio | 1 |
+| **Nataly** — su marca de mayo (20 kg) varada bajo `e38` | sugiere 12,5 kg | **22,5 kg** |
+
+### 2 · Cómo se arregló
+`prsRemapRetired(prs, remap)` **puro en avi-core**, y `REMOVED_EXERCISES` **subió de app-2 a
+avi-core**: lo necesitan DOS superficies y dos copias serían dos verdades sobre el mismo hecho.
+🔒 Se cablea en las dos: el arranque del **coach** (`dedupeExercises`) y el del **asesorado**
+(`_applyAuthClientDB`). Solo en el del coach no bastaba: **el asesorado es quien escribe su propia
+fila**, así que su teléfono lo habría vuelto a pisar en el siguiente sync (offline-first).
+🔒 Cuando el id bueno YA tiene récord se funden con **`isBetterPR`**, la única definición de récord
+de la app. Inventar aquí «se queda el más reciente» sería una segunda definición de lo mismo — la
+forma exacta del bug de v435/v444. 🔒 El huérfano se borra SIEMPRE, gane o pierda: si no, queda
+como entrada duplicada en la pantalla de récords (el caso de Kathe).
+🔒 Candados: el mapa **solo apunta a ids que existen en el catálogo** (leído del código, no de una
+lista a mano) y **no puede volver a duplicarse** en app-2. Los récords legacy de mayo traen solo
+`kg` (sin `val` ni `unit`) y hay test de que se funden igual — leer solo `val` los habría tirado.
+
+### 3 · 🔴 Lo que apareció de paso y vale más que el arreglo
+Trazando el histórico de ese ejercicio: **Nataly tiene récord de 10 kg y en julio hizo 30 × 15.**
+Sus sesiones de 20 y 30 kg **nunca se cerraron**, así que nunca fueron récord — es el bug de v483
+con nombre y apellido. Su primera sesión CERRADA fue la del 7-ago, ya con 10 kg, y ese 10 quedó
+como su marca. **La app le venía sugiriendo 12,5 kg a alguien que movía 30.**
+⏭️ **Decisión abierta del PO:** con v483 esto ya no vuelve a pasar hacia adelante, pero **el
+histórico no se recupera solo** — quien tenga su mejor marca en una sesión sin cerrar sigue con un
+récord por debajo de lo que hace. Rellenarlo desde el historial se descartó en v483 por dos razones
+(duplica por nombre · resucita lo que el coach borró); **la primera se elimina si el relleno exige
+`id` de ejercicio**, y ahí el caso de Nataly se arreglaría solo. Falta que él decida.
+
 ## 🟢 2026-08-14 (2ª parte) — avi-v483: EL RÉCORD SOLO SE GUARDABA SI TERMINABAS EL ENTRENO
 
 **Producción en `avi-v483`.** Suite **734 → 735**, hook 12/12, `_verify-deload` **TODO OK**

@@ -37,6 +37,19 @@ const SABOTAJES = [
   ['8· la frase vuelve a hablar en jerga de entrenador',
     "const DELOAD_NO_PR_HINT = 'Esta semana agarra la mancuerna que sigue por debajo de la de siempre. '",
     "const DELOAD_NO_PR_HINT = 'Esta semana entrena al 60% de tu 1RM con RIR 5. '"],
+  // ── v484: el récord varado en el ejercicio RETIRADO ──
+  ['9· el récord del ejercicio retirado deja de mudarse al id bueno',
+    '  const viejos = Object.keys(mapa).filter(k => src[k]);',
+    '  const viejos = [];'],
+  ['10· el huérfano se muda pero NO se borra (queda duplicado en la pantalla de récords)',
+    '    delete out[viejo];              // el huérfano se va SIEMPRE: si no, queda duplicado en pantalla',
+    '    void 0;'],
+  ['11· la fusión pisa siempre, sin preguntarle a isBetterPR (el récord bueno se pierde)',
+    "    if (isBetterPR(val, rec.reps, rec.unit || 'kg', out[nuevo])) out[nuevo] = rec;",
+    '    out[nuevo] = rec;'],
+  ['12· el mapa de retirados pierde e38 (el único con récords reales medidos)',
+    "const REMOVED_EXERCISES = { 'e38': 'e15', 'e32': 'e19',",
+    "const REMOVED_EXERCISES = { 'e32': 'e19',"],
 ];
 // ⚠️ NO se pone aquí un «sabotaje» que AFLOJE el factor (0,85 → 0,95): aflojar un tope deja la
 // suite verde por definición y nunca mordería. Contra eso protege la cifra medida escrita junto al

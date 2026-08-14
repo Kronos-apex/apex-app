@@ -235,6 +235,8 @@ const {
   exTrack,
   prFromSets,
   isBetterPR,
+  prsRemapRetired,
+  REMOVED_EXERCISES,
   muscleHuman,
   exMuscleText,
   EX_LEVEL,
@@ -6238,6 +6240,95 @@ test('searchExercises: busca también por la etiqueta del músculo, y aguanta ba
   assert.strictEqual(searchExercises(LIB_BUSCA, 'zzz').length, 0);
   assert.strictEqual(searchExercises(null, 'press').length, 0);
   assert.strictEqual(searchExercises([null, undefined], 'press').length, 0);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// v484 · EL RÉCORD SE QUEDABA EN EL EJERCICIO RETIRADO
+// `dedupeExercises` remapea el catálogo y las RUTINAS desde junio (`REMOVED_EXERCISES e38→e15`)
+// pero NUNCA tocó los récords: la rutina pasaba a `e15` y la marca se quedaba en `e38`, así que la
+// app dejaba de encontrarla. Medido contra producción el 14-ago: 3 récords varados en `e38`
+// (Kathe, Nataly, Miguel) y **Miguel sin peso sugerido** en un ejercicio con marca de 30 kg.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+test('🔴 v484 · el récord de un ejercicio RETIRADO se muda al que lo reemplazó', () => {
+  const viejo = { val: 30, kg: 30, reps: 8, unit: 'kg', name: 'Curl Femoral Acostado en Máquina' };
+  const r = prsRemapRetired({ e38: viejo, e6: { val: 40, kg: 40, reps: 10, unit: 'kg' } });
+  assert.strictEqual(r.moved, 1);
+  assert.strictEqual(r.prs.e38, undefined, 'el id retirado NO puede quedar: es el duplicado en pantalla');
+  assert.deepStrictEqual(r.prs.e15, viejo, 'la marca vive ahora bajo el id bueno');
+  assert.ok(r.prs.e6, 'no toca lo que no tiene nada que ver');
+});
+
+test('🔒 v484 · si los DOS existen se funden con isBetterPR, la única definición de récord', () => {
+  const flojo = { val: 3, kg: 3, reps: 15, unit: 'kg' };
+  const fuerte = { val: 20, kg: 20, reps: 15, unit: 'kg' };
+  // El caso de Kathe: e38 flojo (3 kg) contra su e15 real (15 kg) → gana el suyo.
+  const a = prsRemapRetired({ e38: flojo, e15: { val: 15, kg: 15, reps: 12, unit: 'kg' } });
+  assert.strictEqual(a.prs.e15.val, 15, 'el récord bueno no se pisa con uno peor');
+  assert.strictEqual(a.prs.e38, undefined);
+  // El caso de Nataly: el varado es MEJOR que el vigente → gana el varado.
+  const b = prsRemapRetired({ e38: fuerte, e15: { val: 10, kg: 10, reps: 15, unit: 'kg' } });
+  assert.strictEqual(b.prs.e15.val, 20, 'la mejor marca es la que sobrevive');
+  // 🔒 CONTROL: la regla es la de `isBetterPR`, no «se queda el más reciente». Una segunda
+  // definición de récord es la forma exacta del bug de v435/v444.
+  assert.strictEqual(isBetterPR(20, 15, 'kg', { val: 10 }), true);
+  assert.strictEqual(isBetterPR(3, 15, 'kg', { val: 15 }), false);
+});
+
+test('🔒 v484 · un récord viejo SIN `val` ni `unit` (formato legacy) se funde igual', () => {
+  // Los 3 récords varados reales son de mayo y solo traen `kg`: si la fusión leyera únicamente
+  // `val`, los daría por vacíos y los tiraría — perdiendo la marca en vez de recuperarla.
+  const legacy = { kg: 30, reps: 8, name: 'Curl Femoral Acostado en Máquina' };
+  const r = prsRemapRetired({ e38: legacy });
+  assert.strictEqual(r.prs.e15.kg, 30, 'la marca legacy se conserva');
+  assert.strictEqual(suggestFromPR(r.prs.e15, 8), 35, 'y ya alimenta el peso sugerido');
+});
+
+test('🔒 v484 · sin récords varados no toca NADA (ni copia el objeto)', () => {
+  const prs = { e15: { val: 15, kg: 15, reps: 12, unit: 'kg' } };
+  const r = prsRemapRetired(prs);
+  assert.strictEqual(r.moved, 0);
+  assert.strictEqual(r.prs, prs, 'devuelve el mismo objeto: no hay nada que reescribir ni que sincronizar');
+  assert.deepStrictEqual(prsRemapRetired(null).prs, {});
+  assert.deepStrictEqual(prsRemapRetired({}).moved, 0);
+});
+
+test('🔒 v484 · el mapa de retirados apunta SOLO a ejercicios que existen', () => {
+  // Un destino inexistente movería el récord de un id muerto a otro id muerto — el mismo bug
+  // con otra cara, y en silencio. El catálogo se lee del código, no de una lista a mano.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const ids = new Set([...src.matchAll(/id:'(e\d+)',name:'/g)].map(m => m[1]));
+  assert.ok(ids.size > 200, 'no pude leer el catálogo: ' + ids.size);
+  Object.entries(REMOVED_EXERCISES).forEach(([viejo, nuevo]) => {
+    assert.ok(!ids.has(viejo), `${viejo} está marcado como retirado pero SIGUE en el catálogo`);
+    assert.ok(ids.has(nuevo), `${viejo} → ${nuevo}, y ${nuevo} no existe en el catálogo`);
+  });
+});
+
+test('🔒 v484 · el mapa de retirados vive en UN solo sitio', () => {
+  // Vivía en app-2-login.js y ahora lo necesitan dos superficies (coach y asesorado). Dos copias
+  // serían dos verdades sobre el mismo hecho — el patrón que ya estalló con las calorías (v435).
+  const fs = require('fs'), path = require('path');
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(!/const\s+REMOVED_EXERCISES\s*=/.test(app2),
+    'app-2-login.js volvió a declarar su propia copia de REMOVED_EXERCISES');
+  assert.ok(/'e38':\s*'e15'/.test(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8')),
+    'el mapa ya no está en avi-core');
+});
+
+test('🔴 v484 · CABLEADO: las DOS superficies remapean los récords', () => {
+  // El asesorado es quien ESCRIBE su propia fila (offline-first): si solo se arreglara en el
+  // arranque del coach, el teléfono lo volvería a pisar en el siguiente sync.
+  const fs = require('fs'), path = require('path');
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const app3 = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const dedupe = app2.slice(app2.indexOf('function dedupeExercises'), app2.indexOf('\n// ══', app2.indexOf('function dedupeExercises')));
+  assert.ok(/prsRemapRetired\(/.test(dedupe), 'el arranque del COACH no remapea los récords');
+  assert.ok(/sv\('ax_pr'/.test(dedupe), 'el coach remapea pero no lo persiste');
+  const auth = app3.slice(app3.indexOf('function _applyAuthClientDB'), app3.indexOf('\nfunction ', app3.indexOf('function _applyAuthClientDB') + 1));
+  assert.ok(/prsRemapRetired\(/.test(auth), 'el arranque del ASESORADO no remapea los récords');
+  assert.ok(/svNow\('ax_pr'/.test(auth), 'el asesorado remapea pero no lo persiste');
 });
 
 // 🔴 v483 · CANDADO DE CABLEADO: el récord se escribe al GUARDAR la sesión, no solo al cerrarla.
