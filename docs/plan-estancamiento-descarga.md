@@ -166,8 +166,47 @@ persona ya tiene. No pasa por el generador: el checkbox `#mg-deload` y `opts.del
 |---|---|---|
 | Ejercicios · días · **repeticiones** | **intactos** | Laura (vinculante) + Andrés |
 | Series | **× 0,6**, piso 2 (`deloadSets`) | Andrés |
-| Carga | **−10%** en el peso sugerido (`deloadLoadFactor` en `_suggestKg`) | Andrés |
+| Carga | ~~**−10%** en el peso sugerido (`deloadLoadFactor`)~~ → **v482: × 0,85 SOBRE EL RÉCORD** (`deloadSuggestKg`) | Andrés |
 | Duración | **7 días** | Andrés · PO |
+
+### 6.1 v482 — LA CARGA NO BAJABA (reclamo del PO 13-ago, medido el 14-ago)
+El PO: *«solo le bajas el 10% del peso que maneja la persona y eso es prácticamente nada»*. Tenía
+razón en el dato y **midiendo salió peor: el 10% casi nunca llegaba**. Dos causas:
+1. El factor multiplicaba el **peso sugerido**, que solo existe con récord guardado, en modalidad
+   peso+reps y fuera de la fase de adaptación → **186 de 544 ejercicios (34%)**, y **9 de 21
+   personas no recibían la bajada en NI UN ejercicio**.
+2. El factor caía **encima del escalón de progresión** de `suggestFromPR` → la sugerencia «de
+   descarga» quedaba **por encima del propio récord en 130 de 148 casos** (mediana **+6,7%**,
+   hasta +25%). Caso real: Natalia, récord 25 kg ×15 → la app le «descargaba» a 25 kg.
+
+| medido, 148 casos comparables | v481 | v482 |
+|---|---|---|
+| queda ≥ al récord | 130 (88%) | **0** |
+| mediana vs su récord | **+6,7%** | **−15,0%** |
+| peor / más suave | −8,1% / +25,0% | −25,0% / −10,0% |
+
+Ruta: `scripts/deload-carga.mjs` (y `scripts/deload-dosis.mjs` para las 7 mediciones de la dosis).
+
+**Por qué 0,85 y no el 0,50 que pidió el PO** — dictamen de Andrés Hyp del 14-ago, que él **no
+firma**: «bajar al 50%» viene del powerlifting, donde se trabaja al 85-90% del máximo. Medido, la
+mediana de repeticiones de estos planes es **12 = ~71% del máximo**; ×0,50 deja a la persona en
+**36%** pidiéndole 12 repeticiones cuando podría hacer ~54. El taper recorta **volumen** 40-60% y
+**mantiene** la intensidad (Bosquet et al., MSSE 2007;39(8):1358-65 · Pritchard et al., Strength
+Cond J 2015;37(2):72-83), y lo que retiene la adaptación es la carga, no las series (Bickel et al.,
+MSSE 2011;43(7):1177-87). Recortar las dos a la vez (0,6 × 0,5 = **29% del tonelaje**) no está en
+ninguna literatura. Su alternativa si el PO sostenía el 0,50: **series sin recorte y piso 3**. El PO
+eligió la que Andrés firma. ⚠️ **No hay ECA de semana de descarga en hipertrofia**: es criterio
+apoyado, no dato — y **ninguna descarga ha corrido completa todavía** (0 filas, 14-ago), así que no
+hay ni un resultado propio con qué calibrar.
+
+**El recorte de SERIES se queda** porque está medido que no hace daño: de 158 pares persona-músculo,
+**0 caen bajo un tercio** de su volumen y solo **4 cruzan hacia abajo las 4 series semanales**
+(tríceps y cardio). Y el hueco que temía Andrés —ejercicios ya en el piso de 2 series, que no
+reciben recorte— son **2 de 544**.
+
+**Lo que se agregó:** `deloadLoadHint`, la frase para los dos tercios de ejercicios sin récord
+(texto de Andrés, anclado a un objeto y con comprobación por sensación, sin RIR ni RPE). **Se calla
+en fase de adaptación**: ahí el peso ES la referencia técnica y «usa menos» es la peor instrucción.
 
 Medido sobre planes reales: **Kathe 91 → 54 series (−41%)**, **Astrid 113 → 64 (−43%)**.
 

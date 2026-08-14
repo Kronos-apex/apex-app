@@ -4,6 +4,84 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-14 — avi-v482: LA SEMANA DE DESCARGA NO DESCARGABA LA CARGA
+
+**Producción en `avi-v482`, verificada.** Suite **727 → 734**, hook 12/12, `_verify-deload`
+**TODO OK** (`jsErrors: []`), **`_sabotaje-deload` 8/8** (matriz nueva, versionada).
+
+### 1 · El reclamo del PO, y lo que salió al medirlo
+Cerró la sesión anterior con esto: *«en esa semana solo le bajas el 10% del peso que maneja la
+persona y eso es prácticamente nada; una semana de descarga se baja al 50% o hasta el 40%»*.
+**Tenía razón en el dato, y midiendo salió peor que su queja.** Ruta nueva y versionada:
+`scripts/deload-carga.mjs`, 21 asesorados con rutina, 544 ejercicios, 14-ago.
+
+- **Las series sí cumplían**: 1.899 → 1.091 (**−42,5%**).
+- 🔴 **La carga no llegaba**: el factor multiplica el *peso sugerido*, que solo existe con récord
+  guardado, en modalidad peso+reps y fuera de la fase de adaptación → **186 de 544 ejercicios
+  (34%)**, y **9 de 21 personas no recibían la bajada en NI UN ejercicio**.
+- 🔴 **Y donde llegaba, SUBÍA**: el factor caía encima del escalón de progresión de
+  `suggestFromPR` (récord + escalón, y el 0,9 sobre el número ya subido). En el subconjunto
+  comparable —el récord se hizo con ≥ las reps que pide el plan— la sugerencia «de descarga»
+  quedaba **≥ al propio récord en 130 de 148 casos (88%)**, mediana **+6,7%**, hasta **+25%**.
+  Caso real: Natalia, récord 25 kg ×15 → la app le «descargaba» a **25 kg**.
+
+| 148 casos comparables | v481 | v482 |
+|---|---|---|
+| queda ≥ al récord | 130 (88%) | **0** |
+| mediana vs su récord | **+6,7%** | **−15,0%** |
+| peor / más suave | −8,1% / +25,0% | −25,0% / −10,0% |
+
+### 2 · La dosis: el PO pidió 50%, Andrés no la firmó, el PO eligió la de Andrés
+Ruteo obligatorio del CLAUDE.md (deload → Andrés Hyp). Su dictamen, con las 7 mediciones que
+**él pidió en vez de predecir** (`scripts/deload-dosis.mjs`): «bajar al 50%» viene del
+powerlifting, donde se trabaja al 85-90% del máximo. **Medido, la mediana de repeticiones de estos
+planes es 12 = ~71% del máximo**; ×0,50 deja a la persona en **36%** pidiéndole 12 repeticiones
+cuando podría hacer ~54. El taper recorta VOLUMEN 40-60% y MANTIENE la intensidad (Bosquet 2007;
+Pritchard 2015), y lo que retiene la adaptación es la carga (Bickel 2011). **0,6 × 0,5 = 29% del
+tonelaje no está en ninguna literatura.** Firmó **0,85 × series 0,60 (~49%)**, con alternativa
+«0,50 pero sin recortar series». **El PO eligió la que él firma.**
+- ⚠️ **No hay ECA de semana de descarga en hipertrofia**, y **ninguna descarga ha corrido completa
+  todavía** (0 filas medidas): esto es criterio apoyado, no dato propio. Escrito al lado del número.
+- 🔒 **El recorte de series se queda porque está MEDIDO que no hace daño**: de 158 pares
+  persona-músculo, **0 caen bajo un tercio** de su volumen y solo **4 cruzan hacia abajo las 4
+  series semanales** (tríceps y cardio). El hueco que Andrés temía —ejercicios ya en el piso de 2
+  series— son **2 de 544**.
+
+### 3 · Qué se construyó
+- **`deloadSuggestKg(pr, targetReps)`** en avi-core reemplaza a `deloadLoadFactor`: la decisión
+  entera vive en el motor, no en un multiplicador que la pantalla aplicaba al final.
+- **`deloadLoadHint`** — la frase para los dos tercios de ejercicios **sin récord**, texto de
+  Andrés: anclada a un OBJETO («la mancuerna que sigue por debajo») y con comprobación por
+  sensación en cristiano («que te sobraran unas cinco repeticiones»), nunca RIR ni RPE.
+  🔴 **Se calla en fase de adaptación** (Andrés): ahí el peso ES la referencia técnica y decirle
+  «usa menos» a quien lleva dos semanas es la peor instrucción posible.
+- El texto de la tarjeta cambió con el número («un poquito menos peso» describía un −10% que
+  además no llegaba), y el `~10%` que el coach leía escrito A MANO en dos sitios de app-3 ahora
+  **se DERIVA** del factor de avi-core — la misma forma que ya estalló con las calorías (v435/v444)
+  y con el ancho de la franja (v478).
+
+### 4 · 🔴 Lo que enseñó, y no estaba en el guion
+- **El harness llevaba 48 versiones pintando verde encima del defecto.** El check `D2` de
+  `_verify-deload` comparaba la sugerencia de descarga contra **la sugerencia NORMAL**, que ya
+  venía subida un escalón: con su fixture (récord 60 kg) leía «bajó un 10%» ✅ mientras la persona
+  recibía un **−2,5%** real. **El oráculo no puede ser otro número de la app cuando la app es lo
+  que está mal** — misma clase que el sabotaje verde de F7 (v477). Ahora compara contra el RÉCORD
+  y lleva su **control**, que reconstruye la cadena vieja y exige que NO pase la barra.
+- **Mi propio arreglo nació construido por TRIPLICADO y lo destapó la matriz de sabotaje**: tres
+  mecanismos (suprimir el escalón, topar contra el récord, y el guardia del redondeo) donde dos
+  cualesquiera tapaban al tercero → **4 de 9 sabotajes salían verdes**. Se quitó el redundante.
+  Quedan dos, y cada uno tiene un caso que el otro NO cubre (el escalón de progresión / el récord
+  de 1 kg que el redondeo empata). 8/8 muerden.
+- **Mi candado central afirmaba el SIGNO y no la DOSIS**: pedía «sugiere menos que el récord», y
+  con eso quitar el tope seguía pasando (25 kg → 27,5 × 0,85 = 23,5: baja un 6% en vez del 15%).
+  Un candado que afirma la dirección y no la magnitud deja pasar justo el defecto que lo motivó.
+- **Un barrido encontró lo que la medición sobre gente real no podía**: con récords muy livianos
+  `suggestLoad` redondea a su rejilla de 2,5 kg y se va POR ARRIBA del récord (2 kg ×1 para un plan
+  de 8 reps → 2,5). No le pasa a ninguna de las 21, pero el código lo produce.
+- **Una regla de redondeo que propuso Andrés la tumbó la medición**: «redondear siempre hacia
+  ABAJO a la rejilla real» deja a quien levanta 2 kg en 1 kg (**−50%**). El redondeo a medio kilo
+  que ya usa la app da mediana −15% y **peor caso −25%**. Se quedó el de la app.
+
 ## 🟢 2026-08-12 (6ª parte) — avi-v479: la lista del mercado (el estudio queda CERRADO)
 
 **Producción en `avi-v479`, verificada** (`_prodcheck 479` verde, `jsErrors: []`). Suite
