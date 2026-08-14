@@ -4,6 +4,58 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-14 (2ª parte) — avi-v483: EL RÉCORD SOLO SE GUARDABA SI TERMINABAS EL ENTRENO
+
+**Producción en `avi-v483`.** Suite **734 → 735**, hook 12/12, `_verify-deload` **TODO OK**
+(`jsErrors: []`, +D8/D9/D10), `_guiado-suite` TODO OK.
+
+### 1 · Lo que pidió el PO y lo que resultó ser
+Pidió *«arregla lo de los récords, 9 de 21 no tienen ninguno»* (radar de v482). Midiendo,
+**el pedido literal no tiene arreglo posible y el problema real era otro**:
+- 🔴 **De los 8 asesorados reales sin récord, los 8 no han registrado JAMÁS una serie con peso**,
+  y **6 no tienen ni una sesión**. La app no puede inventarle un récord a quien nunca ha
+  entrenado en ella: eso es adopción, no un defecto. (Ya estaba escrito en app-3-coach: «Ocho
+  personas tienen rutina y nunca completaron un entreno».)
+- 🔴 **Pero buscando eso apareció un defecto de verdad**: `checkAndUpdatePRs` solo corría al llegar
+  al **100%** de las series o al tocar «Finalizar temprano». El historial, en cambio, se guarda
+  desde la **1ª serie marcada** (auto-guardado parcial). **Medido: de 192 sesiones con peso, solo
+  72 (38%) quedaron cerradas.** Resultado: **11 pares persona-ejercicio con peso levantado y sin
+  récord, 10 de ellos de sesiones sin cerrar.** **Nataly hizo Prensa de Pierna 100 kg ×15 en CINCO
+  sesiones y no tenía récord.** Samuel 3 ejercicios, Kathe y Astrid uno cada una.
+- La cadena completa: sin récord no hay peso sugerido → sin peso sugerido la descarga de v482 no
+  tiene sobre qué bajar. El esfuerzo quedaba registrado y sin premiar.
+
+### 2 · El arreglo
+El récord se escribe **al guardar la sesión**, no solo al cerrarla (`updateClientProgress`, rama
+del auto-guardado parcial). 🔒 Y lo que se logra ahí se **APARTA por sesión** (`prsnew_<sid>` en
+localStorage, no en memoria: sobrevive a un recargue a mitad de entreno) para que la celebración
+del final lo siga anunciando — si no, al llegar al 100% `isBetterPR` ya no ve nada nuevo y **la
+pantalla «¡Nuevo récord!» se queda MUDA**, una feature que desaparece sin dar error.
+
+### 3 · 🔴 Lo que se construyó, se midió y se DESCARTÓ: rellenar los récords desde el historial
+Parecía el arreglo obvio para los 11 huecos (recuperaba **134 récords en 9 personas**). Se tumbó
+midiéndolo sobre los datos reales, por dos razones que **no se ven leyendo el código**:
+1. **Las sesiones viejas no traen `id` de ejercicio** (`{id: undefined, name:'Jalón al Pecho'}`),
+   así que el récord derivado cae bajo el NOMBRE mientras el que ya existe está bajo `e6` → **dos
+   récords del mismo ejercicio**. De los 26 que «recuperaba» en Kathe, casi todos eran duplicados.
+2. **Resucitaría lo que el coach curó a mano.** `coachEditPR` permite borrar un récord falso y su
+   promesa es «si vuelve a levantar ese peso, se vuelve a crear solo». El historial que lo originó
+   sigue ahí. **El caso que motivó esa función está VIVO en los datos: Nataly, «Patada de Glúteo en
+   Polea 30 kg» cuando levanta 15.**
+Y el premio era mínimo: la cobertura del peso sugerido pasaba de **34,2% a 35,1%**. La función se
+BORRÓ (nada de código muerto); el porqué quedó escrito donde se habría cableado.
+
+### 4 · 🎓 Lo que enseñó
+- **El pedido del PO no era el problema.** «9 de 21 sin récord» sonaba a bug de récords y era
+  adopción; el bug real estaba al lado y nadie lo había pedido. **Medir la causa antes de aceptar
+  el enunciado.**
+- **Un candado que se rompe al DOCUMENTAR el código enseña a no documentarlo**: el test de la
+  auto-cura recortaba el cuerpo de la función con una ventana fija de 2.600 caracteres y dio rojo
+  falso en cuanto creció un comentario. Ahora recorta hasta la siguiente función.
+- **La ruta de la celebración no la cubría ningún harness** (`_shot-finish` inyecta el HTML a mano
+  para la captura). Se cubrió (D10) y el sabotaje confirma que muerde: sin el arreglo, la pantalla
+  de fin solo anuncia el récord de la ÚLTIMA serie.
+
 ## 🟢 2026-08-14 — avi-v482: LA SEMANA DE DESCARGA NO DESCARGABA LA CARGA
 
 **Producción en `avi-v482`, verificada.** Suite **727 → 734**, hook 12/12, `_verify-deload`

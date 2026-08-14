@@ -6240,6 +6240,31 @@ test('searchExercises: busca también por la etiqueta del músculo, y aguanta ba
   assert.strictEqual(searchExercises([null, undefined], 'press').length, 0);
 });
 
+// 🔴 v483 · CANDADO DE CABLEADO: el récord se escribe al GUARDAR la sesión, no solo al cerrarla.
+// El historial se guarda desde la 1ª serie marcada (auto-guardado parcial) pero `checkAndUpdatePRs`
+// solo corría en la rama del 100% y en «Finalizar temprano». Medido el 14-ago en producción:
+// **de 192 sesiones con peso registrado solo 72 (38%) quedaron cerradas** → Nataly hizo Prensa de
+// Pierna 100 kg ×15 en CINCO sesiones y no tenía récord; 10 de los 11 huecos medidos son de
+// sesiones sin cerrar. Y la cadena sigue: sin récord no hay peso sugerido, y sin peso sugerido la
+// semana de descarga (v482) no tiene sobre qué bajar.
+// Es un check ESTÁTICO porque la lógica vive en la capa de pantalla (app-4), fuera de esta suite;
+// la prueba de que de verdad se guarda sin cerrar la sesión la hace `_verify-deload` (D8).
+test('🔴 v483 · el auto-guardado PARCIAL también escribe los récords', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function updateClientProgress');
+  assert.ok(i > 0, 'no encontré updateClientProgress en app-4-entreno.js');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction saveSessionToHistory', i));
+  const ramas = cuerpo.split('} else if(done>0){');
+  assert.strictEqual(ramas.length, 2, 'cambió la forma de updateClientProgress: revisa este candado');
+  assert.ok(/checkAndUpdatePRs\(/.test(ramas[0]), 'la rama del 100% dejó de calcular récords');
+  assert.ok(/checkAndUpdatePRs\(/.test(ramas[1]),
+    'el auto-guardado parcial guarda la sesión pero NO el récord — es el bug de v483 otra vez');
+  // Y lo que se logra en el parcial se APARTA, o la celebración del final se queda muda.
+  assert.ok(/_prsStashSession\(/.test(ramas[1]), 'el parcial no aparta los récords para la celebración');
+  assert.ok(/_prsMergeSession\(/.test(ramas[0]), 'el 100% no recupera los récords apartados durante la sesión');
+});
+
 test('prFromSets: peso_reps → kg máx con sus reps', () => {
   const pr = prFromSets([{ kg: '80', reps: '5' }, { kg: '100', reps: '3' }], 'peso_reps');
   assert.deepStrictEqual(pr, { val: 100, reps: 3, unit: 'kg' });
@@ -8862,7 +8887,11 @@ test('la auto-cura está cableada en la carga del asesorado y persiste lo que ar
   const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
   const i = src.indexOf('function _applyAuthClientDB');
   assert.ok(i > -1, 'no se encontró _applyAuthClientDB');
-  const cuerpo = src.slice(i, i + 2600);
+  // El cuerpo se recorta hasta la SIGUIENTE función, no con una ventana de N caracteres: la
+  // ventana fija (2.600) dio un rojo falso en v483 en cuanto un comentario creció dentro de la
+  // función. Un candado que se rompe al documentar el código enseña a no documentarlo.
+  const fin = src.indexOf('\nfunction ', i + 1);
+  const cuerpo = src.slice(i, fin > i ? fin : src.length);
   assert.ok(/sanitizeHistory\(/.test(cuerpo), 'la carga no sanea el historial');
   assert.ok(/sanitizePrs\(/.test(cuerpo), 'la carga no sanea los récords');
   // OJO: no basta con buscar `svNow('ax_hist')` en la zona — el auto-curado de fixtures (v298)

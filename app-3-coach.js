@@ -331,6 +331,22 @@ function _applyAuthClientDB(client, coll){
     try{ svNow('ax_hist',DB.history); log&&log('AVI: saneados '+_sh.fixed+' valores imposibles del historial'); }catch(_e){} }
   // El historial YA saneado va como 2.º argumento: sin él, un récord fantasma (200 kg cuando lo
   // más pesado real son 40) sobrevive y deja ese ejercicio imposible de superar para siempre.
+  // ⛔ AQUÍ NO VA UNA AUTO-CURA QUE RELLENE RÉCORDS DESDE EL HISTORIAL. Se construyó, se midió
+  // sobre los datos reales el 14-ago y se DESCARTÓ (v483) por dos razones que solo aparecieron al
+  // probarla, ninguna visible leyendo el código:
+  //  1. **Las sesiones viejas no traen `id` de ejercicio** (`{id: undefined, name:'Jalón al
+  //     Pecho'}`), así que el récord derivado cae bajo el NOMBRE mientras el que ya existe está
+  //     bajo `e6` → DOS récords del mismo ejercicio. De los 26 que «recuperaba» en Kathe, casi
+  //     todos eran duplicados de los que ya tenía.
+  //  2. **Resucitaría lo que el coach curó a mano.** `coachEditPR` permite BORRAR un récord falso
+  //     («si vuelve a levantar ese peso, se vuelve a crear solo en la siguiente sesión»), y el
+  //     historial que lo originó sigue ahí: el borrado volvería en el siguiente arranque. El caso
+  //     que motivó esa función —Nataly, «Patada de Glúteo en Polea 30 kg» cuando levanta 15— está
+  //     vivo en los datos de hoy.
+  // Y el premio era mínimo: la cobertura del peso sugerido pasaba de 34,2% a 35,1%.
+  // La causa raíz se arregló donde de verdad estaba: el récord se escribe al GUARDAR la sesión
+  // (app-4, `updateClientProgress`), no solo al cerrarla. El backlog se cura solo la próxima vez
+  // que la persona haga ese ejercicio, que es la misma promesa que ya da el borrado del coach.
   const _sp=(typeof sanitizePrs==='function')?sanitizePrs(coll.prs||{}, _sh.history):{prs:coll.prs||{},removed:0};
   DB.prs       ={[id]: _sp.prs};
   if(_sp.removed>0){ try{ svNow('ax_pr',DB.prs); log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }

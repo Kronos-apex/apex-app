@@ -1603,7 +1603,10 @@ function checkAndShowCongrats(routine){
     // Mismo blindaje que updateClientProgress (caso Claudia 2026-07-07): la celebración
     // no puede morir por un throw en los pasos intermedios.
     let newPRs=[];
-    try{ newPRs=checkAndUpdatePRs(routine)||[]; }
+    // v483: los récords ya se escriben al marcar cada serie, así que la celebración tiene que
+    // sumar los que se lograron ANTES de la última — o el guiado se queda mudo justo cuando la
+    // persona sí superó su marca (`_prsMergeSession` vive en app-4).
+    try{ const _n=checkAndUpdatePRs(routine)||[]; newPRs=(typeof _prsMergeSession==='function')?_prsMergeSession(routine,_n):_n; }
     catch(e){ warn('AVI: checkAndUpdatePRs falló:',e&&e.message); try{ _logAppError('error','wf-prs: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
     try{ renderPRsInProfile(CUR.clientId); renderClientExProgress(CUR.clientId); }
     catch(e){ warn('AVI: refresh de PRs/progreso falló:',e&&e.message); try{ _logAppError('error','wf-refresh: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }

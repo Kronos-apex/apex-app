@@ -146,6 +146,72 @@ try {
   await setTheme('light'); await shot('D2-entreno-claro', '#gm-set-1-0');
   await setTheme('dark'); await shot('D2-entreno-oscuro', '#gm-set-1-0'); await setTheme('light');
 
+  // ── D8: el récord se guarda SIN cerrar el entreno (v483) ──
+  // 🔴 Hasta v483 el récord solo se escribía al llegar al 100% o al tocar «Finalizar». Medido en
+  // producción el 14-ago: **62% de las sesiones con peso NO se cierran nunca** → Nataly hizo
+  // Prensa de Pierna 100 kg ×15 en cinco sesiones y no tenía récord. Y la cadena sigue: sin
+  // récord no hay peso sugerido, y sin peso sugerido la semana de descarga no tiene qué bajar.
+  // Aquí se marca UNA sola serie de un ejercicio sin récord previo y se exige que quede guardado.
+  const d8 = await evj(`(()=>{try{
+    const c=DB.clients[0], rid=c.routines[0].id;
+    const ex=c.routines[0].exercises[1];            // Peso Muerto Rumano: sin récord en el fixture
+    const clave=ex.id||ex.name;
+    const antes=!!(DB.prs.a1||{})[clave];
+    setLog(rid,1,0,'kg','42.5'); setLog(rid,1,0,'reps','12');
+    setDone(rid,1,0,true);                          // UNA serie, y el entreno queda a medias
+    if(typeof updateClientProgress==='function')updateClientProgress(c.routines[0]);
+    const pr=(DB.prs.a1||{})[clave];
+    const ses=(DB.history.a1||[]).find(h=>h.routineId===rid);
+    return {antes, despues:!!pr, val:pr&&pr.val, unit:pr&&pr.unit, reps:pr&&pr.reps,
+      cerrada:!!(ses&&ses.finishedAt), guardada:!!ses};
+  }catch(e){return {err:e.message+' | '+e.stack};}})()`);
+  if (d8.err) throw new Error('D8: ' + d8.err);
+  check('🔒 D8-control el ejercicio NO tenía récord antes (si no, no prueba nada)', d8.antes === false, JSON.stringify(d8));
+  check('🔒 D8-control el entreno quedó SIN cerrar', d8.guardada === true && d8.cerrada === false, JSON.stringify(d8));
+  check('🔒 D8 con UNA serie marcada y sin terminar, el récord YA está guardado',
+    d8.despues === true && d8.val === 42.5 && d8.unit === 'kg' && d8.reps === 12, JSON.stringify(d8));
+
+  // ── D9: y el peso sugerido de la descarga aparece gracias a ese récord ──
+  // Es la cadena entera de una punta a la otra: marcar una serie → récord → sugerencia → descarga.
+  const d9 = await evj(`(()=>{
+    const c=DB.clients[0], ex=c.routines[0].exercises[1];
+    const kg=_suggestKg(ex);
+    return {kg, tope:42.5*0.85};})()`);
+  check('🔒 D9 ese récord ya alimenta el peso sugerido, y viene bajado por la descarga',
+    d9.kg > 0 && d9.kg < 42.5 && d9.kg <= d9.tope + 0.5, JSON.stringify(d9));
+
+  // ── D10: la celebración «¡Nuevo récord!» sigue anunciando lo logrado a MITAD del entreno ──
+  // 🔴 Es lo único que el arreglo de v483 podía romper en silencio: si el récord se escribe al
+  // marcar la 3ª serie, al llegar al 100% `isBetterPR` ya no ve nada nuevo y la pantalla de fin se
+  // queda MUDA — una feature que desaparece sin dar error, como el tour de novedades de v478.
+  // Por eso lo logrado en el parcial se APARTA por sesión y se recupera al cerrar.
+  // Ningún harness tocaba esta ruta: `_shot-finish` inyecta el HTML a mano para la captura.
+  const d10 = await evj(`(()=>{try{
+    const c=DB.clients[0], rt=c.routines[0], rid=rt.id;
+    DB.prs.a1={};                                   // sin récords previos
+    for(let ei=0;ei<rt.exercises.length;ei++){ const n=parseInt(rt.exercises[ei].sets)||3;
+      for(let si=0;si<n;si++) setDone(rid,ei,si,false); }
+    startNewSession(rid);
+    // 1) UNA serie de un ejercicio → auto-guardado PARCIAL: aquí es donde se escribe el récord
+    setLog(rid,1,0,'kg','55'); setLog(rid,1,0,'reps','12'); setDone(rid,1,0,true);
+    updateClientProgress(rt);
+    const trasParcial=(DB.prs.a1||{})[rt.exercises[1].id||rt.exercises[1].name];
+    // 2) el resto hasta el 100% → celebración. Se espía lo que recibe la pantalla de fin.
+    let capturado=null; const orig=window.showWorkoutFinish;
+    window.showWorkoutFinish=function(r,info){ capturado=(info&&info.newPRs)||[]; };
+    for(let ei=0;ei<rt.exercises.length;ei++){ const n=parseInt(rt.exercises[ei].sets)||3;
+      for(let si=0;si<n;si++){ if(ei===1&&si===0) continue;
+        setLog(rid,ei,si,'kg','20'); setLog(rid,ei,si,'reps','10'); setDone(rid,ei,si,true); } }
+    updateClientProgress(rt);
+    window.showWorkoutFinish=orig;
+    return {trasParcial:!!trasParcial, kgParcial:trasParcial&&trasParcial.val,
+      anunciados:(capturado||[]).map(p=>p.name+' '+p.val)};
+  }catch(e){return {err:e.message+' | '+e.stack};}})()`);
+  if (d10.err) throw new Error('D10: ' + d10.err);
+  check('🔒 D10-control el récord se escribió en el guardado PARCIAL', d10.trasParcial && d10.kgParcial === 55, JSON.stringify(d10));
+  check('🔒 D10 la celebración del final SÍ anuncia el récord logrado a mitad del entreno',
+    (d10.anunciados || []).some(x => /Peso Muerto Rumano 55/.test(x)), JSON.stringify(d10));
+
   // ── D3: la tarjeta NO miente cuando la semana ya pasó ──
   if (await ev(fixture(10)) !== true) throw new Error('fixture 10');
   const d3 = await ev(`(()=>{renderClientToday(DB.clients[0]);return (document.getElementById('cn-deload')||{}).innerText||'';})()`);

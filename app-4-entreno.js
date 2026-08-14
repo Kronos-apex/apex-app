@@ -1515,7 +1515,33 @@ function exFormSync(){
 // → un reinicio crea una entrada NUEVA, no destruye la anterior. Regla: nunca perder un entreno.
 function _sessionIdKey(rid){ return 'session_id_'+rid; }
 function currentSessionId(rid){ try{ return localStorage.getItem(_sessionIdKey(rid))||''; }catch(e){ return ''; } }
-function startNewSession(rid){ const id=uid(); try{ localStorage.setItem(_sessionIdKey(rid),id); }catch(e){} return id; }
+function startNewSession(rid){ const id=uid(); try{ localStorage.setItem(_sessionIdKey(rid),id); }catch(e){} _prsClearStash(rid); return id; }
+
+// ── Los récords logrados DURANTE la sesión (v483) ────────────────────────────────────────────
+// Desde v483 el récord se escribe en cuanto se marca la serie (auto-guardado parcial), no solo al
+// terminar — ver el porqué en `updateClientProgress`. Sin esto la celebración del final se
+// quedaría MUDA: al llegar al 100%, `isBetterPR` ya no ve nada nuevo porque el récord se guardó
+// tres series antes. Se apartan POR SESIÓN (no en memoria) para que sobrevivan a un recargue de
+// la app a mitad de entreno, que es justo cuando más se usa el auto-guardado.
+function _prsStashKey(rid){ const sid=currentSessionId(rid); return sid?('prsnew_'+sid):''; }
+function _prsReadStash(rid){ const k=_prsStashKey(rid); if(!k)return []; try{ return JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch(e){ return []; } }
+function _prsClearStash(rid){ const k=_prsStashKey(rid); if(k){ try{ localStorage.removeItem(k); }catch(e){} } }
+function _prsStashSession(routine,nuevos){
+  if(!nuevos||!nuevos.length)return nuevos;
+  const k=_prsStashKey(routine.id); if(!k)return nuevos;
+  try{ localStorage.setItem(k,JSON.stringify(_prsReadStash(routine.id).concat(nuevos))); }catch(e){}
+  return nuevos;
+}
+// Une lo apartado con lo que se acabe de lograr en la última serie. Un ejercicio puede haber
+// mejorado VARIAS veces en la misma sesión: se queda la última marca (la más alta) pero con el
+// `prev` de la primera, que es contra lo que de verdad se comparó al empezar el entreno.
+function _prsMergeSession(routine,nuevos){
+  const todos=_prsReadStash(routine.id).concat(nuevos||[]);
+  const por=new Map();
+  todos.forEach(p=>{ if(!p||!p.name)return; const a=por.get(p.name); por.set(p.name, a?Object.assign({},p,{prev:a.prev,isNew:a.isNew}):p); });
+  _prsClearStash(routine.id);
+  return Array.from(por.values());
+}
 
 function resetSession(){
   const routine=CUR.activeRoutine;if(!routine)return false;
@@ -1731,7 +1757,7 @@ function updateClientProgress(routine){
     // si algo entre el guardado y la celebración lanza, la celebración NO puede morir en
     // silencio — se atrapa, se reporta a app_errors y la pantalla sale igual.
     let newPRs=[];
-    try{ newPRs=checkAndUpdatePRs(routine)||[]; }
+    try{ newPRs=_prsMergeSession(routine,checkAndUpdatePRs(routine)||[]); }
     catch(e){ warn('AVI: checkAndUpdatePRs falló:',e&&e.message); try{ _logAppError('error','wf-prs: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
     try{ renderPRsInProfile(CUR.clientId); renderClientExProgress(CUR.clientId); }
     catch(e){ warn('AVI: refresh de PRs/progreso falló:',e&&e.message); try{ _logAppError('error','wf-refresh: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
@@ -1741,6 +1767,14 @@ function updateClientProgress(routine){
     // (y se va actualizando). Así no se pierde aunque no llegue al 100% ni toque
     // "Finalizar", o si la app se cierra/congela a mitad. Sync con debounce.
     saveSessionToHistory(routine,totalVol,done,false);
+    // 🔴 v483 — LOS RÉCORDS VAN AQUÍ TAMBIÉN, no solo al terminar. El historial se guardaba desde
+    // la 1ª serie pero el récord solo al 100% o con «Finalizar»: medido el 14-ago, **62% de las
+    // sesiones con peso no se cierran nunca** → Nataly hizo Prensa de Pierna 100 kg ×15 en CINCO
+    // sesiones y no tenía récord. Sin récord no hay peso sugerido, y sin peso sugerido la semana
+    // de descarga (v482) no tiene sobre qué bajar. El esfuerzo quedaba registrado y sin premiar.
+    // Lo que se logre aquí se APARTA para que la celebración del final lo siga anunciando.
+    try{ _prsStashSession(routine,checkAndUpdatePRs(routine)||[]); }
+    catch(e){ warn('AVI: récords del guardado parcial fallaron:',e&&e.message); }
   }
 }
 
@@ -1816,7 +1850,7 @@ function finishSessionEarly(){
   if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return false;}
   if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return false;
   saveSessionToHistory(routine,totalVol,done,true,true); // "Finalizar temprano" → marca finishedAt (sesión cerrada, no parcial)
-  checkAndUpdatePRs(routine);
+  _prsMergeSession(routine,checkAndUpdatePRs(routine)||[]); // cierra la sesión → vacía lo apartado
   renderPRsInProfile(CUR.clientId);
   renderClientExProgress(CUR.clientId);
   toast('✅ Entrenamiento guardado');
