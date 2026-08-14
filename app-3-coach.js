@@ -1651,8 +1651,12 @@ function renderNutReviewCard(c){
 
 // ══ SEMANA DE DESCARGA (v434) ══
 // La descarga NO se genera: se ACTIVA sobre el plan que el asesorado ya tiene. Mismos ejercicios,
-// mismos días, mismas repeticiones; bajan las series (×0,6, piso 2) y el peso sugerido (−10%).
+// mismos días, mismas repeticiones; bajan las series (×0,6, piso 2) y el peso sugerido.
 // Las series originales quedan guardadas para que «Volver al plan normal» las devuelva exactas.
+// 🔴 El porcentaje que lee el coach se DERIVA del factor de avi-core. Estaba escrito a mano («~10%»)
+// en dos sitios de este archivo: la misma forma exacta que ya estalló con las calorías (v435/v444) y
+// con el ancho de la franja (v478) — dos números que significan lo mismo en dos archivos distintos.
+const _DELOAD_PCT=(typeof DELOAD_LOAD_FACTOR==='number')?Math.round((1-DELOAD_LOAD_FACTOR)*100):15;
 function renderDeloadPanel(c){
   const el=document.getElementById('d-deload'); if(!el)return;
   el.innerHTML='';
@@ -1665,7 +1669,7 @@ function renderDeloadPanel(c){
       : `En <b>semana de descarga</b> hasta el <b>${esc(hasta)}</b> — ${st.daysLeft===1?'queda 1 día':'quedan '+st.daysLeft+' días'}.`;
     el.innerHTML=`<div class="card" style="padding:11px 13px;background:var(--yll);border-left:3px solid var(--yl)">
       <div style="font-size:12.5px;color:var(--t1);line-height:1.5;margin-bottom:8px">${_coIco('wind',13,'🍃')} ${linea}</div>
-      <div style="font-size:11px;color:var(--t2);line-height:1.45;margin-bottom:9px">Mismos ejercicios y mismas repeticiones; menos series y ~10% menos peso sugerido.</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.45;margin-bottom:9px">Mismos ejercicios y mismas repeticiones; menos series y ~${_DELOAD_PCT}% menos peso del que ya levanta.</div>
       <button class="btn bp bsm" style="width:100%;min-height:36px" onclick="endDeloadFor('${esc(c.id)}')">Volver al plan normal</button>
     </div>`;
     return;
@@ -1680,7 +1684,7 @@ function startDeloadFor(cid){
   const c=DB.clients.find(x=>x.id===cid); if(!c)return;
   if(typeof startDeload!=='function')return;
   const avisos=(typeof deloadWarnings==='function')?deloadWarnings(c,DB.history[cid]||[],Date.now()):[];
-  const cuerpo='Durante 7 días: mismos ejercicios, mismos días y mismas repeticiones; menos series y ~10% menos peso sugerido. Al terminar se lo devuelves con un toque.';
+  const cuerpo='Durante 7 días: mismos ejercicios, mismos días y mismas repeticiones; menos series y ~'+_DELOAD_PCT+'% menos peso del que ya levanta. A quien todavía no tiene récords, la app se lo dice en palabras. Al terminar se lo devuelves con un toque.';
   if(!confirm((avisos.length?avisos.join('\n\n')+'\n\n':'')+cuerpo+'\n\n¿Activar la semana de descarga de '+(c.name||'')+'?'))return;
   const res=startDeload(c,Date.now());
   c.routines=res.routines; c.deload=res.deload;

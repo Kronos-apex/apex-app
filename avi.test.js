@@ -219,7 +219,8 @@ const {
   startDeload,
   endDeload,
   deloadState,
-  deloadLoadFactor,
+  deloadSuggestKg,
+  deloadLoadHint,
   deloadCardText,
   deloadWarnings,
   deloadOverdue,
@@ -7811,16 +7812,126 @@ test('🔒 v434 · la descarga NO se quita sola: sigue puesta hasta que el coach
   const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
   const tarde = DL_NOW + 30 * 86400000;
   assert.ok(deloadState(en, tarde), 'a los 30 días sigue activa');
-  assert.strictEqual(deloadLoadFactor(en, tarde), DELOAD_LOAD_FACTOR, 'y el peso sugerido sigue bajado');
   assert.deepStrictEqual(deloadOverdue([en], tarde).map(x => x.name), ['Kathe'], 'pero el coach lo ve en su Inicio');
   assert.strictEqual(deloadOverdue([en], DL_NOW + 86400000).length, 0, 'dentro de los 7 días no molesta');
 });
 
-test('deloadLoadFactor: −10% solo durante la descarga', () => {
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// v482 · LA SEMANA DE DESCARGA NO DESCARGABA LA CARGA
+// El PO: «solo le bajas el 10% del peso y eso es prácticamente nada». Medido el 14-ago sobre 21
+// asesorados reales (scripts/deload-carga.mjs), era peor: la sugerencia «de descarga» quedaba POR
+// ENCIMA del propio récord en 130 de 148 casos, porque el factor caía sobre el peso YA SUBIDO por
+// la progresión. Estos son los candados de eso.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+test('🔴 v482 · EL CANDADO CENTRAL: en descarga NUNCA se sugiere un peso ≥ al récord', () => {
+  // Barrido, no un caso suelto: el defecto vivía justo en la rama de la doble progresión, así que
+  // hay que recorrer los dos lados (récord con MÁS reps que el plan, y con menos) y toda la
+  // rejilla de escalones de carga (1 kg bajo 10, 2,5 bajo 30, 5 por encima).
+  // 🎓 Y afirma la DOSIS, no solo el signo: la primera versión de este candado solo pedía
+  // «dl < récord», y con eso quitar el tope seguía saliendo VERDE (un récord de 25 kg subido a
+  // 27,5 y multiplicado por 0,85 da 23,5, que baja... un 6% en vez del 15%). Un candado que
+  // afirma la dirección y no la magnitud deja pasar justo el defecto que lo motivó.
+  let casos = 0;
+  for (const kg of [1, 1.5, 2, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 60, 80, 100, 140]) {
+    for (const prReps of [1, 5, 8, 10, 12, 15]) {
+      for (const tgt of [8, 10, 12, 15, 20]) {
+        const pr = { val: kg, unit: 'kg', reps: prReps };
+        const dl = deloadSuggestKg(pr, tgt);
+        if (dl == null) continue;
+        casos++;
+        assert.ok(dl < kg,
+          `récord ${kg} kg ×${prReps}, plan ×${tgt} → la descarga sugiere ${dl} kg, que NO baja`);
+        // Tope superior con la holgura del redondeo a medio kilo. No hay tope inferior a propósito:
+        // cuando el récord se hizo a MENOS reps de las que pide el plan, la base ya viene mucho más
+        // abajo (Epley) y eso es correcto.
+        assert.ok(dl <= kg * DELOAD_LOAD_FACTOR + 0.5,
+          `récord ${kg} kg ×${prReps}, plan ×${tgt} → sugiere ${dl} kg: baja, pero MENOS de lo que la app promete`);
+      }
+    }
+  }
+  assert.ok(casos > 200, 'el barrido tiene que morder de verdad, corrió ' + casos);
+});
+
+test('🔴 v482 · el caso REAL que lo destapó: Natalia, récord 25 kg ×15, plan de 15 reps', () => {
+  // Antes: suggestFromPR sube a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
+  // récord. La app llamaba «descarga» a levantar lo mismo de siempre.
+  const pr = { val: 25, unit: 'kg', reps: 15 };
+  assert.strictEqual(suggestFromPR(pr, 15), 27.5, 'fuera de descarga sí progresa (eso está bien)');
+  assert.strictEqual(Math.round(27.5 * 0.9 * 2) / 2, 25, 'la cadena vieja devolvía su propio récord');
+  assert.strictEqual(deloadSuggestKg(pr, 15), 21.5, 'ahora sale del récord, no del escalón');
+});
+
+test('🔒 v482 · el factor se aplica sobre el RÉCORD, no sobre la sugerencia normal', () => {
+  // Es la trampa en la que cayó el harness _verify-deload durante 48 versiones: comparaba la
+  // sugerencia de descarga contra la NORMAL (que ya venía subida) y pintaba verde.
+  const pr = { val: 60, unit: 'kg', reps: 15 };
+  const normal = suggestFromPR(pr, 15);          // 65 — con escalón de progresión
+  const dl = deloadSuggestKg(pr, 15);            // 51 — 60 × 0,85
+  assert.ok(dl < normal, 'contra la normal baja (esto pasaba ANTES también, por eso no servía)');
+  assert.ok(dl < 60 * 0.9, 'y contra el RÉCORD baja de verdad: ' + dl);
+  assert.strictEqual(dl, Math.round(60 * DELOAD_LOAD_FACTOR * 2) / 2);
+});
+
+test('🔒 v482 · cuando el récord es a MENOS reps de las que pide el plan, no se usa el récord crudo', () => {
+  // Ahí el récord NO es sostenible para las reps del plan: la base tiene que seguir siendo la
+  // estimación de Epley (que ya está por debajo), y el factor cae encima de ESA.
+  const pr = { val: 10, unit: 'kg', reps: 6 };
+  const normal = suggestFromPR(pr, 12);
+  assert.ok(normal < 10, 'la sugerencia normal ya está por debajo del récord: ' + normal);
+  assert.strictEqual(deloadSuggestKg(pr, 12), Math.round(normal * DELOAD_LOAD_FACTOR * 2) / 2);
+});
+
+test('🔒 v482 · sin récord no se inventa un peso', () => {
+  assert.strictEqual(deloadSuggestKg(null, 12), null);
+  assert.strictEqual(deloadSuggestKg({ val: 20, unit: 'reps', reps: 12 }, 12), null, 'un PR en reps no estima carga');
+  assert.strictEqual(deloadSuggestKg({ val: 0, unit: 'kg', reps: 12 }, 12), null);
+});
+
+test('🔴 v482 · a quien NO tiene récord se le dice EN PALABRAS (9 de 21 no recibían nada)', () => {
   const c = dlClient();
-  assert.strictEqual(deloadLoadFactor(c, DL_NOW), 1);
   const r = startDeload(c, DL_NOW);
-  assert.strictEqual(deloadLoadFactor(Object.assign({}, c, { deload: r.deload }), DL_NOW), 0.9);
+  const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
+  const peso = { id: 'e1', name: 'Hip Thrust en Máquina', muscle: 'gluteo', sets: 4, reps: 15 };
+  assert.strictEqual(deloadLoadHint(c, {}, peso, DL_NOW), null, 'fuera de la descarga no se dice nada');
+  const t = deloadLoadHint(en, {}, peso, DL_NOW);
+  assert.ok(t && t.length > 20, 'en descarga sí: ' + t);
+  assert.ok(!/RIR|RPE|%|1RM|deload/i.test(t), 'sin jerga ni porcentajes: ' + t);
+  assert.ok(/mancuerna/i.test(t), 'anclada a un objeto, no a una fracción suelta: ' + t);
+  // Y solo en ejercicios de peso: a una plancha o a un cardio no se le baja «el peso».
+  assert.strictEqual(deloadLoadHint(en, {}, { id: 'e3', name: 'Plancha', track: 'tiempo' }, DL_NOW), null);
+  assert.strictEqual(deloadLoadHint(en, {}, { id: 'e9', name: 'Caminadora', track: 'cardio', reps: 20 }, DL_NOW), null);
+});
+
+test('🔴 v482 · a quien está en sus primeras semanas NO se le dice que baje el peso (Andrés)', () => {
+  // En adaptación el peso ES la referencia técnica: todavía está armando el patrón del movimiento.
+  // `_suggestKg` ya se callaba con ella; la frase tenía que callarse igual o el arreglo de la
+  // cobertura habría metido la peor instrucción posible justo en la persona más frágil.
+  const nueva = Object.assign(dlClient(), { level: 'Principiante', startDate: new Date(DL_NOW - 10 * 86400000).toISOString() });
+  const r = startDeload(nueva, DL_NOW);
+  const en = Object.assign({}, nueva, { routines: r.routines, deload: r.deload });
+  const peso = { id: 'e1', name: 'Hip Thrust en Máquina', sets: 4, reps: 15 };
+  assert.ok(isInAdaptation(en, {}, DL_NOW), 'control: la fixture SÍ está en adaptación');
+  assert.strictEqual(deloadLoadHint(en, {}, peso, DL_NOW), null, 'y por eso no recibe la frase');
+  // Control por el otro lado: la misma persona pasada la ventana sí la recibe.
+  const tarde = DL_NOW + 40 * 86400000;
+  const r2 = startDeload(nueva, tarde);
+  const en2 = Object.assign({}, nueva, { routines: r2.routines, deload: r2.deload });
+  assert.ok(deloadLoadHint(en2, {}, peso, tarde), 'pasada la adaptación sí se le habla de carga');
+});
+
+test('🔒 v482 · la dosis de carga es la que firmó Andrés, y bajarla de nuevo a 0,9 se nota', () => {
+  // Contra un tope AFLOJADO no protege una matriz de sabotaje (aflojar deja la suite verde por
+  // definición): lo que protege es la cifra medida escrita al lado, con su fecha y su ruta.
+  // 📊 Medido 2026-08-14, `scripts/deload-carga.mjs`, 186 casos de 21 asesorados reales:
+  //    con 0,85 la sugerencia queda en mediana −15,0% del récord (peor −25%, más suave −10%).
+  //    Con 0,90 la mediana era −13,0%; con el defecto vivo, +6,7% (o sea, SUBÍA).
+  // Andrés (14-ago) firma la banda 0,80-0,90 y RECHAZA 0,50 junto al recorte de series: a 12 reps
+  // —la mediana real de estos planes— el 0,50 deja a la persona en 36% de su máximo pidiéndole 12
+  // repeticiones cuando podría hacer ~54.
+  assert.strictEqual(DELOAD_LOAD_FACTOR, 0.85);
+  assert.ok(DELOAD_LOAD_FACTOR >= 0.80 && DELOAD_LOAD_FACTOR <= 0.90,
+    'fuera de la banda que firmó Andrés — su dictamen es el que manda aquí, no la conveniencia');
 });
 
 test('🔒 v434 · a la asesorada se le EXPLICA por qué tiene menos series', () => {

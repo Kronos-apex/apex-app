@@ -856,6 +856,11 @@ function suggestFromPR(pr, targetReps, opts) {
   const reps = parseInt(pr.reps) || 1;
   const tgt = parseInt(targetReps) || 10;
   if (reps >= tgt) {
+    // ⚠️ ESTA RAMA SUBE EL PESO. Quien la use dentro de un contexto que quiere BAJARLO tiene que
+    // toparla, no encadenarle un factor: hasta v481 la semana de descarga multiplicaba por 0,9 el
+    // número que ya había salido subido de aquí, y el resultado quedaba POR ENCIMA del propio
+    // récord en 130 de 148 casos reales (medido 14-ago, `scripts/deload-carga.mjs`). El tope vive
+    // en `deloadSuggestKg`.
     const paso = (opts && opts.step) || loadStep(kg);
     return Math.round((kg + paso) * 2) / 2;   // a medio kilo: es una sugerencia, no un disco
   }
@@ -6272,15 +6277,41 @@ function deloadFloorReason(client, sessions, now) {
 // Y no se guardaba el plan anterior, así que volver era imposible.
 // La descarga deja de ser una rutina nueva y pasa a ser un MODO TEMPORAL de 7 días sobre el plan
 // que la persona YA tiene. Lo único que cambia son las SERIES y la carga sugerida:
-//   · ejercicios, días y REPETICIONES: intactos  (Laura, vinculante — y Andrés)
+//   · ejercicios, días y REPETICIONES: intactos  (Laura, vinculante — Andrés lo reconfirmó 14-ago)
 //   · series × 0,6 con piso de 2                 (Andrés)
-//   · carga −10% en el peso sugerido             (Andrés)
+//   · carga × 0,85 SOBRE EL RÉCORD               (Andrés, dictamen 2026-08-14)
 //   · 7 días                                     (Andrés · decisión del PO 2026-08-04)
 // Medido sobre planes reales: Kathe 91 → 54 series (−41%), Astrid 113 → 64 (−43%).
+//
+// ── v482: LA DESCARGA NO DESCARGABA LA CARGA (reclamo del PO 13-ago, medido el 14-ago) ──
+// Él dijo: «solo le bajas el 10% del peso y eso es prácticamente nada». Tenía razón en el dato y
+// midiendo salió peor: el 10% casi nunca llegaba. Dos causas, las dos cerradas aquí:
+//   1. El factor multiplica el PESO SUGERIDO, que solo existe donde hay récord guardado y fuera
+//      de la fase de adaptación → llegaba a 186 de 544 ejercicios (34%), y a 9 de 21 personas no
+//      les tocaba NI UNO. Para esas se dice EN PALABRAS (`deloadLoadHint`).
+//   2. El factor caía ENCIMA del escalón de progresión de `suggestFromPR` → la sugerencia «de
+//      descarga» quedaba por encima del propio récord en 130 de 148 casos (mediana +6,7%).
+//      Ahora la base es el récord SIN escalón (`noProgress`), y el factor se aplica sobre eso.
+// 📊 MEDIDO 2026-08-14, ruta `scripts/deload-carga.mjs` sobre 21 asesorados con rutina, 186 casos:
+//    con 0,85 la sugerencia queda en mediana −15,0% respecto al récord (peor −25%, más suave −10%),
+//    y 0 de 186 se quedan sin bajar. Antes: +6,7% de mediana.
+// 🔴 POR QUÉ 0,85 Y NO EL 0,50 QUE PIDIÓ EL PO — dictamen de Andrés Hyp del 14-ago, que él NO
+// firma: «bajar al 50%» viene del powerlifting, donde se trabaja al 85-90% del máximo. Medido, la
+// mediana de repeticiones de estos planes es 12, o sea ~71% del máximo; ×0,50 deja a la persona en
+// 36% pidiéndole 12 repeticiones cuando podría hacer ~54. El taper recorta VOLUMEN 40-60% y
+// MANTIENE la intensidad (Bosquet et al., MSSE 2007;39(8):1358-65; Pritchard et al., Strength Cond
+// J 2015;37(2):72-83), y lo que retiene la adaptación es la carga, no las series (Bickel et al.,
+// MSSE 2011;43(7):1177-87). Recortar las dos a la vez (0,6 × 0,5 = 29% del tonelaje) no está en
+// ninguna literatura. ⚠️ Y no hay ECA de semana de descarga en hipertrofia: esto es criterio
+// apoyado, no dato. Además NINGUNA descarga ha corrido completa todavía (0 filas, medido 14-ago),
+// así que no hay ni un resultado propio con qué calibrar.
+// 🔒 El recorte de SERIES se queda como está porque está MEDIDO que no hace daño: de 158 pares
+// persona-músculo, 0 caen bajo un tercio de su volumen y solo 4 cruzan hacia abajo las 4 series
+// semanales (tríceps y cardio) — `scripts/deload-dosis.mjs`.
 const DELOAD_DAYS = 7;
 const DELOAD_SETS_FACTOR = 0.6;
 const DELOAD_SETS_MIN = 2;
-const DELOAD_LOAD_FACTOR = 0.9;
+const DELOAD_LOAD_FACTOR = 0.85;
 // Piso de Laura para AVISAR al coach cuando la activa a mano (no bloquea: él manda).
 const DELOAD_WARN_DAYS = 56;
 const DELOAD_WARN_SESSIONS = 12;
@@ -6359,9 +6390,48 @@ function deloadState(client, now) {
     over: ms <= 0,
   };
 }
-// deloadLoadFactor: cuánto se multiplica el peso sugerido. 0,9 en descarga, 1 el resto del tiempo.
-function deloadLoadFactor(client, now) {
-  return deloadState(client, now) ? DELOAD_LOAD_FACTOR : 1;
+// deloadSuggestKg(pr, targetReps) → el peso sugerido DURANTE la semana de descarga, o null. Pura.
+// Reemplaza a `deloadLoadFactor` (v434-v481), que era un multiplicador aplicado al final por la
+// pantalla: eso dejaba la decisión fuera del motor y en cadena con la progresión. Aquí la decisión
+// es UNA: en descarga no se progresa, y la referencia es el peso que la persona YA levanta.
+function deloadSuggestKg(pr, targetReps) {
+  const base = suggestFromPR(pr, targetReps);
+  if (!base) return null;
+  const rec = parseFloat(pr.val != null ? pr.val : pr.kg);
+  // 🔒 TOPE — la descarga jamás parte de un peso por encima del que la persona YA levantó. Cubre
+  // los dos caminos por los que la sugerencia se iba para arriba: la doble progresión (récord +
+  // escalón, el defecto que reportó el PO) y el redondeo de `suggestLoad` a su rejilla de 2,5 kg
+  // en récords muy livianos (récord 2 kg ×1 con un plan de 8 reps → sugería 2,5).
+  // 🎓 Aquí hubo TERCER mecanismo —suprimir el escalón con una opción en `suggestFromPR`— y la
+  // matriz de sabotaje demostró que era REDUNDANTE: borrarlo dejaba la suite verde porque este
+  // tope da el mismo número. Se quitó. Dos arreglos para el mismo efecto son uno que nadie
+  // mantiene y un candado que no muerde (precedente: el `maxG` redundante de v471).
+  const partida = (rec > 0) ? Math.min(base, rec) : base;
+  const kg = Math.round(partida * DELOAD_LOAD_FACTOR * 2) / 2;
+  // 🔒 Y el redondeo a medio kilo tampoco puede EMPATAR el récord: con un récord de 1 kg,
+  // 1 × 0,85 = 0,85 redondea a 1 y la «descarga» vuelve a no descargar. Este caso el tope de
+  // arriba NO lo cubre — por eso son dos y no uno.
+  if (rec > 0 && kg >= rec) return Math.max(0.5, Math.round((rec - 0.5) * 2) / 2);
+  return kg;
+}
+
+// deloadLoadHint(client, history, ex, now) → la frase de carga para un ejercicio de peso al que la
+// app NO le puede sugerir un número (sin récord), o null. Pura.
+// 🔴 Existe porque el factor solo alcanzaba al 34% de los ejercicios: sin esto, la mitad de la
+// descarga es invisible para 9 de 21 personas por más que se baje el número.
+// La instrucción va anclada a un OBJETO (la mancuerna de al lado), no a una fracción suelta: quien
+// no tiene un número de referencia no puede operar un porcentaje. La comprobación por sensación va
+// en cristiano —«que te sobraran unas cinco repeticiones»—, nunca RIR ni RPE (texto de Andrés).
+const DELOAD_NO_PR_HINT = 'Esta semana agarra la mancuerna que sigue por debajo de la de siempre. '
+  + 'Le acertaste si al terminar la serie sientes que te sobraban unas cinco repeticiones.';
+function deloadLoadHint(client, history, ex, now) {
+  if (!deloadState(client, now)) return null;
+  if (exTrack(ex) !== 'peso_reps') return null;
+  // Andrés (14-ago): a quien lleva pocas semanas NO se le habla de bajar carga. Ahí el peso ES la
+  // referencia técnica y todavía está armando el patrón del movimiento; «usa menos» es la peor
+  // instrucción posible. `_suggestKg` ya se calla con ella — la frase tenía que callarse igual.
+  if (isInAdaptation(client, history, now)) return null;
+  return DELOAD_NO_PR_HINT;
 }
 
 // deloadCardText(client, now) → el texto que ve la ASESORADA, o null. Voz AVI: la descarga es una
@@ -6375,9 +6445,15 @@ function deloadCardText(client, now) {
     msg: 'Descansaste lo que había que descansar. Tu coach te devuelve el plan completo en cuanto lo revise.',
   };
   const d = st.daysLeft;
+  // Texto de Andrés (14-ago). «Un poquito menos peso» se cayó con el número: era la descripción de
+  // un −10% que además no llegaba. La instrucción va anclada a un objeto y con su comprobación por
+  // sensación, para que sirva TAMBIÉN a quien no tiene un peso sugerido en pantalla.
   return {
     title: 'Esta semana bajamos revoluciones',
-    msg: 'Menos series y un poquito menos peso, a propósito: así el cuerpo termina de recuperarse y vuelves más fuerte. '
+    msg: 'Baja un poco el peso y quédate ahí: agarra la mancuerna que sigue por debajo de la que usas '
+      + 'siempre. Le acertaste si al terminar la serie sientes que te sobraban unas cinco repeticiones. '
+      + 'Haces las mismas repeticiones de siempre, solo que sin llegar al límite: es la semana en que el '
+      + 'cuerpo termina de armar lo que ya entrenaste. '
       + (d === 1 ? 'Queda un día.' : 'Quedan ' + d + ' días.'),
   };
 }
@@ -7107,7 +7183,9 @@ if (typeof module !== 'undefined' && module.exports) {
     startDeload,
     endDeload,
     deloadState,
-    deloadLoadFactor,
+    deloadSuggestKg,
+    deloadLoadHint,
+    DELOAD_NO_PR_HINT,
     deloadCardText,
     deloadWarnings,
     deloadOverdue,

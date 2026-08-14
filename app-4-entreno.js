@@ -1365,14 +1365,14 @@ function _suggestKg(ex){
     const c=_curClient();if(!c)return null;
     if(isInAdaptation(c,DB.history,new Date()))return null;
     const pr=(DB.prs[c.id]||{})[ex.id||ex.name];
-    const kg=suggestFromPR(pr,parseInt(ex.reps)||10);
-    // Semana de descarga (v434): la carga baja ~10%. Es la mitad de la receta de Andrés (la otra
-    // son las series, que ya vienen bajadas en el plan). Redondeo a medio kilo, como la sugerencia.
-    if(kg&&typeof deloadLoadFactor==='function'){
-      const f=deloadLoadFactor(c,Date.now());
-      if(f!==1)return Math.round(kg*f*2)/2;
+    const reps=parseInt(ex.reps)||10;
+    // Semana de descarga (v482): el peso lo decide el MOTOR entero, no un factor aplicado aquí al
+    // final. Antes esta línea multiplicaba por 0,9 la sugerencia ya subida por la progresión, y el
+    // resultado quedaba por encima del propio récord — ver `deloadSuggestKg` en avi-core.
+    if(typeof deloadState==='function'&&typeof deloadSuggestKg==='function'&&deloadState(c,Date.now())){
+      return deloadSuggestKg(pr,reps);
     }
-    return kg;
+    return suggestFromPR(pr,reps);
   }catch(e){return null;}
 }
 // Peso ligero sugerido para el calentamiento ≈ 50% del peso de trabajo, redondeado a

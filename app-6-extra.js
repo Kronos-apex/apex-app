@@ -703,11 +703,24 @@ function gmRender(){
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
     const gmSug=_suggestKg(ex);
+    // Semana de descarga (v482): el peso sugerido ya viene bajado, así que NO puede seguir diciendo
+    // «según tu récord» — está por debajo de él a propósito, y sin decirlo se lee como un error.
+    // Y donde NO hay récord la app se quedaba muda: para 9 de 21 personas la bajada de carga no
+    // existía en ningún ejercicio. Ahí va la frase (`deloadLoadHint`, que se calla en adaptación).
+    const gmDeload=(typeof deloadState==='function')&&!!deloadState(_curClient(),Date.now());
     if(gmSug){
       const sh=document.createElement('div');
       sh.style.cssText='font-size:11.5px;font-weight:700;color:var(--gt);margin:2px 0 4px';
-      sh.textContent=`🎯 Peso sugerido: ${gmSug} kg · según tu récord`;
+      sh.textContent=`🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana':'según tu récord'}`;
       setsEl.appendChild(sh);
+    }else if(gmDeload&&typeof deloadLoadHint==='function'){
+      const hint=deloadLoadHint(_curClient(),DB.history,ex,Date.now());
+      if(hint){
+        const sh=document.createElement('div');
+        sh.style.cssText='font-size:11.5px;font-weight:700;color:var(--gt);margin:2px 0 4px;line-height:1.45';
+        sh.textContent=`🍃 ${hint}`;
+        setsEl.appendChild(sh);
+      }
     }
     const gmTrack = exTrack(ex);
     // Lastre (peso añadido) para peso corporal — paridad con la clásica (plan unificación P4).

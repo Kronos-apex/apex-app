@@ -88,13 +88,63 @@ try {
   check('D1c sin jerga: ni «deload» ni «estancado»', !/deload|estanc/i.test(d1.txt), d1.txt.slice(0, 60));
   await setTheme('dark'); await shot('D1-asesorada-oscuro','#cn-deload'); await setTheme('light');
 
-  // ── D2: el peso sugerido que VE la asesorada baja ~10% ──
+  // ── D2: el peso sugerido que VE la asesorada baja DE VERDAD ──
+  // 🔴 ESTE CHECK ESTUVO MAL DESDE v434 Y PINTÓ VERDE SOBRE EL DEFECTO 48 VERSIONES.
+  // Comparaba la sugerencia de descarga contra la sugerencia NORMAL, que ya venía SUBIDA un
+  // escalón por la doble progresión: con este mismo fixture (récord 60 kg) daba 65 → 58,5, o sea
+  // «bajó un 10%» ✅ mientras la persona recibía solo un 2,5% menos de lo que ya levantaba.
+  // El oráculo correcto no es la otra sugerencia de la app: es EL RÉCORD, que es el peso que la
+  // persona movió de verdad. Misma clase que el sabotaje verde de F7 (v477): el test le preguntaba
+  // a la app por un número que la app ya tenía mal.
   const d2 = await evj(`(()=>{
     const c=DB.clients[0], ex=c.routines[0].exercises[0];
-    const sin=suggestFromPR(DB.prs.a1.e1,parseInt(ex.reps)||10);
+    const record=DB.prs.a1.e1.val;
+    const normal=suggestFromPR(DB.prs.a1.e1,parseInt(ex.reps)||10);
     const con=_suggestKg(ex);
-    return {sin, con, factor: (sin&&con)?con/sin:null};})()`);
-  check('🔒 D2 el peso sugerido baja ~10% durante la descarga', d2.con < d2.sin && d2.factor > 0.85 && d2.factor < 0.95, JSON.stringify(d2));
+    return {record, normal, con, vsRecord:(con/record-1)*100};})()`);
+  check('🔒 D2 el peso sugerido en descarga queda POR DEBAJO del récord (no de la sugerencia normal)',
+    d2.con < d2.record && d2.vsRecord <= -10 && d2.vsRecord >= -30, JSON.stringify(d2));
+  // CONTROL: sin él, D2 podría estar pasando por casualidad. Se reconstruye la cadena vieja
+  // (sugerencia normal × 0,9) y se afirma que NO habría pasado la barra de D2 — con este fixture
+  // daba 58,5 kg sobre un récord de 60, o sea un −2,5% que el check viejo leía como «bajó un 10%».
+  const viejoKg = Math.round(d2.normal * 0.9 * 2) / 2;
+  const viejoPct = (viejoKg / d2.record - 1) * 100;
+  check('🔒 D2b CONTROL — la cadena vieja NO pasaría la barra de D2', viejoPct > -10,
+    `vieja: ${viejoKg} kg sobre un récord de ${d2.record} = ${viejoPct.toFixed(1)}% · nueva: ${d2.con} kg = ${d2.vsRecord.toFixed(1)}%`);
+
+  // ── D2c: a quien NO tiene récord se le dice en palabras (9 de 21 personas reales) ──
+  const d2c = await evj(`(()=>{
+    const c=DB.clients[0], ex=c.routines[0].exercises[0];
+    const guardado=DB.prs.a1.e1; delete DB.prs.a1.e1;   // misma persona, sin récord
+    let sug=null,hint=null,html='';
+    try{
+      sug=_suggestKg(ex);
+      hint=(typeof deloadLoadHint==='function')?deloadLoadHint(c,DB.history,ex,Date.now()):null;
+    }finally{ DB.prs.a1.e1=guardado; }
+    return {sug, hint};})()`);
+  check('🔒 D2c sin récord la app NO se queda muda: dice qué hacer con el peso',
+    d2c.sug == null && !!d2c.hint && !/RIR|RPE|%/i.test(d2c.hint), JSON.stringify(d2c).slice(0, 160));
+
+  // ── D2d: las dos líneas se PINTAN de verdad en el entreno (no basta con la función pura) ──
+  // El fixture tiene los dos casos a propósito: `e1` con récord (peso bajado) y `e2` SIN récord
+  // (la frase). Sin esto, lo único probado sería que el motor devuelve el texto correcto — y el
+  // 66% de los ejercicios de la gente real cae justo en la rama que no tiene número.
+  const d2d = await evj(`(()=>{try{
+    if(typeof expandTodayWorkout==='function')expandTodayWorkout();
+    const g=document.getElementById('guided-mode');
+    const montado=!!g&&!g.classList.contains('hidden');
+    const t=(g&&g.innerText)||'';
+    return {montado, conNumero:/Peso sugerido:\\s*51\\s*kg/.test(t), bajado:/bajado a prop/i.test(t),
+      frase:/mancuerna que sigue por debajo/i.test(t), viejo:/seg[úu]n tu r[ée]cord/i.test(t)};
+  }catch(e){return {err:e.message};}})()`);
+  if (d2d.err) throw new Error('D2d: ' + d2d.err);
+  check('🔒 D2d-control el guiado MONTÓ (si no, lo de abajo no prueba nada)', d2d.montado, JSON.stringify(d2d));
+  check('🔒 D2d el peso bajado se PINTA y dice que es a propósito', d2d.conNumero && d2d.bajado && !d2d.viejo, JSON.stringify(d2d));
+  check('🔒 D2e el ejercicio SIN récord muestra la frase en pantalla', d2d.frase, JSON.stringify(d2d));
+  // Las capturas van al SEGUNDO ejercicio: es el que no tiene récord, o sea el de la frase — que
+  // es la parte nueva y la que más puede romperse al envolver en dos líneas.
+  await setTheme('light'); await shot('D2-entreno-claro', '#gm-set-1-0');
+  await setTheme('dark'); await shot('D2-entreno-oscuro', '#gm-set-1-0'); await setTheme('light');
 
   // ── D3: la tarjeta NO miente cuando la semana ya pasó ──
   if (await ev(fixture(10)) !== true) throw new Error('fixture 10');
