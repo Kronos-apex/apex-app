@@ -4,6 +4,83 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-15 (4ª parte) — avi-v488: 47 → 13 SIN FUENTE · Y LA YUCA, CORREGIDA CON SU FILA
+
+**Suite 761/761 · matrices `_sabotaje-fuentes` 5/5 y `_sabotaje-menores` 18/18.**
+
+### 1 · 🔓 EL PDF ESCANEADO DEL ICBF SÍ SE PUEDE LEER
+El repo llevaba desde el 5-ago dando por imposible la ruta automática: *«147 páginas ESCANEADAS
+COMO IMAGEN (sin texto) y la API del portal exige cuenta»*. Cierto lo primero, pero **la conclusión
+era falsa**. El PDF solo lleva **cifrado de PROPIETARIO**: se abre con contraseña vacía (`pypdf`,
+`decrypt('')` → 1), y cada página sale como un **JPEG legible**. Lo que fallaba era `pdftotext`,
+que no tiene nada que extraer porque no hay capa de texto — pero la página se puede MIRAR.
+🎓 **«No hay texto» y «no se puede leer» son cosas distintas, y confundirlas costó 10 días.**
+
+### 2 · La fila B106, completa
+| B106 · Yuca blanca, sin cáscara, **cocida**, sin sal · Pulpa (pág. 54 impresa) |
+|---|
+| humedad **61,6** · **157 kcal** · proteína **0,7** · lípidos **0,2** · carbo total **36,6** · disponible 33,9 · fibra 2,7 |
+
+Y debajo, **B107 cruda: humedad 60,9 · 159 kcal**. Los dos datos que cierran el caso:
+- **La yuca NO absorbe agua al hervirse** (61,6% contra 60,9%) → la premisa del factor 0,70 era
+  falsa, y está medida en la propia tabla que se citaba de memoria.
+- **TCAC cruda (159) y USDA cruda (160) COINCIDEN** → las dos fuentes concuerdan entre sí, y el
+  112 no sale de ninguna de las dos.
+
+🔴 **Se usa el carbohidrato TOTAL (36,6), no el disponible (33,9)** — apartándose a propósito de la
+convención de las 42 filas TCAC de fruta. Dos razones medidas: (a) los otros 36 alimentos vienen de
+USDA, cuyo campo es `Carbohydrate, by difference` = TOTAL con la fibra dentro, así que el
+disponible dejaría a la yuca midiéndose distinto que sus vecinas; (b) con el disponible sus macros
+suman 140 contra los 157 declarados (11% de hueco) y **el plato se arma con los MACROS**, o sea que
+el 157 sería decorativo. Con el total suman 151, dentro del redondeo.
+⏭️ **Para Andrés: hoy conviven DOS criterios de carbohidrato en la misma tabla** (fruta =
+disponible, yuca = total). No se unifica sin su dictamen.
+
+**Impacto medido:** la ración pasa de **200 g a 150 g**. Traducido: 200 g que la app contaba como
+224 kcal eran **314 reales** — 90 kcal de más en cada comida con yuca.
+
+### 3 · De 47 a 13 sin fuente
+Con la clave de FoodData Central (gratis, en `~/.avi/fdc.key`, **fuera del repo**) se cruzaron los
+47 contra USDA aceptando SOLO filas que cuadren en los cuatro macros. **34 confirmados con su FDC**
+(arroz, papa, huevo, clara, aceite, las 9 verduras, las 8 frutas, legumbres…). Criterio de corte:
+**kcal idéntico** — los que solo se parecían quedaron fuera y siguen sin verificar.
+
+| procedencia | antes | ahora |
+|---|---|---|
+| `usda_sr` con FDC citado | 2 | **36** |
+| `tcac2018` con código y página | 0 | **1** |
+| `derivado` | 1 | 0 |
+| **`sin_verificar`** | **47** | **13** |
+
+Los 13 que quedan: 4 carnes que no cuadran con ninguna fila USDA · 4 dudosos (leche, pan integral,
+crema de maní, lomo de cerdo: kcal distinto → otra fila) · **5 colombianos** (queso campesino,
+cuajada, papa criolla, arepa, maracuyá) que ahora **sí se pueden leer del PDF**.
+
+### 4 · 🔁 La franja se re-midió: ±12% → ±14%
+Corregir la yuca subió su ración mínima de 113 a **151 kcal** (se sirve en trozos de 100 g y no se
+parte), y en la esquina mala del barrido —1.400 kcal con 35% de proteína, día de descanso— esos
+38 kcal empujan el día del 111% al **113,9%**, fuera de la franja. Curva nueva sobre 315 días-plan:
+±10% → 10 fuera · ±12% → 4 · ±13% → 4 · **±14% → 0 ← elegida**.
+⚠️ **Se ensancha por la ESQUINA, no por la gente**: medido sobre los asesorados reales el plato
+entrega **97,4%-107,8%**, así que a nadie de la base le cambia el veredicto.
+🎓 **Antes de tocar la franja se probaron DOS arreglos del plato y los dos se revirtieron**: bajarle
+el tope de ración a la yuca (lo empeoró, 113,0 → 113,9) y darle un escalón chico de media medida
+(no movió ni una cifra). El límite no es la granularidad: es que un trozo de yuca son 151 kcal.
+
+### 5 · 🎓 Lecciones
+- 🔴 **Un test puede DEFENDER el dato equivocado con un mensaje que suena a autoridad.** El de la
+  yuca afirmaba `kcal === 112` citando *«ICBF/tablas de composición, verificado»* — **nombrando
+  justo la fuente que dice 157**. Un candado que afirma un valor sin CITA localizable no protege el
+  dato: protege el error.
+- 🔴 **Dos hipótesis mías cayeron al medirlas** (el tope de ración y el escalón chico). Las dos eran
+  plausibles y las dos habrían quedado en el código como «arreglos» que no arreglan nada.
+- 🔴 **Un test con la franja escrita a mano se cae por su propio literal**, no por la app: 1.760 y
+  2.240 estaban clavados. Se derivan de `FOODLOG_BAND`, como ya se hizo con el umbral del coach.
+- 🎓 **Un agregador web no es una fuente independiente**: la primera búsqueda devolvió «112 kcal /
+  27 C» y parecía confirmar; al abrir la página era yuca **con grasa añadida** (191 kcal).
+- 🔴 **Mi primera sonda de cruce emparejó «arroz» con *Beans, white*** y casi reporto dos
+  contradicciones falsas del 41% y el 45%. Valida la sonda antes de creerle.
+
 ## 🟢 2026-08-15 (3ª parte) — avi-v487: DE DÓNDE SALIÓ CADA NÚMERO DEL PLATO · Y LA YUCA, RESUELTA
 
 **Suite 758 → 761, matriz nueva `_sabotaje-fuentes` 5/5. NI UN MACRO CAMBIÓ** (verificado

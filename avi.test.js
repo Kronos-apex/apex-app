@@ -4143,7 +4143,7 @@ const _foodsJson = (() => {
 // `src:'avi50'`, así que 50 de sus 181 entradas «con fuente» apuntan de vuelta a la tabla que no
 // la tiene — la trazabilidad era CIRCULAR donde más importaba.
 const NUT_SRC_OK = ['usda_sr', 'tcac2018', 'etiqueta', 'derivado', 'sin_verificar'];
-const NUT_SIN_VERIFICAR_TOPE = 47; // medido el 2026-08-15. Este número solo puede BAJAR.
+const NUT_SIN_VERIFICAR_TOPE = 13; // medido el 2026-08-15 tras verificar 34 contra la API de USDA. Solo puede BAJAR.
 
 test('🔴 v487 · los 50 del recetario declaran TODOS de dónde salió su número', () => {
   for (const f of NUT_FOODS) {
@@ -4165,17 +4165,22 @@ test('🔴 v487 · el número de alimentos SIN VERIFICAR solo puede BAJAR', () =
     sin.map(f => f.id).slice(0, 5).join(', '));
 });
 
-test('🔴 v487 · la yuca queda marcada como DERIVADA, no como verificada', () => {
-  // Medido el 2026-08-15: sus 4 macros son la fila CRUDA de USDA (SR 169985: 160 / 1,36 / 38,1 /
-  // 0,28) multiplicada por 0,70 — kcal da 0,7000 exacto y el carbohidrato 0,7008. No es una fila
-  // de ninguna tabla: es una deducción con un factor de absorción de agua que la TCAC desmiente
-  // (humedad 61,6% cocida contra 60,9% cruda). Este test existe para que nadie vuelva a llamarla
-  // «verificada» sin traer una fila real, y para dejar la aritmética escrita al lado del dato.
+test('🔴 v487 · la yuca es la fila B106 de la TCAC, y NO la deducción que fue', () => {
+  // La historia completa en el comentario de `NUT_FOODS`. Resumen: el 112 que estuvo aquí NO salía
+  // de ninguna tabla — era la fila CRUDA de USDA (SR 169985: 160/1,36/38,1/0,28) × 0,70 exacto en
+  // los cuatro macros, con un factor de absorción de agua que la propia TCAC desmiente (humedad
+  // 61,6% cocida contra 60,9% cruda). Ahora es la fila oficial, leída del PDF del ICBF.
   const y = NUT_FOODS.find(f => f.id === 'yuca');
-  assert.strictEqual(y.src, 'derivado');
-  const crudo = { kcal: 160, p: 1.36, c: 38.1, f: 0.28 };
-  assert.ok(Math.abs(y.kcal / crudo.kcal - 0.70) < 0.005, 'kcal sigue siendo el crudo × 0,70');
-  assert.ok(Math.abs(y.c / crudo.c - 0.70) < 0.005, 'el carbohidrato también');
+  assert.strictEqual(y.src, 'tcac2018');
+  assert.ok(/B106/.test(y.ref), 'la cita lleva el código de la fila, o no se puede re-verificar');
+  // Los valores se afirman UNO A UNO: cambiarlos obliga a volver al PDF, que es el único candado
+  // que existe contra un dato internamente coherente (la clase de la yuca, en la yuca).
+  assert.strictEqual(y.kcal, 157);
+  assert.strictEqual(y.p, 0.7);
+  assert.strictEqual(y.c, 36.6, 'carbohidrato TOTAL — el disponible (33,9) dejaría el kcal descuadrado y mediría distinto que las 36 filas USDA de al lado');
+  assert.strictEqual(y.f, 0.2);
+  // Y el candado contra la vuelta atrás: nunca más el crudo × un factor inventado.
+  assert.ok(Math.abs(y.kcal / 160 - 0.70) > 0.1, 'no puede volver a ser el crudo de USDA × 0,70');
 });
 
 test('🔴 los ids que usa el recetario existen en NUT_FOODS (por eso no se fusiona)', () => {
@@ -5060,16 +5065,23 @@ test('🔴 F7: las dos pantallas leen el plan de hoy de UNA sola función', () =
 section('Registro de alimentos — la FRANJA y la SEMANA (patrones 2, 3 y 6 del estudio)');
 
 test('la franja es simétrica alrededor de la meta y dice en qué lado cae lo comido', () => {
+  // 🔒 Los bordes se DERIVAN de la constante, nunca se escriben a mano: estaban clavados en 1760 y
+  // 2240 (±12%) y al re-medir la franja en v487 este test se cayó por su propio literal, no por la
+  // app. Es la misma regla que ya se aplicó al umbral de desvío del coach (v478): el número que
+  // significa lo mismo vive en UN solo sitio. Lo que se afirma aquí es la FORMA (simétrica, con su
+  // lado y su distancia), que es lo que no debe cambiar aunque el ancho sí.
+  const LO = Math.round(2000 * (1 - FOODLOG_BAND)), HI = Math.round(2000 * (1 + FOODLOG_BAND));
+  assert.ok(HI - 2000 === 2000 - LO, 'simétrica alrededor de la meta');
   const b = foodLogBandFor(2000, 1900);
-  assert.strictEqual(b.lo, 1760);
-  assert.strictEqual(b.hi, 2240);
+  assert.strictEqual(b.lo, LO);
+  assert.strictEqual(b.hi, HI);
   assert.strictEqual(b.estado, 'dentro');
   assert.strictEqual(b.falta, 0, 'dentro de la franja no falta nada');
   assert.strictEqual(b.sobra, 0);
   assert.strictEqual(foodLogBandFor(2000, 1500).estado, 'bajo');
-  assert.strictEqual(foodLogBandFor(2000, 1500).falta, 260, 'lo que falta es para entrar a la FRANJA, no para clavar la meta');
+  assert.strictEqual(foodLogBandFor(2000, 1500).falta, LO - 1500, 'lo que falta es para entrar a la FRANJA, no para clavar la meta');
   assert.strictEqual(foodLogBandFor(2000, 2400).estado, 'alto');
-  assert.strictEqual(foodLogBandFor(2000, 2400).sobra, 160);
+  assert.strictEqual(foodLogBandFor(2000, 2400).sobra, 2400 - HI);
   // Sin meta no se inventa una franja (y la pantalla cae al texto sin objetivo).
   assert.strictEqual(foodLogBandFor(0, 500), null);
   assert.strictEqual(foodLogBandFor(null, 500), null);
@@ -9515,11 +9527,19 @@ test('el plan de comida CUENTA los acompañantes en lo que dice servir', () => {
 // fuente nueva y actualizar el comentario.
 test('los 3 valores de la tabla verificados contra fuente siguen puestos', () => {
   const by = core.NUT_FOOD_BY_ID;
-  // Yuca COCIDA (ICBF/tablas de composición, verificado 2026-08-03). Antes traía los valores
-  // de yuca CRUDA (USDA cassava raw 160/1,36/38,1) con el nombre "cocida": +28% de
-  // carbohidrato → el motor recetaba ~22% MENOS yuca de la que la persona necesitaba.
-  assert.strictEqual(by.yuca.kcal, 112, 'yuca cocida = 112 kcal/100 g, no los 160 de la cruda');
-  assert.strictEqual(by.yuca.c, 26.7, 'yuca cocida = 26,7 g de carbohidrato, no los 38 de la cruda');
+  // 🔴 YUCA — este bloque es la lección más cara de la tabla, y su propio comentario mentía.
+  // Decía «ICBF/tablas de composición, verificado 2026-08-03» y afirmaba 112 kcal… nombrando
+  // justo la fuente que dice **157**. El 112 nunca salió del ICBF ni de USDA: era la fila CRUDA
+  // de USDA (SR 169985: 160/1,36/38,1/0,28) multiplicada por 0,70 exacto en los cuatro macros,
+  // con una premisa («cocida absorbe agua») que la TCAC desmiente en su propia columna de humedad
+  // (61,6% cocida contra 60,9% cruda). O sea: el arreglo del 3-ago cambió un número malo por otro
+  // inventado, y este test lo estuvo DEFENDIENDO con un mensaje que sonaba a autoridad.
+  // Cerrado el 2026-08-15 leyendo la fila B106 del PDF oficial del ICBF (pág. 54 impresa).
+  // 🎓 Por eso el candado no puede ser solo «afirma el valor»: tiene que afirmar la CITA, para que
+  // el que venga pueda ir a mirarla. Un valor afirmado sin cita localizable es indefendible.
+  assert.strictEqual(by.yuca.kcal, 157, 'yuca cocida = 157 kcal/100 g (TCAC B106), no los 112 deducidos');
+  assert.strictEqual(by.yuca.c, 36.6, 'carbohidrato TOTAL de la fila B106 (el disponible es 33,9)');
+  assert.ok(/B106/.test(by.yuca.ref || ''), 'y la cita viaja con el dato, o no se puede re-verificar');
   // Avena: una CUCHARADA de hojuelas pesa ~5,6 g, no 15 (verificado 2026-08-03). Con 15 g la
   // persona servía un TERCIO de lo recetado, y es el alimento más denso de la tabla.
   assert.strictEqual(by.avena.un.label, 'taza', 'la avena se mide en taza: la cucharada mentía por 3x');

@@ -18,8 +18,8 @@ const rx = (s) => new RegExp(s.split('\n').map(l =>
 const SABOTAJES = [
   {
     n: 'F1 · un alimento deja de declarar de dónde salió su número',
-    de: `{ id: 'papa', src: 'sin_verificar',`,
-    a: `{ id: 'papa',`,
+    de: `{ id: 'arepa', src: 'sin_verificar',`,
+    a: `{ id: 'arepa',`,
   },
   {
     n: 'F2 · se AFIRMA una fuente externa pero sin la cita al lado',
@@ -27,23 +27,24 @@ const SABOTAJES = [
     a: ``,
   },
   {
-    n: 'F3 · la YUCA se disfraza de verificada (es una deducción, no una fila)',
-    de: `{ id: 'yuca', src: 'derivado',`,
+    n: 'F3 · la YUCA pierde su fuente oficial y vuelve a un origen inventado',
+    de: `{ id: 'yuca', src: 'tcac2018',`,
     a: `{ id: 'yuca', src: 'usda_sr',`,
   },
   {
     n: 'F4 · entra un alimento NUEVO sin fuente (lo caza el CONTEO, no una lista)',
-    de: `  { id: 'papa', src: 'sin_verificar',`,
+    de: `  { id: 'arepa', src: 'sin_verificar',`,
     a: `  { id: 'inventado_x', name: 'Alimento sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_y', name: 'Otro sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_z', name: 'Tercero sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
-  { id: 'papa', src: 'sin_verificar',`,
+  { id: 'arepa', src: 'sin_verificar',`,
   },
   {
-    n: 'F5 · el valor de la yuca se cambia sin traer la fila (el test guarda la aritmética)',
-    de: `{ id: 'yuca', src: 'derivado', ref: "USDA SR 169985 (Cassava, raw) x 0,70 - NO es una fila de ninguna fuente", name: 'Yuca cocida', rol: 'carb', kcal: 112,`,
-    a: `{ id: 'yuca', src: 'derivado', ref: "USDA SR 169985 (Cassava, raw) x 0,70 - NO es una fila de ninguna fuente", name: 'Yuca cocida', rol: 'carb', kcal: 157,`,
+    n: 'F5 · la yuca vuelve al 112 deducido (el test guarda la fila oficial)',
+    de: `name: 'Yuca cocida', rol: 'carb', kcal: 157, p: 0.7, c: 36.6, f: 0.2,`,
+    a: `name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2,`,
   },
+
 ];
 
 const original = readFileSync(CORE, 'utf8');
