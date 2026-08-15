@@ -32,7 +32,13 @@ const CHECK = process.argv.includes('--check');
 const FUENTES = {
   avi50: {
     nombre: 'Catálogo curado de AVI',
-    nota: 'Macros por 100 g del alimento LISTO PARA COMER. Valores verificados contra fuente externa y revisados en el lote del 2026-08-03 (yuca cocida, avena por taza, lata de atún escurrida).',
+    // 🔴 CORREGIDO 2026-08-15: esta nota decía «Valores verificados contra fuente externa» y era
+    // FALSO — medido, 47 de los 50 no citaban ninguna. Un comentario con una razón falsa es peor
+    // que ninguno: es lo que hace que dentro de seis meses alguien dé el número por bueno. Y la
+    // trazabilidad era CIRCULAR: estas 50 filas se copian aquí como si «avi50» fuera una fuente,
+    // cuando es un puntero de vuelta a la tabla que no la tiene. La procedencia REAL de cada una
+    // vive ahora en su campo `src`/`ref` dentro de `NUT_FOODS`, con un test que la exige.
+    nota: 'Macros por 100 g del alimento LISTO PARA COMER. ⚠️ «avi50» NO es una fuente: es la tabla del recetario. La procedencia de cada alimento va en su campo `src`/`ref` en NUT_FOODS — al 2026-08-15, 47 de los 50 están SIN VERIFICAR contra fuente externa y el test `v487` impide que ese número suba.',
   },
   usda_sr: {
     nombre: 'USDA FoodData Central — SR Legacy (abril 2018)',

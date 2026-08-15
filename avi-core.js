@@ -3894,13 +3894,13 @@ function nutMealSplit(kcal, protG, n) {
 // ──────────────────────────────────────────────────────────────────────
 const NUT_FOODS = [
   // ── PROTEÍNA ──
-  { id: 'pollo_pechuga', name: 'Pechuga de pollo', rol: 'prot', kcal: 165, p: 31.0, c: 0, f: 3.6, un: { label: 'porción', g: 120 } },
-  { id: 'pollo_muslo', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, compra: 'un', un: { label: 'muslo', g: 95 } },
-  { id: 'res_magra', name: 'Carne de res magra (posta)', rol: 'prot', kcal: 187, p: 30.0, c: 0, f: 7.0, un: { label: 'porción', g: 120 } },
-  { id: 'res_molida', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
-  { id: 'cerdo_lomo', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
-  { id: 'huevo', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
-  { id: 'clara', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
+  { id: 'pollo_pechuga', src: 'usda_sr', ref: "FDC 171477 - Chicken, broilers or fryers, breast, meat only, cooked, roasted", name: 'Pechuga de pollo', rol: 'prot', kcal: 165, p: 31.0, c: 0, f: 3.6, un: { label: 'porción', g: 120 } },
+  { id: 'pollo_muslo', src: 'sin_verificar', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, compra: 'un', un: { label: 'muslo', g: 95 } },
+  { id: 'res_magra', src: 'sin_verificar', name: 'Carne de res magra (posta)', rol: 'prot', kcal: 187, p: 30.0, c: 0, f: 7.0, un: { label: 'porción', g: 120 } },
+  { id: 'res_molida', src: 'sin_verificar', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
+  { id: 'cerdo_lomo', src: 'sin_verificar', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
+  { id: 'huevo', src: 'sin_verificar', name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
+  { id: 'clara', src: 'sin_verificar', name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   // ⏭️ PARA EL LOTE DE CONVERSIÓN (dictamen de Andrés Hyp + decisión del PO, 13-ago): estos
   // macros son de pescado COCIDO (la TCAC E043 da la mojarra entera cruda en 96 kcal / 20,1 P).
   // **El PO decidió que aquí se compra ENTERA**, así que el factor de compra es el peor de toda
@@ -3908,17 +3908,17 @@ const NUT_FOODS = [
   // hervido 0,77) ÷ 62% de parte comestible (TCAC 2018, E043, pág. 67) = **207 g comprados**.
   // O sea que hoy la lista pide MENOS DE LA MITAD del pescado. No se convierte todavía porque
   // la conversión va antes de repartir en unidades y eso toca los 14 `compra:'un'`.
-  { id: 'tilapia', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
+  { id: 'tilapia', src: 'sin_verificar', name: 'Mojarra o tilapia', rol: 'prot', kcal: 128, p: 26.0, c: 0, f: 2.7, un: { label: 'porción', g: 130 } },
   // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
   // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
-  { id: 'atun', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, compra: 'un', un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
-  { id: 'queso_campesino', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
-  { id: 'cuajada', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
-  { id: 'yogur_griego', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
-  { id: 'leche', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, maxG: 400, un: { label: 'vaso', g: 200 } },
-  { id: 'lenteja', name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, maxG: 350, un: { label: 'taza', g: 200 } },
-  { id: 'frijol', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, maxG: 350, un: { label: 'taza', g: 180 } },
-  { id: 'garbanzo', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, maxG: 300, un: { label: 'taza', g: 165 } },
+  { id: 'atun', src: 'sin_verificar', name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, compra: 'un', un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
+  { id: 'queso_campesino', src: 'sin_verificar', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
+  { id: 'cuajada', src: 'sin_verificar', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
+  { id: 'yogur_griego', src: 'sin_verificar', name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
+  { id: 'leche', src: 'sin_verificar', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, maxG: 400, un: { label: 'vaso', g: 200 } },
+  { id: 'lenteja', src: 'sin_verificar', name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, maxG: 350, un: { label: 'taza', g: 200 } },
+  { id: 'frijol', src: 'sin_verificar', name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, maxG: 350, un: { label: 'taza', g: 180 } },
+  { id: 'garbanzo', src: 'sin_verificar', name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, maxG: 300, un: { label: 'taza', g: 165 } },
   // ── CARBOHIDRATO ──
   // ⚠️ AQUÍ NO HAY `maxG` A PROPÓSITO, Y SE INTENTÓ (2026-08-10). Léelo antes de volver a ponerlo.
   // EL PROBLEMA ES REAL: `maxG` nació para los alimentos proteicos (la leche que pedía 1.000 g) y
@@ -3935,9 +3935,9 @@ const NUT_FOODS = [
   // (invisible y peor), que es la misma clase de defecto que se mató en v471, en espejo.
   // ✅ LA SALIDA es una SEGUNDA fuente de carbohidrato en el menú (arroz + tajada, arepa + papa),
   // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
-  { id: 'arroz', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 }, un2: { label: 'cucharada', g: 20 } },
-  { id: 'papa', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, compra: 'un', un: { label: 'papa mediana', g: 150 } },
-  { id: 'papa_criolla', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
+  { id: 'arroz', src: 'sin_verificar', name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 }, un2: { label: 'cucharada', g: 20 } },
+  { id: 'papa', src: 'sin_verificar', name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, compra: 'un', un: { label: 'papa mediana', g: 150 } },
+  { id: 'papa_criolla', src: 'sin_verificar', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
   // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
   // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
   // 2026-08-03). El error de +28% en carbohidrato hacía que el motor recetara ~22% MENOS yuca
@@ -3951,46 +3951,60 @@ const NUT_FOODS = [
   // deducción y no de una fila, el arreglo del 3-ago cambió un número malo por otro número
   // derivado — la clase de la yuca, otra vez en la yuca, con el signo al revés (hoy el motor la
   // cree más floja de lo que es y por eso sirve de MÁS).
-  // ⏭️ Primer paso: encontrar contra qué fuente se verificó el 112. Hasta entonces no se mueve
-  // ni un dígito: cambiarlo por el número de otra fuente sin cerrar eso es repetir el error.
-  { id: 'yuca', name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
-  { id: 'platano_maduro', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
-  { id: 'platano_verde', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
-  { id: 'arepa', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, compra: 'un', un: { label: 'arepa', g: 80 } },
-  { id: 'pan_integral', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, compra: 'un', un: { label: 'tajada', g: 28 } },
+  // ✅ EL PRIMER PASO YA ESTÁ HECHO (2026-08-15) — **el 112 NO SE VERIFICÓ CONTRA NADA.**
+  // Es la fila CRUDA de USDA multiplicada por 0,70, en los cuatro macros:
+  //     kcal  160   × 0,70 = 112,0   (AVI: 112)     factor implícito 0,7000
+  //     carbo  38,1 × 0,70 =  26,67  (AVI: 26,7)    factor implícito 0,7008
+  //     prot    1,36× 0,70 =   0,95  (AVI: 1,0)
+  //     grasa   0,28× 0,70 =   0,20  (AVI: 0,2)
+  // Comprobado además contra la API de USDA FoodData Central: **no existe ninguna fila de yuca
+  // cocida con estos valores**. Las que hay son SR 169985 «Cassava, raw» (160/1,36/38,1/0,28) y
+  // FNDDS 2709564 «Cassava, cooked» (191 kcal, porque lleva grasa de preparación). O sea que el
+  // arreglo del 3-ago cambió un número malo por otro DERIVADO, exactamente como sospechaba la
+  // nota de Andrés — y el factor 0,70 sale de una premisa («cocida absorbe agua») que la TCAC
+  // desmiente con su propia humedad. Marcado `src:'derivado'` con test que lo afirma (v487).
+  // ⏭️ QUEDA: traer la fila B106 COMPLETA de la TCAC (kcal, proteína, grasa y carbohidrato) desde
+  // el PDF oficial, que son páginas escaneadas y entra por transcripción revisada. Con la fila
+  // entera en la mano, el cambio es de Andrés. **Sigue sin moverse ni un dígito**: tener probado
+  // que el 112 está mal no autoriza a poner el 157 sin su fila completa y citable.
+  { id: 'yuca', src: 'derivado', ref: "USDA SR 169985 (Cassava, raw) x 0,70 - NO es una fila de ninguna fuente", name: 'Yuca cocida', rol: 'carb', kcal: 112, p: 1.0, c: 26.7, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
+  { id: 'platano_maduro', src: 'sin_verificar', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
+  { id: 'platano_verde', src: 'sin_verificar', name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
+  { id: 'arepa', src: 'sin_verificar', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, compra: 'un', un: { label: 'arepa', g: 80 } },
+  { id: 'pan_integral', src: 'sin_verificar', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, compra: 'un', un: { label: 'tajada', g: 28 } },
   // 🔴 Decía «cucharada = 15 g» y una cucharada de hojuelas pesa **~5,6 g** (verificado
   // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
   // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
   // lee «media taza (40 g)» en vez de «4 cucharadas» que nadie mide igual.
-  { id: 'avena', name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 }, un2: { label: 'cucharada', g: 10 } },
-  { id: 'pasta', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
-  { id: 'mazorca', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, compra: 'un', un: { label: 'mazorca', g: 130 } },
+  { id: 'avena', src: 'usda_sr', ref: "FDC 169705 - Oats (Includes foods for USDA's Food Distribution Program)", name: 'Avena en hojuelas', rol: 'carb', kcal: 389, p: 17.0, c: 66.0, f: 7.0, un: { label: 'taza', g: 80 }, un2: { label: 'cucharada', g: 10 } },
+  { id: 'pasta', src: 'sin_verificar', name: 'Pasta cocida', rol: 'carb', kcal: 158, p: 6.0, c: 31.0, f: 0.9, un: { label: 'taza', g: 140 } },
+  { id: 'mazorca', src: 'sin_verificar', name: 'Mazorca (maíz tierno)', rol: 'carb', kcal: 96, p: 3.4, c: 21.0, f: 1.5, compra: 'un', un: { label: 'mazorca', g: 130 } },
   // ── GRASA ──
-  { id: 'aguacate', name: 'Aguacate', rol: 'fat', kcal: 160, p: 2.0, c: 9.0, f: 15.0, un: { label: 'octavo', g: 30 } },
-  { id: 'aceite', name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
-  { id: 'mani', name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 }, un2: { label: 'cucharada', g: 10 } },
-  { id: 'almendra', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 }, un2: { label: 'almendra', g: 1.2 } },
-  { id: 'crema_mani', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
+  { id: 'aguacate', src: 'sin_verificar', name: 'Aguacate', rol: 'fat', kcal: 160, p: 2.0, c: 9.0, f: 15.0, un: { label: 'octavo', g: 30 } },
+  { id: 'aceite', src: 'sin_verificar', name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
+  { id: 'mani', src: 'sin_verificar', name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 }, un2: { label: 'cucharada', g: 10 } },
+  { id: 'almendra', src: 'sin_verificar', name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 }, un2: { label: 'almendra', g: 1.2 } },
+  { id: 'crema_mani', src: 'sin_verificar', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
   // ── VERDURA (libre: acompañan, no se cuentan al ajustar macros) ──
-  { id: 'tomate', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, compra: 'un', un: { label: 'tomate', g: 120 } },
-  { id: 'cebolla', name: 'Cebolla', rol: 'verd', kcal: 40, p: 1.1, c: 9.0, f: 0.1, un: { label: 'porción', g: 60 } },
-  { id: 'zanahoria', name: 'Zanahoria', rol: 'verd', kcal: 41, p: 0.9, c: 10.0, f: 0.2, compra: 'un', un: { label: 'zanahoria', g: 80 } },
-  { id: 'espinaca', name: 'Espinaca', rol: 'verd', kcal: 23, p: 2.9, c: 3.6, f: 0.4, un: { label: 'taza', g: 30 } },
-  { id: 'brocoli', name: 'Brócoli', rol: 'verd', kcal: 34, p: 2.8, c: 7.0, f: 0.4, un: { label: 'taza', g: 90 } },
-  { id: 'habichuela', name: 'Habichuela', rol: 'verd', kcal: 31, p: 1.8, c: 7.0, f: 0.2, un: { label: 'taza', g: 100 } },
-  { id: 'pepino', name: 'Pepino', rol: 'verd', kcal: 15, p: 0.7, c: 3.6, f: 0.1, un: { label: 'porción', g: 100 } },
-  { id: 'lechuga', name: 'Lechuga', rol: 'verd', kcal: 15, p: 1.4, c: 2.9, f: 0.2, un: { label: 'taza', g: 50 } },
-  { id: 'ahuyama', name: 'Ahuyama', rol: 'verd', kcal: 26, p: 1.0, c: 6.5, f: 0.1, un: { label: 'taza', g: 120 } },
+  { id: 'tomate', src: 'sin_verificar', name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, compra: 'un', un: { label: 'tomate', g: 120 } },
+  { id: 'cebolla', src: 'sin_verificar', name: 'Cebolla', rol: 'verd', kcal: 40, p: 1.1, c: 9.0, f: 0.1, un: { label: 'porción', g: 60 } },
+  { id: 'zanahoria', src: 'sin_verificar', name: 'Zanahoria', rol: 'verd', kcal: 41, p: 0.9, c: 10.0, f: 0.2, compra: 'un', un: { label: 'zanahoria', g: 80 } },
+  { id: 'espinaca', src: 'sin_verificar', name: 'Espinaca', rol: 'verd', kcal: 23, p: 2.9, c: 3.6, f: 0.4, un: { label: 'taza', g: 30 } },
+  { id: 'brocoli', src: 'sin_verificar', name: 'Brócoli', rol: 'verd', kcal: 34, p: 2.8, c: 7.0, f: 0.4, un: { label: 'taza', g: 90 } },
+  { id: 'habichuela', src: 'sin_verificar', name: 'Habichuela', rol: 'verd', kcal: 31, p: 1.8, c: 7.0, f: 0.2, un: { label: 'taza', g: 100 } },
+  { id: 'pepino', src: 'sin_verificar', name: 'Pepino', rol: 'verd', kcal: 15, p: 0.7, c: 3.6, f: 0.1, un: { label: 'porción', g: 100 } },
+  { id: 'lechuga', src: 'sin_verificar', name: 'Lechuga', rol: 'verd', kcal: 15, p: 1.4, c: 2.9, f: 0.2, un: { label: 'taza', g: 50 } },
+  { id: 'ahuyama', src: 'sin_verificar', name: 'Ahuyama', rol: 'verd', kcal: 26, p: 1.0, c: 6.5, f: 0.1, un: { label: 'taza', g: 120 } },
   // ── FRUTA ──
-  { id: 'banano', name: 'Banano', rol: 'fruta', kcal: 89, p: 1.1, c: 23.0, f: 0.3, compra: 'un', un: { label: 'banano', g: 118 } },
-  { id: 'mango', name: 'Mango', rol: 'fruta', kcal: 60, p: 0.8, c: 15.0, f: 0.4, un: { label: 'taza', g: 165 } },
-  { id: 'papaya', name: 'Papaya', rol: 'fruta', kcal: 43, p: 0.5, c: 11.0, f: 0.3, un: { label: 'taza', g: 145 } },
-  { id: 'guayaba', name: 'Guayaba', rol: 'fruta', kcal: 68, p: 2.6, c: 14.0, f: 1.0, compra: 'un', un: { label: 'guayaba', g: 90 } },
-  { id: 'naranja', name: 'Naranja', rol: 'fruta', kcal: 47, p: 0.9, c: 12.0, f: 0.1, compra: 'un', un: { label: 'naranja', g: 130 } },
-  { id: 'mandarina', name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, compra: 'un', un: { label: 'mandarina', g: 90 } },
-  { id: 'pina', name: 'Piña', rol: 'fruta', kcal: 50, p: 0.5, c: 13.0, f: 0.1, un: { label: 'taza', g: 165 } },
-  { id: 'fresa', name: 'Fresa', rol: 'fruta', kcal: 32, p: 0.7, c: 7.7, f: 0.3, un: { label: 'taza', g: 150 } },
-  { id: 'maracuya', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, compra: 'un', un: { label: 'unidad', g: 60 } },
+  { id: 'banano', src: 'sin_verificar', name: 'Banano', rol: 'fruta', kcal: 89, p: 1.1, c: 23.0, f: 0.3, compra: 'un', un: { label: 'banano', g: 118 } },
+  { id: 'mango', src: 'sin_verificar', name: 'Mango', rol: 'fruta', kcal: 60, p: 0.8, c: 15.0, f: 0.4, un: { label: 'taza', g: 165 } },
+  { id: 'papaya', src: 'sin_verificar', name: 'Papaya', rol: 'fruta', kcal: 43, p: 0.5, c: 11.0, f: 0.3, un: { label: 'taza', g: 145 } },
+  { id: 'guayaba', src: 'sin_verificar', name: 'Guayaba', rol: 'fruta', kcal: 68, p: 2.6, c: 14.0, f: 1.0, compra: 'un', un: { label: 'guayaba', g: 90 } },
+  { id: 'naranja', src: 'sin_verificar', name: 'Naranja', rol: 'fruta', kcal: 47, p: 0.9, c: 12.0, f: 0.1, compra: 'un', un: { label: 'naranja', g: 130 } },
+  { id: 'mandarina', src: 'sin_verificar', name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, compra: 'un', un: { label: 'mandarina', g: 90 } },
+  { id: 'pina', src: 'sin_verificar', name: 'Piña', rol: 'fruta', kcal: 50, p: 0.5, c: 13.0, f: 0.1, un: { label: 'taza', g: 165 } },
+  { id: 'fresa', src: 'sin_verificar', name: 'Fresa', rol: 'fruta', kcal: 32, p: 0.7, c: 7.7, f: 0.3, un: { label: 'taza', g: 150 } },
+  { id: 'maracuya', src: 'sin_verificar', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, compra: 'un', un: { label: 'unidad', g: 60 } },
 ];
 
 // Índice por id, null-proto para que un id raro NO herede del prototipo

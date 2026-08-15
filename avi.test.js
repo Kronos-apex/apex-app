@@ -4136,6 +4136,48 @@ const _foodsJson = (() => {
 
 // 🔴 E5 — LA RAZÓN DE LAS DOS CAPAS. `NUT_MENUS` referencia alimentos POR ID: si el catálogo de
 // búsqueda pisara o renombrara esos ids, los platos que la app YA recomienda se romperían.
+// ── LA PROCEDENCIA DE LOS 50 DEL RECETARIO (v487) ─────────────────────────────────────────
+// Hasta hoy **ninguno de los 50 declaraba de dónde salía su número**, mientras la OTRA capa
+// (`foods.json`, el buscador) sí lo exige alimento por alimento. Y la capa sin trazabilidad es
+// justo la que decide cuántos gramos come la gente. Peor: `foods.json` copia los 50 con
+// `src:'avi50'`, así que 50 de sus 181 entradas «con fuente» apuntan de vuelta a la tabla que no
+// la tiene — la trazabilidad era CIRCULAR donde más importaba.
+const NUT_SRC_OK = ['usda_sr', 'tcac2018', 'etiqueta', 'derivado', 'sin_verificar'];
+const NUT_SIN_VERIFICAR_TOPE = 47; // medido el 2026-08-15. Este número solo puede BAJAR.
+
+test('🔴 v487 · los 50 del recetario declaran TODOS de dónde salió su número', () => {
+  for (const f of NUT_FOODS) {
+    assert.ok(f.src, `«${f.name}» (${f.id}) no dice de dónde salieron sus macros`);
+    assert.ok(NUT_SRC_OK.indexOf(f.src) !== -1, `${f.id}: fuente desconocida «${f.src}»`);
+    // Una fuente externa sin la CITA al lado no es una fuente: es una afirmación.
+    if (f.src === 'usda_sr' || f.src === 'tcac2018' || f.src === 'derivado') {
+      assert.ok(f.ref && f.ref.length > 15, `${f.id} dice «${f.src}» pero no cita contra qué`);
+    }
+  }
+});
+
+test('🔴 v487 · el número de alimentos SIN VERIFICAR solo puede BAJAR', () => {
+  // Se afirma por CONTEO, no por lista: una lista caza que se quite uno, jamás que se AGREGUE un
+  // alimento nuevo sin fuente — que es exactamente como se llega a 50 sin trazabilidad.
+  const sin = NUT_FOODS.filter(f => f.src === 'sin_verificar');
+  assert.ok(sin.length <= NUT_SIN_VERIFICAR_TOPE,
+    `subió a ${sin.length} (tope ${NUT_SIN_VERIFICAR_TOPE}). Un alimento nuevo entra CON su fuente: ` +
+    sin.map(f => f.id).slice(0, 5).join(', '));
+});
+
+test('🔴 v487 · la yuca queda marcada como DERIVADA, no como verificada', () => {
+  // Medido el 2026-08-15: sus 4 macros son la fila CRUDA de USDA (SR 169985: 160 / 1,36 / 38,1 /
+  // 0,28) multiplicada por 0,70 — kcal da 0,7000 exacto y el carbohidrato 0,7008. No es una fila
+  // de ninguna tabla: es una deducción con un factor de absorción de agua que la TCAC desmiente
+  // (humedad 61,6% cocida contra 60,9% cruda). Este test existe para que nadie vuelva a llamarla
+  // «verificada» sin traer una fila real, y para dejar la aritmética escrita al lado del dato.
+  const y = NUT_FOODS.find(f => f.id === 'yuca');
+  assert.strictEqual(y.src, 'derivado');
+  const crudo = { kcal: 160, p: 1.36, c: 38.1, f: 0.28 };
+  assert.ok(Math.abs(y.kcal / crudo.kcal - 0.70) < 0.005, 'kcal sigue siendo el crudo × 0,70');
+  assert.ok(Math.abs(y.c / crudo.c - 0.70) < 0.005, 'el carbohidrato también');
+});
+
 test('🔴 los ids que usa el recetario existen en NUT_FOODS (por eso no se fusiona)', () => {
   // ⚠️ La lista de referencias se lee de la ESTRUCTURA de NUT_MENUS (`pick` y `acomp`), NUNCA
   // cruzándola contra NUT_FOODS: la primera versión de este test hacía eso y un sabotaje que

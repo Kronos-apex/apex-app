@@ -4,6 +4,62 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-15 (3ª parte) — avi-v487: DE DÓNDE SALIÓ CADA NÚMERO DEL PLATO · Y LA YUCA, RESUELTA
+
+**Suite 758 → 761, matriz nueva `_sabotaje-fuentes` 5/5. NI UN MACRO CAMBIÓ** (verificado
+comparando las 50 entradas contra `HEAD`: cero diferencias en kcal, macros, medidas y topes).
+
+### 1 · 🔴 LA PREGUNTA DE LA YUCA ESTÁ RESUELTA: el 112 no se verificó contra nada
+La nota de Andrés (13-ago) exigía un primer paso antes de tocar nada: *«encontrar contra qué fuente
+se verificó el 112»*. **Respuesta: contra ninguna. Es la fila CRUDA de USDA × 0,70.**
+
+| | USDA crudo (SR 169985) | ×0,70 | AVI tiene | factor implícito |
+|---|---|---|---|---|
+| kcal | 160 | 112,0 | **112** | **0,7000** |
+| carbohidrato | 38,1 | 26,67 | **26,7** | **0,7008** |
+| proteína | 1,36 | 0,95 | 1,0 | 0,7353 |
+| grasa | 0,28 | 0,20 | 0,2 | 0,7143 |
+
+Comprobado además contra la **API de USDA FoodData Central**: no existe ninguna fila de yuca cocida
+con esos valores. Las que hay son `SR 169985` *Cassava, raw* (160/1,36/38,1/0,28) y `FNDDS 2709564`
+*Cassava, cooked* (**191 kcal**, porque incluye la grasa de preparación). O sea que el arreglo del
+3-ago **cambió un número malo por otro DERIVADO** —justo lo que Andrés sospechaba— y el factor 0,70
+sale de una premisa («cocida absorbe agua») que la TCAC desmiente con su propia humedad.
+⏭️ **Sigue sin moverse ni un dígito.** Tener probado que el 112 está mal **no autoriza** a poner el
+157: falta traer la fila B106 COMPLETA de la TCAC (con proteína y grasa), y el PDF oficial son
+páginas escaneadas. Con la fila entera, el cambio es de Andrés.
+
+### 2 · Los 50 ya dicen de dónde salieron — y el número que no dicen está CONTADO
+Ninguno de los 50 declaraba su procedencia, mientras la otra capa (`foods.json`) sí la exige uno por
+uno. 🔴 **Y era peor: la trazabilidad era CIRCULAR.** `foods.json` copia los 50 con `src:'avi50'`,
+así que **50 de sus 181 entradas «con fuente» apuntaban de vuelta a la tabla que no la tiene** — y
+su nota decía literalmente *«Valores verificados contra fuente externa»*, que es **falso**.
+Ahora cada alimento lleva `src`/`ref` **al lado del dato**:
+
+| procedencia | cuántos |
+|---|---|
+| `usda_sr` **con FDC citado** | 2 (pechuga de pollo `FDC 171477` · avena `FDC 169705`, confirmados contra la API, coinciden exacto) |
+| `derivado` | 1 (la yuca, con su aritmética escrita) |
+| **`sin_verificar`** | **47** |
+
+🔒 Tres candados: (a) **todos** declaran `src`; (b) quien afirme fuente externa **lleva la cita o
+falla**; (c) el conteo de `sin_verificar` está topado en 47 y **solo puede bajar** — se afirma por
+CONTEO y no por lista, porque una lista caza que se quite uno pero jamás que se AGREGUE un alimento
+nuevo sin fuente, que es exactamente como se llega a 50 sin trazabilidad.
+⚠️ **Lo que la matriz NO puede proteger** y por eso va escrito al lado: aflojar el tope deja la
+suite verde por definición (lección de v476). Contra eso solo sirve la cifra medida con su fecha.
+
+### 3 · 🎓 Lo que enseñó
+- 🔴 **«Verificado» sin decir contra qué no es una verificación, es una afirmación** — y sobrevivió
+  12 días porque nadie puede auditar lo que no se puede localizar. Se cazó **haciendo la división**:
+  cuatro macros que dan el mismo factor no son una coincidencia, son una deducción.
+- 🔴 **Mi primera sonda de cruce era basura y casi reporto dos hallazgos falsos**: emparejó «arroz»
+  con *Beans, white* y «plátano verde» con *Peas, green* por coincidencia de tokens, y los sacó como
+  «contradicciones del 41% y el 45%». **Valida la sonda antes de creerle** — otra vez.
+- 🎓 **Un agregador web no es una fuente**: la primera búsqueda devolvió «112 kcal / 27 C» y parecía
+  confirmar el dato; al abrir la página, era yuca cocida **con grasa añadida** (191 kcal). Los
+  agregadores repiten el mismo número sin fuente y eso se lee como confirmación independiente.
+
 ## 🟢 2026-08-15 (2ª parte) — avi-v486: UN PLAN PUEDE ESTAR PERFECTO Y AUN ASÍ MENTIR SOBRE SÍ MISMO
 
 **Suite 753 → 758, matriz `_sabotaje-menores` 14 → 18.** Cierra el 2º hallazgo de la auditoría de
