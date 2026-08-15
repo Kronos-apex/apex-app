@@ -5011,6 +5011,45 @@ function nutMacroKcal(macros) {
 }
 const NUT_KCAL_MISMATCH = 25; // desfase que ya no es redondeo y hay que avisarle al coach
 
+// 🔴 EL CANDADO NUMÉRICO DE MENORES VIVE AQUÍ, a la SALIDA de `nutBaseFor`, que es el punto ÚNICO
+// donde se ELIGE el número que lee el asesorado: las 7 superficies (Hoy · Perfil · «Ver mi plan en
+// grande» · el plato · la lista del mercado ×2 · la franja del registro) leen de aquí.
+// La regla «un menor NUNCA lleva déficit» (dictamen de Andrés Hyp, 2026-08-05) vivía SOLO dentro de
+// `nutritionEstimate` — o sea, la calculadora automática. Un plan ESCRITO A MANO por el coach entra
+// por la otra puerta y nadie le preguntaba la edad. Medido el 2026-08-15 sobre el backup del 12-ago:
+// una asesorada de 15 años con plan escrito de 1.771 kcal y gasto de 1.910 comía un 7,3% POR DEBAJO
+// de lo que gasta, todos los días, mientras su pantalla le explicaba «estás comiendo en balance».
+// Puerta cerrada, ventana abierta: la misma clase que el filtro de lesiones y el calentamiento
+// (v424), y que el candado de TEXTO de v449 — que sí cubre sus 3 rutas, pero solo protege el TEXTO.
+// El plato se arma con los MACROS, así que subir el titular a secas no serviría de nada: se escalan
+// los tres en la MISMA proporción (respeta el reparto que eligió el coach, corrige solo el total) y
+// el faltante del redondeo se cierra con carbohidrato, para que el piso se cumpla SIEMPRE — un
+// candado que afirma el signo y no la dosis deja pasar el defecto que lo motivó (lección de v482).
+function nutMinorFloorBase(base, client, weightKg) {
+  if (!base || !base.macros || !client || !isMenor(client)) return base;
+  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
+  if (!sx) return base;
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  const tdee = calcTDEE(calcTMB(w, client.height, client.age, sx), client.activityFactor);
+  // Sin gasto conocido NO se inventa un piso: no se puede afirmar que el plan esté por debajo.
+  if (!tdee || !(base.kcalObj > 0) || base.kcalObj >= tdee) return base;
+  const factor = tdee / base.kcalObj;
+  const macros = {
+    prot_g: Math.round(base.macros.prot_g * factor),
+    carb_g: Math.round(base.macros.carb_g * factor),
+    fat_g: Math.round(base.macros.fat_g * factor),
+  };
+  macros.kcal = nutMacroKcal(macros);
+  if (macros.kcal < tdee) { // el redondeo de los 3 macros puede dejarlo justo por debajo
+    macros.carb_g += Math.ceil((tdee - macros.kcal) / 4);
+    macros.kcal = nutMacroKcal(macros);
+  }
+  return Object.assign({}, base, {
+    kcalObj: macros.kcal, macros,
+    minorFloor: { tdee, kcalAntes: base.kcalObj, factor: Math.round(factor * 1000) / 1000 },
+  });
+}
+
 function nutBaseFor(client, nut, weightKg) {
   const k = parseFloat(nut && nut.kcal);
   const p = parseFloat(nut && nut.prot);
@@ -5024,14 +5063,20 @@ function nutBaseFor(client, nut, weightKg) {
     // el titular viejo sería el mismo error de v428 (anunciar un déficit mientras se sirve otra cosa).
     const macros = { prot_g: Math.round(p), carb_g: Math.round(c), fat_g: Math.round(f) };
     macros.kcal = nutMacroKcal(macros);
-    return {
+    // `desfase` se calcula ANTES del piso a propósito: describe la contradicción del COACH (su
+    // titular contra sus propios macros), no el efecto de nuestro candado. Mezclarlos le echaría
+    // encima la culpa de algo que hicimos nosotros — el error de v471 con el botón «✨ Generar».
+    return nutMinorFloorBase({
       origen: 'coach', kcalObj: macros.kcal, macros,
       kcalEscrito: Math.round(k), desfase: macros.kcal - Math.round(k),
-    };
+    }, client, weightKg);
   }
   const est = nutritionEstimate(client, weightKg);
   if (!est || !est.macros) return null;
-  return { origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee };
+  // Idempotente por esta rama (`nutritionEstimate` ya aplica el piso), pero se pasa igual: así la
+  // garantía «ningún menor por debajo de su gasto» es de la SALIDA de nutBaseFor, no de una de sus
+  // ramas — y no depende de que quien toque la otra puerta mañana se acuerde de la regla.
+  return nutMinorFloorBase({ origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee }, client, weightKg);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -7039,6 +7084,7 @@ if (typeof module !== 'undefined' && module.exports) {
     FOODLOG_PLAN_PREFIX,
     nutPlanReview,
     nutBaseFor,
+    nutMinorFloorBase,
     nutMacroKcal,
     NUT_KCAL_MISMATCH,
     nutWeekShape,

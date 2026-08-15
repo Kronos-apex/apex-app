@@ -148,6 +148,24 @@ function nutGoalCheck(){
     plan:document.getElementById('nut-plan').value,
     avoid:document.getElementById('nut-avoid').value
   },c);
+  // 🔴 Si el PISO DE MENORES corrigió el plan, el coach tiene que enterarse: le estamos sirviendo
+  // a su asesorada un número distinto del que él escribió, y callarlo es la mentira de v437 al
+  // revés (cambiar la cifra y no decirlo). El aviso se calcula con `nutBaseFor`, que es LA MISMA
+  // función que decide lo que ella ve — no con una cuenta paralela.
+  const _pf=v=>parseFloat((document.getElementById(v)||{}).value)||0;
+  const _bf=(typeof nutBaseFor==='function')
+    ? nutBaseFor(c,{kcal:kcal,prot:_pf('nut-prot'),carbs:_pf('nut-carbs'),fat:_pf('nut-fat')},_nutPesoDe(c))
+    : null;
+  if(_bf&&_bf.minorFloor){
+    const mf=_bf.minorFloor;
+    nota.style.display='block';
+    nota.innerHTML='&#128274; '+esc(c.name)+' es menor de edad y este plan queda por debajo de lo que gasta ('+
+      mf.kcalAntes+' contra ~<strong>'+mf.tdee+' kcal</strong>). Un menor en crecimiento no lleva d&eacute;ficit, '+
+      'as&iacute; que la app le va a servir <strong>'+_bf.kcalObj+' kcal</strong> (P'+_bf.macros.prot_g+
+      ' C'+_bf.macros.carb_g+' G'+_bf.macros.fat_g+'), con el mismo reparto que t&uacute; elegiste. '+
+      'Si quieres otro n&uacute;mero, s&uacute;belo t&uacute; aqu&iacute;.';
+    return;
+  }
   const mm=nutGoalMismatch(efectivo,kcal,est.tdee); if(!mm)return apagar();
   const DIR={deficit:'un d&eacute;ficit',superavit:'un super&aacute;vit',balance:'un balance'};
   const titulo=(GOAL_WHY[efectivo]||{}).title||efectivo;

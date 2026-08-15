@@ -4,6 +4,72 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-15 — avi-v485: EL CANDADO DE MENORES PROTEGÍA EL TEXTO, PERO NO EL NÚMERO
+
+**Suite 742 → 749, matriz `_sabotaje-menores` 10/10.** Sale de una auditoría independiente de
+nutrición encargada por el PO (`docs/auditoria-nutricion-2026-08-15.md`).
+
+### 1 · El defecto, con nombre propio
+La regla del dictamen de Andrés Hyp (v448) dice **«un menor NUNCA lleva déficit: su piso es su
+propio gasto»**. Estaba implementada dentro de `nutritionEstimate` — o sea, **la calculadora
+automática**. Pero cuando el coach **escribe el plan a mano**, el número entra por la otra puerta
+(`nutBaseFor`) y **ahí nadie preguntaba la edad**.
+
+Medido sobre el backup del 12-ago, con el gasto recalculado por fuera de la app (Schofield 10-18):
+
+| | plan escrito | su gasto | recibía |
+|---|---|---|---|
+| **Valery, 15 años** | **1.775 kcal** | 1.910 kcal | **−7,1% todos los días** |
+
+Y encima su pantalla le explicaba *«Estás comiendo en balance: lo que gastas»* — el candado de
+TEXTO de v449 sí funciona en sus 3 rutas, y por eso mismo le pintaba «mantenimiento» **encima de un
+déficit**. Proteger el texto sin proteger el número **fabrica** esa frase falsa.
+De los 5 menores de la base, es la única con plan escrito completo: los otros 4 caen a la
+calculadora (que sí tenía el candado). **La puerta abierta tenía exactamente una persona adentro, y
+era la más joven con plan.**
+
+### 2 · Cómo se arregló
+`nutMinorFloorBase(base, client, weightKg)` **puro en avi-core**, aplicado a la **SALIDA** de
+`nutBaseFor` — que es el punto ÚNICO donde se ELIGE el número que ella lee: las **7 superficies**
+(Hoy · Perfil · «Ver mi plan en grande» · el plato · la lista del mercado ×2 · la franja del
+registro) leen de ahí. Enumerarlas fue el trabajo; el candado es corto.
+- 🔒 **Se escalan los TRES macros en la misma proporción**, no se sube el titular: el plato se arma
+  con los macros. Y no se vuelca todo en carbohidrato, que sería decidir por el entrenador —
+  **el reparto que él eligió se conserva** (test que lo afirma; sabotaje S8).
+- 🔒 **El faltante del redondeo se cierra con carbohidrato**, para que el piso se cumpla SIEMPRE.
+  Un candado que afirma el signo y no la DOSIS deja pasar el defecto que lo motivó (lección v482).
+- 🔒 **Sin datos para conocer el gasto NO se inventa un piso** (Santiago, 17, no declara sexo).
+- 🔒 **`desfase` se calcula ANTES del piso**: denuncia la contradicción del COACH (su titular contra
+  sus propios macros). Recalcularlo después le echaría encima la culpa de algo que hicimos nosotros.
+- 🔒 **El coach se entera**: si el piso actúa, `nutGoalCheck` se lo dice en su editor con el número
+  nuevo y sus macros. Cambiar la cifra y callarlo es la mentira de v437 con otra cara.
+
+**Medido después:** Valery 1.775 → **1.915** (+0,3% sobre su gasto). **Menores por debajo de su
+gasto: 0 de 5.**
+
+### 3 · 🎓 Lo que enseñó la matriz de sabotaje (2 verdes, causas distintas)
+- 🔴 **S5 destapó que mi CONTROL no controlaba nada.** «A una adulta no se le toca el plan» usaba
+  una mujer de 52 kg cuyo plan de 1.775 kcal ya estaba **por encima** de su gasto: nunca estuvo en
+  déficit, así que quitarle el candado de edad no le quitaba nada y el sabotaje salía **VERDE**.
+  Con una adulta **en déficit real** (1.530 contra 1.994 de gasto), muerde. **Un control tiene que
+  estar en el estado que dice controlar, o es decoración.**
+- 🟡 **S2 salió verde y NO era código redundante** — que es la primera hipótesis obligatoria
+  (v471/v482). Se separó con un sabotaje combinado: con **solo** el piso de dentro de
+  `nutritionEstimate` muerto, el barrido **sigue verde** (la capa de la salida rescata a las 7
+  pantallas por su cuenta); con **las dos** muertas, cae. O sea que la segunda capa **sostiene de
+  verdad**. Queda en la matriz como `S2b`, con la razón medida escrita al lado — **un verde sin
+  explicación al lado es un gate que se aprende a ignorar.**
+
+### 4 · ⏭️ Lo que esta versión NO arregla (y sigue abierto)
+- 🔴 **4 de 10 planes escritos a mano contradicen su rótulo** y son ADULTOS (Luz −22%, Kathe −20%,
+  Samuel +12%): un adulto SÍ puede llevar déficit, así que el defecto no es el número sino que el
+  rótulo diga «balance». **`nutGoalCheck` ya lo detecta, pero solo con el editor ABIERTO** — los
+  planes ya guardados están mudos. Detectar en el editor y callar sobre lo guardado deja vivos
+  exactamente los casos que ya existían antes del detector.
+- 🟠 **La yuca sigue en 112 kcal sin fuente citada** (la TCAC dice 157) y **0 de los 50 alimentos
+  del recetario citan fuente**, mientras el catálogo de búsqueda sí la exige uno por uno. Con 11
+  de 22 personas comiendo yuca en su semana. No se toca hasta saber contra qué se verificó.
+
 ## 🟢 2026-08-14 (3ª parte) — avi-v484: EL RÉCORD SE QUEDABA EN EL EJERCICIO RETIRADO
 
 **Producción en `avi-v484`.** Suite **735 → 742**, hook 12/12, `_verify-deload` TODO OK,

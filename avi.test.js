@@ -6917,6 +6917,115 @@ test('🔴 v435 · el titular del plan y sus PROPIOS macros tienen que decir lo 
   assert.strictEqual(ok.desfase, 0);
 });
 
+// ── EL CANDADO NUMÉRICO DE MENORES (v485) ─────────────────────────────────────────────────
+// Caso real medido el 2026-08-15 (backup del 12-ago): una asesorada de 15 años con plan ESCRITO
+// A MANO de 1.775 kcal y gasto de 1.910 comía 7,1% por debajo de lo que gasta. La regla «un menor
+// nunca lleva déficit» solo vivía en `nutritionEstimate` (la calculadora); el plan escrito entraba
+// por la otra puerta de `nutBaseFor` y nadie le preguntaba la edad.
+const MENOR_REAL = { name: 'menor', age: 15, sex: 'F', weight: 52, height: 161, activityFactor: 1.375 };
+const PLAN_BAJO = { kcal: 1775, prot: 94, carbs: 244, fat: 47 }; // los macros REALES de ese plan
+const TDEE_MENOR = 1910; // Schofield 10-18 F: 13,384×52+692,6 = 1.389 → ×1,375 = 1.910
+
+test('🔴 v485 · un MENOR con plan escrito a mano NUNCA queda por debajo de su gasto', () => {
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  assert.strictEqual(base.origen, 'coach', 'sigue siendo el plan del coach, no lo reemplazamos');
+  // La DOSIS, no el signo: «subió algo» lo cumpliría un +1 kcal y el defecto seguiría vivo
+  // (lección de v482 — un candado que afirma el signo deja pasar lo que lo motivó).
+  assert.ok(base.kcalObj >= TDEE_MENOR, `le entrega ${base.kcalObj} y gasta ${TDEE_MENOR}`);
+  assert.ok(base.kcalObj <= TDEE_MENOR + 30, 'y no se pasa de largo inventando un superávit');
+  assert.strictEqual(base.macros.kcal, base.kcalObj, 'el plato se arma con el número corregido');
+  assert.ok(base.minorFloor, 'y queda dicho que el piso actuó, para poder avisarle al coach');
+  assert.strictEqual(base.minorFloor.kcalAntes, 1775);
+  assert.strictEqual(base.minorFloor.tdee, TDEE_MENOR);
+});
+
+test('🔴 v485 · CONTROL: a una ADULTA EN DÉFICIT REAL el plan le llega INTACTO', () => {
+  // Sin este control el «candado» sería haber borrado la feature: un adulto SÍ puede llevar
+  // déficit, es una decisión clínica legítima de su entrenador. (Regla de v449.)
+  // ⚠️ La adulta tiene que estar EN DÉFICIT DE VERDAD o el control no controla nada: la primera
+  // versión de este test usaba a alguien de 52 kg cuyo plan de 1.775 kcal ya estaba POR ENCIMA de
+  // su gasto, así que quitarle el candado de edad no le quitaba nada y el sabotaje S5 salía VERDE.
+  const adulta = { name: 'adulta', age: 34, sex: 'F', weight: 75, height: 165, activityFactor: 1.375 };
+  const planDeficit = { kcal: 1530, prot: 120, carbs: 150, fat: 50 };
+  const tdee = calcTDEE(calcTMB(75, 165, 34, 'F'), 1.375);
+  const kcalPlan = nutMacroKcal({ prot_g: 120, carb_g: 150, fat_g: 50 });
+  assert.ok(kcalPlan < tdee * 0.9, `el control exige déficit real: ${kcalPlan} vs ${tdee}`);
+  const base = nutBaseFor(adulta, planDeficit, 75);
+  assert.strictEqual(base.kcalObj, kcalPlan, 'su déficit se respeta, no se lo subimos');
+  assert.ok(!base.minorFloor, 'a una adulta no se le toca el plan');
+});
+
+test('🔴 v485 · el piso RESPETA el reparto de macros que eligió el coach', () => {
+  // Subir solo el titular no serviría (el plato se arma con los macros) y volcarlo todo en un
+  // macro sería decidir por el entrenador. Se escala; las proporciones se conservan.
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  const antes = { p: 94 * 4, c: 244 * 4, f: 47 * 9 }, tot = antes.p + antes.c + antes.f;
+  const desp = { p: base.macros.prot_g * 4, c: base.macros.carb_g * 4, f: base.macros.fat_g * 9 };
+  const totD = desp.p + desp.c + desp.f;
+  for (const k of ['p', 'c', 'f']) {
+    const dif = Math.abs(desp[k] / totD - antes[k] / tot);
+    assert.ok(dif < 0.01, `el reparto de ${k} se movió ${(dif * 100).toFixed(2)} puntos`);
+  }
+});
+
+test('🔴 v485 · un menor que YA come por encima de su gasto no se toca', () => {
+  const alto = { kcal: 2400, prot: 130, carbs: 330, fat: 70 };
+  const base = nutBaseFor(MENOR_REAL, alto, 52);
+  assert.ok(!base.minorFloor, 'el piso no inventa superávit sobre un plan que ya está bien');
+  assert.strictEqual(base.kcalObj, nutMacroKcal({ prot_g: 130, carb_g: 330, fat_g: 70 }));
+});
+
+test('🔴 v485 · sin datos para conocer el gasto NO se inventa un piso', () => {
+  // Santiago (17) no declara sexo en producción: sin gasto no se puede afirmar que el plan esté
+  // por debajo, y un piso inventado sería peor que el defecto.
+  for (const falta of [{ sex: '' }, { height: '' }, { weight: '' }]) {
+    const c = Object.assign({}, MENOR_REAL, falta);
+    const base = nutBaseFor(c, PLAN_BAJO, falta.weight === '' ? '' : 52);
+    assert.ok(base && !base.minorFloor, 'sin ' + Object.keys(falta)[0] + ' no se toca el plan');
+  }
+});
+
+test('🔴 v485 · el desfase del COACH sobrevive al piso (no le echamos encima lo nuestro)', () => {
+  // `desfase` denuncia que SU titular no cuadra con SUS macros. Si el piso lo recalculara, el
+  // coach vería una contradicción que fabricamos nosotros — el error del botón «✨ Generar».
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  assert.strictEqual(base.kcalEscrito, 1775);
+  assert.strictEqual(base.desfase, nutMacroKcal({ prot_g: 94, carb_g: 244, fat_g: 47 }) - 1775);
+});
+
+test('🔴 v485 · BARRIDO: ningún menor queda bajo su gasto, por ninguna de las dos puertas', () => {
+  // El barrido encuentra lo que la medición sobre 5 menores reales no puede (lección de v482).
+  let casos = 0, fallos = 0, actuo = 0;
+  for (const age of [10, 13, 15, 17]) {
+    for (const sex of ['M', 'F']) {
+      for (const w of [35, 45, 55, 70, 90]) {
+        for (const af of [1.2, 1.375, 1.55, 1.725, 1.9]) {
+          for (const goal of ['Perder grasa', 'Recomposición', 'Ganar músculo']) {
+            const c = { age, sex, weight: w, height: 160, activityFactor: af, goal };
+            const tdee = calcTDEE(calcTMB(w, 160, age, sex), af);
+            // Las dos puertas: plan escrito a mano (varios niveles de déficit) y la calculadora.
+            for (const frac of [0.5, 0.7, 0.85, 0.95, null]) {
+              const nut = frac == null ? null : (() => {
+                const k = Math.round(tdee * frac), p = Math.round(w * 1.6);
+                const f = Math.round(k * 0.25 / 9);
+                return { kcal: k, prot: p, carbs: Math.max(10, Math.round((k - p * 4 - f * 9) / 4)), fat: f };
+              })();
+              const base = nutBaseFor(c, nut, w);
+              if (!base) continue;
+              casos++;
+              if (base.minorFloor) actuo++;
+              if (base.kcalObj < tdee - 1) { fallos++; if (fallos <= 3) console.log('    ✗', JSON.stringify({ age, sex, w, af, goal, frac, dio: base.kcalObj, gasta: tdee })); }
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(casos > 1000, 'el barrido tiene que barrer de verdad: ' + casos);
+  assert.ok(actuo > 100, 'y el piso tiene que ACTUAR en un montón de ellos: ' + actuo);
+  assert.strictEqual(fallos, 0, `${fallos} de ${casos} menores quedaron por debajo de su gasto`);
+});
+
 test('🔴 v435 · la semana que ve el PERFIL suma EXACTO lo que promete', () => {
   // La frase «en la semana comes lo mismo» tiene que ser verdad, no un consuelo. Con el titular
   // escrito (2.400) la semana daba 16.485 contra 16.800 prometidas: 315 kcal de mentira.
