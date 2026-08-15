@@ -7034,6 +7034,64 @@ test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', (
   assert.strictEqual(core.nutPlanReview(adulto, PLAN_BAJO, 52).status, 'ok');
 });
 
+// ── EL RÓTULO QUE MIENTE SOBRE UN PLAN CORRECTO (v486) ────────────────────────────────────
+// Medido el 15-ago sobre los 10 planes escritos: 3 personas tienen los números EXACTOS para su
+// objetivo (Luz, desfase 0) y aun así su app les explica «estás comiendo en balance» encima de un
+// déficit deliberado. Ninguna disparaba aviso: el detector vivía dentro del editor de nutrición.
+const LUZ = { name: 'Luz', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
+const PLAN_LUZ = { kcal: 1731, prot: 130, carbs: 160, fat: 48, goal: 'mantenimiento' };
+
+test('🔴 v486 · un plan con los NÚMEROS BIEN pero el RÓTULO mentiroso se detecta', () => {
+  const r = core.nutPlanReview(LUZ, PLAN_LUZ, 82);
+  assert.strictEqual(r.status, 'rotulo_miente', 'status real: ' + r.status);
+  assert.ok(Math.abs(r.gap) < 300, 'y sus cifras están DENTRO de lo correcto: gap ' + r.gap);
+  assert.strictEqual(r.mismatch.dice, 'balance');
+  assert.strictEqual(r.mismatch.real, 'deficit', 'lee balance y vive en déficit');
+});
+
+test('🔴 v486 · CONTROL: si el rótulo SÍ dice la verdad, no se marca nada', () => {
+  // Sin este control el «detector» sería marcar a todo el mundo. Mismo plan, rótulo honesto.
+  const honesto = Object.assign({}, PLAN_LUZ, { goal: 'cutting' });
+  const r = core.nutPlanReview(LUZ, honesto, 82);
+  assert.notStrictEqual(r.status, 'rotulo_miente', 'un rótulo honesto no es una contradicción');
+  assert.strictEqual(r.mismatch, null);
+});
+
+test('🔴 v486 · el superávit DELIBERADO del piso de menores NO es una contradicción', () => {
+  // El margen del piso (×1,05) y la tolerancia del detector (5%) valen lo mismo, así que la menor
+  // cruzaba el umbral por 3 kcal y salía marcada por algo que la app hace A PROPÓSITO y le explica.
+  // Un detector que marca lo que el propio sistema decide enseña a ignorarlo.
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  const tdee = calcTDEE(calcTMB(52, 161, 15, 'F'), 1.375);
+  assert.ok(base.kcalObj > tdee * 1.05 - 5, 'la menor SÍ queda por encima de su gasto (el piso)');
+  assert.strictEqual(core.nutGoalMismatch('mantenimiento', base.kcalObj, tdee, MENOR_REAL), null,
+    'con el cliente, el piso es la referencia y no hay contradicción');
+  // CONTROL: a un ADULTO con ese mismo número sí se le marca — la excepción es solo del menor.
+  const adulto = Object.assign({}, MENOR_REAL, { age: 34 });
+  assert.ok(core.nutGoalMismatch('mantenimiento', base.kcalObj, tdee, adulto),
+    'a un adulto ese mismo +5% sí es una contradicción con su rótulo');
+});
+
+test('🔴 v486 · el rótulo se juzga contra lo que se SIRVE, no contra el titular escrito', () => {
+  // Desde v435 el titular que escribe el coach y la suma de sus PROPIOS macros pueden no cuadrar
+  // (medido: 6 de 10 planes). El plato se arma con los MACROS, así que es ESO lo que ella come —
+  // juzgar el rótulo contra el titular sería auditar un número que nadie se lleva a la boca.
+  const planDescuadrado = { kcal: 2200, prot: 130, carbs: 160, fat: 48, goal: 'mantenimiento' };
+  const sirve = nutMacroKcal({ prot_g: 130, carb_g: 160, fat_g: 48 });
+  assert.ok(sirve < 1700 && 2200 - sirve > 500, `el titular y los macros van en direcciones distintas: ${sirve} vs 2200`);
+  const r = core.nutPlanReview(LUZ, planDescuadrado, 82);
+  assert.strictEqual(r.status, 'rotulo_miente', 'status real: ' + r.status);
+  assert.strictEqual(r.mismatch.real, 'deficit', 'lo que COME es un déficit, aunque el titular diga otra cosa');
+  assert.strictEqual(r.sirve, sirve, 'y el aviso muestra el número que de verdad se sirve');
+});
+
+test('🔴 v486 · la regla dura del MENOR gana sobre el aviso de rótulo', () => {
+  // Un menor bajo su gasto es una regla clínica; el rótulo es un problema de comunicación. Si los
+  // dos aplican, el coach tiene que ver el grave.
+  const r = core.nutPlanReview(MENOR_REAL, PLAN_BAJO, 52);
+  assert.strictEqual(r.status, 'menor_bajo_gasto');
+});
+
 test('🔴 v485 · BARRIDO: ningún menor queda bajo su gasto, por ninguna de las dos puertas', () => {
   // El barrido encuentra lo que la medición sobre 5 menores reales no puede (lección de v482).
   let casos = 0, fallos = 0, actuo = 0;

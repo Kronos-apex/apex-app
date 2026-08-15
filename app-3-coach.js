@@ -1653,6 +1653,19 @@ function renderNutReviewCard(c){
       titulo='No tiene plan de alimentación';
       cuerpo=`Según su cuerpo y su objetivo le corresponden <b>${r.sugerido} kcal</b> al día.`;
       tono='--bll'; tinta='--blt';
+    } else if(r.status==='rotulo_miente'){
+      // 🔒 Este aviso dice lo CONTRARIO que el de abajo: sus números están bien y no hay que
+      // tocarlos. Lo que está mal es la etiqueta, que es lo ÚNICO que la persona lee. Decirle al
+      // coach «está desviado» aquí sería mandarlo a arreglar lo que no está roto.
+      const _DIR={deficit:'un d&eacute;ficit',superavit:'un super&aacute;vit',balance:'un balance'};
+      const _tit=((typeof GOAL_WHY==='object'&&GOAL_WHY[r.rotulo])||{}).title||r.rotulo||'';
+      titulo=`Sus n&uacute;meros est&aacute;n bien, pero su app le explica otra cosa`;
+      cuerpo=`A <b>${esc(c.name||'')}</b> la app le dice que est&aacute; en <b>${esc(_tit)}</b>, `+
+        `pero su plan le da <b>${r.sirve||r.actual} kcal</b> contra un gasto de <b>${r.base&&r.base.tdee}</b> `+
+        `&mdash; eso es <b>${_DIR[r.mismatch.real]||''}</b>. `+
+        `El plan est&aacute; bien para su objetivo (<b>${esc(c.goal||'sin objetivo')}</b>); lo que no cuadra es el `+
+        `<b>Objetivo del plan</b> en <b>Nutrici&oacute;n</b>, que se qued&oacute; de una plantilla anterior.`;
+      tono='--yll'; tinta='--ylt';
     } else if(r.status==='menor_bajo_gasto'){
       // 🔒 Este aviso NO es «se desvió tanto»: es una regla del dictamen que no admite grados, y
       // por eso vive fuera del umbral de 300 kcal (que se midió sobre adultos). Es el ÚNICO sitio

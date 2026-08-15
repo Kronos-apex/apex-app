@@ -3556,10 +3556,16 @@ function nutKcalDirection(kcal, tdee) {
   if (k > t * (1 + NUT_DIR_TOL)) return 'superavit';
   return 'balance';
 }
-function nutGoalMismatch(nutGoal, kcal, tdee) {
+// `client` es opcional y sirve para UNA cosa: en un MENOR el punto de referencia no es su gasto
+// pelado sino su PISO (gasto × 1,05), porque eso es lo que la app le promete desde v485. Sin esto
+// el margen del piso choca de frente con la tolerancia del detector —los dos valen 5%— y la menor
+// aparece como «contradicción» por 3 kcal, cuando su superávit es DELIBERADO y ya se le explica en
+// pantalla. Un detector que marca lo que el propio sistema hace a propósito enseña a ignorarlo.
+function nutGoalMismatch(nutGoal, kcal, tdee, client) {
   const dice = NUT_GOAL_DIR[nutGoal];
   if (!dice) return null;                       // sin rótulo legible no hay contradicción que marcar
-  const real = nutKcalDirection(kcal, tdee);
+  const ref = (client && isMenor(client) && tdee > 0) ? tdee * NUT_MENOR_PISO_MARGEN : tdee;
+  const real = nutKcalDirection(kcal, ref);
   if (!real) return null;                       // sin gasto (faltan datos del cuerpo) no se opina
   return real === dice ? null : { dice, real };
 }
@@ -5299,6 +5305,21 @@ function nutPlanReview(client, currentPlan, weightKg) {
   }
   const actual = parseFloat(currentPlan && currentPlan.kcal);
   if (!actual) return { status: 'sin_plan', sugerido: base.kcalObj, base };
+  // 🔴 UN PLAN PUEDE ESTAR NUMÉRICAMENTE PERFECTO Y AUN ASÍ MENTIR SOBRE SÍ MISMO, y hasta hoy
+  // este revisor solo sabía mirar números. Medido el 15-ago sobre los 10 planes escritos: Luz
+  // (objetivo «Perder grasa») tiene desfase **0** —su déficit es exactamente el que le toca— pero
+  // su plan quedó rotulado `mantenimiento` de una plantilla vieja, así que su app le explica
+  // «estás comiendo en balance: lo que gastas» mientras baja de peso a propósito. Igual Kathe, e
+  // igual Samuel al revés (gana músculo leyendo «balance»). Son 3 de 10 y **ninguno disparaba
+  // ningún aviso**: el único detector vivía dentro del editor de nutrición, así que solo existía
+  // si el coach reabría a esa persona. Detectar en el editor y callar sobre lo guardado deja vivos
+  // exactamente los casos que ya estaban ahí — el mismo defecto de forma que v485 le cerró a los
+  // menores. El rótulo se compara contra lo que de verdad se SIRVE (`nutBaseFor`), no contra el
+  // titular escrito, porque desde v485 pueden no ser el mismo número.
+  const _srv = (typeof nutBaseFor === 'function') ? nutBaseFor(client, currentPlan, weightKg) : null;
+  const _kcalSirve = (_srv && _srv.kcalObj) || actual;
+  const rotulo = (typeof nutWhyKey === 'function') ? nutWhyKey(currentPlan, client) : null;
+  const mismatch = nutGoalMismatch(rotulo, _kcalSirve, base.tdee, client);
   const gap = Math.round(actual - base.kcalObj);
   // 🔴 UN UMBRAL DE TOLERANCIA NO SIRVE PARA MEDIR UNA REGLA DURA. `NUT_REVIEW_MIN_GAP` (300 kcal)
   // se derivó midiendo planes de ADULTOS, donde la pregunta es «¿cuánto se desvía?». Para un menor
@@ -5308,15 +5329,19 @@ function nutPlanReview(client, currentPlan, weightKg) {
   // que la app le subió el plan. Detectar en el editor y callar sobre lo guardado deja vivos justo
   // los casos que ya existían — el mismo defecto que sigue abierto para los adultos. (Sofía, v485.)
   if (isMenor(client) && gap < 0) {
-    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base };
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
   }
-  if (Math.abs(gap) < NUT_REVIEW_MIN_GAP) return { status: 'ok', gap, actual, sugerido: base.kcalObj, base };
+  // El número puede estar bien y el RÓTULO mentir: es un defecto propio, con su propio estado.
+  // Va DESPUÉS del de menores (ese es una regla dura) y ANTES del `ok`, que ya no puede darse por
+  // bueno solo porque las cifras cuadren.
+  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };
+  if (Math.abs(gap) < NUT_REVIEW_MIN_GAP) return { status: 'ok', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
   // Qué significa la desviación PARA SU OBJETIVO — es lo que le importa al coach.
   const g = _norm((client || {}).goal || '');
   let riesgo = null;
   if (gap > 0 && (g.includes('perd') || g.includes('grasa') || g.includes('defin'))) riesgo = 'come_de_mas_para_bajar';
   else if (gap < 0 && (g.includes('gan') || g.includes('musc') || g.includes('masa'))) riesgo = 'come_de_menos_para_subir';
-  return { status: 'desviado', gap, actual, sugerido: base.kcalObj, riesgo, base };
+  return { status: 'desviado', gap, actual, sugerido: base.kcalObj, riesgo, base, rotulo, mismatch };
 }
 
 // ══════════════════════════════════════════════════════════════════════

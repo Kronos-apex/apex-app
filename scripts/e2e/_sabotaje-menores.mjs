@@ -117,9 +117,29 @@ const SABOTAJES = [
   {
     n: 'S13 · la ficha del coach vuelve a callarse con un menor bajo su gasto',
     de: `  if (isMenor(client) && gap < 0) {
-    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base };
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
   }`,
-    a: `  if (false) { return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base }; }`,
+    a: `  if (false) { return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch }; }`,
+  },
+  {
+    n: 'S14 · el revisor vuelve a mirar SOLO los números (el rótulo puede mentir en paz)',
+    de: `  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };`,
+    a: `  if (false) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };`,
+  },
+  {
+    n: 'S15 · el detector de rótulo marca TAMBIÉN lo que la app hace a propósito con un menor',
+    de: `  const ref = (client && isMenor(client) && tdee > 0) ? tdee * NUT_MENOR_PISO_MARGEN : tdee;`,
+    a: `  const ref = tdee;`,
+  },
+  {
+    n: 'S16 · el rótulo se compara contra el titular ESCRITO y no contra lo que se SIRVE',
+    de: `  const _kcalSirve = (_srv && _srv.kcalObj) || actual;`,
+    a: `  const _kcalSirve = actual;`,
+  },
+  {
+    n: 'S17 · el aviso de rótulo se cuela DELANTE de la regla dura del menor',
+    de: `  if (isMenor(client) && gap < 0) {`,
+    a: `  if (isMenor(client) && gap < 0 && false) {`,
   },
 ];
 

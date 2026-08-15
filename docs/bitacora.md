@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-15 (2ª parte) — avi-v486: UN PLAN PUEDE ESTAR PERFECTO Y AUN ASÍ MENTIR SOBRE SÍ MISMO
+
+**Suite 753 → 758, matriz `_sabotaje-menores` 14 → 18.** Cierra el 2º hallazgo de la auditoría de
+nutrición, que v485 dejó anotado como abierto.
+
+### 1 · La medición cambió el diagnóstico
+La auditoría reportó «4 de 10 planes contradicen su rótulo» y Andrés añadió que **Luz (−499) y
+Kathe (−468) están DENTRO de su banda**. Al medirlo contra el revisor real, la cosa quedó nítida:
+
+| | Su objetivo | Le corresponden | Su plan | Desfase | Rótulo que lee |
+|---|---|---|---|---|---|
+| **Luz** (39) | Perder grasa | 1.730 | 1.731 | **0** | «mantenimiento» |
+| **Kathe** (28) | Perder grasa | 1.899 | 1.931 | 31 | «mantenimiento» |
+| **Samuel** (28) | Ganar músculo | 3.498 | 3.535 | 35 | «mantenimiento» |
+
+**No hay una sola cifra que corregir: los tres planes son exactamente los que les tocan.** Lo único
+roto es la etiqueta, que se quedó de una plantilla anterior — así que **Luz baja de peso a propósito
+mientras su app le explica «estás comiendo en balance: lo que gastas»**, y Samuel gana músculo
+leyendo lo mismo. Es el defecto de v437 sobreviviendo en los planes que ya estaban guardados.
+
+🔴 **Y ninguno disparaba aviso.** `nutPlanReview` —el que pinta la tarjeta de la ficha— solo sabía
+mirar NÚMEROS, y los números estaban bien: devolvía `ok` para los tres. El único detector del
+rótulo (`nutGoalCheck`) vive **dentro del editor de nutrición**, o sea que solo existía si el coach
+reabría a esa persona. **Detectar en el editor y callar sobre lo guardado deja vivos exactamente los
+casos que ya estaban ahí** — el mismo defecto de forma que v485 le cerró a los menores.
+
+### 2 · Cómo se arregló
+- **`nutPlanReview` gana un estado propio, `rotulo_miente`**, que va DESPUÉS de la regla dura del
+  menor y ANTES del `ok` — porque «las cifras cuadran» ya no basta para dar un plan por bueno.
+- 🔒 **El rótulo se juzga contra lo que se SIRVE (`nutBaseFor`), no contra el titular escrito.** Son
+  números distintos desde v435 (el titular y los macros no siempre cuadran, 6 de 10 planes) y desde
+  v485 (el piso de menores). Auditar el titular sería auditar un número que nadie se come.
+- 🔒 **La tarjeta del coach dice lo CONTRARIO que la de desviación**: *«sus números están bien, pero
+  su app le explica otra cosa»*. Mandarlo a corregir cifras que están correctas sería peor que callar.
+
+### 3 · 🔴 Un falso positivo que introdujo v485, cazado al medir
+El margen del piso de menores (**×1,05**) y la tolerancia del detector de dirección (**5%**) valen
+lo mismo, así que **la menor cruzaba el umbral por 3 kcal** y salía marcada como «contradicción»
+por un superávit que la app le da **a propósito y ya le explica en pantalla**. Un detector que marca
+lo que el propio sistema decide hacer es un detector que se aprende a ignorar.
+Arreglo: en un menor, la referencia de dirección **es su piso**, no su gasto pelado — que es lo que
+la app le promete. Con su control: a un ADULTO ese mismo +5% sí se le marca.
+**Regla: al elegir la constante de un mecanismo nuevo, mira si choca con el umbral de algún detector
+que ya existe** — dos cincos que significan cosas distintas se encuentran tarde o temprano.
+
+### 4 · 🎓 Dos sabotajes mal diseñados (míos)
+- **S17 no probaba la prioridad que decía probar.** Le añadía `&& !mismatch` a la rama del menor…
+  y la menor real **no tiene mismatch** (su piso es deliberado), así que la condición era inerte y
+  el sabotaje salía verde. Se rompe la prioridad de verdad (`&& false`) y muerde.
+- **S16 salió verde por un hueco de COBERTURA, no por código sobrante.** En un menor es
+  estructuralmente inalcanzable (si el plan escrito está por debajo, la rama `menor_bajo_gasto` se
+  lo lleva antes). Donde SÍ se alcanza es en un ADULTO con el titular descuadrado de sus macros —el
+  caso de v435, 6 de 10 planes— y con ese test muerde. **Antes de borrar código que un sabotaje no
+  toca, busca la población donde ese camino SÍ se recorre.**
+
 ## 🟢 2026-08-15 — avi-v485: EL CANDADO DE MENORES PROTEGÍA EL TEXTO, PERO NO EL NÚMERO
 
 **Suite 742 → 749, matriz `_sabotaje-menores` 10/10.** Sale de una auditoría independiente de
