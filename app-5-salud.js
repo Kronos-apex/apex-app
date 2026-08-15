@@ -87,6 +87,10 @@ function nutFillSuggested(c,silencioso){
   const nota=document.getElementById('nut-calc-nota');
   if(!est||!est.macros){
     if(nota){nota.style.display='block';nota.innerHTML='&#9888;&#65039; Faltan datos del cuerpo (peso, estatura, edad o sexo) para calcularle el plan. Compl&eacute;talos en su perfil.';}
+    // 🔒 Son DOS notas distintas y esta rama solo tocaba una: `nut-goal-nota` se quedaba con el
+    // aviso del asesorado ANTERIOR, así que el coach podía leer «X es menor de edad…» encima de la
+    // ficha de otra persona. Se recalcula siempre, también al salir temprano. (Lucas QA, L4.)
+    nutGoalCheck();
     return false;
   }
   const m=est.macros;
@@ -486,13 +490,18 @@ function renderNutritionClient(clientId){
   // salían 2.227 el domingo contra 2.400 aquí. Ahora esta pantalla lee del MISMO motor y muestra
   // la semana entera, para que el número de «Hoy» tenga dónde encajar.
   const _c=DB.clients.find(x=>x.id===clientId);
-  let _sem=null, _semanaHtml='';
+  let _sem=null, _semanaHtml='', _base=null;
   try{
     if(_c && typeof nutBaseFor==='function' && typeof nutWeekTargets==='function'){
-      const _base=nutBaseFor(_c,nut,_nutPesoDe(_c));
+      _base=nutBaseFor(_c,nut,_nutPesoDe(_c));
       if(_base)_sem=nutWeekTargets(_base,_c.routines);
     }
   }catch(e){ warn('AVI: la semana de nutrición no se pudo armar (no bloquea el perfil):',e&&e.message); }
+  // 🔴 LOS MACROS SE LEEN DEL MISMO SITIO QUE EL TITULAR. Hasta v485 daba igual (el titular ERA la
+  // suma de `nut.*`), pero el piso de menores los separa: la pantalla mostraba 1.910 kcal encima de
+  // tarjetas que sumaban 1.695, y el plato servía un tercer juego. Es la familia v435/v444 otra vez
+  // — el comentario de estas mismas líneas dice estar protegiendo justo eso. Hallazgo de Lucas QA.
+  const _mac=(_base&&_base.macros)?_base.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
   if(_sem){
     const hoyIdx=new Date().getDay();
     const filas=_sem.days.map(d=>{
@@ -523,11 +532,11 @@ function renderNutritionClient(clientId){
     if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="--nc:var(--gt);text-align:center;background:var(--gl);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
     if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
-    if(nut.prot||nut.carbs||nut.fat){
+    if(_mac.prot_g||_mac.carb_g||_mac.fat_g){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(nut.prot)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${nut.prot*4} kcal</div></div>`;
-      if(nut.carbs)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="--nc:var(--ylt);text-align:center;background:var(--yll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ylt)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--ylt);font-weight:600">${nut.carbs*4} kcal</div></div>`;
-      if(nut.fat)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="--nc:var(--ort);text-align:center;background:var(--orl);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${nut.fat*9} kcal</div></div>`;
+      if(_mac.prot_g)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(_mac.prot_g))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${_mac.prot_g*4} kcal</div></div>`;
+      if(_mac.carb_g)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="--nc:var(--ylt);text-align:center;background:var(--yll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ylt)">${esc(String(_mac.carb_g))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--ylt);font-weight:600">${_mac.carb_g*4} kcal</div></div>`;
+      if(_mac.fat_g)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="--nc:var(--ort);text-align:center;background:var(--orl);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(_mac.fat_g))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${_mac.fat_g*9} kcal</div></div>`;
       html+=`</div>`;
     }
   }
@@ -566,7 +575,12 @@ function openNutritionRoom(clientId){
     // El titular se DERIVA de sus componentes, nunca se guarda aparte.
     const _base=(typeof nutBaseFor==='function')?nutBaseFor(c,nut,_nutPesoDe(c)):null;
     const _kcal=(_base&&_base.kcalObj)?_base.kcalObj:nut.kcal;
-    d={kcal:_kcal,water:nut.water,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c)]};
+    // 🔴 Y los MACROS del mismo sitio que el titular, o vuelve el defecto que estas líneas dicen
+    // arreglar: con el piso de menores puesto, el titular subía y las tarjetas se quedaban en los
+    // gramos crudos del coach — 503 kcal de contradicción en la MISMA tarjeta (Lucas QA + el
+    // verificador, los dos lo reprodujeron). Las 5 superficies restantes ya leían de `base.macros`.
+    const _m=(_base&&_base.macros)?_base.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
+    d={kcal:_kcal,water:nut.water,prot:_m.prot_g,carb:_m.carb_g,fat:_m.fat_g,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c)],minorFloor:_base&&_base.minorFloor};
   } else {
     const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){
@@ -620,6 +634,10 @@ function openNutritionRoom(clientId){
 
   let whyHTML='';
   if(d.why)whyHTML=`<div class="sroom-sec">¿Por qué este plan?</div><div class="exroom-tech" style="border-left:3px solid #10b981"><b>${esc(d.why.title)}.</b> ${esc(d.why.text)}</div>`;
+  // Un número que cambia sin explicación se lee como un error de la app (lección de v434). A ella
+  // su plan le SUBIÓ sin que tocara nada, así que la pantalla lo dice — en su idioma, sin cifras
+  // de antes/después y sin una palabra sobre composición corporal.
+  if(d.minorFloor)whyHTML+=`<div class="exroom-note" style="margin-top:8px">Todavía estás creciendo, así que tu plan nunca baja de la energía que tu cuerpo gasta en el día. Por eso puede que veas un número un poco más alto del que esperabas: es a propósito, y tu entrenador lo sabe.</div>`;
   if(d.isEst)whyHTML+=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (fórmula Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
 
   let mealsHTML='';
@@ -746,14 +764,21 @@ function shareNutWhatsapp(){
   if(nombre)msg+=`👤 ${nombre}\n`;
   msg+=`\n`;
   if(_hasCoachNutPlan(nut)){
-    if(nut.kcal)msg+=`🔥 *Calorías diarias:* ${nut.kcal} kcal\n`;
+    // 🔴 El mensaje que se manda por WhatsApp es UNA SUPERFICIE MÁS: mandaba `nut.kcal` crudo
+    // mientras las otras seis pintan el derivado, así que del mismo plan salían TRES cifras
+    // distintas — y esta se queda en el teléfono de la persona, sin fecha y sin poder corregirla.
+    // Familia v435/v444: al cerrar un bug de consistencia hay que listar TODAS las superficies.
+    const _wb=(typeof nutBaseFor==='function')?nutBaseFor(cl,nut,_nutPesoDe(cl)):null;
+    const _wk=(_wb&&_wb.kcalObj)?_wb.kcalObj:nut.kcal;
+    const _wm=(_wb&&_wb.macros)?_wb.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
+    if(_wk)msg+=`🔥 *Calorías diarias:* ${_wk} kcal\n`;
     if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
     if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
-    if(nut.prot||nut.carbs||nut.fat){
+    if(_wm.prot_g||_wm.carb_g||_wm.fat_g){
       msg+=`\n📊 *Macros:*\n`;
-      if(nut.prot)msg+=`  • Proteína: ${nut.prot}g (${nut.prot*4} kcal)\n`;
-      if(nut.carbs)msg+=`  • Carbohidratos: ${nut.carbs}g (${nut.carbs*4} kcal)\n`;
-      if(nut.fat)msg+=`  • Grasas saludables: ${nut.fat}g (${nut.fat*9} kcal)\n`;
+      if(_wm.prot_g)msg+=`  • Proteína: ${_wm.prot_g}g (${_wm.prot_g*4} kcal)\n`;
+      if(_wm.carb_g)msg+=`  • Carbohidratos: ${_wm.carb_g}g (${_wm.carb_g*4} kcal)\n`;
+      if(_wm.fat_g)msg+=`  • Grasas saludables: ${_wm.fat_g}g (${_wm.fat_g*9} kcal)\n`;
     }
     if(nut.examples){
       msg+=`\n💡 *Ejemplos de comidas:*\n`;

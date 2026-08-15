@@ -1653,6 +1653,18 @@ function renderNutReviewCard(c){
       titulo='No tiene plan de alimentación';
       cuerpo=`Según su cuerpo y su objetivo le corresponden <b>${r.sugerido} kcal</b> al día.`;
       tono='--bll'; tinta='--blt';
+    } else if(r.status==='menor_bajo_gasto'){
+      // 🔒 Este aviso NO es «se desvió tanto»: es una regla del dictamen que no admite grados, y
+      // por eso vive fuera del umbral de 300 kcal (que se midió sobre adultos). Es el ÚNICO sitio
+      // donde el coach se entera sin abrir el editor de esa persona.
+      titulo=`${esc(c.name||'')} es menor de edad y su plan queda bajo su gasto`;
+      const _b=(typeof nutBaseFor==='function')?nutBaseFor(c,_nut,peso):null;
+      const _sirve=(_b&&_b.kcalObj)?_b.kcalObj:null;
+      cuerpo=`Su plan dice <b>${r.actual} kcal</b> y gasta <b>${r.sugerido}</b>. Un menor en crecimiento no lleva déficit, `+
+        (_sirve?`así que la app le está sirviendo <b>${_sirve} kcal</b> con el mismo reparto que tú elegiste.`
+              :`así que la app le sube el plan hasta su gasto.`)+
+        ` Si quieres otro número, súbelo tú en <b>Nutrición</b>.`;
+      tono='--bll'; tinta='--blt';
     } else {
       const sobra=r.gap>0;
       titulo=`Su plan está ${sobra?'por encima':'por debajo'} en ${Math.abs(r.gap)} kcal`;

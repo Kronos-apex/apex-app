@@ -6932,7 +6932,7 @@ test('🔴 v485 · un MENOR con plan escrito a mano NUNCA queda por debajo de su
   // La DOSIS, no el signo: «subió algo» lo cumpliría un +1 kcal y el defecto seguiría vivo
   // (lección de v482 — un candado que afirma el signo deja pasar lo que lo motivó).
   assert.ok(base.kcalObj >= TDEE_MENOR, `le entrega ${base.kcalObj} y gasta ${TDEE_MENOR}`);
-  assert.ok(base.kcalObj <= TDEE_MENOR + 30, 'y no se pasa de largo inventando un superávit');
+  assert.ok(base.kcalObj <= Math.round(TDEE_MENOR * 1.05) + 30, 'y no se pasa de largo inventando un superávit');
   assert.strictEqual(base.macros.kcal, base.kcalObj, 'el plato se arma con el número corregido');
   assert.ok(base.minorFloor, 'y queda dicho que el piso actuó, para poder avisarle al coach');
   assert.strictEqual(base.minorFloor.kcalAntes, 1775);
@@ -6993,6 +6993,47 @@ test('🔴 v485 · el desfase del COACH sobrevive al piso (no le echamos encima 
   assert.strictEqual(base.desfase, nutMacroKcal({ prot_g: 94, carb_g: 244, fat_g: 47 }) - 1775);
 });
 
+test('🔴 v485 · el piso deja margen para lo que el PLATO se desvía (gasto × 1,05)', () => {
+  // Dictamen de Andrés (15-ago): el plato entrega entre −5,3% y +11,4% de lo que promete, así que
+  // con el piso clavado en el gasto EXACTO la menor real seguía comiendo −5,1% en su peor día.
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  assert.ok(base.kcalObj >= Math.round(TDEE_MENOR * 1.05),
+    `el piso tiene que absorber el margen del plato: ${base.kcalObj} vs ${Math.round(TDEE_MENOR * 1.05)}`);
+  assert.strictEqual(base.minorFloor.piso, Math.round(TDEE_MENOR * 1.05));
+});
+
+test('🔴 v485 · TECHO de proteína: escalar un plan muy bajo no produce un disparate', () => {
+  // Sin techo, un plan escrito de 1.000 kcal daba 287 g de proteína = 5,5 g/kg (medido por Andrés).
+  const planAbsurdo = { kcal: 900, prot: 80, carbs: 100, fat: 20 }; // reparto muy proteico y muy bajo
+  const base = nutBaseFor(MENOR_REAL, planAbsurdo, 52);
+  const ref = nutRefWeight(52, 161) || 52;
+  assert.ok(base.kcalObj >= Math.round(TDEE_MENOR * 1.05), 'el piso igual se cumple');
+  assert.ok(base.macros.prot_g <= Math.round(ref * 2.2) + 1,
+    `${base.macros.prot_g} g son ${(base.macros.prot_g / ref).toFixed(2)} g/kg — el techo es 2,2`);
+  assert.ok(base.minorFloor.protTope, 'y queda dicho que el techo actuó');
+});
+
+test('🔴 v485 · un menor SIN datos de gasto se MARCA, no se pasa en silencio', () => {
+  // Santiago, 17 años, no declara sexo. Antes el plan escrito pasaba sin piso y sin aviso: las dos
+  // puertas degradaban al revés (la calculadora se cierra y pide datos; esta se abría y servía).
+  const sinSexo = Object.assign({}, MENOR_REAL, { sex: '' });
+  const base = nutBaseFor(sinSexo, PLAN_BAJO, 52);
+  assert.ok(base, 'el plan sigue existiendo');
+  assert.ok(!base.minorFloor, 'no se inventa un piso sin saber el gasto');
+  assert.ok(base.minorFloorUnknown, 'pero el candado lo DICE — fallar mudo no es fallar seguro');
+});
+
+test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', () => {
+  // El umbral de 300 kcal se midió sobre ADULTOS. Con él, la menor real (−135) daba `ok` y la
+  // tarjeta de su ficha no pintaba nada: el único aviso vivía dentro del editor de nutrición.
+  const r = core.nutPlanReview(MENOR_REAL, PLAN_BAJO, 52);
+  assert.strictEqual(r.status, 'menor_bajo_gasto', 'JSON: ' + JSON.stringify(r.status));
+  assert.ok(Math.abs(r.gap) < 300, 'y el hueco es MENOR que el umbral de adulto: ' + r.gap);
+  // CONTROL: a un adulto con el mismo hueco pequeño se le sigue respetando el silencio.
+  const adulto = Object.assign({}, MENOR_REAL, { age: 34 });
+  assert.strictEqual(core.nutPlanReview(adulto, PLAN_BAJO, 52).status, 'ok');
+});
+
 test('🔴 v485 · BARRIDO: ningún menor queda bajo su gasto, por ninguna de las dos puertas', () => {
   // El barrido encuentra lo que la medición sobre 5 menores reales no puede (lección de v482).
   let casos = 0, fallos = 0, actuo = 0;
@@ -7014,7 +7055,7 @@ test('🔴 v485 · BARRIDO: ningún menor queda bajo su gasto, por ninguna de la
               if (!base) continue;
               casos++;
               if (base.minorFloor) actuo++;
-              if (base.kcalObj < tdee - 1) { fallos++; if (fallos <= 3) console.log('    ✗', JSON.stringify({ age, sex, w, af, goal, frac, dio: base.kcalObj, gasta: tdee })); }
+              if (base.kcalObj < Math.round(tdee * 1.05) - 1) { fallos++; if (fallos <= 3) console.log('    ✗', JSON.stringify({ age, sex, w, af, goal, frac, dio: base.kcalObj, gasta: tdee })); }
             }
           }
         }

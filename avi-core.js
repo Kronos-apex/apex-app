@@ -5025,28 +5025,53 @@ const NUT_KCAL_MISMATCH = 25; // desfase que ya no es redondeo y hay que avisarl
 // los tres en la MISMA proporción (respeta el reparto que eligió el coach, corrige solo el total) y
 // el faltante del redondeo se cierra con carbohidrato, para que el piso se cumpla SIEMPRE — un
 // candado que afirma el signo y no la dosis deja pasar el defecto que lo motivó (lección de v482).
+// Margen del piso sobre el gasto y techo de proteína del menor: los dos DICTADOS por Andrés Hyp
+// (2026-08-15) con su medición al lado. El 1,05 sale del margen REAL del plato (−5,3% a +11,4%),
+// no de una intuición sobre el crecimiento; el 2,2 g/kg es sobre peso de REFERENCIA, no de báscula.
+const NUT_MENOR_PISO_MARGEN = 1.05;
+const NUT_MENOR_PROT_MAX = 2.2;
 function nutMinorFloorBase(base, client, weightKg) {
   if (!base || !base.macros || !client || !isMenor(client)) return base;
   const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
-  if (!sx) return base;
   const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
-  const tdee = calcTDEE(calcTMB(w, client.height, client.age, sx), client.activityFactor);
-  // Sin gasto conocido NO se inventa un piso: no se puede afirmar que el plan esté por debajo.
-  if (!tdee || !(base.kcalObj > 0) || base.kcalObj >= tdee) return base;
-  const factor = tdee / base.kcalObj;
+  const tdee = sx ? calcTDEE(calcTMB(w, client.height, client.age, sx), client.activityFactor) : null;
+  // 🔴 Sin gasto conocido NO se inventa un piso — pero TAMPOCO se calla: el plan sigue como está y
+  // se MARCA, para que el coach vea que a esta persona el candado no la está cubriendo. Fallar en
+  // silencio era el hallazgo L3 de Lucas: las dos puertas degradaban al revés (la calculadora se
+  // cierra y pide datos; el plan escrito se abría y servía). Un candado que falla mudo no es un
+  // candado. Hoy le toca a Santiago, 17 años, que no declara sexo.
+  if (!tdee) return Object.assign({}, base, { minorFloorUnknown: true });
+  if (!(base.kcalObj > 0)) return base;
+  // El piso NO es el gasto pelado: es gasto × 1,05. No por el crecimiento (son 1-2%, FAO/WHO/UNU
+  // 2004) sino porque EL PLATO entrega entre −5,3% y +11,4% de lo que promete — con el piso clavado
+  // en el gasto exacto, la menor real seguía comiendo −5,1% en su peor día. El piso tiene que
+  // absorber el margen del plato o no es un piso. Dictamen de Andrés Hyp, 2026-08-15.
+  const piso = Math.round(tdee * NUT_MENOR_PISO_MARGEN);
+  if (base.kcalObj >= piso) return base;
+  const factor = piso / base.kcalObj;
+  // Techo de proteína: escalar sin tope convierte un plan escrito muy bajo en un disparate — un
+  // plan de 1.000 kcal daría 287 g = 5,5 g/kg. Hoy no mueve a nadie (por eso el test lo fuerza).
+  const ref = nutRefWeight(w, client.height) || w;
+  const protTecho = Math.round(ref * NUT_MENOR_PROT_MAX);
   const macros = {
-    prot_g: Math.round(base.macros.prot_g * factor),
+    prot_g: Math.min(Math.round(base.macros.prot_g * factor), protTecho),
     carb_g: Math.round(base.macros.carb_g * factor),
     fat_g: Math.round(base.macros.fat_g * factor),
   };
   macros.kcal = nutMacroKcal(macros);
-  if (macros.kcal < tdee) { // el redondeo de los 3 macros puede dejarlo justo por debajo
-    macros.carb_g += Math.ceil((tdee - macros.kcal) / 4);
+  // El faltante (del redondeo, y de la proteína que el techo no dejó subir) va a carbohidrato, que
+  // es el macro flexible. Así el piso se cumple SIEMPRE: un candado que afirma el signo y no la
+  // DOSIS deja pasar el defecto que lo motivó (v482).
+  if (macros.kcal < piso) {
+    macros.carb_g += Math.ceil((piso - macros.kcal) / 4);
     macros.kcal = nutMacroKcal(macros);
   }
   return Object.assign({}, base, {
     kcalObj: macros.kcal, macros,
-    minorFloor: { tdee, kcalAntes: base.kcalObj, factor: Math.round(factor * 1000) / 1000 },
+    minorFloor: {
+      tdee, piso, kcalAntes: base.kcalObj, factor: Math.round(factor * 1000) / 1000,
+      protTope: macros.prot_g >= protTecho,
+    },
   });
 }
 
@@ -5275,6 +5300,16 @@ function nutPlanReview(client, currentPlan, weightKg) {
   const actual = parseFloat(currentPlan && currentPlan.kcal);
   if (!actual) return { status: 'sin_plan', sugerido: base.kcalObj, base };
   const gap = Math.round(actual - base.kcalObj);
+  // 🔴 UN UMBRAL DE TOLERANCIA NO SIRVE PARA MEDIR UNA REGLA DURA. `NUT_REVIEW_MIN_GAP` (300 kcal)
+  // se derivó midiendo planes de ADULTOS, donde la pregunta es «¿cuánto se desvía?». Para un menor
+  // la pregunta es otra: CUALQUIER déficit rompe la regla del dictamen, no es cuestión de grados.
+  // Con el umbral de adulto, la menor real (−135 kcal) daba `status:'ok'` y la ficha del coach se
+  // quedaba MUDA: el único aviso vivía dentro del editor, así que él podía no enterarse nunca de
+  // que la app le subió el plan. Detectar en el editor y callar sobre lo guardado deja vivos justo
+  // los casos que ya existían — el mismo defecto que sigue abierto para los adultos. (Sofía, v485.)
+  if (isMenor(client) && gap < 0) {
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base };
+  }
   if (Math.abs(gap) < NUT_REVIEW_MIN_GAP) return { status: 'ok', gap, actual, sugerido: base.kcalObj, base };
   // Qué significa la desviación PARA SU OBJETIVO — es lo que le importa al coach.
   const g = _norm((client || {}).goal || '');

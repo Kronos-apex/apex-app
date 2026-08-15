@@ -60,6 +60,38 @@ gasto: 0 de 5.**
   verdad**. Queda en la matriz como `S2b`, con la razón medida escrita al lado — **un verde sin
   explicación al lado es un gate que se aprende a ignorar.**
 
+### 3-BIS · Lo que encontraron los 4 agentes DESPUÉS del primer commit (todo cerrado en el mismo v485)
+Se lanzaron 4 en paralelo (verificador adversarial · Andrés Hyp · Julián+Lucas QA · Sofía). Los
+cuatro entregaron y **entre los cuatro encontraron 8 cosas que yo no vi**:
+
+| | Hallazgo | Estado |
+|---|---|---|
+| 🔴 **L1** (Lucas + verificador) | Las pantallas de **Perfil** y **«Ver mi plan en grande»** pintaban el titular CON piso y las tarjetas de macros SIN piso — **1.910 kcal encima de tarjetas que sumaban 1.695**, y el plato servía un tercer juego. **Lo causé yo**: hasta v485 `kcalObj` ERA la suma de `nut.*`; el piso los separó | cerrado — las 2 leen de `base.macros` |
+| 🔴 **Sofía** | `nutPlanReview` devolvía `ok` para la menor (−135 kcal) porque el umbral son **300 kcal, medido sobre ADULTOS** → la ficha del coach se quedaba MUDA y el único aviso vivía dentro del editor | cerrado — estado `menor_bajo_gasto`, fuera del umbral |
+| 🔴 **L3** (Lucas + verificador) | Menor **sin sexo** (Santiago, 17): pasaba sin piso **y sin aviso**. Las dos puertas degradaban al revés: la calculadora se cierra y pide datos, el plan escrito se abría y servía | cerrado — `minorFloorUnknown` |
+| 🔴 **Andrés (a)** | Sin **techo de proteína**, un plan escrito de 1.000 kcal daba **287 g = 5,5 g/kg** | cerrado — 2,2 g/kg de peso de referencia |
+| 🔴 **Andrés (b)** | El piso debía ser **gasto × 1,05**, no el gasto pelado — no por el crecimiento (1-2%) sino porque **el plato entrega −5,3% a +11,4%**: con el piso exacto la menor seguía en −5,1% su peor día | cerrado |
+| 🟡 **L5** (Lucas + verificador) | El **WhatsApp del plan** mandaba el kcal crudo → **tres cifras vivas** del mismo plan | cerrado — deriva de `nutBaseFor` |
+| 🟡 **L2** | El aviso al coach no se actualizaba al corregir los macros (faltaba `onchange` en los 3 inputs) | cerrado |
+| 🟡 **L4** | `nut-goal-nota` se quedaba PEGADA del asesorado anterior (son dos notas y la rama temprana solo limpiaba una) → «X es menor de edad…» encima de la ficha de otra persona | cerrado |
+| 🟡 **Sofía** | A la menor nadie le explicaba por qué su plan subió solo (lección v434) | cerrado — línea en la habitación |
+
+**Medido después de todo:** Valery (15) **1.775 → 2.009** (+5,2% sobre su gasto) · Valery Valbuena
+(16) 2.111 → 2.219 · **menores bajo su gasto: 0 de 5**. Suite **742 → 753**, matriz **14/14**.
+
+### 3-TER · 🎓 Lo que enseñó lanzar 4 agentes en paralelo
+- 🔴 **Julián leyó un `avi-core.js` SABOTEADO**: su primera sonda cayó mientras la matriz de otro
+  agente estaba corriendo y dejó el archivo mutado unos segundos. **Cuatro agentes sobre el mismo
+  árbol no son cuatro lecturas independientes** — el que mide tiene que verificar el hash de lo que
+  leyó, y una matriz de sabotaje no debería correr con auditores encima del mismo repo.
+- 🎓 **Un «verde esperado» puede dejar de serlo al cambiar el código.** S2 salía verde y estaba
+  documentado como cubierto por la otra capa; con el margen ×1,05 la capa de la salida pasó a mover
+  el resultado por su cuenta y **empezó a morder**. El runner lo cantó porque marca cuando un verde
+  esperado sale rojo. La nota se borra, no se hereda.
+- 🔴 **El patrón de un sabotaje puede aparecer DOS veces**: el de `sx` está también en
+  `nutritionEstimate`, así que S7 no se aplicaba. Lo cazó el «NO SE APLICÓ» del runner, que existe
+  exactamente para esto — sin él habría contado como un candado probado y no lo estaba.
+
 ### 4 · ⏭️ Lo que esta versión NO arregla (y sigue abierto)
 - 🔴 **4 de 10 planes escritos a mano contradicen su rótulo** y son ADULTOS (Luz −22%, Kathe −20%,
   Samuel +12%): un adulto SÍ puede llevar déficit, así que el defecto no es el número sino que el
@@ -69,6 +101,26 @@ gasto: 0 de 5.**
 - 🟠 **La yuca sigue en 112 kcal sin fuente citada** (la TCAC dice 157) y **0 de los 50 alimentos
   del recetario citan fuente**, mientras el catálogo de búsqueda sí la exige uno por uno. Con 11
   de 22 personas comiendo yuca en su semana. No se toca hasta saber contra qué se verificó.
+- 🔴 **El candado solo mira HACIA ABAJO: Sharith (16, IMC 26,4) recibe +350 kcal de superávit**
+  (medido por Andrés). Cuánto superávit es aceptable para una adolescente **es decisión del PO**,
+  no del código — por eso no entró aquí.
+- 🟡 **`calcTMB` exige estatura también para menores, y Schofield 10-18 NO la usa** (va por peso).
+  Hoy no deja fuera a nadie (Santiago falla por sexo, no por talla), pero es un `null` gratuito
+  que apagaría el piso de un menor con talla en blanco. Cambiarlo mueve `nutritionEstimate` para
+  todos los menores → **decisión de Andrés antes de tocarlo**. Hallazgo del verificador.
+- 🟡 **El texto libre del coach (`nut.plan` / `nut.avoid`) se pinta tal cual, sin pasar por ningún
+  candado** (Sofía): si ahí quedó escrito «plan para bajar de peso», contradice el titular ya
+  corregido. No se pudo verificar el contenido real sin tocar la nube.
+- 🟡 **Andrés pide bajar `NUT_PROT_MIN_SHARE` de 0,70 a 0,60**: el piso de proteína afecta a **30
+  comidas reales en 13 personas** (no 48 en 15 — 18 son de dos `tier:'libre'` que no ven el plan).
+  Con 0,60: 48 → 28 comidas, ninguna ración bajo 25 g, entrega intacta y **la variedad sube**.
+  🎓 Y corrigió el diagnóstico escrito, que estaba **desactualizado**: ya no es «pan + huevos» ni
+  la avena, hoy es **atún+pasta (17)** y **yogur+pan integral (11)**.
+- 🟡 **Adultos, dictamen de Andrés:** Luz (−499) y Kathe (−468) están **dentro de su banda** — el
+  «−22%» asusta porque su gasto es chico, no porque el plan sea agresivo. Lo que sí falta es
+  proteína: **4 de 8 adultas van 25-33 g por debajo** (punto 1 de su dictamen de v448, sin
+  ejecutar). El único a mover de verdad es **Samuel: +387 kcal estando en mantenimiento por ~25%
+  de grasa** → 3.150. Y **Miguel va a +399 con 2,57 g/kg y sin rótulo ninguno**.
 
 ## 🟢 2026-08-14 (3ª parte) — avi-v484: EL RÉCORD SE QUEDABA EN EL EJERCICIO RETIRADO
 

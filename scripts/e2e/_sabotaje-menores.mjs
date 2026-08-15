@@ -32,12 +32,9 @@ const SABOTAJES = [
     };`,
   },
   {
-    // 🟡 VERDE ESPERADO, y está MEDIDO por qué. Esta rama tiene DOS capas: el piso de dentro de
-    // `nutritionEstimate` y el de la salida de `nutBaseFor`. Romper una sola no se nota porque la
-    // otra la cubre — que es justamente para lo que está. Que no sea código redundante se probó
-    // con S2b: con las DOS muertas el barrido cae, y con solo la de DENTRO muerta el barrido
-    // sigue verde (o sea que la de la SALIDA rescata las 7 pantallas por su cuenta).
-    verdeEsperado: 'lo cubre la otra capa — S2b lo prueba',
+    // Hasta el 15-ago este sabotaje salía VERDE (lo tapaba el piso de dentro de `nutritionEstimate`)
+    // y hubo que probar con S2b que no era código redundante. Con el margen ×1,05 del dictamen de
+    // Andrés la capa de la salida MUEVE el resultado por su cuenta, así que ya muerde sola.
     n: 'S2 · la CALCULADORA deja de pasar por el piso de la salida',
     de: `  return nutMinorFloorBase({ origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee }, client, weightKg);`,
     a: `  return { origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee };`,
@@ -53,13 +50,13 @@ const SABOTAJES = [
   },
   {
     n: 'S3 · el piso sube «algo» pero no hasta el gasto (afirma el SIGNO, no la DOSIS)',
-    de: `  const factor = tdee / base.kcalObj;`,
-    a: `  const factor = 1 + (tdee / base.kcalObj - 1) * 0.3;`,
+    de: `  const factor = piso / base.kcalObj;`,
+    a: `  const factor = 1 + (piso / base.kcalObj - 1) * 0.3;`,
   },
   {
-    n: 'S4 · se cae el remate del redondeo (el piso queda 1-3 kcal por debajo)',
-    de: `  if (macros.kcal < tdee) { // el redondeo de los 3 macros puede dejarlo justo por debajo
-    macros.carb_g += Math.ceil((tdee - macros.kcal) / 4);
+    n: 'S4 · se cae el remate del redondeo (el piso queda unas kcal por debajo)',
+    de: `  if (macros.kcal < piso) {
+    macros.carb_g += Math.ceil((piso - macros.kcal) / 4);
     macros.kcal = nutMacroKcal(macros);
   }`,
     a: `  if (false) { macros.kcal = nutMacroKcal(macros); }`,
@@ -71,34 +68,58 @@ const SABOTAJES = [
   },
   {
     n: 'S6 · el piso INVENTA superávit sobre un plan que ya estaba bien',
-    de: `  if (!tdee || !(base.kcalObj > 0) || base.kcalObj >= tdee) return base;`,
-    a: `  if (!tdee || !(base.kcalObj > 0)) return base;`,
+    de: `  if (base.kcalObj >= piso) return base;`,
+    a: `  if (false) return base;`,
   },
   {
-    n: 'S7 · el piso se inventa un gasto cuando faltan datos',
+    n: 'S7 · el piso se inventa un gasto cuando falta el sexo',
+    // ⚠️ El patrón del `sx` aparece DOS veces en avi-core (aquí y en `nutritionEstimate`), así que
+    // se ancla con la línea de abajo, que solo existe dentro de `nutMinorFloorBase`. El runner lo
+    // cazó gritando «NO SE APLICÓ» — para eso está.
     de: `  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
-  if (!sx) return base;`,
-    a: `  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : 'F';`,
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);`,
+    a: `  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : 'F';
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);`,
   },
   {
     n: 'S8 · el piso vuelca todo en carbohidrato (le cambia el reparto al coach)',
-    de: `  const macros = {
-    prot_g: Math.round(base.macros.prot_g * factor),
+    de: `    prot_g: Math.min(Math.round(base.macros.prot_g * factor), protTecho),
     carb_g: Math.round(base.macros.carb_g * factor),
-    fat_g: Math.round(base.macros.fat_g * factor),
-  };`,
-    a: `  const macros = {
-    prot_g: base.macros.prot_g,
-    carb_g: base.macros.carb_g + Math.ceil((tdee - base.kcalObj) / 4),
-    fat_g: base.macros.fat_g,
-  };`,
+    fat_g: Math.round(base.macros.fat_g * factor),`,
+    a: `    prot_g: base.macros.prot_g,
+    carb_g: base.macros.carb_g + Math.ceil((piso - base.kcalObj) / 4),
+    fat_g: base.macros.fat_g,`,
   },
   {
     n: 'S9 · el desfase del coach se recalcula DESPUÉS del piso (le echa encima lo nuestro)',
     de: `  return Object.assign({}, base, {
-    kcalObj: macros.kcal, macros,`,
+    kcalObj: macros.kcal, macros,
+    minorFloor: {`,
     a: `  return Object.assign({}, base, {
-    kcalObj: macros.kcal, macros, desfase: macros.kcal - (base.kcalEscrito || 0),`,
+    kcalObj: macros.kcal, macros, desfase: macros.kcal - (base.kcalEscrito || 0),
+    minorFloor: {`,
+  },
+  {
+    n: 'S10 · el piso pierde el margen del plato (vuelve al gasto pelado — dictamen de Andrés)',
+    de: `const NUT_MENOR_PISO_MARGEN = 1.05;`,
+    a: `const NUT_MENOR_PISO_MARGEN = 1.0;`,
+  },
+  {
+    n: 'S11 · se cae el TECHO de proteína (un plan bajo escala hasta el disparate)',
+    de: `    prot_g: Math.min(Math.round(base.macros.prot_g * factor), protTecho),`,
+    a: `    prot_g: Math.round(base.macros.prot_g * factor),`,
+  },
+  {
+    n: 'S12 · un menor sin datos de gasto se pasa EN SILENCIO (sin marcar)',
+    de: `  if (!tdee) return Object.assign({}, base, { minorFloorUnknown: true });`,
+    a: `  if (!tdee) return base;`,
+  },
+  {
+    n: 'S13 · la ficha del coach vuelve a callarse con un menor bajo su gasto',
+    de: `  if (isMenor(client) && gap < 0) {
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base };
+  }`,
+    a: `  if (false) { return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base }; }`,
   },
 ];
 
