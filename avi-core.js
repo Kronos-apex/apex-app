@@ -2844,22 +2844,19 @@ function foodLogProgress(totals, target) {
 // entrega le diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó** — la misma
 // contradicción de v435/v444, servida por la pantalla que existe para dar tranquilidad.
 // Si algún día el plato entrega más fino, esta cifra se re-mide y se aprieta; no al revés.
-// 🔁 RE-MEDIDA el 2026-08-15 al corregir la yuca (112 → 157 kcal, fila B106 de la TCAC). Ese
-// alimento se sirve en trozos de 100 g, así que su ración MÍNIMA pasó de 113 a 151 kcal y en la
-// esquina mala del barrido —1.400 kcal con 35% de proteína, día de descanso— esos 38 kcal empujan
-// el día del 111% al 113,9%. La curva nueva sobre los 315 días-plan del barrido:
-//   franja ±10% → 10 de 315 fuera
-//   franja ±12% →  4 de 315 fuera   ← la que había; dejó de cumplir al corregir la yuca
-//   franja ±13% →  4 de 315 fuera
-//   franja ±14% →  0 de 315 fuera   ← ELEGIDA
-// ⚠️ Se ensancha por la ESQUINA, no por la gente: medido sobre los asesorados reales el plato
-// entrega 97,4%-107,8%, así que a nadie de la base le cambia el veredicto. Y antes de tocar la
-// franja se probaron dos arreglos del PLATO —bajarle el tope de ración a la yuca y darle un
-// escalón chico de media medida— y **ninguno movió una sola cifra**: se revirtieron los dos.
-// El límite no es la granularidad, es que un trozo de yuca son 151 kcal y no se puede partir.
+// 🔁 RE-MEDIDA DOS VECES el 2026-08-15, y la segunda la volvió a APRETAR — que es la dirección que
+// esta nota exige y casi no se cumple. (1) Al corregir la yuca (112 → 157) su ración mínima subió
+// de 113 a 151 kcal y la esquina mala del barrido se fue a 113,9%: hubo que abrir a ±14%. (2) Al
+// traer 8 filas más de la TCAC el plato volvió a entregar FINO y la curva es:
+//   ±8% → 13 de 315 fuera · ±10% → 5 · ±11% → 2 · ±12% → 0   ← ELEGIDA (el plato da 94,6%-111,6%)
+// ⚠️ Lo que enseña el par: **una franja ensanchada no se queda ensanchada por comodidad**. Si se
+// hubiera dejado en 14 «porque ya pasaba», la app le estaría diciendo «vas bien» a alguien con un
+// 13% de desvío real. Cada vez que cambie la tabla de alimentos, esta cifra se vuelve a medir en
+// las DOS direcciones. Antes de abrirla se probaron dos arreglos del plato —bajarle el tope de
+// ración a la yuca y darle un escalón chico de media medida— y ninguno movió una sola cifra.
 // ⚠️ Solo para CALORÍAS. Por macro el reparto es mucho más ancho (grasa 80,9%-129,2%) y una
 // franja de ±29% no dice nada: los macros siguen con su porcentaje.
-const FOODLOG_BAND = 0.14;
+const FOODLOG_BAND = 0.12;
 function foodLogBandFor(meta, hecho) {
   const m = Math.round(parseFloat(meta) || 0);
   if (!(m > 0)) return null;
@@ -3925,8 +3922,8 @@ const NUT_FOODS = [
   // `un.g` = 100: la lata colombiana de 160 g NETOS escurre ~104 g (Van Camp's, etiqueta y
   // ficha de Éxito/Open Food Facts, verificado 2026-08-03). Decía 120 g = una lata que no existe.
   { id: 'atun', src: 'usda_sr', ref: "FDC 171986 - Fish, tuna, light, canned in water, without salt, drained solids", name: 'Atún en agua (escurrido)', rol: 'prot', kcal: 116, p: 26.0, c: 0, f: 1.0, compra: 'un', un: { label: 'lata', g: 100 }, un2: { label: 'cucharada', g: 20 } },
-  { id: 'queso_campesino', src: 'sin_verificar', name: 'Queso campesino', rol: 'prot', kcal: 230, p: 17.0, c: 2.0, f: 17.0, maxG: 90, un: { label: 'tajada', g: 30 } },
-  { id: 'cuajada', src: 'sin_verificar', name: 'Cuajada', rol: 'prot', kcal: 180, p: 15.0, c: 3.0, f: 12.0, maxG: 150, un: { label: 'porción', g: 60 } },
+  { id: 'queso_campesino', src: 'tcac2018', ref: "TCAC 2018 (ICBF) G017, pag. 78 - Queso fresco, semiduro, semigraso, tipo campesino; carbohidrato TOTAL", name: 'Queso campesino', rol: 'prot', kcal: 301, p: 17.5, c: 0.3, f: 25.5, maxG: 90, un: { label: 'tajada', g: 30 } },
+  { id: 'cuajada', src: 'tcac2018', ref: "TCAC 2018 (ICBF) G016, pag. 78 - Queso fresco, semiblando, semimagro, tipo cuajada; carbohidrato TOTAL", name: 'Cuajada', rol: 'prot', kcal: 207, p: 15.2, c: 2.0, f: 15.4, maxG: 150, un: { label: 'porción', g: 60 } },
   { id: 'yogur_griego', src: 'usda_sr', ref: "FDC 170894 - Yogurt, Greek, plain, nonfat (Includes foods for USDAs Food Distributi", name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
   { id: 'leche', src: 'sin_verificar', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, maxG: 400, un: { label: 'vaso', g: 200 } },
   { id: 'lenteja', src: 'usda_sr', ref: "FDC 172421 - Lentils, mature seeds, cooked, boiled, without salt", name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, maxG: 350, un: { label: 'taza', g: 200 } },
@@ -3950,7 +3947,7 @@ const NUT_FOODS = [
   // que es un cambio de estructura de `NUT_MENUS` y decisión de Andrés — no un número aquí.
   { id: 'arroz', src: 'usda_sr', ref: "FDC 168878 - Rice, white, long-grain, regular, enriched, cooked", name: 'Arroz blanco cocido', rol: 'carb', kcal: 130, p: 2.7, c: 28.0, f: 0.3, maxG: 316, un: { label: 'taza', g: 158 }, un2: { label: 'cucharada', g: 20 } },
   { id: 'papa', src: 'usda_sr', ref: "FDC 170438 - Potatoes, boiled, cooked in skin, flesh, without salt", name: 'Papa cocida', rol: 'carb', kcal: 87, p: 2.0, c: 20.0, f: 0.1, maxG: 450, compra: 'un', un: { label: 'papa mediana', g: 150 } },
-  { id: 'papa_criolla', src: 'sin_verificar', name: 'Papa criolla cocida', rol: 'carb', kcal: 95, p: 2.0, c: 22.0, f: 0.1, maxG: 300, un: { label: 'porción', g: 100 } },
+  { id: 'papa_criolla', src: 'tcac2018', ref: "TCAC 2018 (ICBF) B070, pag. 52 - Papa, variedad harinosa, criolla, con cascara, cocida, sin sal; carbohidrato TOTAL. La fuente imprime 85 kcal, pero 1,4 P + 18,1 C + 0 G no llegan a 85 con ningun factor (la propia fila no reconcilia); el plato se arma con los MACROS, asi que el titular se DERIVA de ellos (78) en vez de dejar un numero decorativo. Sus kJ (358) y su suma de componentes (99,9 g) confirman que la fila esta bien leida", name: 'Papa criolla cocida', rol: 'carb', kcal: 78, p: 1.4, c: 18.1, f: 0.0, maxG: 300, un: { label: 'porción', g: 100 } },
   // 🔴 Traía los valores de yuca CRUDA (USDA cassava raw = 160 kcal / 1,36 P / 38,1 C) con el
   // nombre «cocida». Cocida absorbe agua: 112 kcal / 1 P / 26,7 C / 0,2 G (verificado
   // 2026-08-03). El error de +28% en carbohidrato hacía que el motor recetara ~22% MENOS yuca
@@ -3999,10 +3996,10 @@ const NUT_FOODS = [
   // conviven dos criterios de carbohidrato en la misma tabla. No se unifica sin su dictamen.
   // ⚠️ Cambia el plato: la ración pasa de 200 g a 150 g (medido sobre los asesorados reales).
   { id: 'yuca', src: 'tcac2018', ref: "TCAC 2018 (ICBF) B106, pag. 54 - Yuca blanca, sin cascara, cocida, sin sal (pulpa); carbohidrato TOTAL 36,6 (el disponible es 33,9)", name: 'Yuca cocida', rol: 'carb', kcal: 157, p: 0.7, c: 36.6, f: 0.2, maxG: 300, un: { label: 'trozo', g: 100 } },
-  { id: 'platano_maduro', src: 'sin_verificar', name: 'Plátano maduro cocido', rol: 'carb', kcal: 116, p: 0.8, c: 31.0, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
+  { id: 'platano_maduro', src: 'tcac2018', ref: "TCAC 2018 (ICBF) B088, pag. 52 - Platano harton, maduro, cocido, sin sal; carbohidrato TOTAL", name: 'Plátano maduro cocido', rol: 'carb', kcal: 130, p: 0.8, c: 30.1, f: 0.2, maxG: 240, un: { label: 'tajada grande', g: 80 } },
   { id: 'platano_verde', src: 'usda_sr', ref: "FDC 169130 - Plantains, yellow, raw", name: 'Plátano verde cocido', rol: 'carb', kcal: 122, p: 1.2, c: 32.0, f: 0.4, maxG: 240, un: { label: 'trozo', g: 80 } },
-  { id: 'arepa', src: 'sin_verificar', name: 'Arepa de maíz asada', rol: 'carb', kcal: 218, p: 4.5, c: 44.0, f: 2.5, compra: 'un', un: { label: 'arepa', g: 80 } },
-  { id: 'pan_integral', src: 'sin_verificar', name: 'Pan integral tajado', rol: 'carb', kcal: 247, p: 13.0, c: 41.0, f: 3.4, maxG: 112, compra: 'un', un: { label: 'tajada', g: 28 } },
+  { id: 'arepa', src: 'tcac2018', ref: "TCAC 2018 (ICBF) A006, pag. 42 - Arepa de maiz, asada; carbohidrato TOTAL", name: 'Arepa de maíz asada', rol: 'carb', kcal: 162, p: 4.1, c: 36.3, f: 0.0, compra: 'un', un: { label: 'arepa', g: 80 } },
+  { id: 'pan_integral', src: 'tcac2018', ref: "TCAC 2018 (ICBF) A069, pag. 46 - Pan integral, regular, horneado; carbohidrato TOTAL", name: 'Pan integral tajado', rol: 'carb', kcal: 279, p: 9.4, c: 50.4, f: 3.1, maxG: 112, compra: 'un', un: { label: 'tajada', g: 28 } },
   // 🔴 Decía «cucharada = 15 g» y una cucharada de hojuelas pesa **~5,6 g** (verificado
   // 2026-08-03): la persona servía un TERCIO de lo recetado, y la avena es lo más denso de la
   // tabla (389 kcal/100 g). Se pasa a TAZA, que además es como se sirve: con medios pasos se
@@ -4035,7 +4032,7 @@ const NUT_FOODS = [
   { id: 'mandarina', src: 'usda_sr', ref: "FDC 169105 - Tangerines, (mandarin oranges), raw", name: 'Mandarina', rol: 'fruta', kcal: 53, p: 0.8, c: 13.0, f: 0.3, compra: 'un', un: { label: 'mandarina', g: 90 } },
   { id: 'pina', src: 'usda_sr', ref: "FDC 169124 - Pineapple, raw, all varieties", name: 'Piña', rol: 'fruta', kcal: 50, p: 0.5, c: 13.0, f: 0.1, un: { label: 'taza', g: 165 } },
   { id: 'fresa', src: 'usda_sr', ref: "FDC 167762 - Strawberries, raw", name: 'Fresa', rol: 'fruta', kcal: 32, p: 0.7, c: 7.7, f: 0.3, un: { label: 'taza', g: 150 } },
-  { id: 'maracuya', src: 'sin_verificar', name: 'Maracuyá', rol: 'fruta', kcal: 97, p: 2.2, c: 23.0, f: 0.7, compra: 'un', un: { label: 'unidad', g: 60 } },
+  { id: 'maracuya', src: 'tcac2018', ref: "TCAC 2018 (ICBF) C056, pag. 58 - Maracuya, cruda (pulpa sin semillas); carbohidrato TOTAL", name: 'Maracuyá', rol: 'fruta', kcal: 60, p: 1.5, c: 12.4, f: 0.5, compra: 'un', un: { label: 'unidad', g: 60 } },
 ];
 
 // Índice por id, null-proto para que un id raro NO herede del prototipo

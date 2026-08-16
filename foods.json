@@ -1,6 +1,6 @@
 {
  "v": 1,
- "generado": "2026-08-15",
+ "generado": "2026-08-16",
  "nota": "Catálogo de BÚSQUEDA y REGISTRO. NO es el pool del recetario (ese es NUT_FOODS en avi-core.js, referenciado por id desde NUT_MENUS). Generado por scripts/build-foods.mjs — no editar a mano.",
  "fuentes": {
   "avi50": {
@@ -85,10 +85,10 @@
    "id": "arepa",
    "name": "Arepa de maíz asada",
    "src": "avi50",
-   "kcal": 218,
-   "p": 4.5,
-   "c": 44,
-   "f": 2.5,
+   "kcal": 162,
+   "p": 4.1,
+   "c": 36.3,
+   "f": 0,
    "un": {
     "label": "arepa",
     "g": 80
@@ -225,10 +225,10 @@
    "id": "cuajada",
    "name": "Cuajada",
    "src": "avi50",
-   "kcal": 180,
-   "p": 15,
-   "c": 3,
-   "f": 12,
+   "kcal": 207,
+   "p": 15.2,
+   "c": 2,
+   "f": 15.4,
    "un": {
     "label": "porción",
     "g": 60
@@ -421,10 +421,10 @@
    "id": "maracuya",
    "name": "Maracuyá",
    "src": "avi50",
-   "kcal": 97,
-   "p": 2.2,
-   "c": 23,
-   "f": 0.7,
+   "kcal": 60,
+   "p": 1.5,
+   "c": 12.4,
+   "f": 0.5,
    "un": {
     "label": "unidad",
     "g": 60
@@ -463,10 +463,10 @@
    "id": "pan_integral",
    "name": "Pan integral tajado",
    "src": "avi50",
-   "kcal": 247,
-   "p": 13,
-   "c": 41,
-   "f": 3.4,
+   "kcal": 279,
+   "p": 9.4,
+   "c": 50.4,
+   "f": 3.1,
    "un": {
     "label": "tajada",
     "g": 28
@@ -491,10 +491,10 @@
    "id": "papa_criolla",
    "name": "Papa criolla cocida",
    "src": "avi50",
-   "kcal": 95,
-   "p": 2,
-   "c": 22,
-   "f": 0.1,
+   "kcal": 78,
+   "p": 1.4,
+   "c": 18.1,
+   "f": 0,
    "un": {
     "label": "porción",
     "g": 100
@@ -561,9 +561,9 @@
    "id": "platano_maduro",
    "name": "Plátano maduro cocido",
    "src": "avi50",
-   "kcal": 116,
+   "kcal": 130,
    "p": 0.8,
-   "c": 31,
+   "c": 30.1,
    "f": 0.2,
    "un": {
     "label": "tajada grande",
@@ -617,10 +617,10 @@
    "id": "queso_campesino",
    "name": "Queso campesino",
    "src": "avi50",
-   "kcal": 230,
-   "p": 17,
-   "c": 2,
-   "f": 17,
+   "kcal": 301,
+   "p": 17.5,
+   "c": 0.3,
+   "f": 25.5,
    "un": {
     "label": "tajada",
     "g": 30

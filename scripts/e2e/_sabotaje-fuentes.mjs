@@ -18,8 +18,8 @@ const rx = (s) => new RegExp(s.split('\n').map(l =>
 const SABOTAJES = [
   {
     n: 'F1 · un alimento deja de declarar de dónde salió su número',
-    de: `{ id: 'arepa', src: 'sin_verificar',`,
-    a: `{ id: 'arepa',`,
+    de: `{ id: 'crema_mani', src: 'sin_verificar',`,
+    a: `{ id: 'crema_mani',`,
   },
   {
     n: 'F2 · se AFIRMA una fuente externa pero sin la cita al lado',
@@ -33,11 +33,11 @@ const SABOTAJES = [
   },
   {
     n: 'F4 · entra un alimento NUEVO sin fuente (lo caza el CONTEO, no una lista)',
-    de: `  { id: 'arepa', src: 'sin_verificar',`,
+    de: `  { id: 'crema_mani', src: 'sin_verificar',`,
     a: `  { id: 'inventado_x', name: 'Alimento sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_y', name: 'Otro sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_z', name: 'Tercero sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
-  { id: 'arepa', src: 'sin_verificar',`,
+  { id: 'crema_mani', src: 'sin_verificar',`,
   },
   {
     n: 'F5 · la yuca vuelve al 112 deducido (el test guarda la fila oficial)',

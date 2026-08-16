@@ -4,6 +4,73 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-15 (5ª parte) — avi-v489: 7 ALIMENTOS COLOMBIANOS CON SU FILA OFICIAL · 47 → 6 SIN FUENTE
+
+**Suite 761/761 · matrices 5/5 y 18/18 · franja APRETADA de vuelta a ±12%.**
+Leídas 10 páginas del PDF escaneado del ICBF (secciones A cereales, B verduras, C frutas,
+E pescados, F carnes, G lácteos). **Ni un valor inventado: cada uno con su código y su página.**
+
+### 1 · Lo que traía la tabla, y lo que tenía AVI
+| alimento | AVI tenía | fila oficial | Δ |
+|---|---|---|---|
+| **Arepa de maíz asada** | 218 kcal | **A006 · 162** | −26% |
+| **Maracuyá** | 97 | **C056 · 60** | −38% |
+| **Queso campesino** | 230 | **G017 · 301** | +31% |
+| **Cuajada** | 180 | **G016 · 207** | +15% |
+| **Pan integral** | 247 | **A069 · 279** | +13% |
+| **Plátano hartón maduro cocido** | 116 | **B088 · 130** | +12% |
+| **Papa criolla cocida** | 95 | **B070 · 78** ⚠️ | −18% |
+
+⚠️ **La papa criolla lleva los MACROS de B070 y el titular DERIVADO de ellos (78, no los 85 que
+imprime la fuente).** La fila no reconcilia consigo misma: 1,4 g de proteína y 18,1 de carbohidrato
+no llegan a 85 kcal con ningún factor. Sus kJ (358) y su suma de componentes (99,9 g) confirman que
+está bien leída — es la TCAC. Como el plato se arma con los MACROS, dejar 85 sería un número
+decorativo. Escrito al lado, con las dos comprobaciones.
+
+**Alcance medido:** **18 de las personas** tienen alguno de estos en su plato — **332 raciones a la
+semana** (pan integral 119 · arepa 95 · plátano 71 · papa criolla 27 · yuca 20).
+
+### 2 · 🔴 EL ERROR QUE CASI CUESTA CARO: aflojé una guarda de seguridad por una explicación bonita
+Al meter los 8 alimentos, el guardián de los casos extremos se puso **rojo (+15,2%, tope 13%)**.
+Escribí una justificación elaborada para subirlo a 16: *«la medición dejó de hacerse contra una
+tabla equivocada; el 15,2% es el número honesto que la persona siempre recibió»*. **Era FALSA.**
+Midiendo cuál de los 8 lo movió —revirtiendo de uno en uno— apareció que la causa era **UNA fila mal
+elegida**: al «muslo de pollo» le puse `F090 · pierna o colombina`, que es el muslo INFERIOR,
+cuando el de AVI es el contramuslo. Bajarle la proteína de 26 a 22,9 empujaba al solver por un
+escalón de medida casera y **DUPLICABA las porciones** de esa comida (48 → 95 g de pollo,
+79 → 158 de arroz). Revertida esa fila, **el tope de 13 aguanta intacto**.
+🔴 **La lección: cuando un guardián se pone rojo, la respuesta NUNCA es la primera explicación que
+se te ocurra para subirlo — es medir cuál de tus cambios lo movió.** La explicación bonita habría
+aflojado 3 puntos el tope que protege a la persona más expuesta del sistema, y encima con una
+narrativa convincente escrita al lado. El pollo queda `sin_verificar` hasta que Andrés diga qué
+corte es: **una fila ambigua no cambia un valor.**
+
+### 3 · 🔁 La franja se apretó de vuelta a ±12%
+En v488 hubo que abrirla a ±14% porque la yuca corregida empujaba la esquina a 113,9%. Con las 7
+filas nuevas el plato volvió a entregar fino: ±8% → 13 de 315 fuera · ±10% → 5 · ±11% → 2 ·
+**±12% → 0**. **Una franja ensanchada no se queda ensanchada por comodidad**: dejarla en 14 «porque
+ya pasaba» sería decirle «vas bien» a alguien con 13% de desvío real. Sobre la gente real el plato
+entrega **94,5%-110,8%**.
+
+### 4 · Dos candados que mejoraron de paso
+- 🔒 **El check de «las carnes son valores COCIDOS» usaba `proteína ≥ 25` como PROXY** — y el proxy
+  es falso: la fila oficial del pollo de pierna sin piel COCIDA trae 22,9 g. Marcaba en rojo un dato
+  correcto. Ahora que cada alimento lleva su CITA, **se le pregunta a la fuente** (la descripción
+  tiene que decir cocida/asada/roasted), con fallback al proxy solo donde no hay cita.
+- 🔁 **El fixture de v471 se re-barrió**: su presupuesto {34,105,13} dejó de producir menús cortos
+  al cambiar los alimentos y **el propio test lo cantó** («busca otro» — para eso está su control).
+  El nuevo {22,90,11} se eligió con el MISMO criterio entre 388 candidatos con el perfil del
+  original (un solo corto, proteína al 91%, entrega −11,9%).
+
+### 5 · ⏭️ Lo que queda sin fuente (6) y por qué
+`res_magra` · `res_molida` · `cerdo_lomo` — ninguna fila de la TCAC ni de USDA cuadra con sus
+valores · `pollo_muslo` — fila ambigua (pierna vs contramuslo), decisión de Andrés ·
+`leche` — la de AVI es semidescremada y la TCAC solo trae entera (G012, 55) y descremada (G007, 34) ·
+`crema_mani` — el candidato USDA está fortificado y difiere.
+⏭️ **Y sigue abierto para Andrés:** la tabla tiene DOS criterios de carbohidrato conviviendo (las 42
+frutas TCAC usan *disponible*; los 8 nuevos y la yuca usan *total*, para no medirse distinto que las
+36 filas USDA, cuyo campo es `by difference`).
+
 ## 🟢 2026-08-15 (4ª parte) — avi-v488: 47 → 13 SIN FUENTE · Y LA YUCA, CORREGIDA CON SU FILA
 
 **Suite 761/761 · matrices `_sabotaje-fuentes` 5/5 y `_sabotaje-menores` 18/18.**

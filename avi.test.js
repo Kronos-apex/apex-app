@@ -4143,7 +4143,7 @@ const _foodsJson = (() => {
 // `src:'avi50'`, así que 50 de sus 181 entradas «con fuente» apuntan de vuelta a la tabla que no
 // la tiene — la trazabilidad era CIRCULAR donde más importaba.
 const NUT_SRC_OK = ['usda_sr', 'tcac2018', 'etiqueta', 'derivado', 'sin_verificar'];
-const NUT_SIN_VERIFICAR_TOPE = 13; // medido el 2026-08-15 tras verificar 34 contra la API de USDA. Solo puede BAJAR.
+const NUT_SIN_VERIFICAR_TOPE = 6; // medido el 2026-08-15 tras verificar 34 contra la API de USDA. Solo puede BAJAR.
 
 test('🔴 v487 · los 50 del recetario declaran TODOS de dónde salió su número', () => {
   for (const f of NUT_FOODS) {
@@ -5423,15 +5423,29 @@ test('🔴 la lista NO clasifica alimento por alimento: una sola frase, y dice l
 // proteína por 100 g: no cabe físicamente con 70-75% de agua (TCAC 2018: res magra cruda F099 =
 // 21,8 g · cerdo lomo crudo F019 = 21,6 g · tilapia entera cruda E043 = 20,1 g).
 test('🔴 las carnes de la tabla son valores COCIDOS — si dejan de serlo, la nota miente', () => {
+  // 🔁 v489: antes esto se afirmaba con `proteína ≥ 25`, un PROXY de «cocida» — y el proxy es
+  // falso: la fila oficial del pollo de pierna sin piel COCIDA (TCAC F090) trae 22,9 g, porque una
+  // pierna es menos densa en proteína que una pechuga. El candado marcaba en rojo un dato correcto.
+  // Ahora que cada alimento lleva su CITA, se le pregunta a la fuente en vez de adivinar: la
+  // descripción tiene que decir que está cocida. Es la misma regla que ya se aplicó a los `onclick`
+  // y al espejo del SQL — un candado se DERIVA del dato, no de una heurística sobre el dato.
   const carnes = ['pollo_pechuga', 'pollo_muslo', 'res_magra', 'res_molida', 'cerdo_lomo', 'tilapia'];
-  let vistas = 0;
+  const COCIDA = /cocid|asad|horne|roast|cooked|grill|braise|baked/i;
+  let vistas = 0, porCita = 0;
   carnes.forEach(id => {
     const f = NUT_FOODS.find(x => x.id === id);
     assert.ok(f, `desapareció ${id} de la tabla`);
     vistas++;
-    assert.ok(f.p >= 25, `${id} tiene ${f.p} g de proteína por 100 g: eso ya no es carne cocida, y la lista del mercado quedó mintiendo`);
+    if (f.ref) {
+      porCita++;
+      assert.ok(COCIDA.test(f.ref), `${id} cita una fila que NO dice cocida («${f.ref}»): la lista del mercado aplica su factor de compra sobre un valor crudo y queda mintiendo`);
+    } else {
+      // Sin cita no hay a quién preguntarle: queda el proxy viejo, que es lo único que hay.
+      assert.ok(f.p >= 25, `${id} no tiene fuente citada y sus ${f.p} g de proteína no parecen carne cocida`);
+    }
   });
   assert.strictEqual(vistas, 6, `control: se revisaron ${vistas} carnes de 6`);
+  assert.ok(porCita >= 2, `control: solo ${porCita} carnes se verificaron contra su CITA — si baja, el candado volvió a ser una heurística`);
 });
 
 test('el texto para compartir sale de la lista YA armada, no de un segundo cálculo', () => {
@@ -9564,8 +9578,8 @@ test('en gente TÍPICA el plan no se pasa del 16% ni deja el carbohidrato bajo -
   const objetivo = _sinPiso(_PERFILES_TIPICOS);
   assert.ok(objetivo.length >= 7, `el barrido perdió perfiles: quedan ${objetivo.length}`);
   const r = _peorDesvioPlan(objetivo);
-  assert.ok(r.peorKcal <= 16,
-    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 16%`);
+  assert.ok(r.peorKcal <= 13,
+    `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 13%`);
   // 🔴 La aserción de CARBOHIDRATO existe por un aviso de Andrés que salió de medir: con topes
   // de ración, el desvío de kcal del día se veía perfecto (0,2%) mientras el carbohidrato caía
   // un 42% para un hombre en volumen. El promedio mentía. Un test que solo mira kcal no lo ve.
@@ -9602,6 +9616,16 @@ test('ni en los casos EXTREMOS el plan se pasa del 13%', () => {
   // 13 desde el 12,1. Es apretado A PROPÓSITO: el 14 sobraba, y un guardián con holgura de más no
   // avisa de nada. Si esto se pone rojo, PRIMERO se mide (`r.peorKcal` sale en el mensaje) y se
   // averigua qué lo movió; el tope solo se toca con la cifra nueva escrita aquí y su razón.
+  // 🎓 2026-08-15: este guardián se puso en rojo (+15,2%) al traer 8 filas de la TCAC, y estuve a
+  // punto de subirlo a 16 con una justificación elaborada — «la medición dejó de hacerse contra una
+  // tabla equivocada». Era FALSA. Midiendo cuál lo movió (revertir los 8 de uno en uno) apareció
+  // que la causa era UNA fila mal elegida: le puse al «muslo de pollo» la F090 «pierna o colombina»
+  // (el muslo INFERIOR) cuando en Colombia el muslo de AVI es el contramuslo. Bajar su proteína de
+  // 26 a 22,9 empujaba al solver por un escalón de medida casera y DUPLICABA las porciones de esa
+  // comida (48 g → 95 g de pollo, 79 → 158 de arroz). Revertida esa fila, el tope de 13 aguanta.
+  // 🔴 La lección: cuando un guardián se pone rojo, la respuesta NUNCA es la primera explicación
+  // que se te ocurra para subirlo — es medir cuál de tus cambios lo movió. La explicación bonita
+  // habría aflojado 3 puntos un tope que protege a la persona más expuesta del sistema.
   assert.ok(r.peorKcal <= 13,
     `el plan sirve ${r.peorKcal.toFixed(1)}% más de lo que promete (${r.quienKcal}) — el tope es 13%`);
   assert.ok(r.peorCarb >= -13,
@@ -9686,10 +9710,14 @@ test('🔴 el menú se elige entre los que CABEN, y la rotación sigue viva', ()
 // 385**. Por eso la aserción es POR COMIDA y sobre el contrato, no sobre un promedio.
 test('🔴 v471 · un menú que se queda CORTO no se sirve habiendo alternativas', () => {
   const banco = core.NUT_MENUS.almuerzo;
-  // Presupuesto elegido barriendo: de 773 candidatos realistas, este deja al menú de lenteja
-  // descalificado ÚNICAMENTE por el piso (sirve −11,3%, con la proteína al 91% y sin pasarse de
-  // calorías). Si el piso desaparece, «cabe» y la rotación se lo sirve a alguien.
-  const meta = { prot_g: 34, carb_g: 105, fat_g: 13 };
+  // Presupuesto elegido barriendo: deja UN menú descalificado ÚNICAMENTE por el piso (sirve
+  // −11,9%, con la proteína al 91% y sin pasarse de calorías) y otros 6 que sí cuadran. Si el piso
+  // desaparece, «cabe» y la rotación se lo sirve a alguien.
+  // 🔁 RE-BARRIDO el 2026-08-15: el anterior era {34, 105, 13} y dejó de producir menús cortos al
+  // corregir 8 alimentos contra la TCAC — el propio test lo cantó («busca otro»), que es para lo
+  // que está su control. El nuevo se eligió con el MISMO criterio, entre 388 candidatos que
+  // reproducen el perfil del original (un solo corto, proteína 85-102%, entrega bajo −9%).
+  const meta = { prot_g: 22, carb_g: 90, fat_g: 11 };
   const cortos = banco.filter(m => core.nutPickMenu([m], 0, meta).over < -core.NUT_MENU_MAX_UNDER);
   const buenos = banco.filter(m => {
     const c = core.nutPickMenu([m], 0, meta);
