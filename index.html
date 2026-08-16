@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=491">
+<link rel="stylesheet" href="styles.css?v=492">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -141,7 +141,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="cin-card" id="cin-card" style="display:none">
       <div class="cin-back" onclick="document.getElementById('cin-card').style.display='none';document.getElementById('cin-cta').style.display='flex'">← Volver</div>
       <div id="lerr" class="lerr">Email o contraseña incorrectos</div>
-      <label class="cin-lbl">Email</label>
+      <label class="cin-lbl" for="lu">Email</label>
       <input id="lu" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
       <label class="cin-lbl">Contraseña</label>
       <div style="position:relative">
@@ -184,7 +184,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="wz-eyebrow">Paso 01 · Tú</div>
         <div class="wz-q">¿Cómo te <b>llamas?</b></div>
         <div class="wz-help">Tu plan llevará tu nombre. En AVI entrenas con nombre propio.</div>
-        <label class="cin-lbl">Tu nombre</label>
+        <label class="cin-lbl" for="su-name">Tu nombre</label>
         <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Ej: Camilo" onkeydown="if(event.key==='Enter')WZ.next()">
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
@@ -299,7 +299,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="wz-eyebrow">Paso 07 · Tu cuenta</div>
         <div class="wz-q">Ya casi: crea tu <b>cuenta</b></div>
         <div class="wz-help">Guardamos tu progreso para que nunca lo pierdas. Empiezas con tu <b style="color:#10E0A0">rutina automática</b> hecha con criterio.</div>
-        <label class="cin-lbl">Email</label>
+        <label class="cin-lbl" for="su-email">Email</label>
         <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
         <label class="cin-lbl">Contraseña</label>
         <div style="position:relative">
@@ -828,7 +828,10 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
      confiar en que alcance a leer un aviso de 3 segundos. 🔒 Un solo botón, «Entendido», sin
      confirmación disuasoria ni nada que empuje a seguir entrenando (§2.5 del dictamen). -->
 <div class="mdbg" id="m-painres">
-  <div class="md" style="max-width:420px">
+  <!-- Sin `.mdtitle` propio (su cuerpo lo escribe el JS), así que el nombre va a mano. Se puso
+       explícito y no derivado: derivarlo del siguiente `.mdtitle` del archivo le habría puesto
+       el título de OTRO modal, que es peor que no tener ninguno. -->
+  <div class="md" style="max-width:420px" role="dialog" aria-modal="true" aria-label="Resultado de tu chequeo de dolor">
     <div id="painres-body"></div>
     <!-- «Me equivoqué» NO es una confirmación disuasoria (esas empujan a seguir entrenando y están
          prohibidas): es poder corregir un dato mal marcado. Sin esto, quien marca sin querer y se
@@ -843,8 +846,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Reporte de dolor (⚠️ en la tarjeta del guiado): el asesorado marca dónde y qué tanto;
      painSubmit guarda en client.painCare (el coach lo ve) y le avisa por el chat. -->
 <div class="mdbg" id="m-pain">
-  <div class="md">
-    <div class="mdtitle">⚠️ ¿Algo te duele?</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-01">
+    <div class="mdtitle" id="mdt-01">⚠️ ¿Algo te duele?</div>
     <div id="pain-ex" style="font-size:13px;color:var(--t2);margin-bottom:12px"></div>
     <label class="ilbl">¿Dónde sientes el dolor?</label>
     <div id="pain-areas" class="pain-chips"></div>
@@ -862,7 +865,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
          es un acto positivo, nunca un valor por defecto. La bandera gana sobre la intensidad. -->
     <label class="ilbl" style="margin-top:10px">Marca todo lo que te esté pasando</label>
     <div id="pain-flags" class="pain-chips" style="flex-direction:column;align-items:stretch"></div>
-    <label class="ilbl" style="margin-top:10px">Cuéntanos más (opcional)</label>
+    <label class="ilbl" style="margin-top:10px" for="pain-note">Cuéntanos más (opcional)</label>
     <textarea class="tarea" id="pain-note" maxlength="300" placeholder="Ej: me duele al bajar la mancuerna, con barra no me molesta..."></textarea>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-pain')">Cancelar</button><button class="btn bp" onclick="painSubmit()">Enviar</button></div>
   </div>
@@ -872,7 +875,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
      legal/*.md. Es .mdbg → el atrás de Android lo cierra por la rama genérica de
      _aviCloseTopOverlay. Se abre encima del wizard de registro (z-index 1000). -->
 <div class="mdbg" id="m-legal">
-  <div class="md mdlg" style="display:flex;flex-direction:column">
+  <div class="md mdlg" style="display:flex;flex-direction:column" role="dialog" aria-modal="true" aria-labelledby="legal-title">
     <div class="mdtitle" id="legal-title">Documento</div>
     <div class="legal-body" id="legal-body">Cargando…</div>
     <div class="mdfooter"><button class="btn bp" onclick="cm('m-legal')">Cerrar</button></div>
@@ -880,39 +883,39 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 </div>
 
 <div class="mdbg" id="m-client">
-  <div class="md">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mc-title">
     <div class="mdtitle" id="mc-title">Nuevo asesorado</div>
-    <div class="frow"><div class="fg"><label class="ilbl">Nombre *</label><input type="text" class="inp" id="cf-name" maxlength="60" placeholder="Ej: María"></div><div class="fg"><label class="ilbl">Apellido</label><input type="text" class="inp" id="cf-last" maxlength="60" placeholder="Ej: García"></div></div>
-    <div class="frow"><div class="fg"><label class="ilbl">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: Maria2026" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl" for="cf-name">Nombre *</label><input type="text" class="inp" id="cf-name" maxlength="60" placeholder="Ej: María"></div><div class="fg"><label class="ilbl" for="cf-last">Apellido</label><input type="text" class="inp" id="cf-last" maxlength="60" placeholder="Ej: García"></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl" for="cf-email">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: Maria2026" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-      <div class="fg"><label class="ilbl">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28"></div>
+      <div class="fg"><label class="ilbl" for="cf-sex">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+      <div class="fg"><label class="ilbl" for="cf-age">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28"></div>
     </div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Peso (kg)</label><input class="inp" id="cf-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"></div>
-      <div class="fg"><label class="ilbl">Altura (cm)</label><input type="number" class="inp" id="cf-height" inputmode="numeric" min="100" max="250" placeholder="Ej: 168"></div>
+      <div class="fg"><label class="ilbl" for="cf-weight">Peso (kg)</label><input class="inp" id="cf-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"></div>
+      <div class="fg"><label class="ilbl" for="cf-height">Altura (cm)</label><input type="number" class="inp" id="cf-height" inputmode="numeric" min="100" max="250" placeholder="Ej: 168"></div>
     </div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Objetivo</label><select class="sel" id="cf-goal"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select></div>
-      <div class="fg"><label class="ilbl">Nivel</label><select class="sel" id="cf-level"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select></div>
+      <div class="fg"><label class="ilbl" for="cf-goal">Objetivo</label><select class="sel" id="cf-goal"><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select></div>
+      <div class="fg"><label class="ilbl" for="cf-level">Nivel</label><select class="sel" id="cf-level"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option></select></div>
     </div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
-      <div class="fg"><label class="ilbl">Días / semana</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div class="fg"><label class="ilbl" for="cf-activity">Nivel de actividad diaria</label><select class="sel" id="cf-activity"><option value="1.2">Sedentario (sin ejercicio)</option><option value="1.375">Ligero (1–2 días/sem)</option><option value="1.55" selected>Moderado (3–5 días/sem)</option><option value="1.725">Activo (6–7 días/sem)</option><option value="1.9">Muy activo (trabajo físico + gym)</option></select></div>
+      <div class="fg"><label class="ilbl" for="cf-days">Días / semana</label><select class="sel" id="cf-days"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
-    <div class="fg"><label class="ilbl">Entorno de entrenamiento</label><select class="sel" id="cf-place"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select></div>
-    <div class="fg"><label class="ilbl">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
-    <div class="fg"><label class="ilbl">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
+    <div class="fg"><label class="ilbl" for="cf-place">Entorno de entrenamiento</label><select class="sel" id="cf-place"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select></div>
+    <div class="fg"><label class="ilbl" for="cf-phone">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
+    <div class="fg"><label class="ilbl" for="cf-notes">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
   </div>
 </div>
 
 <!-- New / Edit Routine -->
 <div class="mdbg" id="m-routine">
-  <div class="md mdlg">
+  <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mr-title">
     <div class="mdtitle" id="mr-title">Nueva rutina — <span id="mr-cn" style="color:var(--g)"></span></div>
-    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..." maxlength="50"></div><div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div><div class="fg"><label class="ilbl">Horario habitual</label><select class="sel" id="rf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana</option><option value="afternoon">⚡ Tarde</option><option value="evening">🌙 Noche</option></select></div></div>
-    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nota para el asesorado</label><input type="text" class="inp" id="rf-note" placeholder="Ej: Descansa 90 seg entre series. Enfócate en la técnica."></div>
+    <div class="fg" style="margin-bottom:11px"><label class="ilbl" for="rf-name">Nombre de la rutina *</label><input type="text" class="inp" id="rf-name" placeholder="Ej: Push Día A, Pierna Martes..." maxlength="50"></div><div class="frow" style="margin-bottom:11px"><div class="fg"><label class="ilbl" for="rf-day">Día asignado</label><select class="sel" id="rf-day"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option><option>Libre</option></select></div><div class="fg"><label class="ilbl" for="rf-shift">Horario habitual</label><select class="sel" id="rf-shift"><option value="">Sin especificar</option><option value="morning">🌅 Mañana</option><option value="afternoon">⚡ Tarde</option><option value="evening">🌙 Noche</option></select></div></div>
+    <div class="fg" style="margin-bottom:11px"><label class="ilbl" for="rf-note">Nota para el asesorado</label><input type="text" class="inp" id="rf-note" placeholder="Ej: Descansa 90 seg entre series. Enfócate en la técnica."></div>
     <div class="fg" style="margin-bottom:11px">
       <label class="ilbl">¿Por qué esta rutina? <span style="color:var(--t3);font-weight:400">(opcional)</span></label>
       <textarea id="r-why" class="inp" rows="3" style="resize:none;font-size:13px;line-height:1.5" placeholder="Ej: Esta rutina busca desarrollar fuerza en el tren superior. Enfócate en sentir el músculo, no en el peso..."></textarea>
@@ -939,8 +942,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Picker de movimientos de calentamiento (editable por rutina) -->
 <div class="mdbg" id="m-warmpick">
-  <div class="md mdlg">
-    <div class="mdtitle">Agregar movimiento de calentamiento</div>
+  <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mdt-05">
+    <div class="mdtitle" id="mdt-05">Agregar movimiento de calentamiento</div>
     <div id="wp-body" style="max-height:60vh;overflow-y:auto;margin:8px 0"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-warmpick')">Cerrar</button></div>
   </div>
@@ -949,9 +952,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Aviso único de accesibilidad: ofrece agrandar el texto (la primera vez, por dispositivo).
      Fuentes EXPLÍCITAMENTE grandes para que sea legible incluso con mala vista. -->
 <div class="mdbg" id="m-fsintro">
-  <div class="md" style="max-width:380px;text-align:center">
+  <!-- Su encabezado NO es un `.mdtitle` (es un bloque centrado), así que se le pone id y se
+       apunta a él: `aria-labelledby` antes que `aria-label`, para no tener el mismo texto
+       escrito dos veces y que uno de los dos se quede viejo. -->
+  <div class="md" style="max-width:380px;text-align:center" role="dialog" aria-modal="true" aria-labelledby="fsintro-title">
     <div style="font-size:44px;margin-bottom:4px">👓</div>
-    <div style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:8px;line-height:1.3">¿Se ven pequeñas las letras?</div>
+    <div id="fsintro-title" style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:8px;line-height:1.3">¿Se ven pequeñas las letras?</div>
     <div style="font-size:15px;color:var(--t2);line-height:1.5;margin-bottom:20px">Puedes agrandar el texto de toda la app para leer más cómodo. Luego lo ajustas cuando quieras desde tu Perfil.</div>
     <button class="btn bp" style="width:100%;padding:14px;font-size:16px;margin-bottom:9px" onclick="fsIntroApply()">Agrandar texto</button>
     <button class="btn bg" style="width:100%;padding:12px;font-size:15px" onclick="fsIntroDismiss()">Está bien así</button>
@@ -960,9 +966,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Auto-generador: preview del borrador de la semana -->
 <div class="mdbg" id="m-gen">
-  <div class="md mdlg">
+  <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mg-title">
     <div class="mdtitle" id="mg-title">✨ Borrador de la semana</div>
-    <div class="fg" style="margin-bottom:10px"><label class="ilbl">Estilo de entrenamiento</label><select class="sel" id="mg-style" onchange="genWithStyle(this.value)"></select></div>
+    <div class="fg" style="margin-bottom:10px"><label class="ilbl" for="mg-style">Estilo de entrenamiento</label><select class="sel" id="mg-style" onchange="genWithStyle(this.value)"></select></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:var(--rsm)">
 
       <button class="btn bg bsm" id="mg-excl-btn" onclick="openGenPrefsPicker('exclude')">🚫 Excluidos (0)</button>
@@ -975,7 +981,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Ayuda contextual del asesorado (re-accesible, por sección) -->
 <div class="mdbg" id="m-help">
-  <div class="md">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="help-title">
     <div class="mdtitle" id="help-title">¿Cómo funciona?</div>
     <div id="help-body" style="font-size:14px;line-height:1.65;color:var(--t1);max-height:60vh;overflow-y:auto"></div>
     <div class="mdfooter"><button class="btn bp bfull" onclick="cm('m-help')">Entendido 👍</button></div>
@@ -984,11 +990,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Exercise Picker -->
 <div class="mdbg" id="m-picker">
-  <div class="md">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="pk-title">
     <div class="mdtitle" id="pk-title">Seleccionar ejercicio</div>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
       <span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0">Entorno:</span>
-      <select class="sel" id="pk-env" onchange="pkEnvFilter(this.value)" style="font-size:12px;padding:5px 8px">
+      <select class="sel" id="pk-env" aria-label="Filtrar ejercicios por entorno" onchange="pkEnvFilter(this.value)" style="font-size:12px;padding:5px 8px">
         <option value="all">Todos</option>
         <option value="corporal">🤸 Peso corporal</option>
         <option value="casa">🏠 Casa</option>
@@ -1004,17 +1010,17 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Add/Edit Exercise -->
 <div class="mdbg" id="m-ex">
-  <div class="md">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="m-ex-title">
     <div class="mdtitle" id="m-ex-title">Nuevo ejercicio</div>
-    <div class="fg"><label class="ilbl">Nombre *</label><input type="text" class="inp" id="ex-n" placeholder="Ej: Press de Banca con Barra"></div>
+    <div class="fg"><label class="ilbl" for="ex-n">Nombre *</label><input type="text" class="inp" id="ex-n" placeholder="Ej: Press de Banca con Barra"></div>
     <div class="frow">
-      <div class="fg"><label class="ilbl">Músculo</label><select class="sel" id="ex-m"><option value="pecho">Pecho</option><option value="espalda">Espalda</option><option value="hombros">Hombros</option><option value="biceps">Bíceps</option><option value="triceps">Tríceps</option><option value="piernas">Piernas</option><option value="gluteo">Glúteo</option><option value="core">Core</option><option value="cardio">Cardio</option><option value="otro">Otro</option></select></div>
-      <div class="fg"><label class="ilbl">Tipo</label><select class="sel" id="ex-t" onchange="exFormSync()"><option>Compuesto</option><option>Aislamiento</option><option>Cardio</option><option>HIIT</option><option>Bodyweight</option><option>Isométrico</option><option>Funcional</option></select></div>
+      <div class="fg"><label class="ilbl" for="ex-m">Músculo</label><select class="sel" id="ex-m"><option value="pecho">Pecho</option><option value="espalda">Espalda</option><option value="hombros">Hombros</option><option value="biceps">Bíceps</option><option value="triceps">Tríceps</option><option value="piernas">Piernas</option><option value="gluteo">Glúteo</option><option value="core">Core</option><option value="cardio">Cardio</option><option value="otro">Otro</option></select></div>
+      <div class="fg"><label class="ilbl" for="ex-t">Tipo</label><select class="sel" id="ex-t" onchange="exFormSync()"><option>Compuesto</option><option>Aislamiento</option><option>Cardio</option><option>HIIT</option><option>Bodyweight</option><option>Isométrico</option><option>Funcional</option></select></div>
     </div>
-    <div class="frow"><div class="fg"><label class="ilbl">Series por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-s" placeholder="3" min="1"></div><div class="fg"><label class="ilbl" id="ex-r-lbl">Reps por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-r" placeholder="12" min="1"></div></div>
-    <div class="frow" id="ex-hiit-row" style="display:none"><div class="fg"><label class="ilbl">HIIT: trabajo (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-work" placeholder="30" min="1"></div><div class="fg"><label class="ilbl">HIIT: descanso (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-rest" placeholder="15" min="1"></div></div>
-    <div class="frow" id="ex-hold-row" style="display:none"><div class="fg"><label class="ilbl">Isométrico: segundos por serie</label><input type="number" inputmode="numeric" class="inp" id="ex-hold-secs" placeholder="60" min="1"></div></div>
-    <div class="frow"><div class="fg"><label class="ilbl">Emoji / icono</label><input type="text" class="inp" id="ex-i" placeholder="🏋️" maxlength="2"></div><div class="fg"><label class="ilbl">Descripción técnica</label><input type="text" class="inp" id="ex-d" placeholder="Breve descripción de la ejecución..."></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl" for="ex-s">Series por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-s" placeholder="3" min="1"></div><div class="fg"><label class="ilbl" id="ex-r-lbl" for="ex-r">Reps por defecto</label><input type="number" inputmode="numeric" class="inp" id="ex-r" placeholder="12" min="1"></div></div>
+    <div class="frow" id="ex-hiit-row" style="display:none"><div class="fg"><label class="ilbl" for="ex-hiit-work">HIIT: trabajo (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-work" placeholder="30" min="1"></div><div class="fg"><label class="ilbl" for="ex-hiit-rest">HIIT: descanso (seg)</label><input type="number" inputmode="numeric" class="inp" id="ex-hiit-rest" placeholder="15" min="1"></div></div>
+    <div class="frow" id="ex-hold-row" style="display:none"><div class="fg"><label class="ilbl" for="ex-hold-secs">Isométrico: segundos por serie</label><input type="number" inputmode="numeric" class="inp" id="ex-hold-secs" placeholder="60" min="1"></div></div>
+    <div class="frow"><div class="fg"><label class="ilbl" for="ex-i">Emoji / icono</label><input type="text" class="inp" id="ex-i" placeholder="🏋️" maxlength="2"></div><div class="fg"><label class="ilbl" for="ex-d">Descripción técnica</label><input type="text" class="inp" id="ex-d" placeholder="Breve descripción de la ejecución..."></div></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-ex')">Cancelar</button><button class="btn bp" onclick="saveEx()">Guardar</button></div>
   </div>
 </div>
@@ -1042,23 +1048,23 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- ══ MODAL: BACKUP ══ -->
 <!-- Settings / Coach profile modal -->
 <div class="mdbg" id="m-settings">
-  <div class="md">
-    <div class="mdtitle"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración del coach</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-11">
+    <div class="mdtitle" id="mdt-11"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración del coach</div>
 
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nombre del coach</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-name">Nombre del coach</label>
       <input id="st-name" class="inp" maxlength="60" placeholder="Tu nombre o alias" style="width:100%">
     </div>
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Email de acceso</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-email">Email de acceso</label>
       <input id="st-email" class="inp" type="email" maxlength="100" placeholder="coach@tudominio.com" style="width:100%">
     </div>
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Sitio web (aparece en las imágenes exportadas)</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-site">Sitio web (aparece en las imágenes exportadas)</label>
       <input id="st-site" class="inp" maxlength="80" placeholder="Ej: tucoach.com" style="width:100%">
     </div>
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">📱 Número Nequi para cobros</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-nequi">📱 Número Nequi para cobros</label>
       <input id="st-nequi" class="inp" type="tel" inputmode="numeric" maxlength="20" placeholder="Ej: 3001234567" style="width:100%">
       <div style="font-size:11px;color:var(--t3);margin-top:4px">El asesorado verá este número cuando su plan esté por vencer.</div>
     </div>
@@ -1099,13 +1105,13 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Template create/edit -->
 <div class="mdbg" id="m-template">
-  <div class="md mdlg">
+  <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mt-title">
     <div class="mdtitle" id="mt-title">Nueva plantilla</div>
     <div class="frow" style="margin-bottom:11px">
-      <div class="fg"><label class="ilbl">Nombre de la plantilla *</label><input type="text" class="inp" id="tf-name" placeholder="Ej: Push Día A, Pierna Fuerza..."></div>
-      <div class="fg"><label class="ilbl">Categoría / etiqueta</label><input type="text" class="inp" id="tf-tag" placeholder="Ej: Fuerza, Volumen, Cardio..."></div>
+      <div class="fg"><label class="ilbl" for="tf-name">Nombre de la plantilla *</label><input type="text" class="inp" id="tf-name" placeholder="Ej: Push Día A, Pierna Fuerza..."></div>
+      <div class="fg"><label class="ilbl" for="tf-tag">Categoría / etiqueta</label><input type="text" class="inp" id="tf-tag" placeholder="Ej: Fuerza, Volumen, Cardio..."></div>
     </div>
-    <div class="fg" style="margin-bottom:11px"><label class="ilbl">Nota (visible al aplicarla)</label><input type="text" class="inp" id="tf-note" placeholder="Ej: Semana de carga alta. Pesos al 80% 1RM."></div>
+    <div class="fg" style="margin-bottom:11px"><label class="ilbl" for="tf-note">Nota (visible al aplicarla)</label><input type="text" class="inp" id="tf-note" placeholder="Ej: Semana de carga alta. Pesos al 80% 1RM."></div>
     <div class="fg" style="margin-bottom:13px">
       <label class="ilbl">Tiempo de descanso entre series</label>
       <div class="rpresets" id="tf-rp">
@@ -1165,8 +1171,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Template picker -->
 <div class="mdbg" id="m-tpl-picker">
-  <div class="md">
-    <div class="mdtitle">📂 Cargar plantilla</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-13">
+    <div class="mdtitle" id="mdt-13">📂 Cargar plantilla</div>
     <div id="tpl-picker-list" style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-tpl-picker')">Cancelar</button></div>
   </div>
@@ -1176,8 +1182,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Backup -->
 <div class="mdbg" id="m-backup">
-  <div class="md">
-    <div class="mdtitle">💾 Copia de seguridad</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-14">
+    <div class="mdtitle" id="mdt-14">💾 Copia de seguridad</div>
 
     <div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--ylt);margin-bottom:16px;line-height:1.6">
       ⚠️ <strong>Importante:</strong> Cada vez que abres un archivo nuevo los datos se guardan por separado. Guarda una copia antes de actualizar la app para no perder nada.
@@ -1212,27 +1218,27 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- Comunidad del gym (C5): el coach activa qué asesorados se ven entre sí -->
 <div class="mdbg" id="m-gym">
-  <div class="md mdlg" style="display:flex;flex-direction:column">
-    <div class="mdtitle">👥 Comunidad de mi gym</div>
+  <div class="md mdlg" style="display:flex;flex-direction:column" role="dialog" aria-modal="true" aria-labelledby="mdt-15">
+    <div class="mdtitle" id="mdt-15">👥 Comunidad de mi gym</div>
     <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:10px">Activa a quién quieres que aparezca en la comunidad. Solo tus asesorados salen, y solo si tú los activas — nadie se mete solo.</div>
     <div id="gym-mgr-body" style="overflow-y:auto;flex:1;min-height:80px">Cargando…</div>
     <div class="mdfooter"><button class="btn bp" onclick="cm('m-gym')">Listo</button></div>
   </div>
 </div>
 
-<script src="avi-core.js?v=491"></script>
-<script src="muscle-map.js?v=491"></script>
-<script src="exercise-muscles.js?v=491"></script>
+<script src="avi-core.js?v=492"></script>
+<script src="muscle-map.js?v=492"></script>
+<script src="exercise-muscles.js?v=492"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=491"></script>
-<script src="app-2-login.js?v=491"></script>
-<script src="app-3-coach.js?v=491"></script>
-<script src="app-4-entreno.js?v=491"></script>
-<script src="app-5-salud.js?v=491"></script>
-<script src="app-6-extra.js?v=491"></script>
-<script src="app-7-community.js?v=491"></script>
+<script src="app-1-infra.js?v=492"></script>
+<script src="app-2-login.js?v=492"></script>
+<script src="app-3-coach.js?v=492"></script>
+<script src="app-4-entreno.js?v=492"></script>
+<script src="app-5-salud.js?v=492"></script>
+<script src="app-6-extra.js?v=492"></script>
+<script src="app-7-community.js?v=492"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1247,13 +1253,13 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 </div>
 <!-- Config de HIIT rápido (v301): el usuario elige rondas/trabajo/descanso antes de empezar -->
 <div class="mdbg" id="m-qwcfg">
-  <div class="md" style="max-width:400px">
-    <div class="mdtitle" style="display:flex;align-items:center;gap:9px"><span class="ic-chip" id="qwcfg-ic" aria-hidden="true"></span><span id="qwcfg-name">HIIT</span></div>
+  <div class="md" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="mdt-16">
+    <div class="mdtitle" id="mdt-16" style="display:flex;align-items:center;gap:9px"><span class="ic-chip" id="qwcfg-ic" aria-hidden="true"></span><span id="qwcfg-name">HIIT</span></div>
     <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5">Ajusta el entrenamiento a tu medida — o dale directo a empezar con los valores sugeridos.</div>
     <div style="display:flex;gap:10px;margin-bottom:18px">
-      <div style="flex:1"><label class="flabel">Rondas</label><input class="inp" id="qwcfg-rounds" type="number" inputmode="numeric" min="1" max="20" value="10" style="text-align:center;font-size:18px;font-weight:700"></div>
-      <div style="flex:1"><label class="flabel">Trabajo (s)</label><input class="inp" id="qwcfg-work" type="number" inputmode="numeric" min="10" max="180" value="30" style="text-align:center;font-size:18px;font-weight:700"></div>
-      <div style="flex:1"><label class="flabel">Pausa (s)</label><input class="inp" id="qwcfg-rest" type="number" inputmode="numeric" min="5" max="180" value="15" style="text-align:center;font-size:18px;font-weight:700"></div>
+      <div style="flex:1"><label class="flabel" for="qwcfg-rounds">Rondas</label><input class="inp" id="qwcfg-rounds" type="number" inputmode="numeric" min="1" max="20" value="10" style="text-align:center;font-size:18px;font-weight:700"></div>
+      <div style="flex:1"><label class="flabel" for="qwcfg-work">Trabajo (s)</label><input class="inp" id="qwcfg-work" type="number" inputmode="numeric" min="10" max="180" value="30" style="text-align:center;font-size:18px;font-weight:700"></div>
+      <div style="flex:1"><label class="flabel" for="qwcfg-rest">Pausa (s)</label><input class="inp" id="qwcfg-rest" type="number" inputmode="numeric" min="5" max="180" value="15" style="text-align:center;font-size:18px;font-weight:700"></div>
     </div>
     <div class="mdfooter">
       <button class="btn bg" onclick="_qwCfgSpec=null;cm('m-qwcfg')">Cancelar</button>
@@ -1267,8 +1273,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
      9 de 1.258 series reales (0,7%). Va por modal y no por `confirm()` nativo: esto salta a
      mitad de un entreno y un diálogo del navegador ahí es lo peor que se puede hacer. -->
 <div class="mdbg" id="m-kgconf">
-  <div class="md" style="max-width:400px">
-    <div class="mdtitle"><span class="t-ic plain" data-ic="alert" data-ic-size="15">⚠️</span> ¿Ese peso está bien?</div>
+  <div class="md" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="mdt-17">
+    <div class="mdtitle" id="mdt-17"><span class="t-ic plain" data-ic="alert" data-ic-size="15">⚠️</span> ¿Ese peso está bien?</div>
     <div id="kgconf-txt" style="font-size:13.5px;color:var(--t1);line-height:1.6;margin-bottom:14px"></div>
     <div class="mdfooter">
       <button class="btn bp bsm" onclick="kgConfCorregir()">Lo corrijo</button>
@@ -1280,8 +1286,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Corregir un récord mal anotado (pedido del PO, 2026-08-08). SOLO el coach: si el asesorado
      pudiera editar su propio récord podría inflarlo, y de ahí cuelgan las medallas y el muro. -->
 <div class="mdbg" id="m-prfix">
-  <div class="md" style="max-width:440px">
-    <div class="mdtitle"><span class="t-ic plain" data-ic="trophy" data-ic-size="15">🏆</span> Corregir récord</div>
+  <div class="md" style="max-width:440px" role="dialog" aria-modal="true" aria-labelledby="mdt-18">
+    <div class="mdtitle" id="mdt-18"><span class="t-ic plain" data-ic="trophy" data-ic-size="15">🏆</span> Corregir récord</div>
     <div id="prfix-ex" style="font-size:13px;color:var(--t2);margin-bottom:14px"></div>
     <div style="margin-bottom:12px">
       <label class="flabel" for="prfix-val">Valor real</label>
@@ -1297,12 +1303,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 </div>
 
 <div class="mdbg" id="m-notif">
-  <div class="md" style="max-width:520px">
-    <div class="mdtitle"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones Push</div>
+  <div class="md" style="max-width:520px" role="dialog" aria-modal="true" aria-labelledby="mdt-19">
+    <div class="mdtitle" id="mdt-19"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones Push</div>
     <div style="font-size:13px;color:var(--t2);margin-bottom:16px">Programa mensajes automáticos personalizados. Usa <strong>{nombre}</strong> para el nombre del asesorado.</div>
 
     <div style="margin-bottom:14px">
-      <label class="flabel">Plantilla de mensaje</label>
+      <label class="flabel" for="notif-tpl">Plantilla de mensaje</label>
       <select id="notif-tpl" onchange="notifFillTemplate()" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:13px;margin-bottom:8px">
         <option value="">— Elige una plantilla —</option>
         <option value="Buenos días {nombre} 🌅 Recuerda desayunar mínimo 2 horas antes de entrenar. ¡Hoy es un gran día!">🌅 Buenos días + recordatorio desayuno</option>
@@ -1318,11 +1324,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div>
-        <label class="flabel">Hora de envío</label>
+        <label class="flabel" for="notif-time">Hora de envío</label>
         <input type="time" id="notif-time" value="07:00" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);font-family:inherit;font-size:13px">
       </div>
       <div>
-        <label class="flabel">Destinatario</label>
+        <label class="flabel" for="notif-target">Destinatario</label>
         <select id="notif-target" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:13px">
           <option value="all">Todos los asesorados</option>
         </select>
@@ -1352,8 +1358,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODAL NUTRICIONAL -->
 <div class="mdbg" id="m-nut">
-  <div class="md mdlg">
-    <div class="mdtitle">🥗 Plan nutricional &mdash; <span id="m-nut-cn" style="color:var(--g)"></span></div>
+  <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mdt-20">
+    <div class="mdtitle" id="mdt-20">🥗 Plan nutricional &mdash; <span id="m-nut-cn" style="color:var(--g)"></span></div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">El asesorado ver&aacute; este plan en su perfil.</div>
     <div id="nut-calc-nota" style="display:none;background:var(--gl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--gt);margin-bottom:14px;line-height:1.5"></div>
     <div style="margin-bottom:14px">
@@ -1367,16 +1373,16 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="fg"><label class="ilbl">Calor&iacute;as objetivo</label><input class="inp" id="nut-kcal" type="number" placeholder="Ej: 2200" inputmode="numeric" onchange="nutGoalCheck()"></div>
-      <div class="fg"><label class="ilbl">Prote&iacute;na (g)</label><input class="inp" id="nut-prot" type="number" placeholder="Ej: 160" inputmode="numeric" onchange="nutGoalCheck()"></div>
-      <div class="fg"><label class="ilbl">Carbohidratos (g)</label><input class="inp" id="nut-carbs" type="number" placeholder="Ej: 250" inputmode="numeric" onchange="nutGoalCheck()"></div>
+      <div class="fg"><label class="ilbl" for="nut-kcal">Calor&iacute;as objetivo</label><input class="inp" id="nut-kcal" type="number" placeholder="Ej: 2200" inputmode="numeric" onchange="nutGoalCheck()"></div>
+      <div class="fg"><label class="ilbl" for="nut-prot">Prote&iacute;na (g)</label><input class="inp" id="nut-prot" type="number" placeholder="Ej: 160" inputmode="numeric" onchange="nutGoalCheck()"></div>
+      <div class="fg"><label class="ilbl" for="nut-carbs">Carbohidratos (g)</label><input class="inp" id="nut-carbs" type="number" placeholder="Ej: 250" inputmode="numeric" onchange="nutGoalCheck()"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="fg"><label class="ilbl">Grasas (g)</label><input class="inp" id="nut-fat" type="number" placeholder="Ej: 70" inputmode="numeric" onchange="nutGoalCheck()"></div>
-      <div class="fg"><label class="ilbl">Comidas por d&iacute;a</label><select class="sel" id="nut-meals"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div class="fg"><label class="ilbl" for="nut-fat">Grasas (g)</label><input class="inp" id="nut-fat" type="number" placeholder="Ej: 70" inputmode="numeric" onchange="nutGoalCheck()"></div>
+      <div class="fg"><label class="ilbl" for="nut-meals">Comidas por d&iacute;a</label><select class="sel" id="nut-meals"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
     <div class="fg" style="margin-bottom:14px">
-      <label class="ilbl">Objetivo del plan <span style="color:var(--t3);font-weight:400">(explica el "por qué" al asesorado)</span></label>
+      <label class="ilbl" for="nut-goal">Objetivo del plan <span style="color:var(--t3);font-weight:400">(explica el "por qué" al asesorado)</span></label>
       <select class="sel" id="nut-goal" onchange="nutGoalCheck()">
         <option value="">— Detectar automáticamente —</option>
         <option value="volumen">Volumen / Superávit 🔼</option>
@@ -1388,11 +1394,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div id="nut-goal-nota" style="display:none;background:var(--orl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ort);margin-top:8px;line-height:1.5"></div>
     </div>
     <div class="fg" style="margin-bottom:14px">
-      <label class="ilbl">Plan detallado (comidas, horarios, alimentos...)</label>
+      <label class="ilbl" for="nut-plan">Plan detallado (comidas, horarios, alimentos...)</label>
       <textarea class="tarea" id="nut-plan" rows="8" placeholder="Ej: Desayuno 7am: Avena + 3 claras..."></textarea>
     </div>
     <div class="fg">
-      <label class="ilbl">Alimentos a evitar</label>
+      <label class="ilbl" for="nut-avoid">Alimentos a evitar</label>
       <input class="inp" id="nut-avoid" placeholder="Ej: Azucar refinada, alcohol...">
     </div>
     <div class="ilbl">💧 Agua recomendada (vasos/día)</div>
@@ -1409,16 +1415,16 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODAL MEDIDAS -->
 <div class="mdbg" id="m-med">
-  <div class="md">
-    <div class="mdtitle">📏 Registrar medidas</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-21">
+    <div class="mdtitle" id="mdt-21">📏 Registrar medidas</div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">En cent&iacute;metros. Completa solo las que tengas.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="fg"><label class="ilbl">Pecho (cm)</label><input class="inp" id="med-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
-      <div class="fg"><label class="ilbl">Cintura (cm)</label><input class="inp" id="med-cintura" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80"></div>
-      <div class="fg"><label class="ilbl">Cadera (cm)</label><input class="inp" id="med-cadera" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
-      <div class="fg"><label class="ilbl">Brazo (cm)</label><input class="inp" id="med-brazo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"></div>
-      <div class="fg"><label class="ilbl">Muslo (cm)</label><input class="inp" id="med-muslo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"></div>
-      <div class="fg"><label class="ilbl">Pantorrilla (cm)</label><input class="inp" id="med-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 36"></div>
+      <div class="fg"><label class="ilbl" for="med-pecho">Pecho (cm)</label><input class="inp" id="med-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
+      <div class="fg"><label class="ilbl" for="med-cintura">Cintura (cm)</label><input class="inp" id="med-cintura" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80"></div>
+      <div class="fg"><label class="ilbl" for="med-cadera">Cadera (cm)</label><input class="inp" id="med-cadera" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
+      <div class="fg"><label class="ilbl" for="med-brazo">Brazo (cm)</label><input class="inp" id="med-brazo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"></div>
+      <div class="fg"><label class="ilbl" for="med-muslo">Muslo (cm)</label><input class="inp" id="med-muslo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"></div>
+      <div class="fg"><label class="ilbl" for="med-pantorrilla">Pantorrilla (cm)</label><input class="inp" id="med-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 36"></div>
     </div>
     <div class="mdfooter">
       <button class="btn bg" onclick="cm('m-med')">Cancelar</button>
@@ -1429,7 +1435,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- FICHA EDUCATIVA DE MACROS — se abre al tocar una tarjeta del plan nutricional -->
 <div class="mdbg" id="m-nutri-info" onclick="if(event.target===this)cm('m-nutri-info')">
-  <div class="md">
+  <!-- Sin `.mdtitle` propio: su cuerpo lo escribe el JS. Nombre explícito, no derivado. -->
+  <div class="md" role="dialog" aria-modal="true" aria-label="Información de tu plan de comida">
     <div id="m-nutri-body"></div>
     <div class="mdfooter"><button class="btn bp" onclick="cm('m-nutri-info')" style="width:100%">Entendido</button></div>
   </div>
@@ -1437,8 +1444,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- ELIMINAR CUENTA — confirma y llama la Edge Function delete-account (borra de verdad auth.users) -->
 <div class="mdbg" id="m-delacct">
-  <div class="md">
-    <div class="mdtitle">🗑️ Eliminar mi cuenta</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-23">
+    <div class="mdtitle" id="mdt-23">🗑️ Eliminar mi cuenta</div>
     <div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--t1);margin-bottom:14px;line-height:1.6">
       ⚠️ <strong>Esto es permanente.</strong> Se borrarán para siempre tu cuenta, perfil, rutinas, progreso, medidas y fotos. No se puede deshacer ni recuperar.
     </div>
@@ -1457,24 +1464,24 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODAL REGISTRO DE PAGO -->
 <div class="mdbg" id="m-payment">
-  <div class="md">
-    <div class="mdtitle">💳 Registrar pago</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-24">
+    <div class="mdtitle" id="mdt-24">💳 Registrar pago</div>
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Monto recibido (COP)</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="pay-amount">Monto recibido (COP)</label>
       <input type="number" inputmode="numeric" id="pay-amount" class="inp" placeholder="Ej: 150000" min="0" style="width:100%">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div>
-        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Fecha de pago</label>
+        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="pay-date">Fecha de pago</label>
         <input type="date" id="pay-date" class="inp" oninput="payDateChanged()" style="width:100%">
       </div>
       <div>
-        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Vence el</label>
+        <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="pay-due">Vence el</label>
         <input type="date" id="pay-due" class="inp" style="width:100%">
       </div>
     </div>
     <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nota (opcional)</label>
+      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="pay-note">Nota (opcional)</label>
       <input type="text" id="pay-note" class="inp" placeholder="Ej: Mayo, transferencia Nequi..." maxlength="120" style="width:100%">
     </div>
     <div id="pay-err" style="font-size:12px;color:var(--rd);margin-bottom:8px;display:none"></div>
@@ -1487,11 +1494,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
 <!-- MODAL FOTOS -->
 <div class="mdbg" id="m-photos">
-  <div class="md">
-    <div class="mdtitle"><span class="t-ic" data-ic="camera">📸</span> Fotos de progreso</div>
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-25">
+    <div class="mdtitle" id="mdt-25"><span class="t-ic" data-ic="camera">📸</span> Fotos de progreso</div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px">M&aacute;x. 12 fotos. Solo t&uacute; y tu coach pueden verlas.</div>
     <div style="margin-bottom:14px">
-      <label class="ilbl">Seleccionar foto</label>
+      <label class="ilbl" for="photo-input">Seleccionar foto</label>
       <input type="file" id="photo-input" accept="image/*"
         style="width:100%;padding:10px;border:1.5px solid var(--br);border-radius:var(--rsm);font-size:13px;font-family:inherit;background:var(--w)"
         onchange="previewPhoto(this)">
@@ -1500,7 +1507,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       </div>
     </div>
     <div class="fg">
-      <label class="ilbl">Etiqueta</label>
+      <label class="ilbl" for="photo-label">Etiqueta</label>
       <input class="inp" id="photo-label" placeholder="Ej: Mes 1, Semana 4, Inicio...">
     </div>
     <div class="mdfooter">

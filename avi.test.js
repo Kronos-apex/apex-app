@@ -4185,6 +4185,59 @@ test('🔴 v487 · la yuca es la fila B106 de la TCAC, y NO la deducción que fu
   assert.ok(Math.abs(y.kcal / 160 - 0.70) > 0.1, 'no puede volver a ser el crudo de USDA × 0,70');
 });
 
+test('🔴 v492 · todo campo tiene NOMBRE accesible y todo modal es un diálogo con nombre', () => {
+  // Nace de una auditoría externa que decía «Accessibility 42/100, Screen Reader FAIL». Medido:
+  // la mayor parte de su lista ya estaba (0 imágenes sin alt, `lang="es"`, regla global de foco),
+  // pero DOS cosas eran ciertas — campos sin nombre y modales sin `role` — y son justo las que
+  // dejan a un lector de pantalla anunciando «cuadro combinado» sin decir de qué.
+  // ⚠️ LA REGLA DE ESTE TEST SE CORRIGIÓ ANTES DE ESCRIBIRLO. La primera versión (la que produjo
+  // el «35 campos») contaba de más: no veía las etiquetas que ENVUELVEN al campo —que sí dan
+  // nombre— y además leía dentro de los COMENTARIOS del HTML. Siete de aquellos 35 nunca
+  // estuvieron mal. Un candado con la regla floja acusa lo sano y enseña a ignorarlo.
+  const raw = require('fs').readFileSync(__dirname + '/index.html', 'utf8');
+  const html = raw.replace(/<!--[\s\S]*?-->/g, '');   // los comentarios no son interfaz
+
+  // Tramos cubiertos por una etiqueta que ENVUELVE (`<label>Texto <input></label>`).
+  const envuelve = [];
+  const reLab = /<label\b[^>]*>[\s\S]*?<\/label>/g;
+  for (let m; (m = reLab.exec(html));) envuelve.push([m.index, m.index + m[0].length]);
+  const idsFor = new Set([...html.matchAll(/<label[^>]*\sfor="([^"]+)"/g)].map(m => m[1]));
+  const idsDoc = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+
+  const anonimos = [];
+  for (let m, re = /<(input|select|textarea)\b[^>]*>/g; (m = re.exec(html));) {
+    const t = m[0];
+    if (/type="hidden"/.test(t) || /\shidden(\s|\/|>)/.test(t)) continue;
+    if (/aria-label(ledby)?=/.test(t) || /placeholder="/.test(t)) continue;
+    if (envuelve.some(([a, b]) => m.index > a && m.index < b)) continue;
+    const id = /\sid="([^"]+)"/.exec(t);
+    if (id && idsFor.has(id[1])) continue;
+    anonimos.push(id ? id[1] : t.slice(0, 60));
+  }
+  assert.deepStrictEqual(anonimos, [],
+    `campos sin nombre accesible (un lector de pantalla no dice qué se pide ahí): ${anonimos.join(', ')}`);
+
+  // Los modales: `role`, y un nombre que APUNTE A ALGO. Un `aria-labelledby` hacia un id que no
+  // existe no da nombre — se lee igual que no tenerlo, y es el fallo típico al copiar el patrón.
+  const modales = [...html.matchAll(/<div\s+class="([^"]*)"([^>]*)>/g)]
+    .filter(m => m[1].split(/\s+/).indexOf('md') !== -1);
+  assert.ok(modales.length >= 20, `solo se encontraron ${modales.length} modales: el patrón cambió`);
+  modales.forEach(m => {
+    const a = m[2], quien = (/aria-label(?:ledby)?="([^"]*)"/.exec(a) || [])[1] || '(sin nombre)';
+    assert.ok(/role="dialog"/.test(a), `un modal sin role="dialog" (${quien})`);
+    assert.ok(/aria-modal="true"/.test(a), `un modal sin aria-modal (${quien})`);
+    const by = /aria-labelledby="([^"]+)"/.exec(a);
+    assert.ok(by || /aria-label="[^"]+"/.test(a), 'un modal sin nombre accesible');
+    if (by) assert.ok(idsDoc.has(by[1]),
+      `un modal apunta su nombre a «${by[1]}», que NO existe en el documento: eso no da nombre`);
+  });
+
+  // Lo que la auditoría daba por roto y ya estaba — se afirma para que no se rompa AHORA.
+  assert.ok(/<html[^>]+lang="es"/.test(raw), 'el documento perdió su idioma');
+  assert.strictEqual([...raw.matchAll(/<img\b[^>]*>/g)].filter(m => !/\salt=/.test(m[0])).length, 0,
+    'una imagen sin alt');
+});
+
 test('🔴 v491 · la versión que se MUESTRA es la que se SIRVIÓ (no un literal que caduca)', () => {
   // Hasta v490 la barra del coach decía «v2.0 · Jun 2026» a mano: dos meses y ~490 despliegues
   // desactualizada, y una auditoría externa la copió y fechó su informe entero en junio de 2026.
