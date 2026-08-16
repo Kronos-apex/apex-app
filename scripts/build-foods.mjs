@@ -38,7 +38,10 @@ const FUENTES = {
     // trazabilidad era CIRCULAR: estas 50 filas se copian aquí como si «avi50» fuera una fuente,
     // cuando es un puntero de vuelta a la tabla que no la tiene. La procedencia REAL de cada una
     // vive ahora en su campo `src`/`ref` dentro de `NUT_FOODS`, con un test que la exige.
-    nota: 'Macros por 100 g del alimento LISTO PARA COMER. ⚠️ «avi50» NO es una fuente: es la tabla del recetario. La procedencia de cada alimento va en su campo `src`/`ref` en NUT_FOODS — al 2026-08-15, 47 de los 50 están SIN VERIFICAR contra fuente externa y el test `v487` impide que ese número suba.',
+    // 🟢 2026-08-16 (v490): el 47 de esta nota ya es CERO — los 50 citan su fila. La nota se
+    // actualiza en el mismo commit que cierra el último, o vuelve a ser un comentario falso
+    // (que fue el defecto de la versión anterior de esta misma línea).
+    nota: 'Macros por 100 g del alimento LISTO PARA COMER. ⚠️ «avi50» NO es una fuente: es la tabla del recetario, y se conserva como marca de CAPA porque las entradas ya guardadas en el registro de la gente lo llevan escrito. La procedencia real viaja al lado, en el campo `ref` de cada fila. Al 2026-08-16 los 50 citan su registro oficial (USDA FoodData Central o TCAC 2018 del ICBF, con código y página) y el test `v487` mantiene ese número en cero.',
   },
   usda_sr: {
     nombre: 'USDA FoodData Central — SR Legacy (abril 2018)',
@@ -64,6 +67,12 @@ function desdeNutFoods() {
     id: f.id,
     name: f.name,
     src: 'avi50',
+    // 🔴 LA CITA VIAJA CON EL DATO (v490). Hasta aquí estas 50 filas llegaban con `src:'avi50'` y
+    // nada más — un puntero de vuelta al recetario, que es la trazabilidad CIRCULAR que ya está
+    // documentada arriba. `src` no se puede cambiar (las entradas guardadas en el registro de la
+    // gente lo llevan escrito), pero la procedencia sí puede acompañarlo, y ahora que las 50 la
+    // tienen no hay ninguna razón para dejarla atrás.
+    ...(f.ref ? { ref: f.ref } : {}),
     kcal: f.kcal, p: f.p, c: f.c, f: f.f,
     ...(f.un ? { un: { label: f.un.label, g: f.un.g } } : {}),
     ...(f.rol ? { rol: f.rol } : {}),        // solo los del recetario lo traen

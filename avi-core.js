@@ -2856,7 +2856,23 @@ function foodLogProgress(totals, target) {
 // ración a la yuca y darle un escalón chico de media medida— y ninguno movió una sola cifra.
 // ⚠️ Solo para CALORÍAS. Por macro el reparto es mucho más ancho (grasa 80,9%-129,2%) y una
 // franja de ±29% no dice nada: los macros siguen con su porcentaje.
-const FOODLOG_BAND = 0.12;
+// 🔁 TERCERA RE-MEDIDA (2026-08-16, v490 — las 6 filas sin fuente pasaron a su valor real). Vuelve
+// a abrirse a ±14%, y hay que decir con precisión POR QUÉ, porque la nota de arriba manda apretar:
+//   BARRIDO SINTÉTICO (315 días-plan): el plato entrega 93,0%-114,0%
+//     ±8% → 17 fuera · ±10% → 7 · ±11% → 5 · ±12% → 3 · ±13% → 3 · ±14% → 0   ← ELEGIDA
+//   PERSONAS REALES (19 perfiles de la nube resueltos por `nutBaseFor`, 399 días-plan): el plato
+//   entrega 95,7%-111,4% y **±12% deja 0 fuera** — o sea que HOY no hay nadie a quien esto afecte
+//   (con la tabla vieja daba 95,2%-111,3%: la corrección de los datos casi no los movió).
+// 🔴 Se abre por la ESQUINA, no por la gente, igual que en la primera re-medida: el barrido tiene
+// un perfil (1.800 kcal con 30% de proteína en día de DESCANSO) que ninguna de las 19 ocupa, y una
+// franja que no lo cubra le diría «te pasaste» a la primera persona que caiga ahí.
+// 🔴 Y la causa de esa esquina NO es la tabla nueva —con la vieja ya entregaba 108,5%— sino el
+// PISO DE PROTEÍNA: ahí el plato sirve 4 huevos en el desayuno y otros 4 en la cena (`huevo` es el
+// único alimento proteico sin `maxG`), y la grasa se va a 67 g contra un objetivo de 50. **El
+// arreglo de verdad es el plato, no la franja**, y está esperando el dictamen de Andrés sobre
+// `NUT_PROT_MIN_SHARE`. El día que eso baje, esta cifra se vuelve a apretar: la curva de arriba
+// dice que en cuanto la esquina baje de 113% se puede volver a 12.
+const FOODLOG_BAND = 0.14;
 function foodLogBandFor(meta, hecho) {
   const m = Math.round(parseFloat(meta) || 0);
   if (!(m > 0)) return null;
@@ -3905,10 +3921,24 @@ function nutMealSplit(kcal, protG, n) {
 const NUT_FOODS = [
   // ── PROTEÍNA ──
   { id: 'pollo_pechuga', src: 'usda_sr', ref: "FDC 171477 - Chicken, broilers or fryers, breast, meat only, cooked, roasted", name: 'Pechuga de pollo', rol: 'prot', kcal: 165, p: 31.0, c: 0, f: 3.6, un: { label: 'porción', g: 120 } },
-  { id: 'pollo_muslo', src: 'sin_verificar', name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 209, p: 26.0, c: 0, f: 11.0, compra: 'un', un: { label: 'muslo', g: 95 } },
-  { id: 'res_magra', src: 'sin_verificar', name: 'Carne de res magra (posta)', rol: 'prot', kcal: 187, p: 30.0, c: 0, f: 7.0, un: { label: 'porción', g: 120 } },
-  { id: 'res_molida', src: 'sin_verificar', name: 'Carne molida de res', rol: 'prot', kcal: 176, p: 26.0, c: 0, f: 8.0, un: { label: 'porción', g: 120 } },
-  { id: 'cerdo_lomo', src: 'sin_verificar', name: 'Lomo de cerdo', rol: 'prot', kcal: 174, p: 28.0, c: 0, f: 6.0, un: { label: 'porción', g: 120 } },
+  // 🔴 v490 · LAS CUATRO CARNES QUE QUEDABAN SIN FUENTE. Ninguno de sus números anteriores
+  // reconcilia con NINGUNA fila de la TCAC ni de USDA (comprobado contra la API el 2026-08-16):
+  // eran cifras de cabeza, la misma clase que el 112 de la yuca. Las de aquí son la fila que
+  // imprime la fuente, sin factores ni ajustes. La sección F de la TCAC solo publica carbohidrato
+  // TOTAL (no tiene columna de «disponibles»), así que en las carnes ese criterio ni se plantea.
+  { id: 'pollo_muslo', src: 'tcac2018', ref: "TCAC 2018 (ICBF) F074, pag. 72 - Pollo, contramuslo sin piel, cocido, sin sal; carbohidrato TOTAL", name: 'Muslo de pollo sin piel', rol: 'prot', kcal: 186, p: 24.7, c: 0, f: 9.7, compra: 'un', un: { label: 'muslo', g: 95 } },
+  // «Posta» en Colombia es el corte de CADERA (posta de cadera, posta negra), y esa es la fila.
+  // Va la preparación «frita» porque la TCAC no publica cadera de otra forma — y no mete grasa
+  // ajena: sus 6,6 g están a un pelo de la res magra CRUDA (F099, 5,7 g), o sea que lo que subió
+  // es la concentración por pérdida de agua, no el aceite. Se dice aquí para que se pueda discutir.
+  { id: 'res_magra', src: 'tcac2018', ref: "TCAC 2018 (ICBF) F095, pag. 74 - Res, cadera, frita, sin sal; carbohidrato TOTAL", name: 'Carne de res magra (posta)', rol: 'prot', kcal: 176, p: 28.7, c: 0.5, f: 6.6, un: { label: 'porción', g: 120 } },
+  // 🔴 La TCAC NO tiene carne molida COCIDA: su única fila molida (F101) es CRUDA, y esta tabla es
+  // cocido-base. Pero sí sirve para elegir la de USDA: la TCAC llama «semigorda» a la molida
+  // colombiana (F101, 12,7 g de grasa en crudo), que cae entre el 85% magro de USDA (17,4 g crudo)
+  // y el 90% (10,0 g crudo) — más cerca del 90. Y la forma es «crumbles», que es como se cocina
+  // aquí (desmenuzada en el guiso), no en torta.
+  { id: 'res_molida', src: 'usda_sr', ref: "FDC 171794 - Beef, ground, 90% lean meat / 10% fat, crumbles, cooked, pan-browned", name: 'Carne molida de res', rol: 'prot', kcal: 230, p: 28.4, c: 0, f: 12.0, un: { label: 'porción', g: 120 } },
+  { id: 'cerdo_lomo', src: 'tcac2018', ref: "TCAC 2018 (ICBF) F018, pag. 68 - Cerdo, lomo, cocido, sin sal; carbohidrato TOTAL", name: 'Lomo de cerdo', rol: 'prot', kcal: 170, p: 35.1, c: 0, f: 3.2 , un: { label: 'porción', g: 120 } },
   { id: 'huevo', src: 'usda_sr', ref: "FDC 171287 - Egg, whole, raw, fresh", name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
   { id: 'clara', src: 'usda_sr', ref: "FDC 172183 - Egg, white, raw, fresh", name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   // ⏭️ PARA EL LOTE DE CONVERSIÓN (dictamen de Andrés Hyp + decisión del PO, 13-ago): estos
@@ -3925,7 +3955,12 @@ const NUT_FOODS = [
   { id: 'queso_campesino', src: 'tcac2018', ref: "TCAC 2018 (ICBF) G017, pag. 78 - Queso fresco, semiduro, semigraso, tipo campesino; carbohidrato TOTAL", name: 'Queso campesino', rol: 'prot', kcal: 301, p: 17.5, c: 0.3, f: 25.5, maxG: 90, un: { label: 'tajada', g: 30 } },
   { id: 'cuajada', src: 'tcac2018', ref: "TCAC 2018 (ICBF) G016, pag. 78 - Queso fresco, semiblando, semimagro, tipo cuajada; carbohidrato TOTAL", name: 'Cuajada', rol: 'prot', kcal: 207, p: 15.2, c: 2.0, f: 15.4, maxG: 150, un: { label: 'porción', g: 60 } },
   { id: 'yogur_griego', src: 'usda_sr', ref: "FDC 170894 - Yogurt, Greek, plain, nonfat (Includes foods for USDAs Food Distributi", name: 'Yogur griego natural', rol: 'prot', kcal: 59, p: 10.0, c: 3.6, f: 0.4, maxG: 400, un: { label: 'vaso', g: 200 } },
-  { id: 'leche', src: 'sin_verificar', name: 'Leche semidescremada', rol: 'prot', kcal: 47, p: 3.3, c: 5.0, f: 1.5, maxG: 400, un: { label: 'vaso', g: 200 } },
+  // 🔴 La TCAC NO tiene leche SEMIDESCREMADA: publica entera (G012), descremada (G007) y cruda,
+  // nada en medio. No se cambia el alimento para que quepa en la fuente —el coach receta
+  // semidescremada y eso es lo que se compra— así que la fila viene de USDA, como otras 35 de esta
+  // tabla. El 2% de grasa de USDA cae DENTRO del rango que la norma colombiana le exige a una
+  // semidescremada (1,5-2,0%), en su tope alto.
+  { id: 'leche', src: 'usda_sr', ref: "FDC 172205 - Milk, reduced fat, fluid, 2% milkfat, without added vitamin A and vitamin D", name: 'Leche semidescremada', rol: 'prot', kcal: 50, p: 3.3, c: 4.8, f: 1.98, maxG: 400, un: { label: 'vaso', g: 200 } },
   { id: 'lenteja', src: 'usda_sr', ref: "FDC 172421 - Lentils, mature seeds, cooked, boiled, without salt", name: 'Lentejas cocidas', rol: 'prot', kcal: 116, p: 9.0, c: 20.0, f: 0.4, maxG: 350, un: { label: 'taza', g: 200 } },
   { id: 'frijol', src: 'usda_sr', ref: "FDC 175194 - Beans, kidney, red, mature seeds, cooked, boiled, without salt", name: 'Fríjol cocido', rol: 'prot', kcal: 127, p: 9.0, c: 23.0, f: 0.5, maxG: 350, un: { label: 'taza', g: 180 } },
   { id: 'garbanzo', src: 'usda_sr', ref: "FDC 173757 - Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled,", name: 'Garbanzo cocido', rol: 'prot', kcal: 164, p: 9.0, c: 27.0, f: 2.6, maxG: 300, un: { label: 'taza', g: 165 } },
@@ -4012,7 +4047,12 @@ const NUT_FOODS = [
   { id: 'aceite', src: 'usda_sr', ref: "FDC 171413 - Oil, olive, salad or cooking", name: 'Aceite de oliva o canola', rol: 'fat', kcal: 884, p: 0, c: 0, f: 100.0, un: { label: 'cucharada', g: 14 } },
   { id: 'mani', src: 'usda_sr', ref: "FDC 172430 - Peanuts, all types, raw", name: 'Maní', rol: 'fat', kcal: 567, p: 26.0, c: 16.0, f: 49.0, un: { label: 'puñado', g: 30 }, un2: { label: 'cucharada', g: 10 } },
   { id: 'almendra', src: 'usda_sr', ref: "FDC 170567 - Nuts, almonds", name: 'Almendras', rol: 'fat', kcal: 579, p: 21.0, c: 22.0, f: 50.0, un: { label: 'puñado', g: 30 }, un2: { label: 'almendra', g: 1.2 } },
-  { id: 'crema_mani', src: 'sin_verificar', name: 'Mantequilla de maní', rol: 'fat', kcal: 588, p: 25.0, c: 20.0, f: 50.0, un: { label: 'cucharada', g: 16 } },
+  // La TCAC no llega hasta aquí: no tiene sección de leguminosas ni de frutos secos (salta las
+  // letras I, M y O), así que ni maní ni crema de maní existen en ella. Va la fila SMOOTH porque
+  // el alimento se llama «crema»; la de trozos (172469) queda más cerca de los números viejos,
+  // y por eso mismo no se elige — elegir la fila que se parece a lo inventado es cómo se blinda
+  // un dato inventado.
+  { id: 'crema_mani', src: 'usda_sr', ref: "FDC 172470 - Peanut butter, smooth style, without salt", name: 'Mantequilla de maní', rol: 'fat', kcal: 598, p: 22.2, c: 22.3, f: 51.4, un: { label: 'cucharada', g: 16 } },
   // ── VERDURA (libre: acompañan, no se cuentan al ajustar macros) ──
   { id: 'tomate', src: 'usda_sr', ref: "FDC 170457 - Tomatoes, red, ripe, raw, year round average", name: 'Tomate', rol: 'verd', kcal: 18, p: 0.9, c: 3.9, f: 0.2, compra: 'un', un: { label: 'tomate', g: 120 } },
   { id: 'cebolla', src: 'usda_sr', ref: "FDC 170000 - Onions, raw", name: 'Cebolla', rol: 'verd', kcal: 40, p: 1.1, c: 9.0, f: 0.1, un: { label: 'porción', g: 60 } },

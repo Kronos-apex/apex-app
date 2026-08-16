@@ -87,7 +87,10 @@ const SABOTAJES = [
 
   // ── La FRANJA y la SEMANA (patrones 2, 3 y 6 del estudio) ────────────────
   ['17· la franja se aprieta por debajo de lo que el plato entrega (le diría «te pasaste» a quien comió su plan)',
-    'const FOODLOG_BAND = 0.12;',
+    // 🔁 v490: el ancho pasó de 0.12 a 0.14 al corregir las 6 filas sin fuente (la curva y el
+    // porqué están al lado de la constante). El sabotaje aprieta a 0.08, que es lo que importa:
+    // una franja más estrecha de lo que el plato entrega tiene que poner la suite en rojo.
+    'const FOODLOG_BAND = 0.14;',
     'const FOODLOG_BAND = 0.08;'],
   ['18· «lo que falta» vuelve a medirse contra la cifra EXACTA en vez de la franja',
     '    falta: Math.max(0, Math.round(lo - h)),',
@@ -141,9 +144,15 @@ const SABOTAJES = [
   ['31· la lista redondea los huevos hacia ABAJO (se queda corta el viernes)',
     '  const n = (un && un.g > 0) ? Math.ceil(g / un.g) : null;',
     '  const n = (un && un.g > 0) ? Math.floor(g / un.g) : null;'],
-  ['32· deja de avisar que lo servido es comida COCIDA (se compra el triple de arroz)',
-    "    cocido: /cocid[ao]s?|escurrido/i.test(String(food.name || '')),",
-    '    cocido: false,'],
+  // 🔴 v490 · ESTE SABOTAJE LLEVABA SIN APLICARSE DESDE v481 y nadie lo notó: apuntaba al campo
+  // `cocido` del marcado alimento-por-alimento, que v481 BORRÓ a propósito al cambiarlo por una
+  // frase única e incondicional (`NUT_SHOP_NOTA`). O sea que la matriz venía contando un candado
+  // que ya no existía. Reapuntado al mecanismo VIVO: si la frase deja de nombrar las dos
+  // direcciones, la lista vuelve a mentirle a quien compra carne. (Lo delató el «NO SE APLICÓ»
+  // del propio runner — sin ese grito habría pasado por un ✅ más de la lista.)
+  ['32· la nota del mercado deja de decir las DOS direcciones (la carne pesa MÁS cruda)',
+    'el arroz, la pasta y los granos pesan menos crudos, y las carnes, la papa, la yuca y el plátano pesan más.',
+    'el arroz, la pasta y los granos pesan menos crudos.'],
   ['33· un botón usa un icono que no existe (pinta ✨ en silencio)',
     "aviIcon('utensils',21)",
     "aviIcon('nutricion',21)",

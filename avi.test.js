@@ -4143,7 +4143,9 @@ const _foodsJson = (() => {
 // `src:'avi50'`, así que 50 de sus 181 entradas «con fuente» apuntan de vuelta a la tabla que no
 // la tiene — la trazabilidad era CIRCULAR donde más importaba.
 const NUT_SRC_OK = ['usda_sr', 'tcac2018', 'etiqueta', 'derivado', 'sin_verificar'];
-const NUT_SIN_VERIFICAR_TOPE = 6; // medido el 2026-08-15 tras verificar 34 contra la API de USDA. Solo puede BAJAR.
+// 🎯 CERO desde v490 (2026-08-16): los 6 que quedaban se cerraron contra su fila. Solo puede BAJAR,
+// así que a partir de aquí el tope hace de candado absoluto — un alimento nuevo entra CON su fuente.
+const NUT_SIN_VERIFICAR_TOPE = 0;
 
 test('🔴 v487 · los 50 del recetario declaran TODOS de dónde salió su número', () => {
   for (const f of NUT_FOODS) {
@@ -4181,6 +4183,42 @@ test('🔴 v487 · la yuca es la fila B106 de la TCAC, y NO la deducción que fu
   assert.strictEqual(y.f, 0.2);
   // Y el candado contra la vuelta atrás: nunca más el crudo × un factor inventado.
   assert.ok(Math.abs(y.kcal / 160 - 0.70) > 0.1, 'no puede volver a ser el crudo de USDA × 0,70');
+});
+
+test('🔴 v490 · las 6 últimas filas sin fuente son la fila que imprime la fuente', () => {
+  // Medido el 2026-08-16 contra el PDF del ICBF (páginas leídas como JPEG, ver `scratchpad/ext.py`
+  // en el commit) y contra la API de FoodData Central: **ninguno de sus valores anteriores
+  // reconciliaba con NINGUNA fila de las dos tablas** — eran cifras de cabeza, la clase del 112 de
+  // la yuca. Se afirman UNO A UNO a propósito: cambiarlos obliga a volver a la fuente, que es el
+  // único candado que existe contra un dato internamente coherente.
+  const F = id => NUT_FOODS.find(f => f.id === id);
+  const esperado = {
+    // TCAC — sección F (carnes). Esa sección solo publica carbohidrato TOTAL: no hay columna de
+    // «disponibles», así que aquí el doble criterio de la tabla ni se plantea.
+    pollo_muslo: { src: 'tcac2018', cod: /F074/, kcal: 186, p: 24.7, c: 0,   f: 9.7 },
+    res_magra:   { src: 'tcac2018', cod: /F095/, kcal: 176, p: 28.7, c: 0.5, f: 6.6 },
+    cerdo_lomo:  { src: 'tcac2018', cod: /F018/, kcal: 170, p: 35.1, c: 0,   f: 3.2 },
+    // USDA — la TCAC NO tiene estas tres: no publica molida COCIDA (su F101 es cruda), no tiene
+    // leche semidescremada (solo entera y descremada) y no tiene sección de leguminosas ni de
+    // frutos secos (salta las letras I, M y O), así que el maní no existe en ella.
+    res_molida:  { src: 'usda_sr', cod: /171794/, kcal: 230, p: 28.4, c: 0,    f: 12.0 },
+    leche:       { src: 'usda_sr', cod: /172205/, kcal: 50,  p: 3.3,  c: 4.8,  f: 1.98 },
+    crema_mani:  { src: 'usda_sr', cod: /172470/, kcal: 598, p: 22.2, c: 22.3, f: 51.4 },
+  };
+  Object.keys(esperado).forEach(id => {
+    const f = F(id), e = esperado[id];
+    assert.ok(f, `desapareció ${id} de la tabla`);
+    assert.strictEqual(f.src, e.src, `${id} cambió de fuente`);
+    assert.ok(e.cod.test(f.ref || ''),
+      `${id}: la cita tiene que llevar el código de la fila (${e.cod}), o no se puede re-verificar`);
+    ['kcal', 'p', 'c', 'f'].forEach(k => assert.strictEqual(f[k], e[k],
+      `${id}.${k} = ${f[k]} y la fuente dice ${e[k]} — se vuelve al PDF/API antes de tocarlo`));
+  });
+  // 🔒 EL CANDADO CONTRA LA VUELTA ATRÁS, con los valores INVENTADOS escritos: si alguien los
+  // restaura «porque el plato cuadraba mejor», esto se pone rojo con el motivo delante.
+  const inventados = { pollo_muslo: 209, res_magra: 187, res_molida: 176, cerdo_lomo: 174, leche: 47, crema_mani: 588 };
+  Object.keys(inventados).forEach(id => assert.notStrictEqual(F(id).kcal, inventados[id],
+    `${id} volvió a su valor sin fuente (${inventados[id]}): no salía de ninguna tabla`));
 });
 
 test('🔴 los ids que usa el recetario existen en NUT_FOODS (por eso no se fusiona)', () => {
@@ -4225,6 +4263,17 @@ test('🔴 todo alimento importado dice de qué registro oficial salió', () => 
     assert.ok(f.ref && pat.test(f.ref),
       `«${f.id}» no dice de qué registro salió — sin eso no se puede re-verificar contra la fuente`);
   });
+  // 🔴 v490 · Y LOS 50 DEL RECETARIO TAMBIÉN, que es lo que cierra la trazabilidad circular.
+  // Hasta v489 estas filas llegaban al buscador con `src:'avi50'` y nada más: un puntero de vuelta
+  // a la tabla que en su momento no tenía fuente. `src` sigue diciendo «avi50» porque marca la
+  // CAPA (y las entradas ya guardadas en el registro de la gente lo llevan escrito), así que lo
+  // que se exige es la CITA. Sin esta aserción, el paso de `ref` en `build-foods.mjs` se puede
+  // caer en cualquier refactor y nadie se entera: el buscador seguiría pintando igual.
+  const propios = _foodsJson.foods.filter(f => f.src === 'avi50');
+  assert.strictEqual(propios.length, 50, `el recetario aporta ${propios.length} filas, se esperaban 50`);
+  const CUALQUIERA = /FDC \d+|TCAC 2018 \(ICBF\) [A-Z]\d{3}, pag\. \d+/;
+  propios.forEach(f => assert.ok(f.ref && CUALQUIERA.test(f.ref),
+    `«${f.id}» llega al buscador sin decir de dónde salió su número: la procedencia se quedó en NUT_FOODS`));
 });
 test('🔴 ningún nombre repetido: el buscador no puede mostrar dos filas iguales', () => {
   assert.ok(_foodsJson);
@@ -5430,7 +5479,10 @@ test('🔴 las carnes de la tabla son valores COCIDOS — si dejan de serlo, la 
   // descripción tiene que decir que está cocida. Es la misma regla que ya se aplicó a los `onclick`
   // y al espejo del SQL — un candado se DERIVA del dato, no de una heurística sobre el dato.
   const carnes = ['pollo_pechuga', 'pollo_muslo', 'res_magra', 'res_molida', 'cerdo_lomo', 'tilapia'];
-  const COCIDA = /cocid|asad|horne|roast|cooked|grill|braise|baked/i;
+  // 🔁 v490: se añade `frit` a la lista de formas de cocción. NO es aflojar el candado —lo que
+  // vigila es que la fila citada no sea CRUDA, y freír cuece— sino que a la lista le faltaba una
+  // cocción entera: la TCAC solo publica la cadera (la «posta» de `res_magra`) frita.
+  const COCIDA = /cocid|asad|horne|frit|roast|cooked|grill|braise|baked|fried/i;
   let vistas = 0, porCita = 0;
   carnes.forEach(id => {
     const f = NUT_FOODS.find(x => x.id === id);
@@ -9641,7 +9693,12 @@ test('ni en los casos EXTREMOS el plan se pasa del 13%', () => {
 test('🔴 el menú se elige entre los que CABEN, y la rotación sigue viva', () => {
   const banco = core.NUT_MENUS.almuerzo;
   // Presupuesto normal: la rotación manda y días distintos dan menús distintos.
-  const meta = { prot_g: 41, carb_g: 138, fat_g: 20 };
+  // 🔁 v490: era `{41, 138, 20}`. Se movió porque las 6 filas sin fuente pasaron a sus valores
+  // reales y ese presupuesto concreto quedó dejando 3 menús. **NO es que la variedad empeorara**:
+  // medido sobre 720 presupuestos, los menús distintos en 7 días van de **4,06 a 4,00** — el
+  // fixture caducó, no el producto. El nuevo se buscó a barrido cerca del viejo: 5 distintos en
+  // 7 días con 5 de 7 factibles (el viejo tampoco los admitía todos).
+  const meta = { prot_g: 42, carb_g: 130, fat_g: 20 };
   const vistos = new Set();
   for (let d = 0; d < 7; d++) vistos.add(core.nutPickMenu(banco, d, meta).menu.pick.prot);
   assert.ok(vistos.size >= 4, `la rotación se aplanó a ${vistos.size} menús distintos en 7 días`);
