@@ -4,6 +4,68 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-16 — avi-v490: LAS 6 ÚLTIMAS FILAS SIN FUENTE · LA TABLA QUEDA EN 50 DE 50
+
+**Suite 762/762 · `_sabotaje-f7` 34/34 · `_verify-foodlog` 41/41 · 7 sabotajes nuevos, los 7 muerden ·
+`_prodcheck 490` verde (`jsErrors: []`).** Cierra el frente de trazabilidad abierto en v487.
+
+### 1 · Ninguno de los 6 valores viejos existía en ninguna tabla
+Comprobado contra el PDF del ICBF (páginas leídas como JPEG) **y** contra la API de FoodData
+Central: no reconciliaban con ninguna fila. Eran cifras de cabeza, la clase del 112 de la yuca.
+
+| alimento | AVI tenía | fila oficial | Δ kcal |
+|---|---|---|---|
+| **Muslo de pollo sin piel** | 209 | **TCAC F074** · contramuslo sin piel, cocido | −11% |
+| **Carne de res magra (posta)** | 187 | **TCAC F095** · cadera, frita | −6% |
+| **Lomo de cerdo** | 174 | **TCAC F018** · lomo, cocido | −2% (proteína 28 → **35,1**) |
+| **Carne molida de res** | 176 | **FDC 171794** · 90% magra, crumbles, cocida | +31% |
+| **Leche semidescremada** | 47 | **FDC 172205** · 2% milkfat | +6% |
+| **Mantequilla de maní** | 588 | **FDC 172470** · peanut butter, smooth | +2% |
+
+**Por qué tres van a USDA y no a la TCAC:** no es que no las encontrara — **la TCAC no tiene esas
+secciones**. Su única molida (F101) es CRUDA y esta tabla es cocido-base; no publica leche
+semidescremada (solo entera G012 y descremada G007); y **no hay sección de leguminosas ni de frutos
+secos** (salta las letras I, M y O), así que ni maní ni crema de maní existen en ella.
+
+«Posta» en Colombia es el corte de **cadera**, y esa es la fila. Va la preparación *frita* porque la
+TCAC no publica cadera de otra forma, y no mete grasa ajena: sus 6,6 g están a un pelo de la res
+magra CRUDA (F099, 5,7 g), o sea que lo que subió es la concentración por pérdida de agua.
+
+### 2 · La cita llega ahora al buscador (se cierra la trazabilidad circular)
+`foods.json` recibía estas 50 filas con `src:'avi50'` y nada más — un puntero de vuelta al
+recetario. `src` **no se toca** (las entradas ya guardadas en el registro de la gente lo llevan
+escrito): lo que se propaga es `ref`, y el test que exigía cita a las 131 importadas ahora la exige
+a **las 181**. El tope de `sin_verificar` baja de 6 a **0** y pasa a ser candado absoluto.
+
+### 3 · La franja se re-mide y vuelve a ±14% — por la ESQUINA, no por la gente
+- **barrido sintético (315 días-plan):** el plato entrega 93,0%-114,0% → ±12%→3 fuera · ±13%→3 · **±14%→0**
+- **personas reales (19 perfiles de la nube, 399 días-plan):** 95,7%-111,4%, y **±12% deja 0 fuera**
+  (con la tabla vieja: 95,2%-111,3% — corregir los datos casi no los movió)
+
+🔴 **Y la esquina no la causa la tabla nueva:** con la vieja ese mismo perfil (1.800 kcal, 30% de
+proteína, día de descanso) ya entregaba 108,5% con la grasa en 62 g contra 50. La causa es el **piso
+de proteína**: ahí el plato sirve **4 huevos en el desayuno y otros 4 en la cena** —`huevo` es el
+único alimento proteico sin `maxG`— y la grasa se va a 67 g. **El arreglo de verdad es el plato**, y
+está esperando el dictamen de Andrés sobre `NUT_PROT_MIN_SHARE`. En cuanto la esquina baje de 113%
+se puede volver a 12; la curva queda escrita al lado de la constante.
+
+### 4 · Lo que se aprendió (destilado en GOTCHAS)
+- 🔴 **La fila que más se parece al número inventado es la que NO se elige** (la crema de maní
+  *chunk* quedaba a 1 kcal del valor viejo, la *smooth* a 10 — y el alimento se llama crema).
+- 🔴 **Tampoco se elige «la que deja el test verde»:** entre las 4 filas de molida 90% magra la
+  relación con el guardián es **caótica** (214 kcal lo rompe, 217 no), así que no es un criterio.
+- 🔴 **Un sabotaje puede dejar de APLICARSE y seguir contándose:** el nº 32 apuntaba al campo
+  `cocido` que **v481 borró**, así que llevaba 9 versiones sumando sin tocar nada. Lo delató el
+  «NO SE APLICÓ» del runner. Reapuntado a `NUT_SHOP_NOTA`, que es el mecanismo vivo.
+
+### 5 · Hallazgo que queda ABIERTO y no es de este lote
+Midiendo la papa criolla apareció que **42 de los 50 alimentos tienen ≥1% de desfase entre su `kcal`
+declarado y sus propios macros** (`4p+4c+9f`), hasta **−28,7% en la espinaca** — porque la fibra no
+aporta 4 kcal/g y el `c` de la tabla es carbohidrato total. Reencuadra el punto abierto de la papa
+criolla: **no es una fila anómala, es una propiedad de toda la tabla**, y de hecho la papa criolla es
+la única cuyo titular SÍ cuadra con sus macros. Importa porque la app tiene dos definiciones de
+caloría vivas (el plan deriva `4p+4c+9f`, `foodLogTotals` suma el campo `kcal`). Decisión pendiente.
+
 ## 🟢 2026-08-15 (5ª parte) — avi-v489: 7 ALIMENTOS COLOMBIANOS CON SU FILA OFICIAL · 47 → 6 SIN FUENTE
 
 **Suite 761/761 · matrices 5/5 y 18/18 · franja APRETADA de vuelta a ±12%.**
