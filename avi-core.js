@@ -2872,6 +2872,33 @@ function foodLogProgress(totals, target) {
 // arreglo de verdad es el plato, no la franja**, y está esperando el dictamen de Andrés sobre
 // `NUT_PROT_MIN_SHARE`. El día que eso baje, esta cifra se vuelve a apretar: la curva de arriba
 // dice que en cuanto la esquina baje de 113% se puede volver a 12.
+// ──────────────────────────────────────────────────────────────────────
+// LA VERSIÓN QUE SE MUESTRA SE DERIVA DE LA QUE SE SIRVIÓ (v491)
+// ──────────────────────────────────────────────────────────────────────
+// 🔴 Hasta v490 la barra del coach decía «v2.0 · Jun 2026» escrito a mano en el HTML: llevaba
+// DOS MESES y ~490 despliegues mintiendo. Lo destapó una auditoría externa que copió esa etiqueta
+// y fechó TODO su informe en «v2.0 (Junio 2026)» — o sea que el rótulo no solo estaba viejo:
+// engañó a quien vino a evaluar la app. Es la clase de v437 y v486 (el número se arregla y el
+// rótulo se queda), aquí aplicada a la propia app.
+// 🔒 Ahora sale del `?v=` con el que el navegador PIDIÓ los scripts, que es el despliegue que la
+// persona está corriendo de verdad. No se puede quedar viejo porque no hay nada que actualizar.
+// 🔒 Y de paso cierra un punto abierto desde v415: cuando alguien reportaba un fallo no había
+// forma de saber en qué versión iba su teléfono. Ahora lo lee en su propio perfil y lo dicta.
+function appBuildFrom(urls) {
+  const vs = [];
+  (urls || []).forEach(u => {
+    const m = /[?&]v=(\d+)/.exec(String(u || ''));
+    if (m) { const n = parseInt(m[1], 10); if (n > 0) vs.push(n); }
+  });
+  return vs.length ? Math.max.apply(null, vs) : null;
+}
+function appBuildLabel(urls) {
+  const b = appBuildFrom(urls);
+  // Sin `?v=` NO se inventa un número ni se deja el último que se recuerde: se dice que no se
+  // sabe. Un rótulo que adivina es exactamente lo que se está quitando de aquí.
+  return b ? ('AVI · versión ' + b) : 'AVI';
+}
+
 const FOODLOG_BAND = 0.14;
 function foodLogBandFor(meta, hecho) {
   const m = Math.round(parseFloat(meta) || 0);
@@ -7149,6 +7176,8 @@ if (typeof module !== 'undefined' && module.exports) {
     FL_ESTADO_UI,
     foodLogBandCount,
     FOODLOG_BAND,
+    appBuildFrom,
+    appBuildLabel,
     foodLogWeek,
     foodLogAdherence,
     foodLogActiveDays,

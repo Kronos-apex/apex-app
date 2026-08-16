@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=490">
+<link rel="stylesheet" href="styles.css?v=491">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -375,7 +375,9 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div class="sbout" onclick="openNotifModal()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones</div>
       <div class="sbout" onclick="openSettings()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración</div>
       <div class="sbout" onclick="logout()">🚪 Cerrar sesión</div>
-      <div style="font-size:10px;color:var(--t3);padding:8px 14px 4px;letter-spacing:.4px">v2.0 · Jun 2026</div>
+      <!-- Lo llena renderBuildLabel() DERIVÁNDOLO del `?v=` de los scripts servidos. Aquí decía
+           «v2.0 · Jun 2026» a mano y llevaba dos meses mintiendo (ver appBuildLabel en avi-core). -->
+      <div id="sb-build" style="font-size:10px;color:var(--t3);padding:8px 14px 4px;letter-spacing:.4px"></div>
     </div>
   </nav>
 
@@ -800,6 +802,11 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <!-- Cuenta: eliminar cuenta (derecho de supresión / requisito Play Store). Se llena
            en renderAccountActions; oculto para el coach en su propio entrenamiento. -->
       <div id="cn-danger-card"></div>
+      <!-- La versión que está corriendo ESTE teléfono. No es decoración: desde v415 quedó
+           anotado que al reportar un fallo no había forma de saber en qué versión iba cada
+           asesorado (y la app sirve por PWA, así que dos personas pueden ir en versiones
+           distintas el mismo día). Lo llena renderBuildLabel(), derivado del `?v=` servido. -->
+      <div id="cn-build" style="font-size:10px;color:var(--t3);text-align:center;padding:14px 0 4px;letter-spacing:.4px"></div>
     </div>
     <!-- Comunidad (idea #5, Fase 1 · C3): perfil opt-in + amigos por código + ❤️. Online-only,
          nunca bloquea entrenar. Todo lo pinta renderCommunity() (app-7-community.js). -->
@@ -1213,19 +1220,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=490"></script>
-<script src="muscle-map.js?v=490"></script>
-<script src="exercise-muscles.js?v=490"></script>
+<script src="avi-core.js?v=491"></script>
+<script src="muscle-map.js?v=491"></script>
+<script src="exercise-muscles.js?v=491"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=490"></script>
-<script src="app-2-login.js?v=490"></script>
-<script src="app-3-coach.js?v=490"></script>
-<script src="app-4-entreno.js?v=490"></script>
-<script src="app-5-salud.js?v=490"></script>
-<script src="app-6-extra.js?v=490"></script>
-<script src="app-7-community.js?v=490"></script>
+<script src="app-1-infra.js?v=491"></script>
+<script src="app-2-login.js?v=491"></script>
+<script src="app-3-coach.js?v=491"></script>
+<script src="app-4-entreno.js?v=491"></script>
+<script src="app-5-salud.js?v=491"></script>
+<script src="app-6-extra.js?v=491"></script>
+<script src="app-7-community.js?v=491"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

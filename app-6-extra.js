@@ -4,7 +4,23 @@
 // el ala esmeralda de AVI): el manifest los usa en Android y el apple-touch-icon en iOS.
 // (Se eliminó pwaGenIcon, que dibujaba en canvas el logo viejo AVI — la "A" con barra.)
 
+// Pinta la versión REAL que está corriendo este dispositivo, en las dos superficies donde
+// alguien la va a buscar: la barra del coach y el final del perfil del asesorado. El número
+// sale del `?v=` con el que el navegador pidió los scripts (`appBuildLabel`, avi-core), así que
+// no hay nada que acordarse de actualizar en un deploy — que es justo cómo el rótulo anterior
+// se quedó dos meses diciendo «v2.0 · Jun 2026».
+function renderBuildLabel(){
+  const urls=[].slice.call(document.querySelectorAll('script[src],link[href]'))
+    .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
+  const txt=(typeof appBuildLabel==='function')?appBuildLabel(urls):'AVI';
+  ['sb-build','cn-build'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el)el.textContent=txt;
+  });
+}
+
 function initPWA(){
+  renderBuildLabel();
   // Ícono para Apple Touch Icon (iOS "Añadir a inicio") = MISMO logo AVI que usa
   // el manifest en Android. Antes se generaba en canvas con el logo viejo AVI (la
   // "A" con barra) → en iPhone salía el ícono antiguo. Ahora apunta al PNG de marca.

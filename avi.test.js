@@ -4185,6 +4185,35 @@ test('🔴 v487 · la yuca es la fila B106 de la TCAC, y NO la deducción que fu
   assert.ok(Math.abs(y.kcal / 160 - 0.70) > 0.1, 'no puede volver a ser el crudo de USDA × 0,70');
 });
 
+test('🔴 v491 · la versión que se MUESTRA es la que se SIRVIÓ (no un literal que caduca)', () => {
+  // Hasta v490 la barra del coach decía «v2.0 · Jun 2026» a mano: dos meses y ~490 despliegues
+  // desactualizada, y una auditoría externa la copió y fechó su informe entero en junio de 2026.
+  // Lo que se afirma aquí no es que la función «funcione» sino la propiedad de fondo: **lo que
+  // se pinta coincide con el `?v=` real del archivo desplegado**. Así, si alguien vuelve a
+  // escribir un número a mano o rompe la derivación, esto se pone rojo con el motivo delante.
+  const html = require('fs').readFileSync(__dirname + '/index.html', 'utf8');
+  const servida = /\?v=(\d+)/.exec(html);
+  assert.ok(servida, 'index.html no declara ninguna versión ?v=');
+  const urls = (html.match(/(?:src|href)="([^"]+)"/g) || []).map(s => s.slice(s.indexOf('"') + 1, -1));
+  assert.strictEqual(core.appBuildFrom(urls), parseInt(servida[1], 10),
+    'lo que la app va a mostrar no es la versión que se está sirviendo');
+  assert.ok(core.appBuildLabel(urls).indexOf(servida[1]) !== -1,
+    `el rótulo «${core.appBuildLabel(urls)}» no contiene la versión servida (${servida[1]})`);
+  // 🔒 Y los dos huecos llegan VACÍOS del HTML: un texto escrito ahí volvería a ser el bug.
+  ['sb-build', 'cn-build'].forEach(id => {
+    const m = new RegExp('id="' + id + '"[^>]*>([^<]*)<').exec(html);
+    assert.ok(m, `falta el hueco #${id} donde va la versión`);
+    assert.strictEqual(m[1].trim(), '',
+      `#${id} trae texto escrito a mano («${m[1].trim()}»): eso es lo que caduca`);
+  });
+  // 🔒 Sin `?v=` NO se inventa un número (un rótulo que adivina es el mismo defecto).
+  assert.strictEqual(core.appBuildFrom(['avi-core.js', 'styles.css']), null);
+  assert.strictEqual(core.appBuildLabel([]), 'AVI');
+  assert.strictEqual(core.appBuildFrom(null), null, 'sin lista no puede reventar');
+  // Control: con una versión distinta, el rótulo cambia — o no está leyendo nada.
+  assert.ok(core.appBuildLabel(['x.js?v=123']).indexOf('123') !== -1);
+});
+
 test('🔴 v490 · las 6 últimas filas sin fuente son la fila que imprime la fuente', () => {
   // Medido el 2026-08-16 contra el PDF del ICBF (páginas leídas como JPEG, ver `scratchpad/ext.py`
   // en el commit) y contra la API de FoodData Central: **ninguno de sus valores anteriores

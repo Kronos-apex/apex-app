@@ -30,11 +30,22 @@ const served = (await ev(`(document.querySelector('script[src*="app-1-infra"]')|
 const version = served ? served[1] : '?';
 const feats = JSON.parse(await ev(`JSON.stringify({login:!!document.getElementById('s-login'),core:typeof generarRutinas==='function',renderToday:typeof renderClientToday==='function'})`));
 
+// 🔒 v491 · LO QUE LA APP DICE QUE ES. El rótulo de versión estuvo dos meses diciendo «v2.0 ·
+// Jun 2026» escrito a mano, y una auditoría externa lo copió y fechó su informe entero ahí. La
+// suite ya afirma que el rótulo se DERIVA, pero un test estático no ve si de verdad se PINTA
+// (un hueco que se queda vacío no da error: es la clase del botón mudo de v473). Aquí se lee de
+// la pantalla real, y contra la versión que el servidor acaba de servir. Se mira PRE-LOGIN a
+// propósito: `initPWA` corre en el arranque y los dos huecos son estáticos, así que si esto sale
+// vacío es que el render no ocurrió.
+const rot = JSON.parse(await ev(`JSON.stringify({sb:(document.getElementById('sb-build')||{}).textContent||'',cn:(document.getElementById('cn-build')||{}).textContent||''})`));
+const rotOK = version !== '?' && rot.sb.includes(version) && rot.cn.includes(version);
+
 const versionOK = !EXPECT || version === EXPECT;
-const pass = booted && feats.login && feats.core && feats.renderToday && jsErrors.length === 0 && versionOK;
+const pass = booted && feats.login && feats.core && feats.renderToday && jsErrors.length === 0 && versionOK && rotOK;
 console.log(`boot (initPWA) definido:  ${booted}  (tras ${secs}s)`);
 console.log(`version servida:          v${version}${EXPECT ? '  (esperada v' + EXPECT + ' → ' + (versionOK ? 'OK' : 'NO COINCIDE') + ')' : ''}`);
 console.log(`login/core/renderToday:   ${feats.login}/${feats.core}/${feats.renderToday}`);
+console.log(`rótulo de versión:        coach «${rot.sb}» · asesorado «${rot.cn}»  → ${rotOK ? 'OK' : 'NO COINCIDE CON LO SERVIDO'}`);
 console.log(`jsErrors:                 ${JSON.stringify(jsErrors)}`);
 console.log(pass ? `\n✅ PROD OK — la app arranca limpio en v${version}` : `\n❌ PROD FALLA — revisar antes de dar por bueno el deploy`);
 chrome.kill(); process.exit(pass ? 0 : 1);
