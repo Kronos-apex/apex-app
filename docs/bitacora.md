@@ -4,6 +4,57 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-16 (3ª parte) — avi-v492: LAS DOS AUDITORÍAS EXTERNAS, MEDIDAS
+
+El PO trajo dos PDF («Auditoría profunda» y «Plan de implementación técnico», los dos para el
+pitch a Fondo Emprender). Se midieron contra el código antes de ejecutar nada, que es lo que la
+doctrina exige con cualquier reporte externo. **De todo lo que proponían, sobrevivió una cosa.**
+
+### 1 · Lo que decían como «Actual» contra lo medido en producción
+| Métrica | El plan decía | Medido (móvil emulado, CPU ×4, 4G) |
+|---|---|---|
+| LCP | 3,2 s | **1,21 s** — su propia meta era «<2,5 s» |
+| CLS | 0,15 | **0,089** — su meta era «<0,1» |
+| Vulnerabilidades | «7+» | **0 en producción** (`apex-app` no tiene ni `package.json`) |
+| Imágenes sin alt | tarea de 6 h | **0 de 2** |
+| Focus visible | «FAIL», 4 h | **ya había regla global** (línea 6 del CSS) |
+| HSTS | tarea de 4 h | **ya lo pone GitHub Pages** |
+
+**Dos de los tres objetivos de su Sprint 2 (USD 3.000–4.500) ya se cumplían antes de empezar.**
+Y varias tareas no son ejecutables aquí: DOMPurify y Workbox son dependencias externas
+(restricción #2), el code splitting con bundler exige build (también prohibido, y la app ya va
+en 10 módulos), y **GitHub Pages no permite cabeceras propias** (el CSP tendría que ir en
+`<meta>`). El presupuesto total era **USD 11.500–17.000** con un equipo de 5-7 personas.
+El primer PDF, además, llamaba «IA generadora de rutinas» a `generarRutinas`, que es un motor de
+reglas determinista sin una sola llamada a un modelo — eso iba dentro del pitch deck.
+
+### 2 · Lo que SÍ era cierto, y es lo que se arregló (v492)
+- **65 etiquetas visibles no estaban asociadas a su campo.** Se atan con `for=` (usa el texto que
+  la persona ya ve, en vez de duplicarlo en un `aria-label` que se puede separar).
+- **`pk-env` y `nut-goal`** no tenían ninguna.
+- **Los 26 modales** pasan a `role="dialog"` + `aria-modal` + su nombre. Medido después: **26 → 0**.
+- Suite 763 → **764**, 5 sabotajes y los 5 muerden.
+
+### 3 · Dos errores míos que cazó la propia medición
+1. Mi primera sonda dio «35 campos sin nombre» y **contaba de más**: no veía las etiquetas que
+   ENVUELVEN al campo (7 estaban bien) ni saltaba los comentarios del HTML (2 más).
+2. El script que ataba los modales usaba una ventana fija y **3 modales sin título propio se
+   quedaban con el del SIGUIENTE**. Se acotó al tramo hasta el próximo `.md` y esos 3 llevan
+   nombre puesto a mano. Los dos están destilados en GOTCHAS.
+
+## 🟢 2026-08-16 (2ª parte) — avi-v491: LA APP DEJÓ DE MENTIR SOBRE SU PROPIA VERSIÓN
+
+La barra del coach decía **«v2.0 · Jun 2026»** escrito a mano en el HTML: dos meses y ~490
+despliegues desactualizada. **El daño no fue teórico** — la auditoría externa copió esa etiqueta
+y fechó su informe entero en «v2.0 (Junio 2026)».
+
+`appBuildLabel` (avi-core, pura) lo deriva del `?v=` con el que el navegador pidió los scripts.
+Sin `?v=` no inventa un número: dice «AVI» y se calla. Cierra además un punto abierto desde v415
+(no se sabía en qué versión iba el teléfono de cada asesorado) porque sale también al final de su
+perfil. Candado en dos capas: la suite afirma que lo pintado coincide con el `?v=` real del
+archivo, y **`_prodcheck` lo lee de la pantalla** en cada despliegue — un test estático no ve si
+el render ocurrió. Suite 762 → 763, 3 sabotajes y los 3 muerden.
+
 ## 🟢 2026-08-16 — avi-v490: LAS 6 ÚLTIMAS FILAS SIN FUENTE · LA TABLA QUEDA EN 50 DE 50
 
 **Suite 762/762 · `_sabotaje-f7` 34/34 · `_verify-foodlog` 41/41 · 7 sabotajes nuevos, los 7 muerden ·
