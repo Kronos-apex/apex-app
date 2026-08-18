@@ -105,7 +105,9 @@ function nutFillSuggested(c,silencioso){
   // medido en producción el 2026-08-05, Kathe y Luz (objetivo «Perder grasa») quedaron con el
   // rótulo «mantenimiento» de una plantilla vieja y su pantalla les decía «estás comiendo en
   // balance: lo que gastas» encima de un déficit real de 500 kcal/día.
-  const goalKey=nutGoalForClient(c.goal,c);
+  // El peso va explícito: el rótulo de un menor depende de su IMC para la edad (banda de menores),
+  // y el IMC que manda es el del ÚLTIMO peso registrado, no el de la ficha, que envejece.
+  const goalKey=nutGoalForClient(c.goal,c,_nutPesoDe(c));
   document.getElementById('nut-goal').value=goalKey;
   _nutSwapTemplateText(goalKey);
   if(nota){
@@ -151,7 +153,7 @@ function nutGoalCheck(){
     goal:document.getElementById('nut-goal').value,
     plan:document.getElementById('nut-plan').value,
     avoid:document.getElementById('nut-avoid').value
-  },c);
+  },c,_nutPesoDe(c));
   // 🔴 Si el PISO DE MENORES corrigió el plan, el coach tiene que enterarse: le estamos sirviendo
   // a su asesorada un número distinto del que él escribió, y callarlo es la mentira de v437 al
   // revés (cambiar la cifra y no decirlo). El aviso se calcula con `nutBaseFor`, que es LA MISMA
@@ -170,7 +172,26 @@ function nutGoalCheck(){
       'Si quieres otro n&uacute;mero, s&uacute;belo t&uacute; aqu&iacute;.';
     return;
   }
-  const mm=nutGoalMismatch(efectivo,kcal,est.tdee); if(!mm)return apagar();
+  // Y el espejo: si el TECHO actuó, el coach también está escribiendo un número que ella no come.
+  // Se dice sin una palabra de composición corporal (el coach lee «para su edad»; ella no lee nada
+  // de esto), y con el número servido delante, que es lo único accionable.
+  if(_bf&&_bf.minorCap){
+    const mc=_bf.minorCap;
+    nota.style.display='block';
+    nota.innerHTML='&#128274; '+esc(c.name)+' es menor de edad y este plan le da <strong>'+mc.kcalAntes+
+      ' kcal</strong> contra un gasto de ~<strong>'+mc.tdee+'</strong>. '+
+      (mc.sobrepeso
+        ? 'Para su edad y su sexo, un super&aacute;vit no es lo que le corresponde: su direcci&oacute;n es mantenimiento y el m&uacute;sculo lo pone el entrenamiento. '
+        : 'Un menor no pasa de un 10% por encima de su gasto. ')+
+      'As&iacute; que la app le va a servir <strong>'+_bf.kcalObj+' kcal</strong> (P'+_bf.macros.prot_g+
+      ' C'+_bf.macros.carb_g+' G'+_bf.macros.fat_g+'), sin bajarle la prote&iacute;na. '+
+      'Si quieres otro n&uacute;mero, escr&iacute;belo t&uacute; aqu&iacute;.';
+    return;
+  }
+  // 🔴 `c` va como cuarto argumento y no es decorativo: sin él, el oráculo del editor mide a una
+  // menor contra su gasto PELADO y su piso (gasto × 1,05) cae justo encima de la tolerancia del
+  // detector — el falso positivo de 3 kcal que v485 cerró en la ficha y que aquí seguía vivo.
+  const mm=nutGoalMismatch(efectivo,kcal,est.tdee,c); if(!mm)return apagar();
   const DIR={deficit:'un d&eacute;ficit',superavit:'un super&aacute;vit',balance:'un balance'};
   const titulo=(GOAL_WHY[efectivo]||{}).title||efectivo;
   nota.style.display='block';
@@ -358,7 +379,7 @@ function nutCalcHTML(c){
       <div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${m.carb_g}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${m.carb_g*4} kcal</div></div>
       <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${m.fat_g}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${m.fat_g*9} kcal</div></div>
     </div>
-    <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
+    <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (${esc(tmbFormulaName(c))}). Ajústala según tu progreso real semana a semana.</div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -580,7 +601,7 @@ function openNutritionRoom(clientId){
     // gramos crudos del coach — 503 kcal de contradicción en la MISMA tarjeta (Lucas QA + el
     // verificador, los dos lo reprodujeron). Las 5 superficies restantes ya leían de `base.macros`.
     const _m=(_base&&_base.macros)?_base.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
-    d={kcal:_kcal,water:nut.water,prot:_m.prot_g,carb:_m.carb_g,fat:_m.fat_g,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c)],minorFloor:_base&&_base.minorFloor};
+    d={kcal:_kcal,water:nut.water,prot:_m.prot_g,carb:_m.carb_g,fat:_m.fat_g,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c,_nutPesoDe(c))],minorFloor:_base&&_base.minorFloor,minorCap:_base&&_base.minorCap};
   } else {
     const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){
@@ -589,7 +610,10 @@ function openNutritionRoom(clientId){
       body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
     }
     const m=est.macros||{prot_g:0,carb_g:0,fat_g:0};
-    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal,c)]};
+    // El «por qué» y las marcas de la banda viajan también por esta rama. Sin ellas, quien no
+    // tiene plan escrito —que es justo por donde entró el caso de los +350 kcal— veía el número
+    // corregido sin una línea que le dijera de dónde salió.
+    d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal,c,_nutPesoDe(c))],minorFloor:est.minorFloor,minorCap:est.minorCap};
   }
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
@@ -637,8 +661,9 @@ function openNutritionRoom(clientId){
   // Un número que cambia sin explicación se lee como un error de la app (lección de v434). A ella
   // su plan le SUBIÓ sin que tocara nada, así que la pantalla lo dice — en su idioma, sin cifras
   // de antes/después y sin una palabra sobre composición corporal.
-  if(d.minorFloor)whyHTML+=`<div class="exroom-note" style="margin-top:8px">Todavía estás creciendo, así que tu plan nunca baja de la energía que tu cuerpo gasta en el día. Por eso puede que veas un número un poco más alto del que esperabas: es a propósito, y tu entrenador lo sabe.</div>`;
-  if(d.isEst)whyHTML+=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (fórmula Mifflin-St Jeor). Ajústala según tu progreso real semana a semana.</div>`;
+  if(d.minorCap)whyHTML+=`<div class="exroom-note" style="margin-top:8px">Todavía estás creciendo, así que tu plan acompaña la energía que tu cuerpo gasta en el día y no sube más. Por eso puede que veas un número un poco más bajo del que esperabas: es a propósito, tu entrenador lo sabe, y el músculo lo pone el entrenamiento.</div>`;
+  else if(d.minorFloor)whyHTML+=`<div class="exroom-note" style="margin-top:8px">Todavía estás creciendo, así que tu plan nunca baja de la energía que tu cuerpo gasta en el día. Por eso puede que veas un número un poco más alto del que esperabas: es a propósito, y tu entrenador lo sabe.</div>`;
+  if(d.isEst)whyHTML+=`<div class="exroom-note"><b>${esc(d.label||'')}.</b> Estimación automática según tus datos (fórmula ${esc(tmbFormulaName(c))}). Ajústala según tu progreso real semana a semana.</div>`;
 
   let mealsHTML='';
   if(d.examples){

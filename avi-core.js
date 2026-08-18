@@ -3569,8 +3569,8 @@ const NUT_GOAL_BY_CLIENT = {
 //  (2) «Recomposición» en un menor de peso normal NO es un objetivo: no tiene nada que
 //      recomponer, y el texto de una recomposición es lenguaje de composición corporal, que es
 //      exactamente lo que no debe leer una niña de 15 años. Se le habla de salud general.
-function nutGoalForClient(goal, client) {
-  return nutMinorSafeGoal(NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento', client);
+function nutGoalForClient(goal, client, weightKg) {
+  return nutMinorSafeGoal(NUT_GOAL_BY_CLIENT[goal] || 'mantenimiento', client, weightKg);
 }
 
 // 🔴 EL CANDADO DE MENORES VIVE AQUÍ, en un solo sitio, porque hay DOS caminos por los que se
@@ -3582,15 +3582,21 @@ function nutGoalForClient(goal, client) {
 // lenguaje de composición corporal que el dictamen prohíbe justamente en lo que ella lee.
 // La regla: el candado va donde se ELIGE EL TEXTO, no donde se infiere el objetivo.
 const NUT_GOALS_COMPOSICION = ['cutting', 'definicion', 'recomposicion'];
-function nutMinorSafeGoal(goalKey, client) {
+function nutMinorSafeGoal(goalKey, client, weightKg) {
   if (!goalKey) return goalKey;
-  if (client && isMenor(client) && NUT_GOALS_COMPOSICION.indexOf(goalKey) !== -1) return 'mantenimiento';
+  if (!(client && isMenor(client))) return goalKey;
+  if (NUT_GOALS_COMPOSICION.indexOf(goalKey) !== -1) return 'mantenimiento';
+  // Y «volumen» tampoco, cuando la banda le acaba de quitar el superávit por IMC (REGLA 3): la
+  // explicación «superávit calórico limpio para ganar masa» encima de un plan que ya NO lleva
+  // superávit es el defecto de v437 en la única superficie que ella lee de verdad. Sin sobrepeso
+  // se queda como está: un adolescente delgado que quiere músculo sí hace volumen (Andrés, §1.5).
+  if (goalKey === 'volumen' && nutMinorBmiOver(client, weightKg)) return 'mantenimiento';
   return goalKey;
 }
 // El rótulo de un plan YA GUARDADO por el coach. Es la ruta hermana de `nutGoalForClient` (que
 // sirve a la estimación automática) y pasa por el MISMO candado.
-function nutWhyKey(nut, client) {
-  return nutMinorSafeGoal(inferNutGoal(nut), client);
+function nutWhyKey(nut, client, weightKg) {
+  return nutMinorSafeGoal(inferNutGoal(nut), client, weightKg);
 }
 
 // ── ¿El RÓTULO del plan contradice sus propios números? Un plan rotulado «mantenimiento» que
@@ -3609,16 +3615,30 @@ function nutKcalDirection(kcal, tdee) {
   if (k > t * (1 + NUT_DIR_TOL)) return 'superavit';
   return 'balance';
 }
-// `client` es opcional y sirve para UNA cosa: en un MENOR el punto de referencia no es su gasto
-// pelado sino su PISO (gasto × 1,05), porque eso es lo que la app le promete desde v485. Sin esto
-// el margen del piso choca de frente con la tolerancia del detector —los dos valen 5%— y la menor
-// aparece como «contradicción» por 3 kcal, cuando su superávit es DELIBERADO y ya se le explica en
-// pantalla. Un detector que marca lo que el propio sistema hace a propósito enseña a ignorarlo.
+// `client` es opcional y sirve para UNA cosa: a un MENOR la app le impone un número dentro de una
+// FRANJA (gasto ×1,05 a ×1,10), y esa franja entera cabe dentro de la tolerancia del detector —los
+// dos márgenes son del mismo tamaño—. Sin esto, la app marca como «su rótulo se contradice» el
+// número que ella misma acaba de elegir: primero por 3 kcal cuando llegó el piso (v485), y después
+// el volumen legítimo de un adolescente delgado cuando llegó el techo (v493). Un detector que
+// marca lo que el propio sistema hace a propósito enseña a ignorarlo.
 function nutGoalMismatch(nutGoal, kcal, tdee, client) {
   const dice = NUT_GOAL_DIR[nutGoal];
   if (!dice) return null;                       // sin rótulo legible no hay contradicción que marcar
-  const ref = (client && isMenor(client) && tdee > 0) ? tdee * NUT_MENOR_PISO_MARGEN : tdee;
-  const real = nutKcalDirection(kcal, ref);
+  // 🔴 Y desde la banda, el margen del piso ya no es un PUNTO sino una FRANJA — el mismo choque de
+  // v485, una talla más grande. La app le impone al menor un número entre gasto ×1,05 y ×1,10, y
+  // esa franja entera cabe DENTRO de la tolerancia del detector (±5%): con el techo puesto, un
+  // adolescente delgado en volumen legítimo caía en «balance» y su ficha marcaba «el rótulo
+  // miente» por un superávit que la app le acababa de recortar A PROPÓSITO. Dentro de la franja el
+  // número lo elige el sistema, no el rótulo: no hay nada que corregirle al coach.
+  // 🗑️ Aquí vivía además `ref = tdee × 1,05` para los menores (v485). Se BORRÓ al llegar la franja
+  // y no por gusto: su sabotaje salió VERDE. La franja cubre el caso que aquel `ref` existía para
+  // cubrir (el piso exacto) y los dos únicos llamadores le entregan siempre un número de dentro
+  // —la ficha pasa lo SERVIDO y el editor corta antes con su propio aviso—, así que era una
+  // segunda definición de «el punto de referencia de un menor» esperando a discrepar de esta.
+  if (client && isMenor(client) && tdee > 0 && kcal > 0
+    && kcal >= Math.round(tdee * NUT_MENOR_PISO_MARGEN)
+    && kcal <= Math.round(tdee * NUT_MENOR_TECHO_MARGEN) + NUT_MENOR_GRANO) return null;
+  const real = nutKcalDirection(kcal, tdee);
   if (!real) return null;                       // sin gasto (faltan datos del cuerpo) no se opina
   return real === dice ? null : { dice, real };
 }
@@ -3657,6 +3677,44 @@ function calcTMB(weightKg, heightCm, age, sex) {
 function isMenor(client) {
   const a = parseInt(client && client.age);
   return Number.isFinite(a) && a > 0 && a < TMB_MENOR_EDAD;
+}
+
+// ── ¿EL IMC DE UN MENOR LO PONE EN SOBREPESO PARA SU EDAD Y SU SEXO? ──────────────────────
+// En un adulto «sobrepeso» es un número quieto (IMC 25). Entre los 5 y los 19 años NO lo es: el
+// corte se mueve con la edad y con el sexo, y compararlo contra 25 no es ser estricto, es medir
+// otra cosa. A los 16 años el corte de una mujer son 24,3 y el de un hombre 23,9; a los 11 son
+// 20,3 y 19,5.
+// Tabla: OMS, *Growth reference data for 5-19 years* (2007), indicador **BMI-for-age**, columna
+// **+1 DE** de las tablas de puntuación z (`bmi-girls-z-who-2007-exp.xlsx` y
+// `bmi-boys-z-who-2007-exp.xlsx`, descargadas de who.int el 2026-08-18). En esa referencia la OMS
+// define **sobrepeso > +1 DE** y obesidad > +2 DE.
+// La app solo guarda la edad en AÑOS, así que de cada año se toma el mes CENTRAL (edad × 12 + 6):
+// ni el corte más estricto del año ni el más laxo, el de la mitad del año que la persona declara.
+// Debajo de 5 años manda otra referencia (OMS 0-5, donde sobrepeso es > +2 DE) y aquí NO se
+// extrapola: devuelve null, y quien pregunte se queda sin recorte por IMC en vez de con uno
+// inventado. Igual sin sexo declarado (el corte es distinto por sexo: no hay tabla neutra).
+const WHO_BMI_SD1 = {
+  F: { 5: 16.923, 6: 17.131, 7: 17.488, 8: 18.012, 9: 18.666, 10: 19.429, 11: 20.320, 12: 21.305, 13: 22.279, 14: 23.145, 15: 23.832, 16: 24.324, 17: 24.649 },
+  M: { 5: 16.676, 6: 16.888, 7: 17.231, 8: 17.663, 9: 18.179, 10: 18.808, 11: 19.542, 12: 20.375, 13: 21.298, 14: 22.235, 15: 23.116, 16: 23.910, 17: 24.603 },
+};
+function nutMinorBmiOver(client, weightKg) {
+  if (!client || !isMenor(client)) return null;
+  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
+  if (!sx) return null;
+  const corte = WHO_BMI_SD1[sx][parseInt(client.age)];
+  if (corte == null) return null;
+  const bmi = bmiFrom(weightKg != null && weightKg !== '' ? weightKg : client.weight, client.height);
+  if (bmi == null) return null;
+  return bmi > corte;
+}
+
+// 🔴 El nombre de la ecuación que DE VERDAD se usó, derivado de la misma pregunta que hace
+// `calcTMB`. Estaba escrito a mano en tres pantallas y v448 cambió el cálculo sin tocar el texto:
+// desde entonces la app le decía «fórmula Mifflin-St Jeor» a una asesorada de 16 años — que es
+// justo la ecuación que el dictamen prohibió usarle por no estar validada bajo 18. Un rótulo que
+// nombra el método tiene que salir del método, no de la memoria de quien escribió el HTML.
+function tmbFormulaName(client) {
+  return isMenor(client) ? 'Schofield (FAO/OMS/UNU)' : 'Mifflin-St Jeor';
 }
 
 // TDEE — gasto total = TMB × factor de actividad. Sin TMB → null.
@@ -3885,11 +3943,32 @@ function nutritionEstimate(client, weightKg) {
     ? 'Mínimo seguro para tu cuerpo (no bajamos de lo que gastas en reposo)'
     : t.label;
   const water = w ? Math.round(w * 35 / 250) : null; // ~35 ml/kg en vasos de 250 ml
-  return {
-    tmb, tdee, af, kcalObj, label,
-    deficit: kcalObj != null && tdee ? Math.round(kcalObj - tdee) : t.deficit,
-    floored: !!ajustado, macros, water,
+  // 🔴 LA BANDA DE MENORES SE APLICA AQUÍ TAMBIÉN, y no es una redundancia: `nutritionEstimate` es
+  // una superficie PÚBLICA que leen cinco sitios por su cuenta (la habitación de Nutrición, la
+  // calculadora del Perfil, el prefill de «✨ Generar», el oráculo del editor y el compartir por
+  // WhatsApp), mientras el plato, «Hoy» y la lista del mercado leen la salida de `nutBaseFor`.
+  // Con la banda en un solo lado, las dos mitades de la app pintaban números distintos para la
+  // misma persona (medido: 2.111 contra 2.219 en una menor real). Misma función, mismos datos,
+  // mismo resultado: la banda no es de una pantalla, es de la persona.
+  const _band = nutMinorBandBase({ kcalObj, macros }, client, w);
+  const out = {
+    tmb, tdee, af, kcalObj: _band.kcalObj, label,
+    deficit: _band.kcalObj != null && tdee ? Math.round(_band.kcalObj - tdee) : t.deficit,
+    floored: !!ajustado, macros: _band.macros, water,
   };
+  // El motivo viaja con el número: la pantalla de ella y la ficha del coach explican POR QUÉ le
+  // cambió el plan, y sin esto la explicación se quedaba solo en la mitad `nutBaseFor` de la app.
+  if (_band.minorFloor) out.minorFloor = _band.minorFloor;
+  if (_band.minorCap) out.minorCap = _band.minorCap;
+  if (_band.minorFloorUnknown) out.minorFloorUnknown = true;
+  // Y el RÓTULO no puede quedarse anunciando el superávit que la banda acaba de quitar: cambiar el
+  // número y dejar el texto viejo es, literalmente, el defecto de v437.
+  if (_band.minorCap) {
+    out.label = _band.minorCap.sobrepeso
+      ? 'Mantenimiento: estás creciendo, así que tu plan acompaña lo que gastas y el músculo lo pone el entrenamiento'
+      : 'Superávit de ' + Math.max(0, _band.minorCap.techo - tdee) + ' kcal/día (ganancia limpia)';
+  }
+  return out;
 }
 
 // ── Reparto del día en comidas: distribuye las kcal objetivo por comida según
@@ -5145,11 +5224,36 @@ const NUT_KCAL_MISMATCH = 25; // desfase que ya no es redondeo y hay que avisarl
 // no de una intuición sobre el crecimiento; el 2,2 g/kg es sobre peso de REFERENCIA, no de báscula.
 const NUT_MENOR_PISO_MARGEN = 1.05;
 const NUT_MENOR_PROT_MAX = 2.2;
+// Y el otro lado de la banda (REGLA 3 del mismo dictamen, 2026-08-15): un menor tampoco lleva
+// superávit libre. Tope general +10% del gasto, y **cero superávit** si su IMC lo pone en
+// sobrepeso para su edad y su sexo — ahí su dirección es mantenimiento y el músculo lo pone el
+// entrenamiento, no el exceso de comida. Cuando el IMC manda, el techo ES el piso: no queda una
+// franja donde elegir, queda un número.
+const NUT_MENOR_TECHO_MARGEN = 1.10;
+// Un gramo de carbohidrato son 4 kcal, así que un techo nunca cae en un número exacto: se llega a
+// él con un grano de 3 kcal de holgura. Sin esta holgura el recorte NO ES IDEMPOTENTE —la segunda
+// pasada volvía a «recortar» su propio redondeo y pisaba el `kcalAntes` del aviso con un número
+// que no era el original (cazado midiendo: decía «antes 2.697» cuando el plan real era 2.917)—
+// y el mismo grano es el que le sobra al detector de contradicciones para no marcar la franja.
+const NUT_MENOR_GRANO = 3;
+function nutMinorTecho(tdee, client, weightKg) {
+  if (!(tdee > 0) || !client || !isMenor(client)) return null;
+  const margen = nutMinorBmiOver(client, weightKg) ? NUT_MENOR_PISO_MARGEN : NUT_MENOR_TECHO_MARGEN;
+  return Math.round(tdee * margen);
+}
+// El gasto del menor se calcula en UN solo sitio: el piso y el techo son los dos bordes de la
+// misma banda, y si cada uno lo dedujera por su cuenta podrían acabar mirando números distintos.
+// Sin sexo declarado no hay gasto que calcular — y quien pregunte recibe `null`, no una suposición.
+function nutMinorTdee(client, weightKg) {
+  const sx = client && (client.sex === 'M' || client.sex === 'F') ? client.sex : null;
+  if (!sx) return null;
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  return calcTDEE(calcTMB(w, client.height, client.age, sx), client.activityFactor);
+}
 function nutMinorFloorBase(base, client, weightKg) {
   if (!base || !base.macros || !client || !isMenor(client)) return base;
-  const sx = client.sex === 'M' || client.sex === 'F' ? client.sex : null;
   const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
-  const tdee = sx ? calcTDEE(calcTMB(w, client.height, client.age, sx), client.activityFactor) : null;
+  const tdee = nutMinorTdee(client, w);
   // 🔴 Sin gasto conocido NO se inventa un piso — pero TAMPOCO se calla: el plan sigue como está y
   // se MARCA, para que el coach vea que a esta persona el candado no la está cubriendo. Fallar en
   // silencio era el hallazgo L3 de Lucas: las dos puertas degradaban al revés (la calculadora se
@@ -5190,6 +5294,55 @@ function nutMinorFloorBase(base, client, weightKg) {
   });
 }
 
+// 🔴 EL OTRO LADO DEL CANDADO. El de v485 solo miraba hacia abajo, y hacia arriba sí había gente:
+// medido el 2026-08-15 sobre la base real, una asesorada de 16 años con IMC 26,4 —sobrepeso para
+// su edad en la referencia de la OMS— recibía **+350 kcal/día, todos los días**, y no lo escribió
+// nadie: sale de la calculadora, porque su objetivo dice «Ganar músculo». Un candado que solo
+// mira un lado no es medio candado: es un candado que enseña a confiar en la puerta.
+// El recorte sale del CARBOHIDRATO, que es el macro flexible (mismo criterio que el piso), y la
+// proteína se queda donde está —con el techo de 2,2 g/kg de REGLA 1— porque bajarla es
+// exactamente lo que no se hace cuando se recorta energía. Si el carbohidrato ya está en su
+// suelo, **el que cede es el TECHO, no el plato**: dejar a alguien sin carbohidrato para cumplir
+// un tope es el defecto del 0-carb de v428 puesto del revés. Cuando cede, se dice (`apretado`).
+function nutMinorCapBase(base, client, weightKg) {
+  if (!base || !base.macros || !client || !isMenor(client)) return base;
+  if (!(base.kcalObj > 0)) return base;
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  const tdee = nutMinorTdee(client, w);
+  if (!tdee) return base;                       // sin gasto no hay techo (el piso ya lo MARCA)
+  const techo = nutMinorTecho(tdee, client, w);
+  if (!techo || base.kcalObj <= techo + NUT_MENOR_GRANO) return base;
+  const ref = nutRefWeight(w, client.height) || w;
+  const prot_g = Math.min(base.macros.prot_g, Math.round(ref * NUT_MENOR_PROT_MAX));
+  const fat_g = base.macros.fat_g;
+  const carbMin = Math.round(ref * NUT_CARB_MIN_G_KG);
+  // El residuo del redondeo se cierra HACIA ARRIBA a propósito. Cuando el IMC manda, techo y piso
+  // son el MISMO número y un gramo de carbohidrato son 4 kcal: hay que caer de un lado. Pasarse
+  // 3 kcal de un techo (una regla de dirección) es preferible a quedarse 3 por debajo de un piso
+  // (una promesa de dosis, y la que v485 pagó caro). Así el piso de la banda queda en no-op.
+  let carb_g = Math.ceil((techo - prot_g * 4 - fat_g * 9) / 4);
+  const apretado = carb_g < carbMin;
+  if (apretado) carb_g = carbMin;
+  const macros = { prot_g, carb_g: Math.max(0, carb_g), fat_g };
+  macros.kcal = nutMacroKcal(macros);
+  return Object.assign({}, base, {
+    kcalObj: macros.kcal, macros,
+    minorCap: {
+      tdee, techo, kcalAntes: base.kcalObj, apretado,
+      sobrepeso: !!nutMinorBmiOver(client, w),
+    },
+  });
+}
+
+// La BANDA completa, y en este orden a propósito: primero el techo, el piso al final. Cuando el
+// IMC manda, techo y piso son el MISMO número y el redondeo del recorte puede dejar la cifra 1-3
+// kcal por debajo; que la última palabra la tenga el piso hace que la promesa «ningún menor por
+// debajo de su gasto» siga siendo exacta, y que la que se pase por 3 kcal sea la del techo, que
+// es una regla de dirección, no de dosis.
+function nutMinorBandBase(base, client, weightKg) {
+  return nutMinorFloorBase(nutMinorCapBase(base, client, weightKg), client, weightKg);
+}
+
 function nutBaseFor(client, nut, weightKg) {
   const k = parseFloat(nut && nut.kcal);
   const p = parseFloat(nut && nut.prot);
@@ -5206,17 +5359,27 @@ function nutBaseFor(client, nut, weightKg) {
     // `desfase` se calcula ANTES del piso a propósito: describe la contradicción del COACH (su
     // titular contra sus propios macros), no el efecto de nuestro candado. Mezclarlos le echaría
     // encima la culpa de algo que hicimos nosotros — el error de v471 con el botón «✨ Generar».
-    return nutMinorFloorBase({
+    return nutMinorBandBase({
       origen: 'coach', kcalObj: macros.kcal, macros,
       kcalEscrito: Math.round(k), desfase: macros.kcal - Math.round(k),
     }, client, weightKg);
   }
   const est = nutritionEstimate(client, weightKg);
   if (!est || !est.macros) return null;
-  // Idempotente por esta rama (`nutritionEstimate` ya aplica el piso), pero se pasa igual: así la
-  // garantía «ningún menor por debajo de su gasto» es de la SALIDA de nutBaseFor, no de una de sus
-  // ramas — y no depende de que quien toque la otra puerta mañana se acuerde de la regla.
-  return nutMinorFloorBase({ origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee }, client, weightKg);
+  // 🔴 ESTA RAMA SÍ ES IDEMPOTENTE AHORA, Y ANTES NO LO ERA — decía serlo en este mismo comentario.
+  // `nutritionEstimate` aplicaba la regla «un menor no lleva déficit» pero NO el piso ×1,05, que
+  // v485 dejó solo aquí. Resultado medido el 2026-08-18 sobre la base real: a una asesorada de 16
+  // años la habitación de Nutrición le decía **2.111 kcal** y «Hoy», el plato y la lista del
+  // mercado **2.219** — 108 kcal para el MISMO plan, a un toque de distancia, porque esas dos
+  // pantallas leen `nutritionEstimate` directo y estas leen la salida de aquí. Ahora la banda vive
+  // DENTRO de la estimación, así que las dos puertas devuelven el mismo número y este paso no
+  // mueve nada; se deja igual porque la garantía tiene que ser de la SALIDA de `nutBaseFor`, no de
+  // una de sus ramas ni de que quien toque la otra puerta mañana se acuerde de la regla.
+  const b = nutMinorBandBase({ origen: 'estimado', kcalObj: est.kcalObj, macros: est.macros, tdee: est.tdee }, client, weightKg);
+  if (est.minorFloor && !b.minorFloor) b.minorFloor = est.minorFloor;
+  if (est.minorCap && !b.minorCap) b.minorCap = est.minorCap;
+  if (est.minorFloorUnknown) b.minorFloorUnknown = true;
+  return b;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -5427,7 +5590,7 @@ function nutPlanReview(client, currentPlan, weightKg) {
   // titular escrito, porque desde v485 pueden no ser el mismo número.
   const _srv = (typeof nutBaseFor === 'function') ? nutBaseFor(client, currentPlan, weightKg) : null;
   const _kcalSirve = (_srv && _srv.kcalObj) || actual;
-  const rotulo = (typeof nutWhyKey === 'function') ? nutWhyKey(currentPlan, client) : null;
+  const rotulo = (typeof nutWhyKey === 'function') ? nutWhyKey(currentPlan, client, weightKg) : null;
   const mismatch = nutGoalMismatch(rotulo, _kcalSirve, base.tdee, client);
   const gap = Math.round(actual - base.kcalObj);
   // 🔴 UN UMBRAL DE TOLERANCIA NO SIRVE PARA MEDIR UNA REGLA DURA. `NUT_REVIEW_MIN_GAP` (300 kcal)
@@ -5439,6 +5602,14 @@ function nutPlanReview(client, currentPlan, weightKg) {
   // los casos que ya existían — el mismo defecto que sigue abierto para los adultos. (Sofía, v485.)
   if (isMenor(client) && gap < 0) {
     return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
+  }
+  // El espejo exacto del de arriba, y por la misma razón: la regla no admite grados, así que no
+  // puede vivir debajo del umbral de 300 kcal de los adultos. Si el techo actuó, el coach está
+  // escribiendo un número que NO es el que su asesorada come, y tiene que enterarse sin abrirle
+  // el editor. `minorCap` viene de la misma función que decide lo que ella ve, no de una cuenta
+  // paralela — la lección de v485 sobre los oráculos que calculan por su cuenta.
+  if (isMenor(client) && _srv && _srv.minorCap) {
+    return { status: 'menor_sobre_techo', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve, cap: _srv.minorCap };
   }
   // El número puede estar bien y el RÓTULO mentir: es un defecto propio, con su propio estado.
   // Va DESPUÉS del de menores (ese es una regla dura) y ANTES del `ok`, que ya no puede darse por
@@ -7194,6 +7365,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isMenor,
     TMB_MENOR_EDAD,
     calcTDEE,
+    tmbFormulaName,
     kcalTargetFor,
     calcMacrosFromKcal,
     NUT_CARB_MIN_G_KG,
@@ -7256,6 +7428,12 @@ if (typeof module !== 'undefined' && module.exports) {
     nutPlanReview,
     nutBaseFor,
     nutMinorFloorBase,
+    nutMinorCapBase,
+    nutMinorBandBase,
+    nutMinorTecho,
+    nutMinorBmiOver,
+    WHO_BMI_SD1,
+    NUT_MENOR_TECHO_MARGEN,
     nutMacroKcal,
     NUT_KCAL_MISMATCH,
     nutWeekShape,

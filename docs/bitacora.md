@@ -4,6 +4,96 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 — avi-v493: EL OTRO LADO DEL CANDADO DE MENORES (el techo)
+
+Punto 1 del resumen ejecutable del dictamen de Andrés Hyp (`docs/dictamen-andres-menores-2026-08-15.md`),
+que estaba «nuevo, sin construir». El candado de v485 solo miraba hacia abajo.
+
+### 1 · El caso, medido antes de tocar código (R0.1)
+Sobre el backup del 16-ago, resolviendo a cada persona con `nutBaseFor` (la ruta de producción):
+
+| Menor | Datos | Gasto | Recibía | Desvío |
+|---|---|---|---|---|
+| **Sharith Sofía** | 16 a · F · 72 kg · 165 cm (IMC **26,4**) | 2.567 | **2.917** | **+350 kcal (+13,6%)** |
+| Valery | 15 a · F · 52 kg | 1.910 | 2.009 | +5,2% (es el PISO, deliberado) |
+| Valery Valbuena | 16 a · F · 50 kg | 2.111 | 2.219 | +5,1% (ídem) |
+| Santiago Santos | 17 a · sin sexo | — | — | sin gasto: ya se MARCA |
+
+Sharith es la única con superávit de intención, **y no lo escribió nadie**: sale de la calculadora,
+porque su objetivo dice «Ganar músculo». En la referencia de la OMS (5-19 años) su IMC la pone en
+**sobrepeso para su edad y su sexo** — el corte de una mujer de 16 son 24,3, no los 25 del adulto.
+
+### 2 · La banda (REGLA 3 del dictamen)
+`nutMinorCapBase` + `nutMinorBandBase` en avi-core, en el MISMO punto de salida que el piso:
+- Techo general **+10% del gasto**; con sobrepeso para la edad, **cero superávit** (el techo pasa a
+  ser el piso: gasto × 1,05, que es lo que la app promete servir).
+- **El recorte sale del CARBOHIDRATO**, no de la proteína (que se queda con su tope de 2,2 g/kg de
+  peso de referencia). Si el carbohidrato ya está en su suelo, **cede el TECHO, no el plato** — y se
+  dice (`apretado`): dejar a alguien sin carbohidrato para cumplir un tope es el 0-carb de v428 al revés.
+- Orden **techo → piso** a propósito: cuando el IMC manda los dos son el mismo número y el redondeo
+  tiene que caer del lado del piso, que es una promesa de dosis; pasarse 3 kcal de un techo, que es
+  una regla de dirección, no le hace nada a nadie.
+- **Sharith: 2.917 → 2.697.** Proteína intacta (158 g = 2,2 g/kg), carbohidrato 425 → 370 g.
+  Su rótulo pasa de «volumen» a mantenimiento y su etiqueta deja de anunciarle un superávit que ya
+  no lleva (v437). Cero lenguaje de composición corporal en lo que ella lee.
+- El adolescente DELGADO en volumen legítimo **no se toca** más que por el tope de +10% (Andrés,
+  §1.5: «es defendible en un adolescente delgado en pleno crecimiento»).
+
+### 3 · Lo que apareció al medir, y era más grande que el encargo
+🔴 **La habitación de Nutrición y el plato le decían números DISTINTOS a la misma persona.** El piso
+de v485 vivía solo a la salida de `nutBaseFor`, y **cinco superficies leen `nutritionEstimate`
+directo** (la habitación, la calculadora del Perfil, el prefill de «✨ Generar», el oráculo del
+editor y el WhatsApp del plan). Medido: **Valery Valbuena veía 2.111 kcal en una pantalla y 2.219 en
+la otra, a un toque de distancia**. La banda se aplica ahora DENTRO de la estimación, así que las dos
+puertas devuelven lo mismo y la capa de `nutBaseFor` queda como lo que su comentario decía ser (un
+respaldo idempotente, probado por el sabotaje combinado S2b).
+
+🔴 **La VALORACIÓN del coach calculaba por su cuenta** (`kcalTargetFor` + `calcMacrosFromKcal` a
+pelo) bajo un comentario que afirmaba «misma función que el asesorado». Se vio en pantalla: la
+cabecera decía «2.917 kcal/día» tres centímetros encima de la tarjeta que avisa que se sirven 2.696.
+Ya estaba mal antes de esta versión — **a un menor con «Perder grasa» le mostraba un déficit**, que
+es lo que el dictamen prohíbe desde v448. Sexta superficie de la familia v435/v444/v485. Medido: al
+atarla a `nutritionEstimate`, cambian **3 de 23** valoraciones (las 3 menores) y ni un adulto.
+
+🔴 **La tarjeta del desfase de la ficha afirmaba un número que ya no se sirve.** «El plan dice 3.200
+pero sus macros suman 3.352, así que está comiendo 3.352» — con la banda puesta come 2.696, y como
+esa tarjeta corta con `return`, el aviso de la regla dura ni siquiera llegaba a pintarse. Cuando la
+banda actúa manda ella (es la regla más fuerte y la única de las dos que dice un número verdadero).
+
+🔴 **La app le nombraba a una menor la ecuación que el dictamen le prohíbe.** Tres pantallas decían
+«fórmula Mifflin-St Jeor» escrito a mano; v448 cambió el cálculo de los menores a **Schofield** y
+dejó el texto. Ahora sale de `tmbFormulaName(cliente)`, derivado de la misma pregunta que hace
+`calcTMB`, con un check estático que prohíbe volver a escribirlo a mano.
+
+### 4 · El choque de umbrales que casi entra (y que ya tenía precedente)
+Con el techo puesto, la franja que la app le impone a un menor (+5% a +10%) **cabe entera dentro de
+la tolerancia del detector de rótulos (±5%)**: un adolescente delgado en volumen legítimo aparecía
+marcado como «su rótulo miente» por un superávit que la app le acababa de recortar A PROPÓSITO. Es
+el choque de v485 una talla más grande — allí era un punto, aquí una franja. El detector calla
+dentro de la banda, con su control: fuera de ella sigue mordiendo.
+De paso, el oráculo del editor **no le pasaba el cliente** a `nutGoalMismatch`, así que medía a una
+menor contra su gasto pelado: el falso positivo de 3 kcal de v485 seguía vivo en esa superficie.
+
+### 5 · QA
+Suite **775/775** (11 tests nuevos; 3 viejos re-encuadrados porque afirmaban la AUSENCIA del techo —
+uno de ellos pinchaba el defecto en vez del producto: exigía que la calculadora devolviera el gasto
+pelado, que es justo el número que la app nunca sirvió). Matriz `_sabotaje-menores` **30/30** (12
+sabotajes nuevos; 2 verdes con su razón medida y su combinado que sí cae; S15 **retirado** porque su
+mecanismo quedó redundante y se borró). Harnesses NUEVOS: `_verify-menores` (11, con control de
+montaje y sabotaje probado ×1) y `_verify-menores-coach` (9, sin login). `_verify-foodlog` 41/41,
+`_sabotaje-f7` 34/34, `_test-coach-back` OK.
+⚠️ **Tres rojos de esta sesión fueron de MIS SONDAS, no de la app**: una leía «632 kcal» de la
+tarjeta de proteína creyendo leer el titular; otra daba por «claro» un Chrome headless que arranca
+en OSCURO (las dos primeras capturas del modo claro eran del oscuro); y dos aserciones cortaban el
+texto a 240 caracteres justo antes del número que buscaban.
+
+### ⏭️ Abierto (no es de este lote)
+- 🟡 La explicación «Mantenimiento / Salud general» que lee una menor dice **«sostener tu
+  composición»**. Es la única palabra de composición corporal que queda en su pantalla y es de un
+  texto COMPARTIDO con los adultos: separarlo es decisión de Sofía + Andrés, no un arreglo técnico.
+- 🟡 `renderValoracion` usa el peso de la FICHA, no el último registrado (clase v444). Cambiarlo
+  mueve números de adultos y hay que medirlo aparte.
+
 ## 🟢 2026-08-16 (3ª parte) — avi-v492: LAS DOS AUDITORÍAS EXTERNAS, MEDIDAS
 
 El PO trajo dos PDF («Auditoría profunda» y «Plan de implementación técnico», los dos para el

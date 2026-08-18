@@ -5643,8 +5643,19 @@ test('🔴 un menor NUNCA recibe déficit, ni con objetivo «Perder grasa»', ()
   const v = { age: 15, sex: 'F', height: 161, weight: 52, activityFactor: 1.375 };
   ['Perder grasa', 'Recomposición'].forEach(goal => {
     const e = nutritionEstimate(Object.assign({}, v, { goal }), 52);
-    assert.strictEqual(e.deficit, 0, `«${goal}» le está restando energía a una menor`);
-    assert.strictEqual(e.kcalObj, e.tdee, 'un menor recibe su mantenimiento completo');
+    // 🔴 Este test decía `deficit === 0` y `kcalObj === tdee`, y estaba pinchando el defecto en vez
+    // del producto: la app NUNCA le sirvió su gasto pelado — `nutBaseFor` le pone el piso ×1,05
+    // desde v485, así que lo que ella come son 2.009 y la estimación decía 1.910. El test protegía
+    // la mitad de la app que NO se sirve. Ahora se afirma lo que de verdad se promete: no baja de
+    // su gasto, y las DOS puertas dicen el mismo número.
+    assert.ok(e.deficit >= 0, `«${goal}» le está restando energía a una menor`);
+    const piso = Math.round(e.tdee * 1.05);
+    // La banda se cierra con carbohidrato y un gramo son 4 kcal: se afirma el piso y su grano, no
+    // una cifra exacta que el redondeo no puede prometer.
+    assert.ok(e.kcalObj >= piso && e.kcalObj < piso + 4,
+      `un menor recibe su gasto con el margen del plato (${e.kcalObj} contra un piso de ${piso})`);
+    const b = nutBaseFor(Object.assign({}, v, { goal }), null, 52);
+    assert.strictEqual(b.kcalObj, e.kcalObj, 'la habitación y el plato tienen que dar el MISMO número');
   });
   // Y el TEXTO lo dice: cambiar el número y dejar el rótulo viejo es el defecto de v437.
   const e = nutritionEstimate(Object.assign({}, v, { goal: 'Perder grasa' }), 52);
@@ -5893,7 +5904,9 @@ test('🔴 la habitación de nutrición pasa por el candado, no por inferNutGoal
   const crudas = (src.match(/GOAL_WHY\[inferNutGoal\(/g) || []);
   assert.deepStrictEqual(crudas, [],
     'elegir el texto con inferNutGoal a secas se salta el candado de menores: usa nutWhyKey(nut, cliente)');
-  assert.ok(/GOAL_WHY\[nutWhyKey\(nut,c\)\]/.test(src), 'la ruta del plan guardado debe resolver con nutWhyKey');
+  // Se afirma la LLAMADA, no su lista de argumentos: clavarla a `(nut,c)` la rompió el día que el
+  // rótulo pasó a depender también del peso (banda de menores). R2.3 — aserciones derivadas.
+  assert.ok(/GOAL_WHY\[nutWhyKey\(nut,\s*c\s*[,)]/.test(src), 'la ruta del plan guardado debe resolver con nutWhyKey');
   // El aviso al coach se calcula con la MISMA función que pinta lo que ve el destinatario (v437).
   assert.ok(/const efectivo=nutWhyKey\(/.test(src),
     'el aviso del coach no puede usar un oráculo distinto al que decide lo que lee su asesorada');
@@ -7170,11 +7183,14 @@ test('🔴 v485 · el piso RESPETA el reparto de macros que eligió el coach', (
   }
 });
 
-test('🔴 v485 · un menor que YA come por encima de su gasto no se toca', () => {
-  const alto = { kcal: 2400, prot: 130, carbs: 330, fat: 70 };
-  const base = nutBaseFor(MENOR_REAL, alto, 52);
-  assert.ok(!base.minorFloor, 'el piso no inventa superávit sobre un plan que ya está bien');
-  assert.strictEqual(base.kcalObj, nutMacroKcal({ prot_g: 130, carb_g: 330, fat_g: 70 }));
+test('🔴 v485 · un menor que YA come DENTRO de su banda no se toca', () => {
+  // Este test decía «por encima de su gasto no se toca» con un plan de +29%, y desde REGLA 3 del
+  // dictamen (2026-08-15) eso ya no es cierto: por encima del techo SÍ se toca. Lo que sigue
+  // siendo verdad —y es lo que aquí importa— es que dentro de la banda no metemos mano.
+  const dentro = { kcal: 2028, prot: 110, carbs: 262, fat: 60 }; // 2.028 kcal: entre 2.006 y 2.101
+  const base = nutBaseFor(MENOR_REAL, dentro, 52);
+  assert.ok(!base.minorFloor && !base.minorCap, 'ni el piso ni el techo inventan nada sobre un plan que ya está bien');
+  assert.strictEqual(base.kcalObj, nutMacroKcal({ prot_g: 110, carb_g: 262, fat_g: 60 }));
 });
 
 test('🔴 v485 · sin datos para conocer el gasto NO se inventa un piso', () => {
@@ -7234,6 +7250,180 @@ test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', (
   // CONTROL: a un adulto con el mismo hueco pequeño se le sigue respetando el silencio.
   const adulto = Object.assign({}, MENOR_REAL, { age: 34 });
   assert.strictEqual(core.nutPlanReview(adulto, PLAN_BAJO, 52).status, 'ok');
+});
+
+// ── EL OTRO LADO DEL CANDADO: EL TECHO DE MENORES (v493, REGLA 3 del dictamen 2026-08-15) ──
+// Caso real medido sobre el backup del 16-ago: una asesorada de 16 años, 72 kg y 165 cm (IMC 26,4,
+// SOBREPESO para su edad y su sexo en la referencia OMS 5-19) recibía **+350 kcal/día** porque su
+// objetivo dice «Ganar músculo». No lo escribió nadie: sale de la calculadora. El candado de v485
+// solo miraba hacia abajo.
+const SHARITH = { name: 'Sharith', age: 16, sex: 'F', weight: 72, height: 165, activityFactor: 1.55, goal: 'Ganar músculo' };
+const SHARITH_TDEE = 2567; // Schofield 10-18 F: 13,384×72+692,6 = 1.656 → ×1,55 = 2.567
+
+test('🔴 v493 · una menor con SOBREPESO para su edad no recibe superávit', () => {
+  const e = nutritionEstimate(SHARITH, 72);
+  assert.strictEqual(e.tdee, SHARITH_TDEE);
+  // La DOSIS, no el signo: «le bajamos algo» lo cumpliría un −1 kcal y los +350 seguirían ahí.
+  const piso = Math.round(SHARITH_TDEE * 1.05);
+  assert.ok(e.kcalObj >= piso && e.kcalObj < piso + 4,
+    `sigue en superávit: ${e.kcalObj} contra un techo de ${piso}`);
+  assert.ok(e.deficit <= Math.round(SHARITH_TDEE * 0.05) + 3, 'el superávit deliberado desapareció: ' + e.deficit);
+  // Y el TEXTO: cambiar el número dejando «Superávit de 350 kcal» es el defecto de v437.
+  assert.ok(!/[Ss]uper/.test(e.label), 'la etiqueta sigue anunciando un superávit: «' + e.label + '»');
+  assert.strictEqual(core.nutGoalForClient('Ganar músculo', SHARITH, 72), 'mantenimiento',
+    'la explicación seguiría diciéndole «volumen» sobre un plan que ya no lo es');
+  // Cero lenguaje de composición corporal en lo que lee una menor (regla de v448/v449).
+  assert.ok(!/grasa|sobrepeso|peso|IMC|delgad/i.test(e.label), 'lenguaje de composición en su pantalla: «' + e.label + '»');
+});
+
+test('🔴 v493 · CONTROL: un adolescente DELGADO con el mismo objetivo SÍ hace volumen', () => {
+  // Hernán (17, M, 64 kg, 177 cm, IMC 20,4) estaba en la misma medición y Andrés lo dejó igual:
+  // «es defendible en un adolescente delgado en pleno crecimiento». Lo único que se le aplica es
+  // el tope general de +10%, no el recorte a mantenimiento.
+  const flaco = { name: 'Hernán', age: 17, sex: 'M', weight: 64, height: 177, activityFactor: 1.55, goal: 'Ganar músculo' };
+  assert.strictEqual(core.nutMinorBmiOver(flaco, 64), false, 'IMC 20,4 no es sobrepeso a los 17');
+  const e = nutritionEstimate(flaco, 64);
+  assert.ok(e.deficit > 0, 'a un adolescente delgado en volumen se le quitó el superávit entero');
+  const techo = core.nutMinorTecho(e.tdee, flaco, 64);
+  assert.ok(e.kcalObj >= techo && e.kcalObj < techo + 4, `el techo general es +10% del gasto: ${e.kcalObj} contra ${techo}`);
+  assert.strictEqual(core.nutGoalForClient('Ganar músculo', flaco, 64), 'volumen', 'a él sí le corresponde volumen');
+  assert.ok(/[Ss]uper/.test(e.label), 'y su etiqueta lo dice: «' + e.label + '»');
+});
+
+test('🔴 v493 · el recorte sale del CARBOHIDRATO: la proteína no baja', () => {
+  // El control es el plan que ELLA recibía ayer: su gasto + los 350 de «Ganar músculo», dosificado
+  // por la misma función. Compararla contra «la misma persona pero adulta» sería otro gasto y otra
+  // ecuación (Schofield contra Mifflin): no mediría el recorte, mediría la edad.
+  const antes = core.calcMacrosFromKcal(SHARITH_TDEE + 350, 72, SHARITH.goal, SHARITH.height);
+  const e = nutritionEstimate(SHARITH, 72);
+  assert.strictEqual(e.macros.prot_g, antes.prot_g, 'recortar energía bajándole la proteína es lo que no se hace');
+  assert.strictEqual(e.macros.fat_g, antes.fat_g, 'la grasa tiene su propio piso (0,9 g/kg)');
+  assert.ok(e.macros.carb_g < antes.carb_g, 'el macro flexible es el que absorbe el recorte');
+  assert.strictEqual(e.macros.kcal, e.kcalObj, 'y el titular sigue siendo la suma de sus propios macros');
+});
+
+test('🔴 v493 · el techo también alcanza al plan ESCRITO A MANO', () => {
+  // La puerta que v485 encontró abierta: el coach escribe y nadie le pregunta la edad.
+  const escrito = { kcal: 3200, prot: 158, carbs: 500, fat: 80 };
+  const b = nutBaseFor(SHARITH, escrito, 72);
+  assert.ok(b.minorCap, 'el techo no actuó sobre el plan escrito');
+  assert.strictEqual(b.minorCap.sobrepeso, true);
+  assert.strictEqual(b.minorCap.kcalAntes, core.nutMacroKcal({ prot_g: 158, carb_g: 500, fat_g: 80 }),
+    'el aviso al coach tiene que citar SU número, no el nuestro');
+  assert.ok(b.kcalObj <= b.minorCap.techo + 3, `sirve ${b.kcalObj} con techo ${b.minorCap.techo}`);
+  assert.strictEqual(b.macros.prot_g, 158, 'la proteína del coach se respeta (bajo el tope de 2,2 g/kg)');
+  // Y el coach se entera SIN abrir el editor: la ficha lo dice.
+  const r = core.nutPlanReview(SHARITH, escrito, 72);
+  assert.strictEqual(r.status, 'menor_sobre_techo', 'status real: ' + r.status);
+  assert.strictEqual(r.sirve, b.kcalObj, 'la ficha cita lo que de verdad se sirve');
+});
+
+test('🔴 v493 · la VALORACIÓN del coach lee de la misma cuenta que sirve la app', () => {
+  // Calculaba con `kcalTargetFor` + `calcMacrosFromKcal` a pelo: una cuenta paralela sin pisos ni
+  // reglas de menores. En pantalla decía «2.917 kcal/día» encima de la tarjeta que avisaba que se
+  // sirven 2.696 — y a un menor con «Perder grasa» le mostraba un déficit (prohibido desde v448).
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function renderValoracion(');
+  assert.ok(i > 0, 'renderValoracion cambió de nombre: revisa este candado');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(/nutritionEstimate\(c,\s*w\)/.test(cuerpo), 'la valoración volvió a calcular por su cuenta');
+  // Y el efecto, sobre el caso real: su cabecera y lo que se sirve son el MISMO número.
+  const est = nutritionEstimate(SHARITH, 72);
+  assert.strictEqual(est.kcalObj, nutBaseFor(SHARITH, null, 72).kcalObj);
+});
+
+test('🔴 v493 · el nombre de la fórmula sale del MÉTODO, no de la memoria de quien escribió el HTML', () => {
+  const menor = { age: 16, sex: 'F', weight: 72, height: 165 };
+  assert.strictEqual(core.tmbFormulaName(menor), 'Schofield (FAO/OMS/UNU)');
+  assert.strictEqual(core.tmbFormulaName({ age: 30, sex: 'F' }), 'Mifflin-St Jeor');
+  // El candado: v448 cambió la ecuación de los menores y las TRES pantallas siguieron diciendo
+  // «Mifflin-St Jeor» — la que el dictamen prohíbe usarle a ella. Escrito a mano vuelve a pasar.
+  const fs = require('fs'), path = require('path');
+  const sueltos = [];
+  for (const f of ['app-3-coach.js', 'app-5-salud.js', 'app-2-login.js', 'app-4-entreno.js', 'app-6-extra.js']) {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    src.split('\n').forEach((l, i) => {
+      if (!/Mifflin|Schofield/.test(l)) return;
+      const t = l.trim();
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return; // en comentarios sí
+      sueltos.push(f + ':' + (i + 1));
+    });
+  }
+  assert.deepStrictEqual(sueltos, [], 'nombre de ecuación escrito a mano en pantalla: usa tmbFormulaName(cliente)');
+});
+
+test('🔴 v493 · cumplir el techo NUNCA se hace dejándola sin carbohidrato', () => {
+  // El defecto del 0-carb de v428, puesto del revés: si el recorte no cabe, el que cede es el
+  // TECHO, no el plato. Un plan escrito con la grasa disparada no puede acabar en «0 g de arroz».
+  const grasoso = { kcal: 3400, prot: 158, carbs: 120, fat: 220 };
+  const b = nutBaseFor(SHARITH, grasoso, 72);
+  const carbMin = Math.round((core.nutRefWeight(72, 165) || 72) * 2.0);
+  assert.ok(b.macros.carb_g >= carbMin, `le quedaron ${b.macros.carb_g} g de carbohidrato, bajo el piso de ${carbMin}`);
+  assert.ok(b.minorCap.apretado, 'y queda dicho que el techo cedió, para que no sea un recorte silencioso');
+});
+
+test('🔴 v493 · las DOS puertas dan el MISMO número (la que se lee y la que se come)', () => {
+  // Medido el 18-ago: la habitación de Nutrición decía 2.111 kcal y el plato 2.219 para la misma
+  // menor, porque el piso de v485 vivía solo a la salida de `nutBaseFor` y cinco superficies leen
+  // `nutritionEstimate` directo. 108 kcal de contradicción a un toque de distancia.
+  const casos = [
+    SHARITH,
+    { name: 'V', age: 16, sex: 'F', weight: 50, height: 162, activityFactor: 1.55, goal: 'Recomposición' },
+    { name: 'V2', age: 15, sex: 'F', weight: 52, height: 161, activityFactor: 1.375, goal: 'Perder grasa' },
+    { name: 'H', age: 17, sex: 'M', weight: 64, height: 177, activityFactor: 1.55, goal: 'Ganar músculo' },
+  ];
+  casos.forEach(c => {
+    const e = nutritionEstimate(c, c.weight), b = nutBaseFor(c, null, c.weight);
+    assert.strictEqual(b.kcalObj, e.kcalObj, `${c.name}: la pantalla dice ${e.kcalObj} y el plato sirve ${b.kcalObj}`);
+    assert.deepStrictEqual(b.macros, e.macros, `${c.name}: los macros de las dos puertas`);
+  });
+});
+
+test('🔴 v493 · la banda es IDEMPOTENTE: aplicarla dos veces no mueve el número', () => {
+  // Sin holgura de grano el recorte volvía a «recortar» su propio redondeo y pisaba el `kcalAntes`
+  // del aviso con un número que no era el que escribió el coach (cazado midiendo, no razonando).
+  const una = nutBaseFor(SHARITH, { kcal: 3200, prot: 158, carbs: 500, fat: 80 }, 72);
+  const dos = core.nutMinorBandBase(una, SHARITH, 72);
+  assert.strictEqual(dos.kcalObj, una.kcalObj);
+  assert.deepStrictEqual(dos.macros, una.macros);
+  assert.strictEqual(dos.minorCap.kcalAntes, una.minorCap.kcalAntes, 'la segunda pasada pisó el número original');
+});
+
+test('🔴 v493 · el detector NO marca la franja que la app misma impone', () => {
+  // El choque de v485 una talla más grande: la banda entera (+5% a +10%) cabe DENTRO de la
+  // tolerancia del detector (±5%), así que un adolescente en volumen legítimo aparecía como
+  // «su rótulo miente» por un superávit que le acabábamos de recortar A PROPÓSITO.
+  const flaco = { name: 'H', age: 17, sex: 'M', weight: 64, height: 177, activityFactor: 1.55, goal: 'Ganar músculo' };
+  const e = nutritionEstimate(flaco, 64);
+  assert.strictEqual(core.nutGoalMismatch('volumen', e.kcalObj, e.tdee, flaco), null,
+    'marca como contradicción el número que el propio motor eligió');
+  // CONTROL: fuera de la franja el detector sigue teniendo dientes.
+  assert.ok(core.nutGoalMismatch('volumen', Math.round(e.tdee * 0.8), e.tdee, flaco), 'dejó de detectar un déficit real');
+});
+
+test('🔴 v493 · «sobrepeso» a los 16 no es «sobrepeso» a los 11, ni igual en los dos sexos', () => {
+  // Un corte fijo de IMC 25 es de ADULTO. Entre 5 y 19 años el corte se mueve con la edad y el
+  // sexo (OMS 2007, BMI-for-age, +1 DE): a los 11 una niña con IMC 21 ya está por encima, y a los
+  // 17 con IMC 24 todavía no. Compararlas contra 25 no es ser estricto, es medir otra cosa.
+  const nina = a => ({ age: a, sex: 'F', height: 150, weight: 21 * 2.25, activityFactor: 1.55 }); // IMC 21
+  assert.strictEqual(core.nutMinorBmiOver(nina(11), null), true, 'IMC 21 a los 11 años SÍ es sobrepeso');
+  assert.strictEqual(core.nutMinorBmiOver(nina(16), null), false, 'IMC 21 a los 16 años NO lo es');
+  const c17 = { age: 17, sex: 'F', height: 165, weight: 24 * 2.7225, activityFactor: 1.55 }; // IMC 24
+  assert.strictEqual(core.nutMinorBmiOver(c17, null), false, 'IMC 24 a los 17 está bajo el corte de la OMS (24,65)');
+  // El corte NO es el mismo para los dos sexos a la misma edad, y eso CAMBIA el veredicto: a los
+  // 16, un IMC de 24 pasa el corte de un hombre (23,91) y no el de una mujer (24,32).
+  assert.notStrictEqual(core.WHO_BMI_SD1.F[13], core.WHO_BMI_SD1.M[13]);
+  const seis = sx => ({ age: 16, sex: sx, height: 170, weight: 24 * 2.89, activityFactor: 1.55 }); // IMC 24
+  assert.strictEqual(core.nutMinorBmiOver(seis('M'), null), true, 'a los 16, IMC 24 en un hombre SÍ pasa el corte');
+  assert.strictEqual(core.nutMinorBmiOver(seis('F'), null), false, 'y en una mujer de la misma edad NO');
+  // Sin sexo, sin edad en la tabla o sin datos NO se inventa un corte: se calla y no recorta.
+  assert.strictEqual(core.nutMinorBmiOver({ age: 16, sex: '', height: 165, weight: 90 }, 90), null);
+  assert.strictEqual(core.nutMinorBmiOver({ age: 4, sex: 'F', height: 100, weight: 30 }, 30), null);
+  assert.strictEqual(core.nutMinorBmiOver({ age: 25, sex: 'F', height: 165, weight: 90 }, 90), null, 'a un adulto no le aplica esta referencia');
+  // Y a un ADULTO con IMC alto no se le toca el plan por esta vía.
+  const adulta = Object.assign({}, SHARITH, { age: 25 });
+  assert.ok(!nutBaseFor(adulta, null, 72).minorCap, 'la banda de menores se le aplicó a una adulta');
 });
 
 // ── EL RÓTULO QUE MIENTE SOBRE UN PLAN CORRECTO (v486) ────────────────────────────────────

@@ -1445,12 +1445,18 @@ function renderValoracion(c){
   // getGoalMsg → avi-core.js (fuente única de verdad)
 
   // ── Calorías objetivo y macros sugeridos → avi-core.js ──
+  // 🔴 Aquí vivía `kcalTargetFor` + `calcMacrosFromKcal` a pelo, y el comentario de abajo decía
+  // «misma función que el asesorado» siendo falso: era una cuenta PARALELA que se saltaba los
+  // pisos fisiológicos y las reglas de menores. Se vio en pantalla al llegar la banda de v493 —
+  // esta cabecera decía «2.917 kcal/día» tres centímetros encima de la tarjeta que avisaba que la
+  // app le sirve 2.696—, pero ya estaba mal antes: a un menor con «Perder grasa» le mostraba un
+  // DÉFICIT, que es justo lo que el dictamen prohíbe desde v448. Sexta superficie de la familia
+  // v435/v444/v485: la cuenta es UNA, y todas las pantallas leen de ella.
+  const _est = (typeof nutritionEstimate === 'function') ? nutritionEstimate(c, w) : null;
   const _kcalT = kcalTargetFor(goal, tdee);
-  const kcalObj = _kcalT.kcalObj, kcalLabel = _kcalT.label;
-  // `h` (estatura) va SIEMPRE: sin ella no hay IMC y la proteína/grasa se dosifican sobre el
-  // peso total, que es lo que dejaba sin espacio al carbohidrato. Misma función que el
-  // asesorado — la valoración del coach no puede dar números distintos a los suyos.
-  const macros = calcMacrosFromKcal(kcalObj, w, goal, h);
+  const kcalObj = _est ? _est.kcalObj : _kcalT.kcalObj;
+  const kcalLabel = _est ? _est.label : _kcalT.label;
+  const macros = _est ? _est.macros : calcMacrosFromKcal(kcalObj, w, goal, h);
   // Resumen visible cuando la tarjeta está colapsada: el dato clave (objetivo calórico).
   if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--gt)'; }
 
@@ -1527,7 +1533,7 @@ function renderValoracion(c){
   html += `</div>`;
 
   html += `<div style="font-size:10px;color:var(--t3);margin-top:10px;line-height:1.5;border-top:1px solid var(--br);padding-top:8px">
-    ⚕️ <strong>Nota clínica:</strong> Estos cálculos son estimaciones de referencia basadas en fórmulas estándar (Mifflin-St Jeor).
+    ⚕️ <strong>Nota clínica:</strong> Estos cálculos son estimaciones de referencia basadas en fórmulas estándar (${esc(tmbFormulaName(c))}).
     Ajusta las calorías y macros según la respuesta individual del asesorado.
   </div>`;
 
@@ -1628,7 +1634,14 @@ function renderNutReviewCard(c){
     // 2026-08-04: 6 de 10 planes; el de Nataly por 240 kcal/día). El plato se arma con los MACROS,
     // así que el asesorado come lo que suman ellos — y el coach tiene que enterarse de que el
     // número que escribió no es el que se está entregando.
-    if(typeof nutMacroKcal==='function'&&_nut&&parseFloat(_nut.kcal)>0){
+    // 🔴 …pero «come lo que suman sus macros» dejó de ser cierto para un MENOR: la banda de v493
+    // puede cambiarle el número. Con el techo puesto, esta tarjeta le decía al coach «está
+    // comiendo 3.352 kcal» mientras la app le servía 2.696 — y como corta con `return`, el aviso
+    // de la regla dura ni siquiera llegaba a pintarse. Cuando la banda actúa manda ella: es la
+    // regla más fuerte Y la única de las dos que dice un número verdadero. (Lo cazó el harness.)
+    const _b=(typeof nutBaseFor==='function')?nutBaseFor(c,_nut,peso):null;
+    const _banda=!!(_b&&(_b.minorCap||_b.minorFloor));
+    if(!_banda&&typeof nutMacroKcal==='function'&&_nut&&parseFloat(_nut.kcal)>0){
       const _real=nutMacroKcal({prot_g:_nut.prot,carb_g:_nut.carbs,fat_g:_nut.fat});
       const _dif=_real-Math.round(parseFloat(_nut.kcal));
       const _tope=(typeof NUT_KCAL_MISMATCH==='number')?NUT_KCAL_MISMATCH:25;
@@ -1677,6 +1690,18 @@ function renderNutReviewCard(c){
         (_sirve?`así que la app le está sirviendo <b>${_sirve} kcal</b> con el mismo reparto que tú elegiste.`
               :`así que la app le sube el plan hasta su gasto.`)+
         ` Si quieres otro número, súbelo tú en <b>Nutrición</b>.`;
+      tono='--bll'; tinta='--blt';
+    } else if(r.status==='menor_sobre_techo'){
+      // 🔒 El espejo del de arriba, y también fuera del umbral de 300 kcal: la regla del dictamen
+      // no admite grados en ninguno de los dos sentidos. Aquí el coach lee «para su edad» porque
+      // es información clínica que él SÍ necesita; ella no lee ni una palabra de esto.
+      titulo=`${esc(c.name||'')} es menor de edad y su plan queda por encima de su techo`;
+      cuerpo=`Su plan le da <b>${r.cap.kcalAntes} kcal</b> y gasta <b>${r.cap.tdee}</b>. `+
+        (r.cap.sobrepeso
+          ? `Para su edad y su sexo no le corresponde un superávit: su dirección es mantenimiento y el músculo lo pone el entrenamiento. `
+          : `Un menor no pasa de un 10% por encima de su gasto. `)+
+        `Así que la app le está sirviendo <b>${r.sirve||r.cap.techo} kcal</b>, sin bajarle la proteína. `+
+        `Si quieres otro número, escríbelo tú en <b>Nutrición</b>.`;
       tono='--bll'; tinta='--blt';
     } else {
       const sobra=r.gap>0;
