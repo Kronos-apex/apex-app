@@ -4,6 +4,41 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (8ª parte) — avi-v500: las fotos del PO desbloquean el lote
+
+El PO grabó **2 fotos y 4 videos en su propio gimnasio** con las máquinas que faltaban. Con una
+referencia REAL el generador sí las reproduce — que es exactamente lo que decía el pipeline del
+catálogo (las 219 fotos originales partían de una foto previa del mismo ejercicio) y lo que yo no
+tenía cuando escribí el lote.
+
+### Lo que traían sus archivos, identificado uno por uno
+| archivo | qué es | qué desbloquea |
+|---|---|---|
+| `1000497991.jpg` + `1000497992.mp4` | **máquina de sentadilla pendular** | la foto de `e250`, que él mismo pidió |
+| `1000522809.mp4` | **remo en máquina con apoyo pectoral** | la foto de `e229`, retirada en v498 |
+| `1000498026.mp4` | **peso muerto rumano en multipower** | ejercicio NUEVO: `e251` |
+| `1000513510.mp4` | máquina de aperturas de placas | ya cubierta por `e111` (Pec Deck) — no se duplica |
+| `1000535832.jpg` | banco de hiperextensiones 45° | ya cubierto por `e116`, y con foto |
+
+### Resultado
+- **`e250` Sentadilla en Máquina Pendular**: foto correcta a la primera con su referencia. Es la
+  máquina de su gym, con la plataforma estriada y el brazo oscilante.
+- **`e229` Remo con Apoyo Pectoral**: hicieron falta DOS intentos. Con la referencia sola volvió a
+  dibujar una máquina sentada; solo describiendo la postura («DE PIE, inclinado, PECHO contra el
+  cojín, NO sentado») salió bien. **La referencia manda sobre la máquina; la pose hay que
+  deletreársela igual.**
+- **`e251` Peso Muerto Rumano en Multipower** (nuevo, nivel 'I'): bisagra de cadera con barra
+  guiada. Va como 'I' y no 'P' porque si la espalda se redondea el ejercicio se vuelve otra cosa.
+- `audit-catalog`: **13 → 11 MAJOR**, todas «sin foto». Quedan 11 máquinas esperando referencia.
+
+### 🎓 Lo que cierra este ciclo
+El lote nació de una carencia que el PO vio caminando por otros gimnasios, y se terminó de resolver
+con material que él grabó. **Las dos veces la información venía del que usa el producto, no del
+código.** Lo que el repo puede hacer solo es medir y verificar; lo que hay dentro de esas máquinas
+lo sabe él.
+
+---
+
 ## 🟠 2026-08-18 (7ª parte) — avi-v499: fuera también las 3 DUDOSAS (veredicto del coach)
 
 El PO revisó las 25 a tamaño real en la página de revisión y su veredicto fue **quitar también las

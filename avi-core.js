@@ -1018,6 +1018,9 @@ const EX_LEVEL = {
   // e250: la pendular la señaló el PO al revisar el lote. Guiada y con la espalda apoyada: es de
   // las sentadillas MÁS amables para un principiante, así que va 'P'.
   e250:'P',
+  // e251: bisagra de cadera, aunque la barra vaya guiada. No es de entrada: si la espalda se
+  // redondea el ejercicio se vuelve otra cosa. 'I'.
+  e251:'I',
   // ── LOTE DE JUNIO (e165-e214): entró SIN nivel y llevaba un mes cayendo a 'I' por el default.
   // No fue una decisión de nadie: 48 ejercicios de último recurso para un principiante (el gate
   // agota lo de nivel P antes de tocar lo 'I') y, peor, con el riesgo al revés — el burpee
