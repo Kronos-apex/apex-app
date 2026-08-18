@@ -4,6 +4,59 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (3ª parte) — avi-v495: EL TOPE DE RACIÓN DEL HUEVO
+
+El huevo era el **único alimento proteico sin `maxG`**. Estaba en el radar como «la causa de la
+esquina»; se midió antes de tocarlo y resultó que había DOS problemas distintos metidos en el mismo
+punto — y solo uno se puede cerrar gratis.
+
+### 1 · Lo que el plato estaba sirviendo de verdad
+Sobre las 17 personas reales (595 comidas, 117 con huevo):
+
+| ración | comidas |
+|---|---|
+| 2 a 4 huevos | 100 |
+| **5 huevos** | **16** |
+| **6 huevos (300 g)** | **1** |
+
+Cinco huevos en una sentada a **Miguel (5 días), Samuel, Cristian, Yeison y Sharith**, y un
+desayuno de **seis**. Eso no es un plato: es lo que sale de cubrir 30-40 g de proteína con un
+alimento que trae 13 g por cada 100.
+
+### 2 · El tope que sale GRATIS: 200 g (4 huevos)
+El mismo que ya tiene su par por densidad, la clara. Medido contra el estado anterior:
+raciones de más de 4 huevos **17 → 0** · comidas por debajo del 85% de su proteína **0 → 0** ·
+comidas pasadas del 130% **3 → 3** · variedad **44 → 44** · ración proteica mínima **50 g**.
+No se paga nada; solo desaparecen las raciones de 5 y 6.
+
+### 3 · Lo que NO cierra, y lo que costaría cerrarlo
+La esquina del barrido (la que tiene la franja del registro en ±14% en vez de ±12%) **no la cierra
+este tope**: con 200 g entrega lo mismo que sin tope. Peor, el valor intermedio es **peor que no
+hacer nada** — con 150 g (3 huevos) la esquina **empeora a 114,6%**, que es exactamente el «recorta
+en vez de repartir» del 2026-08-10: el menú deja de caber, sale del pool factible y el selector se
+va a otro con raciones mayores.
+
+| tope | esquina | fuera a ±12% | comidas <85% prot | >130% | variedad |
+|---|---|---|---|---|---|
+| sin tope (antes) | 93%-114% | 3 | 0 | 3 | 44 |
+| **200 g ← puesto** | 93%-114% | 3 | **0** | **3** | **44** |
+| 150 g | **93%-114,6%** 🔴 | 4 | 0 | 3 | 43 |
+| 120 g / 100 g (2 huevos) | **93,3%-109,6%** ✅ | **0** | **3** 🔴 | **7** 🔴 | **41** 🔴 |
+
+**Cerrar la esquina exige topar el huevo en 2 huevos**, y eso se paga con tres cenas reales de
+Astrid al **84%** de su proteína, el doble de comidas pasadas de proteína y tres combinaciones
+menos de variedad. **Es una decisión dietética, no técnica: la toma Andrés.** El precio queda
+medido y escrito al lado de la constante para que no haya que volver a medirlo.
+
+### 4 · QA
+Suite **777/777** (+1 con dientes que afirma **la ración que se ve en la mesa**, no el campo de la
+tabla; rojo→verde demostrado: sin tope cae con «18 raciones sirven más de 4 huevos, la mayor
+"6 huevos (300 g)"»). `_sabotaje-carb2` **12/12** (2 nuevos: quitar el tope y aflojarlo a 5 huevos
+— el segundo por la lección de «afirma el signo, no la dosis»). `_sabotaje-f7` 34/34 ·
+`_verify-foodlog` 41/41.
+
+---
+
 ## 🟢 2026-08-18 (2ª parte) — avi-v494: EL PISO DE PROTEÍNA DEL PLATO, 0,70 → 0,60
 
 REGLA 4 del dictamen de Andrés Hyp (2026-08-15), la que quedaba «medida, sin costo». El piso

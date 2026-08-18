@@ -2872,12 +2872,16 @@ function foodLogProgress(totals, target) {
 // 🔴 **CORRECCIÓN MEDIDA (2026-08-18, v494).** Esta nota decía que la causa era `NUT_PROT_MIN_SHARE`
 // y que «el día que eso baje, esta cifra se vuelve a apretar a 12». **Es falso, y se supo bajándolo:
 // con 0,70 y con 0,60 la esquina entrega exactamente lo mismo (93%-114%), el mismo día (1.800 kcal,
-// descanso, día 3) y con los mismos 8 huevos.** La franja NO se puede apretar, y el punto abierto
-// no es el piso: es que **`huevo` sigue siendo el único alimento proteico sin `maxG`**, así que
-// cubrir 30 g de proteína con huevo entero mete 20 g de grasa que nadie tapa. Poner ese tope es
-// decisión de Andrés (topar un alimento ya RECORTÓ en vez de repartir una vez, 2026-08-10) y hay
-// que medirlo antes. **Una hipótesis escrita al lado de una constante se lee como un hecho: esta
-// llevaba dos versiones diciéndole al siguiente por dónde atacar, y era por el otro lado.**
+// descanso, día 3) y con los mismos 8 huevos.** **Una hipótesis escrita al lado de una constante se
+// lee como un hecho: esta llevaba dos versiones diciéndole al siguiente por dónde atacar.**
+// 🔁 SEGUIMIENTO (v495): se midió el otro sospechoso, el tope de ración del huevo. **Tampoco la
+// cierra.** Con `maxG: 200` (4 huevos, el que se puso porque sale gratis) la esquina entrega
+// exactamente lo mismo, y con 150 g **EMPEORA a 114,6%** — el «recorta en vez de repartir» del
+// 2026-08-10 otra vez. Lo ÚNICO que la cierra es topar el huevo en **2 huevos** (93,3%-109,6%,
+// ±12% → 0 fuera), y eso sí se paga: **tres cenas reales caen al 84% de su proteína**, las comidas
+// pasadas del 130% suben de 3 a 7 y la variedad baja de 44 a 41. **Es una decisión dietética, de
+// Andrés, no técnica: la franja se queda en ±14% hasta que él la tome**, y el precio queda medido
+// aquí para que quien la tome no tenga que volver a medirlo.
 // ──────────────────────────────────────────────────────────────────────
 // LA VERSIÓN QUE SE MUESTRA SE DERIVA DE LA QUE SE SIRVIÓ (v491)
 // ──────────────────────────────────────────────────────────────────────
@@ -4051,7 +4055,20 @@ const NUT_FOODS = [
   // aquí (desmenuzada en el guiso), no en torta.
   { id: 'res_molida', src: 'usda_sr', ref: "FDC 171794 - Beef, ground, 90% lean meat / 10% fat, crumbles, cooked, pan-browned", name: 'Carne molida de res', rol: 'prot', kcal: 230, p: 28.4, c: 0, f: 12.0, un: { label: 'porción', g: 120 } },
   { id: 'cerdo_lomo', src: 'tcac2018', ref: "TCAC 2018 (ICBF) F018, pag. 68 - Cerdo, lomo, cocido, sin sal; carbohidrato TOTAL", name: 'Lomo de cerdo', rol: 'prot', kcal: 170, p: 35.1, c: 0, f: 3.2 , un: { label: 'porción', g: 120 } },
-  { id: 'huevo', src: 'usda_sr', ref: "FDC 171287 - Egg, whole, raw, fresh", name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, compra: 'un', un: { label: 'huevo', g: 50 } },
+  // 🔒 `maxG: 200` = 4 huevos (v495). Era el ÚNICO proteico sin tope de ración, y el tope se pone
+  // donde lo ponen sus pares por densidad: la clara también lo tiene en 200 g. Sin él, medido sobre
+  // las 17 personas reales, **17 de las 117 comidas con huevo servían más de 4** — cinco huevos en
+  // una sentada a Miguel, Samuel, Cristian, Yeison y Sharith, y **seis (300 g) en un desayuno**.
+  // Cuesta CERO: comidas por debajo del 85% de su proteína 0 → 0, comidas pasadas del 130% 3 → 3,
+  // variedad 44 → 44, ración proteica mínima 50 g. Solo desaparecen las raciones de 5 y 6.
+  // ⚠️ Y lo que este tope NO hace, medido antes de ponerlo: **no cierra la esquina** del barrido
+  // (93%-114% con tope y sin él), así que la franja del registro sigue en ±14%. Cerrarla exige
+  // bajar el tope a **2 huevos**, y eso sí se paga: tres cenas reales caen al 84% de su proteína,
+  // las comidas pasadas de proteína suben de 3 a 7 y la variedad baja de 44 a 41. Es una decisión
+  // dietética, no técnica: la toma Andrés. Y el valor intermedio es PEOR que no poner nada —
+  // con 150 g (3 huevos) la esquina EMPEORA a 114,6%, que es el «recorta en vez de repartir» del
+  // 2026-08-10 otra vez: el menú deja de caber y el selector se va a otro con raciones mayores.
+  { id: 'huevo', src: 'usda_sr', ref: "FDC 171287 - Egg, whole, raw, fresh", name: 'Huevo entero', rol: 'prot', kcal: 143, p: 13.0, c: 1.1, f: 9.9, maxG: 200, compra: 'un', un: { label: 'huevo', g: 50 } },
   { id: 'clara', src: 'usda_sr', ref: "FDC 172183 - Egg, white, raw, fresh", name: 'Clara de huevo', rol: 'prot', kcal: 52, p: 11.0, c: 0.7, f: 0.2, maxG: 200, un: { label: 'clara', g: 33 } },
   // ⏭️ PARA EL LOTE DE CONVERSIÓN (dictamen de Andrés Hyp + decisión del PO, 13-ago): estos
   // macros son de pescado COCIDO (la TCAC E043 da la mojarra entera cruda en 96 kcal / 20,1 P).

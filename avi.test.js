@@ -10003,6 +10003,38 @@ test('🔴 v494 · el piso de proteína no EMPUJA la comida por encima de su pro
   assert.ok(combos.size >= 46, `la variedad cayó a ${combos.size} combinaciones distintas`);
 });
 
+// 🔒 EL TOPE DE RACIÓN DEL HUEVO (v495). Era el único proteico sin `maxG` y el plato llegaba a
+// servir SEIS huevos en un desayuno. Se afirma la ración que la persona ve en la mesa, no la
+// constante — porque el defecto no es que falte un campo, es lo que aparece en el plato.
+test('🔴 v495 · el plato no sirve más de 4 huevos en una sola comida', () => {
+  let comidas = 0, maxG = 0, maxTxt = '', sobre4 = 0;
+  _PERFILES_EXTREMOS.forEach(p => {
+    const base = nutritionEstimate(p); if (!base) return;
+    ['pierna', 'torso', 'descanso'].forEach(k => {
+      for (let d = 0; d < 7; d++) {
+        const plan = nutDayPlan(base, k, 4, 2, d); if (!plan) return;
+        plan.meals.forEach(m => {
+          comidas++;
+          m.items.forEach(it => {
+            if (it.id !== 'huevo') return;
+            if (it.grams > maxG) { maxG = it.grams; maxTxt = it.text; }
+            if (it.grams > 200) sobre4++;
+          });
+        });
+      }
+    });
+  });
+  assert.ok(comidas > 1000, `el barrido solo resolvió ${comidas} comidas: no prueba nada`);
+  // Medido 2026-08-18: SIN tope el barrido sirve hasta **«6 huevos (300 g)»** y 18 raciones pasan
+  // de 4; con el tope, la mayor es «4 huevos (200 g)» y las de más de 4 son **0**.
+  assert.strictEqual(sobre4, 0, `${sobre4} raciones sirven más de 4 huevos (la mayor: «${maxTxt}»)`);
+  assert.ok(maxG > 0, 'control: si el barrido no sirve huevo ni una vez, este test no prueba nada');
+  // 🔒 Y el tope va en la TABLA, que es de donde lo lee `nutPortionText`: ponerlo a mano en el
+  // solver sería la segunda verdad de siempre. La clara —su par por densidad— lo tiene igual.
+  assert.strictEqual(core.NUT_FOOD_BY_ID.huevo.maxG, 200);
+  assert.strictEqual(core.NUT_FOOD_BY_ID.clara.maxG, 200);
+});
+
 // 🔴 LA FUNCIÓN QUE CERRÓ EL FRENTE. Lo que se afirma no es que elija «bien» —eso lo miden los
 // dos guardianes de arriba— sino las dos cosas que puede romper alguien tocándola sin querer:
 // que NO deje de rotar (variedad) y que NO se quede callada cuando no hay nada que quepa.

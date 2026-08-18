@@ -40,6 +40,12 @@ const SABOTAJES = [
   ['10· el piso de proteína se va al suelo: el proteico desaparece del plato («20 g de atún con 490 g de pasta»)',
     'const NUT_PROT_MIN_SHARE = 0.6;',
     'const NUT_PROT_MIN_SHARE = 0.1;'],
+  ['11· al huevo se le quita el tope de ración (vuelven los 6 huevos en un desayuno, v495)',
+    "f: 9.9, maxG: 200, compra: 'un'",
+    "f: 9.9, compra: 'un'"],
+  ['12· el tope del huevo se afloja a 5 huevos (afirma el signo, no la dosis)',
+    "f: 9.9, maxG: 200, compra: 'un'",
+    "f: 9.9, maxG: 250, compra: 'un'"],
 ];
 // ⚠️ NO se pone aquí un «sabotaje» que afloje el tope del guardián de extremos: aflojar un tope
 // deja la suite VERDE por definición, así que nunca mordería. Contra eso no protege una matriz de
