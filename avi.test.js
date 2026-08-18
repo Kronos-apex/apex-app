@@ -7252,6 +7252,102 @@ test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', (
   assert.strictEqual(core.nutPlanReview(adulto, PLAN_BAJO, 52).status, 'ok');
 });
 
+// ── EL LOTE DE MÁQUINAS (e228-e249, v497) ────────────────────────────────────────────────
+// Nace de una queja del PO con la razón de su lado: «he estado en otros gyms y veo máquinas que no
+// están en nuestra biblioteca». Medido contra el piso de un gimnasio de cadena: faltaban 25 de las
+// 30 estaciones revisadas, y el catálogo tenía 36 ejercicios de máquina contra 127 de peso corporal.
+const _LOTE_MAQ = [];
+for (let n = 228; n <= 249; n++) _LOTE_MAQ.push('e' + n);
+const _catFuente = () => require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+
+test('🔴 v497 · el lote de máquinas es de GIMNASIO y no se cuela en casa ni en el parque', () => {
+  // El defecto que este candado impide es el que ya está documentado: «al de gym le caen ejercicios
+  // de suelo y al de casa prensa de pierna». Una máquina sin `env` cae a gym por defecto, pero
+  // declararlo es lo que impide que mañana alguien la deje suelta.
+  const src = _catFuente();
+  _LOTE_MAQ.forEach(id => {
+    const linea = src.split('\n').find(l => l.includes(`{id:'${id}',`));
+    assert.ok(linea, `${id} no está en el catálogo`);
+    assert.ok(/env:\['gym'\]/.test(linea), `${id} no declara env:['gym'] — se puede colar en casa`);
+  });
+});
+
+test('🔴 v497 · ninguna máquina nueva cae al nivel por DEFECTO', () => {
+  // Un id sin nivel explícito cae a 'I' y entonces un PRINCIPIANTE no lo recibe jamás — que es
+  // justo al revés de lo que una máquina guiada debería hacer. Pasó con el lote de junio (48
+  // ejercicios un mes en el limbo), así que aquí se afirma id por id.
+  _LOTE_MAQ.forEach(id => {
+    assert.ok(core.EX_LEVEL[id], `${id} no tiene nivel en EX_LEVEL: caería a 'I' por el default`);
+    assert.ok(['P', 'I', 'A'].includes(core.EX_LEVEL[id]), `${id} con nivel raro: ${core.EX_LEVEL[id]}`);
+  });
+  // Y el criterio: la máquina GUIADA es de entrada. Al menos la mitad del lote tiene que ser 'P'
+  // o el lote no le sirve a quien más lo necesita (el principiante que no sabe usar una barra).
+  const p = _LOTE_MAQ.filter(id => core.EX_LEVEL[id] === 'P').length;
+  assert.ok(p >= 11, `solo ${p} de ${_LOTE_MAQ.length} son de nivel principiante`);
+});
+
+test('🔴 v497 · cada máquina nueva dice qué músculo trabaja (mapa muscular)', () => {
+  const { MM_EX } = require('./exercise-muscles.js');
+  _LOTE_MAQ.forEach(id => {
+    const m = MM_EX[id];
+    assert.ok(m && m.p && m.p.length, `${id} sin mapa muscular: la ficha no diría qué trabaja`);
+  });
+});
+
+test('🔴 v497 · el generador de GIMNASIO ya reparte las máquinas nuevas', () => {
+  // Un ejercicio que el generador nunca elige solo sirve en el buscador del coach. Se barre gym
+  // con varias semillas: el catálogo entero se recorre por rotación, así que con UNA semilla no
+  // se puede concluir nada (con 8 parecía que el press de banca DESAPARECÍA y con 40 se ve que
+  // solo baja de frecuencia porque el pool creció).
+  const src = _catFuente();
+  const LIB = [];
+  for (const m of src.matchAll(/\{id:'(e\d+)',name:'([^']+)',muscle:'([^']*)',type:'([^']*)'([^}]*)\}/g)) {
+    const c = m[5]; const env = (c.match(/env:\[([^\]]*)\]/) || [])[1];
+    LIB.push({ id: m[1], name: m[2], muscle: m[3], type: m[4],
+      env: env ? env.split(',').map(s => s.replace(/'/g, '').trim()) : undefined,
+      sets: +((c.match(/sets:(\d+)/) || [])[1] || 3), reps: +((c.match(/reps:(\d+)/) || [])[1] || 10) });
+  }
+  assert.ok(LIB.length > 200, `el barrido leyó ${LIB.length} ejercicios: no está leyendo el catálogo`);
+  const salen = new Set(); const enCasa = new Set();
+  // El barrido cubre los DOS sexos y dos objetivos: los splits y los puestos cambian con ambos,
+  // así que uno solo mide media biblioteca (mi primer barrido de este test daba 10 de 22 por eso).
+  ['Principiante', 'Intermedio', 'Avanzado'].forEach(level => {
+    [3, 5].forEach(days => {
+      ['gym', 'casa'].forEach(place => {
+        for (let seed = 1; seed <= 6; seed++) {
+         for (const sex of ['M', 'F']) {
+          for (const goal of ['Ganar músculo', 'Perder grasa']) {
+          const cli = { id: 'x', name: 'x', sex, level, days, goal, age: 30, weight: 75, height: 175 };
+          let r;
+          try { r = core.generarRutinas(cli, LIB, { place, seed, now: new Date('2026-08-18T12:00:00'), idFn: () => 'r' }); } catch (e) { r = null; }
+          ((r && r.routines) || []).forEach(x => (x.exercises || []).forEach(e => {
+            if (_LOTE_MAQ.includes(e.id)) (place === 'casa' ? enCasa : salen).add(e.id);
+          }));
+          }
+         }
+        }
+      });
+    });
+  });
+  assert.strictEqual(enCasa.size, 0, `máquinas de gimnasio en un plan de CASA: ${[...enCasa].join(', ')}`);
+  // Medido 2026-08-18 con ESTE mismo barrido: **14 de las 22** llegan a un plan de gimnasio (con
+  // uno más ancho —8 semillas y 4 objetivos— son 18). El piso va en 12 con aire: cuáles salen
+  // depende de la rotación del cursor, y lo que este test protege es que el lote NO sea decorativo.
+  // Las 8 que no salen viven del buscador del coach, que es de donde nació la queja.
+  assert.ok(salen.size >= 12, `solo ${salen.size} de 22 máquinas nuevas llegan a un plan de gimnasio`);
+});
+
+test('🔴 v497 · las máquinas que YA estaban ahora dicen que son máquina', () => {
+  // El barrido casi las cuenta como faltantes: el nombre no decía «máquina» aunque la descripción
+  // empieza por «Boca abajo en la MÁQUINA…». Si el coach no las encuentra buscando, para él no
+  // existen — que es literalmente la queja que abrió este lote.
+  const src = _catFuente();
+  [['e15', 'Curl Femoral Tumbado en Máquina'], ['e59', 'Elevación de Talones Sentado en Máquina']]
+    .forEach(([id, nombre]) => {
+      assert.ok(src.includes(`{id:'${id}',name:'${nombre}'`), `${id} debería llamarse «${nombre}»`);
+    });
+});
+
 // ── LA PROTEÍNA DEL PLAN, QUE NO MIRABA NADIE (v496 — punto 1 del dictamen del 2026-08-05) ──
 // El revisor juzgaba calorías y rótulo. Medido el 18-ago sobre los 10 planes escritos: 4 están
 // entre 25 y 37 g POR DEBAJO de la doctrina y 1 está 26 g POR ENCIMA del techo de 2,2 g/kg, y a

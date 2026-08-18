@@ -4,6 +4,63 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (5ª parte) — avi-v497: EL LOTE DE MÁQUINAS (e228-e249)
+
+Pedido del PO, y con la razón de su lado: *«he estado en otros gyms y veo máquinas que no están en
+nuestra biblioteca»*. Se midió antes de escribir nada.
+
+### 1 · La medición le dio la razón
+El catálogo tenía **220 ejercicios: 127 de peso corporal y solo 36 de máquina o polea** — una
+biblioteca de CASA en una app cuyos asesorados entrenan en gimnasio. Contra el piso de un gimnasio
+de cadena (Smart Fit / Bodytech / Stark, líneas Matrix-Life Fitness), estación por estación:
+**faltaban 25 de las 30 revisadas.**
+
+Y dos de las que parecían faltar **ya estaban, pero su nombre no lo decía**: `e15` «Curl Femoral
+Tumbado» y `e59` «Elevación de Talones Sentado» son máquinas —su propia descripción empieza por
+«Boca abajo en la MÁQUINA…»— y el coach no las encuentra buscando «máquina». Renombradas.
+
+### 2 · Lo que entra (22 ejercicios, e228-e249)
+- **Pecho**: press inclinado en máquina · press de banca en multipower.
+- **Espalda**: remo con apoyo pectoral · remo en T · **dominadas asistidas en gravitrón** (el camino
+  real a la dominada para quien no puede con su peso) · pullover en máquina · remo en multipower ·
+  remo Pendlay.
+- **Hombro/brazo**: elevaciones laterales en máquina · curl de bíceps en máquina · extensión de
+  tríceps en máquina.
+- **Pierna/glúteo**: prensa horizontal sentada · gemelo de pie en máquina · gemelo en la prensa ·
+  patada de glúteo en máquina · hip thrust en multipower · búlgara en multipower · zancada con barra.
+- **Core**: crunch en máquina abdominal · abdominales en banco declinado.
+- **Cardio**: bicicleta reclinada · bici indoor (spinning).
+Todos con `env:['gym']`, **nivel explícito** (12 de nivel principiante: la máquina guiada es
+justamente lo que un novato SÍ puede usar), mapa muscular, foto y las dos descripciones.
+
+### 3 · El susto: «desaparece el press de banca» — y era MI barrido
+Al medir el impacto en el generador con **8 semillas**, el resultado decía que el press de banca con
+barra, la sentadilla con barra y otros 13 básicos **caían a 0 apariciones**. Con ese dato el lote no
+se despliega. Con **40 semillas** la conclusión se dio vuelta:
+
+| ejercicio | antes | después |
+|---|---|---|
+| Press de Banca con Barra | 176 | **132** |
+| Sentadilla con Barra | 210 | **150** |
+| Press Inclinado con Barra | 216 | **172** |
+| Press de Banca en Multipower (nuevo) | 0 | **132** |
+
+No desaparecen: **bajan de frecuencia porque el pool creció** (el de pecho compuesto en gimnasio
+pasó de 9 a 11 opciones) y el cursor del generador arranca en `semilla % tamaño`, así que al crecer
+el pool cambia el punto de partida. **Un barrido corto no es un barrido**, y esta vez el falso
+positivo fue mío. De paso: la tabla que escribí para leerlo tenía **los nombres cambiados** (le puse
+«Sentadilla con Barra» al id del remo) porque los tecleé de memoria en vez de leerlos del catálogo.
+
+### 4 · QA
+Suite **787/787** (+5 candados: `env:['gym']` id por id · nivel explícito id por id · mapa muscular ·
+que el generador de gimnasio de verdad las reparte (**14 de 22** en el barrido del test, 18 en uno
+más ancho) y que **ninguna se cuela en un plan de casa** · los dos renombres). Rojo→verde demostrado
+con dos sabotajes (quitarle el `env` a una máquina y quitarle el nivel). `audit-catalog` **0 BLOCK**.
+🔒 El propio candado del repo paró un error mío antes de tiempo: el lote arrancaba en **e227**, que
+está en `REMOVED_EXERCISES` por duplicar a otro ejercicio. Los ids se corrieron a e228-e249.
+
+---
+
 ## 🟢 2026-08-18 (4ª parte) — avi-v496: LA PROTEÍNA DEL PLAN, QUE NO MIRABA NADIE
 
 Punto 1 del dictamen de Andrés Hyp del **2026-08-05** — el que él mismo señaló como «sigue sin
