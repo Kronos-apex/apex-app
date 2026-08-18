@@ -2866,12 +2866,18 @@ function foodLogProgress(totals, target) {
 // 🔴 Se abre por la ESQUINA, no por la gente, igual que en la primera re-medida: el barrido tiene
 // un perfil (1.800 kcal con 30% de proteína en día de DESCANSO) que ninguna de las 19 ocupa, y una
 // franja que no lo cubra le diría «te pasaste» a la primera persona que caiga ahí.
-// 🔴 Y la causa de esa esquina NO es la tabla nueva —con la vieja ya entregaba 108,5%— sino el
-// PISO DE PROTEÍNA: ahí el plato sirve 4 huevos en el desayuno y otros 4 en la cena (`huevo` es el
-// único alimento proteico sin `maxG`), y la grasa se va a 67 g contra un objetivo de 50. **El
-// arreglo de verdad es el plato, no la franja**, y está esperando el dictamen de Andrés sobre
-// `NUT_PROT_MIN_SHARE`. El día que eso baje, esta cifra se vuelve a apretar: la curva de arriba
-// dice que en cuanto la esquina baje de 113% se puede volver a 12.
+// 🔴 Y la causa de esa esquina NO es la tabla nueva: con la vieja ya entregaba 108,5%. Ahí el plato
+// sirve **4 huevos en el desayuno y otros 4 en la cena** y la grasa se va a 67 g contra un objetivo
+// de 50 — o sea que casi todo el exceso es la GRASA del huevo, no la proteína.
+// 🔴 **CORRECCIÓN MEDIDA (2026-08-18, v494).** Esta nota decía que la causa era `NUT_PROT_MIN_SHARE`
+// y que «el día que eso baje, esta cifra se vuelve a apretar a 12». **Es falso, y se supo bajándolo:
+// con 0,70 y con 0,60 la esquina entrega exactamente lo mismo (93%-114%), el mismo día (1.800 kcal,
+// descanso, día 3) y con los mismos 8 huevos.** La franja NO se puede apretar, y el punto abierto
+// no es el piso: es que **`huevo` sigue siendo el único alimento proteico sin `maxG`**, así que
+// cubrir 30 g de proteína con huevo entero mete 20 g de grasa que nadie tapa. Poner ese tope es
+// decisión de Andrés (topar un alimento ya RECORTÓ en vez de repartir una vez, 2026-08-10) y hay
+// que medirlo antes. **Una hipótesis escrita al lado de una constante se lee como un hecho: esta
+// llevaba dos versiones diciéndole al siguiente por dónde atacar, y era por el otro lado.**
 // ──────────────────────────────────────────────────────────────────────
 // LA VERSIÓN QUE SE MUESTRA SE DERIVA DE LA QUE SE SIRVIÓ (v491)
 // ──────────────────────────────────────────────────────────────────────
@@ -4650,7 +4656,28 @@ const NUT_SOLVE_PASSES = 4;
 // deja platos que cuadran en macros y son absurdos en la mesa: medido 2026-08-01, con
 // pasta (6 g de proteína por 100 g) el solver dejaba «20 g de atún con 490 g de pasta».
 // Por eso el alimento proteico nunca baja de esta fracción de la meta de la comida.
-const NUT_PROT_MIN_SHARE = 0.7;
+// 🔒 0,70 → 0,60 (REGLA 4 del dictamen de Andrés Hyp, 2026-08-15, ejecutada en v494). Es el CODO
+// de la curva, y la curva se volvió a medir contra el código de HOY antes de tocar nada — la del
+// dictamen se hizo sobre v485 y entre medio se corrigió media tabla de alimentos, así que sus
+// cifras absolutas ya no valían (él medía 48 comidas pasadas de proteína; hoy son 17).
+// Medido el 2026-08-18 sobre las **17 personas reales que SÍ ven el plan** (595 comidas; 3 de las
+// 20 que resuelve `nutBaseFor` están en tier libre y nunca lo ven), con la proteína servida
+// recalculada desde los gramos y la tabla, NO preguntándole al plan:
+//   piso   comidas >130%   <85%   combos   prot del día (mediana/peor)
+//   0,70        17           0       43         +6,8% / +25,0%
+//   0,65        11           0       43         +6,4% / +25,0%
+//   0,60 ←       3           0       44         +5,2% / +23,4%   ELEGIDO
+//   0,55         1           0       44         +4,7% / +14,3%
+//   0,50         2           0       44         +4,6% / +16,2%
+// **Lo que NO se paga, que es lo que autoriza el cambio:** ni una comida se queda corta (<85% sigue
+// en 0), la ración proteica mínima sigue siendo media lata de atún (50 g) —no aparece el «5 g de
+// atún» que se rechazó dos veces— y **la variedad SUBE** (43 → 44 combinaciones distintas).
+// Por qué 0,60 y no 0,55: entre 0,70 y 0,60 se ganan 14 comidas, de 0,60 a 0,55 se ganan 2, y a
+// 0,50 se pierde una. Es el codo, y coincide con el que midió Andrés sobre el código anterior.
+// ⚠️ Lo que este cambio NO arregla, medido: **la esquina del barrido sintético no se mueve ni una
+// décima** (93%-114% con 0,70 y con 0,60), así que la franja del registro NO se puede apretar.
+// Ver la nota de `FOODLOG_BAND`, donde estaba escrito lo contrario.
+const NUT_PROT_MIN_SHARE = 0.6;
 // 🔴 SEGUNDA FUENTE DE CARBOHIDRATO (`pick.carb2`, dictamen de Andrés 2026-08-10).
 // Un plato colombiano casi nunca trae un solo carbohidrato: es arroz + tajada, arepa + papa.
 // Con UNO solo, cubrir el objetivo obliga a raciones que nadie sirve —«800 g de papa criolla»,

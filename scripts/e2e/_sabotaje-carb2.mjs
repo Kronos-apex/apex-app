@@ -34,6 +34,12 @@ const SABOTAJES = [
   ['8· la medida chica MANDA sobre la grande («8 cucharadas de avena» en vez de «1 taza»)',
     '  const grande = escalon(food.un);',
     '  const grande = food.un2 ? null : escalon(food.un);'],
+  ['9· el piso de proteína vuelve a 0,70 y EMPUJA la comida por encima de su propia meta (v494)',
+    'const NUT_PROT_MIN_SHARE = 0.6;',
+    'const NUT_PROT_MIN_SHARE = 0.7;'],
+  ['10· el piso de proteína se va al suelo: el proteico desaparece del plato («20 g de atún con 490 g de pasta»)',
+    'const NUT_PROT_MIN_SHARE = 0.6;',
+    'const NUT_PROT_MIN_SHARE = 0.1;'],
 ];
 // ⚠️ NO se pone aquí un «sabotaje» que afloje el tope del guardián de extremos: aflojar un tope
 // deja la suite VERDE por definición, así que nunca mordería. Contra eso no protege una matriz de

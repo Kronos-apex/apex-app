@@ -4,6 +4,64 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (2ª parte) — avi-v494: EL PISO DE PROTEÍNA DEL PLATO, 0,70 → 0,60
+
+REGLA 4 del dictamen de Andrés Hyp (2026-08-15), la que quedaba «medida, sin costo». El piso
+existe para que el alimento proteico no desaparezca del plato («20 g de atún con 490 g de pasta»),
+pero puesto muy alto EMPUJA: la comida sirve mucha más proteína de la que su propia meta pide,
+porque el carbohidrato que la acompaña también aporta.
+
+### 1 · La curva se volvió a medir contra el código de HOY, y por eso hubo que medirla
+El dictamen midió sobre v485 y entre medio se corrigió **media tabla de alimentos** (v487-v490).
+Sus cifras absolutas ya no valían: él contaba **48** comidas pasadas de proteína y hoy son **17**.
+La DIRECCIÓN y el CODO sí aguantaron. Medido sobre las **17 personas reales que sí ven el plan**
+(595 comidas; 3 de las 20 que resuelve `nutBaseFor` están en tier libre), con la proteína servida
+recalculada desde los gramos y la tabla —no preguntándole al plan, que es el oráculo que ya falló
+una vez en F7—:
+
+| piso | comidas >130% | <85% | combos | proteína del día (mediana / peor) |
+|---|---|---|---|---|
+| 0,70 (antes) | **17** | 0 | 43 | +6,8% / +25,0% |
+| 0,65 | 11 | 0 | 43 | +6,4% / +25,0% |
+| **0,60 ← elegido** | **3** | 0 | **44** | **+5,2% / +23,4%** |
+| 0,55 | 1 | 0 | 44 | +4,7% / +14,3% |
+| 0,50 | 2 | 0 | 44 | +4,6% / +16,2% |
+
+**Lo que NO se paga, que es lo que autoriza el cambio:** ni una comida se queda corta (`<85%` sigue
+en 0), **la variedad SUBE** (43 → 44 combinaciones), la ración proteica mínima sigue siendo media
+lata de atún (50 g) —no aparece el «5 g de atún» rechazado en v471 y re-rechazado por Andrés en
+v485— y **las porciones mejoran**: raciones de ≥5 medidas caseras **58 → 48**, y el gramaje máximo
+de un solo alimento no se mueve (420 g). Por qué 0,60 y no 0,55: de 0,70 a 0,60 se ganan 14
+comidas, de 0,60 a 0,55 se ganan 2, y a 0,50 se pierde una.
+
+### 2 · Qué cambia en el plato, en el idioma del plato
+14 comidas de gente real cambian. Las dos formas que tenía el defecto:
+- **La cena de atún**: «1 lata (100 g) + 2½ tazas de pasta» servía **143%** de su proteína →
+  ahora «media lata (50 g) + 2½ tazas» = **106%**. La pasta aportaba 21 g que nadie contaba.
+- **El desayuno de yogur**: «1½ vasos (300 g) + 1 taza de avena + 1 banano» daba **136%** →
+  «1 vaso (200 g) + 1 taza + 1½ bananos» = **110%**.
+
+### 3 · Una hipótesis escrita al lado de una constante, y era falsa
+La nota de `FOODLOG_BAND` decía que la **esquina** del barrido (la que tiene la franja del registro
+abierta en ±14% en vez de ±12%) la causaba este piso, y que **«el día que eso baje, esta cifra se
+vuelve a apretar»**. Se bajó, y **no se movió ni una décima**: la esquina entrega 93%-114% con 0,70
+y con 0,60, es el mismo día (1.800 kcal, descanso, día 3) y sigue sirviendo **los mismos 8 huevos**.
+La causa real es que **`huevo` es el único alimento proteico sin `maxG`**: cubrir 30 g de proteína
+con huevo entero mete 20 g de grasa, y el exceso de esa esquina es GRASA, no proteína. Poner ese
+tope es decisión de Andrés y hay que medirlo antes (topar un alimento ya RECORTÓ en vez de repartir,
+2026-08-10). La nota quedó corregida con la medición al lado.
+
+### 4 · QA
+Suite **776/776** (+1 con dientes: afirma la PROPIEDAD —cuántas comidas se pasan del 130% de su
+propia meta— y sus tres contrapesos: que ninguna se quede corta, que no aparezca una ración por
+debajo de 25 g y que la variedad no baje). **Rojo→verde demostrado**: con 0,70 el test cae con
+«23 comidas sirven más del 130%». `_sabotaje-carb2` **10/10** (2 nuevos: el piso de vuelta a 0,70
+y el piso al suelo). `_sabotaje-f7` 34/34 · `_verify-foodlog` 41/41.
+⚠️ Mi primera sonda de porciones contaba «20 g» como «20 medidas caseras» (el número suelto del
+texto): los conteos de la primera pasada estaban inflados en los dos lados.
+
+---
+
 ## 🟢 2026-08-18 — avi-v493: EL OTRO LADO DEL CANDADO DE MENORES (el techo)
 
 Punto 1 del resumen ejecutable del dictamen de Andrés Hyp (`docs/dictamen-andres-menores-2026-08-15.md`),

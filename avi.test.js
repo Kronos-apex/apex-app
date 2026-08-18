@@ -9959,6 +9959,50 @@ test('ni en los casos EXTREMOS el plan se pasa del 13%', () => {
     `al plan le falta ${Math.abs(r.peorProt).toFixed(1)}% de la proteína prometida (${r.quienProt}) — el tope es -11%`);
 });
 
+// 🔒 EL PISO DE PROTEÍNA DE LA COMIDA (`NUT_PROT_MIN_SHARE`, 0,70 → 0,60 en v494, REGLA 4 del
+// dictamen de Andrés Hyp). El piso existe para que el proteico no desaparezca del plato («20 g de
+// atún con 490 g de pasta»), pero puesto demasiado alto EMPUJA: la comida sirve mucha más proteína
+// de la que su propia meta pide, porque el carbohidrato que la acompaña también aporta.
+// Lo que se afirma es la propiedad, no la constante — con 0,70 este test CAE.
+test('🔴 v494 · el piso de proteína no EMPUJA la comida por encima de su propia meta', () => {
+  const byId = {}; core.NUT_FOODS.forEach(f => { byId[f.id] = f; });
+  let comidas = 0, sobre130 = 0, bajo85 = 0, minRacion = Infinity, minTxt = '';
+  const combos = new Set();
+  _PERFILES_EXTREMOS.forEach(p => {
+    const base = nutritionEstimate(p); if (!base) return;
+    ['pierna', 'torso', 'descanso'].forEach(k => {
+      for (let d = 0; d < 7; d++) {
+        const plan = nutDayPlan(base, k, 4, 2, d); if (!plan) continue;
+        plan.meals.forEach(m => {
+          comidas++;
+          // ORÁCULO INDEPENDIENTE: la proteína se recalcula desde los gramos y la tabla, no se le
+          // pregunta a `m.real` — que es el número que el defecto de v470 falseaba.
+          let pr = 0;
+          m.items.forEach(it => { const f = byId[it.id]; if (f) pr += f.p * it.grams / 100; });
+          const ac = core.nutAcompMacros(m.acompIds || []); pr += (ac && ac.prot_g) || 0;
+          const r = m.target.prot_g > 0 ? pr / m.target.prot_g : 1;
+          if (r > 1.30) sobre130++;
+          if (r < 0.85) bajo85++;
+          combos.add(m.items.map(i => i.id).sort().join('+'));
+          m.items.forEach(it => { if (it.rol === 'prot' && it.grams < minRacion) { minRacion = it.grams; minTxt = it.text; } });
+        });
+      }
+    });
+  });
+  assert.ok(comidas > 1000, `el barrido solo resolvió ${comidas} comidas: no prueba nada`);
+  // Medido 2026-08-18 sobre estas 11 personas (1.155 comidas): 0,70 → **23** · 0,65 → 16 ·
+  // 0,60 → **14** · 0,55 → 14. El tope de 18 cae entre los dos y con 0,70 este test se pone ROJO.
+  assert.ok(sobre130 <= 18,
+    `${sobre130} comidas sirven más del 130% de su propia meta de proteína — el piso está empujando`);
+  // 🔒 Y LO QUE NO SE PUEDE PAGAR A CAMBIO, que es lo que autoriza bajarlo:
+  // (1) que se quede corta (0,70 y 0,60 dan los MISMOS 14: bajar el piso no recorta la entrega);
+  assert.ok(bajo85 <= 14, `${bajo85} comidas se quedan por debajo del 85% de su proteína`);
+  // (2) que aparezca la ración que no es ración — el «5 g de atún» rechazado dos veces (v471, v485);
+  assert.ok(minRacion >= 25, `el plato sirve una ración proteica de ${minRacion} g («${minTxt}»): eso es un redondeo, no una ración`);
+  // (3) que se pierda variedad. Medido: 46 combinaciones con 0,70 y **47** con 0,60 — SUBE.
+  assert.ok(combos.size >= 46, `la variedad cayó a ${combos.size} combinaciones distintas`);
+});
+
 // 🔴 LA FUNCIÓN QUE CERRÓ EL FRENTE. Lo que se afirma no es que elija «bien» —eso lo miden los
 // dos guardianes de arriba— sino las dos cosas que puede romper alguien tocándola sin querer:
 // que NO deje de rotar (variedad) y que NO se quede callada cuando no hay nada que quepa.
