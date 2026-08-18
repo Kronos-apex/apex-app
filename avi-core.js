@@ -2867,6 +2867,17 @@ function foodLogProgress(totals, target) {
 // ración a la yuca y darle un escalón chico de media medida— y ninguno movió una sola cifra.
 // ⚠️ Solo para CALORÍAS. Por macro el reparto es mucho más ancho (grasa 80,9%-129,2%) y una
 // franja de ±29% no dice nada: los macros siguen con su porcentaje.
+// 🔁 CUARTA RE-MEDIDA (2026-08-18, v501) — y esta vez APRIETA, que es la dirección que esta nota
+// exige. No cambió la tabla: cambió la forma de CONTAR. El plato sumaba sus calorías con la fórmula
+// genérica `4p+4c+9f` mientras el registro sumaba el campo `kcal` de la fuente — dos definiciones
+// de caloría vivas en la misma app. Medido: el plato **se contaba a sí mismo un +1,43% de más de
+// media y hasta +5,18%**, y el sitio donde más pegaba eran los ACOMPAÑANTES, que son las verduras
+// (la fórmula se pasa +28,7% en la espinaca porque su carbohidrato TOTAL incluye la fibra).
+// Con la caloría de la fuente en las dos puntas, el barrido de 315 días-plan entrega **91,9%-112,3%**:
+//   ±10% → 3 fuera · ±11% → 2 · ±12% → 1 · ±13% → 0   ← ELEGIDA
+// 🔒 Y el efecto que de verdad importa: el plato y el REGISTRO ya dicen el mismo número para la
+// misma comida (coinciden ±1 kcal en 202 de 315 días y el peor caso son **3 kcal**; antes se
+// separaban ~35). La contradicción de v477 queda cerrada.
 // 🔁 TERCERA RE-MEDIDA (2026-08-16, v490 — las 6 filas sin fuente pasaron a su valor real). Vuelve
 // a abrirse a ±14%, y hay que decir con precisión POR QUÉ, porque la nota de arriba manda apretar:
 //   BARRIDO SINTÉTICO (315 días-plan): el plato entrega 93,0%-114,0%
@@ -2920,7 +2931,7 @@ function appBuildLabel(urls) {
   return b ? ('AVI · versión ' + b) : 'AVI';
 }
 
-const FOODLOG_BAND = 0.14;
+const FOODLOG_BAND = 0.13;
 function foodLogBandFor(meta, hecho) {
   const m = Math.round(parseFloat(meta) || 0);
   if (!(m > 0)) return null;
@@ -4836,13 +4847,22 @@ function nutSolveMeal(target, pick) {
   const sol = usaDos ? _conDos : resolver(false);
   const gP = sol.gP, gC = sol.gC, gC2 = sol.gC2, gF = sol.gF;
   const items = [];
-  let gotP = 0, gotC = 0, gotF = 0;
+  let gotP = 0, gotC = 0, gotF = 0, gotK = 0;
   const poner = (food, g, rol) => {
     if (!food || !(g > 0)) return;
     const por = nutPortionText(food, g);
     if (!por) return;
     items.push({ id: food.id, name: food.name, rol, grams: por.grams, text: por.text });
     gotP += food.p * por.grams / 100; gotC += food.c * por.grams / 100; gotF += food.f * por.grams / 100;
+    // 🔴 LA CALORÍA DE UN ALIMENTO SALE DE SU FILA, NO DE UNA FÓRMULA. Aquí se sumaba
+    // `4p + 4c + 9f`, que es una aproximación genérica, mientras el REGISTRO de la persona suma el
+    // campo `kcal` de la tabla —el de la fuente oficial, con los factores de Atwater propios del
+    // alimento—. Eran DOS definiciones de caloría vivas en la misma app. Medido el 2026-08-18 sobre
+    // las 50 filas: **40 se separan ≥1%**, y no al azar — la fórmula genérica se pasa hasta un
+    // **+28,7% en la espinaca, +26,7% en la lechuga y +25,9% en el brócoli** (su `c` es carbohidrato
+    // TOTAL e incluye la FIBRA, que no da 4 kcal/g) y se queda corta un **−6,5% en la clara y −5,2%
+    // en la pechuga** (USDA les aplica factores específicos: 4,27 kcal/g de proteína, no 4).
+    gotK += food.kcal * por.grams / 100;
   };
   poner(prot, gP, 'prot');
   poner(carb, gC, 'carb');
@@ -4850,7 +4870,7 @@ function nutSolveMeal(target, pick) {
   poner(fat, gF, 'fat');
   return {
     items,
-    real: { prot_g: Math.round(gotP), carb_g: Math.round(gotC), fat_g: Math.round(gotF), kcal: Math.round(gotP * 4 + gotC * 4 + gotF * 9) },
+    real: { prot_g: Math.round(gotP), carb_g: Math.round(gotC), fat_g: Math.round(gotF), kcal: Math.round(gotK) },
   };
 }
 
@@ -4958,15 +4978,20 @@ const NUT_MEALS_5 = [
 // registro diría una guayaba distinta de la que el plato contó.
 function nutAcompGrams(food) { return (food && food.un && food.un.g > 0) ? food.un.g : 100; }
 function nutAcompMacros(ids) {
-  let p = 0, c = 0, f = 0;
+  let p = 0, c = 0, f = 0, kcal = 0;
   (ids || []).forEach(id => {
     const food = NUT_FOOD_BY_ID[id];
     if (!food) return;
     const g = nutAcompGrams(food);
     p += food.p * g / 100; c += food.c * g / 100; f += food.f * g / 100;
+    kcal += food.kcal * g / 100;
   });
   const prot_g = Math.round(p), carb_g = Math.round(c), fat_g = Math.round(f);
-  return { prot_g, carb_g, fat_g, kcal: Math.round(prot_g * 4 + carb_g * 4 + fat_g * 9) };
+  // 🔴 Y aquí pegaba MÁS FUERTE que en ningún otro sitio: los acompañantes son justo las VERDURAS,
+  // que son las filas donde la fórmula genérica más se pasa (+19% a +29%). El plan contaba la
+  // ensalada con `4c` incluyendo la fibra y el registro la contaba por su valor real: la misma
+  // ensalada, dos números distintos, en dos pantallas a un toque de distancia.
+  return { prot_g, carb_g, fat_g, kcal: Math.round(kcal) };
 }
 
 // ── ELEGIR EL MENÚ QUE DE VERDAD CABE EN LA COMIDA ──────────────────────
@@ -5152,7 +5177,10 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
       carb_g: solved.real.carb_g + ac.carb_g,
       fat_g: solved.real.fat_g + ac.fat_g,
     };
-    real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
+    // El total de la comida es la SUMA de lo que trae cada alimento (plato + acompañantes), no
+    // una re-derivación desde los macros redondeados: así `plan.real` y lo que el REGISTRO le
+    // suma a esa misma comida son EL MISMO NÚMERO.
+    real.kcal = Math.round(solved.real.kcal + ac.kcal);
     return {
       name: slot.name,
       target: meta,          // lo que esa comida DEBE aportar (acompañantes incluidos)
@@ -5169,7 +5197,7 @@ function nutDayPlan(base, kind, trainDays, legDays, dayIndex) {
   const real = meals.reduce((a, m) => ({
     prot_g: a.prot_g + m.real.prot_g, carb_g: a.carb_g + m.real.carb_g, fat_g: a.fat_g + m.real.fat_g,
   }), { prot_g: 0, carb_g: 0, fat_g: 0 });
-  real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);
+  real.kcal = meals.reduce((a, m) => a + m.real.kcal, 0);
   return { kind: t.kind, target: t, meals, real };
 }
 

@@ -4,6 +4,54 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (9ª parte) — avi-v501: UNA SOLA DEFINICIÓN DE CALORÍA
+
+El punto abierto desde v477 y reencuadrado en v490: **42 de 50 alimentos tienen desfase entre su
+`kcal` y sus propios macros**. La decisión pendiente era «cuál de las dos manda». La medición la
+resuelve sola.
+
+### 1 · No era ruido: es sistemático y tiene una causa física
+Medido sobre las 50 filas: **40 se separan ≥1%**, y no al azar.
+
+| se pasa la fórmula genérica | | se queda corta |
+|---|---|---|
+| espinaca **+28,7%** · lechuga +26,7% · brócoli +25,9% · pepino +20,7% · habichuela +19,4% | | clara **−6,5%** · pechuga −5,2% · pan integral −4,3% · yuca −3,8% · molida −3,7% |
+
+Las de arriba son **todas verduras**: su `c` es carbohidrato TOTAL e incluye la **fibra**, que no da
+4 kcal/g. Las de abajo son **carnes y almidones cocidos**: USDA les aplica factores de Atwater
+propios (4,27 kcal/g de proteína, no 4). O sea: **el `kcal` de la tabla es el bueno —viene de la
+fuente— y `4p+4c+9f` es una aproximación genérica.**
+
+### 2 · Dónde dolía: el plato se contaba a sí mismo de más
+`nutSolveMeal`, `nutAcompMacros` y los totales de `nutDayPlan` sumaban con la fórmula genérica,
+mientras `foodLogTotals` —el registro de la persona— suma el campo `kcal`. **El plato se contaba un
++1,43% de más de media y hasta +5,18%**, y el sitio donde más pegaba eran los **ACOMPAÑANTES**, que
+son justo las verduras: la misma ensalada valía dos números distintos en dos pantallas a un toque.
+
+### 3 · La regla que queda escrita
+> **La caloría de un ALIMENTO sale de su fila (fuente oficial). La de un OBJETIVO sale de sus
+> macros. Nunca al revés.**
+
+Medido después: el plato y el registro **coinciden ±1 kcal en 202 de 315 días-plan y el peor caso
+son 3 kcal** (redondeo por entrada contra redondeo por comida). Antes se separaban ~35.
+
+### 4 · Y la franja se APRIETA, que es la dirección que su nota exige
+Con la caloría real en las dos puntas, el barrido entrega **91,9%-112,3%** (era 93%-114%):
+±10% → 3 fuera · ±11% → 2 · ±12% → 1 · **±13% → 0 ← elegida**. `FOODLOG_BAND` 0,14 → **0,13**.
+No cambió la tabla: cambió la forma de contar.
+
+### 5 · QA
+Suite **789/789** (+2 candados con oráculo independiente: que el plato sume la columna `kcal` de la
+tabla y que plato y registro digan el mismo número). Rojo→verde demostrado: con la fórmula genérica
+puesta, plato y registro se separan **53 kcal** en un día. `_sabotaje-f7` **37/37** (3 nuevos).
+⚠️ **Dos candados viejos se despegaron y hay que decirlo:** (a) el CONTROL de la franja barría menos
+espacio que su propia aserción —solo «entreno» y una proporción de proteína— y al entregar el plato
+más fino ese rincón cómodo cupo dentro del ±5%: **un control que mira menos que lo que controla
+deja de discriminar sin avisar**; (b) el sabotaje nº17 citaba `FOODLOG_BAND = 0.14` y dejó de
+aplicarse al re-medir la constante — lo cantó el runner como «no mordió».
+
+---
+
 ## 🟢 2026-08-18 (8ª parte) — avi-v500: las fotos del PO desbloquean el lote
 
 El PO grabó **2 fotos y 4 videos en su propio gimnasio** con las máquinas que faltaban. Con una

@@ -87,10 +87,12 @@ const SABOTAJES = [
 
   // ── La FRANJA y la SEMANA (patrones 2, 3 y 6 del estudio) ────────────────
   ['17· la franja se aprieta por debajo de lo que el plato entrega (le diría «te pasaste» a quien comió su plan)',
-    // 🔁 v490: el ancho pasó de 0.12 a 0.14 al corregir las 6 filas sin fuente (la curva y el
-    // porqué están al lado de la constante). El sabotaje aprieta a 0.08, que es lo que importa:
-    // una franja más estrecha de lo que el plato entrega tiene que poner la suite en rojo.
-    'const FOODLOG_BAND = 0.14;',
+    // 🔁 El ancho ya se ha movido tres veces (0.12 → 0.14 en v490 al corregir las filas sin fuente,
+    // 0.14 → 0.13 en v501 al contar el plato con la caloría de la tabla). **Este patrón cita el
+    // valor vigente, así que hay que re-anclarlo cada vez que la constante se re-mida** — ya se
+    // despegó una vez y el runner lo cantó como «no mordió». Lo que se sabotea no es el número:
+    // es que la franja quede MÁS ESTRECHA de lo que el plato entrega, y por eso se aprieta a 0.08.
+    'const FOODLOG_BAND = 0.13;',
     'const FOODLOG_BAND = 0.08;'],
   ['18· «lo que falta» vuelve a medirse contra la cifra EXACTA en vez de la franja',
     '    falta: Math.max(0, Math.round(lo - h)),',
@@ -165,6 +167,16 @@ const SABOTAJES = [
     'const FOODLOG_PLAN_PREFIX = ',
     'const FOODLOG_PLAN_PREFIX = /* control del sabotaje */ ',
     'avi-core.js', 'verde'],
+  // ── UNA SOLA DEFINICIÓN DE CALORÍA (v501) ───────────────────────────────────────────────
+  ['35· el plato vuelve a contarse con la fórmula genérica 4p+4c+9f en vez de la caloría de la tabla',
+    '    gotK += food.kcal * por.grams / 100;',
+    '    gotK += (food.p * 4 + food.c * 4 + food.f * 9) * por.grams / 100;'],
+  ['36· los ACOMPAÑANTES (las verduras, donde la fórmula se pasa hasta +28,7%) vuelven a derivarse',
+    '    kcal += food.kcal * g / 100;',
+    '    kcal += (food.p * 4 + food.c * 4 + food.f * 9) * g / 100;'],
+  ['37· el total del DÍA se re-deriva desde los macros redondeados en vez de sumar sus comidas',
+    '  real.kcal = meals.reduce((a, m) => a + m.real.kcal, 0);',
+    '  real.kcal = Math.round(real.prot_g * 4 + real.carb_g * 4 + real.fat_g * 9);'],
 ];
 
 const ARCHIVOS = ['avi-core.js', 'app-5-salud.js', 'app-3-coach.js'];

@@ -5141,6 +5141,65 @@ test('🔴 F7: desmarcar quita SOLO lo del plan', () => {
   assert.strictEqual(foodLogPlanMealDone(fl2, 2, _hoyF7), true, 'desmarcar el desayuno borró el almuerzo');
 });
 
+// ── UNA SOLA DEFINICIÓN DE CALORÍA (v501) ─────────────────────────────────────────────────
+// El plato sumaba sus calorías con `4p+4c+9f` y el REGISTRO con el campo `kcal` de la fuente:
+// dos definiciones vivas en la misma app. Medido el 18-ago sobre las 50 filas, **40 se separan
+// ≥1%** — la fórmula genérica se pasa **+28,7% en la espinaca** (su carbohidrato TOTAL incluye la
+// fibra, que no da 4 kcal/g) y se queda **−6,5% corta en la clara** (USDA le aplica 4,27 kcal/g de
+// proteína). Regla: **la caloría de un ALIMENTO sale de su fila; la de un OBJETIVO, de sus macros.**
+test('🔴 v501 · el plato cuenta la caloría de la TABLA, no la fórmula genérica', () => {
+  const F = core.NUT_FOOD_BY_ID;
+  const base = { origen: 'coach', kcalObj: 2200, macros: { prot_g: 150, carb_g: 220, fat_g: 60, kcal: 2200 } };
+  let comidas = 0, dias = 0, peor = 0;
+  ['pierna', 'entreno', 'descanso'].forEach(kind => {
+    for (let di = 0; di < 7; di++) {
+      const plan = nutDayPlan(base, kind, 4, 1, di);
+      if (!plan) return;
+      dias++;
+      let kcalDia = 0;
+      plan.meals.forEach(m => {
+        comidas++;
+        // ORÁCULO INDEPENDIENTE: se suma desde los gramos y la COLUMNA kcal de la tabla.
+        let k = 0;
+        m.items.forEach(it => { const f = F[it.id]; if (f) k += f.kcal * it.grams / 100; });
+        (m.acompIds || []).forEach(id => { const f = F[id]; if (f) k += f.kcal * core.nutAcompGrams(f) / 100; });
+        kcalDia += k;
+        peor = Math.max(peor, Math.abs(m.real.kcal - Math.round(k)));
+      });
+      assert.ok(Math.abs(plan.real.kcal - kcalDia) <= plan.meals.length,
+        `el día suma ${plan.real.kcal} y sus alimentos dan ${Math.round(kcalDia)}`);
+    }
+  });
+  assert.ok(comidas > 50 && dias >= 20, `el barrido resolvió ${comidas} comidas: no prueba nada`);
+  // Tolerancia = el redondeo a entero de cada comida, nada más. Con la fórmula genérica puesta el
+  // hueco medido era de **+1,43% de media y +5,18% en el peor día**, o sea decenas de kcal.
+  assert.ok(peor <= 1, `una comida se separa ${peor} kcal de lo que suman sus alimentos`);
+});
+
+test('🔴 v501 · el plato y el REGISTRO dicen el MISMO número para la misma comida', () => {
+  // Es el sitio donde las dos definiciones se encontraban en pantalla: la franja compara la meta
+  // del plan contra lo que suma el registro. Antes se separaban ~35 kcal en un día.
+  const hoy = new Date('2026-08-18T12:00:00');
+  const base = { origen: 'coach', kcalObj: 2200, macros: { prot_g: 150, carb_g: 220, fat_g: 60, kcal: 2200 } };
+  let dias = 0, peor = 0, caso = '';
+  ['pierna', 'entreno', 'descanso'].forEach(kind => {
+    for (let di = 0; di < 7; di++) {
+      const plan = nutDayPlan(base, kind, 4, 1, di);
+      if (!plan) return;
+      let fl = foodLogBlank();
+      for (let i = 0; i < plan.meals.length; i++) fl = foodLogMarkPlanMeal(fl, plan, i, hoy);
+      const t = foodLogTotals(foodLogDay(fl, hoy));
+      dias++;
+      const d = Math.abs(t.kcal - plan.real.kcal);
+      if (d > peor) { peor = d; caso = `${kind}/día ${di}: plato ${plan.real.kcal} vs registro ${t.kcal}`; }
+    }
+  });
+  assert.ok(dias >= 20, `el barrido resolvió ${dias} días`);
+  // Medido 2026-08-18 sobre 315 días-plan: coinciden ±1 kcal en 202, y el PEOR caso son 3 kcal
+  // (redondeo por entrada contra redondeo por comida). El tope va en 5 con aire.
+  assert.ok(peor <= 5, `el plato y el registro se separan ${peor} kcal — ${caso}`);
+});
+
 // 🔴 LA PROPIEDAD DE FONDO, no una consecuencia holgada: con el DÍA ENTERO marcado, lo que lee
 // la persona en su barra tiene que caer dentro de la franja que la app ya declara (±10%). Si no,
 // la app se contradice a un toque de distancia — la familia v435/v444.
@@ -5260,16 +5319,25 @@ test('🔴 la franja NUNCA es más estrecha de lo que el propio plato entrega', 
     `La franja (±${FOODLOG_BAND * 100}%) es más estrecha que lo que el plato entrega ` +
     `(${peor.toFixed(1)}%-${mejor.toFixed(1)}%) → la app le diría «te pasaste» a quien comió lo que le mandó.`);
   // Y el control al revés: una franja de ±5% NO puede pasar este test, o el test no prueba nada.
+  // ⚠️ El control barría MENOS espacio que la aserción (solo 'entreno' y una proporción de
+  // proteína) y en v501 se quedó sin dientes: al dejar el plato de contarse de más, ese rincón
+  // cómodo pasó a caber dentro del ±5%. Un control que mira menos que lo que controla deja de
+  // discriminar sin avisar. Ahora barre EL MISMO espacio que la aserción.
   const estrecha = (m, h) => { const lo = Math.round(m * 0.95), hi = Math.round(m * 1.05); return h >= lo && h <= hi; };
   let fueraEstrecha = 0;
-  [1400, 2200, 3200].forEach(kcal => {
-    const prot_g = Math.round(kcal * 0.30 / 4), fat_g = Math.round(kcal * 0.25 / 9);
-    const carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
-    const base = { origen: 'coach', kcalObj: kcal, macros: { prot_g, carb_g, fat_g, kcal } };
-    for (let di = 0; di < 7; di++) {
-      const plan = nutDayPlan(base, 'entreno', 4, 1, di);
-      if (plan && !estrecha(plan.target.kcal, plan.real.kcal)) fueraEstrecha++;
-    }
+  [1400, 1800, 2200, 2600, 3200].forEach(kcal => {
+    [0.25, 0.30, 0.35].forEach(pk => {
+      const prot_g = Math.round(kcal * pk / 4), fat_g = Math.round(kcal * 0.25 / 9);
+      const carb_g = Math.round((kcal - prot_g * 4 - fat_g * 9) / 4);
+      if (carb_g <= 0) return;
+      const base = { origen: 'coach', kcalObj: kcal, macros: { prot_g, carb_g, fat_g, kcal } };
+      ['pierna', 'entreno', 'descanso'].forEach(kind => {
+        for (let di = 0; di < 7; di++) {
+          const plan = nutDayPlan(base, kind, 4, 1, di);
+          if (plan && !estrecha(plan.target.kcal, plan.real.kcal)) fueraEstrecha++;
+        }
+      });
+    });
   });
   assert.ok(fueraEstrecha > 0, 'CONTROL: con ±5% tampoco se sale nadie → este test no discrimina nada');
 });
