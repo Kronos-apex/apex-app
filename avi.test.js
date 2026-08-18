@@ -7252,6 +7252,75 @@ test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', (
   assert.strictEqual(core.nutPlanReview(adulto, PLAN_BAJO, 52).status, 'ok');
 });
 
+// ── LA PROTEÍNA DEL PLAN, QUE NO MIRABA NADIE (v496 — punto 1 del dictamen del 2026-08-05) ──
+// El revisor juzgaba calorías y rótulo. Medido el 18-ago sobre los 10 planes escritos: 4 están
+// entre 25 y 37 g POR DEBAJO de la doctrina y 1 está 26 g POR ENCIMA del techo de 2,2 g/kg, y a
+// tres de ellos la ficha les decía **«ok»**. Todas las cortas son mujeres en «Perder grasa» o
+// «Recomposición», que es el cubo donde la proteína alta importa MÁS.
+const CLAUDIA = { name: 'Claudia', age: 34, sex: 'F', weight: 74, height: 156, activityFactor: 1.55, goal: 'Recomposición' };
+const PLAN_CLAUDIA = { kcal: 2146, prot: 107, carbs: 268, fat: 71, goal: 'mantenimiento' };
+
+test('🔴 v496 · un plan con las CALORÍAS perfectas y la proteína corta ya no pasa por «ok»', () => {
+  const r = core.nutPlanReview(CLAUDIA, PLAN_CLAUDIA, 74);
+  assert.ok(Math.abs(r.gap) < 5, `sus calorías están clavadas (gap ${r.gap}): es la proteína lo único que falla`);
+  assert.strictEqual(r.status, 'proteina_fuera', 'status real: ' + r.status);
+  assert.strictEqual(r.prot.dir, 'corta');
+  // La DOSIS, no el signo: «le falta algo» lo cumpliría 1 g. Medido: 107 g contra 144 de doctrina.
+  assert.ok(r.prot.gramos <= -25, `le faltan ${Math.abs(r.prot.gramos)} g y el aviso tiene que decir cuántos`);
+  assert.strictEqual(r.prot.objetivo, Math.round(core.nutRefWeight(74, 156) * 2.2));
+});
+
+test('🔴 v496 · y el que se PASA del techo de 2,2 g/kg también se marca (caso Miguel)', () => {
+  const miguel = { name: 'Miguel', age: 29, sex: 'M', weight: 70, height: 183, activityFactor: 1.55, goal: 'Ganar músculo' };
+  const r = core.nutPlanReview(miguel, { kcal: 3040, prot: 180, carbs: 400, fat: 80 }, 70);
+  assert.strictEqual(r.status, 'proteina_fuera', 'status real: ' + r.status);
+  assert.strictEqual(r.prot.dir, 'pasada');
+  assert.ok(r.prot.dosis >= 2.5, `2,57 g/kg era el caso real; midiendo ${r.prot.dosis}`);
+});
+
+test('🔴 v496 · la tolerancia reproduce los VEREDICTOS de Andrés, uno por uno', () => {
+  // ±0,3 g/kg no se eligió a ojo: es el único corte que marca a los 5 que él marcó y deja en paz
+  // a los 3 que aprobó. Si alguien la mueve, este test dice a quién empieza a molestar.
+  const casos = [
+    ['Claudia', -0.56, true], ['Kathe', -0.47, true], ['Natalia', -0.41, true],
+    ['Luz', -0.40, true], ['Miguel', +0.37, true],
+    ['coach', -0.28, false], ['Nataly', -0.20, false], ['Samuel', +0.06, false], ['Astrid', -0.01, false],
+  ];
+  casos.forEach(([quien, dif, marcado]) => {
+    assert.strictEqual(Math.abs(dif) >= core.NUT_PROT_TOL_G_KG, marcado,
+      `${quien} (${dif} g/kg) debería ${marcado ? 'marcarse' : 'quedar en paz'} con la tolerancia actual (${core.NUT_PROT_TOL_G_KG})`);
+  });
+});
+
+test('🔴 v496 · la proteína se juzga sobre lo SERVIDO y en peso de REFERENCIA, no sobre la báscula', () => {
+  // Dosificar sobre el peso de báscula es lo que v428 arregló: a IMC alto infla la dosis y deja al
+  // carbohidrato sin espacio. Con 74 kg de báscula y 156 cm, la referencia baja de 74.
+  const ref = core.nutRefWeight(74, 156);
+  assert.ok(ref < 74, `la referencia (${ref}) tiene que ser menor que la báscula en IMC alto`);
+  const p = core.nutProtCheck(CLAUDIA, { prot_g: 107 }, 74);
+  assert.strictEqual(p.dosis, Math.round(107 / ref * 100) / 100);
+  // Sin datos no se opina (ni se inventa una dosis).
+  assert.strictEqual(core.nutProtCheck(CLAUDIA, { prot_g: 0 }, 74), null);
+  assert.strictEqual(core.nutProtCheck(null, { prot_g: 100 }, 74), null);
+});
+
+test('🔴 v496 · el NÚMERO manda sobre el rótulo cuando fallan los dos', () => {
+  // La tarjeta de `rotulo_miente` afirma «sus números están bien». Con un plan 387 kcal por encima
+  // Y el rótulo cambiado, esa frase manda al coach a corregir lo que no toca. Caso real: apareció
+  // simulando el arreglo de Samuel (cambiarle el objetivo a Recomposición).
+  const samuel = { name: 'Samuel', age: 28, sex: 'M', weight: 86, height: 176, activityFactor: 1.725, goal: 'Recomposición' };
+  const plan = { kcal: 3533, prot: 194, carbs: 512, fat: 79, goal: 'mantenimiento' };   // los suyos, tal cual
+  const r = core.nutPlanReview(samuel, plan, 86);
+  assert.strictEqual(r.status, 'desviado', 'status real: ' + r.status);
+  assert.ok(r.gap > 300, `y el hueco es el de verdad: ${r.gap}`);
+  assert.ok(r.mismatch, 'el rótulo sigue viajando en el resultado, para que la ficha lo diga en una línea');
+  // CONTROL de v486: con las cifras CLAVADAS, el rótulo mentiroso sigue siendo el titular. (La
+  // fixture va escrita aquí y no se toma de `LUZ`, que se declara más abajo en el archivo: un
+  // `const` no existe antes de su línea y el test moría con «Cannot access before initialization».)
+  const luz = { name: 'Luz', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
+  assert.strictEqual(core.nutPlanReview(luz, { kcal: 1731, prot: 130, carbs: 160, fat: 48, goal: 'mantenimiento' }, 82).status, 'rotulo_miente');
+});
+
 // ── EL OTRO LADO DEL CANDADO: EL TECHO DE MENORES (v493, REGLA 3 del dictamen 2026-08-15) ──
 // Caso real medido sobre el backup del 16-ago: una asesorada de 16 años, 72 kg y 165 cm (IMC 26,4,
 // SOBREPESO para su edad y su sexo en la referencia OMS 5-19) recibía **+350 kcal/día** porque su

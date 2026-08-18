@@ -86,6 +86,45 @@ A.ok(!!N && N.desborde <= 1, 'C6 el aviso no se desborda a lo ancho', N);
 await ev(`(()=>{const n=document.getElementById('nut-goal-nota');if(n)n.scrollIntoView({block:'center'})})()`); await sleep(300);
 await shot('editor-techo');
 
+// ── v496: LA PROTEÍNA. Caso real (Claudia): calorías clavadas y 37 g de proteína de menos, que
+// hasta v496 la ficha daba por «ok». Se monta encima del mismo fixture, sin recargar la app.
+// ⚠️ Y LO PRIMERO ES CERRAR EL MODAL DEL EDITOR, que quedó abierto de la fase anterior. Sin esto
+// las aserciones pasan igual (leen el DOM, que existe detrás) y la CAPTURA sale del modal: una foto
+// perfecta de otra cosa. Es la segunda vez que este montaje muerde en el mismo día.
+await ev(`(()=>{try{if(typeof cm==='function')cm('m-nut');}catch(e){}
+  document.querySelectorAll('.mdbg.on,.md.on').forEach(m=>m.classList.remove('on'));})()`);
+await sleep(400);
+const setup2 = await ev(`(()=>{try{
+  DB.clients=[{id:'c1',name:'Claudia Valbuena',email:'c@x.com',goal:'Recomposición',level:'Intermedio',days:4,
+    age:34,sex:'F',weight:74,height:156,activityFactor:1.55,tier:'premium',payments:[],routines:[]}];
+  DB.nutrition={c1:{goal:'mantenimiento',kcal:2146,prot:107,carbs:268,fat:71,water:10,meals:4}};
+  openDetail('c1'); return 'ok';
+}catch(e){return 'err:'+e.message}})()`);
+A.ok(setup2 === 'ok', 'montaje del caso de proteína', setup2);
+await sleep(1000);
+const revP = await ev(`(()=>{const r=nutPlanReview(DB.clients[0],DB.nutrition.c1,74);
+  return JSON.stringify({status:r&&r.status,dir:r&&r.prot&&r.prot.dir,gramos:r&&r.prot&&r.prot.gramos})})()`);
+console.log('  montaje proteína:', revP);
+const RP = JSON.parse(revP || '{}');
+if (!A.ok(RP.status === 'proteina_fuera' && RP.dir === 'corta', 'MONTAJE: el revisor ve la proteína corta', RP)) { ws.close(); salir(A, { chrome, srv, out: OUT }); }
+
+const tarjeta = await ev(`(()=>{const el=document.getElementById('d-nutreview');if(!el)return null;
+  el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();
+  return JSON.stringify({txt:(el.innerText||'').replace(/\\s+/g,' ').slice(0,600),dentro:r.top>=0&&r.bottom<=window.innerHeight,desborde:el.scrollWidth-el.clientWidth,alto:Math.round(r.height)})})()`);
+const T = JSON.parse(tarjeta || 'null');
+A.ok(!!T && /prote[íi]na/i.test(T.txt) && T.txt.includes(String(Math.abs(RP.gramos))), 'C8 la ficha dice cuántos gramos le faltan', T && T.txt);
+A.ok(!!T && /por kg de peso de referencia/i.test(T.txt), 'C9 y en qué unidad se mide (g/kg de peso de referencia)', T && T.txt);
+A.ok(!!T && /No hay que subirle las calor/i.test(T.txt), 'C10 con la acción de Andrés: mover carbohidrato, no subir el total', T && T.txt);
+A.ok(!!T && T.desborde <= 1 && T.dentro, 'C11 la tarjeta cabe y se ve entera a 390px', T);
+// C12 — HIT-TESTING: que el DOM tenga la tarjeta no prueba que se VEA. Si algo la tapa (un modal
+// que quedó abierto, un flotante), el toque y la mirada van a parar a otra cosa.
+const visible = await ev(`(()=>{const el=document.getElementById('d-nutreview');if(!el)return null;
+  const r=el.getBoundingClientRect();const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+  return JSON.stringify({tapada:!(top&&el.contains(top)),quien:top?(top.id||top.className||top.tagName):'nada'})})()`);
+const V = JSON.parse(visible || 'null');
+A.ok(!!V && !V.tapada, 'C12 la tarjeta está DESTAPADA (hit-test en su centro)', V);
+await shot('ficha-proteina');
+
 A.ok(A.jsErrors.length === 0, 'C7 sin errores JS', A.jsErrors);
 ws.close();
 salir(A, { chrome, srv, out: OUT });

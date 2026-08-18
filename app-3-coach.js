@@ -1622,6 +1622,15 @@ function _shockAnalysisLine(a){
 // dos mujeres que querían perder grasa el plan las tenía comiendo por encima de su
 // mantenimiento — o sea, les impedía su objetivo.
 // El motor (`nutPlanReview`) es puro y vive en avi-core.
+// La frase accionable de la proteína, en las palabras del dictamen: **no se toca el total**, se
+// mueve carbohidrato. Vive aquí (y no en dos sitios) porque la usan la tarjeta propia y la línea
+// que se le añade a las demás — dos copias del mismo consejo acabarían diciendo cosas distintas.
+function _protFrase(p){
+  const kcal=Math.abs(p.gramos)*4;
+  return p.dir==='corta'
+    ? `<b>No hay que subirle las calorías:</b> se mueven ~${kcal} kcal de carbohidrato a proteína y el total queda igual.`
+    : `Esos ${kcal} kcal rinden más como <b>carbohidrato</b>, que es el combustible del entrenamiento.`;
+}
 function renderNutReviewCard(c){
   const el=document.getElementById('d-nutreview'); if(!el)return;
   el.innerHTML='';el.style.display='none';
@@ -1691,6 +1700,16 @@ function renderNutReviewCard(c){
               :`así que la app le sube el plan hasta su gasto.`)+
         ` Si quieres otro número, súbelo tú en <b>Nutrición</b>.`;
       tono='--bll'; tinta='--blt';
+    } else if(r.status==='proteina_fuera'){
+      // 🔒 El punto 1 del dictamen de Andrés Hyp (2026-08-05), sin ejecutar hasta v496: el revisor
+      // miraba calorías y rótulo, así que daba por bueno un plan con 37 g de proteína de menos.
+      // Son 4 de los 10 planes escritos, y las 4 son mujeres en «Perder grasa» o «Recomposición»,
+      // que es el cubo donde la proteína alta importa MÁS, no menos.
+      const corta=r.prot.dir==='corta';
+      titulo=`A ${esc(c.name||'')} le ${corta?'falta':'sobra'} proteína: ${Math.abs(r.prot.gramos)} g`;
+      cuerpo=`Su plan le da <b>${r.prot.g} g</b> (${String(r.prot.dosis).replace('.',',')} g por kg de peso de referencia) y le corresponden <b>${r.prot.objetivo}</b> `+
+        `(${String(r.prot.doctrina).replace('.',',')} g/kg). ${_protFrase(r.prot)}`;
+      tono='--yll'; tinta='--ylt';
     } else if(r.status==='menor_sobre_techo'){
       // 🔒 El espejo del de arriba, y también fuera del umbral de 300 kcal: la regla del dictamen
       // no admite grados en ninguno de los dos sentidos. Aquí el coach lee «para su edad» porque
@@ -1713,6 +1732,13 @@ function renderNutReviewCard(c){
         : '';
       cuerpo=`Tiene <b>${r.actual} kcal</b> y le corresponden <b>${r.sugerido}</b>.${riesgo}`;
       if(r.riesgo){ tono='--rdl'; tinta='--rdt'; }
+    }
+    // 🔒 LA PROTEÍNA VIAJA CON CUALQUIER TARJETA, no solo con la suya. Kathe y Luz tienen el rótulo
+    // mal Y la proteína corta, y el consejo de Andrés para ellas es literalmente «no toques el
+    // total: mueve carbohidrato a proteína» — si el aviso de proteína solo saliera cuando es el
+    // ÚNICO problema, justo a ellas no les llegaría nunca.
+    if(r.prot&&r.prot.dir&&r.status!=='proteina_fuera'&&r.status!=='sin_plan'&&r.status!=='sin_datos'){
+      cuerpo+=` <span style="opacity:.9">${_protFrase(r.prot)}</span>`;
     }
     el.style.display='';
     el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(${tono});border-left:3px solid var(${tinta})">

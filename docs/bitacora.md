@@ -4,6 +4,72 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-18 (4ª parte) — avi-v496: LA PROTEÍNA DEL PLAN, QUE NO MIRABA NADIE
+
+Punto 1 del dictamen de Andrés Hyp del **2026-08-05** — el que él mismo señaló como «sigue sin
+ejecutarse tres meses después, y mientras eso no entre, cada plan nuevo que se escriba va a nacer
+con la misma brecha». Cierra los dos nombres que quedaban (Samuel y Miguel) y, de paso, a tres
+personas más que nadie había contado.
+
+### 1 · Lo que la ficha le decía al coach ANTES (medido sobre los 10 planes escritos)
+El revisor juzgaba **calorías y rótulo**. La proteína no la miraba nadie:
+
+| persona | proteína | doctrina | brecha | la ficha decía |
+|---|---|---|---|---|
+| **Claudia** | 107 g (1,64 g/kg ref) | 144 | **−37 g** | **«ok»** 🔴 |
+| **Kathe** | 119 g (1,73) | 152 | **−33 g** | «el rótulo miente» (sin hablar de proteína) |
+| **Natalia** | 113 g (1,79) | 139 | **−26 g** | **«ok»** 🔴 |
+| **Luz** | 111 g (1,80) | 136 | **−25 g** | «el rótulo miente» (íd.) |
+| **Miguel** | 180 g (2,57) | 154 | **+26 g** (pasado del techo) | **«ok»** 🔴 |
+
+Las cuatro cortas son mujeres en «Perder grasa» o «Recomposición», que es **el cubo donde la
+proteína alta importa MÁS**, no menos.
+
+### 2 · Lo que hace v496
+- **`nutProtCheck`** (pura): juzga la dosis en **g por kg de peso de REFERENCIA** —el idioma del
+  dictamen, y el único que no se descuadra con la grasa corporal— sobre lo que se **SIRVE**, no
+  sobre el titular escrito.
+- **La tolerancia (±0,3 g/kg) se derivó de los VEREDICTOS de Andrés**, no a ojo: es el único corte
+  que marca a los 5 que él marcó y deja en paz a los 3 que aprobó (Nataly −0,20, Samuel +0,06,
+  Astrid −0,01). Tiene aire a los dos lados: el peor aprobado está en 0,20 y el mejor marcado en
+  0,37. Con ±0,25 entraría el plan del propio coach, que él no juzgó.
+- Estado nuevo **`proteina_fuera`** + la proteína **VIAJA en todos los resultados**: Kathe y Luz
+  tienen el rótulo mal Y la proteína corta, y el consejo de Andrés para ellas es literalmente «no
+  toques el total, mueve carbohidrato a proteína» — si el aviso solo saliera cuando es el ÚNICO
+  problema, justo a ellas no les llegaría nunca.
+- La tarjeta dice **cuántos gramos**, en qué unidad, y **qué hacer**: mover ~kcal de carbohidrato,
+  sin subir el total.
+
+### 3 · El defecto que apareció simulando el arreglo de Samuel
+Samuel es el caso que el PO puso en mantenimiento **por su ~25% de grasa** y hoy come **+387**. Su
+arreglo es de producto: cambiarle el objetivo a «Recomposición». **Al simularlo, la app decía
+«sus números están bien, lo que está mal es la etiqueta»** — sobre 387 kcal de más. `rotulo_miente`
+iba ANTES que `desviado` y su tarjeta AFIRMA que las cifras están bien; cuando fallan las dos cosas,
+esa frase manda al coach a corregir lo que no toca. Ahora manda el NÚMERO y el rótulo viaja en una
+línea de más. El caso de v486 —cifras perfectas, rótulo mentiroso— sigue intacto y con su control.
+🔒 Y el desvío se mide sobre lo **SERVIDO** (extensión al número del principio que v486 aplicó al
+rótulo), con su excepción medida: si el coach escribió **solo el titular** y no los macros, no hay
+plato que servir y el número a juzgar es el suyo — sin esa rama, un plan de «2.400 kcal» a secas se
+comparaba consigo mismo y daba 0.
+
+### 4 · Qué queda en manos del PO (con la app ya diciéndoselo)
+- **Samuel**: cambiarle el objetivo a «Recomposición» en su ficha. Verificado por simulación: la
+  app pasa a decir «su plan está por encima en 387 kcal», y cuando le ponga los 3.150 con 190 g de
+  proteína que dictó Andrés, se calla.
+- **Miguel**: bajarlo a ~2.940 (+300) con **154 g** de proteína y los 104 kcal a carbohidrato.
+  Verificado: con ese plan la ficha queda en «ok».
+- **Claudia, Natalia, Kathe y Luz**: +25 a +37 g de proteína **sin tocar el total**.
+
+### 5 · QA
+Suite **782/782** (+5). Matriz `_sabotaje-menores` **35/35** (5 nuevos: matar el estado, aflojar la
+tolerancia hasta no marcar a nadie, juzgar sobre el peso de báscula, devolverle la prioridad al
+rótulo y medir el desvío sobre el titular). ⚠️ Dos sabotajes viejos (S13/S14) salieron **«NO SE
+APLICÓ»** porque sus patrones incluían la lista de campos del `return`, que este cambio tocó: se
+re-anclaron. `_verify-menores-coach` **11 checks** (+4 de la tarjeta de proteína, con su control de
+montaje). `_verify-foodlog` 41/41, `_sabotaje-f7` 34/34.
+
+---
+
 ## 🟢 2026-08-18 (3ª parte) — avi-v495: EL TOPE DE RACIÓN DEL HUEVO
 
 El huevo era el **único alimento proteico sin `maxG`**. Estaba en el radar como «la causa de la

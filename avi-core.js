@@ -5637,6 +5637,9 @@ function nutPlanReview(client, currentPlan, weightKg) {
   const rotulo = (typeof nutWhyKey === 'function') ? nutWhyKey(currentPlan, client, weightKg) : null;
   const mismatch = nutGoalMismatch(rotulo, _kcalSirve, base.tdee, client);
   const gap = Math.round(actual - base.kcalObj);
+  // La dosis de proteína se mide sobre lo que se SIRVE (`_srv.macros`), no sobre lo escrito: desde
+  // v485 pueden no ser el mismo número, y auditar el titular es auditar algo que nadie se come.
+  const prot = (_srv && _srv.macros) ? nutProtCheck(client, _srv.macros, weightKg) : null;
   // 🔴 UN UMBRAL DE TOLERANCIA NO SIRVE PARA MEDIR UNA REGLA DURA. `NUT_REVIEW_MIN_GAP` (300 kcal)
   // se derivó midiendo planes de ADULTOS, donde la pregunta es «¿cuánto se desvía?». Para un menor
   // la pregunta es otra: CUALQUIER déficit rompe la regla del dictamen, no es cuestión de grados.
@@ -5645,7 +5648,7 @@ function nutPlanReview(client, currentPlan, weightKg) {
   // que la app le subió el plan. Detectar en el editor y callar sobre lo guardado deja vivos justo
   // los casos que ya existían — el mismo defecto que sigue abierto para los adultos. (Sofía, v485.)
   if (isMenor(client) && gap < 0) {
-    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot };
   }
   // El espejo exacto del de arriba, y por la misma razón: la regla no admite grados, así que no
   // puede vivir debajo del umbral de 300 kcal de los adultos. Si el techo actuó, el coach está
@@ -5653,18 +5656,71 @@ function nutPlanReview(client, currentPlan, weightKg) {
   // el editor. `minorCap` viene de la misma función que decide lo que ella ve, no de una cuenta
   // paralela — la lección de v485 sobre los oráculos que calculan por su cuenta.
   if (isMenor(client) && _srv && _srv.minorCap) {
-    return { status: 'menor_sobre_techo', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve, cap: _srv.minorCap };
+    return { status: 'menor_sobre_techo', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve, cap: _srv.minorCap };
+  }
+  // 🔴 EL ORDEN CAMBIÓ EN v496, y no por gusto: `rotulo_miente` iba ANTES que `desviado` y su
+  // tarjeta afirma «sus números están bien, lo que está mal es la etiqueta». Cuando las DOS cosas
+  // fallan a la vez, esa frase es falsa y manda al coach a arreglar lo que no toca. Se destapó
+  // simulando el arreglo de un asesorado real: al corregirle el objetivo, su plan quedaba 387 kcal
+  // por encima Y con el rótulo cambiado, y la app le decía que las cifras estaban bien.
+  // Ahora manda el NÚMERO (que es la palanca grande) y el rótulo VIAJA en el resultado para que la
+  // ficha lo diga en una línea de más. El caso de v486 —cifras perfectas, rótulo mentiroso— sigue
+  // intacto: ahí el hueco es 0, así que `desviado` no se dispara y gana `rotulo_miente`.
+  // 🔒 La decisión se toma sobre lo que se SIRVE, no sobre el titular escrito — el mismo principio
+  // que v486 aplicó al rótulo, extendido al número. Con un plan descuadrado (titular 2.200, macros
+  // 1.636) el titular dice «+470 sobre lo que le corresponde» y el plato dice «−94»: headlinear el
+  // desvío con un número que nadie se come mandaría a corregir lo que no es. De ese caso ya se
+  // ocupa, antes que este revisor, la tarjeta de desfase de la ficha.
+  // ⚠️ …pero «lo que se sirve» solo EXISTE si el coach escribió los macros: un plan con titular y
+  // nada más lo resuelve la estimación, y entonces el número que hay que juzgar es el que él
+  // escribió. Sin esta rama, un plan de «2.400 kcal» a secas se comparaba consigo mismo y daba 0.
+  const _conMacros = !!(_srv && _srv.origen === 'coach');
+  const gapSirve = _conMacros ? Math.round(_kcalSirve - base.kcalObj) : gap;
+  if (Math.abs(gapSirve) >= NUT_REVIEW_MIN_GAP) {
+    // Qué significa la desviación PARA SU OBJETIVO — es lo que le importa al coach.
+    const g = _norm((client || {}).goal || '');
+    let riesgo = null;
+    if (gapSirve > 0 && (g.includes('perd') || g.includes('grasa') || g.includes('defin'))) riesgo = 'come_de_mas_para_bajar';
+    else if (gapSirve < 0 && (g.includes('gan') || g.includes('musc') || g.includes('masa'))) riesgo = 'come_de_menos_para_subir';
+    return { status: 'desviado', gap: gapSirve, actual: _conMacros ? _kcalSirve : actual, sugerido: base.kcalObj, riesgo, base, rotulo, mismatch, prot, sirve: _kcalSirve };
   }
   // El número puede estar bien y el RÓTULO mentir: es un defecto propio, con su propio estado.
-  // Va DESPUÉS del de menores (ese es una regla dura) y ANTES del `ok`, que ya no puede darse por
-  // bueno solo porque las cifras cuadren.
-  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };
-  if (Math.abs(gap) < NUT_REVIEW_MIN_GAP) return { status: 'ok', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
-  // Qué significa la desviación PARA SU OBJETIVO — es lo que le importa al coach.
-  const g = _norm((client || {}).goal || '');
-  let riesgo = null;
-  if (gap > 0 && (g.includes('perd') || g.includes('grasa') || g.includes('defin'))) riesgo = 'come_de_mas_para_bajar';
-  else if (gap < 0 && (g.includes('gan') || g.includes('musc') || g.includes('masa'))) riesgo = 'come_de_menos_para_subir';
+  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };
+  // 🔴 Y LA PROTEÍNA, que hasta v496 no miraba NADIE. El revisor juzgaba calorías y rótulo, así que
+  // decía «ok» a 4 de los 10 planes escritos que están entre 25 y 37 g POR DEBAJO de la doctrina y
+  // a uno que está 26 g POR ENCIMA del techo de 2,2 g/kg. Es el punto 1 del dictamen de Andrés Hyp
+  // del 2026-08-05, y su nota lo dice entero: «todas mujeres, todas en Perder grasa o Recomposición,
+  // que es el cubo donde la proteína alta importa MÁS; mientras eso no entre, cada plan nuevo que se
+  // escriba va a nacer con la misma brecha».
+  if (prot && prot.dir) return { status: 'proteina_fuera', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };
+  return { status: 'ok', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot };
+}
+
+// ── ¿LA PROTEÍNA DEL PLAN ESTÁ EN SU DOSIS? ─────────────────────────────────────────────
+// Se juzga en **g por kg de peso de REFERENCIA**, que es el idioma del dictamen y el único que no
+// se descuadra con la grasa corporal (dosificar sobre el peso de báscula es lo que v428 arregló).
+// La tolerancia (±0,3 g/kg) NO se eligió a ojo: se derivó de los VEREDICTOS de Andrés sobre los 10
+// planes escritos, midiendo el 2026-08-18. Él marcó a Claudia (−0,56), Kathe (−0,47), Natalia
+// (−0,41) y Luz (−0,40) como cortas y a Miguel (+0,37) como pasado del techo; y dio por buenos a
+// Nataly (−0,20), Samuel (+0,06) y Astrid (−0,01). **±0,3 es el único corte que reproduce sus 9
+// veredictos**, y tiene aire a los dos lados (el peor aprobado está en 0,20 y el mejor marcado en
+// 0,37). Con ±0,25 entraría el plan del propio coach, que él no juzgó.
+const NUT_PROT_TOL_G_KG = 0.3;
+function nutProtCheck(client, servido, weightKg) {
+  if (!client || !servido || !(servido.prot_g > 0)) return null;
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  if (!(w > 0)) return null;
+  const ref = nutRefWeight(w, client.height) || w;
+  if (!(ref > 0)) return null;
+  const doctrina = nutProtPerKg(client.goal);
+  const dosis = servido.prot_g / ref;
+  const objetivo = Math.round(ref * doctrina);
+  const dif = dosis - doctrina;
+  return {
+    g: servido.prot_g, objetivo, gramos: servido.prot_g - objetivo,
+    dosis: Math.round(dosis * 100) / 100, doctrina,
+    dir: Math.abs(dif) < NUT_PROT_TOL_G_KG ? null : (dif < 0 ? 'corta' : 'pasada'),
+  };
   return { status: 'desviado', gap, actual, sugerido: base.kcalObj, riesgo, base, rotulo, mismatch };
 }
 
@@ -7470,6 +7526,8 @@ if (typeof module !== 'undefined' && module.exports) {
     foodLogPlanMealDone,
     FOODLOG_PLAN_PREFIX,
     nutPlanReview,
+    nutProtCheck,
+    NUT_PROT_TOL_G_KG,
     nutBaseFor,
     nutMinorFloorBase,
     nutMinorCapBase,

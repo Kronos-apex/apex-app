@@ -130,14 +130,14 @@ const SABOTAJES = [
   {
     n: 'S13 · la ficha del coach vuelve a callarse con un menor bajo su gasto',
     de: `  if (isMenor(client) && gap < 0) {
-    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch };
+    return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot };
   }`,
-    a: `  if (false) { return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch }; }`,
+    a: `  if (false) { return { status: 'menor_bajo_gasto', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot }; }`,
   },
   {
     n: 'S14 · el revisor vuelve a mirar SOLO los números (el rótulo puede mentir en paz)',
-    de: `  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };`,
-    a: `  if (false) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, sirve: _kcalSirve };`,
+    de: `  if (mismatch) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };`,
+    a: `  if (false) return { status: 'rotulo_miente', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };`,
   },
   // 🗑️ S15 RETIRADO en v493. Saboteaba el `ref = gasto × 1,05` del detector, y ese mecanismo ya
   // no existe: la franja (S27) cubre lo mismo y con más alcance, así que el `ref` quedó redundante
@@ -234,6 +234,34 @@ const SABOTAJES = [
     n: 'S29 · se cae el grano y el recorte deja de ser IDEMPOTENTE',
     de: `  if (!techo || base.kcalObj <= techo + NUT_MENOR_GRANO) return base;`,
     a: `  if (!techo || base.kcalObj <= techo) return base;`,
+  },
+  // ── LA PROTEÍNA DEL PLAN (v496, punto 1 del dictamen del 2026-08-05) ──────────────────────
+  {
+    n: 'S30 · el revisor vuelve a mirar SOLO calorías y rótulo (la proteína corta pasa por «ok»)',
+    de: `  if (prot && prot.dir) return { status: 'proteina_fuera', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };`,
+    a: `  if (false) return { status: 'proteina_fuera', gap, actual, sugerido: base.kcalObj, base, rotulo, mismatch, prot, sirve: _kcalSirve };`,
+  },
+  {
+    n: 'S31 · la tolerancia de proteína se afloja hasta no marcar a nadie',
+    de: `const NUT_PROT_TOL_G_KG = 0.3;`,
+    a: `const NUT_PROT_TOL_G_KG = 0.9;`,
+  },
+  {
+    n: 'S32 · la proteína se juzga sobre el peso de BÁSCULA en vez del de referencia (el bug de v428)',
+    de: `  const ref = nutRefWeight(w, client.height) || w;
+  if (!(ref > 0)) return null;`,
+    a: `  const ref = w;
+  if (!(ref > 0)) return null;`,
+  },
+  {
+    n: 'S33 · el rótulo vuelve a ganarle al NÚMERO cuando fallan los dos («tus cifras están bien» sobre 387 kcal)',
+    de: `  if (Math.abs(gapSirve) >= NUT_REVIEW_MIN_GAP) {`,
+    a: `  if (false && Math.abs(gapSirve) >= NUT_REVIEW_MIN_GAP) {`,
+  },
+  {
+    n: 'S34 · el desvío se vuelve a medir sobre el TITULAR escrito y no sobre lo que se sirve',
+    de: `  const gapSirve = _conMacros ? Math.round(_kcalSirve - base.kcalObj) : gap;`,
+    a: `  const gapSirve = gap;`,
   },
 ];
 
