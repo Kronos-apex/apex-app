@@ -1148,7 +1148,13 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // salen de la lista de pendientes (la auditoría las cazó al instante: tener el archivo no basta).
 ['e215','e217','e222'].forEach(id=>EX_IMG_IDS.add(id));
 // Lote de máquinas 2026-08-18: la foto existe Y se resuelve por id (tener el archivo NO basta).
-['e228','e229','e230','e231','e232','e233','e234','e235','e236','e237','e238','e239','e240','e241','e242','e243','e244','e245','e246','e247','e248','e249'].forEach(id=>EX_IMG_IDS.add(id));
+// 🔴 NUEVE FOTOS RETIRADAS (v498): las miré en miniatura de 300 px y a tamaño real —el de la
+// app— mostraban OTRO ejercicio (un press de hombro rotulado «elevación lateral», una prensa
+// completa rotulada «gemelos», un banco predicador con barra rotulado «curl en máquina»…).
+// Lo cazó el PO entrando a la app, no yo. Un ejercicio SIN foto cae a su icono y no enseña
+// nada; una foto equivocada enseña un movimiento que no es. Se rehacen y vuelven.
+// Retiradas: e222, e229, e233, e234, e235, e236, e237, e238, e240
+['e228','e230','e231','e232','e239','e241','e242','e243','e244','e245','e246','e247','e248','e249'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
@@ -1655,6 +1661,7 @@ const defaultExercises=[
   {id:'e247',name:'Remo Pendlay con Barra',muscle:'espalda',type:'Compuesto',sets:4,reps:8,icon:'⚡',env:['gym'],desc:'Remo explosivo desde el suelo: cada repetición arranca parada, así que no hay rebote y la espalda tiene que generar toda la fuerza. Exige una bisagra de cadera sólida y espalda absolutamente recta — por eso es de nivel avanzado y no un remo cualquiera.',descSimple:'Con el tronco casi paralelo al suelo y la espalda recta, jala la barra desde el piso hasta el abdomen con fuerza y devuélvela al suelo en cada repetición. Si no puedes mantener la espalda recta, este no es tu ejercicio todavía.',muscleLabel:'Dorsal, espalda media y trapecio',ytQuery:'remo pendlay tecnica correcta'},
   {id:'e248',name:'Bicicleta Reclinada',muscle:'cardio',type:'Cardio',sets:1,reps:20,icon:'🚲',env:['gym'],desc:'Reps = minutos. Bicicleta con respaldo: el apoyo de la espalda la hace la opción más cómoda para quien tiene molestia lumbar, sobrepeso o poca movilidad, y permite hacer cardio largo sin impacto en rodillas ni columna.',descSimple:'Siéntate con la espalda apoyada en el respaldo y ajusta la distancia para que la rodilla no se estire del todo. Pedalea a un ritmo constante que te deje hablar entrecortado. Los "reps" son minutos.',muscleLabel:'Cardio y piernas',ytQuery:'bicicleta reclinada como usarla'},
   {id:'e249',name:'Bici Indoor (Spinning)',muscle:'cardio',type:'Cardio',sets:1,reps:20,icon:'🚴',env:['gym'],desc:'Reps = minutos. Bicicleta de spinning: permite subir mucho la intensidad con cero impacto, así que sirve tanto para intervalos como para cardio largo. Ajusta el sillín a la altura de la cadera y no pedalees "rebotando" sobre el asiento.',descSimple:'Ajusta el sillín a la altura de tu cadera y sube la resistencia hasta que sientas que empujas de verdad. Alterna sentado y de pie si quieres subir la intensidad. Los "reps" son minutos.',muscleLabel:'Cardio y piernas',ytQuery:'bici indoor spinning tecnica'},
+  {id:'e250',name:'Sentadilla en Máquina Pendular',muscle:'piernas',type:'Compuesto',sets:4,reps:12,icon:'🌗',env:['gym'],desc:'Sentadilla en máquina pendular: el arco del péndulo lleva la carga por una trayectoria fija, así que la espalda va apoyada y la rodilla puede adelantarse sin que el peso se te venga encima. Permite bajar MÁS que en una sentadilla libre con mucha menos exigencia de equilibrio y de lumbar — por eso es la que mejor tolera quien viene de molestia de espalda. Pies a la anchura de la cadera sobre la plataforma, talón siempre apoyado y bajada controlada hasta donde la cadera no se enrosque.',descSimple:'Apóyate en el respaldo con los pies en la plataforma y baja doblando las rodillas, dejando que la máquina te lleve en su arco. Baja hasta donde puedas sin que la cadera se enrosque y empuja con toda la planta del pie. Es la sentadilla más amable con la espalda: la máquina sostiene el peso por ti.',muscleLabel:'Cuádriceps y glúteo',ytQuery:'sentadilla en maquina pendular tecnica'},
 ];
 const DB={
   clients:ld('ax_c',[]),

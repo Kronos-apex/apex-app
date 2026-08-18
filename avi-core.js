@@ -1015,6 +1015,9 @@ const EX_LEVEL = {
   // bisagra de cadera, banco declinado o estabilidad sobre una pierna; 'A' solo el Pendlay, que
   // arranca parado desde el suelo y no perdona una espalda redondeada.
   e228:'P',e229:'P',e230:'I',e231:'P',e232:'I',e233:'P',e234:'P',e235:'P',e236:'P',e237:'P',e238:'P',e239:'P',e240:'P',e241:'I',e242:'P',e243:'I',e244:'I',e245:'I',e246:'I',e247:'A',e248:'P',e249:'P',
+  // e250: la pendular la señaló el PO al revisar el lote. Guiada y con la espalda apoyada: es de
+  // las sentadillas MÁS amables para un principiante, así que va 'P'.
+  e250:'P',
   // ── LOTE DE JUNIO (e165-e214): entró SIN nivel y llevaba un mes cayendo a 'I' por el default.
   // No fue una decisión de nadie: 48 ejercicios de último recurso para un principiante (el gate
   // agota lo de nivel P antes de tocar lo 'I') y, peor, con el riesgo al revés — el burpee

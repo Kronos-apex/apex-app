@@ -4,6 +4,45 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟠 2026-08-18 (6ª parte) — avi-v498: RETIRADAS 9 FOTOS DEL LOTE (las cazó el PO en la app)
+
+**Las revisé en miniaturas de 300 px y aprobé fotos que muestran OTRO ejercicio.** El PO entró a la
+app, las vio a tamaño real y lo dijo sin rodeos. Tiene razón: revisadas de nuevo a 512 px, **9 de
+las 25 muestran un movimiento distinto del que dice su nombre** y 3 son dudosas.
+
+| id | dice | la foto muestra |
+|---|---|---|
+| e233 | Elevaciones laterales en máquina | un **press de hombro** (empuja por encima de la cabeza) |
+| e234 | Curl de bíceps en máquina | un **banco predicador con barra Z** — o sea el e56 que ya existe |
+| e235 | Extensión de tríceps en máquina | brazos apoyados al frente: parece un **curl** |
+| e236 | Prensa horizontal sentada | una **prensa de 45°**, que ya es el e36 |
+| e237 | Gemelo de pie en máquina | una máquina de **encogimientos**, sin escalón ni elevación de talón |
+| e238 | Elevación de talones en prensa | una **prensa de pierna completa**, con el pie plano |
+| e240 | Crunch en máquina abdominal | un **curl femoral sentado** (rodillos sobre las piernas) |
+| e229 | Remo con apoyo pectoral | una máquina de **aperturas**, sin apoyo en el pecho |
+| e222 | Press de banca agarre cerrado | un **press de banca normal** |
+
+**Se retiran las 9** (archivo + registro en `EX_IMG_IDS`): el ejercicio se queda y cae a su icono.
+Una foto equivocada no es un hueco: **enseña un movimiento que no es**, y el asesorado la copia.
+`audit-catalog` pasa a 9 MAJOR, que es la deuda REAL y ahora visible.
+
+### ✅ Y lo que el PO señaló que faltaba: la SENTADILLA EN MÁQUINA PENDULAR (e250)
+No estaba y ninguna otra la cubre. Entra con nivel 'P' (respaldo apoyado y trayectoria guiada: es
+de las sentadillas más amables para un principiante), `env:['gym']` y mapa muscular. **Sin foto**:
+el generador de imágenes tampoco la supo dibujar —devolvió una máquina que no es— y aquí se aplica
+la misma regla que arriba.
+
+### 🎓 Lo que enseña
+- **La escala de revisión ES parte de la revisión.** Miré una hoja de contacto a 300 px y a ese
+  tamaño un press de hombro y una elevación lateral se ven iguales. La foto se revisa **al tamaño
+  al que la va a ver la persona**, no al que le cabe al revisor.
+- **El generador de imágenes acierta con el ejercicio de peso libre y falla con la máquina
+  concreta**: de las 13 que sirven, 9 son barra, banco o Smith. Las máquinas selectorizadas hay que
+  darle una REFERENCIA real, no describírselas.
+- **Un catálogo con foto equivocada es peor que uno sin foto.** El vacío se ve; el error, no.
+
+---
+
 ## 🟢 2026-08-18 (5ª parte) — avi-v497: EL LOTE DE MÁQUINAS (e228-e249)
 
 Pedido del PO, y con la razón de su lado: *«he estado en otros gyms y veo máquinas que no están en

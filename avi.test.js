@@ -7257,7 +7257,7 @@ test('🔴 v485 · la ficha del coach NO se calla con un menor bajo su gasto', (
 // están en nuestra biblioteca». Medido contra el piso de un gimnasio de cadena: faltaban 25 de las
 // 30 estaciones revisadas, y el catálogo tenía 36 ejercicios de máquina contra 127 de peso corporal.
 const _LOTE_MAQ = [];
-for (let n = 228; n <= 249; n++) _LOTE_MAQ.push('e' + n);
+for (let n = 228; n <= 250; n++) _LOTE_MAQ.push('e' + n);   // e250 = la pendular que señaló el PO
 const _catFuente = () => require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
 
 test('🔴 v497 · el lote de máquinas es de GIMNASIO y no se cuela en casa ni en el parque', () => {
@@ -7283,7 +7283,7 @@ test('🔴 v497 · ninguna máquina nueva cae al nivel por DEFECTO', () => {
   // Y el criterio: la máquina GUIADA es de entrada. Al menos la mitad del lote tiene que ser 'P'
   // o el lote no le sirve a quien más lo necesita (el principiante que no sabe usar una barra).
   const p = _LOTE_MAQ.filter(id => core.EX_LEVEL[id] === 'P').length;
-  assert.ok(p >= 11, `solo ${p} de ${_LOTE_MAQ.length} son de nivel principiante`);
+  assert.ok(p >= 12, `solo ${p} de ${_LOTE_MAQ.length} son de nivel principiante`);
 });
 
 test('🔴 v497 · cada máquina nueva dice qué músculo trabaja (mapa muscular)', () => {
