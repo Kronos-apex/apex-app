@@ -4,6 +4,31 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟠 2026-08-18 (7ª parte) — avi-v499: fuera también las 3 DUDOSAS (veredicto del coach)
+
+El PO revisó las 25 a tamaño real en la página de revisión y su veredicto fue **quitar también las
+que yo había marcado como dudosas**: `e231` (dominadas asistidas), `e232` (pullover en máquina) y
+`e239` (patada de glúteo en máquina). Su criterio manda y es el correcto: una foto que **se puede
+confundir** con otro ejercicio no cumple su trabajo, que es enseñar el movimiento.
+
+**Estado del lote:** de las 22 máquinas, **11 conservan foto** (press inclinado en máquina, remo en
+T, abdominal declinado, banca/hip thrust/remo/búlgara en multipower, zancada con barra, Pendlay y
+las dos bicis) y **11 esperan foto**, más la pendular `e250`. `audit-catalog`: **0 BLOCK · 13
+MAJOR**, todas «sin foto» — la deuda está declarada, no escondida.
+
+**Los 23 ejercicios siguen en la app**: con nombre, descripción, músculos y nivel. Lo único que les
+falta es la imagen, y el ejercicio cae a su icono mientras tanto.
+
+### ⏭️ Lo que desbloquea el resto
+El generador de imágenes acierta con barra, banco y multipower y **falla con la máquina
+selectorizada concreta** (le devolvió un press de hombro pidiéndole una elevación lateral, y un
+curl femoral pidiéndole un abdominal). No es cuestión de insistir con el texto: necesita una **foto
+de REFERENCIA** de la máquina, que es exactamente como se generaron las 219 del catálogo (cada una
+partía de una foto previa del mismo ejercicio). Pendiente del PO: fotos de las máquinas de su gym
+—o de los gimnasios donde vio las que faltan— y el lote se cierra en una pasada.
+
+---
+
 ## 🟠 2026-08-18 (6ª parte) — avi-v498: RETIRADAS 9 FOTOS DEL LOTE (las cazó el PO en la app)
 
 **Las revisé en miniaturas de 300 px y aprobé fotos que muestran OTRO ejercicio.** El PO entró a la

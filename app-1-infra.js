@@ -1154,7 +1154,11 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // Lo cazó el PO entrando a la app, no yo. Un ejercicio SIN foto cae a su icono y no enseña
 // nada; una foto equivocada enseña un movimiento que no es. Se rehacen y vuelven.
 // Retiradas: e222, e229, e233, e234, e235, e236, e237, e238, e240
-['e228','e230','e231','e232','e239','e241','e242','e243','e244','e245','e246','e247','e248','e249'].forEach(id=>EX_IMG_IDS.add(id));
+// v499: fuera tambien las 3 DUDOSAS, por veredicto del coach tras revisar las 25 a tamaño real.
+// Retiradas aqui: e231, e232, e239 (la dominada asistida no se lee como maquina asistida,
+// el pullover se confunde con un press de hombro y la patada de gluteo parece de cable).
+// De las 22 maquinas del lote quedan 11 con foto; el resto espera FOTO DE REFERENCIA real.
+['e228','e230','e241','e242','e243','e244','e245','e246','e247','e248','e249'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
