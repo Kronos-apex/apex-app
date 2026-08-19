@@ -4,6 +4,46 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-19 — avi-v502: LA FOTO QUE SE BORRÓ Y EL ID QUE SE QUEDÓ
+
+Apareció revisando las 21 fotos de máquinas que el PO dejó en Descargas, no buscándolo.
+
+**El defecto.** v498 borró `media/exercises/e222.jpg` —a tamaño real mostraba otro ejercicio— y
+quitó las otras 9 retiradas de la lista de `EX_IMG_IDS` del lote de máquinas. **e222 vivía en OTRA
+lista** (la de las tres que el catálogo debía desde v408) y ahí se quedó. `exImgSrc` seguía
+devolviendo su ruta, así que el **press de banca agarre cerrado** pintaba un `<img>` con `src` que
+da 404. Y no cae al ícono: `exImgTag` no tiene `onerror`. **Tres versiones en producción así.**
+
+**El daño, en tres superficies** — la tercera no se ve venir:
+1. La tarjeta del ejercicio (`exIcon`) → imagen rota.
+2. El hero del detalle (`app-6-extra.js`) → imagen rota.
+3. **La foto de cabecera de la rutina** (`app-4-entreno.js:2220`), que se elige con
+   `.find(Boolean)` sobre `exImgSrc`: el id fantasma **se queda con el puesto** y la tarjeta
+   pierde la foto del ejercicio que SÍ la tiene.
+
+**El fix.** Sale `e222` de la lista (vuelve cuando haya foto REAL del gimnasio; ya está en la lista
+que tiene el PO). De paso, el comentario de encima describía el rechazo del PO del 28-jul y llevaba
+**desde v497 contradiciendo al código**: e215 y e217 sí se rehicieron y entraron.
+
+**El candado, de la CLASE.** El cruce de `scripts/audit-catalog.mjs` solo miraba **una dirección**
+—archivo sin registrar = foto invisible— y por eso dejó pasar la contraria. Ahora cruza las dos, en
+**BLOCK** porque llega al usuario, y cubre también `EX_IMG_F`: una variante `_f.jpg` que falte rompe
+la foto **solo en las cuentas de mujer**, invisible para quien prueba con una de hombre.
+
+**Verificación.** La auditoría **reproduce** el defecto antes del fix (1 BLOCK, exit 1) y queda en 0
+después. **Sabotaje ×3 en copia aislada** (los otros agentes estaban leyendo el repo), los tres
+muerden: devolver e222 a la lista · borrar el archivo de una registrada (e250) · borrar una variante
+mujer (e36_f). Control sin sabotaje en verde. Suite 789/789, hook 12/12, `_prodcheck 502` con
+`jsErrors: []`.
+
+**Lo que enseñó, y no es sobre e222.** Cuando se retira una entidad hay que enumerar **todas las
+listas que la referencian**, no solo la que se está mirando — misma familia que `REMOVED_EXERCISES`
+de v484 y que el filtro de lesiones y el calentamiento de v424. Y un cruce de integridad escrito en
+**una sola dirección** deja la contraria viva y encima **enseña a confiar en la puerta**: el hueco
+sobrevivió tres versiones justo debajo de un check que se sentía completo.
+
+---
+
 ## 🟢 2026-08-18 (9ª parte) — avi-v501: UNA SOLA DEFINICIÓN DE CALORÍA
 
 El punto abierto desde v477 y reencuadrado en v490: **42 de 50 alimentos tienen desfase entre su
@@ -1256,7 +1296,8 @@ entra ahora en la función pura y el recorte va al final.
   tranquilamente con `0.88`/`1.12`. **Un fixture uniforme y una prohibición por literal son la
   misma trampa: una aserción que el defecto puede satisfacer.**
 - **Los finales de línea NO son estables:** `app-5-salud.js` pasó de LF a CRLF *entre v477 y v478*
-  porque git los reescribe al commitear. La solución es del RUNNER (normalizar a `?
+  porque git los reescribe al commitear. La solución es del RUNNER (normalizar a `
+?
 `), no
   adivinar cuál toca hoy.
 
