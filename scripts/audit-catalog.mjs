@@ -134,6 +134,32 @@ cat.forEach(e => {
   P('MAJOR', `${e.id} (${e.name}) TIENE foto pero no está registrado en EX_IMG_IDS → no se muestra`);
 });
 
+// FOTO ROTA: el cruce anterior solo miraba UNA dirección (archivo sin registrar = invisible) y
+// por eso dejó pasar la contraria durante 3 versiones. v498 BORRÓ media/exercises/e222.jpg —
+// mostraba otro ejercicio— pero el id se quedó en la lista de EX_IMG_IDS, así que exImgSrc
+// seguía devolviendo la ruta: <img> con src que da 404. Y no cae al ícono, porque exImgTag no
+// tiene onerror. Un ejercicio SIN foto enseña su ícono; un id registrado sin archivo enseña una
+// imagen rota, que es peor. Tercer daño: renderClientRoutines elige la foto de cabecera con
+// `.find(Boolean)` sobre exImgSrc, así que un id fantasma se queda con el puesto y la tarjeta
+// pierde la foto del ejercicio que SÍ la tiene. BLOCK a propósito: llega al usuario.
+// Se registran ids que no son del catálogo (fb01…fb04, feedback), así que el patrón es amplio.
+const idsRegAll = new Set(imgNameVals);
+for (const m of html.matchAll(/\[([^\]]*)\]\.forEach\(\s*id\s*=>\s*EX_IMG_IDS\.add\(id\)\s*\)/g))
+  for (const x of m[1].matchAll(/'([a-z]+\d+)'/g)) idsRegAll.add(x[1]);
+const _nombreDe = id => (cat.find(e => e.id === id) || {}).name || '(fuera del catálogo)';
+[...idsRegAll].sort().forEach(id => {
+  if (has(`${exDir}/${id}.jpg`)) return;
+  P('BLOCK', `${id} (${_nombreDe(id)}) está registrado en EX_IMG_IDS y NO existe ${exDir}/${id}.jpg → imagen ROTA en la app`);
+});
+// Misma clase por el lado de la variante mujer: EX_IMG_F desvía a {id}_f.jpg solo para ellas,
+// así que un archivo que falte ahí rompe la foto SOLO en las cuentas de mujer — invisible para
+// quien prueba con una cuenta de hombre.
+const mF = html.match(/const EX_IMG_F=new Set\(\[([^\]]*)\]/);
+if (mF) [...mF[1].matchAll(/'([a-z]+\d+)'/g)].map(x => x[1]).forEach(id => {
+  if (has(`${exDir}/${id}_f.jpg`)) return;
+  P('BLOCK', `${id} (${_nombreDe(id)}) está en EX_IMG_F y NO existe ${exDir}/${id}_f.jpg → imagen ROTA para las mujeres`);
+});
+
 // ── Reporte ──
 const order = { BLOCK: 0, MAJOR: 1, MINOR: 2 };
 out.sort((a, b) => order[a.sev] - order[b.sev]);

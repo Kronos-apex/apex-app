@@ -1135,18 +1135,26 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 ['e165','e166','e167','e168','e169','e170','e171','e172','e173','e174','e175','e176','e177','e178','e179','e180','e182','e183','e184','e185','e186','e187','e188','e189','e190','e191','e192','e193','e194','e195','e196','e197','e198','e199','e200','e201','e202','e203','e204','e205','e206','e207','e209','e210','e211','e212','e213','e214'].forEach(id=>EX_IMG_IDS.add(id));
 // Repoblado 2026-07-27 + e159, el único viejo que se había quedado sin foto. Generadas con el
 // atleta canon del catálogo y revisadas una por una: de 11 entraron 8.
-// TRES se quedan con el ÍCONO a propósito, porque una foto con la técnica mal es peor que
+// TRES se quedaron con el ÍCONO ese día, porque una foto con la técnica mal es peor que
 // ninguna (el asesorado copia lo que ve):
 //   e217 aperturas declinadas — 4 intentos: el banco salía inclinado (el ejercicio contrario)
 //        o los brazos asimétricos, como un press alternado.
 //   e215 press declinado con barra y e222 press de banca agarre cerrado — RECHAZADAS POR EL PO
 //        (2026-07-28): «no tienen lógica». Discos desparejos a lado y lado de la barra y el
 //        ángulo de la barra imposible. El modelo no sostiene la simetría de una barra cargada.
-// Para estas tres, la vía buena es foto REAL del gimnasio, como se hizo con e126 curl femoral.
+// ESTADO HOY (2026-08-19): e215 y e217 se rehicieron y entraron en v497 — están abajo. e222
+// entró también y v498 la retiró: a tamaño real mostraba otro ejercicio. Sigue con el ícono
+// y su vía buena es foto REAL del gimnasio, como se hizo con e126 curl femoral.
 ['e159','e216','e218','e219','e220','e223','e225','e226'].forEach(id=>EX_IMG_IDS.add(id));
-// Y las TRES que el catálogo debía desde v408: sus fotos se generaron en el mismo lote, así que
-// salen de la lista de pendientes (la auditoría las cazó al instante: tener el archivo no basta).
-['e215','e217','e222'].forEach(id=>EX_IMG_IDS.add(id));
+// Las TRES que el catálogo debía desde v408: sus fotos se generaron en v497 y por eso se
+// registraron aquí (tener el archivo no basta). El comentario de arriba quedó CADUCO ese día:
+// describe el rechazo del PO del 2026-07-28, anterior a la regeneración.
+// v502: sale e222. v498 BORRÓ su archivo (mostraba otro ejercicio) y olvidó quitar el id de
+// esta lista — las otras 9 retiradas ese día vivían en la lista del lote de máquinas, de abajo.
+// Un id registrado sin archivo NO cae al ícono: exImgTag no tiene onerror, así que la app
+// pintaba una imagen ROTA. Vuelve cuando haya foto REAL del gimnasio (está en la lista que
+// tiene el PO). Candado permanente: el cruce inverso de scripts/audit-catalog.mjs, que es BLOCK.
+['e215','e217'].forEach(id=>EX_IMG_IDS.add(id));
 // Lote de máquinas 2026-08-18: la foto existe Y se resuelve por id (tener el archivo NO basta).
 // 🔴 NUEVE FOTOS RETIRADAS (v498): las miré en miniatura de 300 px y a tamaño real —el de la
 // app— mostraban OTRO ejercicio (un press de hombro rotulado «elevación lateral», una prensa
