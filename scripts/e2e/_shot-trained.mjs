@@ -60,7 +60,10 @@ const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (
 
 const cardPresent = await ev(`!!document.querySelector('#cn-today-body .trained-card')`);
 const cardText = await ev(`(()=>{const c=document.querySelector('#cn-today-body .trained-card');return c?c.textContent:''})()`);
-const habitsPresent = await ev(`!!(document.querySelector('#cn-habits .hb-card')||document.querySelector('.hb-card'))`);
+// v504: los hábitos abren como TIRA de chips (el bloque completo queda a un toque). Lo que este
+// check protege —que el agua y los pasos sigan A LA MANO el día que ya entrenó, sin scrollear—
+// vale igual con la tira; por eso se acepta cualquiera de las dos formas.
+const habitsPresent = await ev(`!!document.querySelector('#cn-habits .hb-strip, #cn-habits .hb-card')`);
 const noWorkout = await ev(`!/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
 check('T1 la tarjeta «Ya entrenaste» reemplaza el entrenamiento', cardPresent === true, 'card=' + cardPresent);
 check('T2 el título dice que ya entrenó', /Ya entrenaste hoy/.test(cardText), JSON.stringify(cardText.slice(0, 40)));

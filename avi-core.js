@@ -2636,6 +2636,19 @@ function stepsWeek(habits, now) {
   return out;
 }
 
+// Avance de un hábito hacia su meta, para la barra y el color. PURA.
+// Existe porque v504 pone los MISMOS tres hábitos en dos sitios a la vez —la tira de chips y el
+// bloque desplegado— y ese cálculo estaba escrito a mano tres veces en app-5. Dos superficies
+// con dos cuentas del mismo dato se acaban contradiciendo (lección v435): aquí hay una sola.
+// Sin meta legible el avance es 0 y NUNCA «cumplido» — una barra llena sobre una meta que no
+// existe le diría que terminó algo que nadie le pidió.
+function habitPct(n, goal) {
+  const v = Math.max(0, Number(n) || 0);
+  const g = Number(goal) || 0;
+  if (g <= 0) return { pct: 0, met: false };
+  return { pct: Math.min(100, Math.round(v / g * 100)), met: v >= g };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // REGISTRO DE ALIMENTOS — F0: MODELO DE DATOS (estipulaciones E1-E4 de Fable)
 // ──────────────────────────────────────────────────────────────────────
@@ -7892,5 +7905,6 @@ if (typeof module !== 'undefined' && module.exports) {
     stepsSet,
     stepsAdd,
     stepsWeek,
+    habitPct,
   };
 }

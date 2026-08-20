@@ -46,10 +46,26 @@ try {
   await sleep(2500);
   for (let k = 0; k < 6; k++) { await ev(`(()=>{try{if(typeof hideClientWelcome==='function')hideClientWelcome();}catch(e){}['data-ob','cwelcome','fsintro','m-fsintro','m-textsize'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on');e.style.display='none';}});const ob=document.getElementById('onboarding');if(ob)ob.style.display='none';})()`); await sleep(150); }
   // Poll de 15s no pisa el estado + arranque limpio de hábitos (solo memoria; sello v298 corta la nube)
+  // 🔴 FIXTURE: sin sesiones la app entra en modo DÍA 1 (v403) y APAGA la tarjeta de hábitos a
+  // propósito → W1/W6/S5 llevaban meses en rojo por eso, no por el agua. Quien registra su agua
+  // es alguien que ya entrena: el fixture le da historial (misma corrección que _verify-foodlog).
   await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}
     const c=DB.clients.find(x=>x.id===CUR.clientId); c.habits={}; delete DB.nutrition[CUR.clientId];
+    const hoy=Date.now();
+    DB.history[CUR.clientId]=[1,3,5].map(d=>({id:'hw'+d,routineId:'rw',routineName:'Full Body',
+      date:new Date(hoy-d*86400000).toISOString(), finishedAt:new Date(hoy-d*86400000+3.6e6).toISOString(),
+      doneSets:12,totalSets:12,exercises:[]}));
     navReset('cn-today');cnTab('cn-today',_cnTabEl('cn-today'),true);renderClientToday(c);})()`);
   await sleep(600);
+
+  // W0 (v504): «Hoy» ahora ABRE con la tira de chips y el bloque completo queda a un toque. Este
+  // harness prueba los CONTROLES del agua y los pasos, que viven en ese bloque: se comprueba que
+  // la tira es lo que recibe a la persona y se despliega el detalle para lo que sigue.
+  const tira = await ev(`(()=>{const s=document.querySelector('#cn-habits .hb-strip');
+    return s?s.querySelectorAll('.hb-chip').length:0;})()`);
+  check('W0 «Hoy» recibe con la TIRA de hábitos (agua y pasos, mínimo)', tira >= 2, 'chips=' + tira);
+  await ev(`(()=>{if(typeof habitsToggle==='function'&&!habitsOpen(CUR.clientId))habitsToggle();})()`);
+  await sleep(400);
 
   // W1: la tarjeta sale en Hoy con contador en 0 y meta razonable
   let s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);

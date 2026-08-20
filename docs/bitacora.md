@@ -4,6 +4,80 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-19 — avi-v504: LA TIRA DE 3 CHIPS («B · El Compromiso», 2 de 3)
+
+Segunda pieza de la dirección B. Agua, pasos y plato dejan de ser una tarjeta apilada de tres
+filas y ceden a una **tira de tres chips de una línea**: el día tiene UNA promesa —el entreno, en
+el héroe— y el resto cede.
+
+**LA MEDICIÓN QUE DECIDIÓ LA FORMA.** Antes de tocar nada se midió quién usa qué, sobre los 24
+perfiles reales (últimos 30 días, que es lo que la poda conserva):
+
+| hábito | personas | días registrados |
+|---|---|---|
+| **agua** | **8** | **71** |
+| pasos | 8 | 45 |
+| registro de comida | 5 | 7 (ninguno desde el 13-ago) |
+
+El vaso de agua es **hoy un solo toque** y es el hábito con más adopción de la app. Portar la
+maqueta tal cual —tres chips que solo *muestran* y mandan al detalle— le habría subido el precio
+al único hábito que pegó, que es exactamente el pecado que el estudio de Fitia dejó documentado.
+**Por eso cada chip conserva la acción que ESE hábito necesita:**
+- **agua** → el chip SUMA UN VASO. Un toque, igual que antes. Cero regresión.
+- **comida** → abre la habitación del registro. Un toque, igual que antes.
+- **pasos** → despliega el detalle **y deja el cursor en el campo** donde se escribe el total del
+  celular (que es como se registran los pasos por diseño, desde v362).
+
+**Nada se perdió.** El bloque completo de siempre —corregir −1, el campo de pasos, el +1.000, las
+dos semanas en puntos— sigue existiendo entero, a un toque, y **se queda abierto**: la preferencia
+se guarda por asesorado y **solo en ese aparato** (`ax_hbopen_<cid>`, fuera de SB_KEYS a propósito
+— es una preferencia de pantalla, no un dato suyo). Quien usa los pasos a diario no paga un toque
+extra cada día.
+
+🔴 **UN DEFECTO REAL QUE EL CINTURÓN CAZÓ ANTES DE SALIR.** La primera versión del chip del plato
+decía «2124 de 2080 kcal»: una cifra exacta contra una meta exacta. Eso **contradice v478**, donde
+se midió que el propio plato entrega entre el 94,7% y el 110,2% de lo que promete y por eso la app
+habla en FRANJA. Con 2124 sobre una franja de 1810–2350 la persona está DENTRO, y el chip la
+presentaba como pasada — mientras la fila de abajo le decía «✓ vas en tu franja». La contradicción
+de v435 recién nacida. Ahora el chip usa **las mismas palabras** que la fila: «✓ vas en tu franja»
+· «te quedan N» · «N por encima», y sin nada anotado da la franja del día. Lo cazó
+`_verify-foodlog` (FR1/FR2/F7-3), que ya tenía escrita la regla.
+
+**Una sola cuenta para el mismo dato.** `habitPct` nace pura en avi-core y la usan **las cuatro**
+superficies (los tres chips y las tres filas), que antes calculaban el porcentaje a mano. Un check
+estático prohíbe que vuelva a haber una copia suelta en app-5.
+
+**Verificación.** Suite **797/797** (3 tests nuevos). Harness nuevo `_verify-chips.mjs`, **17/17**:
+la tira, el toque del agua, el foco en el campo de pasos, la habitación del plato, que el detalle
+no perdió nada, que sobrevive al re-render, el tier libre (2 chips), 360 px, letra XL, y el
+contraste medido en el DOM en los dos temas. **Sabotaje ×2, los dos muerden:** quitarle al chip de
+agua su toque (C2 rojo) · darle al chip una SEGUNDA fuente para la meta (C6 rojo: chip 9, fila 8).
+Cinturón: `_verify-foodlog` **41/41** · `_verify-hero` 20/20 · `_verify-firstrun` 8/8 ·
+`_shot-trained` 9/9 · `_audit-pantallas` TODO OK. Capturas miradas en claro, oscuro, 360 y XL.
+
+💎 **`_verify-water` estaba MUERTO y volvió a la vida: de 3 rojos a TODO OK.** Los tres venían de
+su fixture: sin sesiones, la app entra en modo **día 1** (v403) y apaga la tarjeta de hábitos a
+propósito, así que el harness medía una pantalla vacía. Con historial —quien registra su agua es
+alguien que ya entrena— pasa entero, y de paso ahora afirma la tira antes de desplegar el detalle.
+
+**Tres harnesses re-encuadrados, con su porqué:** `_shot-trained` T4 y `_verify-foodlog` FL1
+afirmaban la presencia de `.hb-card`; lo que protegen —que el agua, los pasos y la comida sigan a
+la mano en «Hoy»— vale igual con la tira, así que aceptan cualquiera de las dos formas. Y el
+control C7-bis del harness nuevo pasó a exigir que el objetivo se diga **en franja**, que es más
+estricto que lo que pedía antes.
+
+🔴 **QUEDA PARA v505, y se ve en la captura:** debajo de la tira sigue la tarjeta grande «Tu comida
+de hoy» (`#cn-meals`, el PLAN del día), así que el plato aparece dos veces en la misma pantalla —
+una como chip y otra como tarjeta, con dos expresiones del mismo número a pocos píxeles. No se
+contradicen (la franja es ±13% de esa meta), pero es justo el apilamiento que B viene a quitar, y
+le toca a v505 junto con el tope de tarjetas.
+
+**AVI_NEWS: NO lleva entrada** (decisión declarada, R3.3), por lo mismo que v503: si el lote B
+lleva noticia, la lleva entero al cerrar v505.
+
+**Sigue:** v505 — las filas delgadas y **el tope de cuántas tarjetas pueden salir a la vez**, que
+es lo único que impide que B se degrade sola. **PENDIENTE re-verificación de Fable.**
+
 ## 🟢 2026-08-19 — avi-v503: EL HÉROE («B · El Compromiso», 1 de 3)
 
 Primera pieza construida de la dirección visual que el PO eligió viendo cuatro columnas lado a

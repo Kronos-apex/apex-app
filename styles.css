@@ -359,6 +359,34 @@ html[data-theme="light"] .mta {
 .hb-dot.some{background:var(--bl);opacity:.45}
 .hb-dot.full{background:var(--bl)}
 /* Hábitos parte 2 (v362): 👟 pasos — misma tarjeta, acento VERDE para distinguir del agua azul */
+/* ══ LA TIRA DE 3 CHIPS (v504, dirección B) ═══════════════════════════════════════════════
+   Agua, pasos y plato dejan de ser una tarjeta de tres filas y ceden a una tira de una línea:
+   el día tiene UNA promesa y es el entreno. Cada chip conserva la acción que ESE hábito
+   necesita (el de agua suma un vaso de un toque: 8 personas y 71 días medidos, es el hábito
+   con más adopción de la app). El detalle completo sigue existiendo, a un toque. */
+.hb-strip{display:flex;gap:8px;margin-bottom:10px}
+.hb-chip{flex:1;min-width:0;background:var(--w);border:1px solid var(--br);border-radius:14px;
+  padding:10px 10px 11px;cursor:pointer;text-align:left;font-family:inherit;display:block;
+  transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out)}
+.hb-chip:active{transform:scale(.97)}
+.hb-chip-ic{display:block;width:19px;height:19px;margin-bottom:7px;color:var(--blt)}
+.hb-chip-v{display:block;font-size:15px;font-weight:800;color:var(--t1);line-height:1.1;font-variant-numeric:tabular-nums}
+.hb-chip-v small{font-size:11px;font-weight:600;color:var(--t2)}
+.hb-chip-l{display:block;font-size:10.5px;color:var(--t2);margin-top:2px;font-weight:600;line-height:1.25}
+.hb-chip-bar{display:block;height:4px;border-radius:99px;background:var(--bll);margin-top:8px;overflow:hidden}
+.hb-chip-bar i{display:block;height:100%;border-radius:99px;background:var(--bl);
+  transition:width var(--dur) var(--ease-out)}
+.hb-chip.s .hb-chip-ic{color:var(--gt)} .hb-chip.s .hb-chip-bar{background:var(--gl)} .hb-chip.s .hb-chip-bar i{background:var(--g2)}
+.hb-chip.f .hb-chip-ic{color:var(--ort)} .hb-chip.f .hb-chip-bar{background:var(--orl)} .hb-chip.f .hb-chip-bar i{background:var(--or)}
+.hb-chip.met{border-color:var(--g2)}
+.hb-chip.met .hb-chip-bar i{background:var(--g2)}
+.hb-more{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:38px;
+  margin-bottom:12px;background:transparent;border:1px dashed var(--br2);border-radius:12px;
+  color:var(--t2);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.hb-more:active{border-color:var(--g2);color:var(--t1)}
+.hb-more-chev{display:inline-flex;transition:transform var(--dur) var(--ease-out)}
+.hb-more-chev.up{transform:rotate(180deg)}
 .hb-sep{height:1px;background:var(--br);margin:12px 0}
 .hb-ic.st{background:var(--gl);color:var(--g2)}
 .hb-sub b.st{color:var(--gt);font-size:13px}

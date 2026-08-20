@@ -86,16 +86,19 @@ try {
 
   // FL1 — el bloque sale en la tarjeta de hábitos. OBSERVA lo que la app pinta sola: la sonda
   // NO llama a renderHabitsCard (la primera versión lo hacía y se fabricaba su propio verde).
-  await waitFor(`!!document.querySelector('#cn-habits .hb-card')`, 8000);
+  await waitFor(`!!document.querySelector('#cn-habits .hb-strip, #cn-habits .hb-card')`, 8000);
   let s = JSON.parse(await ev(`JSON.stringify((()=>{const el=document.getElementById('cn-habits');
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     const hist=(DB.history||{})[CUR.clientId]||[];
 
-    return {bloque:!!document.querySelector('#cn-habits .hb-ic.fl'), largo:el?el.innerHTML.length:-1,
+    // v504: los hábitos abren como TIRA de chips y el bloque completo queda a un toque. Lo que
+    // este check protege —que la comida esté presente junto al agua y los pasos, y no escondida
+    // en otra pantalla— vale igual con el chip; por eso se acepta cualquiera de las dos formas.
+    return {bloque:!!document.querySelector('#cn-habits .hb-ic.fl, #cn-habits .hb-chip.f'), largo:el?el.innerHTML.length:-1,
       libre:typeof isFreeClient==='function'?isFreeClient(c):'nofn', sesiones:hist.length,
       sesiones2:hist.length,
-      titulo:[...document.querySelectorAll('#cn-habits .hb-title')].map(e=>e.textContent).join('|')};})())`));
-  check('FL1 el bloque «Comida de hoy» sale junto a agua y pasos', s.bloque && /Comida de hoy/.test(s.titulo), JSON.stringify(s));
+      titulo:[...document.querySelectorAll('#cn-habits .hb-title, #cn-habits .hb-chip')].map(e=>e.textContent.replace(/\s+/g,' ').trim()).join('|')};})())`));
+  check('FL1 la comida sale junto al agua y los pasos (chip o bloque)', s.bloque && /kcal|Comida de hoy|anota tu comida/.test(s.titulo), JSON.stringify(s));
 
   // FL2 — sin aceptar el aviso NO se puede registrar
   await ev(`openFoodLogRoom()`); await sleep(700);

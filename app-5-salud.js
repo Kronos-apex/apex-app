@@ -1303,14 +1303,20 @@ function _waterGoalFor(client){
   const coachGoal=nut&&parseInt(nut.water);
   return (coachGoal>0)?Math.min(30,coachGoal):waterGoalGlasses(client.weight);
 }
+// Avance hacia la meta: SIEMPRE por `habitPct` (avi-core), nunca a mano. Las cuatro superficies
+// que pintan una barra de hábito —los tres chips y las tres filas del detalle— tienen que dar el
+// mismo número o se contradicen en la misma pantalla. El guard es por caché vieja de avi-core.
+function _hbPct(n,goal){
+  return (typeof habitPct==='function')?habitPct(n,goal)
+    :{pct:(goal>0?Math.min(100,Math.round(n/goal*100)):0),met:goal>0&&n>=goal};
+}
 // Formatea un entero con separador de miles colombiano (8000 → "8.000").
 function _fmtSteps(n){ return String(Math.max(0,parseInt(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 function _waterBlockHtml(client){
   const goal=_waterGoalFor(client);
   const n=waterToday(client.habits);
-  const met=n>=goal;
   const lts=v=>(Math.round(v*WATER_GLASS_ML/100)/10)+' L';
-  const pct=Math.min(100,Math.round(n/goal*100));
+  const {pct,met}=_hbPct(n,goal);
   const dots=waterWeek(client.habits).map(d=>{
     const cls=d.n>=goal?' full':(d.n>0?' some':'');
     return `<span class="hb-dot${cls}" title="${d.day}: ${d.n} vaso${d.n!==1?'s':''}"></span>`;
@@ -1334,8 +1340,7 @@ function _waterBlockHtml(client){
 function _stepsBlockHtml(client){
   const goal=STEPS_GOAL_DEFAULT;
   const n=stepsToday(client.habits);
-  const met=n>=goal;
-  const pct=Math.min(100,Math.round(n/goal*100));
+  const {pct,met}=_hbPct(n,goal);
   const dots=stepsWeek(client.habits).map(d=>{
     const cls=d.n>=goal?' full':(d.n>0?' some':'');
     return `<span class="hb-dot st${cls}" title="${d.day}: ${_fmtSteps(d.n)} pasos"></span>`;
@@ -1409,7 +1414,7 @@ function _foodLogBlockHtml(client){
   const tot=foodLogTotals(hoy);
   const meta=_foodLogTargetHoy(client.id);
   const pr=foodLogProgress(tot,meta);
-  const pct=pr.kcal.pct==null?0:Math.min(100,pr.kcal.pct);
+  const pct=_hbPct(pr.kcal.hecho,pr.kcal.meta).pct;
   // LA FRANJA, NO LA CIFRA EXACTA. Ni el propio plato clava el número (sirve 94,7%-110,2% de lo
   // que promete, medido), así que exigirle a la persona un valor al gramo la pone a fallar
   // todos los días. Y se dice lo que le QUEDA, no lo que lleva.
@@ -1434,17 +1439,103 @@ function _foodLogBlockHtml(client){
       <button type="button" class="hb-btn hb-plus fl" aria-label="Registrar lo que comí" onclick="openFoodLogRoom()">+</button>
     </div>`;
 }
+// ── LA TIRA DE 3 CHIPS (v504, dirección B «El Compromiso») ────────────────────────────────
+// El día tiene UNA promesa (el entreno, en el héroe) y el resto CEDE: agua, pasos y plato dejan
+// de ser una tarjeta apilada de tres filas y pasan a una tira de tres chips de una línea.
+//
+// 🔴 LO QUE NO SE PUEDE PERDER, MEDIDO SOBRE LOS 24 PERFILES REALES (19-ago, últimos 30 días):
+//   agua   → 8 personas · 71 días registrados   ← el hábito con más adopción de la app
+//   pasos  → 8 personas · 45 días
+//   comida → 5 personas ·  7 días (ninguna desde el 13-ago)
+// El vaso de agua es HOY un solo toque, y es justo el que más se usa. Un rediseño que lo
+// convierta en «abrir, buscar, tocar» le sube el precio al único hábito que pegó — el pecado
+// que el estudio de Fitia dejó documentado. Por eso cada chip conserva la acción que ESE hábito
+// necesita: el de agua SUMA UN VASO (un toque, igual que antes), el de comida abre la habitación
+// del registro (igual que antes) y el de pasos despliega el detalle, que es donde vive su campo
+// para escribir el total del celular. Lo demás (corregir −1, la semana en puntos) vive en el
+// detalle, a un toque: son correcciones y consulta, no el gesto diario.
+function _habitChipHtml(o){
+  const bar=_hbPct(o.n,o.goal);
+  // `met` se puede forzar porque no todo hábito se cumple llegando a un número: el plato se
+  // cumple cayendo DENTRO de su franja (v478), que es una condición de dos lados.
+  const met=(o.met===undefined)?bar.met:!!o.met;
+  const ic=(typeof aviIcon==='function')?aviIcon(o.icon,19):o.fb;
+  return `<button type="button" class="hb-chip ${o.k}${met?' met':''}" onclick="${o.onclick}" aria-label="${esc(o.aria)}">
+    <span class="hb-chip-ic" aria-hidden="true">${ic}</span>
+    <span class="hb-chip-v">${o.v}</span>
+    <span class="hb-chip-l">${esc(o.l)}</span>
+    <span class="hb-chip-bar" aria-hidden="true"><i style="width:${bar.pct}%"></i></span>
+  </button>`;
+}
+function _habitStripHtml(client,conComida){
+  const wGoal=_waterGoalFor(client), wN=waterToday(client.habits);
+  const sGoal=STEPS_GOAL_DEFAULT, sN=stepsToday(client.habits);
+  const chips=[
+    _habitChipHtml({k:'w',icon:'droplet',fb:'💧',n:wN,goal:wGoal,
+      v:`${wN}<small>/${wGoal}</small>`, l:'vasos', onclick:'waterTap(1)',
+      aria:`Agregar un vaso de agua. Llevas ${wN} de ${wGoal} vasos hoy`}),
+    _habitChipHtml({k:'s',icon:'footprints',fb:'👟',n:sN,goal:sGoal,
+      v:_fmtSteps(sN), l:`de ${_fmtSteps(sGoal)} pasos`, onclick:"habitsToggle('steps')",
+      aria:`Anotar tus pasos. Llevas ${_fmtSteps(sN)} de ${_fmtSteps(sGoal)} pasos hoy`}),
+  ];
+  if(conComida){
+    const tot=foodLogTotals(foodLogDay(client.foodlog));
+    const meta=_foodLogTargetHoy(client.id);
+    // La franja manda sobre la cifra (v478): el chip se pinta «cumplido» cuando el registro está
+    // DENTRO de la franja, no cuando clava el número — o contradiría a la fila de abajo, que ya
+    // dice «✓ vas en tu franja». Sin plan no hay meta y el chip no inventa una.
+    const band=(meta&&typeof foodLogBandFor==='function')?foodLogBandFor(meta.kcal,tot.kcal):null;
+    // 🔴 EL CHIP HABLA EN FRANJA, con las MISMAS palabras que la fila del detalle (v478). Una
+    // cifra exacta contra una meta exacta le diría «te pasaste» a quien comió justo lo que la
+    // app le mandó: el propio plato entrega entre el 94,7% y el 110,2% de lo que promete. Y si
+    // el chip dijera una cosa y la fila de abajo otra, sería la contradicción de v435 otra vez.
+    const l=!band ? 'anota tu comida'
+      : !tot.n ? `hoy: ${band.lo}–${band.hi} kcal`
+      : band.estado==='dentro' ? '✓ vas en tu franja'
+      : band.estado==='bajo' ? `te quedan ${band.falta}`
+      : `${band.sobra} por encima`;
+    chips.push(_habitChipHtml({k:'f',icon:'utensils',fb:'🍽️',
+      n:tot.kcal, goal:meta?meta.kcal:0, met:!!(band&&band.estado==='dentro'),
+      v:tot.n?String(Math.round(tot.kcal)):'—', l:l,
+      onclick:'openFoodLogRoom()',
+      aria:tot.n?`Registrar lo que comiste. Llevas ${Math.round(tot.kcal)} kilocalorías hoy`
+                :'Registrar lo que comiste. Hoy no has anotado nada'}));
+  }
+  return `<div class="hb-strip" role="group" aria-label="Tus hábitos de hoy">${chips.join('')}</div>`;
+}
+// El detalle se abre y se queda abierto: se guarda por asesorado y SOLO en este aparato
+// (`ax_hbopen_<cid>`, fuera de SB_KEYS a propósito — es una preferencia de pantalla, no un dato
+// suyo). Quien usa los pasos a diario no puede pagar un toque extra cada día.
+function _habitsOpenKey(cid){ return 'ax_hbopen_'+cid; }
+function habitsOpen(cid){ try{ return localStorage.getItem(_habitsOpenKey(cid))==='1'; }catch(e){ return false; } }
+function habitsToggle(_focus){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const abierto=habitsOpen(c.id);
+  try{ localStorage.setItem(_habitsOpenKey(c.id), abierto?'0':'1'); }catch(e){}
+  renderHabitsCard(c);
+  // «Anotar mis pasos» tiene que dejar el cursor donde se escribe, o el toque no sirvió de nada.
+  if(!abierto&&_focus==='steps'){
+    const inp=document.querySelector('#cn-habits .hb-num');
+    if(inp){ if(inp.scrollIntoView)inp.scrollIntoView({block:'center',behavior:'smooth'}); inp.focus(); }
+  }
+}
 function renderHabitsCard(client){
   const el=document.getElementById('cn-habits'); if(!el)return;
   if(!client){ el.innerHTML=''; return; }
   // El registro es PREMIUM (decisión del PO): al tier libre no se le muestra ni el bloque, para
   // no ofrecerle una puerta que no puede abrir.
   const conComida=!(typeof isFreeClient==='function'&&isFreeClient(client));
-  el.innerHTML=`<div class="hb-card" role="group" aria-label="Tus hábitos de hoy">
-    ${_waterBlockHtml(client)}
-    ${_stepsBlockHtml(client)}
-    ${conComida?_foodLogBlockHtml(client):''}
-  </div>`;
+  const abierto=habitsOpen(client.id);
+  el.innerHTML=`${_habitStripHtml(client,conComida)}
+    <button type="button" class="hb-more" onclick="habitsToggle()" aria-expanded="${abierto?'true':'false'}">
+      ${abierto?'Ocultar el detalle':'Ver el detalle de mis hábitos'}
+      <span class="hb-more-chev${abierto?' up':''}" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('tridown',11):'▾'}</span>
+    </button>
+    ${abierto?`<div class="hb-card" role="group" aria-label="Tus hábitos de hoy, en detalle">
+      ${_waterBlockHtml(client)}
+      ${_stepsBlockHtml(client)}
+      ${conComida?_foodLogBlockHtml(client):''}
+    </div>`:''}`;
 }
 // ── La habitación del registro ────────────────────────────────────────────────
 // Estado de la vista, NO de los datos (los datos viven en client.foodlog).

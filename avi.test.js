@@ -252,6 +252,7 @@ const {
   heroTitleSize,
   todayHeroModel,
   HERO_MAX_LINES,
+  habitPct,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -10578,6 +10579,50 @@ test('🔴 el ánimo declarado se guarda EN LA SESIÓN (no solo en el teléfono)
   // Las dos: si solo estuviera en la que crea, una sesión que declara el ánimo DESPUÉS de
   // empezar lo perdería — y esa es justo la sesión que interesa (la que salió mal).
   assert.ok(rama1 && rama2, 'el ánimo debe guardarse en las DOS ramas');
+});
+
+// ══════════════════════════════════════════════════════
+// LA TIRA DE 3 CHIPS — dirección B «El Compromiso» (v504)
+// ══════════════════════════════════════════════════════
+
+test('🔴 sin meta legible el hábito NO se pinta como cumplido (barra llena sobre nada)', () => {
+  assert.deepStrictEqual(habitPct(5, 0), { pct: 0, met: false });
+  assert.deepStrictEqual(habitPct(5, null), { pct: 0, met: false });
+  assert.deepStrictEqual(habitPct(5, undefined), { pct: 0, met: false });
+  assert.deepStrictEqual(habitPct(0, 0), { pct: 0, met: false });
+  // Sin plan de nutrición la meta de kcal no existe: el chip no puede felicitar a nadie.
+  assert.strictEqual(habitPct(1240, 0).met, false);
+});
+
+test('el avance del hábito topa en 100 y «cumplido» empieza justo en la meta', () => {
+  assert.deepStrictEqual(habitPct(5, 8), { pct: 63, met: false });
+  assert.deepStrictEqual(habitPct(8, 8), { pct: 100, met: true });
+  assert.deepStrictEqual(habitPct(12, 8), { pct: 100, met: true }, 'la barra no se desborda');
+  assert.deepStrictEqual(habitPct(4820, 8000), { pct: 60, met: false });
+  // Basura y negativos no rompen la barra ni fabrican un cumplido.
+  assert.deepStrictEqual(habitPct(-3, 8), { pct: 0, met: false });
+  assert.deepStrictEqual(habitPct('x', 8), { pct: 0, met: false });
+});
+
+// 🔴 El chip y la fila del detalle pintan el MISMO hábito a un toque de distancia. Si cada uno
+// hace su cuenta, se contradicen — es la clase de v435 (dos pantallas, dos cálculos). Este check
+// mira la fuente: en app-5 no puede quedar ni un porcentaje de hábito calculado a mano.
+test('🔴 las 4 superficies de hábitos calculan el avance con la MISMA función', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8');
+  // El cuerpo de `_hbPct` se recorta antes de buscar: ahí vive la ÚNICA copia sancionada de la
+  // fórmula (la degradación por caché vieja de avi-core, que es real — app-5 nuevo con avi-core
+  // viejo). Lo que este check persigue son las copias en las superficies, que sí se separan.
+  const ini = src.indexOf('function _hbPct(');
+  assert.ok(ini > 0, '_hbPct desapareció de app-5');
+  const fin = src.indexOf('\nfunction ', ini + 1);
+  const fuera = src.slice(0, ini) + src.slice(fin);
+  const aMano = fuera.match(/Math\.min\(100,\s*Math\.round\([^)]*\/\s*goal[^)]*\)\)/g) || [];
+  assert.strictEqual(aMano.length, 0, 'quedó un avance de hábito calculado a mano: ' + aMano.join(' | '));
+  const usos = (src.match(/_hbPct\(/g) || []).length;
+  assert.ok(usos >= 5, `_hbPct debería alimentar los 3 chips y las 3 filas; se usa ${usos} veces`);
+  // Y el helper local tiene que delegar en el núcleo, no reimplementar la regla.
+  assert.ok(/function _hbPct\([^)]*\)\{[\s\S]{0,220}habitPct\(/.test(src), '_hbPct dejó de delegar en habitPct');
 });
 
 // ══════════════════════════════════════════════════════
