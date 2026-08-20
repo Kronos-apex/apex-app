@@ -5773,7 +5773,6 @@ function nutProtCheck(client, servido, weightKg) {
     dosis: Math.round(dosis * 100) / 100, doctrina,
     dir: Math.abs(dif) < NUT_PROT_TOL_G_KG ? null : (dif < 0 ? 'corta' : 'pasada'),
   };
-  return { status: 'desviado', gap, actual, sugerido: base.kcalObj, riesgo, base, rotulo, mismatch };
 }
 
 // ══════════════════════════════════════════════════════════════════════
