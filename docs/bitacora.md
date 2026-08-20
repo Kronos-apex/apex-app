@@ -4,6 +4,53 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔻 2026-08-20 — avi-v507: EL REGISTRO DE ALIMENTOS BAJA DE SITIO (decisión del PO)
+
+Se le planteó al PO la decisión que quedó abierta en §8 del plan de la dirección B —**empujar el
+registro de alimentos o bajarle el sitio**— con la medición delante (agua 8 personas/71 días · pasos
+8/45 · **comida 5/7, y nadie desde el 13-ago**, después de siete versiones de trabajo F0-F7).
+**Eligió bajarlo.**
+
+**La tira de «Hoy» pasa de 3 chips a 2** (agua y pasos, los que la gente usa de verdad). El registro
+**conserva sus dos puertas y gana una tercera**: la fila del detalle de hábitos con su «+», el
+«✓ Me lo comí» por comida dentro del propio plan (F7, que sigue siendo el camino más barato que
+existe: un toque y sin teclear) y —nueva— **«Anotar lo que comí hoy» dentro de «Mi nutrición»**,
+que es donde la persona está pensando en comida.
+
+🔑 **Bajar de sitio y esconder se parecen en la captura y son cosas distintas.** Lo que las separa
+son las puertas que quedan abiertas: si la única hubiera sido el detalle plegado, esto sería lo
+segundo. Por eso la puerta de «Mi nutrición» no es un extra del lote — es la mitad que convierte la
+bajada en MUDANZA, y tiene su propio candado (C4-bis).
+
+**No se pierde información:** la franja del día y los macros los sigue diciendo la tarjeta del plan
+`#cn-meals`, que está justo debajo. **Y de paso cierra el otro punto abierto de §8**: el chip y esa
+tarjeta eran las DOS apariciones del mismo plato en la misma pantalla, a 150 px de distancia.
+
+**Los candados, los dos saboteados:**
+- `_verify-chips` 17 → **19**, y cambia de tema. **C4** ya no es «el chip abre la habitación» sino el
+  candado de la BAJADA (el chip NO está en la tira **y** las dos puertas de abajo abren); **C4-bis**
+  cubre la puerta de «Mi nutrición»; **C11** es nuevo: el plato sale **una sola vez** en «Hoy».
+  **C7/C7-bis y C10 se mudan del chip a la fila del detalle** — bajar de sitio no exime de leerse
+  (medido ahí mismo: 6,01 en claro, 6,33 en oscuro).
+  *Sabotaje 1* (devolver el chip a la tira) → **6 rojos**. *Sabotaje 2* (quitar la puerta de
+  nutrición) → **C4-bis rojo**.
+- `_verify-foodlog` **41/41**: sus 4 rojos eran del mismo tipo —leían el plato en la tira COLAPSADA—.
+  FL1 conserva exactamente lo que protegía (que la comida esté junto al agua y los pasos, no en otra
+  pantalla) abriendo el detalle primero; **si se pone rojo, es que el registro se fue de «Hoy» del
+  todo**. Los otros tres se arreglaron solos con eso, porque el detalle abierto se queda abierto —
+  que es la conducta real de la app.
+
+**Sin AVI_NEWS a propósito.** Un tour de novedades anunciándolo le daría al registro **más** sitio
+del que tenía, a todo el mundo, justo al bajarlo. Quien lo usa lo encuentra donde siempre (el «+»)
+más la puerta nueva.
+
+`?v=507` · suite **803/803** · hook 12/12 · `_prodcheck 507` verde, `jsErrors: []`.
+🧹 Viajó con el despliegue un `return` **muerto** de `nutProtCheck` (commit aparte): copiado de
+`nutPlanReview` y olvidado tras el return real, citando variables que en ese ámbito no existen.
+Inalcanzable hoy, mina el día que alguien mueva código encima.
+
+---
+
 ## 📏 2026-08-20 — LA COLA DE v506, MEDIDA: a cuántos les mostró la ficha el aviso equivocado
 
 Sin despliegue: una medición read-only (`scripts/medir-descuadre-tapaba.mjs`) sobre los **30
