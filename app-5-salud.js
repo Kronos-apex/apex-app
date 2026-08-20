@@ -579,6 +579,18 @@ function renderNutritionClient(clientId){
 // "Mi plan nutricional"). Une las dos fuentes: plan escrito por el coach (DB.nutrition)
 // o estimación automática self-serve (nutritionEstimate). Reúne kcal, agua, macros con
 // reparto visual, el "por qué", comidas/ejemplos y el selector de actividad (self-serve).
+// 🔻 v507 — LA PUERTA DEL REGISTRO, EN LA HABITACIÓN DONDE VIVE LA COMIDA.
+// Al sacar el plato de la tira de «Hoy» hacía falta darle un sitio propio: dejarlo SOLO dentro
+// del detalle de hábitos no sería bajarlo de sitio, sería esconderlo. Aquí queda en su contexto
+// —debajo de las calorías y los macros del día— y la persona que sí lo usa lo encuentra donde
+// piensa en comida, no compitiendo con el entreno del día.
+function _foodLogDoorHtml(c){
+  if(!c)return '';
+  if(typeof isFreeClient==='function'&&isFreeClient(c))return '';   // el registro es Premium
+  if(typeof openFoodLogRoom!=='function')return '';
+  return `<button type="button" class="btn bg bsm" style="width:100%;margin:11px 0 3px;min-height:38px"
+    onclick="openFoodLogRoom()">${typeof aviIcon==='function'?aviIcon('utensils',15):'🍽️'} Anotar lo que comí hoy</button>`;
+}
 function openNutritionRoom(clientId){
   const room=document.getElementById('nutrition-room'),body=document.getElementById('nutroom-body');
   if(!room||!body)return;
@@ -711,6 +723,7 @@ function openNutritionRoom(clientId){
       </div>
     </div>
     ${stats}
+    ${_foodLogDoorHtml(c)}
     ${macroHTML}
     ${actHTML}
     ${whyHTML}
@@ -1467,7 +1480,22 @@ function _habitChipHtml(o){
     <span class="hb-chip-bar" aria-hidden="true"><i style="width:${bar.pct}%"></i></span>
   </button>`;
 }
-function _habitStripHtml(client,conComida){
+// 🔻 v507 — EL REGISTRO DE ALIMENTOS BAJA DE SITIO (decisión del PO, 2026-08-20).
+// La tira nació con TRES chips (agua · pasos · plato). El plato SALE de la tira y se queda con
+// las dos puertas que ya tenía: la fila del detalle, con su «+», y —desde hoy— «Mi nutrición»,
+// que es donde el registro tiene sentido. No se borra nada: baja un piso.
+// LO QUE SOSTIENE LA DECISIÓN, medido sobre los 24 perfiles reales (últimos 30 días al 19-ago):
+//     agua   → 8 personas · 71 días registrados
+//     pasos  → 8 personas · 45 días
+//     comida → 5 personas ·  7 días, y NADIE desde el 13-ago
+// Siete versiones de trabajo (F0-F7) para el hábito con menos adopción de los tres, ocupando un
+// tercio de la única tira de «Hoy». El PO eligió bajarlo antes que empujarlo.
+// 🔒 Y NO SE PIERDE INFORMACIÓN: el número del día (la franja, los macros) lo sigue diciendo la
+// tarjeta del plan `#cn-meals`, que está justo debajo — de hecho el chip y esa tarjeta eran las
+// DOS apariciones del mismo plato en la misma pantalla, así que esto cierra también ese
+// apilamiento. El camino de UN TOQUE para registrar sigue vivo donde siempre fue más barato:
+// «✓ Me lo comí» por comida, en el propio plan (F7).
+function _habitStripHtml(client){
   const wGoal=_waterGoalFor(client), wN=waterToday(client.habits);
   const sGoal=STEPS_GOAL_DEFAULT, sN=stepsToday(client.habits);
   const chips=[
@@ -1478,29 +1506,6 @@ function _habitStripHtml(client,conComida){
       v:_fmtSteps(sN), l:`de ${_fmtSteps(sGoal)} pasos`, onclick:"habitsToggle('steps')",
       aria:`Anotar tus pasos. Llevas ${_fmtSteps(sN)} de ${_fmtSteps(sGoal)} pasos hoy`}),
   ];
-  if(conComida){
-    const tot=foodLogTotals(foodLogDay(client.foodlog));
-    const meta=_foodLogTargetHoy(client.id);
-    // La franja manda sobre la cifra (v478): el chip se pinta «cumplido» cuando el registro está
-    // DENTRO de la franja, no cuando clava el número — o contradiría a la fila de abajo, que ya
-    // dice «✓ vas en tu franja». Sin plan no hay meta y el chip no inventa una.
-    const band=(meta&&typeof foodLogBandFor==='function')?foodLogBandFor(meta.kcal,tot.kcal):null;
-    // 🔴 EL CHIP HABLA EN FRANJA, con las MISMAS palabras que la fila del detalle (v478). Una
-    // cifra exacta contra una meta exacta le diría «te pasaste» a quien comió justo lo que la
-    // app le mandó: el propio plato entrega entre el 94,7% y el 110,2% de lo que promete. Y si
-    // el chip dijera una cosa y la fila de abajo otra, sería la contradicción de v435 otra vez.
-    const l=!band ? 'anota tu comida'
-      : !tot.n ? `hoy: ${band.lo}–${band.hi} kcal`
-      : band.estado==='dentro' ? '✓ vas en tu franja'
-      : band.estado==='bajo' ? `te quedan ${band.falta}`
-      : `${band.sobra} por encima`;
-    chips.push(_habitChipHtml({k:'f',icon:'utensils',fb:'🍽️',
-      n:tot.kcal, goal:meta?meta.kcal:0, met:!!(band&&band.estado==='dentro'),
-      v:tot.n?String(Math.round(tot.kcal)):'—', l:l,
-      onclick:'openFoodLogRoom()',
-      aria:tot.n?`Registrar lo que comiste. Llevas ${Math.round(tot.kcal)} kilocalorías hoy`
-                :'Registrar lo que comiste. Hoy no has anotado nada'}));
-  }
   return `<div class="hb-strip" role="group" aria-label="Tus hábitos de hoy">${chips.join('')}</div>`;
 }
 // El detalle se abre y se queda abierto: se guarda por asesorado y SOLO en este aparato
@@ -1526,7 +1531,7 @@ function renderHabitsCard(client){
   // no ofrecerle una puerta que no puede abrir.
   const conComida=!(typeof isFreeClient==='function'&&isFreeClient(client));
   const abierto=habitsOpen(client.id);
-  el.innerHTML=`${_habitStripHtml(client,conComida)}
+  el.innerHTML=`${_habitStripHtml(client)}
     <button type="button" class="hb-more" onclick="habitsToggle()" aria-expanded="${abierto?'true':'false'}">
       ${abierto?'Ocultar el detalle':'Ver el detalle de mis hábitos'}
       <span class="hb-more-chev${abierto?' up':''}" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('tridown',11):'▾'}</span>

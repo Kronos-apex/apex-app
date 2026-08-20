@@ -1,9 +1,17 @@
-// _verify-chips.mjs — LA TIRA DE 3 CHIPS (dirección B «El Compromiso», avi-v504).
-// Agua, pasos y plato dejan de ser una tarjeta de tres filas y ceden a una tira de una línea.
+// _verify-chips.mjs — LA TIRA DE 2 CHIPS (dirección B «El Compromiso», avi-v504 → v507).
+// Agua y pasos dejan de ser una tarjeta de tres filas y ceden a una tira de una línea.
+//
+// 🔻 v507: EL PLATO SALIÓ DE LA TIRA (decisión del PO, 2026-08-20: «al registro de alimentos
+// bájale el sitio»). Sigue vivo, un piso más abajo: la fila del detalle con su «+», la puerta
+// nueva en «Mi nutrición», y el camino barato de siempre —«✓ Me lo comí» en el plan (F7)—.
+// C4 dejó de ser «el chip abre la habitación» y pasó a ser el candado de la BAJADA: el chip no
+// está en la tira Y las dos puertas de abajo sí abren. C11 vigila que el plato no vuelva a
+// aparecer DOS veces en la misma pantalla (era el chip + la tarjeta del plan).
 //
 // 🔴 LO QUE ESTE HARNESS EXISTE PARA PROTEGER: el vaso de agua es UN toque y es el hábito con
 // más adopción de la app (medido sobre los 24 perfiles reales, 19-ago: agua 8 personas/71 días ·
-// pasos 8/45 · comida 5/7). Un rediseño que lo convierta en «abrir, buscar, tocar» le sube el
+// pasos 8/45 · comida 5/7 y nadie desde el 13-ago — esa misma medición es la que sostiene la
+// bajada del plato). Un rediseño que convierta el agua en «abrir, buscar, tocar» le sube el
 // precio al único hábito que pegó. C2 es el candado: el chip de agua suma un vaso de un toque.
 // Y C6 vigila la otra clase (v435): el chip y la fila del detalle pintan el mismo hábito a un
 // toque de distancia, así que tienen que decir el MISMO número.
@@ -104,8 +112,8 @@ const TIRA = `(()=>{const el=document.getElementById('cn-habits');
 // ══════════ C1 · la tira sustituye a la tarjeta apilada ══════════
 await montar();
 let s = await evj(TIRA);
-check('C1 «Hoy» abre con la TIRA de 3 chips (agua · pasos · plato) y sin la tarjeta apilada',
-  s.n === 3 && s.detalle === false && s.clases.join(',') === 'w,s,f',
+check('C1 «Hoy» abre con la TIRA de 2 chips (agua · pasos) y sin la tarjeta apilada',
+  s.n === 2 && s.detalle === false && s.clases.join(',') === 'w,s',
   JSON.stringify({ chips: s.n, clases: s.clases, detalle: s.detalle, v: s.v, l: s.l }));
 check('C1-bis táctil: cada chip ≥36 px de alto y el «ver el detalle» también',
   s.alto.every(h => h >= 36) && s.moreAlto >= 36, JSON.stringify({ chips: s.alto, more: s.moreAlto }));
@@ -175,80 +183,136 @@ const guardado = await ev(`localStorage.getItem('ax_hbopen_chips')`);
 check('C5-bis se puede cerrar, y la preferencia vive SOLO en este aparato',
   s.detalle === false && guardado === '0', JSON.stringify({ detalle: s.detalle, disco: guardado }));
 
-// ══════════ C4 · el chip de comida abre la habitación del registro (igual que antes) ══════════
+// ══════════ C4 · EL CANDADO DE LA BAJADA (v507): el plato sale de la tira pero NO se pierde ══════════
+// «Bajarle el sitio» y «esconderlo» se parecen en la captura y son cosas distintas: lo que separa
+// una decisión de producto de una pérdida de función son las puertas que quedan abiertas. Este
+// check afirma las dos: la de «Hoy» (detalle → «+») y la de «Mi nutrición».
+await montar();
 await ev(`(()=>{try{localStorage.setItem('ax_foodlogok_chips','1');}catch(e){}; const c=DB.clients[0]; c.foodlogOk=true; renderHabitsCard(c);})()`);
 await sleep(300);
-await ev(`document.querySelector('#cn-habits .hb-chip.f').click()`);
+const sinChip = await ev(`!document.querySelector('#cn-habits .hb-strip .hb-chip.f')`);
+await ev(`(()=>{if(typeof habitsToggle==='function')habitsToggle();})()`); await sleep(600);
+const hayMas = await ev(`!!document.querySelector('#cn-habits .hb-card .hb-btn.hb-plus.fl')`);
+await ev(`document.querySelector('#cn-habits .hb-card .hb-btn.hb-plus.fl').click()`);
 await sleep(900);
 const room = await ev(`(()=>{const r=document.getElementById('foodlog-room');return !!(r&&r.classList.contains('on'));})()`);
-check('C4 el chip del plato abre la habitación del registro (mismo toque que antes)',
-  room === true, JSON.stringify({ habitacionAbierta: room }));
+check('🔴 C4 el plato YA NO está en la tira, y desde el detalle su «+» sigue abriendo el registro',
+  sinChip === true && hayMas === true && room === true,
+  JSON.stringify({ chipEnLaTira: !sinChip, botonMas: hayMas, habitacionAbierta: room }));
 await ev(`(()=>{if(typeof closeFoodLogRoom==='function')closeFoodLogRoom();})()`); await sleep(400);
 
-// ══════════ C7 · cuando NO hay meta que mostrar, el chip no se inventa una ══════════
+// La segunda puerta: «Mi nutrición». Es la que convierte la bajada en MUDANZA — sin ella el
+// registro solo viviría plegado dentro de otro bloque.
+await ev(`(()=>{openNutritionRoom('chips');})()`); await sleep(800);
+const puerta = await evj(`(()=>{const b=[...document.querySelectorAll('#nutroom-body button')]
+  .find(x=>/anotar lo que com/i.test(x.textContent||''));
+  return {existe:!!b, alto:b?Math.round(b.getBoundingClientRect().height):0};})()`);
+if (puerta.existe) { await ev(`[...document.querySelectorAll('#nutroom-body button')].find(x=>/anotar lo que com/i.test(x.textContent||'')).click()`); await sleep(900); }
+const room2 = await ev(`(()=>{const r=document.getElementById('foodlog-room');return !!(r&&r.classList.contains('on'));})()`);
+check('🔴 C4-bis «Mi nutrición» tiene su propia puerta al registro, y abre (≥36 px, táctil)',
+  puerta.existe === true && puerta.alto >= 36 && room2 === true,
+  JSON.stringify({ ...puerta, habitacionAbierta: room2 }));
+await shot('4-puerta-nutricion', 'light');
+await ev(`(()=>{if(typeof closeFoodLogRoom==='function')closeFoodLogRoom(); if(typeof closeNutritionRoom==='function')closeNutritionRoom();})()`); await sleep(400);
+
+// ══════════ C11 · el plato aparece UNA vez en «Hoy», no dos (v507) ══════════
+// Antes de v507 la misma comida salía como chip y, justo debajo, como tarjeta del plan: dos
+// superficies del mismo dato a 150 px de distancia. Es la clase v435 aplicada al layout.
+await montar();
+const platos = await evj(`(()=>{
+  const chip=!!document.querySelector('#cn-habits .hb-strip .hb-chip.f');
+  const card=document.getElementById('cn-meals');
+  const plan=!!(card&&card.innerHTML.trim().length);
+  const kcal=plan?((card.textContent.match(/(\\d[\\d.]*)\\s*kcal/)||[])[1]||null):null;
+  return {chip, plan, kcal};})()`);
+check('🔴 C11 el plato de hoy sale UNA sola vez en «Hoy»: la tarjeta del plan, no el chip',
+  platos.chip === false && platos.plan === true && platos.kcal !== null,
+  JSON.stringify(platos));
+
+// ══════════ C7 · cuando NO hay meta que mostrar, la fila del plato no se inventa una ══════════
 // Ojo: «sin plan del coach» NO es «sin meta» — `nutBaseFor` estima el objetivo del perfil
-// (peso, talla, edad, actividad) y el chip lo muestra, igual que las pantallas de nutrición.
+// (peso, talla, edad, actividad) y la app lo muestra, igual que las pantallas de nutrición.
 // El estado sin meta de verdad es el de quien no tiene ni plan escrito ni datos para estimarla.
+// v507: esto se medía en el chip; ahora se mide donde vive el plato, en la fila del detalle.
+const FILA_PLATO = `(()=>{const el=document.getElementById('cn-habits');
+  const fila=[...el.querySelectorAll('.hb-card .hb-row')].find(r=>r.querySelector('.hb-ic.fl'));
+  if(!fila)return {err:'no hay fila del plato en el detalle'};
+  const b=fila.querySelector('.hb-fill');
+  return {sub:(fila.querySelector('.hb-sub')||{}).textContent.trim(),
+          barra:b?b.style.width:null, cumplido:!!(b&&b.classList.contains('met'))};})()`;
+const abrirDetalle = async () => { await ev(`(()=>{if(!habitsOpen('chips'))habitsToggle();})()`); await sleep(600); };
 await montar('', false);
 await ev(`(()=>{const c=DB.clients[0]; delete c.weight; delete c.height; delete c.age; renderClientToday(c);})()`);
 await sleep(600);
-s = await evj(TIRA);
-const cumplido = await ev(`!!document.querySelector('#cn-habits .hb-chip.f.met')`);
-check('C7 sin datos para calcular una meta, el chip del plato no se pinta cumplido ni la inventa',
-  s.n === 3 && cumplido === false && s.barras[2] === '0%' && !/de \d+ kcal/.test(s.l[2]),
-  JSON.stringify({ etiqueta: s.l[2], barra: s.barras[2], cumplido }));
+await abrirDetalle();
+let plato = await evj(FILA_PLATO);
+check('C7 sin datos para calcular una meta, la fila del plato no se pinta cumplida ni la inventa',
+  !plato.err && plato.cumplido === false && plato.barra === '0%' && !/te toca entre/i.test(plato.sub),
+  JSON.stringify(plato));
 // Y su control: con datos SÍ aparece la meta, o el check anterior estaría aprobando una app muda.
 await montar('', false);
-s = await evj(TIRA);
-// El control lleva la regla de v478 dentro: cuando SÍ hay objetivo, el chip lo dice en FRANJA
-// («hoy: 1810–2350 kcal»), nunca como una cifra exacta que el propio plato no clava.
-check('C7-bis CONTROL: con datos del perfil el chip SÍ da el objetivo del día, y como FRANJA',
-  /hoy: \d+–\d+ kcal/.test(s.l[2]), JSON.stringify({ etiqueta: s.l[2] }));
+await abrirDetalle();
+plato = await evj(FILA_PLATO);
+// El control lleva la regla de v478 dentro: cuando SÍ hay objetivo se dice en FRANJA
+// («entre 1810 y 2350 kcal»), nunca como una cifra exacta que el propio plato no clava.
+check('C7-bis CONTROL: con datos del perfil la fila SÍ da el objetivo del día, y como FRANJA',
+  !plato.err && /te toca entre\s*\d+\s*y\s*\d+\s*kcal/i.test(plato.sub), JSON.stringify(plato));
 
-// ══════════ C8 · tier LIBRE: dos chips, sin puerta que no puede abrir ══════════
+// ══════════ C8 · tier LIBRE: la misma tira, y el detalle SIN la fila que no puede abrir ══════════
+// Desde v507 los dos tiers ven 2 chips, así que lo que distingue al libre ya no es la tira sino
+// el detalle: el registro es Premium y no se le ofrece una puerta cerrada.
 await montar('libre');
 s = await evj(TIRA);
-check('C8 al tier libre le salen 2 chips (el registro es Premium) y la tira no se rompe',
-  s.n === 2 && s.clases.join(',') === 'w,s' && s.desborde === 0,
-  JSON.stringify({ chips: s.n, clases: s.clases, ancho: s.ancho }));
+await abrirDetalle();
+const filasLibre = (await evj(TIRA)).filasDetalle;
+const platoLibre = await ev(`!!document.querySelector('#cn-habits .hb-card .hb-ic.fl')`);
+check('C8 al tier libre le salen los 2 chips y en su detalle NO hay fila de registro (es Premium)',
+  s.n === 2 && s.clases.join(',') === 'w,s' && s.desborde === 0 && filasLibre === 2 && platoLibre === false,
+  JSON.stringify({ chips: s.n, clases: s.clases, filasDetalle: filasLibre, filaPlato: platoLibre }));
 
 // ══════════ C9 · 360 px y LETRA GRANDE (clase v452) ══════════
 await montar();
 await viewport(360, 640); await sleep(400);
 await ev(`(()=>{renderClientToday(DB.clients[0]);})()`); await sleep(600);
 s = await evj(TIRA);
-check('C9 a 360 px los 3 chips caben en una línea y nada se sale a lo ancho',
-  s.n === 3 && s.desborde === 0 && s.ancho.every(w => w > 60) && Math.max(...s.ancho) - Math.min(...s.ancho) <= 2,
+check('C9 a 360 px los 2 chips caben en una línea y nada se sale a lo ancho',
+  s.n === 2 && s.desborde === 0 && s.ancho.every(w => w > 60) && Math.max(...s.ancho) - Math.min(...s.ancho) <= 2,
   JSON.stringify({ ancho: s.ancho, desborde: s.desborde }));
 await shot('9-360', 'light');
 await ev(`(()=>{document.documentElement.setAttribute('data-fs','xl');renderClientToday(DB.clients[0]);})()`);
 await sleep(700);
 s = await evj(TIRA);
 check('🔴 C9-bis (clase v452) con LETRA GRANDE la tira crece y NO se sale a lo ancho',
-  s.n === 3 && s.desborde === 0 && s.alto.every(h => h >= 36),
+  s.n === 2 && s.desborde === 0 && s.alto.every(h => h >= 36),
   JSON.stringify({ desborde: s.desborde, alto: s.alto }));
 await shot('9-360-xl', 'light');
 await ev(`document.documentElement.removeAttribute('data-fs')`);
 await viewport(390, 844); await sleep(400);
 
 // ══════════ C10 · CONTRASTE de la tira, medido en el DOM ══════════
+// v507: la quinta medición era la etiqueta del chip del plato. El plato ya no está en la tira,
+// así que se mide DONDE quedó —la fila del detalle—; bajarlo de sitio no lo exime de leerse.
 await montar();
+await abrirDetalle();
 const CT = `(()=>{
   const lin=c=>{c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)};
   const lum=a=>.2126*lin(a[0])+.7152*lin(a[1])+.0722*lin(a[2]);
   const P=s=>{const m=(s||'').match(/rgba?\\(([^)]+)\\)/);return m?m[1].split(',').map(parseFloat):null};
   const fondo=el=>{let n=el; while(n&&n!==document.documentElement){const p=P(getComputedStyle(n).backgroundColor);
     if(p&&(p.length<4||p[3]>0.98))return p.slice(0,3); n=n.parentElement;} return [255,255,255];};
-  const medir=(sel,label)=>{const e=document.querySelector(sel); if(!e)return {label,err:'no existe '+sel};
+  const medirEl=(e,label)=>{if(!e)return {label,err:'no existe'};
     const cs=getComputedStyle(e); const fg=P(cs.color); if(!fg)return {label,err:'color ilegible: '+cs.color};
     const bg=fondo(e); const a=fg.length>3?fg[3]:1;
     const comp=[0,1,2].map(i=>fg[i]*a+bg[i]*(1-a));
     const l1=Math.max(lum(comp),lum(bg)), l2=Math.min(lum(comp),lum(bg));
     return {label, px:parseFloat(cs.fontSize), ratio:Math.round((l1+.05)/(l2+.05)*100)/100};};
+  const medir=(sel,label)=>{const e=document.querySelector(sel); return e?medirEl(e,label):{label,err:'no existe '+sel};};
+  // La fila del plato no se puede pedir por selector: es la que LLEVA el icono .hb-ic.fl
+  const filaPlato=[...document.querySelectorAll('#cn-habits .hb-card .hb-row')].find(r=>r.querySelector('.hb-ic.fl'));
   return [medir('#cn-habits .hb-chip.w .hb-chip-v','valor'),
           medir('#cn-habits .hb-chip.w .hb-chip-l','etiqueta'),
           medir('#cn-habits .hb-chip.s .hb-chip-l','etiqueta pasos'),
-          medir('#cn-habits .hb-chip.f .hb-chip-l','etiqueta plato'),
+          medirEl(filaPlato?filaPlato.querySelector('.hb-sub'):null,'texto de la fila del plato'),
           medir('#cn-habits .hb-more','ver el detalle')];})()`;
 for (const tema of ['light', 'dark']) {
   await ev(`typeof setTheme==='function' && setTheme('${tema}')`); await sleep(350);
@@ -262,7 +326,7 @@ await ev(`typeof setTheme==='function' && setTheme('light')`);
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 
-console.log('\n──── LA TIRA DE 3 CHIPS (dirección B) ────');
+console.log('\n──── LA TIRA DE 2 CHIPS (dirección B · el plato bajó de sitio en v507) ────');
 const failed = results.filter(r => r.startsWith('❌'));
 console.log('\njsErrors: ' + JSON.stringify(jsErrors));
 console.log(failed.length ? `\n❌ ${failed.length} FALLARON` : '\n✅ TODO OK');

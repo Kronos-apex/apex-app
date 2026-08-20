@@ -87,13 +87,18 @@ try {
   // FL1 — el bloque sale en la tarjeta de hábitos. OBSERVA lo que la app pinta sola: la sonda
   // NO llama a renderHabitsCard (la primera versión lo hacía y se fabricaba su propio verde).
   await waitFor(`!!document.querySelector('#cn-habits .hb-strip, #cn-habits .hb-card')`, 8000);
+  // El detalle guarda su estado por asesorado y en ESTE aparato: se abre solo si está cerrado.
+  await ev(`(()=>{if(typeof habitsOpen==='function'&&!habitsOpen(CUR.clientId))habitsToggle();})()`);
+  await sleep(600);
   let s = JSON.parse(await ev(`JSON.stringify((()=>{const el=document.getElementById('cn-habits');
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     const hist=(DB.history||{})[CUR.clientId]||[];
 
-    // v504: los hábitos abren como TIRA de chips y el bloque completo queda a un toque. Lo que
-    // este check protege —que la comida esté presente junto al agua y los pasos, y no escondida
-    // en otra pantalla— vale igual con el chip; por eso se acepta cualquiera de las dos formas.
+    // v507: el registro BAJÓ DE SITIO por decisión del PO (medido: 5 personas, 7 días, nadie
+    // desde el 13-ago, contra 8 personas y 71 días del agua). Ya no tiene chip en la tira: vive
+    // en el detalle de hábitos, a UN toque. Lo que este check protege sigue siendo lo mismo —que
+    // la comida esté junto al agua y los pasos y no en otra pantalla—, así que ahora se abre el
+    // detalle primero. Si esto se pone rojo, es que el registro se fue de «Hoy» del todo.
     return {bloque:!!document.querySelector('#cn-habits .hb-ic.fl, #cn-habits .hb-chip.f'), largo:el?el.innerHTML.length:-1,
       libre:typeof isFreeClient==='function'?isFreeClient(c):'nofn', sesiones:hist.length,
       sesiones2:hist.length,
