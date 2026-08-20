@@ -207,12 +207,36 @@ await ev(`(()=>{openNutritionRoom('chips');})()`); await sleep(800);
 const puerta = await evj(`(()=>{const b=[...document.querySelectorAll('#nutroom-body button')]
   .find(x=>/anotar lo que com/i.test(x.textContent||''));
   return {existe:!!b, alto:b?Math.round(b.getBoundingClientRect().height):0};})()`);
+await shot('4-puerta-nutricion', 'light');   // ANTES del toque: la captura tiene que ENSEÑAR la puerta
+// Una puerta que no se lee es media puerta: se mide en los DOS temas, como la tira (C10).
+const CTP = `(()=>{
+  const lin=c=>{c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)};
+  const lum=a=>.2126*lin(a[0])+.7152*lin(a[1])+.0722*lin(a[2]);
+  const P=s=>{const m=(s||'').match(/rgba?\\(([^)]+)\\)/);return m?m[1].split(',').map(parseFloat):null};
+  const fondo=el=>{let n=el; while(n&&n!==document.documentElement){const p=P(getComputedStyle(n).backgroundColor);
+    if(p&&(p.length<4||p[3]>0.98))return p.slice(0,3); n=n.parentElement;} return [255,255,255];};
+  const b=[...document.querySelectorAll('#nutroom-body button')].find(x=>/anotar lo que com/i.test(x.textContent||''));
+  if(!b)return {err:'no hay puerta'};
+  const cs=getComputedStyle(b), fg=P(cs.color); if(!fg)return {err:'color ilegible: '+cs.color};
+  const bg=fondo(b), a=fg.length>3?fg[3]:1;
+  const comp=[0,1,2].map(i=>fg[i]*a+bg[i]*(1-a));
+  const l1=Math.max(lum(comp),lum(bg)), l2=Math.min(lum(comp),lum(bg));
+  return {px:parseFloat(cs.fontSize), ratio:Math.round((l1+.05)/(l2+.05)*100)/100};})()`;
+const ctp = {};
+for (const tema of ['light', 'dark']) {
+  await ev(`typeof setTheme==='function' && setTheme('${tema}')`); await sleep(350);
+  ctp[tema] = await evj(CTP);
+}
+await ev(`typeof setTheme==='function' && setTheme('light')`); await sleep(300);
+check('🔴 C4-ter la puerta de «Mi nutrición» SE LEE en los dos temas (≥4,5:1)',
+  !ctp.light.err && !ctp.dark.err && ctp.light.ratio >= 4.5 && ctp.dark.ratio >= 4.5,
+  JSON.stringify({ claro: ctp.light, oscuro: ctp.dark }));
 if (puerta.existe) { await ev(`[...document.querySelectorAll('#nutroom-body button')].find(x=>/anotar lo que com/i.test(x.textContent||'')).click()`); await sleep(900); }
 const room2 = await ev(`(()=>{const r=document.getElementById('foodlog-room');return !!(r&&r.classList.contains('on'));})()`);
 check('🔴 C4-bis «Mi nutrición» tiene su propia puerta al registro, y abre (≥36 px, táctil)',
   puerta.existe === true && puerta.alto >= 36 && room2 === true,
   JSON.stringify({ ...puerta, habitacionAbierta: room2 }));
-await shot('4-puerta-nutricion', 'light');
+await shot('4-registro-abierto', 'light');
 await ev(`(()=>{if(typeof closeFoodLogRoom==='function')closeFoodLogRoom(); if(typeof closeNutritionRoom==='function')closeNutritionRoom();})()`); await sleep(400);
 
 // ══════════ C11 · el plato aparece UNA vez en «Hoy», no dos (v507) ══════════
