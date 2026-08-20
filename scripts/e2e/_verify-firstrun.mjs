@@ -136,9 +136,17 @@ check('D4 (v367) con una sesión PARCIAL la portada desaparece y el entreno sigu
   d4.portada === false && (d4.entreno === true || d4.heroCta === true), JSON.stringify(d4));
 
 // D5: las tarjetas normales vuelven en cuanto la portada se apaga.
-const d5 = await ev(`(()=>{const h=document.getElementById('cn-habits');
-  return {habitos:!!(h&&h.innerHTML.trim()&&h.style.display!=='none')};})()`);
-check('D5 apagada la portada, «Hoy» vuelve a ser el de siempre (hábitos de vuelta)', d5.habitos === true, JSON.stringify(d5));
+// 🔴 D5-bis: y las ESTÁTICAS vuelven con su TEXTO. El día 1 vaciaba el innerHTML de los once
+// bloques, y `qw-entry` es el único que nadie repinta (vive en index.html): al terminar su
+// PRIMER entreno la persona se quedaba con una píldora en blanco —y pulsable— el resto de la
+// sesión. Preexistente desde v403, reproducido en HEAD limpio, arreglado el 20-ago.
+const d5 = await ev(`(()=>{const h=document.getElementById('cn-habits'); const q=document.getElementById('qw-entry');
+  return {habitos:!!(h&&h.innerHTML.trim()&&h.style.display!=='none'),
+          qwTexto:(q?q.textContent:'').replace(/\\s+/g,' ').trim(),
+          qwVisible:!!(q&&q.style.display!=='none')};})()`);
+check('D5 apagada la portada, «Hoy» vuelve a ser el de siempre (hábitos de vuelta)', d5.habitos === true, JSON.stringify({ habitos: d5.habitos }));
+check('🔴 D5-bis el botón de entrenamientos rápidos vuelve CON SU TEXTO, no en blanco',
+  d5.qwVisible === true && /rápidos/i.test(d5.qwTexto), JSON.stringify({ visible: d5.qwVisible, txt: d5.qwTexto.slice(0, 60) }));
 
 // D6: día de DESCANSO → la portada no se inventa un entreno que no existe.
 // 🔴 El día se elige RELATIVO a hoy (era 'Miércoles' fijo, y los miércoles este check daba rojo

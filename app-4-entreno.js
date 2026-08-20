@@ -729,9 +729,59 @@ function _todayOrder(training){
   // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
   // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
   const ids=training
-    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share']
-    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share'];
+    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share','cn-more']
+    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share','cn-more'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
+  _applyTodayCap();
+}
+// ── EL TOPE DE TARJETAS (v505, dirección B) ───────────────────────────────────────────────
+// Corre al final de `_todayOrder`, que es el ÚNICO punto por el que pasan TODOS los caminos de
+// «Hoy» (entreno, descanso, ya entrenaste, sin plan). Cada tarjeta ya decidió por su cuenta si
+// tiene algo que decir; aquí solo se decide cuántas hablan a la vez.
+//
+// 🔴 EL TOPE APARTA, NO SILENCIA. Lo que no cabe se esconde y se cuenta en una fila de una línea
+// que la abre en el sitio. Nada se marca como visto ni se mutea: mañana vuelve a competir.
+//
+// 🔴 Y SE APAGA CON UNA CLASE PROPIA (`.cap-off`), NO con `style.display`. El modo día 1 ya
+// gestiona el `display` de estos MISMOS once contenedores y lo devuelve a '' en cada render: si
+// el tope usara la misma propiedad, la restauración de aquí sería redundante —lo comprobó un
+// sabotaje que salió VERDE— y quedaría dependiendo de que nadie saque una tarjeta de `_DIA1_OFF`
+// en el futuro, que es un acoplamiento invisible. Con clase propia, cada mecanismo apaga lo suyo
+// y esta restauración es la única que enciende lo que ESTE tope apagó (clase v403 D5).
+let _todayMoreOpen=false;
+function _applyTodayCap(){
+  const ids=(typeof TODAY_CARD_PRIORITY!=='undefined')?TODAY_CARD_PRIORITY:[];
+  const more=document.getElementById('cn-more');
+  // 1) ENCENDER de vuelta lo que este tope apagó antes (nunca lo que apagó el día 1: eso lo
+  //    restaura su propio dueño, y su marca es `data-capoff` ausente).
+  ids.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.remove('cap-off');});
+  if(more)more.innerHTML='';
+  if(typeof todayCardPlan!=='function')return;
+  // 2) Presentes = las que de verdad tienen algo pintado Y no las apagó otro (el día 1).
+  const presentes=ids.filter(id=>{const e=document.getElementById(id);
+    return !!(e && e.innerHTML.trim() && e.style.display!=='none' && !e.classList.contains('cap-off'));});
+  const plan=todayCardPlan(presentes);
+  if(!plan.ocultas.length)return;
+  plan.ocultas.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.add('cap-off');});
+  if(!more)return;
+  const n=plan.ocultas.length;
+  more.innerHTML=`<button type="button" class="tod-more" onclick="todayMoreToggle()" aria-expanded="${_todayMoreOpen?'true':'false'}">
+    <span class="tod-more-ic" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('bell',15):'🔔'}</span>
+    <span class="tod-more-tx">${_todayMoreOpen?'Ocultar':'Tienes'} <b>${n}</b> aviso${n!==1?'s':''} más</span>
+    <span class="tod-more-chev${_todayMoreOpen?' up':''}" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('tridown',12):'▾'}</span>
+  </button>`;
+  // Abierta, las apartadas se encienden de nuevo y quedan DEBAJO de la fila, en su orden.
+  if(_todayMoreOpen){
+    const panel=document.getElementById('cn-today');
+    plan.ocultas.forEach(id=>{const e=document.getElementById(id);
+      if(e){ e.classList.remove('cap-off');
+             if(panel&&e.parentElement===panel)panel.appendChild(e); }});
+  }
+}
+function todayMoreToggle(){
+  _todayMoreOpen=!_todayMoreOpen;
+  const c=DB.clients.find(x=>x.id===CUR.clientId);
+  if(c)renderClientToday(c,CUR.todayOverride||undefined);
 }
 // Tarjeta compacta de "ya entrenaste hoy" (v366). Muestra QUÉ entrenó (routineName de las
 // sesiones de hoy, deduplicado) y deja botones para entrenar otra vez o ver sus rutinas.
@@ -822,8 +872,15 @@ function renderClientToday(client, overrideRoutine){
   // el primer entreno la portada se apaga pero hábitos/coach/novedades quedaban invisibles el resto
   // de la sesión (lo cazó `_verify-firstrun` D5 antes de salir de aquí).
   const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-deload','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
+  // 🔴 `qw-entry` NO se vacía: su contenido es ESTÁTICO (vive en index.html) y nadie lo vuelve a
+  // pintar. Vaciarlo lo destruye para el resto de la sesión — al terminar su PRIMER entreno la
+  // persona se quedaba con una píldora en blanco, y encima pulsable (`openQuickWorkouts`), justo
+  // en el momento que más importa. Los demás los repinta su render en cada pasada, así que ahí
+  // vaciar sí protege de contenido viejo. Ocultar basta para los dos casos.
+  const _DIA1_ESTATICOS=['qw-entry'];
   _DIA1_OFF.forEach(id=>{ const e=document.getElementById(id); if(!e) return;
-    if(_dia1){ e.innerHTML=''; e.style.display='none'; } else if(e.style.display==='none'){ e.style.display=''; } });
+    if(_dia1){ if(_DIA1_ESTATICOS.indexOf(id)===-1)e.innerHTML=''; e.style.display='none'; }
+    else if(e.style.display==='none'){ e.style.display=''; } });
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
   // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
   // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.
