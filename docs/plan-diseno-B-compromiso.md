@@ -201,9 +201,14 @@ justificar trabajo, medirla en el DOM.**
   comida quiere ver en «Hoy».
 - 🍽️ **El registro de alimentos no lo usa nadie** (5 personas, 7 días, ninguna desde el 13-ago).
   Siete versiones de trabajo. Decisión del PO: empujarlo o bajarle el sitio.
-- 🔴 **Medir cuántos planes reales tenían el aviso equivocado.** v506 arregló que un descuadre de
-  titular silenciara una desviación grande; se sabe que 6 de 10 planes están descuadrados, pero **no
-  en cuántos había además una desviación escondida detrás**. Media hora sobre el backup.
+- ✅ **CERRADO el 2026-08-20 — «cuántos planes reales tenían el aviso equivocado»: 1 de 10, y es el
+  del propio coach.** `scripts/medir-descuadre-tapaba.mjs` (read-only, sobre los 30 backups, con las
+  funciones puras de la app). En los 7 backups de la ventana viva del defecto (v435 04-ago → v506
+  19-ago) el aviso equivocado cayó siempre en la misma ficha: **Andrés, «ajusta el titular, 25 kcal»
+  tapando −1.418 kcal de desviación (57×)**. 💎 **Una foto de hoy habría contestado mal**: el caso de
+  Luz que motivó v506 ya no está en el backup del 19-ago porque su plan se reescribió el 04-ago. La
+  serie enseña que el día que nació la tarjeta había **6 descuadrados y los 6 tapaban algo**, y que
+  **al día siguiente quedaba 1** — el coach corrigió esos 6 planes en 24-48 h. Detalle en la bitácora.
 - 🟡 **`_prodcheck` puede dar un rojo falso** justo tras desplegar (espera a `initPWA`, que lo define
   app-1, y luego pregunta por `renderClientToday`, que vive en app-4). Debería esperar al ÚLTIMO
   módulo. Pasó con v505: rojo a los 80 s, verde en las cinco corridas siguientes.

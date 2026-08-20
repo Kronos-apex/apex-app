@@ -4,6 +4,41 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 📏 2026-08-20 — LA COLA DE v506, MEDIDA: a cuántos les mostró la ficha el aviso equivocado
+
+Sin despliegue: una medición read-only (`scripts/medir-descuadre-tapaba.mjs`) sobre los **30
+backups** de la serie, corriendo las MISMAS funciones puras de `avi-core.js` que corre la app y
+reproduciendo las dos ramas de `renderNutReviewCard`. Cierra el primer punto abierto de §8 del plan
+de la dirección B.
+
+**LA RESPUESTA: 1 plan de 10 — y es el del propio coach.** La ventana viva del defecto es
+**v435 (04-ago, nace la tarjeta con su `return`) → v506 (19-ago)**, 15 días. En los 7 backups de esa
+ventana el aviso equivocado se mostró siempre sobre la misma ficha: **Andrés (el coach, perfil
+«Ganar músculo»)**. La ficha le decía *«ajusta el titular, 25 kcal»* y **callaba que su propio plan
+está 1.418 kcal por debajo de lo que le corresponde** (1.775 servidas contra 3.193 de objetivo, con
+riesgo `come_de_menos_para_subir`): **57× más grande que lo que sí le decía**.
+
+🔑 **Una foto de hoy no respondía la pregunta, y por poco la contesta mal.** El backup del 19-ago
+solo, leído de frente, dice «1 de 10» sin más — pero el caso que motivó v506 (Luz, 45 kcal tapando
+625) **ya no aparece en él**, porque su plan se reescribió el 04-ago. La serie completa es la que
+enseña las dos cosas: el día que la tarjeta nació el estado era el del 03-ago con **6 planes
+descuadrados y los 6 tapando algo** (Luz +625 · Nataly +677 · Kathe +456 · Natalia +303 · Samuel
+−1.007 · Andrés −1.418), y **al día siguiente quedaba 1**. Diferencia de DATOS, no de código: entre
+el 03 y el 05 de agosto los planes de Luz, Kathe, Natalia, Nataly, Samuel y Claudia fueron
+reescritos (`updatedAt` 04 y 05-ago). **La tarjeta hizo su trabajo en 24-48 h; el único que
+sobrevivió 15 días es el plan que nadie revisa, el del coach.**
+
+⚠️ **Lo que la medición NO puede afirmar:** corre el revisor de HOY sobre datos de ayer
+(`proteina_fuera` es de v496, las bandas de menores de v493), así que las filas de julio dicen lo
+que se HABRÍA visto, no lo que se vio. Los `desviado`, que son los que sostienen la conclusión,
+existen desde v430. Está escrito en la cabecera del script.
+
+📌 **Para el PO, y es decisión suya:** su propio plan (1.800 kcal rotulado `cutting`) contradice el
+objetivo de su perfil («Ganar músculo»). La app tiene razón en avisarlo; lo que hay que decidir es
+cuál de los dos está viejo. Es el único caso vivo que la ficha ya venía señalando mal.
+
+---
+
 ## 🟢 2026-08-20 — avi-v506: LOS 18 GATES MUERTOS, Y EL DEFECTO REAL QUE ESCONDÍAN
 
 Al correr el cinturón de la dirección B aparecieron **18 aserciones en rojo en 5 harnesses de la
