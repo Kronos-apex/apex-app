@@ -1,8 +1,10 @@
 # PLAN VIVO — DIRECCIÓN «B · EL COMPROMISO»
 
-> Escrito el 2026-08-19 al cortar la sesión por límite de tokens. **Nada de B está construido
-> todavía.** El árbol está limpio en `1dc4f5b` (v502 en producción, verificado).
-> Este documento existe para retomar sin re-derivar nada.
+> Escrito el 2026-08-19 al cortar la sesión. **✅ CERRADO el 2026-08-20: las tres piezas están
+> construidas y en producción** (v503 héroe · v504 tira de chips · v505 tope de tarjetas), más
+> v506 (los 21 gates muertos de «Hoy» en 0). Árbol limpio en `5d2193b`, `_prodcheck 506` verde.
+> **Lo de abajo se conserva como está** —es el razonamiento con el que se construyó— y al final,
+> en §8, está lo que CAMBIÓ respecto a este plan y lo que queda abierto. Empezar por ahí.
 
 ---
 
@@ -165,3 +167,45 @@ El informe de Isabella es bueno, pero **sus decimales no se heredan** (regla del
 El conteo de emojis por DOM (el suyo) es el que vale para decidir; el estático (el mío) infla
 porque cuenta los que son FALLBACK de `aviIcon` y nunca se pintan. **Al retomar, si esa cifra va a
 justificar trabajo, medirla en el DOM.**
+
+
+---
+
+## 8 · CIERRE — QUÉ SE CONSTRUYÓ, QUÉ CAMBIÓ Y QUÉ QUEDA (2026-08-20)
+
+### Lo que está en producción
+| | qué | dónde vive |
+|---|---|---|
+| **v503** | **El héroe.** Saludo + racha + arranque del entreno fundidos en la superficie esmeralda a sangre, lista numerada y CTA único. | `renderTodayHead(client, heroRoutine)` + `_todayHeroHTML` (app-4) · `todayHeroModel`/`exDoseShort`/`heroTitleSize` (avi-core) · `.tod-hero*` (styles) · `_verify-hero.mjs` (20) |
+| **v504** | **La tira de 3 chips.** Agua/pasos/plato de una línea; el bloque completo a un toque y se queda abierto. | `_habitStripHtml`/`habitsToggle` (app-5) · `habitPct` (avi-core) · `.hb-strip`/`.hb-chip*` · `_verify-chips.mjs` (17) |
+| **v505** | **El tope.** Máximo 2 avisos a la vez por prioridad; lo que no cabe baja a `#cn-more` y vuelve mañana. | `_applyTodayCap` (app-4, al final de `_todayOrder`) · `todayCardPlan`/`TODAY_CARD_PRIORITY`/`TODAY_MAX_CARDS` (avi-core) · `.cap-off`/`.tod-more` · `_verify-tope.mjs` (14) |
+| **v506** | Los 21 gates muertos de «Hoy» en 0 — y **3 de los 18 eran defectos reales**. | ver bitácora |
+
+### Lo que CAMBIÓ respecto a lo que decía este plan
+1. **La maqueta se dibujó con datos cómodos.** 4 ejercicios y un nombre de 15 letras; los reales
+   son 6 de moda, 35 rutinas con 7+ y nombres de 40 caracteres. El titular se escala por longitud,
+   la lista topa en 6 y lo que sobra se DICE. **De una maqueta se hereda la intención, no las medidas.**
+2. **Los chips NO son meros indicadores.** Medido: agua 8 personas/71 días · pasos 8/45 · registro
+   de comida 5/7. El vaso de agua es UN toque y es lo más usado, así que cada chip conserva la
+   acción de SU hábito aunque los tres no se comporten igual.
+3. **El §3 decía que el `#10E0A0` mide 10,10:1 sobre el héroe.** Eso es contra el extremo OSCURO
+   del degradado; contra el más claro mide **4,83**. Pasa AA igual, pero el peor caso es el que vale.
+4. **El tope apaga con clase propia (`.cap-off`), no con `style.display`** — el modo día 1 gestiona
+   el display de esos mismos contenedores y los dos mecanismos se tapaban (lo delató un sabotaje verde).
+5. **El número del tope (2) no lo eligió el dato:** la curva no tiene codo (150-190 px por aviso).
+   Lo elige el criterio de producto y la curva está escrita al lado de la constante para moverlo.
+
+### Lo que queda ABIERTO
+- 🟡 **`#cn-meals` repite el plato** justo debajo de su propio chip. No es ruido (es el PLAN del día
+  contra el REGISTRO), pero es apilamiento. **Decisión de producto del PO:** cuánto del plan de
+  comida quiere ver en «Hoy».
+- 🍽️ **El registro de alimentos no lo usa nadie** (5 personas, 7 días, ninguna desde el 13-ago).
+  Siete versiones de trabajo. Decisión del PO: empujarlo o bajarle el sitio.
+- 🔴 **Medir cuántos planes reales tenían el aviso equivocado.** v506 arregló que un descuadre de
+  titular silenciara una desviación grande; se sabe que 6 de 10 planes están descuadrados, pero **no
+  en cuántos había además una desviación escondida detrás**. Media hora sobre el backup.
+- 🟡 **`_prodcheck` puede dar un rojo falso** justo tras desplegar (espera a `initPWA`, que lo define
+  app-1, y luego pregunta por `renderClientToday`, que vive en app-4). Debería esperar al ÚLTIMO
+  módulo. Pasó con v505: rojo a los 80 s, verde en las cinco corridas siguientes.
+- 🟡 **`BRAND.md` sigue diciendo que el verde primario es `#2D6A4F`**, que ya se sabe falso.
+- 🔴 **Fable no ha verificado nada desde v386** (ahora v506).
