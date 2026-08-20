@@ -203,8 +203,8 @@ justificar trabajo, medirla en el DOM.**
   de sitio y esconder se parecen en la captura: lo que las separa son las puertas que quedan
   abiertas**, y por eso la de «Mi nutrición» lleva su propio candado. Con el chip fuera, **el
   apilamiento de `#cn-meals` se cierra solo**: el chip y la tarjeta del plan eran las dos
-  apariciones del mismo plato en la misma pantalla. `_verify-chips` 17 → 19 (C4 pasa a ser el
-  candado de la bajada, C11 es nuevo) y `_verify-foodlog` sigue en 41/41. Detalle en la bitácora.
+  apariciones del mismo plato en la misma pantalla. `_verify-chips` 17 → 21 (C4 pasa a ser el
+  candado de la bajada; C11 y C4-bis/C4-ter son nuevos) y `_verify-foodlog` sigue en 41/41. Detalle en la bitácora.
 - ✅ **CERRADO el 2026-08-20 — «cuántos planes reales tenían el aviso equivocado»: 1 de 10, y es el
   del propio coach.** `scripts/medir-descuadre-tapaba.mjs` (read-only, sobre los 30 backups, con las
   funciones puras de la app). En los 7 backups de la ventana viva del defecto (v435 04-ago → v506

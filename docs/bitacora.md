@@ -27,9 +27,10 @@ bajada en MUDANZA, y tiene su propio candado (C4-bis).
 tarjeta eran las DOS apariciones del mismo plato en la misma pantalla, a 150 px de distancia.
 
 **Los candados, los dos saboteados:**
-- `_verify-chips` 17 → **19**, y cambia de tema. **C4** ya no es «el chip abre la habitación» sino el
+- `_verify-chips` 17 → **21 aserciones**, y cambia de tema. **C4** ya no es «el chip abre la habitación» sino el
   candado de la BAJADA (el chip NO está en la tira **y** las dos puertas de abajo abren); **C4-bis**
   cubre la puerta de «Mi nutrición»; **C11** es nuevo: el plato sale **una sola vez** en «Hoy».
+  **C4-ter mide que la puerta nueva se LEA** (5,45:1 en claro, 7,14:1 en oscuro) y
   **C7/C7-bis y C10 se mudan del chip a la fila del detalle** — bajar de sitio no exime de leerse
   (medido ahí mismo: 6,01 en claro, 6,33 en oscuro).
   *Sabotaje 1* (devolver el chip a la tira) → **6 rojos**. *Sabotaje 2* (quitar la puerta de
