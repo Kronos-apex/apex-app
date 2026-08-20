@@ -124,10 +124,16 @@ check('D3 el ánimo no compite el día 1, y el entreno SÍ está montado debajo'
 await ev(`(()=>{const hoy=new Date().toISOString();
   DB.history={nuevo:[{id:'p1',sessionId:'s1',routineId:'r1',routineName:'Full body A',date:hoy,startedAt:hoy,doneSets:1,totalSets:12,exercises:[]}]};
   renderClientToday(DB.clients[0]);})()`); await sleep(700);
+// v503 (héroe de la dirección B): el entreno que llega COLAPSADO ya no se pinta en
+// `#cn-today-body` sino en la cabecera, fundido con el saludo. La propiedad que este check
+// protege no cambió —la portada del día 1 no puede tapar el entreno— así que se afirma donde
+// el entreno se OFRECE hoy: el cuerpo montado, o el héroe con su botón de empezar.
 const d4 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');const body=document.getElementById('cn-today-body');
-  return {portada:!!(el&&el.innerHTML.trim()), entreno:!!(body&&body.innerHTML.trim().length>200)};})()`);
-check('D4 (v367) con una sesión PARCIAL la portada desaparece y el entreno se pinta igual',
-  d4.portada === false && d4.entreno === true, JSON.stringify(d4));
+  const hero=document.querySelector('#cn-today-head .tod-hero');
+  return {portada:!!(el&&el.innerHTML.trim()), entreno:!!(body&&body.innerHTML.trim().length>200),
+          heroCta:!!(hero&&hero.querySelector('.tod-hero-cta'))};})()`);
+check('D4 (v367) con una sesión PARCIAL la portada desaparece y el entreno sigue OFRECIDO',
+  d4.portada === false && (d4.entreno === true || d4.heroCta === true), JSON.stringify(d4));
 
 // D5: las tarjetas normales vuelven en cuanto la portada se apaga.
 const d5 = await ev(`(()=>{const h=document.getElementById('cn-habits');
@@ -135,8 +141,13 @@ const d5 = await ev(`(()=>{const h=document.getElementById('cn-habits');
 check('D5 apagada la portada, «Hoy» vuelve a ser el de siempre (hábitos de vuelta)', d5.habitos === true, JSON.stringify(d5));
 
 // D6: día de DESCANSO → la portada no se inventa un entreno que no existe.
+// 🔴 El día se elige RELATIVO a hoy (era 'Miércoles' fijo, y los miércoles este check daba rojo
+// sin que nadie tocara código — la clase del fixture con fechas absolutas de GOTCHAS VIGENTES).
+// 'Libre' tampoco vale: `renderClientToday` lo usa de comodín cuando no hay rutina para hoy.
 await ev(`(()=>{DB.history={nuevo:[]};
-  DB.clients[0].routines=DB.clients[0].routines.map(r=>Object.assign({},r,{day:'Miércoles'}));
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const manana=days[(new Date().getDay()+1)%7];
+  DB.clients[0].routines=DB.clients[0].routines.map(r=>Object.assign({},r,{day:manana}));
   renderClientToday(DB.clients[0]);})()`); await sleep(700);
 const d6 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');return !!(el&&el.innerHTML.trim());})()`);
 check('D6 sin entreno hoy la portada NO se pinta', d6 === false, JSON.stringify({ pintada: d6 }));

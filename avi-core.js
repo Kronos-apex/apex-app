@@ -6250,6 +6250,78 @@ function workoutStartCollapsed(o) {
   return true;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// EL HÉROE DE «HOY» — dirección B «El Compromiso» (v503)
+// ──────────────────────────────────────────────────────────────────────
+// El PO eligió B viendo cuatro columnas lado a lado: el entreno del día ocupa la primera
+// pantalla entera y el resto del día cede. Lo que la hizo elegible fue una medición: en «Hoy»
+// salen hasta 6 tarjetas a la vez, y le caen a las 8 asesoradas que MÁS entrenan.
+// Aquí vive SOLO el modelo (qué dice el héroe); el pintado y el `esc()` viven en app-4.
+//
+// 🔴 La maqueta se dibujó con una rutina de 4 ejercicios y un nombre de 15 letras. Los datos
+// reales del 19-ago dicen otra cosa: de 93 rutinas, la moda son 6 ejercicios (39), 35 tienen
+// 7 o más (una tiene 14) y el nombre más largo son 40 caracteres («Tren Superior — Espalda,
+// Pecho y Hombros»). Por eso el título se escala por longitud y la lista tiene tope: un héroe
+// que no cabe en la pantalla deja de ser una promesa y vuelve a ser un muro.
+
+// Config del HIIT de un ejercicio (trabajo/descanso en segundos) y segundos de un isométrico.
+// Viven aquí —y no en app-4, donde nacieron— porque `exDoseShort` los necesita y la regla no
+// puede tener dos fuentes: la dosis del héroe y la del entreno deben decir lo MISMO.
+function hiitCfg(ex) { const c = (ex && ex.hiit) || {}; return { work: parseInt(c.work) || 30, rest: parseInt(c.rest) || 15 }; }
+function holdSecsOf(ex) { ex = ex || {}; return parseInt(ex.holdSecs) || parseInt(ex.reps) || 60; }
+
+// Dosis COMPACTA de un ejercicio, para la columna derecha del héroe. PURA.
+// 🔴 Clase de bug ya conocida (Camilo, 2026-06-29): pintar «S×R» para todo le decía «1×20
+// series × reps» a un cardio de 20 minutos. Cada modalidad se dice en su unidad o no se dice.
+function exDoseShort(ex) {
+  ex = ex || {};
+  const t = exTrack(ex);
+  const sets = Math.max(0, parseInt(ex.sets) || 0);
+  if (t === 'cardio') { const m = parseInt(ex.reps) || 0; return m > 0 ? m + ' min' : ''; }
+  if (t === 'hiit') return sets > 0 ? sets + ' ronda' + (sets === 1 ? '' : 's') : '';
+  if (t === 'tiempo') return sets > 0 ? sets + ' × ' + holdSecsOf(ex) + 's' : holdSecsOf(ex) + 's';
+  const reps = String(ex.reps == null ? '' : ex.reps).trim();
+  if (!sets) return reps;
+  return reps ? sets + ' × ' + reps : String(sets);
+}
+
+// Tamaño del titular según lo LARGO que sea el nombre de la rutina. El 34 px de la maqueta solo
+// funciona con nombres cortos; a 40 caracteres son cuatro líneas y el héroe se come la pantalla.
+const HERO_TITLE_SIZES = ['xl', 'lg', 'md'];
+function heroTitleSize(name) {
+  const n = String(name == null ? '' : name).trim().length;
+  if (n <= 18) return 'xl';   // «Pierna y glúteo» — 34 px
+  if (n <= 30) return 'lg';   // 28 px
+  return 'md';                // 24 px — a 40 caracteres caben en dos líneas a 360 px
+}
+
+// Cuántos ejercicios se listan como máximo. Si sobran, la última fila los resume («y 3 más»):
+// nunca se listan MÁS de HERO_MAX_LINES filas, pero tampoco se esconde que existen.
+const HERO_MAX_LINES = 6;
+function todayHeroModel(routine, opts) {
+  opts = opts || {};
+  const exs = ((routine && routine.exercises) || []).filter(Boolean);
+  if (!exs.length) return null;   // rutina vacía → no hay promesa que hacer; la vista degrada sola
+  const max = Math.max(2, parseInt(opts.max) || HERO_MAX_LINES);
+  const show = exs.length <= max ? exs.length : max - 1;
+  const mins = estimateWorkoutMinutes(routine);
+  return {
+    name: String((routine && routine.name) || '').trim() || 'Entrenamiento',
+    size: heroTitleSize((routine && routine.name) || ''),
+    count: exs.length,
+    mins: mins,
+    // Solo se promete «menos de una hora» cuando el motor dice que es verdad. Sin estimación
+    // fiable no se inventa: la frase que se rompe el primer día no se recupera después.
+    underHour: mins != null && mins < 60,
+    lines: exs.slice(0, show).map((e, i) => ({
+      n: String(i + 1).padStart(2, '0'),
+      name: String((e && e.name) || '').trim() || 'Ejercicio',
+      dose: exDoseShort(e),
+    })),
+    rest: exs.length - show,
+  };
+}
+
 // F2 (2026-07-26) — ¿QUIÉN SOY en la comunidad, sin haber abierto la pestaña?
 // A4 preguntaba por los logros solo si `CMTY.profile` estaba cargado, y eso exige haber entrado a
 // Comunidad en ESA MISMA carga (`renderCommunity` tiene un solo llamador). En la sesión típica
@@ -7588,6 +7660,13 @@ if (typeof module !== 'undefined' && module.exports) {
     shouldPostPush,
     delClientGuard,
     cnTodayGuard,
+    hiitCfg,
+    holdSecsOf,
+    exDoseShort,
+    heroTitleSize,
+    HERO_TITLE_SIZES,
+    todayHeroModel,
+    HERO_MAX_LINES,
     generarRutinas,
     GEN_WEEK_DAYS,
     genDayIdxFromDate,

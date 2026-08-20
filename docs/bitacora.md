@@ -4,6 +4,86 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-19 — avi-v503: EL HÉROE («B · El Compromiso», 1 de 3)
+
+Primera pieza construida de la dirección visual que el PO eligió viendo cuatro columnas lado a
+lado. **El día tiene UNA promesa:** el saludo, el chip de racha y la tarjeta de arranque del
+entreno —tres bloques separados hasta hoy— se funden en una sola superficie esmeralda a sangre,
+con la lista numerada de lo que toca y un solo botón grande.
+
+**Lo que la maqueta no sabía, y los datos sí.** La columna B se dibujó con una rutina de 4
+ejercicios y un nombre de 15 letras. El backup del 19-ago dice otra cosa, sobre **93 rutinas
+reales**: la moda son **6 ejercicios** (39 rutinas), **35 tienen 7 o más** (una tiene 14) y el
+nombre más largo son **40 caracteres** («Tren Superior — Espalda, Pecho y Hombros»). Portado tal
+cual, el héroe habría sido un muro de cuatro líneas de titular y ocho filas. Por eso:
+- el titular **se escala por longitud** (`heroTitleSize`: 34 / 28 / 24 px) — a 40 caracteres cabe
+  en dos líneas hasta a 360 px;
+- la lista **tiene tope de 6 filas** y lo que no cabe **se dice, no se esconde** («y 3 ejercicios
+  más»);
+- «te toma menos de una hora» **solo se promete cuando el motor dice que es verdad** (la rutina de
+  8 ejercicios muestra «~72 min» y se calla).
+
+**Dónde vive cada cosa.** El modelo es puro y está en avi-core (`todayHeroModel`, `exDoseShort`,
+`heroTitleSize`); app-4 solo pinta y escapa. `hiitCfg`/`holdSecsOf` **se mudaron a avi-core** —la
+dosis del héroe las necesita y la misma regla no puede tener dos fuentes: la dosis del héroe y la
+del entreno tienen que decir lo mismo. Los 8 usos no cambian (siguen siendo globales).
+
+**Los candados, uno por uno.** El héroe TAPA la primera pantalla, así que solo se pinta donde el
+entreno ya llegaba colapsado, y jamás encima de otro estado:
+- 🔴 **sesión EN CURSO** (clase v367/v447) → no hay héroe, se pinta el entreno;
+- 🔴 **día 1** → manda la portada de quien nunca ha entrenado; las dos no caben en la misma
+  pantalla y la decisión es explícita, no un accidente;
+- día de descanso · «ya entrenaste hoy» · sin plan · **rutina sin ejercicios** (degrada a la
+  tarjeta de arranque de siempre, no a un héroe hueco).
+
+**Paleta: no se inventa nada.** `--emerald-hdr` y `--accent3` ya existían. El `#10E0A0` que la
+auditoría de Isabella marcó por ilegible (**1,72:1 sobre blanco**, medido) vive aquí **y solo
+aquí**. Nuevos: `--on-emerald` y `--on-accent3`, declarados UNA vez —esa superficie es oscura en
+los dos temas, así que un valor por tema sería mentira.
+
+**Verificación.** Suite **794/794** (5 tests nuevos). Harness nuevo `_verify-hero.mjs`, **20/20**,
+que mide contra el DOM: los seis estados no felices, el ancho a sangre, táctil (CTA 56 px), 360 px,
+letra XL, y el **contraste de las 9 tintas contra el tope MÁS CLARO de su propio degradado** —leído
+del DOM, no de mi cabeza— más el CTA. Peor caso **4,62:1**; el rótulo verde da **4,83** contra ese
+extremo (el 10,10 del plan es contra el extremo oscuro: el peor caso es el que vale).
+**Sabotaje ×3, los tres muerden:** quitar el candado del día 1 (H6 rojo) · pintar el héroe
+ignorando la sesión en curso (H2 y H4 rojos) · bajar el alfa de una tinta a .40 (H8 rojo **con
+ratio 2,69, no `undefined`** — la trampa de la sonda que se traga su propio error).
+Cinturón de la zona caliente: `_guiado-suite` TODO OK · `_audit-pantallas` TODO OK ·
+`_verify-firstrun` 8/8 · `_shot-trained` 9/9. Capturas miradas en claro y oscuro, a 390, a 360 y
+con letra XL.
+
+**Dos harnesses re-encuadrados, con su porqué.** `_verify-firstrun` D4 y `_shot-trained` T8
+afirmaban que el entreno se pinta en `#cn-today-body`; el entreno colapsado ahora vive en la
+cabecera. La propiedad que protegen no cambió —nada puede tapar el entreno— así que se afirma
+donde el entreno se OFRECE: cuerpo montado **o** héroe con su botón. T8 quedó más fuerte (busca el
+ejercicio en toda la pestaña, no en un contenedor). No es callar un test: es que afirmaban un
+contenedor, no la promesa.
+
+**Arreglado de paso, porque estaba en rojo por el calendario:** `_verify-firstrun` D6 fijaba el día
+de descanso en `'Miércoles'`, y hoy es miércoles → llevaba dando rojo los miércoles sin que nadie
+tocara código. Ahora el día se elige relativo a `now`. Es la clase de fixture con fechas absolutas
+que ya está en GOTCHAS VIGENTES.
+
+🔴 **HALLAZGO QUE NO ES DE ESTE CAMBIO, y es el que más pesa.** Corriendo el cinturón salieron 18
+aserciones en rojo en cinco harnesses de la pantalla más importante de la app. **Se reprodujeron
+IDÉNTICAS en un worktree limpio en HEAD**, así que son preexistentes: caducaron con **v447** (el
+entreno que llega colapsado) y con el modo día 1, y llevan meses ahí. Reparto:
+`_verify-missday` 7 · `_verify-estudio-defectos` 5 · `_verify-water` 3 ·
+`_fable-repro-midsession` 2 · `_verify-icons-f2` 1. Sus fixtures montan el estado y esperan
+encontrar el entreno desplegado en `#cn-today-body`; hoy encuentran una tarjeta de arranque. **Un
+gate que siempre falla deja de ser señal** — es el mismo final del smoke que pasó 43 versiones
+muerto. No entran en este commit (un feature = un commit): van como trabajo propio, y el radar los
+lleva de primero.
+
+**AVI_NEWS: NO lleva entrada** (decisión declarada, R3.3). El héroe no añade nada que haya que
+descubrir: lo que hacía la tarjeta de arranque lo hace él, con otra forma. Si el lote B lleva
+noticia, la lleva entero al cerrar v505, no en tres tandas.
+
+**Sigue:** v504 (agua/pasos/plato a una tira de 3 chips) y v505 (las filas delgadas y **el tope de
+cuántas tarjetas pueden salir a la vez**, que es lo que impide que B se degrade sola). Plan vivo en
+`docs/plan-diseno-B-compromiso.md`. **PENDIENTE re-verificación de Fable.**
+
 ## 🟢 2026-08-19 — avi-v502: LA FOTO QUE SE BORRÓ Y EL ID QUE SE QUEDÓ
 
 Apareció revisando las 21 fotos de máquinas que el PO dejó en Descargas, no buscándolo.

@@ -90,8 +90,12 @@ check('T7 con override (abrió una rutina) NO sale la tarjeta y se pinta el entr
 // dispara la tarjeta — el asesorado sigue entrenando y debe poder continuar, no ver "ya entrenaste".
 await ev(`(()=>{const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];const c=DB.clients[0];c.routines[0].day=days[new Date().getDay()];const iso=new Date().toISOString();DB.history={ct1:[{id:'hp',sessionId:'sp',routineId:c.routines[0].id,routineName:'Pierna',date:iso,startedAt:iso,totalVol:600,doneSets:1,totalSets:4,exercises:[]}]};CUR.trainAgain=false;CUR.todayOverride=null;CUR.todayWorking=null;renderClientToday(c);})()`);
 await sleep(500);
-const t8card = await ev(`!!document.querySelector('#cn-today-body .trained-card')`);
-const t8workout = await ev(`/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
+// v503: el entreno colapsado se pinta en la CABECERA (héroe de la dirección B), no en
+// `#cn-today-body`. Se busca el ejercicio en toda la pestaña, que es lo que la persona ve —
+// así el check sirve con el héroe y con el guiado montado, y no con una tarjeta de «ya
+// entrenaste» que es justo lo que no debe salir.
+const t8card = await ev(`!!document.querySelector('#cn-today .trained-card')`);
+const t8workout = await ev(`/Sentadilla/.test(document.getElementById('cn-today').textContent)`);
 check('T8 parcial en curso (sin finishedAt) NO dispara la tarjeta; sigue el entreno', t8card === false && t8workout === true, 'card=' + t8card + ' workout=' + t8workout);
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));

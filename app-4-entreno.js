@@ -608,7 +608,12 @@ function aviRestPhoto(sex){ return sex==='M' ? 'media/brand/coach-verde.jpg' : '
 
 // Saludo del "Hoy": texto simple (el wohero de abajo ya trae foto — una sola imagen por
 // pantalla, decisión de Camilo 2026-07-05; la foto del coach saludando vive en la bienvenida).
-function renderTodayHead(client){
+// `heroRoutine` (v503, dirección B «El Compromiso»): cuando el entreno de hoy llega colapsado,
+// la cabecera DEJA de ser un saludo y se convierte en el héroe — saludo, racha y arranque del
+// entreno FUNDIDOS en una sola superficie esmeralda. Sin rutina (descanso, ya entrenaste, sin
+// plan, día 1, sesión en curso) vuelve a ser el saludo de siempre: el héroe no se pinta encima
+// de ningún otro estado. Lo decide quien llama, con el mismo dato con el que decide colapsar.
+function renderTodayHead(client, heroRoutine){
   const el=document.getElementById('cn-today-head'); if(!el||!client)return;
   const h=new Date().getHours();
   const saludo=h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches';
@@ -618,15 +623,51 @@ function renderTodayHead(client){
   const ws=weekStreak((DB.history&&DB.history[client.id])||[], streakTarget(client), new Date());
   // Íconos SVG de marca (v306, F2): flame para racha encendida, target para la meta en curso.
   const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
-  const chip=ws.weeks>=1
-    ? `<div class="streak-chip">${_ic('flame',15,'🔥')} <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} seguida${ws.weeks!==1?'s':''} entrenando</div>`
-    : ws.thisWeekDays>0
-      ? `<div class="streak-chip">${_ic('target',15,'💪')} Vas <b>${ws.thisWeekDays}</b> de <b>${ws.target}</b> para encender tu racha</div>`
-      : `<div class="streak-chip streak-0">${_ic('target',15,'💪')} Empieza tu racha esta semana</div>`;
-  el.innerHTML=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>${chip}`;
+  const hero=(heroRoutine&&typeof todayHeroModel==='function')?todayHeroModel(heroRoutine):null;
+  // La MISMA racha, dicha en dos anchos: la fila de arriba del héroe comparte renglón con el
+  // nombre y no tiene sitio para una frase de 40 caracteres.
+  const chip=hero
+    ? (ws.weeks>=1
+        ? `<div class="streak-chip">${_ic('flame',14,'🔥')} <b>${ws.weeks}</b> sem${ws.weeks!==1?'s':''}.</div>`
+        : ws.thisWeekDays>0
+          ? `<div class="streak-chip">${_ic('target',14,'💪')} <b>${ws.thisWeekDays}</b>/<b>${ws.target}</b> esta semana</div>`
+          : `<div class="streak-chip streak-0">${_ic('target',14,'💪')} Empieza tu racha</div>`)
+    : (ws.weeks>=1
+        ? `<div class="streak-chip">${_ic('flame',15,'🔥')} <b>${ws.weeks}</b> semana${ws.weeks!==1?'s':''} seguida${ws.weeks!==1?'s':''} entrenando</div>`
+        : ws.thisWeekDays>0
+          ? `<div class="streak-chip">${_ic('target',15,'💪')} Vas <b>${ws.thisWeekDays}</b> de <b>${ws.target}</b> para encender tu racha</div>`
+          : `<div class="streak-chip streak-0">${_ic('target',15,'💪')} Empieza tu racha esta semana</div>`);
+  const greet=`<div class="today-greet"><div class="tg-hi">${saludo},</div><div class="tg-name">${name} 👋</div></div>`;
+  if(!hero){
+    el.classList.remove('hero-on');
+    el.innerHTML=greet+chip;
+  }else{
+    el.classList.add('hero-on');
+    el.innerHTML=_todayHeroHTML(greet,chip,hero);
+  }
   // Botón de entrenamientos rápidos (HTML estático): el ⚡ emoji pasa a bolt SVG (F2).
   const qe=document.querySelector('#qw-entry .qw-entry-ic');
   if(qe&&typeof aviIcon==='function')qe.innerHTML=aviIcon('bolt',22);
+}
+// El héroe, ya con el modelo puro resuelto (avi-core.todayHeroModel). Aquí solo se pinta y se
+// escapa: TODO lo que viene del plan del asesorado pasa por esc().
+function _todayHeroHTML(greet,chip,m){
+  const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meta=[m.count+' ejercicio'+(m.count!==1?'s':'')]
+    .concat(m.mins?['~'+m.mins+' min']:[])                    // sin estimación fiable no se inventa
+    .concat(m.underHour?['te toma menos de una hora']:[]).join(' · ');
+  const filas=m.lines.map(l=>`<li class="thl"><span class="thl-n" aria-hidden="true">${esc(l.n)}</span><span class="thl-x">${esc(l.name)}</span>${l.dose?`<span class="thl-d">${esc(l.dose)}</span>`:''}</li>`).join('')
+    +(m.rest>0?`<li class="thl thl-more">y ${m.rest} ejercicio${m.rest!==1?'s':''} más</li>`:'');
+  return `<div class="tod-hero">
+    <div class="tod-hero-top">${greet}${chip}</div>
+    <div class="tod-hero-k">${_ic('dumbbell',13,'🏋️')} ${esc(days[new Date().getDay()])} · tu entreno de hoy</div>
+    <h2 class="tod-hero-t" data-size="${esc(m.size)}">${esc(m.name)}</h2>
+    <div class="tod-hero-m">${esc(meta)}</div>
+    <ol class="tod-hero-list">${filas}</ol>
+    <button type="button" class="tod-hero-cta" onclick="expandTodayWorkout()">${_ic('play',18,'▶')} Empezar mi entreno</button>
+    <button type="button" class="tod-hero-alt" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Hoy prefiero otra rutina</button>
+  </div>`;
 }
 
 // v313 (estudio de interfaz, mejora 1 aprobada por Camilo): en día de ENTRENO el entreno
@@ -873,7 +914,13 @@ function renderClientToday(client, overrideRoutine){
       hasProgress: _todayHasProgress(todayR),
       isOverride: isOverride,
       trainAgain: !!CUR.trainAgain })){
-    con.innerHTML=_startCardHTML(client,todayR);
+    // v503 · dirección B: el arranque del entreno SUBE a la cabecera y se funde con el saludo y
+    // la racha en el héroe esmeralda. Solo cuando hay un héroe que pintar y el día 1 no manda:
+    // la portada de quien nunca ha entrenado tiene su propia primera pantalla y las dos no
+    // pueden ocupar la misma. Sin héroe (rutina sin ejercicios) queda la tarjeta de arranque.
+    const _heroOK=!_dia1 && typeof todayHeroModel==='function' && !!todayHeroModel(todayR);
+    renderTodayHead(client, _heroOK?todayR:null);
+    con.innerHTML=_heroOK?'':_startCardHTML(client,todayR);
     return;
   }
   con.innerHTML='';
@@ -1330,8 +1377,8 @@ function migrateEnv(){
   if(n){sv('ax_e',DB.exercises);sv('ax_c',DB.clients);if(DB.templates)sv('ax_tpl',DB.templates);log(`AVI: ${n} ejercicios etiquetados con entorno (env)`);}
   localStorage.setItem('ax_env_migrated','1');
 }
-function hiitCfg(ex){const c=ex.hiit||{};return{work:parseInt(c.work)||30,rest:parseInt(c.rest)||15};}
-function holdSecsOf(ex){return parseInt(ex.holdSecs)||parseInt(ex.reps)||60;}
+// hiitCfg / holdSecsOf → avi-core.js (v503): la dosis del héroe de «Hoy» las necesita y la
+// misma regla no puede vivir en dos archivos. Siguen siendo globales; los 8 usos no cambian.
 // Formatea un valor de progreso/PR con su unidad según la modalidad.
 // fmtMetric → avi-core.js (fuente única, testeada)
 function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}

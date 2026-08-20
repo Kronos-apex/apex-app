@@ -248,6 +248,10 @@ const {
   chatDeliveryBlock,
   clientPlan,
   submuscleVolume,
+  exDoseShort,
+  heroTitleSize,
+  todayHeroModel,
+  HERO_MAX_LINES,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -10574,6 +10578,75 @@ test('🔴 el ánimo declarado se guarda EN LA SESIÓN (no solo en el teléfono)
   // Las dos: si solo estuviera en la que crea, una sesión que declara el ánimo DESPUÉS de
   // empezar lo perdería — y esa es justo la sesión que interesa (la que salió mal).
   assert.ok(rama1 && rama2, 'el ánimo debe guardarse en las DOS ramas');
+});
+
+// ══════════════════════════════════════════════════════
+// EL HÉROE DE «HOY» — dirección B «El Compromiso» (v503)
+// ══════════════════════════════════════════════════════
+// La maqueta que eligió el PO se dibujó con una rutina de 4 ejercicios y un nombre de 15
+// letras. Los datos reales del 19-ago (93 rutinas de 24 filas) dicen otra cosa: la moda son
+// 6 ejercicios, 35 rutinas tienen 7 o más (una tiene 14) y el nombre más largo son 40
+// caracteres. Estos tests fijan lo que el héroe hace con los datos que EXISTEN, no con los
+// de la maqueta.
+
+test('🔴 el héroe no le pone «series × reps» a un cardio (clase Camilo 2026-06-29)', () => {
+  assert.strictEqual(exDoseShort({ type: 'Cardio', sets: 1, reps: 20 }), '20 min');
+  assert.strictEqual(exDoseShort({ type: 'Isométrico', sets: 3, reps: 45 }), '3 × 45s');
+  assert.strictEqual(exDoseShort({ type: 'HIIT', sets: 4, reps: 8 }), '4 rondas');
+  assert.strictEqual(exDoseShort({ type: 'Compuesto', sets: 4, reps: 10 }), '4 × 10');
+  // El track explícito manda sobre el tipo (es el campo que el coach edita).
+  assert.strictEqual(exDoseShort({ track: 'cardio', type: 'Compuesto', sets: 3, reps: 25 }), '25 min');
+});
+
+test('el titular se encoge con nombres largos (a 34 px, 40 caracteres son cuatro líneas)', () => {
+  assert.strictEqual(heroTitleSize('Pierna y glúteo'), 'xl');
+  assert.strictEqual(heroTitleSize('Gluteo y Piernas A — Cadena Posterior'), 'md');
+  // Nombre REAL más largo del backup del 19-ago: 40 caracteres.
+  assert.strictEqual(heroTitleSize('Tren Superior — Espalda, Pecho y Hombros'), 'md');
+  assert.strictEqual(heroTitleSize(''), 'xl');
+  assert.strictEqual(heroTitleSize(null), 'xl');
+});
+
+test('🔴 el héroe NUNCA lista más de 6 ejercicios, y dice cuántos deja fuera', () => {
+  const ex = n => Array.from({ length: n }, (_, i) => ({ id: 'e' + i, name: 'Ejercicio ' + i, sets: 3, reps: 10 }));
+  const seis = todayHeroModel({ name: 'Pierna', exercises: ex(6), restSec: 90 });
+  assert.strictEqual(seis.lines.length, 6, 'la rutina más común (6) se lista COMPLETA');
+  assert.strictEqual(seis.rest, 0);
+  // 8 ejercicios (15 rutinas reales): 5 filas + el resumen. Nunca 8 filas en la portada.
+  const ocho = todayHeroModel({ name: 'Pierna', exercises: ex(8), restSec: 90 });
+  assert.strictEqual(ocho.lines.length, HERO_MAX_LINES - 1);
+  assert.strictEqual(ocho.rest, 3, 'lo que no cabe se DICE, no se esconde');
+  assert.strictEqual(ocho.count, 8, 'el total sigue siendo el de verdad');
+  // La de 14 ejercicios (existe, una) no puede pintar 14 filas.
+  assert.ok(todayHeroModel({ name: 'x', exercises: ex(14), restSec: 90 }).lines.length <= HERO_MAX_LINES);
+  // La numeración es la del plan, en orden y a dos dígitos.
+  assert.deepStrictEqual(seis.lines.map(l => l.n), ['01', '02', '03', '04', '05', '06']);
+});
+
+test('🔴 el héroe no promete «menos de una hora» cuando la rutina dura más', () => {
+  const ex = n => Array.from({ length: n }, (_, i) => ({ id: 'e' + i, name: 'Ej ' + i, sets: 4, reps: 10 }));
+  // 4 ejercicios × 4 series × (45 + 90)s = 36 min → la promesa es verdad.
+  const corta = todayHeroModel({ name: 'Corta', exercises: ex(4), restSec: 90 });
+  assert.strictEqual(corta.mins, 36);
+  assert.strictEqual(corta.underHour, true);
+  // 8 ejercicios × 4 series = 72 min → la app se calla, no miente.
+  const larga = todayHeroModel({ name: 'Larga', exercises: ex(8), restSec: 90 });
+  assert.strictEqual(larga.mins, 72);
+  assert.strictEqual(larga.underHour, false);
+  // Sin series legibles no hay estimación → tampoco promesa (mins null, no 0).
+  const sinDato = todayHeroModel({ name: 'X', exercises: [{ id: 'e', name: 'Ej', sets: 0, reps: '' }] });
+  assert.strictEqual(sinDato.mins, null);
+  assert.strictEqual(sinDato.underHour, false);
+});
+
+test('rutina VACÍA → no hay héroe (la vista degrada a la tarjeta de arranque, no a un héroe hueco)', () => {
+  assert.strictEqual(todayHeroModel({ name: 'Vacía', exercises: [] }), null);
+  assert.strictEqual(todayHeroModel({ name: 'Nula' }), null);
+  assert.strictEqual(todayHeroModel(null), null);
+  // Un ejercicio nulo dentro del arreglo no cuenta como ejercicio.
+  assert.strictEqual(todayHeroModel({ name: 'X', exercises: [null, undefined] }), null);
+  // Y un nombre en blanco no deja el titular vacío.
+  assert.strictEqual(todayHeroModel({ name: '   ', exercises: [{ name: 'Sentadilla', sets: 3, reps: 10 }] }).name, 'Entrenamiento');
 });
 
 // ══════════════════════════════════════════════════════
