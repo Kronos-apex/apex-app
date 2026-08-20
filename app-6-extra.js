@@ -2730,6 +2730,11 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // Una sola entrada para el lote entero de la dirección B (v503 héroe + v504 chips + v505 tope):
+  // lo que cambió es la FORMA de «Hoy», y contarlo en tres tandas sería tres avisos por un cambio.
+  // Sin `coach:true` a propósito: la pantalla cambió para todos, también para el tier libre.
+  {v:505, icon:'dumbbell', t:'«Hoy» ahora tiene una sola promesa', d:'Tu entreno del dia ocupa la primera pantalla completa, con los ejercicios que te tocan y un solo boton para empezar. El agua, los pasos y tu plato bajan a una tira de tres, y los avisos ya no se apilan: salen maximo dos y el resto te espera en una linea.',
+   steps:['Abre «Hoy»: arriba esta tu entreno, con todo lo que vas a hacer','Toca «Empezar mi entreno» y arrancas — nada mas compite por tu atencion','Abajo, la tira de tres: toca el agua para sumar un vaso, igual que siempre','Si ves «Tienes N avisos mas», tocalo y ahi esta lo que no cupo hoy']},
   {v:479, icon:'clipboard', t:'Tu lista del mercado, lista', d:'AVI suma los 7 dias de tu plan y te arma la lista de todo lo que tienes que comprar, agrupada por seccion del mercado. La puedes compartir con quien haga el mercado en tu casa.',
    steps:['En «Hoy» abre «Tu comida de hoy» y toca «🛒 Ver mi lista del mercado»','Ahi esta todo lo de la semana: proteina, granos, verduras, frutas y grasas','Toca «Compartir mi lista» para mandarla por WhatsApp'],
    coach:true},

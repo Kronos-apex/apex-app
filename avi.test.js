@@ -253,6 +253,9 @@ const {
   todayHeroModel,
   HERO_MAX_LINES,
   habitPct,
+  todayCardPlan,
+  TODAY_CARD_PRIORITY,
+  TODAY_MAX_CARDS,
 } = core;
 
 // Biblioteca mínima de prueba que cubre todos los músculos/tipos que usa el generador.
@@ -10579,6 +10582,66 @@ test('🔴 el ánimo declarado se guarda EN LA SESIÓN (no solo en el teléfono)
   // Las dos: si solo estuviera en la que crea, una sesión que declara el ánimo DESPUÉS de
   // empezar lo perdería — y esa es justo la sesión que interesa (la que salió mal).
   assert.ok(rama1 && rama2, 'el ánimo debe guardarse en las DOS ramas');
+});
+
+// ══════════════════════════════════════════════════════
+// EL TOPE DE TARJETAS DE «HOY» — dirección B «El Compromiso» (v505)
+// ══════════════════════════════════════════════════════
+// Medido sobre los 22 asesorados reales: máximo 6 tarjetas simultáneas, mediana 5, y les caen
+// a las que MÁS entrenan. Tres más viven en el teléfono y solo SUMAN.
+
+test('🔴 el tope reparte por PRIORIDAD, no por el orden en que lleguen', () => {
+  // Llegan al revés de como importan: primero lo que le pedimos nosotros.
+  const p = todayCardPlan(['cn-share', 'cn-news', 'cn-coach-card', 'cn-missday', 'cn-deload']);
+  assert.deepStrictEqual(p.visibles, ['cn-deload', 'cn-missday'], 'gana lo que cambia su entreno de hoy');
+  assert.deepStrictEqual(p.ocultas, ['cn-coach-card', 'cn-news', 'cn-share']);
+  // Y el resultado NO depende del orden de entrada: dos pantallas con la misma gente deciden igual.
+  const q = todayCardPlan(['cn-deload', 'cn-missday', 'cn-coach-card', 'cn-news', 'cn-share']);
+  assert.deepStrictEqual(q.visibles, p.visibles);
+  assert.deepStrictEqual(q.ocultas, p.ocultas);
+});
+
+test('🔴 el tope APARTA, no borra: todo lo que entra sale por algún lado', () => {
+  const entra = ['cn-deload', 'cn-missday', 'cn-coach-card', 'cn-push-nudge', 'cn-news', 'cn-share'];
+  const p = todayCardPlan(entra);
+  assert.strictEqual(p.visibles.length + p.ocultas.length, entra.length, 'no se puede perder ninguna');
+  assert.deepStrictEqual([...p.visibles, ...p.ocultas].sort(), entra.slice().sort());
+  assert.ok(p.ocultas.length > 0, 'con 6 avisos tiene que sobrar algo');
+});
+
+test('con pocas tarjetas no sobra nada (y no se inventa una fila de avisos)', () => {
+  assert.deepStrictEqual(todayCardPlan(['cn-coach-card']).ocultas, []);
+  assert.deepStrictEqual(todayCardPlan(['cn-coach-card', 'cn-share']).ocultas, []);
+  assert.deepStrictEqual(todayCardPlan([]).visibles, []);
+  assert.deepStrictEqual(todayCardPlan(null).visibles, []);
+  assert.strictEqual(todayCardPlan(['cn-coach-card', 'cn-share']).visibles.length, TODAY_MAX_CARDS);
+});
+
+// 🔴 Una tarjeta NUEVA que nadie priorizó no puede desaparecer en silencio: el defecto se ve
+// (una tarjeta de más) en vez de esconderse (una tarjeta que no sale y nadie sabe por qué).
+test('🔴 una tarjeta sin puesto en la lista de prioridad NO se topa: sale', () => {
+  const p = todayCardPlan(['cn-deload', 'cn-missday', 'cn-coach-card', 'cn-tarjeta-nueva']);
+  assert.ok(p.visibles.includes('cn-tarjeta-nueva'), 'lo no priorizado se ve, no se esconde');
+  assert.ok(!p.ocultas.includes('cn-tarjeta-nueva'));
+  assert.deepStrictEqual(p.ocultas, ['cn-coach-card']);
+});
+
+// 🔴 El tope solo puede tocar AVISOS. El entreno, la cabecera, la portada del día 1 y las
+// herramientas del día (hábitos, plan de comida, rápidos) no están en la lista y no pueden estar.
+test('🔴 el entreno y las herramientas del día NO están en la lista de lo topable', () => {
+  ['cn-today-body', 'cn-today-head', 'cn-firstrun', 'cn-habits', 'cn-meals', 'qw-entry']
+    .forEach(id => assert.ok(!TODAY_CARD_PRIORITY.includes(id), id + ' NO puede ser topable'));
+  // Y si alguien se los pasa igual, el plan los deja pasar (no están priorizados → no se topan).
+  const p = todayCardPlan(['cn-deload', 'cn-missday', 'cn-coach-card', 'cn-today-body', 'cn-habits']);
+  assert.ok(p.visibles.includes('cn-today-body') && p.visibles.includes('cn-habits'));
+});
+
+test('el tope es configurable y 0 no rompe (todo se aparta, nada se pierde)', () => {
+  const entra = ['cn-deload', 'cn-missday', 'cn-coach-card'];
+  assert.deepStrictEqual(todayCardPlan(entra, { max: 0 }).visibles, []);
+  assert.deepStrictEqual(todayCardPlan(entra, { max: 0 }).ocultas, entra);
+  assert.deepStrictEqual(todayCardPlan(entra, { max: 99 }).ocultas, []);
+  assert.strictEqual(todayCardPlan(entra, { max: 1 }).visibles.length, 1);
 });
 
 // ══════════════════════════════════════════════════════

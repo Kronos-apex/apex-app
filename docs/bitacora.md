@@ -4,6 +4,77 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-20 — avi-v505: EL TOPE DE TARJETAS — la dirección B queda CERRADA (3 de 3)
+
+La regla que **no existía**. `_todayOrder` ordenaba los 14 bloques de «Hoy» y el modo día 1
+apagaba once de golpe, pero en un día normal **nada limitaba cuántas salen a la vez**. Sin esto,
+B se degrada sola en cuanto se vuelvan a apilar seis.
+
+**LA MEDICIÓN, re-hecha hoy (no heredada).** `scripts/e2e/_medir-tarjetas-hoy.mjs` sobre los 22
+asesorados reales: **máximo 6 tarjetas simultáneas, mediana 5**, y las 4 que llegan a 6 son de las
+que MÁS entrenan (Claudia, Luz, Miguel, Samuel). Tres tarjetas más viven en `localStorage` y no se
+pueden medir desde la nube (aviso de push, novedades, puerta a Comunidad): **solo SUMAN**, así que
+6 es el piso de lo peor, no el techo.
+
+**LA REGLA: máximo 2 avisos a la vez, por PRIORIDAD.** El orden es de valor, no de antigüedad —
+primero lo que cambia lo que hace hoy, después lo que le dice algo sobre ella, y de últimas lo que
+le pedimos nosotros: descarga › día que se corrió › insight del coach › aviso de push › pedir
+coach › novedades › puerta a Comunidad › compartir.
+
+🔴 **EL TOPE APARTA, NO SILENCIA.** Lo que no cabe **no se mutea ni se marca como visto**: baja a
+una fila de una línea («🔔 Tienes 2 avisos más ▾») que la abre en el sitio, y mañana vuelve a
+competir. Silenciar por falta de espacio sería decidir por la persona, y una tarjeta que nunca gana
+su turno es una feature muerta que nadie sabe que existe.
+
+🔴 **Y NO PUEDE TOCAR LA PANTALLA.** Fuera del tope quedan el entreno y su cabecera (son la
+pantalla), la portada del día 1 (que ya apaga todo por su cuenta) y las **herramientas** del día
+—la tira de hábitos, el plan de comida y los rápidos—, que no piden atención: esperan a que se las
+busque. Toparlas sería esconderle su propio registro, no quitarle ruido.
+
+**LA CURVA, medida y escrita al lado de la constante** (peor caso realista, 390×844):
+
+| tope | alto de «Hoy» | pantallas | avisos a la vez |
+|---|---|---|---|
+| sin tope | 1.526 px | 2,1 | 4 |
+| 3 | 1.501 px | 2,1 | 3 |
+| **2** | **1.355 px** | **1,9** | **2** ← elegido |
+| 1 | 1.189 px | 1,6 | 1 |
+| 0 | 998 px | 1,4 | 0 |
+
+🔴 **Honestidad sobre el número: NO hay codo en la curva** — cada aviso cuesta 150-190 px, parejo.
+Así que el 2 **no lo eligió el dato**: lo elige el criterio de producto (el héroe ya pide UNA cosa;
+dos avisos más es lo máximo que cabe sin obligar a triar), y el dato dice lo que cuesta moverlo.
+Cambiarlo es una línea y el PO tiene la cuenta al lado.
+
+💎 **UN SABOTAJE SALIÓ VERDE Y ENSEÑÓ EL DISEÑO CORRECTO.** La primera versión apagaba con
+`style.display` y traía su propia restauración. Quitarle la restauración **no rompió nada**: el
+modo día 1 ya gestiona el `display` de esos MISMOS once contenedores y lo devuelve a `''` en cada
+render. O sea que mi restauración era redundante… **y el tope quedaba dependiendo de que nadie
+saque una tarjeta de `_DIA1_OFF` en el futuro**, que es un acoplamiento invisible entre dos
+mecanismos que se pelean la misma propiedad. Arreglado de raíz: el tope apaga con **su propia
+clase** (`.cap-off`). Ahora cada mecanismo apaga lo suyo, la restauración es load-bearing de
+verdad — y el sabotaje muerde.
+
+**Verificación.** Suite **803/803** (6 tests nuevos). Harness nuevo `_verify-tope.mjs`, **14/14**,
+con el peor caso realista armado con DATOS que disparan a las tarjetas por su cuenta (no se les
+inyecta HTML: eso sería fabricarse el verde). **Sabotaje ×3, los tres muerden:** quitar la
+restauración (T5 y T6 rojos) · meter el entreno y la tira de hábitos en la lista de lo topable (T4
+rojo + suite roja) · repartir por orden de llegada en vez de por prioridad (suite roja).
+Cinturón: `_verify-hero` 20/20 · `_verify-chips` 17/17 · `_verify-firstrun` 9/9 · `_shot-trained`
+9/9 · `_verify-foodlog` 41/41 · `_verify-deload` TODO OK · `_verify-water` TODO OK ·
+`_guiado-suite` TODO OK · `_audit-pantallas` TODO OK. Capturas miradas en claro, oscuro y XL.
+
+**AVI_NEWS: SÍ lleva entrada.** Es la primera del lote que la lleva, y va por el lote ENTERO
+(v503+v504+v505), como se declaró al abrirlo: ahora sí hay algo que contar —«Hoy» cambió de forma—
+y una sola noticia al cerrar vale más que tres tandas.
+
+**Sigue abierto, y sale en la captura:** la tarjeta grande «Tu comida de hoy» (`#cn-meals`, el PLAN
+del día) repite el plato justo debajo de su propio chip. No se contradicen, pero es apilamiento.
+No entra aquí porque es otra decisión de producto (qué se muestra del plan en «Hoy»), no el tope.
+
+**PENDIENTE re-verificación de Fable.** Con esto la dirección B «El Compromiso» queda construida
+entera: héroe (v503) + tira de chips (v504) + filas y tope (v505).
+
 ## 🟢 2026-08-19 — avi-v504: LA TIRA DE 3 CHIPS («B · El Compromiso», 2 de 3)
 
 Segunda pieza de la dirección B. Agua, pasos y plato dejan de ser una tarjeta apilada de tres

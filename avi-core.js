@@ -6277,6 +6277,67 @@ function workoutStartCollapsed(o) {
 // Pecho y Hombros»). Por eso el título se escala por longitud y la lista tiene tope: un héroe
 // que no cabe en la pantalla deja de ser una promesa y vuelve a ser un muro.
 
+// ══════════════════════════════════════════════════════════════════════
+// EL TOPE DE TARJETAS DE «HOY» — dirección B «El Compromiso» (v505)
+// ──────────────────────────────────────────────────────────────────────
+// La regla que NO existía. `_todayOrder` ordena los bloques y el modo día 1 apaga once de
+// golpe, pero en un día normal nada limita CUÁNTAS salen a la vez. Medido sobre los 22
+// asesorados reales (20-ago, con el historial recortado a la fecha): máximo **6 tarjetas
+// simultáneas**, mediana 5 — y les caen a las que MÁS entrenan, no a las que no usan la app.
+// Encima, tres de ellas viven en `localStorage` y no se pueden medir desde la nube
+// (aviso de push, novedades, puerta a Comunidad): solo SUMAN. Así que 6 es el piso de lo peor.
+//
+// 🔴 EL TOPE NO BORRA NADA. Lo que no cabe hoy NO se silencia ni se marca como visto: se
+// aparta detrás de una fila de una línea («+2 avisos») que la abre en el sitio. Silenciar por
+// falta de espacio sería decidir por la persona, y una tarjeta que nunca gana su turno es una
+// feature muerta que nadie sabe que existe.
+//
+// El orden es de VALOR, no de antigüedad: primero lo que cambia lo que hace hoy, después lo
+// que le dice algo sobre ella, y de últimas lo que le pedimos nosotros.
+const TODAY_CARD_PRIORITY = [
+  'cn-deload',        // 1. la semana de descarga cambia CÓMO entrena hoy
+  'cn-missday',       // 2. recuperar un día de ESTA semana: acción concreta sobre su plan
+  'cn-coach-card',    // 3. alguien pendiente de ella (récord, racha, inactividad)
+  'cn-push-nudge',    // 4. sin permiso de notificaciones no la podemos alcanzar (15 de 16 lo están)
+  'cn-today-upsell',  // 5. pedir coach (solo tier libre)
+  'cn-news',          // 6. novedades de la app
+  'cn-cmty-nudge',    // 7. la puerta a Comunidad
+  'cn-share',         // 8. invitar a alguien
+];
+// 🔴 NUNCA entran al tope: el entreno y su cabecera (son la pantalla), la portada del día 1
+// (que ya apaga todo lo demás por su cuenta) y las HERRAMIENTAS del día —la tira de hábitos,
+// el plan de comida y los entrenamientos rápidos—, que no piden atención: esperan a que se las
+// busque. Toparlas sería esconderle su propio registro, no quitarle ruido.
+// LA CURVA, medida el 20-ago sobre el peor caso realista (el perfil de las 4 personas que hoy
+// llegan a 6 tarjetas), alto de «Hoy» a 390×844 — `scripts/e2e/_verify-tope.mjs` la vuelve a
+// imprimir en cada corrida, así que se re-mide, no se hereda:
+//     sin tope → 1.526 px (2,1 pantallas) · 4 mensajes
+//     tope 3   → 1.501 px (2,1)           · 3
+//     tope 2   → 1.355 px (1,9)           · 2   ← elegido
+//     tope 1   → 1.189 px (1,6)           · 1
+//     tope 0   →   998 px (1,4)           · 0
+// 🔴 NO hay codo en la curva: cada aviso cuesta 150-190 px, parejo. Así que el número NO lo
+// eligió el dato — lo elige el criterio de producto, y el dato dice lo que cuesta cambiarlo:
+// el héroe ya pide UNA cosa (entrenar), y dos avisos más es lo máximo que cabe en la pantalla
+// sin obligar a la persona a decidir cuál de cinco atiende. Moverlo es una línea y el PO tiene
+// la cuenta al lado.
+const TODAY_MAX_CARDS = 2;
+function todayCardPlan(presentes, opts) {
+  opts = opts || {};
+  const max = (opts.max === undefined) ? TODAY_MAX_CARDS : Math.max(0, parseInt(opts.max) || 0);
+  const hay = new Set(presentes || []);
+  // El orden de salida es el de PRIORIDAD, no el que traiga quien llame: dos pantallas con la
+  // misma gente tienen que decidir igual.
+  const orden = TODAY_CARD_PRIORITY.filter(id => hay.has(id));
+  // Lo que llegue sin puesto en la lista se respeta y NO se topa: preferimos que salga una
+  // tarjeta nueva de más a que desaparezca en silencio por habérsenos olvidado prioritizarla.
+  const sinRango = (presentes || []).filter(id => TODAY_CARD_PRIORITY.indexOf(id) === -1);
+  return {
+    visibles: orden.slice(0, max).concat(sinRango),
+    ocultas: orden.slice(max),
+  };
+}
+
 // Config del HIIT de un ejercicio (trabajo/descanso en segundos) y segundos de un isométrico.
 // Viven aquí —y no en app-4, donde nacieron— porque `exDoseShort` los necesita y la regla no
 // puede tener dos fuentes: la dosis del héroe y la del entreno deben decir lo MISMO.
@@ -7680,6 +7741,9 @@ if (typeof module !== 'undefined' && module.exports) {
     HERO_TITLE_SIZES,
     todayHeroModel,
     HERO_MAX_LINES,
+    todayCardPlan,
+    TODAY_CARD_PRIORITY,
+    TODAY_MAX_CARDS,
     generarRutinas,
     GEN_WEEK_DAYS,
     genDayIdxFromDate,
