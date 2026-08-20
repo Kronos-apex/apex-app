@@ -79,6 +79,11 @@ async function shot(name, tema) {
 // ══════════ 1 · JERGA ══════════
 // El día 1 la portada tapa el entreno: se pulsa su única salida, como haría la persona.
 await ev(`typeof firstRunGo==='function' && (firstRunGo(),1)`); await sleep(1400);
+// 🔴 Y desde v447 el entreno llega COLAPSADO en una tarjeta de arranque: hay que tocar
+// «Empezar», que es el segundo toque que da la persona. Sin esto el guiado no está montado,
+// no hay ni una línea de ejercicio que mirar ni controles sobre los que medir el toque de la
+// píldora — y los cinco checks de este harness llevaban meses en rojo por eso, no por un defecto.
+await ev(`typeof expandTodayWorkout==='function' && (expandTodayWorkout(),1)`); await sleep(1200);
 
 const metas = await ev(`(()=>[...document.querySelectorAll('#cn-today-body .gm-ex-meta')].map(e=>e.textContent.trim()))()`);
 const JERGA = /compuesto|aislamiento|bodyweight|peso_reps|isom[eé]trico|funcional/i;

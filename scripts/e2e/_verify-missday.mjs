@@ -52,7 +52,14 @@ const RESET = `(()=>{try{
     ],
     habits:{water:{},steps:{}}};
   DB.clients=[client];
-  DB.history={ct1:[]};              // nada entrenado esta semana → rLeg (Lunes) queda PERDIDA
+  // 🔴 Con historial VACIO la app entra en modo DIA 1 (v403) y apaga la tarjeta del dia que se
+  // corrio a proposito: el harness media una pantalla suprimida y llevaba meses en rojo por eso,
+  // no por la tarjeta. A quien se le corre un dia es alguien que YA entrena, asi que el fixture
+  // le da sesiones de SEMANAS ANTERIORES — nada de esta semana, para que rLeg (Lunes) siga
+  // estando PERDIDA. (Sin comillas invertidas: esto viaja dentro de un template literal.)
+  DB.history={ct1:[10,13,16,19].map(d=>{const iso=new Date(Date.now()-d*86400000).toISOString();
+    return {id:'hm'+d,sessionId:'sm'+d,routineId:'rLeg',routineName:'Pierna',date:iso,finishedAt:iso,
+            doneSets:4,totalSets:4,exercises:[]};})};
   DB.msgs=DB.msgs||{};
   CUR.clientId='ct1'; CUR.loggedAs='client'; CUR.trainAgain=false; CUR.todayOverride=null; CUR.todayWorking=null;
   try{ localStorage.removeItem('ax_missmute_ct1'); }catch(e){}
@@ -68,6 +75,9 @@ const isMon = !!ctx.isMon;
 const todayName = ctx.todayName || '';
 await sleep(500);
 
+// v503/v505: el entreno del día se OFRECE en el héroe de la cabecera cuando llega colapsado
+// (v447) y se monta en el cuerpo cuando está abierto. Estos checks preguntan si el entreno SIGUE
+// AHÍ para la persona, así que miran toda la pestaña — no el contenedor donde solía pintarse.
 const results = [];
 const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
 
@@ -84,7 +94,7 @@ if (isMon) {
   check('MD2 nombra la rutina (Pierna) y su día (Lunes)', /Pierna/.test(cardText) && /Lunes/.test(cardText), JSON.stringify(cardText.slice(0, 70)));
   check('MD3 tres acciones: Entrenar hoy · Mover a hoy · Hoy no', btns.length === 3 && /Entrenar hoy/.test(btns[0]) && /Mover a hoy/.test(btns[1]) && /Hoy no/.test(btns[2]), JSON.stringify(btns));
   // El entreno de HOY (Empuje/PressBanca) sigue arriba; la tarjeta es un extra abajo (no lo pisa).
-  const workoutStillThere = await ev(`/PressBanca/.test(document.getElementById('cn-today-body').textContent)`);
+  const workoutStillThere = await ev(`/PressBanca/.test(document.getElementById('cn-today').textContent)`);
   check('MD4 el entreno de hoy NO se pierde: la tarjeta convive con él', workoutStillThere === true, 'today=' + workoutStillThere);
 
   // Para las CAPTURAS: variante de día de DESCANSO (sin rutina de hoy) → la tarjeta es el
@@ -109,7 +119,7 @@ if (isMon) {
   await ev(RESET); await sleep(400);
   await ev(`missTrainToday('rLeg')`); await sleep(500);
   const trOverride = await ev(`!!(CUR.todayOverride&&CUR.todayOverride.id==='rLeg')`);
-  const trWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
+  const trWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today').textContent)`);
   const trPlanIntact = await ev(`DB.clients[0].routines.find(r=>r.id==='rLeg').day==='Lunes'`);
   const trCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
   check('MD5 «Entrenar hoy» abre la rutina perdida como override (Sentadilla), plan INTACTO (rLeg sigue Lunes), tarjeta oculta', trOverride && trWorkout && trPlanIntact && trCardGone, JSON.stringify({ trOverride, trWorkout, trPlanIntact, trCardGone }));
@@ -119,7 +129,7 @@ if (isMon) {
   await ev(`missMoveToday('rLeg')`); await sleep(600);
   const mvLegToday = await ev(`DB.clients[0].routines.find(r=>r.id==='rLeg').day===${JSON.stringify(todayName)}`);
   const mvOccMoved = await ev(`DB.clients[0].routines.find(r=>r.id==='rToday').day==='Lunes'`);
-  const mvWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today-body').textContent)`);
+  const mvWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today').textContent)`);
   const mvCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
   const mvPersisted = await ev(`(()=>{try{const c=JSON.parse(localStorage.getItem('ax_c'));const r=(c&&c[0]&&c[0].routines||[]).find(x=>x.id==='rLeg');return !!(r&&r.day===${JSON.stringify(todayName)});}catch(e){return false;}})()`);
   check('MD6 «Mover a hoy» hace el SWAP (rLeg→hoy, la que ocupaba hoy→Lunes) y lo persiste en ax_c', mvLegToday && mvOccMoved && mvPersisted, JSON.stringify({ mvLegToday, mvOccMoved, mvPersisted }));
@@ -145,7 +155,7 @@ if (isMon) {
   await ev(`(()=>{const iso=new Date().toISOString();DB.history={ct1:[{id:'hp',sessionId:'sp',routineId:'rToday',routineName:'Empuje',date:iso,startedAt:iso,totalVol:600,doneSets:1,totalSets:8,exercises:[]}]};renderClientToday(DB.clients[0]);})()`);
   await sleep(500);
   const partCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
-  const partWorkout = await ev(`/PressBanca/.test(document.getElementById('cn-today-body').textContent)`);
+  const partWorkout = await ev(`/PressBanca/.test(document.getElementById('cn-today').textContent)`);
   check('MD10 con un entreno de HOY a media sesión (parcial) la tarjeta NO sale (no puede pisar el entreno)', partCardGone === true && partWorkout === true, JSON.stringify({ partCardGone, partWorkout }));
 }
 

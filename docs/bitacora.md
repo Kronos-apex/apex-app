@@ -4,6 +4,59 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🟢 2026-08-20 — avi-v506: LOS 18 GATES MUERTOS, Y EL DEFECTO REAL QUE ESCONDÍAN
+
+Al correr el cinturón de la dirección B aparecieron **18 aserciones en rojo en 5 harnesses de la
+pantalla más importante de la app**, reproducidas idénticas en un worktree limpio: preexistentes,
+caducadas con **v447** (el entreno que llega colapsado) y con el modo **día 1** (v403). Un gate que
+siempre falla deja de ser señal — es el final del smoke que pasó 43 versiones muerto. Hoy están las
+18 en verde, y **la pregunta en cada una fue si el harness estaba caduco o si estaba reportando un
+defecto de verdad**. Salieron las dos cosas.
+
+🔴 **UN DEFECTO REAL, y de una clase que este repo ya había cerrado DOS veces.** `_verify-meals`
+tenía razón: la ficha del coach le decía de Luz (39 años, «Perder grasa») **«El plan dice 2400 kcal
+pero sus macros suman 2355 — ajusta el número para que digan lo mismo»**… y **callaba que su plan le
+da 625 kcal por encima de lo que le corresponde**. La tarjeta del descuadre cortaba con `return`
+antes de llamar al revisor, así que en cuanto un plan fallaba en dos cosas a la vez, el coach leía
+la de menos peso: **625 kcal presentadas como un problema de redacción de 45.** Es exactamente lo
+que v496 cerró DENTRO de `nutPlanReview` (el rótulo dejó de ir antes que el desvío) y lo que este
+mismo archivo ya había cerrado para la banda de menores. Ahora manda la palanca grande y el
+descuadre **viaja como línea de más** («Además, su plan dice 2400 y sus macros suman 2355…»), sin
+callarse. Su asesorada real lee lo mismo que antes; el que cambia es lo que ve el coach.
+
+🐛 **Y el rojo de `_verify-icons-f2` era el MISMO defecto de la píldora en blanco** que se arregló
+ayer mirando una captura: se puso verde solo. Dos gates distintos apuntaban al mismo agujero.
+
+**Lo que era harness caduco, y por qué:**
+- **`_fable-repro-midsession` (2)** — su montaje daba por hecho que el guiado salía embebido. Desde
+  v447 el entreno llega COLAPSADO: ahora el harness hace lo que hace la persona, **tocar «Empezar»**.
+  Es la regresión de Fable de la clase v366/v367, así que se probó con el bug original puesto
+  (`sessionFinished` aceptando parciales): **4 rojos**, incluido el REPRO A que motivó el rechazo.
+- **`_verify-missday` (7)** — su fixture tenía historial VACÍO, o sea que la app entraba en **modo
+  día 1** y apagaba `#cn-missday` a propósito: medía una pantalla suprimida. Con sesiones de semanas
+  anteriores (nada de esta semana, para que el lunes siga perdido) pasan 5; los otros 2 buscaban el
+  entreno en `#cn-today-body`, y desde v503 se OFRECE en el héroe. Sabotaje: quitar el candado del
+  entreno en curso (clase v367/v372) → **MD9 y MD10 rojos**.
+- **`_verify-estudio-defectos` (5)** — los cinco por una sola causa: nunca abría el entreno. Con el
+  segundo toque que da la persona («Empezar»), el harness pasa de mirar **12 controles a 82**.
+  Sabotaje: apagar el guardián de la píldora → 3 rojos, **y enseña el defecto original** (se paraba
+  sobre los campos `gm-sinput` de la serie).
+- **`_verify-meals` (1 de los 3)** — su plan «SANO», que es el CONTROL de silencio, traía macros que
+  sumaban 2960 contra un titular de 3200: **el control disparaba la alarma con razón**. Un control
+  que no está en el estado que dice controlar no controla nada.
+
+**Verificación.** Suite 803/803 · **11 harnesses verdes** (`_verify-tope` · `_verify-hero` ·
+`_verify-chips` · `_verify-firstrun` · `_shot-trained` · `_verify-missday` ·
+`_verify-estudio-defectos` · `_fable-repro-midsession` · `_verify-meals` · `_verify-foodlog` 41/41 ·
+`_verify-coach` · `_audit-pantallas` · `_verify-icons-f2` 5/5). **Sabotaje ×4**, todos muerden,
+incluido el del defecto real (devolver el `return` temprano → **4 rojos**, y el coach vuelve a leer
+el problema de redacción encima de las 625 kcal).
+
+**Lo que deja como regla:** un harness en rojo es una PREGUNTA, no una tarea de limpieza — y la
+respuesta puede ser que la app esté mal. De 18 rojos, **3 eran defectos reales** (el descuadre que
+silenciaba, la píldora en blanco y el control que no controlaba) y 15 eran fixtures que se quedaron
+atrás cuando la pantalla cambió.
+
 ## 🟢 2026-08-20 — avi-v505: EL TOPE DE TARJETAS — la dirección B queda CERRADA (3 de 3)
 
 La regla que **no existía**. `_todayOrder` ordenaba los 14 bloques de «Hoy» y el modo día 1

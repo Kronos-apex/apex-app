@@ -1650,21 +1650,33 @@ function renderNutReviewCard(c){
     // regla más fuerte Y la única de las dos que dice un número verdadero. (Lo cazó el harness.)
     const _b=(typeof nutBaseFor==='function')?nutBaseFor(c,_nut,peso):null;
     const _banda=!!(_b&&(_b.minorCap||_b.minorFloor));
+    // 🔴 EL DESFASE YA NO CORTA CON `return`. Esta tarjeta cortaba antes de llamar al revisor, así
+    // que en cuanto un plan tenía las DOS cosas mal, la app hablaba de la de MENOS peso: medido con
+    // Luz (39 años, «Perder grasa»), 45 kcal de descuadre entre titular y macros TAPABAN que su
+    // plan le da ~600 kcal por encima de lo que le corresponde — y la tarjeta la mandaba a
+    // «ajustar el número para que digan lo mismo», que no es lo que hay que arreglar.
+    // Es la MISMA clase que v496 ya cerró dentro de `nutPlanReview` (el rótulo dejó de ir antes que
+    // el desvío) y que este archivo ya había cerrado para la banda de menores: **cuando dos
+    // defectos coexisten, el titular es la palanca grande y el otro viaja como línea de más.**
+    let _desfase=null;
     if(!_banda&&typeof nutMacroKcal==='function'&&_nut&&parseFloat(_nut.kcal)>0){
       const _real=nutMacroKcal({prot_g:_nut.prot,carb_g:_nut.carbs,fat_g:_nut.fat});
       const _dif=_real-Math.round(parseFloat(_nut.kcal));
       const _tope=(typeof NUT_KCAL_MISMATCH==='number')?NUT_KCAL_MISMATCH:25;
-      if(_real>0&&Math.abs(_dif)>=_tope){
-        el.style.display='';
-        el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(--yll);border-left:3px solid var(--yl)">
-          <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(String(Math.round(parseFloat(_nut.kcal))))} kcal, pero sus macros suman ${_real}</div>
-          <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${_real} kcal</b> — ${Math.abs(_dif)} ${_dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
-        </div>`;
-        return;
-      }
+      if(_real>0&&Math.abs(_dif)>=_tope)_desfase={real:_real,dif:_dif,titular:Math.round(parseFloat(_nut.kcal))};
     }
     const r=nutPlanReview(c,_nut,peso);
-    if(!r||r.status==='ok')return;                 // plan sano → sin ruido
+    const _hayReview=!!(r&&r.status!=='ok');
+    if(!_hayReview&&!_desfase)return;              // plan sano → sin ruido
+    if(!_hayReview&&_desfase){
+      // El descuadre es lo ÚNICO que falla: entonces sí es el titular.
+      el.style.display='';
+      el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(--yll);border-left:3px solid var(--yl)">
+        <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(String(_desfase.titular))} kcal, pero sus macros suman ${_desfase.real}</div>
+        <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${_desfase.real} kcal</b> — ${Math.abs(_desfase.dif)} ${_desfase.dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
+      </div>`;
+      return;
+    }
     let tono='--yll', tinta='--ort', titulo='', cuerpo='';
     if(r.status==='sin_datos'){
       if(!r.falta||!r.falta.length)return;
@@ -1739,6 +1751,11 @@ function renderNutReviewCard(c){
     // ÚNICO problema, justo a ellas no les llegaría nunca.
     if(r.prot&&r.prot.dir&&r.status!=='proteina_fuera'&&r.status!=='sin_plan'&&r.status!=='sin_datos'){
       cuerpo+=` <span style="opacity:.9">${_protFrase(r.prot)}</span>`;
+    }
+    // 🔒 Y EL DESCUADRE DE TITULAR VIAJA IGUAL, por la misma razón: no se calla porque haya algo
+    // más grande, pero tampoco se queda con el titular. Se dice al final y con su propio verbo.
+    if(_desfase&&r.status!=='sin_plan'&&r.status!=='sin_datos'){
+      cuerpo+=` <span style="opacity:.9">Además, su plan dice <b>${_desfase.titular} kcal</b> y sus macros suman <b>${_desfase.real}</b>: como la comida se arma con los macros, el titular está de más.</span>`;
     }
     el.style.display='';
     el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(${tono});border-left:3px solid var(${tinta})">

@@ -59,7 +59,12 @@ const SETUP = `(()=>{try{
   const astrid={id:'cX',name:'Astrid',sex:'F',age:33,goal:'Ganar músculo',activityFactor:1.55,days:3,tier:'premium',routines:[]};
   DB.clients=[nataly,luz,sano,astrid];
   DB.nutrition={cN:{kcal:3200,prot:180,carbs:380,fat:80},cL:{kcal:2400,prot:150,carbs:270,fat:75},
-                cS:{kcal:3200,prot:180,carbs:380,fat:80},cX:{kcal:2400}};
+                cS:{kcal:3200,prot:180,carbs:440,fat:80},cX:{kcal:2400}};
+  // 🔴 El plan de Andres es el CONTROL de silencio, asi que tiene que estar sano de VERDAD: sus
+  // macros suman exactamente su titular (180x4 + 440x4 + 80x9 = 3200). Antes traia carbs:380, o
+  // sea 2960 contra un titular de 3200 — un descuadre de 240 kcal, que es justo el defecto de
+  // v435. El control disparaba la alarma y el harness llevaba meses en rojo culpando a la app.
+  // El de Nataly (cN) SI conserva el descuadre a proposito: es su caso real y otro check lo usa.
   DB.bodyweight={};DB.history={cN:[],cL:[],cS:[],cX:[]};DB.prs={};DB.medidas={};DB.photos={};
   return {hoy};
 }catch(e){return {err:String(e)}}})()`;
@@ -95,6 +100,13 @@ const r3 = await ev(`(()=>{const luz=DB.clients[1];CUR.clientId='cL';renderNutRe
 ok(r3.vis, 'avisa que el plan de Luz está desviado');
 ok(/perder grasa/i.test(r3.txt), 'explica el riesgo PARA SU OBJETIVO', r3.txt.slice(0, 130));
 ok(/6[0-9]{2}/.test(r3.txt), 'dice cuántas kcal sobran');
+// 🔴 El plan de Luz falla en DOS cosas a la vez: le sobran ~625 kcal para su objetivo Y su titular
+// (2400) no cuadra con sus macros (2355). Hasta hoy la tarjeta del descuadre cortaba con `return`
+// y el coach solo leía «ajusta el número para que digan lo mismo» — 625 kcal presentadas como un
+// problema de redacción. El titular tiene que ser la palanca GRANDE y el descuadre viajar como
+// línea de más, sin callarse: es la regla que v496 ya aplicó dentro del revisor.
+ok(/por encima en 6[0-9]{2} kcal/.test(r3.txt), '🔴 el TITULAR es el número, no el descuadre de 45 kcal', r3.txt.slice(0, 60));
+ok(/Adem[áa]s.*macros suman 2355/.test(r3.txt), '🔴 …y el descuadre VIAJA en la misma tarjeta, no se calla', r3.txt.slice(-160));
 
 const r4 = await ev(`(()=>{const sano=DB.clients[2];CUR.clientId='cS';renderNutReviewCard(sano);
   const e=document.getElementById('d-nutreview');

@@ -44,6 +44,12 @@ const setup = await ev(`(()=>{try{
   DB.clients=[client]; DB.history={ct9:[]}; DB.msgs=DB.msgs||{};
   CUR.clientId='ct9'; CUR.loggedAs='client'; CUR.trainAgain=false; CUR.todayOverride=null; CUR.todayWorking=null; CUR.todayDirty=false;
   renderClientToday(client);
+  // v447: el entreno llega COLAPSADO hasta que se toca «Empezar». Este harness reproduce a alguien
+  // A MEDIA SESIÓN, así que el montaje tiene que hacer lo que hace esa persona: abrirlo. Antes de
+  // v447 el guiado salía montado solo y el SETUP se daba por hecho — por eso llevaba meses en rojo.
+  if(typeof _gmIsEmbedded==='function' && !_gmIsEmbedded() && typeof expandTodayWorkout==='function'){
+    expandTodayWorkout();
+  }
   if(typeof ntClose==='function')ntClose(false);
   return JSON.stringify({embedded:_gmIsEmbedded(), card:!!document.querySelector('#cn-today-body .trained-card')});
 }catch(e){return 'err:'+e.message+' | '+((e.stack||'').split('\\n')[1]||'');}})()`);
