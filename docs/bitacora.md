@@ -4,6 +4,87 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛡️ 2026-08-21 — avi-v508: LOS DOS DEFECTOS QUE LA AUDITORIA DE 4 AGENTES ENCONTRO VIVOS EN PRODUCCION
+
+Salen del lote de la auditoria de v507 (`docs/auditoria-v507-2026-08-21/`). Ninguno de los dos los
+causo v507: los dos llevaban versiones ahi, y los dos los ve el asesorado, no el coach.
+
+### 1. La portada del DIA 1 sobrevivia al primer entreno terminado
+
+`renderFirstRun` decide sola si aplica y limpia `#cn-firstrun` al entrar — pero se la llama al FINAL
+de `renderClientToday`, despues de elegir la rutina del dia. Los tres `return` de mas arriba (sin
+rutinas, «ya entrenaste hoy», descanso) la SALTABAN, y dejaban en pantalla la portada del render
+anterior. **Medido: 933 chars y 326 px de portada** con la promesa falsa «lo demas aparece cuando
+termines este» y el boton **«Empezar mi primer entreno →» VIVO y recibiendo el toque**, encima de la
+tarjeta «¡Ya entrenaste hoy!». Justo en el momento que mas importa, con 8 de 22 personas que nunca
+completaron una sesion.
+
+**Fix:** `#cn-firstrun` se vacia ARRIBA de los `return`, donde ya se gestionan los once bloques de
+`_DIA1_OFF`. Quien la pinta corre despues, asi que vaciar ahi es seguro.
+
+🔑 Es la clase del `return` prematuro de v506 y del D5 de v403: **el limpiador vivia por debajo de
+la puerta por la que se sale.**
+
+**Candado D7 en `_verify-firstrun`, y el porque de que no existiera:** D4 usa una sesion **PARCIAL**,
+que no dispara ningun `return` y por eso si llegaba a `renderFirstRun`. Con el sabotaje puesto D7 da
+**932 chars, 326 px y `cta:true`** —reproduce la medicion del auditor— y **D6 tambien cae**, o sea que
+el dia de descanso arrastraba lo mismo. D4 sigue verde con el sabotaje: no podia cazarlo.
+
+### 2. El tour le describia al asesorado una pantalla que ya no existe
+
+La entrada `AVI_NEWS` del rediseño de «Hoy» decia *«el agua, los pasos y **tu plato** bajan a una
+**tira de tres**»* y mandaba a buscar el plato ahi. v507 dejo la tira en dos. **Y para el tier libre
+el texto ya era falso desde v504** (el chip del plato lo gateaba `conComida=!isFreeClient`) — encima,
+por ser la unica entrada sin publico marcado, **era la unica slide que un libre llegaba a ver.**
+
+**Fix, y por que sube de version la entrada:** el gate del tour es `n.v > seen`, asi que corregir el
+texto dejandola en `v:505` lo habria arreglado **solo para quien aun no la habia visto** — es decir,
+para nadie de los que leyeron la mentira. Sube a **`v:506`** y se reescribe entera y con tildes.
+
+**Y nace una entrada `v:507` para la mudanza del registro**, que v507 no habia contado a las 5
+personas que lo usaban.
+
+### 🔴 Lo que destapo escribir esa entrada: `coach` y `premium` NO son el mismo publico
+
+`newsToShow` solo sabia filtrar por `coach:true`, y `clientHasCoach` **deja fuera al tier 'app'**
+(Premium sin coach). Contados en produccion: **7 de 24 personas**, mas que el tier libre (4). Marcar
+la novedad del registro como `coach:true` no les habria llegado **aunque lo tengan y lo usen**; y
+dejarla sin marca se la promete a las 4 del tier libre, que es exactamente lo que v316 ya pago con
+el chat. Ahora hay **dos publicos**: `coach:true` (chat, lista del mercado) y `premium:true` (el
+registro, el plan del dia).
+
+### QA
+
+Suite **803 → 805** (`newsToShow` con los dos publicos + un test estatico que lee `AVI_NEWS` del
+archivo y exige que **nada de lo que ve un libre le nombre algo que no tiene**, mas que ninguna
+entrada viva siga diciendo «tira de tres»). Hook 12/12. Harnesses: `_verify-firstrun` **9** (+D7),
+`_verify-news` **12** (N9 ahora modela al libre por partida doble, +N9-bis, +N10 y N10-bis para el
+tier 'app'), y verdes `_verify-hero`, `_verify-tope`, `_verify-chips`, `_verify-missday`,
+`_verify-water`, `_verify-estudio-defectos`.
+
+**4 sabotajes, los 4 muerden:** quitar el filtro `premium` del motor · devolver «tira de tres» al
+texto · quitar la limpieza de la portada · **quitar el gate `premium` del CABLEADO** (este es el que
+importa: con el motor intacto, al tier libre le llegaba la novedad del registro que no puede abrir).
+
+🔴 **Dos errores mios, cazados por los propios controles y anotados porque son la misma clase.**
+La primera regla del test estatico decia `registr[oa]` y salio ROJA sobre una novedad correcta:
+**«registra los pasos que das cada dia» es GRATIS**. Una regla ancha hace daño igual que una que no
+muerde — es el `sentadilla` que borraba el sit-to-stand. Y la primera version de N10 afirmaba «el
+tier app recibe MAS novedades que el libre»: **contar no distingue**, porque los dos topan en 3 por
+el `slice(0,3)`. Lo que los separa es CUAL entrada reciben, que es lo que afirma ahora.
+
+⚠️ **Gotcha operativo nuevo:** `renderNewsCard` corta con un `return` si el tour ya esta abierto,
+asi que una sonda que lo llame sin cerrarlo antes lee `_ntItems` del render ANTERIOR y los dos
+publicos salen identicos — un falso rojo que se lee como un gate roto.
+
+### Y de paso, corregidas 4 frases de la bitacora que Mateo tumbo
+
+La medicion del «1 plan de 10» **aguanta** (24 de 24 filas, matriz 2×2), pero estaba mal escrita:
+«se mostro» era mas de lo medido, las 6 cifras del 03-ago eran del revisor de HOY (Nataly **+48%**),
+«al dia siguiente» fueron **27 minutos**, y fueron **5** planes reescritos, no 6. Corregido arriba.
+
+---
+
 ## 🔻 2026-08-20 — avi-v507: EL REGISTRO DE ALIMENTOS BAJA DE SITIO (decisión del PO)
 
 Se le planteó al PO la decisión que quedó abierta en §8 del plan de la dirección B —**empujar el
@@ -61,20 +142,38 @@ de la dirección B.
 
 **LA RESPUESTA: 1 plan de 10 — y es el del propio coach.** La ventana viva del defecto es
 **v435 (04-ago, nace la tarjeta con su `return`) → v506 (19-ago)**, 15 días. En los 7 backups de esa
-ventana el aviso equivocado se mostró siempre sobre la misma ficha: **Andrés (el coach, perfil
-«Ganar músculo»)**. La ficha le decía *«ajusta el titular, 25 kcal»* y **callaba que su propio plan
-está 1.418 kcal por debajo de lo que le corresponde** (1.775 servidas contra 3.193 de objetivo, con
-riesgo `come_de_menos_para_subir`): **57× más grande que lo que sí le decía**.
+ventana el aviso equivocado **habría salido** siempre sobre la misma ficha: **Andrés (el coach,
+perfil «Ganar músculo»)**. La ficha le decía *«ajusta el titular, 25 kcal»* y **callaba que su propio
+plan está 1.418 kcal por debajo de lo que le corresponde** (1.775 servidas contra 3.193 de objetivo,
+con riesgo `come_de_menos_para_subir`): **57× más grande que lo que sí le decía**.
+
+🔴 **CORRECCIÓN (21-ago, auditoría de 4 agentes — Mateo lo reprodujo con script propio, 24 de 24
+filas).** La conclusión aguanta y la caída 6→1 es por DATOS (lo probó con una matriz 2×2 de código ×
+fecha: 6-1-6-1). Lo que estaba mal escrito era esto, y va corregido arriba y abajo:
+1. **«se MOSTRÓ» era más de lo que se midió.** `renderNutReviewCard` solo corre al ABRIR esa ficha y
+   no hay telemetría: lo medido es que la ficha *habría* pintado eso. Y como la única fila afectada
+   es la del propio coach, a la que se llega por otra puerta, **puede que no se le mostrara a nadie.**
+2. **Las 6 cifras del 03-ago son del revisor de HOY, no del código de entonces.** Con el de ese día
+   (v436) son **+670 · +1.002 · +470 · +348 · −979 · −1.362**. Nataly cambia **+48%**. Los nombres
+   aguantan; los números están fechados mal y quedan abajo con los dos juegos.
+3. **«Al día siguiente» no existe: no hay backup del 04-ago.** Por `updatedAt`, el 6→4 pasó **27
+   minutos** después de desplegar v435 (Luz 14:00, Kathe 14:01) y quedó en 1 el 05-ago a las 15:20.
+   O sea que **el estado de «6» vivió media hora de los 15 días** — la frase exageraba la cola.
+4. **Fueron 5 planes reescritos, no 6.** El sexto (Andrés) se re-guardó el 04-ago con los MISMOS
+   1800/160/160/55: 💎 **re-guardar no es recalcular**, y por eso es justo el que quedó.
 
 🔑 **Una foto de hoy no respondía la pregunta, y por poco la contesta mal.** El backup del 19-ago
 solo, leído de frente, dice «1 de 10» sin más — pero el caso que motivó v506 (Luz, 45 kcal tapando
 625) **ya no aparece en él**, porque su plan se reescribió el 04-ago. La serie completa es la que
 enseña las dos cosas: el día que la tarjeta nació el estado era el del 03-ago con **6 planes
-descuadrados y los 6 tapando algo** (Luz +625 · Nataly +677 · Kathe +456 · Natalia +303 · Samuel
-−1.007 · Andrés −1.418), y **al día siguiente quedaba 1**. Diferencia de DATOS, no de código: entre
-el 03 y el 05 de agosto los planes de Luz, Kathe, Natalia, Nataly, Samuel y Claudia fueron
-reescritos (`updatedAt` 04 y 05-ago). **La tarjeta hizo su trabajo en 24-48 h; el único que
-sobrevivió 15 días es el plan que nadie revisa, el del coach.**
+descuadrados y los 6 tapando algo** — con el revisor de HOY, Luz +625 · Nataly +677 · Kathe +456 ·
+Natalia +303 · Samuel −1.007 · Andrés −1.418; **con el código de ENTONCES (v436), que es lo honesto
+para esa fecha, +670 · +1.002 · +470 · +348 · −979 · −1.362** — y **27 minutos después ya quedaban
+4**, no «al día siguiente». Diferencia de DATOS, no de código: entre el 03 y el 05 de agosto los
+planes de Luz, Kathe, Natalia, Nataly y Samuel fueron **recalculados** (`updatedAt` 04 y 05-ago), y
+el de Andrés se **re-guardó con los mismos números**. **La tarjeta hizo su trabajo en menos de dos
+días; el único que sobrevivió los 15 es el plan que nadie revisa, el del coach — y sobrevivió
+justamente porque re-guardar no es recalcular.**
 
 ⚠️ **Lo que la medición NO puede afirmar:** corre el revisor de HOY sobre datos de ayer
 (`proteina_fuera` es de v496, las bandas de menores de v493), así que las filas de julio dicen lo

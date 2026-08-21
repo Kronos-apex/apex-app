@@ -2730,16 +2730,31 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // 🔴 v508: EL TEXTO DE ESTA ENTRADA DESCRIBÍA UNA PANTALLA QUE YA NO EXISTE. Decía «el agua, los
+  // pasos y tu plato bajan a una tira de TRES» y mandaba a buscar el plato ahí. v507 dejó la tira en
+  // dos (agua y pasos) — y para el tier libre el texto **ya era falso desde v504**, porque el chip
+  // del plato lo gateaba `conComida=!isFreeClient`; encima, siendo la única entrada sin público
+  // marcado, era **la única slide que un libre llegaba a ver**. Se corrige el texto Y sube a `v:506`
+  // a propósito: el gate del tour es `n.v > seen`, así que dejarla en 505 habría corregido la
+  // pantalla solo para quien AÚN no la había visto — o sea, para nadie de los que leyeron la mentira.
+  // (Julián QA pista (a) + Lucas QA hallazgo B, auditoría de v507.)
   // Una sola entrada para el lote entero de la dirección B (v503 héroe + v504 chips + v505 tope):
   // lo que cambió es la FORMA de «Hoy», y contarlo en tres tandas sería tres avisos por un cambio.
-  // Sin `coach:true` a propósito: la pantalla cambió para todos, también para el tier libre.
-  {v:505, icon:'dumbbell', t:'«Hoy» ahora tiene una sola promesa', d:'Tu entreno del dia ocupa la primera pantalla completa, con los ejercicios que te tocan y un solo boton para empezar. El agua, los pasos y tu plato bajan a una tira de tres, y los avisos ya no se apilan: salen maximo dos y el resto te espera en una linea.',
-   steps:['Abre «Hoy»: arriba esta tu entreno, con todo lo que vas a hacer','Toca «Empezar mi entreno» y arrancas — nada mas compite por tu atencion','Abajo, la tira de tres: toca el agua para sumar un vaso, igual que siempre','Si ves «Tienes N avisos mas», tocalo y ahi esta lo que no cupo hoy']},
-  {v:479, icon:'clipboard', t:'Tu lista del mercado, lista', d:'AVI suma los 7 dias de tu plan y te arma la lista de todo lo que tienes que comprar, agrupada por seccion del mercado. La puedes compartir con quien haga el mercado en tu casa.',
-   steps:['En «Hoy» abre «Tu comida de hoy» y toca «🛒 Ver mi lista del mercado»','Ahi esta todo lo de la semana: proteina, granos, verduras, frutas y grasas','Toca «Compartir mi lista» para mandarla por WhatsApp'],
+  // Sin público marcado a propósito: el héroe, la tira de agua/pasos y el tope de avisos son de
+  // TODOS, también del tier libre. Por eso el texto no puede nombrar nada de Premium.
+  {v:507, icon:'utensils', t:'Tu registro de comida cambió de sitio', d:'Anotar lo que comes ya no tiene su propio botón en la tira de hábitos: ahora vive pegado a tu plan de comida, que es donde de verdad te sirve. No se perdió nada — sigue estando a un toque.',
+   steps:['En «Tu comida de hoy» toca «✓ Me lo comí» y queda registrado con sus cantidades','¿Comiste algo distinto? Abre «Ver el detalle de mis hábitos» y toca el + de tu plato','También lo abres desde «Mi nutrición», en «Anotar lo que comí hoy»'],
+   premium:true}, // premium, NO coach: el registro es Premium de app — las 7 personas del tier 'app' lo tienen
+  {v:506, icon:'dumbbell', t:'«Hoy» ahora tiene una sola promesa', d:'Tu entreno del día ocupa la primera pantalla completa, con los ejercicios que te tocan y un solo botón para empezar. Debajo, el agua y los pasos quedan en una tira de dos, y los avisos ya no se apilan: salen máximo dos y el resto te espera en una línea.',
+   steps:['Abre «Hoy»: arriba está tu entreno, con todo lo que vas a hacer','Toca «Empezar mi entreno» y arrancas — nada más compite por tu atención','Abajo, la tira de dos: toca el agua para sumar un vaso, igual que siempre','Si ves «Tienes N avisos más», tócalo y ahí está lo que no cupo hoy']},
+  // Las tildes NO son cosmética: estas tres entradas del tour (v478, v479 y la de «Hoy») eran las
+  // únicas del catálogo escritas sin ellas —«dia», «boton», «maximo», «atencion»— y son justo las
+  // que más gente lee. Corregidas el 21-ago (Julián QA, hallazgo G de la auditoría de v507).
+  {v:479, icon:'clipboard', t:'Tu lista del mercado, lista', d:'AVI suma los 7 días de tu plan y te arma la lista de todo lo que tienes que comprar, agrupada por sección del mercado. La puedes compartir con quien haga el mercado en tu casa.',
+   steps:['En «Hoy» abre «Tu comida de hoy» y toca «🛒 Ver mi lista del mercado»','Ahí está todo lo de la semana: proteína, granos, verduras, frutas y grasas','Toca «Compartir mi lista» para mandarla por WhatsApp'],
    coach:true},
-  {v:478, icon:'check', t:'Tu meta ahora es una franja', d:'Ya no tienes que clavar un numero exacto: tienes un rango, y estar dentro es cumplir. Abajo veras tu semana completa de un vistazo.',
-   steps:['Abre «Comida de hoy»: veras entre que y que cifra te toca','Cuando entres en tu franja aparece un ✓ — eso es meta cumplida','La fila de 7 dias te dice si esto ya es un habito o fue un dia suelto'],
+  {v:478, icon:'check', t:'Tu meta ahora es una franja', d:'Ya no tienes que clavar un número exacto: tienes un rango, y estar dentro es cumplir. Abajo verás tu semana completa de un vistazo.',
+   steps:['Abre «Comida de hoy»: verás entre qué y qué cifra te toca','Cuando entres en tu franja aparece un ✓ — eso es meta cumplida','La fila de 7 días te dice si esto ya es un hábito o fue un día suelto'],
    coach:true},
   {v:477, icon:'check', t:'Tu plan se marca con un toque', d:'Ya no tienes que volver a escribir lo que la app te acaba de decir que comas: si te comiste lo del plan, lo marcas y queda registrado con sus cantidades.',
    steps:['En "Hoy" abre "Tu comida de hoy" y toca "Ver"','Toca "✓ Me lo comí" en la comida que acabas de terminar','¿Cambiaste algo? Toca "Deshacer", o agrega lo que sí comiste'],
@@ -2795,7 +2810,12 @@ function renderNewsCard(){
   // las tres más nuevas fueron todas de Premium, al tier libre **no le quedaba ninguna y el tour
   // dejaba de abrir**. Ahora el público entra en la función pura y el recorte va al final.
   const _nc=DB.clients.find(x=>x.id===CUR.clientId);
-  const items=newsToShow(AVI_NEWS,seen,{coach:(typeof clientHasCoach==='function')?!!clientHasCoach(_nc):true});
+  // 🔴 v508: DOS públicos, no uno. `coach` deja fuera al tier 'app' (Premium sin coach), que son 7
+  // de las 24 personas reales: una novedad sobre el registro de comida marcada `coach:true` no les
+  // llegaba aunque la tengan. `premium` es el corte que de verdad corresponde a lo Premium DE APP.
+  const items=newsToShow(AVI_NEWS,seen,{
+    coach:(typeof clientHasCoach==='function')?!!clientHasCoach(_nc):true,
+    premium:(typeof isFreeClient==='function')?!isFreeClient(_nc):true});
   if(!items.length)return;
   // Visibilidad REAL de cada overlay: no todos se ocultan igual. #cwelcome y #onboarding
   // viven con display:flex y se ocultan con opacity:0 + pointer-events:none (el check

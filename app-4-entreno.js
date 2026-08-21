@@ -881,6 +881,19 @@ function renderClientToday(client, overrideRoutine){
   _DIA1_OFF.forEach(id=>{ const e=document.getElementById(id); if(!e) return;
     if(_dia1){ if(_DIA1_ESTATICOS.indexOf(id)===-1)e.innerHTML=''; e.style.display='none'; }
     else if(e.style.display==='none'){ e.style.display=''; } });
+  // 🔴 LA PORTADA DEL DÍA 1 SE VACÍA AQUÍ, ARRIBA DE LOS `return`. `renderFirstRun` decide sola si
+  // aplica y limpia `#cn-firstrun` al entrar — pero se la llama al FINAL (`:~964`, después de elegir
+  // la rutina del día), así que los tres `return` de más abajo la SALTABAN: sin rutinas, «ya
+  // entrenaste hoy» y descanso dejaban en pantalla la portada del render anterior.
+  // Medido (Lucas QA, hallazgo A de la auditoría de v507): al terminar su PRIMER entreno la persona
+  // se quedaba con 933 chars y 326 px de portada — «Hoy empiezas con el primero», la promesa falsa
+  // «lo demás aparece cuando termines este» y el botón «Empezar mi primer entreno →» VIVO y
+  // recibiendo el toque— encima de la tarjeta «¡Ya entrenaste hoy!».
+  // Es la clase del `return` prematuro de v506 y del D5 de v403: **el limpiador vivía por debajo de
+  // la puerta por la que se sale**. Vaciar aquí es seguro porque quien la pinta corre después.
+  // Candado: D7 en `_verify-firstrun.mjs` (D4 no lo cazaba: usa sesión PARCIAL, que no dispara
+  // ningún `return` y por eso sí llegaba a `renderFirstRun`).
+  const _fr=document.getElementById('cn-firstrun'); if(_fr)_fr.innerHTML='';
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
   // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
   // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.

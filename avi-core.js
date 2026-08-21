@@ -3093,12 +3093,24 @@ function clampQwHiit(cfg, def) {
 // notado — un tour que no sale no da error, y las novedades viejas ya se habían pasado de largo.
 // Puerta cerrada, ventana abierta: la misma familia del filtro de lesiones y el calentamiento.
 // `opts.coach === false` = no tiene coach. Sin `opts` se comporta como antes (compatibilidad).
+//
+// 🔴 SON DOS PÚBLICOS, NO UNO (v508). `coach` y `premium` NO son el mismo corte y confundirlos
+// deja gente sin enterarse de lo suyo: `clientHasCoach` excluye al tier **'app'** (Premium sin
+// coach), que en producción son **7 personas de 24** — más que el tier libre. Una novedad sobre una
+// función Premium-de-app (el registro de comida, el plan del día) marcada `coach:true` no les
+// llegaría, aunque la tengan y la usen. Y al revés: marcarla para todos se la promete a las 4 del
+// tier libre, que es el error que v316 ya pagó con el chat.
+//   · `coach:true`   → solo quien tiene coach de verdad (chat, lista del mercado…).
+//   · `premium:true` → todo el que NO es libre, coach o no (registro de comida, plan del día).
+//   · sin marca      → para todos.
 function newsToShow(list, seenV, opts) {
   const seen = parseInt(seenV) || 0;
   const conCoach = !opts || opts.coach !== false;
+  const conPremium = !opts || opts.premium !== false;
   return (list || [])
     .filter(n => n && parseInt(n.v) > seen)
     .filter(n => conCoach || !n.coach)
+    .filter(n => conPremium || !n.premium)
     .sort((a, b) => b.v - a.v)
     .slice(0, 3);
 }

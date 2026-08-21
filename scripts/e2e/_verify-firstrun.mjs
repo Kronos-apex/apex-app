@@ -148,6 +148,29 @@ check('D5 apagada la portada, «Hoy» vuelve a ser el de siempre (hábitos de vu
 check('🔴 D5-bis el botón de entrenamientos rápidos vuelve CON SU TEXTO, no en blanco',
   d5.qwVisible === true && /rápidos/i.test(d5.qwTexto), JSON.stringify({ visible: d5.qwVisible, txt: d5.qwTexto.slice(0, 60) }));
 
+// 🔴 D7 — EL CASO QUE D4 NO PODÍA CAZAR: la sesión FINALIZADA (`finishedAt`), no la parcial.
+// La parcial de D4 no dispara ningún `return` de `renderClientToday`, así que sí llegaba a
+// `renderFirstRun` y la portada se limpiaba. Con una sesión TERMINADA se sale por el `return` de
+// «ya entrenaste hoy», que vive ARRIBA de esa llamada — y la portada del render anterior se
+// quedaba entera: 933 chars, 326 px, con el botón «Empezar mi primer entreno →» VIVO encima de
+// «¡Ya entrenaste hoy!» (medido por Lucas QA en la auditoría de v507, arreglado el 21-ago).
+// El orden importa: primero se PINTA la portada (día 1 de verdad, historial vacío) y solo después
+// llega el entreno terminado. Sin ese primer render no hay portada vieja que dejar colgada, y el
+// check pasaría sin tocar el defecto.
+await ev(`(()=>{DB.history={nuevo:[]};renderClientToday(DB.clients[0]);})()`); await sleep(500);
+const d7pre = await ev(`(()=>{const el=document.getElementById('cn-firstrun');return !!(el&&el.innerHTML.trim());})()`);
+await ev(`(()=>{const hoy=new Date().toISOString();
+  DB.history={nuevo:[{id:'f1',sessionId:'s2',routineId:'r1',routineName:'Full body A',date:hoy,startedAt:hoy,finishedAt:hoy,doneSets:12,totalSets:12,exercises:[]}]};
+  renderClientToday(DB.clients[0]);})()`); await sleep(700);
+const d7 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');const con=document.getElementById('cn-today-body');
+  const txt=(el?el.textContent:'').replace(/\\s+/g,' ').trim();
+  return {portadaLargo:(el?el.innerHTML.trim().length:0), alto:(el?Math.round(el.getBoundingClientRect().height):0),
+          cta:!!(el&&el.querySelector('button,.btn')), txt:txt.slice(0,80),
+          yaEntrenaste:/ya entrenaste/i.test((con?con.textContent:''))};})()`);
+check('🔴 D7 con el primer entreno TERMINADO la portada del día 1 se va (y sale «¡Ya entrenaste hoy!»)',
+  d7pre === true && d7.portadaLargo === 0 && d7.alto === 0 && d7.cta === false && d7.yaEntrenaste === true,
+  JSON.stringify({ portadaAntes: d7pre, ...d7 }));
+
 // D6: día de DESCANSO → la portada no se inventa un entreno que no existe.
 // 🔴 El día se elige RELATIVO a hoy (era 'Miércoles' fijo, y los miércoles este check daba rojo
 // sin que nadie tocara código — la clase del fixture con fechas absolutas de GOTCHAS VIGENTES).

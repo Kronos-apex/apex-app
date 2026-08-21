@@ -34,8 +34,11 @@ const check = (n, c, x='') => { const line = (c?'OK ':'FAIL ') + n + (x?' — '+
 // Deriva del PROPIO AVI_NEWS lo que el tour DEBE mostrar (top-3 más nuevas > seen, filtro coach,
 // orden de display = la más VIEJA primero) para que las aserciones NO envejezcan al añadir novedades
 // (radar Fable v367: la entrada v367 corrió la ventana y dejó N1/N2/N5/N9 en rojo por versiones clavadas).
-const expNews = async (seen, coachExpr = "((typeof clientHasCoach==='function')?!!clientHasCoach(DB.clients.find(x=>x.id===CUR.clientId)):true)") =>
-  JSON.parse(await ev(`(()=>{const has=${coachExpr};let items=newsToShow(AVI_NEWS,${seen},{coach:has});const asc=items.slice().sort((a,b)=>a.v-b.v);return JSON.stringify({dots:asc.length,firstT:(asc[0]||{}).t||'',lastT:(asc[asc.length-1]||{}).t||'',firstSteps:((asc[0]||{}).steps||[]).length});})()`));
+// v508: son DOS públicos. `coach` (tiene coach de verdad) y `premium` (no es libre) NO son el mismo
+// corte — entre ellos vive el tier 'app', 7 de las 24 personas reales. La derivación los pasa los dos.
+const expNews = async (seen, coachExpr = "((typeof clientHasCoach==='function')?!!clientHasCoach(DB.clients.find(x=>x.id===CUR.clientId)):true)",
+                             premiumExpr = "((typeof isFreeClient==='function')?!isFreeClient(DB.clients.find(x=>x.id===CUR.clientId)):true)") =>
+  JSON.parse(await ev(`(()=>{const has=${coachExpr},pre=${premiumExpr};let items=newsToShow(AVI_NEWS,${seen},{coach:has,premium:pre});const asc=items.slice().sort((a,b)=>a.v-b.v);return JSON.stringify({dots:asc.length,firstT:(asc[0]||{}).t||'',lastT:(asc[asc.length-1]||{}).t||'',firstSteps:((asc[0]||{}).steps||[]).length});})()`));
 
 try {
   await waitFor(`(()=>{const sc=document.getElementById('s-client');if(sc&&getComputedStyle(sc).display!=='none')return true;const sl=document.getElementById('s-login');return !!(sl&&getComputedStyle(sl).display!=='none'&&typeof doLogin==='function'&&!document.getElementById('avi-loading'))})()`, 60000);
@@ -139,18 +142,61 @@ try {
   await sleep(200);
 
   // N9 (v316): las novedades coach:true NO se muestran al modo libre (prometían chat sin coach).
-  // Derivado con has=false: al libre se le filtran los coach:true; slide 1 = la más vieja del resto.
-  const e9 = await expNews(314, 'false');
+  // 🔴 v508: el libre es libre por PARTIDA DOBLE — ni coach ni Premium. Antes este check solo
+  // silenciaba `clientHasCoach`, así que modelaba a medias al tier 'app', no al libre.
+  const e9 = await expNews(314, 'false', 'false');
   s = JSON.parse(await ev(`JSON.stringify((()=>{
-    const orig=window.clientHasCoach; window.clientHasCoach=()=>false;
+    const orig=window.clientHasCoach, origF=window.isFreeClient;
+    window.clientHasCoach=()=>false; window.isFreeClient=()=>true;
     localStorage.setItem('ax_news_seen','314');
-    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; }
+    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; window.isFreeClient=origF; }
     const open=!document.getElementById('news-tour').classList.contains('hidden');
     const dots=document.querySelectorAll('#nt-dots .nt-dot').length;
     const title=(document.querySelector('#nt-body .nt-title')||{}).textContent||'';
+    const cuerpo=(document.getElementById('nt-body')||{}).textContent||'';
     localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
-    return {open,dots,title};})())`));
+    return {open,dots,title,cuerpo:cuerpo.replace(/\\s+/g,' ').trim()};})())`));
   check('N9 libre (sin coach): la novedad del chat (coach:true) SE FILTRA; dots y slide 1 = derivados sin coach, sin "chat"', s.open && s.dots === e9.dots && s.title === e9.firstT && !/chat|respuestas/i.test(s.title), JSON.stringify({ s, exp: e9 }));
+  // 🔴 N9-bis — LO QUE SE LE PROMETE AL LIBRE TIENE QUE EXISTIR PARA ÉL. Es el defecto que la
+  // auditoría de v507 encontró vivo en producción: la entrada del rediseño de «Hoy» no llevaba
+  // público marcado, era la ÚNICA slide que un libre veía, y le hablaba de «tu plato» y de una
+  // «tira de tres» que él nunca tuvo (el chip del plato lo gateaba `conComida` desde v504).
+  check('🔴 N9-bis al libre no se le nombra nada que no tenga (plato/comida/nutrición/registro/coach)',
+    s.open && !/plato|comida|nutrici|registr|tu coach|tira de tres/i.test(s.cuerpo),
+    JSON.stringify({ cuerpo: s.cuerpo.slice(0, 220) }));
+
+  // 🔴 N10 (v508) — EL PÚBLICO QUE NO EXISTÍA: tier 'app' (Premium sin coach), 7 de 24 personas
+  // reales. Tiene el registro de comida pero NO tiene coach, así que una novedad suya marcada
+  // `coach:true` no le llegaba nunca. `premium:true` es el corte que sí le corresponde.
+  // ⚠️ CONTAR NO DISTINGUE: los dos públicos topan en 3 (`slice(0,3)`), así que «recibe más» sale
+  // igual con el gate puesto y sin él. Lo que de verdad los separa es CUÁL entrada reciben, y se
+  // lee de `_ntItems` — lo que la app decidió mostrar, no lo que la función pura predice.
+  const e10 = await expNews(314, 'false', 'true');
+  const titulos = async (coachV, freeV) => JSON.parse(await ev(`JSON.stringify((()=>{
+    // 🔴 EL TOUR SE CIERRA ANTES DE MEDIR. \`renderNewsCard\` corta con un \`return\` si el tour ya
+    // está abierto (para no repintar encima), así que sin esto la sonda lee \`_ntItems\` del
+    // render ANTERIOR y los dos públicos salen idénticos — un falso rojo que parece un gate roto.
+    try{ if(typeof ntClose==='function')ntClose(false); }catch(e){}
+    const _t=document.getElementById('news-tour'); if(_t)_t.classList.add('hidden');
+    const orig=window.clientHasCoach, origF=window.isFreeClient;
+    window.clientHasCoach=()=>${coachV}; window.isFreeClient=()=>${freeV};
+    localStorage.setItem('ax_news_seen','314');
+    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; window.isFreeClient=origF; }
+    const open=!document.getElementById('news-tour').classList.contains('hidden');
+    const dots=document.querySelectorAll('#nt-dots .nt-dot').length;
+    const items=(typeof _ntItems!=='undefined'?_ntItems:[]).map(n=>n.t);
+    try{ if(typeof ntClose==='function')ntClose(false); }catch(e){}
+    localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));
+    return {open,dots,items};})())`));
+  const tApp = await titulos('false', 'false');   // tier 'app': sin coach, NO libre
+  const tLibre = await titulos('false', 'true');  // libre: sin coach y libre
+  const REG = /registro de comida/i;
+  check('🔴 N10 tier «app» (Premium sin coach) SÍ recibe la novedad del registro de comida; el libre NO',
+    tApp.open && tApp.dots === e10.dots && tApp.items.some(t => REG.test(t)) && !tLibre.items.some(t => REG.test(t)),
+    JSON.stringify({ app: tApp.items, libre: tLibre.items }));
+  check('🔴 N10-bis y a ninguno de los dos se le ofrece el chat (no tienen coach)',
+    !tApp.items.concat(tLibre.items).some(t => /chat|respuestas/i.test(t)),
+    JSON.stringify({ app: tApp.items, libre: tLibre.items }));
 
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;

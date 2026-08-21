@@ -3423,6 +3423,67 @@ test('🔴 newsToShow: al tier libre le quedan novedades aunque las 3 más nueva
   assert.deepStrictEqual(newsToShow(list, 0).map(n => n.v), [478, 477, 476]);
 });
 
+// 🔴 SON DOS PÚBLICOS Y NO SE SOLAPAN. `coach` deja fuera al tier 'app' (Premium sin coach), que en
+// producción es el grupo MÁS GRANDE después de premium: 7 de 24. Una novedad sobre el registro de
+// comida —Premium de app, que ellos SÍ tienen— marcada `coach:true` no les llegaba nunca; y sin
+// marca se le prometía al tier libre algo que no puede abrir, que es lo que v316 ya pagó con el chat.
+test('🔴 newsToShow: el tier «app» (Premium sin coach) recibe lo Premium y NO lo de coach', () => {
+  const list = [
+    { v: 470, t: 'para todos' },
+    { v: 471, t: 'registro de comida', premium: true },
+    { v: 472, t: 'chat con tu coach', coach: true },
+  ];
+  // Premium con coach: lo ve todo.
+  assert.deepStrictEqual(newsToShow(list, 0, { coach: true, premium: true }).map(n => n.v), [472, 471, 470]);
+  // Tier 'app': sin coach pero Premium → le llega la de comida, no la del chat.
+  assert.deepStrictEqual(newsToShow(list, 0, { coach: false, premium: true }).map(n => n.v), [471, 470]);
+  // Libre: ni una ni otra.
+  assert.deepStrictEqual(newsToShow(list, 0, { coach: false, premium: false }).map(n => n.v), [470]);
+  // Y sin `opts` (o con opts a medias) sigue comportándose como antes: no filtra nada.
+  assert.deepStrictEqual(newsToShow(list, 0).map(n => n.v), [472, 471, 470]);
+  assert.deepStrictEqual(newsToShow(list, 0, { coach: true }).map(n => n.v), [472, 471, 470]);
+});
+
+// 🔴 LO QUE SE LE PROMETE AL TIER LIBRE TIENE QUE EXISTIR PARA ÉL — sobre el catálogo REAL, no
+// sobre un fixture. Este es el defecto que la auditoría de v507 encontró VIVO en producción: la
+// entrada del rediseño de «Hoy» no llevaba público marcado (a propósito: la pantalla cambió para
+// todos), pero su texto hablaba de «tu plato» y de una «tira de tres» que el libre nunca tuvo —el
+// chip del plato lo gateaba `conComida=!isFreeClient` desde v504— y encima, por ser la única sin
+// marca, era la ÚNICA slide que un libre llegaba a ver.
+test('🔴 AVI_NEWS: lo que ve el tier libre no le nombra nada que no tenga', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const AVI_NEWS=[');
+  assert.ok(ini > 0, 'no encontré AVI_NEWS en app-6-extra.js');
+  const fin = src.indexOf('\n];', ini);
+  assert.ok(fin > ini, 'no encontré el cierre de AVI_NEWS');
+  const AVI_NEWS = new Function(src.slice(ini, fin + 3) + '\nreturn AVI_NEWS;')();
+  assert.ok(AVI_NEWS.length >= 5, 'el catálogo de novedades vino vacío: el test no está midiendo nada');
+
+  // Todo lo que un libre puede llegar a ver, no solo las 3 de hoy: al podar entradas la ventana
+  // corre, y una entrada de más abajo puede quedar siendo la suya mañana.
+  const delLibre = AVI_NEWS.filter(n => !n.coach && !n.premium);
+  assert.ok(delLibre.length > 0, 'al tier libre no le queda NI UNA novedad: el tour no le abriría nunca');
+  // 🔴 La primera versión de esta regla decía `registr[oa]` y salió ROJA sobre v362 («registra los
+  // pasos que das cada día»), que es GRATIS. Una regla ancha hace daño igual que una que no muerde:
+  // es la clase del filtro de lesiones, donde `sentadilla` borraba el sit-to-stand. Lo que se le
+  // prohíbe nombrar al libre es lo Premium CONCRETO —el plato, la comida, la nutrición, la lista del
+  // mercado y el chat—, no el verbo «registrar», que el agua y los pasos también usan.
+  const PROHIBIDO = /plato|comida|comes|comí|nutrici|lista del mercado|\bchat\b|tu coach/i;
+  delLibre.forEach(n => {
+    const texto = [n.t, n.d].concat(n.steps || []).join(' · ');
+    assert.ok(!PROHIBIDO.test(texto),
+      `la novedad v${n.v} («${n.t}») se le muestra al tier libre y le nombra algo que no tiene: ${(texto.match(PROHIBIDO) || [])[0]}`);
+  });
+
+  // Y ninguna entrada viva puede seguir describiendo la tira de TRES chips: v507 la dejó en dos.
+  AVI_NEWS.forEach(n => {
+    const texto = [n.t, n.d].concat(n.steps || []).join(' · ');
+    assert.ok(!/tira de tres/i.test(texto),
+      `la novedad v${n.v} sigue describiendo una «tira de tres» que no existe desde v507`);
+  });
+});
+
 test('painTipFor: tip por área con fallback conservador', () => {
   assert.ok(/encima de la cabeza/.test(painTipFor('hombro')));
   assert.ok(/rango de movimiento que NO duele/.test(painTipFor('zona inventada')));
