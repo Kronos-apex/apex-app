@@ -3484,6 +3484,84 @@ test('🔴 AVI_NEWS: lo que ve el tier libre no le nombra nada que no tenga', ()
   });
 });
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 EL MOTOR NO PUEDE DEPENDER DEL NAVEGADOR — y esto NO es higiene, es una opción de negocio.
+// ──────────────────────────────────────────────────────────────────────────────────────────
+// `avi-core.js` son ~8.000 líneas y 365 funciones: el generador de rutinas, el motor de
+// nutrición, el que arma el plato, el filtro de lesiones de Laura, el candado de menores, el
+// revisor de planes y los récords. Es el tercio del código que más costó y el que más auditorías
+// lleva encima. Hoy corre en node sin un navegador delante — **medido el 21-ago: 0 referencias a
+// globales del navegador fuera de comentarios y cadenas**.
+//
+// Eso es lo que hace que «pasar AVI a nativo» —el día que haga falta, si hace falta— NO sea
+// reescribir 27.000 líneas: sería rehacer las PANTALLAS y llevarse el motor tal cual, con sus
+// pruebas. Es una puerta que hoy está abierta gratis y que se cierra sin que nadie se entere: basta
+// que alguien meta un `document.getElementById` aquí dentro para resolver algo rápido. A partir de
+// ahí el motor deja de poder vivir fuera del navegador y la opción se pierde en silencio.
+//
+// ⚠️ La lista de globales es CORTA a propósito. `confirm`, `prompt`, `location` o `alert` son
+// nombres que se usan legítimamente como variables o propiedades, y una regla ancha hace daño
+// igual que una que no muerde (la clase de `sentadilla` borrando el sit-to-stand, y la del
+// `registr[oa]` que marcó en rojo «registra los pasos» este mismo día). Estos cinco no son ambiguos.
+test('🔴 avi-core NO depende del navegador (y por eso el motor es portable)', () => {
+  const fs = require('fs'), path = require('path');
+
+  // Desnuda el fuente: fuera comentarios de bloque y de línea, respetando las comillas.
+  const desnudar = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => {
+    let out = '', q = null;
+    for (let i = 0; i < l.length; i++) {
+      const c = l[i], n = l[i + 1];
+      if (q) { out += c; if (c === q && l[i - 1] !== '\\') q = null; continue; }
+      if (c === '"' || c === "'" || c === '`') { q = c; out += c; continue; }
+      if (c === '/' && n === '/') break;
+      out += c;
+    }
+    return out;
+  }).join('\n');
+
+  const GLOBALES = ['document', 'window', 'localStorage', 'sessionStorage', 'navigator'];
+  const contar = (archivo) => {
+    const limpio = desnudar(fs.readFileSync(path.join(__dirname, archivo), 'utf8'));
+    const detalle = {};
+    let total = 0;
+    GLOBALES.forEach(g => {
+      const hits = limpio.match(new RegExp('\\b' + g + '\\s*[.\\[]', 'g')) || [];
+      if (hits.length) detalle[g] = hits.length;
+      total += hits.length;
+    });
+    // Dónde exactamente, para que el mensaje sirva sin tener que ir a buscar.
+    const lineas = [];
+    limpio.split('\n').forEach((l, i) => {
+      if (GLOBALES.some(g => new RegExp('\\b' + g + '\\s*[.\\[]').test(l))) lineas.push((i + 1) + ': ' + l.trim().slice(0, 90));
+    });
+    return { total, detalle, lineas };
+  };
+
+  // 1) El motor, limpio.
+  const core = contar('avi-core.js');
+  assert.strictEqual(core.total, 0,
+    'avi-core.js dejó de ser portable: ' + JSON.stringify(core.detalle) +
+    '\n   ' + core.lineas.slice(0, 6).join('\n   ') +
+    '\n   → eso va en la capa de pantalla (app-*.js), no en el motor. Ver el comentario de este test.');
+
+  // 2) 🔴 EL CONTROL, obligatorio: una sonda que no puede dar rojo no es un candado. Si la capa de
+  //    pantalla también diera 0, sería que la sonda dejó de leer, no que el repo esté impecable.
+  const ui = contar('app-4-entreno.js');
+  assert.ok(ui.total > 50,
+    'la sonda dejó de discriminar: app-4-entreno.js (una pantalla) debería estar LLENO de globales ' +
+    'del navegador y devolvió ' + ui.total + '. Arregla la sonda antes de creerle al 0 de arriba.');
+
+  // 3) Y que de verdad CARGUE sin navegador: es la propiedad, no un proxy de la propiedad.
+  //    Medido el 21-ago: 365 exportaciones = 272 funciones + 93 constantes/tablas. El piso va con
+  //    holgura porque este número SUBE al crecer el motor; lo que vigila es una caída brusca, que
+  //    significaría que la lógica se está mudando a la capa de pantalla.
+  const motor = require('./avi-core.js');
+  const fns = Object.keys(motor).filter(k => typeof motor[k] === 'function');
+  assert.ok(fns.length >= 250,
+    'avi-core.js exporta ' + fns.length + ' funciones fuera del navegador; eran 272 el 21-ago. ' +
+    'Una caída así significa que el motor se está mudando a la capa de pantalla.');
+});
+
 test('painTipFor: tip por área con fallback conservador', () => {
   assert.ok(/encima de la cabeza/.test(painTipFor('hombro')));
   assert.ok(/rango de movimiento que NO duele/.test(painTipFor('zona inventada')));
