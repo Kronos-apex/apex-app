@@ -3688,6 +3688,46 @@ function nutWhyKey(nut, client, weightKg) {
   return nutMinorSafeGoal(inferNutGoal(nut), client, weightKg);
 }
 
+// ── 🔴 LO QUE EL PLAN DICE DE SÍ MISMO Y LO QUE LE AFIRMAMOS A ELLA SON DOS PREGUNTAS DISTINTAS ──
+// `nutWhyKey` devuelve el rótulo DECLARADO, y tiene que seguir haciéndolo: es lo que los dos
+// detectores comparan contra los números para avisarle al coach (el aviso del editor y
+// `nutPlanReview`). **Si la corrección viviera dentro de `nutWhyKey`, el rótulo llegaría ya
+// arreglado a los detectores y `rotulo_miente` no saltaría NUNCA** — sería apagar la alarma en vez
+// del incendio, y encima el coach se quedaría sin enterarse de que su plantilla quedó mal.
+//
+// Esta función contesta la OTRA pregunta: qué texto se le PINTA a ella. Y la regla es una sola:
+// **la app no le afirma una dirección calórica que sus propios números contradicen.**
+// Medido en producción el 2026-08-21: **2 de 10 planes**. Kathe (28) leía «estás comiendo en
+// balance: lo que gastas» encima de un déficit REAL de 500 kcal —su plan es correcto, el rótulo se
+// quedó de una plantilla vieja— y Samuel al revés, ganando músculo mientras leía «balance».
+// Es la clase de v437 y v486, en la superficie que faltaba: la pantalla de la persona.
+//
+// Con la contradicción detectada, el texto sale de lo que los números HACEN, no de la etiqueta que
+// quedó escrita: es lo que ella de verdad come, y es la misma doctrina de v435 («el titular se
+// DERIVA de sus componentes, nunca se guarda aparte») aplicada al rótulo.
+// ⚠️ EL GASTO SE CALCULA AQUÍ DENTRO, no se recibe. La primera versión lo pedía por parámetro y el
+// llamador le pasaba `nutBaseFor(...).tdee` — que **no existe**: `nutBaseFor` devuelve
+// `{origen,kcalObj,macros,kcalEscrito,desfase}` y el gasto vive en `nutritionEstimate`. El arreglo
+// quedó INERTE y no lo cazó ningún test: lo cazó medirlo contra las filas reales. Calculándolo
+// dentro, el llamador no puede equivocarse. `tdeeOverride` existe solo para los tests.
+// Sin gasto calculable (falta sexo, talla o edad) se devuelve el declarado — no se adivina.
+const NUT_DIR_GOAL = { deficit: 'cutting', superavit: 'volumen', balance: 'mantenimiento' };
+function nutWhyKeyShown(nut, client, weightKg, tdeeOverride) {
+  const declarado = nutWhyKey(nut, client, weightKg);
+  let tdee = tdeeOverride;
+  if (!tdee && typeof nutritionEstimate === 'function') {
+    const est = nutritionEstimate(client, weightKg);
+    tdee = est && est.tdee;
+  }
+  if (!tdee) return declarado;
+  // Contra lo que se SIRVE, no contra el titular escrito: desde v485 pueden no ser el mismo número.
+  const srv = (typeof nutBaseFor === 'function') ? nutBaseFor(client, nut, weightKg) : null;
+  const kcal = (srv && srv.kcalObj) || (nut && nut.kcal);
+  const mm = nutGoalMismatch(declarado, kcal, tdee, client);
+  if (!mm) return declarado;
+  return nutMinorSafeGoal(NUT_DIR_GOAL[mm.real] || declarado, client, weightKg);
+}
+
 // ── ¿El RÓTULO del plan contradice sus propios números? Un plan rotulado «mantenimiento» que
 // entrega 500 kcal MENOS de lo que la persona gasta le explica al asesorado que «está comiendo
 // en balance: lo que gastas» encima de un déficit. Devuelve null si concuerdan, o
@@ -7684,6 +7724,7 @@ if (typeof module !== 'undefined' && module.exports) {
     nutGoalForClient,
     nutMinorSafeGoal,
     nutWhyKey,
+    nutWhyKeyShown,
     nutKcalDirection,
     nutGoalMismatch,
     getIccLabel,

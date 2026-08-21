@@ -613,7 +613,7 @@ function openNutritionRoom(clientId){
     // gramos crudos del coach — 503 kcal de contradicción en la MISMA tarjeta (Lucas QA + el
     // verificador, los dos lo reprodujeron). Las 5 superficies restantes ya leían de `base.macros`.
     const _m=(_base&&_base.macros)?_base.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
-    d={kcal:_kcal,water:nut.water,prot:_m.prot_g,carb:_m.carb_g,fat:_m.fat_g,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKey(nut,c,_nutPesoDe(c))],minorFloor:_base&&_base.minorFloor,minorCap:_base&&_base.minorCap};
+    d={kcal:_kcal,water:nut.water,prot:_m.prot_g,carb:_m.carb_g,fat:_m.fat_g,meals:nut.meals,examples:nut.examples,plan:nut.plan,avoid:nut.avoid,isEst:false,why:GOAL_WHY[nutWhyKeyShown(nut,c,_nutPesoDe(c))],minorFloor:_base&&_base.minorFloor,minorCap:_base&&_base.minorCap};
   } else {
     const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){

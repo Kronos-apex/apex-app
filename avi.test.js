@@ -6215,7 +6215,11 @@ test('🔴 la habitación de nutrición pasa por el candado, no por inferNutGoal
     'elegir el texto con inferNutGoal a secas se salta el candado de menores: usa nutWhyKey(nut, cliente)');
   // Se afirma la LLAMADA, no su lista de argumentos: clavarla a `(nut,c)` la rompió el día que el
   // rótulo pasó a depender también del peso (banda de menores). R2.3 — aserciones derivadas.
-  assert.ok(/GOAL_WHY\[nutWhyKey\(nut,\s*c\s*[,)]/.test(src), 'la ruta del plan guardado debe resolver con nutWhyKey');
+  // v510: la ruta del plan guardado resuelve con `nutWhyKeyShown`, que ENVUELVE a `nutWhyKey` (y por
+  // tanto sigue pasando por `nutMinorSafeGoal`, que es lo que este candado protege) y además no le
+  // afirma a la asesorada una dirección que sus propios números contradicen. La propiedad vigilada
+  // no cambia: lo que NO puede volver es `inferNutGoal` a secas, que se saltaba el candado de menores.
+  assert.ok(/GOAL_WHY\[nutWhyKeyShown?\(nut,\s*c\s*[,)]/.test(src), 'la ruta del plan guardado debe resolver con nutWhyKey/nutWhyKeyShown');
   // El aviso al coach se calcula con la MISMA función que pinta lo que ve el destinatario (v437).
   assert.ok(/const efectivo=nutWhyKey\(/.test(src),
     'el aviso del coach no puede usar un oráculo distinto al que decide lo que lee su asesorada');
@@ -7913,6 +7917,84 @@ test('🔴 v486 · un plan con los NÚMEROS BIEN pero el RÓTULO mentiroso se de
   assert.ok(Math.abs(r.gap) < 300, 'y sus cifras están DENTRO de lo correcto: gap ' + r.gap);
   assert.strictEqual(r.mismatch.dice, 'balance');
   assert.strictEqual(r.mismatch.real, 'deficit', 'lee balance y vive en déficit');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 v510 · LA SUPERFICIE QUE FALTABA: v486 le AVISÓ al coach y a ELLA le siguió mintiendo.
+// Medido en producción el 2026-08-21: 2 de 10 planes. Kathe (28) leía «estás comiendo en balance:
+// lo que gastas» encima de un déficit REAL de 500 kcal —su plan es correcto, el rótulo se quedó de
+// una plantilla vieja— y Samuel al revés, ganando músculo mientras leía «balance».
+test('🔴 v510 · a ella NO se le afirma una dirección que sus propios números contradicen', () => {
+  // Kathe real: 1.930 kcal contra un gasto de ~2.400 = déficit, rotulado «mantenimiento».
+  const KATHE = { name: 'Kathe', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
+  const PLAN = { kcal: 1930, prot: 119, carbs: 231, fat: 59, goal: 'mantenimiento' };
+  // Lo que el plan DECLARA no cambia: es lo que auditan los detectores.
+  assert.strictEqual(core.nutWhyKey(PLAN, KATHE, 83), 'mantenimiento');
+  // Lo que ella LEE sí: sale de lo que los números hacen.
+  assert.strictEqual(core.nutWhyKeyShown(PLAN, KATHE, 83), 'cutting',
+    'la pantalla de la asesorada sigue afirmando «balance» sobre un déficit real');
+});
+
+// 🔴 EL CANDADO QUE MÁS IMPORTA: corregir el texto de ELLA no puede APAGAR el aviso AL COACH.
+// `nutPlanReview` obtiene el rótulo con `nutWhyKey`; si la corrección hubiera vivido ahí dentro, el
+// rótulo llegaría ya arreglado y `rotulo_miente` no saltaría NUNCA — apagar la alarma en vez del
+// incendio, y el coach sin enterarse de que su plantilla quedó mal. Por eso son DOS funciones.
+test('🔴 v510 · CONTROL: el coach SIGUE recibiendo el aviso de que el rótulo miente', () => {
+  const r = core.nutPlanReview(LUZ, PLAN_LUZ, 82);
+  assert.strictEqual(r.status, 'rotulo_miente',
+    'la corrección de la pantalla de ella apagó el detector del coach: status ' + r.status);
+  assert.strictEqual(r.mismatch.dice, 'balance');
+  assert.strictEqual(r.mismatch.real, 'deficit');
+});
+
+test('🔴 v510 · CONTROL: un rótulo HONESTO no se toca (si no, sería borrar la feature)', () => {
+  const KATHE = { name: 'Kathe', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
+  const honesto = { kcal: 1930, prot: 119, carbs: 231, fat: 59, goal: 'cutting' };
+  assert.strictEqual(core.nutWhyKeyShown(honesto, KATHE, 83), 'cutting');
+  // Y un plan que de verdad está en balance sigue leyéndose como balance.
+  // ⚠️ Los macros TIENEN que sumar el titular: lo que se sirve se DERIVA de ellos (v435). La
+  // primera versión de esta línea puso 280 g de carbohidrato — sumaban 2.270 contra un titular de
+  // 2.400, o sea un déficit real del 5,4%, y el test falló con razón. El fixture estaba mal, no la app.
+  const enBalance = { kcal: 2400, prot: 130, carbs: 313, fat: 70, goal: 'mantenimiento' };
+  assert.strictEqual(core.nutWhyKeyShown(enBalance, KATHE, 83), 'mantenimiento');
+});
+
+test('🔴 v510 · el superávit que la app IMPONE a un menor no se «corrige» en su pantalla', () => {
+  // Su +5% lo pone el piso de menores a propósito y se lo explica. Corregirle el rótulo por eso
+  // sería marcarle como contradicción lo que el propio sistema decidió (la clase de v485/v493).
+  const leido = core.nutWhyKeyShown(PLAN_BAJO, MENOR_REAL, 52);
+  assert.strictEqual(leido, core.nutWhyKey(PLAN_BAJO, MENOR_REAL, 52),
+    'a la menor se le cambió el texto por el margen que la app misma le impone');
+});
+
+test('v510 · sin gasto calculable se devuelve el declarado (no se adivina)', () => {
+  const sinDatos = { name: 'X', goal: 'Perder grasa' }; // sin sexo/talla/edad → no hay estimación
+  const PLAN = { kcal: 1930, goal: 'mantenimiento' };
+  assert.strictEqual(core.nutWhyKeyShown(PLAN, sinDatos, 83), core.nutWhyKey(PLAN, sinDatos, 83));
+});
+
+// 🔴 CANDADO DEL CABLEADO. El arreglo nació INERTE: la primera versión pedía el gasto por parámetro
+// y el llamador le pasaba `nutBaseFor(...).tdee`, que NO EXISTE (`nutBaseFor` devuelve
+// {origen,kcalObj,macros,kcalEscrito,desfase}). Ningún test lo cazó — lo cazó medirlo contra las
+// filas reales. Este check afirma las dos mitades: que la pantalla de ELLA use la función corregida
+// y que los DETECTORES sigan usando la que declara.
+test('🔴 ESTÁTICO v510: la pantalla de ella usa nutWhyKeyShown; los detectores, nutWhyKey', () => {
+  const fs = require('fs'), path = require('path');
+  const salud = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const core_ = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+
+  assert.ok(/why:GOAL_WHY\[nutWhyKeyShown\(nut,\s*c,\s*_nutPesoDe\(c\)\)\]/.test(salud),
+    'el texto del plan guardado que lee la asesorada volvió a salir del rótulo declarado');
+  // El aviso del editor del coach es un DETECTOR: tiene que seguir viendo el rótulo declarado.
+  assert.ok(/const efectivo=nutWhyKey\(\{/.test(salud),
+    'el aviso del editor dejó de comparar el rótulo declarado → dejaría de avisar');
+  assert.ok(/const rotulo = \(typeof nutWhyKey === 'function'\) \? nutWhyKey\(/.test(core_),
+    'nutPlanReview dejó de leer el rótulo DECLARADO → rotulo_miente no volvería a saltar');
+  // Y que la corrección no se haya colado dentro de nutWhyKey (sería apagar los dos detectores).
+  const ini = core_.indexOf('function nutWhyKey(nut, client, weightKg)');
+  const cuerpo = core_.slice(ini, core_.indexOf('\n}', ini));
+  assert.ok(!/nutGoalMismatch/.test(cuerpo),
+    'la corrección se metió dentro de nutWhyKey: los detectores recibirían el rótulo ya arreglado');
 });
 
 test('🔴 v486 · CONTROL: si el rótulo SÍ dice la verdad, no se marca nada', () => {

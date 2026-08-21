@@ -4,6 +4,71 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🗣️ 2026-08-21 — avi-v510: LA APP DEJA DE AFIRMARLE A LA ASESORADA ALGO QUE SUS PROPIOS NÚMEROS CONTRADICEN
+
+Pedido del PO: «arréglame lo de Kathe». **No hacía falta tocarle el plan: el defecto era del código.**
+
+### Lo que pasaba
+
+**Kathe (28) leía «Estás comiendo en balance: lo que gastas» encima de un déficit REAL de 500 kcal.**
+Su plan está bien — 1.930 kcal contra un gasto de 2.399 es exactamente el déficit que le toca—; lo
+que estaba mal era el RÓTULO, que se quedó en «mantenimiento» de una plantilla anterior. Y Samuel al
+revés: gana músculo con un superávit de 523 kcal mientras su pantalla le decía «balance».
+
+**Medido en producción: 2 de 10 planes.** (Valery **no** cuenta: su +5% lo impone el piso de menores
+a propósito — mi primera sonda la marcó por no pasarle el `client` a `nutGoalMismatch`, que existe
+justo para eso. Sonda que cuenta de más, otra vez.)
+
+🔑 **v486 ya había cerrado la mitad de esto**: construyó el detector y le avisa AL COACH. Lo que
+faltaba es la otra mitad — **la app le seguía diciendo a ELLA la frase falsa**. `nutWhyKey` resuelve
+el texto desde el rótulo GUARDADO (`inferNutGoal` devuelve `nut.goal` si es legible) y nunca
+consultaba al detector que vivía a diez líneas.
+
+### El arreglo, y la trampa que tiene dentro
+
+🔴 **`nutPlanReview` OBTIENE el rótulo con `nutWhyKey` para poder detectar la mentira.** Si la
+corrección se metiera ahí dentro, el rótulo llegaría ya arreglado a los dos detectores (la ficha y
+el aviso del editor) y **`rotulo_miente` no saltaría nunca**: apagar la alarma en vez del incendio,
+y el coach sin enterarse de que su plantilla quedó mal.
+
+Por eso son **DOS funciones**, y la separación es conceptual, no cosmética:
+- **`nutWhyKey`** = lo que el plan DICE de sí mismo → lo auditan los detectores. **Intacta.**
+- **`nutWhyKeyShown`** = lo que estamos dispuestos a AFIRMARLE a ella → nunca una dirección que sus
+  propios números contradicen. Con la contradicción detectada, el texto sale de lo que los números
+  HACEN, que es la doctrina de v435 («el titular se DERIVA de sus componentes») aplicada al rótulo.
+
+Se compara contra lo que se **SIRVE** (`nutBaseFor`), no contra el titular escrito — desde v485
+pueden no ser el mismo número.
+
+### 🔴 El arreglo nació INERTE, y no lo cazó ningún test
+
+La primera versión pedía el gasto por parámetro y el llamador le pasaba `nutBaseFor(...).tdee`
+— **que no existe**: `nutBaseFor` devuelve `{origen,kcalObj,macros,kcalEscrito,desfase}` y el gasto
+vive en `nutritionEstimate`. Pasaba `undefined`, la función devolvía el rótulo declarado y **no
+cambiaba nada**. Lo cazó **medirlo contra las 10 filas reales**, no leer el código. Ahora el gasto
+se calcula DENTRO, para que el llamador no pueda equivocarse.
+
+🔴 **Segundo error mío, del mismo rato:** mi propio fixture de control escribía un titular de 2.400
+con macros que suman 2.270. El test falló y **la app tenía razón**: lo que se sirve son 2.270, o sea
+un déficit del 5,4%. Un fixture cuyo titular no cuadra con sus macros no mide lo que dice medir.
+
+### QA
+
+Suite **810 → 816**. Hook 12/12. `_verify-menores`, `_verify-menores-coach`, `_shot-nutri` y
+`_verify-foodlog` (41/41) verdes. **3 sabotajes, los 3 muerden** — y el importante es el segundo:
+meter la corrección DENTRO de `nutWhyKey` lo cazan **CINCO** pruebas, incluida la de v486.
+
+⚠️ **Un candado preexistente se re-encuadró, no se calló**: exigía `GOAL_WHY[nutWhyKey(nut,c` por
+nombre. La propiedad que protege —que la ruta del plan guardado no use `inferNutGoal` a secas y se
+salte el candado de menores— **sigue cumpliéndose**, porque `nutWhyKeyShown` envuelve a `nutWhyKey`.
+
+### ⏭️ Lo que NO arregla esto, dicho claro
+
+El plan de Kathe sigue con **119 g de proteína contra 145 sugeridos**. Eso es una decisión de plan y
+es del coach, no del código: se arregla con «✨ Generar» + «Guardar» en su ficha.
+
+---
+
 ## 🔒 2026-08-21 — avi-v509: EL PANEL DEL COACH DEJA DE BORRARLE SUS PROPIOS DATOS
 
 Tercer hallazgo de la auditoría de v507, y el único que le pasaba **al PO en persona**. Preexistente,
