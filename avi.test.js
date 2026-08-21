@@ -3891,8 +3891,11 @@ test('🔴 mergeOwnProfile: guardar desde el panel NO borra lo que la vista del 
   const nuevo = clientToRow(vista, {}).profile;
 
   // Sin fusión —lo que hacía la app— se pierden 5 claves. Es el defecto, afirmado.
+  // ⚠️ `deload` YA NO está en esta lista: v511 lo METIÓ en la vista a propósito (es estado de
+  // ENTRENAMIENTO, no de negocio) porque sin él el coach no podía salir de su propia semana de
+  // descarga. Sigue siendo el mismo defecto y las otras cuatro siguen fuera de la vista.
   const perdidas = Object.keys(guardado).filter(k => !(k in nuevo));
-  assert.deepStrictEqual(perdidas.sort(), ['deload', 'foodlog', 'foodlogOk', 'painCare', 'tier'],
+  assert.deepStrictEqual(perdidas.sort(), ['foodlog', 'foodlogOk', 'painCare', 'tier'],
     'cambió lo que la vista parcial deja fuera: revisa que este test siga probando el defecto real');
 
   // Con fusión: no se pierde NADA y la edición SÍ manda.
@@ -3903,9 +3906,64 @@ test('🔴 mergeOwnProfile: guardar desde el panel NO borra lo que la vista del 
   // Lo que el panel no toca queda BYTE a BYTE igual (no una copia parecida).
   assert.deepStrictEqual(fusion.foodlog, guardado.foodlog);
   assert.deepStrictEqual(fusion.painCare, guardado.painCare);
-  assert.deepStrictEqual(fusion.deload, guardado.deload);
+  assert.deepStrictEqual(fusion.deload, guardado.deload); // ahora llega por la vista, no por la fusión
   assert.strictEqual(fusion.foodlogOk, guardado.foodlogOk);
   assert.strictEqual(fusion.tier, 'premium');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 v511 · EL COACH TIENE QUE PODER SALIR DE SU PROPIA SEMANA DE DESCARGA.
+// Su fila la tenía (vencida hacía 2 días, con las series aún recortadas), pero el panel arma su
+// ficha con `selfClientFromRow` y `deload` no viajaba: `deloadState` daba null, la pantalla le
+// ofrecía ACTIVAR una descarga en vez de cerrarla, y `deloadOverdue` —que recorre `DB.clients`—
+// no lo listaba nunca. La única salida era «✨ Generar», que RE-ELIGE ejercicios (medido sobre su
+// plan real: sobrevivían 5 de 32) y encima habría dejado huérfano el respaldo de sus series.
+// Reportado por el PO: «no tiene sentido cambiar mi rutina totalmente si necesito salir de la
+// descarga». Es la cara de LECTURA del hueco que v509 cerró en la ESCRITURA.
+test('🔴 v511 · el coach VE su propia semana de descarga en el panel (y puede cerrarla)', () => {
+  const FILA = {
+    user_id: 'u1', role: 'coach',
+    profile: {
+      name: 'Andrés', sex: 'M', age: 37, weight: 92, height: 175, goal: 'Perder grasa',
+      deload: { from: '2026-08-12T17:02:46.059Z', until: '2026-08-19T17:02:46.059Z', sets: { r1: [] } },
+      foodlog: { d: {} }, painCare: [], tier: 'premium',
+    },
+    routines: [],
+  };
+  const self = selfClientFromRow(FILA);
+  assert.ok(self.deload, 'la vista del coach no lleva su descarga: no podría cerrarla');
+
+  const st = core.deloadState(self, new Date('2026-08-21T18:00:00Z'));
+  assert.ok(st && st.over, 'la ficha no detecta la descarga vencida');
+  assert.strictEqual(st.daysOver, 2);
+
+  // Y su Inicio tiene que listarlo entre las descargas vencidas.
+  const pend = core.deloadOverdue([self], new Date('2026-08-21T18:00:00Z'));
+  assert.strictEqual(pend.length, 1, 'el aviso de descargas vencidas no incluye al propio coach');
+  assert.strictEqual(pend[0].daysOver, 2);
+
+  // Sin descarga, la vista no inventa una (el botón que sale es el de ACTIVAR).
+  const sinD = selfClientFromRow({ profile: { name: 'X' } });
+  assert.strictEqual(core.deloadState(sinD, Date.now()), null);
+});
+
+test('🔴 v511 · cerrar la descarga la BORRA de la nube y no se lleva nada más', () => {
+  const guardado = {
+    name: 'Andrés', sex: 'M', age: 37, weight: 92, height: 175, goal: 'Perder grasa',
+    deload: { from: 'x', until: 'y', sets: {} },
+    foodlog: { d: { '2026-08-13': [] } }, painCare: [{ area: 'codo' }],
+    foodlogOk: '2026-08-12T17:33:09.015Z', tier: 'premium',
+  };
+  const self = selfClientFromRow({ profile: guardado });
+  delete self.deload;                                   // lo que hace `endDeloadFor`
+  const nuevo = clientToRow(self, {}).profile;
+  const fusion = mergeOwnProfile(guardado, nuevo);
+  assert.ok(!('deload' in fusion), 'la descarga no se borra: el botón «Volver al plan normal» sería inerte');
+  // Y lo que el panel NO sabe leer sigue intacto (el candado de v509 no se rompió al añadir deload).
+  assert.deepStrictEqual(fusion.foodlog, guardado.foodlog);
+  assert.deepStrictEqual(fusion.painCare, guardado.painCare);
+  assert.strictEqual(fusion.tier, 'premium');
+  assert.strictEqual(fusion.foodlogOk, guardado.foodlogOk);
 });
 
 // 💎 Las claves «conocidas» se DERIVAN del viaje de ida y vuelta, no se listan a mano: si alguien

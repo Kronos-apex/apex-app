@@ -3245,6 +3245,18 @@ function selfClientFromRow(row, opts) {
     activityFactor: p.activityFactor != null ? p.activityFactor : 1.55,
     notes: p.notes || '', habits: p.habits || null,
     startDate: p.startDate || null,
+    // 🔴 `deload` VIAJA, y no es un capricho: es estado de ENTRENAMIENTO, igual que `habits` y
+    // `startDate`, no dato de negocio. Sin él, el coach **no podía salir de su propia semana de
+    // descarga**: su fila la tenía (vencida hacía 2 días, con las series aún recortadas) pero el
+    // panel armaba su ficha desde esta lista blanca, `deloadState` devolvía null y la pantalla le
+    // ofrecía ACTIVAR una descarga en vez de cerrarla — y `deloadOverdue`, que recorre `DB.clients`,
+    // tampoco lo listaba nunca en su Inicio. Reportado por el PO el 21-ago: *«no tiene sentido
+    // cambiar mi rutina totalmente si necesito salir de la descarga»*, y tenía razón: la única
+    // salida que le quedaba era «✨ Generar», que RE-ELIGE ejercicios (medido sobre su plan real:
+    // **sobrevivían 5 de 32**) y además habría dejado huérfano el respaldo de sus series, porque
+    // se indexa por id de rutina y las nuevas traen ids nuevos.
+    // Es la cara de LECTURA del mismo hueco que v509 cerró en la ESCRITURA.
+    deload: p.deload || null,
     routines: Array.isArray(row.routines) ? row.routines : [],
     // NADA de negocio: sin payments, sin tier, sin suspended, sin wantsCoach.
   };

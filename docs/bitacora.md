@@ -4,6 +4,56 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🍃 2026-08-21 — avi-v512: EL COACH NO PODÍA SALIR DE SU PROPIA SEMANA DE DESCARGA
+
+Reporte del PO, y tenía toda la razón: *«no tiene sentido cambiar mi rutina totalmente si necesito
+salir de la descarga y volver a mi rutina de siempre»*.
+
+### Lo que le pasaba
+
+Su semana de descarga **venció el 19-ago** y seguía aplicada: entrenaba con las series recortadas
+sin querer. Y **su panel no le ofrecía el botón para cerrarla**: al abrir su propia ficha le salía
+«🍃 Semana de descarga» (ACTIVAR), como si no tuviera ninguna.
+
+**Causa:** el panel arma su ficha con `selfClientFromRow` —una lista blanca— y **`deload` no
+viajaba**. `deloadState` devolvía `null`, así que la pantalla mostraba el botón equivocado; y
+`deloadOverdue`, que recorre `DB.clients`, **tampoco lo listaba nunca** en su Inicio.
+Es **la cara de LECTURA del hueco que v509 cerró en la ESCRITURA**: la misma lista blanca, ahora
+por no traer en vez de por no guardar.
+
+### Por qué la salida que le quedaba era una trampa
+
+La única puerta abierta era «✨ Generar semana», que **RE-ELIGE los ejercicios**. Medido sobre su
+plan real: de sus **32 ejercicios sobrevivían 5** — se iban sentadilla con barra, peso muerto
+rumano, press de banca, press militar, jalón al pecho… — y los días se movían.
+🔴 **Y peor: habría dejado huérfano el respaldo de sus series.** `endDeload` restaura contra
+`deload.sets[r.id]` por posición + testigo; las rutinas generadas traen **ids nuevos**, así que el
+botón «Volver al plan normal» no habría encontrado nada que restaurar. **Regenerar con la descarga
+puesta pierde las series originales para siempre**, y eso ahora está escrito al lado del código.
+
+### El arreglo
+
+`deload` entra en la vista del coach. **No rompe la regla de la lista blanca**: esa lista excluye lo
+de NEGOCIO (`payments`, `tier`, `suspended`, `wantsCoach`) y `deload` es estado de **entrenamiento**,
+igual que `habits` y `startDate`, que ya viajaban.
+
+Verificado contra su fila real: el panel **ve** la descarga (vencida, 2 días), su Inicio **lo lista**,
+y al pulsar «Volver al plan normal» el perfil se escribe **sin** `deload` y **con** `foodlog`,
+`painCare`, `tier` y `foodlogOk` intactos — el candado de v509 sigue en pie con la clave nueva dentro.
+
+### QA
+
+Suite **819 → 821**, hook 12/12, `_verify-deload` y `_verify-selftraining` verdes. **1 sabotaje que
+lo cazan 3 pruebas**: quitar `deload` de la vista.
+⚠️ **Un test de v509 se RE-ENCUADRÓ, no se calló**: afirmaba que la vista dejaba fuera
+`['deload','foodlog','foodlogOk','painCare','tier']`. Ahora son cuatro, **porque `deload` se metió a
+propósito**; el defecto que ese test protege (una vista parcial pisando un registro completo) sigue
+afirmado con las otras cuatro.
+🔴 **Mi error del rato:** puse el fixture a las 12:00 del 21 y afirmé `daysOver === 2` cuando esa
+hora da 1 (venció el 19 a las 17:02). La cuenta era mía, no de la app.
+
+---
+
 ## ⚖️ 2026-08-21 — avi-v511: EL PESO DE LA FICHA NO ES EL PESO DE LA PERSONA
 
 Reporte del PO, textual: *«no sé de dónde salieron esos pesos de Samuel, él pesa 86 actualmente»*.
