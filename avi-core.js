@@ -3243,6 +3243,38 @@ function selfClientFromRow(row, opts) {
   };
 }
 
+// ── El coach editándose a sí mismo NO puede borrarse lo que su panel no sabe leer ──────────────
+// 🔴 EL DEFECTO (medido sobre su perfil REAL el 2026-08-21, auditoría de v507): `selfClientFromRow`
+// es una LISTA BLANCA a propósito —el coach entra a `DB.clients` SIN nada de negocio— pero
+// `_persistCoachWrite` armaba la fila desde esa vista PARCIAL y `upsertOwn` **REEMPLAZA la columna
+// jsonb entera**. Resultado: **19 claves → 14**, y lo que se perdía era `foodlog` (6.476 B, 2 días
+// de comida registrada), `deload` (2.373 B), `painCare` (el reporte de dolor de codo del 17-ago),
+// `foodlogOk` y `tier`. Le pasaba con solo abrir su ficha y guardar, sin tocar nada de eso.
+// Asimetría que lo delataba: **«Mi entrenamiento» era SEGURO** (usa `rowToClient`, que preserva
+// todo); el que perdía era el PANEL.
+//
+// 🔑 EL ARREGLO NO ES ENSANCHAR LA LISTA BLANCA. Esa lista existe para que `payments`, `tier`,
+// `suspended` y `wantsCoach` NO entren en la vista del coach-como-asesorado, y ensancharla ripplea
+// a cada render que lo lee. El defecto es otro: **una vista parcial estaba pisando un registro
+// completo**. Así que se arregla donde vive — en la ESCRITURA: se pisa lo que se sabe leer y se
+// CONSERVA intacto lo demás.
+//
+// 💎 Las claves «conocidas» se DERIVAN del propio viaje de ida y vuelta (`selfClientFromRow` →
+// `clientToRow`), no se listan a mano: si mañana alguien añade un campo a la lista blanca queda
+// cubierto solo, sin que nadie tenga que acordarse de tocar esto.
+function ownProfileKeys() {
+  return Object.keys(clientToRow(selfClientFromRow({ profile: {} }), {}).profile);
+}
+// `guardado` = el perfil que HAY en la fila (la misma de la que se hidrató la vista).
+// `nuevo`    = el perfil que produce el panel. Gana `nuevo` en todo lo que el panel sabe editar.
+function mergeOwnProfile(guardado, nuevo) {
+  const conocidas = ownProfileKeys();
+  const base = (guardado && typeof guardado === 'object') ? guardado : {};
+  const out = {};
+  Object.keys(base).forEach(k => { if (conocidas.indexOf(k) === -1) out[k] = base[k]; });
+  return Object.assign(out, (nuevo && typeof nuevo === 'object') ? nuevo : {});
+}
+
 // ¿Este cliente puede recibir cobros, recordatorios, chat o push? El coach NO:
 // no se cobra, no se escribe ni se notifica a sí mismo. Un solo lugar donde
 // preguntarlo, para que ninguna superficie nueva se olvide.
@@ -7863,6 +7895,8 @@ if (typeof module !== 'undefined' && module.exports) {
     SELF_CLIENT_ID,
     isSelfClient,
     selfClientFromRow,
+    ownProfileKeys,
+    mergeOwnProfile,
     clientIsBillable,
     clientIsContactable,
     splitSelfFromClients,

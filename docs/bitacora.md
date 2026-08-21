@@ -4,6 +4,59 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔒 2026-08-21 — avi-v509: EL PANEL DEL COACH DEJA DE BORRARLE SUS PROPIOS DATOS
+
+Tercer hallazgo de la auditoría de v507, y el único que le pasaba **al PO en persona**. Preexistente,
+no lo causó ninguna versión reciente.
+
+### El defecto, medido sobre su perfil REAL
+
+Con solo abrir su ficha en el panel de coach y guardar —sin tocar nada de eso— el perfil pasaba de
+**20 claves a 14**. Se perdían **9.135 bytes**: `foodlog` (6.476 B, dos días de comida registrada),
+`deload` (2.373 B), `painCare` (el reporte de dolor de codo del 17-ago), `foodlogOk`, `tier` y
+`updatedAt`.
+
+**Causa, en dos piezas que por separado están bien:** `selfClientFromRow` es una **lista blanca a
+propósito** —el coach entra a `DB.clients` como asesorado sintético SIN nada de negocio (sin
+`payments`, sin `tier`, sin `suspended`)— y `upsertOwn` **REEMPLAZA la columna jsonb entera**.
+Juntas: **una vista PARCIAL pisando un registro COMPLETO.**
+
+🔑 **La asimetría que lo delataba:** «Mi entrenamiento» era **seguro** (usa `rowToClient`, que
+preserva todo). El que perdía era el **PANEL**. Corolario incómodo de la auditoría: para el cambio de
+objetivo del 20-ago, **la escritura directa por SQL fue la vía MÁS segura de las dos.**
+
+### El arreglo, y por qué NO es ensanchar la lista blanca
+
+Ensancharla mete lo de negocio en la vista del coach-como-asesorado y ripplea a cada render que la
+lee. El defecto no es que la vista sea parcial —debe serlo— sino que la **ESCRITURA** pisaba lo que
+no sabía leer. Así que se arregla ahí: `mergeOwnProfile(guardado, nuevo)` (avi-core, pura) escribe
+todo lo que el panel edita y **conserva intacto** lo demás. La base es la MISMA fila de la que se
+hidrató la vista (`COACH_OWN_ROW`, con caída al respaldo local), para que lo conservado sea
+exactamente lo que la vista no podía representar.
+
+💎 **Las claves «conocidas» se DERIVAN del viaje de ida y vuelta** (`selfClientFromRow` →
+`clientToRow`), no se listan a mano: si mañana alguien añade un campo a la lista blanca, queda
+cubierto solo. Un sabotaje comprueba justo eso.
+
+### Verificado contra producción, no contra un fixture
+
+Simulando el guardado con su fila real de la nube: **20 claves antes → 20 después, 0 perdidas, 0
+inventadas y 0 valores distintos** cuando no se edita nada. Antes, ese mismo guardado borraba 9.135
+bytes en silencio.
+
+### QA
+
+Suite **806 → 810**. Hook 12/12. `_verify-selftraining` y `_verify-coach` verdes.
+**3 sabotajes, los 3 muerden:** devolver la escritura a `row.profile` (lo caza el candado ESTÁTICO
+del cableado) · que la fusión deje de conservar · y **escribir la lista de claves A MANO colando
+`foodlog` como conocida**, que es la forma en que este arreglo se degradaría dentro de seis meses.
+
+🔐 El candado del **cableado** es aparte del de la función pura a propósito: una función pura que
+nadie llama es la clase «puerta cerrada, ventana abierta», y el defecto vivía en
+`_persistCoachWrite`, no en el motor.
+
+---
+
 ## 🛡️ 2026-08-21 — avi-v508: LOS DOS DEFECTOS QUE LA AUDITORIA DE 4 AGENTES ENCONTRO VIVOS EN PRODUCCION
 
 Salen del lote de la auditoria de v507 (`docs/auditoria-v507-2026-08-21/`). Ninguno de los dos los

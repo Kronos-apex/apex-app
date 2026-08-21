@@ -154,6 +154,9 @@ const {
   isFreeClient,
   clientToRow,
   rowToClient,
+  selfClientFromRow,
+  ownProfileKeys,
+  mergeOwnProfile,
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
@@ -3803,6 +3806,97 @@ test('round-trip client→row→client conserva el perfil (sin password)', () =>
   const back = rowToClient(clientToRow(SAMPLE_CLIENT, {}));
   const { password, ...expected } = SAMPLE_CLIENT;
   assert.deepStrictEqual(back, expected);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 EL COACH EDITÁNDOSE DESDE SU PANEL NO PUEDE BORRARSE LO QUE EL PANEL NO SABE LEER.
+// Medido sobre su perfil REAL el 2026-08-21 (auditoría de v507): guardar su ficha dejaba el
+// perfil en **19 claves → 14** y se llevaba por delante `foodlog` (6.476 B, 2 días de comida
+// registrada), `deload` (2.373 B), `painCare` (el reporte de dolor de codo del 17-ago),
+// `foodlogOk` y `tier`. Causa: `selfClientFromRow` es una lista blanca a propósito y
+// `upsertOwn` REEMPLAZA la columna jsonb entera → una vista PARCIAL pisando un registro completo.
+// Asimetría que lo delataba: «Mi entrenamiento» era seguro (usa `rowToClient`); perdía el PANEL.
+test('🔴 mergeOwnProfile: guardar desde el panel NO borra lo que la vista del coach no lee', () => {
+  // El perfil real del coach, con la forma exacta que tenía en producción.
+  const guardado = {
+    isSelf: true, name: 'Andres Martínez', sex: 'M', age: 37, weight: 90, height: 176,
+    goal: 'Ganar músculo', level: 'Avanzado', days: 5, place: 'gym', activityFactor: 1.55,
+    notes: '', habits: { water: { '2026-08-18': 3 } }, startDate: null,
+    // …y lo que el panel NO sabe leer y se estaba borrando:
+    foodlog: { d: { '2026-08-13': [{ name: 'Avena', g: 5 }] } },
+    deload: { activa: true, hasta: '2026-08-25' },
+    painCare: [{ area: 'codo', level: 2, at: '2026-08-17T16:05:58.527Z' }],
+    foodlogOk: '2026-08-12T17:33:09.015Z',
+    tier: 'premium',
+  };
+  // Lo que produce el panel: la vista parcial, con una edición real (cambió su objetivo).
+  const vista = selfClientFromRow({ profile: guardado });
+  vista.goal = 'Perder grasa';
+  const nuevo = clientToRow(vista, {}).profile;
+
+  // Sin fusión —lo que hacía la app— se pierden 5 claves. Es el defecto, afirmado.
+  const perdidas = Object.keys(guardado).filter(k => !(k in nuevo));
+  assert.deepStrictEqual(perdidas.sort(), ['deload', 'foodlog', 'foodlogOk', 'painCare', 'tier'],
+    'cambió lo que la vista parcial deja fuera: revisa que este test siga probando el defecto real');
+
+  // Con fusión: no se pierde NADA y la edición SÍ manda.
+  const fusion = mergeOwnProfile(guardado, nuevo);
+  assert.deepStrictEqual(Object.keys(fusion).sort(), Object.keys(guardado).sort(),
+    'la fusión perdió o inventó claves del perfil del coach');
+  assert.strictEqual(fusion.goal, 'Perder grasa', 'la edición del panel tiene que mandar');
+  // Lo que el panel no toca queda BYTE a BYTE igual (no una copia parecida).
+  assert.deepStrictEqual(fusion.foodlog, guardado.foodlog);
+  assert.deepStrictEqual(fusion.painCare, guardado.painCare);
+  assert.deepStrictEqual(fusion.deload, guardado.deload);
+  assert.strictEqual(fusion.foodlogOk, guardado.foodlogOk);
+  assert.strictEqual(fusion.tier, 'premium');
+});
+
+// 💎 Las claves «conocidas» se DERIVAN del viaje de ida y vuelta, no se listan a mano: si alguien
+// añade un campo a `selfClientFromRow`, queda cubierto solo. Este test protege esa propiedad.
+test('🔴 ownProfileKeys se deriva de selfClientFromRow (no es una lista escrita a mano)', () => {
+  const derivadas = ownProfileKeys();
+  const esperadas = Object.keys(clientToRow(selfClientFromRow({ profile: {} }), {}).profile);
+  assert.deepStrictEqual(derivadas.sort(), esperadas.sort());
+  assert.ok(derivadas.includes('goal') && derivadas.includes('weight') && derivadas.includes('habits'),
+    'lo que el panel SÍ edita tiene que estar entre las conocidas, o la fusión no dejaría guardar');
+  assert.ok(!derivadas.includes('foodlog') && !derivadas.includes('painCare') && !derivadas.includes('tier'),
+    'si la vista pasara a leer estas claves, esta prueba deja de estar midiendo el defecto');
+});
+
+test('mergeOwnProfile: casos borde (sin base, base basura, nuevo vacío)', () => {
+  const nuevo = { name: 'Yo', goal: 'Perder grasa' };
+  // Sin fila guardada no hay nada que conservar: se escribe lo del panel tal cual.
+  assert.deepStrictEqual(mergeOwnProfile(null, nuevo), nuevo);
+  assert.deepStrictEqual(mergeOwnProfile(undefined, nuevo), nuevo);
+  assert.deepStrictEqual(mergeOwnProfile('basura', nuevo), nuevo);
+  // Con base y sin nada nuevo, no se borra nada de lo desconocido.
+  assert.deepStrictEqual(mergeOwnProfile({ foodlog: { x: 1 } }, null), { foodlog: { x: 1 } });
+  // Y no muta los objetos que recibe.
+  const base = { foodlog: { x: 1 }, goal: 'viejo' };
+  const copia = JSON.parse(JSON.stringify(base));
+  mergeOwnProfile(base, { goal: 'nuevo' });
+  assert.deepStrictEqual(base, copia, 'mergeOwnProfile mutó la fila guardada');
+});
+
+// 🔴 EL CANDADO DEL CABLEADO: una función pura que nadie llama es la clase «puerta cerrada,
+// ventana abierta». El defecto vivía en `_persistCoachWrite`, así que se afirma AHÍ.
+test('🔴 ESTÁTICO: _persistCoachWrite escribe su propio perfil FUSIONADO, nunca reemplazado', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const ini = src.indexOf('async function _persistCoachWrite');
+  assert.ok(ini > 0, 'no encontré _persistCoachWrite en app-1-infra.js');
+  // Solo la rama de la fila PROPIA: hasta el bucle de los asesorados.
+  const fin = src.indexOf('for(const c of _sp.clients)', ini);
+  assert.ok(fin > ini, 'no encontré el final de la rama de la fila propia');
+  const propia = src.slice(ini, fin);
+
+  assert.ok(/mergeOwnProfile\(\s*_base\.profile\s*,\s*row\.profile\s*\)/.test(propia),
+    'la fila propia del coach ya NO se fusiona: volvería a borrarle foodlog/deload/painCare/tier');
+  assert.ok(/upsertOwn\(\{\s*profile:\s*_perfil\b/.test(propia),
+    'se calcula la fusión pero se escribe otra cosa — el arreglo quedaría muerto');
+  assert.ok(!/upsertOwn\(\{\s*profile:\s*row\.profile\b/.test(propia),
+    'quedó viva la escritura que REEMPLAZA el perfil entero');
 });
 
 test('rowToClient: tolera fila vacía/parcial sin romper', () => {

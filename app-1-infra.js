@@ -975,7 +975,24 @@ async function _persistCoachWrite(k,v){
       const val=_coachClientJSON(_sp.self), sk='ax_c:'+SELF_CLIENT_ID;
       if(_coachSnap[sk]!==val){
         const row=clientToRow(_sp.self,{});
-        try{ await UD.upsertOwn({profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; }
+        // 🔴 FUSIONAR, NO REEMPLAZAR. `upsertOwn` pisa la columna `profile` ENTERA, y esta vista es
+        // PARCIAL: `selfClientFromRow` es una lista blanca a propósito (el coach entra a DB.clients
+        // sin nada de negocio). Guardar desde el panel le borraba lo que la lista no sabe leer —
+        // medido sobre su perfil real el 2026-08-21: **19 claves → 14**, perdiendo `foodlog`
+        // (6.476 B, 2 días de comida registrada), `deload` (2.373 B), `painCare` (el dolor de codo
+        // del 17-ago), `foodlogOk` y `tier`. Y le pasaba con solo abrir su ficha y guardar.
+        // La base es la MISMA fila de la que `_hydrateSelfClient` construyó la vista, para que lo
+        // que se conserva sea exactamente lo que la vista no podía representar.
+        let _base=COACH_OWN_ROW;
+        try{ if(!_base && typeof _readAuthRow==='function') _base=_readAuthRow(_authUid); }catch(_e){}
+        const _perfil=(_base&&_base.profile&&typeof mergeOwnProfile==='function')
+          ? mergeOwnProfile(_base.profile,row.profile) : row.profile;
+        try{
+          await UD.upsertOwn({profile:_perfil,routines:row.routines}); _coachSnap[sk]=val;
+          // La fila en memoria queda igual a lo que acaba de quedar en la nube: así un SEGUNDO
+          // guardado de la misma sesión fusiona sobre lo nuevo y no sobre la foto de al entrar.
+          if(COACH_OWN_ROW)COACH_OWN_ROW.profile=_perfil;
+        }
         catch(e){ _setAuthDirty(true); warn('AVI: persistir mi propio perfil falló:',e&&e.message); }
       }
     }
