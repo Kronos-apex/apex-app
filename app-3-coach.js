@@ -295,7 +295,7 @@ function _autoGenerateWeek(c){
   const inAdapt=isInAdaptation(c,DB.history,new Date());
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
   const _waist=_med.length?_med[0].cintura:null;
-  const loadProfile=bodyLoadProfile(c,_waist);
+  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
   const _p=genPrefs(c);
   // 🔴 El plan arranca HOY, no el lunes. Esta es la vía del que se registra solo: si empezara
   // siempre en lunes, quien se inscribe un sábado o un domingo vería «hoy es tu día de descanso»
@@ -1326,7 +1326,8 @@ async function openDetail(id,_silent){
   if(c.sex) _stats.push(c.sex==='M'?'♂ Masculino':'♀ Femenino');
   if(c.age) _stats.push(c.age+' años');
   if(c.height) _stats.push(c.height+' cm');
-  if(c.weight) _stats.push(c.weight+' kg');
+  const _pesoReal=_coachPesoDe(c);
+  if(_pesoReal) _stats.push(_pesoReal+' kg');
   const _statsEl=document.getElementById('d-stats');
   if(_stats.length){ _statsEl.style.display='flex'; _statsEl.textContent=_stats.join(' · '); }
   else { _statsEl.style.display='none'; }
@@ -1395,13 +1396,26 @@ async function openDetail(id,_silent){
 }
 
 // ══════════════════════════════════════════
+// ⚖️ EL PESO QUE MANDA ES EL ÚLTIMO REGISTRADO, NO EL DE LA FICHA.
+// `profile.weight` se escribe UNA VEZ al dar de alta y nadie vuelve a tocarlo; la persona sí se
+// sigue pesando. Medido el 2026-08-21: **5 de las 14 con peso registrado tenían la ficha
+// desfasada** — Samuel decía 78 kg pesando 86 (su ficha nunca se corrigió desde el alta, y el
+// MISMO día él registró 88), y el propio coach apareciía con IMC 29,4 estando en 30,0.
+// Quién es «el último» lo decide `nutWeightFor` (avi-core) POR FECHA, y es la MISMA función que
+// usa nutrición (`_nutPesoDe` en app-5): una sola definición, dos envoltorios que le dan su lista.
+// Sin ninguna pesada cae al peso de la ficha, que es lo único que hay.
+function _coachPesoDe(c){
+  return (typeof nutWeightFor==='function')
+    ? nutWeightFor(c,(DB.bodyweight||{})[c&&c.id])
+    : (c&&c.weight);
+}
 // VALORACIÓN FÍSICA AUTOMÁTICA
 // ══════════════════════════════════════════
 function renderValoracion(c){
   const con = document.getElementById('d-valoracion-body');
   if(!con) return;
 
-  const w = parseFloat(c.weight);
+  const w = parseFloat(_coachPesoDe(c));   // el ÚLTIMO registrado, no el de la ficha
   const h = parseFloat(c.height);
   const age = parseInt(c.age);
   const sex = c.sex;
@@ -1531,6 +1545,23 @@ function renderValoracion(c){
   const goalMsg = getGoalMsg(goal, rct);
   html += `<div style="background:var(--gl);border-radius:var(--rsm);padding:10px 14px;font-size:13px;color:var(--gt);margin-top:4px;line-height:1.5">${goalMsg}</div>`;
   html += `</div>`;
+
+  // 🔴 DE DÓNDE SALIÓ EL PESO. Si el de la ficha no es el último que se pesó, la valoración usa el
+  // ÚLTIMO (que es lo correcto) pero el coach lee en la cabecera un número distinto del que escribió
+  // al dar de alta y no sabe de dónde salió — literalmente el reporte del PO («no sé de dónde
+  // salieron esos pesos»). Cambiar el número en silencio es la mitad del arreglo: la otra es DECIRLO.
+  // Va aquí y no como aviso aparte porque no es un problema que él deba resolver: es el dato bueno.
+  const _bwList=(DB.bodyweight||{})[c.id]||[];
+  const _pesoFicha=parseFloat(c.weight);
+  if(_bwList.length && _pesoFicha && Math.abs(w-_pesoFicha)>=1){
+    const _ult=_bwList.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+    // Mismo formato es-CO que el resto del panel (`day:'numeric',month:'short'`).
+    const _f=(_ult&&_ult.date)?new Date(_ult.date).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):null;
+    html += `<div style="background:var(--bll);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--bl);margin-top:8px;line-height:1.5">
+      ⚖️ Calculado con <strong>${w} kg</strong>, su última pesada${_f?' ('+esc(_f)+')':''} — no con los ${_pesoFicha} kg de la ficha,
+      que se escribieron al darlo de alta y no se actualizan solos.
+    </div>`;
+  }
 
   html += `<div style="font-size:10px;color:var(--t3);margin-top:10px;line-height:1.5;border-top:1px solid var(--br);padding-top:8px">
     ⚕️ <strong>Nota clínica:</strong> Estos cálculos son estimaciones de referencia basadas en fórmulas estándar (${esc(tmbFormulaName(c))}).
@@ -2275,7 +2306,7 @@ function genWithStyle(styleId){
   const inAdapt=isInAdaptation(c,DB.history,new Date());
   const _med=(DB.medidas&&DB.medidas[c.id])||[];
   const _waist=_med.length?_med[0].cintura:null;
-  const loadProfile=bodyLoadProfile(c,_waist);
+  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
   const _p=genPrefs(c);
   const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
   if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}

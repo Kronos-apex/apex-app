@@ -125,6 +125,7 @@ const {
   dropLoad,
   bmiFrom,
   bodyLoadProfile,
+  nutWeightFor,
   validateSignup,
   passwordProblem,
   consentEvidence,
@@ -3106,6 +3107,61 @@ test('bodyLoadProfile: cintura alta sube el perfil aunque el IMC no sea obesidad
 test('bodyLoadProfile: sin datos suficientes → normal (no asume)', () => {
   assert.strictEqual(bodyLoadProfile({}), 'normal');
   assert.strictEqual(bodyLoadProfile({ weight: 70 }), 'normal');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 v511 · EL PESO DE LA FICHA NO ES EL PESO DE LA PERSONA. `profile.weight` se escribe UNA VEZ
+// al dar de alta y nadie vuelve a tocarlo, mientras ella sí se sigue pesando. Medido el
+// 2026-08-21: **5 de las 14 con peso registrado tenían la ficha desfasada** — Samuel decía 78 kg
+// pesando 86 (y el MISMO día del alta registró 88, así que el 78 nunca fue un peso suyo).
+// El caso que más duele es el del propio coach: ficha 90 → IMC 29,4; real 92 → **30,0**, que cruza
+// el umbral y le cambia el PERFIL DE CARGA con el que el generador le arma la rutina.
+test('🔴 v511 · bodyLoadProfile: el peso explícito MANDA sobre el de la ficha', () => {
+  const COACH = { weight: 90, height: 175 };            // lo que dice su ficha → IMC 29,4
+  assert.strictEqual(bodyLoadProfile(COACH, null), 'normal');
+  // Con su peso REAL (92 → IMC 30,04) el generador tiene que darle el perfil de carga alto.
+  assert.strictEqual(bodyLoadProfile(COACH, null, 92), 'high',
+    'el peso registrado no manda: el generador seguiría usando el de la ficha');
+  // Y hacia el otro lado: una ficha exagerada no debe inflar el perfil si ya bajó de peso.
+  assert.strictEqual(bodyLoadProfile({ weight: 95, height: 175 }, null, 88), 'normal');
+  // Sin peso explícito se comporta EXACTAMENTE como antes (los llamadores viejos no cambian).
+  assert.strictEqual(bodyLoadProfile({ weight: 85, height: 165 }), 'high');
+  assert.strictEqual(bodyLoadProfile({ weight: 85, height: 165 }, null, undefined), 'high');
+  assert.strictEqual(bodyLoadProfile({ weight: 85, height: 165 }, null, ''), 'high');
+});
+
+test('🔴 v511 · nutWeightFor es la ÚNICA decisión de «cuál es el último peso»', () => {
+  // Samuel real: dos pesadas, la más nueva NO es la última del arreglo (se guarda descendente).
+  const BW = [{ kg: 86, date: '2026-06-06' }, { kg: 88, date: '2026-05-23' }];
+  const SAMUEL = { id: 's', weight: 78, height: 176 };
+  assert.strictEqual(nutWeightFor(SAMUEL, BW), 86, 'no está eligiendo por FECHA');
+  // Sin pesadas cae al de la ficha, que es lo único que hay — no inventa.
+  assert.strictEqual(nutWeightFor(SAMUEL, []), 78);
+  assert.strictEqual(nutWeightFor(SAMUEL, null), 78);
+});
+
+// 🔴 CANDADO DEL CABLEADO: la función pura ya existía y el defecto era que las pantallas del coach
+// NO la usaban. Se afirma en las 4 superficies, porque el defecto vive ahí y no en el motor.
+test('🔴 ESTÁTICO v511: el panel del coach lee el peso REGISTRADO, no el de la ficha', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+
+  // El resolvedor delega en `nutWeightFor` — NO es una segunda definición de «cuál es el último».
+  assert.ok(/function _coachPesoDe\(c\)\{[\s\S]{0,220}nutWeightFor\(c,\(DB\.bodyweight\|\|\{\}\)\[c&&c\.id\]\)/.test(src),
+    '_coachPesoDe dejó de delegar en nutWeightFor: habría dos definiciones del «último peso»');
+
+  // 1) La valoración física (IMC, TMB, TDEE, objetivo calórico).
+  assert.ok(/const w = parseFloat\(_coachPesoDe\(c\)\)/.test(src),
+    'la valoración volvió a calcular con el peso de la ficha');
+  // 2) El chip de datos físicos que el coach LEE en la cabecera.
+  assert.ok(/const _pesoReal=_coachPesoDe\(c\);[\s\S]{0,80}_stats\.push\(_pesoReal\+' kg'\)/.test(src),
+    'la cabecera volvió a mostrar el peso de la ficha');
+  // 3) y 4) Las DOS llamadas del generador de rutinas.
+  const gen = (src.match(/bodyLoadProfile\(c,_waist,_coachPesoDe\(c\)\)/g) || []).length;
+  assert.strictEqual(gen, 2,
+    'alguna llamada del generador volvió al peso de la ficha (esperaba 2, hay ' + gen + ')');
+  assert.ok(!/bodyLoadProfile\(c,_waist\)\s*;/.test(src),
+    'quedó viva una llamada a bodyLoadProfile sin el peso registrado');
 });
 
 test('generarRutinas: perfil alto prioriza máquina/guiado en tren inferior', () => {

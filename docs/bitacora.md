@@ -4,6 +4,62 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⚖️ 2026-08-21 — avi-v511: EL PESO DE LA FICHA NO ES EL PESO DE LA PERSONA
+
+Reporte del PO, textual: *«no sé de dónde salieron esos pesos de Samuel, él pesa 86 actualmente»*.
+
+### De dónde salía
+
+`profile.weight` **se escribe UNA VEZ al dar de alta y nadie vuelve a tocarlo**, mientras la persona
+sí se sigue pesando (`bodyweight`). El 78 de Samuel es de su alta, el **23-may** — y **ese MISMO día
+él registró 88 kg**, así que **nunca fue un peso suyo**: es un error de tecleo del formulario que
+llevó tres meses a la vista.
+
+**Medido: 5 de las 14 personas con peso registrado tenían la ficha desfasada** — Samuel (78 vs 86),
+Nataly (56 vs 59,5), Natalia (63 vs 65), Kathe (85 vs 83) y **el propio coach (90 vs 92)**.
+
+### Por qué era más que un número mal pintado
+
+La nutrición ya lo hacía bien desde v448 (`nutWeightFor`, que elige POR FECHA). Lo que seguía
+leyendo `c.weight` en crudo era **el panel del coach**, en cuatro sitios:
+
+| Superficie | Daño medido |
+|---|---|
+| Chip de datos físicos de la ficha | Lee 78 kg de alguien que pesa 86 |
+| **Valoración física automática** | IMC, TMB, TDEE y objetivo calórico calculados sobre el peso viejo |
+| `bodyLoadProfile` × 2 (generador) | **El perfil de carga con el que se arma la rutina** |
+
+🔴 **El caso que más pesa es el del propio coach: su valoración decía IMC 29,4 y está en 30,0.**
+Eso cruza el umbral, así que `bodyLoadProfile` pasaba de `normal` a `high` — **es el único del
+gimnasio a quien esto le cambia la rutina** (el perfil alto prioriza variantes guiadas/asistidas y
+excluye pliométricos). Samuel: IMC 25,2 mostrado contra **27,8** real, y 138 kcal de gasto.
+
+### El arreglo
+
+`nutWeightFor` **ya era la única decisión** de «cuál es el último», y cae al peso de la ficha cuando
+no hay ninguna pesada. El defecto era que las pantallas del coach no la usaban. Se añade
+`_coachPesoDe(c)` (envoltorio que le da su lista, **espejo de `_nutPesoDe` de app-5 — dos
+envoltorios, UNA definición**) y se cablean las cuatro superficies. `bodyLoadProfile` gana un
+`weightKg` opcional, mismo patrón que ya usaba `bmiFrom` dentro de `nutMinorBand`.
+
+🔑 **Y la valoración DICE de dónde sale el número.** Cambiarlo en silencio era la mitad del
+arreglo: si el peso de la ficha difiere, sale una línea — *«Calculado con 86 kg, su última pesada
+(6 jun) — no con los 78 de la ficha, que se escribieron al darlo de alta y no se actualizan
+solos»*. Es literalmente la pregunta del PO, contestada en la pantalla.
+
+⚠️ **Lo que NO se toca:** `profile.weight` se queda como está. Ya no es fuente de verdad de nada
+— solo el respaldo de quien nunca se ha pesado, que es justo lo que `nutWeightFor` implementa.
+
+### QA
+
+Suite **816 → 819**, hook 12/12, `_verify-coach` verde. **3 sabotajes, los 3 muerden**: que
+`bodyLoadProfile` ignore el peso real · que la valoración vuelva al de la ficha · y **convertir
+`_coachPesoDe` en una SEGUNDA definición del «último peso»** (leyendo `bw[0]` en vez de delegar),
+que es exactamente cómo vuelve el bug de v448 — el arreglo se guarda descendente y `[0]` acierta
+hoy por casualidad.
+
+---
+
 ## 🗣️ 2026-08-21 — avi-v510: LA APP DEJA DE AFIRMARLE A LA ASESORADA ALGO QUE SUS PROPIOS NÚMEROS CONTRADICEN
 
 Pedido del PO: «arréglame lo de Kathe». **No hacía falta tocarle el plan: el defecto era del código.**

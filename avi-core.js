@@ -941,9 +941,16 @@ function bmiFrom(weightKg, heightCm) {
   const m = h > 3 ? h / 100 : h; // tolera cm (168) o m (1.68)
   return w / (m * m);
 }
-function bodyLoadProfile(client, waistCm) {
+// 🔴 `weightKg` OPCIONAL, y en producción es el que manda: `client.weight` se escribe UNA VEZ al
+// dar de alta y **nadie lo vuelve a tocar**, mientras la persona sí se sigue pesando. Medido el
+// 2026-08-21: 5 de las 14 personas con peso registrado tienen la ficha desfasada, y el coach
+// cruzaba el umbral de IMC 30 en la vida real mientras su ficha decía 29,4 — o sea que el
+// generador le habría dado el perfil de carga equivocado. Sin `weightKg` se comporta como antes
+// (compatibilidad); quien lo tenga a mano DEBE pasarlo, resuelto con `nutWeightFor`.
+// Mismo patrón que ya usa `bmiFrom` dentro de `nutMinorBand`.
+function bodyLoadProfile(client, waistCm, weightKg) {
   client = client || {};
-  const bmi = bmiFrom(client.weight, client.height);
+  const bmi = bmiFrom((weightKg != null && weightKg !== '') ? weightKg : client.weight, client.height);
   const waist = parseFloat(waistCm);
   const h = parseFloat(client.height);
   const rct = (waist && h) ? waist / (h > 3 ? h : h * 100) : null; // cintura/estatura, ambos en cm
