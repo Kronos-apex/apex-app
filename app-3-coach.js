@@ -788,7 +788,13 @@ async function _enterCoachAuth(authUser, ownRow){
   const _cs = ownRow && ownRow.coach_settings;
   if(_cs && typeof _cs==='object'){
     try{
-      if(Array.isArray(_cs.e) && _cs.e.length){ localStorage.setItem('ax_e',JSON.stringify(_cs.e)); DB.exercises=_cs.e; }
+      if(Array.isArray(_cs.e) && _cs.e.length){ localStorage.setItem('ax_e',JSON.stringify(_cs.e)); DB.exercises=_cs.e;
+        // 🔴 La cura del entorno va TAMBIÉN aquí, no solo en el arranque: esta línea pisa
+        // `DB.exercises` DESPUÉS de que corrió `healExerciseEnv`, así que sin esto el catálogo
+        // del coach volvía a quedar con 91 ejercicios sin `env` —tratados como solo-gimnasio—
+        // en cada sesión suya. Es idempotente: si no falta ninguno, no escribe nada.
+        try{ if(typeof healExerciseEnv==='function')healExerciseEnv(); }catch(e){ warn('AVI: healExerciseEnv (coach) falló:',e&&e.message); }
+      }
       if(_cs.nequi!=null){ localStorage.setItem('ax_nequi',JSON.stringify(_cs.nequi)); DB.nequi=_cs.nequi; }
       if(_cs.cn)        localStorage.setItem('ax_cn',  JSON.stringify(_cs.cn));
       if(_cs.ce)        localStorage.setItem('ax_ce',  JSON.stringify(_cs.ce));

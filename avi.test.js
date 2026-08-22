@@ -11202,6 +11202,15 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
   assert.ok(/healExerciseEnv\(\)/.test(boot), 'healExerciseEnv existe pero no la llama nadie en el arranque');
   assert.ok(boot.indexOf('healExerciseEnv()') > boot.indexOf("DB.exercises=ld('ax_e'"),
     'la auto-cura corre ANTES de cargar el catálogo: no tendría nada que curar');
+  // 🔴 Y en la SEGUNDA puerta: el coach carga su catálogo de la nube DESPUÉS del arranque
+  // (`coach_settings.e` pisa `DB.exercises`), así que sin curar ahí también su catálogo
+  // volvía a quedarse sin entorno en cada sesión suya — la cura del arranque no le servía.
+  const coach = require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
+  const iHidrata = coach.indexOf('DB.exercises=_cs.e');
+  assert.ok(iHidrata > 0, 'cambió la hidratación del catálogo del coach: revisa dónde va la cura');
+  const tramo = coach.slice(iHidrata, iHidrata + 700);
+  assert.ok(/healExerciseEnv\(\)/.test(tramo),
+    'la copia de la nube del coach pisa DB.exercises y nadie la cura después: vuelve a quedarse sin entorno');
 });
 
 // 🔴 v516 · EL PRESET «CASA — PESO CORPORAL» NO LLEVA SESGO DE TIPO.
