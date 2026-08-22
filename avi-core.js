@@ -1006,7 +1006,14 @@ const EX_LEVEL = {
   e9:'P',e10:'P',e29:'P',e55:'P',e56:'P',e101:'P',e102:'P',e103:'A',e120:'P',e121:'P',e139:'P',e140:'P',
   e11:'P',e12:'I',e19:'A',e30:'P',e31:'P',e57:'I',e105:'P',e122:'P',e123:'A',e79:'P',
   e13:'I',e14:'I',e15:'P',e16:'P',e33:'P',e35:'I',e36:'P',e37:'P',e39:'P',e40:'A',e41:'I',e58:'P',e59:'P',e70:'P',e80:'P',e93:'P',e95:'A',e107:'P',e108:'A',e124:'I',e125:'I',e126:'P',e127:'A',e128:'P',
-  e42:'I',e43:'P',e44:'P',e45:'P',e60:'P',e46:'I',e61:'P',e73:'P',e87:'P',e88:'P',e89:'P',e90:'P',e91:'P',e92:'I',e94:'P',e96:'P',e106:'I',e129:'P',e130:'P',
+  e42:'I',e43:'P',e44:'P',e45:'P',e60:'P',e46:'I',e61:'P',e73:'P',e87:'P',e88:'P',e89:'P',e90:'P',e91:'P',e92:'A',e94:'P',e96:'P',e106:'I',e129:'P',e130:'P',
+  // e92 (Hip Thrust Unilateral) pasó de 'I' a 'A' en v513: su PROPIA ficha lo llama «progresión
+  // avanzada del hip thrust convencional» y sus hermanos unilaterales de tren inferior ya estaban
+  // en 'A' (e95 peso muerto a una pierna, e108 sentadilla a una pierna, e40 búlgara) — era el
+  // outlier. Lo destapó el split de gym para principiantes: v513 abre puestos de `gluteo
+  // Compuesto` (GP_A/GP_B) que el Full Body evitaba a propósito, y con el pool de nivel 'P'
+  // agotado por la variedad de la semana caía él. Medido: 12 días de 2.016 de principiante.
+  // Mismo caso que e186/e205 (pliometrías en nivel 'I' contra sus gemelas en 'A').
   e17:'P',e18:'P',e47:'A',e48:'A',e49:'P',e62:'P',e63:'I',e72:'P',e81:'I',e131:'P',e132:'P',e133:'P',e134:'P',
   e20:'P',e64:'P',e65:'P',e66:'I',e67:'P',e74:'A',e75:'A',e76:'I',e135:'P',
   e68:'I',e69:'A',e136:'P',
@@ -1256,6 +1263,16 @@ const GEN_HIIMPACT_RE = /salto|jump|burpee|pliometr|plyo|sprint|saltar|box jump|
 // + (perfil de carga alto) alto impacto/pliométrico + (gym completo) NO bandas como
 // ejercicio PRINCIPAL. En gym hay equipo real → las bandas se ven pobres como trabajo
 // principal (sí valen para calentar/activar o para casa/parque). Pedido de Camilo 2026-06-23.
+// Variantes de SUSTITUCIÓN por falta de equipo: en un gimnasio con bancos, el floor press es la
+// respuesta a una carencia que ahí no existe — su propia ficha dice «es la variante de press
+// cuando no hay banco». Es la misma familia que las bandas (abajo), pero va por ID y NO por
+// nombre: una regex sobre «suelo» se llevaría por delante e109 «Elevaciones Y-T-W en Suelo»,
+// que sí es trabajo legítimo de gimnasio. Medido antes de abrir la regla (v513): de los 5
+// ejercicios del catálogo cuya propia ficha se declara sustituto y que además declaran `gym`,
+// este es el único que cae en un barrido de gym — 116 de 1.008 días, 11,5% — y los otros dos
+// que caerían son de banda, ya borrados por la línea de arriba. Fuera del gym sigue entrando.
+const GEN_GYM_SUB_IDS = ['e219'];
+
 function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   const res = [];
   if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
@@ -1266,6 +1283,7 @@ function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   // el nombre, `e93` («Sentadilla con Banda» = abductor disfrazado) se colaría y la lista sería
   // decorativa. Es el caso que el nombre genuinamente no delata.
   const ids = new Set();
+  if (place === 'gym') GEN_GYM_SUB_IDS.forEach(i => ids.add(i));
   lim.keys.forEach(z => (GEN_EXCL_IDS[z] || []).forEach(i => ids.add(i)));
   return ex => {
     if (ex && ex.id && ids.has(ex.id)) return true;
@@ -1273,14 +1291,25 @@ function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   };
 }
 
-// Resuelve la lista de bloques (split). Full Body para Principiante o ≤2 días (poco margen
-// para dividir). NIVEL manda, no la edad: un menor INTERMEDIO/AVANZADO sin condiciones recibe
-// su split de gym (PPL hombre / glúteo-pierna+tren mujer); la seguridad de menores es de
-// SELECCIÓN de ejercicios (sin carga axial con barra, ver _genMakeExcluder), no de estructura.
-// Antes `minor` forzaba Full Body toda la semana y un joven intermedio (Samuel, 14) quedaba
-// como principiante — corregido 2026-06-23 por pedido de Camilo.
-function _genResolveSplit(sexKey, days, level) {
-  if (level === 'Principiante' || days <= 2) return Array(Math.max(1, days)).fill('FULL_BODY');
+// Resuelve la lista de bloques (split). NIVEL manda, no la edad: un menor INTERMEDIO/AVANZADO sin
+// condiciones recibe su split de gym (PPL hombre / glúteo-pierna+tren mujer); la seguridad de
+// menores es de SELECCIÓN de ejercicios (sin carga axial con barra, ver _genMakeExcluder), no de
+// estructura. Antes `minor` forzaba Full Body toda la semana y un joven intermedio (Samuel, 14)
+// quedaba como principiante — corregido 2026-06-23 por pedido de Camilo.
+//
+// El SITIO también manda (2026-08-22, decisión de Camilo tras ver la rutina de un alta nueva):
+// un Full Body EN GIMNASIO obliga a pasear — piernas→pecho→espalda→hombros→glúteo→core son
+// **5 cambios de zona por sesión, 15 en la semana**, contra los 8 del split que ya reciben los
+// intermedios. Así que un Principiante de GYM con 3+ días recibe el split de su sexo; Full Body
+// se queda para casa/parque/corporal (donde no hay zonas que recorrer) y para ≤2 días en
+// cualquier sitio (poco margen para dividir). Costo aceptado con la cifra delante: la frecuencia
+// por músculo baja de ×3 a ×1 por semana.
+// ⚠️ `place` es OBLIGATORIO en la práctica: sin él se asume gym (es el sitio por defecto de
+// `generarRutinas`), y un principiante de CASA recibiría el split de gym.
+function _genResolveSplit(sexKey, days, level, place) {
+  if (days <= 2) return Array(Math.max(1, days)).fill('FULL_BODY');
+  const enGym = (place || 'gym') === 'gym';
+  if (level === 'Principiante' && !enGym) return Array(days).fill('FULL_BODY');
   return (GEN_SPLITS[sexKey] && GEN_SPLITS[sexKey][days]) || Array(days).fill('FULL_BODY');
 }
 
@@ -1320,7 +1349,7 @@ function generarRutinas(client, lib, opts) {
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
 
-  const codes = _genResolveSplit(sexKey, days, level);
+  const codes = _genResolveSplit(sexKey, days, level, place);
   // En qué días de la semana cae el plan. `opts.startDay` = nombre del día en que la persona
   // ARRANCA (lo usa el auto-registro para que el día 1 tenga entreno). Sin él, lunes: es lo que
   // el coach espera al generar desde su panel.
@@ -7853,6 +7882,7 @@ if (typeof module !== 'undefined' && module.exports) {
     genWeekDays,
     EX_LEVEL,
     exLevel,
+    GEN_GYM_SUB_IDS,
   mcInk,
     mcInkUp,
     inkOn,

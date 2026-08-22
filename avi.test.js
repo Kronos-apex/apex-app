@@ -588,9 +588,35 @@ test('Principiante → cap de 3 series', () => {
     .forEach(e => assert.ok(e.sets <= 3, `Principiante no debe pasar de 3 series, fue ${e.sets}`));
 });
 
-test('Principiante → Full Body (no split avanzado)', () => {
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
-  routines.forEach(r => assert.ok(/Full Body/.test(r.name), `Esperaba Full Body, fue "${r.name}"`));
+// 🔴 EL SITIO decide la ESTRUCTURA (v513, 2026-08-22 — decisión de Camilo viendo el plan de un
+// alta nueva). Fuera del gym no hay zonas que recorrer, así que el principiante conserva su
+// Full Body y su frecuencia ×3 por músculo. ⚠️ Este test es el que caza el olvido de CABLEAR
+// `place` en el llamador: sin él `_genResolveSplit` asume gym y un principiante de CASA
+// recibiría el split.
+test('Principiante FUERA del gym → Full Body (no split avanzado)', () => {
+  ['casa', 'parque', 'corporal'].forEach(place => {
+    const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place }, LIB, FIXED);
+    routines.forEach(r => assert.ok(/Full Body/.test(r.name), `en ${place} esperaba Full Body, fue "${r.name}"`));
+  });
+});
+
+// 🔴 v513 · EN GIMNASIO el Full Body obliga a pasear: piernas→pecho→espalda→hombros→glúteo→core
+// son 5 cambios de zona por sesión, 15 en la semana, contra los 8 del split que ya reciben los
+// intermedios (*«ni para mí como coach la haría»*, Camilo 21-ago). El costo está aceptado con la
+// cifra delante: la frecuencia por músculo baja de ×3 a ×1.
+test('🔴 v513 · Principiante EN GYM con 3+ días → el split de su sexo, no Full Body', () => {
+  const m = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, LIB, FIXED).routines;
+  assert.deepStrictEqual(m.map(r => r.name), ['Empuje', 'Tracción', 'Pierna'], `el hombre principiante de gym recibió ${m.map(r => r.name).join(' / ')}`);
+  const f = generarRutinas({ sex: 'F', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, LIB, FIXED).routines;
+  assert.deepStrictEqual(f.map(r => r.name), ['Glúteo y Piernas A', 'Tren Superior', 'Glúteo y Piernas B'], `la mujer principiante de gym recibió ${f.map(r => r.name).join(' / ')}`);
+  // Es el MISMO split que ya reciben los intermedios: si dejara de serlo, esto no es la regla que
+  // el PO aprobó sino un tercer camino que nadie ha revisado.
+  const inter = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo', place: 'gym' }, LIB, FIXED).routines;
+  assert.deepStrictEqual(m.map(r => r.name), inter.map(r => r.name), 'el principiante de gym debería recibir el mismo split que el intermedio');
+  // CONTROL: lo que cambió es la estructura por SITIO, no que el Full Body desapareciera del gym.
+  // Con ≤2 días sigue siendo Full Body en cualquier sitio (poco margen para dividir).
+  const dos = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, LIB, FIXED).routines;
+  assert.ok(dos.every(r => /Full Body/.test(r.name)), `con 2 días en gym esperaba Full Body, fue ${dos.map(r => r.name).join(' / ')}`);
 });
 
 test('Perder grasa → cierre con cardio en cada día', () => {
@@ -640,9 +666,15 @@ test('< 16 años INTERMEDIO → split de gym (no full body) PERO sin carga axial
   });
 });
 
-test('< 16 años PRINCIPIANTE → Full Body (el nivel, no la edad, fija la estructura)', () => {
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', age: 14, days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
+test('< 16 años PRINCIPIANTE fuera del gym → Full Body (el nivel, no la edad, fija la estructura)', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', age: 14, days: 3, goal: 'Ganar músculo', place: 'casa' }, LIB, FIXED);
   routines.forEach(r => assert.ok(/Full Body/.test(r.name), `Menor principiante sí va Full Body, fue "${r.name}"`));
+  // v513: en gym el menor principiante pasa al split como cualquiera — la seguridad de menores
+  // es de SELECCIÓN (sin carga axial con barra), nunca de estructura, y sigue mordiendo.
+  const gym = generarRutinas({ sex: 'M', level: 'Principiante', age: 14, days: 3, goal: 'Ganar músculo', place: 'gym' }, LIB, FIXED).routines;
+  assert.ok(!gym.some(r => /Full Body/.test(r.name)), `el menor de gym debería recibir split, fue ${gym.map(r => r.name).join(' / ')}`);
+  const nombres = gym.flatMap(r => r.exercises).map(e => e.name);
+  assert.ok(!nombres.some(n => /sentadilla|peso muerto|militar con barra/i.test(n)), `un menor recibió carga axial con barra: ${nombres.join(' / ')}`);
 });
 
 test('place=gym → bandas NO como ejercicio principal; en casa sí pueden entrar', () => {
@@ -664,7 +696,6 @@ test('place=gym → bandas NO como ejercicio principal; en casa sí pueden entra
     .routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
   assert.ok(casaNames.some(n => /banda/.test(n)), `En casa la banda sí debe poder entrar: ${casaNames}`);
 });
-
 section('7b. Gate por nivel de dificultad (P/I/A)');
 
 test('exLevel: lee el mapa, respeta level propio, default I', () => {
@@ -1741,8 +1772,12 @@ test('place="corporal" → reporta envGaps de músculos sin opción (espalda sol
   assert.ok(res.envGaps.includes('espalda'), `Esperaba 'espalda' en envGaps, fue ${JSON.stringify(res.envGaps)}`);
 });
 
+// `days: 2` desde v513: es la población que sigue recibiendo FULL_BODY dentro del gym (con 3+
+// días el principiante de gym pasa al split, y ENVLIB —fixture de 10 ejercicios— no tiene bíceps
+// ni tríceps, así que reportaría un hueco que es del FIXTURE, no del motor). Lo que este test
+// afirma es del ENTORNO, no de la estructura: en gym un músculo solo-gym NO es un hueco.
 test('place="gym" (default) → sí puede usar espalda solo-gym, sin huecos', () => {
-  const res = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, FIXED);
+  const res = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, FIXED);
   assert.deepStrictEqual(res.envGaps, []);
   assert.ok(routinesIncludeMuscle(res.routines, 'espalda'), 'En gym debería poder incluir espalda');
 });
@@ -1752,18 +1787,26 @@ test('sin place (default gym) → comportamiento intacto: usa cualquier env', ()
   assert.strictEqual(res.place, 'gym');
 });
 
+// `days: 2` desde v513 (ver el test de envGaps de arriba): el día de EMPUJE del split pide TRES
+// ejercicios de pecho y ENVLIB solo tiene UNO de peso corporal, así que el tercero salía de
+// máquina por falta de fixture, no por fallo de la preferencia. La propiedad —con calistenia
+// gana el peso corporal habiendo alternativa de gym— se afirma donde sí es observable.
 test('methodBias="calistenia" (vía opts/estilo) → prefiere peso corporal cuando hay opción', () => {
   // pecho tiene Flexiones (Bodyweight) y Press de Banca/Máquina; en gym con calistenia → Flexiones
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, { ...FIXED, methodBias: 'calistenia' });
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, { ...FIXED, methodBias: 'calistenia' });
   const pechos = routines.flatMap(r => r.exercises).filter(e => e.muscle === 'pecho');
   assert.ok(pechos.length && pechos.every(e => e.type === 'Bodyweight'), `Con calistenia el pecho debería ser peso corporal, fue ${pechos.map(e => e.name)}`);
 });
 
 // ── Variedad en la semana (2026-08-01) ──────────────────────────────────
-// El Principiante recibe Full Body los 3 días (mismos slots). Cuando el pool de su nivel
-// para un slot tenía UN solo ejercicio, ese caía los 3 días en toda semilla: medido en el
-// catálogo real, hombro compuesto en gym = 1 opción, y 660 de 1.440 planes (45,8%) repetían
-// un ejercicio TODOS los días. Es el origen del reclamo del PO «a nadie le gustan las rutinas».
+// El Full Body repite los MISMOS slots todos los días. Cuando el pool de su nivel para un slot
+// tenía UN solo ejercicio, ese caía todos los días en toda semilla: medido en el catálogo real,
+// hombro compuesto en gym = 1 opción, y 660 de 1.440 planes (45,8%) repetían un ejercicio TODOS
+// los días. Es el origen del reclamo del PO «a nadie le gustan las rutinas».
+// ⚠️ `days: 2` desde v513: VARLIB son máquinas de gimnasio (`env: ['gym']`, esta prueba no se
+// puede mudar a casa) y en gym el Full Body ya solo lo recibe quien entrena ≤2 días. Con 2 días
+// el defecto se reproduce igual —pool de uno ⇒ el mismo ejercicio los dos días— y los slots
+// siguen siendo idénticos entre días, que es la condición que hace falta.
 // Biblioteca mínima que reproduce la situación: UN solo hombro de nivel P, dos de nivel I.
 const VARLIB = [
   { id: 'v1', name: 'Sentadilla Máquina', muscle: 'piernas', type: 'Compuesto', sets: 3, reps: 10, level: 'P', env: ['gym'] },
@@ -1786,25 +1829,25 @@ const VARLIB = [
 ];
 const hombrosDe = routines => routines.flatMap(r => r.exercises).filter(e => e.muscle === 'hombros');
 
-test('el principiante NO recibe el mismo ejercicio los 3 días cuando hay alternativa', () => {
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+test('el principiante NO recibe el mismo ejercicio todos los días cuando hay alternativa', () => {
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
   const hom = hombrosDe(routines);
-  assert.strictEqual(hom.length, 3, 'los 3 días deben traer un hombro');
+  assert.strictEqual(hom.length, 2, 'los 2 días deben traer un hombro');
   const distintos = new Set(hom.map(e => e.name));
-  assert.strictEqual(distintos.size, 3, `el hombro se repitió en la semana: ${hom.map(e => e.name).join(' / ')}`);
+  assert.strictEqual(distintos.size, 2, `el hombro se repitió en la semana: ${hom.map(e => e.name).join(' / ')}`);
 });
 
 test('al variar NO se pierde el patrón del slot: el hombro sigue siendo compuesto', () => {
   // El relleno afloja el NIVEL antes que el TIPO: si aflojara el tipo, entrarían las
   // elevaciones laterales (aislamiento, nivel P) y el principiante perdería el press.
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
   const hom = hombrosDe(routines);
   assert.ok(hom.every(e => e.type === 'Compuesto'), `entró un aislamiento donde el slot pide compuesto: ${hom.map(e => `${e.name}(${e.type})`).join(' / ')}`);
 });
 
 test('la variedad JAMÁS supera el tope de nivel: a un principiante no le llega un Avanzado', () => {
   const AV = VARLIB.concat([{ id: 'v99', name: 'Press Militar Estricto de Pie', muscle: 'hombros', type: 'Compuesto', sets: 5, reps: 3, level: 'A', env: ['gym'] }]);
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, AV, FIXED);
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, AV, FIXED);
   const nombres = routines.flatMap(r => r.exercises).map(e => e.name);
   assert.ok(!nombres.includes('Press Militar Estricto de Pie'), `un ejercicio Avanzado llegó a un principiante: ${nombres.join(' / ')}`);
 });
@@ -1812,7 +1855,7 @@ test('la variedad JAMÁS supera el tope de nivel: a un principiante no le llega 
 test('SEGURIDAD: el menor sigue sin carga axial con barra aunque la variedad abra el nivel', () => {
   // El fix hace alcanzable «Press Militar con Barra» (nivel I) para un principiante. Para un
   // MENOR eso está prohibido (§2.2): el excluder debe seguir mordiendo por encima de la variedad.
-  const { routines } = generarRutinas({ sex: 'M', age: 14, level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
+  const { routines } = generarRutinas({ sex: 'M', age: 14, level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, VARLIB, FIXED);
   const nombres = routines.flatMap(r => r.exercises).map(e => e.name);
   assert.ok(!nombres.some(n => /militar con barra/i.test(n)), `un menor recibió carga axial con barra: ${nombres.join(' / ')}`);
 });
@@ -1820,9 +1863,10 @@ test('SEGURIDAD: el menor sigue sin carga axial con barra aunque la variedad abr
 test('la INTENCIÓN explícita manda sobre la variedad: calistenia repite antes que desobedecer', () => {
   // Con estilo calistenia y UN solo ejercicio de pecho corporal, repetirlo los 3 días es lo
   // correcto; meter un press de banca para «variar» sería desobedecer lo que pidió el coach.
-  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, { ...FIXED, methodBias: 'calistenia' });
+  const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 2, goal: 'Ganar músculo', place: 'gym' }, ENVLIB, { ...FIXED, methodBias: 'calistenia' });
   const pechos = routines.flatMap(r => r.exercises).filter(e => e.muscle === 'pecho');
-  assert.ok(pechos.length && pechos.every(e => e.type === 'Bodyweight'), `la variedad pisó el estilo pedido: ${pechos.map(e => e.name).join(' / ')}`);
+  assert.ok(pechos.length > 1, 'hacen falta al menos dos picks para que la variedad tenga ocasión de pisar el estilo');
+  assert.ok(pechos.every(e => e.type === 'Bodyweight'), `la variedad pisó el estilo pedido: ${pechos.map(e => e.name).join(' / ')}`);
 });
 
 function routinesIncludeMuscle(routines, m) {
@@ -10843,8 +10887,8 @@ test('🔴 v471 · sin ningún menú factible, el respaldo NO decide por calorí
 // principiante y el hip thrust unilateral) son datos del catálogo y un fixture no los tiene.
 test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.016 días)', () => {
   const EXL = core.EX_LEVEL;
-  let dias = 0, conGluteo = 0;
-  const avanzados = [], saltos = [], prohibidos = [];
+  let dias = 0, diasFB = 0, conGluteoFB = 0, semanasSplit = 0;
+  const avanzados = [], saltos = [], prohibidos = [], semanasSinGluteo = [];
   ['F', 'M', ''].forEach(sex => {
     ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Salud general'].forEach(goal => {
       ['gym', 'casa', 'corporal', 'parque'].forEach(place => {
@@ -10853,10 +10897,20 @@ test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.0
           ['', 'hernia discal L4-L5', 'menisco operado rodilla derecha'].forEach(notes => {
             const r = generarRutinas({ sex, age: 30, level: 'Principiante', days, goal, place, weight: 70, height: 168, notes },
               _LIB_REAL, { seed: 42, now: '2026-08-03T10:00:00Z' });
-            (r.routines || []).forEach(rt => {
+            // v513: en gym con 3+ días el principiante ya NO recibe Full Body sino el split de
+            // su sexo, así que la población se parte en dos y cada mitad se afirma como le toca
+            // (ver el bloque de aserciones al final).
+            const rts = r.routines || [];
+            const esFullBody = rts.length > 0 && rts.every(rt => /Full Body/.test(rt.name));
+            let diasConGluteoEnLaSemana = 0;
+            rts.forEach(rt => {
               dias++;
+              if (esFullBody) diasFB++;
               const g = (rt.exercises || []).filter(e => e.muscle === 'gluteo');
-              if (g.length) conGluteo++;
+              if (g.length) {
+                diasConGluteoEnLaSemana++;
+                if (esFullBody) conGluteoFB++;
+              }
               g.forEach(e => {
                 const lv = e.level || EXL[e.id] || 'I';
                 // 'I' es el respaldo previsto del gate (cap 1, preferP) cuando un entorno no
@@ -10868,14 +10922,28 @@ test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.0
                 if (e.id === 'e60' || e.id === 'e92') prohibidos.push(`${e.id} ${e.name} en ${place}`);
               });
             });
+            if (!esFullBody) {
+              semanasSplit++;
+              if (!diasConGluteoEnLaSemana) semanasSinGluteo.push(`${sex || 'sin sexo'} · ${place} · ${days}d · ${goal}${notes ? ' · con lesión' : ''}`);
+            }
           });
         });
       });
     });
   });
   assert.ok(dias > 1900, `esperaba el barrido completo, generé ${dias} días`);
-  assert.strictEqual(conGluteo, dias,
-    `${dias - conGluteo} de ${dias} días de principiante quedaron SIN trabajo dirigido de glúteo`);
+  // (1) FULL BODY — la propiedad ORIGINAL, intacta: glúteo dirigido TODOS los días. Es la
+  // población mayoritaria (medido v513: 1.824 de 2.016 días = 90,5%) y es donde el candado de
+  // Valery se afirma sin aflojar nada.
+  assert.strictEqual(conGluteoFB, diasFB,
+    `${diasFB - conGluteoFB} de ${diasFB} días de Full Body quedaron SIN trabajo dirigido de glúteo`);
+  assert.ok(diasFB > 1500, `el Full Body dejó de ser la mayoría de los días del principiante: ${diasFB} de ${dias}`);
+  // (2) SPLIT DE GYM (v513) — ahí el glúteo vive en SU día (PIERNA en el hombre, GP_A/GP_B en la
+  // mujer), así que la unidad es la SEMANA, no el día. 🔴 Fundir las dos poblaciones en un solo
+  // «por semana» habría aflojado el candado para el 90,5% de los días que siguen siendo Full Body.
+  assert.ok(semanasSplit > 0, 'el barrido ya no genera ni una semana de split: dejó de cubrir al principiante de gym');
+  assert.deepStrictEqual(semanasSinGluteo, [],
+    'una semana entera de split sin trabajo dirigido de glúteo');
   assert.deepStrictEqual(avanzados, [], 'a un principiante no le puede caer un glúteo de nivel avanzado');
   assert.deepStrictEqual(saltos, [], 'pliometría de impacto en el puesto de glúteo de un principiante');
   assert.deepStrictEqual(prohibidos, [], 'e60 es ADUCTOR y e92 es progresión avanzada: no van en este puesto');
@@ -10889,6 +10957,66 @@ test('e60 es aductor (no glúteo) y las pliometrías de salto son nivel avanzado
   // e186/e205 contra sus hermanas idénticas, que siempre estuvieron en 'A'
   ['e185', 'e186', 'e187', 'e205'].forEach(id => {
     assert.strictEqual(core.EX_LEVEL[id], 'A', `${id} es pliometría de alto impacto: va en nivel A`);
+  });
+  // v513 · e92 «Hip Thrust Unilateral»: su propia ficha dice «progresión avanzada» y sus hermanos
+  // unilaterales de tren inferior ya estaban en 'A'. El dato se afirma AQUÍ, junto a su criterio,
+  // porque generando planes solo se ve cuando un slot lo alcanza — y eso depende del split.
+  const e92 = _LIB_REAL.find(e => e.id === 'e92');
+  assert.ok(/progresi[óo]n avanzada/i.test(e92.desc), 'la ficha de e92 dejó de llamarlo progresión avanzada: re-evalúa su nivel');
+  ['e92', 'e95', 'e108', 'e40'].forEach(id => {
+    assert.strictEqual(core.EX_LEVEL[id], 'A', `${id} es una progresión unilateral/avanzada de tren inferior: va en nivel A`);
+  });
+});
+
+// 🔴 v513 · LA VARIANTE «CUANDO NO HAY BANCO» NO VA EN UN GIMNASIO. Reportado por el PO al mirar
+// el plan de un alta nueva: salió «Press de Pecho en el Suelo» (e219) en un gym, y su propia ficha
+// dice que es la variante de press *cuando no hay banco*. Misma familia que las bandas de arriba:
+// en un gimnasio con equipo real, la respuesta a una carencia que ahí no existe no es el trabajo
+// principal. Corre contra el CATÁLOGO REAL porque lo que se afirma es un dato del catálogo.
+test('🔴 v513 · en gimnasio NO entra la variante de sustitución por falta de equipo (floor press)', () => {
+  const e219 = _LIB_REAL.find(e => e.id === 'e219');
+  assert.ok(e219, 'e219 desapareció del catálogo');
+  // Si alguien reescribe la ficha, que vuelva a decidir: la regla se apoya en lo que el ejercicio
+  // DICE ser. (Mismo patrón que el candado de nivel de e92.)
+  assert.ok(/cuando no hay banco/i.test(e219.desc), 'la ficha de e219 dejó de llamarse la variante sin banco: re-evalúa la exclusión');
+  assert.ok((e219.env || []).includes('gym'), 'e219 ya no declara gym: entonces esta exclusión sobra y hay que quitarla');
+  let enGym = 0, enCasa = 0, diasGym = 0, pechoVacio = 0;
+  ['gym', 'casa'].forEach(place => {
+    ['F', 'M'].forEach(sex => {
+      ['Principiante', 'Intermedio'].forEach(level => {
+        [2, 3, 4, 5].forEach(days => {
+          [0, 42, 7].forEach(seed => {
+            const r = generarRutinas({ sex, age: 30, level, days, goal: 'Ganar músculo', place, weight: 70, height: 168, notes: '' },
+              _LIB_REAL, { seed, now: '2026-08-22T10:00:00Z' });
+            (r.routines || []).forEach(rt => {
+              const tiene = (rt.exercises || []).some(e => e.id === 'e219');
+              if (place === 'gym') {
+                diasGym++;
+                if (tiene) enGym++;
+                // el hueco NO se puede quedar vacío: excluir sin reemplazo sería quitarle el pecho
+                if (/Empuje|Tren Superior|Full Body/.test(rt.name) && !(rt.exercises || []).some(e => e.muscle === 'pecho')) pechoVacio++;
+              } else if (tiene) enCasa++;
+            });
+          });
+        });
+      });
+    });
+  });
+  assert.strictEqual(enGym, 0, `el floor press salió ${enGym} veces en ${diasGym} días de gimnasio`);
+  assert.strictEqual(pechoVacio, 0, `${pechoVacio} días de gym pidieron pecho y se quedaron sin ninguno`);
+  // CONTROL: la regla es del SITIO, no del ejercicio. Si en casa tampoco entra, se borró el
+  // ejercicio en vez de excluirlo donde estorba (medido v513: 54 de 168 días de casa).
+  assert.ok(enCasa > 0, 'e219 tampoco entra en casa: la exclusión se pasó de ancha y borró el ejercicio');
+  // 🔒 La lista se AUTO-VERIFICA contra el criterio escrito al lado de ella. Sin esto, ampliarla
+  // con un ejercicio legítimo de gimnasio —e109 «Elevaciones Y-T-W en Suelo», que es trabajo de
+  // hombro posterior y postura, no un sustituto por falta de equipo— lo borraría del gym y nada
+  // avisaría: es el sabotaje S7 de esta versión, que sin esta comprobación salía VERDE.
+  assert.ok(core.GEN_GYM_SUB_IDS.length > 0, 'la lista quedó vacía: entonces la exclusión no hace nada');
+  core.GEN_GYM_SUB_IDS.forEach(id => {
+    const e = _LIB_REAL.find(x => x.id === id);
+    assert.ok(e, `${id} está en GEN_GYM_SUB_IDS y no existe en el catálogo`);
+    assert.ok(/cuando no hay|si no tienes|sin banco|no necesitas|sustituy/i.test(`${e.desc || ''} ${e.descSimple || ''}`),
+      `${id} «${e.name}» queda excluido del gimnasio pero su propia ficha NO lo declara variante de sustitución por falta de equipo`);
   });
 });
 
