@@ -207,6 +207,14 @@ function festivosCO(anio) {
 const _festivosCache = {};
 // Fecha → 'YYYY-MM-DD' leyendo los componentes LOCALES. Null si no es una fecha.
 function _isoLocal(fecha) {
+  // 🔴 `new Date(null)` NO es Invalid Date: es la ÉPOCA, 1970-01-01 — que es Año Nuevo, o sea
+  // que una fecha AUSENTE se reportaba como FESTIVO. `isNaN` no lo ataja (el gotcha ya estaba
+  // escrito en CLAUDE.md por el `training_since` de comunidad). Lo tapaba el huso: en Colombia
+  // (UTC-5) la época cae el 31 de diciembre y da false; en UTC da true, y por eso lo cazó CI y
+  // no mi máquina. Se ataja el nulo ANTES de construir la fecha.
+  // `!fecha` cubre null, undefined, '' y **0** — que también es la época y es como llega un
+  // «no hay fecha» de un `|| 0`. Nadie entrena el 1 de enero de 1970.
+  if (!fecha) return null;
   if (typeof fecha === 'string') return fecha.slice(0, 10) || null;
   const d = fecha instanceof Date ? fecha : new Date(fecha);
   if (isNaN(d)) return null;

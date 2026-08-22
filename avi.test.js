@@ -11170,6 +11170,40 @@ test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.0
   assert.deepStrictEqual(saltos, [], 'pliometría de impacto en el puesto de glúteo de un principiante');
   assert.deepStrictEqual(prohibidos, [], 'e60 es ADUCTOR y e92 es progresión avanzada: no van en este puesto');
 });
+// 🔴 v517 · LA AUTO-CURA DEL ENTORNO. Arreglar el catálogo SOLO en la nube no dura: la app es
+// offline-first y el dispositivo pisa al servidor — el catálogo corregido se escribió en
+// Supabase el 22-ago y el teléfono del coach lo devolvió al estado viejo ESE MISMO DÍA.
+// `migrateEnv` no alcanza porque marca su bandera en localStorage (por dispositivo) y en esa
+// cuenta ya estaba dada por hecha. La reparación vive en el cliente, sin bandera, y toma el
+// valor de `defaultExercises` — no lo adivina.
+test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function healExerciseEnv');
+  assert.ok(i > 0, 'desapareció healExerciseEnv: el catálogo de quien ya migró vuelve a quedarse sin entorno');
+  const cuerpo = src.slice(i, src.indexOf('function ', i + 20));
+  // 🔴 sin bandera: es justo lo que hacía inalcanzable a `migrateEnv`
+  assert.ok(!/ax_env_migrated|localStorage.getItem/.test(cuerpo),
+    'la auto-cura se puso una bandera: entonces no cura a quien ya la tenía marcada, que es el caso que la motivó');
+  // el valor sale del CÓDIGO, revisado uno por uno; el heurístico solo para lo que el coach creó él
+  assert.ok(/defaultExercises/.test(cuerpo), 'la auto-cura dejó de tomar el entorno de defaultExercises');
+  // 🔴 La decisión se toma DENTRO del bucle, así que el orden se mide ahí y no en todo el
+  // cuerpo: `defaultExercises` aparece arriba (al armar el mapa) y con eso el sabotaje que
+  // consulta el heurístico primero salía VERDE.
+  const bucle = cuerpo.slice(cuerpo.indexOf('DB.exercises.forEach'));
+  const iInf = bucle.indexOf('inferExerciseEnv'), iCod = bucle.indexOf('porId.get');
+  assert.ok(iCod >= 0, 'la auto-cura dejó de mirar el catálogo del código dentro del bucle');
+  assert.ok(iInf < 0 || iCod < iInf,
+    'el heurístico se consulta ANTES que el catálogo del código: se equivoca en las dos direcciones (ver v516)');
+  // y persiste, o el arreglo se pierde al recargar
+  assert.ok(/svNow\('ax_e'/.test(cuerpo), 'la auto-cura no persiste lo que arregla');
+  // 🔴 CONTROL: se la LLAMA en el arranque. Una función pura que nadie invoca es «puerta
+  // cerrada, ventana abierta» — la lección de v509.
+  const boot = require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  assert.ok(/healExerciseEnv\(\)/.test(boot), 'healExerciseEnv existe pero no la llama nadie en el arranque');
+  assert.ok(boot.indexOf('healExerciseEnv()') > boot.indexOf("DB.exercises=ld('ax_e'"),
+    'la auto-cura corre ANTES de cargar el catálogo: no tendría nada que curar');
+});
+
 // 🔴 v516 · EL PRESET «CASA — PESO CORPORAL» NO LLEVA SESGO DE TIPO.
 // Su ENTORNO (`corporal`) ya deja fuera barra, polea y máquina, así que pedir ADEMÁS el tipo
 // `Funcional` no añadía nada y encogía el pool a 5 ejercicios. Medido sobre 36 planes:

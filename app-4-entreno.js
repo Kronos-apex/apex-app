@@ -1448,6 +1448,35 @@ function migrateExTypes(){
   if(n){sv('ax_e',DB.exercises);sv('ax_c',DB.clients);if(DB.templates)sv('ax_tpl',DB.templates);log(`AVI: ${n} ejercicios reclasificados (modalidades)`);}
   localStorage.setItem('ax_track_migrated','2');
 }
+// ── AUTO-CURA DEL ENTORNO (v517) ────────────────────────────────────────────────────────
+// 🔴 Corre en CADA arranque, sin bandera. `migrateEnv` (abajo) la marcaba en localStorage —o sea
+// por DISPOSITIVO— y en la cuenta del coach ya estaba dada por hecha, así que sus 91 ejercicios
+// sin `env` no se iban a curar nunca: el generador los trataba como SOLO GIMNASIO y a quien
+// entrena en casa le escondía las lagartijas, la plancha y la sentadilla de peso corporal.
+// 🔴 Y arreglarlo solo en la nube NO dura: la app es offline-first y el teléfono pisa al
+// servidor — se escribió el catálogo corregido en Supabase el 22-ago y el dispositivo del coach
+// lo devolvió al estado viejo el mismo día. La reparación tiene que vivir AQUÍ.
+// El valor NO se adivina: se toma de `defaultExercises`, que desde v516 lo declara para los 244
+// y está revisado uno por uno. Solo para un ejercicio que el coach creó él (no está en el
+// catálogo del código) se cae al heurístico, que es lo único disponible.
+// Idempotente: tras la primera pasada no falta ninguno y no vuelve a escribir.
+function healExerciseEnv(){
+  if(!Array.isArray(DB.exercises)||!DB.exercises.length)return 0;
+  const porId=new Map((typeof defaultExercises!=='undefined'?defaultExercises:[]).map(e=>[e.id,e]));
+  let n=0, inferidos=0;
+  DB.exercises.forEach(ex=>{
+    if(!ex||(Array.isArray(ex.env)&&ex.env.length))return;
+    const cod=porId.get(ex.id);
+    if(cod&&Array.isArray(cod.env)&&cod.env.length){ ex.env=cod.env.slice(); n++; return; }
+    if(typeof inferExerciseEnv==='function'){ ex.env=inferExerciseEnv(ex); n++; inferidos++; }
+  });
+  if(n){
+    svNow('ax_e',DB.exercises);   // inmediato: el próximo `sv` de otra cosa no puede adelantarse
+    log&&log('AVI: entorno repuesto en '+n+' ejercicios'+(inferidos?' ('+inferidos+' inferidos: son ejercicios propios del coach)':''));
+  }
+  return n;
+}
+
 // Migración: etiqueta `env` (entorno de equipo) en los ejercicios que no lo tengan,
 // usando el heurístico inferExerciseEnv (avi-core.js). PROPONE — el coach valida/edita.
 // Solo asigna si falta → no pisa ediciones del coach. Ver docs/estilos-y-entornos.md.

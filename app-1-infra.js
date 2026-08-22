@@ -1104,6 +1104,9 @@ async function syncFromCloud(){
   // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
   try{ migrateExTypes(); }catch(e){ warn('AVI: migrateExTypes falló (no bloquea):',e&&e.message); }
   try{ migrateEnv(); }catch(e){ warn('AVI: migrateEnv falló (no bloquea):',e&&e.message); }
+  // Va DESPUÉS y sin bandera: `migrateEnv` solo corre una vez por dispositivo y no alcanza a
+  // quien ya la tenía dada por hecha con el catálogo a medio etiquetar. Ver `healExerciseEnv`.
+  try{ healExerciseEnv(); }catch(e){ warn('AVI: healExerciseEnv falló (no bloquea):',e&&e.message); }
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
   DB.prs=ld('ax_pr',{});
