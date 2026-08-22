@@ -11213,6 +11213,97 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
     'la copia de la nube del coach pisa DB.exercises y nadie la cura después: vuelve a quedarse sin entorno');
 });
 
+// ── LA HISTORIA DE PROGRESO, PARA SU HISTORIA DE INSTAGRAM (v522) ────────────────────
+// El PO vende voz a voz y por historias, y lo que MÁS le vende es «el resultado visual de las
+// personas que entrenan conmigo». Medido: fotos de progreso hay 7 (3 personas) —un antes/después
+// no tiene material— pero hay 219 récords y progresiones grandes en 8 de 9.
+const _SES = (dias, ejercicios) => ({
+  id: 's' + dias, date: new Date(Date.now() - dias * 86400000).toISOString(),
+  finishedAt: new Date(Date.now() - dias * 86400000).toISOString(),
+  exercises: Object.keys(ejercicios).map(n => ({ name: n, sets: [{ kg: ejercicios[n], reps: 10 }] })),
+});
+const _HIST_ASTRID = [
+  _SES(85, { 'Prensa de Pierna': 40, 'Pullover en Polea': 4 }),
+  _SES(70, { 'Prensa de Pierna': 55, 'Pullover en Polea': 8 }),
+  _SES(55, { 'Prensa de Pierna': 70, 'Pullover en Polea': 10 }),
+  _SES(40, { 'Prensa de Pierna': 80, 'Pullover en Polea': 12 }),
+  _SES(28, { 'Prensa de Pierna': 85, 'Pullover en Polea': 15 }),
+  _SES(18, { 'Prensa de Pierna': 90, 'Pullover en Polea': 15 }),
+  _SES(10, { 'Prensa de Pierna': 95, 'Pullover en Polea': 15 }),
+  _SES(3, { 'Prensa de Pierna': 95, 'Pullover en Polea': 15 }),
+];
+
+test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', () => {
+  // Medido sobre las 4 personas con más historial: el porcentaje saca accesorios de peso chico
+  // («Pullover 4 → 15 kg, +275%») y el kilo saca lo que impresiona Y es creíble («Prensa
+  // 40 → 95»). En este fixture el pullover gana por porcentaje (+275%) y la prensa por kilos
+  // (+55), así que el orden DISCRIMINA — con cualquier otro fixture el test no probaría nada.
+  const st = core.clientProgressStory({ name: 'Astrid Beltrán', age: 33 }, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.ok, true);
+  assert.strictEqual(st.subidas[0].ejercicio, 'Prensa de Pierna',
+    'ordenó por porcentaje: el primero debería ser el que más KILOS ganó');
+  assert.strictEqual(st.subidas[0].de, 40);
+  assert.strictEqual(st.subidas[0].a, 95);
+  // CONTROL de que el fixture discrimina de verdad
+  const porPct = _HIST_ASTRID.length && (15 / 4 - 1) > (95 / 40 - 1);
+  assert.ok(porPct, 'el fixture dejó de distinguir los dos criterios: elige otro');
+  // y el porcentaje NO viaja en el resultado: un «+275%» en un post se lee como inflado
+  assert.ok(!('pct' in st.subidas[0]), 'la historia expone un porcentaje: no se muestra a propósito');
+});
+
+test('🔴 v522 · a un MENOR no se le arma la imagen de un toque', () => {
+  // Publicar en redes el nombre y los datos de entrenamiento de un menor necesita permiso del
+  // acudiente. No es que no se pueda: es que la app no lo hace fácil por accidente.
+  const menor = core.clientProgressStory({ name: 'Sharith', age: 16 }, _HIST_ASTRID, new Date());
+  assert.strictEqual(menor.ok, false);
+  assert.strictEqual(menor.razon, 'menor');
+  // 🔴 CONTROL: con los MISMOS datos, a una adulta sí. Sin esto, una función que devolviera
+  // siempre `false` pasaría la aserción de arriba.
+  const adulta = core.clientProgressStory({ name: 'Astrid', age: 18 }, _HIST_ASTRID, new Date());
+  assert.strictEqual(adulta.ok, true, 'a los 18 ya no es menor y la historia debe salir');
+  // y la edad manda sobre todo lo demás: aunque no tuviera entrenos, la razón es la edad
+  assert.strictEqual(core.clientProgressStory({ name: 'X', age: 15 }, [], new Date()).razon, 'menor');
+});
+
+test('🔴 v522 · sin material no se inventa una historia', () => {
+  const pocos = core.clientProgressStory({ name: 'Danilo', age: 51 }, _HIST_ASTRID.slice(0, 3), new Date());
+  assert.strictEqual(pocos.ok, false);
+  assert.strictEqual(pocos.razon, 'pocos_entrenos');
+  assert.strictEqual(pocos.faltan, core.STORY_MIN_SESSIONS - 3, 'dice cuántos entrenos faltan');
+  // entrenó, pero SIEMPRE con el mismo peso: no hay progresión que contar
+  const plano = [1, 2, 3, 4, 5, 6, 7, 8].map(d => _SES(d * 7, { 'Prensa de Pierna': 50 }));
+  const st = core.clientProgressStory({ name: 'Plano', age: 30 }, plano, new Date());
+  assert.strictEqual(st.ok, false);
+  assert.strictEqual(st.razon, 'sin_progresion', 'sin subir carga no hay historia de resultado');
+  // sin cliente ni sesiones no revienta
+  assert.strictEqual(core.clientProgressStory(null, null, new Date()).ok, false);
+});
+
+test('🔴 v522 · la historia dice solo el PRIMER nombre y cuenta lo que de verdad pasó', () => {
+  const st = core.clientProgressStory({ name: 'Astrid Beltrán', age: 33 }, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.nombre, 'Astrid', 'en una historia pública va el primer nombre, no el apellido');
+  assert.strictEqual(st.entrenos, 8);
+  assert.strictEqual(st.subieron, 2);
+  assert.strictEqual(st.conCarga, 2, 'cuenta los ejercicios con carga registrada, no los del catálogo');
+  assert.ok(st.meses >= 2 && st.meses <= 4, 'los meses salen de la PRIMERA sesión: ' + st.meses);
+  assert.ok(st.subidas.length <= core.STORY_TOP_LIFTS, 'no caben más de ' + core.STORY_TOP_LIFTS + ' en una historia');
+});
+
+test('🔴 v522 · el botón está cableado y la imagen es de formato HISTORIA', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/function renderStoryCard/.test(src), 'desapareció la tarjeta de la ficha');
+  assert.ok(/function shareClientProgress/.test(src), 'desapareció el generador de la imagen');
+  // 🔴 CONTROL de CABLEADO: una función que nadie llama es «puerta cerrada, ventana abierta» (v509).
+  assert.ok(/\n\s*renderStoryCard\(c\);/.test(src), 'renderStoryCard existe pero no la llama el render de la ficha');
+  const i = src.indexOf('function shareClientProgress');
+  const cuerpo = src.slice(i, src.indexOf('function ', i + 20));
+  assert.ok(/cv\.width=1080/.test(cuerpo) && /cv\.height=1920/.test(cuerpo),
+    'la imagen dejó de ser 1080×1920: ese es el formato de historia de Instagram y estado de WhatsApp');
+  // el motor vive en avi-core y aquí solo se dibuja: si el cálculo se muda al render, deja de
+  // poder probarse sin navegador y el candado de menores se vuelve inalcanzable para la suite.
+  assert.ok(/clientProgressStory\(/.test(src), 'la tarjeta dejó de usar el motor puro');
+});
+
 // ── ¿PUEDE EL COACH AVISARLE? (v520) ─────────────────────────────────────────────────
 // Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
 // guardado ni notificaciones activas— y la app no se lo decía en ninguna parte. Los 10

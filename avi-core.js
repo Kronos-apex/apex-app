@@ -7855,6 +7855,68 @@ function waPhone(raw) {
 
 // Por qué no se pudo usar el teléfono, en cristiano y accionable (R1.5: estados no felices con
 // mensaje útil). '' = el número sirve. PURA.
+// ── LA HISTORIA DE PROGRESO DE UN ASESORADO (v522) ───────────────────────────────────
+// El PO vende voz a voz y compartiendo el link en historias de Instagram, Facebook y WhatsApp,
+// y dice que **lo que más le vende hoy es el resultado visual de las personas que entrenan con
+// él**. Medido sobre sus 9 activos el 22-ago: fotos de progreso hay **7 en total, de 3 personas**
+// —un «antes y después» de fotos NO tiene material— pero hay **219 récords** y progresiones de
+// carga grandes en **8 de 9**. Esta función convierte eso en la historia que él ya cuenta a mano.
+//
+// 🔴 SE ORDENA POR KILOS GANADOS, NO POR PORCENTAJE. Medido sobre las 4 personas con más
+// historial: el porcentaje saca accesorios de peso chico («Pullover 4 → 15 kg, +275%») y el kilo
+// saca lo que de verdad impresiona y además es creíble («Prensa de Pierna 40 → 95 kg», Astrid).
+// Y el porcentaje NO se muestra: un «+650%» en un post se lee como marketing inflado aunque sea
+// verdad, y la credibilidad es justo lo que está vendiendo.
+//
+// 🔴 MENORES BLOQUEADOS. Publicar en redes el nombre y los datos de entrenamiento de un menor no
+// es una decisión de un toque. Devuelve `{ok:false, razon:'menor'}` y la pantalla lo explica: no
+// es que no se pueda con permiso del acudiente, es que la app no lo hace fácil por accidente.
+// Hoy no afecta a nadie (los 8 con historial tienen de 28 a 40 años) y por eso mismo se pone
+// ahora: cuando afecte a alguien, ya no se está mirando.
+const STORY_MIN_SESSIONS = 8;   // por debajo no hay historia que contar, hay un arranque
+const STORY_TOP_LIFTS = 3;      // lo que cabe legible en una historia de 1080×1920
+function clientProgressStory(client, sessions, now) {
+  client = client || {};
+  const ses = (sessions || []).filter(s => s && s.date);
+  const edad = parseInt(client.age);
+  if (edad && edad < 18) return { ok: false, razon: 'menor' };
+  if (ses.length < STORY_MIN_SESSIONS) return { ok: false, razon: 'pocos_entrenos', entrenos: ses.length, faltan: STORY_MIN_SESSIONS - ses.length };
+  const ref = now ? new Date(now) : new Date();
+  const ts = ses.map(s => Date.parse(s.date)).filter(t => isFinite(t)).sort((a, b) => a - b);
+  if (!ts.length) return { ok: false, razon: 'pocos_entrenos', entrenos: 0, faltan: STORY_MIN_SESSIONS };
+  const meses = Math.max(1, Math.round((ref.getTime() - ts[0]) / 86400000 / 30.4));
+
+  // Primer peso registrado de cada ejercicio contra el mayor que llegó a mover.
+  const primero = {}, mayor = {};
+  ses.slice().sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).forEach(s => {
+    (s.exercises || []).forEach(e => {
+      const nom = e && (e.name || e.id); if (!nom) return;
+      const kgs = ((e.sets || e.series) || []).map(x => parseFloat(x && (x.kg != null ? x.kg : x.peso)))
+        .filter(k => isFinite(k) && k > 0);
+      if (!kgs.length) return;
+      const mx = Math.max.apply(null, kgs);
+      if (primero[nom] == null) primero[nom] = mx;
+      mayor[nom] = Math.max(mayor[nom] || 0, mx);
+    });
+  });
+  const conCarga = Object.keys(primero);
+  const subidas = conCarga.map(n => ({ ejercicio: n, de: primero[n], a: mayor[n], gano: +(mayor[n] - primero[n]).toFixed(2) }))
+    .filter(x => x.gano > 0)
+    // por kilos ganados; a igualdad, el que arrancó más pesado (es el levantamiento más serio)
+    .sort((a, b) => (b.gano - a.gano) || (b.de - a.de) || (a.ejercicio < b.ejercicio ? -1 : 1));
+  if (!subidas.length) return { ok: false, razon: 'sin_progresion', entrenos: ses.length };
+
+  return {
+    ok: true,
+    nombre: String(client.name || '').trim().split(/\s+/)[0] || 'Tu asesorado',
+    entrenos: ses.length,
+    meses,
+    subidas: subidas.slice(0, STORY_TOP_LIFTS),
+    subieron: subidas.length,
+    conCarga: conCarga.length,
+  };
+}
+
 // ── ¿Puede el COACH avisarle a esta persona? (v520) ──────────────────────────────────
 // PURA. Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
 // guardado ni notificaciones activas— y la app no se lo decía por ninguna parte. La separación es
@@ -7889,6 +7951,9 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhone,
     waPhoneNote,
     coachCanReach,
+    clientProgressStory,
+    STORY_MIN_SESSIONS,
+    STORY_TOP_LIFTS,
     MS,
     fmtMetric,
     fmtDuration,

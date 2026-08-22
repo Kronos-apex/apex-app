@@ -1385,6 +1385,7 @@ async function openDetail(id,_silent){
   renderCoachHabitsCard(c);
   renderCoachFoodLogCard(c);
   renderCoachPRsCard(c);
+  renderStoryCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
@@ -1399,6 +1400,115 @@ async function openDetail(id,_silent){
     renderNutReviewCard(c);   // la nutrición llega con los datos pesados: recién ahí se puede revisar
     renderCoachHabitsCard(c); // la meta puede afinarse con el plan nutricional recién cargado
   }
+}
+
+// ══════════════════════════════════════════
+// 📣 LA HISTORIA DE PROGRESO, LISTA PARA COMPARTIR (v522)
+// ══════════════════════════════════════════
+// El PO vende voz a voz y compartiendo el link en historias de Instagram, Facebook y WhatsApp, y
+// dice que lo que MÁS le vende es «el resultado visual de las personas que entrenan conmigo».
+// Medido sobre sus 9 activos: las fotos de progreso son 7 en total (3 personas) —así que un
+// «antes y después» no tiene material— pero hay 219 récords y progresiones grandes en 8 de 9.
+// Esto arma la imagen 1080×1920 con los números REALES, que es lo que él ya postea a mano.
+// El motor (`clientProgressStory`) es PURO y vive en avi-core; aquí solo se dibuja.
+function renderStoryCard(c){
+  const el=document.getElementById('d-story'); if(!el)return;
+  el.innerHTML=''; el.style.display='none';
+  if(typeof clientProgressStory!=='function')return;
+  const st=clientProgressStory(c,(DB.history&&DB.history[c.id])||[],new Date());
+  _storyData=null;
+  if(!st||!st.ok){
+    // Solo se explica el caso del MENOR: los demás («aún no hay entrenos suficientes») no son un
+    // problema que el coach deba resolver y una tarjeta por cada uno sería ruido en su ficha.
+    if(st&&st.razon==='menor'){
+      el.style.display='block';
+      el.innerHTML=`<div class="card"><div class="cb" style="font-size:12.5px;color:var(--t2);line-height:1.55">
+        ${_coIco('lock',13,'🔒')} <b>Sin imagen para compartir:</b> es menor de edad. Publicar su nombre y sus
+        datos de entrenamiento en redes necesita el permiso de su acudiente, así que la app no lo
+        deja a un toque. Si lo tienes, ármala tú.</div></div>`;
+    }
+    return;
+  }
+  _storyData=st;
+  const filas=st.subidas.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px">
+      <span style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.ejercicio)}</span>
+      <b style="color:var(--gt);white-space:nowrap">${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join('');
+  el.style.display='block';
+  el.innerHTML=`<div class="card">
+    <div class="ch"><div class="ctitle">${_coIco('camera',14,'📣')} Su progreso, listo para tu historia</div></div>
+    <div class="cb">
+      <div style="font-size:12.5px;color:var(--t2);margin-bottom:8px">
+        <b style="color:var(--t1)">${esc(st.nombre)}</b> · ${st.entrenos} entrenos en ${st.meses} ${st.meses===1?'mes':'meses'}
+        · subió carga en ${st.subieron} de ${st.conCarga} ejercicios</div>
+      ${filas}
+      <button class="btn bp bsm" style="margin-top:10px;width:100%" onclick="shareClientProgress()">
+        ${_coIco('camera',13,'📸')} Crear la imagen para compartir</button>
+    </div></div>`;
+}
+let _storyData=null;
+// Dibuja 1080×1920 (formato historia) con la MISMA marca que el cierre del asesorado (v313):
+// gradiente esmeralda, sin fotos en el lienzo (jamás canvas contaminado ni dependencias de red).
+function shareClientProgress(){
+  const d=_storyData; if(!d){toast('Aún no hay historia que contar');return;}
+  const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
+  const x=cv.getContext('2d');
+  const bg=x.createLinearGradient(0,0,0,1920);
+  bg.addColorStop(0,'#06120D');bg.addColorStop(.55,'#0A2118');bg.addColorStop(1,'#04090688');
+  x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
+  x.fillStyle=bg;x.fillRect(0,0,1080,1920);
+  const glow=x.createRadialGradient(870,240,60,870,240,700);
+  glow.addColorStop(0,'rgba(16,224,160,.20)');glow.addColorStop(1,'rgba(16,224,160,0)');
+  x.fillStyle=glow;x.fillRect(0,0,1080,1100);
+  const F='system-ui,Roboto,sans-serif';
+  x.fillStyle='#EAFBF4';x.font='900 84px '+F;x.fillText('AVI',90,190);
+  x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
+  x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
+  x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
+  x.fillStyle='#10E0A0';x.font='800 34px '+F;
+  x.fillText((d.meses===1?'UN MES':d.meses+' MESES')+' ENTRENANDO',90,520);
+  x.fillStyle='#FFFFFF';x.font='900 120px '+F;x.fillText(d.nombre,90,650);
+  x.fillStyle='rgba(234,251,244,.75)';x.font='600 42px '+F;
+  x.fillText(d.entrenos+' entrenos completados',90,725);
+  // las subidas de carga, que es lo que se ve y lo que convence
+  x.fillStyle='rgba(234,251,244,.55)';x.font='700 30px '+F;x.fillText('SUBIÓ DE PESO EN',90,880);
+  let y=980;
+  d.subidas.forEach(s2=>{
+    const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+    x.fillStyle='rgba(255,255,255,.05)';_rr(90,y-62,900,150,26);x.fill();
+    x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;_rr(90,y-62,900,150,26);x.stroke();
+    // el nombre del ejercicio se RECORTA por ancho medido, no por número de letras: «Extensión de
+    // Cuádriceps en Máquina» y «Prensa» no ocupan lo mismo y a 40px un corte fijo parte palabras.
+    x.fillStyle='rgba(234,251,244,.85)';x.font='700 34px '+F;
+    let nom=String(s2.ejercicio);
+    while(nom.length>4&&x.measureText(nom).width>560)nom=nom.slice(0,-1);
+    if(nom!==s2.ejercicio)nom=nom.replace(/\s+\S*$/,'')+'…';
+    x.fillText(nom,126,y-8);
+    x.fillStyle='#10E0A0';x.font='900 56px '+F;
+    const txt=s2.de+' → '+s2.a+' kg';
+    x.fillText(txt,126,y+58);
+    y+=180;
+  });
+  x.fillStyle='rgba(234,251,244,.7)';x.font='600 34px '+F;
+  x.fillText('Subió carga en '+d.subieron+' de '+d.conCarga+' ejercicios',90,y+30);
+  x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
+  x.fillStyle='rgba(234,251,244,.8)';x.font='700 34px '+F;
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
+  x.fillText('Entrena con '+(coach||'AVI')+(site?('  ·  '+site):''),90,1830);
+  try{window._storyLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness)
+  cv.toBlob(async blob=>{
+    if(!blob){toast('No se pudo crear la imagen');return;}
+    const file=new File([blob],'avi-progreso.png',{type:'image/png'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Progreso en AVI'});
+        return;
+      }
+    }catch(e){ if(e&&e.name==='AbortError')return; }
+    const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='avi-progreso.png';
+    document.body.appendChild(a2);a2.click();a2.remove();
+    toast('📥 Imagen guardada — súbela a tu historia');
+  },'image/png');
 }
 
 // ══════════════════════════════════════════
