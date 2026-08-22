@@ -11213,6 +11213,114 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
     'la copia de la nube del coach pisa DB.exercises y nadie la cura después: vuelve a quedarse sin entorno');
 });
 
+// ── LA VITRINA DE LA PÁGINA DE LLEGADA (v523) ────────────────────────────────────────
+// Quien toca el link que el PO comparte en sus historias veía una promesa y CERO pruebas.
+// `avi_showcase` es la ÚNICA tabla que se lee sin cuenta, y solo tiene lo que él publicó.
+const _STORY_OK = {
+  ok: true, nombre: 'Astrid', entrenos: 48, meses: 3,
+  subidas: [{ ejercicio: 'Prensa de Pierna', de: 40, a: 95 }], subieron: 15, conCarga: 26,
+};
+
+test('🔴 v523 · a la vitrina solo llega lo que la HISTORIA produjo', () => {
+  const r = core.showcaseRow(_STORY_OK);
+  assert.deepStrictEqual(Object.keys(r).sort(),
+    ['con_carga', 'entrenos', 'meses', 'nombre', 'subidas', 'subieron'],
+    'la fila publicada trae campos de más: es una tabla PÚBLICA');
+  assert.deepStrictEqual(Object.keys(r.subidas[0]).sort(), ['a', 'de', 'ejercicio']);
+  // 🔴 Se construye desde la HISTORIA, así que el candado de menores viaja incluido:
+  // una historia bloqueada no puede producir una fila publicable.
+  assert.strictEqual(core.showcaseRow(core.clientProgressStory({ name: 'Sharith', age: 16 }, [], new Date())), null,
+    'una historia de un MENOR produjo fila publicable');
+  assert.strictEqual(core.showcaseRow(null), null);
+  assert.strictEqual(core.showcaseRow({ ok: false }), null);
+});
+
+test('🔴 v523 · la app rechaza ANTES lo mismo que el servidor, con los mismos números', () => {
+  // El servidor es el candado (CHECKs + trigger) pero su mensaje no se le puede mostrar a
+  // nadie: «new row violates check constraint» no es un texto para el coach.
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, subidas: [{ ejercicio: 'P', de: 40, a: 40 }] }), null, 'a <= de no es una subida');
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, subidas: [{ ejercicio: '', de: 1, a: 2 }] }), null, 'ejercicio vacío');
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, subidas: [{ ejercicio: 'P', de: 1, a: 5000 }] }), null, 'kilos imposibles');
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, subieron: 30, conCarga: 2 }), null, 'subieron > conCarga');
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, nombre: 'x'.repeat(40) }), null, 'nombre más largo que el tope');
+  assert.strictEqual(core.showcaseRow({ ..._STORY_OK, subidas: [] }), null, 'sin subidas no hay tarjeta');
+  // no más de 3, que es lo que cabe legible
+  const cinco = { ..._STORY_OK, subidas: [1, 2, 3, 4, 5].map(i => ({ ejercicio: 'E' + i, de: 10, a: 20 })) };
+  assert.strictEqual(core.showcaseRow(cinco).subidas.length, 3);
+});
+
+test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se pueden separar', () => {
+  // Un espejo que MIENTE es peor que ninguno: o bloquea sin motivo, o el insert vuelve con un
+  // error de motor en la cara del coach. Los números se DERIVAN del archivo, no se re-escriben.
+  const sql = require('fs').readFileSync(require('path').join(__dirname, 'supabase/community/s1_showcase.sql'), 'utf8');
+  const num = re => { const m = sql.match(re); assert.ok(m, 'no encontré en el .sql: ' + re); return parseInt(m[1]); };
+  assert.strictEqual(core.SHOWCASE_MAX, num(/count\(\*\) from public\.avi_showcase[\s\S]*?>= (\d+)/),
+    'el tope de tarjetas de la app no es el del trigger');
+  assert.strictEqual(24, num(/length\(nombre\) <= (\d+)/), 'el tope del nombre cambió en el .sql');
+  assert.strictEqual(60, num(/length\(it->>'ejercicio'\) > (\d+)/), 'el tope del ejercicio cambió en el .sql');
+  // 🔴 CONTEO, no lista: una lista caza que se QUITE un check, jamás que se AGREGUE uno nuevo
+  // sin espejo — y un CHECK sin espejo sale en la cara de la persona (lección P2-3).
+  const cuerpo = sql.slice(sql.indexOf('create table public.avi_showcase'), sql.indexOf('\n);'));
+  const checks = (cuerpo.match(/check \(/g) || []).length;
+  assert.strictEqual(checks, 6,   // nombre · entrenos · meses · subieron · con_carga · subieron<=con_carga
+    'cambió el número de CHECK de la tabla (' + checks + '): si añadiste uno, dale su espejo en showcaseRow');
+  // y la tabla NO puede ganar un grant de UPDATE (lección c13c: el INSERT restringe y el
+  // UPDATE amplio deja editar la fila hasta el estado prohibido)
+  // 🔴 Sobre el SQL SIN COMENTARIOS: el encabezado explica por qué NO hay grant de UPDATE, y
+  // un regex crudo lo lee como si lo hubiera (el gotcha de la sonda que leía dentro de los
+  // comentarios del HTML, v492).
+  const sinComentarios = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
+  assert.ok(!/grant[^;]*update[^;]*avi_showcase/i.test(sinComentarios),
+    'apareció un grant de UPDATE sobre avi_showcase: editar = borrar y volver a publicar');
+});
+
+test('🔴 v523 · la vitrina se PINTA en la página de llegada y se llama en el arranque', () => {
+  const app2 = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/function renderShowcase/.test(app2), 'desapareció el render de la vitrina');
+  // 🔴 CONTROL de CABLEADO: una función que nadie llama es «puerta cerrada, ventana abierta».
+  assert.ok(/\brenderShowcase\(\)/.test(app2.replace(/function renderShowcase\(\)/, '')),
+    'renderShowcase existe pero no la llama nadie en el arranque');
+  const i = app2.indexOf('async function renderShowcase');
+  const cuerpo = app2.slice(i, i + 2200);
+  assert.ok(/avi_showcase/.test(cuerpo), 'la vitrina dejó de leer su tabla');
+  // 🔴 CADA interpolación, no «alguna». La primera versión de esta aserción decía «existe un
+  // esc() en el cuerpo» y el sabotaje que se lo quitaba AL NOMBRE salía VERDE, porque los
+  // otros campos seguían escapados: una aserción que el defecto puede satisfacer no es un
+  // candado. Y aquí pesa más que en otras pantallas — es innerHTML en la página PÚBLICA.
+  const plantilla = cuerpo.slice(cuerpo.indexOf('el.innerHTML'), cuerpo.indexOf('el.style.display'));
+  const interpolaciones = plantilla.match(/\$\{[^}]*}/g) || [];
+  assert.ok(interpolaciones.length >= 5, 'no encontré la plantilla de la vitrina: ' + interpolaciones.length);
+  const crudas = interpolaciones.filter(x => !/esc\(|\bm\b|lifts|\?\s*['"]/.test(x));
+  assert.deepStrictEqual(crudas, [], 'la vitrina interpola datos SIN esc() en innerHTML: ' + crudas.join(' · '));
+  // 🔴 SILENCIOSA ANTE EL FALLO: sin red o sin nada publicado NO se pinta un hueco.
+  // 🔴 SILENCIOSA ANTE EL FALLO: sin red o sin nada publicado NO se pinta un hueco. Se afirma
+  // por la PROPIEDAD (sale sin pintar) y no por la forma exacta de la línea.
+  const sinPintar = cuerpo.split('el.innerHTML')[0];
+  assert.ok(/!filas\.length/.test(sinPintar.replace(/\s+/g, '')) ||
+    /!filas.length/.test(sinPintar.replace(/\s+/g, '')),
+    'la vitrina llega a pintar aunque no haya tarjetas publicadas');
+  assert.ok(/catch\([\s\S]{0,40}return 0/.test(cuerpo),
+    'sin red la vitrina no se calla: un error en la primera pantalla de un desconocido es peor que no tenerla');
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="cin-showcase"[^>]*display:none/.test(html), 'la vitrina no nace oculta: se vería un hueco antes de cargar');
+});
+
+test('🔴 v523 · publicar es del coach, avisa que es PERMANENTE y se puede quitar', () => {
+  const app3 = require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/function publishProgress/.test(app3) && /function unpublishProgress/.test(app3),
+    'publicar sin poder QUITAR: si la persona lo pide, no habría cómo');
+  const i = app3.indexOf('async function publishProgress');
+  const cuerpo = app3.slice(i, app3.indexOf('async function unpublishProgress'));
+  assert.ok(/confirm\(/.test(cuerpo), 'publica sin confirmar');
+  // ⚖️ el aviso NO es decoración: la diferencia con una historia de Instagram es el punto
+  assert.ok(/CUALQUIERA/.test(cuerpo) && /24 horas/.test(cuerpo),
+    'el aviso dejó de decir que lo ve cualquiera y que NO se borra como una historia');
+  assert.ok(/\¿Ya le avisaste/.test(cuerpo), 'no le recuerda pedirle permiso a la persona');
+  // 🔒 sellado en localhost, como toda escritura a la nube (v298)
+  assert.ok(/cloudWriteSealed/.test(cuerpo), 'un harness en localhost podría publicar en la página REAL');
+  assert.ok(/showcaseRow/.test(cuerpo), 'publica sin pasar por el validador de la app');
+});
+
 // ── LA HISTORIA DE PROGRESO, PARA SU HISTORIA DE INSTAGRAM (v522) ────────────────────
 // El PO vende voz a voz y por historias, y lo que MÁS le vende es «el resultado visual de las
 // personas que entrenan conmigo». Medido: fotos de progreso hay 7 (3 personas) —un antes/después

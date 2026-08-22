@@ -7917,6 +7917,42 @@ function clientProgressStory(client, sessions, now) {
   };
 }
 
+// ── LA VITRINA PÚBLICA: qué se publica en la página de llegada (v523) ────────────────
+// Quien toca el link que el PO comparte en sus historias ve una promesa y CERO pruebas (medido
+// contra producción). Estas son las tarjetas que él elige publicar ahí.
+//
+// 🔒 ESPEJO DE LOS LÍMITES DE `avi_showcase` (supabase/community/s1_showcase.sql). El servidor es
+// el candado —tiene CHECKs y un trigger con allow-list— pero su mensaje no se le puede mostrar a
+// nadie: «new row violates check constraint» no es un texto para el coach. Aquí se rechaza antes,
+// con los MISMOS números. Un espejo que MIENTE es peor que ninguno (o se bloquea sin motivo, o el
+// insert vuelve con un error de motor), así que hay un test que lee el `.sql` y falla si se
+// desalinean, incluido el CONTEO de checks — una lista solo caza que se quite uno, jamás que se
+// AGREGUE uno nuevo sin espejo (lección P2-3).
+//
+// 🔒 SE CONSTRUYE DESDE `clientProgressStory`, no desde el cliente crudo: así lo que se publica no
+// puede traer un campo que la historia no tenga, y el candado de MENORES viaja incluido (una
+// historia bloqueada no produce fila).
+const SHOWCASE_MAX = 6;            // tope por coach; el mismo que el trigger
+const SHOWCASE_NOMBRE_MAX = 24;
+const SHOWCASE_EJERCICIO_MAX = 60;
+const SHOWCASE_KG_MAX = 1000;
+function showcaseRow(story) {
+  if (!story || story.ok !== true) return null;
+  const nombre = String(story.nombre || '').trim();
+  if (!nombre || nombre.length > SHOWCASE_NOMBRE_MAX) return null;
+  const ent = parseInt(story.entrenos), mes = parseInt(story.meses);
+  const sub = parseInt(story.subieron), con = parseInt(story.conCarga);
+  if (!(ent >= 1 && ent <= 2000) || !(mes >= 1 && mes <= 240)) return null;
+  if (!(sub >= 1 && sub <= 200) || !(con >= 1 && con <= 200) || sub > con) return null;
+  const subidas = (story.subidas || []).slice(0, 3).map(x => ({
+    ejercicio: String((x && x.ejercicio) || '').trim().slice(0, SHOWCASE_EJERCICIO_MAX),
+    de: +x.de, a: +x.a,
+  })).filter(x => x.ejercicio && isFinite(x.de) && isFinite(x.a)
+    && x.de > 0 && x.a > x.de && x.a <= SHOWCASE_KG_MAX);
+  if (!subidas.length) return null;
+  return { nombre, entrenos: ent, meses: mes, subidas, subieron: sub, con_carga: con };
+}
+
 // ── ¿Puede el COACH avisarle a esta persona? (v520) ──────────────────────────────────
 // PURA. Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
 // guardado ni notificaciones activas— y la app no se lo decía por ninguna parte. La separación es
@@ -7952,6 +7988,8 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhoneNote,
     coachCanReach,
     clientProgressStory,
+    showcaseRow,
+    SHOWCASE_MAX,
     STORY_MIN_SESSIONS,
     STORY_TOP_LIFTS,
     MS,

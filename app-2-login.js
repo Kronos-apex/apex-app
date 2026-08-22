@@ -1069,6 +1069,9 @@ syncFromCloud().then(async ()=>{
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered) tryAutoLogin();
+  // La vitrina de la página de llegada (v523). Va al FINAL y sin `await` en el camino crítico:
+  // es una prueba social, no un requisito para entrar — si tarda o falla, el login ya está ahí.
+  try{ renderShowcase(); }catch(_e){}
 }).catch(e=>{
   // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
   // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.
@@ -1852,4 +1855,39 @@ function openCoachStat(kind){
   titleEl.textContent=title;
   body.innerHTML=html+'<div style="height:30px"></div>';
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
+}
+
+// ── LA VITRINA DE LA PÁGINA DE LLEGADA (v523) ────────────────────────────────────────
+// El PO comparte el link en historias de Instagram, Facebook y WhatsApp, y quien llegaba veía
+// una promesa («tu coach arma tu plan») y CERO pruebas: ni una cifra, ni un resultado (medido
+// con captura de producción el 22-ago). Estas son las tarjetas que él publica desde la ficha.
+//
+// 🔒 Lectura PÚBLICA a propósito: `avi_showcase` es la única tabla que se lee sin cuenta, y solo
+// tiene lo que el coach eligió publicar (primer nombre y kilos). Va por `fetch` con la llave
+// pública, como el resto de lo que la app pide antes del login.
+// 🔴 SILENCIOSA ANTE EL FALLO: sin red, o sin nada publicado, NO se pinta nada. Un hueco vacío o
+// un «cargando…» en la primera pantalla de un desconocido es peor que no tener vitrina.
+async function renderShowcase(){
+  const el=document.getElementById("cin-showcase"); if(!el)return 0;
+  try{
+    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga&order=created_at.desc&limit=6",
+      {headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}});
+    if(!r.ok)return 0;
+    const filas=await r.json();
+    if(!Array.isArray(filas)||!filas.length)return 0;
+    const coach=(typeof getCoachName==="function"&&getCoachName())||"";
+    el.innerHTML=filas.map(f=>{
+      const lifts=(f.subidas||[]).slice(0,3).map(x=>
+        `<div class="sc-lift"><span>${esc(String(x.ejercicio||""))}</span><b>${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join("");
+      const m=parseInt(f.meses)||1;
+      return `<div class="sc-card">
+        <div class="sc-eyebrow">${m===1?"Un mes":m+" meses"} entrenando</div>
+        <div class="sc-name">${esc(String(f.nombre||""))}</div>
+        <div class="sc-sub">${esc(String(f.entrenos))} entrenos completados</div>
+        ${lifts}
+        <div class="sc-foot">Subió carga en ${esc(String(f.subieron))} de ${esc(String(f.con_carga))} ejercicios</div>
+      </div>`;}).join("");
+    el.style.display="flex";
+    return filas.length;
+  }catch(e){ return 0; }
 }

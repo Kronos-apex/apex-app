@@ -1443,7 +1443,9 @@ function renderStoryCard(c){
       ${filas}
       <button class="btn bp bsm" style="margin-top:10px;width:100%" onclick="shareClientProgress()">
         ${_coIco('camera',13,'📸')} Crear la imagen para compartir</button>
+      <div id="d-story-pub" style="margin-top:8px"></div>
     </div></div>`;
+  _renderStoryPub(st);
 }
 let _storyData=null;
 // Dibuja 1080×1920 (formato historia) con la MISMA marca que el cierre del asesorado (v313):
@@ -1509,6 +1511,79 @@ function shareClientProgress(){
     document.body.appendChild(a2);a2.click();a2.remove();
     toast('📥 Imagen guardada — súbela a tu historia');
   },'image/png');
+}
+
+// ── PUBLICAR ESA TARJETA EN LA PÁGINA DE LLEGADA (v523) ──────────────────────────────
+// El PO comparte el link en historias de Instagram/Facebook/WhatsApp y quien llega ve una promesa
+// y CERO pruebas (medido contra producción el 22-ago). Esto le deja poner ahí las tarjetas que él
+// elija. La tabla `avi_showcase` es pública POR DISEÑO: es lo único que se muestra sin cuenta.
+//
+// ⚖️ EL AVISO NO ES DECORACIÓN. Una historia de Instagram se borra en 24 h; esto queda PERMANENTE
+// y lo ve cualquiera. Por eso la confirmación lo dice con esas palabras y el borrado es de un
+// toque: si la persona se lo pide, se quita ya.
+let _pubCache=null;   // filas publicadas del coach (se relee tras publicar/quitar)
+async function _loadShowcase(force){
+  if(_pubCache&&!force)return _pubCache;
+  try{
+    const c=AUTH.client(); if(!c)return (_pubCache=[]);
+    const u=await AUTH.getUser(); if(!u)return (_pubCache=[]);
+    const {data,error}=await c.from('avi_showcase').select('id,nombre,created_at')
+      .eq('coach_id',u.id).order('created_at',{ascending:false});
+    if(error){warn('AVI showcase:',error.message);return (_pubCache=[]);}
+    return (_pubCache=data||[]);
+  }catch(e){ warn('AVI showcase:',e&&e.message); return (_pubCache=[]); }
+}
+async function _renderStoryPub(st){
+  const el=document.getElementById('d-story-pub'); if(!el)return;
+  const filas=await _loadShowcase();
+  const el2=document.getElementById('d-story-pub'); if(!el2)return;  // cambió de ficha mientras cargaba
+  const ya=filas.find(f=>f.nombre===st.nombre);
+  if(ya){
+    el2.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt)">
+      ${_coIco('check',13,'✓')} <span>Publicada en tu página</span>
+      <button class="btn bd bsm" style="margin-left:auto" onclick="unpublishProgress('${esc(ya.id)}')">Quitar</button></div>`;
+    return;
+  }
+  const lleno=filas.length>=(typeof SHOWCASE_MAX==='number'?SHOWCASE_MAX:6);
+  el2.innerHTML=lleno
+    ? `<div style="font-size:12px;color:var(--t2)">Tu página ya tiene ${filas.length} tarjetas (el tope). Quita una para publicar esta.</div>`
+    : `<button class="btn bo bsm" style="width:100%" onclick="publishProgress()">
+         ${_coIco('users',13,'🌐')} Publicar en mi página (la ve cualquiera)</button>`;
+}
+async function publishProgress(){
+  const st=_storyData; if(!st){toast('Aún no hay historia que contar');return;}
+  const row=(typeof showcaseRow==='function')?showcaseRow(st):null;
+  if(!row){toast('Esta historia no se puede publicar');return;}
+  if(!confirm(`Vas a publicar la tarjeta de ${row.nombre} en la página que abre tu link.\n\n`+
+    `La va a ver CUALQUIERA que entre, sin cuenta, y se queda ahí hasta que la quites — no es `+
+    `como una historia de Instagram, que se borra en 24 horas.\n\n`+
+    `¿Ya le avisaste a ${row.nombre}?`))return;
+  if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){
+    toast('Sellado en local: no se publica de verdad'); return;
+  }
+  try{
+    const c=AUTH.client(); const u=await AUTH.getUser();
+    if(!c||!u){toast('Necesitas conexión para publicar');return;}
+    const {error}=await c.from('avi_showcase').insert({...row,coach_id:u.id});
+    if(error){ toast(/6 tarjetas/.test(error.message)?'Tu página ya tiene el tope de tarjetas':'No se pudo publicar'); return; }
+    await _loadShowcase(true);
+    toast('🌐 Publicada en tu página');
+    const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
+  }catch(e){ toast('No se pudo publicar'); }
+}
+async function unpublishProgress(id){
+  if(!confirm('¿Quitarla de tu página? Deja de verse de inmediato.'))return;
+  if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){
+    toast('Sellado en local'); return;
+  }
+  try{
+    const c=AUTH.client(); if(!c)return;
+    const {error}=await c.from('avi_showcase').delete().eq('id',id);
+    if(error){toast('No se pudo quitar');return;}
+    await _loadShowcase(true);
+    toast('Quitada de tu página');
+    const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
+  }catch(e){ toast('No se pudo quitar'); }
 }
 
 // ══════════════════════════════════════════
