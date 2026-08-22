@@ -105,16 +105,110 @@ function genDayIdxFromDate(d) { const n = (d instanceof Date ? d : new Date(d)).
 //    Amontonar no es programar; el trabajo se distribuye para que haya recuperación entre
 //    sesiones.
 //
-// Reparte `n` días a lo ancho de la semana con huecos parejos, empezando en `startIdx`
-// (0 = Lunes … 6 = Domingo). Pura y determinista. n=3 → huecos de 2-3 días.
+// 3. 🔴 **SOLO DÍAS HÁBILES** (2026-08-22, regla de Camilo): *«mi horario laboral en el gym es
+//    solo entre semana, no trabajo sábados ni domingos ni festivos»*. El coach ACOMPAÑA las
+//    sesiones en su gimnasio, así que programar un entreno un domingo es programarlo sin él.
+//    Medido sobre los planes reales antes del cambio: a Danilo le tocaba el DOMINGO y a Felipe
+//    el SÁBADO. Los festivos son otra cosa —son FECHAS, no días de la semana— y se resuelven
+//    aparte (ver `esFestivoCO`): aquí solo vive el patrón semanal.
+//
+// Reparte `n` días entre LUNES y VIERNES, empezando en `startIdx` (0 = Lunes … 6 = Domingo).
+// Pura y determinista.
+// El reparto usa los EXTREMOS de la franja (0 y 4) y no huecos parejos: con 5 casillas la
+// fórmula de huecos parejos daba lunes-miércoles-JUEVES para 3 días, y una semana de 3 se
+// programa lunes-miércoles-viernes. Sale: 2→Lu·Vi · 3→Lu·Mi·Vi · 4→Lu·Ma·Ju·Vi · 5→Lu a Vi.
+const GEN_WORK_DAYS = GEN_WEEK_DAYS.slice(0, 5); // Lunes…Viernes
+const GEN_MAX_WORK_DAYS = GEN_WORK_DAYS.length;  // tope de días de entreno por semana
 function genWeekDays(n, startIdx) {
-  const d = Math.max(1, Math.min(7, parseInt(n) || 3));
-  const s = ((parseInt(startIdx) || 0) % 7 + 7) % 7;
+  const d = Math.max(1, Math.min(GEN_MAX_WORK_DAYS, parseInt(n) || 3));
+  let s = ((parseInt(startIdx) || 0) % 7 + 7) % 7;
+  // Quien se registra SÁBADO o DOMINGO arranca el lunes: es el próximo día que el coach trabaja.
+  // ⚠️ Para esa persona el «día 1 con entreno» de la nota de arriba deja de ser posible por
+  // definición — no es una regresión del reparto, es el horario del gimnasio. Lo que su pantalla
+  // le diga ese fin de semana es un asunto aparte y sigue abierto.
+  if (s >= GEN_MAX_WORK_DAYS) s = 0;
   const out = [];
-  for (let i = 0; i < d; i++) out.push(GEN_WEEK_DAYS[(s + Math.round(i * 7 / d)) % 7]);
+  for (let i = 0; i < d; i++) {
+    const paso = d === 1 ? 0 : Math.round(i * (GEN_MAX_WORK_DAYS - 1) / (d - 1));
+    out.push(GEN_WORK_DAYS[(s + paso) % GEN_MAX_WORK_DAYS]);
+  }
   return out;
 }
 
+
+// ── FESTIVOS DE COLOMBIA ─────────────────────────────────────────────────────────────
+// Camilo (2026-08-22): *«no trabajo sábados ni domingos ni festivos con el calendario
+// colombiano»*. Los fines de semana los resuelve `genWeekDays` porque son días de la SEMANA;
+// un festivo es una FECHA y no se puede expresar en un plan semanal — vive aquí.
+//
+// Son 18 al año y se calculan, no se listan: una lista escrita a mano caduca cada 1 de enero
+// y nadie se entera hasta que alguien entrena un festivo. Tres reglas:
+//  1. FIJOS que nunca se mueven: 1-ene, 1-may, 20-jul, 7-ago, 8-dic, 25-dic.
+//  2. LEY EMILIANI (Ley 51 de 1983): estos siete se corren al LUNES siguiente si no caen lunes
+//     — Reyes (6-ene), San José (19-mar), San Pedro y San Pablo (29-jun), Asunción (15-ago),
+//     Día de la Raza (12-oct), Todos los Santos (1-nov), Independencia de Cartagena (11-nov).
+//  3. MÓVILES por Pascua: Jueves y Viernes Santo NO se mueven (Pascua −3 y −2); Ascensión,
+//     Corpus Christi y Sagrado Corazón sí, y por eso su desplazamiento ya cae en lunes
+//     (Pascua +43, +64, +71).
+// La Pascua sale del cómputo gregoriano anónimo (Meeus/Jones/Butcher), que es exacto.
+// Todo en UTC a propósito: solo se comparan año/mes/día, y construir fechas locales metería el
+// huso del navegador en una cuenta que no lo necesita.
+function pascuaGregoriana(anio) {
+  const a = anio % 19, b = Math.floor(anio / 100), c = anio % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31);       // 3 = marzo, 4 = abril
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(anio, mes - 1, dia);
+}
+const _MS_DIA = 86400000;
+// Corre `ms` al lunes siguiente si no es lunes (Ley Emiliani). getUTCDay: 0 = domingo.
+function _aLunes(ms) {
+  const dow = new Date(ms).getUTCDay();
+  return dow === 1 ? ms : ms + ((8 - dow) % 7) * _MS_DIA;
+}
+// Los festivos del año, como 'YYYY-MM-DD', ordenados y SIN REPETIR. Puro y determinista.
+// 🔴 Son 18 fechas casi siempre, pero NO siempre: dos reglas distintas pueden aterrizar en el
+// mismo lunes y el país se queda con un festivo menos. Pasa de verdad — en 2025 San Pedro y San
+// Pablo (29-jun, domingo → lunes 30) cayó encima de Sagrado Corazón (Pascua +71 = 30-jun), y en
+// 2030 vuelve a pasar el 1-jul. Sin el `Set`, `festivosCO(2025).length` diría 18 sobre 17 fechas
+// y cualquier cuenta hecha con eso saldría torcida.
+function festivosCO(anio) {
+  anio = parseInt(anio); if (!anio) return [];
+  const P = pascuaGregoriana(anio);
+  const fijos = [[0, 1], [4, 1], [6, 20], [7, 7], [11, 8], [11, 25]].map(([m, d]) => Date.UTC(anio, m, d));
+  const emiliani = [[0, 6], [2, 19], [5, 29], [7, 15], [9, 12], [10, 1], [10, 11]]
+    .map(([m, d]) => _aLunes(Date.UTC(anio, m, d)));
+  const pascuales = [P - 3 * _MS_DIA, P - 2 * _MS_DIA, P + 43 * _MS_DIA, P + 64 * _MS_DIA, P + 71 * _MS_DIA];
+  return [...new Set([...fijos, ...emiliani, ...pascuales]
+    .map(ms => new Date(ms).toISOString().slice(0, 10)))].sort();
+}
+// ¿Esta fecha es festivo en Colombia? Acepta Date o 'YYYY-MM-DD'.
+// ⚠️ De un `Date` se leen los componentes LOCALES: quien lo usa está mirando su propio
+// calendario, y un 25 de diciembre a las 8 p.m. en Bogotá ya sería 26 en UTC.
+const _festivosCache = {};
+function esFestivoCO(fecha) {
+  let iso;
+  if (typeof fecha === 'string') iso = fecha.slice(0, 10);
+  else {
+    const d = fecha instanceof Date ? fecha : new Date(fecha);
+    if (isNaN(d)) return false;
+    iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  const anio = parseInt(iso.slice(0, 4)); if (!anio) return false;
+  if (!_festivosCache[anio]) _festivosCache[anio] = new Set(festivosCO(anio));
+  return _festivosCache[anio].has(iso);
+}
+// ¿El coach trabaja ese día? = día hábil Y no festivo. Es la pregunta que hace el resto de la app.
+function esDiaLaboralCO(fecha) {
+  const d = fecha instanceof Date ? fecha : new Date(fecha);
+  if (isNaN(d)) return false;
+  const dow = d.getDay(); // 0 = domingo, 6 = sábado
+  if (dow === 0 || dow === 6) return false;
+  return !esFestivoCO(d);
+}
 
 // Deltoides POSTERIOR (face pull, pájaro, pec deck inverso, Y-T-W…) = músculo de TRACCIÓN
 // aunque su etiqueta de catálogo sea "hombros". No debe caer en día de EMPUJE; pertenece al
@@ -157,13 +251,13 @@ const GEN_SPLITS = {
     3: ['GP_A', 'TREN_SUP', 'GP_B'],
     4: ['GP_A', 'TREN_SUP', 'GP_B', 'CORE_CARDIO'],
     5: ['GP_A', 'TREN_SUP', 'GP_B', 'EMP_BRAZOS', 'CORE_CARDIO'],
-    6: ['GP_A', 'TREN_SUP', 'GP_B', 'GP_A', 'TREN_SUP', 'GP_B'],
+    6: ['GP_A', 'TREN_SUP', 'GP_B', 'GP_A', 'TREN_SUP', 'GP_B'], // ⚠️ INALCANZABLE desde 2026-08-22: el tope es 5 (lunes a viernes). Se conserva para el día que el coach trabaje sábados.
   },
   M: {
     3: ['EMPUJE', 'TRACCION', 'PIERNA'],
     4: ['EMPUJE', 'TRACCION', 'PIERNA', 'TREN_SUP'],
     5: ['EMPUJE', 'PIERNA', 'TRACCION', 'HOMBROS_BRAZOS', 'CARDIO_CORE'],
-    6: ['EMPUJE', 'PIERNA', 'TRACCION', 'EMPUJE', 'PIERNA', 'TRACCION'],
+    6: ['EMPUJE', 'PIERNA', 'TRACCION', 'EMPUJE', 'PIERNA', 'TRACCION'], // ⚠️ INALCANZABLE: ver la nota del split de 6 días de arriba.
   },
 };
 
@@ -1322,7 +1416,11 @@ function generarRutinas(client, lib, opts) {
   lib = (lib || []).filter(e => e && e.id && e.muscle);
   const idFn = opts.idFn || (() => Date.now().toString(36) + Math.random().toString(36).slice(2));
   const now = opts.now || new Date().toISOString();
-  const days = Math.max(1, Math.min(6, parseInt(client.days) || 3));
+  // Tope 5 y no 6: las rutinas van de lunes a viernes (ver `genWeekDays`), así que un sexto
+  // día no tendría dónde caer y `_genDays[5]` saldría `undefined`. A quien tenga 6 en su
+  // ficha se le entregan 5 — `planDays` lee las rutinas reales, así que la app no le promete
+  // un día que no tiene.
+  const days = Math.max(1, Math.min(GEN_MAX_WORK_DAYS, parseInt(client.days) || 3));
   const level = client.level || 'Principiante';
   const age = parseInt(client.age) || null;
   const minor = age != null && age < 16;
@@ -7878,6 +7976,12 @@ if (typeof module !== 'undefined' && module.exports) {
     TODAY_MAX_CARDS,
     generarRutinas,
     GEN_WEEK_DAYS,
+    GEN_WORK_DAYS,
+    festivosCO,
+    esFestivoCO,
+    esDiaLaboralCO,
+    pascuaGregoriana,
+    GEN_MAX_WORK_DAYS,
     genDayIdxFromDate,
     genWeekDays,
     EX_LEVEL,

@@ -496,27 +496,186 @@ test('nº de rutinas = días (mujer, 4 días)', () => {
   // producía el generador. No se cambió la aserción para que pasara: se cambió el COMPORTAMIENTO
   // a propósito (2026-08-01) porque amontonar 4 entrenos seguidos y descansar 3 no es programar.
   // Ahora el plan se reparte a lo ancho de la semana. Ver `genWeekDays`.
-  assert.deepStrictEqual(routines.map(r => r.day), ['Lunes', 'Miércoles', 'Viernes', 'Sábado']);
+  // ⚠️ Afirmaba '…Viernes, Sábado'. Cambió el COMPORTAMIENTO, no la aserción: desde el
+  // 2026-08-22 el plan solo usa días hábiles (el coach no trabaja fines de semana).
+  assert.deepStrictEqual(routines.map(r => r.day), ['Lunes', 'Martes', 'Jueves', 'Viernes']);
 });
 
 test('🔴 el plan se REPARTE en la semana, no se amontona en días seguidos', () => {
   // Un principiante de 3 días entrenaba lunes, martes y miércoles y descansaba cuatro.
   const dias = core.genWeekDays(3, 0);
-  assert.deepStrictEqual(dias, ['Lunes', 'Miércoles', 'Sábado']);
+  assert.deepStrictEqual(dias, ['Lunes', 'Miércoles', 'Viernes']);
   // ninguna pareja de días de entreno puede quedar pegada cuando hay hueco de sobra
   const idx = dias.map(d => core.GEN_WEEK_DAYS.indexOf(d));
   idx.slice(1).forEach((v, i) => assert.ok(v - idx[i] >= 2, `quedaron días seguidos: ${dias.join(', ')}`));
+});
+
+// 🔴 SOLO DÍAS HÁBILES (2026-08-22, regla de Camilo: «no trabajo sábados ni domingos»). El coach
+// acompaña las sesiones en su gimnasio, así que un entreno en fin de semana es un entreno sin él.
+// Antes del cambio pasaba de verdad: a Danilo le tocaba el DOMINGO y a Felipe el SÁBADO.
+test('🔴 v514 · ninguna rutina cae en sábado ni domingo, arranque donde arranque', () => {
+  const finde = [];
+  core.GEN_WEEK_DAYS.forEach((_d, i) => {
+    for (let n = 1; n <= 6; n++) {
+      core.genWeekDays(n, i).forEach(d => { if (d === 'Sábado' || d === 'Domingo') finde.push(`${n} días desde ${core.GEN_WEEK_DAYS[i]} → ${d}`); });
+    }
+  });
+  assert.deepStrictEqual(finde, [], 'salieron entrenos en fin de semana');
+  // y por la puerta de verdad, la que usa el coach: el generador completo
+  const salidas = [];
+  ['F', 'M'].forEach(sex => ['Principiante', 'Intermedio'].forEach(level => [1, 2, 3, 4, 5, 6].forEach(days => {
+    generarRutinas({ sex, level, days, goal: 'Ganar músculo' }, LIB, FIXED)
+      .routines.forEach(r => { if (r.day === 'Sábado' || r.day === 'Domingo') salidas.push(`${sex}/${level}/${days}d → ${r.day}`); });
+  })));
+  assert.deepStrictEqual(salidas, [], 'el generador entregó rutinas en fin de semana');
+});
+
+test('🔴 v514 · el reparto de lunes a viernes es el que un entrenador programaría', () => {
+  // 3 días es lunes-miércoles-viernes, no lunes-miércoles-jueves: por eso el reparto usa los
+  // EXTREMOS de la franja y no huecos parejos sobre 5 casillas.
+  assert.deepStrictEqual(core.genWeekDays(2, 0), ['Lunes', 'Viernes']);
+  assert.deepStrictEqual(core.genWeekDays(3, 0), ['Lunes', 'Miércoles', 'Viernes']);
+  assert.deepStrictEqual(core.genWeekDays(4, 0), ['Lunes', 'Martes', 'Jueves', 'Viernes']);
+  assert.deepStrictEqual(core.genWeekDays(5, 0), ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
+  // nunca se repite un día (dos rutinas el mismo día serían una semana rota)
+  for (let n = 1; n <= 6; n++) {
+    for (let i = 0; i < 7; i++) {
+      const d = core.genWeekDays(n, i);
+      assert.strictEqual(new Set(d).size, d.length, `${n} días desde ${core.GEN_WEEK_DAYS[i]} repite día: ${d.join(', ')}`);
+    }
+  }
+});
+
+// ── FESTIVOS DE COLOMBIA (v514) ──────────────────────────────────────────────────────
+// Camilo: «no trabajo sábados ni domingos ni festivos con el calendario colombiano».
+// Se CALCULAN, no se listan — una lista escrita a mano caduca cada 1 de enero. Estos tests son
+// el candado de un dato con fuente externa (Ley 51 de 1983 + cómputo de la Pascua): para
+// cambiarlos hay que volver a la fuente.
+test('🔴 v514 · la Pascua sale exacta (es de donde cuelgan 5 de los 18 festivos)', () => {
+  // Fechas públicas y verificables; si el cómputo se rompe, se corren Semana Santa, Ascensión,
+  // Corpus Christi y Sagrado Corazón de un solo golpe.
+  [[2024, '2024-03-31'], [2025, '2025-04-20'], [2026, '2026-04-05'], [2027, '2027-03-28'], [2030, '2030-04-21']]
+    .forEach(([anio, esperada]) => {
+      assert.strictEqual(new Date(core.pascuaGregoriana(anio)).toISOString().slice(0, 10), esperada,
+        `la Pascua de ${anio} salió mal`);
+    });
+});
+
+test('🔴 v514 · los 18 festivos de 2026, uno por uno', () => {
+  assert.deepStrictEqual(core.festivosCO(2026), [
+    '2026-01-01', // Año Nuevo
+    '2026-01-12', // Reyes (6-ene martes → lunes 12)
+    '2026-03-23', // San José (19-mar jueves → lunes 23)
+    '2026-04-02', // Jueves Santo — NO se mueve
+    '2026-04-03', // Viernes Santo — NO se mueve
+    '2026-05-01', // Día del Trabajo
+    '2026-05-18', // Ascensión (Pascua +43)
+    '2026-06-08', // Corpus Christi (Pascua +64)
+    '2026-06-15', // Sagrado Corazón (Pascua +71)
+    '2026-06-29', // San Pedro y San Pablo (ya cae lunes)
+    '2026-07-20', // Independencia
+    '2026-08-07', // Batalla de Boyacá
+    '2026-08-17', // Asunción (15-ago sábado → lunes 17)
+    '2026-10-12', // Día de la Raza (ya cae lunes)
+    '2026-11-02', // Todos los Santos (1-nov domingo → lunes 2)
+    '2026-11-16', // Independencia de Cartagena (11-nov miércoles → lunes 16)
+    '2026-12-08', // Inmaculada Concepción
+    '2026-12-25', // Navidad
+  ]);
+});
+
+test('🔴 v514 · la LEY EMILIANI mueve los siete que debe y NO toca los seis fijos', () => {
+  // Los siete corridos SIEMPRE terminan en lunes, cualquier año. Si alguno deja de hacerlo es
+  // que se coló en la lista de fijos (o al revés), y eso no se ve mirando un solo año.
+  for (let anio = 2024; anio <= 2035; anio++) {
+    const f = core.festivosCO(anio);
+    // los 6 fijos están tal cual, caigan el día que caigan
+    ['01-01', '05-01', '07-20', '08-07', '12-08', '12-25'].forEach(md =>
+      assert.ok(f.includes(`${anio}-${md}`), `${anio}: falta el festivo fijo ${md}`));
+    // Jueves y Viernes Santo NUNCA son lunes (cuelgan de la Pascua sin correrse)
+    const P = core.pascuaGregoriana(anio);
+    ['jueves', 'viernes'].forEach((_n, i) => {
+      const iso = new Date(P - (3 - i) * 86400000).toISOString().slice(0, 10);
+      assert.ok(f.includes(iso), `${anio}: falta ${_n} santo (${iso})`);
+      assert.notStrictEqual(new Date(iso + 'T12:00:00Z').getUTCDay(), 1, `${anio}: ${_n} santo salió en lunes`);
+    });
+  }
+});
+
+test('🔴 v514 · un año puede tener 17 festivos y no 18: dos reglas caen el mismo lunes', () => {
+  // 2025: San Pedro y San Pablo (29-jun domingo → lunes 30) aterriza encima de Sagrado Corazón
+  // (Pascua +71 = 30-jun). Sin deduplicar, la cuenta diría 18 sobre 17 fechas reales.
+  assert.ok(core.festivosCO(2025).includes('2025-06-30'));
+  assert.strictEqual(core.festivosCO(2025).length, 17, 'en 2025 hay 17 fechas festivas, no 18');
+  assert.strictEqual(core.festivosCO(2030).length, 17, 'en 2030 se repite la colisión (1-jul)');
+  // y en todos los años la lista viene sin repetidos y ordenada
+  for (let anio = 2024; anio <= 2040; anio++) {
+    const f = core.festivosCO(anio);
+    assert.strictEqual(new Set(f).size, f.length, `${anio}: la lista trae fechas repetidas`);
+    assert.deepStrictEqual(f, f.slice().sort(), `${anio}: la lista no viene ordenada`);
+    assert.ok(f.length === 17 || f.length === 18, `${anio}: salieron ${f.length} festivos`);
+  }
+});
+
+test('🔴 v514 · esFestivoCO / esDiaLaboralCO responden lo que el resto de la app pregunta', () => {
+  assert.strictEqual(core.esFestivoCO('2026-12-25'), true);
+  assert.strictEqual(core.esFestivoCO('2026-12-26'), false);
+  assert.strictEqual(core.esFestivoCO(new Date(2026, 11, 25, 20, 0)), true,
+    'un 25 de diciembre a las 8 p.m. en Colombia ya es 26 en UTC: hay que leer la fecha LOCAL');
+  assert.strictEqual(core.esFestivoCO('basura'), false);
+  assert.strictEqual(core.esFestivoCO(null), false);
+  // el coach trabaja: día hábil Y no festivo
+  assert.strictEqual(core.esDiaLaboralCO(new Date(2026, 7, 21)), true, '21-ago-2026 es viernes normal');
+  assert.strictEqual(core.esDiaLaboralCO(new Date(2026, 7, 22)), false, 'sábado');
+  assert.strictEqual(core.esDiaLaboralCO(new Date(2026, 7, 23)), false, 'domingo');
+  assert.strictEqual(core.esDiaLaboralCO(new Date(2026, 7, 17)), false, 'lunes 17-ago-2026 es festivo (Asunción)');
+  // CONTROL: si esto diera siempre false, los tests de arriba pasarían igual y no probarían nada.
+  assert.strictEqual(core.esDiaLaboralCO(new Date(2026, 7, 18)), true, 'martes 18-ago-2026 sí es laboral');
+});
+
+test('🔴 v514 · los festivos le caen a los días que la gente ENTRENA (por eso hay que resolverlos)', () => {
+  // La medición que justifica el trabajo: la Ley Emiliani manda casi todo a LUNES, que es día
+  // de entreno para el 100% de los planes. Si esto bajara a casi cero, el asunto no existiría.
+  const enLunAVie = core.festivosCO(2026).filter(f => {
+    const dow = new Date(f + 'T12:00:00Z').getUTCDay();
+    return dow >= 1 && dow <= 5;
+  });
+  assert.ok(enLunAVie.length >= 15,
+    `esperaba que la gran mayoría de festivos cayera entre semana, fueron ${enLunAVie.length} de ${core.festivosCO(2026).length}`);
+});
+
+test('🔴 v514 · quien pide 6 días recibe 5, y la app NO le promete el sexto', () => {
+  const c = { sex: 'M', level: 'Intermedio', days: 6, goal: 'Ganar músculo' };
+  const { routines } = generarRutinas(c, LIB, FIXED);
+  assert.strictEqual(routines.length, core.GEN_MAX_WORK_DAYS, `esperaba 5 rutinas, fueron ${routines.length}`);
+  assert.ok(routines.every(r => r.day), 'alguna rutina se quedó SIN día (el sexto no tenía dónde caer)');
+  // 🔴 lo que hace que esto no sea una mentira: la meta que la app MUESTRA sale de las rutinas
+  // reales, no del 6 que quedó escrito en la ficha.
+  assert.strictEqual(core.planDays({ ...c, routines }), core.GEN_MAX_WORK_DAYS,
+    'la app le seguiría prometiendo 6 días teniendo 5');
 });
 
 test('🔴 el día 1 tiene entreno: el plan arranca el día que la persona empieza', () => {
   // Medido 2026-08-01: el 100% de los planes arrancaba el LUNES, así que quien se registraba
   // sábado o domingo veía «hoy es tu día de descanso» el mismo día que se inscribió — el 100%
   // de las veces, en el momento de más ganas. Ocho personas tenían rutina y nunca entrenaron.
-  core.GEN_WEEK_DAYS.forEach((dia, i) => {
+  // ⚠️ v514 acota la propiedad a los días HÁBILES, y no por comodidad del test: el coach no
+  // trabaja fines de semana, así que para quien se registra sábado el «día 1 con entreno» dejó
+  // de ser posible. Lo que SÍ se sigue afirmando —y es lo que evitaba el «hoy descansa» del
+  // primer día— es que el plan arranca el día que la persona empieza, de lunes a viernes.
+  core.GEN_WORK_DAYS.forEach((dia, i) => {
     const dias = core.genWeekDays(3, i);
     assert.strictEqual(dias[0], dia, `arrancando en ${dia} el primer entreno cayó en ${dias[0]}`);
     const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, startDay: dia });
     assert.ok(routines.some(r => r.day === dia), `el plan que empieza el ${dia} no tiene entreno ese día`);
+  });
+  // Y quien empieza en FIN DE SEMANA arranca el lunes, que es el próximo día que el coach
+  // trabaja — no un sábado sin él, y tampoco un martes que se saltaría el lunes.
+  ['Sábado', 'Domingo'].forEach(dia => {
+    const i = core.GEN_WEEK_DAYS.indexOf(dia);
+    assert.strictEqual(core.genWeekDays(3, i)[0], 'Lunes', `quien empieza ${dia} debería arrancar el lunes`);
+    const { routines } = generarRutinas({ sex: 'M', level: 'Principiante', days: 3, goal: 'Ganar músculo' }, LIB, { ...FIXED, startDay: dia });
+    assert.strictEqual(routines[0].day, 'Lunes', `el plan de quien empieza ${dia} arranca en ${routines[0].day}`);
   });
 });
 
