@@ -175,32 +175,52 @@ function _aLunes(ms) {
 // Pablo (29-jun, domingo → lunes 30) cayó encima de Sagrado Corazón (Pascua +71 = 30-jun), y en
 // 2030 vuelve a pasar el 1-jul. Sin el `Set`, `festivosCO(2025).length` diría 18 sobre 17 fechas
 // y cualquier cuenta hecha con eso saldría torcida.
+function _festivosDelAnio(anio) {
+  const P = pascuaGregoriana(anio);
+  const pares = [
+    ...[[[0, 1], 'Año Nuevo'], [[4, 1], 'Día del Trabajo'], [[6, 20], 'Día de la Independencia'],
+        [[7, 7], 'Batalla de Boyacá'], [[11, 8], 'Inmaculada Concepción'], [[11, 25], 'Navidad']]
+      .map(([[m, d], n]) => [Date.UTC(anio, m, d), n]),
+    ...[[[0, 6], 'Reyes Magos'], [[2, 19], 'Día de San José'], [[5, 29], 'San Pedro y San Pablo'],
+        [[7, 15], 'La Asunción'], [[9, 12], 'Día de la Raza'], [[10, 1], 'Todos los Santos'],
+        [[10, 11], 'Independencia de Cartagena']]
+      .map(([[m, d], n]) => [_aLunes(Date.UTC(anio, m, d)), n]),
+    [P - 3 * _MS_DIA, 'Jueves Santo'], [P - 2 * _MS_DIA, 'Viernes Santo'],
+    [P + 43 * _MS_DIA, 'La Ascensión'], [P + 64 * _MS_DIA, 'Corpus Christi'], [P + 71 * _MS_DIA, 'Sagrado Corazón'],
+  ];
+  // Mapa fecha→nombre. Cuando dos reglas caen el mismo día ese día ES los dos, así que el nombre
+  // los lleva a ambos (2025-06-30 = «San Pedro y San Pablo y Sagrado Corazón»).
+  const mapa = new Map();
+  pares.forEach(([ms, nombre]) => {
+    const iso = new Date(ms).toISOString().slice(0, 10);
+    mapa.set(iso, mapa.has(iso) ? `${mapa.get(iso)} y ${nombre}` : nombre);
+  });
+  return mapa;
+}
 function festivosCO(anio) {
   anio = parseInt(anio); if (!anio) return [];
-  const P = pascuaGregoriana(anio);
-  const fijos = [[0, 1], [4, 1], [6, 20], [7, 7], [11, 8], [11, 25]].map(([m, d]) => Date.UTC(anio, m, d));
-  const emiliani = [[0, 6], [2, 19], [5, 29], [7, 15], [9, 12], [10, 1], [10, 11]]
-    .map(([m, d]) => _aLunes(Date.UTC(anio, m, d)));
-  const pascuales = [P - 3 * _MS_DIA, P - 2 * _MS_DIA, P + 43 * _MS_DIA, P + 64 * _MS_DIA, P + 71 * _MS_DIA];
-  return [...new Set([...fijos, ...emiliani, ...pascuales]
-    .map(ms => new Date(ms).toISOString().slice(0, 10)))].sort();
+  return [..._festivosDelAnio(anio).keys()].sort();
 }
 // ¿Esta fecha es festivo en Colombia? Acepta Date o 'YYYY-MM-DD'.
 // ⚠️ De un `Date` se leen los componentes LOCALES: quien lo usa está mirando su propio
 // calendario, y un 25 de diciembre a las 8 p.m. en Bogotá ya sería 26 en UTC.
 const _festivosCache = {};
-function esFestivoCO(fecha) {
-  let iso;
-  if (typeof fecha === 'string') iso = fecha.slice(0, 10);
-  else {
-    const d = fecha instanceof Date ? fecha : new Date(fecha);
-    if (isNaN(d)) return false;
-    iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-  const anio = parseInt(iso.slice(0, 4)); if (!anio) return false;
-  if (!_festivosCache[anio]) _festivosCache[anio] = new Set(festivosCO(anio));
-  return _festivosCache[anio].has(iso);
+// Fecha → 'YYYY-MM-DD' leyendo los componentes LOCALES. Null si no es una fecha.
+function _isoLocal(fecha) {
+  if (typeof fecha === 'string') return fecha.slice(0, 10) || null;
+  const d = fecha instanceof Date ? fecha : new Date(fecha);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+// El NOMBRE del festivo, o null. Se expone porque una pantalla que dice «hoy es festivo» a secas
+// se lee como una excusa de la app; «hoy es festivo (Día de la Raza)» se lee como un calendario.
+function nombreFestivoCO(fecha) {
+  const iso = _isoLocal(fecha); if (!iso) return null;
+  const anio = parseInt(iso.slice(0, 4)); if (!anio) return null;
+  if (!_festivosCache[anio]) _festivosCache[anio] = _festivosDelAnio(anio);
+  return _festivosCache[anio].get(iso) || null;
+}
+function esFestivoCO(fecha) { return nombreFestivoCO(fecha) != null; }
 // ¿El coach trabaja ese día? = día hábil Y no festivo. Es la pregunta que hace el resto de la app.
 function esDiaLaboralCO(fecha) {
   const d = fecha instanceof Date ? fecha : new Date(fecha);
@@ -2345,6 +2365,12 @@ function weeklyMissed(client, sessions, now) {
     const ord = dayOrder(r.day);
     if (ord < 1 || ord > 7) return;                       // Libre / '' / desconocido
     if (ord >= todayOrd) return;                          // hoy o futuro → aún no perdida
+    // 🔴 FESTIVO (2026-08-22, decisión de Camilo): el coach no trabaja festivos, así que ese día
+    // NO hubo entreno que perder. Sin esto la app le reclamaría a la persona una sesión que
+    // nunca estuvo disponible — y la Ley Emiliani manda casi todos los festivos a LUNES, que es
+    // día de entreno en el 100% de los planes. Se mira la FECHA real de esa rutina en esta
+    // semana, no el nombre del día: «lunes» no dice nada sobre si ese lunes fue festivo.
+    if (esFestivoCO(new Date(wk + (ord - 1) * 86400000))) return;
     if (trainedIds.has(r.id)) return;                     // ya la entrenó esta semana
     if (r.name && trainedNames.has(r.name)) return;       // fallback por nombre
     out.push({ routine: r, dayName: r.day, weekdayIdx: ord });
@@ -7979,6 +8005,7 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_WORK_DAYS,
     festivosCO,
     esFestivoCO,
+    nombreFestivoCO,
     esDiaLaboralCO,
     pascuaGregoriana,
     GEN_MAX_WORK_DAYS,

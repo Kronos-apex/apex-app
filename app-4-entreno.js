@@ -944,6 +944,15 @@ function renderClientToday(client, overrideRoutine){
   const autoR=routines.find(r=>r.day===today)||routines.find(r=>r.day==='Libre');
   let baseR=overrideRoutine||autoR;
   const isOverride=!!overrideRoutine;
+  // 🔴 FESTIVO (v515, regla de Camilo: «no trabajo sábados ni domingos ni festivos»). El coach
+  // ACOMPAÑA las sesiones en su gimnasio, así que un festivo no hay entreno acompañado.
+  // Se entra por la MISMA puerta que el día de descanso —se anula `baseR` y cae en el `if(!baseR)`
+  // de abajo— y NO por un `return` nuevo: v508 costó un defecto en producción por abrir una
+  // salida por encima de la limpieza que vive más abajo (`_todayOrder`). Aquí no se abre ninguna.
+  // ⚠️ Si el asesorado eligió a mano otra rutina (`overrideRoutine`), manda su decisión: el
+  // festivo apaga la programación automática, no le prohíbe entrenar si él quiere.
+  const _festivoHoy=(!isOverride&&typeof nombreFestivoCO==='function')?nombreFestivoCO(new Date()):null;
+  if(_festivoHoy)baseR=null;
   // Recordamos la rutina mostrada para que el check-in (pickMood/changeMood)
   // re-renderice SIN perder la selección manual (ej. abrir una rutina de otro día).
   CUR.todayOverride=overrideRoutine||null;
@@ -952,10 +961,17 @@ function renderClientToday(client, overrideRoutine){
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
     _todayOrder(false);
+    // Mismo banner, dos textos. El del festivo DICE cuál es —«hoy es festivo» a secas se lee como
+    // una excusa de la app— y deja claro que no se le está contando como entreno perdido, que es
+    // justo la duda que tendría alguien que ve su lunes de pierna desaparecer.
+    const _tit=_festivoHoy?`Hoy es festivo: ${esc(_festivoHoy)}`:'Hoy es tu día de descanso';
+    const _sub=_festivoHoy
+      ?'El gimnasio no abre con tu entrenador hoy, así que esta sesión no cuenta como perdida. Nos vemos el próximo día de tu plan.'
+      :'El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.';
     con.innerHTML=`<div class="avi-restbnr"><div class="rb-bg" style="background-image:url('${aviRestPhoto(client.sex)}')"></div><div class="rb-ov"></div><div class="rb-in">
-      <div style="color:#fff;opacity:.92">${typeof aviIcon==='function'?aviIcon('moon',34):'💤'}</div>
-      <div class="rb-title">Hoy es tu día de descanso</div>
-      <div class="rb-sub">El descanso es parte del entrenamiento. Hoy tu cuerpo repara y crece — regresa mañana listo para rendir.</div>
+      <div style="color:#fff;opacity:.92">${typeof aviIcon==='function'?aviIcon(_festivoHoy?'calendar':'moon',34):(_festivoHoy?'📅':'💤')}</div>
+      <div class="rb-title">${_tit}</div>
+      <div class="rb-sub">${_sub}</div>
       <button class="btn bp bsm" style="margin-top:6px" onclick="cnTab('cn-routines',document.querySelectorAll('.cntab')[1])">Ver todas mis rutinas →</button>
     </div></div>`;
     return;

@@ -3,8 +3,12 @@
 // (override, plan intacto), (2) Mover a hoy en mi plan (swap de días + sv('ax_c')), (3) Hoy no
 // (mute por-rutina-por-semana). Sin login: sintetiza el asesorado y llama renderClientToday directo
 // (la escritura a la nube está SELLADA en localhost, v298 → el swap NO toca producción). Aserciones
-// duras (exit 1) + capturas claro/oscuro a 390px. El día "perdido" se ancla al LUNES (pasado salvo
-// que hoy sea lunes; en ese caso las aserciones dependientes de la tarjeta se saltan con nota honesta).
+// duras (exit 1) + capturas claro/oscuro a 390px.
+// 🔴 El día "perdido" NO se ancla al lunes desde v515: se ELIGE el día hábil pasado de esta semana
+// que NO sea FESTIVO. Anclarlo al lunes hacía que el harness dependiera del calendario — corriendo
+// el 22-ago-2026 el lunes 17 era La Asunción, así que `weeklyMissed` lo silenciaba CON RAZÓN y las
+// 4 aserciones de la tarjeta salían rojas por la app haciendo lo correcto. Si esta semana no queda
+// ningún día hábil pasado y no festivo, se dice y se saltan las aserciones dependientes.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -36,6 +40,26 @@ await sleep(2000);
 
 // Helper de reset: reconstruye el asesorado desde cero (rLeg 'Lunes' PERDIDA + rToday ocupando HOY),
 // limpia el mute y re-renderiza. Devuelve el nombre del día de hoy y si hoy es lunes (sin día perdido).
+// ── Qué día usamos como "perdido" (v515) ───────────────────────────────────────────
+// Días hábiles de ESTA semana ya pasados y que NO son festivos. Se toma el más lejano,
+// que es el que la tarjeta pone primero.
+const _core = (await import('node:module')).createRequire(import.meta.url)('../../avi-core.js');
+const _DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const _hoy = new Date();
+const _lunes = new Date(_hoy); _lunes.setHours(0,0,0,0);
+_lunes.setDate(_lunes.getDate() - ((_lunes.getDay() + 6) % 7));
+const _candidatos = [];
+for (let i = 0; i < 5; i++) {
+  const d = new Date(_lunes.getTime() + i * 86400000);
+  if (d >= new Date(_hoy.getFullYear(), _hoy.getMonth(), _hoy.getDate())) break; // hoy y futuro no están perdidos
+  if (_core.esFestivoCO(d)) continue;                                            // un festivo no se pudo entrenar
+  _candidatos.push({ nombre: _DIAS[d.getDay()], iso: d.toISOString().slice(0,10) });
+}
+const DIA_PERDIDO = _candidatos.length ? _candidatos[0].nombre : null;
+console.log('  día perdido elegido:', DIA_PERDIDO || '(ninguno: hoy es lunes o los hábiles pasados son festivos)');
+if (!DIA_PERDIDO) console.log('  hábiles pasados descartados por festivo:',
+  [0,1,2,3,4].map(i=>new Date(_lunes.getTime()+i*86400000)).filter(d=>_core.esFestivoCO(d)).map(d=>d.toISOString().slice(0,10)).join(', ') || 'ninguno');
+
 const RESET = `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   if(typeof setTheme==='function')setTheme('light');
@@ -47,7 +71,7 @@ const RESET = `(()=>{try{
   const todayName=days[new Date().getDay()];
   const client={id:'ct1',name:'Camilo',sex:'M',level:'Intermedio',goal:'Ganar músculo',days:4,
     routines:[
-      {id:'rLeg',day:'Lunes',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'}]},
+      {id:'rLeg',day:'${DIA_PERDIDO || 'Lunes'}',name:'Pierna',restSec:90,exercises:[{id:'e1',name:'Sentadilla',muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'}]},
       {id:'rToday',day:todayName,name:'Empuje',restSec:90,exercises:[{id:'e2',name:'PressBanca',muscle:'Pecho',type:'Compuesto',sets:4,reps:'10'}]}
     ],
     habits:{water:{},steps:{}}};
@@ -71,7 +95,9 @@ const RESET = `(()=>{try{
 const setupRaw = await ev(RESET);
 console.log('  setup:', setupRaw);
 let ctx = {}; try { ctx = JSON.parse(setupRaw); } catch {}
-const isMon = !!ctx.isMon;
+// Antes: `isMon`. Ahora la pregunta correcta es si QUEDÓ algún día perdido reclamable —
+// hoy lunes es una de las formas de que no lo haya; un festivo el lunes es otra.
+const isMon = !DIA_PERDIDO;
 const todayName = ctx.todayName || '';
 await sleep(500);
 
@@ -82,16 +108,16 @@ const results = [];
 const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
 
 if (isMon) {
-  console.log('  ⚠️ HOY ES LUNES — no hay día pasado esta semana; la tarjeta correctamente NO sale.');
+  console.log('  ⚠️ SIN DÍA PERDIDO reclamable esta semana (hoy lunes, o los hábiles pasados son festivos); la tarjeta correctamente NO sale.');
   const cardAbsent = await ev(`!document.querySelector('#cn-missday .card')`);
-  check('MD0 (lunes) sin día perdido → tarjeta ausente (comportamiento correcto)', cardAbsent === true, 'absent=' + cardAbsent);
+  check('MD0 sin día perdido reclamable → tarjeta ausente (comportamiento correcto)', cardAbsent === true, 'absent=' + cardAbsent);
 } else {
   // ── La tarjeta sale (rLeg 'Lunes' quedó atrás esta semana) ──
   const cardPresent = await ev(`!!document.querySelector('#cn-missday .card')`);
   const cardText = await ev(`(()=>{const c=document.querySelector('#cn-missday .card');return c?c.textContent:''})()`);
   const btns = await ev(`(()=>{const c=document.querySelector('#cn-missday .card');return c?[...c.querySelectorAll('button')].map(b=>b.textContent.trim()):[]})()`);
   check('MD1 la tarjeta #cn-missday aparece', cardPresent === true, 'card=' + cardPresent);
-  check('MD2 nombra la rutina (Pierna) y su día (Lunes)', /Pierna/.test(cardText) && /Lunes/.test(cardText), JSON.stringify(cardText.slice(0, 70)));
+  check('MD2 nombra la rutina (Pierna) y su día (' + DIA_PERDIDO + ')', /Pierna/.test(cardText) && cardText.includes(DIA_PERDIDO), JSON.stringify(cardText.slice(0, 70)));
   check('MD3 tres acciones: Entrenar hoy · Mover a hoy · Hoy no', btns.length === 3 && /Entrenar hoy/.test(btns[0]) && /Mover a hoy/.test(btns[1]) && /Hoy no/.test(btns[2]), JSON.stringify(btns));
   // El entreno de HOY (Empuje/PressBanca) sigue arriba; la tarjeta es un extra abajo (no lo pisa).
   const workoutStillThere = await ev(`/PressBanca/.test(document.getElementById('cn-today').textContent)`);
@@ -120,19 +146,19 @@ if (isMon) {
   await ev(`missTrainToday('rLeg')`); await sleep(500);
   const trOverride = await ev(`!!(CUR.todayOverride&&CUR.todayOverride.id==='rLeg')`);
   const trWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today').textContent)`);
-  const trPlanIntact = await ev(`DB.clients[0].routines.find(r=>r.id==='rLeg').day==='Lunes'`);
+  const trPlanIntact = await ev(`DB.clients[0].routines.find(r=>r.id==='rLeg').day==='${DIA_PERDIDO}'`);
   const trCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
-  check('MD5 «Entrenar hoy» abre la rutina perdida como override (Sentadilla), plan INTACTO (rLeg sigue Lunes), tarjeta oculta', trOverride && trWorkout && trPlanIntact && trCardGone, JSON.stringify({ trOverride, trWorkout, trPlanIntact, trCardGone }));
+  check('MD5 «Entrenar hoy» abre la rutina perdida como override (Sentadilla), plan INTACTO (rLeg sigue en su día), tarjeta oculta', trOverride && trWorkout && trPlanIntact && trCardGone, JSON.stringify({ trOverride, trWorkout, trPlanIntact, trCardGone }));
 
   // ── "Mover a hoy en mi plan" (swap): rLeg→hoy, rToday→Lunes (día que dejó libre), persiste local ──
   await ev(RESET); await sleep(400);
   await ev(`missMoveToday('rLeg')`); await sleep(600);
   const mvLegToday = await ev(`DB.clients[0].routines.find(r=>r.id==='rLeg').day===${JSON.stringify(todayName)}`);
-  const mvOccMoved = await ev(`DB.clients[0].routines.find(r=>r.id==='rToday').day==='Lunes'`);
+  const mvOccMoved = await ev(`DB.clients[0].routines.find(r=>r.id==='rToday').day==='${DIA_PERDIDO}'`);
   const mvWorkout = await ev(`/Sentadilla/.test(document.getElementById('cn-today').textContent)`);
   const mvCardGone = await ev(`!document.querySelector('#cn-missday .card')`);
   const mvPersisted = await ev(`(()=>{try{const c=JSON.parse(localStorage.getItem('ax_c'));const r=(c&&c[0]&&c[0].routines||[]).find(x=>x.id==='rLeg');return !!(r&&r.day===${JSON.stringify(todayName)});}catch(e){return false;}})()`);
-  check('MD6 «Mover a hoy» hace el SWAP (rLeg→hoy, la que ocupaba hoy→Lunes) y lo persiste en ax_c', mvLegToday && mvOccMoved && mvPersisted, JSON.stringify({ mvLegToday, mvOccMoved, mvPersisted }));
+  check('MD6 «Mover a hoy» hace el SWAP (rLeg→hoy, la que ocupaba hoy→el día que dejó libre) y lo persiste en ax_c', mvLegToday && mvOccMoved && mvPersisted, JSON.stringify({ mvLegToday, mvOccMoved, mvPersisted }));
   check('MD7 tras mover, HOY muestra la rutina movida (Sentadilla) y la tarjeta desaparece', mvWorkout && mvCardGone, JSON.stringify({ mvWorkout, mvCardGone }));
 
   // ── "Hoy no" (mute por semana): oculta la tarjeta y escribe ax_missmute ──

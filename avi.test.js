@@ -546,6 +546,69 @@ test('🔴 v514 · el reparto de lunes a viernes es el que un entrenador program
   }
 });
 
+test('🔴 v515 · el festivo sale por la MISMA puerta que el día de descanso (candado v508)', () => {
+  // v508 costó un defecto en producción porque una salida nueva quedó POR ENCIMA de la limpieza
+  // que vive más abajo (`_todayOrder`). El festivo por eso NO abre un `return` propio: anula
+  // `baseR` y cae en el `if(!baseR)` que ya existía. Este check estático lo fija.
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const iFest = src.indexOf('const _festivoHoy=');
+  assert.ok(iFest > 0, 'desapareció el cálculo del festivo en «Hoy»');
+  const iBase = src.indexOf('if(!baseR){', iFest);
+  assert.ok(iBase > iFest, 'el bloque de descanso dejó de estar debajo del festivo');
+  // entre el festivo y esa puerta NO puede haber un return
+  const enMedio = src.slice(iFest, iBase);
+  assert.ok(!/\breturn\b/.test(enMedio),
+    'se abrió una salida nueva entre el festivo y el bloque de descanso: se salta _todayOrder');
+  // y la puerta compartida sigue limpiando ANTES de pintar (la limpieza que v508 se saltó)
+  const puerta = src.slice(iBase, iBase + 1400);
+  assert.ok(puerta.includes('_todayOrder(false)'),
+    '_todayOrder dejó de correr en la salida de descanso/festivo');
+  assert.ok(puerta.indexOf('_todayOrder') < puerta.indexOf('innerHTML'),
+    '_todayOrder quedó DESPUÉS de pintar: es el orden exacto que causó el defecto de v508');
+  // el override manual del asesorado gana sobre el festivo: apaga la programación, no le prohíbe entrenar
+  assert.ok(/const _festivoHoy=\(!isOverride&&/.test(src),
+    'el festivo dejó de respetar la rutina que el asesorado eligió a mano');
+});
+
+test('🔴 v515 · un FESTIVO no cuenta como entreno perdido (la app no reclama lo que no hubo)', () => {
+  const c = { id: 'c1', routines: [{ id: 'rLun', day: 'Lunes', name: 'Pierna' }] };
+  // Lunes 17-ago-2026 es festivo (La Asunción, 15-ago sábado → lunes 17). Hoy, miércoles 19.
+  assert.deepStrictEqual(core.weeklyMissed(c, [], new Date(2026, 7, 19, 10, 0)), [],
+    'le reclamó un entreno de un lunes FESTIVO');
+  // 🔴 CONTROL, obligatorio: la semana SIGUIENTE ese mismo lunes NO es festivo y sí se reclama.
+  // Sin este control, borrar `weeklyMissed` entero dejaría el test de arriba en verde.
+  const perdidas = core.weeklyMissed(c, [], new Date(2026, 7, 26, 10, 0));
+  assert.strictEqual(perdidas.length, 1, 'dejó de avisar del lunes que NO fue festivo');
+  assert.strictEqual(perdidas[0].dayName, 'Lunes');
+  // Y si sí entrenó ese lunes normal, tampoco se reclama (la regla vieja sigue viva).
+  assert.deepStrictEqual(
+    core.weeklyMissed(c, [{ date: new Date(2026, 7, 24, 8, 0).toISOString(), routineId: 'rLun' }], new Date(2026, 7, 26, 10, 0)),
+    []);
+});
+
+test('🔴 v515 · el festivo se mira por FECHA, no por nombre de día', () => {
+  // El mismo «Lunes» es festivo una semana y no la siguiente: si la regla mirara el nombre del
+  // día, o silenciaría todos los lunes del año o ninguno.
+  const c = { id: 'c1', routines: [{ id: 'r', day: 'Lunes', name: 'Pierna' }] };
+  const semanaFestiva = core.weeklyMissed(c, [], new Date(2026, 7, 19, 10, 0)).length;   // lunes 17 festivo
+  const semanaNormal = core.weeklyMissed(c, [], new Date(2026, 7, 26, 10, 0)).length;    // lunes 24 normal
+  assert.strictEqual(semanaFestiva, 0);
+  assert.strictEqual(semanaNormal, 1);
+  assert.notStrictEqual(semanaFestiva, semanaNormal, 'la regla no distingue una semana de otra');
+});
+
+test('🔴 v515 · el festivo tiene NOMBRE, y el día que dos reglas coinciden los lleva los dos', () => {
+  assert.strictEqual(core.nombreFestivoCO('2026-10-12'), 'Día de la Raza');
+  assert.strictEqual(core.nombreFestivoCO('2026-04-03'), 'Viernes Santo');
+  assert.strictEqual(core.nombreFestivoCO('2026-08-22'), null, 'un sábado normal no es festivo');
+  assert.strictEqual(core.nombreFestivoCO('2025-06-30'), 'San Pedro y San Pablo y Sagrado Corazón',
+    'el 30-jun-2025 ES los dos festivos: decir solo uno esconde por qué ese año tiene 17');
+  // el nombre y la pertenencia no pueden discrepar: son la misma tabla
+  for (let anio = 2024; anio <= 2032; anio++) {
+    core.festivosCO(anio).forEach(f => assert.ok(core.nombreFestivoCO(f), `${f} es festivo y no tiene nombre`));
+  }
+});
+
 // ── FESTIVOS DE COLOMBIA (v514) ──────────────────────────────────────────────────────
 // Camilo: «no trabajo sábados ni domingos ni festivos con el calendario colombiano».
 // Se CALCULAN, no se listan — una lista escrita a mano caduca cada 1 de enero. Estos tests son
