@@ -1816,6 +1816,12 @@ function openCoachStat(kind){
       .map(c=>({c,dd:daysSinceLastSession((DB.history&&DB.history[c.id])||[],now)}))
       .sort((a,b)=>b.dd-a.dd);
     // 🔴 v520 · SE SEPARA A QUIEN PUEDES ESCRIBIRLE DE QUIEN NO. La lista decía quién está frío
+    // ⚖️ DECISIÓN DEL PO (22-ago), y por eso la nota NO empuja a recuperarlos: *«esos usuarios que
+    // no continuaron está bien dejarlos así… AVI está por encima de estar rogando a gente para que
+    // la utilice, prefiero venderla a nuevos usuarios que sí la aprecien»*. Medido y le da la razón:
+    // **11 de los 12 inalcanzables NUNCA pagaron** (los tres que pagaron suman $130.000 y solo uno
+    // conserva membresía vigente), contra $2.176.000 de los 9 que entrenan esta semana. Esta sección
+    // existe para que SEPA A QUIÉN NO DEDICARLE TIEMPO, no para mandarlo a perseguir.
     // pero no si hay CÓMO avisarle, y son dos tareas distintas: a unos les escribes hoy, a los
     // otros primero hay que conseguirles el número. Medido el 22-ago sobre las 22 fichas reales:
     // 12 sin ninguna vía, y los 12 llevaban de 15 a 59 días sin entrenar o no habían empezado.
@@ -1837,7 +1843,7 @@ function openCoachStat(kind){
       }
       if(sinVia.length){
         html+=`<div class="sroom-sec">No tienes cómo avisarles 🔕</div>`;
-        html+=`<div class="crep-note">Sin su celular guardado no hay WhatsApp, y las notificaciones solo llegan si ellos las activaron en su teléfono. Toca a cada uno y agrégale el número.</div>`;
+        html+=`<div class="crep-note">Sin su celular guardado no hay WhatsApp, y las notificaciones solo llegan si ellos las activaron. Aquí la app no puede hacer nada — no gastes tu tiempo en esta lista. Si alguno te interesa, agrégale el número desde su ficha.</div>`;
         html+=sinVia.map(_fila).join('');
       }
     } else html+=empty('💪','¡Todos tus asesorados activos entrenaron hace poco!');

@@ -11242,7 +11242,7 @@ test('🔴 v520 · el reporte «Sin entrenar» separa a quien puedes escribirle 
   const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   const i = src.indexOf("kind==='sinentrenar'");
   assert.ok(i > 0, 'desapareció el reporte «Sin entrenar»');
-  const tramo = src.slice(i, i + 2600);
+  const tramo = src.slice(i, i + 3600);   // la ventana crece con los comentarios: se acota holgada
   assert.ok(/coachCanReach/.test(tramo), 'el reporte dejó de mirar si el coach puede avisarle');
   assert.ok(/No tienes cómo avisarles/.test(tramo), 'desapareció la sección de los que no tienen vía');
   assert.ok(/crep-note/.test(tramo), 'la sección no explica POR QUÉ no llega ni qué hacer');
