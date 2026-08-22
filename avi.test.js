@@ -11213,6 +11213,56 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
     'la copia de la nube del coach pisa DB.exercises y nadie la cura después: vuelve a quedarse sin entorno');
 });
 
+// ── ¿PUEDE EL COACH AVISARLE? (v520) ─────────────────────────────────────────────────
+// Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
+// guardado ni notificaciones activas— y la app no se lo decía en ninguna parte. Los 10
+// alcanzables entrenaron esta semana o acaban de darse de alta; los 12 inalcanzables llevan
+// de 15 a 59 días fríos o nunca empezaron.
+test('🔴 v520 · coachCanReach responde «¿puedo escribirle YO?», no «¿tiene la app?»', () => {
+  assert.strictEqual(core.coachCanReach({ phone: '300 123 4567' }), true);
+  assert.strictEqual(core.coachCanReach({ phone: '+57 300 123 4567' }), true);
+  assert.strictEqual(core.coachCanReach({ phone: '' }), false);
+  assert.strictEqual(core.coachCanReach({}), false);
+  assert.strictEqual(core.coachCanReach(null), false, 'sin cliente no puede decir que sí');
+  // 🔴 Un FIJO no sirve: WhatsApp no le llega. Es el bug de clase v365 visto desde el otro
+  // lado — ahí el enlace se armaba roto, aquí se contaría como alcanzable a quien no lo es.
+  assert.strictEqual(core.coachCanReach({ phone: '601 555 5555' }), false, 'un fijo de Bogotá no es una vía de WhatsApp');
+  assert.strictEqual(core.coachCanReach({ phone: '1234' }), false, 'un número incompleto no es una vía');
+  // 🔴 CONTROL: delega en `waPhone` y no re-implementa el criterio. Una segunda definición de
+  // «número válido» es exactamente cómo volvió el bug de v448 con el peso (ver v511).
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const i = src.indexOf('function coachCanReach');
+  const cuerpo = src.slice(i, src.indexOf('function ', i + 20));
+  assert.ok(/waPhone\(/.test(cuerpo), 'coachCanReach dejó de delegar en waPhone: hay dos definiciones de «número válido»');
+});
+
+test('🔴 v520 · el reporte «Sin entrenar» separa a quien puedes escribirle de quien no', () => {
+  // Son DOS tareas distintas: a unos les escribes hoy, a los otros primero hay que
+  // conseguirles el número. Mezclados en una sola lista, la segunda no se hace nunca.
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf("kind==='sinentrenar'");
+  assert.ok(i > 0, 'desapareció el reporte «Sin entrenar»');
+  const tramo = src.slice(i, i + 2600);
+  assert.ok(/coachCanReach/.test(tramo), 'el reporte dejó de mirar si el coach puede avisarle');
+  assert.ok(/No tienes cómo avisarles/.test(tramo), 'desapareció la sección de los que no tienen vía');
+  assert.ok(/crep-note/.test(tramo), 'la sección no explica POR QUÉ no llega ni qué hacer');
+  // 🔴 CONTROL: el que SÍ tiene vía sigue apareciendo. Sin esto, «esconder a los que no se
+  // pueden avisar» pasaría las aserciones de arriba y el reporte perdería su lista principal.
+  assert.ok(/Necesitan un empuj/.test(tramo), 'se perdió la lista de los que sí puedes empujar');
+  // y el conteo del titular avisa cuántos quedan fuera de alcance
+  assert.ok(/sin forma de avisar/.test(tramo), 'el titular no dice cuántos quedan sin forma de avisar');
+});
+
+test('🔴 v520 · la nota usa los tokens del sistema, no colores a mano', () => {
+  // Regla de v453: un hex escrito a mano sobre un tinte que sí cambia de tema da 1,67 en oscuro.
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  const i = css.indexOf('.crep-note{');
+  assert.ok(i > 0, 'falta la clase .crep-note: la nota saldría sin estilo');
+  const regla = css.slice(i, css.indexOf('}', i));
+  assert.ok(!/#[0-9a-fA-F]{3,8}/.test(regla), 'la nota trae un color hardcodeado: usa los tokens --yll/--yl/--ylt');
+  assert.ok(/var\(--ylt\)/.test(regla), 'el texto no usa --ylt, que es el que tiene el contraste medido');
+});
+
 // 🔴 v519 · EL PRESET «FUNCIONAL» DEJA DE REPETIR EL MISMO EJERCICIO TODA LA SEMANA.
 // Un sesgo de estilo NO cede al relleno (decisión escrita: «la intención manda sobre la
 // variedad»), así que si un músculo tiene UN solo ejercicio de ese tipo, ese sale todos los

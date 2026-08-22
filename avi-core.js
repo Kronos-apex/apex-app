@@ -7855,6 +7855,22 @@ function waPhone(raw) {
 
 // Por qué no se pudo usar el teléfono, en cristiano y accionable (R1.5: estados no felices con
 // mensaje útil). '' = el número sirve. PURA.
+// ── ¿Puede el COACH avisarle a esta persona? (v520) ──────────────────────────────────
+// PURA. Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
+// guardado ni notificaciones activas— y la app no se lo decía por ninguna parte. La separación es
+// perfecta y vale la pena leerla con cuidado: los 10 alcanzables entrenaron esta semana o acaban
+// de darse de alta, y los 12 inalcanzables llevan de 15 a 59 días fríos, o nunca empezaron. Parte
+// de eso es que quien se engancha instala la app (y ahí nace la suscripción), así que el push es
+// tanto consecuencia como causa; el TELÉFONO no: ese lo captura el coach.
+//
+// ⚠️ Solo mira el teléfono, y no por descuido: `push_subscriptions` tiene RLS por dueño
+// (`push_sel_own`), así que **el coach NO PUEDE leer si su asesorado tiene notificaciones
+// activas**. El teléfono es la única vía que él controla y la única que puede arreglar.
+// Por eso la pregunta que responde esta función es «¿puedo escribirle YO?», no «¿le llega algo?».
+function coachCanReach(client) {
+  return !!waPhone(client && client.phone);
+}
+
 function waPhoneNote(raw) {
   const s = String(raw == null ? '' : raw).trim();
   if (!s) return 'No tienes su teléfono guardado.';
@@ -7872,6 +7888,7 @@ if (typeof module !== 'undefined' && module.exports) {
     applyMood,
     waPhone,
     waPhoneNote,
+    coachCanReach,
     MS,
     fmtMetric,
     fmtDuration,

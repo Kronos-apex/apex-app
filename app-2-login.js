@@ -1815,15 +1815,31 @@ function openCoachStat(kind){
     const dorm=DB.clients.filter(c=>{const st=MS.getStatus(c);if(st==='inactive'||st==='overdue'||st==='suspended')return false;return daysSinceLastSession((DB.history&&DB.history[c.id])||[],now)>=4;})
       .map(c=>({c,dd:daysSinceLastSession((DB.history&&DB.history[c.id])||[],now)}))
       .sort((a,b)=>b.dd-a.dd);
-    html=_crepHero('😴','#e5484d',String(dorm.length),`${dorm.length===1?'asesorado':'asesorados'} con membresía activa`);
+    // 🔴 v520 · SE SEPARA A QUIEN PUEDES ESCRIBIRLE DE QUIEN NO. La lista decía quién está frío
+    // pero no si hay CÓMO avisarle, y son dos tareas distintas: a unos les escribes hoy, a los
+    // otros primero hay que conseguirles el número. Medido el 22-ago sobre las 22 fichas reales:
+    // 12 sin ninguna vía, y los 12 llevaban de 15 a 59 días sin entrenar o no habían empezado.
+    const _puedo=c=>(typeof coachCanReach==='function')?coachCanReach(c):!!(c&&c.phone);
+    const conVia=dorm.filter(({c})=>_puedo(c)), sinVia=dorm.filter(({c})=>!_puedo(c));
+    const _fila=({c,dd})=>{
+      const estado=!isFinite(dd)?'Sin registro de entrenos':dd===1?'última vez: ayer':`última vez: hace ${dd} días`;
+      const col=(!isFinite(dd)||dd>=7)?'var(--rd)':'var(--or)';
+      const right=`<span class="crep-amt" style="color:${col}">${isFinite(dd)?dd:'∞'}</span><span style="font-size:10px;color:var(--t3)">días</span>`;
+      return _crepRow(c.id,c.name,`${esc(String(c.days||3))}x/sem · ${estado}`,right);
+    };
+    const _sub=sinVia.length?`${dorm.length===1?'asesorado':'asesorados'} con membresía activa · ${sinVia.length} sin forma de avisar`
+                            :`${dorm.length===1?'asesorado':'asesorados'} con membresía activa`;
+    html=_crepHero('😴','#e5484d',String(dorm.length),_sub);
     if(dorm.length){
-      html+=`<div class="sroom-sec">Necesitan un empujón 💪</div>`;
-      html+=dorm.map(({c,dd})=>{
-        const estado=!isFinite(dd)?'Sin registro de entrenos':dd===1?'última vez: ayer':`última vez: hace ${dd} días`;
-        const col=(!isFinite(dd)||dd>=7)?'var(--rd)':'var(--or)';
-        const right=`<span class="crep-amt" style="color:${col}">${isFinite(dd)?dd:'∞'}</span><span style="font-size:10px;color:var(--t3)">días</span>`;
-        return _crepRow(c.id,c.name,`${esc(String(c.days||3))}x/sem · ${estado}`,right);
-      }).join('');
+      if(conVia.length){
+        html+=`<div class="sroom-sec">Necesitan un empujón 💪</div>`;
+        html+=conVia.map(_fila).join('');
+      }
+      if(sinVia.length){
+        html+=`<div class="sroom-sec">No tienes cómo avisarles 🔕</div>`;
+        html+=`<div class="crep-note">Sin su celular guardado no hay WhatsApp, y las notificaciones solo llegan si ellos las activaron en su teléfono. Toca a cada uno y agrégale el número.</div>`;
+        html+=sinVia.map(_fila).join('');
+      }
     } else html+=empty('💪','¡Todos tus asesorados activos entrenaron hace poco!');
   }
 
