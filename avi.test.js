@@ -11249,6 +11249,24 @@ test('🔴 v523 · la app rechaza ANTES lo mismo que el servidor, con los mismos
   assert.strictEqual(core.showcaseRow(cinco).subidas.length, 3);
 });
 
+test('🔴 v525 · la vitrina PÚBLICA solo la escribe un coach real, no cualquiera con cuenta', () => {
+  // HALLAZGO de la verificación adversarial del 22-ago (el papel de Fable, que está sin créditos).
+  // `showcase_ins` pedía SOLO `coach_id = auth.uid()`, y eso no es un gate: el auto-registro es
+  // abierto. Reproducido contra producción en transacción con rollback — un desconocido con cuenta
+  // publicaba en la página que el PO comparte en Instagram, y con 6 filas (su propio tope) las
+  // suyas DESPLAZABAN a las reales, porque la página pide las 6 más recientes sin filtrar por coach.
+  // Familia de F7 y c13c: jamás gatear con algo que el cliente controla.
+  const sql = require('fs').readFileSync(require('path').join(__dirname, 'supabase/community/s1_showcase.sql'), 'utf8');
+  // Se lee SIN los comentarios: el encabezado explica el gate y un regex crudo lo leería como si
+  // estuviera puesto — es el gotcha de v523 con el grant de UPDATE, en el mismo archivo.
+  const vivo = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
+  const ins = vivo.match(/create policy showcase_ins[\s\S]*?;/);
+  assert.ok(ins, 'no encontré la policy de INSERT de la vitrina');
+  assert.match(ins[0], /_is_moderator\s*\(\s*auth\.uid\(\)\s*\)/,
+    'la vitrina pública acepta a cualquier autenticado: es el hueco de v525 otra vez');
+  assert.match(ins[0], /coach_id\s*=\s*auth\.uid\(\)/,
+    'sin la condición de dueño, un coach podría publicar en nombre de otro');
+});
 test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se pueden separar', () => {
   // Un espejo que MIENTE es peor que ninguno: o bloquea sin motivo, o el insert vuelve con un
   // error de motor en la cara del coach. Los números se DERIVAN del archivo, no se re-escriben.
