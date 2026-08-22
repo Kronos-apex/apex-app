@@ -11170,6 +11170,84 @@ test('🔴 todo principiante recibe glúteo dirigido, y nunca uno peligroso (2.0
   assert.deepStrictEqual(saltos, [], 'pliometría de impacto en el puesto de glúteo de un principiante');
   assert.deepStrictEqual(prohibidos, [], 'e60 es ADUCTOR y e92 es progresión avanzada: no van en este puesto');
 });
+// 🔴 v516 · EL PRESET «CASA — PESO CORPORAL» NO LLEVA SESGO DE TIPO.
+// Su ENTORNO (`corporal`) ya deja fuera barra, polea y máquina, así que pedir ADEMÁS el tipo
+// `Funcional` no añadía nada y encogía el pool a 5 ejercicios. Medido sobre 36 planes:
+// 18 repetían un ejercicio TODOS los días (peor caso, Step-up ×5 en una semana de 5) contra
+// 0 de 36 sin el sesgo, y la variedad sube de 38 a 46 ejercicios distintos.
+test('🔴 v516 · el preset «Casa — Peso corporal» no lleva sesgo de TIPO', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8');
+  const linea = src.split('\n').find(l => l.includes("id:'casa_corporal'"));
+  assert.ok(linea, 'desapareció el preset casa_corporal');
+  assert.ok(/methodBias:\s*null/.test(linea),
+    'a «Casa — Peso corporal» le volvieron a poner sesgo de tipo: mide la repetición antes de dejarlo');
+  // 🔴 CONTROL: el preset que SÍ vive de su tipo lo conserva — quitárselo lo dejaría sin
+  // sentido, y sin este control «quitarle el sesgo a todos» pasaría la aserción de arriba.
+  const fun = src.split('\n').find(l => l.includes("id:'funcional'"));
+  assert.ok(fun && /methodBias:'funcional'/.test(fun),
+    'el preset «Funcional» perdió su sesgo: ahí el TIPO es justo lo que el coach está pidiendo');
+});
+
+// ── DÓNDE SE PUEDE HACER CADA EJERCICIO (v516) ───────────────────────────────────────
+// El generador filtra con `(e.env || ['gym']).includes(place)`: un ejercicio SIN `env` se trata
+// como SOLO GIMNASIO. 91 de los 244 no lo declaraban, y entre ellos estaban las lagartijas, la
+// plancha, la sentadilla de peso corporal, el crunch y el puente de glúteo — o sea que a quien
+// entrena en casa la app le escondía los básicos. Medido antes/después: en `corporal` el motor
+// pasa de alcanzar 29 ejercicios distintos a 46, y los cinco clásicos de 0/5 a 5/5.
+test('🔴 v516 · los 244 ejercicios declaran DÓNDE se pueden hacer', () => {
+  const VALIDOS = ['corporal', 'casa', 'parque', 'gym'];
+  const sinEnv = _LIB_REAL.filter(e => !Array.isArray(e.env) || !e.env.length);
+  assert.deepStrictEqual(sinEnv.map(e => e.id), [],
+    'un ejercicio sin `env` el generador lo trata como SOLO GYM — así los básicos de peso corporal desaparecieron de casa');
+  const raros = [];
+  _LIB_REAL.forEach(e => (e.env || []).forEach(x => { if (!VALIDOS.includes(x)) raros.push(`${e.id}:${x}`); }));
+  assert.deepStrictEqual(raros, [], 'entorno inventado (los válidos son corporal|casa|parque|gym)');
+  // 🔴 CONTROL: que no se hayan «arreglado» marcándolos TODOS en TODAS partes, que dejaría el
+  // filtro decorativo. La prensa de pierna no se hace en una sala.
+  const enTodo = _LIB_REAL.filter(e => e.env.length === 4).length;
+  assert.ok(enTodo < _LIB_REAL.length * 0.5,
+    `${enTodo} de ${_LIB_REAL.length} ejercicios dicen hacerse en los 4 entornos: el filtro dejó de filtrar`);
+  assert.ok(_LIB_REAL.filter(e => e.env.length === 1 && e.env[0] === 'gym').length > 80,
+    'casi nada quedó como solo-gimnasio: barra, polea y máquina no se hacen en una casa');
+});
+
+test('🔴 v516 · las decisiones que un heurístico se equivoca, en las DOS direcciones', () => {
+  const env = id => (_LIB_REAL.find(e => e.id === id) || {}).env || [];
+  // (a) Lo que el heurístico mandaba al GIMNASIO y se hace en el suelo. Su propia ficha lo dice.
+  const e90 = _LIB_REAL.find(e => e.id === 'e90');
+  assert.ok(/[Ss]in equipos/.test(e90.desc), 'la ficha de e90 dejó de decir «sin equipos»: re-decide su entorno');
+  ['e90', 'e91'].forEach(id => assert.ok(env(id).includes('corporal'), `${id} se hace en el suelo y quedó fuera de «solo peso corporal»`));
+  // (b) Lo que el heurístico mandaba a CASA y necesita equipo que una casa no tiene.
+  assert.deepStrictEqual(env('e69'), ['gym'], 'e69 «Clean & Press» es un levantamiento OLÍMPICO con barra: no es de casa');
+  assert.ok(!env('e47').includes('corporal'), 'e47 «Rueda Abdominal» necesita la rueda: no es «solo peso corporal»');
+  assert.ok(!env('e95').includes('corporal'), 'e95 es un RDL CON MANCUERNA (lo dice su ficha): no es «solo peso corporal»');
+  // (c) Las que necesitan una BARRA FIJA: parque y gimnasio, nunca una sala vacía.
+  ['e4', 'e19', 'e48'].forEach(id => {
+    assert.ok(env(id).includes('parque') && env(id).includes('gym'), `${id} necesita barra fija: parque y gym`);
+    assert.ok(!env(id).includes('corporal') && !env(id).includes('casa'), `${id} no se puede colgar de nada en una sala`);
+  });
+  // (d) 🔴 CONTROL de que «gym» NO es obligatorio: cinco versiones improvisadas de casa (botella,
+  // mochila, toalla en la puerta) están fuera del gimnasio A PROPÓSITO — ahí se usa el peso real.
+  const soloCasa = _LIB_REAL.filter(e => !e.env.includes('gym'));
+  assert.ok(soloCasa.length >= 5,
+    'desaparecieron las versiones improvisadas de casa; si se les añadió «gym», en el gimnasio se recetaría una botella');
+});
+
+test('🔴 v516 · quien entrena SIN EQUIPO recibe los básicos (la propiedad, no la etiqueta)', () => {
+  // Lo que de verdad importa no es que el catálogo tenga una etiqueta: es que el motor los ENTREGUE.
+  const vistos = new Set();
+  let dias = 0;
+  ['F', 'M'].forEach(sex => ['Principiante', 'Intermedio'].forEach(level => [3, 4, 5].forEach(days => [0, 42, 7].forEach(seed => {
+    const r = generarRutinas({ sex, age: 30, level, days, goal: 'Ganar músculo', place: 'corporal', weight: 70, height: 168, notes: '' },
+      _LIB_REAL, { seed, now: '2026-08-22T12:00:00Z' });
+    (r.routines || []).forEach(rt => { dias++; (rt.exercises || []).forEach(e => vistos.add(e.id)); });
+  }))));
+  const faltan = ['e83', 'e17', 'e80', 'e18', 'e73'].filter(id => !vistos.has(id));
+  assert.deepStrictEqual(faltan, [],
+    'a quien entrena sin equipo no le llegan los básicos (lagartijas/plancha/sentadilla/crunch/puente): ' + faltan.join(', '));
+  assert.ok(vistos.size >= 40,
+    `el motor solo alcanza ${vistos.size} ejercicios distintos en «solo peso corporal» (eran 29 con el defecto, 46 al arreglarlo)`);
+});
 
 test('e60 es aductor (no glúteo) y las pliometrías de salto son nivel avanzado', () => {
   // Los tres son datos del catálogo y no se detectan generando planes si el slot cambia:

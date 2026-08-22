@@ -2006,7 +2006,15 @@ function _dobFinish(){
 const TRAINING_STYLES = [
   {id:'gym_hipertrofia',  name:'Gym — Hipertrofia',          icon:'🏋️', env:'gym',      methodBias:'hipertrofia'},
   {id:'gym_fuerza',       name:'Gym — Fuerza',               icon:'🏋️', env:'gym',      methodBias:'fuerza'},
-  {id:'casa_corporal',    name:'Casa — Peso corporal',       icon:'🤸', env:'corporal', methodBias:'funcional'},
+  // 🔴 SIN SESGO a propósito (v516). Este preset ya promete peso corporal con su ENTORNO
+  // (`env:'corporal'` deja fuera barra, polea y máquina), así que pedir además el TIPO
+  // `Funcional` no añade nada y encoge el pool a 5 ejercicios: medido sobre 36 planes,
+  // **18 repetían un ejercicio TODOS los días** (peor caso, Step-up ×5 en una semana de 5)
+  // contra **0 de 36** sin el sesgo, y la variedad SUBE de 38 a 46 ejercicios distintos.
+  // Un sesgo de tipo solo tiene sentido cuando el entorno NO alcanza para expresar la
+  // intención — aquí sí alcanza. (El preset «Funcional» de abajo es otra cosa: ahí el tipo
+  // ES lo que el coach está pidiendo.)
+  {id:'casa_corporal',    name:'Casa — Peso corporal',       icon:'🤸', env:'corporal', methodBias:null},
   {id:'casa_equipo',      name:'Casa — Bandas y mancuernas', icon:'🏠', env:'casa',     methodBias:'hipertrofia'},
   {id:'parque_calistenia',name:'Calistenia / Parque',        icon:'🌳', env:'parque',   methodBias:'calistenia'},
   {id:'funcional',        name:'Funcional',                  icon:'🔥', env:'casa',     methodBias:'funcional'},
