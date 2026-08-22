@@ -11213,6 +11213,76 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
     'la copia de la nube del coach pisa DB.exercises y nadie la cura después: vuelve a quedarse sin entorno');
 });
 
+// 🔴 v519 · EL PRESET «FUNCIONAL» DEJA DE REPETIR EL MISMO EJERCICIO TODA LA SEMANA.
+// Un sesgo de estilo NO cede al relleno (decisión escrita: «la intención manda sobre la
+// variedad»), así que si un músculo tiene UN solo ejercicio de ese tipo, ese sale todos los
+// días. Medido: 18 de 36 planes repetían algo los 5 días — glúteo (solo el balanceo con pesa
+// rusa) y hombros (solo el paseo del camarero). NO se tocó la regla: se corrigió el CATÁLOGO,
+// que es donde estaba el error.
+//  · e196 «Push Press» era solo-gimnasio y su ficha no nombra ningún equipo: con mancuernas es
+//    de casa como el press militar con mancuernas, que ya lo era.
+//  · e129 «Paseo Lateral con Banda» era `Aislamiento` siendo un PASEO CON CARGA — la familia
+//    entera (granjero, oso, cangrejo, camarero) está como `Funcional` y él era el outlier.
+//    Lo confirmó el PO, que es quien lo prescribe.
+// Resultado medido sobre los 6 presets reales: 0 de 36 planes repiten algo todos los días.
+test('🔴 v519 · ningún músculo se queda con UN solo ejercicio del tipo que pide el estilo', () => {
+  const enCasa = e => (e.env || ['gym']).includes('casa');
+  const fun = _LIB_REAL.filter(e => enCasa(e) && e.type === 'Funcional');
+  const porMusculo = {};
+  fun.forEach(e => { porMusculo[e.muscle] = (porMusculo[e.muscle] || 0) + 1; });
+  // Los músculos que el generador pide en un plan de casa. `otro` y `espalda` no abren slot
+  // propio en las plantillas de casa, así que no pueden producir la repetición diaria.
+  ['gluteo', 'hombros', 'piernas', 'core'].forEach(m => {
+    assert.ok((porMusculo[m] || 0) >= 2,
+      `en casa solo hay ${porMusculo[m] || 0} ejercicio(s) Funcional de ${m}: el preset «Funcional» lo repetiría todos los días`);
+  });
+});
+
+test('🔴 v519 · las dos correcciones de catálogo que lo cerraron', () => {
+  const e196 = _LIB_REAL.find(e => e.id === 'e196');
+  assert.ok(e196.env.includes('casa'),
+    'e196 «Push Press» volvió a ser solo-gimnasio: con mancuernas es de casa, y sin él hombros se queda con uno solo');
+  const e129 = _LIB_REAL.find(e => e.id === 'e129');
+  assert.strictEqual(e129.type, 'Funcional',
+    'e129 «Paseo Lateral con Banda» volvió a Aislamiento: es un paseo con carga y sin él glúteo se queda con uno solo');
+  // 🔴 CONTROL: el criterio no es mi opinión, es la COHERENCIA del catálogo — la familia de
+  // los paseos/caminatas con carga está entera como Funcional. Si alguien mueve a los otros,
+  // este test lo dice en vez de dejar a e129 como el nuevo outlier.
+  ['e136', 'e194', 'e195', 'e212'].forEach(id => {
+    const e = _LIB_REAL.find(x => x.id === id);
+    assert.strictEqual(e.type, 'Funcional',
+      `${id} «${e.name}» salió de la familia de los paseos con carga: re-evalúa e129 con ellos`);
+  });
+});
+
+test('🔴 v519 · ningún preset repite un ejercicio TODOS los días (los 6, medidos)', () => {
+  // La propiedad de fondo, por la puerta de verdad: el generador completo con la configuración
+  // REAL de cada preset. Es la queja del PO («a nadie le gustan las rutinas») convertida en gate.
+  const PRESETS = [
+    { n: 'Gym — Hipertrofia', place: 'gym', mb: 'hipertrofia' },
+    { n: 'Gym — Fuerza', place: 'gym', mb: 'fuerza' },
+    { n: 'Casa — Peso corporal', place: 'corporal', mb: null },
+    { n: 'Casa — Bandas y mancuernas', place: 'casa', mb: 'hipertrofia' },
+    { n: 'Calistenia / Parque', place: 'parque', mb: 'calistenia' },
+    { n: 'Funcional', place: 'casa', mb: 'funcional' },
+  ];
+  const malos = [];
+  PRESETS.forEach(pr => {
+    ['F', 'M'].forEach(sex => ['Principiante', 'Intermedio'].forEach(level => [3, 4, 5].forEach(days => [0, 42, 7].forEach(seed => {
+      const r = generarRutinas({ sex, age: 30, level, days, goal: 'Ganar músculo', place: pr.place, weight: 70, height: 168, notes: '' },
+        _LIB_REAL, { seed, methodBias: pr.mb, adaptation: false, loadProfile: 'normal' });
+      if ((r.routines || []).length < 2) return;
+      const cuenta = {};
+      r.routines.forEach(rt => (rt.exercises || []).forEach(e => { cuenta[e.id] = (cuenta[e.id] || 0) + 1; }));
+      Object.entries(cuenta).forEach(([id, n]) => {
+        if (n === r.routines.length) malos.push(`${pr.n} ${sex}/${level}/${days}d s${seed}: ${(_LIB_REAL.find(x => x.id === id) || {}).name} ×${n}`);
+      });
+    }))));
+  });
+  assert.deepStrictEqual(malos.slice(0, 6), [],
+    `${malos.length} planes repiten un ejercicio TODOS los días`);
+});
+
 // 🔴 v516 · EL PRESET «CASA — PESO CORPORAL» NO LLEVA SESGO DE TIPO.
 // Su ENTORNO (`corporal`) ya deja fuera barra, polea y máquina, así que pedir ADEMÁS el tipo
 // `Funcional` no añadía nada y encogía el pool a 5 ejercicios. Medido sobre 36 planes:
