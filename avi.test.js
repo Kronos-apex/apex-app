@@ -11976,6 +11976,138 @@ test('rutina VACÍA → no hay héroe (la vista degrada a la tarjeta de arranque
   assert.strictEqual(todayHeroModel({ name: '   ', exercises: [{ name: 'Sentadilla', sets: 3, reps: 10 }] }).name, 'Entrenamiento');
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// esc() EN CADA CAMPO — barrido permanente (pedido del PO: «protege cada campo»)
+// ═══════════════════════════════════════════════════════════════════════════
+// Por qué existe: v523 dejó escrita la lección de que «hay un esc() en el cuerpo» NO es un
+// candado — el sabotaje que se lo quitaba AL NOMBRE salía verde porque los otros campos seguían
+// escapados. Este check la aplica a TODA la app: recorre las plantillas hasta la HOJA y exige
+// esc() en cada interpolación que toque un campo que una persona TECLEA.
+//
+// 🔴 Tres cosas que se aprendieron construyéndolo, y por las que está escrito así:
+//  1) NO se ancla en `innerHTML=`: el patrón dominante del repo es acumular con `html += ...`
+//     y asignar al final. Una sonda anclada al innerHTML no veía NINGUNA de esas.
+//  2) La plantilla se acota RECORRIENDO, nunca con una ventana fija de caracteres (esa fue la
+//     que acusó código sano por meterse en la sentencia siguiente — gotcha de los 3 modales).
+//  3) Se RECURRE hasta la hoja: un esc() dentro de un map no puede perdonar al campo de al lado.
+const _ESC_BS = String.fromCharCode(92);
+const _ESC_TICK = String.fromCharCode(96);
+const _ESC_ARCH = ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js',
+  'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js', 'avi-core.js'];
+// Campos con un <input type="text"> o un <textarea> detrás: los DERIVÉ de index.html, no de
+// memoria (así aparecieron `why`, `examples` y `tag`, que mi primera lista no tenía).
+const _ESC_CAMPOS = ['name', 'nombre', 'note', 'notes', 'nota', 'tag', 'why',
+  'desc', 'descSimple', 'text', 'texto', 'msg', 'mensaje', 'bio', 'handle',
+  'brand', 'examples', 'ejemplos', 'email', 'phone', 'telefono', 'apodo',
+  // Vienen de un <select>, no de un teclado — pero un <select> restringe la INTERFAZ, no
+  // el DATO: el catalogo viaja por Supabase en un jsonb que el cliente escribe. Van aqui
+  // porque son los campos que v524 escapo en la biblioteca, y sin esto el arreglo no
+  // quedaria vigilado (lo delato un sabotaje: sin ellos, devolverlos a crudo salia VERDE).
+  'muscle', 'muscleLabel', 'type'];
+// Excepciones VERIFICADAS una por una (2026-08-22). Cada una lleva su razón: sin la razón esto
+// se convierte en el sitio donde se esconde el próximo defecto.
+const _ESC_OK = [
+  // avcStyle(n) devuelve «background:<hex>;color:<hex>» — un color derivado del hash del
+  // nombre. No pinta el nombre; el nombre visible de al lado SÍ va con esc(ini(c.name)).
+  { re: /^avcStyle\([\w.]+\)$/, por: 'devuelve una cadena CSS, no texto' },
+  // _crepAv escapa por dentro (esc(ini(name))). Envolverlo aquí escaparía su HTML.
+  { re: /^_crepAv\([\w.]+\)$/, por: 'ya escapa por dentro' },
+  // Guardas: el campo se usa solo como condición y lo que emite es la plantilla anidada,
+  // que este mismo check ya juzgó por separado. La rama falsa es la cadena vacía.
+  { re: /^[\w.()[\]]+\?\s*:\s*''$/, por: 'guarda: la salida es la plantilla anidada, ya juzgada' },
+  // Ternarios que devuelven un LITERAL del código (puntos suspensivos, un <span> fijo).
+  { re: /^[\w.]+\.length\s*>\s*\d+\s*\?\s*'[^']*'\s*:\s*''$/, por: 'devuelve un literal del código' },
+  { re: /^isToday\?'<span class="rc-today-tag">Hoy<\/span>':''$/, por: 'literal del código' },
+  { re: /^bisetInfo\(_arr,_ei\)\.biset\?/, por: 'literal del código + icono' },
+  // NUTRI_INFO es un catálogo de constantes en app-5 (textos que escribimos nosotros).
+  { re: /^d\.(tag|why)$/, por: 'NUTRI_INFO: constante del código' },
+  // Locales que YA vienen escapadas de su asignación (verificado: `const name=esc(...)`,
+  // `const note=r.note?...esc(r.note)...`, `const why=r.why?...esc(r.why)...`).
+  { re: /^(name|note|why)$/, por: 'local escapada en su propia asignación' },
+  // El campo se usa como CLAVE de un mapa del código (color, icono, silueta), no se pinta.
+  { re: /^(MC|MH|MM_ICON_VIEW)\[[\w.]+\](\|\|'?[\w#()-]+'?)?$/, por: 'clave de un mapa, no texto' },
+  { re: /^muscle(Icon|MapSVG)\(/, por: 'devuelve un SVG; el campo es la clave del mapa' },
+  { re: /^exTrack\(/, por: 'devuelve la modalidad derivada, no texto tecleado' },
+];
+test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino todos)', () => {
+  const fs = require('fs'), path = require('path');
+  const RE_CAMPO = new RegExp(_ESC_BS + 'b(' + _ESC_CAMPOS.join('|') + ')' + _ESC_BS + 'b', 'i');
+  const RE_ESC = new RegExp(_ESC_BS + 'besc' + _ESC_BS + 's*' + _ESC_BS + '(|' +
+    _ESC_BS + 'bescAttr' + _ESC_BS + 's*' + _ESC_BS + '(');
+  const RE_MARCADO = new RegExp('<[a-zA-Z]+[' + _ESC_BS + 's>/]');
+  const plantillas = (src) => {
+    const out = [];
+    for (let i = 0; i < src.length; i++) {
+      if (src[i] !== _ESC_TICK || src[i - 1] === _ESC_BS) continue;
+      let d = 0, k = i + 1;
+      for (; k < src.length; k++) {
+        const c = src[k];
+        if (c === _ESC_BS) { k++; continue; }
+        if (c === '$' && src[k + 1] === '{') { d++; k++; continue; }
+        if (c === '}' && d > 0) { d--; continue; }
+        if (c === _ESC_TICK && d === 0) break;
+      }
+      out.push({ txt: src.slice(i + 1, k), pos: i });
+      i = k;
+    }
+    return out;
+  };
+  const interp = (txt) => {
+    const out = []; const re = new RegExp(_ESC_BS + '$' + _ESC_BS + '{', 'g'); let m;
+    while ((m = re.exec(txt))) {
+      let d = 1, i = m.index + 2;
+      while (i < txt.length && d > 0) { if (txt[i] === '{') d++; else if (txt[i] === '}') d--; i++; }
+      out.push(txt.slice(m.index + 2, i - 1));
+      re.lastIndex = i;
+    }
+    return out;
+  };
+  const hojas = (expr, acc) => {                       // ← baja hasta la hoja
+    const anid = plantillas(expr);
+    let resto = expr, off = 0;
+    anid.forEach(pl => {
+      const ini = pl.pos - off, fin = ini + pl.txt.length + 2;
+      resto = resto.slice(0, ini) + ' ' + resto.slice(fin);
+      off += pl.txt.length + 1;
+      interp(pl.txt).forEach(sub => hojas(sub, acc));
+    });
+    acc.push(resto);
+    return acc;
+  };
+  // CONTROL de la sonda: si estos 3 no discriminan, ninguna cifra de abajo vale.
+  const barrer = (src) => {
+    const mal = [];
+    plantillas(src).forEach(pl => {
+      if (!RE_MARCADO.test(pl.txt)) return;
+      const linea = src.slice(0, pl.pos).split('\n').length;
+      interp(pl.txt).forEach(e => hojas(e, []).forEach(h => {
+        const t = h.replace(/\s+/g, ' ').trim();
+        if (RE_ESC.test(t) || !RE_CAMPO.test(t)) return;
+        if (_ESC_OK.some(x => x.re.test(t))) return;
+        mal.push(linea + ': ' + t.slice(0, 80));
+      }));
+    });
+    return mal;
+  };
+  const T = _ESC_TICK;
+  assert.strictEqual(barrer('x.innerHTML=' + T + '<b>${c.name}</b>' + T + ';').length, 1,
+    'la sonda no ve un campo crudo: ninguna cifra de abajo vale');
+  assert.strictEqual(barrer('x.innerHTML=' + T + '<b>${esc(c.name)}</b>' + T + ';').length, 0,
+    'la sonda acusa un campo YA escapado');
+  // 🔴 EL CONTROL QUE IMPORTA: un esc() en un campo no puede perdonar al de al lado.
+  assert.strictEqual(barrer('x.innerHTML=' + T + '${a.map(x=>' + T +
+    '<b>${esc(x.name)}</b><i>${x.note}</i>' + T + ').join("")}' + T + ';').length, 1,
+    'un esc() anidado perdona al campo vecino: es la debilidad de v523 otra vez');
+
+  const crudos = [];
+  _ESC_ARCH.forEach(a => {
+    barrer(fs.readFileSync(path.join(__dirname, a), 'utf8')).forEach(m => crudos.push(a + ':' + m));
+  });
+  assert.deepStrictEqual(crudos, [],
+    'campos de usuario pintados SIN esc() en innerHTML:\n  ' + crudos.join('\n  '));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

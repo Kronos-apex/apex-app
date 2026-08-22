@@ -454,7 +454,11 @@ function renderTemplates(){
     const exN=(tpl.exercises||[]).length;
     const totS=(tpl.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const div=document.createElement('div');div.className='rc';
-    const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${tpl.tag}</span>`:'';
+    // La etiqueta la TECLEA el coach (input libre "Ej: Fuerza, Volumen, Cardio..."), asi que
+    // va escapada como todo lo demas. El delator de que esta era la anomala: el MISMO campo ya
+    // salia con esc() en el selector de plantillas de mas abajo — un campo escapado en un sitio
+    // y crudo en el de al lado es como se ve un descuido, no una decision.
+    const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${esc(tpl.tag)}</span>`:'';
     div.innerHTML=`
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">
         <div class="rcnum" style="background:var(--bll);color:var(--blt)">${typeof aviIcon==='function'?aviIcon('folder',16):'📂'}</div>
