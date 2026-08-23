@@ -4,6 +4,78 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 📱 2026-08-23 — avi-v526: EL CAMPO PARA ESCRIBIRLE AL COACH DABA ZOOM EN IPHONE
+
+Cabo suelto que salió mientras se escribía la ficha de tipografía del sistema de diseño, y que el PO
+mandó cerrar después de v525.
+
+### El defecto
+
+`.mta` es `#cn-msg-in`: **el campo desde el que el asesorado le escribe a su coach**. Llevaba
+`font-size:13px` **desde el commit inicial** (23-may-2026). Safari en iOS hace **zoom automático al
+enfocar** cualquier campo cuya letra mida menos de 16 px, y deja la pantalla descolocada — justo el
+teléfono de la asesorada del reporte de v525.
+
+Barrido de la clase: de las **7 clases que visten campos de texto** en toda la app, `.mta` era la
+**única** por debajo de 16. `.inp`, `.sel`, `.tarea`, `.cin-in`, `.wz-tel` y `.wz-num` ya cumplían.
+
+### Lo que NO se pudo verificar, dicho claro
+
+**Nadie escribió nunca por qué las otras seis están en 16.** Se buscó en la historia del repo: el
+valor viene del commit inicial, sin comentario ni mensaje que lo explique. Y **el zoom en sí no se
+puede reproducir aquí** — es comportamiento de WebKit en iOS y no hay iPhone en el banco de pruebas.
+
+Lo que sí está medido: que el campo estaba por debajo del umbral, que es el único de siete que lo
+estaba, y lo que cuesta subirlo. El argumento es el del **outlier medible**, el mismo con el que se
+cazaron el nivel de `e92` y la categoría de `e129`.
+
+### El coste, medido antes de tocar
+
+| | antes | después |
+|---|---|---|
+| letra | 13 px | 16 px |
+| alto del campo | 36 px | 40 px |
+| alto de la barra | 56 px | 60 px |
+| desborde a lo ancho | 0 | 0 |
+| botón de enviar | 36×59, dentro | 36×59, dentro |
+
+Cuatro píxeles de barra. Nada más se mueve.
+
+### El candado
+
+Test nuevo en la suite, **derivado de `index.html`**: recoge las clases de todo `<input>` de tipo
+tecleable, `<textarea>` y `<select>`, resuelve su `font-size` efectivo en `styles.css` y exige ≥16.
+
+- **Sabotaje 1** — devolver `.mta` a 13 px → suite en rojo, código de salida 1.
+- **Sabotaje 2** — añadir un campo NUEVO a 12 px → suite en rojo. Es el que un check de lista no
+  puede dar: caza que se AGREGUE, no solo que se quite.
+
+El test se insertó **antes del bloque RESUMEN** y se comprobó que el contador SUBE (859 → 860) — la
+lección de v524, donde un test appendeado al final corría después del veredicto.
+
+### 🔴 Corrección de un error propio de v525
+
+El barrido de pestañas que se añadió en v525 llamaba a **`cnGo(...)`**, que **no existe** en este
+repo (la función es `cnTab(id, botón)`). Envuelto en `try/catch`, no falló: **barrió cuatro veces
+`cn-today`** mientras el harness afirmaba «7 habitaciones + 4 pestañas».
+
+Las 7 habitaciones sí se abren con sus funciones reales, así que el veredicto de v525 se sostiene y
+el arreglo del área segura sigue verificado. Lo que no existía era un tercio de la cobertura
+anunciada. Ahora **cada pestaña afirma que abre** antes de barrerse, y con la cobertura ya real el
+barrido **sigue verde**.
+
+### De paso, un diagnóstico que costó tres corridas
+
+El medidor no lograba entrar y la primera hipótesis fue el rate limit de la cuenta de QA. Falso:
+eran **tres servidores zombis pegados al puerto 8801** (`curl` devolvía `000`). El gotcha está
+escrito en `scripts/e2e/README.md` desde hace tiempo. **Antes de culpar a la cuenta, `curl` al
+servidor local.**
+
+### QA
+
+Suite **860/860 en los dos husos** · hook **12/12** (baseline 859 → 860) · 2 sabotajes, los 2
+muerden por código de salida · `_repro-safearea-volver` verde con la cobertura corregida.
+
 ## 📱 2026-08-23 — avi-v525: «VOLVER» ESTABA DEBAJO DEL RELOJ DEL IPHONE
 
 Reporte del PO sobre una asesorada real: *«tiene iPhone y se le dificulta navegar por la app debido

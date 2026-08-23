@@ -12126,6 +12126,61 @@ test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino t
     'campos de usuario pintados SIN esc() en innerHTML:\n  ' + crudos.join('\n  '));
 });
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔒 NINGÚN CAMPO DE TEXTO POR DEBAJO DE 16px
+//
+// Safari en iOS hace ZOOM automático al enfocar un campo cuya letra mide menos de 16px, y deja la
+// pantalla descolocada. En AVI la app se instala como PWA y hay asesorados en iPhone, así que el
+// campo desde el que se le escribe al coach (`.mta` = #cn-msg-in) era el que lo sufría: llevaba
+// 13px desde el commit inicial, siendo el ÚNICO de las 7 clases que visten campos por debajo de 16.
+//
+// La lista de clases se DERIVA de index.html — escribirla a mano es cómo se queda una fuera (los
+// campos `why`, `examples` y `tag` de v524). Solo cuentan los campos donde se TECLEA texto:
+// un checkbox, un radio o un slider no disparan el zoom.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔒 ningún campo de texto baja de 16px (Safari iOS hace zoom al enfocar y descoloca la pantalla)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+
+  const TECLEABLE = /^(text|email|password|number|tel|search|url|date)$/;
+  const clases = new Set();
+  for (const m of html.matchAll(/<(input|textarea|select)\b([^>]*)>/gi)) {
+    const attrs = m[2];
+    if (m[1].toLowerCase() === 'input') {
+      const t = /type\s*=\s*"([^"]+)"/i.exec(attrs);
+      // sin type explícito, un <input> es de texto
+      if (t && !TECLEABLE.test(t[1].toLowerCase())) continue;
+    }
+    const c = /class\s*=\s*"([^"]+)"/i.exec(attrs);
+    if (c) c[1].trim().split(/\s+/).forEach(x => clases.add(x));
+  }
+  assert.ok(clases.size >= 5,
+    `la sonda solo encontró ${clases.size} clases de campo en index.html — algo cambió en el HTML`);
+
+  // Gana la ÚLTIMA declaración en orden de fuente, que es como resuelve el navegador entre reglas
+  // de la misma especificidad.
+  const efectivo = new Map();
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim().replace(/\s+/g, ' '), cuerpo = m[2].replace(/\n/g, '');
+    const fs2 = /(?:^|;)\s*font-size\s*:\s*([0-9.]+)px/.exec(cuerpo);
+    if (!fs2) continue;
+    for (const parte of sel.split(',')) {
+      const p = parte.trim();
+      if (!/^\.[A-Za-z0-9_-]+$/.test(p)) continue;   // solo selectores de clase a secas
+      const nombre = p.slice(1);
+      if (clases.has(nombre)) efectivo.set(nombre, parseFloat(fs2[1]));
+    }
+  }
+  assert.ok(efectivo.size >= 4,
+    `solo ${efectivo.size} clases de campo tienen font-size en styles.css — la sonda dejó de ver el CSS`);
+
+  const chicos = [...efectivo.entries()].filter(([, v]) => v < 16).map(([k, v]) => `.${k} = ${v}px`);
+  assert.deepStrictEqual(chicos, [],
+    'campos de texto por debajo de 16px (iOS Safari les hará zoom al enfocar):\n  ' + chicos.join('\n  '));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

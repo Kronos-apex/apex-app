@@ -241,7 +241,10 @@ for (const [nombre, abrir] of HABITACIONES) {
 await ev(`document.querySelectorAll('.sroom.on').forEach(r=>r.classList.remove('on'));try{AVINAV.layers=0;}catch(e){}`);
 await sleep(400);
 for (const tab of ['cn-today', 'cn-routines', 'cn-history', 'cn-profile']) {
-  await ev(`(()=>{try{cnGo('${tab}');}catch(e){}})()`); await sleep(600);
+  const r = await ev(`(()=>{const id='${tab}';const b=document.querySelector('.cntab[onclick*="'+id+'"]');if(!b) return 'sin pestaña '+id; cnTab(id,b); return getComputedStyle(document.getElementById(id)).display;})()`);
+  await sleep(700);
+  // Una pestaña que no abre convierte el barrido en cuatro medidas de la MISMA pantalla.
+  A.ok(!!r && r !== 'none' && !String(r).startsWith('sin'), `la pestaña ${tab} abre de verdad antes de barrerla`, { display: r });
   await anota('pestaña ' + tab);
 }
 
