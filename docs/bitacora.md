@@ -4,6 +4,77 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 📱 2026-08-23 — avi-v525: «VOLVER» ESTABA DEBAJO DEL RELOJ DEL IPHONE
+
+Reporte del PO sobre una asesorada real: *«tiene iPhone y se le dificulta navegar por la app debido
+a que el botón de volver atrás está en la parte alta de la pantalla y parece que está muy pegado
+arriba porque no la deja volver, y para regresar a la rutina o al inicio debe cerrar y abrir la
+app»*. Y remató con la pregunta correcta: *«apuesto que no es la única persona a la que le pasa»*.
+
+### Lo que le pasaba
+
+No era que el botón estuviera «muy pegado»: estaba **fuera de su alcance**. AVI declara
+`viewport-fit=cover` y se instala como PWA (`"display":"standalone"`), así que en un iPhone la
+webview ocupa la pantalla **entera**, incluida la franja del reloj y la isla dinámica. iOS publica
+esa franja en `env(safe-area-inset-top)` — 59 px con isla, 47 con notch — para que uno la respete.
+
+- `.sroom` es `position:fixed;inset:0` → su borde superior **es** el borde de la pantalla.
+- `.sroom-bar` era `position:sticky;top:0;padding:13px 16px` → **no nombraba el área segura**.
+
+Medido con el iPhone simulado, en las 7 habitaciones: «‹ Volver» ocupaba de **y=13 a y=47** con la
+línea del sistema en **y=59**. **Tapado entero, no a medias.** Cuatro barras de AVI ya lo hacían
+bien (`.coach-topbar`, `.cntopbar`, `.exlb-close`, `.cw-skip`); esta se quedó fuera.
+
+### Lo que se arregló
+
+1. `.sroom-bar` gana `padding-top:max(13px,env(safe-area-inset-top))` → las 7 habitaciones pasan a
+   y=59..93, despejadas.
+2. `.sidebar` (el nav del panel del coach, el del propio PO) tenía el mismo defecto: su logo y su
+   primer botón caían en la misma franja. Mismo arreglo.
+3. El objetivo táctil de «Volver» medía **34 px** y la guía de Apple pide 44. Se amplía el **área
+   pulsable** con un `::after` invisible centrado, no el botón: el diseño no cambia ni un píxel en
+   ningún tema, y el barrido con `elementFromPoint` confirma 44 px de alto que aciertan.
+
+Dos candidatos resultaron **falsos positivos** y se dejaron intactos: `.nt-skip` (vive dentro de
+`.nt-card`, centrada en pantalla) y `.prog-anchors` (sticky dentro de `.cnbody`, que ya scrollea por
+debajo de una barra protegida).
+
+### Por qué el harness que ya existía no lo cazaba
+
+`_repro-sroom-fs.mjs` afirma desde hace meses que «‹ Volver» se puede pulsar, con hit-testing. Y es
+verdad **dentro del navegador**: `elementFromPoint` vive en el viewport, y el viewport **sí** incluye
+la franja que el sistema se reserva. Un botón tapado por el reloj del iPhone sale «alcanzable» en esa
+prueba. Lo que hay que medir es **geometría contra la línea del área segura**.
+
+### La regresión
+
+`scripts/e2e/_repro-safearea-volver.mjs`:
+
+- **Control de la sonda**: la sustitución del `env()` tiene que haber llegado al CSS servido. Saltó
+  dos veces de verdad (una porque Chrome 151 **no trae `Emulation.setSafeAreaInsets`**, otra porque
+  la caché del navegador servía `styles.css` sin pasar por la interceptación) y en las dos abortó la
+  corrida en vez de dar un verde falso.
+- **Control de la app**: `.exlb-close`, que sí declara el área segura, tiene que aterrizar en y=67.
+  Sin él, un «todo tapado» podría ser que la sonda mide mal.
+- Las 7 habitaciones, el alto pulsable, el nav del coach, y un **barrido del DOM vivo** de las 7
+  habitaciones y las 4 pestañas buscando cualquier control dentro de la franja.
+
+`scripts/e2e/_sabotaje-safearea.py`: 3 sabotajes, **los 3 muerden**, verificados por **código de
+salida** (no por el mensaje impreso — la lección de v524).
+
+### QA
+
+Suite **859/859 en los dos husos** · hook **12/12** · `_repro-sroom-fs` verde · dos corridas
+consecutivas del harness nuevo, verdes.
+
+### Radar
+
+- El defecto **solo se manifiesta con la app instalada**. Quien la abra en una pestaña de Safari ve
+  el botón bien, porque la barra del navegador ya ocupa esa franja y el inset vale 0. **Probar en el
+  navegador da verde sobre un defecto que sufre justo quien más usa la app.**
+- Sin medir: cuántos asesorados están en iPhone con la app instalada, o sea a cuánta gente le estaba
+  pasando esto en silencio.
+
 ## 🍃 2026-08-21 — avi-v512: EL COACH NO PODÍA SALIR DE SU PROPIA SEMANA DE DESCARGA
 
 Reporte del PO, y tenía toda la razón: *«no tiene sentido cambiar mi rutina totalmente si necesito
