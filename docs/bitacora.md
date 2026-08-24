@@ -4,6 +4,45 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🛟 2026-08-24 — avi-v534: EL GATE DEL ARRANQUE APROBABA EXACTAMENTE EL CASO QUE EXISTE PARA CAZAR
+
+El único 🔴 de la auditoría de código, y lo reproduje antes de tocar nada.
+
+**Qué pasaba.** `_verify-arranque-modulos.mjs` existe porque la app **reventó tres veces en Android
+real** (v375/v393/v403) dejando a alguien mirando una pantalla pegada. Su criterio de éxito era
+«`#s-login` existe y no está `display:none`»… y eso **lo cumple el defecto**: `#s-login` es marcado
+ESTÁTICO que vive DEBAJO del splash (`position:fixed;z-index:9999`). Corriéndolo con
+`app-2-login.js` bloqueado imprimía **OK** con `cargaFuera:false` en su propia línea de salida —
+el dato que lo delataba, medido y descartado.
+
+**Y había un defecto de app detrás.** La red de seguridad del arranque («si algo falla, quita el
+splash y muestra el login») vive **dentro de `app-2-login.js`**. Cuando el módulo que no carga es
+justamente ese, no la ejecuta nadie: **el splash se queda para siempre.** La red tenía que estar
+donde no pueda fallar, así que ahora va **inline en `index.html`**: a los 12 s, si el splash sigue
+puesto, se quita — y si los módulos cargaron y lo lento fue la nube, aparece el login; si ni eso,
+un aviso honesto («No pudimos cargar AVI · Reintentar») en vez de una pantalla muda.
+
+**El gate ahora afirma lo que la persona vive**, no la presencia de un selector: que el splash se
+fue Y que en el centro de la pantalla hay algo suyo y pulsable — el login **vivo**, o el aviso
+honesto. Las dos salidas valen; el splash congelado y la capa muda, no.
+
+💎 **Dos cosas las encontraron los sabotajes, no yo:**
+- **S2** destapó que el gate no distingue **un login que se VE de uno que SIRVE**: quitado el
+  splash, `#s-login` está ahí y se puede tocar aunque `doLogin` no exista — la persona pulsa y no
+  pasa nada, que es otra pantalla muerta. Ahora se exige `typeof doLogin==='function'`.
+- **S4** es un **verde documentado** (patrón S2b de v485) y es la prueba del defecto original:
+  quitando la red **y** devolviendo el criterio viejo, el gate vuelve a imprimir OK sobre un splash
+  congelado. El agujero solo se ve cuando la app está rota — con la red puesta, los dos criterios
+  la aprueban igual.
+
+De paso volví a pagar el gotcha de las comillas invertidas dentro de un template literal: esta vez
+en un COMENTARIO de la sonda, que partió el archivo.
+
+Suite **878/878** · gate 6/6 con su modo declarado · **4 sabotajes, 3 muerden y 1 verde documentado
+con su razón**.
+
+---
+
 ## ⏱️ 2026-08-24 — avi-v533: LA DURACIÓN DEJA DE MENTIR, Y LA PROMESA QUE NINGÚN CÁLCULO SOSTIENE SE RETIRA
 
 Lo midieron **dos áreas por separado** (el motor deportivo y la experiencia), que es por lo que

@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=533">
+<link rel="stylesheet" href="styles.css?v=534">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -105,6 +105,41 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
   <div class="ld-msg" id="ld-msg">Conectando con la nube</div>
 </div>
+<script>
+// ── RED DE ÚLTIMA INSTANCIA DEL ARRANQUE (v534) ──────────────────────────────────────────────
+// 🔴 Esto va INLINE en index.html a propósito, y es lo único que hace que sirva: la red que ya
+// existía vive DENTRO de `app-2-login.js` (un `.catch` del arranque), así que cuando el módulo que
+// no carga es justamente app-2, no la apaga nadie y la persona se queda mirando el splash PARA
+// SIEMPRE. Medido con el propio gate del repo: bloqueando `app-2-login.js`, `cargaFuera:false` —
+// y el gate igual imprimía OK, porque su criterio era «#s-login existe y no está display:none» y
+// `#s-login` es marcado ESTÁTICO que vive DEBAJO del splash (`position:fixed;z-index:9999`).
+// Es el defecto que este gate existe para cazar, aprobado por el propio gate.
+// El arranque normal quita el splash a los ~3 s más lo que tarde la nube; 12 s deja margen de
+// sobra sin dejar a nadie mirando una pantalla muerta.
+(function(){
+  setTimeout(function(){
+    var o = document.getElementById('avi-loading');
+    if (!o) return;                       // el arranque terminó y ya lo quitó: nada que hacer
+    try { o.parentNode.removeChild(o); } catch (e) {}
+    // Si los módulos SÍ cargaron y lo lento fue la nube, debajo hay un login que funciona.
+    if (typeof window.doLogin === 'function') { try { showScreen('s-login'); } catch (e) {} return; }
+    // Si ni eso, se dice la verdad y se ofrece la única acción que sirve. Nunca una pantalla muda.
+    var d = document.createElement('div');
+    d.id = 'avi-bootfail';   // el gate lo busca por id: «pantalla honesta» no es «cualquier DIV»
+    d.setAttribute('style', 'position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;'
+      + 'align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;'
+      + 'background:#F4F4F0;color:#1A1A1A;font-family:system-ui,-apple-system,sans-serif');
+    d.innerHTML = '<div style="font-size:34px">📶</div>'
+      + '<div style="font-size:17px;font-weight:800">No pudimos cargar AVI</div>'
+      + '<div style="font-size:13.5px;line-height:1.5;max-width:300px;color:#6A6A6A">'
+      + 'Parece que la conexión se cortó a mitad. Tus datos están a salvo — vuelve a intentarlo.</div>'
+      + '<button type="button" style="margin-top:4px;background:#0A7C5B;color:#fff;border:0;'
+      + 'border-radius:999px;padding:12px 26px;font-size:15px;font-weight:800;font-family:inherit;'
+      + 'cursor:pointer;min-height:44px" onclick="location.reload()">Reintentar</button>';
+    document.body.appendChild(d);
+  }, 12000);
+})();
+</script>
 
 <!-- ══ LOGIN (cinematográfico) ══ -->
 <div id="s-login" class="screen on cin">
@@ -1241,19 +1276,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=533"></script>
-<script src="muscle-map.js?v=533"></script>
-<script src="exercise-muscles.js?v=533"></script>
+<script src="avi-core.js?v=534"></script>
+<script src="muscle-map.js?v=534"></script>
+<script src="exercise-muscles.js?v=534"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=533"></script>
-<script src="app-2-login.js?v=533"></script>
-<script src="app-3-coach.js?v=533"></script>
-<script src="app-4-entreno.js?v=533"></script>
-<script src="app-5-salud.js?v=533"></script>
-<script src="app-6-extra.js?v=533"></script>
-<script src="app-7-community.js?v=533"></script>
+<script src="app-1-infra.js?v=534"></script>
+<script src="app-2-login.js?v=534"></script>
+<script src="app-3-coach.js?v=534"></script>
+<script src="app-4-entreno.js?v=534"></script>
+<script src="app-5-salud.js?v=534"></script>
+<script src="app-6-extra.js?v=534"></script>
+<script src="app-7-community.js?v=534"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

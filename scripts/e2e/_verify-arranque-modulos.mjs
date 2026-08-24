@@ -48,19 +48,52 @@ for (const mod of MODULOS) {
     await send('Page.enable'); await send('Runtime.enable');
     await send('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
     await send('Page.navigate', { url: `http://localhost:${PORT}/` });
-    // El llamado guardado corre a los 3s: hay que esperarlo, o el test pasa por no haber llegado.
-    await sleep(9000);
+    // El llamado guardado corre a los 3s y la red de última instancia a los 12s: hay que esperar
+    // MÁS que eso, o el gate mide antes de que la app haya tenido su última oportunidad.
+    await sleep(16000);
+    // 🔴 QUÉ SE MIDE Y POR QUÉ CAMBIÓ (v534). Hasta aquí el criterio era «`#s-login` existe y no
+    // está display:none», y **eso lo cumple el defecto**: `#s-login` es marcado ESTÁTICO que vive
+    // DEBAJO del splash (`position:fixed;z-index:9999`). Bloqueando `app-2-login.js` este gate
+    // imprimía OK con `cargaFuera:false` en su propia línea de salida — o sea que aprobaba
+    // exactamente el caso que existe para cazar (auditoría de código, 24-ago).
+    // Ahora se afirma **lo que la persona puede hacer**: que en el centro de la pantalla haya algo
+    // suyo y pulsable, no una capa encima. El hit-testing SÍ es la herramienta correcta aquí
+    // (a diferencia de v525, donde lo que tapaba era la franja del sistema y no un elemento).
+    // LA PROMESA DE ESTE GATE, dicha en los términos de la persona: **nadie se queda mirando una
+    // pantalla muerta**. Eso se cumple de DOS maneras y las dos valen: o llega al login (la app
+    // funciona sin ese módulo), o llega al aviso honesto de «no pudimos cargar · Reintentar»
+    // (no funciona, y se le dice). Lo que NO vale es el splash congelado ni una capa muda encima.
     const estado = await ev(`(()=>{const l=document.getElementById('s-login');
+      const fail=document.getElementById('avi-bootfail');
+      const cx=Math.round(innerWidth/2), cy=Math.round(innerHeight/2);
+      const top=document.elementFromPoint(cx,cy);
+      const enLogin=!!(l&&top&&l.contains(top));
+      const enAviso=!!(fail&&top&&fail.contains(top));
       return {login: !!(l&&getComputedStyle(l).display!=='none'),
+              // Un login que se VE no es un login que SIRVE: la pantalla es marcado estatico, asi
+              // que con el splash quitado se ve y se toca aunque el modulo que la hace funcionar
+              // no haya cargado — y entonces la persona pulsa y no pasa nada, que es otra pantalla
+              // muerta. Lo cazo el sabotaje S2, no yo. (Sin comillas invertidas: esto va DENTRO de
+              // un template literal y una sola lo parte — gotcha del repo.)
+              loginVivo: typeof doLogin==='function',
               initPWA: typeof initPWA==='function',
               cargaFuera: !document.getElementById('avi-loading')||getComputedStyle(document.getElementById('avi-loading')).display==='none',
+              alcanzable: enLogin||enAviso,
+              modo: enLogin?'login':(enAviso?'aviso honesto':'NADA USABLE'),
+              tapadoPor: (enLogin||enAviso)?null:(top?((top.id||top.className||top.tagName)+''):'nada'),
               faltaModulo: typeof migratePhotosToStorage!=='function'};})()`);
     const fatales = jsErrors.filter(e => !/Failed to load resource|net::ERR/i.test(e));
     // `initPWA` VIVE en app-6-extra.js: exigirlo con ese módulo bloqueado es medir mal, no un
     // defecto (mi primera corrida lo reportó como fallo y era la sonda). Lo que debe cumplirse
     // SIEMPRE es lo que ve la persona: la pantalla de login pintada y cero excepciones.
     const exigeInitPWA = mod !== 'app-6-extra.js';
-    ok = !!(estado && estado.login && (!exigeInitPWA || estado.initPWA) && fatales.length === 0);
+    // 🔴 `cargaFuera` y `alcanzable` son las condiciones NUEVAS y son las que de verdad describen
+    // lo que la persona vive: el splash se fue Y hay algo suyo y pulsable en pantalla.
+    // `initPWA` y el login solo se exigen cuando la app PUEDE funcionar sin ese módulo; si cayó en
+    // el aviso honesto, exigirlos sería pedirle a una app que no cargó que además tenga su motor.
+    const degradado = estado && estado.modo === 'aviso honesto';
+    ok = !!(estado && estado.cargaFuera && estado.alcanzable && fatales.length === 0
+            && (degradado || (estado.login && estado.loginVivo && (!exigeInitPWA || estado.initPWA))));
     detalle = JSON.stringify({ ...estado, errores: fatales.slice(0, 2) });
     // Coherencia de la sonda: si bloqueamos app-5 y la función SIGUE existiendo, no bloqueamos nada.
     if (mod === 'app-5-salud.js' && estado && estado.faltaModulo === false) { ok = false; detalle += ' ⚠️ el bloqueo NO surtió efecto — la sonda no probó nada'; }
