@@ -1030,7 +1030,16 @@ function loadStep(kg) {
 // ese peso (lo calcula `sessionsAtLoad`, que sí ve el historial). Por defecto **1**, o sea la
 // conservadora: sin el dato NO se sube. Un caller que se olvide de pasarlo hace que la app
 // repita el peso, nunca que lo dispare — y el test de cableado exige que `_suggestKg` lo pase.
-const LOAD_CONSOLIDATE_SESSIONS = 2;
+// 📊 LA CURVA, medida sobre las 208 sugerencias de los planes vigentes (24-ago). De ellas, la
+// regla vieja subía el peso en 167; con consolidación siguen subiendo:
+//     umbral 2 → 84 suben  (se frenan 83)
+//     umbral 3 → 52 suben  (se frenan 115)   ← elegido por el PO
+//     umbral 4 → 38 suben  (se frenan 129)
+// 🔴 La curva NO tiene codo: cada sesión que se exige frena ~30 casos, parejo. Así que el número
+// NO lo elige el dato — lo elige el criterio del entrenador, y el dato dice lo que cuesta moverlo.
+// El PO subió de 2 a 3 el 24-ago: quiere que la persona repita la carga dos veces antes de que la
+// app proponga subir. Cambiarlo es una línea y la cuenta está aquí al lado.
+const LOAD_CONSOLIDATE_SESSIONS = 3;
 // Cuántas sesiones distintas cumplió ya las reps objetivo con ESE peso (o más). PURA.
 // Cuenta por DÍA, no por registro: dos entradas del mismo día son el mismo entrenamiento.
 function sessionsAtLoad(sessions, exKey, kg, targetReps) {

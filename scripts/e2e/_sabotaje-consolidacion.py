@@ -26,8 +26,10 @@ SABOTAJES = [
      "    const ses = (opts && opts.sesionesEnPeso != null) ? (parseInt(opts.sesionesEnPeso) || 0) : 1;",
      "    const ses = (opts && opts.sesionesEnPeso != null) ? (parseInt(opts.sesionesEnPeso) || 0) : 99;"),
 
+    # El PO movió el umbral de 2 a 3 el mismo día. El sabotaje se ancla en el NOMBRE, no en el
+    # valor, para que no caduque la próxima vez que lo mueva (el runner lo cazó al no aplicarse).
     ('S3 · el umbral baja a 1: consolidar deja de significar nada', 'avi-core.js',
-     "const LOAD_CONSOLIDATE_SESSIONS = 2;",
+     "const LOAD_CONSOLIDATE_SESSIONS = 3;",
      "const LOAD_CONSOLIDATE_SESSIONS = 1;"),
 
     ('S4 · `_suggestKg` deja de pasar el conteo (la app no subiría el peso NUNCA)', 'app-4-entreno.js',

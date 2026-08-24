@@ -7224,7 +7224,7 @@ test('🔒 v484 · un récord viejo SIN `val` ni `unit` (formato legacy) se fund
   assert.strictEqual(r.prs.e15.kg, 30, 'la marca legacy se conserva');
   // v529: con el peso ya consolidado (≥2 sesiones) sube; lo que este test afirma es que la marca
   // legacy ALIMENTA la sugerencia, no la regla de progresión (esa vive en su propio bloque).
-  assert.strictEqual(suggestFromPR(r.prs.e15, 8, { sesionesEnPeso: 2 }), 35, 'y ya alimenta el peso sugerido');
+  assert.strictEqual(suggestFromPR(r.prs.e15, 8, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 35, 'y ya alimenta el peso sugerido');
 });
 
 test('🔒 v484 · sin récords varados no toca NADA (ni copia el objeto)', () => {
@@ -9544,7 +9544,7 @@ test('🔴 v482 · el caso REAL que lo destapó: Natalia, récord 25 kg ×15, pl
   // Antes: suggestFromPR sube a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
   // récord. La app llamaba «descarga» a levantar lo mismo de siempre.
   const pr = { val: 25, unit: 'kg', reps: 15 };
-  assert.strictEqual(suggestFromPR(pr, 15, { sesionesEnPeso: 2 }), 27.5, 'fuera de descarga sí progresa (eso está bien)');
+  assert.strictEqual(suggestFromPR(pr, 15, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 27.5, 'fuera de descarga sí progresa (eso está bien)');
   assert.strictEqual(Math.round(27.5 * 0.9 * 2) / 2, 25, 'la cadena vieja devolvía su propio récord');
   assert.strictEqual(deloadSuggestKg(pr, 15), 21.5, 'ahora sale del récord, no del escalón');
 });
@@ -11814,11 +11814,11 @@ test('sanitizePrs retira el récord FANTASMA que nadie podría volver a batir', 
 test('🔴 suggestFromPR: si ya cumpliste las reps objetivo Y consolidaste el peso, SUBE (doble progresión)', () => {
   // El caso exacto que estaba en producción. v529 le añade la consolidación: el escalón exige
   // ≥2 sesiones con ese peso, así que el test lo declara explícitamente.
-  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12, { sesionesEnPeso: 2 });
+  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS });
   assert.ok(r > 10, `sugirió ${r} kg cuando ya levanta 10: el peso sugerido nunca subiría`);
   assert.strictEqual(r, 12.5);
   // Y no se calla por encima de 15 reps: ahí es JUSTO cuando se ganó el salto de mancuerna
-  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15, { sesionesEnPeso: 2 });
+  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS });
   assert.ok(luz != null, 'con 20 reps la app se callaba (estimate1RM devuelve null > 15 reps)');
   assert.ok(luz > 2.5, `sugirió ${luz} tras 20 repeticiones con 2,5 kg`);
 });
@@ -11829,11 +11829,19 @@ test('🔴 suggestFromPR: si ya cumpliste las reps objetivo Y consolidaste el pe
 // subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner?»
 // ══════════════════════════════════════════════════════════════════════════════
 test('🔴 v529 · el caso del PO: con UNA sola sesión a 40 kg, la app REPITE 40 — no sube a 45', () => {
+  // El umbral se LEE de la constante, no se escribe a mano: el PO la movió de 2 a 3 el mismo día
+  // y un test con el número quemado se habría puesto rojo describiendo su decisión como un fallo.
   const pr = { val: 40, reps: 12, unit: 'kg' };
   assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 1 }), 40, 'aún se está adaptando: se repite');
-  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 2 }), 45, 'consolidado: ahora sí sube un escalón');
-  // 🔒 CONTROL de que la regla no se volvió «no subir nunca»: a la 3ª también sube.
-  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 5 }), 45);
+  for (let n = 1; n < LOAD_CONSOLIDATE_SESSIONS; n++) {
+    assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: n }), 40, `con ${n} sesión(es) todavía se repite`);
+  }
+  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 45,
+    'consolidado: ahora sí sube un escalón');
+  // 🔒 CONTROL de que la regla no se volvió «no subir nunca»: por encima del umbral también sube.
+  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS + 3 }), 45);
+  // 🔒 Y que el umbral es un número con sentido: exigir 1 sería no exigir nada.
+  assert.ok(LOAD_CONSOLIDATE_SESSIONS >= 2, 'consolidar exige repetir al menos una vez');
 });
 test('🔒 v529 · sin el dato de sesiones NO se dispara el peso (el default es el conservador)', () => {
   // Un caller que se olvide de pasar `sesionesEnPeso` hace que la app REPITA la carga, jamás que

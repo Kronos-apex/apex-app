@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔢 2026-08-24 — avi-v530: el umbral de consolidación sube a 3 (decisión del PO)
+
+Con v529 recién desplegada, el PO decidió exigir **tres** sesiones en vez de dos antes de que la
+app proponga subir el peso. La curva medida sobre las 208 sugerencias vigentes estaba al lado de la
+constante y con ella tomó la decisión:
+
+| umbral | siguen subiendo | se frenan |
+|---|---|---|
+| 2 | 84 | 83 |
+| **3** | **52** | **115** |
+| 4 | 38 | 129 |
+
+🔴 **La curva no tiene codo**: cada sesión que se exige frena ~30 casos, parejo. O sea que el número
+lo elige el criterio del entrenador, no el dato — y así queda escrito junto a la constante.
+
+De paso, dos cosas quedan a prueba de la próxima vez que lo mueva: **los tests leen el umbral de la
+constante** en vez de llevar el número quemado (si no, la decisión del PO habría puesto la suite en
+rojo describiéndose a sí misma como un fallo), y **el sabotaje se ancla en el nombre**, no en el
+valor — el runner lo cazó gritando «NO SE APLICÓ» en cuanto cambió el 2 por el 3.
+
+Suite **866/866** en los dos husos · **6 sabotajes y los 6 muerden**.
+
+---
+
 ## 🏋️ 2026-08-24 — avi-v529: EL PESO NO SUBE HASTA QUE SE CONSOLIDA (reporte del PO)
 
 **Lo que reportó.** *«¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión
