@@ -4,6 +4,50 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔔 2026-08-24 — avi-v535: A NATALY CADA AVISO LE SALÍA 8 VECES
+
+Hallazgo H1 de la auditoría de base de datos, encontrado también por la de móvil desde el otro lado.
+
+**Qué pasaba.** La UNIQUE de `push_subscriptions` es `(client_id, subscription)`, y `subscription`
+incluye las claves de cifrado, que **el navegador ROTA** en cada re-suscripción. Así que el
+`upsert` no casaba el conflicto nunca e insertaba fila nueva — y el arranque re-suscribe con
+`force=true` **una vez por cada apertura de la app**.
+
+Medido en producción y reproducido hoy: **Nataly, 8 filas · 1 endpoint · 8 claves**, acumuladas
+entre el 12 y el 20 de agosto. La edge imprimía **8 líneas de envío para ella en una sola ronda**:
+**7 de los 17 envíos diarios eran basura**. 🔒 Y el control que separa el defecto de lo legítimo:
+Samuel y Natalia también tienen 2 filas, pero con **2 endpoints DISTINTOS** — son dos aparatos de
+verdad y no se tocan.
+
+**🔴 Por qué se arregló en el SERVIDOR y no cambiando el `onConflict`.** AVI es offline-first y el
+JS viaja en la caché del Service Worker: durante horas o días hay teléfonos con la versión
+anterior. Un índice único nuevo, a secas, los haría **fallar al re-suscribirse** y se quedarían con
+las claves caducadas — o sea, sin recibir nada. El trigger `before insert` arregla a todos desde el
+primer momento y sin tocar una línea de JS: la primera vez que cada persona abre la app, sus filas
+se colapsan en una.
+
+**Resultado, verificado:** 18 filas → **11**, **0 duplicados**, Nataly en **1** y con sus días de
+entreno intactos. Sin advisors nuevos (la función vive en `private`, que no se expone por API).
+
+💎 **Las dos trampas del arreglo las cazó la prueba en transacción con rollback, no leer el código:**
+- `training_days` tiene **DEFAULT `'[]'::jsonb`**, así que nunca llega null y un `coalesce` a secas
+  es **inerte**: se perdían los días guardados.
+- En PL/pgSQL un **`SELECT ... INTO` que no encuentra fila pone NULL en los destinos**. Asignando
+  directo sobre `new.*`, la PRIMERA suscripción de cada aparato se borraba a sí misma los ajustes
+  que venían en el INSERT.
+
+Y se corrigió **el comentario del código, que afirmaba lo contrario de lo que hacía** («re-suscribir
+el mismo endpoint ACTUALIZA en vez de duplicar»): es la frase que hizo que nadie volviera a mirar.
+
+Dos candados nuevos, uno de ellos **de clase**: toda función `security definer` de cualquier `.sql`
+del repo tiene que fijar su `search_path` — no solo las de un archivo. 💎 Y una aserción mía nació
+débil otra vez: `create trigger push_dedupe_endpoint` casaba por prefijo con
+`push_dedupe_endpoint_OFF`, así que renombrar el trigger salía verde.
+
+Suite **880/880** · **4 sabotajes y los 4 muerden**.
+
+---
+
 ## 🛟 2026-08-24 — avi-v534: EL GATE DEL ARRANQUE APROBABA EXACTAMENTE EL CASO QUE EXISTE PARA CAZAR
 
 El único 🔴 de la auditoría de código, y lo reproduje antes de tocar nada.

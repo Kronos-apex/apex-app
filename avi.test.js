@@ -5499,6 +5499,70 @@ test('🔴 F6: el cliente NUNCA puede mover `verified` — el .sql de verdad lo 
   // Y la de borrar se niega sobre una fila ya aprobada: dos actos deliberados, no uno.
   assert.ok(/verified row: unverify first/.test(f6));
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔒 v535 · TODA `security definer` DEL REPO FIJA SU `search_path`
+// El candado de arriba solo mira `f6_fb_moderation.sql`. Esta regla es de CLASE y vale para
+// cualquier .sql que se añada mañana: una DEFINER sin `search_path` fijo es escalable por
+// esquema. Se afirma por CONTEO y por archivo, que es lo único que caza la que TODAVÍA no existe
+// (la lección del espejo de v490: una lista caza que se quite uno, jamás que se agregue).
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔒 v535 · ninguna función `security definer` del repo se queda sin `search_path`', () => {
+  const fs = require('fs'), path = require('path');
+  const raiz = path.join(__dirname, 'supabase');
+  const sqls = [];
+  (function walk(d) {
+    fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.sql')) sqls.push(p);
+    });
+  })(raiz);
+  assert.ok(sqls.length >= 5, `solo se encontraron ${sqls.length} .sql — el barrido dejó de ver el árbol`);
+
+  let definers = 0, malas = [];
+  sqls.forEach(p => {
+    const src = fs.readFileSync(p, 'utf8')
+      .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');   // los comentarios EXPLICAN, no declaran
+    // Cada `security definer` tiene que traer un `set search_path` cerca (antes del cuerpo `as $$`).
+    const re = /security\s+definer/gi;
+    let m;
+    while ((m = re.exec(src))) {
+      definers++;
+      const ventana = src.slice(m.index, m.index + 220);
+      if (!/set\s+search_path\s*=/i.test(ventana)) {
+        malas.push(path.basename(p) + ' @' + m.index);
+      }
+    }
+  });
+  assert.ok(definers >= 3, `solo ${definers} DEFINER encontradas — el patrón dejó de casar`);
+  assert.deepStrictEqual(malas, [], 'funciones DEFINER sin search_path fijo:\n  ' + malas.join('\n  '));
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔔 v535 · LA IDENTIDAD DE UNA SUSCRIPCIÓN ES EL ENDPOINT, NO EL JSON ENTERO
+// Medido en producción: Nataly tenía 8 filas para UN endpoint (1 por apertura de app), porque la
+// UNIQUE era `(client_id, subscription)` y `subscription` incluye las claves, que el navegador
+// ROTA. 7 de los 17 envíos de cada ronda diaria eran basura.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔔 v535 · la migración deduplica por ENDPOINT, en el servidor y con candado', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260824_push_dedupe_endpoint.sql'), 'utf8');
+  const vivo = sql.split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  // El trigger, que es lo que arregla a TODOS los teléfonos sin depender de la caché del SW.
+  // ⚠️ El `\b` no es adorno: sin él, renombrar el trigger a `push_dedupe_endpoint_OFF` casaba por
+  // prefijo y el sabotaje salía VERDE. Una aserción que el defecto puede satisfacer no es candado.
+  assert.match(vivo, /create trigger push_dedupe_endpoint\b(?!_)/i);
+  assert.match(vivo, /before insert on public\.push_subscriptions/i);
+  // La clave de deduplicación es el endpoint. Si alguien la devuelve al jsonb entero, vuelve el bug.
+  assert.match(vivo, /subscription->>'endpoint'/);
+  // El candado por si el trigger se cae algún día.
+  assert.match(vivo, /create unique index[\s\S]{0,120}push_subscriptions_client_endpoint_key/i);
+  // 🔒 Y el rescate de los ajustes por aparato: al borrar la fila hermana no se pueden perder los
+  // días ni el turno. Las dos trampas que costó descubrir van afirmadas, no solo comentadas.
+  assert.match(vivo, /'\[\]'::jsonb/, 'training_days tiene DEFAULT [] — un coalesce a secas es inerte');
+  assert.match(vivo, /if found then/i, 'un SELECT INTO sin fila pone NULL: hay que asignar solo si encontró');
+});
 test('🔴 F5: los límites del cliente son los MISMOS que los CHECK de la tabla', () => {
   // Este test existe porque el espejo que miente es peor que no tener espejo: si el SQL se
   // relaja y el cliente no (o al revés), o se bloquea a alguien sin motivo o el insert vuelve

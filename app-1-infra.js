@@ -341,8 +341,20 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
     // refrescaba) → PostgREST lo trataba como ANÓNIMO → la RLS rechazaba TODAS las suscripciones
     // (bug 2026-07-11, logs postgres: cientos de "violates row-level security" → CERO asesorados
     // suscritos y el _coach del coach sin refrescar). El cliente refresca el JWT antes de la
-    // petición, igual que el resto de escrituras que SÍ funcionan. onConflict = la UNIQUE
-    // (client_id, subscription) → re-suscribir el mismo endpoint ACTUALIZA en vez de duplicar.
+    // petición, igual que el resto de escrituras que SÍ funcionan.
+    // 🔴 CORREGIDO EN v535 — aquí decía: «onConflict = la UNIQUE (client_id, subscription) →
+    // re-suscribir el mismo endpoint ACTUALIZA en vez de duplicar». **Era FALSO**, y es la frase
+    // que hizo que nadie volviera a mirar durante meses: `subscription` incluye `keys.p256dh` y
+    // `keys.auth`, que el navegador **ROTA** en cada re-suscripción, así que el conflicto no casa
+    // NUNCA e inserta una fila nueva. Medido en producción: **Nataly, 8 filas para UN endpoint**,
+    // ~1 por apertura de la app, y 7 de los 17 envíos de cada ronda diaria eran basura.
+    // Quien deduplica ahora es el SERVIDOR: un trigger `before insert` colapsa por
+    // `(client_id, endpoint)` — que es la identidad real de una suscripción — más un índice único
+    // como candado (`supabase/migrations/20260824_push_dedupe_endpoint.sql`). Se hizo del lado del
+    // servidor a propósito: el JS viaja en la caché del Service Worker, así que un arreglo aquí
+    // dejaría a los teléfonos con la versión vieja duplicando (o fallando) durante días.
+    // El `onConflict` se queda como está porque sigue siendo correcto para su caso (misma fila
+    // exacta) y cambiarlo rompería a esos mismos clientes viejos.
     if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))return false; // no registrar desde localhost/harness
     const _c=AUTH.client(); let _u=null; try{ _u=await AUTH.getUser(); }catch(_e){}
     if(!_c||!_u){ warn('AVI Push: sin sesión auth — registro pospuesto'); return false; }
