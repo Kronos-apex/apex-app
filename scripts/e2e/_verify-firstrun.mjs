@@ -180,8 +180,32 @@ await ev(`(()=>{DB.history={nuevo:[]};
   const manana=days[(new Date().getDay()+1)%7];
   DB.clients[0].routines=DB.clients[0].routines.map(r=>Object.assign({},r,{day:manana}));
   renderClientToday(DB.clients[0]);})()`); await sleep(700);
-const d6 = await ev(`(()=>{const el=document.getElementById('cn-firstrun');return !!(el&&el.innerHTML.trim());})()`);
-check('D6 sin entreno hoy la portada NO se pinta', d6 === false, JSON.stringify({ pintada: d6 }));
+// 🔴 D6 RE-ENCUADRADO en v531. Antes afirmaba «sin entreno hoy la portada NO se pinta» — o sea,
+// afirmaba EL DEFECTO: el plan va de lunes a viernes, así que quien se registra sábado, domingo o
+// festivo (el 43 % de los días, medido) veía como primera pantalla de su vida en la app un banner
+// que le dice que hoy no entrene. Le pasó a Chema el 22-ago con plan de pago y cero sesiones.
+// Ahora la portada SÍ se pinta, en su variante «tu plan empieza el <día>».
+const d6 = await ev(`(()=>{
+  const el=document.getElementById('cn-firstrun');
+  const con=document.getElementById('cn-today-body');
+  const txt=el?(el.innerText||'').replace(/\\s+/g,' ').trim():'';
+  return { pintada: !!(el&&el.innerHTML.trim()), txt,
+           bannerDescanso: /d[ií]a de descanso/i.test((con&&con.innerText)||''),
+           cuerpoVacio: !((con&&con.innerHTML||'').trim()) };
+})()`);
+check('🔴 D6 sin entreno hoy la portada SÍ se pinta (v531: antes era el banner de descanso a secas)',
+  d6.pintada === true, JSON.stringify(d6).slice(0, 200));
+// 🔴 Esta aserción nació DÉBIL y lo cazó el sabotaje S3: buscaba un día de la semana en TODO el
+// texto, y la frase «tu plan va de lunes a viernes» la satisfacía sola — o sea que borrar la
+// promesa entera salía verde. Ahora se exige la FRASE, que es lo que la persona necesita leer.
+check('🔴 D6b y DICE cuándo empieza («tu primer entreno es …»)',
+  /tu primer entreno es\s+(mañana|el\s+\S+)/i.test(d6.txt || ''), (d6.txt || '').slice(0, 140));
+check('D6c y enseña CON QUÉ empieza (el nombre de la rutina)',
+  /EMPIEZAS CON/i.test(d6.txt || ''), (d6.txt || '').slice(0, 120));
+// 🔒 El banner de descanso NO puede quedar apilado debajo: «tu plan está listo» + «hoy descansa»
+// se contradicen para quien acaba de entrar y todavía no sabe cómo funciona la app.
+check('🔒 D6d el banner de descanso NO queda apilado debajo de la portada',
+  d6.bannerDescanso === false && d6.cuerpoVacio === true, JSON.stringify(d6).slice(0, 200));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

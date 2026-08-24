@@ -612,6 +612,42 @@ test('🔴 v515 · el festivo tiene NOMBRE, y el día que dos reglas coinciden l
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔴 v531 · nextPlanDay — CUÁNDO empieza quien se registra un día sin entreno
+// La puerta del día 1 está cerrada el 43 % de los días (auditoría de experiencia). Para poder
+// decirle CUÁNDO empieza en vez de solo «hoy descansa», hace falta el próximo día de su plan.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔴 v531 · nextPlanDay: quien se registra un SÁBADO empieza el lunes', () => {
+  const rutinas = [{ day: 'Lunes', name: 'Full Body' }, { day: 'Miércoles', name: 'Tren superior' }];
+  const sab = new Date('2026-08-22T12:00:00');          // sábado normal, no festivo
+  const r = core.nextPlanDay(rutinas, sab);
+  assert.strictEqual(r.dia, 'Lunes');
+  assert.strictEqual(r.enDias, 2);
+  assert.strictEqual(r.rutina.name, 'Full Body');
+});
+test('v531 · nextPlanDay: NO cuenta hoy, y «mañana» es enDias 1', () => {
+  const rutinas = [{ day: 'Lunes', name: 'A' }, { day: 'Martes', name: 'B' }];
+  // Un lunes: el de hoy no cuenta (para eso ya hay entreno), el próximo es el martes.
+  const r = core.nextPlanDay(rutinas, new Date('2026-08-24T12:00:00'));
+  assert.strictEqual(r.dia, 'Martes');
+  assert.strictEqual(r.enDias, 1);
+});
+test('🔒 v531 · nextPlanDay SALTA los festivos, y por eso la ventana es de 14 días y no de 7', () => {
+  // Sábado 10-oct-2026, plan de lunes solamente. El lunes 12 es Día de la Raza → no hay entreno.
+  // Con una ventana de 7 días esto devolvía null y la app caía al banner genérico; el próximo
+  // entreno REAL es el lunes 19, a 9 días. Lo cazó el test al escribirlo.
+  const r = core.nextPlanDay([{ day: 'Lunes', name: 'A' }], new Date('2026-10-10T12:00:00'));
+  assert.ok(r, 'con la ventana de 14 días sí lo encuentra');
+  assert.strictEqual(r.dia, 'Lunes');
+  assert.strictEqual(r.enDias, 9, 'salta el lunes festivo y cae en el siguiente');
+});
+test('🔒 v531 · nextPlanDay devuelve null si no hay ningún día en la ventana — no se inventa una fecha', () => {
+  assert.strictEqual(core.nextPlanDay([], new Date('2026-08-22T12:00:00')), null);
+  assert.strictEqual(core.nextPlanDay(null, new Date('2026-08-22T12:00:00')), null);
+  assert.strictEqual(core.nextPlanDay([{ day: 'Libre', name: 'X' }], new Date('2026-08-22T12:00:00')), null,
+    'una rutina «Libre» no tiene día: no sirve para prometer una fecha');
+});
+
 // ── FESTIVOS DE COLOMBIA (v514) ──────────────────────────────────────────────────────
 // Camilo: «no trabajo sábados ni domingos ni festivos con el calendario colombiano».
 // Se CALCULAN, no se listan — una lista escrita a mano caduca cada 1 de enero. Estos tests son

@@ -679,13 +679,20 @@ function _todayHeroHTML(greet,chip,m){
 // «Hoy» les pedía primero autoevaluarse (ánimo) y dejaba bajo el pliegue lo único que importa: qué
 // entrenan hoy y cómo empiezan. Esta portada ocupa la primera pantalla y solo tiene una salida.
 // Se apaga SOLA en cuanto existe una sesión, aunque sea parcial (`firstSessionMode` — clase v367).
-function renderFirstRun(client, routine){
+// `routine` = la rutina de HOY. Si viene null se entra en la variante «todavía no te toca»
+// (v531): el plan cae de lunes a viernes, así que quien se registra sábado, domingo o festivo
+// —el **43 % de los días**, medido por la auditoría de experiencia— abría la app y su primera
+// pantalla era «hoy es tu día de descanso». Le pasó a Chema el 22-ago, con plan de pago y cero
+// sesiones. Ahora se le dice CUÁNDO empieza y se le enseña con qué, que es lo que responde la
+// pregunta que trae encima: «¿y entonces yo qué hago?».
+function renderFirstRun(client, routine, opts){
   const el=document.getElementById('cn-firstrun'); if(!el) return false;
   el.innerHTML='';
-  if(!client||!routine) return false;
+  if(!client) return false;
   if(typeof firstSessionMode!=='function') return false;
   const sess=(typeof DB!=='undefined'&&DB.history&&DB.history[client.id])||[];
   if(!firstSessionMode(sess)) return false;
+  if(!routine) return _firstRunEspera(el, client, opts||{});
   const nombre=((client.name||'').trim().split(' ')[0])||'';
   const exN=(routine.exercises||[]).length;
   const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(routine):null;
@@ -707,6 +714,47 @@ function renderFirstRun(client, routine){
     '</div>'+
     '<button type="button" class="fr-cta" onclick="firstRunGo()">Empezar mi primer entreno →</button>'+
     '<div class="fr-foot">Lo demás aparece cuando termines este.</div>'+
+  '</div>';
+  return true;
+}
+// Variante «tu plan empieza el <día>» (v531). Se pinta EN LUGAR del banner de descanso, no encima:
+// dos mensajes apilados («tu plan está listo» + «hoy descansa») se contradicen para quien acaba de
+// entrar y no sabe todavía cómo funciona la app.
+// 🔴 Nada de inventar: si el plan no tiene ningún día en los próximos 7, esto devuelve false y
+// manda el banner de siempre. Es preferible el mensaje genérico a una fecha falsa.
+function _firstRunEspera(el, client, opts){
+  if(typeof nextPlanDay!=='function') return false;
+  const prox=nextPlanDay(client.routines||[], new Date());
+  if(!prox) return false;
+  const nombre=((client.name||'').trim().split(' ')[0])||'';
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te lo armó. '):'';
+  // 🔴 Por encima de 7 días «el lunes» MIENTE (pasa cuando el día del plan cae festivo y hay que
+  // saltar a la semana siguiente). El texto sigue a `enDias`, no al nombre del día.
+  const cuando=prox.enDias===1?'mañana'
+    :(prox.enDias<=7?('el '+prox.dia.toLowerCase())
+                    :('el '+prox.dia.toLowerCase()+' de la otra semana'));
+  // Por qué hoy no hay entreno: el festivo se NOMBRA (v515) y el fin de semana se explica, porque
+  // «hoy no te toca» sin razón se lee como que la app no le preparó nada.
+  const porque=opts.festivo
+    ? ('Hoy es festivo ('+esc(opts.festivo)+') y tu entrenador no acompaña sesiones.')
+    : 'Tu plan va de lunes a viernes, que es cuando tu entrenador está en el gimnasio.';
+  const r=prox.rutina, exN=(r.exercises||[]).length;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r):null;
+  const chips=[exN+' ejercicio'+(exN===1?'':'s')]
+    .concat(mins?['~'+mins+' min']:[])
+    .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
+  el.innerHTML='<div class="fr-wrap">'+
+    '<div class="fr-emoji" aria-hidden="true">📅</div>'+
+    '<h2 class="fr-h">'+(nombre?esc(nombre)+', tu plan ya está listo':'Tu plan ya está listo')+'</h2>'+
+    '<p class="fr-sub">'+quien+porque+' Tu primer entreno es <b>'+esc(cuando)+'</b>.</p>'+
+    '<div class="fr-card">'+
+      '<div class="fr-eyebrow">'+(typeof aviIcon==='function'?aviIcon('dumbbell',12):'⚡')+' EMPIEZAS CON</div>'+
+      '<div class="fr-name">'+esc(r.name||'Entrenamiento')+'</div>'+
+      '<div class="fr-chips">'+chips+'</div>'+
+    '</div>'+
+    '<button type="button" class="fr-cta" onclick="cnTab(\'cn-routines\',document.querySelectorAll(\'.cntab\')[1])">Ver mi plan completo →</button>'+
+    '<div class="fr-foot">Mientras tanto puedes ir mirando en qué consiste.</div>'+
   '</div>';
   return true;
 }
@@ -964,6 +1012,17 @@ function renderClientToday(client, overrideRoutine){
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
     _todayOrder(false);
+    // 🔴 DÍA 1 SIN ENTRENO HOY (v531). El plan va de lunes a viernes, así que quien se registra
+    // sábado, domingo o festivo —el 43 % de los días— veía como PRIMERA pantalla de su vida en la
+    // app un banner que le dice que hoy no entrene. Aquí la portada le dice CUÁNDO empieza y con
+    // qué, y SUSTITUYE al banner: apilar los dos se contradice. Si no hay próximo día en 7,
+    // devuelve false y manda el banner de siempre — antes una fecha falsa, ninguna.
+    // ⚠️ Va DENTRO de esta rama, no en un `return` nuevo por encima: v508 costó un defecto en
+    // producción por abrir una salida por encima de la limpieza (`_todayOrder`), que ya corrió.
+    if(typeof renderFirstRun==='function' && renderFirstRun(client, null, {festivo:_festivoHoy})){
+      con.innerHTML='';
+      return;
+    }
     // Mismo banner, dos textos. El del festivo DICE cuál es —«hoy es festivo» a secas se lee como
     // una excusa de la app— y deja claro que no se le está contando como entreno perdido, que es
     // justo la duda que tendría alguien que ve su lunes de pierna desaparecer.

@@ -4,6 +4,47 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🚪 2026-08-24 — avi-v531: LA PUERTA DEL DÍA 1 DEJA DE ESTAR CERRADA EL 43 % DE LOS DÍAS
+
+Hallazgo H1 de la auditoría de experiencia, y el que choca de frente con la decisión del PO de
+vender a nuevos.
+
+**Qué pasaba.** El plan se reparte de lunes a viernes (v514). Quien se registra un **sábado, un
+domingo o un festivo** —el **43 % de los días**— abría la app y la **primera pantalla de su vida
+en AVI** era un banner que le dice que hoy no entrene. Le pasó a **Chema el sábado 22-ago**, con
+plan de pago y cero sesiones. La portada del día 1 existe desde v403 pero se pinta 30 líneas por
+debajo del `return` del día de descanso, así que en esos días no llegaba nunca.
+
+**Qué ve ahora.** En lugar del banner, su portada:
+
+> 📅 **Santiago, tu plan ya está listo**
+> Tu plan va de lunes a viernes, que es cuando tu entrenador está en el gimnasio.
+> **Tu primer entreno es mañana.**
+> EMPIEZAS CON — *Full body A* · 4 ejercicios · ~35 min
+> **Ver mi plan completo →**
+
+Responde la pregunta que trae encima («¿y entonces yo qué hago?») en vez de solo decirle que hoy
+no. Y **sustituye** al banner, no se apila: «tu plan está listo» encima de «hoy descansa» se
+contradice para quien todavía no sabe cómo funciona la app.
+
+**Lo que enseñó.**
+- 🔴 **El test D6 afirmaba el defecto.** Decía «sin entreno hoy la portada NO se pinta» — que era
+  exactamente lo que había que arreglar. Re-encuadrado, no ajustado.
+- 🔴 **La ventana de `nextPlanDay` son 14 días y no 7, y lo cazó el test al escribirlo:** quien
+  entrena un solo día a la semana y se registra el sábado antes de que ese día caiga festivo se
+  quedaba sin respuesta (sábado 10-oct-2026, plan de lunes, el 12 es Día de la Raza → el próximo
+  real es el 19). Y por encima de 7 días el texto **no puede decir «el lunes» a secas**: miente.
+- 🔴 **Una aserción mía nació débil y la cazó su sabotaje:** «dice cuándo empieza» buscaba un día
+  de la semana en TODO el texto, y la frase «tu plan va de **lunes** a viernes» la satisfacía sola,
+  así que borrar la promesa entera salía verde. Ahora exige la frase completa.
+- Si el plan no tiene ningún día en la ventana, **no se inventa una fecha**: devuelve `null` y
+  manda el banner de siempre.
+
+Suite **870/870** en los dos husos · `_verify-firstrun` **12/12** · **6 sabotajes y los 6 muerden**
+(3 los caza la suite, 3 el harness).
+
+---
+
 ## 🔢 2026-08-24 — avi-v530: el umbral de consolidación sube a 3 (decisión del PO)
 
 Con v529 recién desplegada, el PO decidió exigir **tres** sesiones en vez de dos antes de que la

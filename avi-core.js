@@ -238,6 +238,35 @@ function esDiaLaboralCO(fecha) {
   return !esFestivoCO(d);
 }
 
+// ── ¿CUÁNDO ES SU PRÓXIMO ENTRENO? (v531) ────────────────────────────────────────────────────
+// El plan cae de lunes a viernes (v514), así que quien se registra un sábado, un domingo o un
+// festivo abre la app y su primera pantalla dice «hoy es tu día de descanso» — medido por la
+// auditoría de experiencia: **la puerta del día 1 está cerrada el 43 % de los días**, y le pasó a
+// Chema el sábado 22-ago con plan de pago y cero sesiones. Para poder decirle CUÁNDO empieza en
+// vez de solo que hoy no, hace falta saber cuál es el próximo día de su plan.
+// PURA y determinista (recibe `now`). Salta los festivos, porque un festivo tampoco hay entreno.
+// Devuelve `null` si no hay ninguno en la ventana — quien llame decide qué decir entonces.
+// 🔴 La ventana son 14 días y no 7 POR EL FESTIVO: quien tiene plan de un solo día a la semana y
+// se registra el sábado antes de que ese día caiga festivo se queda sin respuesta dentro de 7
+// (caso real del calendario: sábado 10-oct-2026, plan de lunes, el 12 es Día de la Raza → el
+// próximo entreno de verdad es el 19). Lo cazó el test al escribirlo, no la app en producción.
+// Quien pinte el texto tiene que mirar `enDias`: por encima de 7, «el lunes» a secas MIENTE.
+const _DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const NEXT_PLAN_WINDOW_DAYS = 14;
+function nextPlanDay(routines, now) {
+  const base = now != null ? new Date(now) : new Date();
+  if (isNaN(base)) return null;
+  for (let i = 1; i <= NEXT_PLAN_WINDOW_DAYS; i++) {
+    const d = new Date(base.getTime());
+    d.setDate(d.getDate() + i);
+    if (esFestivoCO(d)) continue;
+    const nombre = _DIAS_ES[d.getDay()];
+    const r = (routines || []).find(x => x && x.day === nombre);
+    if (r) return { dia: nombre, enDias: i, rutina: r };
+  }
+  return null;
+}
+
 // Deltoides POSTERIOR (face pull, pájaro, pec deck inverso, Y-T-W…) = músculo de TRACCIÓN
 // aunque su etiqueta de catálogo sea "hombros". No debe caer en día de EMPUJE; pertenece al
 // de jalón. Se detecta por el muscleLabel ("Hombro posterior…") — más fiable que el nombre,
@@ -8225,6 +8254,7 @@ if (typeof module !== 'undefined' && module.exports) {
     esFestivoCO,
     nombreFestivoCO,
     esDiaLaboralCO,
+    nextPlanDay,
     pascuaGregoriana,
     GEN_MAX_WORK_DAYS,
     genDayIdxFromDate,
