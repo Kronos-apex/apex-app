@@ -4,6 +4,47 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🧹 2026-08-24 — avi-v537: LA HIGIENE DE LOS CANDADOS — y dos defectos reales que salieron de ahí
+
+Cola menor de la auditoría de código. Empezó como limpieza y terminó destapando dos fallos de la app.
+
+**1. Tres sabotajes llevaban versiones sin aplicarse.** De los 129 del repo, tres anclaban en texto
+que ya no existe, así que el runner los marcaba «NO SE APLICÓ» — y **el mecanismo del grito
+funciona**: el problema es que nadie corría esas matrices desde v490/v508, mientras CLAUDE.md seguía
+afirmando «34/34» y «5/5».
+- El del tour de novedades anclaba en **dos líneas consecutivas** y **v508 metió una en medio**.
+  🎓 La lección va en el ancla: **un ancla de dos líneas se despega cada vez que alguien mete una
+  entre ellas.** Reapuntado a una sola línea.
+- Los dos de fuentes pedían `src:'sin_verificar'` en la crema de maní… y **v490 le dio fuente real**.
+  Es el gotcha de v490 al revés: no se borró un mecanismo, se ARREGLÓ el dato, y el ancla se
+  despegó igual. Reapuntados a la fila de hoy.
+Corridas las dos matrices: **f7 37/37 · fuentes 5/5**.
+
+**2. 🔴 La cadena de arranque llamaba a otros módulos sin guarda — y costaba la SESIÓN.** La regla
+del repo existe desde que la app reventó tres veces en Android real: todo llamado a una función de
+otro `app-*.js` va con `typeof`. La cadena de boot la incumplía, la auditoría de v417 ya lo había
+marcado y seguía igual **120 versiones después**.
+- `initPWA()` vive en app-6. Al lanzar, se llevaba por delante **todo lo que viene después en la
+  cadena**, incluida la restauración de la sesión: un fallo de red cargando un módulo secundario
+  **echaba al login a todo el que tuviera sesión guardada**.
+- Y el check estático nuevo encontró **uno que el gate dinámico NO puede ver**: `_enterAuthSession`
+  vive en `app-3-coach.js`, así que un fallo del módulo del COACH dejaba en el login a un
+  ASESORADO con sesión guardada. El gate corre sin sesión guardada y por eso ese camino le es
+  invisible.
+El candado nuevo **deriva del propio código** qué función vive en qué módulo — no hay lista que
+mantener — y los dos sabotajes muerden.
+
+**3. El hook de IDs dejaba pasar hasta 5 rotos.** Solo fallaba con MÁS de cinco; con uno a cinco
+avisaba y **autorizaba el commit**. Un `getElementById` roto no da error: devuelve null y la
+pantalla se queda a medias en silencio. Medido al apretarlo: **0 rotos de 413 estáticos**, así que
+no costó nada, y probado con un id roto inyectado (exit 1 con UNO solo). Si algún día aparece uno
+legítimamente dinámico va a una lista declarada **con su razón al lado**: una excepción se audita,
+un umbral de 5 esconde las otras cuatro.
+
+Suite **887/887**.
+
+---
+
 ## 🎚️ 2026-08-24 — avi-v536: EL NIVEL SE CORREGÍA HACIA ADELANTE Y NUNCA HACIA ATRÁS
 
 Hallazgo H4 de la auditoría del motor deportivo.

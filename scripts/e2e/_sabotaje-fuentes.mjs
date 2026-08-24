@@ -17,8 +17,13 @@ const rx = (s) => new RegExp(s.split('\n').map(l =>
 
 const SABOTAJES = [
   {
+    // ⚠️ REAPUNTADO en v537. El ancla decía `src: 'sin_verificar'` y **v490 le dio fuente real** a
+    // la crema de maní: desde entonces aparecía 0 veces y el runner marcaba «NO SE APLICÓ» — o sea
+    // que este candado llevaba versiones sin comprobarse. Es el gotcha de v490 («al borrar un
+    // mecanismo, grep en las matrices de sabotaje») cobrado en la dirección contraria: aquí no se
+    // borró nada, se ARREGLÓ el dato, y el ancla se despegó igual.
     n: 'F1 · un alimento deja de declarar de dónde salió su número',
-    de: `{ id: 'crema_mani', src: 'sin_verificar',`,
+    de: `{ id: 'crema_mani', src: 'usda_sr', ref: "FDC 172470 - Peanut butter, smooth style, without salt",`,
     a: `{ id: 'crema_mani',`,
   },
   {
@@ -32,12 +37,14 @@ const SABOTAJES = [
     a: `{ id: 'yuca', src: 'usda_sr',`,
   },
   {
+    // ⚠️ REAPUNTADO en v537, misma causa que F1. Este es el que de verdad importa: una LISTA caza
+    // que se quite una fuente, jamás que se AGREGUE un alimento nuevo sin ella (gotcha de v476).
     n: 'F4 · entra un alimento NUEVO sin fuente (lo caza el CONTEO, no una lista)',
-    de: `  { id: 'crema_mani', src: 'sin_verificar',`,
+    de: `  { id: 'crema_mani', src: 'usda_sr',`,
     a: `  { id: 'inventado_x', name: 'Alimento sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_y', name: 'Otro sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
   { id: 'inventado_z', name: 'Tercero sin fuente', rol: 'carb', kcal: 100, p: 1, c: 20, f: 1, un: { label: 'porción', g: 100 } },
-  { id: 'crema_mani', src: 'sin_verificar',`,
+  { id: 'crema_mani', src: 'usda_sr',`,
   },
   {
     n: 'F5 · la yuca vuelve al 112 deducido (el test guarda la fila oficial)',

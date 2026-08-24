@@ -126,9 +126,17 @@ const SABOTAJES = [
     'const grave=Math.abs(pct)>=25, medio=Math.abs(pct)>=_FL_DESVIO_MEDIO;',
     'app-3-coach.js'],
 
+  // ⚠️ REAPUNTADO en v537 y ahora ancla en UNA sola línea. El ancla anterior eran DOS líneas
+  // consecutivas (`.filter(conCoach…)` + `.sort(…)`) y **v508 metió el filtro de `premium` justo en
+  // medio**: desde entonces aparecía 0 veces y el runner lo marcaba «NO SE APLICÓ», o sea que este
+  // candado llevaba 17 versiones sin comprobarse.
+  // 🎓 La lección va en el ancla, no en el arreglo: **un ancla de dos líneas consecutivas se
+  // despega cada vez que alguien mete una en medio.** Ahora el sabotaje recorta a 3 en la MISMA
+  // línea del primer filtro, que reproduce el defecto (cortar antes de filtrar por público) sin
+  // depender de qué haya debajo.
   ['26· el tour de novedades vuelve a recortar ANTES de filtrar (el tier libre se queda sin nada)',
-    '    .filter(n => conCoach || !n.coach)' + String.fromCharCode(10) + '    .sort((a, b) => b.v - a.v)',
-    '    .sort((a, b) => b.v - a.v)'],
+    '    .filter(n => n && parseInt(n.v) > seen)',
+    '    .filter(n => n && parseInt(n.v) > seen).slice(0, 3)'],
 
   // ── La LISTA DEL MERCADO (patrón 4 del estudio) ──────────────────────────
   ['27· la lista del mercado se deja los acompañantes (manda a la persona sin la mitad de la compra)',

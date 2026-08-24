@@ -1045,11 +1045,21 @@ function _aviInstallBack(){
 
 // Boot: sync from cloud then show login
 syncFromCloud().then(async ()=>{
-  initTheme();
-  initTextSize();
-  initRememberMe();
-  initPWA();
-  _aviInstallBack();
+  // 🔴 GUARDAS DE MÓDULO (v537). Regla del repo desde v375/v393/v403: **todo llamado a una función
+  // que vive en OTRO `app-*.js` va con `typeof f==='function'`** — reventó tres veces en Android
+  // real. Estas cuatro líneas la incumplían y la auditoría de v417 ya las había marcado; siguen
+  // igual **120 versiones después**, así que se cierran aquí.
+  // Lo que costaba: `initPWA` vive en `app-6-extra.js`. Si ese módulo no carga, la llamada lanza y
+  // **se lleva por delante todo lo que viene DESPUÉS en esta cadena** — incluida la restauración de
+  // la sesión de Supabase Auth, que está 6 líneas más abajo. O sea que un fallo de red al cargar
+  // un módulo secundario **echaba de la app a todo el que tuviera sesión guardada**, en vez de
+  // costarle solo las funciones de la PWA. El `.catch` de abajo lo dejaba en el login, y por eso
+  // el gate lo veía «arrancando bien».
+  if(typeof initTheme==='function')initTheme();
+  if(typeof initTextSize==='function')initTextSize();
+  if(typeof initRememberMe==='function')initRememberMe();
+  if(typeof initPWA==='function')initPWA();
+  if(typeof _aviInstallBack==='function')_aviInstallBack();
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
   let authEntered=false;
   try{
@@ -1065,7 +1075,13 @@ syncFromCloud().then(async ()=>{
         // Retorno de "Conectar mi Google": programado ANTES del await (que puede quedar
         // pendiente, gotcha v216) y con settle para que el splash no tape el toast.
         setTimeout(()=>{ try{ _handleGoogleLinkReturn().catch(()=>{}); }catch(_e){} },1500);
-        await _enterAuthSession(session.user); authEntered=true;
+        // 🔴 Guarda de módulo (v537): `_enterAuthSession` vive en `app-3-coach.js`. Sin el
+        // `typeof`, un fallo de red cargando ese módulo lanzaba aquí y la cadena entera caía al
+        // `.catch` — así que un ASESORADO con sesión guardada acababa en el login por culpa de un
+        // módulo que él no usa. Lo encontró el check ESTÁTICO de la cadena de arranque, no el gate
+        // dinámico: ése corre sin sesión guardada y por eso no puede ver este camino.
+        if(typeof _enterAuthSession==='function'){ await _enterAuthSession(session.user); authEntered=true; }
+        else warn('AVI: app-3 no cargó — la sesión guardada no se pudo restaurar');
       } else if(session&&session.user&&AUTH_MODE){
         authEntered=true; // el login manual ya entró — no pisar su sesión ni su navegación
       }

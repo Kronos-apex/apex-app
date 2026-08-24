@@ -108,11 +108,18 @@ static_ids = {i for i in get_ids if '${' not in i}
 declared   = set(re.findall(r'id="([^"]+)"', everything))
 in_src     = {i for i in static_ids if f'"{i}"' in everything or f"'{i}'" in everything.replace(f"getElementById('{i}')", '')}
 missing    = static_ids - declared - in_src
+# 🔴 APRETADO en v537 (auditoría de código): antes esto solo FALLABA con MÁS de 5 ids rotos; con
+# 1 a 5 avisaba y **dejaba pasar el commit**. O sea que la ventana por la que se cuela un
+# `getElementById` roto medía cinco, y un id roto no da error: devuelve null y la pantalla se queda
+# a medias en silencio. El umbral existía por los ids que se ARMAN en tiempo de ejecución, pero de
+# esos ya se encargan los dos filtros de arriba (`'${' not in i` y `in_src`).
+# Medido al apretarlo: **0 ids rotos hoy** de 407 estáticos, así que el cambio no cuesta nada.
+# Si algún día aparece uno legítimamente dinámico, va a `IDS_DINAMICOS` **con su razón al lado** —
+# una excepción declarada se puede auditar; un umbral de 5 esconde las otras cuatro.
+IDS_DINAMICOS = set()   # id → (vacío hoy). Añadir SOLO con el porqué escrito al lado.
+missing = missing - IDS_DINAMICOS
 if missing:
-    if len(missing) > 5:
-        fail(f'IDs JS sin HTML: {sorted(missing)[:8]}')
-    else:
-        warn(f'IDs posiblemente dinámicos: {sorted(missing)}')
+    fail(f'IDs JS sin HTML ({len(missing)}): {sorted(missing)[:8]}')
 else:
     ok(f'{len(static_ids)} IDs estáticos — todos con match')
 

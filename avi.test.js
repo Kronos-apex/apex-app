@@ -5501,6 +5501,53 @@ test('🔴 F6: el cliente NUNCA puede mover `verified` — el .sql de verdad lo 
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 🔒 v537 · LA CADENA DE ARRANQUE NO PUEDE LLAMAR A OTRO MÓDULO SIN GUARDA
+// Regla del repo desde v375/v393/v403 (reventó TRES veces en Android real): todo llamado a una
+// función que vive en otro `app-*.js` va con `typeof f==='function'`. La cadena de boot la
+// incumplía en `initPWA()` —que vive en app-6— y eso NO costaba solo la PWA: al lanzar, se llevaba
+// por delante todo lo que viene después, incluida la restauración de la sesión. La auditoría de
+// v417 ya lo había marcado y seguía igual 120 versiones más tarde.
+// El check DERIVA qué función vive en qué módulo del propio código: no hay lista que mantener.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔒 v537 · ningún llamado de la cadena de arranque cruza de módulo sin `typeof`', () => {
+  const fs = require('fs'), path = require('path');
+  const MODS = ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js',
+    'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'];
+  const src = {}, donde = new Map();
+  MODS.forEach(m => {
+    src[m] = fs.readFileSync(path.join(__dirname, m), 'utf8');
+    for (const mm of src[m].matchAll(/^\s*(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)) {
+      if (!donde.has(mm[1])) donde.set(mm[1], m);
+    }
+  });
+  assert.ok(donde.size > 500, `solo se mapearon ${donde.size} funciones — el barrido dejó de ver los módulos`);
+
+  // La cadena de arranque: desde `syncFromCloud().then(` hasta el `.catch(` que la cierra.
+  const boot = src['app-2-login.js'];
+  const ini = boot.indexOf('syncFromCloud().then(');
+  assert.ok(ini > 0, 'no se encontró la cadena de arranque en app-2-login.js');
+  const cuerpo = boot.slice(ini, boot.indexOf('\n});', ini));
+  assert.ok(cuerpo.length > 400, 'el recorte de la cadena de arranque salió demasiado corto');
+
+  const crudos = [];
+  for (const m of cuerpo.matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) {
+    const fn = m[2];
+    const vive = donde.get(fn);
+    if (!vive || vive === 'app-2-login.js') continue;      // propia del módulo: no cruza nada
+    // `syncFromCloud` ES la cabeza de la cadena: si no existe, no hay cadena que proteger.
+    // Guardarla no arregla nada y confundiría a quien lea el porqué de las demás guardas.
+    if (fn === 'syncFromCloud') continue;
+    // ¿Está guardada? Se mira la línea donde aparece.
+    const linea = cuerpo.slice(cuerpo.lastIndexOf('\n', m.index) + 1, cuerpo.indexOf('\n', m.index));
+    if (/^\s*(\/\/|\*)/.test(linea)) continue;             // los comentarios explican, no ejecutan
+    if (new RegExp("typeof\\s+" + fn.replace(/\$/g, '\\$') + "\\s*===?\\s*'function'").test(linea)) continue;
+    crudos.push(`${fn}() [vive en ${vive}]`);
+  }
+  assert.deepStrictEqual([...new Set(crudos)], [],
+    'la cadena de arranque llama sin guarda a funciones de otro módulo:\n  ' + crudos.join('\n  '));
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 // 🎚️ v536 · EL GATE DE NIVEL SE CORREGÍA HACIA ADELANTE Y NUNCA HACIA ATRÁS
 // El motor de hoy no comete el fallo (0 violaciones en 5.760 planes), pero nada recalculaba los
 // planes YA escritos. Medido en producción: 4 ejercicios avanzados vivos en planes de principiante
