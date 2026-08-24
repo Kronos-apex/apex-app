@@ -719,6 +719,7 @@ function _hydrateCoachFromRows(rows){
   _hydrateSelfClient(); // el coach también entrena: su fila entra como un asesorado más
   _mergePendingIntoDB(); // #8: no perder altas offline aún no provisionadas
   _arrancarDescargasProgramadas(); // v532: las que ya les tocaba, ANTES de la foto base
+  _curarNivelDeLosPlanes();        // v536: ejercicios por encima del nivel en planes ya escritos
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
 }
 
@@ -727,6 +728,27 @@ function _hydrateCoachFromRows(rows){
 // propio asesorado. `applyDueDeload` es idempotente —no hace nada si ya hay una activa—, que es lo
 // único que hace segura esa doble vía. Va ANTES de `_primeCoachSnap` para que el cambio entre en
 // la foto base y se sincronice como cualquier edición suya.
+// 🎚️ AUTO-CURA DEL NIVEL (v536). El gate se corrige HACIA ADELANTE y nunca hacia atrás: cuando un
+// ejercicio se re-etiqueta (como `e92` en v513), los planes YA escritos se quedan con él. Corre en
+// las DOS puertas —esta y la app del asesorado, que escribe su propia fila— porque curarlo solo
+// aquí lo deja para que el teléfono lo vuelva a pisar (lección de v518). `healRoutineLevel` es
+// determinista, así que las dos eligen el MISMO reemplazo y no se pelean.
+// 🔴 La app NO cambia un plan en silencio: lo que cambió queda en `levelHealed` y la ficha lo dice.
+function _curarNivelDeLosPlanes(){
+  if(typeof healRoutineLevel!=='function')return 0;
+  let n=0;
+  (DB.clients||[]).forEach(c=>{
+    try{
+      const res=healRoutineLevel(c, DB.exercises||[]);
+      if(!res||!res.tocado)return;
+      c.routines=res.routines;
+      c.levelHealed={at:new Date().toISOString(), cambios:res.cambios.filter(x=>x.a)};
+      n++;
+    }catch(e){ if(typeof warn==='function')warn('AVI: cura de nivel de',c&&c.id,e&&e.message); }
+  });
+  if(n&&typeof sv==='function')sv('ax_c',DB.clients);
+  return n;
+}
 function _arrancarDescargasProgramadas(){
   if(typeof applyDueDeload!=='function')return 0;
   let n=0;
@@ -1402,6 +1424,7 @@ async function openDetail(id,_silent){
   renderValoracion(c);
   renderShockCard(c);
   renderDeloadPanel(c);
+  renderLevelHealCard(c);
   renderNutReviewCard(c);
   renderCoachHabitsCard(c);
   renderCoachFoodLogCard(c);
@@ -2017,6 +2040,31 @@ function renderNutReviewCard(c){
 // en dos sitios de este archivo: la misma forma exacta que ya estalló con las calorías (v435/v444) y
 // con el ancho de la franja (v478) — dos números que significan lo mismo en dos archivos distintos.
 const _DELOAD_PCT=(typeof DELOAD_LOAD_FACTOR==='number')?Math.round((1-DELOAD_LOAD_FACTOR)*100):15;
+// Lo que la auto-cura de nivel cambió, dicho en la ficha (v536). Sin esto, la app le habría
+// reescrito el plan a alguien y el coach se enteraría de casualidad — que es justo lo que v434
+// dejó escrito: quien recibe el cambio tiene que saber POR QUÉ su plan cambió.
+function renderLevelHealCard(c){
+  const el=document.getElementById('d-levelheal'); if(!el)return;
+  el.innerHTML='';
+  const h=c&&c.levelHealed;
+  if(!h||!Array.isArray(h.cambios)||!h.cambios.length)return;
+  const filas=h.cambios.slice(0,6).map(x=>
+    `<li style="margin-bottom:3px">${esc(x.de)} <span style="color:var(--t3)">→</span> <b>${esc(x.a)}</b>`
+    +(x.rutina?` <span style="color:var(--t3)">(${esc(x.rutina)})</span>`:'')+'</li>').join('');
+  const mas=h.cambios.length>6?`<li style="color:var(--t2)">y ${h.cambios.length-6} más</li>`:'';
+  el.innerHTML=`<div class="card" style="padding:11px 13px;background:var(--bll);border-left:3px solid var(--bl)">
+    <div style="font-size:12.5px;color:var(--t1);line-height:1.5;margin-bottom:7px">${_coIco('shield',13,'🎚️')} Su plan tenía ejercicios <b>por encima de su nivel</b> (${esc(c.level||'')}) y se sustituyeron por otros del mismo músculo. Revísalo y cámbialo si prefieres otra cosa.</div>
+    <ul style="font-size:12px;color:var(--t1);line-height:1.45;margin:0 0 9px 16px;padding:0">${filas}${mas}</ul>
+    <button class="btn bg bsm" style="width:100%;min-height:36px" onclick="dismissLevelHeal('${esc(c.id)}')">Entendido</button>
+  </div>`;
+}
+function dismissLevelHeal(cid){
+  const c=DB.clients.find(x=>x.id===cid); if(!c)return;
+  delete c.levelHealed;
+  sv('ax_c',DB.clients);
+  renderLevelHealCard(c);
+}
+
 function renderDeloadPanel(c){
   const el=document.getElementById('d-deload'); if(!el)return;
   el.innerHTML='';

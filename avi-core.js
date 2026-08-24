@@ -1325,6 +1325,70 @@ function exLevel(ex) {
   return (v === 'P' || v === 'I' || v === 'A') ? v : 'I';
 }
 function exLevelRank(ex) { return _LVL_RANK[exLevel(ex)]; }
+
+// ── AUTO-CURA DEL NIVEL EN PLANES YA ESCRITOS (v536) ─────────────────────────────────────────
+// 🔴 EL DEFECTO: **el gate de nivel se corrige HACIA ADELANTE y nunca hacia atrás.** El motor de
+// hoy no comete el fallo (0 violaciones en 5.760 planes del barrido), pero **nada recalcula los
+// planes YA escritos**: quedan en la fila de cada persona con el nivel que tenía el catálogo el
+// día que se generaron. Medido en producción (24-ago, cruzando los 18 ids de nivel `A` contra
+// `user_data.routines`): **4 ejercicios avanzados vivos en planes de principiante e intermedio** —
+// Felipe con Pike Push-up (×2) y Rueda Abdominal, y Sofía con el Hip Thrust Unilateral, que entró
+// ahí **por la propia corrección de v513** al re-etiquetar `e92` de `'I'` a `'A'`.
+// Las cuatro rutinas están marcadas `generated:true`; **ninguna hecha a mano por el coach viola el
+// gate**, y por eso esta cura NO las toca: lo que arma el algoritmo se filtra, lo que arma el
+// coach se MARCA (regla del repo desde el filtro de lesiones).
+//
+// 🔒 DETERMINISTA A PROPÓSITO: la cura corre en las DOS puertas (el panel del coach y la app del
+// asesorado, que escribe su propia fila — lección de v518), así que **las dos tienen que elegir el
+// MISMO reemplazo** o se pisarían la una a la otra en cada sincronización. Por eso el candidato se
+// escoge por orden de `id`, no al azar ni por semilla.
+// Devuelve `null` si no hay nada que curar — quien llama no escribe ni sincroniza.
+function healRoutineLevel(client, lib) {
+  if (!client || !Array.isArray(client.routines) || !client.routines.length) return null;
+  const cap = _levelGate(client.level || 'Principiante').cap;
+  const place = client.place || 'gym';
+  const catalogo = Array.isArray(lib) ? lib : [];
+  if (!catalogo.length) return null;                 // sin biblioteca no se opina (guarda de población)
+  const porId = new Map(catalogo.map(e => [e.id, e]));
+  const cambios = [];
+  let tocado = false;
+
+  const routines = client.routines.map(r => {
+    if (!r || r.generated !== true) return r;         // el plan hecho a mano no se toca
+    const usados = new Set((r.exercises || []).map(e => e && e.id).filter(Boolean));
+    let cambioAqui = false;
+    const exercises = (r.exercises || []).map(e => {
+      if (!e || !e.id) return e;
+      const ficha = porId.get(e.id) || e;
+      if (exLevelRank(ficha) <= cap) return e;        // dentro de su nivel: nada que hacer
+      // Reemplazo: mismo músculo y mismo tipo, dentro del nivel, que se pueda hacer donde entrena
+      // y que no esté ya en esa rutina. Por orden de id = misma decisión en los dos aparatos.
+      const candidatos = catalogo
+        .filter(c => c.muscle === ficha.muscle && exLevelRank(c) <= cap
+                     && (c.env || ['gym']).includes(place) && !usados.has(c.id))
+        .sort((a, b) => String(a.id).localeCompare(String(b.id), 'en'));
+      const mismoTipo = candidatos.filter(c => c.type === ficha.type);
+      const nuevo = mismoTipo[0] || candidatos[0];
+      // 🔴 Si no hay ninguno, se DEJA como está y se REPORTA. Un hueco en el plan es peor que un
+      // ejercicio duro, y el coach necesita enterarse para decidir él.
+      if (!nuevo) { cambios.push({ rutina: r.name || '', de: ficha.name || e.id, a: null }); return e; }
+      usados.add(nuevo.id);
+      cambios.push({ rutina: r.name || '', de: ficha.name || e.id, a: nuevo.name || nuevo.id });
+      tocado = true; cambioAqui = true;
+      // Se conservan series y repeticiones: la cura cambia QUÉ ejercicio, no la dosis (igual que
+      // `applyShockOption`).
+      return Object.assign({}, e, {
+        id: nuevo.id, name: nuevo.name, muscle: nuevo.muscle, type: nuevo.type,
+        icon: nuevo.icon || e.icon, desc: nuevo.desc || '', descSimple: nuevo.descSimple || '',
+        imgUrl: nuevo.imgUrl || '',
+      });
+    });
+    return cambioAqui ? Object.assign({}, r, { exercises }) : r;
+  });
+
+  if (!cambios.length) return null;
+  return { routines: tocado ? routines : client.routines, cambios, tocado };
+}
 // Tope de nivel + preferencia según el perfil. Principiante: P primero, I solo como
 // respaldo cuando un músculo no tiene opción P, NUNCA A. Intermedio: P+I. Avanzado: todo.
 function _levelGate(level) {
@@ -8377,6 +8441,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mcInkUp,
     inkOn,
     exLevelRank,
+    healRoutineLevel,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,

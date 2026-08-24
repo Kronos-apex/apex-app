@@ -125,6 +125,21 @@ function initClientView(client){
       if(_dl){ client.routines=_dl.routines; client.deload=_dl.deload; delete client.deloadPlan; sv('ax_c',DB.clients); }
     }
   }catch(e){ if(typeof warn==='function')warn('AVI: descarga programada (asesorado):',e&&e.message); }
+  // 🎚️ Cura de nivel (v536): los planes ya escritos se quedan con el nivel que tenía el catálogo
+  // el día que se generaron, así que una re-etiquetación (como la de `e92` en v513) deja
+  // ejercicios avanzados en el plan de un principiante. Va en las DOS puertas porque el asesorado
+  // escribe su PROPIA fila: curarlo solo del lado del coach lo deja para que el teléfono lo vuelva
+  // a pisar (lección de v518). `healRoutineLevel` es determinista → las dos eligen igual.
+  try{
+    if(typeof healRoutineLevel==='function'){
+      const _hl=healRoutineLevel(client, DB.exercises||[]);
+      if(_hl&&_hl.tocado){
+        client.routines=_hl.routines;
+        client.levelHealed={at:new Date().toISOString(), cambios:_hl.cambios.filter(x=>x.a)};
+        sv('ax_c',DB.clients);
+      }
+    }
+  }catch(e){ if(typeof warn==='function')warn('AVI: cura de nivel (asesorado):',e&&e.message); }
   // Fase 2 (perf móvil): en el login solo pintamos lo VISIBLE ("Hoy") + el badge de mensajes.
   // Perfil, Historial, Rutinas y Mensajes se pintan en cnTab al abrir su pestaña (lazy),
   // sacando 4 renders pesados (gráficas SVG, listas largas) de la ruta crítica de arranque.

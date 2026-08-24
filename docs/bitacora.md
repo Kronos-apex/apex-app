@@ -4,6 +4,49 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🎚️ 2026-08-24 — avi-v536: EL NIVEL SE CORREGÍA HACIA ADELANTE Y NUNCA HACIA ATRÁS
+
+Hallazgo H4 de la auditoría del motor deportivo.
+
+**Qué pasaba.** El motor de HOY no comete el fallo —**0 violaciones en 5.760 planes** del barrido—
+pero **nada recalcula los planes YA escritos**: se quedan con el nivel que tenía el catálogo el día
+que se generaron. Medido y reproducido en producción: **4 ejercicios avanzados vivos en planes de
+principiante e intermedio**, y uno de ellos lo metió **la propia corrección de v513** al
+re-etiquetar `e92` de `'I'` a `'A'`.
+
+| persona | nivel | tenía | ahora |
+|---|---|---|---|
+| FELIPE R.L | Principiante · peso corporal | Pike Push-up (×2) | Elevaciones Y-T-W en Suelo |
+| FELIPE R.L | | Rueda Abdominal | Elevación de Piernas Tumbado |
+| Sofía Vega | Intermedio · gym | Hip Thrust Unilateral | Peso Muerto Rumano con Mancuernas |
+
+**Cómo se cerró.** `healRoutineLevel` (pura) sustituye lo que excede el nivel por otro del **mismo
+músculo**, dentro del nivel y **que se pueda hacer donde esa persona entrena**, conservando series
+y repeticiones. Corre en **las DOS puertas** —el panel del coach y la app del asesorado, que
+escribe su propia fila— porque curarlo solo de un lado lo deja para que el otro lo vuelva a pisar
+(lección de v518). 🔒 Y por eso es **determinista** (elige por orden de id): si cada app eligiera
+distinto, se pelearían en cada sincronización y el plan bailaría solo.
+
+**Dos límites que son decisiones, no descuidos:**
+- **No toca lo que el coach armó a mano.** Regla del repo: lo que arma el algoritmo se filtra, lo
+  que arma el coach se MARCA. Las 4 rutinas afectadas eran `generated:true`; ninguna hecha a mano
+  violaba el gate.
+- **Si no hay reemplazo posible, se DEJA y se reporta.** Un hueco en el plan es peor que un
+  ejercicio duro, y el coach necesita enterarse para decidir él.
+
+Y **la app no cambia un plan en silencio**: la ficha dice qué cambió y por qué, con un «Entendido».
+
+💎 **Tres sabotajes salieron VERDES y los tres eran aserciones mías que el defecto satisfacía**:
+quitar el filtro de nivel, quitar el de entorno y borrar el aviso al coach. Los dos primeros
+pasaban porque el candidato alfabéticamente primero cumplía **por casualidad**; se cambiaron por un
+**barrido** de todo el catálogo que excede cada nivel en los cuatro entornos. El tercero pedía
+`levelHealed` en todo el archivo y lo satisfacían el render y el botón: ahora se ancla dentro de la
+función que cura.
+
+Suite **886/886** · **9 sabotajes y los 9 muerden**.
+
+---
+
 ## 🔔 2026-08-24 — avi-v535: A NATALY CADA AVISO LE SALÍA 8 VECES
 
 Hallazgo H1 de la auditoría de base de datos, encontrado también por la de móvil desde el otro lado.

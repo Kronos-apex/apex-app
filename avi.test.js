@@ -5501,6 +5501,114 @@ test('🔴 F6: el cliente NUNCA puede mover `verified` — el .sql de verdad lo 
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 🎚️ v536 · EL GATE DE NIVEL SE CORREGÍA HACIA ADELANTE Y NUNCA HACIA ATRÁS
+// El motor de hoy no comete el fallo (0 violaciones en 5.760 planes), pero nada recalculaba los
+// planes YA escritos. Medido en producción: 4 ejercicios avanzados vivos en planes de principiante
+// e intermedio — y uno lo metió la propia corrección de v513 al re-etiquetar `e92`.
+// Corre contra el CATÁLOGO REAL, no contra un fixture: un fixture no tiene Pike Push-up.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔴 v536 · el caso REAL de Sofía: el Hip Thrust Unilateral (nivel A) sale de su plan de Intermedia', () => {
+  const sofia = { level: 'Intermedio', place: 'gym', routines: [{
+    name: 'Glúteo y Piernas A', generated: true,
+    exercises: [{ id: 'e92', sets: 4, reps: 8 }, { id: 'e42', sets: 3, reps: 10 }],
+  }] };
+  const r = core.healRoutineLevel(sofia, _LIB_REAL);
+  assert.ok(r && r.tocado, 'e92 es nivel A y ella es Intermedia: tiene que curarse');
+  const nuevos = r.routines[0].exercises;
+  assert.notStrictEqual(nuevos[0].id, 'e92');
+  assert.ok(core.exLevelRank(_LIB_REAL.find(x => x.id === nuevos[0].id)) <= 1, 'el reemplazo respeta su nivel');
+  assert.strictEqual(nuevos[0].muscle, 'gluteo', 'y es del MISMO músculo: el plan no cambia de sentido');
+  assert.strictEqual(nuevos[0].sets, 4, 'la dosis se conserva: la cura cambia QUÉ, no CUÁNTO');
+  assert.strictEqual(nuevos[0].reps, 8);
+  assert.strictEqual(nuevos[1].id, 'e42', 'lo que sí cumple el nivel no se toca');
+});
+test('🔴 v536 · el caso REAL de Felipe: dos avanzados fuera de un plan de peso corporal', () => {
+  const felipe = { level: 'Principiante', place: 'corporal', routines: [{
+    name: 'Full Body', generated: true,
+    exercises: [{ id: 'e107' }, { id: 'e83' }, { id: 'e97' }, { id: 'e82' }, { id: 'e47' }],
+  }] };
+  const r = core.healRoutineLevel(felipe, _LIB_REAL);
+  assert.ok(r && r.tocado);
+  const ids = r.routines[0].exercises.map(e => e.id);
+  assert.ok(!ids.includes('e97') && !ids.includes('e47'), 'Pike Push-up y Rueda Abdominal fuera');
+  // 🔒 Y el reemplazo TIENE que poder hacerse donde entrena: mandarle una máquina a quien entrena
+  // en casa es cambiar un problema por otro peor.
+  r.routines[0].exercises.forEach(e => {
+    const f = _LIB_REAL.find(x => x.id === e.id);
+    assert.ok((f.env || ['gym']).includes('corporal'), `${f.name} no se puede hacer en peso corporal`);
+  });
+  assert.strictEqual(new Set(ids).size, ids.length, 'no puede meter un duplicado en la misma rutina');
+});
+test('🔒 v536 · CONTROLES: no toca lo que el coach armó a mano, ni a quien sí tiene el nivel', () => {
+  // Regla del repo: lo que arma el ALGORITMO se filtra; lo que arma el coach se MARCA.
+  const aMano = { level: 'Principiante', place: 'corporal',
+    routines: [{ name: 'A mano', generated: false, exercises: [{ id: 'e97' }, { id: 'e47' }] }] };
+  assert.strictEqual(core.healRoutineLevel(aMano, _LIB_REAL), null, 'el plan del coach es intocable');
+  const avanzado = { level: 'Avanzado', place: 'gym',
+    routines: [{ name: 'X', generated: true, exercises: [{ id: 'e92' }, { id: 'e47' }] }] };
+  assert.strictEqual(core.healRoutineLevel(avanzado, _LIB_REAL), null, 'a un avanzado no le sobra nada');
+  // Guarda de población: sin biblioteca NO se opina (si no, borraría el plan entero).
+  assert.strictEqual(core.healRoutineLevel({ level: 'Principiante', routines: [{ generated: true, exercises: [{ id: 'e92' }] }] }, []), null);
+  assert.strictEqual(core.healRoutineLevel(null, _LIB_REAL), null);
+});
+// 🔴 BARRIDO, y no un caso suelto: los tres sabotajes que quitaban el filtro de NIVEL y el de
+// ENTORNO salían VERDES con un caso a mano, porque el candidato alfabéticamente primero cumplía
+// igual por casualidad. Una aserción que el defecto puede satisfacer no es un candado — así que se
+// barre TODO ejercicio del catálogo que exceda cada nivel, en los cuatro entornos.
+test('🔴 v536 · BARRIDO: ningún reemplazo excede el nivel ni sale del entorno de la persona', () => {
+  const CAP = { Principiante: 1, Intermedio: 1, Avanzado: 2 };
+  let curados = 0, malos = [];
+  ['Principiante', 'Intermedio'].forEach(level => {
+    ['gym', 'casa', 'corporal', 'parque'].forEach(place => {
+      // Todo lo que EXCEDE su tope y se puede hacer donde entrena: son los que hay que curar.
+      const violan = _LIB_REAL.filter(e => core.exLevelRank(e) > CAP[level] && (e.env || ['gym']).includes(place));
+      violan.forEach(mal => {
+        const c = { level, place, routines: [{ name: 'R', generated: true, exercises: [{ id: mal.id, sets: 3, reps: 10 }] }] };
+        const r = core.healRoutineLevel(c, _LIB_REAL);
+        if (!r || !r.tocado) return;                    // sin candidato se DEJA y se reporta: es correcto
+        curados++;
+        const puesto = _LIB_REAL.find(x => x.id === r.routines[0].exercises[0].id);
+        if (!puesto) { malos.push(`${level}/${place}: ${mal.name} → id inexistente`); return; }
+        if (core.exLevelRank(puesto) > CAP[level]) malos.push(`${level}/${place}: ${mal.name} → ${puesto.name} (nivel ${core.exLevel(puesto)})`);
+        if (!(puesto.env || ['gym']).includes(place)) malos.push(`${level}/${place}: ${mal.name} → ${puesto.name} (no se puede hacer ahí)`);
+        if (puesto.muscle !== mal.muscle) malos.push(`${level}/${place}: ${mal.name} → ${puesto.name} (otro músculo)`);
+      });
+    });
+  });
+  assert.ok(curados >= 20, `el barrido solo curó ${curados} casos — dejó de recorrer el catálogo`);
+  assert.deepStrictEqual(malos, [], 'reemplazos que no respetan nivel/entorno/músculo:\n  ' + malos.join('\n  '));
+});
+test('🔒 v536 · la cura es DETERMINISTA — las dos apps eligen el mismo reemplazo', () => {
+  // Corre en el panel del coach Y en la app del asesorado, que escribe su propia fila. Si cada una
+  // eligiera distinto, se pisarían en cada sincronización y el plan bailaría solo.
+  const c = () => ({ level: 'Intermedio', place: 'gym',
+    routines: [{ name: 'A', generated: true, exercises: [{ id: 'e92' }, { id: 'e47' }] }] });
+  const a = core.healRoutineLevel(c(), _LIB_REAL);
+  const b = core.healRoutineLevel(c(), _LIB_REAL);
+  assert.deepStrictEqual(a.routines[0].exercises.map(e => e.id), b.routines[0].exercises.map(e => e.id));
+  assert.deepStrictEqual(a.cambios, b.cambios);
+});
+test('🔴 v536 · CABLEADO: las dos puertas curan y la ficha DICE lo que cambió', () => {
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (v509). Y curarlo solo
+  // del lado del coach lo deja para que el teléfono del asesorado lo vuelva a pisar (v518).
+  const fs = require('fs'), path = require('path');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const cliente = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.match(coach, /healRoutineLevel\(/, 'el panel del coach tiene que curar al cargar');
+  assert.match(cliente, /healRoutineLevel\(/, 'la app del asesorado también');
+  // 🔒 Y la app NO cambia un plan en silencio: lo que cambió se GUARDA en el mismo sitio donde se
+  // cura y la ficha lo pinta.
+  // ⚠️ Esta aserción nació DÉBIL y la cazó su sabotaje: pedía `/levelHealed/` en todo el archivo, y
+  // borrar la línea que lo ESCRIBE salía verde porque el render y el «Entendido» también lo
+  // nombran. Se ancla dentro de la función que cura.
+  const cuerpoCoach = coach.slice(coach.indexOf('function _curarNivelDeLosPlanes'));
+  assert.match(cuerpoCoach.slice(0, 900), /levelHealed\s*=/, 'el coach tiene que GUARDAR lo que la app cambió');
+  const cuerpoCli = cliente.slice(cliente.indexOf('healRoutineLevel(client'));
+  assert.match(cuerpoCli.slice(0, 600), /levelHealed\s*=/, 'la app del asesorado también');
+  assert.match(coach, /function renderLevelHealCard/, 'y la ficha tiene que pintarlo');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 // 🔒 v535 · TODA `security definer` DEL REPO FIJA SU `search_path`
 // El candado de arriba solo mira `f6_fb_moderation.sql`. Esta regla es de CLASE y vale para
 // cualquier .sql que se añada mañana: una DEFINER sin `search_path` fijo es escalable por
