@@ -114,6 +114,17 @@ function initClientView(client){
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.getElementById('cn-today').classList.add('on');
   navReset('cn-today'); // botón atrás: inicio = Hoy, sin pasos previos
   if(!DB.prs)DB.prs=ld('ax_pr',{});if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
+  // 🍃 Descarga PROGRAMADA que ya le tocaba (v532). Va aquí, ANTES de pintar «Hoy», porque si no
+  // vería su entreno completo el primer día de su propia descarga. La app es offline-first y no
+  // hay cron: la aplica la primera de las dos apps que se abra —esta o la del coach— y por eso
+  // `applyDueDeload` es idempotente (no hace nada si ya hay una activa). Se cuenta desde la fecha
+  // PROGRAMADA, así que abrir tarde no le alarga la descarga.
+  try{
+    if(typeof applyDueDeload==='function'){
+      const _dl=applyDueDeload(client,Date.now());
+      if(_dl){ client.routines=_dl.routines; client.deload=_dl.deload; delete client.deloadPlan; sv('ax_c',DB.clients); }
+    }
+  }catch(e){ if(typeof warn==='function')warn('AVI: descarga programada (asesorado):',e&&e.message); }
   // Fase 2 (perf móvil): en el login solo pintamos lo VISIBLE ("Hoy") + el badge de mensajes.
   // Perfil, Historial, Rutinas y Mensajes se pintan en cnTab al abrir su pestaña (lazy),
   // sacando 4 renders pesados (gráficas SVG, listas largas) de la ruta crítica de arranque.

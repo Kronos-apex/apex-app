@@ -718,7 +718,28 @@ function _hydrateCoachFromRows(rows){
   });
   _hydrateSelfClient(); // el coach también entrena: su fila entra como un asesorado más
   _mergePendingIntoDB(); // #8: no perder altas offline aún no provisionadas
+  _arrancarDescargasProgramadas(); // v532: las que ya les tocaba, ANTES de la foto base
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
+}
+
+// 🍃 DESCARGAS PROGRAMADAS QUE YA LES TOCABA (v532). AVI es offline-first y no hay cron, así que
+// una descarga con fecha futura la aplica la primera app que se abra: aquí (el coach) o la del
+// propio asesorado. `applyDueDeload` es idempotente —no hace nada si ya hay una activa—, que es lo
+// único que hace segura esa doble vía. Va ANTES de `_primeCoachSnap` para que el cambio entre en
+// la foto base y se sincronice como cualquier edición suya.
+function _arrancarDescargasProgramadas(){
+  if(typeof applyDueDeload!=='function')return 0;
+  let n=0;
+  (DB.clients||[]).forEach(c=>{
+    try{
+      const res=applyDueDeload(c,Date.now());
+      if(!res)return;
+      c.routines=res.routines; c.deload=res.deload; delete c.deloadPlan;
+      n++;
+    }catch(e){ if(typeof warn==='function')warn('AVI: descarga programada de',c&&c.id,e&&e.message); }
+  });
+  if(n&&typeof sv==='function')sv('ax_c',DB.clients);
+  return n;
 }
 
 // ── El coach como asesorado (`_self`) ──────────────────────────────────
@@ -2013,23 +2034,91 @@ function renderDeloadPanel(c){
     </div>`;
     return;
   }
+  // Programada y todavía sin arrancar (v532): se ve CUÁNDO empieza y se puede cancelar. Sin esto,
+  // el coach programa algo que desaparece de su vista hasta el día que se aplica solo.
+  const pl=(typeof deloadPlanState==='function')?deloadPlanState(c,Date.now()):null;
+  if(pl){
+    const dia=new Date(pl.from).toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'short'});
+    el.innerHTML=`<div class="card" style="padding:11px 13px;background:var(--bll);border-left:3px solid var(--bl)">
+      <div style="font-size:12.5px;color:var(--t1);line-height:1.5;margin-bottom:8px">${_coIco('calendar',13,'📅')} Descarga <b>programada</b> para el <b>${esc(dia)}</b> — ${pl.enDias===0?'empieza hoy':(pl.enDias===1?'empieza mañana':'empieza en '+pl.enDias+' días')}, ${pl.days} días.</div>
+      <button class="btn bg bsm" style="width:100%;min-height:36px" onclick="cancelDeloadPlanFor('${esc(c.id)}')">Cancelar la programación</button>
+    </div>`;
+    return;
+  }
   if(!(c.routines||[]).length)return; // sin plan no hay nada que descargar
-  el.innerHTML=`<button class="btn bg bsm" style="width:100%" onclick="startDeloadFor('${esc(c.id)}')" title="Baja el volumen 7 días sobre el plan actual, sin cambiarle los ejercicios">🍃 Semana de descarga</button>`;
+  el.innerHTML=`<button class="btn bg bsm" style="width:100%" onclick="startDeloadFor('${esc(c.id)}')" title="Baja el volumen sobre el plan actual, sin cambiarle los ejercicios. Puedes elegir cuándo empieza y cuánto dura.">🍃 Semana de descarga</button>`;
 }
 
-// Activa la descarga. AVISA (sin bloquear: la decisión es del coach) cuando no le cuadra a esa
-// persona — dolor reciente o poca historia detrás.
+// ── MODAL DE DESCARGA (v532) ─────────────────────────────────────────────────────────────────
+// Pedido del PO: elegir CUÁNDO empieza, CUÁNTO dura y hacerlo a VARIOS de una pasada. Antes era un
+// `confirm()` que arrancaba hoy y duraba 7 días fijos.
+// El aviso de `deloadWarnings` sigue AVISANDO sin bloquear: la decisión es suya («Claudia y Luz,
+// que se están recuperando de una gripa» no es una señal que la app pueda ver en los datos).
+function _dlFechaHoy(){ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function startDeloadFor(cid){
   const c=DB.clients.find(x=>x.id===cid); if(!c)return;
-  if(typeof startDeload!=='function')return;
-  const avisos=(typeof deloadWarnings==='function')?deloadWarnings(c,DB.history[cid]||[],Date.now()):[];
-  const cuerpo='Durante 7 días: mismos ejercicios, mismos días y mismas repeticiones; menos series y ~'+_DELOAD_PCT+'% menos peso del que ya levanta. A quien todavía no tiene récords, la app se lo dice en palabras. Al terminar se lo devuelves con un toque.';
-  if(!confirm((avisos.length?avisos.join('\n\n')+'\n\n':'')+cuerpo+'\n\n¿Activar la semana de descarga de '+(c.name||'')+'?'))return;
-  const res=startDeload(c,Date.now());
-  c.routines=res.routines; c.deload=res.deload;
+  if(typeof scheduleDeload!=='function')return;
+  CUR.deloadFor=cid;
+  const av=(typeof deloadWarnings==='function')?deloadWarnings(c,DB.history[cid]||[],Date.now()):[];
+  const w=document.getElementById('dlm-warn');
+  if(w) w.innerHTML=av.length
+    ? '<div class="card" style="padding:10px 12px;background:var(--yll);border-left:3px solid var(--yl);margin-bottom:12px;font-size:12.5px;line-height:1.5">'
+      +av.map(a=>esc(a)).join('<br>')+'</div>'
+    : '';
+  const f=document.getElementById('dlm-desde'); if(f){ f.min=_dlFechaHoy(); f.value=_dlFechaHoy(); }
+  const d=document.getElementById('dlm-dias'); if(d) d.value=String(DELOAD_DAYS);
+  // «También para»: el resto de asesorados CON plan y SIN descarga activa. Los que ya están en una
+  // no salen — programarle otra encima es la puerta al doble recorte que `applyDueDeload` prohíbe.
+  const otros=(DB.clients||[]).filter(x=>x.id!==cid && (x.routines||[]).length
+    && !(typeof deloadState==='function'&&deloadState(x,Date.now())));
+  const o=document.getElementById('dlm-otros');
+  if(o) o.innerHTML=otros.length
+    ? '<label class="flabel">También para</label>'
+      +'<div style="max-height:150px;overflow-y:auto;border:1.5px solid var(--br);border-radius:var(--rsm);padding:8px 10px">'
+      +otros.map(x=>'<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13.5px;cursor:pointer">'
+        +'<input type="checkbox" class="dlm-otro" value="'+esc(x.id)+'"> '+esc(x.name||'—')+'</label>').join('')
+      +'</div>'
+    : '';
+  om('m-deload');
+}
+function deloadModalApply(){
+  const cid=CUR.deloadFor; const c=DB.clients.find(x=>x.id===cid); if(!c){cm('m-deload');return;}
+  const desdeStr=(document.getElementById('dlm-desde')||{}).value||_dlFechaHoy();
+  const dias=parseInt((document.getElementById('dlm-dias')||{}).value)||DELOAD_DAYS;
+  // La fecha del input viene sin hora: se ancla al MEDIODÍA local para que no se corra de día al
+  // pasar por UTC (Colombia es UTC-5, así que un `T00:00Z` cae el día anterior aquí).
+  const desde=new Date(desdeStr+'T12:00:00');
+  if(isNaN(desde)){ if(typeof toast==='function')toast('Revisa la fecha'); return; }
+  const ids=[cid].concat([...document.querySelectorAll('.dlm-otro:checked')].map(x=>x.value));
+  const hoy=Date.now();
+  let arrancadas=0, programadas=0;
+  ids.forEach(id=>{
+    const cl=DB.clients.find(x=>x.id===id); if(!cl)return;
+    const plan=scheduleDeload(desde,dias,hoy); if(!plan)return;
+    cl.deloadPlan=plan;
+    // Si la fecha es HOY (o ya pasó) se aplica de una: programar algo para ahora mismo y dejarlo
+    // esperando a que alguien abra la app sería el mismo botón, pero peor.
+    const res=(typeof applyDueDeload==='function')?applyDueDeload(cl,hoy):null;
+    if(res){ cl.routines=res.routines; cl.deload=res.deload; delete cl.deloadPlan; arrancadas++; }
+    else programadas++;
+  });
   sv('ax_c',DB.clients);
+  cm('m-deload');
   renderDeloadPanel(c); renderDetailRoutines(c); renderShockCard(c);
-  if(typeof toast==='function')toast('Semana de descarga activada');
+  if(typeof renderClients==='function')renderClients();
+  if(typeof toast==='function'){
+    const partes=[];
+    if(arrancadas)partes.push(arrancadas===1?'1 descarga activada':arrancadas+' descargas activadas');
+    if(programadas)partes.push(programadas===1?'1 programada':programadas+' programadas');
+    toast(partes.join(' · ')||'Sin cambios');
+  }
+}
+function cancelDeloadPlanFor(cid){
+  const c=DB.clients.find(x=>x.id===cid); if(!c)return;
+  delete c.deloadPlan;
+  sv('ax_c',DB.clients);
+  renderDeloadPanel(c);
+  if(typeof toast==='function')toast('Descarga programada cancelada');
 }
 function endDeloadFor(cid){
   const c=DB.clients.find(x=>x.id===cid); if(!c)return;

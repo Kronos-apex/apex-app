@@ -301,6 +301,58 @@ try {
     JSON.stringify(d6.restauradas) === JSON.stringify([4, 3]), JSON.stringify({ series: d6.series, restauradas: d6.restauradas }));
   check('D6b tras volver, la ficha ofrece activarla de nuevo', /Semana de descarga/.test(d6.despues), d6.despues.slice(0, 50));
 
+  // ── D11 · DESCARGA PROGRAMADA (v532) ────────────────────────────────────────────────────
+  // Pedido del PO: elegir cuándo empieza, cuánto dura y hacerlo a VARIOS de una pasada.
+  // El motor ya lo cubre la suite; aquí se prueba lo que la suite no ve: que el modal exista, que
+  // programe de verdad, que la ficha lo MUESTRE (si no, el coach programa algo que desaparece de
+  // su vista hasta que se aplica solo) y que se pueda cancelar.
+  const d11 = await evj(`(()=>{
+    const f=(n)=>{const d=new Date(); d.setDate(d.getDate()+n);
+      return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);};
+    // 🔒 Candidato explícito para «a varios de una pasada». Hace falta porque el otro cliente del
+    // fixture tiene una descarga VENCIDA (lo usa D4) y la lista lo excluye CON RAZÓN: programarle
+    // otra encima es justo lo que \`applyDueDeload\` prohíbe. Sin este, el control salía en 0 y el
+    // caso «a varios» no se probaba — que es como se aprueba una feature que no existe.
+    if(!DB.clients.find(x=>x.id==='a3')){
+      DB.clients.push({id:'a3',name:'Peer QA',sex:'F',
+        routines:[{id:'r3',day:'Lunes',exercises:[{id:'e1',name:'A',sets:4}]}]});
+    }
+    CUR.clientId='a1';
+    startDeloadFor('a1');
+    const modalAbierto=!!document.getElementById('m-deload').classList.contains('on');
+    const otros=[...document.querySelectorAll('.dlm-otro')].length;
+    document.getElementById('dlm-desde').value=f(4);
+    document.getElementById('dlm-dias').value='10';
+    // y de paso se lo programa TAMBIÉN al segundo asesorado, que es la parte de «a varios»
+    const otro=document.querySelector('.dlm-otro'); const otroId=otro?otro.value:null; if(otro)otro.checked=true;
+    deloadModalApply();
+    const c1=DB.clients.find(x=>x.id==='a1');
+    const c2=otroId?DB.clients.find(x=>x.id===otroId):null;
+    renderDeloadPanel(c1);
+    const ficha=(document.getElementById('d-deload')||{}).innerText||'';
+    return { modalAbierto, otros,
+      plan1:!!c1.deloadPlan, dias1:c1.deloadPlan&&c1.deloadPlan.days,
+      seriesIntactas:JSON.stringify(c1.routines[0].exercises.map(e=>e.sets)),
+      plan2:!!(c2&&c2.deloadPlan), otroId,
+      ficha: ficha.replace(/\\s+/g,' ').trim() };})()`);
+  await shot('D11-programada', '#d-deload');
+  check('🔒 D11-control el modal ABRE y lista a los demás asesorados', d11.modalAbierto && d11.otros >= 1,
+    JSON.stringify({ abierto: d11.modalAbierto, otros: d11.otros }));
+  check('🍃 D11 programar a futuro NO toca el plan todavía', d11.plan1 && d11.seriesIntactas === '[4,3]',
+    JSON.stringify({ plan: d11.plan1, series: d11.seriesIntactas }));
+  check('🍃 D11b respeta la duración elegida (10 días, no los 7 de siempre)', d11.dias1 === 10, 'días=' + d11.dias1);
+  check('🍃 D11c «a varios de una pasada»: el otro asesorado también queda programado', d11.plan2 === true,
+    JSON.stringify({ otro: d11.otroId, plan: d11.plan2 }));
+  check('🍃 D11d la ficha DICE que está programada y cuándo', /programada/i.test(d11.ficha) && /empieza/i.test(d11.ficha),
+    d11.ficha.slice(0, 110));
+
+  const d12 = await evj(`(()=>{
+    cancelDeloadPlanFor('a1');
+    const c=DB.clients.find(x=>x.id==='a1');
+    return { sinPlan:!c.deloadPlan, ficha:((document.getElementById('d-deload')||{}).innerText||'').replace(/\\s+/g,' ').trim() };})()`);
+  check('🍃 D12 se puede CANCELAR la programación', d12.sinPlan && /Semana de descarga/.test(d12.ficha),
+    JSON.stringify(d12).slice(0, 120));
+
   log('\njsErrors:', jsErrors);
   if (jsErrors.length) { fails++; log('  FAIL hubo errores JS'); }
   log('shots en:', OUT);

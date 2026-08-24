@@ -3502,6 +3502,11 @@ function selfClientFromRow(row, opts) {
     // se indexa por id de rutina y las nuevas traen ids nuevos.
     // Es la cara de LECTURA del mismo hueco que v509 cerró en la ESCRITURA.
     deload: p.deload || null,
+    // 🔒 Y `deloadPlan` viaja por la misma razón (v532): es la descarga PROGRAMADA que todavía no
+    // arranca. Sin él, el coach que se programa una descarga a sí mismo no la vería en su ficha
+    // (no podría cancelarla) y `applyDueDeload` no la encontraría el día que le toca — o sea que
+    // no arrancaría nunca. Es exactamente el hueco de v512, una feature más tarde.
+    deloadPlan: p.deloadPlan || null,
     routines: Array.isArray(row.routines) ? row.routines : [],
     // NADA de negocio: sin payments, sin tier, sin suspended, sin wantsCoach.
   };
@@ -7401,6 +7406,9 @@ function deloadFloorReason(client, sessions, now) {
 // persona-músculo, 0 caen bajo un tercio de su volumen y solo 4 cruzan hacia abajo las 4 series
 // semanales (tríceps y cardio) — `scripts/deload-dosis.mjs`.
 const DELOAD_DAYS = 7;
+// Rango permitido cuando el coach elige la duración (v532). No es una opinión sobre entrenamiento
+// —él decide—: es el candado contra el cero de más, la misma clase que el tope de kg de v417.
+const DELOAD_MIN_DAYS = 3, DELOAD_MAX_DAYS = 21;
 const DELOAD_SETS_FACTOR = 0.6;
 const DELOAD_SETS_MIN = 2;
 const DELOAD_LOAD_FACTOR = 0.85;
@@ -7419,8 +7427,12 @@ function deloadSets(sets) {
 // startDeload(client, now) → { routines, deload } NUEVOS. PURA: no muta al cliente.
 // El snapshot guarda las series originales POR POSICIÓN, con el id y el nombre como testigo: si el
 // coach cambia un ejercicio durante la semana, al volver se respeta SU cambio en vez de pisarlo.
-function startDeload(client, now) {
+// `days` (v532) es opcional y por defecto `DELOAD_DAYS`: el PO pidió poder acortarla o alargarla
+// según el caso. Se acota a un rango con sentido para que un dedo gordo no deje a alguien medio año
+// en descarga — el tope NO es una opinión sobre entrenamiento, es un candado contra el cero de más.
+function startDeload(client, now, days) {
   client = client || {};
+  const dias = Math.max(DELOAD_MIN_DAYS, Math.min(DELOAD_MAX_DAYS, parseInt(days) || DELOAD_DAYS));
   const nowTs = (now != null ? new Date(now) : new Date()).getTime();
   const snapshot = {};
   const routines = (client.routines || []).map(r => {
@@ -7438,10 +7450,61 @@ function startDeload(client, now) {
     routines,
     deload: {
       from: new Date(nowTs).toISOString(),
-      until: new Date(nowTs + DELOAD_DAYS * 86400000).toISOString(),
+      until: new Date(nowTs + dias * 86400000).toISOString(),
+      days: dias,
       sets: snapshot,
     },
   };
+}
+
+// ── DESCARGA PROGRAMADA (v532) ───────────────────────────────────────────────────────────────
+// Pedido del PO (24-ago): *«necesito poder programar las semanas de descarga a asesorados que
+// según mi criterio la necesiten — por ejemplo Claudia y Luz, que se están recuperando de una
+// gripa y ya casi cumplen las 8 semanas»*. El botón de v434 ya existía, pero arranca HOY y dura
+// 7 días fijos; lo que faltaba era elegir CUÁNDO empieza, CUÁNTO dura y hacerlo a varios de una.
+//
+// 🔴 EL PROBLEMA DE FONDO NO ES LA UI, ES QUIÉN LA ACTIVA. AVI es offline-first y no hay cron: una
+// descarga que empieza el lunes tiene que aplicarse sola en algún dispositivo. Por eso el plan
+// pendiente vive aparte (`deloadPlan`) y NO toca las rutinas hasta que llega el día; cuando llega,
+// `applyDueDeload` hace exactamente lo que habría hecho el botón. Se llama desde el arranque del
+// coach Y desde el del asesorado, así que la primera de las dos apps que se abra la aplica.
+// 🔒 Y por eso tiene que ser IDEMPOTENTE, que es lo único que hace segura esa doble vía:
+//   · si ya hay una descarga activa (`client.deload`) NO hace nada — el que ya la aplicó, o el que
+//     se sincronizó con las series bajadas, no la vuelve a bajar (sería una descarga sobre otra);
+//   · el snapshot se toma en el momento de aplicar, sobre las rutinas de ESE momento, así que si
+//     el coach editó el plan entre programarla y que arranque, se respeta lo último que él puso.
+// Devuelve `null` cuando no hay nada que hacer: quien llama no escribe ni sincroniza.
+function scheduleDeload(desde, days, now) {
+  const dias = Math.max(DELOAD_MIN_DAYS, Math.min(DELOAD_MAX_DAYS, parseInt(days) || DELOAD_DAYS));
+  const d = desde ? new Date(desde) : null;
+  if (!d || isNaN(d)) return null;
+  return { from: d.toISOString(), days: dias, at: (now != null ? new Date(now) : new Date()).toISOString() };
+}
+// ¿Está pendiente de arrancar? PURO. `enDias` es para que la ficha diga «empieza en 3 días».
+function deloadPlanState(client, now) {
+  const p = (client || {}).deloadPlan;
+  if (!p || !p.from) return null;
+  const from = new Date(p.from).getTime();
+  if (isNaN(from)) return null;
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const ms = from - nowTs;
+  return {
+    from: p.from,
+    days: parseInt(p.days) || DELOAD_DAYS,
+    enDias: ms > 0 ? Math.ceil(ms / 86400000) : 0,
+    vencida: ms <= 0,
+  };
+}
+// Aplica la descarga programada si ya le tocaba. PURA e IDEMPOTENTE — ver el porqué arriba.
+// → `null` si no hay nada que aplicar; `{routines, deload}` si sí (quien llama borra `deloadPlan`).
+function applyDueDeload(client, now) {
+  client = client || {};
+  if (client.deload) return null;                 // ya hay una activa: jamás una descarga sobre otra
+  const st = deloadPlanState(client, now);
+  if (!st || !st.vencida) return null;            // todavía no le toca
+  // Arranca contando desde la fecha PROGRAMADA, no desde hoy: si el coach la puso para el lunes y
+  // nadie abrió la app hasta el miércoles, la descarga termina el día que él dijo, no dos después.
+  return startDeload(client, st.from, st.days);
 }
 
 // endDeload(client) → { routines } con las series ORIGINALES devueltas. PURA.
@@ -8425,6 +8488,11 @@ if (typeof module !== 'undefined' && module.exports) {
     DELOAD_MIN_TRAINING_DAYS,
     DELOAD_MIN_DATA_WEEKS,
     DELOAD_DAYS,
+    DELOAD_MIN_DAYS,
+    DELOAD_MAX_DAYS,
+    scheduleDeload,
+    deloadPlanState,
+    applyDueDeload,
     DELOAD_SETS_FACTOR,
     DELOAD_SETS_MIN,
     DELOAD_LOAD_FACTOR,

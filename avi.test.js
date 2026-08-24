@@ -4183,6 +4183,9 @@ test('🔴 mergeOwnProfile: guardar desde el panel NO borra lo que la vista del 
     isSelf: true, name: 'Andres Martínez', sex: 'M', age: 37, weight: 90, height: 176,
     goal: 'Ganar músculo', level: 'Avanzado', days: 5, place: 'gym', activityFactor: 1.55,
     notes: '', habits: { water: { '2026-08-18': 3 } }, startDate: null,
+    // v532: la descarga PROGRAMADA viaja en la vista por la misma razón que `deload` — si no, el
+    // coach que se programa una a sí mismo no podría cancelarla y no le arrancaría nunca.
+    deloadPlan: { from: '2026-08-31T12:00:00.000Z', days: 7, at: '2026-08-24T12:00:00.000Z' },
     // …y lo que el panel NO sabe leer y se estaba borrando:
     foodlog: { d: { '2026-08-13': [{ name: 'Avena', g: 5 }] } },
     deload: { activa: true, hasta: '2026-08-25' },
@@ -4212,8 +4215,91 @@ test('🔴 mergeOwnProfile: guardar desde el panel NO borra lo que la vista del 
   assert.deepStrictEqual(fusion.foodlog, guardado.foodlog);
   assert.deepStrictEqual(fusion.painCare, guardado.painCare);
   assert.deepStrictEqual(fusion.deload, guardado.deload); // ahora llega por la vista, no por la fusión
+  assert.deepStrictEqual(fusion.deloadPlan, guardado.deloadPlan); // v532, igual que `deload`
   assert.strictEqual(fusion.foodlogOk, guardado.foodlogOk);
   assert.strictEqual(fusion.tier, 'premium');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🍃 v532 · DESCARGA PROGRAMADA — pedido del PO (24-ago)
+// «Necesito poder programar las semanas de descarga a asesorados que según mi criterio la
+// necesiten»: elegir CUÁNDO empieza, CUÁNTO dura y hacerlo a varios de una pasada.
+// El riesgo real no es la UI: AVI es offline-first y no hay cron, así que una descarga con fecha
+// futura la aplica la primera app que se abra (la del coach o la del asesorado) y por eso
+// `applyDueDeload` TIENE que ser idempotente.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+const _dlCliente = () => ({ routines: [{ id: 'r1', exercises: [{ id: 'e1', name: 'A', sets: 4 }, { id: 'e2', name: 'B', sets: 3 }] }] });
+
+test('🍃 v532 · scheduleDeload acota la duración al rango permitido', () => {
+  const hoy = Date.parse('2026-08-24T12:00:00Z');
+  assert.strictEqual(core.scheduleDeload('2026-08-31T12:00:00Z', 10, hoy).days, 10);
+  // El tope NO es una opinión sobre entrenamiento: es el candado contra el cero de más.
+  assert.strictEqual(core.scheduleDeload('2026-08-31T12:00:00Z', 999, hoy).days, core.DELOAD_MAX_DAYS);
+  assert.strictEqual(core.scheduleDeload('2026-08-31T12:00:00Z', 1, hoy).days, core.DELOAD_MIN_DAYS);
+  assert.strictEqual(core.scheduleDeload('2026-08-31T12:00:00Z', null, hoy).days, core.DELOAD_DAYS);
+  assert.strictEqual(core.scheduleDeload('no es fecha', 7, hoy), null, 'una fecha ilegible no programa nada');
+  assert.strictEqual(core.scheduleDeload(null, 7, hoy), null);
+});
+
+test('🔴 v532 · una descarga programada NO toca el plan hasta el día que le toca', () => {
+  const hoy = Date.parse('2026-08-24T12:00:00Z');
+  const c = _dlCliente();
+  c.deloadPlan = core.scheduleDeload('2026-08-31T12:00:00Z', 7, hoy);
+  const st = core.deloadPlanState(c, hoy);
+  assert.strictEqual(st.enDias, 7);
+  assert.strictEqual(st.vencida, false);
+  assert.strictEqual(core.applyDueDeload(c, hoy), null, 'antes de tiempo no se aplica nada');
+  assert.deepStrictEqual(c.routines[0].exercises.map(e => e.sets), [4, 3], 'y el plan sigue intacto');
+});
+
+test('🔴 v532 · al llegar el día se aplica sola, y las series bajan', () => {
+  const hoy = Date.parse('2026-08-24T12:00:00Z');
+  const c = _dlCliente();
+  c.deloadPlan = core.scheduleDeload('2026-08-31T12:00:00Z', 10, hoy);
+  const res = core.applyDueDeload(c, Date.parse('2026-08-31T13:00:00Z'));
+  assert.ok(res, 'el 31 ya le tocaba');
+  assert.deepStrictEqual(res.routines[0].exercises.map(e => e.sets), [2, 2]);
+  assert.strictEqual(res.deload.days, 10, 'respeta la duración que eligió el coach');
+  // 🔒 Cuenta desde la fecha PROGRAMADA, no desde hoy: abrir la app tarde no le alarga la descarga.
+  const tarde = core.applyDueDeload(c, Date.parse('2026-09-02T13:00:00Z'));
+  assert.strictEqual(new Date(tarde.deload.until).toISOString().slice(0, 10), '2026-09-10',
+    'termina el día que el coach dijo, aunque nadie abriera la app hasta el 2');
+});
+
+test('🔒 v532 · applyDueDeload es IDEMPOTENTE — jamás una descarga sobre otra', () => {
+  // Es lo ÚNICO que hace segura la doble vía (la aplica la app del coach o la del asesorado, la
+  // que se abra primero). Sin esto, el segundo dispositivo recortaría las series ya recortadas.
+  const hoy = Date.parse('2026-08-24T12:00:00Z');
+  const c = _dlCliente();
+  c.deloadPlan = core.scheduleDeload('2026-08-24T12:00:00Z', 7, hoy);
+  const primera = core.applyDueDeload(c, hoy);
+  assert.ok(primera);
+  const yaActiva = Object.assign({}, c, { routines: primera.routines, deload: primera.deload });
+  assert.strictEqual(core.applyDueDeload(yaActiva, hoy), null, 'con una descarga activa no se aplica otra');
+  // Y aunque el plan pendiente siguiera ahí por un merge a medias, tampoco.
+  yaActiva.deloadPlan = c.deloadPlan;
+  assert.strictEqual(core.applyDueDeload(yaActiva, hoy), null);
+});
+
+test('v532 · sin plan programado no pasa nada (y no revienta con datos basura)', () => {
+  assert.strictEqual(core.deloadPlanState({}, Date.now()), null);
+  assert.strictEqual(core.deloadPlanState({ deloadPlan: { from: 'basura' } }, Date.now()), null);
+  assert.strictEqual(core.applyDueDeload({}, Date.now()), null);
+  assert.strictEqual(core.applyDueDeload(null, Date.now()), null);
+});
+
+test('🔴 v532 · CABLEADO: las dos apps aplican las descargas que ya tocaban', () => {
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (v509). Y aquí importa
+  // el doble: si solo la llamara el coach, una descarga programada no arrancaría hasta que él
+  // abriera su app — y la persona entrenaría a plena carga el primer día de su propia descarga.
+  const fs = require('fs'), path = require('path');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const cliente = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.match(coach, /applyDueDeload\(/, 'el panel del coach tiene que aplicarlas al cargar');
+  assert.match(cliente, /applyDueDeload\(/, 'la app del asesorado también');
+  // Y las dos tienen que BORRAR el plan pendiente al aplicarlo, o se re-aplicaría en cada arranque.
+  assert.match(coach, /delete\s+c\.deloadPlan/, 'el coach borra el plan pendiente al aplicarlo');
+  assert.match(cliente, /delete\s+client\.deloadPlan/, 'el asesorado también');
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════

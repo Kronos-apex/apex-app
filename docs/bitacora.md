@@ -4,6 +4,48 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🍃 2026-08-24 — avi-v532: LA DESCARGA SE PROGRAMA (fecha, duración y a varios de una pasada)
+
+Pedido del PO: *«necesito poder programar las semanas de descarga a asesorados que según mi
+criterio la necesiten — por ejemplo Claudia y Luz, que se están recuperando de una gripa y ya casi
+cumplen las 8 semanas»*.
+
+**Lo primero fue comprobar qué existía**, para no construir un botón duplicado: el de v434 ya
+estaba en la ficha y él no lo había visto. Lo que de verdad faltaba eran las tres cosas que pidió
+al preguntárselo: **elegir cuándo empieza, cuánto dura y hacerlo a varios de una pasada**.
+
+**🔴 El problema de fondo no era la interfaz, era quién la activa.** AVI es offline-first y no hay
+cron: una descarga que empieza el lunes tiene que aplicarse sola en algún dispositivo. El plan
+pendiente vive aparte (`deloadPlan`) y **no toca el plan** hasta que llega el día; entonces
+`applyDueDeload` hace exactamente lo que habría hecho el botón. La llaman **las dos apps** —la del
+coach al cargar sus asesorados y la del asesorado al entrar— así que la aplica la primera que se
+abra. Eso solo es seguro porque la función es **idempotente**: si ya hay una descarga activa no
+hace nada, o el segundo dispositivo recortaría unas series ya recortadas.
+
+Dos detalles que se decidieron midiendo el caso, no a ojo:
+
+- **Se cuenta desde la fecha PROGRAMADA, no desde hoy.** Si el coach la puso para el lunes y nadie
+  abrió la app hasta el miércoles, termina el día que él dijo — no dos días después.
+- **La duración se acota entre 3 y 21 días.** No es una opinión sobre entrenamiento (él decide):
+  es el candado contra el cero de más, la misma clase que el tope de kg de v417.
+
+**En la ficha** el botón abre ahora un modal con fecha, duración y una lista de «también para» con
+el resto de asesorados —**excluyendo a los que ya están en descarga**, porque programarles otra
+encima es justo lo que la función prohíbe—. Mientras está pendiente, la ficha **dice cuándo empieza
+y deja cancelarla**: sin eso, el coach programa algo que desaparece de su vista hasta que se aplica
+solo.
+
+Y `deloadPlan` **viaja en la vista del coach-como-asesorado**, igual que `deload`: es el hueco de
+v512 una feature más tarde — sin él, el coach que se programa una descarga a sí mismo no podría
+cancelarla y no le arrancaría nunca.
+
+Suite **876/876** en los dos husos · `_verify-deload` con 6 checks nuevos · **9 sabotajes y los 9
+muerden** (6 los caza la suite, 3 el harness). 💎 El control del harness cazó que en su fixture el
+otro asesorado tenía una descarga vencida y la lista **lo excluía con razón**: hizo falta darle un
+candidato real, o el caso «a varios» se habría aprobado sin probarse.
+
+---
+
 ## 🚪 2026-08-24 — avi-v531: LA PUERTA DEL DÍA 1 DEJA DE ESTAR CERRADA EL 43 % DE LOS DÍAS
 
 Hallazgo H1 de la auditoría de experiencia, y el que choca de frente con la decisión del PO de

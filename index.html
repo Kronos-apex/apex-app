@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=531">
+<link rel="stylesheet" href="styles.css?v=532">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1241,19 +1241,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=531"></script>
-<script src="muscle-map.js?v=531"></script>
-<script src="exercise-muscles.js?v=531"></script>
+<script src="avi-core.js?v=532"></script>
+<script src="muscle-map.js?v=532"></script>
+<script src="exercise-muscles.js?v=532"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=531"></script>
-<script src="app-2-login.js?v=531"></script>
-<script src="app-3-coach.js?v=531"></script>
-<script src="app-4-entreno.js?v=531"></script>
-<script src="app-5-salud.js?v=531"></script>
-<script src="app-6-extra.js?v=531"></script>
-<script src="app-7-community.js?v=531"></script>
+<script src="app-1-infra.js?v=532"></script>
+<script src="app-2-login.js?v=532"></script>
+<script src="app-3-coach.js?v=532"></script>
+<script src="app-4-entreno.js?v=532"></script>
+<script src="app-5-salud.js?v=532"></script>
+<script src="app-6-extra.js?v=532"></script>
+<script src="app-7-community.js?v=532"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1313,6 +1313,34 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <button class="btn bd bsm" onclick="prfixDelete()">Borrar récord</button>
       <button class="btn bg bsm" onclick="cm('m-prfix')">Cancelar</button>
       <button class="btn bp bsm" onclick="prfixSave()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Semana de descarga (v532). El botón de v434 arrancaba HOY y duraba 7 días fijos; el PO pidió
+     elegir cuándo empieza, cuánto dura y hacerlo a varios de una pasada («Claudia y Luz, que se
+     están recuperando de una gripa y ya casi cumplen las 8 semanas»). -->
+<div class="mdbg" id="m-deload">
+  <div class="md" style="max-width:520px" role="dialog" aria-modal="true" aria-labelledby="mdt-26">
+    <div class="mdtitle" id="mdt-26">🍃 Semana de descarga</div>
+    <div id="dlm-warn"></div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:14px">
+      Mismos ejercicios, mismos días y mismas repeticiones: <strong>menos series y menos peso</strong>
+      del que ya levanta. Al terminar se lo devuelves con un toque.
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="flabel" for="dlm-desde">¿Cuándo empieza?</label>
+      <input type="date" id="dlm-desde" class="inp" style="width:100%">
+      <div style="font-size:11.5px;color:var(--t2);margin-top:5px">Déjalo en hoy para que arranque de una.</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="flabel" for="dlm-dias">¿Cuántos días dura?</label>
+      <input type="number" id="dlm-dias" class="inp" min="3" max="21" step="1" value="7" style="width:100%">
+    </div>
+    <div id="dlm-otros" style="margin-bottom:14px"></div>
+    <div class="mdfooter">
+      <button class="btn bg bsm" onclick="cm('m-deload')">Cancelar</button>
+      <button class="btn bp bsm" onclick="deloadModalApply()">Programar</button>
     </div>
   </div>
 </div>
