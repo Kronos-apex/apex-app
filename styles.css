@@ -1813,7 +1813,7 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
   padding:10px 12px;margin:0 0 12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .cchat-noliv-t{color:var(--t1);font-size:13px;line-height:1.45}
 .cchat-composer{display:flex;align-items:flex-end;gap:8px;padding:8px 12px calc(env(safe-area-inset-bottom) + 8px);background:var(--w);border-top:1px solid var(--br);flex-shrink:0}
-.cchat-composer textarea{flex:1;resize:none;max-height:120px;border:1.5px solid var(--br);border-radius:20px;padding:9px 14px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--t1);line-height:1.35}
+.cchat-composer textarea{flex:1;resize:none;max-height:120px;border:1.5px solid var(--br);border-radius:20px;padding:9px 14px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--t1);line-height:1.35}
 .cchat-send{width:44px;height:44px;border-radius:50%;border:none;background:var(--g);color:#fff;font-size:17px;cursor:pointer;flex-shrink:0}
 .rpresets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .rp{padding:5px 13px;border-radius:20px;border:1.5px solid var(--br);background:var(--w);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}

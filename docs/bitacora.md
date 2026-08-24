@@ -4,6 +4,35 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 📱 2026-08-23 — avi-v527: EL PISO DE 16 px, ESTA VEZ MEDIDO EN EL NAVEGADOR
+
+**Qué pasaba.** v526 subió a 16 px el campo desde el que el asesorado le escribe a su coach, para
+que Safari en iPhone dejara de dar zoom al enfocarlo, y dejó un candado en la suite para que no
+volviera. Ese candado resuelve el tamaño **por clase**, leyendo el CSS como texto — y así no ve
+tres cosas: los campos sin `class`, los selectores de descendencia y el `font-size` escrito en la
+propia etiqueta. La auditoría A3 lo reportó y se verificó punto por punto: era cierto.
+
+**Qué se midió.** Un harness nuevo entra a la app y le pregunta al navegador el tamaño REAL de
+cada campo (`getComputedStyle`), que es la única autoridad sobre quién gana la cascada. Barre el
+documento entero — app del asesorado y panel del coach, modales cerrados incluidos — y salta los
+cinco `<select>` ocultos del registro, que no son campos sino cajones del asistente. Resultado:
+**8 campos por debajo de 16 px**, todos corregidos:
+
+| campo | medía | quién lo usa |
+|---|---|---|
+| `cchat-in` · `cmtychat-in` | 14 px | el compositor del chat del coach y el de Comunidad |
+| `r-why` | 13 px | el «por qué» de la rutina, que escribe el coach |
+| `notif-tpl` · `notif-msg` · `notif-time` · `notif-target` | 13 px | el compositor de avisos del coach |
+| `pk-env` | 12 px | el filtro de entorno del selector de ejercicios |
+
+**Lo que queda distinto para siempre.** El candado de la suite se reescribió para cubrir las tres
+vías (clase, etiqueta y `style=` en línea) y lleva escrito en su comentario **lo que NO puede
+ver**, con el harness nombrado como autoridad. Los tres sabotajes del harness muerden y los tres
+de la suite también.
+
+⚠️ El zoom en sí sigue sin reproducirse: es comportamiento de WebKit en iOS y no hay iPhone en el
+banco de pruebas. Lo que está medido es que los campos estaban bajo el umbral y que ya no lo están.
+
 ## 📱 2026-08-23 — avi-v526: EL CAMPO PARA ESCRIBIRLE AL COACH DABA ZOOM EN IPHONE
 
 Cabo suelto que salió mientras se escribía la ficha de tipografía del sistema de diseño, y que el PO

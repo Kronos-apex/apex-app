@@ -12131,52 +12131,88 @@ test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino t
 // 🔒 NINGÚN CAMPO DE TEXTO POR DEBAJO DE 16px
 //
 // Safari en iOS hace ZOOM automático al enfocar un campo cuya letra mide menos de 16px, y deja la
-// pantalla descolocada. En AVI la app se instala como PWA y hay asesorados en iPhone, así que el
-// campo desde el que se le escribe al coach (`.mta` = #cn-msg-in) era el que lo sufría: llevaba
-// 13px desde el commit inicial, siendo el ÚNICO de las 7 clases que visten campos por debajo de 16.
+// pantalla descolocada. En AVI la app se instala como PWA y hay asesorados en iPhone, así que un
+// campo chico no es un detalle de diseño: es una pantalla de la que la persona no sabe salir.
 //
-// La lista de clases se DERIVA de index.html — escribirla a mano es cómo se queda una fuera (los
-// campos `why`, `examples` y `tag` de v524). Solo cuentan los campos donde se TECLEA texto:
-// un checkbox, un radio o un slider no disparan el zoom.
+// 🔴 LO QUE ESTE CANDADO NO PUEDE HACER, Y HAY QUE SABERLO: la primera versión (v526) resolvía el
+// tamaño «por clase» leyendo styles.css como TEXTO, y dejó OCHO campos rotos detrás de una luz
+// verde — 13 campos no llevan class, `.cchat-composer textarea` es un selector de descendencia, y
+// nueve campos traen el tamaño en `style=`. El tamaño de letra de un campo NO se puede deducir del
+// texto del CSS: solo el navegador sabe qué gana la cascada.
+//   La autoridad es `scripts/e2e/_repro-zoom-16px.mjs`, que lo mide con getComputedStyle sobre el
+//   DOM vivo. Esto de aquí es la red barata que corre en CADA commit, y cubre las tres vías que el
+//   texto sí puede ver con certeza: el `style=` en línea, la regla que nombra la etiqueta, y la
+//   clase. Si esto se pone rojo, hay un campo roto; si sale verde, todavía falta el harness.
+//
+// Solo cuentan los campos donde se TECLEA texto: un checkbox, un radio o un slider no disparan el
+// zoom. Y se saltan los `[hidden]`: los cinco `<select id="su-*">` del registro son cajones donde
+// el asistente guarda lo que se eligió con botones, nunca reciben el foco.
 // ══════════════════════════════════════════════════════════════════════════════
 test('🔒 ningún campo de texto baja de 16px (Safari iOS hace zoom al enfocar y descoloca la pantalla)', () => {
   const fs = require('fs'), path = require('path');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 
-  const TECLEABLE = /^(text|email|password|number|tel|search|url|date)$/;
+  const TECLEABLE = /^(text|email|password|number|tel|search|url|date|time|month|week)$/;
+  const chicos = [];
+
+  // ── VÍA 1 · el font-size escrito en la propia etiqueta. Aquí el texto SÍ es la autoridad:
+  //    un estilo en línea le gana a cualquier regla, así que lo que diga es lo que se ve.
   const clases = new Set();
+  let campos = 0;
   for (const m of html.matchAll(/<(input|textarea|select)\b([^>]*)>/gi)) {
     const attrs = m[2];
+    if (/\shidden(\s|=|$)/i.test(attrs)) continue;
     if (m[1].toLowerCase() === 'input') {
       const t = /type\s*=\s*"([^"]+)"/i.exec(attrs);
-      // sin type explícito, un <input> es de texto
-      if (t && !TECLEABLE.test(t[1].toLowerCase())) continue;
+      if (t && !TECLEABLE.test(t[1].toLowerCase())) continue;   // sin type, un <input> es de texto
     }
+    campos++;
     const c = /class\s*=\s*"([^"]+)"/i.exec(attrs);
     if (c) c[1].trim().split(/\s+/).forEach(x => clases.add(x));
+    const st = /style\s*=\s*"([^"]*)"/i.exec(attrs);
+    const px = st && /(?:^|;)\s*font-size\s*:\s*([0-9.]+)px/.exec(st[1]);
+    if (px && parseFloat(px[1]) < 16) {
+      const id = /\sid\s*=\s*"([^"]+)"/i.exec(attrs);
+      chicos.push(`style= en <${m[1].toLowerCase()}#${id ? id[1] : '?'}> = ${px[1]}px`);
+    }
   }
-  assert.ok(clases.size >= 5,
-    `la sonda solo encontró ${clases.size} clases de campo en index.html — algo cambió en el HTML`);
+  assert.ok(campos >= 60, `la sonda solo encontró ${campos} campos tecleables en index.html — algo cambió en el HTML`);
+  assert.ok(clases.size >= 5, `la sonda solo encontró ${clases.size} clases de campo en index.html — algo cambió en el HTML`);
 
-  // Gana la ÚLTIMA declaración en orden de fuente, que es como resuelve el navegador entre reglas
-  // de la misma especificidad.
-  const efectivo = new Map();
+  // ── VÍAS 2 y 3 · las reglas de styles.css. Gana la ÚLTIMA declaración en orden de fuente, que es
+  //    como resuelve el navegador entre reglas de la misma especificidad.
+  const efectivo = new Map();       // clase → px  (vía 3)
+  const porEtiqueta = new Map();    // selector que termina en input/textarea/select → px  (vía 2)
   for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const sel = m[1].trim().replace(/\s+/g, ' '), cuerpo = m[2].replace(/\n/g, '');
     const fs2 = /(?:^|;)\s*font-size\s*:\s*([0-9.]+)px/.exec(cuerpo);
     if (!fs2) continue;
+    const px = parseFloat(fs2[1]);
     for (const parte of sel.split(',')) {
       const p = parte.trim();
-      if (!/^\.[A-Za-z0-9_-]+$/.test(p)) continue;   // solo selectores de clase a secas
-      const nombre = p.slice(1);
-      if (clases.has(nombre)) efectivo.set(nombre, parseFloat(fs2[1]));
+      if (/^\.[A-Za-z0-9_-]+$/.test(p)) {                  // vía 3: selector de clase a secas
+        const nombre = p.slice(1);
+        if (clases.has(nombre)) efectivo.set(nombre, px);
+        continue;
+      }
+      // vía 2: el último trozo del selector es la etiqueta de un campo que se teclea
+      const ultimo = p.split(/[ >+~]+/).filter(Boolean).pop() || '';
+      const tag = /^(input|textarea|select)\b/i.exec(ultimo);
+      if (!tag) continue;
+      const ty = /\[type\s*=\s*["']?([\w-]+)/i.exec(ultimo);
+      if (tag[1].toLowerCase() === 'input' && ty && !TECLEABLE.test(ty[1].toLowerCase())) continue;
+      porEtiqueta.set(p, px);
     }
   }
   assert.ok(efectivo.size >= 4,
     `solo ${efectivo.size} clases de campo tienen font-size en styles.css — la sonda dejó de ver el CSS`);
+  assert.ok(porEtiqueta.size >= 1,
+    'ninguna regla de styles.css nombra input/textarea/select — la sonda dejó de ver esa vía');
 
-  const chicos = [...efectivo.entries()].filter(([, v]) => v < 16).map(([k, v]) => `.${k} = ${v}px`);
+  [...efectivo.entries()].filter(([, v]) => v < 16).forEach(([k, v]) => chicos.push(`.${k} = ${v}px`));
+  [...porEtiqueta.entries()].filter(([, v]) => v < 16).forEach(([k, v]) => chicos.push(`${k} = ${v}px`));
+
   assert.deepStrictEqual(chicos, [],
     'campos de texto por debajo de 16px (iOS Safari les hará zoom al enfocar):\n  ' + chicos.join('\n  '));
 });

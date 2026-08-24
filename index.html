@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=526">
+<link rel="stylesheet" href="styles.css?v=527">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -928,7 +928,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="fg" style="margin-bottom:11px"><label class="ilbl" for="rf-note">Nota para el asesorado</label><input type="text" class="inp" id="rf-note" placeholder="Ej: Descansa 90 seg entre series. Enfócate en la técnica."></div>
     <div class="fg" style="margin-bottom:11px">
       <label class="ilbl">¿Por qué esta rutina? <span style="color:var(--t3);font-weight:400">(opcional)</span></label>
-      <textarea id="r-why" class="inp" rows="3" style="resize:none;font-size:13px;line-height:1.5" placeholder="Ej: Esta rutina busca desarrollar fuerza en el tren superior. Enfócate en sentir el músculo, no en el peso..."></textarea>
+      <textarea id="r-why" class="inp" rows="3" style="resize:none;font-size:16px;line-height:1.5" placeholder="Ej: Esta rutina busca desarrollar fuerza en el tren superior. Enfócate en sentir el músculo, no en el peso..."></textarea>
     </div>
     <div class="fg" style="margin-bottom:13px">
       <label class="ilbl">Tiempo de descanso entre series</label>
@@ -1004,7 +1004,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="mdtitle" id="pk-title">Seleccionar ejercicio</div>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
       <span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0">Entorno:</span>
-      <select class="sel" id="pk-env" aria-label="Filtrar ejercicios por entorno" onchange="pkEnvFilter(this.value)" style="font-size:12px;padding:5px 8px">
+      <select class="sel" id="pk-env" aria-label="Filtrar ejercicios por entorno" onchange="pkEnvFilter(this.value)" style="font-size:16px;padding:5px 8px">
         <option value="all">Todos</option>
         <option value="corporal">🤸 Peso corporal</option>
         <option value="casa">🏠 Casa</option>
@@ -1236,19 +1236,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=526"></script>
-<script src="muscle-map.js?v=526"></script>
-<script src="exercise-muscles.js?v=526"></script>
+<script src="avi-core.js?v=527"></script>
+<script src="muscle-map.js?v=527"></script>
+<script src="exercise-muscles.js?v=527"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=526"></script>
-<script src="app-2-login.js?v=526"></script>
-<script src="app-3-coach.js?v=526"></script>
-<script src="app-4-entreno.js?v=526"></script>
-<script src="app-5-salud.js?v=526"></script>
-<script src="app-6-extra.js?v=526"></script>
-<script src="app-7-community.js?v=526"></script>
+<script src="app-1-infra.js?v=527"></script>
+<script src="app-2-login.js?v=527"></script>
+<script src="app-3-coach.js?v=527"></script>
+<script src="app-4-entreno.js?v=527"></script>
+<script src="app-5-salud.js?v=527"></script>
+<script src="app-6-extra.js?v=527"></script>
+<script src="app-7-community.js?v=527"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1319,7 +1319,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 
     <div style="margin-bottom:14px">
       <label class="flabel" for="notif-tpl">Plantilla de mensaje</label>
-      <select id="notif-tpl" onchange="notifFillTemplate()" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:13px;margin-bottom:8px">
+      <select id="notif-tpl" onchange="notifFillTemplate()" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:16px;margin-bottom:8px">
         <option value="">— Elige una plantilla —</option>
         <option value="Buenos días {nombre} 🌅 Recuerda desayunar mínimo 2 horas antes de entrenar. ¡Hoy es un gran día!">🌅 Buenos días + recordatorio desayuno</option>
         <option value="¡Hola {nombre}! 💧 No olvides tomar agua durante el día. Mínimo 2 litros. Tu cuerpo te lo agradece.">💧 Hidratación</option>
@@ -1329,17 +1329,17 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <option value="Hola {nombre} 🥗 ¿Ya comiste bien hoy? Recuerda respetar tus tiempos de comida y priorizar proteína en cada plato.">🥗 Recordatorio nutricional</option>
         <option value="custom">✏️ Escribir mensaje personalizado</option>
       </select>
-      <textarea id="notif-msg" rows="3" placeholder="Escribe el mensaje aquí... usa {nombre} para personalizar" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+      <textarea id="notif-msg" rows="3" placeholder="Escribe el mensaje aquí... usa {nombre} para personalizar" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);font-family:inherit;font-size:16px;resize:vertical"></textarea>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div>
         <label class="flabel" for="notif-time">Hora de envío</label>
-        <input type="time" id="notif-time" value="07:00" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);font-family:inherit;font-size:13px">
+        <input type="time" id="notif-time" value="07:00" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);font-family:inherit;font-size:16px">
       </div>
       <div>
         <label class="flabel" for="notif-target">Destinatario</label>
-        <select id="notif-target" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:13px">
+        <select id="notif-target" style="width:100%;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--br);background:var(--w);font-family:inherit;font-size:16px">
           <option value="all">Todos los asesorados</option>
         </select>
       </div>
