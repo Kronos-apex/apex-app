@@ -4,6 +4,46 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🏋️ 2026-08-24 — avi-v529: EL PESO NO SUBE HASTA QUE SE CONSOLIDA (reporte del PO)
+
+**Lo que reportó.** *«¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión
+ya le quieras subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner? Y veo que
+eso haces con todos los pesos.»*
+
+**Tenía razón, y es lo que le faltaba a v482.** Aquella versión arregló el bucle cerrado (la app
+sugería el peso que la persona ya levantaba) metiendo doble progresión: si cumpliste las reps
+objetivo, sube. Pero se quedó a medias: **la doble progresión de verdad REPITE el peso hasta
+consolidarlo** y solo entonces sube. Aquí bastaba **una serie buena** para que el récord subiera y
+la sugerencia saltara un escalón a la sesión siguiente.
+
+**Medido en producción (24-ago), y el número explica el «con todos los pesos»:**
+
+| | |
+|---|---|
+| Sugerencias de peso en los planes vigentes | **208** |
+| De ellas, la app **subía el peso** | **167 (80 %)** |
+| Subían con **una sola sesión** a esa carga | **83** ← las que cambian |
+| Siguen subiendo (ya consolidadas) | **84** ← el control: la regla no es «no subir nunca» |
+
+Casos reales que se iban a disparar: **Nataly, sentadilla con barra 90 kg → 95** con una sola
+sesión a 90; **Andrés, hip thrust 110 → 115**; **Luz y Claudia, prensa 70 → 75**.
+
+**🔴 La primera idea la tumbó la medición.** Lo obvio era exigir las reps en TODAS las series. No
+sirve: la gente registra las mismas reps en todas (146 de 215 sesiones de 4 series), así que ese
+filtro habría tocado **26 de 436 casos** y dejado el problema intacto. **El filtro que discrimina es
+el de SESIONES, no el de series** — y solo se supo midiendo.
+
+**Cómo quedó.** `sessionsAtLoad` (pura) cuenta los **días distintos** en que ya cumplió las reps
+objetivo con ese peso; `suggestFromPR` exige `LOAD_CONSOLIDATE_SESSIONS` = 2 antes de subir, y
+mientras tanto **devuelve el mismo peso**. Sin el dato asume 1 sesión —el default conservador: un
+caller olvidadizo hace que la app repita la carga, jamás que la dispare— y un **test de cableado**
+exige que `_suggestKg` siga pasándoselo, porque si nadie lo pasa la app no subiría el peso nunca.
+
+Suite **866/866** en los dos husos · **6 sabotajes y los 6 muerden**. El runner cazó de paso que uno
+de ellos apuntaba a dos sitios a la vez y lo gritó en vez de contarlo como candado probado.
+
+---
+
 ## 💳 2026-08-24 — avi-v528: SIETE DÍAS DE GRACIA, PORQUE EL BLOQUEO DEL MISMO DÍA COBRABA DE QUIEN IBA A PAGAR IGUAL
 
 Primer punto ejecutado de `docs/auditoria-areas-2026-08-22/OPORTUNIDADES.md`.

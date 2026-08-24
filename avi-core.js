@@ -1012,6 +1012,48 @@ function loadStep(kg) {
 // cuando alguien llega a 20 repeticiones y se ganó el salto de mancuerna.
 // Regla nueva = doble progresión, la de toda la vida: si ya cumpliste las reps objetivo con
 // ese peso, lo siguiente es SUBIR.
+//
+// ── CONSOLIDACIÓN (v529) — reporte del PO, 2026-08-24 ────────────────────────────────────────
+// *«¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión ya le quieras
+// subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner?»* Tenía razón, y
+// esto es lo que le faltaba a v482: la doble progresión de verdad **repite el peso hasta
+// CONSOLIDARLO** y solo entonces sube. Aquí bastaba UNA serie buena para que el récord subiera y
+// la sugerencia saltara un escalón a la sesión siguiente.
+// 📊 MEDIDO sobre las 209 combinaciones persona-ejercicio reales (24-ago): **en 113 (54%) el peso
+// tope se hizo UN SOLO día** — o sea que en más de la mitad de los casos la app estaba lista para
+// subir sin que la persona hubiera repetido nunca esa carga.
+// 🔴 Y la primera idea —exigir las reps en TODAS las series— la tumbó la medición: la gente
+// registra las mismas reps en todas (146 de 215 sesiones de 4 series), así que ese filtro habría
+// tocado **26 de 436 casos** y dejado el problema intacto. El filtro que discrimina es el de
+// SESIONES, no el de series.
+// CONTRATO: `opts.sesionesEnPeso` = cuántas sesiones DISTINTAS ya cumplió las reps objetivo con
+// ese peso (lo calcula `sessionsAtLoad`, que sí ve el historial). Por defecto **1**, o sea la
+// conservadora: sin el dato NO se sube. Un caller que se olvide de pasarlo hace que la app
+// repita el peso, nunca que lo dispare — y el test de cableado exige que `_suggestKg` lo pase.
+const LOAD_CONSOLIDATE_SESSIONS = 2;
+// Cuántas sesiones distintas cumplió ya las reps objetivo con ESE peso (o más). PURA.
+// Cuenta por DÍA, no por registro: dos entradas del mismo día son el mismo entrenamiento.
+function sessionsAtLoad(sessions, exKey, kg, targetReps) {
+  const objetivo = parseInt(targetReps) || 10;
+  const peso = parseFloat(kg);
+  if (!(peso > 0)) return 0;
+  const dias = new Set();
+  (sessions || []).forEach(s => {
+    if (!s || !s.date) return;
+    const dia = String(s.date).slice(0, 10);
+    ((s.exercises) || []).forEach(e => {
+      if (!e) return;
+      if (e.id !== exKey && e.name !== exKey) return;
+      ((e.sets) || []).forEach(st => {
+        if (!st || !st.done) return;
+        const k = parseFloat(st.kg), r = parseFloat(st.reps);
+        // «Con ese peso o más» y cumpliendo las reps: una serie mejor también consolida.
+        if (k >= peso && r >= objetivo) dias.add(dia);
+      });
+    });
+  });
+  return dias.size;
+}
 function suggestFromPR(pr, targetReps, opts) {
   if (!pr || (pr.unit || 'kg') !== 'kg') return null;
   const kg = parseFloat(pr.val != null ? pr.val : pr.kg);
@@ -1024,6 +1066,10 @@ function suggestFromPR(pr, targetReps, opts) {
     // número que ya había salido subido de aquí, y el resultado quedaba POR ENCIMA del propio
     // récord en 130 de 148 casos reales (medido 14-ago, `scripts/deload-carga.mjs`). El tope vive
     // en `deloadSuggestKg`.
+    // 🔴 CONSOLIDACIÓN: repetir el peso hasta hacerlo en ≥2 sesiones. Sin el dato se asume 1
+    // (conservador): la app repite la carga en vez de dispararla.
+    const ses = (opts && opts.sesionesEnPeso != null) ? (parseInt(opts.sesionesEnPeso) || 0) : 1;
+    if (ses < LOAD_CONSOLIDATE_SESSIONS) return kg;   // mismo peso: aún se está adaptando
     const paso = (opts && opts.step) || loadStep(kg);
     return Math.round((kg + paso) * 2) / 2;   // a medio kilo: es una sugerencia, no un disco
   }
@@ -8236,6 +8282,8 @@ if (typeof module !== 'undefined' && module.exports) {
     suggestLoad,
     loadStep,
     suggestFromPR,
+    sessionsAtLoad,
+    LOAD_CONSOLIDATE_SESSIONS,
     warmupLoad,
     dropLoad,
     trainingStartTs,

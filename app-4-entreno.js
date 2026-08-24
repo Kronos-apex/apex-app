@@ -1563,7 +1563,16 @@ function _suggestKg(ex){
     if(typeof deloadState==='function'&&typeof deloadSuggestKg==='function'&&deloadState(c,Date.now())){
       return deloadSuggestKg(pr,reps);
     }
-    return suggestFromPR(pr,reps);
+    // CONSOLIDACIÓN (v529, reporte del PO): la doble progresión repite el peso hasta hacerlo en
+    // ≥2 sesiones y solo entonces sube. `suggestFromPR` no ve el historial, así que el conteo se
+    // calcula aquí con `sessionsAtLoad` y se le pasa. Sin este argumento la regla asume 1 sesión
+    // y repite el peso — conservadora a propósito, pero entonces NADIE subiría nunca: por eso
+    // hay un test de CABLEADO que exige que esta línea siga pasando `sesionesEnPeso`.
+    const _ses=(typeof sessionsAtLoad==='function')
+      ? sessionsAtLoad((DB.history&&DB.history[c.id])||[], ex.id||ex.name,
+                       parseFloat(pr&&(pr.val!=null?pr.val:pr.kg)), reps)
+      : undefined;
+    return suggestFromPR(pr,reps,{sesionesEnPeso:_ses});
   }catch(e){return null;}
 }
 // Peso ligero sugerido para el calentamiento ≈ 50% del peso de trabajo, redondeado a

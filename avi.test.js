@@ -121,6 +121,8 @@ const {
   estimate1RM,
   suggestLoad,
   suggestFromPR,
+  sessionsAtLoad,
+  LOAD_CONSOLIDATE_SESSIONS,
   warmupLoad,
   dropLoad,
   bmiFrom,
@@ -7220,7 +7222,9 @@ test('🔒 v484 · un récord viejo SIN `val` ni `unit` (formato legacy) se fund
   const legacy = { kg: 30, reps: 8, name: 'Curl Femoral Acostado en Máquina' };
   const r = prsRemapRetired({ e38: legacy });
   assert.strictEqual(r.prs.e15.kg, 30, 'la marca legacy se conserva');
-  assert.strictEqual(suggestFromPR(r.prs.e15, 8), 35, 'y ya alimenta el peso sugerido');
+  // v529: con el peso ya consolidado (≥2 sesiones) sube; lo que este test afirma es que la marca
+  // legacy ALIMENTA la sugerencia, no la regla de progresión (esa vive en su propio bloque).
+  assert.strictEqual(suggestFromPR(r.prs.e15, 8, { sesionesEnPeso: 2 }), 35, 'y ya alimenta el peso sugerido');
 });
 
 test('🔒 v484 · sin récords varados no toca NADA (ni copia el objeto)', () => {
@@ -9540,7 +9544,7 @@ test('🔴 v482 · el caso REAL que lo destapó: Natalia, récord 25 kg ×15, pl
   // Antes: suggestFromPR sube a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
   // récord. La app llamaba «descarga» a levantar lo mismo de siempre.
   const pr = { val: 25, unit: 'kg', reps: 15 };
-  assert.strictEqual(suggestFromPR(pr, 15), 27.5, 'fuera de descarga sí progresa (eso está bien)');
+  assert.strictEqual(suggestFromPR(pr, 15, { sesionesEnPeso: 2 }), 27.5, 'fuera de descarga sí progresa (eso está bien)');
   assert.strictEqual(Math.round(27.5 * 0.9 * 2) / 2, 25, 'la cadena vieja devolvía su propio récord');
   assert.strictEqual(deloadSuggestKg(pr, 15), 21.5, 'ahora sale del récord, no del escalón');
 });
@@ -11807,15 +11811,61 @@ test('sanitizePrs retira el récord FANTASMA que nadie podría volver a batir', 
 // peso que la persona ya levanta. PR 10 kg × 12 → 1RM 14 → 14/1,4 × 0,95 = 9,5 → redondea a
 // **10**. El peso sugerido no sube ⇒ el récord no sube ⇒ el detector lo llama estancamiento.
 // Caso real: 10 sesiones en 2 meses remando con 10 kg mientras hacía hip thrust con 100.
-test('🔴 suggestFromPR: si ya cumpliste las reps objetivo, el peso SUBE (doble progresión)', () => {
-  // El caso exacto que estaba en producción
-  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12);
+test('🔴 suggestFromPR: si ya cumpliste las reps objetivo Y consolidaste el peso, SUBE (doble progresión)', () => {
+  // El caso exacto que estaba en producción. v529 le añade la consolidación: el escalón exige
+  // ≥2 sesiones con ese peso, así que el test lo declara explícitamente.
+  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12, { sesionesEnPeso: 2 });
   assert.ok(r > 10, `sugirió ${r} kg cuando ya levanta 10: el peso sugerido nunca subiría`);
   assert.strictEqual(r, 12.5);
   // Y no se calla por encima de 15 reps: ahí es JUSTO cuando se ganó el salto de mancuerna
-  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15);
+  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15, { sesionesEnPeso: 2 });
   assert.ok(luz != null, 'con 20 reps la app se callaba (estimate1RM devuelve null > 15 reps)');
   assert.ok(luz > 2.5, `sugirió ${luz} tras 20 repeticiones con 2,5 kg`);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔴 v529 · CONSOLIDACIÓN — reporte del PO (24-ago)
+// «¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión ya le quieras
+// subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner?»
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔴 v529 · el caso del PO: con UNA sola sesión a 40 kg, la app REPITE 40 — no sube a 45', () => {
+  const pr = { val: 40, reps: 12, unit: 'kg' };
+  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 1 }), 40, 'aún se está adaptando: se repite');
+  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 2 }), 45, 'consolidado: ahora sí sube un escalón');
+  // 🔒 CONTROL de que la regla no se volvió «no subir nunca»: a la 3ª también sube.
+  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 5 }), 45);
+});
+test('🔒 v529 · sin el dato de sesiones NO se dispara el peso (el default es el conservador)', () => {
+  // Un caller que se olvide de pasar `sesionesEnPeso` hace que la app REPITA la carga, jamás que
+  // la suba sola. El riesgo del default contrario es el bug que este lote vino a arreglar.
+  assert.strictEqual(suggestFromPR({ val: 40, reps: 12, unit: 'kg' }, 12), 40);
+});
+test('🔴 v529 · CABLEADO: `_suggestKg` tiene que pasarle el conteo de sesiones', () => {
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (lección v509). Si
+  // alguien borra el argumento, la app deja de subir el peso NUNCA y no da ningún error.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function _suggestKg');
+  assert.ok(i > 0, 'no se encontró _suggestKg en app-4-entreno.js');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.match(cuerpo, /sessionsAtLoad\(/, '_suggestKg debe contar las sesiones con ese peso');
+  assert.match(cuerpo, /sesionesEnPeso\s*:/, '_suggestKg debe pasarle el conteo a suggestFromPR');
+});
+test('v529 · sessionsAtLoad cuenta DÍAS distintos que cumplieron las reps con ese peso', () => {
+  const ses = [
+    { date: '2026-08-01T10:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '40', reps: '12' }] }] },
+    { date: '2026-08-01T18:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '40', reps: '12' }] }] },
+    { date: '2026-08-05T10:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '45', reps: '12' }] }] },
+  ];
+  assert.strictEqual(sessionsAtLoad(ses, 'e9', 40, 12), 2, 'dos entradas del mismo día son UN entrenamiento; 45 kg también consolida los 40');
+  assert.strictEqual(sessionsAtLoad(ses, 'e9', 40, 15), 0, 'con objetivo de 15 reps, ninguna sesión lo cumplió');
+  // Una serie NO marcada como hecha no cuenta: anotar el peso no es levantarlo.
+  const noHecha = [{ date: '2026-08-01', exercises: [{ id: 'e9', sets: [{ done: false, kg: '40', reps: '12' }] }] }];
+  assert.strictEqual(sessionsAtLoad(noHecha, 'e9', 40, 12), 0);
+  // Casa por nombre cuando el registro viejo no trae id.
+  const porNombre = [{ date: '2026-08-01', exercises: [{ name: 'Hack Squat', sets: [{ done: true, kg: '40', reps: '12' }] }] }];
+  assert.strictEqual(sessionsAtLoad(porNombre, 'Hack Squat', 40, 12), 1);
+  assert.strictEqual(sessionsAtLoad(null, 'e9', 40, 12), 0);
 });
 
 test('suggestFromPR: si el récord es a MENOS reps que el objetivo, sigue estimando hacia abajo', () => {
