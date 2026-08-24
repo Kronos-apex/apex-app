@@ -4,6 +4,63 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏱️ 2026-08-24 — avi-v533: LA DURACIÓN DEJA DE MENTIR, Y LA PROMESA QUE NINGÚN CÁLCULO SOSTIENE SE RETIRA
+
+Lo midieron **dos áreas por separado** (el motor deportivo y la experiencia), que es por lo que
+pesaba más que un hallazgo suelto.
+
+**Lo que decía la app contra lo que pasa.** Medido sobre **225 sesiones reales** con duración
+registrada:
+
+| | |
+|---|---|
+| Lo que predecía la app | **42,0 min** |
+| Duración real | p25 **40,9** · **mediana 56,4** · p75 **74,4** |
+| Sesiones que pasan de la hora | **102 de 225 (45 %)** |
+| Segundos por serie completada | **157** reales contra los **118** que asumía la fórmula |
+
+Los 45 s de `SET_WORK_SECONDS` eran «una serie de fuerza típica»: no cuentan montar la máquina,
+cambiar discos, esperar el equipo ni el celular. La constante estaba clavada en el **percentil 25**.
+
+**Lo que se arregló, con su curva:**
+
+| segundos por serie | mediana predicha | rutinas que decían «<1 h» |
+|---|---|---|
+| 45 (lo que había) | 42,0 | 87 de 102 |
+| 65 | 49,1 | 78 |
+| **84** | **55,2** | 59 |
+
+Y, mejor que una constante para todos: **el ritmo PROPIO de cada persona**. Entre las 7 con
+historial suficiente va de **129 s/serie (Claudia) a 192 (Kathe)** —1,5×— y cada una es consistente
+consigo misma a lo largo de 8-43 sesiones. `personalSecsPerSet` lo saca de su historial; la
+constante queda solo para quien todavía no tiene con qué.
+
+**🔴 Y la parte que costó medirla: la FRASE no tiene arreglo.** «Te toma menos de una hora», contra
+las 172 sesiones que se pueden emparejar con su rutina:
+
+| regla | promete | **incumple** |
+|---|---|---|
+| hoy (45 s) | 133 | **64 — 48 %** |
+| 84 s | 91 | 39 — 43 % |
+| 84 s con margen | 57 | 23 — 40 % |
+| calibrado por persona | 95 | 39 — 41 % |
+
+El error mediano de la mejor predicción posible sigue siendo **13,4 minutos**, y una franja de
+**±40 % solo cubre el 72 %**. La duración de una sesión de gimnasio **no es predecible desde el
+plan** — depende de cuánta gente haya, de si se queda hablando, del celular. **Así que la promesa
+se retira**: el número se queda (ahora honesto) y la frase categórica desaparece, con un candado de
+texto que impide que vuelva a escribirse a mano en cualquier pantalla.
+
+💎 De paso, dos aserciones mías nacieron débiles y las cazaron sus propios sabotajes: el caso de
+basura de `personalSecsPerSet` daba `null` con y sin el filtro (no probaba nada), y los minutos
+estaban escritos a mano en dos tests y en el harness — ahora se DERIVAN del motor, para que la
+próxima recalibración no se lea como un fallo.
+
+Suite **878/878** en los dos husos · `_verify-hero` y `_verify-firstrun` verdes · **7 sabotajes y
+los 7 muerden**.
+
+---
+
 ## 🍃 2026-08-24 — avi-v532: LA DESCARGA SE PROGRAMA (fecha, duración y a varios de una pasada)
 
 Pedido del PO: *«necesito poder programar las semanas de descarga a asesorados que según mi

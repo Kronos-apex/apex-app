@@ -103,9 +103,16 @@ check('D1 con cero entrenos se pinta la portada, con la rutina de hoy y UNA sola
   d1.pintada && d1.rutina && d1.botones === 1 && d1.altoBoton >= 44,
   JSON.stringify({ btns: d1.botones, alto: d1.altoBoton, txt: d1.txt.slice(0, 80) }));
 
-// D1-bis: la duración sale del motor puro, no de un número inventado (12 series, 90s → ~27 min).
-check('D1-bis dice cuántos ejercicios y una duración estimada honesta',
-  /4 ejercicios/.test(d1.txt) && /~27 min/.test(d1.txt), JSON.stringify({ txt: d1.txt.slice(0, 120) }));
+// D1-bis: la duración sale del motor puro, no de un número inventado.
+// ⚠️ El minuto exacto se DERIVA del motor, no se escribe aquí: v533 recalibró la constante de 45 a
+// 84 s con 225 sesiones reales delante y un `~27 min` quemado habría pintado esa medición como un
+// fallo del arreglo. Lo que este check afirma es que el número que se PINTA es el que el motor
+// calcula — que es lo que de verdad puede romperse.
+const d1min = await ev(`(()=>{const c=DB.clients[0];const r=(c.routines||[])[0];
+  return (typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r,{secsPerSet:(typeof _secsPerSetDe==='function'?_secsPerSetDe(c):undefined)}):null;})()`);
+check('D1-bis dice cuántos ejercicios y la duración que calcula el motor',
+  /4 ejercicios/.test(d1.txt) && d1min > 0 && new RegExp('~' + d1min + ' min').test(d1.txt),
+  JSON.stringify({ motor: d1min, txt: d1.txt.slice(0, 120) }));
 
 // D2: NINGUNA tarjeta secundaria compite ese día.
 const d2 = await ev(`(()=>{const ids=['cn-habits','cn-coach-card','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','cn-push-nudge'];

@@ -6618,15 +6618,58 @@ function firstSessionMode(sessions) {
 // (sin ejercicios, sin series legibles) → la UI omite el dato en vez de inventar un número: decirle
 // «~35 min» a alguien que va a tardar 70 quema la confianza en el primer día, que es justo lo que
 // se está intentando ganar. Series × (trabajo + descanso), con el descanso real de la rutina.
-const SET_WORK_SECONDS = 45;   // una serie de fuerza típica, de pie a última repetición
-function estimateWorkoutMinutes(routine) {
+// ── CUÁNTO DURA DE VERDAD UN ENTRENO (recalibrado en v533) ───────────────────────────────────
+// 🔴 Los 45 s eran «una serie de fuerza típica» y por eso la cuenta salía corta: no cuenta montar
+// la máquina, cambiar discos, esperar el equipo ni el celular. Medido el 24-ago sobre **225
+// sesiones reales con duración registrada**: la mediana es **56,4 min** y el **45 % pasa de la
+// hora**, mientras la app predecía **42,0**. Por serie completada, lo real son **157 s** (p25 120,
+// p75 210) contra los 45 + 73 = 118 que asumía la fórmula — o sea que estaba clavada en el p25.
+// 📊 LA CURVA, sobre las 102 rutinas reales (mediana predicha / rutinas que decían «<1h»):
+//     45 s → 42,0 min · 87 de 102        ← lo que había
+//     65 s → 49,1 min · 78
+//     84 s → 55,2 min · 59               ← elegido: cae sobre la mediana real de 56,4
+// 🔴 Y LA LECCIÓN CARA: NINGUNA constante arregla la FRASE «te toma menos de una hora». Medido
+// sobre las 172 sesiones que se pueden emparejar con su rutina, el incumplimiento va de **48 %
+// (hoy)** a **43 % (84 s)** a **40 % (84 s con margen)**. Ni calibrando por persona baja: el error
+// mediano sigue siendo **13,4 min**, y una franja de **±40 % solo cubre el 72 %**. La duración de
+// una sesión de gimnasio NO es predecible desde el plan (depende de cuánta gente haya, de si se
+// queda hablando, del celular). **Así que la promesa categórica se RETIRA** — ver `underHour`.
+const SET_WORK_SECONDS = 84;
+// Mínimo de sesiones para fiarse del ritmo PROPIO en vez del global. Con menos, la mediana de una
+// persona la decide un mal día.
+const SECS_PER_SET_MIN_SESSIONS = 3;
+// Segundos por serie de ESTA persona, medidos de su propio historial. PURO. `null` si no hay con
+// qué (entonces manda la constante global).
+// 🔴 Por qué existe: entre las 7 personas con historial suficiente el ritmo va de **129 s/serie
+// (Claudia) a 192 (Kathe)** — 1,5× — y cada una es consistente consigo misma a lo largo de 8-43
+// sesiones. Un solo número para todas se equivoca por diseño con las dos puntas.
+function personalSecsPerSet(sessions) {
+  const vals = [];
+  (sessions || []).forEach(s => {
+    const dur = Number(s && s.durationSec);
+    if (!isFinite(dur) || dur < 300 || dur > 10800) return;   // ni un toque suelto ni la app olvidada abierta
+    let hechas = 0;
+    ((s.exercises) || []).forEach(e => ((e && e.sets) || []).forEach(st => { if (st && st.done) hechas++; }));
+    if (hechas < 5) return;                                    // una sesión de 2 series no dice el ritmo
+    vals.push(dur / hechas);
+  });
+  if (vals.length < SECS_PER_SET_MIN_SESSIONS) return null;
+  vals.sort((a, b) => a - b);
+  const m = Math.floor(vals.length / 2);
+  return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+}
+// `opts.secsPerSet` (v533) = el ritmo de esa persona, si se conoce. Incluye el descanso, porque se
+// mide de punta a punta; por eso cuando se usa NO se le suma `restSec` otra vez.
+function estimateWorkoutMinutes(routine, opts) {
   const exs = (routine && routine.exercises) || [];
   if (!exs.length) return null;
   const rest = Number(routine.restSec) > 0 ? Number(routine.restSec) : 90;
   let sets = 0;
   exs.forEach(e => { const n = Number(e && e.sets); if (isFinite(n) && n > 0) sets += Math.min(n, 20); });
   if (!sets) return null;
-  const mins = Math.round((sets * (SET_WORK_SECONDS + rest)) / 60);
+  const sps = Number(opts && opts.secsPerSet);
+  const porSerie = (isFinite(sps) && sps > 0) ? sps : (SET_WORK_SECONDS + rest);
+  const mins = Math.round((sets * porSerie) / 60);
   return mins > 0 ? mins : null;
 }
 
@@ -6764,15 +6807,20 @@ function todayHeroModel(routine, opts) {
   if (!exs.length) return null;   // rutina vacía → no hay promesa que hacer; la vista degrada sola
   const max = Math.max(2, parseInt(opts.max) || HERO_MAX_LINES);
   const show = exs.length <= max ? exs.length : max - 1;
-  const mins = estimateWorkoutMinutes(routine);
+  const mins = estimateWorkoutMinutes(routine, { secsPerSet: opts.secsPerSet });
   return {
     name: String((routine && routine.name) || '').trim() || 'Entrenamiento',
     size: heroTitleSize((routine && routine.name) || ''),
     count: exs.length,
     mins: mins,
-    // Solo se promete «menos de una hora» cuando el motor dice que es verdad. Sin estimación
-    // fiable no se inventa: la frase que se rompe el primer día no se recupera después.
-    underHour: mins != null && mins < 60,
+    // 🔴 `underHour` SE RETIRA en v533 y se deja en `false` para no romper a quien lo lea de una
+    // caché vieja. La frase «te toma menos de una hora» se incumplía en el **48 %** de las 172
+    // sesiones emparejadas con su rutina, y **no hay forma de arreglarla**: con la constante
+    // recalibrada baja al 43 %, con margen al 40 %, y calibrando por persona el error mediano
+    // sigue en 13,4 min (una franja de ±40 % solo cubre el 72 %). La duración de una sesión de
+    // gimnasio no se puede predecir desde el plan. El NÚMERO sí se arregló y se queda; la promesa
+    // categórica no, porque una frase que falla una de cada dos veces enseña a no creerle a la app.
+    underHour: false,
     lines: exs.slice(0, show).map((e, i) => ({
       n: String(i + 1).padStart(2, '0'),
       name: String((e && e.name) || '').trim() || 'Ejercicio',
@@ -8460,6 +8508,9 @@ if (typeof module !== 'undefined' && module.exports) {
     communityMe,
     firstSessionMode,
     estimateWorkoutMinutes,
+    SET_WORK_SECONDS,
+    personalSecsPerSet,
+    SECS_PER_SET_MIN_SESSIONS,
     workoutStartCollapsed,
     CMTY_NUDGE_MIN_SESSIONS,
     CMTY_NUDGE_SNOOZE_DAYS,

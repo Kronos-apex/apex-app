@@ -3063,20 +3063,29 @@ test('firstSessionMode: la portada del día 1 JAMÁS tapa a quien ya empezó (cl
 });
 
 test('estimateWorkoutMinutes: estima con el descanso real, o calla si no puede', () => {
-  // 12 series × (45s de trabajo + 90s de descanso) = 27 min
+  // ⚠️ Los minutos se DERIVAN de la constante, no se escriben a mano: v533 la recalibró de 45 a
+  // 84 con 225 sesiones reales delante, y un número quemado habría pintado esa medición como un
+  // fallo (la lección de v530 con el umbral de consolidación).
+  const W = core.SET_WORK_SECONDS;
+  const esperado = (sets, rest) => Math.round(sets * (W + rest) / 60);
   const r = { restSec: 90, exercises: [{ sets: 3 }, { sets: 3 }, { sets: 3 }, { sets: 3 }] };
-  assert.strictEqual(estimateWorkoutMinutes(r), 27);
-  // el descanso de la rutina manda (60s → 21 min)
-  assert.strictEqual(estimateWorkoutMinutes({ restSec: 60, exercises: [{ sets: 3 }, { sets: 3 }, { sets: 3 }, { sets: 3 }] }), 21);
+  assert.strictEqual(estimateWorkoutMinutes(r), esperado(12, 90));
+  // el descanso de la rutina manda
+  assert.strictEqual(estimateWorkoutMinutes({ restSec: 60, exercises: [{ sets: 3 }, { sets: 3 }, { sets: 3 }, { sets: 3 }] }), esperado(12, 60));
   // sin descanso declarado usa 90s
-  assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 4 }] }), 9);
+  assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 4 }] }), esperado(4, 90));
+  // 🔴 v533: con el ritmo PROPIO de la persona manda ese, y NO se le suma el descanso otra vez
+  // (se mide de punta a punta). 12 series × 150 s = 30 min.
+  assert.strictEqual(estimateWorkoutMinutes(r, { secsPerSet: 150 }), 30);
+  assert.strictEqual(estimateWorkoutMinutes(r, { secsPerSet: 0 }), esperado(12, 90), 'un ritmo inválido cae a la constante');
   // NUNCA inventa: sin ejercicios, sin series o basura → null (la UI omite el chip)
   assert.strictEqual(estimateWorkoutMinutes({ exercises: [] }), null);
   assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 0 }] }), null);
   assert.strictEqual(estimateWorkoutMinutes({ exercises: [{ sets: 'x' }] }), null);
   assert.strictEqual(estimateWorkoutMinutes(null), null);
-  // una serie absurda (999) no dispara una promesa de 20 horas
-  assert.ok(estimateWorkoutMinutes({ restSec: 90, exercises: [{ sets: 999 }] }) <= 45);
+  // una serie absurda (999) no dispara una promesa de 20 horas: el tope de 20 series manda.
+  // (El número se DERIVA, igual que arriba: con 45 s salían 45 min y con 84 salen 58.)
+  assert.strictEqual(estimateWorkoutMinutes({ restSec: 90, exercises: [{ sets: 999 }] }), esperado(20, 90));
 });
 
 test('communityMe: sé quién soy sin haber abierto la pestaña (F2), o no pregunto', () => {
@@ -12179,20 +12188,54 @@ test('🔴 el héroe NUNCA lista más de 6 ejercicios, y dice cuántos deja fuer
   assert.deepStrictEqual(seis.lines.map(l => l.n), ['01', '02', '03', '04', '05', '06']);
 });
 
-test('🔴 el héroe no promete «menos de una hora» cuando la rutina dura más', () => {
+// 🔴 RE-ENCUADRADO en v533. Antes afirmaba que el héroe promete «menos de una hora» cuando la
+// rutina es corta. Esa promesa SE RETIRÓ: medida contra 172 sesiones reales emparejadas con su
+// rutina, se incumplía en el **48 %**, y no hay forma de arreglarla — con la constante recalibrada
+// baja al 43 %, con margen al 40 %, y calibrando por persona el error mediano sigue en 13,4 min.
+// Lo que se conserva y ahora sí es honesto es el NÚMERO.
+test('🔴 v533 · el héroe NUNCA promete «menos de una hora» (la frase se retiró, medida)', () => {
   const ex = n => Array.from({ length: n }, (_, i) => ({ id: 'e' + i, name: 'Ej ' + i, sets: 4, reps: 10 }));
-  // 4 ejercicios × 4 series × (45 + 90)s = 36 min → la promesa es verdad.
+  const W = core.SET_WORK_SECONDS;
   const corta = todayHeroModel({ name: 'Corta', exercises: ex(4), restSec: 90 });
-  assert.strictEqual(corta.mins, 36);
-  assert.strictEqual(corta.underHour, true);
-  // 8 ejercicios × 4 series = 72 min → la app se calla, no miente.
+  assert.strictEqual(corta.mins, Math.round(16 * (W + 90) / 60));
+  assert.strictEqual(corta.underHour, false, 'ni siquiera con una rutina corta: la frase ya no se dice');
   const larga = todayHeroModel({ name: 'Larga', exercises: ex(8), restSec: 90 });
-  assert.strictEqual(larga.mins, 72);
+  assert.strictEqual(larga.mins, Math.round(32 * (W + 90) / 60));
   assert.strictEqual(larga.underHour, false);
-  // Sin series legibles no hay estimación → tampoco promesa (mins null, no 0).
+  // Sin series legibles no hay estimación → mins null, no 0.
   const sinDato = todayHeroModel({ name: 'X', exercises: [{ id: 'e', name: 'Ej', sets: 0, reps: '' }] });
   assert.strictEqual(sinDato.mins, null);
-  assert.strictEqual(sinDato.underHour, false);
+  // 🔒 Y el ritmo propio LLEGA hasta el héroe: si no, el número honesto se quedaría a medio camino.
+  const conRitmo = todayHeroModel({ name: 'Corta', exercises: ex(4), restSec: 90 }, { secsPerSet: 120 });
+  assert.strictEqual(conRitmo.mins, 32, '16 series × 120 s = 32 min');
+});
+test('🔴 v533 · la coletilla «menos de una hora» NO puede volver a la pantalla', () => {
+  // Candado de TEXTO: el modelo ya devuelve false, pero nada impedía que alguien volviera a
+  // escribir la frase a mano en la vista. Se incumplía casi una de cada dos veces.
+  const fs = require('fs'), path = require('path');
+  ['app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'index.html'].forEach(a => {
+    const src = fs.readFileSync(path.join(__dirname, a), 'utf8')
+      .split('\n').filter(l => !/^\s*(\/\/|\*|<!--)/.test(l)).join('\n');   // los comentarios EXPLICAN por qué se quitó
+    assert.ok(!/menos de una hora/i.test(src), `${a} vuelve a prometer «menos de una hora»`);
+  });
+});
+test('v533 · personalSecsPerSet: el ritmo sale del historial propio, y calla si no hay con qué', () => {
+  const s = (dur, hechas) => ({ durationSec: dur, exercises: [{ sets: Array.from({ length: hechas }, () => ({ done: true })) }] });
+  // 3 sesiones: 10, 12 y 14 min para 6 series → 100, 120 y 140 s/serie → mediana 120.
+  assert.strictEqual(core.personalSecsPerSet([s(600, 6), s(720, 6), s(840, 6)]), 120);
+  // Con menos de las mínimas no se opina: la mediana de una persona la decidiría un mal día.
+  assert.strictEqual(core.personalSecsPerSet([s(600, 6), s(720, 6)]), null);
+  // 🔴 Basura fuera. El caso tiene que ser DISCRIMINANTE: con tres sesiones buenas ya hay mediana,
+  // así que si el filtro de duración desaparece la basura ENTRA y la mueve. (La primera versión de
+  // este test daba `null` con y sin filtro — o sea que no probaba nada, y lo cazó su sabotaje.)
+  const buenas = [s(600, 6), s(720, 6), s(840, 6)];                    // mediana 120
+  assert.strictEqual(core.personalSecsPerSet(buenas.concat([s(20000, 6), s(19000, 6)])), 120,
+    'la app olvidada abierta 5 horas no puede mover el ritmo');
+  assert.strictEqual(core.personalSecsPerSet(buenas.concat([s(60, 6), s(90, 6)])), 120,
+    'ni un toque suelto de un minuto');
+  assert.strictEqual(core.personalSecsPerSet(buenas.concat([s(600, 2), s(600, 1)])), 120,
+    'ni una sesión de dos series, que no dice el ritmo de nadie');
+  assert.strictEqual(core.personalSecsPerSet(null), null);
 });
 
 test('rutina VACÍA → no hay héroe (la vista degrada a la tarjeta de arranque, no a un héroe hueco)', () => {

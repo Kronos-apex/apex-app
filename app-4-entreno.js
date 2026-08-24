@@ -634,7 +634,7 @@ function renderTodayHead(client, heroRoutine){
   const ws=weekStreak((DB.history&&DB.history[client.id])||[], streakTarget(client), new Date());
   // Íconos SVG de marca (v306, F2): flame para racha encendida, target para la meta en curso.
   const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
-  const hero=(heroRoutine&&typeof todayHeroModel==='function')?todayHeroModel(heroRoutine):null;
+  const hero=(heroRoutine&&typeof todayHeroModel==='function')?todayHeroModel(heroRoutine,{secsPerSet:_secsPerSetDe(client)}):null;
   // La MISMA racha, dicha en dos anchos: la fila de arriba del héroe comparte renglón con el
   // nombre y no tiene sitio para una frase de 40 caracteres.
   const chip=hero
@@ -665,9 +665,11 @@ function renderTodayHead(client, heroRoutine){
 function _todayHeroHTML(greet,chip,m){
   const _ic=(n,s,fb)=>(typeof aviIcon==='function'?aviIcon(n,s):fb);
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  // v533: la coletilla «te toma menos de una hora» SE RETIRÓ — se incumplía en el 48 % de las
+  // sesiones reales y ninguna calibración la salva (ver `underHour` en avi-core). Queda el número,
+  // que ahora sí es honesto: se calibra con el ritmo propio de la persona cuando se conoce.
   const meta=[m.count+' ejercicio'+(m.count!==1?'s':'')]
-    .concat(m.mins?['~'+m.mins+' min']:[])                    // sin estimación fiable no se inventa
-    .concat(m.underHour?['te toma menos de una hora']:[]).join(' · ');
+    .concat(m.mins?['~'+m.mins+' min']:[]).join(' · ');       // sin estimación fiable no se inventa
   const filas=m.lines.map(l=>`<li class="thl"><span class="thl-n" aria-hidden="true">${esc(l.n)}</span><span class="thl-x">${esc(l.name)}</span>${l.dose?`<span class="thl-d">${esc(l.dose)}</span>`:''}</li>`).join('')
     +(m.rest>0?`<li class="thl thl-more">y ${m.rest} ejercicio${m.rest!==1?'s':''} más</li>`:'');
   return `<div class="tod-hero">
@@ -706,7 +708,7 @@ function renderFirstRun(client, routine, opts){
   if(!routine) return _firstRunEspera(el, client, opts||{});
   const nombre=((client.name||'').trim().split(' ')[0])||'';
   const exN=(routine.exercises||[]).length;
-  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(routine):null;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(routine,{secsPerSet:_secsPerSetDe(client)}):null;
   const chips=[exN+' ejercicio'+(exN===1?'':'s')]
     .concat(mins?['~'+mins+' min']:[])   // sin estimación fiable NO se inventa un número
     .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
@@ -751,7 +753,7 @@ function _firstRunEspera(el, client, opts){
     ? ('Hoy es festivo ('+esc(opts.festivo)+') y tu entrenador no acompaña sesiones.')
     : 'Tu plan va de lunes a viernes, que es cuando tu entrenador está en el gimnasio.';
   const r=prox.rutina, exN=(r.exercises||[]).length;
-  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r):null;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r,{secsPerSet:_secsPerSetDe(client)}):null;
   const chips=[exN+' ejercicio'+(exN===1?'':'s')]
     .concat(mins?['~'+mins+' min']:[])
     .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
@@ -882,11 +884,21 @@ function _todayHasProgress(routine){
   }catch(e){ return false; }
   return false;
 }
+// El ritmo PROPIO de esta persona (v533), para que el «~N min» no salga de un promedio de todos.
+// Una sola función para las tres superficies que muestran el número (héroe, tarjeta de arranque y
+// portada del día 1): si cada una lo calculara por su lado, se acabarían contradiciendo — es la
+// lección de v435 aplicada a los minutos.
+function _secsPerSetDe(client){
+  try{
+    if(typeof personalSecsPerSet!=='function'||!client)return undefined;
+    return personalSecsPerSet((DB.history&&DB.history[client.id])||[])||undefined;
+  }catch(e){ return undefined; }
+}
 // Tarjeta de arranque: lo que hay que saber ANTES de empezar (qué toca, cuánto dura) y un solo
 // botón grande. Antes el «Empezar» estaba enterrado dentro de la primera serie.
 function _startCardHTML(client,r){
   const n=(r.exercises||[]).filter(Boolean).length;
-  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r):null;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r,{secsPerSet:_secsPerSetDe(client)}):null;
   const musculos=[...new Set((r.exercises||[]).filter(Boolean).map(e=>e.muscle).filter(Boolean))].slice(0,4);
   return `<div class="card start-card">
     <div class="start-card-k">Tu entreno de hoy</div>
