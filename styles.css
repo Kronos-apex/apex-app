@@ -1812,6 +1812,13 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
 .cchat-noliv{background:var(--yll);border:1px solid var(--br2);border-radius:var(--rsm);
   padding:10px 12px;margin:0 0 12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .cchat-noliv-t{color:var(--t1);font-size:13px;line-height:1.45}
+/* Banda del período de gracia (v528). Tono CÁLIDO, no de alarma: la persona no hizo nada mal —
+   se le venció el plan y puede seguir entrenando mientras lo renueva. Usa la familia naranja
+   (aviso) y su variante legible `--ort`, nunca el token crudo como texto (regla de la FASE 3). */
+.gband{background:var(--orl);border:1.5px solid var(--or);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.gband-t{font-size:14px;font-weight:800;color:var(--ort);margin-bottom:4px}
+.gband-s{font-size:12.5px;color:var(--t1);line-height:1.45;margin-bottom:10px}
+.gband-b{background:var(--ort);color:#fff;border:0;border-radius:999px;font-family:inherit;font-size:13px;font-weight:800;padding:9px 16px;cursor:pointer;min-height:40px}
 .cchat-composer{display:flex;align-items:flex-end;gap:8px;padding:8px 12px calc(env(safe-area-inset-bottom) + 8px);background:var(--w);border-top:1px solid var(--br);flex-shrink:0}
 .cchat-composer textarea{flex:1;resize:none;max-height:120px;border:1.5px solid var(--br);border-radius:20px;padding:9px 14px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--t1);line-height:1.35}
 .cchat-send{width:44px;height:44px;border-radius:50%;border:none;background:var(--g);color:#fff;font-size:17px;cursor:pointer;flex-shrink:0}

@@ -162,6 +162,7 @@ const {
   MOOD_STATES,
   applyMood,
   MS,
+  MS_GRACE_DAYS,
   fmtMetric,
   fmtDuration,
   feelingEmoji,
@@ -4475,17 +4476,37 @@ test('MS.getStatus: vence en >7 días → "active"', () => {
 test('MS.getStatus: vence dentro de 7 días → "expiring"', () => {
   assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(3) }] }), 'expiring');
 });
-test('MS.getStatus: ya venció → "overdue"', () => {
-  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-5) }] }), 'overdue');
+// ⚠️ RE-ENCUADRADO en v528, no aflojado: antes este caso (-5 días) era `overdue` y apagaba la app.
+// Ahora hay 7 días de gracia, así que -5 es `grace` y -10 sigue siendo `overdue`. El test afirma
+// LOS DOS lados del borde: sin el segundo, quitar la gracia entera saldría verde.
+test('MS.getStatus: venció hace ≤7 días → "grace"; pasada la gracia → "overdue"', () => {
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-5) }] }), 'grace');
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-MS_GRACE_DAYS) }] }), 'grace');
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-MS_GRACE_DAYS - 1) }] }), 'overdue');
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-30) }] }), 'overdue');
+});
+// La gracia NO puede rescatar a quien el coach pausó a mano: son dos cosas distintas y `suspended`
+// se evalúa antes que cualquier fecha.
+test('MS: un suspendido NO entra en gracia aunque acabe de vencer', () => {
+  assert.strictEqual(MS.getStatus({ suspended: true, payments: [{ dueDate: _plusDays(-2) }] }), 'inactive');
+  assert.strictEqual(MS.canLogin({ suspended: true, payments: [{ dueDate: _plusDays(-2) }] }), false);
+});
+test('MS.daysOverdue: cuenta los días vencidos y es 0 para quien está al día', () => {
+  assert.strictEqual(MS.daysOverdue({ payments: [{ dueDate: _plusDays(-3) }] }), 3);
+  assert.strictEqual(MS.daysOverdue({ payments: [{ dueDate: _plusDays(10) }] }), 0);
+  assert.strictEqual(MS.daysOverdue({ payments: [] }), 0);   // sin pagos no está «vencido»
 });
 test('MS.getStatus: toma el pago con dueDate más reciente', () => {
   assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-30) }, { dueDate: _plusDays(20) }] }), 'active');
 });
-test('MS.canLogin: active/expiring/pending SÍ; overdue/inactive NO', () => {
+test('MS.canLogin: active/expiring/pending/grace SÍ; overdue/inactive NO', () => {
   assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(20) }] }), true);  // active
   assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(3) }] }), true);   // expiring
   assert.strictEqual(MS.canLogin({ payments: [] }), true);                            // pending
-  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-5) }] }), false); // overdue
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-5) }] }), true);  // grace (v528)
+  // 🔒 El CONTROL: la gracia tiene FIN. Sin esta línea, borrar el `overdue` entero saldría verde
+  // y la app no volvería a bloquear a nadie jamás.
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-30) }] }), false); // overdue
   assert.strictEqual(MS.canLogin({ suspended: true }), false);                        // inactive
 });
 test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback', () => {
@@ -4497,7 +4518,8 @@ test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viej
   const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
   assert.strictEqual(MS.getStatus(c, '2026-07-01T00:00:00Z'), 'active');   // faltan 14 días
   assert.strictEqual(MS.getStatus(c, '2026-07-10T00:00:00Z'), 'expiring'); // faltan 5 días
-  assert.strictEqual(MS.getStatus(c, '2026-07-20T00:00:00Z'), 'overdue');  // venció
+  assert.strictEqual(MS.getStatus(c, '2026-07-20T00:00:00Z'), 'grace');    // venció hace 5 (v528)
+  assert.strictEqual(MS.getStatus(c, '2026-07-30T00:00:00Z'), 'overdue');  // pasada la gracia
 });
 
 // ══════════════════════════════════════════════════════
@@ -4525,9 +4547,18 @@ test('rank: dolor expirado (>14 días) NO cuenta', () => {
   const c = _mkClient({ painCare: [{ level: 2, at: _rDay(-20) }] });
   assert.strictEqual(clientAttentionRank(c, { x: [{ date: _rDay(-1) }] }, _RNOW).reason, 'ok');
 });
-test('rank tier 1/2: plan vencido y por vencer', () => {
+// ⚠️ RE-ENCUADRADO en v528: -3 días ya no es `overdue`, es `grace`. Y la lección está en por qué
+// este test cayó — ablandar el bloqueo, sin más, habría sacado de la lista de atención del coach
+// justo a la persona a la que todavía llega a tiempo. `grace` va en el MISMO tier 1.
+test('rank tier 1/2: vencido, EN GRACIA y por vencer — los tres siguen pidiendo atención', () => {
   const hist = { x: [{ date: _rDay(-1) }] };
-  assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(-3) }] }), hist, _RNOW).reason, 'overdue');
+  const enGracia = clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(-3) }] }), hist, _RNOW);
+  assert.strictEqual(enGracia.reason, 'grace');
+  assert.strictEqual(enGracia.tier, 1);                       // 🔒 no puede caerse de tier
+  assert.strictEqual(enGracia.sev, 3);                        // el que lleva más días, primero
+  const vencido = clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(-30) }] }), hist, _RNOW);
+  assert.strictEqual(vencido.reason, 'overdue');
+  assert.strictEqual(vencido.tier, 1);
   assert.strictEqual(clientAttentionRank(_mkClient({ payments: [{ dueDate: _rDay(4) }] }), hist, _RNOW).reason, 'expiring');
 });
 test('rank tier 5: dejó de entrenar (≥7 días) → idle con nº de días en sev', () => {

@@ -4,6 +4,44 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 💳 2026-08-24 — avi-v528: SIETE DÍAS DE GRACIA, PORQUE EL BLOQUEO DEL MISMO DÍA COBRABA DE QUIEN IBA A PAGAR IGUAL
+
+Primer punto ejecutado de `docs/auditoria-areas-2026-08-22/OPORTUNIDADES.md`.
+
+**Qué pasaba.** El plan vencía y la app se apagaba **ese mismo día**. La auditoría de negocio midió
+qué hizo eso de verdad, dos meses seguidos, y el resultado va en las dos direcciones:
+
+- **Cobra de quien iba a pagar igual.** Claudia y Luz vencieron el 31-jul, **entrenaron el 1-ago con
+  el plan vencido** y pagaron el día 3. El bloqueo no las empujó a nada: llegó tarde.
+- **Expulsa al que dudaba.** Yeison y Valery Valbuena vencieron el 31-jul y el 1-ago. Llevan **24
+  días bloqueados, no han vuelto y no han pagado.** Son las dos únicas bajas del delta.
+- En 23 días de operación se acumularon **≈66 días-persona** de app apagada — por día, casi el
+  triple que en julio.
+
+**Y el dato que decide:** el bloqueo **nunca fue una barrera real**. Los pagos viven en el perfil,
+que el propio teléfono del asesorado escribe (gotcha F7), así que esto siempre fue un empujón, no un
+candado. Ablandarlo no afloja ninguna seguridad.
+
+**Qué hace ahora.** Estado nuevo `grace`: los 7 días siguientes al vencimiento se entra **con acceso
+completo** y con una banda en «Hoy» que dice qué pasó, cuántos días quedan y abre el chat con el
+coach. Pasados los 7, `overdue` bloquea igual que siempre. El número es de PRODUCTO, no de una curva:
+cubre con margen lo que tardaron en pagar las 6 personas de agosto (todas entre el día 1 y el 3).
+
+**🔴 Lo que enseñó, y lo cazó un test al caer, no yo.** Ablandar el bloqueo **sacaba de la lista de
+atención del coach justo a la persona a la que todavía llega a tiempo**: `clientAttentionRank` y el
+banner de vencimientos filtraban por `overdue`, así que un vencido de 3 días pasaba a «ok» y
+desaparecía. `grace` va en el **mismo tier 1**, con los días vencidos como severidad. Es la lección
+de v513 otra vez: **al cambiar quién recibe un estado, hay que mirar quién deja de recibirlo.**
+
+La banda **no la topa nada**: ni el modo día 1 ni el tope de tarjetas de v505. Es el estado de la
+cuenta, no un aviso que compita — y esconderla convertiría la gracia en el mismo muro corrido una
+semana, sin aviso.
+
+Suite **862/862** en los dos husos · harness nuevo `_verify-gracia.mjs` (11) · **6 sabotajes y los 6
+muerden**, cada uno ejecutado en la capa que le toca (3 los caza la suite, 3 el harness).
+
+---
+
 ## 📱 2026-08-23 — avi-v527: EL PISO DE 16 px, ESTA VEZ MEDIDO EN EL NAVEGADOR
 
 **Qué pasaba.** v526 subió a 16 px el campo desde el que el asesorado le escribe a su coach, para

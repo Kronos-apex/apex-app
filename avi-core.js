@@ -3650,6 +3650,22 @@ function applyMood(routine, mood, opts) {
 // Lógica pura (extraída de index.html). getStatus deriva el estado del último
 // pago; canLogin define quién entra (pending/active/expiring SÍ; overdue/inactive NO);
 // badge mapea estado → etiqueta/colores. Los colores son tokens CSS (var(--…)).
+// ── PERÍODO DE GRACIA (v528) ────────────────────────────────────────────
+// Hasta v527 el plan vencía y la app se apagaba **el mismo día**. La auditoría de negocio del
+// 24-ago midió qué hizo eso de verdad, dos meses seguidos, y el resultado va en las dos
+// direcciones: **cobra de quien iba a pagar igual y expulsa al que dudaba.**
+//   · Claudia y Luz vencieron el 31-jul, **entrenaron el 1-ago con el plan vencido** y pagaron
+//     el día 3 — a ellas el bloqueo no las empujó a nada, solo llegó tarde.
+//   · Yeison y Valery Valbuena vencieron el 31-jul y el 1-ago: llevan **24 días bloqueados,
+//     no han vuelto y no han pagado.** Son las dos únicas bajas del delta.
+//   · Y en 23 días de operación se acumularon **≈66 días-persona** de app apagada.
+// 🔴 Y el dato que decide: **el bloqueo NUNCA fue una barrera real.** `payments` vive en
+// `profile`, que el propio teléfono del asesorado escribe (gotcha F7), así que esto siempre fue
+// un empujón, no un candado — ablandarlo no afloja ninguna seguridad.
+// El número es de PRODUCTO, no derivado de una curva: 7 días cubre con margen lo que tardaron en
+// pagar las 6 personas de agosto (todas entre el día 1 y el 3 de vencidas).
+const MS_GRACE_DAYS = 7;
+
 const MS = {
   // `now` opcional (default Date.now()) para determinismo en tests/rank — los callers
   // viejos que pasan solo `c` siguen funcionando igual.
@@ -3659,13 +3675,24 @@ const MS = {
     if (!pays.length) return 'pending';
     const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
     const daysLeft = Math.ceil((new Date(last.dueDate) - (now != null ? new Date(now).getTime() : Date.now())) / 86400000);
-    if (daysLeft < 0) return 'overdue';
+    if (daysLeft < -MS_GRACE_DAYS) return 'overdue';
+    if (daysLeft < 0) return 'grace';
     if (daysLeft <= 7) return 'expiring';
     return 'active';
   },
+  // Días que lleva vencido el plan (0 si está al día). PURA. La usa la banda que lee el
+  // asesorado, para no re-derivar la fecha en la vista.
+  daysOverdue(c, now) {
+    const pays = (c && c.payments) || [];
+    if (!pays.length) return 0;
+    const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
+    const d = Math.ceil((new Date(last.dueDate) - (now != null ? new Date(now).getTime() : Date.now())) / 86400000);
+    return d < 0 ? -d : 0;
+  },
+  // grace = venció hace ≤7 días → SÍ entra, con la banda puesta (ver MS_GRACE_DAYS).
   // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
   // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
-  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending'; },
+  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending' || s === 'grace'; },
   // El color va como TEXTO sobre `bg`, así que aquí manda la regla de lectura de la FASE 3:
   // los tokens crudos (--or/--rd/--yl) son para RELLENAR, y encima de su propio tinte no se
   // leen (medido en claro: «Por vencer» daba 2.62:1, «Vencido» 3.45 y «Sin pago» 1.55, contra
@@ -3677,6 +3704,7 @@ const MS = {
     return ({
       active:   { label: 'Al día',      color: 'var(--gt)',  bg: 'var(--gl)' },
       expiring: { label: 'Por vencer',  color: 'var(--ort)', bg: 'var(--orl)' },
+      grace:    { label: 'Por renovar', color: 'var(--ort)', bg: 'var(--orl)' },
       overdue:  { label: 'Vencido',     color: 'var(--rdt)', bg: 'var(--rdl)' },
       pending:  { label: 'Sin pago',    color: 'var(--t1)',  bg: 'var(--yll)' },
       inactive: { label: 'Inactivo',    color: 'var(--t2)',  bg: 'var(--br)' },
@@ -3718,6 +3746,12 @@ function clientAttentionRank(c, history, now, opts) {
   // 1) Plan vencido (determinista con now).
   const st = MS.getStatus(c, nowTs);
   if (st === 'overdue')  return { tier: 1, sev: 0, reason: 'overdue',  label: '⛔ Plan vencido' };
+  // 1-bis) EN GRACIA (v528). Va en el MISMO tier que el vencido y por encima de él en `sev`,
+  // porque es donde el coach todavía llega a tiempo: la persona sigue entrenando y está a un
+  // mensaje de renovar. Sin esto, ablandar el bloqueo la habría hecho DESAPARECER de la lista de
+  // atención durante los 7 días que más importan — el defecto lo cazó el test del tier 1/2 al
+  // caer, no yo. `sev` = días vencidos, para que el que lleva 6 salga antes que el que lleva 1.
+  if (st === 'grace')    return { tier: 1, sev: MS.daysOverdue(c, nowTs), reason: 'grace', label: '🟠 Por renovar' };
   // 2) 💬 MENSAJE SIN LEER del asesorado — la señal #1 que el coach espera (aviso Lucas v317).
   //    Va ENCIMA del lead a propósito: un lead recién llegado también escribió al chat
   //    (requestCoach empuja un mensaje) → entra aquí hasta que el coach lo lea, y DESPUÉS
@@ -7993,6 +8027,7 @@ if (typeof module !== 'undefined' && module.exports) {
     STORY_MIN_SESSIONS,
     STORY_TOP_LIFTS,
     MS,
+    MS_GRACE_DAYS,
     fmtMetric,
     fmtDuration,
     WF_FEELINGS,

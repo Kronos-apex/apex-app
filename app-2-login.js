@@ -1485,7 +1485,10 @@ function renderHome(){
       if(!pays.length)return false;
       const due=new Date(pays[0].dueDate);
       const st=MS.getStatus(c);
-      return (st==='expiring'||st==='overdue')&&due<=in5days;
+      // `grace` (v528) ENTRA aquí: es el estado en el que el coach todavía llega a tiempo, y
+      // dejarlo fuera era sacar del banner justo a quien hay que llamar hoy (mismo defecto que
+      // el tier del ranking, cazado por su test al caer).
+      return (st==='expiring'||st==='overdue'||st==='grace')&&due<=in5days;
     });
     if(expiring.length){
       banner.style.display='block';
@@ -1561,7 +1564,9 @@ function renderHome(){
     return;
   }
   const sorted=[...DB.clients].sort((a,b)=>{
-    const order={'overdue':0,'expiring':1,'pending':2,'active':3,'inactive':4,'suspended':5};
+    // `grace` (v528) va pegado a `overdue`: es el que todavía se alcanza a renovar. Sin su
+    // entrada caía al `??9` y se iba al fondo, detrás de los suspendidos.
+    const order={'overdue':0,'grace':1,'expiring':2,'pending':3,'active':4,'inactive':5,'suspended':6};
     return (order[MS.getStatus(a)]??9)-(order[MS.getStatus(b)]??9);
   });
   list.innerHTML='';

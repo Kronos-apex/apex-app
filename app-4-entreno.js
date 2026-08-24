@@ -894,6 +894,9 @@ function renderClientToday(client, overrideRoutine){
   // Candado: D7 en `_verify-firstrun.mjs` (D4 no lo cazaba: usa sesión PARCIAL, que no dispara
   // ningún `return` y por eso sí llegaba a `renderFirstRun`).
   const _fr=document.getElementById('cn-firstrun'); if(_fr)_fr.innerHTML='';
+  // 🟠 Período de gracia (v528): va ARRIBA de los `return` (sale también en descanso y sin
+  // rutinas) y SIN el gate de `_dia1` — es el estado de su cuenta, no un aviso que compita.
+  if(typeof renderGraceBand==='function')renderGraceBand(client);
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
   // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
   // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.
@@ -1182,6 +1185,32 @@ function _missMuteSet(cid,rid){
   map[rid]=(typeof weekStartTs==='function')?weekStartTs(new Date()):Date.now();
   try{ localStorage.setItem('ax_missmute_'+cid, JSON.stringify(map)); }catch(e){}
 }
+// ── BANDA DEL PERÍODO DE GRACIA (v528) ───────────────────────────────────────────────────────
+// Hasta v527 el plan vencía y la app se apagaba el mismo día, sin aviso previo en la pantalla del
+// asesorado. `MS_GRACE_DAYS` (avi-core) le da 7 días de margen; esta banda es la ÚNICA forma que
+// tiene de enterarse de que está en ellos — sin banda, la gracia sería un muro corrido una semana.
+// 🔴 Se pinta SIEMPRE que el estado sea `grace`: ni el modo día 1 ni el tope de tarjetas la tocan
+//    (`cn-grace` no está en `_DIA1_OFF` ni en `TODAY_CARD_PRIORITY`, y `todayCardPlan` respeta lo
+//    que no tiene puesto en la lista). Es a propósito: es estado de cuenta, no un aviso.
+// 🔴 Nada de cifras de dinero aquí. El monto y la forma de pago los habla el coach — la app solo
+//    dice qué pasa y abre la conversación.
+function renderGraceBand(client){
+  const el=document.getElementById('cn-grace'); if(!el)return;
+  el.innerHTML='';
+  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace') return;
+  const d=MS.daysOverdue(client);
+  const cuando = d<=1 ? 'ayer' : ('hace '+d+' días');
+  const quedan = Math.max(0, MS_GRACE_DAYS-d);
+  const margen = quedan<=0 ? 'Hoy es el último día que puedes entrenar con este plan.'
+    : (quedan===1 ? 'Te queda <b>1 día</b> para renovarlo y seguir entrenando sin cortes.'
+                  : 'Te quedan <b>'+quedan+' días</b> para renovarlo y seguir entrenando sin cortes.');
+  el.innerHTML='<div class="gband">'
+    +'<div class="gband-t">Tu plan se venció '+cuando+'</div>'
+    +'<div class="gband-s">Puedes seguir entrenando con normalidad mientras lo renuevas. '+margen+'</div>'
+    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +'</div>';
+}
+
 function renderMissedDayCard(client, override){
   const el=document.getElementById('cn-missday'); if(!el)return;
   el.innerHTML='';
