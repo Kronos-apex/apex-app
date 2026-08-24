@@ -41,6 +41,12 @@ function initPWA(){
     const wf=document.getElementById('workout-finish');
     const tour=document.getElementById('news-tour');
     return !!((typeof _gmLiveTimer==='function' && _gmLiveTimer())
+      // 🔴 v538: un REORDEN sin confirmar también es «estar ocupado». Antes no se miraba, así que
+      // entre serie y serie —sin timer y sin foco en un campo— la actualización recargaba encima
+      // del entreno. Con la persistencia del reorden ya no CORROMPE nada, pero sacar a alguien de
+      // su sesión a mitad sigue siendo sacarlo. Es la misma noción de «ocupado» que ya usa el poll
+      // del plan del coach (`app-1-infra.js`), que sí la miraba desde siempre.
+      || (typeof CUR!=='undefined' && (CUR.todayWorking || CUR.todayDirty || CUR.todayOverride))
       || (ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA'))
       || document.querySelector('.mdbg.on')
       || (typeof AVINAV!=='undefined' && AVINAV.layers>0)

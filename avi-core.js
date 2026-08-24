@@ -1326,6 +1326,34 @@ function exLevel(ex) {
 }
 function exLevelRank(ex) { return _LVL_RANK[exLevel(ex)]; }
 
+// ── EL REORDEN DE HOY, RECONSTRUIDO (v538) ───────────────────────────────────────────────────
+// Reporte del PO: rotó dos ejercicios, la app se actualizó a mitad del entreno y al volver la
+// rutina estaba en su orden original **con los pesos cambiados de sitio**. La causa era que el
+// reorden vivía en memoria y las claves de sesión (que van por POSICIÓN) en disco: media mitad no
+// sobrevive a una recarga. Ahora el orden de trabajo se guarda, y esto es lo que lo reconstruye.
+// PURA a propósito: vive aquí y no en la vista para poder probar los dos casos que de verdad
+// importan y que un check de texto no puede dar —que CADUCA por día y que NO arma medio plan—.
+//   `guardado` = { d:'<toDateString>', ex:[{id,sets,reps,restSec}] }
+//   → array de ejercicios listo para usar, o `null` si no aplica (manda el plan guardado).
+function restoreWorkOrder(guardado, baseExercises, catalogo, hoyStr) {
+  if (!guardado || !Array.isArray(guardado.ex) || !guardado.ex.length) return null;
+  // 🔒 Caduca por DÍA, igual que `session_date_<rid>`: un reorden de ayer no manda hoy — si no, la
+  // decisión de un día se heredaría para siempre sin que nadie la volviera a confirmar.
+  if (!hoyStr || guardado.d !== hoyStr) return null;
+  const enBase = new Map((baseExercises || []).filter(Boolean).map(e => [e.id, e]));
+  const enCat = new Map((catalogo || []).filter(Boolean).map(e => [e.id, e]));
+  const out = [];
+  for (const g of guardado.ex) {
+    const src = enBase.get(g && g.id) || enCat.get(g && g.id);
+    // 🔒 TODO O NADA: si un id ya no se puede resolver (el coach cambió el plan, se retiró el
+    // ejercicio del catálogo), se devuelve null y manda el orden guardado. **Antes el plan normal
+    // que un plan a medias** — un hueco silencioso es peor que perder el reorden.
+    if (!src) return null;
+    out.push(Object.assign({}, src, { sets: g.sets, reps: g.reps, restSec: g.restSec }));
+  }
+  return out;
+}
+
 // ── AUTO-CURA DEL NIVEL EN PLANES YA ESCRITOS (v536) ─────────────────────────────────────────
 // 🔴 EL DEFECTO: **el gate de nivel se corrige HACIA ADELANTE y nunca hacia atrás.** El motor de
 // hoy no comete el fallo (0 violaciones en 5.760 planes del barrido), pero **nada recalcula los
@@ -8442,6 +8470,7 @@ if (typeof module !== 'undefined' && module.exports) {
     inkOn,
     exLevelRank,
     healRoutineLevel,
+    restoreWorkOrder,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,

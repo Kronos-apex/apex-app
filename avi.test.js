@@ -5501,6 +5501,75 @@ test('🔴 F6: el cliente NUNCA puede mover `verified` — el .sql de verdad lo 
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 🔄 v538 · EL REORDEN DE HOY SOBREVIVE A UNA RECARGA
+// Reporte del PO: rotó dos ejercicios, la app se actualizó a mitad del entreno y al volver «la
+// rutina vuelve a su orden» — con los pesos cambiados de sitio (100 en el que hizo con 70).
+// Reproducido contra su rutina real: los dos pesos salían INTERCAMBIADOS.
+// La causa: el reorden vivía en MEMORIA y su consecuencia (las claves de sesión, que van por
+// POSICIÓN) en DISCO. Media mitad no sobrevive a nada.
+// El comportamiento lo prueba `_repro-reorden-recarga.mjs`; aquí van los candados ESTÁTICOS de
+// las piezas que ese harness no puede alcanzar.
+// ══════════════════════════════════════════════════════════════════════════════
+test('🔴 v538 · el reorden y la sustitución PERSISTEN, y se limpian al cerrar la sesión', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const cuerpo = f => { const i = src.indexOf('function ' + f); assert.ok(i > 0, 'falta ' + f); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  // Las dos vías que cambian la rutina del día tienen que GUARDAR el resultado.
+  assert.match(cuerpo('todayMoveEx'), /_saveTodayWork\(/, 'reordenar sin guardar = el bug del PO');
+  assert.match(cuerpo('_applySubstitute'), /_saveTodayWork\(/, 'sustituir sin guardar, igual');
+  // Y al cerrar la sesión se limpia: el reorden era de HOY, no un cambio del plan.
+  assert.match(cuerpo('offerKeepReorder'), /clearTodayWork\(/, 'sin limpiar, el reorden se hereda al día siguiente');
+  // 🔒 Y alguien tiene que RECUPERARLO al pintar. Sin esta línea la copia guardada existiría y no
+  // la leería nadie hasta el siguiente cambio — o sea, después de que la persona ya vio el plan
+  // al revés. Es «puerta cerrada, ventana abierta» (v509) aplicado a una restauración.
+  assert.match(cuerpo('renderClientToday'), /restoreTodayWorkIfAny\(/, 'nadie recupera el reorden al pintar «Hoy»');
+  assert.match(cuerpo('_saveTodayWork'), /toDateString\(\)/, 'el guardado tiene que llevar el día');
+  // Y la REGLA (caduca por día, todo-o-nada) se prueba de verdad abajo, no por texto: los dos
+  // sabotajes que la atacaban salían VERDES cuando esto afirmaba «aparece la palabra toDateString».
+  assert.match(cuerpo('_restoreTodayWork'), /restoreWorkOrder\(/, 'la reconstrucción delega en la función pura');
+});
+test('🔴 v538 · restoreWorkOrder: caduca por DÍA y es TODO O NADA', () => {
+  const base = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }];
+  const cat = [{ id: 'z', name: 'Z' }];
+  const hoy = 'Mon Aug 24 2026';
+  const g = { d: hoy, ex: [{ id: 'b', sets: 4, reps: 8 }, { id: 'a', sets: 3, reps: 10 }, { id: 'c', sets: 3, reps: 12 }] };
+  const r = core.restoreWorkOrder(g, base, cat, hoy);
+  assert.deepStrictEqual(r.map(e => e.id), ['b', 'a', 'c'], 'se recupera el orden que eligió la persona');
+  assert.strictEqual(r[0].sets, 4, 'y la dosis que tenía puesta');
+  assert.strictEqual(r[0].name, 'B', 'con los datos del ejercicio, no solo el id');
+  // 🔒 CADUCA POR DÍA: un reorden de ayer no manda hoy. Sin esto, la decisión de un día se
+  // heredaría para siempre sin que nadie la volviera a confirmar.
+  assert.strictEqual(core.restoreWorkOrder({ d: 'Sun Aug 23 2026', ex: g.ex }, base, cat, hoy), null);
+  assert.strictEqual(core.restoreWorkOrder(g, base, cat, null), null, 'sin fecha de hoy no se opina');
+  // 🔒 TODO O NADA: si un id ya no se puede resolver, manda el plan guardado. Antes el orden normal
+  // que un plan a medias — un hueco silencioso es peor que perder el reorden.
+  const conFantasma = { d: hoy, ex: [{ id: 'b' }, { id: 'ya-no-existe' }, { id: 'a' }] };
+  assert.strictEqual(core.restoreWorkOrder(conFantasma, base, cat, hoy), null);
+  // Un ejercicio SUSTITUIDO (no está en el plan base pero sí en el catálogo) sí se resuelve.
+  assert.deepStrictEqual(
+    core.restoreWorkOrder({ d: hoy, ex: [{ id: 'z' }, { id: 'a' }] }, base, cat, hoy).map(e => e.id),
+    ['z', 'a']);
+  assert.strictEqual(core.restoreWorkOrder(null, base, cat, hoy), null);
+  assert.strictEqual(core.restoreWorkOrder({ d: hoy, ex: [] }, base, cat, hoy), null);
+});
+test('🔴 v538 · la actualización NO se aplica encima de un reorden sin confirmar', () => {
+  // `_aviUpdateBusy` decide si se puede recargar. Miraba el timer, el foco, los modales, el cierre
+  // y el tour — pero NO el reorden, así que entre serie y serie la actualización entraba.
+  // Es candado ESTÁTICO porque la función se crea dentro de `initPWA()`, que el harness del reorden
+  // no llega a ejecutar (ahí el login se hace a mano, sin pasar por la cadena de arranque).
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('window._aviUpdateBusy');
+  assert.ok(i > 0, 'no se encontró _aviUpdateBusy en app-6-extra.js');
+  const cuerpo = src.slice(i, src.indexOf('};', i));
+  assert.match(cuerpo, /CUR\.todayWorking/, 'el guard tiene que ver el reorden en curso');
+  assert.match(cuerpo, /CUR\.todayDirty/);
+  // 🔒 Control: lo que ya protegía sigue ahí — el arreglo no puede haber quitado nada.
+  assert.match(cuerpo, /_gmLiveTimer/, 'el timer vivo seguía siendo motivo de espera');
+  assert.match(cuerpo, /TEXTAREA/, 'y escribir en un campo también');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 // 🔒 v537 · LA CADENA DE ARRANQUE NO PUEDE LLAMAR A OTRO MÓDULO SIN GUARDA
 // Regla del repo desde v375/v393/v403 (reventó TRES veces en Android real): todo llamado a una
 // función que vive en otro `app-*.js` va con `typeof f==='function'`. La cadena de boot la

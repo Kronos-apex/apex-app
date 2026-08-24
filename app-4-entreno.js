@@ -1047,6 +1047,9 @@ function renderClientToday(client, overrideRoutine){
   CUR.todayOverride=overrideRoutine||null;
   // Si el usuario reordenó/sustituyó hoy, usamos su copia de trabajo (misma rutina) para
   // que los cambios sobrevivan a los re-render (mood, etc.). El plan guardado no se toca.
+  // v538: si dejó un reorden de HOY sin confirmar (y la app se recargó por una actualización,
+  // por cerrarla o porque el sistema mató la pestaña), se recupera ANTES de pintar.
+  if(baseR&&typeof restoreTodayWorkIfAny==='function')restoreTodayWorkIfAny(baseR);
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
   if(!baseR){
     _todayOrder(false);
@@ -1946,6 +1949,47 @@ function _clearSessionKeys(rid,idx){
   _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`; Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)localStorage.removeItem(k); }); });
   _SK_EX.forEach(kind=>localStorage.removeItem(`${kind}_${rid}_${idx}`));
 }
+// ── EL REORDEN TIENE QUE SOBREVIVIR A UNA RECARGA (v538) ─────────────────────────────────────
+// 🔴 REPORTE DEL PO (24-ago): *«si no pude empezar con press inclinado y lo roté por press plano,
+// cuando la app se actualiza la rutina vuelve a su orden — y si en plano levanto 100 y en inclinado
+// 70, inclinado me queda con 100 y plano con 70. Y eso le debe pasar a todo el que entrene.»*
+// Tenía razón, y reproducido contra su rutina real: anotó 100 en un ejercicio y 70 en el otro, y
+// tras recargar **los dos pesos salieron intercambiados**.
+// LA CAUSA es que este cambio tenía **una mitad en memoria y la otra en disco**: el reorden vivía
+// solo en `CUR.todayWorking`, pero las series se guardan por POSICIÓN
+// (`log_<rid>_<ei>_<si>_kg`) y al rotar se intercambian también esas claves para que cuadre. Al
+// recargar se pierde la mitad de memoria, la rutina vuelve a su orden guardado y **las claves
+// intercambiadas se quedan**: cada peso acaba en el ejercicio del vecino.
+// ⚠️ NO se arregla cambiando el formato de las claves de sesión — está prohibido por doctrina
+// (rompe las sesiones en curso de gente real). Se arregla persistiendo la otra mitad.
+// Se guarda POR DÍA, igual que `session_date_<rid>`, y es LOCAL a propósito: es una decisión de
+// hoy, no un cambio del plan (ese lo pregunta `offerKeepReorder` al terminar).
+function _workKey(rid){ return 'work_'+rid; }
+function _saveTodayWork(w){
+  try{
+    if(!w||!w.id)return;
+    localStorage.setItem(_workKey(w.id), JSON.stringify({
+      d:new Date().toDateString(),
+      ex:(w.exercises||[]).filter(Boolean).map(e=>({id:e.id,sets:e.sets,reps:e.reps,restSec:e.restSec})),
+    }));
+  }catch(e){}
+}
+function clearTodayWork(rid){ try{ localStorage.removeItem(_workKey(rid)); }catch(e){} }
+// Reconstruye la copia de trabajo guardada. Devuelve null si no hay, si es de otro día o si algún
+// ejercicio ya no se puede resolver — en ese caso manda el plan guardado: **antes el orden normal
+// que un plan a medias**.
+// Lee el guardado y delega la reconstrucción en `restoreWorkOrder` (avi-core, PURA). Aquí solo
+// vive el acceso a disco: la regla —que caduca por día y que es todo-o-nada— se prueba allá, y no
+// con un check de texto. (Los dos sabotajes que la atacaban salían VERDES cuando la afirmación era
+// «la palabra `toDateString` aparece en la función».)
+function _restoreTodayWork(baseR){
+  try{
+    if(typeof restoreWorkOrder!=='function')return null;
+    const raw=localStorage.getItem(_workKey(baseR.id)); if(!raw)return null;
+    const exercises=restoreWorkOrder(JSON.parse(raw),baseR.exercises,DB.exercises,new Date().toDateString());
+    return exercises?{...baseR,exercises}:null;
+  }catch(e){ return null; }
+}
 // Copia de trabajo del día (se crea al primer cambio; ligada a la rutina base por id).
 function _todayWork(){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return null;
@@ -1954,9 +1998,20 @@ function _todayWork(){
   const autoR=(c.routines||[]).find(r=>r.day===today)||(c.routines||[]).find(r=>r.day==='Libre');
   const baseR=CUR.todayOverride||autoR; if(!baseR)return null;
   if(!CUR.todayWorking||CUR.todayWorking.id!==baseR.id){
-    CUR.todayWorking={...baseR,exercises:(baseR.exercises||[]).map(e=>({...e}))};
+    CUR.todayWorking=_restoreTodayWork(baseR)
+      ||{...baseR,exercises:(baseR.exercises||[]).map(e=>({...e}))};
   }
   return CUR.todayWorking;
+}
+// Se llama al PINTAR «Hoy»: si la persona dejó un reorden de hoy sin confirmar, se recupera antes
+// de que la pantalla se dibuje con el orden guardado. Sin esto, `_todayWork` solo lo recuperaría
+// al hacer OTRO cambio — o sea, nunca, porque para entonces ya vio el plan al revés.
+function restoreTodayWorkIfAny(baseR){
+  if(!baseR||!baseR.id)return null;
+  if(CUR.todayWorking&&CUR.todayWorking.id===baseR.id)return CUR.todayWorking;
+  const w=_restoreTodayWork(baseR);
+  if(w){ CUR.todayWorking=w; CUR.todayDirty=true; }
+  return w;
 }
 function todayMoveEx(ei,dir){
   const w=_todayWork(); if(!w)return; const exs=w.exercises; const j=ei+dir;
@@ -1964,6 +2019,7 @@ function todayMoveEx(ei,dir){
   const t=exs[ei];exs[ei]=exs[j];exs[j]=t;
   _swapSessionKeys(w.id,ei,j);
   if(typeof normalizeBisets==='function')normalizeBisets(exs);
+  _saveTodayWork(w);            // v538: la otra mitad del cambio, para que sobreviva a una recarga
   CUR.todayDirty=true;
   const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
 }
@@ -1981,6 +2037,7 @@ function _applySubstitute(newEx){
   delete w.exercises[ei].ssNext; // no heredar la pareja de biserie del anterior
   if(typeof normalizeBisets==='function')normalizeBisets(w.exercises);
   _clearSessionKeys(w.id,ei); // ejercicio nuevo → empieza limpio
+  _saveTodayWork(w);            // v538: igual que el reorden — media mitad en memoria no sirve
   CUR.todayDirty=true; cm('m-picker');
   const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
   // Si el guiado está abierto encima (sustitución lanzada desde él), reconstruirlo también.
@@ -2001,6 +2058,7 @@ function offerKeepReorder(){
     stored.exercises=CUR.todayWorking.exercises.map(e=>({...e}));
     sv('ax_c',DB.clients); toast('✅ Guardado para la próxima');
   } else if(a!==b){ toast('Solo por hoy 👍'); }
+  clearTodayWork(CUR.todayWorking&&CUR.todayWorking.id);   // v538: el reorden era de HOY
   CUR.todayDirty=false; CUR.todayWorking=null;
 }
 

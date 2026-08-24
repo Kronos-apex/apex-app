@@ -4,6 +4,55 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-24 — avi-v538: EL REORDEN SE PERDÍA AL RECARGAR Y LOS PESOS QUEDABAN EN EL EJERCICIO DEL VECINO
+
+Reporte del PO, y de los que más duelen porque **corrompe el entreno de quien lo hizo bien**:
+*«si no pude empezar con press inclinado y lo roté por press plano, cuando la app se actualiza la
+rutina vuelve a su orden — y si en plano levanto 100 y en inclinado 70, inclinado me queda con 100
+y plano con 70. Y eso le debe pasar a todo el que entrene.»*
+
+**Reproducido contra su rutina real**, no contra un fixture:
+
+```
+antes de recargar : orden [militar, banca, …]   pesos {militar:100, banca:70}
+después de recargar: orden [banca, militar, …]  pesos {banca:100,  militar:70}
+```
+
+Los dos pesos, intercambiados. Exactamente lo que describió.
+
+**La causa, en una frase: el cambio tenía UNA MITAD EN MEMORIA Y LA OTRA EN DISCO.** El reorden
+vivía solo en `CUR.todayWorking`, pero las series se guardan **por POSICIÓN**
+(`log_<rid>_<ei>_<si>_kg`) y al rotar se intercambian también esas claves para que todo cuadre…
+mientras la página viva. Al recargar, la mitad de memoria desaparece, la rutina vuelve a su orden
+guardado y **las claves intercambiadas se quedan**.
+
+⚠️ **No se arregló cambiando el formato de las claves de sesión** — está prohibido por doctrina
+(rompe las sesiones en curso de gente real). Se arregló persistiendo la otra mitad: el orden de
+trabajo se guarda por DÍA (como `session_date_`), se recupera al pintar «Hoy» y se limpia al cerrar
+la sesión. La reconstrucción es **todo o nada**: si un id ya no se resuelve, manda el plan guardado
+— antes el orden normal que un plan a medias.
+
+**Y no era solo cosa de las actualizaciones.** La actualización es el disparador más visible, pero
+lo mismo pasaba al cerrar y abrir la app o si el sistema mataba la pestaña. Aun así, `_aviUpdateBusy`
+—que decide si se puede recargar— miraba el timer, el foco, los modales, el cierre y el tour **pero
+no el reorden**, así que entre serie y serie la actualización entraba. Ahora también lo mira: es la
+misma noción de «ocupado» que el poll del plan del coach usaba desde siempre.
+
+💎 **Dos cosas que enseñó el proceso:**
+- **La primera sonda no valía**: montaba un fixture en memoria y **la recarga lo destruía** (la app
+  se vuelve a bajar el plan al arrancar), así que la mitad de después medía otra rutina. Un fixture
+  que no sobrevive al evento que estás probando no prueba nada.
+- **Dos sabotajes salieron VERDES** porque mis aserciones eran de TEXTO («la palabra `toDateString`
+  aparece en la función»), y el defecto las satisface. La regla —que caduca por día y que es
+  todo-o-nada— se movió a una función PURA en avi-core y ahora se prueba de verdad.
+- 🔴 Y una aserción **no se pudo hacer en el harness y se dice**: `_aviUpdateBusy` nace dentro de
+  `initPWA()`, que ahí no llega a ejecutarse. Se declara como no probado en esa capa y el candado
+  vive en la suite, en vez de afirmar algo que no se midió.
+
+Suite **890/890** · harness nuevo `_repro-reorden-recarga.mjs` · **7 sabotajes y los 7 muerden**.
+
+---
+
 ## 🧹 2026-08-24 — avi-v537: LA HIGIENE DE LOS CANDADOS — y dos defectos reales que salieron de ahí
 
 Cola menor de la auditoría de código. Empezó como limpieza y terminó destapando dos fallos de la app.
