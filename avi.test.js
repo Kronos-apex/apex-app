@@ -4817,6 +4817,39 @@ test('🔒 la puerta a la página existe y abre la página REAL, no una maqueta'
   const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
   assert.ok(/onclick="verMiPagina\(\)"/.test(coach), 'la ficha ofrece ver la página tras publicar');
 });
+test('🔒 v543 · la app enlaza a la WEB, y la dirección es UNA sola en los dos sitios', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const login = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  // El enlace vive en la BIENVENIDA, que es donde cae quien llega por el link que el PO comparte.
+  const a = html.match(/<a class="cin-web" href="([^"]+)"/);
+  assert.ok(a, 'la bienvenida tiene el enlace a la web');
+  // Y es ESTÁTICO a propósito: pintado por JS desaparecería justo cuando un módulo no carga.
+  assert.ok(/<a class="cin-web"/.test(html) && !/cin-web[^]{0,80}innerHTML/.test(login),
+    'el enlace de la bienvenida es marcado estático, no pintado por JS');
+  const c = ent.match(/const AVI_WEB_URL='([^']+)'/);
+  assert.ok(c, 'existe la constante AVI_WEB_URL');
+  // 🔒 ESPEJO: la misma dirección en dos sitios se separa sola. El día del dominio propio, este
+  // test dice el segundo sitio que hay que tocar (patrón del espejo del .sql y de la edge).
+  assert.strictEqual(a[1], c[1],
+    'la dirección del enlace de la bienvenida se separó de AVI_WEB_URL');
+  // 🔒 Y NO puede ser la misma que la app: son dos cosas distintas y confundirlas manda a la
+  // gente a la puerta equivocada — el enlace de la bienvenida apuntaría a la propia bienvenida.
+  const app = ent.match(/const AVI_SHARE_URL='([^']+)'/);
+  assert.notStrictEqual(c[1], app[1], 'la web y la app no pueden ser la misma dirección');
+  // El panel del coach ofrece las dos, cada una con lo suyo.
+  assert.ok(/function verMiWeb\(\)/.test(login) && /function copiarMiWeb\(\)/.test(login));
+  const i = login.indexOf('function renderPageCard');
+  const cuerpo = login.slice(i, login.indexOf('\nfunction ', i + 10));
+  assert.ok(/verMiWeb\(\)/.test(cuerpo) && /compartirMiPagina\(\)/.test(cuerpo),
+    'la tarjeta ofrece la web Y la app');
+  // 🔴 «Compartir» sigue dando el link de la APP: es el que el PO manda en sus historias
+  // (dicho por él, 25-ago). Cambiarlo en silencio le rompería lo que ya funciona.
+  const cs = login.indexOf('function compartirMiPagina');
+  assert.ok(/_aviUrl\(\)/.test(login.slice(cs, cs + 400)) && !/_aviWebUrl\(\)/.test(login.slice(cs, cs + 400)),
+    'Compartir tiene que seguir dando el link de la APP');
+});
 test('LANDING_SHARE_MSG: habla en la voz del coach y en español colombiano', () => {
   assert.ok(/mi gente/i.test(LANDING_SHARE_MSG), 'es él quien comparte, no un tercero');
   // 🔒 Nada de voseo rioplatense: el tono de la app es colombiano (regla de Sofía).

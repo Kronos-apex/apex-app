@@ -1964,7 +1964,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes aviInstallPulse{0%,100%{box-shadow:0 10px 30px rgba(10,124,91,.45)}50%{box-shadow:0 10px 38px rgba(19,181,131,.75)}}
 #install-banner button:active{transform:scale(.96)}
 @media(prefers-reduced-motion:reduce){#install-banner [style*="aviInstallPulse"]{animation:none!important}}
-.cin-cta{display:flex;gap:12px;margin-top:24px}
+/* `flex-wrap` para que el enlace a la web (v543) caiga DEBAJO de los dos botones y no se meta
+   como tercera columna: no compite con «Crear cuenta», lo acompaña. */
+.cin-cta{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+/* El camino de vuelta a la web (v543). Enlace, no botón; y con área pulsable de 44px, que es lo
+   que pide Apple y lo que este repo ya tuvo que arreglar a mano en v525. */
+.cin-web{flex-basis:100%;display:flex;align-items:center;justify-content:center;min-height:44px;
+  font-size:13px;font-weight:700;color:rgba(255,255,255,.92);text-decoration:underline;
+  text-underline-offset:3px;text-align:center;line-height:1.35}
+.cin-web:hover{color:#fff}
 .cin-cta button{flex:1;padding:16px;border-radius:40px;font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid #fff;transition:transform .12s}
 .cin-cta button:active{transform:scale(.98)}
 .cin-cta-fill{background:#fff;color:#0A0E0C}

@@ -1423,6 +1423,16 @@ function missMoveToday(rid){
 // real (≥3 sesiones finalizadas, motor puro shareBannerEligible) y se pospone 45 días al descartar.
 // Comparte con navigator.share nativo (móvil) y cae a WhatsApp (elige contacto) si no está.
 const AVI_SHARE_URL='https://kronos-apex.github.io/apex-app/';
+// La WEB de venta (proyecto `avi-web` en Vercel, v543). Son DOS direcciones distintas y hacen
+// cosas distintas: esta EXPLICA y vende (qué es AVI, los 3 pasos, testimonios, precios, el
+// WhatsApp del coach) y `AVI_SHARE_URL` es la app, donde se crea la cuenta y salen las tarjetas
+// de resultados que él publica. La web ya enlazaba hacia la app; faltaba el camino de vuelta.
+// ⚠️ El PO comparte en sus historias el link de la APP (dicho por él, 25-ago), así que quien
+// llega cae en una promesa y dos botones y nunca ve lo que de verdad vende.
+// ⚠️ La misma dirección está escrita en el `<a class="cin-web">` de index.html —tiene que ser
+// estática para sobrevivir a un módulo que no cargue— y un test de la suite las COMPARA.
+// El día que haya dominio propio (`SEO-LANZAMIENTO.md` del proyecto web), se cambia en los dos.
+const AVI_WEB_URL='https://avi-web-chi.vercel.app/';
 const AVI_SHARE_MSG='Entreno con AVI 💪 una app para llevar mis rutinas y ver mi progreso. Míralo aquí:';
 function renderShareBanner(client){
   const el=document.getElementById('cn-share'); if(!el)return;

@@ -1722,6 +1722,7 @@ function renderDeloadAlerts(){
 // problema, es el acceso a una superficie que él usa para vender. Un acceso que solo aparece
 // «cuando pasa algo» no es un acceso.
 function _aviUrl(){ return (typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://kronos-apex.github.io/apex-app/'; }
+function _aviWebUrl(){ return (typeof AVI_WEB_URL!=='undefined')?AVI_WEB_URL:'https://avi-web-chi.vercel.app/'; }
 function renderPageCard(){
   const el=document.getElementById('h-page'); if(!el)return;
   const url=_aviUrl();
@@ -1730,14 +1731,19 @@ function renderPageCard(){
   el.innerHTML=`<div class="card" style="padding:11px 14px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
       <span style="color:var(--g2);display:flex">${typeof aviIcon==='function'?aviIcon('users',15):'🌐'}</span>
-      <div style="font-size:13px;font-weight:800;color:var(--t1)">Tu página</div>
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">Tus dos direcciones</div>
       <span id="h-page-n" style="font-size:11px;color:var(--t2);margin-left:auto"></span>
     </div>
-    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:9px">Es la que abre tu link cuando lo compartes. Ahí salen las tarjetas de resultados que publiques.</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap">
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px"><b style="color:var(--t1)">La app</b> — la que compartes en tus historias. Ahí se crea la cuenta y salen las tarjetas de resultados que publiques.</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">
       <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiPagina()">Ver mi página</button>
       <button class="btn bp bsm" style="flex:1;min-width:120px" onclick="compartirMiPagina()">Compartir link</button>
       <button class="btn bg bsm" onclick="copiarMiPagina()" aria-label="Copiar el enlace de mi página">Copiar</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px;padding-top:9px;border-top:1px solid var(--br)"><b style="color:var(--t1)">Tu web</b> — la que explica AVI, los planes y los precios, con tu WhatsApp. La bienvenida de la app ya la enlaza.</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiWeb()">Abrir mi web</button>
+      <button class="btn bg bsm" onclick="copiarMiWeb()" aria-label="Copiar el enlace de mi web">Copiar</button>
     </div>
   </div>`;
   // Cuántas tarjetas tiene publicadas: usa la MISMA lectura que la ficha (`_loadShowcase`), para
@@ -1767,8 +1773,14 @@ function compartirMiPagina(){
   }
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
-function copiarMiPagina(){
-  const url=_aviUrl();
+function copiarMiPagina(){ _copiar(_aviUrl()); }
+// La WEB (v543). No lleva marca de vista previa: la web no tiene sesión que saltar — es una
+// página normal y se abre tal cual, igual para él que para cualquiera.
+function verMiWeb(){ window.open(_aviWebUrl(),'_blank'); }
+function copiarMiWeb(){ _copiar(_aviWebUrl()); }
+// Un solo copiador para los dos: dos implementaciones acabarían con dos comportamientos
+// distintos cuando el portapapeles falle (que en un navegador sin permiso es lo normal).
+function _copiar(url){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>toast('📋 Link copiado')).catch(()=>toast(url));
   } else toast(url);

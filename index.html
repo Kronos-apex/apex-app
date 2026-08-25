@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=542">
+<link rel="stylesheet" href="styles.css?v=543">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -163,6 +163,16 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="cin-cta" id="cin-cta">
       <button class="cin-cta-fill" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-card').style.display='block';var e=document.getElementById('lu');if(e)setTimeout(function(){e.focus()},50)">Iniciar sesión</button>
       <button class="cin-cta-out" onclick="document.getElementById('cin-cta').style.display='none';document.getElementById('cin-signup').style.display='block';WZ.open();var e=document.getElementById('su-name');if(e)setTimeout(function(){e.focus()},60)">Crear cuenta</button>
+      <!-- v543 · EL CAMINO DE VUELTA A LA WEB. El PO comparte el link de LA APP en sus historias,
+           así que quien llega cae aquí: una promesa y dos botones. Los precios, los testimonios,
+           el «por qué existe AVI» y su WhatsApp viven en la web (avi-web), que hasta ahora
+           enlazaba hacia la app pero no al revés — o sea que el desconocido que dudaba no tenía
+           dónde resolver la duda. Va como ENLACE y no como tercer botón a propósito: quien ya
+           venía a registrarse no debe encontrarse otra opción del mismo peso encima.
+           ⚠️ La dirección está ESCRITA aquí y en `AVI_WEB_URL` (app-4): un test de la suite las
+           compara, porque dos direcciones a mano acaban separándose. Va estática y no pintada por
+           JS para que siga estando si un módulo no carga (la app ya reventó 3 veces así). -->
+      <a class="cin-web" href="https://avi-web-chi.vercel.app/" target="_blank" rel="noopener">¿Primera vez aquí? Conoce AVI, los planes y los precios →</a>
     </div>
 
     <!-- v523 · LA PRUEBA. Quien llega desde una historia de Instagram veía una promesa y CERO
@@ -1282,19 +1292,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=542"></script>
-<script src="muscle-map.js?v=542"></script>
-<script src="exercise-muscles.js?v=542"></script>
+<script src="avi-core.js?v=543"></script>
+<script src="muscle-map.js?v=543"></script>
+<script src="exercise-muscles.js?v=543"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=542"></script>
-<script src="app-2-login.js?v=542"></script>
-<script src="app-3-coach.js?v=542"></script>
-<script src="app-4-entreno.js?v=542"></script>
-<script src="app-5-salud.js?v=542"></script>
-<script src="app-6-extra.js?v=542"></script>
-<script src="app-7-community.js?v=542"></script>
+<script src="app-1-infra.js?v=543"></script>
+<script src="app-2-login.js?v=543"></script>
+<script src="app-3-coach.js?v=543"></script>
+<script src="app-4-entreno.js?v=543"></script>
+<script src="app-5-salud.js?v=543"></script>
+<script src="app-6-extra.js?v=543"></script>
+<script src="app-7-community.js?v=543"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
