@@ -4759,6 +4759,38 @@ test('🔒 la edge daily-notifs usa el MISMO umbral que la app (espejo, no copia
   // Y respeta las mismas exclusiones que la app.
   assert.ok(/!prof\.courtesy && !prof\.suspended/.test(edge), 'la edge respeta cortesía y suspendido');
 });
+// ── LA RACHA NO PUEDE SALIRSE DE LA PANTALLA (v544) ─────────────────────────────────────────
+// Reporte del PO: con 14 semanas, el letrero se salía y había que arrastrar la pantalla de lado.
+// ⚠️ ESTE CANDADO ES LA RED BARATA, no la autoridad: solo lee el CSS como texto y por eso NO
+// puede ver lo que de verdad importa —cuántos píxeles mide el chip con `zoom:1.40` en un
+// teléfono de 360—. Eso lo mide `_repro-racha-desborde.mjs` sobre el DOM vivo, en las 6
+// combinaciones de ancho y talla de letra (lección de v527: la autoridad es el harness).
+// Lo que sí caza aquí, y es lo que causó el defecto: que alguien devuelva al chip LARGO la
+// prohibición de encoger o de partirse.
+test('🔒 v544 · el letrero de la racha puede encoger y partirse (o se sale de la pantalla)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const regla = (sel) => {
+    const i = css.indexOf(sel + '{');
+    assert.ok(i >= 0, 'no existe la regla ' + sel);
+    return css.slice(i + sel.length + 1, css.indexOf('}', i));
+  };
+  const chip = regla('.streak-chip');
+  // Las dos propiedades que lo hacían desbordar, medidas: 263-368 px contra 360 de pantalla.
+  assert.ok(!/white-space:\s*nowrap/.test(chip), 'el chip largo no puede llevar nowrap: no cabe');
+  assert.ok(!/flex-shrink:\s*0/.test(chip), 'el chip largo tiene que poder encoger');
+  assert.ok(/max-width:\s*100%/.test(chip), 'y no puede pasarse del ancho de su fila');
+  // La fila envuelve: si el chip no cabe al lado del saludo, baja a su propio renglón.
+  assert.ok(/flex-wrap:\s*wrap/.test(regla('#cn-today-head')),
+    'la cabecera de «Hoy» tiene que poder envolver');
+  // 🔒 CONTROL: en el HÉROE el chip es el corto y comparte renglón con el nombre — ahí SÍ va en
+  // una línea. Sin esta mitad, «arreglarlo» quitándole el nowrap a todo partiría «15 sems.» en
+  // dos y descuadraría la cabecera del héroe, que es la pantalla que ve todo el mundo.
+  const heroChip = regla('.hero-on .streak-chip');
+  assert.ok(/white-space:\s*nowrap/.test(heroChip), 'el chip del héroe SÍ va en una línea');
+  assert.ok(/flex-shrink:\s*0/.test(heroChip), 'y no encoge: el que se recorta es el nombre');
+});
+
 // ── VER LA PÁGINA PÚBLICA SIN SALIR DE LA CUENTA (v542) ─────────────────────────────────────
 test('isLandingPreview: solo la marca EXACTA saca a alguien de su sesión', () => {
   assert.strictEqual(isLandingPreview('?ver=pagina'), true);

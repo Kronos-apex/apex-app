@@ -815,10 +815,21 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .wopills{display:flex;gap:6px;flex-wrap:wrap}
 .wopill{background:rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
 /* Saludo grande + racha (cabecera del "Hoy") */
-#cn-today-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 15px}
+/* 🔴 REPORTE DEL PO (25-ago): con 14 semanas de racha el letrero se salía de la pantalla y había
+   que arrastrarla de lado para leerlo. Medido con su caso real (`_repro-racha-desborde.mjs`): el
+   chip largo —«15 semanas seguidas entrenando»— mide 263 px con letra normal, 310 en «Grande» y
+   368 en «Muy grande» (el contenedor lleva `zoom` con esas tallas), contra 360 de pantalla; y
+   como la fila era de UN renglón y el chip tenía PROHIBIDO encoger (`flex-shrink:0`) y partirse
+   (`white-space:nowrap`), lo que sobraba —de 29 a 163 px— se convertía en desplazamiento lateral.
+   ⚠️ El desborde NO estaba en el documento sino en el contenedor interno, que es por lo que una
+   sonda que mira `documentElement.scrollWidth` lo daba por sano.
+   Arreglo: la fila puede envolver y el chip puede encoger y partir su texto. Si no cabe al lado
+   del saludo, baja a su propio renglón — pantalla uniforme, nada que arrastrar. */
+#cn-today-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 15px;flex-wrap:wrap}
+.today-greet{min-width:0}
 .today-greet .tg-hi{font-size:13px;color:var(--t2);line-height:1.1;margin-bottom:2px}
 .today-greet .tg-name{font-size:25px;font-weight:800;letter-spacing:-.4px;line-height:1.12;color:var(--t1)}
-.streak-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--g2);color:var(--gt);border-radius:22px;padding:8px 14px;font-size:13px;font-weight:700;white-space:nowrap}
+.streak-chip{flex-shrink:1;min-width:0;max-width:100%;display:inline-flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--g2);color:var(--gt);border-radius:22px;padding:8px 14px;font-size:13px;font-weight:700;white-space:normal;text-wrap:balance}
 .streak-chip b{font-size:16px}
 .streak-chip.streak-0{background:var(--bg);border-color:var(--br2);color:var(--t2);font-weight:600}
 
@@ -836,8 +847,11 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .hero-on .today-greet .tg-hi{color:rgba(255,255,255,.74)}
 .hero-on .today-greet .tg-name{color:var(--on-emerald);font-size:20px;letter-spacing:-.3px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* En el HÉROE el chip es el corto («15 sems.», 100-139 px medidos) y comparte renglón con el
+   nombre, que ya se recorta con puntos suspensivos: ahí SÍ va en una línea. Medido en las 6
+   combinaciones de ancho y talla de letra: nunca desborda. */
 .hero-on .streak-chip{background:rgba(255,255,255,.14);border-color:transparent;color:var(--on-emerald);
-  font-size:12px;padding:7px 12px}
+  font-size:12px;padding:7px 12px;white-space:nowrap;flex-shrink:0}
 .hero-on .streak-chip b{font-size:14px}
 .hero-on .streak-chip.streak-0{background:rgba(255,255,255,.10);color:rgba(255,255,255,.78)}
 .tod-hero-k{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
