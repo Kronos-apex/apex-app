@@ -4,6 +4,37 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-25 — avi-v544: LA RACHA DE 14 SEMANAS SE SALÍA DE LA PANTALLA
+
+Reporte del PO: *«el letrero de la racha de semanas entrenadas —en mi caso 14 semanas— está bien
+pero se sale de la pantalla, y eso hace que la pantalla se mueva hacia los lados. Prefiero una
+pantalla uniforme.»*
+
+Reproducido con su caso real (historial de 15 semanas cumpliendo la meta, no una racha falseada)
+y medido en las **6 combinaciones de ancho × talla de letra**:
+
+```
+                      chip     pantalla   desborde
+letra Normal          263 px   360        29 px
+letra Grande          310 px   360        84 px     (el contenedor lleva zoom:1.18)
+letra Muy grande      368 px   360       163 px     (zoom:1.40)
+```
+
+La fila era de UN renglón y el chip tenía prohibido encoger (`flex-shrink:0`) y partirse
+(`white-space:nowrap`), así que lo que sobraba se volvía desplazamiento lateral.
+
+🔴 **El desborde NO estaba en el documento sino en el contenedor interno**, y por eso la primera
+versión de la sonda imprimió «desborde=0px» sobre el defecto que venía a reproducir: mirar
+`documentElement.scrollWidth` no ve el scroll de un `.cnbody`. Ahora recorre la cadena de padres.
+
+Arreglo: la cabecera envuelve y el chip encoge y parte su texto. **0 px de desborde en las 6
+combinaciones.** En el HÉROE el chip corto sigue en una línea (el que se recorta ahí es el nombre).
+
+🎓 Y de paso se retiró un hallazgo MÍO de la auditoría de la web: dije que la sección de los 3
+pasos tenía «media pantalla vacía» en escritorio y **la medición lo desmintió** (1.218 px = 1,4
+pantallas, filas de 225 px para 103 de texto). Era el final de sección en una captura a media
+altura. Un hallazgo sacado de una captura se mide antes de arreglarlo.
+
 ## 🔄 2026-08-25 — avi-v543: LA APP ENLAZA A LA WEB (corrección de rumbo de v542)
 
 **v542 leyó mal el pedido.** Cuando el PO dijo *«que las personas puedan visitar la página web de
