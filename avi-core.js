@@ -3957,6 +3957,81 @@ function renewalNotice(client, now) {
   return { days, dueTs };
 }
 
+// ── QUÉ VERSIÓN TRAE CADA TELÉFONO (v541) ───────────────────────────────────────────────
+// Decisión del PO (25-ago), sobre la pregunta que dejó abierta la auditoría de móvil: *«¿se
+// instrumenta la versión que trae cada teléfono?»* → sí.
+//
+// 🔴 EL PROBLEMA, TAL CUAL: hoy la app **solo registra su versión cuando hay un ERROR**
+// (`app_errors.build`, v282). Así que después de desplegar un arreglo no hay forma de saber si
+// le llegó a alguien — y esa fue exactamente la duda del reporte de Kathe: se sospechó del
+// Service Worker, se midió, se descartó… y quedó sin respuesta porque **no había dato**. Un
+// teléfono sano es hoy invisible; solo se sabe de los que fallan.
+//
+// Lo que hace falta es un LATIDO: cada vez que alguien abre la app, su fila anota qué versión
+// está corriendo y cuándo. Es un dato del dispositivo, así que lo escribe el dispositivo, en su
+// propia fila (la vía que ya existe, `sv('ax_c')` → `upsertOwn`), sin tabla nueva ni RLS nueva.
+//
+// 🔒 Y se escribe LO MENOS POSIBLE, por dos razones que no son estéticas: cada escritura es una
+// subida a la nube desde el celular de alguien que puede estar con datos móviles, y `profile` se
+// reemplaza ENTERO en cada upsert (v509), así que cuantas menos veces se toque, mejor.
+const DEV_STAMP_MAX_AGE_MS = 12 * 3600 * 1000;   // 12 h: dos aperturas al día bastan para saberlo
+// Devuelve el sello NUEVO, o null si no hay que escribir nada. `prev` = lo que ya hay guardado.
+// PURA: recibe el build y el `now`; no mira `caches`, ni el DOM, ni la hora del sistema.
+function deviceStamp(prev, build, ua, now) {
+  const b = parseInt(build, 10);
+  // Sin versión NO se inventa un número ni se deja el anterior: no se escribe (misma regla que
+  // `appBuildLabel`, v491 — un rótulo que adivina es peor que no tenerlo).
+  if (!(b > 0)) return null;
+  const nowTs = (now != null ? new Date(now).getTime() : Date.now());
+  const p = (prev && typeof prev === 'object') ? prev : null;
+  const prevB = p ? parseInt(p.b, 10) : NaN;
+  const prevAt = p && p.at ? Date.parse(p.at) : NaN;
+  // Se escribe si: no había nada · cambió la versión (el dato que de verdad importa) · o el
+  // último latido ya envejeció. Un latido viejo no distingue «no ha abierto la app» de «la abrió
+  // y no escribimos», y esa diferencia es justo la pregunta del coach.
+  const fresco = isFinite(prevAt) && (nowTs - prevAt) < DEV_STAMP_MAX_AGE_MS;
+  if (prevB === b && fresco) return null;
+  const out = { b: b, at: new Date(nowTs).toISOString() };
+  // El navegador/sistema, RECORTADO: sirve para saber si un fallo es de Android o de iPhone y
+  // no hace falta más (y una cadena de 300 caracteres en cada perfil sí se nota).
+  const u = String(ua || '').trim();
+  if (u) out.ua = u.slice(0, 120);
+  return out;
+}
+// Cómo se lee ese sello en la ficha del coach. `build` = la versión que corre ÉL ahora mismo,
+// que es la referencia honesta: «al día» significa «trae lo mismo que yo estoy viendo».
+function deviceInfo(dev, build, now) {
+  const b = parseInt(build, 10);
+  const d = (dev && typeof dev === 'object') ? dev : null;
+  const db = d ? parseInt(d.b, 10) : NaN;
+  if (!(db > 0)) return { estado: 'sin-dato', version: null, dias: null, texto: 'sin datos todavía' };
+  const nowTs = (now != null ? new Date(now).getTime() : Date.now());
+  const at = d.at ? Date.parse(d.at) : NaN;
+  const dias = isFinite(at) ? Math.floor((nowTs - at) / 86400000) : null;
+  const cuando = dias === null ? '' : (dias <= 0 ? 'hoy' : dias === 1 ? 'ayer' : 'hace ' + dias + ' días');
+  // Atrasado solo si HAY con qué comparar: sin saber la versión propia no se acusa a nadie.
+  const estado = (b > 0 && db < b) ? 'atrasada' : (b > 0 ? 'al-dia' : 'sin-referencia');
+  return { estado, version: db, dias, texto: 'versión ' + db + (cuando ? ' · ' + cuando : ''),
+           ua: (d.ua || '') };
+}
+// El resumen que responde «¿llegó el arreglo?» de un vistazo, sin abrir 22 fichas.
+function coachBuildReport(clients, build, now) {
+  const b = parseInt(build, 10);
+  const out = { build: b > 0 ? b : null, alDia: [], atrasados: [], sinDato: [] };
+  (clients || []).forEach(c => {
+    if (!c || isSelfClient(c)) return;                  // el coach ve su propia versión en su barra
+    const i = deviceInfo(c.dev, b, now);
+    const fila = { id: c.id, name: c.name || '', version: i.version, dias: i.dias };
+    if (i.estado === 'sin-dato') out.sinDato.push(fila);
+    else if (i.estado === 'atrasada') out.atrasados.push(fila);
+    else out.alDia.push(fila);
+  });
+  // Determinista: el panel del coach se repinta cada 15 s y una lista que salta es inservible.
+  const ord = (x, y) => String(x.name).localeCompare(String(y.name), 'es');
+  out.alDia.sort(ord); out.atrasados.sort(ord); out.sinDato.sort(ord);
+  return out;
+}
+
 // ── Orden inteligente de asesorados (mejora 7 del estudio, 2026-07-11) — puro/testeable ──
 // El coach con 20+ asesorados no puede escanear una lista plana. Esta función ordena por
 // QUIÉN NECESITA ATENCIÓN, usando SOLO señales que ya existen en los datos. Devuelve un
@@ -8380,6 +8455,10 @@ if (typeof module !== 'undefined' && module.exports) {
     MS_GRACE_DAYS,
     RENEW_NOTICE_DAYS,
     renewalNotice,
+    DEV_STAMP_MAX_AGE_MS,
+    deviceStamp,
+    deviceInfo,
+    coachBuildReport,
     fmtMetric,
     fmtDuration,
     WF_FEELINGS,

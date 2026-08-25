@@ -1377,6 +1377,20 @@ async function openDetail(id,_silent){
   if(c.height) _stats.push(c.height+' cm');
   const _pesoReal=_coachPesoDe(c);
   if(_pesoReal) _stats.push(_pesoReal+' kg');
+  // (2-bis) QUÉ VERSIÓN TRAE SU TELÉFONO (v541). Va en la misma fila de datos y en gris: no es
+  // una alarma, es el dato que hasta hoy no existía —la app solo registraba la versión cuando
+  // había un error— y sin el cual no se puede responder «¿le llegó el arreglo?».
+  // Se compara contra la versión que corre el COACH ahora mismo, que es la referencia honesta.
+  try{
+    if(typeof deviceInfo==='function' && typeof appBuildFrom==='function'){
+      const _u=[].slice.call(document.querySelectorAll('script[src],link[href]'))
+        .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
+      const _dv=deviceInfo(c.dev, appBuildFrom(_u));
+      // «sin datos» solo se dice de quien todavía no ha abierto la app desde este cambio —
+      // no se inventa un «al día» para rellenar (la regla de v491 aplicada a otro número).
+      if(_dv.estado!=='sin-dato') _stats.push('app '+_dv.texto+(_dv.estado==='atrasada'?' ⚠️':''));
+    }
+  }catch(e){}
   const _statsEl=document.getElementById('d-stats');
   if(_stats.length){ _statsEl.style.display='flex'; _statsEl.textContent=_stats.join(' · '); }
   else { _statsEl.style.display='none'; }

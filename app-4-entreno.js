@@ -125,6 +125,20 @@ function initClientView(client){
       if(_dl){ client.routines=_dl.routines; client.deload=_dl.deload; delete client.deloadPlan; sv('ax_c',DB.clients); }
     }
   }catch(e){ if(typeof warn==='function')warn('AVI: descarga programada (asesorado):',e&&e.message); }
+  // 📟 EL LATIDO DE VERSIÓN (v541). Hasta ahora la app solo registraba qué versión corre un
+  // teléfono CUANDO FALLA (`app_errors.build`), así que después de desplegar un arreglo no había
+  // forma de saber si le llegó a alguien — la pregunta que quedó abierta con el reporte de Kathe.
+  // Va aquí, en la misma puerta que la descarga programada y la cura de nivel: es lo que corre
+  // cuando un asesorado abre su app. La decisión de escribir o no vive en `deviceStamp` (pura);
+  // esto solo le pasa el número REAL con el que el navegador pidió los scripts.
+  try{
+    if(typeof deviceStamp==='function' && typeof appBuildFrom==='function'){
+      const _urls=[].slice.call(document.querySelectorAll('script[src],link[href]'))
+        .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
+      const _st=deviceStamp(client.dev, appBuildFrom(_urls), navigator.userAgent, Date.now());
+      if(_st){ client.dev=_st; sv('ax_c',DB.clients); }
+    }
+  }catch(e){ if(typeof warn==='function')warn('AVI: latido de versión:',e&&e.message); }
   // 🎚️ Cura de nivel (v536): los planes ya escritos se quedan con el nivel que tenía el catálogo
   // el día que se generaron, así que una re-etiquetación (como la de `e92` en v513) deja
   // ejercicios avanzados en el plan de un principiante. Va en las DOS puertas porque el asesorado

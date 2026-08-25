@@ -1612,6 +1612,7 @@ function renderHome(){
   if(typeof renderMyTrainingCard==='function')renderMyTrainingCard();
   if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
+  if(typeof renderBuildsCard==='function')renderBuildsCard();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
   // 🛡️ Reportes de comunidad (lote v3-a #1): async, se pinta sola solo si hay reportes abiertos.
@@ -1693,6 +1694,34 @@ function renderDeloadAlerts(){
       </div>
       <div style="font-size:12px;color:var(--t3);flex-shrink:0">›</div>
     </div>`).join('')}
+  </div>`;
+}
+// ── QUÉ VERSIÓN TRAE CADA TELÉFONO (v541) ───────────────────────────────────────────────────
+// Decisión del PO: instrumentarlo. La pregunta que responde es «¿el arreglo que desplegué le
+// llegó a la gente?», y hasta hoy no se podía contestar: la app solo registraba su versión
+// cuando había un ERROR, así que un teléfono sano era invisible.
+// 🔴 Solo se pinta si hay alguien ATRASADO. Una tarjeta permanente que casi siempre dice «todo
+// bien» es ruido, y el ruido es cómo se aprende a ignorar un aviso — la muerte que este repo ya
+// pagó con los gates en rojo. Cuando todos están al día, aquí no hay nada.
+// «Sin datos» NO es lo mismo que atrasado y por eso no dispara la tarjeta: es quien no ha abierto
+// la app desde que existe el latido (y de esos ya avisa el reporte de «Sin entrenar»).
+function renderBuildsCard(){
+  const el=document.getElementById('h-builds'); if(!el)return;
+  el.style.display='none'; el.innerHTML='';
+  if(typeof coachBuildReport!=='function'||typeof appBuildFrom!=='function')return;
+  const urls=[].slice.call(document.querySelectorAll('script[src],link[href]'))
+    .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
+  const rep=coachBuildReport(DB.clients, appBuildFrom(urls));
+  if(!rep.build||!rep.atrasados.length)return;
+  el.style.display='block';
+  el.innerHTML=`<div class="card" style="padding:10px 14px;border-left:3px solid var(--bl)">
+    <div style="font-size:12px;font-weight:700;color:var(--blt);margin-bottom:5px">${typeof aviIcon==='function'?aviIcon('phone',13):'📱'} ${rep.atrasados.length} ${rep.atrasados.length===1?'teléfono trae':'teléfonos traen'} una versión vieja de AVI</div>
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:6px">Tú estás en la <b>${rep.build}</b>. Se actualiza sola al cerrar y volver a abrir la app; si alguien te reporta algo ya arreglado, mira primero esto.</div>
+    ${rep.atrasados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--br)">
+      <span style="font-size:12.5px;font-weight:600">${esc(r.name)}</span>
+      <span style="font-size:11px;color:var(--t2)">versión ${esc(String(r.version))}${r.dias!=null?' · '+(r.dias<=0?'hoy':r.dias===1?'ayer':'hace '+r.dias+' días'):''}</span>
+    </div>`).join('')}
+    <div style="font-size:11px;color:var(--t3);margin-top:6px">${rep.alDia.length} al día${rep.sinDato.length?' · '+rep.sinDato.length+' sin datos todavía':''}</div>
   </div>`;
 }
 function renderPulse(){

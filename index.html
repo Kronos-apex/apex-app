@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=540">
+<link rel="stylesheet" href="styles.css?v=541">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -487,6 +487,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <!-- El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles (récord/racha/estancamiento/deload) -->
       <div id="h-deload" style="display:none;margin-bottom:13px"></div>
       <div id="h-pulse" style="display:none;margin-bottom:13px"></div>
+      <!-- Qué versión de la app trae cada teléfono (v541) — solo aparece si hay alguien atrasado -->
+      <div id="h-builds" style="display:none;margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
         <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="bolt">⚡</span> Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
@@ -1278,19 +1280,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=540"></script>
-<script src="muscle-map.js?v=540"></script>
-<script src="exercise-muscles.js?v=540"></script>
+<script src="avi-core.js?v=541"></script>
+<script src="muscle-map.js?v=541"></script>
+<script src="exercise-muscles.js?v=541"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=540"></script>
-<script src="app-2-login.js?v=540"></script>
-<script src="app-3-coach.js?v=540"></script>
-<script src="app-4-entreno.js?v=540"></script>
-<script src="app-5-salud.js?v=540"></script>
-<script src="app-6-extra.js?v=540"></script>
-<script src="app-7-community.js?v=540"></script>
+<script src="app-1-infra.js?v=541"></script>
+<script src="app-2-login.js?v=541"></script>
+<script src="app-3-coach.js?v=541"></script>
+<script src="app-4-entreno.js?v=541"></script>
+<script src="app-5-salud.js?v=541"></script>
+<script src="app-6-extra.js?v=541"></script>
+<script src="app-7-community.js?v=541"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

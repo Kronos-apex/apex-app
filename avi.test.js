@@ -164,6 +164,10 @@ const {
   clientIsContactable,
   renewalNotice,
   RENEW_NOTICE_DAYS,
+  deviceStamp,
+  deviceInfo,
+  coachBuildReport,
+  DEV_STAMP_MAX_AGE_MS,
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
@@ -4751,6 +4755,89 @@ test('🔒 la edge daily-notifs usa el MISMO umbral que la app (espejo, no copia
     'el push de renovación va UNA vez: día exacto y turno de la tarde');
   // Y respeta las mismas exclusiones que la app.
   assert.ok(/!prof\.courtesy && !prof\.suspended/.test(edge), 'la edge respeta cortesía y suspendido');
+});
+// ── EL LATIDO DE VERSIÓN (v541) — «¿le llegó el arreglo al teléfono?» ───────────────────────
+const _T0 = '2026-08-25T15:00:00Z';
+const _hrs = (base, h) => new Date(Date.parse(base) + h * 3600000).toISOString();
+test('deviceStamp: escribe la PRIMERA vez y cuando CAMBIA la versión', () => {
+  const s1 = deviceStamp(null, 540, 'Android', _T0);
+  assert.strictEqual(s1.b, 540);
+  // Se compara la FECHA, no la cadena: `toISOString` trae milisegundos y afirmar el texto sería
+  // clavar el test a un formato en vez de al dato.
+  assert.strictEqual(Date.parse(s1.at), Date.parse(_T0));
+  // Cambió la versión → se escribe aunque el latido anterior sea de hace un minuto.
+  const s2 = deviceStamp({ b: 540, at: _hrs(_T0, -0.02) }, 541, 'Android', _T0);
+  assert.ok(s2 && s2.b === 541);
+});
+test('deviceStamp: NO escribe en cada apertura (una subida por teléfono, no veinte)', () => {
+  // Misma versión y latido fresco → null (no se toca la nube).
+  assert.strictEqual(deviceStamp({ b: 541, at: _hrs(_T0, -1) }, 541, 'Android', _T0), null);
+  assert.strictEqual(deviceStamp({ b: 541, at: _hrs(_T0, -11) }, 541, 'Android', _T0), null);
+  // Pasado el plazo sí, porque un latido viejo no distingue «no ha abierto la app» de
+  // «la abrió y no escribimos», que es justo lo que el coach necesita saber.
+  assert.ok(deviceStamp({ b: 541, at: _hrs(_T0, -13) }, 541, 'Android', _T0));
+  // Y el plazo se LEE de la constante: moverla no puede poner la suite en rojo (lección v530).
+  const justoAntes = DEV_STAMP_MAX_AGE_MS / 3600000 - 0.1;
+  assert.strictEqual(deviceStamp({ b: 541, at: _hrs(_T0, -justoAntes) }, 541, 'A', _T0), null);
+});
+test('deviceStamp: sin versión conocida NO inventa un número — no escribe', () => {
+  assert.strictEqual(deviceStamp(null, null, 'Android', _T0), null);
+  assert.strictEqual(deviceStamp(null, 0, 'Android', _T0), null);
+  assert.strictEqual(deviceStamp({ b: 540, at: _T0 }, 'abc', 'Android', _T0), null);
+  // Un sello anterior ilegible no bloquea: se vuelve a sellar.
+  assert.ok(deviceStamp({ b: 'x', at: 'ayer' }, 541, 'Android', _T0));
+  // El user-agent se recorta (una cadena de 300 caracteres en CADA perfil sí se nota).
+  assert.ok(deviceStamp(null, 541, 'x'.repeat(400), _T0).ua.length <= 120);
+});
+test('deviceInfo: dice la versión y hace cuánto, y solo acusa si hay con qué comparar', () => {
+  const i = deviceInfo({ b: 539, at: _hrs(_T0, -50) }, 541, _T0);
+  assert.strictEqual(i.estado, 'atrasada');
+  assert.strictEqual(i.version, 539);
+  assert.strictEqual(i.dias, 2);
+  assert.ok(/versión 539/.test(i.texto) && /hace 2 días/.test(i.texto));
+  assert.strictEqual(deviceInfo({ b: 541, at: _T0 }, 541, _T0).estado, 'al-dia');
+  // Sin dato no se rellena con un «al día» optimista (regla del rótulo que adivina, v491).
+  assert.strictEqual(deviceInfo(null, 541, _T0).estado, 'sin-dato');
+  assert.strictEqual(deviceInfo({}, 541, _T0).estado, 'sin-dato');
+  // Sin saber la versión propia NO se acusa a nadie de estar atrasado.
+  assert.strictEqual(deviceInfo({ b: 500, at: _T0 }, null, _T0).estado, 'sin-referencia');
+});
+test('coachBuildReport: reparte a los 3 cubos, deja fuera al coach y es DETERMINISTA', () => {
+  // 🔒 DOS atrasados a propósito, y en el fixture van DESORDENADOS: con uno solo por cubo, dar
+  // la vuelta a la lista devuelve lo mismo y el sabotaje que borra el `sort` sale VERDE (pasó).
+  const cs = [
+    { id: 'z', name: 'Zoe', dev: { b: 538, at: _hrs(_T0, -30) } },
+    { id: 'b', name: 'Beto', dev: { b: 539, at: _hrs(_T0, -30) } },
+    { id: 'a', name: 'Ana', dev: { b: 541, at: _T0 } },
+    { id: 'c', name: 'Caro' },
+    { id: core.SELF_CLIENT_ID, name: 'Yo', dev: { b: 500, at: _T0 } },
+  ];
+  const r = coachBuildReport(cs, 541, _T0);
+  assert.deepStrictEqual(r.alDia.map(x => x.name), ['Ana']);
+  assert.deepStrictEqual(r.atrasados.map(x => x.name), ['Beto', 'Zoe']);
+  assert.deepStrictEqual(r.sinDato.map(x => x.name), ['Caro']);
+  // 🔒 El coach NO entra: ve su propia versión en la barra de su panel, y contarse a sí mismo
+  // como «atrasado» sería el hueco de v512 al revés.
+  assert.ok(!JSON.stringify(r).includes('"Yo"'));
+  // Orden estable: el panel se repinta cada 15 s y una lista que salta es inservible.
+  const r2 = coachBuildReport(cs.slice().reverse(), 541, _T0);
+  assert.deepStrictEqual(r2.atrasados, r.atrasados);
+});
+test('🔒 el latido está CABLEADO: el asesorado sella y el coach lo lee', () => {
+  const fs = require('fs'), path = require('path');
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = ent.indexOf('function initClientView');
+  const cuerpo = ent.slice(i, ent.indexOf('\nfunction ', i + 10));
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (v509).
+  assert.ok(/deviceStamp\(/.test(cuerpo), 'el asesorado tiene que sellar al abrir su app');
+  assert.ok(/sv\('ax_c'/.test(cuerpo), 'y persistirlo por la vía sancionada');
+  // El número sale del `?v=` real, no de una constante que alguien tenga que acordarse de subir.
+  assert.ok(/appBuildFrom\(/.test(cuerpo), 'la versión se DERIVA del ?v= con el que cargó');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/deviceInfo\(c\.dev/.test(coach), 'la ficha del coach lee el sello del asesorado');
+  const login = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/renderBuildsCard\(\)/.test(login) && /coachBuildReport\(/.test(login),
+    'y su Inicio resume quién está atrasado');
 });
 test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viejos', () => {
   const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
@@ -12694,6 +12781,13 @@ const _ESC_OK = [
   { re: /^(MC|MH|MM_ICON_VIEW)\[[\w.]+\](\|\|'?[\w#()-]+'?)?$/, por: 'clave de un mapa, no texto' },
   { re: /^muscle(Icon|MapSVG)\(/, por: 'devuelve un SVG; el campo es la clave del mapa' },
   { re: /^exTrack\(/, por: 'devuelve la modalidad derivada, no texto tecleado' },
+  // 🔒 `aviIcon('phone')` (v541): el argumento es el NOMBRE de un icono del catálogo del código
+  // —lo colisiona con el campo `phone` de la lista de arriba, que es un teléfono TECLEADO— y lo
+  // que devuelve es un `<svg>` nuestro. La excepción se escribe ESTRECHA (nombre literal entre
+  // comillas + tamaño numérico) para que no perdone un `aviIcon(c.phone)`, que sí sería un campo
+  // de usuario. Y ese nombre ya lo vigila el otro candado: todo aviIcon() usa un icono que existe.
+  { re: /^typeof aviIcon==='function'\?aviIcon\('\w+',\s*\d+\):'[^']*'$/,
+    por: "aviIcon('nombre') devuelve un SVG del catálogo; el argumento es una constante del código" },
 ];
 test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino todos)', () => {
   const fs = require('fs'), path = require('path');
@@ -12764,6 +12858,13 @@ test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino t
   assert.strictEqual(barrer('x.innerHTML=' + T + '${a.map(x=>' + T +
     '<b>${esc(x.name)}</b><i>${x.note}</i>' + T + ').join("")}' + T + ';').length, 1,
     'un esc() anidado perdona al campo vecino: es la debilidad de v523 otra vez');
+  // 🔒 CONTROL DE LA EXCEPCIÓN de `aviIcon` (v541): perdona el NOMBRE literal de un icono, y
+  // tiene que seguir acusando si alguien mete ahí el campo de una persona. Sin este caso,
+  // ensanchar la excepción a /aviIcon/ sale VERDE — lo dijo su sabotaje, no yo.
+  assert.strictEqual(barrer('x.innerHTML=' + T + "<b>${typeof aviIcon==='function'?aviIcon('phone',13):'X'}</b>" + T + ';').length, 0,
+    'la excepción no reconoce el nombre literal de un icono');
+  assert.strictEqual(barrer('x.innerHTML=' + T + "<b>${typeof aviIcon==='function'?aviIcon(c.phone,13):'X'}</b>" + T + ';').length, 1,
+    'la excepción de aviIcon perdona un CAMPO de usuario: se ensanchó de más');
 
   const crudos = [];
   _ESC_ARCH.forEach(a => {

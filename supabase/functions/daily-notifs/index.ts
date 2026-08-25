@@ -185,9 +185,6 @@ const MORNING_DONE = {
   ],
 };
 
-// ── Recordatorio de hábitos (v362): se APENDE al push de la tarde SOLO si el asesorado
-// no registró su agua ni sus pasos hoy. No es un push nuevo — es una coletilla suave al
-// mensaje que ya recibe, para cerrar el día completo. Rotativo por día (msgIndex).
 // ── Recordatorio de RENOVACIÓN (v540) ────────────────────────────────────────────────
 // Decisión del PO (25-ago): el aviso le llega al asesorado, SIN cifras y sin número de cuenta.
 // 🔴 UN SOLO push, el día que faltan exactamente RENEW_NOTICE_DAYS y solo en el turno de la
@@ -211,6 +208,9 @@ const RENEW = {
   ],
 };
 
+// ── Recordatorio de hábitos (v362): se APENDE al push de la tarde SOLO si el asesorado
+// no registró su agua ni sus pasos hoy. No es un push nuevo — es una coletilla suave al
+// mensaje que ya recibe, para cerrar el día completo. Rotativo por día (msgIndex).
 const HABITS_REMINDER = [
   "Y no olvides: ¿ya registraste tu agua y tus pasos de hoy?",
   "De paso, anota tu agua y tus pasos de hoy en la app.",
