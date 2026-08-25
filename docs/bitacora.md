@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-25 — avi-v542: LA PÁGINA QUE ABRE SU LINK, CON SU PUERTA
+
+Reporte del PO: *«hoy aparece un botón de compartir datos de asesorados en la página, pero no
+aparece un link para visitar esa página»*.
+
+Tenía razón, y es peor de lo que suena: desde v523 podía **publicar** tarjetas en la página que
+abre su link y en toda la app **no había una sola puerta para verla ni para compartirla** —
+publicaba a ciegas. Y aunque hubiera un enlace, tocarlo no le servía: con la sesión guardada el
+arranque lo lleva derecho a su panel, así que **para ver su propia vitrina tendría que cerrar
+sesión**.
+
+**`?ver=pagina`**: el arranque no entra a la cuenta en esa pestaña. No cierra sesión, no borra
+nada. La página que ve es la de VERDAD —el mismo código que ve un desconocido—, nunca una maqueta
+dentro de la app, que se desincroniza y acaba mintiendo. Banda abajo que lo devuelve a su panel
+sin escribir contraseña. La marca cierra **las dos puertas** del arranque (sesión de auth y
+auto-login legacy) y se reconoce estricta, porque aflojarla dejaría a alguien fuera de su cuenta
+por un parámetro cualquiera.
+
+**Tarjeta «Tu página»** en su Inicio: ver, compartir y copiar el link, con cuántas tarjetas lleva
+de las 6. Permanente a propósito: es un acceso, no un aviso.
+
+Verificado con **sesión real, arranque real y recarga real** (`_verify-vermipagina`, 10/10), y con
+el control primero: sin la marca, la sesión se restaura como siempre.
+
 ## 🔄 2026-08-25 — avi-v539 · v540 · v541: LO QUE EL PO DECIDIÓ HOY
 
 Tres decisiones suyas, ejecutadas en tres versiones.
