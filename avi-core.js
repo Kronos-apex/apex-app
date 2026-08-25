@@ -3639,7 +3639,11 @@ function mergeOwnProfile(guardado, nuevo) {
 // ¿Este cliente puede recibir cobros, recordatorios, chat o push? El coach NO:
 // no se cobra, no se escribe ni se notifica a sí mismo. Un solo lugar donde
 // preguntarlo, para que ninguna superficie nueva se olvide.
-function clientIsBillable(c) { return !!c && !isSelfClient(c); }
+// 🔒 Y desde v539, tampoco quien está marcado como CORTESÍA. Es la única puerta por la que
+// un cobro llega a alguien —ingresos del mes, contador de activos, banner de vencimientos,
+// recordatorio de renovación—, así que la marca se pone AQUÍ y no en cada pantalla: una
+// superficie de plata que se construya mañana la hereda sin que nadie se acuerde.
+function clientIsBillable(c) { return !!c && !isSelfClient(c) && !c.courtesy; }
 function clientIsContactable(c) { return !!c && !isSelfClient(c); }
 
 // Separa la lista para persistir: el coach JAMÁS va como fila de cliente.
@@ -3847,11 +3851,28 @@ function applyMood(routine, mood, opts) {
 // pagar las 6 personas de agosto (todas entre el día 1 y el 3 de vencidas).
 const MS_GRACE_DAYS = 7;
 
+// ── CORTESÍA — «a esta persona no le cobro» (v539) ──────────────────────────────────────
+// Decisión del PO (25-ago), sobre un caso concreto: *«Valery es mi hija, no le voy a cobrar»*.
+// Hasta ahora la app no tenía forma de saberlo. Sin pagos registrados, `getStatus` devolvía
+// `pending` («Sin pago») — un estado que significa *«todavía no ha pagado»*, o sea una deuda
+// pendiente que en su caso NO EXISTE Y NUNCA VA A EXISTIR. La ficha se lo recordaba al coach
+// cada vez que la abría, y cualquier superficie de cobro que se construya después la habría
+// tratado como morosa.
+// 🔴 Va como ESTADO propio y no como un `payments` falso: inventarle un pago de $0 con
+// vencimiento lejano habría ensuciado los ingresos, el historial y el banner de vencimientos
+// con un pago que nadie hizo. Un dato falso siempre se paga en otra pantalla.
+// 🔒 Y no toca el acceso: `canLogin` la deja entrar SIEMPRE — es exactamente lo contrario de
+// una suspensión. Lo único que hace es sacarla de TODO lo que habla de plata
+// (`clientIsBillable`), que es la única puerta por la que un cobro puede llegarle.
 const MS = {
   // `now` opcional (default Date.now()) para determinismo en tests/rank — los callers
   // viejos que pasan solo `c` siguen funcionando igual.
   getStatus(c, now) {
     if (c.suspended) return 'inactive';
+    // Cortesía ANTES que los pagos: si el coach marcó que no le cobra, el estado no se
+    // deriva de un historial de pagos que no va a existir nunca. Y va DESPUÉS de
+    // `suspended` a propósito: suspender es una decisión de acceso y pesa más.
+    if (c.courtesy) return 'courtesy';
     const pays = c.payments || [];
     if (!pays.length) return 'pending';
     const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
@@ -3873,7 +3894,8 @@ const MS = {
   // grace = venció hace ≤7 días → SÍ entra, con la banda puesta (ver MS_GRACE_DAYS).
   // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
   // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
-  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending' || s === 'grace'; },
+  // `courtesy` entra SIEMPRE: es lo contrario de una suspensión (v539).
+  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending' || s === 'grace' || s === 'courtesy'; },
   // El color va como TEXTO sobre `bg`, así que aquí manda la regla de lectura de la FASE 3:
   // los tokens crudos (--or/--rd/--yl) son para RELLENAR, y encima de su propio tinte no se
   // leen (medido en claro: «Por vencer» daba 2.62:1, «Vencido» 3.45 y «Sin pago» 1.55, contra
@@ -3884,6 +3906,10 @@ const MS = {
   badge(s) {
     return ({
       active:   { label: 'Al día',      color: 'var(--gt)',  bg: 'var(--gl)' },
+      // Cortesía (v539): azul, no verde. «Al día» dice *pagó y está vigente*; esto dice
+      // *no se le cobra*. Dos cosas distintas merecen dos etiquetas distintas, o el coach
+      // no puede distinguir de un vistazo a quién sí tiene que cobrarle.
+      courtesy: { label: 'Cortesía',    color: 'var(--blt)', bg: 'var(--bll)' },
       expiring: { label: 'Por vencer',  color: 'var(--ort)', bg: 'var(--orl)' },
       grace:    { label: 'Por renovar', color: 'var(--ort)', bg: 'var(--orl)' },
       overdue:  { label: 'Vencido',     color: 'var(--rdt)', bg: 'var(--rdl)' },

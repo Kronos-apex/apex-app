@@ -160,6 +160,8 @@ const {
   selfClientFromRow,
   ownProfileKeys,
   mergeOwnProfile,
+  clientIsBillable,
+  clientIsContactable,
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
@@ -4646,6 +4648,36 @@ test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback'
   assert.strictEqual(MS.badge('active').label, 'Al día');
   assert.strictEqual(MS.badge('overdue').label, 'Vencido');
   assert.strictEqual(MS.badge('zzz').label, 'Sin pago');
+});
+// ── CORTESÍA (v539) — «a esta persona no le cobro» ──────────────────────────────────────────
+// Decisión del PO sobre su hija: la app la trataba como `pending` («Sin pago») para siempre.
+test('MS: cortesía → estado propio, NUNCA «Sin pago» ni vencida', () => {
+  assert.strictEqual(MS.getStatus({ courtesy: true }), 'courtesy');
+  // Y gana sobre la fecha: aunque arrastre un vencimiento viejo de cuando sí se le cobraba.
+  assert.strictEqual(MS.getStatus({ courtesy: true, payments: [{ dueDate: _plusDays(-90) }] }), 'courtesy');
+  assert.strictEqual(MS.getStatus({ courtesy: true, payments: [{ dueDate: _plusDays(-2) }] }), 'courtesy');
+  // 🔒 CONTROL: sin la marca, esos MISMOS datos siguen dando vencido/gracia. Sin esta línea,
+  // un `return 'courtesy'` incondicional saldría verde y nadie volvería a estar vencido.
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-90) }] }), 'overdue');
+  assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-2) }] }), 'grace');
+});
+test('MS: la cortesía NO es una suspensión — entra siempre, y suspender pesa más', () => {
+  assert.strictEqual(MS.canLogin({ courtesy: true }), true);
+  assert.strictEqual(MS.canLogin({ courtesy: true, payments: [{ dueDate: _plusDays(-90) }] }), true);
+  // Suspender es una decisión de ACCESO y va primero: un cortesía suspendido NO entra.
+  assert.strictEqual(MS.getStatus({ courtesy: true, suspended: true }), 'inactive');
+  assert.strictEqual(MS.canLogin({ courtesy: true, suspended: true }), false);
+});
+test('MS.badge: cortesía tiene etiqueta PROPIA, distinta de «Al día»', () => {
+  assert.strictEqual(MS.badge('courtesy').label, 'Cortesía');
+  assert.notStrictEqual(MS.badge('courtesy').label, MS.badge('active').label);
+  assert.notStrictEqual(MS.badge('courtesy').bg, MS.badge('active').bg);
+});
+test('clientIsBillable: la cortesía queda FUERA de todo lo que habla de plata', () => {
+  assert.strictEqual(clientIsBillable({ id: 'c1', name: 'Hija' }), true);          // control
+  assert.strictEqual(clientIsBillable({ id: 'c1', name: 'Hija', courtesy: true }), false);
+  // …pero sigue siendo alguien a quien se le escribe y se le notifica: entrena igual.
+  assert.strictEqual(clientIsContactable({ id: 'c1', name: 'Hija', courtesy: true }), true);
 });
 test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viejos', () => {
   const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };

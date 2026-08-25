@@ -2599,14 +2599,21 @@ function renderDetailMembership(id){
   const whatsappBtn=(st==='overdue'||st==='expiring')
     ?`<button class="btn bo bsm" onclick="whatsappReminder('${id}')">WhatsApp</button>`
     :'';
+  // CORTESÍA (v539). El botón se llama por lo que HACE, no por el estado en el que deja:
+  // «No cobrarle» / «Volver a cobrarle». Y va aquí, junto a Suspender, porque son la misma
+  // familia de decisión del coach sobre la cuenta — no un ajuste escondido en otra pantalla.
+  const courtLabel=c.courtesy?'Volver a cobrarle':'No cobrarle';
+  const courtBtn=`<button class="btn bd bsm" onclick="toggleCourtesy('${id}')">${courtLabel}</button>`;
 
   con.innerHTML=`
     <div class="card">
       <div class="ch">
         <div>
           <div class="ctitle">${_gmIco('card',16,'💳')} Membresía</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:3px">Último pago: ${dateStr} · Vence: ${dueStr}</div>
-          ${daysLeftStr?`<div style="margin-top:4px">${daysLeftStr}</div>`:''}
+          ${c.courtesy
+            ? `<div style="font-size:12px;color:var(--t2);margin-top:3px">No se le cobra. La app no le pide pagos ni le manda recordatorios de renovación.</div>`
+            : `<div style="font-size:12px;color:var(--t2);margin-top:3px">Último pago: ${dateStr} · Vence: ${dueStr}</div>
+          ${daysLeftStr?`<div style="margin-top:4px">${daysLeftStr}</div>`:''}`}
         </div>
         <span style="background:${badge.bg};color:${badge.color};font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0">${badge.label}</span>
       </div>
@@ -2615,6 +2622,7 @@ function renderDetailMembership(id){
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
           <button class="btn bp bsm" onclick="openPaymentModal('${id}')">+ Registrar pago</button>
           <button class="${suspClass} bsm" onclick="toggleSuspend('${id}')">${suspLabel}</button>
+          ${courtBtn}
           ${whatsappBtn}
         </div>
       </div>
@@ -2685,6 +2693,21 @@ function toggleSuspend(id){
   renderClients();
   renderHome();
   toast(c.suspended?'Asesorado suspendido':'Asesorado reactivado');
+}
+
+// CORTESÍA (v539) — «a esta persona no le cobro». Misma vía de persistencia que `suspended`
+// (`sv('ax_c')` → fila del asesorado): es un campo más del perfil, sin tabla ni sync nuevos.
+// 🔴 NO borra los pagos que ya tenga registrados: si el coach la desmarca mañana, su historial
+// sigue ahí intacto y el vencimiento vuelve a contar solo. Marcar no es destruir.
+function toggleCourtesy(id){
+  const c=DB.clients.find(x=>x.id===id);
+  if(!c)return;
+  c.courtesy=!c.courtesy;
+  sv('ax_c',DB.clients);
+  renderDetailMembership(id);
+  renderClients();
+  renderHome();
+  toast(c.courtesy?'Listo: a esta persona no se le cobra':'Vuelve a contar para cobros');
 }
 
 function whatsappReminder(id){
