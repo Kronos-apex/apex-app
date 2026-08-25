@@ -4,6 +4,65 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-25 — avi-v539 · v540 · v541: LO QUE EL PO DECIDIÓ HOY
+
+Tres decisiones suyas, ejecutadas en tres versiones.
+
+### v539 — «a esta persona no le cobro» (cortesía)
+
+*«Valery es mi hija, no le voy a cobrar.»* La app no tenía forma de saberlo: sin pagos,
+`getStatus` devolvía `pending` («Sin pago») para siempre — un estado que significa *todavía no ha
+pagado*, o sea una deuda que en su caso no existe ni va a existir.
+
+Va como ESTADO propio y no como un `payments` falso: inventarle un pago de $0 con vencimiento
+lejano habría ensuciado los ingresos, el historial y el banner de vencimientos con un pago que
+nadie hizo. La marca vive en `clientIsBillable`, la ÚNICA puerta por la que un cobro llega a
+alguien, así que cualquier superficie de plata que se escriba mañana la hereda sola. No toca el
+acceso —`canLogin` la deja entrar siempre— y `suspended` sigue pesando más.
+
+Aplicada en producción a Valery: 23 → 24 claves de perfil, nada más tocado.
+
+### v540 — el recordatorio de renovación, 3 días antes y sin hablar de plata
+
+Pedido del PO: *«un recordatorio de pago para los próximos a vencer sin que sea incómodo»*.
+Decidió que le llegue al ASESORADO y que no nombre ni el monto ni el número de cuenta.
+
+🔴 **Lo primero que apareció al medir: lo que ya existía es letra muerta.** `renderPaymentCard`
+pinta una tarjeta de cobro cuando faltan ≤7 días… si hay número de Nequi configurado. En la nube
+ese campo está VACÍO — y aunque estuviera lleno, vive en `coach_settings`, o sea en la fila del
+COACH, y la RLS de `user_data` deja leer solo la fila propia. **El teléfono del asesorado no puede
+leerlo nunca.** Dos puertas cerradas, una detrás de la otra: esa tarjeta no la ha visto nadie.
+
+La banda nueva no depende de ningún dato del coach: la fecha de vencimiento vive en el perfil del
+propio asesorado. Motor puro `renewalNotice` con la MISMA aritmética de `MS.getStatus`, para que
+no quede hueco ni solape con la banda de gracia (v528). Fuera: el coach, la cortesía, el
+suspendido y quien nunca ha pagado.
+
+El TONO era la mitad del pedido y la primera versión lo tenía mal: heredaba el naranja de alerta
+del vencido. Variante `.gband-soft` en azul de información.
+
+Push: **uno solo**, el día exacto y en el turno de la tarde. Nunca `>=`: serían 3 días × 3 turnos
+= nueve avisos de cobro. Edge `daily-notifs` v7 → v8, verificada en seco contra producción
+(HTTP 200, 11 clasificados, 0 fallos, 0 enviados).
+
+Medido antes de construir: de los 7 cobros que caen en seis días, **6 tienen dispositivo con
+notificaciones**; el único sin push es Miguel Pulido.
+
+### v541 — la app dice qué versión trae cada teléfono
+
+Decisión del PO sobre la pregunta que dejó abierta la auditoría de móvil. Hasta hoy la app **solo
+registraba su versión cuando había un error**, así que después de desplegar un arreglo no se podía
+saber si le llegó a alguien: un teléfono sano era invisible.
+
+Ahora hay un latido: al abrir la app, el asesorado anota en su propia fila qué versión corre y
+cuándo. Sin tabla nueva ni RLS nueva. Se sella solo si no había nada, si cambió la versión o si el
+último latido pasó de 12 h. La ficha lo muestra en gris; el Inicio saca tarjeta **solo si hay
+alguien atrasado**, porque una que casi siempre dice «todo bien» es ruido.
+
+💎 De sus 11 sabotajes, dos salieron VERDES y los dos eran huecos del test, no código de más: el
+fixture del orden tenía UN atrasado (dar la vuelta a una lista de uno devuelve lo mismo) y la
+excepción del candado de `esc()` no tenía ningún caso que solo la versión estrecha cazara.
+
 ## 🔄 2026-08-24 — avi-v538: EL REORDEN SE PERDÍA AL RECARGAR Y LOS PESOS QUEDABAN EN EL EJERCICIO DEL VECINO
 
 Reporte del PO, y de los que más duelen porque **corrompe el entreno de quien lo hizo bien**:
