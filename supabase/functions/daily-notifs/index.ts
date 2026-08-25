@@ -188,6 +188,29 @@ const MORNING_DONE = {
 // ── Recordatorio de hábitos (v362): se APENDE al push de la tarde SOLO si el asesorado
 // no registró su agua ni sus pasos hoy. No es un push nuevo — es una coletilla suave al
 // mensaje que ya recibe, para cerrar el día completo. Rotativo por día (msgIndex).
+// ── Recordatorio de RENOVACIÓN (v540) ────────────────────────────────────────────────
+// Decisión del PO (25-ago): el aviso le llega al asesorado, SIN cifras y sin número de cuenta.
+// 🔴 UN SOLO push, el día que faltan exactamente RENEW_NOTICE_DAYS y solo en el turno de la
+// TARDE. Repetirlo los 3 días × 3 turnos serían NUEVE avisos de cobro: eso es justo lo que el PO
+// pidió evitar («sin que sea incómodo»). Los otros dos días el recordatorio vive en la banda de
+// «Hoy», que la persona ve si abre la app y no la persigue si no.
+// ⚠️ ESPEJO de `renewalNotice` (avi-core). Deno no puede importar el módulo del navegador, así
+// que la regla vive dos veces y un test de la suite LEE este archivo y compara la constante —
+// el mismo patrón que `STREAK_MILESTONES` y que el espejo del `.sql` de la vitrina.
+const RENEW_NOTICE_DAYS = 3;
+const RENEW = {
+  title: "Tu plan se renueva pronto 💚",
+  body: [
+    "Tu plan va hasta este fin de semana. Habla con tu coach para renovarlo y seguir sin cortes.",
+    "Quedan pocos días de tu plan. Escríbele a tu coach cuando puedas y lo renuevan.",
+    "Tu plan está por cumplir el mes. Coordina con tu coach para seguir sin interrupciones.",
+    "Se acerca la fecha de renovación de tu plan. Tu coach te cuenta cómo seguir.",
+    "Tu plan termina en unos días. Habla con tu coach para que no se te corte el proceso.",
+    "Recordatorio tranquilo: tu plan se renueva pronto. Escríbele a tu coach.",
+    "Tu mes está por cerrar. Coordina la renovación con tu coach y sigues igual.",
+  ],
+};
+
 const HABITS_REMINDER = [
   "Y no olvides: ¿ya registraste tu agua y tus pasos de hoy?",
   "De paso, anota tu agua y tus pasos de hoy en la app.",
@@ -281,7 +304,7 @@ serve(async (req) => {
       .select("user_id, history, profile");
     if (udErr) console.error("[daily-notifs] user_data:", udErr.message);
     const todayCol = new Date(now.getTime() - 5 * 3600_000).toISOString().slice(0, 10);
-    const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null; habitsLoggedToday: boolean }>();
+    const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null; habitsLoggedToday: boolean; renewDays: number | null }>();
     for (const r of (udRows ?? [])) {
       const hist: Array<{ date?: string }> = Array.isArray(r.history) ? r.history : [];
       let trainedToday = false, last = 0;
@@ -296,7 +319,20 @@ serve(async (req) => {
       const habits = (r.profile && (r.profile as { habits?: { water?: Record<string, number>; steps?: Record<string, number> } }).habits) || {};
       const waterToday = Number((habits.water || {})[todayCol]) || 0;
       const stepsToday = Number((habits.steps || {})[todayCol]) || 0;
+      // Días que faltan para que venza su plan (v540). null = no aplica: sin pagos («pending»,
+      // no hay nada que RE-novar), en cortesía (v539: a esta persona no se le cobra) o suspendido.
+      const prof = (r.profile ?? {}) as { payments?: Array<{ dueDate?: string }>; courtesy?: boolean; suspended?: boolean };
+      let renewDays: number | null = null;
+      if (!prof.courtesy && !prof.suspended && Array.isArray(prof.payments) && prof.payments.length) {
+        let due = 0;
+        for (const p of prof.payments) {
+          const t = p && p.dueDate ? Date.parse(p.dueDate) : NaN;
+          if (isFinite(t) && t > due) due = t;
+        }
+        if (due > 0) renewDays = Math.ceil((due - now.getTime()) / 86400_000);
+      }
       state.set(String(r.user_id), {
+        renewDays,
         trainedToday, total: hist.length,
         daysSince: last ? Math.floor((now.getTime() - last) / 86400_000) : null,
         habitsLoggedToday: waterToday > 0 || stepsToday > 0,
@@ -325,7 +361,11 @@ serve(async (req) => {
         let habitsNudge = false; // v362: ¿apendemos el recordatorio de hábitos a la tarde?
 
         // ── Segmentos por estado (solo asesorados con fila user_data) ──
-        if (st && st.total === 0) {
+        // RENOVACIÓN primero (v540): es el único con FECHA — si cede el turno a otro segmento,
+        // ese día no vuelve. Los demás son recurrentes y pierden un turno sin consecuencia.
+        if (st && st.renewDays === RENEW_NOTICE_DAYS && slot === "afternoon") {
+          title = RENEW.title; body = RENEW.body[msgIndex];
+        } else if (st && st.total === 0) {
           // NUNCA ha entrenado → rescate SOLO tarde, SOLO martes y sábado (no quemar el push)
           if (slot !== "afternoon" || (dayIndex !== 2 && dayIndex !== 6)) { skipped++; continue; }
           title = RESCUE.title; body = RESCUE.body[msgIndex];

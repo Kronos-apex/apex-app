@@ -3920,6 +3920,43 @@ const MS = {
   }
 };
 
+// ── RECORDATORIO DE RENOVACIÓN — los días ANTES de que venza (v540) ─────────────────────
+// Decisión del PO (25-ago): el aviso le llega AL ASESORADO, sin cifras y sin número de cuenta,
+// y abre el chat con su coach. *«Que sea un recordatorio de pago sin que sea incómodo.»*
+//
+// 🔴 LO QUE HABÍA ERA LETRA MUERTA, medido contra la base el 25-ago. `renderPaymentCard` pinta
+// una tarjeta de cobro cuando faltan ≤7 días… y solo si hay número de Nequi configurado. En la
+// nube ese campo está VACÍO, y aunque estuviera lleno vive en la fila del COACH: la RLS de
+// `user_data` deja que cada quien lea SU fila (o las de sus asesorados), así que el teléfono del
+// asesorado no puede leerlo NUNCA. Dos puertas cerradas, una detrás de la otra: esa tarjeta no la
+// ha visto nadie. Esta banda no depende de ningún dato del coach — la fecha de vencimiento vive
+// en el perfil del propio asesorado, que su teléfono sí lee.
+//
+// 🔒 Quién NO recibe nada, y por qué cada uno:
+//   · el coach consigo mismo y quien está en CORTESÍA → `clientIsBillable` (v539);
+//   · quien nunca ha pagado (`pending`, sin `payments`) → no hay nada que RE-novar, y pedirle
+//     plata a un asesorado nuevo el día que estrena la app es exactamente lo que el PO no quiere;
+//   · el suspendido → el coach lo pausó a propósito;
+//   · el que ya venció → esa es la banda de GRACIA (v528), que dice otra cosa distinta.
+// El aviso vive SOLO en los 3 días previos: antes es ruido y el día 0 lo releva la gracia.
+const RENEW_NOTICE_DAYS = 3;
+// `now` opcional (determinismo en tests). Devuelve null o `{days, dueTs}`; el TEXTO lo arma la
+// vista — el formato de fecha depende del idioma del navegador y aquí no hay DOM ni locale.
+function renewalNotice(client, now) {
+  if (!client || !clientIsBillable(client) || client.suspended) return null;
+  const pays = (client.payments || []).filter(p => p && p.dueDate);
+  if (!pays.length) return null;
+  const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
+  const dueTs = new Date(last.dueDate).getTime();
+  if (!isFinite(dueTs)) return null;                       // fecha ilegible → se calla (no se inventa)
+  const nowTs = (now != null ? new Date(now).getTime() : Date.now());
+  // MISMA cuenta que `MS.getStatus`, a propósito: dos formas de contar los días que faltan
+  // acabarían diciendo «te quedan 3» en una pantalla y «por vencer» en otra el día que no toca.
+  const days = Math.ceil((dueTs - nowTs) / 86400000);
+  if (days < 0 || days > RENEW_NOTICE_DAYS) return null;
+  return { days, dueTs };
+}
+
 // ── Orden inteligente de asesorados (mejora 7 del estudio, 2026-07-11) — puro/testeable ──
 // El coach con 20+ asesorados no puede escanear una lista plana. Esta función ordena por
 // QUIÉN NECESITA ATENCIÓN, usando SOLO señales que ya existen en los datos. Devuelve un
@@ -8341,6 +8378,8 @@ if (typeof module !== 'undefined' && module.exports) {
     STORY_TOP_LIFTS,
     MS,
     MS_GRACE_DAYS,
+    RENEW_NOTICE_DAYS,
+    renewalNotice,
     fmtMetric,
     fmtDuration,
     WF_FEELINGS,

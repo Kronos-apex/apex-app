@@ -1294,10 +1294,35 @@ function _missMuteSet(cid,rid){
 //    que no tiene puesto en la lista). Es a propósito: es estado de cuenta, no un aviso.
 // 🔴 Nada de cifras de dinero aquí. El monto y la forma de pago los habla el coach — la app solo
 //    dice qué pasa y abre la conversación.
+// ── Y SU MITAD DE ANTES: EL RECORDATORIO DE RENOVACIÓN (v540) ────────────────────────────────
+// Decisión del PO: el aviso le llega al ASESORADO, en los 3 días previos, SIN cifras y sin número
+// de cuenta — abre el chat con su coach y ya. Vive en el MISMO contenedor que la banda de gracia
+// y por la misma razón: es estado de cuenta, no un aviso que compita por atención (ni el modo día
+// 1 ni el tope de tarjetas de v505 lo tocan). Son excluyentes por construcción — `renewalNotice`
+// exige que falten días y `grace` que ya haya vencido—, así que un solo contenedor basta y no
+// pueden apilarse dos bandas de plata en la misma pantalla.
+// 🔒 Quién queda fuera está decidido en la función pura, no aquí: el coach, la cortesía (v539),
+// el suspendido y el que nunca ha pagado.
+function renderRenewBand(client){
+  const el=document.getElementById('cn-grace'); if(!el)return false;
+  if(typeof renewalNotice!=='function')return false;                  // guard caché vieja
+  const n=renewalNotice(client);
+  if(!n)return false;
+  const fecha=new Date(n.dueTs).toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+  const cuando = n.days===0 ? 'Tu plan llega hasta hoy'
+    : (n.days===1 ? 'Tu plan se renueva mañana' : 'Tu plan se renueva en '+n.days+' días');
+  el.innerHTML='<div class="gband gband-soft">'
+    +'<div class="gband-t">'+esc(cuando)+'</div>'
+    +'<div class="gband-s">Va hasta el <b>'+esc(fecha)+'</b>. Habla con tu coach para renovarlo y seguir entrenando sin cortes.</div>'
+    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +'</div>';
+  return true;
+}
+
 function renderGraceBand(client){
   const el=document.getElementById('cn-grace'); if(!el)return;
   el.innerHTML='';
-  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace') return;
+  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace'){ renderRenewBand(client); return; }
   const d=MS.daysOverdue(client);
   const cuando = d<=1 ? 'ayer' : ('hace '+d+' días');
   const quedan = Math.max(0, MS_GRACE_DAYS-d);

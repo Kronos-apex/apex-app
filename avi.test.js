@@ -162,6 +162,8 @@ const {
   mergeOwnProfile,
   clientIsBillable,
   clientIsContactable,
+  renewalNotice,
+  RENEW_NOTICE_DAYS,
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
@@ -4678,6 +4680,77 @@ test('clientIsBillable: la cortesía queda FUERA de todo lo que habla de plata',
   assert.strictEqual(clientIsBillable({ id: 'c1', name: 'Hija', courtesy: true }), false);
   // …pero sigue siendo alguien a quien se le escribe y se le notifica: entrena igual.
   assert.strictEqual(clientIsContactable({ id: 'c1', name: 'Hija', courtesy: true }), true);
+});
+// ── RECORDATORIO DE RENOVACIÓN (v540) ───────────────────────────────────────────────────────
+// Decisión del PO: le llega AL ASESORADO, 3 días antes, sin cifras, y abre el chat con su coach.
+const _renewC = (dias, extra) => Object.assign({ id: 'c1', name: 'Ana', payments: [{ dueDate: _plusDays(dias) }] }, extra || {});
+test('renewalNotice: aparece SOLO en los días previos, y dice cuántos faltan', () => {
+  assert.strictEqual(renewalNotice(_renewC(3)).days, 3);
+  assert.strictEqual(renewalNotice(_renewC(1)).days, 1);
+  // El día 0 («vence hoy») todavía es previo: aún no ha vencido.
+  assert.ok(renewalNotice(_renewC(0)));
+  // 🔒 Los DOS bordes. Sin el de arriba, ensanchar la ventana a un mes saldría verde; sin el de
+  // abajo, la banda se quedaría puesta encima de la de gracia diciendo dos cosas contrarias.
+  assert.strictEqual(renewalNotice(_renewC(RENEW_NOTICE_DAYS + 1)), null);
+  assert.strictEqual(renewalNotice(_renewC(-1)), null);   // ya venció → eso es la gracia (v528)
+  assert.strictEqual(renewalNotice(_renewC(-30)), null);
+});
+test('renewalNotice: NO le llega a quien no se le cobra', () => {
+  // Cortesía (v539): la marca vive en clientIsBillable, así que se hereda sin repetir la regla.
+  assert.strictEqual(renewalNotice(_renewC(2, { courtesy: true })), null);
+  // El coach consigo mismo.
+  assert.strictEqual(renewalNotice(Object.assign(_renewC(2), { id: core.SELF_CLIENT_ID })), null);
+  // Suspendido: el coach lo pausó a propósito.
+  assert.strictEqual(renewalNotice(_renewC(2, { suspended: true })), null);
+  // Sin pagos NUNCA: no hay nada que RE-novar (y es el asesorado nuevo estrenando la app).
+  assert.strictEqual(renewalNotice({ id: 'c1', payments: [] }), null);
+  assert.strictEqual(renewalNotice({ id: 'c1' }), null);
+  assert.strictEqual(renewalNotice(null), null);
+  // 🔒 CONTROL: los mismos datos SIN la marca sí avisan, o esto no probaría nada.
+  assert.ok(renewalNotice(_renewC(2)));
+});
+test('renewalNotice: manda el vencimiento MÁS RECIENTE y una fecha ilegible se calla', () => {
+  // Un pago viejo no puede disparar el aviso de hoy.
+  assert.strictEqual(renewalNotice({ id: 'c1', payments: [{ dueDate: _plusDays(-90) }, { dueDate: _plusDays(20) }] }), null);
+  assert.strictEqual(renewalNotice({ id: 'c1', payments: [{ dueDate: _plusDays(-90) }, { dueDate: _plusDays(2) }] }).days, 2);
+  // No se inventa una fecha (lección del fallback a la época, v359/v517).
+  assert.strictEqual(renewalNotice({ id: 'c1', payments: [{ dueDate: 'mañana' }] }), null);
+  assert.strictEqual(renewalNotice({ id: 'c1', payments: [{ dueDate: null }] }), null);
+});
+test('renewalNotice: cuenta los días IGUAL que MS.getStatus (una sola aritmética)', () => {
+  const c = { id: 'c1', payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
+  assert.strictEqual(renewalNotice(c, '2026-07-12T00:00:00Z').days, 3);
+  assert.strictEqual(MS.getStatus(c, '2026-07-12T00:00:00Z'), 'expiring');
+  // Y el día que la banda se apaga, la de gracia ya está encendida: no queda hueco entre las dos.
+  assert.strictEqual(renewalNotice(c, '2026-07-16T00:00:00Z'), null);
+  assert.strictEqual(MS.getStatus(c, '2026-07-16T00:00:00Z'), 'grace');
+});
+test('🔒 la banda de renovación NO nombra plata: ni monto, ni Nequi, ni número de cuenta', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function renderRenewBand');
+  assert.ok(i > 0, 'renderRenewBand tiene que existir');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  // Decisión del PO, 25-ago: «sin número, que abra el chat conmigo». El monto y la forma de pago
+  // los habla él — la app solo dice qué pasa y abre la conversación.
+  assert.ok(!/nequi/i.test(cuerpo), 'la banda no puede nombrar Nequi');
+  assert.ok(!/\$|amount|toLocaleString\('es-CO'\s*\)|COP/i.test(cuerpo), 'la banda no puede pintar un monto');
+  assert.ok(/Hablar con mi coach/.test(cuerpo), 'y su única acción es abrir el chat con el coach');
+  assert.ok(/renewalNotice\(/.test(cuerpo), 'la vista DELEGA en el motor puro, no re-deriva la fecha');
+});
+test('🔒 la edge daily-notifs usa el MISMO umbral que la app (espejo, no copia a ojo)', () => {
+  const fs = require('fs'), path = require('path');
+  const edge = fs.readFileSync(path.join(__dirname, 'supabase/functions/daily-notifs/index.ts'), 'utf8');
+  const m = edge.match(/const RENEW_NOTICE_DAYS = (\d+);/);
+  assert.ok(m, 'la edge declara su umbral de renovación');
+  assert.strictEqual(Number(m[1]), RENEW_NOTICE_DAYS,
+    'el umbral de la edge se separó del de avi-core: la app diría una cosa y el push llegaría otro día');
+  // Un solo push: solo el turno de la tarde, y solo el día exacto (nunca `>=`, que serían 3 días
+  // × 3 turnos = nueve avisos de cobro).
+  assert.ok(/st\.renewDays === RENEW_NOTICE_DAYS && slot === "afternoon"/.test(edge),
+    'el push de renovación va UNA vez: día exacto y turno de la tarde');
+  // Y respeta las mismas exclusiones que la app.
+  assert.ok(/!prof\.courtesy && !prof\.suspended/.test(edge), 'la edge respeta cortesía y suspendido');
 });
 test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viejos', () => {
   const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
