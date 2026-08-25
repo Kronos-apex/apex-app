@@ -1819,6 +1819,12 @@ html[data-zoomw="scale"][data-fs="xl"] .md{ width:calc(100%/1.40); transform-ori
 .gband-t{font-size:14px;font-weight:800;color:var(--ort);margin-bottom:4px}
 .gband-s{font-size:12.5px;color:var(--t1);line-height:1.45;margin-bottom:10px}
 .gband-b{background:var(--ort);color:#fff;border:0;border-radius:999px;font-family:inherit;font-size:13px;font-weight:800;padding:9px 16px;cursor:pointer;min-height:40px}
+/* Banda de «estás mirando tu página» (v542). Va ABAJO y reserva el área segura del sistema:
+   lo pegado a un borde en un iPhone instalado se mete debajo de la barra (lección v525). */
+.prevbar{position:fixed;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;gap:10px;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--emerald-hdr);color:var(--on-emerald);
+  font-size:12px;font-weight:600;box-shadow:0 -2px 14px rgba(0,0,0,.18)}
+.prevbar span{flex:1;min-width:0;line-height:1.35}
 /* Variante SUAVE del mismo componente (v540): el recordatorio de renovación, que llega ANTES de
    que venza nada. La forma es la misma —es la misma información: el estado de tu plan— pero el
    naranja de alerta es del vencido; avisar con él tres días antes es justo lo que el PO pidió

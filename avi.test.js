@@ -168,6 +168,9 @@ const {
   deviceInfo,
   coachBuildReport,
   DEV_STAMP_MAX_AGE_MS,
+  isLandingPreview,
+  LANDING_PREVIEW_Q,
+  LANDING_SHARE_MSG,
   USER_DATA_COLLECTIONS,
   MOOD_STATES,
   applyMood,
@@ -4756,6 +4759,74 @@ test('🔒 la edge daily-notifs usa el MISMO umbral que la app (espejo, no copia
   // Y respeta las mismas exclusiones que la app.
   assert.ok(/!prof\.courtesy && !prof\.suspended/.test(edge), 'la edge respeta cortesía y suspendido');
 });
+// ── VER LA PÁGINA PÚBLICA SIN SALIR DE LA CUENTA (v542) ─────────────────────────────────────
+test('isLandingPreview: solo la marca EXACTA saca a alguien de su sesión', () => {
+  assert.strictEqual(isLandingPreview('?ver=pagina'), true);
+  assert.strictEqual(isLandingPreview('?x=1&ver=pagina'), true);
+  assert.strictEqual(isLandingPreview('?ver=pagina&x=1'), true);
+  // 🔒 Lo que NO puede activarla: si esto se afloja, un parámetro cualquiera —o el retorno de
+  // Google, que trae los suyos— dejaría a alguien fuera de su cuenta sin haberlo pedido.
+  assert.strictEqual(isLandingPreview(''), false);
+  assert.strictEqual(isLandingPreview('?ver=pagina2'), false);
+  assert.strictEqual(isLandingPreview('?verver=pagina'), false);
+  assert.strictEqual(isLandingPreview('?ver=otra'), false);
+  assert.strictEqual(isLandingPreview('?error=x&code=abc'), false);
+  assert.strictEqual(isLandingPreview(null), false);
+  // Y la marca que usa el botón es la MISMA que reconoce el arranque (una sola definición).
+  assert.strictEqual(isLandingPreview('?' + LANDING_PREVIEW_Q), true);
+});
+test('🔒 el arranque NO entra a la cuenta en modo «ver mi página», por ninguna de las dos puertas', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/isLandingPreview\(location\.search\)/.test(src), 'el arranque lee la marca');
+  // Las DOS puertas: la sesión de auth y el auto-login legacy. Cerrar solo una es «puerta
+  // cerrada, ventana abierta» — entraría por la otra y el modo no serviría para nada.
+  assert.ok(/session&&session\.user&&_verPagina/.test(src), 'la marca gana sobre la sesión de auth');
+  assert.ok(/if\(!authEntered&&!_verPagina\) tryAutoLogin\(\);/.test(src), 'y también sobre el auto-login legacy');
+  // 🔴 Y NO puede cerrar sesión ni borrar nada: mirar su página no le puede costar la cuenta.
+  const i = src.indexOf('const _verPagina=');
+  const bloque = src.slice(i, i + 2200);
+  assert.ok(!/signOut|logout\(|localStorage\.removeItem|localStorage\.clear/.test(bloque),
+    'el modo «ver mi página» NO puede tocar la sesión guardada');
+  // La banda solo si de verdad se saltó una sesión (a un visitante «Volver a mi panel» no le dice nada).
+  assert.ok(/_verPagina&&_teniaSesion&&typeof renderPreviewBar/.test(src), 'la banda pide sesión previa');
+});
+test('🔒 la puerta a la página existe y abre la página REAL, no una maqueta', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="h-page"/.test(html), 'el Inicio del coach tiene su contenedor');
+  // 🔒 El cableado se afirma DENTRO de `renderHome`, no en todo el archivo: `renderPageCard()`
+  // aparece también en su propia declaración, así que borrar la llamada salía VERDE (lo dijo su
+  // sabotaje). Es el mismo hueco que v536 pagó con un check anclado en el archivo entero.
+  const rh = src.indexOf('function renderHome');
+  const cuerpoHome = src.slice(rh, src.indexOf('\nfunction ', rh + 10));
+  assert.ok(/renderPageCard\(\);/.test(cuerpoHome), 'la tarjeta se pinta al renderizar el Inicio');
+  const i = src.indexOf('function verMiPagina');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  // 🔒 La marca tiene que ir EN la llamada que abre. Pedirla «en el cuerpo» dejaba pasar un
+  // `window.open` pelado con la constante declarada al lado sin usarse — y entonces el botón
+  // manda al coach a SU PROPIO PANEL en vez de a su página, que es el defecto entero.
+  assert.ok(/window\.open\(_aviUrl\(\)\s*\+\s*'\?'\s*\+\s*q/.test(cuerpo),
+    'abre la dirección REAL con la marca pegada');
+  assert.ok(/LANDING_PREVIEW_Q/.test(cuerpo), 'y la marca sale de la constante, no escrita a mano');
+  // El enlace sale de UNA sola definición: dos direcciones escritas a mano acaban separándose.
+  assert.ok(/AVI_SHARE_URL/.test(src.slice(src.indexOf('function _aviUrl'), src.indexOf('function _aviUrl') + 200)),
+    'la dirección se toma de AVI_SHARE_URL, no se re-escribe');
+  // Y el botón «Ver» también está donde publica (v523), que es donde va a querer comprobarlo.
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/onclick="verMiPagina\(\)"/.test(coach), 'la ficha ofrece ver la página tras publicar');
+});
+test('LANDING_SHARE_MSG: habla en la voz del coach y en español colombiano', () => {
+  assert.ok(/mi gente/i.test(LANDING_SHARE_MSG), 'es él quien comparte, no un tercero');
+  // 🔒 Nada de voseo rioplatense: el tono de la app es colombiano (regla de Sofía).
+  // ⚠️ SIN `\b`: en JS una vocal acentuada NO es carácter de palabra, así que `\bmirá\b` no casa
+  // con «mirá sus resultados» y el sabotaje del voseo salía VERDE. La trampa está en el acento.
+  assert.ok(!/(mirá|armá|entrená|tenés|podés|querés)/i.test(LANDING_SHARE_MSG), 'sin voseo');
+  // CONTROL de la propia aserción: con el texto voseado, esta regla TIENE que morder.
+  assert.ok(/(mirá|armá)/i.test('Mirá sus resultados y armá tu plan'), 'la regla del voseo discrimina');
+});
+
 // ── EL LATIDO DE VERSIÓN (v541) — «¿le llegó el arreglo al teléfono?» ───────────────────────
 const _T0 = '2026-08-25T15:00:00Z';
 const _hrs = (base, h) => new Date(Date.parse(base) + h * 3600000).toISOString();

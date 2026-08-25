@@ -3957,6 +3957,30 @@ function renewalNotice(client, now) {
   return { days, dueTs };
 }
 
+// ── VER LA PÁGINA PÚBLICA SIN SALIR DE LA CUENTA (v542) ─────────────────────────────────
+// Reporte del PO (25-ago): *«hoy aparece un botón de compartir datos de asesorados en la página,
+// pero no aparece un link para visitar esa página»*. Tenía razón y es peor de lo que suena: desde
+// v523 él puede PUBLICAR tarjetas en la página que abre su link, pero en toda la app **no había
+// una sola puerta para verla ni para compartirla** — publicaba a ciegas.
+// 🔴 Y aunque hubiera un enlace, tocarlo no le sirve: su sesión está guardada, así que el arranque
+// lo mete DERECHO a su panel. Para ver su propia página tendría que cerrar sesión — o sea que la
+// única forma de mirar su vitrina era dejar de ser él.
+// La solución NO es dibujar una copia de la página dentro de la app (una maqueta se desincroniza
+// y acaba mintiendo sobre lo que ve la gente): es abrir LA PÁGINA DE VERDAD con una marca en la
+// dirección que le dice al arranque «esta vez no entres a la cuenta». No cierra sesión, no toca
+// nada guardado, y vale solo para esa pestaña.
+const LANDING_PREVIEW_Q = 'ver=pagina';
+// PURA. Estricta a propósito: solo esa marca exacta, para que un parámetro cualquiera (o el hash
+// que devuelve Google al conectar la cuenta) no deje a nadie fuera de su sesión por accidente.
+function isLandingPreview(search) {
+  const s = String(search || '');
+  return /(^|[?&])ver=pagina(&|$)/.test(s);
+}
+// El mensaje con el que el COACH comparte su página. Va en su voz —es él quien lo publica en sus
+// historias— y en español colombiano, como todo lo que lee un usuario. El enlace lo pega quien
+// llama (`AVI_SHARE_URL` vive en app-4), para que no haya dos definiciones de la dirección.
+const LANDING_SHARE_MSG = 'Así entrena mi gente 💪 Mira sus resultados reales y arma tu plan conmigo en AVI:';
+
 // ── QUÉ VERSIÓN TRAE CADA TELÉFONO (v541) ───────────────────────────────────────────────
 // Decisión del PO (25-ago), sobre la pregunta que dejó abierta la auditoría de móvil: *«¿se
 // instrumenta la versión que trae cada teléfono?»* → sí.
@@ -8455,6 +8479,9 @@ if (typeof module !== 'undefined' && module.exports) {
     MS_GRACE_DAYS,
     RENEW_NOTICE_DAYS,
     renewalNotice,
+    LANDING_PREVIEW_Q,
+    isLandingPreview,
+    LANDING_SHARE_MSG,
     DEV_STAMP_MAX_AGE_MS,
     deviceStamp,
     deviceInfo,

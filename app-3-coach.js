@@ -1597,9 +1597,12 @@ async function _renderStoryPub(st){
   const el2=document.getElementById('d-story-pub'); if(!el2)return;  // cambió de ficha mientras cargaba
   const ya=filas.find(f=>f.nombre===st.nombre);
   if(ya){
-    el2.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt)">
+    // «Ver» va aquí y no solo en el Inicio (v542): es el momento en que quiere comprobar cómo
+    // quedó — publicar a ciegas y tener que buscar la puerta en otra pantalla es lo que reportó.
+    el2.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt);flex-wrap:wrap">
       ${_coIco('check',13,'✓')} <span>Publicada en tu página</span>
-      <button class="btn bd bsm" style="margin-left:auto" onclick="unpublishProgress('${esc(ya.id)}')">Quitar</button></div>`;
+      <button class="btn bg bsm" style="margin-left:auto" onclick="verMiPagina()">Ver</button>
+      <button class="btn bd bsm" onclick="unpublishProgress('${esc(ya.id)}')">Quitar</button></div>`;
     return;
   }
   const lleno=filas.length>=(typeof SHOWCASE_MAX==='number'?SHOWCASE_MAX:6);

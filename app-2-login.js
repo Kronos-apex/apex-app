@@ -1060,8 +1060,16 @@ syncFromCloud().then(async ()=>{
   if(typeof initRememberMe==='function')initRememberMe();
   if(typeof initPWA==='function')initPWA();
   if(typeof _aviInstallBack==='function')_aviInstallBack();
+  // ── ¿Viene a MIRAR su página, no a entrar? (v542) ──────────────────────────────────────
+  // El coach publica tarjetas en la página que abre su link desde v523, pero no tenía forma de
+  // VERLA: con la sesión guardada, el arranque lo mete derecho a su panel, así que para mirar su
+  // propia vitrina tendría que cerrar sesión. Con `?ver=pagina` el arranque **no entra a la
+  // cuenta en esta pestaña** — no cierra sesión, no borra nada, no toca lo guardado: solo se
+  // queda en la página, que es la de verdad y no una maqueta.
+  const _verPagina=(typeof isLandingPreview==='function')&&isLandingPreview(location.search);
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
   let authEntered=false;
+  let _teniaSesion=false;
   try{
     if(AUTH.ready()){
       const session=await AUTH.getSession();
@@ -1071,7 +1079,13 @@ syncFromCloud().then(async ()=>{
       // devuelve la sesión recién creada por doLogin y el boot RE-ENTRABA completo:
       // segunda carga + segundo initClientView cuyo navReset tardío arrasaba el stack
       // del botón atrás (2 entradas → 0). Si ya estamos en modo auth, no re-entrar.
-      if(session&&session.user&&!AUTH_MODE){
+      _teniaSesion=!!(session&&session.user);
+      if(session&&session.user&&_verPagina){
+        // La marca gana sobre la sesión: se queda en la página. `authEntered` se deja en true
+        // para que tampoco corra el auto-login legacy de abajo — si no, entraría por la otra
+        // puerta y el modo no serviría para nada (puerta cerrada, ventana abierta).
+        authEntered=true;
+      } else if(session&&session.user&&!AUTH_MODE){
         // Retorno de "Conectar mi Google": programado ANTES del await (que puede quedar
         // pendiente, gotcha v216) y con settle para que el splash no tape el toast.
         setTimeout(()=>{ try{ _handleGoogleLinkReturn().catch(()=>{}); }catch(_e){} },1500);
@@ -1088,7 +1102,10 @@ syncFromCloud().then(async ()=>{
     }
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
-  if(!authEntered) tryAutoLogin();
+  if(!authEntered&&!_verPagina) tryAutoLogin();
+  // La banda de «estás mirando tu página» va SOLO si de verdad se saltó una sesión: a un visitante
+  // de verdad —que llega sin cuenta— un botón «Volver a mi panel» no le dice nada.
+  if(_verPagina&&_teniaSesion&&typeof renderPreviewBar==='function')renderPreviewBar();
   // La vitrina de la página de llegada (v523). Va al FINAL y sin `await` en el camino crítico:
   // es una prueba social, no un requisito para entrar — si tarda o falla, el login ya está ahí.
   try{ renderShowcase(); }catch(_e){}
@@ -1613,6 +1630,7 @@ function renderHome(){
   if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
   if(typeof renderBuildsCard==='function')renderBuildsCard();
+  if(typeof renderPageCard==='function')renderPageCard();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
   // 🛡️ Reportes de comunidad (lote v3-a #1): async, se pinta sola solo si hay reportes abiertos.
@@ -1696,6 +1714,83 @@ function renderDeloadAlerts(){
     </div>`).join('')}
   </div>`;
 }
+// ── TU PÁGINA PÚBLICA, CON SU PUERTA (v542) ─────────────────────────────────────────────────
+// Reporte del PO: *«aparece un botón de compartir datos de asesorados en la página, pero no
+// aparece un link para visitar esa página»*. Publicaba a ciegas desde v523. Esta tarjeta es la
+// puerta que faltaba: verla, compartirla y copiar el enlace.
+// 🔴 Es PERMANENTE, a diferencia de la de versiones (v541), y es a propósito: no avisa de un
+// problema, es el acceso a una superficie que él usa para vender. Un acceso que solo aparece
+// «cuando pasa algo» no es un acceso.
+function _aviUrl(){ return (typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://kronos-apex.github.io/apex-app/'; }
+function renderPageCard(){
+  const el=document.getElementById('h-page'); if(!el)return;
+  const url=_aviUrl();
+  // El conteo llega después (es una consulta); la tarjeta se pinta YA, porque su valor es la
+  // puerta, no el número. Si la nube no responde, sigue sirviendo igual.
+  el.innerHTML=`<div class="card" style="padding:11px 14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="color:var(--g2);display:flex">${typeof aviIcon==='function'?aviIcon('users',15):'🌐'}</span>
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">Tu página</div>
+      <span id="h-page-n" style="font-size:11px;color:var(--t2);margin-left:auto"></span>
+    </div>
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:9px">Es la que abre tu link cuando lo compartes. Ahí salen las tarjetas de resultados que publiques.</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiPagina()">Ver mi página</button>
+      <button class="btn bp bsm" style="flex:1;min-width:120px" onclick="compartirMiPagina()">Compartir link</button>
+      <button class="btn bg bsm" onclick="copiarMiPagina()" aria-label="Copiar el enlace de mi página">Copiar</button>
+    </div>
+  </div>`;
+  // Cuántas tarjetas tiene publicadas: usa la MISMA lectura que la ficha (`_loadShowcase`), para
+  // que las dos superficies no puedan decir números distintos.
+  try{
+    if(typeof _loadShowcase==='function'){
+      _loadShowcase().then(filas=>{
+        const n=document.getElementById('h-page-n'); if(!n)return;
+        const max=(typeof SHOWCASE_MAX==='number')?SHOWCASE_MAX:6;
+        n.textContent=(filas&&filas.length)?`${filas.length} de ${max} tarjetas`:'sin tarjetas todavía';
+      }).catch(()=>{});
+    }
+  }catch(e){}
+}
+// Abre la página REAL en otra pestaña, con la marca que le dice al arranque que no entre a la
+// cuenta. Nunca una maqueta: una copia dibujada dentro de la app se desincroniza y acaba
+// mintiendo sobre lo que la gente ve de verdad.
+function verMiPagina(){
+  const q=(typeof LANDING_PREVIEW_Q!=='undefined')?LANDING_PREVIEW_Q:'ver=pagina';
+  window.open(_aviUrl()+'?'+q,'_blank');
+}
+function compartirMiPagina(){
+  const msg=((typeof LANDING_SHARE_MSG!=='undefined')?LANDING_SHARE_MSG:'Mira mi página en AVI:')+' '+_aviUrl();
+  if(navigator.share){
+    navigator.share({title:'AVI',text:msg}).catch(()=>{});
+    return;
+  }
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function copiarMiPagina(){
+  const url=_aviUrl();
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>toast('📋 Link copiado')).catch(()=>toast(url));
+  } else toast(url);
+}
+
+// ── LA BANDA DE «ESTÁS MIRANDO TU PÁGINA» (v542) ────────────────────────────────────────────
+// Sin ella, el coach abre el enlace, ve el login en vez de su panel y lo lee como «me sacó la
+// app» — que es exactamente la clase de susto que produjo el reporte del perfil de coach.
+// Va ABAJO y respetando el área segura del iPhone (lección v525: lo pegado a un borde se mete
+// debajo del reloj o de la barra del sistema).
+function renderPreviewBar(){
+  if(document.getElementById('avi-prevbar'))return;
+  const d=document.createElement('div');
+  d.id='avi-prevbar'; d.className='prevbar';
+  d.innerHTML='<span>Así ve tu página quien entra por tu link</span>'
+    +'<button class="btn bp bsm" onclick="salirVistaPagina()">Volver a mi panel</button>';
+  document.body.appendChild(d);
+}
+// Volver = la MISMA dirección sin la marca. La sesión sigue guardada, así que el arranque entra
+// solo; no hay que volver a escribir la contraseña.
+function salirVistaPagina(){ location.href=location.pathname; }
+
 // ── QUÉ VERSIÓN TRAE CADA TELÉFONO (v541) ───────────────────────────────────────────────────
 // Decisión del PO: instrumentarlo. La pregunta que responde es «¿el arreglo que desplegué le
 // llegó a la gente?», y hasta hoy no se podía contestar: la app solo registraba su versión
