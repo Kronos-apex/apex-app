@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-25 — avi-v543: LA APP ENLAZA A LA WEB (corrección de rumbo de v542)
+
+**v542 leyó mal el pedido.** Cuando el PO dijo *«que las personas puedan visitar la página web de
+la aplicación»* hablaba de **`avi-web-chi.vercel.app`** —su WEB DE VENTA, el proyecto `avi-web` en
+Vercel—, no de la bienvenida de la app. No lo sabía: lo único que el repo declara es
+`AVI_SHARE_URL`, y apunta a la app. Lo aclaró él mandando la dirección.
+
+Son **dos direcciones que hacen cosas distintas**: la WEB explica y vende (qué es AVI, los 3
+pasos, testimonios, precios de $19.900 sin permanencia, su WhatsApp) y la APP es donde se crea la
+cuenta y salen las tarjetas de resultados que él publica.
+
+🔴 La web **ya enlazaba a la app**; faltaba la vuelta. Y pesa: **el link que él comparte en sus
+historias es el de la APP**, así que quien llega cae en una promesa y dos botones y nunca ve lo
+que de verdad vende.
+
+En la bienvenida: *«¿Primera vez aquí? Conoce AVI, los planes y los precios →»*, como ENLACE y no
+como tercer botón, con 44 px de área pulsable (medido: 12 px bajo los botones, dentro de la
+primera pantalla). Estático en `index.html` a propósito — pintado por JS desaparecería justo
+cuando un módulo no carga—, lo que obliga a tener la dirección en dos sitios y por eso hay un
+test que las COMPARA.
+
+🔒 **«Compartir link» sigue dando el link de la app**, con candado propio: es el que él manda en
+sus historias y cambiárselo en silencio le rompería lo que ya funciona.
+
 ## 🔄 2026-08-25 — avi-v542: LA PÁGINA QUE ABRE SU LINK, CON SU PUERTA
 
 Reporte del PO: *«hoy aparece un botón de compartir datos de asesorados en la página, pero no
