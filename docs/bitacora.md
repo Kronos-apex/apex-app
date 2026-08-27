@@ -4,6 +4,116 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v545: EN UN HIIT EL TIEMPO LO DECIDE EL PROTOCOLO, NO EL RELOJ
+
+**Reporte del PO, traído de una pregunta de dos asesoradas reales.** Luz y Claudia entrenan el
+mismo plan. Le preguntaron en el gimnasio por qué, haciendo lo mismo, a una le salían más calorías
+que a la otra — y por qué en el HIIT, habiendo empezado a la vez y puesto las dos las mismas
+rondas, a una le duró más la sesión.
+
+### Lo que se midió (producción, 27-ago)
+
+Las cuatro sesiones del día, leídas de `user_data`:
+
+| | Luz (82 kg) | Claudia (74 kg) |
+|---|---|---|
+| Glúteo | 37:16 · 2.179 kg · 255 kcal | 36:58 · 2.304 kg · 228 kcal |
+| HIIT en Máquina | 8:24 (504 s) · 92 kcal · 10/10 | 6:45 (405 s) · 67 kcal · 10/10 |
+
+**(1) El VOLUMEN no tenía defecto.** `totalVol` = Σ kg × reps de las series cerradas, y no mira
+nada más. Comparados ejercicio por ejercicio, **5 de los 6 son idénticos al kilo** (300 · 600 ·
+480 · 480 · 144 = 2.004). Toda la brecha —125 kg— está en el curl femoral: Claudia 10×15 · 10×15
+= 300; Luz 5×15 · 10×10 = 175. La intuición del PO era correcta y quedó verificada.
+
+**(2) Las CALORÍAS tampoco.** `kcal = MET(modalidad) × peso corporal × horas`, verificado exacto
+en las cuatro sesiones. Luz pesa 82 y Claudia 74 en su ficha: mover un cuerpo más pesado cuesta
+más. Por eso en el glúteo Luz levantó **125 kg menos y quemó 27 kcal más** — dos magnitudes
+distintas, no una contradicción.
+
+**(3) El HIIT sí tenía algo.** El preset `qw_hiit_maquina` son 10 rondas de 30 s con pausas de
+15 s = **435 s desde el ▶**. Como la sesión nace al cerrarse la 1ª ronda (30 s), lo que la app
+debería marcar son **405 s exactos**. Claudia: **405,000 s**, al milisegundo — el temporizador
+corrió limpio de punta a punta. Luz: **504 s**, 99 segundos que el protocolo no explica (una
+pausa, o el celular bloqueado, que en Android congela el temporizador: `gmStartHiit` calcula
+`left` por timestamp pero **la transición de fase solo ocurre cuando el tick DISPARA**).
+
+O sea: la app no calculaba mal, **medía el reloj de pared** — y como las calorías se estiman
+sobre ese tiempo, Luz recibió ~25 kcal por 99 segundos en los que quizá no estaba pedaleando.
+⚠️ Y significa algo peor que un número feo: **sus pausas duraron más de 15 s**, así que las dos
+marcan 10/10 y no hicieron el mismo HIIT.
+
+### La decisión (del PO, sobre tres opciones con su costo delante)
+
+**«Sobre el protocolo.»** En un HIIT el tiempo no se mide: está decidido de antemano.
+
+### El arreglo
+
+`hiitProtocolSec(routine, doneByEx)` (avi-core, **PURA**) → Σ por ejercicio de
+`n·work + (n−1)·rest` sobre las rondas **CERRADAS**. Se aplica **solo si TODOS los ejercicios son
+HIIT** (los tres presets del catálogo lo son); en una sesión mixta —pesas + un HIIT al final—
+devuelve `null` y manda el reloj, que ahí es la única fuente honesta.
+
+- **NO se clampa a 60 s** como el reloj: ese piso protege contra una MEDICIÓN absurda y esto no se
+  mide. Una sola ronda de 30 s se dice 30 s.
+- `showWorkoutFinish` prefiere el protocolo sobre el reloj; la habitación de detalle y los totales
+  del mes leen `s.durationSec`, así que heredan solos (una sola fuente).
+- **Solo hacia adelante**: el historial guardado no se reescribe. Las entradas viejas no guardan la
+  config `hiit` del ejercicio, así que no se puede derivar sin inventar.
+
+**Resultado sobre el caso real:** las dos pasan a **7 min**, con **79 y 72 kcal** — la diferencia
+que queda es la del peso corporal, que es la que sí tiene sentido.
+
+### De paso: 6ª superficie del peso muerto (clase v511)
+
+La misma línea de las calorías leía **`c.weight`**, que se teclea UNA VEZ en el alta y nadie
+actualiza. Ahora delega en `nutWeightFor` (una sola definición de «su peso»): manda el último
+registrado y la ficha queda de respaldo. Hoy no mueve a Luz ni a Claudia —Luz **nunca se ha
+pesado** en la app y la única pesada de Claudia (74, 30-jun) coincide con su ficha—, y por eso
+mismo se cierra ahora.
+
+### Verificación
+
+- Suite **921/921** en los DOS husos (912 → 921; el contador SUBE, o sea que los tests entraron en
+  la tanda contada — lección de v524).
+- Matriz versionada `scripts/e2e/_sabotaje-hiit.mjs`: **7/7 muerden, por CÓDIGO DE SALIDA**.
+  El nº 1 salió primero como «NO SE APLICÓ» (su ancla aparecía 3 veces en `avi-core.js`) — el
+  grito del runner es lo único que lo distingue de un candado flojo.
+- Candado de **CABLEADO** anclado DENTRO del cuerpo de `showWorkoutFinish` (una función pura que
+  nadie llama es «puerta cerrada, ventana abierta»), y candado del **preset**: si alguien cambia
+  las 10 rondas de 30/15, avisa en vez de dejar el 435 medido mintiendo en silencio.
+
+### 🎓 Lecciones
+
+🔴 **UN NÚMERO QUE LA APP MIDE BIEN PUEDE SEGUIR RESPONDIENDO LA PREGUNTA EQUIVOCADA.** Los cuatro
+valores del reporte eran correctos: el volumen se derivaba de lo tecleado y las calorías de la
+fórmula MET, verificadas al dígito en las cuatro sesiones. El defecto no estaba en el cálculo sino
+en **qué se decidió medir**: para un protocolo cuyo tiempo está fijado de antemano, el reloj de
+pared mide a la persona (sus pausas, su pantalla bloqueada), no al entrenamiento. **Regla: antes
+de auditar la fórmula, pregunta si la magnitud es una MEDICIÓN o una CONSTANTE del diseño** — y si
+es constante, derivarla elimina la clase entera en vez de afinar el número.
+
+🔴 **UN VALOR EXACTO AL MILISEGUNDO ES UNA FIRMA, Y VALE MÁS QUE CUALQUIER RAZONAMIENTO.** Los
+405,000 s de Claudia (y los `.233` idénticos en las dos marcas de tiempo) prueban que su sesión
+corrió sobre `setInterval` sin una sola interrupción, porque un intervalo conserva el offset de
+milisegundos de su arranque. Los 503,996 de Luz **no son un múltiplo limpio**: ahí hubo algo que no
+fue el temporizador. **Al diagnosticar con marcas de tiempo, mira los MILISEGUNDOS antes de teorizar:
+distinguen «lo generó un reloj» de «lo generó una persona».**
+
+🔴 **DOS PREGUNTAS EN UN MISMO REPORTE PUEDEN TENER RESPUESTAS OPUESTAS, Y HAY QUE DECIR CUÁL ES CUÁL.**
+Aquí una era «la app funciona como usted cree» (el volumen, con la brecha explicada por un
+ejercicio concreto que el PO podía repetirles a ellas) y la otra un defecto real. Empaquetar las dos
+como «hallazgos» habría hecho dudar de un motor sano; empaquetarlas como «todo bien» habría dejado
+vivo el que sí mordía.
+
+⚠️ **`fmtDuration` REDONDEA A MINUTOS ENTEROS: lo que está en el dato no es lo que se ve.** Los 504
+y 405 segundos guardados se pintan como **«8 min» y «7 min»**, así que la brecha que Luz y Claudia
+notaron de verdad fueron las **calorías** (92 contra 67), no el tiempo. Escribí «8:24 y 6:45» en el
+primer informe leyendo el dato crudo y sin pasarlo por la función que lo pinta. **Al reportar lo
+que alguien VIO, pásalo por el formateador de la app, no por el que uno tiene en la cabeza.**
+
+⏭️ **Abierto (del coach, no de la app):** Luz no tiene ni una pesada registrada y la única de
+Claudia es del 30-jun. Las calorías de las dos se apoyan hoy en un peso que nadie ha confirmado.
+
 ## 🔄 2026-08-25 — avi-v544: LA RACHA DE 14 SEMANAS SE SALÍA DE LA PANTALLA
 
 Reporte del PO: *«el letrero de la racha de semanas entrenadas —en mi caso 14 semanas— está bien

@@ -7027,6 +7027,37 @@ function todayCardPlan(presentes, opts) {
 function hiitCfg(ex) { const c = (ex && ex.hiit) || {}; return { work: parseInt(c.work) || 30, rest: parseInt(c.rest) || 15 }; }
 function holdSecsOf(ex) { ex = ex || {}; return parseInt(ex.holdSecs) || parseInt(ex.reps) || 60; }
 
+// ── Duración PRESCRITA de una sesión que es SOLO HIIT (v545). PURA. ──
+// POR QUÉ: Luz y Claudia hicieron el MISMO HIIT (10 rondas de 30/15), las dos marcaron 10/10, y
+// la app les mostró «8 min · 92 kcal» y «7 min · 67 kcal» — 504 y 405 segundos guardados. Lo que
+// les saltó a la vista fueron las calorías: 25 de diferencia por el mismo trabajo. Ninguno de los
+// dos números estaba mal: medía el reloj de pared
+// entre la 1ª ronda cerrada y la última, así que una pausa —o el celular bloqueado, que en Android
+// congela el temporizador— se cuenta como entrenamiento. Y como las calorías se estiman sobre ese
+// tiempo, Luz recibió ~25 kcal por 99 segundos en los que quizá no estaba pedaleando.
+// En un HIIT el tiempo NO es una medición: está decidido de antemano por el protocolo. 10 rondas
+// de 30s con 9 pausas de 15s son 435s, para quien sea. Por eso, cuando la sesión es 100% HIIT, la
+// duración se DERIVA de las rondas cerradas y deja de depender del reloj.
+// Se aplica SOLO si TODOS los ejercicios son HIIT (los tres presets del catálogo lo son). En una
+// sesión mixta —pesas + un HIIT al final— el reloj de pared sigue siendo la única fuente honesta
+// del tiempo total, así que devuelve null y el llamador no toca nada.
+// NO se clampa a 60s como el reloj: ese piso protege contra una MEDICIÓN absurda, y esto no se
+// mide. Si alguien cerró una sola ronda de 30s, la respuesta honesta es 30s.
+// doneByEx: rondas CERRADAS por ejercicio, en el mismo orden que routine.exercises.
+function hiitProtocolSec(routine, doneByEx) {
+  const exs = (routine && routine.exercises) || [];
+  if (!exs.length) return null;
+  if (!exs.every(e => exTrack(e) === 'hiit')) return null;
+  let sec = 0;
+  for (let i = 0; i < exs.length; i++) {
+    const n = Math.max(0, parseInt((doneByEx || [])[i], 10) || 0);
+    if (!n) continue;
+    const c = hiitCfg(exs[i]);
+    sec += n * c.work + (n - 1) * c.rest;
+  }
+  return sec > 0 ? sec : null;
+}
+
 // Dosis COMPACTA de un ejercicio, para la columna derecha del héroe. PURA.
 // 🔴 Clase de bug ya conocida (Camilo, 2026-06-29): pintar «S×R» para todo le decía «1×20
 // series × reps» a un cardio de 20 minutos. Cada modalidad se dice en su unidad o no se dice.
@@ -8612,6 +8643,7 @@ if (typeof module !== 'undefined' && module.exports) {
     delClientGuard,
     cnTodayGuard,
     hiitCfg,
+    hiitProtocolSec,
     holdSecsOf,
     exDoseShort,
     heroTitleSize,

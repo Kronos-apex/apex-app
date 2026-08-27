@@ -2285,6 +2285,19 @@ function _sessionMET(routine){
   let sum=0; exs.forEach(e=>{ sum+=_trackMET(exTrack(e)); });
   return sum/exs.length;
 }
+// Rondas/series CERRADAS por ejercicio, en el orden de routine.exercises. Lo necesita
+// hiitProtocolSec, que es pura y no puede leer las banderas de sesión.
+function _roundsDoneByEx(routine){
+  return ((routine&&routine.exercises)||[]).map((ex,ei)=>{
+    const sets=parseInt(ex.sets)||3; let n=0;
+    for(let si=0;si<sets;si++)if(isDone(routine.id,ei,si))n++;
+    return n;
+  });
+}
+// El peso corporal con el que se estiman las calorías. `c.weight` se teclea UNA VEZ en el alta y
+// nadie lo vuelve a tocar (v511): manda el último registrado, y la ficha es solo el respaldo de
+// quien no se ha pesado nunca. Delega en nutWeightFor — una sola definición de "su peso".
+function _entrenoPesoDe(c){ return nutWeightFor(c,(DB.bodyweight||{})[c&&c.id]); }
 function showWorkoutFinish(routine,stats){
   if(!routine)return;
   const key=routine.id+'|'+new Date().toDateString();
@@ -2304,8 +2317,14 @@ function showWorkoutFinish(routine,stats){
   const entry=(DB.history[CUR.clientId]||[]).find(h=>_sid?h.sessionId===_sid:(h.routineId===routine.id&&new Date(h.date).toDateString()===today));
   _wfEntry=entry||null;
   if(entry&&entry.startedAt){
-    durationSec=Math.max(60,Math.min(4*3600,Math.round((Date.now()-Date.parse(entry.startedAt))/1000)));
-    const w=parseFloat(c&&c.weight)||70;            // kg; fallback 70 si no hay peso
+    // Reloj de pared: desde la 1ª serie cerrada hasta ahora. Es la fuente de siempre y la única
+    // honesta en una sesión de fuerza, donde el descanso lo pone la persona.
+    const reloj=Math.max(60,Math.min(4*3600,Math.round((Date.now()-Date.parse(entry.startedAt))/1000)));
+    // …salvo si la sesión es 100% HIIT: ahí el tiempo lo decide el PROTOCOLO, no el reloj. Ver
+    // hiitProtocolSec (avi-core) para el caso real que lo motivó (Luz y Claudia, 27-ago).
+    const proto=hiitProtocolSec(routine,_roundsDoneByEx(routine));
+    durationSec=proto!=null?proto:reloj;
+    const w=parseFloat(_entrenoPesoDe(c))||70;      // kg; fallback 70 si no hay peso
     kcal=Math.round(_sessionMET(routine)*w*(durationSec/3600)); // MET según la modalidad de la sesión
     entry.durationSec=durationSec; entry.kcal=kcal;
     // Récords logrados este día → se guardan en la sesión para mostrarlos luego en

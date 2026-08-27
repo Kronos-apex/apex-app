@@ -13102,6 +13102,102 @@ test('🔒 ningún campo de texto baja de 16px (Safari iOS hace zoom al enfocar 
 });
 
 // ══════════════════════════════════════════════════════
+// EL TIEMPO DE UN HIIT LO DECIDE EL PROTOCOLO, NO EL RELOJ (v545)
+// ══════════════════════════════════════════════════════
+// Caso real que lo motivó (27-ago-2026, medido en producción): Luz y Claudia arrancaron el mismo
+// «HIIT en Máquina» con UN SEGUNDO de diferencia, las dos cerraron 10/10 rondas, y la app les
+// mostró «8 min · 92 kcal» y «7 min · 67 kcal» (504 y 405 s guardados; fmtDuration redondea a
+// minutos, así que en PANTALLA la brecha visible fueron las calorías, no el tiempo).
+// Ninguno de los dos números estaba mal: medían el reloj
+// de pared entre la 1ª ronda cerrada y la última. El de Claudia salió en 405,000 s EXACTOS, que
+// es el valor teórico (435 del protocolo menos los 30 s de la 1ª ronda, que es cuando nace la
+// sesión); Luz tenía 99 s que el protocolo no explica — una pausa, o el celular bloqueado, que
+// en Android congela el temporizador. En un HIIT el tiempo no se mide: está decidido de antemano.
+
+const _hiitEx = (sets, work, rest) => ({ name: 'HIIT / Intervalos', track: 'hiit', sets, hiit: { work, rest } });
+const _hiitRut = (...exs) => ({ id: 'r1', name: 'HIIT', exercises: exs });
+
+test('HIIT: 10 rondas de 30/15 duran 435 s (el caso real de Luz y Claudia), no lo que marque el reloj', () => {
+  const r = _hiitRut(_hiitEx(10, 30, 15));
+  assert.strictEqual(core.hiitProtocolSec(r, [10]), 10 * 30 + 9 * 15);
+  assert.strictEqual(core.hiitProtocolSec(r, [10]), 435);
+});
+
+test('HIIT: las MISMAS rondas dan la MISMA duración — es lo que preguntaron Luz y Claudia', () => {
+  const r = _hiitRut(_hiitEx(10, 30, 15));
+  assert.strictEqual(core.hiitProtocolSec(r, [10]), core.hiitProtocolSec(r, [10]));
+  // Y con menos rondas TIENE que dar menos: si no, «duración» dejaría de significar nada.
+  assert.ok(core.hiitProtocolSec(r, [9]) < core.hiitProtocolSec(r, [10]));
+});
+
+test('HIIT: se cuentan las rondas CERRADAS, no las planeadas (5 de 10 → 210 s)', () => {
+  const r = _hiitRut(_hiitEx(10, 30, 15));
+  assert.strictEqual(core.hiitProtocolSec(r, [5]), 5 * 30 + 4 * 15);
+});
+
+test('HIIT: una sola ronda no lleva pausa (30 s, no 45) — aquí es donde muerde el n-1', () => {
+  assert.strictEqual(core.hiitProtocolSec(_hiitRut(_hiitEx(10, 30, 15)), [1]), 30);
+});
+
+test('HIIT: cero rondas cerradas → null (no se inventa una duración)', () => {
+  assert.strictEqual(core.hiitProtocolSec(_hiitRut(_hiitEx(10, 30, 15)), [0]), null);
+});
+
+test('HIIT: varios ejercicios, cada uno con SU config (el preset de casa y el pliométrico)', () => {
+  // qw_hiit_casa: 5 ejercicios × 4 rondas de 30/15 → 5 × (4·30 + 3·15) = 825
+  const casa = _hiitRut(...Array.from({ length: 5 }, () => _hiitEx(4, 30, 15)));
+  assert.strictEqual(core.hiitProtocolSec(casa, [4, 4, 4, 4, 4]), 5 * (4 * 30 + 3 * 15));
+  // qw_plio: 5 ejercicios × 3 rondas de 40/20 → 5 × (3·40 + 2·20) = 800
+  const plio = _hiitRut(...Array.from({ length: 5 }, () => _hiitEx(3, 40, 20)));
+  assert.strictEqual(core.hiitProtocolSec(plio, [3, 3, 3, 3, 3]), 5 * (3 * 40 + 2 * 20));
+  assert.strictEqual(core.hiitProtocolSec(plio, [3, 3, 3, 3, 3]), 800);
+  // Parcial en una sesión de varios: los ejercicios sin cerrar no restan (el 'continue' del bucle).
+  assert.strictEqual(core.hiitProtocolSec(casa, [4, 4, 0, 0, 0]), 2 * (4 * 30 + 3 * 15));
+});
+
+test('🔒 CONTROL: una sesión MIXTA devuelve null — ahí el reloj de pared es la única fuente honesta', () => {
+  // Pesas + un HIIT al final. Derivar el tiempo del protocolo se comería el trabajo de fuerza,
+  // cuyo descanso lo pone la persona y NO está decidido de antemano.
+  const mixta = {
+    id: 'r2', name: 'Pierna + HIIT',
+    exercises: [{ name: 'Sentadilla', track: 'peso_reps', sets: 4 }, _hiitEx(10, 30, 15)],
+  };
+  assert.strictEqual(core.hiitProtocolSec(mixta, [4, 10]), null);
+  // Sin ejercicios tampoco se opina.
+  assert.strictEqual(core.hiitProtocolSec({ id: 'r3', exercises: [] }, []), null);
+  assert.strictEqual(core.hiitProtocolSec(null, null), null);
+});
+
+test('🔒 el preset «HIIT en Máquina» sigue siendo 10 rondas de 30/15 (si cambia, re-medir el 435)', () => {
+  // El 435 de arriba es una cifra MEDIDA contra producción, no derivada del catálogo: si alguien
+  // cambia el preset, este check avisa en vez de dejar el número viejo mintiendo en silencio.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const m = /id:'qw_hiit_maquina'[\s\S]*?items:\[\{id:'e74',sets:(\d+),hiit:\{work:(\d+),rest:(\d+)\}\}\]/.exec(src);
+  assert.ok(m, 'el preset qw_hiit_maquina cambió de forma — revisar el caso medido de v545');
+  assert.deepStrictEqual([+m[1], +m[2], +m[3]], [10, 30, 15]);
+});
+
+test('🔒 CABLEADO: showWorkoutFinish usa el protocolo y el ÚLTIMO peso, no el reloj ni la ficha', () => {
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta»: el candado se ancla
+  // DENTRO del cuerpo de la función que hace el trabajo, no en el archivo entero.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function showWorkoutFinish(');
+  assert.ok(i > 0, 'showWorkoutFinish desapareció de app-4-entreno.js');
+  const j = src.indexOf('\nfunction ', i + 10);
+  const cuerpo = src.slice(i, j > 0 ? j : src.length);
+  assert.ok(/hiitProtocolSec\(routine,\s*_roundsDoneByEx\(routine\)\)/.test(cuerpo),
+    'showWorkoutFinish dejó de preguntarle al protocolo: un HIIT vuelve a durar lo que marque el reloj');
+  assert.ok(/durationSec\s*=\s*proto\s*!=\s*null\s*\?\s*proto\s*:\s*reloj/.test(cuerpo),
+    'la duración dejó de preferir el protocolo sobre el reloj');
+  assert.ok(/_entrenoPesoDe\(c\)/.test(cuerpo),
+    'las calorías volvieron a estimarse con un peso que no es el último registrado');
+  assert.ok(!/parseFloat\(c\s*&&\s*c\.weight\)/.test(cuerpo),
+    'las calorías volvieron a leer c.weight, que se teclea en el alta y nadie actualiza (v511)');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
