@@ -329,7 +329,19 @@ const GEN_LIMIT_KWS = [
   { zone: 'hombro', re: /hombro|manguito|rotador|deltoid/ },
   { zone: 'generic', re: /lesion|operad|postoperat|posoperat|tendon|cirugia|protesis|fractura/ },
 ];
-const GEN_ZONE_LABEL = { rodilla: 'rodilla', lumbar: 'zona lumbar', hombro: 'hombro', generic: 'lesión/postoperatorio' };
+// 🔴 ESTE MAPA SE LLENA COMPLETO O LA ZONA NACE MUDA. Lo cazó Laura midiendo (dictamen del
+// 27-ago §5): desde la adenda del 8-ago, `aductor`, `abductor`, `cuello` y `tobillo` no tenían
+// etiqueta, así que la ficha del coach le decía «reportó dolor: quitamos de su plan lo que suele
+// molestar ahí» SIN DECIR DÓNDE, y —peor— `warmupWarnZones` hace `.map(...).filter(Boolean)` y
+// devolvía VACÍO: cuando el coach armaba el calentamiento a mano, la app no le marcaba nada.
+// Al motor se le FILTRA y al coach se le MARCA; sin etiqueta, la marca no existe.
+const GEN_ZONE_LABEL = {
+  rodilla: 'rodilla', lumbar: 'zona lumbar', hombro: 'hombro',
+  aductor: 'muslo por dentro', abductor: 'cara externa del muslo o glúteo',
+  cuello: 'cuello', tobillo: 'tobillo',
+  codo: 'codo', muneca: 'muñeca o mano', pecho: 'pecho',
+  generic: 'lesión/postoperatorio',
+};
 // Síntomas que sugieren compromiso NERVIOSO (radiculopatía). No cambian qué se excluye —
 // cambian lo que la app le dice al coach: esto es criterio de DERIVACIÓN médica antes de
 // cargar, no de sustituir un ejercicio por otro. (Veredicto de Laura, fisio, 2026-08-02.)
@@ -391,13 +403,75 @@ const GEN_ZONE_EXCL = {
   // regex codifica «qué agrava esta zona», el nivel codifica «cuánto movimiento se permite».
   // ⚠️ Sin `cuerda`: se comía `e11 Extensión de Tríceps con Cuerda en Polea`.
   tobillo: /salto|saltarin|burpee|sprawl|sprint|carrera|trote|tijera|rodillas altas|talones al gluteo|patinador|escalador|mountain climber|elevacion de talones|escalon|step ?-?up|escaladora|subida con rodilla|caminata del granjero|farmer|zancada caminando|perro boca abajo|paso lateral|talones atras|oruga|caminata del oso|caminata del cangrejo/,
+  // ── CODO · MUÑECA · PECHO (dictamen de Laura, 27-ago-2026) ────────────────────────────────
+  // 🔴 LAURA RECTIFICA SU PROPIA DECISIÓN, y el caso que la falsea es del PO. Aquí decía que codo
+  // y muñeca «son de CARGA y AGARRE, no de patrón — un regex acertaría por azar». Él reportó dolor
+  // de codo el 17-ago con `e11` y, entrenando diez días, produjo un patrón limpio: le molestan las
+  // extensiones (polea, trasnuca, a una mano) y NO le molesta la patada en polea. Eso no es ruido
+  // de carga: los tres cargan el codo en FLEXIÓN PROFUNDA CON EL TRÍCEPS ALARGADO (la trasnuca
+  // suma el hombro flexionado → cabeza larga en su longitud máxima), y la patada lo carga
+  // ACORTADO, con el pico de resistencia en la extensión terminal. La tensión sobre el tendón es
+  // máxima con el músculo largo y cargado. Es un mecanismo, es nombrable, y por lo tanto filtrable.
+  // Su frase seguía siendo cierta en una mitad —el agarre NO está en el nombre, §1.6— pero «el
+  // filtro no es perfecto» nunca fue argumento para no tener filtro: es argumento para no prometer
+  // más de lo que hace, y eso lo resuelve el TEXTO (`painResultText`), no la lista.
+  // 🔒 CINCO ESTRECHAMIENTOS MEDIDOS, cada uno es el `sentadilla` que borraba el sit-to-stand:
+  //  · `curl de muneca|rotaciones de muneca` y NUNCA `muneca` a secas → con `muneca` caen los 4
+  //    calentamientos de muñeca (wm1/wm2/wm3/wh5), y el estiramiento del extensor ES el automanejo
+  //    de primera línea de una epicondilalgia. Medido: con la versión estrecha, 0 calentamientos.
+  //  · `banca agarre cerrado` y no `agarre cerrado` → se llevaba `e28 Jalón al Pecho Agarre
+  //    Cerrado`, que es la posición MÁS amable para el codo de los cuatro jalones.
+  //  · `escaladores` (plural) + `mountain climber` y no `escalador` → se llevaba `e135 Escaladora`,
+  //    que es una máquina de piernas.
+  //  · solo las planchas DE MANO (`plancha saltarina`, `plancha a flexion`, `toques de hombro`) y
+  //    nunca `plancha` a secas → las de antebrazo (e17/e49/e164) son justo adonde se manda a
+  //    alguien con problema de codo o de muñeca.
+  //  · NO se excluye `kickback`: se llevaría `e96 Kickback con Banda`, que es de GLÚTEO. Queda
+  //    escrito por si alguien decide algún día excluir la patada.
+  // ⚠️ `colgarse` y `colgad` hacen falta LOS DOS: ninguno contiene al otro.
+  // ⚠️ La ñ SÍ se normaliza (`_norm` hace NFD y quita diacríticos), así que va `muneca`: escribir
+  //    `muñeca` en el regex no matchearía jamás.
+  // 🔒 `GEN_EXCL_IDS.codo` va VACÍO y es una decisión medida, no un olvido: Laura barrió las 244
+  //    descripciones y no encontró ninguno que el nombre no delatara. El falso negativo de esta
+  //    zona no es un ejercicio, es una VARIABLE (cuánto peso y con qué agarre), y por eso el texto
+  //    de codo/muñeca lleva su línea propia.
+  codo: /extension de triceps|press frances|skull|trasnuca|tras ?nuca|fondos|diamante|flexion cerrada|banca agarre cerrado|curl de muneca|rotaciones de muneca|curl invertido|zottman|scott|predicador|colgarse|colgad|dominada|chin ?-?up|azote|cuerdas de batalla|clean|man maker|lanzamiento|burpee|sprawl|escaladores|mountain climber|toques? de hombro|plancha saltarina|plancha a flexion|caminata del oso|caminata del cangrejo|caminata del granjero|farmer|paseo del camarero|camarero/,
+  // 🔒 MUÑECA — un agravador domina a todos: CARGAR PESO SOBRE LA MANO CON LA MUÑECA EN EXTENSIÓN
+  // MÁXIMA (cadena cerrada). De ahí la familia de lagartijas, planchas de mano, gateos, burpees y
+  // la rueda abdominal. Luego el trabajo directo de muñeca, y luego el agarre sostenido bajo
+  // tracción. Va `flexiones` en PLURAL (con `flexion` a secas caería cualquier «flexión de cadera»
+  // futura). Se acepta que caiga toda la familia de lagartijas, incluidas `e77` en pared y `e78` en
+  // rodillas: aquí, a diferencia del sit-to-stand, NO son insustituibles — un press en máquina o
+  // unas aperturas en polea cargan el pecho con cero apoyo sobre la mano, y son mejor respuesta.
+  muneca: /flexiones|flexion cerrada|lagartija|push ?-?up|pike|plancha saltarina|plancha a flexion|toques? de hombro|caminata del oso|caminata del cangrejo|burpee|sprawl|escaladores|mountain climber|oruga|man maker|clean|azote|cuerdas de batalla|lanzamiento|colgarse|colgad|dominada|chin ?-?up|curl de muneca|rotaciones de muneca|curl invertido|zottman|caminata del granjero|farmer|paseo del camarero|camarero|fondos|rueda abdominal|ab wheel/,
+  // 🔒 PECHO — Laura también rectifica aquí. Decía que excluir «borraría todo el patrón de empuje»
+  // y que el dolor torácico que importa ya lo cubre la bandera roja. Las dos mitades eran flojas:
+  // medido, esta lista deja 16 de 22 de pecho vivos y NO TOCA UN SOLO PRESS (borra el patrón de
+  // ESTIRAMIENTO, no el de empuje); y la bandera roja se evalúa ANTES y es independiente — el
+  // filtro no la reemplaza, se suma. El criterio que deja escrito para la próxima zona ambigua:
+  // un filtro es admisible cuando el PEOR CASO que esconde la ambigüedad no sale perjudicado por
+  // él. En «pecho» el peor caso es cardíaco y el filtro no ayuda, pero tampoco daña, y la capa que
+  // sí responde a ese caso ya existe y va primero; sin filtro, al dolor costocondral —que es lo que
+  // de verdad tiene un asesorado de gimnasio— se le sirven mañana cinco aperturas y un pec deck.
+  // Mecanismo: lo que agrava es el FIN DE RANGO BAJO CARGA (aperturas y contractora llevan el
+  // pectoral a su longitud máxima con la resistencia puesta; los fondos añaden compresión
+  // esternoclavicular; lanzamientos y azotes suman impacto costal).
+  // ⚠️ `contractora` y NUNCA `pec deck`: se llevaba `e119 Pec Deck INVERSO`, que es deltoides
+  //    posterior y de los seguros. Y `aperturas` en plural + `apertura de pecho`, nunca `apertura`
+  //    a secas: se llevaría `wc3 Apertura de cadera` y `we3 Apertura de cadena posterior`.
+  // Los presses se quedan TODOS y son 🟡 (rango corto, sin tocar el pecho): eso va en texto.
+  pecho: /aperturas|apertura de pecho|contractora|fondos|lanzamiento|azote/,
 };
 // Ejercicios que el NOMBRE genuinamente no delata. En todo el dictamen es UN solo caso, y por eso
 // esto no es una lista paralela sino la excepción documentada: `e93 «Sentadilla con Banda de
 // Resistencia»` es trabajo directo de abductor disfrazado de sentadilla (su descripción dice que
 // «la banda fuerza la activación del glúteo medio»). 🔒 NO va en `aductor`: la banda RESISTE
 // abducción, así que el aductor no se estira — Laura lo tenía en las dos y lo corrigió al medir.
-const GEN_EXCL_IDS = { abductor: ['e93'] };
+// 🔒 `e127 Sentadilla Frontal con Barra` va en MUÑECA y no en codo: el rack frontal fuerza
+// extensión extrema de muñeca bajo el peso de la barra, pero el peso descansa sobre los
+// deltoides, así que el codo no sufre. Su propia ficha dice «exige movilidad de muñeca/hombro»
+// y el nombre solo dice «sentadilla» — es exactamente el caso para el que existe esta lista.
+const GEN_EXCL_IDS = { abductor: ['e93'], muneca: ['e127'] };
 
 // ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
 // 🔴 HASTA AQUÍ TODO EL MOTOR SABÍA EXCLUIR Y NO SABÍA PRESCRIBIR. Lo destapó el propio PO: «me
@@ -437,6 +511,12 @@ const GEN_EXCL_IDS = { abductor: ['e93'] };
 //         con esas palabras, porque el nombre del ejercicio afirma lo contrario.
 //      3. Un reporte nuevo lo devuelve al escalón agudo — sale gratis: un reporte nuevo tiene
 //         menos de 72 h.
+// 🔒 `codo` NO TIENE CORRECTIVO, Y ES DELIBERADO — no rellenar el hueco (Laura, 27-ago §1.9).
+// El correctivo de un codo depende de QUÉ tendón es (extensor, flexor, tríceps, bíceps distal) y
+// eso no se decide desde una app: son tres pruebas de exploración con las manos encima.
+// Prescribir «lo que le hace falta» sin saber cuál es le daría trabajo excéntrico de antebrazo a
+// quien tiene una inserción tricipital irritada, que es agravarlo. `null` es la respuesta correcta
+// y `correctiveFor` ya la contempla. Lo mismo `muneca` y `pecho`.
 const GEN_CORRECTIVE = {
 // 🔒 EL SITIO LO DICTA LA FUNCIÓN, y lo decide Laura — no se deriva del `type` del catálogo (mi
 // primera versión lo hacía y mandaba solo la movilidad al calentamiento):
@@ -592,6 +672,11 @@ const WARMUP_ZONE_EXCL_IDS = {
   abductor: ['wc2', 'wc3', 'wc5', 'wai2'],
   cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1'],
   tobillo: ['wai1', 'wai2', 'wai4', 'wt2'],
+  // 🔒 `we4 «Plancha de hombros»` habla del hombro en el nombre y su descripción dice «en
+  // posición de lagartija alta… los brazos no se doblan»: es peso corporal completo sobre las
+  // muñecas en extensión máxima con el codo bloqueado. El arquetipo del gesto que hay que
+  // quitar, escondido bajo un nombre de escápula, y EN EL CALENTAMIENTO.
+  muneca: ['we4'],
 };
 // Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
 // Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
@@ -616,14 +701,32 @@ function warmupWarnText(zonas, propio) {
 // MÚSCULO, así que a quien decía «no puedo con esta sentadilla, me duele la rodilla» la app le
 // ofrecía sentadilla en Smith y sentadilla hack. La reacción de la app al dolor era ofrecer más
 // de lo que duele.
-function exerciseContraindicated(ex, limKeys) {
+// 🔴 `lib` NO ES OPCIONAL POR COMODIDAD: sin él la regla existe y no protege a nadie. Una rutina
+// guarda una COPIA del ejercicio, y su `name` puede no ser el del catálogo — el coach lo renombra
+// al armar el plan. Medido el 27-ago sobre los planes reales: `e11` es «Extensión de Tríceps con
+// Cuerda en Polea» en el catálogo y **«Extensión en Polea» en el plan del PO**, que es justo el
+// ejercicio con el que reportó su dolor de codo. La lista de Laura lo atrapa por el nombre bueno y
+// se le escapaba por el guardado: el filtro habría entrado en producción sin quitarle nada a la
+// única persona que lo reportó. No es hipotético ni nuevo: 24 de los 150 nombres en uso difieren
+// del catálogo, y ya había una fuga viva —`e7` está como «Press Militar» y la regla lumbar dice
+// «militar con barra»—. Se prueba contra los DOS nombres; el del catálogo manda porque es donde
+// vive el criterio clínico, y el guardado se conserva porque un ejercicio propio del coach no está
+// en el catálogo. Sin `lib` el comportamiento es el de siempre (ningún caller queda roto).
+function exerciseContraindicated(ex, limKeys, lib) {
   if (!ex || !limKeys || !limKeys.length) return false;
-  const n = _norm(ex.name);
+  const nombres = [_norm(ex.name)];
+  if (lib && ex.id) {
+    const canon = (Array.isArray(lib) ? lib : []).find(x => x && x.id === ex.id);
+    if (canon && canon.name) {
+      const nc = _norm(canon.name);
+      if (nombres.indexOf(nc) < 0) nombres.push(nc);
+    }
+  }
   return limKeys.some(z => {
     const ids = GEN_EXCL_IDS[z];
     if (ids && ex.id && ids.indexOf(ex.id) >= 0) return true;
     const re = GEN_ZONE_EXCL[z];
-    return !!re && re.test(n);
+    return !!re && nombres.some(n => re.test(n));
   });
 }
 
@@ -7664,6 +7767,12 @@ const _PAIN_ZONE_TO_EXCL = {
   'rodilla': 'rodilla',
   'pantorrilla': 'tobillo',            // tríceps sural y Aquiles son la misma unidad
   'tobillo o pie': 'tobillo',
+  // Las tres que Laura habilitó el 27-ago. 🔒 `otra zona` SIGUE sin lista y no se le inventa
+  // una: por definición no sabemos qué es, y filtrar sobre lo desconocido es inventar. Esa
+  // parte de su excepción original la sostiene entera.
+  'codo': 'codo',
+  'muñeca o mano': 'muneca',
+  'pecho': 'pecho',
 };
 
 // shockTargets(sessions, client, now) → PURA. Decide CÓMO atacar cuando hay varios ejercicios
@@ -8755,6 +8864,7 @@ if (typeof module !== 'undefined' && module.exports) {
     painCareActive,
     painZoneKeys,
     limitationsFor,
+    GEN_ZONE_LABEL,
     exerciseContraindicated,
     correctiveFor,
     correctiveZoneKeys,

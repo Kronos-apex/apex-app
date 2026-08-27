@@ -13198,6 +13198,133 @@ test('🔒 CABLEADO: showWorkoutFinish usa el protocolo y el ÚLTIMO peso, no el
 });
 
 // ══════════════════════════════════════════════════════
+// CODO · MUÑECA · PECHO — las tres zonas que se declaraban y no filtraban (v546)
+// ══════════════════════════════════════════════════════
+// Caso real: el PO reportó dolor de CODO derecho el 17-ago-2026 con `e11`, la app le respondió
+// «sacamos de tu sesión lo que carga esa zona, hoy y en los próximos entrenos», y diez días
+// después seguía con e11, e30 y e31 en su plan del martes. `codo` era una de las 4 zonas que el
+// cuestionario ofrecía SIN lista clínica, así que no había nada que sacar. Dictamen de Laura del
+// 27-ago: rectifica su propia excepción y entrega las listas de codo, muñeca y pecho.
+
+const _cliDolor = (area, at) => ({ painCare: [{ at: at || new Date().toISOString(), area, side: 'derecha', level: 2, exId: 'e11' }] });
+const _keysDe = area => core.limitationsFor(_cliDolor(area), Date.now()).keys;
+
+test('dolor de CODO ya produce una clave de exclusión (era una de las 4 zonas mudas)', () => {
+  assert.deepStrictEqual(_keysDe('codo'), ['codo']);
+  assert.strictEqual(core.limitationsFor(_cliDolor('codo'), Date.now()).hasExclusions, true);
+  assert.deepStrictEqual(_keysDe('muñeca o mano'), ['muneca']);
+  assert.deepStrictEqual(_keysDe('pecho'), ['pecho']);
+});
+
+test('🔒 CONTROL: «otra zona» SIGUE sin lista — no se filtra sobre lo desconocido', () => {
+  assert.deepStrictEqual(_keysDe('otra zona'), []);
+  assert.strictEqual(core.limitationsFor(_cliDolor('otra zona'), Date.now()).hasExclusions, false);
+});
+
+test('CODO: caen los 3 que le molestan al PO y NO cae la patada que él encontró', () => {
+  const k = _keysDe('codo');
+  const cae = (id, name) => core.exerciseContraindicated({ id, name }, k);
+  assert.ok(cae('e11', 'Extensión de Tríceps con Cuerda en Polea'), 'e11 debe caer');
+  assert.ok(cae('e30', 'Extensión de Tríceps sobre la Cabeza (Trasnuca)'), 'e30 debe caer');
+  assert.ok(cae('e31', 'Extensión de Tríceps a una Mano en Polea'), 'e31 debe caer');
+  // El control que le da sentido a todo: la patada carga el tríceps ACORTADO y se queda.
+  assert.ok(!cae('e122', 'Patada de Tríceps con Mancuerna (Kickback)'), 'la patada NO debe caer');
+});
+
+test('🔴 el filtro mira el nombre del CATÁLOGO, no solo el guardado en el plan', () => {
+  // Sin esto la regla existe y no protege a nadie: el plan guarda una COPIA del ejercicio y el
+  // coach lo renombra. `e11` es «Extensión en Polea» en el plan del PO — el ejercicio exacto con
+  // el que reportó. Medido: 24 de los 150 nombres en uso difieren del catálogo.
+  const lib = [{ id: 'e11', name: 'Extensión de Tríceps con Cuerda en Polea' }, { id: 'e7', name: 'Press Militar con Barra' }];
+  const enSuPlan = { id: 'e11', name: 'Extensión en Polea' };
+  assert.strictEqual(core.exerciseContraindicated(enSuPlan, _keysDe('codo')), false, 'sin lib se escapa (contrato viejo intacto)');
+  assert.strictEqual(core.exerciseContraindicated(enSuPlan, _keysDe('codo'), lib), true, 'con lib cae');
+  // La fuga que YA estaba viva en producción antes de esta versión, en otra zona.
+  assert.strictEqual(core.exerciseContraindicated({ id: 'e7', name: 'Press Militar' }, ['lumbar'], lib), true);
+  // Control: pasar lib no vuelve contraindicado lo que no lo es.
+  assert.strictEqual(core.exerciseContraindicated({ id: 'e122', name: 'Patada de Tríceps con Mancuerna (Kickback)' }, _keysDe('codo'), lib), false);
+});
+
+test('🔒 LOS 5 CONTROLES DE LAURA: si alguno cae, el regex se ensanchó', () => {
+  const codo = _keysDe('codo'), muneca = _keysDe('muñeca o mano'), pecho = _keysDe('pecho');
+  const vive = (id, name, ks) => assert.ok(!core.exerciseContraindicated({ id, name }, ks), `${id} ${name} NO debía caer`);
+  vive('e119', 'Posteriores en Máquina (Pec Deck Inverso)', codo);   // deltoides posterior, no pec deck
+  vive('e119', 'Posteriores en Máquina (Pec Deck Inverso)', pecho);
+  vive('e28', 'Jalón al Pecho Agarre Cerrado', codo);                 // «agarre cerrado» nunca a secas
+  vive('e96', 'Kickback con Banda (en Suelo)', codo);                 // es de GLÚTEO
+  vive('e135', 'Escaladora (Stair Climber)', codo);                   // máquina de piernas
+  vive('e135', 'Escaladora (Stair Climber)', muneca);
+  // Las 3 planchas de ANTEBRAZO son adonde se manda a alguien con codo o muñeca: se quedan.
+  [['e17', 'Plancha Frontal'], ['e49', 'Plancha Lateral'], ['e164', 'Plancha en Rodillas']]
+    .forEach(([id, n]) => { vive(id, n, codo); vive(id, n, muneca); });
+  // Y su contrario, o el control no discrimina: las de MANO sí caen.
+  [['e189', 'Plancha Saltarina'], ['e201', 'Plancha a Flexión'], ['e188', 'Plancha Toque de Hombro']]
+    .forEach(([id, n]) => assert.ok(core.exerciseContraindicated({ id, name: n }, codo), `${n} SÍ debía caer`));
+});
+
+test('🔒 los calentamientos de muñeca sobreviven: son el tratamiento, no el riesgo', () => {
+  // `muneca` a secas se llevaba wm1/wm2/wm3/wh5 — y el estiramiento del extensor ES el automanejo
+  // de primera línea de una epicondilalgia lateral. Por eso va `curl de muneca|rotaciones de muneca`.
+  const codo = _keysDe('codo');
+  [['wm1', 'Círculos de muñeca'], ['wm2', 'Estiramiento extensor de muñeca'], ['wm3', 'Estiramiento flexor de muñeca']]
+    .forEach(([id, n]) => assert.ok(!core.warmupContraindicated({ id, name: n }, codo), `${n} NO debía caer`));
+  // `we4 «Plancha de hombros»` habla del hombro y es peso corporal sobre la muñeca en extensión:
+  // va por ID porque el nombre no lo delata.
+  assert.ok(core.warmupContraindicated({ id: 'we4', name: 'Plancha de hombros' }, _keysDe('muñeca o mano')));
+});
+
+test('🔒 §5: TODA clave de exclusión tiene etiqueta (o la zona nace muda para el coach)', () => {
+  // Derivado, no una lista a mano: `warmupWarnZones` hace .map(GEN_ZONE_LABEL[z]).filter(Boolean),
+  // así que una clave sin etiqueta devuelve VACÍO y el coach no ve ninguna marca al armar el
+  // calentamiento a mano. Llevaba 4 zonas mudas desde el 8-ago sin que nadie lo notara.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const bloque = src.slice(src.indexOf('const GEN_ZONE_EXCL = {'), src.indexOf('const GEN_EXCL_IDS'));
+  const claves = [...bloque.matchAll(/^  ([a-z]+): \//gm)].map(m => m[1]);
+  assert.ok(claves.length >= 10, `la sonda solo vio ${claves.length} zonas en GEN_ZONE_EXCL`);
+  const sinEtiqueta = claves.filter(z => !core.GEN_ZONE_LABEL[z]);
+  assert.deepStrictEqual(sinEtiqueta, [], 'zonas sin etiqueta (mudas para el coach): ' + sinEtiqueta.join(', '));
+});
+
+test('los 3 ejercicios nuevos existen, son de tríceps y sobreviven a las 10 zonas', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const zonas = ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo', 'codo', 'muneca', 'pecho'];
+  [['e252', 'Patada de Tríceps en Polea'], ['e253', 'Patada de Tríceps con Banda'], ['e254', 'Tríceps Isométrico Autorresistido']]
+    .forEach(([id, nombre]) => {
+      assert.ok(src.includes(`{id:'${id}',name:'${nombre}'`), `${id} «${nombre}» no está en el catálogo`);
+      assert.ok(src.includes(`{id:'${id}',name:'${nombre}',muscle:'triceps'`), `${id} debe ser de tríceps`);
+      zonas.forEach(z => assert.ok(!core.exerciseContraindicated({ id, name: nombre }, [z]),
+        `${nombre} no puede caer en ${z} — se agregó justo para llenar ese hueco`));
+    });
+  // 🔒 Un id RETIRADO no se reusa: resucitaría récords e historial de otro ejercicio.
+  ['e252', 'e253', 'e254'].forEach(id => assert.ok(!core.REMOVED_EXERCISES[id], `${id} está retirado`));
+});
+
+test('🔒 §1.7: con CODO declarado, ningún entorno se queda sin tríceps', () => {
+  // El hueco solo se ve mirando `corporal`: antes de los 3 nuevos era gym 1 · casa 2 · parque 1 ·
+  // corporal 0, y `GEN_DAYS` pide DOS puestos de tríceps aislamiento en tres splits.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const tri = [];
+  for (const m of src.matchAll(/\{id:'(e\d+)',name:'([^']*)',muscle:'triceps'[\s\S]{0,900}?env:\[([^\]]*)\]/g)) {
+    tri.push({ id: m[1], name: m[2], env: m[3].replace(/'/g, '').split(',').map(s => s.trim()) });
+  }
+  assert.ok(tri.length >= 16, `la sonda solo vio ${tri.length} ejercicios de tríceps`);
+  ['gym', 'casa', 'parque', 'corporal'].forEach(en => {
+    const vivos = tri.filter(e => e.env.includes(en) && !core.exerciseContraindicated(e, ['codo']));
+    assert.ok(vivos.length >= 1, `tríceps en ${en} queda en 0 con codo declarado`);
+  });
+});
+
+test('🔒 codo/muñeca/pecho NO tienen correctivo, y es deliberado', () => {
+  // El correctivo de un codo depende de qué tendón es, y eso son tres pruebas con las manos
+  // encima. Prescribir sin saberlo puede agravar. `null` es la respuesta correcta.
+  ['codo', 'muneca', 'pecho'].forEach(z => assert.ok(!core.GEN_CORRECTIVE[z], `${z} no debe tener correctivo`));
+  assert.ok(core.GEN_CORRECTIVE.lumbar, 'control: las zonas que SÍ tienen correctivo siguen teniéndolo');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

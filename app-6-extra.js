@@ -510,7 +510,11 @@ function painSubmit(){
   gmScrollTop();
   // 🔒 EL RESULTADO SE MUESTRA EN PANTALLA, no en un toast que se va. Con una bandera roja no se
   // puede confiar en que alcance a leer un aviso de 3 segundos.
-  painShowResult(tri, _propio);
+  // `hasExclusions` se calcula DESPUÉS de guardar el reporte, porque es lo que decide si la app
+  // de verdad tiene algo que quitarle por esta zona. Se le pregunta al motor, no a una lista aparte.
+  let _hasExcl=true;
+  try{ _hasExcl=(typeof limitationsFor==='function')?!!limitationsFor(c,Date.now()).hasExclusions:true; }catch(_e){}
+  painShowResult(tri, _propio, {hasExclusions:_hasExcl, area:PAIN.area});
   // 🔒 LA APP NO ABRE UN SELECTOR DE ALTERNATIVAS EN NINGÚN NIVEL. Antes, con dolor 🔴 lo abría
   // sola — y encima filtraba por MÚSCULO, así que a quien decía «no puedo con esta sentadilla» le
   // ofrecía otras sentadillas. Proponer una alternativa automática es afirmar que esa alternativa
@@ -560,8 +564,25 @@ const PAIN_RESULT_TXT={
 };
 // Id del reporte que se acaba de crear: es al que apunta «Me equivoqué».
 let _painLastId=null;
-function painShowResult(tri,propio){
-  const d=PAIN_RESULT_TXT[tri.texto]||PAIN_RESULT_TXT.N2;
+// 🔴 EL TEXTO SE RAMIFICA CON `hasExclusions`, Y ANTES NO (dictamen de Laura del 27-ago §3).
+// N1 y N2 afirmaban «sacamos de tu sesión lo que carga esa zona» de forma INCONDICIONAL, mirando
+// solo el nivel de triaje. El campo que dice si de verdad hay algo que sacar existía desde
+// siempre (`limitationsFor().hasExclusions`) y no lo consultaba nadie. Medido: el PO reportó codo
+// el 17-ago, leyó esa frase, y diez días después seguía con los tres ejercicios de tríceps en su
+// plan — porque `codo` no tenía lista. Ahora la tiene, pero `otra zona` no la tendrá nunca (no se
+// filtra sobre lo desconocido), así que la rama sigue haciendo falta.
+// 🔒 La línea extra de codo/muñeca NO es adorno: es la mitad del problema que el filtro no puede
+// tocar. La palabra «codo» sale en más de 60 descripciones del catálogo — lo que decide si duele
+// el jalón no es que sea jalón, es cuánto peso y con qué agarre, y eso no está en el nombre y no
+// va a estarlo. Si el texto calla, la app finge un control que no tiene.
+const PAIN_SIN_LISTA_C='No te vamos a cambiar los ejercicios: con lo que nos contaste no sabemos cuáles quitarte, y quitarte los que no son sería peor. Lo que sí funciona hoy: <b>bájale peso y sáltate lo que te la despierte.</b><br><br>Si un ejercicio te duele, párate ahí mismo. No hay ninguno que valga la pena terminar con dolor.<br><br><b>Parar no te cuesta la racha y el día te cuenta igual.</b><br><br>Te vamos a preguntar cómo va antes de cada entreno. Si en 5 días no mejora, te vamos a pedir que te valore un médico o un fisioterapeuta.';
+const PAIN_CARGA_AGARRE='<br><br>En el codo y en la muñeca manda tanto <b>cuánto peso le pones y cómo agarras</b> como qué ejercicio haces. Baja la carga en lo que quede y prueba con el agarre que menos te moleste: si con las palmas mirándose se siente mejor, ese es tu agarre hoy.';
+const PAIN_AREAS_CARGA=['codo','muñeca o mano'];
+function painShowResult(tri,propio,opts){
+  opts=opts||{};
+  let d=PAIN_RESULT_TXT[tri.texto]||PAIN_RESULT_TXT.N2;
+  if((tri.texto==='N1'||tri.texto==='N2')&&opts.hasExclusions===false) d={...d,c:PAIN_SIN_LISTA_C};
+  else if((tri.texto==='N1'||tri.texto==='N2')&&PAIN_AREAS_CARGA.indexOf(opts.area)>=0) d={...d,c:d.c+PAIN_CARGA_AGARRE};
   const el=document.getElementById('painres-body');
   // El botón solo sale si a ESE reporte le queda su única corrección.
   try{
@@ -604,9 +625,34 @@ function gmPainBannerHTML(){
     <div style="margin-top:7px;font-size:11px;color:var(--t3);line-height:1.5">⚠️ Si el dolor es agudo o lleva varios días, consúltalo con un profesional de la salud.</div>
   </div>`;
 }
-function _painForEx(exId){
-  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!exId)return null;
-  return painCareActive(c.painCare).find(p=>p.exId===exId)||null;
+// ¿Este ejercicio toca una zona que la persona declaró que le duele? Devuelve el reporte y POR QUÉ.
+// 🔴 Antes solo comparaba `p.exId === exId`, o sea el ejercicio EXACTO con el que reportó — y el
+// texto del reporte le promete «sacamos de tu sesión lo que carga esa zona». Medido el 27-ago: el
+// PO reportó codo con `e11` y su plan del martes seguía con `e30` (trasnuca) y `e31` (a una mano)
+// diez días después, sin una sola marca. Ahora se marca TODO lo que carga la zona.
+// 🔒 SE MARCA, NO SE QUITA — y esto no es una comodidad, es la regla de la casa: lo que arma el
+// ALGORITMO se filtra, lo que arma una PERSONA se marca. Esa rutina la escribió el coach. Laura
+// (27-ago §4) autorizó quitar solo donde elige la app —generador, calentamiento, opciones del
+// 🔄— y NO autorizó que la app reescriba el plan sola: proponer una alternativa es afirmar que es
+// segura, y quitarle a alguien un ejercicio de su plan sin avisar es esa misma afirmación al revés.
+function _painForEx(exId, ex){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return null;
+  const act=(typeof painCareActive==='function'?painCareActive(c.painCare):null)||[];
+  if(!act.length)return null;
+  const exacto=exId?act.find(p=>p.exId===exId):null;
+  if(exacto)return {rep:exacto,motivo:'mismo'};
+  // Mismo criterio clínico que usa el generador: una sola fuente, jamás una segunda lista.
+  if(!ex||typeof painZoneKeys!=='function'||typeof exerciseContraindicated!=='function')return null;
+  const keys=painZoneKeys(c,Date.now())||[];
+  if(!keys.length)return null;
+  // `DB.exercises` va SIEMPRE: el plan guarda una copia y su nombre puede no ser el del catálogo.
+  const zona=keys.find(k=>exerciseContraindicated(ex,[k],DB.exercises));
+  if(!zona)return null;
+  return {rep:act.find(p=>(_PAIN_ZONE_KEYS_OF(p)||[]).indexOf(zona)>=0)||act[0],motivo:'zona'};
+}
+// Las claves de exclusión de UN reporte (una zona puede mapear a dos, como «cadera o ingle»).
+function _PAIN_ZONE_KEYS_OF(p){
+  return (typeof painZoneKeys==='function')?painZoneKeys({painCare:[p]},Date.now()):[];
 }
 
 function closeGuidedMode(){
@@ -715,11 +761,16 @@ function gmRender(){
       </div>`;
     card.appendChild(hdr);
     // Chip de cuidado: este ejercicio tiene un reporte de dolor VIGENTE (14 días)
-    const _pw=_painForEx(ex.id);
+    const _pw=_painForEx(ex.id,ex);
     if(_pw){
       const w=document.createElement('div');
       w.className='pain-exchip';
-      w.innerHTML=`🩹 Reportaste dolor de <b>${esc(_pw.area)}</b> con este ejercicio — baja la carga o <button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--gt);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo ${_gmIco('repeat',12,'🔄')}</button>`;
+      const _cambia=`<button type="button" onclick="todaySubstitute(${ei})" style="background:none;border:none;padding:0;color:var(--gt);font-weight:800;cursor:pointer;font-family:inherit;font-size:inherit;text-decoration:underline">cámbialo ${_gmIco('repeat',12,'🔄')}</button>`;
+      // Dos textos, porque son dos cosas distintas y confundirlas se nota: «con este ejercicio»
+      // a quien nunca lo reportó se lee como que la app se equivocó de dato.
+      w.innerHTML=_pw.motivo==='mismo'
+        ? `🩹 Reportaste dolor de <b>${esc(_pw.rep.area)}</b> con este ejercicio — baja la carga o ${_cambia}`
+        : `🩹 Este carga tu <b>${esc(_pw.rep.area)}</b> — baja la carga o ${_cambia}`;
       card.appendChild(w);
     }
     const setsEl = document.createElement('div');

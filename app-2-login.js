@@ -571,7 +571,7 @@ function renderPickerForTarget(){
     if(_c) _pkLim=limitationsFor(_c,Date.now()).keys;
   }
   const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env))
-    &&!(_pkLim&&typeof exerciseContraindicated==='function'&&exerciseContraindicated(e,_pkLim)));
+    &&!(_pkLim&&typeof exerciseContraindicated==='function'&&exerciseContraindicated(e,_pkLim,DB.exercises)));
   const titleEl=document.getElementById('pk-title');
   // Fase C: modos "excluir 🚫" / "priorizar ⭐" → togglean la lista en c.genPrefs.
   if(pickerTarget==='exclude'||pickerTarget==='prefer'){
@@ -608,7 +608,17 @@ function renderPickerForTarget(){
       div.onclick=()=>_applySubstitute(ex);
       list.appendChild(div);
     });
-    if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+    // 🔒 CANDADO DE LAURA (27-ago §4): el selector filtrado NO puede quedarse vacío en silencio.
+    // «Sin ejercicios en esta categoría» se lee como un error de la app cuando en realidad la app
+    // está haciendo lo correcto — y le deja a la persona la duda de si tiene que hacerlo igual.
+    // Con el catálogo de hoy esto le pasa de verdad a un tríceps en gimnasio con codo declarado.
+    // Y la última frase es obligatoria: si saltárselo pareciera costarle algo, nadie se lo salta.
+    if(!filtered.length){
+      const _porZona=_pkLim&&_pkLim.length&&DB.exercises.some(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter));
+      list.innerHTML=_porZona
+        ? '<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px;line-height:1.6">Hoy no tenemos con qué reemplazarlo sin meterte en esa zona.<br><b>Sáltatelo</b> — no cuenta como sesión incompleta.</div>'
+        : '<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+    }
     return;
   }
   if(titleEl)titleEl.textContent='Seleccionar ejercicio';

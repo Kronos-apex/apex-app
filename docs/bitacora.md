@@ -4,6 +4,139 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v546: EL CODO SE PODÍA DECLARAR Y NO FILTRABA NADA (dictamen de Laura)
+
+**Reporte del PO, entrenando con la molestia puesta.** Dijo dos cosas: que la patada de tríceps en
+polea —que descubrió que NO le duele— no está en la biblioteca, y que cuando reporta una molestia
+la app no le sugiere nada: *«te dije que la extensión de tríceps en polea me genera molestia, igual
+la trasnuca y la de una mano, y nunca sugeriste otro ejercicio ni bajarle peso»*.
+
+### Lo que se midió antes de tocar nada
+
+**El 17-ago él reportó codo derecho, N2, con `e11`. La app le respondió por escrito:**
+
+> *«Esa zona la dejamos quieta por ahora. Sacamos de tu sesión lo que carga esa zona, hoy y en los
+> próximos entrenos.»*
+
+**Diez días después, `e11`, `e30` (trasnuca) y `e31` (a una mano) seguían en su Empuje del martes**,
+más `e19` fondos en paralelas en el lunes. Tres huecos apilados, cada uno suficiente por sí solo:
+
+1. 🔴 **`codo` era una de las 4 zonas ofrecidas SIN lista clínica** (con `pecho`, `muñeca o mano` y
+   `otra zona`): el cuestionario ofrece 16 zonas y `_PAIN_ZONE_TO_EXCL` mapeaba 12. Sin clave, no
+   hay nada que excluir. **Y el comentario del propio código, escrito el 8-ago respondiendo a esta
+   MISMA pregunta suya sobre los codos, afirmaba «lo primero sí (se le quita)».** Nunca se quitó.
+2. 🔴 **El plan YA ESCRITO no se filtra por dolor en ninguna parte.** Lo único que mira `painCare`
+   es el generador (un plan NUEVO), el calentamiento y las opciones del 🔄. Aunque el codo hubiera
+   tenido lista, su martes habría seguido igual — o sea que la frase era falsa para CUALQUIER zona.
+3. 🔴 **El filtro compara el nombre GUARDADO, y los planes renombran.** `e11` es «Extensión de
+   Tríceps con Cuerda en Polea» en el catálogo y **«Extensión en Polea» en su plan**. Una regla de
+   codo correcta lo atrapa en el catálogo y **se le escapa en el plan del único que lo reportó**.
+
+**El dato que remata: en toda la base hay UN solo reporte de dolor desde que existe la función. El
+suyo. Y cayó en el hueco.**
+
+### El dictamen de Laura (27-ago) — y su rectificación
+
+En el código estaba escrito, con su firma, que codo y muñeca *«son de CARGA y AGARRE, no de patrón:
+un regex acertaría por azar»*. **El caso del PO falsea esa hipótesis**: entrenando produjo un patrón
+limpio —le molestan las extensiones y NO la patada—, y eso no es ruido de carga. Las tres cargan el
+codo en **flexión profunda con el tríceps ALARGADO**; la patada lo carga **acortado**, con el pico
+de resistencia en la extensión terminal. La tensión sobre el tendón es máxima con el músculo largo
+y cargado: es un mecanismo, es nombrable y por lo tanto es filtrable. Levanta las tres excepciones
+(`codo`, `muneca`, `pecho`) y deja `otra zona` sin lista para siempre.
+
+Rectifica también **pecho**, y sus dos argumentos anteriores eran flojos: la lista deja **16 de 22**
+vivos y **no toca un solo press** (borra el patrón de ESTIRAMIENTO, no el de empuje), y la bandera
+roja va antes y es independiente — el filtro no la reemplaza, se suma. **El criterio que deja para
+la próxima zona ambigua:** un filtro es admisible cuando el PEOR CASO que esconde la ambigüedad no
+sale perjudicado por él.
+
+### Lo implementado
+
+- **Tres listas nuevas en `GEN_ZONE_EXCL`** (codo · muneca · pecho) + `GEN_EXCL_IDS.muneca=['e127']`
+  (la sentadilla frontal: el rack fuerza extensión de muñeca y el nombre dice «sentadilla») +
+  `WARMUP_ZONE_EXCL_IDS.muneca=['we4']` (la «Plancha de hombros», que es peso corporal sobre la
+  muñeca con nombre de escápula) + las 3 entradas del mapa.
+- 🔒 **Cinco estrechamientos medidos**, cada uno es el `sentadilla` que borraba el sit-to-stand:
+  `muneca` nunca a secas (se lleva los 4 calentamientos, y el estiramiento del extensor ES el
+  automanejo) · `banca agarre cerrado` y no `agarre cerrado` (se lleva `e28`, el jalón más amable) ·
+  `escaladores` y no `escalador` (se lleva `e135`, máquina de piernas) · solo las planchas de MANO
+  (las de antebrazo son adonde se manda a alguien con codo) · `contractora` y no `pec deck` (se
+  lleva `e119`, que es deltoides posterior).
+- **El filtro resuelve el nombre CANÓNICO por id** (`exerciseContraindicated(ex, keys, lib)`). Sin
+  esto la regla entraba a producción sin quitarle nada al único que la reportó. Cierra también una
+  fuga que ya estaba viva: `e7` está como «Press Militar» y la regla lumbar dice «militar con barra».
+- **El plan del día ahora MARCA todo lo que carga la zona**, no solo el ejercicio exacto reportado
+  (`_painForEx` mira la zona). 🔒 **Marca, no quita**: esa rutina la escribió el coach, y Laura solo
+  autorizó filtrar donde elige la app. Es la regla de la casa —lo que arma el algoritmo se filtra,
+  lo que arma una persona se MARCA— y por eso el texto del reporte también cambia.
+- **Los textos se ramifican con `hasExclusions`** (el campo existía y no lo consultaba nadie) y
+  codo/muñeca llevan su línea propia sobre carga y agarre, porque **la palabra «codo» sale en más
+  de 60 descripciones**: lo que decide si duele el jalón es cuánto peso y con qué agarre, y eso no
+  está en el nombre ni va a estarlo. Si el texto calla, la app finge un control que no tiene.
+- **El 🔄 filtrado ya no puede quedar vacío en silencio**: dice que no hay con qué reemplazarlo y
+  que saltárselo no cuenta como sesión incompleta (si pareciera costar algo, nadie se lo salta).
+- **`GEN_ZONE_LABEL` completo.** Hallazgo suyo (§5): llevaba **4 zonas mudas desde el 8-ago**, así
+  que la ficha decía «reportó dolor: quitamos lo que suele molestar ahí» **sin decir dónde**, y
+  `warmupWarnZones` devolvía vacío — al coach no se le marcaba nada al armar el calentamiento a mano.
+- **3 ejercicios nuevos (`e252`-`e254`)**: Patada de Tríceps en Polea (la que él nombró, y es *mejor*
+  que la de mancuerna: tensión constante), con Banda, e Isométrico Autorresistido. Sin ellos el pool
+  de tríceps con codo declarado quedaba en **gym 1 · casa 2 · parque 1 · corporal 0**, y `GEN_DAYS`
+  pide DOS puestos en tres splits: la misma patada todos los días y un hueco. Ahora **4 · 4 · 3 · 1**.
+- 🔒 **`codo` no lleva correctivo, y va escrito por qué**: depende de qué tendón es, y eso son tres
+  pruebas con las manos encima. Prescribir a ciegas puede agravar.
+
+### Verificación
+
+- **El dictamen se verificó ANTES de ejecutarlo** (`scripts/verificar-dictamen-laura.mjs`): sus 43
+  ejercicios, sus 0 calentamientos, sus 5 controles y su tabla del hueco por entorno dan exacto.
+- Suite **931/931** en los DOS husos (921 → 931, el contador sube). Matriz `_sabotaje-codo.mjs`
+  **10/10 muerden por código de salida**. `_verify-pain` E2E en navegador real: **todo OK, 0 errores JS**.
+
+### 🎓 Lecciones
+
+🔴 **UNA OPCIÓN QUE SE PUEDE DECLARAR Y NO HACE NADA ES PEOR QUE NO OFRECERLA: promete sola.** El
+cuestionario ofrecía 16 zonas y el motor sabía filtrar 12, y la diferencia no se veía por ninguna
+parte — ni para quien reporta (recibía el mismo texto) ni para el coach. **Regla: cuando una lista
+de OPCIONES y una lista de CAPACIDADES no coinciden, el desajuste tiene que ser visible en el
+producto (aquí `hasExclusions` ramificando el texto), y un candado tiene que exigir que se declare.**
+Puerta cerrada, ventana abierta, aplicada a un menú.
+
+🔴 **UN COMENTARIO QUE AFIRMA QUE ALGO YA ESTÁ CUBIERTO ES LO QUE HACE QUE NADIE VUELVA A MIRAR.** El
+del correctivo, escrito el 8-ago respondiendo literalmente a la pregunta del PO sobre sus codos,
+decía «lo primero sí (se le quita)». Era falso y sobrevivió 19 días y varias auditorías **porque
+estaba escrito**. Misma familia que la razón falsa de F5 y que el «tabular-nums» inerte: al escribir
+que una capacidad existe, ejecútala una vez.
+
+🔴 **UN FILTRO QUE COMPARA CONTRA UN NOMBRE QUE EL USUARIO PUEDE CAMBIAR NO ES UN FILTRO.** Los planes
+guardan una COPIA del ejercicio y el coach lo renombra al armar la rutina: 24 de los 150 nombres en
+uso difieren del catálogo. La regla clínica correcta se le escapaba al ejercicio exacto del único
+que la reportó. **Al filtrar por nombre, resuelve siempre el canónico por ID — y si la entidad tiene
+identidad estable (el id), esa es la que manda; el nombre es presentación.** Esto no lo podía ver
+Laura desde su lado: su regex estaba bien y aun así no protegía a nadie.
+
+🔴 **UN DICTAMEN SE VERIFICA CONTRA EL DATO QUE EL QUE LO ESCRIBIÓ NO TIENE.** Ella midió contra el
+catálogo (y dio exacto: 43, 0 calentamientos, el hueco por entorno). Lo que faltaba era el CONTROL
+que solo existe de este lado: los planes vivos. La división de trabajo correcta es que ella dicte el
+mecanismo y el ingeniero pruebe que es implementable **sobre los datos reales**, no sobre los ideales.
+
+🔴 **UN CONTROL MÁS ANCHO QUE LO QUE CONTROLA ACUSA A LO SANO.** Mi primer control de «las planchas de
+antebrazo sobreviven» las filtraba por NOMBRE y se llevaba dentro «Toques de Hombro en Plancha» y
+«Plancha Toque de Hombro», que se apoyan en la MANO y **sí deben caer**: el control marcó en rojo la
+regla correcta y por un momento pareció que el dictamen fallaba. Es el mismo error que la sonda de
+accesibilidad que acusaba lo sano — pero por el lado del control, que es donde más caro sale porque
+la reacción natural es tocar el código bueno.
+
+⚠️ **UN ANCLA DE SABOTAJE PUEDE COLISIONAR CON SU PROPIO COMENTARIO.** El nº 3 de la matriz no se
+aplicó: `banca agarre cerrado` aparece en el regex **y en el comentario que explica por qué no va
+`agarre cerrado`**. El grito «NO SE APLICÓ» del runner es lo único que lo distingue de un candado
+flojo. Documentar bien una decisión multiplica las ocurrencias del texto que la nombra.
+
+⏭️ **Abierto, y es del PO como persona, no del producto:** 10 días con una molestia que le hace
+moverse distinto es un N2 que ya cumplió su plazo. Laura pide que se valore en persona — el patrón
+que él describe (duele estirado, no duele acortado) tiene al menos tres causas con tres manejos
+distintos, y separarlas son diez minutos con las manos encima. Ninguna app lo hace.
+
 ## 🔄 2026-08-27 — avi-v545: EN UN HIIT EL TIEMPO LO DECIDE EL PROTOCOLO, NO EL RELOJ
 
 **Reporte del PO, traído de una pregunta de dos asesoradas reales.** Luz y Claudia entrenan el
