@@ -13401,6 +13401,110 @@ test('🔒 LOTE 1: el hueco que lo motivó quedó cerrado (bíceps en polea)', (
 });
 
 // ══════════════════════════════════════════════════════
+// LOTE 2 DE LA REPOBLACIÓN — PECHO, ESPALDA Y HOMBROS (v548)
+// ══════════════════════════════════════════════════════
+// 47 ejercicios (e281–e327). Catálogo 273 → 320.
+
+test('LOTE 2: los 47 existen, con nivel, entorno y ficha completa', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const nuevos = marcas.filter(m => +m[1].slice(1) >= 281 && +m[1].slice(1) <= 327);
+  assert.strictEqual(nuevos.length, 47, `esperaba 47 del lote 2, hay ${nuevos.length}`);
+  nuevos.forEach(m => {
+    const b = src.slice(m.index, marcas[marcas.indexOf(m) + 1] ? marcas[marcas.indexOf(m) + 1].index : src.length);
+    assert.ok(/level:'[PIA]'/.test(b), `${m[1]} sin nivel`);
+    assert.ok(/env:\[/.test(b), `${m[1]} sin entorno`);
+    assert.ok(/muscleLabel:'/.test(b) && /descSimple:'/.test(b), `${m[1]} sin ficha completa`);
+    assert.ok(!core.REMOVED_EXERCISES[m[1]], `${m[1]} está retirado`);
+  });
+});
+
+test('🔒 LOTE 2: lo que el nombre NO delata cae por ID (y con su control)', () => {
+  const cae = (id, name, z) => core.exerciseContraindicated({ id, name }, [z]);
+  // El remo al mentón es EL gesto de pinzamiento subacromial y su nombre no lleva ningún término
+  // de la lista de hombro. Igual el press cubano, que termina sobre la cabeza.
+  assert.ok(cae('e313', 'Remo al Mentón con Barra', 'hombro'));
+  assert.ok(cae('e314', 'Remo al Mentón en Polea', 'hombro'));
+  assert.ok(cae('e325', 'Press Cubano con Mancuernas', 'hombro'));
+  // En el multipower el implemento ES una barra, guiada pero barra. `e242` es PREEXISTENTE: llevaba
+  // sin caer desde v497 mientras `e1 Press de Banca con Barra` sí caía.
+  assert.ok(cae('e290', 'Press Inclinado en Multipower', 'hombro'));
+  assert.ok(cae('e242', 'Press de Banca en Multipower', 'hombro'));
+  // Remo inclinado SIN apoyo = la lumbar sosteniendo el torso, igual que `e5 Remo con Barra`.
+  assert.ok(cae('e305', 'Remo Inclinado con Mancuernas a Dos Manos', 'lumbar'));
+  assert.ok(cae('e306', 'Remo en Punta con Barra', 'lumbar'));
+  assert.ok(cae('e247', 'Remo Pendlay con Barra', 'lumbar'));   // PREEXISTENTE desde v497
+  assert.ok(cae('e244', 'Remo en Multipower', 'lumbar'));       // PREEXISTENTE desde v497
+  // El renegado se hace en plancha alta sobre las mancuernas: muñeca en extensión y codo bloqueado.
+  assert.ok(cae('e307', 'Remo Renegado con Mancuernas', 'muneca'));
+  assert.ok(cae('e307', 'Remo Renegado con Mancuernas', 'codo'));
+  // 🔒 CONTROLES — si estos caen, la lista se ensanchó:
+  //  · el remo con mancuerna a UNA mano va apoyado en el banco: la lumbar no sostiene nada.
+  assert.ok(!cae('e52', 'Remo con Mancuerna a una Mano', 'lumbar'));
+  //  · el press en punta NO llega a vertical: es la variante amable de hombro, no el riesgo.
+  assert.ok(!cae('e323', 'Press en Punta a una Mano', 'hombro'));
+  //  · un lateral en polea es aislamiento de deltoides medio, no un gesto de pinzamiento.
+  assert.ok(!cae('e315', 'Elevación Lateral a una Mano en Polea', 'hombro'));
+});
+
+test('🔴 «agarre amplio» pinza POR ENCIMA de la cabeza, no en un remo horizontal', () => {
+  // Mi primer nombre para `e300` era «Remo Sentado en Polea Agarre Amplio» y caía en HOMBRO por
+  // ese término, que existe por el jalón ancho. Ninguno de los otros tres remos en polea cae: era
+  // el NOMBRE que elegí creando la inconsistencia, no la regla. Se renombró el ejercicio.
+  assert.ok(!core.exerciseContraindicated({ id: 'e300', name: 'Remo Sentado en Polea con Barra Ancha' }, ['hombro']));
+  // 🔒 CONTROL: el término sigue haciendo su trabajo donde importa — tirar ancho por encima.
+  assert.ok(core.exerciseContraindicated({ id: 'e26', name: 'Jalón al Pecho Agarre Amplio' }, ['hombro']));
+  // Y el press de banca con agarre amplio SÍ debe caer: se nombró así a propósito.
+  assert.ok(core.exerciseContraindicated({ id: 'e295', name: 'Press de Banca Agarre Amplio' }, ['hombro']));
+});
+
+test('🔒 ninguna zona deja un músculo SIN NADA en su entorno', () => {
+  // Laura §1.7: un hueco en el plan es peor que un ejercicio duro, así que cada exclusión se mide
+  // por músculo Y por entorno. `pecho/corporal` con dolor de MUÑECA llegó a 0 —todas las flexiones
+  // se apoyan en la mano— y por eso existe `e327`, isométrico con las palmas enfrentadas: carga el
+  // pecho sin equipo y sin apoyar la muñeca en extensión.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const cat = marcas.map((m, i) => {
+    const b = src.slice(m.index, marcas[i + 1] ? marcas[i + 1].index : src.length);
+    const campo = k => (new RegExp(k + ":'((?:[^'\\\\]|\\\\.)*)'").exec(b) || [, ''])[1];
+    const env = (/env:\[([^\]]*)\]/.exec(b) || [, "'gym'"])[1].replace(/'/g, '').split(',').map(x => x.trim());
+    return { id: m[1], name: campo('name'), muscle: campo('muscle'), env };
+  });
+  assert.ok(cat.length >= 320 && cat.every(e => e.name), `la sonda resolvió ${cat.length}`);
+  const musculos = [...new Set(cat.map(e => e.muscle))];
+  const huecos = [];
+  ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo', 'codo', 'muneca', 'pecho']
+    .forEach(z => musculos.forEach(m => ['gym', 'casa', 'parque', 'corporal'].forEach(en => {
+      const pool = cat.filter(e => e.muscle === m && e.env.includes(en));
+      if (!pool.length) return;
+      if (!pool.some(e => !core.exerciseContraindicated(e, [z]))) huecos.push(`${z}: ${m}/${en}`);
+    })));
+  assert.deepStrictEqual(huecos, [], 'músculos que quedan sin NINGÚN ejercicio:\n  ' + huecos.join('\n  '));
+});
+
+test('🔒 LOTE 2: el pool de polea creció donde tenía que crecer', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const cat = marcas.map((m, i) => {
+    const b = src.slice(m.index, marcas[i + 1] ? marcas[i + 1].index : src.length);
+    return { name: (/name:'([^']*)'/.exec(b) || [, ''])[1], muscle: (/muscle:'([^']*)'/.exec(b) || [, ''])[1] };
+  });
+  // 🔒 «cable» cuenta igual que «polea»: e3 se llama «Aperturas con Cable» y es el mismo aparato.
+  // Mi primera versión solo buscaba «polea» y afirmaba 8 sobre una medición que SÍ contaba e3 —el
+  // oráculo del test no coincidía con el de la medición, y el rojo era mío.
+  const enPolea = m => cat.filter(e => e.muscle === m && /polea|cable/i.test(e.name)).length;
+  // Cifras medidas con ESTE MISMO oráculo antes y después del lote (no con otro barrido, que es
+  // como me equivoqué dos veces seguidas escribiendo el umbral).
+  assert.ok(enPolea('pecho') >= 8, `pecho en polea: ${enPolea('pecho')}`);      // era 4
+  assert.ok(enPolea('hombros') >= 7, `hombros en polea: ${enPolea('hombros')}`);  // era 2
+  assert.ok(enPolea('espalda') >= 8, `espalda en polea: ${enPolea('espalda')}`);  // era 5
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

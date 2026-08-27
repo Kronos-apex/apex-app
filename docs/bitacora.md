@@ -4,6 +4,77 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v548: LOTE 2 — PECHO, ESPALDA Y HOMBROS (+47)
+
+Segundo lote de la repoblación. Catálogo **273 → 320**. El eje sigue siendo el de VARIANTES: el
+mismo patrón con el implemento y el agarre que de verdad hay en un gimnasio.
+**Pecho en polea 4 → 8 · hombros en polea 2 → 7 · espalda en polea 5 → 8.** Entra el cruce de
+poleas, que era el aislamiento de pecho más usado del gimnasio y no existía.
+
+### 🔒 El nombre, otra vez, como decisión de seguridad
+Tres se nombraron para que el filtro los atrape, y el nombre elegido es igual de correcto en la calle:
+**«Aperturas Cruzadas en Polea»** y no «Cruce de Poleas» (`aperturas` la caza en pecho) ·
+**«Press de Banca Agarre Amplio»** y no «Agarre Ancho» (`agarre amplio` la caza en hombro) ·
+**«Hiperextensiones en Máquina»** y no «Extensión Lumbar» (`hiperexten` la caza en lumbar).
+
+### 🔴 El falso positivo que creó MI nombre
+**«Remo Sentado en Polea Agarre Amplio» caía en HOMBRO.** El término `agarre amplio` existe por el
+jalón ancho —tirar ancho POR ENCIMA de la cabeza es lo que pinza— y un remo es tracción HORIZONTAL:
+ninguno de los otros tres remos en polea cae. Era el nombre que elegí creando la inconsistencia, no
+la regla. **Se renombró el ejercicio** («con Barra Ancha»), y el control es que `e26 Jalón al Pecho
+Agarre Amplio` sigue cayendo.
+
+### 🔴 DOS HUECOS PREEXISTENTES que destapó el barrido (vivos desde v497)
+No los introdujo este lote — llevaban en producción desde el lote de máquinas:
+- **`e247` REMO PENDLAY no caía en lumbar** mientras `e5 Remo con Barra` sí. El Pendlay exige **más**
+  lumbar, no menos: arranca del piso en cada repetición. Igual **`e244` Remo en Multipower**.
+- **`e242` PRESS DE BANCA EN MULTIPOWER no caía en hombro** mientras `e1 Press de Banca con Barra` sí.
+Los tres entran ahora por ID. Es la misma clase que este lote venía a evitar, escrita 51 versiones
+antes: **el lote de v497 eligió nombres sin barrerlos contra los filtros.**
+
+### Lo que entró por ID (mecanismo de Laura aplicado a ejercicios nuevos)
+**HOMBRO** — `e313`/`e314` REMO AL MENTÓN: elevar el codo por encima del hombro en rotación interna
+es el gesto de pinzamiento subacromial por excelencia y es lo primero que un fisio retira; su nombre
+no lleva ningún término de la lista. `e325` PRESS CUBANO (termina sobre la cabeza).
+`e290`/`e291`/`e242` PRESS EN MULTIPOWER: el implemento ES una barra, guiada pero barra.
+**LUMBAR** — `e305`/`e306` remo inclinado SIN apoyo (la lumbar sostiene el torso todo el tiempo,
+igual que `e5`); `e247`/`e244` preexistentes. 🔒 El control es que `e52`, que va apoyado en el
+banco, sigue SIN caer. **MUÑECA y CODO** — `e307` REMO RENEGADO: se hace en plancha alta sobre las
+mancuernas. ⏭️ Todo pendiente de confirmación de Laura; se cae del lado de EXCLUIR.
+
+### `e327`: el hueco que no se podía dejar
+Con dolor de MUÑECA, **pecho en peso corporal quedaba en 0 de 7** — todas las flexiones se apoyan
+en la mano y la regla las excluye con razón. Laura ya lo había aceptado para gimnasio («un press en
+máquina carga el pecho con cero apoyo sobre la mano»), pero quien entrena SIN equipo se quedaba sin
+nada. Entra el **press isométrico autorresistido** (palmas enfrentadas): carga pecho sin equipo y
+con la muñeca en neutro. Espejo de `e254` y `e151`. **Ninguna zona deja ya un músculo en cero**, y
+eso lo afirma un test que barre las 10 zonas × todos los músculos × los 4 entornos.
+
+### Verificación
+Suite **941/941** en los dos husos (936 → 941). `_sabotaje-codo` **15/15 muerden**.
+Barrido de las 10 zonas sobre los 47 nuevos, uno por uno.
+
+### 🎓 Lecciones
+
+🔴 **UN LOTE DE CATÁLOGO SIN BARRIDO DEJA MINAS QUE TARDAN AÑOS EN VERSE.** El de v497 metió 22
+máquinas con nombres razonables y **tres quedaron fuera de los filtros de lesión** — el Pendlay, el
+remo en multipower y el press de banca en multipower—, invisibles durante 51 versiones porque un
+ejercicio que NO cae no da error: simplemente se le sirve a quien no debería. Lo destapó barrer el
+lote nuevo, no una auditoría. **Cada lote se barre contra las 10 zonas Y se compara con su hermano
+ya existente**: si «Press de Banca con Barra» cae y «Press de Banca en Multipower» no, uno de los
+dos está mal.
+
+🔴 **EL FALSO POSITIVO TAMBIÉN LO CREA EL NOMBRE, Y ES MÁS DIFÍCIL DE VER QUE EL FALSO NEGATIVO.**
+«Remo Sentado en Polea Agarre Amplio» caía en hombro y parecía prudente; lo que lo delató fue la
+INCONSISTENCIA CON SUS HERMANOS —ningún otro remo en polea cae—, no el sentido común. **Al revisar
+un barrido, la pregunta no es «¿tiene sentido que caiga?» sino «¿cae lo mismo que sus hermanos?»**;
+el sentido común aprueba casi cualquier exclusión, porque excluir siempre parece lo seguro.
+
+🎓 **DOS VECES SEGUIDAS PUSE UN UMBRAL MEDIDO CON OTRO ORÁCULO.** El test contaba ejercicios «en
+polea» por nombre y yo escribí los umbrales de una medición anterior que también contaba `cable` y
+`jalón`. El rojo era del test, no del código. **El número de una aserción se mide con la MISMA
+función que la aserción usa** — no con el barrido de al lado que dio un número parecido.
+
 ## 🔄 2026-08-27 — avi-v547: LOTE 1 DE LA REPOBLACIÓN — BRAZOS Y POLEAS (+26)
 
 **Decisión del PO tras el estudio:** repoblar por lotes hasta meterlos todos, y **las fotos las va

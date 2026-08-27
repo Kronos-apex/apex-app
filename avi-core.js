@@ -481,7 +481,37 @@ const GEN_ZONE_EXCL = {
 //    el curl araña tiene esa misma posición de abajo, boca abajo en un banco inclinado.
 // ⏭️ PENDIENTE DE SU CONFIRMACIÓN. Se cae del lado de EXCLUIR a propósito: si se equivoca, a
 // alguien con el codo malo le sobra un ejercicio; al revés, le duele.
-const GEN_EXCL_IDS = { abductor: ['e93'], muneca: ['e127'], codo: ['e264', 'e275', 'e276'] };
+// 🔒 LO QUE EL NOMBRE NO DELATA, POR ID. Cada lote de repoblación se barre contra las 10 zonas y
+// lo que debería caer y no cae entra aquí, con su mecanismo escrito. No es criterio nuevo: es el
+// de Laura aplicado a ejercicios que cuando ella dictaminó no existían. ⏭️ Pendiente de su
+// confirmación; se cae del lado de EXCLUIR a propósito.
+//
+// HOMBRO
+//  · `e313`/`e314` REMO AL MENTÓN (barra y polea): elevar el codo por encima del hombro con el
+//    brazo en rotación interna es el gesto de pinzamiento subacromial por excelencia, y su nombre
+//    no lleva ninguno de los términos de la lista. Es EL ejercicio que un fisio retira primero.
+//  · `e325` PRESS CUBANO: termina en press por encima de la cabeza; su nombre no dice «sobre la
+//    cabeza» ni «press militar», que son los términos que cazan a los demás.
+//  · `e290`/`e291`/`e242` PRESS EN MULTIPOWER (inclinado, declinado y banca): la lista dice
+//    `press inclinado con barra` y `press de banca con barra`, y en el multipower el implemento ES
+//    una barra —guiada, pero barra—. `e242` llevaba así desde v497: es un hueco PREEXISTENTE que
+//    este lote destapó, no uno que introdujera.
+// LUMBAR
+//  · `e305` REMO INCLINADO CON MANCUERNAS A DOS MANOS y `e306` REMO EN PUNTA: remo inclinado SIN
+//    apoyo, o sea la lumbar sosteniendo el torso en flexión de cadera todo el tiempo — exactamente
+//    lo que hace caer a `e5 Remo con Barra`. El de una mano (`e52`) NO entra: va apoyado en el banco.
+//  · `e247` REMO PENDLAY y `e244` REMO EN MULTIPOWER: PREEXISTENTES desde v497. El Pendlay exige
+//    MÁS lumbar que el remo normal (arranca del piso en cada repetición) y llevaba sin caer.
+// MUÑECA y CODO
+//  · `e307` REMO RENEGADO: se hace en plancha alta apoyado sobre las mancuernas, así que es peso
+//    corporal sobre muñeca en extensión y codo bloqueado, más el remo. El nombre no dice «plancha».
+const GEN_EXCL_IDS = {
+  abductor: ['e93'],
+  muneca: ['e127', 'e307'],
+  codo: ['e264', 'e275', 'e276', 'e307'],
+  hombro: ['e313', 'e314', 'e325', 'e290', 'e291', 'e242'],
+  lumbar: ['e305', 'e306', 'e247', 'e244'],
+};
 
 // ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
 // 🔴 HASTA AQUÍ TODO EL MOTOR SABÍA EXCLUIR Y NO SABÍA PRESCRIBIR. Lo destapó el propio PO: «me

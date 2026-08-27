@@ -45,7 +45,14 @@ const SABOTAJES = [
   [CORE, '11· «rana» pierde sus límites de palabra → «araña» vuelve a caer por dolor de ingle',
     'fire hydrant|frog|\\brana\\b|patinador', 'fire hydrant|frog|rana|patinador'],
   [CORE, '12· los 3 que el nombre no delata (Press JM, Tate, Curl Araña) dejan de caer en codo',
-    "codo: ['e264', 'e275', 'e276'] };", '};'],
+    "codo: ['e264', 'e275', 'e276', 'e307'],", "codo: [],"],
+  // ── v548, lote 2 ──
+  [CORE, '13· el remo al mentón y el press cubano dejan de caer en hombro (el gesto de pinzamiento)',
+    "  hombro: ['e313', 'e314', 'e325', 'e290', 'e291', 'e242'],", '  hombro: [],'],
+  [CORE, '14· el remo inclinado sin apoyo y el Pendlay dejan de caer en lumbar',
+    "  lumbar: ['e305', 'e306', 'e247', 'e244'],", '  lumbar: [],'],
+  [APP1, '15· desaparece el press isométrico de pecho → peso corporal se queda SIN pecho con dolor de muñeca',
+    "{id:'e327',name:'Press de Pecho Isométrico Autorresistido'", "{id:'e327x',name:'Press de Pecho Isometrico Autorresistidox'"],
 ];
 
 const ORIGINALES = new Map([[CORE.href, readFileSync(CORE, 'utf8')], [APP1.href, readFileSync(APP1, 'utf8')]]);
