@@ -41,6 +41,11 @@ const SABOTAJES = [
     'const GEN_CORRECTIVE = {', "const GEN_CORRECTIVE = {\n  codo: [{ id: 'e140', fase: 'subagudo' }],"],
   [APP1, '10· desaparece la patada en polea → el tríceps de gimnasio vuelve a quedarse en uno',
     "  {id:'e252',name:'Patada de Tríceps en Polea'", "  {id:'e252x',name:'Patada de Tríceps en Poleax'"],
+  // ── v547, lote 1 de la repoblación ──
+  [CORE, '11· «rana» pierde sus límites de palabra → «araña» vuelve a caer por dolor de ingle',
+    'fire hydrant|frog|\\brana\\b|patinador', 'fire hydrant|frog|rana|patinador'],
+  [CORE, '12· los 3 que el nombre no delata (Press JM, Tate, Curl Araña) dejan de caer en codo',
+    "codo: ['e264', 'e275', 'e276'] };", '};'],
 ];
 
 const ORIGINALES = new Map([[CORE.href, readFileSync(CORE, 'utf8')], [APP1.href, readFileSync(APP1, 'utf8')]]);

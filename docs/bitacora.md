@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v547: LOTE 1 DE LA REPOBLACIÓN — BRAZOS Y POLEAS (+26)
+
+**Decisión del PO tras el estudio:** repoblar por lotes hasta meterlos todos, y **las fotos las va
+tomando él en el gimnasio y las pasa después** — los ejercicios entran sin foto porque no afectan
+ninguna rutina ya escrita (las rutinas guardan una COPIA; el catálogo solo cambia lo que el
+generador puede elegir la próxima vez que él toque «✨ Generar»).
+
+### Qué entró — `e255`–`e280`
+14 de bíceps y 12 de tríceps, casi todos VARIANTES del mismo patrón con otro implemento o agarre,
+que es el eje que faltaba. **Bíceps en polea: 1 → 9. Tríceps en polea: 4 → 10.** Catálogo 247 → 273.
+Su ejemplo literal («bíceps en polea con cuerda, con barra corta») ya existe: `e255` cuerda, `e256`
+barra recta, `e257` barra Z.
+
+🔒 **EL NOMBRE ES PARTE DE LA SEGURIDAD.** Los jalones de tríceps se llaman «Extensión de Tríceps
+en Polea con…» y no «Jalón de Tríceps» —que es igual de correcto en la calle— porque con el
+segundo nombre **NO caerían con dolor de codo**, y son exactamente el movimiento que se lo produjo
+a él. Con el primero caen por su propio nombre, sin depender de ninguna lista.
+
+### 🔴 El defecto que introdujo el lote, cazado por el barrido
+**`e264 «Curl de Bíceps Araña»` caía bajo la regla de ADUCTOR.** `_norm` quita la ñ, así que el
+nombre es `...arana` y **contiene `rana`**, el término que existe por el Frog Pump: un curl de
+bíceps quedaba excluido por dolor de ingle. Arreglado en la raíz (`\brana\b`), no renombrando el
+ejercicio — el defecto habría vuelto con el siguiente nombre que llevara «rana» dentro.
+
+### Los 3 que el nombre no delata, por ID
+`e275` Press JM, `e276` Press Tate y `e264` Curl Araña caen en `codo` por `GEN_EXCL_IDS`. **No es
+criterio nuevo: es el mecanismo que Laura dejó escrito el 27-ago aplicado a ejercicios que
+entonces no existían** (`press frances|skull` = flexión profunda de codo bajo carga; `scott|
+predicador` = brazo en extensión completa sobre un apoyo fijo). ⏭️ **Pendiente de su confirmación**,
+y se cae del lado de EXCLUIR a propósito: si se equivoca, a alguien le sobra un ejercicio; al
+revés, le duele.
+
+### Verificación
+Barrido de las 10 zonas sobre los 26 nuevos, uno por uno. Suite **936/936** en los dos husos
+(931 → 936). `_sabotaje-codo` **12/12 muerden**. `verificar-dictamen-laura` verde.
+
+### 🎓 Lecciones
+
+🔴 **UN TÉRMINO DE EXCLUSIÓN SIN LÍMITES DE PALABRA ES UNA MINA QUE ARMA EL SIGUIENTE QUE ESCRIBA UN
+NOMBRE.** `rana` llevaba meses correcto porque ningún ejercicio del catálogo contenía esa secuencia
+dentro de otra palabra; el primer nombre nuevo con «araña» la pisó. **Al escribir un término corto
+en una lista de exclusión, pregúntate de qué palabras es SUBCADENA** — y el arreglo va en el
+término, no en el nombre del ejercicio, o el defecto vuelve con el próximo. Es el `sentadilla` que
+borraba el sit-to-stand, pero por dentro de una palabra.
+
+🔴 **AL AÑADIR AL CATÁLOGO, EL NOMBRE ES UNA DECISIÓN DE SEGURIDAD, NO DE ESTILO.** Dos nombres
+igual de correctos en español —«Jalón de Tríceps» y «Extensión de Tríceps»— dan resultados
+opuestos frente al filtro de lesiones. Se elige el que el filtro entiende, y si el natural no
+sirve, va por ID. **Todo lote nuevo se barre contra las 10 zonas antes de commitear.**
+
+🎓 **UNA CIFRA MEDIDA SE ANCLA A LA POBLACIÓN QUE SE MIDIÓ.** El verificador del dictamen afirmaba
+«43 ejercicios caen en codo» y se puso rojo con el lote (57 de 273). No era una regla ensanchada,
+era el lote haciendo su trabajo: ahora la cifra se afirma sobre los 247 que ella midió (id ≤ e254)
+y el total de hoy se imprime aparte. Un candado que se pone rojo con cada lote se aprende a ignorar.
+
 ## 🔄 2026-08-27 — avi-v546: EL CODO SE PODÍA DECLARAR Y NO FILTRABA NADA (dictamen de Laura)
 
 **Reporte del PO, entrenando con la molestia puesta.** Dijo dos cosas: que la patada de tríceps en

@@ -26,7 +26,11 @@ const R = {
   muneca: /flexiones|flexion cerrada|lagartija|push ?-?up|pike|plancha saltarina|plancha a flexion|toques? de hombro|caminata del oso|caminata del cangrejo|burpee|sprawl|escaladores|mountain climber|oruga|man maker|clean|azote|cuerdas de batalla|lanzamiento|colgarse|colgad|dominada|chin ?-?up|curl de muneca|rotaciones de muneca|curl invertido|zottman|caminata del granjero|farmer|paseo del camarero|camarero|fondos|rueda abdominal|ab wheel/,
   pecho: /aperturas|apertura de pecho|contractora|fondos|lanzamiento|azote/,
 };
-const IDS = { muneca: ['e127'] };            // codo va VACÍO a propósito (§1.6)
+// §1.6: `codo` nació VACÍO —Laura barrió las 244 descripciones y no encontró ninguno que el nombre
+// no delatara—. Dejó de estarlo con el LOTE 1 (v547): tres ejercicios NUEVOS cuyo nombre no lleva
+// ninguno de sus términos (`e275` Press JM, `e276` Press Tate, `e264` Curl Araña). No es criterio
+// nuevo, es su mecanismo aplicado a ejercicios que entonces no existían.
+const IDS = { muneca: ['e127'], codo: ['e264', 'e275', 'e276'] };
 const WU_IDS = { muneca: ['we4'] };
 
 const cae = (z, e) => R[z].test(norm(e.name)) || (IDS[z] || []).includes(e.id);
@@ -77,9 +81,15 @@ console.log(`\n━━━━━━ OTRAS AFIRMACIONES DEL DICTAMEN ━━━━�
 const wuMuneca = wu.filter(w => /muneca/.test(norm(w.name)));
 ok(wuMuneca.length > 0 && wuMuneca.every(w => !caeWu('codo', w)),
   `los ${wuMuneca.length} calentamientos de muñeca sobreviven a codo (son el tratamiento)`);
-ok(cat.filter(e => cae('codo', e)).length === 43, `§1.4: dice 43 ejercicios en codo → mide ${cat.filter(e => cae('codo', e)).length}`);
+// 🔒 Su cifra se ancla al catálogo QUE ELLA MIDIÓ (los 247 de entonces, id ≤ e254). Anclarla al
+// catálogo completo la haría caducar con cada lote de repoblación y el rojo no diría nada: el de
+// hoy sería «43 → 57», que es el lote 1 haciendo su trabajo, no una regla que se ensanchó.
+const delDictamen = cat.filter(e => +e.id.slice(1) <= 254);
+ok(delDictamen.filter(e => cae('codo', e)).length === 43,
+  `§1.4: dice 43 ejercicios en codo sobre los 247 que midió → mide ${delDictamen.filter(e => cae('codo', e)).length}`);
+console.log(`  ℹ️  con el catálogo de hoy (${cat.length}) son ${cat.filter(e => cae('codo', e)).length}`);
 ok(wu.filter(w => caeWu('codo', w)).length === 0, `§1.4: dice 0 calentamientos en codo → mide ${wu.filter(w => caeWu('codo', w)).length}`);
-ok((IDS.codo || []).length === 0, '§1.6: GEN_EXCL_IDS.codo va vacío');
+ok((IDS.codo || []).length === 3, '§1.6: GEN_EXCL_IDS.codo lleva los 3 del lote 1 que el nombre no delata');
 const e127 = porId('e127');
 ok(cae('muneca', e127) && !cae('codo', e127), 'e127 Sentadilla Frontal cae en muñeca (por id) y NO en codo');
 

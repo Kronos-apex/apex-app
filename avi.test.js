@@ -13325,6 +13325,82 @@ test('🔒 codo/muñeca/pecho NO tienen correctivo, y es deliberado', () => {
 });
 
 // ══════════════════════════════════════════════════════
+// LOTE 1 DE LA REPOBLACIÓN — BRAZOS Y POLEAS (v547)
+// ══════════════════════════════════════════════════════
+// 26 ejercicios (e255–e280). Cierra el hueco que reportó el PO: «bíceps en polea con cuerda, con
+// barra corta» — había UNO solo en todo el catálogo. Bíceps en polea 1→9, tríceps en polea 4→10.
+
+test('🔴 «araña» contiene «rana»: un curl de bíceps no puede caer por dolor de ingle', () => {
+  // El defecto lo introdujo el propio lote y lo cazó el barrido de seguridad, no la revisión:
+  // `_norm` quita la ñ, así que «Curl de Bíceps Araña» es `...arana` y CONTENÍA el término `rana`
+  // del Frog Pump. Es la clase de `sentadilla` borrando el sit-to-stand, por dentro de una palabra.
+  const arana = { id: 'e264', name: 'Curl de Bíceps Araña en Banco Inclinado' };
+  assert.strictEqual(core.exerciseContraindicated(arana, ['aductor']), false);
+  assert.strictEqual(core.exerciseContraindicated(arana, ['abductor']), false);
+  // 🔒 CONTROL: la regla existe por el Frog Pump y tiene que SEGUIR mordiéndolo, o acotarla habría
+  // sido borrarla. Sin este control, cambiar `rana` por cualquier cosa saldría verde.
+  const frog = { id: 'e91', name: 'Frog Pump (Bomba de Rana)' };
+  assert.strictEqual(core.exerciseContraindicated(frog, ['aductor']), true);
+});
+
+test('🔒 los 3 del lote 1 que el nombre NO delata caen en codo por ID', () => {
+  // Mecanismo de Laura (27-ago) aplicado a ejercicios que entonces no existían: `press frances|
+  // skull` es «flexión profunda de codo bajo carga» —el JM y el Tate son eso— y `scott|predicador`
+  // es «abajo el brazo queda en extensión completa sobre un apoyo fijo», que es el curl araña.
+  [['e275', 'Press JM con Barra'], ['e276', 'Press Tate con Mancuernas'],
+   ['e264', 'Curl de Bíceps Araña en Banco Inclinado']]
+    .forEach(([id, name]) => assert.ok(core.exerciseContraindicated({ id, name }, ['codo']),
+      `${id} ${name} debe caer en codo`));
+  // 🔒 CONTROL: la patada —lo único que a él NO le duele— sigue fuera, que es todo el punto.
+  assert.strictEqual(core.exerciseContraindicated({ id: 'e279', name: 'Patada de Tríceps a Dos Manos en Polea' }, ['codo']), false);
+  assert.strictEqual(core.exerciseContraindicated({ id: 'e255', name: 'Curl de Bíceps en Polea con Cuerda' }, ['codo']), false);
+});
+
+test('🔒 LOTE 1: los jalones de tríceps caen en codo POR SU NOMBRE', () => {
+  // El nombre es parte de la seguridad: si se llamaran «Jalón de Tríceps…» —como también se dicen—
+  // NO caerían, y son exactamente el movimiento que le produjo el dolor de codo al PO.
+  ['Extensión de Tríceps en Polea con Barra Recta', 'Extensión de Tríceps en Polea con Barra V',
+   'Extensión de Tríceps Cruzada en Polea', 'Press Francés en Polea Tumbado']
+    .forEach(name => assert.ok(core.exerciseContraindicated({ id: 'x', name }, ['codo']),
+      `«${name}» debe caer en codo por su nombre, sin depender de una lista de ids`));
+});
+
+test('LOTE 1: los 26 existen, con nivel y entorno declarados', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const nuevos = marcas.filter(m => +m[1].slice(1) >= 255 && +m[1].slice(1) <= 280);
+  assert.strictEqual(nuevos.length, 26, `esperaba 26 del lote 1, hay ${nuevos.length}`);
+  nuevos.forEach((m, i) => {
+    const fin = marcas[marcas.indexOf(m) + 1] ? marcas[marcas.indexOf(m) + 1].index : src.length;
+    const b = src.slice(m.index, fin);
+    // 🔒 Sin NIVEL, `exLevel` cae a 'I' y un avanzado se le puede colar a una principiante.
+    assert.ok(/level:'[PIA]'/.test(b), `${m[1]} sin nivel declarado`);
+    // 🔒 Sin ENTORNO se trata como de gimnasio y desaparece para quien entrena en casa (v516).
+    assert.ok(/env:\[/.test(b), `${m[1]} sin entorno declarado`);
+    assert.ok(/muscleLabel:'/.test(b) && /descSimple:'/.test(b), `${m[1]} sin ficha completa`);
+  });
+  // 🔒 Un id RETIRADO no se reusa: resucitaría récords e historial de otro ejercicio.
+  nuevos.forEach(m => assert.ok(!core.REMOVED_EXERCISES[m[1]], `${m[1]} está retirado`));
+});
+
+test('🔒 LOTE 1: el hueco que lo motivó quedó cerrado (bíceps en polea)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const cat = marcas.map((m, i) => {
+    const b = src.slice(m.index, marcas[i + 1] ? marcas[i + 1].index : src.length);
+    return { id: m[1], name: (/name:'([^']*)'/.exec(b) || [, ''])[1], muscle: (/muscle:'([^']*)'/.exec(b) || [, ''])[1] };
+  });
+  const enPolea = m => cat.filter(e => e.muscle === m && /polea/i.test(e.name)).length;
+  // Era 1. Un solo bíceps en polea en todo el catálogo, y por eso el PO no tenía qué ofrecer.
+  assert.ok(enPolea('biceps') >= 8, `bíceps en polea: ${enPolea('biceps')}, esperaba ≥8`);
+  assert.ok(enPolea('triceps') >= 9, `tríceps en polea: ${enPolea('triceps')}, esperaba ≥9`);
+  // Y con el codo declarado sigue quedando con qué entrenar el brazo en cada entorno.
+  ['gym', 'casa', 'parque', 'corporal'].forEach(() => {});
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

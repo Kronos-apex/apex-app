@@ -387,7 +387,7 @@ const GEN_ZONE_EXCL = {
   // mecanismo de lesión es el cambio de dirección y la base abierta, no la sentadilla: la
   // sentadilla estrecha, la prensa y el wall-sit son EL CAMINO DE VUELTA. Si `sentadilla` entrara
   // a secas se repetiría el error que borraba el sit-to-stand.
-  aductor: /aduccion|abduccion|sumo|clamshell|concha|hidrante|fire hydrant|frog|rana|patinador|tijera|90\/90|estiramiento del mundo|zancada con giro|balanceo de piernas|(zancada|paseo|paso|patada|estocada|desplante|abduccion|balanceo) lateral|salto|saltarin|burpee|sprawl|sprint/,
+  aductor: /aduccion|abduccion|sumo|clamshell|concha|hidrante|fire hydrant|frog|\brana\b|patinador|tijera|90\/90|estiramiento del mundo|zancada con giro|balanceo de piernas|(zancada|paseo|paso|patada|estocada|desplante|abduccion|balanceo) lateral|salto|saltarin|burpee|sprawl|sprint/,
   // 🔒 ABDUCTOR — ANCHO en abducción/lateral/UNILATERAL DE PIE. El glúteo medio se provoca
   // sosteniendo la pelvis sobre UNA pierna: por eso caen búlgara, step-up y las variantes a una
   // pierna. La zancada bilateral con apoyo sobrevive (es 🟡, no ❌).
@@ -471,7 +471,17 @@ const GEN_ZONE_EXCL = {
 // extensión extrema de muñeca bajo el peso de la barra, pero el peso descansa sobre los
 // deltoides, así que el codo no sufre. Su propia ficha dice «exige movilidad de muñeca/hombro»
 // y el nombre solo dice «sentadilla» — es exactamente el caso para el que existe esta lista.
-const GEN_EXCL_IDS = { abductor: ['e93'], muneca: ['e127'] };
+// 🔒 CODO — tres del lote 1 que el nombre NO delata. No es criterio nuevo: es el MECANISMO que
+// Laura dejó escrito el 27-ago aplicado a ejercicios que entonces no existían.
+//  · `e275 Press JM` y `e276 Press Tate`: su regla de `press frances|skull` es «tríceps aislado
+//    con el pico de carga en FLEXIÓN PROFUNDA DE CODO», y los dos son exactamente eso —el JM es
+//    un híbrido de press cerrado y press francés—; sus nombres no llevan ninguno de sus términos.
+//  · `e264 Curl Araña`: su regla de `scott|predicador` es «abajo el brazo queda en extensión
+//    completa con la carga sobre un apoyo fijo → tracción sobre el tendón distal del bíceps», y
+//    el curl araña tiene esa misma posición de abajo, boca abajo en un banco inclinado.
+// ⏭️ PENDIENTE DE SU CONFIRMACIÓN. Se cae del lado de EXCLUIR a propósito: si se equivoca, a
+// alguien con el codo malo le sobra un ejercicio; al revés, le duele.
+const GEN_EXCL_IDS = { abductor: ['e93'], muneca: ['e127'], codo: ['e264', 'e275', 'e276'] };
 
 // ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
 // 🔴 HASTA AQUÍ TODO EL MOTOR SABÍA EXCLUIR Y NO SABÍA PRESCRIBIR. Lo destapó el propio PO: «me
