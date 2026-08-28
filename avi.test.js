@@ -13505,6 +13505,70 @@ test('🔒 LOTE 2: el pool de polea creció donde tenía que crecer', () => {
 });
 
 // ══════════════════════════════════════════════════════
+// LOTE 3 DE LA REPOBLACIÓN — PIERNAS Y GLÚTEO (v549)
+// ══════════════════════════════════════════════════════
+// 32 ejercicios (e328–e359). Catálogo 320 → 352.
+
+test('LOTE 3: los 32 existen, con nivel, entorno y ficha completa', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const nuevos = marcas.filter(m => +m[1].slice(1) >= 328 && +m[1].slice(1) <= 359);
+  assert.strictEqual(nuevos.length, 32, `esperaba 32 del lote 3, hay ${nuevos.length}`);
+  nuevos.forEach(m => {
+    const b = src.slice(m.index, marcas[marcas.indexOf(m) + 1] ? marcas[marcas.indexOf(m) + 1].index : src.length);
+    assert.ok(/level:'[PIA]'/.test(b), `${m[1]} sin nivel`);
+    assert.ok(/env:\[/.test(b), `${m[1]} sin entorno`);
+    assert.ok(/muscleLabel:'/.test(b) && /descSimple:'/.test(b), `${m[1]} sin ficha completa`);
+    assert.ok(!core.REMOVED_EXERCISES[m[1]], `${m[1]} está retirado`);
+  });
+});
+
+test('🔒 LOTE 3: lo que el nombre NO delata cae por ID, con su hermano de control', () => {
+  const cae = (id, name, z) => core.exerciseContraindicated({ id, name }, [z]);
+  // La Zercher carga por delante —la lista ya caza `sentadilla frontal` por ese mismo mecanismo—
+  // y exige aún más lumbar; su nombre no contiene ninguno de los cinco patrones de la lista.
+  assert.ok(cae('e335', 'Sentadilla Zercher', 'lumbar'));
+  assert.ok(cae('e127', 'Sentadilla Frontal con Barra', 'lumbar'));      // 🔒 el hermano sigue cayendo
+  // «muslo por detrás» mapea a lumbar (isquios y lumbar son una cadena, decisión de Laura) y el
+  // nórdico es el excéntrico de isquios más duro que hay.
+  assert.ok(cae('e333', 'Curl Nórdico', 'lumbar'));
+  assert.ok(!cae('e15', 'Curl Femoral Tumbado en Máquina', 'lumbar'));   // 🔒 y es OTRA magnitud
+  // El cosaco es base muy abierta + descenso lateral = máximo estiramiento del aductor, que es el
+  // mecanismo que Laura nombró para esa zona.
+  assert.ok(cae('e336', 'Sentadilla Cosaco', 'aductor'));
+  assert.ok(cae('e61', 'Sentadilla Sumo', 'aductor'));                   // 🔒 el hermano sigue cayendo
+  assert.ok(!cae('e158', 'Sentadilla a Silla (Sit-to-Stand)', 'aductor')); // 🔒 y lo terapéutico se queda
+});
+
+test('🔴 nombrar el ejercicio por lo que HACE lo mete solo en el filtro', () => {
+  // «Puente de Glúteo con Banda en las Rodillas» no caía en abductor; el ejercicio ES extensión de
+  // cadera + ABDUCCIÓN contra resistencia, y decirlo en el nombre lo resuelve sin tocar la lista
+  // ni añadir un id. Es la alternativa preferible a `GEN_EXCL_IDS` siempre que el nombre sea natural.
+  // 🔴 EL NOMBRE SE LEE DEL CATÁLOGO, NO SE ESCRIBE AQUÍ. Mi primera versión lo pasaba como
+  // literal: el sabotaje que renombraba el ejercicio en app-1-infra.js salía VERDE, porque el test
+  // afirmaba sobre una cadena suya y no sobre lo que la app tiene de verdad.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const nombre = (/\{id:'e359',name:'([^']*)'/.exec(src) || [, ''])[1];
+  assert.ok(nombre, 'e359 desapareció del catálogo');
+  assert.ok(core.exerciseContraindicated({ id: 'e359', name: nombre }, ['abductor']),
+    'e359 «' + nombre + '» dejó de entrar al filtro de abductor por su nombre');
+  // 🔒 CONTROL: el puente normal, que no lleva banda, sigue disponible para quien tiene esa zona.
+  assert.ok(!core.exerciseContraindicated({ id: 'e73', name: 'Puente de Glúteo' }, ['abductor']));
+});
+
+test('🔒 LOTE 3: la prensa y la extensión de cadera se comportan como sus hermanas', () => {
+  // La prensa NO está en la lista de rodilla a propósito: es guiada y suele ser el camino de vuelta.
+  // Las cuatro variantes nuevas tienen que comportarse igual que `e36`, o una de las dos está mal.
+  ['e328', 'e329', 'e330', 'e345'].forEach(id =>
+    assert.ok(!core.exerciseContraindicated({ id, name: 'Prensa de Pierna a una Pierna' }, ['rodilla'])));
+  assert.ok(!core.exerciseContraindicated({ id: 'e36', name: 'Prensa de Pierna' }, ['rodilla']));
+  // Y la sissy SÍ cae: es flexión máxima de rodilla bajo carga, lo más exigente que hay para ella.
+  assert.ok(core.exerciseContraindicated({ id: 'e337', name: 'Sentadilla Sissy' }, ['rodilla']));
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

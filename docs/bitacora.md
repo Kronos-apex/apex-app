@@ -4,6 +4,54 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v549: LOTE 3 — PIERNAS Y GLÚTEO (+32)
+
+Tercer lote de la repoblación. Catálogo **320 → 352**. Piernas 69, glúteo 40.
+Entra lo que faltaba del gimnasio de verdad: **la prensa como TRES ejercicios** (a una pierna, pies
+altos, pies bajos) en vez de uno solo, el trabajo unilateral de cuádriceps e isquios, el curl
+nórdico, la barra hexagonal, el peso muerto rumano en polea, y el glúteo cargado —hip thrust
+unilateral en máquina, patada en multipower, abducción en polea de pie—.
+
+### 🔒 El barrido, ya como rutina del lote
+Los 32 se barrieron contra las 10 zonas y se compararon con su HERMANO existente, que es la regla
+que dejó el lote 2. Tres falsos negativos, todos por ID con su mecanismo escrito:
+- **`e335` SENTADILLA ZERCHER → lumbar.** La barra va en el pliegue de los codos, o sea carga
+  FRONTAL —la lista ya caza `sentadilla frontal` por ese mismo mecanismo— y exige aún más de la
+  lumbar para no irse adelante. Su nombre no contiene ninguno de los cinco patrones de la lista.
+- **`e333` CURL NÓRDICO → lumbar.** «Muslo por detrás» mapea a `lumbar` (isquios y lumbar son una
+  cadena, decisión de Laura) y el nórdico es el excéntrico de isquios más duro que existe.
+  🔒 El curl femoral en máquina (`e15`) NO entra, y está bien: es otra magnitud de carga.
+- **`e336` SENTADILLA COSACO → aductor.** Base muy abierta y descenso lateral: la posición de
+  máximo estiramiento del aductor, y el mecanismo que Laura nombró para esa zona es literalmente
+  «el cambio de dirección y la base abierta».
+
+### 💎 Y uno que se resolvió SIN tocar ninguna lista
+«Puente de Glúteo con Banda en las Rodillas» no entraba en `abductor`. El ejercicio ES extensión de
+cadera **más abducción contra resistencia**, así que se renombró a **«Puente de Glúteo con
+Abducción en Banda»** y entra al filtro por su propio nombre. **Nombrar el ejercicio por lo que
+HACE es preferible a un id**: el id hay que mantenerlo, el nombre se explica solo.
+🔒 Control: el puente normal, sin banda, sigue disponible para quien tiene esa zona.
+
+### Verificación
+Suite **945/945** en los dos husos (941 → 945). `_sabotaje-codo` **18/18 muerden**.
+El test de «ninguna zona deja un músculo en cero» del lote 2 cubre solo a los 32 nuevos: está
+derivado del catálogo, no de una lista.
+
+### 🎓 Lecciones
+
+🔴 **UN TEST QUE ESCRIBE EL NOMBRE A MANO NO PRUEBA LO QUE EL CATÁLOGO DICE.** El sabotaje que
+renombraba `e359` en `app-1-infra.js` salió **VERDE**: mi test pasaba el nombre como cadena
+literal, así que afirmaba sobre un texto mío y no sobre la app. Es la misma familia que el oráculo
+circular, aquí por el lado del FIXTURE: **si lo que se prueba es que el nombre entra al filtro, el
+nombre se LEE del catálogo.** Lo cazó el sabotaje, no la revisión.
+
+⚠️ **UN LOTE QUE ALARGA UNA LISTA DESPEGA LAS ANCLAS DE SABOTAJE QUE LA CITAN.** El nº 14 apuntaba
+a la línea de `lumbar` con sus 4 ids y el lote 3 la dejó en 6: «NO SE APLICÓ», 0 ocurrencias. Ya
+estaba escrito desde v537 —«arreglar un dato despega el ancla igual que borrarlo»— y volvió a pasar
+en cuanto una lista creció. **Toda matriz que cite una línea que un lote va a tocar se re-corre y
+se reapunta EN ESE MISMO lote**, y el grito del runner es lo único que lo distingue de un candado
+que ya no muerde.
+
 ## 🔄 2026-08-27 — avi-v548: LOTE 2 — PECHO, ESPALDA Y HOMBROS (+47)
 
 Segundo lote de la repoblación. Catálogo **273 → 320**. El eje sigue siendo el de VARIANTES: el

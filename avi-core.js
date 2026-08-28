@@ -510,7 +510,19 @@ const GEN_EXCL_IDS = {
   muneca: ['e127', 'e307'],
   codo: ['e264', 'e275', 'e276', 'e307'],
   hombro: ['e313', 'e314', 'e325', 'e290', 'e291', 'e242'],
-  lumbar: ['e305', 'e306', 'e247', 'e244'],
+  // LUMBAR (lote 3)
+  //  · `e335` SENTADILLA ZERCHER: la barra va en el pliegue de los codos, o sea carga FRONTAL —la
+  //    lista ya caza `sentadilla frontal` por eso mismo— y exige aún más de la lumbar para no irse
+  //    adelante. Su nombre no contiene ninguno de los cinco patrones de sentadilla de la lista.
+  //  · `e333` CURL NÓRDICO: «muslo por detrás» mapea a `lumbar` (isquios y lumbar son una cadena,
+  //    decisión de Laura), y el nórdico es el excéntrico de isquios más duro que existe. El curl
+  //    femoral en máquina (`e15`) NO entra y está bien: es otra magnitud de carga.
+  lumbar: ['e305', 'e306', 'e247', 'e244', 'e335', 'e333'],
+  // ADUCTOR (lote 3)
+  //  · `e336` SENTADILLA COSACO: base MUY abierta y descenso sobre una pierna con la otra
+  //    extendida — la posición de máximo estiramiento del aductor. El mecanismo que Laura nombró
+  //    para esta zona es «el cambio de dirección y la base abierta», y esto es las dos cosas.
+  aductor: ['e336'],
 };
 
 // ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
