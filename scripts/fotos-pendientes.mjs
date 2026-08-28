@@ -9,7 +9,7 @@ const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
 const cat = marcas.map((m, i) => {
   const b = src.slice(m.index, marcas[i + 1] ? marcas[i + 1].index : src.length);
   const campo = k => (new RegExp(k + ":'((?:[^'\\\\]|\\\\.)*)'").exec(b) || [, ''])[1];
-  return { id: m[1], name: campo('name'), muscle: campo('muscle'), desc: campo('descSimple') };
+  return { id: m[1], name: campo('name'), muscle: campo('muscle'), desc: campo('descSimple'), q: campo('ytQuery') };
 });
 if (cat.some(e => !e.name)) { console.error('🔴 sonda incompleta'); process.exit(1); }
 
@@ -47,7 +47,7 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify(orden.filter(k => grupos[k]).map(k => ({
     estacion: k,
     ejercicios: grupos[k].sort((a, b) => a.muscle.localeCompare(b.muscle) || a.name.localeCompare(b.name))
-      .map(e => ({ id: e.id, name: e.name, muscle: e.muscle, como: e.desc })),
+      .map(e => ({ id: e.id, name: e.name, muscle: e.muscle, como: e.desc, q: e.q })),
   })), null, 1));
   process.exit(0);
 }
