@@ -52,16 +52,25 @@ const SABOTAJES = [
   // ⚠️ REAPUNTADO EN v549: el lote 3 alargó la línea de `lumbar` y despegó el ancla vieja. El
   // grito «NO SE APLICÓ» del runner es lo único que lo distingue de un candado flojo (gotcha v537).
   [CORE, '14· los DOS preexistentes de v497 (Pendlay y remo en multipower) dejan de caer en lumbar',
-    "'e247', 'e244', 'e335', 'e333'],", "'e335', 'e333'],"],
+    "'e247', 'e244', 'e335'", "'e335'"],
   [APP1, '15· desaparece el press isométrico de pecho → peso corporal se queda SIN pecho con dolor de muñeca',
     "{id:'e327',name:'Press de Pecho Isométrico Autorresistido'", "{id:'e327x',name:'Press de Pecho Isometrico Autorresistidox'"],
   // ── v549, lote 3 ──
   [CORE, '16· la Zercher y el nórdico dejan de caer en lumbar',
-    ", 'e335', 'e333'],", '],'],
+    "'e335', 'e333', 'e360'", "'e360'"],
   [CORE, '17· la sentadilla cosaco deja de caer en aductor (es su máximo estiramiento)',
     "  aductor: ['e336'],", '  aductor: [],'],
   [APP1, '18· el puente pierde «Abducción» del nombre y se sale del filtro solo',
     "name:'Puente de Glúteo con Abducción en Banda'", "name:'Puente de Glúteo con Banda en las Rodillas'"],
+  // ── v550, lote 4 ──
+  [CORE, '19· «salto» pierde su límite de palabra → la bici de AIRE cae en SEIS zonas por «a-salto»',
+    // ⚠️ DOS barras: en una CADENA de JS `\b` es el carácter de retroceso, no una barra invertida
+    // seguida de b. Con una sola, el ancla no casaba nunca y el runner cantó «NO SE APLICÓ».
+    'desplante|\\bsalto|saltarin', 'desplante|salto|saltarin'],
+  [CORE, '20· el leñador, el dragon flag y las rodillas colgado dejan de caer en lumbar',
+    ", 'e360', 'e361', 'e367', 'e364'],", '],'],
+  [APP1, '21· el crunch en V se renombra y se sale del filtro de lumbar solo',
+    "name:'Crunch en V (V-Ups)'", "name:'V-Ups'"],
 ];
 
 const ORIGINALES = new Map([[CORE.href, readFileSync(CORE, 'utf8')], [APP1.href, readFileSync(APP1, 'utf8')]]);

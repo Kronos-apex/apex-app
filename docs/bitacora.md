@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-27 — avi-v550: LOTE 4 — CORE Y CARDIO (+22). **LA REPOBLACIÓN QUEDA CERRADA**
+
+Último lote. Catálogo **352 → 374**, desde los 247 con los que arrancó el estudio: **+127 en cuatro
+lotes**. Core sube de 28 a 40 y deja de ser 25 ejercicios de suelo: entra el abdomen CARGADO (leñador
+en polea en sus dos direcciones, giro ruso en polea, crunch y plancha con disco, silla romana,
+dragon flag). Cardio pasa de 19 a 29 con las máquinas que hay en cualquier gimnasio de cadena y no
+se podían registrar: ski erg, bici de aire, escalador vertical, trineo en sus dos direcciones,
+cinta inclinada y el sprint por intervalos.
+
+### 🔴 SEGUNDA VEZ DE LA MISMA CLASE, Y LA MÁS CARA
+**«Bicicleta de A-SALTO» caía en SEIS zonas** —rodilla, lumbar, aductor, abductor, cuello y
+tobillo— porque contiene la subcadena `salto`. Es decir: **la máquina de MENOR impacto de todo el
+gimnasio quedaba excluida justo para quien más la necesita.** Es la misma clase que `rana` dentro de
+«araña» (v547), tres lotes después y sobre un término que vive en SEIS listas a la vez.
+Arreglado con límite de palabra **solo al principio** (`\bsalto`), para que «saltos», «saltar» y
+«saltarina» sigan entrando: medido, **los 9 saltos reales del catálogo siguen cayendo**.
+
+### Cuatro por ID, con su mecanismo
+`e360`/`e361` LEÑADOR (rotación de tronco contra carga: es el gesto por el que `russian twist` está
+en la lista, con más brazo de palanca) · `e367` DRAGON FLAG (el momento sobre la columna más alto de
+todo el catálogo de abdomen) · `e364` ELEVACIÓN DE RODILLAS COLGADO (hermano de `e48`, que sí caía).
+🔒 Controles: la plancha —columna neutra— NO cae, ni siquiera con disco encima. Es lo que se le da a
+una lumbar, no lo que se le quita.
+
+### Tres nombrados para entrar solos al filtro
+«Giro Ruso (**Russian Twist**) en Polea» · «**Crunch** Completo con Disco (Sit-up)» · «**Crunch** en
+V (V-Ups)». Y uno nombrado para NO caer donde no debe: **«Elevación de Rodillas Colgado» y no
+«Encogimiento Abdominal Colgado»**, porque `encogimiento` vive en la lista de CUELLO por los
+encogimientos de trapecio y habría metido ahí un ejercicio de abdomen.
+
+### Verificación
+Suite **949/949** en los dos husos (945 → 949). `_sabotaje-codo` **21/21 muerden**, sin ningún
+«NO SE APLICÓ». El test de «ninguna zona deja un músculo en cero» sigue verde con los 22 nuevos.
+
+### 🎓 Lecciones
+
+🔴 **UN TÉRMINO CORTO EN UNA LISTA DE EXCLUSIÓN ES UNA MINA, Y NO BASTA CON DESACTIVARLA UNA VEZ.**
+`rana` dentro de «araña» costó el lote 1; `salto` dentro de «asalto» costó el lote 4, y este vivía en
+SEIS listas a la vez. **La regla operativa que queda: al meter un término de menos de siete letras,
+escríbelo ya con su límite de palabra**, en vez de esperar a que un nombre nuevo lo pise. El coste
+de acotar de más es cero (el control lo detecta); el de no acotar es excluirle a alguien justo lo
+que necesita.
+
+🔴 **`\b` EN UNA CADENA DE JS ES EL CARÁCTER DE RETROCESO, NO UNA BARRA INVERTIDA.** El ancla del
+sabotaje 19 se escribió con una sola barra: la cadena valía `desplante|<BS>salto|saltarin`, no
+casaba nunca, y el candado del arreglo más importante del lote habría quedado sin probar. **En un
+regex LITERAL va una barra; en una CADENA que representa ese mismo texto, van dos.** Lo cantó el
+«NO SE APLICÓ» del runner, que a estas alturas ha cazado más candados muertos que cualquier revisión.
+
+⚠️ **TERCER LOTE SEGUIDO QUE DESPEGA ANCLAS DE SABOTAJE, Y YA ES UN PATRÓN, NO UN ACCIDENTE.** Cada
+lote alarga la lista de `lumbar` y deja fuera de sitio a las matrices que la citan entera. **El ancla
+se pone en el TROZO que cambia** (`'e247', 'e244', 'e335'`), nunca en la línea completa: así sobrevive
+a que la lista crezca por la derecha, que es como crece siempre.
+
 ## 🔄 2026-08-27 — avi-v549: LOTE 3 — PIERNAS Y GLÚTEO (+32)
 
 Tercer lote de la repoblación. Catálogo **320 → 352**. Piernas 69, glúteo 40.

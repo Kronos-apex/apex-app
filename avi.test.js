@@ -13569,6 +13569,77 @@ test('🔒 LOTE 3: la prensa y la extensión de cadera se comportan como sus her
 });
 
 // ══════════════════════════════════════════════════════
+// LOTE 4 (ÚLTIMO) — CORE Y CARDIO (v550)
+// ══════════════════════════════════════════════════════
+// 22 ejercicios (e360–e381). Catálogo 352 → 374. Cierra la repoblación por lotes.
+
+test('LOTE 4: los 22 existen, con nivel, entorno y ficha completa', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
+  const nuevos = marcas.filter(m => +m[1].slice(1) >= 360 && +m[1].slice(1) <= 381);
+  assert.strictEqual(nuevos.length, 22, `esperaba 22 del lote 4, hay ${nuevos.length}`);
+  nuevos.forEach(m => {
+    const b = src.slice(m.index, marcas[marcas.indexOf(m) + 1] ? marcas[marcas.indexOf(m) + 1].index : src.length);
+    assert.ok(/level:'[PIA]'/.test(b), `${m[1]} sin nivel`);
+    assert.ok(/env:\[/.test(b), `${m[1]} sin entorno`);
+    assert.ok(/muscleLabel:'/.test(b) && /descSimple:'/.test(b), `${m[1]} sin ficha completa`);
+    assert.ok(!core.REMOVED_EXERCISES[m[1]], `${m[1]} está retirado`);
+  });
+});
+
+test('🔴 «asalto» contiene «salto»: la bici de aire no puede caer en SEIS zonas', () => {
+  // Segunda vez de esta clase (la primera fue `rana` dentro de «araña», v547) y la más cara: sin
+  // límite de palabra, «Bicicleta de A-SALTO» caía en rodilla, lumbar, aductor, abductor, cuello y
+  // tobillo — es decir, la máquina de MENOR impacto que existe quedaba excluida justo para quien
+  // más la necesita. El término va en las SEIS listas, así que el arreglo va en las seis.
+  const bici = { id: 'e373', name: 'Bicicleta de Asalto' };
+  ['rodilla', 'lumbar', 'aductor', 'abductor', 'cuello', 'tobillo']
+    .forEach(z => assert.ok(!core.exerciseContraindicated(bici, [z]), `la bici de aire NO puede caer en ${z}`));
+  // 🔒 CONTROL: los saltos de verdad SIGUEN cayendo, o acotar habría sido borrar la regla. El límite
+  // va solo al principio del término para que «saltos» y «saltarina» sigan entrando.
+  [['e66', 'Salto a la Cuerda'], ['e76', 'Saltos de Tijera'], ['e187', 'Salto al Cajón'],
+   ['e184', 'Sentadilla con Salto'], ['e200', 'Salto Agrupado'], ['e186', 'Salto del Patinador'],
+   ['e205', 'Zancada Lateral con Salto'], ['e189', 'Plancha Saltarina'], ['e378', 'Comba con Doble Salto']]
+    .forEach(([id, name]) => assert.ok(
+      core.exerciseContraindicated({ id, name }, ['rodilla']) || core.exerciseContraindicated({ id, name }, ['tobillo']),
+      `${name} tiene que SEGUIR cayendo`));
+});
+
+test('🔒 LOTE 4: la rotación y la palanca de columna caen en lumbar por ID', () => {
+  const cae = (id, name, z) => core.exerciseContraindicated({ id, name }, [z]);
+  // La lista ya caza `russian twist` y `hollow` por este mecanismo; estos hacen lo mismo con más
+  // brazo de palanca y su nombre no lo dice.
+  assert.ok(cae('e360', 'Leñador en Polea de Alto a Bajo', 'lumbar'));
+  assert.ok(cae('e361', 'Leñador en Polea de Bajo a Alto', 'lumbar'));
+  assert.ok(cae('e367', 'Dragon Flag', 'lumbar'));
+  assert.ok(cae('e364', 'Elevación de Rodillas Colgado', 'lumbar'));
+  assert.ok(cae('e48', 'Elevación de Piernas Colgado', 'lumbar'));   // 🔒 el hermano que ya caía
+  // 🔒 CONTROLES: la plancha es isometría con la columna NEUTRA — es lo que se le da a una lumbar,
+  // no lo que se le quita. Y añadirle un disco no cambia el patrón.
+  assert.ok(!cae('e17', 'Plancha Frontal', 'lumbar'));
+  assert.ok(!cae('e365', 'Plancha con Disco en la Espalda', 'lumbar'));
+});
+
+test('🔒 LOTE 4: los nombres que se eligieron para entrar al filtro, entran', () => {
+  // Tres se nombraron a propósito para que el filtro los cace sin necesidad de un id. Los nombres
+  // se LEEN del catálogo: si alguien los cambia, este test cae (lección de v549).
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const nombreDe = id => (new RegExp("\\{id:'" + id + "',name:'([^']*)'").exec(src) || [, ''])[1];
+  [['e362', 'lumbar'], ['e366', 'lumbar'], ['e370', 'lumbar']].forEach(([id, z]) => {
+    const n = nombreDe(id);
+    assert.ok(n, `${id} desapareció del catálogo`);
+    assert.ok(core.exerciseContraindicated({ id, name: n }, [z]),
+      `${id} «${n}» dejó de entrar al filtro de ${z} por su nombre`);
+  });
+  // 🔒 Y el que se nombró para NO caer donde no debe: «Elevación de Rodillas Colgado» y no
+  // «Encogimiento Abdominal Colgado», porque `encogimiento` está en la lista de CUELLO por los
+  // encogimientos de trapecio y habría metido ahí un ejercicio de abdomen.
+  assert.ok(!core.exerciseContraindicated({ id: 'e364', name: nombreDe('e364') }, ['cuello']));
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

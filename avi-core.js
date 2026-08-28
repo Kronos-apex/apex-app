@@ -371,8 +371,14 @@ const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerz
 //    familias nombrables, y una lista solo atrapa lo que ya existe.
 //    🔒 `e211` sale de `hombro` pero SE QUEDA en `lumbar`: ahí la descompresión sí es útil y no
 //    hay articulación irritada colgando. Criterio de Laura, no simetría automática.
+// 🔒 `\bsalto` Y NO `salto` A SECAS, en las SEIS zonas que lo usan. Segunda vez de esta clase
+// (la primera fue `rana` dentro de «araña», v547): «Bicicleta de A-SALTO» contiene `salto`, y sin el
+// límite de palabra la máquina de MENOR impacto que existe caía en rodilla, lumbar, aductor,
+// abductor, cuello y tobillo — justo la que se le da a quien tiene esas zonas. El límite va solo al
+// principio para que siga cazando «saltos», «saltar» y «salto» (medido: las 8 del catálogo siguen
+// cayendo). ⚠️ Al escribir un término CORTO en estas listas, pregúntate de qué palabras es subcadena.
 const GEN_ZONE_EXCL = {
-  rodilla: /sentadilla|zancada|estocada|desplante|salto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla/,
+  rodilla: /sentadilla|zancada|estocada|desplante|\bsalto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla/,
   // ⚠️ `buenos dias CON BARRA` y no a secas (Laura, auditoría 2026-08-08): a secas se llevaba
   // `e148 «Patrón de Bisagra (Buenos Días SIN PESO)»`, que es el ejercicio con el que se le enseña
   // a alguien con lumbalgia a moverse desde la cadera y no desde la columna. No es un caso de
@@ -381,28 +387,28 @@ const GEN_ZONE_EXCL = {
   // 🔒 `wai3` («Peso muerto con peso corporal») SIGUE fuera por id, y la razón no es el riesgo
   // sino el PROPÓSITO: es un ensayo del peso muerto justo antes de una sesión de la que el filtro
   // ya quitó todos los pesos muertos — no tiene beneficio que compense. `e148` sí lo tiene.
-  lumbar: /peso muerto|remo con barra|buenos dias con barra|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|salto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
+  lumbar: /peso muerto|remo con barra|buenos dias con barra|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|\bsalto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
   hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra|paseo del camarero|camarero|colgarse/,
   // 🔒 ADUCTOR — ANCHO en lateral/apertura/explosivo, ESTRECHO en sentadilla (solo `sumo`). El
   // mecanismo de lesión es el cambio de dirección y la base abierta, no la sentadilla: la
   // sentadilla estrecha, la prensa y el wall-sit son EL CAMINO DE VUELTA. Si `sentadilla` entrara
   // a secas se repetiría el error que borraba el sit-to-stand.
-  aductor: /aduccion|abduccion|sumo|clamshell|concha|hidrante|fire hydrant|frog|\brana\b|patinador|tijera|90\/90|estiramiento del mundo|zancada con giro|balanceo de piernas|(zancada|paseo|paso|patada|estocada|desplante|abduccion|balanceo) lateral|salto|saltarin|burpee|sprawl|sprint/,
+  aductor: /aduccion|abduccion|sumo|clamshell|concha|hidrante|fire hydrant|frog|\brana\b|patinador|tijera|90\/90|estiramiento del mundo|zancada con giro|balanceo de piernas|(zancada|paseo|paso|patada|estocada|desplante|abduccion|balanceo) lateral|\bsalto|saltarin|burpee|sprawl|sprint/,
   // 🔒 ABDUCTOR — ANCHO en abducción/lateral/UNILATERAL DE PIE. El glúteo medio se provoca
   // sosteniendo la pelvis sobre UNA pierna: por eso caen búlgara, step-up y las variantes a una
   // pierna. La zancada bilateral con apoyo sobrevive (es 🟡, no ❌).
-  abductor: /abduccion|aduccion|clamshell|concha|hidrante|fire hydrant|patinador|90\/90|(zancada|paseo|paso|patada|estocada|desplante|balanceo) lateral|zancada caminando|bulgara|step ?-?up|escalon|subida con rodilla|sentadilla a una pierna|rumano a una pierna|salto|saltarin|burpee|sprawl|sprint|tijera/,
+  abductor: /abduccion|aduccion|clamshell|concha|hidrante|fire hydrant|patinador|90\/90|(zancada|paseo|paso|patada|estocada|desplante|balanceo) lateral|zancada caminando|bulgara|step ?-?up|escalon|subida con rodilla|sentadilla a una pierna|rumano a una pierna|\bsalto|saltarin|burpee|sprawl|sprint|tijera/,
   // 🔒 CUELLO — MEDIO-ANCHO. Cae lo que carga por encima de la cabeza, lo que cuelga, lo que mete
   // al cuello en el crunch y el impacto; NO cae lo que se hace sentado con respaldo.
   // ⚠️ `buenos dias con barra` y no `buenos dias`: el segundo se comía `e148 Patrón de Bisagra
   // (sin peso)`, que es la versión terapéutica. Igual `elevacion de piernas colgado` y no a secas,
   // que se comía `e132` (tumbado, cuello apoyado). Los dos los cazó Laura midiendo.
-  cuello: /encogimiento|press militar|press de hombro|arnold|push press|thruster|clean|sobre la cabeza|tras ?nuca|pike|dominada|chin ?-?up|colgarse|crunch|hollow|russian twist|elevacion de piernas colgado|rueda abdominal|ab wheel|peso muerto convencional|remo con barra|buenos dias con barra|hiperexten|caminata del granjero|farmer|paseo del camarero|camarero|cuerdas de batalla|azote|man maker|burpee|sprawl|salto|saltarin|sprint|superman|nadador/,
+  cuello: /encogimiento|press militar|press de hombro|arnold|push press|thruster|clean|sobre la cabeza|tras ?nuca|pike|dominada|chin ?-?up|colgarse|crunch|hollow|russian twist|elevacion de piernas colgado|rueda abdominal|ab wheel|peso muerto convencional|remo con barra|buenos dias con barra|hiperexten|caminata del granjero|farmer|paseo del camarero|camarero|cuerdas de batalla|azote|man maker|burpee|sprawl|\bsalto|saltarin|sprint|superman|nadador/,
   // 🔒 TOBILLO — ANCHO en impacto y carga en pie, ESTRECHO en movilidad. `e177` y `wt1` NO se
   // excluyen: son el tratamiento. La fase aguda la cubre el NIVEL del reporte, que para todo — el
   // regex codifica «qué agrava esta zona», el nivel codifica «cuánto movimiento se permite».
   // ⚠️ Sin `cuerda`: se comía `e11 Extensión de Tríceps con Cuerda en Polea`.
-  tobillo: /salto|saltarin|burpee|sprawl|sprint|carrera|trote|tijera|rodillas altas|talones al gluteo|patinador|escalador|mountain climber|elevacion de talones|escalon|step ?-?up|escaladora|subida con rodilla|caminata del granjero|farmer|zancada caminando|perro boca abajo|paso lateral|talones atras|oruga|caminata del oso|caminata del cangrejo/,
+  tobillo: /\bsalto|saltarin|burpee|sprawl|sprint|carrera|trote|tijera|rodillas altas|talones al gluteo|patinador|escalador|mountain climber|elevacion de talones|escalon|step ?-?up|escaladora|subida con rodilla|caminata del granjero|farmer|zancada caminando|perro boca abajo|paso lateral|talones atras|oruga|caminata del oso|caminata del cangrejo/,
   // ── CODO · MUÑECA · PECHO (dictamen de Laura, 27-ago-2026) ────────────────────────────────
   // 🔴 LAURA RECTIFICA SU PROPIA DECISIÓN, y el caso que la falsea es del PO. Aquí decía que codo
   // y muñeca «son de CARGA y AGARRE, no de patrón — un regex acertaría por azar». Él reportó dolor
@@ -517,7 +523,16 @@ const GEN_EXCL_IDS = {
   //  · `e333` CURL NÓRDICO: «muslo por detrás» mapea a `lumbar` (isquios y lumbar son una cadena,
   //    decisión de Laura), y el nórdico es el excéntrico de isquios más duro que existe. El curl
   //    femoral en máquina (`e15`) NO entra y está bien: es otra magnitud de carga.
-  lumbar: ['e305', 'e306', 'e247', 'e244', 'e335', 'e333'],
+  // LUMBAR (lote 4) — flexión y ROTACIÓN de columna bajo carga, que es lo que la lista ya caza
+  // con `crunch`, `russian twist` y `hollow`; estos cuatro hacen lo mismo y su nombre no lo dice:
+  //  · `e360`/`e361` LEÑADOR en polea: rotación de tronco CONTRA carga, en diagonal. Es el gesto
+  //    por el que `russian twist` está en la lista, con más brazo de palanca.
+  //  · `e367` DRAGON FLAG: el cuerpo entero en palanca desde los hombros — el momento sobre la
+  //    columna más alto de todo el catálogo de abdomen.
+  //  · `e364` ELEVACIÓN DE RODILLAS COLGADO: hermano de `e48 Elevación de Piernas Colgado`, que
+  //    SÍ cae por `elevacion de piernas`. Con las rodillas dobladas pesa menos, pero es el mismo
+  //    patrón de enrollar la pelvis colgado.
+  lumbar: ['e305', 'e306', 'e247', 'e244', 'e335', 'e333', 'e360', 'e361', 'e367', 'e364'],
   // ADUCTOR (lote 3)
   //  · `e336` SENTADILLA COSACO: base MUY abierta y descenso sobre una pierna con la otra
   //    extendida — la posición de máximo estiramiento del aductor. El mecanismo que Laura nombró
