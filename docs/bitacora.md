@@ -4,6 +4,51 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-29 — avi-v552: QUIEN SE REGISTRA SOLO CON UNA LESIÓN, NI SE LE MIENTE NI SE LE ESCONDE
+
+El asistente de registro recoge las lesiones en texto libre (paso 6) y `_autoGenerateWeek` genera
+el plan con ellas. Dos agujeros, los dos medidos contra producción el 29-ago:
+
+🔴 **(1) EL SELLO «REVISADO» SE PONÍA SOBRE UN PLAN QUE NADIE MIRÓ.** `_autoGenerateWeek` marcaba
+`reviewed:true` en cada rutina, y el comentario decía por qué: *«para modo libre no hay coach que
+revise»* — que es exactamente la razón por la que NO se puede marcar. **En producción hay 32
+rutinas con ese sello.** Hoy no lo lee ninguna pantalla (`reviewed` se escribe y no se consulta en
+ningún sitio), así que el daño era latente: el primer sitio que lo pinte estaría afirmando una
+revisión clínica que no existió — la misma frase que se retiró en v424 por bajarle la guardia a
+quien revisa.
+
+🔴 **(2) EL COACH NO SE ENTERABA.** El ÚNICO sitio donde la app avisa de una limitación es el
+banner `⚠️ Limitación detectada` de la vista previa del generador… **y esa vista solo se abre
+cuando el coach pulsa ✨ Generar**. En el registro por cuenta propia nadie la abre: la persona
+declaraba su hernia, recibía su plan y entraba a entrenar sin que nada saliera del lado del coach.
+Medido: **14 personas auto-registradas en la base**; hoy ninguna declaró limitación, así que **no
+hay víctima viva** — la puerta estaba abierta y se cierra antes de que pase, no después.
+
+🔴 **(3) Y LA NOTA LE HABLABA A OTRO.** El texto de la rutina («⚠️ REVISAR… **Ajusta antes de
+aprobar**») está escrito para el coach. En este camino **la lee la persona**, a la que se le pedía
+aprobar un plan que no tiene a quién aprobarle, con vocabulario de otro oficio. Y sí la ve: la
+pestaña «Rutinas» pinta `r.note` con su 💡.
+
+**El arreglo:** `genLimitationNote(lim, audience)` y `limitationCoachAlert(name, lim, notes)`,
+puras en avi-core. `generarRutinas` acepta `opts.audience` ('coach' por defecto — el texto del
+coach NO cambia). El auto-registro pasa `'client'`, deja de sellar «revisado», y `_selfRegLimAlert`
+le manda al coach el mensaje + push por el **mismo canal del reporte de dolor**, que lleva
+versiones funcionando. Se avisa **una vez** (`limAlertAt`): «✨ Regenerar mi semana» vuelve a pasar
+por ahí y un push por toque es ruido que se aprende a ignorar.
+
+🔒 **LO CLÍNICO NO SE TOCÓ.** Las frases las dictó Laura y viajan **verbatim** (`lim.advice`,
+`lim.nerveAdvice`, incluida la derivación médica por compromiso nervioso): lo único que cambia es
+la frase que las enmarca y a quién le habla. Ninguna lista de exclusión se movió.
+
+### Verificación
+Suite **955/955** (951 → 955) · matriz nueva `_sabotaje-selfreg-lim.mjs`, **8/8 muerden por código
+de salida**. 🔴 **Y la primera corrida dio 5 de 8** — los tres fallos eran MÍOS y valen más que el
+arreglo: **S3 y S4 salieron VERDES porque mi candado buscaba el nombre de la función en el archivo
+y los sabotajes solo la COMENTABAN** (un `//` delante es justo como esto se apaga sin querer), y
+**S6 no se aplicó por los finales de línea** — el gotcha que ya estaba escrito desde v537 y que
+esta matriz volvió a pagar. Los tres cerrados: las aserciones de cableado quitan los comentarios
+antes de mirar, y el runner normaliza los saltos con `\r?\n`.
+
 ## 🔄 2026-08-29 — avi-v551: EL AVISO DIARIO SIGUE EL PLAN DE LA PERSONA, NO LA COPIA DEL TELÉFONO
 
 **El defecto, medido en producción y con la prueba en los logs:** los días de entreno viajaban

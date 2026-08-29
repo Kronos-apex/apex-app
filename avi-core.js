@@ -962,6 +962,49 @@ function parseLimitations(notes) {
   };
 }
 
+// ── ¿QUIÉN VA A LEER ESTA NOTA? (v552) ───────────────────────────────────────────────
+// Los textos de arriba están escritos para el COACH: «ajusta antes de aprobar», «confírmale qué
+// hace hoy sin dolor». En el registro por cuenta propia la persona escribe sus lesiones en el
+// paso 6 del asistente, `_autoGenerateWeek` genera el plan y **el único que lee esa nota es ella
+// misma** — a la que se le pide aprobar un plan que no tiene a quién aprobarle, con vocabulario
+// de otro oficio. Aquí no cambia NADA de lo clínico: `lim.advice` y `lim.nerveAdvice` (las frases
+// que dictó Laura) viajan VERBATIM; lo que cambia es la frase que las enmarca y a quién le habla.
+//
+// 🔒 LA LÍNEA QUE NO SE MUEVE: la app dice QUÉ QUITÓ, jamás que lo que queda esté bien para esa
+// persona (gotcha de v424). En la versión del asesorado eso pesa MÁS, no menos: es la única que
+// lee alguien sin criterio clínico para dudar de ella.
+function genLimitationNote(lim, audience) {
+  const l = lim || {};
+  const zonas = (l.zones || []).join(', ');
+  const nerv = l.nerve ? ' 🚑 ' + l.nerveAdvice : '';
+  if (audience === 'client') {
+    return `⚠️ Escribiste que tienes una molestia en ${zonas || 'una zona'}, así que este plan la tuvo en cuenta. ${l.advice}${nerv} Todavía no lo ha revisado un profesional: si algo te duele, no lo hagas y avísale a tu coach.`;
+  }
+  return `⚠️ REVISAR — limitación detectada (${zonas}). ${l.advice}${nerv} Ajusta antes de aprobar.`;
+}
+
+// El aviso que le llega al COACH cuando alguien se registra SOLO y declara una limitación.
+// 🔴 Hasta v552 esa persona era invisible: el único sitio donde la app avisaba de una limitación
+// era el banner de la vista previa del generador, **que solo se abre cuando el coach pulsa
+// ✨ Generar** — y en este camino nadie lo pulsa. El plan se armaba, se marcaba `reviewed:true`
+// (v552 también quita ese sello: nadie lo revisó) y la persona entraba a entrenar.
+// Mismo canal que el reporte de dolor, que lleva versiones funcionando: mensaje en su hilo + push.
+function limitationCoachAlert(name, lim, notes) {
+  const l = lim || {};
+  if (!l.detected) return null;
+  const first = String(name || '').trim().split(/\s+/)[0] || 'Un asesorado';
+  const zonas = (l.zones || []).join(', ') || 'sin zona específica';
+  const nota = String(notes || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+  // El texto NO afirma que el filtro alcance: si la zona no tiene lista clínica, lo dice.
+  const filtro = l.hasExclusions
+    ? 'El generador sacó lo que carga esa zona, que es un filtro por lo que escribió y no una valoración.'
+    : 'Esa zona NO tiene filtro automático: no se excluyó ni un ejercicio.';
+  return `⚠️ ${first} se registró por su cuenta y declaró una limitación (${zonas}). `
+    + `Su plan se generó solo y NADIE lo ha revisado. ${filtro}`
+    + (l.nerve ? ' 🚑 ' + l.nerveAdvice : '')
+    + (nota ? ` Escribió: «${nota}»` : '');
+}
+
 // Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
 // `adaptation`: si es true (principiante en sus primeras semanas) sobrescribe el
 // esquema del objetivo por una FASE DE ADAPTACIÓN ANATÓMICA — ver isInAdaptation().
@@ -1782,7 +1825,9 @@ function _genResolveSplit(sexKey, days, level, place) {
 }
 
 // ── API principal: genera el borrador de rutinas de la semana ──
-// client: {sex,age,level,days,goal,notes}. lib: DB.exercises. opts: {idFn,now,seed,tier}.
+// client: {sex,age,level,days,goal,notes}. lib: DB.exercises. opts: {idFn,now,seed,tier,audience}.
+// `audience`: quién va a LEER la nota de la rutina — 'coach' (por defecto) o 'client' (registro
+// por cuenta propia, donde no hay coach que apruebe). Ver `genLimitationNote`.
 // Devuelve { routines:[...], needsReview:bool, limitations:{...} }.
 function generarRutinas(client, lib, opts) {
   client = client || {};
@@ -1854,7 +1899,7 @@ function generarRutinas(client, lib, opts) {
     const note = exs.length === 0
       ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
       : lim.detected
-      ? `⚠️ REVISAR — limitación detectada (${lim.zones.join(', ')}). ${lim.advice}${lim.nerve ? ' 🚑 ' + lim.nerveAdvice : ''} Ajusta antes de aprobar.`
+      ? genLimitationNote(lim, opts.audience)
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
       : 'Borrador generado automáticamente. Revisa y ajusta antes de asignar.';
@@ -8708,6 +8753,8 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhoneNote,
     coachCanReach,
     pushPlanFromRoutines,
+    genLimitationNote,
+    limitationCoachAlert,
     clientProgressStory,
     showcaseRow,
     SHOWCASE_MAX,

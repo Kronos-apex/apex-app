@@ -12235,6 +12235,103 @@ test('🔴 v520 · coachCanReach responde «¿puedo escribirle YO?», no «¿tie
   assert.ok(/waPhone\(/.test(cuerpo), 'coachCanReach dejó de delegar en waPhone: hay dos definiciones de «número válido»');
 });
 
+// ── QUIEN SE REGISTRA SOLO CON UNA LESIÓN: NI SE LE MIENTE NI SE LE ESCONDE (v552) ───────────
+// El asistente de registro recoge las lesiones en texto libre y `_autoGenerateWeek` genera el
+// plan con ellas. Dos agujeros medidos el 29-ago: (1) el sello «revisado» se ponía sobre un plan
+// que NADIE miró —32 rutinas en producción lo llevan—; (2) el único sitio donde la app avisa de
+// una limitación es el banner de la vista previa del generador, **que solo se abre cuando el
+// coach pulsa ✨ Generar**, así que en este camino el coach no se enteraba jamás.
+test('🔴 v552 · la nota de la rutina le habla a QUIEN la va a leer', () => {
+  const lim = core.parseLimitations('hernia lumbar, evitar peso muerto');
+  assert.strictEqual(lim.detected, true);
+  const coach = core.genLimitationNote(lim, 'coach');
+  const client = core.genLimitationNote(lim, 'client');
+  // El del coach NO cambia: es el texto que lleva versiones en su vista previa.
+  assert.ok(/REVISAR/.test(coach) && /antes de aprobar/.test(coach));
+  // El del asesorado no le pide aprobar nada (no tiene a quién) ni le habla en jerga de coach.
+  assert.ok(!/aprobar|asignar/i.test(client), 'al asesorado no se le pide aprobar su propio plan');
+  // 🔒 LO CLÍNICO VIAJA VERBATIM: las frases las dictó Laura y este cambio es de FRAMING.
+  assert.ok(client.includes(lim.advice), 'la frase clínica tiene que ir literal, no reescrita');
+  // 🔒 Y LA LÍNEA DE v424: se dice qué se quitó, NUNCA que lo que queda esté bien para ella.
+  assert.ok(!/seguro|apto|puedes hacerlo sin riesgo/i.test(client));
+  assert.ok(/no lo ha revisado un profesional/i.test(client),
+    'la versión del asesorado tiene que decirle que nadie lo ha revisado todavía');
+  // Compromiso nervioso → la derivación médica viaja en las DOS versiones, literal.
+  const nerv = core.parseLimitations('hernia lumbar con hormigueo que baja por la pierna');
+  assert.strictEqual(nerv.nerve, true);
+  assert.ok(core.genLimitationNote(nerv, 'client').includes(nerv.nerveAdvice));
+  assert.ok(core.genLimitationNote(nerv, 'coach').includes(nerv.nerveAdvice));
+});
+
+test('🔴 v552 · generarRutinas escribe la nota del público que le digan', () => {
+  const c = { sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo', notes: 'hernia lumbar' };
+  const paraCoach = generarRutinas(c, LIB, FIXED);                                   // sin audience
+  const paraCliente = generarRutinas(c, LIB, Object.assign({}, FIXED, { audience: 'client' }));
+  paraCoach.routines.forEach(r => assert.ok(/antes de aprobar/.test(r.note)));
+  paraCliente.routines.forEach(r => {
+    assert.ok(!/antes de aprobar/.test(r.note), 'la nota del asesorado no puede pedirle aprobar');
+    assert.ok(/⚠️/.test(r.note) && r.needsReview === true, 'sigue marcada para revisión');
+  });
+  // 🔒 CONTROL: sin limitación, el público NO cambia el texto — si cambiara, `audience` estaría
+  // reescribiendo notas que no tienen nada que ver con una lesión.
+  const sano = { sex: 'F', level: 'Intermedio', days: 2, goal: 'Ganar músculo' };
+  assert.deepStrictEqual(
+    generarRutinas(sano, LIB, FIXED).routines.map(r => r.note),
+    generarRutinas(sano, LIB, Object.assign({}, FIXED, { audience: 'client' })).routines.map(r => r.note));
+});
+
+test('🔴 v552 · el coach se entera de que alguien se registró solo con una limitación', () => {
+  const lim = core.parseLimitations('hernia lumbar, evitar peso muerto');
+  const msg = core.limitationCoachAlert('Ana María Gómez', lim, 'hernia lumbar, evitar peso muerto');
+  assert.ok(msg.startsWith('⚠️ Ana '), 'lo encabeza su primer nombre');
+  assert.ok(/se registr[óo] por su cuenta/.test(msg));
+  assert.ok(/NADIE lo ha revisado/.test(msg), 'el aviso tiene que decir que el plan está sin revisar');
+  assert.ok(/zona lumbar/.test(msg), 'y qué zona declaró');
+  assert.ok(/«hernia lumbar, evitar peso muerto»/.test(msg), 'y lo que ella escribió, textual');
+  // 🔴 NO PROMETE UN FILTRO QUE NO EXISTE: una limitación sin zona con lista clínica lo DICE.
+  const gen = core.parseLimitations('tuve una fractura el año pasado');
+  assert.strictEqual(gen.detected, true);
+  assert.strictEqual(gen.hasExclusions, false);
+  assert.ok(/NO tiene filtro autom/.test(core.limitationCoachAlert('Luis', gen, 'tuve una fractura')),
+    'sin lista clínica el aviso no puede decir que se excluyó algo');
+  assert.ok(/sac[óo] lo que carga esa zona/.test(msg), 'y con lista clínica sí lo dice');
+  // Sin limitación no hay aviso — un aviso vacío en su chat es ruido que se aprende a ignorar.
+  assert.strictEqual(core.limitationCoachAlert('Ana', core.parseLimitations(''), ''), null);
+  assert.strictEqual(core.limitationCoachAlert('Ana', null, ''), null);
+  // La nota se topa: es texto libre y va a un push.
+  const largo = core.limitationCoachAlert('Ana', lim, 'lumbar ' + 'x'.repeat(500));
+  assert.ok(largo.length < 460, 'el aviso no puede crecer sin límite: ' + largo.length);
+});
+
+test('🔴 v552 · el camino del auto-registro NO sella «revisado» y SÍ avisa', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function _autoGenerateWeek');
+  // ⚠️ Se quitan los COMENTARIOS antes de mirar: el comentario que explica por qué NO va el sello
+  // NOMBRA el sello, y la primera versión de este candado se marcó a sí misma en rojo. Es el
+  // gotcha del regex que leía el comentario de cabecera del `.sql` (v523), aquí en un .js.
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 20))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(!/reviewed:\s*true/.test(cuerpo),
+    'volvió el sello «revisado» sobre un plan que nadie miró (32 rutinas lo llevan en producción)');
+  assert.ok(/audience:'client'/.test(cuerpo), 'la nota del auto-registro dejó de escribirse para el asesorado');
+  // El aviso al coach está CABLEADO en las dos puertas — una función pura que nadie llama es
+  // «puerta cerrada, ventana abierta» (lección v509).
+  // 🔴 Y LA LLAMADA SE BUSCA SIN COMENTARIOS: la primera versión de este candado salió VERDE con
+  // los dos sabotajes que COMENTABAN la llamada — el nombre seguía en el archivo y el regex lo
+  // daba por cableado. Un `//` delante es exactamente la forma en que esto se apaga sin querer.
+  const vivo = t => t.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const prov = vivo(src.slice(src.indexOf('async function _provisionFreeClient'), src.indexOf('function showPlanReveal')));
+  assert.ok(/_selfRegLimAlert\(/.test(prov), 'el registro nuevo no avisa de la limitación');
+  const regen = vivo(src.slice(src.indexOf('function clientSelfGenerate'), src.indexOf('function clientSelfGenerate') + 700));
+  assert.ok(/_selfRegLimAlert\(/.test(regen), '«Regenerar mi semana» no avisa de la limitación');
+  // Y se avisa UNA vez: sin el guardia, cada toque de «Regenerar» le manda un push al coach.
+  const fn = src.slice(src.indexOf('function _selfRegLimAlert'), src.indexOf('\nfunction ', src.indexOf('function _selfRegLimAlert') + 20));
+  assert.ok(/c\.limAlertAt/.test(fn) && /!c\.selfReg\s*\|\|\s*c\.limAlertAt/.test(fn),
+    'el aviso no está topado: se repetiría en cada regeneración');
+  assert.ok(/limitationCoachAlert/.test(fn), 'el texto del aviso tiene que salir del motor puro');
+});
+
 // ── EL AVISO DIARIO SIGUE EL PLAN DE LA PERSONA, NO LA COPIA DEL TELÉFONO (v551) ─────────────
 // Medido en producción el 29-ago: Natalia Martínez tenía DOS filas de suscripción —la del 7-ago,
 // huérfana (ningún aparato vuelve a tocar un endpoint que ya rotó), con los días congelados de

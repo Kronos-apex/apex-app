@@ -303,11 +303,44 @@ function _autoGenerateWeek(c){
   // el momento de más ganas. Ocho personas tienen rutina y nunca completaron un entreno.
   // El coach que genera desde su panel NO manda `startDay` y sigue viendo lunes, que es lo que espera.
   const _hoy=GEN_WEEK_DAYS[genDayIdxFromDate(new Date())];
-  const res=generarRutinas(c,DB.exercises,{idFn:uid,startDay:_hoy,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
+  // `audience:'client'` — la nota de la rutina la va a leer ELLA, no un coach: sin «aprueba» ni
+  // «ajusta antes de asignar», que es vocabulario de otro oficio (v552).
+  const res=generarRutinas(c,DB.exercises,{idFn:uid,startDay:_hoy,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer,audience:'client'});
   if(res.routines&&res.routines.length){
-    c.routines=sortRoutinesByDay(res.routines.map(r=>({...r,reviewed:true})));
+    // 🔴 NO SE MARCA `reviewed:true`. Hasta v552 este camino sellaba «revisado» las 32 rutinas de
+    // producción **sin que nadie las hubiera mirado** — el sello lo ponía el comentario «para modo
+    // libre no hay coach que revise», que es exactamente la razón por la que NO se puede poner.
+    // Hoy no lo lee ninguna pantalla, así que el daño era latente: el primer sitio que lo pinte
+    // estaría afirmando una revisión que no existió (familia del texto de v424).
+    c.routines=sortRoutinesByDay(res.routines);
   }
   return res;
+}
+
+// ── AVISO AL COACH: alguien se registró SOLO y declaró una limitación (v552) ──────────
+// El ÚNICO sitio donde la app avisaba de una limitación era el banner de la vista previa del
+// generador, y esa vista **solo se abre cuando el coach pulsa ✨ Generar**: en el registro por
+// cuenta propia nadie la abre, así que la persona entraba a entrenar con su hernia declarada y
+// el coach no se enteraba por ninguna parte. Mismo canal que el reporte de dolor (mensaje en su
+// hilo + push), que lleva versiones funcionando.
+// 🔒 Se avisa UNA vez (`limAlertAt` en el perfil): «✨ Regenerar mi semana» vuelve a pasar por
+// aquí y un aviso repetido en cada toque es ruido que se aprende a ignorar.
+function _selfRegLimAlert(c,res){
+  try{
+    if(!c||!c.selfReg||c.limAlertAt)return false;
+    const lim=(res&&res.limitations)||((typeof parseLimitations==='function')?parseLimitations(c.notes):null);
+    const txt=(typeof limitationCoachAlert==='function')?limitationCoachAlert(c.name,lim,c.notes):null;
+    if(!txt)return false;
+    c.limAlertAt=new Date().toISOString();
+    if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+    DB.msgs[c.id].push({from:'client',text:txt,date:c.limAlertAt});
+    svNow('ax_m',DB.msgs); svNow('ax_c',DB.clients);
+    if(typeof pushToClient==='function'){
+      pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+' se registró con una limitación',
+        txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+    }
+    return true;
+  }catch(e){ warn('AVI: aviso de limitación falló (no bloquea):',e&&e.message); return false; }
 }
 
 // ── Modo auth: poblar DB SOLO con el usuario logueado (aislado del blob global) ──
@@ -476,11 +509,15 @@ async function _provisionFreeClient(authUser, p){
   _applyAuthClientDB(rec,{}); // colecciones vacías (usuario nuevo)
   // Siempre auto-generamos la semana (con defaults si faltara algún dato) — ya no hay 2ª pantalla
   // "Cuéntanos de ti". El wizard premium ya recoge el perfil; el usuario puede regenerar desde Rutinas.
-  try{ _autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); }
+  let _genRes=null;
+  try{ _genRes=_autoGenerateWeek(rec); }catch(e){ warn('AVI: auto-generación falló (no bloquea):',e&&e.message); }
   // coachId=COACH_UID → la fila es visible para el coach por RLS (ve TODOS los registros como leads,
   // con tag 🆓 Libre o 🙋 Quiere coach). El usuario sigue tier:'libre' (premium bloqueado hasta convertir).
   try{ await UD.createFromClient(rec,{role:'client',coachId:COACH_UID}); }
   catch(e){ warn('AVI: crear fila user_data falló:',e&&e.message); }
+  // El aviso de limitación va DESPUÉS de crear la fila: escribe en `ax_m`/`ax_c` de esta persona,
+  // y sin fila esa escritura no tiene dónde caer.
+  _selfRegLimAlert(rec,_genRes);
   return rec;
 }
 
@@ -1232,6 +1269,9 @@ function clientSelfGenerate(){
   try{
     const res=_autoGenerateWeek(c);
     svNow('ax_c',DB.clients);
+    // Segunda puerta al mismo camino: quien declaró su limitación DESPUÉS del registro (editando
+    // su perfil) entra por aquí, no por el provisionamiento. `_selfRegLimAlert` avisa una sola vez.
+    _selfRegLimAlert(c,res);
     renderClientAllRoutines(c);
     toast(res.routines&&res.routines.length?'✨ ¡Tu nueva semana está lista!':'No se pudo generar, intenta de nuevo');
   }catch(e){ warn('AVI: regenerar libre falló:',e&&e.message); toast('No se pudo generar, intenta de nuevo'); }
