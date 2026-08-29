@@ -4,6 +4,37 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-29 — avi-v554: TRES EJERCICIOS DE PESO CORPORAL DEJAN DE PEDIR KILOS
+
+**Decisión del PO** sobre el punto que v553 dejó medido y sin tocar. De los 9 ejercicios declarados
+`env:'corporal'` (que quiere decir «sin equipos») a los que la app les pintaba casilla de KG, tres
+eran error claro del **lote 4 del 27-ago** y seis son de doble uso.
+
+**Corregidos** — `e369` Crunch Bicicleta, `e370` Crunch en V (V-Ups) y `e371` Plancha Lateral con
+Elevación de Cadera, que se declararon `type:'Aislamiento'` cuando **su familia entera es
+`Bodyweight`** (crunch abdominal, russian twist, dead bug, elevación de piernas colgado). El tipo
+no es una etiqueta de estilo: `exTrack` lo lee para decidir la MODALIDAD, o sea si la pantalla pide
+kilos, si sugiere peso, si permite dropset y si el ejercicio cuenta como «carga» en el ajuste por
+dolor de v553.
+
+**NO tocados, y es la mitad que importa** — `e35` Desplantes, `e124` Zancada Inversa, `e336`
+Sentadilla Cosaco, `e341` Elevación de Talones a una Pierna, `e90` Fire Hydrant y `e91` Frog Pump
+**sí admiten mancuerna, disco o tobillera**, así que ahí pedir kg es correcto. Reetiquetarlos era
+lo fácil y habría sido el error contrario.
+
+⚠️ **Cero impacto en datos**: los tres son del lote del 27-ago y **no están en ningún plan, ningún
+historial ni ningún récord** (medido contra la nube). Y no hace falta migración: `migrateExercises`
+tiene `type` en `CATALOG_FIELDS`, así que el catálogo guardado del coach se refresca solo en su
+próximo arranque.
+
+### Verificación
+Suite **958/958** (957 → 958) · `audit-catalog` **0 BLOCK** · **2 sabotajes y los 2 muerden**:
+devolver un tipo lo nombra en la lista, y «arreglarlo» pasando a peso corporal el **giro ruso EN
+POLEA** cae por el control **y además** por el candado del dolor de v553 — las dos capas lo cazan.
+🔒 **La excepción se declara UNA POR UNA con su razón**, nunca como un tope numérico: un «hasta 6»
+escondería al séptimo (lección del umbral de ids rotos de v537). Al añadir un ejercicio de peso
+corporal mal tipado, el test lo nombra.
+
 ## 🔄 2026-08-29 — avi-v553: «HOY TRABAJAMOS SIN CARGA» AHORA ES VERDAD (y la vitrina filtra por coach)
 
 ### 🔴 Con dolor, 23 ejercicios CARGADOS se quedaban con todo su peso

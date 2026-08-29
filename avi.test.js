@@ -12261,6 +12261,47 @@ test('🔴 v520 · coachCanReach responde «¿puedo escribirle YO?», no «¿tie
   assert.ok(/waPhone\(/.test(cuerpo), 'coachCanReach dejó de delegar en waPhone: hay dos definiciones de «número válido»');
 });
 
+// ── UN EJERCICIO DE «SOLO TU CUERPO» NO PUEDE PEDIR KILOS (v554) ─────────────────────────────
+// `env:'corporal'` significa literalmente «sin equipos». Si además su modalidad sale `peso_reps`,
+// la app le pinta a esa persona una casilla de KG que no tiene con qué llenar — y de paso el
+// ejercicio entra en la cuenta de «carga» del ajuste por dolor. Medido el 29-ago: **9 así**, tres
+// de ellos del lote 4 y error claro (el crunch bicicleta, el V-up y la plancha lateral dinámica,
+// que se declararon `Aislamiento` cuando su familia entera —crunch, russian twist, dead bug— es
+// `Bodyweight`). Los otros 6 SÍ admiten mancuerna o disco, así que ahí pedir kg es correcto.
+// 🔒 LA EXCEPCIÓN SE DECLARA UNA POR UNA CON SU RAZÓN, NUNCA COMO UN NÚMERO: un tope «hasta 6»
+// escondería al séptimo (lección del umbral de ids rotos, v537). Al añadir un ejercicio de peso
+// corporal mal tipado, este test lo nombra.
+test('🔴 v554 · en «solo peso corporal», solo los DUALES pueden pedir kg', () => {
+  const DUALES = {
+    e35:  'desplantes: se hacen con mancuernas o barra tan a menudo como sin nada',
+    e124: 'zancada inversa: misma familia que e35',
+    e336: 'sentadilla cosaco: se carga con goblet',
+    e341: 'elevación de talones a una pierna: se sostiene una mancuerna',
+    e90:  'fire hydrant: admite tobillera lastrada',
+    e91:  'frog pump: se hace con disco sobre la cadera',
+  };
+  const piden = _LIB_REAL.filter(e => (e.env || []).includes('corporal') && exTrack(e) === 'peso_reps');
+  assert.deepStrictEqual(piden.map(e => e.id).sort(), Object.keys(DUALES).sort(),
+    'cambió la lista de ejercicios de peso corporal que piden kg: ' +
+    piden.map(e => `${e.id} ${e.name}`).join(' · '));
+  // 🔒 Y LOS TRES CORREGIDOS, POR ID: son los que motivaron el candado.
+  ['e369', 'e370', 'e371'].forEach(id => {
+    const e = _LIB_REAL.find(x => x.id === id);
+    assert.ok(e, `falta ${id}`);
+    assert.strictEqual(exTrack(e), 'reps', `${id} (${e && e.name}) volvió a pedir kilos`);
+  });
+  // 🔒 CONTROL: la familia a la que pertenecen sigue igual — si alguien "arregla" esto pasando
+  // TODO el core a peso corporal, el giro ruso EN POLEA (que sí lleva peso) se caería aquí.
+  const polea = _LIB_REAL.find(e => e.id === 'e362');
+  assert.strictEqual(exTrack(polea), 'peso_reps', 'el giro ruso en POLEA sí lleva peso');
+  // Y el `type` es el de su familia, no uno inventado: los tipos válidos son los del catálogo.
+  const tipos = new Set(_LIB_REAL.map(e => e.type));
+  ['e369', 'e370', 'e371'].forEach(id => {
+    assert.strictEqual(_LIB_REAL.find(x => x.id === id).type, 'Bodyweight');
+  });
+  assert.ok(tipos.has('Bodyweight') && tipos.has('Isométrico'), 'control: los tipos sin carga existen');
+});
+
 test('🔴 v553 · la vitrina pública pide SOLO las tarjetas de su coach', () => {
   // Cabo suelto de la verificación adversarial de v525: el tope de 6 es POR COACH (lo pone el
   // trigger del .sql) y la página pedía «las 6 más recientes» sin filtrar. Con dos coaches, las
