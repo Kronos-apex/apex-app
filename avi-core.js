@@ -3914,14 +3914,24 @@ const MOOD_STATES = [
   { id: 'dolor',   emoji: '🤕',   label: 'Con dolor o molestia' },
 ];
 
-// ¿El ejercicio es de carga (fuerza con peso externo)? Peso corporal,
-// isométrico, funcional, cardio y core NO cuentan como carga.
+// ¿El ejercicio es de carga (fuerza con peso externo)?
+// 🔴 ANTES SE DECIDÍA POR EL MÚSCULO Y EL NOMBRE DEL TIPO —«core y funcional no cuentan»— y eso
+// es un PROXY de la pregunta real, que es si hay peso externo. Medido el 29-ago sobre el catálogo
+// de 374: **23 ejercicios cargados se escapaban** del alivio por dolor mientras la app le prometía
+// a la persona, por escrito, «hoy trabajamos suave, SIN CARGA»:
+//   · 11 de tipo `Funcional` — thruster, push press, clean & press, caminata del granjero,
+//     balanceo con pesa rusa, man maker, remo renegado… nada de eso es ligero;
+//   · 10 de músculo `core` — el abdomen CARGADO que entró con el lote 4 (leñador en polea en sus
+//     dos direcciones, giro ruso en polea, crunch con disco, máquina abdominal). La regla se
+//     escribió cuando «core» significaba trabajo de suelo y envejeció sin que nadie la mirara;
+//   · 2 de `cardio` — el trineo, que se empuja CON DISCOS ENCIMA.
+// La pregunta se le hace ahora a `exTrack`, que es quien ya sabe la respuesta en toda la app (es
+// lo que decide si la pantalla pide KG). Peso corporal, isométrico, cardio y HIIT siguen fuera
+// por su propia modalidad, no por una lista que hay que acordarse de actualizar.
+// 🔒 Y queda IDEMPOTENTE: `_demoteToBodyweight` pone `track:'reps'`, así que un segundo repintado
+// ya no lo vuelve a tocar.
 function _isLoadedEx(ex) {
-  const type = ((ex && ex.type) || '').toLowerCase();
-  const muscle = (ex && ex.muscle) || '';
-  if (muscle === 'cardio' || muscle === 'core') return false;
-  if (/bodyweight|isom|funcional|cardio|hiit/.test(type)) return false;
-  return true;
+  return exTrack(ex) === 'peso_reps';
 }
 
 // Bloque de cardio "de relleno" autocontenido (no depende de la biblioteca).

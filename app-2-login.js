@@ -2040,7 +2040,14 @@ function openCoachStat(kind){
 async function renderShowcase(){
   const el=document.getElementById("cin-showcase"); if(!el)return 0;
   try{
-    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga&order=created_at.desc&limit=6",
+    // 🔴 FILTRA POR COACH (v553). El tope de 6 tarjetas es POR COACH —lo pone el trigger— y esta
+    // consulta pedía «las 6 más recientes» SIN filtrar: con dos coaches en la base, cada página
+    // mostraría las tarjetas del otro y las 6 de uno DESPLAZARÍAN a las del otro por completo.
+    // Quedó anotado como cabo suelto en la verificación adversarial de v525 («muerde el día que
+    // AVI GYM tenga su moderador») y es una línea. El índice `(coach_id, created_at desc)` ya
+    // existe desde s1: el esquema lo tenía previsto y solo faltaba usarlo.
+    // Modelo de un solo coach → la página de llegada es la SUYA, así que el id es el constante.
+    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga&coach_id=eq."+encodeURIComponent(COACH_UID)+"&order=created_at.desc&limit=6",
       {headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}});
     if(!r.ok)return 0;
     const filas=await r.json();

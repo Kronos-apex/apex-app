@@ -4506,6 +4506,19 @@ function moodRoutine() {
   };
 }
 
+// 🔴 EL FIXTURE DEL DOLOR VA APARTE, y no es cosmético: `moodRoutine()` lo comparten media docena
+// de tests que CUENTAN sus ejercicios, así que meterle casos nuevos les rompe la aritmética sin
+// que haya cambiado ninguna conducta. Este trae los dos que la regla vieja dejaba pasar —abdomen
+// CARGADO y un funcional pesado— más la plancha isométrica como control de lo que NO se toca.
+function moodRoutineConCargaOculta() {
+  const r = moodRoutine();
+  r.exercises.push(
+    { name: 'Leñador en Polea', muscle: 'core', type: 'Aislamiento', sets: 3, reps: 12 },
+    { name: 'Thruster', muscle: 'piernas', type: 'Funcional', sets: 3, reps: 10 },
+  );
+  return r;
+}
+
 test('applyMood: nunca muta la rutina original (devuelve copia)', () => {
   const base = moodRoutine();
   const snapshot = JSON.stringify(base);
@@ -4560,14 +4573,27 @@ test('applyMood "periodo": NO despoja carga (empodera + autorregula); rutina int
 });
 
 test('applyMood "dolor": trabajo sin carga, descanso mayor y avisa al coach', () => {
-  const out = applyMood(moodRoutine(), 'dolor', {});
+  const base = moodRoutineConCargaOculta();
+  const out = applyMood(base, 'dolor', {});
   assert.strictEqual(out.adapt.flagCoach, true);
   assert.strictEqual(out.restSec, 80);              // 60 + 20
-  const loaded = out.exercises.filter(e => e.muscle !== 'cardio' && e.muscle !== 'core');
-  assert.ok(loaded.every(e => e.bodyweightMode === true && e.sets === 2));
+  // 🔴 EL CRITERIO SE MIDE COMO LO MIDE LA APP, no por músculo: lo que PEDÍA KG antes del ajuste
+  // es lo que tiene que quedar sin carga. Antes este filtro excluía `core` y `cardio` a mano, y
+  // por eso no veía el abdomen cargado ni el funcional pesado (23 ejercicios del catálogo).
+  const conPeso = base.exercises.filter(e => exTrack(e) === 'peso_reps').map(e => e.name);
+  assert.ok(conPeso.includes('Leñador en Polea') && conPeso.includes('Thruster'),
+    'el fixture tiene que traer los casos que la regla vieja dejaba pasar');
+  const tocados = out.exercises.filter(e => conPeso.includes(e.name));
+  assert.strictEqual(tocados.length, conPeso.length);
+  assert.ok(tocados.every(e => e.bodyweightMode === true && e.sets === 2));
   // #6: la modalidad pasa a 'reps' → la UI NO pide KG ni sugiere peso ni permite dropset
   // (todo eso está gateado por track==='peso_reps'). Sin esto el "sin carga" era invisible.
-  assert.ok(loaded.every(e => exTrack(e) === 'reps'), 'dolor debe dejar la modalidad sin carga (reps)');
+  assert.ok(tocados.every(e => exTrack(e) === 'reps'), 'dolor debe dejar la modalidad sin carga (reps)');
+  // 🔒 CONTROL: lo que NUNCA pidió peso se queda como está — la plancha isométrica no se convierte
+  // en «12 reps sin peso». Sin esta mitad, «demoler todo» pasaría las aserciones de arriba.
+  const plancha = out.exercises.find(e => e.name === 'Plancha');
+  assert.ok(!plancha.bodyweightMode && plancha.sets === 3 && exTrack(plancha) === 'tiempo',
+    'un isométrico no es carga: el ajuste no puede tocarlo');
 });
 
 test('MOOD_STATES: "periodo" es el único femaleOnly; ids únicos', () => {
@@ -12233,6 +12259,68 @@ test('🔴 v520 · coachCanReach responde «¿puedo escribirle YO?», no «¿tie
   const i = src.indexOf('function coachCanReach');
   const cuerpo = src.slice(i, src.indexOf('function ', i + 20));
   assert.ok(/waPhone\(/.test(cuerpo), 'coachCanReach dejó de delegar en waPhone: hay dos definiciones de «número válido»');
+});
+
+test('🔴 v553 · la vitrina pública pide SOLO las tarjetas de su coach', () => {
+  // Cabo suelto de la verificación adversarial de v525: el tope de 6 es POR COACH (lo pone el
+  // trigger del .sql) y la página pedía «las 6 más recientes» sin filtrar. Con dos coaches, las
+  // 6 de uno desplazan a las del otro y cada página muestra las tarjetas ajenas.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf('async function renderShowcase');
+  assert.ok(i > 0, 'desapareció la vitrina de la página de llegada');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 20));
+  assert.ok(/avi_showcase\?/.test(cuerpo), 'la vitrina dejó de consultar su tabla');
+  assert.ok(/coach_id=eq\./.test(cuerpo), 'la consulta pública volvió a traer las tarjetas de CUALQUIER coach');
+  assert.ok(/COACH_UID/.test(cuerpo), 'el coach se escribió a mano en vez de leerse de la constante');
+  // 🔒 CONTROL: el tope y el orden siguen ahí — un filtro que se lleve por delante el `limit`
+  // convertiría la vitrina en «todas las tarjetas que existan».
+  assert.ok(/limit=6/.test(cuerpo) && /order=created_at\.desc/.test(cuerpo));
+  // 🔒 Y el espejo: el tope del cliente y el del servidor son el mismo número.
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase/community/s1_showcase.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  const m = sql.match(/count\(\*\)[\s\S]{0,120}?>=\s*(\d+)/);
+  assert.ok(m, 'el .sql dejó de topar las tarjetas por coach');
+  assert.strictEqual(Number(m[1]), 6, 'el tope del servidor y el `limit` de la página se separaron');
+});
+
+// ── «HOY TRABAJAMOS SIN CARGA» TIENE QUE SER VERDAD EN TODO EL CATÁLOGO (v553) ───────────────
+// La regla de qué cuenta como carga se decidía por el MÚSCULO y por el nombre del TIPO, que es un
+// proxy de la pregunta real. Medido sobre los 374: **23 ejercicios cargados se escapaban** — el
+// abdomen con polea y disco que entró con el lote 4, once funcionales pesados (thruster, push
+// press, clean & press, caminata del granjero) y el trineo, que se empuja CON DISCOS. La app le
+// prometía a la persona con dolor, por escrito, «hoy trabajamos suave, sin carga».
+test('🔴 v553 · con dolor, TODO lo que pide kg en el catálogo real queda sin carga', () => {
+  assert.ok(_LIB_REAL.length > 300, `esperaba el catálogo real, leí ${_LIB_REAL.length}`);
+  const conPeso = _LIB_REAL.filter(e => exTrack(e) === 'peso_reps');
+  assert.ok(conPeso.length > 200, 'control: el catálogo tiene ejercicios de carga de sobra');
+  // Se pasa el catálogo entero por el ajuste de dolor, en tandas de una rutina por ejercicio.
+  const escapan = conPeso.filter(e => {
+    const out = applyMood({ id: 'r', name: 'x', day: 'Lunes', restSec: 60, exercises: [Object.assign({}, e)] }, 'dolor', {});
+    const r = out.exercises[0];
+    return !(r.bodyweightMode === true && exTrack(r) === 'reps');
+  });
+  assert.deepStrictEqual(escapan.map(e => e.id), [],
+    'estos ejercicios piden kg y el ajuste de dolor no se los quita: ' + escapan.map(e => e.name).join(', '));
+  // 🔒 LOS CASOS QUE LO MOTIVARON, por id: si alguien vuelve a decidir por músculo o por tipo,
+  // estos tres son los primeros en caerse y el mensaje dice por qué duelen.
+  const casos = { e362: 'giro ruso en POLEA (core cargado)', e191: 'thruster (funcional pesado)', e376: 'trineo (cardio con discos)' };
+  for (const [id, why] of Object.entries(casos)) {
+    const ex = _LIB_REAL.find(x => x.id === id);
+    assert.ok(ex, `falta ${id} del catálogo`);
+    const r = applyMood({ id: 'r', name: 'x', day: 'Lunes', restSec: 60, exercises: [Object.assign({}, ex)] }, 'dolor', {}).exercises[0];
+    assert.strictEqual(r.bodyweightMode, true, `${id} — ${why}`);
+  }
+  // 🔒 CONTROL OBLIGATORIO: lo que NUNCA pidió peso sigue intacto. Sin esta mitad, «convertir todo
+  // el catálogo a peso corporal» pasaría la aserción de arriba y la plancha pasaría a «12 reps».
+  const sinPeso = _LIB_REAL.filter(e => exTrack(e) !== 'peso_reps');
+  assert.ok(sinPeso.length > 100, 'control: hay material sin carga de sobra');
+  const tocados = sinPeso.filter(e => {
+    const r = applyMood({ id: 'r', name: 'x', day: 'Lunes', restSec: 60, exercises: [Object.assign({}, e)] }, 'dolor', {}).exercises[0];
+    return r.bodyweightMode === true;
+  });
+  assert.deepStrictEqual(tocados.map(e => e.id), [],
+    'el ajuste tocó ejercicios que no tenían carga que quitar: ' + tocados.map(e => e.name).join(', '));
 });
 
 // ── QUIEN SE REGISTRA SOLO CON UNA LESIÓN: NI SE LE MIENTE NI SE LE ESCONDE (v552) ───────────

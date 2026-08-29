@@ -4,6 +4,56 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-29 — avi-v553: «HOY TRABAJAMOS SIN CARGA» AHORA ES VERDAD (y la vitrina filtra por coach)
+
+### 🔴 Con dolor, 23 ejercicios CARGADOS se quedaban con todo su peso
+Al marcar 🤕 la app promete por escrito **«Con dolor lo mejor es no forzar. Hoy trabajamos suave,
+SIN CARGA»** y convierte los ejercicios a peso corporal. Quién entraba en «carga» se decidía por el
+**MÚSCULO** y por el nombre del **TIPO** (`core` y `funcional` fuera), que es un PROXY de la
+pregunta real: ¿tiene peso externo? **Medido sobre los 374 del catálogo: 23 se escapaban.**
+
+- **11 de tipo `Funcional`** — thruster, push press, clean & press, caminata del granjero, balanceo
+  con pesa rusa, man maker, remo renegado, step-up con mancuernas… nada de eso es ligero.
+- **10 de músculo `core`** — el abdomen CARGADO que entró con el **lote 4 de la repoblación**:
+  leñador en polea en sus dos direcciones, giro ruso en polea, crunch con disco, máquina abdominal.
+  La regla se escribió cuando «core» quería decir trabajo de suelo y **envejeció sin que nadie la
+  volviera a mirar**; la repoblación la dejó falsa el 27-ago.
+- **2 de `cardio`** — el trineo, que se empuja **con discos encima**.
+
+**El arreglo es una línea:** la pregunta se le hace a `exTrack`, que es quien ya la responde en toda
+la app (es lo que decide si la pantalla pide KG). Peso corporal, isométrico, cardio y HIIT siguen
+fuera **por su propia modalidad**, no por una lista que hay que acordarse de actualizar. Y queda
+idempotente: `_demoteToBodyweight` deja `track:'reps'`, así que un repintado ya no lo re-toca.
+
+⚠️ **Hoy no hay víctima viva**: esos 23 aparecen 7 veces en planes vigentes y las 6 personas que
+los tienen **nunca han entrenado** (0 sesiones con peso registrado en ellos). Es la puerta, no el
+incendio — pero la promesa estaba escrita en pantalla.
+
+### ✅ La vitrina pública ya filtra por coach
+Cabo suelto que dejó anotado la verificación adversarial de **v525**: el tope de 6 tarjetas es **por
+coach** (lo pone el trigger) y la página pedía «las 6 más recientes» **sin filtrar**, así que el día
+que AVI GYM tenga un segundo moderador **las 6 de uno desplazan a las del otro** y cada página
+muestra tarjetas ajenas. Una línea; el índice `(coach_id, created_at desc)` ya existía desde `s1`.
+Verificado contra producción con la llave PÚBLICA: la consulta filtrada devuelve las mismas 2
+tarjetas (Astrid y Luz) — el filtro no vacía la vitrina, que sería peor que el defecto.
+
+### Verificación
+Suite **957/957** (955 → 957) · **2 sabotajes y los 2 muerden**: devolver la regla al músculo/tipo
+cae nombrando **los 23** y hacer que la regla toque TODO cae por el control (la plancha isométrica
+no se convierte en «12 reps»). El candado nuevo barre el **catálogo REAL**, no un fixture: un
+fixture no tiene leñador en polea y habría dado verde sobre algo que sí pasa.
+🔴 **El fixture compartido no se tocó**: `moodRoutine()` lo usan seis tests que CUENTAN sus
+ejercicios, así que los casos nuevos van en uno propio — meterlos al común rompía tres tests sin
+que hubiera cambiado ninguna conducta.
+
+### ⏭️ Medido y NO tocado, porque es decisión del PO
+**9 ejercicios del catálogo se declaran «peso corporal» (`env:'corporal'`) y la app les pide KG**:
+`e369` Crunch Bicicleta, `e370` Crunch en V y `e371` Plancha Lateral con Elevación (los tres del
+lote 4, y estos tres son error claro), más `e35` Desplantes, `e124` Zancada Inversa, `e336`
+Sentadilla Cosaco, `e341` Elevación de Talones a una Pierna, `e90` Fire Hydrant y `e91` Frog Pump
+—que sí admiten mancuerna o disco, así que ahí **pedir kg es defendible**—. Reetiquetarlos es
+criterio de entrenador sobre su propio catálogo, no del ingeniero.
+
 ## 🔄 2026-08-29 — avi-v552: QUIEN SE REGISTRA SOLO CON UNA LESIÓN, NI SE LE MIENTE NI SE LE ESCONDE
 
 El asistente de registro recoge las lesiones en texto libre (paso 6) y `_autoGenerateWeek` genera
