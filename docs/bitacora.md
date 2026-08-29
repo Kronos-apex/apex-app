@@ -4,6 +4,50 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-29 — avi-v551: EL AVISO DIARIO SIGUE EL PLAN DE LA PERSONA, NO LA COPIA DEL TELÉFONO
+
+**El defecto, medido en producción y con la prueba en los logs:** los días de entreno viajaban
+GUARDADOS en la fila de `push_subscriptions` —una copia por APARATO de un hecho que es de la
+PERSONA—. Esa copia solo se reescribe cuando el navegador cambia de endpoint, y cuando cambia **la
+fila vieja queda HUÉRFANA**: ningún aparato la vuelve a tocar jamás, pero la ronda diaria le sigue
+enviando con el plan congelado de aquel día.
+
+🔴 **Natalia Martínez** tenía la fila del 7-ago con `["Lunes","Lunes","Martes"]` (el «Lunes» repetido
+es su plan de entonces, dos rutinas el mismo día) y la de hoy con su plan real de cuatro días. **El
+jueves 28-ago, turno de la tarde, los logs de la edge imprimieron para su mismo `client_id`
+«(entreno) ✅» y «(descanso) ✅» con 14 segundos de diferencia**: dos avisos que se contradicen, a
+una persona que paga. Y el mismo agujero se abre SIN duplicados: si el coach le cambia el plan a
+alguien y esa persona no vuelve a cambiar de endpoint, sus avisos siguen los días viejos para
+siempre.
+
+**El arreglo:** el plan MANDA. `daily-notifs` trae ahora `routines` y deriva de ahí los días y el
+turno; la copia de la fila se queda solo como respaldo para quien todavía no tiene plan. La
+derivación nace pura en avi-core (`pushPlanFromRoutines`) y **borra dos copias literales** que vivían
+en `app-2-login.js` y `app-3-coach.js` — que es exactamente por lo que pudo divergir sin que nadie lo
+viera. En la edge va como ESPEJO (Deno no importa el módulo del navegador) con su test de la suite,
+igual que `RENEW_NOTICE_DAYS`.
+
+✅ **De paso, la misma clase en el hermano de al lado:** `send-push` poda las suscripciones muertas
+(410/404) desde julio y **`daily-notifs` no lo hacía** — los endpoints zombis se acumulaban para
+siempre y la ronda reportaba «enviado» a la nada. Ahora poda igual (y nunca en corrida `dry`).
+
+⚖️ **Lo que NO se tocó, y es una decisión:** Samuel y Natalia tienen dos filas con endpoints
+DISTINTOS. La migración de v535 las declaró «dos aparatos de verdad» y ese control se respeta: no se
+deduplican. Con el plan como autoridad, dos aparatos reciben el MISMO mensaje, que es lo correcto.
+
+### Verificación
+Suite **951/951** (949 → 951) · **3 sabotajes, 3 muerden**: (1) la edge vuelve a leer
+`sub.training_days` → cae; (2) el motor deja de colapsar el día repetido → cae; (3) se cambia el
+código de poda → cae. Harness nuevo **`scripts/push-plan-contradice.mjs`** (read-only contra
+producción): recorre los 7 días y compara las dos reglas sobre los datos vivos —
+**regla vieja: 2 contradicciones (Natalia, jueves y viernes) · regla v551: 0**.
+
+### 🎓 Lección
+**Una copia por aparato de un hecho de la persona se convierte en un mentiroso el día que el aparato
+deja de existir.** No hay forma de curarla desde el cliente —ningún teléfono es dueño de esa fila ya—
+así que la única salida es que el envío lea el hecho en su fuente. Vale para cualquier dato que hoy
+viaje denormalizado en `push_subscriptions`.
+
 ## 🔄 2026-08-27 — avi-v550: LOTE 4 — CORE Y CARDIO (+22). **LA REPOBLACIÓN QUEDA CERRADA**
 
 Último lote. Catálogo **352 → 374**, desde los 247 con los que arrancó el estudio: **+127 en cuatro

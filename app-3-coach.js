@@ -619,9 +619,8 @@ async function _enterAuthSession(authUser){
   // que el camino legacy: espera 4s para no competir con el arranque.
   setTimeout(()=>{
     try{
-      const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
-      const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
-      _pushCtx={clientId:client.id,days:trainingDays,shifts:Object.keys(shiftMap).length?shiftMap:null};
+      const _plan=pushPlanFromRoutines(client.routines);
+      _pushCtx={clientId:client.id,days:_plan.days,shifts:Object.keys(_plan.shift).length?_plan.shift:null};
       // Con permiso ya dado: self-heal FORZADO (v320 — el no-forzado no re-insertaba la fila
       // muerta del cutover; CERO asesorados suscritos en 40+ días). Sin pedir aún ('default'):
       // tarjeta amable en "Hoy" — auditoría 2026-07-07: nadie le pedía el permiso al asesorado.

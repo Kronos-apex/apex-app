@@ -8659,6 +8659,36 @@ function coachCanReach(client) {
   return !!waPhone(client && client.phone);
 }
 
+// ── ¿QUÉ DÍAS ENTRENA ESTA PERSONA? (v551) ───────────────────────────────────────────
+// PURA. Una sola derivación para las TRES bocas que la necesitaban: los dos caminos de login
+// que registran el push y la edge `daily-notifs`, que hasta hoy leía una COPIA congelada.
+//
+// 🔴 EL DEFECTO QUE LA TRAE (medido el 29-ago en producción): los días de entreno viajaban
+// GUARDADOS en la fila de `push_subscriptions`, o sea una copia por APARATO de un hecho que es
+// de la PERSONA. Esa copia solo se reescribe cuando el navegador cambia de endpoint — y cuando
+// cambia, la fila vieja queda HUÉRFANA: ningún aparato la vuelve a tocar nunca, pero la ronda
+// diaria le sigue enviando. Natalia Martínez tenía la fila del 7-ago con
+// `["Lunes","Lunes","Martes"]` y la de hoy con su plan real de 4 días: **el jueves 28-ago recibió
+// los dos avisos de la tarde, uno diciéndole que hoy entrenaba y otro que hoy descansaba**
+// (verificado en los logs de la edge: mismo client_id, mismo turno, «(entreno) ✅» y
+// «(descanso) ✅» con 14 segundos de diferencia).
+// La misma puerta se abre sin duplicados: si el coach le cambia el plan a alguien y esa persona
+// no vuelve a cambiar de endpoint, sus avisos siguen los días VIEJOS para siempre.
+//
+// La copia por aparato NO se borra: sigue siendo el respaldo para quien todavía no tiene plan
+// (`days:[]`), y es lo que la edge usa cuando la persona no tiene rutinas.
+function pushPlanFromRoutines(routines) {
+  const rs = Array.isArray(routines) ? routines : [];
+  const days = [], shift = {};
+  rs.forEach(r => {
+    const d = r && r.day;
+    if (!d || d === 'Libre') return;
+    if (days.indexOf(d) < 0) days.push(d);   // dos rutinas el mismo día no son dos días
+    if (r.shift && !shift[d]) shift[d] = r.shift;
+  });
+  return { days, shift };
+}
+
 function waPhoneNote(raw) {
   const s = String(raw == null ? '' : raw).trim();
   if (!s) return 'No tienes su teléfono guardado.';
@@ -8677,6 +8707,7 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhone,
     waPhoneNote,
     coachCanReach,
+    pushPlanFromRoutines,
     clientProgressStory,
     showcaseRow,
     SHOWCASE_MAX,

@@ -291,7 +291,7 @@ serve(async (req) => {
     // (mensajes, leads) van por `send-push`, que no pasa por aquí.
     const { data: subs, error } = await supabase
       .from("push_subscriptions")
-      .select("client_id, subscription, training_days, training_shift")
+      .select("id, client_id, subscription, training_days, training_shift")
       .neq("client_id", "_coach");
 
     if (error) throw new Error(error.message);
@@ -301,10 +301,15 @@ serve(async (req) => {
     // por vida. daysSince: días desde la última. Con esto la función deja de adivinar.
     const { data: udRows, error: udErr } = await supabase
       .from("user_data")
-      .select("user_id, history, profile");
+      .select("user_id, history, profile, routines");
     if (udErr) console.error("[daily-notifs] user_data:", udErr.message);
     const todayCol = new Date(now.getTime() - 5 * 3600_000).toISOString().slice(0, 10);
     const state = new Map<string, { trainedToday: boolean; total: number; daysSince: number | null; habitsLoggedToday: boolean; renewDays: number | null }>();
+    // ⚠️ ESPEJO de `pushPlanFromRoutines` (avi-core). Deno no importa el módulo del navegador, así
+    // que la derivación vive dos veces y un test de la suite lee este archivo — mismo patrón que
+    // RENEW_NOTICE_DAYS. Los días de entreno son de la PERSONA: leerlos de su plan de HOY es lo
+    // único que impide que una fila huérfana mande el mensaje de un plan de hace tres semanas.
+    const plans = new Map<string, { days: string[]; shift: Record<string, string> }>();
     for (const r of (udRows ?? [])) {
       const hist: Array<{ date?: string }> = Array.isArray(r.history) ? r.history : [];
       let trainedToday = false, last = 0;
@@ -331,6 +336,17 @@ serve(async (req) => {
         }
         if (due > 0) renewDays = Math.ceil((due - now.getTime()) / 86400_000);
       }
+      const rutinas: Array<{ day?: string; shift?: string }> = Array.isArray(r.routines) ? r.routines : [];
+      if (rutinas.length) {
+        const days: string[] = [], shift: Record<string, string> = {};
+        for (const rt of rutinas) {
+          const d = rt && rt.day;
+          if (!d || d === "Libre") continue;
+          if (days.indexOf(d) < 0) days.push(d);
+          if (rt.shift && !shift[d]) shift[d] = rt.shift;
+        }
+        plans.set(String(r.user_id), { days, shift });
+      }
       state.set(String(r.user_id), {
         renewDays,
         trainedToday, total: hist.length,
@@ -347,11 +363,15 @@ serve(async (req) => {
     let sent = 0;
     let failed = 0;
     let skipped = 0;
+    const deadIds: string[] = [];   // endpoints que el servicio de push declara muertos (410/404)
 
     for (const sub of subs) {
       try {
-        const trainingDays: string[] = sub.training_days ?? [];
-        const shiftMap: Record<string,string> = sub.training_shift ?? {};
+        // El plan MANDA sobre la copia guardada en la fila (v551). La copia se queda como
+        // respaldo para quien todavía no tiene rutinas — ahí no hay nada mejor que leer.
+        const plan = plans.get(String(sub.client_id));
+        const trainingDays: string[] = plan ? plan.days : (sub.training_days ?? []);
+        const shiftMap: Record<string,string> = plan ? plan.shift : (sub.training_shift ?? {});
         const shift: string = shiftMap[todayName] ?? "";
         const isTraining = trainingDays.includes(todayName);
         const st = state.get(String(sub.client_id)) ?? null; // null p.ej. para '_coach'
@@ -424,12 +444,26 @@ serve(async (req) => {
         console.log(`[daily-notifs] ${slot} → ${sub.client_id} shift=${shift||"none"} (${isTraining?"entreno":"descanso"}) ✅`);
       } catch (e) {
         failed++;
+        // Poda de suscripciones MUERTAS — la misma que `send-push` tiene desde el 2026-07-11 y
+        // que a esta hermana le faltaba: un 410 Gone / 404 Not Found dice que ese endpoint ya no
+        // existe. Sin esto los zombis se acumulan para siempre y la ronda reporta "enviado" a la
+        // nada (clase conocida: 7 filas '_coach' muertas del cutover).
+        const code = (e as { statusCode?: number; status?: number } | undefined)?.statusCode
+                  ?? (e as { statusCode?: number; status?: number } | undefined)?.status;
+        if (code === 410 || code === 404) deadIds.push(sub.id);
         console.error(`[daily-notifs] Error → ${sub.client_id}:`, e);
       }
     }
 
+    let pruned = 0;
+    if (deadIds.length && !dry) {
+      const { error: delErr } = await supabase.from("push_subscriptions").delete().in("id", deadIds);
+      if (!delErr) pruned = deadIds.length;
+      else console.error("[daily-notifs] poda:", delErr.message);
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, slot, dry, today: todayName, sent, failed, skipped, total: subs.length }),
+      JSON.stringify({ ok: true, slot, dry, today: todayName, sent, failed, skipped, pruned, total: subs.length }),
       { headers: { ...cors, "Content-Type": "application/json" } },
     );
   } catch (err) {

@@ -1170,9 +1170,8 @@ async function tryAutoLogin(){
         resetLoginAttempts();
         if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
         if(Notification.permission==='granted') setTimeout(()=>{
-          const trainingDays=(client.routines||[]).map(r=>r.day).filter(d=>d&&d!=='Libre');
-          const shiftMap={};(client.routines||[]).forEach(r=>{if(r.day&&r.day!=='Libre'&&r.shift)shiftMap[r.day]=r.shift;});
-          subscribePush(client.id,trainingDays,Object.keys(shiftMap).length?shiftMap:null);
+          const _plan=pushPlanFromRoutines(client.routines);
+          subscribePush(client.id,_plan.days,Object.keys(_plan.shift).length?_plan.shift:null);
         },4000);
       } else {
         localStorage.removeItem('ax_session');

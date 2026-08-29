@@ -12235,6 +12235,68 @@ test('🔴 v520 · coachCanReach responde «¿puedo escribirle YO?», no «¿tie
   assert.ok(/waPhone\(/.test(cuerpo), 'coachCanReach dejó de delegar en waPhone: hay dos definiciones de «número válido»');
 });
 
+// ── EL AVISO DIARIO SIGUE EL PLAN DE LA PERSONA, NO LA COPIA DEL TELÉFONO (v551) ─────────────
+// Medido en producción el 29-ago: Natalia Martínez tenía DOS filas de suscripción —la del 7-ago,
+// huérfana (ningún aparato vuelve a tocar un endpoint que ya rotó), con los días congelados de
+// aquel plan, y la de hoy con su plan real—. El jueves 28-ago los logs de la edge imprimieron
+// para ella «(entreno) ✅» y «(descanso) ✅» en el MISMO turno de la tarde: dos avisos que se
+// contradicen. La copia por aparato no puede ser la autoridad sobre un hecho de la persona.
+test('🔴 v551 · pushPlanFromRoutines deriva los días de entreno del plan, y colapsa repetidos', () => {
+  // El plan REAL de Natalia el 29-ago (4 días, dos turnos declarados).
+  const plan = core.pushPlanFromRoutines([
+    { day: 'Lunes', shift: 'morning' }, { day: 'Martes' },
+    { day: 'Jueves', shift: 'morning' }, { day: 'Viernes' },
+  ]);
+  assert.deepStrictEqual(plan.days, ['Lunes', 'Martes', 'Jueves', 'Viernes']);
+  assert.deepStrictEqual(plan.shift, { Lunes: 'morning', Jueves: 'morning' });
+  // 🔴 EL CASO EXACTO DE LA FILA VIEJA: dos rutinas el mismo día son UN día de entreno, no dos.
+  // Así se guardó en producción (`["Lunes","Lunes","Martes"]`) y así llegaba a la ronda diaria.
+  assert.deepStrictEqual(core.pushPlanFromRoutines([
+    { day: 'Lunes' }, { day: 'Lunes' }, { day: 'Martes' },
+  ]).days, ['Lunes', 'Martes'], 'un día repetido no puede duplicarse en la lista');
+  // Libre no es un día de entreno, y lo que no trae día no cuenta.
+  assert.deepStrictEqual(core.pushPlanFromRoutines([
+    { day: 'Libre' }, { day: '' }, {}, { day: 'Miércoles' },
+  ]).days, ['Miércoles']);
+  // Estados no-felices: sin rutinas, sin arreglo, null → plan vacío, nunca una excepción.
+  assert.deepStrictEqual(core.pushPlanFromRoutines(null), { days: [], shift: {} });
+  assert.deepStrictEqual(core.pushPlanFromRoutines(undefined), { days: [], shift: {} });
+  assert.deepStrictEqual(core.pushPlanFromRoutines('Lunes'), { days: [], shift: {} });
+  // 🔒 CONTROL: los dos caminos de login DELEGAN en el motor. Eran dos copias literales de la
+  // misma derivación (app-2-login y app-3-coach) y por eso pudo divergir sin que nadie lo viera.
+  const fs = require('fs'), path = require('path');
+  for (const f of ['app-2-login.js', 'app-3-coach.js']) {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    assert.ok(/pushPlanFromRoutines\(/.test(src), `${f} dejó de delegar en el motor`);
+    assert.ok(!/\.map\(r=>r\.day\)\.filter\(d=>d&&d!=='Libre'\)/.test(src),
+      `${f} volvió a derivar los días a mano: hay dos definiciones de «día de entreno»`);
+  }
+});
+
+test('🔴 v551 · la ronda diaria lee el plan VIVO y poda las suscripciones muertas', () => {
+  const fs = require('fs'), path = require('path');
+  const edge = fs.readFileSync(path.join(__dirname, 'supabase/functions/daily-notifs/index.ts'), 'utf8');
+  // 1) Trae las rutinas de la persona…
+  assert.ok(/\.select\("user_id, history, profile, routines"\)/.test(edge),
+    'la edge dejó de traer las rutinas: vuelve a depender de la copia congelada del teléfono');
+  // 2) …y el plan MANDA sobre la copia de la fila (el respaldo solo aplica si no hay rutinas).
+  assert.ok(/const trainingDays: string\[\] = plan \? plan\.days : \(sub\.training_days \?\? \[\]\)/.test(edge),
+    'el plan de la persona dejó de mandar sobre la copia guardada en la suscripción');
+  assert.ok(/const shiftMap: Record<string,string> = plan \? plan\.shift : \(sub\.training_shift \?\? \{\}\)/.test(edge),
+    'el turno volvió a salir de la copia del aparato');
+  // 3) La derivación de la edge es ESPEJO de la del motor: si una colapsa los días repetidos y la
+  //    otra no, la persona con dos rutinas el lunes vuelve a recibir dos avisos distintos.
+  assert.ok(/if \(!d \|\| d === "Libre"\) continue;/.test(edge), 'el espejo dejó de excluir «Libre»');
+  assert.ok(/if \(days\.indexOf\(d\) < 0\) days\.push\(d\);/.test(edge), 'el espejo dejó de colapsar días repetidos');
+  // 4) Poda de muertas — la hermana `send-push` la tiene desde julio y a esta le faltaba.
+  assert.ok(/code === 410 \|\| code === 404/.test(edge), 'la ronda diaria no poda los endpoints muertos');
+  assert.ok(/\.from\("push_subscriptions"\)\.delete\(\)\.in\("id", deadIds\)/.test(edge),
+    'la poda no borra nada: los zombis se acumulan igual');
+  assert.ok(/deadIds\.length && !dry/.test(edge), 'una corrida en seco NO puede borrar filas');
+  assert.ok(/\.select\("id, client_id, subscription/.test(edge),
+    'sin el id no hay nada que borrar en la poda');
+});
+
 test('🔴 v520 · el reporte «Sin entrenar» separa a quien puedes escribirle de quien no', () => {
   // Son DOS tareas distintas: a unos les escribes hoy, a los otros primero hay que
   // conseguirles el número. Mezclados en una sola lista, la segunda no se hace nunca.
