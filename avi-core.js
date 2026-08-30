@@ -8659,7 +8659,27 @@ function clientProgressStory(client, sessions, now) {
     subidas: subidas.slice(0, STORY_TOP_LIFTS),
     subieron: subidas.length,
     conCarga: conCarga.length,
+    // 🔴 EL OBJETIVO ES LA LENTE CON QUE SE LEEN LOS NÚMEROS (pedido del PO, 30-ago). Sin él la
+    // misma cifra dice cosas opuestas: Nataly ganó 5,5 kg y eso es un ÉXITO porque su objetivo es
+    // ganar músculo, pero en una tarjeta sin objetivo un «+5,5 kg» se lee como que engordó. Sale
+    // del perfil, no lo teclea nadie: es dato de la app, como el resto de la tarjeta.
+    objetivo: normalizeGoal(client.goal),
   };
+}
+
+// ── OBJETIVOS VÁLIDOS ────────────────────────────────────────────────────────────────
+// 🔒 ESPEJO del CHECK de `objetivo` en s2_showcase_objetivo.sql y de los <option> de index.html.
+// Fuera de la lista devuelve null en vez de reventar: un objetivo raro no debe impedir publicar
+// una tarjeta legítima, y mandar al servidor un valor que su CHECK rechaza sería un espejo que
+// MIENTE (el insert volvería con «violates check constraint» en la cara del coach).
+const SHOWCASE_OBJETIVOS = ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Fuerza', 'Resistencia', 'Salud general'];
+function normalizeGoal(goal) {
+  // 🔴 EXIGE UNA CADENA DE VERDAD, no algo que se PAREZCA a una al convertirlo. `String(['Fuerza'])`
+  // es 'Fuerza': con un `String(...)` por delante, un arreglo de un elemento entraba como objetivo
+  // válido — y esto lee de un jsonb público. Lo cazó el caso de control de su propio test.
+  if (typeof goal !== 'string') return null;
+  const g = goal.trim();
+  return SHOWCASE_OBJETIVOS.indexOf(g) >= 0 ? g : null;
 }
 
 // ── LA VITRINA PÚBLICA: qué se publica en la página de llegada (v523) ────────────────
@@ -8695,7 +8715,12 @@ function showcaseRow(story) {
   })).filter(x => x.ejercicio && isFinite(x.de) && isFinite(x.a)
     && x.de > 0 && x.a > x.de && x.a <= SHOWCASE_KG_MAX);
   if (!subidas.length) return null;
-  return { nombre, entrenos: ent, meses: mes, subidas, subieron: sub, con_carga: con };
+  const row = { nombre, entrenos: ent, meses: mes, subidas, subieron: sub, con_carga: con };
+  // El objetivo viaja solo si es uno de los válidos. Va aparte y no rompe la fila: las 6 tarjetas
+  // ya publicadas nacieron sin él, así que la columna es NULA en el servidor y aquí también.
+  const obj = normalizeGoal(story.objetivo);
+  if (obj) row.objetivo = obj;
+  return row;
 }
 
 // ── ¿Puede el COACH avisarle a esta persona? (v520) ──────────────────────────────────
@@ -8768,6 +8793,8 @@ if (typeof module !== 'undefined' && module.exports) {
     clientProgressStory,
     showcaseRow,
     SHOWCASE_MAX,
+    SHOWCASE_OBJETIVOS,
+    normalizeGoal,
     STORY_MIN_SESSIONS,
     STORY_TOP_LIFTS,
     MS,

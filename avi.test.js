@@ -12090,6 +12090,13 @@ test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se
   const checks = (cuerpo.match(/check \(/g) || []).length;
   assert.strictEqual(checks, 6,   // nombre · entrenos · meses · subieron · con_carga · subieron<=con_carga
     'cambió el número de CHECK de la tabla (' + checks + '): si añadiste uno, dale su espejo en showcaseRow');
+  // 🔴 Y LOS CHECK QUE LLEGAN POR MIGRACIÓN. El conteo de arriba solo mira el `create table` de
+  // s1, así que una columna añadida con ALTER en otro archivo se le escapa entera — que es
+  // justamente como entró `objetivo`. Cada migración que toque esta tabla necesita su línea aquí.
+  const migraciones = require('fs').readdirSync(require('path').join(__dirname, 'supabase/community'))
+    .filter(f => /^s\d+_/.test(f) && f !== 's1_showcase.sql');
+  assert.deepStrictEqual(migraciones, ['s2_showcase_objetivo.sql'],
+    'apareció una migración nueva de la vitrina sin espejo en este test: ' + migraciones.join(', '));
   // y la tabla NO puede ganar un grant de UPDATE (lección c13c: el INSERT restringe y el
   // UPDATE amplio deja editar la fila hasta el estado prohibido)
   // 🔴 Sobre el SQL SIN COMENTARIOS: el encabezado explica por qué NO hay grant de UPDATE, y
@@ -12107,7 +12114,12 @@ test('🔴 v523 · la vitrina se PINTA en la página de llegada y se llama en el
   assert.ok(/\brenderShowcase\(\)/.test(app2.replace(/function renderShowcase\(\)/, '')),
     'renderShowcase existe pero no la llama nadie en el arranque');
   const i = app2.indexOf('async function renderShowcase');
-  const cuerpo = app2.slice(i, i + 2200);
+  // 🔴 SE ACOTA POR EL FINAL REAL DE LA FUNCIÓN, no por un número mágico. Antes decía
+  // `slice(i, i+2200)`: al comentar por qué el chip del objetivo es condicional (v555), el
+  // `catch` se salió de la ventana y el test dijo que la vitrina había dejado de callarse ante
+  // un fallo de red — una aserción que se rompe porque alguien escribió un comentario no está
+  // midiendo el código, está midiendo su longitud.
+  const cuerpo = app2.slice(i, app2.indexOf('\nfunction ', i + 20));
   assert.ok(/avi_showcase/.test(cuerpo), 'la vitrina dejó de leer su tabla');
   // 🔴 CADA interpolación, no «alguna». La primera versión de esta aserción decía «existe un
   // esc() en el cuerpo» y el sabotaje que se lo quitaba AL NOMBRE salía VERDE, porque los
@@ -12323,6 +12335,80 @@ test('🔴 v553 · la vitrina pública pide SOLO las tarjetas de su coach', () =
   const m = sql.match(/count\(\*\)[\s\S]{0,120}?>=\s*(\d+)/);
   assert.ok(m, 'el .sql dejó de topar las tarjetas por coach');
   assert.strictEqual(Number(m[1]), 6, 'el tope del servidor y el `limit` de la página se separaron');
+});
+
+// ── EL OBJETIVO EN LA TARJETA (v555) ─────────────────────────────────────────────────────────
+// Pedido del PO (30-ago). NO es decoración: sin el objetivo la MISMA cifra dice cosas opuestas.
+// Nataly subió de 54 a 59,5 kg y es un éxito —busca ganar músculo— pero en una tarjeta muda ese
+// «+5,5 kg» en una página de venta se lee como que engordó.
+test('🔴 v555 · el objetivo viaja del perfil a la fila, y solo si es uno de los seis', () => {
+  assert.deepStrictEqual(core.SHOWCASE_OBJETIVOS,
+    ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Fuerza', 'Resistencia', 'Salud general'],
+    'cambió la lista de objetivos de la vitrina: el CHECK del .sql y la web se separan');
+  // los seis pasan tal cual
+  core.SHOWCASE_OBJETIVOS.forEach(g =>
+    assert.strictEqual(core.normalizeGoal(g), g, `«${g}» debería ser un objetivo válido`));
+  // 🔴 CONTROL: cualquier otra cosa sale NULA, no se propaga. Mandar al servidor un valor que su
+  // CHECK rechaza sería un espejo que MIENTE — el insert volvería con un error de motor.
+  [null, undefined, '', '  ', 'perder grasa', 'Perder Grasa', 'Bajar de peso', 0, {}, ['Fuerza']]
+    .forEach(v => assert.strictEqual(core.normalizeGoal(v), null,
+      'un objetivo fuera de la lista se coló: ' + JSON.stringify(v)));
+});
+
+test('🔴 v555 · la historia lleva el objetivo y la fila publicable lo copia', () => {
+  const ses = [];
+  for (let i = 0; i < 10; i++) {
+    ses.push({ date: new Date(2026, 4, 1 + i).toISOString(),
+      exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 30 + i * 5, reps: 10 }] }] });
+  }
+  const st = core.clientProgressStory({ name: 'Nataly Ruiz', age: 40, goal: 'Ganar músculo' }, ses, new Date(2026, 7, 30));
+  assert.strictEqual(st.ok, true, 'control: la historia debería armarse');
+  assert.strictEqual(st.objetivo, 'Ganar músculo', 'la historia perdió el objetivo del perfil');
+  const row = core.showcaseRow(st);
+  assert.ok(row, 'control: la fila debería ser publicable');
+  assert.strictEqual(row.objetivo, 'Ganar músculo', 'la fila publicable perdió el objetivo');
+
+  // Un perfil SIN objetivo válido publica igual, pero sin el campo: la columna es nula en el
+  // servidor y las 6 tarjetas ya publicadas nacieron así.
+  const st2 = core.clientProgressStory({ name: 'Alguien', age: 30, goal: 'Bajar la panza' }, ses, new Date(2026, 7, 30));
+  assert.strictEqual(st2.objetivo, null);
+  const row2 = core.showcaseRow(st2);
+  assert.ok(row2, 'un objetivo raro NO puede impedir publicar una tarjeta legítima');
+  assert.ok(!('objetivo' in row2), 'se mandó un objetivo que el CHECK del servidor rechaza');
+});
+
+test('🔴 v555 · ESPEJO: los seis objetivos de la app son los del CHECK en el .sql', () => {
+  // Un espejo que MIENTE es peor que ninguno. Los valores se DERIVAN del archivo, no se
+  // re-escriben aquí: si alguien agrega un objetivo en un lado, este test lo caza.
+  const sql = require('fs').readFileSync(
+    require('path').join(__dirname, 'supabase/community/s2_showcase_objetivo.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');   // sin comentarios: el encabezado los nombra
+  const bloque = sql.match(/objetivo in \(([\s\S]*?)\)/);
+  assert.ok(bloque, 'el .sql dejó de restringir `objetivo` a una lista');
+  const delSql = [...bloque[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+  assert.deepStrictEqual(delSql, core.SHOWCASE_OBJETIVOS,
+    'la lista de objetivos del servidor y la de la app se separaron');
+  // 🔒 Y la columna tiene que ser NULA: las 6 tarjetas vivas nacieron sin objetivo y la tabla NO
+  // tiene grant de UPDATE, así que un NOT NULL las dejaría sin arreglo posible.
+  assert.ok(!/objetivo text[^;]*not null/i.test(sql),
+    'la columna `objetivo` se volvió NOT NULL: rompe las tarjetas ya publicadas');
+  assert.match(sql, /objetivo is null or/, 'el CHECK dejó de admitir null');
+});
+
+test('🔴 v555 · la página de llegada pide el objetivo, lo pinta y lo ESCAPA', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf('async function renderShowcase');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 20));
+  assert.match(cuerpo, /select=[^"']*objetivo/, 'la consulta no trae la columna: el chip nunca se pintaría');
+  assert.match(cuerpo, /sc-goal/, 'la tarjeta dejó de pintar el objetivo');
+  // 🔴 Es innerHTML en la página PÚBLICA: el valor tiene que ir escapado, como el resto.
+  assert.match(cuerpo, /sc-goal">\$\{esc\(/, 'el objetivo se interpola SIN esc() en la página pública');
+  // 🔒 Y pasa por la lista blanca antes de pintarse, no crudo desde la tabla.
+  assert.match(cuerpo, /normalizeGoal\(f\.objetivo\)/, 'el objetivo se pinta sin normalizar');
+  // 🔒 CONTROL de que el chip es CONDICIONAL: una tarjeta sin objetivo no puede pintar un hueco.
+  assert.match(cuerpo, /obj\s*\?\s*`<div class="sc-goal"/, 'el chip se pinta aunque no haya objetivo');
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  assert.match(css, /\.sc-goal\{/, 'el chip del objetivo no tiene estilo: saldría como texto suelto');
 });
 
 // ── «HOY TRABAJAMOS SIN CARGA» TIENE QUE SER VERDAD EN TODO EL CATÁLOGO (v553) ───────────────

@@ -2047,7 +2047,7 @@ async function renderShowcase(){
     // AVI GYM tenga su moderador») y es una línea. El índice `(coach_id, created_at desc)` ya
     // existe desde s1: el esquema lo tenía previsto y solo faltaba usarlo.
     // Modelo de un solo coach → la página de llegada es la SUYA, así que el id es el constante.
-    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga&coach_id=eq."+encodeURIComponent(COACH_UID)+"&order=created_at.desc&limit=6",
+    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga,objetivo&coach_id=eq."+encodeURIComponent(COACH_UID)+"&order=created_at.desc&limit=6",
       {headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}});
     if(!r.ok)return 0;
     const filas=await r.json();
@@ -2057,10 +2057,16 @@ async function renderShowcase(){
       const lifts=(f.subidas||[]).slice(0,3).map(x=>
         `<div class="sc-lift"><span>${esc(String(x.ejercicio||""))}</span><b>${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join("");
       const m=parseInt(f.meses)||1;
+      // 🔴 EL OBJETIVO VA ARRIBA DE LOS KILOS, no debajo: es la lente con la que se leen. Sin él,
+      // «+5,5 kg» de quien busca ganar músculo se lee como que engordó. Las tarjetas publicadas
+      // antes de v555 no lo traen (la columna es nula) y entonces no se pinta nada — ni un hueco
+      // ni un «sin objetivo», que en la primera pantalla de un desconocido es peor que nada.
+      const obj=(typeof normalizeGoal==="function")?normalizeGoal(f.objetivo):null;
       return `<div class="sc-card">
         <div class="sc-eyebrow">${m===1?"Un mes":m+" meses"} entrenando</div>
         <div class="sc-name">${esc(String(f.nombre||""))}</div>
         <div class="sc-sub">${esc(String(f.entrenos))} entrenos completados</div>
+        ${obj?`<div class="sc-goal">${esc(obj)}</div>`:""}
         ${lifts}
         <div class="sc-foot">Subió carga en ${esc(String(f.subieron))} de ${esc(String(f.con_carga))} ejercicios</div>
       </div>`;}).join("");

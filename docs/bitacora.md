@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-30 — avi-v555: EL OBJETIVO EN LA TARJETA DE VITRINA
+
+**Pedido del PO:** *«en la tarjeta debería aparecer el objetivo de cada quien»*, con su propio
+ejemplo: *«Nataly quiere ganar músculo y lo ha hecho muy bien ganando varios kilos, y Claudia,
+Luz y Kathe están en recomposición corporal»*.
+
+**No es decoración: sin el objetivo la MISMA cifra dice cosas opuestas.** Nataly subió de 54 a
+59,5 kg y eso es un ÉXITO —busca ganar músculo— pero en una tarjeta muda, en una página de VENTA,
+un «+5,5 kg» se lee como que engordó. El objetivo es la LENTE con la que se leen los kilos que ya
+estaban en la tarjeta.
+
+**Qué se construyó.** El valor sale del PERFIL y viaja `clientProgressStory` → `showcaseRow` →
+tabla → las dos vitrinas (la de la app y la de `avi-web`). **Nadie lo teclea**: es dato de la app,
+como el resto de la tarjeta.
+- `normalizeGoal` + `SHOWCASE_OBJETIVOS` (avi-core, puras): solo entran los SEIS del formulario.
+- Migración `s2_showcase_objetivo.sql`: columna `objetivo text` **NULA a propósito** —las 6
+  tarjetas ya publicadas nacieron sin él y la tabla **no tiene grant de UPDATE**, así que un
+  NOT NULL las dejaría sin arreglo posible— con CHECK declarativo y su espejo en la app.
+- 🔒 **Sigue sin haber peso, edad ni medidas**: el principio de s1 no se toca.
+- Chip condicional en las dos superficies: sin objetivo **no se pinta nada** (ni hueco ni
+  «sin objetivo», que en la primera pantalla de un desconocido es peor que la ausencia).
+
+**🔴 Un caso de control cazó un hueco real de mi propio código.** `normalizeGoal` empezaba con
+`String(goal)` y **`String(['Fuerza'])` es `'Fuerza'`**: un arreglo de un elemento entraba como
+objetivo válido, y esto lee de un jsonb público. Ahora exige `typeof === 'string'`.
+
+**🔴 Y rompí un test al DOCUMENTAR.** El candado de v523 recortaba el cuerpo de `renderShowcase`
+con `slice(i, i+2200)`; al comentar por qué el chip es condicional, el `catch` se salió de la
+ventana y el test dijo que la vitrina había dejado de callarse ante un fallo de red. Se acota por
+el final REAL de la función. **Una aserción que se rompe porque alguien escribió un comentario no
+mide el código, mide su longitud** (el mismo gotcha ya escrito en v483, en otro archivo).
+
+**✅ De paso, el cabo suelto de v525:** `avi-web` pedía las 6 tarjetas más recientes **sin filtrar
+por coach** — el mismo hueco que v553 cerró en la app y que aquí seguía abierto.
+
+**Verificación.** Suite **962/962** en los dos husos · hook 12/12 · matriz nueva
+`_sabotaje-showcase-objetivo` **12 sabotajes muerden + 1 caso que DEBE PASAR en verde** · el CHECK
+probado contra producción con **11 casos** (los 6 válidos y null pasan; «Bajar de peso», sin
+acento, con espacio final y vacío bloquean), **0 filas escritas** al terminar, `authenticated`
+sigue **sin UPDATE** y **0 advisors nuevos** · `avi-web` compila (`tsc --noEmit` limpio).
+
+**⏭️ Las 6 tarjetas vivas siguen en `null`:** la tabla no permite editar (editar = quitar y volver
+a publicar), así que el objetivo aparece cuando él las renueve — y ya tenía previsto renovar las
+de Luz, Claudia, Astrid y Kathe.
+
+**⚖️ DOS DATOS DEL PO QUE NO CUADRAN CON LA APP, y los dos cambian el plan que comen hoy:**
+- **Kathe** está como «Perder grasa» → plan de **1.899 kcal, cutting**. En «Recomposición» serían
+  **2.430**, que es exactamente su gasto: **531 kcal/día** de diferencia.
+- **Luz** está como «Salud general». Las calorías no cambian (2.230 las dos) pero la **proteína
+  sube de 111 a 136 g**.
+- Se corrigen **desde su app** (el teléfono sube el perfil completo desde su copia local, así que
+  una escritura directa a la nube la pisa el siguiente guardado).
+
+---
+
 ## 🔄 2026-08-29 — avi-v554: TRES EJERCICIOS DE PESO CORPORAL DEJAN DE PEDIR KILOS
 
 **Decisión del PO** sobre el punto que v553 dejó medido y sin tocar. De los 9 ejercicios declarados
