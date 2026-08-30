@@ -1943,7 +1943,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .cin-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(2,10,7,.30) 0%,rgba(0,0,0,0) 24%,rgba(0,0,0,0) 40%,rgba(2,10,7,.55) 64%,rgba(2,8,6,.94) 100%)}
 .cin-edge{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 120px 12px rgba(0,0,0,.42)}
-.cin-wrap{position:relative;z-index:6;display:flex;flex-direction:column;height:100%;width:100%;max-width:430px;margin:0 auto;
+/* 🔴 `overflow-y:auto`: esta columna es de alto FIJO (100% de la pantalla) y `#s-login`
+   recorta lo que sobra, así que en un teléfono corto algo se perdía sí o sí — antes se
+   aplastaba la vitrina, y al dejar de aplastarse se salía el aviso de instalación.
+   Lo que no cabe se DESPLAZA; en pantalla grande no cambia nada. Medido el 30-ago a
+   360×640: sin esto, 170 px del aviso quedaban fuera y eran inalcanzables. */
+.cin-wrap{position:relative;z-index:6;display:flex;flex-direction:column;height:100%;overflow-y:auto;width:100%;max-width:430px;margin:0 auto;
   padding:max(38px,env(safe-area-inset-top)) 26px max(24px,env(safe-area-inset-bottom))}
 .cin-brand{display:flex;align-items:center;gap:9px}
 .cin-brand svg{width:21px;height:19px}
@@ -2214,7 +2219,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    Va en DOM y no como imagen: se adapta al ancho, se lee con lector de pantalla y no depende
    de descargar nada. Los colores son FIJOS a propósito — esta tarjeta vive sobre el héroe
    oscuro del login, que no cambia con el tema (igual que --emerald-hdr). */
-.cin-showcase{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+/* 🔴 `flex-shrink:0`: `.cin-wrap` es una COLUMNA de alto fijo, así que sus hijos se encogen
+   cuando la pantalla queda justa — y esta tira es la que cedía. Al encogerse recorta por dentro,
+   porque `overflow-x:auto` obliga a `overflow-y` a valer `auto` (no se puede dejar en visible),
+   y lo que se pierde es la última línea de la tarjeta. Medido el 30-ago: con el chip del objetivo
+   las tres tarjetas que lo llevan desbordaban 8 px y «Subió carga en 16 de 28» salía cortado. */
+.cin-showcase{display:flex;flex-shrink:0;gap:10px;overflow-x:auto;padding:2px 0 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
 .cin-showcase::-webkit-scrollbar{height:0}
 .sc-card{scroll-snap-align:start;flex:0 0 82%;max-width:300px;background:rgba(6,18,13,.72);
   border:1px solid rgba(16,224,160,.30);border-radius:var(--rlg);padding:13px 15px;backdrop-filter:blur(6px)}

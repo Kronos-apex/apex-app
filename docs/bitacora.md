@@ -4,6 +4,50 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-08-30 — avi-v556: LA TARJETA DE LA VITRINA SE APLASTABA EN TELÉFONOS CORTOS
+
+**Lo destapó MIRAR la captura de v555**, no un test: «Subió carga en 16 de 28 ejercicios» salía
+cortado en las tres tarjetas con chip. 8 px en un teléfono de 844.
+
+**La causa es anterior al chip.** `.cin-wrap` es una columna de **alto fijo** (100% de la pantalla)
+y sus hijos se ENCOGEN cuando el contenido queda justo: la tira de la vitrina era la que cedía. Al
+encogerse recorta por dentro, porque `overflow-x:auto` **obliga** a `overflow-y` a valer `auto` (el
+navegador no permite dejarlo en `visible`), y lo que se pierde es la última línea de la tarjeta.
+
+**🔴 Y medido por alturas resultó MUCHO peor de lo reportado:**
+
+| alto de pantalla | tarjetas cortadas | se pierde | alto de la tira |
+|---|---|---|---|
+| 844 px | 0 | — | 238 px |
+| 800 px | 3 | 10 px | 215 px |
+| 720 px | 6 | 90 px | 135 px |
+| **640 px** | **6** | **170 px** | **55 px** |
+
+O sea que en **cualquier teléfono más corto que 844** la vitrina se aplastaba hasta ser ilegible —
+y 640-800 es media gama Android y el iPhone SE. El chip de v555 solo lo hizo visible en la pantalla
+grande.
+
+**El arreglo son dos líneas, y la segunda salió de medir la primera.** `flex-shrink:0` en la tira
+para que deje de ser la que cede; y al ponerlo, el harness cazó que el defecto se **mudaba**: a
+360×640 el aviso de instalación quedaba 170 px fuera y `#s-login` lo recorta. En una columna de alto
+fijo con más contenido del que cabe, **algo se pierde sí o sí**: la salida es que lo que no cabe se
+DESPLACE (`overflow-y:auto` en `.cin-wrap`). En pantalla grande no cambia nada.
+
+**Regresión nueva `_verify-vitrina-corte.mjs`**, y las tres veces que salió verde sobre el defecto
+enseñan más que el arreglo:
+1. **Midiendo solo a 844 y en local, el sabotaje salía VERDE**: la bienvenida pinta ahí la variante
+   de TEXTO del aviso de instalación, más baja que la de BOTÓN que sale en producción, así que la
+   columna no llega a apretar. Ahora mide en **dos alturas**.
+2. **La aserción «nada se sale de la pantalla» pasó a ser falsa** en cuanto la columna se desplaza:
+   quedar bajo la línea de flotación es normal. La pregunta correcta es si se puede **ALCANZAR**.
+3. **Y calcularlo con `scrollHeight > clientHeight` también salía VERDE**, porque eso es cierto
+   aunque el elemento no pueda desplazarse. Ahora **empuja el scroll y mira cuánto bajó de verdad**.
+
+**Verificación.** Suite **962/962** · hook 12/12 · **2 sabotajes y los 2 muerden** · el harness verde
+a 390×844 y 360×640, con su control de montaje (sin tarjetas pintadas aborta en vez de aprobar).
+
+---
+
 ## 🔄 2026-08-30 — avi-v555: EL OBJETIVO EN LA TARJETA DE VITRINA
 
 **Pedido del PO:** *«en la tarjeta debería aparecer el objetivo de cada quien»*, con su propio
