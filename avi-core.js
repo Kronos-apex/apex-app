@@ -7430,6 +7430,64 @@ function communityInviteMsg(name, peers, url) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// IDENTIDAD DE UN EJERCICIO DENTRO DEL HISTORIAL
+// ──────────────────────────────────────────────────────────────────────
+// El NOMBRE que guarda una sesión es una COPIA que el coach puede editar en la
+// rutina; el ID es la identidad estable. Agrupar el historial por nombre parte un
+// mismo ejercicio en dos filas en cuanto alguien lo renombra — medido en producción
+// el 31-ago sobre el historial del PO: `e29`, `e10` y `e11` aparecían cada uno bajo
+// DOS nombres (el suyo hasta el 26-ago y el del catálogo desde el 27), así que sus
+// series salían repartidas y «cuánto le das a cada músculo» contaba de menos.
+// Es la misma lección de v546 con el filtro de dolor, aplicada a las estadísticas.
+//
+// Segunda mitad del problema: **las sesiones anteriores a finales de junio NO traen
+// `id`** (llegó después), así que para esas el id no se puede leer — se APRENDE, del
+// propio historial, qué id le corresponde a cada nombre. El puente solo se usa cuando
+// es INEQUÍVOCO: si un mismo nombre se vio con dos ids distintos, no se adivina y cada
+// uno se queda por su lado.
+//
+// PURA: recibe las sesiones y devuelve dos funciones. `keyOf(ex)` da la clave de
+// agrupación; `nameOf(key)` da el rótulo, que es el nombre MÁS RECIENTE visto para ese
+// ejercicio — el que la persona está usando hoy y por lo tanto reconoce.
+function exerciseIdentity(sessions) {
+  const idsPorNombre = new Map();   // nombre normalizado → Set de ids vistos con él
+  const vistas = [];
+  (sessions || []).forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    ((s && s.exercises) || []).forEach(ex => {
+      if (!ex) return;
+      const nombre = String(ex.name == null ? '' : ex.name).trim();
+      const n = _norm(nombre).trim();
+      if (ex.id) {
+        if (!idsPorNombre.has(n)) idsPorNombre.set(n, new Set());
+        idsPorNombre.get(n).add(String(ex.id));
+      }
+      vistas.push({ ex, nombre, t: isNaN(t) ? 0 : t });
+    });
+  });
+  // El puente nombre→id SOLO cuando ese nombre nunca se vio con otro id.
+  const puente = new Map();
+  idsPorNombre.forEach((ids, n) => { if (ids.size === 1) puente.set(n, [...ids][0]); });
+
+  const keyOf = ex => {
+    if (!ex) return '';
+    const n = _norm(String(ex.name == null ? '' : ex.name)).trim();
+    if (ex.id) return String(ex.id);
+    if (puente.has(n)) return puente.get(n);
+    return 'n:' + n;   // sin id y sin puente: se agrupa por su propio nombre
+  };
+
+  // Rótulo = el nombre más reciente. Desempate por orden de aparición (determinista).
+  const rotulo = new Map();
+  vistas.forEach(({ ex, nombre, t }) => {
+    const k = keyOf(ex); if (!k || !nombre) return;
+    const prev = rotulo.get(k);
+    if (!prev || t > prev.t) rotulo.set(k, { nombre, t });
+  });
+  return { keyOf, nameOf: k => (rotulo.get(k) || {}).nombre || '' };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // PROGRESO POR EJERCICIO (gráfica de evolución del asesorado)
 // ──────────────────────────────────────────────────────────────────────
 // Agrega el historial en una serie por ejercicio: un punto por día entrenado
@@ -7440,7 +7498,9 @@ function communityInviteMsg(name, peers, url) {
 // El consumidor (buildExerciseProgress en index.html) solo le pasa DB.history[cid].
 function computeExerciseProgress(history) {
   const sessions = (history || []).slice().reverse(); // oldest first
-  const map = {}; // key: nombre del ejercicio
+  // Clave por IDENTIDAD, no por nombre: un ejercicio renombrado es el mismo ejercicio.
+  const ident = exerciseIdentity(history || []);
+  const map = {}; // key: identidad del ejercicio (id, o su nombre si nunca tuvo id)
   sessions.forEach(s => {
     const dateStr = new Date(s.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     (s.exercises || []).forEach(ex => {
@@ -7466,12 +7526,13 @@ function computeExerciseProgress(history) {
       } else if (track === 'hiit') {
         if (!done.length) return; val = done.length; unit = 'rondas';
       } else return;
-      if (!map[ex.name]) map[ex.name] = { name: ex.name, icon: ex.icon || '💪', muscle: ex.muscle, unit, points: [] };
-      map[ex.name].unit = unit;
+      const k = ident.keyOf(ex);
+      if (!map[k]) map[k] = { key: k, name: ident.nameOf(k) || ex.name, icon: ex.icon || '💪', muscle: ex.muscle, unit, points: [] };
+      map[k].unit = unit;
       // Un punto por fecha de sesión (si entrenó dos veces el mismo día, toma el máx).
-      const existing = map[ex.name].points.find(p => p.dateStr === dateStr);
+      const existing = map[k].points.find(p => p.dateStr === dateStr);
       if (existing) { existing.maxKg = Math.max(existing.maxKg, val); existing.vol += vol; }
-      else map[ex.name].points.push({ date: s.date, dateStr, maxKg: val, vol: Math.round(vol) });
+      else map[k].points.push({ date: s.date, dateStr, maxKg: val, vol: Math.round(vol) });
     });
   });
   // Conserva ejercicios con ≥1 punto; ordena por nº de puntos (más datos primero).
@@ -9116,6 +9177,7 @@ if (typeof module !== 'undefined' && module.exports) {
     communityCommentText,
     leadPending,
     computeExerciseProgress,
+    exerciseIdentity,
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,

@@ -14037,6 +14037,85 @@ test('🔴 cada sección del asesorado tiene su ficha de ayuda (derivado de inde
     `estas secciones caen a la ayuda de «Hoy» en silencio: ${sinFicha.join(', ')}`);
 });
 
+// 🔴 El NOMBRE de una sesión es una copia editable; el ID es la identidad. Agrupar el
+// historial por nombre partía un mismo ejercicio en dos filas en cuanto alguien lo
+// renombraba (medido el 31-ago en producción: e29, e10 y e11, cada uno bajo dos nombres).
+// Y las sesiones anteriores a finales de junio NO traen id, así que su nombre se resuelve
+// contra el puente que se APRENDE del propio historial — solo cuando es inequívoco.
+test('🔴 un ejercicio renombrado sigue siendo UNO en el historial', () => {
+  const ses = [
+    // nuevo (con id) y con el nombre del catálogo
+    { date: '2026-08-30T10:00:00.000Z', exercises: [{ id: 'e29', name: 'Curl de Bíceps con Mancuernas' }] },
+    // el MISMO id, con el nombre viejo que el coach le había puesto
+    { date: '2026-08-10T10:00:00.000Z', exercises: [{ id: 'e29', name: 'Curl Bíceps con Mancuerna' }] },
+    // sesión VIEJA sin id: solo se puede resolver por el puente nombre→id
+    { date: '2026-06-01T10:00:00.000Z', exercises: [{ name: 'Curl Bíceps con Mancuerna' }] },
+    // otro ejercicio distinto: no se debe mezclar con nada
+    { date: '2026-08-20T10:00:00.000Z', exercises: [{ id: 'e10', name: 'Curl Martillo' }] },
+  ];
+  const id = core.exerciseIdentity(ses);
+  const k = id.keyOf({ id: 'e29', name: 'Curl de Bíceps con Mancuernas' });
+  assert.strictEqual(k, 'e29');
+  assert.strictEqual(id.keyOf({ id: 'e29', name: 'Curl Bíceps con Mancuerna' }), 'e29',
+    'el mismo id con otro nombre se separó');
+  assert.strictEqual(id.keyOf({ name: 'Curl Bíceps con Mancuerna' }), 'e29',
+    'la sesión vieja SIN id no se pudo puentear a su ejercicio');
+  // El rótulo es el nombre MÁS RECIENTE — el que la persona está usando hoy.
+  assert.strictEqual(id.nameOf('e29'), 'Curl de Bíceps con Mancuernas');
+  // 🔒 CONTROL: dos ejercicios distintos NO se juntan.
+  assert.notStrictEqual(id.keyOf({ id: 'e10', name: 'Curl Martillo' }), 'e29');
+});
+
+// 🔒 El puente nombre→id solo vale cuando es INEQUÍVOCO: si un mismo nombre se vio con dos
+// ids distintos, adivinar juntaría dos ejercicios que no son el mismo. Ahí NO se puentea.
+test('🔒 un nombre ambiguo (dos ids) no se puentea: se deja por su nombre', () => {
+  const ses = [
+    { date: '2026-08-30T10:00:00.000Z', exercises: [{ id: 'e5', name: 'Remo' }] },
+    { date: '2026-08-20T10:00:00.000Z', exercises: [{ id: 'e51', name: 'Remo' }] },
+    { date: '2026-06-01T10:00:00.000Z', exercises: [{ name: 'Remo' }] },
+  ];
+  const id = core.exerciseIdentity(ses);
+  assert.strictEqual(id.keyOf({ id: 'e5', name: 'Remo' }), 'e5');
+  assert.strictEqual(id.keyOf({ id: 'e51', name: 'Remo' }), 'e51');
+  const kSinId = id.keyOf({ name: 'Remo' });
+  assert.ok(kSinId !== 'e5' && kSinId !== 'e51',
+    'se adivinó un id para un nombre que pertenece a DOS ejercicios: ' + kSinId);
+});
+
+// 🔒 Y el cableado: `computeExerciseProgress` tiene que agrupar por esa identidad. Una
+// función pura que nadie llama es «puerta cerrada, ventana abierta» (v509).
+test('🔒 computeExerciseProgress agrupa por identidad, no por nombre', () => {
+  const set = [{ kg: 10, reps: 10, done: true }];
+  const ses = [
+    { date: '2026-08-30T10:00:00.000Z', exercises: [{ id: 'e29', name: 'Curl de Bíceps con Mancuernas', sets: set }] },
+    { date: '2026-08-10T10:00:00.000Z', exercises: [{ id: 'e29', name: 'Curl Bíceps con Mancuerna', sets: set }] },
+  ];
+  const prog = core.computeExerciseProgress(ses);
+  assert.strictEqual(prog.length, 1, 'el ejercicio renombrado salió como dos series distintas');
+  assert.strictEqual(prog[0].points.length, 2, 'se perdió un punto al unir');
+  assert.strictEqual(prog[0].name, 'Curl de Bíceps con Mancuernas');
+  assert.strictEqual(prog[0].key, 'e29', 'la fila no expone su clave: openExerciseRoom la necesita');
+});
+
+// 🔒 `openMuscleRoom` es código de PANTALLA: la suite no lo ejecuta, así que su cableado
+// se afirma en estático. Se quitan los COMENTARIOS antes de mirar — un comentario que
+// nombre la función la daría por cableada (lección de v552), y este bloque tiene uno que
+// explica justamente por qué se agrupa por identidad.
+test('🔒 la sala del músculo agrupa por identidad, no por nombre', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function openMuscleRoom(');
+  assert.ok(i > 0, 'openMuscleRoom desapareció de app-4-entreno.js');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10))
+    .split(/\r?\n/).map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+  assert.ok(/exerciseIdentity\(sessions\)/.test(cuerpo),
+    'openMuscleRoom no construye la identidad del historial');
+  assert.ok(/const k=ident\.keyOf\(ex\)/.test(cuerpo),
+    'la clave de agrupación volvió a salir del nombre en vez de la identidad');
+  assert.ok(/name:ident\.nameOf\(k\)/.test(cuerpo),
+    'el rótulo de la fila no sale de la identidad');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

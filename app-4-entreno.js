@@ -2923,14 +2923,18 @@ function openExerciseRoom(clientId,exId,exName){
   const muscleLabel=(def&&def.muscleLabel)||(typeof MUSCLE_GROUP_LABEL!=='undefined'&&MUSCLE_GROUP_LABEL[muscle])||muscle;
   const col=(typeof MC!=='undefined'&&MC[muscle])||'#0A7C5B';
   const sessions=(DB.history&&DB.history[clientId])||[];
-  const prog=computeExerciseProgress(sessions).find(e=>e.name===name);
+  // Por IDENTIDAD, no por nombre: si el ejercicio se renombró, su historial es UNO solo
+  //  (v558). El nombre sale del CATÁLOGO y puede no ser aquel con el que se registró.
+  const _idt=(typeof exerciseIdentity==="function")?exerciseIdentity(sessions):null;
+  const _key=_idt?_idt.keyOf({id:exId,name:exName||name}):null;
+  const prog=computeExerciseProgress(sessions).find(e=>_key?e.key===_key:e.name===name);
   const pts=(prog&&prog.points)||[];
   const unit=(prog&&prog.unit)||'kg';
   const prs=(DB.prs&&DB.prs[clientId])||{};
   const pr=prs[exId]||prs[name]||null;
   const recordVal=pr?(pr.val!=null?pr.val:pr.kg):(pts.length?Math.max(...pts.map(p=>p.maxKg)):null);
   const e1=(unit==='kg'&&pr&&pr.reps>1)?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
-  const did=sessions.filter(s=>(s.exercises||[]).some(x=>(exId&&x.id===exId)||x.name===name));
+  const did=sessions.filter(s=>(s.exercises||[]).some(x=>_key?(_idt.keyOf(x)===_key):((exId&&x.id===exId)||x.name===name)));
   const veces=did.length;
   const lastDate=did.reduce((m,s)=>(!m||new Date(s.date)>new Date(m))?s.date:m,null);
   const lastStr=lastDate?new Date(lastDate).toLocaleDateString('es-ES',{day:'numeric',month:'short'}):'—';
@@ -3227,9 +3231,14 @@ function openMuscleRoom(clientId,group){
   const catLabel={empuje:'Empuje',traccion:'Tracción',piernas:'Piernas',core:'Core',cardio:'Cardio',otro:'Otro'}[g.cat]||'';
   const pct=vol.totalSets?Math.round(g.sets/vol.totalSets*100):0;
   const subs=(group==='cardio'||group==='otro')?[]:submuscleVolume(sessions,group,win,new Date(),_exSubregions);
-  // ejercicios que lo trabajan (en la ventana): por nombre → series done + volumen
+  // Ejercicios que lo trabajan (en la ventana): por IDENTIDAD → series done + volumen.
+  // Agrupar por NOMBRE partía en dos un ejercicio renombrado (el nombre es una copia
+  // editable; el id es la identidad). La identidad se aprende del historial COMPLETO,
+  // no solo de la ventana, para que el puente nombre→id de las sesiones viejas —las de
+  // antes de que existiera el id— tenga de dónde deducirse. Ver `exerciseIdentity`.
+  const ident=(typeof exerciseIdentity==='function')?exerciseIdentity(sessions):{keyOf:ex=>ex.name||'?',nameOf:k=>k};
   const cutoff=Date.now()-win*864e5, exMap={};
-  sessions.forEach(s=>{ const t=new Date(s.date).getTime(); if(isNaN(t)||t<cutoff)return; (s.exercises||[]).forEach(ex=>{ if(ex.muscle!==group)return; const done=(ex.sets||[]).filter(st=>st&&st.done); if(!done.length)return; const k=ex.name||'?'; if(!exMap[k])exMap[k]={name:k,id:ex.id,muscle:ex.muscle,sets:0,vol:0}; exMap[k].sets+=done.length; exMap[k].vol+=done.reduce((a,st)=>a+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0); }); });
+  sessions.forEach(s=>{ const t=new Date(s.date).getTime(); if(isNaN(t)||t<cutoff)return; (s.exercises||[]).forEach(ex=>{ if(ex.muscle!==group)return; const done=(ex.sets||[]).filter(st=>st&&st.done); if(!done.length)return; const k=ident.keyOf(ex)||'?'; if(!exMap[k])exMap[k]={name:ident.nameOf(k)||ex.name||'?',id:(String(k).slice(0,2)==='n:'?(ex.id||''):k),muscle:ex.muscle,sets:0,vol:0}; exMap[k].sets+=done.length; exMap[k].vol+=done.reduce((a,st)=>a+(parseFloat(st.kg)||0)*(parseFloat(st.reps)||0),0); }); });
   const exList=Object.values(exMap).sort((a,b)=>b.sets-a.sets);
   // tendencia: series del músculo por sesión (todas, últimas 10 con datos)
   const trend=[];
