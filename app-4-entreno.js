@@ -109,7 +109,10 @@ function exReveal(id){
 // ══════════════════════ CLIENT VIEW ══════════════════════
 function initClientView(client){
   const h=new Date().getHours();
-  document.getElementById('cn-greet').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches')+', '+client.name.split(' ')[0]+'!';
+  // El saludo del asesorado vive en la CABECERA de «Hoy» (`renderTodayHead`, v503), que lo
+  // pinta siempre —con heroe o sin el—. Repetirlo aqui lo mostraba DOS veces en «Hoy» y
+  // apretaba una barra que ya iba justa; en las otras pestanas no hace falta, cada una
+  // trae su propio encabezado.
   document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));document.querySelector('.cntab').classList.add('on');
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.getElementById('cn-today').classList.add('on');
   navReset('cn-today'); // botón atrás: inicio = Hoy, sin pasos previos
@@ -575,7 +578,10 @@ function renderGamification(client){
     ? `<div class="gx-prog"><div class="gx-pbar"><div class="gx-pfill" style="width:${L.pct}%"></div></div>
         <div class="gx-plbl"><span>Te ${L.rem===1?'falta':'faltan'} <b>${L.rem} entreno${L.rem===1?'':'s'}</b> para <b>${esc(L.next.name)}</b></span><span>${total}/${L.next.min}</span></div></div>`
     : `<div class="gx-prog"><div class="gx-plbl"><span>Has llegado al nivel máximo 🏆</span><span>${total} entrenos</span></div></div>`;
-  const volTxt = totalVol>=1000?`${(totalVol/1000).toFixed(1)}<span class="u">k kg</span>`:`${totalVol}<span class="u"> kg</span>`;
+  // «735.2k kg» juntaba el sufijo compacto y la unidad y se leia mal. Esta tarjeta era la
+  // UNICA que lo hacia: la pantalla de cierre, el promedio de la grafica y el detalle de
+  // sesion ya escriben el volumen con separador de miles. Se alinea con sus vecinos.
+  const volTxt = `${Math.round(totalVol).toLocaleString()}<span class="u"> kg</span>`;
   const lvlHTML=`<div class="gx-lvl">
     <div class="gx-ltop">
       <div class="gx-ring"><svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="7"/><circle cx="50" cy="50" r="44" fill="none" stroke="#10E0A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ2}" stroke-dashoffset="${off.toFixed(1)}" style="filter:drop-shadow(0 0 5px rgba(16,224,160,.6))"/></svg><div class="gx-num"><b>${L.cur.n}</b><small>NIVEL</small></div></div>
