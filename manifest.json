@@ -42,8 +42,8 @@
     }
   ],
   "screenshots": [
-    { "src": "/apex-app/screenshots/01-asesorado.png", "sizes": "516x689", "type": "image/png", "form_factor": "narrow", "label": "Tu entrenamiento del dia" },
-    { "src": "/apex-app/screenshots/02-rutina.png", "sizes": "516x689", "type": "image/png", "form_factor": "narrow", "label": "Rutina personalizada" },
-    { "src": "/apex-app/screenshots/03-coach.png", "sizes": "516x689", "type": "image/png", "form_factor": "narrow", "label": "Panel del coach" }
+    { "src": "/apex-app/screenshots/01-hoy.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu entrenamiento del día" },
+    { "src": "/apex-app/screenshots/02-rutinas.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tus rutinas, armadas por tu coach" },
+    { "src": "/apex-app/screenshots/03-constancia.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu constancia, semana a semana" }
   ]
 }
