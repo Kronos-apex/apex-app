@@ -959,12 +959,16 @@ function drawMedChart(container,points,field,color){
     y:6+(H-16)-((p[field]-minV)/span)*(H-16),p
   }));
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  // Mismo motor que las otras dos graficas: con muchas tomas de medidas las fechas se
+  // encaballaban. 8px sans ~ 4.4px por caracter.
+  const medFechas=pts.map(p=>new Date(p.p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}));
+  const medConFecha=new Set(typeof chartLabelIndices==='function'?chartLabelIndices(medFechas,W-pad*2,4.4):medFechas.map((_,i)=>i));
   // Colores en style= (no atributos): el caller pasa tokens var(--chart-*) — gotcha en styles.css
   container.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     <path d="${pathD} L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z" style="fill:${color}" fill-opacity="0.1"/>
     <path d="${pathD}" fill="none" style="stroke:${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:${color}"/>
-      <text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="8" style="fill:var(--t3)" font-family="sans-serif">${new Date(p.p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`).join('')}
+    ${pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:${color}"/>
+      ${medConFecha.has(i)?`<text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="8" style="fill:var(--t3)" font-family="sans-serif">${medFechas[i]}</text>`:''}`).join('')}
   </svg>`;
 }
 

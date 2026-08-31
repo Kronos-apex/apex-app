@@ -14126,6 +14126,72 @@ test('🔒 la sala del músculo agrupa por identidad, no por nombre', () => {
     'el rótulo de la fila no sale de la identidad');
 });
 
+// 🔴 Las tres gráficas SVG pintaban una etiqueta por punto sin preguntar si cabía: con 12
+// sesiones el eje quedaba ilegible («15 a17ea9o18 ago…»). La aserción es la PROPIEDAD que
+// sufre la persona —que dos etiquetas no se toquen—, no el número de etiquetas: un test que
+// dijera «devuelve 6» pasaría con el defecto puesto en cualquier otro ancho.
+test('🔴 el eje solo pinta las etiquetas que CABEN, y jamás suelta el último punto', () => {
+  const CHAR_W = 5, GAP = 6;
+  const etiquetas = n => Array.from({ length: n }, () => '15 ago'); // 6 caracteres
+  const ancho = 6 * CHAR_W + GAP;
+  let apretados = 0;
+
+  for (const [n, W] of [[12, 330], [30, 330], [8, 330], [12, 500], [2, 200], [40, 360], [60, 320]]) {
+    const idx = core.chartLabelIndices(etiquetas(n), W, CHAR_W);
+    const espaciado = W / (n - 1);
+    assert.strictEqual(idx[idx.length - 1], n - 1, `n=${n} W=${W}: se soltó el último punto`);
+    assert.strictEqual(idx[0], 0, `n=${n} W=${W}: se soltó el primero`);
+    for (let i = 1; i < idx.length; i++) {
+      const sep = (idx[i] - idx[i - 1]) * espaciado;
+      assert.ok(sep >= ancho,
+        `n=${n} W=${W}: dos etiquetas a ${sep.toFixed(1)}px y necesitan ${ancho}`);
+    }
+    if (idx.length < n) apretados++;
+  }
+  // 🔒 CONTROL de que el barrido DISCRIMINA: si en ningún caso sobró nada, este test solo
+  // estaría probando que una lista corta cabe entera.
+  assert.ok(apretados >= 4, `solo ${apretados} casos obligaron a recortar; el barrido no discrimina`);
+});
+
+// 🔒 El otro lado: cuando SÍ caben todas, no se esconde ninguna. El tope `length<=8` que
+// había antes fallaba justo aquí — con 9 puntos en una pantalla ancha las borraba todas.
+test('🔒 si las etiquetas caben, se pintan todas', () => {
+  assert.deepStrictEqual(
+    core.chartLabelIndices(Array.from({ length: 9 }, () => '15 ago'), 900, 5),
+    [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepStrictEqual(core.chartLabelIndices([], 330, 5), []);
+  assert.deepStrictEqual(core.chartLabelIndices(['15 ago'], 330, 5), [0]);
+});
+
+// 🔒 Cableado en las TRES gráficas: una función pura que nadie llama es «puerta cerrada,
+// ventana abierta» (v509). Se quitan los comentarios antes de mirar (v552).
+//
+// 🔴 La primera versión de este check solo exigía que se LLAMARA a `chartLabelIndices`, y
+// los cuatro sabotajes del cableado salieron VERDES: dejan la llamada en su sitio y se
+// limitan a ignorar la respuesta. Lo que hay que afirmar es que CADA `<text>` que se pinta
+// pasa por su guarda — y el número de guardas se DERIVA del número de etiquetas, no se
+// escribe a mano, para que una gráfica que mañana pinte una etiqueta más quede cubierta.
+test('🔒 en las tres gráficas, cada etiqueta pasa por su guarda de «¿cabe?»', () => {
+  const fs = require('fs'), path = require('path');
+  [
+    ['app-4-entreno.js', 'renderVolChart'],      // volumen por sesión
+    ['app-2-login.js', 'drawExProgChart'],       // progresión de carga y series por sesión
+    ['app-5-salud.js', 'drawMedChart'],          // medidas corporales
+  ].forEach(([archivo, fn]) => {
+    const src = fs.readFileSync(path.join(__dirname, archivo), 'utf8')
+      .split(/\r?\n/).map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+    const i = src.indexOf('function ' + fn + '(');
+    assert.ok(i > 0, `${fn} desapareció de ${archivo}`);
+    const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+    assert.ok(/chartLabelIndices\(/.test(cuerpo), `${fn} ya no pregunta qué etiquetas caben`);
+    const etiquetas = (cuerpo.match(/<text/g) || []).length;
+    const guardas = (cuerpo.match(/\.has\(i\)/g) || []).length;
+    assert.ok(etiquetas >= 1, `${fn} dejó de pintar etiquetas: el check ya no vigila nada`);
+    assert.ok(guardas >= etiquetas,
+      `${fn} pinta ${etiquetas} etiqueta(s) y solo ${guardas} pasa(n) por la guarda`);
+  });
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

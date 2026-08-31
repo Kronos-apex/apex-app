@@ -7430,6 +7430,36 @@ function communityInviteMsg(name, peers, url) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// ETIQUETAS DEL EJE DE UNA GRAFICA — cuales caben
+// ──────────────────────────────────────────────────────────────────────
+// Las tres graficas SVG pintaban una etiqueta por punto sin preguntar si cabia: con 12
+// sesiones el eje de «Volumen por sesion» quedaba ilegible («15 a17ea9o18 ago…»), y lo
+// mismo los valores de «tus series, sesion a sesion». La unica que se defendia lo hacia
+// con un tope escrito a ojo (length<=8), que es el error contrario: en cuanto hay 9
+// puntos ESCONDE TODAS las fechas.
+//
+// Aqui se DERIVA del ancho real. PRIMERO y ULTIMO siempre entran —son los que le dan el
+// rango a la serie—, y si al ultimo le queda pegada la anterior, se cae la anterior.
+//
+// PURA. `charW` es el ancho aproximado de un caracter a la tipografia de esa grafica.
+const CHART_LABEL_GAP = 6;   // aire minimo entre dos etiquetas vecinas, en px
+function chartLabelIndices(labels, chartW, charW) {
+  const n = Array.isArray(labels) ? labels.length : 0;
+  if (n <= 0) return [];
+  if (n === 1) return [0];
+  const largo = labels.reduce((m, l) => Math.max(m, String(l == null ? '' : l).length), 0);
+  const anchoEtiqueta = largo * Math.max(1, charW || 6) + CHART_LABEL_GAP;
+  const espaciado = Math.max(1, (chartW || 0)) / (n - 1);
+  const paso = Math.max(1, Math.ceil(anchoEtiqueta / espaciado));
+  const idx = [];
+  for (let i = 0; i < n - 1; i += paso) idx.push(i);
+  const ultimo = n - 1;
+  while (idx.length && (ultimo - idx[idx.length - 1]) * espaciado < anchoEtiqueta) idx.pop();
+  idx.push(ultimo);
+  return idx;
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // IDENTIDAD DE UN EJERCICIO DENTRO DEL HISTORIAL
 // ──────────────────────────────────────────────────────────────────────
 // El NOMBRE que guarda una sesión es una COPIA que el coach puede editar en la
@@ -9178,6 +9208,7 @@ if (typeof module !== 'undefined' && module.exports) {
     leadPending,
     computeExerciseProgress,
     exerciseIdentity,
+    chartLabelIndices,
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,

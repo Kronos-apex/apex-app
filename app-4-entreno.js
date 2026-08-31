@@ -2678,6 +2678,10 @@ function renderVolChart(sessions){
   });
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
+  // CUALES fechas se pintan lo decide el ancho: con 12 sesiones en un movil no caben 12
+  // y se encaballaban. 9px en Plus Jakarta Sans ~ 5px por caracter.
+  const volFechas=pts.map(p=>new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}));
+  const volConEtiqueta=new Set(typeof chartLabelIndices==='function'?chartLabelIndices(volFechas,chartW,5):volFechas.map((_,i)=>i));
   con.innerHTML=`<svg width="100%" height="${H+16}" viewBox="0 0 ${W} ${H+16}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--chart-g)" stop-opacity="0.18"/><stop offset="100%" style="stop-color:var(--chart-g)" stop-opacity="0"/></linearGradient></defs>
     <path d="${areaD}" fill="url(#vg)"/>
@@ -2688,7 +2692,7 @@ function renderVolChart(sessions){
       const anc=i===0?'start':(i===pts.length-1?'end':'middle');
       const lx=i===0?pad:(i===pts.length-1?W-pad:p.x);
       return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:var(--chart-g)"/>
-      <text x="${lx.toFixed(1)}" y="${H+11}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="9" style="fill:var(--t3)">${new Date(p.s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`;
+      ${volConEtiqueta.has(i)?`<text x="${lx.toFixed(1)}" y="${H+11}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="9" style="fill:var(--t3)">${volFechas[i]}</text>`:''}`;
     }).join('')}
   </svg>`;
 }

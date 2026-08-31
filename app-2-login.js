@@ -788,6 +788,14 @@ function drawExProgChart(container, points, color, unit){
   // Tokens de gráfica (C6): claro = verde/coral de siempre, oscuro = menta/coral del tema.
   // var() NO vale en atributos SVG → todos los colores van en style= (gotcha en styles.css).
   const lineColor=color||(trend>=0?'var(--chart-g)':'var(--chart-or)');
+  // CUÁLES etiquetas se pintan lo decide el ancho, no un tope a ojo: el `length<=8` de antes
+  // escondía TODAS las fechas en cuanto había 9 puntos, y los VALORES no preguntaban nada y
+  // se encaballaban («7 series» encima de «4 series»). Sans 8.5px ≈ 4.7px/carácter; mono 8px ≈ 4.8.
+  const epFechas=pts.map(p=>p.p.dateStr||'');
+  const epVals=pts.map(p=>fmtMetric(p.p.maxKg,unit));
+  const epHay=typeof chartLabelIndices==='function';
+  const epConFecha=new Set(epHay?chartLabelIndices(epFechas,chartW,4.7):[]);
+  const epConValor=new Set(epHay?chartLabelIndices(epVals,chartW,4.8):epVals.map((_,i)=>i));
   container.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">
     <defs><linearGradient id="epg${Math.random().toString(36).slice(2)}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" style="stop-color:${lineColor}" stop-opacity="0.15"/>
@@ -801,11 +809,12 @@ function drawExProgChart(container, points, color, unit){
       const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
       return `
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${points.length>12?2:3}" style="fill:${lineColor}"/>
-      ${points.length<=8?`<text x="${lx.toFixed(1)}" y="${H-2}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" style="fill:var(--t3)">${p.p.dateStr}</text>`:''}`;
+      ${epConFecha.has(i)?`<text x="${lx.toFixed(1)}" y="${H-2}" text-anchor="${anc}" font-family="Plus Jakarta Sans,sans-serif" font-size="8.5" style="fill:var(--t3)">${p.p.dateStr}</text>`:''}`;
     }).join('')}
     ${pts.map((p,i)=>{
       const anc=i===0?'start':i===pts.length-1?'end':'middle';
       const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
+      if(!epConValor.has(i))return '';
       const ly=p.y<16?(p.y+12):(p.y-5); // el punto más alto voltea su etiqueta hacia abajo (no se recorta arriba)
       return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" style="fill:${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
     }).join('')}
