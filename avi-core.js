@@ -7430,6 +7430,32 @@ function communityInviteMsg(name, peers, url) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// ¿EL LOGIN FALLO POR FALTA DE CONEXION O PORQUE LA CLAVE ESTA MAL?
+// ──────────────────────────────────────────────────────────────────────
+// Claudia lo reporto el 31-ago: «necesito internet para entrar». Reproducido — sin señal
+// la app respondia «Email o contraseña incorrectos», o sea que le echaba la culpa a su
+// clave, y encima le GASTABA un intento de los 5 que la bloquean 30 segundos. La castigaba
+// por no tener red.
+//
+// Ya existia un aviso de conexion, pero solo cubria que la libreria de auth no hubiera
+// CARGADO (CDN caido). Cuando si carga —lo normal, la cachea el Service Worker— y lo que
+// falla es la PETICION, caia al mensaje de credenciales. Puerta cerrada, ventana abierta.
+//
+// La señal que separa los dos casos es limpia y no necesita adivinar sobre el texto del
+// error: si el servidor RESPONDIO, la respuesta trae un `status` HTTP y un 4xx significa
+// que juzgó las credenciales; si la peticion no llego, no hay status (y `signInEmail`
+// lanza). PURA: recibe el error y lo que dice el navegador de su conexion.
+function loginFailIsNetwork(err, online) {
+  if (online === false) return true;            // el propio navegador ya lo dice
+  if (!err) return false;                       // sin error no hay nada que clasificar
+  const st = (err.status != null) ? err.status : err.statusCode;
+  // 4xx = el servidor contesto y rechazo las credenciales. 5xx o 0 = no fue culpa de ella.
+  if (typeof st === 'number') return !(st >= 400 && st < 500);
+  return /failed to fetch|networkerror|network request failed|load failed|fetch failed|err_internet|err_network/i
+    .test(String((err && err.message) || err || ''));
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // ETIQUETAS DEL EJE DE UNA GRAFICA — cuales caben
 // ──────────────────────────────────────────────────────────────────────
 // Las tres graficas SVG pintaban una etiqueta por punto sin preguntar si cabia: con 12
@@ -9209,6 +9235,7 @@ if (typeof module !== 'undefined' && module.exports) {
     computeExerciseProgress,
     exerciseIdentity,
     chartLabelIndices,
+    loginFailIsNetwork,
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,

@@ -14192,6 +14192,47 @@ test('🔒 en las tres gráficas, cada etiqueta pasa por su guarda de «¿cabe?�
   });
 });
 
+// 🔴 Sin señal la app respondía «Email o contraseña incorrectos» y encima gastaba un intento
+// de los 5 que bloquean 30 segundos: le echaba la culpa a la persona por no tener red
+// (reporte de Claudia, 31-ago). La señal que separa los dos casos es el `status`: si el
+// servidor RESPONDIÓ, un 4xx significa que juzgó las credenciales; si la petición no llegó,
+// no hay status.
+test('🔴 sin conexión el login NO culpa a la contraseña', () => {
+  const F = core.loginFailIsNetwork;
+  // El servidor contestó y rechazó: eso SÍ es culpa de las credenciales.
+  assert.strictEqual(F({ status: 400, message: 'Invalid login credentials' }, true), false);
+  assert.strictEqual(F({ status: 401, message: 'Unauthorized' }, true), false);
+  // La petición no llegó, o llegó y el servidor se cayó: no es culpa de ella.
+  assert.strictEqual(F({ message: 'Failed to fetch' }, true), true);
+  assert.strictEqual(F({ message: 'Load failed' }, true), true, 'Safari sin red dice «Load failed»');
+  assert.strictEqual(F({ status: 500, message: 'Internal' }, true), true);
+  assert.strictEqual(F({ status: 0, message: '' }, true), true);
+  // 🔒 Si el propio navegador se declara sin línea, manda eso — aunque el error parezca de clave.
+  assert.strictEqual(F({ status: 400, message: 'Invalid login credentials' }, false), true);
+  // 🔒 CONTROL: sin error no hay nada que clasificar, y no se puede inventar una falla de red.
+  assert.strictEqual(F(null, true), false);
+  assert.strictEqual(F(undefined, true), false);
+});
+
+// 🔒 Cableado: la función pura no sirve de nada si `doLogin` no la consulta, y sobre todo si
+// sigue gastando un intento cuando lo que falló fue la red. Se quitan los comentarios antes
+// de mirar (v552) — este bloque tiene uno que nombra justamente lo que se busca.
+test('🔒 doLogin distingue red de credenciales, y no gasta intento sin red', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8')
+    .split(/\r?\n/).map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+  const i = src.indexOf('async function doLogin(');
+  assert.ok(i > 0, 'doLogin desapareció de app-2-login.js');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(/loginFailIsNetwork\(/.test(cuerpo), 'doLogin no clasifica el fallo');
+  // La salida por conexión tiene que ocurrir ANTES de registrar el intento fallido.
+  const salida = cuerpo.indexOf('_falloDeRed)');
+  const gasta = cuerpo.indexOf('recordLoginFail(');
+  assert.ok(salida > 0 && gasta > 0, 'no se encontraron las dos ramas');
+  assert.ok(salida < gasta,
+    'el aviso de conexión quedó DESPUÉS de gastar el intento: sigue castigando por no tener red');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -301,6 +301,11 @@ async function doLogin(){
   try{
     // ── Auth real (Supabase) — ÚNICO camino de login (Fase 4) ──
     // Todas las cuentas viven en auth.users; entra por aquí (modo user_data + RLS).
+    // ¿Fallo por RED o por credenciales? Son cosas distintas y hasta v563 se trataban igual:
+    // sin señal la app decia «Email o contraseña incorrectos» y gastaba un intento (reporte
+    // de Claudia, 31-ago). Un THROW aqui es que la peticion no llego; un error DEVUELTO con
+    // status 4xx es que el servidor juzgo las credenciales. Ver `loginFailIsNetwork`.
+    let _falloDeRed=false;
     if(AUTH.ready()){
       try{
         const r=await AUTH.signInEmail(u,p);
@@ -310,15 +315,24 @@ async function doLogin(){
           await _enterAuthSession(r.data.user);
           return;
         }
-      }catch(e){ warn('AVI auth login (error de red/credenciales):',e&&e.message); }
+        _falloDeRed=(typeof loginFailIsNetwork==='function')
+          ? loginFailIsNetwork(r&&r.error, navigator.onLine) : false;
+      }catch(e){
+        warn('AVI auth login (la peticion no llego):',e&&e.message);
+        _falloDeRed=true;   // si lanza, no hubo respuesta que juzgara nada
+      }
     }
     // ── Fase 4 (v2.0): login SOLO por Supabase Auth — respaldo legacy ELIMINADO ──
     // apex_data quedó cerrado por RLS; el login client-side viejo (coach@apex.com +
     // ax_c con SHA-256) ya no aplica. Todas las cuentas reales viven en auth.users.
     // Si supabase-js no cargó (CDN caído / sin red), avisar de conexión en vez de
     // marcar "contraseña incorrecta" (sería confuso y gastaría intentos).
-    if(!AUTH.ready()){
-      err.textContent='No se pudo conectar para entrar. Revisa tu internet e intenta de nuevo.';
+    // Sin conexion NO se le echa la culpa a su clave NI se le gasta un intento de los 5 que
+    // la bloquean 30 segundos: eso seria castigarla por no tener señal.
+    if(!AUTH.ready()||_falloDeRed){
+      err.textContent=(navigator.onLine===false)
+        ? 'No hay internet, así que no pudimos verificar tu cuenta. Si ya habías entrado en este teléfono, ábrela de nuevo y entra sin conexión.'
+        : 'No se pudo conectar para entrar. Revisa tu internet e intenta de nuevo.';
       err.classList.add('on');
       return;
     }
