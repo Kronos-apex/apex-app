@@ -13277,7 +13277,7 @@ const _ESC_OK = [
   { re: /^_crepAv\([\w.]+\)$/, por: 'ya escapa por dentro' },
   // Guardas: el campo se usa solo como condición y lo que emite es la plantilla anidada,
   // que este mismo check ya juzgó por separado. La rama falsa es la cadena vacía.
-  { re: /^[\w.()[\]]+\?\s*:\s*''$/, por: 'guarda: la salida es la plantilla anidada, ya juzgada' },
+  { re: /^[\w.()[\]|]+\?\s*:\s*''$/, por: 'guarda: la salida es la plantilla anidada, ya juzgada' },
   // Ternarios que devuelven un LITERAL del código (puntos suspensivos, un <span> fijo).
   { re: /^[\w.]+\.length\s*>\s*\d+\s*\?\s*'[^']*'\s*:\s*''$/, por: 'devuelve un literal del código' },
   { re: /^isToday\?'<span class="rc-today-tag">Hoy<\/span>':''$/, por: 'literal del código' },
@@ -13288,7 +13288,7 @@ const _ESC_OK = [
   // `const note=r.note?...esc(r.note)...`, `const why=r.why?...esc(r.why)...`).
   { re: /^(name|note|why)$/, por: 'local escapada en su propia asignación' },
   // El campo se usa como CLAVE de un mapa del código (color, icono, silueta), no se pinta.
-  { re: /^(MC|MH|MM_ICON_VIEW)\[[\w.]+\](\|\|'?[\w#()-]+'?)?$/, por: 'clave de un mapa, no texto' },
+  { re: /^\(?(MC|MH|MM_ICON_VIEW)\[[\w.]+\](\|\|'?[\w#()-]+'?)?\)?$/, por: 'clave de un mapa, no texto' },
   { re: /^muscle(Icon|MapSVG)\(/, por: 'devuelve un SVG; el campo es la clave del mapa' },
   { re: /^exTrack\(/, por: 'devuelve la modalidad derivada, no texto tecleado' },
   // 🔒 `aviIcon('phone')` (v541): el argumento es el NOMBRE de un icono del catálogo del código
@@ -13298,6 +13298,11 @@ const _ESC_OK = [
   // de usuario. Y ese nombre ya lo vigila el otro candado: todo aviIcon() usa un icono que existe.
   { re: /^typeof aviIcon==='function'\?aviIcon\('\w+',\s*\d+\):'[^']*'$/,
     por: "aviIcon('nombre') devuelve un SVG del catálogo; el argumento es una constante del código" },
+  // 🔒 `v(k)` y `err(k)` del formulario del código de barras (app-5) escapan POR DENTRO:
+  //    `const v=(k,def)=>esc(...)` y `const err=k=>...esc(e[k])...`. Envolverlos aquí
+  //    escaparía dos veces. La excepción va ESTRECHA —nombre literal entre comillas— para
+  //    que no perdone un `v(algoDelUsuario)`.
+  { re: /^(v|err)\('\w+'(,\s*'[^']*')?\)$/, por: 'helper que ya escapa por dentro' },
 ];
 test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino todos)', () => {
   const fs = require('fs'), path = require('path');
@@ -13313,7 +13318,12 @@ test('🔒 esc() en CADA campo que una persona teclea (no «hay un esc», sino t
       for (; k < src.length; k++) {
         const c = src[k];
         if (c === _ESC_BS) { k++; continue; }
-        if (c === '$' && src[k + 1] === '{') { d++; k++; continue; }
+        // 🔴 Contaba SOLO las llaves de `${`, no las normales: cualquier bloque dentro de una
+        // interpolación (`${xs.map(x=>{ ... })}`) le restaba de más y el escáner cerraba la
+        // plantilla donde no era. Venía pasando por CASUALIDAD, apoyado en que las llaves
+        // desbalanceadas del código actual se compensaban; en cuanto se movió una, empezó a
+        // acusar código sano (v560). Ahora cuenta TODA llave, que es lo que equilibra.
+        if (c === '{') { d++; continue; }
         if (c === '}' && d > 0) { d--; continue; }
         if (c === _ESC_TICK && d === 0) break;
       }

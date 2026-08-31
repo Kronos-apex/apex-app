@@ -2765,7 +2765,7 @@ function renderClientStreak(clientId){
   }));
   // Mensaje en lenguaje claro: explica qué es la racha y qué hacer ahora.
   const falta=Math.max(0,ws.target-ws.thisWeekDays);
-  const msg = ws.weeks>=2
+  const textoRacha = ws.weeks>=2
     ? `Llevas <b>${ws.weeks} semanas seguidas</b> entrenando. ¡Sigue así!${!ws.metThisWeek?` Esta semana vas <b>${ws.thisWeekDays}/${ws.target}</b>.`:''}`
     : ws.weeks===1
       ? `¡Semana cumplida! 🎉 Completa esta (${ws.thisWeekDays}/${ws.target}) para encadenar 2 seguidas.`
@@ -2779,7 +2779,7 @@ function renderClientStreak(clientId){
       <div class="sstat sstat-y"><div class="sstat-n">${record}</div><div class="sstat-l">Tu récord</div></div>
       <div class="sstat sstat-b"><div class="sstat-n">${cal.trainedDays}</div><div class="sstat-l">Días este mes</div></div>
     </div>
-    <div class="streak-msg">${msg}</div>
+    <div class="streak-msg">${textoRacha}</div>
     <div class="cal-month cal-month-door" onclick="openMonthRoom('${clientId}',${cal.year},${cal.month})" title="Ver el resumen del mes">${mes.charAt(0).toUpperCase()+mes.slice(1)} <span class="cal-month-chev">›</span></div>
     <div class="cal-dows">${dows.map(x=>`<span>${x}</span>`).join('')}</div>
     <div class="cal-grid">${grid}</div>
@@ -3115,8 +3115,8 @@ function openRecordRoom(clientId,exName){
   const tl=milestones.slice().reverse().map((m,i)=>{
     const isCur=(i===0);
     const d=new Date(m.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
-    const tag=m.first?'Primer registro':(isCur?'Récord actual':'Nueva marca');
-    return `<div class="rr-mile${isCur?' cur':''}"><div class="rr-mile-dot">${isCur?'🏆':'•'}</div><div class="rr-mile-body"><div class="rr-mile-top"><span class="rr-mile-val">${fmtMetric(m.val,unit)}</span><span class="rr-mile-tag">${tag}</span></div><div class="rr-mile-date">${d}</div></div></div>`;
+    const hito=m.first?'Primer registro':(isCur?'Récord actual':'Nueva marca');
+    return `<div class="rr-mile${isCur?' cur':''}"><div class="rr-mile-dot">${isCur?'🏆':'•'}</div><div class="rr-mile-body"><div class="rr-mile-top"><span class="rr-mile-val">${fmtMetric(m.val,unit)}</span><span class="rr-mile-tag">${hito}</span></div><div class="rr-mile-date">${d}</div></div></div>`;
   }).join('');
   const tlHTML=milestones.length?`<div class="sroom-sec">Tu línea de marcas</div><div class="rr-timeline">${tl}</div>`:`<div class="exroom-note">Aún no hay marcas registradas para este ejercicio. Completa una sesión con peso para empezar tu historial 💪</div>`;
 
