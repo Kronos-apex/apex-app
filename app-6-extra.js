@@ -1703,12 +1703,15 @@ function shouldShowOnboarding(clientId){
 // sencillo (pensado para personas no técnicas — pedido de Andrés 2026-05-31).
 const HELP_SECTIONS = {
   'cn-today': { emoji:'🏋️', title:'La pantalla "Hoy"', html:`
-    Aquí está tu entrenamiento de <b>hoy</b>, preparado por tu entrenador.
+    Arriba está tu <b>entreno de hoy</b>, con los ejercicios que te tocan y un solo botón:
+    <b>"Empezar mi entreno"</b>.
     <ul style="margin:10px 0 0;padding-left:18px">
-      <li style="margin-bottom:7px">Primero haz el <b>calentamiento</b>. El botón <b>🎥</b> te muestra cómo se hace cada movimiento.</li>
+      <li style="margin-bottom:7px">Al empezar, haz primero el <b>calentamiento</b>. El botón <b>🎥</b> te muestra cómo se hace cada movimiento.</li>
       <li style="margin-bottom:7px">En cada ejercicio, escribe el <b>peso (KG)</b> y las <b>repeticiones</b> que hiciste. Si no usas peso, deja 0.</li>
       <li style="margin-bottom:7px">Toca el <b>círculo verde ✓</b> al terminar cada serie. La app cuenta tu descanso sola.</li>
       <li style="margin-bottom:7px">¿No conoces un ejercicio? Toca su <b>nombre</b> para ver un video y la explicación.</li>
+      <li style="margin-bottom:7px">Más abajo están tus <b>hábitos del día</b>: toca el vaso para sumar agua, o los pasos para anotar los que llevas.</li>
+      <li style="margin-bottom:7px">Si ves <b>"Tienes N avisos más"</b>, tócalo: ahí te espera lo que no cupo en la pantalla.</li>
     </ul>
     <div style="margin-top:10px">Cuando termines todo, verás una <b>celebración 🎉</b>. ¡Sin presión, ve a tu ritmo!</div>` },
   'cn-routines': { emoji:'📋', title:'Tus "Rutinas"', html:`
@@ -1739,6 +1742,19 @@ const HELP_SECTIONS = {
       <li style="margin-bottom:7px">Tu entrenador usa estos datos para <b>ajustar tu plan</b>.</li>
     </ul>
     <div style="margin-top:10px">No es obligatorio llenarlo todo. Anota lo que puedas, cuando puedas.</div>` },
+  // Comunidad existe desde v373 y esta ficha faltaba: `openHelp` cae al default (la de «Hoy»), así
+  // que quien tocaba ❓ Ayuda parado aquí recibía la explicación del entreno. El fallback no da
+  // error — por eso el candado de abajo, en avi.test.js, DERIVA las secciones de index.html.
+  'cn-community': { emoji:'🤝', title:'La "Comunidad"', html:`
+    Aquí te encuentras con <b>otras personas que entrenan</b>, en tu gimnasio y fuera de él.
+    <ul style="margin:10px 0 0;padding-left:18px">
+      <li style="margin-bottom:7px"><b>Nadie te ve hasta que tú quieras.</b> Mientras no crees tu perfil aquí, no aparece nada tuyo.</li>
+      <li style="margin-bottom:7px">Cuando lo crees, eliges tu <b>apodo</b> y tu foto. No tienes que poner tu nombre real.</li>
+      <li style="margin-bottom:7px">Para conectarte con alguien, pásale tu <b>código</b> — o mira la gente de tu gimnasio.</li>
+      <li style="margin-bottom:7px">Puedes <b>celebrar</b> lo de los demás con un ❤️ y escribirles un comentario.</li>
+      <li style="margin-bottom:7px">Si alguien te incomoda, lo <b>bloqueas o lo reportas</b> cuando quieras.</li>
+    </ul>
+    <div style="margin-top:10px">Tu peso, tus medidas y tus datos de salud <b>nunca</b> se comparten aquí: solo se ve lo que tú publiques. Esta sección necesita internet.</div>` },
 };
 function openHelp(){
   const active = document.querySelector('#s-client .cnp.on');

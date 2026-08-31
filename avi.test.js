@@ -14013,6 +14013,30 @@ test('🔒 LOTE 4: los nombres que se eligieron para entrar al filtro, entran', 
   assert.ok(!core.exerciseContraindicated({ id: 'e364', name: nombreDe('e364') }, ['cuello']));
 });
 
+// 🔴 `openHelp` resuelve con `HELP_SECTIONS[id] || HELP_SECTIONS['cn-today']`: una sección sin ficha
+// NO da error, muestra la ayuda del ENTRENO. Así vivió «Comunidad» desde v373 — quien tocaba ❓
+// Ayuda parado ahí leía cómo marcar sus series. Misma familia que `aviIcon` cayendo a ✨.
+// La lista de secciones se DERIVA de index.html, jamás se escribe a mano: así la pestaña que
+// alguien agregue mañana queda cubierta sola.
+test('🔴 cada sección del asesorado tiene su ficha de ayuda (derivado de index.html)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+
+  const secciones = [...html.matchAll(/<div\s+id="(cn-[a-z]+)"\s+class="cnp/g)].map(m => m[1]);
+  // Control de cobertura: si el extractor deja de casar, el test no puede salir verde por vacío.
+  assert.ok(secciones.length >= 6,
+    `el extractor de secciones encontró ${secciones.length}, esperaba 6 o más — revisa el patrón`);
+
+  const bloque = js.slice(js.indexOf('const HELP_SECTIONS'), js.indexOf('function openHelp'));
+  const fichas = new Set([...bloque.matchAll(/'(cn-[a-z]+)':\s*\{/g)].map(m => m[1]));
+  assert.ok(fichas.size >= 6, `HELP_SECTIONS tiene ${fichas.size} fichas, esperaba 6 o más`);
+
+  const sinFicha = secciones.filter(id => !fichas.has(id));
+  assert.deepStrictEqual(sinFicha, [],
+    `estas secciones caen a la ayuda de «Hoy» en silencio: ${sinFicha.join(', ')}`);
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
