@@ -1,5 +1,57 @@
 # Plan de diseño — COMUNIDAD en AVI
 
+> # 🧊 CONGELADA POR DECISIÓN DEL PO — 2026-09-02
+>
+> **No se construye nada más en comunidad.** Lo que está en producción se queda vivo y se
+> mantiene (seguridad y correcciones sí; funcionalidad nueva no). Fase 2 —feed de logros,
+> ranking de constancia— y todo lo que quede abierto en este documento quedan **suspendidos**.
+>
+> **Por qué (medido el 2-sep-2026 contra producción, no a ojo):**
+>
+> | | cuánto | personas | último |
+> |---|---|---|---|
+> | Publicaciones | 45 | 8 | 2026-09-02 |
+> | — **escritas por una persona** | **0** | **0** | **nunca** |
+> | Comentarios | 1 | 1 | 2026-07-24 |
+> | Mensajes directos | 3 | 2 | 2026-07-21 |
+> | Reacciones | 22 | 6 | 2026-08-12 |
+> | Reportes | 0 | — | nunca |
+> | Perfiles de comunidad | 10 | — | 2026-08-13 |
+>
+> Las 45 publicaciones son de los **cinco tipos automáticos** que emite la app sola
+> (`workout` 22 · `streak` 12 · `level` 7 · `routine` 3 · `pr` 1). `community_posts` no tiene
+> **ni una** fila de tipo `text`: **nadie ha escrito nunca un post en AVI**. Lo social de
+> verdad son 1 comentario y 3 mensajes, todos de julio; las reacciones llevan 21 días en cero.
+> Son 2.230 líneas vivas sosteniendo eso.
+>
+> Mismo criterio con el que se congeló el registro de alimentos (§8.4 de
+> `plan-registro-alimentos.md`): **medir no es desconfiar de la idea, es lo que permite
+> reabrirla con un número en la mano.**
+>
+> **Qué NO cambia:** la comunidad sigue visible y funcionando para quien la use. No se
+> esconde, no se apaga, no se borra un solo dato. Los candados que la protegen —`esc()` en
+> las 61 interpolaciones, validador de payload en el servidor, la protección de menores por
+> *trigger* de base de datos, los tres límites de tasa— **se siguen manteniendo**; una
+> funcionalidad congelada que guarda datos de menores no se desatiende.
+>
+> **Disparador para reabrir (uno cualquiera, medido, no impresión):**
+> 1. **≥3 personas distintas** publican, comentan o se escriben en una ventana de 30 días
+>    (hoy: 1 comentario en toda la historia), **o**
+> 2. el PO decide empujarla activamente y quiere el feed como palanca de retención, **o**
+> 3. aparece un reporte de contenido — porque hoy hay un hueco de moderación abierto (ver abajo).
+>
+> **Deuda que el congelado NO tapa** (queda anotada, no resuelta): si alguien reporta un
+> **comentario**, el coach no puede borrarlo. La bandeja solo pinta «Eliminar publicación», y
+> solo cuando el reporte es sobre un post (`app-3-coach.js:3223`). La función del servidor que
+> borra comentarios existe (`supabase/community/c16_comments.sql:107`) y **no la llama nadie
+> en todo el repo**. Con 0 reportes en la historia no está sangrando; el día que llegue el
+> primero, esto se arregla antes de resolverlo.
+>
+> Evidencia completa: `docs/auditoria-areas-2026-09-01/A9-comunidad.md`.
+
+---
+
+
 > **Estado:** Fase 1 COMPLETA EN PROD (2026-07-20, avi-v374) — C1+C2 verificados por Fable;
 > **C3+C4 EJECUTADOS por Opus, PENDIENTES de re-verificación de Fable.** Idea #5 (Camilo 2026-07-17).
 > **Autor del borrador:** Opus 4.8 (2026-07-18). **Endurecido por Fable (auditoría 2026-07-18):**

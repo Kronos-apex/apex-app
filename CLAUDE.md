@@ -377,7 +377,7 @@ SB_KEYS = [
 
 ### Membresía
 - `MS.getStatus(client)` → `active | expiring | overdue | inactive | pending`
-- `MS.canLogin(client)` → entran `active`, `expiring` y `pending` (asesorado nuevo sin pago — onboarding/tier libre). `overdue` (plan vencido) e `inactive` (suspendido) BLOQUEADOS
+- `MS.canLogin(client)` → **entra todo el mundo MENOS `inactive`** (v564). `active`, `expiring`, `pending` (nuevo sin pago), `grace` (v528) y `courtesy` (v539) entran de siempre; **`overdue` también entra desde v564, pero cae en AVI FREE** — el descenso lo deriva `premiumLocked`, no toca `client.tier`. `inactive` (el coach lo pausó a mano) es el ÚNICO bloqueado
 - `MS.badge(status)` → `{label, color, bg}`
 - `registerPayment(clientId)` — registra pago por 30 días
 - `toggleSuspend(clientId)` — pausar/reactivar
@@ -387,7 +387,7 @@ SB_KEYS = [
 - `hashClientPass(pass, clientId)` → SHA-256 con salt
 - `isHashed(pass)` → detecta si ya migró a SHA-256
 - `doLogin()` — auth dual coach/asesorado
-- `canLogin(c)` — inclusión positiva: `active || expiring || pending` (pending = nuevo sin pago, entra)
+- `canLogin(c)` — **exclusión única: `getStatus(c) !== 'inactive'`** (v564). Antes era lista blanca; dejar fuera al vencido incumplía la promesa pública del FAQ («vuelves a AVI FREE y tu historial sigue ahí»)
 - `esc(str)` — sanitización XSS obligatoria en todo innerHTML con datos de usuario
 
 ### Renderizado principal
@@ -494,7 +494,7 @@ SB_KEYS = [
 | CORS Edge Functions | ✅ Restringido a `https://kronos-apex.github.io` (NO usar `*`) |
 | Contraseña coach | ✅ SHA-256 en `ax_cph`, legacy `ax_cp` no sincroniza |
 | Contraseñas asesorados | ✅ SHA-256 con clientId como salt, migración automática |
-| Login con membresía vencida | ✅ `overdue`/`inactive` bloqueados; `pending` (nuevo sin pago) SÍ entra (onboarding/tier libre) |
+| Login con membresía vencida | ✅ **`overdue` SÍ entra, en AVI FREE** (v564, `premiumLocked` apaga lo premium sin tocar su tier); `inactive` bloqueado; `pending` (nuevo sin pago) SÍ entra |
 | VAPID private key | ✅ Solo en variables de entorno Supabase — jamás en frontend |
 | send-push Edge Function | ✅ **v426:** resuelve al usuario por su JWT (`auth.getUser`) + autoriza el destinatario (a sí mismo · a `_coach` sus asesorados · a un asesorado solo su coach). Antes el candado era la anon key PÚBLICA (hallazgo H1) |
 | Pre-commit hook | ✅ Bloquea secrets hardcodeados antes de cualquier commit |
@@ -1048,6 +1048,24 @@ git push origin main
 
 > 📜 El historial completo de versiones y sesiones (v1.0 → hoy, con TODOS los hitos por sesión)
 > vive en **`docs/bitacora.md`** — movido el 2026-07-07 para adelgazar este archivo.
+
+### 🧊 CONGELADO POR DECISIÓN DEL PO — no se construye más aquí
+- **COMUNIDAD (2026-09-02).** No se le añade funcionalidad. Lo que está en producción sigue vivo
+  y se **mantiene** (seguridad y correcciones sí; features nuevas no). Fase 2 —feed de logros,
+  ranking de constancia— suspendida. **El número que lo decidió:** de 45 publicaciones, **0 las
+  escribió una persona** (las 5 clases son automáticas: `workout`/`streak`/`level`/`routine`/`pr`);
+  **1 comentario** en toda la historia (24-jul), **3 mensajes directos** (21-jul), reacciones en
+  cero desde el 12-ago, **0 reportes jamás**. Son 2.230 líneas vivas. **Se reabre** si ≥3 personas
+  distintas publican/comentan/se escriben en 30 días, si el PO decide empujarla, o si llega el
+  primer reporte. **Deuda anotada, no tapada:** un **comentario** reportado no se puede borrar
+  desde la bandeja del coach (`app-3-coach.js:3223` solo pinta el botón para `post:`; la RPC
+  `cmty_mod_delete_comment` existe y no la llama nadie) — se arregla el día que llegue un reporte.
+  Detalle y evidencia: `docs/plan-comunidad.md` (cabecera) y
+  `docs/auditoria-areas-2026-09-01/A9-comunidad.md`.
+- **REGISTRO DE ALIMENTOS (2026-08-27).** Mismo criterio, misma razón: 5 personas, 7 días, nadie
+  desde el 13-ago. Criterio de corte en `docs/plan-registro-alimentos.md` §8.4.
+- **Regla general:** congelar **no** es esconder ni borrar. La funcionalidad sigue visible para
+  quien la use y sus candados se siguen manteniendo — sobre todo si guarda datos de menores.
 
 ### ✅ Hecho (resumen ejecutivo)
 - **v1.0–v1.3** (2025 – mayo 2026): base PWA single-file + Supabase sync, push VAPID, mensajes coach↔asesorado, pagos/membresía, nutrición con macros, analytics, dark mode, hardening XSS, gates QA.
