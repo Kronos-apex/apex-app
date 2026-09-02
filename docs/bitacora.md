@@ -4,6 +4,74 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-02 — avi-v564: VENCER YA NO ES QUEDARSE POR FUERA — SE VUELVE A AVI FREE
+
+**Pedido del PO, textual:** *«hagamos que esa promesa se haga realidad»*, sobre un hallazgo de la
+auditoría por áreas (A8 · web de venta, confirmado por A5 · experiencia).
+
+**La promesa incumplida.** El FAQ de `avi-web`, en «¿Cómo cancelo?», dice: *«Dejas de pagar el mes
+siguiente y ya… Tu cuenta no se borra — vuelves a AVI FREE y tu historial de entrenamientos sigue
+ahí.»* Era **falso en el segundo tramo**: pasados los 7 días de gracia (v528), `MS.canLogin`
+excluía `overdue` y la persona **no entraba a nada** — leía «Tu plan venció. Habla con tu coach
+para continuar entrenando» y su historial quedaba del otro lado de la puerta. No volvía a AVI
+FREE: quedaba afuera hasta que el coach la tocara a mano. Ningún camino del código bajaba a nadie
+a `tier:'libre'`.
+
+**Medido contra producción el 2-sep:** **1 persona bloqueada hoy por esto** — YEISON VALBUENA,
+vencido el 31-jul, **33 días** — que es precisamente una de las dos bajas que el propio bloque de
+v528 ya había nombrado (*«llevan 24 días bloqueados, no han vuelto y no han pagado»*). Y **4 más
+vencen hoy** (Astrid, Luz, Claudia, Kathe): sin esto, el día 10 caían en el mismo hueco.
+
+**Qué se hizo.**
+- `MS.canLogin` pasa a `s !== 'inactive'`. **El suspendido a mano sigue sin entrar** — suspender es
+  una decisión deliberada de acceso; dejar de pagar no lo es, y ya no se tratan igual. Los dos
+  gates de login (`app-2-login.js` auto-login y `app-3-coach.js` camino de Auth) dejan de
+  bifurcar el mensaje: solo queda el de acceso pausado.
+- **Nueva función pura `premiumLocked(client, now)`** (avi-core): lo premium de app se apaga si el
+  cliente es del plan libre **o** su plan está `overdue`. Los 18 candados de la vista del
+  asesorado (gráficas, récords, constancia, medidas, fotos, plan de comida, registro) pasan a
+  usarla.
+- 🔒 **`client.tier` NO se toca.** El nivel comprado se queda escrito y el descenso se DERIVA en
+  cada lectura. Regla de v551: si un dato tiene fuente viva, no se guarda copia congelada de lo
+  que implica. Aquí además sería destructivo — al renovar habría que adivinar a qué nivel volver.
+- 🔒 **`isFreeClient` NO se contagia**: sigue significando *«es del plan libre»*, porque también la
+  usa el panel del COACH. Meterlos en el mismo saco le habría ofrecido «¿quieres un coach real?»
+  a alguien que ya tiene el suyo, y habría disparado el «¿regenerar su rutina automática?» al
+  editarle los datos.
+- 🔓 **El chat NO se quita** (`clientHasCoach` intacto): la única salida de este estado es hablar
+  con el coach, y la banda manda justo ahí. Sin chat sería un botón que no lleva a ninguna parte.
+- **Banda nueva `renderLapsedBand`** (tercer tramo del contenedor `cn-grace`, junto a la de gracia
+  de v528 y el recordatorio de v540): «Estás en AVI FREE», cuántos días lleva vencido, **qué
+  conserva** (rutinas e historial, puede seguir entrenando) y **qué queda en pausa**. Sin cifras de
+  dinero, como sus dos hermanas. Es obligatoria, no decorativa: sin ella la persona entra y se
+  encuentra media app apagada sin explicación, que parece una app dañada.
+
+**Verificación.** 975/975 tests (2 aserciones estáticas del registro de alimentos actualizadas al
+nombre nuevo del gate). **Dos sabotajes con dientes:** quitar el tramo `overdue` de
+`premiumLocked` → 1 rojo; volver `canLogin` un `true` constante → 3 rojos. `_verify-gracia.mjs`
+**se puso rojo solo** y así se descubrió que su aserción nº11 codificaba la conducta vieja
+(«pasada la gracia la banda ya no sale»); se invirtió a propósito y se le añadieron 4 líneas más,
+incluida una de discriminación que distingue la banda de AVI FREE de la de gracia repetida.
+`_verify-arranque-modulos` 6/6, `_verify-coach` TODO OK, `_verify-foodlog` 41/41, `node --check`
+en los 6 archivos tocados.
+
+**Los dos defectos que cazó el QA, no yo.**
+- **Julián (estático):** `CLAUDE.md` seguía afirmando en 3 sitios (líneas 380, 390, 497) que
+  *«`overdue` e `inactive` BLOQUEADOS»* — falso desde este mismo commit. Documentación que
+  contradice al código arranca la próxima sesión con contexto falso. Corregidos los 3 + barrido
+  del resto del archivo.
+- **Lucas (funcional):** el candado premium **pasó a tener dos públicos y solo estaba escrito
+  para uno**. Hasta v563 solo lo veía el usuario del plan libre, que no tiene coach; por eso su
+  botón decía «Quiero un coach →» y llamaba a `showPremiumUpsell`. Al vencido eso le fallaba por
+  las dos mitades: le ofrecía algo que YA TIENE, y el botón **no hacía nada** — `showPremiumUpsell`
+  corta en silencio con `clientHasCoach(c)`, sin abrir ni avisar. `premiumLockHTML` ahora bifurca:
+  al vencido le dice «Vuelve a estar disponible en cuanto renueves tu plan» y le da «Hablar con mi
+  coach», que es la misma salida de su banda. Con candado estático propio y su sabotaje (1 rojo).
+
+**Lo que este cambio NO arregla** (queda abierto): la pantalla de bloqueo que sigue viendo el
+**suspendido** no tiene contacto del coach ni WhatsApp, solo el formulario de login (hallazgo de
+A5). Y la web sigue sin enlazar la política de datos ni los términos (A8).
+
 ## 🔄 2026-08-30 — avi-v556: LA TARJETA DE LA VITRINA SE APLASTABA EN TELÉFONOS CORTOS
 
 **Lo destapó MIRAR la captura de v555**, no un test: «Subió carga en 16 de 28 ejercicios» salía

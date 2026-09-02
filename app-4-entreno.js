@@ -414,7 +414,7 @@ function _prRowHtml(pr,clientId){
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
   const con=document.getElementById('cn-pr-list');if(!con)return;
-  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Tus récords (PRs)','Lleva el registro de tus marcas personales por ejercicio.');return;}
+  if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Tus récords (PRs)','Lleva el registro de tus marcas personales por ejercicio.');return;}
   const prs=DB.prs[clientId]||{};
   const list=Object.values(prs).sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){
@@ -628,7 +628,7 @@ function applyProfileDisclosure(clientId){
   // Nutrición: visible si el coach asignó plan O si es Premium (ahí vive la calculadora
   // automática de calorías/macros para el self-serve sin coach). El modo libre no la ve.
   const _nutClient=(DB.clients||[]).find(x=>x.id===clientId);
-  show('cn-nut-card', hasNut || (_nutClient && !isFreeClient(_nutClient)));
+  show('cn-nut-card', hasNut || (_nutClient && !premiumLocked(_nutClient)));
   // Seguimiento personal: abierto si ya hay datos; colapsado si está todo vacío.
   const ttBody=document.getElementById('tt-body'), ttChev=document.getElementById('tt-chev');
   const hasTracking=bw.length||med.length||ph.length;
@@ -1275,7 +1275,7 @@ function renderCoachCard(client){
   // _waterGoalFor vive en app-5; si aún no cargó, agua cae a waterGoalGlasses(peso) en core.
   const _bw=(DB.bodyweight&&DB.bodyweight[cid])||[];
   const _wg=(typeof _waterGoalFor==='function')?_waterGoalFor(client):undefined;
-  const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:isFreeClient(client),muted:_coachMuteMap(cid),bw:_bw,waterGoal:_wg});
+  const ins=coachInsight(client,(DB.history&&DB.history[cid])||[],(DB.prs&&DB.prs[cid])||{},Date.now(),{isFree:premiumLocked(client),muted:_coachMuteMap(cid),bw:_bw,waterGoal:_wg});
   if(!ins){el.innerHTML='';return;} // sin señal (o todas silenciadas) → la tarjeta desaparece sola
   const ic=typeof aviIcon==='function'?aviIcon(ins.icon,20):'';
   // El cta solo llega en insights premium (deload); premium sí tiene chat → coherente.
@@ -1339,10 +1339,36 @@ function renderRenewBand(client){
   return true;
 }
 
+// ── Y SU TERCER TRAMO: EL PLAN YA VENCIÓ DEL TODO → AVI FREE (v564) ─────────────────────────
+// Cumple la promesa que la web ya hacía por escrito («vuelves a AVI FREE y tu historial sigue
+// ahí»). Hasta v563 este tramo no existía porque la persona no llegaba a verlo: no entraba.
+// 🔴 La banda es OBLIGATORIA, no decorativa. Sin ella la persona entra un día y se encuentra
+//    las gráficas y el plan de comida apagados sin ninguna explicación — que es peor que el
+//    bloqueo, porque parece que la app se dañó. Dice qué pasó, qué CONSERVA y cómo volver.
+// 🔒 Sin cifras de dinero, igual que sus dos hermanas: el monto lo habla el coach.
+function renderLapsedBand(client){
+  const el=document.getElementById('cn-grace'); if(!el)return false;
+  // `renderGraceBand` puede llamarnos con client=null (su propia guarda es la misma línea):
+  // sin este corte, `MS.getStatus(null)` revienta al leer `.suspended` y se lleva la pantalla.
+  if(!client||typeof MS==='undefined'||MS.getStatus(client)!=='overdue')return false;
+  const d=MS.daysOverdue(client);
+  el.innerHTML='<div class="gband">'
+    +'<div class="gband-t">Estás en AVI FREE</div>'
+    +'<div class="gband-s">Tu plan venció hace <b>'+esc(String(d))+(d===1?' día':' días')+'</b>, así que volviste al plan gratis. '
+      +'<b>No perdiste nada:</b> tus rutinas y todo tu historial de entrenamientos siguen aquí, y puedes seguir entrenando. '
+      +'Mientras tanto quedan en pausa las gráficas de progreso, las medidas, las fotos y tu plan de comida.</div>'
+    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +'</div>';
+  return true;
+}
+
 function renderGraceBand(client){
   const el=document.getElementById('cn-grace'); if(!el)return;
   el.innerHTML='';
-  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace'){ renderRenewBand(client); return; }
+  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace'){
+    if(typeof renderLapsedBand==='function' && renderLapsedBand(client))return;   // guard caché vieja
+    renderRenewBand(client); return;
+  }
   const d=MS.daysOverdue(client);
   const cuando = d<=1 ? 'ayer' : ('hace '+d+' días');
   const quedan = Math.max(0, MS_GRACE_DAYS-d);
@@ -2666,7 +2692,7 @@ function renderClientAllRoutines(client){
 function renderVolChart(sessions){
   const wrap=document.getElementById('vol-chart-wrap');
   const con=document.getElementById('vol-chart');
-  if(wrap&&isFreeClient(_curClient())){wrap.style.display='none';return;} // analítica avanzada = Premium
+  if(wrap&&premiumLocked(_curClient())){wrap.style.display='none';return;} // analítica avanzada = Premium
   if(!wrap||!con)return;
   const withVol=sessions.filter(s=>s.totalVol>0).slice(0,12).reverse();
   if(withVol.length<2){wrap.style.display='none';return;}
@@ -2750,7 +2776,7 @@ function _sessionExercisesHTML(s,clientId){
 function renderClientStreak(clientId){
   const con=document.getElementById('cn-streak');if(!con)return;
   const c=DB.clients.find(x=>x.id===clientId);
-  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu constancia','Cuántas semanas seguidas llevas cumpliendo tu plan, tu récord y el calendario del mes.');return;}
+  if(premiumLocked(c)){con.innerHTML=premiumLockHTML('Tu constancia','Cuántas semanas seguidas llevas cumpliendo tu plan, tu récord y el calendario del mes.');return;}
   const sessions=(DB.history&&DB.history[clientId])||[];
   const now=new Date();
   // Racha SEMANAL (2026-07-06): semanas seguidas cumpliendo la meta del plan.
@@ -3315,7 +3341,7 @@ function setAdvWin(d){_advWin=d;renderAdvStats(CUR.clientId);}
 function renderAdvStats(clientId){
   const con=document.getElementById('cn-advstats');if(!con)return;
   const c=DB.clients.find(x=>x.id===clientId);
-  if(isFreeClient(c)){con.innerHTML=premiumLockHTML('Tu entrenamiento en números','Cuántas series le das a cada músculo y si tu empuje y tu tracción están equilibrados.');return;}
+  if(premiumLocked(c)){con.innerHTML=premiumLockHTML('Tu entrenamiento en números','Cuántas series le das a cada músculo y si tu empuje y tu tracción están equilibrados.');return;}
   const sessions=(DB.history&&DB.history[clientId])||[];
   const win=_advWin;
   const vol=muscleVolume(sessions,win,new Date());

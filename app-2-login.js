@@ -901,7 +901,7 @@ function renderExerciseProgressInto(con, clientId){
 // Client-side: render into profile tab
 function renderClientExProgress(clientId){
   const con=document.getElementById('cn-exprog-list');
-  if(con&&isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Progreso por ejercicio','Mira con gráficas cómo evoluciona cada ejercicio.');return;}
+  if(con&&premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Progreso por ejercicio','Mira con gráficas cómo evoluciona cada ejercicio.');return;}
   renderExerciseProgressInto(con,clientId);
 }
 
@@ -1173,15 +1173,16 @@ async function tryAutoLogin(){
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
       if(client){
-        // Bloquear auto-login si suspendido o vencido
+        // Bloquear auto-login si el coach lo pausó a mano. Desde v564 el plan VENCIDO ya no
+        // rebota aquí: entra y cae en AVI FREE (ver `premiumLocked` en avi-core). El único
+        // estado que queda fuera es `inactive`, que sí es una decisión deliberada de acceso.
         if(!MS.canLogin(client)){
           localStorage.removeItem('ax_session');
-          const st=MS.getStatus(client);
           const errEl=document.getElementById('lerr');
           // Revelar el formulario (la bienvenida lo oculta) para que se vea el mensaje
           const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
           if(cta)cta.style.display='none'; if(card)card.style.display='block';
-          if(errEl){errEl.textContent=st==='inactive'?'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡':'Tu plan venció. Habla con tu coach para continuar entrenando 💪';errEl.classList.add('on');}
+          if(errEl){errEl.textContent='Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡';errEl.classList.add('on');}
           const uEl=document.getElementById('lu');if(uEl)uEl.focus();
           return;
         }

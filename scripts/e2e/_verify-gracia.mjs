@@ -125,10 +125,20 @@ const tope = await ev(`(()=>{
 A.ok(!!(tope && tope.visibles && tope.visibles.indexOf('cn-grace') !== -1),
   'el tope de tarjetas NO esconde la banda ni con la pantalla llena de avisos', tope);
 
-// ── 4 · La gracia TIENE FIN ────────────────────────────────────────────────────────────────
+// ── 4 · La gracia TIENE FIN — pero el fin ya no es la puerta, es AVI FREE (v564) ───────────
+// Hasta v563 aquí se comprobaba que la banda DESAPARECIERA, porque pasada la gracia la persona
+// no entraba: mandaba el bloqueo del login. v564 cumple la promesa pública del FAQ («vuelves a
+// AVI FREE y tu historial sigue ahí»), así que ahora la banda sigue saliendo y CAMBIA de
+// mensaje. La aserción se invierte a propósito: es el mismo control, sobre el estado nuevo.
 const stO = await conVencimiento(-30); await sleep(350);
 const bO = await leerBanda();
 A.ok(stO === 'overdue', `vencido hace 30 días → vuelve a "overdue" (es "${stO}")`, stO);
-A.ok(bO && bO.hay === false, 'pasada la gracia la banda ya no sale (manda el bloqueo del login)', bO);
+A.ok(!!(bO && bO.hay && bO.visible), 'pasada la gracia la banda SIGUE saliendo (ya no hay bloqueo)', bO);
+A.ok(!!(bO && /AVI FREE/i.test(bO.txt || '')), 'la banda dice que quedó en AVI FREE', bO);
+A.ok(!!(bO && /historial/i.test(bO.txt || '')), 'la banda le promete su historial, que es lo que dice la web', bO);
+A.ok(!!(bO && /pausa/i.test(bO.txt || '')), 'la banda dice QUÉ queda en pausa (si no, parece que la app se dañó)', bO);
+// 🔒 CONTROL DE DISCRIMINACIÓN: la banda de AVI FREE y la de gracia son mensajes DISTINTOS.
+// Sin esto, dejar la de gracia pintada para siempre pasaría las 4 líneas de arriba.
+A.ok(!!(bO && !/Te quedan/i.test(bO.txt || '')), 'no es la banda de gracia repetida: ya no ofrece días de margen', bO);
 
 salir(A, { chrome, srv });

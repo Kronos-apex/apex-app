@@ -2919,7 +2919,7 @@ function renderNewsCard(){
   // llegaba aunque la tengan. `premium` es el corte que de verdad corresponde a lo Premium DE APP.
   const items=newsToShow(AVI_NEWS,seen,{
     coach:(typeof clientHasCoach==='function')?!!clientHasCoach(_nc):true,
-    premium:(typeof isFreeClient==='function')?!isFreeClient(_nc):true});
+    premium:(typeof premiumLocked==='function')?!premiumLocked(_nc):true});
   if(!items.length)return;
   // Visibilidad REAL de cada overlay: no todos se ocultan igual. #cwelcome y #onboarding
   // viven con display:flex y se ocultan con opacity:0 + pointer-events:none (el check

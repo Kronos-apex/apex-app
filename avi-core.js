@@ -4058,7 +4058,7 @@ function applyMood(routine, mood, opts) {
 
 // ── MEMBRESÍA — estado de pago, permiso de login y badge ──
 // Lógica pura (extraída de index.html). getStatus deriva el estado del último
-// pago; canLogin define quién entra (pending/active/expiring SÍ; overdue/inactive NO);
+// pago; canLogin define quién entra (solo `inactive` queda fuera — ver v564 abajo);
 // badge mapea estado → etiqueta/colores. Los colores son tokens CSS (var(--…)).
 // ── PERÍODO DE GRACIA (v528) ────────────────────────────────────────────
 // Hasta v527 el plan vencía y la app se apagaba **el mismo día**. La auditoría de negocio del
@@ -4089,6 +4089,43 @@ const MS_GRACE_DAYS = 7;
 // 🔒 Y no toca el acceso: `canLogin` la deja entrar SIEMPRE — es exactamente lo contrario de
 // una suspensión. Lo único que hace es sacarla de TODO lo que habla de plata
 // (`clientIsBillable`), que es la única puerta por la que un cobro puede llegarle.
+// ── VENCER YA NO ES QUEDARSE POR FUERA: SE VUELVE A AVI FREE (v564) ──────────────────────
+// Decisión del PO (2-sep-2026), sobre una promesa PÚBLICA que la app no cumplía. El FAQ de la
+// web de venta dice, en «¿Cómo cancelo?»: *«Dejas de pagar el mes siguiente y ya… Tu cuenta no
+// se borra — vuelves a AVI FREE y tu historial de entrenamientos sigue ahí.»*
+// Hasta v563 eso era FALSO en el segundo tramo: pasados los 7 días de gracia, `canLogin`
+// excluía `overdue` y la persona no entraba a NADA — leía «Tu plan venció. Habla con tu coach
+// para continuar entrenando» y su historial quedaba del otro lado de la puerta. No volvía a
+// AVI FREE: quedaba afuera hasta que el coach la tocara a mano.
+// 🔴 Medido el 2-sep contra producción: **1 persona bloqueada por esto hoy** (Yeison Valbuena,
+//    vencido el 31-jul, 33 días) — precisamente una de las dos bajas que el bloque de v528 ya
+//    había nombrado como «llevan 24 días bloqueados, no han vuelto y no han pagado». Y **4 más
+//    vencen hoy** (Astrid, Luz, Claudia, Kathe): sin esto, el día 10 caen en el mismo hueco.
+// 🔒 Esto NO afloja ninguna seguridad, por el mismo argumento ya escrito en v528: `payments`
+//    vive en `profile`, que el propio teléfono del asesorado escribe (gotcha F7). El bloqueo
+//    nunca fue un candado — era un empujón. Lo que sí es un candado de verdad, `suspended`,
+//    NO se toca: el suspendido sigue sin entrar.
+// 🔒 Y NO se toca `client.tier`. El nivel que la persona compró se queda escrito tal cual, y el
+//    descenso a libre se DERIVA del estado de pago en cada lectura. Regla del proyecto (v551):
+//    si un dato tiene una fuente viva, no se guarda una copia congelada de lo que implica —
+//    aquí, además, esa copia sería destructiva: al renovar habría que adivinar a qué nivel
+//    volver, y nadie sería dueño de restaurarlo.
+// ── Lo PREMIUM DE APP que se apaga mientras el plan está vencido ────────────────────────────
+// `isFreeClient` sigue significando *«es un usuario del plan libre»* — se usa también en el
+// panel del COACH (regenerar rutina auto, tarjeta «pásate a Premium») y ahí un vencido NO es un
+// usuario libre: tiene coach y tiene plan, solo que sin pagar. Meterlos en el mismo saco le
+// ofrecería «¿quieres un coach real?» a alguien que ya tiene el suyo.
+// Por eso el descenso vive en una función APARTE, y solo la usan los candados de lo premium en
+// la vista del asesorado.
+// 🔓 El CHAT no entra aquí a propósito (`clientHasCoach` intacto): la única salida de este
+//    estado es hablar con el coach, y la banda que ve la persona la manda justo ahí. Quitarle
+//    el chat sería dejarla dentro pero incomunicada, con un botón que no lleva a ninguna parte.
+function premiumLocked(client, now) {
+  if (!client) return false;
+  if (isFreeClient(client)) return true;
+  return MS.getStatus(client, now) === 'overdue';
+}
+
 const MS = {
   // `now` opcional (default Date.now()) para determinismo en tests/rank — los callers
   // viejos que pasan solo `c` siguen funcionando igual.
@@ -4118,9 +4155,11 @@ const MS = {
   },
   // grace = venció hace ≤7 días → SÍ entra, con la banda puesta (ver MS_GRACE_DAYS).
   // pending = asesorado nuevo aún sin pago → SÍ entra (onboarding + tier libre).
-  // overdue (plan que venció) e inactive (suspendido) siguen bloqueados.
+  // overdue = SÍ entra, pero DE VUELTA EN AVI FREE (v564, ver bloque de abajo).
   // `courtesy` entra SIEMPRE: es lo contrario de una suspensión (v539).
-  canLogin(c) { const s = this.getStatus(c); return s === 'active' || s === 'expiring' || s === 'pending' || s === 'grace' || s === 'courtesy'; },
+  // 🔒 inactive (el coach lo pausó a mano) es el ÚNICO que sigue sin entrar. Suspender es una
+  //    decisión deliberada de acceso; dejar de pagar no lo es, y ya no se tratan igual.
+  canLogin(c) { const s = this.getStatus(c); return s !== 'inactive'; },
   // El color va como TEXTO sobre `bg`, así que aquí manda la regla de lectura de la FASE 3:
   // los tokens crudos (--or/--rd/--yl) son para RELLENAR, y encima de su propio tinte no se
   // leen (medido en claro: «Por vencer» daba 2.62:1, «Vencido» 3.45 y «Sin pago» 1.55, contra
@@ -9174,6 +9213,7 @@ if (typeof module !== 'undefined' && module.exports) {
     sortClientsByAttention,
     pushNudgeDecision,
     isFreeClient,
+    premiumLocked,
     clientHasCoach,
     chatDeliveryBlock,
     clientPlan,

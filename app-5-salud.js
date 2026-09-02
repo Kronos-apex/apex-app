@@ -402,7 +402,7 @@ function _mealsDayLabel(kind){
 // llamador decide qué decir. Nunca lanza: un fallo aquí no puede tumbar el día de nadie.
 function _nutPlanHoy(client){
   if(!client)return null;
-  if(typeof isFreeClient==='function'&&isFreeClient(client))return null; // el plan es Premium
+  if(typeof premiumLocked==='function'&&premiumLocked(client))return null; // el plan es Premium
   if(typeof nutDayPlan!=='function'||typeof nutBaseFor!=='function')return null;
   try{
     // peso más reciente si lo hay (el del perfil puede estar viejo)
@@ -420,7 +420,7 @@ function renderMealsToday(client){
   const con=document.getElementById('cn-meals'); if(!con)return;
   con.innerHTML='';
   if(!client)return;
-  if(typeof isFreeClient==='function'&&isFreeClient(client))return; // el plan de comida es Premium
+  if(typeof premiumLocked==='function'&&premiumLocked(client))return; // el plan de comida es Premium
   if(typeof nutDayPlan!=='function')return;
   try{
     const ph=_nutPlanHoy(client); if(!ph)return;
@@ -490,7 +490,7 @@ function toggleMealsToday(){ _mealsOpen=!_mealsOpen; const c=DB.clients.find(x=>
 
 function renderNutritionClient(clientId){
   const con=document.getElementById('cn-nut-body');if(!con)return;
-  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}
+  if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Plan nutricional','Calorías, macros y un plan de alimentación armado para ti.');return;}
   // El bot\u00f3n "Editar" solo aparece para el coach en su propio entrenamiento (COACH_SELF):
   // as\u00ed el due\u00f1o ajusta su plan, pero los asesorados lo siguen viendo como lo dej\u00f3 el coach.
   const editBtn=document.getElementById('cn-nut-edit'); if(editBtn)editBtn.style.display=COACH_SELF?'':'none';
@@ -586,7 +586,7 @@ function renderNutritionClient(clientId){
 // piensa en comida, no compitiendo con el entreno del día.
 function _foodLogDoorHtml(c){
   if(!c)return '';
-  if(typeof isFreeClient==='function'&&isFreeClient(c))return '';   // el registro es Premium
+  if(typeof premiumLocked==='function'&&premiumLocked(c))return '';   // el registro es Premium
   if(typeof openFoodLogRoom!=='function')return '';
   return `<button type="button" class="btn bg bsm" style="width:100%;margin:11px 0 3px;min-height:38px"
     onclick="openFoodLogRoom()">${typeof aviIcon==='function'?aviIcon('utensils',15):'🍽️'} Anotar lo que comí hoy</button>`;
@@ -739,7 +739,7 @@ function openNutritionRoom(clientId){
 // La cuenta vive en `avi-core` (`nutShoppingList`, pura y testeada); aquí solo se pinta.
 function _shopListHtml(c){
   if(typeof nutShoppingList!=='function'||!c)return '';
-  if(typeof isFreeClient==='function'&&isFreeClient(c))return '';
+  if(typeof premiumLocked==='function'&&premiumLocked(c))return '';
   let lista=null;
   try{
     const base=nutBaseFor(c,(DB.nutrition||{})[c.id],_nutPesoDe(c));
@@ -890,7 +890,7 @@ function renderMedidasClient(clientId){
   const listEl=document.getElementById('cn-med-list');
   const chartWrap=document.getElementById('cn-med-chart-wrap');
   if(!listEl)return;
-  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){listEl.innerHTML=premiumLockHTML('Medidas corporales','Registra cintura, cadera y más, y míralas evolucionar.');if(chartWrap)chartWrap.style.display='none';return;}
+  if(premiumLocked(DB.clients.find(x=>x.id===clientId))){listEl.innerHTML=premiumLockHTML('Medidas corporales','Registra cintura, cadera y más, y míralas evolucionar.');if(chartWrap)chartWrap.style.display='none';return;}
   const entries=(DB.medidas||{})[clientId]||[];
   if(!entries.length){
     listEl.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('ruler',32):'📏'}</div><div class="etxt">Aún no has registrado medidas</div><div class="esub">Anota cintura, cadera y más — así ves cómo tu cuerpo cambia con el tiempo.</div></div>`;
@@ -1113,7 +1113,7 @@ function savePhoto(){
 
 function renderPhotosClient(clientId){
   const con=document.getElementById('cn-photos-grid');if(!con)return;
-  if(isFreeClient(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
+  if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
   const photos=(DB.photos||{})[clientId]||[];
   if(!photos.length){
     con.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('camera',32):'\ud83d\udcf7'}</div><div class="etxt">A\u00fan no tienes fotos de progreso</div><div class="esub">La primera es la m\u00e1s importante: marca tu punto de partida.</div></div>`;return;
@@ -1533,7 +1533,7 @@ function renderHabitsCard(client){
   if(!client){ el.innerHTML=''; return; }
   // El registro es PREMIUM (decisión del PO): al tier libre no se le muestra ni el bloque, para
   // no ofrecerle una puerta que no puede abrir.
-  const conComida=!(typeof isFreeClient==='function'&&isFreeClient(client));
+  const conComida=!(typeof premiumLocked==='function'&&premiumLocked(client));
   const abierto=habitsOpen(client.id);
   el.innerHTML=`${_habitStripHtml(client)}
     <button type="button" class="hb-more" onclick="habitsToggle()" aria-expanded="${abierto?'true':'false'}">
@@ -1551,7 +1551,7 @@ function renderHabitsCard(client){
 let _flView={modo:'dia',meal:'desayuno',q:'',offset:0,sel:null};
 function openFoodLogRoom(meal){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
-  if(typeof isFreeClient==='function'&&isFreeClient(c))return;
+  if(typeof premiumLocked==='function'&&premiumLocked(c))return;
   _flScanStop();
   _flView={modo:'dia',meal:meal||_flView.meal||'desayuno',q:'',offset:0,sel:null,ean:'',err:'',errores:{},aviso:null,base:'porcion',draft:null};
   const room=document.getElementById('foodlog-room'); if(!room)return;
@@ -1927,7 +1927,7 @@ function flQuitar(entryId){
 // La cuenta la hace `avi-core` (puro y testeado); aquí solo se decide y se repinta.
 function flTogglePlanMeal(idx){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(!c)return;
-  if(typeof isFreeClient==='function'&&isFreeClient(c))return;
+  if(typeof premiumLocked==='function'&&premiumLocked(c))return;
   if(typeof foodLogMarkPlanMeal!=='function')return;
   // 🔒 Marcar el plan ES registrar. Quien no ha leído todavía que su coach ve el detalle no puede
   // saltarse ese aviso por la puerta de al lado — lo llevamos a la habitación, que es donde vive.

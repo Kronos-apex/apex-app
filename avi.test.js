@@ -155,6 +155,7 @@ const {
   clampQwHiit,
   newsToShow,
   isFreeClient,
+  premiumLocked,
   clientToRow,
   rowToClient,
   selfClientFromRow,
@@ -4669,15 +4670,67 @@ test('MS.daysOverdue: cuenta los días vencidos y es 0 para quien está al día'
 test('MS.getStatus: toma el pago con dueDate más reciente', () => {
   assert.strictEqual(MS.getStatus({ payments: [{ dueDate: _plusDays(-30) }, { dueDate: _plusDays(20) }] }), 'active');
 });
-test('MS.canLogin: active/expiring/pending/grace SÍ; overdue/inactive NO', () => {
+test('MS.canLogin: entra todo el mundo MENOS el suspendido a mano (v564)', () => {
   assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(20) }] }), true);  // active
   assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(3) }] }), true);   // expiring
   assert.strictEqual(MS.canLogin({ payments: [] }), true);                            // pending
   assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-5) }] }), true);  // grace (v528)
-  // 🔒 El CONTROL: la gracia tiene FIN. Sin esta línea, borrar el `overdue` entero saldría verde
-  // y la app no volvería a bloquear a nadie jamás.
-  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-30) }] }), false); // overdue
+  // v564: vencer ya NO es quedarse por fuera. La promesa pública del FAQ («vuelves a AVI FREE
+  // y tu historial sigue ahí») ahora se cumple: entra.
+  assert.strictEqual(MS.canLogin({ payments: [{ dueDate: _plusDays(-30) }] }), true);  // overdue
+  // 🔒 El CONTROL que sigue vivo: `suspended` es lo ÚNICO que cierra la puerta. Si alguien
+  // simplifica `canLogin` a `true`, esta línea lo caza.
   assert.strictEqual(MS.canLogin({ suspended: true }), false);                        // inactive
+});
+// 🔒 EL CONTROL QUE REEMPLAZA AL VIEJO: la gracia sigue teniendo FIN — lo que cambió es la
+// consecuencia. Ya no es «no entras»; es «entras en AVI FREE». Sin estas líneas, borrar el
+// tramo `overdue` de `premiumLocked` saldría verde y un plan vencido conservaría lo premium
+// para siempre, que es la mitad silenciosa del defecto.
+test('premiumLocked: el plan vencido baja a AVI FREE sin tocar su tier (v564)', () => {
+  const vencido = { tier: 'premium', payments: [{ dueDate: _plusDays(-30) }] };
+  assert.strictEqual(premiumLocked(vencido), true);                 // vencido → sin premium
+  assert.strictEqual(vencido.tier, 'premium');                      // …y su nivel NO se reescribe
+  assert.strictEqual(premiumLocked({ tier: 'libre' }), true);       // libre de siempre
+  // Control de discriminación: los que SÍ deben conservar lo premium.
+  assert.strictEqual(premiumLocked({ tier: 'premium', payments: [{ dueDate: _plusDays(20) }] }), false); // al día
+  assert.strictEqual(premiumLocked({ tier: 'premium', payments: [{ dueDate: _plusDays(-5) }] }), false); // en gracia
+  assert.strictEqual(premiumLocked({ tier: 'premium', courtesy: true }), false);                        // cortesía
+  assert.strictEqual(premiumLocked({ payments: [{ dueDate: _plusDays(20) }] }), false);  // creado por coach
+  assert.strictEqual(premiumLocked(null), false);
+});
+// El descenso es de lo PREMIUM DE APP, no del vínculo con el coach: la única salida de este
+// estado es hablar con él, y la banda manda justo ahí. Si el chat se apagara, sería un botón
+// que no lleva a ninguna parte.
+test('premiumLocked NO le quita el chat al vencido (v564)', () => {
+  const vencido = { tier: 'premium', payments: [{ dueDate: _plusDays(-30) }] };
+  assert.strictEqual(clientHasCoach(vencido), true);
+  assert.strictEqual(chatDeliveryBlock(vencido), null);
+});
+// Y el panel del COACH sigue viendo lo que es: un asesorado con plan, no un usuario libre.
+// Sin esto, al vencido se le ofrecería «¿quieres un coach real?» —ya tiene el suyo— y editarle
+// los datos dispararía el «¿regenerar su rutina automática?» que es solo para el modo libre.
+// 🔒 CANDADO ESTÁTICO — el candado premium tiene DOS públicos desde v564. Al vencido no se le
+// puede ofrecer «quiero un coach» (ya tiene el suyo) ni dejarle un botón que no hace nada:
+// `showPremiumUpsell` corta en silencio con `clientHasCoach`. Su salida es el chat.
+test('el candado premium le da al VENCIDO una salida que existe (v564)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function premiumLockHTML');
+  assert.ok(i > 0, 'desapareció premiumLockHTML');
+  const cuerpo = src.slice(i, i + 1800);
+  assert.ok(cuerpo.indexOf("MS.getStatus(c)==='overdue'") !== -1,
+    'el candado no distingue al vencido del usuario libre');
+  assert.ok(cuerpo.indexOf('Hablar con mi coach') !== -1,
+    'al vencido no se le ofrece hablar con su coach');
+  assert.ok(cuerpo.indexOf("cnTab('cn-messages'") !== -1,
+    'el botón del vencido no lleva al chat');
+  // Control de discriminación: la rama del usuario LIBRE tiene que seguir intacta.
+  assert.ok(cuerpo.indexOf('showPremiumUpsell()') !== -1 && cuerpo.indexOf('Quiero un coach') !== -1,
+    'se perdió la invitación a coach del usuario libre');
+});
+test('isFreeClient NO se contagia del vencido: sigue significando «plan libre» (v564)', () => {
+  assert.strictEqual(isFreeClient({ tier: 'premium', payments: [{ dueDate: _plusDays(-30) }] }), false);
+  assert.strictEqual(isFreeClient({ tier: 'libre' }), true);
 });
 test('MS.badge: estado conocido → etiqueta correcta; desconocido → fallback', () => {
   assert.strictEqual(MS.badge('active').label, 'Al día');
@@ -6445,8 +6498,10 @@ test('🔴 el formulario del registro está cableado a las funciones que guardan
   assert.ok(/tu propio registro/.test(src), 'falta el texto del caso COACH_SELF');
   // Y el registro es Premium: al tier libre no se le pinta el bloque.
   // Dos aserciones separadas y exactas: de dónde sale el gate, y que el bloque dependa de él.
-  assert.ok(/const conComida=!\(typeof isFreeClient==='function'&&isFreeClient\(client\)\)/.test(src),
-    'el gate Premium del registro no sale de isFreeClient');
+  // v564: el gate pasó de `isFreeClient` a `premiumLocked` — mismo candado, y ahora también
+  // cubre al que tiene el plan VENCIDO (que desde v564 sí entra, pero en AVI FREE).
+  assert.ok(/const conComida=!\(typeof premiumLocked==='function'&&premiumLocked\(client\)\)/.test(src),
+    'el gate Premium del registro no sale de premiumLocked');
   assert.ok(/\$\{conComida\?_foodLogBlockHtml\(client\):''\}/.test(src),
     'el bloque de comida se pinta sin pasar por el gate Premium');
   // El botón de atrás tiene que cerrar la habitación (si no, se sale de la app).
@@ -6675,7 +6730,7 @@ test('🔴 F7: las dos pantallas leen el plan de hoy de UNA sola función', () =
   // 🔒 Marcar el plan ES registrar: no puede saltarse el aviso de que el coach ve el detalle.
   const cuerpo = src.slice(src.indexOf('function flTogglePlanMeal'), src.indexOf('function flTogglePlanMeal') + 1400);
   assert.ok(/if\(!c\.foodlogOk\)/.test(cuerpo), 'marcar el plan se salta el aviso de privacidad');
-  assert.ok(/isFreeClient/.test(cuerpo), 'marcar el plan se salta el gate Premium');
+  assert.ok(/premiumLocked/.test(cuerpo), 'marcar el plan se salta el gate Premium');
 });
 
 // ══════════════════════════════════════════════════════

@@ -592,15 +592,16 @@ async function _enterAuthSession(authUser){
     // P1-1 (auditoría 2026-07-01): el gate de membresía murió con el cutover a Auth —
     // un asesorado suspendido o con plan vencido entraba normal. Mismo criterio y
     // mensajes del camino legacy (tryAutoLogin): pending/active/expiring SÍ entran.
+    // v564: el plan vencido YA NO rebota aquí — entra y cae en AVI FREE (`premiumLocked`).
+    // Solo el suspendido a mano sigue sin pasar, y por eso el mensaje ya no se bifurca.
     if(!MS.canLogin(client)){
       try{ await AUTH.signOut(); }catch(e){}
       AUTH_MODE=false; _authUid=null;
-      const st=MS.getStatus(client);
       showScreen('s-login');
       const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
       if(cta)cta.style.display='none'; if(card)card.style.display='block';
       const er=document.getElementById('lerr');
-      if(er){ er.textContent = st==='inactive' ? 'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡' : 'Tu plan venció. Habla con tu coach para continuar entrenando 💪'; er.classList.add('on'); }
+      if(er){ er.textContent = 'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡'; er.classList.add('on'); }
       return;
     }
     _applyAuthClientDB(client,{
@@ -1295,13 +1296,26 @@ function coachUpsellHTML(c){
 function renderCoachUpsell(c){
   ['cn-today-upsell','cn-profile-upsell'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=coachUpsellHTML(c);});
 }
-// Candado para funciones Premium (modo libre): atenuado + invitación a coach.
+// Candado para funciones Premium: atenuado + la salida que corresponda.
+// 🔴 v564 — EL CANDADO TIENE DOS PÚBLICOS, Y ANTES SOLO TENÍA UNO. Hasta v563 esto solo lo veía
+// el usuario del plan libre, que NO tiene coach: por eso el botón decía «Quiero un coach →» y
+// abría `showPremiumUpsell`. Desde v564 también lo ve quien tiene el plan VENCIDO — y ese ya
+// tiene coach, solo dejó de pagar. Para él las dos mitades estaban mal: el texto le ofrecía algo
+// que ya tiene, y el botón **no hacía absolutamente nada** (`showPremiumUpsell` corta en silencio
+// con `clientHasCoach(c)`), sin abrir ni avisar. Aviso de Lucas QA antes de desplegar.
+// La salida del vencido es hablar con SU coach, que es justo lo que dice su banda de AVI FREE.
 function premiumLockHTML(title,desc){
+  const c=(typeof _curClient==='function')?_curClient():null;
+  const vencido=!!(c && typeof MS!=='undefined' && MS.getStatus(c)==='overdue');
+  const cierre=vencido?'Vuelve a estar disponible en cuanto renueves tu plan.':'Disponible con un <b>coach (Premium)</b>.';
+  const accion=vencido
+    ? `<button onclick="cnTab('cn-messages',document.getElementById('tab-msgs'))" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Hablar con mi coach</button>`
+    : `<button onclick="showPremiumUpsell()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>`;
   return `<div style="background:var(--w);border:1px dashed var(--br2);border-radius:var(--r);padding:18px 16px;text-align:center">
     <div style="font-size:26px;margin-bottom:6px">🔒</div>
     <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(title)}</div>
-    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">${esc(desc)} Disponible con un <b>coach (Premium)</b>.</div>
-    <button onclick="showPremiumUpsell()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">${esc(desc)} ${cierre}</div>
+    ${accion}
   </div>`;
 }
 // Cliente actual (para gating en vistas del asesorado).
