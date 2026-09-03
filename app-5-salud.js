@@ -1324,8 +1324,11 @@ function savePhoto(){
     catch(e){warn('AVI storage upload failed, keeping base64',e.message);}
     if(!DB.photos)DB.photos={};
     if(!DB.photos[clientId])DB.photos[clientId]=[];
-    DB.photos[clientId].unshift({id:photoId,date:new Date().toISOString(),label:finalLabel,src});
-    if(DB.photos[clientId].length>12)DB.photos[clientId]=DB.photos[clientId].slice(0,12);
+    DB.photos[clientId].unshift({id:photoId,date:new Date().toISOString(),mAt:new Date().toISOString(),label:finalLabel,src});
+    // El tope lo aplica `photoPrune`: con un `slice` a secas una lápida ocuparía el cupo de
+    // una foto viva y borrar se comería el historial (lección de las medidas, v566).
+    if(typeof photoPrune==='function')DB.photos[clientId]=photoPrune(DB.photos[clientId],new Date().toISOString());
+    else if(DB.photos[clientId].length>12)DB.photos[clientId]=DB.photos[clientId].slice(0,12);
     svNow('ax_photos',DB.photos);
     cm('m-photos');
     renderPhotosClient(clientId);
@@ -1337,7 +1340,8 @@ function savePhoto(){
 function renderPhotosClient(clientId){
   const con=document.getElementById('cn-photos-grid');if(!con)return;
   if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
-  const photos=(DB.photos||{})[clientId]||[];
+  // Las lápidas no son fotos: quien borró la suya ve el estado vacío, no un hueco.
+  const photos=(typeof photoLive==='function')?photoLive((DB.photos||{})[clientId]||[]):((DB.photos||{})[clientId]||[]);
   if(!photos.length){
     con.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('camera',32):'\ud83d\udcf7'}</div><div class="etxt">A\u00fan no tienes fotos de progreso</div><div class="esub">La primera es la m\u00e1s importante: marca tu punto de partida.</div></div>`;return;
   }
@@ -1353,7 +1357,8 @@ function renderPhotosClient(clientId){
 
 function viewPhoto(photoId,clientId){
   const cid=clientId||CUR.clientId;if(!cid)return;
-  const photo=(DB.photos[cid]||[]).find(p=>p.id===photoId);if(!photo)return;
+  const _vivas=(typeof photoLive==='function')?photoLive((DB.photos||{})[cid]||[]):((DB.photos||{})[cid]||[]);
+  const photo=_vivas.find(p=>p.id===photoId);if(!photo)return;
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
@@ -1362,16 +1367,44 @@ function viewPhoto(photoId,clientId){
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button onclick="this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
-      <button onclick="deletePhoto('${esc(photoId)}','${esc(cid)}');this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>
+      <button id="ph-del-btn" onclick="_photoAskDelete(this,'${esc(photoId)}','${esc(cid)}')" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>
     </div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
 }
 
+// 🔒 Dos pasos, en el propio botón. Sin `confirm()` (bloquea el hilo y en la PWA se lo come
+//    el navegador, regla de la casa) y sin modal encima de un overlay a pantalla completa.
+//    El primer toque avisa que no hay vuelta atrás; el segundo borra.
+function _photoAskDelete(btn,photoId,cid){
+  if(btn.dataset.armed==='1'){
+    deletePhoto(photoId,cid);
+    const ov=btn.closest('div'); if(ov&&ov.parentElement)ov.parentElement.remove();
+    return;
+  }
+  btn.dataset.armed='1';
+  btn.textContent='\u00bfSeguro? No se puede deshacer';
+  // Si no confirma en unos segundos, el botón vuelve a su sitio: un botón que se queda
+  // «armado» es una trampa esperando el próximo toque.
+  setTimeout(()=>{ if(btn&&btn.isConnected&&btn.dataset.armed==='1'){btn.dataset.armed='';btn.textContent='Eliminar';} },6000);
+}
+
+// 🔴 BORRAR NO ERA UN BORRADO: era un `filter` sobre una lista que se fusiona con la nube
+//    por UNIÓN, así que la foto volvía en la siguiente sincronización — y como el archivo SÍ
+//    se borra de Storage, lo que resucitaba era un recuadro ROTO donde estaba su «antes».
+//    `photoDelete` deja lápida y `mergePhotos` la hace ganar por fecha de modificación.
+// 🔒 Y ahora PREGUNTA. El archivo se borra de verdad y no hay vuelta atrás: hasta v568 esto
+//    era UN TOQUE, sin confirmación, sobre la foto que marca su punto de partida.
 function deletePhoto(photoId,clientId){
   const cid=clientId||CUR.clientId;if(!cid)return;
+  if(typeof premiumLocked==='function'&&premiumLocked((DB.clients||[]).find(x=>x.id===cid)))return;
+  const lista=(typeof photoDelete==='function')?photoDelete((DB.photos||{})[cid]||[],photoId,new Date().toISOString()):null;
+  if(!lista){toast('Esa foto ya no est\u00e1');return;}
+  // El archivo se borra DESPUÉS de saber que la entrada existía: si no existía, no hay nada
+  // que borrar y pedirle a Storage que borre algo ajeno no es gratis.
   deletePhotoFromStorage(cid,photoId);
-  DB.photos[cid]=(DB.photos[cid]||[]).filter(p=>p.id!==photoId);
+  if(!DB.photos)DB.photos={};
+  DB.photos[cid]=lista;
   sv('ax_photos',DB.photos);
   renderPhotosClient(cid);
   toast('Foto eliminada');

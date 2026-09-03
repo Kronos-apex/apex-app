@@ -2143,7 +2143,10 @@ function mergeAuthRow(localRow, cloudRow) {
   //    no sabe de borrados — lo eliminado en un teléfono volvía desde la copia de la nube.
   //    `mergeMedidas` fusiona por id y deja ganar a la modificación más reciente.
   out.medidas = pair((l, c) => mergeMedidas(l, c), localRow.medidas || [], cloudRow.medidas || []);
-  out.photos = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.photos || [], cloudRow.photos || []);
+  // 🔴 Las fotos tampoco usan la unión por fecha: desde v568 se pueden BORRAR, y una unión
+  //    no sabe de borrados — la foto eliminada volvía de la nube apuntando a un archivo que
+  //    `deletePhotoFromStorage` ya había borrado, o sea un recuadro roto.
+  out.photos = pair((l, c) => mergePhotos(l, c), localRow.photos || [], cloudRow.photos || []);
   return out;
 }
 
@@ -3797,6 +3800,110 @@ function consentKeep(prev, next) {
 //    que alarma a todo el mundo, o uno mudo que no alarma nunca.
 
 // Los 12 perímetros. `par` agrupa izquierda/derecha; sin `par` es una medida única.
+// ═════ BORRAR DE VERDAD EN UNA COLECCIÓN QUE SE FUSIONA POR UNIÓN ═════════════════
+// 🔴 LA FILA DEL USUARIO SE FUSIONA CON LA NUBE POR UNIÓN (`mergeClientArrays`), Y UNA
+//    UNIÓN NO SABE DE BORRADOS: lo que se quita de la lista local **vuelve** en la siguiente
+//    fusión — basta con que otro teléfono traiga una copia vieja, o con haber borrado sin
+//    conexión. Por eso borrar deja una **lápida** (`del:true`) que gana por `mAt`.
+//
+// 🔒 ESTO VIVE UNA SOLA VEZ. Nació para las medidas (v566) y las fotos tenían el MISMO
+//    defecto (v568). Copiarlo habría sido una segunda definición de «borrado», que es
+//    exactamente cómo volvió el bug del peso en v448 y en v511. Las funciones de cada
+//    colección delegan aquí y solo aportan su IDENTIDAD y su cupo.
+
+// Normaliza: pone `id` (con la identidad que decida el llamador) y `mAt` a lo que venga sin ellos.
+function tombNormalize(items, idFn) {
+  if (!Array.isArray(items)) return [];
+  return items.filter(e => e && typeof e === 'object').map(e => {
+    const out = Object.assign({}, e);
+    out.id = idFn(e);
+    if (!out.mAt) out.mAt = String(e.date || '');
+    return out;
+  });
+}
+
+// Las VIVAS, nueva → vieja. Las lápidas nunca salen de aquí.
+function tombLive(items, idFn) {
+  return tombNormalize(items, idFn)
+    .filter(e => !e.del)
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
+
+// Recorta. Las VIVAS se topan en `cap`; las lápidas NO consumen ese cupo (una lápida no es un
+// registro) y solo se sueltan cuando son tan viejas que ninguna copia rezagada puede resucitar
+// lo que tapan.
+function tombPrune(items, idFn, cap, tumbaDias, nowIso) {
+  const lista = tombNormalize(items, idFn).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const ahora = new Date(nowIso || Date.now()).getTime();
+  const vivas = [], tumbas = [];
+  lista.forEach(e => {
+    if (e.del) {
+      const t = new Date(e.mAt || e.date || 0).getTime();
+      const dias = isFinite(t) ? (ahora - t) / 86400000 : 0;
+      if (dias <= tumbaDias) tumbas.push(e);
+    } else vivas.push(e);
+  });
+  return vivas.slice(0, cap).concat(tumbas);
+}
+
+// Borra dejando lápida. `null` si no existía: el llamador no debe fingir que borró.
+function tombDelete(items, id, idFn, cap, tumbaDias, nowIso) {
+  const lista = tombNormalize(items, idFn);
+  const at = nowIso || new Date().toISOString();
+  const i = lista.findIndex(e => e.id === String(id));
+  if (i < 0) return null;
+  if (lista[i].del) return lista;                 // ya estaba borrada
+  lista[i] = { id: lista[i].id, date: lista[i].date, del: true, mAt: at };
+  return tombPrune(lista, idFn, cap, tumbaDias, at);
+}
+
+// Fusión por `id` donde **gana la más reciente por `mAt`**. La común (`mergeClientArrays`) es
+// una unión por fecha: con ella una lápida local perdía contra la copia viva de la nube en el
+// empate de fechas (`a.concat(b)` pone la nube de segunda y el `>=` la deja ganar).
+function mergeTombstoned(local, cloud, idFn, cap, tumbaDias) {
+  local = local && typeof local === 'object' ? local : {};
+  cloud = cloud && typeof cloud === 'object' ? cloud : {};
+  const out = {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  ids.forEach(cid => {
+    const a = tombNormalize(Array.isArray(local[cid]) ? local[cid] : [], idFn);
+    const b = tombNormalize(Array.isArray(cloud[cid]) ? cloud[cid] : [], idFn);
+    const porId = new Map();
+    a.concat(b).forEach(it => {
+      const prev = porId.get(it.id);
+      if (!prev) { porId.set(it.id, it); return; }
+      const t = new Date(it.mAt || it.date || 0).getTime();
+      const tp = new Date(prev.mAt || prev.date || 0).getTime();
+      if (t > tp) porId.set(it.id, it);
+    });
+    out[cid] = tombPrune([...porId.values()], idFn, cap, tumbaDias);
+  });
+  return out;
+}
+
+// ── FOTOS DE PROGRESO (v568) ───────────────────────────────────────────
+// 🔴 `deletePhoto` borraba con un `filter` — la misma clase que las medidas de v566, y aquí
+//    PEOR: `deletePhotoFromStorage` sí borra el archivo, así que lo que resucitaba de la nube era
+//    una entrada apuntando a una imagen que ya no existe. Un recuadro roto donde estaba tu
+//    «antes» es más cruel que no haber borrado nada.
+const PHOTO_CAP = 12;            // el mismo tope que ya aplicaba `savePhoto`
+const PHOTO_TUMBA_DIAS = 400;
+function photoEntryId(p) {
+  if (!p) return '';
+  if (p.id) return String(p.id);
+  return 'd:' + String(p.date || '');   // las de antes de que existiera `uid()` se anclan a su fecha
+}
+function photoLive(list) { return tombLive(list, photoEntryId); }
+function photoDelete(list, id, nowIso) {
+  return tombDelete(list, id, photoEntryId, PHOTO_CAP, PHOTO_TUMBA_DIAS, nowIso);
+}
+function photoPrune(list, nowIso) {
+  return tombPrune(list, photoEntryId, PHOTO_CAP, PHOTO_TUMBA_DIAS, nowIso);
+}
+function mergePhotos(local, cloud) {
+  return mergeTombstoned(local, cloud, photoEntryId, PHOTO_CAP, PHOTO_TUMBA_DIAS);
+}
+
 const MED_FIELDS = [
   { key: 'cuello',          label: 'Cuello',           grupo: 'Tronco' },
   { key: 'pecho',           label: 'Pecho',            grupo: 'Tronco' },
@@ -3838,22 +3945,10 @@ function medEntryId(entry) {
 
 // Normaliza una lista: pone `id` y `mAt` a lo que venga sin ellos. `mAt` (modificado-en)
 // es lo que decide quién gana al fusionar; sin él, la fecha de la toma.
-function medNormalize(entries) {
-  if (!Array.isArray(entries)) return [];
-  return entries.filter(e => e && typeof e === 'object').map(e => {
-    const out = Object.assign({}, e);
-    out.id = medEntryId(e);
-    if (!out.mAt) out.mAt = String(e.date || '');
-    return out;
-  });
-}
+function medNormalize(entries) { return tombNormalize(entries, medEntryId); }
 
 // Las tomas VIVAS, nueva → vieja. Las lápidas nunca salen de aquí.
-function medLive(entries) {
-  return medNormalize(entries)
-    .filter(e => !e.del)
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-}
+function medLive(entries) { return tombLive(entries, medEntryId); }
 
 // ¿Qué campos trae realmente esta toma? (los 12 nuevos + los 3 viejos sin lado)
 function medFilled(entry) {
@@ -3913,30 +4008,14 @@ function medUpsert(entries, valores, nowIso, id) {
 //    otro teléfono traiga una copia vieja. Por eso el borrado deja la toma en la lista
 //    marcada `del:true`, y la fusión de abajo hace que la lápida gane por `mAt`.
 function medDelete(entries, id, nowIso) {
-  const lista = medNormalize(entries);
-  const at = nowIso || new Date().toISOString();
-  const i = lista.findIndex(e => e.id === String(id));
-  if (i < 0) return null;                 // no existe: el llamador no debe fingir que borró
-  if (lista[i].del) return lista;         // ya estaba borrada
-  lista[i] = { id: lista[i].id, date: lista[i].date, del: true, mAt: at };
-  return medPrune(lista, at);
+  return tombDelete(entries, id, medEntryId, MED_CAP, MED_TUMBA_DIAS, nowIso);
 }
 
 // Recorta la lista. Las VIVAS se topan en MED_CAP; las lápidas no cuentan para ese tope
 // (una lápida no es una toma) y solo se sueltan cuando son tan viejas que ninguna copia
 // rezagada puede resucitar lo que tapan.
 function medPrune(entries, nowIso) {
-  const lista = medNormalize(entries).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  const ahora = new Date(nowIso || Date.now()).getTime();
-  const vivas = [], tumbas = [];
-  lista.forEach(e => {
-    if (e.del) {
-      const t = new Date(e.mAt || e.date || 0).getTime();
-      const dias = isFinite(t) ? (ahora - t) / 86400000 : 0;
-      if (dias <= MED_TUMBA_DIAS) tumbas.push(e);
-    } else vivas.push(e);
-  });
-  return vivas.slice(0, MED_CAP).concat(tumbas);
+  return tombPrune(entries, medEntryId, MED_CAP, MED_TUMBA_DIAS, nowIso);
 }
 
 // Fusión propia de las medidas: por `id`, y **gana la más reciente por `mAt`**.
@@ -3944,24 +4023,7 @@ function medPrune(entries, nowIso) {
 // una lápida local perdía contra la copia viva de la nube en el empate de fechas
 // (`a.concat(b)` pone la nube de segunda y el `>=` la deja ganar) y lo borrado volvía.
 function mergeMedidas(local, cloud) {
-  local = local && typeof local === 'object' ? local : {};
-  cloud = cloud && typeof cloud === 'object' ? cloud : {};
-  const out = {};
-  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
-  ids.forEach(cid => {
-    const a = medNormalize(Array.isArray(local[cid]) ? local[cid] : []);
-    const b = medNormalize(Array.isArray(cloud[cid]) ? cloud[cid] : []);
-    const porId = new Map();
-    a.concat(b).forEach(it => {
-      const prev = porId.get(it.id);
-      if (!prev) { porId.set(it.id, it); return; }
-      const t = new Date(it.mAt || it.date || 0).getTime();
-      const tp = new Date(prev.mAt || prev.date || 0).getTime();
-      if (t > tp) porId.set(it.id, it);
-    });
-    out[cid] = medPrune([...porId.values()]);
-  });
-  return out;
+  return mergeTombstoned(local, cloud, medEntryId, MED_CAP, MED_TUMBA_DIAS);
 }
 
 // ── CADA CUÁNTO VOLVER A MEDIRSE ───────────────────────────────────────────
@@ -9551,6 +9613,18 @@ if (typeof module !== 'undefined' && module.exports) {
     passwordProblem,
     consentEvidence,
     consentNeedsGuardian,
+    tombNormalize,
+    tombLive,
+    tombDelete,
+    tombPrune,
+    mergeTombstoned,
+    PHOTO_CAP,
+    PHOTO_TUMBA_DIAS,
+    photoEntryId,
+    photoLive,
+    photoDelete,
+    photoPrune,
+    mergePhotos,
     MED_CADENCIA_DIAS,
     MED_AVISO_DIAS,
     medNextDue,

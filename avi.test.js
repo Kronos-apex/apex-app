@@ -144,6 +144,14 @@ const {
   medDelete,
   medPrune,
   mergeMedidas,
+  tombLive,
+  tombDelete,
+  photoEntryId,
+  photoLive,
+  photoDelete,
+  photoPrune,
+  mergePhotos,
+  PHOTO_CAP,
   medNextDue,
   medReminder,
   MED_CADENCIA_DIAS,
@@ -4376,6 +4384,130 @@ test('🔒 con una sola toma la app dice «aun no sabemos», no «no es nada» (
     'la otra rama perdio la unica lectura que una cinta metrica puede sostener');
 });
 
+// ═════ FOTOS DE PROGRESO: BORRAR DE VERDAD (v568) ════════════════════════════
+// 🔴 `deletePhoto` borraba con un `filter` sobre una lista que la fila fusiona por UNION:
+// la foto volvia de la nube. Y aqui es PEOR que en las medidas, porque el archivo SI se borra
+// de Storage: lo que resucitaba era una entrada apuntando a una imagen que ya no existe, o sea
+// un recuadro roto donde estaba su «antes».
+test('photoDelete: la foto borrada NO resucita al fusionar con la nube (v568)', () => {
+  const t = '2026-06-30T10:00:00.000Z';
+  const original = [{ id: 'p1', date: t, mAt: t, label: 'Inicio', src: 'https://x/p1.jpg' }];
+  const local = photoDelete(original, 'p1', '2026-09-03T10:00:00.000Z');
+  assert.ok(local[0].del === true, 'no quedo lapida');
+  assert.strictEqual(photoLive(local).length, 0, 'la lapida no puede verse como una foto');
+  // La nube todavia tiene la copia VIVA (otro telefono, o el borrado sin conexion).
+  assert.strictEqual(photoLive(mergePhotos({ c1: local }, { c1: original }).c1).length, 0,
+    'la foto borrada volvio de la nube — y su archivo ya no existe');
+  // CONTROL DE DISCRIMINACION: lo que nadie borro sobrevive la fusion.
+  assert.strictEqual(photoLive(mergePhotos({ c1: original }, { c1: original }).c1).length, 1,
+    'la fusion esta perdiendo fotos que nadie borro');
+  // CONTROL 2: el orden de los argumentos no puede cambiar el resultado.
+  assert.strictEqual(photoLive(mergePhotos({ c1: original }, { c1: local }).c1).length, 0);
+  // Borrar algo que no existe NO puede decir que borro (el llamador borra el archivo despues).
+  assert.strictEqual(photoDelete(original, 'no-existe', t), null);
+  // Borrar dos veces no rompe ni duplica lapidas.
+  assert.strictEqual(photoDelete(local, 'p1', t).filter(x => x.del).length, 1);
+});
+
+// 🔒 La identidad de una foto tiene que ser ESTABLE entre arranques, o cada sincronizacion
+// la ve como nueva y la duplica — y las lapidas dejan de encontrar a quien tapan.
+test('photoEntryId: identidad estable, y las viejas sin id se anclan a su fecha (v568)', () => {
+  assert.strictEqual(photoEntryId({ id: 'p1', date: 'x' }), 'p1', 'con id propio manda el id');
+  const d = '2026-06-30T10:00:00.000Z';
+  assert.strictEqual(photoEntryId({ date: d }), 'd:' + d, 'sin id, la identidad es su fecha');
+  assert.strictEqual(photoEntryId({ date: d }), photoEntryId({ date: d }), 'la identidad cambia entre llamadas');
+  assert.strictEqual(photoEntryId(null), '');
+  // Consecuencia real: una foto vieja sin id se puede borrar y NO vuelve de la nube.
+  const vieja = [{ date: d, src: 'https://x/v.jpg' }];
+  const borrada = photoDelete(vieja, 'd:' + d, '2026-09-03T10:00:00.000Z');
+  assert.ok(borrada, 'no se pudo borrar una foto vieja sin id');
+  assert.strictEqual(photoLive(mergePhotos({ c1: borrada }, { c1: vieja }).c1).length, 0,
+    'la foto vieja sin id resucito: su identidad no es estable');
+});
+
+test('photoPrune: una lapida no ocupa el cupo de una foto viva (v568)', () => {
+  const mk = i => ({ id: 'p' + i, date: new Date(Date.UTC(2026, 0, i + 1)).toISOString(), src: 'https://x/' + i });
+  const vivas = [];
+  for (let i = 0; i < PHOTO_CAP + 3; i++) vivas.push(mk(i));
+  const lap = { id: 'z', date: '2026-01-01T00:00:00.000Z', del: true, mAt: '2026-09-03T00:00:00.000Z' };
+  const out = photoPrune(vivas.concat([lap]), '2026-09-03T00:00:00.000Z');
+  assert.strictEqual(photoLive(out).length, PHOTO_CAP, 'el tope de fotos vivas no es el de siempre');
+  assert.ok(out.some(x => x.del), 'la lapida se solto antes de tiempo: la foto puede resucitar');
+  // Pasados los 400 dias ya nadie puede resucitarla y la lapida se suelta.
+  const viejo = photoPrune([lap], '2028-01-01T00:00:00.000Z');
+  assert.strictEqual(viejo.length, 0, 'las lapidas se guardan para siempre');
+});
+
+// 🔒 UNA SOLA DEFINICION DE «BORRADO». Medidas (v566) y fotos (v568) tenian el MISMO
+// defecto; copiar la maquinaria habria sido una segunda definicion, que es exactamente como
+// volvio el bug del peso en v448 y en v511. Las dos delegan en la capa generica.
+test('🔒 medidas y fotos comparten UNA maquinaria de lapidas (v568)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const cuerpo = f => {
+    const i = src.indexOf('function ' + f + '(');
+    assert.ok(i > 0, 'no existe ' + f);
+    return src.slice(i, src.indexOf('\n}', i));
+  };
+  ['medLive', 'medDelete', 'medPrune', 'mergeMedidas'].forEach(f =>
+    assert.ok(/tomb|mergeTombstoned/.test(cuerpo(f)), f + ' dejo de delegar: hay dos definiciones de borrado'));
+  ['photoLive', 'photoDelete', 'photoPrune', 'mergePhotos'].forEach(f =>
+    assert.ok(/tomb|mergeTombstoned/.test(cuerpo(f)), f + ' dejo de delegar: hay dos definiciones de borrado'));
+  // Y cada coleccion aporta su IDENTIDAD y su cupo, que NO son los mismos.
+  assert.notStrictEqual(PHOTO_CAP, MED_CAP, 'fotos y medidas no tienen por que topar igual');
+  // CONTROL DE DISCRIMINACION: la capa generica hace su trabajo de verdad, no es un envoltorio.
+  const idFn = x => String(x.id || '');
+  const l = tombDelete([{ id: 'a', date: '2026-01-01T00:00:00.000Z' }], 'a', idFn, 5, 400, '2026-02-01T00:00:00.000Z');
+  assert.strictEqual(tombLive(l, idFn).length, 0);
+  assert.strictEqual(tombDelete([], 'a', idFn, 5, 400), null);
+});
+
+// 🔒 CANDADO DE CABLEADO: la lapida solo sirve si la fusion de la FILA la usa. Es el
+// mismo candado que v566 necesito para las medidas — sin el, devolver esta linea a la union
+// deja toda la maquinaria perfecta y el borrado sin durar, con la suite en verde.
+test('mergeAuthRow: las fotos se fusionan con mergePhotos, no por union (v568)', () => {
+  const t = '2026-06-30T10:00:00.000Z';
+  const original = [{ id: 'p1', date: t, mAt: t, src: 'https://x/p1.jpg' }];
+  const local = photoDelete(original, 'p1', '2026-09-03T10:00:00.000Z');
+  const out = mergeAuthRow({ photos: local }, { photos: original });
+  assert.strictEqual(photoLive(out.photos).length, 0,
+    'la fila de la nube resucito la foto borrada: mergeAuthRow no usa mergePhotos');
+  // CONTROL DE DISCRIMINACION: lo que nadie borro sobrevive.
+  assert.strictEqual(photoLive(mergeAuthRow({ photos: original }, { photos: original }).photos).length, 1);
+  // CONTROL DE COBERTURA: el resto de la fila se sigue fusionando.
+  const vivo = mergeAuthRow({ photos: original, medidas: [] }, { photos: original, medidas: [] });
+  assert.ok(Array.isArray(vivo.history) && Array.isArray(vivo.bodyweight) && Array.isArray(vivo.medidas));
+});
+
+// 🔴 Borrar una foto es IRREVERSIBLE (el archivo se va de Storage) y hasta v568 era UN
+// TOQUE, sin preguntar, sobre la foto que marca el punto de partida de alguien.
+test('🔒 borrar una foto pregunta antes, y el borrado pasa por la lapida (v568)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const del = src.slice(src.indexOf('function deletePhoto('), src.indexOf('\n}', src.indexOf('function deletePhoto(')));
+  assert.ok(/photoDelete\(/.test(del), 'deletePhoto volvio a borrar sin lapida');
+  assert.ok(!/\.filter\(p\s*=>\s*p\.id\s*!==/.test(del), 'volvio el filter: lo borrado resucita de la nube');
+  assert.ok(/premiumLocked\(/.test(del), 'se puede borrar una foto con la pantalla bajo candado');
+  // El archivo se borra DESPUES de comprobar que la entrada existia.
+  assert.ok(del.indexOf('photoDelete(') < del.indexOf('deletePhotoFromStorage('),
+    'se le pide a Storage que borre antes de saber si habia algo que borrar');
+  // 🔒 EL CABLEADO, no la mera existencia de la funcion: el primer intento de este
+  //    candado preguntaba si `_photoAskDelete` aparecia en el ARCHIVO, y el sabotaje que
+  //    devolvia el onclick a `deletePhoto` salia VERDE porque la funcion seguia definida.
+  const view = src.slice(src.indexOf('function viewPhoto('), src.indexOf('function _photoAskDelete('));
+  assert.ok(/onclick="_photoAskDelete\(this,/.test(view),
+    'el boton de eliminar volvio a borrar de un toque, sin preguntar');
+  assert.ok(!/onclick="deletePhoto\(/.test(view),
+    'el overlay llama a deletePhoto directo: se salta la confirmacion');
+  // Y la guarda de los dos pasos tiene que MIRAR el estado, no ser un `if` que siempre pasa:
+  // con `if(true)` la palabra «armed» sigue apareciendo mas abajo y el candado salia verde.
+  const ask = src.slice(src.indexOf('function _photoAskDelete('), src.indexOf('\n}', src.indexOf('function _photoAskDelete(')));
+  assert.ok(/if\(btn\.dataset\.armed===/.test(ask),
+    'el primer toque ya borra: la confirmacion perdio su guarda');
+  assert.ok(/deletePhoto\(/.test(ask), 'el segundo toque no borra nada');
+  assert.ok(!/\bconfirm\(/.test(ask), 'confirm() esta prohibido: bloquea el hilo y la PWA se lo come');
+});
+
 // ═════ VOLVER A MEDIRSE: 8 SEMANAS, AVISANDO UNA ANTES (v567) ═══════════════════
 // 🔴 8 de 24 personas se midieron EXACTAMENTE UNA VEZ. El diagnostico de Coach Pro no fue
 // la pantalla: a nadie se le dijo cuando volver. Los dos especialistas no coincidieron (Andres
@@ -4523,6 +4655,9 @@ test('🔒 nadie cuenta lapidas como tomas (Julian QA, v566)', () => {
   const cuerpo = entreno.slice(i, entreno.indexOf('\n}', i));
   assert.ok(/medLive\(/.test(cuerpo),
     'la tarjeta de seguimiento cuenta el arreglo crudo: una lapida no es una toma');
+  // v568: las fotos tienen lapidas por la misma razon, y el MISMO lector las contaba.
+  assert.ok(/photoLive\(/.test(cuerpo),
+    'la tarjeta de seguimiento cuenta lapidas de fotos como fotos');
   const salud = lee('app-5-salud.js');
   const j = salud.indexOf('const vistas=');
   assert.ok(j > 0 && /medLive\(/.test(salud.slice(j, j + 90)),

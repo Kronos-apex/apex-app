@@ -69,10 +69,14 @@ const CASOS = [
     to: "  return 'm' + Math.random().toString(36).slice(2);",
   },
   {
-    n: 'S9 · una lapida ocupa el cupo de una toma viva (borrar te come el historial)',
+    // REAPUNTADO en v568: el recorte se mudo a la capa generica `tombPrune` cuando medidas y
+    // fotos pasaron a compartir una sola definicion de borrado, y este ancla quedo en 0
+    // ocurrencias ("NO SE APLICO"). La linea comun ya la sabotea `_sabotaje-fotos` S4; aqui se
+    // ataca la DELEGACION de medidas, que es lo propio de esta matriz.
+    n: 'S9 · medPrune deja de topar y las lapidas ocupan el cupo de las tomas vivas',
     file: 'avi-core.js',
-    from: '  return vivas.slice(0, MED_CAP).concat(tumbas);',
-    to: '  return vivas.concat(tumbas).slice(0, MED_CAP);',
+    from: '  return tombPrune(entries, medEntryId, MED_CAP, MED_TUMBA_DIAS, nowIso);',
+    to: '  return tombNormalize(entries, medEntryId);',
   },
   {
     n: 'S10 · el umbral de asimetria se mide en cm y no en % (sobre-alarma en el brazo)',

@@ -4,6 +4,47 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v568: BORRAR UNA FOTO DE PROGRESO BORRA DE VERDAD
+
+**De dónde sale.** Cola técnica mía, no pedido del PO. Lo dejé anotado al cerrar v566 y él dio
+el visto bueno: *«arranca»*.
+
+**El defecto.** `deletePhoto` borraba con un `filter` sobre `DB.photos`, y la fila del usuario se
+fusiona con la nube por **UNIÓN**: la foto volvía en la siguiente sincronización. Es la misma
+clase que v566 cerró en las medidas — **y aquí es peor**: `deletePhotoFromStorage` **sí borra el
+archivo**, así que lo que resucitaba era una entrada apuntando a una imagen que ya no existe.
+Un recuadro roto donde estaba su «antes» es más cruel que no haber borrado nada.
+
+**Y de paso, algo que no estaba en la lista y es peor de ver:** borrar una foto era **UN TOQUE,
+sin preguntar**, sobre la imagen que marca el punto de partida de alguien — y el archivo se va
+de Storage, o sea que no hay vuelta atrás. Ahora el botón pide confirmación en dos pasos (sin
+`confirm()`, que bloquea el hilo y la PWA se lo come) y se desarma solo a los 6 segundos: un
+botón que se queda «armado» es una trampa esperando el próximo toque.
+
+**🔒 UNA SOLA DEFINICIÓN DE «BORRADO», y esta es la decisión de fondo.** La tentación era copiar
+la maquinaria de las medidas. Copiarla habría dejado **dos definiciones de borrado** vivas en el
+mismo archivo, que es exactamente cómo volvió el bug del peso en v448 y otra vez en v511. En vez
+de eso nació la capa genérica — `tombNormalize` / `tombLive` / `tombDelete` / `tombPrune` /
+`mergeTombstoned` — y **las dos colecciones delegan ahí**, aportando solo su IDENTIDAD y su cupo
+(fotos 12, medidas 60). **Las medidas se refactorizaron a delegación en este mismo commit y sus
+25 tests y sus 24 sabotajes siguen verdes sin tocar uno** — esa es la prueba de que la
+delegación es fiel, y por eso el refactor era seguro de hacer aquí y no en otro momento.
+
+**También:** el tope de 12 lo aplica ahora `photoPrune` (con un `slice` a secas **una lápida
+ocuparía el cupo de una foto viva** y borrar se comería el historial), el candado Premium se
+comprueba en la ACCIÓN (hallazgo de Lucas en v566, misma clase), y a Storage se le pide borrar
+**después** de saber que la entrada existía.
+
+**Verificación.** Suite **1012 → 1018**. Matriz nueva `scripts/e2e/_sabotaje-fotos.mjs` (12 casos).
+🔴 **La primera corrida dio 8 de 12, y los cuatro verdes eran huecos reales de MIS tests:**
+- **S7** preguntaba si `_photoAskDelete` aparecía **en el archivo** — y devolver el `onclick` a
+  `deletePhoto` la dejaba definida más abajo, así que salía verde. Ahora se afirma el CABLEADO
+  dentro de `viewPhoto`, y que **no** llame a `deletePhoto` directo.
+- **S8** pedía que la palabra «armed» estuviera en la función — con `if(true)` sigue estando.
+  Ahora se afirma la FORMA de la guarda (`if(btn.dataset.armed===`).
+- **S11** y **S12** no tenían test: la identidad de una foto vieja sin `id`, y el lector de la
+  tarjeta de seguimiento, que contaba lápidas de fotos igual que contaba las de medidas.
+
 ## 🔄 2026-09-03 — avi-v567: VOLVER A MEDIRSE — 8 SEMANAS, AVISANDO UNA ANTES
 
 **De dónde sale.** La decisión que v566 dejó abierta. El PO, textual: *«vamos a pedir la medición

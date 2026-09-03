@@ -626,7 +626,7 @@ function applyProfileDisclosure(clientId){
   //    dentro de esta misma coleccion. Contandolas, quien borra su unica toma se queda
   //    con «Mi seguimiento personal» desplegado ensenando su propio estado vacio.
   const med=(typeof medLive==='function')?medLive((DB.medidas||{})[clientId]||[]):((DB.medidas||{})[clientId]||[]);
-  const ph=(DB.photos||{})[clientId]||[];
+  const ph=(typeof photoLive==='function')?photoLive((DB.photos||{})[clientId]||[]):((DB.photos||{})[clientId]||[]);
   show('cn-pr-card', Object.keys(prs).length>0);
   // Nutrición: visible si el coach asignó plan O si es Premium (ahí vive la calculadora
   // automática de calorías/macros para el self-serve sin coach). El modo libre no la ve.
