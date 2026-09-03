@@ -4,6 +4,42 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v569: LA PANTALLA DEJA DE APAGARSE EN EL DESCANSO
+
+**De dónde sale.** Cola técnica mía, con el visto bueno del PO.
+
+**El defecto.** AVI pide el candado de pantalla (`wakeLock`) en el HIIT, en el isométrico y en el
+cardio. **En el descanso ENTRE SERIES no** — y es el único de los cuatro que corre en **cada serie
+de cada entreno**. La pantalla se apagaba a mitad del descanso y había que despertarla para
+anotar el peso. Nadie lo reporta nunca: se asume que los teléfonos son así.
+
+**🔴 Y al buscarlo apareció el contrario, que es peor.** `relWake()` vivía **DENTRO** de
+`if(GM.hiit){…}` en **cuatro salidas** (abrir el guiado, cerrarlo, reiniciar la sesión, y una
+más): cerrar el guiado durante un **isométrico** o un **cardio** no soltaba nada y **la pantalla
+se quedaba encendida indefinidamente**, quemando batería hasta que el sistema decidiera. Es la
+clase de la cámara de v473: **quien enciende algo enumera TODAS sus salidas, no solo la del
+camino por el que lo encendió.** Ahora el `relWake()` va fuera del `if` en las cuatro.
+
+**Dos cosas más que salión de paso, y las dos son de la misma familia:**
+- **`reqWake` no era idempotente**, y `gmShowRest` corre en cada serie: pedir un candado teniendo
+  uno no reemplaza al anterior, lo deja colgado — una rutina de 24 series dejaba 24 candados vivos.
+- **El sistema suelta el candado solo cuando la página deja de verse, y NO lo devuelve al volver.**
+  Bastaba mirar una notificación a mitad del descanso para que la pantalla se apagara en la
+  siguiente serie, sin que nada hubiera fallado. Ahora se re-pide en `visibilitychange`, y
+  `relWake` apaga la intención (`_wakeWanted`) para que no se resucite solo para siempre.
+
+**⚠️ NO SE PUEDE REPRODUCIR EN EL BANCO, y así queda dicho.** `navigator.wakeLock` no existe en
+Chrome headless y que la pantalla se apague lo decide el sistema operativo. Lo que se mide son
+los candados estáticos: que cada timer PIDE y que cada salida SUELTA. Misma honestidad que el
+zoom de iOS de v526, donde tampoco había iPhone.
+
+**Verificación.** Suite **1018 → 1021**. Matriz nueva `scripts/e2e/_sabotaje-pantalla.mjs` (9 casos).
+🔴 **La primera corrida dio 8 de 9** y el verde era una aserción mía que **el propio defecto
+satisfacía**: pedía que `relWake()` apareciera en `gmSkipRest`, y la rama del isométrico traía la
+suya, así que quitar la de la salida común salía verde. **Esa segunda llamada era redundante y se
+eliminó** (lección de v482: si un sabotaje sale verde, la primera hipótesis es que ese código
+sobra), y el candado pasó a afirmar la POSICIÓN — que se suelte antes de bifurcar.
+
 ## 🔄 2026-09-03 — avi-v568: BORRAR UNA FOTO DE PROGRESO BORRA DE VERDAD
 
 **De dónde sale.** Cola técnica mía, no pedido del PO. Lo dejé anotado al cerrar v566 y él dio

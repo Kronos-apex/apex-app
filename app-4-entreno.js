@@ -1875,9 +1875,38 @@ function attachDropSwipe(row,routine,ei,si,rerender){
 // F5b 2026-07-06; el guiado usa gmSetCellsHTML y sus propios toasts.)
 
 // ── Wake Lock: mantener pantalla encendida durante timers ──
-let aviWakeLock=null;
-async function reqWake(){try{if('wakeLock'in navigator)aviWakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
-function relWake(){try{if(aviWakeLock){aviWakeLock.release();aviWakeLock=null;}}catch(e){}}
+// ── MANTENER LA PANTALLA ENCENDIDA ─────────────────────────────────────
+// 🔴 EL SISTEMA OPERATIVO SUELTA EL CANDADO SOLO cuando la página deja de verse — y NO lo
+//    devuelve al volver. Sin re-pedirlo, basta con mirar una notificación a mitad del descanso
+//    para que la pantalla se apague en la siguiente serie, sin que nada haya fallado.
+//    `_wakeWanted` recuerda si ALGUIEN lo quiere ahora mismo; es lo único que sabe si
+//    re-pedirlo al volver. Sin esa memoria no hay forma de distinguir «nadie lo quiere» de
+//    «el sistema me lo quitó».
+let aviWakeLock=null, _wakeWanted=false;
+async function reqWake(){
+  _wakeWanted=true;
+  // 🔒 IDEMPOTENTE: `gmShowRest` corre en CADA serie, y pedir un candado nuevo teniendo uno
+  //    no reemplaza al anterior — lo deja colgado. Con una rutina de 24 series eso son 24
+  //    candados vivos que nadie suelta.
+  if(aviWakeLock)return;
+  try{
+    if(!('wakeLock'in navigator))return;
+    aviWakeLock=await navigator.wakeLock.request('screen');
+    // El sistema lo suelta por su cuenta al ocultarse la página: hay que enterarse, o
+    // `aviWakeLock` queda apuntando a un candado muerto y el guard de arriba impide re-pedirlo.
+    aviWakeLock.addEventListener('release',()=>{aviWakeLock=null;});
+  }catch(e){}
+}
+// 🔒 IDEMPOTENTE A PROPÓSITO: soltarlo sin tenerlo no hace nada. Así cada salida puede
+//    llamarlo sin preguntar de qué timer venía — y ese «preguntar» es justo lo que dejó el
+//    candado colgado cuando se cerraba el guiado durante un isométrico o un cardio (v569).
+function relWake(){
+  _wakeWanted=false;
+  try{if(aviWakeLock){aviWakeLock.release();aviWakeLock=null;}}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && _wakeWanted && !aviWakeLock) reqWake();
+});
 
 // (El HIIT clásico — buildHiitCard/startHiit/stopHiit — y el cronómetro isométrico
 // clásico — HOLD/_endHoldUI/cancelHold/startHoldTimer — se RETIRARON en F5b 2026-07-06.

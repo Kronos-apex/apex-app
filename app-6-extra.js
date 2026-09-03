@@ -299,7 +299,8 @@ function openGuidedEmbedded(routine){
   // Sin timers heredados de una sesión previa
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
   if(GM.holding) _gmEndHoldUI();
-  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; relWake(); }
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; }
+  relWake();   // fuera del `if`: el candado también lo piden el descanso, el hold y el cardio
   const ov=document.getElementById('gm-rest-overlay'); if(ov) ov.classList.add('hidden');
   g.classList.add('gm-embedded');
   g.classList.remove('hidden');
@@ -329,7 +330,8 @@ function gmRebuild(){
   const routine = CUR.activeRoutine; if(!routine) return;
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
   if(GM.holding) _gmEndHoldUI();
-  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; }
+  relWake();
   const _ov = document.getElementById('gm-rest-overlay'); if(_ov) _ov.classList.add('hidden');
   GM.routine = routine;
   GM.exercises = routine.exercises;
@@ -658,7 +660,11 @@ function _PAIN_ZONE_KEYS_OF(p){
 function closeGuidedMode(){
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer = null; }
   if(GM.holding) _gmEndHoldUI();
-  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; relWake(); }
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit = null; }
+  // 🔴 FUERA del `if(GM.hiit)`: aquí vivía un candado COLGADO. Cerrar el guiado durante un
+  //    isométrico o un cardio no soltaba nada y la pantalla se quedaba encendida indefinidamente.
+  //    Es la misma clase que la cámara de v473: quien enciende algo enumera TODAS sus salidas.
+  relWake();
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   closeStartCard();
   // Embebido (F2): "Hoy" ES el guiado → NO se oculta ni se relocaliza. Solo se limpian timers;
@@ -917,7 +923,8 @@ function gmResetSession(){
   if(!resetSession()) return; // canceló el confirm (o no hay rutina)
   if(GM.restTimer){ clearInterval(GM.restTimer); GM.restTimer=null; }
   if(GM.holding) _gmEndHoldUI();
-  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; relWake(); }
+  if(GM.hiit){ clearInterval(GM.hiit); GM.hiit=null; }
+  relWake();
   document.getElementById('gm-rest-overlay').classList.add('hidden');
   closeStartCard();
   GM.currentStep=0;
@@ -1510,6 +1517,10 @@ function gmShowRest(secs, nextStep, opts){
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.innerHTML=bc?(_gmIco('wind',12,'💨')+' '+esc(bc.s)):''; breEl.style.display=bc?'block':'none'; }
   if(GM.restTimer) clearInterval(GM.restTimer);
+  // 🔴 EL DESCANSO ENTRE SERIES ERA EL ÚNICO TIMER SIN CANDADO DE PANTALLA. El HIIT, el
+  //    isométrico y el cardio ya lo pedían; éste no — y es el que corre en CADA serie de CADA
+  //    entreno. La pantalla se apagaba a mitad del descanso y había que despertarla para anotar.
+  reqWake();
   // Reset del estado de pausa/+15s y del botón de pausa (el overlay se reusa entre descansos).
   GM.restPaused=false;GM.restTotal=secs;GM.restEndAt=Date.now()+secs*1000;
   const pbtn=document.getElementById('gm-rest-pause');if(pbtn){pbtn.textContent='⏸ Pausar';pbtn.setAttribute('aria-label','Pausar descanso');}
@@ -1530,6 +1541,7 @@ function gmShowRest(secs, nextStep, opts){
       overlay.classList.remove('gm-rest-paused');
       overlay.classList.add('hidden');
       _gmRemoveRestMini();
+      relWake();
       playRestEndBeep();
       a11ySay('Descanso terminado. Empieza la siguiente serie.');
       // Ejercicio NUEVO (primera serie) → tarjeta de respiración; misma serie → flash "¡VAMOS!"
@@ -1576,11 +1588,12 @@ function gmSkipRest(){
   if(GM.restTimer){clearInterval(GM.restTimer);GM.restTimer=null;}
   GM.restPaused=false;
   _gmRemoveRestMini();
+  relWake();   // saltar es una salida como cualquier otra
   const _ov=document.getElementById('gm-rest-overlay');
   _ov.classList.remove('gm-rest-paused');
   _ov.classList.add('hidden');
   if(GM.holding){ // cancelar el crono isométrico: NO marca la serie ni lanza "siguiente"
-    _gmEndHoldUI(); relWake();
+    _gmEndHoldUI();   // el candado ya lo solto la salida comun de arriba
     toast('⏹ Cronómetro cancelado — la serie no se marcó');
     return;
   }

@@ -4384,6 +4384,80 @@ test('🔒 con una sola toma la app dice «aun no sabemos», no «no es nada» (
     'la otra rama perdio la unica lectura que una cinta metrica puede sostener');
 });
 
+// ═════ LA PANTALLA NO SE APAGA EN EL DESCANSO (v569) ════════════════════════
+// 🔴 El HIIT, el isometrico y el cardio pedian el candado de pantalla; el descanso ENTRE
+// SERIES — el que corre en cada serie de cada entreno — no. La pantalla se apagaba a mitad y
+// habia que despertarla para anotar el peso.
+// ⚠️ NO SE PUEDE REPRODUCIR EN EL BANCO: `navigator.wakeLock` no existe en Chrome headless y
+// el efecto (que la pantalla no se apague) es del sistema operativo. Lo que se mide aqui es que
+// cada timer PIDE el candado y que CADA salida lo suelta — misma honestidad que el zoom de iOS
+// de v526, donde tampoco habia iPhone.
+test('🔒 el descanso entre series pide el candado de pantalla (v569)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('function gmShowRest(');
+  assert.ok(i > 0, 'se movio gmShowRest');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i));
+  assert.ok(/reqWake\(\)/.test(cuerpo),
+    'el descanso entre series volvio a correr sin candado: la pantalla se apaga a mitad');
+  // Y lo suelta al terminar: un candado que nadie suelta deja la pantalla encendida sola.
+  assert.ok(/relWake\(\)/.test(cuerpo), 'el descanso pide el candado y no lo suelta al terminar');
+  // CONTROL DE COBERTURA: los otros tres timers lo siguen pidiendo (no se rompio nada al lado).
+  ['gmHoldTimer', 'gmStartHiit', 'gmCardioTimer'].forEach(fn => {
+    const j = src.indexOf('function ' + fn + '(');
+    assert.ok(j > 0, 'no existe ' + fn);
+    assert.ok(/reqWake\(\)/.test(src.slice(j, src.indexOf('\n}', j))), fn + ' dejo de pedir el candado');
+  });
+});
+
+// 🔴 EL CANDADO COLGADO: `relWake()` vivia DENTRO de `if(GM.hiit){...}` en cuatro salidas,
+// asi que cerrar el guiado durante un isometrico o un cardio no soltaba nada y la pantalla se
+// quedaba encendida indefinidamente. Es la clase de la camara de v473: quien enciende algo
+// enumera TODAS sus salidas, no solo la del camino por el que lo encendio.
+test('🔒 ninguna salida suelta el candado SOLO si venia del HIIT (v569)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const dentroDelIf = src.split('\n').filter(l =>
+    /if\s*\(\s*GM\.hiit\s*\)/.test(l) && /relWake\(\)/.test(l));
+  assert.deepStrictEqual(dentroDelIf, [],
+    'relWake() volvio a vivir dentro de if(GM.hiit): cerrar durante un hold o un cardio deja la pantalla encendida');
+  // Y las cuatro salidas lo sueltan de verdad, cada una en su funcion.
+  ['closeGuidedMode', 'gmResetSession', 'gmSkipRest'].forEach(fn => {
+    const j = src.indexOf('function ' + fn + '(');
+    assert.ok(j > 0, 'no existe ' + fn);
+    assert.ok(/relWake\(\)/.test(src.slice(j, src.indexOf('\n}', j))),
+      fn + ' no suelta el candado de pantalla');
+  });
+  // 🔒 Y en `gmSkipRest` tiene que soltarlo en la salida COMUN, antes de bifurcar: el
+  //    primer intento de este candado solo pedia que `relWake()` apareciera en la funcion, y
+  //    la rama del isometrico traia el suyo — asi que quitar el de arriba salia VERDE. Esa
+  //    llamada duplicada se elimino: dos mecanismos para lo mismo se tapan (leccion v482).
+  const skip = src.slice(src.indexOf('function gmSkipRest('), src.indexOf('\n}', src.indexOf('function gmSkipRest(')));
+  assert.ok(skip.indexOf('relWake()') > -1 && skip.indexOf('relWake()') < skip.indexOf('if(GM.holding)'),
+    'gmSkipRest suelta el candado solo en una de sus ramas: la otra lo deja colgado');
+});
+
+// 🔴 `gmShowRest` corre en CADA serie. Pedir un candado teniendo uno no reemplaza al
+// anterior: lo deja colgado. Y el sistema lo suelta solo al ocultarse la pagina, sin devolverlo.
+test('🔒 el candado se pide UNA vez y se recupera al volver a la app (v569)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('async function reqWake(');
+  assert.ok(i > 0, 'se movio reqWake');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i));
+  assert.ok(/if\(aviWakeLock\)return;/.test(cuerpo),
+    'reqWake dejo de ser idempotente: una rutina de 24 series deja 24 candados colgados');
+  assert.ok(/addEventListener\('release'/.test(cuerpo),
+    'sin enterarse de que el sistema lo solto, la variable apunta a un candado muerto y el guard impide re-pedirlo');
+  // Y al volver a la app se re-pide, o basta mirar una notificacion para perderlo en silencio.
+  assert.ok(/visibilitychange[\s\S]{0,220}_wakeWanted[\s\S]{0,120}reqWake\(\)/.test(src),
+    'al volver de otra app el candado no se recupera: la pantalla se apaga en la siguiente serie');
+  // Soltar tiene que APAGAR la intencion, o el visibilitychange lo resucita para siempre.
+  const rel = src.slice(src.indexOf('function relWake('), src.indexOf('\n}', src.indexOf('function relWake(')));
+  assert.ok(/_wakeWanted\s*=\s*false/.test(rel),
+    'relWake no apaga la intencion: al volver a la app el candado se re-pide aunque nadie lo quiera');
+});
+
 // ═════ FOTOS DE PROGRESO: BORRAR DE VERDAD (v568) ════════════════════════════
 // 🔴 `deletePhoto` borraba con un `filter` sobre una lista que la fila fusiona por UNION:
 // la foto volvia de la nube. Y aqui es PEOR que en las medidas, porque el archivo SI se borra
