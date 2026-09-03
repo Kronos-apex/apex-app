@@ -2234,6 +2234,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    las tres tarjetas que lo llevan desbordaban 8 px y «Subió carga en 16 de 28» salía cortado. */
 .cin-showcase{display:flex;flex-shrink:0;gap:10px;overflow-x:auto;padding:2px 0 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
 .cin-showcase::-webkit-scrollbar{height:0}
+/* 🔴 v571 · LA BIENVENIDA NO PUEDE SEGUIR VENDIENDO MIENTRAS ALGUIEN LLENA EL FORMULARIO.
+   Al tocar «Crear cuenta» solo se escondía `#cin-cta`: la tira de tarjetas y el bloque de
+   instalación seguían puestos DURANTE TODO EL REGISTRO. Lo reportó el PO registrando a dos
+   asesorados en persona. (Medido: el campo SÍ se alcanzaba sin scrollear — mi primera
+   hipótesis era falsa; lo que estorba es la tira puesta al lado del formulario.)
+   🔒 Clase propia, JAMÁS `style.display`: `#install-hint` ya lo apaga el flujo de instalación
+   (app-6) y dos mecanismos peleando la misma propiedad se tapan entre sí (lección v505).
+   Al quitar la clase, lo que decidió app-6 sigue mandando. */
+.cin-hide-onform{display:none!important}
 .sc-card{scroll-snap-align:start;flex:0 0 82%;max-width:300px;background:rgba(6,18,13,.72);
   border:1px solid rgba(16,224,160,.30);border-radius:var(--rlg);padding:13px 15px;backdrop-filter:blur(6px)}
 .sc-eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.12em;color:#10E0A0;text-transform:uppercase}

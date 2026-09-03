@@ -12,3 +12,4 @@ scripts/demo/
 # Scratch de desarrollo (previews, batches, generadores de íconos/mapa muscular)
 scripts/_*
 _*.html
+.tmp-chrome-*/

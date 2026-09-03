@@ -693,7 +693,7 @@ async function _enterAuthSession(authUser){
       AUTH_MODE=false; _authUid=null;
       showScreen('s-login');
       const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
-      if(cta)cta.style.display='none'; if(card)card.style.display='block';
+      if(cta)cta.style.display='none'; if(typeof cinFormMode==='function')cinFormMode(true); if(card)card.style.display='block';
       const er=document.getElementById('lerr');
       if(er){ er.textContent = 'Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡'; er.classList.add('on'); }
       return;
@@ -1297,6 +1297,9 @@ const WZ={
   back(){
     if(this.cur===0){ // volver a la bienvenida (CTA)
       document.getElementById('cin-signup').style.display='none';
+      // v571 · la 4ª puerta: al volver, la bienvenida recupera sus tarjetas y el bloque de
+      // instalación. Vive en otro módulo, así que va con guarda (regla del arranque, v537).
+      if(typeof cinFormMode==='function')cinFormMode(false);
       document.getElementById('cin-cta').style.display='flex';
       return;
     }

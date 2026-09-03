@@ -394,6 +394,7 @@ function logout(){
   // Volver a la pantalla de bienvenida (no al formulario abierto)
   const _cta=document.getElementById('cin-cta'),_card=document.getElementById('cin-card');
   if(_cta)_cta.style.display='flex'; if(_card)_card.style.display='none';
+  cinFormMode(false);   // v571 · sin esto, salir con el formulario abierto las escondia PARA SIEMPRE
   const _err=document.getElementById('lerr'); if(_err)_err.classList.remove('on');
   hideClientWelcome(); // cerrar el overlay de bienvenida si seguía visible
   CUR.loggedAs=null;CUR.clientId=null;
@@ -1181,7 +1182,7 @@ async function tryAutoLogin(){
           const errEl=document.getElementById('lerr');
           // Revelar el formulario (la bienvenida lo oculta) para que se vea el mensaje
           const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card');
-          if(cta)cta.style.display='none'; if(card)card.style.display='block';
+          if(cta)cta.style.display='none'; cinFormMode(true); if(card)card.style.display='block';
           if(errEl){errEl.textContent='Tu acceso está pausado. Escríbele a tu coach para reactivarlo 🟡';errEl.classList.add('on');}
           const uEl=document.getElementById('lu');if(uEl)uEl.focus();
           return;
@@ -2086,6 +2087,28 @@ function openCoachStat(kind){
 // una promesa («tu coach arma tu plan») y CERO pruebas: ni una cifra, ni un resultado (medido
 // con captura de producción el 22-ago). Estas son las tarjetas que él publica desde la ficha.
 //
+// ── LA BIENVENIDA SE APARTA MIENTRAS ALGUIEN LLENA UN FORMULARIO (v571) ──────────────
+// 🔴 EL DEFECTO: al tocar «Crear cuenta» o «Iniciar sesión» solo se escondía `#cin-cta`. La tira
+//    de tarjetas de resultados (v523) y el bloque «Instala la app» viven ENTRE los botones y las
+//    dos tarjetas de formulario, así que seguían puestos DURANTE TODO EL REGISTRO. Lo reportó el
+//    PO registrando a dos asesorados en persona — *«super incómodo y tedioso»*.
+// 📏 MEDIDO, y tumba la hipótesis fácil: el primer campo SÍ se alcanzaba sin scrollear en 390×844
+//    y en 360×640, antes y después. Lo que la medición sostiene es que la tira —con scroll
+//    horizontal y scroll-snap— se queda pegada al formulario todo el rato. No se inventa aquí el
+//    mecanismo exacto de la molestia: se quita lo que sobra y se dice qué se midió.
+// 🔒 Se APARTA, no se borra: son su prueba de venta y las eligió él una por una. Vuelven solas al
+//    tocar «← Volver», porque quien llega desde una historia sí tiene que verlas.
+// 🔒 Con CLASE propia y no con `style.display`: `#install-hint` ya lo apaga el flujo de
+//    instalación (app-6), y dos mecanismos peleando la misma propiedad se tapan (v505). Quitar la
+//    clase devuelve el mando a app-6 en vez de encender algo que él había apagado.
+const CIN_WELCOME_EXTRAS = ['cin-showcase', 'install-hint'];
+function cinFormMode(on){
+  CIN_WELCOME_EXTRAS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.classList.toggle('cin-hide-onform', !!on);
+  });
+}
+
 // 🔒 Lectura PÚBLICA a propósito: `avi_showcase` es la única tabla que se lee sin cuenta, y solo
 // tiene lo que el coach eligió publicar (primer nombre y kilos). Va por `fetch` con la llave
 // pública, como el resto de lo que la app pide antes del login.

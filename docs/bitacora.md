@@ -4,6 +4,49 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v571: LA BIENVENIDA DEJA DE VENDER MIENTRAS ALGUIEN SE REGISTRA
+
+**De dónde sale.** El PO, registrando a **dos asesorados nuevos en persona**: *«es super incómodo
+y tedioso hacer el registro debido a esas tarjetas»*. Pidió quitarlas de la pantalla de ingreso.
+
+**El defecto.** En el orden del DOM, la tira de tarjetas de resultados (v523) y el bloque «Instala
+la app» viven **ENTRE** los botones de bienvenida y las dos tarjetas de formulario. Al tocar
+«Crear cuenta» o «Iniciar sesión» **solo se escondía `#cin-cta`**: los otros dos se quedaban
+puestos **durante todo el registro**, con el formulario debajo.
+
+**📏 Y la medición tumbó mi primera hipótesis, que es la que casi queda escrita.** Di por hecho
+que había que scrollear la página para alcanzar el formulario. **Falso**: medido en 390×844 y
+360×640, el primer campo se alcanza sin scrollear **antes y después** (`scrollPagina` = 0 en los
+cuatro casos). Lo que la medición SÍ sostiene es que la tira —con scroll horizontal y
+`scroll-snap`— se queda pegada al formulario todo el rato. El mecanismo exacto de la molestia lo
+sabe quien la sufrió; lo que se corrige es que deje de estar ahí. **Una razón falsa escrita al
+lado de un arreglo es peor que ninguna razón** (v535), así que las cuatro copias del comentario se
+corrigieron antes de commitear.
+
+**Se APARTA, no se borra.** Son su prueba de venta, las eligió él una por una y quien llega desde
+una historia de Instagram sí tiene que verlas: vuelven solas al tocar «← Volver».
+
+**🔒 Dos decisiones de mecanismo.**
+1. **Clase propia (`.cin-hide-onform`), jamás `style.display`**: `#install-hint` ya lo apaga el
+   flujo de instalación (app-6), y dos mecanismos peleando la misma propiedad se tapan entre sí
+   (lección v505). Quitar la clase le devuelve el mando a app-6 en vez de encender algo que él
+   había apagado a propósito.
+2. **Son SIETE puertas, no dos.** Los dos botones de la bienvenida, los dos «← Volver», los dos
+   caminos de «tu acceso está pausado» **y el LOGOUT** — esta última era la peligrosa: restaura la
+   bienvenida, así que salir con el formulario abierto habría dejado las tarjetas **escondidas
+   para siempre** (la clase de v508: lo que se apaga hay que encenderlo por TODAS las vueltas).
+   El candado no lleva lista escrita a mano: **barre el código** buscando quien mueva el `display`
+   de `cin-cta`/`cin-card`/`cin-signup` y exige la llamada al lado, con su control de cobertura.
+
+**Verificación.** Suite **1026 → 1027**. Harness nuevo `scripts/e2e/_repro-registro-estorbo.mjs`
+en dos teléfonos, **con su control**: con la conducta anterior da FALLA en los dos y dice que la
+tira y el bloque de instalación siguen visibles; con el arreglo, OK y las tarjetas **vuelven** al
+tocar «← Volver». 🔴 El bloque de instalación se **fuerza visible** en el montaje: en headless no
+llega el evento de instalación y sin eso esa aserción salía gratis — el harness aprobaba por vacío
+sobre la mitad de lo que dice medir. ⚠️ Y **cuarta vez del mismo gotcha**: metí comillas invertidas
+en un comentario **dentro de un template literal** y reventó el harness con un `SyntaxError` que
+apunta a la primera línea del bloque.
+
 ## 🔄 2026-09-03 — avi-v570: QUITAR NO PUEDE DEPENDER DE PODER PUBLICAR
 
 **De dónde sale.** El PO reportó que **Samuel mintió en la edad**: se registró declarando 28 y

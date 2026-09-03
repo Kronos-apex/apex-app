@@ -13276,6 +13276,49 @@ test('🔴 v522 · el botón está cableado y la imagen es de formato HISTORIA',
   assert.ok(/clientProgressStory\(/.test(src), 'la tarjeta dejó de usar el motor puro');
 });
 
+// ══════ LA BIENVENIDA SE APARTA MIENTRAS SE LLENA UN FORMULARIO (v571) ══════════════════
+// 🔴 Al tocar «Crear cuenta» solo se escondía `#cin-cta`: la tira de tarjetas (v523) y el bloque
+// «Instala la app» viven ENTRE los botones y las tarjetas de formulario, así que seguían puestos
+// DURANTE TODO EL REGISTRO. Lo reportó el PO registrando a dos asesorados en persona.
+// 📏 Medido en 390×844 y 360×640: el campo se alcanzaba sin scrollear en los dos, antes y después
+// — la hipótesis del scroll era FALSA. Lo que se corrige es que la tira deje de estar ahí.
+test('🔒 la bienvenida aparta sus extras en TODA puerta que abre o cierra un formulario (v571)', () => {
+  const fs = require('fs'), path = require('path');
+  // 🔒 DERIVADO DEL CÓDIGO, no de una lista a mano: son SIETE puertas (dos botones de la
+  //    bienvenida, dos «← Volver», el LOGOUT —que sin esto dejaba las tarjetas escondidas para
+  //    siempre— y los dos caminos de «tu acceso está pausado»). Una lista escrita a mano se
+  //    queda corta con la octava, que es exactamente cómo nació este defecto.
+  const files = ['index.html', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js',
+    'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'];
+  const sitios = [], sinCablear = [];
+  for (const f of files) {
+    const L = fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n');
+    L.forEach((l, i) => {
+      if (!/\.style\.display\s*=/.test(l)) return;
+      // La ventana va -3/+5 porque el id suele declararse en una línea anterior
+      // (`const cta=document.getElementById('cin-cta')`) y la llamada puede quedar debajo de su
+      // comentario. Medida: con -2/+2 daba un falso «falta» sobre código ya cableado.
+      const vent = L.slice(Math.max(0, i - 3), i + 6).join('\n');
+      if (!/cin-(card|signup|cta)/.test(vent)) return;
+      sitios.push(`${f}:${i + 1}`);
+      if (!/cinFormMode\(/.test(vent)) sinCablear.push(`${f}:${i + 1}`);
+    });
+  }
+  assert.deepStrictEqual(sinCablear, [],
+    'una puerta abre o cierra el formulario sin apartar la bienvenida:\n  ' + sinCablear.join('\n  '));
+  // CONTROL DE COBERTURA: si el barrido deja de encontrar las 7 puertas, aprueba por vacío.
+  assert.ok(sitios.length >= 7, `el barrido solo halló ${sitios.length} puertas: el patrón dejó de casar`);
+  // 🔒 Y se aparta con CLASE, jamás con `style.display`: `#install-hint` ya lo apaga el flujo de
+  //    instalación (app-6) y dos mecanismos peleando la misma propiedad se tapan (v505).
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const cuerpo = app2.slice(app2.indexOf('function cinFormMode('), app2.indexOf('\n}', app2.indexOf('function cinFormMode(')));
+  assert.ok(/classList\.toggle\('cin-hide-onform'/.test(cuerpo),
+    'cinFormMode dejó de usar su clase propia: si vuelve a `style.display` se pelea con app-6');
+  assert.ok(!/style\.display/.test(cuerpo), 'cinFormMode volvió a tocar style.display');
+  assert.ok(/\.cin-hide-onform\{display:none!important\}/.test(
+    fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8')), 'falta la clase en styles.css');
+});
+
 // ══════ QUITAR NO PUEDE DEPENDER DE PODER PUBLICAR (v570) ═══════════════════════════════
 // 🔴 Medido el 3-sep en producción: Samuel se registró declarando 28 años y tiene 15, así que la
 // app le publicó la tarjeta el 29-ago — el candado de menores le preguntó a la cifra equivocada.
