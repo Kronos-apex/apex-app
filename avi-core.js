@@ -3964,6 +3964,61 @@ function mergeMedidas(local, cloud) {
   return out;
 }
 
+// ── CADA CUÁNTO VOLVER A MEDIRSE ───────────────────────────────────────────
+// 🔴 EL DIAGNÓSTICO QUE ORIGINÓ ESTO (Coach Pro, 2026-09-02): **8 de 24 personas se
+//    midieron, las 8 EXACTAMENTE UNA VEZ**. No es que la pantalla estuviera mal — es que a
+//    nadie se le dijo cuándo volver. Una medición sin fecha de regreso es una foto suelta.
+//
+// ⚖️ LOS DOS ESPECIALISTAS NO COINCIDIERON y decidió el PO (2026-09-03):
+//    · Andrés pedía **8 semanas**: por debajo de eso el cambio real no supera el error de la
+//      propia cinta (0,5-1,5 cm en manos de una persona común), así que la persona ve RUIDO
+//      y aprende que medirse no dice nada.
+//    · Coach Pro pedía **3 semanas**, por adherencia: a las 8 ya nadie vuelve.
+//    El PO eligió las **8 semanas de Andrés** — la exactitud manda sobre la frecuencia —
+//    **y compró la objeción de Coach Pro avisando UNA SEMANA ANTES**, que es lo que convierte
+//    una fecha en algo que se puede planear. Las dos constantes son suyas, no del código.
+const MED_CADENCIA_DIAS = 56;   // 8 semanas (Andrés)
+const MED_AVISO_DIAS = 7;       // el aviso arranca una semana antes (decisión del PO)
+
+// Cuándo toca la próxima. `null` si nunca se ha medido: sin toma no hay ancla, y empujar a
+// medirse a quien jamás lo hizo es OTRA cosa (adopción), no un recordatorio.
+function medNextDue(entries) {
+  const vivas = medLive(entries);
+  if (!vivas.length) return null;
+  const t = new Date(vivas[0].date || 0).getTime();
+  if (!isFinite(t) || !t) return null;   // `new Date(null)` es la ÉPOCA, no Invalid Date (v517)
+  return new Date(t + MED_CADENCIA_DIAS * 86400000).toISOString();
+}
+
+// El estado del recordatorio. PURA y determinista (recibe `now`).
+//   'pronto'    → faltan de 1 a MED_AVISO_DIAS días
+//   'toca'      → hoy o pasado
+//   null        → sin tomas, todavía lejos, o pospuesto
+// 🔒 `snoozeUntilIso` lo decide el llamador y vive LOCAL (no en SB_KEYS): posponer un aviso
+//    es una preferencia del aparato, no un dato de la persona.
+function medReminder(entries, nowIso, snoozeUntilIso) {
+  const due = medNextDue(entries);
+  if (!due) return null;
+  const now = new Date(nowIso || Date.now()).getTime();
+  if (!isFinite(now)) return null;
+  if (snoozeUntilIso) {
+    const sn = new Date(snoozeUntilIso).getTime();
+    if (isFinite(sn) && sn > now) return null;
+  }
+  const dueT = new Date(due).getTime();
+  const dias = Math.ceil((dueT - now) / 86400000);
+  if (dias > MED_AVISO_DIAS) return null;
+  const vivas = medLive(entries);
+  return {
+    estado: dias > 0 ? 'pronto' : 'toca',
+    dias: dias > 0 ? dias : 0,
+    // Cuántos días lleva esperando cuando ya se pasó (0 si todavía no toca).
+    atraso: dias < 0 ? -dias : 0,
+    due,
+    ultima: vivas[0].date,
+  };
+}
+
 // La diferencia izquierda/derecha de una toma, en cm y en % del lado mayor.
 // 🔴 NO DICTAMINA. Devuelve la medición cruda a propósito: qué diferencia es normal
 //    y cuál merece decir algo lo deciden Andrés y Laura, y hasta que lo digan la pantalla
@@ -7549,11 +7604,15 @@ const TODAY_CARD_PRIORITY = [
   'cn-deload',        // 1. la semana de descarga cambia CÓMO entrena hoy
   'cn-missday',       // 2. recuperar un día de ESTA semana: acción concreta sobre su plan
   'cn-coach-card',    // 3. alguien pendiente de ella (récord, racha, inactividad)
-  'cn-push-nudge',    // 4. sin permiso de notificaciones no la podemos alcanzar (15 de 16 lo están)
-  'cn-today-upsell',  // 5. pedir coach (solo tier libre)
-  'cn-news',          // 6. novedades de la app
-  'cn-cmty-nudge',    // 7. la puerta a Comunidad
-  'cn-share',         // 8. invitar a alguien
+  'cn-med-due',       // 4. volver a medirse: aparece ~1 semana de cada 8 y trae FECHA.
+                      //    Va encima del aviso de notificaciones — que sale casi siempre —
+                      //    porque con el tope en 2 lo raro y fechado tiene que ganarle a lo
+                      //    permanente, o no sale nunca.
+  'cn-push-nudge',    // 5. sin permiso de notificaciones no la podemos alcanzar (15 de 16 lo están)
+  'cn-today-upsell',  // 6. pedir coach (solo tier libre)
+  'cn-news',          // 7. novedades de la app
+  'cn-cmty-nudge',    // 8. la puerta a Comunidad
+  'cn-share',         // 9. invitar a alguien
 ];
 // 🔴 NUNCA entran al tope: el entreno y su cabecera (son la pantalla), la portada del día 1
 // (que ya apaga todo lo demás por su cuenta) y las HERRAMIENTAS del día —la tira de hábitos,
@@ -9492,6 +9551,10 @@ if (typeof module !== 'undefined' && module.exports) {
     passwordProblem,
     consentEvidence,
     consentNeedsGuardian,
+    MED_CADENCIA_DIAS,
+    MED_AVISO_DIAS,
+    medNextDue,
+    medReminder,
     MED_FIELDS,
     MED_LEGACY,
     MED_PARES,

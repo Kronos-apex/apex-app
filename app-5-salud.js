@@ -927,7 +927,65 @@ function saveMedidas(){
   cm('m-med');
   renderMedidasClient(clientId);
   renderMedidasCoach(clientId);
-  toast(era?'✏️ Medida corregida':'📏 Medidas guardadas');
+  // 🔴 NADIE VOLVIÓ A MEDIRSE PORQUE A NADIE SE LE DIJO CUÁNDO. La fecha se entrega en
+  //    el momento en que se guarda la toma, no solo cuando el aviso salte 7 semanas después.
+  const _prox=(typeof medNextDue==='function')?medNextDue(lista):null;
+  if(!era&&_prox){
+    toast('📏 Guardadas · vuelve a medirte el '+new Date(_prox).toLocaleDateString('es-ES',{day:'numeric',month:'long'}));
+  } else toast(era?'✏️ Medida corregida':'📏 Medidas guardadas');
+  // Al guardar una toma nueva, el aviso pospuesto deja de tener sentido.
+  try{ localStorage.removeItem(_medDueSnoozeKey(clientId)); }catch(e){}
+  if(typeof renderMedDueCard==='function')renderMedDueCard(DB.clients.find(x=>x.id===clientId));
+}
+
+// ── LA TARJETA DE «VUELVE A MEDIRTE» ────────────────────────────────────────
+// 🔴 8 de 24 personas se midieron UNA vez y ninguna volvió. El diagnóstico de Coach Pro
+//    no fue la pantalla: fue que **a nadie se le dijo cuándo volver**. Esta tarjeta y la línea
+//    «Tu próxima medición» de abajo son las dos mitades de la misma respuesta — una avisa,
+//    la otra deja la fecha puesta desde el momento en que se guarda la toma.
+// 🔒 Solo a quien YA se midió: sin una toma anterior no hay fecha que recordar, y empujar
+//    a medirse a quien nunca lo hizo es otra cosa (adopción) y otro texto.
+function _medDueSnoozeKey(cid){ return 'ax_meddue_'+cid; }
+function renderMedDueCard(client){
+  const con=document.getElementById('cn-med-due'); if(!con)return;
+  con.innerHTML='';
+  if(!client||typeof medReminder!=='function')return;
+  if(typeof premiumLocked==='function'&&premiumLocked(client))return;  // el candado va en la acción Y aquí
+  let snooze=null;
+  try{ snooze=localStorage.getItem(_medDueSnoozeKey(client.id))||null; }catch(e){}
+  const r=medReminder((DB.medidas||{})[client.id]||[], new Date().toISOString(), snooze);
+  if(!r)return;
+  const fmt=d=>new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'long'});
+  const toca=r.estado==='toca';
+  const titulo=toca
+    ? '📏 Toca volver a medirte'
+    : (r.dias===1?'📏 Mañana toca volver a medirte':'📏 En '+r.dias+' días vuelves a medirte');
+  // El POR QUÉ de las 8 semanas es de Andrés y se dice: sin él, esperar dos meses se lee como
+  // que la app se olvidó de ti. Y con esa razón delante, la persona entiende que medirse antes
+  // no le da más información.
+  const sub=toca
+    ? 'Pasaron 8 semanas desde tu última medida ('+esc(fmt(r.ultima))+'). Ahora sí hay cambio que ver: menos que eso y lo que se mueve es la cinta, no tu cuerpo.'
+    : 'Prepárate para el '+esc(fmt(r.due))+'. Acuérdate: en ayunas, recién levantado y antes de entrenar.';
+  con.innerHTML=`<div class="card" style="margin-bottom:12px;border-left:3px solid var(--g2)">
+    <div class="cb" style="padding:13px 15px">
+      <div style="font-size:13.5px;font-weight:800;color:var(--t1);margin-bottom:4px">${titulo}</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:11px">${sub}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp bsm" onclick="openMedModal()">Medirme ahora</button>
+        <button class="btn bg bsm" onclick="medDueSnooze()">Más tarde</button>
+      </div>
+    </div></div>`;
+}
+// Posponer NO marca nada como visto ni cambia la fecha: solo calla el aviso una semana.
+// Vive en localStorage y NO en SB_KEYS — es una preferencia del aparato (patrón `coachmute`).
+function medDueSnooze(){
+  const cid=CUR.clientId; if(!cid)return;
+  try{ localStorage.setItem(_medDueSnoozeKey(cid), new Date(Date.now()+7*86400000).toISOString()); }catch(e){}
+  const con=document.getElementById('cn-med-due'); if(con)con.innerHTML='';
+  // `_applyTodayCap` y no `_todayOrder`: al esconder esta tarjeta puede caber una de las
+  // que el tope había apartado, y el tope no necesita saber si hoy es día de entreno.
+  if(typeof _applyTodayCap==='function')_applyTodayCap();
+  toast('Listo, te lo recuerdo en unos días');
 }
 
 // 🔴 BORRAR NO ES UN `filter`. La fila del usuario se fusiona con la nube por UNIÓN,
@@ -1029,6 +1087,15 @@ function renderMedidasClient(clientId){
   });
   html+=`</div>`;
   html+=`<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${entries.length} toma${entries.length!==1?'s':''} · última: ${esc(fmt(latest.date))}</div>`;
+  // La fecha de regreso, SIEMPRE visible: es la mitad que faltaba del problema de las 8 que
+  // se midieron una vez. Se DERIVA de `medNextDue`, jamás se escribe aparte.
+  const _due=(typeof medNextDue==='function')?medNextDue((DB.medidas||{})[clientId]||[]):null;
+  if(_due){
+    html+=`<div class="medlegacy" style="margin-top:10px;text-align:center">
+      Tu próxima medición: <b>${esc(fmt(_due))}</b><br>
+      <span style="color:var(--t3)">Son 8 semanas a propósito: en menos tiempo lo que cambia es cómo quedó puesta la cinta, no tu cuerpo.</span>
+    </div>`;
+  }
   listEl.innerHTML=html;
 }
 

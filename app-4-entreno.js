@@ -828,8 +828,8 @@ function _todayOrder(training){
   // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
   // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
   const ids=training
-    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share','cn-more']
-    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share','cn-more'];
+    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-med-due','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share','cn-more']
+    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','cn-med-due','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share','cn-more'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
   _applyTodayCap();
 }
@@ -980,7 +980,7 @@ function renderClientToday(client, overrideRoutine){
   // OJO: apagar con `display:none` obliga a ENCENDER de vuelta. Sin esta restauración, al terminar
   // el primer entreno la portada se apaga pero hábitos/coach/novedades quedaban invisibles el resto
   // de la sesión (lo cazó `_verify-firstrun` D5 antes de salir de aquí).
-  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-deload','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
+  const _DIA1_OFF=['cn-push-nudge','cn-habits','cn-meals','cn-coach-card','cn-med-due','cn-deload','cn-missday','cn-news','cn-today-upsell','cn-cmty-nudge','cn-share','qw-entry'];
   // 🔴 `qw-entry` NO se vacía: su contenido es ESTÁTICO (vive en index.html) y nadie lo vuelve a
   // pintar. Vaciarlo lo destruye para el resto de la sesión — al terminar su PRIMER entreno la
   // persona se quedaba con una píldora en blanco, y encima pulsable (`openQuickWorkouts`), justo
@@ -1018,6 +1018,9 @@ function renderClientToday(client, overrideRoutine){
   // early-returns → sale también en descanso y sin rutinas. Guard por caché vieja.
   if(!_dia1 && typeof renderDeloadCard==='function')renderDeloadCard(client);
   if(!_dia1 && typeof renderCoachCard==='function')renderCoachCard(client);
+  // 📏 Volver a medirse (v567, decisión del PO): 8 semanas, avisando una semana antes.
+  //    Antes de los early-returns — medirse no depende de si hoy toca entrenar.
+  if(!_dia1 && typeof renderMedDueCard==='function')renderMedDueCard(client);
   // 🔁 Día que se corrió (v368, idea Camilo 2026-07-17): rutina de un día ya pasado esta
   // semana sin entrenar → tarjeta para recuperarla hoy o moverla en el plan. Recibe el
   // override para callarse cuando el asesorado ya está enfocado en un entreno concreto.

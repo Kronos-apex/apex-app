@@ -224,10 +224,46 @@ ok(/-3\.0 cm/.test(may), 'CONTROL: con 30 años el mismo dato sí muestra el cam
 ok(!/cintura\s*\/\s*cadera|\bICC\b/i.test(may + men),
   'no existe índice cintura-cadera en la pantalla del asesorado, a ninguna edad');
 
-// ══ 9 · Sin errores de JavaScript por el camino ══
-console.log('\n── 9 · consola limpia ───────────────────────────────────────────');
+// ══ 9 · Volver a medirse: la fecha se entrega al guardar y el aviso llega a los 7 días ══
+console.log('\n── 9 · cuándo toca volver (v567) ─────────────────────────');
+const hace = d => new Date(Date.now() - d * 86400000).toISOString();
+const conAviso = async (dias) => {
+  await montar([{ id: 'r1', date: hace(dias), mAt: hace(dias), cintura: 80 }]);
+  return JSON.parse(await ev(`(()=>{
+    try{ localStorage.removeItem('ax_meddue_qa1'); }catch(e){}
+    renderMedDueCard(DB.clients[0]);
+    const el=document.getElementById('cn-med-due');
+    return JSON.stringify({ texto: el.innerText.replace(/\\s+/g,' ').trim(), vacio: el.innerHTML==='' });
+  })()`));
+};
+// A 40 días todavía falta más de una semana: silencio.
+const lejos = await conAviso(40);
+ok(lejos.vacio === true, 'a 40 días no se le dice nada todavía', lejos.texto.slice(0, 60));
+// A 50 días (faltan 6) ya avisa.
+const pronto = await conAviso(50);
+ok(!pronto.vacio && /días|mañana/i.test(pronto.texto), 'una semana antes ya avisa', pronto.texto.slice(0, 80));
+// A 60 días ya toca, y se le dice POR QUÉ son 8 semanas.
+const toca = await conAviso(60);
+ok(/toca/i.test(toca.texto), 'pasadas las 8 semanas dice que toca', toca.texto.slice(0, 70));
+ok(/cinta/i.test(toca.texto), 'explica por qué son 8 semanas y no menos');
+// CONTROL: quien NUNCA se midió no recibe el aviso (eso es adopción, no un recordatorio).
+await montar([]);
+const nunca = await ev(`(()=>{renderMedDueCard(DB.clients[0]);return document.getElementById('cn-med-due').innerHTML==='';})()`);
+ok(nunca === true, 'CONTROL: sin una toma anterior no hay fecha que recordar');
+// Y al guardar, la fecha de regreso se entrega ahí mismo.
+await montar([]);
+const guardado = JSON.parse(await ev(`(()=>{
+  openMedModal(); document.getElementById('med-cintura').value='80';
+  let dicho=''; const _t=window.toast; window.toast=(m)=>{dicho=m;}; saveMedidas(); window.toast=_t;
+  return JSON.stringify({ dicho, pantalla: document.getElementById('cn-med-list').innerText.replace(/\\s+/g,' ') });
+})()`));
+ok(/vuelve a medirte el/i.test(guardado.dicho), 'al guardar se le dice cuándo volver', guardado.dicho);
+ok(/próxima medición/i.test(guardado.pantalla), 'y la fecha queda visible en la pantalla');
+
+// ══ 10 · Sin errores de JavaScript por el camino ══
+console.log('\n── 10 · consola limpia ───────────────────────────────────────────');
 ok(jsErrors.length === 0, 'ningún error de JS durante toda la corrida', jsErrors.slice(0, 3));
 
 console.log('\n' + '─'.repeat(66));
-console.log(fallos === 0 ? '✅ MEDIDAS v566 OK' : `❌ ${fallos} comprobaciones en rojo`);
+console.log(fallos === 0 ? '✅ MEDIDAS v566+v567 OK' : `❌ ${fallos} comprobaciones en rojo`);
 fin(fallos === 0 ? 0 : 1);

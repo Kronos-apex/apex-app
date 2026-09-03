@@ -144,6 +144,10 @@ const {
   medDelete,
   medPrune,
   mergeMedidas,
+  medNextDue,
+  medReminder,
+  MED_CADENCIA_DIAS,
+  MED_AVISO_DIAS,
   medAsimetria,
   medComparable,
   consentSame,
@@ -4370,6 +4374,87 @@ test('🔒 con una sola toma la app dice «aun no sabemos», no «no es nada» (
   // CONTROL DE DISCRIMINACION: con dos tomas SI se dice la lectura que la cinta sostiene.
   assert.ok(/tama\u00f1o/i.test(ramas[1]),
     'la otra rama perdio la unica lectura que una cinta metrica puede sostener');
+});
+
+// ═════ VOLVER A MEDIRSE: 8 SEMANAS, AVISANDO UNA ANTES (v567) ═══════════════════
+// 🔴 8 de 24 personas se midieron EXACTAMENTE UNA VEZ. El diagnostico de Coach Pro no fue
+// la pantalla: a nadie se le dijo cuando volver. Los dos especialistas no coincidieron (Andres
+// 8 semanas por exactitud, Coach Pro 3 por adherencia) y decidio el PO: 8 semanas + aviso una
+// semana antes. Las dos constantes son SUYAS, y el test las afirma para que no se muevan solas.
+test('medReminder: avisa una semana antes de las 8 semanas, y no antes (v567)', () => {
+  assert.strictEqual(MED_CADENCIA_DIAS, 56, 'la cadencia la decidio el PO sobre el dictamen de Andres');
+  assert.strictEqual(MED_AVISO_DIAS, 7, 'el aviso arranca una semana antes: decision del PO');
+  const t = d => new Date(Date.UTC(2026, 0, 1) + d * 86400000).toISOString();
+  const e = [{ id: 'a', date: t(0), mAt: t(0), cintura: 80 }];
+  // Silencio mientras falte mas de una semana — incluido el dia 48, el borde de adentro.
+  assert.strictEqual(medReminder(e, t(0)), null, 'no se avisa el mismo dia que se midio');
+  assert.strictEqual(medReminder(e, t(48)), null, 'a 8 dias todavia no se avisa');
+  // El borde: a 7 dias empieza.
+  const p = medReminder(e, t(49));
+  assert.ok(p && p.estado === 'pronto' && p.dias === 7, 'el aviso tiene que empezar a los 7 dias');
+  assert.strictEqual(medReminder(e, t(55)).dias, 1, 'la vispera dice UN dia');
+  // Y a las 8 semanas, toca.
+  const c = medReminder(e, t(56));
+  assert.strictEqual(c.estado, 'toca');
+  assert.strictEqual(c.atraso, 0, 'el mismo dia no es atraso');
+  assert.strictEqual(medReminder(e, t(60)).atraso, 4, 'despues sigue avisando, y dice cuanto lleva');
+  // La fecha que se le PROMETE a la persona sale de la misma cuenta que el aviso.
+  assert.strictEqual(medNextDue(e), t(56), 'la fecha prometida y el aviso tienen que ser el mismo dia');
+  assert.strictEqual(new Date(c.due).getTime(), new Date(medNextDue(e)).getTime());
+});
+
+test('medReminder: sin tomas no hay nada que recordar (v567)', () => {
+  const t = d => new Date(Date.UTC(2026, 0, 1) + d * 86400000).toISOString();
+  // 🔒 Quien NUNCA se midio no tiene ancla: empujarlo es adopcion, no un recordatorio,
+  //    y con otro texto. Sin este limite el aviso le saldria a las 16 personas que nunca abrieron
+  //    la pantalla, todos los dias, desde el primero.
+  assert.strictEqual(medReminder([], t(99)), null, 'sin tomas no hay fecha de regreso');
+  assert.strictEqual(medNextDue([]), null);
+  // Una LAPIDA no es una toma: quien borro todo lo suyo vuelve a no tener ancla.
+  const soloLapida = [{ id: 'x', date: t(0), del: true, mAt: t(1) }];
+  assert.strictEqual(medReminder(soloLapida, t(99)), null, 'una lapida no puede disparar el aviso');
+  assert.strictEqual(medNextDue(soloLapida), null);
+  // Una fecha ilegible no inventa un recordatorio (`new Date(null)` es la EPOCA, no NaN — v517).
+  assert.strictEqual(medNextDue([{ id: 'y', date: null }]), null);
+  assert.strictEqual(medNextDue([{ id: 'z', date: '' }]), null);
+});
+
+test('medReminder: posponer calla el aviso y NO mueve la fecha (v567)', () => {
+  const t = d => new Date(Date.UTC(2026, 0, 1) + d * 86400000).toISOString();
+  const e = [{ id: 'a', date: t(0), mAt: t(0), cintura: 80 }];
+  assert.strictEqual(medReminder(e, t(56), t(60)), null, 'pospuesto, se calla');
+  // CONTROL: vencido el plazo vuelve, y la fecha de regreso es la MISMA de siempre —
+  // posponer un aviso no puede reescribir cuando toca medirse.
+  const v = medReminder(e, t(61), t(60));
+  assert.ok(v && v.estado === 'toca', 'al vencer el plazo el aviso vuelve');
+  assert.strictEqual(v.due, medNextDue(e), 'posponer movio la fecha de la medicion');
+  // Un plazo ilegible no puede silenciar para siempre.
+  assert.ok(medReminder(e, t(56), 'manana'), 'un snooze basura no puede callar el aviso');
+});
+
+// 🔒 CANDADO DE CABLEADO + DE PANTALLA: el motor puede estar perfecto y no avisar a nadie.
+test('🔒 la tarjeta de volver a medirse esta cableada y dice el porque (v567)', () => {
+  const fs = require('fs'), path = require('path');
+  const salud = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = salud.indexOf('function renderMedDueCard');
+  assert.ok(i > 0, 'no existe la tarjeta');
+  const cuerpo = salud.slice(i, salud.indexOf('\nfunction ', i + 10));
+  assert.ok(/medReminder\(/.test(cuerpo), 'la tarjeta no le pregunta al motor');
+  assert.ok(/premiumLocked\(/.test(cuerpo), 'la tarjeta le sale a quien tiene la pantalla bajo candado');
+  // El PORQUE de las 8 semanas va en el texto: sin el, esperar dos meses se lee como que la app
+  // se olvido, y medirse antes parece una buena idea.
+  assert.ok(/cinta/.test(cuerpo), 'no se explica por que son 8 semanas y no menos');
+  // Y la llama alguien: una funcion pura que nadie invoca es puerta cerrada, ventana abierta.
+  const entreno = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.ok(/renderMedDueCard\(client\)/.test(entreno), 'nadie pinta la tarjeta');
+  // Tiene puesto en la prioridad, o el tope de 2 la deja fuera sin que nadie se entere.
+  assert.ok(TODAY_CARD_PRIORITY.indexOf('cn-med-due') > -1,
+    'la tarjeta no esta en la lista de prioridad: el tope la puede tapar en silencio');
+  assert.ok(TODAY_CARD_PRIORITY.indexOf('cn-med-due') < TODAY_CARD_PRIORITY.indexOf('cn-push-nudge'),
+    'lo que sale 1 semana de cada 8 tiene que ganarle a lo que sale siempre, o no sale nunca');
+  // Y la fecha se le entrega al guardar, que es la mitad que faltaba del problema.
+  assert.ok(/medNextDue\(/.test(salud.slice(salud.indexOf('function saveMedidas'), salud.indexOf('function saveMedidas') + 1400)),
+    'al guardar una toma no se le dice cuando volver');
 });
 
 // 🔴 HALLAZGO DE LUCAS QA (v566, antes de desplegar). El asistente del DIA 1 rotula

@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v567: VOLVER A MEDIRSE — 8 SEMANAS, AVISANDO UNA ANTES
+
+**De dónde sale.** La decisión que v566 dejó abierta. El PO, textual: *«vamos a pedir la medición
+cada 8 semanas pero ponemos recordatorio una semana antes»*.
+
+**El problema que cierra.** No era la pantalla. Medido: **8 de 24 personas se midieron, las 8
+EXACTAMENTE UNA VEZ**, y el diagnóstico de Coach Pro fue que **a nadie se le dijo cuándo volver**.
+Una medición sin fecha de regreso es una foto suelta.
+
+**⚖️ El desacuerdo entre los dos especialistas, resuelto por el PO.**
+- **Andrés pedía 8 semanas**: por debajo de eso el cambio real no supera el error de la propia
+  cinta (0,5-1,5 cm en manos de una persona común), así que la persona ve **ruido** y aprende que
+  medirse no dice nada.
+- **Coach Pro pedía 3 semanas**, por adherencia: a las 8 ya nadie vuelve.
+- **El PO eligió las 8 de Andrés — la exactitud manda sobre la frecuencia — y compró la objeción
+  de Coach Pro avisando una semana antes**, que es lo que convierte una fecha en algo que se puede
+  planear. Las dos constantes (`MED_CADENCIA_DIAS=56`, `MED_AVISO_DIAS=7`) son decisiones suyas y
+  el test las afirma para que no se muevan solas.
+
+**Qué se hizo — son DOS mitades, y la segunda es la que de verdad responde al diagnóstico.**
+- **La fecha se entrega al GUARDAR**, no 7 semanas después: el toast dice «vuelve a medirte el
+  28 de octubre» y la pantalla de medidas lleva la fecha **siempre visible**, con el porqué al
+  lado. Sin esto, el aviso llega tarde a un problema que empieza el día de la primera toma.
+- **La tarjeta `#cn-med-due`** en «Hoy»: aparece a los 49 días («En 7 días vuelves a medirte»),
+  cambia a «Toca volver a medirte» a los 56, y trae dos botones — medirme ahora / más tarde.
+- **Dice POR QUÉ son 8 semanas** (*«menos que eso y lo que se mueve es la cinta, no tu cuerpo»*).
+  Sin esa razón, esperar dos meses se lee como que la app se olvidó, y medirse antes parece
+  buena idea.
+- 🔒 **Solo a quien YA se midió.** Sin una toma anterior no hay ancla: empujar a medirse a
+  quien nunca lo hizo es **adopción**, no un recordatorio, y lleva otro texto. Sin ese límite el
+  aviso le saldría a las 16 personas que jamás abrieron la pantalla, todos los días.
+  Una **lápida tampoco es ancla**: quien borró todo lo suyo vuelve a no tener fecha.
+- 🔒 **Posponer NO mueve la fecha de la medición**, solo calla el aviso una semana; vive en
+  `localStorage` y **no** en SB_KEYS (posponer es del aparato, no de la persona) y se borra sola
+  al guardar una toma nueva.
+- **Puesto 4 en `TODAY_CARD_PRIORITY`, por encima del aviso de notificaciones.** Con el tope de 2
+  de v505, **lo que sale una semana de cada ocho tiene que ganarle a lo que sale siempre**, o no
+  sale nunca. El test lo afirma como propiedad, no como índice.
+
+**Verificación.** Suite **1008 → 1012**. Matriz `_sabotaje-medidas.mjs` **18 → 24 casos**.
+
+**⚖️ Otras decisiones del PO en el mismo turno:** *«cada pierna»* era un error suyo y queda
+descartado (los 12 perímetros se quedan como están) · **el abogado se aplaza: recordarlo el
+2026-10-03** · las fotos de ejercicios siguen sin tiempo · mañana le pide a Claudia que le muestre
+la app funcionando y pesa a Luz.
+
+🔴 **Y una corrección que salió al verificar:** el PO dijo que «Samuel ya está autorizado por la
+mamá». **Samuel Cifuentes tiene 28 años** en la app, así que su autorización es la suya. El menor
+sin ningún consentimiento guardado es **Santiago Santos (17)** — leído contra producción en solo
+lectura, junto con Sharith Sofía (16) y Valery (15), que conservan el `adulto:true` anterior a
+v565 que a propósito no se reescribió. **Pendiente de confirmar con él a quién se refería antes
+de registrar nada**: anotar una autorización legal bajo la persona equivocada es peor que no
+tenerla. (Precedente: el 27-ago escribió «Estella» y era Claudia Valbuena.)
+
 ## 🔄 2026-09-03 — avi-v566: LAS MEDIDAS SE PUEDEN CORREGIR, BORRAR Y COMPARAR POR LADO
 
 **De dónde sale.** Pedido del PO, textual: *«necesito mejorar la toma de medidas corporales, poder

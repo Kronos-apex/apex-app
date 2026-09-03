@@ -128,6 +128,42 @@ const CASOS = [
     from: "  const med=(typeof medLive==='function')?medLive((DB.medidas||{})[clientId]||[]):((DB.medidas||{})[clientId]||[]);",
     to: '  const med=(DB.medidas||{})[clientId]||[];',
   },
+  {
+    n: 'S19 · la cadencia deja de ser la que decidio el PO (8 semanas)',
+    file: 'avi-core.js',
+    from: 'const MED_CADENCIA_DIAS = 56;',
+    to: 'const MED_CADENCIA_DIAS = 21;',
+  },
+  {
+    n: 'S20 · se acaba el aviso de una semana antes: solo avisa cuando ya se paso',
+    file: 'avi-core.js',
+    from: 'const MED_AVISO_DIAS = 7;',
+    to: 'const MED_AVISO_DIAS = 0;',
+  },
+  {
+    n: 'S21 · el aviso le sale a quien NUNCA se ha medido (no hay fecha que recordar)',
+    file: 'avi-core.js',
+    from: '  if (!vivas.length) return null;',
+    to: '  if (false) return null;',
+  },
+  {
+    n: 'S22 · posponer el aviso MUEVE la fecha de la proxima medicion',
+    file: 'avi-core.js',
+    from: '    if (isFinite(sn) && sn > now) return null;',
+    to: '    if (isFinite(sn)) return null;',
+  },
+  {
+    n: 'S23 · nadie pinta la tarjeta de volver a medirse (motor perfecto, cero avisos)',
+    file: 'app-4-entreno.js',
+    from: "  if(!_dia1 && typeof renderMedDueCard==='function')renderMedDueCard(client);",
+    to: '  ;',
+  },
+  {
+    n: 'S24 · la tarjeta pierde su puesto y el tope de 2 la tapa en silencio',
+    file: 'avi-core.js',
+    from: "  'cn-med-due',       // 4.",
+    to: "  'cn-med-due-off',   // 4.",
+  },
 ];
 
 let muerden = 0;
