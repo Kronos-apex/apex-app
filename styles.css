@@ -2248,3 +2248,29 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .sc-lift span{font-size:11.5px;color:rgba(234,251,244,.62);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sc-lift b{font-size:13.5px;font-weight:900;color:#10E0A0;white-space:nowrap}
 .sc-foot{font-size:11px;color:rgba(234,251,244,.55);margin-top:8px;border-top:1px solid rgba(16,224,160,.22);padding-top:7px}
+
+/* ── Medidas corporales, dirección A (v566) ─────────────────────────────────
+   El microcopy va DEBAJO de cada campo y siempre visible: doce perímetros con la cinta en
+   un sitio distinto cada vez son doce números que no se pueden comparar (Coach Pro). */
+.medgrp{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--g);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.medgrp::after{content:"";flex:1;height:1px;background:var(--br)}
+.medgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.medhint{font-size:10.5px;line-height:1.35;color:var(--t3);margin-top:4px}
+.medfirst{background:var(--gl);border:1px solid var(--br);border-radius:10px;
+  padding:11px 13px;margin-bottom:14px;font-size:12px;line-height:1.5;color:var(--gt)}
+.medfirst b{display:block;color:var(--gt);margin-bottom:4px;font-size:12.5px}
+/* 🔴 `--surface`, NO `--c`: `--c` NO es un token global — solo existe dentro de
+   `.wz-row` (el asistente de registro). Fuera de ahí la variable no resuelve y el
+   `background` queda inválido: la caja pierde su fondo y se lee como texto suelto. */
+.medlegacy{background:var(--surface);border:1px solid var(--br);border-radius:10px;
+  padding:10px 12px;margin-top:14px;font-size:11.5px;line-height:1.5;color:var(--t2)}
+.medrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--br)}
+.medrow:last-child{border-bottom:none}
+.medacts{display:flex;gap:6px;flex:none}
+.medacts button{background:none;border:1px solid var(--br);color:var(--t2);
+  border-radius:8px;padding:5px 9px;font-family:inherit;font-size:11.5px;cursor:pointer}
+.medacts button:hover{border-color:var(--g);color:var(--g)}
+.medacts button:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+@media (max-width:360px){.medgrid{grid-template-columns:1fr}}

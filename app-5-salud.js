@@ -847,51 +847,116 @@ function shareNutWhatsapp(){
 
 // ══════════════ MEDIDAS CORPORALES ══════════════
 
-const MED_FIELDS=[
-  {key:'pecho',label:'Pecho',icon:'\uD83D\uDCAA'},
-  {key:'cintura',label:'Cintura',icon:'\u2B55'},
-  {key:'cadera',label:'Cadera',icon:'\uD83D\uDC9B'},
-  {key:'brazo',label:'Brazo',icon:'\uD83D\uDCAA'},
-  {key:'muslo',label:'Muslo',icon:'\uD83E\uDDB5'},
-  {key:'pantorrilla',label:'Pantorrilla',icon:'\uD83E\uDDB5'}
-];
+// 🔴 `MED_FIELDS` YA NO VIVE AQUÍ: la lista de los 12 perímetros es de avi-core, para
+//    que la suite y los harness lean UNA sola fuente. Aquí solo quedó la pantalla.
+//    Decisión del PO (2026-09-02): dirección A, 12 perímetros con los miembros por lado.
 
-function openMedModal(){
-  MED_FIELDS.forEach(f=>{const el=document.getElementById('med-'+f.key);if(el)el.value='';});
+// Qué toma se está corrigiendo (null = alta nueva).
+let MED_EDIT_ID=null;
+// Qué fila está pidiendo confirmación de borrado (null = ninguna).
+let MED_CONFIRM_ID=null;
+
+// 🔴 EL CANDADO PREMIUM VIVÍA SOLO EN EL RENDER, Y EL BOTÓN «+ Registrar» ES MARCADO
+//    ESTÁTICO que vive FUERA de `#cn-med-list`: `renderMedidasClient` reemplaza la lista por
+//    el candado y el botón sigue ahí, vivo. Un tier libre o un plan vencido abría
+//    «Mi seguimiento personal» (su toggle tampoco preguntaba), tocaba «+ Registrar»,
+//    guardaba — y el dato se sincronizaba a la nube — para ver después el candado otra vez.
+//    El patrón correcto ya estaba en el mismo archivo (`openFoodLogRoom`, `flTogglePlanMeal`):
+//    la comprobación va en la ACCIÓN, no solo en lo que se pinta.
+function _medLocked(clientId){
+  const c=(DB.clients||[]).find(x=>x.id===(clientId||CUR.clientId));
+  return (typeof premiumLocked==='function')&&premiumLocked(c);
+}
+function openMedModal(editId){
+  if(_medLocked())return;
+  MED_EDIT_ID=editId||null;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
+  MED_FIELDS.forEach(f=>set('med-'+f.key,''));
+  const t=document.getElementById('mdt-21');
+  const b=document.getElementById('med-save-btn');
+  const first=document.getElementById('med-first');
+  const leg=document.getElementById('med-legacy');
+  if(leg){leg.style.display='none';leg.innerHTML='';}
+  if(MED_EDIT_ID){
+    const e=(medLive((DB.medidas||{})[CUR.clientId]||[])||[]).find(x=>x.id===MED_EDIT_ID);
+    if(!e){MED_EDIT_ID=null;}
+    else{
+      MED_FIELDS.forEach(f=>{ if(e[f.key]!=null) set('med-'+f.key,e[f.key]); });
+      if(t)t.textContent='✏️ Corregir la medida del '+new Date(e.date).toLocaleDateString('es-ES',{day:'numeric',month:'long'});
+      if(b)b.textContent='💾 Guardar la corrección';
+      if(first)first.style.display='none';
+      // 🔒 Las medidas VIEJAS sin lado no tienen dónde re-teclearse (el campo «Brazo»
+      //    a secas ya no existe), así que se ENSEÑAN pero no se editan — y `medUpsert` las
+      //    conserva. Callarlas haría creer que se perdieron.
+      const vs=(typeof MED_LEGACY!=='undefined'?MED_LEGACY:[]).filter(f=>e[f.key]!=null);
+      if(vs.length&&leg){
+        leg.innerHTML='De esta toma quedó guardado, de cuando la app no preguntaba el lado: '
+          +vs.map(f=>'<b>'+esc(f.label)+' '+esc(String(e[f.key]))+' cm</b>').join(', ')
+          +'. No se puede corregir aquí porque no sabemos de qué lado era, pero no se pierde.';
+        leg.style.display='block';
+      }
+    }
+  }
+  if(!MED_EDIT_ID){
+    if(t)t.textContent='📏 Registrar medidas';
+    if(b)b.textContent='💾 Guardar';
+    // El aviso de las tres reglas sale la PRIMERA vez y nunca más (Coach Pro): repetirlo
+    // en cada toma lo vuelve ruido que se aprende a saltar.
+    // Con `medLive`, no con el largo crudo: una lapida no es una toma, y quien borro todo
+    // lo suyo vuelve a ser alguien que se mide por primera vez.
+    const vistas=medLive((DB.medidas||{})[CUR.clientId]||[]).length;
+    if(first)first.style.display=vistas?'none':'block';
+  }
   om('m-med');
 }
 
 function saveMedidas(){
   const clientId=CUR.clientId;if(!clientId)return;
+  if(_medLocked(clientId))return;
   if(!DB.medidas)DB.medidas={};
-  if(!DB.medidas[clientId])DB.medidas[clientId]=[];
-  const entry={date:new Date().toISOString()};
-  let hasData=false;
+  const vals={};
   MED_FIELDS.forEach(f=>{
     const el=document.getElementById('med-'+f.key);
-    if(!el)return;
-    const v=parseFloat(el.value);
-    if(v>0){entry[f.key]=v;hasData=true;}
+    if(el&&el.value!=='')vals[f.key]=parseFloat(el.value);
   });
-  if(!hasData){toast('\u26a0\ufe0f Ingresa al menos una medida');return;}
-  const today=new Date().toDateString();
-  const idx=DB.medidas[clientId].findIndex(e=>new Date(e.date).toDateString()===today);
-  if(idx>=0)DB.medidas[clientId][idx]={...DB.medidas[clientId][idx],...entry};
-  else DB.medidas[clientId].unshift(entry);
-  if(DB.medidas[clientId].length>24)DB.medidas[clientId]=DB.medidas[clientId].slice(0,24);
+  const lista=medUpsert(DB.medidas[clientId]||[],vals,new Date().toISOString(),MED_EDIT_ID);
+  if(!lista){toast('⚠️ Escribe al menos una medida');return;}
+  DB.medidas[clientId]=lista;
   sv('ax_med',DB.medidas);
+  const era=MED_EDIT_ID;MED_EDIT_ID=null;MED_CONFIRM_ID=null;
   cm('m-med');
   renderMedidasClient(clientId);
   renderMedidasCoach(clientId);
-  toast('\uD83D\uDCCF Medidas guardadas');
+  toast(era?'✏️ Medida corregida':'📏 Medidas guardadas');
 }
+
+// 🔴 BORRAR NO ES UN `filter`. La fila del usuario se fusiona con la nube por UNIÓN,
+//    así que lo que se quita de la lista local VUELVE en la siguiente fusión — basta con
+//    que otro teléfono traiga una copia vieja. `medDelete` deja una lápida que gana por
+//    fecha de modificación, y por eso el borrado dura.
+function delMedida(id){
+  const clientId=CUR.clientId;if(!clientId)return;
+  if(_medLocked(clientId))return;
+  const lista=medDelete((DB.medidas||{})[clientId]||[],id,new Date().toISOString());
+  if(!lista){toast('Esa medida ya no está');return;}
+  DB.medidas[clientId]=lista;
+  MED_CONFIRM_ID=null;
+  sv('ax_med',DB.medidas);
+  renderMedidasClient(clientId);
+  renderMedidasCoach(clientId);
+  toast('Medida eliminada');
+}
+// La confirmación vive EN LA FILA, no en un diálogo del navegador: `confirm()` bloquea
+// el hilo y en la PWA el navegador se lo puede comer (gotcha de la casa sobre alertas).
+function askDelMedida(id){ MED_CONFIRM_ID=id; renderMedidasClient(CUR.clientId); }
+function cancelDelMedida(){ MED_CONFIRM_ID=null; renderMedidasClient(CUR.clientId); }
 
 function renderMedidasClient(clientId){
   const listEl=document.getElementById('cn-med-list');
   const chartWrap=document.getElementById('cn-med-chart-wrap');
   if(!listEl)return;
   if(premiumLocked(DB.clients.find(x=>x.id===clientId))){listEl.innerHTML=premiumLockHTML('Medidas corporales','Registra cintura, cadera y más, y míralas evolucionar.');if(chartWrap)chartWrap.style.display='none';return;}
-  const entries=(DB.medidas||{})[clientId]||[];
+  const entries=medLive((DB.medidas||{})[clientId]||[]);
   if(!entries.length){
     listEl.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('ruler',32):'📏'}</div><div class="etxt">Aún no has registrado medidas</div><div class="esub">Anota cintura, cadera y más — así ves cómo tu cuerpo cambia con el tiempo.</div></div>`;
     if(chartWrap)chartWrap.style.display='none';return;
@@ -903,40 +968,131 @@ function renderMedidasClient(clientId){
       drawMedChart(document.getElementById('cn-med-chart'),cintPts,'cintura','var(--chart-or)');
     } else chartWrap.style.display='none';
   }
-  const latest=entries[0];const first=entries[entries.length-1];
-  let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+  const cli=DB.clients.find(x=>x.id===clientId)||{};
+  // 🔴 DICTAMEN DE LAURA (fisio): cintura y cadera son las dos medidas más ligadas al
+  //    chequeo corporal y a la comparación con un ideal estético. A un MENOR se le guarda
+  //    el dato pero NO se le interpreta ni se le destaca el cambio. Hay 3 menores en la base.
+  const menor=(typeof consentNeedsGuardian==='function')&&consentNeedsGuardian(cli.age);
+  const sinInterpretar=k=>menor&&(k==='cintura'||k==='cadera');
+  const latest=entries[0];
+  const primera=!medComparable((DB.medidas||{})[clientId]||[]);
+  const fmt=d=>new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+  let html='';
+
+  // 🔴 EL DEFECTO QUE VIERON LAS 8 PERSONAS QUE SE MIDIERON. La tabla comparaba
+  //    «Actual» contra «Inicio» y con UNA sola toma son el mismo registro: la columna
+  //    «Cambio» decía 0.0 cm en todas las filas. Te mides el cuerpo entero y la app te
+  //    devuelve una columna de ceros, como si no hubiera pasado nada. Con una toma, esto
+  //    es tu PUNTO DE PARTIDA y así se dice.
+  if(primera){
+    html+=`<div class="medfirst" style="margin-bottom:12px"><b>Este es tu punto de partida</b>
+      Guardamos tus medidas del ${esc(fmt(latest.date))}. Cuando vuelvas a medirte vas a ver aquí cuánto cambió cada una.</div>`;
+  }
+  const first=primera?null:entries[entries.length-1];
+  const campos=(typeof MED_LEGACY!=='undefined'?MED_FIELDS.concat(MED_LEGACY):MED_FIELDS);
+  html+=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="border-bottom:2px solid var(--br)">
       <th style="text-align:left;padding:6px 8px;color:var(--t2);font-weight:700">Medida</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">Actual</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">Inicio</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">Cambio</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">${primera?'Tu medida':'Actual'}</th>
+      ${primera?'':`<th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">Inicio</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--t2);font-weight:700">Cambio</th>`}
     </tr></thead><tbody>`;
-  MED_FIELDS.forEach(f=>{
-    const cur=latest[f.key];const ini=first[f.key];
+  campos.forEach(f=>{
+    const cur=latest[f.key];const ini=first?first[f.key]:null;
     if(!cur&&!ini)return;
-    const delta=(cur&&ini)?(cur-ini).toFixed(1):null;
+    const mudo=sinInterpretar(f.key);
+    const delta=(!primera&&!mudo&&cur&&ini)?(cur-ini).toFixed(1):null;
     const dc=delta===null?'':parseFloat(delta)<0?'var(--gt)':parseFloat(delta)>0?'var(--ort)':'var(--t3)';
     html+=`<tr style="border-bottom:1px solid var(--br)">
-      <td style="padding:7px 8px;font-weight:600">${f.label}</td>
-      <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${cur?cur+' cm':'\u2014'}</td>
-      <td style="padding:7px 8px;text-align:right;color:var(--t3)">${ini?ini+' cm':'\u2014'}</td>
-      <td style="padding:7px 8px;text-align:right;font-weight:700;color:${dc}">${delta!==null?(parseFloat(delta)>0?'+':'')+delta+' cm':'\u2014'}</td>
+      <td style="padding:7px 8px;font-weight:600">${esc(f.label)}</td>
+      <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${cur?esc(String(cur))+' cm':'—'}</td>
+      ${primera?'':`<td style="padding:7px 8px;text-align:right;color:var(--t3)">${ini?esc(String(ini))+' cm':'—'}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:700;color:${dc}">${delta!==null?(parseFloat(delta)>0?'+':'')+delta+' cm':'—'}</td>`}
     </tr>`;
   });
   html+=`</tbody></table></div>`;
-  html+=`<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${entries.length} registro${entries.length!==1?'s':''} \u00b7 \u00faltimo: ${new Date(latest.date).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>`;
+
+  html+=_medAsimetriaHtml(latest,primera);
+
+  // Corregir y eliminar: hasta v565 no existía ninguna vía. Un 56 tecleado como 65
+  // quedaba para siempre y envenenaba la columna de cambio de ahí en adelante.
+  html+=`<div style="margin-top:14px"><div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Tus tomas</div>`;
+  entries.slice(0,8).forEach(e=>{
+    const n=medFilled(e).length;
+    const pidiendo=(MED_CONFIRM_ID===e.id);
+    html+=`<div class="medrow">
+      <span style="min-width:0"><b>${esc(fmt(e.date))}</b> <span style="color:var(--t3)">· ${n} medida${n!==1?'s':''}</span></span>
+      <span class="medacts">${pidiendo
+        ? `<button onclick="delMedida('${esc(e.id)}')" style="border-color:var(--rd);color:var(--rd)">Sí, eliminar</button><button onclick="cancelDelMedida()">Cancelar</button>`
+        : `<button onclick="openMedModal('${esc(e.id)}')">✏️ Corregir</button><button onclick="askDelMedida('${esc(e.id)}')">Eliminar</button>`}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  html+=`<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${entries.length} toma${entries.length!==1?'s':''} · última: ${esc(fmt(latest.date))}</div>`;
   listEl.innerHTML=html;
+}
+
+// ── La diferencia izquierda/derecha ─────────────────────────────────────
+// 🔴 LOS DOS DICTÁMENES, QUE COINCIDIERON POR SEPARADO:
+//  · Andrés: el umbral va en % (un brazo de 30 y un muslo de 60 no comparten cm) y el
+//    perímetro predice MAL la fuerza — explica el 13% de su varianza en la población más
+//    favorable medida. Por eso aquí jamás se dice «desequilibrio de fuerza»: se dice
+//    «diferencia de tamaño», que es lo único que una cinta puede sostener.
+//  · Laura: por debajo de ~5% es ruido de medición; por encima de ~10% se pregunta más.
+//    Y con UNA sola toma la app no tiene autoridad para tranquilizar: «aún no sabemos», no
+//    «no es nada» — el error de una cinta en manos de una persona común es del mismo orden
+//    que la asimetría que se busca.
+// 🔒 TECHO DE LO QUE PUEDE DECIR: «comentáselo a tu coach». Nunca un nombre de
+//    diagnóstico, nunca una prescripción de entrenamiento, nunca lenguaje estético.
+const MED_ASIM_RUIDO=5, MED_ASIM_HABLAR=10;
+function _medAsimetriaHtml(entry,primera){
+  const as=(typeof medAsimetria==='function')?medAsimetria(entry):[];
+  if(!as.length)return '';
+  const nom={brazo:'Brazos',antebrazo:'Antebrazos',muslo:'Muslos',pantorrilla:'Pantorrillas'};
+  let filas='';
+  as.forEach(a=>{
+    const lado=a.mayorLado==='der'?'derecho':'izquierdo';
+    let txt,col;
+    if(a.pct<MED_ASIM_RUIDO){ txt='Prácticamente iguales.'; col='var(--t3)'; }
+    else if(a.pct<MED_ASIM_HABLAR){
+      txt='El '+lado+' mide '+a.dif+' cm más. Es común, sobre todo del lado con el que más haces todo.';
+      col='var(--t3)';
+    } else {
+      txt='El '+lado+' mide '+a.dif+' cm más ('+a.pct+'%). Vale la pena que se lo comentes a tu coach.'
+        +(a.par==='antebrazo'?' En el antebrazo es lo más normal: es el que más usas a diario.':'');
+      col='var(--ort)';
+    }
+    filas+=`<div class="medrow"><span style="min-width:0"><b>${esc(nom[a.par]||a.par)}</b>
+      <span style="font-family:'JetBrains Mono',monospace;color:var(--t3)"> ${a.izq} / ${a.der} cm</span>
+      <div style="font-size:11.5px;color:${col};line-height:1.4;margin-top:2px">${esc(txt)}</div></span></div>`;
+  });
+  // Con una sola toma NO se tranquiliza a nadie: no se puede distinguir una diferencia
+  // real de haber apretado más la cinta. Se dice, en vez de callarlo.
+  // 🔒 Se llama `leyenda`, no `nota`: es una frase FIJA nuestra con marcado a propósito
+  //    (el <b> de «tamaño» es el dictamen de Andrés), no texto que teclee nadie. El candado
+  //    de esc() vigila los nombres de campo de usuario, y `nota` es uno — el nombre mentía
+  //    sobre lo que guarda. Si algún día aquí entra texto de una persona, va con esc().
+  const leyenda=primera
+    ? 'Con una sola toma esto todavía no es concluyente: una cinta puesta un poco más arriba cambia el número tanto como semanas de entreno. Vuelve a medirte para saberlo.'
+    : 'Esto compara tu lado izquierdo con el derecho. Es una diferencia de <b>tamaño</b>, que no es lo mismo que una diferencia de fuerza.';
+  return `<div style="margin-top:16px"><div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Tu equilibrio izquierda / derecha</div>
+    ${filas}<div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.45">${leyenda}</div></div>`;
 }
 
 function renderMedidasCoach(clientId){
   const con=document.getElementById('d-med-preview');if(!con)return;
-  const entries=(DB.medidas||{})[clientId]||[];
-  if(!entries.length){con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Sin medidas a\u00fan</div>';return;}
-  const latest=entries[0];const first=entries[entries.length-1];
+  // Las lápidas no son tomas: el coach ve lo mismo que la persona.
+  const entries=medLive((DB.medidas||{})[clientId]||[]);
+  if(!entries.length){con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Sin medidas aún</div>';return;}
+  const latest=entries[0];
+  // El mismo defecto de la columna de ceros, en la ficha del coach: con UNA toma
+  // `first` ES `latest` y cada casilla remataba con un «0.0cm» que no significa nada.
+  const first=entries.length>1?entries[entries.length-1]:null;
   let html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  MED_FIELDS.forEach(f=>{
+  // El coach SÍ ve las medidas viejas sin lado: son las únicas que tiene de 8 personas.
+  (typeof MED_LEGACY!=='undefined'?MED_FIELDS.concat(MED_LEGACY):MED_FIELDS).forEach(f=>{
     const cur=latest[f.key];if(!cur)return;
-    const ini=first[f.key];
+    const ini=first?first[f.key]:null;
     const delta=ini?(cur-ini).toFixed(1):null;
     const dc=delta!==null&&parseFloat(delta)<0?'var(--gt)':delta!==null&&parseFloat(delta)>0?'var(--ort)':'var(--t3)';
     html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px;text-align:center;box-shadow:var(--sh)">

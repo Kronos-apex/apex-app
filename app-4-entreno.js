@@ -622,7 +622,10 @@ function applyProfileDisclosure(clientId){
   const nut=(DB.nutrition||{})[clientId];
   const hasNut=!!(nut&&(nut.kcal||nut.plan||nut.examples));
   const bw=(DB.bodyweight||{})[clientId]||[];
-  const med=(DB.medidas||{})[clientId]||[];
+  // 🔴 `medLive`, no el largo crudo: desde v566 borrar una medida deja una LAPIDA
+  //    dentro de esta misma coleccion. Contandolas, quien borra su unica toma se queda
+  //    con «Mi seguimiento personal» desplegado ensenando su propio estado vacio.
+  const med=(typeof medLive==='function')?medLive((DB.medidas||{})[clientId]||[]):((DB.medidas||{})[clientId]||[]);
   const ph=(DB.photos||{})[clientId]||[];
   show('cn-pr-card', Object.keys(prs).length>0);
   // Nutrición: visible si el coach asignó plan O si es Premium (ahí vive la calculadora

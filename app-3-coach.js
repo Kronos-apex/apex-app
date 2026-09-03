@@ -361,7 +361,9 @@ function _autoGenerateWeek(c){
   const styleId=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
   const inAdapt=isInAdaptation(c,DB.history,new Date());
-  const _med=(DB.medidas&&DB.medidas[c.id])||[];
+  // `medLive` ordena y descarta lapidas: sin el, «la ultima medida» depende de que el
+  // arreglo venga ordenado, que es la clase de suposicion que costo el bug del peso (v448).
+  const _med=(typeof medLive==='function')?medLive((DB.medidas&&DB.medidas[c.id])||[]):((DB.medidas&&DB.medidas[c.id])||[]);
   const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
   const _p=genPrefs(c);
@@ -1900,9 +1902,10 @@ function renderValoracion(c){
   // Las medidas se guardan con unshift (la más NUEVA en índice 0). Antes se leía [length-1]
   // = la más VIEJA → RCT/ICC/getRctLabel/getGoalMsg invertidos (podía decir "riesgo elevado"
   // cuando el asesorado mejoró). Bug #4 auditoría 2026-06-30.
-  const latestMed = (DB.medidas && DB.medidas[c.id] && DB.medidas[c.id].length)
-    ? DB.medidas[c.id][0]
-    : {};
+  const _medLive = (typeof medLive==='function')
+    ? medLive((DB.medidas && DB.medidas[c.id]) || [])
+    : ((DB.medidas && DB.medidas[c.id]) || []);
+  const latestMed = _medLive.length ? _medLive[0] : {};
   const cinturaCm = latestMed.cintura ? parseFloat(latestMed.cintura) : null;
   const caderaCm  = latestMed.cadera  ? parseFloat(latestMed.cadera)  : null;
   const sexCode   = getSexCode(c.sex);
@@ -2856,7 +2859,9 @@ function genWithStyle(styleId){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return false;
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
   const inAdapt=isInAdaptation(c,DB.history,new Date());
-  const _med=(DB.medidas&&DB.medidas[c.id])||[];
+  // `medLive` ordena y descarta lapidas: sin el, «la ultima medida» depende de que el
+  // arreglo venga ordenado, que es la clase de suposicion que costo el bug del peso (v448).
+  const _med=(typeof medLive==='function')?medLive((DB.medidas&&DB.medidas[c.id])||[]):((DB.medidas&&DB.medidas[c.id])||[]);
   const _waist=_med.length?_med[0].cintura:null;
   const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
   const _p=genPrefs(c);

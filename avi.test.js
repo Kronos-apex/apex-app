@@ -132,6 +132,20 @@ const {
   passwordProblem,
   consentEvidence,
   consentNeedsGuardian,
+  MED_FIELDS,
+  MED_LEGACY,
+  MED_PARES,
+  MED_CAP,
+  medEntryId,
+  medNormalize,
+  medLive,
+  medFilled,
+  medUpsert,
+  medDelete,
+  medPrune,
+  mergeMedidas,
+  medAsimetria,
+  medComparable,
   consentSame,
   consentKeep,
   minorCoachAlert,
@@ -4116,6 +4130,409 @@ test('la ficha del coach exige la edad para registrar la autorizacion (v565)', (
   // CONTROL: guardar SIN marcar la casilla no puede exigir edad (el guard cuelga de .checked).
   const g = blk.slice(blk.indexOf('!(data.age>0)') - 220, blk.indexOf('!(data.age>0)'));
   assert.ok(/_ckC&&_ckC\.checked/.test(g), 'el guard no puede pedir edad a quien no acredita nada');
+});
+
+// ═════ MEDIDAS CORPORALES · el motor de la direccion A (v566) ════════════════════
+// Decision del PO viendo tres pantallas: direccion A, 12 perimetros por lado.
+// La tomo CONTRA mi recomendacion medida (yo propuse 9); queda anotado a proposito.
+
+test('MED_FIELDS: 12 perimetros, 4 pares izq/der, y ninguna clave repetida (v566)', () => {
+  assert.strictEqual(MED_FIELDS.length, 12, 'la direccion A son 12 campos, no 13');
+  const claves = MED_FIELDS.map(f => f.key);
+  assert.strictEqual(new Set(claves).size, 12, 'hay una clave repetida');
+  MED_PARES.forEach(par => {
+    assert.ok(claves.includes(par + '_izq'), par + ' no tiene lado izquierdo');
+    assert.ok(claves.includes(par + '_der'), par + ' no tiene lado derecho');
+  });
+  // Las 3 viejas SIN lado siguen existiendo aparte: son datos que ya dio gente real.
+  assert.deepStrictEqual(MED_LEGACY.map(f => f.key), ['brazo', 'muslo', 'pantorrilla']);
+  // CONTROL: ninguna clave nueva pisa a una vieja (seria reinterpretar un dato ajeno).
+  MED_LEGACY.forEach(l => assert.ok(!claves.includes(l.key),
+    'la clave vieja ' + l.key + ' no puede ser tambien un campo nuevo'));
+  // 🔒 Y una medida vieja NO PUEDE DECLARAR LADO. Aqui el dato no es que falte: es
+  //    que nadie sabe de que lado era. Declararle uno (aunque hoy no lo lea nadie) es
+  //    afirmar por escrito algo que nadie midio, y la pantalla agrupa por `lado`.
+  MED_LEGACY.forEach(l => assert.strictEqual(l.lado, undefined,
+    'a la medida vieja ' + l.key + ' se le esta declarando un lado que nadie midio'));
+  // CONTROL: los campos NUEVOS por lado si lo declaran, y son 8.
+  assert.strictEqual(MED_FIELDS.filter(f => f.lado).length, 8,
+    'se perdieron los campos por lado: la version entera existe para eso');
+});
+
+// \🔴 A UNA MEDIDA VIEJA NO SE LE INVENTA EL LADO. 8 personas tienen guardado un
+// «Brazo» sin saber cual. Meterlo en «derecho» porque la mayoria es diestra fabricaria
+// un dato que nadie dio, y envenenaria justo la comparacion izq/der de esta version.
+test('las medidas sin lado se conservan y NUNCA se convierten en un lado (v566)', () => {
+  const viejas = [{ date: '2026-06-30T10:00:00.000Z', brazo: 31, muslo: 56, cintura: 78 }];
+  const norm = medNormalize(viejas);
+  assert.strictEqual(norm[0].brazo, 31, 'se perdio el dato viejo');
+  assert.strictEqual(norm[0].brazo_izq, undefined, 'se le invento un lado');
+  assert.strictEqual(norm[0].brazo_der, undefined, 'se le invento un lado');
+  // Y no aporta nada a la asimetria: sin los dos lados no hay diferencia que calcular.
+  assert.deepStrictEqual(medAsimetria(norm[0]), []);
+  // La identidad de una toma vieja es su fecha, la misma con la que la nube ya la fusiona.
+  assert.strictEqual(medEntryId(viejas[0]), 'd:2026-06-30T10:00:00.000Z');
+  // CONTROL: con id propio manda el id.
+  assert.strictEqual(medEntryId({ id: 'm1', date: 'x' }), 'm1');
+});
+
+test('medUpsert: alta, mismo dia y edicion sin mover la fecha (v566)', () => {
+  const t1 = '2026-09-02T10:00:00.000Z';
+  let l = medUpsert([], { brazo_izq: 30.44, brazo_der: 32.2 }, t1, null);
+  assert.strictEqual(l.length, 1);
+  assert.strictEqual(l[0].brazo_izq, 30.4, 'se redondea a un decimal');
+  // Dos tomas el MISMO dia no son dos puntos: se actualiza la de ese dia.
+  const t2 = '2026-09-02T20:00:00.000Z';
+  l = medUpsert(l, { brazo_izq: 31, brazo_der: 32.2 }, t2, null);
+  assert.strictEqual(l.length, 1, 'el mismo dia no crea una segunda toma');
+  assert.strictEqual(l[0].date, t1, 'la fecha de la toma no se mueve');
+  // Otro dia SI es otra toma.
+  const t3 = '2026-09-09T10:00:00.000Z';
+  l = medUpsert(l, { brazo_izq: 31.5, brazo_der: 32.4 }, t3, null);
+  assert.strictEqual(l.length, 2);
+  assert.strictEqual(l[0].date, t3, 'la nueva va primero (nueva -> vieja)');
+  // \🔒 Editar una toma vieja NO le mueve la fecha: corregir un dedazo no puede
+  //    reescribir tu historia. Y borrar un valor en la pantalla SI lo quita.
+  const idVieja = l[1].id;
+  const t4 = '2026-09-20T10:00:00.000Z';
+  l = medUpsert(l, { brazo_izq: 30.9 }, t4, idVieja);
+  const ed = l.find(e => e.id === idVieja);
+  assert.strictEqual(ed.date, t1, 'editar movio la fecha de la toma');
+  assert.strictEqual(ed.brazo_izq, 30.9);
+  assert.strictEqual(ed.brazo_der, undefined, 'lo que se borro en pantalla debe irse');
+  assert.strictEqual(ed.mAt, t4, 'queda constancia de cuando se edito');
+  // Una toma vacia jamas se guarda.
+  assert.strictEqual(medUpsert([], {}, t1, null), null);
+  assert.strictEqual(medUpsert([], { brazo_izq: 0 }, t1, null), null);
+});
+
+test('medUpsert: al editar se conserva la medida vieja sin lado (v566)', () => {
+  // Esa persona no tiene donde re-teclearla en la pantalla nueva: si el editar la
+  // borrara, se perderia el unico dato que llego a dar.
+  const l0 = [{ id: 'x1', date: '2026-06-30T10:00:00.000Z', brazo: 31, cintura: 78 }];
+  const l1 = medUpsert(l0, { cintura: 77 }, '2026-09-02T10:00:00.000Z', 'x1');
+  assert.strictEqual(l1[0].brazo, 31, 'se perdio la medida vieja sin lado al editar');
+  assert.strictEqual(l1[0].cintura, 77);
+});
+
+// \🔴 BORRAR CON UN `filter` NO BORRA: la fila del usuario se fusiona con la nube
+// por UNION, asi que lo quitado localmente VUELVE en la siguiente fusion. Este test es
+// el que sostiene que el borrado sea una lapida y no un filtro.
+test('medDelete: lo borrado NO resucita al fusionar con la nube (v566)', () => {
+  const t = '2026-06-30T10:00:00.000Z';
+  const original = [{ id: 'x1', date: t, mAt: t, brazo_izq: 30, brazo_der: 32 }];
+  const local = medDelete(original, 'x1', '2026-09-02T10:00:00.000Z');
+  assert.ok(local[0].del === true, 'no quedo lapida');
+  assert.strictEqual(medLive(local).length, 0, 'la lapida no puede verse como una toma');
+
+  // La nube todavia tiene la copia VIVA (otro telefono, o el borrado sin conexion).
+  const fusion = mergeMedidas({ c1: local }, { c1: original });
+  assert.strictEqual(medLive(fusion.c1).length, 0,
+    'la toma borrada volvio de la nube — el borrado no es duradero');
+
+  // CONTROL DE DISCRIMINACION: si NO se borro nada, la fusion si conserva la toma.
+  const sinBorrar = mergeMedidas({ c1: original }, { c1: original });
+  assert.strictEqual(medLive(sinBorrar.c1).length, 1,
+    'la fusion esta perdiendo tomas que nadie borro');
+
+  // CONTROL 2: gana la mas reciente por mAt, en las dos direcciones.
+  const editada = [{ id: 'x1', date: t, mAt: '2026-09-03T10:00:00.000Z', brazo_izq: 33 }];
+  assert.strictEqual(mergeMedidas({ c1: local }, { c1: editada }).c1[0].brazo_izq, 33,
+    'la edicion posterior a la lapida deberia ganar');
+  assert.strictEqual(medLive(mergeMedidas({ c1: editada }, { c1: local }).c1).length, 1,
+    'el orden de los argumentos no puede cambiar el resultado');
+
+  // Borrar algo que no existe NO puede decir que borro.
+  assert.strictEqual(medDelete(original, 'no-existe', t), null);
+});
+
+// 🔒 CANDADO DE CABLEADO: la lapida solo sirve si la fusion de la FILA la usa.
+// `mergeAuthRow` fusionaba las medidas con la union por fecha (`mergeClientArrays`), que
+// no sabe de borrados: la maquinaria entera de lapidas puede estar perfecta y el borrado
+// seguir sin durar si esta linea vuelve a la union. Sin este test, ese sabotaje sale verde.
+test('mergeAuthRow: las medidas se fusionan con mergeMedidas, no por union (v566)', () => {
+  const t = '2026-06-30T10:00:00.000Z';
+  const original = [{ id: 'x1', date: t, mAt: t, brazo_izq: 30, brazo_der: 32 }];
+  const local = medDelete(original, 'x1', '2026-09-02T10:00:00.000Z');
+  const out = mergeAuthRow({ medidas: local }, { medidas: original });
+  assert.strictEqual(medLive(out.medidas).length, 0,
+    'la fila de la nube resucito la medida borrada: mergeAuthRow no esta usando mergeMedidas');
+  // CONTROL DE DISCRIMINACION: lo que nadie borro tiene que sobrevivir la fusion.
+  const vivo = mergeAuthRow({ medidas: original }, { medidas: original });
+  assert.strictEqual(medLive(vivo.medidas).length, 1, 'la fusion de la fila esta perdiendo tomas');
+  // CONTROL DE COBERTURA: el resto de la fila sigue fusionandose (no se rompio nada al lado).
+  assert.ok(Array.isArray(vivo.history) && Array.isArray(vivo.bodyweight));
+});
+
+test('medPrune: una lapida no ocupa el cupo de una toma viva (v566)', () => {
+  const mk = (i) => ({ id: 'v' + i, date: new Date(Date.UTC(2026, 0, i + 1)).toISOString(), brazo_izq: 30 });
+  const vivas = [];
+  for (let i = 0; i < MED_CAP + 5; i++) vivas.push(mk(i));
+  const lap = { id: 'z', date: '2026-01-01T00:00:00.000Z', del: true, mAt: '2026-09-02T00:00:00.000Z' };
+  const out = medPrune(vivas.concat([lap]), '2026-09-03T00:00:00.000Z');
+  assert.strictEqual(medLive(out).length, MED_CAP, 'el tope de tomas vivas no se respeto');
+  assert.ok(out.some(e => e.id === 'z'), 'la lapida se solto antes de tiempo y lo borrado resucita');
+  // Una lapida MUY vieja si se puede soltar: ya ninguna copia rezagada puede taparla.
+  const vieja = { id: 'z2', date: '2020-01-01T00:00:00.000Z', del: true, mAt: '2020-01-01T00:00:00.000Z' };
+  assert.ok(!medPrune([vieja], '2026-09-03T00:00:00.000Z').some(e => e.id === 'z2'));
+});
+
+// \🔴 DICTAMEN DE LAURA (fisio, 2026-09-02): con UNA sola toma la app NO tiene
+// autoridad para decir nada sobre asimetria — el error de una cinta en manos de una
+// persona comun (0,5-1,5 cm) es del MISMO orden que la asimetria que se busca medir.
+// Por eso el motor devuelve el numero crudo y no dictamina. El umbral lo deciden
+// Andres y Laura; hasta entonces, un umbral inventado alarma a todos o a nadie.
+test('medAsimetria: mide la diferencia y NO la juzga (v566)', () => {
+  const e = { brazo_izq: 30.4, brazo_der: 32.2, muslo_izq: 56, muslo_der: 56, cintura: 78 };
+  const a = medAsimetria(e);
+  assert.strictEqual(a.length, 2, 'solo los pares con AMBOS lados');
+  const br = a.find(x => x.par === 'brazo');
+  assert.strictEqual(br.dif, 1.8);
+  assert.strictEqual(br.mayorLado, 'der');
+  assert.strictEqual(br.pct, 5.6, 'el % va sobre el lado mayor');
+  const mu = a.find(x => x.par === 'muslo');
+  assert.strictEqual(mu.dif, 0);
+  assert.strictEqual(mu.mayorLado, null, 'iguales no tienen lado mayor');
+  // CANDADO: el motor no puede traer un veredicto. Si alguien le agrega uno, que sea
+  // una decision consciente y no un descuido — el umbral todavia no existe.
+  assert.strictEqual(br.nivel, undefined, 'el motor no dictamina: el umbral aun no se ha decidido');
+  assert.strictEqual(br.alerta, undefined, 'el motor no dictamina');
+  // Un solo lado no produce nada (ni con las medidas viejas sin lado).
+  assert.deepStrictEqual(medAsimetria({ brazo_izq: 30 }), []);
+  assert.deepStrictEqual(medAsimetria({ brazo: 31 }), []);
+  assert.deepStrictEqual(medAsimetria(null), []);
+});
+
+// \🔴 EL DEFECTO QUE VIERON LAS 8. La tabla compara Actual contra Inicio; con una
+// sola toma son el MISMO registro, asi que la columna «Cambio» decia 0.0 cm en todas las
+// filas. Te mides el cuerpo entero y la app te devuelve una columna de ceros.
+test('medComparable: con una sola toma NO hay evolucion que mostrar (v566)', () => {
+  const uno = [{ id: 'a', date: '2026-06-30T10:00:00.000Z', cintura: 78 }];
+  assert.strictEqual(medComparable(uno), false, 'con una toma no se puede comparar nada');
+  const dos = uno.concat([{ id: 'b', date: '2026-08-30T10:00:00.000Z', cintura: 77 }]);
+  assert.strictEqual(medComparable(dos), true);
+  // Una lapida no cuenta como segunda toma.
+  assert.strictEqual(medComparable(uno.concat([{ id: 'c', date: 'x', del: true }])), false);
+  assert.strictEqual(medComparable([]), false);
+});
+
+test('medFilled: dice que trae la toma, viejas incluidas (v566)', () => {
+  const e = { brazo_izq: 30, cintura: 78, brazo: 31, pecho: 0 };
+  const k = medFilled(e).map(f => f.key).sort();
+  assert.deepStrictEqual(k, ['brazo', 'brazo_izq', 'cintura'], 'el 0 no es una medida');
+  assert.deepStrictEqual(medFilled(null), []);
+});
+
+// 🔴 EL DEFECTO QUE VIERON LAS 8. `medComparable` ya tiene su test, pero la PANTALLA
+// puede ignorarlo: basta un `const primera=false` para que vuelva la columna de ceros. Sin
+// este candado ese sabotaje sale VERDE (medido: la matriz de v566 lo cazo asi).
+test('🔒 con UNA sola toma la pantalla no fabrica un cambio (v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function renderMedidasClient');
+  const j = src.indexOf('function _medAsimetriaHtml');
+  assert.ok(i > 0 && j > i, 'se movieron las funciones de medidas');
+  const bloque = src.slice(i, j);
+  // De donde sale la respuesta: del numero REAL de tomas vivas, no de una constante.
+  assert.ok(/const primera\s*=\s*!medComparable\(/.test(bloque),
+    'la pantalla dejo de preguntarle a medComparable cuantas tomas hay');
+  // Y que hace con ella: con una toma no se calcula ningun cambio...
+  assert.ok(/const delta\s*=\s*\(!primera/.test(bloque),
+    'se esta calculando un cambio aunque solo haya una toma: vuelve la columna de ceros');
+  // ...ni se dibujan las columnas que lo mostrarian...
+  assert.ok((bloque.match(/\$\{primera\?''/g) || []).length >= 2,
+    'las celdas de Inicio/Cambio ya no estan condicionadas a que haya con que comparar');
+  // ...y se le dice lo que SI es: su punto de partida.
+  assert.ok(/if\(primera\)\{/.test(bloque) && /punto de partida/i.test(bloque),
+    'se perdio el mensaje que reemplaza a la columna de ceros');
+});
+
+// 🔴 DICTAMEN DE LAURA: con UNA sola toma la app no tiene autoridad para tranquilizar.
+// El error de una cinta en manos de una persona comun (0,5-1,5 cm) es del MISMO orden que la
+// asimetria que se busca, asi que «no es nada» seria una afirmacion que el dato no sostiene.
+test('🔒 con una sola toma la app dice «aun no sabemos», no «no es nada» (Laura, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function _medAsimetriaHtml');
+  assert.ok(i > 0, 'se movio la pantalla de asimetria');
+  const bloque = src.slice(i, src.indexOf('function renderMedidasCoach'));
+  assert.ok(/const leyenda\s*=\s*primera/.test(bloque),
+    'el texto del pie dejo de depender de si hay con que comparar');
+  // Las dos ramas del ternario, cada una entre comillas simples (el texto no lleva apostrofes).
+  const m = bloque.match(/const leyenda\s*=\s*primera\s*\?\s*('[^']*')\s*:\s*('[^']*')\s*;/);
+  assert.ok(m, 'no se pudo leer el pie de la asimetria');
+  const ramas = [m[1], m[2]];
+  const conUna = ramas[0];
+  assert.ok(/no es concluyente|a\u00fan no|aun no/i.test(conUna),
+    'con una sola toma hay que decir que todavia no se sabe');
+  assert.ok(!/no es nada|es normal|tranquil|no te preocupes/i.test(conUna),
+    'la app no puede tranquilizar con una sola toma: no distingue una diferencia real de la cinta');
+  // CONTROL DE DISCRIMINACION: con dos tomas SI se dice la lectura que la cinta sostiene.
+  assert.ok(/tama\u00f1o/i.test(ramas[1]),
+    'la otra rama perdio la unica lectura que una cinta metrica puede sostener');
+});
+
+// 🔴 HALLAZGO DE LUCAS QA (v566, antes de desplegar). El asistente del DIA 1 rotula
+// «Biceps der.» y «Muslo der.» — PIDE el lado — y guardaba en las claves SIN LADO, que desde
+// v566 son irreparables por diseno (no se pueden re-teclear y nadie sabe de que lado eran).
+// Era la puerta de entrada de CADA asesorado nuevo fabricando el unico dato que esta version
+// declara imposible de arreglar. La lista de claves se DERIVA del codigo, no se escribe a mano.
+test('🔒 el asistente del dia 1 guarda las medidas CON su lado (Lucas QA, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('function _dobSaveMed');
+  assert.ok(i > 0, 'se movio el guardado de medidas del asistente');
+  const bloque = src.slice(i, src.indexOf('function ', i + 20));
+  const claves = [...bloque.matchAll(/\{\s*key:\s*'([a-z_]+)'/g)].map(m => m[1]);
+  assert.ok(claves.length >= 6, 'no se pudieron leer los campos del asistente');
+  const legacy = MED_LEGACY.map(f => f.key);
+  const validas = MED_FIELDS.map(f => f.key);
+  claves.forEach(k => {
+    assert.ok(!legacy.includes(k),
+      'el asistente guarda «' + k + '», una clave SIN LADO que ya no se puede corregir nunca');
+    assert.ok(validas.includes(k),
+      'el asistente guarda «' + k + '», que no es ninguno de los 12 perimetros');
+  });
+  // Y no por su cuenta: por el mismo motor que la pantalla, o son dos verdades.
+  assert.ok(/medUpsert\(/.test(bloque),
+    'el asistente escribe medidas por su cuenta en vez de pasar por medUpsert');
+  assert.ok(!/DB\.medidas\[clientId\]\.unshift/.test(bloque),
+    'volvio el segundo camino de escritura con sus propias reglas');
+  // CONTROL: los campos que el formulario rotula «der.» son justo los que llevan lado.
+  const conLado = claves.filter(k => /_izq$|_der$/.test(k));
+  assert.strictEqual(conLado.length, 3,
+    'el asistente pide tres medidas de un lado (biceps, muslo, pantorrilla): tienen que guardarse asi');
+});
+
+// 🔴 HALLAZGO DE LUCAS QA: el candado Premium vivia SOLO en el render, y el boton
+// «+ Registrar» es marcado ESTATICO que vive fuera del contenedor que el render reemplaza.
+// Un tier libre o un plan vencido guardaba medidas — y se sincronizaban — para ver despues
+// el candado otra vez. El patron correcto ya estaba al lado (`openFoodLogRoom`).
+test('🔒 el candado Premium de medidas esta en la ACCION, no solo en el render (v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  ['openMedModal', 'saveMedidas', 'delMedida'].forEach(fn => {
+    const i = src.indexOf('function ' + fn + '(');
+    assert.ok(i > 0, 'se movio ' + fn);
+    const cuerpo = src.slice(i, src.indexOf('\n}', i));
+    assert.ok(/_medLocked\(/.test(cuerpo),
+      fn + ' no comprueba el plan: se llega por un boton estatico que el render no tapa');
+  });
+  // Y el que responde la pregunta lo hace con la funcion de siempre, no con una segunda
+  // definicion de «que es Premium» (seria el bug del peso de v448 en otro campo).
+  const g = src.indexOf('function _medLocked(');
+  assert.ok(g > 0 && /premiumLocked\(/.test(src.slice(g, g + 260)),
+    '_medLocked deberia delegar en premiumLocked');
+});
+
+// 🔴 HALLAZGO DE JULIAN QA + el mio del mismo tipo: al cambiar la FORMA de una
+// coleccion (ahora lleva lapidas dentro), hay que enumerar TODOS sus lectores. Contando
+// lapidas, quien borra su unica toma se queda con «Mi seguimiento personal» desplegado
+// ensenando su propio estado vacio, y no vuelve a ver el aviso de protocolo.
+test('🔒 nadie cuenta lapidas como tomas (Julian QA, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const lee = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const entreno = lee('app-4-entreno.js');
+  const i = entreno.indexOf('function applyProfileDisclosure');
+  assert.ok(i > 0, 'se movio applyProfileDisclosure');
+  const cuerpo = entreno.slice(i, entreno.indexOf('\n}', i));
+  assert.ok(/medLive\(/.test(cuerpo),
+    'la tarjeta de seguimiento cuenta el arreglo crudo: una lapida no es una toma');
+  const salud = lee('app-5-salud.js');
+  const j = salud.indexOf('const vistas=');
+  assert.ok(j > 0 && /medLive\(/.test(salud.slice(j, j + 90)),
+    'el aviso de protocolo se decide contando lapidas');
+  // Y «la ultima medida» del coach tampoco puede salir de un indice crudo.
+  const coach = lee('app-3-coach.js');
+  assert.ok(!/DB\.medidas\[c\.id\]\[0\]/.test(coach),
+    'el panel del coach lee «la ultima medida» por indice: puede ser una lapida');
+});
+
+// ═════ LOS CANDADOS DEL DICTAMEN DE LAURA (fisio, 2026-09-02) ═══════════════════
+// «Aqui es donde alguien se puede hacer dano de verdad si la app se equivoca»: si la app
+// interpreta como musculo algo que es un edema, manda a una persona a cargar peso sobre un
+// problema medico. Su lista de lo que la app NO puede decir NUNCA, vuelta candado.
+test('🔒 la pantalla de medidas no nombra NINGUN diagnostico (Laura, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function renderMedidasClient');
+  const j = src.indexOf('function renderMedidasCoach');
+  assert.ok(i > 0 && j > i, 'se movieron las funciones de medidas');
+  // Solo el TEXTO que se pinta: los comentarios explican por que estan prohibidas.
+  const bloque = src.slice(i, j).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const prohibidas = ['linfedema', 'trombosis', 'coagulo', 'coágulo', 'circulatori',
+    'retencion de liquido', 'retención de líquido', 'edema', 'varice', 'várice', 'inflamacion', 'inflamación'];
+  prohibidas.forEach(w => assert.ok(!new RegExp(w, 'i').test(bloque),
+    'la app no puede nombrar «' + w + '»: es un diagnostico, y AVI no diagnostica'));
+  // CONTROL DE DISCRIMINACION: el escaner tiene que poder morder de verdad.
+  assert.ok(/linfedema/i.test(bloque + ' linfedema'), 'el escaner no distingue nada');
+});
+
+test('🔒 la app no promete FUERZA a partir de una cinta metrica (Andres, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function _medAsimetriaHtml');
+  assert.ok(i > 0, 'se movio la pantalla de asimetria');
+  const bloque = src.slice(i, i + 2600).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  // El perimetro explica el 13% de la varianza de la asimetria de fuerza en la poblacion
+  // MAS favorable medida. Prometer «desequilibrio de fuerza» es la promesa-vs-plato de v427.
+  assert.ok(!/desequilibrio/i.test(bloque), 'no se puede hablar de «desequilibrio»: la cinta no lo mide');
+  assert.ok(!/m\u00fasculo|musculo|grasa/i.test(bloque),
+    'un perimetro no distingue musculo de grasa de agua: no se puede afirmar cual es');
+  // Y lo que SI dice tiene que estar: tamano, y el techo «coméntaselo a tu coach».
+  assert.ok(/tama\u00f1o/i.test(bloque), 'se perdio la unica lectura que la cinta sostiene');
+  assert.ok(/coach/i.test(bloque), 'se perdio el techo de severidad: hablar con el coach');
+});
+
+test('🔒 nunca una prescripcion de entrenamiento por asimetria (Laura, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function _medAsimetriaHtml');
+  const bloque = src.slice(i, i + 2600).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  [/entrena m\u00e1s/i, /m\u00e1s series/i, /compensa/i, /trabaja m\u00e1s ese/i].forEach(re =>
+    assert.ok(!re.test(bloque), 'prescribir carga por una asimetria es del coach, no de una regla automatica'));
+});
+
+test('🔒 la banda de asimetria es RELATIVA y no alarma dentro del ruido (v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  assert.ok(/MED_ASIM_RUIDO\s*=\s*5/.test(src),
+    'el piso de 5% esta anclado al error de medicion: por debajo no se distingue de apretar la cinta');
+  assert.ok(/MED_ASIM_HABLAR\s*=\s*10/.test(src),
+    'el techo de 10% es donde Andres y Laura coincidieron por separado');
+  // El umbral se compara contra el PORCENTAJE, no contra los cm: un brazo de 30 y un muslo
+  // de 60 no pueden compartir umbral en cm (sobre-alarma en el chico, calla en el grande).
+  const i = src.indexOf('function _medAsimetriaHtml');
+  const bloque = src.slice(i, i + 2600);
+  assert.ok(/a\.pct\s*<\s*MED_ASIM_RUIDO/.test(bloque), 'el umbral tiene que mirar el %, no los cm');
+  assert.ok(!/a\.dif\s*[<>]\s*MED_ASIM/.test(bloque), 'el umbral no puede compararse en cm');
+});
+
+// \🔴 Laura: cintura y cadera son las dos medidas mas ligadas al chequeo corporal y a
+// la comparacion con un ideal estetico. Hay 3 menores en la base (16, 17 y 15) y v449 ya
+// obligo a reescribir lenguaje de composicion corporal por esto mismo.
+test('🔒 a un MENOR no se le interpreta cintura ni cadera (Laura, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function renderMedidasClient');
+  const bloque = src.slice(i, src.indexOf('function _medAsimetriaHtml'));
+  assert.ok(/consentNeedsGuardian\(cli\.age\)/.test(bloque),
+    'la pantalla no sabe si quien la lee es menor de edad');
+  assert.ok(/sinInterpretar/.test(bloque) && /'cintura'/.test(bloque) && /'cadera'/.test(bloque),
+    'el silencio para menores no cubre cintura y cadera');
+  // El dato se GUARDA igual: no se le esconde, no se le interpreta.
+  assert.ok(/mudo/.test(bloque), 'la fila del menor tiene que seguir mostrando su numero');
+});
+
+// \🔴 Laura: ningun indice cintura-cadera visible para el asesorado, a ninguna edad.
+// Convierte dos numeros neutros en un juicio implicito de forma corporal.
+test('🔒 no existe indice cintura-cadera en la vista del asesorado (Laura, v566)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function renderMedidasClient');
+  const bloque = src.slice(i, src.indexOf('function renderMedidasCoach'));
+  assert.ok(!/cintura\s*\/\s*cadera|latest\.cintura\s*\/|\bICC\b/i.test(bloque),
+    'un indice cintura-cadera es un juicio de forma corporal: no va en la pantalla de nadie');
 });
 
 // 🔒 CANDADO DE CABLEADO — una funcion pura que no llama nadie es «puerta cerrada,

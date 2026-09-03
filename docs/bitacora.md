@@ -4,6 +4,123 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v566: LAS MEDIDAS SE PUEDEN CORREGIR, BORRAR Y COMPARAR POR LADO
+
+**De dónde sale.** Pedido del PO, textual: *«necesito mejorar la toma de medidas corporales, poder
+corregirlos o eliminarlos … poder medir cada brazo, cada pierna, cada pantorrilla, medir el cuello,
+cada muslo — eso ayuda a identificar posibles desequilibrios de fuerzas»*, y con él un estudio sobre
+cómo hacer seguimiento de medidas. Eligió la **dirección A** (los 12 perímetros completos) viendo
+las dos opciones lado a lado, **contra mi recomendación medida**, que era la B (cuello + un par por
+lado, 6 campos). Su decisión es final; el criterio de corte que acompaña a esa elección está abajo.
+
+**Medido contra producción el 2-sep (solo lectura).** Esto es lo que decide el diseño:
+- **8 de 24 personas se han medido alguna vez. Las 8, EXACTAMENTE UNA VEZ. Cero segundas tomas.**
+  (Comparación del mismo día: peso 18 personas, fotos 6.)
+- Las 8 vieron lo mismo: la tabla compara «Actual» contra «Inicio» y **con una sola toma son el
+  mismo registro**, así que la columna «Cambio» decía **0.0 cm en todas las filas**. Te mides el
+  cuerpo entero y la app te devuelve una columna de ceros.
+- **No había ninguna vía para corregir ni para borrar una toma.** Un 56 tecleado como 65 quedaba
+  para siempre y envenenaba la comparación de ahí en adelante.
+
+**El estudio: tres dictámenes, y dos de sus conclusiones contradicen el pedido.**
+- 🔴 **Andrés: el perímetro predice MAL la fuerza — explica el 13% de la varianza de la asimetría
+  de fuerza en la población más favorable medida.** O sea que la razón que el PO dio para pedir esto
+  («identificar desequilibrios de fuerzas») **no la sostiene una cinta métrica**. La feature se
+  construyó igual, porque el dato sirve para otras cosas, pero **la app jamás dice «desequilibrio de
+  fuerza»**: dice «diferencia de tamaño», que es lo único que una cinta puede afirmar.
+- 🔴 **El umbral va en PORCENTAJE, no en centímetros** (Andrés y Laura, por separado): un brazo de
+  30 y un muslo de 60 no pueden compartir umbral en cm — sobre-alarma en el chico y calla en el
+  grande. Piso **5%** (por debajo es ruido de la propia cinta), techo **10%** (por encima se
+  pregunta más). Las dos constantes viven al lado de su razón.
+- 🔴 **Lista de Laura de lo que la app NO puede decir NUNCA**, vuelta candado en la suite: ningún
+  nombre de diagnóstico (edema, linfedema, problema circulatorio…), ninguna prescripción de
+  entrenamiento por una asimetría, ningún lenguaje estético, **ningún índice cintura-cadera al
+  asesorado a ninguna edad**, y **a un MENOR no se le interpretan cintura ni cadera** (el dato se le
+  guarda y se le muestra; lo que no se hace es destacarle el cambio). Su techo de severidad es
+  «comentáselo a tu coach».
+- **Coach Pro corrigió el protocolo** (cintura en el borde del hueso de la cadera, **no en el
+  ombligo**; brazo suelto, nunca contraído; piernas de pie; en ayunas y antes de entrenar) y
+  diagnosticó la causa de las cero segundas tomas: **a nadie se le dijo cuándo volver a medirse**.
+- ⚠️ **DESACUERDO SIN RESOLVER, es del PO:** cada cuánto re-medir. **Andrés dice 8 semanas** (el
+  cambio real tiene que superar el error de medición); **Coach Pro dice 3** (por adherencia: a las 8
+  semanas ya nadie vuelve). No se construyó ningún recordatorio hasta que él decida.
+
+**Qué se hizo.**
+- **12 perímetros** (`MED_FIELDS`, avi-core): cuello, pecho, cintura, cadera + brazo, antebrazo,
+  muslo y pantorrilla **por lado**. Cada campo lleva **su instrucción debajo**, siempre visible: doce
+  perímetros con la cinta en un sitio distinto cada vez son doce números que no se pueden comparar.
+- **Corregir y eliminar.** `medUpsert` edita conservando la toma; **corregir NO mueve la fecha**
+  (mover la fecha reescribiría tu historia para tapar un dedazo) y **reemplaza** los campos en vez
+  de mezclarlos (mezclar dejaría vivo justo el valor que acabas de borrar).
+- 🔴 **BORRAR NO ES UN `filter`.** La fila del usuario se fusiona con la nube por **UNIÓN**
+  (`mergeClientArrays`): lo que se quita de la lista local **vuelve** en la siguiente fusión, basta
+  con que otro teléfono traiga una copia vieja. `medDelete` deja una **lápida** que gana por fecha de
+  modificación, `mergeMedidas` fusiona por id, y **`mergeAuthRow` se recableó** para usarla — con su
+  propio candado, porque la maquinaria entera puede estar perfecta y no servir de nada si esa
+  línea vuelve a la unión (sin ese test, el sabotaje salía VERDE).
+- **La columna de ceros muere.** Con una sola toma la pantalla no dibuja «Inicio» ni «Cambio»:
+  dice que es **tu punto de partida** y cuándo lo tomaste. Lo mismo en la ficha del coach, que
+  remataba cada casilla con un «0.0cm».
+- **Las medidas viejas sin lado no se pierden ni se falsifican.** 8 personas tienen guardado un
+  «brazo: 31» sin saber de qué lado: se muestran rotuladas **«sin lado»**, se conservan al editar, y
+  **jamás se les inventa un lado** — hacerlo envenenaría justo la comparación que esta versión
+  existe para hacer.
+
+**✂️ CRITERIO DE CORTE MEDIDO** (el compromiso al aceptar la dirección A sobre la B). La dirección A
+pide **12 números por toma contra los 6 de la B**, y hoy nadie se ha medido dos veces. Si dentro de
+**8 semanas (28-oct-2026)** las tomas nuevas no llenan los campos por lado, el dato lo dirá y se
+recorta a la B sin discusión. **Se reabre / se recorta con estas cifras, medibles el mismo día:**
+- **Se queda A** si hay **≥3 personas con ≥2 tomas** y **≥1 de cada 3 tomas nuevas** trae al menos
+  un par izquierda/derecha completo.
+- **Se recorta a B** si las tomas nuevas llenan **solo tronco** (0 pares completos), o si a las 8
+  semanas **sigue sin haber una sola segunda toma** — en ese caso el problema no son los campos.
+- Mismo patrón que el registro de alimentos (congelado el 27-ago con su criterio escrito).
+
+**🔴 LO QUE ENCONTRÓ EL QA, Y ES LO MÁS IMPORTANTE DE LA VERSIÓN.** Tres defectos, ninguno
+en el modal nuevo — los tres **por fuera**, en código que este cambio no tocó pero cuyo
+comportamiento sí cambió:
+
+- 🔴 **Lucas: el asistente del DÍA 1 pedía el lado y lo tiraba.** `_dobSaveMed`
+  (`app-6-extra.js`) es la puerta por la que entra **todo asesorado nuevo**: su formulario rotula
+  **«Bíceps der.»** y **«Muslo der.»** — PIDE el lado — y guardaba en las claves sin lado, que
+  desde v566 son `MED_LEGACY`: **no se pueden re-teclear en ninguna pantalla y jamás se les puede
+  asignar un lado**, porque nadie sabría cuál era. O sea que la entrada principal fabricaba, desde
+  el día 1 y para siempre, el único dato que esta versión declara irreparable, **y justo en los
+  tres campos por los que existe la dirección A**. Ahora escribe `brazo_der`/`muslo_der`/
+  `pantorrilla_der` **por `medUpsert`** (hereda id, `mAt`, redondeo, tope y la regla del mismo
+  día), y la pantorrilla se rotula «der.» como sus dos vecinas.
+- 🔴 **Lucas: el candado Premium vivía solo en el RENDER.** El botón «+ Registrar» es marcado
+  **estático** y vive FUERA de `#cn-med-list`, que es lo único que `renderMedidasClient` sustituye
+  por el candado; el toggle de «Mi seguimiento personal» tampoco preguntaba. Un tier libre o un
+  plan vencido abría el modal, guardaba, **el dato se sincronizaba a la nube**, y después veía el
+  candado otra vez. El patrón correcto ya estaba en el mismo archivo (`openFoodLogRoom`): la
+  comprobación va en la **ACCIÓN**. Ahora `openMedModal`, `saveMedidas` y `delMedida` preguntan.
+- 🔴 **Julián: hay lectores que cuentan LÁPIDAS como tomas.** Al meter borrados dentro de la
+  colección cambió su FORMA, y no todos sus lectores se enteraron: `applyProfileDisclosure`
+  (`app-4-entreno.js`) medía `med.length` crudo — quien borra su única toma se quedaba con «Mi
+  seguimiento personal» **desplegado enseñando su propio estado vacío** — y lo mismo mi propio
+  contador del aviso de protocolo. De paso, los **tres lectores de «la última medida» del panel
+  del coach** leían `DB.medidas[c.id][0]` por ÍNDICE, confiando en un orden que nadie garantiza
+  (la clase exacta del bug del peso de v448). Los cinco pasan por `medLive`.
+
+⚖️ **Los dos QA se contradijeron y hubo que medir.** Julián dio el primero por **código muerto**
+(«los ids `dob-*` no existen en `index.html`») y Lucas por **bloqueante**. Ganó Lucas: los inputs
+no están en `index.html` porque **`_dobRenderStep` los inyecta** dentro de `#dob-body`, que sí
+está. **Un `grep` de ids sobre el HTML no ve el marcado que se genera desde JS** — y este repo lo
+genera casi todo. El resto del informe de Julián reprodujo limpio.
+
+**Verificación.** Suite **1002 → 1008**. Matriz nueva `scripts/e2e/_sabotaje-medidas.mjs` (**18 casos**, los 3 últimos de los hallazgos del QA;
+por código de salida) — **la primera corrida dio 12 de 15**: uno no se aplicó (ancla mal escrita) y
+**dos salían VERDES porque la pantalla no tenía candado**, o sea que un `const primera=false` habría
+devuelto la columna de ceros con la suite en verde. Los dos candados que faltaban se escribieron.
+Harness nuevo `scripts/e2e/_verify-medidas.mjs` (9 secciones, lee **solo lo VISIBLE**).
+
+⚠️ **CLASE HERMANA CONFIRMADA, NO ARREGLADA AQUÍ (va en su propia versión): `deletePhoto`**
+(`app-5-salud.js:1291`) borra con `filter` sobre `DB.photos`, que `mergeAuthRow` fusiona con la
+UNIÓN por fecha — misma resurrección. Y ahí es **peor**: `deletePhotoFromStorage` sí borra el
+archivo, así que lo que vuelve de la nube es una entrada apuntando a una foto que ya no existe.
+No entra en este commit para no mezclar dos features; entra inmediatamente después.
+
 ## 🔄 2026-09-02 — avi-v565: LA APP YA NO OBLIGA A UN MENOR A MENTIR
 
 **De dónde sale.** Hallazgo del área A1 (legal y datos personales) de la auditoría por áreas,

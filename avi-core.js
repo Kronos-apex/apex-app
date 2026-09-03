@@ -2139,7 +2139,10 @@ function mergeAuthRow(localRow, cloudRow) {
   out.msgs = mergeMsgs(localRow.msgs, cloudRow.msgs);
   const byDate = it => String(it && it.date || '');
   out.bodyweight = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.bodyweight || [], cloudRow.bodyweight || []);
-  out.medidas = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.medidas || [], cloudRow.medidas || []);
+  // 🔴 Las medidas NO usan la unión por fecha: desde v566 se pueden BORRAR, y una unión
+  //    no sabe de borrados — lo eliminado en un teléfono volvía desde la copia de la nube.
+  //    `mergeMedidas` fusiona por id y deja ganar a la modificación más reciente.
+  out.medidas = pair((l, c) => mergeMedidas(l, c), localRow.medidas || [], cloudRow.medidas || []);
   out.photos = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.photos || [], cloudRow.photos || []);
   return out;
 }
@@ -3773,6 +3776,221 @@ function consentSame(a, b) {
 function consentKeep(prev, next) {
   if (!next) return prev || null;
   return consentSame(prev, next) ? prev : next;
+}
+
+// ═════════ MEDIDAS CORPORALES — el motor (v566) ════════════════════════════
+// MEDIDO contra producción el 2026-09-02: 8 de 24 personas se han medido alguna vez y
+// **las 8 tienen exactamente UNA toma — cero segundas tomas en toda la base**. De
+// contraste, 18 se pesan y 6 suben fotos. Así que esta superficie no es que se use poco:
+// es que **no retiene a nadie**, y eso enmarca todo lo de abajo.
+//
+// Decisión del PO (2026-09-02), tomada viendo tres pantallas dibujadas lado a lado:
+// **dirección A — el mapa completo**, 12 perímetros con los miembros medidos POR LADO.
+// La tomó contra mi recomendación medida (yo propuse 9, quitando pecho y antebrazo).
+// Por eso nace con criterio de corte medido, igual que el registro de alimentos: si
+// dentro de unas semanas los campos nuevos no se llenan, el dato lo dirá.
+//
+// 🔴 EL UMBRAL DE ASIMETRÍA NO VIVE AQUÍ TODAVÍA. `medAsimetria` devuelve la
+//    diferencia en cm y en %, y **no dictamina nada**: cuánta diferencia es normal y
+//    cuánta es señal lo tienen que decidir Andrés (hipertrofia) y Laura (fisio). Un
+//    umbral inventado es la misma clase de error que la descarga de v433: un detector
+//    que alarma a todo el mundo, o uno mudo que no alarma nunca.
+
+// Los 12 perímetros. `par` agrupa izquierda/derecha; sin `par` es una medida única.
+const MED_FIELDS = [
+  { key: 'cuello',          label: 'Cuello',           grupo: 'Tronco' },
+  { key: 'pecho',           label: 'Pecho',            grupo: 'Tronco' },
+  { key: 'cintura',         label: 'Cintura',          grupo: 'Tronco' },
+  { key: 'cadera',          label: 'Cadera',           grupo: 'Tronco' },
+  { key: 'brazo_izq',       label: 'Brazo izq.',       grupo: 'Brazos',  par: 'brazo',       lado: 'izq' },
+  { key: 'brazo_der',       label: 'Brazo der.',       grupo: 'Brazos',  par: 'brazo',       lado: 'der' },
+  { key: 'antebrazo_izq',   label: 'Antebrazo izq.',   grupo: 'Brazos',  par: 'antebrazo',   lado: 'izq' },
+  { key: 'antebrazo_der',   label: 'Antebrazo der.',   grupo: 'Brazos',  par: 'antebrazo',   lado: 'der' },
+  { key: 'muslo_izq',       label: 'Muslo izq.',       grupo: 'Piernas', par: 'muslo',       lado: 'izq' },
+  { key: 'muslo_der',       label: 'Muslo der.',       grupo: 'Piernas', par: 'muslo',       lado: 'der' },
+  { key: 'pantorrilla_izq', label: 'Pantorrilla izq.', grupo: 'Piernas', par: 'pantorrilla', lado: 'izq' },
+  { key: 'pantorrilla_der', label: 'Pantorrilla der.', grupo: 'Piernas', par: 'pantorrilla', lado: 'der' },
+];
+
+// 🔒 LAS MEDIDAS VIEJAS NO SE LES ASIGNA UN LADO. Hasta v565 el campo decía «Brazo»
+//    y nadie preguntaba cuál: 8 personas tienen guardado un número cuyo lado NO SE SABE.
+//    Adivinarlo (meterlo en «derecho» porque la mayoría es diestra) fabricaría un dato que
+//    nadie dio, y encima envenenaría justo la comparación izquierda/derecha que esta
+//    versión existe para hacer. Se muestran tal cual, rotulados «sin lado», y ahí mueren.
+const MED_LEGACY = [
+  { key: 'brazo',       label: 'Brazo (sin lado)',       par: 'brazo' },
+  { key: 'muslo',       label: 'Muslo (sin lado)',       par: 'muslo' },
+  { key: 'pantorrilla', label: 'Pantorrilla (sin lado)', par: 'pantorrilla' },
+];
+
+const MED_PARES = ['brazo', 'antebrazo', 'muslo', 'pantorrilla'];
+const MED_CAP = 60;          // tomas vivas que se conservan por persona
+const MED_TUMBA_DIAS = 400;  // cuánto vive una lápida antes de poder soltarla (ver abajo)
+
+// Identidad estable de una toma. Las viejas no tienen `id` y su identidad ERA la fecha
+// (así las fusiona la nube desde siempre), de modo que el id derivado la conserva: una
+// toma que ya existía no se duplica al actualizar la app.
+function medEntryId(entry) {
+  if (!entry) return '';
+  if (entry.id) return String(entry.id);
+  return 'd:' + String(entry.date || '');
+}
+
+// Normaliza una lista: pone `id` y `mAt` a lo que venga sin ellos. `mAt` (modificado-en)
+// es lo que decide quién gana al fusionar; sin él, la fecha de la toma.
+function medNormalize(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries.filter(e => e && typeof e === 'object').map(e => {
+    const out = Object.assign({}, e);
+    out.id = medEntryId(e);
+    if (!out.mAt) out.mAt = String(e.date || '');
+    return out;
+  });
+}
+
+// Las tomas VIVAS, nueva → vieja. Las lápidas nunca salen de aquí.
+function medLive(entries) {
+  return medNormalize(entries)
+    .filter(e => !e.del)
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
+
+// ¿Qué campos trae realmente esta toma? (los 12 nuevos + los 3 viejos sin lado)
+function medFilled(entry) {
+  if (!entry) return [];
+  const todos = MED_FIELDS.concat(MED_LEGACY);
+  return todos.filter(f => {
+    const v = Number(entry[f.key]);
+    return isFinite(v) && v > 0;
+  });
+}
+
+// Crea o EDITA una toma. Devuelve la lista nueva (no muta la que recibe).
+//   id === null  → alta; si ya hay una toma de ESE MISMO DÍA, se actualiza esa
+//                  (misma regla de siempre: dos tomas del mismo día no son dos puntos)
+//   id !== null  → edición de esa toma, conservando su fecha original
+// 🔒 Editar NO mueve la fecha de la toma: si corriges un 65 que era 56, sigue siendo
+//    la medida de aquel día. Mover la fecha reescribiría tu historia para tapar un dedazo.
+function medUpsert(entries, valores, nowIso, id) {
+  const lista = medNormalize(entries);
+  const at = nowIso || new Date().toISOString();
+  const limpio = {};
+  let algo = false;
+  MED_FIELDS.forEach(f => {
+    const v = Number(valores && valores[f.key]);
+    if (isFinite(v) && v > 0) { limpio[f.key] = Math.round(v * 10) / 10; algo = true; }
+  });
+  if (!algo) return null;   // el llamador avisa; jamás se guarda una toma vacía
+
+  let i = -1;
+  if (id) i = lista.findIndex(e => e.id === String(id) && !e.del);
+  else {
+    const hoy = new Date(at).toDateString();
+    i = lista.findIndex(e => !e.del && new Date(e.date || 0).toDateString() === hoy);
+  }
+
+  if (i >= 0) {
+    const prev = lista[i];
+    // Al editar se REEMPLAZAN los campos, no se mezclan: si borraste un valor de la
+    // pantalla es porque ese número no debe quedar. Mezclar dejaría vivo lo que
+    // acabas de quitar, que es la forma más silenciosa de que un dedazo sobreviva.
+    const base = { id: prev.id, date: prev.date, mAt: at };
+    if (prev.por) base.por = prev.por;
+    // Los campos viejos sin lado se CONSERVAN: no se pueden re-teclear desde la
+    // pantalla nueva (no tienen dónde) y borrarlos aquí sería perder el único dato
+    // que esa persona llegó a dar.
+    MED_LEGACY.forEach(f => { if (prev[f.key] != null) base[f.key] = prev[f.key]; });
+    lista[i] = Object.assign(base, limpio);
+  } else {
+    lista.unshift(Object.assign({ id: 'm' + at + '-' + Math.random().toString(36).slice(2, 7), date: at, mAt: at }, limpio));
+  }
+  return medPrune(lista, at);
+}
+
+// 🔴 BORRAR DE VERDAD EXIGE UNA LÁPIDA, NO UN `filter`. La fila del usuario se
+//    fusiona con la nube por UNIÓN (`mergeClientArrays`): lo que se quita de la lista
+//    local sigue estando en la nube y **vuelve** en la siguiente fusión — basta con que
+//    otro teléfono traiga una copia vieja. Por eso el borrado deja la toma en la lista
+//    marcada `del:true`, y la fusión de abajo hace que la lápida gane por `mAt`.
+function medDelete(entries, id, nowIso) {
+  const lista = medNormalize(entries);
+  const at = nowIso || new Date().toISOString();
+  const i = lista.findIndex(e => e.id === String(id));
+  if (i < 0) return null;                 // no existe: el llamador no debe fingir que borró
+  if (lista[i].del) return lista;         // ya estaba borrada
+  lista[i] = { id: lista[i].id, date: lista[i].date, del: true, mAt: at };
+  return medPrune(lista, at);
+}
+
+// Recorta la lista. Las VIVAS se topan en MED_CAP; las lápidas no cuentan para ese tope
+// (una lápida no es una toma) y solo se sueltan cuando son tan viejas que ninguna copia
+// rezagada puede resucitar lo que tapan.
+function medPrune(entries, nowIso) {
+  const lista = medNormalize(entries).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const ahora = new Date(nowIso || Date.now()).getTime();
+  const vivas = [], tumbas = [];
+  lista.forEach(e => {
+    if (e.del) {
+      const t = new Date(e.mAt || e.date || 0).getTime();
+      const dias = isFinite(t) ? (ahora - t) / 86400000 : 0;
+      if (dias <= MED_TUMBA_DIAS) tumbas.push(e);
+    } else vivas.push(e);
+  });
+  return vivas.slice(0, MED_CAP).concat(tumbas);
+}
+
+// Fusión propia de las medidas: por `id`, y **gana la más reciente por `mAt`**.
+// La común (`mergeClientArrays`) es una UNIÓN por fecha y no sabe de borrados: con ella
+// una lápida local perdía contra la copia viva de la nube en el empate de fechas
+// (`a.concat(b)` pone la nube de segunda y el `>=` la deja ganar) y lo borrado volvía.
+function mergeMedidas(local, cloud) {
+  local = local && typeof local === 'object' ? local : {};
+  cloud = cloud && typeof cloud === 'object' ? cloud : {};
+  const out = {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  ids.forEach(cid => {
+    const a = medNormalize(Array.isArray(local[cid]) ? local[cid] : []);
+    const b = medNormalize(Array.isArray(cloud[cid]) ? cloud[cid] : []);
+    const porId = new Map();
+    a.concat(b).forEach(it => {
+      const prev = porId.get(it.id);
+      if (!prev) { porId.set(it.id, it); return; }
+      const t = new Date(it.mAt || it.date || 0).getTime();
+      const tp = new Date(prev.mAt || prev.date || 0).getTime();
+      if (t > tp) porId.set(it.id, it);
+    });
+    out[cid] = medPrune([...porId.values()]);
+  });
+  return out;
+}
+
+// La diferencia izquierda/derecha de una toma, en cm y en % del lado mayor.
+// 🔴 NO DICTAMINA. Devuelve la medición cruda a propósito: qué diferencia es normal
+//    y cuál merece decir algo lo deciden Andrés y Laura, y hasta que lo digan la pantalla
+//    enseña el número sin adjetivo. Un umbral inventado alarma a todo el mundo o a nadie.
+function medAsimetria(entry) {
+  if (!entry) return [];
+  const out = [];
+  MED_PARES.forEach(par => {
+    const i = Number(entry[par + '_izq']), d = Number(entry[par + '_der']);
+    if (!isFinite(i) || !isFinite(d) || i <= 0 || d <= 0) return;
+    const dif = Math.round(Math.abs(d - i) * 10) / 10;
+    const mayor = Math.max(i, d);
+    out.push({
+      par, izq: i, der: d, dif,
+      mayorLado: d > i ? 'der' : (i > d ? 'izq' : null),
+      pct: mayor > 0 ? Math.round((dif / mayor) * 1000) / 10 : 0,
+    });
+  });
+  return out;
+}
+
+// ¿Esta persona tiene con qué comparar? Con UNA sola toma no hay evolución que mostrar,
+// y hasta v565 la tabla lo tapaba enseñando «0.0 cm» en todas las filas — mides el cuerpo
+// entero y la app te devuelve una columna de ceros. Las 8 personas que se midieron vieron
+// exactamente eso. Con una toma, la pantalla dice que es tu PUNTO DE PARTIDA.
+function medComparable(entries) {
+  return medLive(entries).length >= 2;
 }
 
 // ── ¿Es usuario en modo libre (gratis, sin coach)? ──
@@ -9274,6 +9492,21 @@ if (typeof module !== 'undefined' && module.exports) {
     passwordProblem,
     consentEvidence,
     consentNeedsGuardian,
+    MED_FIELDS,
+    MED_LEGACY,
+    MED_PARES,
+    MED_CAP,
+    MED_TUMBA_DIAS,
+    medEntryId,
+    medNormalize,
+    medLive,
+    medFilled,
+    medUpsert,
+    medDelete,
+    medPrune,
+    mergeMedidas,
+    medAsimetria,
+    medComparable,
     consentSame,
     consentKeep,
     PAIN_AREAS,

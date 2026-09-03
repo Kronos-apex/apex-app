@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=565">
+<link rel="stylesheet" href="styles.css?v=566">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1319,19 +1319,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=565"></script>
-<script src="muscle-map.js?v=565"></script>
-<script src="exercise-muscles.js?v=565"></script>
+<script src="avi-core.js?v=566"></script>
+<script src="muscle-map.js?v=566"></script>
+<script src="exercise-muscles.js?v=566"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=565"></script>
-<script src="app-2-login.js?v=565"></script>
-<script src="app-3-coach.js?v=565"></script>
-<script src="app-4-entreno.js?v=565"></script>
-<script src="app-5-salud.js?v=565"></script>
-<script src="app-6-extra.js?v=565"></script>
-<script src="app-7-community.js?v=565"></script>
+<script src="app-1-infra.js?v=566"></script>
+<script src="app-2-login.js?v=566"></script>
+<script src="app-3-coach.js?v=566"></script>
+<script src="app-4-entreno.js?v=566"></script>
+<script src="app-5-salud.js?v=566"></script>
+<script src="app-6-extra.js?v=566"></script>
+<script src="app-7-community.js?v=566"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1538,18 +1538,45 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <div class="mdbg" id="m-med">
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-21">
     <div class="mdtitle" id="mdt-21">📏 Registrar medidas</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">En cent&iacute;metros. Completa solo las que tengas.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="fg"><label class="ilbl" for="med-pecho">Pecho (cm)</label><input class="inp" id="med-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
-      <div class="fg"><label class="ilbl" for="med-cintura">Cintura (cm)</label><input class="inp" id="med-cintura" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80"></div>
-      <div class="fg"><label class="ilbl" for="med-cadera">Cadera (cm)</label><input class="inp" id="med-cadera" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
-      <div class="fg"><label class="ilbl" for="med-brazo">Brazo (cm)</label><input class="inp" id="med-brazo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"></div>
-      <div class="fg"><label class="ilbl" for="med-muslo">Muslo (cm)</label><input class="inp" id="med-muslo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"></div>
-      <div class="fg"><label class="ilbl" for="med-pantorrilla">Pantorrilla (cm)</label><input class="inp" id="med-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 36"></div>
+    <!-- 🔴 EL AVISO DE UNA SOLA VEZ (Coach Pro): tres reglas y ni una más. Si cada toma
+         usa una postura distinta, dos números del mismo brazo no se pueden comparar — y el
+         error de una cinta en manos de una persona común (0,5-1,5 cm) es del MISMO orden que
+         la diferencia izquierda/derecha que se busca medir (Andrés + Laura, coinciden). -->
+    <div id="med-first" class="medfirst">
+      <b>Tres cosas para que tus medidas se puedan comparar</b>
+      Mídete <b>en ayunas, recién levantado y antes de entrenar</b>, con el <b>brazo suelto</b> (nunca contraído) y sin ropa gruesa. Después de entrenar el músculo está congestionado y mide más.
     </div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">En cent&iacute;metros. Completa solo las que tengas — ninguna es obligatoria.</div>
+
+    <div class="medgrp">Tronco</div>
+    <div class="medgrid">
+      <div class="fg"><label class="ilbl" for="med-cuello">Cuello (cm)</label><input class="inp" id="med-cuello" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 38"><div class="medhint">Debajo de la nuez, horizontal, mirando al frente.</div></div>
+      <div class="fg"><label class="ilbl" for="med-pecho">Pecho (cm)</label><input class="inp" id="med-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"><div class="medhint">Por la mitad del pecho, pasando bajo las axilas. Mide al soltar el aire.</div></div>
+      <div class="fg"><label class="ilbl" for="med-cintura">Cintura (cm)</label><input class="inp" id="med-cintura" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80"><div class="medhint">En el borde duro del hueso de la cadera — no en el ombligo. Sin meter la barriga.</div></div>
+      <div class="fg"><label class="ilbl" for="med-cadera">Cadera (cm)</label><input class="inp" id="med-cadera" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 98"><div class="medhint">Por la parte más ancha de los glúteos, de pie y con los talones juntos.</div></div>
+    </div>
+
+    <div class="medgrp">Brazos · izquierdo y derecho</div>
+    <div class="medgrid">
+      <div class="fg"><label class="ilbl" for="med-brazo_izq">Brazo izq. (cm)</label><input class="inp" id="med-brazo_izq" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 31"><div class="medhint">Brazo suelto y colgando, a mitad entre el hombro y el codo.</div></div>
+      <div class="fg"><label class="ilbl" for="med-brazo_der">Brazo der. (cm)</label><input class="inp" id="med-brazo_der" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 32"><div class="medhint">Igual que el otro: suelto, nunca contraído.</div></div>
+      <div class="fg"><label class="ilbl" for="med-antebrazo_izq">Antebrazo izq. (cm)</label><input class="inp" id="med-antebrazo_izq" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 27"><div class="medhint">En la parte más gruesa, un par de dedos bajo el codo.</div></div>
+      <div class="fg"><label class="ilbl" for="med-antebrazo_der">Antebrazo der. (cm)</label><input class="inp" id="med-antebrazo_der" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 28"><div class="medhint">Mismo punto que el izquierdo, brazo suelto.</div></div>
+    </div>
+
+    <div class="medgrp">Piernas · izquierda y derecha</div>
+    <div class="medgrid">
+      <div class="fg"><label class="ilbl" for="med-muslo_izq">Muslo izq. (cm)</label><input class="inp" id="med-muslo_izq" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"><div class="medhint">De pie, peso en los dos pies, a mitad entre la ingle y la rodilla.</div></div>
+      <div class="fg"><label class="ilbl" for="med-muslo_der">Muslo der. (cm)</label><input class="inp" id="med-muslo_der" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 56"><div class="medhint">Mismo punto que el izquierdo. Nunca sentado.</div></div>
+      <div class="fg"><label class="ilbl" for="med-pantorrilla_izq">Pantorrilla izq. (cm)</label><input class="inp" id="med-pantorrilla_izq" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"><div class="medhint">De pie, por la parte más ancha.</div></div>
+      <div class="fg"><label class="ilbl" for="med-pantorrilla_der">Pantorrilla der. (cm)</label><input class="inp" id="med-pantorrilla_der" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 36"><div class="medhint">Mismo punto que la izquierda.</div></div>
+    </div>
+
+    <div id="med-legacy" class="medlegacy" style="display:none"></div>
+
     <div class="mdfooter">
       <button class="btn bg" onclick="cm('m-med')">Cancelar</button>
-      <button class="btn bp" onclick="saveMedidas()">💾 Guardar</button>
+      <button class="btn bp" id="med-save-btn" onclick="saveMedidas()">💾 Guardar</button>
     </div>
   </div>
 </div>

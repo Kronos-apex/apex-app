@@ -1937,7 +1937,7 @@ function _dobRenderStep(step){
           <div class="fg"><label class="ilbl">Pecho (cm)</label><input class="inp" id="dob-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"></div>
           <div class="fg"><label class="ilbl">Bíceps der. (cm)</label><input class="inp" id="dob-brazo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 35"></div>
           <div class="fg"><label class="ilbl">Muslo der. (cm)</label><input class="inp" id="dob-muslo" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 55"></div>
-          <div class="fg"><label class="ilbl">Pantorrilla (cm)</label><input class="inp" id="dob-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 38"></div>
+          <div class="fg"><label class="ilbl">Pantorrilla der. (cm)</label><input class="inp" id="dob-pantorrilla" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 38"></div>
         </div>
       </div>
       <div class="dob-foot">
@@ -1984,29 +1984,38 @@ function _dobSaveBW(){
   _dobRenderStep(2);
 }
 
+// 🔴 ESTE ASISTENTE PEDÍA EL LADO Y LO TIRABA. El formulario dice «Bíceps der.» y
+//    «Muslo der.», y guardaba en las claves SIN LADO (`brazo`, `muslo`, `pantorrilla`) — que
+//    desde v566 son `MED_LEGACY`: no se pueden re-teclear en ninguna pantalla y jamás se les
+//    puede asignar un lado, porque nadie sabría cuál era. O sea que la puerta de entrada de
+//    CADA asesorado nuevo fabricaba, desde el día 1, el único dato que esta versión declara
+//    irreparable — y justo en los tres campos por los que existe la dirección A.
+// 🔒 Y pasa por `medUpsert`, no por un `unshift` a mano: así hereda el id, el `mAt`, el
+//    redondeo, el tope real y la regla de «dos tomas el mismo día no son dos puntos». Un
+//    segundo camino de escritura con sus propias reglas es como se separan dos verdades.
 function _dobSaveMed(){
   const clientId = _dobClientId;
   const fields = [
-    {key:'cintura',id:'dob-cintura'},
-    {key:'cadera',id:'dob-cadera'},
-    {key:'pecho',id:'dob-pecho'},
-    {key:'brazo',id:'dob-brazo'},
-    {key:'muslo',id:'dob-muslo'},
-    {key:'pantorrilla',id:'dob-pantorrilla'}
+    {key:'cintura',        id:'dob-cintura'},
+    {key:'cadera',         id:'dob-cadera'},
+    {key:'pecho',          id:'dob-pecho'},
+    {key:'brazo_der',      id:'dob-brazo'},
+    {key:'muslo_der',      id:'dob-muslo'},
+    {key:'pantorrilla_der',id:'dob-pantorrilla'}
   ];
-  const entry = {date: new Date().toISOString()};
-  let hasData = false;
+  const vals = {};
   fields.forEach(f => {
     const el = document.getElementById(f.id);
-    if(!el) return;
+    if(!el || el.value === '') return;
     const v = parseFloat(el.value);
-    if(v > 0){ entry[f.key] = v; hasData = true; }
+    if(v > 0) vals[f.key] = v;
   });
-  if(hasData){
+  const lista = (typeof medUpsert === 'function')
+    ? medUpsert((DB.medidas || {})[clientId] || [], vals, new Date().toISOString(), null)
+    : null;
+  if(lista){
     if(!DB.medidas) DB.medidas = {};
-    if(!DB.medidas[clientId]) DB.medidas[clientId] = [];
-    DB.medidas[clientId].unshift(entry);
-    if(DB.medidas[clientId].length > 24) DB.medidas[clientId] = DB.medidas[clientId].slice(0, 24);
+    DB.medidas[clientId] = lista;
     sv('ax_med', DB.medidas);
     renderMedidasClient(clientId);
     toast('📏 Medidas guardadas');
