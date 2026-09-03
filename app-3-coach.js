@@ -1685,15 +1685,24 @@ function renderStoryCard(c){
   const st=clientProgressStory(c,(DB.history&&DB.history[c.id])||[],new Date());
   _storyData=null;
   if(!st||!st.ok){
+    // 🔴 v570 · AQUÍ VIVÍA LA TRAMPA. Este `return` se daba ANTES de dibujar `#d-story-pub`, que
+    //    es donde vive el botón «Quitar». O sea: corregirle la edad a un menor escondía el único
+    //    botón para bajar la tarjeta que esa misma corrección volvía ilegal. Ahora el control de
+    //    la tarjeta PUBLICADA se dibuja pase lo que pase — quitar no depende de poder publicar.
     // Solo se explica el caso del MENOR: los demás («aún no hay entrenos suficientes») no son un
     // problema que el coach deba resolver y una tarjeta por cada uno sería ruido en su ficha.
-    if(st&&st.razon==='menor'){
-      el.style.display='block';
-      el.innerHTML=`<div class="card"><div class="cb" style="font-size:12.5px;color:var(--t2);line-height:1.55">
+    const _menor=!!(st&&st.razon==='menor');
+    el.innerHTML=`<div class="card"><div class="cb">`+
+      (_menor?`<div style="font-size:12.5px;color:var(--t2);line-height:1.55">
         ${_coIco('lock',13,'🔒')} <b>Sin imagen para compartir:</b> es menor de edad. Publicar su nombre y sus
         datos de entrenamiento en redes necesita el permiso de su acudiente, así que la app no lo
-        deja a un toque. Si lo tienes, ármala tú.</div></div>`;
-    }
+        deja a un toque. Si lo tienes, ármala tú.</div>`:'')+
+      `<div id="d-story-pub"${_menor?' style="margin-top:9px"':''}></div></div></div>`;
+    // La tarjeta se muestra ya si hay algo que decir; si no, la revela `_renderStoryPub` cuando
+    // encuentra una fila publicada (la lectura es de red y no se puede resolver aquí).
+    if(_menor) el.style.display='block';
+    _renderStoryPub({nombre:(typeof showcaseFirstName==='function')?showcaseFirstName(c.name):'',
+                     ok:false, razon:(st&&st.razon)||null});
     return;
   }
   _storyData=st;
@@ -1808,12 +1817,27 @@ async function _renderStoryPub(st){
   if(ya){
     // «Ver» va aquí y no solo en el Inicio (v542): es el momento en que quiere comprobar cómo
     // quedó — publicar a ciegas y tener que buscar la puerta en otra pantalla es lo que reportó.
-    el2.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt);flex-wrap:wrap">
-      ${_coIco('check',13,'✓')} <span>Publicada en tu página</span>
+    // 🔒 v570 · Si HOY no se publicaría, se dice y se dice POR QUÉ. Una tarjeta que ya está
+    //    afuera no se cae sola cuando cambian las condiciones: alguien tiene que enterarse.
+    const mal=st.ok===false;
+    const _pq=st.razon==='menor'
+      ? 'es menor de edad, y publicar su nombre necesita permiso de su acudiente'
+      : 'hoy ya no cumple las condiciones para publicarse';
+    el2.innerHTML=(mal
+      ? `<div style="font-size:12px;color:var(--ort);line-height:1.5;margin-bottom:7px">
+           ${_coIco('alert',13,'⚠️')} <b>Tiene una tarjeta publicada</b> en tu página y la app hoy no la
+           publicaría: ${_pq}. Si no debe seguir ahí, quítala.</div>`
+      : '')+
+      `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt);flex-wrap:wrap">
+      ${mal?'':_coIco('check',13,'✓')} <span>${mal?'En tu página pública':'Publicada en tu página'}</span>
       <button class="btn bg bsm" style="margin-left:auto" onclick="verMiPagina()">Ver</button>
       <button class="btn bd bsm" onclick="unpublishProgress('${esc(ya.id)}')">Quitar</button></div>`;
+    const _cont=document.getElementById('d-story'); if(_cont)_cont.style.display='block';
     return;
   }
+  // Sin tarjeta publicada y sin historia que publicar no hay nada que ofrecer: el botón de
+  // publicar exige una historia válida, así que aquí se acaba.
+  if(st.ok===false){ el2.innerHTML=''; return; }
   const lleno=filas.length>=(typeof SHOWCASE_MAX==='number'?SHOWCASE_MAX:6);
   el2.innerHTML=lleno
     ? `<div style="font-size:12px;color:var(--t2)">Tu página ya tiene ${filas.length} tarjetas (el tope). Quita una para publicar esta.</div>`
@@ -1850,9 +1874,12 @@ async function unpublishProgress(id){
     const c=AUTH.client(); if(!c)return;
     const {error}=await c.from('avi_showcase').delete().eq('id',id);
     if(error){toast('No se pudo quitar');return;}
-    await _loadShowcase(true);
+    const filas=await _loadShowcase(true);
     toast('Quitada de tu página');
     const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
+    // Se puede quitar desde el Inicio (una huérfana no tiene ficha donde volver): ese bloque se
+    // repinta aquí o seguiría mostrando la tarjeta que se acaba de borrar.
+    if(typeof _renderPagePendientes==='function')_renderPagePendientes(filas);
   }catch(e){ toast('No se pudo quitar'); }
 }
 

@@ -12048,6 +12048,53 @@ test('ninguna regla de styles.css usa el token CRUDO como texto sobre su propio 
     'texto con el token crudo sobre su propio tinte (ilegible en tema CLARO):\n  ' + malas.join('\n  '));
 });
 
+// (A-bis) El MISMO defecto en un `style=` EN LÍNEA del JS/HTML — y aquí el crudo ni siquiera
+//     necesita su tinte debajo: basta con pintarlo sobre una tarjeta blanca. El check (A) solo
+//     lee `styles.css` y solo mira cuando el fondo es el tinte propio, así que este caso caía
+//     fuera de los dos filtros: v570 metió un aviso naranja a `color:var(--or)` sobre `.card`
+//     (**3,09:1 en tema CLARO**, contra 7,31 con `--ort`) y ninguna prueba dijo nada. Lo cazó
+//     Lucas QA leyendo el diff, que es justo lo que un candado debería ahorrarle.
+//
+// 🔒 La lista NO es una tolerancia numérica (esconde al siguiente): son las ocurrencias
+//    PREEXISTENTES declaradas por archivo y token, con su ratio medido en tema claro. Se afirma
+//    que lo encontrado es un SUBCONJUNTO — arreglar una de ellas pasa, añadir una nueva CAE.
+const _CRUDO_TEXTO_PREEXISTENTE = {
+  // 3,80 — texto azul sobre su propio tinte, en la nota de la ficha del coach.
+  'app-3-coach.js': { bl: 1 },
+  // 4,17 — el «Sí, eliminar» de una medida corporal (v566).
+  'app-5-salud.js': { rd: 1 },
+  // 4,17 ×3 — los mensajes de error de ajustes, borrar cuenta y pago.
+  'index.html': { rd: 3 },
+};
+test('ningún estilo inline NUEVO usa el token crudo como color de TEXTO (v570)', () => {
+  const fs = require('fs'), path = require('path');
+  const archivos = fs.readdirSync(__dirname)
+    .filter(f => /^(avi-core|app-\d-[a-z]+)\.js$/.test(f)).concat(['index.html']);
+  const halladas = {};
+  for (const f of archivos) {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    // El límite por delante es obligatorio: sin él, `border-color:var(--yl)` casa y el check
+    // acusa a lo SANO — pasó al medirlo la primera vez (familia de las sondas de v561).
+    for (const m of src.matchAll(/(^|[;{"'\s])color\s*:\s*var\(--(or|bl|rd|yl)\)/g)) {
+      halladas[f] = halladas[f] || {};
+      halladas[f][m[2]] = (halladas[f][m[2]] || 0) + 1;
+    }
+  }
+  const nuevas = [];
+  for (const [f, toks] of Object.entries(halladas)) {
+    for (const [t, n] of Object.entries(toks)) {
+      const tope = (_CRUDO_TEXTO_PREEXISTENTE[f] || {})[t] || 0;
+      if (n > tope) nuevas.push(`${f}: color:var(--${t}) ×${n} (declaradas ${tope}) → usa var(--${t}t)`);
+    }
+  }
+  assert.deepStrictEqual(nuevas, [],
+    'texto con el token CRUDO en un style= en línea (ilegible en tema CLARO):\n  ' + nuevas.join('\n  '));
+  // CONTROL DE COBERTURA: si el barrido deja de encontrar los 5 preexistentes es que el patrón
+  // dejó de casar y el candado aprueba por vacío — la muerte silenciosa de un gate.
+  const total = Object.values(halladas).reduce((a, t) => a + Object.values(t).reduce((x, y) => x + y, 0), 0);
+  assert.ok(total >= 5, `el barrido solo encontró ${total} usos: el patrón dejó de casar`);
+});
+
 // (B) En el JS/HTML: un hex ESCRITO A MANO sobre uno de esos mismos tintes. Es el caso inverso y
 //     más traicionero — el hex se eligió mirando el tema claro (5.79 ✔) y nunca cambia, así que
 //     el que se rompe es el tema OSCURO (2.45 y 1.67), donde el tinte sí se invierte.
@@ -13227,6 +13274,119 @@ test('🔴 v522 · el botón está cableado y la imagen es de formato HISTORIA',
   // el motor vive en avi-core y aquí solo se dibuja: si el cálculo se muda al render, deja de
   // poder probarse sin navegador y el candado de menores se vuelve inalcanzable para la suite.
   assert.ok(/clientProgressStory\(/.test(src), 'la tarjeta dejó de usar el motor puro');
+});
+
+// ══════ QUITAR NO PUEDE DEPENDER DE PODER PUBLICAR (v570) ═══════════════════════════════
+// 🔴 Medido el 3-sep en producción: Samuel se registró declarando 28 años y tiene 15, así que la
+// app le publicó la tarjeta el 29-ago — el candado de menores le preguntó a la cifra equivocada.
+// Lo grave apareció al ir a corregirlo: el único botón «Quitar» vivía DENTRO del bloque que solo
+// se dibuja cuando la historia SÍ es publicable. Corregir la edad escondía el botón de bajar la
+// tarjeta que esa misma corrección volvía ilegal. Y borrando a la persona, la tarjeta se quedaba
+// pública sin puerta ninguna.
+const _scCl = [
+  { id: 'a', name: 'Samuel Cifuentes', age: 15 },
+  { id: 'b', name: 'Astrid Beltran', age: 33 },
+  { id: 'd1', name: 'diana ramirez', age: 18 },
+  { id: 'd2', name: 'Diana Paola Diaz', age: 41 },
+];
+const _scSes = (n) => Array.from({ length: n }, (_, i) => ({
+  date: '2026-0' + (1 + (i % 8)) + '-0' + (1 + (i % 9)),
+  exercises: [{ name: 'Press', sets: [{ kg: 10 + i }] }],
+}));
+const _scHist = { a: _scSes(37), b: _scSes(57), d1: [], d2: _scSes(30) };
+
+test('🔒 una tarjeta publicada se vuelve a atar a su persona, y si no puede lo DICE (v570)', () => {
+  const r = core.showcaseAudit(
+    [{ id: 'c1', nombre: 'Samuel' }, { id: 'c2', nombre: 'Astrid' },
+     { id: 'c3', nombre: 'Miguel' }, { id: 'c4', nombre: 'Diana' }],
+    _scCl, _scHist, new Date('2026-09-03'));
+  const por = {}; r.forEach(x => { por[x.id] = x; });
+  // El caso real: publicada con 28 declarados, hoy la edad correcta la vuelve impublicable.
+  assert.strictEqual(por.c1.estado, 'revisar');
+  assert.strictEqual(por.c1.razon, 'menor');
+  assert.strictEqual(por.c1.clienteId, 'a');
+  // La que está bien no se toca: un aviso que grita sobre lo sano se deja de leer.
+  assert.strictEqual(por.c2.estado, 'ok');
+  // 🔴 SIN FICHA NO HAY PUERTA: la tarjeta de quien ya no está en la lista es la que no se
+  //    puede quitar desde ninguna parte, y es justo la que nadie va a ir a mirar.
+  assert.strictEqual(por.c3.estado, 'huerfana');
+  // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy hay dos Diana en la
+  //    lista real; elegir una sería decidir sobre la tarjeta equivocada.
+  assert.strictEqual(por.c4.estado, 'ambigua');
+  assert.strictEqual(por.c4.cuantos, 2);
+  // `showcasePendientes` es lo que ve el Inicio: todo menos lo sano.
+  const p = core.showcasePendientes(
+    [{ id: 'c1', nombre: 'Samuel' }, { id: 'c2', nombre: 'Astrid' }], _scCl, _scHist, new Date('2026-09-03'));
+  assert.deepStrictEqual(p.map(x => x.id), ['c1'], 'el Inicio muestra la sana o esconde la mala');
+});
+
+test('🔒 la atadura tarjeta↔persona usa la MISMA derivación del nombre que la historia (v570)', () => {
+  // Si las dos derivaciones se separan, la atadura falla EN SILENCIO: la tarjeta se vuelve
+  // huérfana sin que nadie se haya ido, y el aviso pasa a mentir.
+  const c = { id: 'z', name: '  Samuel  Cifuentes ', age: 30 };
+  const st = core.clientProgressStory(c, _scSes(20), new Date('2026-09-03'));
+  assert.strictEqual(st.ok, true);
+  assert.strictEqual(core.showcaseFirstName(c.name), st.nombre,
+    'el nombre de la tarjeta y el que busca la auditoría dejaron de derivarse igual');
+  assert.strictEqual(core.showcaseFirstName(null), '');
+  assert.strictEqual(core.showcaseFirstName('   '), '');
+});
+
+test('🔒 el botón de QUITAR se dibuja aunque la historia NO sea publicable (v570)', () => {
+  // 🔴 SIN QUITAR LOS COMENTARIOS ESTE CANDADO NO MUERDE, y lo delató su sabotaje: el comentario
+  //    que explica dónde vive `#d-story-pub` CONTIENE ese identificador, así que borrar el <div>
+  //    de verdad dejaba la aserción satisfecha por la prosa. Documentar bien una decisión
+  //    multiplica las ocurrencias del texto que la nombra (misma clase que v546 y v552).
+  const sinCom = (s) => s.split('\n').map(l => {
+    const j = l.indexOf('//');
+    return j > -1 && !/https?:$/.test(l.slice(0, j)) ? l.slice(0, j) : l;
+  }).join('\n');
+  const src = sinCom(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = src.indexOf('function renderStoryCard');
+  const cuerpo = src.slice(i, src.indexOf('\nlet _storyData', i));
+  // 🔴 EL DEFECTO EXACTO: el `return` del caso no-publicable se daba ANTES de que existiera
+  //    `#d-story-pub`, que es donde vive «Quitar».
+  const rama = cuerpo.slice(cuerpo.indexOf('if(!st||!st.ok)'), cuerpo.indexOf('_storyData=st'));
+  assert.ok(rama.indexOf('d-story-pub') > -1,
+    'la rama no-publicable volvió a salir sin dibujar el contenedor del botón Quitar');
+  assert.ok(rama.indexOf('_renderStoryPub(') > -1 && rama.indexOf('_renderStoryPub(') < rama.lastIndexOf('return'),
+    'la rama no-publicable no llama a _renderStoryPub: el botón Quitar queda inalcanzable');
+  // Y el control sigue pintándose en el camino sano (no se arregló uno rompiendo el otro).
+  assert.ok(cuerpo.slice(cuerpo.indexOf('_storyData=st')).indexOf('_renderStoryPub(st)') > -1,
+    'el camino publicable dejó de dibujar el control de la tarjeta');
+  // `_renderStoryPub` tiene que poder REVELAR la ficha: en el caso no-publicable el contenedor
+  // nace oculto y solo la lectura de red sabe si hay tarjeta que mostrar.
+  const j = src.indexOf('async function _renderStoryPub');
+  const pub = src.slice(j, src.indexOf('async function publishProgress', j));
+  assert.ok(/getElementById\('d-story'\)[\s\S]{0,80}display='block'/.test(pub),
+    'al encontrar una tarjeta publicada nadie revela la ficha: el botón existe pero no se ve');
+  assert.ok(/unpublishProgress\(/.test(pub), 'se cayó el botón Quitar');
+  // Y cuando ya no es publicable, se DICE por qué: una tarjeta que sigue afuera después de que
+  // cambiaron las condiciones necesita que alguien se entere — no basta con poder quitarla.
+  // 🔴 La aserción se ancla en la ASIGNACIÓN, no en «aparece `st.ok===false`»: esa comparación
+  //    sale DOS veces en la función (aquí y en el corte de más abajo), así que apagar el aviso
+  //    con `const mal=false` la dejaba satisfecha por la otra. Una aserción que el defecto puede
+  //    cumplir no es un candado — lo delató su sabotaje.
+  assert.ok(/const\s+mal\s*=\s*st\.ok\s*===\s*false/.test(pub),
+    'el aviso dejó de derivarse de si hoy sería publicable');
+  assert.ok(/menor de edad/.test(pub), 'el aviso ya no dice por qué no debería seguir publicada');
+});
+
+test('🔒 el Inicio tiene una puerta para las tarjetas SIN ficha (v570)', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/function _renderPagePendientes/.test(src), 'desapareció la revisión de tarjetas del Inicio');
+  // CONTROL DE CABLEADO: una función que nadie llama es puerta cerrada y ventana abierta (v509).
+  assert.ok(/\n\s*_renderPagePendientes\(filas\);/.test(src),
+    '_renderPagePendientes existe pero nadie la llama tras leer la vitrina');
+  assert.ok(/id="h-page-rev"/.test(src), 'no existe el hueco donde se pinta el aviso');
+  const i = src.indexOf('function _renderPagePendientes');
+  const cuerpo = src.slice(i, src.indexOf('\n}', src.indexOf('el.innerHTML=`<div style="margin-top:11px', i)));
+  assert.ok(/showcasePendientes\(/.test(cuerpo), 'el Inicio dejó de usar el motor puro');
+  assert.ok(/unpublishProgress\(/.test(cuerpo),
+    'el aviso del Inicio no trae el botón Quitar: sin ficha, esa es la ÚNICA puerta que queda');
+  // Sin nada que revisar NO se pinta: un aviso permanente en el Inicio se vuelve invisible (v505).
+  assert.ok(/if\(!pend\.length\)return;/.test(cuerpo),
+    'el bloque se pinta aunque no haya nada que revisar');
 });
 
 // ── ¿PUEDE EL COACH AVISARLE? (v520) ─────────────────────────────────────────────────

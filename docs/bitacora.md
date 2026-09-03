@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-03 — avi-v570: QUITAR NO PUEDE DEPENDER DE PODER PUBLICAR
+
+**De dónde sale.** El PO reportó que **Samuel mintió en la edad**: se registró declarando 28 y
+tiene **15**. Ya no entrena con él (estuvo más de un año), la mamá autorizó el uso de sus datos,
+y el PO decidió conservar el registro y corregir la edad.
+
+**Lo que se midió antes de tocar nada** (solo lectura, contra producción):
+- **Su tarjeta está publicada en la página pública desde el 29-ago** — «Samuel · 37 entrenos ·
+  3 meses · subió carga en 13 ejercicios», con nombre y tres progresiones de peso.
+  `clientProgressStory` **se niega a armar la tarjeta de un menor** (`{ok:false, razon:'menor'}`)
+  y ese candado nunca se activó porque le preguntó a la cifra equivocada.
+- Su plan de comida es un **déficit** (2.648 kcal, `cutting`), y el piso que impide dirección
+  calórica negativa en un menor (v485) tampoco se activó, por lo mismo.
+- **Ninguna autorización guardada.** (Valery y Sharith Sofía conservan un `adulto:true` de antes
+  de v565: el candado impide emitir nuevas, no reescribe las dos que ya existen.)
+
+**🔴 EL DEFECTO, que no es la edad.** Al ir a corregirlo apareció algo peor: **el único botón para
+QUITAR una tarjeta vive dentro de la ficha y solo se dibuja cuando la historia SÍ es publicable.**
+`renderStoryCard` cortaba con `return` en la rama no-publicable **antes** de crear `#d-story-pub`.
+O sea: **corregirle la edad a 15 escondía el botón de bajar la tarjeta que esa misma corrección
+volvía ilegal** — la app diciéndole «esto necesita permiso del acudiente» y quitándole la única
+manera de actuar. Y si además borra a la persona de su lista, **no queda ficha ninguna y la
+tarjeta se queda pública para siempre, sin puerta**.
+
+**🔒 La regla.** *Poder QUITAR algo no puede depender de que siga cumpliendo los requisitos para
+PONERLO.* Es la familia del calentamiento fuera del filtro de lesiones (v424) y del plan escrito
+que no se filtraba por dolor (v550): un candado que cuida la entrada y deja la salida tapiada. La
+entrada se endurece; la salida se deja SIEMPRE abierta, justo porque las condiciones cambian.
+
+**Lo construido.**
+- `showcaseFirstName` / `showcaseAudit` / `showcasePendientes` (avi-core, puras). `avi_showcase`
+  guarda **solo el primer nombre** —decisión correcta: es la única tabla que se lee sin cuenta—
+  y el precio es que una tarjeta publicada no se puede volver a atar a su persona por id. La
+  atadura se hace por ese nombre y **cuando no puede lo DICE**: `huerfana` (nadie se llama así),
+  `ambigua` (dos o más, y hoy hay **dos Diana** en la lista real), `revisar` + razón, `ok`.
+- **La ficha** dibuja el control de la tarjeta publicada pase lo que pase, y si hoy no se
+  publicaría lo avisa en naranja con el motivo.
+- **El Inicio** gana la puerta que no existía: las tarjetas sin ficha, con su botón «Quitar». Se
+  pinta **solo si hay algo que revisar** — un aviso permanente se vuelve invisible (v505).
+
+**Verificación.** Suite **1021 → 1025**. Matriz nueva `scripts/e2e/_sabotaje-vitrina.mjs`,
+**12/12 muerden**. 🔴 La primera corrida dio 10 de 12 y los dos verdes eran huecos de MIS tests:
+- **S7**: mi comentario explicando dónde vive `#d-story-pub` **contiene ese identificador**, así
+  que borrar el `<div>` de verdad dejaba la aserción satisfecha por la prosa. El check estático
+  quita ahora las líneas de comentario antes de mirar (la regla ya estaba escrita en v552).
+- **S9**: pedía que apareciera `st.ok===false` y esa comparación sale **dos veces** en la función,
+  así que apagar el aviso con `const mal=false` la dejaba satisfecha por la otra ocurrencia. Se
+  ancla en la asignación.
+
+**⏭️ Abierto.** La edad de Samuel **no se ha corregido todavía**: se despliega esto primero para
+que el PO no caiga en la trampa, y la corrección + la autorización de la mamá las hace él desde
+la ficha (v565 ya tiene los campos de acudiente), que es donde la evidencia lleva su mano y su
+fecha. **Qué pasa con su tarjeta publicada lo decide él.**
+
 ## 🔄 2026-09-03 — avi-v569: LA PANTALLA DEJA DE APAGARSE EN EL DESCANSO
 
 **De dónde sale.** Cola técnica mía, con el visto bueno del PO.

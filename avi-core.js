@@ -9304,6 +9304,61 @@ function showcaseRow(story) {
   return row;
 }
 
+// ── UNA TARJETA PUBLICADA ES UN HECHO VIVO, NO UN RECUERDO (v570) ────────────────────
+// PURA. `avi_showcase` guarda SOLO el primer nombre, y esa decisión es correcta: es la única
+// tabla que se lee sin cuenta, y lo que no está ahí no se puede filtrar. El precio es que una
+// tarjeta publicada **no se puede volver a atar a su persona por id** — solo por ese nombre.
+// Esta función hace esa atadura, y cuando no puede lo DICE en vez de adivinar.
+//
+// 🔴 EL DEFECTO QUE LA TRAE (medido el 3-sep en producción). Samuel se registró declarando 28
+// años y tiene 15. Con esa edad falsa la app publicó su tarjeta el 29-ago: el candado de menores
+// de `clientProgressStory` nunca se activó porque le preguntó a la cifra equivocada. Hasta ahí es
+// un dato malo. Lo grave apareció al ir a corregirlo: **el único botón para QUITAR una tarjeta
+// vive dentro de la ficha, y solo se dibuja cuando la historia SÍ es publicable**. O sea que
+// corregirle la edad a 15 escondía el botón de bajar la tarjeta que esa misma corrección volvía
+// ilegal. Y si además se borra a la persona de la lista, no queda ficha ninguna: la tarjeta se
+// queda pública para siempre, sin puerta.
+//
+// 🔒 LA REGLA, y es la lección entera: **poder QUITAR algo no puede depender de que siga
+//    cumpliendo los requisitos para PONERLO.** Es la misma clase que el calentamiento fuera del
+//    filtro de lesiones (v424) y que el plan ya escrito que no se filtraba por dolor (v550):
+//    un candado que cuida la entrada y deja la salida tapiada. La entrada se endurece; la salida
+//    se deja SIEMPRE abierta, justo porque las condiciones cambian.
+//
+// Estados: 'ok' sigue calificando · 'revisar' hoy no se publicaría (+razon) · 'huerfana' ningún
+// asesorado se llama así · 'ambigua' dos o más se llaman así y el nombre no alcanza para decidir.
+function showcaseFirstName(name) {
+  // MISMA derivación que `clientProgressStory` — si se separan, la atadura falla en silencio.
+  return String(name || '').trim().split(/\s+/)[0] || '';
+}
+function showcaseAudit(cards, clients, historyByClient, now) {
+  const cls = (clients || []).filter(c => c && c.id);
+  const hist = historyByClient || {};
+  const norm = (s) => showcaseFirstName(s).toLocaleLowerCase('es');
+  return (cards || []).filter(Boolean).map(card => {
+    const nombre = String(card.nombre || '');
+    const cand = cls.filter(c => norm(c.name) === norm(nombre));
+    const base = { id: card.id, nombre };
+    if (!cand.length) return Object.assign(base, { estado: 'huerfana' });
+    // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy mismo hay dos
+    //    Diana en la lista. Elegir una sería decidir sobre la tarjeta equivocada; se muestra
+    //    el caso y decide quien sí sabe de quién es.
+    if (cand.length > 1) {
+      return Object.assign(base, { estado: 'ambigua', cuantos: cand.length });
+    }
+    const c = cand[0];
+    const st = clientProgressStory(c, hist[c.id] || [], now);
+    if (st && st.ok) return Object.assign(base, { estado: 'ok', clienteId: c.id });
+    return Object.assign(base, {
+      estado: 'revisar', clienteId: c.id, razon: (st && st.razon) || 'desconocida',
+    });
+  });
+}
+// Las que el coach tiene que mirar sí o sí. `ok` no entra: esa está bien donde está.
+function showcasePendientes(cards, clients, historyByClient, now) {
+  return showcaseAudit(cards, clients, historyByClient, now).filter(x => x.estado !== 'ok');
+}
+
 // ── ¿Puede el COACH avisarle a esta persona? (v520) ──────────────────────────────────
 // PURA. Medido sobre las 22 fichas reales el 22-ago: **12 no tienen NINGUNA vía** —ni teléfono
 // guardado ni notificaciones activas— y la app no se lo decía por ninguna parte. La separación es
@@ -9375,6 +9430,9 @@ if (typeof module !== 'undefined' && module.exports) {
     clientProgressStory,
     showcaseRow,
     SHOWCASE_MAX,
+    showcaseFirstName,
+    showcaseAudit,
+    showcasePendientes,
     SHOWCASE_OBJETIVOS,
     normalizeGoal,
     STORY_MIN_SESSIONS,

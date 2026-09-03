@@ -1778,18 +1778,48 @@ function renderPageCard(){
       <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiWeb()">Abrir mi web</button>
       <button class="btn bg bsm" onclick="copiarMiWeb()" aria-label="Copiar el enlace de mi web">Copiar</button>
     </div>
+    <div id="h-page-rev"></div>
   </div>`;
   // Cuántas tarjetas tiene publicadas: usa la MISMA lectura que la ficha (`_loadShowcase`), para
   // que las dos superficies no puedan decir números distintos.
   try{
     if(typeof _loadShowcase==='function'){
       _loadShowcase().then(filas=>{
-        const n=document.getElementById('h-page-n'); if(!n)return;
+        const n=document.getElementById('h-page-n');
         const max=(typeof SHOWCASE_MAX==='number')?SHOWCASE_MAX:6;
-        n.textContent=(filas&&filas.length)?`${filas.length} de ${max} tarjetas`:'sin tarjetas todavía';
+        if(n)n.textContent=(filas&&filas.length)?`${filas.length} de ${max} tarjetas`:'sin tarjetas todavía';
+        _renderPagePendientes(filas);
       }).catch(()=>{});
     }
   }catch(e){}
+}
+// 🔴 v570 · LA ÚNICA PUERTA PARA QUITAR UNA TARJETA VIVÍA DENTRO DE LA FICHA de su dueño. Si esa
+// persona ya no está en la lista, la tarjeta se queda pública SIN PUERTA NINGUNA. Y si la ficha
+// existe pero hoy no calificaría (un menor, por ejemplo), el botón tampoco se dibujaba. Aquí está
+// la puerta que no depende de nadie: se pinta solo cuando hay algo que revisar, para que el
+// Inicio no cargue con un aviso permanente.
+function _renderPagePendientes(filas){
+  const el=document.getElementById('h-page-rev'); if(!el)return;
+  el.innerHTML='';
+  if(typeof showcasePendientes!=='function')return;
+  let pend=[];
+  try{ pend=showcasePendientes(filas||[],(DB&&DB.clients)||[],(DB&&DB.history)||{},new Date()); }
+  catch(e){ return; }
+  if(!pend.length)return;
+  const motivo=(p)=>p.estado==='huerfana'
+      ? `<b>${esc(p.nombre)}</b> — ya no está en tu lista de asesorados, y su tarjeta sigue publicada.`
+    : p.estado==='ambigua'
+      ? `<b>${esc(p.nombre)}</b> — tienes ${p.cuantos} asesorados con ese nombre, así que la app no sabe de cuál es esta tarjeta.`
+    : p.razon==='menor'
+      ? `<b>${esc(p.nombre)}</b> — es menor de edad: publicar su nombre necesita permiso de su acudiente.`
+      : `<b>${esc(p.nombre)}</b> — hoy ya no cumple las condiciones para estar publicada.`;
+  el.innerHTML=`<div style="margin-top:11px;padding-top:9px;border-top:1px solid var(--br)">
+    <div style="font-size:11.5px;color:var(--ort);font-weight:800;margin-bottom:6px">
+      ${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} Revisa ${pend.length===1?'esta tarjeta':`estas ${pend.length} tarjetas`} de tu página</div>
+    ${pend.map(p=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--t2);line-height:1.5;padding:5px 0">
+      <span style="flex:1;min-width:160px">${motivo(p)}</span>
+      <button class="btn bd bsm" onclick="unpublishProgress('${esc(p.id)}')">Quitar</button></div>`).join('')}
+  </div>`;
 }
 // Abre la página REAL en otra pestaña, con la marca que le dice al arranque que no entre a la
 // cuenta. Nunca una maqueta: una copia dibujada dentro de la app se desincroniza y acaba
