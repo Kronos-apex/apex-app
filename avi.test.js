@@ -131,6 +131,10 @@ const {
   validateSignup,
   passwordProblem,
   consentEvidence,
+  consentNeedsGuardian,
+  consentSame,
+  consentKeep,
+  minorCoachAlert,
   PAIN_AREAS,
   PAIN_LEVELS,
   painTipFor,
@@ -3979,7 +3983,216 @@ test('validateSignup: rechaza contraseña que no cumple la política y lo dice e
 
 test('consentEvidence: las 3 casillas marcadas arman la evidencia con versión y fecha', () => {
   const ev = consentEvidence({ general: true, salud: true, adulto: true }, '2026-07-07', '2026-07-07T15:00:00.000Z');
-  assert.deepStrictEqual(ev, { general: true, salud: true, adulto: true, v: '2026-07-07', at: '2026-07-07T15:00:00.000Z' });
+  assert.deepStrictEqual(ev, { general: true, salud: true, adulto: true, edad: null, v: '2026-07-07', at: '2026-07-07T15:00:00.000Z' });
+});
+
+// 🔒 EL CANDADO DE v565, y el que más pesa de todos: la app ya no puede FIRMAR que alguien es
+// mayor de edad cuando su propio formulario acaba de decir que no lo es. Medido en producción
+// el 2-sep, antes del arreglo: Valery (15) y Sharith Sofía (16) tenían `adulto:true` guardado,
+// porque la única forma de entrar era declarar algo falso.
+test('consentEvidence: con edad de menor NO se puede firmar «soy mayor de 18» (v565)', () => {
+  // Aunque el formulario mande la casilla de adulto marcada, la función pura NO la firma.
+  assert.strictEqual(consentEvidence({ general: true, salud: true, adulto: true }, 'v1', null, { age: 15 }), null);
+  assert.strictEqual(consentEvidence({ general: true, salud: true, adulto: true }, 'v1', null, { age: 17 }), null);
+  // Y el camino correcto SÍ pasa, con la verdad escrita dentro.
+  const ev = consentEvidence(
+    { general: true, salud: true, acudiente: true }, 'v1', '2026-09-02T10:00:00.000Z',
+    { age: 15, acudienteNombre: '  Camilo Andrés  ', acudienteTel: '3001234567' });
+  assert.deepStrictEqual(ev, {
+    general: true, salud: true, adulto: false, menor: true, edad: 15,
+    acudiente: { nombre: 'Camilo Andrés', tel: '3001234567' },
+    v: 'v1', at: '2026-09-02T10:00:00.000Z',
+  });
+  // CONTROL de discriminación: a los 18 el camino es el de siempre y `adulto` vuelve a ser true.
+  const adulta = consentEvidence({ general: true, salud: true, adulto: true }, 'v1', null, { age: 18 });
+  assert.strictEqual(adulta.adulto, true);
+  assert.strictEqual(adulta.menor, undefined);
+  assert.strictEqual(adulta.edad, 18);
+});
+
+// Una autorización de representante SIN representante identificable no es una autorización.
+test('consentEvidence: al menor le falta el acudiente → no procede (v565)', () => {
+  const base = { general: true, salud: true, acudiente: true };
+  assert.strictEqual(consentEvidence(base, 'v1', null, { age: 15 }), null);                        // sin nombre
+  assert.strictEqual(consentEvidence(base, 'v1', null, { age: 15, acudienteNombre: ' ' }), null);   // en blanco
+  assert.strictEqual(consentEvidence(base, 'v1', null, { age: 15, acudienteNombre: 'A' }), null);   // una letra
+  // Sin marcar la casilla del acudiente tampoco, por mucho nombre que haya.
+  assert.strictEqual(consentEvidence({ general: true, salud: true }, 'v1', null,
+    { age: 15, acudienteNombre: 'Camilo Andrés' }), null);
+  // El teléfono SÍ es opcional: sin él la evidencia se emite igual.
+  const ev = consentEvidence(base, 'v1', null, { age: 16, acudienteNombre: 'Camilo Andrés' });
+  assert.deepStrictEqual(ev.acudiente, { nombre: 'Camilo Andrés' });
+});
+
+// Quien no dice su edad va por el camino CONSERVADOR: el de adulto. Un `null` no puede abrir
+// la puerta del menor, o cualquiera se la salta dejando el campo vacío.
+test('consentNeedsGuardian: solo una edad menor de 18 y legible pide acudiente (v565)', () => {
+  assert.strictEqual(consentNeedsGuardian(17), true);
+  assert.strictEqual(consentNeedsGuardian(12), true);
+  assert.strictEqual(consentNeedsGuardian(18), false);
+  assert.strictEqual(consentNeedsGuardian(40), false);
+  assert.strictEqual(consentNeedsGuardian(null), false);
+  assert.strictEqual(consentNeedsGuardian(undefined), false);
+  assert.strictEqual(consentNeedsGuardian(''), false);
+  assert.strictEqual(consentNeedsGuardian('quince'), false);
+  assert.strictEqual(consentNeedsGuardian(0), false);
+  assert.strictEqual(consentNeedsGuardian(-3), false);
+  assert.strictEqual(consentNeedsGuardian('16'), true);   // el formulario entrega texto
+});
+
+// El coach le PROMETE al menor, por escrito en el formulario, que va a hablar con su
+// acudiente. Sin este aviso esa frase sería mentira: la evidencia vive en el perfil y no la
+// lee nadie. Se deriva de la EVIDENCIA, nunca de `c.age` (el perfil se edita después).
+// 🔴 UNA AUTORIZACION NO SE RE-FECHA CADA VEZ QUE SE GUARDA LA FICHA (v565).
+// La primera version recalculaba la evidencia en cada `saveClient`: editarle el peso a
+// alguien le movia la fecha de su autorizacion al dia de hoy y le cambiaba la version legal
+// aceptada por la vigente. `at` y `v` SON el proposito de la evidencia — con eso, la prueba
+// pasaba a decir «la ultima vez que el coach toco la ficha», que no prueba nada.
+// Lo cazo Julian QA antes de desplegar.
+test('consentKeep: editar la ficha NO re-fecha una autorizacion ya dada (v565)', () => {
+  const prev = { general: true, salud: true, adulto: true, edad: 30, v: '2026-07-26-borrador', at: '2026-07-01T10:00:00.000Z' };
+  const igual = { general: true, salud: true, adulto: true, edad: 30, v: '2026-09-02-borrador', at: '2026-09-02T20:00:00.000Z' };
+  assert.strictEqual(consentKeep(prev, igual), prev, 'con lo mismo declarado se conserva la evidencia ORIGINAL');
+  assert.strictEqual(consentKeep(prev, igual).at, '2026-07-01T10:00:00.000Z');
+  assert.strictEqual(consentKeep(prev, igual).v, '2026-07-26-borrador');
+
+  // CONTROL: si cambia el FONDO de lo declarado, es una autorizacion NUEVA y SI se re-fecha.
+  const aMenor = { general: true, salud: true, adulto: false, menor: true, edad: 17, acudiente: { nombre: 'Ana' }, v: 'x', at: '2026-09-02T20:00:00.000Z' };
+  assert.strictEqual(consentKeep(prev, aMenor), aMenor, 'de adulto a menor es una autorizacion distinta');
+  const otroAcu = { general: true, salud: true, adulto: false, menor: true, edad: 17, acudiente: { nombre: 'Beatriz' }, v: 'x', at: '2026-09-03T20:00:00.000Z' };
+  assert.strictEqual(consentKeep(aMenor, otroAcu), otroAcu, 'cambiar de acudiente es una autorizacion distinta');
+  const otraEdad = { general: true, salud: true, adulto: true, edad: 31, v: 'x', at: '2026-09-03T20:00:00.000Z' };
+  assert.strictEqual(consentKeep(prev, otraEdad), otraEdad, 'otra edad declarada es otra autorizacion');
+
+  // Sin previa manda la nueva; sin nueva se conserva la que habia (desmarcar no destruye la prueba).
+  assert.strictEqual(consentKeep(null, igual), igual);
+  assert.strictEqual(consentKeep(prev, null), prev);
+  assert.strictEqual(consentKeep(null, null), null);
+});
+
+test('consentSame: compara el FONDO de lo declarado, no la fecha ni la version (v565)', () => {
+  const a = { adulto: true, edad: 30, v: 'v1', at: '2026-01-01T00:00:00.000Z' };
+  const b = { adulto: true, edad: 30, v: 'v9', at: '2026-09-09T00:00:00.000Z' };
+  assert.strictEqual(consentSame(a, b), true, 'la fecha y la version NO cuentan para la comparacion');
+  assert.strictEqual(consentSame(a, { adulto: true, edad: null }), false);
+  assert.strictEqual(consentSame({ menor: true, edad: 15, acudiente: { nombre: 'Ana', tel: '300' } },
+                                 { menor: true, edad: 15, acudiente: { nombre: 'Ana', tel: '301' } }), false,
+    'cambiar el telefono del acudiente cambia lo declarado');
+  assert.strictEqual(consentSame(null, a), false);
+  assert.strictEqual(consentSame(a, null), false);
+});
+
+// 🔒 LA EDAD DECIDE QUE AUTORIZACION SE PIDE, asi que dejarla en blanco reabria el
+// hueco entero: `consentNeedsGuardian(null)` es false y un menor volvia al camino de adulto.
+// Aviso de Julian QA. El peso y la altura siguen siendo opcionales: no deciden nada legal.
+test('la edad es OBLIGATORIA en el auto-registro (v565)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const v = src.slice(src.indexOf('  _valid(){'), src.indexOf('  _valid(){') + 1400);
+  assert.ok(/wz-s-body/.test(v), 'el paso del cuerpo no se valida: la edad volveria a ser opcional');
+  assert.ok(/su-age/.test(v), 'la validacion no mira la edad');
+  // Control: el nombre lo sigue exigiendo, y el peso NO (no decide nada legal).
+  assert.ok(/su-name/.test(v), 'se perdio la validacion del nombre');
+  assert.ok(!/su-weight/.test(v), 'el peso no puede volverse obligatorio: no decide nada legal');
+});
+
+// 🔴 EN LA FICHA DEL COACH, MARCAR LA CASILLA TAMBIEN EXIGE LA EDAD (v565).
+// Hallazgo mio leyendo, hermano del de Julian: `cfSyncConsentAge` con el campo vacio da
+// `menor=false`, asi que el coach podia acreditar una autorizacion como `adulto:true,
+// edad:null` sin haber escrito la edad. La rama por defecto es la MENOS protectora, que es
+// exactamente lo que esta version vino a cerrar en la otra puerta.
+// Se exige SOLO al marcar la casilla: guardar la ficha sin acreditar nada no pide edad.
+test('la ficha del coach exige la edad para registrar la autorizacion (v565)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf("const _ckC=document.getElementById('cf-ck-consent')");
+  assert.ok(i > 0, 'se movio el bloque de consentimiento de saveClient');
+  const blk = src.slice(i, i + 2600);
+  assert.ok(/_ckC&&_ckC\.checked&&!\(data\.age>0\)/.test(blk),
+    'sin este guard la casilla acredita adulto:true con edad nula');
+  // El guard sale ANTES de armar la evidencia: si saliera despues, ya se habria emitido.
+  assert.ok(blk.indexOf('!(data.age>0)') < blk.indexOf('consentEvidence'),
+    'el guard tiene que cortar ANTES de llamar a consentEvidence');
+  // CONTROL: guardar SIN marcar la casilla no puede exigir edad (el guard cuelga de .checked).
+  const g = blk.slice(blk.indexOf('!(data.age>0)') - 220, blk.indexOf('!(data.age>0)'));
+  assert.ok(/_ckC&&_ckC\.checked/.test(g), 'el guard no puede pedir edad a quien no acredita nada');
+});
+
+// 🔒 CANDADO DE CABLEADO — una funcion pura que no llama nadie es «puerta cerrada,
+// ventana abierta» (v509). Aqui hay TRES puertas y las tres tienen que pasar por ella:
+// el registro por email, el registro con Google y el alta que hace el coach.
+test('las tres puertas de registro pasan la EDAD a consentEvidence (v565)', () => {
+  const fs = require('fs'), path = require('path');
+  const NL = String.fromCharCode(10);
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8')
+    .split(/\r?\n/).filter(l => !/^\s*\/\//.test(l)).join(NL);   // fuera los comentarios (v552)
+
+  const wz = src.slice(src.indexOf('function _wzConsent'), src.indexOf('function _wzConsent') + 900);
+  assert.ok(/consentEvidence\(/.test(wz), '_wzConsent dejo de usar la funcion pura');
+  assert.ok(/su-age/.test(wz), '_wzConsent no le pasa la edad: volveria a firmar adulto a un menor');
+  assert.ok(/su-acu-nombre/.test(wz), '_wzConsent no recoge el nombre del acudiente');
+  assert.ok(/su-ck-acudiente/.test(wz), '_wzConsent no lee la casilla del acudiente');
+
+  const sv = src.slice(src.indexOf('async function saveClient'), src.indexOf('async function saveClient') + 4200);
+  assert.ok(/consentEvidence\(/.test(sv), 'el alta del coach no captura consentimiento');
+  assert.ok(/cf-acu-nombre/.test(sv), 'el alta del coach no recoge el acudiente de un menor');
+  assert.ok(/data\.consent\s*=/.test(sv), 'el alta del coach no guarda la evidencia en el perfil');
+
+  // El aviso al coach existe Y se llama desde las DOS puertas del auto-registro.
+  assert.ok(/function _selfRegMinorAlert/.test(src), 'desaparecio el aviso de menor');
+  assert.strictEqual((src.match(/_selfRegMinorAlert\(/g) || []).length, 3,
+    'el aviso de menor se define UNA vez y se llama desde las DOS puertas');
+});
+
+// 🔒 Y las dos ramas tienen que existir en la pantalla: el candado de la funcion pura evita
+// firmar la mentira, pero si el formulario no ofrece la salida del acudiente, el menor
+// simplemente no puede registrarse y volvemos a empujarlo a mentir con la edad.
+// 🔴 EL ATRIBUTO `hidden` NO PUDO APAGAR LA CASILLA, Y ESO NO SE VE LEYENDO EL CODIGO.
+// `hidden` vale `display:none` como regla del NAVEGADOR, asi que cualquier regla nuestra con
+// display le gana: `.wz-ck` lleva `display:flex` y la casilla de «soy mayor de 18» SEGUIA
+// VISIBLE para un menor — o sea, seguia pudiendo mentir con un toque. Lo cazo el harness en
+// el navegador (`_verify-menor-consent.mjs`), no la revision.
+// Aqui va el candado ESTATICO barato que corre en cada commit; la conducta la sigue
+// afirmando el harness, que es la capa que de verdad puede verla.
+test('la rama de consentimiento se apaga con una clase, no con `hidden` (v565)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.cx-off\s*\{[^}]*display:\s*none\s*!important/.test(css),
+    'sin la clase .cx-off con !important, un display:flex deja la casilla visible');
+
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const f = src.slice(src.indexOf('function wzSyncConsentAge'), src.indexOf('function wzSyncConsentAge') + 1200);
+  assert.ok(/cx-off/.test(f), 'wzSyncConsentAge dejo de usar la clase');
+  assert.ok(!/\.hidden\s*=/.test(f), 'volvio a apagar con `hidden`: no puede con un display:flex');
+
+  const g = src.slice(src.indexOf('function cfSyncConsentAge'), src.indexOf('function cfSyncConsentAge') + 900);
+  assert.ok(/cx-off/.test(g), 'cfSyncConsentAge (alta del coach) dejo de usar la clase');
+});
+
+test('el formulario ofrece la salida del acudiente, no solo la de adulto (v565)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, '');                              // fuera los comentarios (v523)
+  ['su-ck-adulto-row', 'su-menor-box', 'su-ck-acudiente', 'su-acu-nombre',
+   'cf-ck-consent', 'cf-menor-box', 'cf-acu-nombre'].forEach(id => {
+    assert.ok(html.indexOf('id="' + id + '"') !== -1, 'falta en la pantalla: ' + id);
+  });
+  // Control de discriminacion: la casilla de adulto SIGUE existiendo — el arreglo es dar una
+  // segunda salida, no borrar la primera.
+  assert.ok(html.indexOf('id="su-ck-adulto"') !== -1, 'se perdio la casilla de adulto');
+});
+
+test('minorCoachAlert: avisa solo si la evidencia dice menor, y nombra al acudiente (v565)', () => {
+  const txt = minorCoachAlert('Valery Valbuena', { menor: true, edad: 15, acudiente: { nombre: 'Camilo Andrés', tel: '3001234567' } });
+  assert.ok(/Valery/.test(txt), 'nombra a la persona por su primer nombre');
+  assert.ok(/MENOR/.test(txt) && /15 años/.test(txt), 'dice que es menor y su edad');
+  assert.ok(/Camilo Andrés/.test(txt) && /3001234567/.test(txt), 'nombra al acudiente y su teléfono');
+  // Sin teléfono lo DICE, en vez de callarlo: el coach tiene que saber que le toca conseguirlo.
+  assert.ok(/no dejó teléfono/.test(minorCoachAlert('Sharith', { menor: true, edad: 16, acudiente: { nombre: 'Ana' } })));
+  assert.ok(/No quedó registrado/.test(minorCoachAlert('Sharith', { menor: true, edad: 16 })));
+  // CONTROL: a una adulta NO se le manda nada, o el aviso es ruido que se aprende a ignorar.
+  assert.strictEqual(minorCoachAlert('Astrid', { general: true, salud: true, adulto: true }), null);
+  assert.strictEqual(minorCoachAlert('Astrid', null), null);
 });
 
 test('consentEvidence: cualquier casilla sin marcar devuelve null (no hay "acepto todo")', () => {

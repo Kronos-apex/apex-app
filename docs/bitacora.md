@@ -4,6 +4,112 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-02 — avi-v565: LA APP YA NO OBLIGA A UN MENOR A MENTIR
+
+**De dónde sale.** Hallazgo del área A1 (legal y datos personales) de la auditoría por áreas,
+primer punto del orden que aprobó el PO (*«vamos a trabajar en orden de prioridades pero vamos a
+resolverlo todo»*). La decisión de producto la tomó él: **«pedir permiso del acudiente»**, no
+cerrarle la puerta al menor ni dejar la casilla como estaba.
+
+**El defecto.** El registro tenía **una sola** salida en el paso legal: `☐ Declaro que soy mayor de
+18 años`, y era **obligatoria**. Un menor no tenía otro camino que declarar algo falso — y esa
+declaración quedaba archivada como su prueba de autorización. La app no solo permitía la mentira:
+la **exigía** y después la guardaba como evidencia legal.
+
+**Medido contra producción el 2-sep (solo lectura):**
+- **24 personas reales**; **3 declaran menos de 18 años** (16, 17 y 15).
+- **2 de esas 3 tienen `adulto:true` guardado**: Sharith Sofia (16) y Valery (15). Ninguna de las
+  dos mintió por su cuenta — el formulario no tenía dónde decir la verdad.
+- **Solo 5 de 24 tienen autorización guardada, y las 5 vienen del auto-registro.** La ruta del
+  **coach no capturaba nada**: 19 personas dadas de alta por él no tienen evidencia de ningún tipo.
+  Cerrar solo el auto-registro habría dejado abierta la puerta por la que entra la mayoría.
+
+**Qué se hizo.**
+- **La edad DECIDE qué permiso se pide.** Función pura `consentNeedsGuardian(age)` en avi-core.
+  Se muestra **una sola** de las dos casillas, nunca las dos: ofrecer ambas sería volver a
+  pedirle a un menor que elija si miente.
+- **`consentEvidence` no puede firmar `adulto:true` con edad de menor.** Es una garantía de la
+  función, no del formulario: aunque la pantalla se equivoque, la evidencia no sale mal. Y sin el
+  **nombre del acudiente** no emite nada — una autorización de representante sin representante
+  identificable no es una autorización.
+- **La evidencia guarda la EDAD con la que se autorizó** (`edad`). El perfil se edita después; sin
+  ese campo nadie podría saber con qué edad se dio el permiso.
+- **La ruta del COACH también captura consentimiento**, con la misma función pura y marcada
+  `por:'coach'`. La casilla **jamás se auto-marca** sin evidencia guardada: una casilla marcada
+  sola es una autorización inventada.
+- **El coach se entera** (`minorCoachAlert`, espejo del aviso de limitaciones de v552): mensaje al
+  hilo de esa persona **y** push, una sola vez (`c.minorAlertAt`), con el nombre y el teléfono del
+  acudiente — o diciendo explícitamente que no dejó teléfono. Lo que la app **no** puede
+  verificar es que el acudiente exista y esté de acuerdo: eso lo declara el menor. Por eso el
+  aviso dice que le toca a él hablar con el acudiente **antes** de que la persona entrene, en vez
+  de fingir una verificación que no hace.
+- **`legal/autorizacion-consentimiento.md`** §C partida en C.1 (adulto) y C.2 (acudiente), con la
+  medición que la motivó y lo que la app **no** garantiza. `LEGAL_V` → `2026-09-02-borrador`:
+  cambió el texto, sube la versión.
+
+🔒 **Lo que NO se hizo, a propósito.** No se re-pide autorización a las 2 menores que ya
+tienen `adulto:true` guardado ni se les borra la evidencia vieja. Reescribirla desde aquí sería
+fabricar una prueba que nadie dio. Queda para el PO, en persona, con el acudiente.
+
+**Verificación.** 986/986 tests. **Matriz de sabotaje de 11 casos, 11 muerden por código de
+salida** (`scripts/e2e/_sabotaje-menor.mjs`). Harness de navegador nuevo
+(`scripts/e2e/_verify-menor-consent.mjs`) con control de montaje, leyendo **solo lo visible** y
+espiando `_wzConsent` en vez de crear cuentas de verdad. `_verify-arranque-modulos` 6/6,
+`_verify-coach` TODO OK.
+
+🔴 **El defecto real lo cachó mi propio harness, no la revisión.** El atributo `hidden` **no
+podía** esconder la casilla de adulto: `.wz-ck` trae `display:flex`, que le gana a la regla del
+navegador para `[hidden]`. Un menor seguía viendo la opción de «mayor de 18». Se arregló con
+clase propia `.cx-off` — **clase, no `style.display`**: la lección de v505 es que dos mecanismos
+peleando la misma propiedad se tapan el uno al otro. Con candado estático.
+
+**Los dos hallazgos del QA, ambos reales, ambos míos.**
+- **Julián · la autorización se re-fechaba en cada guardado.** `saveClient` recalculaba la
+  evidencia siempre: editarle el peso a alguien le movía **la fecha de su autorización al día de
+  hoy** y le cambiaba **la versión legal aceptada** por la vigente. `at` y `v` SON el propósito de
+  la evidencia — con eso, la prueba pasaba a decir «la última vez que el coach tocó la ficha»,
+  que no prueba nada. Cerrado con dos funciones puras, `consentSame`/`consentKeep`: se conserva la
+  evidencia original mientras **lo declarado** sea lo mismo; si cambia el fondo (de adulto a
+  menor, u otro acudiente) sí es una autorización nueva y sí se re-fecha.
+- **Julián · la edad era opcional.** En blanco, `consentNeedsGuardian` devuelve false y un menor
+  volvía al camino de adulto: **el hueco entero se reabría dejando un campo vacío**. Ahora la edad
+  es obligatoria en el auto-registro (12–99). El peso y la altura **siguen** siendo opcionales: no
+  deciden nada legal, y el texto de ayuda del paso ya lo dice así.
+- De paso: desmarcar la casilla en la ficha **no borra** una autorización ya dada — un clic no
+  puede destruir lo único que la acredita — pero ahora **se dice**, o la casilla reaparecía
+  marcada y parecía que la app no había guardado.
+
+**LA 2ª PASADA DE QA — la puerta del coach tenía el MISMO hueco.**
+- 🔴 **Lucas, reproducido en vivo:** a un menor con evidencia válida de acudiente, el coach le
+  abría la ficha, **vaciaba el campo Edad** y guardaba — la casilla queda pre-marcada porque
+  `cfLoadConsent` la rellena desde la evidencia guardada — y `{menor:true, edad:15,
+  acudiente:{...}}` se reescribía **en silencio** por `{adulto:true, edad:null}`. Ni aviso, ni
+  bloqueo. La protección de una menor se perdía sin que nadie se enterara.
+- Lo había visto leyendo por mi cuenta un rato antes (`cfSyncConsentAge` con el campo vacío da
+  `menor=false`), pero **fue él quien lo reprodujo con la app de verdad**, que es lo que lo
+  convierte en hallazgo. Cerrado con el mismo guard que en el auto-registro: **marcar la
+  casilla exige la edad**; guardar la ficha SIN marcarla sigue sin pedirla, porque entonces no
+  se está acreditando nada. Medido antes de escribirlo: **las 5 personas con consentimiento
+  guardado tienen edad**, así que el guard no encierra a nadie al editar su ficha. Con test
+  estático, sabotaje S12 y **sección 6 nueva del harness de navegador**, con sus dos controles
+  de discriminación (con la edad puesta el guardado pasa, conserva `at`/`v` originales y NO
+  pide la edad).
+- 🟡 **Julián: tres documentos que contradecían al código de este mismo commit.**
+  `terminos-y-condiciones.md` y `politica-tratamiento-datos.md` §8 decían que el modo libre es
+  **solo para mayores de 18** — justo lo contrario de lo que v565 construye — y la cifra de
+  personas con autorización estaba en 4 en dos sitios y 5 en otro (una persona autorizó el
+  mismo 2-sep, horas después de la primera medición). Corregidos los tres + `LEEME-IMPORTANTE`,
+  donde la decisión del PO queda anotada: de las dos opciones que el documento planteaba, se
+  tomó la del acudiente. El tercero (`politica-tratamiento-datos`) **no estaba en su reporte**:
+  salió de barrer la frase por todo `legal/` en vez de arreglar solo las dos líneas que él dio.
+
+**Verificación final.** 987/987 tests · **12/12 sabotajes muerden** · harness de consentimiento
+con la sección 6 nueva, todo verde · `_verify-arranque-modulos` 6/6 · `_verify-coach` TODO OK.
+
+**Lo que queda abierto.** La revisión del abogado sobre `legal/` (¿basta la declaración indirecta
+del menor, o hace falta que el acudiente firme por un canal propio?). Y la web sigue sin enlazar
+la política de datos ni los términos (A8).
+
 ## 🔄 2026-09-02 — avi-v564: VENCER YA NO ES QUEDARSE POR FUERA — SE VUELVE A AVI FREE
 
 **Pedido del PO, textual:** *«hagamos que esa promesa se haga realidad»*, sobre un hallazgo de la

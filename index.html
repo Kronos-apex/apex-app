@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=564">
+<link rel="stylesheet" href="styles.css?v=565">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -306,7 +306,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div class="wz-step" id="wz-s-body">
         <div class="wz-eyebrow">Paso 06 · Tu cuerpo</div>
         <div class="wz-q">Cuéntanos de <b>ti</b></div>
-        <div class="wz-help">Afina tus cargas y tu volumen. Puedes dejarlo en blanco y cambiarlo luego.</div>
+        <div class="wz-help">La <b>edad</b> nos dice qué permiso pedirte. El peso y la altura afinan tus cargas y puedes dejarlos en blanco.</div>
         <div class="wz-stepper" style="--c:#F2C94C">
           <span class="lab"><span class="lic"><svg class="ic"><use href="#i-cal"/></svg></span>Edad</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-age',-1,12,99)">−</button>
@@ -363,7 +363,20 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <div class="wz-consent">
           <label class="wz-ck"><input type="checkbox" id="su-ck-general"><span>He leído y acepto los <a href="#" onclick="showLegalDoc('terminos');return false">Términos y Condiciones</a> y la <a href="#" onclick="showLegalDoc('politica');return false">Política de Tratamiento de Datos</a>, y autorizo a AVI a tratar mis datos para crear mi cuenta, generar mis rutinas y guardar mi progreso.</span></label>
           <label class="wz-ck"><input type="checkbox" id="su-ck-salud"><span>Autorizo <b>de forma expresa</b> el tratamiento de mis <b>datos de salud y estado físico</b> (peso, medidas, edad, sexo, lesiones y fotos de progreso) para personalizar mis rutinas y seguir mi evolución. Es voluntario: puedo revocarlo y pedir eliminar mis datos cuando quiera.</span></label>
-          <label class="wz-ck"><input type="checkbox" id="su-ck-adulto"><span>Declaro que soy <b>mayor de 18 años</b>.</span></label>
+          <!-- v565 · La 3ª casilla CAMBIA según la edad declarada en el paso 6. Hasta v564 solo
+               existía la de adulto y era obligatoria: un menor no tenía más salida que mentir, y esa
+               mentira quedaba archivada como prueba de autorización. Las dos ramas viven en el
+               marcado y `wzSyncConsentAge()` (app-3) enseña la que toca; el candado de verdad está
+               en `consentEvidence`, que NO firma `adulto:true` con una edad de menor. -->
+          <label class="wz-ck" id="su-ck-adulto-row"><input type="checkbox" id="su-ck-adulto"><span>Declaro que soy <b>mayor de 18 años</b>.</span></label>
+          <div id="su-menor-box" class="cx-off">
+            <label class="wz-ck"><input type="checkbox" id="su-ck-acudiente"><span>Soy <b>menor de 18 años</b> y <b>mi papá, mamá o acudiente</b> conoce esta autorización y está de acuerdo con que yo entrene y con que se guarden mis datos.</span></label>
+            <label class="cin-lbl" for="su-acu-nombre" style="margin-top:10px">¿Cómo se llama tu acudiente?</label>
+            <input id="su-acu-nombre" class="cin-in" type="text" maxlength="80" placeholder="Nombre y apellido" autocomplete="off">
+            <label class="cin-lbl" for="su-acu-tel" style="margin-top:10px">Su teléfono <span style="font-weight:400;color:var(--t3)">(opcional)</span></label>
+            <input id="su-acu-tel" class="cin-in wz-tel" type="tel" inputmode="tel" maxlength="20" placeholder="300 123 4567" autocomplete="off">
+            <div class="wz-help" style="margin-top:8px">Tu coach va a hablar con él o ella antes de empezar. Nada de esto se publica.</div>
+          </div>
         </div>
         <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
         <div class="wz-or">o</div>
@@ -954,7 +967,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="frow"><div class="fg"><label class="ilbl" for="cf-email">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: Maria2026" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button></div></div></div>
     <div class="frow">
       <div class="fg"><label class="ilbl" for="cf-sex">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-      <div class="fg"><label class="ilbl" for="cf-age">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28"></div>
+      <div class="fg"><label class="ilbl" for="cf-age">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28" oninput="if(typeof cfSyncConsentAge==='function')cfSyncConsentAge()"></div>
     </div>
     <div class="frow">
       <div class="fg"><label class="ilbl" for="cf-weight">Peso (kg)</label><input class="inp" id="cf-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"></div>
@@ -971,6 +984,21 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="fg"><label class="ilbl" for="cf-place">Entorno de entrenamiento</label><select class="sel" id="cf-place"><option value="gym">🏋️ Gym completo</option><option value="casa">🏠 Casa (bandas / mancuernas)</option><option value="corporal">🤸 Solo peso corporal</option><option value="parque">🌳 Aire libre / parque</option></select></div>
     <div class="fg"><label class="ilbl" for="cf-phone">WhatsApp (con código de país)</label><input class="inp" id="cf-phone" type="tel" placeholder="Ej: 573001234567"></div>
     <div class="fg"><label class="ilbl" for="cf-notes">Notas (lesiones, restricciones, patologías...)</label><textarea class="tarea" id="cf-notes" maxlength="500" placeholder="Ej: Dolor lumbar crónico, evitar peso muerto convencional. Alérgica a la lactosa..."></textarea></div>
+    <!-- v565 · CONSENTIMIENTO EN LA RUTA DEL COACH. Hasta v564 esta ruta no capturaba NADA:
+         de 24 personas reales, solo 4 tenían autorización guardada, y las 9 que creó él —una de
+         ellas menor— ninguna. La ley pide la prueba de la autorización, no la autorización a
+         secas. Aquí el coach declara que la recogió EN PERSONA, que es como trabaja de verdad.
+         `cfSyncConsentAge()` (app-3) enseña la fila del acudiente en cuanto la edad es de menor. -->
+    <div class="fg" id="cf-consent-box" style="background:var(--surface);border:1px solid var(--br);border-radius:var(--r);padding:12px 13px">
+      <label class="wz-ck" style="align-items:flex-start"><input type="checkbox" id="cf-ck-consent"><span style="font-size:13px;line-height:1.5">Esta persona <b>me autorizó</b> a guardar y tratar sus datos de salud y entrenamiento, y le expliqué para qué. <span style="color:var(--t3)">Queda con fecha, como prueba.</span></span></label>
+      <div id="cf-menor-box" class="cx-off" style="margin-top:11px;border-top:1px solid var(--br);padding-top:11px">
+        <div style="font-size:12.5px;font-weight:800;color:var(--ort);margin-bottom:7px">⚠️ Es menor de edad — hace falta su acudiente</div>
+        <label class="ilbl" for="cf-acu-nombre">Nombre del acudiente</label>
+        <input class="inp" id="cf-acu-nombre" type="text" maxlength="80" placeholder="Nombre y apellido">
+        <label class="ilbl" for="cf-acu-tel" style="margin-top:9px">Su WhatsApp <span style="font-weight:400;color:var(--t3)">(opcional)</span></label>
+        <input class="inp" id="cf-acu-tel" type="tel" inputmode="tel" maxlength="20" placeholder="Ej: 573001234567">
+      </div>
+    </div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-client')">Cancelar</button><button class="btn bp" onclick="saveClient()" id="save-cli-btn">Guardar</button></div>
   </div>
 </div>
@@ -1291,19 +1319,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=564"></script>
-<script src="muscle-map.js?v=564"></script>
-<script src="exercise-muscles.js?v=564"></script>
+<script src="avi-core.js?v=565"></script>
+<script src="muscle-map.js?v=565"></script>
+<script src="exercise-muscles.js?v=565"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=564"></script>
-<script src="app-2-login.js?v=564"></script>
-<script src="app-3-coach.js?v=564"></script>
-<script src="app-4-entreno.js?v=564"></script>
-<script src="app-5-salud.js?v=564"></script>
-<script src="app-6-extra.js?v=564"></script>
-<script src="app-7-community.js?v=564"></script>
+<script src="app-1-infra.js?v=565"></script>
+<script src="app-2-login.js?v=565"></script>
+<script src="app-3-coach.js?v=565"></script>
+<script src="app-4-entreno.js?v=565"></script>
+<script src="app-5-salud.js?v=565"></script>
+<script src="app-6-extra.js?v=565"></script>
+<script src="app-7-community.js?v=565"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

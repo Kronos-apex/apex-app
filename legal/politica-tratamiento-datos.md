@@ -67,8 +67,20 @@ control de acceso por usuario y cifrado en tránsito). Ningún sistema es 100% i
 comprometemos a actuar con diligencia y a notificar incidentes según la ley.
 
 ## 8. Menores de edad
-[DECISIÓN CON ABOGADO] El modo libre público está dirigido a **mayores de 18 años**. No
-recolectamos conscientemente datos de menores sin autorización de su representante legal.
+**Un menor de 18 años puede usar AVI con la autorización de su padre, madre o acudiente.** Al
+crear la cuenta se pregunta la edad, y quien declara menos de 18 no firma la casilla de mayor
+de edad: firma que su acudiente conoce y acepta esta autorización, y deja su **nombre** (y, si
+quiere, su teléfono). Sin ese nombre no se crea la cuenta. El entrenador recibe ese dato para
+**hablar con el acudiente antes de que la persona empiece a entrenar**: la app no verifica por
+su cuenta que el acudiente exista o esté de acuerdo, y no finge hacerlo.
+
+Corregido el 2026-09-02 (v565). Hasta esa fecha este documento decía que el modo libre era
+solo para mayores de 18 mientras la app **obligaba** a todo el mundo a declararse mayor de
+edad para poder registrarse — de modo que un menor no tenía ninguna vía cierta de usarla y
+dos ya lo hacían con una declaración falsa que la propia app le había exigido firmar.
+
+[PENDIENTE DE ABOGADO] Si la declaración indirecta del menor basta, o si hace falta que el
+acudiente autorice por un canal propio (correo o WhatsApp al número registrado).
 
 ## 9. Comunidad (función opcional)
 AVI incluye una función de **Comunidad** para que te motives con amigos. Es **totalmente

@@ -16,7 +16,7 @@
 
 2. **Revisión de abogado** — en especial sobre:
    - **Datos sensibles (salud/fitness):** peso, medidas, lesiones, fotos de progreso son *datos sensibles* (Art. 5, Ley 1581). Exigen **consentimiento explícito** y no se puede negar el servicio por no entregarlos, salvo que sean esenciales. El abogado valida cómo lo pedimos.
-   - **Menores de edad:** recolectar datos de menores tiene reglas especiales (Decreto 1377, Art. 12). **Recomendación fuerte: el modo libre público debe ser solo para mayores de 18**, o exigir autorización del representante legal. Decisión con el abogado.
+   - **Menores de edad:** recolectar datos de menores tiene reglas especiales (Decreto 1377, Art. 12). **Recomendación fuerte: el modo libre público debe ser solo para mayores de 18**, o exigir autorización del representante legal. Decisión con el abogado. ✅ **DECIDIDO por el PO el 2026-09-02 (v565): la segunda opción** — el menor entra con autorización de su acudiente, cuyo nombre queda registrado. Sigue pendiente de abogado si esa declaración indirecta basta o hace falta que el acudiente autorice por un canal propio.
    - **Registro Nacional de Bases de Datos (RNBD) ante la SIC:** puede requerirse según el tipo de responsable. El abogado confirma si aplica para ti.
    - **Transferencia internacional de datos:** los datos se guardan en Supabase (servidores fuera de Colombia). Hay que declararlo y el abogado verifica el cumplimiento.
 

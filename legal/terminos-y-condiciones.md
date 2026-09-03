@@ -23,7 +23,12 @@ ayuda, no un servicio médico.**
 
 ## 4. Tu cuenta
 - Eres responsable de la veracidad de los datos que ingresas y de mantener segura tu sesión.
-- El modo libre está dirigido a **mayores de 18 años**.
+- **Menores de 18 años** pueden usar AVI con la **autorización de su padre, madre o acudiente**,
+  que se registra al crear la cuenta (ver `autorizacion-consentimiento.md` §C.2). Corregido el
+  2026-09-02: hasta entonces este documento decía que el modo libre era solo para mayores de
+  18, mientras la app **exigía** a todo el mundo declararse mayor de edad — así que un menor no
+  tenía ninguna forma cierta de usarla, y dos ya lo hacían con una declaración falsa que la
+  propia app le había obligado a firmar.
 - Puedes eliminar tu cuenta y tus datos cuando quieras desde la app.
 
 ## 5. Uso aceptable

@@ -1005,6 +1005,28 @@ function limitationCoachAlert(name, lim, notes) {
     + (nota ? ` Escribió: «${nota}»` : '');
 }
 
+// ── AVISO AL COACH: se registró SOLA una persona MENOR de edad (v565) ──────────────
+// El formulario le promete al menor que «tu coach va a hablar con él o ella antes de
+// empezar», y una promesa que la app no cumple es peor que no hacerla: sin este aviso el
+// coach no tiene forma de enterarse (la evidencia vive en el perfil y no la lee nadie).
+// Devuelve null si la persona no es menor — el aviso se DERIVA de la evidencia guardada,
+// jamás de la edad del perfil, que se puede editar después de haber autorizado.
+function minorCoachAlert(name, consent) {
+  const c = consent || {};
+  if (!c.menor) return null;
+  const first = String(name || '').trim().split(/\s+/)[0] || 'Alguien';
+  const ac = c.acudiente || {};
+  const nombre = String(ac.nombre || '').trim();
+  const tel = String(ac.tel || '').trim();
+  const edad = (c.edad != null && isFinite(c.edad)) ? c.edad + ' años' : 'menor de 18';
+  const quien = nombre
+    ? 'Su acudiente es ' + nombre + (tel ? ' (' + tel + ')' : ' (no dejó teléfono)') + '.'
+    : 'No quedó registrado quién es su acudiente.';
+  return '⚠️ ' + first + ' se registró por su cuenta y es MENOR de edad (' + edad + '). '
+    + quien + ' Marcó que su acudiente está de acuerdo, pero eso lo declaró ella, no él. '
+    + 'Habla con el acudiente antes de que empiece a entrenar.';
+}
+
 // Scheme de series/reps/descanso según objetivo (regla de Andrés §2.4) + nivel.
 // `adaptation`: si es true (principiante en sus primeras semanas) sobrescribe el
 // esquema del objetivo por una FASE DE ADAPTACIÓN ANATÓMICA — ver isInAdaptation().
@@ -3679,14 +3701,78 @@ function newsToShow(list, seenV, opts) {
 // (legal/autorizacion-consentimiento.md §E). Si falta alguna devuelve null (el registro
 // no procede); si están todas, arma la "prueba de autorización" que exige la ley:
 // qué se aceptó, cuándo y con qué versión de los textos. Va en la fila del usuario.
-function consentEvidence(checks, version, nowIso) {
+// ── LA APP YA NO OBLIGA A UN MENOR A MENTIR (v565) ──────────────────────────────────────
+// Hasta v564 la casilla «Declaro que soy mayor de 18 anios» era OBLIGATORIA, no habia
+// alternativa de acudiente, y **nadie la cruzaba contra la edad que el propio formulario
+// acababa de pedir** dos pasos antes. Medido en produccion el 2-sep: Valery (15) y Sharith
+// Sofia (16) tienen `consent:{adulto:true}` guardado — o sea que la unica forma de entrar
+// era declarar algo falso, y encima esa mentira quedaba archivada como PRUEBA de que se
+// autorizo siendo adulta, que es exactamente lo contrario de lo que la evidencia sirve.
+// Decision del PO (2-sep): **si declara menos de 18, se le pide el permiso de su acudiente**
+// y la evidencia dice la verdad. Regimen reforzado de la Ley 1581/2012 para menores.
+// 🔒 EL CANDADO ES QUE `adulto:true` NO SE PUEDE EMITIR CON UNA EDAD DE MENOR, pase lo que
+//    pase con las casillas: si el formulario se equivoca, la funcion pura NO firma la mentira.
+// 🔒 La edad DECLARADA viaja dentro de la evidencia (`edad`), porque el perfil se puede
+//    editar despues y entonces nadie sabria con que edad se autorizo.
+// Reglas del `age`: null/vacio/ilegible = no se sabe -> se pide la de adulto (es el camino
+// conservador: quien no dice su edad no habilita el camino del menor).
+function consentNeedsGuardian(age) {
+  const n = (age === '' || age === null || age === undefined) ? NaN : Number(age);
+  if (!isFinite(n) || n <= 0) return false;
+  return n < 18;
+}
+
+// checks: {general, salud, adulto, acudiente}. opts: {age, acudienteNombre, acudienteTel}.
+// Devuelve null si falta algo (el registro no procede) o la evidencia si esta completa.
+function consentEvidence(checks, version, nowIso, opts) {
   checks = checks || {};
-  if (!checks.general || !checks.salud || !checks.adulto) return null;
-  return {
-    general: true, salud: true, adulto: true,
-    v: String(version || ''),
-    at: nowIso || new Date().toISOString(),
-  };
+  opts = opts || {};
+  if (!checks.general || !checks.salud) return null;
+  const at = nowIso || new Date().toISOString();
+  const v = String(version || '');
+  const age = (opts.age === '' || opts.age === null || opts.age === undefined) ? null : Number(opts.age);
+  const edad = (age != null && isFinite(age) && age > 0) ? age : null;
+
+  if (consentNeedsGuardian(edad)) {
+    // Menor: la casilla que vale es la del ACUDIENTE, y su nombre es obligatorio — una
+    // autorizacion de representante sin representante identificable no es una autorizacion.
+    const nombre = String(opts.acudienteNombre || '').trim();
+    if (!checks.acudiente || nombre.length < 2) return null;
+    const tel = String(opts.acudienteTel || '').trim();
+    return {
+      general: true, salud: true,
+      adulto: false, menor: true, edad,
+      acudiente: tel ? { nombre, tel } : { nombre },
+      v, at,
+    };
+  }
+  if (!checks.adulto) return null;
+  return { general: true, salud: true, adulto: true, edad, v, at };
+}
+
+// ── UNA AUTORIZACIÓN NO SE RE-FECHA CADA VEZ QUE SE GUARDA LA FICHA (v565) ────────
+// `at` y `v` SON el propósito de la evidencia: cuándo autorizó esa persona y qué versión
+// del texto aceptó. La primera versión de v565 los recalculaba en cada `saveClient`, así
+// que editarle el peso a alguien le movía la fecha de su autorización al día de hoy y le
+// cambiaba la versión legal aceptada por la vigente — la prueba pasaba a decir «la última
+// vez que el coach tocó la ficha», que no prueba nada. Lo cazó Julián QA antes de desplegar.
+// 🔒 Se conserva la evidencia ANTERIOR mientras lo declarado sea LO MISMO. Si cambia el
+//    fondo —de adulto a menor, o el acudiente— es una autorización NUEVA y se re-fecha,
+//    porque lo que se autorizó ya no es lo mismo.
+function consentSame(a, b) {
+  if (!a || !b) return false;
+  if (!!a.menor !== !!b.menor) return false;
+  if (!!a.adulto !== !!b.adulto) return false;
+  if ((a.edad == null ? null : a.edad) !== (b.edad == null ? null : b.edad)) return false;
+  const aa = a.acudiente || {}, ba = b.acudiente || {};
+  return String(aa.nombre || '') === String(ba.nombre || '')
+      && String(aa.tel || '') === String(ba.tel || '');
+}
+// prev = la que ya estaba guardada; next = la que arma el formulario ahora.
+// Devuelve la que hay que ESCRIBIR (o null si no hay ninguna).
+function consentKeep(prev, next) {
+  if (!next) return prev || null;
+  return consentSame(prev, next) ? prev : next;
 }
 
 // ── ¿Es usuario en modo libre (gratis, sin coach)? ──
@@ -8946,6 +9032,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pushPlanFromRoutines,
     genLimitationNote,
     limitationCoachAlert,
+    minorCoachAlert,
     clientProgressStory,
     showcaseRow,
     SHOWCASE_MAX,
@@ -9186,6 +9273,9 @@ if (typeof module !== 'undefined' && module.exports) {
     validateSignup,
     passwordProblem,
     consentEvidence,
+    consentNeedsGuardian,
+    consentSame,
+    consentKeep,
     PAIN_AREAS,
     PAIN_SIDES,
     painSidesFor,

@@ -117,7 +117,7 @@ function renderClients(){
   if(_term&&typeof filterClients==='function')filterClients(_term);
 }
 
-function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';om('m-client')}
+function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';cfLoadConsent(null);om('m-client')}
 
 // Muestra u oculta los campos que solo tienen sentido para un ASESORADO (correo y clave de
 // acceso, WhatsApp). En mi propio perfil no aplican: entro como coach y no me escribo.
@@ -128,6 +128,33 @@ function _mcToggleAccountFields(show){
     if(box)box.style.display=show?'':'none';
   });
 }
+// v565 · La ruta del COACH tampoco capturaba consentimiento: medido el 2026-09-02, de 24
+// personas reales solo 5 tenían autorización guardada y las 5 venían del auto-registro — de
+// las que creó él, ninguna, y una de ellas es menor.
+// `cfSyncConsentAge` enseña la fila del acudiente en cuanto la edad declarada es de menor.
+// 🔒 La casilla NO se auto-marca al editar a alguien que ya autorizó: se rellena desde la
+//    evidencia guardada, y si no hay evidencia queda vacía. Una casilla marcada sola sería
+//    fabricar la prueba, que es justo lo contrario de lo que la evidencia sirve.
+function cfSyncConsentAge(){
+  if(typeof consentNeedsGuardian!=='function')return;                 // guard caché vieja
+  const ageEl=document.getElementById('cf-age');
+  const menor=consentNeedsGuardian(ageEl?parseInt(ageEl.value):null);
+  const box=document.getElementById('cf-menor-box');
+  if(box)box.classList.toggle('cx-off',!menor);
+}
+// Rellena la caja de consentimiento con lo que YA hay guardado de esa persona (o la vacía).
+function cfLoadConsent(c){
+  const ck=document.getElementById('cf-ck-consent');
+  const nom=document.getElementById('cf-acu-nombre');
+  const tel=document.getElementById('cf-acu-tel');
+  const ev=(c&&c.consent)||null;
+  if(ck)ck.checked=!!(ev&&ev.general&&ev.salud);
+  const ac=(ev&&ev.acudiente)||{};
+  if(nom)nom.value=ac.nombre||'';
+  if(tel)tel.value=ac.tel||'';
+  cfSyncConsentAge();
+}
+
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   _mcToggleAccountFields(!isSelfClient(c));
@@ -143,6 +170,7 @@ function openEditClient(){
   document.getElementById('cf-weight').value=c.weight||'';
   document.getElementById('cf-height').value=c.height||'';
   document.getElementById('cf-age').value=c.age||'';
+  cfLoadConsent(c);
   document.getElementById('cf-sex').value=c.sex||'';
   document.getElementById('cf-activity').value=c.activityFactor||'1.55';
   document.getElementById('cf-days').value=c.days||'3';
@@ -234,6 +262,46 @@ async function saveClient(){
     phone:document.getElementById('cf-phone').value.trim(),
     updatedAt:new Date().toISOString()
   };
+  // v565 · La autorización que el coach recogió EN PERSONA, con su fecha. Misma función pura
+  // que el auto-registro (`consentEvidence`), así que un menor NUNCA queda firmado como adulto:
+  // si le falta el acudiente, devuelve null y aquí no se escribe nada — jamás una evidencia
+  // a medias, que sería peor que ninguna.
+  {
+    const _ckC=document.getElementById('cf-ck-consent');
+    const _acN=document.getElementById('cf-acu-nombre');
+    const _acT=document.getElementById('cf-acu-tel');
+    // 🔴 MARCAR LA CASILLA EXIGE LA EDAD, igual que en el auto-registro. Sin edad,
+    //    `consentNeedsGuardian` devuelve false y la evidencia salía `adulto:true, edad:null`:
+    //    la rama por defecto es la MENOS protectora, que es justo lo que v565 vino a cerrar.
+    //    Se exige solo cuando se registra la autorización — guardar la ficha SIN marcarla
+    //    sigue sin pedir edad, porque entonces no se está acreditando nada.
+    //    Medido: las 5 personas con consentimiento guardado tienen edad, así que esto no
+    //    deja a nadie encerrado al editar su ficha.
+    if(_ckC&&_ckC.checked&&!(data.age>0)){
+      toast('⚠️ Escribe su edad: es la que decide qué autorización corresponde');
+      const _ae=document.getElementById('cf-age'); if(_ae)_ae.focus();
+      return;
+    }
+    const _menor=(typeof consentNeedsGuardian==='function')&&consentNeedsGuardian(data.age);
+    const _prev=(CUR.editClientId&&(DB.clients.find(x=>x.id===CUR.editClientId)||{}).consent)||null;
+    const _ev=(typeof consentEvidence==='function')?consentEvidence(
+      {general:!!(_ckC&&_ckC.checked),salud:!!(_ckC&&_ckC.checked),adulto:!_menor,acudiente:_menor},
+      LEGAL_V, null,
+      {age:data.age, acudienteNombre:_acN?_acN.value:'', acudienteTel:_acT?_acT.value:''}
+    ):null;
+    if(_ev){
+      _ev.por='coach';
+      // 🔒 Si lo declarado es LO MISMO que ya estaba guardado, se conserva la evidencia
+      //    ORIGINAL con su fecha y su versión: editarle el peso a alguien no puede mover
+      //    la fecha de su autorización ni cambiarle el texto que aceptó (aviso de Julián QA).
+      data.consent=(typeof consentKeep==='function')?consentKeep(_prev,_ev):_ev;
+    }
+    else if(_ckC&&_ckC.checked&&_menor){ toast('⚠️ Es menor de edad: escribe el nombre de su acudiente'); return; }
+    // 🔒 Desmarcar NO borra una autorización que ya se dio: la prueba se conserva, o un
+    //    clic destruiría lo único que acredita que esa persona autorizó. Pero hay que DECIRLO,
+    //    o la casilla reaparece marcada y parece que la app no guardó.
+    else if(_prev&&_ckC&&!_ckC.checked){ toast('La autorización que ya dio queda registrada. Para retirarla, hay que eliminar sus datos.'); }
+  }
   if(hashedPass) data.password=hashedPass;
   let _oldEmail=null; // correo previo, para detectar cambio de correo de acceso (bug #3)
   if(CUR.editClientId){
@@ -341,6 +409,29 @@ function _selfRegLimAlert(c,res){
     }
     return true;
   }catch(e){ warn('AVI: aviso de limitación falló (no bloquea):',e&&e.message); return false; }
+}
+
+// ── AVISO AL COACH: se registró SOLA una persona MENOR de edad (v565) ──────────────────
+// Mismo canal y mismo candado que el aviso de limitación de v552: mensaje en su hilo + push,
+// UNA sola vez (`minorAlertAt`). El formulario le PROMETE al menor que su coach va a hablar
+// con su acudiente — sin esto, esa frase sería mentira.
+// 🔒 Se deriva de la EVIDENCIA guardada (`consent.menor`), no de `c.age`: el perfil se puede
+//    editar después y la autorización se dio con la edad de ese día.
+function _selfRegMinorAlert(c){
+  try{
+    if(!c||!c.selfReg||c.minorAlertAt)return false;
+    const txt=(typeof minorCoachAlert==='function')?minorCoachAlert(c.name,c.consent):null;
+    if(!txt)return false;
+    c.minorAlertAt=new Date().toISOString();
+    if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+    DB.msgs[c.id].push({from:'client',text:txt,date:c.minorAlertAt});
+    svNow('ax_m',DB.msgs); svNow('ax_c',DB.clients);
+    if(typeof pushToClient==='function'){
+      pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+' es menor de edad',
+        txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+    }
+    return true;
+  }catch(e){ warn('AVI: aviso de menor falló (no bloquea):',e&&e.message); return false; }
 }
 
 // ── Modo auth: poblar DB SOLO con el usuario logueado (aislado del blob global) ──
@@ -518,6 +609,7 @@ async function _provisionFreeClient(authUser, p){
   // El aviso de limitación va DESPUÉS de crear la fila: escribe en `ax_m`/`ax_c` de esta persona,
   // y sin fila esa escritura no tiene dónde caer.
   _selfRegLimAlert(rec,_genRes);
+  _selfRegMinorAlert(rec);
   return rec;
 }
 
@@ -955,7 +1047,12 @@ async function backToCoachPanel(){
 // documentos de legal/ para que la evidencia guardada diga QUÉ versión se aceptó.
 // Los textos son BORRADORES pendientes de revisión de abogado (legal/LEEME-IMPORTANTE.md);
 // Camilo decidió conectarlos tal cual mientras tanto (2026-07-06).
-const LEGAL_V='2026-07-26-borrador'; // 2026-07-26: §9 corrige QUIÉN te ve — decía «solo por código,
+// 2026-09-02 (v565): §C del consentimiento pasa a tener DOS caminos — el de adulto y el del
+// ACUDIENTE para quien declara menos de 18. Antes la única salida era declararse mayor de edad,
+// así que la app archivaba una mentira como prueba de autorización (dos menores reales la tenían).
+// La versión SUBE porque el texto que la persona acepta ya no es el mismo: la evidencia guarda
+// qué versión se aceptó, y dejarla igual haría que apuntara a un texto que nadie vio.
+const LEGAL_V='2026-09-02-borrador'; // 2026-07-26: §9 corrige QUIÉN te ve — decía «solo por código,
 // no hay directorio ni buscador» y eso es FALSO desde el directorio del gimnasio (C5) y «Descubrir»
 // (③c-3). Ahora describe los tres caminos y el bloqueo. PENDIENTE de abogado.
 const LEGAL_DOCS={
@@ -1118,11 +1215,55 @@ async function toggleGymMember(memberId){
   }catch(e){ toast('No se pudo actualizar. Intenta de nuevo.'); }
 }
 
-// Lee las 3 casillas y arma la evidencia (o null si falta alguna). La usan los DOS
-// caminos de registro: email (signupClient) y Google (wzGoogle).
+// Lee las casillas y arma la evidencia (o null si falta algo). La usan los DOS caminos de
+// registro: email (signupClient) y Google (wzGoogle).
+// v565: la 3ª casilla depende de la EDAD declarada en el paso 6 — adulto o acudiente. Aquí
+// solo se leen los campos; quien manda es `consentEvidence`, que jamás firma `adulto:true`
+// con una edad de menor aunque el formulario mande la casilla equivocada.
 function _wzConsent(){
   const ck=id=>{const e=document.getElementById(id);return !!(e&&e.checked);};
-  return consentEvidence({general:ck('su-ck-general'),salud:ck('su-ck-salud'),adulto:ck('su-ck-adulto')},LEGAL_V);
+  const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const age=parseInt(val('su-age'));
+  return consentEvidence(
+    {general:ck('su-ck-general'),salud:ck('su-ck-salud'),adulto:ck('su-ck-adulto'),acudiente:ck('su-ck-acudiente')},
+    LEGAL_V, null,
+    {age:isFinite(age)?age:null, acudienteNombre:val('su-acu-nombre'), acudienteTel:val('su-acu-tel')}
+  );
+}
+
+// Enseña la rama de consentimiento que le toca a la edad declarada, y APAGA la otra —
+// dejar las dos a la vista sería pedirle a un menor que elija si miente.
+function wzSyncConsentAge(){
+  if(typeof consentNeedsGuardian!=='function')return;                 // guard caché vieja
+  const ageEl=document.getElementById('su-age');
+  const menor=consentNeedsGuardian(ageEl?parseInt(ageEl.value):null);
+  const rowAd=document.getElementById('su-ck-adulto-row');
+  const boxMe=document.getElementById('su-menor-box');
+  // Se apaga con la clase propia, NO con `hidden`: `.wz-ck` lleva display:flex y le gana
+  // al `display:none` del navegador — la casilla de adulto seguia visible para el menor.
+  if(rowAd)rowAd.classList.toggle('cx-off',menor);
+  if(boxMe)boxMe.classList.toggle('cx-off',!menor);
+  // Desmarcar la casilla de la rama que se apaga: si alguien puso 25, marcó «soy mayor» y
+  // luego corrigió a 15, esa marca no puede quedarse viva escondida.
+  const off=document.getElementById(menor?'su-ck-adulto':'su-ck-acudiente');
+  if(off)off.checked=false;
+}
+
+// El mensaje dice QUÉ falta, y en la rama del menor nombra al acudiente: «marca las 3
+// casillas» sería una instrucción imposible para quien tiene la de adulto apagada.
+function _wzConsentError(){
+  const ck=id=>{const e=document.getElementById(id);return !!(e&&e.checked);};
+  const ageEl=document.getElementById('su-age');
+  const menor=(typeof consentNeedsGuardian==='function')&&consentNeedsGuardian(ageEl?parseInt(ageEl.value):null);
+  if(!ck('su-ck-general')||!ck('su-ck-salud'))
+    return 'Para crear tu cuenta acepta las dos primeras autorizaciones (la de datos de salud es la que nos deja armar tu rutina).';
+  if(menor){
+    const nom=document.getElementById('su-acu-nombre');
+    if(!ck('su-ck-acudiente'))return 'Como eres menor de 18, marca que tu acudiente está de acuerdo.';
+    if(!nom||nom.value.trim().length<2)return 'Escribe el nombre de tu acudiente para poder continuar.';
+    return 'Falta el permiso de tu acudiente para crear la cuenta.';
+  }
+  return 'Marca la última casilla para confirmar que eres mayor de 18 años.';
 }
 
 const WZ={
@@ -1143,6 +1284,9 @@ const WZ={
     const c=document.getElementById('wz-count'); if(c)c.textContent='0'+(this.cur+1)+'/0'+this.steps.length;
     const e=document.getElementById('su-err'); if(e)e.classList.remove('on');
     const sg=document.getElementById('cin-signup'); if(sg)sg.scrollTop=0;
+    // v565: la rama de consentimiento se decide con la edad del paso 6, así que se resuelve
+    // AL PINTAR el paso de la cuenta (no al teclear: puede volver atrás y corregirla).
+    if(typeof wzSyncConsentAge==='function')wzSyncConsentAge();
   },
   next(){
     if(!this._valid())return;
@@ -1176,6 +1320,15 @@ const WZ={
       const n=document.getElementById('su-name');
       if(!n||!n.value.trim()){ this._err('Escribe tu nombre para continuar'); return false; }
     }
+    // v565 · LA EDAD DEJA DE SER OPCIONAL, y es lo único obligatorio de este paso.
+    // Es el dato que DECIDE qué autorización se pide: en blanco, `consentNeedsGuardian`
+    // devuelve false y un menor volvía al camino de adulto — el mismo hueco que esta
+    // versión existe para cerrar, alcanzable dejando un campo vacío (aviso de Julián QA).
+    // El peso y la altura SIGUEN siendo opcionales: no deciden nada legal.
+    if(this.steps[this.cur]==='wz-s-body'){
+      const a=document.getElementById('su-age'); const n=a?parseInt(a.value):NaN;
+      if(!isFinite(n)||n<12||n>99){ this._err('Escribe tu edad para continuar — con ella sabemos qué permiso pedirte'); if(a)a.focus(); return false; }
+    }
     return true;
   }
 };
@@ -1206,7 +1359,7 @@ async function signupClient(){
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
   const consent=_wzConsent();
-  if(!consent){err.textContent='Para crear tu cuenta marca las 3 casillas de autorización (incluida la de datos de salud: sin ella no podemos armar tu rutina).';err.classList.add('on');return;}
+  if(!consent){err.textContent=_wzConsentError();err.classList.add('on');return;}
   if(!AUTH.ready()){err.textContent='Sin conexión para crear la cuenta. Revisa tu internet.';err.classList.add('on');return;}
   err.classList.remove('on');
   if(btn){btn.disabled=true;}
@@ -1247,7 +1400,7 @@ function wzGoogle(){
   // Mismo gate de consentimiento que el registro por email: sin las 3 casillas no se
   // redirige a Google (la evidencia viaja en ax_wz_pending porque OAuth nos saca de la página).
   const consent=_wzConsent();
-  if(!consent){ const e=document.getElementById('su-err'); if(e){e.textContent='Para crear tu cuenta marca las 3 casillas de autorización (incluida la de datos de salud: sin ella no podemos armar tu rutina).';e.classList.add('on');} return; }
+  if(!consent){ const e=document.getElementById('su-err'); if(e){e.textContent=_wzConsentError();e.classList.add('on');} return; }
   try{
     localStorage.setItem('ax_wz_pending', JSON.stringify({
       name, goal:g('su-goal')||null, place:g('su-place')||'gym', level:g('su-level')||'Principiante',
@@ -1273,6 +1426,7 @@ function clientSelfGenerate(){
     // Segunda puerta al mismo camino: quien declaró su limitación DESPUÉS del registro (editando
     // su perfil) entra por aquí, no por el provisionamiento. `_selfRegLimAlert` avisa una sola vez.
     _selfRegLimAlert(c,res);
+    _selfRegMinorAlert(c);
     renderClientAllRoutines(c);
     toast(res.routines&&res.routines.length?'✨ ¡Tu nueva semana está lista!':'No se pudo generar, intenta de nuevo');
   }catch(e){ warn('AVI: regenerar libre falló:',e&&e.message); toast('No se pudo generar, intenta de nuevo'); }
