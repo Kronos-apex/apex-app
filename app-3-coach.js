@@ -1695,11 +1695,34 @@ function renderStoryCard(c){
     // Solo se explica el caso del MENOR: los demás («aún no hay entrenos suficientes») no son un
     // problema que el coach deba resolver y una tarjeta por cada uno sería ruido en su ficha.
     const _menor=!!(st&&st.razon==='menor');
+    // v573 · La puerta del acudiente. Hasta v572 esta rama SOLO explicaba por qué no se podía y
+    // no ofrecía nada: el coach con el permiso en la mano quedaba en el mismo sitio que el que
+    // no lo tenía. El nombre viene precargado del consentimiento de v565 si ya está —es el mismo
+    // acudiente— pero se CONFIRMA a mano: autorizar el tratamiento de sus datos no es autorizar
+    // publicarlo (ver `showcaseMinorOk`), así que la casilla no puede venir marcada.
+    const _acuPrev=((c&&c.consent&&c.consent.acudiente)||{});
     el.innerHTML=`<div class="card"><div class="cb">`+
       (_menor?`<div style="font-size:12.5px;color:var(--t2);line-height:1.55">
         ${_coIco('lock',13,'🔒')} <b>Sin imagen para compartir:</b> es menor de edad. Publicar su nombre y sus
-        datos de entrenamiento en redes necesita el permiso de su acudiente, así que la app no lo
-        deja a un toque. Si lo tienes, ármala tú.</div>`:'')+
+        datos de entrenamiento en una página abierta necesita el permiso de su acudiente, y ese
+        permiso es aparte del que dio para que entrene.</div>
+      <details style="margin-top:9px">
+        <summary style="font-size:12.5px;font-weight:800;color:var(--gt);cursor:pointer">Tengo el permiso de su acudiente</summary>
+        <div style="margin-top:9px">
+          <label class="ilbl" for="d-story-acu-nom">Nombre del acudiente que autoriza</label>
+          <input id="d-story-acu-nom" class="inp" type="text" maxlength="80"
+                 placeholder="Nombre y apellido" value="${esc(_acuPrev.nombre||'')}">
+          <label class="ilbl" for="d-story-acu-tel" style="margin-top:7px">Su WhatsApp <span style="font-weight:400;color:var(--t3)">(opcional)</span></label>
+          <input id="d-story-acu-tel" class="inp" type="tel" inputmode="tel" maxlength="20" value="${esc(_acuPrev.tel||'')}">
+          <label class="wz-ck" style="margin-top:9px"><input type="checkbox" id="d-story-acu-ck">
+            <span>Su acudiente me autorizó a <b>publicar su nombre y sus números de entrenamiento</b>
+            en mi página pública, que puede ver cualquiera.</span></label>
+          <button class="btn bo bsm" style="width:100%;margin-top:9px" onclick="registrarPermisoVitrina()">
+            Registrar la autorización</button>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:7px;line-height:1.5">
+            Queda guardado quién autorizó y en qué fecha. Lo puedes retirar cuando quieras.</div>
+        </div>
+      </details>`:'')+
       `<div id="d-story-pub"${_menor?' style="margin-top:9px"':''}></div></div></div>`;
     // La tarjeta se muestra ya si hay algo que decir; si no, la revela `_renderStoryPub` cuando
     // encuentra una fila publicada (la lectura es de red y no se puede resolver aquí).
@@ -1712,6 +1735,20 @@ function renderStoryCard(c){
   const filas=st.subidas.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px">
       <span style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.ejercicio)}</span>
       <b style="color:var(--gt);white-space:nowrap">${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join('');
+  // v573 · Si esto se puede publicar SOLO porque su acudiente lo autorizó, se dice y se puede
+  // retirar aquí mismo. 🔒 Una autorización que no se ve por ninguna parte no se puede revocar
+  // —sería otra salida tapiada— y además el coach tiene que poder recordar QUIÉN se la dio.
+  let _permisoFila='';
+  if((typeof consentNeedsGuardian==='function')&&consentNeedsGuardian(c.age)
+     &&(typeof showcaseMinorOk==='function')&&showcaseMinorOk(c)){
+    const _sc=c.showcaseConsent||{}, _ac=_sc.acudiente||{};
+    const _cuando=_sc.at?new Date(_sc.at).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'}):'';
+    _permisoFila=`<div style="margin-top:10px;border-top:1px solid var(--br);padding-top:9px;
+        display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--t2);line-height:1.5">
+      <span style="flex:1;min-width:150px">${_coIco('check',12,'✓')} Es menor: publicarlo lo autorizó
+        <b style="color:var(--t1)">${esc(_ac.nombre||'su acudiente')}</b>${_cuando?' el '+esc(_cuando):''}.</span>
+      <button class="btn bd bsm" onclick="retirarPermisoVitrina()">Retirar</button></div>`;
+  }
   el.style.display='block';
   el.innerHTML=`<div class="card">
     <div class="ch"><div class="ctitle">${_coIco('camera',14,'📣')} Su progreso, listo para tu historia</div></div>
@@ -1722,9 +1759,54 @@ function renderStoryCard(c){
       ${filas}
       <button class="btn bp bsm" style="margin-top:10px;width:100%" onclick="shareClientProgress()">
         ${_coIco('camera',13,'📸')} Crear la imagen para compartir</button>
+      ${_permisoFila}
       <div id="d-story-pub" style="margin-top:8px"></div>
     </div></div>`;
   _renderStoryPub(st);
+}
+
+// ── EL PERMISO DEL ACUDIENTE PARA PUBLICAR A UN MENOR (v573) ──────────────────────────
+// El motor es puro y vive en avi-core (`showcaseMinorConsent` / `showcaseMinorOk`); aquí solo
+// se recoge lo que el coach declara y se guarda.
+// 🔒 LA CASILLA NO SE PRE-MARCA ni se deduce del consentimiento de v565: autorizar que la app
+//    trate los datos de su hijo NO es autorizar publicarlo en una página abierta. Son dos
+//    finalidades y la ley pide autorización por finalidad.
+function registrarPermisoVitrina(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const nom=document.getElementById('d-story-acu-nom');
+  const tel=document.getElementById('d-story-acu-tel');
+  const ck=document.getElementById('d-story-acu-ck');
+  if(!ck||!ck.checked){ toast('⚠️ Marca la casilla: es lo que acredita que te autorizó'); return; }
+  const ev=(typeof showcaseMinorConsent==='function')?showcaseMinorConsent(
+    {autoriza:true, acudienteNombre:nom?nom.value:'', acudienteTel:tel?tel.value:'', edad:c.age},
+    (typeof SHOWCASE_MINOR_V!=='undefined')?SHOWCASE_MINOR_V:'', null):null;
+  if(!ev){ toast('⚠️ Escribe el nombre del acudiente que autoriza'); if(nom)nom.focus(); return; }
+  ev.por='coach';
+  // 🔒 Una autorización que se REEMPLAZA no se tira a la basura: se archiva con su fecha y con
+  //    la de su retiro. Si algún día alguien reclama «publicaste a mi hijo después de que dije
+  //    que no», esto es lo único que puede contar qué pasó y cuándo. Nada lo LEE hoy, y es a
+  //    propósito: es prueba, no una pantalla. Topado para que no crezca sin freno.
+  if(c.showcaseConsent){
+    c.showcaseConsentLog=(c.showcaseConsentLog||[]).concat([c.showcaseConsent]).slice(-10);
+  }
+  c.showcaseConsent=ev;
+  sv('ax_c',DB.clients);
+  toast('✅ Autorización registrada');
+  renderStoryCard(c);
+}
+// 🔒 v570 · LA SALIDA NO PUEDE DEPENDER DE LA ENTRADA. Retirar NO borra la prueba —eso destruiría
+//    lo único que acredita que sí autorizó en su momento— sino que la fecha.
+// ⚠️ Retirar NO baja la tarjeta que ya está publicada, y NO se hace solo a propósito: borrar de
+//    `avi_showcase` no se puede deshacer. Al repintar, `_renderStoryPub` cae en la rama de v570
+//    («tiene una tarjeta publicada y la app hoy no la publicaría») con su botón Quitar al lado.
+function retirarPermisoVitrina(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const sc=c.showcaseConsent; if(!sc||sc.retiradoAt)return;
+  if(!confirm('¿Retirar la autorización de su acudiente?\n\nDeja de poder publicarse. Si su tarjeta ya está en tu página, hay que quitarla aparte — te lo va a decir ahí mismo.'))return;
+  sc.retiradoAt=new Date().toISOString();
+  sv('ax_c',DB.clients);
+  toast('Autorización retirada');
+  renderStoryCard(c);
 }
 let _storyData=null;
 // Dibuja 1080×1920 (formato historia) con la MISMA marca que el cierre del asesorado (v313):

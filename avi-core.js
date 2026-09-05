@@ -9194,18 +9194,66 @@ function waPhone(raw) {
 // Y el porcentaje NO se muestra: un «+650%» en un post se lee como marketing inflado aunque sea
 // verdad, y la credibilidad es justo lo que está vendiendo.
 //
-// 🔴 MENORES BLOQUEADOS. Publicar en redes el nombre y los datos de entrenamiento de un menor no
-// es una decisión de un toque. Devuelve `{ok:false, razon:'menor'}` y la pantalla lo explica: no
-// es que no se pueda con permiso del acudiente, es que la app no lo hace fácil por accidente.
-// Hoy no afecta a nadie (los 8 con historial tienen de 28 a 40 años) y por eso mismo se pone
-// ahora: cuando afecte a alguien, ya no se está mirando.
+// 🔴 MENORES BLOQUEADOS SALVO PERMISO REGISTRADO DEL ACUDIENTE (v573). Publicar en redes el
+// nombre y los datos de entrenamiento de un menor no es una decisión de un toque. Sin permiso
+// devuelve `{ok:false, razon:'menor'}` y la pantalla lo explica. La frase que este comentario
+// tenía desde v522 —«no es que no se pueda con permiso del acudiente, es que la app no lo hace
+// fácil por accidente»— describía una puerta que NO EXISTÍA: no había forma de acreditar ese
+// permiso, así que el candado era absoluto y la palabra «accidente» sobraba. Ahora la puerta
+// existe, y sigue sin ser un toque — ver `showcaseMinorOk`.
 const STORY_MIN_SESSIONS = 8;   // por debajo no hay historia que contar, hay un arranque
 const STORY_TOP_LIFTS = 3;      // lo que cabe legible en una historia de 1080×1920
+
+// ── EL PERMISO DEL ACUDIENTE PARA PUBLICAR (v573) ────────────────────────────────────
+// 🔴 NO SIRVE EL CONSENTIMIENTO DE v565, Y ESA ES LA DECISIÓN DE FONDO. Lo que el acudiente
+// acepta al inscribir al menor autoriza TRATAR sus datos y que ENTRENE. Publicar su nombre y
+// sus kilos en una página abierta que el coach reparte por WhatsApp e Instagram es OTRA
+// finalidad, y la Ley 1581/2012 pide que la autorización sea específica de su finalidad
+// (régimen reforzado del art. 7 para menores). Si este candado leyera `consent.acudiente`,
+// **cualquier menor inscrito con normalidad quedaría publicable de una** — que es exactamente
+// el accidente que el candado vino a evitar. Familia del filtro de lesiones (v424): una regla
+// ANCHA también hace daño, y de las dos formas de equivocarse esta es la cara.
+//
+// 🔒 Por eso vive en SU PROPIO campo, lo registra el coach a mano, y acredita QUIÉN autorizó,
+//    CUÁNDO y con qué versión del texto — la misma forma que `consentEvidence`.
+// 🔒 Y SE PUEDE RETIRAR (v570: la salida no puede depender de la entrada). Retirar NO borra la
+//    prueba —eso destruiría lo único que acredita lo que pasó— sino que la fecha: la evidencia
+//    queda, la autorización se acaba. Un consentimiento de publicación es revocable siempre.
+// ⚠️ La edad viaja como CONSTANCIA de con qué edad se autorizó, y NO se re-verifica después:
+//    corregir una edad no revoca lo que el acudiente autorizó. Quien quiera revocar, revoca.
+const SHOWCASE_MINOR_V = 'vitrina-menor-1';
+// opts: {autoriza, acudienteNombre, acudienteTel, edad}. null si falta algo — jamás a medias.
+function showcaseMinorConsent(opts, version, nowIso) {
+  opts = opts || {};
+  if (!opts.autoriza) return null;
+  // Una autorización de representante sin representante identificable no es una autorización
+  // (mismo listón que `consentEvidence`).
+  const nombre = String(opts.acudienteNombre || '').trim();
+  if (nombre.length < 2) return null;
+  const n = Number(opts.edad);
+  const edad = (isFinite(n) && n > 0) ? n : null;
+  const tel = String(opts.acudienteTel || '').trim();
+  return {
+    acudiente: tel ? { nombre, tel } : { nombre },
+    edad, v: String(version || ''), at: nowIso || new Date().toISOString(),
+  };
+}
+// ¿Hay hoy un permiso VIVO para publicar a este menor? PURA.
+function showcaseMinorOk(client) {
+  const sc = (client || {}).showcaseConsent;
+  if (!sc || typeof sc !== 'object') return false;
+  if (sc.retiradoAt) return false;                     // retirado: la prueba queda, el permiso no
+  const ac = sc.acudiente || {};
+  if (String(ac.nombre || '').trim().length < 2) return false;
+  // Sin fecha ni versión no es evidencia de nada, y una evidencia a medias es peor que ninguna.
+  return !!(sc.at && sc.v);
+}
+
 function clientProgressStory(client, sessions, now) {
   client = client || {};
   const ses = (sessions || []).filter(s => s && s.date);
   const edad = parseInt(client.age);
-  if (edad && edad < 18) return { ok: false, razon: 'menor' };
+  if (edad && edad < 18 && !showcaseMinorOk(client)) return { ok: false, razon: 'menor' };
   if (ses.length < STORY_MIN_SESSIONS) return { ok: false, razon: 'pocos_entrenos', entrenos: ses.length, faltan: STORY_MIN_SESSIONS - ses.length };
   const ref = now ? new Date(now) : new Date();
   const ts = ses.map(s => Date.parse(s.date)).filter(t => isFinite(t)).sort((a, b) => a - b);
@@ -9428,6 +9476,9 @@ if (typeof module !== 'undefined' && module.exports) {
     limitationCoachAlert,
     minorCoachAlert,
     clientProgressStory,
+    showcaseMinorConsent,
+    showcaseMinorOk,
+    SHOWCASE_MINOR_V,
     showcaseRow,
     SHOWCASE_MAX,
     showcaseFirstName,

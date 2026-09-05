@@ -4,6 +4,79 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔐 2026-09-05 — avi-v573: LA PUERTA DEL ACUDIENTE PARA PUBLICAR A UN MENOR
+
+**Decisión del PO:** *«la tarjeta la corregimos y la dejamos»* (sobre la tarjeta pública de
+Samuel). Al ir a ejecutarlo apareció que **era justo lo único que la app no sabía hacer**.
+
+### El defecto: puerta de entrada blindada, y ninguna puerta de corrección
+
+Samuel se registró declarando 28 años y tiene 15; con esa edad falsa la app le publicó la
+tarjeta el 29-ago. Corregida la edad (3-sep), `clientProgressStory` devuelve `menor` — y como
+**la tarjeta se congela al publicarla** (la tabla no acepta UPDATE a propósito: corregir =
+quitar y volver a publicar), **publicar era exactamente lo prohibido**. Resultado medido: su
+ficha explicaba por qué no se podía y **no ofrecía nada**. Un coach CON el permiso del
+acudiente en la mano quedaba en el mismo sitio que uno que no lo tenía, y el único botón era
+«Quitar». El comentario de v522 decía *«no es que no se pueda con permiso del acudiente, es que
+la app no lo hace fácil por accidente»*: describía **una puerta que no existía**.
+
+### 🔒 La decisión de fondo: NO reusar el consentimiento de v565
+
+Lo fácil era que el candado leyera `consent.acudiente` (v565 ya lo guarda). **Se descartó a
+propósito**: eso autoriza TRATAR los datos y que entrene; publicar su nombre y sus kilos en una
+página abierta es OTRA finalidad, y la Ley 1581/2012 pide autorización específica por finalidad
+(régimen reforzado para menores). Con esa lectura, **cualquier menor inscrito con normalidad
+quedaría publicable de una** — el accidente que el candado vino a evitar. Familia del filtro de
+lesiones (v424): **una regla ANCHA también hace daño**.
+
+Por eso el permiso vive en **su propio campo** (`showcaseConsent`), lo registra el coach a mano
+con la casilla SIN pre-marcar, y acredita **quién** autorizó, **cuándo** y con **qué versión**
+del texto — la misma forma que `consentEvidence`.
+
+### 🔒 Y la salida nace con la entrada (regla de v570)
+
+`retirarPermisoVitrina` **fecha** el retiro (`retiradoAt`) en vez de borrar: revocar no puede
+destruir lo único que acredita que sí se autorizó. Una autorización que se reemplaza se archiva
+en `showcaseConsentLog` (topado a 10). Retirar **no** baja sola la tarjeta ya publicada — borrar
+de `avi_showcase` no se deshace —: al repintar cae en la rama de v570 («tiene una tarjeta
+publicada y la app hoy no la publicaría») con su botón Quitar al lado.
+
+### Lo que se construyó
+
+- **avi-core**: `showcaseMinorConsent` (constructor puro, `null` si falta algo) y
+  `showcaseMinorOk` (lector puro). El candado de `clientProgressStory` pasa de absoluto a
+  `edad < 18 && !showcaseMinorOk(client)`.
+- **app-3-coach**: la rama del menor de `renderStoryCard` deja de ser un callejón — ofrece la
+  puerta con el nombre del acudiente precargado de v565 (mismo acudiente) **pero la casilla a
+  mano**; y la tarjeta publicable de un menor muestra quién autorizó, cuándo, y el botón Retirar.
+
+### Verificación
+
+- Suite **1029 → 1037** (+8), verde en los dos husos. Hook **12/12**.
+- **5 sabotajes al MOTOR** (candado absoluto · `showcaseMinorOk` que aprueba a todos · retiro
+  inerte · leer el consentimiento de v565 · firmar sin fecha) — **5/5 muerden**, por código de
+  salida.
+- Harness nuevo `scripts/e2e/_repro-permiso-menor.mjs`: la puerta **en el DOM real** a 390 y 360
+  px, con control de COBERTURA y de DISCRIMINACIÓN. **5 sabotajes a la PANTALLA** (quitar la
+  puerta · pre-marcar la casilla · no exigirla · quitar Retirar · borrar la prueba) — **5/5
+  muerden**.
+- 🔬 **El control de cobertura se ganó el sueldo en la primera corrida**: `renderStoryCard`
+  pintaba **2.064 caracteres de innerHTML con alto 0**, porque la ficha vive dentro de la
+  pantalla del coach y estaba apagada. Medir el innerHTML habría aprobado una pantalla que nadie
+  veía. **Se lee lo VISIBLE, siempre.**
+- ✅ Comprobado que **el permiso VIAJA a `user_data.profile`** (el puente es `clientToRow`, que
+  copia todas las claves): sin eso la puerta nacería muerta, porque quien corrige la tarjeta
+  (`vitrina-refrescar.mjs`) lee la fila del ASESORADO y el coach guarda en `ax_c`, la suya.
+  Gotcha de v540, atornillado con test propio.
+
+### ⏭️ Lo que queda en manos del PO
+
+La tarjeta de Samuel **todavía no está corregida**: la puerta existe, pero **registrar la
+autorización es un acto suyo** — nadie más puede afirmar que la mamá autorizó publicarlo. Con
+el permiso puesto, `node scripts/vitrina-refrescar.mjs` (en seco por defecto) la corrige.
+
+---
+
 ## 🔄 2026-09-04 — avi-v572: EL ATRÁS DEVUELVE LOS PASOS QUE SE DIERON, Y LA PANTALLA DEJA DE MOVERSE SOLA
 
 **Tres cosas pedidas por el PO en el mismo mensaje.** Una de precio (en los dos repos) y dos de

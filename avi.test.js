@@ -13225,7 +13225,9 @@ test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', 
 
 test('🔴 v522 · a un MENOR no se le arma la imagen de un toque', () => {
   // Publicar en redes el nombre y los datos de entrenamiento de un menor necesita permiso del
-  // acudiente. No es que no se pueda: es que la app no lo hace fácil por accidente.
+  // acudiente. No es que no se pueda: es que la app no lo hace fácil por accidente. Desde v573
+  // ese permiso SE PUEDE ACREDITAR (`showcaseMinorOk`) — este test cubre a quien no lo tiene,
+  // que sigue siendo el caso por defecto.
   const menor = core.clientProgressStory({ name: 'Sharith', age: 16 }, _HIST_ASTRID, new Date());
   assert.strictEqual(menor.ok, false);
   assert.strictEqual(menor.razon, 'menor');
@@ -15495,6 +15497,158 @@ test('🔴 v572 · lo que la persona abrió sobrevive al repintado, y el repinta
   const sub = app4.slice(iS, app4.indexOf('\nfunction ', iS + 10));
   assert.match(sub, /_gmKeepAnchor/, 'sustituir un ejercicio repinta sin anclar');
   assert.match(sub, /_live&&_gm/, 'sustituir vuelve a pintar la lista dos veces');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v573 · EL PERMISO DEL ACUDIENTE PARA PUBLICAR A UN MENOR
+// ═════════════════════════════════════════════════════════════════════════════
+test('🔴 v573 · el consentimiento de v565 NO habilita por sí solo publicar a un menor', () => {
+  // ESTA ES LA ASERCIÓN QUE SOSTIENE TODO EL LOTE. Lo que el acudiente acepta al inscribir al
+  // menor autoriza TRATAR sus datos; publicar su nombre y sus kilos en una página abierta es
+  // OTRA finalidad. Si el candado leyera `consent.acudiente`, cualquier menor inscrito con
+  // normalidad quedaría publicable de una — el accidente que el candado vino a evitar.
+  const conV565 = {
+    name: 'Sharith Sofía', age: 16,
+    consent: { general: true, salud: true, menor: true, adulto: false, edad: 16,
+               acudiente: { nombre: 'Marta Restrepo', tel: '573001234567' },
+               v: 'legal-3', at: '2026-09-01T10:00:00.000Z' },
+  };
+  const st = core.clientProgressStory(conV565, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.ok, false, 'el consentimiento de tratamiento abrió la puerta de PUBLICAR');
+  assert.strictEqual(st.razon, 'menor');
+  assert.strictEqual(core.showcaseMinorOk(conV565), false,
+    'showcaseMinorOk aceptó una evidencia que es de otra finalidad');
+});
+
+test('🔴 v573 · con el permiso del acudiente registrado, la historia del menor SÍ sale', () => {
+  const ev = core.showcaseMinorConsent(
+    { autoriza: true, acudienteNombre: 'Marta Restrepo', acudienteTel: '573001234567', edad: 15 },
+    core.SHOWCASE_MINOR_V, '2026-09-05T12:00:00.000Z');
+  assert.ok(ev, 'no armó la evidencia con todo completo');
+  assert.strictEqual(ev.acudiente.nombre, 'Marta Restrepo');
+  assert.strictEqual(ev.edad, 15, 'no deja constancia de con qué edad se autorizó');
+  assert.ok(ev.at && ev.v, 'una evidencia sin fecha ni versión no acredita nada');
+
+  const menor = { name: 'Samuel Cifuentes', age: 15, showcaseConsent: ev };
+  const st = core.clientProgressStory(menor, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.ok, true, 'con permiso registrado sigue bloqueado');
+  assert.strictEqual(st.nombre, 'Samuel');
+  // 🔴 CONTROL: el MISMO menor sin el campo sigue bloqueado. Sin esto, un candado que se hubiera
+  // caído entero (o un `showcaseMinorOk` que devolviera siempre true) pasaría la aserción de
+  // arriba y el test estaría midiendo el aire.
+  const sinPermiso = { name: 'Samuel Cifuentes', age: 15 };
+  assert.strictEqual(core.clientProgressStory(sinPermiso, _HIST_ASTRID, new Date()).razon, 'menor',
+    'el candado dejó de morder para un menor SIN permiso');
+  // Y la fila publicable se arma de verdad: el candado viaja dentro de showcaseRow.
+  assert.ok(core.showcaseRow(st), 'la historia sale pero no produce fila publicable');
+});
+
+test('🔴 v573 · el permiso se puede RETIRAR, y retirarlo no borra la prueba', () => {
+  // v570: la salida no puede depender de la entrada. Un consentimiento de publicación es
+  // revocable siempre, y revocarlo no puede destruir lo único que acredita que sí se dio.
+  const ev = core.showcaseMinorConsent(
+    { autoriza: true, acudienteNombre: 'Marta Restrepo', edad: 15 },
+    core.SHOWCASE_MINOR_V, '2026-09-05T12:00:00.000Z');
+  const menor = { name: 'Samuel', age: 15, showcaseConsent: ev };
+  assert.strictEqual(core.showcaseMinorOk(menor), true);
+  menor.showcaseConsent = Object.assign({}, ev, { retiradoAt: '2026-09-06T08:00:00.000Z' });
+  assert.strictEqual(core.showcaseMinorOk(menor), false, 'retirar el permiso no lo apagó');
+  assert.strictEqual(core.clientProgressStory(menor, _HIST_ASTRID, new Date()).razon, 'menor');
+  // la prueba sigue entera: quién autorizó, cuándo, y cuándo se retiró
+  assert.strictEqual(menor.showcaseConsent.acudiente.nombre, 'Marta Restrepo');
+  assert.strictEqual(menor.showcaseConsent.at, '2026-09-05T12:00:00.000Z');
+  assert.ok(menor.showcaseConsent.retiradoAt, 'no queda constancia de cuándo se retiró');
+});
+
+test('🔴 v573 · una autorización a medias no se firma', () => {
+  const V = core.SHOWCASE_MINOR_V;
+  assert.strictEqual(core.showcaseMinorConsent({ autoriza: false, acudienteNombre: 'Marta R', edad: 15 }, V, null), null,
+    'sin marcar la casilla no hay autorización');
+  assert.strictEqual(core.showcaseMinorConsent({ autoriza: true, acudienteNombre: '', edad: 15 }, V, null), null,
+    'una autorización de representante sin representante identificable no es una autorización');
+  assert.strictEqual(core.showcaseMinorConsent({ autoriza: true, acudienteNombre: 'M', edad: 15 }, V, null), null,
+    'una letra no es un nombre');
+  assert.strictEqual(core.showcaseMinorConsent(null, V, null), null);
+  // y lo que NO es evidencia no abre la puerta, aunque tenga la forma
+  assert.strictEqual(core.showcaseMinorOk({ showcaseConsent: { acudiente: { nombre: 'Marta R' } } }), false,
+    'una evidencia sin fecha ni versión pasó por buena');
+  assert.strictEqual(core.showcaseMinorOk({ showcaseConsent: true }), false);
+  assert.strictEqual(core.showcaseMinorOk({}), false);
+  assert.strictEqual(core.showcaseMinorOk(null), false);
+  // 🔴 CONTROL: la completa SÍ pasa — si no, todo lo de arriba lo cumpliría un `return false`.
+  assert.ok(core.showcaseMinorConsent({ autoriza: true, acudienteNombre: 'Marta Restrepo', edad: 15 }, V, null),
+    'la evidencia completa tampoco se firma: la función está muerta');
+});
+
+test('🔴 v573 · un ADULTO no pasa por la puerta del acudiente, ni para bien ni para mal', () => {
+  // El permiso solo puede AÑADIR un caso, jamás quitar uno: si un adulto quedara colgando de
+  // este campo, la puerta nueva habría roto lo que ya funcionaba.
+  const adulta = { name: 'Astrid', age: 33 };
+  assert.strictEqual(core.clientProgressStory(adulta, _HIST_ASTRID, new Date()).ok, true);
+  // y un campo retirado tampoco puede bloquear a quien ya no es menor
+  const exMenor = { name: 'Valery', age: 18,
+    showcaseConsent: { acudiente: { nombre: 'Marta R' }, at: 'x', v: 'y', retiradoAt: 'z' } };
+  assert.strictEqual(core.clientProgressStory(exMenor, _HIST_ASTRID, new Date()).ok, true,
+    'un permiso retirado bloqueó a alguien que ya es mayor de edad');
+});
+
+test('🔴 v573 · la auditoría de la vitrina ve el permiso: «revisar» pasa a «ok»', () => {
+  // Una tarjeta publicada es un hecho vivo (v570). Cuando el permiso entra, el aviso de «hoy no
+  // la publicaría» tiene que APAGARSE solo — si no, el coach ve una alarma que ya no es cierta.
+  const card = [{ id: 'c1', nombre: 'Samuel' }];
+  const sinPermiso = [{ id: 's1', name: 'Samuel Cifuentes', age: 15 }];
+  const hist = { s1: _HIST_ASTRID };
+  const a1 = core.showcaseAudit(card, sinPermiso, hist, new Date());
+  assert.strictEqual(a1[0].estado, 'revisar');
+  assert.strictEqual(a1[0].razon, 'menor');
+  const conPermiso = [{ id: 's1', name: 'Samuel Cifuentes', age: 15,
+    showcaseConsent: core.showcaseMinorConsent(
+      { autoriza: true, acudienteNombre: 'Marta Restrepo', edad: 15 }, core.SHOWCASE_MINOR_V, null) }];
+  const a2 = core.showcaseAudit(card, conPermiso, hist, new Date());
+  assert.strictEqual(a2[0].estado, 'ok', 'con el permiso puesto la auditoría sigue pidiendo revisar');
+  assert.strictEqual(core.showcasePendientes(card, conPermiso, hist, new Date()).length, 0,
+    'la tarjeta autorizada sigue apareciendo como pendiente');
+});
+
+test('🔴 v573 · la pantalla ofrece la puerta y la salida, y la casilla NO viene marcada', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function renderStoryCard');
+  assert.ok(i > 0, 'falta renderStoryCard');
+  const cuerpo = src.slice(i, src.indexOf('\n// ── EL PERMISO DEL ACUDIENTE', i));
+  // la rama del menor dejó de ser un callejón: ofrece registrar el permiso
+  assert.match(cuerpo, /registrarPermisoVitrina\(\)/, 'la rama del menor no ofrece registrar el permiso');
+  assert.match(cuerpo, /retirarPermisoVitrina\(\)/, 'no hay por dónde RETIRAR el permiso (salida tapiada)');
+  // 🔒 la casilla no puede venir pre-marcada ni deducida: sería autorizar por él
+  assert.ok(!/id="d-story-acu-ck"[^>]*checked/.test(cuerpo), 'la casilla del acudiente viene pre-marcada');
+  // 🔒 y el nombre precargado sale del consentimiento de v565, pero la casilla se marca a mano
+  assert.match(cuerpo, /c&&c\.consent&&c\.consent\.acudiente/, 'no precarga el nombre del acudiente que ya se conocía');
+  // los dos manejadores existen y guardan
+  const reg = src.slice(src.indexOf('function registrarPermisoVitrina'), src.indexOf('function retirarPermisoVitrina'));
+  assert.match(reg, /showcaseMinorConsent\(/, 'la pantalla arma la evidencia por su cuenta en vez de usar el motor puro');
+  assert.match(reg, /sv\('ax_c'/, 'registrar el permiso no lo guarda');
+  const ret = src.slice(src.indexOf('function retirarPermisoVitrina'));
+  assert.match(ret.slice(0, 900), /retiradoAt/, 'retirar no fecha el retiro');
+  assert.ok(!/delete\s+\w*\.showcaseConsent/.test(ret.slice(0, 900)), 'retirar BORRA la prueba en vez de fecharla');
+});
+
+test('🔴 v573 · el permiso VIAJA a la fila del asesorado, o la puerta nace muerta', () => {
+  // Gotcha v540: una feature puede estar construida, desplegada y ser letra muerta porque su
+  // dato no llega a donde se lee. Aqui el riesgo es concreto y NO lo ve ninguna otra asercion:
+  // el coach guarda en `ax_c` (SU fila), pero quien decide si la tarjeta se puede corregir
+  // —`vitrina-refrescar.mjs` y cualquier lectura del lado servidor— lee `user_data.profile`,
+  // que es la fila del ASESORADO. El puente es `clientToRow`, que copia todas las claves.
+  const c = { id: 'smx', name: 'Samuel Cifuentes', age: 15, routines: [], password: 'x',
+    showcaseConsent: { acudiente: { nombre: 'Marta Restrepo' }, edad: 15, v: 'vitrina-menor-1',
+                       at: '2026-09-05T12:00:00.000Z' } };
+  const row = core.clientToRow(c, { coachId: 'coach-1' });
+  assert.ok(row.profile.showcaseConsent, 'el permiso no llega al profile: la puerta nace muerta');
+  assert.strictEqual(row.profile.showcaseConsent.acudiente.nombre, 'Marta Restrepo');
+  // y el motor lo reconoce leyendo el profile tal cual queda en la nube
+  assert.strictEqual(core.showcaseMinorOk(row.profile), true,
+    'lo que queda guardado en la nube ya no abre la puerta');
+  // 🔴 CONTROL: lo que NO debe viajar sigue sin viajar (si copiara todo a lo bruto, esto caeria)
+  assert.ok(!('password' in row.profile), 'clientToRow filtró de menos');
 });
 
 // ══════════════════════════════════════════════════════
