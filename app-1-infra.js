@@ -20,11 +20,47 @@ const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 // (navOpenLayer → AVINAV.layers). El botón físico la saca de forma natural y el handler solo
 // DESCUENTA la capa, sin re-empujar nada. Así se elimina la operación frágil para el flujo que
 // Camilo usa (entrar a una habitación y salir con el botón físico).
-const AVINAV = { stack: [], exitArmed: false, curTab: null, layers: 0 };
-function navRecord(undo){ if(typeof undo==='function') AVINAV.stack.push({ undo: undo }); }
+//
+// 🔴 v572 — LO QUE v223 DEJÓ A MEDIAS: arregló las HABITACIONES y dejó las PESTAÑAS en el patrón
+// frágil. Cambiar de pestaña no empujaba nada: el paso solo existía en `AVINAV.stack`, y para
+// sobrevivir dependía de un `pushState` hecho DENTRO del popstate. Reporte del PO (4-sep-2026):
+// «si estoy en perfil y entro a alimentación me devuelve a mi perfil, y si doy de nuevo atrás se
+// sale de la app» — el primer atrás va por el camino ARREGLADO (la habitación tiene su entrada)
+// y el segundo por el FRÁGIL. Medido en `_repro-back-pantallas.mjs` con el sabotaje que imita al
+// WebView (se descarta el pushState que sale de `_aviHandleBack`): la app caía por DEBAJO de su
+// entrada de carga en ese segundo atrás — el punto exacto donde Android la cierra — y desde ahí
+// ningún atrás volvía a funcionar.
+// LA REGLA, ahora para TODA navegación hacia adelante: **una entrada de historial real se empuja
+// AL NAVEGAR (gesto de la persona), nunca al volver**. El atrás solo DESHACE. Así el atrás
+// devuelve tantos pasos como pasos se dieron, que es lo que pidió el PO.
+const AVINAV = { stack: [], exitArmed: false, curTab: null, layers: 0, seq: 0 };
+// Tope del stack lógico: una sesión larga saltando de pestaña no puede crecer sin fin. Al
+// pasarse se suelta el paso MÁS VIEJO; su entrada de historial sobrante cae en el colchón del
+// handler (volver a Inicio), nunca en salir de la app.
+const NAV_MAX_STEPS = 40;
+// Toda entrada nuestra va numerada: es lo que permite saber si el WebView se comió un empuje
+// (una entrada vieja tiene un `n` menor, así que no se confunde con la que acabamos de poner).
+function navPush(kind){ AVINAV.seq++; const st={n:AVINAV.seq}; st[kind]=1; try{ history.pushState(st,''); }catch(e){} return AVINAV.seq; }
+function navRecord(undo){
+  if(typeof undo!=='function') return;
+  AVINAV.stack.push({ undo: undo });
+  if(AVINAV.stack.length>NAV_MAX_STEPS) AVINAV.stack.shift();
+  navPush('aviStep'); // ← la entrada del paso, empujada AL IR, no al volver
+}
 function navReset(tab){ AVINAV.stack.length=0; AVINAV.curTab=tab||null; AVINAV.exitArmed=false; AVINAV.layers=0; }
 // Empuja una entrada de historial REAL por cada habitación que se abre (ver nota de arriba).
-function navOpenLayer(){ AVINAV.layers=(AVINAV.layers||0)+1; history.pushState({aviLayer:1},''); }
+function navOpenLayer(){ AVINAV.layers=(AVINAV.layers||0)+1; navPush('aviLayer'); }
+// Re-empuje del guard: SOLO para los atrás que consumen la última entrada de la app sin tener
+// una propia (overlays legacy sin capa, y el doble-atrás del Inicio). Es la única operación
+// frágil que queda, así que lleva verificación DIFERIDA: si al salir del despacho del popstate
+// nuestra entrada no está (el WebView la perdió), se vuelve a poner. Si alguien empujó después
+// (n mayor) no se toca nada.
+function navRepushGuard(){
+  const want=navPush('aviGuard');
+  setTimeout(function(){
+    try{ const s=history.state; if(!s||typeof s.n!=='number'||s.n<want) navPush('aviGuard'); }catch(e){}
+  },0);
+}
 // Cierre por UI (tap/swipe/Escape) de un overlay que empujó capa con navOpenLayer: consumir
 // su entrada de historial con history.back() — el popstate hace el cierre real y descuenta
 // la capa, igual que los botones "‹ Volver" de las habitaciones. Colchón: si no hay capa

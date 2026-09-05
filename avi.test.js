@@ -15415,6 +15415,88 @@ test('🔒 doLogin distingue red de credenciales, y no gasta intento sin red', (
     'el aviso de conexión quedó DESPUÉS de gastar el intento: sigue castigando por no tener red');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ↩️ v572 · EL ATRÁS DEVUELVE TANTOS PASOS COMO PASOS SE DIERON
+// Reporte del PO (4-sep-2026): «desde perfil entro a alimentación, el atrás me devuelve a perfil
+// y el siguiente atrás SE SALE DE LA APP». El primer atrás iba por el camino que v223 arregló
+// (la habitación empuja su propia entrada de historial); el segundo por el que dejó a medias: el
+// paso de PESTAÑA no empujaba nada y dependía de un `pushState` hecho DENTRO del popstate, que
+// es justo lo que el WebView del TWA pierde. El comportamiento lo mide
+// `scripts/e2e/_repro-back-pantallas.mjs` (con sabotaje que imita al WebView); aquí van los
+// candados ESTÁTICOS para que la regla no se deshaga por descuido.
+// ═════════════════════════════════════════════════════════════════════════════
+test('🔴 v572 · cada paso hacia adelante empuja SU entrada; el atrás solo deshace', () => {
+  const fs = require('fs'), path = require('path');
+  const sinCom = f => fs.readFileSync(path.join(__dirname, f), 'utf8')
+    .split(/\r?\n/).map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+  const infra = sinCom('app-1-infra.js');
+  const login = sinCom('app-2-login.js');
+  const cuerpo = (src, f) => { const i = src.indexOf('function ' + f); assert.ok(i > 0, 'falta ' + f); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  // 1) Registrar un paso de navegación empuja una entrada REAL, en el gesto de ir hacia adelante.
+  assert.match(cuerpo(infra, 'navRecord'), /navPush\(/, 'un paso sin entrada de historial es el bug del PO');
+  assert.match(cuerpo(infra, 'navOpenLayer'), /navPush\(/, 'las habitaciones también empujan la suya');
+  // 2) 🔒 EL CANDADO DE VERDAD: dentro del manejador del atrás NO puede haber un pushState crudo.
+  // Es la operación que el WebView del TWA pierde; lo único permitido es `navRepushGuard`, que
+  // verifica FUERA del despacho.
+  const iH = login.indexOf('function _aviHandleBack');
+  assert.ok(iH > 0, '_aviHandleBack desapareció');
+  const handler = login.slice(iH, login.indexOf('\nfunction ', iH + 10));
+  assert.strictEqual((handler.match(/history\.pushState/g) || []).length, 0,
+    'volvió un pushState crudo dentro del popstate: es el bug que cierra la app en Android');
+  // 3) Y la rama de las pestañas no repone nada: su entrada la acaba de consumir el atrás.
+  const ramaStack = handler.slice(handler.indexOf('AVINAV.stack.length){'), handler.indexOf('const detail='));
+  assert.ok(ramaStack.length > 20 && !/_navRepush|navRepushGuard|pushState/.test(ramaStack),
+    'la rama del stack repone una entrada que nadie consumió: cada atrás dejaría una de más');
+  // 3b) 🔒 Y el manejador llama a las funciones de historial —que viven en OTRO módulo— por el
+  // envoltorio con guarda: si app-1-infra no carga, el botón físico no puede quedar muerto
+  // (GOTCHAS: reventó 3 veces en Android real).
+  assert.match(login.slice(login.indexOf('function _navRepush')), /^function _navRepush\(\)\{ if\(typeof navRepushGuard==='function'\)/,
+    '_navRepush perdió la guarda de módulo');
+  assert.ok(!/[^_a-zA-Z]navRepushGuard\(\)/.test(handler), 'el manejador llama a navRepushGuard sin guarda de módulo');
+  // 4) La reposición que queda (overlays legacy e Inicio) se VERIFICA después del despacho.
+  const rep = cuerpo(infra, 'navRepushGuard');
+  assert.match(rep, /setTimeout/, 'sin verificación diferida no hay red de seguridad');
+  assert.match(rep, /s\.n\s*<\s*want/, 'la verificación tiene que comparar el número de entrada, no sólo «hay algo»');
+  // 5) El stack lógico tiene tope: una sesión larga no puede crecer sin fin.
+  assert.match(infra, /NAV_MAX_STEPS\s*=\s*\d+/, 'sin tope, el stack crece sin fin');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🧨 v572 · LA PANTALLA DE ENTRENO NO SE MUEVE SOLA
+// Reporte del PO: «mostrar calentamiento da un salto hacia abajo» y «subir o bajar un ejercicio
+// da saltos raros o se demora». Medido en `scripts/e2e/_repro-saltos-entreno.mjs`: 543 px al
+// mostrar (la tarjeta de calentamiento se repintaba CERRADA) y 1.062 px tardíos al reordenar
+// (un `gmScrollToCurrent` diferido con scroll suave), con DOS repintados por toque.
+// ═════════════════════════════════════════════════════════════════════════════
+test('🔴 v572 · lo que la persona abrió sobrevive al repintado, y el repintado va anclado', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const cuerpo = f => { const i = src.indexOf('function ' + f); assert.ok(i > 0, 'falta ' + f); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  // 1) El abierto/cerrado del calentamiento PERSISTE (vivía solo en el DOM → cada repintado lo
+  // cerraba y la lista daba el salto).
+  assert.match(cuerpo('toggleWarmup'), /localStorage\.setItem\(wuOpenKey/, 'el calentamiento no guarda si estaba abierto');
+  assert.match(cuerpo('renderWarmup'), /wuIsOpen\(/, 'nadie lo vuelve a pintar abierto');
+  // 2) Los repintados que dispara un toque van ANCLADOS a la tarjeta tocada.
+  assert.match(cuerpo('gmToggleExWarm'), /_gmKeepAnchor\(/, 'mostrar calentamiento repinta sin anclar');
+  assert.match(cuerpo('gmMoveEx'), /_gmKeepAnchor\(/, 'reordenar repinta sin anclar');
+  // 3) Y el ancla CANCELA el scroll diferido: ese era el salto que llegaba tarde.
+  assert.match(cuerpo('_gmKeepAnchor'), /_gmScrollT/, 'sin cancelar el scroll diferido, la pantalla se sigue yendo sola');
+  // 4) 🔒 Un solo repintado por toque: con timer vivo lo hace gmRebuild (renderClientToday se
+  // abstiene a propósito); sin timer lo hace el render de «Hoy». Nunca los dos.
+  const mv = cuerpo('gmMoveEx');
+  assert.match(mv, /_gmLiveTimer\(\)/, 'gmMoveEx ya no distingue el caso del timer vivo');
+  assert.match(mv, /if\(_live\)\s*gmRebuild\(\)/, 'gmRebuild incondicional = la lista se pinta dos veces por toque');
+  // 5) 🔒 Y el HERMANO DE AL LADO: el botón 🔄 (sustituir) vive en la misma fila que ↑↓ y tenía
+  // el mismo patrón viejo — 531 px de salto tardío medidos. Arreglar uno y dejar el otro es la
+  // clase de defecto que vuelve por la puerta de al lado.
+  const app4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const iS = app4.indexOf('function _applySubstitute');
+  assert.ok(iS > 0, 'falta _applySubstitute');
+  const sub = app4.slice(iS, app4.indexOf('\nfunction ', iS + 10));
+  assert.match(sub, /_gmKeepAnchor/, 'sustituir un ejercicio repinta sin anclar');
+  assert.match(sub, /_live&&_gm/, 'sustituir vuelve a pintar la lista dos veces');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

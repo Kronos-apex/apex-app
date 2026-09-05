@@ -1504,7 +1504,7 @@ function planControlHTML(c){
   const cur=clientPlan(c);
   const opts=[
     ['libre','leaf','🆓','Libre','Gratis · app auto-generada'],
-    ['app','star','⭐','Premium app','$19.900 · toda la app, sin coach'],
+    ['app','star','⭐','Premium app','$30.000 · toda la app, sin coach'],
     ['coach','crown','👑','Premium + Coach','$100.000 · todo + chat y ajustes'],
   ];
   const btns=opts.map(([k,ico,fb,lbl,sub])=>{

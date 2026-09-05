@@ -4,6 +4,108 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔄 2026-09-04 — avi-v572: EL ATRÁS DEVUELVE LOS PASOS QUE SE DIERON, Y LA PANTALLA DEJA DE MOVERSE SOLA
+
+**Tres cosas pedidas por el PO en el mismo mensaje.** Una de precio (en los dos repos) y dos de
+la app. Las dos de la app se reprodujeron con harness antes de tocar una línea.
+
+### 1) El botón ATRÁS cerraba la app al segundo toque
+
+*«Si estoy en perfil revisando mi plan de alimentación y entro a alimentación, me devuelve a mi
+perfil; y si doy de nuevo atrás se sale de la app. Quiero que si le doy atrás dos veces regrese
+dos veces atrás, y así sucesivamente.»*
+
+**Por qué su ejemplo es exactamente el diagnóstico.** El primer atrás va por el camino que
+**v223 arregló** (cada habitación empuja su propia entrada de historial al abrirse) y el segundo
+por el que **v223 dejó a medias**: cambiar de PESTAÑA no empujaba nada. El paso solo existía en
+`AVINAV.stack`, y para no agotar el historial el manejador hacía un `history.pushState` **dentro
+del propio popstate** — justo la operación que el WebView del TWA pierde a veces, y que la nota
+de `app-1-infra.js` lleva documentada desde v211 como «reincidente».
+
+**🔬 Por eso llevaba años sin reproducirse: en escritorio no se ve.** El harness nuevo
+`scripts/e2e/_repro-back-pantallas.mjs` corre cada escenario DOS veces —Chrome tal cual y con un
+**sabotaje que descarta el `pushState` que sale de `_aviHandleBack`**— y cuenta la profundidad
+real del historial. Con la versión vieja: en Chrome todo verde; **con el sabotaje la app cae por
+DEBAJO de su entrada de carga en el segundo atrás** (el punto exacto donde Android la cierra) **y
+desde ahí ningún atrás vuelve a responder** — 6 de 12. Con el arreglo, **16 de 16**.
+
+**🔴 Y el primer sabotaje salió VERDE sin morder nada.** Marcaba «estoy dentro de un popstate»
+con un listener propio; como el de la app se registró antes, corría DESPUÉS —en el propio target
+manda el orden de registro, no la fase de captura— y el `pushState` de la app pasaba intacto. El
+sabotaje bueno decide por la **pila de llamada**. Un sabotaje sin control de discriminación es un
+resultado inventado.
+
+**🔒 LA REGLA (ahora para toda navegación, no solo para las habitaciones):** *una entrada de
+historial real se empuja AL NAVEGAR —en el gesto de la persona—, nunca al volver. El atrás solo
+DESHACE.* Así el atrás devuelve tantos pasos como pasos se dieron, que es lo que pidió el PO.
+`navRecord` empuja la suya (`navPush`, con las entradas numeradas), la rama del stack ya no repone
+nada, y lo único que sigue reponiendo —modales sin capa propia y el doble-atrás del Inicio— lo
+hace por `navRepushGuard`, que **verifica fuera del despacho**: si el WebView se comió el empuje,
+lo vuelve a poner. Tope de 40 pasos para que una sesión larga no crezca sin fin; lo que sobre cae
+en el colchón de «volver a Inicio», nunca en salir.
+
+### 2) «Mostrar calentamiento» daba un salto de 543 px
+
+El abierto/cerrado de la tarjeta de calentamiento de la sesión **vivía solo en el DOM**, y el
+guiado repinta ENTERO por cualquier cosa: cada repintado la volvía a dibujar **cerrada**. Con la
+tarjeta abierta, tocar «Mostrar» encogía de golpe lo que había arriba y la lista se corría sola.
+Medido en `_repro-saltos-entreno.mjs`: **543 px**. Ahora persiste (`wuopen_<rid>`, misma clase de
+clave local que `wshow_`) y **lo que la persona abrió sobrevive al repintado**.
+
+### 3) Subir/bajar un ejercicio: 1.062 px de salto tardío y dos repintados por toque
+
+Cada ↑/↓ costaba **dos repintados completos** (el render de «Hoy» re-embebe el guiado y ya lo
+reconstruye; encima `gmMoveEx` llamaba a `gmRebuild` otra vez) y, lo que se sentía como «se
+demora», era el **`gmScrollToCurrent` diferido a 120 ms con scroll SUAVE** que programa el
+re-embebido: la pantalla se iba sola al ejercicio activo **un rato después** del toque.
+Ahora: un solo repintado (con timer vivo lo hace `gmRebuild`, porque ahí «Hoy» se abstiene a
+propósito; sin timer lo hace el render de «Hoy»), el scroll diferido cancelado, y el repintado
+**anclado** (`_gmKeepAnchor`): la tarjeta que la persona está mirando queda en el mismo punto de
+la pantalla. **11/11** en el harness, 0 px en los cinco escenarios, 41 ms por toque.
+
+**🔒 Y la otra mitad, que salió de reponer bien: LA SALIDA.** Con el empuje reparado, el
+doble-atrás del Inicio **ya no cerraría la app nunca**: reponía su entrada antes de avisar, así que
+«atrás otra vez» se la comía y volvía a avisar, en bucle. Se cerraba **de chiripa**, porque el
+WebView perdía ese empuje. Ahora, mientras el aviso está vivo **no se repone nada** —Android cierra
+cuando al WebView no le queda historial— y si la persona no sale, el colchón vuelve al vencer el
+aviso. De paso eso **drena las entradas huérfanas** que deja un cierre de sesión o el tope de 40.
+
+### 3b) El hermano de al lado: 🔄 «Cambiar ejercicio»
+
+Vive en la MISMA fila que ↑↓ y traía el patrón viejo entero: **531 px de salto tardío y dos
+repintados**, medidos igual. Arreglar ↑↓ y dejar 🔄 era garantizar que el PO volviera a reportar lo
+mismo por el botón de al lado.
+
+### 4) El precio de AVI PRO: $19.900 → $30.000
+
+Es a lo que el PO ya lo vende. Vivía en **dos repos**: la web (`/precios`, el inicio, los
+metadatos de Google y la `Offer` del structured data) y **dentro de la app**, en el selector de
+nivel del coach. Al asesorado la app nunca le muestra un precio, así que no queda ninguna
+contradicción. Web desplegada y verificada con `curl`.
+
+**🔴 Y EL GATE DE QA SE PAGÓ SOLO: mi sonda aprobó un HTML roto.** Al meter la clase condicional
+en `renderWarmup` se me fue el `>` de la etiqueta: `<div id="wu-body" class="...">` quedó sin
+cerrar, las filas del calentamiento salieron **fuera** de `#wu-body` y —como el mostrar/ocultar es
+`display:none` sobre ese contenedor— **el calentamiento quedaba visible siempre**. Justo la
+feature que este lote dice arreglar. **Mi harness lo dio por bueno**: medía píxeles de salto y la
+clase `open`, y las dos cosas seguían «bien» con el HTML roto (sin contenido que aparezca y
+desaparezca, no hay salto). Lo cazó la auditoría estática. La sonda ahora lleva **control de
+cobertura**: las filas tienen que vivir DENTRO de `#wu-body`, verse todas abierto y **ninguna
+cerrado** — se volvió a romper la etiqueta a propósito y los dos controles se pusieron rojos.
+**Medir el síntoma no prueba que la función funcione.**
+
+**QA:** suite **1029/1029** en los dos husos · hook 12/12 · smoke · `_repro-back-pantallas` **18/18
+con sabotaje** (7/18 contra el código viejo) · `_repro-saltos-entreno` **17/17** (15/17 contra el
+viejo) · `_guiado-suite` TODO OK · `_repro-back`, `_repro-back-v243`, `_repro-nav-corte`,
+`_verify-hero`, `_verify-modals` OK. Los tests nuevos de la suite se sabotearon uno por uno y los
+dos se pusieron rojos.
+⚠️ `_repro-reorden-recarga.mjs` no se pudo correr hoy: su control de montaje exige una rutina REAL
+de hoy en la cuenta de QA y ese día no la hay (falla antes de tocar nada del cambio).
+⚠️ **Y un artefacto mío más, el cuarto de la familia**: `_repro-back.mjs` daba «OUT-OF-APP» en
+todo, y no era el código — eran **dos servidores python huérfanos** de corridas anteriores
+ocupando el puerto 8763. Con el puerto limpio, verde. Antes de creerle a una sonda que dice que
+todo está roto, mirar el entorno.
+
 ## 🔄 2026-09-03 — avi-v571: LA BIENVENIDA DEJA DE VENDER MIENTRAS ALGUIEN SE REGISTRA
 
 **De dónde sale.** El PO, registrando a **dos asesorados nuevos en persona**: *«es super incómodo

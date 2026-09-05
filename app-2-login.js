@@ -1071,9 +1071,15 @@ function initRememberMe(){
 // sola ejecución porque se llama TAMBIÉN en la rama catch del boot (latente auditoría
 // 2026-06-30: si syncFromCloud lanzaba, la app mostraba el login pero el atrás salía en seco).
 let _aviBackInstalled=false;
+// 🔒 Las dos funciones de historial viven en app-1-infra.js. Regla del repo (GOTCHAS, reventó 3
+// veces en Android real, v375/v393/v403): TODO llamado a otro `app-*.js` va con guarda, y aquí
+// pesa el doble — el manejador del atrás es global y un `ReferenceError` dentro dejaría el botón
+// físico muerto. El respaldo hace lo mínimo con la API del navegador, que siempre está.
+function _navPush(kind){ if(typeof navPush==='function') return navPush(kind); try{ history.pushState({aviGuard:1},''); }catch(e){} return 0; }
+function _navRepush(){ if(typeof navRepushGuard==='function') return navRepushGuard(); try{ history.pushState({aviGuard:1},''); }catch(e){} }
 function _aviInstallBack(){
   if(_aviBackInstalled)return; _aviBackInstalled=true;
-  history.pushState({aviGuard:1},'');
+  _navPush('aviGuard'); // entrada RAÍZ de la app: por debajo de ella está la carga de la página
   window.addEventListener('popstate',_aviHandleBack);
 }
 
@@ -1228,10 +1234,13 @@ function initCoach(){migrateExercises();dedupeExercises();
 function renderAll(){renderHome();renderClients();renderExercises();renderMsgs();renderTemplates();document.getElementById('bdg').textContent=DB.clients.length}
 
 // ── NAVIGATION ──
-// Manejador del botón ATRÁS. Un solo "guard" en el historial que se RE-EMPUJA en cada atrás
-// manejado, para no agotar el historial nunca. Orden: 1) overlay/habitación de arriba →
-// cerrar; 2) un paso del stack de pestañas → deshacer; 3) coach en detalle → lista;
-// 3b) cliente fuera de Inicio con stack vacío → ir a Inicio; 4) en Inicio → doble-atrás.
+// Manejador del botón ATRÁS. Orden: 1) overlay/habitación de arriba → cerrar; 2) un paso del
+// stack de pestañas → deshacer; 3) coach en detalle → lista; 3b) cliente fuera de Inicio con
+// stack vacío → ir a Inicio; 4) en Inicio → doble-atrás.
+// 🔒 v572: los pasos 0 y 2 NO empujan nada — su entrada de historial ya se puso AL NAVEGAR
+// (navOpenLayer / navRecord), y el atrás físico acaba de consumirla. Solo re-empujan los casos
+// que se comen la última entrada sin tener una propia, y lo hacen por `navRepushGuard`, que
+// verifica fuera del despacho. Ver la nota larga en app-1-infra.js.
 function _aviHandleBack(){
   // 0) Overlay con su propia capa de historial (navOpenLayer): habitaciones .sroom Y TAMBIÉN
   // la ficha de ejercicio (#exdetail-bg) y el lightbox (#ex-lightbox) desde v243 — se abren
@@ -1240,27 +1249,37 @@ function _aviHandleBack(){
   // cerrar lo de más arriba y DESCONTAR la capa, SIN re-empujar — eso arregla el bug del TWA
   // (ver nota en app-1-infra.js).
   if(AVINAV.layers>0){ _aviCloseTopOverlay(); AVINAV.layers--; return; }
-  // 1) Overlays/modales legacy (no empujan capa propia) → cerrar con re-empuje del guard único.
-  if(_aviCloseTopOverlay()){ history.pushState({aviGuard:1},''); return; }
-  // 2) Stack de navegación (pestañas del cliente) → retroceder un paso.
-  if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} history.pushState({aviGuard:1},''); return; }
+  // 1) Overlays/modales legacy (no empujan capa propia) → cerrar y reponer la entrada consumida.
+  if(_aviCloseTopOverlay()){ _navRepush(); return; }
+  // 2) Stack de navegación (pestañas del cliente) → retroceder un paso. Su entrada se empujó al
+  // navegar hacia adelante y el atrás acaba de consumirla: aquí NO se empuja nada.
+  if(AVINAV.stack.length){ const s=AVINAV.stack.pop(); try{ s.undo&&s.undo(); }catch(e){} return; }
   // 3) Coach en detalle de un asesorado → volver a la lista.
   const detail=document.getElementById('p-detail');
   if(detail&&detail.classList.contains('on')){
     gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
     const navItems=document.querySelectorAll('.cbnav-item'); if(navItems[1])setBottomNav(navItems[1]);
-    history.pushState({aviGuard:1},''); return;
+    _navRepush(); return;
   }
   // 3b) Cliente fuera de Inicio con el stack ya vacío → ir a Inicio (último colchón).
   const sc=document.getElementById('s-client');
   if(sc&&getComputedStyle(sc).display!=='none'){
     const cur=document.querySelector('#s-client .cnp.on');
-    if(cur&&cur.id!=='cn-today'){ cnTab('cn-today',_cnTabEl('cn-today'),true); AVINAV.stack.length=0; history.pushState({aviGuard:1},''); return; }
+    if(cur&&cur.id!=='cn-today'){ cnTab('cn-today',_cnTabEl('cn-today'),true); AVINAV.stack.length=0; _navRepush(); return; }
   }
   // 4) En el INICIO → doble atrás para salir.
-  if(AVINAV.exitArmed){ AVINAV.exitArmed=false; history.go(-1); return; }
+  // 🔒 MIENTRAS EL AVISO ESTÁ VIVO NO SE REPONE LA ENTRADA. Android cierra la app cuando al
+  // WebView no le queda historial: reponer aquí era garantizar que «atrás otra vez» encontrara
+  // una entrada NUESTRA, la consumiera y volviera a avisar — la app no se cerraría nunca. (En la
+  // versión vieja se cerraba SOLO porque el WebView perdía ese empuje; con la reposición
+  // verificada de v572 esa suerte se acaba, así que el camino de salida tiene que ser explícito.)
+  // Si por debajo quedan entradas nuestras —huérfanas de una sesión anterior, o pasos que soltó
+  // el tope— se van consumiendo en cada atrás, con el aviso puesto, hasta llegar al fondo.
+  if(AVINAV.exitArmed){ history.back(); return; }
   AVINAV.exitArmed=true; if(typeof toast==='function')toast('Presiona atrás otra vez para salir 👋');
-  history.pushState({aviGuard:1},''); setTimeout(function(){ AVINAV.exitArmed=false; }, 2000);
+  // Si NO sale, al vencer el aviso se repone el colchón: la app no puede quedarse a un toque de
+  // cerrarse en silencio, sin el segundo aviso.
+  setTimeout(function(){ if(AVINAV.exitArmed){ AVINAV.exitArmed=false; _navRepush(); } }, 2000);
 }
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){

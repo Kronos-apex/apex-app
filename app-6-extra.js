@@ -354,9 +354,26 @@ function gmRebuild(){
 // sesión que siguen al ejercicio + re-render clásico debajo) y reconstruye el guiado encima.
 // La sustitución abre #m-picker (z-index 1000 > 700 del guiado); al elegir, _applySubstitute
 // detecta el guiado abierto y llama gmRebuild.
+// 🔴 v572 — UN toque, UN repintado, y la lista NO se mueve. Antes cada ↑/↓ costaba DOS
+// repintados completos (`todayMoveEx` → `renderClientToday` ya re-embebe el guiado y eso ya
+// llama a `gmRebuild`; el `gmRebuild` de aquí lo pintaba TODO otra vez) y, lo peor, el
+// re-embebido programa un `gmScrollToCurrent` diferido a 120 ms con scroll SUAVE: la pantalla
+// se iba sola al ejercicio activo un rato DESPUÉS del toque — medido en
+// `_repro-saltos-entreno.mjs`: **1.062 px de salto tardío** («dan saltos raros o se demora en
+// ejecutar la acción», reporte del PO 4-sep-2026).
+// Ahora: un solo repintado, el scroll diferido cancelado, y el par que se intercambia queda
+// anclado en el mismo punto de la pantalla.
 function gmMoveEx(ei,dir){
-  todayMoveEx(ei,dir);
-  gmRebuild();
+  _gmKeepAnchor('gm-ex-'+Math.min(ei,ei+dir),function(){
+    // 🔒 Con un timer VIVO (descanso/HIIT/isométrico) `renderClientToday` se abstiene a propósito
+    // (F2 sub-3: el poll no puede cortar una serie en curso) → ahí el repintado tiene que hacerlo
+    // `gmRebuild`, que además cancela ese timer porque los índices cambian. Sin timer, el render
+    // de «Hoy» ya re-embebe y reconstruye el guiado: llamar a `gmRebuild` encima era pintar la
+    // lista DOS veces por toque. Se mira ANTES de mover, que es cuando el timer aún vive.
+    const _live=_gmIsEmbedded()&&_gmLiveTimer();
+    if(typeof todayMoveEx==='function') todayMoveEx(ei,dir); // vive en app-4 (regla de módulos)
+    if(_live) gmRebuild();
+  });
 }
 
 // ══════════ REPORTE DE DOLOR (pedido Camilo 2026-07-07) ══════════
@@ -817,7 +834,7 @@ function gmRender(){
       tg.className='gm-lastre-toggle';
       tg.style.cssText='text-align:right;margin:0 0 6px';
       tg.innerHTML=`<button type="button" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1.5px solid var(--br2);background:${gmLastre?'var(--gl)':'transparent'};color:${gmLastre?'var(--gt)':'var(--t3)'};cursor:pointer">${gmLastre?'✓ ':'+ '}Lastre (peso añadido)</button>`;
-      tg.querySelector('button').onclick=()=>{toggleLastre(GM.routine,ei);gmRender();};
+      tg.querySelector('button').onclick=()=>{toggleLastre(GM.routine,ei);_gmKeepAnchor('gm-ex-'+ei,gmRender);};
       setsEl.appendChild(tg);
     }
     // 🔥 Sets de calentamiento (aproximación) — solo peso: ENCABEZADO con Mostrar/Ocultar
@@ -939,7 +956,8 @@ function gmResetSession(){
 function gmToggleExWarm(ei){
   if(!GM.routine) return;
   localStorage.setItem(`wshow_${GM.routine.id}_${ei}`, exWarmShown(GM.routine,ei)?'0':'1');
-  gmRender();
+  // Anclado en SU tarjeta: lo que se abre queda donde el dedo lo tocó (v572).
+  _gmKeepAnchor('gm-ex-'+ei,gmRender);
 }
 
 // Fila auxiliar del guiado (calentamiento/dropset): NO entra en GM.steps ni dispara
@@ -1671,6 +1689,27 @@ function gmScrollToCurrent(){
 // reporte Camilo 2026-07-03, sc=155).
 let _gmScrollT=null;
 function _gmDeferScrollToCurrent(ms){ if(_gmScrollT)clearTimeout(_gmScrollT); _gmScrollT=setTimeout(()=>{_gmScrollT=null;gmScrollToCurrent();},ms); }
+// El elemento que scrollea de verdad: embebido es .cnbody del asesorado; si no, #gm-body.
+function _gmScroller(){ return _gmIsEmbedded()? document.querySelector('#s-client .cnbody') : document.getElementById('gm-body'); }
+// Repinta SIN que la lista se mueva bajo el dedo (v572). El guiado repinta entero, y si lo que
+// hay ARRIBA del ejercicio que se está tocando cambia de alto, la pantalla se corre sola: el
+// «salto» que reportó el PO el 4-sep-2026. La regla es la del ancla: la tarjeta que la persona
+// está mirando tiene que quedar en el MISMO punto de la pantalla; lo que se mueve es el
+// contenido, no su vista. Se mide en píxeles en `_repro-saltos-entreno.mjs`.
+function _gmKeepAnchor(anchorId,fn){
+  const sc=_gmScroller();
+  const el0=document.getElementById(anchorId);
+  const before=(sc&&el0)?el0.getBoundingClientRect().top:null;
+  fn();
+  // 🔒 Un repintado ANCLADO no puede llevar un scroll automático detrás: el re-embebido del
+  // guiado programa un `gmScrollToCurrent` diferido (120 ms, suave) que llegaba tarde y se
+  // llevaba la pantalla al ejercicio activo. Se cancela SIEMPRE, se haya corregido o no.
+  if(_gmScrollT){clearTimeout(_gmScrollT);_gmScrollT=null;}
+  if(before==null)return;
+  const el1=document.getElementById(anchorId); if(!el1)return;
+  const d=el1.getBoundingClientRect().top-before;
+  if(d){ const prev=sc.style.scrollBehavior; sc.style.scrollBehavior='auto'; sc.scrollTop+=d; sc.style.scrollBehavior=prev||''; }
+}
 // Sube al tope del guiado. Embebido: el scroll real vive en .cnbody (NO en #cn-today, que es un
 // .cnp sin overflow → la clásica hace today.scrollTop=0 pero es no-op inofensivo). Overlay: el
 // scroll propio es #gm-body. Lo usan las acciones de ánimo (chooser/banner van arriba) para NO
@@ -2335,6 +2374,9 @@ function renderWarmup(exercises){
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;
   const custom=(customIds&&customIds.length)?customIds.map(id=>findWarmupEx(id)).filter(Boolean):null;
   const total=custom?custom.length:(articulares.length+activaciones.length);
+  // Si la persona ya la había abierto, se repinta ABIERTA (ver toggleWarmup): así un repintado
+  // del guiado no le cambia el alto de lo que está mirando.
+  const _wuOpen=wuIsOpen(rid);
 
   const exRow=(ex)=>{
     const d=rid&&wuIsDone(rid,ex.id); // estado persistido: queda marcado al salir y volver
@@ -2362,12 +2404,12 @@ function renderWarmup(exercises){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="wu-prog-txt"><span id="wu-prog-num">0/${total}</span></div>
-          <div class="wu-chev" id="wu-chev">▼</div>
+          <div class="wu-chev" id="wu-chev"${_wuOpen?' style="transform:rotate(180deg)"':''}>▼</div>
         </div>
       </div>
       <div class="wu-prog-bar"><div class="wu-prog-fill" id="wu-prog-fill"></div></div>
 
-      <div id="wu-body" class="wu-body">
+      <div id="wu-body" class="wu-body${_wuOpen?' open':''}">
         ${custom
           ? custom.map(exRow).join('')
           : `<div class="wu-section-title">🦴 Movilidad articular</div>
@@ -2379,12 +2421,24 @@ function renderWarmup(exercises){
   updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)
 }
 
+// Abierto/cerrado de la tarjeta de calentamiento de la sesión. PERSISTE (v572).
+// 🔴 Vivía SOLO en el DOM, y el guiado repinta entero por cualquier cosa (mostrar los sets de
+// calentamiento de un ejercicio, el lastre, reordenar): cada repintado la volvía a dibujar
+// CERRADA. Con la tarjeta abierta eso encoge de golpe lo que hay ARRIBA y la lista se corre
+// sola — medido en `_repro-saltos-entreno.mjs`: **543 px** al tocar «Mostrar» (reporte del PO,
+// 4-sep-2026: «cuando le doy en mostrar calentamiento da un salto hacia abajo»). El estado que
+// la persona eligió no puede vivir donde el próximo repintado lo borra: va en la misma clase de
+// clave que `wshow_` de los sets por ejercicio.
+function wuOpenKey(rid){return `wuopen_${rid}`}
+function wuIsOpen(rid){return !!rid&&localStorage.getItem(wuOpenKey(rid))==='1'}
 function toggleWarmup(){
   const body=document.getElementById('wu-body');
   const chev=document.getElementById('wu-chev');
   if(!body)return;
   const open=body.classList.toggle('open');
   chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
+  const rid=CUR.activeRoutine&&CUR.activeRoutine.id;
+  if(rid)localStorage.setItem(wuOpenKey(rid),open?'1':'0');
 }
 
 

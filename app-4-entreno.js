@@ -2129,15 +2129,21 @@ function restoreTodayWorkIfAny(baseR){
   if(w){ CUR.todayWorking=w; CUR.todayDirty=true; }
   return w;
 }
+// Devuelve `true` si de verdad se movió (v572): el guiado lo necesita para no repintar ni
+// anclar la vista cuando el toque no cambió nada (↑ en el primero, ↓ en el último).
+// 🔒 El re-render va AQUÍ y no en quien llama: `renderClientToday` es el único sitio que
+// re-deriva la rutina activa desde la copia de trabajo Y le vuelve a aplicar el ánimo del día.
+// Repintar solo el guiado sobre `CUR.todayWorking` se saltaría esa adaptación.
 function todayMoveEx(ei,dir){
-  const w=_todayWork(); if(!w)return; const exs=w.exercises; const j=ei+dir;
-  if(j<0||j>=exs.length)return;
+  const w=_todayWork(); if(!w)return false; const exs=w.exercises; const j=ei+dir;
+  if(j<0||j>=exs.length)return false;
   const t=exs[ei];exs[ei]=exs[j];exs[j]=t;
   _swapSessionKeys(w.id,ei,j);
   if(typeof normalizeBisets==='function')normalizeBisets(exs);
   _saveTodayWork(w);            // v538: la otra mitad del cambio, para que sobreviva a una recarga
   CUR.todayDirty=true;
   const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
+  return true;
 }
 function todaySubstitute(ei){
   const w=_todayWork(); if(!w)return; const ex=w.exercises[ei]; if(!ex)return;
@@ -2155,10 +2161,18 @@ function _applySubstitute(newEx){
   _clearSessionKeys(w.id,ei); // ejercicio nuevo → empieza limpio
   _saveTodayWork(w);            // v538: igual que el reorden — media mitad en memoria no sirve
   CUR.todayDirty=true; cm('m-picker');
-  const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
-  // Si el guiado está abierto encima (sustitución lanzada desde él), reconstruirlo también.
-  const _gm=document.getElementById('guided-mode');
-  if(_gm&&!_gm.classList.contains('hidden')&&typeof gmRebuild==='function')gmRebuild();
+  // v572: MISMO trato que el reorden — el botón 🔄 vive en la misma fila que ↑↓ y traía el patrón
+  // viejo: dos repintados completos y el scroll diferido del re-embebido llevándose la pantalla
+  // al ejercicio activo 120 ms después. Un repintado, anclado en la tarjeta que se sustituye.
+  // Con un timer vivo `renderClientToday` se abstiene a propósito → ahí repinta `gmRebuild`.
+  const _live=(typeof _gmIsEmbedded==='function'&&_gmIsEmbedded()&&typeof _gmLiveTimer==='function'&&_gmLiveTimer());
+  const _pinta=function(){
+    const c=DB.clients.find(x=>x.id===CUR.clientId); renderClientToday(c,CUR.todayOverride);
+    // Si el guiado está abierto encima (sustitución lanzada desde él), reconstruirlo también.
+    const _gm=document.getElementById('guided-mode');
+    if(_live&&_gm&&!_gm.classList.contains('hidden')&&typeof gmRebuild==='function')gmRebuild();
+  };
+  if(typeof _gmKeepAnchor==='function') _gmKeepAnchor('gm-ex-'+ei,_pinta); else _pinta();
   toast('🔄 Ejercicio cambiado');
 }
 // Al finalizar: si la estructura (orden o ejercicios) cambió vs el plan guardado, ofrece
