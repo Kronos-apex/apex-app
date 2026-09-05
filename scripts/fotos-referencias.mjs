@@ -170,21 +170,147 @@ if (arg('--bajar') || arg('--revisar')) {
 }
 
 if (arg('--revisar')) {
-  // Hoja de contactos: el nombre de AVI contra la foto propuesta, para el OJO.
-  const html = `<meta charset="utf-8"><title>Referencias propuestas</title><style>
-body{margin:0;background:#0d0d0d;color:#eee;font:13px system-ui}
-.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;padding:12px}
-figure{margin:0;background:#1a1a1a;border-radius:8px;overflow:hidden}
-img{width:100%;height:160px;object-fit:cover;display:block;background:#000}
-figcaption{padding:7px 9px;line-height:1.35}
-b{color:#10E0A0;font-size:12px;display:block}
-span{color:#8a8a8a;font-size:11px;display:block;margin-top:2px}
-</style><div class="g">` + fuerte.map(f =>
-  `<figure><img src="img/${f.id}.jpg" alt=""><figcaption><b>${f.id} · ${f.name}</b>` +
-  `<span>banco: ${f.top[0].name} [${f.top[0].eq}] · ${f.top[0].score}</span></figcaption></figure>`
-).join('') + '</div>';
+  // ── LA HOJA DE TRABAJO ──────────────────────────────────────────────────────────────
+  // El PO genera las imagenes el mismo, en la cuenta gratis de Gemini. O sea que lo que
+  // necesita en pantalla no es solo la referencia: es el PROMPT listo para pegar, al lado
+  // de la foto que va a adjuntar. Van las 141, no solo las que tienen referencia — el
+  // prompt no la necesita (asi se hicieron las 109 originales); la referencia AYUDA.
+  //
+  // 🔒 LA FRASE DEL MOVIMIENTO VA EN ESPANOL, con el texto de tecnica que YA vive en la
+  //    app (`desc`). Lo escribieron el y Laura y esta verificado: traducirlo yo seria
+  //    meter errores mios en 141 prompts. Gemini es multilingue. El BLOQUE DE ESTILO si
+  //    va en ingles y VERBATIM del doc del PO — es lo que da la serie cohesiva.
+  let ESTILO = '';
+  try {
+    ESTILO = readFileSync(new URL('../../PROMPTS-EJERCICIOS-AVI.md', import.meta.url), 'utf8').split('```')[1].trim();
+  } catch (e) { /* el doc vive fuera del repo; si no esta, se avisa abajo */ }
+  if (!ESTILO || ESTILO.length < 400) {
+    console.error('🔴 No pude leer el BLOQUE DE ESTILO de PROMPTS-EJERCICIOS-AVI.md — la hoja saldria sin el look AVI.');
+    process.exit(1);
+  }
+
+  const esc = t => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // El punto del rep se pide EXPLICITO: es lo que el doc marca como truco, y sin eso el
+  // modelo dibuja una pose neutra que no ensena el movimiento.
+  const promptDe = f => {
+    const ap = f.declara ? `El aparato es OBLIGATORIO y tiene que verse completo: ${f.declara === 'smith' ? 'multipower (máquina Smith)' : f.declara === 'machine' ? 'máquina' : f.declara === 'cable' ? 'polea con su cable y su torre' : f.declara === 'dumbbell' ? 'mancuerna' : f.declara === 'bands' ? 'banda elástica' : f.declara === 'barbell' ? 'barra' : f.declara}.` : '';
+    return [
+      `Un atleta hombre haciendo: ${f.name}.`,
+      f.desc,
+      ap,
+      'Captúralo en el punto más claro del movimiento (abajo, a media subida o en la contracción máxima), con los ángulos de codo y rodilla bien visibles. Ángulo de cámara: el que mejor muestre el gesto (lateral o 3/4).',
+      '',
+      ESTILO,
+    ].filter(Boolean).join('\n');
+  };
+
+  const orden = [...filas].sort((a, b) =>
+    (b.top.length ? 1 : 0) - (a.top.length ? 1 : 0) || a.id.localeCompare(b.id, 'es', { numeric: true }));
+
+  const tarjetas = orden.map(f => {
+    const tieneRef = !!(f.top[0] && existsSync(join(REF_DIR, 'img', f.id + '.jpg')));
+    return `<article class="c" data-id="${esc(f.id)}" data-ref="${tieneRef ? 1 : 0}">
+  <div class="ph">${tieneRef
+      ? `<img src="img/${esc(f.id)}.jpg" alt="referencia de ${esc(f.name)}" loading="lazy">`
+      : '<div class="sinref">sin referencia<br><small>el prompt igual sirve</small></div>'}</div>
+  <div class="bd">
+    <h3>${esc(f.id)} · ${esc(f.name)}</h3>
+    <p class="sub">${tieneRef ? 'adjunta a Gemini: <code>img\\\\' + esc(f.id) + '.jpg</code>' : 'sin foto de referencia en el banco'}</p>
+    ${f.top[0] ? `<p class="sub2">banco: ${esc(f.top[0].name)} [${esc(f.top[0].eq)}]</p>` : ''}
+    <button class="cp" type="button">Copiar el prompt</button>
+    <details><summary>ver el prompt</summary><pre>${esc(promptDe(f))}</pre></details>
+  </div></article>`;
+  }).join('\n');
+
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prompts y referencias — fotos que faltan</title><style>
+:root{--bg:#0b0f0d;--sf:#141a17;--sf2:#1b231e;--tx:#e8f2ec;--t2:#94a89d;--ac:#10E0A0;--ln:#232e27}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:20px 16px 12px;border-bottom:1px solid var(--ln)}
+h1{margin:0;font-size:22px;letter-spacing:-.01em}
+.lede{margin:8px 0 0;color:var(--t2);max-width:75ch}
+.lede b{color:var(--tx)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--ln);z-index:3}
+.bar button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;background:var(--sf);color:var(--t2);border:1px solid var(--ln);cursor:pointer}
+.bar button[aria-pressed=true]{background:var(--ac);color:#04170f;border-color:var(--ac);font-weight:600}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;padding:14px 16px 60px}
+.c{background:var(--sf);border:1px solid var(--ln);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.ph{background:#000;aspect-ratio:3/2}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.sinref{height:100%;display:grid;place-content:center;text-align:center;color:#5d6b63;font-size:12px;background:var(--sf2)}
+.bd{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+h3{margin:0;font-size:14px;color:var(--ac);font-weight:600;line-height:1.3}
+.sub,.sub2{margin:0;font-size:11.5px;color:var(--t2)}
+.sub2{color:#5d6b63}
+code{background:var(--sf2);padding:1px 5px;border-radius:4px;font-size:11px}
+.cp{font:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:7px;cursor:pointer;
+    background:var(--ac);color:#04170f;border:0;margin-top:2px}
+.cp.ok{background:var(--sf2);color:var(--ac)}
+details{margin-top:2px}
+summary{cursor:pointer;font-size:12px;color:var(--t2)}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--sf2);padding:9px;border-radius:7px;
+    font-size:11px;line-height:1.45;max-height:230px;overflow:auto;margin:7px 0 0;color:#c4d4cb}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+</style></head><body>
+<header>
+  <h1>Prompts y referencias · ${orden.length} ejercicios sin foto</h1>
+  <p class="lede">Cada tarjeta trae <b>el prompt listo para pegar en Gemini</b> y, cuando existe,
+  <b>la foto de referencia</b> que le adjuntas (está en la carpeta <code>img\\\\</code>, al lado de este archivo).
+  La técnica va en español porque es la que ya está escrita y verificada en tu app; el bloque de estilo va en inglés,
+  igual al de tu documento. <b>Ninguna entra a la app sin que la mires a tamaño real</b> — en v498, 9 de 22 mostraban otro ejercicio.</p>
+</header>
+<div class="bar">
+  <button id="f-todas" aria-pressed="true">Las ${orden.length}</button>
+  <button id="f-ref" aria-pressed="false">Con referencia (${orden.filter(f => f.top[0] && existsSync(join(REF_DIR, 'img', f.id + '.jpg'))).length})</button>
+  <button id="f-sin" aria-pressed="false">Sin referencia</button>
+</div>
+<main class="g">
+${tarjetas}
+</main>
+<script>
+(function(){
+  // Copiar sin depender de navigator.clipboard: en file:// no siempre existe.
+  function copiar(t){
+    if(navigator.clipboard&&window.isSecureContext){ return navigator.clipboard.writeText(t); }
+    return new Promise(function(res,rej){
+      var a=document.createElement('textarea');
+      a.value=t; a.setAttribute('readonly',''); a.style.position='fixed'; a.style.opacity='0';
+      document.body.appendChild(a); a.select();
+      var ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+      document.body.removeChild(a); ok?res():rej();
+    });
+  }
+  document.addEventListener('click',function(ev){
+    var b=ev.target.closest('.cp'); if(!b) return;
+    var pre=b.parentNode.querySelector('pre');
+    copiar(pre.textContent).then(function(){
+      b.textContent='Copiado \u2713'; b.classList.add('ok');
+      setTimeout(function(){ b.textContent='Copiar el prompt'; b.classList.remove('ok'); },1600);
+    }).catch(function(){
+      b.textContent='No pude copiar \u2014 abre \u00abver el prompt\u00bb';
+      setTimeout(function(){ b.textContent='Copiar el prompt'; },2600);
+    });
+  });
+  var modos=[['f-todas',null],['f-ref','1'],['f-sin','0']];
+  modos.forEach(function(p){
+    document.getElementById(p[0]).addEventListener('click',function(){
+      modos.forEach(function(q){ document.getElementById(q[0]).setAttribute('aria-pressed', q[0]===p[0]?'true':'false'); });
+      document.querySelectorAll('.c').forEach(function(c){
+        c.hidden = (p[1]!==null && c.getAttribute('data-ref')!==p[1]);
+      });
+    });
+  });
+})();
+<\/script>
+</body></html>`;
   writeFileSync(join(REF_DIR, 'revisar.html'), html);
-  console.log(`  hoja de contactos → ${join(REF_DIR, 'revisar.html')}  (ábrela y descarta las que no son)\n`);
+  console.log(`  hoja de trabajo → ${join(REF_DIR, 'revisar.html')}`);
+  console.log('  (cada tarjeta: la referencia para adjuntar + el prompt para pegar en Gemini)\n');
 }
 
 if (arg('--generar')) {
