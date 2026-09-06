@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v575';
+const CACHE_NAME = 'avi-v576';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -38,6 +38,36 @@ self.addEventListener('activate', e => {
   );
 });
 
+// ══════ v576 · NO SE GUARDA EN EL TELÉFONO LO QUE NO SE COMPROBÓ ══════
+// Hallazgo de la auditoría «app instalada» (5-sep). Había TRES sitios que hacían `cache.put`
+// con lo que llegara de la red —navegación, JS/CSS y el CDN— sin mirar si la respuesta estaba
+// bien. Un 404 o un 500 de GitHub Pages se guardaba y se servía después, **incluso sin red**,
+// que es cuando más se necesita que lo guardado sea bueno. Encaja con los 3
+// `Uncaught SyntaxError: Unexpected end of input` registrados en producción (v470, v479, v507):
+// la firma de un archivo que llegó cortado.
+// 💎 El patrón correcto YA ESTABA en este archivo, en la rama de iconos/manifest (`r.ok`).
+// Los otros tres no lo usaban. Aquí se unifica en un solo sitio para que no vuelva a haber
+// una rama que se olvida.
+function _guardable(res){
+  if(!res) return false;
+  // 🔒 OPACA se acepta a propósito: el supabase-js del CDN llega en modo no-cors (status 0,
+  //    `ok` falso) y NO se puede inspeccionar. Guardarla es justo lo que hace que el login
+  //    funcione sin red (hueco cazado en la auditoría 2026-07-06). Exigirle `ok` lo rompería.
+  if(res.type === 'opaque') return true;
+  if(!res.ok) return false;              // 404, 500 y todo lo que no sea 2xx
+  // 🔴 206 = respuesta PARCIAL. `Response.ok` es true para 200-299, o sea que un trozo de
+  //    archivo pasa el filtro obvio. Guardarlo sirve un archivo CORTADO en la siguiente carga.
+  if(res.status === 206) return false;
+  return true;
+}
+function _guardar(req, res){
+  if(!_guardable(res)) return;
+  const cl = res.clone();
+  // El `.catch` no estaba: un `put` rechazado (respuesta no cacheable) quedaba como promesa sin
+  // atender, o sea ruido en el registro de errores por algo que no es un fallo de la app.
+  caches.open(CACHE_NAME).then(ca => ca.put(req, cl)).catch(() => {});
+}
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if(url.hostname.includes('supabase.co')){
@@ -48,7 +78,7 @@ self.addEventListener('fetch', e => {
   if(url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com') || url.hostname.includes('cdn.jsdelivr.net')){
     e.respondWith(caches.match(e.request).then(c => {
       if(c) return c;
-      return fetch(e.request).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; });
+      return fetch(e.request).then(r => { _guardar(e.request, r); return r; });
     })); return;
   }
   if(e.request.mode === 'navigate'){
@@ -64,7 +94,7 @@ self.addEventListener('fetch', e => {
           fetch(e.request.url, {cache:'no-cache'}),
           new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
         ]);
-        const cl = net.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl));
+        _guardar(e.request, net);
         return net;
       } catch (_e) {
         return (await caches.match(e.request)) || (await caches.match('/apex-app/index.html')) || fetch(e.request);
@@ -79,7 +109,7 @@ self.addEventListener('fetch', e => {
     // cache:'no-cache' → sin él, "network-first" devolvía la copia del caché HTTP
     // (max-age=600 de Pages) hasta 10 min tras un deploy. Con ETag el 304 es barato.
     e.respondWith(
-      fetch(e.request, {cache:'no-cache'}).then(r => { const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); return r; })
+      fetch(e.request, {cache:'no-cache'}).then(r => { _guardar(e.request, r); return r; })
         // Offline: primero la MISMA versión (?v= exacto); si no está (SW recién actualizado
         // sin red), cualquier copia cacheada del archivo antes que pantalla rota.
         .catch(() => caches.match(e.request).then(c => c || caches.match(e.request, {ignoreSearch:true})))
@@ -95,7 +125,7 @@ self.addEventListener('fetch', e => {
   // Assets del mismo origen (icons, manifest): cache-first y se
   // guardan tras el primer fetch para que funcionen offline.
   e.respondWith(caches.match(e.request).then(c => c || fetch(e.request).then(r => {
-    if(r.ok && url.origin === self.location.origin){ const cl = r.clone(); caches.open(CACHE_NAME).then(ca => ca.put(e.request, cl)); }
+    if(url.origin === self.location.origin) _guardar(e.request, r);
     return r;
   })));
 });

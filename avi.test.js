@@ -15768,6 +15768,60 @@ test('🔴 v575 · la ficha del coach dice «no sé» y no «no los tiene»', ()
   assert.match(ent, /'sin-soporte'/, 'no distingue un teléfono que no admite avisos');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// v576 · NO SE GUARDA EN EL TELÉFONO LO QUE NO SE COMPROBÓ
+// ═════════════════════════════════════════════════════════════════════════════
+// `sw.js` corre en el service worker, no en la página, así que la suite nunca lo había
+// tocado. Pero `_guardable` es una función PURA: se extrae del archivo real y se ejecuta.
+// Así esto prueba COMPORTAMIENTO, no que exista un texto.
+const _SW_SRC = (() => {
+  const fs = require('fs'), path = require('path');
+  return fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
+})();
+const _guardable = (() => {
+  const i = _SW_SRC.indexOf('function _guardable');
+  if (i < 0) return null;
+  const j = _SW_SRC.indexOf('\n}', i);
+  return new Function('return (' + _SW_SRC.slice(i, j + 2) + ')')();
+})();
+
+test('🔴 v576 · el service worker NO guarda una respuesta que no comprobó', () => {
+  assert.ok(typeof _guardable === 'function', 'no pude extraer _guardable de sw.js');
+  // Lo que SÍ se guarda
+  assert.strictEqual(_guardable({ ok: true, status: 200, type: 'basic' }), true, 'no guarda un 200');
+  // Lo que NO: un 404 o un 500 guardado se sirve después, incluso SIN RED, que es cuando más
+  // falta hace que lo guardado sea bueno.
+  assert.strictEqual(_guardable({ ok: false, status: 404, type: 'basic' }), false, '🔴 guarda un 404');
+  assert.strictEqual(_guardable({ ok: false, status: 500, type: 'basic' }), false, '🔴 guarda un 500');
+  // 🔴 EL CASO QUE SE ESCAPA DEL FILTRO OBVIO: 206 es PARCIAL y `ok` es true para 200-299.
+  //    Guardar un trozo sirve un archivo CORTADO — la firma de los `SyntaxError: Unexpected
+  //    end of input` que hay registrados en producción (v470, v479, v507).
+  assert.strictEqual(_guardable({ ok: true, status: 206, type: 'basic' }), false,
+    '🔴 guarda una respuesta PARCIAL: eso sirve un archivo cortado');
+  // 🔒 CONTROL: la opaca del CDN se acepta A PROPÓSITO. Llega en no-cors (status 0, ok falso) y
+  //    no se puede inspeccionar; guardarla es lo que hace que el login funcione sin red. Si
+  //    alguien "endurece" esto exigiendo ok, rompe el offline y este test lo caza.
+  assert.strictEqual(_guardable({ ok: false, status: 0, type: 'opaque' }), true,
+    'dejó de guardar la respuesta opaca del CDN: se rompe el login sin red');
+  assert.strictEqual(_guardable(null), false);
+  assert.strictEqual(_guardable(undefined), false);
+});
+
+test('🔒 v576 · TODAS las ramas guardan por el mismo filtro, no solo unas', () => {
+  // El defecto era justo ese: la rama de iconos comprobaba `r.ok` y las otras tres no. Si
+  // vuelve a aparecer un `cache.put` suelto, aquí se cae.
+  const puts = (_SW_SRC.match(/\.put\(/g) || []).length;
+  assert.strictEqual(puts, 1, `hay ${puts} llamadas a cache.put: deben pasar TODAS por _guardar`);
+  assert.match(_SW_SRC, /function _guardar\(req, res\)\{[\s\S]*_guardable\(res\)/,
+    '_guardar dejó de consultar a _guardable');
+  // Las cuatro ramas que guardan lo hacen llamando al helper.
+  const usos = (_SW_SRC.match(/_guardar\(e\.request,/g) || []).length;
+  assert.strictEqual(usos, 4, `esperaba 4 ramas llamando a _guardar y hay ${usos}`);
+  // 🔒 y el put lleva su .catch: sin él, un put rechazado queda como promesa sin atender y
+  //    ensucia el registro de errores con algo que no es un fallo de la app.
+  assert.match(_SW_SRC, /\.put\(req, cl\)\)\.catch\(/, 'el cache.put volvió a quedar sin .catch');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
