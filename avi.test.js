@@ -15822,6 +15822,51 @@ test('🔒 v576 · TODAS las ramas guardan por el mismo filtro, no solo unas', (
   assert.match(_SW_SRC, /\.put\(req, cl\)\)\.catch\(/, 'el cache.put volvió a quedar sin .catch');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// v577 · EL APARATO QUE SE DEJÓ DE USAR (y el que NO se toca)
+// ═════════════════════════════════════════════════════════════════════════════
+test('🔔 v577 · se poda el hermano abandonado, NUNCA la única suscripción de alguien', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260905_push_hermano_abandonado.sql'), 'utf8');
+  const vivo = sql.split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  // El trigger, para que no vuelva a acumularse sin depender de la caché del Service Worker.
+  // ⚠️ El `\b(?!_)` no es adorno (lección de v535): sin él, renombrarlo a `push_poda_hermano_OFF`
+  // casaría por prefijo y el sabotaje saldría VERDE.
+  assert.match(vivo, /create trigger push_poda_hermano\b(?!_)/i);
+  assert.match(vivo, /before insert on public\.push_subscriptions/i);
+
+  // 🔒 LA REGLA QUE SOSTIENE TODO, y la que hay que poder leer de un vistazo dentro de un año:
+  //    solo se borra si existe OTRA fila del MISMO cliente refrescada 21+ días DESPUÉS. Eso
+  //    implica que la MÁS RECIENTE de cada persona nunca cae, por vieja que sea.
+  const compara = /n\.updated_at\s*>\s*v\.updated_at\s*\+\s*interval\s*'21 days'/;
+  assert.match(vivo, compara, 'la limpieza dejó de exigir una hermana MÁS NUEVA');
+  assert.match(vivo, /coalesce\(new\.updated_at, now\(\)\)\s*>\s*v\.updated_at\s*\+\s*interval\s*'21 days'/,
+    'el trigger dejó de exigir la hermana más nueva, o perdió el coalesce');
+
+  // 🔴 EL CANDADO CONTRA LA VERSIÓN "FÁCIL" DE ESTE ARREGLO. Podar por antigüedad a secas
+  //    —«borra lo que tenga más de N días»— amputaría el canal de RESCATE: las suscripciones
+  //    viejas son justo las de quien lleva semanas sin entrenar, que es a quien ese aviso busca.
+  //    Si alguien simplifica la condición y se lleva por delante la comparación entre hermanas,
+  //    esto se cae.
+  const dels = vivo.split(/delete\s+from\s+public\.push_subscriptions/i).slice(1);
+  assert.strictEqual(dels.length, 2, `esperaba 2 borrados (limpieza + trigger) y hay ${dels.length}`);
+  for (const d of dels) {
+    const hasta = d.slice(0, d.indexOf(';'));
+    assert.match(hasta, /client_id\s*=/, 'un borrado no se acota al MISMO cliente');
+    assert.match(hasta, /is distinct from/, 'un borrado puede llevarse la fila que acaba de entrar');
+    assert.match(hasta, /interval\s*'21 days'/, '🔴 un borrado poda por antigüedad sin comparar con una hermana: eso amputa el rescate');
+  }
+
+  // 🔒 Regla F6 del repo: toda función `security definer` declara su search_path.
+  assert.match(vivo, /security definer[\s\S]{0,80}set search_path = ''/i,
+    'la función definer no fija search_path');
+
+  // 🔒 Y el orden importa: este trigger va DESPUÉS del dedupe por endpoint de v535, y Postgres
+  //    los dispara por orden alfabético del nombre.
+  assert.ok('push_dedupe_endpoint' < 'push_poda_hermano',
+    'los nombres dejaron de garantizar el orden de disparo');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
