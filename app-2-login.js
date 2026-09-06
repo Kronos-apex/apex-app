@@ -1467,6 +1467,15 @@ async function notifyPaid(){
 
 
 // ══════════════════════ HOME ══════════════════════
+// ¿Puedo escribirle YO a esta persona? UNA sola definición para las dos superficies que lo
+// preguntan (el banner de adherencia del Inicio y el reporte «Sin entrenar»): dos copias de
+// «número válido» es exactamente cómo volvió el bug del peso en v448 y otra vez en v511.
+// Delega en `coachCanReach` (avi-core, v520), que a su vez delega en `waPhone` — un fijo NO es
+// una vía de WhatsApp. El fallback existe porque la app tiene que arrancar aunque avi-core no
+// haya cargado; mira solo el teléfono, igual que la función real.
+function _coachPuedeEscribir(c){
+  return (typeof coachCanReach==='function')?coachCanReach(c):!!(c&&c.phone);
+}
 function renderHome(){
   const now=new Date();
   const y=now.getFullYear(), mo=now.getMonth();
@@ -1618,10 +1627,26 @@ function renderHome(){
       return (b.dd||0)-(a.dd||0);
     });
     if(dormidos.length){
-      const shown=dormidos.slice(0,6), extra=dormidos.length-shown.length;
+      // 🔴 v580 — «EMPUJAR 💪» NO SALE SIN DESTINATARIO. El banner pintaba el botón para todo el
+      //    mundo y `whatsappNudge` cae a `wa.me/?text=` (elegir contacto a mano) cuando no hay un
+      //    número plausible. Medido el 6-sep-2026 sobre las fichas reales: **de 14 dormidos, 12
+      //    no tienen ninguna vía**, así que 5 de los 6 botones visibles no llevaban a nadie.
+      // 🔴 Y lo peor no era el botón muerto: el orden pone primero a quien NUNCA empezó, y esos
+      //    son justo los que no dejaron teléfono — **Nataly, la única que sí se está soltando y sí
+      //    se puede alcanzar, quedaba escondida bajo «y 8 más…»**. El banner enterraba su único
+      //    caso accionable debajo de cinco que no lo son.
+      // ⚖️ Los inalcanzables NO se esconden ni se convierten en tarea: decisión del PO (22-ago,
+      //    v521) — *«prefiero venderla a nuevos usuarios que sí la aprecien»*. Se dicen en una
+      //    línea que lleva al reporte, que es donde ya está escrito por qué no hay nada que hacer.
+      const conVia=dormidos.filter(({c})=>_coachPuedeEscribir(c));
+      const sinVia=dormidos.filter(({c})=>!_coachPuedeEscribir(c));
+      const shown=conVia.slice(0,6), extra=conVia.length-shown.length;
       adhBanner.style.display='block';
+      const _tit=conVia.length
+        ? `💤 ${conVia.length} ${conVia.length>1?'asesorados necesitan':'asesorado necesita'} un empujón`
+        : `💤 ${dormidos.length} sin entrenar${dormidos.length>1?'':''} · no tienes cómo avisarles`;
       adhBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--rd);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--rdt);margin-bottom:6px">💤 ${dormidos.length} ${dormidos.length>1?'asesorados necesitan':'asesorado necesita'} un empujón</div>
+        <div style="font-size:12px;font-weight:700;color:var(--rdt);margin-bottom:6px">${_tit}</div>
         ${shown.map(({c,dd})=>{
           const estado=dd===null?'Aún no empieza':dd===1?'Hace 1 día':'Hace '+dd+' días';
           const col=dd===null||dd>=7?'var(--rdt)':'var(--ort)';
@@ -1634,6 +1659,7 @@ function renderHome(){
           </div>`;
         }).join('')}
         ${extra>0?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${extra} más…</div>`:''}
+        ${sinVia.length?`<div class="tap" style="font-size:11px;color:var(--t3);padding-top:6px;margin-top:2px;border-top:1px solid var(--br);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="openCoachStat('sinentrenar')"><span>${conVia.length?`🔕 Otros ${sinVia.length} llevan días sin entrenar y no hay cómo avisarles`:'🔕 Ver quiénes son'}</span><span style="flex-shrink:0">›</span></div>`:''}
       </div>`;
     } else {
       adhBanner.style.display='none';
@@ -2069,8 +2095,9 @@ function openCoachStat(kind){
     // pero no si hay CÓMO avisarle, y son dos tareas distintas: a unos les escribes hoy, a los
     // otros primero hay que conseguirles el número. Medido el 22-ago sobre las 22 fichas reales:
     // 12 sin ninguna vía, y los 12 llevaban de 15 a 59 días sin entrenar o no habían empezado.
-    const _puedo=c=>(typeof coachCanReach==='function')?coachCanReach(c):!!(c&&c.phone);
-    const conVia=dorm.filter(({c})=>_puedo(c)), sinVia=dorm.filter(({c})=>!_puedo(c));
+    // v580: la definición vive UNA sola vez (`_coachPuedeEscribir`), compartida con el banner
+    // de adherencia del Inicio, que desde v580 hace la misma separación.
+    const conVia=dorm.filter(({c})=>_coachPuedeEscribir(c)), sinVia=dorm.filter(({c})=>!_coachPuedeEscribir(c));
     const _fila=({c,dd})=>{
       const estado=!isFinite(dd)?'Sin registro de entrenos':dd===1?'última vez: ayer':`última vez: hace ${dd} días`;
       const col=(!isFinite(dd)||dd>=7)?'var(--rd)':'var(--or)';

@@ -4,6 +4,57 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v580: «EMPUJAR 💪» NO SALE SIN DESTINATARIO
+
+**Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº3).
+
+**Lo reportado:** el banner de adherencia del Inicio pinta «Empujar 💪» para todo el mundo, y
+`whatsappNudge` cae a `wa.me/?text=` —elegir el contacto a mano— cuando el número no es plausible.
+`coachCanReach` existe desde v520 y solo se usaba en UN sitio (el reporte «Sin entrenar»).
+
+**Lo que apareció al MEDIRLO contra las fichas reales (6-sep), y es peor:** de **14 dormidos, 12
+no tienen ninguna vía**. Pero el daño de verdad no era el botón muerto sino el **ORDEN**: la lista
+pone primero a quien NUNCA empezó, y esos son justo los que no dejaron teléfono. Los 6 renglones
+visibles eran 5 inalcanzables + 1, y **Nataly —la única que de verdad se está soltando y sí tiene
+WhatsApp— quedaba enterrada bajo «y 8 más…»**. El banner escondía su único caso accionable debajo
+de cinco que no lo son.
+
+### Lo que cambia
+- El banner separa por alcance: **el botón solo se pinta sobre quien el coach puede alcanzar**, y
+  el titular los cuenta a ellos (prometer 6 empujones y poder dar 1 es la mentira de v437).
+- ⚖️ **Los inalcanzables NO se esconden.** Decisión del PO (v521): *«prefiero venderla a nuevos
+  usuarios que sí la aprecien»* — así que no se convierten en tarea, pero borrarlos sería peor que
+  el defecto (dejaría de saber que existen). Van en una línea que lleva al reporte «Sin entrenar»,
+  donde ya está escrito por qué ahí la app no puede hacer nada.
+- Si **nadie** es alcanzable, el titular lo dice en vez de prometer un empujón imposible, y la
+  línea de abajo no lo repite: solo lleva al reporte.
+- 🔒 **Una sola definición de «¿puedo escribirle?»** (`_coachPuedeEscribir`, que delega en
+  `coachCanReach` → `waPhone`): al aparecer la segunda superficie que hace la misma pregunta, dos
+  copias de «número válido» habrían sido el bug del peso de v448/v511 otra vez.
+
+### QA
+- Suite **1050 → 1052** en los dos husos. Matriz nueva `_sabotaje-empujar.mjs`, **6/6 muerden**
+  (incluido el de esconder a los inalcanzables y el de que el envoltorio deje de delegar).
+- Harness nuevo `_verify-empujar.mjs` (preview-SIN-login), **16/16**: afirma la CONSECUENCIA
+  —cuántos botones se ven y **sobre quién**—, no la presencia de un selector. Con el control que
+  Nataly ya se ve, el caso «nadie alcanzable», el CONTROL de que con todos alcanzables no aparece
+  ninguna línea de más, y claro/oscuro a 390 y 360 px.
+- 🔁 **El test de v520 cayó con este cambio y se RE-ENCUADRÓ, no se calló:** pedía el nombre
+  `coachCanReach` dentro del reporte, y ahora la llamada pasa por el envoltorio. Se afirma la
+  CADENA entera (reporte → `_coachPuedeEscribir` → `coachCanReach`), que es más de lo que
+  vigilaba antes: sin el tercer eslabón, el envoltorio podría re-implementar el criterio.
+
+### 🔴 Tres rojos que eran de MIS sondas, no de la app
+1. Dos aserciones leían la tarjeta ENTERA como si fuera el titular (`div>div`) y daban rojo sobre
+   una pantalla correcta.
+2. La primera captura salía siendo **la foto del splash**: `display!=='none'` no es «se ve». El
+   control pasó a **hit-test** (quién recibe el toque en el banner), como el «Volver» de v525.
+3. Y ese hit-test dio rojo por mirar **fuera del viewport**: faltaba `scrollIntoView` (v453).
+- ⚠️ Y **quinta vez** con el mismo gotcha: comillas invertidas **dentro de un comentario** que vive
+  dentro de un template literal → `SyntaxError` que apunta a la primera línea del bloque.
+
+---
+
 ## ⏮️ 2026-09-06 — v579: TERMINAR TEMPRANO TAMBIÉN PREMIA
 
 **Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº1 del área «entreno en vivo»).

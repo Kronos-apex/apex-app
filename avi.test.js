@@ -13778,7 +13778,18 @@ test('🔴 v520 · el reporte «Sin entrenar» separa a quien puedes escribirle 
   const i = src.indexOf("kind==='sinentrenar'");
   assert.ok(i > 0, 'desapareció el reporte «Sin entrenar»');
   const tramo = src.slice(i, i + 3600);   // la ventana crece con los comentarios: se acota holgada
-  assert.ok(/coachCanReach/.test(tramo), 'el reporte dejó de mirar si el coach puede avisarle');
+  // 🔁 RE-ENCUADRE v580: antes esto pedía el nombre `coachCanReach` DENTRO del tramo. Al aparecer
+  //    la segunda superficie que hace la misma pregunta (el banner de adherencia del Inicio), la
+  //    definición se extrajo a `_coachPuedeEscribir` — una sola, porque dos copias de «número
+  //    válido» es cómo volvió el bug del peso en v448 y otra vez en v511. La propiedad no cambia,
+  //    cambia por dónde pasa: así que ahora se afirma la CADENA ENTERA, que es más de lo que
+  //    vigilaba antes. Sin el tercer eslabón, el envoltorio podría re-implementar el criterio.
+  assert.ok(/_coachPuedeEscribir\(c\)/.test(tramo), 'el reporte dejó de mirar si el coach puede avisarle');
+  const iH = src.indexOf('function _coachPuedeEscribir');
+  assert.ok(iH > 0, 'desapareció _coachPuedeEscribir: cada superficie volvería a definir «puedo escribirle»');
+  const helper = src.slice(iH, src.indexOf('\nfunction ', iH + 10));
+  assert.ok(/coachCanReach\(c\)/.test(helper),
+    'el envoltorio dejó de delegar en coachCanReach: hay dos definiciones de «número válido» (clase v448/v511)');
   assert.ok(/No tienes cómo avisarles/.test(tramo), 'desapareció la sección de los que no tienen vía');
   assert.ok(/crep-note/.test(tramo), 'la sección no explica POR QUÉ no llega ni qué hacer');
   // 🔴 CONTROL: el que SÍ tiene vía sigue apareciendo. Sin esto, «esconder a los que no se
@@ -15929,6 +15940,53 @@ test('🔒 CABLEADO v579: el titular sale de wfTitle, no escrito a mano en el re
     '🔴 el titular dejó de preguntarle a stats.partial: «¡Lo lograste!» sobre 6 de 12 series');
   assert.ok(!/¡Lo lograste/.test(cuerpo),
     'el texto volvió a escribirse a mano en el render — segunda definición del titular');
+});
+
+// ══════════════════════════════════════════════════════
+// v580 — «EMPUJAR 💪» NO SALE SIN DESTINATARIO
+// ══════════════════════════════════════════════════════
+// El banner de adherencia del Inicio pintaba el botón para todo el mundo, y `whatsappNudge` cae
+// a elegir contacto a mano cuando no hay un número plausible. Medido el 6-sep-2026 sobre las
+// fichas reales: de 14 dormidos, 12 sin ninguna vía. Y el daño de verdad no era el botón muerto
+// sino el ORDEN: los «nunca empezó» van primero y son justo los que no dejaron teléfono, así que
+// el único caso accionable quedaba enterrado bajo «y N más…».
+
+const _bannerAdh = () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf("h-adherence-banner");
+  assert.ok(i > 0, 'desapareció el banner de adherencia del Inicio');
+  const j = src.indexOf("h-list", i);
+  return src.slice(i, j > 0 ? j : i + 6000);
+};
+
+test('🔴 v580 · el banner solo ofrece «Empujar» a quien el coach PUEDE alcanzar', () => {
+  const t = _bannerAdh();
+  // El botón se pinta sobre `shown`, y `shown` sale de `conVia` — no de `dormidos`.
+  assert.ok(/const conVia=dormidos\.filter\(\(\{c\}\)=>_coachPuedeEscribir\(c\)\)/.test(t),
+    '🔴 el banner dejó de separar por alcance: vuelven los botones que abren WhatsApp sin nadie');
+  assert.ok(/const shown=conVia\.slice\(0,6\)/.test(t),
+    '🔴 las filas con botón volvieron a salir de la lista completa, no de los alcanzables');
+  assert.ok(!/const shown=dormidos\.slice/.test(t), 'quedó viva la versión anterior del recorte');
+  // El titular cuenta a los alcanzables, o promete N empujones y ofrece 2.
+  assert.ok(/conVia\.length\}\s*\$\{conVia\.length>1\?'asesorados necesitan'/.test(t),
+    'el titular volvió a contar a todos los dormidos, incluidos los que no se pueden avisar');
+});
+
+test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y llevan al reporte', () => {
+  // ⚖️ Decisión del PO (v521): no se le empuja a perseguirlos. Pero borrarlos de la pantalla
+  //    sería peor que el defecto — dejaría de saber que existen. Sin este control, «esconder a
+  //    los que no se pueden avisar» pasaría el test de arriba.
+  const t = _bannerAdh();
+  assert.ok(/const sinVia=dormidos\.filter\(\(\{c\}\)=>!_coachPuedeEscribir\(c\)\)/.test(t),
+    'se perdió el grupo de los que no tienen vía');
+  assert.ok(/sinVia\.length\?/.test(t) && /no hay cómo avisarles/.test(t),
+    '🔴 los inalcanzables desaparecieron del banner: el coach deja de saber que existen');
+  assert.ok(/openCoachStat\('sinentrenar'\)/.test(t),
+    'la línea no lleva al reporte, que es donde está escrito por qué no hay nada que hacer');
+  // Y el caso en que NADIE es alcanzable tiene su propio titular: sin él, la cabecera diría
+  // «0 asesorados necesitan un empujón» sobre una lista que sí tiene gente.
+  assert.ok(/no tienes cómo avisarles/.test(t),
+    'sin nadie alcanzable el banner no dice qué pasa: quedaría un titular en cero');
 });
 
 // ══════════════════════════════════════════════════════
