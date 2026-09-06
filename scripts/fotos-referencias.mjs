@@ -41,7 +41,7 @@ const marcas = [...src.matchAll(/\{id:'(e\d+)',/g)];
 const cat = marcas.map((m, i) => {
   const b = src.slice(m.index, marcas[i + 1] ? marcas[i + 1].index : src.length);
   const campo = k => (new RegExp(k + ":'((?:[^'\\\\]|\\\\.)*)'").exec(b) || [, ''])[1].replace(/\\'/g, "'");
-  return { id: m[1], name: campo('name'), muscle: campo('muscle'), desc: campo('desc') };
+  return { id: m[1], name: campo('name'), muscle: campo('muscle'), desc: campo('desc'), q: campo('ytQuery') };
 });
 if (cat.length < 100 || cat.some(e => !e.name)) { console.error('🔴 sonda incompleta'); process.exit(1); }
 const conFoto = new Set(readdirSync(new URL('media/exercises', RAIZ))
@@ -193,6 +193,30 @@ if (arg('--revisar')) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  // ── BUSCAR LA REFERENCIA A MANO ─────────────────────────────────────────────────────
+  // Para las 66 que el banco no cubre —y para cambiar una que no convenza— hace falta ir a
+  // buscarla. Va a IMAGENES, no a video: lo que se adjunta a Gemini es una FOTO.
+  // 🔴 La consulta se arma en INGLES cuando se puede: para aparatos de gimnasio devuelve
+  //    mucho mejor que en espanol. Si hay candidato del banco, su nombre YA es el nombre
+  //    ingles correcto del movimiento y se usa ese; si no, se traduce con el glosario; y si
+  //    el glosario no alcanza, cae al `ytQuery` que el catalogo ya trae en espanol.
+  const buscarUrl = f => {
+    let q = '';
+    // 🔴 SOLO se reusa el nombre del banco si el emparejamiento PASO el umbral. Un candidato
+    //    descartado es descartado tambien para buscar: usarlo mandaba a buscar «Dip Machine»
+    //    para las dominadas asistidas, o sea a buscar el error que el candado acababa de
+    //    rechazar.
+    if (f.top[0] && f.top[0].score >= FUERTE) q = f.top[0].name;
+    else {
+      const en = [...saco(f.name)].join(' ').trim();
+      q = en.length >= 6 ? en : (f.q || f.name);
+    }
+    if (f.declara && !norm(q).includes(f.declara)) {
+      q += ' ' + (f.declara === 'smith' ? 'smith machine' : f.declara);
+    }
+    return 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q + ' exercise gym');
+  };
+
   // El punto del rep se pide EXPLICITO: es lo que el doc marca como truco, y sin eso el
   // modelo dibuja una pose neutra que no ensena el movimiento.
   const promptDe = f => {
@@ -220,7 +244,11 @@ if (arg('--revisar')) {
     <h3>${esc(f.id)} · ${esc(f.name)}</h3>
     <p class="sub">${tieneRef ? 'adjunta a Gemini: <code>img\\\\' + esc(f.id) + '.jpg</code>' : 'sin foto de referencia en el banco'}</p>
     ${f.top[0] ? `<p class="sub2">banco: ${esc(f.top[0].name)} [${esc(f.top[0].eq)}]</p>` : ''}
-    <button class="cp" type="button">Copiar el prompt</button>
+    <div class="acc">
+      <button class="cp" type="button">Copiar el prompt</button>
+      <a class="bu" href="${esc(buscarUrl(f))}" target="_blank" rel="noopener noreferrer"
+         >Buscar imagen de referencia</a>
+    </div>
     <details><summary>ver el prompt</summary><pre>${esc(promptDe(f))}</pre></details>
   </div></article>`;
   }).join('\n');
@@ -248,9 +276,17 @@ h3{margin:0;font-size:14px;color:var(--ac);font-weight:600;line-height:1.3}
 .sub,.sub2{margin:0;font-size:11.5px;color:var(--t2)}
 .sub2{color:#5d6b63}
 code{background:var(--sf2);padding:1px 5px;border-radius:4px;font-size:11px}
-.cp{font:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:7px;cursor:pointer;
-    background:var(--ac);color:#04170f;border:0;margin-top:2px}
+.acc{display:flex;gap:7px;margin-top:2px}
+.cp,.bu{font:inherit;font-size:13px;font-weight:600;padding:8px 10px;border-radius:7px;
+    text-align:center;line-height:1.2;flex:1;cursor:pointer;border:1px solid transparent}
+.cp{background:var(--ac);color:#04170f;border:0}
 .cp.ok{background:var(--sf2);color:var(--ac)}
+.bu{background:var(--sf2);color:var(--ac);border-color:var(--ln);text-decoration:none;
+    display:flex;align-items:center;justify-content:center}
+.bu:hover{border-color:var(--ac)}
+/* Sin referencia, buscarla es LA acción: se resalta y copiar pasa a segundo plano. */
+.c[data-ref="0"] .bu{background:var(--ac);color:#04170f;border-color:var(--ac)}
+.c[data-ref="0"] .cp{background:var(--sf2);color:var(--ac);border:1px solid var(--ln)}
 details{margin-top:2px}
 summary{cursor:pointer;font-size:12px;color:var(--t2)}
 pre{white-space:pre-wrap;word-break:break-word;background:var(--sf2);padding:9px;border-radius:7px;
