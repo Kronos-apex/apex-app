@@ -4,6 +4,72 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 📲 2026-09-05 (3ª parte) — v575, v576 y v577: LOS TRES PUNTOS RESTANTES DE LA AUDITORÍA
+
+Puntos 2, 3 y 4 de `docs/auditoria-app-instalada-2026-09-05/`. Los cuatro quedan cerrados.
+
+### v575 · El latido dice si la persona puede recibir un recordatorio
+
+**Lo medido afina el hallazgo del agente.** Las 10 personas con push son las 10 que entrenan esta
+semana — pero de las 14 sin push, **5 abrieron la app en los últimos 10 días** (Yovan 4-sep,
+maria rubio 4-sep, Nicolás 3-sep, Chema 1-sep, diana ramirez 26-ago). O sea que la tarjeta que
+pide el permiso SÍ las alcanza y aun así no lo tienen. Las otras 9 no tienen ni latido: nunca
+abrieron la app. Y **las 24 tienen correo**, un canal sin usar.
+
+**Por qué esto y no un arreglo directo:** el mecanismo para pedir el permiso existe y está bien
+hecho. Lo que no existía era saber si esas 5 dijeron que NO, lo pospusieron, o nunca vieron la
+tarjeta — y sin esa diferencia cualquier arreglo es adivinar. Va dentro del latido que ya
+escribe la app (`deviceStamp`): ni tabla nueva ni una escritura más.
+🔒 **Un cambio de permiso DISPARA la escritura**, o el campo nacería congelado (defecto de
+v551). 🔒 Y «no sé» no se rellena: la ficha se calla si el teléfono no lo reportó, y solo
+avisa cuando NO están activados — un aviso que sale siempre se aprende a ignorar.
+6 sabotajes, 6 muerden.
+
+### v576 · El service worker no guarda lo que no comprobó
+
+Había **cuatro ramas que guardan en caché y solo UNA comprobaba la respuesta**. Un 404 o un 500
+se guardaba y se servía después, incluso sin red.
+🔴 **Y el caso que se escapa del filtro obvio, que salió escribiendo el arreglo y no del
+informe: una respuesta 206 (PARCIAL) pasa `response.ok`**, porque `ok` es true para todo
+200-299. Guardar un trozo sirve un archivo CORTADO — la firma exacta de los 3
+`Uncaught SyntaxError: Unexpected end of input` registrados en producción. Comprobar `ok` a
+secas no habría cerrado ese caso.
+💎 El patrón correcto YA estaba en el archivo (la rama de iconos). Ahora las cuatro pasan por
+`_guardar`, y un test afirma que **queda UNA sola llamada a `cache.put`** en todo el archivo.
+🔒 La respuesta OPACA del CDN se sigue guardando a propósito: no se puede inspeccionar y es lo
+que hace que el login funcione sin red. Hay test que lo protege de un «endurecimiento» futuro.
+`sw.js` nunca había tenido tests (corre en el service worker); `_guardable` es pura, así que se
+extrae del archivo real y se ejecuta. 5 sabotajes, 5 muerden. Regresión offline verde: entra sin
+red en 3,6 s y el login sin red sigue funcionando.
+
+### v577 · Se poda el aparato abandonado, nunca la única suscripción de alguien
+
+Natalia recibía cada aviso DOS veces. v535 había clasificado sus 2 filas como «dos aparatos de
+verdad» y **esa clasificación nunca se volvió a comprobar**: hoy su fila vieja lleva 30 días sin
+refrescarse y trae `["Lunes","Lunes","Martes"]`, la copia congelada del 7-ago que el gotcha de
+v551 nombra como huérfana. Las 2 de Samuel (7 y 12 días, plan correcto) SÍ son dos aparatos y no
+se tocan.
+
+🔬 **La medición que habilita la regla:** `updated_at` no es «cuándo cambió el endpoint», es
+**cuándo esa persona abrió la app en ese aparato** (`ensureClientPush` fuerza la reescritura una
+vez por sesión). Comprobado cruzando las 7 personas con las dos señales: coincide con su último
+latido `profile.dev`. Sin ese cruce la regla sería una corazonada.
+
+🔴 **La trampa que la regla esquiva:** podar por antigüedad a secas borraría justo las
+suscripciones de quien lleva semanas sin entrenar — las personas para las que existen los avisos
+de RESCATE y de VUELTA. El canal de recuperación se amputaría solo. Por eso se borra una fila
+**solo si el mismo cliente tiene otra refrescada 21+ días DESPUÉS**, y la más reciente de cada
+persona no se toca jamás. 6 sabotajes, 6 muerden, incluido el de «podar por antigüedad».
+
+Verificado en seco antes de aplicar (devolvía exactamente 1 fila) y después: Natalia con 1,
+Samuel con 2, nadie más movido.
+
+### Estado de la ronda
+Suite **1041 → 1047**. Los 4 puntos de la auditoría, cerrados. Sigue sin probarse un push en un
+teléfono real — es lo único que solo puede hacer el PO.
+
+---
+
 ## ⚖️ 2026-09-05 (2ª parte) — avi-v574: BORRAR LA CUENTA BORRA LO QUE LA PANTALLA PROMETE
 
 **Punto 1 de la auditoría «app instalada»** (`docs/auditoria-app-instalada-2026-09-05/`), y el

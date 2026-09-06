@@ -23,6 +23,20 @@ Los 3 entregaron completo.
 | B2 | La app instalada (SW, caché, TWA) | `B2-instalada.md` | 🔴 se cachea sin comprobar que la respuesta esté bien |
 | B3 | Funciones de servidor sin auditar | `B3-servidor.md` | 🔴 borrar la cuenta no borra todo lo que promete |
 
+## ✅ ESTADO: los 4 puntos, CERRADOS el mismo día
+
+| | Qué | Versión | Verificación |
+|---|---|---|---|
+| 1 | Borrar la cuenta no borraba lo prometido | **v574** | 7 sabotajes + **borrado real de una cuenta desechable**, 14/14 |
+| 2 | El rescate no tenía a quién rescatar | **v575** | 6 sabotajes · el latido ya reporta el permiso |
+| 3 | Se cacheaba sin comprobar la respuesta | **v576** | 5 sabotajes · regresión offline verde |
+| 4 | Avisos por partida doble | **v577** | 6 sabotajes · migración verificada en seco y aplicada |
+
+Suite 1041 → 1047. Detalle en `docs/bitacora.md` (5-sep, partes 2ª y 3ª).
+
+⏭️ **Lo único que sigue sin probarse: un push llegando a un teléfono real con la pantalla
+bloqueada.** Es de las pocas cosas que solo puede comprobar el PO.
+
 ## Lo que hay que arreglar, en orden
 
 ### 1. 🔴 Borrar la cuenta no borra todo lo que la pantalla promete (B3)
