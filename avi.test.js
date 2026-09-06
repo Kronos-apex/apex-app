@@ -5849,8 +5849,14 @@ test('🔒 la puerta a la página existe y abre la página REAL, no una maqueta'
   assert.ok(/AVI_SHARE_URL/.test(src.slice(src.indexOf('function _aviUrl'), src.indexOf('function _aviUrl') + 200)),
     'la dirección se toma de AVI_SHARE_URL, no se re-escribe');
   // Y el botón «Ver» también está donde publica (v523), que es donde va a querer comprobarlo.
+  // ⏮️ v578 · ese botón abre ahora la WEB, no la bienvenida: el PO mandó las tarjetas allá, así
+  //    que mirar la bienvenida ya no le enseñaría la tarjeta que acaba de publicar. La puerta
+  //    tiene que llevar a donde el dato VIVE, o es una puerta que miente (clase v540).
   const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
-  assert.ok(/onclick="verMiPagina\(\)"/.test(coach), 'la ficha ofrece ver la página tras publicar');
+  assert.ok(/onclick="verMiWeb\(\)"/.test(coach), 'la ficha ofrece ver dónde quedó la tarjeta publicada');
+  const iw = src.indexOf('function verMiWeb');
+  assert.ok(iw > 0 && /_aviWebUrl\(\)/.test(src.slice(iw, iw + 120)),
+    'verMiWeb abre la dirección de la web, no otra escrita a mano');
 });
 test('🔒 v543 · la app enlaza a la WEB, y la dirección es UNA sola en los dos sitios', () => {
   const fs = require('fs'), path = require('path');
@@ -13133,40 +13139,33 @@ test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se
     'apareció un grant de UPDATE sobre avi_showcase: editar = borrar y volver a publicar');
 });
 
-test('🔴 v523 · la vitrina se PINTA en la página de llegada y se llama en el arranque', () => {
-  const app2 = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
-  assert.ok(/function renderShowcase/.test(app2), 'desapareció el render de la vitrina');
-  // 🔴 CONTROL de CABLEADO: una función que nadie llama es «puerta cerrada, ventana abierta».
-  assert.ok(/\brenderShowcase\(\)/.test(app2.replace(/function renderShowcase\(\)/, '')),
-    'renderShowcase existe pero no la llama nadie en el arranque');
-  const i = app2.indexOf('async function renderShowcase');
-  // 🔴 SE ACOTA POR EL FINAL REAL DE LA FUNCIÓN, no por un número mágico. Antes decía
-  // `slice(i, i+2200)`: al comentar por qué el chip del objetivo es condicional (v555), el
-  // `catch` se salió de la ventana y el test dijo que la vitrina había dejado de callarse ante
-  // un fallo de red — una aserción que se rompe porque alguien escribió un comentario no está
-  // midiendo el código, está midiendo su longitud.
-  const cuerpo = app2.slice(i, app2.indexOf('\nfunction ', i + 20));
-  assert.ok(/avi_showcase/.test(cuerpo), 'la vitrina dejó de leer su tabla');
-  // 🔴 CADA interpolación, no «alguna». La primera versión de esta aserción decía «existe un
-  // esc() en el cuerpo» y el sabotaje que se lo quitaba AL NOMBRE salía VERDE, porque los
-  // otros campos seguían escapados: una aserción que el defecto puede satisfacer no es un
-  // candado. Y aquí pesa más que en otras pantallas — es innerHTML en la página PÚBLICA.
-  const plantilla = cuerpo.slice(cuerpo.indexOf('el.innerHTML'), cuerpo.indexOf('el.style.display'));
-  const interpolaciones = plantilla.match(/\$\{[^}]*}/g) || [];
-  assert.ok(interpolaciones.length >= 5, 'no encontré la plantilla de la vitrina: ' + interpolaciones.length);
-  const crudas = interpolaciones.filter(x => !/esc\(|\bm\b|lifts|\?\s*['"]/.test(x));
-  assert.deepStrictEqual(crudas, [], 'la vitrina interpola datos SIN esc() en innerHTML: ' + crudas.join(' · '));
-  // 🔴 SILENCIOSA ANTE EL FALLO: sin red o sin nada publicado NO se pinta un hueco.
-  // 🔴 SILENCIOSA ANTE EL FALLO: sin red o sin nada publicado NO se pinta un hueco. Se afirma
-  // por la PROPIEDAD (sale sin pintar) y no por la forma exacta de la línea.
-  const sinPintar = cuerpo.split('el.innerHTML')[0];
-  assert.ok(/!filas\.length/.test(sinPintar.replace(/\s+/g, '')) ||
-    /!filas.length/.test(sinPintar.replace(/\s+/g, '')),
-    'la vitrina llega a pintar aunque no haya tarjetas publicadas');
-  assert.ok(/catch\([\s\S]{0,40}return 0/.test(cuerpo),
-    'sin red la vitrina no se calla: un error en la primera pantalla de un desconocido es peor que no tenerla');
-  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
-  assert.ok(/id="cin-showcase"[^>]*display:none/.test(html), 'la vitrina no nace oculta: se vería un hueco antes de cargar');
+test('⏮️ v578 · la vitrina YA NO vive en la app: vive en la web', () => {
+  // ⚖️ DECISIÓN DEL PO (6-sep-2026): *«quita esas tarjetas de la pantalla de inicio… las
+  //    prefiero en la web de la app, incomodan mucho»*. Publicar NO cambió: la tarjeta sigue
+  //    saliendo de la ficha a `avi_showcase`, y quien la pinta es `avi-web` (sección
+  //    «Resultados»), que lee la MISMA tabla con el mismo filtro por coach y el mismo tope.
+  // 🔒 Este test es el CANDADO de la decisión, no un residuo: sin él, la tira vuelve a la
+  //    bienvenida el día que alguien reviva el código de v523 y nadie se entera hasta que el PO
+  //    lo vea otra vez en su teléfono.
+  const fs = require('fs'), path = require('path');
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css  = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  // 🔴 SIN los comentarios: los tres archivos EXPLICAN por qué se fue, y un regex crudo lee
+  //    dentro de la explicación (el gotcha de v523 con el `.sql`, y otra vez en v552 y v570).
+  const sinCom = (s) => s.replace(/^[ 	]*(\/\/|\*|\/\*|<!--).*$/gm, '');
+  assert.ok(!/function renderShowcase/.test(sinCom(app2)),
+    'volvió el render de la vitrina a la app: el PO la quiso en la web');
+  assert.ok(!/id="cin-showcase"/.test(sinCom(html)),
+    'volvió el contenedor de la vitrina a la bienvenida');
+  assert.ok(!/^\.sc-card\{/m.test(css) && !/^\.cin-showcase\{/m.test(css),
+    'volvieron los estilos de la tira de tarjetas');
+  // 🔒 CONTROL: lo que se quitó es la VITRINA, no el enlace a la web ni el apartado del
+  //    formulario (v571). Sin esto, «borrarlo todo» pasaría las tres aserciones de arriba.
+  assert.ok(/AVI_WEB_URL|avi-web-chi\.vercel\.app/.test(html),
+    'la bienvenida se quedó sin el enlace a la web, que es donde viven ahora las tarjetas');
+  assert.ok(/\.cin-hide-onform\{display:none!important\}/.test(css) &&
+    /cinFormMode/.test(app2), 'se llevó por delante el apartado de la bienvenida (v571)');
 });
 
 test('🔴 v523 · publicar es del coach, avisa que es PERMANENTE y se puede quitar', () => {
@@ -13498,27 +13497,22 @@ test('🔴 v554 · en «solo peso corporal», solo los DUALES pueden pedir kg', 
   assert.ok(tipos.has('Bodyweight') && tipos.has('Isométrico'), 'control: los tipos sin carga existen');
 });
 
-test('🔴 v553 · la vitrina pública pide SOLO las tarjetas de su coach', () => {
+test('🔴 v553 · el tope de tarjetas por coach vive en el servidor', () => {
   // Cabo suelto de la verificación adversarial de v525: el tope de 6 es POR COACH (lo pone el
-  // trigger del .sql) y la página pedía «las 6 más recientes» sin filtrar. Con dos coaches, las
-  // 6 de uno desplazan a las del otro y cada página muestra las tarjetas ajenas.
+  // trigger del .sql) y quien pinta la vitrina pedía «las 6 más recientes» sin filtrar. Con dos
+  // coaches, las 6 de uno desplazan a las del otro y cada página muestra las tarjetas ajenas.
+  //
+  // ⏮️ v578 · EL LADO DEL CLIENTE YA NO ESTÁ EN ESTE REPO. El PO mandó la vitrina a la web, así
+  //    que el `coach_id=eq.…&limit=6` vive ahora en `avi-web/lib/showcase.ts` y lo vigila
+  //    `avi-web/scripts/verificar-vitrina.mjs` — el mismo par de aserciones, en el repo donde
+  //    está el código. Aquí se conserva lo que SÍ vive aquí: el tope del SERVIDOR, que es el
+  //    que de verdad impide que un coach desplace al otro.
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
-  const i = src.indexOf('async function renderShowcase');
-  assert.ok(i > 0, 'desapareció la vitrina de la página de llegada');
-  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 20));
-  assert.ok(/avi_showcase\?/.test(cuerpo), 'la vitrina dejó de consultar su tabla');
-  assert.ok(/coach_id=eq\./.test(cuerpo), 'la consulta pública volvió a traer las tarjetas de CUALQUIER coach');
-  assert.ok(/COACH_UID/.test(cuerpo), 'el coach se escribió a mano en vez de leerse de la constante');
-  // 🔒 CONTROL: el tope y el orden siguen ahí — un filtro que se lleve por delante el `limit`
-  // convertiría la vitrina en «todas las tarjetas que existan».
-  assert.ok(/limit=6/.test(cuerpo) && /order=created_at\.desc/.test(cuerpo));
-  // 🔒 Y el espejo: el tope del cliente y el del servidor son el mismo número.
   const sql = fs.readFileSync(path.join(__dirname, 'supabase/community/s1_showcase.sql'), 'utf8')
-    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+    .replace(/^\s*--.*$/gm, '');
   const m = sql.match(/count\(\*\)[\s\S]{0,120}?>=\s*(\d+)/);
   assert.ok(m, 'el .sql dejó de topar las tarjetas por coach');
-  assert.strictEqual(Number(m[1]), 6, 'el tope del servidor y el `limit` de la página se separaron');
+  assert.strictEqual(Number(m[1]), 6, 'cambió el tope del servidor: el `limit` de la web tiene que moverse con él');
 });
 
 // ── EL OBJETIVO EN LA TARJETA (v555) ─────────────────────────────────────────────────────────
@@ -13577,22 +13571,6 @@ test('🔴 v555 · ESPEJO: los seis objetivos de la app son los del CHECK en el 
   assert.ok(!/objetivo text[^;]*not null/i.test(sql),
     'la columna `objetivo` se volvió NOT NULL: rompe las tarjetas ya publicadas');
   assert.match(sql, /objetivo is null or/, 'el CHECK dejó de admitir null');
-});
-
-test('🔴 v555 · la página de llegada pide el objetivo, lo pinta y lo ESCAPA', () => {
-  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
-  const i = src.indexOf('async function renderShowcase');
-  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 20));
-  assert.match(cuerpo, /select=[^"']*objetivo/, 'la consulta no trae la columna: el chip nunca se pintaría');
-  assert.match(cuerpo, /sc-goal/, 'la tarjeta dejó de pintar el objetivo');
-  // 🔴 Es innerHTML en la página PÚBLICA: el valor tiene que ir escapado, como el resto.
-  assert.match(cuerpo, /sc-goal">\$\{esc\(/, 'el objetivo se interpola SIN esc() en la página pública');
-  // 🔒 Y pasa por la lista blanca antes de pintarse, no crudo desde la tabla.
-  assert.match(cuerpo, /normalizeGoal\(f\.objetivo\)/, 'el objetivo se pinta sin normalizar');
-  // 🔒 CONTROL de que el chip es CONDICIONAL: una tarjeta sin objetivo no puede pintar un hueco.
-  assert.match(cuerpo, /obj\s*\?\s*`<div class="sc-goal"/, 'el chip se pinta aunque no haya objetivo');
-  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
-  assert.match(css, /\.sc-goal\{/, 'el chip del objetivo no tiene estilo: saldría como texto suelto');
 });
 
 // ── «HOY TRABAJAMOS SIN CARGA» TIENE QUE SER VERDAD EN TODO EL CATÁLOGO (v553) ───────────────

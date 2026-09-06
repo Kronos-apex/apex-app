@@ -11,7 +11,16 @@
 //   · el valor sale del PERFIL y viaja historia → fila → tabla (nadie lo teclea)
 //   · solo entran los SEIS de la lista, y la lista de la app es la del CHECK del servidor
 //   · la columna admite NULL (las 6 tarjetas vivas nacieron sin objetivo y la tabla no tiene UPDATE)
-//   · se pinta ESCAPADO —es innerHTML en la página pública— y solo si existe
+//   · se pinta solo si existe, y en el repo donde HOY vive la tarjeta
+//
+// ⏮️ v578 · EL PINTADO SE MUDÓ A LA WEB. El PO sacó la vitrina de la bienvenida de la app
+// («las prefiero en la web de la app, incomodan mucho», 6-sep) y con ella se fue `renderShowcase`,
+// donde vivían los casos 8 a 12 y el control P1: quedaron **despegados**, gritando «NO SE APLICÓ»
+// — el gotcha de v537/v549, que vuelve cada vez que se borra o se arregla lo que un ancla cita.
+// No se borran: se mudan y se reapuntan. Lo que se pinta lo vigila ahora
+// `avi-web/scripts/verificar-vitrina.mjs` (chip condicional, lista blanca, sin HTML crudo), con
+// su propia matriz de 3 sabotajes; aquí quedan los casos 8-12 apuntando al CANDADO NUEVO: que la
+// vitrina no se cuele de vuelta a la bienvenida, que es la decisión que hay que sostener.
 //
 // Cada sabotaje devuelve el código a la conducta INCORRECTA, corre la suite y exige que CAIGA por
 // CÓDIGO DE SALIDA (nunca por el mensaje impreso: leer el texto es como el smoke pasó 43 versiones
@@ -33,6 +42,9 @@ const CORE = join(RAIZ, 'avi-core.js');
 const LOGIN = join(RAIZ, 'app-2-login.js');
 const SQL = join(RAIZ, 'supabase', 'community', 's2_showcase_objetivo.sql');
 const CSS = join(RAIZ, 'styles.css');
+const HTML = join(RAIZ, 'index.html');
+const COACH = join(RAIZ, 'app-3-coach.js');
+const SQL2 = join(RAIZ, 'supabase', 'community', 's1_showcase.sql');
 
 const SABOTAJES = [
   { n: 1, f: CORE, why: 'la historia deja de llevar el objetivo del perfil',
@@ -56,21 +68,23 @@ const SABOTAJES = [
   { n: 7, f: SQL, why: 'el CHECK deja de admitir null (mismo daño, por la otra puerta)',
     de: '    objetivo is null or objetivo in (',
     a:  '    objetivo in (' },
-  { n: 8, f: LOGIN, why: 'la consulta pública deja de pedir la columna: el chip nunca se pinta',
-    de: 'select=nombre,entrenos,meses,subidas,subieron,con_carga,objetivo',
-    a:  'select=nombre,entrenos,meses,subidas,subieron,con_carga' },
-  { n: 9, f: LOGIN, why: 'el objetivo se interpola SIN esc() en innerHTML de la página pública',
-    de: '${obj?`<div class="sc-goal">${esc(obj)}</div>`:""}',
-    a:  '${obj?`<div class="sc-goal">${obj}</div>`:""}' },
-  { n: 10, f: LOGIN, why: 'el chip se pinta siempre: una tarjeta sin objetivo muestra un hueco',
-    de: '${obj?`<div class="sc-goal">${esc(obj)}</div>`:""}',
-    a:  '<div class="sc-goal">${esc(obj||"")}</div>' },
-  { n: 11, f: LOGIN, why: 'el valor de la tabla se pinta crudo, sin pasar por la lista blanca',
-    de: 'const obj=(typeof normalizeGoal==="function")?normalizeGoal(f.objetivo):null;',
-    a:  'const obj=f.objetivo||null;' },
-  { n: 12, f: CSS, why: 'el chip se queda sin estilo y sale como texto suelto encima de los kilos',
-    de: '.sc-goal{display:inline-block;',
-    a:  '.sc-goalXX{display:inline-block;' },
+  { n: 8, f: LOGIN, why: 'la vitrina vuelve a la app: el PO la quiso en la web, no en la bienvenida',
+    de: 'const CIN_WELCOME_EXTRAS = [',
+    a:  'async function renderShowcase(){ return 0; }\nconst CIN_WELCOME_EXTRAS = [' },
+  { n: 9, f: HTML, why: 'vuelve el contenedor de la tira entre los botones y el formulario',
+    de: '    <div id="install-hint" class="cin-install">',
+    a:  '    <div id="cin-showcase" class="cin-showcase" style="display:none"></div>\n    <div id="install-hint" class="cin-install">' },
+  { n: 10, f: CSS, why: 'vuelven los estilos de la tarjeta que ya no se pinta aqui',
+    de: '.cin-hide-onform{display:none!important}',
+    a:  '.cin-hide-onform{display:none!important}\n.sc-card{flex:0 0 82%}' },
+  { n: 11, f: HTML, why: 'CONTROL del candado: se lleva por delante el enlace a la web, que es adonde se fueron las tarjetas',
+    de: '<a class="cin-web" href="https://avi-web-chi.vercel.app/"',
+    a:  '<a class="cin-webXX" href="https://ejemplo-invalido.test/"' },
+  // ⚠️ El ancla va con `s.coach_id`: `count(*)` a secas aparece DOS veces en el .sql (la otra
+  //    valida las claves del jsonb) y el runner lo canta como «NO SE APLICÓ» — gotcha vigente.
+  { n: 12, f: SQL2, why: 'el servidor deja de topar las tarjetas por coach: las de uno desplazan a las del otro',
+    de: 'where s.coach_id = new.coach_id) >= 6 then',
+    a:  'where s.coach_id = new.coach_id) >= 60 then' },
 ];
 
 // 🔴 EL CASO QUE DEBE PASAR. No es relleno: sin él, una suite que reventara por cualquier motivo
@@ -78,9 +92,13 @@ const SABOTAJES = [
 // texto del chip pasa a mayúsculas por CSS, que ya era el aspecto— y la suite tiene que SEGUIR
 // VERDE. Si esto cae, las aserciones están atadas a la forma y no a la conducta.
 const DEBE_PASAR = [
-  { n: 'P1', f: CSS, why: 'cambiar el aspecto del chip NO puede romper la suite',
-    de: 'text-transform:uppercase;color:rgba(234,251,244,.82);',
-    a:  'text-transform:none;color:rgba(234,251,244,.90);' },
+  // ⏮️ v578: el control apuntaba al CSS del chip, que se fue con la vitrina. Se reapunta a un
+  // cambio igual de real y de ajeno: el RÓTULO del botón con el que el coach publica. Cambiar
+  // cómo se dice algo NO puede poner la suite en rojo; si esto cae, las aserciones están atadas
+  // a la redacción y no a la conducta.
+  { n: 'P1', f: COACH, why: 'cambiar el rótulo del botón de publicar NO puede romper la suite',
+    de: 'Publicar en mi web (la ve cualquiera)',
+    a:  'Publicar en mi web (la ve todo el mundo)' },
 ];
 
 // ⚠️ LOS FINALES DE LÍNEA DE ESTE REPO NO SON ESTABLES (gotcha vigente: git los reescribe al

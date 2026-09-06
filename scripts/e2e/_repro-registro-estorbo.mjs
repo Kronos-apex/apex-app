@@ -6,6 +6,10 @@
 // «Instala la app» viven ENTRE los botones y las tarjetas de formulario, asi que seguian
 // puestos DURANTE TODO EL REGISTRO.
 //
+// v578 · LA TIRA YA NO EXISTE: el PO la mando a la web («las prefiero en la web de la app,
+// incomodan mucho», 6-sep). Este repro se queda por el bloque de instalacion, que sigue
+// viviendo ahi, y de paso vigila que la tira no vuelva a colarse en la bienvenida.
+//
 // MEDIDO, y tumbo mi primera hipotesis: el primer campo SI se alcanza sin scrollear en los dos
 // telefonos, antes y despues (campoTop dentro del viewport, scroll de pagina 0). Lo que la
 // medicion sostiene es que la tira sigue VISIBLE durante todo el registro — una tira con
@@ -80,20 +84,18 @@ for (const t of TELEFONOS) {
   await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/index.html` }, sessionId);
   await new Promise(r => setTimeout(r, 2600));
 
-  // Monta 6 tarjetas de vitrina, que es lo que el PO tiene publicado hoy.
-  await ev(`(()=>{const el=document.getElementById('cin-showcase');
-    el.innerHTML=Array.from({length:6},(_,i)=>'<div class="sc-card" style="min-width:210px;padding:12px;border:1px solid var(--br2);border-radius:12px"><b>Persona '+i+'</b><div>48 entrenos en 3 meses</div><div>Prensa 40 → 95 kg</div><div>Hip Thrust 90 → 110 kg</div></div>').join('');
-    el.style.display='flex';
-    /* El bloque de instalacion se FUERZA visible: en headless no llega el evento de instalacion,
-       asi que sin esto la asercion sobre el saldria gratis y el harness aprobaria por vacio.
-       (Sin comillas invertidas: esto vive DENTRO de un template literal.) */
-    const ih=document.getElementById('install-hint'); if(ih)ih.style.display='block';
+  /* v578: la tira de tarjetas de resultados YA NO EXISTE aqui — el PO la mando a la web. Lo que
+     queda entre los botones y el formulario es el bloque «Instala la app», y es lo que este
+     repro sigue vigilando. Se FUERZA visible: en headless no llega el evento de instalacion,
+     asi que sin esto la asercion saldria gratis y el harness aprobaria por vacio.
+     (Sin comillas invertidas: esto vive DENTRO de un template literal.) */
+  await ev(`(()=>{const ih=document.getElementById('install-hint'); if(ih)ih.style.display='block';
     return 1})()`);
 
-  // CONTROL DE MONTAJE: si la tira no ocupa alto, esta medicion no vale.
-  const altoTira = await ev(`document.getElementById('cin-showcase').getBoundingClientRect().height`);
-  if (!(altoTira > 80)) {
-    console.log(`  \x1b[33m!! MONTAJE\x1b[0m ${t.n}: la tira mide ${Math.round(altoTira)}px, no se puede medir el estorbo`);
+  // CONTROL DE MONTAJE: si el bloque no ocupa alto, esta medicion no vale.
+  const altoTira = await ev(`document.getElementById('install-hint').getBoundingClientRect().height`);
+  if (!(altoTira > 40)) {
+    console.log(`  \x1b[33m!! MONTAJE\x1b[0m ${t.n}: el bloque mide ${Math.round(altoTira)}px, no se puede medir el estorbo`);
     fallos++; continue;
   }
 
@@ -108,7 +110,7 @@ for (const t of TELEFONOS) {
       return r.height>0 && getComputedStyle(el).display!=='none'; };
     const r=campo?campo.getBoundingClientRect():null;
     return JSON.stringify({
-      tiraVisible: vis(sc), instalVisible: vis(ih),
+      tiraExiste: !!sc, instalVisible: vis(ih),
       campoTop: r?Math.round(r.top):null,
       campoDentro: r? (r.top>=0 && r.bottom<=window.innerHeight) : false,
       scrollPagina: Math.round(document.scrollingElement.scrollHeight-window.innerHeight)
@@ -116,20 +118,20 @@ for (const t of TELEFONOS) {
   })()`);
   const d = JSON.parse(m);
 
-  const ok = !d.tiraVisible && !d.instalVisible && d.campoDentro;
+  const ok = !d.tiraExiste && !d.instalVisible && d.campoDentro;
   console.log(`  ${ok ? '\x1b[32mOK  \x1b[0m' : '\x1b[31mFALLA\x1b[0m'} ${t.n} (${t.w}x${t.h})`);
-  console.log(`        tarjetas visibles durante el registro : ${d.tiraVisible ? 'SI (estorban)' : 'no'}`);
+  console.log(`        tira de tarjetas en la bienvenida     : ${d.tiraExiste ? 'SI (volvio: el PO la quiso en la web)' : 'no existe (v578)'}`);
   console.log(`        bloque «Instala la app» visible       : ${d.instalVisible ? 'SI (estorba)' : 'no'}`);
   console.log(`        primer campo del formulario           : y=${d.campoTop}px  ${d.campoDentro ? 'se ve sin scrollear' : 'HAY QUE SCROLLEAR'}`);
   console.log(`        scroll de pagina sobrante             : ${d.scrollPagina}px`);
   if (!ok) fallos++;
 
-  // Y al volver, la prueba de venta TIENE que reaparecer (v508: lo que se apaga se enciende).
+  // Y al volver, lo que se aparto TIENE que reaparecer (v508: lo que se apaga se enciende).
   await ev(`WZ.back();1`);
   await new Promise(r => setTimeout(r, 350));
-  const vuelve = await ev(`(()=>{const sc=document.getElementById('cin-showcase');
-    return getComputedStyle(sc).display!=='none' && sc.getBoundingClientRect().height>80})()`);
-  console.log(`        al tocar «← Volver» las tarjetas vuelven: ${vuelve ? '\x1b[32msi\x1b[0m' : '\x1b[31mNO — se apagaron para siempre\x1b[0m'}`);
+  const vuelve = await ev(`(()=>{const ih=document.getElementById('install-hint');
+    return getComputedStyle(ih).display!=='none' && ih.getBoundingClientRect().height>40})()`);
+  console.log(`        al tocar «← Volver» el bloque vuelve    : ${vuelve ? '\x1b[32msi\x1b[0m' : '\x1b[31mNO — se apago para siempre\x1b[0m'}`);
   if (!vuelve) fallos++;
 }
 

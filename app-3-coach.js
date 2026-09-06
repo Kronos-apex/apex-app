@@ -1814,7 +1814,7 @@ function registrarPermisoVitrina(){
 function retirarPermisoVitrina(){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
   const sc=c.showcaseConsent; if(!sc||sc.retiradoAt)return;
-  if(!confirm('¿Retirar la autorización de su acudiente?\n\nDeja de poder publicarse. Si su tarjeta ya está en tu página, hay que quitarla aparte — te lo va a decir ahí mismo.'))return;
+  if(!confirm('¿Retirar la autorización de su acudiente?\n\nDeja de poder publicarse. Si su tarjeta ya está en tu web, hay que quitarla aparte — te lo va a decir ahí mismo.'))return;
   sc.retiradoAt=new Date().toISOString();
   sv('ax_c',DB.clients);
   toast('Autorización retirada');
@@ -1922,12 +1922,12 @@ async function _renderStoryPub(st){
       : 'hoy ya no cumple las condiciones para publicarse';
     el2.innerHTML=(mal
       ? `<div style="font-size:12px;color:var(--ort);line-height:1.5;margin-bottom:7px">
-           ${_coIco('alert',13,'⚠️')} <b>Tiene una tarjeta publicada</b> en tu página y la app hoy no la
+           ${_coIco('alert',13,'⚠️')} <b>Tiene una tarjeta publicada</b> en tu web y la app hoy no la
            publicaría: ${_pq}. Si no debe seguir ahí, quítala.</div>`
       : '')+
       `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gt);flex-wrap:wrap">
-      ${mal?'':_coIco('check',13,'✓')} <span>${mal?'En tu página pública':'Publicada en tu página'}</span>
-      <button class="btn bg bsm" style="margin-left:auto" onclick="verMiPagina()">Ver</button>
+      ${mal?'':_coIco('check',13,'✓')} <span>${mal?'En tu web pública':'Publicada en tu web'}</span>
+      <button class="btn bg bsm" style="margin-left:auto" onclick="verMiWeb()">Ver</button>
       <button class="btn bd bsm" onclick="unpublishProgress('${esc(ya.id)}')">Quitar</button></div>`;
     const _cont=document.getElementById('d-story'); if(_cont)_cont.style.display='block';
     return;
@@ -1937,15 +1937,15 @@ async function _renderStoryPub(st){
   if(st.ok===false){ el2.innerHTML=''; return; }
   const lleno=filas.length>=(typeof SHOWCASE_MAX==='number'?SHOWCASE_MAX:6);
   el2.innerHTML=lleno
-    ? `<div style="font-size:12px;color:var(--t2)">Tu página ya tiene ${filas.length} tarjetas (el tope). Quita una para publicar esta.</div>`
+    ? `<div style="font-size:12px;color:var(--t2)">Tu web ya tiene ${filas.length} tarjetas (el tope). Quita una para publicar esta.</div>`
     : `<button class="btn bo bsm" style="width:100%" onclick="publishProgress()">
-         ${_coIco('users',13,'🌐')} Publicar en mi página (la ve cualquiera)</button>`;
+         ${_coIco('users',13,'🌐')} Publicar en mi web (la ve cualquiera)</button>`;
 }
 async function publishProgress(){
   const st=_storyData; if(!st){toast('Aún no hay historia que contar');return;}
   const row=(typeof showcaseRow==='function')?showcaseRow(st):null;
   if(!row){toast('Esta historia no se puede publicar');return;}
-  if(!confirm(`Vas a publicar la tarjeta de ${row.nombre} en la página que abre tu link.\n\n`+
+  if(!confirm(`Vas a publicar la tarjeta de ${row.nombre} en tu web (la de los planes y precios).\n\n`+
     `La va a ver CUALQUIERA que entre, sin cuenta, y se queda ahí hasta que la quites — no es `+
     `como una historia de Instagram, que se borra en 24 horas.\n\n`+
     `¿Ya le avisaste a ${row.nombre}?`))return;
@@ -1956,14 +1956,14 @@ async function publishProgress(){
     const c=AUTH.client(); const u=await AUTH.getUser();
     if(!c||!u){toast('Necesitas conexión para publicar');return;}
     const {error}=await c.from('avi_showcase').insert({...row,coach_id:u.id});
-    if(error){ toast(/6 tarjetas/.test(error.message)?'Tu página ya tiene el tope de tarjetas':'No se pudo publicar'); return; }
+    if(error){ toast(/6 tarjetas/.test(error.message)?'Tu web ya tiene el tope de tarjetas':'No se pudo publicar'); return; }
     await _loadShowcase(true);
-    toast('🌐 Publicada en tu página');
+    toast('🌐 Publicada en tu web');
     const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
   }catch(e){ toast('No se pudo publicar'); }
 }
 async function unpublishProgress(id){
-  if(!confirm('¿Quitarla de tu página? Deja de verse de inmediato.'))return;
+  if(!confirm('¿Quitarla de tu web? Deja de verse de inmediato.'))return;
   if(cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE)){
     toast('Sellado en local'); return;
   }
@@ -1972,7 +1972,7 @@ async function unpublishProgress(id){
     const {error}=await c.from('avi_showcase').delete().eq('id',id);
     if(error){toast('No se pudo quitar');return;}
     const filas=await _loadShowcase(true);
-    toast('Quitada de tu página');
+    toast('Quitada de tu web');
     const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
     // Se puede quitar desde el Inicio (una huérfana no tiene ficha donde volver): ese bloque se
     // repinta aquí o seguiría mostrando la tarjeta que se acaba de borrar.

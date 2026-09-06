@@ -2222,41 +2222,18 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    aterrizar en «¿cómo te sientes?». Vuelve solo el día 2, cuando la portada ya no se pinta. */
 #cn-firstrun:not(:empty)~#cn-today-body .checkin-card{display:none}
 
-/* v523 · LA VITRINA DE LA PÁGINA DE LLEGADA. Misma cara que la imagen 1080×1920 que el coach
-   comparte (v522): panel oscuro esmeralda, el nombre grande y las subidas de carga en verde.
-   Va en DOM y no como imagen: se adapta al ancho, se lee con lector de pantalla y no depende
-   de descargar nada. Los colores son FIJOS a propósito — esta tarjeta vive sobre el héroe
-   oscuro del login, que no cambia con el tema (igual que --emerald-hdr). */
-/* 🔴 `flex-shrink:0`: `.cin-wrap` es una COLUMNA de alto fijo, así que sus hijos se encogen
-   cuando la pantalla queda justa — y esta tira es la que cedía. Al encogerse recorta por dentro,
-   porque `overflow-x:auto` obliga a `overflow-y` a valer `auto` (no se puede dejar en visible),
-   y lo que se pierde es la última línea de la tarjeta. Medido el 30-ago: con el chip del objetivo
-   las tres tarjetas que lo llevan desbordaban 8 px y «Subió carga en 16 de 28» salía cortado. */
-.cin-showcase{display:flex;flex-shrink:0;gap:10px;overflow-x:auto;padding:2px 0 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-.cin-showcase::-webkit-scrollbar{height:0}
+/* ⏮️ v578 · LA VITRINA SALIÓ DE LA BIENVENIDA (decisión del PO, 6-sep). Con ella se van
+   `.cin-showcase` y las seis reglas `.sc-*` que la vestían: las tarjetas viven ahora en la WEB
+   (avi-web, sección «Resultados»), que tiene su propio diseño. Y con ellas se va también el
+   defecto de v556 —la tira se aplastaba en pantallas cortas por ser hija encogible de una
+   columna de alto fijo—, que ya no tiene dónde ocurrir. */
 /* 🔴 v571 · LA BIENVENIDA NO PUEDE SEGUIR VENDIENDO MIENTRAS ALGUIEN LLENA EL FORMULARIO.
-   Al tocar «Crear cuenta» solo se escondía `#cin-cta`: la tira de tarjetas y el bloque de
-   instalación seguían puestos DURANTE TODO EL REGISTRO. Lo reportó el PO registrando a dos
-   asesorados en persona. (Medido: el campo SÍ se alcanzaba sin scrollear — mi primera
-   hipótesis era falsa; lo que estorba es la tira puesta al lado del formulario.)
+   Al tocar «Crear cuenta» solo se escondía `#cin-cta`: el bloque de instalación seguía puesto
+   DURANTE TODO EL REGISTRO. Lo reportó el PO registrando a dos asesorados en persona.
    🔒 Clase propia, JAMÁS `style.display`: `#install-hint` ya lo apaga el flujo de instalación
-   (app-6) y dos mecanismos peleando la misma propiedad se tapan entre sí (lección v505).
+   (app-6) y dos mecanismos peleando la misma propiedad se tapan el uno al otro (lección v505).
    Al quitar la clase, lo que decidió app-6 sigue mandando. */
 .cin-hide-onform{display:none!important}
-.sc-card{scroll-snap-align:start;flex:0 0 82%;max-width:300px;background:rgba(6,18,13,.72);
-  border:1px solid rgba(16,224,160,.30);border-radius:var(--rlg);padding:13px 15px;backdrop-filter:blur(6px)}
-.sc-eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.12em;color:#10E0A0;text-transform:uppercase}
-.sc-name{font-size:23px;font-weight:900;color:#fff;line-height:1.15;margin:2px 0 1px}
-.sc-sub{font-size:12px;color:rgba(234,251,244,.72);margin-bottom:9px}
-/* El objetivo: píldora discreta. NO compite con el verde del eyebrow ni con el de los kilos —
-   es el rótulo que da sentido a esos kilos, no otro dato que gritar. */
-.sc-goal{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;color:rgba(234,251,244,.82);background:rgba(16,224,160,.11);
-  border:1px solid rgba(16,224,160,.28);border-radius:999px;padding:3px 9px;margin-bottom:9px}
-.sc-lift{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:3px 0}
-.sc-lift span{font-size:11.5px;color:rgba(234,251,244,.62);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sc-lift b{font-size:13.5px;font-weight:900;color:#10E0A0;white-space:nowrap}
-.sc-foot{font-size:11px;color:rgba(234,251,244,.55);margin-top:8px;border-top:1px solid rgba(16,224,160,.22);padding-top:7px}
 
 /* ── Medidas corporales, dirección A (v566) ─────────────────────────────────
    El microcopy va DEBAJO de cada campo y siempre visible: doce perímetros con la cinta en

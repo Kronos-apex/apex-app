@@ -53,7 +53,7 @@ const estado = async () => {
       bandaAbajo:rb?Math.round(window.innerHeight-rb.bottom):null,
       bandaPulsable: rr? (()=>{const e=document.elementFromPoint(rr.left+rr.width/2, rr.top+rr.height/2);
         return !!(e && (e===btn || btn.contains(e)));})() : false,
-      vitrina:(document.getElementById('cin-showcase')||{}).childElementCount||0};})())`);
+      web:!!document.querySelector('.cin-web[href]')};})())`);
   return JSON.parse(r || '{}');
 };
 async function shot(n) { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(`${OUT}/${n}.png`, Buffer.from(r.data, 'base64')); }
@@ -86,8 +86,12 @@ await sleep(3000);
 e = await estado();
 check('P1 con ?ver=pagina NO entra a la cuenta: se queda en la página pública',
   e.login && !e.coach && !e.cliente, JSON.stringify(e));
-check('P1b y la página que ve es la de VERDAD, con su vitrina cargada de la nube',
-  e.vitrina > 0, 'tarjetas=' + e.vitrina);
+// ⏮️ v578 · antes esto se afirmaba con la VITRINA cargada de la nube. El PO mandó las tarjetas
+// a la web (avi-web), así que aquí ya no hay ninguna que contar. Lo que sigue probando que esto
+// es la página de VERDAD y no una maqueta dibujada dentro de la app es su marcado real: el
+// enlace de salida hacia la web, que es justo donde están ahora los resultados.
+check('P1b y la página que ve es la de VERDAD, con su enlace a la web',
+  e.web, JSON.stringify({ web: e.web }));
 check('P3 la banda le explica qué está viendo y ofrece volver, pegada abajo y PULSABLE',
   e.banda && /tu página/i.test(e.bandaTxt) && /Volver/i.test(e.bandaTxt) && e.bandaPulsable && e.bandaAbajo === 0,
   JSON.stringify({ txt: e.bandaTxt, abajo: e.bandaAbajo, pulsable: e.bandaPulsable }));
@@ -122,18 +126,28 @@ const puerta = await ev(`JSON.stringify((()=>{
     const r=c.getBoundingClientRect();
     return {botones:bs.map(b=>(b.innerText||'').trim()),
       altos:bs.map(b=>Math.round(b.getBoundingClientRect().height)),
-      txt:(c.innerText||'').replace(/\\s+/g,' ').trim().slice(0,140), ancho:Math.round(r.width)};
+      txt:(c.innerText||'').replace(/\\s+/g,' ').trim(), ancho:Math.round(r.width)};
   }catch(x){return {err:x.message};}})())`);
 const P = JSON.parse(puerta || '{}');
 check('P5-montaje 🔒 CONTROL: la tarjeta se midió VISIBLE (un 0 aquí es de la sonda, no de la app)',
   !P.err && P.ancho > 200, JSON.stringify({ err: P.err, ancho: P.ancho }));
-check('P5 la tarjeta «Tu página» existe con sus tres acciones, todas ≥36px',
-  !P.err && P.botones && P.botones.length === 3 && /Ver mi página/.test(P.botones.join('|')) &&
-  /Compartir/.test(P.botones.join('|')) && P.altos.every(h => h >= 36),
+// ⏮️ REENCUADRADO (6-sep). Estas dos afirmaciones llevaban ROJAS desde v543 y no por un
+// defecto: la tarjeta ganó entonces su SEGUNDA dirección (la web, con «Abrir mi web» y su
+// «Copiar»), así que pasó de 3 botones a 5 y «botones.length === 3» describía una versión que
+// ya no existe. Comprobado contra HEAD antes de tocar nada, no supuesto — un rojo es una
+// PREGUNTA, y aquí la respuesta era el harness. Ahora se afirma la PROPIEDAD: las dos
+// direcciones traen sus acciones y ninguna queda por debajo del mínimo táctil.
+check('P5 la tarjeta trae las acciones de sus DOS direcciones, todas ≥36px',
+  !P.err && P.botones && P.botones.length >= 5 && /Ver mi página/.test(P.botones.join('|')) &&
+  /Compartir/.test(P.botones.join('|')) && /Abrir mi web/.test(P.botones.join('|')) &&
+  P.altos.every(h => h >= 36),
   JSON.stringify(P));
 await shot('tarjeta-pagina');
-check('P5b y explica QUÉ es esa página (no un botón suelto sin contexto)',
-  !!P.txt && /link/i.test(P.txt), (P.txt || '').slice(0, 100));
+// ⏮️ Y este salía rojo por la SONDA: el texto se recortaba a 140 caracteres y la palabra que
+// buscaba caía justo detrás del corte. Se lee entero y se exige que nombre las DOS direcciones,
+// que es lo que la tarjeta tiene que explicar.
+check('P5b y explica QUÉ es cada dirección (no dos botones sueltos sin contexto)',
+  !!P.txt && /La app/.test(P.txt) && /Tu web/.test(P.txt), (P.txt || '').slice(0, 170));
 
 console.log('\njsErrors:', JSON.stringify(jsErrors));
 const fallos = results.filter(r => r.startsWith('❌')).length;

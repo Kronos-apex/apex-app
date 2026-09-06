@@ -1146,9 +1146,6 @@ syncFromCloud().then(async ()=>{
   // La banda de «estás mirando tu página» va SOLO si de verdad se saltó una sesión: a un visitante
   // de verdad —que llega sin cuenta— un botón «Volver a mi panel» no le dice nada.
   if(_verPagina&&_teniaSesion&&typeof renderPreviewBar==='function')renderPreviewBar();
-  // La vitrina de la página de llegada (v523). Va al FINAL y sin `await` en el camino crítico:
-  // es una prueba social, no un requisito para entrar — si tarda o falla, el login ya está ahí.
-  try{ renderShowcase(); }catch(_e){}
 }).catch(e=>{
   // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
   // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.
@@ -1787,13 +1784,13 @@ function renderPageCard(){
       <div style="font-size:13px;font-weight:800;color:var(--t1)">Tus dos direcciones</div>
       <span id="h-page-n" style="font-size:11px;color:var(--t2);margin-left:auto"></span>
     </div>
-    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px"><b style="color:var(--t1)">La app</b> — la que compartes en tus historias. Ahí se crea la cuenta y salen las tarjetas de resultados que publiques.</div>
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px"><b style="color:var(--t1)">La app</b> — la que compartes en tus historias. Ahí se crea la cuenta, y la bienvenida enlaza tu web.</div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">
       <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiPagina()">Ver mi página</button>
       <button class="btn bp bsm" style="flex:1;min-width:120px" onclick="compartirMiPagina()">Compartir link</button>
       <button class="btn bg bsm" onclick="copiarMiPagina()" aria-label="Copiar el enlace de mi página">Copiar</button>
     </div>
-    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px;padding-top:9px;border-top:1px solid var(--br)"><b style="color:var(--t1)">Tu web</b> — la que explica AVI, los planes y los precios, con tu WhatsApp. La bienvenida de la app ya la enlaza.</div>
+    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:4px;padding-top:9px;border-top:1px solid var(--br)"><b style="color:var(--t1)">Tu web</b> — la que explica AVI, los planes y los precios, con tu WhatsApp. Ahí salen las tarjetas de resultados que publiques.</div>
     <div style="display:flex;gap:7px;flex-wrap:wrap">
       <button class="btn bg bsm" style="flex:1;min-width:120px" onclick="verMiWeb()">Abrir mi web</button>
       <button class="btn bg bsm" onclick="copiarMiWeb()" aria-label="Copiar el enlace de mi web">Copiar</button>
@@ -2101,72 +2098,21 @@ function openCoachStat(kind){
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
 }
 
-// ── LA VITRINA DE LA PÁGINA DE LLEGADA (v523) ────────────────────────────────────────
-// El PO comparte el link en historias de Instagram, Facebook y WhatsApp, y quien llegaba veía
-// una promesa («tu coach arma tu plan») y CERO pruebas: ni una cifra, ni un resultado (medido
-// con captura de producción el 22-ago). Estas son las tarjetas que él publica desde la ficha.
-//
-// ── LA BIENVENIDA SE APARTA MIENTRAS ALGUIEN LLENA UN FORMULARIO (v571) ──────────────
-// 🔴 EL DEFECTO: al tocar «Crear cuenta» o «Iniciar sesión» solo se escondía `#cin-cta`. La tira
-//    de tarjetas de resultados (v523) y el bloque «Instala la app» viven ENTRE los botones y las
-//    dos tarjetas de formulario, así que seguían puestos DURANTE TODO EL REGISTRO. Lo reportó el
-//    PO registrando a dos asesorados en persona — *«super incómodo y tedioso»*.
-// 📏 MEDIDO, y tumba la hipótesis fácil: el primer campo SÍ se alcanzaba sin scrollear en 390×844
-//    y en 360×640, antes y después. Lo que la medición sostiene es que la tira —con scroll
-//    horizontal y scroll-snap— se queda pegada al formulario todo el rato. No se inventa aquí el
-//    mecanismo exacto de la molestia: se quita lo que sobra y se dice qué se midió.
-// 🔒 Se APARTA, no se borra: son su prueba de venta y las eligió él una por una. Vuelven solas al
-//    tocar «← Volver», porque quien llega desde una historia sí tiene que verlas.
+// ── LA BIENVENIDA SE APARTA MIENTRAS ALGUIEN LLENA UN FORMULARIO (v571) ─────────────
+// 🔴 EL DEFECTO: al tocar «Crear cuenta» o «Iniciar sesión» solo se escondía `#cin-cta`. El bloque
+//    «Instala la app» vive ENTRE los botones y las dos tarjetas de formulario, así que seguía
+//    puesto DURANTE TODO EL REGISTRO. Lo reportó el PO registrando a dos asesorados en persona
+//    — *«super incómodo y tedioso»*.
+// ⏮️ v578 · la tira de tarjetas de resultados (v523) que compartía este apartado YA NO EXISTE
+//    aquí: el PO la mandó a la web (ver el comentario del `#cin-showcase` retirado en index.html).
+//    Queda `install-hint`, que es lo que sigue estorbando al formulario si nadie lo aparta.
 // 🔒 Con CLASE propia y no con `style.display`: `#install-hint` ya lo apaga el flujo de
 //    instalación (app-6), y dos mecanismos peleando la misma propiedad se tapan (v505). Quitar la
 //    clase devuelve el mando a app-6 en vez de encender algo que él había apagado.
-const CIN_WELCOME_EXTRAS = ['cin-showcase', 'install-hint'];
+const CIN_WELCOME_EXTRAS = ['install-hint'];
 function cinFormMode(on){
   CIN_WELCOME_EXTRAS.forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.classList.toggle('cin-hide-onform', !!on);
   });
-}
-
-// 🔒 Lectura PÚBLICA a propósito: `avi_showcase` es la única tabla que se lee sin cuenta, y solo
-// tiene lo que el coach eligió publicar (primer nombre y kilos). Va por `fetch` con la llave
-// pública, como el resto de lo que la app pide antes del login.
-// 🔴 SILENCIOSA ANTE EL FALLO: sin red, o sin nada publicado, NO se pinta nada. Un hueco vacío o
-// un «cargando…» en la primera pantalla de un desconocido es peor que no tener vitrina.
-async function renderShowcase(){
-  const el=document.getElementById("cin-showcase"); if(!el)return 0;
-  try{
-    // 🔴 FILTRA POR COACH (v553). El tope de 6 tarjetas es POR COACH —lo pone el trigger— y esta
-    // consulta pedía «las 6 más recientes» SIN filtrar: con dos coaches en la base, cada página
-    // mostraría las tarjetas del otro y las 6 de uno DESPLAZARÍAN a las del otro por completo.
-    // Quedó anotado como cabo suelto en la verificación adversarial de v525 («muerde el día que
-    // AVI GYM tenga su moderador») y es una línea. El índice `(coach_id, created_at desc)` ya
-    // existe desde s1: el esquema lo tenía previsto y solo faltaba usarlo.
-    // Modelo de un solo coach → la página de llegada es la SUYA, así que el id es el constante.
-    const r=await fetch(SB_URL+"/rest/v1/avi_showcase?select=nombre,entrenos,meses,subidas,subieron,con_carga,objetivo&coach_id=eq."+encodeURIComponent(COACH_UID)+"&order=created_at.desc&limit=6",
-      {headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}});
-    if(!r.ok)return 0;
-    const filas=await r.json();
-    if(!Array.isArray(filas)||!filas.length)return 0;
-    const coach=(typeof getCoachName==="function"&&getCoachName())||"";
-    el.innerHTML=filas.map(f=>{
-      const lifts=(f.subidas||[]).slice(0,3).map(x=>
-        `<div class="sc-lift"><span>${esc(String(x.ejercicio||""))}</span><b>${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join("");
-      const m=parseInt(f.meses)||1;
-      // 🔴 EL OBJETIVO VA ARRIBA DE LOS KILOS, no debajo: es la lente con la que se leen. Sin él,
-      // «+5,5 kg» de quien busca ganar músculo se lee como que engordó. Las tarjetas publicadas
-      // antes de v555 no lo traen (la columna es nula) y entonces no se pinta nada — ni un hueco
-      // ni un «sin objetivo», que en la primera pantalla de un desconocido es peor que nada.
-      const obj=(typeof normalizeGoal==="function")?normalizeGoal(f.objetivo):null;
-      return `<div class="sc-card">
-        <div class="sc-eyebrow">${m===1?"Un mes":m+" meses"} entrenando</div>
-        <div class="sc-name">${esc(String(f.nombre||""))}</div>
-        <div class="sc-sub">${esc(String(f.entrenos))} entrenos completados</div>
-        ${obj?`<div class="sc-goal">${esc(obj)}</div>`:""}
-        ${lifts}
-        <div class="sc-foot">Subió carga en ${esc(String(f.subieron))} de ${esc(String(f.con_carga))} ejercicios</div>
-      </div>`;}).join("");
-    el.style.display="flex";
-    return filas.length;
-  }catch(e){ return 0; }
 }

@@ -4,6 +4,64 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v578: LA VITRINA SALE DE LA PANTALLA DE INICIO Y SE QUEDA EN LA WEB
+
+**Decisión del PO, literal:** *«quita esas tarjetas de la pantalla de inicio, no me gustan, tú las
+metiste y se ven feas, las prefiero en la web de la app, no en la pantalla de inicio, incomodan
+mucho»*. Son la tira de resultados que entró en v523 y que él ya había reportado como estorbo una
+vez (v571, registrando a dos asesorados en persona: *«super incómodo y tedioso»*). Entonces se
+APARTARON durante el formulario; ahora se van.
+
+**No se pierde nada, y eso se comprobó antes de borrar:** las mismas tarjetas ya se pintan en la
+web de venta (`avi-web`, sección «Resultados», `components/Resultados.tsx` + `lib/showcase.ts`),
+leyendo la MISMA tabla `avi_showcase` con el mismo filtro por coach y el mismo tope de 6.
+**Publicar no cambió**: la tarjeta se sigue creando desde la ficha del asesorado.
+
+### Lo que se fue
+`renderShowcase` y su llamada del arranque · el `#cin-showcase` de `index.html` · las siete reglas
+`.cin-showcase`/`.sc-*` de `styles.css` · y el harness `_verify-vitrina-corte.mjs`, que existía por
+un defecto (v556: la tira se aplastaba en pantallas cortas) **que ya no tiene dónde ocurrir**.
+
+### Lo que hubo que arreglar por arrastre — y es lo que costaba de verdad
+1. **El texto mentía en cuatro sitios.** La tarjeta «Tus dos direcciones» del Inicio decía que las
+   tarjetas salen en LA APP; el botón de publicar decía «en la página que abre tu link»; y el
+   «Ver» de la ficha —el que se toca justo después de publicar— abría **la bienvenida**, o sea el
+   único sitio donde ya no está la tarjeta recién publicada. Ahora abre la web. *(Clase v540: una
+   puerta que lleva a donde el dato NO vive es una puerta que miente.)*
+2. **El candado de la consulta pública se quedó sin código que vigilar.** El test de v553 —filtro
+   por coach y tope de 6, hallazgo de la verificación adversarial de v525— miraba el
+   `renderShowcase` de la app. Al irse ese render, la única consulta que queda es la de la web y
+   se habría quedado **sin candado, en silencio**. El candado se muda con el código:
+   `avi-web/scripts/verificar-vitrina.mjs` (10 aserciones: filtro por coach, tope, orden, espejo
+   con el `.sql`, lista blanca de objetivos, chip condicional, sin HTML crudo).
+   **3 sabotajes contra él, los 3 muerden.** En la suite se conserva lo que SÍ vive aquí: el tope
+   del SERVIDOR.
+3. **Seis casos de `_sabotaje-showcase-objetivo` quedaron DESPEGADOS** gritando «NO SE APLICÓ»
+   — el gotcha de v537/v549, que vuelve cada vez que se borra lo que un ancla cita. Reapuntados:
+   S8-S12 vigilan ahora el candado NUEVO (que la vitrina no se cuele de vuelta) y el control P1
+   pasó al rótulo del botón de publicar. **13/13.**
+
+### 🔴 Dos gates que llevaban ROJOS desde v543, y no era mi cambio
+`_verify-vermipagina` fallaba P5 y P5b **antes de tocar nada** (comprobado contra HEAD, no
+supuesto): v543 le dio a esa tarjeta su SEGUNDA dirección, así que pasó de 3 botones a 5 y la
+aserción `botones.length === 3` describía una versión que ya no existe; y P5b buscaba una palabra
+que **la propia sonda cortaba** al recortar el texto a 140 caracteres. Reencuadrados por PROPIEDAD
+(las dos direcciones traen sus acciones; el texto explica cada una). **10/10, `jsErrors: []`.**
+
+### QA
+⚠️ **El check 11 del hook abortó el commit** — hace su trabajo: la suite BAJÓ y el gate existe para que nadie borre un test que estorba. El borrado es legítimo (3 tests de un render que ya no existe; entra 1 candado nuevo) y por eso `scripts/hooks/suite-baseline` pasa de **1047 a 1046**, documentado aquí como el propio mensaje del gate exige.
+
+Suite **1047 → 1046** en los dos husos (se van 3 tests del render que ya no existe, entra 1
+candado nuevo) · hook 12/12 · `_sabotaje-showcase-objetivo` 13/13 · `_sabotaje-vitrina` 12/12 ·
+`verificar-vitrina` 10 aserciones con 3 sabotajes · `_repro-registro-estorbo` verde en los dos
+teléfonos · `_verify-vermipagina` 10/10 · capturas de la bienvenida MIRADAS en claro y oscuro a
+390×844 y 360×640: cabe entera sin scrollear y el formulario se alcanza sin desplazar.
+
+⚠️ **Lo que hay que decirle al PO:** él comparte en sus historias el link de LA APP, y esa
+pantalla ya no lleva prueba de resultados — la lleva el enlace *«¿Primera vez aquí? Conoce AVI,
+los planes y los precios»*, que es un toque más. Si quiere que quien llega vea resultados sin
+tocar nada, lo que se comparte pasa a ser el link de la WEB.
+
 ## 📲 2026-09-05 (3ª parte) — v575, v576 y v577: LOS TRES PUNTOS RESTANTES DE LA AUDITORÍA
 
 Puntos 2, 3 y 4 de `docs/auditoria-app-instalada-2026-09-05/`. Los cuatro quedan cerrados.
