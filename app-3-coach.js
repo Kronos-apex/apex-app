@@ -1054,7 +1054,15 @@ async function backToCoachPanel(){
 // así que la app archivaba una mentira como prueba de autorización (dos menores reales la tenían).
 // La versión SUBE porque el texto que la persona acepta ya no es el mismo: la evidencia guarda
 // qué versión se aceptó, y dejarla igual haría que apuntara a un texto que nadie vio.
-const LEGAL_V='2026-09-02-borrador'; // 2026-07-26: §9 corrige QUIÉN te ve — decía «solo por código,
+// 2026-09-05 (v574): la política gana un §10 «Qué pasa cuando eliminas tu cuenta», que declara
+// dos cosas que antes no decía y que la auditoría de la app instalada destapó: que al borrar la
+// cuenta se retira TAMBIÉN la tarjeta pública del progreso, y que los respaldos conservan una
+// copia hasta 90 días (medido: 25 instantáneas, ventana de 83 días). Un respaldo no se puede
+// editar sin romperlo, así que la ley pide declarar la ventana, no fingir que no existe.
+// 🔒 Subir la versión NO re-pide consentimiento ni re-fecha el de nadie: `consentSame` compara
+//    lo declarado (menor/adulto/edad/acudiente), no `v`, y `consentKeep` conserva la evidencia
+//    anterior. Cada quien queda apuntando al texto que de verdad aceptó.
+const LEGAL_V='2026-09-05-borrador'; // 2026-07-26: §9 corrige QUIÉN te ve — decía «solo por código,
 // no hay directorio ni buscador» y eso es FALSO desde el directorio del gimnasio (C5) y «Descubrir»
 // (③c-3). Ahora describe los tres caminos y el bloqueo. PENDIENTE de abogado.
 const LEGAL_DOCS={

@@ -127,7 +127,20 @@ das tu autorización.
 - **Menores de edad:** para usar la Comunidad debes ser **mayor de 18 años** o contar con la
   autorización de tu representante legal.
 
-## 10. Vigencia
+## 10. Qué pasa cuando eliminas tu cuenta
+Al eliminar tu cuenta se borran de inmediato y para siempre: tu perfil, tus rutinas, tu
+historial de entrenamientos, tus récords, tus medidas, tu peso, tus fotos, tu plan de
+alimentación, tus mensajes con tu entrenador, tus avisos (notificaciones) y todo lo tuyo en la
+Comunidad. **También se retira de la página pública de tu entrenador la tarjeta con tu progreso,
+si tenías una publicada.**
+
+**Copias de seguridad:** la base de datos se respalda a diario y esos respaldos se conservan
+**hasta 90 días**, después de los cuales se eliminan solos. Un respaldo es una fotografía
+completa del sistema y no se puede editar sin dañarlo, así que durante esa ventana tus datos
+pueden seguir existiendo dentro de un respaldo, **sin usarse para nada** y sin ser accesibles
+desde la aplicación. Pasados los 90 días desaparecen también de ahí.
+
+## 11. Vigencia
 Esta política rige desde [FECHA] y la base de datos se conservará mientras tengas una cuenta
 activa o exista un deber legal de conservación. Podremos actualizar esta política; te
 informaremos de cambios sustanciales.

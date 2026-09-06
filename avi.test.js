@@ -15651,6 +15651,69 @@ test('🔴 v573 · el permiso VIAJA a la fila del asesorado, o la puerta nace mu
   assert.ok(!('password' in row.profile), 'clientToRow filtró de menos');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// v574 · BORRAR LA CUENTA BORRA LO QUE LA PANTALLA PROMETE
+// ═════════════════════════════════════════════════════════════════════════════
+const _DEL_SRC = (() => {
+  const fs = require('fs'), path = require('path');
+  return fs.readFileSync(path.join(__dirname, 'supabase/functions/delete-account/index.ts'), 'utf8');
+})();
+// El camino del borrado COMPLETO (no el del fantasma, que es otro flujo y va antes).
+const _DEL_FULL = _DEL_SRC.slice(_DEL_SRC.indexOf('Borrado COMPLETO self-service'));
+
+test('🔴 v574 · la cuenta se borra de ÚLTIMA: el único paso irreversible va al final', () => {
+  // Antes se borraba `user_data` primero y la cuenta al final, sin transacción: un fallo en
+  // medio dejaba a la persona con el perfil borrado y la cuenta VIVA. Ahora todo lo previo es
+  // idempotente y reintentable.
+  const iAuth = _DEL_FULL.indexOf('auth.admin.deleteUser');
+  assert.ok(iAuth > 0, 'el borrado completo ya no borra la cuenta');
+  for (const paso of ['avi_showcase', 'push_subscriptions', 'app_errors', 'community_resolve_attempts']) {
+    const i = _DEL_FULL.indexOf(paso);
+    assert.ok(i > 0, 'el borrado ya no toca ' + paso);
+    assert.ok(i < iAuth, `${paso} se borra DESPUÉS de la cuenta: si falla, queda huérfano`);
+  }
+  // 🔒 `user_data` NO se borra a mano: cascadea desde auth.users. Borrarlo aparte es
+  //    exactamente lo que abría la ventana del fantasma con datos a medias.
+  assert.ok(!/from\("user_data"\)\s*\.delete\(\)/.test(_DEL_FULL),
+    'el borrado completo vuelve a borrar user_data a mano — esa es la ventana que v574 cerró');
+});
+
+test('🔴 v574 · la TARJETA PÚBLICA se quita, y atada por coach + nombre', () => {
+  // Es el dato más expuesto de todos: `avi_showcase` es la única tabla que se lee SIN cuenta.
+  // Se quedaba publicada para siempre porque la tabla guarda solo el primer nombre y nadie la
+  // ataba de vuelta.
+  assert.match(_DEL_FULL, /from\("avi_showcase"\)\s*\.delete\(\)/, 'la tarjeta pública no se quita');
+  assert.match(_DEL_FULL, /\.eq\("coach_id",\s*mio\.coach_id\)/, 'no acota por coach: podría borrar la de otro coach');
+  assert.match(_DEL_FULL, /\.eq\("nombre",\s*primerNombre\)/, 'no acota por nombre');
+  // 🔒 MISMA derivación que `showcaseFirstName` (avi-core). Si se separan, la atadura falla
+  //    en silencio y la tarjeta sobrevive al borrado.
+  assert.match(_DEL_SRC, /\.trim\(\)\.split\(\/\\s\+\/\)\[0\]/, 'el primer nombre se deriva de otra forma que showcaseFirstName');
+  assert.strictEqual(core.showcaseFirstName('  Samuel  Cifuentes Ruiz '), 'Samuel',
+    'showcaseFirstName cambió: la edge quedó desalineada');
+  // y la respuesta dice cuántas quitó, para poder avisarle al coach
+  assert.match(_DEL_FULL, /tarjetasQuitadas/, 'no informa cuántas tarjetas se quitaron');
+});
+
+test('🔴 v574 · se limpian los DOS buckets y los errores registrados', () => {
+  // La pantalla promete «tu cuenta, perfil, rutinas, progreso, medidas y fotos».
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.match(html, /Se borrarán para siempre tu cuenta, perfil, rutinas, progreso, medidas y fotos/,
+    'cambió el texto de la promesa: revisa que el borrado siga cumpliéndola');
+  assert.match(_DEL_FULL, /\["avatars",\s*"apex-photos"\]/, 'sigue limpiando un solo bucket');
+  assert.match(_DEL_FULL, /from\("app_errors"\)\s*\.delete\(\)\s*\.eq\("uid",\s*uid\)/,
+    'sus errores registrados (uid + user-agent) sobreviven al borrado');
+});
+
+test('🔒 v574 · el modo FANTASMA no se tocó: sigue negándose si hay datos', () => {
+  // CONTROL: el otro camino de esta misma función. Si un cambio de orden lo hubiera roto,
+  // «Continuar con Google» podría borrar una cuenta CON datos.
+  const ghost = _DEL_SRC.slice(_DEL_SRC.indexOf('MODO FANTASMA'), _DEL_SRC.indexOf('Borrado COMPLETO'));
+  assert.match(ghost, /if \(rows && rows\.length\) return json\(\{ ok: false, error: "not_a_ghost" \}, 403\)/,
+    'el candado del fantasma ya no exige que NO haya user_data');
+  assert.match(_DEL_SRC, /uid === COACH_UID/, 'la cuenta del coach dejó de estar protegida');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
