@@ -138,7 +138,12 @@ function initClientView(client){
     if(typeof deviceStamp==='function' && typeof appBuildFrom==='function'){
       const _urls=[].slice.call(document.querySelectorAll('script[src],link[href]'))
         .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
-      const _st=deviceStamp(client.dev, appBuildFrom(_urls), navigator.userAgent, Date.now());
+      // v575 · Y el permiso de AVISOS, que es la otra mitad de la pregunta del coach: no basta
+      // saber que abrió la app, hace falta saber si puede recibir un recordatorio. Se lee del
+      // navegador aquí porque es el único sitio que lo conoce; `deviceStamp` decide si escribe.
+      const _perm=(typeof Notification==='undefined'||!('PushManager' in window))
+        ? 'sin-soporte' : String(Notification.permission||'default');
+      const _st=deviceStamp(client.dev, appBuildFrom(_urls), navigator.userAgent, Date.now(), _perm);
       if(_st){ client.dev=_st; sv('ax_c',DB.clients); }
     }
   }catch(e){ if(typeof warn==='function')warn('AVI: latido de versión:',e&&e.message); }

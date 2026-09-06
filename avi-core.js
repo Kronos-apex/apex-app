@@ -4686,7 +4686,16 @@ const LANDING_SHARE_MSG = 'Así entrena mi gente 💪 Mira sus resultados reales
 const DEV_STAMP_MAX_AGE_MS = 12 * 3600 * 1000;   // 12 h: dos aperturas al día bastan para saberlo
 // Devuelve el sello NUEVO, o null si no hay que escribir nada. `prev` = lo que ya hay guardado.
 // PURA: recibe el build y el `now`; no mira `caches`, ni el DOM, ni la hora del sistema.
-function deviceStamp(prev, build, ua, now) {
+// ── v575 · EL LATIDO TAMBIÉN DICE SI TIENE LOS AVISOS ACTIVADOS ──────────────────────
+// 🔴 POR QUÉ. Medido el 5-sep: las 10 personas con push son las 10 que entrenan esta semana,
+// y de las 14 sin push hay **5 que abrieron la app en los últimos 10 días**. O sea que la
+// tarjeta que pide el permiso (`renderPushNudge`) las está alcanzando y aun así no lo tienen —
+// pero **la app no sabía si dijeron que NO, si lo pospusieron, o si nunca se les preguntó**, y
+// sin esa diferencia cualquier arreglo es adivinar. Es la ceguera que dejó el push roto meses
+// en julio, aplicada a la otra punta: antes no sabíamos si SALÍA, ahora no sabemos si ENTRA.
+// Va dentro del latido que ya existe: no hace falta tabla nueva ni una escritura más.
+const DEV_PUSH_ESTADOS = ['granted', 'denied', 'default', 'sin-soporte'];
+function deviceStamp(prev, build, ua, now, push) {
   const b = parseInt(build, 10);
   // Sin versión NO se inventa un número ni se deja el anterior: no se escribe (misma regla que
   // `appBuildLabel`, v491 — un rótulo que adivina es peor que no tenerlo).
@@ -4695,16 +4704,25 @@ function deviceStamp(prev, build, ua, now) {
   const p = (prev && typeof prev === 'object') ? prev : null;
   const prevB = p ? parseInt(p.b, 10) : NaN;
   const prevAt = p && p.at ? Date.parse(p.at) : NaN;
-  // Se escribe si: no había nada · cambió la versión (el dato que de verdad importa) · o el
-  // último latido ya envejeció. Un latido viejo no distingue «no ha abierto la app» de «la abrió
-  // y no escribimos», y esa diferencia es justo la pregunta del coach.
+  // Un valor raro no se guarda: este campo se lee para decidir a quién perseguir.
+  const est = DEV_PUSH_ESTADOS.indexOf(String(push)) >= 0 ? String(push) : null;
+  const prevEst = p && p.push ? String(p.push) : null;
+  // 🔒 EL CAMBIO DE PERMISO DISPARA LA ESCRITURA. Sin esto el campo nace CONGELADO: el latido
+  //    solo se reescribe al cambiar de versión, así que alguien que activa sus avisos hoy
+  //    seguiría figurando como «denied» hasta el próximo despliegue. Es exactamente el defecto
+  //    de v551 (una copia que solo se refresca por otro motivo) y no se repite.
+  const cambioPush = est !== prevEst;
+  // Se escribe si: no había nada · cambió la versión (el dato que de verdad importa) · cambió el
+  // permiso de avisos · o el último latido ya envejeció. Un latido viejo no distingue «no ha
+  // abierto la app» de «la abrió y no escribimos», y esa diferencia es justo la pregunta del coach.
   const fresco = isFinite(prevAt) && (nowTs - prevAt) < DEV_STAMP_MAX_AGE_MS;
-  if (prevB === b && fresco) return null;
+  if (prevB === b && fresco && !cambioPush) return null;
   const out = { b: b, at: new Date(nowTs).toISOString() };
   // El navegador/sistema, RECORTADO: sirve para saber si un fallo es de Android o de iPhone y
   // no hace falta más (y una cadena de 300 caracteres en cada perfil sí se nota).
   const u = String(ua || '').trim();
   if (u) out.ua = u.slice(0, 120);
+  if (est) out.push = est;
   return out;
 }
 // Cómo se lee ese sello en la ficha del coach. `build` = la versión que corre ÉL ahora mismo,
@@ -4720,8 +4738,17 @@ function deviceInfo(dev, build, now) {
   const cuando = dias === null ? '' : (dias <= 0 ? 'hoy' : dias === 1 ? 'ayer' : 'hace ' + dias + ' días');
   // Atrasado solo si HAY con qué comparar: sin saber la versión propia no se acusa a nadie.
   const estado = (b > 0 && db < b) ? 'atrasada' : (b > 0 ? 'al-dia' : 'sin-referencia');
+  // v575 · El permiso de avisos, tal como lo reportó su teléfono la última vez. `null` = no lo
+  // sabemos todavía, y eso NO es lo mismo que «no los tiene»: quien abrió la app antes de v575
+  // no lo trae. Se dice «no sé», no se rellena con una suposición.
+  const push = DEV_PUSH_ESTADOS.indexOf(String(d.push)) >= 0 ? String(d.push) : null;
   return { estado, version: db, dias, texto: 'versión ' + db + (cuando ? ' · ' + cuando : ''),
-           ua: (d.ua || '') };
+           ua: (d.ua || ''), push,
+           pushTexto: push === 'granted' ? 'avisos activados'
+             : push === 'denied' ? 'avisos BLOQUEADOS'
+             : push === 'default' ? 'no ha activado los avisos'
+             : push === 'sin-soporte' ? 'su teléfono no admite avisos'
+             : '' };
 }
 // El resumen que responde «¿llegó el arreglo?» de un vistazo, sin abrir 22 fichas.
 function coachBuildReport(clients, build, now) {

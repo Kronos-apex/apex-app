@@ -1609,6 +1609,10 @@ async function openDetail(id,_silent){
       // «sin datos» solo se dice de quien todavía no ha abierto la app desde este cambio —
       // no se inventa un «al día» para rellenar (la regla de v491 aplicada a otro número).
       if(_dv.estado!=='sin-dato') _stats.push('app '+_dv.texto+(_dv.estado==='atrasada'?' ⚠️':''));
+      // v575 · Si no puede recibir un recordatorio, el coach tiene que saberlo AQUÍ: es lo que
+      // decide si le escribe por WhatsApp o se lo dice en persona. Solo se dice cuando el
+      // teléfono lo reportó — «no sé» no se pinta como «no los tiene».
+      if(_dv.push && _dv.push!=='granted') _stats.push(_dv.pushTexto+' ⚠️');
     }
   }catch(e){}
   const _statsEl=document.getElementById('d-stats');

@@ -15714,6 +15714,60 @@ test('🔒 v574 · el modo FANTASMA no se tocó: sigue negándose si hay datos',
   assert.match(_DEL_SRC, /uid === COACH_UID/, 'la cuenta del coach dejó de estar protegida');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// v575 · EL LATIDO DICE SI PUEDE RECIBIR UN RECORDATORIO
+// ═════════════════════════════════════════════════════════════════════════════
+test('🔴 v575 · cambiar el permiso de avisos DISPARA la escritura del latido', () => {
+  // ESTA ES LA ASERCIÓN QUE SOSTIENE LA FEATURE. El latido solo se reescribía al cambiar de
+  // versión; si el permiso no dispara escritura, el campo nace CONGELADO y quien active sus
+  // avisos hoy seguiría figurando como bloqueado hasta el próximo despliegue. Es el defecto de
+  // v551 (una copia que solo se refresca por otro motivo) en otra superficie.
+  const t0 = Date.parse('2026-09-05T10:00:00Z');
+  const prev = { b: 575, at: new Date(t0).toISOString(), ua: 'x', push: 'denied' };
+  // mismo build, latido FRESCO, pero el permiso cambió → tiene que escribir
+  const s = core.deviceStamp(prev, 575, 'x', t0 + 60000, 'granted');
+  assert.ok(s, 'un cambio de permiso no disparó la escritura: el campo nace congelado');
+  assert.strictEqual(s.push, 'granted');
+  // 🔴 CONTROL: sin cambio de permiso y con la misma versión fresca, NO escribe (si escribiera
+  // siempre, la aserción de arriba pasaría sola y no probaría nada).
+  assert.strictEqual(core.deviceStamp(prev, 575, 'x', t0 + 60000, 'denied'), null,
+    'escribe aunque no cambie nada: el latido perdió su freno');
+});
+
+test('🔴 v575 · el permiso se guarda solo si es uno de verdad, y «no sé» no se rellena', () => {
+  const t0 = Date.parse('2026-09-05T10:00:00Z');
+  for (const est of ['granted', 'denied', 'default', 'sin-soporte']) {
+    assert.strictEqual(core.deviceStamp(null, 575, 'x', t0, est).push, est, est + ' no se guardó');
+  }
+  // un valor raro no entra: este campo decide a quién persigue el coach
+  assert.ok(!('push' in core.deviceStamp(null, 575, 'x', t0, 'lo-que-sea')), 'guardó un estado inventado');
+  assert.ok(!('push' in core.deviceStamp(null, 575, 'x', t0)), 'inventó un estado sin que se lo pasaran');
+  // y sin versión no se escribe nada, permiso o no (regla de v491, intacta)
+  assert.strictEqual(core.deviceStamp(null, 0, 'x', t0, 'granted'), null, 'escribió sin versión');
+});
+
+test('🔴 v575 · la ficha del coach dice «no sé» y no «no los tiene»', () => {
+  const t0 = Date.parse('2026-09-05T10:00:00Z');
+  // Quien abrió la app ANTES de v575 no trae el campo: eso es desconocido, no bloqueado.
+  const viejo = core.deviceInfo({ b: 570, at: new Date(t0).toISOString() }, 575, t0);
+  assert.strictEqual(viejo.push, null, 'a un latido viejo le inventa un estado de avisos');
+  assert.strictEqual(viejo.pushTexto, '', 'pinta un texto de avisos sin dato que lo respalde');
+  // y cuando SÍ hay dato, lo dice en cristiano
+  const bloq = core.deviceInfo({ b: 575, at: new Date(t0).toISOString(), push: 'denied' }, 575, t0);
+  assert.strictEqual(bloq.push, 'denied');
+  assert.match(bloq.pushTexto, /BLOQUEADOS/);
+  const ok = core.deviceInfo({ b: 575, at: new Date(t0).toISOString(), push: 'granted' }, 575, t0);
+  assert.match(ok.pushTexto, /activados/);
+  // 🔒 y la ficha solo lo AVISA cuando no está en 'granted': un aviso que sale siempre se ignora
+  const fs = require('fs'), path = require('path');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.match(coach, /_dv\.push\s*&&\s*_dv\.push\s*!==\s*'granted'/, 'la ficha avisa también a quien SÍ los tiene');
+  // y el llamador lee el permiso REAL del navegador, no un valor inventado
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.match(ent, /Notification\.permission/, 'el latido no lee el permiso real del navegador');
+  assert.match(ent, /'sin-soporte'/, 'no distingue un teléfono que no admite avisos');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
