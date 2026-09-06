@@ -64,6 +64,14 @@ persona no se toca jamás. 6 sabotajes, 6 muerden, incluido el de «podar por an
 Verificado en seco antes de aplicar (devolvía exactamente 1 fila) y después: Natalia con 1,
 Samuel con 2, nadie más movido.
 
+### ⚠️ Nota de versiones, para no confundir a la próxima sesión
+
+**v577 es una MIGRACIÓN de base de datos, no una versión de la app.** No cambió una línea de JS,
+así que no hubo bump: la app servida sigue siendo **avi-v576** (`?v=576` + `CACHE_NAME`
+coherentes, check 10 del hook en verde). El trigger y la limpieza ya están APLICADOS en
+producción; el archivo versionado es
+`supabase/migrations/20260905_push_hermano_abandonado.sql`.
+
 ### Estado de la ronda
 Suite **1041 → 1047**. Los 4 puntos de la auditoría, cerrados. Sigue sin probarse un push en un
 teléfono real — es lo único que solo puede hacer el PO.
