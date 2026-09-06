@@ -1713,6 +1713,84 @@ function renderHome(){
   if(typeof renderReportsCard==='function')renderReportsCard();
   // 📷 Cola de productos escaneados (F6): igual — un no-moderador recibe 0 filas y no ve nada.
   if(typeof renderFbQueueCard==='function')renderFbQueueCard();
+  // 🔒 AL FINAL y no en medio: el tope reparte lo que de verdad quedó pintado, así que tiene que
+  //    correr DESPUÉS de todos los render* que crean avisos. Es el mismo sitio (el único por el
+  //    que pasan todos los caminos) que ocupa `_applyTodayCap` en la pantalla del asesorado.
+  _applyCoachCap();
+}
+
+// ── EL TOPE DE AVISOS DEL INICIO DEL COACH (v581) ──────────────────────────────────────
+// Decisión del PO: máximo DOS avisos a la vez, con vencimientos y empujón como los que siempre
+// quiere ver. Lo que no cabe se APARTA en la fila «Tienes N avisos más», nunca se silencia —
+// misma promesa que le hace la app al asesorado desde v505.
+// 🔒 Se apaga con CLASE propia (`.cap-off`), JAMÁS con `style.display`: varios de estos
+//    contenedores ya gestionan su propio `display` (`h-deload`, `h-pulse` y los tres banners se
+//    encienden y apagan solos), y dos mecanismos peleando la misma propiedad se tapan entre sí —
+//    la lección de v505, que allá costó un sabotaje verde.
+let _coachMoreOpen=false;
+// 🔴 Abrir MUEVE nodos (los apartados suben a pegarse a la fila), y un movimiento no se deshace
+//    solo: sin esto, abrir y cerrar UNA vez dejaría los avisos descolocados hasta recargar la
+//    app, y el siguiente que subiera al top-2 se pintaría debajo de la fila. El orden canónico se
+//    fotografía del MARCADO la primera vez —no se escribe a mano, o sería una segunda copia del
+//    orden del HTML esperando a separarse— y se restaura en cada pasada.
+let _coachNoticeOrder=null, _coachNoticePrev=null;
+function _coachRestoreOrder(){
+  const more=document.getElementById('h-more'); if(!more)return;
+  const padre=more.parentElement; if(!padre)return;
+  const ids=((typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[]).concat(['h-more']);
+  if(!_coachNoticeOrder){
+    _coachNoticeOrder=[...padre.children].map(e=>e.id).filter(id=>ids.indexOf(id)>=0);
+    // El grupo también necesita saber DÓNDE empieza, o al restaurarlo quedaría contiguo y en
+    // orden pero corrido de sitio (detrás de donde lo dejó el último movimiento). El vecino de
+    // arriba es marcado estático que nunca se borra, así que la referencia sobrevive.
+    const primero=document.getElementById(_coachNoticeOrder[0]);
+    _coachNoticePrev=primero?primero.previousElementSibling:null;
+    return; // la primera vez el DOM YA está en su orden: fotografiarlo basta
+  }
+  let ancla=(_coachNoticePrev&&_coachNoticePrev.parentElement===padre)?_coachNoticePrev:null;
+  _coachNoticeOrder.forEach(id=>{
+    const e=document.getElementById(id);
+    if(!e||e.parentElement!==padre)return;
+    if(ancla)ancla.insertAdjacentElement('afterend',e);
+    else padre.insertBefore(e,padre.firstChild);
+    ancla=e;
+  });
+}
+function _applyCoachCap(){
+  const ids=(typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[];
+  const more=document.getElementById('h-more');
+  _coachRestoreOrder();
+  // 1) Encender de vuelta lo que ESTE tope apagó antes (nunca lo que apagó su propio dueño).
+  ids.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.remove('cap-off');});
+  if(more)more.innerHTML='';
+  if(typeof coachNoticePlan!=='function')return;
+  // 2) Presentes = los que de verdad tienen algo pintado y su dueño dejó visibles.
+  const presentes=ids.filter(id=>{const e=document.getElementById(id);
+    return !!(e && e.innerHTML.trim() && e.style.display!=='none');});
+  const plan=coachNoticePlan(presentes);
+  if(!plan.ocultas.length)return;
+  plan.ocultas.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.add('cap-off');});
+  if(!more)return;
+  const n=plan.ocultas.length;
+  more.innerHTML=`<button type="button" class="tod-more" onclick="coachMoreToggle()" aria-expanded="${_coachMoreOpen?'true':'false'}">
+    <span class="tod-more-ic" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('bell',15):'🔔'}</span>
+    <span class="tod-more-tx">${_coachMoreOpen?'Ocultar':'Tienes'} <b>${n}</b> aviso${n!==1?'s':''} más</span>
+    <span class="tod-more-chev${_coachMoreOpen?' up':''}" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('tridown',12):'▾'}</span>
+  </button>`;
+  // Abierto: se encienden de nuevo y quedan JUSTO DEBAJO de la fila, en su orden de prioridad.
+  // (El asesorado los manda al final de su panel; aquí abajo hay más tarjetas, así que dejarlos
+  //  pegados a la fila es lo que hace que abrir se sienta como abrir.)
+  if(_coachMoreOpen){
+    let ancla=more;
+    plan.ocultas.forEach(id=>{const e=document.getElementById(id);
+      if(e&&e.parentElement===more.parentElement){ e.classList.remove('cap-off');
+        ancla.insertAdjacentElement('afterend',e); ancla=e; }
+      else if(e){ e.classList.remove('cap-off'); }});
+  }
+}
+function coachMoreToggle(){
+  _coachMoreOpen=!_coachMoreOpen;
+  renderHome();
 }
 
 // ── El pulso del coach (v353): tarjeta en Inicio con los motivos positivos/técnicos para

@@ -15990,6 +15990,82 @@ test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y lleva
 });
 
 // ══════════════════════════════════════════════════════
+// v581 — EL TOPE DE AVISOS DEL INICIO DEL COACH
+// ══════════════════════════════════════════════════════
+// Decisión del PO (6-sep-2026): hasta v580 se le pintaban hasta CINCO avisos a la vez y eligió el
+// mismo tope que el asesorado tiene desde v505 —dos—, con vencimientos y empujón como los que
+// siempre quiere ver. Lo que no cabe se APARTA, nunca se silencia.
+
+test('v581 · el tope deja 2 y los dos que el PO eligió', () => {
+  const p = core.coachNoticePlan(['h-pulse', 'h-today-banner', 'h-adherence-banner', 'h-deload', 'h-expiry-banner']);
+  assert.deepStrictEqual(p.visibles, ['h-expiry-banner', 'h-adherence-banner']);
+  // El orden de salida es el de PRIORIDAD, no el que traiga quien llame: dos pantallas con la
+  // misma gente tienen que decidir igual.
+  assert.deepStrictEqual(p.ocultas, ['h-deload', 'h-today-banner', 'h-pulse']);
+});
+
+test('v581 · con 2 o menos no se aparta nada, y el orden sigue mandando', () => {
+  assert.deepStrictEqual(core.coachNoticePlan(['h-pulse', 'h-expiry-banner']).ocultas, []);
+  assert.deepStrictEqual(core.coachNoticePlan(['h-pulse', 'h-expiry-banner']).visibles,
+    ['h-expiry-banner', 'h-pulse'], 'con hueco de sobra el pulso SÍ sale, pero después de la plata');
+  assert.deepStrictEqual(core.coachNoticePlan([]).visibles, []);
+  assert.deepStrictEqual(core.coachNoticePlan(null).ocultas, [], 'sin lista no puede lanzar');
+});
+
+test('v581 · un aviso NUEVO sin puesto en la lista NO desaparece en silencio', () => {
+  // Preferimos que salga uno de más a que se pierda por habérsenos olvidado prioritizarlo — es
+  // la misma decisión que tomó v505 para el asesorado, y aquí importa igual: el que se pierda
+  // sería justo el que nadie está mirando.
+  const p = core.coachNoticePlan(['h-expiry-banner', 'h-adherence-banner', 'h-deload', 'h-inventado']);
+  assert.ok(p.visibles.indexOf('h-inventado') >= 0, 'un aviso sin rango se perdió');
+  assert.deepStrictEqual(p.ocultas, ['h-deload']);
+});
+
+test('🔒 v581 · el reparto es UNA implementación, compartida con el tope del asesorado', () => {
+  // Dos copias del «quién cabe y quién no» acaban decidiendo distinto (clase v448/v511 aplicada
+  // al orden). El CONTROL de que la extracción fue fiel son los tests de `todayCardPlan`, que
+  // siguen verdes sin tocarse; aquí se afirma que ninguno de los dos se re-implementó.
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const cuerpo = f => { const i = src.indexOf('function ' + f + '('); assert.ok(i > 0, f + ' desapareció'); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  assert.ok(/_capPlan\(presentes,\s*TODAY_CARD_PRIORITY,\s*max\)/.test(cuerpo('todayCardPlan')),
+    'todayCardPlan volvió a implementar el reparto por su cuenta');
+  assert.ok(/_capPlan\(presentes,\s*COACH_NOTICE_PRIORITY,\s*max\)/.test(cuerpo('coachNoticePlan')),
+    'coachNoticePlan volvió a implementar el reparto por su cuenta');
+  assert.strictEqual(core.COACH_MAX_NOTICES, 2, 'cambió el tope sin que el PO lo decidiera');
+});
+
+test('🔒 CABLEADO v581: el tope corre al FINAL de renderHome y apaga con su propia clase', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf('function renderHome(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  // La llamada tiene que ser la sentencia pelada: un `if(false)` delante la mataría dejando el
+  // nombre intacto (la clase que dos sabotajes de v579 destaparon).
+  assert.ok(/^\s*_applyCoachCap\(\);\s*$/m.test(cuerpo),
+    '🔴 el tope dejó de aplicarse: vuelven los 5 avisos a la vez');
+  // Y DESPUÉS de quien pinta los avisos, o repartiría sobre una pantalla a medio pintar.
+  const iPulse = cuerpo.indexOf('renderPulse'), iCap = cuerpo.indexOf('_applyCoachCap()');
+  assert.ok(iPulse > 0 && iCap > iPulse, 'el tope corre ANTES de que los avisos existan');
+
+  const j = src.indexOf('function _applyCoachCap(');
+  const cap = src.slice(j, src.indexOf('\nfunction coachMoreToggle', j))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  // 🔒 Clase propia y NUNCA style.display: varios de estos contenedores gestionan su propio
+  //    display, y dos mecanismos peleando la misma propiedad se tapan (v505).
+  assert.ok(/classList\.add\('cap-off'\)/.test(cap), 'el tope dejó de apagar con su clase');
+  assert.ok(!/\.style\.display\s*=/.test(cap),
+    '🔴 el tope volvió a tocar style.display: se pisa con el dueño de cada banner (v505)');
+  // Restaurar el ORDEN no es opcional: abrir mueve nodos y sin esto la pantalla queda
+  // descolocada hasta recargar la app.
+  // Sentencia PELADA, no «el nombre aparece»: con `if(false)` delante este sabotaje salió VERDE
+  // en la primera corrida de la matriz — la misma clase que ya me mordió en v579, dos features
+  // antes. La CONSECUENCIA (que abrir y cerrar no descoloque la pantalla) la afirma T3b del
+  // harness `_verify-tope-coach`, que es donde de verdad se puede medir.
+  assert.ok(/^\s*_coachRestoreOrder\(\);\s*$/m.test(cap),
+    'se perdió la restauración del orden del marcado: abrir y cerrar descoloca los avisos');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

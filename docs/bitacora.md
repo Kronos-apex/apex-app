@@ -4,6 +4,65 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v581: EL TOPE DE AVISOS DEL INICIO DEL COACH
+
+**Decisión del PO (6-sep-2026)**, sobre su propia pantalla: hasta v580 se le pintaban hasta CINCO
+avisos a la vez —entrenaron hoy · vencimientos · empujón · descarga terminada · el pulso— y
+eligió el mismo tope que el asesorado tiene desde v505: **dos**, con **vencimientos y empujón**
+como los que siempre quiere ver.
+
+### El orden no es de importancia en abstracto: es de FRECUENCIA × caducidad
+Regla de v567 — lo que aparece poco y trae fecha tiene que ganarle a lo que aparece casi siempre,
+o no sale nunca. `COACH_NOTICE_PRIORITY`: vencimientos (plata, con fecha) · empujón (retención, y
+desde v580 solo lista a quien de verdad puede alcanzar) · descarga vencida (una tarea que no
+expira sola) · entrenaron hoy (el único positivo, no pide nada) · el pulso (sugerencias).
+
+### Lo que se respeta
+- **APARTA, NO SILENCIA**: lo que no cabe baja a «Tienes N avisos más», que se abre en el sitio.
+- 🔒 Apaga con **clase propia** (`.cap-off`), JAMÁS con `style.display`: los cinco contenedores ya
+  gestionan su propio `display`, y dos mecanismos peleando la misma propiedad se tapan — la
+  lección de v505, que allá costó un sabotaje verde.
+- 🔒 **NUNCA entran al tope** las cifras, la retención, los prioritarios, «Mi entrenamiento», las
+  dos direcciones ni las colas de moderación: no son avisos, son la pantalla.
+- Un aviso NUEVO sin puesto en la lista **no desaparece en silencio**: sale de más. El que se
+  perdiera sería justo el que nadie está mirando.
+
+### Una sola implementación del reparto
+`_capPlan(presentes, prioridad, max)` se extrajo de `todayCardPlan` (v505) al aparecer la segunda
+superficie con la misma regla: dos copias del «quién cabe y quién no» acaban decidiendo distinto,
+que es la clase v448/v511 aplicada al orden. **El CONTROL de que la extracción fue fiel son los
+tests y el harness del tope del ASESORADO, que siguen verdes sin tocarse** (`_verify-tope` TODO
+OK, con su curva de píxeles re-medida).
+
+### 🔴 La trampa: abrir MUEVE nodos, y un movimiento no se deshace solo
+Al abrir, lo apartado sube a pegarse a la fila. Sin restaurar el orden, **abrir y cerrar UNA vez
+dejaría los avisos descolocados hasta recargar la app**, y el siguiente que subiera al top-2 se
+pintaría debajo de la fila. El orden canónico se **fotografía del marcado** la primera vez —no se
+escribe a mano, o sería una segunda copia del orden del HTML esperando a separarse— junto con el
+vecino de arriba, porque si no el grupo queda contiguo y en orden pero **corrido de sitio**.
+
+### QA
+- Suite **1052 → 1057** en los dos husos. Matriz nueva `_sabotaje-tope-coach.mjs`, **7/7 muerden**.
+- Harness nuevo `_verify-tope-coach.mjs`, **12/12**: afirma cuántos avisos se VEN y CUÁLES, que lo
+  apartado se dice y se abre, que **cerrar devuelve la pantalla a su sitio**, y el CONTROL de que
+  con dos o menos no se aparta nada ni aparece la fila.
+- 🔴 **El sabotaje del orden salió VERDE en la primera corrida, y es el gotcha que YO acababa de
+  documentar dos versiones antes**: mi aserción volvía a pedir que el nombre apareciera, y un
+  `if(false)` delante la satisface. Apretada a la sentencia pelada. Y como la suite no puede medir
+  un reordenamiento del DOM, se **PROBÓ en el harness** (regla de v520: un verde que se explica
+  con «lo cubre la otra capa» hay que ejecutarlo en la otra capa): con el sabotaje puesto, T3b cae
+  imprimiendo el orden descolocado exacto.
+- ⚠️ Y ese sabotaje **no se aplicó a la primera** porque el patrón se escribió con `
+` sobre un
+  archivo con CRLF: los finales de línea de este repo no son estables (v537). El `AssertionError`
+  fue lo único que lo delató.
+- 🔴 **Dos rojos más eran de MIS sondas**: contar «tiene innerHTML» para saber cuántos avisos hay
+  (los banners se apagan con `style.display` y **no limpian su HTML**, así que uno viejo sigue
+  contando), y capturar sin scrollear —los avisos viven por debajo del pliegue y la captura salía
+  siendo la portada del panel—.
+
+---
+
 ## ⏮️ 2026-09-06 — v580: «EMPUJAR 💪» NO SALE SIN DESTINATARIO
 
 **Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº3).

@@ -7732,20 +7732,56 @@ const TODAY_CARD_PRIORITY = [
 // sin obligar a la persona a decidir cuál de cinco atiende. Moverlo es una línea y el PO tiene
 // la cuenta al lado.
 const TODAY_MAX_CARDS = 2;
-function todayCardPlan(presentes, opts) {
-  opts = opts || {};
-  const max = (opts.max === undefined) ? TODAY_MAX_CARDS : Math.max(0, parseInt(opts.max) || 0);
+// ── El REPARTO de un tope, compartido por las dos pantallas que lo usan (v581) ──
+// Nació dentro de `todayCardPlan` (v505, el asesorado) y se extrajo al aparecer la segunda
+// superficie con la misma regla (el Inicio del coach). Una sola implementación: dos copias del
+// «quién cabe y quién no» acaban decidiendo distinto, que es la clase v448/v511 aplicada al orden.
+// Lo que cada pantalla aporta es SU lista de prioridad y SU tope; el reparto es el mismo.
+function _capPlan(presentes, prioridad, max) {
+  const tope = Math.max(0, parseInt(max) || 0);
   const hay = new Set(presentes || []);
   // El orden de salida es el de PRIORIDAD, no el que traiga quien llame: dos pantallas con la
   // misma gente tienen que decidir igual.
-  const orden = TODAY_CARD_PRIORITY.filter(id => hay.has(id));
+  const orden = prioridad.filter(id => hay.has(id));
   // Lo que llegue sin puesto en la lista se respeta y NO se topa: preferimos que salga una
   // tarjeta nueva de más a que desaparezca en silencio por habérsenos olvidado prioritizarla.
-  const sinRango = (presentes || []).filter(id => TODAY_CARD_PRIORITY.indexOf(id) === -1);
+  const sinRango = (presentes || []).filter(id => prioridad.indexOf(id) === -1);
   return {
-    visibles: orden.slice(0, max).concat(sinRango),
-    ocultas: orden.slice(max),
+    visibles: orden.slice(0, tope).concat(sinRango),
+    ocultas: orden.slice(tope),
   };
+}
+function todayCardPlan(presentes, opts) {
+  opts = opts || {};
+  const max = (opts.max === undefined) ? TODAY_MAX_CARDS : opts.max;
+  return _capPlan(presentes, TODAY_CARD_PRIORITY, max);
+}
+
+// ── EL TOPE DE AVISOS DEL INICIO DEL COACH (v581) ──────────────────────────────────────
+// Decisión del PO (6-sep-2026), sobre su propia pantalla: hasta v580 se le pintaban hasta CINCO
+// avisos a la vez y eligió el mismo tope que ya tiene el asesorado desde v505 —dos—, con
+// vencimientos y empujón como los que siempre quiere ver.
+// El orden NO es de importancia en abstracto, es de FRECUENCIA × caducidad (regla de v567): lo
+// que aparece poco y trae fecha tiene que ganarle a lo que aparece casi siempre, o no sale nunca.
+//   1. vencimientos — es PLATA y tiene fecha: quien vence en 5 días se renueva o se pierde.
+//   2. empujón      — es RETENCIÓN, y desde v580 solo lista a quien de verdad puede alcanzar.
+//   3. descarga vencida — una TAREA que no expira sola: sin ella alguien se queda semanas al 60%.
+//   4. entrenaron hoy — bueno de leer, pero no pide nada: es el único positivo.
+//   5. el pulso     — sugerencias para escribirles; se puede hacer en cualquier momento.
+// 🔴 NUNCA entran al tope: las cifras, la retención, los prioritarios, «Mi entrenamiento», las
+// dos direcciones y las colas de moderación — no son avisos, son la pantalla.
+const COACH_NOTICE_PRIORITY = [
+  'h-expiry-banner',
+  'h-adherence-banner',
+  'h-deload',
+  'h-today-banner',
+  'h-pulse',
+];
+const COACH_MAX_NOTICES = 2;
+function coachNoticePlan(presentes, opts) {
+  opts = opts || {};
+  const max = (opts.max === undefined) ? COACH_MAX_NOTICES : opts.max;
+  return _capPlan(presentes, COACH_NOTICE_PRIORITY, max);
 }
 
 // Config del HIIT de un ejercicio (trabajo/descanso en segundos) y segundos de un isométrico.
@@ -9674,6 +9710,9 @@ if (typeof module !== 'undefined' && module.exports) {
     todayCardPlan,
     TODAY_CARD_PRIORITY,
     TODAY_MAX_CARDS,
+    coachNoticePlan,
+    COACH_NOTICE_PRIORITY,
+    COACH_MAX_NOTICES,
     generarRutinas,
     GEN_WEEK_DAYS,
     GEN_WORK_DAYS,
