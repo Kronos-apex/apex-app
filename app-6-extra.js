@@ -933,8 +933,22 @@ function gmChangeMood(){
 // Reusan las funciones de la clásica (mismo guardado de historial/PRs y mismo reset de
 // claves); aquí solo se re-sincroniza el estado GM y sus overlays/timers.
 function gmFinishEarly(){
-  if(!finishSessionEarly()) return; // no guardó (0 series o canceló el confirm)
+  const stats=finishSessionEarly(); if(!stats) return; // no guardó (0 series o canceló el confirm)
+  // La rutina se captura ANTES de cerrar: `closeGuidedMode` limpia el estado del guiado.
+  const routine=CUR.activeRoutine;
+  // 🔴 El ORDEN importa: `closeGuidedMode` devuelve `document.body.style.overflow` a '' en el
+  // camino de overlay, así que celebrar antes dejaría la página de atrás desplazándose bajo la
+  // pantalla de cierre. Cerrar primero también deja pintado el progreso (updateClientProgress).
   closeGuidedMode();
+  // v579 — TERMINAR TEMPRANO PREMIA. Antes esto acababa en un `toast` y la duración, las
+  // calorías, los récords, la subida de nivel y el pedido de avisos solo existían para quien
+  // llegaba al 100%. Al 100% la celebración ya la dispara `updateClientProgress` desde
+  // `closeGuidedMode`; su guard por día (`_wfShownFor`) hace que esta llamada no la repita.
+  if(typeof showWorkoutFinish==='function' && routine) showWorkoutFinish(routine,stats);
+  // El toast solo si la celebración NO salió (guard del día ya consumido, o la pantalla no está
+  // en el DOM): sin él la persona se quedaría sin ninguna señal de que su entreno se guardó.
+  const wf=document.getElementById('workout-finish');
+  if(!wf||!wf.classList.contains('on')) toast('✅ Entrenamiento guardado');
 }
 function gmResetSession(){
   if(!resetSession()) return; // canceló el confirm (o no hay rutina)

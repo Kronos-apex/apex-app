@@ -15846,6 +15846,92 @@ test('🔔 v577 · se poda el hermano abandonado, NUNCA la única suscripción d
 });
 
 // ══════════════════════════════════════════════════════
+// v579 — TERMINAR TEMPRANO TAMBIÉN PREMIA
+// ══════════════════════════════════════════════════════
+// `showWorkoutFinish` (duración, calorías, récords, subida de nivel, el pedido de avisos) tenía
+// DOS puntos de entrada y los dos eran el camino del 100%; `finishSessionEarly` guardaba bien y
+// acababa en un `toast`. Medido el 6-sep-2026: 4 de 213 cierres usaron ese botón, con el 24,5%
+// de las sesiones sin cerrar nunca.
+
+test('v579 · el titular NO felicita por lo que no se hizo (sesión parcial)', () => {
+  assert.strictEqual(core.wfTitle('Claudia', true), '¡Bien hecho, Claudia!');
+  assert.strictEqual(core.wfTitle('', true), '¡Bien hecho!');
+  // CONTROL: con la sesión completa el texto es EXACTAMENTE el de siempre — si esto cambiara,
+  // el arreglo habría degradado la celebración de quien SÍ llegó al 100%.
+  assert.strictEqual(core.wfTitle('Claudia', false), '¡Lo lograste, Claudia!');
+  assert.strictEqual(core.wfTitle('', false), '¡Lo lograste!');
+  // Estados no-felices: sin nombre (null/undefined) o con espacios, nunca «¡Lo lograste, !».
+  assert.strictEqual(core.wfTitle(null, false), '¡Lo lograste!');
+  assert.strictEqual(core.wfTitle(undefined, true), '¡Bien hecho!');
+  assert.strictEqual(core.wfTitle('   ', false), '¡Lo lograste!');
+});
+
+test('🔒 CABLEADO v579: gmFinishEarly celebra, y celebra DESPUÉS de cerrar el guiado', () => {
+  // Un check estático se ancla DENTRO de la función que hace el trabajo (v536/v568) y quita los
+  // comentarios ANTES de mirar: `//` es justo como esto se apaga sin querer (v552).
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('function gmFinishEarly(');
+  assert.ok(i > 0, 'gmFinishEarly desapareció de app-6-extra.js');
+  const j = src.indexOf('\nfunction ', i + 10);
+  const cuerpo = src.slice(i, j > 0 ? j : src.length)
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+
+  // 🔴 Se afirma la FORMA de la guarda, no que el nombre aparezca: un `if(false)` delante deja
+  //    el identificador intacto y salía VERDE (los dos primeros sabotajes de la matriz, primera
+  //    corrida). Misma clase que v568/v570, tercera cara. La guarda `typeof` es además la que
+  //    exige la doctrina para llamar a otro módulo.
+  assert.ok(/^\s*if\(typeof showWorkoutFinish==='function'\s*&&\s*routine\)\s*showWorkoutFinish\(routine,stats\);\s*$/m.test(cuerpo),
+    '🔴 terminar temprano volvió a acabar en un toast: la llamada a showWorkoutFinish está muerta o sin su guarda typeof');
+  // Y que USE lo que devuelve `finishSessionEarly`, no un `true` suelto: sin las cifras la
+  // pantalla saldría con 0 series y 0 volumen (v560 — afirmar la llamada no afirma el efecto).
+  assert.ok(/const\s+stats\s*=\s*finishSessionEarly\(\)/.test(cuerpo),
+    'gmFinishEarly dejó de recoger el resumen de la sesión');
+  assert.ok(/if\s*\(\s*!stats\s*\)\s*return/.test(cuerpo),
+    'se perdió la salida temprana: 0 series o «cancelar» celebrarían igual');
+  // El ORDEN: closeGuidedMode devuelve body.overflow a '' — celebrar antes deja la página de
+  // atrás desplazándose bajo la pantalla de cierre. Y tiene que llamarse INCONDICIONALMENTE:
+  // una línea `if(false) closeGuidedMode();` conserva el orden y satisfacía la aserción vieja.
+  assert.ok(/^\s*closeGuidedMode\(\);\s*$/m.test(cuerpo),
+    '🔴 closeGuidedMode dejó de llamarse incondicionalmente: el guiado se queda abierto detrás');
+  const iClose = cuerpo.indexOf('closeGuidedMode()'), iWf = cuerpo.indexOf('showWorkoutFinish(');
+  assert.ok(iClose > 0 && iWf > iClose,
+    '🔴 la celebración quedó ANTES de cerrar el guiado: el fondo vuelve a desplazarse');
+});
+
+test('🔒 CABLEADO v579: finishSessionEarly devuelve el resumen, no un booleano', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function finishSessionEarly(');
+  assert.ok(i > 0, 'finishSessionEarly desapareció de app-4-entreno.js');
+  const j = src.indexOf('\nfunction ', i + 10);
+  const cuerpo = src.slice(i, j > 0 ? j : src.length)
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/return\s*\{[^}]*partial\s*:\s*done\s*<\s*total[^}]*\}/.test(cuerpo),
+    '🔴 finishSessionEarly dejó de decir si la sesión fue parcial: el titular volvería a mentir');
+  assert.ok(/\bdone\b[\s\S]*\btotalVol\b[\s\S]*\bnewPRs\b/.test(/return\s*\{([^}]*)\}/.exec(cuerpo)[1]),
+    'el resumen perdió alguna cifra que la pantalla de cierre necesita');
+  assert.ok(!/return\s+true\s*;/.test(cuerpo),
+    'volvió el `return true`: el llamador se queda sin cifras y la pantalla saldría en 0');
+  // Y la celebración no puede morir por un throw de los récords (caso Claudia 2026-07-07).
+  assert.ok(/try\s*\{\s*newPRs\s*=\s*_prsMergeSession/.test(cuerpo),
+    'los récords volvieron a correr sin blindaje: un throw ahí se lleva la pantalla de cierre');
+});
+
+test('🔒 CABLEADO v579: el titular sale de wfTitle, no escrito a mano en el render', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function showWorkoutFinish(');
+  const j = src.indexOf('\nfunction ', i + 10);
+  const cuerpo = src.slice(i, j > 0 ? j : src.length)
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/wf-title'\)\.textContent\s*=\s*wfTitle\(name,\s*!!\(stats\s*&&\s*stats\.partial\)\)/.test(cuerpo),
+    '🔴 el titular dejó de preguntarle a stats.partial: «¡Lo lograste!» sobre 6 de 12 series');
+  assert.ok(!/¡Lo lograste/.test(cuerpo),
+    'el texto volvió a escribirse a mano en el render — segunda definición del titular');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

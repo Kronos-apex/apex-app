@@ -4887,6 +4887,17 @@ function fmtDuration(sec) {
   return mm ? `${h} h ${mm} min` : `${h} h`;
 }
 
+// ── Titular de la pantalla de cierre (v579) ──
+// Desde v579 esa pantalla también la ve quien cierra TEMPRANO, así que el titular tiene que
+// cuadrar con las cifras que van justo debajo: «¡Lo lograste!» encima de «Series 6/12» es la
+// mentira de v437 con otra cara (el número cambia y el rótulo se queda). Con la sesión completa
+// el texto es EXACTAMENTE el de siempre — sin nombre incluido.
+function wfTitle(name, partial) {
+  const n = String(name == null ? '' : name).trim();
+  if (partial) return n ? `¡Bien hecho, ${n}!` : '¡Bien hecho!';
+  return n ? `¡Lo lograste, ${n}!` : '¡Lo lograste!';
+}
+
 // ── Calificación de sesión "¿cómo te sentiste?" (1–5 → emoji/etiqueta) ──
 const WF_FEELINGS = [{ v: 1, e: '😫', l: 'Muy duro' }, { v: 2, e: '😕', l: 'Pesado' }, { v: 3, e: '😐', l: 'Normal' }, { v: 4, e: '🙂', l: 'Bien' }, { v: 5, e: '😄', l: 'Excelente' }];
 function feelingEmoji(n) { const f = WF_FEELINGS.find(x => x.v === n); return f ? f.e : ''; }
@@ -9528,6 +9539,7 @@ if (typeof module !== 'undefined' && module.exports) {
     coachBuildReport,
     fmtMetric,
     fmtDuration,
+    wfTitle,
     WF_FEELINGS,
     feelingEmoji,
     feelingLabel,

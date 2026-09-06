@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v579: TERMINAR TEMPRANO TAMBIÉN PREMIA
+
+**Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº1 del área «entreno en vivo»).
+
+**El defecto, en una línea:** `showWorkoutFinish` —la pantalla de cierre con la duración, las
+calorías, los récords, la subida de nivel y el pedido de avisos— tenía **DOS puntos de entrada y
+los dos eran el camino del 100%** (`updateClientProgress` y `checkAndShowCongrats`). Quien tocaba
+«✓ Finalizar entrenamiento» guardaba bien su sesión… y recibía un `toast`. **Medido: 4 de 213
+cierres usaron ese botón, con el 24,5% de las sesiones sin cerrar nunca.**
+
+### Lo que cambia
+- `finishSessionEarly` **devuelve el resumen de la sesión** (`{done,total,totalVol,newPRs,partial}`)
+  en vez de `true`; `null` sigue significando «no guardó» (0 series o canceló el confirm).
+- `gmFinishEarly` cierra el guiado y **celebra**, con la guarda `typeof` que exige la doctrina para
+  llamar a otro módulo. El `toast` queda solo para cuando la celebración NO sale (guarda del día
+  ya consumida): sin él la persona se quedaría sin ninguna señal de que su entreno se guardó.
+- 🔴 **El titular tiene que cuadrar con las cifras de debajo.** «¡Lo lograste!» encima de
+  «Series 6/12» es la mentira de v437 con otra cara —el número cambia y el rótulo se queda—, así
+  que el texto lo decide `wfTitle(name, partial)` (avi-core, pura): «¡Bien hecho, X!» en una
+  sesión parcial, y **exactamente el de siempre** al 100%.
+- 🔒 Los récords pasan a correr con el **mismo blindaje** que `updateClientProgress` (caso Claudia,
+  2026-07-07): ahora que de ellos cuelga la celebración, un `throw` ahí no puede dejar a nadie sin
+  su pantalla de cierre.
+
+### El orden importa
+`closeGuidedMode()` va ANTES de celebrar: su rama embebida repinta el progreso
+(`updateClientProgress`) y la de overlay devuelve `body.overflow` a `''` — celebrar primero dejaría
+la página de atrás desplazándose bajo la pantalla de cierre. Con un candado que lo afirma.
+
+### QA
+- Suite **1046 → 1050** en los dos husos. Matriz nueva `_sabotaje-finish-temprano.mjs`,
+  **10/10 muerden**, incluido el **CONTROL** de que el 100% conserva su «¡Lo lograste!» — sin él,
+  pasarlo TODO a «¡Bien hecho!» habría salido verde y habríamos degradado la celebración de quien
+  sí llegó al final.
+- 🔴 **Los dos primeros sabotajes salieron VERDES en la primera corrida, y eran huecos MÍOS**: mis
+  aserciones pedían que el nombre de la función APARECIERA, y un `if(false)` delante las satisface
+  intacto. Es la clase de v568/v570, tercera cara. Se re-escribieron sobre la **FORMA de la
+  guarda** (la línea completa, con su `typeof`) y sobre que `closeGuidedMode()` se llame
+  **incondicionalmente**.
+- Harness `_repro-wf-claudia.mjs` **19/19, TODO OK**: W10 recorre el botón REAL del guiado y afirma
+  que la pantalla trae `1 min · 5 kcal · 1/3 series` con el titular «¡Bien hecho»; W11 es el
+  control del 100%; W12 (cancelar) y W13 (0 series) afirman que NO se celebra.
+
+### 🔴 Y de paso: ese harness llevaba ROJO desde v503 y nadie lo miró
+Sus 9 checks W1-W9 fallaban enteros. **No era la app: es de julio y v503 dejó el entreno
+COLAPSADO** tras un solo CTA («▶ Empezar mi entreno» → `expandTodayWorkout()`), así que clicaba
+`gm-chk-0-0` sobre un guiado que no existía. Misma clase que los 18 gates muertos de v506 y que la
+sonda muerta del smoke. Se le añadió el paso del CTA **y el control de montaje que le faltaba**
+(que se entró a la app, que llegó el catálogo, que la rutina se plantó y que el guiado quedó
+pintado), porque 16 rojos sin decir por qué son tan inútiles como un verde por vacío. Con el CTA
+puesto, **W1-W9 vuelven a verde sin tocar nada más**: eso es lo que prueba que el rojo era del
+harness y no de este cambio.
+
+---
+
 ## ⏮️ 2026-09-06 — v578: LA VITRINA SALE DE LA PANTALLA DE INICIO Y SE QUEDA EN LA WEB
 
 **Decisión del PO, literal:** *«quita esas tarjetas de la pantalla de inicio, no me gustan, tú las

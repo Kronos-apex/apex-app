@@ -2324,9 +2324,14 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
 // Guardado PARCIAL: registra el entreno con lo que el asesorado lleve hecho, aunque no
 // haya marcado el 100% de las series. Antes solo se guardaba al completar todo, así que
 // un entreno real se perdía si no se palomeaba todo. Botón "Finalizar" en la vista de hoy.
-// Devuelve true si guardó (el guiado lo usa para cerrarse tras finalizar).
+// 🔴 v579 — DEVUELVE EL RESUMEN DE LA SESIÓN, no `true`. Quien cierra temprano se ganó lo mismo
+// que quien llega al 100% (duración, calorías, récords, subida de nivel, el pedido de avisos) y
+// hasta hoy solo recibía un `toast`: `showWorkoutFinish` tenía DOS puntos de entrada y los dos
+// eran el camino del 100% (`updateClientProgress` y `checkAndShowCongrats`). Medido el 6-sep:
+// 4 de 213 cierres usaron este botón, con el 24,5% de las sesiones sin cerrar nunca.
+// El llamador celebra con lo que se devuelve; `null` = no guardó (0 series o canceló el confirm).
 function finishSessionEarly(){
-  const routine=CUR.activeRoutine;if(!routine)return false;
+  const routine=CUR.activeRoutine;if(!routine)return null;
   let total=0,done=0,totalVol=0;
   (routine.exercises||[]).forEach((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;total+=sets;
@@ -2337,15 +2342,18 @@ function finishSessionEarly(){
       }
     }
   });
-  if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return false;}
-  if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return false;
+  if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return null;}
+  if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return null;
   saveSessionToHistory(routine,totalVol,done,true,true); // "Finalizar temprano" → marca finishedAt (sesión cerrada, no parcial)
-  _prsMergeSession(routine,checkAndUpdatePRs(routine)||[]); // cierra la sesión → vacía lo apartado
-  renderPRsInProfile(CUR.clientId);
-  renderClientExProgress(CUR.clientId);
-  toast('✅ Entrenamiento guardado');
+  // Mismo blindaje que updateClientProgress (caso Claudia 2026-07-07): ahora que de esto cuelga
+  // la celebración, un throw aquí NO puede dejar a la persona sin su pantalla de cierre.
+  let newPRs=[];
+  try{ newPRs=_prsMergeSession(routine,checkAndUpdatePRs(routine)||[])||[]; } // cierra la sesión → vacía lo apartado
+  catch(e){ warn('AVI: checkAndUpdatePRs falló:',e&&e.message); try{ _logAppError('error','fse-prs: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
+  try{ renderPRsInProfile(CUR.clientId); renderClientExProgress(CUR.clientId); }
+  catch(e){ warn('AVI: refresh de PRs/progreso falló:',e&&e.message); try{ _logAppError('error','fse-refresh: '+(e&&e.message),e&&e.stack&&String(e.stack).split('\n')[1]); }catch(_e){} }
   offerKeepReorder();
-  return true;
+  return {done,total,totalVol,newPRs,partial:done<total};
 }
 
 // ── Fin de entrenamiento: celebración full-bleed (se dispara al 100%) ──
@@ -2431,7 +2439,9 @@ function showWorkoutFinish(routine,stats){
     }
   }catch(e){}
   document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
-  document.getElementById('wf-title').textContent=name?`¡Lo lograste, ${name}!`:'¡Lo lograste!';
+  // v579 — quien cierra TEMPRANO también llega aquí, y «¡Lo lograste!» sobre 6 de 12 series sería
+  // felicitarla por algo que no hizo: el titular lo decide `wfTitle` (avi-core, pura).
+  document.getElementById('wf-title').textContent=wfTitle(name,!!(stats&&stats.partial));
   // toLocaleDateString con options lanza RangeError en WebViews sin ICU completo (Huawei
   // viejos) — y aquí un throw mata la celebración entera. Fallback manual sin locale.
   let fecha;

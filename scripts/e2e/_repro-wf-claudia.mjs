@@ -50,6 +50,26 @@ async function freshLogin() {
 const wf = () => ev(`JSON.stringify({on:document.getElementById('workout-finish').classList.contains('on'),guard:typeof _wfShownFor!=='undefined'?_wfShownFor:'<no-var>'})`).then(JSON.parse);
 const resetWf = () => ev(`(()=>{document.getElementById('workout-finish').classList.remove('on');document.body.style.overflow='';_wfShownFor=null;if(DB.history&&DB.history[CUR.clientId])DB.history[CUR.clientId]=DB.history[CUR.clientId].filter(h=>h.routineId!=='rTest');})()`);
 async function setR(name, mkExs){
+  const r = await _setR(name, mkExs);
+  // 🔒 El montaje AFIRMA que ocurrió: si la rutina no se plantó, lo que venga después mide otra
+  //    cosa (o nada) y el rojo apunta al sitio equivocado.
+  if (r !== 'ok') throw new Error('MONTAJE setR(' + name + ') falló → ' + r);
+  // 🔴 v503 — EL ENTRENO LLEGA COLAPSADO. El héroe de «Hoy» pinta un solo CTA
+  //    («▶ Empezar mi entreno» → `expandTodayWorkout()`) y `#cn-today-body` queda VACÍO hasta
+  //    que se toca. Este harness es del 7-jul-2026, o sea ANTERIOR, así que desde v503 clicaba
+  //    `gm-chk-0-0` sobre un guiado que no existía: sus 9 aserciones llevaban en ROJO desde
+  //    entonces sin que nadie lo mirara — la misma clase que los 18 gates muertos de v506.
+  //    Se pulsa el CTA REAL, no `openGuidedEmbedded`, para recorrer la puerta de la persona.
+  await ev(`(()=>{const b=document.querySelector('#cn-today .tod-hero-cta');if(b){b.click();return 'cta';}
+                  if(typeof expandTodayWorkout==='function'){expandTodayWorkout();return 'fn';}return 'no';})()`);
+  await sleep(500);
+  // Control de cobertura: si el guiado no quedó pintado, se aborta con el diagnóstico. Sin esto
+  // el harness volvería a medir una pantalla vacía y a echarle la culpa a la app.
+  const pintado = await ev(`!!document.getElementById('gm-chk-0-0')`);
+  if (!pintado) throw new Error('MONTAJE: el guiado de «' + name + '» no se pintó tras el CTA');
+  return r;
+}
+async function _setR(name, mkExs){
   return await ev(`(()=>{try{
     const c=DB.clients.find(x=>x.id===CUR.clientId);
     const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -68,6 +88,18 @@ async function setR(name, mkExs){
 
 try {
   await freshLogin();
+  // 🔒 CONTROL DE MONTAJE (v579). Sin esto, un login que no entra o un `setR` que lanza dejan
+  //    el guiado sin pintar y las 16 aserciones salen en ROJO sin decir por qué — que es tan
+  //    inútil como el verde por vacío. Se aborta con el diagnóstico en la mano.
+  const _montaje = JSON.parse(await ev(`JSON.stringify({
+    enApp:(()=>{const e=document.getElementById('s-client');return !!(e&&getComputedStyle(e).display!=='none')})(),
+    cid:(typeof CUR!=='undefined'&&CUR.clientId)||'',
+    exs:(typeof DB!=='undefined'&&DB.exercises&&DB.exercises.length)||0
+  })`));
+  log('montaje -> ' + JSON.stringify(_montaje));
+  if (!_montaje.enApp || !_montaje.cid || !_montaje.exs) {
+    throw new Error('MONTAJE: no se entró a la app o no llegó el catálogo → ' + JSON.stringify(_montaje));
+  }
 
   // ── W1: en orden, última serie con el check ──
   log('\n=== W1: completar EN ORDEN (2 series reps) ===');
@@ -204,6 +236,83 @@ try {
   await sleep(900);
   s = await wf();
   check('W9 guard no quemado: tras el throw, re-marcar SÍ celebra', blocked === true && s.on === true, JSON.stringify({blocked, retry:s.on}));
+  await resetWf();
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // v579 — TERMINAR TEMPRANO TAMBIÉN PREMIA
+  // ══════════════════════════════════════════════════════════════════════════════
+  // Hasta v578 `showWorkoutFinish` tenía DOS puntos de entrada y los dos eran el camino del
+  // 100% (W1-W7 de arriba los recorren). Quien tocaba «✓ Finalizar entrenamiento» guardaba
+  // bien y recibía un `toast`: sin duración, sin calorías, sin récords, sin subida de nivel y
+  // sin el pedido de avisos. Medido el 6-sep-2026: 4 de 213 cierres usaron ese botón.
+  // 🔒 Se pulsa EL BOTÓN REAL del guiado, no la función: el defecto era un cableado que faltaba,
+  //    y llamar a la función por dentro lo daría por bueno sin probar que alguien la llame.
+  const _btnFin = `document.querySelector('#gm-session-actions button[onclick="gmFinishEarly()"]')`;
+  const wfTexto = () => ev(`JSON.stringify({title:(document.getElementById('wf-title')||{}).textContent||'',stats:(document.getElementById('wf-stats')||{}).textContent||''})`).then(JSON.parse);
+  // El `confirm()` de finishSessionEarly bloquearía el hilo en headless: se estuba para poder
+  // probar los DOS lados de la decisión (aceptar y cancelar), que es lo que interesa.
+  const confirmDice = v => ev(`(()=>{if(!window._realConfirm)window._realConfirm=window.confirm;window.confirm=()=>${v?'true':'false'};})()`);
+
+  log('\n=== W10: TERMINAR TEMPRANO (1 de 3 series) abre la celebración ===');
+  await setR('WF Temprano', `({byTrack})=>{const r=byTrack('reps');r.sets=3;return [r];}`);
+  await sleep(500); await resetWf(); await confirmDice(true);
+  await ev(`document.getElementById('gm-chk-0-0').click()`);
+  await sleep(400);
+  await ev(`(()=>{if(GM.restTimer)gmSkipRest();})()`);
+  const hayBoton = await ev(`!!${_btnFin}`);
+  check('W10a el botón «Finalizar entrenamiento» existe en el guiado', hayBoton === true, String(hayBoton));
+  await ev(`(()=>{const b=${_btnFin};if(b)b.click();})()`);
+  await sleep(1400);
+  s = await wf();
+  const t10 = await wfTexto();
+  check('W10b terminar temprano ABRE la pantalla de cierre (antes: solo un toast)', s.on === true, JSON.stringify(s));
+  // Lo que el PO pidió que reciba: las mismas cifras que quien llega al 100%.
+  check('W10c trae DURACIÓN y CALORÍAS, no solo el conteo', /Duración/.test(t10.stats) && /Calorías/.test(t10.stats), t10.stats.slice(0, 90));
+  check('W10d las series dicen la verdad (1/3), no un 3/3 inventado', /1\/3/.test(t10.stats), t10.stats.slice(0, 90));
+  // El titular tiene que cuadrar con esas cifras: «¡Lo lograste!» sobre 1 de 3 es la mentira
+  // de v437 con otra cara (el número cambia y el rótulo se queda).
+  check('W10e el titular NO felicita por lo que no se hizo', /Bien hecho/.test(t10.title) && !/Lo lograste/.test(t10.title), t10.title);
+  // La sesión queda CERRADA (finishedAt), no parcial — es lo que la distingue de un abandono.
+  const cerrada = await ev(`(()=>{const h=(DB.history[CUR.clientId]||[]).find(x=>x.routineId==='rTest');return !!(h&&h.finishedAt);})()`);
+  check('W10f la sesión queda cerrada de verdad (finishedAt)', cerrada === true, String(cerrada));
+  await resetWf();
+
+  log('\n=== W11: CONTROL · el 100% conserva su «¡Lo lograste!» de siempre ===');
+  // Sin este control, «arreglar» el titular pasando TODO a «¡Bien hecho!» saldría verde y
+  // habríamos degradado la celebración de quien sí llegó al final.
+  await setR('WF Completo', `({byTrack})=>{const r=byTrack('reps');r.sets=2;return [r];}`);
+  await sleep(500); await resetWf();
+  await ev(`document.getElementById('gm-chk-0-0').click()`);
+  await sleep(400);
+  await ev(`(()=>{if(GM.restTimer)gmSkipRest();})()`);
+  await ev(`document.getElementById('gm-chk-0-1').click()`);
+  await sleep(1200);
+  s = await wf();
+  const t11 = await wfTexto();
+  check('W11 al 100% sigue diciendo «¡Lo lograste!» y 2/2', s.on === true && /Lo lograste/.test(t11.title) && /2\/2/.test(t11.stats), JSON.stringify({ on: s.on, title: t11.title }));
+  await resetWf();
+
+  log('\n=== W12: CANCELAR el aviso NO celebra ni guarda nada ===');
+  await setR('WF Cancela', `({byTrack})=>{const r=byTrack('reps');r.sets=3;return [r];}`);
+  await sleep(500); await resetWf(); await confirmDice(false);
+  await ev(`document.getElementById('gm-chk-0-0').click()`);
+  await sleep(400);
+  await ev(`(()=>{if(GM.restTimer)gmSkipRest();})()`);
+  await ev(`(()=>{const b=${_btnFin};if(b)b.click();})()`);
+  await sleep(1200);
+  s = await wf();
+  const noCerrada = await ev(`(()=>{const h=(DB.history[CUR.clientId]||[]).find(x=>x.routineId==='rTest');return !!(h&&h.finishedAt);})()`);
+  check('W12 cancelar no abre la celebración ni cierra la sesión', s.on === false && noCerrada === false, JSON.stringify({ on: s.on, finishedAt: noCerrada }));
+  await resetWf();
+
+  log('\n=== W13: sin NINGUNA serie marcada no hay nada que celebrar ===');
+  await setR('WF Vacio', `({byTrack})=>{const r=byTrack('reps');r.sets=3;return [r];}`);
+  await sleep(500); await resetWf(); await confirmDice(true);
+  await ev(`(()=>{const b=${_btnFin};if(b)b.click();})()`);
+  await sleep(1000);
+  s = await wf();
+  check('W13 con 0 series no se abre la celebración', s.on === false, JSON.stringify(s));
+  await ev(`(()=>{if(window._realConfirm)window.confirm=window._realConfirm;})()`);
   await resetWf();
 
 } catch (e) { results.push('FATAL ' + e.message); }
