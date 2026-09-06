@@ -4,6 +4,68 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⚖️ 2026-09-05 (2ª parte) — avi-v574: BORRAR LA CUENTA BORRA LO QUE LA PANTALLA PROMETE
+
+**Punto 1 de la auditoría «app instalada»** (`docs/auditoria-app-instalada-2026-09-05/`), y el
+único con exposición legal: es el derecho de supresión de la Ley 1581/2012.
+
+### Lo que sobrevivía al borrado
+
+La pantalla promete *«se borrarán para siempre tu cuenta, perfil, rutinas, progreso, medidas y
+fotos»*. Quedaban tres cosas, verificadas línea por línea contra la función desplegada:
+
+- 🔴 **La TARJETA PÚBLICA del progreso** (`avi_showcase`). Es lo más grave porque es **el
+  único dato suyo que se lee SIN cuenta**. Se quedaba publicada para siempre: la tabla guarda
+  solo el primer nombre —decisión correcta, es pública— y nadie la ataba de vuelta.
+- `app_errors`, que guarda su `uid`, su user-agent y el contexto de sus errores.
+- El bucket `apex-photos`: se limpiaba `avatars` y este no.
+
+### 🔒 Y el ORDEN, que era la otra mitad del defecto
+
+Se borraba `user_data` **primero** y la cuenta al final, sin transacción: un fallo en medio
+dejaba a la persona **con el perfil borrado y la cuenta VIVA**. Ahora todo lo que no cascadea va
+primero —idempotente y reintentable— y `auth.users` de último, que es el único paso
+irreversible. **`user_data` ya no se borra a mano**: su FK es `ON DELETE CASCADE` (verificado en
+`pg_constraint`), igual que toda la comunidad (`community_profiles` →
+posts/comments/reactions/friendships). Borrarlo aparte era justo lo que abría la ventana.
+
+⚠️ **Decisión deliberada:** si dos asesorados del mismo coach comparten primer nombre, se
+quitan las dos tarjetas. Dejar publicado el nombre y los kilos de quien pidió que lo borren no
+es una opción, y una tarjeta se republica en un toque. Hoy no hay ambigüedad: las 6 tarjetas
+tienen nombres distintos. La respuesta trae `tarjetasQuitadas` para poder avisarle al coach.
+
+### ⚖️ Lo que no se puede borrar, se DECLARA
+
+`apex_data_backups` conserva instantáneas completas ~90 días (**medido: 25 filas, ventana de 83
+días, 32 MB**). Editar un respaldo para sacarle una persona lo rompe como respaldo, así que lo
+correcto es declarar la ventana. La política gana un **§10 «Qué pasa cuando eliminas tu
+cuenta»** que declara eso y también que se retira la tarjeta pública. Por eso **`LEGAL_V` sube
+a `2026-09-05-borrador`**: la regla del repo es que la versión sube cuando cambia el texto que
+la persona acepta. 🔒 No re-pide consentimiento a nadie — `consentSame` compara lo declarado
+(menor/adulto/edad/acudiente), no la versión, y `consentKeep` conserva la evidencia anterior.
+
+### Verificación
+
+- Suite **1037 → 1041** verde en los dos husos · hook 12/12 · `_prodcheck 574` verde,
+  `jsErrors: []`.
+- **7 sabotajes al arreglo, 7 muerden** por código de salida: orden roto · `user_data` a mano
+  otra vez · tarjeta sin acotar por coach · tarjeta que no se quita · un solo bucket · errores
+  que sobreviven · candado del modo fantasma aflojado.
+- Edge desplegada (versión 5). Antes de desplegar se comparó lo DESPLEGADO contra el repo: no
+  había deriva.
+- 🔬 **Sonda nueva `scripts/e2e/_probe-delete-account.mjs`**, que resuelve el problema de
+  cómo probar una función destructiva sin destruir: **un GET con sesión válida devuelve 405**,
+  y ese 405 lo produce la 2ª línea del handler — o sea que el módulo cargó entero. Más el 401
+  sin sesión. Con control de discriminación: una función inexistente da 404, no 405.
+
+### ⏭️ Lo que queda pendiente y hay que decirlo
+
+**El camino destructivo está verificado de forma ESTÁTICA, no ejecutado.** Correrlo exige borrar
+una cuenta real. Falta probarlo con una cuenta desechable: crear una, publicarle una tarjeta,
+borrarla, y comprobar que la tarjeta desaparece de la página pública.
+
+---
+
 ## 🔐 2026-09-05 — avi-v573: LA PUERTA DEL ACUDIENTE PARA PUBLICAR A UN MENOR
 
 **Decisión del PO:** *«la tarjeta la corregimos y la dejamos»* (sobre la tarjeta pública de
