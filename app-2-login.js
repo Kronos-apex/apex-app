@@ -1601,6 +1601,31 @@ function renderHome(){
   const activos=DB.clients.filter(c=>{ if(!clientIsBillable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
   const elActv=document.getElementById('h-actv');if(elActv)elActv.textContent=activos;
 
+  // ── v583 · LA NOTA QUE LES FALTABA A ESTAS DOS CIFRAS ─────────────────────────────────
+  // 🔴 NO cambia ninguna definición (decisión del PO, 6-sep): la caja del mes sigue siendo la
+  //    plata que ENTRÓ y «Activos» sigue siendo quien está al día — meter la gracia ahí sería
+  //    inflar la métrica, que es justo lo que v528 dejó dicho. Lo que se arregla es la LECTURA:
+  //    casi todos renuevan en los primeros días del mes, así que **el día 6 el tablero muestra
+  //    la caja casi en cero y «Activos» en mínimos por diseño**, con media lista en gracia.
+  //    Medido el 6-sep sobre sus datos reales: 3 al día, **7 en gracia ≈$715.000 pendientes**.
+  // 🔒 El monto va con «≈» porque es una ESTIMACIÓN declarada (lo que cada quien pagó la última
+  //    vez): no hay forma de saber cuánto pagará, y jamás se suma a la caja real.
+  const _pend=(typeof coachPendingRenewals==='function')?coachPendingRenewals(DB.clients,now.getTime()):{count:0,amount:0};
+  const _nIngr=document.getElementById('h-ingr-nota');
+  if(_nIngr){
+    const hay=_pend.count>0;
+    _nIngr.style.display=hay?'block':'none';
+    _nIngr.textContent=hay
+      ? `+ ${_pend.count} por renovar${_pend.amount>0?` · ≈$${Math.round(_pend.amount).toLocaleString('es-CO')}`:''}`
+      : '';
+  }
+  const _nActv=document.getElementById('h-actv-nota');
+  if(_nActv){
+    const hay=_pend.count>0;
+    _nActv.style.display=hay?'block':'none';
+    _nActv.textContent=hay?`+ ${_pend.count} en gracia`:'';
+  }
+
   // ── Sesiones esta semana ──
   let sesiones=0;
   Object.values(DB.history||{}).forEach(arr=>{

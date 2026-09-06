@@ -16150,6 +16150,81 @@ test('🔒 CABLEADO v582: la marca del enlace se toma ANTES de que auth se coma 
 });
 
 // ══════════════════════════════════════════════════════
+// v583 — LA NOTA DE LAS RENOVACIONES PENDIENTES
+// ══════════════════════════════════════════════════════
+// 🔴 Nace de DESMENTIR un hallazgo de la auditoría del 6-sep. Ese informe decía que «Ingresos
+// mes» y «Activos» medían la cadencia con que el coach teclea los pagos; medido contra los 26
+// pagos reales, es falso: las fechas son reales y encadenadas con su vencimiento. Lo que pasa es
+// un artefacto del CICLO — casi todos renuevan los primeros días del mes, así que el día 6 el
+// tablero muestra la caja casi en cero **por diseño**, con media lista en período de gracia.
+// Decisión del PO: no se cambia ninguna definición, se pone al lado lo que falta para leerlas.
+
+const _cliPago = (nombre, dueDate, amount, extra) => Object.assign({
+  id: 'p-' + nombre, name: nombre,
+  payments: [{ date: '2026-08-03T12:00:00Z', dueDate, amount }],
+}, extra || {});
+const _AHORA = new Date('2026-09-06T17:00:00Z').getTime();
+
+test('v583 · cuenta y estima SOLO a quien está en gracia', () => {
+  const clientes = [
+    _cliPago('EnGracia1', '2026-09-02T12:00:00Z', 150000),   // venció hace 4 días
+    _cliPago('EnGracia2', '2026-09-05T12:00:00Z', 125000),   // venció hace 1 día
+    _cliPago('AlDia', '2026-10-03T12:00:00Z', 120000),       // no ha vencido
+    _cliPago('PorVencer', '2026-09-11T12:00:00Z', 25000),    // vence en 5 días
+  ];
+  const r = core.coachPendingRenewals(clientes, _AHORA);
+  assert.strictEqual(r.count, 2, 'entró alguien que no está en gracia');
+  assert.strictEqual(r.amount, 275000, 'la estimación no es lo que cada quien pagó la última vez');
+  assert.strictEqual(core.coachInGrace(clientes, _AHORA), 2, 'las dos notas dejaron de derivarse de lo mismo');
+});
+
+test('🔴 v583 · un vencido de hace un mes NO es una renovación pendiente', () => {
+  // Meterlo aquí sería inflar una expectativa de plata que no va a llegar: Yeison lleva 37 días
+  // vencido y ya se fue. La ventana es la de v528 — aquella en la que el coach todavía alcanza.
+  const clientes = [_cliPago('Ido', '2026-07-31T12:00:00Z', 20000)];
+  assert.deepStrictEqual(core.coachPendingRenewals(clientes, _AHORA), { count: 0, amount: 0 });
+});
+
+test('🔒 v583 · quien no se cobra NO entra, y sin pagos tampoco', () => {
+  // `clientIsBillable` es la única puerta por la que un cobro llega a alguien (v539): una
+  // cortesía no puede aparecer como plata pendiente.
+  const cortesia = _cliPago('Cortesia', '2026-09-02T12:00:00Z', 150000, { courtesy: true });
+  assert.strictEqual(core.coachPendingRenewals([cortesia], _AHORA).count, 0, 'la cortesía entró a lo que se cobra');
+  // 🔴 EL CASO QUE DE VERDAD DISCRIMINA: la cortesía la tapa además `getStatus` (devuelve
+  //    'courtesy' antes de mirar pagos), así que con ella sola el sabotaje que quita
+  //    `clientIsBillable` sale VERDE — dos capas solapadas (clase v513). **El COACH entrenando
+  //    como asesorado sí llega a 'grace'** y es lo único que esa puerta ataja: no se cobra a sí
+  //    mismo, así que jamás puede aparecer como una renovación que le deben.
+  const coachSelf = _cliPago('Yo', '2026-09-02T12:00:00Z', 150000, { id: core.SELF_CLIENT_ID, isSelf: true });
+  assert.strictEqual(core.coachPendingRenewals([coachSelf], _AHORA).count, 0,
+    '🔴 el propio coach aparece como plata pendiente: no se cobra a sí mismo');
+  assert.strictEqual(core.coachPendingRenewals([{ id: 'x', name: 'Nuevo', payments: [] }], _AHORA).count, 0);
+  assert.deepStrictEqual(core.coachPendingRenewals(null, _AHORA), { count: 0, amount: 0 }, 'sin lista no puede lanzar');
+  // Y un pago de $0 cuenta como PERSONA pero no infla la plata.
+  const cero = _cliPago('PagoCero', '2026-09-03T12:00:00Z', 0);
+  assert.deepStrictEqual(core.coachPendingRenewals([cero], _AHORA), { count: 1, amount: 0 });
+});
+
+test('🔒 CABLEADO v583: la nota se pinta y las CIFRAS no se tocan', () => {
+  const src = _srcApp2();
+  const i = src.indexOf('function renderHome(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/coachPendingRenewals\(DB\.clients,\s*now\.getTime\(\)\)/.test(cuerpo),
+    'la nota dejó de calcularse: las dos cifras vuelven a leerse como un derrumbe el día 6');
+  assert.ok(/h-ingr-nota/.test(cuerpo) && /h-actv-nota/.test(cuerpo), 'falta pintar alguna de las dos notas');
+  // 🔴 EL CONTROL QUE IMPORTA: la caja del mes sigue siendo la plata que ENTRÓ y «Activos» sigue
+  //    siendo quien está al día. Sumar lo pendiente a cualquiera de las dos sería inventar plata
+  //    que nadie pagó, y meter la gracia en «Activos» es justo lo que v528 dejó prohibido.
+  assert.ok(/const activos=DB\.clients\.filter[\s\S]{0,160}s==='active'\|\|s==='expiring'/.test(cuerpo),
+    '🔴 «Activos» cambió de definición: la gracia no cuenta como al día (v528)');
+  assert.ok(!/ingr\s*\+=?\s*_pend/.test(cuerpo) && !/activos\s*\+\s*_pend/.test(cuerpo),
+    '🔴 lo pendiente se sumó a una cifra real: eso es inventar plata que nadie pagó');
+  // El monto es una estimación y se DECLARA como tal.
+  assert.ok(/≈\$/.test(cuerpo), 'el monto perdió el «≈»: se leería como plata que ya entró');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

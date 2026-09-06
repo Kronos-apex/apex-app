@@ -4,6 +4,58 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v583: LAS RENOVACIONES PENDIENTES, AL LADO DE LAS CIFRAS
+
+### 🔴 Esto nace de DESMENTIR un hallazgo de la auditoría del 6-sep
+Ese informe decía, en rojo: *«"Ingresos mes" y "Activos" miden la cadencia con que el coach teclea
+los pagos, no el negocio»*. **Medido contra los 26 pagos reales de la nube: es falso.**
+- Las fechas de pago son **reales y espaciadas**, cada una encadenada con su propio vencimiento
+  (Samuel 3-may → 7-jun → 6-jul → 6-ago, ~30 días). No hay ninguna señal de tecleo en lote — y no
+  existe registro de *cuándo* se digitó, así que la afirmación tampoco era comprobable.
+- El vaivén (may $515k/7 · jun $155k/2 · jul $646k/7 · ago $890k/9 · sep $120k/1) es un
+  **artefacto del CICLO**: casi todos renuevan los primeros días del mes, y dos días de retraso
+  mueven la plata al mes siguiente. Junio se ve hundido porque **Astrid y Kathe renovaron el 2-jul**.
+- **«Activos: 4 mientras entrenaron 9» tampoco es un bug**: compara dos definiciones distintas
+  («membresía al día» contra «entrenó»). El 6-sep había **7 personas en gracia** —vencieron entre
+  el 2 y el 5— y todas pagan cada mes.
+- **Conclusión: el 6 de cada mes su tablero se ve en ruinas POR DISEÑO. Es un problema de LECTURA,
+  no de cálculo.** Construir el «arreglo» que pedía el informe habría sido cambiar una métrica de
+  negocio sana. La memoria del proyecto quedó corregida con la medición al lado.
+
+### La decisión del PO, con los números delante
+No se cambia ninguna definición: se pone al lado lo que falta para leerlas.
+- «Ingresos mes» gana **«+ N por renovar · ≈$X»**; «Activos», **«+ N en gracia»**.
+- Solo cuenta `grace` (vencido hace ≤7 días, la ventana en la que el coach todavía alcanza, v528):
+  un `overdue` de 37 días no es una renovación pendiente, es alguien que se fue, y meterlo aquí
+  sería **inflar una expectativa de plata que no va a llegar**.
+- El monto va con **«≈»** porque es una estimación declarada (lo que cada quien pagó la última vez)
+  y **jamás se suma a la caja real**. Sobre sus datos de hoy: **7 por renovar ≈$715.000**.
+- 🔒 `clientIsBillable` sigue siendo la única puerta: ni el coach ni una cortesía pueden aparecer
+  como plata que alguien le debe.
+
+### QA
+- Suite **1061 → 1065** en los dos husos. Matriz nueva `_sabotaje-renovaciones.mjs`, **9/9 muerden**,
+  con los dos que de verdad importan: **sumar lo pendiente a la caja real** y **meter la gracia en
+  «Activos»** (lo que v528 dejó prohibido).
+- Harness nuevo `_verify-renovaciones.mjs`, **13/13**: afirma que las dos cifras NO cambian, que la
+  nota aparece solo cuando hay algo que decir, que el de 37 días no entra, y que **cabe** en la
+  baldosa a 390 y 360 px, claro y oscuro.
+- 🔴 **Dos sabotajes salieron VERDES y los dos eran defectos MÍOS, de distinta clase:**
+  1. El de la cortesía, porque `getStatus` ya devuelve `'courtesy'` antes de mirar pagos —**dos
+     capas solapadas** (clase v513). El caso que sí discrimina es **el coach entrenando como
+     asesorado**: ese sí llega a `grace` y es lo único que `clientIsBillable` ataja ahí.
+  2. El de «sumar lo pendiente a la caja» **no llegó a aplicarse**: en `String.replace` un `$` del
+     texto de reemplazo es un patrón especial (`$'` = todo lo que va después del match) y varias
+     líneas de este archivo llevan `'$'+ingr`. **El sabotaje escribía basura y salía verde sin
+     romper nada.** El runner pasa a reemplazar con FUNCIÓN.
+- 🔴 Y **un rojo era de mi sonda**: preguntarle a la BALDOSA si desborda mezcla dos cosas — la
+  cifra a 32 px sobre una baldosa de ~160 px ya desborda por su cuenta. Se mide lo de la NOTA, y
+  el control compara el mismo dato **con y sin ella**: idéntico, así que la nota no empeora nada.
+  ⚠️ Ese desborde de la baldosa es **preexistente y hoy inofensivo** (nada se ve cortado; es el
+  chevron absoluto), pero queda anotado: un margen que todavía no falla no es que funcione.
+
+---
+
 ## ⏮️ 2026-09-06 — v582: «OLVIDÉ MI CONTRASEÑA»
 
 **Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº2).

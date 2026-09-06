@@ -300,6 +300,11 @@ html[data-theme="light"] .mta {
 .sm{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
 .smv{font-size:32px;font-weight:800;letter-spacing:-1.5px}
 .sml{font-size:12px;color:var(--t2);margin-top:2px}
+/* v583 · la nota que explica una cifra que se lee mal el día 6 de cada mes (renovaciones
+   pendientes / en gracia). Va DEBAJO de la etiqueta y en tono de aviso, no de dato: la cifra
+   grande no cambia, solo deja de parecer un derrumbe. `--ort` es la variante legible de --or
+   (los tokens crudos son para RELLENAR: encima de su propio tinte no se leen, regla de v453). */
+.smn{font-size:10.5px;line-height:1.35;color:var(--ort);margin-top:4px;font-weight:600}
 /* Tarjeta de stat TOCABLE (abre su habitación-reporte). Reset de <button> + affordance. */
 .sm-tap{position:relative;display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
 .sm-tap:hover{border-color:var(--g2);box-shadow:0 5px 16px -6px rgba(0,0,0,.2)}

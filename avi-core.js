@@ -4547,6 +4547,39 @@ function premiumLocked(client, now) {
   return MS.getStatus(client, now) === 'overdue';
 }
 
+// ── RENOVACIONES PENDIENTES (v583) — la nota que le falta a dos cifras del Inicio ──────────
+// 🔴 POR QUÉ EXISTE, y es lo contrario de lo que decía la auditoría del 6-sep. Ese informe dijo
+// que «Ingresos mes» y «Activos» medían *la cadencia con que el coach teclea los pagos*. Medido
+// contra los 26 pagos reales de la nube: **es falso**. Las fechas son reales y espaciadas, cada
+// una encadenada con su propio vencimiento (Samuel 3-may → 7-jun → 6-jul → 6-ago, ~30 días).
+// Lo que pasa de verdad es un artefacto del CICLO: casi todos renuevan en los primeros días del
+// mes, así que dos días de retraso mueven la plata al mes siguiente —junio se ve hundido ($155k
+// contra $890k de agosto) porque Astrid y Kathe renovaron el 2-jul— y el día 6 de cada mes el
+// tablero muestra la caja casi en cero y «Activos» en mínimos **por diseño**, con la mitad de la
+// gente en período de gracia. Es un problema de LECTURA, no de cálculo.
+// 🔒 Por eso esto NO cambia ninguna definición (decisión del PO, 6-sep): la cifra grande sigue
+// siendo la misma y `MS.getStatus` no se toca. Se le pone al lado lo que falta para leerla.
+// Solo cuenta `grace` —vencido hace ≤7 días, la ventana en la que el coach todavía llega a
+// tiempo (v528)—; un `overdue` de 37 días no es una renovación pendiente, es alguien que se fue,
+// y meterlo aquí sería inflar una expectativa de plata que no va a llegar.
+// El monto es una ESTIMACIÓN declarada: lo que esa persona pagó la última vez. No hay forma de
+// saber cuánto pagará; por eso quien la pinta lo escribe con «≈» y nunca la suma a la caja real.
+function coachPendingRenewals(clients, now) {
+  const t = now != null ? new Date(now).getTime() : Date.now();
+  let count = 0, amount = 0;
+  (clients || []).forEach(c => {
+    if (!c || !clientIsBillable(c)) return;
+    if (MS.getStatus(c, t) !== 'grace') return;
+    count++;
+    const pays = (c.payments || []).slice().sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+    amount += (parseFloat(pays[0] && pays[0].amount) || 0);
+  });
+  return { count, amount };
+}
+// Cuántos están en gracia AHORA (el número que explica un «Activos» bajo). Se deriva de lo
+// anterior para que las dos notas no puedan decir cosas distintas.
+function coachInGrace(clients, now) { return coachPendingRenewals(clients, now).count; }
+
 const MS = {
   // `now` opcional (default Date.now()) para determinismo en tests/rank — los callers
   // viejos que pasan solo `c` siguen funcionando igual.
@@ -9545,6 +9578,8 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhone,
     waPhoneNote,
     coachCanReach,
+    coachPendingRenewals,
+    coachInGrace,
     pushPlanFromRoutines,
     genLimitationNote,
     limitationCoachAlert,
