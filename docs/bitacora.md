@@ -4,6 +4,64 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-06 — v582: «OLVIDÉ MI CONTRASEÑA»
+
+**Aprobado por el PO** de la auditoría del 6-sep (hallazgo 🔴 nº2).
+
+**El defecto:** `AUTH.resetPassword` y `AUTH.sendMagicLink` están escritas en `app-1-infra.js`
+desde el cutover de auth y **no las llamaba nadie**. El login no tenía enlace, así que quien
+perdía su contraseña **no tenía ninguna salida dentro de la app** — y el coach tampoco puede
+cambiársela: desde v2.0 la contraseña real vive en Supabase Auth, no en su ficha.
+
+### Lo que se construyó
+- **La puerta**: «¿Olvidaste tu contraseña?» en la tarjeta de login, como ENLACE y no como
+  segundo botón: no compite con «Entrar».
+- 🔒 **ANTI-ENUMERACIÓN**: la respuesta es la MISMA exista o no la cuenta. Decir «ese correo no
+  está registrado» convertiría el formulario en un detector de quién es cliente de AVI, y el
+  registro es abierto. El error que devuelve el servidor **no llega a la pantalla** (solo a la
+  consola); lo único que se distingue es lo que la persona puede arreglar: la red.
+- **Enfriamiento de 60 s** entre envíos: el servidor tiene su propio límite y no se gasta a toques.
+- 🔴 **La vuelta del correo tiene pantalla propia.** El enlace de recuperación deja la sesión
+  ABIERTA, así que la persona ya está dentro; lo que le falta es poder entrar MAÑANA. Sin
+  `#m-newpass`, esto habría sido **media feature**: entra una vez y vuelve a quedarse afuera.
+- 🔒 La marca del enlace se **fotografía al parsear `app-1-infra.js`**, antes del objeto `AUTH`:
+  `detectSessionInUrl` se come el hash en cuanto alguien pide el cliente por primera vez, así que
+  preguntarlo después es preguntarle a una URL que ya no lo tiene.
+- 🔒 La regla de contraseña la responde `passwordProblem` (avi-core), que es el **espejo** de la
+  del servidor: escribir aquí otra distinta sería prometer algo que Supabase rechaza después.
+- 🔒 Al **coach** se le escribe además el hash local (`saveCoachPass`): su propio «cambiar
+  contraseña» le pide la actual contra `ax_cph`, así que cambiarle solo la de la nube dejaría ese
+  formulario sin reconocerle la nueva.
+- Y un **enlace vencido o ya usado NO se calla**: quedarse en el login sin explicación después de
+  haber tocado un correo se lee como que la app está rota.
+
+### QA
+- Suite **1057 → 1061** en los dos husos. Matriz nueva `_sabotaje-reset-pass.mjs`, **9/9 muerden**.
+- Harness nuevo `_verify-reset-pass.mjs`, **21/21**, con `AUTH.resetPassword`/`updatePassword`
+  **ESPIADAS** (patrón `_verify-consent`): cero correos reales, cero rate-limit. Incluye el
+  CONTROL de anti-enumeración —una cuenta que no existe da un mensaje **idéntico, carácter por
+  carácter**— y que una contraseña débil o repetida mal **no llega a la nube**.
+- 🔴 **El sabotaje de la marca del enlace salió VERDE**: mi aserción comprobaba DÓNDE está la
+  línea, no que LEA el hash, así que un `=false` clavado pasaba — y con eso el enlace del correo
+  no se reconocería nunca. Apretada a `location.hash` + `type=recovery`.
+- Y **una aserción mía marcaba en ROJO código correcto** (pedía que `r.error` y `_forgotMsg` no
+  estuvieran a menos de 120 caracteres, cuando entre los dos solo hay un `warn`): se cambió por la
+  propiedad de fondo, que ningún mensaje de pantalla se arme con el error del servidor.
+- Cinturón del arranque, porque se tocó la cadena de boot y `app-1-infra.js`:
+  `_verify-arranque-modulos` **6/6** y `_repro-login-sin-internet` verde.
+
+### ⚠️ LO QUE ESTE TRABAJO **NO** PUEDE PROBAR — y es lo que hay que pedirle al PO
+Se comprobó contra producción que **el servidor acepta y sale a enviar**: `POST /auth/v1/recover`
+→ **200**, y en los logs de auth aparece `user_recovery_requested` con ~1 s de duración (o sea una
+llamada SMTP real). **Lo que ningún harness puede comprobar es que el correo LLEGUE a la bandeja.**
+El repo no declara SMTP propio, así que lo más probable es que use el servicio de correo por
+defecto de Supabase, que está limitado y suele caer en spam. **Hace falta que el PO pida el enlace
+con su propio correo y diga si llegó, y en cuánto tiempo.** Si no llega, la alternativa medida —y
+más acorde a cómo funciona su negocio— es que **el coach le restablezca la clave al asesorado desde
+la ficha**, por la edge function con service role, sin depender del correo de nadie.
+
+---
+
 ## ⏮️ 2026-09-06 — v581: EL TOPE DE AVISOS DEL INICIO DEL COACH
 
 **Decisión del PO (6-sep-2026)**, sobre su propia pantalla: hasta v580 se le pintaban hasta CINCO

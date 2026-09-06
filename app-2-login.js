@@ -355,6 +355,97 @@ async function doLogin(){
   }
 }
 
+// ══════════════ «OLVIDÉ MI CONTRASEÑA» (v582) ══════════════
+// 🔴 EL DEFECTO: `AUTH.resetPassword` y `AUTH.sendMagicLink` están escritas en app-1-infra.js
+//    desde el cutover de auth y **no las llamaba nadie**. Quien perdía su contraseña no tenía
+//    NINGUNA salida dentro de la app: dependía de escribirle al coach, y el coach no puede
+//    cambiársela (la contraseña real vive en Supabase Auth, no en su ficha).
+// 🔒 ANTI-ENUMERACIÓN: la respuesta es la MISMA exista o no la cuenta. Decir «ese correo no está
+//    registrado» convierte el formulario en un detector de quién es cliente de AVI, y el registro
+//    es abierto (cualquiera puede probar correos). Supabase también responde 200 siempre.
+let _resetEnviadoAt=0;
+const RESET_COOLDOWN_MS=60000;   // el servidor tiene su propio límite; esto evita gastarlo a toques
+function _forgotMsg(txt,esError){
+  const el=document.getElementById('l-forgot-msg'); if(!el)return;
+  el.textContent=txt; el.classList.toggle('err',!!esError); el.style.display=txt?'block':'none';
+}
+async function pedirResetPass(){
+  const inp=document.getElementById('lu');
+  const correo=(inp&&inp.value||'').trim().toLowerCase();
+  // Sin correo no hay a dónde mandar nada, y eso SÍ se puede decir sin filtrar quién existe.
+  if(!correo||correo.indexOf('@')<0){
+    _forgotMsg('Escribe primero tu correo aquí arriba y vuelve a tocar.',true);
+    if(inp)inp.focus();
+    return;
+  }
+  if(!AUTH.ready()){
+    _forgotMsg('Para esto necesitas internet: el enlace te lo mandamos por correo.',true);
+    return;
+  }
+  const falta=RESET_COOLDOWN_MS-(Date.now()-_resetEnviadoAt);
+  if(_resetEnviadoAt&&falta>0){
+    _forgotMsg(`Ya te lo mandamos. Revisa tu correo (y la carpeta de spam); si no llega, vuelve a intentar en ${Math.ceil(falta/1000)} segundos.`);
+    return;
+  }
+  const btn=document.getElementById('l-forgot');
+  if(btn){btn.disabled=true;btn.textContent='Enviando…';}
+  try{
+    const r=await AUTH.resetPassword(correo);
+    // 🔒 Un error DEVUELTO por el servidor no se le enseña: puede delatar si la cuenta existe o
+    //    si ya se pidió hace poco. Solo se distingue lo que la persona puede arreglar: la red.
+    if(r&&r.error) warn('AVI resetPassword:',r.error.message);
+    _resetEnviadoAt=Date.now();
+    _forgotMsg('Listo: si esa cuenta existe, te llega un correo con un enlace para crear una contraseña nueva. Míralo también en spam.');
+  }catch(e){
+    // Un THROW es que la petición no llegó — igual que en doLogin (v563).
+    warn('AVI resetPassword (la peticion no llego):',e&&e.message);
+    _forgotMsg('No pudimos conectarnos para mandarte el correo. Revisa tu internet e intenta de nuevo.',true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='¿Olvidaste tu contraseña?';}
+  }
+}
+
+// ── La vuelta del correo: crear la contraseña nueva ──────────────────────────────────
+// El enlace de recuperación deja la sesión ABIERTA, así que la persona ya entró. Lo que le falta
+// es poder entrar MAÑANA: sin esta pantalla, «olvidé mi contraseña» sería media feature.
+function openNewPassModal(){
+  const err=document.getElementById('np-err'); if(err)err.classList.remove('on');
+  const a=document.getElementById('np-new'), b=document.getElementById('np-rep');
+  if(a)a.value=''; if(b)b.value='';
+  om('m-newpass');
+  if(a)setTimeout(()=>a.focus(),120);
+}
+async function saveNewPass(){
+  const err=document.getElementById('np-err');
+  const nueva=(document.getElementById('np-new')||{}).value||'';
+  const rep=(document.getElementById('np-rep')||{}).value||'';
+  const falla=t=>{ if(err){err.textContent=t;err.classList.add('on');} };
+  // La regla de contraseña es UNA (`passwordProblem`, avi-core) y es el ESPEJO de la que aplica
+  // el servidor: escribir aquí otra distinta sería prometer algo que Supabase rechaza después.
+  const problema=(typeof passwordProblem==='function')?passwordProblem(nueva):(nueva.length<8?'Mínimo 8 caracteres':null);
+  if(problema){ falla(problema); return; }
+  if(nueva!==rep){ falla('Las dos contraseñas no son iguales.'); return; }
+  const btn=document.getElementById('np-save');
+  if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  try{
+    // El COACH lleva además un hash local (`ax_cph`) que `saveSettings` usa para pedirle su
+    // contraseña actual: si se le cambia solo en la nube, su propio «cambiar contraseña» dejaría
+    // de reconocerle la nueva. `saveCoachPass` escribe las dos.
+    if(AUTH_ROLE==='coach'&&typeof saveCoachPass==='function'){ await saveCoachPass(nueva); }
+    else{
+      const {error}=await AUTH.updatePassword(nueva);
+      if(error)throw new Error(error.message||'No se pudo guardar');
+    }
+    cm('m-newpass');
+    try{ window._aviRecovery=false; }catch(_e){}
+    toast('✅ Tu contraseña quedó lista');
+  }catch(e){
+    falla('No se pudo guardar: '+((e&&e.message)||'intenta de nuevo'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Guardar mi contraseña';}
+  }
+}
+
 function logout(){
   // F5b: parar los timers del GUIADO al salir (el rest-banner clásico ya no existe).
   try{
@@ -1141,6 +1232,18 @@ syncFromCloud().then(async ()=>{
       }
     }
   }catch(e){ warn('AVI boot auth (cae a legacy):',e&&e.message); }
+  // ── ¿Volvió del enlace de «olvidé mi contraseña»? (v582) ─────────────────────────────
+  // El enlace de recuperación deja la sesión abierta, así que a estas alturas ya está DENTRO.
+  // Lo que le falta es poder entrar mañana: se le pide la contraseña nueva. Con `settle` para
+  // que el modal no salga debajo del splash (mismo motivo que el retorno de Google).
+  // 🔴 Y si el enlace ya no sirve (vencido o usado), NO se calla: quedarse en el login sin
+  //    explicación después de haber tocado un correo se lee como que la app está rota.
+  if(window._aviRecovery&&!_verPagina){
+    if(authEntered){ setTimeout(()=>{ try{ openNewPassModal(); }catch(_e){} },1600); }
+    else{ setTimeout(()=>{ try{ _forgotMsg('Ese enlace ya venció o se usó. Toca «¿Olvidaste tu contraseña?» para pedir uno nuevo.',true);
+                                const c=document.getElementById('cin-card'),k=document.getElementById('cin-cta');
+                                if(c&&k){k.style.display='none';cinFormMode(true);c.style.display='block';} }catch(_e){} },1600); }
+  }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered&&!_verPagina) tryAutoLogin();
   // La banda de «estás mirando tu página» va SOLO si de verdad se saltó una sesión: a un visitante

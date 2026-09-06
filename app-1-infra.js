@@ -237,6 +237,13 @@ function sbAuthClient(){
   });
   return _sbc;
 }
+// ── ¿Esta carga viene del enlace de «olvidé mi contraseña»? (v582) ──────────────────────
+// 🔴 Se fotografía AQUÍ, al parsear el módulo, y no cuando haga falta: el enlace de recuperación
+// llega como `#access_token=…&type=recovery`, y `detectSessionInUrl:true` **se come el hash** en
+// cuanto alguien pide el cliente de auth por primera vez. Preguntarlo después es preguntarle a
+// una URL que ya no lo tiene. Va en `window` a propósito: un `const` de módulo no es global
+// (gotcha «let-no-es-window») y quien lo necesita vive en app-2.
+window._aviRecovery=(function(){ try{ return /[#&]type=recovery/.test(location.hash||''); }catch(e){ return false; } })();
 const AUTH={
   ready(){return sbAuthReady();},
   client(){return sbAuthClient();},

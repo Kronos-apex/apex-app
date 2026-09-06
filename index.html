@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=581">
+<link rel="stylesheet" href="styles.css?v=582">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -205,6 +205,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <input type="checkbox" id="l-rem" style="width:15px;height:15px;accent-color:#10E0A0;cursor:pointer">
         <label for="l-rem">Recordar mi email</label>
       </div>
+      <!-- v582 · LA PUERTA DE VUELTA. `AUTH.resetPassword` y `AUTH.sendMagicLink` estaban escritas
+           en app-1-infra.js desde el cutover de auth y NO LAS LLAMABA NADIE: quien perdía su
+           contraseña no tenía ninguna salida dentro de la app y dependía de escribirle al coach.
+           Va como ENLACE y no como botón: no compite con «Entrar». -->
+      <button type="button" id="l-forgot" class="cin-forgot" onclick="pedirResetPass()">¿Olvidaste tu contraseña?</button>
+      <div id="l-forgot-msg" class="cin-forgot-msg" style="display:none"></div>
       <button class="cin-btn lbtn" onclick="doLogin()">Entrar →</button>
       <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:rgba(255,255,255,.45);font-size:12px"><div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div>o<div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div></div>
       <button onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.25);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">
@@ -959,6 +965,30 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <!-- Visor de documentos legales (Política / Términos): lo llena showLegalDoc desde
      legal/*.md. Es .mdbg → el atrás de Android lo cierra por la rama genérica de
      _aviCloseTopOverlay. Se abre encima del wizard de registro (z-index 1000). -->
+<!-- v582 · CREAR UNA CONTRASEÑA NUEVA. Se abre SOLO al volver del enlace del correo: el enlace de
+     recuperación de Supabase deja la sesión abierta, así que la persona ya está DENTRO — lo que le
+     falta es poder entrar la próxima vez. Sin esta pantalla, «olvidé mi contraseña» sería media
+     feature: entraría una vez y volvería a quedarse afuera mañana. -->
+<div class="mdbg" id="m-newpass">
+  <div class="md" style="max-width:440px" role="dialog" aria-modal="true" aria-labelledby="mdt-27">
+    <div class="mdtitle" id="mdt-27"><span class="t-ic plain" data-ic="lock" data-ic-size="15">🔒</span> Crea tu contraseña nueva</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px">Ya estás dentro. Ponle una contraseña nueva para poder entrar la próxima vez.</div>
+    <div id="np-err" class="lerr" style="margin-bottom:12px">Revisa los datos</div>
+    <div style="position:relative;margin-bottom:10px">
+      <label class="flabel" for="np-new">Contraseña nueva</label>
+      <input id="np-new" class="inp" type="password" maxlength="100" autocomplete="new-password" placeholder="Mínimo 8 caracteres" style="width:100%;padding-right:42px">
+      <button type="button" onclick="togglePass(this,'np-new')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:31px;background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button>
+    </div>
+    <div style="position:relative;margin-bottom:6px">
+      <label class="flabel" for="np-rep">Repítela</label>
+      <input id="np-rep" class="inp" type="password" maxlength="100" autocomplete="new-password" placeholder="La misma de arriba" style="width:100%;padding-right:42px"
+        onkeydown="if(event.key==='Enter')saveNewPass()">
+      <button type="button" onclick="togglePass(this,'np-rep')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:31px;background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6">👁</button>
+    </div>
+    <div class="mdfooter"><button class="btn bp" id="np-save" onclick="saveNewPass()">Guardar mi contraseña</button></div>
+  </div>
+</div>
+
 <div class="mdbg" id="m-legal">
   <div class="md mdlg" style="display:flex;flex-direction:column" role="dialog" aria-modal="true" aria-labelledby="legal-title">
     <div class="mdtitle" id="legal-title">Documento</div>
@@ -1326,19 +1356,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=581"></script>
-<script src="muscle-map.js?v=581"></script>
-<script src="exercise-muscles.js?v=581"></script>
+<script src="avi-core.js?v=582"></script>
+<script src="muscle-map.js?v=582"></script>
+<script src="exercise-muscles.js?v=582"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=581"></script>
-<script src="app-2-login.js?v=581"></script>
-<script src="app-3-coach.js?v=581"></script>
-<script src="app-4-entreno.js?v=581"></script>
-<script src="app-5-salud.js?v=581"></script>
-<script src="app-6-extra.js?v=581"></script>
-<script src="app-7-community.js?v=581"></script>
+<script src="app-1-infra.js?v=582"></script>
+<script src="app-2-login.js?v=582"></script>
+<script src="app-3-coach.js?v=582"></script>
+<script src="app-4-entreno.js?v=582"></script>
+<script src="app-5-salud.js?v=582"></script>
+<script src="app-6-extra.js?v=582"></script>
+<script src="app-7-community.js?v=582"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

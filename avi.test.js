@@ -16066,6 +16066,90 @@ test('🔒 CABLEADO v581: el tope corre al FINAL de renderHome y apaga con su pr
 });
 
 // ══════════════════════════════════════════════════════
+// v582 — «OLVIDÉ MI CONTRASEÑA»
+// ══════════════════════════════════════════════════════
+// `AUTH.resetPassword` y `AUTH.sendMagicLink` estaban escritas desde el cutover de auth y NO LAS
+// LLAMABA NADIE: quien perdía su contraseña no tenía salida dentro de la app, y el coach tampoco
+// puede cambiársela (la contraseña real vive en Supabase Auth, no en su ficha).
+
+const _srcApp2 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
+const _fn2 = (src, nombre) => { const i = src.indexOf('function ' + nombre + '('); assert.ok(i > 0, nombre + ' desapareció de app-2-login.js'); return src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'); };
+
+test('🔒 v582 · la puerta EXISTE y está cableada al login', () => {
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('id="cin-card"');
+  assert.ok(i > 0, 'desapareció la tarjeta de login');
+  const card = html.slice(i, html.indexOf('id="cin-signup"'));
+  assert.ok(/id="l-forgot"[^>]*onclick="pedirResetPass\(\)"/.test(card),
+    '🔴 se perdió «¿Olvidaste tu contraseña?»: quien pierda su clave se queda otra vez sin salida');
+  assert.ok(/id="l-forgot-msg"/.test(card), 'sin sitio donde poner la respuesta, el botón no diría nada');
+  // Va ANTES de «Entrar» pero no compite con él: es un enlace, no un segundo botón primario.
+  assert.ok(card.indexOf('id="l-forgot"') < card.indexOf('class="cin-btn lbtn"'),
+    'el enlace quedó por debajo del botón de entrar');
+});
+
+test('🔒 v582 · el mensaje NO delata si la cuenta existe (anti-enumeración)', () => {
+  const cuerpo = _fn2(_srcApp2(), 'pedirResetPass');
+  assert.ok(/AUTH\.resetPassword\(correo\)/.test(cuerpo), 'pedirResetPass dejó de pedir el enlace');
+  // 🔴 Una sola redacción para el éxito: si aparecieran dos ramas de texto según el resultado del
+  //    servidor, el formulario se convertiría en un detector de quién es cliente de AVI — y el
+  //    registro es abierto, así que cualquiera puede probar correos.
+  assert.ok(/si esa cuenta existe/i.test(cuerpo), 'se perdió la redacción neutra');
+  // La propiedad exacta es que NINGÚN mensaje de pantalla se arme con el error del servidor.
+  // (La primera versión de esta aserción pedía que `r.error` y `_forgotMsg` no estuvieran a menos
+  //  de 120 caracteres, y marcaba en ROJO el código correcto: entre los dos solo hay un `warn`.)
+  assert.ok(!/_forgotMsg\([^)]*\berror\b/.test(cuerpo),
+    '🔴 el error del servidor volvió a la pantalla: eso delata si la cuenta existe');
+  assert.ok(/warn\([^)]*resetPassword/.test(cuerpo),
+    'el error dejó de registrarse siquiera en la consola: se pierde el diagnóstico');
+  // El correo se normaliza igual que en doLogin, o «  Juan@X.com » no encontraría su cuenta.
+  assert.ok(/\.trim\(\)\.toLowerCase\(\)/.test(cuerpo), 'el correo dejó de normalizarse');
+  // Y el candado anti-toques, para no gastar el límite del servidor.
+  assert.ok(/RESET_COOLDOWN_MS/.test(cuerpo), 'se perdió el enfriamiento entre envíos');
+});
+
+test('🔒 v582 · la vuelta del correo tiene pantalla, y la regla de contraseña es UNA', () => {
+  const src = _srcApp2();
+  const cuerpo = _fn2(src, 'saveNewPass');
+  // Sin esta pantalla «olvidé mi contraseña» sería media feature: el enlace deja la sesión
+  // abierta, así que entraría una vez y volvería a quedarse afuera mañana.
+  assert.ok(/passwordProblem\(nueva\)/.test(cuerpo),
+    '🔴 la contraseña nueva dejó de pasar por passwordProblem: dos definiciones de «clave válida», y la del servidor manda');
+  assert.ok(/nueva!==rep/.test(cuerpo), 'se perdió la comprobación de que las dos coincidan');
+  // El COACH lleva además un hash local que su propio «cambiar contraseña» verifica: cambiarle
+  // solo la de la nube dejaría ese formulario sin reconocerle la nueva.
+  assert.ok(/AUTH_ROLE==='coach'[\s\S]{0,80}saveCoachPass\(nueva\)/.test(cuerpo),
+    'al coach se le cambia solo la clave de la nube y su hash local queda desfasado');
+});
+
+test('🔒 CABLEADO v582: la marca del enlace se toma ANTES de que auth se coma el hash', () => {
+  const inf = require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = inf.indexOf('window._aviRecovery=');
+  assert.ok(i > 0, 'desapareció la marca del enlace de recuperación');
+  // 🔴 Tiene que estar en el NIVEL SUPERIOR del módulo y ANTES del objeto AUTH: `detectSessionInUrl`
+  //    se come el hash en cuanto alguien pide el cliente por primera vez, así que preguntarlo
+  //    después es preguntarle a una URL que ya no lo tiene. Y va en `window` porque un `const` de
+  //    módulo no es global y quien lo usa vive en app-2.
+  assert.ok(/^window\._aviRecovery=/m.test(inf), 'la marca dejó de tomarse al parsear el módulo');
+  assert.ok(i < inf.indexOf('const AUTH={'), 'la marca quedó DESPUÉS del cliente de auth: el hash ya no está');
+  // 🔴 Y que de verdad MIRE el hash: comprobar solo DÓNDE está deja pasar un `=false` clavado,
+  //    con lo que el enlace del correo no se reconocería nunca y la persona entraría sin que
+  //    nadie le pida la clave nueva. (Sabotaje 9 de la matriz salió VERDE por esto.)
+  const linea = inf.slice(i, inf.indexOf('\n', i));
+  assert.ok(/location\.hash/.test(linea) && /type=recovery/.test(linea),
+    '🔴 la marca dejó de leer el hash: el enlace del correo no se reconocería nunca');
+
+  const src = _srcApp2();
+  const iBoot = src.indexOf('syncFromCloud().then(');
+  const boot = src.slice(iBoot, src.indexOf('}).catch(', iBoot)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/window\._aviRecovery&&!_verPagina/.test(boot), 'el arranque dejó de mirar si viene del enlace');
+  assert.ok(/openNewPassModal\(\)/.test(boot), '🔴 se volvió media feature: entra pero nunca le pide la clave nueva');
+  // Y el enlace vencido NO se calla: quedarse en el login sin explicación después de tocar un
+  // correo se lee como que la app está rota.
+  assert.ok(/ya venció o se usó/.test(boot), 'un enlace vencido volvió a dejar a la persona sin explicación');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
