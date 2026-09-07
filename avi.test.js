@@ -295,6 +295,7 @@ const {
   pushPullBalance,
   clientHasCoach,
   chatDeliveryBlock,
+  chatViewMode,
   clientPlan,
   submuscleVolume,
   exDoseShort,
@@ -5061,6 +5062,58 @@ test('chatDeliveryBlock: avisa cuando el mensaje del coach NO le va a llegar', (
   assert.strictEqual(chatDeliveryBlock({ tier: 'premium' }), null);
   assert.strictEqual(chatDeliveryBlock({}), null);    // creado por coach, sin tier: sí tiene chat
   assert.strictEqual(chatDeliveryBlock(null), null);  // sin cliente no hay nada que avisar
+});
+
+test('chatViewMode: bajar de nivel no le confisca la conversación que ya tuvo', () => {
+  // Caso real medido 2026-09-07: Samuel Cifuentes, 40 mensajes en 5 meses (la conversación más
+  // larga de la app), pasó a 'libre' y el candado se comía el hilo entero. 68 de los 95
+  // mensajes que existen estaban en esa situación, en 5 personas.
+  const hilo = [{ from: 'coach', text: 'Vamos Samuel', date: '2026-05-23T14:28:12.599Z' }];
+  // Con coach: chat normal, se puede escribir.
+  assert.strictEqual(chatViewMode({ tier: 'premium' }, hilo), 'open');
+  assert.strictEqual(chatViewMode({}, hilo), 'open');          // creado por coach, sin tier
+  assert.strictEqual(chatViewMode({ tier: 'premium' }, []), 'open'); // sin mensajes también abre
+  // Sin coach PERO con historial: se lee, no se escribe. Esto es lo que arregla v584.
+  assert.strictEqual(chatViewMode({ tier: 'libre' }, hilo), 'archive');
+  assert.strictEqual(chatViewMode({ tier: 'app' }, hilo), 'archive');
+  // Sin coach y sin nada que enseñar: el candado de siempre (no hay historial que proteger).
+  assert.strictEqual(chatViewMode({ tier: 'libre' }, []), 'lock');
+  assert.strictEqual(chatViewMode({ tier: 'app' }, null), 'lock');
+  assert.strictEqual(chatViewMode({ tier: 'app' }, undefined), 'lock');
+  // Control de discriminación: si esto devolviera siempre lo mismo, el test pasaría igual.
+  // Los 3 estados tienen que ser DISTINTOS entre sí con la misma entrada de mensajes.
+  const estados = new Set([
+    chatViewMode({ tier: 'premium' }, hilo),
+    chatViewMode({ tier: 'libre' }, hilo),
+    chatViewMode({ tier: 'libre' }, []),
+  ]);
+  assert.strictEqual(estados.size, 3, 'los 3 estados del chat tienen que distinguirse');
+});
+
+test('renderClientMsgs: el archivo pinta el hilo de verdad, no otro candado', () => {
+  // Candado del candado: que `chatViewMode` diga 'archive' no sirve de nada si la pantalla
+  // sigue reemplazando el hilo. Se exige que el camino de archivo LLAME al pintor del hilo.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function renderClientMsgs');
+  assert.ok(i > 0, 'desapareció renderClientMsgs');
+  const cuerpo = src.slice(i, src.indexOf('function _clientSend'));
+  assert.ok(/chatViewMode\s*\(/.test(cuerpo), 'renderClientMsgs ya no consulta chatViewMode');
+  const rama = cuerpo.slice(cuerpo.indexOf("_vista!=='open'"), cuerpo.indexOf("if(composer)composer.style.display='';"));
+  assert.ok(rama.indexOf('_paintMsgThread') !== -1,
+    'la rama sin coach no pinta el historial: el candado se lo volvió a comer');
+  assert.ok(rama.indexOf("_vista==='lock'") !== -1,
+    'la rama sin coach ya no distingue archivo de candado');
+  // Y el pintor tiene que existir de verdad y ser UNO solo (dos copias = dos verdades).
+  assert.strictEqual((src.match(/function _paintMsgThread/g) || []).length, 1,
+    '_paintMsgThread duplicado o ausente');
+  // La burbuja tiene que poder CORTAR una palabra larga: un enlace pegado sin espacios
+  // desbordaba el hilo y arrastraba el scroll lateral de toda la pantalla (lo destapó el QA
+  // funcional de v584; es de siempre, pero el archivo enseña hilos largos a más gente).
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const regla = (css.match(/\n\.mb\{[^}]*\}/) || [''])[0];
+  assert.ok(/overflow-wrap|word-break/.test(regla),
+    'la burbuja de mensaje no corta palabras largas: un enlace pegado desborda la pantalla');
 });
 
 // ══════════════════════════════════════════════════════

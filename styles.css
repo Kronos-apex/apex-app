@@ -708,7 +708,7 @@ html[data-theme="light"] .mta {
 
 /* ── MESSAGES ── */
 .mthread{display:flex;flex-direction:column;gap:3px;padding:13px 14px;overflow-y:auto}
-.mb{max-width:78%;padding:9px 13px;border-radius:13px;font-size:13px;line-height:1.5}
+.mb{max-width:78%;padding:9px 13px;border-radius:13px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .mb.cs{background:var(--g);color:white;align-self:flex-end;border-bottom-right-radius:4px}
 .mb.cl{background:var(--w);border:1px solid var(--br);color:var(--t1);align-self:flex-start;border-bottom-left-radius:4px}
 .mt{font-size:10px;color:var(--t3);padding:0 4px 4px}

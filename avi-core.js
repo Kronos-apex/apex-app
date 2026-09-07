@@ -4140,6 +4140,22 @@ function chatDeliveryBlock(client) {
   const plan = clientPlan(client);
   return { plan, label: PLAN_LABEL[plan] || plan };
 }
+// ── Qué se le pinta al asesorado en su pestaña de mensajes (v584) ──────────────
+// El chat es SOLO-COACH, pero el candado se estaba comiendo TAMBIÉN la conversación que esa
+// persona YA tuvo: al bajar de nivel, `renderClientMsgs` reemplazaba el hilo entero por el
+// upsell. Medido 2026-09-07 en producción: **68 de los 95 mensajes que existen** viven en las
+// 5 conversaciones que hoy están bajo candado; la más larga es la de Samuel Cifuentes, 40
+// mensajes en 5 meses, invisibles para él desde que pasó a 'libre'.
+// Misma clase que el caso Samuel de v573: PODER QUITAR (o releer) algo no puede depender de
+// seguir cumpliendo el requisito para ponerlo. Lo que ya se dijo es suyo.
+// Escribir SIGUE siendo premium — eso no cambia. Puro: la UI solo pinta lo que esto devuelva.
+//   'open'    → hilo + caja de escribir (tiene coach)
+//   'archive' → hilo visible en SOLO LECTURA + aviso de por qué no puede responder
+//   'lock'    → el candado de siempre (no tiene coach y nunca hubo conversación)
+function chatViewMode(client, msgs) {
+  if (clientHasCoach(client)) return 'open';
+  return (Array.isArray(msgs) && msgs.length) ? 'archive' : 'lock';
+}
 // Nivel normalizado del cliente para etiquetas/UI.
 function clientPlan(client) {
   if (!client || isFreeClient(client)) return 'libre';
@@ -9898,6 +9914,7 @@ if (typeof module !== 'undefined' && module.exports) {
     premiumLocked,
     clientHasCoach,
     chatDeliveryBlock,
+    chatViewMode,
     clientPlan,
     PLAN_LABEL,
     USER_DATA_COLLECTIONS,

@@ -3637,12 +3637,25 @@ function renderClientMsgs(clientId){
   const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');con.innerHTML='';
   const composer=document.getElementById('cn-msg-composer');
   const quick=document.getElementById('cn-msg-quick'); // v316: respuestas rápidas
-  // El chat es SOLO-COACH (Premium + Coach). Libre y Premium app (sin coach) ven el
-  // candado con invitación a sumar coach. El resto de lo premium de app NO se toca.
-  if(!clientHasCoach(DB.clients.find(x=>x.id===clientId))){
+  // El chat es SOLO-COACH (Premium + Coach). ESCRIBIR sigue siendo lo premium; LEER lo que ya
+  // se habló, no. `chatViewMode` (avi-core, puro) decide cuál de los 3 estados toca — ver ahí
+  // por qué el candado ya no se come el historial (v584, caso Samuel: 40 mensajes ocultos).
+  const _vista=chatViewMode(DB.clients.find(x=>x.id===clientId),msgs);
+  if(_vista!=='open'){
     if(composer)composer.style.display='none';
     if(quick)quick.style.display='none';
-    con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía, ajusta tu plan y te responde.');
+    if(_vista==='lock'){
+      con.innerHTML=premiumLockHTML('Chat con tu coach','Habla directo con un entrenador que te guía, ajusta tu plan y te responde.');
+      return;
+    }
+    // 'archive': su conversación sigue siendo suya. Se pinta completa y el candado baja al
+    // sitio donde estaría la caja de escribir, que es lo único que de verdad se perdió.
+    _paintMsgThread(con,msgs);
+    const pie=document.createElement('div');
+    pie.style.cssText='margin-top:12px';
+    pie.innerHTML=premiumLockHTML('Aquí quedó tu conversación','Puedes releerla cuando quieras. Para volver a escribirle a tu coach necesitas plan con coach.');
+    con.appendChild(pie);
+    con.scrollTop=con.scrollHeight;
     return;
   }
   if(composer)composer.style.display='';
@@ -3657,13 +3670,19 @@ function renderClientMsgs(clientId){
       +'<div class="esub">Cuéntale cómo te fue, pregúntale una duda o avísale si algo te dolió'+(nom?', '+esc(nom):'')+'. Te responde por acá mismo.</div></div>';
     return;
   }
-  msgs.forEach(m=>{
+  _paintMsgThread(con,msgs);
+  con.scrollTop=con.scrollHeight;
+}
+// Pinta el hilo tal cual lo ve el ASESORADO. Una sola función para los dos estados que lo
+// muestran (chat abierto y archivo en solo lectura): dos copias serían dos verdades sobre la
+// misma conversación, y la del archivo envejecería sin que nadie la mire.
+function _paintMsgThread(con,msgs){
+  (msgs||[]).forEach(m=>{
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
     const mine=m.from!=='coach';
     const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
     const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
   });
-  con.scrollTop=con.scrollHeight;
 }
 // Ruta ÚNICA de envío del asesorado — la usan el textarea y las respuestas rápidas (v316).
 function _clientSend(text){
