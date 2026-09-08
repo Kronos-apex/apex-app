@@ -4,6 +4,67 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (3ª parte) — v590: LA PLANTILLA QUE PROMETE HOMBROS, Y EL FORMULARIO QUE HEREDABA
+
+Tercer frente: los dos hallazgos de plantillas, **D2-3** y **D2-4**.
+
+### 🔴 D2-3 — el nombre promete un músculo que no está adentro
+«Tren Superior — Espalda, Pecho y Hombros» son `e6, e83, e51, e84, e24`: **3 de espalda, 2 de
+pecho y cero de hombro**. Se le aplicó a tres personas y a **Kathe la dejó sin un solo ejercicio
+de hombro en TODO su plan** (4 rutinas, 25 ejercicios). El 7-sep se le corrigió a ella a mano;
+**la plantilla seguía igual para la siguiente persona**, que es lo que arregla esta versión.
+
+**Medido el 8-sep contra producción** (`scripts/plantillas-prometen.mjs`): **1 de las 5
+plantillas** y **2 de las 108 rutinas vivas** (maria rubio y Astrid, las dos con ese nombre
+heredado). Marca poco y lo que marca es real — que es justo lo que hace que un aviso se siga
+leyendo.
+
+`routinePromiseGap(name, exercises)` (avi-core, **PURA**) compara lo que el nombre nombra con los
+músculos que hay dentro, y `routinePromiseText` lo dice en palabras.
+- 🔒 **AVISA, NO BLOQUEA ni corrige sola**: puede sobrar la palabra en el nombre o faltar el
+  ejercicio, y quién de los dos es lo sabe el coach (regla del repo desde v424). La rutina se
+  guarda igual y el aviso sale después.
+- 🔒 El aviso va **donde se DECIDE aplicarla** (la lista de plantillas), no solo al guardar: ahí
+  es donde el hueco se ve **antes** de llegar al plan de una persona.
+- 🔒 La lista de palabras es **estrecha** a propósito. El control que de verdad discrimina costó
+  dos intentos (ver abajo).
+
+### 🔴 D2-4 — el formulario se quedaba con lo de la persona anterior
+Al modal de rutina se entra por **tres puertas** —«+ Nueva rutina», aplicar una plantilla y
+cargar una plantilla dentro del modal— y **solo la primera limpiaba el estado**. Las otras dos
+rellenaban nombre, nota y ejercicios y dejaban puesto lo que quedó de la rutina anterior: el
+**calentamiento personalizado** (`CUR.routineWarmup`) y el **«por qué de la rutina»** (`#r-why`),
+que es texto que **lee el asesorado**. Como la rutina anterior suele ser de OTRA persona,
+aplicarle una plantilla a Kathe podía escribirle el calentamiento y la explicación de Astrid.
+El arreglo es de raíz: **un solo `rfBlank()` y las tres puertas lo llaman**, para que la cuarta
+puerta que alguien abra mañana no nazca con el mismo defecto.
+
+### QA
+- Suite **1092 → 1097** en los dos husos · hook **12/12** · `_prodcheck 590` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-plantillas.mjs`: **10/10 muerden**.
+- Harness nuevo `_verify-plantillas.mjs`: **13/13**, y **REPRODUCE la herencia**: abre la rutina de
+  Astrid (con calentamiento y «por qué» propios), le aplica la plantilla a Kathe y afirma que no
+  se hereda nada — con el control de que la plantilla SÍ se carga (vaciar no puede borrar la
+  feature) y de que la plantilla sana NO lleva aviso. Contraste del aviso **9,65 oscuro / 5,79
+  claro**, y se MIRÓ la captura.
+- 🔬 **Un sabotaje salió VERDE y el defectuoso era MI CONTROL:** para probar que la regla no es
+  ancha usé «hombrera»… que contiene **«hombre», no «hombro»**, así que aprobaba igual con la
+  regla ancha puesta. El caso que sí discrimina es real del gimnasio: **«bíceps femoral» es el
+  isquiotibial**, un músculo de la PIERNA — sin esa excepción, una rutina de pierna llamada así
+  se marcaría por no traer curl de brazo. La regla la lleva ahora, con su control contrario (el
+  bíceps de brazo se sigue marcando).
+- 🔬 Y otro error propio: la primera captura salió **con el modal encima**, porque
+  `openNewRoutineFromTemplate` lo reabre con un `om` diferido a 50 ms. Las aserciones eran válidas
+  (miden geometría propia) pero la imagen no mostraba lo que decía mostrar.
+- **R3.3:** sin entrada en `AVI_NEWS` — lo que cambia es del COACH.
+
+### ⏭️ Lo que queda en manos del PO
+**La plantilla sigue sin hombros.** Qué ejercicio meterle (y si el nombre debe cambiar) es
+decisión suya: la app ahora se lo dice cada vez que la ve, y a las dos rutinas vivas con ese
+nombre —maria rubio y Astrid— les pasa lo mismo.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (2ª parte) — v589: MARCAR UN CHAT COMO LEÍDO DEJA DE SUBIR LA BIBLIOTECA
 
 Hallazgo **D2-2**, el segundo de los cuatro frentes.

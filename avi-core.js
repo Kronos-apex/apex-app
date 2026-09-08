@@ -9398,6 +9398,66 @@ function cloudWriteSealed(hostname, allowFlag) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// EL NOMBRE DE UNA RUTINA PROMETE, Y LO PROMETIDO TIENE QUE ESTAR DENTRO (v590)
+// ──────────────────────────────────────────────────────────────────────
+// Hallazgo D2-3 de la auditoría del 7-sep: la plantilla «Tren Superior — Espalda, Pecho y
+// Hombros» son `e6, e83, e51, e84, e24` = 3 de espalda + 2 de pecho y **cero de hombro**. Se le
+// aplicó a tres personas, y a Kathe la dejó sin un solo ejercicio de hombro en TODO su plan
+// (25 ejercicios, 4 rutinas). Se le corrigió a mano el 7-sep; la plantilla seguía igual para la
+// siguiente persona a la que se la aplicara.
+//
+// Medido el 8-sep contra producción: **1 de las 5 plantillas** y **2 de las 108 rutinas vivas**
+// (maria rubio y Astrid, las dos con ese mismo nombre heredado). O sea que la regla marca poco y
+// lo que marca es de verdad — que es justo lo que hace que un aviso se siga leyendo.
+//
+// 🔒 AVISA, NO BLOQUEA ni corrige sola: lo que arma el algoritmo se filtra, lo que arma el coach
+// se MARCA (regla del repo desde v424). El nombre puede estar bien y faltar el ejercicio, o al
+// revés; quien sabe cuál de los dos es, es él.
+// 🔒 Y la lista es ESTRECHA a propósito: solo palabras que nombran un músculo del catálogo sin
+// ambigüedad. Una regla ancha aquí marcaría rutinas correctas y se aprendería a ignorar, que es
+// como muere un gate (v424: `sentadilla` borraba el sit-to-stand).
+const ROUTINE_PROMISES = [
+  [/\bhombros?\b/i, 'hombros', 'hombros'],
+  [/\bpecho\b|\bpectoral(es)?\b/i, 'pecho', 'pecho'],
+  [/\bespalda\b|\bdorsal(es)?\b/i, 'espalda', 'espalda'],
+  // 🔒 «bíceps FEMORAL» es el isquiotibial: un músculo de la PIERNA. Sin esta excepción, una
+  // rutina de pierna llamada «Bíceps femoral y glúteo» se marcaría por no traer curl de brazo
+  // — el falso positivo que hace que un aviso se aprenda a ignorar (v424). El `\b` no basta:
+  // la palabra es la misma y lo que la desambigua es lo que viene DESPUÉS.
+  [/\bb[ií]ceps\b(?!\s+femoral)/i, 'biceps', 'bíceps'],
+  [/\btr[ií]ceps\b/i, 'triceps', 'tríceps'],
+  [/\bgl[uú]teos?\b/i, 'gluteo', 'glúteo'],
+  [/\bpiernas?\b|\bcu[aá]driceps\b/i, 'piernas', 'piernas'],
+];
+
+// Qué músculos promete el NOMBRE y no están entre los ejercicios. PURA. Devuelve las etiquetas
+// como se le dicen a una persona ([] si no falta nada, o si el nombre no promete nada).
+function routinePromiseGap(name, exercises) {
+  const txt = String(name == null ? '' : name);
+  const tiene = new Set();
+  for (const e of (Array.isArray(exercises) ? exercises : [])) {
+    const m = e && e.muscle;
+    if (m) tiene.add(String(m).toLowerCase());
+  }
+  const falta = [];
+  for (const [re, muscle, label] of ROUTINE_PROMISES) {
+    if (re.test(txt) && !tiene.has(muscle)) falta.push(label);
+  }
+  return falta;
+}
+
+// La frase que se le muestra al coach. PURA y sin DOM: '' cuando no hay nada que decir.
+// Dice lo que PASA («no tiene ninguno»), no lo que él tiene que hacer: puede ser que sobre la
+// palabra en el nombre y no que falte el ejercicio.
+function routinePromiseText(falta) {
+  const l = Array.isArray(falta) ? falta.filter(Boolean) : [];
+  if (!l.length) return '';
+  const lista = l.length === 1 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1];
+  return 'El nombre dice ' + lista + ', y no hay ningún ejercicio de ' +
+    (l.length === 1 ? 'esa zona' : 'esas zonas') + '.';
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // LO QUE EL COACH ESCRIBE SIN RED (v588) — hallazgo D1-2 de la auditoría del 7-sep
 // ──────────────────────────────────────────────────────────────────────
 // El asesorado tiene red de seguridad desde la auditoría del 2026-06-21: respaldo local
@@ -10261,6 +10321,9 @@ if (typeof module !== 'undefined' && module.exports) {
     errReportGate,
     cloudWriteSealed,
     mergeCoachMsgs,
+    ROUTINE_PROMISES,
+    routinePromiseGap,
+    routinePromiseText,
     coachQueuePut,
     coachQueueCanReplay,
     COACH_Q_MAX_ENTRY,

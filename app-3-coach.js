@@ -3067,14 +3067,28 @@ function renderDetailRoutines(c){
   });
 }
 
+// 🔴 v590 · EL FORMULARIO DE RUTINA SE VACÍA EN UN SOLO SITIO (hallazgo D2-4).
+// Al modal se entra por TRES puertas —«+ Nueva rutina», aplicar una plantilla y cargar una
+// plantilla dentro del modal— y solo la primera limpiaba el estado. Las otras dos rellenaban
+// nombre, nota y ejercicios y dejaban puesto lo que quedó de la rutina anterior: el
+// CALENTAMIENTO personalizado (`CUR.routineWarmup`) y el «por qué de la rutina» (`#r-why`), que
+// es texto que LEE el asesorado. Como la rutina anterior suele ser de OTRA persona, aplicarle una
+// plantilla a Kathe podía escribirle el calentamiento y la explicación de Astrid.
+// Vaciar en una función y que las tres puertas la llamen es lo único que impide que la cuarta
+// puerta que alguien abra mañana nazca con el mismo defecto.
+function rfBlank(){
+  const g=id=>document.getElementById(id);
+  ['rf-name','rf-note','rf-shift','r-why'].forEach(id=>{ const el=g(id); if(el)el.value=''; });
+  const day=g('rf-day'); if(day)day.value='Lunes';
+  CUR.editRoutineIdx=null; CUR.routineExs=[]; CUR.restSec=60; CUR.routineWarmup=null;
+  document.querySelectorAll('#rf-rp .rp').forEach(b=>b.classList.remove('on'));
+  const rp=document.querySelectorAll('#rf-rp .rp')[1]; if(rp)rp.classList.add('on');
+}
 function openNewRoutine(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
-  CUR.editRoutineIdx=null;
+  rfBlank();
   document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
-  document.getElementById('rf-name').value='';document.getElementById('rf-note').value='';document.getElementById('rf-day').value='Lunes';document.getElementById('rf-shift').value='';const whyElNew=document.getElementById('r-why');if(whyElNew)whyElNew.value='';
-  CUR.routineExs=[];CUR.restSec=60;CUR.routineWarmup=null;
-  document.querySelectorAll('#rf-rp .rp').forEach(b=>b.classList.remove('on'));document.querySelectorAll('#rf-rp .rp')[1].classList.add('on');
   // Show template loader only if templates exist
   const tplRow=document.getElementById('tpl-load-row');
   if(tplRow)tplRow.style.display=DB.templates.length?'block':'none';
@@ -3378,6 +3392,10 @@ function saveRoutine(){
   }
   c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);cm('m-routine');renderDetailRoutines(c);renderHome();
+  // v590 · si el NOMBRE promete un músculo que no está adentro, se dice — después de guardar y
+  // sin bloquear: puede sobrar la palabra en el nombre o faltar el ejercicio, y eso lo sabe él.
+  const _gap=(typeof routinePromiseGap==='function')?routinePromiseGap(name,rutData.exercises):[];
+  if(_gap.length)setTimeout(()=>toast('⚠️ '+routinePromiseText(_gap)),900);
   if(CUR.loggedAs==='client'){renderClientAllRoutines(c);renderClientToday(c);} // coach-en-su-entreno o cliente libre: refrescar SU vista
 }
 

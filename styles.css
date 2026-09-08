@@ -2287,3 +2287,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .medacts button:hover{border-color:var(--g);color:var(--g)}
 .medacts button:focus-visible{outline:2px solid var(--g);outline-offset:2px}
 @media (max-width:360px){.medgrid{grid-template-columns:1fr}}
+
+/* v590 · «el nombre promete un músculo que no está adentro» en la lista de plantillas.
+   Texto sobre fondo amarillo con los tokens de contraste (--ylt, no el token crudo: v570/v587). */
+.tpl-gap{margin-top:5px;background:var(--yll);color:var(--ylt);border-radius:var(--rsm);
+  padding:5px 8px;font-size:11.5px;font-weight:600;line-height:1.4}

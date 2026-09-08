@@ -16758,6 +16758,89 @@ test('🔒 v589 · ESPEJO: el cliente llama a la función que la migración defi
 });
 
 // ══════════════════════════════════════════════════════
+// v590 · EL NOMBRE PROMETE Y LO PROMETIDO ESTÁ ADENTRO (D2-3) · EL FORMULARIO SE VACÍA (D2-4)
+// ══════════════════════════════════════════════════════
+// «Tren Superior — Espalda, Pecho y Hombros» = 3 de espalda + 2 de pecho y CERO de hombro.
+// Se aplicó a 3 personas y dejó a Kathe sin un solo ejercicio de hombro en todo su plan.
+// Medido el 8-sep: 1 de 5 plantillas y 2 de 108 rutinas vivas — marca poco, y lo que marca es real.
+
+const _ejs = (...ms) => ms.map(m => ({ muscle: m, name: 'Ej ' + m }));
+
+test('v590 · el nombre que promete hombros sin un solo ejercicio de hombro se marca', () => {
+  const falta = core.routinePromiseGap('Tren Superior — Espalda, Pecho y Hombros', _ejs('espalda', 'espalda', 'pecho'));
+  assert.deepStrictEqual(falta, ['hombros']);
+  assert.match(core.routinePromiseText(falta), /nombre dice hombros/);
+  // El caso de Kathe, ya corregido a mano: con el ejercicio dentro, la app se calla.
+  assert.deepStrictEqual(core.routinePromiseGap('Tren Superior — Espalda, Pecho y Hombros',
+    _ejs('espalda', 'pecho', 'hombros')), []);
+});
+
+test('🔒 v590 · la regla es ESTRECHA: no marca lo que no promete (una regla ancha se aprende a ignorar)', () => {
+  // Nombres reales del coach que NO prometen un músculo concreto: ninguno puede marcarse.
+  ['Día 1', 'Full Body', 'Rutina A', 'Tren superior', 'Cardio y core', 'Fuerza general']
+    .forEach(n => assert.deepStrictEqual(core.routinePromiseGap(n, _ejs('pecho')), [], 'marcó «' + n + '»'));
+  // 🔬 EL CONTROL QUE DE VERDAD DISCRIMINA, y costó dos intentos: «hombrera» NO contiene
+  //    «hombro» (contiene «hombre»), así que ese caso aprobaba con la regla ancha puesta y no
+  //    probaba nada — lo cazó el sabotaje, no la revisión. El caso real del gimnasio es que
+  //    **«bíceps femoral» es el isquiotibial**: una rutina de PIERNA con ese nombre no promete
+  //    ningún curl de brazo.
+  assert.deepStrictEqual(core.routinePromiseGap('Bíceps femoral y glúteo', _ejs('piernas', 'gluteo')), [],
+    '🔴 marcó «bíceps femoral» como si prometiera bíceps de brazo: es un músculo de la pierna');
+  // Y su contrario, o acotar sería borrar la regla: el bíceps de brazo SÍ se sigue marcando.
+  assert.deepStrictEqual(core.routinePromiseGap('Bíceps y espalda', _ejs('espalda')), ['bíceps']);
+  assert.deepStrictEqual(core.routinePromiseGap('', _ejs('pecho')), []);
+  assert.deepStrictEqual(core.routinePromiseGap(null, null), [], 'sin datos no puede lanzar');
+});
+
+test('🔒 v590 · las tildes NO desactivan la regla (el `\\b` junto a una vocal acentuada, v542)', () => {
+  // Escrito con tilde y sin tilde: los dos tienen que marcar, o la regla depende del teclado.
+  assert.deepStrictEqual(core.routinePromiseGap('Bíceps y tríceps', _ejs('pecho')), ['bíceps', 'tríceps']);
+  assert.deepStrictEqual(core.routinePromiseGap('Biceps y triceps', _ejs('pecho')), ['bíceps', 'tríceps']);
+  assert.deepStrictEqual(core.routinePromiseGap('Glúteo y pierna', _ejs('core')), ['glúteo', 'piernas']);
+  assert.deepStrictEqual(core.routinePromiseGap('Gluteo y piernas', _ejs('core')), ['glúteo', 'piernas']);
+  // Y el texto enumera bien cuando son dos o más.
+  assert.match(core.routinePromiseText(['glúteo', 'piernas']), /glúteo y piernas.*esas zonas/);
+  assert.strictEqual(core.routinePromiseText([]), '', 'sin huecos no se dice nada');
+});
+
+test('🔒 CABLEADO v590: las TRES puertas del formulario de rutina lo vacían primero', () => {
+  const src3 = _srcApp3(), src2 = _srcApp2();
+  assert.ok(/function rfBlank\(\)\{/.test(src3), '🔴 desapareció el vaciado compartido');
+  // Lo que de verdad se filtraba entre asesorados: el calentamiento y el «por qué» que lee el
+  // asesorado. Los dos tienen que quedar limpios en el vaciado.
+  const blank = src3.slice(src3.indexOf('function rfBlank(){'), src3.indexOf('function openNewRoutine('));
+  assert.ok(/CUR\.routineWarmup=null/.test(blank), '🔴 el calentamiento personalizado ya no se limpia');
+  assert.ok(/'r-why'/.test(blank), '🔴 el «por qué» de la rutina ya no se limpia: lo hereda otra persona');
+  assert.ok(/CUR\.editRoutineIdx=null/.test(blank) && /CUR\.routineExs=\[\]/.test(blank));
+  // Puerta 1: «+ Nueva rutina».
+  const nueva = src3.slice(src3.indexOf('function openNewRoutine('), src3.indexOf('// ══════════════════════ AUTO-GENERADOR'));
+  assert.ok(/rfBlank\(\)/.test(nueva), '🔴 «+ Nueva rutina» dejó de vaciar');
+  // Puertas 2 y 3: aplicar una plantilla, y cargarla dentro del modal.
+  const desdeTpl = src2.slice(src2.indexOf('function openNewRoutineFromTemplate('), src2.indexOf('function openTemplatePicker('));
+  assert.ok(/rfBlank\(\)/.test(desdeTpl), '🔴 aplicar una plantilla vuelve a heredar el estado anterior (D2-4)');
+  const picker = src2.slice(src2.indexOf('function openTemplatePicker('));
+  assert.ok(/rfBlank\(\)/.test(picker.slice(0, picker.indexOf('om(\'m-tpl-picker\')'))),
+    '🔴 cargar una plantilla dentro del modal vuelve a heredar el estado anterior');
+});
+
+test('🔒 CABLEADO v590: el aviso se pinta donde se DECIDE aplicar la plantilla, y al guardar', () => {
+  const src2 = _srcApp2(), src3 = _srcApp3();
+  const lista = src2.slice(src2.indexOf('function renderTemplates('), src2.indexOf('function openNewTemplate('));
+  assert.ok(/routinePromiseGap\(tpl\.name,\s*tpl\.exercises\)/.test(lista),
+    '🔴 la lista de plantillas dejó de mirar si el nombre cumple');
+  assert.ok(/tpl-gap/.test(lista) && /esc\(routinePromiseText/.test(lista),
+    '🔴 el aviso no se pinta (o dejó de escaparse)');
+  const save = src3.slice(src3.indexOf('function saveRoutine('), src3.indexOf('function delRoutine('));
+  assert.ok(/routinePromiseGap\(name,\s*rutData\.exercises\)/.test(save),
+    '🔴 guardar una rutina ya no comprueba lo que promete su nombre');
+  // 🔒 AVISA, NO BLOQUEA: la rutina se guarda igual — el nombre puede sobrar o el ejercicio faltar,
+  //    y eso lo decide el coach (regla del repo desde v424).
+  assert.ok(save.indexOf('sv(\'ax_c\',DB.clients)') < save.indexOf('routinePromiseGap'),
+    '🔴 el aviso se metió ANTES de guardar: dejaría de ser un aviso y sería un bloqueo');
+  assert.ok(!/return[^\n]*routinePromiseGap/.test(save), 'el aviso corta el guardado');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

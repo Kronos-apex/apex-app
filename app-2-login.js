@@ -565,12 +565,16 @@ function renderTemplates(){
     // salia con esc() en el selector de plantillas de mas abajo — un campo escapado en un sitio
     // y crudo en el de al lado es como se ve un descuido, no una decision.
     const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${esc(tpl.tag)}</span>`:'';
+    // v590 · el aviso va DONDE SE DECIDE aplicarla, no solo al guardar: así el hueco se ve antes
+    // de que llegue al plan de una persona, que es como Kathe se quedó sin hombros.
+    const _gapTpl=(typeof routinePromiseGap==='function')?routinePromiseGap(tpl.name,tpl.exercises):[];
     div.innerHTML=`
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">
         <div class="rcnum" style="background:var(--bll);color:var(--blt)">${typeof aviIcon==='function'?aviIcon('folder',16):'📂'}</div>
         <div class="rci">
           <div class="rcname">${esc(tpl.name)} ${tagHtml}</div>
           <div class="rcmeta">${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${typeof aviIcon==='function'?aviIcon('timer',11):'⏱'}${tpl.restSec||60}s</div>
+          ${_gapTpl.length?`<div class="tpl-gap">⚠️ ${esc(routinePromiseText(_gapTpl))}</div>`:''}
         </div>
         <div class="tplacts" style="display:flex;gap:4px;margin-right:4px">
           <button class="btn bp bsm" style="padding:0 12px;min-height:36px;font-size:11px" onclick="event.stopPropagation();applyTemplateToClient('${tpl.id}')">Aplicar →</button>
@@ -815,13 +819,13 @@ function openTemplateClientSelector(tplId){
 
 function openNewRoutineFromTemplate(tpl){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
-  CUR.editRoutineIdx=null;
+  // v590 · PRIMERO se vacía (hallazgo D2-4): sin esto, el calentamiento y el «por qué» de la
+  // rutina que el coach abrió antes —normalmente de OTRO asesorado— se quedaban puestos.
+  if(typeof rfBlank==='function')rfBlank();
   document.getElementById('mr-title').innerHTML=`Nueva rutina — <span style="color:var(--gt)">${esc(c.name)}</span>`;
   document.getElementById('save-rut-btn').textContent='Guardar rutina';
   document.getElementById('rf-name').value=tpl.name.replace(' (plantilla)','');
   document.getElementById('rf-note').value=tpl.note||'';
-  document.getElementById('rf-day').value='Lunes';
-  document.getElementById('rf-shift').value='';
   CUR.routineExs=(tpl.exercises||[]).map(e=>({...e}));
   CUR.restSec=tpl.restSec||60;
   const restMap={45:0,60:1,90:2,120:3,180:4};
@@ -848,7 +852,8 @@ function openTemplatePicker(){
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{
       cm('m-tpl-picker');
-      // Populate routine modal with template data
+      // v590 · misma puerta, mismo vaciado previo (hallazgo D2-4).
+      if(typeof rfBlank==='function')rfBlank();
       document.getElementById('rf-name').value=tpl.name.replace(' (plantilla)','');
       document.getElementById('rf-note').value=tpl.note||'';
       CUR.routineExs=(tpl.exercises||[]).map(e=>({...e}));
