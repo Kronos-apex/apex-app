@@ -100,7 +100,35 @@ No se le pasa nada al PO sin medirlo aparte. De los hallazgos que deciden trabaj
 14. 🟡 El motor de estancamiento **ya existe** (`shockTargets`) y «Cargas» no lo usa: 10 de 11
     activos tienen al menos un ejercicio con 3+ sesiones al mismo peso.
 
-## Estado
+## Estado — ACTUALIZADO el 8-sep
+
+El PO mandó atacar los cuatro puntos que quedaban. **Los cuatro están en producción** (v588-v591,
+`_prodcheck 591` verde con `jsErrors: []`):
+
+| # | Hallazgo | Estado |
+|---|---|---|
+| D1-1 | el candado se come el historial del chat | ✅ **v584** |
+| D1-2 | el mensaje del coach sin red se pierde en silencio | ✅ **v588** |
+| D2-2 | abrir un chat resube la biblioteca (241 KB) | ✅ **v589** — 237.002 B → 438 B |
+| D2-3 | la plantilla promete hombros y no los tiene | ✅ **v590** — la app lo dice; la plantilla la corrige el PO |
+| D2-4 | aplicar una plantilla hereda el calentamiento de otro | ✅ **v590** — y también heredaba el «por qué» |
+| D3-1 / D3-14 | «Cargas» muestra la última sesión, no el récord | ✅ **v585** |
+| D3-2 | los récords se quedan atascados | ✅ **v591** — 9 récords de 4 personas |
+| D3-3 | el coach no ve ninguna foto de progreso | ✅ **v586** |
+| D3-4 | el peso corporal no se pide ni se recuerda | ✅ **v587** (la mitad: la ficha dice de cuándo es) |
+
+### Lo que NO se hizo, y por qué
+- **D1-3** 🟡 el badge de no leídos no distingue un aviso automático de un mensaje humano. Sin
+  tocar: es el mismo dato que ya corrigió el baseline de esta ronda y no cuesta trabajo perdido.
+- **D2-1** 🔴 `migrateExercises` revierte en cada login la edición del coach sobre un ejercicio del
+  catálogo. **Sin víctima hoy: 374/374 del catálogo y 0 ejercicios propios**, medido otra vez el
+  8-sep. Queda anotado como la mina que es.
+- **La plantilla sigue sin hombros.** Qué ejercicio meterle es decisión del PO; la app se lo dice
+  ahora cada vez que la ve, y a las dos rutinas vivas con ese nombre les pasa lo mismo.
+- **Pedirle al asesorado que se pese** (la otra mitad de D3-4): sigue sin construir, por lo dicho
+  en v587 (cadencia y tono los deciden él y un especialista, y hay dos menores en la base).
+
+## Estado (al cierre de la ronda, 7-sep)
 
 **Diagnóstico, salvo dos cosas que el PO mandó hacer el mismo día:**
 
