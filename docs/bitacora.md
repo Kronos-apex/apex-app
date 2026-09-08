@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (5ª parte) — v592: EL INICIO DEL COACH DEJA DE TAPAR A QUIEN SÍ ENTRENA
+
+Reporte del PO, el mismo día: *«en la pantalla de inicio de mi panel de coach está muy saturada de
+información innecesaria y me ocultaste a los asesorados que han entrenado en el día; quita esa
+tarjeta [la de las versiones] y la de empujar asesorados, eso me contamina la pantalla y me oculta
+a los que SÍ utilizan la aplicación»*.
+
+### 🔴 Tenía razón, y el defecto lo metí yo en v581
+El tope de dos avisos de v581 ordenaba por **frecuencia × caducidad** (regla de v567) y por eso
+dejó «entrenaron hoy» de **cuarto**. Los dos de arriba están casi siempre presentes, así que en la
+práctica no salía nunca. **Medido el 8-sep contra sus datos reales: 7 personas entrenaron ese día
+y ninguna se veía**, mientras la pantalla la ocupaban 7 vencimientos y 16 dormidos.
+
+La regla de v567 no era falsa; lo que estaba mal era aplicarla a una pantalla cuyo dueño ya dijo
+qué quiere ver primero. **Eso lo decide él, no una heurística.**
+
+### Lo que cambió
+1. **«Entrenaron hoy» va primero** — y no solo en la lista de prioridad: el contenedor estaba
+   **debajo de la retención, «Mi entrenamiento» y «Comunidad de mi gym»**, o sea a dos pantallas de
+   scroll. Se subió justo después de las cuatro cifras. Medido en el harness: queda a **587 px en
+   una pantalla de 844**, encima de la retención.
+2. **Fuera el banner de «Empujar 💪»** del Inicio. 🔒 **No se perdió nada**: la lista completa —con
+   las dos secciones de v520 y la nota de v521— vive en el reporte «Sin entrenar», que se abre
+   desde la cifra que sigue en la pantalla, **y el botón de empujar se mudó con ella**, solo en la
+   sección de los alcanzables (el candado de v580 viaja con el botón, no con la pantalla).
+3. **Fuera la tarjeta «qué versión trae cada teléfono»** (v541). El PO: *«es gigante y no sé cuál
+   es su función real»* — y no la sabía porque **no era suya**: se construyó para responder una
+   pregunta MÍA. 🔒 La capacidad no se pierde: el sello se sigue escribiendo, **la ficha de cada
+   asesorado sigue diciendo su versión** (que es donde sirve cuando alguien reporta algo) y la
+   vista de conjunto se mudó a `scripts/versiones-telefonos.mjs`, que lee la nube sin ocupar su
+   Inicio. Hoy dice: 16 atrasados, con Chema en v563 y diana ramirez en v544.
+
+### QA
+- Suite **1102 → 1103** en los dos husos · hook **12/12** · `_prodcheck 592` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-inicio-coach.mjs`: **7/7 muerden** (incluidos los dos que devuelven las
+  tarjetas al marcado y el que baja «entrenaron hoy» otra vez).
+- Harness nuevo `_verify-inicio-coach.mjs`: **11/11**, montado con su situación REAL del 8-sep
+  (7 entrenaron, 7 por vencer, 16 dormidos). Afirma lo que se VE y **dónde** se ve, con los
+  controles de que los vencimientos siguen, de que sin nadie entrenando no queda un hueco, y de
+  que el reporte conserva sus dos secciones, su nota y sus 3 botones.
+- 🔁 **Cinco tests cayeron con el cambio y los CINCO se re-encuadraron leyéndolos** (R2.2), no se
+  callaron: la propiedad de v580 (no ofrecer «Empujar» a quien no se alcanza) se mudó al reporte;
+  la de v541 pasó a afirmar que la tarjeta **no** está en el Inicio **y que existe el script** —si
+  no, retirarla habría sido perder la capacidad—; y las de v581 se reescribieron con el orden
+  nuevo, conservando la regla de que un aviso sin rango no desaparece.
+- 🔬 **Dos errores de MI sonda, cazados por ella misma:** `innerText` devolvió `''` sobre una
+  habitación que se abre con transición aunque el contenido ya medía 1.457 px (se leen las
+  secciones por geometría), y una nota que sí estaba salió en rojo porque **mi propia sonda
+  recortaba el texto a 90 caracteres antes de buscar la frase** (clase v493).
+- 💎 **Y lo que enseñó MIRAR la captura:** los checks daban verde con «entrenaron hoy» visible…
+  a dos pantallas de scroll. Ser el primer aviso no es estar arriba.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (4ª parte) — v591: LOS RÉCORDS QUE SE QUEDARON ATASCADOS
 
 Cuarto y último frente: **D3-2**. «Nataly, Curl Femoral: `prs` dice 20 kg del 25-may y su

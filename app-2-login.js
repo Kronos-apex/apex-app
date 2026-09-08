@@ -1743,68 +1743,13 @@ function renderHome(){
     }
   }
 
-  // ── Banner de adherencia: quién dejó de entrenar (accionable) ──
-  // Umbral adaptado a la frecuencia de cada quien: si entrena `days`/sem, su hueco
-  // normal es ~7/days; lo marcamos si lleva 2+ días por encima de su ritmo. Nunca
-  // entrenado (con plan vigente) = urgente. Solo membresías vigentes (lo vencido lo
-  // cubre el banner de pagos).
-  const adhBanner=document.getElementById('h-adherence-banner');
-  if(adhBanner){
-    const dormidos=DB.clients.filter(c=>{
-      const st=MS.getStatus(c);
-      if(st==='inactive'||st==='overdue'||st==='suspended')return false;
-      const last=(DB.history[c.id]||[])[0];
-      if(!last)return true; // vigente y nunca entrenó
-      const dd=Math.floor((Date.now()-new Date(last.date))/86400000);
-      const expectedGap=Math.ceil(7/(parseInt(c.days)||3));
-      return dd>=expectedGap+2;
-    }).map(c=>{
-      const last=(DB.history[c.id]||[])[0];
-      return {c,dd:last?Math.floor((Date.now()-new Date(last.date))/86400000):null};
-    }).sort((a,b)=>{
-      if(a.dd===null&&b.dd!==null)return -1;
-      if(b.dd===null&&a.dd!==null)return 1;
-      return (b.dd||0)-(a.dd||0);
-    });
-    if(dormidos.length){
-      // 🔴 v580 — «EMPUJAR 💪» NO SALE SIN DESTINATARIO. El banner pintaba el botón para todo el
-      //    mundo y `whatsappNudge` cae a `wa.me/?text=` (elegir contacto a mano) cuando no hay un
-      //    número plausible. Medido el 6-sep-2026 sobre las fichas reales: **de 14 dormidos, 12
-      //    no tienen ninguna vía**, así que 5 de los 6 botones visibles no llevaban a nadie.
-      // 🔴 Y lo peor no era el botón muerto: el orden pone primero a quien NUNCA empezó, y esos
-      //    son justo los que no dejaron teléfono — **Nataly, la única que sí se está soltando y sí
-      //    se puede alcanzar, quedaba escondida bajo «y 8 más…»**. El banner enterraba su único
-      //    caso accionable debajo de cinco que no lo son.
-      // ⚖️ Los inalcanzables NO se esconden ni se convierten en tarea: decisión del PO (22-ago,
-      //    v521) — *«prefiero venderla a nuevos usuarios que sí la aprecien»*. Se dicen en una
-      //    línea que lleva al reporte, que es donde ya está escrito por qué no hay nada que hacer.
-      const conVia=dormidos.filter(({c})=>_coachPuedeEscribir(c));
-      const sinVia=dormidos.filter(({c})=>!_coachPuedeEscribir(c));
-      const shown=conVia.slice(0,6), extra=conVia.length-shown.length;
-      adhBanner.style.display='block';
-      const _tit=conVia.length
-        ? `💤 ${conVia.length} ${conVia.length>1?'asesorados necesitan':'asesorado necesita'} un empujón`
-        : `💤 ${dormidos.length} sin entrenar${dormidos.length>1?'':''} · no tienes cómo avisarles`;
-      adhBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--rd);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--rdt);margin-bottom:6px">${_tit}</div>
-        ${shown.map(({c,dd})=>{
-          const estado=dd===null?'Aún no empieza':dd===1?'Hace 1 día':'Hace '+dd+' días';
-          const col=dd===null||dd>=7?'var(--rdt)':'var(--ort)';
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
-            <div style="min-width:0;flex:1;cursor:pointer" onclick="openDetail('${esc(c.id)}')">
-              <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
-              <div style="font-size:11px;color:${col}">🏋️ ${estado} · ${esc(String(c.days||3))}x/sem</div>
-            </div>
-            <button class="btn bo bsm" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();whatsappNudge('${esc(c.id)}')">Empujar 💪</button>
-          </div>`;
-        }).join('')}
-        ${extra>0?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${extra} más…</div>`:''}
-        ${sinVia.length?`<div class="tap" style="font-size:11px;color:var(--t3);padding-top:6px;margin-top:2px;border-top:1px solid var(--br);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="openCoachStat('sinentrenar')"><span>${conVia.length?`🔕 Otros ${sinVia.length} llevan días sin entrenar y no hay cómo avisarles`:'🔕 Ver quiénes son'}</span><span style="flex-shrink:0">›</span></div>`:''}
-      </div>`;
-    } else {
-      adhBanner.style.display='none';
-    }
-  }
+  // ⛔ v592 · EL BANNER DE ADHERENCIA SALIÓ DEL INICIO, por reporte del PO (8-sep): *«quita esa
+  //    tarjeta… y la de empujar asesorados, eso me contamina la pantalla y me oculta a los que SÍ
+  //    utilizan la aplicación»*. Medido ese día: le listaba **16 dormidos** y, con el tope de dos
+  //    avisos de v581, dejaba fuera a las **7 personas que habían entrenado ese mismo día**.
+  // 🔒 NO se perdió nada: la lista completa —con sus dos secciones de v520 y el botón de empujar—
+  //    vive en el reporte «Sin entrenar», que se abre desde la cifra que sigue en esta pantalla.
+  //    Lo que se retiró es que ocupara el Inicio todos los días, no la capacidad.
 
   // ── Prioritarios: vencidos y por vencer primero ──
   const list=document.getElementById('h-list');
@@ -1845,7 +1790,6 @@ function renderHome(){
   if(typeof renderMyTrainingCard==='function')renderMyTrainingCard();
   if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
-  if(typeof renderBuildsCard==='function')renderBuildsCard();
   if(typeof renderPageCard==='function')renderPageCard();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
@@ -2136,25 +2080,16 @@ function salirVistaPagina(){ location.href=location.pathname; }
 // pagó con los gates en rojo. Cuando todos están al día, aquí no hay nada.
 // «Sin datos» NO es lo mismo que atrasado y por eso no dispara la tarjeta: es quien no ha abierto
 // la app desde que existe el latido (y de esos ya avisa el reporte de «Sin entrenar»).
-function renderBuildsCard(){
-  const el=document.getElementById('h-builds'); if(!el)return;
-  el.style.display='none'; el.innerHTML='';
-  if(typeof coachBuildReport!=='function'||typeof appBuildFrom!=='function')return;
-  const urls=[].slice.call(document.querySelectorAll('script[src],link[href]'))
-    .map(function(n){return n.getAttribute('src')||n.getAttribute('href');});
-  const rep=coachBuildReport(DB.clients, appBuildFrom(urls));
-  if(!rep.build||!rep.atrasados.length)return;
-  el.style.display='block';
-  el.innerHTML=`<div class="card" style="padding:10px 14px;border-left:3px solid var(--bl)">
-    <div style="font-size:12px;font-weight:700;color:var(--blt);margin-bottom:5px">${typeof aviIcon==='function'?aviIcon('phone',13):'📱'} ${rep.atrasados.length} ${rep.atrasados.length===1?'teléfono trae':'teléfonos traen'} una versión vieja de AVI</div>
-    <div style="font-size:11.5px;color:var(--t2);line-height:1.5;margin-bottom:6px">Tú estás en la <b>${rep.build}</b>. Se actualiza sola al cerrar y volver a abrir la app; si alguien te reporta algo ya arreglado, mira primero esto.</div>
-    ${rep.atrasados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--br)">
-      <span style="font-size:12.5px;font-weight:600">${esc(r.name)}</span>
-      <span style="font-size:11px;color:var(--t2)">versión ${esc(String(r.version))}${r.dias!=null?' · '+(r.dias<=0?'hoy':r.dias===1?'ayer':'hace '+r.dias+' días'):''}</span>
-    </div>`).join('')}
-    <div style="font-size:11px;color:var(--t3);margin-top:6px">${rep.alDia.length} al día${rep.sinDato.length?' · '+rep.sinDato.length+' sin datos todavía':''}</div>
-  </div>`;
-}
+// ⛔ v592 · LA TARJETA «QUÉ VERSIÓN TRAE CADA TELÉFONO» (v541) SALIÓ DEL INICIO. El PO: *«es
+// gigante y no sé cuál es su función real»*, y tiene razón — se construyó para responder una
+// pregunta MÍA («¿le llegó el arreglo a su teléfono?»), no una suya, y le ocupaba la pantalla
+// todos los días para eso.
+// 🔒 No se pierde la capacidad, que era el punto de v541: el sello sigue escribiéndose
+// (`deviceStamp`), la ficha de cada asesorado sigue diciendo su versión (`deviceInfo(c.dev…)`,
+// app-3) —que es donde importa cuando alguien reporta algo— y para la vista de conjunto está
+// `scripts/versiones-telefonos.mjs`, que lee la nube sin ocupar su Inicio.
+// `coachBuildReport` (avi-core) se queda: la usa el script y sigue con sus tests.
+
 function renderPulse(){
   const el=document.getElementById('h-pulse'); if(!el)return;
   if(typeof coachPulse!=='function'){el.style.display='none';return;}
@@ -2316,10 +2251,14 @@ function openCoachStat(kind){
     // v580: la definición vive UNA sola vez (`_coachPuedeEscribir`), compartida con el banner
     // de adherencia del Inicio, que desde v580 hace la misma separación.
     const conVia=dorm.filter(({c})=>_coachPuedeEscribir(c)), sinVia=dorm.filter(({c})=>!_coachPuedeEscribir(c));
-    const _fila=({c,dd})=>{
+    // v592 · el botón de empujar se MUDÓ aquí desde el Inicio (que era donde estorbaba). Solo en
+    // la sección de los alcanzables: el candado de v580 es que no se ofrece «Empujar» a quien no
+    // se puede escribir, y ese candado viaja con el botón, no con la pantalla.
+    const _fila=({c,dd},conBoton)=>{
       const estado=!isFinite(dd)?'Sin registro de entrenos':dd===1?'última vez: ayer':`última vez: hace ${dd} días`;
       const col=(!isFinite(dd)||dd>=7)?'var(--rd)':'var(--or)';
-      const right=`<span class="crep-amt" style="color:${col}">${isFinite(dd)?dd:'∞'}</span><span style="font-size:10px;color:var(--t3)">días</span>`;
+      const btn=conBoton?`<button class="btn bo bsm" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();whatsappNudge('${esc(c.id)}')">Empujar 💪</button>`:'';
+      const right=`${btn}<span class="crep-amt" style="color:${col}">${isFinite(dd)?dd:'∞'}</span><span style="font-size:10px;color:var(--t3)">días</span>`;
       return _crepRow(c.id,c.name,`${esc(String(c.days||3))}x/sem · ${estado}`,right);
     };
     const _sub=sinVia.length?`${dorm.length===1?'asesorado':'asesorados'} con membresía activa · ${sinVia.length} sin forma de avisar`
@@ -2328,12 +2267,12 @@ function openCoachStat(kind){
     if(dorm.length){
       if(conVia.length){
         html+=`<div class="sroom-sec">Necesitan un empujón 💪</div>`;
-        html+=conVia.map(_fila).join('');
+        html+=conVia.map(x=>_fila(x,true)).join('');
       }
       if(sinVia.length){
         html+=`<div class="sroom-sec">No tienes cómo avisarles 🔕</div>`;
         html+=`<div class="crep-note">Sin su celular guardado no hay WhatsApp, y las notificaciones solo llegan si ellos las activaron. Aquí la app no puede hacer nada — no gastes tu tiempo en esta lista. Si alguno te interesa, agrégale el número desde su ficha.</div>`;
-        html+=sinVia.map(_fila).join('');
+        html+=sinVia.map(x=>_fila(x,false)).join('');
       }
     } else html+=empty('💪','¡Todos tus asesorados activos entrenaron hace poco!');
   }

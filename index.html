@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=591">
+<link rel="stylesheet" href="styles.css?v=592">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -500,6 +500,12 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
         <button class="sm sm-tap" onclick="openCoachStat('sesiones')" aria-label="Ver sesiones de la semana"><div class="smv" style="color:var(--ort)" id="h-sess">0</div><div class="sml">Sesiones semana</div><span class="sm-chev">›</span></button>
         <button class="sm sm-tap" onclick="openCoachStat('sinentrenar')" aria-label="Ver asesorados sin entrenar"><div class="smv" style="color:var(--rdt)" id="h-venc">0</div><div class="sml">Sin entrenar</div><span class="sm-chev">›</span></button>
       </div>
+      <!-- 🔴 v592 · QUIÉN ENTRENÓ HOY, ARRIBA DEL TODO. Estaba después de la retención, «Mi
+           entrenamiento» y «Comunidad de mi gym», o sea a dos pantallas de scroll — y encima
+           con el tope de avisos de v581 casi nunca salía. El PO: «me ocultaste a los asesorados
+           que han entrenado en el día… me oculta a los que SÍ utilizan la aplicación». Es lo
+           primero que quiere ver, así que va lo primero. -->
+      <div id="h-today-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Retención semanal -->
       <div class="card" style="margin-bottom:13px" id="h-retention-card">
         <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="chart">📊</span> Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
@@ -515,12 +521,8 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           <button class="btn bg" style="width:100%;min-height:40px" onclick="openGymMgr()">Gestionar</button>
         </div>
       </div>
-      <!-- Banner: quién entrenó hoy (con nombre) -->
-      <div id="h-today-banner" style="display:none;margin-bottom:13px"></div>
       <!-- Banner de vencimientos próximos -->
       <div id="h-expiry-banner" style="display:none;margin-bottom:13px"></div>
-      <!-- Banner de adherencia: quién no está entrenando (empújalos) -->
-      <div id="h-adherence-banner" style="display:none;margin-bottom:13px"></div>
       <!-- El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles (récord/racha/estancamiento/deload) -->
       <div id="h-deload" style="display:none;margin-bottom:13px"></div>
       <div id="h-pulse" style="display:none;margin-bottom:13px"></div>
@@ -529,8 +531,6 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
            con vencimientos y empujón como los que siempre quiere ver. Lo que no cabe se APARTA
            aquí, nunca se silencia: se abre con un toque y en el sitio. -->
       <div id="h-more" style="margin-bottom:13px"></div>
-      <!-- Qué versión de la app trae cada teléfono (v541) — solo aparece si hay alguien atrasado -->
-      <div id="h-builds" style="display:none;margin-bottom:13px"></div>
       <!-- Tu página pública (v542): verla como la ve un visitante y compartir el link -->
       <div id="h-page" style="margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
@@ -1368,19 +1368,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=591"></script>
-<script src="muscle-map.js?v=591"></script>
-<script src="exercise-muscles.js?v=591"></script>
+<script src="avi-core.js?v=592"></script>
+<script src="muscle-map.js?v=592"></script>
+<script src="exercise-muscles.js?v=592"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=591"></script>
-<script src="app-2-login.js?v=591"></script>
-<script src="app-3-coach.js?v=591"></script>
-<script src="app-4-entreno.js?v=591"></script>
-<script src="app-5-salud.js?v=591"></script>
-<script src="app-6-extra.js?v=591"></script>
-<script src="app-7-community.js?v=591"></script>
+<script src="app-1-infra.js?v=592"></script>
+<script src="app-2-login.js?v=592"></script>
+<script src="app-3-coach.js?v=592"></script>
+<script src="app-4-entreno.js?v=592"></script>
+<script src="app-5-salud.js?v=592"></script>
+<script src="app-6-extra.js?v=592"></script>
+<script src="app-7-community.js?v=592"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

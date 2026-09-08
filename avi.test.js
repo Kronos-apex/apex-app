@@ -6037,9 +6037,16 @@ test('🔒 el latido está CABLEADO: el asesorado sella y el coach lo lee', () =
   assert.ok(/appBuildFrom\(/.test(cuerpo), 'la versión se DERIVA del ?v= con el que cargó');
   const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
   assert.ok(/deviceInfo\(c\.dev/.test(coach), 'la ficha del coach lee el sello del asesorado');
+  // ⛔ v592 · LA TARJETA DEL INICIO SE RETIRÓ (el PO: «es gigante y no sé cuál es su función
+  //    real»). La propiedad que este test protege NO se va con ella: el sello se escribe, y quien
+  //    lo LEE es la ficha de esa persona —que es donde sirve cuando alguien reporta algo—. Se
+  //    afirma además que la tarjeta no vuelve al Inicio por accidente, y que la vista de conjunto
+  //    (la que era MÍA, no suya) tiene dónde vivir: un script que lee la nube.
   const login = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
-  assert.ok(/renderBuildsCard\(\)/.test(login) && /coachBuildReport\(/.test(login),
-    'y su Inicio resume quién está atrasado');
+  assert.ok(!/renderBuildsCard\(\)/.test(login),
+    '🔴 volvió la tarjeta de versiones al Inicio del coach: el PO la sacó el 8-sep');
+  assert.ok(fs.existsSync(path.join(__dirname, 'scripts', 'versiones-telefonos.mjs')),
+    '🔴 se retiró la tarjeta y no quedó NINGUNA forma de ver quién está atrasado: eso no es sacarla del Inicio, es perder la capacidad');
 });
 test('MS.getStatus: acepta `now` explícito (determinista) sin romper a los viejos', () => {
   const c = { payments: [{ dueDate: '2026-07-15T00:00:00Z' }] };
@@ -16297,25 +16304,27 @@ test('🔒 CABLEADO v579: el titular sale de wfTitle, no escrito a mano en el re
 // sino el ORDEN: los «nunca empezó» van primero y son justo los que no dejaron teléfono, así que
 // el único caso accionable quedaba enterrado bajo «y N más…».
 
+// ⛔ v592 · EL BANNER SALIÓ DEL INICIO por reporte del PO (le tapaba a los que SÍ entrenan), y
+// con él se fue su código. **La propiedad no se va con la pantalla**: sigue siendo que no se
+// ofrezca «Empujar» a quien no se puede alcanzar, y ahora vive en el reporte «Sin entrenar», que
+// es donde se mudó el botón. Este helper apunta ahí; el test es el mismo trabajo, otro sitio.
 const _bannerAdh = () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
-  const i = src.indexOf("h-adherence-banner");
-  assert.ok(i > 0, 'desapareció el banner de adherencia del Inicio');
-  const j = src.indexOf("h-list", i);
+  const i = src.indexOf("kind==='sinentrenar'");
+  assert.ok(i > 0, 'desapareció el reporte «Sin entrenar»');
+  const j = src.indexOf("titleEl.textContent", i);
   return src.slice(i, j > 0 ? j : i + 6000);
 };
 
 test('🔴 v580 · el banner solo ofrece «Empujar» a quien el coach PUEDE alcanzar', () => {
   const t = _bannerAdh();
-  // El botón se pinta sobre `shown`, y `shown` sale de `conVia` — no de `dormidos`.
-  assert.ok(/const conVia=dormidos\.filter\(\(\{c\}\)=>_coachPuedeEscribir\(c\)\)/.test(t),
-    '🔴 el banner dejó de separar por alcance: vuelven los botones que abren WhatsApp sin nadie');
-  assert.ok(/const shown=conVia\.slice\(0,6\)/.test(t),
-    '🔴 las filas con botón volvieron a salir de la lista completa, no de los alcanzables');
-  assert.ok(!/const shown=dormidos\.slice/.test(t), 'quedó viva la versión anterior del recorte');
-  // El titular cuenta a los alcanzables, o promete N empujones y ofrece 2.
-  assert.ok(/conVia\.length\}\s*\$\{conVia\.length>1\?'asesorados necesitan'/.test(t),
-    'el titular volvió a contar a todos los dormidos, incluidos los que no se pueden avisar');
+  assert.ok(/const conVia=dorm\.filter\(\(\{c\}\)=>_coachPuedeEscribir\(c\)\)/.test(t),
+    '🔴 el reporte dejó de separar por alcance: vuelven los botones que abren WhatsApp sin nadie');
+  // 🔒 El botón se pinta SOLO en la sección de los alcanzables: `conVia` lo pide, `sinVia` no.
+  assert.ok(/conVia\.map\(x=>_fila\(x,true\)\)/.test(t) && /sinVia\.map\(x=>_fila\(x,false\)\)/.test(t),
+    '🔴 el botón de empujar volvió a ofrecerse a quien no se puede alcanzar');
+  assert.ok(/conBoton\?/.test(t) && /whatsappNudge/.test(t),
+    'la fila dejó de poder pintar el botón: la capacidad se perdió al mudarla');
 });
 
 test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y llevan al reporte', () => {
@@ -16323,16 +16332,18 @@ test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y lleva
   //    sería peor que el defecto — dejaría de saber que existen. Sin este control, «esconder a
   //    los que no se pueden avisar» pasaría el test de arriba.
   const t = _bannerAdh();
-  assert.ok(/const sinVia=dormidos\.filter\(\(\{c\}\)=>!_coachPuedeEscribir\(c\)\)/.test(t),
+  assert.ok(/sinVia=dorm\.filter\(\(\{c\}\)=>!_coachPuedeEscribir\(c\)\)/.test(t),
     'se perdió el grupo de los que no tienen vía');
-  assert.ok(/sinVia\.length\?/.test(t) && /no hay cómo avisarles/.test(t),
-    '🔴 los inalcanzables desaparecieron del banner: el coach deja de saber que existen');
-  assert.ok(/openCoachStat\('sinentrenar'\)/.test(t),
-    'la línea no lleva al reporte, que es donde está escrito por qué no hay nada que hacer');
-  // Y el caso en que NADIE es alcanzable tiene su propio titular: sin él, la cabecera diría
-  // «0 asesorados necesitan un empujón» sobre una lista que sí tiene gente.
-  assert.ok(/no tienes cómo avisarles/.test(t),
-    'sin nadie alcanzable el banner no dice qué pasa: quedaría un titular en cero');
+  assert.ok(/No tienes cómo avisarles/.test(t),
+    '🔴 los inalcanzables desaparecieron del reporte: el coach deja de saber que existen');
+  // Y la nota que dice que ahí la app no puede hacer nada — es la decisión del PO de v521, y sin
+  // ella la sección se lee como una lista de tareas pendientes.
+  assert.ok(/no gastes tu tiempo en esta lista/.test(t),
+    'se perdió la nota que explica por qué esa lista NO es una tarea');
+  // 🔒 Y la CIFRA que lleva hasta aquí sigue en el Inicio: sin ella el reporte no tiene puerta.
+  const home = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/openCoachStat\('sinentrenar'\)/.test(home),
+    '🔴 se quitó la tarjeta del Inicio Y la puerta al reporte: eso sí es perder la información');
 });
 
 // ══════════════════════════════════════════════════════
@@ -16342,12 +16353,36 @@ test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y lleva
 // mismo tope que el asesorado tiene desde v505 —dos—, con vencimientos y empujón como los que
 // siempre quiere ver. Lo que no cabe se APARTA, nunca se silencia.
 
-test('v581 · el tope deja 2 y los dos que el PO eligió', () => {
-  const p = core.coachNoticePlan(['h-pulse', 'h-today-banner', 'h-adherence-banner', 'h-deload', 'h-expiry-banner']);
-  assert.deepStrictEqual(p.visibles, ['h-expiry-banner', 'h-adherence-banner']);
+test('v581+v592 · el tope deja 2, y los dos que el PO eligió el 8-sep', () => {
+  // 🔴 v592 — CAMBIÓ EL ORDEN, NO EL TOPE. El PO: «me ocultaste a los asesorados que han
+  //    entrenado en el día». Con el orden de v581, «entrenaron hoy» iba de cuarto y los dos de
+  //    arriba están casi siempre presentes: medido el 8-sep, 7 personas entrenaron y ninguna se
+  //    veía. Ahora va PRIMERO, y el banner de empujar salió de la pantalla.
+  const p = core.coachNoticePlan(['h-pulse', 'h-today-banner', 'h-deload', 'h-expiry-banner']);
+  assert.deepStrictEqual(p.visibles, ['h-today-banner', 'h-expiry-banner'],
+    '🔴 «entrenaron hoy» volvió a quedarse fuera del Inicio');
   // El orden de salida es el de PRIORIDAD, no el que traiga quien llame: dos pantallas con la
   // misma gente tienen que decidir igual.
-  assert.deepStrictEqual(p.ocultas, ['h-deload', 'h-today-banner', 'h-pulse']);
+  assert.deepStrictEqual(p.ocultas, ['h-deload', 'h-pulse']);
+  // 🔒 Y el banner retirado no puede robarle el puesto a los dos de arriba: si alguien lo repone
+  //    sin decidirlo, entra como aviso SIN RANGO, que por la regla de v581 se respeta pero va al
+  //    FINAL — nunca desplaza a «entrenaron hoy» ni a los vencimientos.
+  const q = core.coachNoticePlan(['h-today-banner', 'h-expiry-banner', 'h-adherence-banner']);
+  assert.deepStrictEqual(q.visibles.slice(0, 2), ['h-today-banner', 'h-expiry-banner']);
+  assert.strictEqual(q.visibles[2], 'h-adherence-banner', 'un aviso sin rango tiene que seguir saliendo (v581)');
+});
+
+test('🔒 v592 · «entrenaron hoy» va ARRIBA en la pantalla, no solo primero en la lista', () => {
+  // Ser el primer AVISO no basta: el contenedor estaba después de la retención, «Mi entrenamiento»
+  // y «Comunidad de mi gym», o sea a dos pantallas de scroll. El PO lo pidió por lo que VE.
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const pos = id => html.indexOf('id="' + id + '"');
+  assert.ok(pos('h-today-banner') > 0, 'desapareció el aviso de quién entrenó hoy');
+  ['h-retention-card', 'h-mytraining', 'h-expiry-banner'].forEach(id =>
+    assert.ok(pos('h-today-banner') < pos(id), '🔴 «entrenaron hoy» volvió a quedar debajo de ' + id));
+  // Y las dos tarjetas que el PO mandó sacar no vuelven al marcado.
+  assert.strictEqual(pos('h-adherence-banner'), -1, '🔴 volvió el banner de empujar al Inicio');
+  assert.strictEqual(pos('h-builds'), -1, '🔴 volvió la tarjeta de versiones al Inicio');
 });
 
 test('v581 · con 2 o menos no se aparta nada, y el orden sigue mandando', () => {
@@ -16362,7 +16397,7 @@ test('v581 · un aviso NUEVO sin puesto en la lista NO desaparece en silencio', 
   // Preferimos que salga uno de más a que se pierda por habérsenos olvidado prioritizarlo — es
   // la misma decisión que tomó v505 para el asesorado, y aquí importa igual: el que se pierda
   // sería justo el que nadie está mirando.
-  const p = core.coachNoticePlan(['h-expiry-banner', 'h-adherence-banner', 'h-deload', 'h-inventado']);
+  const p = core.coachNoticePlan(['h-expiry-banner', 'h-today-banner', 'h-deload', 'h-inventado']);
   assert.ok(p.visibles.indexOf('h-inventado') >= 0, 'un aviso sin rango se perdió');
   assert.deepStrictEqual(p.ocultas, ['h-deload']);
 });

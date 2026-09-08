@@ -7867,20 +7867,27 @@ function todayCardPlan(presentes, opts) {
 // Decisión del PO (6-sep-2026), sobre su propia pantalla: hasta v580 se le pintaban hasta CINCO
 // avisos a la vez y eligió el mismo tope que ya tiene el asesorado desde v505 —dos—, con
 // vencimientos y empujón como los que siempre quiere ver.
-// El orden NO es de importancia en abstracto, es de FRECUENCIA × caducidad (regla de v567): lo
-// que aparece poco y trae fecha tiene que ganarle a lo que aparece casi siempre, o no sale nunca.
-//   1. vencimientos — es PLATA y tiene fecha: quien vence en 5 días se renueva o se pierde.
-//   2. empujón      — es RETENCIÓN, y desde v580 solo lista a quien de verdad puede alcanzar.
+// 🔴 REORDENADO EN v592, POR REPORTE DEL PO: *«me ocultaste a los asesorados que han entrenado en
+// el día… eso me contamina la pantalla y me oculta a los que SÍ utilizan la aplicación»*. El orden
+// de v581 era de FRECUENCIA × caducidad y por eso dejó «entrenaron hoy» de CUARTO — con el tope de
+// dos, y estando casi siempre presentes los dos de arriba, no salía nunca. Medido el 8-sep:
+// **7 personas entrenaron ese día y ninguna se veía**, mientras la pantalla la ocupaban 7
+// vencimientos y 16 dormidos.
+// La regla de v567 no era falsa; lo que estaba mal era aplicarla a una pantalla cuyo dueño quiere
+// ver, primero, quién SÍ está usando la app. Eso lo decide él, no una heurística.
+//   1. entrenaron hoy — lo que el coach quiere ver primero (decisión del PO, 8-sep).
+//   2. vencimientos   — es PLATA y tiene fecha: quien vence en 5 días se renueva o se pierde.
 //   3. descarga vencida — una TAREA que no expira sola: sin ella alguien se queda semanas al 60%.
-//   4. entrenaron hoy — bueno de leer, pero no pide nada: es el único positivo.
-//   5. el pulso     — sugerencias para escribirles; se puede hacer en cualquier momento.
+//   4. el pulso       — sugerencias para escribirles; se puede hacer en cualquier momento.
 // 🔴 NUNCA entran al tope: las cifras, la retención, los prioritarios, «Mi entrenamiento», las
 // dos direcciones y las colas de moderación — no son avisos, son la pantalla.
+// ⛔ `h-adherence-banner` SE RETIRÓ del Inicio en v592 (mismo reporte). No desapareció: la lista
+//    completa, con sus dos secciones y el botón de empujar, vive en el reporte «Sin entrenar»,
+//    detrás de la cifra que sigue en la pantalla.
 const COACH_NOTICE_PRIORITY = [
-  'h-expiry-banner',
-  'h-adherence-banner',
-  'h-deload',
   'h-today-banner',
+  'h-expiry-banner',
+  'h-deload',
   'h-pulse',
 ];
 const COACH_MAX_NOTICES = 2;
