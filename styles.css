@@ -1130,7 +1130,18 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .vmac-lbl{font-size:12px;color:#10E0A0}
 .vmac-obj+.vmac-h{margin-top:12px}
 .vmac-h{font-size:11px;font-weight:800;color:#8FAF98;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
-.vmac-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+/* 🔴 v587 — un `1fr` tiene por mínimo automático el MIN-CONTENT, así que con la letra grande
+   las tres tarjetas de macros no cabían y la rejilla se salía **35 px** de la ficha del coach.
+   PREEXISTENTE: reproducido igual en HEAD limpio, y solo se ve con la tarjeta DESPLEGADA (la
+   medición con la valoración colapsada daba 0 y escondía el defecto). Clase de v453.
+   Medido después del arreglo, 6 combinaciones (360 y 390 px × normal/lg/xl): **0 px de
+   desborde y las 3 columnas intactas**.
+   ⚠️ Aquí basta `minmax(0,1fr)` en la PISTA: se probaron además `min-width:0` en la celda y
+   `overflow-wrap:anywhere`, y ninguna de las dos movió una sola cifra — así que no se quedan
+   (si no mueve nada, no es un arreglo: es una línea más que mantener, v482). Ojo, esto NO
+   contradice a v453: allí hacía falta la segunda mitad porque las celdas eran vacías con
+   `aspect-ratio`, y aquí el texto se ajusta solo por sus espacios. */
+.vmac-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .vmac-c{border-radius:10px;padding:10px;text-align:center}
 .vmac-k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .vmac-n{font-size:20px;font-weight:900;color:#FFFFFF}
