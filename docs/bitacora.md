@@ -4,6 +4,91 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 — v588: LO QUE EL COACH ESCRIBE YA NO SE PIERDE EN SILENCIO
+
+Hallazgo **D1-2** de la auditoría del 7-sep, el primero de los cuatro que el PO mandó atacar hoy.
+
+### 🔴 El defecto: el asesorado tenía red de seguridad y el coach no
+Desde la auditoría de junio, todo lo que escribe el ASESORADO va con respaldo local, bandera
+`dirty` persistida y reintento al reconectar. `_persistCoachWrite` —por donde pasa **todo** lo que
+el coach escribe de sus asesorados— tenía esto en el `catch`:
+
+    catch(e){ warn('AVI coach persist '+k+' falló:',id,e&&e.message); }
+
+Ni bandera, ni cola, ni respaldo. Y en modo auth **nada suyo se espeja a localStorage**, así que
+el dato solo vivía en memoria: al recargar, se iba. Encima `sendCoachChatMsg` cantaba
+**«💬 Mensaje enviado»** pasara lo que pasara —el `sv()` es a ciegas y con 800 ms de debounce— y
+mandaba el **push con el texto real** antes de saber si el mensaje existía: al asesorado le sonaba
+el celular con un mensaje que no estaba en su chat.
+
+**Medido el 8-sep contra producción:** **47 mensajes** escritos por el coach viven hoy en la nube,
+y por ese mismo camino viajan el perfil, las rutinas, el historial, los récords, el peso, las
+medidas, la nutrición y las fotos de **25 asesorados** (peor caso por columna: fotos 280 KB,
+historial 136 KB, perfil 41 KB). Los `warn()` de la consola son el único rastro que quedaba.
+
+### 🔒 La regla dura: al reintentar, la pérdida de datos CAMBIA DE BANDO
+Reenviar una columna entera **pisa** lo que la otra punta escribió mientras tanto, y el asesorado
+escribe su historial, su perfil y sus mensajes desde su propio teléfono. Replicar a ciegas el pago
+pendiente de ayer le borraría el entreno de hoy. Por eso hay **dos políticas y no una**:
+
+- **`msgs` → se FUSIONA por unión** (`mergeCoachMsgs`, pura, de-duplica por `from+date+text` y
+  ordena por fecha). Nunca pisa: es el único caso demostrablemente seguro, y es el del hallazgo.
+- **el resto → se reenvía solo si la fila no cambió después del intento fallido**
+  (`coachQueueCanReplay` compara el `updated_at` de la nube contra el momento en que falló). Si
+  cambió, **no se pisa**: se queda en la cola, el coach lo ve y decide él.
+
+Es la lección de «borrar con `filter` lo que se fusiona por unión resucita» (v566/v568) leída al
+revés, y por eso cada regla tiene su propio sabotaje.
+
+### Lo construido
+- **avi-core (puro):** `mergeCoachMsgs`, `coachQueuePut` (una entrada por columna+asesorado, gana
+  la última) y `coachQueueCanReplay`. Topes `COACH_Q_MAX_ENTRY` 300 KB y `COACH_Q_MAX_TOTAL` 1 MB.
+  🔒 **Lo que no cabe NO se descarta en silencio**: se guarda marcado `tooBig` y sin payload —
+  perder el aviso es exactamente el defecto que esta versión mata—, y con esa marca el reintento
+  no lo sube (subir `null` borraría la columna).
+- **app-3:** la cola persistida `ax_cwq_<uid>` con la misma forma que la de altas offline que ya
+  existía desde junio (`_addPending`/`_flushPendingClients`) — misma medicina, misma casa.
+  `_flushCoachWrites()` corre **al reconectar** y **al entrar** (después de `_primeCoachSnap`: si
+  corriera antes, el reintento cambiaría `DB` y la foto base lo daría por persistido).
+- **app-1:** `UD.readClientCol` trae la columna **y** su `updated_at` — el reintento necesita las
+  dos: la columna para fusionar y la fecha para no pisar. Sin poder leer la fila **no se escribe**.
+- **La pantalla dice la verdad:** el hilo marca «⏳ enviando…» y «⚠️ sin enviar»; el aviso
+  **«⚠️ N sin guardar»** vive en la barra del coach y se toca para reintentar; y el **push sale
+  después** de que el mensaje exista.
+- **`svNow` devuelve su promesa**, porque quien necesita saber si la nube aceptó no puede
+  enterarse por un efecto secundario.
+
+### 🔴 Lo que destapó MIRAR la captura, no medir
+La primera versión marcaba **«sin enviar» el hilo ENTERO**: la cola guarda el hilo completo (es lo
+que se sube), así que preguntar «¿está en el payload?» marcaba también los mensajes que la nube ya
+tenía. **La aserción salía verde** porque solo exigía que el texto apareciera. Lo que de verdad
+falta por subir es lo que no está en `_coachSnap` —la última versión que la nube CONFIRMÓ— y el
+harness pasó a exigir que la marca aparezca **exactamente una vez**.
+
+### QA
+- Suite **1081 → 1089** en los dos husos · hook **12/12** · `_prodcheck 588` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-cola-coach.mjs`: **16/16 muerden**.
+- Harness nuevo `_verify-cola-coach.mjs`: **18/18**, y **REPRODUCE la pérdida antes de medir el
+  arreglo** — R1 corre con la nube caída y afirma que el mensaje queda en la cola, que no se dice
+  «enviado», que no sale el push y que el hilo lo marca; R2 comprueba que sobrevive en disco; R3
+  que al reconectar sube **fusionado** (3 mensajes, incluido el que ella escribió mientras tanto);
+  R4 que un entreno del coach **NO pisa** una fila más nueva; R5 el control con red, donde todo se
+  comporta como antes. Contraste del aviso medido: **9,65 en oscuro y 5,79 en claro**.
+- 🔬 **Un error propio del test, cazado por el propio test:** `coachQueueCanReplay` daba por vieja
+  una fila sin `updated_at`, porque `new Date(null)` es la ÉPOCA y no una fecha inválida (clase
+  v517). Con eso, una fila ilegible se habría **pisado**.
+- ⚠️ **Un tropiezo de método:** edité archivos mientras la matriz de sabotaje corría en segundo
+  plano, y la matriz los restaura al terminar — se llevó por delante el trabajo en curso (estaba
+  respaldado). El gotcha ya estaba escrito desde el 6-ago; ahora tiene un caso propio.
+- **R3.3:** sin entrada en `AVI_NEWS` — lo que cambia es del COACH.
+
+### ⏭️ Lo que NO cubre, dicho explícitamente
+Los ajustes del coach (`coach_settings`: biblioteca, Nequi, leídos) siguen con el trato viejo —
+bandera `dirty` y `warn()`, sin cola—, y `_flushAuthOnline` sigue excluyendo al coach para su
+**propia** fila. No es el hallazgo D1-2 y no se metió a la fuerza en esta versión.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-07 (4ª parte) — v587: DE CUÁNDO ES EL PESO CON EL QUE SE CALCULA TODO
 
 Frente 2, parte B (hallazgo D3-4). Con el peso corporal se le calculan TMB, TDEE, objetivo

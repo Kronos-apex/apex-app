@@ -834,6 +834,105 @@ async function _flushPendingClients(){
   }
 }
 window.addEventListener('online',()=>{ _flushPendingClients(); });
+
+// ══════════════════════════════════════════════════════════════════════
+// LO QUE EL COACH ESCRIBE Y LA NUBE NO CONFIRMÓ (v588) — hallazgo D1-2
+// ──────────────────────────────────────────────────────────────────────
+// El alta de un asesorado sin red YA tenía cola desde la auditoría de junio
+// (`_addPending`/`_flushPendingClients`). Lo que el coach ESCRIBE, no: `_persistCoachWrite`
+// solo hacía `warn()` y en modo auth nada suyo se espeja a localStorage, así que el mensaje
+// desaparecía al recargar mientras la app decía «Mensaje enviado». Misma medicina, misma forma.
+// Las reglas del reintento (fusionar `msgs`, no pisar lo que cambió después) viven en avi-core.
+function _cwqKey(){ return 'ax_cwq_'+(_authUid||'anon'); }
+function _cwqRead(){ try{ const r=localStorage.getItem(_cwqKey()); const l=r?JSON.parse(r):[]; return Array.isArray(l)?l:[]; }catch(e){ return []; } }
+function _cwqWrite(list){ try{ localStorage.setItem(_cwqKey(),JSON.stringify(list||[])); }catch(e){ warn('AVI: no cabe la cola de pendientes:',e&&e.message); } }
+function _cwqAdd(col,id,val){
+  const c=(DB.clients||[]).find(x=>x.id===id);
+  const r=coachQueuePut(_cwqRead(),{col:col,id:id,name:(c&&c.name)||'Asesorado',val:val,ts:Date.now()});
+  _cwqWrite(r.list); _setAuthDirty(true); _renderCoachSync();
+  return r.tooBig;
+}
+function _cwqDrop(col,id){
+  const antes=_cwqRead(); const desp=antes.filter(x=>!(x&&x.col===col&&x.id===id));
+  if(desp.length===antes.length)return;
+  _cwqWrite(desp); if(!desp.length)_setAuthDirty(false); _renderCoachSync();
+}
+// ¿Este mensaje concreto está esperando en la cola? (para pintarlo «sin enviar» en el hilo)
+// 🔴 La cola guarda el HILO ENTERO (es lo que se sube), así que preguntar «¿está en el payload?»
+// marca «sin enviar» también los mensajes que la nube ya tiene — se vio MIRANDO la captura, no
+// midiendo: la aserción de que el texto aparecía salía verde con todo el hilo marcado.
+// Lo que de verdad falta por subir es lo que no está en `_coachSnap`, que es la última versión
+// que la nube CONFIRMÓ (se pone al hidratar y en cada escritura buena).
+function _cwqHasMsg(clientId,date){
+  const e=_cwqRead().find(x=>x&&x.col==='msgs'&&x.id===clientId);
+  if(!e||!Array.isArray(e.val)||!e.val.some(m=>m&&m.date===date))return false;
+  let conf=[]; try{ conf=JSON.parse((typeof _coachSnap!=='undefined'&&_coachSnap['ax_m:'+clientId])||'[]')||[]; }catch(err){ conf=[]; }
+  return !conf.some(m=>m&&m.date===date);
+}
+// Columnas que hay que LEER de la nube para decidir el reintento de esta entrada.
+function _cwqSelect(col){ return col==='ax_c' ? 'profile,routines' : col; }
+
+// Reintenta las escrituras que quedaron pendientes. Devuelve {ok, held, fail}:
+//   ok   = subidas · held = NO se pisan (la nube tiene algo más nuevo, o no cabía el payload)
+//   fail = no se pudo hablar con la nube (siguen en cola)
+// 🔒 `held` NO se descarta: se queda en la cola y el coach lo ve, porque quien decide pisar el
+// trabajo de otro es él y no la app.
+async function _flushCoachWrites(){
+  if(!AUTH_MODE||AUTH_ROLE!=='coach'||!AUTH.ready())return {ok:0,held:0,fail:0};
+  const list=_cwqRead(); if(!list.length)return {ok:0,held:0,fail:0};
+  let ok=0,held=0,fail=0;
+  for(const e of list){
+    if(!e||!e.col||!e.id){ continue; }
+    if(e.tooBig){ held++; continue; }
+    const esMio=(e.id===SELF_CLIENT_ID);
+    try{
+      const fila=await UD.readClientCol(esMio?_authUid:e.id,_cwqSelect(e.col));
+      if(!fila){ fail++; continue; }                       // sin red / sin permiso → sigue en cola
+      if(!coachQueueCanReplay(e,fila.updated_at)){ held++; continue; }
+      if(e.col==='msgs'){
+        // Fusión por unión: nunca pisa lo que el asesorado escribió desde su teléfono.
+        const fus=mergeCoachMsgs(fila.msgs||[],e.val||[]);
+        if(esMio) await UD.upsertOwn({msgs:fus}); else await UD.updateClientRow(e.id,{msgs:fus});
+        if(DB.msgs) DB.msgs[e.id]=fus;
+      } else if(e.col==='ax_c'){
+        const patch={profile:(e.val&&e.val.profile)||{},routines:(e.val&&e.val.routines)||[]};
+        if(esMio) await UD.upsertOwn(patch); else await UD.updateClientRow(e.id,patch);
+      } else {
+        const patch={}; patch[e.col]=e.val;
+        if(esMio) await UD.upsertOwn(patch); else await UD.updateClientRow(e.id,patch);
+      }
+      _cwqDrop(e.col,e.id); ok++;
+    }catch(err){ fail++; warn('AVI: reintento de escritura del coach falló ('+e.col+'):',err&&err.message); }
+  }
+  _renderCoachSync();
+  return {ok,held,fail};
+}
+window.addEventListener('online',()=>{ _flushCoachWrites(); });
+
+// El aviso de la barra: mientras haya algo sin guardar, se VE. Un fallo silencioso es el
+// defecto que esta versión mata, así que la señal no puede vivir solo en la consola.
+function _renderCoachSync(){
+  const el=document.getElementById('coach-sync'); if(!el)return;
+  const list=_cwqRead();
+  if(!list.length||AUTH_ROLE!=='coach'){ el.style.display='none'; return; }
+  const n=list.length;
+  el.style.display='';
+  el.textContent='⚠️ '+n+' sin guardar';
+  el.title='Sin guardar: '+list.map(x=>x.name+' · '+_cwqLabel(x.col)).join(' · ')+' — toca para reintentar';
+}
+function _cwqLabel(col){
+  return {msgs:'mensajes',ax_c:'plan y ficha',history:'entrenos',prs:'récords',bodyweight:'peso',
+    medidas:'medidas',nutrition:'nutrición',photos:'fotos'}[col]||col;
+}
+// Reintento a mano (el coach toca el aviso). Le dice qué pasó con palabras, no con un código.
+async function coachSyncRetry(){
+  const el=document.getElementById('coach-sync'); if(el)el.textContent='⏳ reintentando…';
+  const r=await _flushCoachWrites();
+  if(typeof _cchatId!=='undefined'&&_cchatId&&typeof renderCoachChatThread==='function')renderCoachChatThread(_cchatId);
+  if(!_cwqRead().length){ toast('✅ Ya quedó todo guardado'); return; }
+  if(r.fail) toast('📴 Sigo sin conexión — lo vuelvo a intentar al reconectar');
+  else if(r.held) toast('⚠️ '+r.held+(r.held===1?' cambio quedó':' cambios quedaron')+' sin subir: hay algo más nuevo en la nube. Vuelve a hacerlo desde la ficha.');
+}
 function _hydrateCoachFromRows(rows){
   DB.clients=rows.map(rowToClient);
   DB.history={};DB.msgs={};DB.prs={};DB.bodyweight={};DB.medidas={};DB.nutrition={};DB.photos={};
@@ -852,6 +951,9 @@ function _hydrateCoachFromRows(rows){
   _arrancarDescargasProgramadas(); // v532: las que ya les tocaba, ANTES de la foto base
   _curarNivelDeLosPlanes();        // v536: ejercicios por encima del nivel en planes ya escritos
   _primeCoachSnap(); // foto base: solo se escribirá lo que el coach cambie de aquí en más
+  // v588 · lo que la sesión anterior no logró subir. VA DESPUÉS de la foto base: si corriera
+  // antes, el reintento cambiaría DB y `_primeCoachSnap` lo daría por ya persistido.
+  _renderCoachSync(); _flushCoachWrites();
 }
 
 // 🍃 DESCARGAS PROGRAMADAS QUE YA LES TOCABA (v532). AVI es offline-first y no hay cron, así que
@@ -3463,17 +3565,29 @@ function renderCoachChatThread(clientId, forceBottom){
   msgs.forEach(m=>{
     const isC=m.from==='coach';
     const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
-    const t=document.createElement('div');t.className=`mt${isC?' r':''}`;t.textContent=`${isC?'Tú':first} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
+    const t=document.createElement('div');t.className=`mt${isC?' r':''}`;
+    // v588 · el estado REAL del mensaje. Antes todos se pintaban igual y el que nunca salió
+    // se veía idéntico al entregado — con la app diciendo además «Mensaje enviado».
+    const _env=isC&&_cchatSending[m.date]?' · ⏳ enviando…':(isC&&_cwqHasMsg(clientId,m.date)?' · ⚠️ sin enviar':'');
+    t.textContent=`${isC?'Tú':first} · ${fmtD(m.date)} ${fmtT(m.date)}${_env}`;con.appendChild(t);
   });
   con.scrollTop=nearBottom?con.scrollHeight:prevTop; // aterriza en el más reciente solo si procede
 }
-function sendCoachChatMsg(){
+// v588 · mensajes del coach cuya escritura sigue en vuelo (clave: su fecha ISO, que es única
+// por mensaje). Solo para pintar el ⏳; lo que SOBREVIVE a la recarga es la cola persistida.
+const _cchatSending={};
+// 🔴 Hasta v587 esto era `sv()` (a ciegas, con 800 ms de debounce) + `toast('Mensaje enviado')`
+// incondicional: si la nube no aceptaba, el mensaje se perdía al recargar Y el coach quedaba
+// convencido de haberlo mandado. Ahora se espera el resultado, el hilo dice en qué estado está,
+// y el PUSH sale solo cuando el mensaje existe de verdad (avisar de algo que no está guardado
+// deja al asesorado abriendo un chat vacío).
+async function sendCoachChatMsg(){
   const ta=document.getElementById('cchat-in'); const text=(ta&&ta.value||'').trim(); const id=_cchatId;
   if(!text||!id)return;
   if(!DB.msgs[id])DB.msgs[id]=[];
-  DB.msgs[id].push({from:'coach',text,date:new Date().toISOString()});
-  sv('ax_m',DB.msgs);
-  if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
+  const _msg={from:'coach',text,date:new Date().toISOString()};
+  DB.msgs[id].push(_msg);
+  _cchatSending[_msg.date]=1;
   ta.value=''; ta.style.height='auto';
   markCoachRead(id);
   renderCoachChatThread(id,true); // acabas de enviar → sigue al fondo
@@ -3481,6 +3595,12 @@ function sendCoachChatMsg(){
   if(typeof renderHome==='function')renderHome();
   const det=document.getElementById('p-detail');
   if(CUR.clientId===id&&det&&det.classList.contains('on')&&typeof renderDetailMsgs==='function')renderDetailMsgs(id);
+  try{ await svNow('ax_m',DB.msgs); }catch(e){ warn('AVI: enviar mensaje falló:',e&&e.message); }
+  delete _cchatSending[_msg.date];
+  const _enCola=(typeof _cwqHasMsg==='function')&&_cwqHasMsg(id,_msg.date);
+  if(_cchatId===id)renderCoachChatThread(id,true);
+  if(_enCola){ toast('📴 Sin conexión: guardé el mensaje y lo envío al reconectar'); return; }
+  if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
   toast('💬 Mensaje enviado');
 }
 // v364 (adopción, ítem c): invitar al asesorado a ABRIR la app para activar sus notificaciones.

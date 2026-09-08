@@ -9397,6 +9397,90 @@ function cloudWriteSealed(hostname, allowFlag) {
   return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(String(hostname || ''));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// LO QUE EL COACH ESCRIBE SIN RED (v588) — hallazgo D1-2 de la auditoría del 7-sep
+// ──────────────────────────────────────────────────────────────────────
+// El asesorado tiene red de seguridad desde la auditoría del 2026-06-21: respaldo local
+// SIEMPRE + bandera `dirty` persistida + reintento al reconectar. El COACH no tenía NADA:
+// `_persistCoachWrite` solo hacía `warn()` en el catch, y en modo auth sus escrituras no se
+// espejan a localStorage — así que un mensaje escrito con mala señal desaparecía al recargar
+// mientras la app le decía «💬 Mensaje enviado».
+//
+// Medido el 8-sep contra producción: **47 mensajes suyos** vivos, y el MISMO camino lleva
+// perfil, rutinas, historial, récords, peso, medidas, nutrición y fotos de 25 asesorados
+// (peor caso por columna: 280 KB de fotos, 136 KB de historial, 41 KB de perfil).
+//
+// 🔒 REGLA DURA DEL REINTENTO: reenviar una columna entera PISA lo que la otra punta haya
+// escrito mientras tanto. El asesorado también escribe su historial, su perfil y sus mensajes
+// desde su teléfono — replicar a ciegas un pago pendiente de ayer le borraría el entreno de
+// hoy. Por eso hay DOS políticas y no una:
+//   · `msgs` → se FUSIONA por unión (los mensajes son append-only y se de-duplican por
+//     from+date+text). Nunca pisa: es el único caso demostrablemente seguro.
+//   · el resto → se reenvía SOLO si la fila de la nube no cambió después de que el intento
+//     fallara. Si cambió, no se pisa: se le dice al coach y él decide.
+// Es la lección de «borrar con filter lo que se fusiona por unión resucita» leída al revés.
+
+// Fusiona los mensajes que quedaron sin enviar con los que hay en la nube. PURA.
+// Clave de identidad: from + date + text (un mismo mensaje reenviado no se duplica).
+// Devuelve la lista ordenada por fecha ascendente, que es como la pinta el hilo.
+function mergeCoachMsgs(cloud, pend) {
+  // La identidad de un mensaje es la terna completa. Se serializa con `JSON.stringify` y no
+  // con un separador: cualquier carácter elegido como separador puede aparecer en un texto
+  // que escribió una persona, y entonces dos mensajes distintos colisionarían.
+  const key = m => JSON.stringify([m && m.from, m && m.date, m && m.text]);
+  const out = [], vistos = new Set();
+  for (const m of [].concat(Array.isArray(cloud) ? cloud : [], Array.isArray(pend) ? pend : [])) {
+    if (!m) continue;
+    const k = key(m);
+    if (vistos.has(k)) continue;
+    vistos.add(k); out.push(m);
+  }
+  // Orden por fecha; lo que no tiene fecha legible se queda donde estaba (no se inventa un orden).
+  return out.map((m, i) => ({ m, i, t: new Date(m.date).getTime() }))
+    .sort((a, b) => (Number.isFinite(a.t) && Number.isFinite(b.t) ? a.t - b.t : 0) || a.i - b.i)
+    .map(x => x.m);
+}
+
+// Topes de la cola de escrituras pendientes del coach. localStorage son ~5 MB para TODA la app
+// (que ahí guarda además el caché de sesión), así que la cola no puede crecer sin freno.
+const COACH_Q_MAX_ENTRY = 300 * 1024;   // una entrada (las fotos de Samuel pesan 280 KB)
+const COACH_Q_MAX_TOTAL = 1024 * 1024;  // la cola entera
+
+// Mete una escritura fallida en la cola. PURA: recibe la lista y devuelve una nueva.
+// · UNA entrada por columna+asesorado: la última gana (reenviar la vieja sería volver atrás).
+// · Si no cabe, la entrada se guarda SIN payload y marcada `tooBig`. 🔒 Jamás se descarta en
+//   silencio: perder el aviso es exactamente el defecto que esta versión mata. Sin payload no
+//   se puede reintentar sola, y por eso el aviso dice que hay que rehacer el cambio.
+function coachQueuePut(list, entry, caps) {
+  const max = (caps && caps.entry) || COACH_Q_MAX_ENTRY;
+  const total = (caps && caps.total) || COACH_Q_MAX_TOTAL;
+  const e = Object.assign({}, entry || {});
+  const otras = (Array.isArray(list) ? list : []).filter(x => x && !(x.col === e.col && x.id === e.id));
+  let bytes = 0;
+  try { bytes = JSON.stringify(e.val === undefined ? null : e.val).length; } catch (err) { bytes = Infinity; }
+  const usado = otras.reduce((s, x) => s + (x.bytes || 0), 0);
+  if (!(bytes <= max) || usado + bytes > total) {
+    return { list: otras.concat([{ col: e.col, id: e.id, name: e.name, ts: e.ts, val: null, bytes: 0, tooBig: true }]), tooBig: true };
+  }
+  return { list: otras.concat([Object.assign(e, { bytes, tooBig: false })]), tooBig: false };
+}
+
+// ¿Se puede reenviar esta entrada sin pisar trabajo ajeno? PURA.
+// `rowUpdatedAt` es el `updated_at` que la nube tiene AHORA para esa fila; `entry.ts`, el
+// momento en que el intento falló. Si la fila se tocó después, hay algo más nuevo que lo mío.
+// `msgs` es la excepción: se fusiona, así que nunca pisa (y por eso siempre puede ir).
+// Sin `updated_at` legible NO se reenvía: no saber es la razón para no pisar, no para pisar.
+function coachQueueCanReplay(entry, rowUpdatedAt) {
+  if (!entry || entry.tooBig) return false;
+  if (entry.col === 'msgs') return true;
+  // 🔒 `new Date(null)` devuelve EPOCH, no Invalid Date (clase v517): sin atajar el nulo ANTES
+  // de parsear, una fila sin `updated_at` legible daría t=0 → «nadie escribió después» → PISA.
+  if (rowUpdatedAt == null || rowUpdatedAt === '') return false;
+  const t = new Date(rowUpdatedAt).getTime();
+  if (!Number.isFinite(t)) return false;
+  return t <= (entry.ts || 0);
+}
+
 // IDs de rutina que SOLO usan los harness E2E (nunca un asesorado real: las rutinas
 // reales llevan id hex/base36 tipo "mqqx81o..."). Antes del sello v298, algún harness
 // alcanzó a inyectar sesiones de PRUEBA en el historial real de un asesorado (y su
@@ -10176,6 +10260,11 @@ if (typeof module !== 'undefined' && module.exports) {
     submuscleVolume,
     errReportGate,
     cloudWriteSealed,
+    mergeCoachMsgs,
+    coachQueuePut,
+    coachQueueCanReplay,
+    COACH_Q_MAX_ENTRY,
+    COACH_Q_MAX_TOTAL,
     FIXTURE_ROUTINE_IDS,
     stripFixtureSessions,
     WATER_GLASS_ML,

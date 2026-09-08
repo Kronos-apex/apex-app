@@ -316,6 +316,18 @@ const UD={
     if(error){warn('UD.loadClientHeavy:',error.message);return null;}
     return data;
   },
+  // Lee UNA columna de la fila de un asesorado JUNTO CON su `updated_at` (v588). El reintento
+  // de una escritura fallida necesita las dos: la columna para FUSIONAR (msgs) y el `updated_at`
+  // para saber si alguien escribió después de mi intento — y entonces NO pisarlo.
+  // Devuelve null al fallar (sin red/permiso): el caller distingue «no pude» de «puedo pisar».
+  async readClientCol(clientId,cols){
+    try{
+      const c=AUTH.client(); if(!c||!clientId)return null;
+      const {data,error}=await c.from('user_data').select(cols+',updated_at').eq('user_id',clientId).maybeSingle();
+      if(error){warn('UD.readClientCol:',error.message);return null;}
+      return data;
+    }catch(e){ warn('UD.readClientCol (¿sin conexión?):',e&&e.message); return null; }
+  },
   // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
   // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.
   async updateClientRow(clientId,patch){
@@ -917,7 +929,9 @@ function sv(k,v){
 function svNow(k,v){
   if(AUTH_MODE&&SB_KEYS.includes(k)){
     if(_COACH_SETTINGS_KEYS.includes(k)){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
-    _persistAuthUser(k,v); return;
+    // v588 · DEVUELVE la promesa: quien necesita saber si la nube aceptó (el chat del coach)
+    // no puede enterarse por un efecto secundario. Los demás llamadores la ignoran igual.
+    return _persistAuthUser(k,v);
   }
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){warn('localStorage full:',e);}
   if(SB_KEYS.includes(k)){_pendingPush[k]=v;clearTimeout(_sbDebounce[k]);sbSet(k,v);}
@@ -1047,8 +1061,9 @@ async function _persistCoachWrite(k,v){
           // La fila en memoria queda igual a lo que acaba de quedar en la nube: así un SEGUNDO
           // guardado de la misma sesión fusiona sobre lo nuevo y no sobre la foto de al entrar.
           if(COACH_OWN_ROW)COACH_OWN_ROW.profile=_perfil;
+          _cwqDrop('ax_c',SELF_CLIENT_ID);
         }
-        catch(e){ _setAuthDirty(true); warn('AVI: persistir mi propio perfil falló:',e&&e.message); }
+        catch(e){ _cwqAdd('ax_c',SELF_CLIENT_ID,{profile:_perfil,routines:row.routines}); warn('AVI: persistir mi propio perfil falló, en cola para reintentar:',e&&e.message); }
       }
     }
     for(const c of _sp.clients){
@@ -1056,8 +1071,8 @@ async function _persistCoachWrite(k,v){
       const val=_coachClientJSON(c), sk='ax_c:'+id;
       if(_coachSnap[sk]===val)continue; // ese cliente no cambió
       const row=clientToRow(c,{});
-      try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; }
-      catch(e){ warn('AVI coach persist ax_c falló:',id,e&&e.message); }
+      try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; _cwqDrop('ax_c',id); }
+      catch(e){ _cwqAdd('ax_c',id,{profile:row.profile,routines:row.routines}); warn('AVI coach persist ax_c falló, en cola para reintentar:',id,e&&e.message); }
     }
     return;
   }
@@ -1069,8 +1084,8 @@ async function _persistCoachWrite(k,v){
     if(slice!==undefined){
       const val=JSON.stringify(slice), sk=k+':'+SELF_CLIENT_ID;
       if(_coachSnap[sk]!==val){
-        try{ await UD.upsertOwn({[col]:slice}); _coachSnap[sk]=val; }
-        catch(e){ _setAuthDirty(true); warn('AVI: persistir mis propios datos falló ('+k+'):',e&&e.message); }
+        try{ await UD.upsertOwn({[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,SELF_CLIENT_ID); }
+        catch(e){ _cwqAdd(col,SELF_CLIENT_ID,slice); warn('AVI: persistir mis propios datos falló ('+k+'), en cola para reintentar:',e&&e.message); }
       }
     }
   }
@@ -1079,8 +1094,8 @@ async function _persistCoachWrite(k,v){
     const slice=v&&v[id]; if(slice===undefined)continue;
     const val=JSON.stringify(slice), sk=k+':'+id;
     if(_coachSnap[sk]===val)continue;
-    try{ await UD.updateClientRow(id,{[col]:slice}); _coachSnap[sk]=val; }
-    catch(e){ warn('AVI coach persist '+k+' falló:',id,e&&e.message); }
+    try{ await UD.updateClientRow(id,{[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,id); }
+    catch(e){ _cwqAdd(col,id,slice); warn('AVI coach persist '+k+' falló, en cola para reintentar:',id,e&&e.message); }
   }
 }
 

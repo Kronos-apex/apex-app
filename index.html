@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=587">
+<link rel="stylesheet" href="styles.css?v=588">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -458,6 +458,13 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
       <div class="menu-btn" onclick="openDrawer()">☰</div>
       <div class="coach-topbar-logo" style="display:flex;align-items:center;gap:6px">
                 AVI <span class="sync-dot" id="sync-dot" title="Guardando en la nube..."></span>
+        <!-- v588 · LO QUE NO SE GUARDÓ SE VE. Hasta v587 una escritura del coach que la nube no
+             confirmaba moría en un warn() de la consola y la app seguía diciendo «Mensaje
+             enviado». Mientras quede algo en la cola este aviso está a la vista y se puede
+             tocar para reintentar. Nace oculto: sin nada pendiente no se pinta un hueco. -->
+        <button type="button" id="coach-sync" onclick="coachSyncRetry()" style="display:none;
+          background:var(--yll);color:var(--ylt);border:0;border-radius:999px;padding:4px 10px;
+          font-size:11px;font-weight:700;cursor:pointer;min-height:28px"></button>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:7px">
@@ -1361,19 +1368,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=587"></script>
-<script src="muscle-map.js?v=587"></script>
-<script src="exercise-muscles.js?v=587"></script>
+<script src="avi-core.js?v=588"></script>
+<script src="muscle-map.js?v=588"></script>
+<script src="exercise-muscles.js?v=588"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=587"></script>
-<script src="app-2-login.js?v=587"></script>
-<script src="app-3-coach.js?v=587"></script>
-<script src="app-4-entreno.js?v=587"></script>
-<script src="app-5-salud.js?v=587"></script>
-<script src="app-6-extra.js?v=587"></script>
-<script src="app-7-community.js?v=587"></script>
+<script src="app-1-infra.js?v=588"></script>
+<script src="app-2-login.js?v=588"></script>
+<script src="app-3-coach.js?v=588"></script>
+<script src="app-4-entreno.js?v=588"></script>
+<script src="app-5-salud.js?v=588"></script>
+<script src="app-6-extra.js?v=588"></script>
+<script src="app-7-community.js?v=588"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

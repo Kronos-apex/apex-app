@@ -16571,6 +16571,132 @@ test('🔒 CABLEADO v583: la nota se pinta y las CIFRAS no se tocan', () => {
 });
 
 // ══════════════════════════════════════════════════════
+// v588 · LO QUE EL COACH ESCRIBE SIN RED (hallazgo D1-2 de la auditoría del 7-sep)
+// ══════════════════════════════════════════════════════
+// El asesorado tiene red de seguridad desde junio (respaldo local + dirty + reintento). El
+// coach no tenía NADA: `_persistCoachWrite` solo hacía `warn()` y sus datos no se espejan a
+// localStorage, así que un mensaje escrito con mala señal moría al recargar mientras la app
+// decía «Mensaje enviado». Medido el 8-sep: 47 mensajes suyos vivos y 25 asesorados cuyo
+// perfil, rutinas, historial, récords, peso, medidas y nutrición van por el mismo camino.
+
+const _srcApp1 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+const _srcApp3 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
+const _m = (from, date, text) => ({ from, date, text });
+
+test('v588 · el reintento de mensajes FUSIONA: no pisa lo que el asesorado escribió mientras tanto', () => {
+  // La nube tiene lo que ella mandó desde su teléfono; yo traigo el mío, que nunca subió.
+  const nube = [_m('coach', '2026-09-01T10:00:00Z', 'hola'), _m('client', '2026-09-02T11:00:00Z', 'llegué tarde')];
+  const pend = [_m('coach', '2026-09-01T10:00:00Z', 'hola'), _m('coach', '2026-09-02T09:00:00Z', 'te dejé el plan')];
+  const r = core.mergeCoachMsgs(nube, pend);
+  assert.strictEqual(r.length, 3, '🔴 o se duplicó el reenviado o se perdió alguno');
+  assert.ok(r.some(x => x.text === 'llegué tarde'), '🔴 el reintento borró el mensaje de ella: eso es lo que NO puede pasar');
+  assert.deepStrictEqual(r.map(x => x.text), ['hola', 'te dejé el plan', 'llegué tarde'], 'el hilo quedó desordenado');
+});
+
+test('v588 · dos mensajes con el MISMO texto en momentos distintos son dos mensajes', () => {
+  // De-duplicar por texto se comería el «ok» que se manda dos veces al día.
+  const r = core.mergeCoachMsgs([_m('coach', '2026-09-01T10:00:00Z', 'ok')], [_m('coach', '2026-09-01T18:00:00Z', 'ok')]);
+  assert.strictEqual(r.length, 2, '🔴 se perdió un mensaje real por parecerse a otro');
+  // Y sin fecha legible no se inventa un orden: se conserva el que traían.
+  const sinFecha = core.mergeCoachMsgs([_m('coach', null, 'A'), _m('coach', null, 'B')], []);
+  assert.deepStrictEqual(sinFecha.map(x => x.text), ['A', 'B']);
+  assert.deepStrictEqual(core.mergeCoachMsgs(null, null), [], 'sin datos no puede lanzar');
+});
+
+test('v588 · la cola guarda UNA entrada por columna+asesorado, y gana la última', () => {
+  let q = [];
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Samuel', val: [1], ts: 10 }).list;
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Samuel', val: [1, 2], ts: 20 }).list;
+  q = core.coachQueuePut(q, { col: 'history', id: 'c1', name: 'Samuel', val: [9], ts: 30 }).list;
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c2', name: 'Kathe', val: [7], ts: 40 }).list;
+  assert.strictEqual(q.length, 3, 'la cola crece con cada intento fallido en vez de reemplazar');
+  const msgs1 = q.find(x => x.col === 'msgs' && x.id === 'c1');
+  assert.deepStrictEqual(msgs1.val, [1, 2], '🔴 reenviaría la versión VIEJA: eso es hacer retroceder el hilo');
+  assert.ok(msgs1.bytes > 0, 'sin tamaño no se puede respetar el tope de localStorage');
+});
+
+test('🔒 v588 · lo que no cabe NO se descarta en silencio: queda marcado y sin payload', () => {
+  const gordo = { col: 'photos', id: 'c1', name: 'Samuel', val: 'x'.repeat(400 * 1024), ts: 10 };
+  const r = core.coachQueuePut([], gordo, { entry: 300 * 1024, total: 1024 * 1024 });
+  assert.strictEqual(r.tooBig, true);
+  assert.strictEqual(r.list.length, 1, '🔴 se perdió el aviso: el coach no se enteraría de nada');
+  assert.strictEqual(r.list[0].val, null, 'se guardó un payload que no cabe');
+  assert.strictEqual(r.list[0].tooBig, true, 'sin la marca, el reintento lo subiría vacío y BORRARÍA la columna');
+  // Y el tope TOTAL también manda: dos entradas grandes no pueden llenar el almacenamiento.
+  const caps = { entry: 100, total: 150 };
+  const q = core.coachQueuePut([], { col: 'msgs', id: 'a', val: 'y'.repeat(80), ts: 1 }, caps).list;
+  const r2 = core.coachQueuePut(q, { col: 'msgs', id: 'b', val: 'y'.repeat(80), ts: 2 }, caps);
+  assert.strictEqual(r2.tooBig, true, 'la cola pasó del tope total');
+  assert.strictEqual(r2.list.length, 2, 'la segunda desapareció en vez de quedar marcada');
+});
+
+test('🔴 v588 · un reintento NO pisa una fila que cambió después del intento fallido', () => {
+  const e = { col: 'history', id: 'c1', val: [], ts: new Date('2026-09-07T10:00:00Z').getTime() };
+  assert.strictEqual(core.coachQueueCanReplay(e, '2026-09-07T09:00:00Z'), true, 'nada cambió después: sí se puede reenviar');
+  assert.strictEqual(core.coachQueueCanReplay(e, '2026-09-08T09:00:00Z'), false,
+    '🔴 pisaría el entreno que ella registró hoy: la pérdida de datos cambia de bando, no desaparece');
+  // Sin `updated_at` legible NO se pisa: no saber es razón para NO escribir.
+  assert.strictEqual(core.coachQueueCanReplay(e, null), false);
+  assert.strictEqual(core.coachQueueCanReplay(e, 'ayer'), false);
+  // `msgs` es la excepción y por una razón demostrable: se fusiona, así que nunca pisa.
+  assert.strictEqual(core.coachQueueCanReplay({ col: 'msgs', id: 'c1', val: [], ts: 1 }, '2030-01-01T00:00:00Z'), true);
+  // Lo que no cabía tampoco se reenvía: subiría null y borraría la columna.
+  assert.strictEqual(core.coachQueueCanReplay({ col: 'msgs', id: 'c1', tooBig: true, ts: 1 }, '2020-01-01T00:00:00Z'), false);
+});
+
+test('🔒 CABLEADO v588: los CUATRO catch del coach encolan, y el éxito limpia la cola', () => {
+  const src = _srcApp1();
+  const i = src.indexOf('async function _persistCoachWrite(');
+  const cuerpo = src.slice(i, src.indexOf('\n// ⚠️ Solo escribir a la nube', i));
+  const catches = cuerpo.match(/catch\(e\)\{[^\n]*\n?/g) || [];
+  assert.strictEqual(catches.length, 4, 'cambió el número de caminos de escritura del coach: revisa que todos encolen');
+  catches.forEach((c, n) => assert.ok(/_cwqAdd\(/.test(c),
+    `🔴 el catch ${n + 1} volvió a perder el dato en silencio (solo warn): es el hallazgo D1-2`));
+  // Y al confirmar la nube hay que SACARLO de la cola: si no, el reintento reescribiría datos viejos.
+  assert.strictEqual((cuerpo.match(/_cwqDrop\(/g) || []).length, 4, 'algún camino no limpia su pendiente al confirmar');
+});
+
+test('🔒 CABLEADO v588: el chat espera la nube, y el push sale DESPUÉS del mensaje', () => {
+  const src = _srcApp3();
+  const i = src.indexOf('async function sendCoachChatMsg(');
+  assert.ok(i > 0, '🔴 sendCoachChatMsg dejó de ser async: volvió a mandar a ciegas');
+  const cuerpo = src.slice(i, src.indexOf('\n// v364', i))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const iAwait = cuerpo.indexOf('await svNow(');
+  assert.ok(iAwait > 0, '🔴 volvió el `sv()` a ciegas: nadie se entera de si la nube aceptó');
+  assert.ok(cuerpo.indexOf('pushToClient(') > iAwait,
+    '🔴 el push vuelve a salir antes de guardar: el asesorado abriría un chat vacío');
+  assert.ok(cuerpo.indexOf("toast('💬 Mensaje enviado')") > iAwait,
+    '🔴 «Mensaje enviado» vuelve a cantarse antes de saberlo — la mentira del hallazgo D1-2');
+  assert.ok(/_enCola[\s\S]{0,120}return;/.test(cuerpo),
+    '🔴 se perdió la bifurcación: un mensaje encolado se anuncia como entregado');
+  // El hilo tiene que DECIRLO, no solo guardarlo.
+  const hilo = src.slice(src.indexOf('function renderCoachChatThread('), i);
+  assert.ok(/_cwqHasMsg\(clientId,\s*m\.date\)/.test(hilo) && /sin enviar/.test(hilo),
+    '🔴 el mensaje que nunca salió se pinta igual que el entregado');
+});
+
+test('🔒 CABLEADO v588: el reintento respeta las dos reglas y está enchufado a las dos puertas', () => {
+  const src = _srcApp3();
+  const i = src.indexOf('async function _flushCoachWrites(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction _renderCoachSync(', i));
+  assert.ok(/coachQueueCanReplay\(e,\s*fila\.updated_at\)/.test(cuerpo),
+    '🔴 el reintento dejó de preguntar si puede pisar: vuelve a poder borrar el entreno de alguien');
+  assert.ok(/mergeCoachMsgs\(fila\.msgs\s*\|\|\s*\[\],\s*e\.val/.test(cuerpo),
+    '🔴 los mensajes se reenvían REEMPLAZANDO: borraría lo que ella escribió');
+  assert.ok(/if\(!fila\)\{\s*fail\+\+;\s*continue;\s*\}/.test(cuerpo),
+    '🔴 sin poder leer la fila se sigue adelante: escribiría a ciegas');
+  assert.ok(/_cwqDrop\(e\.col,\s*e\.id\)/.test(cuerpo), 'lo subido no sale de la cola: se reenviaría para siempre');
+  // Las dos puertas: al reconectar y al entrar (lo que quedó de la sesión anterior).
+  assert.ok(/window\.addEventListener\('online',\s*\(\)\s*=>\s*\{\s*_flushCoachWrites\(\);\s*\}\)/.test(src),
+    '🔴 nadie reintenta al volver la señal');
+  const hyd = src.slice(src.indexOf('function _hydrateCoachFromRows('), src.indexOf('function _curarNivelDeLosPlanes('));
+  assert.ok(/_flushCoachWrites\(\)/.test(hyd), '🔴 lo que quedó de la sesión anterior no se reintenta nunca');
+  assert.ok(hyd.indexOf('_primeCoachSnap()') < hyd.indexOf('_flushCoachWrites()'),
+    '🔴 el reintento corre ANTES de la foto base: lo que cambie quedaría dado por persistido');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
