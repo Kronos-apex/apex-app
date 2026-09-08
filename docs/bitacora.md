@@ -78,8 +78,9 @@ son ejercicios que ya no están en el plan de esa persona, no desajustes de nomb
   **body** y no la superficie donde vive la fila, así que aprobaba una pantalla con texto oscuro
   sobre fondo oscuro.
 - **R3.3:** sin entrada en `AVI_NEWS` — la pantalla es del COACH, no del asesorado.
-- De propina, en su propio commit: **«3 sesiónes» → «3 sesiones»** en los 3 sitios del archivo (uno
-  de ellos es texto que lee el asesorado).
+- De propina, y en ESTE mismo commit (no aparte, como se dijo primero): **«3 sesiónes» → «3
+  sesiones»** en los 3 sitios de `app-2-login.js` — uno de ellos es texto que lee el asesorado. Lo
+  destapó MIRAR la captura, no un test.
 
 ### ⏭️ PENDIENTE re-verificación de Fable.
 
