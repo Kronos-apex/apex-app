@@ -8248,8 +8248,19 @@ function perfIndex(kg, reps) {
 // exercisePerfSeries: una serie de puntos {t, day, perf, kg} por ejercicio de CARGA (peso_reps).
 // El punto de un día es el MEJOR índice de sus series hechas. Pura; recibe el historial tal como
 // se guarda (nuevo→viejo) y devuelve cada serie ordenada viejo→nuevo.
+//
+// ⚠️ Agrupa por IDENTIDAD (`exerciseIdentity`), no por nombre — v585. Agrupar por `ex.name`
+// partía un mismo ejercicio en dos series en cuanto alguien lo renombraba, y este detector pide
+// 7 puntos-día (STALL_MIN_POINTS + STALL_MIN_BEFORE) para pronunciarse: partido, ninguna mitad
+// llega al mínimo y el ejercicio se vuelve INVISIBLE justo cuando más historia tiene. Medido en
+// producción el 7-sep: 3 de 201 ejercicios-persona estaban partidos («Pullover en Polea» y
+// «Pull Over en Polea» de Kathe son el mismo e24), y 2 de esos 3 quedaban fuera del detector solo
+// por eso. Es la misma clase que ya se mató en `computeExerciseProgress` (v484) y en el filtro de
+// dolor (v546): el nombre es una COPIA editable, el id es la identidad. `key` viaja en la serie
+// para que quien la consuma pueda casar por identidad y no por rótulo.
 function exercisePerfSeries(history) {
   const map = {};
+  const ident = exerciseIdentity(history || []);
   const sessions = (history || []).slice().reverse();
   sessions.forEach(s => {
     const t = new Date(s && s.date).getTime();
@@ -8266,7 +8277,10 @@ function exercisePerfSeries(history) {
         if (k > bestKg) bestKg = k;
       });
       if (best == null) return;
-      const m = (map[ex.name] = map[ex.name] || { name: ex.name, muscle: ex.muscle, icon: ex.icon || '💪', points: [] });
+      const k = ident.keyOf(ex);
+      // El rótulo es el nombre MÁS RECIENTE del ejercicio (el que la persona reconoce hoy), el
+      // mismo criterio que usa la gráfica de progreso: así los dos lados hablan del mismo nombre.
+      const m = (map[k] = map[k] || { key: k, name: ident.nameOf(k) || ex.name, muscle: ex.muscle, icon: ex.icon || '💪', points: [] });
       const prev = m.points.find(p => p.day === day);
       if (prev) { prev.perf = Math.max(prev.perf, best); prev.kg = Math.max(prev.kg, bestKg); }
       else m.points.push({ t, day, perf: best, kg: bestKg });
@@ -8322,7 +8336,7 @@ function stallReport(client, sessions, now) {
     const after = Math.max.apply(null, dentro.map(p => p.perf));
     if (!(before > 0)) return;
     items.push({
-      name: e.name, muscle: e.muscle || '', icon: e.icon,
+      key: e.key, name: e.name, muscle: e.muscle || '', icon: e.icon,
       stalled: after <= before, delta: after / before - 1,
       before, after, sessions: dentro.length, weeks: (nowTs - cut) / (7 * 86400000),
     });

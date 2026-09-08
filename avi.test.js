@@ -11164,6 +11164,36 @@ test('🔴 v433 · UN ESTANCAMIENTO REAL SÍ SE DETECTA (caso Astrid, remo con b
   assert.ok(it && it.stalled, 'esto SÍ es un estancamiento y tiene que salir');
 });
 
+test('🔴 v585 · UN EJERCICIO RENOMBRADO ES EL MISMO EJERCICIO PARA EL DETECTOR (caso Kathe, e24)', () => {
+  // Medido en producción el 7-sep-2026: «Pullover en Polea» (5 sesiones) y «Pull Over en Polea»
+  // (3) son el MISMO e24 en el historial de Kathe; a Samuel le pasa con e30 y a Astrid con e29.
+  // Agrupando por NOMBRE ninguna mitad llegaba a los 7 puntos-día que el detector exige para
+  // pronunciarse, así que la meseta era invisible: 2 de los 3 ejercicios partidos de producción
+  // quedaban fuera del detector solo por cómo se escribía su nombre ese día.
+  // 9 semanas de historial (el detector exige STALL_MIN_DATA_WEEKS=8 para siquiera opinar) y 10
+  // sesiones, 5 bajo cada grafía: juntas pasan los 7 puntos-día, separadas ninguna llega.
+  const offsets = [63, 56, 49, 42, 35, 28, 21, 14, 7, 0];
+  const h = offsets.map((off, i) => ({
+    date: new Date(CI_NOW - off * 86400000).toISOString(),
+    exercises: [{
+      id: 'e24',
+      name: i % 2 ? 'Pull Over en Polea' : 'Pullover en Polea',   // el coach lo reescribe
+      muscle: 'espalda', track: 'peso_reps',
+      sets: [{ done: true, kg: '25', reps: '12' }],               // 25 kg quieto: meseta real
+    }],
+  })).reverse();
+  const serie = exercisePerfSeries(h);
+  assert.strictEqual(serie.length, 1, 'UNA serie, no una por grafía');
+  assert.strictEqual(serie[0].points.length, 10, 'los 10 puntos-día, juntos');
+  assert.strictEqual(serie[0].key, 'e24', 'la clave de la serie es la identidad, no el rótulo');
+  const items = stallReport({ level: 'Intermedio', days: 3 }, h, CI_NOW).items;
+  assert.strictEqual(items.length, 1, 'el detector lo evalúa UNA sola vez');
+  assert.strictEqual(items[0].stalled, true, '25 kg quieto casi dos meses es una meseta');
+  assert.strictEqual(items[0].key, 'e24', 'el veredicto viaja con la identidad para poder casarlo');
+  // El rótulo es el nombre MÁS RECIENTE: el que el coach y la persona reconocen hoy.
+  assert.strictEqual(items[0].name, 'Pull Over en Polea');
+});
+
 test('🔒 v433 · una PRINCIPIANTE en adaptación no se estanca nunca (caso Luz)', () => {
   // Llevaba 5 semanas y la app le decía que se había estancado en el curl femoral.
   const h = Array.from({ length: 12 }, (_, i) => ({
