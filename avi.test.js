@@ -8941,6 +8941,47 @@ test('🔒 CABLEADO v585: el panel PINTA el récord, lo ROTULA y le pregunta al 
   assert.ok(!/setProgFilter\('down',this\)/.test(html), 'y el de «Bajando» ya no existe');
 });
 
+test('🔒 CABLEADO v586: el coach VE las fotos, y en solo lectura', () => {
+  // Una función pura impecable que nadie llama es «puerta cerrada, ventana abierta» (v509), y
+  // aquí hay dos cosas que el candado tiene que sostener: que el render se LLAME (en las DOS
+  // pasadas de la ficha, porque las fotos llegan con los datos pesados) y que el coach NO pueda
+  // borrar la foto de otra persona — eso es irreversible: el archivo se va de Storage.
+  const fs = require('fs'), path = require('path');
+  // Quita comentarios de LAS DOS FORMAS. Filtrar solo las líneas que empiezan por `//` deja
+  // pasar un `/*renderPhotosCoach(id);*/` en medio de la línea, y entonces el nombre sigue
+  // apareciendo y la llamada se cuenta como viva: probado, con ese sabotaje la suite salía
+  // VERDE. Cuarta cara de la clase v552/v568/v570/v579.
+  const sinComentarios = txt => txt.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const salud = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+
+  // 1. El contenedor existe en la ficha del coach, o el render no tiene dónde pintar.
+  assert.ok(/id="d-photos"/.test(html) && /id="d-photos-wrap"/.test(html), 'la ficha tiene su sitio para las fotos');
+  // 2. Se llama en LAS DOS pasadas: la de memoria y la de después de `_ensureClientHeavy`
+  //    (las fotos son una colección PESADA — en la primera pasada todavía no están).
+  const llamadas = (coach.match(/renderPhotosCoach\(id\)/g) || []).length;
+  assert.strictEqual(llamadas, 2, 'se llama en la pasada de memoria Y en la de datos pesados, no solo en una');
+  // 3. El coach abre el visor en SOLO LECTURA. Se afirma la llamada completa, no que el nombre
+  //    aparezca: un `viewPhoto(a,b)` sin el tercer argumento le devolvería el botón de borrar.
+  assert.ok(/onclick="viewPhoto\('\$\{esc\(p\.id\)\}','\$\{esc\(clientId\)\}',true\)"/.test(salud),
+    'el grid del coach abre el visor con soloLectura=true');
+  // 4. Y el visor de verdad esconde el botón cuando se lo piden.
+  assert.ok(/\$\{soloLectura\?''/.test(salud), 'el visor respeta el modo solo lectura');
+  // 5. CONTROL: el asesorado NO pierde su botón de eliminar — «arreglarlo» quitándolo a todos
+  //    sería borrar la feature, no protegerla.
+  assert.ok(/_photoAskDelete\(this,/.test(salud), 'el asesorado sigue pudiendo borrar las suyas');
+  assert.ok(/onclick="viewPhoto\('\$\{esc\(p\.id\)\}','\$\{esc\(clientId\)\}'\)"/.test(salud),
+    'y su propio grid sigue abriendo el visor completo');
+  // 6. Se le DICE que su coach las ve, y solo a quien tiene coach.
+  assert.ok(/clientHasCoach\(_c\)/.test(salud), 'el aviso se decide con clientHasCoach');
+  assert.ok(/Tu entrenador ve estas fotos/.test(salud), 'y se escribe');
+  const cuerpo = salud.slice(salud.indexOf('function renderPhotosClient'), salud.indexOf('function viewPhoto'));
+  assert.strictEqual((cuerpo.match(/\+_verCoach/g) || []).length, 2,
+    'el aviso sale en los DOS estados: con fotos y vacío (avisar solo al final llega tarde)');
+});
+
 test('🔒 v585 · el filtro del panel separa lo que dice separar', () => {
   const up = { state: 'up' }, flat = { state: 'flat' }, st = { state: 'stalled' };
   assert.ok(progressRowMatches(up, 'all') && progressRowMatches(flat, 'all') && progressRowMatches(st, 'all'));

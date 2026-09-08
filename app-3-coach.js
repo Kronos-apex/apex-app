@@ -1668,7 +1668,7 @@ async function openDetail(id,_silent){
   renderCoachFoodLogCard(c);
   renderCoachPRsCard(c);
   renderStoryCard(c);
-  renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+  renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);renderPhotosCoach(id);
   renderDetailMembership(id);
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
   document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on');
@@ -1678,7 +1678,7 @@ async function openDetail(id,_silent){
   if(!_heavyLoaded[id]){
     await _ensureClientHeavy(id);
     if(CUR.clientId!==id) return; // el coach abrió otro cliente mientras cargaba → no pisar
-    renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);
+    renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);renderPhotosCoach(id);
     renderNutReviewCard(c);   // la nutrición llega con los datos pesados: recién ahí se puede revisar
     renderCoachHabitsCard(c); // la meta puede afinarse con el plan nutricional recién cargado
   }

@@ -1172,6 +1172,41 @@ function renderMedidasCoach(clientId){
   con.innerHTML=html;
 }
 
+// ── FOTOS DE PROGRESO, DEL LADO DEL COACH (v586) ────────────────────────────
+// Hasta hoy el coach no veía NINGUNA foto de sus asesorados: `renderPhotosClient` vive
+// exclusivamente en la pantalla del asesorado (`#cn-profile`) y en `p-detail` no existía
+// ningún contenedor. Medido el 7-sep contra producción: **5 asesorados con 10 fotos vivas**
+// (más las 2 del propio coach en su cuenta, que él sí ve por «Mi entrenamiento» — de ahí que
+// el informe dijera 6: son 5 asesorados + él). Ese material se sube, sobrevive al borrado con
+// lápida (v568) y no lo miraba nadie.
+//
+// 🔒 Que el dato LLEGUE está comprobado antes de escribir la pantalla, que es la lección de
+// v540 (una feature puede nacer muerta porque su lector no tiene permiso): `_ensureClientHeavy`
+// ya trae `DB.photos[id]` de la fila del asesorado, la RLS de `user_data` deja al coach leer
+// las filas de sus asesorados, y medido, **9 de las 10 fotos son base64 dentro de la propia
+// fila** (la décima es una URL de Storage PÚBLICA). O sea que no hace falta tocar Storage.
+//
+// 🔒 SOLO LECTURA: el visor se abre sin el botón de eliminar. Borrar una foto es irreversible
+// (el archivo se va de Storage) y es la foto que marca el punto de partida de otra persona.
+function renderPhotosCoach(clientId){
+  const wrap=document.getElementById('d-photos-wrap');
+  const con=document.getElementById('d-photos');
+  if(!wrap||!con)return;
+  const photos=(typeof photoLive==='function')?photoLive((DB.photos||{})[clientId]||[]):((DB.photos||{})[clientId]||[]);
+  // Progressive disclosure, como el resto de la ficha: sin fotos no se pinta un hueco.
+  wrap.style.display=photos.length?'block':'none';
+  if(!photos.length){con.innerHTML='';return;}
+  const dias=t=>Math.round((Date.now()-new Date(t).getTime())/86400000);
+  con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    ${photos.map(p=>`
+      <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${esc(p.id)}','${esc(clientId)}',true)">
+        <img src="${/^(data:image\/|https:\/\/)/.test(p.src)?p.src:''}" alt="Foto de progreso" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
+      </div>`).join('')}
+  </div>
+  <div style="font-size:11px;color:var(--t3);margin-top:8px">${photos.length} foto${photos.length!==1?'s':''} · la más reciente, de hace ${dias(photos[0].date)} días</div>`;
+}
+
 function drawMedChart(container,points,field,color){
   if(!container||!points.length)return;
   const W=Math.max(container.offsetWidth||280,200);const H=60;const pad=8;
@@ -1339,11 +1374,20 @@ function savePhoto(){
 
 function renderPhotosClient(clientId){
   const con=document.getElementById('cn-photos-grid');if(!con)return;
-  if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
+  const _c=DB.clients.find(x=>x.id===clientId);
+  if(premiumLocked(_c)){con.innerHTML=premiumLockHTML('Fotos de progreso','Guarda tu antes/después y compara tu transformación.');return;}
+  // 🔒 v586 — SE LO DECIMOS ANTES, NO DESPUÉS. Desde v586 el coach ve estas fotos en su ficha;
+  // hasta entonces no las veía nadie, y cambiar quién mira algo tuyo sin avisarte es la clase de
+  // cosa que la app no hace en silencio. El aviso va también en el estado VACÍO: enterarse antes
+  // de subir la primera es justo el momento en que sirve de algo.
+  // Solo a quien TIENE coach: a un plan 'libre' o 'app' esta frase le prometería un lector que
+  // no existe.
+  const _verCoach=(typeof clientHasCoach==='function')&&clientHasCoach(_c)
+    ?'<div style="font-size:11px;color:var(--t3);margin-top:8px">Tu entrenador ve estas fotos desde su app para acompañar tu proceso. Nadie más las ve.</div>':'';
   // Las lápidas no son fotos: quien borró la suya ve el estado vacío, no un hueco.
   const photos=(typeof photoLive==='function')?photoLive((DB.photos||{})[clientId]||[]):((DB.photos||{})[clientId]||[]);
   if(!photos.length){
-    con.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('camera',32):'\ud83d\udcf7'}</div><div class="etxt">A\u00fan no tienes fotos de progreso</div><div class="esub">La primera es la m\u00e1s importante: marca tu punto de partida.</div></div>`;return;
+    con.innerHTML=`<div class="empty" style="padding:22px 12px"><div class="eico" style="color:var(--t3)">${typeof aviIcon==='function'?aviIcon('camera',32):'\ud83d\udcf7'}</div><div class="etxt">A\u00fan no tienes fotos de progreso</div><div class="esub">La primera es la m\u00e1s importante: marca tu punto de partida.</div></div>`+_verCoach;return;
   }
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
@@ -1352,10 +1396,13 @@ function renderPhotosClient(clientId){
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
-  <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${photos.length}/12 fotos guardadas</div>`;
+  <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${photos.length}/12 fotos guardadas</div>`+_verCoach;
 }
 
-function viewPhoto(photoId,clientId){
+// `soloLectura` (v586): el COACH abre el visor sin el botón de eliminar. Borrar es
+// irreversible —el archivo se va de Storage— y no es su foto: es el punto de partida de
+// otra persona. El parámetro es opcional, así que la pantalla del asesorado no cambia.
+function viewPhoto(photoId,clientId,soloLectura){
   const cid=clientId||CUR.clientId;if(!cid)return;
   const _vivas=(typeof photoLive==='function')?photoLive((DB.photos||{})[cid]||[]):((DB.photos||{})[cid]||[]);
   const photo=_vivas.find(p=>p.id===photoId);if(!photo)return;
@@ -1367,7 +1414,7 @@ function viewPhoto(photoId,clientId){
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button onclick="this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
-      <button id="ph-del-btn" onclick="_photoAskDelete(this,'${esc(photoId)}','${esc(cid)}')" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>
+      ${soloLectura?'':`<button id="ph-del-btn" onclick="_photoAskDelete(this,'${esc(photoId)}','${esc(cid)}')" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>`}
     </div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);

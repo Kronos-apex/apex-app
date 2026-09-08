@@ -4,6 +4,69 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-07 (3ª parte) — v586: EL COACH VE LAS FOTOS DE PROGRESO
+
+Segundo frente de los cuatro que mandó el PO (hallazgo D3-3). Parte A: las fotos. El peso
+corporal (D3-4) va aparte.
+
+### 🔴 El defecto: material que existe y no lo miraba nadie
+`renderPhotosClient` vive **exclusivamente** en la pantalla del asesorado (`#cn-profile`) y en la
+ficha del coach no había ningún contenedor: el coach **no veía ni una foto de nadie**, en ningún
+panel. Tampoco en «Cargas» ni en la historia para redes.
+
+**Medido el 7-sep contra producción** (`scripts/coach-no-ve.mjs`): **5 asesorados con 10 fotos
+vivas** (Samuel 5, Miguel 2, y Nicolás, Luz y jhojan 1 cada uno), de hace 39 a 106 días.
+⚠️ El informe decía «6 personas»: son **5 asesorados + la cuenta propia del coach**, que él ya ve
+por «Mi entrenamiento». Misma cifra, distinta unidad — la lección del 7-sep, otra vez.
+
+### 🔒 Lo primero que se midió no fue el hallazgo: fue si la feature podía nacer MUERTA
+Es la clase de v540 (una pantalla que pide un dato que su lector no tiene permiso de leer), y aquí
+era un riesgo real: si las fotos fueran URLs de un bucket de Storage con RLS por dueño, una
+galería para el coach no mostraría nada. **Medido antes de escribir una línea: 9 de las 10 fotos
+son `base64` DENTRO de la fila del asesorado** —que la RLS de `user_data` deja leer al coach por
+`coach_id`— y la décima es una URL de Storage **pública**. Y `_ensureClientHeavy` ya trae
+`DB.photos[id]`. O sea: cero trabajo de Storage, y se supo por medir, no por suerte.
+
+### Lo construido
+- **`renderPhotosCoach`** (app-5, junto a su hermano `renderMedidasCoach`): rejilla de 3 columnas
+  con la etiqueta de cada foto y un pie que dice **de cuándo es la más reciente** — una foto sin
+  fecha no le dice nada a nadie. Progressive disclosure como el resto de la ficha: sin fotos no se
+  pinta un hueco.
+- 🔒 **SOLO LECTURA.** El visor traía botón «Eliminar», y borrar es **irreversible** (el archivo se
+  va de Storage) sobre la foto que marca el punto de partida de otra persona. `viewPhoto` gana un
+  tercer parámetro opcional, así que la pantalla del asesorado **no cambia** y él sigue pudiendo
+  borrar las suyas — eso es el CONTROL: proteger no puede ser borrar la feature.
+- 🔒 **El asesorado se ENTERA, y antes de subir la primera.** Hasta hoy sus fotos no las veía
+  nadie; cambiar quién mira algo tuyo sin decírtelo es lo que la app no hace en silencio. La línea
+  va en su tarjeta **también en el estado vacío** (avisar solo cuando ya subió llega tarde) y
+  **solo a quien tiene coach** — a un plan `libre` o `app` le prometería un lector que no existe
+  (gotcha v508: «coach» y «premium» no son el mismo público).
+
+### QA
+- Suite **1074 → 1075** en los dos husos · hook **12/12** · `_prodcheck 586` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-fotos-coach.mjs`: **10/10 muerden**.
+- Harness nuevo `_verify-fotos-coach.mjs`: **12/12**, con control de cobertura, los dos temas y
+  360 px.
+- 🔬 **Tres defectos de MI PROPIO trabajo de verificación, cazados aquí:**
+  1. **Un sabotaje salía VERDE y el defecto era del sabotaje**: comentaba una COPIA de la llamada y
+     dejaba la real en su sitio. Reescrito para comentar la de verdad **en línea** — y entonces
+     apareció un **hueco real del candado**: `sinComentarios` filtraba solo las líneas que
+     EMPIEZAN por `//`, así que un `/*renderPhotosCoach(id);*/` seguía contando como llamada viva
+     y la suite salía verde. Apretado (quita también los bloques `/* */`) y demostrado rojo→verde.
+     Cuarta cara de la clase v552/v568/v570/v579.
+  2. **Un CONTROL aprobaba por la razón equivocada**: usaba un tier `libre`, al que
+     `premiumLocked` le tapa las fotos ANTES de llegar al aviso. El caso que de verdad discrimina
+     es el tier **`app`** (premium sin coach), que sí ve sus fotos. Es el control de v485 otra vez:
+     hay que comprobar que el caso de control ESTÉ en la situación que el candado debe respetar.
+  3. El control del tema medía el fondo de un contenedor **transparente** (`rgba(0,0,0,0)`, que en
+     JS es una cadena *truthy* y se comía el fallback): se sube por la cadena de padres hasta el
+     primer fondo pintado (v453).
+- **R3.3 — decisión declarada:** sin entrada en `AVI_NEWS`. La funcionalidad nueva es del COACH; lo
+  que el asesorado ve es una línea permanente **en el sitio exacto donde están sus fotos**, que
+  para un aviso de quién-ve-qué es más fiable que una diapositiva que se mira una vez.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-07 (2ª parte) — v585: EL PANEL «CARGAS» DICE LA VERDAD
 
 Primer frente de los cuatro que el PO mandó atacar de la auditoría del 7-sep
