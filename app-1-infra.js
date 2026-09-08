@@ -155,15 +155,24 @@ const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','
 // igual que las plantillas (ax_tpl→templates). Antes caían al vacío en _persistCoachWrite →
 // se perdían al recargar (bug #1 auditoría 2026-06-30). ax_cph NO va aquí: la clave real del
 // coach es la de Supabase Auth (lo cubre saveCoachPass→updateUser, bug #2).
-const _COACH_SETTINGS_KEYS=['ax_e','ax_nequi','ax_cn','ax_ce','ax_site','ax_msgreads','ax_leadsdone'];
+// v589 · QUÉ CLAVE DE AJUSTES OCUPA QUÉ SITIO DENTRO DE `coach_settings`. Fuente ÚNICA: de aquí
+// salen la lista de claves Y el objeto completo, así que no pueden separarse. Antes el nombre
+// corto solo existía escrito a mano dentro de `_coachSettingsObj`.
+const _COACH_SETTINGS_COL={ax_e:'e',ax_nequi:'nequi',ax_cn:'cn',ax_ce:'ce',ax_site:'site',ax_msgreads:'mr',ax_leadsdone:'ld'};
+const _COACH_SETTINGS_KEYS=Object.keys(_COACH_SETTINGS_COL);
 // Construye el objeto completo coach_settings desde el estado local (sv ya espejó cada clave a
 // localStorage antes de persistir) → un upsert idempotente que no pisa las demás claves.
 // `mr` (v321) = mapa {clientId: iso} de leído del chat → el estado de leído persiste entre
 // dispositivos (antes coach_read_<id> era solo-local y re-notificaba mensajes ya leídos).
+// `ld` = leads ya ATENDIDOS {clientId: iso}. Vive del lado del COACH a propósito: el flag
+// `wantsCoach` está en la fila del asesorado y su dispositivo puede re-subirlo (clase F7).
+// El objeto ENTERO ya casi no se usa para escribir (v589 sube solo la clave que cambió); queda
+// para el arranque y para el respaldo.
+const _COACH_SETTINGS_DEF={ax_e:[],ax_nequi:'',ax_cn:'',ax_ce:'',ax_site:'',ax_msgreads:{},ax_leadsdone:{}};
 function _coachSettingsObj(){
-  // `ld` = leads ya ATENDIDOS {clientId: iso}. Vive del lado del COACH a propósito: el flag
-  // `wantsCoach` está en la fila del asesorado y su dispositivo puede re-subirlo (clase F7).
-  return { e:ld('ax_e',[]), nequi:ld('ax_nequi',''), cn:ld('ax_cn',''), ce:ld('ax_ce',''), site:ld('ax_site',''), mr:ld('ax_msgreads',{}), ld:ld('ax_leadsdone',{}) };
+  const o={};
+  Object.keys(_COACH_SETTINGS_COL).forEach(k=>{ o[_COACH_SETTINGS_COL[k]]=ld(k,_COACH_SETTINGS_DEF[k]); });
+  return o;
 }
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
@@ -315,6 +324,18 @@ const UD={
       .eq('user_id',clientId).maybeSingle();
     if(error){warn('UD.loadClientHeavy:',error.message);return null;}
     return data;
+  },
+  // Escribe SOLO las claves que cambiaron dentro de `coach_settings` (v589). Sin esto había que
+  // mandar el objeto entero, y ahí adentro vive la biblioteca de ejercicios: marcar una
+  // conversación como leída —960 B de contenido real— costaba **241 KB** de subida.
+  // `coach_settings_patch` hace la fusión en el servidor (`||`) y corre como el USUARIO, así que
+  // la RLS decide igual que en cualquier otra escritura suya.
+  async patchCoachSettings(patch){
+    if(cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)){ if(window.AVI_DEBUG)console.warn('[AVI] UD.patchCoachSettings SELLADO en localhost (harness/dev) — no toca la nube'); return null; }
+    const c=AUTH.client(); if(!c)throw new Error('Auth no disponible');
+    const {error}=await c.rpc('coach_settings_patch',{p:patch||{}});
+    if(error)throw error;
+    return true;
   },
   // Lee UNA columna de la fila de un asesorado JUNTO CON su `updated_at` (v588). El reintento
   // de una escritura fallida necesita las dos: la columna para FUSIONAR (msgs) y el `updated_at`
@@ -979,7 +1000,11 @@ async function _persistAuthUser(k,v){
   // columna `coach_settings` (jsonb). Sin esto caían al vacío en _persistCoachWrite → se perdían
   // al recargar (bug #1 auditoría 2026-06-30). Idempotente: re-escribe el objeto completo.
   if(AUTH_ROLE==='coach' && _COACH_SETTINGS_KEYS.includes(k)){
-    try{ await UD.upsertOwn({coach_settings:_coachSettingsObj()}); }
+    // 🔴 v589 · SOLO LA CLAVE QUE CAMBIÓ. `coach_settings` es UNA columna jsonb y `upsertOwn` la
+    // reemplaza entera, así que cada «leído» del chat subía la biblioteca de 374 ejercicios
+    // detrás: medido el 8-sep contra producción, **241.029 B de los que 239.849 son `e`**.
+    const patch={}; patch[_COACH_SETTINGS_COL[k]]=v;
+    try{ await UD.patchCoachSettings(patch); }
     catch(e){ _setAuthDirty(true); warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message); }
     return;
   }

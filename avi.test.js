@@ -16697,6 +16697,67 @@ test('🔒 CABLEADO v588: el reintento respeta las dos reglas y está enchufado 
 });
 
 // ══════════════════════════════════════════════════════
+// v589 · MARCAR UN CHAT COMO LEÍDO NO SUBE LA BIBLIOTECA (hallazgo D2-2)
+// ══════════════════════════════════════════════════════
+// Los 7 ajustes del coach viven en UNA columna jsonb y `upsertOwn` la reemplaza entera, así que
+// cada escritura se llevaba detrás la biblioteca de ejercicios. Medido el 8-sep contra la fila
+// real: coach_settings 241.029 B en JSON, de los que `e` son 239.849 (99,5%); `mr` —lo que de
+// verdad cambia al marcar leído— son 960 B.
+
+test('🔒 CABLEADO v589: se sube SOLO la clave que cambió, no el objeto entero', () => {
+  const src = _srcApp1();
+  const i = src.indexOf("if(AUTH_ROLE==='coach' && _COACH_SETTINGS_KEYS.includes(k)){");
+  assert.ok(i > 0, 'desapareció la rama de ajustes del coach');
+  const cuerpo = src.slice(i, src.indexOf('\n  }', i))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/patch\[_COACH_SETTINGS_COL\[k\]\]\s*=\s*v/.test(cuerpo),
+    '🔴 el patch dejó de armarse con la clave que cambió');
+  assert.ok(/UD\.patchCoachSettings\(patch\)/.test(cuerpo),
+    '🔴 volvió a subirse por otra vía');
+  assert.ok(!/upsertOwn\(\{coach_settings/.test(cuerpo),
+    '🔴 volvió el objeto ENTERO: cada «leído» del chat sube otra vez los 374 ejercicios');
+  // Y la escritura sigue avisando cuando falla (no se perdió al reescribir la rama).
+  assert.ok(/_setAuthDirty\(true\)/.test(cuerpo), 'un fallo de ajustes volvió a ser silencioso');
+});
+
+test('🔒 v589 · el nombre corto de cada ajuste sale de UNA tabla, no escrito a mano', () => {
+  const src = _srcApp1();
+  const mapa = (src.match(/const _COACH_SETTINGS_COL=\{([^}]*)\}/) || [])[1] || '';
+  const claves = mapa.split(',').map(x => x.split(':')[0].trim()).filter(Boolean);
+  assert.strictEqual(claves.length, 7, 'cambió el número de ajustes del coach: revisa el mapa');
+  // La lista de claves y el objeto que se guarda se DERIVAN del mismo sitio: si alguien vuelve a
+  // escribir los nombres cortos a mano en `_coachSettingsObj`, los dos lados se separan en
+  // silencio y el patch escribiría en una clave que nadie lee (clase del espejo del .sql).
+  assert.ok(/const _COACH_SETTINGS_KEYS=Object\.keys\(_COACH_SETTINGS_COL\)/.test(src),
+    '🔴 la lista de claves dejó de derivarse del mapa');
+  const obj = src.slice(src.indexOf('function _coachSettingsObj()'), src.indexOf('const VAPID_PUBLIC'));
+  assert.ok(/_COACH_SETTINGS_COL\[k\]/.test(obj),
+    '🔴 `_coachSettingsObj` volvió a escribir los nombres cortos a mano');
+  // Cada clave larga es una de las que sincronizan (SB_KEYS) o un ajuste conocido del coach.
+  claves.forEach(k => assert.ok(/^ax_[a-z]+$/.test(k), 'clave de ajuste con forma rara: ' + k));
+});
+
+test('🔒 v589 · ESPEJO: el cliente llama a la función que la migración define', () => {
+  const src = _srcApp1();
+  // 🔴 Sin quitar los comentarios, el propio encabezado —que explica POR QUÉ es invoker y por qué
+  // lleva el `where`— satisface las aserciones de abajo: dos sabotajes salieron verdes por eso.
+  // Es la clase de v523, y documentar bien una decisión MULTIPLICA el texto que la nombra (v546).
+  const sql = require('fs').readFileSync(
+    require('path').join(__dirname, 'supabase', 'migrations', '20260908_coach_settings_patch.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  const enSql = (sql.match(/create or replace function public\.([a-z_]+)\(/) || [])[1];
+  assert.strictEqual(enSql, 'coach_settings_patch', 'la migración define otra función');
+  assert.ok(new RegExp("rpc\\('" + enSql + "'").test(src),
+    '🔴 el cliente llama a una función con otro nombre: el ajuste no se guardaría');
+  // 🔒 INVOKER a propósito: no hace falta elevación (el coach ya puede escribir su fila) y así la
+  // RLS decide con SU identidad. Un DEFINER aquí abriría una escritura sin dueño comprobable.
+  assert.ok(/security invoker/.test(sql), '🔴 la función pasó a DEFINER: escribiría sin que la RLS opine');
+  assert.ok(/set search_path = ''/.test(sql), 'falta el search_path vacío (regla F6)');
+  assert.ok(/where user_id = auth\.uid\(\)/.test(sql), '🔴 se fue el cinturón: podría tocar otra fila');
+  assert.ok(/revoke execute[\s\S]{0,80}from public, anon/.test(sql), 'anon puede ejecutarla');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

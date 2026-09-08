@@ -4,6 +4,72 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (2ª parte) — v589: MARCAR UN CHAT COMO LEÍDO DEJA DE SUBIR LA BIBLIOTECA
+
+Hallazgo **D2-2**, el segundo de los cuatro frentes.
+
+### 🔴 El defecto: 250 veces lo que el dato pesa
+Los 7 ajustes del coach viven juntos en **una** columna jsonb (`user_data.coach_settings`) y
+PostgREST reemplaza la columna ENTERA en cada escritura. Dentro vive `e`, su copia de la
+biblioteca de ejercicios.
+
+**Medido el 8-sep contra la fila real** (bytes de JSON, que es lo que viaja):
+
+| clave | qué es | bytes |
+|---|---|---|
+| `e` | biblioteca de 374 ejercicios | **239.849** (99,5 %) |
+| `mr` | qué chats leyó | 960 |
+| `ld` | leads atendidos | 133 |
+| `cn`/`ce`/`site`/`nequi` | ajustes sueltos | 40 |
+| | **total** | **241.029** |
+
+Y `markCoachRead` —que escribe esos 960 B— corre **al abrir cada chat, al enviar cada mensaje y
+cada vez que llega uno con el chat abierto**. Cada una de esas veces subía la biblioteca entera
+desde el celular del coach. No se ve porque funciona: el ajuste se guarda igual.
+
+### Lo construido
+- **Migración `20260908_coach_settings_patch.sql`**: `coach_settings_patch(p jsonb)` hace la
+  fusión en el servidor (`coach_settings || p`), así que el cliente manda **solo la clave que
+  cambió**.
+  - 🔒 **`security invoker` A PROPÓSITO**, y es al revés de la regla habitual del repo: las
+    funciones DEFINER existen aquí para leer algo que el usuario no puede leer. Esto no necesita
+    elevación —el coach ya puede escribir su propia fila— y con INVOKER **la RLS decide con SU
+    identidad**. La función no recibe `user_id`, y el `where user_id = auth.uid()` es el cinturón.
+  - 🔒 El patch es un **objeto**, no una ruta: `||` fusiona en el primer nivel. Un `jsonb_set` con
+    ruta variable dejaría escribir dentro de cualquier clave anidada.
+  - **Probado contra producción en transacción con rollback:** con el coach impersonado, `mr`
+    cambia y `e` queda **byte a byte igual** (245.933 antes y después, 7 claves); y con un
+    ASESORADO impersonado mandando `{"e":[{"id":"HACK"}]}`, **la fila del coach queda con el mismo
+    md5** y la escritura cae solo en la fila del que llama —que ya podía escribirla igual—.
+- **`_COACH_SETTINGS_COL`**: una tabla única de la que salen la lista de claves Y el objeto
+  completo. El nombre corto (`ax_msgreads` → `mr`) solo existía escrito a mano dentro de
+  `_coachSettingsObj`; separarse de ahí escribiría en una clave que nadie lee.
+- El objeto completo **sigue armándose** para el arranque y el respaldo. Lo que se fue es
+  mandarlo en cada escritura.
+
+### QA
+- Suite **1089 → 1092** en los dos husos · hook **12/12** · `_prodcheck 589` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-ajustes-coach.mjs`: **8/8 muerden** (3 de ellos sobre el `.sql`).
+- Harness nuevo `_verify-ajustes-coach.mjs`: **9/9**, y afirma **LO QUE SALE DEL TELÉFONO** —
+  intercepta la escritura y mide los bytes: **237.002 B → 438 B, 541× menos**. Con sus controles:
+  editar la biblioteca **sí** la sube (si no, esto no sería un ahorro sino una feature rota), los
+  otros cinco ajustes viajan solos a su clave correcta, y el objeto completo sigue completo.
+- 🔬 **Tres errores propios cazados por los controles:**
+  1. El **control de cobertura** rechazó mi primer fixture: 374 ejercicios inventados pesaban
+     **115 KB contra los 237 de los de verdad**, así que el ahorro medido habría sido falso. Se
+     planta el catálogo REAL (`defaultExercises`).
+  2. y 3. **Dos sabotajes del `.sql` salieron VERDES** porque el candado leía el archivo ENTERO y
+     el encabezado —que explica por qué es invoker y por qué lleva el `where`— contiene el texto
+     que la aserción buscaba. Es la clase de v523/v546 y **está escrita en CLAUDE.md desde hoy
+     mismo**: el test quita las líneas de comentario antes de mirar.
+
+### ⏭️ Lo que NO cubre
+La biblioteca sigue viviendo dentro de `coach_settings`, así que **el arranque del coach la sigue
+bajando entera** (una vez por sesión). Sacarla a su propia columna obliga a tocar la hidratación,
+el respaldo local y el backup para ganar poco más que esto; queda escrito, no hecho.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 — v588: LO QUE EL COACH ESCRIBE YA NO SE PIERDE EN SILENCIO
 
 Hallazgo **D1-2** de la auditoría del 7-sep, el primero de los cuatro que el PO mandó atacar hoy.
