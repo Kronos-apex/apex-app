@@ -2137,15 +2137,42 @@ function renderValoracion(c){
   // al dar de alta y no sabe de dónde salió — literalmente el reporte del PO («no sé de dónde
   // salieron esos pesos»). Cambiar el número en silencio es la mitad del arreglo: la otra es DECIRLO.
   // Va aquí y no como aviso aparte porque no es un problema que él deba resolver: es el dato bueno.
+  // v587 — DE CUÁNDO ES ESE PESO. `nutWeightFor` elige bien el número desde v511, pero nadie
+  // decía su ANTIGÜEDAD, y con él se calculan TMB, TDEE, macros y el perfil de carga del
+  // generador. Medido: 7 de 25 sin ningún pesaje (se calcula con el número del alta, que nadie
+  // confirmó) y 9 de 18 con el suyo de hace más de 60 días.
+  // 🔒 Los DOS avisos pueden coexistir y ninguno se calla: el de la fuente/antigüedad y el del
+  //    descuadre con la ficha responden preguntas distintas. Nada de `return` prematuro (v506).
   const _bwList=(DB.bodyweight||{})[c.id]||[];
   const _pesoFicha=parseFloat(c.weight);
+  const _bw=(typeof bodyWeightSource==='function')?bodyWeightSource(c,_bwList,Date.now()):null;
+  const _fFecha=d=>d?new Date(d).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):null;
+  if(_bw && _bw.fuente==='ninguno'){
+    html += `<div style="background:var(--orl);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--ort);margin-top:8px;line-height:1.5">
+      ⚖️ <strong>No tiene ninguna pesada registrada.</strong> Estos números salen del peso que se
+      escribió al darlo de alta, y nadie lo ha confirmado desde entonces.
+    </div>`;
+  }else if(_bw && _bw.fuente==='ficha'){
+    html += `<div style="background:var(--orl);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--ort);margin-top:8px;line-height:1.5">
+      ⚖️ Calculado con los <strong>${_bw.kg} kg</strong> que se escribieron al darlo de alta:
+      <strong>no tiene ninguna pesada registrada</strong>, así que no hay con qué confirmarlo.
+    </div>`;
+  }else if(_bw && _bw.stale){
+    // No se afirma que el plan esté mal: en la mediana de esta gente la deriva a 60 días son
+    // ~43 kcal. Lo que es verdad es que no se puede SABER si sigue cuadrando.
+    html += `<div style="background:var(--orl);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--ort);margin-top:8px;line-height:1.5">
+      ⚖️ Calculado con <strong>${_bw.kg} kg</strong>, ${_bw.tomas>1?'su pesada más reciente':'la única pesada que tiene'}${_bw.date?' ('+esc(_fFecha(_bw.date))+')':''}
+      — de hace <strong>${_bw.ageDays} días</strong>. Con una pesada nueva se sabe si estos números siguen cuadrando.
+    </div>`;
+  }else if(_bw && _bw.fuente==='pesaje'){
+    html += `<div style="background:var(--bll);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--blt);margin-top:8px;line-height:1.5">
+      ⚖️ Calculado con <strong>${_bw.kg} kg</strong>, su pesada${_bw.date?' del '+esc(_fFecha(_bw.date)):''} (hace ${_bw.ageDays} día${_bw.ageDays===1?'':'s'}).
+    </div>`;
+  }
   if(_bwList.length && _pesoFicha && Math.abs(w-_pesoFicha)>=1){
-    const _ult=_bwList.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-    // Mismo formato es-CO que el resto del panel (`day:'numeric',month:'short'`).
-    const _f=(_ult&&_ult.date)?new Date(_ult.date).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):null;
-    html += `<div style="background:var(--bll);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--bl);margin-top:8px;line-height:1.5">
-      ⚖️ Calculado con <strong>${w} kg</strong>, su última pesada${_f?' ('+esc(_f)+')':''} — no con los ${_pesoFicha} kg de la ficha,
-      que se escribieron al darlo de alta y no se actualizan solos.
+    html += `<div style="background:var(--bll);border-radius:var(--rsm);padding:9px 12px;font-size:11.5px;color:var(--blt);margin-top:8px;line-height:1.5">
+      ⚖️ Ojo: la ficha dice <strong>${_pesoFicha} kg</strong> — ese número se escribió al darlo de
+      alta y no se actualiza solo. Los cálculos usan su pesada, que es el dato bueno.
     </div>`;
   }
 

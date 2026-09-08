@@ -5360,6 +5360,63 @@ function nutWeightFor(client, bwList) {
   return ultimo != null ? ultimo : (client && client.weight);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// ¿DE DÓNDE SALE EL PESO CON EL QUE SE LE CALCULA TODO, Y DE CUÁNDO ES? (v587)
+// ──────────────────────────────────────────────────────────────────────
+// `nutWeightFor` elige bien el número desde v511, pero NADIE dice de cuándo es — y con ese
+// peso se calculan TMB, TDEE, el objetivo calórico, los macros y el perfil de carga con el que
+// el generador arma la rutina. Medido el 7-sep contra producción (25 asesorados):
+//   · **7 no tienen NINGÚN pesaje** → se calcula con el número que se escribió al darlos de
+//     alta y que nadie confirmó nunca. Es el peor caso y no tenía ninguna señal.
+//   · **9 de los 18 con pesaje lo tienen de hace más de 60 días** (el peor, 104).
+//   · **12 de 18 tienen UNA sola toma**, o sea que no hay tendencia que leer.
+//
+// 🔬 El UMBRAL se eligió midiendo la deriva REAL de esta gente (`/tmp` → 7 tramos entre tomas
+// consecutivas): mediana **1,43 kg/mes**, p75 **4,29**, máximo **8,25** (Nataly, 54 → 59,5 kg en
+// 20 días). Con ~15 kcal de TDEE por kg, a los 60 días la deriva MEDIANA son ~43 kcal/día
+// —dentro de la tolerancia del 5% que la app ya usa para juzgar dirección— pero a la tasa p75
+// son ~129 kcal, o sea fuera. 60 días es donde la cola empieza a importar, y de ahí sale
+// `BW_STALE_DAYS`.
+//
+// 🔴 Y por eso el mensaje NO puede ser «sus macros están mal»: en la mediana el sesgo es
+// modesto. Lo honesto es que **sin una pesada reciente no se puede saber si siguen cuadrando**,
+// que es una afirmación verdadera para los dos casos. Afirmar más sería la mentira de v437 con
+// otra cara.
+//
+// PURA: recibe `now` siempre, sin DOM ni DB, y NO formatea (quien pinta decide las palabras).
+const BW_STALE_DAYS = 60;   // ver la medición de arriba antes de moverlo
+
+function bodyWeightSource(client, bwList, now) {
+  const nowTs = (now != null ? new Date(now) : new Date()).getTime();
+  const kgPesaje = lastBodyweightKg(bwList);
+  const fichaKg = client && client.weight != null && client.weight !== '' ? parseFloat(client.weight) : null;
+  if (kgPesaje == null) {
+    // Sin pesaje: el cálculo se apoya en el número del alta. Si tampoco hay ficha, no hay nada.
+    return {
+      kg: (fichaKg != null && !isNaN(fichaKg)) ? fichaKg : null,
+      fuente: (fichaKg != null && !isNaN(fichaKg)) ? 'ficha' : 'ninguno',
+      date: null, ageDays: null, stale: true, tomas: 0,
+      fichaKg: (fichaKg != null && !isNaN(fichaKg)) ? fichaKg : null,
+    };
+  }
+  // La lista se guarda DESCENDENTE, pero el «más reciente» se decide por FECHA y nunca por
+  // posición — es el bug de v448/v511 y no se reintroduce leyendo un extremo.
+  const conFecha = (bwList || []).filter(x => x && x.date != null && x.date !== '');
+  let ult = null;
+  conFecha.forEach(x => { const t = new Date(x.date).getTime(); if (isNaN(t)) return; if (!ult || t > ult._t) ult = Object.assign({ _t: t }, x); });
+  const ageDays = ult ? Math.floor((nowTs - ult._t) / 86400000) : null;
+  return {
+    kg: kgPesaje,
+    fuente: 'pesaje',
+    date: ult ? ult.date : null,
+    ageDays,
+    // Sin fecha legible no se puede afirmar que sea reciente: callar es decir «no sabemos».
+    stale: ageDays == null ? true : ageDays >= BW_STALE_DAYS,
+    tomas: conFecha.length,
+    fichaKg: (fichaKg != null && !isNaN(fichaKg)) ? fichaKg : null,
+  };
+}
+
 // ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
 // TMB(Mifflin-St Jeor) → TDEE(×actividad) → objetivo calórico por meta → macros.
 // weightKg opcional (si no, usa client.weight). Devuelve null si faltan datos
@@ -9756,6 +9813,8 @@ if (typeof module !== 'undefined' && module.exports) {
     nutProtPerKg,
     lastBodyweightKg,
     nutWeightFor,
+    bodyWeightSource,
+    BW_STALE_DAYS,
     nutritionEstimate,
     NUT_FOODS,
     NUT_FOOD_BY_ID,

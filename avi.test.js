@@ -128,6 +128,8 @@ const {
   bmiFrom,
   bodyLoadProfile,
   nutWeightFor,
+  bodyWeightSource,
+  BW_STALE_DAYS,
   validateSignup,
   passwordProblem,
   consentEvidence,
@@ -8941,6 +8943,106 @@ test('🔒 CABLEADO v585: el panel PINTA el récord, lo ROTULA y le pregunta al 
   assert.ok(!/setProgFilter\('down',this\)/.test(html), 'y el de «Bajando» ya no existe');
 });
 
+// ══════════════════════════════════════════════════════
+section('De cuándo es el peso con el que se calcula todo (bodyWeightSource, v587)');
+
+// El caso REAL: Astrid, 73 kg de hace 104 días y UNA sola toma. Con ese peso se le calculan
+// TMB, TDEE, objetivo calórico, macros y el perfil de carga con el que el generador arma su
+// rutina — y la ficha no decía en ninguna parte de cuándo era.
+const _d = n => new Date(BW_NOW - n * 86400000).toISOString();
+const BW_NOW = new Date('2026-09-07T12:00:00Z').getTime();
+
+test('🔴 v587 · DICE DE CUÁNDO ES (caso Astrid: 73 kg de hace 104 días)', () => {
+  const r = bodyWeightSource({ id: 'a', weight: 73 }, [{ date: _d(104), kg: 73 }], BW_NOW);
+  assert.strictEqual(r.fuente, 'pesaje');
+  assert.strictEqual(r.kg, 73);
+  assert.strictEqual(r.ageDays, 104, 'la antigüedad es el dato que faltaba');
+  assert.strictEqual(r.tomas, 1);
+  assert.strictEqual(r.stale, true, 'a 104 días no se puede afirmar que el cálculo siga cuadrando');
+});
+
+test('🔴 v587 · SIN NINGUNA PESADA se calcula con el número del alta, y eso se DICE', () => {
+  // 7 de 25 en producción. Es el peor caso: nadie ha confirmado nunca ese número.
+  const r = bodyWeightSource({ id: 'b', weight: 82 }, [], BW_NOW);
+  assert.strictEqual(r.fuente, 'ficha', 'el cálculo se apoya en la ficha, no en una pesada');
+  assert.strictEqual(r.kg, 82);
+  assert.strictEqual(r.ageDays, null, 'no hay fecha que dar: inventarla sería peor');
+  assert.strictEqual(r.tomas, 0);
+  assert.strictEqual(r.stale, true);
+  // Y si tampoco hay ficha, no hay nada — jamás un 0, que se leería como un peso.
+  const vacio = bodyWeightSource({ id: 'c' }, [], BW_NOW);
+  assert.strictEqual(vacio.fuente, 'ninguno');
+  assert.strictEqual(vacio.kg, null);
+});
+
+test('🔒 v587 · el borde del umbral, y su razón medida', () => {
+  assert.strictEqual(BW_STALE_DAYS, 60, 'la cifra sale de la deriva medida (mediana 1,43 kg/mes)');
+  const fresco = bodyWeightSource({ id: 'd', weight: 70 }, [{ date: _d(BW_STALE_DAYS - 1), kg: 70 }], BW_NOW);
+  assert.strictEqual(fresco.stale, false, 'un día antes del umbral todavía sirve');
+  const viejo = bodyWeightSource({ id: 'd', weight: 70 }, [{ date: _d(BW_STALE_DAYS), kg: 70 }], BW_NOW);
+  assert.strictEqual(viejo.stale, true, 'y en el umbral ya no');
+});
+
+test('🔒 v587 · «el más reciente» se elige por FECHA, nunca por posición (bug v448/v511)', () => {
+  // La lista se guarda descendente, pero leer un extremo es exactamente cómo volvió ese bug dos
+  // veces. Se le pasa DESORDENADA a propósito.
+  const lista = [
+    { date: _d(30), kg: 80 },
+    { date: _d(2), kg: 86 },   // la más nueva, en el medio
+    { date: _d(90), kg: 78 },
+  ];
+  const r = bodyWeightSource({ id: 'e', weight: 78 }, lista, BW_NOW);
+  assert.strictEqual(r.kg, 86, 'el peso es el de la pesada más reciente');
+  assert.strictEqual(r.ageDays, 2);
+  assert.strictEqual(r.stale, false);
+  assert.strictEqual(r.tomas, 3);
+});
+
+test('🔒 v587 · sin fecha legible NO se afirma que sea reciente', () => {
+  // Callar es decir «no sabemos», que es la verdad. Afirmar frescura sobre un dato sin fecha
+  // sería la clase del `new Date(null)` que ya costó CI en rojo cinco pushes (v517).
+  const r = bodyWeightSource({ id: 'f', weight: 70 }, [{ date: null, kg: 71 }], BW_NOW);
+  assert.strictEqual(r.stale, true);
+  assert.strictEqual(r.ageDays, null);
+  const basura = bodyWeightSource({ id: 'g', weight: 70 }, [{ date: 'ayer por la tarde', kg: 71 }], BW_NOW);
+  assert.strictEqual(basura.stale, true);
+});
+
+test('🔒 CABLEADO v587: la valoración del coach DICE la antigüedad, y los dos avisos coexisten', () => {
+  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (v509). Y aquí hay
+  // una trampa propia: el aviso de la fuente y el del descuadre con la ficha responden
+  // preguntas distintas y pueden pasar a la vez — si uno corta con `return`, el coach se entera
+  // solo del que se detectó primero, que es el defecto de v506.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const ini = src.indexOf('function renderValoracion(');
+  assert.ok(ini > 0, 'la función existe');
+  const fin = src.indexOf('\nfunction ', ini + 10);
+  const cuerpo = src.slice(ini, fin > 0 ? fin : src.length);
+  assert.ok(cuerpo.length > 500, 'control: se recortó la función, no medio archivo');
+
+  assert.ok(/bodyWeightSource\(c,_bwList,Date\.now\(\)\)/.test(cuerpo), 'la valoración le pregunta al motor');
+  // La antigüedad se afirma EN CADA RAMA, no en el cuerpo entero: `_bw.ageDays` aparece dos
+  // veces y quitarlo del aviso que importa dejaba la otra ocurrencia satisfaciendo el check
+  // — salió VERDE en la matriz. Es la clase v568 (el identificador sobrevive al lado).
+  assert.ok(/de hace <strong>\$\{_bw\.ageDays\} días<\/strong>/.test(cuerpo),
+    'el aviso de peso VIEJO dice de cuántos días, que es todo su contenido');
+  assert.ok(/\(hace \$\{_bw\.ageDays\} día/.test(cuerpo),
+    'y el de peso fresco también lo dice, en vez de callar la fecha');
+  assert.ok(/_bw\.fuente==='ninguno'/.test(cuerpo) && /_bw\.fuente==='ficha'/.test(cuerpo),
+    'distingue no-tener-pesada de tener-una-vieja: son dos avisos distintos');
+  // Los dos avisos son sentencias INDEPENDIENTES: el del descuadre no vive dentro del `else`
+  // de la cadena de la fuente.
+  const iFuente = cuerpo.indexOf("_bw.fuente==='ninguno'");
+  const iFicha = cuerpo.indexOf('Math.abs(w-_pesoFicha)>=1');
+  assert.ok(iFicha > iFuente, 'el aviso del descuadre va DESPUÉS');
+  assert.ok(/\}\s*if\(_bwList\.length && _pesoFicha && Math\.abs\(w-_pesoFicha\)>=1\)\{/.test(cuerpo),
+    'y arranca su propio `if`, no un `else if`: los dos pueden salir juntos');
+  // El token de texto tiene que ser la variante legible en claro (el candado de v570 lo cazó).
+  assert.ok(!/color:var\(--bl\);/.test(cuerpo), 'el azul usa --blt, no el token crudo');
+});
+
 test('🔒 CABLEADO v586: el coach VE las fotos, y en solo lectura', () => {
   // Una función pura impecable que nadie llama es «puerta cerrada, ventana abierta» (v509), y
   // aquí hay dos cosas que el candado tiene que sostener: que el render se LLAME (en las DOS
@@ -12301,8 +12403,9 @@ test('ninguna regla de styles.css usa el token CRUDO como texto sobre su propio 
 //    PREEXISTENTES declaradas por archivo y token, con su ratio medido en tema claro. Se afirma
 //    que lo encontrado es un SUBCONJUNTO — arreglar una de ellas pasa, añadir una nueva CAE.
 const _CRUDO_TEXTO_PREEXISTENTE = {
-  // 3,80 — texto azul sobre su propio tinte, en la nota de la ficha del coach.
-  'app-3-coach.js': { bl: 1 },
+  // ✅ v587: la nota azul de la ficha del coach (3,80) se pasó a `--blt` al reescribirla, así
+  //    que ya NO hay ninguna preexistente en app-3-coach.js. Se retira del censo en vez de
+  //    dejarla declarada: una entrada que ya nadie usa es un permiso abierto para el próximo.
   // 4,17 — el «Sí, eliminar» de una medida corporal (v566).
   'app-5-salud.js': { rd: 1 },
   // 4,17 ×3 — los mensajes de error de ajustes, borrar cuenta y pago.
@@ -12333,8 +12436,15 @@ test('ningún estilo inline NUEVO usa el token crudo como color de TEXTO (v570)'
     'texto con el token CRUDO en un style= en línea (ilegible en tema CLARO):\n  ' + nuevas.join('\n  '));
   // CONTROL DE COBERTURA: si el barrido deja de encontrar los 5 preexistentes es que el patrón
   // dejó de casar y el candado aprueba por vacío — la muerte silenciosa de un gate.
+  // Se cuenta contra lo DECLARADO, no contra un número escrito a mano: así, cuando alguien
+  // arregle otra preexistente y la retire del censo, el control se ajusta solo en vez de
+  // ponerse rojo por el motivo equivocado (bajó de 5 a 4 en v587, al pasar la nota del coach
+  // a `--blt`).
   const total = Object.values(halladas).reduce((a, t) => a + Object.values(t).reduce((x, y) => x + y, 0), 0);
-  assert.ok(total >= 5, `el barrido solo encontró ${total} usos: el patrón dejó de casar`);
+  const declaradas = Object.values(_CRUDO_TEXTO_PREEXISTENTE)
+    .reduce((a, t) => a + Object.values(t).reduce((x, y) => x + y, 0), 0);
+  assert.strictEqual(total, declaradas,
+    `el barrido encontró ${total} usos y el censo declara ${declaradas}: o el patrón dejó de casar, o alguien arregló una y no la retiró del censo`);
 });
 
 // (B) En el JS/HTML: un hex ESCRITO A MANO sobre uno de esos mismos tintes. Es el caso inverso y

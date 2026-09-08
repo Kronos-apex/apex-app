@@ -4,6 +4,83 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-07 (4ª parte) — v587: DE CUÁNDO ES EL PESO CON EL QUE SE CALCULA TODO
+
+Frente 2, parte B (hallazgo D3-4). Con el peso corporal se le calculan TMB, TDEE, objetivo
+calórico, macros y el **perfil de carga con el que el generador arma su rutina** — y la ficha no
+decía en ninguna parte de cuándo era ese peso. `nutWeightFor` elige bien el número desde v511;
+lo que faltaba era su ANTIGÜEDAD.
+
+**Medido el 7-sep contra producción** (`scripts/coach-no-ve.mjs`, 25 asesorados):
+- **7 no tienen NINGUNA pesada** → se calcula con el número que se escribió al darlos de alta y
+  que nadie confirmó nunca. Es el peor caso y no tenía ninguna señal. Incluye a **Luz, con 48
+  sesiones**.
+- **9 de los 18 con pesada la tienen de hace más de 60 días** (la peor, Astrid: 104).
+- Y lo que el informe no dijo: **12 de 18 tienen UNA sola toma**, o sea que no hay tendencia que
+  leer aunque se quiera.
+
+### 🔬 El dato cambió el MENSAJE, no solo el umbral
+El informe sugiere que los macros se calculan mal. Medida la deriva REAL de esta gente (7 tramos
+entre pesadas consecutivas): **mediana 1,43 kg/mes**, p75 **4,29**, máximo **8,25** (Nataly, 54 →
+59,5 kg en 20 días). Con ~15 kcal de TDEE por kg, a los 104 días la deriva mediana son ~**74
+kcal/día** — por debajo de la tolerancia del 5% que la app ya usa para juzgar dirección.
+
+O sea: **en la mediana el sesgo es modesto, y el riesgo está en la COLA**. Por eso el aviso NO
+dice «sus macros están mal» (sería la mentira de v437 con otra cara) sino que **sin una pesada
+reciente no se puede SABER si siguen cuadrando**, que es verdad en los dos casos. Y `BW_STALE_DAYS`
+= **60** sale de ahí: a 60 días la mediana da ~43 kcal (dentro) y la p75 ~**129** (fuera), o sea
+que es donde la cola empieza a importar. La medición va escrita al lado de la constante.
+
+### Lo construido
+`bodyWeightSource(client, bwList, now)` (avi-core, **PURA**, recibe `now`): devuelve el peso, su
+fecha, su antigüedad, cuántas tomas hay y de dónde sale (`pesaje` / `ficha` / `ninguno`).
+- 🔒 El más reciente se decide **por FECHA, nunca por posición**: leer un extremo de la lista es
+  exactamente cómo volvió el bug en v448 y otra vez en v511, y el test le pasa la lista
+  DESORDENADA a propósito.
+- 🔒 Sin fecha legible **no se afirma frescura**: callar es decir «no sabemos» (familia del
+  `new Date(null)` que dejó CI en rojo cinco pushes, v517).
+- La valoración del coach distingue **cuatro estados** y los DOS avisos —fuente/antigüedad y
+  descuadre con la ficha— **coexisten**: ninguno corta al otro con un `return`, que es el defecto
+  de v506 que ya costó presentar 625 kcal como un problema de redacción.
+
+### 🔴 Y un defecto PREEXISTENTE que solo apareció al medir bien
+Mi harness leía el `innerText` de `#d-valoracion-body`, que **nace con `display:none`** (la tarjeta
+abre colapsada) — y con `display:none` `innerText` devuelve el `textContent` **por
+especificación**, así que estaba midiendo texto INVISIBLE y creyéndome protegido. Al desplegarla y
+exigir alto real, apareció: **la rejilla de macros se salía 35 px de la ficha** a 360 px con la
+letra en «Muy grande». Reproducido en HEAD limpio → preexistente, no lo causé yo. Clase de v453.
+Arreglo en **commit aparte** y de UNA línea: `repeat(3,minmax(0,1fr))` en la pista.
+💡 Se probaron además `min-width:0` en la celda y `overflow-wrap:anywhere`, y **ninguna movió una
+sola cifra**, así que no se quedan (v482: si no mueve nada, no es un arreglo). Eso **no contradice
+a v453**: allí hacía falta la segunda mitad porque las celdas eran vacías con `aspect-ratio`; aquí
+el texto se ajusta solo por sus espacios. Medido después en 6 combinaciones (360 y 390 px ×
+normal/lg/xl): **0 px de desborde y las 3 columnas intactas**.
+
+### QA
+- Suite **1075 → 1081** en los dos husos · hook **12/12** · `_prodcheck 587` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-peso-fuente.mjs`: **10/10 muerden**.
+- Harness nuevo `_verify-peso-fuente.mjs`: **13/13**, con los cuatro estados, el control de que
+  dicen cosas DISTINTAS, contraste medido (**6,19 en claro y 7,40 en oscuro**) y 360 px con letra xl.
+- 🔬 Errores propios cazados por los controles: el `innerText` sobre un contenedor colapsado (ver
+  arriba), y un candado que afirmaba `_bw.ageDays` **en el cuerpo entero** — salió VERDE al borrar
+  la línea que importaba, porque el identificador aparece también en la rama del peso fresco;
+  apretado POR RAMA (clase v568).
+- Dos candados del repo me cazaron con razón: el token azul **crudo** como color de texto
+  (ilegible en claro, v570) y —al corregir esa preexistente— el **control de cobertura** de ese
+  mismo candado, cuyo censo bajó de 5 a 4. Se retiró la entrada del censo y el control pasó a
+  **derivarse** de lo declarado en vez de un número escrito a mano.
+- **R3.3:** sin entrada en `AVI_NEWS` — la pantalla es del COACH.
+
+### ⏭️ Lo que NO se hizo, y es decisión del PO
+**Pedirle al ASESORADO que se pese** (la otra mitad de D3-4). No se construyó a propósito: la
+cadencia y el tono son decisión suya y de un especialista, y hay dos MENORES en la base — el repo
+tiene candados fuertes sobre lenguaje de composición corporal con menores (v448/v449/v485/v493), y
+un recordatorio de báscula insistente es justo el tipo de cosa que esos candados existen para
+evitar. Con el umbral de 60 días la tarjeta le saldría hoy a **9 personas**, y compite con el tope
+de 2 avisos de «Hoy» (v505). Queda planteado, medido y sin construir.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-07 (3ª parte) — v586: EL COACH VE LAS FOTOS DE PROGRESO
 
 Segundo frente de los cuatro que mandó el PO (hallazgo D3-3). Parte A: las fotos. El peso
