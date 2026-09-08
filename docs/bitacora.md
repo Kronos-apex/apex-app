@@ -4,6 +4,85 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-07 (2ª parte) — v585: EL PANEL «CARGAS» DICE LA VERDAD
+
+Primer frente de los cuatro que el PO mandó atacar de la auditoría del 7-sep
+(`docs/auditoria-herramientas-coach-2026-09-07`, hallazgos D3-1 y D3-14).
+
+### 🔴 El defecto: el titular no era el récord, y la flecha contaba el progreso como retroceso
+`renderProgressPanel` pintaba `points[último].maxKg` —el peso máximo de la **última sesión**— como
+número grande, **sin ninguna etiqueta**, y la flecha ↑/↓ comparaba esa última sesión contra la
+**primera de toda la historia**. Nada falla: cada número venía de una sesión real. Lo que estaba
+mal era la ELECCIÓN de qué dato es el titular, y es la pantalla con la que el coach decide a quién
+subirle el peso esta semana.
+
+**Medido el 7-sep contra producción** (`scripts/cargas-titular.mjs`, 229 ejercicios-persona en kg
+de 15 personas, con la función REAL de la app):
+- **59 de 229 (26%)** mostraban un número distinto a su récord. El peor: **Samuel, prensa de
+  pierna — récord 90 kg y en pantalla 10**.
+- De los **34** marcados «↓ bajando», **9 tenían el récord POR ENCIMA de su primera sesión**:
+  progreso real contado como retroceso (Claudia y Luz, prensa: récord 70 y «↓ 22 kg»).
+
+⚠️ **Las cifras del informe no eran las de hoy y las dos mediciones eran correctas.** El agente
+midió 80 de 241 y 14 falsos; yo 59 de 229 y 9. La diferencia es real: **Astrid entrenó el 7-sep y
+marcó 45 kg**, así que su caso estrella (sentadilla, titular 4,5 con récord 42,5) salió de la lista
+al pasar su última sesión a SER su récord. Regla: una cifra medida sobre datos vivos caduca; se
+re-mide antes de citarla.
+
+### El arreglo
+`progressRowModel(ex, stalledKeys)` (avi-core, **PURA**, sin formato): devuelve `record`, `first`,
+`last`, `gain`, `atRecord`, `sinceRecord` y un `state` de tres valores.
+- **El titular es el récord, ROTULADO**, y la última sesión aparece al lado **solo cuando difiere**
+  — es lo que explica por qué la gráfica baja.
+- **La tendencia se mide contra el récord** (`gain = record - first`): un día liviano ya no borra el
+  progreso. Y por construcción no puede ser negativa.
+- 🔴 **Por eso el filtro «Bajando» no se calibró: se RETIRÓ.** Con la tendencia honesta quedaría
+  **siempre vacío**. Su relevo es «Estancados», que responde la misma pregunta del coach («¿a quién
+  no le está subiendo la carga?») con población medida (20 ejercicios en 5 personas) — y lo dice el
+  detector YA calibrado de v433, no un umbral nuevo de este panel. Eso cierra de paso el 🟡 D3-14.
+- El icono del filtro pasó de flecha-bajando a **línea plana** (`flat`): el mensaje de esta versión
+  es justo que bajar ≠ estancarse.
+
+💎 **El informe proponía precargar `ax_pr` para los 25 y no hacía falta.** El récord se computa del
+propio historial (`Math.max` de los puntos), igual que ya hacía bien la tarjeta «Progreso por
+ejercicio». Así el arreglo no toca la carga de datos **y no hereda el `ax_pr` atascado** — que es el
+hallazgo D3-2, esquivado sin escribir una línea para él (control: `ax_pr` coincide con el historial
+en 196 de 204, 96%, y donde no coincide el historial es el que tiene razón).
+
+### 🔴 Lo que apareció ESCRIBIENDO el arreglo: el detector partía un ejercicio en dos
+Para casar el estancamiento con la fila hacía falta emparejar, y ahí se vio que
+`exercisePerfSeries` agrupaba por **`ex.name`** mientras `computeExerciseProgress` ya agrupaba por
+**identidad**. Un ejercicio renombrado se partía en dos series, y el detector pide **7 puntos-día**
+para pronunciarse: partido, ninguna mitad llega y el ejercicio se vuelve **invisible justo cuando
+más historia tiene**.
+
+Medido: **3 de 201 ejercicios-persona partidos** («Pullover en Polea» y «Pull Over en Polea» de
+Kathe son el mismo `e24`; a Samuel le pasa con `e30`, a Astrid con `e29`) y **2 de esos 3 quedaban
+fuera del detector solo por eso**. Es la clase de v484 viva en otra función. Va en **commit
+aparte**, y de paso el nombre reportado pasa a ser el canónico más reciente, así que el
+emparejamiento del plan de choque con las rutinas vivas **mejora: 15 → 17 de 20** (los 3 que quedan
+son ejercicios que ya no están en el plan de esa persona, no desajustes de nombre).
+
+### QA
+- Suite **1067 → 1074** en los dos husos · hook **12/12** · `_prodcheck 585` verde con `jsErrors: []`.
+- Matriz nueva `_sabotaje-cargas.mjs`: **11/11 muerden**, y sabotea DOS archivos a propósito — la
+  función pura y el CABLEADO, porque `progressRowModel` puede estar impecable y el panel seguir
+  pintando `m.last` sin rótulo.
+- Harness nuevo `_verify-cargas.mjs` (**15/15**, patrón preview-sin-login): afirma lo que se LEE en
+  cada fila, con control de cobertura, hit-test y los dos temas.
+- 🔬 **Tres errores de MI PROPIA sonda, cazados por sus controles antes de dar nada por bueno:**
+  (1) la primera captura era **el SPLASH** (`display!=='none'` no es «se ve» — el id real es
+  `avi-loading`, y CLAUDE.md dice `#apex-loading`); (2) la captura «claro» salió **oscura**, porque
+  el tema no se cambia quitando la clase del body sino con `setTheme` (vive en
+  `documentElement[data-theme]`, default dark); (3) el control del modo claro medía el fondo del
+  **body** y no la superficie donde vive la fila, así que aprobaba una pantalla con texto oscuro
+  sobre fondo oscuro.
+- **R3.3:** sin entrada en `AVI_NEWS` — la pantalla es del COACH, no del asesorado.
+- De propina, en su propio commit: **«3 sesiónes» → «3 sesiones»** en los 3 sitios del archivo (uno
+  de ellos es texto que lee el asesorado).
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-06 — v583: LAS RENOVACIONES PENDIENTES, AL LADO DE LAS CIFRAS
 
 ### 🔴 Esto nace de DESMENTIR un hallazgo de la auditoría del 6-sep

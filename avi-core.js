@@ -8183,6 +8183,73 @@ function computeExerciseProgress(history) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// PANEL «CARGAS» DEL COACH — el modelo de UNA fila (v585)
+// ──────────────────────────────────────────────────────────────────────
+// El panel pintaba como titular `points[último].maxKg` —el peso de la ÚLTIMA
+// sesión— SIN rotularlo, y la flecha ↑/↓ comparaba esa última contra la PRIMERA
+// sesión de toda la historia. Medido el 7-sep-2026 sobre los 229 ejercicios-persona
+// en kg de producción: en 59 (26%) el titular NO era el récord —Samuel, prensa de
+// pierna: récord 90 kg y en pantalla 10— y de los 34 marcados «↓ bajando», 9 tenían
+// el récord POR ENCIMA de su primera sesión, o sea progreso real contado como
+// retroceso. Un día liviano no es una regresión, y el coach decide cargas leyendo
+// esto.
+//
+// El récord se computa del PROPIO historial (`Math.max` de los puntos), igual que
+// la tarjeta «Progreso por ejercicio» que ya lo hacía bien: NO se lee de `ax_pr`,
+// que solo se carga al abrir la ficha de una persona (así que en este panel está
+// vacío) y además se atasca — medido, coincide con el historial en 196 de 204 (96%),
+// y donde no coincide el historial es el que tiene razón.
+//
+// `stalledKeys` = las claves que el detector de estancamiento (`stalledExercises`,
+// v433) marcó para esta persona. Se casa por IDENTIDAD, que es lo que hizo posible
+// agrupar `exercisePerfSeries` por id: casando por NOMBRE se perdían 2 de 20 marcas
+// en producción. Ese detector ya está calibrado y tiene sus compuertas de persona
+// (principiante en adaptación, historial mínimo) — aquí no se inventa un umbral.
+//
+// PURA: sin DOM, sin DB y SIN FORMATO — devuelve los números crudos y un estado;
+// cómo se escriben lo decide quien pinta.
+function progressRowModel(ex, stalledKeys) {
+  const pts = (ex && ex.points) || [];
+  if (!pts.length) return null;
+  const vals = pts.map(p => p.maxKg);
+  const record = Math.max.apply(null, vals);
+  const first = vals[0], last = vals[vals.length - 1];
+  // Sesiones transcurridas desde que estableció esa marca por PRIMERA vez — o sea
+  // «cuánto lleva sin MEJORARLA», que es lo que el coach necesita leer en una meseta.
+  // Ojo: no es «sesiones por debajo del récord»; quien repite su mejor peso cuatro
+  // veces está plantado igual, y esa cuenta daría 0 justo en el caso más típico.
+  let firstAt = 0;
+  for (let i = 0; i < pts.length; i++) { if (pts[i].maxKg >= record) { firstAt = i; break; } }
+  const sinceRecord = pts.length - 1 - firstAt;
+  const stalled = !!(stalledKeys && (typeof stalledKeys.has === 'function'
+    ? stalledKeys.has(ex.key) : stalledKeys[ex.key]));
+  return {
+    key: ex.key, name: ex.name, unit: ex.unit || 'kg', sessions: pts.length,
+    record, first, last,
+    gain: record - first,          // progreso REAL acumulado; nunca puede ser negativo
+    atRecord: last >= record,      // su última sesión ES su mejor marca
+    sinceRecord,
+    // El estado que se pinta. `stalled` MANDA: es lo accionable para el coach, y lo
+    // dice un detector con criterio, no la comparación de dos puntos sueltos.
+    state: stalled ? 'stalled' : (record > first ? 'up' : 'flat'),
+  };
+}
+
+// ¿Esta fila pasa el filtro del panel? Puro. El filtro «bajando» de antes NO tiene
+// relevo directo: con la tendencia medida contra el récord es imposible por
+// construcción (el récord nunca es menor que la primera sesión), así que quedaría
+// SIEMPRE vacío. Lo que el coach necesitaba de ese filtro —«¿a quién no le está
+// subiendo la carga?»— lo responde «estancados», que sí tiene población medida
+// (20 ejercicios en 5 personas el 7-sep) y viene del detector calibrado.
+function progressRowMatches(model, filter) {
+  if (!model) return false;
+  if (!filter || filter === 'all') return true;
+  if (filter === 'up') return model.state === 'up';
+  if (filter === 'stalled') return model.state === 'stalled';
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // COACH INTELIGENTE — motor de insights proactivos (Capa B, v352)
 // ──────────────────────────────────────────────────────────────────────
 // Función PURA: recibe `now` SIEMPRE (jamás Date.now() adentro), sin DOM, sin
@@ -9986,6 +10053,8 @@ if (typeof module !== 'undefined' && module.exports) {
     communityCommentText,
     leadPending,
     computeExerciseProgress,
+    progressRowModel,
+    progressRowMatches,
     exerciseIdentity,
     chartLabelIndices,
     loginFailIsNetwork,

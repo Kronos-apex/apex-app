@@ -255,6 +255,8 @@ const {
   calcMacrosFromKcal,
   gxLevel,
   computeExerciseProgress,
+  progressRowModel,
+  progressRowMatches,
   coachInsight,
   coachPulse,
   shockTargets,
@@ -8835,6 +8837,116 @@ test('ordena por número de puntos (más datos primero)', () => {
 test('historial vacío o nulo → []', () => {
   assert.deepStrictEqual(computeExerciseProgress([]), []);
   assert.deepStrictEqual(computeExerciseProgress(null), []);
+});
+
+// ══════════════════════════════════════════════════════
+section('Panel «Cargas» del coach (progressRowModel, v585)');
+
+// El caso REAL que destapó el defecto, medido en producción el 7-sep-2026:
+// Astrid, sentadilla con barra. Dos sesiones quedaron anotadas en 4,5 kg (son 45 con
+// el punto corrido) entre sesiones de 40 y 42,5 — el panel pintaba «4,5 kg» como
+// titular, sin rótulo, y la flecha decía «↓ bajando» contra su primera sesión.
+const _astridPts = [40, 30, 30, 40, 35, 30, 35, 40, 40, 35, 40, 40, 4.5, 42.5, 4.5];
+
+test('🔴 v585 · EL TITULAR ES EL RÉCORD, NO LA ÚLTIMA SESIÓN (caso Astrid, sentadilla)', () => {
+  const ex = { key: 'e13', name: 'Sentadilla con Barra', unit: 'kg', points: _astridPts.map((v, i) => ({ maxKg: v, dateStr: 'd' + i })) };
+  const m = progressRowModel(ex, null);
+  assert.strictEqual(m.record, 42.5, 'el número grande es su mejor marca');
+  assert.strictEqual(m.last, 4.5, 'y la última sesión sigue disponible, para poder mostrarla al lado');
+  assert.strictEqual(m.atRecord, false, 'no está en su récord → la fila tiene que decir cuál fue la última');
+  // La tendencia se mide contra el RÉCORD, así que una sesión liviana no borra el progreso.
+  assert.strictEqual(m.gain, 2.5, '42,5 contra sus 40 del principio: subió, no bajó');
+  assert.strictEqual(m.state, 'up', 'esto NO es un retroceso');
+});
+
+test('🔴 v585 · UN DÍA LIVIANO NO ES UNA REGRESIÓN (los 9 «↓ bajando» falsos)', () => {
+  // Claudia y Luz, prensa de pierna: primera 30, récord 70, última 8. El panel viejo
+  // pintaba «↓ bajando 22 kg» para las dos.
+  const ex = { key: 'e50', name: 'Prensa de Pierna', unit: 'kg', points: [30, 50, 70, 8].map(v => ({ maxKg: v })) };
+  const m = progressRowModel(ex, null);
+  assert.strictEqual(m.record, 70);
+  assert.strictEqual(m.state, 'up');
+  assert.ok(m.gain > 0, 'el progreso acumulado es positivo: +' + m.gain);
+  // La propiedad de fondo: medido contra el récord, «bajando» es IMPOSIBLE por
+  // construcción — y por eso el filtro «Bajando» tenía que desaparecer, no calibrarse.
+  assert.ok(m.record >= m.first, 'el récord nunca puede ser menor que la primera sesión');
+});
+
+test('🔴 v585 · EL ESTANCAMIENTO LO DICE EL DETECTOR, Y MANDA SOBRE LA TENDENCIA', () => {
+  const ex = { key: 'e24', name: 'Pullover en Polea', unit: 'kg', points: [20, 25, 25, 25, 25].map(v => ({ maxKg: v })) };
+  // Sin el detector: progresó (25 > 20), y eso es cierto.
+  assert.strictEqual(progressRowModel(ex, null).state, 'up');
+  // Con el detector marcándolo, gana el estancamiento: es lo accionable para el coach.
+  const m = progressRowModel(ex, new Set(['e24']));
+  assert.strictEqual(m.state, 'stalled');
+  assert.strictEqual(m.sinceRecord, 3, 'estableció sus 25 kg hace 3 sesiones y no los ha mejorado');
+  // 🔒 Se casa por IDENTIDAD, no por rótulo: con la clave de otro ejercicio no marca.
+  assert.strictEqual(progressRowModel(ex, new Set(['e99'])).state, 'up');
+});
+
+test('🔒 v585 · quien está EN su récord hoy no muestra «última», y el sin-cambios es plano', () => {
+  const enRecord = { key: 'e1', name: 'X', unit: 'kg', points: [40, 45].map(v => ({ maxKg: v })) };
+  const m1 = progressRowModel(enRecord, null);
+  assert.strictEqual(m1.atRecord, true, 'la última ES el récord → no hay nada que aclarar');
+  assert.strictEqual(m1.sinceRecord, 0, 'lo acaba de establecer');
+  // 🔒 Y quien REPITE su mejor peso está plantado igual: se cuenta desde la PRIMERA vez
+  // que lo alcanzó, no desde la última — si no, el caso más típico de meseta daría 0.
+  const repite = { key: 'e9', name: 'Z', unit: 'kg', points: [30, 30, 30, 30].map(v => ({ maxKg: v })) };
+  assert.strictEqual(progressRowModel(repite, null).sinceRecord, 3);
+  const plano = { key: 'e2', name: 'Y', unit: 'kg', points: [20, 20, 20].map(v => ({ maxKg: v })) };
+  assert.strictEqual(progressRowModel(plano, null).state, 'flat');
+  assert.strictEqual(progressRowModel(plano, null).gain, 0);
+  // Sin puntos no hay fila: null, jamás una fila con ceros (un cero se lee como un dato).
+  assert.strictEqual(progressRowModel({ key: 'e3', points: [] }, null), null);
+  assert.strictEqual(progressRowModel(null, null), null);
+});
+
+test('🔒 CABLEADO v585: el panel PINTA el récord, lo ROTULA y le pregunta al detector', () => {
+  // El candado del cableado va APARTE del de la función pura: `progressRowModel` puede estar
+  // perfecta y el panel seguir pintando `m.last` sin rótulo — «puerta cerrada, ventana abierta»
+  // (v509). Se acota a `renderProgressPanel` (hasta la siguiente `function `, nunca una ventana
+  // de caracteres a ojo: v483/v555) y se quitan los comentarios antes de mirar, porque un
+  // identificador citado en un comentario satisface la aserción (v552/v570).
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const ini = src.indexOf('function renderProgressPanel(');
+  assert.ok(ini > 0, 'la función existe');
+  const fin = src.indexOf('\nfunction ', ini + 10);
+  const cuerpo = src.slice(ini, fin > 0 ? fin : src.length)
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(cuerpo.length > 500, 'control: se recortó la función, no medio archivo');
+
+  // 1. El titular es el RÉCORD, y el número de la última sesión NO puede ocupar ese sitio.
+  assert.ok(/font-weight:700">\$\{fmtMetric\(m\.record,unit\)\}/.test(cuerpo),
+    'el número grande de la fila sale de m.record');
+  assert.ok(!/font-weight:700">\$\{fmtMetric\(m\.last,unit\)\}/.test(cuerpo),
+    'y NUNCA de m.last: ese fue el defecto');
+  // 2. Va ROTULADO. Un número sin rótulo es exactamente lo que se está arreglando.
+  assert.ok(/>récord</.test(cuerpo), 'el titular lleva la palabra «récord» debajo');
+  // 3. Y la última sesión se muestra cuando difiere, o el coach no entiende la gráfica.
+  assert.ok(/m\.atRecord\?''/.test(cuerpo) && /última \$\{fmtMetric\(m\.last,unit\)\}/.test(cuerpo),
+    'si no está en su récord, la fila dice cuál fue su última sesión');
+  // 4. El veredicto de estancamiento se le PIDE al detector calibrado, no se inventa aquí.
+  assert.ok(/stalledExercises\(c,\(DB\.history\[c\.id\]\|\|\[\]\),Date\.now\(\)\)/.test(cuerpo),
+    'el panel consulta stalledExercises con el historial de esa persona');
+  assert.ok(/progressRowModel\(e,stalledKeys\)/.test(cuerpo),
+    'y le pasa esas claves al modelo (si no, el estado nunca sería «stalled»)');
+  // 5. El filtro lo resuelve la función pura, no una comparación suelta que se separe de ella.
+  assert.ok(/progressRowMatches\(m,_progFilter\)/.test(cuerpo), 'el filtro delega en la función pura');
+
+  // 6. Y el botón del filtro retirado no puede volver: «bajando» medido contra el récord es
+  //    imposible por construcción, así que sería un filtro permanentemente vacío.
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/setProgFilter\('stalled',this\)/.test(html), 'el filtro de estancados está en pantalla');
+  assert.ok(!/setProgFilter\('down',this\)/.test(html), 'y el de «Bajando» ya no existe');
+});
+
+test('🔒 v585 · el filtro del panel separa lo que dice separar', () => {
+  const up = { state: 'up' }, flat = { state: 'flat' }, st = { state: 'stalled' };
+  assert.ok(progressRowMatches(up, 'all') && progressRowMatches(flat, 'all') && progressRowMatches(st, 'all'));
+  assert.ok(progressRowMatches(up, 'up') && !progressRowMatches(flat, 'up') && !progressRowMatches(st, 'up'));
+  assert.ok(progressRowMatches(st, 'stalled') && !progressRowMatches(up, 'stalled'));
+  assert.strictEqual(progressRowMatches(null, 'all'), false, 'una fila que no existe no pasa ningún filtro');
 });
 
 // ══════════════════════════════════════════════════════

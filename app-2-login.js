@@ -962,7 +962,7 @@ function renderExerciseProgressInto(con, clientId){
         <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${muscleIcon(ex.muscle,20)}</div>
         <div style="flex:1;min-width:0">
           <div class="exprog-name">${esc(ex.name)}</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:1px">${pts.length} sesión${pts.length!==1?'es':''} · <span style="color:${trendColor};font-weight:600">${trendStr}</span></div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px">${pts.length} ${pts.length===1?'sesión':'sesiones'} · <span style="color:${trendColor};font-weight:600">${trendStr}</span></div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div class="exprog-pr">${fmtMetric(pr,unit)}</div>
@@ -1032,15 +1032,19 @@ function renderProgressPanel(){
   clients.forEach(c=>{
     const exList=buildExerciseProgress(c.id);
     if(!exList.length)return;
-    const filtered=_progFilter==='up'
-      ?exList.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg>e.points[0].maxKg)
-      :_progFilter==='down'
-      ?exList.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg<e.points[0].maxKg)
-      :exList;
+    // El veredicto de estancamiento lo da el detector YA calibrado (v433), no un umbral
+    // nuevo de este panel; se casa por IDENTIDAD (v585), que es lo que evita perder marcas
+    // cuando el coach renombró el ejercicio en la rutina.
+    const stalledKeys=new Set();
+    if(typeof stalledExercises==='function'){
+      try{stalledExercises(c,(DB.history[c.id]||[]),Date.now()).forEach(s=>{if(s&&s.key)stalledKeys.add(s.key);});}catch(e){}
+    }
+    const models=exList.map(e=>progressRowModel(e,stalledKeys)).filter(Boolean);
+    const filtered=models.filter(m=>progressRowMatches(m,_progFilter));
     if(!filtered.length)return;
     anyShown=true;
-    const upCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg>e.points[0].maxKg).length;
-    const dnCount=filtered.filter(e=>e.points.length>=2&&e.points[e.points.length-1].maxKg<e.points[0].maxKg).length;
+    const upCount=filtered.filter(m=>m.state==='up').length;
+    const stCount=filtered.filter(m=>m.state==='stalled').length;
     const card=document.createElement('div');
     card.className='pload-card';
     const bodyId=`plb_${c.id}`;
@@ -1052,20 +1056,22 @@ function renderProgressPanel(){
       </div>
       <div style="display:flex;gap:4px;margin-right:6px">
         ${upCount?`<span class="tag tg" style="font-size:10px">↑ ${upCount}</span>`:''}
-        ${dnCount?`<span class="tag tr" style="font-size:10px">↓ ${dnCount}</span>`:''}
+        ${stCount?`<span class="tag to" style="font-size:10px">⏸ ${stCount}</span>`:''}
       </div>
       <div class="pload-chev">▼</div>
     </div>
     <div class="pload-body" id="${bodyId}"></div>`;
     const body=card.querySelector(`#${bodyId}`);
-    filtered.forEach((ex,idx)=>{
-      const pts=ex.points;
-      const unit=ex.unit||'kg';
-      const lastKg=pts[pts.length-1].maxKg;
-      const firstKg=pts[0].maxKg;
-      const trend=lastKg-firstKg;
-      const trendColor=trend>0?'var(--gt)':trend<0?'var(--rdt)':'var(--t3)';
-      const trendStr=trend===0?'↔ estable':trend>0?`↑ +${fmtMetric(trend,unit)}`:`↓ ${fmtMetric(trend,unit)}`;
+    filtered.forEach((m,idx)=>{
+      const ex=exList.find(e=>e.key===m.key)||{};
+      const pts=ex.points||[];
+      const unit=m.unit;
+      // El titular es el RÉCORD y va rotulado; la última sesión se muestra al lado SOLO
+      // cuando difiere (26% de los casos), porque es la que explica por qué la gráfica baja.
+      const trendColor=m.state==='stalled'?'var(--ort)':m.state==='up'?'var(--gt)':'var(--t3)';
+      const trendStr=m.state==='stalled'
+        ?(m.sinceRecord?`⏸ ${m.sinceRecord} ${m.sinceRecord===1?'sesión':'sesiones'} sin mejorarlo`:'⏸ se plantó en ese peso')
+        :m.state==='up'?`↑ +${fmtMetric(m.gain,unit)} desde que empezó`:'↔ sigue en su peso inicial';
       const color=MC[ex.muscle]||'#0A7C5B';
       const chartId=`plch_${c.id}_${idx}`;
       const adjId=`plad_${c.id}_${idx}`;
@@ -1081,11 +1087,12 @@ function renderProgressPanel(){
         <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ex.name)}</div>
-          <div style="font-size:10px;color:var(--t2)">${pts.length} sesión${pts.length!==1?'es':''}</div>
+          <div style="font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.sessions} ${m.sessions===1?'sesión':'sesiones'} · <span style="font-weight:600;color:${trendColor}">${trendStr}</span></div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-right:8px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(lastKg,unit)}</div>
-          <div style="font-size:10px;font-weight:600;color:${trendColor}">${trendStr}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(m.record,unit)}</div>
+          <div style="font-size:10px;color:var(--t3);line-height:1.3">récord</div>
+          ${m.atRecord?'':`<div style="font-size:10px;color:var(--t3);line-height:1.3;white-space:nowrap">última ${fmtMetric(m.last,unit)}</div>`}
         </div>
         ${matches.length?`<button class="btn bg bsm" style="padding:4px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();toggleAdjForm('${adjId}','${c.id}')">✏️ Ajustar</button>`:''}
         <span style="font-size:10px;color:var(--t3);flex-shrink:0;margin-left:2px">▾</span>
