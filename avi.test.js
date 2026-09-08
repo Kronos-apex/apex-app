@@ -16841,6 +16841,104 @@ test('🔒 CABLEADO v590: el aviso se pinta donde se DECIDE aplicar la plantilla
 });
 
 // ══════════════════════════════════════════════════════
+// v591 · LOS RÉCORDS QUE SE QUEDARON ATASCADOS (hallazgo D3-2)
+// ══════════════════════════════════════════════════════
+// El récord alimenta el PESO SUGERIDO: atascado, la app le sugiere a alguien menos de lo que ya
+// levanta (el bucle de v432). La causa raíz ya estaba arreglada —hasta v483 el récord solo se
+// escribía al 100%, y hasta v579 «Finalizar temprano» no pasaba por ahí—; esto cura el RESIDUO.
+// Medido el 8-sep: 9 récords en 4 personas, todos de sesiones anteriores a esas dos versiones.
+
+const _ses = (date, exId, sets, extra) => Object.assign({ date, exercises: [{ id: exId, name: 'Jalón al Pecho', track: 'peso_reps', sets }] }, extra || {});
+const _pr50 = () => ({ e6: { val: 50, kg: 50, unit: 'kg', reps: 10, date: '2026-05-26T00:00:00Z', name: 'Jalón al Pecho' } });
+
+test('v591 · un récord batido por una sesión POSTERIOR con la serie marcada se pone al día', () => {
+  const r = core.healStalePrs(_pr50(), [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 70, reps: 9, done: true }])]);
+  assert.strictEqual(r.prs.e6.val, 70);
+  assert.strictEqual(r.prs.e6.kg, 70, 'el campo viejo `kg` tiene que moverse con `val`');
+  assert.strictEqual(r.prs.e6.reps, 9);
+  assert.strictEqual(r.curados.length, 1);
+  // La app no cambia un dato de alguien en silencio: queda de dónde venía (regla desde v536).
+  assert.deepStrictEqual(r.prs.e6.healedFrom, { val: 50, date: '2026-05-26T00:00:00Z', at: '2026-06-24T00:00:00Z' });
+  // Y es idempotente: correrlo otra vez no mueve nada (corre en CADA arranque).
+  const dos = core.healStalePrs(r.prs, [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 70, reps: 9, done: true }])]);
+  assert.strictEqual(dos.curados.length, 0);
+});
+
+test('🔴 v591 · NUNCA crea un récord que no existe (es lo que v483 midió y rechazó)', () => {
+  // Un récord ausente puede ser uno que el coach BORRÓ a mano con `coachEditPR`, y el historial
+  // que lo originó sigue ahí: crearlo aquí sería resucitarlo. Medido: 132 ejercicios en esa
+  // situación hoy — ninguno se toca.
+  const r = core.healStalePrs({}, [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 70, reps: 9, done: true }])]);
+  assert.deepStrictEqual(r.prs, {});
+  assert.strictEqual(r.curados.length, 0);
+  // Y con OTRO récord presente, tampoco aparece el ausente.
+  const r2 = core.healStalePrs(_pr50(), [_ses('2026-06-24T00:00:00Z', 'e99', [{ kg: 99, reps: 5, done: true }])]);
+  assert.strictEqual(Object.keys(r2.prs).length, 1, '🔴 creó un récord de un ejercicio sin récord previo');
+});
+
+test('🔴 v591 · una serie ANOTADA pero NO MARCADA no es un récord', () => {
+  // El caso REAL de Nataly: 30 kg escritos el 4-ago en una serie que no marcó. Eso es un número
+  // en la casilla, no un levantamiento — y el motor de la app siempre lo ha tratado así.
+  const r = core.healStalePrs(_pr50(), [_ses('2026-08-04T00:00:00Z', 'e6', [{ kg: 90, reps: 15, done: false }])]);
+  assert.strictEqual(r.curados.length, 0, '🔴 un peso sin marcar se convirtió en récord');
+  assert.strictEqual(r.prs.e6.val, 50);
+  // Con la MISMA sesión pero la serie marcada, sí.
+  const r2 = core.healStalePrs(_pr50(), [_ses('2026-08-04T00:00:00Z', 'e6', [{ kg: 90, reps: 15, done: true }])]);
+  assert.strictEqual(r2.prs.e6.val, 90, 'el control: marcada sí cuenta, o el candado sería borrar la cura');
+});
+
+test('🔒 v591 · no toca lo que no lleva carga, ni lo ANTERIOR al récord', () => {
+  // Un récord de 0 kg es de peso corporal: convertirlo en uno de 40 kg no es destrabar nada, es
+  // cambiarle la modalidad — y medido, esos casos son sesiones registradas con un kg que ahí no
+  // significa nada (dos personas con «Flexiones en Pared, 20 kg» el mismo día).
+  const cero = { e6: { val: 0, kg: 0, unit: 'kg', reps: 20, date: '2026-05-26T00:00:00Z', name: 'Flexiones' } };
+  assert.strictEqual(core.healStalePrs(cero, [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 40, reps: 10, done: true }])]).curados.length, 0);
+  // Un récord en otra unidad (reps, segundos) tampoco se juzga en kg.
+  const reps = { e6: { val: 20, unit: 'reps', reps: 20, date: '2026-05-26T00:00:00Z', name: 'Lagartijas' } };
+  assert.strictEqual(core.healStalePrs(reps, [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 40, reps: 10, done: true }])]).curados.length, 0);
+  // Ni un ejercicio cuya sesión declara otra modalidad.
+  const otro = [{ date: '2026-06-24T00:00:00Z', exercises: [{ id: 'e6', name: 'X', track: 'reps', sets: [{ kg: 70, reps: 9, done: true }] }] }];
+  assert.strictEqual(core.healStalePrs(_pr50(), otro).curados.length, 0);
+  // 🔒 Y si el mejor peso es ANTERIOR al récord, no se toca: lo más probable es que un humano lo
+  //    haya corregido hacia abajo a propósito.
+  assert.strictEqual(core.healStalePrs(_pr50(), [_ses('2026-05-01T00:00:00Z', 'e6', [{ kg: 70, reps: 9, done: true }])]).curados.length, 0);
+  // 🔴 Y una sesión POSTERIOR con MENOS peso tampoco lo mueve: la cura es HACIA ARRIBA. Sin esta
+  //    aserción, quitar la comparación deja la suite verde y el récord de alguien BAJA al último
+  //    día flojo — el defecto contrario y peor (lo cazó el sabotaje, no la revisión).
+  const flojo = core.healStalePrs(_pr50(), [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 30, reps: 20, done: true }])]);
+  assert.strictEqual(flojo.prs.e6.val, 50, '🔴 un día liviano posterior BAJÓ el récord');
+  assert.strictEqual(flojo.curados.length, 0);
+  // Sin fecha en el récord no se puede comparar → no se toca (nada de `new Date(null)`, v517).
+  const sinF = { e6: { val: 50, kg: 50, unit: 'kg', reps: 10, name: 'X' } };
+  assert.strictEqual(core.healStalePrs(sinF, [_ses('2026-06-24T00:00:00Z', 'e6', [{ kg: 70, reps: 9, done: true }])]).curados.length, 0);
+  assert.deepStrictEqual(core.healStalePrs(null, null), { prs: {}, curados: [] }, 'sin datos no puede lanzar');
+});
+
+test('🔒 CABLEADO v591: la cura corre en las DOS puertas, y DESPUÉS de sanear', () => {
+  const src = _srcApp3();
+  // Puerta del asesorado (su propia fila).
+  // 🔴 Sin quitar los comentarios, el bloque que EXPLICA por qué la cura va después del saneo
+  // nombra `healStalePrs` antes que `sanitizePrs` y la comparación de posiciones sale al revés.
+  // Tercera vez hoy de la misma clase (v523/v546/v589): el candado lee CÓDIGO, no comentarios.
+  const _sinCom = t => t.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const cli = _sinCom(src.slice(src.indexOf('function _applyAuthClientDB('), src.indexOf('// ── OFFLINE para clientes auth')));
+  assert.ok(/healStalePrs\(_sp\.prs,_sh\.history\)/.test(cli),
+    '🔴 la cura dejó de correr sobre lo SANEADO: un 200 kg imposible se volvería récord');
+  assert.ok(cli.indexOf('sanitizePrs') < cli.indexOf('healStalePrs'),
+    '🔴 la cura corre ANTES de sanear: curaría un récord que el saneo iba a retirar');
+  assert.ok(/DB\.prs\s*=\{\[id\]:\s*_hp\.prs\}/.test(cli), 'lo curado no llega a DB');
+  // 🔒 Se afirma la GUARDA EXACTA del guardado, no que el identificador aparezca: la línea que
+  //    escribe el log también lo nombra, así que quitarlo de la condición salía VERDE.
+  assert.ok(/if\(_sp\.removed>0\|\|_pr\.moved>0\|\|_hp\.curados\.length\)\{\s*try\{\s*svNow\('ax_pr',DB\.prs\)/.test(cli),
+    '🔴 se cura en memoria y no se persiste: vuelve a estar atascado al siguiente arranque');
+  // Puerta del COACH entrenando (5 de los 9 medidos son suyos).
+  const self = _sinCom(src.slice(src.indexOf('function _hydrateSelfClient('), src.indexOf('async function _loadCoachClientsIntoDB(')));
+  assert.ok(/healStalePrs\(_prSelf,DB\.history\[id\]\)/.test(self),
+    '🔴 el coach-como-asesorado se queda sin curar: es la mayoría del caso real (v518)');
+  assert.ok(/sv\('ax_pr',DB\.prs\)/.test(self), 'lo curado del coach no se persiste');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

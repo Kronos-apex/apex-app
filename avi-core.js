@@ -9398,6 +9398,87 @@ function cloudWriteSealed(hostname, allowFlag) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// LOS RÉCORDS QUE SE QUEDARON ATASCADOS (v591) — hallazgo D3-2
+// ──────────────────────────────────────────────────────────────────────
+// «Nataly, Curl Femoral Acostado: `prs` dice 20 kg del 25-may y su historial tiene 30 kg».
+// v585 lo esquivó en el panel «Cargas» (calcula el récord del historial), pero `ax_pr` sigue
+// alimentando **el peso sugerido** y la pantalla de récords del asesorado: con el récord
+// atascado, la app le sugiere menos de lo que ya levanta — el bucle de v432 otra vez.
+//
+// 🔬 LO PRIMERO FUE BUSCAR LA CAUSA, Y RESULTÓ SER UN DEFECTO YA ARREGLADO (dos, de hecho):
+// el récord se escribe desde `checkAndUpdatePRs`, y hasta **v483 (14-ago)** eso solo corría al
+// llegar al 100%, mientras que «de 192 sesiones con peso solo 72 quedaron cerradas»; y hasta
+// **v579 (7-sep)** «Finalizar temprano» tampoco pasaba por ahí. Las 9 sesiones que dejaron un
+// récord atascado son **todas anteriores a esas dos versiones**. O sea que esto NO es un bug
+// vivo: es el RESIDUO que dejaron, y el residuo no se cura solo porque el motor ya funcione.
+//
+// 🔒 LAS CUATRO REGLAS, y las tres primeras salen de lo que v483 midió y RECHAZÓ (rellenar
+// récords desde el historial):
+//   1. **Solo se ACTUALIZA lo que ya existe, jamás se CREA.** Un récord que no está puede ser uno
+//      que el coach borró a mano con `coachEditPR` —cuya promesa es «se vuelve a crear la próxima
+//      vez que lo levante»—, y crearlo aquí sería resucitarlo. Medido: 132 ejercicios tienen peso
+//      en el historial y ningún récord; ninguno se toca.
+//   2. **Solo cuenta una serie MARCADA** (`done`). Nataly tiene 30 kg anotados el 4-ago en una
+//      serie que **no marcó**: eso no es un récord, es un número escrito en la casilla.
+//   3. **Solo récords con CARGA** (`unit` kg y valor > 0). Un récord de 0 kg es de peso corporal;
+//      convertirlo en uno de 40 kg no es «destrabar un récord», es cambiarle la modalidad — y
+//      medido, esos casos son sesiones que el coach registró con un kg que ahí no significa nada.
+//   4. **Solo si la sesión es POSTERIOR** a la fecha del récord. Si el mejor peso del historial es
+//      ANTERIOR, lo más probable es que un humano corrigiera el récord hacia abajo a propósito.
+//
+// Medido el 8-sep contra producción con estas cuatro reglas: **9 récords de 4 personas**
+// (5 del propio coach; Samuel 2, Miguel 1, Nataly 1). Ejemplos: Samuel, Aperturas en Polea Alta
+// 10 → 35 kg; Nataly, Curl Femoral 20 → 30; Miguel, Jalón al Pecho 50 → 70.
+//
+// PURA: recibe los récords y el historial de UNA persona y devuelve unos récords nuevos + la
+// lista de lo que cambió. No escribe, no formatea y no decide cuándo correr.
+function healStalePrs(prs, history) {
+  const out = {}, curados = [];
+  const src = (prs && typeof prs === 'object') ? prs : {};
+  Object.keys(src).forEach(k => { out[k] = src[k]; });
+  const hist = Array.isArray(history) ? history : [];
+  Object.keys(out).forEach(key => {
+    const pr = out[key];
+    if (!pr || typeof pr !== 'object') return;
+    const unit = pr.unit || 'kg';
+    const val = parseFloat(pr.val != null ? pr.val : pr.kg);
+    if (unit !== 'kg' || !(val > 0)) return;                 // regla 3
+    const prTs = pr.date ? new Date(pr.date).getTime() : NaN;
+    if (!Number.isFinite(prTs)) return;                      // sin fecha no se puede comparar
+    let mejor = null;
+    for (const s of hist) {
+      if (!s) continue;
+      const ts = new Date(s.date || 0).getTime();
+      if (!Number.isFinite(ts) || ts <= prTs) continue;       // regla 4
+      for (const ex of (s.exercises || [])) {
+        if (!ex) continue;
+        const id = ex.id || ex.name;
+        if (id !== key && ex.name !== pr.name) continue;
+        if (ex.track && ex.track !== 'peso_reps') continue;   // regla 3, del lado del ejercicio
+        for (const se of (ex.sets || [])) {
+          if (!se || se.done !== true) continue;              // regla 2
+          const kg = parseFloat(se.kg);
+          if (!(kg > 0) || kg <= val) continue;
+          const reps = parseInt(se.reps) || 0;
+          if (!mejor || kg > mejor.kg || (kg === mejor.kg && reps > mejor.reps)) {
+            mejor = { kg, reps, date: s.date };
+          }
+        }
+      }
+    }
+    if (!mejor) return;
+    // El récord se mueve SOLO hacia arriba y conserva de dónde venía: la app no cambia un dato
+    // de alguien en silencio (regla del repo desde v536).
+    out[key] = Object.assign({}, pr, {
+      val: mejor.kg, kg: mejor.kg, reps: mejor.reps, unit: 'kg', date: mejor.date,
+      healedFrom: { val, date: pr.date, at: mejor.date },
+    });
+    curados.push({ key, name: pr.name || key, de: val, a: mejor.kg, fecha: mejor.date });
+  });
+  return { prs: out, curados };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // EL NOMBRE DE UNA RUTINA PROMETE, Y LO PROMETIDO TIENE QUE ESTAR DENTRO (v590)
 // ──────────────────────────────────────────────────────────────────────
 // Hallazgo D2-3 de la auditoría del 7-sep: la plantilla «Tren Superior — Espalda, Pecho y
@@ -10323,6 +10404,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeCoachMsgs,
     ROUTINE_PROMISES,
     routinePromiseGap,
+    healStalePrs,
     routinePromiseText,
     coachQueuePut,
     coachQueueCanReplay,

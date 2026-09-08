@@ -471,8 +471,15 @@ function _applyAuthClientDB(client, coll){
   //     vivo en los datos de hoy.
   // Y el premio era mínimo: la cobertura del peso sugerido pasaba de 34,2% a 35,1%.
   // La causa raíz se arregló donde de verdad estaba: el récord se escribe al GUARDAR la sesión
-  // (app-4, `updateClientProgress`), no solo al cerrarla. El backlog se cura solo la próxima vez
-  // que la persona haga ese ejercicio, que es la misma promesa que ya da el borrado del coach.
+  // (app-4, `updateClientProgress`), no solo al cerrarla.
+  // ⚠️ MATIZ DE v591, porque lo de arriba dice «el backlog se cura solo la próxima vez que la
+  // persona haga ese ejercicio» y eso resultó ser FALSO para un caso: si la persona ya lo hizo
+  // —con la serie MARCADA— y el récord se quedó igual, no hay próxima vez que lo arregle. Medido
+  // el 8-sep: 9 récords de 4 personas, todos de sesiones ANTERIORES a v483/v579, o sea el residuo
+  // de esos dos defectos ya arreglados. `healStalePrs` cura eso y SOLO eso: nunca CREA un récord
+  // (que es lo que se rechazó arriba, por los duplicados por nombre y por el borrado del coach),
+  // solo mueve hacia arriba uno que YA existe cuando una sesión posterior con la serie marcada lo
+  // superó. Las dos razones de v483 siguen intactas.
   // 🧹 Auto-cura (v484): el récord que apunta a un ejercicio RETIRADO se muda al id bueno. El
   // remapeo existía desde junio para el catálogo y las rutinas (`dedupeExercises`) pero NUNCA tocó
   // los récords, y esa función solo corre en el arranque del COACH — el asesorado, que es quien
@@ -480,10 +487,14 @@ function _applyAuthClientDB(client, coll){
   // del lado del coach, el teléfono lo volvería a pisar (offline-first).
   const _pr=(typeof prsRemapRetired==='function')?prsRemapRetired(coll.prs||{}):{prs:coll.prs||{},moved:0};
   const _sp=(typeof sanitizePrs==='function')?sanitizePrs(_pr.prs, _sh.history):{prs:_pr.prs,removed:0};
-  DB.prs       ={[id]: _sp.prs};
-  if(_sp.removed>0||_pr.moved>0){ try{ svNow('ax_pr',DB.prs);
+  // 🧹 Auto-cura (v591) — DESPUÉS de sanear, y sobre el historial YA saneado: si corriera antes,
+  // un 200 kg imposible (que `sanitizeHistory` deja en blanco) se convertiría en récord.
+  const _hp=(typeof healStalePrs==='function')?healStalePrs(_sp.prs,_sh.history):{prs:_sp.prs,curados:[]};
+  DB.prs       ={[id]: _hp.prs};
+  if(_sp.removed>0||_pr.moved>0||_hp.curados.length){ try{ svNow('ax_pr',DB.prs);
     if(_pr.moved>0)log&&log('AVI: '+_pr.moved+' récord(s) reasignados desde un ejercicio retirado');
-    if(_sp.removed>0)log&&log('AVI: retirados '+_sp.removed+' récords imposibles'); }catch(_e){} }
+    if(_sp.removed>0)log&&log('AVI: retirados '+_sp.removed+' récords imposibles');
+    if(_hp.curados.length)log&&log('AVI: '+_hp.curados.length+' récord(s) atascados puestos al día'); }catch(_e){} }
   DB.bodyweight={[id]: coll.bodyweight||[]};
   DB.medidas   ={[id]: coll.medidas   ||[]};
   DB.nutrition ={[id]: coll.nutrition ||{}};
@@ -1015,7 +1026,13 @@ function _hydrateSelfClient(){
     const id=SELF_CLIENT_ID;
     DB.history[id]   =Array.isArray(row.history)?row.history:[];
     DB.bodyweight[id]=Array.isArray(row.bodyweight)?row.bodyweight:[];
-    DB.prs[id]       =(row.prs&&typeof row.prs==='object')?row.prs:{};
+    // v591 · el coach entrena, y 5 de los 9 récords atascados medidos son SUYOS. Su fila entra
+    // por aquí y no por `_applyAuthClientDB`, así que la cura va en las DOS puertas o la mitad
+    // del caso real se queda sin arreglar (lección de v518: curar en un solo lado no dura).
+    const _prSelf=(row.prs&&typeof row.prs==='object')?row.prs:{};
+    const _hpSelf=(typeof healStalePrs==='function')?healStalePrs(_prSelf,DB.history[id]):{prs:_prSelf,curados:[]};
+    DB.prs[id]       =_hpSelf.prs;
+    if(_hpSelf.curados.length){ try{ sv('ax_pr',DB.prs); log&&log('AVI: '+_hpSelf.curados.length+' récord(s) míos atascados puestos al día'); }catch(_e){} }
     DB.medidas[id]   =Array.isArray(row.medidas)?row.medidas:[];
     DB.nutrition[id] =(row.nutrition&&typeof row.nutrition==='object')?row.nutrition:{};
     DB.photos[id]    =Array.isArray(row.photos)?row.photos:[];

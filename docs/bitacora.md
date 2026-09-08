@@ -4,6 +4,83 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (4ª parte) — v591: LOS RÉCORDS QUE SE QUEDARON ATASCADOS
+
+Cuarto y último frente: **D3-2**. «Nataly, Curl Femoral: `prs` dice 20 kg del 25-may y su
+historial tiene 30». v585 lo esquivó en el panel «Cargas» calculando el récord del historial,
+pero **`ax_pr` sigue alimentando el peso sugerido** y la pantalla de récords del asesorado: con
+el récord atascado, la app le sugiere a alguien **menos de lo que ya levanta** — el bucle cerrado
+de v432 otra vez.
+
+### 🔬 Lo primero fue buscar la causa, y resultó ser un defecto YA ARREGLADO. Dos, de hecho.
+El récord se escribe en `checkAndUpdatePRs`, y:
+- hasta **v483 (14-ago)** eso solo corría al llegar al **100%**, mientras «de 192 sesiones con
+  peso solo 72 quedaron cerradas»;
+- hasta **v579 (ayer)** «Finalizar temprano» tampoco pasaba por ahí.
+
+**Las 9 sesiones que dejaron un récord atascado son TODAS anteriores a esas dos versiones.** O
+sea que esto no es un bug vivo: es el **residuo** que dejaron — y el residuo no se cura solo
+porque el motor ya funcione. Es justo el matiz que faltaba en el comentario de v483, que decía
+«el backlog se cura solo la próxima vez que la persona haga ese ejercicio»: si ya lo hizo, con la
+serie marcada, y el récord se quedó igual, **no hay próxima vez que lo arregle**.
+
+### 🔒 Las cuatro reglas, y tres salen de lo que v483 midió y RECHAZÓ
+Rellenar récords desde el historial se construyó en agosto y se descartó por dos razones que
+siguen vivas. `healStalePrs` (avi-core, **PURA**) las respeta:
+1. **Solo ACTUALIZA lo que ya existe; jamás CREA.** Un récord ausente puede ser uno que el coach
+   borró a mano con `coachEditPR` —cuya promesa es «se vuelve a crear la próxima vez que lo
+   levante»—, y el historial que lo originó sigue ahí. **Medido: 132 ejercicios tienen peso en el
+   historial y ningún récord. Ninguno se toca.**
+2. **Solo cuenta una serie MARCADA.** Nataly tiene 30 kg anotados el 4-ago en una serie que **no
+   marcó**: eso es un número en la casilla, no un levantamiento.
+3. **Solo récords con CARGA** (kg > 0). Un récord de 0 kg es de peso corporal, y convertirlo en
+   uno de 40 kg no es destrabar nada: es cambiarle la modalidad. Medido, esos casos son sesiones
+   registradas con un kg que ahí no significa nada (dos personas con «Flexiones en Pared, 20 kg»
+   el mismo día).
+4. **Solo hacia ARRIBA y solo desde una sesión POSTERIOR** al récord. Si el mejor peso es
+   anterior, lo más probable es que un humano lo corrigiera hacia abajo a propósito.
+
+**Medido el 8-sep contra producción** (`scripts/records-atascados.mjs` + la función pura sobre las
+filas reales): **9 récords en 4 personas** — 5 del propio coach, Samuel 2, Miguel 1, Nataly 1.
+Samuel, Aperturas en Polea Alta **10 → 35 kg**; Miguel, Jalón al Pecho **50 → 70**; Nataly, Curl
+Femoral **20 → 30**.
+
+### Lo construido
+- La cura corre **en las DOS puertas** —la fila del asesorado (`_applyAuthClientDB`) y la del
+  **coach entrenando** (`_hydrateSelfClient`, que es de donde salen 5 de los 9)—, porque curar de
+  un solo lado no dura (v518). Es **idempotente** y se persiste; si no, vuelve a estar atascado
+  al siguiente arranque.
+- Va **DESPUÉS del saneo y sobre el historial ya saneado**: si corriera antes, un 200 kg imposible
+  —que `sanitizeHistory` deja en blanco— se convertiría en récord.
+- El récord conserva **de dónde venía** (`healedFrom`): la app no cambia un dato de alguien en
+  silencio, y así queda auditable qué movió esta versión.
+
+### QA
+- Suite **1097 → 1102** en los dos husos · hook **12/12** · `_prodcheck 591` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-records.mjs`: **9/9 muerden**.
+- Harness nuevo `_verify-records.mjs`: **9/9**, entrando por la puerta REAL del asesorado con los
+  cuatro casos a la vez. Lo que mide de verdad: **el peso sugerido pasa de 50 a 65 kg** con el
+  récord al día — que es el daño que esto arregla.
+- 🔬 **Tres huecos MÍOS los cazó la matriz, no la revisión:** (1) el sabotaje que «creaba» récords
+  era **inerte** —el bucle solo recorre los que existen—, así que no probaba nada; se reescribió
+  como lo reintroduciría alguien de verdad (recorrer también el historial); (2) faltaba la
+  aserción de que una sesión posterior **con MENOS peso** no baja el récord, así que quitar la
+  comparación salía verde y el defecto contrario —bajarle el récord a alguien— pasaba; (3) la
+  aserción del guardado se satisfacía con la línea del `log`, no con la guarda.
+- ⚠️ Y por **tercera vez en el día**, un candado aprobó porque **mi propio comentario contenía el
+  identificador que buscaba**: el bloque que explica por qué la cura va después del saneo nombra
+  `healStalePrs` antes que `sanitizePrs` y la comparación de posiciones salía al revés. El test
+  quita los comentarios antes de mirar.
+- **R3.3:** sin entrada en `AVI_NEWS`. Se pensó y se descartó: el récord corregido es **una buena
+  noticia que se ve sola** en su pantalla de récords, y una diapositiva que diga «te arreglamos un
+  dato» invita a desconfiar de los demás.
+
+### ⏭️ Decisión declarada: sin aviso permanente en pantalla
+El rastro queda en el dato (`healedFrom`) y en la consola, no en una etiqueta fija. Es una cura de
+UNA vez sobre 9 récords: una marca permanente sería ruido para siempre por algo que ya se corrigió.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (3ª parte) — v590: LA PLANTILLA QUE PROMETE HOMBROS, Y EL FORMULARIO QUE HEREDABA
 
 Tercer frente: los dos hallazgos de plantillas, **D2-3** y **D2-4**.
