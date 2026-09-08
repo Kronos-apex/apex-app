@@ -665,15 +665,28 @@ cambiársela: desde v2.0 la contraseña real vive en Supabase Auth, no en su fic
 - Cinturón del arranque, porque se tocó la cadena de boot y `app-1-infra.js`:
   `_verify-arranque-modulos` **6/6** y `_repro-login-sin-internet` verde.
 
-### ⚠️ LO QUE ESTE TRABAJO **NO** PUEDE PROBAR — y es lo que hay que pedirle al PO
-Se comprobó contra producción que **el servidor acepta y sale a enviar**: `POST /auth/v1/recover`
-→ **200**, y en los logs de auth aparece `user_recovery_requested` con ~1 s de duración (o sea una
-llamada SMTP real). **Lo que ningún harness puede comprobar es que el correo LLEGUE a la bandeja.**
-El repo no declara SMTP propio, así que lo más probable es que use el servicio de correo por
-defecto de Supabase, que está limitado y suele caer en spam. **Hace falta que el PO pida el enlace
-con su propio correo y diga si llegó, y en cuánto tiempo.** Si no llega, la alternativa medida —y
-más acorde a cómo funciona su negocio— es que **el coach le restablezca la clave al asesorado desde
-la ficha**, por la edge function con service role, sin depender del correo de nadie.
+### ✅ LO QUE ESTE TRABAJO NO PODÍA PROBAR — **CONFIRMADO POR EL PO el 8-sep**
+Se comprobó contra producción que el servidor acepta y sale a enviar (`POST /auth/v1/recover` →
+**200** y `user_recovery_requested` en los logs con ~1 s de duración, o sea una llamada SMTP real),
+pero **que el correo LLEGUE no lo puede comprobar ningún harness**. Lo probó él:
+
+> *«ya pedí mi contraseña y me llegó el correo a bandeja de entrada y funcionó bien»* (8-sep)
+
+**A bandeja de entrada, no a spam, y el enlace funcionó.** Con eso el flujo queda cerrado
+punta a punta y **NO se construye la alternativa** que quedó planteada aquí (que el coach
+restablezca la clave desde la ficha): no hace falta, y sería una segunda puerta a la contraseña
+de otra persona sin ninguna necesidad.
+
+### 🔴 Y una corrección a lo que yo mismo escribí aquí el 6-sep
+La nota decía *«el repo no declara SMTP propio, así que lo más probable es que use el servicio de
+correo por defecto de Supabase, que está limitado y suele caer en spam»*. **Es falso, y la
+respuesta estaba en esta misma bitácora**: el 2026-06-04 se conectó **SMTP propio con Brevo**
+(`smtp-relay.brevo.com`, remitente `aviapptraining2020@gmail.com` verificado, límite subido a
+30 correos/hora) — por eso llega a bandeja de entrada. Escribí una conjetura como si fuera un
+hecho **sin buscarla en el historial del proyecto**, y una conjetura al lado de una decisión es
+justo lo que hace que el siguiente construya de más (la lección de v535, aplicada a mí mismo).
+⚠️ Lo que sí sigue siendo cierto y conviene recordar: el límite es de **30 correos/hora**, así que
+si algún día hay un lote de altas grande, ese es el techo.
 
 ---
 
