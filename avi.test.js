@@ -14495,16 +14495,32 @@ test('🔒 v529 · sin el dato de sesiones NO se dispara el peso (el default es 
   // la suba sola. El riesgo del default contrario es el bug que este lote vino a arreglar.
   assert.strictEqual(suggestFromPR({ val: 40, reps: 12, unit: 'kg' }, 12), 40);
 });
-test('🔴 v529 · CABLEADO: `_suggestKg` tiene que pasarle el conteo de sesiones', () => {
+test('🔴 v529 · CABLEADO: el conteo de sesiones LLEGA a la progresión', () => {
   // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (lección v509). Si
   // alguien borra el argumento, la app deja de subir el peso NUNCA y no da ningún error.
+  // 🔁 RE-ENCUADRADO en v595: el conteo se mudó de `_suggestKg` a `_progressInfo` (para que la
+  //    PISTA que se lee y el PESO que se sugiere salgan del mismo sitio). La propiedad que este
+  //    test protege es la misma —que el conteo llegue— y por eso se afirma en su casa nueva, más
+  //    que `_suggestKg` DELEGUE: sin esa segunda mitad, alguien puede reintroducir una segunda
+  //    cuenta de las sesiones y tener dos verdades sobre el mismo número (bug de v448/v511).
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
-  const i = src.indexOf('function _suggestKg');
-  assert.ok(i > 0, 'no se encontró _suggestKg en app-4-entreno.js');
+  // El helper compartido `sinComentarios` se declara MÁS ABAJO en este archivo, así que aquí se
+  // quitan los comentarios de línea a mano (regla de v593: un check estático nunca mira dentro
+  // de un comentario — mi propio comentario contendría el texto que la aserción busca).
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const i = src.indexOf('function _progressInfo');
+  assert.ok(i > 0, 'no se encontró _progressInfo en app-4-entreno.js');
   const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
-  assert.match(cuerpo, /sessionsAtLoad\(/, '_suggestKg debe contar las sesiones con ese peso');
-  assert.match(cuerpo, /sesionesEnPeso\s*:/, '_suggestKg debe pasarle el conteo a suggestFromPR');
+  assert.match(cuerpo, /sessionsAtLoad\(/, '_progressInfo debe contar las sesiones con ese peso');
+  assert.match(cuerpo, /sesionesEnPeso\s*:/, 'debe pasarle el conteo a suggestFromPR');
+
+  const j = src.indexOf('function _suggestKg');
+  assert.ok(j > 0, 'no se encontró _suggestKg');
+  const cuerpoSug = src.slice(j, src.indexOf('\nfunction ', j + 10));
+  assert.match(cuerpoSug, /_progressInfo\(/, '_suggestKg tiene que DELEGAR, no recalcular');
+  assert.ok(!/sessionsAtLoad\(/.test(cuerpoSug),
+    '🔴 _suggestKg volvió a contar las sesiones por su cuenta: son dos verdades sobre el mismo número');
 });
 test('v529 · sessionsAtLoad cuenta DÍAS distintos que cumplieron las reps con ese peso', () => {
   const ses = [
@@ -17146,6 +17162,114 @@ test('🔒 CABLEADO v594: el calentamiento REAL deja de repetir el movimiento', 
   assert.ok(!(empuje.activaciones || []).some(x => core.wuMovePattern(x.name) === 'empuje'),
     '🔴 la activación vuelve a mandar lagartijas a quien arranca la sesión con lagartijas');
   assert.ok((empuje.activaciones || []).length >= 2, 'la activación de tren superior se quedó corta');
+});
+
+// ══════════════════════════════════════════════════════
+// v595 · LA PROGRESIÓN SE DICE COMO INSTRUCCIÓN, NO COMO NÚMERO
+// ══════════════════════════════════════════════════════
+// Pedido del PO: «construyamos la progresión dentro de la app». Medido ANTES de construir: la
+// doble progresión ya existía y ya funcionaba — sobre sus datos reales la app le mandaba subir en
+// 15 de 24 ejercicios, uno con 18 sesiones al mismo peso. Lo que fallaba es que la pantalla decía
+// lo mismo al mandar subir que al mandar repetir.
+
+test('v595 · el día del escalón la app lo DICE, y dice desde qué peso', () => {
+  const h = core.progressHint(90, 10, 8, 9, 95);
+  assert.strictEqual(h.estado, 'sube');
+  assert.match(h.texto, /90 kg/, 'tiene que decir de qué peso viene');
+  assert.match(h.texto, /95 kg/, 'y a cuál va: sin el número nuevo no es una instrucción');
+  assert.match(h.texto, /9 sesiones/, 'y por qué toca: es lo que hace legible la doble progresión');
+});
+
+test('🔒 v595 · mientras consolida dice CUÁNTO FALTA, derivado de la constante', () => {
+  const a = core.progressHint(90, 10, 8, 1, 90);
+  assert.strictEqual(a.estado, 'consolida');
+  assert.strictEqual(a.faltan, core.LOAD_CONSOLIDATE_SESSIONS - 1);
+  // 🔒 Se afirma contra la CONSTANTE, no contra un 2 escrito a mano: si alguien mueve el umbral,
+  //    la pantalla tiene que prometer el plazo nuevo, no el viejo.
+  assert.match(a.texto, new RegExp('faltan? ' + (core.LOAD_CONSOLIDATE_SESSIONS - 1)
+    + '|falta 1 sesión'));
+  const b = core.progressHint(90, 10, 8, core.LOAD_CONSOLIDATE_SESSIONS - 1, 90);
+  assert.strictEqual(b.faltan, 1);
+  assert.match(b.texto, /falta 1 sesión/, 'en singular: «te faltan 1 sesiones» se lee como un error');
+});
+
+test('🔒 v595 · CONTROL · no promete un escalón donde el mecanismo es OTRO', () => {
+  // Récord a MENOS reps que el objetivo: ahí el peso se estima hacia abajo, no se consolida.
+  // Decirle «te faltan N sesiones para subir» sería mentir sobre cómo funciona.
+  const h = core.progressHint(100, 8, 12, 0, 90);
+  assert.strictEqual(h.estado, 'base');
+  assert.ok(!/faltan|falta 1/.test(h.texto), '🔴 prometió una consolidación que no existe');
+  // Y sin datos no se inventa nada.
+  assert.strictEqual(core.progressHint(null, null, 10, 1, null), null);
+  assert.strictEqual(core.progressHint(0, 10, 10, 5, 0), null);
+});
+
+test('🔴 v595 · NO da instrucciones sobre un récord que ya no es su peso de trabajo', () => {
+  // Antes de la guarda, a su Prensa le decía «Repite 200 kg · te falta 1 sesión para subir»
+  // cuando viene moviendo 100: la versión anterior lo pintaba como número de referencia y la
+  // instrucción lo volvía una orden imposible. Un cambio que MEJORA el caso bueno no puede
+  // empeorar el malo.
+  const desfasado = core.progressHint(200, 12, 12, 2, 200, 100);   // último real = 50% del récord
+  assert.strictEqual(desfasado.estado, 'base');
+  assert.ok(!/Repite|faltan|falta 1/.test(desfasado.texto),
+    '🔴 le está dando una instrucción sobre un peso que ya no mueve');
+
+  // 🔒 CONTROL: una variación NORMAL (fatiga, otro día) sigue instruyendo — si no, la guarda
+  //    no sería una guarda, sería haber borrado la feature.
+  const vigente = core.progressHint(110, 12, 8, 4, 115, 100);      // 91% del récord
+  assert.strictEqual(vigente.estado, 'sube');
+
+  // 🔒 Sin dato de lo último movido NO se calla: la ausencia de información no puede volverse
+  //    silencio (es el detector mudo de v433 al revés).
+  assert.strictEqual(core.progressHint(200, 12, 12, 2, 200, null).estado, 'consolida');
+
+  // El corte se DERIVA de la constante, no de un 0,75 escrito en el test.
+  const r = core.PROGRESS_HINT_MIN_RATIO;
+  assert.strictEqual(core.progressHint(100, 12, 12, 9, 105, 100 * r * 0.99).estado, 'base');
+  assert.strictEqual(core.progressHint(100, 12, 12, 9, 105, 100 * r * 1.01).estado, 'sube');
+});
+
+test('v595 · lastWorkKg = lo que movió la ÚLTIMA vez, no su mejor día', () => {
+  const ses = [
+    { date: '2026-05-26', exercises: [{ id: 'e36', sets: [{ kg: '200', reps: '12' }] }] },
+    { date: '2026-08-15', exercises: [{ id: 'e36', sets: [{ kg: '90', reps: '12' }, { kg: '100', reps: '12' }] }] },
+  ];
+  assert.strictEqual(core.lastWorkKg(ses, 'e36'), 100, 'la sesión más reciente, y de ella el peso más alto');
+  // Casa por NOMBRE: las sesiones viejas no traen id (misma razón que sessionsAtLoad y v558).
+  const viejas = [{ date: '2026-06-01', exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: '150' }] }] }];
+  assert.strictEqual(core.lastWorkKg(viejas, 'Prensa de Pierna'), 150);
+  // Sin carga, sin fecha usable o sin nada: null, jamás un número inventado.
+  assert.strictEqual(core.lastWorkKg([{ date: '2026-06-01', exercises: [{ id: 'e36', sets: [{ reps: '12' }] }] }], 'e36'), null);
+  assert.strictEqual(core.lastWorkKg([{ date: null, exercises: [{ id: 'e36', sets: [{ kg: '80' }] }] }], 'e36'), null);
+  assert.strictEqual(core.lastWorkKg([], 'e36'), null);
+  assert.strictEqual(core.lastWorkKg(null, null), null);
+});
+
+test('🔒 CABLEADO v595: la pantalla del entreno usa la instrucción, y destaca SOLO al subir', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  assert.match(src, /progressHint\(/, '🔴 la función pura no la llama nadie: puerta cerrada, ventana abierta');
+  // El realce va atado al estado 'sube'. Si se destacara siempre, dejaría de significar algo —
+  // es el gate que se aprende a ignorar (lección del smoke que pasó 43 versiones en rojo).
+  // Se ancla en la GUARDA concreta, no en que el texto aparezca: 'sube' sale tambien en el
+  // ternario del icono, asi que quitar la condicion del realce saldria VERDE (leccion v570).
+  assert.match(src, /if\(_ph&&_ph\.estado==='sube'\)/, '🔴 el realce dejó de mirar si de verdad toca subir');
+  // Y el texto que se pinta sale del hint, no de una segunda redacción.
+  assert.match(src, /_ph\s*\?/, '🔴 la pantalla dejó de usar el texto de la instrucción');
+  // 🔒 Y el ÚLTIMO peso real tiene que llegar hasta la función: sin ese argumento la guarda del
+  //    récord desfasado no se aplica nunca y la app vuelve a mandar «repite 200 kg» a quien
+  //    mueve 100 — una guarda que nadie invoca es puerta cerrada, ventana abierta (v509).
+  assert.match(src, /gmInfo\.ultimo/, '🔴 el último peso real dejó de llegar a la instrucción');
+
+  // 🔴 Y la otra mitad, que faltaba: que app-4 lo CALCULE. Comprobar solo que la pantalla lo pasa
+  //    deja pasar el caso en que `ultimo` viaja siempre en null y la guarda queda inerte — un
+  //    sabotaje salió VERDE exactamente por eso. Los dos extremos del cable, o no es un cable.
+  const src4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const k = src4.indexOf('function _progressInfo');
+  const cuerpoInfo = src4.slice(k, src4.indexOf('\nfunction ', k + 10));
+  assert.match(cuerpoInfo, /lastWorkKg\(/, '🔴 _progressInfo dejó de calcular el último peso real');
+  assert.match(cuerpoInfo, /ultimo\s*:/, '🔴 el último peso real no viaja en el resultado');
 });
 
 // ══════════════════════════════════════════════════════

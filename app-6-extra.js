@@ -798,7 +798,9 @@ function gmRender(){
     }
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
-    const gmSug=_suggestKg(ex);
+    // v595: se pide UNA vez todo lo de la progresión (peso + récord + sesiones consolidando).
+    const gmInfo=(typeof _progressInfo==='function')?_progressInfo(ex):null;
+    const gmSug=gmInfo?gmInfo.sug:((typeof _suggestKg==='function')?_suggestKg(ex):null);
     // Semana de descarga (v482): el peso sugerido ya viene bajado, así que NO puede seguir diciendo
     // «según tu récord» — está por debajo de él a propósito, y sin decirlo se lee como un error.
     // Y donde NO hay récord la app se quedaba muda: para 9 de 21 personas la bajada de carga no
@@ -807,7 +809,24 @@ function gmRender(){
     if(gmSug){
       const sh=document.createElement('div');
       sh.style.cssText='font-size:11.5px;font-weight:700;color:var(--gt);margin:2px 0 4px';
-      sh.textContent=`🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana':'según tu récord'}`;
+      // 🔴 v595: el mismo renglón decía LO MISMO cuando tocaba SUBIR y cuando tocaba repetir,
+      //    así que el escalón de la doble progresión no se notaba (medido sobre el PO: la app le
+      //    mandaba subir en 15 de 24 ejercicios, uno con 18 sesiones al mismo peso, y él seguía
+      //    igual). Ahora el número se dice como INSTRUCCIÓN, y el día que toca subir se ve.
+      let _ph=null;
+      if(!gmDeload&&gmInfo&&typeof progressHint==='function'){
+        const _pr=gmInfo.pr||{};
+        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.ultimo);
+      }
+      if(_ph&&_ph.estado==='sube'){
+        // Sube de tamaño y gana fondo SOLO en el día del escalón: si se destacara siempre,
+        // dejaría de significar nada (es el gate que se aprende a ignorar).
+        sh.style.cssText='font-size:13px;font-weight:800;color:var(--gt);background:var(--gl);'
+          +'border-radius:8px;padding:5px 8px;margin:2px 0 6px';
+      }
+      sh.textContent=_ph
+        ? (_ph.estado==='sube'?'⬆️ ':'🎯 ')+_ph.texto
+        : `🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana':'según tu récord'}`;
       setsEl.appendChild(sh);
     }else if(gmDeload&&typeof deloadLoadHint==='function'){
       const hint=deloadLoadHint(_curClient(),DB.history,ex,Date.now());

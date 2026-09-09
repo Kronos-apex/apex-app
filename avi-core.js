@@ -1351,6 +1351,84 @@ function suggestFromPR(pr, targetReps, opts) {
   return e1 ? suggestLoad(e1, tgt, opts) : null;
 }
 
+// ── La progresión, dicha como INSTRUCCIÓN y no como número ──────────────────
+// 🔴 v595, reporte del PO: «construyamos la progresión dentro de la app». Medido antes de
+// construir: la doble progresión YA existe y YA funciona — sobre sus datos reales la app le
+// decía que subiera en 15 de 24 ejercicios, uno de ellos con 18 sesiones al mismo peso. Lo que
+// fallaba es que la pantalla decía LO MISMO en los dos casos («🎯 Peso sugerido: 95 kg · según
+// tu récord»), así que un número que manda subir hoy era indistinguible de un número de
+// referencia. Una progresión que no se nota no es una progresión.
+//
+// PURA. Recibe el récord, las reps objetivo, cuántas sesiones lleva consolidando y el peso ya
+// sugerido (no lo recalcula: `suggestFromPR` es la única que decide el peso).
+// → null si no hay con qué decir nada · {estado:'sube'|'consolida'|'base', faltan, texto}
+// lastWorkKg(sessions, exKey) → el peso MÁS ALTO de la sesión MÁS RECIENTE en la que aparece ese
+// ejercicio con carga, o null. PURA. Es «lo que de verdad viene moviendo», que no es lo mismo que
+// su récord: el récord es el mejor día de su vida y puede tener meses.
+// 🔒 Casa por id y también por NOMBRE, porque las sesiones anteriores a finales de junio no traen
+//    id (misma razón que `sessionsAtLoad`, v529, y que `exerciseIdentity`, v558).
+function lastWorkKg(sessions, exKey) {
+  const key = String(exKey == null ? '' : exKey);
+  if (!key) return null;
+  let mejorFecha = null, kg = null;
+  (Array.isArray(sessions) ? sessions : []).forEach(s => {
+    const t = s && s.date ? new Date(s.date).getTime() : NaN;
+    if (!isFinite(t)) return;                       // sin fecha usable no se compara (v517)
+    (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
+      if (!e) return;
+      if (String(e.id || '') !== key && String(e.name || '') !== key) return;
+      const pesos = (Array.isArray(e.sets) ? e.sets : [])
+        .map(x => parseFloat(x && x.kg)).filter(n => isFinite(n) && n > 0);
+      if (!pesos.length) return;
+      if (mejorFecha == null || t > mejorFecha) { mejorFecha = t; kg = Math.max.apply(null, pesos); }
+    });
+  });
+  return kg;
+}
+
+// 🔒 Piso para ATREVERSE a dar una instrucción: si lo último que movió de verdad está muy por
+// debajo del récord, ese récord ya no describe su trabajo (otra máquina, otra variante, un dato
+// mal tecleado o una bajada deliberada) y decirle «repite 200 kg» sería mandarle algo imposible.
+// Ahí la app vuelve al texto NEUTRO de siempre — nunca a una instrucción.
+// Medido el 9-sep sobre los 24 ejercicios del PO, récord contra su último peso real:
+//   86% · 83% · 78% · 70% · 50% · 50% · 40% · 38%
+// Los cuatro de arriba son variación normal (fatiga, otro día, descarga); los cuatro de abajo son
+// récords que ya no son suyos (Prensa 200 cuando mueve 100, Press Militar 65 cuando mueve 25).
+// El corte parte esa curva por la mitad, en el hueco que hay entre 70% y 50%.
+const PROGRESS_HINT_MIN_RATIO = 0.75;
+
+function progressHint(prKg, prReps, targetReps, sesiones, sug, ultimoKg) {
+  const kg = parseFloat(prKg), s = parseFloat(sug);
+  if (!(kg > 0) || !(s > 0)) return null;
+  const tgt = parseInt(targetReps) || 0;
+  const reps = parseInt(prReps) || 0;
+  const ult = parseFloat(ultimoKg);
+  // Sin dato de lo último movido NO se bloquea nada: la ausencia de información no puede
+  // convertirse en un silencio (el defecto contrario, que es el de v433).
+  const desfasado = ult > 0 && ult < kg * PROGRESS_HINT_MIN_RATIO;
+  if (desfasado) return { estado: 'base', faltan: 0,
+    texto: `Peso sugerido: ${s} kg · según tu récord` };
+  if (s > kg) {
+    const n = parseInt(sesiones);
+    const cuantas = isFinite(n) && n > 0 ? ` en ${n} ${n === 1 ? 'sesión' : 'sesiones'}` : '';
+    return { estado: 'sube', faltan: 0,
+      texto: `Consolidaste ${kg} kg${cuantas} — hoy toca ${s} kg` };
+  }
+  // Repite. Solo es CONSOLIDACIÓN si ya cumple las reps objetivo con ese peso; si el récord es a
+  // menos reps que el objetivo, lo que pasa es otra cosa (el peso se estima hacia abajo) y decir
+  // «te faltan N sesiones» sería mentir sobre el mecanismo.
+  if (reps >= tgt && tgt > 0) {
+    const n = parseInt(sesiones);
+    const faltan = Math.max(0, LOAD_CONSOLIDATE_SESSIONS - (isFinite(n) ? n : 0));
+    // 🔒 El número de sesiones que faltan se DERIVA de la constante. Escrito a mano, el día que
+    //    alguien mueva la constante la pantalla seguiría prometiendo el plazo viejo.
+    if (faltan > 0) return { estado: 'consolida', faltan,
+      texto: `Repite ${kg} kg · te ${faltan === 1 ? 'falta 1 sesión' : 'faltan ' + faltan + ' sesiones'}` +
+             ` cumpliendo ${tgt} reps para subir` };
+  }
+  return { estado: 'base', faltan: 0, texto: `Peso sugerido: ${s} kg · según tu récord` };
+}
+
 // ── Calentamiento + dropset: peso derivado del peso de trabajo ──
 // Calentamiento ≈ 50% del peso de trabajo; dropset ≈ 70% del peso de la última serie.
 // Ambos redondean a discos reales (2.5 kg) con piso de 2.5 kg. null si no hay base.
@@ -10325,6 +10403,9 @@ if (typeof module !== 'undefined' && module.exports) {
     suggestFromPR,
     sessionsAtLoad,
     LOAD_CONSOLIDATE_SESSIONS,
+    lastWorkKg,
+    progressHint,
+    PROGRESS_HINT_MIN_RATIO,
     warmupLoad,
     dropLoad,
     trainingStartTs,

@@ -4,6 +4,83 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-09 — v595: LA PROGRESIÓN SE DICE COMO INSTRUCCIÓN, NO COMO NÚMERO
+
+Pedido del PO, después de que sus tres especialistas revisaran sus rutinas: *«construyamos la
+progresión dentro de la app»*.
+
+### 🔴 Medir ANTES de construir cambió por completo lo que había que hacer
+**La doble progresión YA existía (v529) y YA funcionaba.** Corriendo `_suggestKg` con sus datos
+reales sobre sus 24 ejercicios con carga:
+
+| | |
+|---|---|
+| la app le manda **SUBIR** | **15 ejercicios** |
+| repite (consolidando) | 9 |
+
+Y no eran escalones recientes: **Elevaciones Laterales llevaba 18 sesiones al mismo peso**, Curl
+Bíceps 14, Curl Martillo 13, Extensión de Cuádriceps 10, Jalón 9. Construir la doble progresión
+otra vez habría sido un DUPLICADO de un motor sano — el error de v532, cuando el botón que pedía
+ya existía desde v434 y no lo había visto.
+
+**El defecto real estaba en cómo se DICE.** La pantalla pintaba, con letra de 11,5 px:
+
+> `🎯 Peso sugerido: 95 kg · según tu récord`
+
+…exactamente lo mismo el día del escalón que el día de repetir. Un número presentado como
+referencia derivada de su récord, no como una instrucción para hoy. **Una progresión que no se
+nota no es una progresión.**
+
+### Lo construido
+- **`progressHint`** (avi-core, PURA): convierte el número en instrucción y devuelve el estado.
+  - `sube` → «Consolidaste 90 kg **en 9 sesiones** — hoy toca 95 kg»
+  - `consolida` → «Repite 90 kg · te **falta 1 sesión** cumpliendo 8 reps para subir»
+  - `base` → el texto neutro de siempre.
+  🔒 El plazo se **DERIVA de `LOAD_CONSOLIDATE_SESSIONS`**: escrito a mano, el día que alguien
+  mueva el umbral la pantalla seguiría prometiendo el plazo viejo.
+  🔒 Solo habla de consolidación cuando el récord cumple las reps objetivo; si el récord es a
+  MENOS reps, el mecanismo es otro (se estima hacia abajo) y prometer un escalón sería mentir.
+- **`_progressInfo`** (app-4): una sola fuente para el peso sugerido Y la pista. `_suggestKg`
+  pasa a delegar — una segunda cuenta de `sesionesEnPeso` sería el bug del peso de v448/v511
+  otra vez, con dos verdades sobre el mismo número.
+- **El realce solo el día del escalón** (fondo y 13 px): destacar siempre es no destacar nada.
+
+### 🔴 El arreglo MEJORABA el caso bueno y EMPEORABA el malo — y solo se vio midiendo
+Con la instrucción puesta, su Prensa pasaba a decir **«Repite 200 kg · te falta 1 sesión para
+subir»**… y él mueve 100. El récord es real (26-mayo) pero ya no describe su trabajo. Antes eso se
+leía como un número de referencia; convertido en instrucción, es una **orden imposible**.
+
+`PROGRESS_HINT_MIN_RATIO = 0.75`, con la curva medida al lado: sobre sus 24 ejercicios, el récord
+contra su último peso real da **86% · 83% · 78% · 70% · 50% · 50% · 40% · 38%**. Los de arriba son
+variación normal; los de abajo son récords que ya no son suyos. El corte parte la curva por el
+hueco. Con la guarda: **15 «toca subir» intactos y 5 instrucciones imposibles calladas** (vuelven
+al texto neutro, nunca a otra instrucción).
+🔒 **Sin dato de lo último movido NO se calla**: la ausencia de información no puede volverse
+silencio — es el detector mudo de v433 al revés.
+- **`lastWorkKg`** (avi-core, PURA): el peso más alto de la sesión MÁS RECIENTE. Casa por id y por
+  nombre, porque las sesiones anteriores a finales de junio no traen id (v529/v558).
+
+### QA
+- Suite **1111 → 1117** en los dos husos · hook 12/12 · `_prodcheck 595` verde.
+- Matriz nueva `_sabotaje-progresion.mjs`: **10/10 muerden**.
+- 🔬 **Dos huecos propios, los dos cazados por la matriz y no por releer el test:**
+  1. El cableado comprobaba que la PANTALLA pasa el último peso y no que app-4 lo CALCULE:
+     matar `lastWorkKg` dejaba la guarda inerte con la suite en verde. **Los dos extremos del
+     cable, o no es un cable.**
+  2. La aserción del realce buscaba el texto `estado === 'sube'`, que también aparece en el
+     ternario del icono → quitar la condición salía VERDE. Se ancló en la GUARDA concreta (v570).
+- 🔁 **Un test de v529 cayó y se RE-ENCUADRÓ, no se calló**: afirmaba que `_suggestKg` contaba las
+  sesiones, y eso se mudó a `_progressInfo`. La propiedad es la misma (que el conteo llegue) y
+  ahora se afirma en su casa nueva **más** que `_suggestKg` delegue.
+- **R3.3:** sin entrada en `AVI_NEWS` — no es una función nueva, es la misma diciéndose mejor.
+
+### ⏭️ Lo que queda abierto
+**El peso sugerido se ancla al RÉCORD HISTÓRICO, no al trabajo reciente.** Por eso hay 5
+ejercicios suyos donde la app calla en vez de ayudar. La guarda evita el daño; el arreglo de fondo
+—anclar la sugerencia a lo que viene moviendo— es una decisión de diseño sin tomar.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (7ª parte) — v594: EL CALENTAMIENTO DEJA DE REPETIR LO QUE YA VIENE
 
 Reporte del PO, mirando sus propias rutinas: *«he visto varios donde pones para calentar

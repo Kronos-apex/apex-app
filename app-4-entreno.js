@@ -1749,7 +1749,11 @@ function exSetsCellHTML(e){
 // ── Peso sugerido por PR (Epley, funciones en avi-core) ──
 // Solo modalidad de peso, con PR previo del MISMO ejercicio y fuera de la fase de
 // adaptación (ahí la consigna es carga suave y técnica, no acercarse al máximo).
-function _suggestKg(ex){
+// v595: devuelve TODO lo que la progresión necesita (peso sugerido + récord + reps objetivo +
+// sesiones consolidando), para que la PISTA que lee el asesorado y el PESO que se le sugiere
+// salgan del mismo sitio. `_suggestKg` delega aquí: una segunda cuenta de `sesionesEnPeso` sería
+// el bug del peso de v448/v511 otra vez, con dos verdades sobre el mismo número.
+function _progressInfo(ex){
   try{
     if(exTrack(ex)!=='peso_reps')return null;
     const c=_curClient();if(!c)return null;
@@ -1760,7 +1764,7 @@ function _suggestKg(ex){
     // final. Antes esta línea multiplicaba por 0,9 la sugerencia ya subida por la progresión, y el
     // resultado quedaba por encima del propio récord — ver `deloadSuggestKg` en avi-core.
     if(typeof deloadState==='function'&&typeof deloadSuggestKg==='function'&&deloadState(c,Date.now())){
-      return deloadSuggestKg(pr,reps);
+      return {sug:deloadSuggestKg(pr,reps),pr:pr,reps:reps,ses:null,deload:true};
     }
     // CONSOLIDACIÓN (v529, reporte del PO): la doble progresión repite el peso hasta hacerlo en
     // ≥2 sesiones y solo entonces sube. `suggestFromPR` no ve el historial, así que el conteo se
@@ -1771,8 +1775,17 @@ function _suggestKg(ex){
       ? sessionsAtLoad((DB.history&&DB.history[c.id])||[], ex.id||ex.name,
                        parseFloat(pr&&(pr.val!=null?pr.val:pr.kg)), reps)
       : undefined;
-    return suggestFromPR(pr,reps,{sesionesEnPeso:_ses});
+    // Lo ULTIMO que movio de verdad en este ejercicio: sin eso, una instruccion puede mandarle
+    // un peso que ya no levanta (su Prensa tenia record de 200 kg moviendo 100).
+    const _ult=(typeof lastWorkKg==='function')
+      ? lastWorkKg((DB.history&&DB.history[c.id])||[], ex.id||ex.name) : null;
+    return {sug:suggestFromPR(pr,reps,{sesionesEnPeso:_ses}),pr:pr,reps:reps,ses:_ses,ultimo:_ult,deload:false};
   }catch(e){return null;}
+}
+// El peso sugerido SALE de `_progressInfo` — jamás se recalcula aquí (ver el comentario de arriba).
+function _suggestKg(ex){
+  const i=_progressInfo(ex);
+  return i?i.sug:null;
 }
 // Peso ligero sugerido para el calentamiento ≈ 50% del peso de trabajo, redondeado a
 // 2.5 kg (sin bajar de 2.5). Devuelve null si no hay referencia de carga.
