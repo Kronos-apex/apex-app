@@ -62,6 +62,23 @@ eso nadie lo había reportado.
 - **R3.3:** sin entrada en `AVI_NEWS` — el asesorado ve un calentamiento más corto, no una función
   nueva, y anunciarlo sería pedirle que note algo que solo debía sobrar.
 
+### 🔴 Y CI SE PUSO EN ROJO DESPUÉS DE DESPLEGAR — el defecto era del TEST, no de la app
+Lo reportó el PO con la captura del correo, 20 minutos después del push. El paso que cayó fue la
+suite, en Linux, mientras aquí pasaba **en los dos husos**. La causa: el test extrae `buildWarmup`
+del archivo y **el recorte termina justo en una línea de comentario `//`**. Con CRLF —mi copia de
+trabajo— el `\r` final hace de terminador y el `; return buildWarmup;` que se le concatena corre;
+**con LF, que es lo que sirve el checkout de CI, ese código queda DENTRO del comentario** y `build`
+sale `undefined` sin lanzar nada. El mismo defecto estaba en `scripts/calentamiento-repetido.mjs`
+(ahí no se vio porque solo corre aquí). Arreglado con el salto de línea + una aserción de que la
+extracción devolvió una función.
+
+🔒 **Y la clase queda cerrada, no solo el caso:** `core.autocrlf=true` hace que el repo guarde LF y
+la copia de trabajo sea CRLF, o sea que **la suite local mide un archivo que nadie más tiene**. El
+pre-commit corre ahora una **TERCERA vez** sobre un árbol normalizado a LF, con su control de
+cobertura (si no convierte nada, ROJO). Probado con dos sabotajes: quitar el salto de línea deja
+local y UTC en verde y **solo LF en rojo**, con el diagnóstico puesto; y vaciar la lista de
+extensiones lo tumba por cobertura. Es lo mismo que hizo v517 con los husos horarios.
+
 ### ⏭️ Lo que queda del calentamiento, para la ronda que sigue
 Esto arregla la redundancia que el PO reportó; **la auditoría del calentamiento como área todavía
 no se hizo**. Sin mirar: si los 2 primeros de cada pool son los MEJORES para cada sesión (hoy es

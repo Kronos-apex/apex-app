@@ -17100,8 +17100,14 @@ test('🔒 CABLEADO v594: el calentamiento REAL deja de repetir el movimiento', 
   const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
   const trozo = src.slice(src.indexOf('const WARMUP_LIBRARY = {'),
     src.indexOf('\nfunction ', src.indexOf('function buildWarmup(') + 10));
-  const build = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '; return buildWarmup;')(
+  // 🔴 EL SALTO DE LINEA NO ES COSMETICO: el trozo TERMINA en una linea de comentario `//`,
+  //    asi que sin el, lo que se concatene queda DENTRO del comentario y no corre nunca. Con CRLF
+  //    el `\r` final hacia de terminador y lo tapaba; con LF —que es como lo sirve el checkout de CI—
+  //    `build` salia undefined. Los finales de linea de este repo NO son estables (v537).
+  const build = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '\n; return buildWarmup;')(
     core.wuMovePattern, core.wuSessionPatterns, core.exTrack);
+  assert.strictEqual(typeof build, 'function',
+    'la extraccion de buildWarmup no devolvio una funcion: el recorte del archivo esta mal');
   const pats = wu => [...(wu.articulares || []), ...(wu.activaciones || [])]
     .map(x => core.wuMovePattern(x.name)).filter(Boolean);
   const dup = l => l.length !== new Set(l).size;

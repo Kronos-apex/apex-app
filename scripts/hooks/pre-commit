@@ -213,6 +213,58 @@ if os.path.exists(test_file):
             ok('avi.test.js en UTC — ' + (out_utc.split('\n')[-1].strip() if out_utc else 'OK'))
         else:
             fail('Tests fallaron SOLO en UTC (así corre CI):\n' + '\n'.join(out_utc.split('\n')[-10:]))
+        # 🔴 Y UNA TERCERA VEZ CON FINALES DE LÍNEA LF, que es lo que recibe CI.
+        # Esta máquina tiene core.autocrlf=true: el repo guarda LF y la copia de trabajo es
+        # CRLF, así que las dos corridas de arriba miden un archivo que NADIE MÁS TIENE.
+        # Costó un CI en rojo (v594): un test extrae `buildWarmup` del archivo y ese trozo
+        # TERMINA en una línea de comentario `//` — con CRLF el `\r` final hacía de
+        # terminador y el `; return buildWarmup;` que se le concatena corría; con LF quedaba
+        # DENTRO del comentario y la función salía undefined, con la suite verde aquí.
+        # Los finales de línea de este repo no son estables (v537): la única forma de verlo
+        # antes de empujar es correr la suite en LF.
+        import tempfile, shutil
+        LF_EXT = ('.js', '.mjs', '.cjs', '.html', '.css', '.json', '.sql', '.md')
+        tmp_lf = tempfile.mkdtemp(prefix='avi-lf-')
+        try:
+            crudo = subprocess.run(['git', 'ls-files', '-z'],
+                                   capture_output=True, cwd=ROOT).stdout or b''
+            copiados = convertidos = 0
+            for raw in crudo.split(b'\x00'):
+                if not raw:
+                    continue
+                rel = raw.decode('utf-8').replace('/', os.sep)
+                orig = os.path.join(ROOT, rel)
+                if not os.path.isfile(orig):
+                    continue
+                dest = os.path.join(tmp_lf, rel)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                if rel.endswith(LF_EXT):
+                    datos = open(orig, 'rb').read()
+                    if b'\r\n' in datos:
+                        datos = datos.replace(b'\r\n', b'\n')
+                        convertidos += 1
+                    open(dest, 'wb').write(datos)
+                else:
+                    shutil.copyfile(orig, dest)
+                copiados += 1
+            # 🔒 CONTROL DE COBERTURA: si no se copió el árbol o no se convirtió NADA, esta
+            #    corrida no está midiendo lo que dice medir → rojo, jamás un verde por vacío.
+            if copiados < 20 or convertidos == 0:
+                fail('La corrida en LF no montó nada que medir (%d archivos, %d convertidos)'
+                     % (copiados, convertidos))
+            else:
+                r_lf = subprocess.run(['node', os.path.join(tmp_lf, 'avi.test.js')],
+                                      capture_output=True, encoding='utf-8',
+                                      errors='replace', cwd=tmp_lf)
+                out_lf = (r_lf.stdout or '').strip()
+                if r_lf.returncode == 0:
+                    ok('avi.test.js en LF (%d archivos convertidos) — ' % convertidos +
+                       (out_lf.split('\n')[-1].strip() if out_lf else 'OK'))
+                else:
+                    fail('Tests fallaron SOLO con finales de línea LF (así los sirve el '
+                         'checkout de CI):\n' + '\n'.join(out_lf.split('\n')[-10:]))
+        finally:
+            shutil.rmtree(tmp_lf, ignore_errors=True)
     else:
         tail = '\n'.join(stdout.split('\n')[-10:])
         fail(f'Tests fallaron:\n{tail}')

@@ -25,9 +25,14 @@ const trozo = src.slice(src.indexOf('const WARMUP_LIBRARY = {'), src.indexOf('\n
 
 // CON las globales (comportamiento de hoy) y SIN ellas (el de antes de v594): el mismo código,
 // dos configuraciones — así el «antes» no es una reconstrucción de memoria.
-const conFiltro = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '; return buildWarmup;')(
+const conFiltro = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '\n; return buildWarmup;')(
   core.wuMovePattern, core.wuSessionPatterns, core.exTrack);
-const sinFiltro = new Function(trozo + '; return buildWarmup;')();
+const sinFiltro = new Function(trozo + '\n; return buildWarmup;')();
+// 🔴 El salto de linea de arriba NO es cosmetico: el trozo termina en un comentario `//`,
+//    y sin el, el `return` queda dentro del comentario y estas dos salen undefined (solo con LF).
+if (typeof conFiltro !== 'function' || typeof sinFiltro !== 'function') {
+  console.error('🔴 la extraccion de buildWarmup fallo: revisa el recorte del archivo'); process.exit(1);
+}
 
 const KEY = readFileSync(join(homedir(), '.avi', 'service-role.key'), 'utf8').trim();
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}` };
