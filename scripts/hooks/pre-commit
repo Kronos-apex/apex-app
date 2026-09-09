@@ -228,7 +228,7 @@ if os.path.exists(test_file):
         try:
             crudo = subprocess.run(['git', 'ls-files', '-z'],
                                    capture_output=True, cwd=ROOT).stdout or b''
-            copiados = convertidos = 0
+            copiados = texto = convertidos = restos = 0
             for raw in crudo.split(b'\x00'):
                 if not raw:
                     continue
@@ -244,21 +244,28 @@ if os.path.exists(test_file):
                         datos = datos.replace(b'\r\n', b'\n')
                         convertidos += 1
                     open(dest, 'wb').write(datos)
+                    texto += 1
+                    if b'\r\n' in datos:
+                        restos += 1
                 else:
                     shutil.copyfile(orig, dest)
                 copiados += 1
-            # 🔒 CONTROL DE COBERTURA: si no se copió el árbol o no se convirtió NADA, esta
-            #    corrida no está midiendo lo que dice medir → rojo, jamás un verde por vacío.
-            if copiados < 20 or convertidos == 0:
-                fail('La corrida en LF no montó nada que medir (%d archivos, %d convertidos)'
-                     % (copiados, convertidos))
+            # 🔒 CONTROL DE COBERTURA: se afirma la PROPIEDAD (el árbol quedó en LF), no
+            #    cuántos se convirtieron. `convertidos == 0` es lo NORMAL en una máquina que
+            #    ya trabaja en LF —CI, sin ir más lejos— y usarlo como control puso el propio
+            #    CI en rojo la primera vez. Lo que invalida la corrida es no haber copiado el
+            #    árbol o que quede un CRLF vivo: eso sí es no medir lo que se dice medir.
+            if copiados < 20 or texto < 10 or restos:
+                fail('La corrida en LF no montó lo que dice montar (%d archivos, %d de texto, '
+                     '%d con CRLF vivo)' % (copiados, texto, restos))
             else:
                 r_lf = subprocess.run(['node', os.path.join(tmp_lf, 'avi.test.js')],
                                       capture_output=True, encoding='utf-8',
                                       errors='replace', cwd=tmp_lf)
                 out_lf = (r_lf.stdout or '').strip()
                 if r_lf.returncode == 0:
-                    ok('avi.test.js en LF (%d archivos convertidos) — ' % convertidos +
+                    ok('avi.test.js en LF (%d de texto, %d convertidos) — '
+                       % (texto, convertidos) +
                        (out_lf.split('\n')[-1].strip() if out_lf else 'OK'))
                 else:
                     fail('Tests fallaron SOLO con finales de línea LF (así los sirve el '
