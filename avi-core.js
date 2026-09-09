@@ -2419,6 +2419,65 @@ function kgNeedsConfirm(kg, bestEx, bestGlobal) {
   return v > kgConfirmLimit(bestEx, bestGlobal);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// EL CALENTAMIENTO NO REPITE LO QUE YA VIENE (v594)
+// ──────────────────────────────────────────────────────────────────────
+// Reporte del PO (8-sep): *«he visto varios donde pones para calentar sentadillas peso corporal
+// y en activación vuelves a poner sentadillas, en rutinas donde se arranca con sentadillas peso
+// corporal; eso termina siendo redundante»*.
+//
+// Es estructural, no un descuido: `buildWarmup` toma **los dos primeros** de cada pool, y resulta
+// que movilidad de rodilla trae `wr2` «Sentadilla de movilidad lenta» de segunda y activación
+// inferior trae `wai1` «Sentadilla con peso corporal» de primera. Con eso, CUALQUIER día de
+// pierna o glúteo se lleva las dos.
+//
+// Medido el 8-sep con la función REAL sobre las 105 rutinas vivas con calentamiento automático:
+//   · **54 llevan dos SENTADILLAS** · **52 llevan dos ZANCADAS** («Estocada con rotación» en
+//     movilidad + «Desplante alterno» en activación) — o sea que no era solo la sentadilla.
+//   · **26 además ARRANCAN con una sentadilla**; en 4 de ellas el primer ejercicio es la misma
+//     sentadilla SIN CARGA, o sea el mismo movimiento tres veces.
+//
+// Decisión del PO, que es entrenador y por eso la tomó él:
+//   1. el calentamiento **nunca repite un patrón dentro de sí mismo**;
+//   2. si el primer ejercicio de la sesión es ese mismo patrón **SIN CARGA**, la activación sobra
+//      —es literalmente la primera serie—;
+//   3. si arranca con la versión **CON CARGA** (barra, Smith, pendular), la activación con peso
+//      corporal **se queda**: ahí es una serie de aproximación, no una repetición.
+//
+// 🔒 La lista es ESTRECHA a propósito y solo nombra patrones que EXISTEN en la biblioteca de
+// calentamiento: una regla ancha aquí borraría trabajo legítimo, que es el error de v424.
+const WU_PATTERNS = [
+  ['sentadilla', /\bsentadill|\bsquat\b/i],
+  ['zancada', /\bdesplante|\bzancada|\bestocada|\blunge\b|\bb[úu]lgara/i],
+  ['bisagra', /peso muerto|bisagra de cadera|buenos d[íi]as/i],
+  ['empuje', /flexi[óo]n de pecho|\blagartija|push.?up/i],
+  ['plancha', /\bplancha\b/i],
+  ['talones', /\btalones\b|pantorrilla/i],
+];
+
+// El patrón de movimiento de un ejercicio, por su nombre. PURA. null = no es de los que colisionan.
+function wuMovePattern(nombre) {
+  const t = String(nombre == null ? '' : nombre);
+  const hit = WU_PATTERNS.find(([, re]) => re.test(t));
+  return hit ? hit[0] : null;
+}
+
+// Los patrones con los que un calentamiento NO debe volver a cargar, mirando lo que la sesión ya
+// trae. PURA: recibe los ejercicios de la sesión y una forma de saber si uno lleva carga.
+// 🔒 Solo cuenta el PRIMER ejercicio: es con el que la persona arranca en frío, y es el único al
+// que la activación podría estar duplicando. Mirar la sesión entera vaciaría el calentamiento de
+// un día de pierna.
+// 🔒 Y solo si va SIN CARGA (regla 3 del PO): con barra o en máquina, la versión con peso corporal
+// es una aproximación legítima y se queda.
+function wuSessionPatterns(exercises, esConCarga) {
+  const primero = (Array.isArray(exercises) ? exercises : [])[0];
+  if (!primero) return [];
+  const p = wuMovePattern(primero.name);
+  if (!p) return [];
+  const conCarga = typeof esConCarga === 'function' ? !!esConCarga(primero) : false;
+  return conCarga ? [] : [p];
+}
+
 // ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────
 // El candado de v431 vigila los KILOS. Auditando los entrenamientos rápidos (8-sep) apareció que
 // las REPETICIONES no tienen ninguno, y que ya hay daño real:
@@ -10461,6 +10520,9 @@ if (typeof module !== 'undefined' && module.exports) {
     errReportGate,
     cloudWriteSealed,
     repsOutlier,
+    WU_PATTERNS,
+    wuMovePattern,
+    wuSessionPatterns,
     mergeCoachMsgs,
     ROUTINE_PROMISES,
     routinePromiseGap,

@@ -4,6 +4,72 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (7ª parte) — v594: EL CALENTAMIENTO DEJA DE REPETIR LO QUE YA VIENE
+
+Reporte del PO, mirando sus propias rutinas: *«he visto varios donde pones para calentar
+sentadillas peso corporal y en activación vuelves a poner sentadillas, en rutinas donde se arranca
+con sentadillas peso corporal, y así en varios calentamientos; eso termina siendo redundante»*.
+
+### 🔴 Tenía razón, es estructural, y era más grande de lo que vio
+`buildWarmup` toma **los dos primeros** de cada pool. Movilidad de rodilla trae `wr2` «Sentadilla
+de movilidad lenta» de **segunda**; activación inferior trae `wai1` «Sentadilla con peso corporal»
+de **primera**. Con eso, **cualquier** día de pierna o glúteo se lleva las dos.
+
+**Medido el 8-sep con la función REAL sobre las 105 rutinas vivas con calentamiento automático:**
+
+| | antes | ahora |
+|---|---|---|
+| calientan **2× sentadilla** | **54** | **0** |
+| calientan **2× zancada** («Estocada con rotación» + «Desplante alterno») | **52** | **0** |
+| la activación repite el 1.er ejercicio de la sesión (sin carga) | 4 | **0** |
+
+O sea que **no era solo la sentadilla**: la zancada estaba duplicada en la mitad de las rutinas y
+eso nadie lo había reportado.
+
+### La regla, decidida por el PO (es de entrenador, no de código)
+1. el calentamiento **nunca repite un patrón dentro de sí mismo**;
+2. si el primer ejercicio de la sesión es ese mismo patrón **SIN CARGA**, la activación sobra —es
+   literalmente su primera serie—;
+3. si arranca con la versión **CON CARGA** (barra, Smith, pendular), la activación con peso
+   corporal **se queda**: ahí es una serie de aproximación, no una repetición.
+
+### Lo construido
+- `wuMovePattern` y `wuSessionPatterns` (avi-core, **PURAS**) + `WU_PATTERNS`, una lista
+  **ESTRECHA** que solo nombra patrones que EXISTEN en la biblioteca de calentamiento.
+  🔒 Barrida contra el catálogo real antes de cablear nada: **67 de 374 ejercicios reciben patrón
+  y ninguno de más** (Press de Banca, Remo, Curl, Jalón y Elevaciones dan `null`). Una regla ancha
+  aquí dejaría el calentamiento CORTO, que es peor que repetido (v424).
+- El filtro va **ANTES del `slice(0,2)`**, igual que el de lesiones y por la misma razón escrita en
+  ese comentario: filtrando después nos quedaríamos cortos en vez de tomar el siguiente del pool.
+  Por eso la activación de un día de pierna pasa a ser «Peso muerto con peso corporal» +
+  «Elevación de talones», no una lista de uno.
+- 🔒 **La regla 2 se aplica SOLO a la activación.** La movilidad conserva su sentadilla lenta
+  (tempo 4-4, preparación articular): el PO pidió quitar la repetición, no el trabajo de movilidad.
+
+### QA
+- Suite **1108 → 1111** en los dos husos · hook **12/12** · `_prodcheck 594` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-calentamiento.mjs`: **7/7 muerden**, incluidos el que ensancha la regla
+  (deja el calentamiento corto), el que mueve el filtro DESPUÉS del corte y el que ignora la carga.
+- El test de cableado **ejecuta `buildWarmup` de verdad** —extraída de app-6 con sus globales
+  inyectadas— y afirma el COMPORTAMIENTO: sin patrones repetidos, con la activación completa, y
+  con la movilidad intacta.
+- 🔬 **Dos errores propios, los dos de MEDICIÓN y los dos cazados por el control:**
+  1. Mi primer script construía `buildWarmup` **sin inyectarle las globales nuevas**: sus guardas
+     `typeof x==='function'` daban false, el filtro no corría y el script decía «no cambió nada»
+     sobre un arreglo que sí funcionaba. Es la clase del fixture que no monta lo que dice montar.
+  2. Mi métrica de «el mismo patrón 3 veces» contaba la MOVILIDAD, que por la regla del PO se
+     queda: decía **4 → 4** sobre un arreglo correcto. Corregida, mide lo que la regla 2 quita.
+- **R3.3:** sin entrada en `AVI_NEWS` — el asesorado ve un calentamiento más corto, no una función
+  nueva, y anunciarlo sería pedirle que note algo que solo debía sobrar.
+
+### ⏭️ Lo que queda del calentamiento, para la ronda que sigue
+Esto arregla la redundancia que el PO reportó; **la auditoría del calentamiento como área todavía
+no se hizo**. Sin mirar: si los 2 primeros de cada pool son los MEJORES para cada sesión (hoy es
+el orden del array, no una decisión), qué pasa con el calentamiento en un día de solo core o solo
+cardio, y los 5 calentamientos que el coach escribió a mano (no pasan por este motor).
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (6ª parte) — v593: EL CERO DE MÁS, PERO EN LAS REPETICIONES
 
 Sale de la auditoría de **entrenamientos rápidos** (`docs/auditoria-rapidos-2026-09-08/`), aunque

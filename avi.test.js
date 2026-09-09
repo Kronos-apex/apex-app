@@ -17047,6 +17047,102 @@ test('🔒 CABLEADO v593: se avisa al teclear, y el preset ya no le habla de gra
 });
 
 // ══════════════════════════════════════════════════════
+// v594 · EL CALENTAMIENTO NO REPITE LO QUE YA VIENE
+// ══════════════════════════════════════════════════════
+// Reporte del PO: «pones para calentar sentadillas peso corporal y en activación vuelves a poner
+// sentadillas, en rutinas donde se arranca con sentadillas peso corporal». Medido con la función
+// REAL sobre las 105 rutinas vivas: 54 llevaban dos sentadillas y 52 dos zancadas.
+
+test('v594 · el patrón de movimiento se reconoce por el nombre, y NO marca lo que no toca', () => {
+  assert.strictEqual(core.wuMovePattern('Sentadilla con peso corporal'), 'sentadilla');
+  assert.strictEqual(core.wuMovePattern('Sentadilla de movilidad lenta'), 'sentadilla');
+  assert.strictEqual(core.wuMovePattern('Desplante alterno'), 'zancada');
+  assert.strictEqual(core.wuMovePattern('Estocada con rotación'), 'zancada');
+  assert.strictEqual(core.wuMovePattern('Peso muerto con peso corporal'), 'bisagra');
+  // 🔒 CONTROL: la lista es ESTRECHA. Si marcara de más, el calentamiento se quedaría corto —
+  //    que es peor que repetido (v424: una regla ancha también hace daño).
+  ['Press de Banca', 'Remo con Barra', 'Curl de Bíceps', 'Jalón al Pecho', 'Elevaciones Laterales',
+   'Círculos de rodilla', 'Band pull-apart / apertura con banda', 'Deadbug']
+    .forEach(n => assert.strictEqual(core.wuMovePattern(n), null, 'marcó de más: ' + n));
+  assert.strictEqual(core.wuMovePattern(null), null, 'sin nombre no puede lanzar');
+});
+
+test('🔒 v594 · la sesión solo bloquea su patrón cuando el primer ejercicio va SIN CARGA', () => {
+  const conCarga = ex => (ex.track || '') === 'peso_reps';
+  // Regla 2 del PO: arranca con la MISMA sentadilla sin carga → la activación sobra.
+  assert.deepStrictEqual(
+    core.wuSessionPatterns([{ name: 'Sentadilla de Peso Corporal', track: 'reps' }], conCarga), ['sentadilla']);
+  // 🔒 Regla 3: con barra o en máquina la activación con peso corporal es una serie de
+  //    aproximación legítima y SE QUEDA. Sin este caso, «acotar» sería borrar la activación.
+  assert.deepStrictEqual(
+    core.wuSessionPatterns([{ name: 'Sentadilla con Barra', track: 'peso_reps' }], conCarga), []);
+  // 🔬 Solo mira el PRIMERO — y el caso que de verdad lo discrimina NO es este:
+  //    con «Press de Banca» de primero, mirar la sesión entera daría igual [] porque la carga
+  //    se juzga sobre el primero. El sabotaje salía VERDE. El caso que muerde es un primer
+  //    ejercicio SIN patrón y SIN carga, con el patrón más adelante.
+  assert.deepStrictEqual(
+    core.wuSessionPatterns([{ name: 'Press de Banca', track: 'peso_reps' },
+                            { name: 'Sentadilla de Peso Corporal', track: 'reps' }], conCarga), []);
+  assert.deepStrictEqual(
+    core.wuSessionPatterns([{ name: 'Curl de Bíceps', track: 'reps' },
+                            { name: 'Sentadilla de Peso Corporal', track: 'reps' }], conCarga), [],
+    '🔴 mira la sesión entera: bloquearía el calentamiento por un ejercicio que viene al final');
+  assert.deepStrictEqual(core.wuSessionPatterns([], conCarga), []);
+  assert.deepStrictEqual(core.wuSessionPatterns(null, null), [], 'sin datos no puede lanzar');
+});
+
+test('🔒 CABLEADO v594: el calentamiento REAL deja de repetir el movimiento', () => {
+  // Se ejecuta `buildWarmup` de verdad, extraída de app-6, con sus globales inyectadas: es la
+  // única forma de afirmar el COMPORTAMIENTO y no la presencia de una línea.
+  // 🔬 Sin inyectarlas, sus guardas `typeof x==='function'` dan false, el filtro no corre y el
+  //    test mediría el comportamiento VIEJO creyendo medir el nuevo.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const trozo = src.slice(src.indexOf('const WARMUP_LIBRARY = {'),
+    src.indexOf('\nfunction ', src.indexOf('function buildWarmup(') + 10));
+  const build = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '; return buildWarmup;')(
+    core.wuMovePattern, core.wuSessionPatterns, core.exTrack);
+  const pats = wu => [...(wu.articulares || []), ...(wu.activaciones || [])]
+    .map(x => core.wuMovePattern(x.name)).filter(Boolean);
+  const dup = l => l.length !== new Set(l).size;
+
+  // Día de pierna que arranca CON CARGA: no puede repetir patrón dentro del calentamiento…
+  const pierna = build([{ name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' },
+                        { name: 'Prensa', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }], null);
+  assert.ok(!dup(pats(pierna)), '🔴 volvió el calentamiento con dos sentadillas (o dos zancadas)');
+  // …y la activación NO se queda vacía: filtrar antes del corte hace que entre el siguiente.
+  assert.ok((pierna.activaciones || []).length >= 2, '🔴 el filtro dejó el calentamiento corto');
+  // 🔒 Y la MOVILIDAD conserva sus seis (2 por zona: cadera, rodillas, tobillos). Filtrar DESPUÉS
+  //    del corte en vez de antes se lleva una y nadie lo nota: el duplicado desaparece igual, pero
+  //    el calentamiento se queda corto. Sin esta cifra, ese sabotaje sale VERDE.
+  assert.strictEqual((pierna.articulares || []).length, 6,
+    '🔴 la movilidad se quedó corta: el filtro está corriendo DESPUÉS del recorte');
+  // 🔒 Y con carga, la sentadilla de activación SÍ puede seguir estando (regla 3 del PO).
+
+  // Día que arranca con la MISMA sentadilla SIN carga: la activación no la repite.
+  const corporal = build([{ name: 'Sentadilla de Peso Corporal', muscle: 'piernas', type: 'Bodyweight', track: 'reps' },
+                          { name: 'Puente de Glúteo', muscle: 'gluteo', type: 'Bodyweight', track: 'reps' }], null);
+  assert.ok(!(corporal.activaciones || []).some(x => core.wuMovePattern(x.name) === 'sentadilla'),
+    '🔴 la activación repite el primer ejercicio de la sesión: es literalmente su primera serie');
+  assert.ok((corporal.activaciones || []).length >= 2, 'la activación se quedó sin nada que hacer');
+  // 🔒 La MOVILIDAD conserva la suya a propósito (tempo lento, preparación articular): el PO pidió
+  //    quitar la repetición, no el trabajo de movilidad.
+  assert.ok((corporal.articulares || []).some(x => core.wuMovePattern(x.name) === 'sentadilla'),
+    '🔴 se llevó por delante la movilidad, que no era lo que sobraba');
+
+  // 🔬 EL CASO QUE DE VERDAD PRUEBA LA REGLA 2, y costó un sabotaje verde encontrarlo: en la
+  //    sentadilla, la regla 1 ya la tapa —la movilidad mete su sentadilla ANTES y el patrón queda
+  //    marcado—, así que quitar la regla 2 no cambiaba nada y el sabotaje pasaba. Donde SOLO ella
+  //    actúa es en el EMPUJE: la movilidad de hombro no cubre ese patrón, así que una sesión que
+  //    arranca con lagartijas se llevaba «Flexión de pecho» como activación.
+  const empuje = build([{ name: 'Lagartijas (Push-up)', muscle: 'pecho', type: 'Bodyweight', track: 'reps' },
+                        { name: 'Remo Invertido', muscle: 'espalda', type: 'Bodyweight', track: 'reps' }], null);
+  assert.ok(!(empuje.activaciones || []).some(x => core.wuMovePattern(x.name) === 'empuje'),
+    '🔴 la activación vuelve a mandar lagartijas a quien arranca la sesión con lagartijas');
+  assert.ok((empuje.activaciones || []).length >= 2, 'la activación de tren superior se quedó corta');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

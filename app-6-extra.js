@@ -2280,9 +2280,23 @@ const MUSCLE_WARMUP_MAP = {
 // filtrar — un calentamiento de menos no le hace daño a nadie, uno contraindicado sí.
 function buildWarmup(exercises,limKeys){
   const _lim=(limKeys&&limKeys.length&&typeof warmupContraindicated==='function')?limKeys:null;
-  const wuPool=area=>{
+  // 🔴 v594 · EL CALENTAMIENTO NO REPITE LO QUE YA VIENE (reporte del PO, 8-sep).
+  // `_usados` acumula los PATRONES de movimiento ya cubiertos. Empieza con el del primer ejercicio
+  // de la sesión **solo si va SIN CARGA** (regla 3 del PO: con barra o en máquina, la versión con
+  // peso corporal es una serie de aproximación legítima y se queda).
+  // 🔒 Se filtra ANTES del `slice(0,2)`, igual que el filtro de lesiones y por la misma razón: si
+  // se filtrara después nos quedaríamos cortos en vez de tomar el siguiente del pool.
+  // ⚠️ La regla de la SESIÓN solo se aplica a la ACTIVACIÓN: la movilidad lenta es otra cosa
+  // (tempo 4-4, preparación articular) y el PO no pidió quitarla.
+  const _conCarga=ex=>(typeof exTrack==='function')?exTrack(ex)==='peso_reps':false;
+  const _sesPats=(typeof wuSessionPatterns==='function')?wuSessionPatterns(exercises,_conCarga):[];
+  const _usados=new Set();
+  const _pat=ex=>(typeof wuMovePattern==='function')?wuMovePattern(ex&&ex.name):null;
+  const wuPool=(area,evitar)=>{
     const pool=WARMUP_LIBRARY[area]||[];
-    return _lim?pool.filter(ex=>!warmupContraindicated(ex,_lim)):pool;
+    const conFiltro=_lim?pool.filter(ex=>!warmupContraindicated(ex,_lim)):pool;
+    if(!evitar)return conFiltro;
+    return conFiltro.filter(ex=>{ const p=_pat(ex); return !p || !evitar.has(p); });
   };
   const muscleCount={};
   (exercises||[]).forEach(e=>{
@@ -2321,9 +2335,10 @@ function buildWarmup(exercises,limKeys){
     (map.articular||[]).forEach(area=>{
       if(!articularSets.has(area)){
         articularSets.add(area);
-        const pool=wuPool(area);
+        // v594 · la movilidad solo evita repetirse a SÍ MISMA (no mira la sesión: ver arriba).
+        const pool=wuPool(area,_usados);
         // Take 1-2 exercises per area
-        pool.slice(0,2).forEach(ex=>articulares.push(ex));
+        pool.slice(0,2).forEach(ex=>{ articulares.push(ex); const p=_pat(ex); if(p)_usados.add(p); });
       }
     });
   });
@@ -2336,9 +2351,12 @@ function buildWarmup(exercises,limKeys){
     (map.activacion||[]).forEach(area=>{
       if(!activacionSets.has(area)){
         activacionSets.add(area);
-        const pool=wuPool(area);
+        // v594 · la ACTIVACION evita dos cosas: lo que ya hizo la movilidad, y el primer
+        // ejercicio de la sesion cuando va SIN CARGA (ahi seria literalmente la primera serie).
+        const evitar=new Set([..._usados,..._sesPats]);
+        const pool=wuPool(area,evitar);
         pool.slice(0,2).forEach(ex=>{
-          if(activaciones.length<4)activaciones.push(ex);
+          if(activaciones.length<4){ activaciones.push(ex); const p=_pat(ex); if(p)_usados.add(p); }
         });
       }
     });
