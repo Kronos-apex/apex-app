@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v595';
+const CACHE_NAME = 'avi-v596';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -6,7 +6,7 @@ const V = CACHE_NAME.replace('avi-v', '');
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
-const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png']
+const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png', '/apex-app/icons/badge-96.png']
   // `foods.json` = catálogo de búsqueda del registro de alimentos (E8). Va precacheado con
   // ?v= como los módulos: sin él, la primera visita sin red se quedaría sin buscador. Si aun
   // así falta, `foodCatalog(null)` cae a los 50 que viajan dentro de avi-core (E9).
@@ -137,7 +137,12 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(d.title || 'AVI', {
     body: d.body || '',
     icon: '/apex-app/icons/icon-192.png',
-    badge: '/apex-app/icons/icon-192.png',
+    // 🔴 El BADGE es el iconito de la barra de estado, y Android lo dibuja recortando el
+    // CANAL ALFA: pinta la silueta, no la imagen. Aqui iba `icon-192.png`, que es un cuadrado
+    // 100% OPACO (medido: 0 pixeles transparentes de 36.864), asi que la silueta era el cuadrado
+    // entero — una mancha solida, la marca mas generica posible. `badge-96.png` lleva la marca
+    // de AVI con fondo TRANSPARENTE de verdad (7.749 pixeles transparentes de 9.216).
+    badge: '/apex-app/icons/badge-96.png',
     vibrate: isMsg ? [200,100,200,100,200] : [200,100,200],
     tag: d.tag || (isMsg ? 'avi-chat-' + (d.chatId || 'x') : 'avi-notif'),
     renotify: true,

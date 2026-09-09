@@ -4,6 +4,56 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-09 (2ª parte) — v596: EL ICONITO DE LA BARRA DE ESTADO ERA UNA MANCHA
+
+Reporte del PO con una foto de su teléfono: *«estas notificaciones quiero que se vean más bonitas,
+no tan genéricas»*.
+
+### 🔴 Lo primero fue separar lo que NO es nuestro
+La notificación de la foto **no la pinta AVI**: el remitente es **Chrome** y el texto es «Presiona
+para copiar la URL para esta app». Es la notificación silenciosa que Android/Chrome muestra
+siempre que una app web corre en su propia ventana; no la genera nuestro código, no se puede
+maquetar y no se puede quitar desde el sitio. **Arreglar lo que se pidió literal habría sido
+imposible; lo que sí se podía arreglar estaba al lado.**
+
+### El defecto real, medido
+El **`badge`** de una notificación web es el iconito de la barra de estado, y Android lo dibuja
+**recortando el CANAL ALFA**: pinta la silueta, no la imagen. `sw.js` lo tenía apuntando a
+`icon-192.png`… que es **un cuadrado 100% OPACO: 0 píxeles transparentes de 36.864** (medido, no
+supuesto). O sea que la silueta era el cuadrado entero — **una mancha sólida, la marca más
+genérica que existe**. `maskable-192.png` está igual.
+
+### Lo construido
+- **`icons/badge-96.png`**: la marca de AVI en blanco sobre fondo transparente de verdad (**7.749
+  transparentes de 9.216**), derivada del propio logo por brillo —así conserva el antialiasing del
+  original— recortada a su caja y centrada con un 10% de aire, porque Android recorta el badge y
+  sin margen la forma se ve amputada.
+- `sw.js` apunta ahí **y lo mete en el precache del shell**: si el archivo no está disponible sin
+  red, Android cae a su icono genérico, que es justo el aspecto del que se quejó el PO.
+
+### QA
+- Suite **1117 → 1119** en los tres modos · hook 12/12 · `_prodcheck 596` verde.
+- Matriz nueva `_sabotaje-badge.mjs`: **3/3 muerden**, incluida la que de verdad importa —
+  **reemplazar el ARCHIVO del badge por uno opaco**: el cableado puede estar perfecto y la imagen
+  ser un cuadrado, que es exactamente el defecto original.
+- 🔬 El test **decodifica el PNG de verdad** (IHDR + IDAT inflado + desfiltrado de scanlines) en
+  vez de mirar el tipo de color: un PNG puede declararse RGBA y ser opaco entero, que es el caso
+  que este candado existe para cazar. **Se afirma la propiedad, no un proxy de la propiedad.**
+- 🔒 Con su **CONTROL**: se comprueba que `icon-192.png` SIGUE siendo opaco. Sin ese caso el test
+  no probaría que discrimina — y es justo el archivo al que apuntaba el badge.
+- 🔬 Y el badge se **MIRÓ compuesto sobre fondo oscuro** antes de darlo por bueno: en blanco sobre
+  transparente, la vista previa sobre fondo claro sale en blanco y no se puede juzgar nada
+  (lección de las 9 fotos de ejercicio aprobadas a 300 px, v499).
+- **R3.3:** sin entrada en `AVI_NEWS` — el asesorado ve el mismo aviso con mejor icono, no una
+  función nueva.
+
+### ⏭️ Lo que NO se hizo, y por qué
+Se evaluó añadir **botones de acción** a las notificaciones. Se descartó por ahora: un botón que
+solo abre la app duplica lo que ya hace tocar la notificación, y añadir superficie sin una acción
+que de verdad ahorre un paso es ruido, no pulido. Queda como decisión del PO.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-09 — v595: LA PROGRESIÓN SE DICE COMO INSTRUCCIÓN, NO COMO NÚMERO
 
 Pedido del PO, después de que sus tres especialistas revisaran sus rutinas: *«construyamos la

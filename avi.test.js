@@ -17273,6 +17273,87 @@ test('🔒 CABLEADO v595: la pantalla del entreno usa la instrucción, y destaca
 });
 
 // ══════════════════════════════════════════════════════
+// v596 · EL ICONITO DE LA BARRA DE ESTADO NO PUEDE SER UNA MANCHA
+// ══════════════════════════════════════════════════════
+// Reporte del PO: «quiero que estas notificaciones se vean más bonitas, no tan genéricas».
+// El `badge` de una notificación web lo dibuja Android RECORTANDO EL CANAL ALFA — pinta la
+// silueta, no la imagen. `sw.js` apuntaba a `icon-192.png`, que es un cuadrado 100% OPACO, así
+// que la silueta era el cuadrado entero: una mancha.
+
+// Lee el alfa REAL de un PNG (IHDR + IDAT inflado + desfiltrado de scanlines). Se decodifica de
+// verdad en vez de mirar el tipo de color: un PNG puede declararse RGBA y ser opaco entero, que
+// es exactamente el defecto que este test existe para cazar (afirmar la PROPIEDAD, no un proxy).
+function _alfaDePng(ruta) {
+  const zlib = require('zlib'), fs = require('fs');
+  const buf = fs.readFileSync(ruta);
+  const ancho = buf.readUInt32BE(16), alto = buf.readUInt32BE(20);
+  const bits = buf[24], tipo = buf[25];
+  if (bits !== 8 || tipo !== 6) return null;          // solo RGBA de 8 bits
+  const trozos = [];
+  let p = 8;
+  while (p < buf.length) {
+    const len = buf.readUInt32BE(p), nombre = buf.toString('ascii', p + 4, p + 8);
+    if (nombre === 'IDAT') trozos.push(buf.subarray(p + 8, p + 8 + len));
+    p += len + 12;
+  }
+  const crudo = zlib.inflateSync(Buffer.concat(trozos));
+  const bpp = 4, fila = ancho * bpp;
+  const salida = Buffer.alloc(alto * fila);
+  const paeth = (a, b, c) => {
+    const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c);
+    return (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+  };
+  for (let y = 0; y < alto; y++) {
+    const filtro = crudo[y * (fila + 1)];
+    const src = y * (fila + 1) + 1, dst = y * fila, prev = (y - 1) * fila;
+    for (let x = 0; x < fila; x++) {
+      const izq = x >= bpp ? salida[dst + x - bpp] : 0;
+      const arr = y > 0 ? salida[prev + x] : 0;
+      const diag = (y > 0 && x >= bpp) ? salida[prev + x - bpp] : 0;
+      let v = crudo[src + x];
+      if (filtro === 1) v += izq;
+      else if (filtro === 2) v += arr;
+      else if (filtro === 3) v += (izq + arr) >> 1;
+      else if (filtro === 4) v += paeth(izq, arr, diag);
+      salida[dst + x] = v & 255;
+    }
+  }
+  let opacos = 0, transparentes = 0, total = ancho * alto;
+  for (let i = 3; i < salida.length; i += 4) {
+    if (salida[i] > 200) opacos++; else if (salida[i] < 20) transparentes++;
+  }
+  return { ancho, alto, opacos, transparentes, total };
+}
+
+test('🔴 v596 · el badge de las notificaciones tiene transparencia REAL, no es un cuadrado', () => {
+  const path = require('path');
+  const a = _alfaDePng(path.join(__dirname, 'icons', 'badge-96.png'));
+  assert.ok(a, 'badge-96.png tiene que ser un PNG RGBA de 8 bits');
+  assert.ok(a.transparentes > a.total * 0.3,
+    `🔴 el badge es casi opaco (${a.transparentes} transparentes de ${a.total}): Android lo pintaría como una mancha`);
+  assert.ok(a.opacos > a.total * 0.05,
+    `🔴 el badge quedó casi vacío (${a.opacos} opacos de ${a.total}): no se vería nada en la barra`);
+
+  // 🔒 CONTROL: el ícono a color SIGUE siendo un cuadrado opaco. Sin este caso, el test de arriba
+  //    no prueba que discrimine — y es justo el archivo al que apuntaba el badge (0 de 36.864
+  //    píxeles transparentes, medido el 9-sep).
+  const icono = _alfaDePng(path.join(__dirname, 'icons', 'icon-192.png'));
+  if (icono) assert.ok(icono.transparentes < icono.total * 0.02,
+    'el ícono a color dejó de ser opaco: revisa si el badge sigue haciendo falta');
+});
+
+test('🔒 CABLEADO v596: el service worker usa el badge propio y lo precachea', () => {
+  const fs = require('fs'), path = require('path');
+  const sw = sinComentarios(fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8'));
+  assert.match(sw, /badge:\s*'\/apex-app\/icons\/badge-96\.png'/,
+    '🔴 el badge volvió a apuntar a un ícono a color: sería una mancha otra vez');
+  // Si no está en el precache, sin conexión el archivo no está y Android cae a su genérico —
+  // que es exactamente el aspecto del que se quejó el PO.
+  assert.match(sw, /SHELL\s*=\s*\[[^\]]*badge-96\.png/,
+    '🔴 el badge no entra al precache: sin red la notificación vuelve al ícono genérico');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
