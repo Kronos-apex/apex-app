@@ -16614,6 +16614,10 @@ test('🔒 CABLEADO v583: la nota se pinta y las CIFRAS no se tocan', () => {
 // decía «Mensaje enviado». Medido el 8-sep: 47 mensajes suyos vivos y 25 asesorados cuyo
 // perfil, rutinas, historial, récords, peso, medidas y nutrición van por el mismo camino.
 
+// 🔴 QUITAR LOS COMENTARIOS ANTES DE MIRAR. Cuatro candados distintos aprobaron el 8-sep porque
+// el comentario que EXPLICA la decisión contiene el mismo texto que la aserción busca (clase
+// v523/v546). Todo check estático sobre código pasa por aquí.
+const sinComentarios = t => String(t).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 const _srcApp1 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
 const _srcApp3 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
 const _m = (from, date, text) => ({ from, date, text });
@@ -16955,8 +16959,7 @@ test('🔒 CABLEADO v591: la cura corre en las DOS puertas, y DESPUÉS de sanear
   // 🔴 Sin quitar los comentarios, el bloque que EXPLICA por qué la cura va después del saneo
   // nombra `healStalePrs` antes que `sanitizePrs` y la comparación de posiciones sale al revés.
   // Tercera vez hoy de la misma clase (v523/v546/v589): el candado lee CÓDIGO, no comentarios.
-  const _sinCom = t => t.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  const cli = _sinCom(src.slice(src.indexOf('function _applyAuthClientDB('), src.indexOf('// ── OFFLINE para clientes auth')));
+  const cli = sinComentarios(src.slice(src.indexOf('function _applyAuthClientDB('), src.indexOf('// ── OFFLINE para clientes auth')));
   assert.ok(/healStalePrs\(_sp\.prs,_sh\.history\)/.test(cli),
     '🔴 la cura dejó de correr sobre lo SANEADO: un 200 kg imposible se volvería récord');
   assert.ok(cli.indexOf('sanitizePrs') < cli.indexOf('healStalePrs'),
@@ -16967,10 +16970,80 @@ test('🔒 CABLEADO v591: la cura corre en las DOS puertas, y DESPUÉS de sanear
   assert.ok(/if\(_sp\.removed>0\|\|_pr\.moved>0\|\|_hp\.curados\.length\)\{\s*try\{\s*svNow\('ax_pr',DB\.prs\)/.test(cli),
     '🔴 se cura en memoria y no se persiste: vuelve a estar atascado al siguiente arranque');
   // Puerta del COACH entrenando (5 de los 9 medidos son suyos).
-  const self = _sinCom(src.slice(src.indexOf('function _hydrateSelfClient('), src.indexOf('async function _loadCoachClientsIntoDB(')));
+  const self = sinComentarios(src.slice(src.indexOf('function _hydrateSelfClient('), src.indexOf('async function _loadCoachClientsIntoDB(')));
   assert.ok(/healStalePrs\(_prSelf,DB\.history\[id\]\)/.test(self),
     '🔴 el coach-como-asesorado se queda sin curar: es la mayoría del caso real (v518)');
   assert.ok(/sv\('ax_pr',DB\.prs\)/.test(self), 'lo curado del coach no se persiste');
+});
+
+// ══════════════════════════════════════════════════════
+// v593 · EL CERO DE MÁS, PERO EN LAS REPETICIONES (auditoría de rápidos, 8-sep)
+// ══════════════════════════════════════════════════════
+// v431 puso el candado sobre los KILOS. Las repeticiones no tenían ninguno, y ya había daño:
+// Luz anotó `10 / 110` en Dead Bug dos días (su plan dice 2×10) y ese 110 ES SU RÉCORD, con lo
+// que ese ejercicio le queda imposible de superar. Medido sobre las 7.116 series de la base:
+// 3 sospechosas, y las 3 son de verdad.
+
+test('v593 · una repetición que no cuadra con las otras series del día se marca', () => {
+  // El caso REAL de Luz, con sus dos únicas series.
+  assert.strictEqual(core.repsOutlier([10, 110], 1), true);
+  assert.strictEqual(core.repsOutlier([10, 110], 0), false, 'el valor normal no se acusa');
+  // El de Astrid: el peso tecleado en la casilla de repeticiones, entre series normales.
+  assert.strictEqual(core.repsOutlier([10, 110, 10, 8], 1), true);
+});
+
+test('🔒 v593 · el umbral se eligió BARRIENDO el dato real: con 3 series se perdía el único récord malo', () => {
+  // 🔬 `_SANE_REL_MIN_SETS` (kilos) vale 3, y Luz tiene DOS series: copiar la constante habría
+  //    dejado fuera justo el caso con récord corrupto. Barrido sobre 7.116 series reales:
+  //    mín. 2 → 3 marcadas (las 3 reales, con cualquier factor de 2,5× a 5×) · mín. 3 → 1.
+  assert.strictEqual(core.repsOutlier([10, 110], 1), true, '🔴 con dos series dejó de marcar: vuelve el récord de Luz');
+  // Con UNA sola serie no hay con qué comparar y no se acusa a nadie.
+  assert.strictEqual(core.repsOutlier([110], 0), false);
+  assert.strictEqual(core.repsOutlier([], 0), false);
+  assert.strictEqual(core.repsOutlier(null, 0), false, 'sin datos no puede lanzar');
+});
+
+test('🔒 v593 · CONTROL · el progreso REAL no se marca (una regla ancha borraría el mejor día de alguien)', () => {
+  // Es la lección de v431: un cero de más CONVIVE con valores normales; progresar hace que el
+  // valor nuevo SEA el normal en todas las series.
+  [[12, 15, 20], [10, 10, 12], [8, 10, 12, 15], [20, 25, 30], [15, 15, 15]]
+    .forEach(reps => reps.forEach((_, i) =>
+      assert.strictEqual(core.repsOutlier(reps, i), false, '🔴 marcó progreso legítimo: ' + reps.join('/'))));
+  // Y una serie al fallo que dobla a las otras tampoco: el factor es 4×, no 2×.
+  assert.strictEqual(core.repsOutlier([10, 10, 25], 2), false, 'una serie larga al fallo no es un error de dedo');
+});
+
+test('🔒 v593 · la cura pone la repetición imposible en BLANCO y retira el récord fantasma', () => {
+  const sesion = { date: '2026-08-28T12:00:00Z', totalVol: 900, exercises: [
+    { id: 'e72', name: 'Dead Bug', track: 'reps', sets: [{ reps: 10, kg: '', done: true }, { reps: 110, kg: '', done: true }] }] };
+  const h = core.sanitizeHistory([sesion]);
+  assert.strictEqual(h.fixed, 1);
+  assert.strictEqual(h.history[0].exercises[0].sets[1].reps, '',
+    '🔴 se recortó en vez de dejar en blanco: poner 10 afirmaría que hizo 10, y eso no se sabe');
+  assert.strictEqual(h.history[0].exercises[0].sets[0].reps, 10, 'la serie buena se tocó');
+  // El récord sobrevive al saneo del historial si nadie lo retira — y mientras siga ahí, ese
+  // ejercicio es imposible de superar.
+  const prs = { e72: { val: 110, reps: 110, unit: 'reps', name: 'Dead Bug', date: '2026-08-28T12:00:00Z' } };
+  assert.strictEqual(core.sanitizePrs(prs, h.history).removed, 1, '🔴 el récord de 110 reps se quedó');
+  // 🔒 CONTROL: un récord de reps que el historial SÍ sostiene no se toca.
+  const buena = [{ date: '2026-08-28T12:00:00Z', exercises: [{ id: 'e18', sets: [{ reps: 20, done: true }, { reps: 20, done: true }] }] }];
+  assert.strictEqual(core.sanitizePrs({ e18: { val: 20, reps: 20, unit: 'reps' } }, buena).removed, 0);
+});
+
+test('🔒 CABLEADO v593: se avisa al teclear, y el preset ya no le habla de grasa a un menor', () => {
+  const fs = require('fs'), path = require('path');
+  const extra = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  assert.ok(/function repsSanityHint\(/.test(extra), '🔴 desapareció el aviso al teclear repeticiones');
+  assert.ok(/onchange="repsSanityHint\(/.test(extra),
+    '🔴 el aviso existe pero no está cableado a la casilla: una función que nadie llama es puerta cerrada, ventana abierta');
+  // El de kilos sigue en su sitio: añadir uno no puede haberse llevado el otro.
+  assert.ok(/onchange="kgSanityHint\(/.test(extra), 'se perdió el aviso de los kilos');
+  const entreno = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const qw = sinComentarios(entreno.slice(entreno.indexOf('const QUICK_WORKOUTS=['), entreno.indexOf('function buildQuickRoutine')));
+  assert.ok(!/[Qq]uema.?grasa/.test(qw),
+    '🔴 volvió el lenguaje de composición corporal a un preset que ven cuatro menores (v448/v485/v493)');
+  // 🔒 CONTROL: el preset SIGUE existiendo — quitarle el nombre no puede ser borrarlo.
+  assert.ok(/id:'qw_hiit_casa'/.test(qw) && /place:'Casa\/Parque'/.test(qw), 'se perdió el preset entero');
 });
 
 // ══════════════════════════════════════════════════════

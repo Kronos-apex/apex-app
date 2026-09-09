@@ -4,6 +4,81 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-08 (6ª parte) — v593: EL CERO DE MÁS, PERO EN LAS REPETICIONES
+
+Sale de la auditoría de **entrenamientos rápidos** (`docs/auditoria-rapidos-2026-09-08/`), aunque
+el defecto no es de ellos: apareció persiguiendo una cifra rara de esa ronda (un récord de «110
+repeticiones de Dead Bug») y resultó ser de otra zona.
+
+### 🔴 El defecto: v431 vigila los KILOS y nadie vigilaba las REPETICIONES
+`kgOutlier`/`sanitizeHistory` detectan desde v431 el kilo que no cuadra con las otras series del
+mismo día — el cero de más. **Las repeticiones no tenían ese candado**, y ya hay daño real:
+
+| persona | ejercicio | día | series | |
+|---|---|---|---|---|
+| **Luz Rodríguez** | Dead Bug | 28-ago y 2-sep | `10 / 110` | 🔴 **ES SU RÉCORD** |
+| Astrid Beltran | Prensa de Pierna | 2-sep | `10r×110kg \| 110r×0kg \| 10r \| 8r` | el PESO tecleado en la casilla de reps |
+
+Su plan dice **2×10**. Y la consecuencia es exactamente la de v431: **mientras ese récord siga
+ahí, Luz no puede volver a superarlo nunca** — el detector de estancamiento leerá ese ejercicio
+como plantado para siempre y su gráfica de repeticiones va inflada ×11.
+
+Medido sobre **7.116 series con repeticiones** de toda la base: **3 sospechosas (0,04%)**, y las
+tres son de verdad. No es una epidemia; es un dato de dos personas y un récord roto.
+
+### 🔬 El umbral NO se copió del de los kilos, y menos mal
+`_SANE_REL_MIN_SETS` vale **3** («por debajo de 3 no hay con qué comparar») y **Luz solo tiene 2
+series**: copiar la constante habría dejado fuera el único caso con récord corrupto. Barrido sobre
+el dato real antes de elegir:
+
+| | factor 2,5× | 3× | 4× | 5× |
+|---|---|---|---|---|
+| **mín. 2 series** | 3 | 3 | **3** | 3 |
+| mín. 3 series | 1 | 1 | 1 | 1 |
+
+Con mínimo 2 se cazan las tres con **cualquier** factor (la separación real es de 11×), y con 3 se
+pierde la de Luz. Por eso `_SANE_REL_MIN_SETS_REPS = 2`, con el factor compartido en 4×.
+🔒 **Por qué 2 es seguro en reps y no lo sería en kg:** entre dos series de kilos, una de
+calentamiento a la cuarta parte del peso es normal (10 y 40 kg). Un salto de 4× en las
+REPETICIONES del mismo ejercicio el mismo día no es un patrón de entrenamiento — **0 falsos
+positivos en 7.116 series**.
+
+### Lo construido
+- `repsOutlier` (avi-core, PURA) + `_saneRelReps`, hermanos exactos de los de kilos.
+- `sanitizeHistory` deja la repetición imposible **en BLANCO, jamás recortada**: poner 10 donde
+  dice 110 afirmaría que hizo 10, y eso no se sabe (regla de v417).
+- `sanitizePrs` retira el **récord fantasma de repeticiones**: sobrevive al saneo del historial si
+  nadie lo quita, y es lo que de verdad le hace daño a Luz. Con su control: un récord de reps que
+  el historial SÍ sostiene no se toca.
+- **Aviso al teclear** (`repsSanityHint`, `onchange` como el de los kilos): «¿110 repeticiones?
+  Revisa el número». **Avisa y deja seguir** — quien sabe si hizo 110 es ella.
+- 🔁 La cura corre sola en el arranque de cada persona (misma puerta que v431/v591) y se persiste.
+  **No se toca la nube a mano:** la app es offline-first y el teléfono la volvería a pisar (v517).
+
+### Y de la misma auditoría: «HIIT Quema-grasa» ya no se llama así
+El preset `qw_hiit_casa` se llamaba así y esa biblioteca **no tiene gate por edad**: hay **4
+menores** en la base (15, 15, 16 y 17) y **uno de ellos ya usa los rápidos**. «Quema-grasa» es
+lenguaje de composición corporal, prohibido para menores desde v448 y con candados en v485/v493 —
+la misma clase que el `weekEditorial` retirado en v493. Pasa a **«HIIT sin equipo»**: nombrado por
+lo que ES, sirve igual para todos y **no hay que gatear nada por edad**, que siempre es mejor
+solución que un candado más. 🔒 Con su control: el preset sigue existiendo entero.
+
+### QA
+- Suite **1103 → 1108** en los dos husos · hook **12/12** · `_prodcheck 593` verde, `jsErrors: []`.
+- Matriz nueva `_sabotaje-reps.mjs`: **7/7 muerden**, incluido el que devuelve el mínimo a 3 series
+  (el que dejaría escapar el caso de Luz) y el que devuelve el nombre del preset.
+- Verificado contra el dato REAL antes de escribir el test: la cura sobre la sesión de Luz tal como
+  está en la nube deja `[10, '']` y retira su récord; una progresión legítima (12/15/20) no se toca.
+- 🔴 **CUARTA vez en el día** que un candado aprobó porque **mi propio comentario contenía el texto
+  que la aserción busca** — aquí, el comentario que explica por qué el preset se renombró contiene
+  «Quema-grasa». Se resolvió de raíz: `sinComentarios()` pasa a ser un helper COMPARTIDO de la
+  suite, para que el próximo check estático nazca usándolo.
+- **R3.3:** sin entrada en `AVI_NEWS`. El cambio que ve el asesorado es un preset con otro nombre y
+  un aviso que solo aparece si teclea algo raro; anunciar «corregimos un dato tuyo» invita a
+  desconfiar del resto.
+
+### ⏭️ PENDIENTE re-verificación de Fable.
+
 ## ⏮️ 2026-09-08 (5ª parte) — v592: EL INICIO DEL COACH DEJA DE TAPAR A QUIEN SÍ ENTRENA
 
 Reporte del PO, el mismo día: *«en la pantalla de inicio de mi panel de coach está muy saturada de

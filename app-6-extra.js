@@ -1087,6 +1087,28 @@ function kgSanityHint(rid, ei, si, el){
   }catch(_e){}
 }
 
+// v593 · El mismo aviso, para las REPETICIONES. Nace de un caso real: Luz anotó `10 / 110` en
+// Dead Bug dos días distintos (su plan dice 2×10) y ese 110 se convirtió en su récord — con lo
+// que ese ejercicio le quedaba imposible de superar. Avisa y deja seguir, como el de los kilos:
+// quien sabe si hizo 110 repeticiones es ella, no la app.
+function repsSanityHint(rid, ei, si, el){
+  try{
+    if(typeof repsOutlier!=='function') return;
+    const reps=[]; let mio=-1;
+    for(let k=0;k<12;k++){
+      const v=getLog(rid,ei,k,'reps');
+      if(v==='' || v==null) continue;
+      if(String(k)===String(si)) mio=reps.length;
+      reps.push(v);
+    }
+    if(mio<0) return;
+    if(repsOutlier(reps,mio)){
+      const v=getLog(rid,ei,si,'reps');
+      toast('¿'+v+' repeticiones? Revisa el número — tus otras series de hoy van mucho más abajo');
+    }
+  }catch(_e){}
+}
+
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
 function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
@@ -1094,7 +1116,7 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   const g=f=>getLog(GM.routine.id,ei,si,f);
   const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
     <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
-      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si},this)"`:''}>
+      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si},this)"`:(f==='reps'?` onchange="repsSanityHint('${GM.routine.id}',${ei},${si},this)"`:'')}>
     <div class="gm-sinput-label">${label}</div></div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.

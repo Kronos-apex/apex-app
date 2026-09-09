@@ -1533,7 +1533,14 @@ const QUICK_WORKOUTS=[
   {id:'qw_hiit_maquina', emoji:'🚴', ic:'bike', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
    desc:'Bici estática, elíptica o trotadora: sprints fuertes con pausas suaves. Tú eliges las rondas.',
    items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
-  {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT Quema-grasa', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
+  // 🔴 v593 · SE LLAMABA «HIIT Quema-grasa» y esa biblioteca no tiene gate por edad: en la base hay
+  //    CUATRO menores (15, 15, 16 y 17 años) y uno de ellos ya usa los rápidos. «Quema-grasa» es
+  //    lenguaje de composición corporal, prohibido para menores desde el dictamen de v448 y los
+  //    candados de v485/v493 — la misma clase que el `weekEditorial` que se retiró en v493 por
+  //    decirle «RECOMPOSICIÓN · más definido» a dos menores. El circuito no tiene nada de malo; lo
+  //    que sobraba era la promesa sobre el cuerpo. Nombrado por lo que ES, sirve igual para todos
+  //    y no hay que gatear nada por edad.
+  {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT sin equipo', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
    items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e81',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
   {id:'qw_abs_casa', emoji:'💥', ic:'burst', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',

@@ -2378,6 +2378,12 @@ function _saneRelKg(sets, i) {
   const m = _medianOf(otros);
   return m > 0 && mio >= _SANE_REL_FACTOR * m;
 }
+// Hermano del anterior para las repeticiones (v593). Mismo criterio, mínimo de series propio.
+function _saneRelReps(sets, i) {
+  const reps = (sets || []).map(x => (x && x.reps != null) ? x.reps : null);
+  if (reps.filter(r => r != null && r !== '').length < _SANE_REL_MIN_SETS_REPS) return false;
+  return repsOutlier(reps, i);
+}
 
 // Versión para el MOMENTO DE ANOTAR: recibe los kg que ya lleva ese ejercicio hoy y dice si el
 // de la posición `i` desentona. Misma regla que la auto-cura, para que la app no avise de algo
@@ -2411,6 +2417,39 @@ function kgNeedsConfirm(kg, bestEx, bestGlobal) {
   const v = parseFloat(kg);
   if (!isFinite(v) || v <= 0) return false;
   return v > kgConfirmLimit(bestEx, bestGlobal);
+}
+
+// ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────
+// El candado de v431 vigila los KILOS. Auditando los entrenamientos rápidos (8-sep) apareció que
+// las REPETICIONES no tienen ninguno, y que ya hay daño real:
+//   · **Luz, Dead Bug, 28-ago y 2-sep: series `10 / 110`** con su plan diciendo 2×10 — y ese 110
+//     **es su récord**, así que ese ejercicio le queda imposible de superar (el detector de
+//     estancamiento lo leerá como plantado para siempre) y su gráfica de reps va inflada ×11.
+//   · **Astrid, Prensa, 2-sep: `10r×110kg | 110r×0kg | 10r | 8r`** — ahí el 110 es el PESO tecleado
+//     en la casilla de repeticiones. Misma firma, otro origen.
+//
+// 🔬 EL UMBRAL SE ELIGIÓ BARRIENDO EL DATO REAL, no copiando el de los kilos — y menos mal, porque
+// copiarlo habría dejado fuera el único caso con récord corrupto: `_SANE_REL_MIN_SETS` vale 3 y
+// **Luz solo tiene 2 series**. Barrido sobre las 7.116 series con repeticiones de toda la base:
+//     mín. 2 series → 3 marcadas (las 3 reales) con CUALQUIER factor entre 2,5× y 5×
+//     mín. 3 series → 1 marcada (se pierde Luz, que es la del récord)
+// Por eso aquí el mínimo es 2. El factor se queda en el mismo 4× de los kilos: la separación real
+// es de 11×, así que no hace falta apretar, y una constante compartida es una decisión menos.
+//
+// 🔒 Por qué 2 series es seguro en REPS y no lo sería en KG: entre dos series de kilos, una de
+// calentamiento a la cuarta parte del peso es normal y legítima (10 kg y 40 kg). Un salto de 4×
+// en las REPETICIONES del mismo ejercicio el mismo día no es un patrón de entrenamiento — y el
+// barrido lo confirma: 0 falsos positivos en 7.116 series.
+const _SANE_REL_MIN_SETS_REPS = 2;   // ver el barrido de arriba antes de moverlo
+
+function repsOutlier(reps, i) {
+  const nums = (reps || []).map(r => { const n = parseInt(r, 10); return isFinite(n) && n > 0 ? n : null; });
+  const mio = nums[i];
+  if (mio == null) return false;
+  const otros = nums.filter((r, j) => j !== i && r != null);
+  if (otros.length < _SANE_REL_MIN_SETS_REPS - 1) return false;
+  const m = _medianOf(otros);
+  return m > 0 && mio >= _SANE_REL_FACTOR * m;
 }
 
 function kgOutlier(kgs, i) {
@@ -2453,6 +2492,9 @@ function sanitizeHistory(history) {
         // BLANCO, jamás se recorta: recortar 200 a 100 afirmaría que levantó 100, tan falso
         // como el original (lección de v417).
         if (!sTocado && _saneRelKg(ex.sets, i)) { ns.kg = ''; sTocado = true; fixed++; }
+        // v593 · lo mismo para las REPETICIONES. En BLANCO, jamás recortado: poner 10 donde dice
+        // 110 afirmaría que hizo 10, y eso no lo sabemos — lo único cierto es que 110 no fue.
+        if (!sTocado && _saneRelReps(ex.sets, i)) { ns.reps = ''; sTocado = true; fixed++; }
         if (!sTocado) return s;
         exTocado = true; return ns;
       });
@@ -2479,13 +2521,15 @@ function sanitizeHistory(history) {
 function sanitizePrs(prs, history) {
   const src = (prs && typeof prs === 'object') ? prs : {};
   // Mejor kg que SOBREVIVE en el historial, por id de ejercicio.
-  const mejor = {};
+  const mejor = {}, mejorReps = {};
   (Array.isArray(history) ? history : []).forEach(h => {
     ((h && h.exercises) || []).forEach(ex => {
       if (!ex || !ex.id) return;
       ((ex.sets) || []).forEach(s => {
         const kg = parseFloat(s && s.kg);
         if (isFinite(kg) && kg > 0 && kg > (mejor[ex.id] || 0)) mejor[ex.id] = kg;
+        const rp = parseInt(s && s.reps, 10);
+        if (isFinite(rp) && rp > 0 && rp > (mejorReps[ex.id] || 0)) mejorReps[ex.id] = rp;
       });
     });
   });
@@ -2494,10 +2538,18 @@ function sanitizePrs(prs, history) {
     const p = src[k];
     const malo = p && typeof p === 'object' &&
       ['kg', 'val', 'reps', 'secs', 'min', 'dist'].some(f => _saneNum(p[f], _SANE_MAX[f] || 1000));
-    // Relativo: el récord dice X pero en el historial limpio no hay nada que se le acerque.
+      // Relativo: el récord dice X pero en el historial limpio no hay nada que se le acerque.
     const kgPR = p && parseFloat(p.kg);
     const tope = mejor[k];
-    const fantasma = !malo && isFinite(kgPR) && kgPR > 0 && tope > 0 && kgPR >= _SANE_REL_FACTOR * tope;
+    let fantasma = !malo && isFinite(kgPR) && kgPR > 0 && tope > 0 && kgPR >= _SANE_REL_FACTOR * tope;
+    // v593 · y el mismo fantasma en REPETICIONES: el récord de Luz (110 reps de Dead Bug) sobrevive
+    // aunque el historial ya esté limpio, y mientras siga ahí ese ejercicio le queda imposible de
+    // superar. `mejorReps` se calcula del historial YA saneado, así que el 110 ya no está.
+    if (!malo && !fantasma && p && (p.unit === 'reps')) {
+      const vPR = parseFloat(p.val != null ? p.val : p.reps);
+      const topeR = mejorReps[k];
+      if (isFinite(vPR) && vPR > 0 && topeR > 0 && vPR >= _SANE_REL_FACTOR * topeR) fantasma = true;
+    }
     if (malo || fantasma) { removed++; return; }
     out[k] = p;
   });
@@ -10408,6 +10460,7 @@ if (typeof module !== 'undefined' && module.exports) {
     submuscleVolume,
     errReportGate,
     cloudWriteSealed,
+    repsOutlier,
     mergeCoachMsgs,
     ROUTINE_PROMISES,
     routinePromiseGap,
