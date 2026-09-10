@@ -13727,8 +13727,97 @@ test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', 
   // CONTROL de que el fixture discrimina de verdad
   const porPct = _HIST_ASTRID.length && (15 / 4 - 1) > (95 / 40 - 1);
   assert.ok(porPct, 'el fixture dejó de distinguir los dos criterios: elige otro');
-  // y el porcentaje NO viaja en el resultado: un «+275%» en un post se lee como inflado
-  assert.ok(!('pct' in st.subidas[0]), 'la historia expone un porcentaje: no se muestra a propósito');
+  // ── v601 · DECISIÓN DEL PO (10-sep-2026): EL PORCENTAJE SÍ VIAJA ─────────────────────────
+  // v522 lo prohibió porque «un +275% en un post se lee como inflado», y tenía razón EN EL
+  // TITULAR. El PO pidió venderlo en %, así que el % entra — pero lo que protegía v522 se queda
+  // entero, y por eso este candado se hace MÁS estricto, no menos:
+  //   · el ORDEN sigue siendo por kilos ganados (arriba)
+  //   · el % viaja PEGADO a los kilos de su ejercicio, para que no pueda leerse solo
+  //   · y el % de la primera fila NO es el más alto de la tarjeta: si algún día lo fuera, sería
+  //     que se volvió a ordenar por porcentaje.
+  assert.strictEqual(st.subidas[0].pct, Math.round(100 * (95 / 40 - 1)),
+    'el % de la fila que más kilos ganó no cuadra con sus propios kilos');
+  const pctMax = Math.max.apply(null, st.subidas.map(s => s.pct));
+  assert.ok(st.subidas[0].pct < pctMax,
+    '🔴 la primera fila trae el % MÁS ALTO: volvió el orden por porcentaje que v522 midió y rechazó');
+  // 🔒 Y EL TITULAR NO PUEDE SER EL MÁXIMO. Es la mediana: con el máximo, la tarjeta de Nataly
+  //    diría «+650%» (una polea de 2 → 15 kg) mientras su volumen por sesión cayó un 42%.
+  assert.ok(st.medianaPct < pctMax,
+    '🔴 el titular volvió a ser el porcentaje MÁXIMO: es el número que infla la tarjeta');
+  assert.strictEqual(st.medianaPct, Math.round((Math.round(100 * (95 / 40 - 1)) + Math.round(100 * (15 / 4 - 1))) / 2),
+    'la mediana del titular no sale de los porcentajes de sus ejercicios');
+});
+
+// 🔒 v601 · CON EL TRABAJO TOTAL A LA BAJA, LA TARJETA NO PRESUME EN %.
+// Medido el 10-sep-2026: Nataly tiene un máximo de +650% y su volumen por sesión es x0,58; el
+// propio PO, +140% con x0,70. Un titular en % los presentaría MEJOR de lo que están — es el
+// «arreglo que mejora el caso bueno y empeora el malo» de v595. Sin titular, la tarjeta se queda
+// con el recuento, que es verdad igual.
+test('🔴 v601 · si el volumen por sesión BAJÓ, no hay titular en % (y el control: si sube, sí)', () => {
+  // Sube la carga de un ejercicio pero hace CADA VEZ MENOS series: más kilos, menos trabajo.
+  const menos = [
+    { id: 'a1', date: new Date(Date.now() - 80 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 40, reps: 10 }, { kg: 40, reps: 10 }, { kg: 40, reps: 10 }, { kg: 40, reps: 10 }] }] },
+    { id: 'a2', date: new Date(Date.now() - 70 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 45, reps: 10 }, { kg: 45, reps: 10 }, { kg: 45, reps: 10 }, { kg: 45, reps: 10 }] }] },
+    { id: 'a3', date: new Date(Date.now() - 60 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 50, reps: 10 }, { kg: 50, reps: 10 }, { kg: 50, reps: 10 }] }] },
+    { id: 'a4', date: new Date(Date.now() - 50 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 55, reps: 10 }, { kg: 55, reps: 10 }] }] },
+    { id: 'a5', date: new Date(Date.now() - 40 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 60, reps: 10 }, { kg: 60, reps: 10 }] }] },
+    { id: 'a6', date: new Date(Date.now() - 30 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 65, reps: 8 }] }] },
+    { id: 'a7', date: new Date(Date.now() - 20 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 70, reps: 6 }] }] },
+    { id: 'a8', date: new Date(Date.now() - 10 * 86400000).toISOString(), exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 75, reps: 5 }] }] },
+  ];
+  const baja = core.clientProgressStory({ name: 'Nat', age: 30 }, menos, new Date());
+  assert.strictEqual(baja.ok, true, 'la tarjeta sigue siendo publicable: lo que se calla es el titular');
+  assert.ok(baja.volRatio < 1, 'el fixture dejó de tener el volumen a la baja: elige otro (x' + baja.volRatio + ')');
+  assert.strictEqual(baja.medianaPct, null,
+    '🔴 presume en % con el trabajo total A LA BAJA: la presentaría mejor de lo que está');
+  // 🔴 CONTROL DE DISCRIMINACIÓN: con los MISMOS kilos y las series SOSTENIDAS, el titular sale.
+  // Sin este caso, un `medianaPct` que devolviera null SIEMPRE también pasaría el test de arriba.
+  // Mismos KILOS, pero 4 series de 10 en todas: el primer intento de este control copiaba la
+  // serie tal cual y heredaba las reps bajas del final (75×5), así que el volumen tampoco subía
+  // y el control «no discriminaba» por su propia culpa, no por la función.
+  const sube = menos.map(s => {
+    const kg = s.exercises[0].sets[0].kg;
+    const serie = { kg, reps: 10 };
+    return { ...s, exercises: [{ name: 'Prensa de Pierna', sets: [serie, serie, serie, serie] }] };
+  });
+  const alta = core.clientProgressStory({ name: 'Nat', age: 30 }, sube, new Date());
+  assert.ok(alta.volRatio > 1, 'el control no sube el volumen: no discrimina');
+  assert.ok(alta.medianaPct > 0,
+    'con el trabajo sostenido tampoco sale el titular: la guarda calla a todo el mundo');
+});
+
+test('🔒 CABLEADO v601: la BARRA mide kilos y el titular sale de la mediana', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function shareClientProgress(');
+  assert.ok(i > 0, 'no existe shareClientProgress');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // los comentarios, fuera antes de mirar
+  // 🔒 El ancho de la barra sale de los KILOS GANADOS. Si midiera el %, la barra más larga sería
+  //    la del ejercicio de carga más pequeña (2 → 15 kg) y la tarjeta entera mentiría en silencio.
+  assert.ok(/560\*\(\(s2\.gano\|\|0\)\/maxGano\)/.test(cuerpo),
+    '🔴 la barra dejó de medir kilos ganados: si mide %, la más larga es la de menos peso');
+  assert.ok(!/maxPct|\/maxPct/.test(cuerpo), 'apareció una escala por porcentaje para las barras');
+  // El % viaja como ETIQUETA al lado de sus kilos, nunca solo.
+  assert.ok(/s2\.de\+' → '\+s2\.a\+' kg'/.test(cuerpo) && /'\+'\+s2\.pct\+'%'/.test(cuerpo),
+    'la fila dejó de mostrar los kilos junto al porcentaje');
+  // El titular es la MEDIANA, y solo si existe (la guarda del volumen vive en avi-core).
+  assert.ok(/d\.medianaPct!=null&&d\.medianaPct>0/.test(cuerpo),
+    '🔴 el titular ya no pregunta por medianaPct: podría pintar un % que la guarda calló');
+  assert.ok(/x\.fillText\('DE CARGA'/.test(cuerpo) && !/DE FUERZA/.test(cuerpo),
+    '🔴 el titular dice FUERZA: pasar de 2 a 15 kg en una polea es técnica, no fuerza ×7,5');
+  // Y sin titular hay plan B: el recuento, que es verdad igual.
+  assert.ok(/EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR/.test(cuerpo),
+    'sin titular en % la tarjeta se queda sin hero');
+  // La gráfica dibuja hasta 8, no 3.
+  assert.ok(/\(d\.subidas\|\|\[\]\)\.slice\(0,8\)/.test(cuerpo), 'la gráfica volvió a recortar a 3');
+  assert.strictEqual(core.STORY_TOP_LIFTS, 8, 'la historia dejó de traer 8 subidas para la gráfica');
+  // 🔒 Y lo que se PUBLICA en la web sigue recortando a 3 por su cuenta: subir el tope de la
+  //    tarjeta no puede cambiar el contrato de la fila del servidor.
+  const core3 = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const showc = core3.slice(core3.indexOf('function showcaseRow('), core3.indexOf('\n}', core3.indexOf('function showcaseRow(')));
+  assert.ok(/\.slice\(0,\s*3\)/.test(showc),
+    '🔴 la fila publicada dejó de recortar a 3: cambiaría el contrato del servidor sin avisar');
 });
 
 test('🔴 v522 · a un MENOR no se le arma la imagen de un toque', () => {

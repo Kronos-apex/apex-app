@@ -4,6 +4,62 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (5ª parte) — v601: LA TARJETA DE HITO, CON GRÁFICA Y CON EL % HONESTO
+
+El PO, sobre la tarjeta de Luz: *«solo se ven 3 ejercicios de 15 mejoras… no sé qué piensas si
+utilizamos una gráfica y lo vendemos mejor como en %… pero quiero que la imagen se vea top»*.
+
+### Lo medido antes de escribir el titular
+Sobre las **11 personas con ≥8 sesiones**, qué imprimiría cada candidato a titular:
+
+| | máximo % | mediana % | volumen/sesión |
+|---|---|---|---|
+| Nataly | **650%** (polea 2 → 15 kg) | 329% | **x0,58 ↓** |
+| Claudia | 500% | 133% | x2,01 |
+| Luz | 300% | 133% | x1,49 |
+| El PO | 140% | 24% | **x0,70 ↓** |
+| Miguel | 50% | 25% | x1,06 |
+
+🔴 **El máximo es la cifra más frágil de la tarjeta**: sale de cargas minúsculas, y **Nataly y el
+propio PO lo tienen alto con el volumen por sesión A LA BAJA** — un titular con el máximo los
+presentaría mejor de lo que están, que es «el arreglo que mejora el caso bueno y empeora el malo»
+(v595) sobre una tarjeta que se PUBLICA con el nombre de una persona real.
+
+### Lo construido
+- **Titular = la MEDIANA**, con la frase que la hace verdadera: «+133% **DE CARGA**, en la mitad de
+  sus 15 ejercicios que subieron». Y una segunda línea cuando suma: «y mueve 49% más peso en cada
+  entreno» (solo si el volumen subió ≥15%: un «+3%» al lado de un titular grande resta).
+- 🔒 **CARGA, nunca FUERZA.** Pasar de 2 a 15 kg en una polea es sobre todo técnica y aprendizaje
+  del movimiento; multiplicar la fuerza por 7,5 no lo sostiene ningún dato nuestro. El candado lo
+  afirma y un sabotaje lo prueba.
+- 🔒 **Guarda: con el volumen por sesión a la baja NO hay titular en %** — la tarjeta cae al
+  recuento («15 de 22 ejercicios con más carga que al empezar»), que es verdad igual. Y **sin dato
+  de volumen no se calla**: la ausencia de una medición no puede volverse silencio (v433 al revés).
+- **Gráfica de 8 barras** en el mismo hueco donde cabían 3 tarjetas (`STORY_TOP_LIFTS` 3 → 8).
+- 🔒 **La barra mide KILOS GANADOS, y el orden también.** Si midiera el %, encabezaría la gráfica el
+  ejercicio de carga más pequeña y la tarjeta entera se leería como si ese fuera su mejor
+  levantamiento. El % va al lado, **pegado a sus kilos**, para que las dos cosas se vean juntas.
+  Es lo que v522 midió y protegió; su decisión de no mostrar % **la revierte el PO hoy**, pero lo
+  que protegía se queda entero y el candado quedó MÁS estricto, no menos.
+- Y `showcaseRow` **sigue recortando a 3** por su cuenta: subir el tope de la tarjeta no toca el
+  contrato de la fila que se publica en la web.
+
+### QA
+- Suite **1126 → 1128** en los tres modos · hook 12/12 · `_prodcheck 601` verde.
+- **`_sabotaje-v601.mjs` 10/10 muerden.** 🔬 El sabotaje 1 salió VERDE en el primer intento y
+  **tenía razón**: invertía el orden de la lista de porcentajes, y **la mediana de un conjunto es
+  la misma en los dos sentidos** — el sabotaje no cambiaba nada. Reescrito para poner el máximo de
+  verdad. Un sabotaje inerte se lee como un candado flojo y no lo es.
+- **`_verify-v601.mjs` 7/7** dibuja el lienzo con los datos REALES de Luz y **guarda el PNG para
+  mirarlo**, que es la única forma de juzgar «se ve top». 🔬 Su sonda falló dos veces por su propia
+  culpa: primero pedía `g > b+40` y **el arranque del degradado (`#0A7C5B`) no lo cumple**, así que
+  contaba 4 barras de 8; luego contaba 12, porque la columna que muestrea cruza el subrayado de
+  AVI, el titular y la línea del pie. Ahora **mide el ALTO de cada franja** (las barras son las
+  únicas de 20 px) y **devuelve los altos** para poder ver que discrimina en vez de creérselo.
+- 🔬 **Y mirar la imagen encontró lo que ningún test iba a encontrar:** al reemplazar el bloque
+  había borrado sin querer la línea «Subió carga en 15 de 22 ejercicios», y el hueco entre la
+  última barra y el pie quedaba muerto. Repuesta, y de paso llena el hueco.
+
 ## ⏮️ 2026-09-10 (4ª parte) — v600: NINGUNA FOTO LLEGÓ NUNCA AL BUCKET
 
 El PO, al ver que sus fotos de julio y septiembre estaban como base64 dentro de su fila:

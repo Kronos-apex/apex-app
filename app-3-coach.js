@@ -1958,32 +1958,85 @@ function shareClientProgress(){
   x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
   x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
   x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
+  const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  // Los meses y los entrenos van en UNA línea: son el mismo dato (cuánto lleva) y separarlos
+  // gastaba dos renglones de los que hacen falta abajo para la gráfica.
   x.fillStyle='#10E0A0';x.font='800 34px '+F;
-  x.fillText((d.meses===1?'UN MES':d.meses+' MESES')+' ENTRENANDO',90,520);
-  x.fillStyle='#FFFFFF';x.font='900 120px '+F;x.fillText(d.nombre,90,650);
-  x.fillStyle='rgba(234,251,244,.75)';x.font='600 42px '+F;
-  x.fillText(d.entrenos+' entrenos completados',90,725);
-  // las subidas de carga, que es lo que se ve y lo que convence
-  x.fillStyle='rgba(234,251,244,.55)';x.font='700 30px '+F;x.fillText('SUBIÓ DE PESO EN',90,880);
-  let y=980;
-  d.subidas.forEach(s2=>{
-    const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
-    x.fillStyle='rgba(255,255,255,.05)';_rr(90,y-62,900,150,26);x.fill();
-    x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;_rr(90,y-62,900,150,26);x.stroke();
-    // el nombre del ejercicio se RECORTA por ancho medido, no por número de letras: «Extensión de
-    // Cuádriceps en Máquina» y «Prensa» no ocupan lo mismo y a 40px un corte fijo parte palabras.
-    x.fillStyle='rgba(234,251,244,.85)';x.font='700 34px '+F;
+  x.fillText((d.meses===1?'UN MES':d.meses+' MESES')+' ENTRENANDO  ·  '+d.entrenos+' ENTRENOS',90,395);
+  x.fillStyle='#FFFFFF';x.font='900 120px '+F;x.fillText(d.nombre,90,520);
+
+  // ── EL TITULAR ─────────────────────────────────────────────────────────────────────────
+  // 🔴 Es la MEDIANA de sus subidas, no el máximo, y dice CARGA, no FUERZA. Ver la nota de
+  // `STORY_VOL_MIN_RATIO` en avi-core: con el máximo, la tarjeta de Nataly gritaría «+650%»
+  // (una polea de 2 → 15 kg) mientras su volumen por sesión CAYÓ un 42%.
+  let yTit=700;
+  if(d.medianaPct!=null&&d.medianaPct>0){
+    x.fillStyle='#10E0A0';x.font='900 190px '+F;
+    const big='+'+d.medianaPct+'%';
+    x.fillText(big,90,yTit);
+    const wBig=x.measureText(big).width;
+    x.fillStyle='rgba(234,251,244,.85)';x.font='800 40px '+F;
+    x.fillText('DE CARGA',96+wBig,yTit-92);
+    x.fillStyle='rgba(234,251,244,.6)';x.font='600 30px '+F;
+    x.fillText('en la mitad de sus '+d.subieron,96+wBig,yTit-44);
+    x.fillText('ejercicios que subieron',96+wBig,yTit-6);
+    yTit+=64;
+    // El volumen solo se dice cuando suma de verdad: un «+3%» al lado de un titular grande resta.
+    if(d.volRatio!=null&&d.volRatio>=1.15){
+      x.fillStyle='rgba(234,251,244,.75)';x.font='600 36px '+F;
+      x.fillText('Y mueve '+Math.round((d.volRatio-1)*100)+'% más peso en cada entreno',90,yTit);
+      yTit+=54;
+    }
+  }else{
+    // Sin titular en % (volumen a la baja): el recuento, que es verdad igual y no presume.
+    x.fillStyle='#10E0A0';x.font='900 96px '+F;
+    x.fillText(d.subieron+' de '+d.conCarga,90,yTit-20);
+    x.fillStyle='rgba(234,251,244,.85)';x.font='800 38px '+F;
+    x.fillText('EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR',90,yTit+34);
+    yTit+=96;
+  }
+
+  // ── LA GRÁFICA: la barra mide KILOS GANADOS ────────────────────────────────────────────
+  // 🔒 La barra NO mide el %, y el orden tampoco: si midiera el %, encabezaría la gráfica el
+  //    ejercicio de carga más pequeña (2 → 15 kg = +650%) y la tarjeta entera se leería como si
+  //    ese fuera su mejor levantamiento. Los kilos ganados son una cantidad física comparable;
+  //    el % va al lado, como etiqueta, para que las dos cosas se vean a la vez.
+  x.fillStyle='rgba(234,251,244,.55)';x.font='700 30px '+F;
+  x.fillText('DÓNDE SUBIÓ',90,yTit+34);
+  const lista=(d.subidas||[]).slice(0,8);
+  const maxGano=Math.max.apply(null,lista.map(s2=>s2.gano||0).concat([1]));
+  let y=yTit+92;
+  const FILA=Math.min(92,Math.floor((1690-y)/Math.max(1,lista.length)));
+  lista.forEach(s2=>{
+    // El nombre se RECORTA por ancho MEDIDO, no por número de letras: «Extensión de Cuádriceps en
+    // Máquina» y «Prensa» no ocupan lo mismo y un corte fijo parte palabras.
+    x.fillStyle='rgba(234,251,244,.9)';x.font='700 34px '+F;
     let nom=String(s2.ejercicio);
-    while(nom.length>4&&x.measureText(nom).width>560)nom=nom.slice(0,-1);
+    while(nom.length>4&&x.measureText(nom).width>600)nom=nom.slice(0,-1);
     if(nom!==s2.ejercicio)nom=nom.replace(/\s+\S*$/,'')+'…';
-    x.fillText(nom,126,y-8);
-    x.fillStyle='#10E0A0';x.font='900 56px '+F;
-    const txt=s2.de+' → '+s2.a+' kg';
-    x.fillText(txt,126,y+58);
-    y+=180;
+    x.fillText(nom,90,y);
+    // los kilos, a la derecha y alineados al borde
+    x.textAlign='right';
+    x.fillStyle='rgba(234,251,244,.7)';x.font='700 32px '+F;
+    x.fillText(s2.de+' → '+s2.a+' kg',990,y);
+    x.textAlign='start';
+    // la barra
+    const w=Math.max(8,Math.round(560*((s2.gano||0)/maxGano)));
+    x.fillStyle='rgba(255,255,255,.07)';_rr(90,y+16,560,20,10);x.fill();
+    const g2=x.createLinearGradient(90,0,90+w,0);
+    g2.addColorStop(0,'#0A7C5B');g2.addColorStop(1,'#10E0A0');
+    x.fillStyle=g2;_rr(90,y+16,w,20,10);x.fill();
+    if(s2.pct!=null){
+      x.fillStyle='#10E0A0';x.font='900 34px '+F;
+      x.fillText('+'+s2.pct+'%',668,y+38);
+    }
+    y+=FILA;
   });
+  // El recuento COMPLETO cierra la tarjeta: el titular habla de la mitad de los que subieron, y
+  // esta línea dice sobre cuántos. Sin ella la tarjeta no dice nunca el total (y de paso, el hueco
+  // entre la última barra y el pie quedaba muerto). Se topa para no pisar el pie.
   x.fillStyle='rgba(234,251,244,.7)';x.font='600 34px '+F;
-  x.fillText('Subió carga en '+d.subieron+' de '+d.conCarga+' ejercicios',90,y+30);
+  x.fillText('Subió carga en '+d.subieron+' de '+d.conCarga+' ejercicios',90,Math.min(y+40,1690));
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
   x.fillStyle='rgba(234,251,244,.8)';x.font='700 34px '+F;
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';

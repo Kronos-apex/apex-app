@@ -9891,7 +9891,22 @@ function waPhone(raw) {
 // permiso, así que el candado era absoluto y la palabra «accidente» sobraba. Ahora la puerta
 // existe, y sigue sin ser un toque — ver `showcaseMinorOk`.
 const STORY_MIN_SESSIONS = 8;   // por debajo no hay historia que contar, hay un arranque
-const STORY_TOP_LIFTS = 3;      // lo que cabe legible en una historia de 1080×1920
+// v601 — 8, no 3. El PO: «solo se ven 3 ejercicios de 15 mejoras». Con tarjetas de 150 px cabían
+// tres; con barras de 92 px caben ocho en el MISMO hueco y se lee mejor, porque una barra dice de
+// un golpe lo que tres números obligan a comparar a mano. La fila que se PUBLICA en la web sigue
+// recortando a 3 por su cuenta (`showcaseRow`), así que subir esto no toca el contrato del server.
+const STORY_TOP_LIFTS = 8;
+// 🔴 EL TITULAR EN % ES LA CIFRA MÁS FRÁGIL DE ESTA TARJETA, y por eso no es el máximo.
+// Medido el 10-sep-2026 sobre las 11 personas con ≥8 sesiones: el máximo por ejercicio llega a
+// **650%** y sale de cargas minúsculas (Nataly, «Extensión en Polea», 2 → 15 kg). Peor: Nataly y
+// el propio PO tienen el **volumen por sesión A LA BAJA** (x0,58 y x0,70) mientras su máximo dice
+// +650% y +140%. Un titular con el máximo los presentaría mejor de lo que están, que es
+// exactamente «el arreglo que mejora el caso bueno y empeora el malo» (v595).
+// La MEDIANA sí se sostiene y sigue siendo grande (Luz 133%, Claudia 133%, Valery 200%), y encima
+// se puede decir en una frase verdadera: «en la mitad de sus ejercicios subió esto o más».
+// Y se dice **CARGA, nunca FUERZA**: pasar de 2 a 15 kg en una polea es sobre todo técnica y
+// aprendizaje del movimiento; multiplicar la fuerza por 7,5 no lo sostiene ningún dato nuestro.
+const STORY_VOL_MIN_RATIO = 1.0; // con el volumen por sesión a la baja, la tarjeta NO presume en %
 
 // ── EL PERMISO DEL ACUDIENTE PARA PUBLICAR (v573) ────────────────────────────────────
 // 🔴 NO SIRVE EL CONSENTIMIENTO DE v565, Y ESA ES LA DECISIÓN DE FONDO. Lo que el acudiente
@@ -9951,23 +9966,55 @@ function clientProgressStory(client, sessions, now) {
 
   // Primer peso registrado de cada ejercicio contra el mayor que llegó a mover.
   const primero = {}, mayor = {};
-  ses.slice().sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).forEach(s => {
+  // Y el VOLUMEN por sesión (kg × reps), para poder comparar el primer tercio de sus sesiones
+  // contra el último: es la única cifra de esta tarjeta que habla del trabajo COMPLETO y no de un
+  // ejercicio suelto, y es la que decide si el titular en % se puede presumir o no.
+  const ordenadas = ses.slice().sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  const vols = [];
+  ordenadas.forEach(s => {
+    let vol = 0;
     (s.exercises || []).forEach(e => {
       const nom = e && (e.name || e.id); if (!nom) return;
-      const kgs = ((e.sets || e.series) || []).map(x => parseFloat(x && (x.kg != null ? x.kg : x.peso)))
-        .filter(k => isFinite(k) && k > 0);
+      const kgs = [];
+      ((e.sets || e.series) || []).forEach(x => {
+        const k = parseFloat(x && (x.kg != null ? x.kg : x.peso));
+        if (!isFinite(k) || k <= 0) return;
+        kgs.push(k);
+        const reps = parseFloat(x && (x.reps != null ? x.reps : x.repes));
+        if (isFinite(reps) && reps > 0) vol += k * reps;
+      });
       if (!kgs.length) return;
       const mx = Math.max.apply(null, kgs);
       if (primero[nom] == null) primero[nom] = mx;
       mayor[nom] = Math.max(mayor[nom] || 0, mx);
     });
+    vols.push(vol);
   });
+  // Tercios por número de sesiones, no por fecha: quien entrena a rachas tendría meses vacíos que
+  // moverían el corte sin que su trabajo cambiara.
+  const tercio = Math.max(1, Math.floor(vols.length / 3));
+  const media = a => a.length ? a.reduce((s2, v) => s2 + v, 0) / a.length : 0;
+  const volPri = media(vols.slice(0, tercio)), volUlt = media(vols.slice(-tercio));
+  const volRatio = (volPri > 0 && volUlt > 0) ? +(volUlt / volPri).toFixed(2) : null;
   const conCarga = Object.keys(primero);
-  const subidas = conCarga.map(n => ({ ejercicio: n, de: primero[n], a: mayor[n], gano: +(mayor[n] - primero[n]).toFixed(2) }))
+  const subidas = conCarga.map(n => ({
+    ejercicio: n, de: primero[n], a: mayor[n],
+    gano: +(mayor[n] - primero[n]).toFixed(2),
+    // El % viaja POR EJERCICIO, al lado de sus kilos: es lo único que impide que un «+650%»
+    // se lea como un levantamiento serio cuando fue de 2 a 15 kg.
+    pct: primero[n] > 0 ? Math.round(100 * (mayor[n] / primero[n] - 1)) : null,
+  }))
     .filter(x => x.gano > 0)
-    // por kilos ganados; a igualdad, el que arrancó más pesado (es el levantamiento más serio)
+    // por kilos ganados; a igualdad, el que arrancó más pesado (es el levantamiento más serio).
+    // 🔒 NO se ordena por %, a propósito: encabezaría la lista el ejercicio de carga más pequeña.
     .sort((a, b) => (b.gano - a.gano) || (b.de - a.de) || (a.ejercicio < b.ejercicio ? -1 : 1));
   if (!subidas.length) return { ok: false, razon: 'sin_progresion', entrenos: ses.length };
+
+  // La MEDIANA de los % (no el máximo: ver la nota de STORY_VOL_MIN_RATIO).
+  const pcts = subidas.map(x => x.pct).filter(p => p != null).sort((a, b) => a - b);
+  const mitad = pcts.length ? (pcts.length % 2
+    ? pcts[(pcts.length - 1) / 2]
+    : Math.round((pcts[pcts.length / 2 - 1] + pcts[pcts.length / 2]) / 2)) : null;
 
   return {
     ok: true,
@@ -9977,6 +10024,13 @@ function clientProgressStory(client, sessions, now) {
     subidas: subidas.slice(0, STORY_TOP_LIFTS),
     subieron: subidas.length,
     conCarga: conCarga.length,
+    // Cuánto MÁS trabajo mueve por sesión hoy contra sus primeras sesiones (null si no se puede).
+    volRatio,
+    // 🔒 EL TITULAR EN % SOLO EXISTE SI EL TRABAJO TOTAL NO BAJÓ. Con el volumen a la baja la
+    //    tarjeta se queda con el recuento («subió carga en 15 de 22»), que es verdad igual.
+    //    Sin dato de volumen NO se calla: la ausencia de una medición no puede volverse silencio
+    //    (el detector mudo de v433 al revés) — se exige la baja PROBADA para callar.
+    medianaPct: (mitad != null && (volRatio == null || volRatio >= STORY_VOL_MIN_RATIO)) ? mitad : null,
     // 🔴 EL OBJETIVO ES LA LENTE CON QUE SE LEEN LOS NÚMEROS (pedido del PO, 30-ago). Sin él la
     // misma cifra dice cosas opuestas: Nataly ganó 5,5 kg y eso es un ÉXITO porque su objetivo es
     // ganar músculo, pero en una tarjeta sin objetivo un «+5,5 kg» se lee como que engordó. Sale
@@ -10179,6 +10233,7 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeGoal,
     STORY_MIN_SESSIONS,
     STORY_TOP_LIFTS,
+    STORY_VOL_MIN_RATIO,
     MS,
     MS_GRACE_DAYS,
     RENEW_NOTICE_DAYS,
