@@ -545,7 +545,12 @@ function saveAvatar(file){
     toast('⏳ Subiendo foto...');
     const small=await compressImage(e.target.result,40000);
     let src=small;
-    try{src=(await uploadPhotoToStorage(clientId,'avatar',small))+'?v='+Date.now();}
+    // 🔒 `avatarObjId` y `uploadPhotoToStorage` viven en app-5: guarda `typeof` obligatoria (la
+    //    app tiene que ARRANCAR aunque un módulo no cargue — reventó 3 veces en Android real).
+    try{
+      if(typeof uploadPhotoToStorage!=='function'||typeof avatarObjId!=='function')throw new Error('modulo de fotos no cargado');
+      src=(await uploadPhotoToStorage(avatarObjId(clientId),small))+'?v='+Date.now();
+    }
     catch(err){warn('AVI avatar upload failed, keeping base64',err.message);}
     client.avatar=src;
     svNow('ax_c',DB.clients);
@@ -558,9 +563,13 @@ function removeAvatar(){
   const clientId=CUR.clientId;if(!clientId)return;
   const client=DB.clients.find(c=>c.id===clientId);if(!client||!client.avatar)return;
   if(!confirm('¿Quitar tu foto de perfil? Volverás a ver tus iniciales.'))return;
+  // La URL se guarda ANTES de borrar el campo: de ella sale la ruta real del archivo. Las fotos
+  // subidas antes de v600 viven bajo la carpeta vieja, y reconstruir la ruta con el uuid nuevo
+  // pediría borrar algo que no existe — el archivo quedaría huérfano en el bucket para siempre.
+  const _prev=client.avatar;
   delete client.avatar;
   svNow('ax_c',DB.clients);
-  deletePhotoFromStorage(clientId,'avatar');
+  if(typeof deletePhotoFromStorage==='function'&&typeof avatarObjId==='function')deletePhotoFromStorage(avatarObjId(clientId),_prev);
   renderClientProfile(client);
   toast('Foto quitada');
 }

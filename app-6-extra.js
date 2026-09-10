@@ -2151,7 +2151,7 @@ function _dobSavePhoto(){
     toast('⏳ Subiendo foto...'); base64 = await compressImage(base64, 100000);
     const photoId = uid();
     let src = base64;
-    try{ src = await uploadPhotoToStorage(clientId, photoId, base64); }
+    try{ src = await uploadPhotoToStorage(photoId, base64); }
     catch(e){ warn('AVI storage upload failed, keeping base64', e.message); }
     if(!DB.photos) DB.photos = {};
     if(!DB.photos[clientId]) DB.photos[clientId] = [];

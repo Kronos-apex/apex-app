@@ -4,6 +4,77 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (4ª parte) — v600: NINGUNA FOTO LLEGÓ NUNCA AL BUCKET
+
+El PO, al ver que sus fotos de julio y septiembre estaban como base64 dentro de su fila:
+*«revisa el tema de las fotos»*.
+
+### Lo medido en producción
+- **El bucket `apex-photos` recibió DOS objetos en toda su historia**, los dos del **28-may a las
+  11:58:06 y 11:58:07** — una migración de un tiro. Ninguna subida orgánica, nunca.
+- **El avatar de perfil no subió NI UNA VEZ**: los 3 que existen viven en base64.
+- **11 fotos de progreso + 3 avatares de 6 personas: 838 KB DENTRO de las filas** de `user_data`
+  (Samuel 5/273 KB, el PO 2/183 KB, Miguel, jhojan, Nicolás, Luz; avatares de Natalia y Astrid).
+- Y `migratePhotosToStorage` **sí está cableada** (3 s después de cada arranque): llevaba **3 meses
+  y medio reintentando y fallando en silencio**, en cada apertura de cada persona. El único rastro
+  era un `warn` en una consola que nadie abre.
+
+### La causa, reproducida con un JWT de usuario real (no deducida)
+El POST va con **`x-upsert: true`**, y un upsert necesita **LEER** la fila existente para resolver
+el conflicto. `apex-photos` **no tenía policy SELECT** → la RLS se la oculta y **rechaza con
+«new row violates row-level security policy» (HTTP 400)**.
+
+| Prueba | Resultado |
+|---|---|
+| Mismo token, mismo bucket, **sin** `x-upsert` | **200** ← sube |
+| Mismo token **con** `x-upsert` contra `avatars` (que sí tiene su SELECT) | **200** |
+| Carpeta de otro · raíz del bucket | **403** ← la guarda funciona y el arreglo no la ensancha |
+
+Causa secundaria real: la carpeta era el **id de cliente de la app** (`mpis0v4bsd1geso7tt`), que no
+es `auth.uid()` ni el `user_id` de nadie, así que la policy INSERT tampoco matcheaba por ahí.
+
+### 🔴 DOS CORRECCIONES A LO QUE YA ESTABA ESCRITO EN ESTE REPO
+1. La nota del 12-jul en `20260712_rls_snapshot_refresh.sql` dice que la causa es la ruta legacy.
+   **Es solo la mitad, y es la que NO manda: con la ruta ya correcta seguía fallando.** Lo confirma
+   por otra vía que la migración del avatar del coach **ya usaba el uuid** y fallaba igual.
+2. **La otra mitad estaba escrita —este fallo explicado palabra por palabra— en
+   `community/c2_avatars_bucket.sql`, del MISMO DÍA**, que lo arregló para el bucket hermano con
+   `avatars_select_own`. La lección se aprendió, se escribió, se aplicó a UN bucket y nunca se
+   trajo al otro. Puerta cerrada, ventana abierta (v424).
+
+### Lo construido
+- **`supabase/migrations/20260910_apex_photos_select_policy.sql`**: `apex_photos_select_own`,
+  espejo exacto de la del bucket hermano, **acotada a la carpeta propia** — un SELECT ancho
+  arreglaría el upsert igual y de paso habilitaría **enumerar** el bucket entero. Se copió el
+  criterio, no solo la línea.
+- **La carpeta pasa a ser el uuid de auth** (`_storageSession`), con **una sola función que arma la
+  ruta** para subir y para borrar (dos formas de armarla se separan: v435).
+- 🔴 **Y el nombre del archivo tiene que decir de quién es.** El avatar se llamaba `avatar.jpg` y
+  era único porque la carpeta era el id del asesorado; al mover la carpeta al uuid de quien sube,
+  **los avatares de todos los asesorados de un coach habrían caído en el mismo objeto y se
+  sobrescribirían entre ellos** —con `x-upsert` puesto, encima, sin un solo error—. El id se muda
+  al nombre (`avatarObjId`), que es la única función que lo escribe.
+- **Borrar saca la ruta de la URL guardada**: las fotos de antes de v600 viven bajo la carpeta
+  vieja y rearmar la ruta con el uuid nuevo dejaría el archivo huérfano en el bucket para siempre.
+- Guardas `typeof` en la llamada app-4 → app-5 (es lo que reventó 3 veces en Android real).
+
+### QA
+- Suite **1124 → 1126** en los tres modos · hook 12/12 · `_prodcheck 600` verde.
+- **`_sabotaje-v600.mjs` 9/9 muerden**, incluido el que no es una sustitución: **borrar el archivo
+  de la migración** (el caso real — un archivo que nadie echa de menos).
+- **`_verify-v600.mjs`** reproduce la subida real contra el bucket con la cuenta QA y **se
+  autodiagnostica**: si S1 falla y S5 (sin `x-upsert`) pasa, imprime que **lo que falta es aplicar
+  la migración**, no otra cosa. Hoy da eso exactamente, porque el DDL lo tiene que aplicar el PO
+  (la autorización del MCP de Supabase está vencida y no hay CLI ni `psql` en la máquina).
+- 🔬 **Un defecto MÍO cazado por la matriz:** mis ediciones con python metieron **líneas con LF
+  dentro de archivos CRLF** (app-4 mixto, app-5 entero en LF tras un `stash pop`). El sabotaje 6
+  salió «inerte» por eso — la misma familia del rojo de CI de v594. Normalizados a CRLF.
+
+### ⏭️ Orden de despliegue (sin riesgo)
+El código puede ir ANTES de la migración: hoy las subidas fallan y caen a base64; con el código y
+sin la policy **fallan igual y caen a base64** — no hay regresión. Al aplicar la policy, **las 11
+fotos y los 3 avatares se migran SOLOS** en la siguiente apertura de cada persona.
+
 ## ⏮️ 2026-09-10 (3ª parte) — v599: EL VACÍO DE LA BÚSQUEDA DE ALIMENTOS NO LLEVABA A NINGUNA PARTE
 
 El PO, contando su desayuno: *«también me tomé una bebida de proteína que compré en el D1 y en la

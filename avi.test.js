@@ -4635,6 +4635,77 @@ test('🔒 borrar una foto pregunta antes, y el borrado pasa por la lapida (v568
   assert.ok(!/\bconfirm\(/.test(ask), 'confirm() esta prohibido: bloquea el hilo y la PWA se lo come');
 });
 
+// ══════════════════════════════════════════════════════
+// v600 — LAS FOTOS NUNCA LLEGARON AL BUCKET
+// ══════════════════════════════════════════════════════
+// MEDIDO el 10-sep-2026 contra produccion: `apex-photos` tenia DOS objetos en toda su historia,
+// los dos de una migracion del 28-may (11:58:06 y 11:58:07), y el avatar de perfil no subio NI UNA
+// VEZ. 11 fotos + 3 avatares de 6 personas vivian como base64 DENTRO de sus filas (838 KB), porque
+// el `catch` del llamador cae a base64 y solo deja un `warn` que nadie lee. Y `migratePhotosToStorage`
+// corre 3 s despues de CADA arranque: llevaba 3 meses y medio reintentando y fallando en silencio.
+// Dos causas, y hacian falta las dos: la carpeta era el id de cliente de la APP (que no es
+// `auth.uid()` ni el `user_id` de nadie) y el POST va con `x-upsert` sin policy SELECT en el bucket.
+// NADA de esto da un error visible, asi que los candados son estaticos y viven aqui.
+test('🔒 CABLEADO v600: la carpeta del bucket sale de la SESION, no del id de cliente', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const cuerpo = n => {
+    const i = src.indexOf('function ' + n + '(');
+    assert.ok(i > 0, 'no existe ' + n);
+    return src.slice(i, src.indexOf('\n}', i)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  };
+  const up = cuerpo('uploadPhotoToStorage');
+  // La ruta se construye con el uuid de la sesion y por UNA sola funcion: dos formas de armarla
+  // acaban separandose y el borrado se queda pidiendo un archivo que no existe (v435).
+  assert.ok(/_photoPath\(uid,\s*photoId\)/.test(up),
+    '🔴 la ruta volvio a armarse a mano: subir y borrar pueden separarse');
+  assert.ok(!/\$\{clientId\}\//.test(up),
+    '🔴 volvio la carpeta con el id de cliente de la app: la policy no matchea por ninguna rama');
+  // 🔒 Y sin uuid NO se intenta subir: una subida a una ruta que la RLS va a rechazar solo
+  //    produce el mismo base64 silencioso de siempre, pero mas tarde.
+  assert.ok(/if\(!uid\)throw/.test(up),
+    'sin sesion se sigue intentando subir a una carpeta que nadie acepta');
+  // El nombre del objeto tiene que decir de QUIEN es, o los avatares de un coach se pisan entre
+  // ellos dentro de su carpeta (y con `x-upsert` puesto, sin un solo error).
+  assert.ok(/function avatarObjId\(clientId\)\s*\{\s*return\s*'avatar-'\+String\(clientId\|\|''\);/.test(src),
+    '🔴 el nombre del avatar dejo de llevar el id del asesorado: se sobrescriben entre ellos');
+  const av4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.ok(/uploadPhotoToStorage\(avatarObjId\(clientId\),/.test(av4),
+    'el avatar del asesorado se sube con un nombre que no lo identifica');
+  // 🔒 Cruza modulos (app-4 llama a app-5): la app tiene que ARRANCAR aunque uno no cargue.
+  assert.ok(/typeof\s+avatarObjId\s*!==\s*'function'|typeof\s+avatarObjId\s*===\s*'function'/.test(av4),
+    '🔴 llamada entre modulos sin guarda typeof: es lo que revento 3 veces en Android');
+  // Borrar saca la ruta de la URL guardada: las fotos de antes de v600 viven bajo la carpeta
+  // vieja, y rearmarla con el uuid nuevo dejaria el archivo huerfano en el bucket para siempre.
+  const del = cuerpo('deletePhotoFromStorage');
+  assert.ok(/_photoPathFromUrl\(url\)/.test(del),
+    '🔴 el borrado ya no usa la URL guardada: los archivos viejos quedan huerfanos');
+  assert.ok(/if\(!path\)return;/.test(del),
+    'sin ruta se le pide a Storage que borre a ciegas');
+  assert.ok(/deletePhotoFromStorage\(photoId,\s*_ent&&_ent\.src\)/.test(src),
+    'deletePhoto dejo de pasarle la URL de la entrada que esta borrando');
+});
+
+test('🔒 v600: la policy SELECT que faltaba existe, ACOTADA a la carpeta propia', () => {
+  const fs = require('fs'), path = require('path');
+  const p = path.join(__dirname, 'supabase', 'migrations', '20260910_apex_photos_select_policy.sql');
+  assert.ok(fs.existsSync(p), '🔴 se fue la migracion de la policy SELECT de apex-photos');
+  const sql = fs.readFileSync(p, 'utf8');
+  assert.ok(/create policy apex_photos_select_own on storage\.objects/.test(sql),
+    'la migracion ya no crea la policy');
+  assert.ok(/for select to authenticated/.test(sql), 'la policy dejo de ser un SELECT de authenticated');
+  // 🔒 LO QUE IMPORTA: acotada a la carpeta PROPIA. Un SELECT ancho arregla el upsert igual y de
+  //    paso habilita ENUMERAR todo el bucket — es el criterio que `c2_avatars_bucket.sql` dejo
+  //    escrito para el bucket hermano, y aqui se copia el criterio, no solo la linea.
+  assert.ok(/\(storage\.foldername\(name\)\)\[1\]\s*=\s*auth\.uid\(\)::text/.test(sql),
+    '🔴 la policy SELECT quedo ANCHA: cualquiera podria listar el bucket entero');
+  assert.ok(/bucket_id\s*=\s*'apex-photos'/.test(sql), 'la policy no acota el bucket');
+  // Y el bucket hermano conserva la suya (si se cae, vuelve el bug de los avatares de v-20jul).
+  const av = fs.readFileSync(path.join(__dirname, 'supabase', 'community', 'c2_avatars_bucket.sql'), 'utf8');
+  assert.ok(/create policy avatars_select_own on storage\.objects/.test(av),
+    'se fue avatars_select_own: volveria el 400 al subir la foto de perfil');
+});
+
 // ═════ VOLVER A MEDIRSE: 8 SEMANAS, AVISANDO UNA ANTES (v567) ═══════════════════
 // 🔴 8 de 24 personas se midieron EXACTAMENTE UNA VEZ. El diagnostico de Coach Pro no fue
 // la pantalla: a nadie se le dijo cuando volver. Los dos especialistas no coincidieron (Andres

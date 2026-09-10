@@ -1235,16 +1235,54 @@ function drawMedChart(container,points,field,color){
 // Token de la sesión del usuario para Storage. Las políticas del bucket limitan
 // subir/borrar a la propia carpeta del usuario (o a la de sus clientes, si es coach),
 // así que NO usamos la anon key para escribir. Fallback a anon solo en modo legacy.
-async function _storageToken(){
-  try{const s=await AUTH.getSession();if(s&&s.access_token)return s.access_token;}catch(e){}
-  return SB_KEY;
+// ── v600 · LA CARPETA DEL BUCKET ES EL uuid DE AUTH, NO EL ID DE CLIENTE DE LA APP ──
+// 🔴 Medido el 10-sep-2026: en 3 meses y medio el bucket `apex-photos` recibió DOS objetos, los
+// dos de una migración del 28-may, y el avatar no subió NUNCA. Las 11 fotos y 3 avatares de 6
+// personas vivían como base64 dentro de sus filas (838 KB), porque `uploadPhotoToStorage` fallaba
+// y el `catch` del llamador se lo tragaba con un `warn`. Dos causas, y hacían falta las dos:
+//   1) la carpeta era el id de cliente de la APP (`mpis0v4bsd1geso7tt`), que no es `auth.uid()`
+//      ni el `user_id` de nadie → la policy INSERT no matcheaba por ninguna de sus dos ramas;
+//   2) 🔴 LA QUE DE VERDAD MANDABA: el POST va con `x-upsert:true` y un upsert necesita LEER la
+//      fila para resolver el conflicto. `apex-photos` no tenía policy SELECT → la RLS la oculta y
+//      RECHAZA con «new row violates row-level security policy» (HTTP 400). **Con la ruta ya
+//      correcta seguía fallando**, así que arreglar solo la ruta no habría servido de nada.
+// Reproducido con un JWT de usuario real: sin `x-upsert` daba 200, con `x-upsert` 400, y el mismo
+// token con `x-upsert` contra el bucket `avatars` —que SÍ tiene su SELECT acotada— daba 200.
+// El arreglo de la parte 2 es `apex_photos_select_own` (migración 20260910), espejo exacto de
+// `avatars_select_own`: la MISMA lección se escribió el 12-jul para el bucket hermano y nunca se
+// trajo a este. Puerta cerrada, ventana abierta.
+async function _storageSession(){
+  try{
+    const s=await AUTH.getSession();
+    if(s&&s.access_token)return {token:s.access_token,uid:(s.user&&s.user.id)||null};
+  }catch(e){}
+  return {token:SB_KEY,uid:null};
+}
+// UNA sola definición de la ruta, para subir Y para borrar: dos formas de construirla se acaban
+// separando y el borrado se queda pidiendo un archivo que no existe (la lección de v435).
+function _photoPath(uid,photoId){ return `${uid}/${photoId}.jpg`; }
+// 🔴 EL NOMBRE DEL ARCHIVO TIENE QUE DECIR DE QUIÉN ES. Antes el avatar se llamaba `avatar.jpg`
+// y era único porque la CARPETA era el id del asesorado. Al mover la carpeta al uuid de quien
+// sube, los avatares de todos los asesorados de un coach caerían en el MISMO `avatar.jpg` y se
+// sobrescribirían entre ellos — con `x-upsert:true` puesto, encima, sin un solo error. El id del
+// asesorado se muda al nombre del objeto, y esta función es la única que lo escribe.
+function avatarObjId(clientId){ return 'avatar-'+String(clientId||''); }
+// Para BORRAR lo que YA está subido, la ruta se saca de la URL guardada. Las fotos de antes de
+// v600 viven bajo la carpeta LEGACY: reconstruirla con el uuid nuevo pediría borrar algo que no
+// existe y dejaría el archivo huérfano en el bucket para siempre.
+function _photoPathFromUrl(url){
+  const m=String(url||'').match(/\/apex-photos\/(.+?)(\?|$)/);
+  return m?decodeURIComponent(m[1]):null;
 }
 
-async function uploadPhotoToStorage(clientId,photoId,base64){
+async function uploadPhotoToStorage(photoId,base64){
   const res=await fetch(base64);
   const blob=await res.blob();
-  const path=`${clientId}/${photoId}.jpg`;
-  const token=await _storageToken();
+  const {token,uid}=await _storageSession();
+  // 🔒 Sin uuid de sesión NO hay carpeta que la RLS acepte. Se lanza aquí para que el llamador
+  //    caiga a base64 —lo de siempre— en vez de subir a una ruta que va a ser rechazada.
+  if(!uid)throw new Error('Storage upload: sin sesión');
+  const path=_photoPath(uid,photoId);
   const r=await fetch(`${SB_URL}/storage/v1/object/apex-photos/${path}`,{
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'image/jpeg','x-upsert':'true'},
@@ -1254,12 +1292,14 @@ async function uploadPhotoToStorage(clientId,photoId,base64){
   return `${SB_URL}/storage/v1/object/public/apex-photos/${path}`;
 }
 
-async function deletePhotoFromStorage(clientId,photoId){
-  const token=await _storageToken();
+async function deletePhotoFromStorage(photoId,url){
+  const {token,uid}=await _storageSession();
+  const path=_photoPathFromUrl(url)||(uid?_photoPath(uid,photoId):null);
+  if(!path)return;                       // sin ruta no se le pide a Storage que borre a ciegas
   await fetch(`${SB_URL}/storage/v1/object/apex-photos`,{
     method:'DELETE',
     headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
-    body:JSON.stringify({prefixes:[`${clientId}/${photoId}.jpg`]})
+    body:JSON.stringify({prefixes:[path]})
   }).catch(()=>{});
 }
 
@@ -1269,7 +1309,7 @@ async function migratePhotosToStorage(){
   for(const cid of Object.keys(photos)){
     for(const p of photos[cid]){
       if(p.src&&p.src.startsWith('data:image/')){
-        try{p.src=await uploadPhotoToStorage(cid,p.id,p.src);changed=true;}
+        try{p.src=await uploadPhotoToStorage(p.id,p.src);changed=true;}
         catch(e){warn('AVI storage migration skip:',p.id,e.message);}
       }
     }
@@ -1280,7 +1320,7 @@ async function migratePhotosToStorage(){
   let avChanged=false;
   for(const c of (DB.clients||[])){
     if(c.avatar&&c.avatar.startsWith('data:image/')){
-      try{c.avatar=(await uploadPhotoToStorage(c.id,'avatar',c.avatar))+'?v='+Date.now();avChanged=true;}
+      try{c.avatar=(await uploadPhotoToStorage(avatarObjId(c.id),c.avatar))+'?v='+Date.now();avChanged=true;}
       catch(e){warn('AVI avatar migration skip:',c.id,e.message);}
     }
   }
@@ -1292,7 +1332,7 @@ async function migratePhotosToStorage(){
       const av=own&&own.profile&&own.profile.avatar;
       if(typeof av==='string'&&av.startsWith('data:image/')){
         const u=await AUTH.getUser();
-        const url=(await uploadPhotoToStorage(u.id,'avatar',av))+'?v='+Date.now();
+        const url=(await uploadPhotoToStorage('avatar',av))+'?v='+Date.now();
         await UD.upsertOwn({profile:Object.assign({},own.profile,{avatar:url})});
         log('AVI: avatar propio del coach migrado a Storage');
       }
@@ -1355,7 +1395,7 @@ function savePhoto(){
     toast('\u23f3 Subiendo foto...');base64=await compressImage(base64,100000);
     const photoId=uid();
     let src=base64;
-    try{src=await uploadPhotoToStorage(clientId,photoId,base64);}
+    try{src=await uploadPhotoToStorage(photoId,base64);}
     catch(e){warn('AVI storage upload failed, keeping base64',e.message);}
     if(!DB.photos)DB.photos={};
     if(!DB.photos[clientId])DB.photos[clientId]=[];
@@ -1449,7 +1489,10 @@ function deletePhoto(photoId,clientId){
   if(!lista){toast('Esa foto ya no est\u00e1');return;}
   // El archivo se borra DESPUÉS de saber que la entrada existía: si no existía, no hay nada
   // que borrar y pedirle a Storage que borre algo ajeno no es gratis.
-  deletePhotoFromStorage(cid,photoId);
+  // Y se le pasa la URL de la entrada, que es de donde sale la ruta REAL del archivo (las fotos
+  // de antes de v600 viven bajo la carpeta vieja: ver `_photoPathFromUrl`).
+  const _ent=((DB.photos||{})[cid]||[]).find(e=>(typeof photoEntryId==='function'?photoEntryId(e):e&&e.id)===photoId);
+  deletePhotoFromStorage(photoId,_ent&&_ent.src);
   if(!DB.photos)DB.photos={};
   DB.photos[cid]=lista;
   sv('ax_photos',DB.photos);
