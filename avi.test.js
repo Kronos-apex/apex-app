@@ -6708,6 +6708,43 @@ test('foodSearch: sin resultados y con basura no revienta', () => {
   assert.ok(foodSearch(cat, null).total > 0, 'sin término se lista todo (primera apertura)');
 });
 
+// 🔒 v599 — CUANDO NO ENCUENTRA, LA PANTALLA TIENE QUE TENER SALIDA.
+// El texto era «Prueba con otro nombre — la lista tiene 181 alimentos», y para un PRODUCTO DE
+// MARCA eso es un callejón sin salida: la lista son alimentos base (USDA + TCAC del ICBF), así que
+// una bebida de proteína del D1 no va a estar ahí por más nombres que se prueben. El camino para
+// agregarla existe desde el 10-ago (escanear el empaque o teclear el código) y estaba a un botón
+// arriba — pero el mensaje del momento exacto en que se descubre que no está no lo mencionaba.
+// **Medido el 10-sep-2026: `food_barcodes` tenía 0 filas en toda la historia de la app**, con la
+// función desplegada hacía un mes; el primero en chocarse con la pared fue el propio PO.
+// Esto no da ningún error: la pantalla «funciona», solo que no lleva a ninguna parte.
+test('🔒 v599: el vacío de la búsqueda dice POR QUÉ y ofrece el escáner como acción', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
+  const i = src.indexOf('function _flBuscarHtml(');
+  assert.ok(i > 0, 'no existe _flBuscarHtml');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10))
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // los comentarios, fuera antes de mirar
+  const iv = cuerpo.indexOf('if(!r.total)');
+  assert.ok(iv > 0, 'se fue la rama del vacío');
+  const vacio = cuerpo.slice(iv, cuerpo.indexOf('`;', iv));
+  assert.ok(/onclick="flEscanear\(\)"/.test(vacio),
+    '🔴 el vacío perdió la salida al escáner: vuelve a ser un callejón sin salida');
+  assert.ok(/producto de marca/.test(vacio),
+    '🔴 el vacío ya no dice POR QUÉ no está: sin eso, la salida parece un botón cualquiera');
+  assert.ok(!/Prueba con otro nombre/.test(vacio),
+    '🔴 volvió «prueba con otro nombre», que para un producto de marca manda a dar vueltas');
+  // Y la salida es la acción PRIMARIA (`bp`), no un enlace perdido entre texto gris.
+  assert.ok(/class="btn bp"[^>]*onclick="flEscanear\(\)"/.test(vacio),
+    'la salida dejó de ser el botón primario del vacío');
+  // 🔒 UNA sola salida: el botón de escanear de arriba se esconde cuando el vacío trae el suyo
+  //    (dos botones que hacen lo mismo reparten la atención), pero SOLO en ese caso — su control
+  //    es que siga saliendo cuando hay resultados.
+  assert.ok(/const sinResultados=cat\.length&&!_flView\.sel&&!r\.total;/.test(cuerpo),
+    'se fue la condición que evita los dos botones de escanear a la vez');
+  assert.ok(/\$\{sinResultados\?''\:`<button class="btn bg"[^`]*flEscanear\(\)/.test(cuerpo),
+    '🔴 el escáner de arriba se esconde siempre o nunca: con resultados TIENE que seguir estando');
+});
+
 // ══════════════════════════════════════════════════════
 section('F5 · Escáner de códigos de barras — la parte pura');
 

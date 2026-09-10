@@ -4,6 +4,53 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (3ª parte) — v599: EL VACÍO DE LA BÚSQUEDA DE ALIMENTOS NO LLEVABA A NINGUNA PARTE
+
+El PO, contando su desayuno: *«también me tomé una bebida de proteína que compré en el D1 y en la
+biblioteca de alimentos pues no están esos productos, y la solicitud que radiqué nunca la
+respondieron»*.
+
+### Lo medido antes de tocar nada
+- El camino para agregar un producto de marca **existe completo** desde el 10-ago: escanear el
+  código del empaque → si no está, se copia la tabla nutricional → **queda para todos y se usa de
+  una**. Con **fallback sin cámara** (teclear los números) y con excusas honestas por cada motivo
+  de fallo. Y el coach tiene su **cola de aprobación** (`fb_pending`), que se anuncia sola.
+- 🔴 **`food_barcodes` tenía 0 filas en TODA la historia de la app.** Un mes desplegado, nadie lo
+  usó nunca — y el primero en chocarse con la pared fue el dueño del producto.
+- **La causa estaba en el mensaje del momento exacto del choque.** Al no encontrar algo, la
+  pantalla decía: «No encontramos ese alimento — **Prueba con otro nombre**, la lista tiene 181
+  alimentos». Para un producto de marca eso es un **callejón sin salida**: la lista son alimentos
+  BASE (USDA + TCAC del ICBF), así que una bebida del D1 no va a estar ahí por más nombres que se
+  prueben. El botón de escanear estaba a dos dedos, arriba, y el mensaje no lo mencionaba.
+  **Nada de esto da un error: la pantalla «funciona», solo que no lleva a ninguna parte.**
+- ⏭️ **Lo que NO se pudo medir:** qué fue la «solicitud radicada». En AVI no hay rastro (la tabla
+  está vacía), así que salió por otro lado. **Preguntado al PO, sin respuesta todavía.**
+
+### Lo construido
+- El vacío ahora **dice por qué** no está («la lista tiene 181 alimentos base: arroz, huevo, pollo,
+  lulo. **Si es un producto de marca** —una bebida, una barra, un yogur— no va a estar aquí por más
+  que cambies el nombre») y ofrece la salida como **acción primaria**: «📷 Cópialo del empaque».
+- 🧹 Y se quita el botón de escanear de ARRIBA **solo en el vacío**: dos botones que hacen lo mismo
+  en una pantalla reparten la atención y ninguno se lee como el camino (mismo criterio que v594).
+  Con resultados sigue estando — es el control del candado.
+
+### QA
+- Suite **1123 → 1124** en los tres modos · hook 12/12 · `_prodcheck 599` verde.
+- **`_sabotaje-v599.mjs` 5/5 muerden**, incluidos los dos del botón duplicado: esconderlo SIEMPRE
+  (el caso normal se quedaría sin escáner) y no esconderlo NUNCA (vuelven los dos).
+- **`_verify-v599.mjs` 9/9**, forzando **el estado en el que el defecto existe** (un harness que
+  encuentra la superficie vacía es inofensivo): se busca un producto que no puede estar, se mide
+  que la salida esté DENTRO del vacío, sea tocable (36 px) y quepa en 390 px, **se le hace clic** y
+  se comprueba que llega al escáner **con el campo para teclear el código a mano** — la mitad que
+  hace que el camino sirva sin cámara. Controles: con «arroz» el vacío no aparece **y el escáner de
+  arriba sigue**; el catálogo tiene que estar cargado (si no, el vacío medido es «Cargando…», otro
+  estado); y la habitación, abierta y opaca.
+- 🔬 **La primera corrida dio 6 rojos y los 6 eran de la sonda**: leía `window._foodCat` (es un
+  `let` de módulo, no vive en `window`) y buscaba un contenedor que no existe (`#fl-room`, cuando
+  es `#flroom-body`), además de no activar el consentimiento `foodlogOk`. Lo grave no fue el rojo:
+  **el «control» pasó por VACÍO** —no encontraba nada en ninguno de los dos casos— que es el mismo
+  falso verde por empate de v597, dos veces el mismo día.
+
 ## ⏮️ 2026-09-10 (2ª parte) — v598: HOMBROS ENTRA A LAS MEDIDAS
 
 El PO fue a registrar sus hombros y **no encontró dónde**. Medido contra el código: los 12

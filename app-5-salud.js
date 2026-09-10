@@ -2061,15 +2061,33 @@ function _flDiaHtml(c){
 function _flBuscarHtml(c){
   const cat=_foodCat||[];
   const r=foodSearch(cat,_flView.q,{limit:FOOD_PAGE,offset:0});
+  // Cuando el vacío ya trae su propia salida al escáner, este botón sobra: dos botones que hacen
+  // LO MISMO en la misma pantalla reparten la atención y ninguno se lee como el camino a seguir
+  // (la misma razón por la que el criterio de «no repetir» va en la SALIDA, v594).
+  const sinResultados=cat.length&&!_flView.sel&&!r.total;
   let html=`<div style="margin-bottom:12px">
       <button class="btn bg bsm" style="margin-bottom:10px" onclick="flVolverDia()">‹ ${FOODLOG_MEAL_LABEL[_flView.meal]}</button>
       <input class="inp" id="fl-q" type="search" inputmode="search" placeholder="Busca un alimento (arroz, huevo, lulo…)"
         value="${esc(_flView.q)}" aria-label="Buscar alimento" oninput="flQ(this.value)">
-      <button class="btn bg" style="width:100%;margin-top:8px" onclick="flEscanear()">📷 Escanear un empaque</button>
+      ${sinResultados?'':`<button class="btn bg" style="width:100%;margin-top:8px" onclick="flEscanear()">📷 Escanear un empaque</button>`}
     </div>`;
   if(!cat.length)return html+`<div class="empty" style="padding:24px"><div class="etxt">Cargando alimentos…</div></div>`;
   if(_flView.sel)return html+_flCantidadHtml(_flView.sel);
-  if(!r.total)return html+`<div class="empty" style="padding:24px"><div class="etxt">No encontramos ese alimento</div><div class="esub">Prueba con otro nombre — la lista tiene ${cat.length} alimentos.</div></div>`;
+  // 🔴 «PRUEBA CON OTRO NOMBRE» ES UN CALLEJÓN SIN SALIDA PARA UN PRODUCTO DE MARCA.
+  // La lista son alimentos BASE (USDA + TCAC del ICBF): una bebida de proteína del D1 no va a
+  // estar ahí por más que se cambie el nombre. El camino para agregarla existe desde el 10-ago
+  // (escanear el empaque o teclear el código) y estaba a un botón de distancia arriba —
+  // pero **el mensaje que sale justo en el momento de no encontrarlo no lo mencionaba**, así
+  // que la persona reintenta nombres, se rinde y concluye que la app no puede.
+  // Medido el 10-sep-2026: `food_barcodes` tiene **0 filas en toda la historia de la app** con la
+  // función desplegada hace un mes — y el primero en chocarse con la pared fue el propio PO.
+  // El vacío ahora DICE por qué no está y ofrece la salida real como acción principal.
+  if(!r.total)return html+`<div class="empty" style="padding:24px">
+      <div class="etxt">No encontramos «${esc((_flView.q||'').slice(0,40))}»</div>
+      <div class="esub" style="line-height:1.55;max-width:34ch;margin:0 auto">La lista tiene ${cat.length} alimentos base: arroz, huevo, pollo, lulo. <b>Si es un producto de marca</b> —una bebida, una barra, un yogur— no va a estar aquí por más que cambies el nombre.</div>
+      <button class="btn bp" style="width:100%;margin-top:14px" onclick="flEscanear()">📷 Cópialo del empaque</button>
+      <div style="font-size:11.5px;color:var(--t3);margin-top:8px">Escaneas el código o escribes los números. Queda para todos y lo usas de una.</div>
+    </div>`;
   html+=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${r.total} resultado${r.total!==1?'s':''}${r.hayMas?' · mostrando los primeros '+r.items.length:''}</div>`;
   r.items.forEach(f=>{
     html+=`<button type="button" style="display:block;width:100%;text-align:left;padding:10px 12px;background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);margin-bottom:6px;cursor:pointer" onclick="flElegir('${esc(f.id)}')">
