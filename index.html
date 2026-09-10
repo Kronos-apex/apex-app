@@ -61,7 +61,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=597">
+<link rel="stylesheet" href="styles.css?v=598">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1368,19 +1368,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=597"></script>
-<script src="muscle-map.js?v=597"></script>
-<script src="exercise-muscles.js?v=597"></script>
+<script src="avi-core.js?v=598"></script>
+<script src="muscle-map.js?v=598"></script>
+<script src="exercise-muscles.js?v=598"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=597"></script>
-<script src="app-2-login.js?v=597"></script>
-<script src="app-3-coach.js?v=597"></script>
-<script src="app-4-entreno.js?v=597"></script>
-<script src="app-5-salud.js?v=597"></script>
-<script src="app-6-extra.js?v=597"></script>
-<script src="app-7-community.js?v=597"></script>
+<script src="app-1-infra.js?v=598"></script>
+<script src="app-2-login.js?v=598"></script>
+<script src="app-3-coach.js?v=598"></script>
+<script src="app-4-entreno.js?v=598"></script>
+<script src="app-5-salud.js?v=598"></script>
+<script src="app-6-extra.js?v=598"></script>
+<script src="app-7-community.js?v=598"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1600,6 +1600,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="medgrp">Tronco</div>
     <div class="medgrid">
       <div class="fg"><label class="ilbl" for="med-cuello">Cuello (cm)</label><input class="inp" id="med-cuello" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 38"><div class="medhint">Debajo de la nuez, horizontal, mirando al frente.</div></div>
+      <div class="fg"><label class="ilbl" for="med-hombros">Hombros (cm)</label><input class="inp" id="med-hombros" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 118"><div class="medhint">Rodeando los dos hombros por la parte más ancha, con los brazos relajados a los lados. Es la más difícil de tomarte solo: pide ayuda o sáltala.</div></div>
       <div class="fg"><label class="ilbl" for="med-pecho">Pecho (cm)</label><input class="inp" id="med-pecho" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 95"><div class="medhint">Por la mitad del pecho, pasando bajo las axilas. Mide al soltar el aire.</div></div>
       <div class="fg"><label class="ilbl" for="med-cintura">Cintura (cm)</label><input class="inp" id="med-cintura" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80"><div class="medhint">En el borde duro del hueso de la cadera — no en el ombligo. Sin meter la barriga.</div></div>
       <div class="fg"><label class="ilbl" for="med-cadera">Cadera (cm)</label><input class="inp" id="med-cadera" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 98"><div class="medhint">Por la parte más ancha de los glúteos, de pie y con los talones juntos.</div></div>

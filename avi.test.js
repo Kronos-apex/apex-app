@@ -4153,10 +4153,25 @@ test('la ficha del coach exige la edad para registrar la autorizacion (v565)', (
 // Decision del PO viendo tres pantallas: direccion A, 12 perimetros por lado.
 // La tomo CONTRA mi recomendacion medida (yo propuse 9); queda anotado a proposito.
 
-test('MED_FIELDS: 12 perimetros, 4 pares izq/der, y ninguna clave repetida (v566)', () => {
-  assert.strictEqual(MED_FIELDS.length, 12, 'la direccion A son 12 campos, no 13');
+// v598 — el PO pidio HOMBROS el 10-sep-2026 (fue a registrarlos y no habia donde), asi que la
+// direccion A pasa de 12 a 13 campos. El numero se actualiza a proposito y con su motivo escrito:
+// este test existe para que nadie agregue un campo sin decidirlo, no para congelar el 12.
+test('MED_FIELDS: 13 perimetros, 4 pares izq/der, y ninguna clave repetida (v566+v598)', () => {
+  assert.strictEqual(MED_FIELDS.length, 13, 'la direccion A son 13 campos desde v598 (hombros)');
   const claves = MED_FIELDS.map(f => f.key);
-  assert.strictEqual(new Set(claves).size, 12, 'hay una clave repetida');
+  assert.strictEqual(new Set(claves).size, 13, 'hay una clave repetida');
+  // 🔒 HOMBROS NO LLEVA LADO. Es UNA circunferencia que rodea los dos deltoides: no se puede
+  //    medir por mitades con una cinta, y ofrecer izq/der invitaria a una comparacion de
+  //    simetria que el dato no sostiene (la misma promesa que la version entera se niega a hacer).
+  const hombros = MED_FIELDS.find(f => f.key === 'hombros');
+  assert.ok(hombros, 'se fue el campo de hombros que pidio el PO');
+  assert.strictEqual(hombros.lado, undefined, 'a hombros se le esta declarando un lado no medible');
+  assert.strictEqual(hombros.par, undefined, 'hombros no puede entrar en la comparacion izq/der');
+  assert.strictEqual(hombros.grupo, 'Tronco', 'hombros pertenece al grupo Tronco');
+  // Y va en ORDEN ANATOMICO dentro de su grupo, no al final: la pantalla pinta en este orden.
+  assert.deepStrictEqual(MED_FIELDS.filter(f => f.grupo === 'Tronco').map(f => f.key),
+    ['cuello', 'hombros', 'pecho', 'cintura', 'cadera'],
+    'el grupo Tronco quedo desordenado respecto al cuerpo');
   MED_PARES.forEach(par => {
     assert.ok(claves.includes(par + '_izq'), par + ' no tiene lado izquierdo');
     assert.ok(claves.includes(par + '_der'), par + ' no tiene lado derecho');
@@ -4174,6 +4189,39 @@ test('MED_FIELDS: 12 perimetros, 4 pares izq/der, y ninguna clave repetida (v566
   // CONTROL: los campos NUEVOS por lado si lo declaran, y son 8.
   assert.strictEqual(MED_FIELDS.filter(f => f.lado).length, 8,
     'se perdieron los campos por lado: la version entera existe para eso');
+});
+
+// 🔒 v598 — LAS DOS DIRECCIONES, O EL CAMPO QUEDA A MEDIO CABLEAR Y NADIE SE ENTERA.
+// `openMedModal` rellena por `med-<key>` y `saveMedidas` LEE por `med-<key>`: los dos recorren
+// MED_FIELDS. Asi que un campo en la lista SIN su input es un campo que nadie puede llenar jamas
+// (el `set()` no encuentra nada y el `save` lo salta, sin un solo error), y un input SIN campo en
+// la lista es una casilla que se teclea y se TIRA al guardar. Las dos mitades son invisibles por
+// separado: es la misma familia que `EX_IMG_IDS` vs los archivos de foto (audit-catalog, v502).
+test('todo perimetro de MED_FIELDS tiene su input en el formulario, y al reves (v598)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('<div class="mdbg" id="m-med"');
+  assert.ok(i > 0, 'no esta el modal de medidas');
+  const modal = html.slice(i, html.indexOf('<div class="mdbg"', i + 10));
+  const enHtml = [...modal.matchAll(/id="med-([a-z_]+)"/g)].map(m => m[1])
+    .filter(k => !['first', 'legacy', 'save'].includes(k));   // no son campos: aviso, legacy, boton
+  MED_FIELDS.forEach(f => assert.ok(enHtml.includes(f.key),
+    `🔴 «${f.label}» esta en MED_FIELDS y NO tiene input med-${f.key}: nadie podria llenarlo nunca`));
+  enHtml.forEach(k => assert.ok(MED_FIELDS.some(f => f.key === k),
+    `🔴 hay un input med-${k} que MED_FIELDS no conoce: se teclea y se tira al guardar`));
+  // CONTROL de la sonda: si el recorte del modal saliera vacio, los dos forEach de arriba
+  // pasarian sin mirar nada (un check que no puede fallar). Se afirma que encontro los 13.
+  assert.strictEqual(enHtml.length, MED_FIELDS.length,
+    `la sonda leyo ${enHtml.length} inputs y hay ${MED_FIELDS.length} campos`);
+  // Y cada input lleva su etiqueta y su pista de COMO medirlo: una medida tomada de otra
+  // forma cada vez no se puede comparar consigo misma (la regla que abre el propio modal).
+  MED_FIELDS.forEach(f => {
+    assert.ok(modal.includes(`for="med-${f.key}"`), `med-${f.key} no tiene <label for>`);
+    const trozo = modal.slice(modal.indexOf(`for="med-${f.key}"`));
+    const pista = trozo.slice(0, trozo.indexOf('</div>') + 6);
+    assert.ok(/class="medhint">[^<]{25,}/.test(pista),
+      `med-${f.key} no dice COMO medirlo: sin la pista, dos tomas no son comparables`);
+  });
 });
 
 // \🔴 A UNA MEDIDA VIEJA NO SE LE INVENTA EL LADO. 8 personas tienen guardado un

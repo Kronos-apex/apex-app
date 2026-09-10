@@ -2279,7 +2279,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .medhint{font-size:10.5px;line-height:1.35;color:var(--t3);margin-top:4px}
 .medfirst{background:var(--gl);border:1px solid var(--br);border-radius:10px;
   padding:11px 13px;margin-bottom:14px;font-size:12px;line-height:1.5;color:var(--gt)}
-.medfirst b{display:block;color:var(--gt);margin-bottom:4px;font-size:12.5px}
+/* 🔴 `.medfirst b{display:block}` estaba pensado para el TÍTULO del aviso y le caía a TODAS las
+   negritas del párrafo: «en ayunas, recién levantado…» y «brazo suelto» rompían línea y dejaban
+   una coma huérfana abriendo renglón («, con el»). Se ve solo con el aviso real puesto, que sale
+   una única vez en la vida de cada persona — y es lo primero que lee quien se mide por primera
+   vez. El bloque va SOLO al primer hijo; el resto resalta en línea, como se escribió. (v598) */
+.medfirst b{color:var(--gt);font-size:12.5px}
+.medfirst>b:first-child{display:block;margin-bottom:4px}
 /* 🔴 `--surface`, NO `--c`: `--c` NO es un token global — solo existe dentro de
    `.wz-row` (el asistente de registro). Fuera de ahí la variable no resuelve y el
    `background` queda inválido: la caja pierde su fondo y se lee como texto suelto. */

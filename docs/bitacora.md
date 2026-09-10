@@ -4,6 +4,53 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (2ª parte) — v598: HOMBROS ENTRA A LAS MEDIDAS
+
+El PO fue a registrar sus hombros y **no encontró dónde**. Medido contra el código: los 12
+perímetros eran cuello, **pecho**, cintura, cadera + brazo/antebrazo/muslo/pantorrilla por lado.
+**`pecho` sí existía** (2º campo de «Tronco», con su pista); **`hombros` no existía en ningún
+lado.** 🔴 **Y el hueco era mío: le pedí el dato sin comprobar que la app tuviera dónde
+guardarlo.** Dijo «sí agrega los hombros» → 13º campo.
+
+### Lo construido
+- **`MED_FIELDS` 12 → 13.** Va en el **orden anatómico** del grupo (cuello · **hombros** · pecho ·
+  cintura · cadera), no al final: la pantalla pinta en ese orden.
+- **SIN lado, a propósito.** El perímetro de hombros es UNA circunferencia que rodea los dos
+  deltoides: no se puede medir por mitades con una cinta, y ofrecer izq/der invitaría a una
+  comparación de simetría que el dato no sostiene — la misma promesa que v566 se niega a hacer.
+- Su pista dice **cómo** medirlo y además **que es la más difícil de tomarse solo** («pide ayuda o
+  sáltala»): una medida tomada de otra forma cada vez no se puede comparar consigo misma, y en este
+  perímetro esa es la regla más fácil de romper.
+- 🧹 **De paso, basura vista al mirar el formulario:** `.medfirst b{display:block}` estaba pensado
+  para el TÍTULO del aviso y le caía a **todas** las negritas del párrafo — el aviso de las tres
+  reglas rompía línea en cada resalte y dejaba una **coma abriendo renglón** («, con el»). Es lo
+  primero que lee quien se mide por primera vez, y sale una única vez en su vida. **158 px contra
+  los ~430 de antes.**
+
+### QA
+- Suite **1122 → 1123** en los tres modos · hook 12/12 · `_prodcheck 598` verde.
+- 🔒 **Candado nuevo de las DOS DIRECCIONES** (`_sabotaje-v598.mjs` **5/5 muerden**): todo campo de
+  `MED_FIELDS` tiene su `<input>` **y al revés**. Un campo sin casilla es un campo que **nadie
+  puede llenar jamás** —`openMedModal` no encuentra qué rellenar y `saveMedidas` lo salta, sin un
+  solo error— y una casilla sin campo **se teclea y se tira al guardar**. Las dos mitades son
+  invisibles por separado; es la familia de `EX_IMG_IDS` contra los archivos de foto (v502).
+  El candado exige además que cada casilla tenga su `<label for>` y su pista de ≥25 caracteres.
+- **`_verify-v598.mjs` 9/9**: las 13 casillas se VEN (no una huérfana fuera de pantalla), Hombros
+  entre Cuello y Pecho, el `118.5` sobrevive con su decimal hasta `DB.medidas` y aparece en la
+  tabla del asesorado. **Con su CONTROL:** sin dato de hombros la fila **no** se inventa — sin ese
+  caso, «la tabla muestra Hombros» lo aprobaría cualquier toma.
+- 🛑 **El harness comprueba el SELLO v298 (`cloudWriteSealed`) ANTES de guardar y aborta si no
+  está**: aquí se llama `saveMedidas` de verdad, y el incidente del 8-jul (un harness borró las 4
+  rutinas reales de Samuel) empezó exactamente así.
+- **Sin entrada en `AVI_NEWS`**, a propósito: una casilla nueva en un formulario que ya se abre
+  para medirse se descubre al abrirlo. Anunciar un campo gastaría el aviso que sí hace falta para
+  algo que pide un acto (como el de v597).
+
+### ⚠️ Lo que hay que vigilar
+El **corte del 28-oct** compara la dirección A (muchos campos) contra la B (6): si el campo nuevo
+no se llena, **empeora justo la métrica que decide ese corte**. Hombros no tiene línea base de
+junio, así que su primera toma es su punto de partida.
+
 ## ⏮️ 2026-09-10 — v597: EL CIERRE DE ENTRENO LLEVA SU CARA Y SU NOMBRE
 
 Pedido del PO: *«que cuando los asesorados compartan el resultado de haber finalizado su

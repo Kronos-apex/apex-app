@@ -4095,6 +4095,13 @@ function mergePhotos(local, cloud) {
 
 const MED_FIELDS = [
   { key: 'cuello',          label: 'Cuello',           grupo: 'Tronco' },
+  // 13º campo, pedido por el PO el 10-sep-2026: fue a registrar sus hombros y no encontró dónde.
+  // 🔴 Y el hueco era mío: se le pidió el dato sin comprobar que la app tuviera dónde guardarlo.
+  // Va en el orden anatómico del grupo (de arriba hacia abajo), NO al final, o «Tronco» quedaría
+  // con la lista desordenada respecto al cuerpo. SIN lado a propósito: el perímetro de hombros es
+  // UNA circunferencia que rodea los dos deltoides — partirlo en izq/der no es medible con cinta,
+  // y ofrecer los dos campos invitaría a una comparación que el dato no puede sostener.
+  { key: 'hombros',         label: 'Hombros',          grupo: 'Tronco' },
   { key: 'pecho',           label: 'Pecho',            grupo: 'Tronco' },
   { key: 'cintura',         label: 'Cintura',          grupo: 'Tronco' },
   { key: 'cadera',          label: 'Cadera',           grupo: 'Tronco' },
