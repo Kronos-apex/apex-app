@@ -16312,6 +16312,89 @@ test('🔒 CABLEADO v579: el titular sale de wfTitle, no escrito a mano en el re
 });
 
 // ══════════════════════════════════════════════════════
+// v597 — EL CIERRE LLEVA SU CARA Y SU NOMBRE
+// ══════════════════════════════════════════════════════
+// Pedido del PO (10-sep-2026): «que cuando compartan el resultado aparezca su nombre… y que en esa
+// misma pantalla aparezca una foto del asesorado, así sería totalmente personalizada».
+// MEDIDO ANTES DE ESCRIBIR, y la mitad ya existía: el nombre YA salía en la PANTALLA (`wfTitle`,
+// v579) pero NO en la imagen compartible —ahí solo elegía entre «¡Lo logré!» y «¡Sesión lista!»—,
+// y la ranura de la foto YA existía (`wf-photo`) con una foto genérica de marca mientras
+// `client.avatar`, la que sube el propio asesorado desde su perfil, no se usaba en ninguna parte.
+// Nada de esto da error nunca: la imagen se genera y se comparte igual, solo que sin decir de
+// quién es. Por eso los candados son estáticos y viven aquí.
+const _v597 = (() => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  // Todo check estático quita los comentarios ANTES de mirar: tres veces el 8-sep un candado
+  // aprobó porque el texto que buscaba estaba en MI comentario.
+  return nombre => {
+    const i = src.indexOf('function ' + nombre + '(');
+    assert.ok(i > 0, 'no existe ' + nombre + ' en app-4-entreno.js');
+    const j = src.indexOf('\nfunction ', i + 10);
+    return src.slice(i, j > 0 ? j : src.length).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  };
+})();
+
+test('🔒 CABLEADO v597: el cierre pinta el retrato DE QUIEN entrenó, y sin foto queda el trofeo', () => {
+  // Los DOS extremos del cable (lección de v595: el cableado comprobaba que la pantalla PASA el
+  // dato y no que la función lo LEA, así que matar el cálculo dejaba la guarda inerte en verde).
+  assert.ok(/_wfRenderCrest\(c\)/.test(_v597('showWorkoutFinish')),
+    '🔴 showWorkoutFinish dejó de pedir el retrato: la pantalla vuelve a ser igual para todos');
+  const crest = _v597('_wfRenderCrest');
+  assert.ok(/client\s*&&\s*client\.avatar/.test(crest),
+    '🔴 el retrato dejó de salir de client.avatar: pintaría una foto que no es de quien entrenó');
+  // Sin foto NO se degrada a iniciales: se queda el trofeo, que es lo que ya celebraba. Una
+  // pantalla nueva no puede empeorarle el cierre a quien no tiene avatar (hoy, casi todos).
+  assert.ok(/if\(!src\)return;/.test(crest) && /textContent='🏆'/.test(crest),
+    '🔴 sin foto ya no queda el trofeo: el cierre empeoraría justo para la mayoría');
+  // Y una foto que no carga (bucket caído, sin red, base64 corrupto) no puede dejar el ícono de
+  // imagen rota encima de la celebración: ese es el estado no-feliz que nadie mira.
+  assert.ok(/img\.onerror\s*=\s*trofeo/.test(crest),
+    '🔴 se fue el respaldo de la foto rota: quedaría un cuadro roto en la pantalla de cierre');
+  // La URL es de USUARIO: entra por propiedad (`img.src`), nunca interpolada en un url() de CSS
+  // como la foto de marca —que es una ruta nuestra y fija—, o un apóstrofo rompe la regla entera.
+  assert.ok(/img\.src\s*=\s*src/.test(crest) && !/url\(/.test(crest),
+    '🔴 la foto del asesorado volvió a un url() de CSS: una URL con apóstrofo rompe la regla');
+});
+
+test('🔒 CABLEADO v597: la imagen compartible DICE el nombre y lleva el círculo', () => {
+  const share = _v597('wfShare');
+  assert.ok(/fillText\(d\.name,/.test(share),
+    '🔴 la imagen dejó de DIBUJAR el nombre: volvería a decir «¡Lo logré!» sin decir de quién es');
+  assert.ok(/_wfDrawCrest\(x,\s*\d+,\s*\d+,\s*\d+,\s*d\.fullName\|\|d\.name,\s*_wfShareAvatar,/.test(share),
+    '🔴 el círculo del retrato se cayó del lienzo o dejó de recibir la foto ya verificada');
+  // En un canvas no hay reflow que avise: un nombre largo se sale del lienzo y nadie lo ve.
+  assert.ok(/measureText\(d\.name\)\.width>\d+/.test(share),
+    '🔴 se fue el ajuste del tamaño del nombre: un nombre largo se saldría de la imagen');
+  // Y el nombre COMPLETO tiene que viajar en los datos del share, o el círculo de iniciales se
+  // queda sin de dónde sacar sus dos letras y su color de la paleta.
+  assert.ok(/fullName:\s*\(\(c&&c\.name\)\|\|''\)\.trim\(\)/.test(_v597('showWorkoutFinish')),
+    '🔴 _wfShareData dejó de llevar el nombre completo: el círculo perdería iniciales y color');
+  // El círculo usa el MISMO avatar que la persona ya se ve en su perfil (paleta + tinta que
+  // contrasta), no un gris inventado aquí: dos fuentes para el mismo avatar se acaban separando.
+  const draw = _v597('_wfDrawCrest');
+  assert.ok(/avc\(name\)/.test(draw) && /inkOn\(col\)/.test(draw) && /ini\(name\)/.test(draw),
+    '🔴 el círculo de iniciales dejó de usar avc/inkOn/ini: sería otro avatar distinto al suyo');
+});
+
+test('🔒 v597: una foto NO puede llevarse el compartir entero (lienzo teñido)', () => {
+  const prep = _v597('_wfPrepShareAvatar');
+  // 🔴 El daño de una foto remota en un canvas no es que la foto no salga: es que `toBlob` LANZA
+  // y se pierde el compartir completo. Por eso v313 dibujó solo texto. Las dos vías o ninguna.
+  assert.ok(prep.includes("if(!/^data:/i.test(src))img.crossOrigin='anonymous';"),
+    '🔴 la foto remota ya no se pide con CORS: teñiría el lienzo y toBlob lanzaría SecurityError');
+  assert.ok(/getImageData\(/.test(prep),
+    '🔴 se fue la sonda de teñido: la ÚNICA forma de saber si tiñó es intentar leer un píxel');
+  assert.ok(/catch\(e\)\{_wfShareAvatar=null;\}/.test(prep),
+    '🔴 el teñido dejó de caer a iniciales: la tarjeta se compartiría o no según el bucket');
+  // Cinturón sobre los tirantes: si alguna vez entra una imagen por otra puerta, la persona ve
+  // un aviso y no una excepción que se lleve la pantalla de cierre (blindaje de v579).
+  const share = _v597('wfShare');
+  assert.ok(/try\{\s*cv\.toBlob/.test(share) && /catch\(e\)\{ toast\('No se pudo crear la imagen'\); \}/.test(share),
+    '🔴 `toBlob` volvió a correr a pelo: un lienzo teñido se llevaría el cierre con una excepción');
+});
+
+// ══════════════════════════════════════════════════════
 // v580 — «EMPUJAR 💪» NO SALE SIN DESTINATARIO
 // ══════════════════════════════════════════════════════
 // El banner de adherencia del Inicio pintaba el botón para todo el mundo, y `whatsappNudge` cae

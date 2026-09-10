@@ -2459,6 +2459,13 @@ function showWorkoutFinish(routine,stats){
     }
   }catch(e){}
   document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
+  // v597 — el retrato de QUIEN entrenó, en el sitio del trofeo (pedido del PO: «que esa pantalla
+  // sea totalmente personalizada»). La foto ya la sube el propio asesorado desde su perfil
+  // (`openAvatarPicker` → `client.avatar`): aquí no nace ningún dato nuevo, se conecta el que ya
+  // existía con la ranura que ya existía. 🔒 SIN foto NO se degrada a iniciales: se queda el
+  // trofeo, que es lo que ya celebraba — una pantalla nueva no puede empeorarle el cierre a los
+  // que no tienen foto (la mayoría).
+  _wfRenderCrest(c);
   // v579 — quien cierra TEMPRANO también llega aquí, y «¡Lo lograste!» sobre 6 de 12 series sería
   // felicitarla por algo que no hizo: el titular lo decide `wfTitle` (avi-core, pura).
   document.getElementById('wf-title').textContent=wfTitle(name,!!(stats&&stats.partial));
@@ -2487,7 +2494,10 @@ function showWorkoutFinish(routine,stats){
   document.getElementById('wf-faces').innerHTML=WF_FEELINGS.map(f=>`<button type="button" class="wf-face${f.v===curFeel?' sel':''}" onclick="wfRate(${f.v})">${f.e}</button>`).join('');
   document.getElementById('wf-feeling-lbl').textContent=curFeel?feelingLabel(curFeel):'';
   // v313 (estudio, mejora 2): datos para la imagen compartible del cierre.
-  _wfShareData={name:name||'',rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
+  // v597 — `fullName` es para el círculo de iniciales de la imagen: `ini`/`avc` se alimentan del
+  // nombre COMPLETO en toda la app (dos iniciales y el mismo color de siempre), mientras `name`
+  // sigue siendo el de pila, que es el que se lee bonito en grande.
+  _wfShareData={name:name||'',fullName:((c&&c.name)||'').trim(),rname:(routine&&routine.name)||'',fecha,chips:chips.slice(),
     prs:prs.slice(0,3).map(pr=>({name:pr.name,val:pr.val!=null?pr.val:pr.kg,unit:pr.unit||'kg',reps:pr.reps}))};
   // F13 — TURNOS: la pantalla de fin llegó a apilar TRES pedidos (logro + compartir + activar
   // notificaciones) y eso empujaba el trofeo y «¡Lo lograste!» fuera de la pantalla. Se muestra UNO
@@ -2579,9 +2589,86 @@ async function wfShareToCommunity(){
 // ── Compartir el cierre (v313, estudio de interfaz mejora 2, aprobada por Camilo) ──
 // Imagen 1080×1920 (formato historia/estado de WhatsApp) dibujada en canvas con la marca:
 // gradiente esmeralda, números grandes, récords y el sitio del coach. navigator.share con
-// archivo si el dispositivo puede (Android/TWA sí); si no, descarga el PNG. Sin fotos en
-// el lienzo: solo gradientes y texto → jamás canvas contaminado ni dependencias de red.
+// archivo si el dispositivo puede (Android/TWA sí); si no, descarga el PNG.
+// v597 — SU NOMBRE Y SU RETRATO entran al lienzo (pedido del PO). Hasta aquí no había ninguna
+// foto a propósito, porque una imagen ajena tiñe el canvas y `toBlob` lanza: la única foto que
+// entra es la que el propio asesorado subió, verificada CORS-limpia por `_wfPrepShareAvatar`
+// antes de tocar el lienzo. Si no pasa la sonda, el círculo va con sus iniciales y se comparte
+// igual — nunca se pierde el compartir por una foto. ⏭️ Enlace de la app: NO va todavía
+// (decisión del PO 10-sep-2026: entra cuando haya dominio propio, no `…vercel.app`).
 let _wfShareData=null;
+
+// ── v597 · EL RETRATO DEL CIERRE (pantalla y imagen compartible) ──
+// Retrato de quien acaba de entrenar, donde estaba el trofeo. La foto se pinta con un `<img>` y
+// `src` por PROPIEDAD: interpolarla dentro de un `url('…')` de CSS —como hace la foto de marca,
+// que es una ruta nuestra y fija— con una URL de usuario rompería la regla entera con un apóstrofo.
+function _wfRenderCrest(client){
+  const el=document.getElementById('wf-crest'); if(!el)return;
+  const src=(client&&client.avatar)||'';
+  const trofeo=()=>{el.classList.remove('wf-crest-photo');el.textContent='🏆';};
+  trofeo();                    // el estado de partida es SIEMPRE el trofeo (el cierre de otro asesorado no hereda su foto)
+  _wfPrepShareAvatar(src);
+  if(!src)return;
+  const img=document.createElement('img');
+  img.className='wf-crest-img'; img.alt='';
+  // Si la foto no carga (bucket caído, sin red, base64 corrupto) se queda el trofeo: la
+  // celebración no puede terminar con un cuadro roto encima. Y se pinta al CARGAR, no antes,
+  // para que no asome el ícono de imagen rota mientras baja.
+  img.onerror=trofeo;
+  img.onload=()=>{el.textContent='';el.appendChild(img);el.classList.add('wf-crest-photo');};
+  img.src=src;
+}
+
+// Copia de la foto apta para el LIENZO de la imagen compartible.
+// 🔴 Una foto remota TIÑE el canvas y `toBlob` lanza SecurityError: eso no se llevaría la foto,
+// se llevaría el COMPARTIR ENTERO (por eso v313 lo prohibió y dibujó solo texto). Se pide con
+// CORS y se COMPRUEBA el teñido con una sonda de 1 px antes de darla por buena; si no pasa, la
+// tarjeta dibuja el círculo de iniciales y se comparte igual. Se prepara al ABRIR la pantalla,
+// no al tocar «Compartir», para no meter una espera entre el toque y `navigator.share` (que
+// exige activación reciente del usuario).
+let _wfShareAvatar=null;
+function _wfPrepShareAvatar(src){
+  _wfShareAvatar=null;
+  if(!src)return;
+  const img=new Image();
+  if(!/^data:/i.test(src))img.crossOrigin='anonymous';
+  img.onload=()=>{
+    try{
+      const p=document.createElement('canvas');p.width=p.height=2;
+      const px=p.getContext('2d');px.drawImage(img,0,0,2,2);px.getImageData(0,0,1,1); // lanza si quedó teñido
+      _wfShareAvatar=img;
+    }catch(e){_wfShareAvatar=null;}
+  };
+  img.onerror=()=>{_wfShareAvatar=null;};
+  img.src=src;
+}
+
+// El círculo del retrato dentro del lienzo: la foto recortada en redondo si se pudo cargar sin
+// teñir, y si no las iniciales con SU color de la paleta (`avc`) y la tinta que contrasta
+// (`inkOn`) — el mismo avatar que la persona ya se ve en su perfil, no un gris inventado aquí.
+function _wfDrawCrest(x,cx,cy,r,name,img,F){
+  x.save();
+  x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.closePath();
+  if(img&&img.width&&img.height){
+    x.clip();
+    const s=Math.max(2*r/img.width,2*r/img.height);   // cubre el círculo sin deformar la cara
+    x.drawImage(img,cx-img.width*s/2,cy-img.height*s/2,img.width*s,img.height*s);
+  }else{
+    // El color y SU tinta se declaran juntos, en la misma línea: es el candado de la auditoría
+    // del 29-jul (dos sitios que pintaban con `avc` a dos líneas de su tinta se quedaron con el
+    // blanco fijo, y 6 de los 8 colores no llegaban al mínimo de lectura).
+    const col=(typeof avc==='function'&&name)?avc(name):'#0A7C5B', tinta=(typeof inkOn==='function')?inkOn(col):'#FFFFFF';
+    x.fillStyle=col;x.fill();
+    x.fillStyle=tinta;
+    x.font='900 '+Math.round(r*0.95)+'px '+F;x.textAlign='center';x.textBaseline='middle';
+    x.fillText((typeof ini==='function'&&name)?ini(name):'AVI',cx,cy+4);
+  }
+  x.restore();
+  x.save();                                            // el anillo va fuera del recorte, o se comería la mitad
+  x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);
+  x.strokeStyle='#10E0A0';x.lineWidth=9;x.stroke();
+  x.restore();
+}
 function wfShare(){
   const d=_wfShareData; if(!d){toast('Aún no hay datos de esta sesión');return;}
   const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
@@ -2600,18 +2687,29 @@ function wfShare(){
   x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
   x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
   x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
+  // quién entrenó: retrato (o iniciales) y su nombre. Antes la imagen no lo decía en NINGUNA
+  // parte — el nombre solo elegía entre «¡Lo logré!» y «¡Sesión lista!», y ahí se quedaba.
+  _wfDrawCrest(x,170,400,80,d.fullName||d.name,_wfShareAvatar,F);
+  if(d.name){
+    // El nombre se ENCOGE hasta caber: un «Michelle» de 70 px cabe, pero el hueco es finito y
+    // un nombre largo se saldría del lienzo sin que nada avise (no hay reflow en un canvas).
+    let fs=70;
+    x.fillStyle='#FFFFFF';x.font='900 '+fs+'px '+F;
+    while(fs>34&&x.measureText(d.name).width>690){fs-=4;x.font='900 '+fs+'px '+F;}
+    x.fillText(d.name,282,424);
+  }
   // titular
-  x.fillStyle='#10E0A0';x.font='800 34px '+F;x.fillText('ENTRENAMIENTO COMPLETADO',90,520);
+  x.fillStyle='#10E0A0';x.font='800 34px '+F;x.fillText('ENTRENAMIENTO COMPLETADO',90,570);
   x.fillStyle='#FFFFFF';x.font='900 112px '+F;
-  x.fillText(d.name?('¡Lo logré!'):'¡Sesión lista!',90,650);
+  x.fillText(d.name?('¡Lo logré!'):'¡Sesión lista!',90,700);
   x.fillStyle='rgba(234,251,244,.75)';x.font='600 40px '+F;
-  x.fillText((d.rname?d.rname+'  ·  ':'')+d.fecha,90,725);
+  x.fillText((d.rname?d.rname+'  ·  ':'')+d.fecha,90,775);
   // estadísticas 2×2
   const cells=d.chips.slice(0,4);
   // roundRect no existe en WebViews viejos → rectángulo normal antes que un throw
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
   cells.forEach((c2,i)=>{
-    const cx=90+(i%2)*470, cy=850+Math.floor(i/2)*260;
+    const cx=90+(i%2)*470, cy=900+Math.floor(i/2)*260;
     x.fillStyle='rgba(255,255,255,.05)';
     _rr(cx,cy,430,215,26);x.fill();
     x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;
@@ -2620,7 +2718,7 @@ function wfShare(){
     x.fillStyle='rgba(234,251,244,.6)';x.font='700 28px '+F;x.fillText(String(c2[0]).toUpperCase(),cx+36,cy+172);
   });
   // récords
-  let ry=850+Math.ceil(cells.length/2)*260+70;
+  let ry=900+Math.ceil(cells.length/2)*260+70;
   d.prs.forEach(pr=>{
     x.fillStyle='#F2C94C';x.font='900 40px '+F;x.fillText('★',90,ry);
     x.fillStyle='#FFFFFF';x.font='800 38px '+F;
@@ -2635,6 +2733,11 @@ function wfShare(){
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),90,1830);
   try{window._wfLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness v313)
+  // 🔒 Cinturón sobre los tirantes: `toBlob` de un lienzo teñido lanza SÍNCRONO. La sonda de
+  // `_wfPrepShareAvatar` ya impide que una foto teñida llegue aquí, pero si alguna vez entra una
+  // imagen por otra puerta, el asesorado tiene que ver un aviso — no una excepción que se lleve
+  // el cierre entero (misma razón que el blindaje de los récords en v579).
+  try{
   cv.toBlob(async blob=>{
     if(!blob){toast('No se pudo crear la imagen');return;}
     const file=new File([blob],'avi-entreno.png',{type:'image/png'});
@@ -2649,6 +2752,7 @@ function wfShare(){
     document.body.appendChild(a);a.click();a.remove();
     toast('📥 Imagen guardada — súbela a tu estado');
   },'image/png');
+  }catch(e){ toast('No se pudo crear la imagen'); }
 }
 function closeWorkoutFinish(){
   document.getElementById('workout-finish').classList.remove('on');

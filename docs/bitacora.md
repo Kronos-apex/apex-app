@@ -4,6 +4,68 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 — v597: EL CIERRE DE ENTRENO LLEVA SU CARA Y SU NOMBRE
+
+Pedido del PO: *«que cuando los asesorados compartan el resultado de haber finalizado su
+entrenamiento aparezca su nombre y si es posible se añada el enlace de la aplicación, así nos
+ayudan a hacer marketing»* y *«que en esa misma pantalla de finalización apareciera una foto del
+asesorado, así esa pantalla sería totalmente personalizada»*.
+
+### Medido antes de escribir: la mitad ya existía
+| Lo que pidió | Estado real antes de tocar nada |
+|---|---|
+| Nombre en la **pantalla** de cierre | ✅ Ya salía desde v579 (`wfTitle` → «¡Lo lograste, Camilo!») |
+| Nombre en la **imagen compartible** | 🔴 **No salía.** El dato ya viajaba en `_wfShareData.name` y solo se usaba para elegir entre «¡Lo logré!» y «¡Sesión lista!» |
+| **Enlace** de la app en la imagen | 🔴 No salía (el pie lleva el nombre y el sitio del COACH) |
+| **Foto** del asesorado | 🟡 La ranura ya existía (`wf-photo`) con una foto genérica de marca, y `client.avatar` —la que sube el propio asesorado— no se usaba en el cierre |
+
+O sea que no había que construir un sistema de fotos: había que **conectar el dato que ya existía
+con la ranura que ya existía**. Misma regla que v595, aplicada a tiempo esta vez.
+
+### Decisiones del PO, sobre opciones vistas
+- **El enlace NO entra todavía.** Se le ofrecieron los dos destinos reales y eligió esperar: la web
+  de venta vive en `avi-web-chi.vercel.app` y ese dominio, impreso en cientos de estados de
+  WhatsApp, se lee como una prueba y no como una marca. Entra cuando haya dominio propio; es una
+  constante de una línea.
+- **Retrato circular junto al título**, no la foto a pantalla completa: la app guarda el avatar
+  comprimido a ~40 KB, y estirado a pantalla llena se ve borroso, el encuadre corta por arriba y el
+  degradado del cierre tapa del 55% al 97%. Eligió viendo las dos maquetas.
+
+### Lo construido
+- **`_wfRenderCrest`** (app-4): el retrato ocupa **la ranura del trofeo**, no una nueva. Apilar un
+  bloque más es justo lo que F13 midió que empujaba el titular fuera de la pantalla; y
+  `.wf-inner>.wf-trophy{margin-top:auto}` es lo que centra el bloque, así que un elemento delante
+  se habría quedado pegado al techo. **Sin foto sigue el trofeo** — no se degrada a iniciales,
+  porque hoy casi nadie tiene avatar y el cierre no puede empeorar para la mayoría.
+- **`_wfPrepShareAvatar`** + **`_wfDrawCrest`**: el nombre y el círculo entran al lienzo 1080×1920.
+  El bloque del titular bajó 50 px para que el retrato respire (se **miró** la imagen: medida, la
+  cabecera quedaba apretada contra «ENTRENAMIENTO COMPLETADO»).
+- El nombre **se encoge hasta caber** (`measureText`): en un canvas no hay reflow que avise.
+- **`AVI_NEWS` v597**, y existe por una razón: la función solo sirve si la persona sube su foto.
+  Sin avisar, se queda esperando un acto que nadie sabe que puede hacer.
+
+### QA
+- Suite **1119 → 1122** en los tres modos · hook 12/12 · `_prodcheck 597` verde.
+- **`_sabotaje-v597.mjs`: 12/12 muerden**, incluido el candado VIEJO del 29-jul (separar el color
+  del avatar de su tinta), que mordió sobre código nuevo — y de hecho me cazó a mí en el primer
+  intento: había escrito `avc(name)` y su `inkOn` a dos líneas de distancia.
+- **`_verify-v597.mjs`: 19/19** con controles de discriminación, y el que de verdad importa:
+  **una foto servida desde OTRO ORIGEN sin cabeceras CORS no puede llevarse el compartir**. Se
+  sirve desde un segundo puerto (= otro origen, como un bucket sin CORS): la foto se ve en la
+  pantalla, el círculo del lienzo cae a iniciales y **el blob se genera igual**.
+- 🔬 **Tres fallos de la primera corrida eran de MI SONDA, no de la app**: el PNG «rojo» que escribí
+  de memoria en base64 era transparente, y la cuenta QA se llama «🧪» — un emoji no tiene píxeles
+  blancos, así que la sonda del nombre medía 0 **y su control también**, o sea que aprobaba por
+  empate. Ahora la foto de prueba se genera con canvas y se le mide el píxel (check `F0`).
+
+### ⏭️ Radar de este lote
+**El ajuste de tamaño de letra NO LLEGA a la pantalla de cierre.** El `zoom` de `data-fs` cubre
+`.cnp`, `.md`, `#s-coach .panel`, `.gm-body` y `.sroom-body`; `#workout-finish` no está en ninguna
+lista, así que quien tiene la letra en «Muy grande» ve el cierre a tamaño normal. Medido de paso al
+intentar escribir el caso xl (que sin esto es un caso que no puede fallar). El sitio correcto sería
+`.wf-inner` —el scroller interno—, **nunca `#workout-finish`**, que es `position:fixed;inset:0`:
+ese es exactamente el error de v453.
+
 ## ⏮️ 2026-09-09 (2ª parte) — v596: EL ICONITO DE LA BARRA DE ESTADO ERA UNA MANCHA
 
 Reporte del PO con una foto de su teléfono: *«estas notificaciones quiero que se vean más bonitas,

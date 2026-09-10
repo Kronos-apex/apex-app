@@ -1507,6 +1507,13 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wf-inner{position:absolute;inset:0;z-index:2;padding:60px 26px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;color:#fff;overflow-y:auto;overscroll-behavior:contain}
 .wf-inner>.wf-trophy{margin-top:auto}
 .wf-trophy{font-size:46px;margin-bottom:8px;filter:drop-shadow(0 6px 20px rgba(16,224,160,.5));animation:wfPop .5s cubic-bezier(.3,1.4,.5,1) both}
+/* v597 — con foto, la misma ranura del trofeo lleva el retrato. `font-size:0` mata el hueco del
+   emoji que ya no está (si no, el círculo arrastra 46px de línea vacía debajo) y el retrato hereda
+   el `wfPop` y el resplandor del trofeo, así que entra igual de celebrado. El tamaño va en px y no
+   en em a propósito: es una imagen, no texto, y con la letra en «Muy grande» no debe crecer y
+   empujar el titular fuera (el defecto de v452). */
+.wf-trophy.wf-crest-photo{font-size:0;line-height:0;margin-bottom:12px}
+.wf-crest-img{width:84px;height:84px;border-radius:50%;object-fit:cover;display:block;border:3px solid #10E0A0;background:#0A2118}
 @keyframes wfPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .wf-eyebrow{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2.6px;text-transform:uppercase;color:#10E0A0;margin-bottom:6px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .wf-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.5px;margin-bottom:6px;text-shadow:0 2px 18px rgba(0,0,0,.6)}

@@ -2983,6 +2983,12 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v597 — ESTA ENTRADA EXISTE PARA QUE LA FUNCIÓN TENGA A QUIÉN SERVIR. El cierre solo se
+  // personaliza si la persona subió su foto de perfil, y hoy casi nadie la tiene: sin avisar, la
+  // función se queda esperando un acto que nadie sabe que puede hacer (la lección de «las 10 con
+  // push son las 10 que ya entrenaban»). Sin público marcado: es de TODOS, también del tier libre.
+  {v:597, icon:'camera', t:'Tu cierre de entreno ahora lleva tu cara', d:'Cuando terminas de entrenar, la pantalla de celebración muestra tu foto de perfil en vez del trofeo, y la imagen que compartes sale con tu nombre. Si todavía no tienes foto, sigue saliendo el trofeo — nada se pierde.',
+   steps:['Entra a «Mi perfil» y toca el círculo con tus iniciales','Elige una foto tuya desde el celular','Termina tu próximo entreno y toca «Compartir mi entreno»']},
   // 🔴 v508: EL TEXTO DE ESTA ENTRADA DESCRIBÍA UNA PANTALLA QUE YA NO EXISTE. Decía «el agua, los
   // pasos y tu plato bajan a una tira de TRES» y mandaba a buscar el plato ahí. v507 dejó la tira en
   // dos (agua y pasos) — y para el tier libre el texto **ya era falso desde v504**, porque el chip
