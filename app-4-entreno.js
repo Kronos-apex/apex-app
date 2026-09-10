@@ -2467,7 +2467,12 @@ function showWorkoutFinish(routine,stats){
       }
     }
   }catch(e){}
-  document.getElementById('wf-photo').style.backgroundImage=`url('${window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO}')`;
+  const _bgSrc=window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO;
+  document.getElementById('wf-photo').style.backgroundImage=`url('${_bgSrc}')`;
+  // La MISMA foto va al lienzo compartible, para que la imagen que sale sea la pantalla que se
+  // ve. Se prepara aqui y no al tocar «Compartir»: `navigator.share` exige activacion reciente.
+  _wfBgPhoto=null;
+  if(typeof canvasSafePhoto==='function')canvasSafePhoto(_bgSrc,img=>{_wfBgPhoto=img||null;});
   // v597 — el retrato de QUIEN entrenó, en el sitio del trofeo (pedido del PO: «que esa pantalla
   // sea totalmente personalizada»). La foto ya la sube el propio asesorado desde su perfil
   // (`openAvatarPicker` → `client.avatar`): aquí no nace ningún dato nuevo, se conecta el que ya
@@ -2640,6 +2645,10 @@ function _wfRenderCrest(client){
 // una se arregla y la otra se queda con el hueco (es el patrón de v424 y del bucket de v600).
 // Aquí queda solo la ranura: de quién es la foto de ESTE cierre.
 let _wfShareAvatar=null;
+// v603 · La FOTO DE FONDO del lienzo: la misma que la pantalla pinta en `#wf-photo`. Es del
+// mismo origen, asi que nunca tiñe, pero pasa por la misma comprobacion que cualquier otra:
+// una regla de seguridad con excepciones deja de ser una regla.
+let _wfBgPhoto=null;
 function _wfPrepShareAvatar(src){
   _wfShareAvatar=null;
   // 🔒 Cruza módulos: sin app-1 no hay comprobación de teñido, y sin comprobación NO se arriesga
@@ -2681,68 +2690,106 @@ function wfShare(){
   const d=_wfShareData; if(!d){toast('Aún no hay datos de esta sesión');return;}
   const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
   const x=cv.getContext('2d');
-  // fondo de marca
-  const bg=x.createLinearGradient(0,0,0,1920);
-  bg.addColorStop(0,'#06120D');bg.addColorStop(.55,'#0A2118');bg.addColorStop(1,'#04090688');
-  x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
-  x.fillStyle=bg;x.fillRect(0,0,1080,1920);
-  const glow=x.createRadialGradient(870,240,60,870,240,700);
-  glow.addColorStop(0,'rgba(16,224,160,.20)');glow.addColorStop(1,'rgba(16,224,160,0)');
-  x.fillStyle=glow;x.fillRect(0,0,1080,1100);
-  // v602 · la tipografia de la MARCA (Anton + Plus Jakarta) en vez de la del sistema. Ver
-  // `canvasFont` en app-1: si no estan cargadas devuelve la del sistema y sale como antes.
+  // ══ v603 · LA IMAGEN COMPARTIDA ES LA MISMA PANTALLA QUE EL PO ADORA ══════════════════
+  // Reporte suyo con una captura de su telefono: «esta imagen encanta, pero la que se comparte no
+  // es nada parecida». Tenia razon y eran TRES diferencias, no una: la pantalla lleva FOTO de
+  // fondo con su degradado, esta CENTRADA, y sus cifras son tarjetas oscuras translucidas. El
+  // lienzo no tenia ninguna de las tres — era un degradado plano con el texto a la izquierda.
+  // 🔒 La foto se pudo meter porque es del MISMO ORIGEN (`media/brand/…`), que nunca tiñe el
+  //    lienzo, y aun asi pasa por `canvasSafePhoto`: la regla es una para todas las fotos.
+  //    Si no cargo, queda el degradado de marca de siempre — la tarjeta nunca sale rota.
   const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
   const F='system-ui,Roboto,sans-serif';   // el circulo de iniciales lo sigue usando via _wfDrawCrest
-  // wordmark
-  x.fillStyle='#EAFBF4';x.font=_cf(84,'900',true);x.fillText('AVI',90,190);
-  x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
-  x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(26,'700');
-  x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
-  // quién entrenó: retrato (o iniciales) y su nombre. Antes la imagen no lo decía en NINGUNA
-  // parte — el nombre solo elegía entre «¡Lo logré!» y «¡Sesión lista!», y ahí se quedaba.
-  _wfDrawCrest(x,170,400,80,d.fullName||d.name,_wfShareAvatar,F);
-  if(d.name){
-    // El nombre se ENCOGE hasta caber: un «Michelle» de 70 px cabe, pero el hueco es finito y
-    // un nombre largo se saldría del lienzo sin que nada avise (no hay reflow en un canvas).
-    let fs=70;
-    x.fillStyle='#FFFFFF';x.font=_cf(fs,'900',true);
-    while(fs>34&&x.measureText(d.name).width>690){fs-=4;x.font=_cf(fs,'900',true);}
-    x.fillText(d.name,282,424);
-  }
-  // titular
-  x.fillStyle='#10E0A0';x.font=_cf(34,'800');x.fillText('ENTRENAMIENTO COMPLETADO',90,570);
-  x.fillStyle='#FFFFFF';x.font=_cf(112,'900',true);
-  x.fillText(d.name?('¡Lo logré!'):'¡Sesión lista!',90,700);
-  x.fillStyle='rgba(234,251,244,.75)';x.font=_cf(40,'600');
-  x.fillText((d.rname?d.rname+'  ·  ':'')+d.fecha,90,775);
-  // estadísticas 2×2
-  const cells=d.chips.slice(0,4);
-  // roundRect no existe en WebViews viejos → rectángulo normal antes que un throw
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
+  if(_wfBgPhoto&&_wfBgPhoto.width&&_wfBgPhoto.height){
+    const s2=Math.max(1080/_wfBgPhoto.width,1920/_wfBgPhoto.height);   // cubrir sin deformar
+    x.drawImage(_wfBgPhoto,(1080-_wfBgPhoto.width*s2)/2,0,_wfBgPhoto.width*s2,_wfBgPhoto.height*s2);
+  }
+  // El MISMO degradado que la pantalla (`.wf-photo::after`): sin el, el texto no se lee sobre la
+  // foto — y con el, la foto se intuye sin competir. Los cuatro topes son los del CSS.
+  const bg=x.createLinearGradient(0,0,0,1920);
+  bg.addColorStop(0,'rgba(4,8,10,.55)');bg.addColorStop(.26,'rgba(4,8,10,.55)');
+  bg.addColorStop(.56,'rgba(4,8,10,.72)');bg.addColorStop(1,'rgba(4,8,10,.97)');
+  x.fillStyle=bg;x.fillRect(0,0,1080,1920);
+
+  // ── Todo CENTRADO, como la pantalla ──
+  x.textAlign='center';
+  x.fillStyle='#EAFBF4';x.font=_cf(64,'900',true);x.fillText('AVI',540,140);
+  x.fillStyle='#10E0A0';x.fillRect(495,164,90,6);
+  // el retrato (o el trofeo de siempre si no hay foto de perfil), como en la pantalla
+  if(_wfShareAvatar||d.fullName||d.name){
+    _wfDrawCrest(x,540,330,92,d.fullName||d.name,_wfShareAvatar,F);
+  }
+  x.textAlign='center';                       // `_wfDrawCrest` lo restaura, pero no se asume
+  // 🔒 EL NOMBRE, debajo del retrato. En la PANTALLA el nombre viaja dentro del titular («¡Lo
+  //    lograste, Andres!»), pero aqui el titular es en primera persona porque lo comparte ella
+  //    misma — asi que si no se dibuja aparte, la imagen no dice de quien es (candado de v597).
+  if(d.name){
+    x.fillStyle='#FFFFFF';
+    let ns=58; x.font=_cf(ns,'900',true);
+    while(ns>30&&x.measureText(d.name).width>900){ns-=4;x.font=_cf(ns,'900',true);}
+    x.fillText(d.name,540,492);
+  }
+  x.fillStyle='#10E0A0';x.font=_cf(34,'800');x.fillText('ENTRENAMIENTO COMPLETADO',540,548);
+  x.fillStyle='#FFFFFF';
+  let ts=112; x.font=_cf(ts,'900',true);
+  const _tit=d.name?('¡Lo logré!'):'¡Sesión lista!';
+  while(ts>56&&x.measureText(_tit).width>920){ts-=6;x.font=_cf(ts,'900',true);}
+  x.fillText(_tit,540,660);
+  x.fillStyle='rgba(242,245,244,.8)';x.font=_cf(36,'600');
+  const _sub=(d.rname?d.rname+'  ·  ':'')+d.fecha;
+  let ss=36; x.font=_cf(ss,'600',false);
+  while(ss>22&&x.measureText(_sub).width>920){ss-=2;x.font=_cf(ss,'600');}
+  x.fillText(_sub,540,722);
+
+  // ── Las cifras, 2×2, con la MISMA ficha de la pantalla (.wf-stat) ──
+  const cells=d.chips.slice(0,4);
+  const CW=436,CH=180,GAP=28,X0=540-(CW+GAP/2);
+  let yc=790;
   cells.forEach((c2,i)=>{
-    const cx=90+(i%2)*470, cy=900+Math.floor(i/2)*260;
-    x.fillStyle='rgba(255,255,255,.05)';
-    _rr(cx,cy,430,215,26);x.fill();
-    x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;
-    _rr(cx,cy,430,215,26);x.stroke();
-    x.fillStyle='#10E0A0';x.font=_cf(76,'900',true);x.fillText(String(c2[1]),cx+36,cy+112);
-    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(28,'700');x.fillText(String(c2[0]).toUpperCase(),cx+36,cy+172);
+    const cx=X0+(i%2)*(CW+GAP), cy=yc+Math.floor(i/2)*(CH+GAP);
+    x.fillStyle='rgba(4,8,10,.58)';_rr(cx,cy,CW,CH,38);x.fill();
+    x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=3;_rr(cx,cy,CW,CH,38);x.stroke();
+    x.fillStyle='#10E0A0';
+    let vs=62; x.font=_cf(vs,'800',false);
+    while(vs>30&&x.measureText(String(c2[1])).width>CW-56){vs-=4;x.font=_cf(vs,'800');}
+    x.fillText(String(c2[1]),cx+CW/2,cy+96);
+    x.fillStyle='rgba(242,245,244,.7)';x.font=_cf(27,'600');
+    x.fillText(String(c2[0]).toUpperCase(),cx+CW/2,cy+142);
   });
-  // récords
-  let ry=900+Math.ceil(cells.length/2)*260+70;
-  d.prs.forEach(pr=>{
-    x.fillStyle='#F2C94C';x.font=_cf(40,'900');x.fillText('★',90,ry);
-    x.fillStyle='#FFFFFF';x.font=_cf(38,'800');
-    const det=pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps:'')):(pr.val+' '+pr.unit);
-    x.fillText('Récord: '+pr.name+' — '+det,150,ry);
-    ry+=72;
+  let ry=yc+Math.ceil(cells.length/2)*(CH+GAP)+24;
+
+  // ── Los récords, con la MISMA tarjeta de la pantalla (.wf-pr) ──
+  d.prs.slice(0,3).forEach(pr=>{
+    const h=124;
+    const g3=x.createLinearGradient(90,ry,990,ry+h);
+    g3.addColorStop(0,'rgba(4,8,10,.62)');g3.addColorStop(1,'rgba(4,8,10,.52)');
+    x.fillStyle=g3;_rr(90,ry,900,h,32);x.fill();
+    x.strokeStyle='rgba(16,224,160,.35)';x.lineWidth=3;_rr(90,ry,900,h,32);x.stroke();
+    x.textAlign='start';
+    x.fillStyle='#F2C94C';x.font=_cf(44,'900');x.fillText('★',126,ry+78);
+    x.fillStyle='#FFFFFF';x.font=_cf(34,'800');
+    let nm=(pr.isNew?'¡Primer récord! ':'¡Nuevo récord! ')+pr.name;
+    while(nm.length>6&&x.measureText(nm).width>720)nm=nm.slice(0,-1);
+    if(nm!==((pr.isNew?'¡Primer récord! ':'¡Nuevo récord! ')+pr.name))nm=nm.replace(/\s+\S*$/,'')+'…';
+    x.fillText(nm,192,ry+58);
+    x.fillStyle='rgba(242,245,244,.92)';x.font=_cf(30,'600');
+    x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' reps':'')):(pr.val+' '+pr.unit),192,ry+100);
+    x.textAlign='center';
+    ry+=h+18;
   });
+  x.textAlign='start';
   // pie con el coach
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
+  // El pie CENTRADO como todo lo demas: era lo unico que quedaba alineado a la izquierda y en una
+  // composicion centrada eso se lee como un descuido, no como una decision.
+  x.textAlign='center';
   x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
-  x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),90,1830);
+  x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),540,1830);
+  x.textAlign='start';
   try{window._wfLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness v313)
   // 🔒 Cinturón sobre los tirantes: `toBlob` de un lienzo teñido lanza SÍNCRONO. La sonda de
   // `_wfPrepShareAvatar` ya impide que una foto teñida llegue aquí, pero si alguna vez entra una

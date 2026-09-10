@@ -13825,6 +13825,42 @@ test('🔒 v602: el lienzo pide la tipografía de la marca, y COMPRUEBA que est�
   });
 });
 
+// 🔒 v603 · LA VISTA PREVIA DEL ENLACE ES UNA PANTALLA DE COMPARTIR, Y LA VE QUIEN NO ES CLIENTE.
+// `og:image` apuntaba a un icono CUADRADO de 512 px con `twitter:card=summary_large_image`, que
+// espera 1200×630 apaisado: cada enlace compartido salía con un iconito recortado. Nada de esto
+// da un error — el enlace funciona, solo se ve mal, y lo ve justo quien todavía no entró.
+test('🔒 v603: la tarjeta de vista previa existe, es 1200×630 y no pesa de más', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const og = /<meta property="og:image" content="([^"]+)"/.exec(html);
+  assert.ok(og, 'se fue la etiqueta og:image');
+  assert.ok(!/icon-\d+\.png/.test(og[1]),
+    '🔴 og:image volvió a un ícono cuadrado: la vista previa sale recortada');
+  assert.ok(/og-1200x630\.jpg$/.test(og[1]), 'og:image no apunta a la tarjeta apaisada');
+  assert.ok(/<meta name="twitter:image"/.test(html), 'falta twitter:image: X/Twitter no hereda og:image');
+  assert.ok(/og:image:width" content="1200"/.test(html) && /og:image:height" content="630"/.test(html),
+    'faltan las medidas declaradas: algunos clientes no descargan la imagen para medirla');
+  // 🔒 EL ARCHIVO EXISTE Y ESTÁ VERSIONADO. Una etiqueta que apunta a un 404 deja la vista previa
+  //    PEOR que con el icono: sin imagen ninguna.
+  const img = path.join(__dirname, 'media', 'brand', 'og-1200x630.jpg');
+  assert.ok(fs.existsSync(img), '🔴 og:image apunta a un archivo que no está en el repo');
+  const kb = fs.statSync(img).size / 1024;
+  // 🔴 Y NO PESA DE MÁS: en PNG pesaba 831 KB y los clientes de mensajería descartan las pesadas,
+  //    o sea que el arreglo se quedaría sin verse — peor que no haberlo hecho.
+  assert.ok(kb < 300, `la tarjeta pesa ${Math.round(kb)} KB: por encima de 300 la descartan`);
+  // Y es de verdad 1200×630: se leen los bytes del JPEG (marcador SOF), no se cree la etiqueta.
+  const b = fs.readFileSync(img);
+  let i = 2, w = 0, h = 0;
+  while (i < b.length - 9) {
+    if (b[i] !== 0xFF) { i++; continue; }
+    const m = b[i + 1];
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { h = b.readUInt16BE(i + 5); w = b.readUInt16BE(i + 7); break; }
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  assert.strictEqual(w, 1200, 'el ancho real del archivo no es 1200 (medido en sus bytes)');
+  assert.strictEqual(h, 630, 'el alto real del archivo no es 630 (medido en sus bytes)');
+});
+
 test('🔒 CABLEADO v601: la BARRA mide kilos y el titular sale de la mediana', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');

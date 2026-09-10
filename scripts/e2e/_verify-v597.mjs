@@ -106,12 +106,14 @@ const medirLienzo = async (conNombre) => {
     let px=null, rojoCentro=null, centro=null, teñido='';
     try{
       const g=cv.getContext('2d');
-      // banda del NOMBRE: a la derecha del círculo (x 282..980, y 360..440)
-      const d=g.getImageData(282,360,698,80).data; let claros=0;
+      // banda del NOMBRE: v603 la tarjeta pasó a estar CENTRADA como la pantalla, asi que el
+      // nombre ya no va al lado del circulo sino DEBAJO (540,492). La sonda se realinea; si se
+      // dejara en las coordenadas viejas mediria fondo y diria que el nombre no se dibuja.
+      const d=g.getImageData(120,440,840,70).data; let claros=0;
       for(let i=0;i<d.length;i+=4){ if(d[i]>230&&d[i+1]>230&&d[i+2]>230) claros++; }
       px=claros;
-      // centro del CÍRCULO del retrato (cx=170, cy=400)
-      const c=g.getImageData(170,400,1,1).data;
+      // centro del CÍRCULO del retrato (v603: centrado, cx=540, cy=330)
+      const c=g.getImageData(540,330,1,1).data;
       centro=[c[0],c[1],c[2]];
       rojoCentro=(c[0]>200&&c[1]<60&&c[2]<60);
     }catch(e){ teñido=String(e&&e.name||e); }  // getImageData lanza si el lienzo quedó TEÑIDO
@@ -159,6 +161,21 @@ try {
   check('C1 el NOMBRE se dibuja en el lienzo', (L.claros || 0) > 400, 'píxeles claros en la banda del nombre=' + L.claros);
   check('C2 el RETRATO se dibuja dentro del círculo', L.rojoCentro === true, 'centro=' + JSON.stringify(L.centro));
   check('C2b la foto pasó la sonda de teñido (data: URL)', L.avatarListo === true, 'avatarListo=' + L.avatarListo);
+  // v603 · Y la tarjeta con una sesion COMPLETA (las 4 cifras y sus records), que es el caso real:
+  // con dos cifras y sin records la composicion no se puede juzgar (era el hueco muerto de antes).
+  await ev(`(async()=>{
+    _wfShareData=Object.assign({},_wfShareData,{
+      chips:[['Duración','48:12'],['Calorías','412 kcal'],['Series','24/24'],['Volumen','5.480 kg']],
+      prs:[{name:'Press de Banca con Barra',val:80,unit:'kg',reps:8},{name:'Sentadilla con Barra',val:120,unit:'kg',reps:5}]});
+    const orig=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){cb(new Blob(['x'],{type:'image/png'}));};
+    try{ Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true}); }catch(e){}
+    const oc=document.createElement.bind(document);
+    document.createElement=t=>{const el=oc(t);if(t==='a'){el.click=()=>{};}return el;};
+    try{ wfShare(); }catch(e){}
+    await new Promise(r=>setTimeout(r,300));
+    HTMLCanvasElement.prototype.toBlob=orig; document.createElement=oc;
+  })()`);
   const dataUrl = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
   if (dataUrl && dataUrl.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v597-share-img.png', Buffer.from(dataUrl.split(',')[1], 'base64')); log('  shot → ' + SHOTDIR + '/v597-share-img.png'); }
 

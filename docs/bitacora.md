@@ -4,6 +4,54 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (7ª parte) — v603: LA IMAGEN QUE SE COMPARTE ES LA PANTALLA QUE ÉL ADORA
+
+El PO mandó **una captura de su teléfono**: *«esta imagen encanta, pero la que se comparte no es
+nada parecida»*. 🔴 **Y yo estaba construyendo al revés**: había entendido que quería el resto de
+tarjetas como las nuevas, cuando lo que quería es que **la imagen compartible se pareciera a la
+PANTALLA de cierre**, que es la que le gusta.
+
+### Eran TRES diferencias, no una
+| | La pantalla | El lienzo compartible |
+|---|---|---|
+| Fondo | **foto** con su degradado oscuro | degradado plano |
+| Composición | **centrada** | alineada a la izquierda |
+| Cifras | **fichas oscuras translúcidas** con borde claro | recuadros verdes |
+
+Ninguna de las tres estaba en la imagen. Ahora el lienzo dibuja **la misma foto** (`#wf-photo`),
+**el mismo degradado** (los cuatro topes salen del `.wf-photo::after` del CSS), **centrado**, y con
+**la misma ficha** (`.wf-stat`: `rgba(4,8,10,.58)`, borde `rgba(255,255,255,.16)`) y **la misma
+tarjeta de récord** (`.wf-pr`, con su estrella dorada).
+
+🔒 **La foto se pudo meter ahora y no antes por una razón concreta:** es del **mismo origen**
+(`media/brand/…`), que nunca tiñe el lienzo — y aun así pasa por `canvasSafePhoto` como cualquier
+otra, porque una regla de seguridad con excepciones deja de ser una regla. Si no carga, queda el
+fondo oscuro y la tarjeta sale igual: **nunca rota**.
+
+### Y de paso, la pantalla de compartir que nadie había mirado
+**`og:image` apuntaba a `icons/icon-512.png`** —un cuadrado de 512— con `twitter:card` declarado
+como `summary_large_image`, que espera **1200×630 apaisado**. O sea que **cada enlace que el PO
+comparte en sus historias salía con un iconito recortado**, y esa es la pantalla de compartir que
+ve **quien todavía no es cliente**. Nace `media/brand/og-1200x630.jpg`, dibujada con el mismo
+lienzo y la misma tipografía (`node scripts/og-gen.mjs`).
+🔴 **En JPEG y no en PNG:** en PNG el degradado pesaba **831 KB**, y una vista previa pesada la
+**descartan** los clientes de mensajería — el arreglo se habría quedado sin verse, que es peor que
+no hacerlo. En JPEG a 0,92 son **59 KB** con la misma cara, y tanto el generador como el candado
+**afirman el peso** además del tamaño.
+
+### QA
+- Suite **1129 → 1130** en los tres modos · hook 12/12 · `_prodcheck 603` verde.
+- `_verify-v597` **19/19** y `_verify-v601` **11/11**.
+- 🔒 El candado de la vista previa **lee los bytes del JPEG** (marcador SOF) para afirmar que el
+  archivo es de verdad 1200×630, en vez de creerle a la etiqueta `og:image:width` — que es
+  justamente el dato que estaba mintiendo antes.
+- 🔬 **El candado de v597 cazó un descuido mío en el rediseño:** al centrar la composición se me
+  fue el NOMBRE. En la pantalla el nombre viaja dentro del titular («¡Lo lograste, Andres!»), pero
+  en la tarjeta el titular es en primera persona porque la comparte ella misma — así que sin
+  dibujarlo aparte, la imagen no decía de quién era.
+- 🔬 Y las sondas del harness apuntaban a las coordenadas del diseño viejo: **realineadas**, con su
+  control intacto (sin nombre, 0 píxeles — la foto de fondo no las contamina).
+
 ## ⏮️ 2026-09-10 (6ª parte) — v602: LAS TARJETAS DIBUJABAN EN LA FUENTE DEL SISTEMA
 
 El PO, después de v601: *«¿y tú crees que la imagen ya se ve lo suficientemente premium?»*.
