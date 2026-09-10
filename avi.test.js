@@ -13786,6 +13786,45 @@ test('🔴 v601 · si el volumen por sesión BAJÓ, no hay titular en % (y el co
     'con el trabajo sostenido tampoco sale el titular: la guarda calla a todo el mundo');
 });
 
+// 🔒 v602 · LAS DOS TARJETAS DIBUJAN CON LA TIPOGRAFÍA DE LA MARCA.
+// El defecto lo cazó el PO mirando la imagen: los números estaban bien y la tarjeta se leía como
+// un tablero cualquiera porque el lienzo pedía `system-ui,Roboto` mientras la app entera usa
+// `Anton` y `Plus Jakarta Sans` (cargadas en index.html). 🔴 Y es un defecto SILENCIOSO en las dos
+// direcciones: un canvas que pide una fuente que no está cargada cae a la del sistema sin lanzar
+// nada, así que el arreglo necesita las DOS piezas —precargar y COMPROBAR al dibujar— o depende
+// de que la red haya sido rápida.
+test('🔒 v602: el lienzo pide la tipografía de la marca, y COMPRUEBA que esté cargada', () => {
+  const fs = require('fs'), path = require('path');
+  const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  // Las familias salen de una sola casa y son las de la marca (BRAND.md + styles.css).
+  assert.ok(/const BRAND_CANVAS_DISPLAY='Anton'/.test(infra), 'la display del lienzo ya no es Anton');
+  assert.ok(/const BRAND_CANVAS_UI='"Plus Jakarta Sans"'/.test(infra), 'la UI del lienzo ya no es Plus Jakarta Sans');
+  const i = infra.indexOf('function canvasFont(');
+  assert.ok(i > 0, 'se fue `canvasFont`: las tarjetas volverían a la fuente del sistema');
+  const cf = infra.slice(i, infra.indexOf('\n}', i)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  // 🔴 La comprobación SÍNCRONA es el candado de verdad: sin ella el lienzo pide una fuente que
+  //    puede no estar y cae a la del sistema sin decir nada.
+  assert.ok(/document\.fonts\.check/.test(cf),
+    '🔴 `canvasFont` dejó de COMPROBAR si la fuente está cargada: caería a la del sistema en silencio');
+  assert.ok(/BRAND_CANVAS_FALLBACK/.test(cf),
+    'sin respaldo, una fuente que no cargue deja el texto sin dibujar');
+  // ⚠️ Anton existe SOLO en 400: si el display pidiera 900, `fonts.check` diría que no está.
+  assert.ok(/'400 '\+px\+'px '\+BRAND_CANVAS_DISPLAY/.test(cf),
+    '🔴 el display pide un peso que Anton no tiene: la comprobación fallaría siempre y no se usaría nunca');
+  assert.ok(/document\.fonts\.load/.test(infra), 'se fue el precargado: el primer share saldría con la del sistema');
+  // Y NINGUNA de las dos tarjetas puede haberse quedado con la fuente del sistema escrita a mano.
+  [['app-3-coach.js', 'shareClientProgress'], ['app-4-entreno.js', 'wfShare']].forEach(([f, fn]) => {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    const a = src.indexOf('function ' + fn + '(');
+    const cuerpo = src.slice(a, src.indexOf('\nfunction ', a + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.ok(/_cf\(\d+/.test(cuerpo), `${fn} no usa la tipografía de la marca`);
+    assert.ok(!/px '\+F;/.test(cuerpo),
+      `🔴 ${fn} dejó textos con la fuente del SISTEMA escrita a mano: la tarjeta sale mezclada`);
+    assert.ok(/typeof canvasFont==='function'/.test(cuerpo),
+      `${fn} llama a canvasFont sin guarda typeof (cruza de módulo)`);
+  });
+});
+
 test('🔒 CABLEADO v601: la BARRA mide kilos y el titular sale de la mediana', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
@@ -16623,15 +16662,31 @@ test('🔒 CABLEADO v597: la imagen compartible DICE el nombre y lleva el círcu
 });
 
 test('🔒 v597: una foto NO puede llevarse el compartir entero (lienzo teñido)', () => {
-  const prep = _v597('_wfPrepShareAvatar');
+  // 🔁 RE-ENCUADRADO en v602: la comprobación del teñido se mudó a `canvasSafePhoto` (app-1),
+  // porque la tarjeta del HITO necesita la misma y dos copias de una regla de seguridad se acaban
+  // separando. El candado se muda con ella; lo que NO se hace es callarlo.
+  const fs = require('fs'), path = require('path');
+  const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = infra.indexOf('function canvasSafePhoto(');
+  assert.ok(i > 0, '🔴 se fue `canvasSafePhoto`: las dos tarjetas se quedan sin sonda de teñido');
+  const prep = infra.slice(i, infra.indexOf('\n}', i)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
   // 🔴 El daño de una foto remota en un canvas no es que la foto no salga: es que `toBlob` LANZA
   // y se pierde el compartir completo. Por eso v313 dibujó solo texto. Las dos vías o ninguna.
   assert.ok(prep.includes("if(!/^data:/i.test(src))img.crossOrigin='anonymous';"),
     '🔴 la foto remota ya no se pide con CORS: teñiría el lienzo y toBlob lanzaría SecurityError');
   assert.ok(/getImageData\(/.test(prep),
     '🔴 se fue la sonda de teñido: la ÚNICA forma de saber si tiñó es intentar leer un píxel');
-  assert.ok(/catch\(e\)\{_wfShareAvatar=null;\}/.test(prep),
-    '🔴 el teñido dejó de caer a iniciales: la tarjeta se compartiría o no según el bucket');
+  assert.ok(/catch\(e\)\{fin\(null\);\}/.test(prep),
+    '🔴 el teñido dejó de caer al respaldo: la tarjeta se compartiría o no según el bucket');
+  // Y las dos tarjetas la USAN, con su guarda de módulo: si una se descuelga, vuelve a tener su
+  // propia copia y el hueco se abre por ese lado.
+  ['app-4-entreno.js', 'app-3-coach.js'].forEach(f => {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    // La guarda vale en sus dos formas (`!==` para salir antes, `===` para entrar): lo que no
+    // vale es llamarla a pelo — es lo que revento 3 veces en Android real.
+    assert.ok(/typeof canvasSafePhoto\s*[!=]==\s*'function'/.test(src) && /canvasSafePhoto\(/.test(src),
+      `🔴 ${f} dejó de usar la sonda compartida (o perdió su guarda typeof)`);
+  });
   // Cinturón sobre los tirantes: si alguna vez entra una imagen por otra puerta, la persona ve
   // un aviso y no una excepción que se lleve la pantalla de cierre (blindaje de v579).
   const share = _v597('wfShare');

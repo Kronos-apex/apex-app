@@ -4,6 +4,52 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (6ª parte) — v602: LAS TARJETAS DIBUJABAN EN LA FUENTE DEL SISTEMA
+
+El PO, después de v601: *«¿y tú crees que la imagen ya se ve lo suficientemente premium?»*.
+La respuesta honesta era **no, y no era la composición**.
+
+### El defecto, medido
+**La app entera usa `Anton` (display) y `Plus Jakarta Sans` (todo lo demás)**, cargadas en
+`index.html` y declaradas en `BRAND.md`. **Las dos tarjetas compartibles dibujaban en
+`system-ui,Roboto,sans-serif`** — la fuente por defecto del sistema operativo. Los números estaban
+bien, las barras estaban bien, y la imagen se leía como un tablero de datos cualquiera. **Lo cazó
+el PO mirándola; ningún test iba a encontrar eso.**
+
+### Los tres arreglos
+1. **La tipografía de la marca en el lienzo** (`canvasFont`, app-1, compartida por las dos
+   tarjetas). 🔴 **Y es un defecto SILENCIOSO: un canvas que pide una fuente que no está cargada
+   cae a la del sistema sin lanzar nada.** Por eso hacen falta las dos piezas: el precargado
+   asíncrono al arrancar Y la comprobación **síncrona** (`document.fonts.check`) en el momento de
+   dibujar. Sin la segunda, el arreglo dependería de que la red hubiera sido rápida.
+   ⚠️ `Anton` existe **solo en peso 400**: pedirle 900 haría que `fonts.check` dijera que no está
+   aunque estuviera, y no se usaría nunca. El display fuerza 400 y el peso que se le pase se ignora.
+2. **Jerarquía de color.** Antes el mismo `#10E0A0` pintaba el rótulo, el titular, las 8 barras y
+   los 8 porcentajes: cuando todo grita, nada destaca. El acento vivo se reserva para **el número**;
+   las barras bajan a un verde apagado y los `+X%` de las filas pasan a blanco tenue.
+3. **El retrato**, con el mecanismo a prueba de teñido de v597 — que de paso **se mudó a una sola
+   casa** (`canvasSafePhoto`, app-1) porque las dos tarjetas necesitan la misma regla y dos copias
+   de una regla de seguridad se acaban separando (es el patrón de v424 y del bucket de v600).
+   🔒 **Va solo en la imagen que el coach comparte con su dedo, NO en `showcaseRow`**: esa fila se
+   publica sola en la web, y la cara de una persona no se publica de rebote.
+
+### QA
+- Suite **1128 → 1129** en los tres modos · hook 12/12 · `_prodcheck 602` verde.
+- `_verify-v601` a **11/11** y `_verify-v597` sigue en **19/19** (la tarjeta del cierre también
+  cambió de fuente y no se rompió).
+- 🔒 **El candado que importa prueba que la fuente se APLICÓ, no que se pidió:** mide el ancho de
+  «AVI» con la tipografía de marca y con la del sistema y exige que **difieran** (97 px contra 151).
+  Un check que solo mirara el `font=` habría pasado con la fuente sin cargar.
+- 🔁 Los candados de v597 se **RE-ENCUADRARON** a la casa nueva de la sonda de teñido, no se
+  callaron. Y la guarda vale en sus dos formas (`===`/`!==`): lo que no vale es llamarla a pelo.
+- 🔬 **Y otra vez fue MIRAR la imagen lo que encontró el defecto de este lote:** Anton tiene la caja
+  mucho más alta que la fuente del sistema, así que al cambiar la tipografía **el «+133%» subió y
+  quedó tocando el nombre** sin que se hubiera movido una sola coordenada. Un cambio de fuente
+  recompone la tarjeta entera.
+- 🔬 Y la sonda de las barras hubo que arreglarla otra vez: con Anton, **el «+» del titular mide
+  22 px de alto**, o sea dentro del rango de una barra, y contaba 9 de 8. Ahora discrimina por lo
+  que de verdad distingue a las barras —**que están equiespaciadas**— en vez de por su alto.
+
 ## ⏮️ 2026-09-10 (5ª parte) — v601: LA TARJETA DE HITO, CON GRÁFICA Y CON EL % HONESTO
 
 El PO, sobre la tarjeta de Luz: *«solo se ven 3 ejercicios de 15 mejoras… no sé qué piensas si

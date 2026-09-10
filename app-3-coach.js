@@ -1863,6 +1863,10 @@ function renderStoryCard(c){
     return;
   }
   _storyData=st;
+  // 🔒 Guarda de módulo: sin app-1 no hay comprobación de teñido, y sin comprobación NO se
+  //    arriesga el lienzo — sale el círculo de iniciales, que es el respaldo de siempre.
+  _storyAvatar=null;
+  if(typeof canvasSafePhoto==='function')canvasSafePhoto(c&&c.avatar,img=>{_storyAvatar=img||null;});
   const filas=st.subidas.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px">
       <span style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.ejercicio)}</span>
       <b style="color:var(--gt);white-space:nowrap">${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join('');
@@ -1940,6 +1944,10 @@ function retirarPermisoVitrina(){
   renderStoryCard(c);
 }
 let _storyData=null;
+// v602 · la foto de ESTA tarjeta, ya comprobada contra el teñido del lienzo (`canvasSafePhoto`).
+// Se prepara al PINTAR la tarjeta del panel, no al tocar «compartir»: `navigator.share` exige
+// activación reciente del usuario y meter una espera entre el toque y el share es un riesgo gratis.
+let _storyAvatar=null;
 // Dibuja 1080×1920 (formato historia) con la MISMA marca que el cierre del asesorado (v313):
 // gradiente esmeralda, sin fotos en el lienzo (jamás canvas contaminado ni dependencias de red).
 function shareClientProgress(){
@@ -1953,45 +1961,87 @@ function shareClientProgress(){
   const glow=x.createRadialGradient(870,240,60,870,240,700);
   glow.addColorStop(0,'rgba(16,224,160,.20)');glow.addColorStop(1,'rgba(16,224,160,0)');
   x.fillStyle=glow;x.fillRect(0,0,1080,1100);
-  const F='system-ui,Roboto,sans-serif';
-  x.fillStyle='#EAFBF4';x.font='900 84px '+F;x.fillText('AVI',90,190);
+  // v602 · la tipografia de la MARCA en el lienzo. `canvasFont` (app-1) resuelve en el momento
+  // de dibujar si Anton / Plus Jakarta estan cargadas; si no, devuelve la del sistema y la
+  // tarjeta sale como antes (nunca una rota). Se cruza de modulo, asi que va con guarda.
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  x.fillStyle='#EAFBF4';x.font=_cf(84,'900',true);x.fillText('AVI',90,190);
   x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
-  x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
+  x.fillStyle='rgba(234,251,244,.45)';x.font=_cf(26,'700');
   x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
   // Los meses y los entrenos van en UNA línea: son el mismo dato (cuánto lleva) y separarlos
   // gastaba dos renglones de los que hacen falta abajo para la gráfica.
-  x.fillStyle='#10E0A0';x.font='800 34px '+F;
+  // v602 · JERARQUIA DE COLOR: antes el mismo #10E0A0 pintaba el rotulo, el titular, las 8
+  // barras y los 8 porcentajes. Cuando todo grita, nada destaca. El acento vivo se reserva
+  // para EL NUMERO; lo demas retrocede a verde apagado o a blanco tenue.
+  x.fillStyle='rgba(16,224,160,.62)';x.font=_cf(34,'800');
   x.fillText((d.meses===1?'UN MES':d.meses+' MESES')+' ENTRENANDO  ·  '+d.entrenos+' ENTRENOS',90,395);
-  x.fillStyle='#FFFFFF';x.font='900 120px '+F;x.fillText(d.nombre,90,520);
+  // ── v602 · EL RETRATO: una tarjeta de testimonio sin cara es un informe ────────────────────
+  // La foto sale de `client.avatar` —la que sube la propia persona— y solo entra al lienzo si pasó
+  // la comprobación de teñido (`canvasSafePhoto`, app-1). Si no hay foto o no pasa, va el círculo
+  // de iniciales con SU color de la paleta, que es el avatar que ella ya se ve en la app.
+  // 🔒 Va SOLO en esta imagen, la que el coach comparte con su dedo. **No entra en `showcaseRow`**:
+  //    esa fila se publica sola en la web, y la cara de una persona no se publica de rebote.
+  const _cx=880,_cy=420,_cr=100;
+  x.save();
+  x.beginPath();x.arc(_cx,_cy,_cr,0,Math.PI*2);x.closePath();
+  if(_storyAvatar&&_storyAvatar.width&&_storyAvatar.height){
+    x.clip();
+    const _s=Math.max(2*_cr/_storyAvatar.width,2*_cr/_storyAvatar.height);   // cubrir sin deformar
+    x.drawImage(_storyAvatar,_cx-_storyAvatar.width*_s/2,_cy-_storyAvatar.height*_s/2,
+      _storyAvatar.width*_s,_storyAvatar.height*_s);
+  }else{
+    // El color y SU tinta se declaran juntos (candado del 29-jul: separarlos dejó dos avatares
+    // con el blanco fijo y 6 de los 8 colores por debajo del mínimo de lectura).
+    const _col=(typeof avc==='function'&&d.nombre)?avc(d.nombre):'#0A7C5B',_tin=(typeof inkOn==='function')?inkOn(_col):'#FFFFFF';
+    x.fillStyle=_col;x.fill();
+    x.fillStyle=_tin;x.font=_cf(Math.round(_cr*0.95),'900');
+    x.textAlign='center';x.textBaseline='middle';
+    x.fillText((typeof ini==='function'&&d.nombre)?ini(d.nombre):'AVI',_cx,_cy+4);
+  }
+  x.restore();
+  x.save();                                   // el anillo, fuera del recorte o se come la mitad
+  x.beginPath();x.arc(_cx,_cy,_cr,0,Math.PI*2);
+  x.strokeStyle='rgba(16,224,160,.75)';x.lineWidth=9;x.stroke();
+  x.restore();
+  // El nombre se ENCOGE hasta no chocar con el retrato: en un canvas no hay reflow que avise, y
+  // «Nicolás» a 120 px se metería dentro del círculo sin que nada lo impida.
+  x.fillStyle='#FFFFFF';
+  let _fn=120; x.font=_cf(_fn,'900',true);
+  while(_fn>52&&x.measureText(d.nombre).width>660){_fn-=6;x.font=_cf(_fn,'900',true);}
+  x.fillText(d.nombre,90,520);
 
   // ── EL TITULAR ─────────────────────────────────────────────────────────────────────────
   // 🔴 Es la MEDIANA de sus subidas, no el máximo, y dice CARGA, no FUERZA. Ver la nota de
   // `STORY_VOL_MIN_RATIO` en avi-core: con el máximo, la tarjeta de Nataly gritaría «+650%»
   // (una polea de 2 → 15 kg) mientras su volumen por sesión CAYÓ un 42%.
-  let yTit=700;
+  // v602 · 728 y no 700: Anton tiene una caja MUCHO mas alta que la fuente del sistema, asi que
+  // al cambiar la tipografia el «+133%» subio y casi toca el nombre. Se vio mirando la imagen,
+  // no midiendo: un cambio de fuente mueve la composicion aunque no se toque una coordenada.
+  let yTit=728;
   if(d.medianaPct!=null&&d.medianaPct>0){
-    x.fillStyle='#10E0A0';x.font='900 190px '+F;
+    x.fillStyle='#10E0A0';x.font=_cf(190,'900',true);
     const big='+'+d.medianaPct+'%';
     x.fillText(big,90,yTit);
     const wBig=x.measureText(big).width;
-    x.fillStyle='rgba(234,251,244,.85)';x.font='800 40px '+F;
-    x.fillText('DE CARGA',96+wBig,yTit-92);
-    x.fillStyle='rgba(234,251,244,.6)';x.font='600 30px '+F;
-    x.fillText('en la mitad de sus '+d.subieron,96+wBig,yTit-44);
-    x.fillText('ejercicios que subieron',96+wBig,yTit-6);
+    x.fillStyle='rgba(234,251,244,.85)';x.font=_cf(40,'800');
+    x.fillText('DE CARGA',124+wBig,yTit-92);
+    x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(30,'600');
+    x.fillText('en la mitad de sus '+d.subieron,124+wBig,yTit-44);
+    x.fillText('ejercicios que subieron',124+wBig,yTit-6);
     yTit+=64;
     // El volumen solo se dice cuando suma de verdad: un «+3%» al lado de un titular grande resta.
     if(d.volRatio!=null&&d.volRatio>=1.15){
-      x.fillStyle='rgba(234,251,244,.75)';x.font='600 36px '+F;
+      x.fillStyle='rgba(234,251,244,.7)';x.font=_cf(36,'600');
       x.fillText('Y mueve '+Math.round((d.volRatio-1)*100)+'% más peso en cada entreno',90,yTit);
       yTit+=54;
     }
   }else{
     // Sin titular en % (volumen a la baja): el recuento, que es verdad igual y no presume.
-    x.fillStyle='#10E0A0';x.font='900 96px '+F;
+    x.fillStyle='#10E0A0';x.font=_cf(96,'900',true);
     x.fillText(d.subieron+' de '+d.conCarga,90,yTit-20);
-    x.fillStyle='rgba(234,251,244,.85)';x.font='800 38px '+F;
+    x.fillStyle='rgba(234,251,244,.85)';x.font=_cf(38,'800');
     x.fillText('EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR',90,yTit+34);
     yTit+=96;
   }
@@ -2001,7 +2051,7 @@ function shareClientProgress(){
   //    ejercicio de carga más pequeña (2 → 15 kg = +650%) y la tarjeta entera se leería como si
   //    ese fuera su mejor levantamiento. Los kilos ganados son una cantidad física comparable;
   //    el % va al lado, como etiqueta, para que las dos cosas se vean a la vez.
-  x.fillStyle='rgba(234,251,244,.55)';x.font='700 30px '+F;
+  x.fillStyle='rgba(234,251,244,.4)';x.font=_cf(30,'700');
   x.fillText('DÓNDE SUBIÓ',90,yTit+34);
   const lista=(d.subidas||[]).slice(0,8);
   const maxGano=Math.max.apply(null,lista.map(s2=>s2.gano||0).concat([1]));
@@ -2010,24 +2060,24 @@ function shareClientProgress(){
   lista.forEach(s2=>{
     // El nombre se RECORTA por ancho MEDIDO, no por número de letras: «Extensión de Cuádriceps en
     // Máquina» y «Prensa» no ocupan lo mismo y un corte fijo parte palabras.
-    x.fillStyle='rgba(234,251,244,.9)';x.font='700 34px '+F;
+    x.fillStyle='rgba(234,251,244,.9)';x.font=_cf(34,'700');
     let nom=String(s2.ejercicio);
     while(nom.length>4&&x.measureText(nom).width>600)nom=nom.slice(0,-1);
     if(nom!==s2.ejercicio)nom=nom.replace(/\s+\S*$/,'')+'…';
     x.fillText(nom,90,y);
     // los kilos, a la derecha y alineados al borde
     x.textAlign='right';
-    x.fillStyle='rgba(234,251,244,.7)';x.font='700 32px '+F;
+    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(32,'700');
     x.fillText(s2.de+' → '+s2.a+' kg',990,y);
     x.textAlign='start';
     // la barra
     const w=Math.max(8,Math.round(560*((s2.gano||0)/maxGano)));
     x.fillStyle='rgba(255,255,255,.07)';_rr(90,y+16,560,20,10);x.fill();
     const g2=x.createLinearGradient(90,0,90+w,0);
-    g2.addColorStop(0,'#0A7C5B');g2.addColorStop(1,'#10E0A0');
+    g2.addColorStop(0,'#0A6B4F');g2.addColorStop(1,'#13B583');
     x.fillStyle=g2;_rr(90,y+16,w,20,10);x.fill();
     if(s2.pct!=null){
-      x.fillStyle='#10E0A0';x.font='900 34px '+F;
+      x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'900');
       x.fillText('+'+s2.pct+'%',668,y+38);
     }
     y+=FILA;
@@ -2035,10 +2085,10 @@ function shareClientProgress(){
   // El recuento COMPLETO cierra la tarjeta: el titular habla de la mitad de los que subieron, y
   // esta línea dice sobre cuántos. Sin ella la tarjeta no dice nunca el total (y de paso, el hueco
   // entre la última barra y el pie quedaba muerto). Se topa para no pisar el pie.
-  x.fillStyle='rgba(234,251,244,.7)';x.font='600 34px '+F;
+  x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(34,'600');
   x.fillText('Subió carga en '+d.subieron+' de '+d.conCarga+' ejercicios',90,Math.min(y+40,1690));
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
-  x.fillStyle='rgba(234,251,244,.8)';x.font='700 34px '+F;
+  x.fillStyle='rgba(234,251,244,.7)';x.font=_cf(34,'700');
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entrena con '+(coach||'AVI')+(site?('  ·  '+site):''),90,1830);

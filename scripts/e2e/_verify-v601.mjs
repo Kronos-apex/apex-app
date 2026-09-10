@@ -78,14 +78,25 @@ const pintar = async (story, nombreArchivo) => {
     // linea del pie (4 px): contar «cualquier franja verde» daba 12 de 8. Las barras son las
     // unicas de 20 px de alto, y los ALTOS se devuelven para poder ver que la sonda discrimina
     // en vez de creerselo.
-    const filas=altos.filter(a2=>a2[1]>=16&&a2[1]<=24).length;
+    const cand=altos.filter(a2=>a2[1]>=14&&a2[1]<=26).map(a2=>a2[0]);
+    let filas=0;
+    for(let i=0;i<cand.length;i++)for(let j=i+1;j<cand.length;j++){
+      const paso=cand[j]-cand[i];
+      if(paso<40)continue;
+      let n=1,y2=cand[i];
+      while(cand.indexOf(y2+paso)>=0){n++;y2+=paso;}
+      if(n>filas)filas=n;
+    }
+    // el RETRATO: el centro del circulo (880,420). Con foto o con iniciales, ahi NO puede
+    // estar el fondo de la tarjeta: si lo esta, el retrato no se dibujo.
+    const rp=g.getImageData(880,420,1,1).data; const retrato=[rp[0],rp[1],rp[2]];
     // ¿hay tinta en la banda del titular? (y 560..700, a la derecha del margen)
     const t=g.getImageData(90,560,900,140).data; let tinta=0;
     for(let i=0;i<t.length;i+=4){ if(t[i]+t[i+1]+t[i+2]>150) tinta++; }
     // ¿algo pisa el pie? la linea del pie esta en y=1760; la banda 1715..1755 debe estar limpia
     const p=g.getImageData(90,1715,900,40).data; let sucio=0;   // el recuento cierra en 1690
     for(let i=0;i<p.length;i+=4){ if(p[i]+p[i+1]+p[i+2]>150) sucio++; }
-    return JSON.stringify({blob,err,filas,altos,tinta,sucio,w:cv.width,h:cv.height});
+    return JSON.stringify({blob,err,filas,altos,tinta,sucio,retrato,w:cv.width,h:cv.height});
   })()`);
   const dataUrl = await ev(`window._storyLastCanvas?window._storyLastCanvas.toDataURL('image/png'):''`);
   if (dataUrl && dataUrl.startsWith('data:image/png')) {
@@ -102,6 +113,27 @@ try {
   check('G0 la funcion del lienzo esta cargada sin necesidad de sesion',
     (await ev(`typeof shareClientProgress==='function'`)) === true);
 
+  // ── v602 · LA TIPOGRAFIA: probar que se APLICO, no que se pidio ──
+  // Un canvas que pide una fuente no cargada cae a la del sistema EN SILENCIO. La unica prueba
+  // honesta es MEDIR: si el ancho del mismo texto con la fuente de marca es igual que con la del
+  // sistema, es que no se aplico. Ese es el control de discriminacion de este check.
+  await ev(`(typeof preloadBrandCanvasFonts==='function')&&preloadBrandCanvasFonts()`);
+  await waitFor(`(()=>{try{return document.fonts.check('400 40px Anton')&&document.fonts.check('800 40px "Plus Jakarta Sans"')}catch(e){return false}})()`, 20000);
+  const tipo = await evj(`JSON.stringify((()=>{
+    const c=document.createElement('canvas'),g=c.getContext('2d');
+    const marca=canvasFont(84,'900',true), sistema="900 84px system-ui,Roboto,sans-serif";
+    g.font=marca; const wm=g.measureText('AVI').width;
+    g.font=sistema; const ws=g.measureText('AVI').width;
+    g.font=canvasFont(40,'800'); const ui=g.font;
+    return {marca, ui, wm:Math.round(wm), ws:Math.round(ws),
+      cargadas:document.fonts.check('400 40px Anton')&&document.fonts.check('800 40px "Plus Jakarta Sans"')};
+  })())`);
+  check('F1 las fuentes de la marca estan cargadas en la pagina', tipo.cargadas === true, JSON.stringify(tipo));
+  check('F2 el lienzo pide Anton para el display y Plus Jakarta para el resto',
+    /Anton/.test(tipo.marca || '') && /Plus Jakarta Sans/.test(tipo.ui || ''), `${tipo.marca} | ${tipo.ui}`);
+  check('F3 y de verdad se APLICA: el ancho con la marca difiere del de la fuente del sistema',
+    tipo.wm > 0 && tipo.ws > 0 && tipo.wm !== tipo.ws, `marca=${tipo.wm}px sistema=${tipo.ws}px`);
+
   // ── La tarjeta de Luz, con sus numeros REALES ──
   const g = await pintar(STORY, 'v601-luz.png');
   check('G1 el lienzo se genera 1080×1920 y sale el blob',
@@ -110,6 +142,11 @@ try {
     g.filas === STORY.subidas.length, 'franjas de barra=' + g.filas + ' y subidas=' + STORY.subidas.length);
   check('G3 el titular en % ocupa su banda', (g.tinta || 0) > 3000, 'tinta en la banda=' + g.tinta);
   check('G4 nada pisa el pie de la tarjeta', (g.sucio || 0) === 0, 'pixeles sobre el pie=' + g.sucio);
+  // F4 · el retrato: sin foto son las INICIALES sobre su color de la paleta, y con foto la foto.
+  // En los dos casos el centro del circulo NO puede ser el fondo de la tarjeta (#0A2118-ish).
+  const fondo = (g.retrato || []).join(',');
+  check('F4 el retrato se dibuja (el centro del circulo no es el fondo)',
+    !!g.retrato && (g.retrato[0] + g.retrato[1] + g.retrato[2]) > 90, 'centro=' + fondo);
 
   // ── CONTROL · la misma tarjeta SIN titular (volumen a la baja) ──
   // Sin este caso, «hay tinta en la banda del titular» lo aprobaria cualquier cosa que se pinte

@@ -2635,21 +2635,17 @@ function _wfRenderCrest(client){
 // tarjeta dibuja el círculo de iniciales y se comparte igual. Se prepara al ABRIR la pantalla,
 // no al tocar «Compartir», para no meter una espera entre el toque y `navigator.share` (que
 // exige activación reciente del usuario).
+// v602 · La comprobación del teñido se mudó a `canvasSafePhoto` (app-1): la tarjeta del HITO
+// necesita exactamente la misma, y dos copias de una regla de seguridad se acaban separando —
+// una se arregla y la otra se queda con el hueco (es el patrón de v424 y del bucket de v600).
+// Aquí queda solo la ranura: de quién es la foto de ESTE cierre.
 let _wfShareAvatar=null;
 function _wfPrepShareAvatar(src){
   _wfShareAvatar=null;
-  if(!src)return;
-  const img=new Image();
-  if(!/^data:/i.test(src))img.crossOrigin='anonymous';
-  img.onload=()=>{
-    try{
-      const p=document.createElement('canvas');p.width=p.height=2;
-      const px=p.getContext('2d');px.drawImage(img,0,0,2,2);px.getImageData(0,0,1,1); // lanza si quedó teñido
-      _wfShareAvatar=img;
-    }catch(e){_wfShareAvatar=null;}
-  };
-  img.onerror=()=>{_wfShareAvatar=null;};
-  img.src=src;
+  // 🔒 Cruza módulos: sin app-1 no hay comprobación de teñido, y sin comprobación NO se arriesga
+  //    el lienzo — se comparte con el círculo de iniciales, que es el respaldo de siempre.
+  if(typeof canvasSafePhoto!=='function')return;
+  canvasSafePhoto(src,img=>{_wfShareAvatar=img||null;});
 }
 
 // El círculo del retrato dentro del lienzo: la foto recortada en redondo si se pudo cargar sin
@@ -2669,7 +2665,10 @@ function _wfDrawCrest(x,cx,cy,r,name,img,F){
     const col=(typeof avc==='function'&&name)?avc(name):'#0A7C5B', tinta=(typeof inkOn==='function')?inkOn(col):'#FFFFFF';
     x.fillStyle=col;x.fill();
     x.fillStyle=tinta;
-    x.font='900 '+Math.round(r*0.95)+'px '+F;x.textAlign='center';x.textBaseline='middle';
+    // Las iniciales tambien en la tipografia de la marca (v602); `F` se conserva de respaldo.
+    x.font=(typeof canvasFont==='function')?canvasFont(Math.round(r*0.95),'900')
+      :('900 '+Math.round(r*0.95)+'px '+F);
+    x.textAlign='center';x.textBaseline='middle';
     x.fillText((typeof ini==='function'&&name)?ini(name):'AVI',cx,cy+4);
   }
   x.restore();
@@ -2690,11 +2689,14 @@ function wfShare(){
   const glow=x.createRadialGradient(870,240,60,870,240,700);
   glow.addColorStop(0,'rgba(16,224,160,.20)');glow.addColorStop(1,'rgba(16,224,160,0)');
   x.fillStyle=glow;x.fillRect(0,0,1080,1100);
-  const F='system-ui,Roboto,sans-serif';
+  // v602 · la tipografia de la MARCA (Anton + Plus Jakarta) en vez de la del sistema. Ver
+  // `canvasFont` en app-1: si no estan cargadas devuelve la del sistema y sale como antes.
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  const F='system-ui,Roboto,sans-serif';   // el circulo de iniciales lo sigue usando via _wfDrawCrest
   // wordmark
-  x.fillStyle='#EAFBF4';x.font='900 84px '+F;x.fillText('AVI',90,190);
+  x.fillStyle='#EAFBF4';x.font=_cf(84,'900',true);x.fillText('AVI',90,190);
   x.fillStyle='#10E0A0';x.fillRect(90,215,120,7);
-  x.fillStyle='rgba(234,251,244,.55)';x.font='700 26px '+F;
+  x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(26,'700');
   x.fillText('ENTRENAMIENTO CON NOMBRE PROPIO',90,275);
   // quién entrenó: retrato (o iniciales) y su nombre. Antes la imagen no lo decía en NINGUNA
   // parte — el nombre solo elegía entre «¡Lo logré!» y «¡Sesión lista!», y ahí se quedaba.
@@ -2703,15 +2705,15 @@ function wfShare(){
     // El nombre se ENCOGE hasta caber: un «Michelle» de 70 px cabe, pero el hueco es finito y
     // un nombre largo se saldría del lienzo sin que nada avise (no hay reflow en un canvas).
     let fs=70;
-    x.fillStyle='#FFFFFF';x.font='900 '+fs+'px '+F;
-    while(fs>34&&x.measureText(d.name).width>690){fs-=4;x.font='900 '+fs+'px '+F;}
+    x.fillStyle='#FFFFFF';x.font=_cf(fs,'900',true);
+    while(fs>34&&x.measureText(d.name).width>690){fs-=4;x.font=_cf(fs,'900',true);}
     x.fillText(d.name,282,424);
   }
   // titular
-  x.fillStyle='#10E0A0';x.font='800 34px '+F;x.fillText('ENTRENAMIENTO COMPLETADO',90,570);
-  x.fillStyle='#FFFFFF';x.font='900 112px '+F;
+  x.fillStyle='#10E0A0';x.font=_cf(34,'800');x.fillText('ENTRENAMIENTO COMPLETADO',90,570);
+  x.fillStyle='#FFFFFF';x.font=_cf(112,'900',true);
   x.fillText(d.name?('¡Lo logré!'):'¡Sesión lista!',90,700);
-  x.fillStyle='rgba(234,251,244,.75)';x.font='600 40px '+F;
+  x.fillStyle='rgba(234,251,244,.75)';x.font=_cf(40,'600');
   x.fillText((d.rname?d.rname+'  ·  ':'')+d.fecha,90,775);
   // estadísticas 2×2
   const cells=d.chips.slice(0,4);
@@ -2723,21 +2725,21 @@ function wfShare(){
     _rr(cx,cy,430,215,26);x.fill();
     x.strokeStyle='rgba(16,224,160,.28)';x.lineWidth=2.5;
     _rr(cx,cy,430,215,26);x.stroke();
-    x.fillStyle='#10E0A0';x.font='900 76px '+F;x.fillText(String(c2[1]),cx+36,cy+112);
-    x.fillStyle='rgba(234,251,244,.6)';x.font='700 28px '+F;x.fillText(String(c2[0]).toUpperCase(),cx+36,cy+172);
+    x.fillStyle='#10E0A0';x.font=_cf(76,'900',true);x.fillText(String(c2[1]),cx+36,cy+112);
+    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(28,'700');x.fillText(String(c2[0]).toUpperCase(),cx+36,cy+172);
   });
   // récords
   let ry=900+Math.ceil(cells.length/2)*260+70;
   d.prs.forEach(pr=>{
-    x.fillStyle='#F2C94C';x.font='900 40px '+F;x.fillText('★',90,ry);
-    x.fillStyle='#FFFFFF';x.font='800 38px '+F;
+    x.fillStyle='#F2C94C';x.font=_cf(40,'900');x.fillText('★',90,ry);
+    x.fillStyle='#FFFFFF';x.font=_cf(38,'800');
     const det=pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps:'')):(pr.val+' '+pr.unit);
     x.fillText('Récord: '+pr.name+' — '+det,150,ry);
     ry+=72;
   });
   // pie con el coach
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
-  x.fillStyle='rgba(234,251,244,.8)';x.font='700 34px '+F;
+  x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),90,1830);

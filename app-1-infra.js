@@ -2030,3 +2030,62 @@ function aviIconizeStatic(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aviIconizeStatic);
 else{try{aviIconizeStatic();}catch(_e){}}
+
+// ══════════ v602 · LO QUE LAS DOS TARJETAS COMPARTIBLES NECESITAN ══════════
+// El cierre del asesorado (app-4) y el hito del coach (app-3) dibujan en canvas y las dos
+// necesitan lo mismo: la tipografía de la marca y una foto que no contamine el lienzo. Vivía
+// duplicado a medias; una sola casa, porque dos definiciones de lo mismo se acaban separando.
+//
+// 🔴 EL DEFECTO QUE ARREGLA ESTO: las dos tarjetas dibujaban en `system-ui,Roboto,sans-serif` —
+// la fuente por defecto del SISTEMA — mientras la app entera usa `Anton` (display) y
+// `Plus Jakarta Sans` (todo lo demás), cargadas en index.html. Los números estaban bien y la
+// imagen se leía como un tablero de datos cualquiera, no como la marca. Lo cazó el PO mirándola.
+const BRAND_CANVAS_DISPLAY='Anton';
+const BRAND_CANVAS_UI='"Plus Jakarta Sans"';
+const BRAND_CANVAS_FALLBACK='system-ui,Roboto,sans-serif';
+// 🔴 UN CANVAS QUE PIDE UNA FUENTE QUE NO ESTÁ CARGADA CAE A LA DEL SISTEMA **EN SILENCIO**: no
+//    lanza, no avisa, y la imagen sale igual de genérica que antes. Por eso hay dos piezas: este
+//    precargado (asíncrono, al arrancar) y la comprobación SÍNCRONA de abajo en el momento de
+//    dibujar. Sin la comprobación, el arreglo dependería de que la red haya sido rápida.
+function preloadBrandCanvasFonts(){
+  try{
+    if(!document.fonts||!document.fonts.load)return;
+    document.fonts.load('400 190px '+BRAND_CANVAS_DISPLAY).catch(()=>{});
+    ['600','700','800','900'].forEach(w=>{
+      document.fonts.load(w+' 40px '+BRAND_CANVAS_UI).catch(()=>{});
+    });
+  }catch(e){}
+}
+// El `font` COMPLETO para el lienzo, ya resuelto.
+// ⚠️ `Anton` existe SOLO en peso 400: pedirle 900 haría que el navegador lo sintetice o lo
+//    descarte, y `fonts.check('900 … Anton')` diría que no está aunque esté. Por eso el display
+//    fuerza 400 y el peso que se le pase se ignora a propósito.
+function canvasFont(px,weight,display){
+  const ok=fam=>{ try{ return !!(document.fonts&&document.fonts.check&&document.fonts.check((fam===BRAND_CANVAS_DISPLAY?'400':'800')+' 40px '+fam)); }catch(e){ return false; } };
+  if(display&&ok(BRAND_CANVAS_DISPLAY))return '400 '+px+'px '+BRAND_CANVAS_DISPLAY+','+BRAND_CANVAS_FALLBACK;
+  if(!display&&ok(BRAND_CANVAS_UI))return weight+' '+px+'px '+BRAND_CANVAS_UI+','+BRAND_CANVAS_FALLBACK;
+  return weight+' '+px+'px '+BRAND_CANVAS_FALLBACK;   // sin la fuente, la tarjeta de antes: nunca una rota
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',preloadBrandCanvasFonts);
+else{try{preloadBrandCanvasFonts();}catch(_e){}}
+
+// Copia de una foto APTA PARA UN LIENZO. Sale de v597 (el retrato del cierre) y ahora la usan las
+// dos tarjetas. 🔴 Una foto de otro origen TIÑE el canvas y `toBlob` lanza SecurityError: eso no
+// se lleva la foto, se lleva el COMPARTIR ENTERO. Se pide con CORS y se COMPRUEBA el teñido
+// leyendo 1 píxel en un lienzo aparte antes de darla por buena — la única forma de saberlo es
+// intentarlo. `done(img)` recibe la imagen usable, o `done(null)` si no se puede.
+function canvasSafePhoto(src,done){
+  const fin=typeof done==='function'?done:function(){};
+  if(!src){fin(null);return;}
+  const img=new Image();
+  if(!/^data:/i.test(src))img.crossOrigin='anonymous';
+  img.onload=()=>{
+    try{
+      const p=document.createElement('canvas');p.width=p.height=2;
+      const px=p.getContext('2d');px.drawImage(img,0,0,2,2);px.getImageData(0,0,1,1); // lanza si quedó teñido
+      fin(img);
+    }catch(e){fin(null);}
+  };
+  img.onerror=()=>{fin(null);};
+  img.src=src;
+}
