@@ -17852,6 +17852,30 @@ test('🔒 CABLEADO v596: el service worker usa el badge propio y lo precachea',
     '🔴 el badge no entra al precache: sin red la notificación vuelve al ícono genérico');
 });
 
+test('🔒 CABLEADO v606: el ajuste de tamaño de texto LLEGA al cierre del entreno', () => {
+  const fs = require('fs'), path = require('path');
+  // 🔒 Se leen las REGLAS, no el archivo: los comentarios de `styles.css` explican justamente
+  //    este arreglo, y un candado que busca texto dentro de su propia explicación aprueba solo
+  //    (pasó TRES veces el 8-sep). Sin comentarios, lo que queda es CSS que el navegador aplica.
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const [fs_, factor] of [['lg', '1.18'], ['xl', '1.40']]) {
+    const re = new RegExp('html\\[data-fs="' + fs_ + '"\\][^{}]*\\.wf-inner[^{}]*\\{[^}]*zoom:\\s*' + factor);
+    assert.ok(re.test(css),
+      `🔴 el cierre de entreno se quedó sin zoom en «${fs_}»: quien puso la letra grande vuelve a ` +
+      'leer las cifras de su entreno a tamaño normal');
+  }
+  // 🔴 EL ERROR QUE HAY QUE SEGUIR EVITANDO: el zoom NO puede ir en `#workout-finish`, que es
+  //    `position:fixed;inset:0` — multiplicaría una caja que ya ocupa el viewport entero y la
+  //    sacaría de la pantalla (es la trampa que ya cazó `.sroom` en la auditoría del 6-ago).
+  assert.ok(!/html\[data-fs="(lg|xl)"\][^{}]*#workout-finish\s*\{[^}]*zoom:/.test(css),
+    '🔴 el zoom se puso en #workout-finish (fixed;inset:0): saca la pantalla del viewport. Va en .wf-inner');
+  // El scroller tiene que seguir siéndolo: lo que crece se alcanza scrolleando, y «Continuar →»
+  // —la única salida— vive al final. Regresión viva: scripts/e2e/_repro-wf-fs.mjs
+  assert.ok(/\.wf-inner\s*\{[^}]*overflow-y:\s*auto/.test(css),
+    '🔴 `.wf-inner` dejó de ser scroller: con letra grande el botón de salir queda inalcanzable');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

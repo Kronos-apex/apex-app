@@ -1798,6 +1798,25 @@ html[data-fs="xl"] .sroom-body, html[data-fs="xl"] .sroom-bar{ zoom:1.40; }
 html[data-zoomw="scale"][data-fs="lg"] .sroom-body, html[data-zoomw="scale"][data-fs="lg"] .sroom-bar{ width:calc(100%/1.18); transform-origin:left top; }
 html[data-zoomw="scale"][data-fs="xl"] .sroom-body, html[data-zoomw="scale"][data-fs="xl"] .sroom-bar{ width:calc(100%/1.40); transform-origin:left top; }
 
+/* CIERRE DE ENTRENO (`#workout-finish`): el ajuste de tamaño de texto tampoco llegaba aquí — y
+   esta es la pantalla del pico emocional del día, la que lleva las cifras de SU entreno.
+   El `zoom` va en `.wf-inner`, NUNCA en `#workout-finish`: es el mismo caso que `.sroom`
+   (`position:fixed;inset:0` — un `zoom` ahí multiplica una caja que YA ocupa el viewport entero).
+   `.wf-inner` es el gemelo de `.sroom-body`: el contenedor interno, y además el scroller
+   (`overflow-y:auto`), así que lo que crece se alcanza scrolleando.
+   ⚠️ `.wf-inner` es `inset:0`, o sea que su ANCHO Y SU ALTO salen de las insets, no de `width`.
+   En un motor legacy (`zoom` escala también la caja) eso desborda por los DOS ejes, y el de abajo
+   duele: `#workout-finish` es `overflow:hidden`, así que lo que sobresale por abajo no se puede
+   alcanzar ni scrolleando y «Continuar →» —la ÚNICA salida de la pantalla— queda fuera. Por eso
+   aquí la compensación lleva `height` además de `width`: es la lección de v452 (altura y ancho son
+   dos ejes distintos) aplicada a un elemento que se dimensiona por insets.
+   Medido con `_repro-wf-fs.mjs`: antes ×1.00 en «lg» y en «xl», con `.cnp` de control creciendo en
+   la misma corrida. */
+html[data-fs="lg"] .wf-inner{ zoom:1.18; }
+html[data-fs="xl"] .wf-inner{ zoom:1.40; }
+html[data-zoomw="scale"][data-fs="lg"] .wf-inner{ width:calc(100%/1.18); height:calc(100%/1.18); transform-origin:left top; }
+html[data-zoomw="scale"][data-fs="xl"] .wf-inner{ width:calc(100%/1.40); height:calc(100%/1.40); transform-origin:left top; }
+
 /* Modales: el `zoom` (factor) va siempre; la compensación de ancho + el anclaje del backdrop
    arriba-izquierda (zoom rompe el centrado del flex en legacy) van SOLO en motores legacy. */
 html[data-fs="lg"] .md{ zoom:1.18; }
