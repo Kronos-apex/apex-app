@@ -13829,6 +13829,45 @@ test('🔒 v602: el lienzo pide la tipografía de la marca, y COMPRUEBA que est�
 // `og:image` apuntaba a un icono CUADRADO de 512 px con `twitter:card=summary_large_image`, que
 // espera 1200×630 apaisado: cada enlace compartido salía con un iconito recortado. Nada de esto
 // da un error — el enlace funciona, solo se ve mal, y lo ve justo quien todavía no entró.
+// 🔒 v604 · LA FOTO DEL CIERRE NO PUEDE SER UN HOMBRE PARA TODO EL MUNDO.
+// Lo cazó el PO: «¿y si es una mujer quien comparte, también le sale un hombre de fondo?». Sí.
+// `WF_DEFAULT_PHOTO` era `ob-2.jpg` (un hombre) y `window.AVI_FINISH_PHOTO`, que existía para
+// sobreescribirla, NO LA FIJABA NADIE — dos sitios la leían y ninguno la escribía. Medido sobre
+// las fichas reales: 12 de 27 son mujeres, y de las 11 que de verdad entrenan, 7 son mujeres.
+// Esto no da ningún error: la tarjeta sale bonita y con alguien que no se le parece.
+test('🔴 v604 · la foto del cierre la decide el SEXO, y el fixture discrimina', () => {
+  assert.strictEqual(core.finishPhotoFor('F'), core.WF_PHOTO_F, 'a una mujer no le sale su foto');
+  assert.strictEqual(core.finishPhotoFor('M'), core.WF_PHOTO_M, 'a un hombre no le sale su foto');
+  // 🔴 CONTROL: las dos rutas son DISTINTAS. Sin esto, una función que devolviera siempre la
+  //    misma foto pasaría las dos aserciones de arriba tan ricamente.
+  assert.notStrictEqual(core.WF_PHOTO_F, core.WF_PHOTO_M,
+    'las dos fotos son el mismo archivo: la función no cambia nada');
+  // Sin dato se sigue la ÚNICA definición de sexo de la app (`getSexCode`: lo que no es 'M' es
+  // 'F'), no una segunda inventada aquí — dos definiciones de lo mismo acaban contradiciéndose.
+  assert.strictEqual(core.finishPhotoFor(undefined), core.finishPhotoFor('F'), 'sin dato no sigue a getSexCode');
+  assert.strictEqual(core.finishPhotoFor('x'), core.finishPhotoFor('F'), 'un sexo raro no sigue a getSexCode');
+  // 🔒 Y LOS DOS ARCHIVOS EXISTEN. Una ruta que apunta a un 404 deja el cierre sin fondo, que es
+  //    peor que el fondo equivocado: la pantalla se ve rota.
+  const fs = require('fs'), path = require('path');
+  [core.WF_PHOTO_F, core.WF_PHOTO_M].forEach(f => assert.ok(fs.existsSync(path.join(__dirname, f)),
+    `🔴 la foto ${f} no está en el repo: el cierre se quedaría sin fondo`));
+});
+
+test('🔒 CABLEADO v604: la pantalla pide la foto de la PERSONA, no la constante', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function showWorkoutFinish(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/finishPhotoFor\(c&&c\.sex\)/.test(cuerpo),
+    '🔴 la pantalla volvió a la foto fija: a las mujeres les sale un hombre de fondo otra vez');
+  assert.ok(/typeof finishPhotoFor==='function'/.test(cuerpo),
+    'llamada a avi-core sin guarda typeof');
+  // Y la MISMA fuente alimenta la pantalla y el lienzo compartible: si se separan, la imagen que
+  // se comparte deja de ser la pantalla que se vio (que es justo lo que v603 vino a arreglar).
+  assert.ok(/_bgSrc/.test(cuerpo) && (cuerpo.match(/_bgSrc/g) || []).length >= 3,
+    '🔴 la foto de la pantalla y la del lienzo dejaron de salir de la misma variable');
+});
+
 test('🔒 v603: la tarjeta de vista previa existe, es 1200×630 y no pesa de más', () => {
   const fs = require('fs'), path = require('path');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');

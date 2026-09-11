@@ -2386,7 +2386,11 @@ function finishSessionEarly(){
 }
 
 // ── Fin de entrenamiento: celebración full-bleed (se dispara al 100%) ──
-// Foto: window.AVI_FINISH_PHOTO la sobreescribe; default = foto de marca AVI.
+// Foto: window.AVI_FINISH_PHOTO la sobreescribe; si no, la que le corresponde a la persona.
+// v604 · Esto era `ob-2.jpg` —un hombre— PARA TODO EL MUNDO: `AVI_FINISH_PHOTO` existia para
+// sobreescribirla y no la fijaba nadie. Ahora la decide `finishPhotoFor` (avi-core, PURA) con el
+// MISMO `getSexCode` que usa el resto de la app. Este default queda solo como red de seguridad
+// por si avi-core no cargo: la pantalla tiene que salir igual, no en blanco.
 const WF_DEFAULT_PHOTO='media/brand/ob-2.jpg';
 let _wfShownFor=null; // routineId|día ya celebrado → evita re-pop al re-marcar la última serie
 // fmtDuration → avi-core.js (fuente única, testeada)
@@ -2467,7 +2471,10 @@ function showWorkoutFinish(routine,stats){
       }
     }
   }catch(e){}
-  const _bgSrc=window.AVI_FINISH_PHOTO||WF_DEFAULT_PHOTO;
+  // La foto que le corresponde a ESTA persona. `window.AVI_FINISH_PHOTO` sigue mandando si
+  // alguien la fija; `typeof` porque `finishPhotoFor` vive en avi-core.
+  const _bgSrc=window.AVI_FINISH_PHOTO
+    ||((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO);
   document.getElementById('wf-photo').style.backgroundImage=`url('${_bgSrc}')`;
   // La MISMA foto va al lienzo compartible, para que la imagen que sale sea la pantalla que se
   // ve. Se prepara aqui y no al tocar «Compartir»: `navigator.share` exige activacion reciente.

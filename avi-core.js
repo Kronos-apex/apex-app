@@ -26,6 +26,24 @@ function getSexCode(sex) {
   return sex === 'M' ? 'M' : 'F';
 }
 
+// ── v604 · LA FOTO DEL CIERRE NO PUEDE SER UN HOMBRE PARA TODO EL MUNDO ──────────────────
+// 🔴 Lo cazó el PO: *«¿y si es una mujer quien comparte, también le sale un hombre de fondo?»*.
+// Sí. `WF_DEFAULT_PHOTO` era `ob-2.jpg` —un hombre— y `window.AVI_FINISH_PHOTO`, que existía para
+// sobreescribirla, **no la fijaba nadie**: la leían dos sitios y no la escribía ninguno. Así que
+// esa foto salía en la pantalla de cierre Y en la imagen compartible de TODAS las personas.
+// Medido el 10-sep-2026 sobre las fichas reales: **12 de 27 son mujeres, y de las 11 que de verdad
+// entrenan (≥8 sesiones), 7 son mujeres**. O sea que a la mayoría de quien termina un entreno le
+// salía de fondo alguien que no se le parece, justo en la imagen que va a compartir con su gente.
+// 🔒 El sexo sale de `getSexCode`, la ÚNICA definición que la app ya usa: sin dato trata a la
+//    persona como 'F' en todo lo demás (gasto, % de grasa), y que la foto dijera otra cosa sería
+//    abrir una segunda definición de lo mismo — que es como empiezan las contradicciones (v435).
+// PURA: recibe el sexo, devuelve la ruta. Sin DOM y sin decidir nada más.
+const WF_PHOTO_M = 'media/brand/ob-2.jpg';
+const WF_PHOTO_F = 'media/brand/ath-woman-2.jpg';   // la contraparte exacta: misma luz, misma camiseta
+function finishPhotoFor(sex) {
+  return getSexCode(sex) === 'M' ? WF_PHOTO_M : WF_PHOTO_F;
+}
+
 // ⛔ `calcMacrosSugeridos` BORRADA en v436: era una CUARTA cuenta (la que rellenaba «Editar
 // plan») que dosificaba sobre el PESO TOTAL — a quien tiene IMC>30 le proponía comer por encima
 // de su gasto con objetivo de perder grasa. El formulario usa `nutritionEstimate`, que es lo que
@@ -10369,6 +10387,9 @@ if (typeof module !== 'undefined' && module.exports) {
     NUT_REVIEW_MIN_GAP,
     nutMealSplit,
     getSexCode,
+    finishPhotoFor,
+    WF_PHOTO_M,
+    WF_PHOTO_F,
     migrateRoutineIds,
     shouldPostPush,
     delClientGuard,

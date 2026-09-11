@@ -4,6 +4,45 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (8ª parte) — v604: A LAS MUJERES LES SALÍA UN HOMBRE DE FONDO
+
+Pregunta del PO, en cuanto vio la tarjeta nueva: *«¿y si es una mujer quien comparte, también le
+sale un hombre de fondo en la imagen?»*. **Sí.**
+
+### Lo medido
+- `WF_DEFAULT_PHOTO` era **`ob-2.jpg` — un hombre — para TODO EL MUNDO**. Y
+  `window.AVI_FINISH_PHOTO`, que existía justo para sobreescribirla, **no la fijaba nadie**: dos
+  sitios la leían y ninguno la escribía.
+- Sobre las fichas reales: **12 de 27 son mujeres**, y de **las 11 que de verdad entrenan** (≥8
+  sesiones) **7 son mujeres**. O sea que a la mayoría de quien termina un entreno le salía de
+  fondo alguien que no se le parece — y desde v603, también en la imagen que va a compartir.
+- Y estaba desde siempre en la PANTALLA, no solo en la tarjeta: v603 solo lo hizo visible.
+
+### Lo construido
+- **`finishPhotoFor(sex)`** en avi-core (PURA): `ob-2.jpg` para 'M', **`ath-woman-2.jpg`** para
+  'F' — que resultó ser la contraparte exacta de la otra: misma luz, misma camiseta AVI, mismo
+  encuadre vertical, mismo gimnasio oscuro. La pareja ya existía en `media/brand/` sin usarse.
+- 🔒 **El sexo sale de `getSexCode`, la ÚNICA definición que la app ya tiene** (lo que no es 'M' es
+  'F'): sin dato, la app ya trata a la persona como 'F' para el gasto y el % de grasa, y que la
+  foto dijera otra cosa sería abrir una segunda definición de lo mismo — así empiezan las
+  contradicciones entre pantallas (v435).
+- `window.AVI_FINISH_PHOTO` sigue mandando si alguien la fija, y `WF_DEFAULT_PHOTO` queda como red
+  de seguridad por si avi-core no cargó: la pantalla tiene que salir igual, no en blanco.
+
+### QA
+- Suite **1130 → 1132** en los tres modos · hook 12/12 · `_prodcheck 604` verde.
+- `_verify-v597` a **23/23**, con el caso y **su control**: para 'F' sale `ath-woman-2`, para 'M'
+  sale `ob-2`, **y las dos son DISTINTAS** — sin ese control, una función que devolviera siempre la
+  misma foto pasaría las dos primeras aserciones tan ricamente. Y se afirma que **la misma foto
+  entra al lienzo**, no solo a la pantalla.
+- 🔒 El candado de la suite comprueba además que **los dos archivos existen en el repo**: una ruta
+  a un 404 deja el cierre sin fondo, que es peor que el fondo equivocado.
+- 🔬 **Dos defectos de sonda, los dos míos, los dos ya conocidos:** (1) escribí el patrón de la
+  sonda en un heredoc de Git Bash y **manglar los `\\` es un gotcha que este mismo repo tiene
+  escrito** — el `\w` de la regex llegó al navegador como `w` y la sonda devolvía cadena vacía;
+  (2) el check «la misma foto entra al lienzo» comparaba dos cadenas **vacías** y pasaba por
+  EMPATE, que es el mismo falso verde de v597 y v599. Los dos arreglados.
+
 ## ⏮️ 2026-09-10 (7ª parte) — v603: LA IMAGEN QUE SE COMPARTE ES LA PANTALLA QUE ÉL ADORA
 
 El PO mandó **una captura de su teléfono**: *«esta imagen encanta, pero la que se comparte no es

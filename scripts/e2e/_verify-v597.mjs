@@ -257,6 +257,54 @@ try {
   check('T1d el nombre se sigue dibujando aunque la foto se caiga', (L.claros || 0) > 400, 'claros=' + L.claros);
   await shot('v597-cierre-otro-origen');
 
+  // ── v604 · LA FOTO DE FONDO CAMBIA CON EL SEXO ──
+  // Se afirma sobre la CONSECUENCIA (qué foto pide la pantalla y cuál entra al lienzo), y con su
+  // CONTROL, que es lo que hace que valga: para 'M' y para 'F' NO puede ser la misma.
+  const fotoDe = async (sexo) => {
+    await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.sex=${JSON.stringify(sexo)};
+      c.name='Camilo Prueba';delete c.avatar;
+      const press={...DB.exercises.find(e=>e.id==='e83'),sets:2,reps:12};
+      const rt={id:'rV604',name:'Cierre v604',day:'Lunes',exercises:[press]};
+      c.routines=[rt];_wfShownFor=null;
+      showWorkoutFinish(rt,{done:2,total:2,totalVol:400,newPRs:[]});})()`);
+    await sleep(1200);
+    return await evj(`JSON.stringify((()=>{
+      const el=document.getElementById('wf-photo');
+      const u=el?getComputedStyle(el).backgroundImage:'';
+      // ⚠️ \\w y no \\w a secas: dentro de un template literal JS se come los escapes que no
+      // conoce, asi que un [\\w.-] escrito a pelo llega al navegador como [w.-] y no matchea nada
+      // — la sonda devolvia '' y decia que la foto no cambiaba.
+      const cortar=t=>{const m=/media[/]brand[/][\\w.-]+/.exec(String(t||''));return m?m[0]:'';};
+      return {url:cortar(u), enLienzo:!!_wfBgPhoto, srcLienzo:_wfBgPhoto?cortar(_wfBgPhoto.src):''};
+    })())`);
+  };
+  const fF = await fotoDe('F'), fM = await fotoDe('M');
+  // Y se GUARDA la tarjeta de una mujer: esto se aprueba mirandola, no solo midiendola.
+  await fotoDe('F');
+  await ev(`(async()=>{
+    _wfShareData=Object.assign({},_wfShareData,{name:'Luz',fullName:'Luz Rodriguez',
+      chips:[['Duracion','52:30'],['Calorias','388 kcal'],['Series','21/21'],['Volumen','4.120 kg']],
+      prs:[{name:'Prensa de Pierna',val:70,unit:'kg',reps:12}]});
+    const o=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){cb(new Blob(['x'],{type:'image/png'}));};
+    try{ Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true}); }catch(e){}
+    const oc=document.createElement.bind(document);
+    document.createElement=t=>{const el=oc(t);if(t==='a'){el.click=()=>{};}return el;};
+    try{ wfShare(); }catch(e){}
+    await new Promise(r=>setTimeout(r,400));
+    HTMLCanvasElement.prototype.toBlob=o; document.createElement=oc;
+  })()`);
+  const duM = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
+  if (duM && duM.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v604-mujer.png', Buffer.from(duM.split(',')[1], 'base64')); log('  shot -> ' + SHOTDIR + '/v604-mujer.png'); }
+  check('S1 a una MUJER le sale una foto de mujer', /ath-woman/.test(fF.url), JSON.stringify(fF));
+  check('S2 a un HOMBRE le sale la de siempre', /ob-2/.test(fM.url), JSON.stringify(fM));
+  check('S3-CONTROL las dos son DISTINTAS (si no, la función no cambia nada)',
+    !!fF.url && !!fM.url && fF.url !== fM.url, `F=${fF.url} M=${fM.url}`);
+  // 🔴 El `!!fM.url` no sobra: sin él, con los dos campos vacíos («''===''») este check pasaba
+  //    por EMPATE — el mismo falso verde que ya me costó tiempo hoy dos veces.
+  check('S4 y la MISMA foto entra al lienzo compartible, no solo a la pantalla',
+    fM.enLienzo === true && !!fM.url && fM.srcLienzo === fM.url, JSON.stringify(fM));
+
   log('\njsErrors: ' + JSON.stringify(jsErrors));
   const fails = results.filter(r => r.startsWith('FAIL')).length;
   log('\n' + (fails === 0 && jsErrors.length === 0 ? 'TODO OK' : fails + ' FALLA(S)'));
