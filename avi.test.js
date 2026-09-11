@@ -13853,6 +13853,47 @@ test('🔴 v604 · la foto del cierre la decide el SEXO, y el fixture discrimina
     `🔴 la foto ${f} no está en el repo: el cierre se quedaría sin fondo`));
 });
 
+// 🔒 v605 · EL FONDO ES LA FOTO DE LA PERSONA; LA GENÉRICA ES EL RESPALDO.
+// Pedido del PO: «la idea es que cuando cada asesorado suba su propia foto de perfil, sea la foto
+// de perfil de cada asesorado la que aparezca de fondo». Y rechazó las dos genéricas anteriores
+// mirándolas: «esa imagen de mujer se ve muy ruda y parece hombre, y esa de hombre tampoco».
+test('🔴 v605 · manda el avatar de la persona, y sin avatar la genérica de su sexo', () => {
+  const conFoto = { sex: 'F', avatar: 'https://x/mi-foto.jpg' };
+  assert.strictEqual(core.finishBackdropFor(conFoto), 'https://x/mi-foto.jpg',
+    '🔴 con foto propia sigue saliendo la genérica: es justo lo que el PO pidió cambiar');
+  // 🔴 CONTROL: sin avatar NO se queda sin fondo — cae a la genérica que le toca.
+  assert.strictEqual(core.finishBackdropFor({ sex: 'F' }), core.WF_PHOTO_F, 'sin avatar la mujer se queda sin fondo');
+  assert.strictEqual(core.finishBackdropFor({ sex: 'M' }), core.WF_PHOTO_M, 'sin avatar el hombre se queda sin fondo');
+  // Una cadena vacía o basura NO es una foto: un fondo negro rompe la tarjeta entera, así que
+  // se cae a la genérica en vez de confiar en que «si hay campo, hay foto».
+  ['', '   ', null, undefined, 42].forEach(v => assert.strictEqual(
+    core.finishBackdropFor({ sex: 'M', avatar: v }), core.WF_PHOTO_M,
+    'un avatar vacío o inválido (' + JSON.stringify(v) + ') deja la tarjeta sin fondo'));
+  assert.strictEqual(core.finishBackdropFor(null), core.WF_PHOTO_F, 'sin cliente tampoco puede quedarse sin fondo');
+  // Y las dos genéricas nuevas existen en el repo (las viejas las rechazó el PO).
+  const fs = require('fs'), path = require('path');
+  [core.WF_PHOTO_F, core.WF_PHOTO_M].forEach(f => assert.ok(fs.existsSync(path.join(__dirname, f)),
+    `🔴 ${f} no está en el repo: el cierre se quedaría sin fondo`));
+});
+
+test('🔒 CABLEADO v605: la foto de fondo se trata con la paleta, y el modo se COMPRUEBA', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const i = src.indexOf('function wfShare(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  // El duotono: sin color, sombras al verde, luces con un toque de esmeralda.
+  assert.ok(/_modo\('saturation'\)/.test(cuerpo) && /_modo\('multiply'\)/.test(cuerpo),
+    '🔴 se fue el tratamiento de paleta: la foto de cada uno entra con sus colores y rompe la marca');
+  // 🔴 LO QUE DE VERDAD IMPORTA: que el modo de fusión se COMPRUEBE. Si el motor no lo conoce, el
+  //    `gco` se queda en `source-over` EN SILENCIO y el relleno siguiente TAPA la foto con un
+  //    rectángulo gris — la tarjeta saldría sin foto y sin un solo error.
+  assert.ok(/x\.globalCompositeOperation===m/.test(cuerpo),
+    '🔴 el modo de fusión ya no se comprueba: donde no exista, un rectángulo gris tapa la foto');
+  // Y SIEMPRE se devuelve a lo normal, o todo lo que se dibuja después se funde con el fondo.
+  assert.ok(/x\.globalCompositeOperation='source-over';/.test(cuerpo),
+    '🔴 no se restaura el modo de fusión: el texto y las fichas saldrían fundidos con la foto');
+});
+
 test('🔒 CABLEADO v604: la pantalla pide la foto de la PERSONA, no la constante', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');

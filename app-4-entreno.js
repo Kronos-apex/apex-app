@@ -2473,8 +2473,11 @@ function showWorkoutFinish(routine,stats){
   }catch(e){}
   // La foto que le corresponde a ESTA persona. `window.AVI_FINISH_PHOTO` sigue mandando si
   // alguien la fija; `typeof` porque `finishPhotoFor` vive en avi-core.
+  // v605 · Si la persona subio su foto de perfil, ESA es el fondo (pedido del PO). Si no, la
+  // generica que le corresponde. `window.AVI_FINISH_PHOTO` sigue mandando por encima de las dos.
   const _bgSrc=window.AVI_FINISH_PHOTO
-    ||((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO);
+    ||((typeof finishBackdropFor==='function')?finishBackdropFor(c)
+      :((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO));
   document.getElementById('wf-photo').style.backgroundImage=`url('${_bgSrc}')`;
   // La MISMA foto va al lienzo compartible, para que la imagen que sale sea la pantalla que se
   // ve. Se prepara aqui y no al tocar «Compartir»: `navigator.share` exige activacion reciente.
@@ -2710,14 +2713,42 @@ function wfShare(){
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
   x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
   if(_wfBgPhoto&&_wfBgPhoto.width&&_wfBgPhoto.height){
-    const s2=Math.max(1080/_wfBgPhoto.width,1920/_wfBgPhoto.height);   // cubrir sin deformar
-    x.drawImage(_wfBgPhoto,(1080-_wfBgPhoto.width*s2)/2,0,_wfBgPhoto.width*s2,_wfBgPhoto.height*s2);
+    // 🔴 DESENFOCADA A PROPÓSITO. Con la foto nítida, una selfie de cara cubriendo 1080×1920 deja
+    // una cara ENORME a medio recortar detrás del texto: compite con lo que la tarjeta viene a
+    // decir. Desenfocada es atmósfera —el color y el sitio de la persona— y el retrato del
+    // círculo, que sí está nítido, es quien la muestra. Y de paso tapa que el avatar se guarda a
+    // 800 px: un fondo desenfocado no tiene resolución que delatar.
+    // El `filter` del lienzo puede no existir en WebViews viejos: si no lo acepta, se dibuja
+    // nítida (como hasta ahora) en vez de no dibujar nada.
+    let _blur=false;
+    try{ x.filter='blur(16px)'; _blur=(x.filter!=='none'); }catch(e){ _blur=false; }
+    // El 1,10 de más compensa el borde que el desenfoque deja transparente al difuminar.
+    const s2=Math.max(1080/_wfBgPhoto.width,1920/_wfBgPhoto.height)*(_blur?1.10:1);
+    x.drawImage(_wfBgPhoto,(1080-_wfBgPhoto.width*s2)/2,(1920-_wfBgPhoto.height*s2)/2,
+      _wfBgPhoto.width*s2,_wfBgPhoto.height*s2);
+    try{ x.filter='none'; }catch(e){}   // SIEMPRE se quita, o lo de abajo sale borroso también
+    // ── v605 · QUE LA FOTO DE CADA UNO LLEVE LA PALETA DE AVI Y NO DESENTONE ──────────────
+    // Pedido del PO: si el fondo pasa a ser la foto de perfil de cada persona, esa foto viene de
+    // donde venga —una selfie con luz amarilla, un espejo de gimnasio— y sin tratar rompe la
+    // marca. Se hace un DUOTONO: se le quita el color, las sombras se tiñen del verde oscuro de
+    // AVI y las luces reciben un toque de esmeralda. Cualquier foto acaba en la misma paleta.
+    // 🔴 LOS MODOS DE FUSIÓN PUEDEN NO EXISTIR, Y FALLAR AQUÍ ES CATASTRÓFICO: si el motor no
+    //    conoce `saturation`, el `gco` se queda en `source-over` **en silencio** y el relleno
+    //    siguiente TAPA la foto con un rectángulo gris. Por eso se COMPRUEBA leyendo el valor de
+    //    vuelta, y si no lo aceptó se deja la foto tal cual — apagada, pero la foto.
+    const _modo=(m)=>{ x.globalCompositeOperation=m; return x.globalCompositeOperation===m; };
+    if(_modo('saturation')){
+      x.fillStyle='hsl(0,0%,50%)';x.fillRect(0,0,1080,1920);          // 1· sin color
+      if(_modo('multiply')){ x.fillStyle='#123A2C';x.fillRect(0,0,1080,1920); }   // 2· sombras al verde
+      if(_modo('screen')){ x.fillStyle='rgba(16,224,160,.12)';x.fillRect(0,0,1080,1920); } // 3· luces
+    }
+    x.globalCompositeOperation='source-over';   // SIEMPRE se devuelve, o todo lo de abajo se funde
   }
   // El MISMO degradado que la pantalla (`.wf-photo::after`): sin el, el texto no se lee sobre la
   // foto — y con el, la foto se intuye sin competir. Los cuatro topes son los del CSS.
   const bg=x.createLinearGradient(0,0,0,1920);
-  bg.addColorStop(0,'rgba(4,8,10,.55)');bg.addColorStop(.26,'rgba(4,8,10,.55)');
-  bg.addColorStop(.56,'rgba(4,8,10,.72)');bg.addColorStop(1,'rgba(4,8,10,.97)');
+  bg.addColorStop(0,'rgba(6,26,19,.58)');bg.addColorStop(.26,'rgba(6,26,19,.58)');
+  bg.addColorStop(.56,'rgba(5,20,15,.74)');bg.addColorStop(1,'rgba(4,9,6,.97)');
   x.fillStyle=bg;x.fillRect(0,0,1080,1920);
 
   // ── Todo CENTRADO, como la pantalla ──

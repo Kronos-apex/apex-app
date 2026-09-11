@@ -1497,8 +1497,19 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 #workout-finish{position:fixed;inset:0;z-index:900;display:none;background:#04080A;overflow:hidden}
 #workout-finish.on{display:block;animation:wfFade .4s ease}
 @keyframes wfFade{from{opacity:0}to{opacity:1}}
+/* v605 — EL MISMO TRATAMIENTO QUE EL LIENZO COMPARTIBLE, o las dos se vuelven a separar (que es
+   justo lo que el PO reportó de v603). Desde v605 el fondo es LA FOTO DE PERFIL de cada persona,
+   así que llega de donde llegue —una selfie con luz amarilla, un espejo de gimnasio—: se
+   desatura, se desenfoca y el degradado la tiñe del verde de AVI. Así cualquier foto entra en la
+   paleta y ninguna compite con el texto. El `scale` compensa el borde que deja el desenfoque. */
 .wf-photo{position:absolute;inset:0;background-size:cover;background-position:center top;background-color:#04080A}
 .wf-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,10,.55) 0%,rgba(4,8,10,.55) 26%,rgba(4,8,10,.72) 56%,rgba(4,8,10,.97) 100%)}
+/* 🔒 El tratamiento va por ID, SOLO al cierre de entreno: `.wf-photo` la comparten el aviso de
+   upsell (#pu-photo) y la subida de nivel (#lu-photo), que llevan fotos de marca elegidas para
+   verse NÍTIDAS y que nadie pidió cambiar. Acotar aquí es la diferencia entre arreglar una
+   pantalla y tocar tres. */
+#wf-photo{background-position:center;filter:grayscale(.88) blur(14px) brightness(.92);transform:scale(1.12)}
+#wf-photo::after{background:linear-gradient(180deg,rgba(6,26,19,.58) 0%,rgba(6,26,19,.58) 26%,rgba(5,20,15,.74) 56%,rgba(4,9,6,.97) 100%)}
 /* F13: con `justify-content:flex-end` el desbordamiento se va por ARRIBA, y ahí el scroll no
    llega (scrollTop no puede ser negativo): a 360x640 con las 3 tarjetas apiladas, el trofeo y
    «¡Lo lograste!» quedaban fuera de alcance (medido: maxScroll 0). Con `margin-top:auto` en el

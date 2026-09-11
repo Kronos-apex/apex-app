@@ -38,10 +38,28 @@ function getSexCode(sex) {
 //    persona como 'F' en todo lo demás (gasto, % de grasa), y que la foto dijera otra cosa sería
 //    abrir una segunda definición de lo mismo — que es como empiezan las contradicciones (v435).
 // PURA: recibe el sexo, devuelve la ruta. Sin DOM y sin decidir nada más.
-const WF_PHOTO_M = 'media/brand/ob-2.jpg';
-const WF_PHOTO_F = 'media/brand/ath-woman-2.jpg';   // la contraparte exacta: misma luz, misma camiseta
+// v605 · LAS DOS LAS ELIGIÓ EL PO MIRÁNDOLAS, y son del MISMO set (mismo gimnasio, misma luz
+// verde de contra): emparejan entre sí, que es lo que hace que la tarjeta no desentone según a
+// quién le toque. Las anteriores las rechazó él: «esa imagen de mujer se ve muy ruda y parece
+// hombre, y esa foto de hombre tampoco me gusta».
+const WF_PHOTO_M = 'media/brand/ath-stand.jpg';
+const WF_PHOTO_F = 'media/brand/ath-woman-1.jpg';
 function finishPhotoFor(sex) {
   return getSexCode(sex) === 'M' ? WF_PHOTO_M : WF_PHOTO_F;
+}
+
+// ── v605 · EL FONDO ES LA FOTO DE LA PERSONA, Y LA GENÉRICA ES EL RESPALDO ───────────────
+// Pedido del PO: «la idea es que cuando cada asesorado suba su propia foto de perfil, sea la foto
+// de perfil de cada asesorado la que aparezca de fondo». Esta función decide QUÉ foto va de fondo;
+// el TRATAMIENTO de color para que no desentone vive en el lienzo (`_wfPaintBackdrop`).
+// PURA: no toca el DOM ni carga nada — recibe lo que hay y devuelve la ruta.
+// 🔒 El avatar solo manda si existe de verdad: una cadena vacía o un `null` caen a la genérica,
+//    porque un fondo negro sin foto rompe la tarjeta entera (y es lo que pasaría si se confiara
+//    en que «si hay campo, hay foto»).
+function finishBackdropFor(client) {
+  const av = client && typeof client.avatar === 'string' ? client.avatar.trim() : '';
+  if (av) return av;
+  return finishPhotoFor(client && client.sex);
 }
 
 // ⛔ `calcMacrosSugeridos` BORRADA en v436: era una CUARTA cuenta (la que rellenaba «Editar
@@ -10388,6 +10406,7 @@ if (typeof module !== 'undefined' && module.exports) {
     nutMealSplit,
     getSexCode,
     finishPhotoFor,
+    finishBackdropFor,
     WF_PHOTO_M,
     WF_PHOTO_F,
     migrateRoutineIds,

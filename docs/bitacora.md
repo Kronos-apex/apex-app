@@ -4,6 +4,52 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-10 (9ª parte) — v605: EL FONDO ES LA FOTO DE CADA PERSONA, TEÑIDA CON LA PALETA
+
+El PO, sobre las dos fotos genéricas de v604: *«esa imagen de mujer se ve muy ruda y parece hombre
+y no me gusta, y esa foto de hombre tampoco. Busca en las imágenes que hemos hecho antes… **la idea
+es que cuando cada asesorado suba su propia foto de perfil, sea la foto de perfil de cada asesorado
+la que aparezca de fondo**. Igual tendríamos que mejorar la foto de cada persona para que lleve la
+paleta de colores de AVI y no desentone»*.
+
+### Lo construido
+- **`finishBackdropFor(client)`** (avi-core, PURA): **manda el avatar de la persona**; sin avatar,
+  la genérica de su sexo. 🔒 Una cadena vacía o basura **no** es una foto: cae a la genérica, o la
+  tarjeta se quedaría con un fondo negro por confiar en que «si hay campo, hay foto».
+- **Las dos genéricas nuevas las eligió él mirándolas**: `ath-woman-1.jpg` y `ath-stand.jpg`, que
+  además son **del mismo set** (mismo gimnasio, misma luz verde de contra), así que emparejan entre
+  sí — que es lo que hace que la tarjeta no cambie de tono según a quién le toque.
+- **El tratamiento de paleta**, que es lo que pidió y lo que hace viable la idea: la foto llega de
+  donde llegue —una selfie con luz amarilla, un espejo de gimnasio— así que se **desatura**, las
+  sombras se tiñen del verde de AVI, las luces reciben un toque de esmeralda, y encima el
+  degradado. **Cualquier foto acaba en la misma paleta.**
+- 🔴 **Y DESENFOCADA**, que no estaba en el pedido y se vio al mirarlo: con la foto nítida, una
+  selfie de cara cubriendo 1080×1920 deja **una cara enorme a medio recortar detrás del texto**,
+  compitiendo con lo que la tarjeta viene a decir. Desenfocada es **atmósfera**, y el retrato del
+  círculo —ese sí nítido— es quien muestra a la persona. De paso tapa que el avatar se guarda a
+  **800 px**: un fondo desenfocado no tiene resolución que delatar.
+- **El mismo tratamiento en la PANTALLA** (`#wf-photo`), o las dos se vuelven a separar — que es
+  exactamente lo que él reportó de v603.
+
+### 🔒 Dos guardas que el lienzo necesitaba
+1. **Los modos de fusión pueden no existir.** Si el motor no conoce `saturation`, el
+   `globalCompositeOperation` se queda en `source-over` **en silencio** y el relleno siguiente
+   **tapa la foto con un rectángulo gris**. Se comprueba leyendo el valor de vuelta; si no lo
+   aceptó, la foto se queda sin teñir — apagada, pero foto.
+2. Lo mismo con `filter` del lienzo: si no lo acepta, se dibuja nítida en vez de no dibujarse.
+   Y **siempre** se restauran los dos, o todo lo que se dibuja después sale fundido y borroso.
+- 🔒 El CSS va **por ID** (`#wf-photo`), no por clase: `.wf-photo` la comparten el aviso de upsell
+  y la subida de nivel, con fotos de marca elegidas para verse NÍTIDAS y que nadie pidió tocar.
+
+### QA
+- Suite **1132 → 1134** en los tres modos · hook 12/12 · `_prodcheck 605` verde.
+- `_verify-v597` a **27/27**, con el caso que prueba el tratamiento: se pone de avatar una foto
+  **naranja fuerte** y se afirma que **no queda un solo píxel naranja** en el fondo y que el verde
+  domina. Sin un color que no esté en la paleta, «el duotono funciona» no se puede medir.
+- 🔬 **La sonda contaba el RETRATO como naranja superviviente** y decía que el tratamiento fallaba:
+  ese círculo va ENCIMA y conserva el color natural **a propósito** —es un retrato, no una
+  textura—. Se excluye su área. **La sonda medía justo lo único que no debe tratarse.**
+
 ## ⏮️ 2026-09-10 (8ª parte) — v604: A LAS MUJERES LES SALÍA UN HOMBRE DE FONDO
 
 Pregunta del PO, en cuanto vio la tarjeta nueva: *«¿y si es una mujer quien comparte, también le

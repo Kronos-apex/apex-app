@@ -279,6 +279,84 @@ try {
     })())`);
   };
   const fF = await fotoDe('F'), fM = await fotoDe('M');
+  // ── v605 · con foto de perfil, el fondo es LA SUYA (y se trata con la paleta) ──
+  // Se usa una foto de prueba NARANJA fuerte: si el duotono funciona, ningun pixel del fondo
+  // puede seguir siendo naranja — y ese es el control que prueba que el tratamiento se aplico,
+  // no solo que se pidio.
+  const FOTO_NARANJA = await ev(`(()=>{const c=document.createElement('canvas');c.width=400;c.height=700;
+    const g=c.getContext('2d');g.fillStyle='#FF7A1A';g.fillRect(0,0,400,700);
+    g.fillStyle='#FFFFFF';g.fillRect(60,60,120,120);return c.toDataURL('image/jpeg',0.9)})()`);
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.sex='F';c.name='Luz Rodriguez';
+    c.avatar=${JSON.stringify(String(FOTO_NARANJA))};
+    const press={...DB.exercises.find(e=>e.id==='e83'),sets:2,reps:12};
+    const rt={id:'rV605',name:'Cierre v605',day:'Lunes',exercises:[press]};
+    c.routines=[rt];_wfShownFor=null;
+    showWorkoutFinish(rt,{done:2,total:2,totalVol:400,newPRs:[]});})()`);
+  await sleep(1400);
+  const prop = await evj(`JSON.stringify((()=>{
+    const el=document.getElementById('wf-photo');
+    const u=el?getComputedStyle(el).backgroundImage:'';
+    return {esLaSuya:u.indexOf('data:image')>=0, enLienzo:!!_wfBgPhoto};
+  })())`);
+  check('S5 con foto de perfil, el fondo es LA SUYA (pantalla y lienzo)',
+    prop.esLaSuya === true && prop.enLienzo === true, JSON.stringify(prop));
+  const trat = await evj(`(async()=>{
+    const o=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){cb(new Blob(['x'],{type:'image/png'}));};
+    try{ Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true}); }catch(e){}
+    const oc=document.createElement.bind(document);
+    document.createElement=t=>{const el=oc(t);if(t==='a'){el.click=()=>{};}return el;};
+    try{ wfShare(); }catch(e){}
+    await new Promise(r=>setTimeout(r,400));
+    HTMLCanvasElement.prototype.toBlob=o; document.createElement=oc;
+    const cv=window._wfLastCanvas; if(!cv)return JSON.stringify({err:'sin lienzo'});
+    const g=cv.getContext('2d');
+    // se barre la mitad de arriba del fondo buscando naranja: r muy por encima de g y de b
+    // 🔴 Se SALTA el retrato circular (540,330,r=101): ese va ENCIMA del tratamiento y conserva
+    // el color natural de la persona a proposito — es un retrato, no una textura. La primera
+    // version de esta sonda lo contaba como 'naranja que sobrevivio' y decia que el duotono
+    // fallaba cuando lo que medía era justo lo que NO debe tratarse.
+    const d=g.getImageData(0,0,1080,900).data; let naranja=0, verdes=0, muestras=0;
+    for(let i=0;i<d.length;i+=40){
+      const px=(i/4)%1080, py=Math.floor((i/4)/1080);
+      if((px-540)*(px-540)+(py-330)*(py-330)<=112*112)continue;   // el retrato y su anillo, fuera
+      muestras++;
+      const r=d[i],gg=d[i+1],b=d[i+2];
+      if(r>120&&r>gg+50&&r>b+60)naranja++;
+      if(gg>r&&gg>=b)verdes++;
+    }
+    return JSON.stringify({naranja,verdes,muestras});
+  })()`);
+  check('S6 el duotono APLICA: no queda naranja de la foto original en el fondo',
+    (trat.naranja || 0) === 0, JSON.stringify(trat));
+  check('S6b y el fondo queda en la paleta (verde domina)',
+    (trat.verdes || 0) > (trat.muestras || 0) * 0.6, JSON.stringify(trat));
+  const duP = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
+  if (duP && duP.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v605-foto-propia.png', Buffer.from(duP.split(',')[1], 'base64')); log('  shot -> ' + SHOTDIR + '/v605-foto-propia.png'); }
+
+  // Y con una foto de PERSONA de verdad como avatar: el naranja prueba que el duotono aplica,
+  // pero «se ve bien» solo se puede juzgar con una cara real detras. Se aprueba mirandola.
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.sex='M';c.name='Camilo Martinez';
+    c.avatar='media/brand/coach-camilo.jpg';
+    const press={...DB.exercises.find(e=>e.id==='e83'),sets:2,reps:12};
+    const rt={id:'rV605b',name:'Empuje',day:'Lunes',exercises:[press]};
+    c.routines=[rt];_wfShownFor=null;
+    showWorkoutFinish(rt,{done:24,total:24,totalVol:5480,newPRs:[{name:'Press de Banca con Barra',val:80,unit:'kg',reps:8}]});})()`);
+  await sleep(1500);
+  await ev(`(async()=>{
+    _wfShareData=Object.assign({},_wfShareData,{
+      chips:[['Duración','48:12'],['Calorías','412 kcal'],['Series','24/24'],['Volumen','5.480 kg']]});
+    const o=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(cb){cb(new Blob(['x'],{type:'image/png'}));};
+    try{ Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true}); }catch(e){}
+    const oc=document.createElement.bind(document);
+    document.createElement=t=>{const el=oc(t);if(t==='a'){el.click=()=>{};}return el;};
+    try{ wfShare(); }catch(e){}
+    await new Promise(r=>setTimeout(r,400));
+    HTMLCanvasElement.prototype.toBlob=o; document.createElement=oc;
+  })()`);
+  const duR = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
+  if (duR && duR.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v605-realista.png', Buffer.from(duR.split(',')[1], 'base64')); log('  shot -> ' + SHOTDIR + '/v605-realista.png'); }
   // Y se GUARDA la tarjeta de una mujer: esto se aprueba mirandola, no solo midiendola.
   await fotoDe('F');
   await ev(`(async()=>{
@@ -297,7 +375,7 @@ try {
   const duM = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
   if (duM && duM.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v604-mujer.png', Buffer.from(duM.split(',')[1], 'base64')); log('  shot -> ' + SHOTDIR + '/v604-mujer.png'); }
   check('S1 a una MUJER le sale una foto de mujer', /ath-woman/.test(fF.url), JSON.stringify(fF));
-  check('S2 a un HOMBRE le sale la de siempre', /ob-2/.test(fM.url), JSON.stringify(fM));
+  check('S2 a un HOMBRE le sale la suya', /ath-stand/.test(fM.url), JSON.stringify(fM));
   check('S3-CONTROL las dos son DISTINTAS (si no, la función no cambia nada)',
     !!fF.url && !!fM.url && fF.url !== fM.url, `F=${fF.url} M=${fM.url}`);
   // 🔴 El `!!fM.url` no sobra: sin él, con los dos campos vacíos («''===''») este check pasaba
