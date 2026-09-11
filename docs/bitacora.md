@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-11 — v606: EL AJUSTE DE TAMAÑO DE TEXTO NO LLEGABA AL CIERRE DEL ENTRENO
+
+Punto de deuda que venía anotado del 10-sep. El ajuste «Tamaño de texto» del Perfil escala el
+contenido con `zoom`, y la lista de selectores de `styles.css` nombraba `.cnp`, `#s-coach .panel`,
+`.gm-body`, `.sroom-body`/`.sroom-bar` y `.md` — **pero no el cierre de entreno**. Quien puso la
+letra en «Grande» o «Muy grande» veía el pico emocional del día, con las cifras de SU sesión, a
+tamaño normal. **Medido antes de tocar: ×1.00 en «lg» y en «xl»**, con `.cnp` de control creciendo
+×1.14 y ×1.33 en la misma corrida.
+
+### Lo construido
+- El `zoom` va en **`.wf-inner`**, y **NUNCA en `#workout-finish`**: es el mismo caso de `.sroom`
+  (`position:fixed;inset:0` — un `zoom` ahí multiplica una caja que YA ocupa el viewport entero y
+  la saca de la pantalla). `.wf-inner` es el gemelo de `.sroom-body`: el contenedor interno, y
+  además el scroller (`overflow-y:auto`), así que lo que crece se alcanza scrolleando.
+- 🔴 **La compensación de motores legacy lleva `height` además de `width`.** A diferencia de
+  `.sroom-body`, `.wf-inner` se dimensiona por **insets**, no por `width`: en un motor donde el
+  `zoom` escala también la caja, eso desborda por los DOS ejes, y el de abajo duele —
+  `#workout-finish` es `overflow:hidden`, así que lo que sobresale por abajo no se alcanza ni
+  scrolleando y **«Continuar →», la única salida de la pantalla, queda fuera**. Es la lección de
+  v452 (altura y ancho son dos ejes distintos) aplicada a un elemento que toma su tamaño de las
+  insets.
+- Resultado: **×1.18 y ×1.39** en la cifra del entreno, **×1.21 y ×1.42** en el antetítulo, sin
+  desborde a lo ancho y con «Continuar →» pulsable tras scrollear al fondo, en los tres tamaños.
+
+### El harness (`scripts/e2e/_repro-wf-fs.mjs`) y los DOS defectos propios que cazó
+Monta el bloque REAL de `index.html` con el `styles.css` REAL (técnica de
+`_repro-cierre-contraste`): el defecto es puramente CSS y no necesita sesión ni nube. Afirma la
+CONSECUENCIA —¿el texto crece? ¿se desborda? ¿se puede pulsar «Continuar»?— y no la presencia de un
+selector en el CSS (regla de v453).
+- 🔬 **Contaba el fondo como desborde.** `#wf-photo` lleva `transform:scale(1.12)` A PROPÓSITO
+  (compensa el borde que deja el desenfoque de v605) y sobresale 23 px por diseño, tapados por el
+  `overflow:hidden`. Daba **rojo de 23 px en los TRES tamaños, o sea también con el ajuste
+  apagado**: un desborde que aparece sin tocar nada no es del cambio que se está midiendo. El
+  desborde se mide dentro de `.wf-inner`, que es donde vive el contenido.
+- 🔬 **Su control de «una sola línea» aprobaba por casualidad.** Afirmaba
+  `el.getClientRects().length === 1`, y en un elemento de BLOQUE eso devuelve **una caja de borde
+  pase lo que pase**, tenga 1 línea o 5: aprobaba mientras la cifra del entreno medía **×2.80**
+  (dos líneas × 1.40) sin cantarlo. Las líneas se cuentan con un `Range` sobre el contenido (que sí
+  devuelve una caja por línea) y **se mide el alto de la PRIMERA**, que es el factor de zoom aunque
+  el texto parta. Con eso quedó a la vista que «1 h 23 min» **sí parte en dos líneas en «xl»** —
+  conducta correcta (la tarjeta crece y el cierre scrollea), verificada mirando la captura.
+
+### El candado en la suite (1134 → 1135)
+Lee las REGLAS, no el archivo: **los comentarios de `styles.css` explican justamente este arreglo**,
+y un candado que busca texto dentro de su propia explicación se aprueba solo (pasó tres veces el
+8-sep). Exige el `zoom` en `.wf-inner` con su factor, **prohíbe** el `zoom` en `#workout-finish`
+(la trampa que ya cazó `.sroom` en la auditoría del 6-ago) y afirma que `.wf-inner` sigue siendo
+scroller. **Dos sabotajes y los dos muerden**: mover el zoom al contenedor fijo, y añadirlo ahí
+dejando el bueno puesto.
+
+**Verificación:** suite **1135/1135** en huso local, UTC y árbol LF · hook 12/12 · smoke OK ·
+`_repro-wf-fs.mjs` verde (con el CSS anterior: 4 aserciones en rojo) · `_prodcheck 606` verde,
+`jsErrors: []`.
+
 ## ⏮️ 2026-09-10 (9ª parte) — v605: EL FONDO ES LA FOTO DE CADA PERSONA, TEÑIDA CON LA PALETA
 
 El PO, sobre las dos fotos genéricas de v604: *«esa imagen de mujer se ve muy ruda y parece hombre
