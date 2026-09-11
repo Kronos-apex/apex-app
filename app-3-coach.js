@@ -2306,6 +2306,25 @@ function renderValoracion(c){
   if(icc && iccInfo){
     html += statBox(_coIco('scale',12,'⚖️'),'Cintura/Cadera', icc.toFixed(2), iccInfo.label, iccInfo.color);
   }
+  // GRASA ESTIMADA (v607). El IMC no distingue músculo de grasa y el propio PO lo leyó como si
+  // fuera su grasa corporal; estos perímetros sí dan una estimación. 🔒 A un MENOR no se le pinta
+  // (el motor devuelve `razon:'menor'`) y NO lleva categoría ni color de juicio hasta que el
+  // equipo dé su veredicto. Cuando falta un perímetro, la casilla dice CUÁL — a 5 de sus
+  // asesoradas les falta solo el cuello.
+  const _bf=(typeof bodyFatEstimate==='function')
+    ? bodyFatEstimate(c,(DB.medidas&&DB.medidas[c.id])||[]) : null;
+  if(_bf && _bf.ok){
+    html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.', _bf.pct.toFixed(1).replace('.',',')+'%',
+      String(_bf.lo).replace('.',',')+'–'+String(_bf.hi).replace('.',',')+'%','var(--t1)');
+  } else if(_bf && _bf.razon==='menor'){
+    // 🔒 Al MENOR no se le muestra nada (eso no cambia), pero el COACH es un adulto y necesita
+    //    distinguir «no hay dato» de «la app decidió no mostrarlo» — si no, le pide a la familia
+    //    que «complete la medida». Corrección pedida por Laura el 11-sep.
+    html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.','—','No se estima en menores de edad','var(--t3)');
+  } else if(_bf && _bf.razon==='faltan_medidas' && (_bf.falta||[]).length){
+    const _fn=_bf.falta.map(k=>{const f=(typeof MED_FIELDS!=='undefined'?MED_FIELDS:[]).filter(x=>x.key===k)[0];return f?f.label.toLowerCase():k;});
+    html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.','—','Falta medir '+esc(_fn.join(' y ')),'var(--t3)');
+  }
   if(tmb)  html += statBox(_coIco('flame',12,'🔥'),'TMB',tmb+' kcal','En reposo','var(--or)');
   if(tdee) html += statBox(_coIco('bolt',12,'⚡'),'TDEE',tdee+' kcal','Con actividad','var(--g)');
   html += `</div>`;

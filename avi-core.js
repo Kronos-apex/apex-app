@@ -376,6 +376,7 @@ const GEN_ZONE_LABEL = {
   aductor: 'muslo por dentro', abductor: 'cara externa del muslo o glúteo',
   cuello: 'cuello', tobillo: 'tobillo',
   codo: 'codo', muneca: 'muñeca o mano', pecho: 'pecho',
+  isquios: 'la parte de atrás de tu muslo (isquiotibiales)',
   generic: 'lesión/postoperatorio',
 };
 // Síntomas que sugieren compromiso NERVIOSO (radiculopatía). No cambian qué se excluye —
@@ -445,6 +446,26 @@ const GEN_ZONE_EXCL = {
   // regex codifica «qué agrava esta zona», el nivel codifica «cuánto movimiento se permite».
   // ⚠️ Sin `cuerda`: se comía `e11 Extensión de Tríceps con Cuerda en Polea`.
   tobillo: /\bsalto|saltarin|burpee|sprawl|sprint|carrera|trote|tijera|rodillas altas|talones al gluteo|patinador|escalador|mountain climber|elevacion de talones|escalon|step ?-?up|escaladora|subida con rodilla|caminata del granjero|farmer|zancada caminando|perro boca abajo|paso lateral|talones atras|oruga|caminata del oso|caminata del cangrejo/,
+  // ── ISQUIOS (dictamen de Laura, 11-sep-2026) ──────────────────────────────────────────────
+  // 🔴 EL HUECO QUE LA MOTIVA, MEDIDO: «muslo por detrás» apuntaba SOLO a `lumbar`, que atrapa la
+  // BISAGRA DE CADERA (peso muerto rumano, sentadilla) y **ningún trabajo de FLEXIÓN DE RODILLA**.
+  // Con isquios lesionados la app dejaba puesto el curl femoral, que es contracción resistida
+  // DIRECTA del músculo que duele — y se vio con el plan real del PO el día después de lesionarse
+  // corriendo. Contra POLICE: eso es cargar tejido lesionado en fase aguda.
+  // 🔒 VA EN SU PROPIA ZONA Y NO DENTRO DE `lumbar`: quien tiene hernia o lumbalgia pura no
+  // necesita perder el curl femoral (otra articulación, y en máquina con apoyo la carga lumbar es
+  // mínima). Meterlo ahí sería la regla ANCHA que ya costó el sit-to-stand y el wall-sit (v424).
+  // 🔒 Y VA COMO NOMBRE, NO COMO LISTA DE IDS, a propósito (Laura): es nombrable, cubre las 4
+  // variantes que existen hoy (e15, e39, e126, e332) más el nórdico (e333), y seguirá cazando las
+  // que traiga el próximo lote sin que nadie se acuerde de actualizar una lista.
+  // ⚠️ EL CONTROL, con su razón clínica — lo que NO debe caer: **Hip Thrust (e42/e43) y Puente de
+  // Glúteo (e73/e106)**, porque la rodilla va flexionada todo el movimiento y el isquio nunca se
+  // alarga bajo carga (son de los más seguros para reintroducir carga posterior) · **Extensión de
+  // cuádriceps (e37)**, otro grupo · **el patrón de bisagra SIN peso (e148) y los estiramientos
+  // (e179, e166, e176)**, porque un estiramiento suave y autolimitado es parte del tratamiento.
+  // «La lista existe para sacar lo que carga directamente el músculo lesionado, no para vaciarle
+  // a nadie la cadena posterior completa.»
+  isquios: /curl femoral|curl nordico/,
   // ── CODO · MUÑECA · PECHO (dictamen de Laura, 27-ago-2026) ────────────────────────────────
   // 🔴 LAURA RECTIFICA SU PROPIA DECISIÓN, y el caso que la falsea es del PO. Aquí decía que codo
   // y muñeca «son de CARGA y AGARRE, no de patrón — un regex acertaría por azar». Él reportó dolor
@@ -872,9 +893,7 @@ function correctiveZoneKeys(client, nowTs) {
     if (!p || !p.at) return;
     const dt = now - Date.parse(p.at);
     if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
-    const z = _PAIN_ZONE_TO_EXCL[p.area];
-    if (!z) return;
-    (Array.isArray(z) ? z : [z]).forEach(k => out.push(k));
+    painExclZones(p.area).forEach(k => out.push(k));
   });
   return [...new Set(out)];
 }
@@ -899,13 +918,13 @@ function correctivePhases(client, nowTs) {
     if (!p || !p.at) return;
     const dt = now - Date.parse(p.at);
     if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
-    const z = _PAIN_ZONE_TO_EXCL[p.area];
-    if (!z) return;
+    const zs = painExclZones(p.area);
+    if (!zs.length) return;
     const agudo = dt < CORRECTIVE_ACUTE_MS
       || (parseInt(p.level, 10) || 0) >= 3
       || (parseInt(p.triaje, 10) || 0) >= 3
       || ((p.flags || []).length > 0);
-    (Array.isArray(z) ? z : [z]).forEach(k => {
+    zs.forEach(k => {
       if (out[k] !== 'agudo') out[k] = agudo ? 'agudo' : 'subagudo';
     });
   });
@@ -919,7 +938,7 @@ function correctiveReview(client, nowTs) {
   const now = nowTs || Date.now();
   let peor = null;
   ((client && client.painCare) || []).forEach(p => {
-    if (!p || !p.at || !_PAIN_ZONE_TO_EXCL[p.area]) return;
+    if (!p || !p.at || !painExclZones(p.area).length) return;
     const dt = now - Date.parse(p.at);
     if (!(dt >= 0 && dt < CORRECTIVE_TTL_MS)) return;
     if (dt < CORRECTIVE_REVIEW_MS) return;
@@ -934,9 +953,7 @@ function painZoneKeys(client, nowTs) {
   const out = [];
   act.forEach(p => {
     // Una zona puede mapear a DOS reglas («cadera o ingle» → aductor + abductor).
-    const z = _PAIN_ZONE_TO_EXCL[p && p.area];
-    if (!z) return;
-    (Array.isArray(z) ? z : [z]).forEach(k => out.push(k));
+    painExclZones(p && p.area).forEach(k => out.push(k));
   });
   return [...new Set(out)];
 }
@@ -4341,6 +4358,200 @@ function medAsimetria(entry) {
 function medComparable(entries) {
   return medLive(entries).length >= 2;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRASA CORPORAL ESTIMADA (perímetros — Navy / Hodgdon-Beckett)
+//
+// Nace de una pregunta del PO el 11-sep-2026: leyó un «IMC 31,3» y entendió que era su grasa
+// corporal. **No lo es, y él es el que sabe de esto** — el IMC es peso ÷ talla² y no distingue
+// músculo de grasa, así que en alguien que entrena sale inflado (con sus medidas reales: IMC 31,3
+// contra ~24% de grasa). Y la app YA TENÍA todo lo necesario para decirlo bien: los perímetros de
+// v566 incluyen cuello, cintura y cadera, que son exactamente las entradas de este método. No se
+// le pide un dato nuevo a nadie.
+//
+// 🔴 NO ES UNA MEDICIÓN, ES UNA ESTIMACIÓN, Y SE DICE. El error típico del método contra DEXA
+// ronda los ±3-4 puntos, así que se devuelve una FRANJA además del número: un «24,4%» a secas
+// finge una precisión que una cinta métrica no tiene (misma regla que la promesa de duración de
+// v533 y que la franja del registro de comida).
+//
+// 🔒 LAS FÓRMULAS SON DISTINTAS POR SEXO Y NO SE ADIVINA EL SEXO. En el hombre entran cuello y
+//    cintura; en la mujer, cuello, cintura Y CADERA (por eso `cadera` es obligatoria para ella y
+//    no para él: no es un descuido). Sin `sex` NO se calcula — usar la de hombre «por defecto»
+//    es exactamente el defecto de v604, donde una constante con una persona dentro decidía por
+//    las 12 mujeres de la base.
+//
+// 🔒 LOS TRES PERÍMETROS SALEN DE LA MISMA TOMA. Mezclar la cintura de hoy con el cuello de junio
+//    fabrica una medición que nadie hizo — y es justo lo que pasa en los datos reales: la toma del
+//    17-jun del PO no tiene cuello. Se usa la toma más reciente que traiga TODO junto, y la
+//    pantalla dice de qué día es (regla de v511: un número sin su procedencia no se reconoce).
+//
+// 🔒 A UN MENOR NO SE LE ESTIMA. Es lenguaje de composición corporal, que el dictamen de Andrés
+//    (v448/v449) prohíbe para menores de 18, y además la referencia de grasa en 5-19 años no es
+//    la del adulto. Devuelve `{ok:false, razon:'menor'}`, como `clientProgressStory`.
+//
+// ⏭️ PENDIENTE DE VEREDICTO DEL EQUIPO (Andrés Hyp · Laura · Coach Pro · Valery), pedido del PO
+//    el 11-sep: el MÉTODO, si la franja es la correcta, y si esto debe entrar donde hoy manda el
+//    IMC (`bodyLoadProfile`). Hasta que lo digan, la pantalla enseña el número y su franja SIN
+//    categoría ni adjetivo — igual que `medAsimetria`, que lleva la misma nota desde v566: un
+//    umbral inventado alarma a todo el mundo o a nadie.
+// ══════════════════════════════════════════════════════════════════════════════
+// 🔴 LA FRANJA VA POR SEXO, y la primera versión no: era UNA constante tomada del error
+// MASCULINO, o sea una constante «por defecto» con una persona dentro decidiendo por las 12
+// mujeres de la base — la clase exacta de v604. Lo cazó Valery: la fórmula femenina compone TRES
+// perímetros (cuello, cintura, cadera) contra dos en la masculina, así que arrastra tres errores
+// de cinta, y la cadera es la más sensible a la postura y a la estructura ósea.
+// Fuente de los dos números (la que citó Andrés Hyp): Hodgdon & Beckett, Naval Health Research
+// Center, **Report 84-11 (1984)**, validado contra pesaje hidrostático — error estándar de
+// estimación ~3,5 puntos en hombres y ~3,9 en mujeres.
+// ⚠️ El TEXTO que la pantalla muestra LEE esta constante: llevaba el «3» escrito a mano y con eso
+//    le mentía a las mujeres en cuanto los dos números dejaran de ser iguales.
+const BF_BAND_PTS_M = 3.5;
+const BF_BAND_PTS_F = 3.9;
+const BF_BAND_PTS = BF_BAND_PTS_M;   // compatibilidad: el default sigue siendo el masculino
+function bfBandFor(sexo) { return sexo === 'F' ? BF_BAND_PTS_F : BF_BAND_PTS_M; }
+const BF_MIN_PCT = 3;      // por debajo: el dato de entrada está mal, no la persona
+const BF_MAX_PCT = 60;
+// Lo que necesita CADA sexo. La cadera solo entra en la fórmula femenina.
+const BF_NEEDS = { M: ['cuello', 'cintura'], F: ['cuello', 'cintura', 'cadera'] };
+
+// Navy / Hodgdon-Beckett, versión métrica (cm). Devuelve null si la combinación es imposible
+// (un logaritmo de cero o negativo: cintura ≤ cuello en el hombre).
+function _bfNavyPct(sexo, tallaCm, m) {
+  const log10 = x => (x > 0 ? Math.log10(x) : NaN);
+  let pct;
+  if (sexo === 'F') {
+    pct = 495 / (1.29579 - 0.35004 * log10(m.cintura + m.cadera - m.cuello) + 0.22100 * log10(tallaCm)) - 450;
+  } else {
+    pct = 495 / (1.0324 - 0.19077 * log10(m.cintura - m.cuello) + 0.15456 * log10(tallaCm)) - 450;
+  }
+  return isFinite(pct) ? pct : null;
+}
+
+// La toma más reciente que traiga los tres perímetros a la vez, con su índice.
+// 🔴 RECIBE LA LISTA YA VIVA Y ORDENADA, no la cruda: antes llamaba a `medLive` por su cuenta y
+//    quedaban DOS llamadas haciendo lo mismo — con eso, romper una de las dos no cambiaba el
+//    resultado y su sabotaje salía VERDE (la lección de v505: dos capas solapadas se tapan entre
+//    sí). Ahora el filtro y el orden por fecha entran UNA vez, y quien los rompa lo rompe todo.
+function _bfPickEntry(vivas, sexo, desde) {
+  const need = BF_NEEDS[sexo] || BF_NEEDS.M;
+  for (let i = (desde || 0); i < vivas.length; i++) {
+    const e = vivas[i];
+    if (need.every(k => { const v = Number(e[k]); return isFinite(v) && v > 0; })) return { entry: e, idx: i };
+  }
+  return null;
+}
+
+// bodyFatEstimate(client, entries) → PURA.
+//   { ok:true, pct, lo, hi, metodo:'navy', sexo, fecha, usados, prev?, delta? }
+//   { ok:false, razon:'menor'|'sin_sexo'|'sin_talla'|'faltan_medidas'|'sin_tomas'|'implausible', falta? }
+// `falta` son las CLAVES que hay que medir, para que la pantalla pueda decir cuál — «faltan datos»
+// a secas manda a adivinar (lección del vacío de la búsqueda de alimentos, v599).
+function bodyFatEstimate(client, entries) {
+  client = client || {};
+  const edad = parseInt(client.age);
+  if (isFinite(edad) && edad < 18) return { ok: false, razon: 'menor' };
+  const sexo = client.sex === 'F' ? 'F' : (client.sex === 'M' ? 'M' : null);
+  if (!sexo) return { ok: false, razon: 'sin_sexo' };
+  const talla = Number(client.height);
+  if (!isFinite(talla) || talla < 100 || talla > 250) return { ok: false, razon: 'sin_talla' };
+
+  const need = BF_NEEDS[sexo];
+  const vivas = medLive(entries);
+  if (!vivas.length) return { ok: false, razon: 'sin_tomas', falta: need.slice() };
+
+  const pick = _bfPickEntry(vivas, sexo, 0);
+  if (!pick) {
+    // Hay tomas, pero ninguna trae los tres juntos: se dice qué falta en la más reciente.
+    const ult = vivas[0];
+    const falta = need.filter(k => { const v = Number(ult[k]); return !(isFinite(v) && v > 0); });
+    return { ok: false, razon: 'faltan_medidas', falta, ultima: ult.date };
+  }
+
+  const usados = {};
+  need.forEach(k => { usados[k] = Number(pick.entry[k]); });
+  const crudo = _bfNavyPct(sexo, talla, usados);
+  if (crudo == null || crudo < BF_MIN_PCT || crudo > BF_MAX_PCT) {
+    return { ok: false, razon: 'implausible', usados, fecha: pick.entry.date };
+  }
+  const r1 = x => Math.round(x * 10) / 10;
+  const banda = bfBandFor(sexo);
+  const out = {
+    ok: true, metodo: 'navy', sexo, fecha: pick.entry.date, banda,
+    pct: r1(crudo),
+    lo: r1(Math.max(BF_MIN_PCT, crudo - banda)),
+    hi: r1(Math.min(BF_MAX_PCT, crudo + banda)),
+    usados,
+  };
+  // La toma ANTERIOR que también traiga los tres: la flecha es lo que de verdad se acciona.
+  // 🔒 Si la anterior no los trae, NO se rellena con los de otra fecha: se queda sin flecha.
+  const antes = _bfPickEntry(vivas, sexo, pick.idx + 1);
+  if (antes) {
+    const usadosA = {};
+    need.forEach(k => { usadosA[k] = Number(antes.entry[k]); });
+    const pctA = _bfNavyPct(sexo, talla, usadosA);
+    if (pctA != null && pctA >= BF_MIN_PCT && pctA <= BF_MAX_PCT) {
+      out.prev = { pct: r1(pctA), fecha: antes.entry.date };
+      out.delta = r1(crudo - pctA);
+      // 🔴 UN CAMBIO MENOR QUE MEDIA FRANJA NO ES UN CAMBIO (Valery). Enseñarlo con flecha y cifra
+      //    es la falsa precisión que esta misma franja existe para evitar: está DENTRO del margen
+      //    de la propia cinta.
+      out.dentroDelMargen = Math.abs(out.delta) < banda / 2;
+      // 🔴 BANDERA ROJA de Laura: un cambio de MÁS DEL DOBLE de la franja no se explica por ruido
+      //    del instrumento — o el dato está mal tomado, o el cambio es demasiado rápido para ser
+      //    solo grasa. Las dos cosas merecen pausa y la MISMA acción las cubre (hablar con el
+      //    coach), así que no hace falta diagnosticar cuál es.
+      //    🔒 Y NO hay bandera por valor bajo absoluto: «flaggear a alguien solo por tener poca
+      //    grasa castigaría a gente naturalmente delgada sin señal real de riesgo. El riesgo está
+      //    en la VELOCIDAD del cambio, no en el punto aislado» (Laura, 11-sep).
+      if (Math.abs(out.delta) > banda * 2) out.bandera = 'cambio_grande';
+    }
+  }
+  return out;
+}
+
+// El texto de procedencia. La pantalla NUNCA muestra el número solo: dice de qué toma salió y con
+// qué perímetros, o el coach no reconoce el dato (el reporte que originó v511).
+// ── BANDERA DE CINTURA (dictada por Laura el 11-sep-2026) ───────────────────────────────────
+// 🔴 Es INDEPENDIENTE de la grasa estimada: dispara con cintura + sexo, así que alcanza también a
+// quien no tiene cuello medido (5 de las 6 personas medibles hoy). La cintura es un marcador de
+// riesgo por sí sola.
+// Fuente: **OMS, «Waist Circumference and Waist–Hip Ratio», informe de consulta de expertos,
+// 2008** — ≥102 cm en hombre y ≥88 cm en mujer es riesgo cardiometabólico sustancialmente
+// aumentado. Se usa ESE corte y no el de ≥94/≥80 («aumentado») a propósito: el alto es el que no
+// sobre-alarma. ⚠️ El PO cae exactamente en el umbral (102 cm) y subió 7 cm en 3 meses.
+// 🔒 NO es un diagnóstico y el texto lo dice: manda a un profesional de la salud, no da un nombre
+//    a nada — la misma regla que v424 («la app dice qué quitó, jamás que lo que queda esté bien»).
+const WAIST_RISK_CM = { M: 102, F: 88 };
+function waistFlag(client, entries) {
+  client = client || {};
+  const edad = parseInt(client.age);
+  if (isFinite(edad) && edad < 18) return null;     // a un menor no se le habla de esto
+  const sexo = client.sex === 'F' ? 'F' : (client.sex === 'M' ? 'M' : null);
+  if (!sexo) return null;
+  const vivas = medLive(entries);
+  const toma = vivas.filter(e => { const v = Number(e.cintura); return isFinite(v) && v > 0; })[0];
+  if (!toma) return null;
+  const cm = Number(toma.cintura);
+  if (cm < WAIST_RISK_CM[sexo]) return null;
+  return { cm, corte: WAIST_RISK_CM[sexo], sexo, fecha: toma.date };
+}
+
+// La fecha se formatea aquí y no con un helper de UI: `avi-core.js` corre también en Node (la
+// suite) y no puede depender de nada del navegador.
+function _bfDia(d) {
+  try { return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }); }
+  catch (e) { return String(d || ''); }
+}
+function bodyFatSourceText(est) {
+  if (!est || !est.ok) return '';
+  const partes = Object.keys(est.usados).map(k => {
+    const f = MED_FIELDS.filter(x => x.key === k)[0];
+    // Coma decimal: en es-CO «44.5» se lee como cuarenta y cuatro punto cinco de otra cosa.
+    return (f ? f.label.toLowerCase() : k) + ' ' + String(est.usados[k]).replace('.', ',') + ' cm';
+  });
+  return 'Estimada con ' + partes.join(', ') + ', de tu toma del ' + _bfDia(est.fecha) + '.';
+}
+
 
 // ── ¿Es usuario en modo libre (gratis, sin coach)? ──
 // Gating de funciones Premium. Libre = tier 'libre' (auto-registrados). Los asesorados
@@ -8963,8 +9174,13 @@ const _PAIN_ZONE_TO_EXCL = {
   'zona lumbar': 'lumbar',
   'cadera o ingle': ['aductor', 'abductor'],  // 🔒 las DOS: sin exploración no se separa una ingle de un trocánter
   'muslo por delante': 'rodilla',      // cuádriceps y rodilla comparten el aparato extensor
-  'muslo por detrás': 'lumbar',        // 🔒 isquios + lumbar son una cadena, y «detrás del muslo» es
-                                       //    lo más parecido a una ciática que escribe alguien sin formación
+  // 🔴 LAS DOS (Laura, 11-sep-2026). `lumbar` sola atrapaba los patrones de BISAGRA DE CADERA
+  //    (peso muerto rumano, sentadilla) y **ningún trabajo de FLEXIÓN DE RODILLA**: con isquios
+  //    lesionados la app dejaba puesto el curl femoral, que es contracción resistida DIRECTA del
+  //    músculo que duele. Medido contra el plan real del PO el día después de lesionarse.
+  //    `lumbar` se conserva porque «detrás del muslo» es lo más parecido a una ciática que escribe
+  //    alguien sin formación; `isquios` es lo que faltaba.
+  'muslo por detrás': ['lumbar', 'isquios'],
   'muslo por dentro (aductores)': 'aductor',
   'cara externa del muslo o glúteo (abductores)': 'abductor',
   'rodilla': 'rodilla',
@@ -8977,6 +9193,20 @@ const _PAIN_ZONE_TO_EXCL = {
   'muñeca o mano': 'muneca',
   'pecho': 'pecho',
 };
+
+// Las reglas de exclusión de un área, SIEMPRE como lista. Una zona puede apuntar a DOS
+// («cadera o ingle» → aductor+abductor desde v546; «muslo por detrás» → lumbar+isquios desde
+// v607), y ese `Array.isArray(z) ? z : [z]` estaba copiado en TRES sitios y FALTABA en el cuarto:
+// 🔴 `shockPlan` hacía `excludeZones.add(z)` con el array entero, así que `GEN_ZONE_EXCL[array]`
+//    daba `undefined` y **el cambio de variante no excluía NADA** para esa zona. Defecto
+//    PREEXISTENTE: vivía desde v546 para quien reportara dolor de cadera o ingle, y mi cambio de
+//    hoy lo habría extendido a los isquios. Cuatro copias de un criterio son cuatro sitios donde
+//    puede faltar una: ahora es UNA.
+function painExclZones(area) {
+  const z = _PAIN_ZONE_TO_EXCL[area];
+  if (!z) return [];
+  return Array.isArray(z) ? z.slice() : [z];
+}
 
 // shockTargets(sessions, client, now) → PURA. Decide CÓMO atacar cuando hay varios ejercicios
 // plantados a la vez (v355 Fase 4.1; gate de constancia v356). Criterio del coach profesional
@@ -9359,7 +9589,7 @@ function shockPlan(client, exName, sessions, lib, now) {
   const hasPain = painCareActive(client.painCare, nowTs).length > 0;
   if (hasPain) {
     warnings.push('🤕 Reportó dolor hace poco — revisa su estado antes de subir cargas.');
-    painCareActive(client.painCare, nowTs).forEach(p => { const z = _PAIN_ZONE_TO_EXCL[p.area]; if (z) excludeZones.add(z); });
+    painCareActive(client.painCare, nowTs).forEach(p => painExclZones(p.area).forEach(z => { if (GEN_ZONE_EXCL[z]) excludeZones.add(z); }));
   }
 
   const name = client.name || 'Tu asesorado';
@@ -10548,6 +10778,15 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeMedidas,
     medAsimetria,
     medComparable,
+    bodyFatEstimate,
+    bodyFatSourceText,
+    BF_BAND_PTS,
+    BF_BAND_PTS_M,
+    BF_BAND_PTS_F,
+    bfBandFor,
+    waistFlag,
+    WAIST_RISK_CM,
+    BF_NEEDS,
     consentSame,
     consentKeep,
     PAIN_AREAS,
@@ -10567,6 +10806,7 @@ if (typeof module !== 'undefined' && module.exports) {
     painZoneKeys,
     limitationsFor,
     GEN_ZONE_LABEL,
+    painExclZones,
     exerciseContraindicated,
     correctiveFor,
     correctiveZoneKeys,

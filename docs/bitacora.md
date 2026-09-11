@@ -4,6 +4,77 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-11 (2ª parte) — v607: LA GRASA CORPORAL ESTIMADA, Y LOS CUATRO VEREDICTOS
+
+**Nace de una pregunta suya, no de un plan.** Al reportarle lo que movía registrar sus 96 kg leyó
+**«IMC 31,3» como si fuera su porcentaje de grasa**, y preguntó. No lo es —el IMC es peso ÷ talla² y
+no distingue músculo de grasa— y **la app ya tenía todo lo necesario para decirlo bien**: los 13
+perímetros de v566 incluyen cuello, cintura y cadera, que son exactamente las entradas del método
+de perímetros. No hubo que pedirle un dato nuevo a nadie.
+Dijo: *«construyelo y se lo pasas a los coach para que lo evaluen»*.
+
+### El motor (`bodyFatEstimate`, PURO)
+Navy / Hodgdon-Beckett métrico, con las guardas que el propio repo ya había pagado antes:
+- **Franja por SEXO** (±3,5 hombre · ±3,9 mujer; Report 84-11, 1984). 🔴 Nació como **una sola
+  constante tomada del error masculino** —la clase de v604— y lo cazó Valery.
+- **A un menor NO se le estima y no se le pinta NADA**, ni una explicación (Laura: *«explicar “no te
+  lo mostramos porque eres menor” sigue nombrando el concepto delante de una persona de 15 años”»*).
+  Con su control: a un adulto con las MISMAS medidas sí se le calcula.
+- **El sexo no se adivina** (la fórmula femenina lleva cadera; sin `sex` no se calcula).
+- **Los tres perímetros salen de la MISMA toma**: su toma de junio no tiene cuello, así que **hoy no
+  tiene flecha** y la app lo dice en vez de inventarla mezclando fechas.
+- Rango de cordura, lápidas respetadas y el más reciente **por FECHA** (no por posición: v448).
+
+### Medido ANTES de construir la pantalla (los 28 perfiles reales)
+**1 persona puede estimarse hoy (él, 24,4%)** · **5 solo les falta el CUELLO** (Claudia, Natalia,
+Kathe, Luz, Nicolás — 4 de las 5 son mujeres) · 16 sin ninguna toma · 4 menores bloqueados · 2 sin
+talla. Por eso la pantalla dice **qué perímetro falta**, no «faltan datos».
+
+### Los cuatro veredictos, EJECUTADOS (`docs/veredictos-grasa-2026-09-11.md`)
+- 💃 **Valery (🟡→🟢):** la franja por sexo · **el color del delta era lenguaje de castigo** (verde
+  al bajar, naranja al subir, *sin preguntarle su objetivo*: en recomposición subir un punto ES el
+  plan funcionando — familia de `nutWhyKeyShown`, v510) → texto neutro · **un cambio menor que media
+  franja no es un cambio** → «dentro del margen de tu cinta» · el texto del cuello que sonaba a
+  tarea · la línea del **ciclo menstrual** en el aviso de cómo medirse · y la **regla nueva** de que
+  el % de grasa jamás entra a la vitrina pública ni a gamificación.
+- 🩺 **Laura (🟡, dos condiciones):** la **zona nueva de ISQUIOS** —`'muslo por detrás'` apuntaba
+  solo a `lumbar`, que atrapa la bisagra de cadera y **ningún trabajo de flexión de rodilla**: con
+  isquios lesionados la app le dejaba puesto el **curl femoral**, que es contracción resistida
+  DIRECTA del músculo lesionado (medido contra su plan real del miércoles, el día después de
+  lesionarse)— y las **dos banderas rojas**: cintura ≥102/≥88 cm (OMS 2008; él cae justo en 102) y
+  cambio mayor al doble de la franja. Su regla va **como nombre y no como lista de ids**, y **en su
+  propia zona y no dentro de `lumbar`** (quien tiene lumbalgia pura no necesita perder el curl
+  femoral: sería la regla ANCHA de v424). **Control probado con sabotaje, como ella pidió:** caen 5
+  de 374 y sobreviven los 9 que dictó (hip thrust, puente, cuádriceps, bisagra sin peso,
+  estiramientos).
+- 🏋️ **Coach Pro (🟢):** aprueba mostrarla; pide **cambiar** el criterio del perfil de carga y dicta
+  el umbral de asimetría (5%, un solo nivel, sin nada automático en la rutina).
+- 💪 **Andrés Hyp (🟡):** aprueba el método y la franja partida; pide **categorías** con cortes ACE y
+  textos escritos; y **nutrición NO se toca** todavía — dosificar proteína sobre masa magra con el
+  2,2 g/kg actual **BAJARÍA** la dosis de los más musculosos (el PO pasaría de 174 a ~160 g) porque
+  ese 2,2 está calibrado sobre peso de referencia, no sobre masa magra (lo correcto sería 2,3-2,7
+  g/kg de masa libre de grasa, ISSN/Helms 2014, sin calibrar aquí).
+
+### 🔴 El defecto PREEXISTENTE que destapó el cambio
+`shockPlan` era **el único de cuatro consumidores** del mapa de zonas que no sabía leer una zona con
+DOS reglas: hacía `excludeZones.add(z)` con el array entero, así que `GEN_ZONE_EXCL[array]` daba
+`undefined` y **el cambio de variante no excluía nada**. Vivía **desde v546** para quien reportara
+dolor de «cadera o ingle». Ahora hay UNA definición (`painExclZones`) y un test cuenta que nadie
+vuelva a leer el mapa crudo.
+
+### QA
+Suite **1142 → 1148** · matriz nueva `_sabotaje-grasa` **24/24 muerden** (dos salieron INERTES por
+anclas que mis propios cambios despegaron, reapuntadas) · harness nuevo `_verify-grasa` con la
+función REAL extraída del archivo, verde en tema claro y oscuro a 360 px. 🔬 **Tres rojos fueron de
+mis sondas, no de la app**: un control de «una sola línea» que en un elemento de bloque aprueba
+siempre, el fondo desenfocado contado como desborde, y un `!/diagn/i` que rechazaba la frase
+*«no es una alarma ni un diagnóstico»*.
+
+⏭️ **Lo que queda en manos del PO:** las **categorías** (Andrés sí / Valery no) · si la grasa
+**reemplaza al IMC** en el perfil de carga (Andrés y Coach Pro sí / Laura no) · el **umbral de
+asimetría del 5%** de Coach Pro · y la **separación visual** de la tarjeta de fotos, que hoy es la
+tarjeta contigua.
+
 ## ⏮️ 2026-09-11 — v606: EL AJUSTE DE TAMAÑO DE TEXTO NO LLEGABA AL CIERRE DEL ENTRENO
 
 Punto de deuda que venía anotado del 10-sep. El ajuste «Tamaño de texto» del Perfil escala el

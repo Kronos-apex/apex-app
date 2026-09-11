@@ -1009,6 +1009,88 @@ function delMedida(id){
 function askDelMedida(id){ MED_CONFIRM_ID=id; renderMedidasClient(CUR.clientId); }
 function cancelDelMedida(){ MED_CONFIRM_ID=null; renderMedidasClient(CUR.clientId); }
 
+
+// ── GRASA CORPORAL ESTIMADA (v607) ──────────────────────────────────────────
+// Nace de que el PO leyó su IMC como si fuera su grasa corporal. El motor es
+// `bodyFatEstimate` (avi-core, PURO); aquí solo se pinta.
+// 🔒 A UN MENOR NO SE LE PINTA NADA — ni el número ni una explicación de por qué no: nombrar
+//    la grasa corporal ES el lenguaje que el dictamen de Andrés prohíbe (v448/v449). El motor
+//    devuelve `razon:'menor'` y esta función devuelve cadena vacía, en silencio.
+// 🔒 SIN CATEGORÍA NI ADJETIVO hasta que el equipo dé su veredicto (pedido del PO el 11-sep):
+//    la pantalla enseña el número y su franja, como `medAsimetria` desde v566.
+// 🔴 Y cuando NO se puede estimar, se dice QUÉ perímetro falta: medido sobre los 28 perfiles
+//    reales, a 5 personas les falta SOLO el cuello — «faltan datos» a secas las deja adivinando.
+function _medGrasaHtml(cli, entries){
+  if(typeof bodyFatEstimate!=='function') return '';
+  const e=bodyFatEstimate(cli, entries);
+  if(!e || e.razon==='menor' || e.razon==='sin_sexo') return '';   // silencio, no explicación
+  const box=(inner)=>`<div class="medgrasa">${inner}</div>`;
+  if(!e.ok){
+    if(e.razon==='sin_talla'){
+      return box(`<div class="mg-h">Tu grasa corporal estimada</div>
+        <div class="mg-falta">Nos falta tu <b>altura</b> para calcularla. Pídele a tu coach que la anote en tu ficha.</div>`);
+    }
+    if(e.razon==='faltan_medidas'||e.razon==='sin_tomas'){
+      const nombres=(e.falta||[]).map(k=>{
+        const f=(typeof MED_FIELDS!=='undefined'?MED_FIELDS:[]).filter(x=>x.key===k)[0];
+        return f?f.label.toLowerCase():k;
+      });
+      if(!nombres.length) return '';
+      // Texto de Valery (11-sep): el anterior sonaba a tarea pendiente, y 4 de las 5 personas a
+      // las que solo les falta un dato son mujeres — la función nacía sin alcanzar a casi ninguna.
+      const plural=nombres.length>1;
+      return box(`<div class="mg-h">Tu grasa corporal estimada</div>
+        <div class="mg-falta">Ya tienes lo demás registrado. Solo te falta${plural?'n estos datos':' un dato'}: <b>${esc(nombres.map(x=>'el '+x).join(' y '))}</b>. ${plural?'Mídelos':'Mídelo'} cuando quieras, con la misma cinta — no es una tarea, y en cuanto lo anotes aquí aparece tu estimación.</div>`);
+    }
+    return '';   // implausible: no se le enseña un número que sabemos que está mal
+  }
+  const dl=e.delta;
+  const dia=f=>esc(new Date(f).toLocaleDateString('es-ES',{day:'numeric',month:'long'}));
+  // 🔴 SIN COLOR EN NINGÚN SENTIDO (Valery, 11-sep). Verde al bajar y naranja al subir es decirle
+  //    «bajar es bueno, subir es un problema» SIN preguntarle su objetivo: para quien está en
+  //    recomposición o en volumen, subir un punto mientras gana músculo ES el plan funcionando.
+  //    Familia de `nutWhyKeyShown` (v510): un número sin el objetivo al lado dice lo contrario de
+  //    lo que pasó.
+  // 🔴 Y UN CAMBIO MENOR QUE MEDIA FRANJA NO ES UN CAMBIO: enseñarlo con flecha y cifra es la
+  //    falsa precisión que la franja existe para evitar. Lo decide el motor (`dentroDelMargen`).
+  let flecha='';
+  if(dl==null){
+    flecha=`<div class="mg-delta">Cuando te vuelvas a medir <b>los mismos perímetros</b>, aquí aparece cuánto cambió.</div>`;
+  } else if(e.dentroDelMargen){
+    flecha=`<div class="mg-delta">Dentro del margen de tu cinta — con este método no se puede afirmar que haya cambio real desde el ${dia(e.prev.fecha)}.</div>`;
+  } else if(dl===0){
+    flecha=`<div class="mg-delta">Igual que la vez pasada.</div>`;
+  } else {
+    flecha=`<div class="mg-delta">${dl<0?'▼':'▲'} ${Math.abs(dl).toFixed(1).replace('.',',')} puntos desde el ${dia(e.prev.fecha)}.</div>`;
+  }
+  // 🔴 BANDERA de Laura: un cambio de más del DOBLE de la franja no lo explica el instrumento.
+  //    No diagnostica cuál de las dos causas es (dato mal tomado / cambio muy rápido): la misma
+  //    acción cubre las dos.
+  const bandera=(e.bandera==='cambio_grande')
+    ? `<div class="mg-flag">Este cambio es más grande de lo que este método suele medir bien. Antes de seguir, cuéntale a tu coach cómo te has sentido estos días — con la comida, con el sueño, con el ánimo — y si pueden, vuelvan a tomar la medida para confirmarla.</div>` : '';
+  // La franja se DICE leyendo la constante del motor, nunca con el número escrito a mano: la
+  // primera versión decía «3 puntos» para todo el mundo y a las mujeres la franja es más ancha.
+  const pts=String(e.banda||'').replace('.',',');
+  return box(`<div class="mg-h">Tu grasa corporal estimada</div>
+    <div class="mg-n">${e.pct.toFixed(1).replace('.',',')}%</div>
+    <div class="mg-band">entre ${String(e.lo).replace('.',',')}% y ${String(e.hi).replace('.',',')}%</div>
+    ${flecha}${bandera}
+    <div class="mg-src">Es una <b>estimación con cinta métrica</b>, no una medición de laboratorio: puede irse unos ${esc(pts)} puntos para cualquier lado.</div>
+    <div class="mg-src">${esc(typeof bodyFatSourceText==='function'?bodyFatSourceText(e):'')}</div>`);
+}
+
+// ── BANDERA DE CINTURA (Laura, 11-sep-2026) ─────────────────────────────────
+// 🔒 Independiente de la grasa estimada: alcanza a quien no tiene el cuello medido, que hoy son
+//    5 de las 6 personas medibles. Y a un menor NO le sale (lo corta `waistFlag`).
+// 🔒 NO diagnostica y NO nombra ninguna enfermedad: manda a un profesional de la salud, que es la
+//    misma regla de v424 — la app dice lo que ve, jamás que lo demás esté bien.
+function _medCinturaFlagHtml(cli, entries){
+  if(typeof waistFlag!=='function') return '';
+  const f=waistFlag(cli, entries);
+  if(!f) return '';
+  return `<div class="mg-flag">Tu cintura está en un rango que vale la pena revisar con un profesional de la salud, más allá de lo que hagamos aquí contigo entrenando. No es una alarma ni un diagnóstico — es cuidarte con toda la información, no solo con la del gimnasio.</div>`;
+}
+
 function renderMedidasClient(clientId){
   const listEl=document.getElementById('cn-med-list');
   const chartWrap=document.getElementById('cn-med-chart-wrap');
@@ -1069,6 +1151,11 @@ function renderMedidasClient(clientId){
     </tr>`;
   });
   html+=`</tbody></table></div>`;
+
+  // La grasa estimada va ANTES de la asimetría: responde la pregunta que la gente se hace
+  // mirando la tabla («¿y esto qué significa?»), y la asimetría es un detalle de después.
+  html+=_medGrasaHtml(cli,(DB.medidas||{})[clientId]||[]);
+  html+=_medCinturaFlagHtml(cli,(DB.medidas||{})[clientId]||[]);
 
   html+=_medAsimetriaHtml(latest,primera);
 

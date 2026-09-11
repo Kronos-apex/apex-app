@@ -17876,6 +17876,279 @@ test('🔒 CABLEADO v606: el ajuste de tamaño de texto LLEGA al cierre del entr
     '🔴 `.wf-inner` dejó de ser scroller: con letra grande el botón de salir queda inalcanzable');
 });
 
+
+// ══════════════════════════════════════════════════════
+// GRASA CORPORAL ESTIMADA (v607) — pedido del PO el 11-sep, pendiente del veredicto del equipo
+// ══════════════════════════════════════════════════════
+
+// Los números REALES del PO (medidas del 8-sep-2026, talla 175, 37 años).
+const _BF_PO = { sex: 'M', age: 37, height: 175 };
+const _BF_MED_PO = [
+  { id: 'a', date: '2026-09-08T22:52:43.818Z', cuello: 44.5, cintura: 102, cadera: 105.5, hombros: 134, pecho: 116 },
+  { id: 'b', date: '2026-06-17T20:35:28.694Z', cintura: 95, cadera: 102 },   // ⚠️ SIN cuello
+];
+
+test('🔴 la grasa estimada sale de los perímetros, y el IMC no es la grasa', () => {
+  const e = core.bodyFatEstimate(_BF_PO, _BF_MED_PO);
+  assert.ok(e.ok, 'no estimó con cuello+cintura+talla: ' + JSON.stringify(e));
+  // Navy/Hodgdon-Beckett con 102/44,5/175 → 24,4%. El valor se afirma con holgura de redondeo.
+  assert.ok(Math.abs(e.pct - 24.4) < 0.15, 'la fórmula cambió de resultado: ' + e.pct);
+  // 🔒 Y el CONTROL que da sentido a todo esto: su IMC es 31,3 — el número que el PO leyó como
+  //    si fuera su grasa. Si algún día estos dos se acercan, es que alguien sustituyó la
+  //    fórmula por el IMC disfrazado.
+  const imc = 96 / Math.pow(1.75, 2);
+  assert.ok(imc - e.pct > 5, 'la estimación se parece al IMC: ¿se está calculando el IMC?');
+  // Es una ESTIMACIÓN y se dice: franja de ±3,5 puntos, no un número solo.
+  assert.ok(e.hi - e.lo > 5, 'la franja desapareció: un número solo finge precisión que no hay');
+  assert.ok(e.lo < e.pct && e.pct < e.hi);
+  // La procedencia viaja con el número (regla de v511).
+  const src = core.bodyFatSourceText(e);
+  // 🔒 COMA decimal: en es-CO «44.5» se lee como otra cosa. Si alguien vuelve al punto, esto cae.
+  assert.ok(/cuello 44,5 cm/.test(src) && /cintura 102 cm/.test(src), 'no dice con qué se calculó: ' + src);
+  assert.ok(/septiembre/.test(src), 'no dice de qué toma salió: ' + src);
+});
+
+test('🔒 a un MENOR no se le estima la grasa — y a una adulta con las mismas medidas SÍ', () => {
+  const menor = core.bodyFatEstimate({ sex: 'M', age: 15, height: 175 }, _BF_MED_PO);
+  assert.strictEqual(menor.ok, false);
+  assert.strictEqual(menor.razon, 'menor', 'un menor recibió lenguaje de composición corporal');
+  // 🔒 CONTROL OBLIGATORIO (lección v485): sin esto, «bloquear al menor» y «borrar la feature»
+  //    pasan el mismo test. Con las MISMAS medidas, a un adulto sí se le estima.
+  const adulto = core.bodyFatEstimate({ sex: 'M', age: 18, height: 175 }, _BF_MED_PO);
+  assert.ok(adulto.ok, 'el candado de menores se llevó también a los adultos');
+});
+
+test('🔒 la fórmula es POR SEXO y el sexo no se adivina (el defecto de v604)', () => {
+  const med = [{ id: 'x', date: '2026-09-01', cuello: 33, cintura: 80, cadera: 100 }];
+  const h = core.bodyFatEstimate({ sex: 'M', age: 30, height: 165 }, med);
+  const m = core.bodyFatEstimate({ sex: 'F', age: 30, height: 165 }, med);
+  assert.ok(h.ok && m.ok);
+  // Si las dos dieran lo mismo, se estaría usando UNA fórmula para todo el mundo — que es
+  // exactamente lo que hacía `WF_DEFAULT_PHOTO` con las 12 mujeres de la base.
+  assert.ok(Math.abs(h.pct - m.pct) > 3, 'hombre y mujer dan el mismo número: ¿una sola fórmula?');
+  // Sin `sex` NO se calcula: no hay default.
+  const sinSexo = core.bodyFatEstimate({ age: 30, height: 165 }, med);
+  assert.strictEqual(sinSexo.ok, false);
+  assert.strictEqual(sinSexo.razon, 'sin_sexo');
+  // A la mujer la CADERA es obligatoria (entra en su fórmula); al hombre no.
+  const sinCadera = [{ id: 'y', date: '2026-09-01', cuello: 33, cintura: 80 }];
+  assert.deepStrictEqual(core.bodyFatEstimate({ sex: 'F', age: 30, height: 165 }, sinCadera).falta, ['cadera']);
+  assert.ok(core.bodyFatEstimate({ sex: 'M', age: 30, height: 165 }, sinCadera).ok, 'al hombre se le exige cadera sin necesitarla');
+});
+
+test('🔴 los tres perímetros salen de la MISMA toma: no se mezclan fechas', () => {
+  // El caso REAL del PO: la toma de junio no tiene cuello. Si se mezclara con el cuello de
+  // septiembre, la app inventaría una medición que nadie hizo (y con ella una «mejora»).
+  const soloJunio = [_BF_MED_PO[1]];
+  const e = core.bodyFatEstimate(_BF_PO, soloJunio);
+  assert.strictEqual(e.ok, false);
+  assert.strictEqual(e.razon, 'faltan_medidas');
+  assert.deepStrictEqual(e.falta, ['cuello'], 'no dice QUÉ falta: «faltan datos» manda a adivinar');
+  // Y con las dos tomas, la flecha NO se fabrica: la anterior no trae cuello → sin `delta`.
+  const full = core.bodyFatEstimate(_BF_PO, _BF_MED_PO);
+  assert.ok(full.ok);
+  assert.strictEqual(full.delta, undefined, 'se inventó una comparación con una toma incompleta');
+  // Cuando la anterior SÍ los trae, entonces sí hay flecha, y con su fecha.
+  const conAnterior = _BF_MED_PO.concat([{ id: 'c', date: '2026-03-01', cuello: 44.5, cintura: 95 }]);
+  const e3 = core.bodyFatEstimate(_BF_PO, conAnterior);
+  assert.ok(e3.prev && e3.prev.fecha === '2026-03-01', 'no encontró la toma anterior comparable');
+  assert.ok(e3.delta > 0, 'la cintura subió 7 cm y el delta no lo refleja: ' + e3.delta);
+});
+
+test('🔒 la toma que manda es la más RECIENTE POR FECHA, y una borrada no se usa', () => {
+  // 🔴 Esto es lo que de verdad garantiza `medLive`, y lo destapó un sabotaje que salió VERDE:
+  //    mi primera versión de este test solo ponía una lápida VACÍA (tombDelete le quita los
+  //    campos), así que ignorar el filtro no cambiaba el resultado y el candado no vigilaba nada.
+  //    Lo que se rompe al leer la lista en crudo es el ORDEN: se toma `entries[0]` en vez de la
+  //    más nueva por fecha. Es la clase del bug del peso (v448/v511), que leía por POSICIÓN.
+  const alReves = [
+    { id: 'vieja', date: '2026-03-01T00:00:00.000Z', cuello: 44.5, cintura: 112 },
+    { id: 'nueva', date: '2026-09-08T22:52:43.818Z', cuello: 44.5, cintura: 102 },
+  ];
+  const e = core.bodyFatEstimate(_BF_PO, alReves);
+  assert.ok(e.ok);
+  assert.strictEqual(e.fecha, '2026-09-08T22:52:43.818Z', 'usó la toma vieja: está leyendo por posición, no por fecha');
+  assert.strictEqual(e.usados.cintura, 102);
+  assert.ok(e.prev && e.delta < 0, 'la cintura bajó 10 cm y la flecha no lo dice: ' + JSON.stringify(e.prev));
+  // 🔒 Y una toma BORRADA no se usa NI SI CONSERVA SUS CAMPOS — que es el escenario de
+  //    resurrección del que protege el filtro (hoy `tombDelete` los quita, pero una copia
+  //    rezagada de otro dispositivo no tiene por qué venir limpia).
+  const conLapida = [{ id: 'a', date: '2026-09-08T22:52:43.818Z', del: true, mAt: '2026-09-09', cuello: 44.5, cintura: 102 }];
+  assert.ok(!core.bodyFatEstimate(_BF_PO, conLapida).ok, 'se calculó sobre una toma que la persona borró');
+  // 🔒 Y el mensaje de «qué falta» también sale de la toma MÁS NUEVA: si saliera de la primera
+  //    de la lista, a alguien le pediríamos medirse algo que ya se midió ayer.
+  const desordenSinCuello = [
+    { id: 'vieja', date: '2026-03-01T00:00:00.000Z', cintura: 100 },
+    { id: 'nueva', date: '2026-09-08T00:00:00.000Z', cintura: 102, cadera: 105 },
+  ];
+  const f = core.bodyFatEstimate({ sex: 'F', age: 30, height: 165 }, desordenSinCuello);
+  assert.strictEqual(f.razon, 'faltan_medidas');
+  assert.strictEqual(f.ultima, '2026-09-08T00:00:00.000Z', 'el aviso se calculó sobre la toma vieja');
+  assert.deepStrictEqual(f.falta, ['cuello'], 'pide medir algo que la toma nueva ya trae: ' + JSON.stringify(f.falta));
+});
+
+test('🔒 un número imposible NO se pinta (y el rango es lo que lo caza, no el NaN)', () => {
+  // Cintura ≤ cuello no existe: el logaritmo se va a NaN y ahí se corta.
+  const nan = core.bodyFatEstimate({ sex: 'M', age: 30, height: 175 }, [{ id: 'z', date: '2026-09-01', cuello: 100, cintura: 80 }]);
+  assert.strictEqual(nan.razon, 'implausible');
+  // 🔴 Y el caso que de verdad necesita el RANGO, que el otro no cubre (por eso su sabotaje salía
+  //    VERDE): cintura apenas por encima del cuello da un número FINITO y absurdo (−105%).
+  const absurdo = core.bodyFatEstimate({ sex: 'M', age: 30, height: 175 }, [{ id: 'w', date: '2026-09-01', cuello: 44.5, cintura: 45 }]);
+  assert.strictEqual(absurdo.ok, false, 'se pintó un porcentaje que no existe');
+  assert.strictEqual(absurdo.razon, 'implausible');
+  assert.ok(!isNaN(absurdo.usados.cintura), 'no devuelve lo que midió para poder corregirlo');
+  // CONTROL: el rango no se está comiendo lo legítimo — un 8% de un atleta sigue pasando.
+  const flaco = core.bodyFatEstimate({ sex: 'M', age: 28, height: 178 }, [{ id: 'f', date: '2026-09-01', cuello: 39, cintura: 72 }]);
+  assert.ok(flaco.ok && flaco.pct < 15, 'el rango de cordura está descartando a una persona delgada: ' + JSON.stringify(flaco));
+});
+
+test('🔒 CABLEADO v607: las dos pantallas la calculan, y a un menor no le pintan nada', () => {
+  const fs = require('fs'), path = require('path');
+  const sin = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  // El asesorado: la tarjeta de medidas la llama, y con su lista COMPLETA (no solo la última
+  // toma: el motor necesita el historial para la flecha y para saltarse las lápidas).
+  assert.match(sin, /html\+=_medGrasaHtml\(cli,\(DB\.medidas\|\|\{\}\)\[clientId\]\|\|\[\]\);/,
+    '🔴 la tarjeta de medidas dejó de calcular la grasa estimada');
+  assert.match(sin, /function _medGrasaHtml\(cli, entries\)\{[\s\S]*?bodyFatEstimate\(cli, entries\)/,
+    '🔴 `_medGrasaHtml` dejó de preguntarle al motor');
+  // 🔒 El silencio del menor es parte del cableado: `razon:'menor'` devuelve cadena vacía, no
+  //    una explicación — nombrar la grasa corporal ES el lenguaje prohibido (v448/v449).
+  assert.match(sin, /razon==='menor'[^\n]*return ''/,
+    '🔴 a un menor se le pinta algo cuando el motor dice que no');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.match(coach, /bodyFatEstimate\(c,\(DB\.medidas&&DB\.medidas\[c\.id\]\)\|\|\[\]\)/,
+    '🔴 la valoración del coach dejó de calcular la grasa estimada');
+  assert.match(coach, /_bf\.razon==='faltan_medidas'[\s\S]{0,400}Falta medir/,
+    '🔴 la casilla del coach dejó de decir QUÉ perímetro falta (a 5 asesoradas les falta solo el cuello)');
+});
+
+
+// ── Lo que dictó el equipo el 11-sep (Valery · Laura · Coach Pro · Andrés) ──────────────────
+
+test('🔒 la FRANJA es más ancha en mujer que en hombre, y el texto la LEE', () => {
+  // 🔴 La primera versión tenía UNA constante tomada del error masculino decidiendo por las 12
+  //    mujeres de la base: la clase de v604. Fuente de los dos números (Andrés Hyp):
+  //    Hodgdon & Beckett, Naval Health Research Center, Report 84-11 (1984).
+  assert.ok(core.BF_BAND_PTS_F > core.BF_BAND_PTS_M,
+    '🔴 la franja de la mujer dejó de ser más ancha: su fórmula compone TRES perímetros');
+  const med = [{ id: 'x', date: '2026-09-01', cuello: 33, cintura: 80, cadera: 100 }];
+  const h = core.bodyFatEstimate({ sex: 'M', age: 30, height: 165 }, med);
+  const m = core.bodyFatEstimate({ sex: 'F', age: 30, height: 165 }, med);
+  assert.strictEqual(h.banda, core.BF_BAND_PTS_M);
+  assert.strictEqual(m.banda, core.BF_BAND_PTS_F);
+  assert.ok((m.hi - m.lo) > (h.hi - h.lo), 'la franja pintada no refleja la constante de su sexo');
+  // 🔒 Y la pantalla tiene que LEER la banda, no llevar el número a mano (decía «3 puntos» para
+  //    todo el mundo, o sea que a las mujeres les mentía).
+  const fs = require('fs'), path = require('path');
+  const app5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  assert.match(app5, /const pts=String\(e\.banda\|\|''\)/, '🔴 la franja del texto volvió a un número escrito a mano');
+  assert.ok(!/unos 3 puntos/.test(app5), '🔴 quedó el «3 puntos» fijo en el texto');
+});
+
+test('🔒 un cambio DENTRO del margen no se pinta como cambio, y uno imposible levanta bandera', () => {
+  const cli = { sex: 'M', age: 37, height: 175 };
+  const dos = (c1, c2) => core.bodyFatEstimate(cli, [
+    { id: 'n', date: '2026-09-08', cuello: 44.5, cintura: c1 },
+    { id: 'v', date: '2026-06-08', cuello: 44.5, cintura: c2 },
+  ]);
+  // 1 cm de cintura mueve menos de media franja → no es un cambio que este método pueda afirmar.
+  const chico = dos(102, 103);
+  assert.ok(chico.delta !== 0 && Math.abs(chico.delta) < core.BF_BAND_PTS_M / 2);
+  assert.strictEqual(chico.dentroDelMargen, true, '🔴 se afirma un cambio que cabe en el margen de la cinta');
+  // CONTROL: un cambio de verdad NO se marca como «dentro del margen», o esto sería silenciar todo.
+  const grande = dos(102, 112);
+  assert.strictEqual(grande.dentroDelMargen, false, 'el piso se está comiendo los cambios reales');
+  assert.ok(!grande.bandera, 'un cambio normal no puede levantar la bandera de Laura');
+  // 🔴 BANDERA de Laura: más del DOBLE de la franja no lo explica el instrumento.
+  const brutal = dos(102, 135);
+  assert.strictEqual(brutal.bandera, 'cambio_grande', '🔴 un cambio imposible pasa sin avisar');
+  assert.ok(Math.abs(brutal.delta) > core.BF_BAND_PTS_M * 2);
+});
+
+test('🔒 la bandera de CINTURA usa el corte de la OMS y no depende de la grasa estimada', () => {
+  // Fuente: OMS, «Waist Circumference and Waist–Hip Ratio» (2008): ≥102 cm hombre / ≥88 cm mujer.
+  const sinCuello = [{ id: 'a', date: '2026-09-08', cintura: 102, cadera: 105 }];
+  // 🔒 Dispara aunque la grasa NO se pueda estimar — es el caso de 5 de las 6 personas medibles.
+  assert.ok(!core.bodyFatEstimate({ sex: 'M', age: 37, height: 175 }, sinCuello).ok);
+  const f = core.waistFlag({ sex: 'M', age: 37, height: 175 }, sinCuello);
+  assert.ok(f && f.cm === 102 && f.corte === 102, 'no marcó una cintura justo en el umbral: ' + JSON.stringify(f));
+  // CONTROL por sexo: 90 cm marca en mujer y NO en hombre. Si el corte fuera uno solo, cae.
+  const c90 = [{ id: 'b', date: '2026-09-08', cintura: 90 }];
+  assert.ok(core.waistFlag({ sex: 'F', age: 30, height: 160 }, c90), 'el corte femenino (88) no se aplica');
+  assert.ok(!core.waistFlag({ sex: 'M', age: 30, height: 175 }, c90), 'se marcó a un hombre con 90 cm: ¿un solo corte?');
+  // 🔒 A un MENOR no se le habla de esto, como en todo lo demás de composición corporal.
+  assert.strictEqual(core.waistFlag({ sex: 'M', age: 16, height: 175 }, sinCuello), null);
+  // 🔒 Y sin cintura medida no se inventa nada.
+  assert.strictEqual(core.waistFlag({ sex: 'M', age: 37, height: 175 }, [{ id: 'c', date: '2026-09-01', pecho: 100 }]), null);
+});
+
+test('🔴 dolor DETRÁS DEL MUSLO saca el curl femoral, y NO vacía la cadena posterior', () => {
+  const fs = require('fs'), path = require('path');
+  const cat = _leerCatalogo(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const id = x => cat.filter(e => e.id === x)[0];
+  // Dictamen de Laura (11-sep): la zona mapea a lumbar + isquios, no solo a lumbar.
+  assert.deepStrictEqual(core.painExclZones('muslo por detrás'), ['lumbar', 'isquios'],
+    '🔴 «muslo por detrás» volvió a apuntar solo a lumbar: el curl femoral queda puesto');
+  const z = core.painExclZones('muslo por detrás');
+  // Lo que DEBE caer: las 4 variantes de curl femoral del catálogo + el nórdico.
+  ['e15', 'e39', 'e126', 'e332', 'e333'].forEach(x => assert.ok(core.exerciseContraindicated(id(x), z),
+    '🔴 ' + x + ' (' + id(x).name + ') NO cae: es contracción resistida directa del músculo lesionado'));
+  // 🔒 EL CONTROL, con la razón clínica de cada uno — una regla ANCHA también hace daño (v424).
+  //    Hip thrust y puente: la rodilla va flexionada, el isquio nunca se alarga bajo carga.
+  //    Bisagra sin peso y estiramientos: son el tratamiento, no el problema.
+  [['e42', 'hip thrust'], ['e43', 'hip thrust en máquina'], ['e73', 'puente de glúteo'],
+   ['e106', 'puente a una pierna'], ['e37', 'extensión de cuádriceps'],
+   ['e148', 'bisagra sin peso'], ['e179', 'estiramiento de isquios']].forEach(([x, q]) =>
+    assert.ok(!core.exerciseContraindicated(id(x), ['isquios']),
+      '🔴 la regla de isquios se llevó ' + q + ' (' + x + '): eso le vacía la cadena posterior'));
+  // Y sigue siendo ESTRECHA: 5 de 374, no media pierna.
+  const caen = cat.filter(e => core.exerciseContraindicated(e, ['isquios'])).length;
+  assert.strictEqual(caen, 5, 'la regla de isquios dejó de ser estrecha: caen ' + caen + ' ejercicios');
+});
+
+test('🔴 painExclZones es UNA definición, y `shockPlan` también la usa (defecto preexistente)', () => {
+  // 🔴 El `Array.isArray(z)?z:[z]` estaba copiado en TRES sitios y FALTABA en el cuarto:
+  //    `shockPlan` hacía `excludeZones.add(z)` con el ARRAY entero, así que `GEN_ZONE_EXCL[array]`
+  //    daba undefined y el cambio de variante NO excluía nada. Vivía desde v546 para quien
+  //    reportara dolor de «cadera o ingle».
+  assert.deepStrictEqual(core.painExclZones('cadera o ingle'), ['aductor', 'abductor']);
+  assert.deepStrictEqual(core.painExclZones('rodilla'), ['rodilla'], 'una zona simple debe salir como lista de uno');
+  assert.deepStrictEqual(core.painExclZones('otra zona'), [], 'una zona sin regla no puede devolver nada');
+  const fs = require('fs'), path = require('path');
+  const core_src = sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
+  // Nadie vuelve a leer el mapa crudo fuera del propio helper.
+  const crudos = (core_src.match(/_PAIN_ZONE_TO_EXCL\[/g) || []).length;
+  assert.strictEqual(crudos, 1, '🔴 alguien volvió a leer `_PAIN_ZONE_TO_EXCL` a pelo: son ' + crudos + ' sitios');
+  // 🔴 Mi primera aserción aquí buscaba `add(z); })` y eso lo satisface también el código
+  //    CORRECTO: no discriminaba nada. Lo que de verdad importa es que el `add` esté GUARDADO por
+  //    `GEN_ZONE_EXCL[z]` — sin guarda, una zona sin regla entra al Set y el filtro busca una
+  //    expresión que no existe.
+  assert.match(core_src, /painExclZones\(p\.area\)\.forEach\(z => \{ if \(GEN_ZONE_EXCL\[z\]\) excludeZones\.add\(z\); \}\)/,
+    '🔴 shockPlan dejó de recorrer las zonas una por una con su guarda');
+});
+
+test('🔒 CABLEADO v607: los textos y las banderas que dictó el equipo están puestos', () => {
+  const fs = require('fs'), path = require('path');
+  const app5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  // Valery: el delta SIN color en ningún sentido.
+  assert.ok(!/\.mg-delta\.(baja|sube)/.test(css),
+    '🔴 volvió el color al delta: verde/naranja es decirle «bajar es bueno» sin saber su objetivo');
+  // Laura: las dos banderas, cada una con su texto.
+  assert.match(app5, /function _medCinturaFlagHtml/, '🔴 se fue la bandera de cintura');
+  assert.match(app5, /html\+=_medCinturaFlagHtml\(cli,/, '🔴 la bandera de cintura no la llama nadie');
+  assert.match(app5, /Dentro del margen de tu cinta/, '🔴 se fue el piso de «dentro del margen»');
+  assert.match(app5, /más grande de lo que este método suele medir bien/, '🔴 se fue la bandera de cambio grande');
+  // Valery: la línea del ciclo, en el aviso de cómo medirse.
+  assert.match(html, /Y si menstrúas: evita medirte justo antes o durante tu período/,
+    '🔴 se fue la advertencia del ciclo: la cintura es la entrada que más pesa y es la que más se mueve');
+  // Laura: el coach distingue «no hay dato» de «la app no lo muestra».
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.match(coach, /No se estima en menores de edad/,
+    '🔴 la ficha del coach volvió a quedar muda en un menor: va a pedirle a la familia que complete la medida');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
