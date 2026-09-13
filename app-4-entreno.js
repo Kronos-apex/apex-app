@@ -74,7 +74,18 @@ function saveEx(){
   data.hiit=type==='HIIT'?{work:parseInt(document.getElementById('ex-hiit-work').value)||30,rest:parseInt(document.getElementById('ex-hiit-rest').value)||15}:null;
   data.holdSecs=type==='Isométrico'?(parseInt(document.getElementById('ex-hold-secs').value)||60):null;
   let guardadoId=CUR.editExId;
-  if(CUR.editExId){const i=DB.exercises.findIndex(e=>e.id===CUR.editExId);if(i!==-1)DB.exercises[i]={...DB.exercises[i],...data};toast(`✅ "${name}" actualizado`)}
+  if(CUR.editExId){
+    const i=DB.exercises.findIndex(e=>e.id===CUR.editExId);
+    if(i!==-1){
+      const ex={...DB.exercises[i],...data};
+      // 🔒 Qué campos de catálogo separó el coach del código. Sin esta marca, `migrateExercises`
+      // le revertía la edición en el siguiente login mientras el toast decía «actualizado».
+      // Se RECALCULA en cada guardado: si lo deja igual al del código, el campo vuelve al redil.
+      const ed=catalogEditedFields(ex,defaultExercises.find(d=>d.id===CUR.editExId),CATALOG_FIELDS);
+      if(ed.length)ex._ed=ed; else delete ex._ed;
+      DB.exercises[i]=ex;
+    }
+    toast(`✅ "${name}" actualizado`)}
   // El ejercicio nuevo va AL PRINCIPIO, no al final. Con la biblioteca entera pintada daba
   // igual; con el pintado por tandas, al final caía en la posición 213 y para enseñárselo al
   // coach había que abrir las 8 tandas —o sea volver a dibujar los 213 y perder la mejora el

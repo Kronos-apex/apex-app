@@ -1283,6 +1283,55 @@ function prsRemapRetired(prs, remap) {
   return { prs: out, moved: moved };
 }
 
+// ── EL CATÁLOGO REFRESCA, PERO LO QUE EL COACH EDITÓ MANDA ───────────────────────────────────
+// Campos de "catálogo" (presentación) cuya fuente de verdad es el código: se refrescan desde
+// `defaultExercises` en cada arranque para que las fichas viejas no queden desfasadas. Lo
+// editable por el coach dentro de una rutina —sets, reps, env, track, holdSecs…— nunca entra aquí.
+// 🔴 EL DEFECTO (radar, cerrado en v608): `saveEx` deja que el coach cambie nombre/músculo/tipo/
+// ícono/descripción de un ejercicio del catálogo y canta «✅ actualizado»… y el siguiente arranque
+// los reescribía TODOS desde el código, o sea revertía la edición sin decir nada. Medido con
+// `_verify-edicion-coach`: el nombre volvía al del código en el primer login. La app le mentía.
+// 🔒 La regla: un campo que el coach separó del catálogo queda marcado en `_ed` y a partir de ahí
+// manda él; los demás se siguen refrescando. Y `_ed` se RECALCULA en cada guardado, así que si lo
+// deja otra vez igual al del código el campo vuelve al redil — si no, una edición congelaría ese
+// campo para siempre (la ficha nunca volvería a recibir una corrección del catálogo).
+const CATALOG_FIELDS = ['name', 'muscle', 'type', 'icon', 'desc', 'descSimple', 'muscleLabel', 'ytQuery'];
+
+// catalogEditedFields(ex, def, campos) → qué campos de catálogo separó el coach. PURA.
+// Sin `def` (ejercicio propio del coach, id no-catálogo) devuelve [] : no hay nada de qué separarse.
+function catalogEditedFields(ex, def, campos) {
+  if (!ex || !def) return [];
+  const f = (Array.isArray(campos) && campos.length) ? campos : CATALOG_FIELDS;
+  return f.filter(k => def[k] !== undefined && ex[k] !== def[k]);
+}
+
+// refreshCatalogFields(lista, defs, campos) → {list, added, refreshed, kept, changed}. PURA.
+// No muta la lista que recibe: devuelve una nueva (y objetos nuevos solo para lo que cambió).
+// (1) agrega los ejercicios del catálogo que falten, (2) refresca los campos de presentación de
+// los que ya están, SALTÁNDOSE los que el coach marcó en `_ed`, (3) no toca los ejercicios
+// propios del coach (id fuera del catálogo).
+function refreshCatalogFields(list, defs, campos) {
+  const f = (Array.isArray(campos) && campos.length) ? campos : CATALOG_FIELDS;
+  const byDef = {}; (defs || []).forEach(d => { if (d && d.id) byDef[d.id] = d; });
+  let refreshed = 0, kept = 0, added = 0;
+  const out = (Array.isArray(list) ? list : []).map(ex => {
+    const def = (ex && ex.id) ? byDef[ex.id] : null;
+    if (!def) return ex;                                   // propio del coach: intocable
+    const mios = Array.isArray(ex._ed) ? ex._ed : [];
+    let copia = null;
+    f.forEach(k => {
+      if (def[k] === undefined || ex[k] === def[k]) return;
+      if (mios.indexOf(k) !== -1) { kept++; return; }       // lo editó el coach: manda él
+      copia = copia || Object.assign({}, ex);
+      copia[k] = def[k]; refreshed++;
+    });
+    return copia || ex;
+  });
+  const vistos = {}; out.forEach(e => { if (e && e.id) vistos[e.id] = 1; });
+  (defs || []).forEach(d => { if (d && d.id && !vistos[d.id]) { out.push(Object.assign({}, d)); added++; } });
+  return { list: out, added: added, refreshed: refreshed, kept: kept, changed: !!(added || refreshed) };
+}
+
 // ── Peso sugerido por PR (estimación de 1RM, fórmula de Epley) ──
 // No se hacen tests de máximos (peligrosos para principiantes): el 1RM se ESTIMA
 // desde cualquier serie registrada (kg × reps). Epley: 1RM ≈ kg·(1 + reps/30).
@@ -10929,6 +10978,9 @@ if (typeof module !== 'undefined' && module.exports) {
     isBetterPR,
     prsRemapRetired,
     REMOVED_EXERCISES,
+    CATALOG_FIELDS,
+    catalogEditedFields,
+    refreshCatalogFields,
     muscleHuman,
     exMuscleText,
     searchExercises,

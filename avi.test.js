@@ -289,6 +289,9 @@ const {
   prFromSets,
   isBetterPR,
   prsRemapRetired,
+  CATALOG_FIELDS,
+  catalogEditedFields,
+  refreshCatalogFields,
   REMOVED_EXERCISES,
   muscleHuman,
   exMuscleText,
@@ -18147,6 +18150,83 @@ test('🔒 CABLEADO v607: los textos y las banderas que dictó el equipo están 
   const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
   assert.match(coach, /No se estima en menores de edad/,
     '🔴 la ficha del coach volvió a quedar muda en un menor: va a pedirle a la familia que complete la medida');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// v608 · LO QUE EL COACH EDITA DE UN EJERCICIO DEL CATÁLOGO TIENE QUE DURAR
+// `saveEx` guardaba nombre/músculo/tipo/ícono/descripción y cantaba «✅ actualizado»… y
+// `migrateExercises` los reescribía desde el código en el siguiente login, en silencio.
+// Sin víctima medida (el 13-sep la nube tiene 0 campos separados del código), pero la app le
+// mentía al coach. El refresco del catálogo se queda; lo que él tocó, manda.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+test('🔴 v608 · lo que el coach editó SOBREVIVE al refresco del catálogo', () => {
+  const def = { id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto', icon: '🏋️', desc: 'La del código', descSimple: 'Fácil', muscleLabel: 'Pecho', ytQuery: 'press banca' };
+  const suyo = Object.assign({}, def, { name: 'Press de Banca (barra corta del gym)', _ed: ['name'] });
+  const r = refreshCatalogFields([suyo], [def]);
+  assert.strictEqual(r.list[0].name, 'Press de Banca (barra corta del gym)', '🔴 le revirtió el nombre al coach');
+  assert.strictEqual(r.kept, 1);
+  assert.strictEqual(r.changed, false, 'y no hay nada que volver a guardar ni a subir');
+});
+
+test('🔒 v608 · lo que NO tocó se sigue refrescando desde el código (para eso existe la migración)', () => {
+  const def = { id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', descSimple: 'La nueva', muscleLabel: 'Pecho' };
+  // Ficha vieja: la editó de nombre y le falta `descSimple` (bibliotecas de antes de v380).
+  const viejo = { id: 'e1', name: 'Mi press', muscle: 'pecho', muscleLabel: 'ETIQUETA VIEJA', _ed: ['name'] };
+  const r = refreshCatalogFields([viejo], [def]);
+  assert.strictEqual(r.list[0].name, 'Mi press', 'el campo editado no se toca');
+  assert.strictEqual(r.list[0].descSimple, 'La nueva', '🔴 la ficha vieja se quedó sin la descripción nueva');
+  assert.strictEqual(r.list[0].muscleLabel, 'Pecho', '🔴 la etiqueta desfasada no se refrescó');
+  assert.strictEqual(r.changed, true, 'hubo refresco: hay que persistir');
+});
+
+test('🔒 v608 · sin marca `_ed` el catálogo manda (la migración de siempre no cambió)', () => {
+  const def = { id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho' };
+  const r = refreshCatalogFields([{ id: 'e1', name: 'Nombre viejo del catálogo', muscle: 'pecho' }], [def]);
+  assert.strictEqual(r.list[0].name, 'Press de Banca con Barra');
+  assert.strictEqual(r.refreshed, 1);
+});
+
+test('🔒 v608 · agrega los ejercicios nuevos y NO toca los propios del coach', () => {
+  const defs = [{ id: 'e1', name: 'Press' }, { id: 'e2', name: 'Aperturas' }];
+  const mio = { id: 'mtq9x1', name: 'Remo Australiano del parque', muscle: 'espalda' };
+  const r = refreshCatalogFields([{ id: 'e1', name: 'Press' }, mio], defs);
+  assert.strictEqual(r.added, 1);
+  assert.ok(r.list.find(e => e.id === 'e2'), 'el ejercicio nuevo del catálogo entró');
+  assert.strictEqual(r.list.find(e => e.id === 'mtq9x1'), mio, 'el propio del coach queda intacto, sin copiarlo siquiera');
+});
+
+test('🔒 v608 · la lista que entra NO se muta: el catálogo del código nunca se reescribe', () => {
+  // Es la otra mitad del defecto: en un dispositivo sin `ax_e`, `DB.exercises` ERA
+  // `defaultExercises`. Si esta función mutara, la fuente de la verdad quedaría contaminada.
+  const def = { id: 'e1', name: 'Press de Banca con Barra' };
+  const entrada = [{ id: 'e1', name: 'Nombre viejo' }];
+  const r = refreshCatalogFields(entrada, [def]);
+  assert.strictEqual(entrada[0].name, 'Nombre viejo', '🔴 mutó la lista que recibió');
+  assert.strictEqual(r.list[0].name, 'Press de Banca con Barra');
+  assert.notStrictEqual(r.list, entrada, 'devuelve una lista nueva');
+});
+
+test('🔒 v608 · la marca se recalcula: si lo deja igual al código, el campo vuelve al redil', () => {
+  const def = { id: 'e1', name: 'Press de Banca con Barra', desc: 'La del código' };
+  assert.deepStrictEqual(catalogEditedFields({ id: 'e1', name: 'Mi press', desc: 'La del código' }, def), ['name']);
+  assert.deepStrictEqual(catalogEditedFields({ id: 'e1', name: 'Press de Banca con Barra', desc: 'La del código' }, def), [],
+    '🔴 quedaría marcado para siempre: ese campo no volvería a recibir una corrección del catálogo');
+  assert.deepStrictEqual(catalogEditedFields({ id: 'mtq9x1', name: 'Mío' }, null), [],
+    'un ejercicio propio del coach no tiene de qué separarse');
+});
+
+test('🔒 v608 · saveEx sella la marca y el arranque respeta la marca (si no, el fix es de mentiras)', () => {
+  const fs = require('fs'), path = require('path');
+  const app4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.match(app4, /catalogEditedFields\(ex,\s*defaultExercises\.find/,
+    '🔴 `saveEx` dejó de marcar lo que el coach edita → el arranque se lo revierte otra vez');
+  const app2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.match(app2, /refreshCatalogFields\(DB\.exercises,\s*defaultExercises/,
+    '🔴 `migrateExercises` volvió a refrescar por su cuenta, sin la regla de `_ed`');
+  const app1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  assert.ok(!/exercises:\s*ld\('ax_e',\s*defaultExercises\)/.test(app1),
+    '🔴 volvió `ld(\'ax_e\',defaultExercises)`: en un dispositivo nuevo eso comparte el array con el catálogo del código');
 });
 
 // ══════════════════════════════════════════════════════

@@ -4,6 +4,44 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-13 — v608: LO QUE EL COACH EDITA DE UN EJERCICIO YA NO SE LO REVIERTE LA APP
+
+Dijo *«continuamos bro»*, sin frente. Se tomó el **punto 2 del radar**, que era mío y no esperaba
+nada suyo.
+
+### El defecto, y el que apareció al reproducirlo
+`saveEx` deja que el coach cambie **nombre, músculo, tipo, ícono y descripción** de un ejercicio del
+catálogo, canta «✅ actualizado»… y en el siguiente arranque `migrateExercises` refrescaba esos
+mismos campos desde `defaultExercises`: **le revertía la edición sin decir nada**. Reproducido con
+`_verify-edicion-coach`: el nombre volvía al del código en el primer login.
+
+🔴 **Y el control de la sonda destapó el hermano, que es peor.** Las dos primeras corridas daban
+VERDE sobre el defecto: en un dispositivo **sin `ax_e`** —instalación nueva, primer login en otro
+celular— `ld('ax_e', defaultExercises)` devuelve el default **POR REFERENCIA**, así que
+`DB.exercises` **ERA** `defaultExercises`. Editar un ejercicio reescribía el catálogo del código en
+memoria y, de paso, dejaba **ciega a la migración**, que compara contra él. El control C2 («editar
+NO cambió el catálogo del código») es lo único que lo dijo.
+
+### La regla
+Un campo que el coach separó del catálogo queda marcado en **`_ed`** y a partir de ahí manda él;
+los demás se siguen refrescando, que es para lo que existe la migración (las bibliotecas viejas
+mostraban fichas sin `descSimple`/`muscleLabel`). Y **`_ed` se RECALCULA en cada guardado**: si lo
+deja otra vez igual al del código, el campo vuelve al redil — si no, una edición congelaría ese
+campo **para siempre** y esa ficha no volvería a recibir una corrección del catálogo.
+Motor puro en avi-core: `CATALOG_FIELDS` · `catalogEditedFields` · `refreshCatalogFields` (no muta
+la lista que recibe). `migrateExercises` delega; `saveEx` sella; el arranque copia el catálogo.
+
+### Medido contra producción antes de tocar
+La nube del coach tiene **374 ejercicios guardados, 0 propios y 0 campos separados del código**:
+**sin víctima hoy**. Y no se puede probar lo contrario — cada reversión borraba su propia
+evidencia. Lo que se arregla es que la app le mienta.
+
+### QA
+Suite **1148 → 1155** en los tres modos · hook 12/12 · harness nuevo `_verify-edicion-coach`
+(9 checks, con C1 y C2 de control) **rojo → verde** · matriz nueva `_sabotaje-v608`: **8/8 muerden**.
+
+---
+
 ## ⏮️ 2026-09-11 (2ª parte) — v607: LA GRASA CORPORAL ESTIMADA, Y LOS CUATRO VEREDICTOS
 
 **Nace de una pregunta suya, no de un plan.** Al reportarle lo que movía registrar sus 96 kg leyó

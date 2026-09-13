@@ -1194,7 +1194,7 @@ async function syncFromCloud(){
     });
     if(_daySorted){sv('ax_c',DB.clients);log('AVI: routine day-order migration applied');}
   }catch(e){ warn('AVI: ordenamiento de días falló (no bloquea):',e&&e.message); }
-  DB.exercises=ld('ax_e',defaultExercises);
+  DB.exercises=_libreriaEjercicios();
   // Migraciones blindadas: si una falla (p.ej. avi-core.js viejo en caché tras un update),
   // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
   try{ migrateExTypes(); }catch(e){ warn('AVI: migrateExTypes falló (no bloquea):',e&&e.message); }
@@ -1924,9 +1924,19 @@ const defaultExercises=[
   {id:'e380',name:'Sprint en Cinta por Intervalos',muscle:'cardio',type:'HIIT',sets:8,reps:30,icon:'💨',env:['gym'],level:'A',desc:'Series cortas a velocidad máxima con pausas: la forma más eficiente de trabajar la capacidad anaeróbica. Impacto alto y exige estar acostumbrado a correr.',descSimple:'En la cinta, alterna tramos cortos corriendo lo más rápido que puedas con pausas para recuperar. Súbete y bájate en las pausas: no frenes la banda de golpe.',muscleLabel:'Cardio',ytQuery:'sprint en cinta por intervalos hiit'},
   {id:'e381',name:'Caminata con Chaleco Lastrado',muscle:'cardio',type:'Cardio',sets:1,reps:40,icon:'🎒',env:['casa','parque','gym'],level:'P',desc:'Caminar con chaleco o mochila cargada: sube el gasto de una caminata sin subir el impacto ni la velocidad. Las manos quedan libres, a diferencia de la caminata del granjero.',descSimple:'Camina a paso vivo con un chaleco con peso o una mochila cargada en la espalda. Gastas bastante más que caminando normal y las rodillas casi no lo notan.',muscleLabel:'Cardio',ytQuery:'caminata con chaleco lastrado rucking'},
 ];
+// 🔴 `ld` devuelve el default POR REFERENCIA. En un dispositivo que todavía no tiene su `ax_e`
+// —instalación nueva, primer login en otro celular— `DB.exercises` ERA `defaultExercises`: el
+// mismo array. Editar un ejercicio reescribía el catálogo del código en memoria, y con eso
+// `migrateExercises` quedaba ciega (comparaba el dato contra sí mismo). La biblioteca de trabajo
+// es SIEMPRE una copia: el catálogo del código no se toca nunca.
+function _libreriaEjercicios(){
+  const guardada=ld('ax_e',null);
+  if(Array.isArray(guardada)&&guardada.length)return guardada;
+  return defaultExercises.map(e=>Object.assign({},e));
+}
 const DB={
   clients:ld('ax_c',[]),
-  exercises:ld('ax_e',defaultExercises),
+  exercises:_libreriaEjercicios(),
   msgs:ld('ax_m',{}),
   history:ld('ax_hist',{}),
   prs:ld('ax_pr',{}),

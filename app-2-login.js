@@ -1,24 +1,15 @@
 // ══════════════════════ LOGIN ══════════════════════
 // ══════════ EXERCISE MIGRATION ══════════
-// Campos de "catálogo" (presentación) cuya fuente de verdad es el código.
-// Se REFRESCAN desde defaultExercises en cada arranque para que las fichas no
-// queden desfasadas (texto/foto/etiqueta). Lo editable por el coach —sets, reps,
-// env, track, holdSecs…— NO se toca.
-const CATALOG_FIELDS=['name','muscle','type','icon','desc','descSimple','muscleLabel','ytQuery'];
+// (1) Agrega ejercicios nuevos sin perder datos del usuario.
+// (2) Refresca los campos de catálogo de los existentes (antes solo agregaba, por eso las
+//     bibliotecas viejas mostraban fichas sin descSimple/muscleLabel)…
+// (3) …PERO respeta lo que el coach editó a mano (marcado en `_ed`): hasta v607 esta función
+//     revertía en cada login el nombre/descripción que él acabara de cambiar, sin avisar.
+// La regla, la lista de campos y el porqué viven en `refreshCatalogFields` (avi-core).
 function migrateExercises(){
-  // (1) Agrega ejercicios nuevos sin perder datos del usuario.
-  // (2) Refresca los campos de catálogo de los existentes (antes solo agregaba,
-  //     por eso las bibliotecas viejas mostraban fichas sin descSimple/muscleLabel).
-  let changed=false;
-  const byId={}; DB.exercises.forEach(e=>{ if(e&&e.id)byId[e.id]=e; });
-  defaultExercises.forEach(def=>{
-    const cur=byId[def.id];
-    if(!cur){ DB.exercises.push({...def}); changed=true; return; }
-    CATALOG_FIELDS.forEach(f=>{
-      if(def[f]!==undefined && cur[f]!==def[f]){ cur[f]=def[f]; changed=true; }
-    });
-  });
-  if(changed){sv('ax_e',DB.exercises);log('AVI: catálogo refrescado OK');}
+  const r=refreshCatalogFields(DB.exercises,defaultExercises,CATALOG_FIELDS);
+  DB.exercises=r.list;
+  if(r.changed){sv('ax_e',DB.exercises);log(`AVI: catálogo refrescado OK (${r.added} nuevos, ${r.refreshed} campos; ${r.kept} respetados del coach)`);}
 }
 
 // Autolimpia la biblioteca local (ax_e) aunque la nube no sincronice. Quita:
