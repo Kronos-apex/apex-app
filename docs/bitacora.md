@@ -4,6 +4,56 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-13 (2ª parte) — v609: LAS DOS DECISIONES DE LA GRASA ESTIMADA, EJECUTADAS
+
+v607 dejó la grasa corporal estimada construida y **dos decisiones abiertas, con el equipo en
+desacuerdo**. Las tomó el PO con las dos objeciones delante.
+
+### (1) La categoría: **solo cuando no hay duda**
+Andrés la quería siempre (cortes ACE); **Valery no la quería nunca**, porque el error del método
+(±3,5 / ±3,9) es del **mismo ancho que una categoría**, así que alguien en el borde cae de un lado
+o del otro según cómo quedó la cinta — *«eso no es información, es ruido con etiqueta»*. El PO
+eligió la síntesis: **la etiqueta se muestra solo si la franja ENTERA cae dentro de una sola
+banda**; si pisa dos, sale el número y la pantalla **dice por qué no hay etiqueta** (callar del
+todo se lee como que la app está rota — v598).
+
+🔒 **La fuente es la que pidió Valery, no la tabla plana del ACE**: **Gallagher et al. 2000,
+Am J Clin Nutr 72(3):694-701** (NHANES), que **ajusta por edad y sexo**. Una tabla plana le dice a
+una mujer de 48 que «pasó a estar mal» por un cambio fisiológico normal. Sin edad **no hay
+etiqueta**: el corte se mueve con ella, así que inventar el tramo es inventar la categoría.
+
+### (2) El perfil de carga: **la grasa reemplaza al IMC cuando existe**
+Andrés y Coach Pro a favor (el IMC no distingue músculo de grasa). **Laura en contra**: *«lo que
+decide la física del aterrizaje es la MASA TOTAL, no la composición; una tercera vía que desbloquee
+pliométricos sería un retroceso de seguridad disfrazado de personalización»*. **Su objeción quedó
+escrita entera al lado de `bodyLoadProfile`**, que es donde hay que releerla si algún día alguien se
+lesiona aterrizando — no en un commit que nadie vuelve a abrir.
+
+🔒 **Lo que la decisión NO toca, y por eso Laura queda cubierta en las dos puntas:** la
+**cintura-talla** sigue subiendo el perfil por su cuenta (es masa y distribución, no composición) y
+el **filtro de dolor** es independiente — a quien declara una molestia se le siguen sacando los
+saltos aunque su perfil sea `normal`. Sin sexo no se usa la grasa (adivinarlo es el defecto de
+v604) y sin dato se cae al IMC de siempre.
+
+### Medido sobre los perfiles REALES antes de dar nada por bueno
+**6 personas son estimables hoy** (eran 1 el 11-sep: entraron los cuellos que faltaban).
+- **Etiqueta: 1 de 6.** Las otras **5 tienen la franja a caballo entre dos bandas** — incluido el
+  propio PO (24,4% [20,9–27,9] a los 37: pisa «por encima» y «alto»). Es exactamente lo que la
+  regla existe para evitar, y es incómodo a propósito.
+- **Perfil de carga: cambia a 3 de 6, y NO en una sola dirección.** A **Astrid y Claudia** las pone
+  en `high` (IMC por debajo de 30, grasa por encima de 32 → menos impacto, más variantes guiadas) y
+  al **PO** lo baja a `normal` (IMC 31,3 pero 24,4% de grasa). O sea que la decisión **aprieta a
+  dos y afloja a uno**, que no es como se leía en abstracto.
+
+### QA
+Suite **1155 → 1160** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v609` **9/9
+muerden** · `_verify-grasa` verde en los dos temas.
+🔁 **Un test de v511 cayó y se re-encuadró, no se calló**: clavaba la llamada entera
+`bodyLoadProfile(c,_waist,_coachPesoDe(c))` y la función ganó un 4º argumento. Lo que ese candado
+vigila es que el PESO que entra sea el REGISTRADO, no cuántos argumentos recibe.
+
+---
+
 ## ⏮️ 2026-09-13 — v608: LO QUE EL COACH EDITA DE UN EJERCICIO YA NO SE LO REVIERTE LA APP
 
 Dijo *«continuamos bro»*, sin frente. Se tomó el **punto 2 del radar**, que era mío y no esperaba

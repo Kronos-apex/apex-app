@@ -2335,6 +2335,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .mg-n{font-family:var(--mono,'JetBrains Mono',monospace);font-size:32px;font-weight:900;
   line-height:1;color:var(--t1)}
 .mg-band{font-size:12px;color:var(--t2);margin-top:4px}
+/* 🔒 LA CATEGORÍA VA SIN COLOR, por la misma razón que el delta: teñir «por encima» de naranja es
+   decirle a la persona que su número está mal sin preguntarle su objetivo, y esta etiqueta ya es
+   la parte más juzgadora de la tarjeta. Peso 600 para que se lea como rótulo y no como titular. */
+.mg-cat{font-size:13px;font-weight:600;color:var(--t1);margin-top:8px;line-height:1.45}
+.mg-cat-none{font-size:12px;font-weight:400;color:var(--t2)}
 /* 🔴 EL DELTA NO LLEVA COLOR, y llevaba (verde al bajar, naranja al subir). Eso le decía a la
    persona «bajar es bueno, subir es un problema» sin preguntarle su objetivo: en recomposición o
    en volumen, subir un punto mientras gana músculo ES el plan funcionando. Lo cazó Valery el

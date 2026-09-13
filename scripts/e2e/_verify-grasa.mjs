@@ -36,11 +36,14 @@ const fin = APP5.indexOf('\nfunction ', ini + 10);
 const cuerpo = APP5.slice(ini, fin > 0 ? fin : undefined);
 // ⚠️ El separador es un SALTO DE LÍNEA, no un `;`: el trozo puede terminar en un comentario `//`
 //    y con LF se comería el `return` (lección de v594, que solo se vio en CI).
-const build = new Function('esc', 'MED_FIELDS', 'bodyFatEstimate', 'bodyFatSourceText',
+// ⚠️ TODA global que la función use hay que INYECTARLA: la que falte queda `undefined`, el
+//    `typeof x==='function'` de la app la esquiva sin lanzar y la rama se apaga EN SILENCIO —
+//    así fue como la etiqueta de v609 salió vacía en la primera corrida y parecía un defecto.
+const build = new Function('esc', 'MED_FIELDS', 'bodyFatEstimate', 'bodyFatSourceText', 'bfCategoryText',
   cuerpo + '\n;return _medGrasaHtml;');
 const _medGrasaHtml = build(
   s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-  core.MED_FIELDS || [], core.bodyFatEstimate, core.bodyFatSourceText);
+  core.MED_FIELDS || [], core.bodyFatEstimate, core.bodyFatSourceText, core.bfCategoryText);
 A.ok(typeof _medGrasaHtml === 'function', 'CONTROL · se extrajo `_medGrasaHtml` del archivo real', typeof _medGrasaHtml);
 if (typeof _medGrasaHtml !== 'function') salir(A, {});
 
@@ -50,7 +53,14 @@ const MED_PO = [
   { id: 'b', date: '2026-06-17T20:35:28.694Z', cintura: 95, cadera: 102 },
 ];
 const CASOS = [
-  ['po', 'el PO (datos reales del 8-sep)', { sex: 'M', age: 37, height: 175 }, MED_PO, { pinta: true, dice: ['24,4', '%'] }],
+  // v609 · La etiqueta solo si la franja ENTERA cae en una banda. La del PO (20,9–27,9 a los 37)
+  // pisa dos, así que NO la recibe — y la pantalla dice por qué, en vez de callar (v598).
+  ['po', 'el PO (datos reales del 8-sep)', { sex: 'M', age: 37, height: 175 }, MED_PO,
+    { pinta: true, dice: ['24,4', '%', 'entre dos categorías'], noDice: ['rango de referencia para tu edad'] }],
+  // 🔒 CONTROL de la etiqueta: sin un caso que SÍ la reciba, «no etiquetar nunca» pasa igual.
+  ['etiqueta', 'franja entera dentro de una banda → SÍ lleva etiqueta', { sex: 'F', age: 39, height: 155 },
+    [{ id: 'e', date: '2026-09-01', cuello: 36, cintura: 105, cadera: 120 }],
+    { pinta: true, dice: ['rango de referencia para tu edad'], noDice: ['entre dos categorías'] }],
   ['flecha', 'con toma anterior comparable (baja)', { sex: 'M', age: 37, height: 175 },
     MED_PO.concat([{ id: 'c', date: '2026-03-01', cuello: 44.5, cintura: 110 }]), { pinta: true, dice: ['puntos desde'] }],
   ['falta', 'a la asesorada le falta el cuello (5 personas reales)', { sex: 'F', age: 34, height: 160 },

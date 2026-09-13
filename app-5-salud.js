@@ -1071,10 +1071,20 @@ function _medGrasaHtml(cli, entries){
   // La franja se DICE leyendo la constante del motor, nunca con el número escrito a mano: la
   // primera versión decía «3 puntos» para todo el mundo y a las mujeres la franja es más ancha.
   const pts=String(e.banda||'').replace('.',',');
+  // 🔒 LA ETIQUETA, SOLO SI NO HAY DUDA (decisión del PO, 13-sep). La decide el motor comparando
+  //    los DOS extremos de la franja: si pisan dos bandas no hay etiqueta, porque decir una u otra
+  //    dependería de cómo quedó la cinta. Y cuando no la hay se DICE por qué — quien busca algo
+  //    que no está no concluye «no aplica», concluye que la app está rota (v598).
+  const catTxt=(typeof bfCategoryText==='function'&&e.categoria)?bfCategoryText(e.categoria):'';
+  const cat=catTxt
+    ? `<div class="mg-cat">${esc(catTxt)}</div>`
+    : (e.categoriaAmbigua
+      ? `<div class="mg-cat mg-cat-none">Tu rango cae entre dos categorías, así que no te ponemos etiqueta: con este método, decir una u otra dependería de cómo quedó la cinta ese día.</div>`
+      : '');
   return box(`<div class="mg-h">Tu grasa corporal estimada</div>
     <div class="mg-n">${e.pct.toFixed(1).replace('.',',')}%</div>
     <div class="mg-band">entre ${String(e.lo).replace('.',',')}% y ${String(e.hi).replace('.',',')}%</div>
-    ${flecha}${bandera}
+    ${cat}${flecha}${bandera}
     <div class="mg-src">Es una <b>estimación con cinta métrica</b>, no una medición de laboratorio: puede irse unos ${esc(pts)} puntos para cualquier lado.</div>
     <div class="mg-src">${esc(typeof bodyFatSourceText==='function'?bodyFatSourceText(e):'')}</div>`);
 }

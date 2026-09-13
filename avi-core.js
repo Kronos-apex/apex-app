@@ -1569,13 +1569,34 @@ function bmiFrom(weightKg, heightCm) {
 // generador le habría dado el perfil de carga equivocado. Sin `weightKg` se comporta como antes
 // (compatibilidad); quien lo tenga a mano DEBE pasarlo, resuelto con `nutWeightFor`.
 // Mismo patrón que ya usa `bmiFrom` dentro de `nutMinorBand`.
-function bodyLoadProfile(client, waistCm, weightKg) {
+// 🔴 v609 · LA GRASA ESTIMADA REEMPLAZA AL IMC CUANDO EXISTE. Decisión del PO (13-sep-2026), con
+// el desacuerdo del equipo delante: Andrés Hyp y Coach Pro a favor (el IMC no distingue músculo de
+// grasa, así que a alguien musculoso le pone el perfil duro sin motivo); **Laura en contra** —
+// *«lo que decide la física del aterrizaje es la MASA TOTAL, no la composición; una tercera vía que
+// desbloquee pliométricos sería un retroceso de seguridad disfrazado de personalización»*. Queda
+// escrito porque es su objeción, no un detalle: si mañana alguien se lesiona aterrizando, este es
+// el comentario que hay que releer.
+// 🔒 Lo que la decisión NO toca, y por eso Laura queda cubierta en las dos puntas:
+//    (a) la **cintura-talla** sigue subiendo el perfil por su cuenta — es masa y es distribución,
+//        no composición, y alcanza a quien no tiene el cuello medido;
+//    (b) el **filtro de dolor** es independiente de todo esto: a quien declara una molestia se le
+//        siguen sacando los saltos aunque su perfil sea 'normal'.
+// 🔒 Sin SEXO no se usa la grasa (los cortes son distintos y adivinarlo es el defecto de v604) y
+//    sin dato se cae al IMC de siempre, que es la conducta anterior intacta.
+const BF_LOAD_HIGH_M = 25;   // ≥25% en hombre · ≥32% en mujer → perfil de carga 'high'
+const BF_LOAD_HIGH_F = 32;
+function bodyLoadProfile(client, waistCm, weightKg, bfPct) {
   client = client || {};
   const bmi = bmiFrom((weightKg != null && weightKg !== '') ? weightKg : client.weight, client.height);
   const waist = parseFloat(waistCm);
   const h = parseFloat(client.height);
   const rct = (waist && h) ? waist / (h > 3 ? h : h * 100) : null; // cintura/estatura, ambos en cm
-  if ((bmi != null && bmi >= 30) || (rct != null && rct >= 0.60)) return 'high';
+  const sexo = client.sex === 'F' ? 'F' : (client.sex === 'M' ? 'M' : null);
+  const bf = parseFloat(bfPct);
+  const usaBf = !!sexo && isFinite(bf) && bf >= BF_MIN_PCT && bf <= BF_MAX_PCT;
+  const corte = sexo === 'F' ? BF_LOAD_HIGH_F : BF_LOAD_HIGH_M;
+  const masa = usaBf ? (bf >= corte) : (bmi != null && bmi >= 30);
+  if (masa || (rct != null && rct >= 0.60)) return 'high';
   return 'normal';
 }
 
@@ -4438,11 +4459,13 @@ function medComparable(entries) {
 //    (v448/v449) prohíbe para menores de 18, y además la referencia de grasa en 5-19 años no es
 //    la del adulto. Devuelve `{ok:false, razon:'menor'}`, como `clientProgressStory`.
 //
-// ⏭️ PENDIENTE DE VEREDICTO DEL EQUIPO (Andrés Hyp · Laura · Coach Pro · Valery), pedido del PO
-//    el 11-sep: el MÉTODO, si la franja es la correcta, y si esto debe entrar donde hoy manda el
-//    IMC (`bodyLoadProfile`). Hasta que lo digan, la pantalla enseña el número y su franja SIN
-//    categoría ni adjetivo — igual que `medAsimetria`, que lleva la misma nota desde v566: un
-//    umbral inventado alarma a todo el mundo o a nadie.
+// ✅ VEREDICTOS CERRADOS (13-sep-2026, las dos decisiones las tomó el PO con el desacuerdo del
+//    equipo delante): **(1) CATEGORÍA sí, pero solo cuando la franja ENTERA cae en una banda**
+//    (síntesis entre Andrés, que la quería siempre, y Valery, que no la quería nunca), con la
+//    fuente que pidió Valery — Gallagher 2000, ajustada por edad, no la tabla plana del ACE.
+//    **(2) La grasa REEMPLAZA al IMC en `bodyLoadProfile` cuando existe** (Andrés y Coach Pro a
+//    favor, **Laura en contra**: su objeción está escrita entera al lado de esa función, que es
+//    donde hay que releerla si algún día alguien se lesiona aterrizando).
 // ══════════════════════════════════════════════════════════════════════════════
 // 🔴 LA FRANJA VA POR SEXO, y la primera versión no: era UNA constante tomada del error
 // MASCULINO, o sea una constante «por defecto» con una persona dentro decidiendo por las 12
@@ -4460,6 +4483,39 @@ const BF_BAND_PTS = BF_BAND_PTS_M;   // compatibilidad: el default sigue siendo 
 function bfBandFor(sexo) { return sexo === 'F' ? BF_BAND_PTS_F : BF_BAND_PTS_M; }
 const BF_MIN_PCT = 3;      // por debajo: el dato de entrada está mal, no la persona
 const BF_MAX_PCT = 60;
+
+// ── LA CATEGORÍA (decisión del PO, 13-sep-2026) ──────────────────────────────────────────────
+// Andrés Hyp la pedía siempre; Valery NO, porque el error del método (±3,5/±3,9) es del MISMO
+// ancho que una categoría, así que alguien en el borde cae de un lado o del otro según cómo quedó
+// la cinta ese día — *«eso no es información, es ruido con etiqueta»*. El PO eligió la síntesis:
+// 🔒 **la etiqueta se muestra SOLO si la franja ENTERA cae dentro de una sola banda.** Si la franja
+//    pisa dos, sale el número sin etiqueta — nadie recibe una categoría que dependa de la cinta.
+// 🔒 Y la FUENTE es la que pidió Valery, no la tabla plana del ACE: **Gallagher et al. 2000,
+//    Am J Clin Nutr 72(3):694-701** (NHANES), que **ajusta por EDAD y sexo**. Una tabla plana le
+//    dice a una mujer de 48 que «pasó a estar mal» por un cambio fisiológico normal.
+// 🔒 SIN EDAD NO HAY CATEGORÍA: el corte se mueve con ella, así que inventar el tramo es inventar
+//    la etiqueta. Se devuelve null y la pantalla enseña el número solo.
+// ⚠️ Estos cortes NO son los mismos que `BF_LOAD_HIGH_*` y no deben unificarse: aquí se describe
+//    una referencia de SALUD poblacional; allá se decide si el impacto articular conviene.
+const BF_GALLAGHER = {
+  M: [{ hasta: 39, saludDesde: 8,  altoDesde: 20, muyAltoDesde: 25 },
+      { hasta: 59, saludDesde: 11, altoDesde: 22, muyAltoDesde: 28 },
+      { hasta: 200, saludDesde: 13, altoDesde: 25, muyAltoDesde: 30 }],
+  F: [{ hasta: 39, saludDesde: 21, altoDesde: 33, muyAltoDesde: 39 },
+      { hasta: 59, saludDesde: 23, altoDesde: 34, muyAltoDesde: 40 },
+      { hasta: 200, saludDesde: 24, altoDesde: 36, muyAltoDesde: 42 }],
+};
+// bfCategoryKey(sexo, edad, pct) → 'bajo'|'saludable'|'porEncima'|'alto'|null. PURA.
+function bfCategoryKey(sexo, edad, pct) {
+  const tramos = BF_GALLAGHER[sexo === 'F' ? 'F' : 'M'];
+  const a = parseInt(edad), p = parseFloat(pct);
+  if (!isFinite(a) || a < 18 || !isFinite(p)) return null;   // sin edad no hay tramo, y un menor no llega aquí
+  const t = tramos.filter(x => a <= x.hasta)[0] || tramos[tramos.length - 1];
+  if (p < t.saludDesde) return 'bajo';
+  if (p < t.altoDesde) return 'saludable';
+  if (p < t.muyAltoDesde) return 'porEncima';
+  return 'alto';
+}
 // Lo que necesita CADA sexo. La cadera solo entra en la fórmula femenina.
 const BF_NEEDS = { M: ['cuello', 'cintura'], F: ['cuello', 'cintura', 'cadera'] };
 
@@ -4531,6 +4587,14 @@ function bodyFatEstimate(client, entries) {
     hi: r1(Math.min(BF_MAX_PCT, crudo + banda)),
     usados,
   };
+  // 🔒 LA ETIQUETA SOLO SI NO HAY DUDA: se categoriza la franja ENTERA, no el punto central. Si
+  //    los dos extremos caen en la misma banda, se muestra; si pisan dos, `categoria` es null y
+  //    `categoriaAmbigua` queda en true para que la pantalla pueda DECIR por qué no hay etiqueta
+  //    (callar del todo se lee como que la app está rota — lección de v598).
+  const kLo = bfCategoryKey(sexo, edad, out.lo);
+  const kHi = bfCategoryKey(sexo, edad, out.hi);
+  out.categoria = (kLo && kLo === kHi) ? kLo : null;
+  out.categoriaAmbigua = !!(kLo && kHi && kLo !== kHi);
   // La toma ANTERIOR que también traiga los tres: la flecha es lo que de verdad se acciona.
   // 🔒 Si la anterior no los trae, NO se rellena con los de otra fecha: se queda sin flecha.
   const antes = _bfPickEntry(vivas, sexo, pick.idx + 1);
@@ -4600,6 +4664,23 @@ function bodyFatSourceText(est) {
   });
   return 'Estimada con ' + partes.join(', ') + ', de tu toma del ' + _bfDia(est.fecha) + '.';
 }
+
+// El texto de la categoría vive AL LADO de la regla que la decide, no en la pantalla: si se
+// separan, un día la etiqueta dice una cosa y el corte hace otra (la clase de v437).
+// 🔒 Describe DÓNDE cae respecto de la referencia de su edad y no dice nada más: ni un adjetivo
+//    sobre la persona, ni una meta de «% objetivo» (regla de Valery), ni un diagnóstico — de
+//    mandar a un profesional ya se encarga la bandera de cintura de Laura, con su propio criterio.
+const BF_CAT_TEXT = {
+  bajo:       'Por debajo del rango de referencia para tu edad.',
+  saludable:  'Dentro del rango de referencia para tu edad.',
+  porEncima:  'Por encima del rango de referencia para tu edad.',
+  alto:       'Bastante por encima del rango de referencia para tu edad.',
+};
+function bfCategoryText(key) { return BF_CAT_TEXT[key] || ''; }
+// Versión corta para la ficha del COACH, que la lee al lado del rango y en una línea de 2 cm.
+// Misma clave y mismo sitio que la larga, para que no puedan decir cosas distintas.
+const BF_CAT_SHORT = { bajo: 'Por debajo del rango', saludable: 'En el rango', porEncima: 'Por encima del rango', alto: 'Muy por encima' };
+function bfCategoryShort(key) { return BF_CAT_SHORT[key] || ''; }
 
 
 // ── ¿Es usuario en modo libre (gratis, sin coach)? ──
@@ -10832,6 +10913,12 @@ if (typeof module !== 'undefined' && module.exports) {
     BF_BAND_PTS,
     BF_BAND_PTS_M,
     BF_BAND_PTS_F,
+    BF_GALLAGHER,
+    bfCategoryKey,
+    bfCategoryText,
+    bfCategoryShort,
+    BF_LOAD_HIGH_M,
+    BF_LOAD_HIGH_F,
     bfBandFor,
     waistFlag,
     WAIST_RISK_CM,

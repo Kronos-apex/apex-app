@@ -357,6 +357,15 @@ async function saveClient(){
 // ── Auto-registro (modo libre) ──────────────────────────────────────────
 // Genera y APLICA una semana al cliente `c` reusando el motor del coach (adaptación +
 // perfil de carga). Para modo libre no hay coach que revise → se aplica directo.
+// La grasa estimada que alimenta el perfil de carga (v609, decisión del PO). UNA definición para
+// las dos vías de generación: dos copias del mismo número son dos verdades, que es cómo volvió el
+// bug del peso en v448 y otra vez en v511. Sin dato devuelve null y `bodyLoadProfile` se queda con
+// el IMC de siempre — incluidos los menores, a los que el motor no les estima nada.
+function _coachGrasaPct(c){
+  if(typeof bodyFatEstimate!=='function')return null;
+  const e=bodyFatEstimate(c,(DB.medidas&&DB.medidas[c.id])||[]);
+  return (e&&e.ok)?e.pct:null;
+}
 function _autoGenerateWeek(c){
   const styleId=PLACE_DEFAULT_STYLE[c.place]||'gym_hipertrofia';
   const style=TRAINING_STYLES.find(s=>s.id===styleId)||TRAINING_STYLES[0];
@@ -365,7 +374,7 @@ function _autoGenerateWeek(c){
   // arreglo venga ordenado, que es la clase de suposicion que costo el bug del peso (v448).
   const _med=(typeof medLive==='function')?medLive((DB.medidas&&DB.medidas[c.id])||[]):((DB.medidas&&DB.medidas[c.id])||[]);
   const _waist=_med.length?_med[0].cintura:null;
-  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
+  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c),_coachGrasaPct(c));
   const _p=genPrefs(c);
   // 🔴 El plan arranca HOY, no el lunes. Esta es la vía del que se registra solo: si empezara
   // siempre en lunes, quien se inscribe un sábado o un domingo vería «hoy es tu día de descanso»
@@ -2308,14 +2317,17 @@ function renderValoracion(c){
   }
   // GRASA ESTIMADA (v607). El IMC no distingue músculo de grasa y el propio PO lo leyó como si
   // fuera su grasa corporal; estos perímetros sí dan una estimación. 🔒 A un MENOR no se le pinta
-  // (el motor devuelve `razon:'menor'`) y NO lleva categoría ni color de juicio hasta que el
-  // equipo dé su veredicto. Cuando falta un perímetro, la casilla dice CUÁL — a 5 de sus
-  // asesoradas les falta solo el cuello.
+  // (el motor devuelve `razon:'menor'`). Cuando falta un perímetro, la casilla dice CUÁL — a 5 de
+  // sus asesoradas les falta solo el cuello.
+  // 🔒 v609 · La CATEGORÍA se añade solo cuando la franja entera cae en una banda (decisión del
+  //    PO); si pisa dos, la casilla se queda con el rango y sin etiqueta. Sin color de juicio:
+  //    teñirla sería decirle al coach «esto está mal» sin saber el objetivo de esa persona.
   const _bf=(typeof bodyFatEstimate==='function')
     ? bodyFatEstimate(c,(DB.medidas&&DB.medidas[c.id])||[]) : null;
   if(_bf && _bf.ok){
+    const _cat=(typeof bfCategoryShort==='function'&&_bf.categoria)?bfCategoryShort(_bf.categoria):'';
     html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.', _bf.pct.toFixed(1).replace('.',',')+'%',
-      String(_bf.lo).replace('.',',')+'–'+String(_bf.hi).replace('.',',')+'%','var(--t1)');
+      String(_bf.lo).replace('.',',')+'–'+String(_bf.hi).replace('.',',')+'%'+(_cat?' · '+_cat:''),'var(--t1)');
   } else if(_bf && _bf.razon==='menor'){
     // 🔒 Al MENOR no se le muestra nada (eso no cambia), pero el COACH es un adulto y necesita
     //    distinguir «no hay dato» de «la app decidió no mostrarlo» — si no, le pide a la familia
@@ -3269,7 +3281,7 @@ function genWithStyle(styleId){
   // arreglo venga ordenado, que es la clase de suposicion que costo el bug del peso (v448).
   const _med=(typeof medLive==='function')?medLive((DB.medidas&&DB.medidas[c.id])||[]):((DB.medidas&&DB.medidas[c.id])||[]);
   const _waist=_med.length?_med[0].cintura:null;
-  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c));
+  const loadProfile=bodyLoadProfile(c,_waist,_coachPesoDe(c),_coachGrasaPct(c));
   const _p=genPrefs(c);
   const res=generarRutinas(c,DB.exercises,{idFn:uid,seed:_genSeed(c.id),place:style.env,methodBias:style.methodBias,adaptation:inAdapt,loadProfile,excludeIds:_p.exclude,preferIds:_p.prefer});
   if(!res.routines.length){toast('⚠️ No se pudo generar el borrador');return false;}

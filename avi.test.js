@@ -127,6 +127,11 @@ const {
   dropLoad,
   bmiFrom,
   bodyLoadProfile,
+  bfCategoryKey,
+  bfCategoryText,
+  bfCategoryShort,
+  BF_LOAD_HIGH_M,
+  BF_LOAD_HIGH_F,
   nutWeightFor,
   bodyWeightSource,
   BW_STALE_DAYS,
@@ -3521,7 +3526,10 @@ test('🔴 ESTÁTICO v511: el panel del coach lee el peso REGISTRADO, no el de l
   assert.ok(/const _pesoReal=_coachPesoDe\(c\);[\s\S]{0,80}_stats\.push\(_pesoReal\+' kg'\)/.test(src),
     'la cabecera volvió a mostrar el peso de la ficha');
   // 3) y 4) Las DOS llamadas del generador de rutinas.
-  const gen = (src.match(/bodyLoadProfile\(c,_waist,_coachPesoDe\(c\)\)/g) || []).length;
+  // 🔁 v609: se afirma el PREFIJO, no la llamada entera. `bodyLoadProfile` ganó un 4º argumento
+  //    (la grasa estimada, decisión del PO) y este candado no vigila cuántos argumentos recibe:
+  //    vigila que el PESO que entra sea el REGISTRADO y no el de la ficha, que es su propiedad.
+  const gen = (src.match(/bodyLoadProfile\(c,_waist,_coachPesoDe\(c\)/g) || []).length;
   assert.strictEqual(gen, 2,
     'alguna llamada del generador volvió al peso de la ficha (esperaba 2, hay ' + gen + ')');
   assert.ok(!/bodyLoadProfile\(c,_waist\)\s*;/.test(src),
@@ -18227,6 +18235,81 @@ test('🔒 v608 · saveEx sella la marca y el arranque respeta la marca (si no, 
   const app1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
   assert.ok(!/exercises:\s*ld\('ax_e',\s*defaultExercises\)/.test(app1),
     '🔴 volvió `ld(\'ax_e\',defaultExercises)`: en un dispositivo nuevo eso comparte el array con el catálogo del código');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// v609 · LAS DOS DECISIONES DEL PO SOBRE LA GRASA ESTIMADA (13-sep-2026)
+// (1) La CATEGORÍA se muestra solo cuando la franja ENTERA cae en una banda — síntesis entre
+//     Andrés (siempre) y Valery (nunca). Fuente Gallagher 2000, que ajusta por EDAD.
+// (2) La grasa REEMPLAZA al IMC en el perfil de carga cuando existe — Andrés y Coach Pro a
+//     favor, Laura en contra. Medido sobre las 6 personas estimables: cambia a 3, y a DOS las
+//     pone en 'high' (Astrid y Claudia, con IMC por debajo de 30 y grasa por encima de 32).
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+test('🔴 v609 · la etiqueta solo sale si la franja ENTERA cae en una sola banda', () => {
+  // El caso del PO: 24,4% [20,9–27,9] a los 37 años pisa «por encima» (20–24,9) y «alto» (≥25).
+  const e = core.bodyFatEstimate(_BF_PO, _BF_MED_PO);
+  assert.ok(e.ok);
+  assert.strictEqual(e.categoria, null, '🔴 le puso etiqueta a una franja que pisa dos bandas');
+  assert.strictEqual(e.categoriaAmbigua, true, 'y la pantalla necesita saber POR QUÉ no hay etiqueta');
+  // 🔒 CONTROL: sin un caso que SÍ la reciba, «nunca etiquetar» pasaría este test igual.
+  const luz = core.bodyFatEstimate({ sex: 'F', age: 39, height: 155 },
+    [{ id: 'a', date: '2026-09-01T00:00:00.000Z', cuello: 36, cintura: 105, cadera: 120 }]);
+  assert.ok(luz.ok, JSON.stringify(luz));
+  assert.strictEqual(luz.categoria, 'alto', 'una franja que cabe entera en una banda SÍ se etiqueta');
+  assert.strictEqual(luz.categoriaAmbigua, false);
+  assert.ok(bfCategoryText('alto').length > 10 && bfCategoryShort('alto').length > 3);
+});
+
+test('🔒 v609 · Gallagher ajusta por EDAD: el mismo % no cae en la misma banda a los 30 que a los 55', () => {
+  // 21% en hombre: a los 30 es «por encima» (corte 20); a los 55 sigue siendo saludable (corte 22).
+  assert.strictEqual(bfCategoryKey('M', 30, 21), 'porEncima');
+  assert.strictEqual(bfCategoryKey('M', 55, 21), 'saludable');
+  // En mujer los cortes son MUCHO más altos: 25% a los 30 es saludable, no «por encima».
+  assert.strictEqual(bfCategoryKey('F', 30, 25), 'saludable');
+  assert.strictEqual(bfCategoryKey('F', 30, 40), 'alto');
+  // 🔒 Sin edad no hay tramo, así que no hay etiqueta: inventarlo es inventar la categoría.
+  assert.strictEqual(bfCategoryKey('M', null, 21), null);
+  assert.strictEqual(bfCategoryKey('M', '', 21), null);
+});
+
+test('🔴 v609 · con grasa estimada manda la grasa, no el IMC', () => {
+  // El caso del PO: IMC 31,3 (≥30 → 'high' de siempre) con 24,4% de grasa (<25 → normal).
+  const po = { sex: 'M', age: 37, height: 175, weight: 96 };
+  assert.strictEqual(bodyLoadProfile(po, null, 96), 'high', 'sin grasa, el IMC manda como siempre');
+  assert.strictEqual(bodyLoadProfile(po, null, 96, 24.4), 'normal', '🔴 la grasa no reemplazó al IMC');
+  // 🔒 CONTROL en la otra dirección, que es la mitad que de verdad se midió: una mujer con IMC
+  //    por debajo de 30 y grasa por encima de 32 pasa a 'high' — el caso de Astrid y Claudia.
+  const ella = { sex: 'F', age: 33, height: 160, weight: 70 };   // IMC 27,3
+  assert.strictEqual(bodyLoadProfile(ella, null, 70), 'normal');
+  assert.strictEqual(bodyLoadProfile(ella, null, 70, 37.9), 'high', '🔴 la grasa alta no subió el perfil');
+  // Los cortes son por sexo y no se comparten.
+  assert.strictEqual(BF_LOAD_HIGH_M, 25);
+  assert.strictEqual(BF_LOAD_HIGH_F, 32);
+});
+
+test('🔒 v609 · sin sexo NO se usa la grasa, y la cintura-talla sigue mandando por su cuenta', () => {
+  // Sin sexo los cortes no se pueden elegir: adivinarlo es el defecto de v604. Cae al IMC.
+  const sinSexo = { age: 37, height: 175, weight: 96 };
+  assert.strictEqual(bodyLoadProfile(sinSexo, null, 96, 24.4), 'high', '🔴 usó un corte adivinado');
+  // 🔒 La decisión reemplaza el IMC, NO la cintura-talla (es masa y distribución, no composición):
+  //    con RCT ≥0,60 el perfil sigue siendo 'high' aunque la grasa esté por debajo del corte.
+  const po = { sex: 'M', age: 37, height: 175, weight: 96 };
+  assert.strictEqual(bodyLoadProfile(po, 110, 96, 24.4), 'high', '🔴 la grasa apagó la cintura-talla');
+  // Un valor de grasa imposible no se usa (se cae al IMC), no se toma por bueno.
+  assert.strictEqual(bodyLoadProfile(po, null, 96, 0.5), 'high');
+});
+
+test('🔒 v609 · CABLEADO: las dos vías de generación le pasan la grasa al perfil de carga', () => {
+  const fs = require('fs'), path = require('path');
+  const app3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const llamadas = app3.match(/bodyLoadProfile\((?:[^()]|\([^()]*\))*\)/g) || [];
+  assert.strictEqual(llamadas.length, 2, 'cambió el número de vías de generación: ' + llamadas.length);
+  llamadas.forEach(l => assert.match(l, /_coachGrasaPct\(c\)/,
+    '🔴 una vía de generación sigue decidiendo el perfil de carga con el IMC: ' + l));
+  // Y la grasa se resuelve en UNA sola función: dos copias del mismo número son dos verdades.
+  assert.strictEqual((app3.match(/function _coachGrasaPct/g) || []).length, 1);
+  assert.match(app3, /function _coachGrasaPct[\s\S]{0,400}bodyFatEstimate\(c,/);
 });
 
 // ══════════════════════════════════════════════════════
