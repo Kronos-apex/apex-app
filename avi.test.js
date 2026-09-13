@@ -17714,48 +17714,119 @@ test('🔒 v595 · CONTROL · no promete un escalón donde el mecanismo es OTRO'
   assert.strictEqual(core.progressHint(0, 10, 10, 5, 0), null);
 });
 
-test('🔴 v595 · NO da instrucciones sobre un récord que ya no es su peso de trabajo', () => {
-  // Antes de la guarda, a su Prensa le decía «Repite 200 kg · te falta 1 sesión para subir»
-  // cuando viene moviendo 100: la versión anterior lo pintaba como número de referencia y la
-  // instrucción lo volvía una orden imposible. Un cambio que MEJORA el caso bueno no puede
-  // empeorar el malo.
-  const desfasado = core.progressHint(200, 12, 12, 2, 200, 100);   // último real = 50% del récord
-  assert.strictEqual(desfasado.estado, 'base');
-  assert.ok(!/Repite|faltan|falta 1/.test(desfasado.texto),
-    '🔴 le está dando una instrucción sobre un peso que ya no mueve');
-
-  // 🔒 CONTROL: una variación NORMAL (fatiga, otro día) sigue instruyendo — si no, la guarda
-  //    no sería una guarda, sería haber borrado la feature.
-  const vigente = core.progressHint(110, 12, 8, 4, 115, 100);      // 91% del récord
-  assert.strictEqual(vigente.estado, 'sube');
-
-  // 🔒 Sin dato de lo último movido NO se calla: la ausencia de información no puede volverse
-  //    silencio (es el detector mudo de v433 al revés).
-  assert.strictEqual(core.progressHint(200, 12, 12, 2, 200, null).estado, 'consolida');
-
-  // El corte se DERIVA de la constante, no de un 0,75 escrito en el test.
-  const r = core.PROGRESS_HINT_MIN_RATIO;
-  assert.strictEqual(core.progressHint(100, 12, 12, 9, 105, 100 * r * 0.99).estado, 'base');
-  assert.strictEqual(core.progressHint(100, 12, 12, 9, 105, 100 * r * 1.01).estado, 'sube');
+// 🔁 RE-ENCUADRADOS EN v610, NO CALLADOS. Los tres tests de v595 que vivían aquí afirmaban la
+// GUARDA: «si el récord ya no es su peso de trabajo, no des una instrucción». Esa propiedad no se
+// pierde — se cumple mucho mejor, porque ahora el NÚMERO tampoco sale del récord desfasado. Lo que
+// dejaba de tener sentido era exigir que la app se quedara MUDA sobre un peso que sí puede
+// calcular bien, y que el criterio se decidiera con UNA sola sesión (27 de 59 falsos positivos).
+test('🔴 v610 · con el récord desfasado, el peso sale del TRABAJO RECIENTE (el caso de la Prensa)', () => {
+  // Su Prensa: récord de 200 kg de mayo, y viene moviendo 100 desde que se lastimó la pierna.
+  const ses = [
+    { date: '2026-05-26', exercises: [{ id: 'e36', sets: [{ kg: '200', reps: '12', done: 1 }] }] },
+    { date: '2026-09-01', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
+    { date: '2026-09-04', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
+    { date: '2026-09-08', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
+  ];
+  const pr = { val: 200, kg: 200, reps: 12, unit: 'kg' };
+  const anc = core.loadAnchor(pr, ses, 'e36');
+  assert.strictEqual(anc.fuente, 'reciente', '🔴 siguió anclado a un récord que ya no describe su trabajo');
+  assert.strictEqual(anc.kg, 100);
+  assert.strictEqual(anc.recordKg, 200, 'el récord no se pierde ni se reescribe: solo deja de ser el ancla');
+  // Y el peso que se le propone sale de ahí: consolidó 100 en 3 sesiones → toca subir un escalón.
+  const ses3 = core.sessionsAtLoad(ses, 'e36', anc.kg, 12);
+  const sug = core.suggestFromPR(anc, 12, { sesionesEnPeso: ses3 });
+  assert.ok(sug > 100 && sug <= 110, 'esperaba un escalón sobre 100, vino ' + sug);
+  // 🔒 Y el calentamiento, que se DERIVA del peso sugerido, deja de ser su serie de trabajo.
+  assert.ok(core.warmupLoad(sug) < 60, 'el calentamiento sigue clavado al récord: ' + core.warmupLoad(sug));
+  assert.strictEqual(core.warmupLoad(200), 100, 'CONTROL: con el ancla vieja le pedía calentar con 100 kg');
+  // El texto DICE de dónde sale el número (v511): afirmar «según tu récord» aquí sería falso.
+  // 🔬 La primera versión de esta aserción salió VERDE con el sabotaje puesto y la cazó la matriz:
+  //    miraba un hint en estado 'consolida' («Repite 100 kg…»), que no nombra la fuente NUNCA, así
+  //    que clavar «según tu récord» pasaba sin despeinarse. La fuente solo se pinta en la rama
+  //    'base', y ESA es la que hay que ejercitar (la aserción que el defecto puede satisfacer).
+  const base = core.progressHint(100, 8, 12, 1, 85, 'reciente');   // récord a MENOS reps → estima abajo
+  assert.strictEqual(base.estado, 'base', 'el fixture tiene que caer en la rama que nombra la fuente');
+  assert.match(base.texto, /según lo que vienes moviendo/, base.texto);
+  assert.ok(!/tu récord/.test(base.texto), '🔴 dice «según tu récord» sobre un peso que no salió del récord');
+  // 🔒 CONTROL: cuando el peso SÍ sale del récord, lo sigue diciendo — si no, esto sería haber
+  //    borrado la frase en vez de haberla hecho honesta.
+  assert.match(core.progressHint(100, 8, 12, 1, 85, 'record').texto, /según tu récord/);
 });
 
-test('v595 · lastWorkKg = lo que movió la ÚLTIMA vez, no su mejor día', () => {
+test('🔒 v610 · un día flojo suelto NO mueve el ancla (27 de 59 casos reales eran eso)', () => {
+  // La guarda de v595 miraba solo la ÚLTIMA sesión, así que a la Patada de Glúteo de Nataly le
+  // quitaba la instrucción por un día liviano, con el récord vigente en las sesiones de al lado.
+  const ses = [
+    { date: '2026-09-01', exercises: [{ id: 'e10', sets: [{ kg: '30', reps: '12', done: 1 }] }] },
+    { date: '2026-09-04', exercises: [{ id: 'e10', sets: [{ kg: '30', reps: '12', done: 1 }] }] },
+    { date: '2026-09-08', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },   // día flojo
+  ];
+  const pr = { val: 30, kg: 30, reps: 12, unit: 'kg' };
+  const anc = core.loadAnchor(pr, ses, 'e10');
+  assert.strictEqual(anc.fuente, 'record', '🔴 un solo día flojo le tumbó el ancla');
+  assert.strictEqual(anc.kg, 30);
+  // 🔒 CONTROL: si el día flojo se vuelve la norma, el ancla SÍ baja — si no, esto no sería una
+  //    ventana, sería haber vuelto al récord de siempre.
+  const bajada = ses.concat([
+    { date: '2026-09-10', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },
+    { date: '2026-09-12', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },
+  ]);
+  assert.strictEqual(core.loadAnchor(pr, bajada, 'e10').fuente, 'reciente');
+});
+
+test('🔒 v610 · recentWorkLoad = la mejor carga de las últimas sesiones, no el mejor día de su vida', () => {
   const ses = [
     { date: '2026-05-26', exercises: [{ id: 'e36', sets: [{ kg: '200', reps: '12' }] }] },
-    { date: '2026-08-15', exercises: [{ id: 'e36', sets: [{ kg: '90', reps: '12' }, { kg: '100', reps: '12' }] }] },
+    { date: '2026-08-15', exercises: [{ id: 'e36', sets: [{ kg: '90', reps: '12' }, { kg: '100', reps: '8' }] }] },
   ];
-  assert.strictEqual(core.lastWorkKg(ses, 'e36'), 100, 'la sesión más reciente, y de ella el peso más alto');
+  const r = core.recentWorkLoad(ses, 'e36', { sesiones: 1 });
+  assert.strictEqual(r.kg, 100, 'de la sesión reciente, la mejor carga');
+  assert.strictEqual(r.reps, 8, 'y las reps que hizo CON esa carga, que es lo que decide si sube');
+  // Con la ventana entera entra el récord viejo, que es la carga más alta del rango.
+  assert.strictEqual(core.recentWorkLoad(ses, 'e36').kg, 200);
   // Casa por NOMBRE: las sesiones viejas no traen id (misma razón que sessionsAtLoad y v558).
   const viejas = [{ date: '2026-06-01', exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: '150' }] }] }];
-  assert.strictEqual(core.lastWorkKg(viejas, 'Prensa de Pierna'), 150);
+  assert.strictEqual(core.recentWorkLoad(viejas, 'Prensa de Pierna').kg, 150);
   // Sin carga, sin fecha usable o sin nada: null, jamás un número inventado.
-  assert.strictEqual(core.lastWorkKg([{ date: '2026-06-01', exercises: [{ id: 'e36', sets: [{ reps: '12' }] }] }], 'e36'), null);
-  assert.strictEqual(core.lastWorkKg([{ date: null, exercises: [{ id: 'e36', sets: [{ kg: '80' }] }] }], 'e36'), null);
-  assert.strictEqual(core.lastWorkKg([], 'e36'), null);
-  assert.strictEqual(core.lastWorkKg(null, null), null);
+  assert.strictEqual(core.recentWorkLoad([{ date: '2026-06-01', exercises: [{ id: 'e36', sets: [{ reps: '12' }] }] }], 'e36'), null);
+  assert.strictEqual(core.recentWorkLoad([{ date: null, exercises: [{ id: 'e36', sets: [{ kg: '80' }] }] }], 'e36'), null);
+  assert.strictEqual(core.recentWorkLoad([], 'e36'), null);
+  assert.strictEqual(core.recentWorkLoad(null, null), null);
 });
 
-test('🔒 CABLEADO v595: la pantalla del entreno usa la instrucción, y destaca SOLO al subir', () => {
+test('🔒 v610 · sin historial manda el récord, y el corte se DERIVA de la constante', () => {
+  const pr = { val: 100, kg: 100, reps: 12, unit: 'kg' };
+  // Sin sesiones no se calla ni se inventa: manda el récord (el detector mudo de v433 al revés).
+  assert.strictEqual(core.loadAnchor(pr, [], 'e1').fuente, 'record');
+  assert.strictEqual(core.loadAnchor(pr, null, 'e1').kg, 100);
+  // Sin récord manda lo reciente, que es mejor que nada.
+  const ses = [{ date: '2026-09-08', exercises: [{ id: 'e1', sets: [{ kg: '40', reps: '10' }] }] }];
+  const sinPr = core.loadAnchor(null, ses, 'e1');
+  assert.strictEqual(sinPr.fuente, 'reciente');
+  assert.strictEqual(sinPr.kg, 40);
+  assert.strictEqual(core.loadAnchor(null, [], 'e1'), null, 'sin nada de nada, null');
+  // El corte sale de la constante, no de un 0,75 escrito a mano en el test.
+  const r = core.LOAD_ANCHOR_MIN_RATIO;
+  const conKg = kg => core.loadAnchor(pr, [{ date: '2026-09-08', exercises: [{ id: 'e1', sets: [{ kg: String(kg), reps: '12' }] }] }], 'e1').fuente;
+  assert.strictEqual(conKg(100 * r * 1.01), 'record');
+  assert.strictEqual(conKg(100 * r * 0.99), 'reciente');
+});
+
+test('🔒 v610 · una semana de DESCARGA no puede arrastrar el ancla', () => {
+  // La descarga baja la carga a propósito (`DELOAD_LOAD_FACTOR`), y si ese factor cayera por
+  // debajo del corte del ancla, tres semanas de descarga le rebajarían el ancla a todo el mundo
+  // y nadie volvería a su carga real. Los dos números viven en avi-core y aquí se comparan.
+  assert.ok(core.DELOAD_LOAD_FACTOR > core.LOAD_ANCHOR_MIN_RATIO,
+    `🔴 el factor de descarga (${core.DELOAD_LOAD_FACTOR}) cayó por debajo del corte del ancla (${core.LOAD_ANCHOR_MIN_RATIO})`);
+  // Y en concreto: tres sesiones a la carga de descarga dejan el ancla en el récord.
+  const pr = { val: 100, kg: 100, reps: 12, unit: 'kg' };
+  const dl = Math.round(100 * core.DELOAD_LOAD_FACTOR * 2) / 2;
+  const ses = ['2026-09-01', '2026-09-04', '2026-09-08'].map(d =>
+    ({ date: d, exercises: [{ id: 'e1', sets: [{ kg: String(dl), reps: '12', done: 1 }] }] }));
+  assert.strictEqual(core.loadAnchor(pr, ses, 'e1').fuente, 'record');
+});
+
+test('🔒 CABLEADO v610: el ancla se calcula, viaja y la pantalla dice de dónde sale el peso', () => {
   const fs = require('fs'), path = require('path');
   const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
   assert.match(src, /progressHint\(/, '🔴 la función pura no la llama nadie: puerta cerrada, ventana abierta');
@@ -17764,23 +17835,28 @@ test('🔒 CABLEADO v595: la pantalla del entreno usa la instrucción, y destaca
   // Se ancla en la GUARDA concreta, no en que el texto aparezca: 'sube' sale tambien en el
   // ternario del icono, asi que quitar la condicion del realce saldria VERDE (leccion v570).
   assert.match(src, /if\(_ph&&_ph\.estado==='sube'\)/, '🔴 el realce dejó de mirar si de verdad toca subir');
-  // Y el texto que se pinta sale del hint, no de una segunda redacción.
   assert.match(src, /_ph\s*\?/, '🔴 la pantalla dejó de usar el texto de la instrucción');
-  // 🔒 Y el ÚLTIMO peso real tiene que llegar hasta la función: sin ese argumento la guarda del
-  //    récord desfasado no se aplica nunca y la app vuelve a mandar «repite 200 kg» a quien
-  //    mueve 100 — una guarda que nadie invoca es puerta cerrada, ventana abierta (v509).
-  assert.match(src, /gmInfo\.ultimo/, '🔴 el último peso real dejó de llegar a la instrucción');
+  // 🔒 La FUENTE tiene que llegar hasta la función, o la pantalla afirma «según tu récord» sobre
+  //    un peso que salió del trabajo reciente — que es la mentira de v437 con otra cara.
+  assert.match(src, /gmInfo\.fuente/, '🔴 la fuente del peso dejó de llegar a la instrucción');
+  // Y el respaldo (cuando no hay hint) tampoco puede clavar «según tu récord».
+  assert.match(src, /fuente==='reciente'\)\?'seg[uú]n lo que vienes moviendo'/,
+    '🔴 el texto de respaldo volvió a afirmar «según tu récord» pase lo que pase');
 
   // 🔴 Y la otra mitad, que faltaba: que app-4 lo CALCULE. Comprobar solo que la pantalla lo pasa
-  //    deja pasar el caso en que `ultimo` viaja siempre en null y la guarda queda inerte — un
+  //    deja pasar el caso en que la fuente viaja siempre en 'record' y el ancla queda inerte — un
   //    sabotaje salió VERDE exactamente por eso. Los dos extremos del cable, o no es un cable.
-  const src4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')
-    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const src4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
   const k = src4.indexOf('function _progressInfo');
   const cuerpoInfo = src4.slice(k, src4.indexOf('\nfunction ', k + 10));
-  assert.match(cuerpoInfo, /lastWorkKg\(/, '🔴 _progressInfo dejó de calcular el último peso real');
-  assert.match(cuerpoInfo, /ultimo\s*:/, '🔴 el último peso real no viaja en el resultado');
+  assert.match(cuerpoInfo, /loadAnchor\(pr,_hist,/, '🔴 _progressInfo dejó de calcular el ancla');
+  assert.match(cuerpoInfo, /fuente:\(_anc&&_anc\.fuente\)/, '🔴 la fuente no viaja en el resultado');
+  // 🔒 Y la consolidación se cuenta sobre el ANCLA, no sobre el récord: contar sesiones a 200 kg
+  //    mientras se sugiere 100 daría siempre 0 y nadie volvería a subir de peso jamás.
+  assert.match(cuerpoInfo, /sessionsAtLoad\(_hist,[\s\S]{0,120}_base/, '🔴 la consolidación volvió a contarse sobre el récord');
+  assert.match(cuerpoInfo, /suggestFromPR\(_base,/, '🔴 el peso volvió a calcularse desde el récord');
 });
+
 
 // ══════════════════════════════════════════════════════
 // v596 · EL ICONITO DE LA BARRA DE ESTADO NO PUEDE SER UNA MANCHA

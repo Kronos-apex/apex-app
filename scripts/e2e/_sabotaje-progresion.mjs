@@ -31,18 +31,17 @@ const SABOTAJES = [
   [ENTRENO, '5· `_suggestKg` vuelve a contar las sesiones por su cuenta (dos verdades)',
     '  const i=_progressInfo(ex);',
     '  const c0=_curClient(); const pr0=(DB.prs[c0.id]||{})[ex.id||ex.name]; const r0=parseInt(ex.reps)||10;\n  const s0=sessionsAtLoad((DB.history&&DB.history[c0.id])||[],ex.id||ex.name,parseFloat(pr0&&(pr0.val!=null?pr0.val:pr0.kg)),r0);\n  const i={sug:suggestFromPR(pr0,r0,{sesionesEnPeso:s0})};'],
+  // 🔁 REAPUNTADO EN v610: el ancla de la llamada cambió (ahora viaja la FUENTE del peso, no el
+  //    último peso suelto). La regla ya estaba escrita desde v537: arreglar o mover un mecanismo
+  //    despega las anclas igual que borrarlo, y se reapuntan en el MISMO commit.
   [EXTRA, '6· la pantalla deja de usar la instrucción y vuelve al número pelado',
-    '        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.ultimo);',
+    '        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.fuente);',
     '        _ph=null;'],
-  [CORE, '8· la guarda del récord desfasado se apaga: instrucciones sobre pesos que ya no mueve',
-    '  const desfasado = ult > 0 && ult < kg * PROGRESS_HINT_MIN_RATIO;',
-    '  const desfasado = false;'],
-  [CORE, '9· el corte se escribe a mano en vez de derivarse de la constante',
-    'const PROGRESS_HINT_MIN_RATIO = 0.75;',
-    'const PROGRESS_HINT_MIN_RATIO = 0.30;'],
-  [ENTRENO, '10· el último peso real deja de calcularse: la guarda queda inerte',
-    '      ? lastWorkKg((DB.history&&DB.history[c.id])||[], ex.id||ex.name) : null;',
-    '      ? null : null;'],
+  // ⏭️ Los casos 8, 9 y 10 de esta matriz se RETIRARON en v610 y su propiedad NO se perdió: vigilaban
+  //    la guarda de v595 («si el récord ya no es su peso de trabajo, no des una instrucción»), que
+  //    dejó de existir porque ahora el NÚMERO tampoco sale de ese récord. Lo que la sustituye vive
+  //    en `_sabotaje-v610.mjs` (casos 1, 4, 5, 7, 8 y 9), que además cubre lo que estos NO podían:
+  //    que el ancla se calcule, que viaje y que la pantalla diga de dónde salió el peso.
   [EXTRA, '7· el realce se aplica SIEMPRE: destacar todo es no destacar nada',
     '      if(_ph&&_ph.estado===\'sube\'){',
     '      if(_ph){'],

@@ -816,7 +816,10 @@ function gmRender(){
       let _ph=null;
       if(!gmDeload&&gmInfo&&typeof progressHint==='function'){
         const _pr=gmInfo.pr||{};
-        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.ultimo);
+        // v610: `gmInfo.pr` ya es el ANCLA (récord o trabajo reciente) y `fuente` dice cuál, para
+        // que la pantalla pueda decir de dónde sale el número en vez de afirmar «según tu récord»
+        // sobre un peso que no salió de ahí (lección de v511).
+        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.fuente);
       }
       if(_ph&&_ph.estado==='sube'){
         // Sube de tamaño y gana fondo SOLO en el día del escalón: si se destacara siempre,
@@ -826,7 +829,10 @@ function gmRender(){
       }
       sh.textContent=_ph
         ? (_ph.estado==='sube'?'⬆️ ':'🎯 ')+_ph.texto
-        : `🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana':'según tu récord'}`;
+        // v610: el respaldo también dice de DÓNDE sale el número. Dejarlo clavado en «según tu
+        // récord» mentiría en los 32 casos reales en que el peso lo decide el trabajo reciente.
+        : `🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana'
+            :((gmInfo&&gmInfo.fuente==='reciente')?'según lo que vienes moviendo':'según tu récord')}`;
       setsEl.appendChild(sh);
     }else if(gmDeload&&typeof deloadLoadHint==='function'){
       const hint=deloadLoadHint(_curClient(),DB.history,ex,Date.now());

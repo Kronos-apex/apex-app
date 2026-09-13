@@ -1786,20 +1786,26 @@ function _progressInfo(ex){
     if(typeof deloadState==='function'&&typeof deloadSuggestKg==='function'&&deloadState(c,Date.now())){
       return {sug:deloadSuggestKg(pr,reps),pr:pr,reps:reps,ses:null,deload:true};
     }
+    // v610 · EL ANCLA. El peso ya NO sale siempre del récord: si lo que viene moviendo está muy
+    // por debajo de él, ese récord dejó de describir su trabajo y manda lo reciente. `loadAnchor`
+    // devuelve un objeto con la MISMA forma que un récord, así que la doble progresión de
+    // `suggestFromPR` sigue siendo la de siempre — solo cambia desde qué peso se cuenta.
+    const _hist=(DB.history&&DB.history[c.id])||[];
+    const _anc=(typeof loadAnchor==='function')?loadAnchor(pr,_hist,ex.id||ex.name):null;
+    const _base=_anc||pr;
     // CONSOLIDACIÓN (v529, reporte del PO): la doble progresión repite el peso hasta hacerlo en
-    // ≥2 sesiones y solo entonces sube. `suggestFromPR` no ve el historial, así que el conteo se
+    // ≥3 sesiones y solo entonces sube. `suggestFromPR` no ve el historial, así que el conteo se
     // calcula aquí con `sessionsAtLoad` y se le pasa. Sin este argumento la regla asume 1 sesión
     // y repite el peso — conservadora a propósito, pero entonces NADIE subiría nunca: por eso
     // hay un test de CABLEADO que exige que esta línea siga pasando `sesionesEnPeso`.
+    // 🔒 Se cuenta sobre el ANCLA, no sobre el récord: contar las sesiones a 200 kg mientras se
+    //    sugiere 100 daría siempre 0 y nadie volvería a subir de peso nunca.
     const _ses=(typeof sessionsAtLoad==='function')
-      ? sessionsAtLoad((DB.history&&DB.history[c.id])||[], ex.id||ex.name,
-                       parseFloat(pr&&(pr.val!=null?pr.val:pr.kg)), reps)
+      ? sessionsAtLoad(_hist, ex.id||ex.name,
+                       parseFloat(_base&&(_base.val!=null?_base.val:_base.kg)), reps)
       : undefined;
-    // Lo ULTIMO que movio de verdad en este ejercicio: sin eso, una instruccion puede mandarle
-    // un peso que ya no levanta (su Prensa tenia record de 200 kg moviendo 100).
-    const _ult=(typeof lastWorkKg==='function')
-      ? lastWorkKg((DB.history&&DB.history[c.id])||[], ex.id||ex.name) : null;
-    return {sug:suggestFromPR(pr,reps,{sesionesEnPeso:_ses}),pr:pr,reps:reps,ses:_ses,ultimo:_ult,deload:false};
+    return {sug:suggestFromPR(_base,reps,{sesionesEnPeso:_ses}),pr:_base,record:pr,reps:reps,ses:_ses,
+            fuente:(_anc&&_anc.fuente)||'record',deload:false};
   }catch(e){return null;}
 }
 // El peso sugerido SALE de `_progressInfo` — jamás se recalcula aquí (ver el comentario de arriba).

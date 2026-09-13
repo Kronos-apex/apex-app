@@ -4,6 +4,59 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-13 (3ª parte) — v610: EL PESO SUGERIDO SE ANCLA A LO QUE VIENE MOVIENDO
+
+*«arregla lo del peso sugerido»*. Era la decisión de fondo que quedó abierta en v595.
+
+### El defecto, y lo que v595 solo tapó
+Todo el peso sugerido salía del **RÉCORD**, que es el mejor día de su vida y puede tener meses.
+v595 puso una guarda para no dar una **instrucción** sobre un récord desfasado… pero **seguía
+enseñando el número del récord**: a la Prensa del PO le proponía **200 kg moviendo 100**. Y como el
+**calentamiento se deriva de esa cifra**, le pedía calentar con **100 kg**, que es su serie de
+trabajo entera.
+
+### Medido ANTES de escribir la regla (279 combinaciones persona-ejercicio de los planes VIVOS)
+- **59 tenían el récord desfasado** contra su última sesión. **12 personas, no solo el PO.**
+- 🔴 **Y la medición tumbó la primera idea.** Anclar a la ÚLTIMA sesión —que es lo que miraba la
+  guarda de v595— es demasiado frágil: **27 de esos 59 eran FALSOS**, un día flojo suelto con el
+  récord perfectamente vigente en las sesiones de al lado (la Patada de Glúteo de Nataly, los
+  Desplantes de Samuel). A esas 27 personas-ejercicio la app les quitaba la instrucción sin motivo.
+  El ancla es la **mejor carga de las últimas 3 sesiones**, y con eso las 27 la recuperan.
+
+### La regla
+`recentWorkLoad` (mejor carga de la ventana + las reps que hizo con ella) y `loadAnchor`, las dos
+PURAS. El ancla es el **récord**, salvo que lo reciente esté por debajo de `LOAD_ANCHOR_MIN_RATIO`
+(0,75) — ahí manda **lo que viene moviendo**.
+🔒 `loadAnchor` devuelve un objeto con la **misma forma que un récord**, así que `suggestFromPR` no
+se entera: la doble progresión, la consolidación y el redondeo siguen siendo los de siempre. Solo
+cambia **desde qué peso se cuentan**. Una segunda fórmula de progresión sería el bug de v435.
+🔒 La consolidación se cuenta sobre el **ANCLA**: contarla sobre el récord mientras se sugiere otra
+cosa daría siempre 0 y **nadie volvería a subir de peso jamás**.
+🔒 El corte queda **por debajo de `DELOAD_LOAD_FACTOR`** (0,85) a propósito, o una semana de
+descarga arrastraría el ancla de todo el mundo. Hay un test que compara las dos constantes.
+🔒 **El récord no se toca**: sigue siendo su marca, solo deja de ser el ancla.
+
+### Lo que cambia para la gente real
+- **249 de 279 no cambian de número.** El récord sigue mandando cuando describe su trabajo.
+- **32 pasan al trabajo reciente**: 27 bajan y **3 hablan por primera vez** (la app estaba MUDA).
+- **El calentamiento de los que cambian cae de 672,5 kg a 392,5 kg en total.**
+- Y la pantalla **dice de dónde sale el número** («según lo que vienes moviendo»): cambiarlo en
+  silencio es media solución y el dato no se reconoce (lección de v511).
+
+### QA
+Suite **1160 → 1163** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v610` **10/10** ·
+`_verify-deload` y `_guiado-suite` verdes (cinturón de zona caliente).
+🔬 **El sabotaje 6 salió VERDE en la primera corrida y tenía razón**: mi aserción miraba un texto en
+estado `consolida`, que no nombra la fuente nunca, así que clavar «según tu récord» pasaba sin
+despeinarse. La fuente solo se pinta en la rama `base` — y esa es la que hay que ejercitar.
+🔁 **Tres tests de v595 re-encuadrados, no callados**, y **cuatro anclas de `_sabotaje-progresion`
+reapuntadas o retiradas** en este mismo commit (regla de v537): tres de ellas vigilaban una guarda
+que ya no existe, y su propiedad vive ahora en la matriz nueva.
+📰 Sin entrada en `AVI_NEWS`, y se declara: lo que cambia se explica **en el propio renglón** que
+lee la persona, que es mejor que una diapositiva.
+
+---
+
 ## ⏮️ 2026-09-13 (2ª parte) — v609: LAS DOS DECISIONES DE LA GRASA ESTIMADA, EJECUTADAS
 
 v607 dejó la grasa corporal estimada construida y **dos decisiones abiertas, con el equipo en

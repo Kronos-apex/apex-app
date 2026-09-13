@@ -1464,52 +1464,97 @@ function suggestFromPR(pr, targetReps, opts) {
 // PURA. Recibe el récord, las reps objetivo, cuántas sesiones lleva consolidando y el peso ya
 // sugerido (no lo recalcula: `suggestFromPR` es la única que decide el peso).
 // → null si no hay con qué decir nada · {estado:'sube'|'consolida'|'base', faltan, texto}
-// lastWorkKg(sessions, exKey) → el peso MÁS ALTO de la sesión MÁS RECIENTE en la que aparece ese
-// ejercicio con carga, o null. PURA. Es «lo que de verdad viene moviendo», que no es lo mismo que
-// su récord: el récord es el mejor día de su vida y puede tener meses.
-// 🔒 Casa por id y también por NOMBRE, porque las sesiones anteriores a finales de junio no traen
-//    id (misma razón que `sessionsAtLoad`, v529, y que `exerciseIdentity`, v558).
-function lastWorkKg(sessions, exKey) {
-  const key = String(exKey == null ? '' : exKey);
-  if (!key) return null;
-  let mejorFecha = null, kg = null;
-  (Array.isArray(sessions) ? sessions : []).forEach(s => {
-    const t = s && s.date ? new Date(s.date).getTime() : NaN;
-    if (!isFinite(t)) return;                       // sin fecha usable no se compara (v517)
-    (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
-      if (!e) return;
-      if (String(e.id || '') !== key && String(e.name || '') !== key) return;
-      const pesos = (Array.isArray(e.sets) ? e.sets : [])
-        .map(x => parseFloat(x && x.kg)).filter(n => isFinite(n) && n > 0);
-      if (!pesos.length) return;
-      if (mejorFecha == null || t > mejorFecha) { mejorFecha = t; kg = Math.max.apply(null, pesos); }
-    });
-  });
-  return kg;
-}
-
-// 🔒 Piso para ATREVERSE a dar una instrucción: si lo último que movió de verdad está muy por
-// debajo del récord, ese récord ya no describe su trabajo (otra máquina, otra variante, un dato
-// mal tecleado o una bajada deliberada) y decirle «repite 200 kg» sería mandarle algo imposible.
-// Ahí la app vuelve al texto NEUTRO de siempre — nunca a una instrucción.
-// Medido el 9-sep sobre los 24 ejercicios del PO, récord contra su último peso real:
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// EL ANCLA DE LA CARGA (v610) — «arregla lo del peso sugerido», pedido del PO el 13-sep-2026
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// Hasta v609 TODO el peso sugerido salía del RÉCORD, que es el mejor día de su vida y puede tener
+// meses. v595 solo tapó el síntoma: cuando el récord quedaba lejos del trabajo real, la app dejaba
+// de dar la instrucción… pero **seguía enseñando el número del récord**, así que a la Prensa del PO
+// le proponía 200 kg moviendo 100 — y, como el calentamiento se deriva de esa cifra, le pedía
+// calentar con 100 kg, que es su serie de trabajo entera.
+//
+// 📊 MEDIDO sobre las 279 combinaciones persona-ejercicio de los planes VIVOS (13-sep):
+//   · **59 tenían el récord desfasado** contra su última sesión — 12 personas, no solo el PO.
+//   · Con el ancla nueva, **249 de 279 no cambian de número** (el récord sigue mandando cuando
+//     describe su trabajo) y **32 pasan al trabajo reciente**: 27 bajan, 3 hablan por primera vez
+//     (la app estaba MUDA porque el récord no daba sugerencia).
+//   · **El calentamiento de los que cambian cae de 672,5 kg a 392,5 kg en total.**
+//
+// 🔴 LA VENTANA ES DE VARIAS SESIONES, Y ESO LO DECIDIÓ LA MEDICIÓN. Mirar solo la ÚLTIMA sesión
+//    —que es lo que hacía la guarda de v595— es demasiado frágil: **27 de los 59 casos que marcaba
+//    eran FALSOS** (un día flojo suelto, con el récord perfectamente vigente en las sesiones de al
+//    lado: la Patada de Glúteo de Nataly, los Desplantes de Samuel…). A esas 27 la app les quitaba
+//    la instrucción sin motivo. Con la mejor carga de las últimas 3 sesiones, esos 27 la recuperan.
+const LOAD_ANCHOR_SESSIONS = 3;
+// 🔒 Piso para que el RÉCORD siga siendo el ancla. Por debajo de esto el récord ya no describe su
+// trabajo (otra máquina, otra variante, un dato mal tecleado o una bajada deliberada por lesión —
+// el caso literal del PO) y manda lo que viene moviendo.
+// Medido el 9-sep sobre los 24 ejercicios del PO, récord contra su peso real:
 //   86% · 83% · 78% · 70% · 50% · 50% · 40% · 38%
 // Los cuatro de arriba son variación normal (fatiga, otro día, descarga); los cuatro de abajo son
-// récords que ya no son suyos (Prensa 200 cuando mueve 100, Press Militar 65 cuando mueve 25).
-// El corte parte esa curva por la mitad, en el hueco que hay entre 70% y 50%.
-const PROGRESS_HINT_MIN_RATIO = 0.75;
+// récords que ya no son suyos. El corte parte esa curva por la mitad, en el hueco entre 70% y 50%.
+// 🔒 Y queda POR DEBAJO de `DELOAD_LOAD_FACTOR` (0,85) a propósito: una semana de descarga baja la
+//    carga a propósito y NO puede arrastrar el ancla con ella. Si algún día ese factor baja de
+//    0,75, la descarga empezaría a rebajar el ancla de todo el mundo — hay un test que lo vigila.
+const LOAD_ANCHOR_MIN_RATIO = 0.75;
 
-function progressHint(prKg, prReps, targetReps, sesiones, sug, ultimoKg) {
+// recentWorkLoad(sessions, exKey, opts) → {kg, reps, sesiones} | null. PURA.
+// La mejor carga (y las reps que hizo con ella) entre las últimas `LOAD_ANCHOR_SESSIONS` sesiones
+// en las que aparece ese ejercicio CON peso. Es «lo que viene moviendo», que no es su récord.
+// 🔒 Casa por id y también por NOMBRE, porque las sesiones anteriores a finales de junio no traen
+//    id (misma razón que `sessionsAtLoad`, v529, y que `exerciseIdentity`, v558).
+// 🔒 Sin fecha usable la sesión no entra: `new Date(null)` es la ÉPOCA y ordenaría al revés (v517).
+function recentWorkLoad(sessions, exKey, opts) {
+  const key = String(exKey == null ? '' : exKey);
+  if (!key) return null;
+  const N = (opts && opts.sesiones) || LOAD_ANCHOR_SESSIONS;
+  const mismo = e => e && (String(e.id || '') === key || String(e.name || '') === key);
+  const conCarga = (Array.isArray(sessions) ? sessions : []).filter(s => {
+    if (!s || !s.date || !isFinite(new Date(s.date).getTime())) return false;
+    return (Array.isArray(s.exercises) ? s.exercises : []).some(e => mismo(e) &&
+      (Array.isArray(e.sets) ? e.sets : []).some(x => parseFloat(x && x.kg) > 0));
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, N);
+  if (!conCarga.length) return null;
+  let kg = 0, reps = 0;
+  conCarga.forEach(s => (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
+    if (!mismo(e)) return;
+    (Array.isArray(e.sets) ? e.sets : []).forEach(st => {
+      const k = parseFloat(st && st.kg), r = parseFloat(st && st.reps) || 0;
+      if (!(k > 0)) return;
+      // La mejor carga; a igual carga, la serie con más repeticiones.
+      if (k > kg || (k === kg && r > reps)) { kg = k; reps = r; }
+    });
+  }));
+  return kg > 0 ? { kg: kg, reps: reps, sesiones: conCarga.length } : null;
+}
+
+// loadAnchor(pr, sessions, exKey, opts) → el objeto tipo-récord desde el que se calcula el peso.
+// PURA. `{kg, reps, unit:'kg', fuente:'record'|'reciente', recordKg}` o null si no hay de dónde.
+// 🔒 Devuelve la MISMA forma que un récord justamente para que `suggestFromPR` no se entere: la
+//    doble progresión, la consolidación y el redondeo siguen siendo los de siempre, solo cambia
+//    DESDE QUÉ PESO se cuentan. Una segunda fórmula de progresión sería el bug de v435 otra vez.
+function loadAnchor(pr, sessions, exKey, opts) {
+  const recordKg = pr ? parseFloat(pr.val != null ? pr.val : pr.kg) : NaN;
+  const tieneRecord = isFinite(recordKg) && recordKg > 0 && (pr.unit || 'kg') === 'kg';
+  const rec = recentWorkLoad(sessions, exKey, opts);
+  // Sin historial de carga manda el récord: la ausencia de información no puede volverse silencio
+  // (el detector mudo de v433 al revés). Sin récord manda lo reciente, que es mejor que nada.
+  if (!rec) return tieneRecord ? { kg: recordKg, reps: parseInt(pr.reps) || 1, unit: 'kg', fuente: 'record', recordKg: recordKg } : null;
+  if (!tieneRecord) return { kg: rec.kg, reps: rec.reps || 1, unit: 'kg', fuente: 'reciente', recordKg: null };
+  if (rec.kg >= recordKg * LOAD_ANCHOR_MIN_RATIO) {
+    return { kg: recordKg, reps: parseInt(pr.reps) || 1, unit: 'kg', fuente: 'record', recordKg: recordKg };
+  }
+  return { kg: rec.kg, reps: rec.reps || 1, unit: 'kg', fuente: 'reciente', recordKg: recordKg };
+}
+
+// `fuente` = de dónde salió el peso ('record' | 'reciente'). La pantalla lo DICE: cambiar de dónde
+// sale un número sin decirlo es media solución y el coach no reconoce el dato (lección de v511).
+function progressHint(prKg, prReps, targetReps, sesiones, sug, fuente) {
   const kg = parseFloat(prKg), s = parseFloat(sug);
   if (!(kg > 0) || !(s > 0)) return null;
   const tgt = parseInt(targetReps) || 0;
   const reps = parseInt(prReps) || 0;
-  const ult = parseFloat(ultimoKg);
-  // Sin dato de lo último movido NO se bloquea nada: la ausencia de información no puede
-  // convertirse en un silencio (el defecto contrario, que es el de v433).
-  const desfasado = ult > 0 && ult < kg * PROGRESS_HINT_MIN_RATIO;
-  if (desfasado) return { estado: 'base', faltan: 0,
-    texto: `Peso sugerido: ${s} kg · según tu récord` };
+  const segun = fuente === 'reciente' ? 'según lo que vienes moviendo' : 'según tu récord';
   if (s > kg) {
     const n = parseInt(sesiones);
     const cuantas = isFinite(n) && n > 0 ? ` en ${n} ${n === 1 ? 'sesión' : 'sesiones'}` : '';
@@ -1528,7 +1573,7 @@ function progressHint(prKg, prReps, targetReps, sesiones, sug, ultimoKg) {
       texto: `Repite ${kg} kg · te ${faltan === 1 ? 'falta 1 sesión' : 'faltan ' + faltan + ' sesiones'}` +
              ` cumpliendo ${tgt} reps para subir` };
   }
-  return { estado: 'base', faltan: 0, texto: `Peso sugerido: ${s} kg · según tu récord` };
+  return { estado: 'base', faltan: 0, texto: `Peso sugerido: ${s} kg · ${segun}` };
 }
 
 // ── Calentamiento + dropset: peso derivado del peso de trabajo ──
@@ -10865,9 +10910,11 @@ if (typeof module !== 'undefined' && module.exports) {
     suggestFromPR,
     sessionsAtLoad,
     LOAD_CONSOLIDATE_SESSIONS,
-    lastWorkKg,
+    recentWorkLoad,
+    loadAnchor,
     progressHint,
-    PROGRESS_HINT_MIN_RATIO,
+    LOAD_ANCHOR_SESSIONS,
+    LOAD_ANCHOR_MIN_RATIO,
     warmupLoad,
     dropLoad,
     trainingStartTs,
