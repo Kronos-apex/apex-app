@@ -4,6 +4,65 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-14 — v611: LA CAMINATA DEL GRANJERO CUENTA PASOS, NO REPETICIONES
+
+**Pedido:** reporte del PO del 13-sep — *«en la caminata de granjero no salen pasos sino
+repeticiones, o las reps cuentan como pasos?»*. Tenía razón.
+
+**El diagnóstico, en una línea:** es un defecto de **RÓTULO, no del motor**. `e136` es
+`type:'Funcional'` sin `track` declarado, así que `exTrack` cae a `peso_reps` y la app pinta KG +
+**REPS** — y lo único que dice PASOS está enterrado en la descripción larga («Reps = pasos»), que
+nadie lee mientras entrena.
+
+**Medido ANTES de tocar** (backup del 10-sep): `e136` aparece en **0 de 114 rutinas** y en **0 de
+2.646 ejercicios registrados** en el historial. Nadie lo ha entrenado todavía → no hay récord que
+migrar y el arreglo es preventivo. (Control de la sonda: el mismo barrido ve 744 ejercicios en
+rutinas y 97 ids distintos en sesiones, así que no estaba midiendo en vacío.)
+
+**Por qué NO se cambió la modalidad** (que era la otra opción sobre la mesa): el `track` decide la
+unidad del RÉCORD (`prFromSets` guarda kg en `peso_reps` y segundos en `tiempo`), y el KG del
+granjero es correcto — lleva carga externa de verdad. La doble progresión también funciona igual
+contando pasos («cumple 40 con ese peso → sube»). Lo que había que arreglar es cómo se LLAMA la
+segunda cifra.
+
+**Es un outlier medible dentro de su familia:** de los 11 acarreos y caminatas del catálogo, el
+trineo (`e376`/`e377`) comparte `peso_reps` y **su ficha NO promete pasos** (verificado leyendo las
+dos descripciones, no de memoria); los demás van en `tiempo`, `reps` o `cardio`.
+
+**Lo construido:** `repsUnitOf` (avi-core, PURA) responde cómo se llama la segunda cifra —
+modalidad primero (`min`/`seg`/`rondas`) y, dentro de las que cuentan repeticiones, el mapa
+`REPS_UNIT_EX`. **Va por ID y no por un campo del ejercicio a propósito:** una rutina guarda una
+COPIA renombrable (24 de 150 nombres en uso difieren del catálogo, v546) y un récord se guarda bajo
+`ex.id||ex.name` — el id es lo único estable. Acepta objeto o string suelto por eso.
+
+**Las 10 superficies** (la lección de v435/v444: al cerrar un bug de rótulo se listan TODAS):
+casilla del guiado (las 3 ramas) · calentamiento y dropset · aviso de cordura de reps · dosis del
+héroe (`exDoseShort`, que decía «3 × 40» sin unidad — literalmente lo que preguntó) · celda de la
+vista de rutina · `exMetaText` · instrucción de la progresión (`progressHint`: «cumpliendo 40 PASOS
+para subir») · los **4 sitios de récord** (perfil, celebración, habitación de la sesión, imagen
+compartible) · los 2 del coach · el constructor de rutinas.
+
+🔴 **De paso, la MISMA clase preexistente:** la ficha del ejercicio rotulaba «Reps» pasara lo que
+pasara, así que a un **cardio** le llamaba «Reps» a sus MINUTOS y a un **isométrico** a sus
+SEGUNDOS. Es el superviviente de la clase que `exSetsCellHTML` ya había cerrado en junio.
+
+🔒 **Para que el arreglo no naciera inerte** hizo falta que la CLAVE viajara: `renderPRsInProfile`
+pasó a recorrer `Object.entries` (los récords no llevan su id dentro) y `checkAndUpdatePRs` mete
+`id:ex.id` en los récords nuevos, que es lo que alimenta la celebración y la imagen compartible.
+
+**QA:** suite **1163 → 1170** en los tres modos · hook **12/12** · matriz nueva
+`_sabotaje-v611.mjs` **16/16 muerden**. 🔴 Uno salió VERDE en la primera corrida (el rótulo del
+constructor del coach) y era un hueco de mi test, no un candado flojo: la aserción no miraba
+`rfExRow`.
+
+⚡ **Y lo que costó de verdad la sesión:** los cortes de luz de la casa del PO mataron la matriz a
+mitad de escritura **dos veces**, y las dos dejaron `app-6-extra.js` en **204.769 bytes de CEROS**.
+El síntoma engaña: la suite no canta «archivo corrupto», solo caen 16 checks estáticos que se leen
+como un defecto del cambio en curso. Arreglo de raíz en el runner (escritura atómica) + la regla
+nueva de trabajo: **commitear antes de correr una matriz**.
+
+---
+
 ## ⏮️ 2026-09-13 (3ª parte) — v610: EL PESO SUGERIDO SE ANCLA A LO QUE VIENE MOVIENDO
 
 *«arregla lo del peso sugerido»*. Era la decisión de fondo que quedó abierta en v595.
