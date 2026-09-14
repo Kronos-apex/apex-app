@@ -18597,6 +18597,66 @@ test('v612 · «Sigo sin conexión» solo se dice cuando de verdad no se pudo pr
   assert.match(rt, /_cwqArmT=setTimeout\(_cwqDisarm/, '🔴 el botón armado ya no se desarma solo (trampa de v568)');
 });
 
+// ── v613 · LA CORRECCIÓN DE UN REPORTE DE DOLOR TENÍA UNA SOLA PUERTA Y SE CERRABA SOLA ──
+// Caso del PO (14-sep): marcó «muslo por dentro (aductores)» cuando el tirón fue en la parte de
+// ATRÁS de la pierna — dos chips vecinos. Medido contra su plan real: el que eligió marca 2 de 53
+// ejercicios y el correcto marca 13, con el Curl Femoral entre ellos. La app le debía su
+// corrección (`painCanCorrect` no caduca) y el botón solo existía en la pantalla de resultado,
+// porque el id vivía en una variable EN MEMORIA. Derecho sin puerta: la clase de v570 aplicada
+// al tiempo.
+
+const _DIA613 = 86400000;
+test('v613 · la corrección se ofrece sobre el reporte VIGENTE más reciente', () => {
+  const ahora = Date.parse('2026-09-14T18:00:00Z');
+  const lista = [
+    { id: 'viejo', at: new Date(ahora - 5 * _DIA613).toISOString(), area: 'rodilla' },
+    { id: 'nuevo', at: new Date(ahora - 2 * 3600000).toISOString(), area: 'muslo por detrás' },
+  ];
+  assert.strictEqual(core.painLastCorrectable(lista, ahora), 'nuevo');
+});
+
+test('v613 🔒 sigue siendo UNA sola vez: corregido deja de ofrecerse', () => {
+  const ahora = Date.parse('2026-09-14T18:00:00Z');
+  const uno = [{ id: 'p1', at: new Date(ahora - 3600000).toISOString(), area: 'codo' }];
+  assert.strictEqual(core.painLastCorrectable(uno, ahora), 'p1');
+  const yaCorregido = core.painCareCorrect(uno, 'p1', { area: 'muñeca o mano' }, new Date(ahora).toISOString());
+  assert.strictEqual(core.painLastCorrectable(yaCorregido, ahora), null,
+    '🔴 la puerta se quedó abierta: la corrección dejaría de ser de una sola vez');
+  // Y el CONTROL de que la corrección de verdad ocurrió (si no, el null de arriba no prueba nada).
+  assert.strictEqual(yaCorregido[0].area, 'muñeca o mano');
+  assert.strictEqual(yaCorregido[0].previo.area, 'codo', 'el coach tiene que poder ver las dos respuestas');
+});
+
+test('v613 🔒 un reporte que ya no filtra nada no tiene nada que corregir', () => {
+  const ahora = Date.parse('2026-09-14T18:00:00Z');
+  // Descartado a mano («Ya estoy bien ✓») y vencido por los 14 días: ninguno abre puerta.
+  assert.strictEqual(core.painLastCorrectable(
+    [{ id: 'a', at: new Date(ahora - 3600000).toISOString(), cleared: true }], ahora), null);
+  assert.strictEqual(core.painLastCorrectable(
+    [{ id: 'b', at: new Date(ahora - 20 * _DIA613).toISOString() }], ahora), null);
+  // CONTROL: el mismo reporte DENTRO de la ventana sí la abre — si no, esto no discrimina nada.
+  assert.strictEqual(core.painLastCorrectable(
+    [{ id: 'b', at: new Date(ahora - 3 * _DIA613).toISOString() }], ahora), 'b');
+});
+
+test('v613 · CABLEADO: el id VIAJA y el banner de cuidado ofrece la puerta', () => {
+  const gm = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const fx = gm.slice(gm.indexOf('function painFixAnswers'), gm.indexOf('function painPick'));
+  assert.ok(fx.length > 200, 'no se recortó painFixAnswers');
+  assert.match(fx, /function painFixAnswers\(entryId\)/,
+    '🔴 la corrección volvió a depender de una variable en memoria: se pierde al cerrar la app');
+  assert.match(fx, /const id=entryId\|\|_painLastId/);
+  assert.match(fx, /fixId:id\}/, '🔴 se corrige un reporte y se marca OTRO como corregido');
+  const ban = gm.slice(gm.indexOf('function gmPainBannerHTML'), gm.indexOf('function _painForEx'));
+  assert.ok(ban.length > 200, 'no se recortó gmPainBannerHTML');
+  assert.match(ban, /painLastCorrectable\(c\.painCare\)/,
+    '🔴 el banner dejó de preguntar si queda corrección');
+  assert.match(ban, /painFixAnswers\('\$\{esc\(_fixId\)\}'\)/,
+    '🔴 el banner no pasa el id: la puerta vuelve a depender de la pantalla de resultado');
+  // Y NO se pinta cuando no hay nada que corregir: un botón muerto es peor que ninguno.
+  assert.match(ban, /_fixId\?/, '🔴 el botón se pinta siempre, tenga puerta o no');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

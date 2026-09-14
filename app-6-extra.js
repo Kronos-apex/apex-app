@@ -445,14 +445,21 @@ function _painRenderChips(){
     `<button type="button" class="pain-chip${PAIN.sinFlags?' on':''}" style="text-align:left;font-weight:800" onclick="painFlag('_none')">Nada de esto ✓</button>`;
 }
 // Reabre el cuestionario con lo que ya marcó, para que corrija en vez de re-teclear todo.
-function painFixAnswers(){
-  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!_painLastId)return;
-  const p=(c.painCare||[]).find(x=>x&&x.id===_painLastId);
-  if(!p||!painCanCorrect(c.painCare,_painLastId))return;
+// 🔴 ANTES SOLO SE PODÍA LLAMAR SIN ARGUMENTO, Y ENTONCES DEPENDÍA DE `_painLastId`, QUE
+// VIVE EN MEMORIA: al cerrar la app el id se perdía y la corrección quedaba inalcanzable para
+// siempre — aunque `painCanCorrect` siguiera diciendo que sí (ese derecho no caduca). El PO se
+// equivocó de chip el 14-sep y no tuvo dónde arreglarlo. Ahora el id VIAJA: la pantalla de
+// resultado sigue llamando sin argumento (es el reporte que acaba de enviar) y el banner de
+// cuidado — que sale en cada entreno mientras el dolor esté vigente — lo pasa explícito.
+function painFixAnswers(entryId){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  const id=entryId||_painLastId; if(!id)return;
+  const p=(c.painCare||[]).find(x=>x&&x.id===id);
+  if(!p||!painCanCorrect(c.painCare,id))return;
   cm('m-painres');
   PAIN={ei:PAIN.ei,exId:p.exId||null,exName:p.exName||'',area:p.area||null,side:p.side||null,
     level:null,limita:p.limita||null,inicio:p.inicio||null,
-    flags:(p.flags||[]).slice(),sinFlags:!(p.flags||[]).length,fixId:_painLastId};
+    flags:(p.flags||[]).slice(),sinFlags:!(p.flags||[]).length,fixId:id};
   const exEl=document.getElementById('pain-ex');
   if(exEl)exEl.innerHTML='Corrige lo que marcaste mal. <b>Esto se puede hacer una sola vez</b>, y tu coach va a ver las dos respuestas.';
   const nt=document.getElementById('pain-note'); if(nt)nt.value=p.note||'';
@@ -634,11 +641,16 @@ function gmPainBannerHTML(){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return '';
   const act=painCareActive(c.painCare); if(!act.length)return '';
   const areas=[...new Set(act.map(p=>p.area))];
+  // La corrección vive AQUÍ, no solo en los segundos posteriores a enviar el reporte: este banner
+  // sale en cada entreno mientras el dolor esté vigente, que es justo cuando la persona ve la zona
+  // escrita y puede notar que se equivocó de chip. Sigue siendo UNA sola vez por reporte.
+  const _fixId=(typeof painLastCorrectable==='function')?painLastCorrectable(c.painCare):null;
+  const _fixBtn=_fixId?`<button type="button" class="btn bd bsm" style="flex-shrink:0" onclick="painFixAnswers('${esc(_fixId)}')">Me equivoqué</button>`:'';
   const tips=areas.slice(0,2).map(a=>`<div style="margin-top:6px;font-size:12px;line-height:1.55;color:var(--t1)"><b>${esc(a)}:</b> ${esc(painTipFor(a))}</div>`).join('');
   return `<div class="pain-banner">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="font-size:13px;font-weight:800;color:var(--t1)">🩹 Cuidando tu ${esc(areas.join(' y '))}</div>
-      <button type="button" class="btn bg bsm" style="flex-shrink:0" onclick="painCareClear()">Ya estoy bien ✓</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">${_fixBtn}<button type="button" class="btn bg bsm" onclick="painCareClear()">Ya estoy bien ✓</button></div>
     </div>
     ${tips}
     <div style="margin-top:7px;font-size:11px;color:var(--t3);line-height:1.5">⚠️ Si el dolor es agudo o lleva varios días, consúltalo con un profesional de la salud.</div>

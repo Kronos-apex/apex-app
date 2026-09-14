@@ -3460,6 +3460,34 @@ function painCanCorrect(list, entryId) {
   return !!p && !p.corregido;
 }
 
+// ¿A qué reporte se le puede ofrecer HOY su corrección? PURA. Devuelve el id del más reciente
+// que siga VIGENTE y no se haya corregido, o null.
+//
+// 🔴 Nace del caso del PO (14-sep): registró su dolor y marcó «muslo por dentro (aductores)»
+// cuando el tirón fue en la parte de ATRÁS de la pierna — dos chips vecinos, y el que eligió
+// marca 2 de sus 53 ejercicios mientras el correcto marca 13, con el curl femoral entre ellos.
+// La app SÍ le debía la corrección (`painCanCorrect` no caduca nunca: el derecho queda abierto
+// hasta que se usa) y NO tenía dónde ejercerla: el botón vivía solo en la pantalla de resultado,
+// o sea los segundos siguientes a enviar, porque el id del reporte se guardaba en una variable en
+// memoria que se pierde al cerrar la app. Derecho sin puerta.
+// Es la clase de v570 («la salida no puede depender de la entrada») aplicada al tiempo: lo que se
+// puede hacer no puede depender de seguir parado en la pantalla donde se pudo.
+//
+// 🔒 Solo entre los VIGENTES: un reporte que ya no filtra nada no tiene nada que corregir, y
+// ofrecerlo sería una puerta que no lleva a ninguna parte. Y sigue siendo UNA sola corrección:
+// esto no relaja la regla, solo la hace alcanzable.
+function painLastCorrectable(list, nowTs) {
+  const vivos = painCareActive(list, nowTs).filter(p => p && !p.corregido && p.id);
+  if (!vivos.length) return null;
+  // El más reciente: es del que la persona se acuerda, y el que la pantalla está describiendo.
+  let mejor = null, mejorT = -Infinity;
+  vivos.forEach(p => {
+    const t = Date.parse(p.at);
+    if (Number.isFinite(t) && t >= mejorT) { mejorT = t; mejor = p; }
+  });
+  return mejor ? mejor.id : null;
+}
+
 // Reportes vigentes: menos de 14 días y no descartados por el usuario ("Ya estoy bien").
 const PAIN_TTL_MS = 14 * 86400000;
 function painCareActive(list, nowTs) {
@@ -11057,6 +11085,7 @@ if (typeof module !== 'undefined' && module.exports) {
     painStopsSession,
     painCareCorrect,
     painCanCorrect,
+    painLastCorrectable,
     painTipFor,
     painCareAdd,
     painCareActive,
