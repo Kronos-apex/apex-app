@@ -819,7 +819,10 @@ function gmRender(){
         // v610: `gmInfo.pr` ya es el ANCLA (récord o trabajo reciente) y `fuente` dice cuál, para
         // que la pantalla pueda decir de dónde sale el número en vez de afirmar «según tu récord»
         // sobre un peso que no salió de ahí (lección de v511).
-        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.fuente);
+        // v611: la instrucción nombra la unidad del ejercicio — «cumpliendo 40 PASOS para subir»,
+        // no «40 reps», que es lo que la casilla de al lado ya dejó de decir.
+        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.fuente,
+          (typeof repsUnitOf==='function'?repsUnitOf(ex):'reps'));
       }
       if(_ph&&_ph.estado==='sube'){
         // Sube de tamaño y gana fondo SOLO en el día del escalón: si se destacara siempre,
@@ -1009,7 +1012,7 @@ function gmAuxRowHTML(ei,ex,tok,kind,num,sug,repsPh){
   return `<div class="gm-set-row gm-${kind}${done?' set-done':''}" id="${rid}">
     <div class="gm-set-num ${kind}">${num}</div>
     <div><input class="gm-sinput" data-field="kg" inputmode="decimal" type="number" step="0.5" min="0" placeholder="${sug?('~'+sug):'kg'}" value="${g('kg')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','kg',this.value)"><div class="gm-sinput-label">${kind==='warm'?'KG · CALENT.':'KG · DROP'}</div></div>
-    <div><input class="gm-sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="${repsPh}" value="${g('reps')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','reps',this.value)"><div class="gm-sinput-label">REPS</div></div>
+    <div><input class="gm-sinput" data-field="reps" inputmode="numeric" type="number" min="1" placeholder="${repsPh}" value="${g('reps')}" ${ro} oninput="setLog('${GM.routine.id}',${ei},'${tok}','reps',this.value)"><div class="gm-sinput-label">${(typeof repsUnitOf==='function'?repsUnitOf(ex):'reps').toUpperCase()}</div></div>
     <button class="gm-check ${kind}${done?' checked':''}" id="${cid}" aria-label="Marcar ${kind==='warm'?'calentamiento':'dropset'} como hecho" onclick="gmToggleAux(${ei},'${tok}','${rid}','${cid}')">${done?'✓':'○'}</button>
   </div>`;
 }
@@ -1129,7 +1132,10 @@ function repsSanityHint(rid, ei, si, el){
     if(mio<0) return;
     if(repsOutlier(reps,mio)){
       const v=getLog(rid,ei,si,'reps');
-      toast('¿'+v+' repeticiones? Revisa el número — tus otras series de hoy van mucho más abajo');
+      // v611: el aviso nombra lo que la persona está contando (pasos en el granjero), o pregunta
+      // por unas «repeticiones» que su propia pantalla no le está pidiendo.
+      const _u=(typeof repsUnitOf==='function'&&GM&&GM.exercises)?repsUnitOf(GM.exercises[ei]):'reps';
+      toast('¿'+v+' '+(_u==='reps'?'repeticiones':_u)+'? Revisa el número — tus otras series de hoy van mucho más abajo');
     }
   }catch(_e){}
 }
@@ -1138,6 +1144,9 @@ function repsSanityHint(rid, ei, si, el){
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
 function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   const ro=done?'readonly':'';
+  // v611: el rótulo de la casilla de repeticiones lo dice el ejercicio, no la modalidad — el
+  // granjero cuenta PASOS. Una sola fuente (`repsUnitOf`) para las tres ramas que la pintan.
+  const RL=(typeof repsUnitOf==='function'?repsUnitOf(ex):'reps').toUpperCase();
   const g=f=>getLog(GM.routine.id,ei,si,f);
   const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
     <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
@@ -1145,12 +1154,12 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
     <div class="gm-sinput-label">${label}</div></div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.
-  if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',false);
-  if(track==='reps') return cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',true);
+  if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
+  if(track==='reps') return cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,true);
   if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
     +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
   if(track==='cardio') return cell('min','type="number" min="0"','min',g('min')||ex.reps,'MIN',false)+cell('dist','type="number" min="0" step="0.1"','km',g('dist'),'KM',false);
-  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,'REPS',false);
+  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
 }
 
 // Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.
@@ -2664,6 +2673,14 @@ function _showExSheet(ex, isCoach, editable){
   // Stats
   document.getElementById('exd-sets').textContent = ex.sets;
   document.getElementById('exd-reps').textContent = ex.reps;
+  // v611: la ficha rotulaba «Reps» pasara lo que pasara, así que a un cardio le llamaba «Reps» a
+  // sus MINUTOS y a un isométrico a sus SEGUNDOS. El rótulo lo dice la modalidad (y, dentro de las
+  // que cuentan repeticiones, el ejercicio: el granjero cuenta pasos).
+  const _rl = document.getElementById('exd-reps-lbl');
+  if (_rl && typeof repsUnitOf === 'function') {
+    const _u = repsUnitOf(ex);
+    _rl.textContent = _u === 'reps' ? 'Reps' : _u.charAt(0).toUpperCase() + _u.slice(1);
+  }
   document.getElementById('exd-type').textContent = ex.type;
 
   // Simple description (shown to asesorado)

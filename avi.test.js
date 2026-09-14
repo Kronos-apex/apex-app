@@ -291,6 +291,7 @@ const {
   applyShockOption,
   weekEditorial,
   exTrack,
+  repsUnitOf,
   prFromSets,
   isBetterPR,
   prsRemapRetired,
@@ -18386,6 +18387,115 @@ test('🔒 v609 · CABLEADO: las dos vías de generación le pasan la grasa al p
   // Y la grasa se resuelve en UNA sola función: dos copias del mismo número son dos verdades.
   assert.strictEqual((app3.match(/function _coachGrasaPct/g) || []).length, 1);
   assert.match(app3, /function _coachGrasaPct[\s\S]{0,400}bodyFatEstimate\(c,/);
+});
+
+// ══════════════════════════════════════════════════════
+// v611 — LA CAMINATA DEL GRANJERO CUENTA PASOS, NO REPETICIONES
+// ══════════════════════════════════════════════════════
+
+test('🔴 v611 · la Caminata del Granjero cuenta PASOS (reporte del PO)', () => {
+  // Su ficha promete pasos («se cuentan PASOS, no repeticiones») y la app le pintaba REPS.
+  assert.strictEqual(repsUnitOf({ id: 'e136', type: 'Funcional' }), 'pasos');
+  // Y se resuelve también desde la CLAVE de un récord, que es un string suelto (`ex.id||ex.name`).
+  assert.strictEqual(repsUnitOf('e136'), 'pasos');
+});
+
+test('🔒 v611 · CONTROL: el resto del catálogo sigue contando repeticiones', () => {
+  // Sin este control, «devolver siempre pasos» pasaría la prueba de arriba.
+  assert.strictEqual(repsUnitOf({ id: 'e1', type: 'Compuesto' }), 'reps');
+  // Los VECINOS de familia: el trineo comparte modalidad `peso_reps` con el granjero y su ficha
+  // NO promete pasos (verificado en el catálogo), así que no se toca.
+  assert.strictEqual(repsUnitOf({ id: 'e376', type: 'Funcional' }), 'reps');
+  assert.strictEqual(repsUnitOf({ id: 'e377', type: 'Funcional' }), 'reps');
+  // Un ejercicio propio del coach, sin id conocido, también.
+  assert.strictEqual(repsUnitOf({ id: 'custom-9', type: 'Compuesto' }), 'reps');
+  assert.strictEqual(repsUnitOf(null), 'reps');
+});
+
+test('🔒 v611 · manda el ID, no el nombre — una rutina guarda una COPIA renombrable', () => {
+  // 24 de 150 nombres en uso difieren del catálogo (v546): si el rótulo dependiera del nombre,
+  // el coach lo rompería sin querer al armar la rutina.
+  const enPlan = { id: 'e136', name: 'Granjero', type: 'Funcional', sets: 3, reps: 40 };
+  assert.strictEqual(repsUnitOf(enPlan), 'pasos');
+  assert.strictEqual(repsUnitOf({ name: 'Caminata del Granjero (Farmers Walk)' }), 'reps',
+    '🔴 el rótulo se está resolviendo por NOMBRE: se rompe en cuanto el coach lo renombre');
+});
+
+test('🔒 v611 · la MODALIDAD manda sobre el mapa: un cardio no cuenta ni reps ni pasos', () => {
+  // La ficha del ejercicio rotulaba «Reps» pasara lo que pasara — a un cardio le llamaba «Reps»
+  // a sus MINUTOS y a un isométrico a sus SEGUNDOS.
+  assert.strictEqual(repsUnitOf({ id: 'e64', type: 'Cardio' }), 'min');
+  assert.strictEqual(repsUnitOf({ id: 'e17', type: 'Isométrico' }), 'seg');
+  assert.strictEqual(repsUnitOf({ id: 'e999', type: 'HIIT' }), 'rondas');
+  // Y un `track` explícito gana, como en todo el resto de la app.
+  assert.strictEqual(repsUnitOf({ id: 'e136', track: 'tiempo' }), 'seg');
+});
+
+test('🔴 v611 · la dosis del héroe nombra la unidad SOLO cuando no son repeticiones', () => {
+  // Antes decía «3 × 40» sin unidad, que es literalmente lo que preguntó el PO.
+  assert.strictEqual(exDoseShort({ id: 'e136', type: 'Funcional', sets: 3, reps: 40 }), '3 × 40 pasos');
+  // 🔒 CONTROL: en los otros 373 la lista sigue compacta — si se nombrara siempre, el héroe
+  //    (tope de 6 filas) se llenaría de ruido.
+  assert.strictEqual(exDoseShort({ id: 'e1', type: 'Compuesto', sets: 3, reps: 12 }), '3 × 12');
+  // Y las modalidades que ya traían su propio formato no se tocan.
+  assert.strictEqual(exDoseShort({ id: 'e64', type: 'Cardio', sets: 1, reps: 20 }), '20 min');
+});
+
+test('🔴 v611 · la instrucción de la progresión dice PASOS, y por defecto sigue diciendo reps', () => {
+  const faltan = core.LOAD_CONSOLIDATE_SESSIONS - 1;
+  const conPasos = core.progressHint(40, 40, 40, faltan, 40, 'record', 'pasos');
+  assert.strictEqual(conPasos.estado, 'consolida');
+  assert.match(conPasos.texto, /40 pasos para subir/);
+  // Sin unidad (todos los demás llamadores posibles) el texto es el de siempre: el default
+  // conservador nunca puede inventarle una unidad a nadie.
+  const sinUnidad = core.progressHint(90, 10, 8, faltan, 90, 'record');
+  assert.match(sinUnidad.texto, /8 reps para subir/);
+});
+
+test('🔒 v611 · CABLEADO: las superficies que rotulan la 2ª cifra pasan por repsUnitOf', () => {
+  const fs = require('fs'), path = require('path');
+  const lee = f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+  const gm = lee('app-6-extra.js'), ent = lee('app-4-entreno.js'), coach = lee('app-3-coach.js');
+  // El guiado: las TRES ramas de celda ya no pueden llevar el rótulo escrito a mano.
+  const celdas = gm.slice(gm.indexOf('function gmSetCellsHTML'), gm.indexOf('function gmLogRow'));
+  assert.ok(celdas.length > 200, 'no se recortó gmSetCellsHTML');
+  assert.ok(!/'REPS'/.test(celdas), '🔴 una rama del guiado volvió al rótulo REPS escrito a mano');
+  assert.match(celdas, /repsUnitOf\(ex\)/);
+  // La fila auxiliar (calentamiento y dropset) es otra superficie y se olvida con facilidad.
+  const aux = gm.slice(gm.indexOf('function gmAuxRowHTML'), gm.indexOf('function gmToggleAux'));
+  assert.ok(!/>REPS</.test(aux), '🔴 el calentamiento del granjero sigue pidiendo REPS');
+  // La dosis de la vista de rutina y la celda de la lista.
+  assert.match(ent.slice(ent.indexOf('function exMetaText'), ent.indexOf('function exSetsCellHTML')),
+    /repsUnitOf\(ex\)/);
+  assert.match(ent.slice(ent.indexOf('function exSetsCellHTML'), ent.indexOf('function _progressInfo')),
+    /repsUnitOf\(e\)/);
+  // Los récords: el detalle «× N reps» sale en CUATRO sitios (perfil, celebración, habitación de
+  // la sesión, imagen compartible) y en los dos del coach. Ninguno puede llevarlo a mano.
+  // Se busca la PALABRA usada como rótulo (con su espacio delante), nunca la cadena `'reps'`, que
+  // es el valor por defecto legítimo de las guardas `typeof repsUnitOf==='function'`.
+  const rotuloAMano = /' reps'|" reps"|\} reps|\+' reps/;
+  [['app-3-coach.js', coach], ['app-4-entreno.js', ent], ['app-6-extra.js', gm]].forEach(([n, src]) => {
+    assert.ok(!rotuloAMano.test(src), '🔴 ' + n + ' volvió a rotular «reps» a mano junto a una cifra');
+  });
+  // Y su CONTROL: si la regla de arriba no pudiera marcar nada, este candado sería decorativo.
+  assert.ok(rotuloAMano.test('`${pr.reps} reps`'), 'la regla del rótulo dejó de discriminar');
+  // El récord guardado NO trae su id dentro, así que la clave tiene que VIAJAR: la lista se
+  // recorre por entradas y la celebración se lleva el id de la sesión. Sin esto, todo lo de
+  // arriba resuelve siempre 'reps' y el arreglo queda inerte en las 4 superficies de récord.
+  assert.match(ent, /Object\.entries\(prs\)/, '🔴 la lista de récords perdió la clave del ejercicio');
+  assert.match(ent, /_prRowHtml\(p,clientId,k\)/, '🔴 la fila del récord ya no recibe su clave');
+  assert.match(ent, /newPRs\.push\(\{id:ex\.id,/, '🔴 el récord nuevo dejó de llevar su id');
+  // La ficha del ejercicio: su rótulo se escribe desde el código, no está clavado en el HTML.
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.match(html, /id="exd-reps-lbl"/, '🔴 desapareció el rótulo que la ficha reescribe');
+  assert.match(gm, /exd-reps-lbl[\s\S]{0,300}repsUnitOf\(ex\)/,
+    '🔴 la ficha del ejercicio volvió a rotular «Reps» pase lo que pase');
+  // Y el constructor de rutinas del COACH: él fija el objetivo, así que es donde primero se ve
+  // la unidad — si ahí dice «Reps», el coach escribe repeticiones y su asesorado lee pasos.
+  const fila = coach.slice(coach.indexOf('function rfExRow'), coach.indexOf('function renderRfExList'));
+  assert.ok(fila.length > 200, 'no se recortó rfExRow');
+  assert.ok(!/lbl\('Reps'\)/.test(fila), '🔴 el constructor de rutinas volvió a clavar «Reps»');
+  assert.match(fila, /repsUnitOf\(e\)/);
 });
 
 // ══════════════════════════════════════════════════════

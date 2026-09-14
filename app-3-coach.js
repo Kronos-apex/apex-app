@@ -2981,7 +2981,7 @@ function renderCoachPRsCard(c){
     return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--br)">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name||exId)}</div>
-        <div style="font-size:11px;color:var(--t2)">${esc(String(val))} ${esc(unit)}${p.reps?' × '+esc(String(p.reps))+' reps':''}</div>
+        <div style="font-size:11px;color:var(--t2)">${esc(String(val))} ${esc(unit)}${p.reps?' × '+esc(String(p.reps))+' '+esc(typeof repsUnitOf==='function'?repsUnitOf(exId):'reps'):''}</div>
       </div>
       <button class="btn bg bsm" style="min-height:34px;padding:0 11px" onclick="coachEditPR('${esc(exId)}')">Corregir</button>
     </div>`;
@@ -3004,7 +3004,7 @@ function coachEditPR(exId){
   const unit=p.unit||'kg';
   const actual=p.val!=null?p.val:p.kg;
   const ex=document.getElementById('prfix-ex');
-  if(ex)ex.innerHTML=`<b>${esc(p.name||exId)}</b> — hoy dice <b>${esc(String(actual))} ${esc(unit)}</b>${p.reps?` × ${esc(String(p.reps))} reps`:''}`;
+  if(ex)ex.innerHTML=`<b>${esc(p.name||exId)}</b> — hoy dice <b>${esc(String(actual))} ${esc(unit)}</b>${p.reps?` × ${esc(String(p.reps))} ${esc(typeof repsUnitOf==='function'?repsUnitOf(exId):'reps')}`:''}`;
   const inp=document.getElementById('prfix-val');
   if(inp)inp.value=String(actual);
   om('m-prfix');
@@ -3396,7 +3396,11 @@ function rfExRow(i,n,abMark){
       + restCtl + delCtl;
   } else {
     // peso/reps/hiit: series × reps + descanso (comportamiento de siempre).
-    ctl = lbl('Series') + setsIn + `<span style="color:var(--t3);font-size:14px;font-weight:700">×</span>` + lbl('Reps')
+    // v611: el rótulo lo dice el EJERCICIO — el granjero cuenta pasos, así que el coach fija
+    // «Pasos», que es lo que su asesorado va a ver al entrenar.
+    const _ru = (typeof repsUnitOf==='function') ? repsUnitOf(e) : 'reps';
+    const _rl = _ru==='reps' ? 'Reps' : _ru.charAt(0).toUpperCase()+_ru.slice(1);
+    ctl = lbl('Series') + setsIn + `<span style="color:var(--t3);font-size:14px;font-weight:700">×</span>` + lbl(_rl)
       + `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.reps}" min="1" max="999" onchange="CUR.routineExs[${i}].reps=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].reps" onfocus="this.select()">`
       + restCtl + delCtl;
   }

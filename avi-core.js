@@ -1549,7 +1549,9 @@ function loadAnchor(pr, sessions, exKey, opts) {
 
 // `fuente` = de dónde salió el peso ('record' | 'reciente'). La pantalla lo DICE: cambiar de dónde
 // sale un número sin decirlo es media solución y el coach no reconoce el dato (lección de v511).
-function progressHint(prKg, prReps, targetReps, sesiones, sug, fuente) {
+// `unidad` (v611): cómo se llama la segunda cifra de ESE ejercicio — 'reps' salvo el granjero,
+// que cuenta pasos. Se recibe ya resuelta (`repsUnitOf`) para no duplicar el criterio aquí.
+function progressHint(prKg, prReps, targetReps, sesiones, sug, fuente, unidad) {
   const kg = parseFloat(prKg), s = parseFloat(sug);
   if (!(kg > 0) || !(s > 0)) return null;
   const tgt = parseInt(targetReps) || 0;
@@ -1571,7 +1573,7 @@ function progressHint(prKg, prReps, targetReps, sesiones, sug, fuente) {
     //    alguien mueva la constante la pantalla seguiría prometiendo el plazo viejo.
     if (faltan > 0) return { estado: 'consolida', faltan,
       texto: `Repite ${kg} kg · te ${faltan === 1 ? 'falta 1 sesión' : 'faltan ' + faltan + ' sesiones'}` +
-             ` cumpliendo ${tgt} reps para subir` };
+             ` cumpliendo ${tgt} ${unidad || 'reps'} para subir` };
   }
   return { estado: 'base', faltan: 0, texto: `Peso sugerido: ${s} kg · ${segun}` };
 }
@@ -8563,8 +8565,13 @@ function exDoseShort(ex) {
   if (t === 'hiit') return sets > 0 ? sets + ' ronda' + (sets === 1 ? '' : 's') : '';
   if (t === 'tiempo') return sets > 0 ? sets + ' × ' + holdSecsOf(ex) + 's' : holdSecsOf(ex) + 's';
   const reps = String(ex.reps == null ? '' : ex.reps).trim();
-  if (!sets) return reps;
-  return reps ? sets + ' × ' + reps : String(sets);
+  // v611: la unidad solo se nombra cuando NO son repeticiones. El héroe es una lista compacta y
+  // «3 × 12 reps» en 373 de 374 ejercicios es ruido; «3 × 40 pasos» es lo único que hace legible
+  // la dosis del granjero (antes decía «3 × 40» sin unidad — reporte del PO).
+  const u = repsUnitOf(ex);
+  const rs = reps && u !== 'reps' ? reps + ' ' + u : reps;
+  if (!sets) return rs;
+  return rs ? sets + ' × ' + rs : String(sets);
 }
 
 // Tamaño del titular según lo LARGO que sea el nombre de la rutina. El 34 px de la maqueta solo
@@ -9884,6 +9891,40 @@ function exTrack(ex) {
   return 'peso_reps';
 }
 
+// ── CÓMO SE LLAMA LA SEGUNDA CIFRA DE UN EJERCICIO (v611) ──
+// La modalidad ya dice QUÉ se cuenta (minutos, segundos, rondas). Lo que faltaba es que dentro de
+// las que cuentan repeticiones hay UNA que no cuenta repeticiones: la Caminata del Granjero cuenta
+// PASOS, y eso solo estaba escrito en su descripción larga («Reps = pasos»), que nadie lee mientras
+// entrena. Reporte del PO (13-sep-2026): «en la caminata de granjero no salen pasos sino
+// repeticiones, o las reps cuentan como pasos?».
+//
+// 🔒 Es un defecto de RÓTULO, no de modalidad, y por eso NO se toca el `track`: el granjero lleva
+// carga externa de verdad (el KG está bien) y la doble progresión funciona igual contando pasos
+// («cumple 40 con ese peso → sube»). Cambiarle el `track` movería sus RÉCORDS de unidad
+// (`prFromSets` guarda kg en `peso_reps` y segundos en `tiempo`).
+//
+// 💎 Es un OUTLIER MEDIBLE dentro de su propia familia: de los 11 acarreos y caminatas del
+// catálogo, las del oso/cangrejo y el paseo del camarero van en `tiempo`, el paseo lateral con
+// banda en `reps` y la caminata con chaleco en `cardio`. e136 es el ÚNICO cuya ficha promete PASOS
+// y cuya modalidad pide REPS. (El trineo, e376/e377, comparte `peso_reps` y su ficha NO promete
+// pasos — medido, no supuesto.)
+//
+// El mapa va por ID y no por un campo del ejercicio A PROPÓSITO: una rutina guarda una COPIA del
+// ejercicio y el coach le cambia el nombre al armarla (24 de 150 nombres en uso difieren del
+// catálogo, v546), y un récord se guarda bajo la clave `ex.id||ex.name`. El id es lo único estable.
+const REPS_UNIT_EX = { e136: 'pasos' };
+
+// Acepta el ejercicio (objeto) o directamente su id/clave de récord (string).
+function repsUnitOf(ex) {
+  if (typeof ex === 'string') ex = { id: ex };
+  ex = ex || {};
+  const t = exTrack(ex);
+  if (t === 'cardio') return 'min';
+  if (t === 'tiempo') return 'seg';
+  if (t === 'hiit') return 'rondas';
+  return REPS_UNIT_EX[ex.id] || 'reps';
+}
+
 // Valor del récord a partir de las series HECHAS (ya filtradas) según la modalidad:
 // peso_reps → kg máx (+ sus reps); reps → reps máx; tiempo → segundos máx;
 // cardio → minutos sumados; hiit → nº de rondas. Sin valor positivo → null.
@@ -11108,6 +11149,8 @@ if (typeof module !== 'undefined' && module.exports) {
     applyShockOption,
     weekEditorial,
     exTrack,
+    repsUnitOf,
+    REPS_UNIT_EX,
     prFromSets,
     isBetterPR,
     prsRemapRetired,

@@ -396,7 +396,9 @@ function checkAndUpdatePRs(routine){
     if(isBetterPR(val,reps,unit,prev)){
       const isNew=!prev;
       DB.prs[clientId][key]={val,unit,reps,kg:unit==='kg'?val:0,date:new Date().toISOString(),name:ex.name,icon:ex.icon||'💪',muscle:ex.muscle};
-      newPRs.push({name:ex.name,val,unit,reps,icon:ex.icon||'💪',isNew,prev:prevVal});
+      // `id` (v611): la celebración y la tarjeta compartible necesitan saber cómo se llama la
+      // segunda cifra de ESE ejercicio (pasos en el granjero), y el récord guardado no trae id.
+      newPRs.push({id:ex.id,name:ex.name,val,unit,reps,icon:ex.icon||'💪',isNew,prev:prevVal});
     }
   });
   if(newPRs.length){sv('ax_pr',DB.prs);}
@@ -409,7 +411,9 @@ function checkAndUpdatePRs(routine){
 // estado dentro de la sesión.
 let _prsOpen=false;
 function togglePRs(){_prsOpen=!_prsOpen;renderPRsInProfile(CUR.clientId);}
-function _prRowHtml(pr,clientId){
+// `exId` (v611) = la CLAVE con la que está guardado el récord (`ex.id||ex.name`): es lo único que
+// dice si esa segunda cifra son repeticiones o pasos. El récord guardado no lleva el id dentro.
+function _prRowHtml(pr,clientId,exId){
   // 1RM estimado (Epley) solo para récords de peso con >1 rep — si es 1 rep el récord YA
   // es el 1RM, y reps fuera de rango devuelven null (no se muestra). Es una estimación.
   const isKg=(pr.unit||'kg')==='kg';
@@ -423,7 +427,7 @@ function _prRowHtml(pr,clientId){
     </div>
     <div style="text-align:right">
       <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
-      <div style="font-size:10px;color:var(--t2)">${isKg?`${pr.reps} reps`:'récord'}</div>
+      <div style="font-size:10px;color:var(--t2)">${isKg?`${pr.reps} ${esc(typeof repsUnitOf==='function'?repsUnitOf(exId||pr.id||''):'reps')}`:'récord'}</div>
       ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)}kg · 1RM est.</div>`:''}
     </div>
   </div>`;}
@@ -432,17 +436,20 @@ function renderPRsInProfile(clientId){
   const con=document.getElementById('cn-pr-list');if(!con)return;
   if(premiumLocked(DB.clients.find(x=>x.id===clientId))){con.innerHTML=premiumLockHTML('Tus récords (PRs)','Lleva el registro de tus marcas personales por ejercicio.');return;}
   const prs=DB.prs[clientId]||{};
-  const list=Object.values(prs).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // v611: se recorre por ENTRADAS, no por valores — la clave es el id del ejercicio y es lo único
+  // que dice si la segunda cifra son reps o pasos (el récord guardado no lo trae dentro).
+  const list=Object.entries(prs).filter(([,p])=>p&&typeof p==='object')
+    .sort((a,b)=>new Date(b[1].date)-new Date(a[1].date));
   if(!list.length){
     con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords 💪</div>';
     return;
   }
   const COLLAPSE_AT=3, PEEK=2;
   if(list.length>COLLAPSE_AT && !_prsOpen){
-    con.innerHTML=list.slice(0,PEEK).map(p=>_prRowHtml(p,clientId)).join('')+
+    con.innerHTML=list.slice(0,PEEK).map(([k,p])=>_prRowHtml(p,clientId,k)).join('')+
       `<button class="collapse-more" onclick="togglePRs()">Ver mis ${list.length} récords ▾</button>`;
   } else {
-    con.innerHTML=list.map(p=>_prRowHtml(p,clientId)).join('')+
+    con.innerHTML=list.map(([k,p])=>_prRowHtml(p,clientId,k)).join('')+
       (list.length>COLLAPSE_AT?`<button class="collapse-more" onclick="togglePRs()">Ver menos ▴</button>`:'');
   }
 }
@@ -1751,7 +1758,7 @@ function exMetaText(ex,sets,track){
   if(track==='hiit'){const c=hiitCfg(ex);return `${sets} rondas · ${c.work}s/${c.rest}s`;}
   if(track==='tiempo')return `${sets} series × ${holdSecsOf(ex)}s`;
   if(track==='cardio')return `${ex.reps} min`;
-  return `${sets} series × ${ex.reps} reps`;
+  return `${sets} series × ${ex.reps} ${typeof repsUnitOf==='function'?repsUnitOf(ex):'reps'}`;
 }
 // Contenido de la celda ".exsets" (vista de rutina) según MODALIDAD. Antes se pintaba
 // siempre "S×R series × reps" → para un cardio mostraba "1×20 series × reps" en vez de
@@ -1761,7 +1768,7 @@ function exSetsCellHTML(e){
   if(t==='cardio')return `${esc(String(e.reps||0))}<small>min de cardio</small>`;
   if(t==='tiempo')return `${esc(String(e.sets||0))}×${esc(String(holdSecsOf(e)))}<small>series × seg</small>`;
   if(t==='hiit'){const c=hiitCfg(e);return `${esc(String(e.sets||0))}<small>rondas · ${c.work}s/${c.rest}s</small>`;}
-  return `${esc(String(e.sets||0))}×${esc(String(e.reps||0))}<small>series × reps</small>`;
+  return `${esc(String(e.sets||0))}×${esc(String(e.reps||0))}<small>series × ${esc(typeof repsUnitOf==='function'?repsUnitOf(e):'reps')}</small>`;
 }
 
 // (setLogHeadHTML — cabecera de la tabla clásica — RETIRADA en F5b 2026-07-06)
@@ -2263,7 +2270,7 @@ function updateVolSummary(routine,ei,sets,ex,el){
   if(!doneSets){el.textContent='';return;}
   let txt;
   if(track==='peso_reps'||(track==='reps'&&totalVol>0))txt=`Volumen: ${Math.round(totalVol).toLocaleString()} kg`;
-  else if(track==='reps')txt=`Total: ${totReps} reps`;
+  else if(track==='reps')txt=`Total: ${totReps} ${typeof repsUnitOf==='function'?repsUnitOf(ex):'reps'}`;
   else if(track==='tiempo')txt=`Tiempo: ${totSecs}s`;
   else if(track==='cardio')txt=`Cardio: ${totMin} min`;
   else if(track==='hiit')txt=`${doneSets} ronda${doneSets!==1?'s':''}`;
@@ -2525,7 +2532,7 @@ function showWorkoutFinish(routine,stats){
   const prWrap=document.getElementById('wf-prs');
   let prHtml=prs.slice(0,3).map(pr=>{
     const val=pr.val!=null?pr.val:pr.kg;const unit=pr.unit||'kg';
-    const detail=unit==='kg'?`${fmtMetric(val,unit)}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(val,unit);
+    const detail=unit==='kg'?`${fmtMetric(val,unit)}${pr.reps?` × ${pr.reps} ${typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'}`:''}`:fmtMetric(val,unit);
     return `<div class="wf-pr"><span class="wf-pr-ico">🏆</span><div style="flex:1;min-width:0"><div class="wf-pr-name">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="wf-pr-det">${esc(detail)}</div></div></div>`;
   }).join('');
   if(prs.length>3)prHtml+=`<div style="font-size:11.5px;color:rgba(242,245,244,.7);text-align:center">+${prs.length-3} récord${prs.length-3!==1?'s':''} más 🎉</div>`;
@@ -2830,7 +2837,7 @@ function wfShare(){
     if(nm!==((pr.isNew?'¡Primer récord! ':'¡Nuevo récord! ')+pr.name))nm=nm.replace(/\s+\S*$/,'')+'…';
     x.fillText(nm,192,ry+58);
     x.fillStyle='rgba(242,245,244,.92)';x.font=_cf(30,'600');
-    x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' reps':'')):(pr.val+' '+pr.unit),192,ry+100);
+    x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' '+(typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'):'')):(pr.val+' '+pr.unit),192,ry+100);
     x.textAlign='center';
     ry+=h+18;
   });
@@ -3182,7 +3189,7 @@ function openSessionRoom(clientId,sid){
   const prs=s.prs||[];
   if(prs.length){
     prHTML=`<div class="sroom-sec">${typeof aviIcon==='function'?aviIcon('trophy',14):'🏆'} Récords de este día</div>`+prs.map(pr=>{
-      const detail=(pr.unit==='kg'||!pr.unit)?`${fmtMetric(pr.val,pr.unit||'kg')}${pr.reps?` × ${pr.reps} reps`:''}`:fmtMetric(pr.val,pr.unit);
+      const detail=(pr.unit==='kg'||!pr.unit)?`${fmtMetric(pr.val,pr.unit||'kg')}${pr.reps?` × ${pr.reps} ${typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'}`:''}`:fmtMetric(pr.val,pr.unit);
       return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
     }).join('');
   }
