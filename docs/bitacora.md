@@ -4,6 +4,127 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-14 — v613: LA CORRECCIÓN DE UN REPORTE DE DOLOR TENÍA UNA PUERTA QUE SE CERRABA SOLA
+
+**De dónde sale:** el PO registró su dolor de isquios (la tarea que estaba pendiente desde el
+13-sep) y escribió *«lo marqué como dolor en el femoral CREO»*. Ese «creo» es lo que hizo que se
+verificara en vez de darlo por bueno.
+
+**Lo que había guardado** (leído de producción, solo lectura):
+`{area:"muslo por dentro (aductores)", side:"izquierda", level:3, exName:"Peso Muerto Rumano",
+inicio:"traumatismo", flags:["R5"], triaje:4}`.
+
+**El tirón fue en la parte de ATRÁS de la pierna**, arrancando una carrera corta jugando fútbol
+(lo confirmó él). O sea que marcó el chip vecino: `muslo por dentro (aductores)` en vez de
+`muslo por detrás` — son adyacentes en la misma lista.
+
+**Medido contra su plan REAL** (7 rutinas, 53 ejercicios, con control de discriminación que aborta
+si una regla conocida no muerde):
+
+| zona | reglas | marca |
+|---|---|---|
+| `muslo por dentro (aductores)` | `["aductor"]` | **2 de 53** — Sentadilla con Salto, Burpees |
+| `muslo por detrás` | `["lumbar","isquios"]` | **13 de 53** — e **incluye los 2 anteriores** |
+
+Los 11 que entran son los que importan: **Curl Femoral Acostado en Máquina** (el ejercicio con el
+que se construyó la zona de isquios en v607), Sentadilla en Smith, Remo con Barra, Clean & Press,
+Caminata del Granjero, Rueda Abdominal, Russian Twist ×2, Elevación de Piernas ×2, Crunch.
+Como los 2 viejos están contenidos en los 13, **volver a reportar no pierde nada**: esa fue la
+salida que se le dio para hoy, sin esperar despliegue.
+
+**La bandera roja estaba BIEN.** `inicio:'traumatismo'` levanta sola `R5` («Empezó con un golpe,
+una caída o un tirón fuerte») y eso puso el reporte en **triaje 4** = valoración en 24-72 h. Un
+tirón al arrancar una carrera es exactamente eso. No se tocó nada de triaje.
+
+**El defecto que destapó, y que SÍ es de la app:** `painCanCorrect` **no caduca nunca** — el
+derecho a la única corrección queda abierto hasta que se usa — y el botón «Me equivoqué al
+responder» vive **solo dentro de `#m-painres`**, la pantalla de resultado, porque el id del reporte
+se guardaba en `_painLastId`, una variable **en memoria** que se pierde al cerrar la app.
+**Derecho sin puerta.** Es la clase de v570 aplicada al TIEMPO: lo que se puede hacer no puede
+depender de seguir parado en la pantalla donde se pudo.
+
+**Arreglo:** `painLastCorrectable(list, nowTs)` (PURA) → el id del reporte VIGENTE más reciente
+que aún tenga su corrección; el id **viaja** (`painFixAnswers(entryId)`); y la puerta se muda a
+donde el reporte VIVE — el banner «🩹 Cuidando tu X», que sale en cada entreno mientras el dolor
+esté vigente, que es justo cuando la persona ve la zona escrita y puede notar el error.
+
+🔒 Sigue siendo **UNA sola corrección** y las dos respuestas siguen visibles para el coach
+(`previo`). Solo se ofrece sobre reportes vigentes: uno que ya no filtra nada no tiene qué
+corregir, y un botón muerto es peor que ninguno.
+
+**QA:** suite **1175 → 1179** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v613`
+**9/9 muerden** · `?v=613` + `avi-v613` servidos · `_prodcheck 613` verde con `jsErrors: []`.
+
+🔎 **Un hallazgo mío que resultó FALSO y no se reportó:** sospeché que la regla de isquios
+(`/curl femoral|curl nordico/`, 2 patrones) dejaba escapar la cadena posterior. Barrido sobre los
+374 del catálogo con control de cobertura: los «candidatos» que no caían eran **falsos positivos
+de mi propia sonda** — «Pájaro / Elevaciones Posteriores», «Posteriores en Máquina» y «Elevación
+Posterior en Polea» son **deltoides posterior**, no isquios, y «Estiramiento de Isquios» es
+TERAPÉUTICO (la lección de v424: una regla ancha borra lo que cura). Todos los peso-muerto caen
+vía `lumbar` y toda la familia del curl femoral vía `isquios`. El único candidato real es
+`e148 Patrón de Bisagra (Buenos Días sin Peso)`, que es sin carga — decisión de Laura, no mía.
+
+---
+
+## ⏮️ 2026-09-14 — v612: UN PENDIENTE PARA ALGUIEN QUE YA NO EXISTE NO ES «SIN CONEXIÓN»
+
+**Pedido:** reporte del PO con captura — *«me ha estado apareciendo este aviso en amarillo en la
+parte superior desde el viernes de la semana pasada, creo que fue cuando intenté crear un nuevo
+usuario pero luego lo eliminé porque el usuario se registró solo por la app»*.
+
+**El síntoma:** «⚠️ 1 sin guardar» clavado en su barra y, al tocarlo, «📴 Sigo sin conexión»
+**con WiFi y LTE a la vista en la misma captura**.
+
+**La causa, en tres pasos:**
+1. Creó el asesorado y le escribió algo sin señal → la red de seguridad de v588 lo encoló, que es
+   exactamente lo que tenía que pasar.
+2. Después **lo eliminó** (la persona — Diana Pilar — se había registrado sola). `delClient` borra
+   la ficha y la fila de la nube… **y nunca tocaba la cola**.
+3. `UD.readClientCol` devolvía `null` para **TRES cosas distintas** — no hay red · no tengo
+   permiso · **esa fila ya no existe** — así que el reintento solo podía concluir «sin conexión»,
+   lo contaba como fallo y lo devolvía a la cola **para siempre**.
+
+**Por qué importa más de lo que parece:** no se perdió ningún dato (verificado contra la nube:
+Diana Pilar existe, `selfReg:true`, bajo su coach). Lo que se rompía es la **señal**: ese aviso es
+lo único que le diría que algo suyo DE VERDAD no subió, y un aviso que miente todos los días
+enseña a ignorarlo — la muerte del gate que este repo ya documentó tres veces. Bandeja que no se
+puede vaciar (v474).
+
+**Arreglo, en cuatro piezas:**
+- `UD.readClientCol` → `{estado,row}` con `'ok' | 'ausente' | 'mudo'`. La distinción que importa
+  es entre **no poder preguntar** y **haber preguntado**: solo la segunda autoriza a concluir algo.
+- `coachQueueVerdict` (PURA) → `'subir' | 'retener' | 'huerfana' | 'mudo'`, delegando en
+  `coachQueueCanReplay` (una segunda definición de «puedo pisar» sería el bug de v448 otra vez).
+- `coachQueueDropClient` (PURA): eliminar la ficha se lleva sus pendientes — no es descartar en
+  silencio, acaba de confirmar que se borran todos sus datos.
+- La huérfana **no se descarta sola** (regla v588: quien descarta su trabajo es él). Se marca,
+  deja de reintentarse, y el aviso por fin tiene salida: **nombra a la persona** y un segundo toque
+  la suelta. El botón armado se desarma a los 8 s (la trampa de v568).
+
+⚠️ `'ausente'` **no distingue** «la fila se borró» de «la RLS me la esconde»: PostgREST devuelve
+cero filas en los dos casos. Da igual para la DECISIÓN (en los dos es inescribible) pero no para el
+trato — y por eso no se borra nada solo.
+
+**QA:** suite **1170 → 1175** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v612`
+**14/14 muerden** · `?v=612` + `avi-v612` · `_prodcheck 612` verde con `jsErrors: []`.
+
+🔴 **El sabotaje 2 salió VERDE y era hueco MÍO:** la aserción pedía que apareciera
+`v==='huerfana'` y el sabotaje que la devuelve a `fail++` conserva ese texto entero. **Quinta cara
+de la misma clase** (v552 comentada · v568 el identificador sobrevive · v570 en el comentario ·
+v579 `if(false)`): se afirma lo que la rama HACE, no que el identificador exista.
+
+🔴 **Dos candados de v588 se pusieron rojos y se RE-ENCUADRARON, no se callaron:** afirmaban las
+líneas literales (`coachQueueCanReplay(e, fila.updated_at)` y `if(!fila){fail++}`) y la decisión se
+mudó a avi-core. La PROPIEDAD que protegían sigue viva y ahora se afirma en las **dos mitades**:
+que aquí se pregunte el veredicto, y que allá el veredicto siga delegando.
+
+⚡ **Y una lección operativa que costó un susto:** corrí una matriz de sabotaje pasándola por
+`| head -3` y `head` cerró el pipe → **node murió por EPIPE a mitad de la matriz**. El gotcha
+«NUNCA cortar un harness con `head`» lleva meses escrito en este archivo. Los archivos sobrevivieron
+porque el `finally` alcanzó a restaurar, pero el trabajo estaba **sin commitear**.
+
+---
+
 ## ⏮️ 2026-09-14 — v611: LA CAMINATA DEL GRANJERO CUENTA PASOS, NO REPETICIONES
 
 **Pedido:** reporte del PO del 13-sep — *«en la caminata de granjero no salen pasos sino
