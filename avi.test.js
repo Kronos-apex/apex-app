@@ -17246,11 +17246,23 @@ test('🔒 CABLEADO v588: el reintento respeta las dos reglas y está enchufado 
   const src = _srcApp3();
   const i = src.indexOf('async function _flushCoachWrites(');
   const cuerpo = src.slice(i, src.indexOf('\nfunction _renderCoachSync(', i));
-  assert.ok(/coachQueueCanReplay\(e,\s*fila\.updated_at\)/.test(cuerpo),
+  // v612 movió la decisión a `coachQueueVerdict` (pura), que es quien delega en `coachQueueCanReplay`.
+  // La PROPIEDAD es la misma y sigue siendo la que importa: nadie escribe sin preguntar si pisa.
+  // Se afirma en las DOS mitades — que aquí se pregunte, y que allá se siga preguntando.
+  assert.ok(/coachQueueVerdict\(e,/.test(cuerpo),
     '🔴 el reintento dejó de preguntar si puede pisar: vuelve a poder borrar el entreno de alguien');
+  assert.ok(/v==='subir'/.test(cuerpo) || /v!=='subir'/.test(cuerpo),
+    '🔴 se escribe sin mirar el veredicto');
+  const _core = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const _ver = _core.slice(_core.indexOf('function coachQueueVerdict'), _core.indexOf('function coachQueueDropClient'));
+  assert.ok(_ver.length > 200, 'no se recortó coachQueueVerdict');
+  assert.ok(/coachQueueCanReplay\(entry,/.test(_ver),
+    '🔴 el veredicto dejó de delegar: una SEGUNDA definición de «puedo pisar» es el bug de v448 otra vez');
   assert.ok(/mergeCoachMsgs\(fila\.msgs\s*\|\|\s*\[\],\s*e\.val/.test(cuerpo),
     '🔴 los mensajes se reenvían REEMPLAZANDO: borraría lo que ella escribió');
-  assert.ok(/if\(!fila\)\{\s*fail\+\+;\s*continue;\s*\}/.test(cuerpo),
+  // v612: «no pude preguntar» dejó de ser el mismo caso que «esa fila no existe» (el aviso
+  // clavado del PO). Lo que este candado protege es lo de siempre: sin lectura NO se escribe.
+  assert.ok(/v==='mudo'\)\{\s*fail\+\+;\s*continue;\s*\}/.test(cuerpo),
     '🔴 sin poder leer la fila se sigue adelante: escribiría a ciegas');
   assert.ok(/_cwqDrop\(e\.col,\s*e\.id\)/.test(cuerpo), 'lo subido no sale de la cola: se reenviaría para siempre');
   // Las dos puertas: al reconectar y al entrar (lo que quedó de la sesión anterior).
@@ -18496,6 +18508,93 @@ test('🔒 v611 · CABLEADO: las superficies que rotulan la 2ª cifra pasan por 
   assert.ok(fila.length > 200, 'no se recortó rfExRow');
   assert.ok(!/lbl\('Reps'\)/.test(fila), '🔴 el constructor de rutinas volvió a clavar «Reps»');
   assert.match(fila, /repsUnitOf\(e\)/);
+});
+
+// ── v612 · UN PENDIENTE PARA ALGUIEN QUE YA NO EXISTE NO ES «SIN CONEXIÓN» ──────────
+// Reporte del PO (14-sep): «1 sin guardar» clavado desde el viernes y, al tocarlo, «Sigo sin
+// conexión» con WiFi y datos a la vista. Había creado un asesorado, le escribió algo sin señal
+// y después LO ELIMINÓ. La fila ya no existe → `readClientCol` devolvía null → se contaba como
+// fallo de red → volvía a la cola PARA SIEMPRE. Bandeja que no se puede vaciar (v474), encima
+// de la única señal que avisa de que algo suyo de verdad no subió.
+
+test('v612 · no poder PREGUNTAR y haber preguntado son dos cosas: el veredicto las separa', () => {
+  const e = { col: 'history', id: 'c1', name: 'Kathe', ts: 1000 };
+  // Sin poder hablar con la nube NO se concluye nada: sigue en cola y se reintenta.
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'mudo' }), 'mudo');
+  // La consulta llegó y esa fila no está → jamás se va a poder escribir.
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'ausente' }), 'huerfana');
+  // La fila está y nadie la tocó después → se sube.
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'ok', updatedAt: new Date(500).toISOString() }), 'subir');
+  // La fila está y hay algo MÁS NUEVO → no se pisa: decide el coach (regla v588).
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'ok', updatedAt: new Date(9999).toISOString() }), 'retener');
+});
+
+test('v612 · una entrada sin payload se RETIENE, pero si la fila no existe es huérfana igual', () => {
+  const gordo = { col: 'photos', id: 'c1', name: 'Samuel', ts: 1000, tooBig: true };
+  assert.strictEqual(core.coachQueueVerdict(gordo, { estado: 'ok', updatedAt: new Date(1).toISOString() }), 'retener');
+  // 🔒 El ORDEN importa: si la fila no está, da igual que el payload cupiera o no — nunca se va
+  // a poder escribir. Con el orden al revés, un pendiente gordo de alguien borrado se quedaría
+  // clavado exactamente igual que el que motivó esta versión.
+  assert.strictEqual(core.coachQueueVerdict(gordo, { estado: 'ausente' }), 'huerfana');
+  // Y sin lectura ninguna se asume lo prudente: no se pudo preguntar.
+  assert.strictEqual(core.coachQueueVerdict(e0(), undefined), 'mudo');
+  function e0() { return { col: 'msgs', id: 'c9', ts: 1 }; }
+});
+
+test('v612 · borrar la ficha se lleva TODO lo pendiente de esa persona, y solo de esa', () => {
+  const q = [
+    { col: 'msgs', id: 'c1', name: 'Kathe' }, { col: 'history', id: 'c1', name: 'Kathe' },
+    { col: 'msgs', id: 'c2', name: 'Luz' },
+  ];
+  const r = core.coachQueueDropClient(q, 'c1');
+  assert.strictEqual(r.length, 1, 'tenía que soltar las DOS columnas de c1');
+  assert.strictEqual(r[0].id, 'c2', '🔴 se llevó por delante lo de otro asesorado');
+  assert.strictEqual(core.coachQueueDropClient(q, 'nadie').length, 3);
+});
+
+test('v612 · CABLEADO: el borrado de la ficha suelta sus pendientes y el flush obedece al veredicto', () => {
+  const app1 = sinComentarios(_srcApp1());
+  const app3 = sinComentarios(_srcApp3());
+  // 1. La lectura DEVUELVE el estado, no la fila pelada: sin eso nada de lo demás puede decidir.
+  const rc = app1.slice(app1.indexOf('async readClientCol'), app1.indexOf('async updateClientRow'));
+  assert.ok(rc.length > 200, 'no se recortó readClientCol');
+  assert.match(rc, /estado:'ausente'/, '🔴 volvió a confundir «no hay fila» con «no pude preguntar»');
+  assert.match(rc, /estado:'mudo'/);
+  assert.ok(!/return null;/.test(rc), '🔴 readClientCol volvió a devolver null y el que llama no puede distinguir');
+  // 2. El flush pregunta a la función PURA y trata la huérfana aparte del fallo de red.
+  const fl = app3.slice(app3.indexOf('async function _flushCoachWrites'), app3.indexOf('function _renderCoachSync('));
+  assert.ok(fl.length > 300, 'no se recortó _flushCoachWrites');
+  assert.match(fl, /coachQueueVerdict\(/, '🔴 el flush dejó de usar el veredicto puro');
+  // 🔴 ESTA ASERCIÓN PEDÍA SOLO QUE APARECIERA `v==='huerfana'` — y el sabotaje que la
+  // devuelve a `fail++` conserva ese texto entero, así que salía VERDE sobre el defecto original.
+  // Lo que se afirma es lo que la rama HACE: contarla aparte y dejar de reintentarla. (Quinta cara
+  // de la misma clase: v552 comentada · v568 el identificador sobrevive · v570 en el comentario
+  // · v579 `if(false)`.)
+  const ramaHu = fl.split('\n').find(l => /v==='huerfana'/.test(l)) || '';
+  assert.ok(ramaHu, '🔴 desapareció la rama de la huérfana');
+  assert.match(ramaHu, /orphan\+\+/, '🔴 la huérfana volvió a contarse como fallo de red (el aviso clavado)');
+  assert.ok(!/fail\+\+/.test(ramaHu), '🔴 la huérfana vuelve a reintentarse como si fuera falta de señal');
+  assert.match(ramaHu, /_cwqMarkOrphan\(/, '🔴 no se marca: el próximo reintento vuelve a preguntar por una fila que no existe');
+  // Y lo ya marcado no se vuelve a reintentar nunca (si no, cada arranque repregunta en balde).
+  assert.match(fl, /if\(e\.huerfana\)\{[^}]*orphan\+\+/,
+    '🔴 lo ya marcado como huérfano vuelve al bucle de reintentos');
+  assert.ok(!/if\(!fila\)\{ fail\+\+/.test(fl), '🔴 volvió el «sin fila = sin conexión»');
+  // 3. Y eliminar la ficha limpia la cola EN EL MISMO ACTO.
+  const del = app3.slice(app3.indexOf('function delClient()'), app3.indexOf('function delClient()') + 1600);
+  assert.match(del, /_cwqDropClient\(delId\)/, '🔴 borrar un asesorado vuelve a dejar su pendiente fantasma');
+});
+
+test('v612 · «Sigo sin conexión» solo se dice cuando de verdad no se pudo preguntar', () => {
+  const app3 = sinComentarios(_srcApp3());
+  const rt = app3.slice(app3.indexOf('async function coachSyncRetry'), app3.indexOf('function _hydrateCoachFromRows'));
+  assert.ok(rt.length > 300, 'no se recortó coachSyncRetry');
+  // El mensaje de red va atado a `r.fail` y a nada más.
+  const linea = rt.split('\n').find(l => /Sigo sin conexi/.test(l)) || '';
+  assert.match(linea, /r\.fail/, '🔴 el aviso de red se soltó de su causa');
+  // Y la huérfana tiene su propia salida: se nombra a la persona y se puede DESCARTAR.
+  assert.match(rt, /r\.orphan/, '🔴 la huérfana no tiene rama propia: el aviso vuelve a no tener salida');
+  assert.match(rt, /_cwqArmed=true/, '🔴 desapareció la puerta para descartarla');
+  assert.match(rt, /_cwqArmT=setTimeout\(_cwqDisarm/, '🔴 el botón armado ya no se desarma solo (trampa de v568)');
 });
 
 // ══════════════════════════════════════════════════════

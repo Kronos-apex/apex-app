@@ -341,13 +341,23 @@ const UD={
   // de una escritura fallida necesita las dos: la columna para FUSIONAR (msgs) y el `updated_at`
   // para saber si alguien escribió después de mi intento — y entonces NO pisarlo.
   // Devuelve null al fallar (sin red/permiso): el caller distingue «no pude» de «puedo pisar».
+  // Devuelve {estado,row} y NO la fila a secas. 🔴 Devolver `null` para todo juntaba tres cosas
+  // distintas —no hay red · no tengo permiso · esa fila YA NO EXISTE— y quien llama solo podía
+  // concluir «sin conexión». Con eso, una escritura pendiente para un asesorado BORRADO se
+  // reintentaba para siempre y el aviso «N sin guardar» quedaba clavado (reporte del PO, 14-sep).
+  //   'ok'      → la consulta llegó y la fila está
+  //   'ausente' → la consulta LLEGÓ y no hay fila (borrada, o la RLS ya no me la deja ver)
+  //   'mudo'    → no se pudo preguntar: no se concluye NADA
+  // ⚠️ `maybeSingle` devuelve {data:null,error:null} tanto si la fila no existe como si la RLS
+  // la esconde: son indistinguibles desde el cliente, y por eso 'ausente' no autoriza a borrar
+  // nada — solo a dejar de reintentar y avisar. La decisión vive en `coachQueueVerdict`.
   async readClientCol(clientId,cols){
     try{
-      const c=AUTH.client(); if(!c||!clientId)return null;
+      const c=AUTH.client(); if(!c||!clientId)return {estado:'mudo',row:null};
       const {data,error}=await c.from('user_data').select(cols+',updated_at').eq('user_id',clientId).maybeSingle();
-      if(error){warn('UD.readClientCol:',error.message);return null;}
-      return data;
-    }catch(e){ warn('UD.readClientCol (¿sin conexión?):',e&&e.message); return null; }
+      if(error){warn('UD.readClientCol:',error.message);return {estado:'mudo',row:null};}
+      return data?{estado:'ok',row:data}:{estado:'ausente',row:null};
+    }catch(e){ warn('UD.readClientCol (¿sin conexión?):',e&&e.message); return {estado:'mudo',row:null}; }
   },
   // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
   // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.

@@ -10307,6 +10307,39 @@ function coachQueueCanReplay(entry, rowUpdatedAt) {
   return t <= (entry.ts || 0);
 }
 
+// ¿Qué se hace con esta entrada de la cola? PURA. Nace del reporte del PO (14-sep): un aviso
+// «1 sin guardar» que llevaba una semana clavado y que al tocarlo respondía «Sigo sin conexión»
+// con WiFi y datos a la vista. Había creado un asesorado, le escribió algo sin señal, y después
+// LO ELIMINÓ: la fila ya no existe, así que el reintento no encontraba nada, lo contaba como
+// fallo de red y volvía a la cola PARA SIEMPRE. Un aviso que no se puede vaciar es una bandeja
+// muerta (v474) — y peor: es la única señal que avisa de que algo suyo de verdad no subió, así
+// que mentir ahí enseña a ignorarla.
+// `lectura` es lo que devolvió la nube, ya clasificado por `UD.readClientCol`:
+//   {estado:'ok', updatedAt} · {estado:'ausente'} · {estado:'mudo'}
+// 🔒 La diferencia que importa es entre NO PODER PREGUNTAR y HABER PREGUNTADO: solo la segunda
+// autoriza a concluir algo. Por eso 'ausente' y 'mudo' son estados distintos y no un `null`
+// compartido — ese `null` común era exactamente el defecto.
+// ⚠️ 'ausente' NO distingue «la fila se borró» de «la RLS me la esconde»: PostgREST devuelve
+// cero filas en los dos casos. Da igual para la decisión (en los dos es inescribible para mí)
+// pero NO da igual para el trato: por eso 'huerfana' no descarta nada, solo deja de reintentar
+// y se lo dice al coach con el nombre por delante. Quien descarta su trabajo es él (regla v588).
+function coachQueueVerdict(entry, lectura) {
+  if (!entry || !entry.col || !entry.id) return 'retener';
+  const estado = (lectura && lectura.estado) || 'mudo';
+  if (estado === 'mudo') return 'mudo';
+  if (estado === 'ausente') return 'huerfana';
+  if (entry.tooBig) return 'retener';
+  return coachQueueCanReplay(entry, lectura && lectura.updatedAt) ? 'subir' : 'retener';
+}
+
+// Saca de la cola TODO lo pendiente de un asesorado. PURA. La llama el borrado de la ficha:
+// ahí el coach acaba de confirmar que se borran «sus rutinas, historial, fotos y todos sus
+// datos», así que soltar lo que quedaba pendiente PARA ÉL no es descartar en silencio — es la
+// consecuencia de lo que pidió. Sin esto, cada borrado deja un fantasma en la barra.
+function coachQueueDropClient(list, clientId) {
+  return (Array.isArray(list) ? list : []).filter(x => !(x && x.id === clientId));
+}
+
 // IDs de rutina que SOLO usan los harness E2E (nunca un asesorado real: las rutinas
 // reales llevan id hex/base36 tipo "mqqx81o..."). Antes del sello v298, algún harness
 // alcanzó a inyectar sesiones de PRUEBA en el historial real de un asesorado (y su
@@ -11182,6 +11215,8 @@ if (typeof module !== 'undefined' && module.exports) {
     routinePromiseText,
     coachQueuePut,
     coachQueueCanReplay,
+    coachQueueVerdict,
+    coachQueueDropClient,
     COACH_Q_MAX_ENTRY,
     COACH_Q_MAX_TOTAL,
     FIXTURE_ROUTINE_IDS,

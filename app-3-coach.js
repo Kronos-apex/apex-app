@@ -877,6 +877,22 @@ function _cwqDrop(col,id){
   if(desp.length===antes.length)return;
   _cwqWrite(desp); if(!desp.length)_setAuthDirty(false); _renderCoachSync();
 }
+// Eliminar la ficha se lleva lo que quedara pendiente PARA esa persona. No es descartar en
+// silencio: el coach acaba de confirmar que se borran todos sus datos. Sin esto, cada borrado
+// deja un pendiente que apunta a una fila que él mismo mandó borrar — y que por tanto NUNCA se
+// va a poder escribir (el aviso clavado que reportó el PO el 14-sep).
+function _cwqDropClient(id){
+  const antes=_cwqRead(); const desp=coachQueueDropClient(antes,id);
+  if(desp.length===antes.length)return;
+  _cwqWrite(desp); if(!desp.length)_setAuthDirty(false); _renderCoachSync();
+}
+// Una entrada HUÉRFANA (su fila ya no existe, o la RLS dejó de dejármela ver) no se borra sola:
+// se MARCA para dejar de reintentarla y que el aviso pueda decir la verdad. La descarta el coach.
+function _cwqMarkOrphan(col,id){
+  const l=_cwqRead(); const e=l.find(x=>x&&x.col===col&&x.id===id);
+  if(!e||e.huerfana)return;
+  e.huerfana=true; _cwqWrite(l);
+}
 // ¿Este mensaje concreto está esperando en la cola? (para pintarlo «sin enviar» en el hilo)
 // 🔴 La cola guarda el HILO ENTERO (es lo que se sube), así que preguntar «¿está en el payload?»
 // marca «sin enviar» también los mensajes que la nube ya tiene — se vio MIRANDO la captura, no
@@ -898,17 +914,22 @@ function _cwqSelect(col){ return col==='ax_c' ? 'profile,routines' : col; }
 // 🔒 `held` NO se descarta: se queda en la cola y el coach lo ve, porque quien decide pisar el
 // trabajo de otro es él y no la app.
 async function _flushCoachWrites(){
-  if(!AUTH_MODE||AUTH_ROLE!=='coach'||!AUTH.ready())return {ok:0,held:0,fail:0};
-  const list=_cwqRead(); if(!list.length)return {ok:0,held:0,fail:0};
-  let ok=0,held=0,fail=0;
+  if(!AUTH_MODE||AUTH_ROLE!=='coach'||!AUTH.ready())return {ok:0,held:0,fail:0,orphan:0};
+  const list=_cwqRead(); if(!list.length)return {ok:0,held:0,fail:0,orphan:0};
+  let ok=0,held=0,fail=0,orphan=0;
   for(const e of list){
     if(!e||!e.col||!e.id){ continue; }
+    if(e.huerfana){ orphan++; continue; }   // ya se preguntó: su fila no está. No se reintenta.
     if(e.tooBig){ held++; continue; }
     const esMio=(e.id===SELF_CLIENT_ID);
     try{
-      const fila=await UD.readClientCol(esMio?_authUid:e.id,_cwqSelect(e.col));
-      if(!fila){ fail++; continue; }                       // sin red / sin permiso → sigue en cola
-      if(!coachQueueCanReplay(e,fila.updated_at)){ held++; continue; }
+      const lec=await UD.readClientCol(esMio?_authUid:e.id,_cwqSelect(e.col));
+      const fila=lec&&lec.row;
+      // La decisión es PURA y vive en avi-core: aquí solo se obedece.
+      const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:fila&&fila.updated_at});
+      if(v==='mudo'){ fail++; continue; }                  // no se pudo preguntar → sigue en cola
+      if(v==='huerfana'){ _cwqMarkOrphan(e.col,e.id); orphan++; continue; }
+      if(v!=='subir'){ held++; continue; }
       if(e.col==='msgs'){
         // Fusión por unión: nunca pisa lo que el asesorado escribió desde su teléfono.
         const fus=mergeCoachMsgs(fila.msgs||[],e.val||[]);
@@ -925,7 +946,7 @@ async function _flushCoachWrites(){
     }catch(err){ fail++; warn('AVI: reintento de escritura del coach falló ('+e.col+'):',err&&err.message); }
   }
   _renderCoachSync();
-  return {ok,held,fail};
+  return {ok,held,fail,orphan};
 }
 window.addEventListener('online',()=>{ _flushCoachWrites(); });
 
@@ -934,22 +955,56 @@ window.addEventListener('online',()=>{ _flushCoachWrites(); });
 function _renderCoachSync(){
   const el=document.getElementById('coach-sync'); if(!el)return;
   const list=_cwqRead();
-  if(!list.length||AUTH_ROLE!=='coach'){ el.style.display='none'; return; }
+  if(!list.length||AUTH_ROLE!=='coach'){ el.style.display='none'; _cwqArmed=false; return; }
   const n=list.length;
   el.style.display='';
+  // Armado = ya se preguntó y esas filas no están; el siguiente toque las suelta. Se DICE con el
+  // nombre por delante, porque en un celular no hay `title` que alguien pueda leer.
+  if(_cwqArmed){
+    const hu=list.filter(x=>x&&x.huerfana);
+    el.textContent='🗑️ Descartar '+(hu.length===1?('el de '+_cwqCorto(hu[0].name)):(hu.length+' cambios'));
+    el.title='Ya no están en tu lista: '+hu.map(x=>x.name).join(' · ')+' — toca para descartarlos';
+    return;
+  }
   el.textContent='⚠️ '+n+' sin guardar';
   el.title='Sin guardar: '+list.map(x=>x.name+' · '+_cwqLabel(x.col)).join(' · ')+' — toca para reintentar';
 }
+function _cwqCorto(n){ const t=String(n||'Asesorado').trim().split(/\s+/)[0]; return t.length>14?t.slice(0,13)+'…':t; }
 function _cwqLabel(col){
   return {msgs:'mensajes',ax_c:'plan y ficha',history:'entrenos',prs:'récords',bodyweight:'peso',
     medidas:'medidas',nutrition:'nutrición',photos:'fotos'}[col]||col;
 }
 // Reintento a mano (el coach toca el aviso). Le dice qué pasó con palabras, no con un código.
+// 🔒 «Sigo sin conexión» solo se dice cuando de verdad NO SE PUDO PREGUNTAR. Antes salía
+// también cuando la fila no existía, y con eso el aviso se quedaba clavado mintiendo por
+// semanas — justo encima de la única señal que avisa de que algo suyo de verdad no subió.
+let _cwqArmed=false,_cwqArmT=null;
+function _cwqDisarm(){ _cwqArmed=false; if(_cwqArmT){clearTimeout(_cwqArmT);_cwqArmT=null;} _renderCoachSync(); }
 async function coachSyncRetry(){
+  // Segundo toque del descarte. Se desarma solo: un botón que se queda armado es una trampa (v568).
+  if(_cwqArmed){
+    const hu=_cwqRead().filter(x=>x&&x.huerfana);
+    _cwqWrite(_cwqRead().filter(x=>!(x&&x.huerfana)));
+    if(!_cwqRead().length)_setAuthDirty(false);
+    _cwqDisarm();
+    toast('✅ Listo — '+(hu.length===1?'ese cambio ya no aparece':'esos cambios ya no aparecen'));
+    return;
+  }
   const el=document.getElementById('coach-sync'); if(el)el.textContent='⏳ reintentando…';
   const r=await _flushCoachWrites();
   if(typeof _cchatId!=='undefined'&&_cchatId&&typeof renderCoachChatThread==='function')renderCoachChatThread(_cchatId);
   if(!_cwqRead().length){ toast('✅ Ya quedó todo guardado'); return; }
+  _renderCoachSync();
+  // Huérfana: la consulta SÍ llegó y esa fila no está. No se descarta sola (regla v588: quien
+  // descarta su trabajo es él), pero deja de reintentarse y el aviso por fin tiene salida.
+  if(r.orphan){
+    const hu=_cwqRead().filter(x=>x&&x.huerfana);
+    const q=hu.length===1?('El cambio de '+(hu[0].name||'un asesorado')+' ('+_cwqLabel(hu[0].col)+')'):(hu.length+' cambios');
+    toast('👤 '+q+' no se puede guardar: ya no está en tu lista. Toca otra vez para descartarlo.');
+    _cwqArmed=true; _renderCoachSync();
+    _cwqArmT=setTimeout(_cwqDisarm,8000);
+    return;
+  }
   if(r.fail) toast('📴 Sigo sin conexión — lo vuelvo a intentar al reconectar');
   else if(r.held) toast('⚠️ '+r.held+(r.held===1?' cambio quedó':' cambios quedaron')+' sin subir: hay algo más nuevo en la nube. Vuelve a hacerlo desde la ficha.');
 }
@@ -2466,6 +2521,11 @@ function delClient(){
   const delId=CUR.clientId;
   // Modo auth: borrar la fila del cliente en la nube (si no, reaparece al volver a entrar).
   if(AUTH_MODE){ UD.deleteClientRow(delId).catch(e=>warn('AVI: borrar fila cliente en nube falló:',e&&e.message)); }
+  // 🔒 Y se lleva lo que quedara PENDIENTE para él: esa fila la acaba de mandar borrar, así que
+  // ese cambio no se va a poder escribir jamás y el aviso «N sin guardar» se quedaría clavado
+  // para siempre (reporte del PO, 14-sep). No es descartar en silencio — acaba de confirmar que
+  // se borran todas sus cosas.
+  if(typeof _cwqDropClient==='function')_cwqDropClient(delId);
   DB.clients=DB.clients.filter(x=>x.id!==CUR.clientId);delete DB.msgs[CUR.clientId];
   if(DB.history)delete DB.history[CUR.clientId];
   if(DB.prs)delete DB.prs[CUR.clientId];
