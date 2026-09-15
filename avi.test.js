@@ -18833,6 +18833,17 @@ test('v615 🔒 un record NUEVO posterior le gana a la correccion (o quedaria bl
   assert.strictEqual(mergePRs(nuevo, corregido).u1.e53.val, 15,
     '🔴 la correccion bloqueo un record legitimo posterior: nadie volveria a subir');
   assert.strictEqual(mergePRs(corregido, nuevo).u1.e53.val, 15);
+
+  // 🔒 Y AL REVES, que es el caso que hace falta la fecha de la CORRECCION y no la del record:
+  //    el coach corrige HOY un record de una sesion vieja, mientras el otro lado trae un record
+  //    con fecha posterior a esa sesion pero anterior a la correccion. `prfixSave` NO toca `date`
+  //    a proposito (es cuando OCURRIO), asi que mirar solo `date` revierte la correccion.
+  const corrigeHoy = { u1: { e53: { val: 12.5, kg: 12.5, reps: 12, date: '2026-07-18T10:00:00.000Z',
+    corregido: '2026-09-01T09:00:00.000Z', corregidoDe: 40 } } };
+  const rezagado = { u1: { e53: { val: 40, kg: 40, reps: 12, date: '2026-08-27T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(rezagado, corrigeHoy).u1.e53.val, 12.5,
+    '🔴 se miro la fecha del RECORD y no la de la correccion: vuelve el numero corregido');
+  assert.strictEqual(mergePRs(corrigeHoy, rezagado).u1.e53.val, 12.5);
 });
 
 test('v615 🔒 CONTROL: sin correcciones de por medio, sigue mandando el MAXIMO', () => {
@@ -18849,8 +18860,12 @@ test('v615 · una correccion con fecha ilegible no borra el record', () => {
   const { mergePRs } = core;
   const raro = { u1: { e1: { val: 50, kg: 50, reps: 8, date: '2026-08-01T10:00:00.000Z', corregido: 'ayer' } } };
   const otro = { u1: { e1: { val: 60, kg: 60, reps: 8, date: '2026-08-05T10:00:00.000Z' } } };
-  const r = mergePRs(raro, otro).u1.e1;
-  assert.ok(r && r.val > 0, 'la fusion devolvio un record roto por una fecha ilegible');
+  // 🔒 «Ilegible» tiene que valer 0 (= no se estableció nunca), JAMÁS «ahora»: con `Date.now()`
+  //    de respaldo, una fecha basura le ganaría a cualquier récord legítimo, para siempre.
+  //    Afirmar «devolvió algo» pasaba con el defecto puesto: hay que decir CUÁL gana.
+  assert.strictEqual(mergePRs(raro, otro).u1.e1.val, 60,
+    '🔴 una fecha ilegible se leyo como AHORA y se comio el record bueno');
+  assert.strictEqual(mergePRs(otro, raro).u1.e1.val, 60);
 });
 
 // ══════════════════════════════════════════════════════
