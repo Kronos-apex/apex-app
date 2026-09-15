@@ -18806,6 +18806,54 @@ test('v614 · CABLEADO: la fila fusiona el peso con lapidas, y los dos formulari
 });
 
 // ══════════════════════════════════════════════════════
+// v615 — LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA FUSIÓN
+// ══════════════════════════════════════════════════════
+// 🔴 `mergePRs` se queda con el MAYOR (un récord es un máximo), y la corrección del coach casi
+//    siempre BAJA el número — así que una copia rezagada devolvía el error que se vino a corregir.
+//    Medido: 8 correcciones a mano vivas, 0 reversiones observadas (la fusión solo corre `dirty`).
+
+test('v615 · una correccion del coach le gana a la copia rezagada con el valor viejo', () => {
+  const { mergePRs } = core;
+  // El caso real: 200.000 kg de un dedo gordo, corregidos a 20.
+  const viejo = { u1: { e24: { val: 200000, kg: 200000, reps: 12, date: '2026-07-29T10:00:00.000Z' } } };
+  const corregido = { u1: { e24: { val: 20, kg: 20, reps: 12, date: '2026-07-29T10:00:00.000Z',
+    corregido: '2026-08-10T15:00:00.000Z', corregidoDe: 200000 } } };
+  assert.strictEqual(mergePRs(viejo, corregido).u1.e24.val, 20,
+    '🔴 la copia vieja REVIRTIO la correccion: vuelve el record falso');
+  // Y en el otro orden, que es el que de verdad ocurre (local rezagado, nube corregida).
+  assert.strictEqual(mergePRs(corregido, viejo).u1.e24.val, 20);
+});
+
+test('v615 🔒 un record NUEVO posterior le gana a la correccion (o quedaria bloqueado)', () => {
+  const { mergePRs } = core;
+  // Caso real de Andres, e53: corregido a 12,5 el 20-ago y volvio a levantar 15 el 27-ago.
+  const corregido = { u1: { e53: { val: 12.5, kg: 12.5, reps: 12, date: '2026-07-18T10:00:00.000Z',
+    corregido: '2026-08-20T11:59:06.000Z', corregidoDe: 15 } } };
+  const nuevo = { u1: { e53: { val: 15, kg: 15, reps: 12, date: '2026-08-27T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(nuevo, corregido).u1.e53.val, 15,
+    '🔴 la correccion bloqueo un record legitimo posterior: nadie volveria a subir');
+  assert.strictEqual(mergePRs(corregido, nuevo).u1.e53.val, 15);
+});
+
+test('v615 🔒 CONTROL: sin correcciones de por medio, sigue mandando el MAXIMO', () => {
+  const { mergePRs } = core;
+  // Un record es un maximo: que un dia flojo POSTERIOR no baje la marca.
+  const alto = { u1: { e1: { val: 100, kg: 100, reps: 8, date: '2026-08-01T10:00:00.000Z' } } };
+  const bajo = { u1: { e1: { val: 80, kg: 80, reps: 8, date: '2026-09-01T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(alto, bajo).u1.e1.val, 100,
+    '🔴 la regla nueva se comio el comportamiento de siempre: el record ya no es un maximo');
+  assert.strictEqual(mergePRs(bajo, alto).u1.e1.val, 100);
+});
+
+test('v615 · una correccion con fecha ilegible no borra el record', () => {
+  const { mergePRs } = core;
+  const raro = { u1: { e1: { val: 50, kg: 50, reps: 8, date: '2026-08-01T10:00:00.000Z', corregido: 'ayer' } } };
+  const otro = { u1: { e1: { val: 60, kg: 60, reps: 8, date: '2026-08-05T10:00:00.000Z' } } };
+  const r = mergePRs(raro, otro).u1.e1;
+  assert.ok(r && r.val > 0, 'la fusion devolvio un record roto por una fecha ilegible');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

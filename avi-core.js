@@ -2328,10 +2328,25 @@ function mergeHistory(local, cloud, cap) {
 
 // Récords personales { clientId: { exKey: {val,unit,reps,kg,date,...} } }.
 // Conserva el MEJOR récord: mayor valor → más reps → más reciente. Nunca pierde un PR.
+// 🔴 UN RÉCORD ES UN MÁXIMO, ASÍ QUE LA FUSIÓN SE QUEDA CON EL MAYOR — y eso REVERTÍA LA
+//    CORRECCIÓN DEL COACH. `coachEditPR` existe justo para bajar un récord falso (el caso vivo:
+//    200.000 kg de un dedo gordo), y una copia rezagada trae el valor VIEJO, que es más ALTO:
+//    en la primera fusión tras entrenar sin conexión, el número corregido perdía contra el error
+//    que se vino a corregir. Sin víctima medida (45 respaldos, 10-jul→15-sep: 8 correcciones
+//    vivas y 0 reversiones), pero son 8 decisiones del coach que el motor puede deshacer.
+// 🔒 La regla NO es «gana el más reciente»: un récord sin tocar sigue siendo un máximo. Es que
+//    **una corrección explícita es un HECHO con fecha**, así que cuando alguno de los dos lados
+//    la trae, gana el que se estableció después — la corrección, o un récord NUEVO posterior a
+//    ella. Esa segunda mitad es obligatoria: sin ella la corrección bloquearía para siempre, y
+//    está medido que la gente vuelve a levantar el peso (Samuel, e24, 6-ago) y el récord se
+//    re-crea solo, que es exactamente lo que le promete el botón de borrar.
 function mergePRs(local, cloud) {
   local = local && typeof local === 'object' ? local : {};
   cloud = cloud && typeof cloud === 'object' ? cloud : {};
   const valOf = p => (p && p.val != null ? p.val : (p && p.kg) || 0);
+  const tsOf = raw => { const t = new Date(raw || 0).getTime(); return Number.isFinite(t) ? t : 0; };
+  // Cuándo quedó establecida esta entrada: la corrección a mano, o la fecha del récord.
+  const setAt = p => Math.max(tsOf(p && p.corregido), tsOf(p && p.date));
   const out = {};
   const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
   ids.forEach(cid => {
@@ -2341,6 +2356,12 @@ function mergePRs(local, cloud) {
       Object.keys(o).forEach(k => {
         const cand = o[k], cur = m[k];
         if (!cur) { m[k] = cand; return; }
+        if (cand && cand.corregido || cur && cur.corregido) {
+          // Empate de fechas → manda la corrección, que es el acto deliberado.
+          const sc = setAt(cand), su = setAt(cur);
+          if (sc > su || (sc === su && cand && cand.corregido && !(cur && cur.corregido))) m[k] = cand;
+          return;
+        }
         const cv = valOf(cand), uv = valOf(cur);
         const better = cv > uv
           || (cv === uv && (cand.reps || 0) > (cur.reps || 0))
