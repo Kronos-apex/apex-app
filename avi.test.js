@@ -18937,14 +18937,24 @@ test('v616 · CABLEADO: el fallo va a la cola y el exito la limpia', () => {
     '🔴 el fallo de un ajuste del coach volvio a perderse en silencio');
   assert.ok(/_cwqDropSetting\(short\)/.test(rama),
     '🔴 al guardar bien no se limpia la cola: el aviso se queda para siempre');
-  // 🔒 Y el reintento NO puede volver al upsert de la columna entera (240 KB, leccion v589).
   const co = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  // 🔒 Cada ajuste lleva su clave en el `col`, o todos comparten una entrada y el ultimo borra
+  //    al anterior de la cola. Esto NO lo puede ver el test de `coachQueuePut`: ahi los `col` se
+  //    escriben a mano distintos, asi que la funcion pura sale verde con el cableado roto.
+  assert.ok(/_cwqAdd\('cs:'\+short,/.test(co),
+    '🔴 los ajustes comparten una entrada: cambiar el Nequi borra la biblioteca de la cola');
+  // 🔒 Y el reintento NO puede volver al upsert de la columna entera (240 KB, leccion v589).
+  //    La rama se recorta SOLA: `coachQueueVerdict` tambien aparece en la otra rama de la misma
+  //    funcion, asi que pedirlo «en _flushCoachWrites» salia VERDE con el veredicto clavado.
   const fl = co.slice(co.indexOf('async function _flushCoachWrites('), co.indexOf('window.addEventListener(\'online\',()=>{ _flushCoachWrites(); })'));
-  assert.ok(/UD\.patchCoachSettings\(patch\)/.test(fl),
+  const ramaCs = fl.slice(fl.indexOf("if(String(e.col).indexOf('cs:')===0){"), fl.indexOf('const esMio='));
+  assert.ok(ramaCs.length > 100, 'desapareció la rama de ajustes del reintento');
+  assert.ok(/UD\.patchCoachSettings\(patch\)/.test(ramaCs),
     '🔴 el reintento de ajustes dejo de usar el patch del servidor');
-  assert.ok(!/upsertOwn\(\{coach_settings/.test(fl),
+  assert.ok(!/upsertOwn\(\{coach_settings/.test(ramaCs),
     '🔴 el reintento sube la columna entera: la biblioteca de 240 KB de acompañante');
-  assert.ok(/coachQueueVerdict\(/.test(fl), '🔴 el reintento de ajustes decide por su cuenta');
+  assert.ok(/const v=coachQueueVerdict\(e,/.test(ramaCs),
+    '🔴 el reintento de ajustes decide por su cuenta en vez de obedecer al veredicto');
 });
 
 // ══════════════════════════════════════════════════════
