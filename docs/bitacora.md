@@ -4,6 +4,57 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v614: BORRAR UN PESO BORRA DE VERDAD (3ª víctima de la clase de v566/v568)
+
+**De dónde sale:** el PO mandó arreglar `deletePhoto`, que mi radar arrastraba como abierto. Lo
+primero que se encontró es que **ya estaba cerrado desde v568** — la nota del radar llevaba
+equivocada desde entonces. Barrida la CLASE entera (las 6 colecciones que `mergeAuthRow` fusiona
+por unión), quedaban **dos** sin lápida: el peso corporal y los récords.
+
+**Lo que se midió antes de escribir código** (45 respaldos locales, 10-jul → 15-sep, 33 personas):
+
+| | |
+|---|---|
+| Borrados reales en 2 meses | **7** (6 récords, 1 peso) |
+| Resurrecciones observadas | **0** |
+
+Todos se quedaron borrados. El único candidato que saltó lo **tumbó su control**: a Samuel se le
+guardó un récord de **200.000 kg** el 29-jul, alguien lo borró el 30, quedó quieto una semana y
+volvió el 6-ago con 20 kg — porque **volvió a entrenar**. Re-creación legítima, exactamente lo que
+promete el botón. Un segundo candidato (una corrección del PO «revertida») cayó igual: había
+entrenado ese día. **El defecto es estructural, no histórico**, y la razón de que no haya víctimas
+es que `mergeAuthRow` solo corre cuando el arranque anterior quedó `dirty` (entrenó sin conexión).
+
+**Lo que se construyó (el peso):** delega en la capa de lápidas que ya existe —`tombDelete`,
+`tombLive`, `tombPrune`, `mergeTombstoned`— aportando solo su **identidad** (`d:<fecha>`: un día,
+un peso) y su **cupo** (52, el que ya aplicaba `logBodyWeight`). No se copió la maquinaria: es la
+lección de v568 y por eso las 3 colecciones comparten una sola definición de «borrado».
+
+- 🔴 **`bwUpsert` unifica los DOS formularios de peso**, que ya habían divergido: «Mi peso» y el
+  asistente del Día 1 tenían cada uno su copia del guardado y **la del asistente no aplicaba el
+  tope de 52**. Es el gotcha de v566 («un segundo camino de escritura con sus propias reglas»).
+- 🔒 **Re-registrar un día con lápida lo REVIVE.** El `findIndex` viejo le habría escrito el `kg`
+  ENCIMA a la lápida dejando `del:true` intacto: el peso recién tecleado invisible para siempre.
+- 🔴 **Los lectores, los que CUENTAN y los que INDEXAN** (lección v566): `lastBodyweightKg` (el
+  peso con el que se calcula el plan), `bodyWeightSource` (contaba lápidas como pesadas y podía
+  rotular el kg de un día con la fecha de otro), `miniSparkline`, el perfil —que leía el índice 0
+  a pelo— y el aviso de descuadre del coach. `coachInsight` ya estaba a salvo por construcción.
+
+**QA:** suite **1179 → 1187** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v614`
+**17/17 muerden**. 🔬 La primera corrida dio **12/17**: cuatro candados míos salían VERDES (tres
+renders sin vigilancia de dónde sacan la lista, y un guard de `lastBodyweightKg` que era letra
+muerta porque `tombDelete` no le deja `kg` a la lápida — ahora la regla se afirma sola, con una
+lápida que SÍ trae `kg`) y un sabotaje quedó inerte por la indentación del ancla.
+
+**⏭️ Lo que NO se hizo, y por qué:** los **récords** siguen sin lápida. Su tombstone tendría que
+vivir en la columna `prs`, que `refresh_snapshot/index.ts` cuenta con `Object.keys(prs).length`
+para decidir una medalla de la vitrina pública — o sea que cerrarlo entero exige tocar una edge
+function **que esta máquina no puede desplegar** (sin CLI de Supabase), y dejaría el arreglo
+bloqueado detrás de un acto del PO. Va al radar con su medición. Lo que sí se puede hacer sin eso
+—que `mergePRs` deje de revertir una corrección del coach— queda propuesto aparte.
+
+---
+
 ## ⏮️ 2026-09-14 — v613: LA CORRECCIÓN DE UN REPORTE DE DOLOR TENÍA UNA PUERTA QUE SE CERRABA SOLA
 
 **De dónde sale:** el PO registró su dolor de isquios (la tarea que estaba pendiente desde el

@@ -1304,6 +1304,33 @@ la misma lista, y **el que se equivocó fue el entrenador**, que conoce la anato
 va el dedo, a un asesorado más. No se tocó (es decisión de producto y de Laura), pero queda
 medido: la consecuencia de errar un chip ahí es de **2 contra 13 ejercicios** marcados. (v613)
 
+- 🔴 **UNA ENTRADA DEL RADAR ES UNA HIPÓTESIS CON FECHA: SE RE-MIDE CONTRA EL CÓDIGO ANTES DE
+GASTARLE UN TURNO AL PO.** «`deletePhoto` sigue borrando con `filter`» vivió en el radar y en la
+memoria **desde v568 hasta el 15-sep**, o sea 46 versiones **después de estar arreglado**; el PO
+mandó arreglarlo y lo primero que se encontró fue el arreglo. La regla ya existía para los
+hallazgos de un subagente y para los propios (*«el radar es una hipótesis, no un hallazgo»*, v484)
+— **también vale para el radar VIEJO, que envejece sin que nadie lo toque.** Corolario que salvó
+el turno: al re-medirla, la CLASE seguía viva en **otras dos** colecciones, así que la nota estaba
+equivocada en el sujeto y acertada en el fondo. **Al retomar una entrada de radar: (1) verifica que
+el defecto exista HOY; (2) si no existe, corrige la nota con la fecha del cierre; (3) barre la
+CLASE, porque la víctima que se nombró puede no ser la única ni la vigente.** (v614)
+- 🔴 **UN GUARD DEFENSIVO QUE EL RESTO DEL SISTEMA HACE INALCANZABLE ES LETRA MUERTA, Y SU SABOTAJE
+SALE VERDE — la salida no es borrarlo, es afirmar la REGLA en vez de la forma actual del dato.**
+`lastBodyweightKg` gana un `if (e.del) continue;` que **hoy no puede ejecutarse**, porque
+`tombDelete` construye la lápida sin `kg` y el `parseFloat(undefined)` ya la descartaba. Quitarlo
+no rompía ningún test. Pero la regla que enuncia —*una lápida no es un pesaje*— es verdadera
+independientemente de cómo se construya una lápida mañana. **Se prueba con una lápida que SÍ trae
+`kg`**: así el candado afirma el invariante y no la casualidad de la implementación de al lado.
+Familia de «una aserción que el defecto puede satisfacer no es un candado» (v428), por el lado
+contrario: aquí el test pasaba con y sin el código porque el FIXTURE no podía distinguirlos. (v614)
+- 🔴 **UN CANDADO SOBRE UN RENDER SOLO PUEDE VIGILAR DE DÓNDE SACA LA LISTA — y si no se escribe,
+los sabotajes de los renders salen VERDES en bloque.** Tres de los cuatro verdes de la matriz de
+v614 eran renders (la gráfica del coach, el perfil del asesorado, el aviso de descuadre): la suite
+no pinta, así que devolverles la colección cruda no rompía nada. La lección de v566 («el candado
+del motor no protege la pantalla») aplicada a las lápidas: **al meter un estado nuevo en una
+colección, cada lector que la PINTA necesita su aserción estática de que pide las vivas**, y va
+sobre el código sin comentarios (clase v552/v570). (v614)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1499,7 +1526,26 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-14 (**v613 — LA CORRECCIÓN DEL REPORTE DE DOLOR YA TIENE PUERTA**.
+*Última actualización: 2026-09-15 (**v614 — BORRAR UN PESO BORRA DE VERDAD**. Tercera víctima de
+la clase de v566/v568: `deleteBodyWeight` quitaba la toma con un `filter` y `mergeAuthRow` fusionaba
+el peso por UNIÓN por fecha, así que lo borrado volvía en la primera fusión tras entrenar sin
+conexión. 🔴 **Nace de que el PO mandó arreglar `deletePhoto` y eso YA estaba cerrado desde v568**:
+mi radar lo arrastraba equivocado hacía 46 versiones. Barrida la clase entera, quedaban dos
+colecciones sin lápida. **Medido sobre 45 respaldos locales (10-jul→15-sep, 33 personas): 7
+borrados reales (6 récords, 1 peso) y CERO resurrecciones** — el defecto es estructural, no
+histórico, porque esa fusión solo corre con el arranque anterior `dirty`. 🔬 **Los dos candidatos
+que saltaron los tumbó su control**: el récord de **200.000 kg** de Samuel se borró, estuvo quieto
+una semana y volvió con 20 kg porque **volvió a entrenar** (re-creación legítima), y la corrección
+del PO «revertida» fue una sesión nueva. Delega en `tombDelete`/`tombLive`/`mergeTombstoned` sin
+copiar nada, aportando identidad (`d:<fecha>`) y cupo (52). **`bwUpsert` unifica los DOS formularios
+de peso, que ya habían divergido**: el del asistente del Día 1 ni siquiera topaba. Lectores
+corregidos, los que cuentan y los que indexan: `lastBodyweightKg`, `bodyWeightSource`,
+`miniSparkline`, el perfil (leía el índice 0 a pelo) y el aviso del coach. Suite **1179 → 1187** en
+los tres modos, hook 12/12, matriz nueva `_sabotaje-v614` **17/17 muerden** — la primera corrida dio
+12 y **cuatro verdes eran huecos míos**. ⏭️ **Los récords siguen sin lápida a propósito**: su
+tombstone viviría en la columna `prs`, que `refresh_snapshot` cuenta para una medalla de la vitrina
+pública, así que cerrarlo exige desplegar una edge function **que esta máquina no puede desplegar**)
+· (**v613 — LA CORRECCIÓN DEL REPORTE DE DOLOR YA TIENE PUERTA**.
 El PO registró su dolor y escribió *«lo marqué como dolor en el femoral CREO»* — ese «creo» es lo
 que hizo que se verificara. Había marcado **`muslo por dentro (aductores)`** y el tirón fue en la
 parte de **ATRÁS** de la pierna, arrancando una carrera jugando fútbol. **Medido contra su plan
