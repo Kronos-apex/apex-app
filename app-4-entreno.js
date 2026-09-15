@@ -2788,9 +2788,21 @@ function wfShare(){
   x.textAlign='center';
   x.fillStyle='#EAFBF4';x.font=_cf(64,'900',true);x.fillText('AVI',540,140);
   x.fillStyle='#10E0A0';x.fillRect(495,164,90,6);
+  // ── v619 · EL RETRATO, MÁS GRANDE ────────────────────────────────────────────────────
+  // Reporte del PO (15-sep): «se ve muy pequeña la foto». Medido sobre el lienzo real: el radio
+  // era 92, o sea **184 px de diámetro en un lienzo de 1080 = el 17% del ancho** — en una imagen
+  // que se comparte para que se vea QUIÉN entrenó, la persona era lo más chico de la tarjeta.
+  // 🔒 El sitio de donde sale el espacio está MEDIDO, no estimado: en el caso APRETADO (4 cifras
+  //    y 3 récords, el máximo que caben) sobraban ~120 px muertos entre la última tarjeta y la
+  //    raya del pie, y otros 38 entre el subrayado de «AVI» y el círculo. De ahí sale todo.
+  // 🔒 Y la posición de lo que viene debajo se DERIVA del propio círculo (`_dy`): con los seis
+  //    números escritos a mano, tocar el radio deja seis sitios que hay que acordarse de mover
+  //    —y el que se olvide se monta encima del vecino, que es justo lo que no se ve en un test.
+  const CR_R=140, CR_TOP=200, CR_CY=CR_TOP+CR_R;   // 280 px = 26% del ancho (era 17%)
+  const _dy=(CR_CY+CR_R)-422;                      // 422 era el borde inferior del círculo viejo
   // el retrato (o el trofeo de siempre si no hay foto de perfil), como en la pantalla
   if(_wfShareAvatar||d.fullName||d.name){
-    _wfDrawCrest(x,540,330,92,d.fullName||d.name,_wfShareAvatar,F);
+    _wfDrawCrest(x,540,CR_CY,CR_R,d.fullName||d.name,_wfShareAvatar,F);
   }
   x.textAlign='center';                       // `_wfDrawCrest` lo restaura, pero no se asume
   // 🔒 EL NOMBRE, debajo del retrato. En la PANTALLA el nombre viaja dentro del titular («¡Lo
@@ -2800,24 +2812,24 @@ function wfShare(){
     x.fillStyle='#FFFFFF';
     let ns=58; x.font=_cf(ns,'900',true);
     while(ns>30&&x.measureText(d.name).width>900){ns-=4;x.font=_cf(ns,'900',true);}
-    x.fillText(d.name,540,492);
+    x.fillText(d.name,540,492+_dy);
   }
-  x.fillStyle='#10E0A0';x.font=_cf(34,'800');x.fillText('ENTRENAMIENTO COMPLETADO',540,548);
+  x.fillStyle='#10E0A0';x.font=_cf(34,'800');x.fillText('ENTRENAMIENTO COMPLETADO',540,548+_dy);
   x.fillStyle='#FFFFFF';
   let ts=112; x.font=_cf(ts,'900',true);
   const _tit=d.name?('¡Lo logré!'):'¡Sesión lista!';
   while(ts>56&&x.measureText(_tit).width>920){ts-=6;x.font=_cf(ts,'900',true);}
-  x.fillText(_tit,540,660);
+  x.fillText(_tit,540,660+_dy);
   x.fillStyle='rgba(242,245,244,.8)';x.font=_cf(36,'600');
   const _sub=(d.rname?d.rname+'  ·  ':'')+d.fecha;
   let ss=36; x.font=_cf(ss,'600',false);
   while(ss>22&&x.measureText(_sub).width>920){ss-=2;x.font=_cf(ss,'600');}
-  x.fillText(_sub,540,722);
+  x.fillText(_sub,540,722+_dy);
 
   // ── Las cifras, 2×2, con la MISMA ficha de la pantalla (.wf-stat) ──
   const cells=d.chips.slice(0,4);
   const CW=436,CH=180,GAP=28,X0=540-(CW+GAP/2);
-  let yc=790;
+  let yc=790+_dy;
   cells.forEach((c2,i)=>{
     const cx=X0+(i%2)*(CW+GAP), cy=yc+Math.floor(i/2)*(CH+GAP);
     x.fillStyle='rgba(4,8,10,.58)';_rr(cx,cy,CW,CH,38);x.fill();

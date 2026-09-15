@@ -16787,7 +16787,11 @@ test('🔒 CABLEADO v597: la imagen compartible DICE el nombre y lleva el círcu
   const share = _v597('wfShare');
   assert.ok(/fillText\(d\.name,/.test(share),
     '🔴 la imagen dejó de DIBUJAR el nombre: volvería a decir «¡Lo logré!» sin decir de quién es');
-  assert.ok(/_wfDrawCrest\(x,\s*\d+,\s*\d+,\s*\d+,\s*d\.fullName\|\|d\.name,\s*_wfShareAvatar,/.test(share),
+  // v619 re-encuadre: la posición y el radio pasaron a ser CONSTANTES derivadas (antes iban tres
+  // dígitos a mano). La propiedad que vigila este candado no cambia —que el círculo se dibuje y
+  // reciba el nombre completo y la foto YA VERIFICADA—, así que se afirma eso y no la forma de
+  // escribir las coordenadas. El tamaño lo vigila su propio candado (v619).
+  assert.ok(/_wfDrawCrest\(x,\s*[\w.]+,\s*[\w.]+,\s*[\w.]+,\s*d\.fullName\|\|d\.name,\s*_wfShareAvatar,/.test(share),
     '🔴 el círculo del retrato se cayó del lienzo o dejó de recibir la foto ya verificada');
   // En un canvas no hay reflow que avise: un nombre largo se sale del lienzo y nadie lo ve.
   assert.ok(/measureText\(d\.name\)\.width>\d+/.test(share),
@@ -19036,6 +19040,51 @@ test('v618 · dos correcciones del mismo record: manda la MAS RECIENTE', () => {
   assert.strictEqual(mergePRs(vieja, nueva).c1.e1.val, 20,
     '🔴 gano la correccion MAS VIEJA: el coach corrige y su ultimo cambio no manda');
   assert.strictEqual(mergePRs(nueva, vieja).c1.e1.val, 20);
+});
+
+// ══════════════════════════════════════════════════════
+// v619 — EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE
+// ══════════════════════════════════════════════════════
+// Reporte del PO (15-sep): «se ve muy pequeña la foto». Medido sobre el lienzo real: radio 92 =
+// 184 px de diámetro en 1080, el 17% del ancho. En una imagen que se comparte para que se vea
+// QUIÉN entrenó, la persona era lo más chico de la tarjeta.
+
+test('v619 · el retrato ocupa una parte seria del lienzo, no un botoncito', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const m = src.match(/const CR_R=(\d+),\s*CR_TOP=(\d+)/);
+  assert.ok(m, '🔴 desaparecieron las constantes del retrato');
+  const R = +m[1];
+  assert.ok(2 * R / 1080 >= 0.22,
+    `🔴 el retrato volvio a ser chico: ${(2 * R / 1080 * 100).toFixed(1)}% del ancho (el PO reporto el 17%)`);
+  // Y el circulo se dibuja CON esas constantes, no con numeros sueltos al lado.
+  assert.ok(/_wfDrawCrest\(x,540,CR_CY,CR_R,/.test(src),
+    '🔴 el retrato volvio a dibujarse con numeros escritos a mano');
+});
+
+// 🔒 EL CANDADO QUE DE VERDAD PROTEGE no es «el radio vale 140»: es que, CON EL RADIO QUE SEA, lo
+//    de abajo siga cabiendo. Agrandar el circulo empuja todo, y lo que se monta sobre el pie no
+//    da ningun error — sale en la imagen que la persona ya compartió. Se calcula el caso
+//    APRETADO (4 cifras + 3 records, el maximo) DERIVANDO cada medida del codigo, nunca a mano.
+test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const num = (re, q) => { const m = src.match(re); assert.ok(m, 'no se pudo leer ' + q); return +m[1]; };
+  const R = num(/const CR_R=(\d+),/, 'CR_R'), TOP = num(/CR_TOP=(\d+),/, 'CR_TOP');
+  const CH = num(/CW=\d+,CH=(\d+),/, 'alto de ficha'), GAP = num(/CH=\d+,GAP=(\d+),/, 'separacion');
+  const PRH = num(/const h=(\d+);/, 'alto de la tarjeta de record');
+  const PRGAP = num(/ry\+=h\+(\d+);/, 'separacion de records');
+  const PIE = num(/x\.fillRect\(90,(\d+),900,4\)/, 'la raya del pie');
+  const dy = (TOP + 2 * R) - 422;                 // 422 era el borde inferior del circulo viejo
+  const yc = 790 + dy;                            // primera fila de cifras
+  const ry = yc + 2 * (CH + GAP) + 24;            // 4 cifras = 2 filas
+  const fin = ry + 3 * PRH + 2 * PRGAP;           // 3 records, el tope
+  assert.ok(fin < PIE - 30,
+    `🔴 el caso apretado termina en y=${fin} y la raya del pie esta en ${PIE}: se montan`);
+  // Y su CONTROL: que el calculo pueda fallar de verdad. Con un radio disparatado tiene que dar
+  // colision — si no, esta asercion no vigila nada (un gate que no puede fallar no es un gate).
+  const finGrande = (200 + 2 * 260 - 422) + 790 + 2 * (CH + GAP) + 24 + 3 * PRH + 2 * PRGAP;
+  assert.ok(finGrande >= PIE - 30, 'el calculo no detecta una colision ni con un radio absurdo');
 });
 
 // ══════════════════════════════════════════════════════
