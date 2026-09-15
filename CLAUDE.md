@@ -1344,6 +1344,27 @@ segunda mitad, o el acto bloquea para siempre: un récord nuevo posterior tiene 
 la corrección, porque está medido que la gente vuelve a levantar el peso y el récord se re-crea
 solo; (4) el CONTROL va en la matriz — si el récord deja de ser un máximo, tiene que caer algo.**
 (v615)
+- 🔴 **UNA BANDERA DE «QUEDÓ ALGO SIN GUARDAR» QUE NADIE LEE EN ESE ROL ES PEOR QUE NO TENERLA: da
+por cubierto un camino que está abierto.** La rama de `coach_settings` se quedó fuera de la cola de
+v588 y al fallar hacía `warn()` + `_setAuthDirty(true)` — pero cuando el rol es COACH,
+`_enterCoachAuth` devuelve **antes** del único bloque que consume ese flag, y ese bloque además es
+para la fila del ASESORADO. Se perdía en silencio lo que él edita de sí mismo (Nequi, nombre,
+sitio, la biblioteca de ejercicios), y como `localStorage` conserva el valor **la app le decía que
+había guardado**. **Reglas: (1) al escribir una red de seguridad, sigue la bandera hasta QUIÉN la
+LEE y con qué rol — «se marca como sucio» no es «se reintenta»; (2) la segunda víctima de una clase
+DELEGA en la capa que ya existe y solo aporta su identidad y su forma de escribir (lección v568),
+porque dos definiciones de «lo que falta por subir» son dos avisos que se contradicen; (3) una
+entrada POR unidad de cambio, o guardar una cosa saca otra de la cola.** (v616)
+- 🔴 **UNA REGLA DE «NO PISES LO QUE CAMBIÓ DESPUÉS» PUEDE SER IMPOSIBLE DE CUMPLIR, Y ENTONCES NO
+PROTEGE: RETIENE PARA SIEMPRE.** El `updated_at` de la fila del coach se mueve con **todo** lo suyo
+—marcar un chat como leído ya lo mueve—, así que aplicarla a sus ajustes dejaría cada entrada
+retenida indefinidamente: el aviso clavado de v612 reproducido por otra vía. La exención se
+sostiene porque `coach_settings_patch` **fusiona en el servidor por clave**, o sea que reenviar no
+puede pisar nada más que ese mismo ajuste. **Regla: antes de aplicar una regla de concurrencia,
+pregunta con qué FRECUENCIA se mueve la marca que consulta — si se mueve por motivos ajenos al dato
+que proteges, la regla no discrimina y hay que acotarla al grano que sí importa. Y la exención se
+escribe con su CONTROL: un sabotaje que la extienda a toda la cola tiene que poner algo en rojo.**
+(v616)
 
 ---
 
@@ -1540,7 +1561,23 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-15 (**v615 — LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA
+*Última actualización: 2026-09-15 (**v616 — LOS AJUSTES DEL COACH TAMBIÉN TIENEN COLA**. Punto 3
+del radar, y se quedaba corto: la rama de `coach_settings` quedó fuera de la cola de v588 y al
+fallar hacía `warn()` + `_setAuthDirty(true)`… **una bandera que NADIE lee cuando el rol es coach**
+(`_enterCoachAuth` devuelve antes del único bloque que la consume, y ese bloque es para la fila del
+asesorado). Como `localStorage` conserva el valor, **la app le decía que había guardado**: se perdía
+en silencio su Nequi, su nombre, su sitio, sus ejercicios propios y la **biblioteca de ejercicios**,
+que es justo lo que v608 acababa de dejarle editar. Ahora **delega** en la cola de v588 —misma
+barra, mismo reintento al reconectar y a mano— aportando solo lo suyo: **una entrada por ajuste**
+(`cs:<clave>`, para que cambiar el Nequi no saque la biblioteca de la cola) y el **patch del
+servidor** como forma de escritura, nunca un upsert de la columna entera (240 KB, lección v589).
+🔒 **La decisión que lo hacía o lo rompía**: la regla «no pises lo que cambió después» se EXIME para
+los ajustes, porque el `updated_at` del coach se mueve con todo lo suyo —marcar un chat leído ya lo
+mueve— y con la regla general la entrada quedaría retenida **para siempre**, que es el aviso clavado
+de v612 por otra vía; el patch fusiona por clave en el servidor, así que reenviar no pisa nada más.
+Suite **1191 → 1196** en los tres modos, hook 12/12, `_sabotaje-v616` **7/7 muerden** — la primera
+corrida dio 5 y los dos verdes eran huecos míos. 🔁 Un candado de v589 cayó y se **re-encuadró**)
+· (**v615 — LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA
 FUSIÓN**. Apareció buscando dónde poner la lápida de los récords, y es PEOR que lo que se venía a
 arreglar: `mergePRs` se queda con el MAYOR —un récord es un máximo— pero `coachEditPR` existe justo
 para BAJAR un récord falso (los 200.000 kg de un dedo gordo), así que la copia rezagada traía el

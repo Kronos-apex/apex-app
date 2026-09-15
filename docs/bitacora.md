@@ -4,6 +4,46 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v616: LOS AJUSTES DEL COACH TAMBIÉN TIENEN COLA
+
+**De dónde sale:** punto 3 del radar. `_persistCoachWrite` ganó su cola en v588 y **la rama de
+`coach_settings` se quedó fuera**: al fallar hacía `warn()` y `_setAuthDirty(true)`.
+
+**Y esa bandera no la lee nadie cuando el rol es coach.** `_enterCoachAuth` devuelve en la línea
+686 de `app-3-coach.js`; el bloque que consume el flag está en la 698, doce líneas más abajo, y es
+para la fila del ASESORADO. O sea que el radar se quedaba corto: no era «solo hay una bandera», era
+**una bandera que nadie mira**. Como `localStorage` sí conserva el valor, la app le decía que había
+guardado, y el dato solo volvía a intentarse si él tocaba ESE mismo ajuste otra vez.
+
+**Lo que se perdía:** su número de Nequi, su nombre, su sitio web, sus ejercicios propios, los
+chats marcados como leídos, los leads atendidos — y la **biblioteca de ejercicios**, que es justo
+lo que v608 acababa de dejarle editar.
+
+**Lo que se hizo:** delega en la cola de v588 (misma barra, mismo reintento al reconectar, mismo
+reintento a mano), aportando solo lo suyo: **una entrada por ajuste** (`cs:<clave>`, para que
+cambiar el Nequi no saque la biblioteca de la cola) y **el patch del servidor** como forma de
+escritura — jamás un upsert de la columna entera, que arrastraría los 240 KB de la biblioteca
+(lección v589).
+
+🔒 **La decisión que hacía o rompía esto:** la regla «no pises lo que cambió después» se **exime**
+para los ajustes, y no por comodidad. `coach_settings_patch` fusiona en el servidor, así que
+reenviar toca esa clave y ninguna otra; y el `updated_at` de la fila del coach **se mueve con todo
+lo suyo** —marcar un chat como leído ya lo mueve—, así que con la regla general la entrada quedaría
+retenida **para siempre**: el aviso clavado que el PO reportó el 14-sep, reproducido por otra vía.
+El riesgo que queda escrito al lado: si cambió ese mismo ajuste en otro aparato, el reintento lo
+pisa. Se acepta porque la alternativa es perderlo en silencio.
+
+**QA:** suite **1191 → 1196** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v616`
+**7/7 muerden** (la primera corrida dio 5: uno medía la función pura y no el cableado, y el otro
+se satisfacía con la OTRA rama de la misma función — clase v536/v560). El **control** está en la
+matriz: si la exención se contagia al resto de la cola, caen 3 pruebas.
+
+🔁 **Un candado de v589 cayó y se RE-ENCUADRÓ, no se calló** (R2.2): afirmaba la línea literal
+`patch[_COACH_SETTINGS_COL[k]]=v` y el fallo ahora necesita esa clave en una variable. La propiedad
+que protege —que el nombre de la clave salga de la tabla y no escrito a mano— se afirma igual.
+
+---
+
 ## ⏮️ 2026-09-15 — v615: LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA FUSIÓN
 
 **De dónde sale:** buscando dónde poner la lápida de los récords apareció un defecto **peor que el
