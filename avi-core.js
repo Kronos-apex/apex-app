@@ -2357,10 +2357,30 @@ function mergePRs(local, cloud) {
         const cand = o[k], cur = m[k];
         if (!cur) { m[k] = cand; return; }
         if (cand && cand.corregido || cur && cur.corregido) {
-          // Empate de fechas → manda la corrección, que es el acto deliberado.
-          const sc = setAt(cand), su = setAt(cur);
-          if (sc > su || (sc === su && cand && cand.corregido && !(cur && cur.corregido))) m[k] = cand;
-          return;
+          // 🔴 v618 · UNA CORRECCIÓN RECHAZA EL VALOR QUE QUITÓ, NO TODO LO QUE SEA MAYOR.
+          //    v615 hacía ganar a la corrección por ser la más reciente, y con eso se comía un
+          //    récord LEGÍTIMO: un teléfono que estuvo sin red mientras la persona batía su marca
+          //    (30 kg el 20-ago) perdía contra una corrección hecha después (el 1-sep) que no
+          //    hablaba de él, sino del typo de 200.000. Comparaba dos relojes distintos —cuándo
+          //    se LOGRÓ contra cuándo se ADMINISTRÓ— y trataba «llegó tarde a sincronizar» como
+          //    «es más viejo». Lo demostró Fable verificando v615, y la regla vieja (puro máximo)
+          //    acertaba en ese caso: era una regresión nuestra.
+          // 🔒 `corregidoDe` dice EXACTAMENTE qué número rechazó el coach, así que la corrección
+          //    solo tapa ese número y todo lo demás sigue compitiendo como un récord normal.
+          //    Y solo mientras el candidato no sea POSTERIOR a la corrección: si lo es, es que
+          //    volvió a levantarlo (caso medido: Samuel el 6-ago, el PO el 27-ago).
+          const rechaza = (corr, otro) => !!(corr && corr.corregido && corr.corregidoDe != null
+            && valOf(otro) === corr.corregidoDe && setAt(otro) <= tsOf(corr.corregido));
+          if (rechaza(cand, cur)) { m[k] = cand; return; }
+          if (rechaza(cur, cand)) { return; }
+          // Sin `corregidoDe` no se puede saber qué rechazó (correcciones anteriores a v615):
+          // se cae a «gana el que se estableció después», que es lo que protegía hasta ahora.
+          if (!(cand && cand.corregidoDe != null) && !(cur && cur.corregidoDe != null)) {
+            const sc = setAt(cand), su = setAt(cur);
+            if (sc > su || (sc === su && cand && cand.corregido && !(cur && cur.corregido))) m[k] = cand;
+            return;
+          }
+          // La corrección no habla de este candidato → compite como un récord cualquiera.
         }
         const cv = valOf(cand), uv = valOf(cur);
         const better = cv > uv

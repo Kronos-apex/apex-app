@@ -18972,6 +18972,56 @@ test('v616 · CABLEADO: el fallo va a la cola y el exito la limpia', () => {
 });
 
 // ══════════════════════════════════════════════════════
+// v618 — LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO QUE SEA MAYOR
+// ══════════════════════════════════════════════════════
+// 🔴 Regresión que introdujo v615 y demostró Fable verificándola: hacer ganar a la corrección por
+//    ser la más reciente se come un récord LEGÍTIMO que venía de un teléfono sin red. Compara dos
+//    relojes distintos —cuándo se LOGRÓ contra cuándo se ADMINISTRÓ— y con la regla vieja (puro
+//    máximo) ese caso funcionaba bien.
+
+test('v618 · un record legitimo NO lo mata una correccion que no hablaba de el', () => {
+  const { mergePRs } = core;
+  // El coach solo veia el typo de 200.000 y lo corrigio a 20 el 1-sep. Mientras tanto, en un
+  // telefono sin red, la persona habia levantado 30 kg de verdad el 20-ago.
+  const nube = { c1: { e1: { val: 20, kg: 20, reps: 8, date: '2026-08-01T10:00:00.000Z',
+    corregido: '2026-09-01T10:00:00.000Z', corregidoDe: 200000 } } };
+  const offline = { c1: { e1: { val: 30, kg: 30, reps: 8, date: '2026-08-20T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(offline, nube).c1.e1.val, 30,
+    '🔴 la correccion se comio un record legitimo: «nunca pierde un PR» deja de ser verdad');
+  assert.strictEqual(mergePRs(nube, offline).c1.e1.val, 30);
+});
+
+test('v618 🔒 CONTROL: el numero que la correccion SI quito sigue sin volver', () => {
+  const { mergePRs } = core;
+  const nube = { c1: { e1: { val: 20, kg: 20, reps: 12, date: '2026-07-29T10:00:00.000Z',
+    corregido: '2026-08-10T15:00:00.000Z', corregidoDe: 200000 } } };
+  const stale = { c1: { e1: { val: 200000, kg: 200000, reps: 12, date: '2026-07-29T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(stale, nube).c1.e1.val, 20,
+    '🔴 volvio el record falso: la correccion dejo de tapar lo que quito');
+  assert.strictEqual(mergePRs(nube, stale).c1.e1.val, 20);
+});
+
+test('v618 🔒 y volver a levantar ESE peso despues de la correccion sigue ganando', () => {
+  const { mergePRs } = core;
+  // Caso real del PO (e53): corregido a 12,5 el 20-ago, volvio a levantar 15 el 27-ago.
+  const corr = { c1: { e1: { val: 12.5, kg: 12.5, reps: 12, date: '2026-07-18T10:00:00.000Z',
+    corregido: '2026-08-20T11:59:06.000Z', corregidoDe: 15 } } };
+  const nuevo = { c1: { e1: { val: 15, kg: 15, reps: 12, date: '2026-08-27T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(nuevo, corr).c1.e1.val, 15,
+    '🔴 la correccion bloqueo el mismo peso levantado DESPUES: nadie volveria a subir');
+  assert.strictEqual(mergePRs(corr, nuevo).c1.e1.val, 15);
+});
+
+test('v618 · una correccion VIEJA sin corregidoDe conserva la proteccion de v615', () => {
+  const { mergePRs } = core;
+  const corr = { c1: { e1: { val: 20, kg: 20, reps: 12, date: '2026-07-29T10:00:00.000Z',
+    corregido: '2026-08-10T15:00:00.000Z' } } };   // sin corregidoDe (anterior a v615)
+  const stale = { c1: { e1: { val: 200000, kg: 200000, reps: 12, date: '2026-07-29T10:00:00.000Z' } } };
+  assert.strictEqual(mergePRs(stale, corr).c1.e1.val, 20,
+    '🔴 una correccion sin corregidoDe dejo de proteger: vuelve el record falso');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
