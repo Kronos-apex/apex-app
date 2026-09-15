@@ -19085,6 +19085,23 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
   // colision — si no, esta asercion no vigila nada (un gate que no puede fallar no es un gate).
   const finGrande = (200 + 2 * 260 - 422) + 790 + 2 * (CH + GAP) + 24 + 3 * PRH + 2 * PRGAP;
   assert.ok(finGrande >= PIE - 30, 'el calculo no detecta una colision ni con un radio absurdo');
+
+  // 🔴 Y ESTO ES LO QUE DE VERDAD FALTABA: la cuenta de arriba usa las CONSTANTES, asi que salia
+  //    VERDE aunque el codigo dejara de APLICARLAS — quitarle el desplazamiento a las cifras o al
+  //    nombre no movia ni un numero de mi calculo (lo dijo la matriz: 3 sabotajes verdes). En un
+  //    lienzo no hay reflow que avise, asi que hay que afirmar que cada pieza de abajo SIGUE al
+  //    circulo. Clase de v566: el candado del motor no protege la pantalla.
+  const cuerpo = src.slice(src.indexOf('function wfShare('), src.indexOf('function _wfCanvasPreview') > 0
+    ? src.indexOf('function _wfCanvasPreview') : src.indexOf('function wfShare(') + 12000);
+  assert.ok(/const _dy=\(CR_CY\+CR_R\)-422;/.test(cuerpo),
+    '🔴 el desplazamiento dejo de derivarse del circulo: crecer el retrato ya no mueve nada');
+  [[/x\.fillText\(d\.name,540,492\+_dy\)/, 'el nombre'],
+   [/'ENTRENAMIENTO COMPLETADO',540,548\+_dy/, 'el rotulo'],
+   [/x\.fillText\(_tit,540,660\+_dy\)/, 'el titular'],
+   [/x\.fillText\(_sub,540,722\+_dy\)/, 'el subtitulo'],
+   [/let yc=790\+_dy;/, 'las cifras']].forEach(([re, q]) => {
+    assert.ok(re.test(cuerpo), `🔴 ${q} dejo de seguir al circulo: el retrato nuevo se le monta encima`);
+  });
 });
 
 // ══════════════════════════════════════════════════════
