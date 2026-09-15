@@ -867,12 +867,28 @@ window.addEventListener('online',()=>{ _flushPendingClients(); });
 function _cwqKey(){ return 'ax_cwq_'+(_authUid||'anon'); }
 function _cwqRead(){ try{ const r=localStorage.getItem(_cwqKey()); const l=r?JSON.parse(r):[]; return Array.isArray(l)?l:[]; }catch(e){ return []; } }
 function _cwqWrite(list){ try{ localStorage.setItem(_cwqKey(),JSON.stringify(list||[])); }catch(e){ warn('AVI: no cabe la cola de pendientes:',e&&e.message); } }
-function _cwqAdd(col,id,val){
+function _cwqAdd(col,id,val,nombre){
   const c=(DB.clients||[]).find(x=>x.id===id);
-  const r=coachQueuePut(_cwqRead(),{col:col,id:id,name:(c&&c.name)||'Asesorado',val:val,ts:Date.now()});
+  const r=coachQueuePut(_cwqRead(),{col:col,id:id,name:nombre||(c&&c.name)||'Asesorado',val:val,ts:Date.now()});
   _cwqWrite(r.list); _setAuthDirty(true); _renderCoachSync();
   return r.tooBig;
 }
+// ── LOS AJUSTES DEL COACH TAMBIÉN VAN A LA COLA (v616) ────────────────────────
+// 🔴 `_persistCoachWrite` ganó su cola en v588 y la rama de `coach_settings` se quedó FUERA: al
+//    fallar solo hacía `warn()` + `_setAuthDirty(true)`… y esa bandera NADIE la lee cuando el rol
+//    es coach — `_enterCoachAuth` devuelve ANTES del bloque que la consume. O sea, pérdida
+//    silenciosa de lo que él edita de SÍ MISMO: su número de Nequi, su nombre, su sitio, sus
+//    ejercicios propios y la BIBLIOTECA de ejercicios, que es justo lo que v608 acaba de dejarle
+//    editar. Y no da error: localStorage se queda con el valor, así que la app le dice que guardó.
+// 🔒 Se DELEGA en la cola de v588 (misma forma, mismo aviso, mismo reintento al reconectar), no
+//    se copia: dos definiciones de «lo que falta por subir» serían dos avisos que se contradicen.
+//    Solo aporta su identidad (`cs:<clave corta>`, una entrada por ajuste para que cambiar el
+//    Nequi no borre de la cola la biblioteca) y su forma de escritura (el patch del servidor).
+const _CS_NOMBRE={e:'biblioteca de ejercicios',nequi:'número de Nequi',cn:'tu nombre',
+  ce:'ejercicios propios',site:'tu sitio web',mr:'chats leídos',ld:'leads atendidos'};
+function _cwqSettingId(){ return _authUid||'coach'; }
+function _cwqAddSetting(short,val){ return _cwqAdd('cs:'+short,_cwqSettingId(),val,'Tus ajustes'); }
+function _cwqDropSetting(short){ _cwqDrop('cs:'+short,_cwqSettingId()); }
 function _cwqDrop(col,id){
   const antes=_cwqRead(); const desp=antes.filter(x=>!(x&&x.col===col&&x.id===id));
   if(desp.length===antes.length)return;
@@ -922,6 +938,21 @@ async function _flushCoachWrites(){
     if(!e||!e.col||!e.id){ continue; }
     if(e.huerfana){ orphan++; continue; }   // ya se preguntó: su fila no está. No se reintenta.
     if(e.tooBig){ held++; continue; }
+    // Un ajuste del coach vive en SU fila y se escribe con el patch del servidor (jamás con un
+    // upsert de la columna entera: ahí adentro está la biblioteca, 240 KB — lección v589).
+    if(String(e.col).indexOf('cs:')===0){
+      try{
+        const lec=await UD.readClientCol(_authUid,'coach_settings');
+        const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:lec&&lec.row&&lec.row.updated_at});
+        if(v==='mudo'){ fail++; continue; }
+        if(v==='huerfana'){ _cwqMarkOrphan(e.col,e.id); orphan++; continue; }
+        if(v!=='subir'){ held++; continue; }
+        const patch={}; patch[e.col.slice(3)]=e.val;
+        await UD.patchCoachSettings(patch);
+        _cwqDrop(e.col,e.id); ok++;
+      }catch(err){ fail++; warn('AVI: reintento de ajustes del coach falló ('+e.col+'):',err&&err.message); }
+      continue;
+    }
     const esMio=(e.id===SELF_CLIENT_ID);
     try{
       const lec=await UD.readClientCol(esMio?_authUid:e.id,_cwqSelect(e.col));
@@ -972,6 +1003,8 @@ function _renderCoachSync(){
 }
 function _cwqCorto(n){ const t=String(n||'Asesorado').trim().split(/\s+/)[0]; return t.length>14?t.slice(0,13)+'…':t; }
 function _cwqLabel(col){
+  // Un ajuste se nombra por lo que ES para él («número de Nequi»), nunca por su clave corta.
+  if(String(col).indexOf('cs:')===0) return _CS_NOMBRE[col.slice(3)]||'ajustes';
   return {msgs:'mensajes',ax_c:'plan y ficha',history:'entrenos',prs:'récords',bodyweight:'peso',
     medidas:'medidas',nutrition:'nutrición',photos:'fotos'}[col]||col;
 }

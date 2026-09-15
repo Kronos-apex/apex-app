@@ -10398,6 +10398,17 @@ function coachQueuePut(list, entry, caps) {
 function coachQueueCanReplay(entry, rowUpdatedAt) {
   if (!entry || entry.tooBig) return false;
   if (entry.col === 'msgs') return true;
+  // 🔒 Los AJUSTES del coach (`cs:<clave>`, v616) también quedan exentos, y por DOS razones que
+  //    hay que leer juntas. (1) `coach_settings_patch` fusiona en el SERVIDOR (`||`), así que
+  //    reenviar toca ESA clave y ninguna otra: no hay trabajo ajeno que pisar salvo el mismo
+  //    ajuste cambiado desde otro aparato. (2) Sin la exención esto no funcionaría NUNCA: el
+  //    `updated_at` de la fila del coach se mueve con TODO lo suyo —marcar un chat como leído ya
+  //    lo mueve—, así que la regla daría «hay algo más nuevo» siempre y la entrada se quedaría
+  //    retenida para siempre. Eso es exactamente el aviso clavado que el PO reportó el 14-sep.
+  //    El riesgo que queda, escrito: si cambió ESE ajuste en otro aparato mientras tanto, el
+  //    reintento lo pisa. Se acepta porque la alternativa es perderlo en silencio, que es el
+  //    defecto que esta cola existe para matar.
+  if (String(entry.col).indexOf('cs:') === 0) return true;
   // 🔒 `new Date(null)` devuelve EPOCH, no Invalid Date (clase v517): sin atajar el nulo ANTES
   // de parsear, una fila sin `updated_at` legible daría t=0 → «nadie escribió después» → PISA.
   if (rowUpdatedAt == null || rowUpdatedAt === '') return false;

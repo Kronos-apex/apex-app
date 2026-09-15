@@ -1013,9 +1013,22 @@ async function _persistAuthUser(k,v){
     // 🔴 v589 · SOLO LA CLAVE QUE CAMBIÓ. `coach_settings` es UNA columna jsonb y `upsertOwn` la
     // reemplaza entera, así que cada «leído» del chat subía la biblioteca de 374 ejercicios
     // detrás: medido el 8-sep contra producción, **241.029 B de los que 239.849 son `e`**.
-    const patch={}; patch[_COACH_SETTINGS_COL[k]]=v;
-    try{ await UD.patchCoachSettings(patch); }
-    catch(e){ _setAuthDirty(true); warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message); }
+    const short=_COACH_SETTINGS_COL[k];
+    const patch={}; patch[short]=v;
+    try{
+      await UD.patchCoachSettings(patch);
+      // Confirmado: si algo de este ajuste quedó en la cola, ya no hace falta.
+      if(typeof _cwqDropSetting==='function')_cwqDropSetting(short);
+    }
+    catch(e){
+      // 🔴 v616: hasta aquí esto era `warn()` + una bandera que NADIE lee cuando el rol es coach
+      // (`_enterCoachAuth` devuelve antes del bloque que la consume) → lo que él edita de sí mismo
+      // se perdía en silencio, con localStorage diciéndole que sí guardó. Ahora va a la MISMA cola
+      // de v588: se ve en la barra, se reintenta al reconectar y se puede reintentar a mano.
+      if(typeof _cwqAddSetting==='function')_cwqAddSetting(short,v);
+      else _setAuthDirty(true);
+      warn('AVI: persistir ajustes de coach falló, reintento al reconectar:',e&&e.message);
+    }
     return;
   }
   // Coach en modo auth: escribe la fila del cliente que cambió (no la suya). Ver _persistCoachWrite.

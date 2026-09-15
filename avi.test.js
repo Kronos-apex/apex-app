@@ -17288,14 +17288,21 @@ test('🔒 CABLEADO v589: se sube SOLO la clave que cambió, no el objeto entero
   assert.ok(i > 0, 'desapareció la rama de ajustes del coach');
   const cuerpo = src.slice(i, src.indexOf('\n  }', i))
     .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  assert.ok(/patch\[_COACH_SETTINGS_COL\[k\]\]\s*=\s*v/.test(cuerpo),
+  // v616 re-encuadre: la propiedad sigue siendo la MISMA —el nombre de la clave del patch sale de
+  // la tabla y no escrito a mano— pero ahora pasa por una variable, porque el fallo también la
+  // necesita para encolar. Se afirma el ORIGEN y el USO, no la forma de escribirlo en una línea.
+  assert.ok(/=\s*_COACH_SETTINGS_COL\[k\]/.test(cuerpo),
+    '🔴 la clave del patch dejó de salir de la tabla de ajustes');
+  assert.ok(/patch\[(short|_COACH_SETTINGS_COL\[k\])\]\s*=\s*v/.test(cuerpo),
     '🔴 el patch dejó de armarse con la clave que cambió');
   assert.ok(/UD\.patchCoachSettings\(patch\)/.test(cuerpo),
     '🔴 volvió a subirse por otra vía');
   assert.ok(!/upsertOwn\(\{coach_settings/.test(cuerpo),
     '🔴 volvió el objeto ENTERO: cada «leído» del chat sube otra vez los 374 ejercicios');
-  // Y la escritura sigue avisando cuando falla (no se perdió al reescribir la rama).
-  assert.ok(/_setAuthDirty\(true\)/.test(cuerpo), 'un fallo de ajustes volvió a ser silencioso');
+  // Y la escritura sigue avisando cuando falla (no se perdió al reescribir la rama). Desde v616
+  // lo que avisa es la COLA; `_setAuthDirty` queda de respaldo si el módulo del coach no cargó.
+  assert.ok(/_cwqAddSetting\(|_setAuthDirty\(true\)/.test(cuerpo),
+    'un fallo de ajustes volvió a ser silencioso');
 });
 
 test('🔒 v589 · el nombre corto de cada ajuste sale de UNA tabla, no escrito a mano', () => {
@@ -18866,6 +18873,78 @@ test('v615 · una correccion con fecha ilegible no borra el record', () => {
   assert.strictEqual(mergePRs(raro, otro).u1.e1.val, 60,
     '🔴 una fecha ilegible se leyo como AHORA y se comio el record bueno');
   assert.strictEqual(mergePRs(otro, raro).u1.e1.val, 60);
+});
+
+// ══════════════════════════════════════════════════════
+// v616 — LOS AJUSTES DEL COACH TAMBIÉN TIENEN COLA
+// ══════════════════════════════════════════════════════
+// 🔴 La rama de `coach_settings` se quedó fuera de la cola de v588: al fallar solo hacía `warn()`
+//    + `_setAuthDirty(true)`, y esa bandera NADIE la lee cuando el rol es coach. Lo que él edita
+//    de sí mismo —Nequi, nombre, sitio, y la BIBLIOTECA que v608 acaba de dejarle editar— se
+//    perdía en silencio, con localStorage diciéndole que había guardado.
+
+test('v616 · un ajuste que falla se puede REENVIAR (si no, la cola no serviria de nada)', () => {
+  const { coachQueueVerdict } = core;
+  const e = { col: 'cs:nequi', id: 'coach-1', val: '3001234567', ts: 1000 };
+  // 🔒 El `updated_at` de la fila del coach se mueve con TODO lo suyo (marcar un chat leido ya lo
+  //    mueve), asi que con la regla general esto quedaria RETENIDO PARA SIEMPRE = el aviso clavado
+  //    que el PO reporto el 14-sep. El patch fusiona en el servidor, asi que se exime.
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ok', updatedAt: '2030-01-01T00:00:00.000Z' }), 'subir',
+    '🔴 un ajuste del coach quedo retenido para siempre: el aviso se clava y no sube nada');
+});
+
+test('v616 🔒 CONTROL: la exencion NO se contagia al resto de la cola', () => {
+  const { coachQueueVerdict } = core;
+  const plan = { col: 'ax_c', id: 'c1', val: {}, ts: 1000 };
+  assert.strictEqual(coachQueueVerdict(plan, { estado: 'ok', updatedAt: '2030-01-01T00:00:00.000Z' }), 'retener',
+    '🔴 la exencion se comio la regla de no pisar: el reintento borra el entreno de hoy');
+  // Y un nombre que solo EMPIEZA parecido tampoco se cuela.
+  const casi = { col: 'csx', id: 'c1', val: {}, ts: 1000 };
+  assert.strictEqual(coachQueueVerdict(casi, { estado: 'ok', updatedAt: '2030-01-01T00:00:00.000Z' }), 'retener');
+});
+
+test('v616 · cada ajuste ocupa su propia entrada: cambiar uno no borra el otro de la cola', () => {
+  const { coachQueuePut } = core;
+  let l = coachQueuePut([], { col: 'cs:e', id: 'coach-1', name: 'Tus ajustes', val: [1, 2], ts: 1 }).list;
+  l = coachQueuePut(l, { col: 'cs:nequi', id: 'coach-1', name: 'Tus ajustes', val: '300', ts: 2 }).list;
+  assert.strictEqual(l.length, 2, '🔴 un ajuste saco de la cola al otro: se pierde el primero');
+  // Y re-guardar el MISMO ajuste reemplaza, no apila.
+  l = coachQueuePut(l, { col: 'cs:nequi', id: 'coach-1', name: 'Tus ajustes', val: '301', ts: 3 }).list;
+  assert.strictEqual(l.length, 2);
+  assert.strictEqual(l.find(x => x.col === 'cs:nequi').val, '301');
+});
+
+test('v616 · un ajuste huerfano o mudo se trata como el resto de la cola', () => {
+  const { coachQueueVerdict } = core;
+  const e = { col: 'cs:cn', id: 'coach-1', val: 'Camilo', ts: 1000 };
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'mudo' }), 'mudo');
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ausente' }), 'huerfana');
+});
+
+test('v616 · CABLEADO: el fallo va a la cola y el exito la limpia', () => {
+  const fs = require('fs'), path = require('path');
+  const sinComentarios = txt => txt.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const inf = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  // 🔒 El ancla es la rama COMPLETA: `_COACH_SETTINGS_KEYS.includes(k)` a secas cae primero en
+  //    `sv()`, que es otra función — el candado medía el sitio equivocado y salía rojo sobre
+  //    código correcto. Y el final se DERIVA del cierre de la rama, nunca de una ventana a ojo
+  //    (clase v483: un candado que se rompe al documentar enseña a no documentar).
+  const i = inf.indexOf("if(AUTH_ROLE==='coach' && _COACH_SETTINGS_KEYS.includes(k)){");
+  assert.ok(i > 0, 'desapareció la rama de ajustes del coach');
+  const rama = inf.slice(i, inf.indexOf('\n  }', i));
+  assert.ok(/_cwqAddSetting\(short,\s*v\)/.test(rama),
+    '🔴 el fallo de un ajuste del coach volvio a perderse en silencio');
+  assert.ok(/_cwqDropSetting\(short\)/.test(rama),
+    '🔴 al guardar bien no se limpia la cola: el aviso se queda para siempre');
+  // 🔒 Y el reintento NO puede volver al upsert de la columna entera (240 KB, leccion v589).
+  const co = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const fl = co.slice(co.indexOf('async function _flushCoachWrites('), co.indexOf('window.addEventListener(\'online\',()=>{ _flushCoachWrites(); })'));
+  assert.ok(/UD\.patchCoachSettings\(patch\)/.test(fl),
+    '🔴 el reintento de ajustes dejo de usar el patch del servidor');
+  assert.ok(!/upsertOwn\(\{coach_settings/.test(fl),
+    '🔴 el reintento sube la columna entera: la biblioteca de 240 KB de acompañante');
+  assert.ok(/coachQueueVerdict\(/.test(fl), '🔴 el reintento de ajustes decide por su cuenta');
 });
 
 // ══════════════════════════════════════════════════════
