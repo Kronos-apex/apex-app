@@ -2369,6 +2369,13 @@ function mergePRs(local, cloud) {
           //    solo tapa ese número y todo lo demás sigue compitiendo como un récord normal.
           //    Y solo mientras el candidato no sea POSTERIOR a la corrección: si lo es, es que
           //    volvió a levantarlo (caso medido: Samuel el 6-ago, el PO el 27-ago).
+          // 🔒 Dos CORRECCIONES del mismo récord (el coach lo tocó en dos aparatos): manda la más
+          //    reciente. Sin esta rama ninguna rechaza a la otra —cada una habla de un número
+          //    distinto— y caían a «gana el mayor», o sea que ganaba la corrección MÁS VIEJA.
+          if (cand && cand.corregido && cur && cur.corregido) {
+            if (tsOf(cand.corregido) > tsOf(cur.corregido)) m[k] = cand;
+            return;
+          }
           const rechaza = (corr, otro) => !!(corr && corr.corregido && corr.corregidoDe != null
             && valOf(otro) === corr.corregidoDe && setAt(otro) <= tsOf(corr.corregido));
           if (rechaza(cand, cur)) { m[k] = cand; return; }

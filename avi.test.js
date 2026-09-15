@@ -19014,11 +19014,28 @@ test('v618 🔒 y volver a levantar ESE peso despues de la correccion sigue gana
 
 test('v618 · una correccion VIEJA sin corregidoDe conserva la proteccion de v615', () => {
   const { mergePRs } = core;
-  const corr = { c1: { e1: { val: 20, kg: 20, reps: 12, date: '2026-07-29T10:00:00.000Z',
+  // 🔒 La fecha del RECORD corregido es ANTERIOR a la del rezagado a proposito: es lo unico que
+  //    obliga a mirar la fecha de la CORRECCION. Con las dos fechas iguales, el desempate rescata
+  //    y el sabotaje que ignora `corregido` sale VERDE (lo dijo la matriz, no yo).
+  const corr = { c1: { e1: { val: 20, kg: 20, reps: 12, date: '2026-07-01T10:00:00.000Z',
     corregido: '2026-08-10T15:00:00.000Z' } } };   // sin corregidoDe (anterior a v615)
   const stale = { c1: { e1: { val: 200000, kg: 200000, reps: 12, date: '2026-07-29T10:00:00.000Z' } } };
   assert.strictEqual(mergePRs(stale, corr).c1.e1.val, 20,
     '🔴 una correccion sin corregidoDe dejo de proteger: vuelve el record falso');
+  assert.strictEqual(mergePRs(corr, stale).c1.e1.val, 20);
+});
+
+test('v618 · dos correcciones del mismo record: manda la MAS RECIENTE', () => {
+  const { mergePRs } = core;
+  // El coach lo corrigio en dos aparatos. Ninguna «rechaza» a la otra (cada una habla de un
+  // numero distinto), asi que sin su propia regla caian a «gana el mayor» = gana la VIEJA.
+  const vieja = { c1: { e1: { val: 25, kg: 25, reps: 12, date: '2026-07-29T10:00:00.000Z',
+    corregido: '2026-08-01T10:00:00.000Z', corregidoDe: 200000 } } };
+  const nueva = { c1: { e1: { val: 20, kg: 20, reps: 12, date: '2026-07-29T10:00:00.000Z',
+    corregido: '2026-09-01T10:00:00.000Z', corregidoDe: 200000 } } };
+  assert.strictEqual(mergePRs(vieja, nueva).c1.e1.val, 20,
+    '🔴 gano la correccion MAS VIEJA: el coach corrige y su ultimo cambio no manda');
+  assert.strictEqual(mergePRs(nueva, vieja).c1.e1.val, 20);
 });
 
 // ══════════════════════════════════════════════════════
