@@ -4,6 +4,37 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v618: LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO MAYOR
+
+**De dónde sale:** el segundo hallazgo de Fable. v615 arregló que una copia rezagada revirtiera la
+corrección del coach **y de paso metió una regresión que la regla vieja no tenía** — Fable la
+demostró con `mergePRs` real, no hipotética.
+
+**El caso:** un teléfono se queda sin red mientras la persona bate su marca de verdad (30 kg el
+20-ago). El coach, que solo ve el typo viejo de 200.000 en la nube, lo corrige a 20 el 1-sep.
+Cuando el teléfono sincroniza, **su récord legítimo pierde contra la corrección**. La regla de
+v615 compara dos relojes distintos —cuándo se LOGRÓ contra cuándo se ADMINISTRÓ— y trata «llegó
+tarde a sincronizar» como «es más viejo». Con la regla anterior (puro máximo) ese caso funcionaba.
+
+**El arreglo, de raíz y no aceptando el riesgo:** `corregidoDe` dice EXACTAMENTE qué número
+rechazó el coach, así que la corrección **tapa ese número y nada más**; todo lo demás compite
+como un récord normal. Y solo mientras el candidato no sea POSTERIOR a la corrección: si lo es, es
+que volvió a levantarlo (Samuel el 6-ago, el PO el 27-ago). Una corrección vieja sin `corregidoDe`
+conserva la protección de v615.
+
+🔍 **Y siguiendo un sabotaje VERDE apareció un caso que ninguna de las dos reglas cubría:** dos
+correcciones del mismo récord (el coach lo tocó en dos aparatos). Ninguna rechaza a la otra
+—cada una habla de un número distinto— así que caían a «gana el mayor» y **ganaba la corrección
+MÁS VIEJA**. Ahora manda la más reciente. El sabotaje verde no era un test flojo ni código
+sobrante: era un hueco de cobertura que señalaba una rama que faltaba.
+
+**QA:** suite **1196 → 1201** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v618`
+**6/6 muerden a la primera** (el nº 1 ES el caso de Fable) · `_sabotaje-v615` **6/6** sigue
+mordiendo con la regla nueva. El CONTROL está en las dos matrices: sin corrección de por medio,
+el récord sigue siendo un máximo.
+
+---
+
 ## ⏮️ 2026-09-15 — v617: DOS LECTORES QUE CONTABAN LÁPIDAS — HALLAZGO DE FABLE
 
 **De dónde sale:** la verificación adversarial de Fable sobre v614-v616. Aprobó las tres, y en

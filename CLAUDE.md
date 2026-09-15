@@ -1365,6 +1365,27 @@ pregunta con qué FRECUENCIA se mueve la marca que consulta — si se mueve por 
 que proteges, la regla no discrimina y hay que acotarla al grano que sí importa. Y la exención se
 escribe con su CONTROL: un sabotaje que la extienda a toda la cola tiene que poner algo en rojo.**
 (v616)
+- 🔴 **UN ACTO DELIBERADO NO SE FECHA CON EL MISMO RELOJ QUE EL DATO QUE CORRIGE: son dos relojes
+y compararlos pierde trabajo legítimo.** v615 hizo ganar a la corrección del coach por ser «la más
+reciente», y con eso se comía un récord REAL que venía de un teléfono sin red: la fecha del récord
+dice cuándo se LOGRÓ y la de la corrección cuándo se ADMINISTRÓ, así que «llegó tarde a
+sincronizar» se leía como «es más viejo». **La regla correcta es la ESTRECHA: una corrección tapa
+exactamente el valor que rechazó** (`corregidoDe` lo dice), y todo lo demás sigue compitiendo con
+la regla de siempre. **Reglas: (1) al hacer que un acto administrativo le gane a un dato, acota su
+alcance a lo que ese acto nombra — si no puede nombrarlo, el acto no debería ganar; (2) el arreglo
+de un arreglo se mide contra la conducta ANTERIOR: aquí la regla vieja acertaba en ese caso, o sea
+que era una regresión nuestra y no una limitación heredada; (3) lo destapó la verificación
+adversarial respondiendo a una pregunta que yo mismo había escrito en el briefing («¿puede la regla
+perder un récord legítimo?») — una pregunta que uno se hace y no contesta es un hueco, no una
+formalidad.** (v618)
+- 🔴 **UN SABOTAJE VERDE TIENE UNA CUARTA CAUSA QUE NO ESTABA EN LA LISTA: señala una RAMA QUE
+FALTA.** Las tres conocidas eran test débil · código redundante · sabotaje no aplicado (v482). En
+v618 el sabotaje que ignoraba la fecha de la corrección salió verde, y siguiendo el hilo apareció
+que **dos correcciones del mismo récord** (el coach lo tocó en dos aparatos) no las cubría ninguna
+regla: ninguna rechaza a la otra, caían a «gana el mayor» y **ganaba la corrección MÁS VIEJA**. El
+verde no era un test flojo: era el borde de un caso que el código no contemplaba. **Al investigar
+un sabotaje verde, pregunta también qué ENTRADA haría que esa línea importara — si no existe
+ninguna, sobra; si existe y no está probada, falta una rama.** (v618)
 
 ---
 
@@ -1561,7 +1582,25 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-15 (**v616 — LOS AJUSTES DEL COACH TAMBIÉN TIENEN COLA**. Punto 3
+*Última actualización: 2026-09-15 (**v618 — LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO
+MAYOR** · **v617 — DOS LECTORES CONTABAN LÁPIDAS**. Los dos salen de la **verificación adversarial
+de Fable** sobre v614-v616, que aprobó las tres y tumbó una frase de cada commit. **v617:**
+«corregí TODOS los lectores» era falso — `applyProfileDisclosure` y `shouldShowDataOnboarding`
+contaban `DB.bodyweight` crudo, y el primero tenía el aviso de esta clase escrito **dos líneas más
+abajo en la misma función**. 🔴 Verificando el segundo apareció que ahí las TRES colecciones se
+contaban crudas: medidas desde **v566** y fotos desde **v568**, o sea dos versiones mal antes de
+que el peso llegara. Y **el candado de la clase YA EXISTÍA** (`🔒 nadie cuenta lapidas como tomas`)
+y no se extendió a `bwLive`: se AMPLIÓ, no se escribió otro al lado. **v618:** v615 arregló la
+reversión de la corrección del coach **y metió una regresión que la regla vieja no tenía** — Fable
+la demostró con `mergePRs` real: un teléfono sin red donde la persona batió su marca de verdad
+perdía contra una corrección posterior que hablaba de OTRO número. Compara dos relojes, cuándo se
+LOGRÓ contra cuándo se ADMINISTRÓ. Cerrado de raíz: `corregidoDe` dice qué rechazó el coach, así
+que la corrección tapa **ese número y nada más**. 🔍 Y siguiendo un sabotaje VERDE apareció un caso
+que ninguna regla cubría —**dos correcciones del mismo récord**, donde ganaba la MÁS VIEJA—: el
+verde no era un test flojo, era una rama que faltaba. Suite **1196 → 1201** en los tres modos, hook
+12/12, matriz nueva `_sabotaje-v618` **6/6 a la primera** (el nº 1 ES el caso de Fable) y
+`_sabotaje-v615` **6/6** sigue mordiendo con la regla nueva) · (**v616 — LOS AJUSTES DEL COACH
+TAMBIÉN TIENEN COLA**. Punto 3
 del radar, y se quedaba corto: la rama de `coach_settings` quedó fuera de la cola de v588 y al
 fallar hacía `warn()` + `_setAuthDirty(true)`… **una bandera que NADIE lee cuando el rol es coach**
 (`_enterCoachAuth` devuelve antes del único bloque que la consume, y ese bloque es para la fila del
