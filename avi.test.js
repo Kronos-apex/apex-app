@@ -4868,6 +4868,20 @@ test('🔒 nadie cuenta lapidas como tomas (Julian QA, v566)', () => {
   // v568: las fotos tienen lapidas por la misma razon, y el MISMO lector las contaba.
   assert.ok(/photoLive\(/.test(cuerpo),
     'la tarjeta de seguimiento cuenta lapidas de fotos como fotos');
+  // 🔴 v617: y el PESO desde v614. Este candado existia para ESTA clase exacta y no se extendio
+  //    cuando el peso gano lapidas — por eso el defecto entro con la suite en verde. Al darle
+  //    lapidas a una coleccion nueva, se amplia el candado de la clase, no se escribe otro.
+  assert.ok(/bwLive\(/.test(cuerpo),
+    'la tarjeta de seguimiento cuenta lapidas de peso como pesadas');
+  // 🔒 Y el OTRO lector que decide si el asistente del Dia 1 vuelve a ofrecerse. Contaba las
+  //    TRES colecciones crudas: medidas (v566) y fotos (v568) llevaban dos versiones mal ANTES
+  //    de que el peso se sumara, y nadie lo habia mirado.
+  const extra = lee('app-6-extra.js');
+  const k = extra.indexOf('function shouldShowDataOnboarding');
+  assert.ok(k > 0, 'se movio shouldShowDataOnboarding');
+  const ob = extra.slice(k, extra.indexOf('\n}', k));
+  assert.ok(/bwLive/.test(ob) && /medLive/.test(ob) && /photoLive/.test(ob),
+    'el asistente de datos cuenta lapidas: quien borra su unica toma no lo vuelve a ver');
   const salud = lee('app-5-salud.js');
   const j = salud.indexOf('const vistas=');
   assert.ok(j > 0 && /medLive\(/.test(salud.slice(j, j + 90)),

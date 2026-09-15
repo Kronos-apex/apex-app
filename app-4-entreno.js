@@ -660,7 +660,9 @@ function applyProfileDisclosure(clientId){
   const prs=(DB.prs||{})[clientId]||{};
   const nut=(DB.nutrition||{})[clientId];
   const hasNut=!!(nut&&(nut.kcal||nut.plan||nut.examples));
-  const bw=(DB.bodyweight||{})[clientId]||[];
+  // 🔴 v617: y el PESO igual, desde v614. Este lector ya tenía el aviso escrito dos líneas abajo
+  //    para las medidas y aun así el peso entró crudo — la lección de v566 estaba AQUÍ MISMO.
+  const bw=(typeof bwLive==='function')?bwLive((DB.bodyweight||{})[clientId]||[]):((DB.bodyweight||{})[clientId]||[]);
   // 🔴 `medLive`, no el largo crudo: desde v566 borrar una medida deja una LAPIDA
   //    dentro de esta misma coleccion. Contandolas, quien borra su unica toma se queda
   //    con «Mi seguimiento personal» desplegado ensenando su propio estado vacio.

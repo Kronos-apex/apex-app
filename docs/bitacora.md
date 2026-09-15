@@ -4,6 +4,37 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v617: DOS LECTORES QUE CONTABAN LÁPIDAS — HALLAZGO DE FABLE
+
+**De dónde sale:** la verificación adversarial de Fable sobre v614-v616. Aprobó las tres, y en
+v614 tumbó una frase del commit: **«corregí TODOS los lectores» era falso.** Dos lectores seguían
+contando `DB.bodyweight` crudo, con lápidas dentro.
+
+- `applyProfileDisclosure` (app-4): decide si «Mi seguimiento personal» se abre o queda colapsado.
+  **El aviso de esta clase estaba escrito DOS LÍNEAS más abajo, en la misma función**, para las
+  medidas — y el peso entró crudo igual.
+- `shouldShowDataOnboarding` (app-6): decide si el asistente del Día 1 vuelve a ofrecerse.
+
+🔴 **Y verificando el segundo apareció algo que no es mío:** ahí las **tres** colecciones se
+contaban crudas. Medidas tienen lápidas desde **v566** y fotos desde **v568**, así que ese lector
+llevaba **dos versiones** equivocado antes de que el peso se sumara: quien borraba su única medida
+quedaba marcado como «ya tiene datos» para siempre y el asistente no volvía a salirle nunca.
+
+🔴 **Lo más incómodo: el candado que debía cazar esto YA EXISTÍA.** `🔒 nadie cuenta lapidas como
+tomas (Julian QA, v566)` revisa que `applyProfileDisclosure` use `medLive` y `photoLive`… y nadie
+lo extendió a `bwLive` cuando v614 le dio lápidas al peso. **Al darle lápidas a una colección
+nueva, se AMPLÍA el candado de la clase; escribir uno nuevo al lado deja el viejo mintiendo.**
+Ahora cubre las dos funciones y las tres colecciones.
+
+**Impacto:** cosmético en el primero (una sección desplegada enseñando su propio estado vacío) y
+funcional menor en el segundo. Ni pérdida de datos ni resurrección — por eso Fable lo dio como
+RESERVA y no como rechazo.
+
+**QA:** suite 1196/1196 en los tres modos · hook 12/12 · el candado ampliado cae con cualquiera de
+los tres lectores crudos.
+
+---
+
 ## ⏮️ 2026-09-15 — v616: LOS AJUSTES DEL COACH TAMBIÉN TIENEN COLA
 
 **De dónde sale:** punto 3 del radar. `_persistCoachWrite` ganó su cola en v588 y **la rama de

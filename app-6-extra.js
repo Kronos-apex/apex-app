@@ -1999,9 +1999,14 @@ function shouldShowDataOnboarding(clientId){
   const bw = ld('ax_bw', {});
   const med = ld('ax_med', {});
   const photos = ld('ax_photos', {});
-  const hasBW = (bw[clientId] || []).length > 0;
-  const hasMed = (med[clientId] || []).length > 0;
-  const hasPhoto = (photos[clientId] || []).length > 0;
+  // 🔴 v617 · LAS TRES COLECCIONES TIENEN LÁPIDAS y las tres se contaban CRUDAS: medidas desde
+  //    v566, fotos desde v568 y el peso desde v614 — o sea que esto llevaba DOS versiones mal
+  //    antes de que el peso se sumara. Contando lápidas, quien borra su única toma queda con
+  //    «ya tiene datos» para siempre y el asistente del Día 1 no vuelve a ofrecerse jamás.
+  const vivas = (fn, l) => (typeof fn === 'function') ? fn(l || []) : (l || []);
+  const hasBW = vivas(typeof bwLive === 'function' ? bwLive : null, bw[clientId]).length > 0;
+  const hasMed = vivas(typeof medLive === 'function' ? medLive : null, med[clientId]).length > 0;
+  const hasPhoto = vivas(typeof photoLive === 'function' ? photoLive : null, photos[clientId]).length > 0;
   return !hasBW && !hasMed && !hasPhoto;
 }
 
