@@ -18729,6 +18729,13 @@ test('v614 🔒 los lectores del peso no ven las lapidas (cuentan e indexan bien
   // El peso de HOY: sin el guard, la lapida (la mas reciente por fecha) ganaba y daba NaN.
   assert.strictEqual(lastBodyweightKg(tras), 95, '🔴 el peso del plan salio de una lapida');
   assert.strictEqual(nutWeightFor({ weight: 80 }, tras), 95);
+  // 🔒 Y la regla se afirma SOLA, no por la forma que hoy tiene una lápida: `tombDelete` no le
+  //    deja `kg`, así que sin esto el guard de `lastBodyweightKg` era letra muerta y su sabotaje
+  //    salía VERDE. Una lápida no es un pesaje TRAIGA LO QUE TRAIGA.
+  const conKg = [{ id: 'd:2026-09-10', date: '2026-09-10', kg: 96, del: true, mAt: '2026-09-14T10:00:00.000Z' },
+    { date: '2026-09-01', kg: 95 }];
+  assert.strictEqual(lastBodyweightKg(conKg), 95,
+    '🔴 una lapida con kg dentro se colo como pesaje: el plan sale de un peso borrado');
   const src = bodyWeightSource({ weight: 80 }, tras, new Date('2026-09-15T12:00:00.000Z'));
   assert.strictEqual(src.tomas, 1, '🔴 «cuantas veces se ha pesado» cuenta los borrados');
   assert.strictEqual(src.date, '2026-09-01',
@@ -18777,6 +18784,20 @@ test('v614 · CABLEADO: la fila fusiona el peso con lapidas, y los dos formulari
   //    siquiera aplicaba el tope de 52.
   const log = a4.slice(a4.indexOf('function logBodyWeight('), a4.indexOf('\n}', a4.indexOf('function logBodyWeight(')));
   assert.ok(/bwUpsert\(/.test(log), '🔴 «Mi peso» volvio a tener su propia copia del guardado');
+  // 🔒 LOS OTROS TRES LECTORES. Sin esto, sus sabotajes salen VERDES: la suite no pinta, así que
+  //    lo único que puede vigilar un render es de dónde SACA la lista. Comentarios fuera antes de
+  //    mirar (clase v552/v570: el comentario que explica una decisión contiene lo que se prohíbe).
+  const sinComentarios = txt => txt.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const a4L = sinComentarios(a4);
+  assert.ok(/const bwEntries=bwLive\(/.test(a4L),
+    '🔴 el perfil volvio a leer el indice 0 de la coleccion cruda: «undefined kg»');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const spark = a3.slice(a3.indexOf('function miniSparkline('), a3.indexOf('\n}', a3.indexOf('function miniSparkline(')));
+  assert.ok(/bwLive\(/.test(spark), '🔴 la grafica del coach volvio a la coleccion cruda');
+  assert.ok(/const _bwList=bwLive\(/.test(a3),
+    '🔴 el aviso del coach cuenta lapidas como pesadas');
+
   const a6 = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
   const dob = a6.slice(a6.indexOf('function _dobSaveBW('), a6.indexOf('\n}', a6.indexOf('function _dobSaveBW(')));
   assert.ok(/bwUpsert\(/.test(dob), '🔴 el asistente del Dia 1 volvio a guardar por su cuenta');
