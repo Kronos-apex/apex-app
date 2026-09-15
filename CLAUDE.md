@@ -1386,6 +1386,23 @@ regla: ninguna rechaza a la otra, caían a «gana el mayor» y **ganaba la corre
 verde no era un test flojo: era el borde de un caso que el código no contemplaba. **Al investigar
 un sabotaje verde, pregunta también qué ENTRADA haría que esa línea importara — si no existe
 ninguna, sobra; si existe y no está probada, falta una rama.** (v618)
+- 🔴 **EN UN LIENZO NO HAY REFLOW QUE AVISE: lo que se monta encima sale en la imagen que la
+persona YA COMPARTIÓ.** Al agrandar el retrato de la tarjeta del cierre (radio 92 → 140, del 17% al
+26% del ancho), las cinco piezas de debajo tenían su `y` escrita a mano: con seis números sueltos,
+tocar el radio deja seis sitios que hay que acordarse de mover y el que se olvide no da ningún
+error. **Reglas: (1) en un dibujo, la posición de lo que va debajo se DERIVA de lo que va arriba
+(`_dy`), nunca se re-teclea; (2) el espacio se SACA de donde está medido — aquí sobraban ~120 px
+muertos en el caso apretado (4 cifras + 3 récords), así que no hubo que quitarle sitio a nada; (3)
+el caso que se prueba es el APRETADO, porque con un récord sobra sitio y la prueba no probaría
+nada; (4) se MIRA la imagen, y en las dos variantes — con foto y con el círculo de iniciales, que
+es lo que ve la mayoría (solo 3 asesorados tienen foto).** (v619)
+- 🔴 **UN CANDADO QUE CALCULA CON LAS CONSTANTES NO VIGILA QUE EL CÓDIGO LAS APLIQUE.** El de v619
+leía el radio del archivo, computaba dónde termina el caso apretado y afirmaba que no choca con el
+pie — y salía **VERDE con tres sabotajes puestos**, porque quitarle el desplazamiento a las cifras
+o al nombre no movía ni un número de mi cuenta. La cuenta describía una app que el código ya no
+era. **Regla: junto a la aserción calculada va la de CABLEADO — que cada pieza lleve de verdad el
+término que la ata a lo de arriba.** Es la clase de v566 («el candado del motor no protege la
+pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos. (v619)
 
 ---
 
@@ -1582,7 +1599,18 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-15 (**v618 — LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO
+*Última actualización: 2026-09-15 (**v619 — EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE**.
+Reporte del PO: *«se ve muy pequeña la foto»*. Medido sobre el lienzo real: el radio era **92**, o
+sea 184 px en un lienzo de 1080 — **el 17% del ancho**, en una imagen que existe para que se vea
+QUIÉN entrenó. Ahora **280 px = el 26%** (+52% de diámetro, más del doble de área). El espacio
+también está medido: en el caso APRETADO (4 cifras y 3 récords, el máximo) sobraban **~120 px
+muertos** entre la última tarjeta y la raya del pie. 🔒 Las cinco piezas de debajo **derivan** su
+posición del círculo, porque **en un lienzo no hay reflow que avise** y lo que se monta encima sale
+en la imagen que la persona ya compartió. Verificado **MIRANDO** las dos variantes (sonda nueva
+`_shot-wfshare.mjs`): con foto y con el círculo de iniciales, que es lo que ve la mayoría — **solo
+3 asesorados tienen foto**. Suite **1201 → 1203**, `_sabotaje-v619` **6/6** — la primera corrida
+dio **3**: mi candado calculaba la colisión con las constantes y **no comprobaba que el código las
+aplicara**) · (**v618 — LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO
 MAYOR** · **v617 — DOS LECTORES CONTABAN LÁPIDAS**. Los dos salen de la **verificación adversarial
 de Fable** sobre v614-v616, que aprobó las tres y tumbó una frase de cada commit. **v617:**
 «corregí TODOS los lectores» era falso — `applyProfileDisclosure` y `shouldShowDataOnboarding`

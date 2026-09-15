@@ -4,6 +4,38 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v619: EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE
+
+**Reporte del PO:** *«dale más tamaño a la foto de los asesorados que se comparte al terminar el
+entrenamiento, se ve muy pequeña»*.
+
+**Medido sobre el lienzo real, no a ojo:** el radio era **92**, o sea 184 px de diámetro en un
+lienzo de 1080 — **el 17% del ancho**. En una imagen que existe para que se vea QUIÉN entrenó, la
+persona era lo más chico de la tarjeta. Ahora **140 de radio = 280 px = el 26%**, o sea **+52% de
+diámetro y más del doble de área**.
+
+**De dónde sale el espacio, también medido:** en el caso APRETADO (4 cifras y 3 récords, el
+máximo que caben) sobraban **~120 px muertos** entre la última tarjeta y la raya del pie, y otros
+38 entre el subrayado de «AVI» y el círculo. No hubo que quitarle sitio a nada.
+
+🔒 **Las cinco cosas que van debajo DERIVAN su posición del círculo** (`_dy`), no la llevan escrita
+a mano: con seis números sueltos, tocar el radio deja seis sitios que hay que acordarse de mover, y
+**en un lienzo no hay reflow que avise** — lo que se monta encima sale en la imagen que la persona
+ya compartió en su historia.
+
+**Verificado MIRANDO la imagen, en las dos variantes** (sonda nueva `_shot-wfshare.mjs`, que dibuja
+el lienzo real y lo exporta): con foto de perfil y con el **círculo de iniciales**, que es lo que
+hoy ve la mayoría — **solo 3 asesorados tienen foto**.
+
+**QA:** suite **1201 → 1203** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v619`
+**6/6 muerden** — la primera corrida dio **3**: mi candado calculaba la colisión con las
+constantes pero **no comprobaba que el código las APLICARA**, así que quitarle el desplazamiento a
+las cifras o al nombre no movía ni un número (clase v566). 🔁 Dos candados viejos se
+**re-encuadraron**: el de v597 clavaba las coordenadas como dígitos literales, y el de `_afirma`
+pedía los dientes en una forma concreta.
+
+---
+
 ## ⏮️ 2026-09-15 — v618: LA CORRECCIÓN TAPA EL NÚMERO QUE QUITÓ, NO TODO LO MAYOR
 
 **De dónde sale:** el segundo hallazgo de Fable. v615 arregló que una copia rezagada revirtiera la
