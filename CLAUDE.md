@@ -1331,6 +1331,20 @@ del motor no protege la pantalla») aplicada a las lápidas: **al meter un estad
 colección, cada lector que la PINTA necesita su aserción estática de que pide las vivas**, y va
 sobre el código sin comentarios (clase v552/v570). (v614)
 
+- 🔴 **UNA FUSIÓN QUE SE QUEDA CON «EL MEJOR» DESHACE TODA CORRECCIÓN A LA BAJA — y el daño es
+INVISIBLE, al revés que un borrado que resucita.** `mergePRs` toma el MÁXIMO porque un récord es un
+máximo, y `coachEditPR` existe justo para **bajar** un récord falso (200.000 kg de un dedo gordo):
+la copia rezagada traía el valor viejo, más alto, y ganaba. **Reglas: (1) cuando una colección se
+fusiona por «el mejor valor», pregunta si existe alguna operación que BAJE ese valor a propósito —
+si la hay, la fusión tiene que distinguir un dato de un ACTO; (2) un acto deliberado se reconoce
+porque deja su propia marca de tiempo (`corregido`), y esa marca NO es la fecha del dato (aquí
+`date` es cuándo OCURRIÓ el récord y no se toca a propósito: mirar `date` revierte una corrección
+hecha hoy sobre una sesión vieja — lo destapó un sabotaje VERDE); (3) la regla necesita SIEMPRE su
+segunda mitad, o el acto bloquea para siempre: un récord nuevo posterior tiene que poder ganarle a
+la corrección, porque está medido que la gente vuelve a levantar el peso y el récord se re-crea
+solo; (4) el CONTROL va en la matriz — si el récord deja de ser un máximo, tiene que caer algo.**
+(v615)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1526,7 +1540,20 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-15 (**v614 — BORRAR UN PESO BORRA DE VERDAD**. Tercera víctima de
+*Última actualización: 2026-09-15 (**v615 — LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA
+FUSIÓN**. Apareció buscando dónde poner la lápida de los récords, y es PEOR que lo que se venía a
+arreglar: `mergePRs` se queda con el MAYOR —un récord es un máximo— pero `coachEditPR` existe justo
+para BAJAR un récord falso (los 200.000 kg de un dedo gordo), así que la copia rezagada traía el
+valor viejo, más alto, y **la corrección del coach se deshacía sola, sin dejar rastro**. Un borrado
+que resucita se ve; un número que vuelve a estar mal, no. **Medido: 8 correcciones a mano vivas
+(7 del PO) y 0 reversiones observadas** — el candidato que saltó lo tumbó su control (entrenó ese
+día y lo levantó). La regla no es «gana el más reciente»: es que **una corrección explícita es un
+hecho con fecha**, y cuando alguno de los dos lados la trae gana el que se estableció después — con
+su segunda mitad obligatoria, que un récord NUEVO posterior le gane a la corrección, o quedaría
+bloqueada para siempre. 🔒 `prfixSave` no toca `date` a propósito (es cuándo OCURRIÓ), y mirar
+`date` en vez de `corregido` revierte una corrección hecha hoy sobre una sesión vieja: lo destapó
+un sabotaje VERDE. Suite **1187 → 1191** en los tres modos, hook 12/12, `_sabotaje-v615` **6/6
+muerden** — la primera corrida dio 4 y los dos verdes eran huecos míos) · (**v614 — BORRAR UN PESO BORRA DE VERDAD**. Tercera víctima de
 la clase de v566/v568: `deleteBodyWeight` quitaba la toma con un `filter` y `mergeAuthRow` fusionaba
 el peso por UNIÓN por fecha, así que lo borrado volvía en la primera fusión tras entrenar sin
 conexión. 🔴 **Nace de que el PO mandó arreglar `deletePhoto` y eso YA estaba cerrado desde v568**:

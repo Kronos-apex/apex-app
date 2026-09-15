@@ -4,6 +4,40 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-15 — v615: LA CORRECCIÓN DE UN RÉCORD YA NO LA REVIERTE LA FUSIÓN
+
+**De dónde sale:** buscando dónde poner la lápida de los récords apareció un defecto **peor que el
+que se venía a arreglar**, en la misma función. `mergePRs` se queda con el MAYOR —un récord ES un
+máximo, y eso está bien— pero `coachEditPR` existe justo para **bajar** un récord falso: el caso
+vivo son los **200.000 kg** que un dedo gordo le metió a Samuel. Una copia rezagada trae el valor
+viejo, que es más alto, así que **ganaba**: la corrección del coach se deshacía sola, en silencio y
+sin dejar rastro. Un borrado que resucita se ve; un número que vuelve a estar mal, no.
+
+**Medido** (45 respaldos locales, 10-jul → 15-sep): **8 correcciones a mano vivas** —7 del PO, 1 de
+sus asesorados— y **0 reversiones observadas**. El candidato que saltó lo tumbó su control: el e53
+del PO «volvió» a 15 kg el 27-ago porque **entrenó ese día** y lo levantó.
+
+**La regla no es «gana el más reciente»** —un récord sin tocar sigue siendo un máximo— sino que
+**una corrección explícita es un hecho con fecha**: cuando alguno de los dos lados la trae, gana el
+que se estableció después. La segunda mitad es obligatoria: sin ella la corrección **bloquearía
+para siempre**, y está medido que la gente vuelve a levantar el peso y el récord se re-crea solo,
+que es exactamente lo que promete el botón.
+
+🔒 `prfixSave` **no toca `date` a propósito** (es cuándo OCURRIÓ), así que el momento de la
+corrección se lee de `corregido` y no de la fecha del récord — y ese matiz es justo lo que destapó
+un sabotaje verde: mirar solo `date` revierte una corrección hecha hoy sobre una sesión vieja.
+
+**QA:** suite **1187 → 1191** en los tres modos · hook 12/12 · matriz nueva `_sabotaje-v615`
+**6/6 muerden** (la primera corrida dio 4: uno era un caso que no cubrí y el otro una aserción que
+solo pedía «devolvió algo», que el defecto satisface). El **control** está en la matriz: si el
+récord deja de ser un máximo, caen 3 pruebas.
+
+**⏭️ Sigue faltando la lápida de los récords borrados** — no es este defecto, y su bloqueo está
+explicado en v614: viviría en la columna `prs`, que una edge function cuenta para la vitrina
+pública.
+
+---
+
 ## ⏮️ 2026-09-15 — v614: BORRAR UN PESO BORRA DE VERDAD (3ª víctima de la clase de v566/v568)
 
 **De dónde sale:** el PO mandó arreglar `deletePhoto`, que mi radar arrastraba como abierto. Lo
