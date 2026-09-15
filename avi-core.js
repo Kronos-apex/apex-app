@@ -2385,8 +2385,10 @@ function mergeAuthRow(localRow, cloudRow) {
   out.history = pair(mergeHistory, localRow.history || [], cloudRow.history || []);
   out.prs = pair(mergePRs, localRow.prs || {}, cloudRow.prs || {});
   out.msgs = mergeMsgs(localRow.msgs, cloudRow.msgs);
-  const byDate = it => String(it && it.date || '');
-  out.bodyweight = pair((l, c) => mergeClientArrays(l, c, byDate, 'desc'), localRow.bodyweight || [], cloudRow.bodyweight || []);
+  // 🔴 El peso tampoco usa la unión por fecha: desde v614 se puede BORRAR, y una unión no sabe
+  //    de borrados — la toma eliminada volvía de la nube en la primera fusión tras entrenar
+  //    sin conexión. `mergeBodyweight` fusiona por día y deja ganar la modificación más reciente.
+  out.bodyweight = pair((l, c) => mergeBodyweight(l, c), localRow.bodyweight || [], cloudRow.bodyweight || []);
   // 🔴 Las medidas NO usan la unión por fecha: desde v566 se pueden BORRAR, y una unión
   //    no sabe de borrados — lo eliminado en un teléfono volvía desde la copia de la nube.
   //    `mergeMedidas` fusiona por id y deja ganar a la modificación más reciente.
@@ -4291,6 +4293,49 @@ function mergePhotos(local, cloud) {
   return mergeTombstoned(local, cloud, photoEntryId, PHOTO_CAP, PHOTO_TUMBA_DIAS);
 }
 
+// ── PESO CORPORAL (v614) ───────────────────────────────────────────────
+// 🔴 TERCERA VÍCTIMA DE LA MISMA CLASE. `deleteBodyWeight` quitaba la toma con un `filter` y
+//    `mergeAuthRow` fusionaba el peso por UNIÓN por fecha: el peso borrado volvía en la
+//    siguiente fusión tras un entreno sin conexión. Medido sobre 45 respaldos (10-jul→15-sep):
+//    1 borrado de peso real y 0 resurrecciones observadas — porque la fusión solo corre cuando
+//    el arranque anterior quedó `dirty`. El defecto es estructural, no histórico: se cierra
+//    delegando en la misma capa de lápidas, no copiándola (lección v568).
+const BW_CAP = 52;              // el tope que YA aplicaba `logBodyWeight`: una toma semanal por año
+const BW_TUMBA_DIAS = 400;
+// El peso no tiene id propio: su identidad ES su día (un día, un peso — por eso registrar
+// dos veces el mismo día reemplaza en vez de añadir). Mismo convenio que las fotos viejas.
+function bwEntryId(e) {
+  if (!e) return '';
+  if (e.id) return String(e.id);
+  return 'd:' + String(e.date || '');
+}
+function bwLive(list) { return tombLive(list, bwEntryId); }
+function bwDelete(list, id, nowIso) {
+  return tombDelete(list, id, bwEntryId, BW_CAP, BW_TUMBA_DIAS, nowIso);
+}
+function bwPrune(list, nowIso) { return tombPrune(list, bwEntryId, BW_CAP, BW_TUMBA_DIAS, nowIso); }
+function mergeBodyweight(local, cloud) {
+  return mergeTombstoned(local, cloud, bwEntryId, BW_CAP, BW_TUMBA_DIAS);
+}
+
+// 🔴 UN SOLO MOTOR PARA LOS DOS FORMULARIOS. «Mi peso» (`logBodyWeight`) y el asistente del
+//    Día 1 (`_dobSaveBW`) tenían cada uno su copia de esta lógica, y ya habían divergido: el
+//    del asistente NO aplicaba el tope de 52. Dos copias de una regla es como se separan dos
+//    verdades (clase v566/v448).
+// 🔒 Y aquí está el detalle que hace falta con lápidas: si el día que se registra tiene una,
+//    el registro nuevo la REEMPLAZA y estrena `mAt`. Escribirle el `kg` encima a la lápida
+//    (que es lo que hacía el `findIndex` viejo) dejaría `del:true` intacto y el peso recién
+//    tecleado quedaría invisible para siempre.
+function bwUpsert(list, date, kg, nowIso) {
+  const at = nowIso || new Date().toISOString();
+  const lista = tombNormalize(Array.isArray(list) ? list : [], bwEntryId);
+  const id = bwEntryId({ date: date });
+  const i = lista.findIndex(e => e.id === id);
+  const entrada = { id: id, date: date, kg: kg, mAt: at };
+  if (i > -1) lista[i] = entrada; else lista.unshift(entrada);
+  return bwPrune(lista, at);
+}
+
 const MED_FIELDS = [
   { key: 'cuello',          label: 'Cuello',           grupo: 'Tronco' },
   // 13º campo, pedido por el PO el 10-sep-2026: fue a registrar sus hombros y no encontró dónde.
@@ -5989,6 +6034,7 @@ function lastBodyweightKg(bwList) {
   let kgGanador = null, tGanador = -Infinity, kgSinFecha = null;
   for (const e of bwList) {
     if (!e) continue;
+    if (e.del) continue;          // una lápida no es un pesaje (v614)
     const kg = parseFloat(e.kg);
     if (!(kg > 0)) continue;
     if (kgSinFecha == null) kgSinFecha = kg;
@@ -6049,7 +6095,11 @@ function bodyWeightSource(client, bwList, now) {
   }
   // La lista se guarda DESCENDENTE, pero el «más reciente» se decide por FECHA y nunca por
   // posición — es el bug de v448/v511 y no se reintroduce leyendo un extremo.
-  const conFecha = (bwList || []).filter(x => x && x.date != null && x.date !== '');
+  // 🔒 v614: las lápidas se excluyen ANTES de contar y de elegir la más reciente. Con ellas
+  //    dentro, «tomas» contaría borrados y `ult` podía ser la lápida — o sea el kg de un día
+  //    rotulado con la fecha de OTRO. Es la clase de v566: un estado nuevo en la colección le
+  //    cambia la forma a todos sus lectores, no solo a los que pintan.
+  const conFecha = (bwList || []).filter(x => x && !x.del && x.date != null && x.date !== '');
   let ult = null;
   conFecha.forEach(x => { const t = new Date(x.date).getTime(); if (isNaN(t)) return; if (!ult || t > ult._t) ult = Object.assign({ _t: t }, x); });
   const ageDays = ult ? Math.floor((nowTs - ult._t) / 86400000) : null;
@@ -11038,6 +11088,14 @@ if (typeof module !== 'undefined' && module.exports) {
     photoDelete,
     photoPrune,
     mergePhotos,
+    BW_CAP,
+    BW_TUMBA_DIAS,
+    bwEntryId,
+    bwLive,
+    bwDelete,
+    bwPrune,
+    bwUpsert,
+    mergeBodyweight,
     MED_CADENCIA_DIAS,
     MED_AVISO_DIAS,
     medNextDue,

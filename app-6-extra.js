@@ -2108,10 +2108,8 @@ function _dobSaveBW(){
   if(!DB.bodyweight) DB.bodyweight = {};
   if(!DB.bodyweight[clientId]) DB.bodyweight[clientId] = [];
   const today = new Date().toISOString().split('T')[0];
-  const idx = DB.bodyweight[clientId].findIndex(e => e.date === today);
-  if(idx > -1) DB.bodyweight[clientId][idx].kg = val;
-  else DB.bodyweight[clientId].unshift({date: today, kg: val});
-  DB.bodyweight[clientId].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // v614: el mismo motor que «Mi peso». Esta copia ni siquiera aplicaba el tope de 52.
+  DB.bodyweight[clientId] = bwUpsert(DB.bodyweight[clientId], today, val, new Date().toISOString());
   sv('ax_bw', DB.bodyweight);
   renderBodyWeightSection(clientId);
   toast('⚖️ Peso guardado');

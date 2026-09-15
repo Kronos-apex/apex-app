@@ -287,12 +287,9 @@ function logBodyWeight(){
   const clientId=CUR.clientId;if(!clientId)return;
   if(!DB.bodyweight[clientId])DB.bodyweight[clientId]=[];
   const today=new Date().toISOString().split('T')[0];
-  // Update today's entry or push new
-  const idx=DB.bodyweight[clientId].findIndex(e=>e.date===today);
-  if(idx>-1)DB.bodyweight[clientId][idx].kg=val;
-  else DB.bodyweight[clientId].unshift({date:today,kg:val});
-  DB.bodyweight[clientId].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if(DB.bodyweight[clientId].length>52)DB.bodyweight[clientId]=DB.bodyweight[clientId].slice(0,52);
+  // v614: reemplazar-o-añadir, ordenar y topar vive en `bwUpsert` (avi-core), que es el MISMO
+  // motor que usa el asistente del Día 1. Antes había dos copias y ya habían divergido.
+  DB.bodyweight[clientId]=bwUpsert(DB.bodyweight[clientId],today,val,new Date().toISOString());
   sv('ax_bw',DB.bodyweight);
   document.getElementById('bw-kg').value='';
   renderBodyWeightSection(clientId);
@@ -301,7 +298,10 @@ function logBodyWeight(){
 
 function renderBodyWeightSection(clientId){
   if(!DB.bodyweight)DB.bodyweight=ld('ax_bw',{});
-  const entries=(DB.bodyweight[clientId]||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  // v614: SOLO las vivas. Con lápidas dentro, la gráfica dibujaba un punto sin `kg` y el
+  // resumen decía «Inicio: undefined kg». `bwLive` las devuelve nueva→vieja; aquí se pinta
+  // vieja→nueva, así que se invierte.
+  const entries=bwLive(DB.bodyweight[clientId]||[]).slice().reverse();
   const listEl=document.getElementById('bw-list');
   const chartWrap=document.getElementById('bw-chart-wrap');
   const summEl=document.getElementById('bw-summary');
@@ -354,14 +354,20 @@ function renderBodyWeightSection(clientId){
       <div class="wlog-date">${isToday?'<strong>Hoy</strong>':new Date(e.date+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
       <div class="wlog-kg">${e.kg} kg</div>
       ${deltaStr}
-      <button class="hit40" onclick="deleteBodyWeight('${e.date}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:14px;padding:0;line-height:1" aria-label="Eliminar registro de peso">✕</button>
+      <button class="hit40" onclick="deleteBodyWeight('${esc(bwEntryId(e))}')" style="border:none;background:none;cursor:pointer;color:var(--t3);font-size:14px;padding:0;line-height:1" aria-label="Eliminar registro de peso">✕</button>
     </div>`;
   }).join('');
 }
 
-function deleteBodyWeight(date){
+// 🔴 ESTO NO BORRABA: era un `filter` sobre una colección que la fila fusiona por UNIÓN, así
+//    que la toma volvía en la primera fusión tras entrenar sin conexión. Tercera víctima de la
+//    clase (medidas v566, fotos v568) y se cierra DELEGANDO en la misma capa, no copiándola.
+function deleteBodyWeight(id){
   const clientId=CUR.clientId;if(!clientId)return;
-  DB.bodyweight[clientId]=(DB.bodyweight[clientId]||[]).filter(e=>e.date!==date);
+  const lista=bwDelete((DB.bodyweight||{})[clientId]||[],id,new Date().toISOString());
+  if(!lista){toast('Ese registro ya no está');return;}
+  if(!DB.bodyweight)DB.bodyweight={};
+  DB.bodyweight[clientId]=lista;
   sv('ax_bw',DB.bodyweight);
   renderBodyWeightSection(clientId);
 }
@@ -469,7 +475,8 @@ function renderClientProfile(client){
   if(!_dia1) renderCoachUpsell(client);
   renderGoogleLink();
   // Current weight from bodyweight log (most recent entry)
-  const bwEntries=DB.bodyweight[client.id]||[];
+  // v614: vivas. Leía el índice 0 a pelo y con una lápida ahí el perfil decía «undefined kg».
+  const bwEntries=bwLive(DB.bodyweight[client.id]||[]);
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   const _pfi=(nm,fb)=>typeof aviIcon==='function'?aviIcon(nm,12):fb;
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);

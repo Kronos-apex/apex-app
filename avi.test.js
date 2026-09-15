@@ -18658,6 +18658,133 @@ test('v613 · CABLEADO: el id VIAJA y el banner de cuidado ofrece la puerta', ()
 });
 
 // ══════════════════════════════════════════════════════
+// v614 — BORRAR UN PESO BORRA DE VERDAD (3ª víctima de la clase de v566/v568)
+// ══════════════════════════════════════════════════════
+// 🔴 `deleteBodyWeight` quitaba la toma con un `filter` y `mergeAuthRow` fusionaba el peso
+//    por UNIÓN por fecha: lo borrado volvía en la primera fusión tras entrenar sin conexión.
+//    Medido sobre 45 respaldos (10-jul→15-sep-2026): 1 borrado real y 0 resurrecciones — la
+//    fusión solo corre con el arranque anterior `dirty`. Estructural, no histórico.
+
+test('v614 · borrar un peso deja lapida, y la lapida gana en la fusion', () => {
+  const { bwDelete, bwLive, mergeBodyweight, bwEntryId } = core;
+  const lista = [{ date: '2026-09-10', kg: 96 }, { date: '2026-09-01', kg: 95 }];
+  const tras = bwDelete(lista, bwEntryId({ date: '2026-09-10' }), '2026-09-14T10:00:00.000Z');
+  assert.ok(tras, 'bwDelete dijo que no existia una toma que si estaba');
+  assert.strictEqual(bwLive(tras).length, 1, 'la toma borrada sigue viva');
+  assert.strictEqual(bwLive(tras)[0].kg, 95);
+  // EL CORAZÓN DEL BUG: la copia rezagada de la nube TODAVÍA la tiene viva.
+  const fus = mergeBodyweight({ u1: tras }, { u1: lista });
+  assert.strictEqual(bwLive(fus.u1).length, 1,
+    '🔴 el peso borrado RESUCITO desde la nube: la union volvio a ganarle a la lapida');
+  assert.strictEqual(bwLive(fus.u1)[0].kg, 95);
+});
+
+test('v614 · borrar algo que no existe devuelve null: nadie finge que borro', () => {
+  assert.strictEqual(core.bwDelete([{ date: '2026-09-10', kg: 96 }], 'd:2026-01-01'), null);
+});
+
+test('v614 · re-registrar un dia con lapida lo REVIVE (no queda escrito bajo un borrado)', () => {
+  const { bwDelete, bwUpsert, bwLive, bwEntryId, mergeBodyweight } = core;
+  const lista = [{ date: '2026-09-10', kg: 96 }];
+  const borrado = bwDelete(lista, bwEntryId({ date: '2026-09-10' }), '2026-09-14T10:00:00.000Z');
+  // El findIndex viejo le escribia el `kg` ENCIMA a la lapida y dejaba `del:true` intacto:
+  // el peso recien tecleado quedaba invisible para siempre.
+  const revivido = bwUpsert(borrado, '2026-09-10', 94, '2026-09-15T08:00:00.000Z');
+  assert.strictEqual(bwLive(revivido).length, 1, '🔴 el peso re-registrado sobre una lapida no revivio');
+  assert.strictEqual(bwLive(revivido)[0].kg, 94);
+  // Y gana contra la copia vieja de la nube, que todavia trae la lapida.
+  const fus = mergeBodyweight({ u1: revivido }, { u1: borrado });
+  assert.strictEqual(bwLive(fus.u1).length, 1, '🔴 la lapida vieja mato el registro nuevo');
+  assert.strictEqual(bwLive(fus.u1)[0].kg, 94);
+});
+
+test('v614 · un dia, un peso: registrar dos veces el mismo dia reemplaza', () => {
+  const { bwUpsert, bwLive } = core;
+  let l = bwUpsert([], '2026-09-15', 96, '2026-09-15T08:00:00.000Z');
+  l = bwUpsert(l, '2026-09-15', 95.5, '2026-09-15T20:00:00.000Z');
+  assert.strictEqual(bwLive(l).length, 1, 'se duplico la toma del mismo dia');
+  assert.strictEqual(bwLive(l)[0].kg, 95.5);
+});
+
+test('v614 · el tope de 52 lo gastan las VIVAS, nunca las lapidas', () => {
+  const { bwUpsert, bwDelete, bwLive, bwEntryId, BW_CAP } = core;
+  assert.strictEqual(BW_CAP, 52, 'el tope dejo de ser el que ya aplicaba logBodyWeight');
+  let l = [];
+  for (let i = 0; i < 52; i++) {
+    const d = new Date(Date.UTC(2026, 0, 1) + i * 7 * 86400000).toISOString().slice(0, 10);
+    l = bwUpsert(l, d, 90 + i / 10, '2027-01-01T00:00:00.000Z');
+  }
+  assert.strictEqual(bwLive(l).length, 52);
+  const borrada = bwDelete(l, bwEntryId({ date: bwLive(l)[0].date }), '2027-01-02T00:00:00.000Z');
+  assert.strictEqual(bwLive(borrada).length, 51, 'la lapida se llevo una toma viva por delante');
+  assert.ok(borrada.length > 51, 'la lapida no se guardo: no puede tapar nada');
+});
+
+// 🔒 LOS LECTORES. Lección de v566: meter borrados en una colección le cambia la forma a
+//    TODOS sus lectores — los que CUENTAN y los que INDEXAN, no solo los que pintan.
+test('v614 🔒 los lectores del peso no ven las lapidas (cuentan e indexan bien)', () => {
+  const { bwDelete, bwEntryId, lastBodyweightKg, bodyWeightSource, nutWeightFor } = core;
+  const lista = [{ date: '2026-09-10', kg: 96 }, { date: '2026-09-01', kg: 95 }];
+  const tras = bwDelete(lista, bwEntryId({ date: '2026-09-10' }), '2026-09-14T10:00:00.000Z');
+  // El peso de HOY: sin el guard, la lapida (la mas reciente por fecha) ganaba y daba NaN.
+  assert.strictEqual(lastBodyweightKg(tras), 95, '🔴 el peso del plan salio de una lapida');
+  assert.strictEqual(nutWeightFor({ weight: 80 }, tras), 95);
+  const src = bodyWeightSource({ weight: 80 }, tras, new Date('2026-09-15T12:00:00.000Z'));
+  assert.strictEqual(src.tomas, 1, '🔴 «cuantas veces se ha pesado» cuenta los borrados');
+  assert.strictEqual(src.date, '2026-09-01',
+    '🔴 la fecha es la de la LAPIDA: el kg de un dia rotulado con el dia de otro');
+  assert.strictEqual(src.kg, 95);
+  // Borrar TODAS deja a la persona sin pesaje, no con un pesaje fantasma.
+  const vacia = bwDelete(tras, bwEntryId({ date: '2026-09-01' }), '2026-09-14T11:00:00.000Z');
+  assert.strictEqual(lastBodyweightKg(vacia), null);
+  assert.strictEqual(bodyWeightSource({ weight: 80 }, vacia, new Date('2026-09-15T12:00:00.000Z')).fuente, 'ficha');
+});
+
+test('v614 🔒 la tarjeta del coach ignora las lapidas al mirar la tendencia', () => {
+  const { bwDelete, bwEntryId, coachInsight } = core;
+  const lista = [{ date: '2026-09-10', kg: 96 }, { date: '2026-09-08', kg: 95 }];
+  const tras = bwDelete(lista, bwEntryId({ date: '2026-09-10' }), '2026-09-11T10:00:00.000Z');
+  // Con una sola pesada viva no hay tendencia: la lapida no puede hacer de segundo punto.
+  const ins = coachInsight({ id: 'c1', goal: 'perder grasa' }, [], {},
+    new Date('2026-09-11T12:00:00.000Z').getTime(), { isFree: false, bw: tras, muted: {} });
+  assert.notStrictEqual(ins && ins.type, 'peso',
+    '🔴 la lapida hizo de segundo punto y fabrico una tendencia');
+});
+
+// 🔒 EL CABLEADO VA APARTE DE LA FUNCIÓN PURA (lección v566, familia v509): toda la maquinaria
+//    puede estar perfecta y no servir de nada si la línea de `mergeAuthRow` vuelve a la unión
+//    — y sin este candado ese sabotaje sale VERDE.
+test('v614 · CABLEADO: la fila fusiona el peso con lapidas, y los dos formularios comparten motor', () => {
+  const fs = require('fs'), path = require('path');
+  const csrc = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const fila = csrc.slice(csrc.indexOf('function mergeAuthRow('), csrc.indexOf('\n}', csrc.indexOf('function mergeAuthRow(')));
+  assert.ok(/out\.bodyweight\s*=\s*pair\(\(l,\s*c\)\s*=>\s*mergeBodyweight\(l,\s*c\)/.test(fila),
+    '🔴 la fila volvio a fusionar el peso por UNION: lo borrado resucita');
+  assert.ok(!/out\.bodyweight[^\n]*mergeClientArrays/.test(fila), '🔴 el peso volvio a mergeClientArrays');
+
+  const a4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const del = a4.slice(a4.indexOf('function deleteBodyWeight('), a4.indexOf('\n}', a4.indexOf('function deleteBodyWeight(')));
+  assert.ok(/bwDelete\(/.test(del), '🔴 deleteBodyWeight volvio a borrar sin lapida');
+  assert.ok(!/\.filter\(/.test(del), '🔴 volvio el filter: el borrado es una animacion');
+
+  // El botón manda la IDENTIDAD que entiende la capa, no la fecha cruda.
+  const ren = a4.slice(a4.indexOf('function renderBodyWeightSection('), a4.indexOf('function deleteBodyWeight('));
+  assert.ok(/deleteBodyWeight\('\$\{esc\(bwEntryId\(e\)\)\}'\)/.test(ren),
+    '🔴 la lista llama al borrado con algo que no es el id de la capa');
+  assert.ok(/bwLive\(/.test(ren), '🔴 la lista volvio a pintar la coleccion cruda (lapidas incluidas)');
+
+  // 🔴 UN SOLO MOTOR para los dos formularios de peso: la copia del asistente del Día 1 ni
+  //    siquiera aplicaba el tope de 52.
+  const log = a4.slice(a4.indexOf('function logBodyWeight('), a4.indexOf('\n}', a4.indexOf('function logBodyWeight(')));
+  assert.ok(/bwUpsert\(/.test(log), '🔴 «Mi peso» volvio a tener su propia copia del guardado');
+  const a6 = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const dob = a6.slice(a6.indexOf('function _dobSaveBW('), a6.indexOf('\n}', a6.indexOf('function _dobSaveBW(')));
+  assert.ok(/bwUpsert\(/.test(dob), '🔴 el asistente del Dia 1 volvio a guardar por su cuenta');
+  assert.ok(!/findIndex\(e\s*=>\s*e\.date\s*===\s*today\)/.test(dob),
+    '🔴 volvio el findIndex por fecha: le escribe el kg encima a una lapida');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

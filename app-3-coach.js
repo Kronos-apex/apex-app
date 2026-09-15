@@ -15,7 +15,8 @@ function filterClients(q){
 }
 
 function miniSparkline(clientId){
-  const entries=(DB.bodyweight[clientId]||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  // v614: solo las vivas — una lápida no tiene `kg` y partía la línea de la gráfica.
+  const entries=bwLive(DB.bodyweight[clientId]||[]).slice().reverse();
   if(entries.length<2)return '';
   const vals=entries.map(e=>e.kg);
   const maxV=Math.max(...vals),minV=Math.min(...vals);
@@ -2451,7 +2452,9 @@ function renderValoracion(c){
   // confirmó) y 9 de 18 con el suyo de hace más de 60 días.
   // 🔒 Los DOS avisos pueden coexistir y ninguno se calla: el de la fuente/antigüedad y el del
   //    descuadre con la ficha responden preguntas distintas. Nada de `return` prematuro (v506).
-  const _bwList=(DB.bodyweight||{})[c.id]||[];
+  // v614: vivas. Más abajo se pregunta `_bwList.length` («¿tiene pesadas?») y una lápida
+  //       haría decir que sí a quien borró la única que tenía.
+  const _bwList=bwLive((DB.bodyweight||{})[c.id]||[]);
   const _pesoFicha=parseFloat(c.weight);
   const _bw=(typeof bodyWeightSource==='function')?bodyWeightSource(c,_bwList,Date.now()):null;
   const _fFecha=d=>d?new Date(d).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):null;
