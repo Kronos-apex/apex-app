@@ -4,6 +4,49 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v623: LO QUE EL COACH CAMBIA EN EL PERFIL YA NO LO PISA UN TELÉFONO ABIERTO
+
+**Pedido del PO:** tras v621 quedó en el radar que el defecto no era solo de la lápida: *«arregla
+lo de la foto de perfil»* — aclarado por él: *«me refiero a tu comentario de que cualquier cambio
+que realice al perfil de un asesorado le puede pasar lo mismo que a los récords»*.
+
+**Medido primero, en los 45 respaldos diarios (11-jul → 16-sep):** 0 reversiones A→B→A de ninguna
+clave del perfil ni de las rutinas, y 0 vasos/pasos que bajen de un día a otro. Control de
+cobertura: la sonda sí ve los cambios (habits 115, rutinas 90, pagos 14, descarga 6…). ⚠️ Un
+respaldo por día **no ve lo que se pisa dentro del mismo día**, así que el cero no descarta el
+defecto: lo acota. **El mecanismo es real leyendo el código**: `_pollAuthClient` solo refresca las
+RUTINAS con la app abierta; pagos, cortesía, descarga, dolor y lápidas no. Y el panel del coach no
+refresca el perfil de nadie.
+
+**El arreglo: merge de tres vías por clave** (`mergeProfile3`/`mergeOwnRow3`, PURAS). `base` = lo
+último que ese aparato sabe que estaba en la nube. Si ese lado no tocó la clave, manda la nube; si
+solo la tocó él, manda él; si la tocaron los dos, manda el que guarda (raro). Las lápidas de v620
+se UNEN siempre. 🔒 **Comparación canónica**: `jsonb` reordena las claves, y con `JSON.stringify`
+a pelo este lado ganaría siempre (lo cazó un sabotaje verde). Cableado en:
+- **el teléfono**: `_mergeOwnWithCloud` antes de guardar el perfil y antes de la subida al
+  reconectar; **las rutinas que no tocó NO se mandan** (su copia puede ser vieja en pleno entreno);
+  la base vive en memoria + `ax_udbase_<uid>`, con el uid al lado (cambio de cuenta en la pestaña).
+- **el arranque sin red**: `mergeAuthRow` dejaba el perfil de la nube y tiraba lo tocado offline
+  (un vaso de agua); ahora fusiona con la base guardada.
+- **el refresco en vivo**: al adoptar el plan del coach lo anota en la base.
+- **el panel del coach**: fusiona con `_coachSnap` (lo último confirmado) antes de `updateClientRow`.
+🔒 **Una lectura sin perfil NO es «la nube borró todo»**: sin perfil de verdad no se fusiona y se
+cae a lo de v621.
+
+**QA:** suite **1215 → 1221** en los dos husos + LF, hook 12/12 · `_sabotaje-v623` **14/14** — la
+primera corrida dio **11** y los tres verdes eran huecos de mis pruebas (dos objetos con las claves
+en el mismo orden, y dos condiciones apagables con `false&&`, clase v579) · harnesses
+`_verify-cola-coach` 18/18, `_verify-chips`, `_verify-records` 9/9, `_verify-arranque-modulos` 6/6,
+smoke OK.
+
+**De paso, la medición del progreso por edad y sexo** (pedido del PO, sin código): 13 personas y
+285 subidas de peso. Sostuvo las repeticiones con el peso nuevo: <30 años 59% · 30-39 83% · 40+
+93%; mujeres 81% · hombres 71%. **No hay señal de que la regla general le exija de más a los de
+40+** (fallan menos; suben más lento: 7%/4 sem contra 13% del total), pero son 4 personas y 15
+subidas: sirve para ver la dirección, no para calibrar.
+
+---
+
 ## ⏮️ 2026-09-17 — v622: EL RETRATO «MUY GRANDE» (MODELO C) EN LA IMAGEN COMPARTIDA
 
 **Decisión del PO:** *«de las imágenes que me habías mostrado para la pantalla de compartir el
