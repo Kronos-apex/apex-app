@@ -64,7 +64,10 @@ const montaje = await ev(`(()=>{try{
   UD.updateClientRow=async(id,patch)=>{ if(window.__nube.caida) throw new Error('Failed to fetch');
     window.__nube.escrituras.push({id,patch}); Object.assign(window.__nube.fila[id]||(window.__nube.fila[id]={}),patch); return patch; };
   UD.upsertOwn=async(patch)=>{ if(window.__nube.caida) throw new Error('Failed to fetch'); window.__nube.escrituras.push({id:'self',patch}); return patch; };
-  UD.readClientCol=async(id,cols)=>{ if(window.__nube.caida) return null; return window.__nube.fila[id]||null; };
+  // v612 cambió la forma de la lectura a {estado,row}: con la forma vieja (la fila a pelo) TODA
+  // lectura se leía como «mudo» y la cola nunca subía — este harness llevaba rojo desde v612.
+  UD.readClientCol=async(id,cols)=>{ if(window.__nube.caida) return {estado:'mudo',row:null};
+    const f=window.__nube.fila[id]; return f?{estado:'ok',row:f}:{estado:'ausente',row:null}; };
   window.__push=[]; pushToClient=async(id,t,b)=>{ window.__push.push({id,t,b}); return true; };
   window.__toasts=[]; toast=(t)=>{ window.__toasts.push(t); };
   try{localStorage.removeItem('ax_cwq_coach-uid');}catch(e){}
