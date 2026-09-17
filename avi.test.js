@@ -19491,6 +19491,14 @@ test('v624 · sin fecha no hay tarjeta (null), y la fecha no depende del idioma 
   assert.strictEqual(core.sessionShareData({}, {}), null);
   assert.strictEqual(core.sessionShareData({ date: 'no-es-fecha' }, {}), null);
   assert.strictEqual(core.sessionShareData(null, null), null);
+  // 🔒 El caso que DISCRIMINA (lo dijo un sabotaje verde): `!isFinite(Date.parse(x))` ataja el
+  //    undefined y la basura, pero NO el 0 — `Date.parse(0)` coerce a la cadena '0' y devuelve el
+  //    1 de enero de 2000. Y el 0 es justo como llega un «no hay fecha» de un `|| 0` (gotcha ya
+  //    pagado en `training_since`). Sin la guarda de `!s.date`, esa tarjeta se comparte fechada
+  //    en el año 2000.
+  assert.strictEqual(core.sessionShareData({ date: 0, doneSets: 3, totalSets: 3 }, { name: 'Astrid' }), null,
+    '🔴 una sesión con fecha 0 arma tarjeta: saldría «1 de enero» de 2000');
+  assert.strictEqual(core.sessionShareData({ date: '' }, {}), null);
   // `toLocaleDateString` con opciones lanza RangeError en WebViews sin ICU completo (gotcha ya
   // pagado en la pantalla de cierre): la fecha se arma a mano.
   const fn = core.sessionShareData.toString();

@@ -4,6 +4,66 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v624: COMPARTIR UN ENTRENO YA GUARDADO, NO SOLO EL DE HOY
+
+**Reporte del PO:** *«los entrenamientos solo se pueden compartir al finalizar el entrenamiento y
+si de casualidad le oprimes continuar ya perdiste la opción de compartir»*. Propuso compartirlos
+desde la pantalla de progreso, y además los logros y la semana completa. Recomendación medida: el
+historial PRIMERO —es el que arregla un defecto—, y los otros dos solo después de medir si a este
+lo usa alguien.
+
+**La clase:** el entreno queda guardado; su imagen no. Es la de v613 (*el derecho no caduca, la
+PUERTA sí*) aplicada a una pantalla: `showWorkoutFinish` armaba la tarjeta y al tocar «Continuar»
+se iba con ella, aunque la sesión siga en el historial para siempre.
+
+**Medido antes de construir (482 sesiones guardadas):** duración y calorías están en el 75% del
+total y en el **88% de las de este mes**; los récords, en el 41%. O sea que una sesión vieja tiene
+MENOS que contar, y de ahí la regla que gobierna la tarjeta: **LO QUE NO SE GUARDÓ NO SE PINTA**
+—ni una duración inventada, ni unas calorías, ni un «0 kg» que no dice nada—.
+
+**Lo construido:**
+- `sessionShareData(session, client)` (avi-core, PURA) arma la misma tarjeta desde una sesión
+  guardada. La fecha se escribe a mano (`SHARE_DIAS`/`SHARE_MESES`): `toLocaleDateString` con
+  opciones lanza `RangeError` en WebViews sin ICU completo, gotcha ya pagado en el cierre.
+- El botón vive en la **habitación de la sesión** (`openSessionRoom`), que es la puerta que ya
+  existía desde el historial y desde la gráfica de progreso: no se inventó una pantalla.
+- `_wfPrepShareCanvas` prepara fondo y retrato **al ABRIR**, no al tocar: `navigator.share` exige
+  activación reciente del usuario y una espera entre el toque y el share es un riesgo gratis.
+- `_wfShareBgSrc` queda como **UNA sola definición** de qué foto de fondo le toca (v604), que
+  antes vivía suelta dentro de `showWorkoutFinish`.
+- 🔒 **El coach no comparte el entreno de un menor** sin el permiso del acudiente (misma puerta
+  que la tarjeta de progreso, v573). En la app del propio asesorado no cambia nada: es su dato.
+
+**🔴 El defecto que solo se vio MIRANDO la imagen:** la composición del modelo C se armó con la
+tarjeta LLENA (4 cifras + 3 récords, termina en y≈1624 con la raya del pie en 1760). Una sesión
+vieja trae 2 cifras y ningún récord: el bloque colgaba de arriba y dejaba **508 px de vacío, el
+26% de la imagen**, que en algo que se comparte se lee como que no cargó. Ahora lo que sobra se
+parte por la mitad, y **por construcción la tarjeta llena no se mueve ni un píxel** — ese es el
+control del test, y se comprobó también renderizándola.
+
+**Verificación.** Suite **1221 → 1226** en los tres modos · hook 12/12 · harness nuevo
+`_verify-compartir-sesion.mjs` **12/12** (el botón existe, se puede tocar y dibuja 1080×1920 con
+los datos de ESA sesión; con una sesión de mayo sin duración ni calorías la tarjeta trae 2 fichas
+y ningún récord, y la reciente sí trae las cuatro) · matriz nueva `_sabotaje-v624.mjs` **15/15
+muerden** · `_shot-wfshare` y `_verify-news` verdes. Novedad `v:624` sin público marcado: esto es
+de todos, también del tier libre.
+
+**🔴 Tres defectos de MIS candados, cazados por la matriz y por el harness:**
+1. El sabotaje que borraba `if (!s.date) return null;` salió **VERDE**: mi fixture no podía
+   distinguir, porque `Date.parse(undefined)` ya da `NaN`. El caso que SÍ discrimina es
+   **`date: 0`** —como llega un «no hay fecha» de un `|| 0`—: `Date.parse(0)` coerce a la cadena
+   `'0'` y devuelve el **1 de enero de 2000**, o sea una tarjeta compartida con fecha falsa.
+2. El harness dio rojo en «se puede tocar» y el defecto era del MONTAJE: esperaba a que existiera
+   `openSessionRoom`, que existe al PARSEAR, así que medía con el splash todavía encima
+   (`ld-logo` se quedaba con el toque). Con el símbolo post-arranque, 12/12.
+3. Los tres candados de v619/v622 cayeron por el renombrado de constantes y se **RE-ENCUADRARON**
+   leyendo qué afirman (R2.2): la propiedad que vigilan —que con el radio que sea lo de abajo
+   quepa— no cambió.
+
+**⏭️ Fase 2, y solo con el número delante:** los logros y la semana completa esperan a medir
+cuánta gente usa esto. Y la semana solo se comparte **si el plan se cumplió** — una tarjeta que
+dice «mi semana» con 2 de 5 días no la manda nadie.
+
 ## ⏮️ 2026-09-17 — v623: LO QUE EL COACH CAMBIA EN EL PERFIL YA NO LO PISA UN TELÉFONO ABIERTO
 
 **Pedido del PO:** tras v621 quedó en el radar que el defecto no era solo de la lápida: *«arregla

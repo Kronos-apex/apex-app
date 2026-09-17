@@ -3021,6 +3021,10 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v624 — La imagen del entreno dejo de caducar al tocar «Continuar». Sin publico marcado a
+  // proposito: compartir un entreno guardado es de TODOS, tambien del tier libre.
+  {v:624, icon:'camera', t:'Comparte cualquier entreno, no solo el de hoy', d:'Antes la imagen de tu entreno solo existía en la pantalla de celebración: si tocabas «Continuar», la perdías. Ahora entras a cualquier entreno tuyo y la armas cuando quieras.',
+   steps:['Abre la pestaña «Progreso» y toca el entreno que quieras compartir','Debajo del resumen, toca «Compartir este entreno»','La imagen sale con las cifras y los récords de ESE día']},
   // v597 — ESTA ENTRADA EXISTE PARA QUE LA FUNCIÓN TENGA A QUIÉN SERVIR. El cierre solo se
   // personaliza si la persona subió su foto de perfil, y hoy casi nadie la tiene: sin avisar, la
   // función se queda esperando un acto que nadie sabe que puede hacer (la lección de «las 10 con
