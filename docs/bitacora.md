@@ -4,6 +4,24 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v622: EL RETRATO «MUY GRANDE» (MODELO C) EN LA IMAGEN COMPARTIDA
+
+**Decisión del PO:** *«de las imágenes que me habías mostrado para la pantalla de compartir el
+entrenamiento deja la imagen C, la muy grande»* — entre cinco modelos dibujados el 16-sep con el
+código real (26% · 39% · 54% · foto de portada · portada sin foto).
+
+**Lo que cambia en el lienzo:** el retrato pasa de 280 a **580 px = el 54% del ancho**; el sello
+«AVI» sube 40 px; las **cuatro cifras van en UNA fila** (fichas de 210 px, centradas con las que
+haya, la cifra se ajusta a su ficha) y los récords se compactan (124 → 108 px). El caso apretado
+(4 cifras + 3 récords) termina en y≈1609 con la raya del pie en 1760.
+
+**Verificado MIRANDO** las dos variantes con `_shot-wfshare.mjs`: con foto y con el círculo de
+iniciales (la que ve la mayoría). **QA:** el candado de colisión de v619 se RE-ENCUADRÓ a una sola
+fila leyendo del código el arranque de las cifras y el salto a los récords (antes suponía dos filas)
+· test nuevo del modelo C · suite **1214 → 1215** · `_sabotaje-v622` **7/7 muerden**.
+
+---
+
 ## ⏮️ 2026-09-17 — v621: LA LÁPIDA DEL RÉCORD YA NO LA BORRA UN TELÉFONO VIEJO
 
 **Pedido del PO:** *«tapa el hueco de los récords borrados»* — el riesgo que v620 dejó escrito.
