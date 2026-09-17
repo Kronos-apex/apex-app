@@ -19559,6 +19559,84 @@ test('v624 🔒 el aire que sobra se reparte, y la tarjeta LLENA no se mueve ni 
 });
 
 // ══════════════════════════════════════════════════════
+// v625 — LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN
+// ══════════════════════════════════════════════════════
+// Medido en los 45 respaldos diarios (11-jul → 16-sep, 44 pares de días, 1.134 filas): la única
+// pérdida REAL de toda la ventana fue el 5-ago-2026, cuando el hilo propio del coach pasó de
+// **29 mensajes a 2**. Los 2 que quedaron son los prellenados del plan de choque que él envió a
+// las 20:21, y el resto de la fila creció normal ese día (historial 54→55, perfil 20→22 claves):
+// no fue un borrado, fue el panel escribiendo la columna `msgs` entera con su copia en memoria.
+// Clase de v623 en una colección APPEND-ONLY → la regla es UNIÓN, no fusión de tres vías.
+
+test('v625 · escribir NO puede quitar un mensaje: se une con lo que hay en la nube', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = src.indexOf('async function _msgsUnionCloud(');
+  assert.ok(i > 0, '🔴 desapareció la unión de mensajes');
+  let cuerpo = src.slice(i, src.indexOf('\nasync function ', i + 10));
+  // ⚠️ `test()` es SÍNCRONO: un test que devuelve una promesa pasa SIN afirmar nada (gotcha v621).
+  //    Se le quita el `async`/`await` al código extraído y el stub responde en el acto, así la
+  //    aserción corre de verdad dentro de la tanda.
+  cuerpo = cuerpo.replace(/^async function/, 'function').replace(/await /g, '');
+  const hacer = (ud, merge) => new Function('UD', 'mergeMsgs', cuerpo + '\nreturn _msgsUnionCloud;')(ud, merge);
+  const nube = [{ from: 'client', date: 'd1', text: 'hola' }, { from: 'coach', date: 'd2', text: 'ey' }];
+  const unir = (a, b) => [].concat(a, b.filter(x => !a.some(y => y.date === x.date)));
+
+  const f = hacer({ readClientCol: () => ({ estado: 'ok', row: { msgs: nube } }) }, unir);
+  assert.strictEqual(f('uid', [{ from: 'coach', date: 'd3', text: 'nuevo' }]).length, 3,
+    '🔴 escribir se llevó por delante lo que había en la nube');
+  // 🔒 EL CASO REAL DEL 5-AGO: quien escribe traía 2 en memoria y la nube tenía 29. Con la unión,
+  //    una copia VACÍA tampoco puede vaciar el hilo — que es la propiedad de fondo.
+  assert.strictEqual(f('uid', []).length, 2,
+    '🔴 una copia vacía en memoria sigue pudiendo vaciar el hilo');
+  // Y sin fila propia no se inventa nada.
+  assert.deepStrictEqual(f('', [{ date: 'd4' }]), [{ date: 'd4' }]);
+});
+
+test('v625 🔒 si no se puede leer la nube NO se bloquea el envío (lo recoge la cola)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = src.indexOf('async function _msgsUnionCloud(');
+  let cuerpo = src.slice(i, src.indexOf('\nasync function ', i + 10));
+  cuerpo = cuerpo.replace(/^async function/, 'function').replace(/await /g, '');
+  const hacer = (ud, merge) => new Function('UD', 'mergeMsgs', cuerpo + '\nreturn _msgsUnionCloud;')(ud, merge);
+  const mio = [{ from: 'coach', date: 'd9', text: 'voy' }];
+  [['sin red', { readClientCol: () => ({ estado: 'mudo', row: null }) }],
+   ['fila ausente', { readClientCol: () => ({ estado: 'ausente', row: null }) }],
+   ['la nube no trae mensajes', { readClientCol: () => ({ estado: 'ok', row: {} }) }],
+   ['la lectura revienta', { readClientCol: () => { throw new Error('boom'); } }],
+   ['sin readClientCol', {}],
+  ].forEach(([q, ud]) => {
+    assert.deepStrictEqual(hacer(ud, (a, b) => a.concat(b))('uid', mio), mio,
+      '🔴 con «' + q + '» el mensaje no saldría, y eso lo pierde');
+  });
+  // 🔒 CONTROL: el caso bueno SÍ cambia el resultado, o los de arriba pasarían con la función rota.
+  const f = hacer({ readClientCol: () => ({ estado: 'ok', row: { msgs: [{ date: 'z' }] } }) }, (a, b) => a.concat(b));
+  assert.strictEqual(f('uid', mio).length, 2, '🔴 el test no discrimina: nunca une');
+});
+
+test('v625 · CABLEADO: las TRES puertas que escriben mensajes pasan por la unión', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  // 1· el teléfono (su propia fila)
+  assert.ok(/UD\.upsertOwn\(\{msgs:\s*await _msgsUnionCloud\(_authUid,/.test(src),
+    '🔴 el teléfono volvió a subir su hilo entero desde memoria');
+  // 2· y 3· el panel del coach: su propia fila y la de cada asesorado. Las dos deciden por COLUMNA,
+  //     y el resto de colecciones sigue subiendo tal cual (esto NO es un cambio general).
+  const union = src.match(/const slice=\(col==='msgs'\)\?await _msgsUnionCloud\(/g) || [];
+  assert.strictEqual(union.length, 2,
+    `🔴 el panel tiene ${union.length} de 2 puertas unidas: la que falta puede borrar un hilo`);
+  // 🔒 Y lo que se GUARDA como confirmado es lo unido, no lo que traía en memoria: si no, el
+  //    siguiente guardado creería que la nube tiene menos de lo que tiene.
+  assert.ok((src.match(/const val=\(col==='msgs'\)\?JSON\.stringify\(slice\):val0;/g) || []).length === 2,
+    '🔴 la foto de lo confirmado se quedó con la copia vieja');
+  // 🔒 CONTROL: el cambio es SOLO para mensajes. Si alguien lo extiende a todo, esto cae — las
+  //    otras colecciones se editan y se borran, y una unión ahí resucitaría lo borrado (v566).
+  assert.ok(!/_msgsUnionCloud\((?!_authUid|id,|_authUid,)/.test(src.replace(/function _msgsUnionCloud/, '')),
+    '🔴 la unión se está usando fuera de los mensajes');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

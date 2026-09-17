@@ -57,17 +57,23 @@ const MONTAJE = `(()=>{
       payments:[{date:'2026-08-15',dueDate:'2026-09-15',amount:100000}]};
     window.__nube.routines=[{id:'r1',name:'Glúteo A',day:'Lunes',
       exercises:[{id:'e1',name:'Hip Thrust con Barra',muscle:'gluteo',sets:4,reps:'10'}]}];
+    // El hilo que los dos ven al abrir (v625: el caso real fue 29 mensajes → 2).
+    window.__nube.msgs=[
+      {from:'client',date:'2026-09-10T15:00:00.000Z',text:'Hola coach, ya terminé'},
+      {from:'coach', date:'2026-09-10T15:05:00.000Z',text:'¡Bien! Mañana subimos el peso'}];
     window.__nube.escrituras=0;
   };
   window.__reset();
   // 🔒 El stub copia la FORMA real de UD.readClientCol ({estado,row}) — un stub con la forma vieja
   //    fue lo que dio 5 rojos falsos en v612.
   UD.readClientCol=async()=>({estado:'ok',row:{profile:clon(window.__nube.profile),
-    routines:clon(window.__nube.routines),updated_at:new Date().toISOString()}});
+    routines:clon(window.__nube.routines),msgs:clon(window.__nube.msgs||[]),
+    updated_at:new Date().toISOString()}});
   UD.readPrTombs=async()=>((window.__nube.profile&&window.__nube.profile.prTombs)||null);
   const escribir=patch=>{ window.__nube.escrituras++;
     if(patch&&'profile' in patch) window.__nube.profile=clon(patch.profile);
     if(patch&&'routines' in patch) window.__nube.routines=clon(patch.routines);
+    if(patch&&'msgs' in patch) window.__nube.msgs=clon(patch.msgs);   // REEMPLAZA, como PostgREST
     return {ok:true}; };
   UD.upsertOwn=async patch=>escribir(patch);
   UD.updateClientRow=async(cid,patch)=>escribir(patch);
@@ -81,6 +87,7 @@ const MONTAJE = `(()=>{
     const fila=clon(foto||window.__nube);
     const c=Object.assign({id:'cli-1'},fila.profile,{routines:fila.routines});
     DB.clients=[c]; DB.prs={}; DB.history={};
+    DB.msgs={'cli-1':clon(fila.msgs||[])};
     if(rol==='coach'){
       CUR.loggedAs='coach'; CUR.clientId=null;
       _authUid='uid-coach';                     // binding de script: asignación pelada
@@ -171,6 +178,35 @@ try {
   const planSin = await ev(guion(false, true, 'plan'));
   ok('🔒 CONTROL: sin fusión, el teléfono le devuelve el plan viejo (el ejercicio se pierde)',
     !!planSin && !planSin._error && planSin.ejercicios === 1, planSin);
+
+  // ── EL CASO MEDIDO EN LOS RESPALDOS (v625): el hilo del coach pasó de 29 mensajes a 2 ───────
+  // Ella escribe desde su celular; el coach responde con la copia que tenía al abrir el panel.
+  // Un mensaje no se edita ni se borra, así que la regla es UNIÓN: escribir no puede quitar.
+  const guionMsgs = (conFusion) => `(async()=>{
+    window.__reset();
+    const real=window.mergeMsgs;
+    if(!${conFusion}) window.mergeMsgs=undefined;    // apaga v625
+    const foto=JSON.parse(JSON.stringify(window.__nube));
+    try{
+      window.__montar('tel',foto);
+      DB.msgs['cli-1'].push({from:'client',date:'2026-09-17T18:00:00.000Z',text:'Coach, me dolió la rodilla'});
+      await _persistAuthUser('ax_m',DB.msgs);
+      window.__montar('coach',foto);               // el panel NO vio ese mensaje
+      DB.msgs['cli-1'].push({from:'coach',date:'2026-09-17T18:30:00.000Z',text:'Bajemos la carga esta semana'});
+      await _persistCoachWrite('ax_m',DB.msgs);
+    } finally { window.mergeMsgs=real; }
+    const m=window.__nube.msgs||[];
+    return { total:m.length, textos:m.map(x=>(x.text||'').slice(0,40)) };
+  })()`;
+
+  const msgsCon = await ev(guionMsgs(true));
+  ok('🔒 v625 · responderle no le borra el mensaje que ella acababa de escribir',
+    !!msgsCon && !msgsCon._error && msgsCon.total === 4 &&
+    msgsCon.textos.some(t => /me dolió la rodilla/.test(t)), msgsCon);
+  const msgsSin = await ev(guionMsgs(false));
+  ok('🔒 CONTROL: sin la unión, el mensaje de ella desaparece (es lo que pasó el 5-ago)',
+    !!msgsSin && !msgsSin._error && msgsSin.total < 4 &&
+    !msgsSin.textos.some(t => /me dolió la rodilla/.test(t)), msgsSin);
 
   console.log('\n  jsErrors:', JSON.stringify(jsErrors.slice(0, 3)));
   ok('sin errores JS', jsErrors.length === 0);

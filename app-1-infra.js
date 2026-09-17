@@ -1079,6 +1079,27 @@ async function _mergeOwnWithCloud(id){
   _authBaseSet({profile:nube.profile,routines:tocoRutinas?nube.routines:base.routines});
   return {sendRoutines:tocoRutinas};
 }
+// ── v625 · LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN ────────────────────────────────────────
+// Medido en los 45 respaldos diarios: el 5-ago-2026 el hilo propio del coach pasó de **29
+// mensajes a 2**. Los 2 que quedaron son los prellenados del plan de choque que él envió a las
+// 20:21, y el resto de la fila creció normal ese día (historial 54→55): o sea que no fue un
+// borrado, fue el panel escribiendo la columna `msgs` ENTERA con su copia en memoria.
+// Es la clase de v623 en una colección APPEND-ONLY, y ahí el arreglo es más simple que una fusión
+// de tres vías: un mensaje no se edita ni se borra, así que lo que se sube es la **UNIÓN** con lo
+// que ya hay en la nube (`mergeMsgs`, que existe desde siempre y ya se usa al arrancar). Con eso,
+// escribir no puede quitarle un mensaje a nadie, ni aunque la copia de quien escribe esté vacía.
+// 🔒 Si no se puede LEER la nube NO se bloquea el envío: la escritura de al lado va a fallar igual
+//    y cae a la cola, que vuelve a unir al reintentar (v588). Bloquear aquí perdería el mensaje,
+//    que es justo el defecto que la cola vino a matar.
+async function _msgsUnionCloud(rowId,locales){
+  const arr=Array.isArray(locales)?locales:[];
+  if(!rowId||!UD.readClientCol||typeof mergeMsgs!=='function')return arr;
+  try{
+    const lec=await UD.readClientCol(rowId,'msgs');
+    if(!lec||lec.estado!=='ok'||!lec.row||!Array.isArray(lec.row.msgs))return arr;
+    return mergeMsgs(arr,lec.row.msgs);
+  }catch(e){ return arr; }
+}
 async function _persistAuthUser(k,v){
   // Plantillas (ax_tpl): nivel coach/global → viven en la fila PROPIA del coach (columna
   // `templates`), no por-cliente ni en el blob legacy. Sin esto NO se guardaban en modo auth
@@ -1140,7 +1161,7 @@ async function _persistAuthUser(k,v){
     else if(k==='ax_med')    { await UD.upsertOwn({medidas:   (v&&v[id])||[]}); }
     else if(k==='ax_nut')    { await UD.upsertOwn({nutrition: (v&&v[id])||{}}); }
     else if(k==='ax_photos') { await UD.upsertOwn({photos:    (v&&v[id])||[]}); }
-    else if(k==='ax_m')      { await UD.upsertOwn({msgs:      (v&&v[id])||[]}); }
+    else if(k==='ax_m')      { await UD.upsertOwn({msgs:      await _msgsUnionCloud(_authUid,(v&&v[id])||[])}); }   // v625 · unión, nunca reemplazo
     // ax_e/ax_tpl/ax_cn/ax_site/ax_nequi/ax_cph/ax_ce: nivel coach/global → no aplica al cliente libre
     delete _udFailedKeys[k]; _udMaybeClean(); // la nube confirmó ESTA clave
   }catch(e){
@@ -1236,10 +1257,15 @@ async function _persistCoachWrite(k,v){
   const _sp2=splitSelfFromClients(DB.clients||[]);
   if(_sp2.self){
     // historial, récords, peso, medidas, fotos y nutrición PROPIOS → su fila, misma columna
-    const slice=v&&v[SELF_CLIENT_ID];
-    if(slice!==undefined){
-      const val=JSON.stringify(slice), sk=k+':'+SELF_CLIENT_ID;
-      if(_coachSnap[sk]!==val){
+    const slice0=v&&v[SELF_CLIENT_ID];
+    if(slice0!==undefined){
+      const val0=JSON.stringify(slice0), sk=k+':'+SELF_CLIENT_ID;
+      // 🪦 v625 · los mensajes se UNEN con la nube: aquí fue donde el hilo propio del coach pasó
+      //    de 29 a 2 el 5-ago. Lo demás sigue subiendo tal cual.
+      const slice=(col==='msgs')?await _msgsUnionCloud(_authUid,slice0):slice0;
+      const val=(col==='msgs')?JSON.stringify(slice):val0;
+      if(col==='msgs'&&DB.msgs)DB.msgs[SELF_CLIENT_ID]=slice;
+      if(_coachSnap[sk]!==val0){
         try{ await UD.upsertOwn({[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,SELF_CLIENT_ID); }
         catch(e){ _cwqAdd(col,SELF_CLIENT_ID,slice); warn('AVI: persistir mis propios datos falló ('+k+'), en cola para reintentar:',e&&e.message); }
       }
@@ -1247,9 +1273,14 @@ async function _persistCoachWrite(k,v){
   }
   for(const c of _sp2.clients){
     const id=c.id; if(!id)continue;
-    const slice=v&&v[id]; if(slice===undefined)continue;
-    const val=JSON.stringify(slice), sk=k+':'+id;
-    if(_coachSnap[sk]===val)continue;
+    const slice0=v&&v[id]; if(slice0===undefined)continue;
+    const val0=JSON.stringify(slice0), sk=k+':'+id;
+    if(_coachSnap[sk]===val0)continue;
+    // 🪦 v625 · el hilo de un asesorado se UNE con la nube antes de subirlo: si ella escribió
+    //    después de que el coach abriera el panel, responderle le borraba el mensaje.
+    const slice=(col==='msgs')?await _msgsUnionCloud(id,slice0):slice0;
+    const val=(col==='msgs')?JSON.stringify(slice):val0;
+    if(col==='msgs'&&DB.msgs)DB.msgs[id]=slice;
     try{ await UD.updateClientRow(id,{[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,id); }
     catch(e){ _cwqAdd(col,id,slice); warn('AVI coach persist '+k+' falló, en cola para reintentar:',id,e&&e.message); }
   }
