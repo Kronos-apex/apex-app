@@ -19360,7 +19360,8 @@ test('v623 · el pago del coach y el vaso de agua del asesorado sobreviven los d
 
 test('v623 🔒 la fusión no confunde el orden de claves de la nube con un cambio', () => {
   // jsonb reordena las claves: si eso contara como «cambió», este lado ganaría siempre (el defecto).
-  const base = { deload: { a: 1, b: 2 } }, local = { deload: { a: 1, b: 2 } }, nube = { deload: { b: 3, a: 1 } };
+  // La base viene de la nube (orden de jsonb) y la ficha en memoria trae el orden de JS: mismos valores.
+  const base = { deload: { b: 2, a: 1 } }, local = { deload: { a: 1, b: 2 } }, nube = { deload: { b: 3, a: 1 } };
   assert.deepStrictEqual(core.mergeProfile3(base, local, nube).deload, { b: 3, a: 1 }, '🔴 el orden de claves se leyó como cambio local');
   assert.strictEqual(core.canonJSON({ b: 1, a: [{ y: 1, x: 2 }] }), core.canonJSON({ a: [{ x: 2, y: 1 }], b: 1 }));
   // CONTROL: un JSON.stringify a pelo SÍ los ve distintos (por eso hace falta la forma canónica).
@@ -19428,10 +19429,14 @@ test('v623 · CABLEADO: rutinas no tocadas no se mandan, el panel fusiona, arran
   const iM = pcw.indexOf('const _m=mergeOwnRow3(_cb,');
   assert.ok(iM > 0 && iM < pcw.indexOf('await UD.updateClientRow(id,'), '🔴 el panel del coach vuelve a pisar lo que el asesorado subió');
   assert.ok(/_cb=\{profile:sn\.p,routines:sn\.r\}/.test(pcw), '🔴 el panel fusiona sin la base confirmada (_coachSnap)');
+  // La CONDICIÓN entera, no solo la llamada: un `false&&` delante deja el nombre intacto (clase v579).
+  assert.ok(/\n\s*if\(_lec&&_lec\.estado==='ok'&&_lec\.row&&_lec\.row\.profile&&typeof _lec\.row\.profile==='object'&&Array\.isArray\(_lec\.row\.routines\)&&_cb\)\{/.test(pcw),
+    '🔴 la fusión del panel quedó apagada detrás de su condición');
   const fl = app3.slice(app3.indexOf('async function _flushAuthOnline('), app3.indexOf('async function _flushAuthOnline(') + 1600);
   assert.ok(/if\(_mg&&!_mg\.sendRoutines\) delete patch\.routines;/.test(fl), '🔴 al reconectar se mandan rutinas que no se tocaron');
   assert.ok(/const _m=mergeOwnRow3\(_b,\{profile:cached\.profile,routines:cached\.routines\},\{profile:_nube\.profile,routines:_nube\.routines\}\);/.test(app3),
     '🔴 el arranque vuelve a tirar lo que se tocó sin red');
+  assert.ok(/\n\s*if\(_b&&typeof mergeOwnRow3==='function'\)\{\r?\n\s*const _m=mergeOwnRow3\(_b,/.test(app3), '🔴 la fusión del arranque quedó apagada detrás de su condición');
   assert.ok(/if\(online&&!_mergedOffline&&typeof _authBaseSet==='function'\) _authBaseSet\(/.test(app3), '🔴 el arranque no deja base: la primera fusión no sabría qué cambió');
   const poll = app1.slice(app1.indexOf('async function _pollAuthClient('), app1.indexOf('async function _pollAuthCoach('));
   assert.ok(/_authBaseSet\(Object\.assign\(\{\},_b,\{routines:row\.routines\}\)\)/.test(poll), '🔴 el refresco adopta el plan del coach y no lo anota en la base');
