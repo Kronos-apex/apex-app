@@ -19259,6 +19259,32 @@ test('v621 🔒 unir lápidas no inventa nada: sin lápidas el perfil sale IGUAL
   assert.ok(dos.tombs.e1 && dos.tombs.e2, '🔴 unir perdió una de las dos lápidas');
 });
 
+test('v621 · EJECUTADO: el guardado del teléfono viejo sube la lápida y NO sube el récord borrado', () => {
+  // Se corren las funciones REALES de app-1 con la nube y la memoria de mentira: un candado que solo
+  // mira el texto aprueba aunque el resultado no se aplique a la ficha que después se sube.
+  // ⚠️ `test()` es SÍNCRONO: un `async` aquí saldría verde sin esperar nada. Por eso se les quita
+  // el async/await y la nube de mentira responde en el acto.
+  const src = _srcApp1();
+  const cortar = nombre => { const i = src.indexOf('async function ' + nombre + '('); return src.slice(i, src.indexOf('\n}', i) + 2).replace('async function', 'function').replace(/\bawait /g, ''); };
+  const armar = nube => {
+    const ctx = { DB: { clients: [{ id: 'u1', name: 'Samuel' }], prs: { u1: _prBorrado() } }, _authUid: 'u1',
+      UD: { readPrTombs: () => nube }, foldPrTombs: core.foldPrTombs };
+    require('vm').runInNewContext(cortar('_foldOwnPrTombs') + cortar('_profileWithCloudPrTombs') +
+      'this.fold=_foldOwnPrTombs; this.perfil=_profileWithCloudPrTombs;', ctx);
+    return ctx;
+  };
+  const ok = armar(_tumba);
+  ok.fold('u1');
+  const subida = core.clientToRow(ok.DB.clients[0], {}).profile;
+  assert.deepStrictEqual(subida.prTombs, _tumba, '🔴 la lápida no llegó a la ficha que se sube');
+  assert.ok(!ok.DB.prs.u1.e1, '🔴 los récords que se suben todavía traen el borrado');
+  assert.deepStrictEqual(ok.perfil('u1', { name: 'Samuel' }).prTombs, _tumba, '🔴 el panel sube el perfil sin la lápida');
+  // Sin respuesta de la nube no se toca nada (y el guardado sigue: no se bloquea por esto).
+  const mudo = armar(null);
+  mudo.fold('u1');
+  assert.ok(!('prTombs' in mudo.DB.clients[0]) && mudo.DB.prs.u1.e1, '🔴 una nube muda cambió la ficha');
+});
+
 test('v621 · CABLEADO: TODA escritura del perfil entero pregunta antes por las lápidas', () => {
   const app1 = sinComentarios(_srcApp1()), app3 = sinComentarios(_srcApp3());
   assert.match(app1, /readClientCol\(userId,'tombs:profile->prTombs'\)/, '🔴 la lectura de lápidas trae otra cosa');
