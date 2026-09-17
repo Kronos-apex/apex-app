@@ -170,12 +170,17 @@ async function hashClientPass(plain, clientId){
   return await hashPass(plain, clientId);
 }
 
-// Mostrar/ocultar contraseña (botón 👁). Cambia el type del input y el ícono.
+// Mostrar/ocultar contraseña. Cambia el type del input y el ícono.
+// 🔴 17-sep: el botón era un emoji (👁 ↔ 🙈) y por eso esto escribía `textContent`. Ahora lleva el
+//    SVG del sprite, así que se intercambia el SÍMBOLO — escribir texto aquí BORRARÍA el icono.
+//    La rama de texto se conserva para cualquier botón que no tenga el svg dentro.
 function togglePass(btn,id){
   const el=document.getElementById(id); if(!el)return;
   const show=el.type==='password';
   el.type=show?'text':'password';
-  btn.textContent=show?'🙈':'👁';
+  const uso=btn.querySelector('use');
+  if(uso) uso.setAttribute('href',show?'#i-eye-off':'#i-eye');
+  else btn.textContent=show?'🙈':'👁';
   btn.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');
 }
 
@@ -1326,7 +1331,7 @@ function initCoach(){migrateExercises();dedupeExercises();
   // "Mi entrenamiento") → desde ahí el atrás recorre los paneles del coach paso a paso.
   const _onP=document.querySelector('#s-coach .panel.on'); AVINAV.curTab=(_onP&&_onP.id)||'p-home';
   const h=new Date().getHours();
-  document.getElementById('greeting').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches')+' 👋';
+  document.getElementById('greeting').textContent=(h<13?'Buenos días':h<20?'Buenas tardes':'Buenas noches');
   document.getElementById('sb-nm').textContent=getCoachName();
   document.getElementById('sb-av').textContent='C';
   renderAll();

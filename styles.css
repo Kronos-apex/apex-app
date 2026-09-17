@@ -2370,3 +2370,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    Texto sobre fondo amarillo con los tokens de contraste (--ylt, no el token crudo: v570/v587). */
 .tpl-gap{margin-top:5px;background:var(--yll);color:var(--ylt);border-radius:var(--rsm);
   padding:5px 8px;font-size:11.5px;font-weight:600;line-height:1.4}
+
+/* Ojo de ver la contraseña (17-sep): hereda el color del texto y no depende del sistema. */
+.ic-eye{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:block}
+
+/* Icono del título del recuadro de instalación (17-sep): hereda el color y la altura
+   del rótulo, para que no se vea pegado ni salte de línea base como hacía el emoji. */
+.ic-ttl{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}

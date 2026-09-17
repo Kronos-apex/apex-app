@@ -19637,6 +19637,78 @@ test('v625 · CABLEADO: las TRES puertas que escriben mensajes pasan por la uni�
 });
 
 // ══════════════════════════════════════════════════════
+// v626 — LOS CONTROLES LLEVAN ICONO, NO EMOJI
+// ══════════════════════════════════════════════════════
+// Pedido del PO (17-sep): «que se vea profesional y que no parezca hecha por un novato». Mirando
+// las capturas, el delator más claro era un emoji DENTRO de un control: no hereda el color del
+// botón, se dibuja distinto en cada sistema operativo y convive con los SVG limpios del sprite a
+// dos centímetros. El patrón bueno ya existía en la app (`aviIcon('eye')` en la biblioteca de
+// ejercicios); lo que se había quedado atrás era el marcado ESTÁTICO.
+
+test('v626 · ningún botón de ver la contraseña lleva un emoji (es el control que ve todo el mundo)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = sinComentarios(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
+  const ojos = [...html.matchAll(/<button[^>]*onclick="togglePass\([^)]*\)"[^>]*>([\s\S]*?)<\/button>/g)];
+  assert.ok(ojos.length >= 6, `🔴 solo ${ojos.length} botones de contraseña: el patrón dejó de casar`);
+  ojos.forEach(m => {
+    assert.ok(/<use href="#i-eye"\/>/.test(m[1]),
+      '🔴 un botón de ver la contraseña volvió a llevar emoji en vez del icono del sprite');
+  });
+  // 🔒 Y los símbolos TIENEN que existir, o el botón sale vacío y no da ningún error.
+  assert.ok(/<symbol id="i-eye"/.test(html) && /<symbol id="i-eye-off"/.test(html),
+    '🔴 falta el símbolo del ojo en el sprite: el botón quedaría en blanco');
+});
+
+test('v626 🔒 alternar la contraseña intercambia el SÍMBOLO, no escribe texto encima', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const i = js.indexOf('function togglePass(');
+  const cuerpo = js.slice(i, js.indexOf('\nfunction ', i + 10));
+  // Escribir `textContent` a secas BORRARÍA el svg de dentro: solo vale como respaldo.
+  assert.ok(/const uso=btn\.querySelector\('use'\);/.test(cuerpo),
+    '🔴 dejó de buscar el símbolo: el icono se borraría al primer toque');
+  assert.ok(/if\(uso\) uso\.setAttribute\('href',show\?'#i-eye-off':'#i-eye'\);/.test(cuerpo),
+    '🔴 ya no intercambia el símbolo del ojo');
+  assert.ok(/else btn\.textContent=/.test(cuerpo),
+    '🔴 la escritura de texto dejó de ser el RESPALDO y volvió a ser el camino normal');
+  // Y la etiqueta para lectores de pantalla sigue cambiando con el estado.
+  assert.ok(/aria-label',show\?'Ocultar contraseña':'Mostrar contraseña'/.test(cuerpo),
+    '🔴 el botón anunciaría siempre lo mismo a quien usa lector de pantalla');
+});
+
+test('v626 · el recuadro y el botón de instalar llevan el icono del sprite, no un emoji', () => {
+  const fs = require('fs'), path = require('path');
+  const html = sinComentarios(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
+  assert.ok(/<symbol id="i-install"/.test(html), '🔴 falta el símbolo de instalar');
+  const pildora = html.slice(html.indexOf('id="install-banner"'), html.indexOf('id="install-banner"') + 1400);
+  assert.ok(/<use href="#i-install"\/>/.test(pildora), '🔴 la píldora «Instalar app» volvió al emoji');
+  assert.ok(/stroke:currentColor/.test(pildora),
+    '🔴 el icono de la píldora dejó de heredar el color del botón');
+  const ttl = html.slice(html.indexOf('INSTALA LA APP') - 200, html.indexOf('INSTALA LA APP'));
+  assert.ok(/<use href="#i-install"\/>/.test(ttl), '🔴 el título del recuadro volvió al emoji');
+});
+
+test('v626 · el saludo del coach no lleva emoji, en las DOS puertas', () => {
+  const fs = require('fs'), path = require('path');
+  const html = sinComentarios(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  // El marcado estático y el que lo repinta: si solo se limpia uno, el emoji vuelve al primer render.
+  const est = (html.match(/id="greeting">([^<]*)</) || [])[1] || '';
+  assert.ok(est && !/[\u{1F300}-\u{1FAFF}]/u.test(est), `🔴 el saludo estático trae emoji: «${est}»`);
+  const din = (js.match(/getElementById\('greeting'\)\.textContent=([^;]+);/) || [])[1] || '';
+  assert.ok(din && !/[\u{1F300}-\u{1FAFF}]/u.test(din), `🔴 el saludo que repinta trae emoji: «${din}»`);
+});
+
+test('v626 · el recuadro de instalar usa las comillas de la marca, no las rectas', () => {
+  const fs = require('fs'), path = require('path');
+  const html = sinComentarios(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
+  const caja = html.slice(html.indexOf('id="install-hint"'), html.indexOf('id="install-hint"') + 1800);
+  assert.ok(!/<strong>"[^"]+"<\/strong>/.test(caja),
+    '🔴 volvieron las comillas rectas a la primera pantalla que ve cualquiera');
+  assert.ok(/«/.test(caja), '🔴 se fueron las comillas angulares de la marca');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
