@@ -2823,8 +2823,22 @@ function wfShare(){
   // foto) eligió el C: **580 px = el 54% del ancho**. Para que quepa sin tocar el pie, las cuatro
   // cifras pasan a UNA fila y los récords se compactan (124 → 108 px): así el caso apretado
   // termina en y≈1609 con la raya del pie en 1760, el mismo aire que tenía v619.
-  const CR_R=290, CR_TOP=150, CR_CY=CR_TOP+CR_R;   // 580 px = 54% del ancho (v619: 26%, antes 17%)
-  const _dy=(CR_CY+CR_R)-422;                      // 422 era el borde inferior del círculo viejo
+  const CR_R=290, CR_TOP0=150;                     // 580 px = 54% del ancho (v619: 26%, antes 17%)
+  const _dy0=(CR_TOP0+2*CR_R)-422;                 // 422 era el borde inferior del círculo viejo
+  // ── v624 · EL AIRE QUE SOBRA SE REPARTE, NO SE DEJA TODO ABAJO ─────────────────────────
+  // La composición se armó con la tarjeta LLENA (4 cifras + 3 récords), que termina en y≈1624
+  // con la raya del pie en 1760. Una sesión vieja del historial trae 2 cifras y ningún récord:
+  // ahí el bloque terminaba en 1252 y quedaban **508 px de vacío**, el 26% de la imagen, que en
+  // una imagen que se comparte se lee como que algo no cargó.
+  // 🔒 La regla es que lo que sobra se parte por la mitad —la mitad arriba, la mitad abajo—, y
+  //    por construcción la tarjeta llena NO se mueve ni un píxel: ahí no sobra nada y el modelo
+  //    que eligió el PO queda intacto (ese es el control del test).
+  const CW=210,CH=150,GAP=20;                      // ficha de cifra (v622: las cuatro en UNA fila)
+  const PRH=108, PRGAP=16;                         // tarjeta de récord
+  const cells=d.chips.slice(0,4), prs3=d.prs.slice(0,3);
+  const _endNat=764+_dy0+(cells.length?CH:0)+30+prs3.length*(PRH+PRGAP);
+  const _sobra=Math.max(0,Math.round((1624-_endNat)/2));
+  const CR_TOP=CR_TOP0+_sobra, CR_CY=CR_TOP+CR_R, _dy=_dy0+_sobra;
   // el retrato (o el trofeo de siempre si no hay foto de perfil), como en la pantalla
   if(_wfShareAvatar||d.fullName||d.name){
     _wfDrawCrest(x,540,CR_CY,CR_R,d.fullName||d.name,_wfShareAvatar,F);
@@ -2854,8 +2868,7 @@ function wfShare(){
   // ── Las cifras, en UNA fila (v622), con la MISMA ficha de la pantalla (.wf-stat) ──
   // La fila se CENTRA con las fichas que haya: una sesión sin volumen trae 3, y alinearlas a la
   // izquierda dejaría un hueco a la derecha que se lee como una ficha que falta.
-  const cells=d.chips.slice(0,4);
-  const CW=210,CH=150,GAP=20,X0=540-(cells.length*CW+Math.max(0,cells.length-1)*GAP)/2;
+  const X0=540-(cells.length*CW+Math.max(0,cells.length-1)*GAP)/2;
   let yc=764+_dy;
   cells.forEach((c2,i)=>{
     const cx=X0+i*(CW+GAP), cy=yc;
@@ -2874,8 +2887,8 @@ function wfShare(){
   let ry=yc+(cells.length?CH:0)+30;
 
   // ── Los récords, con la MISMA tarjeta de la pantalla (.wf-pr) ──
-  d.prs.slice(0,3).forEach(pr=>{
-    const h=108;
+  prs3.forEach(pr=>{
+    const h=PRH;
     const g3=x.createLinearGradient(90,ry,990,ry+h);
     g3.addColorStop(0,'rgba(4,8,10,.62)');g3.addColorStop(1,'rgba(4,8,10,.52)');
     x.fillStyle=g3;_rr(90,ry,900,h,28);x.fill();
@@ -2890,7 +2903,7 @@ function wfShare(){
     x.fillStyle='rgba(242,245,244,.92)';x.font=_cf(28,'600');
     x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' '+(typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'):'')):(pr.val+' '+pr.unit),192,ry+88);
     x.textAlign='center';
-    ry+=h+16;
+    ry+=h+PRGAP;
   });
   x.textAlign='start';
   // pie con el coach

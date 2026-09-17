@@ -19058,7 +19058,9 @@ test('v618 · dos correcciones del mismo record: manda la MAS RECIENTE', () => {
 test('v619 · el retrato ocupa una parte seria del lienzo, no un botoncito', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
-  const m = src.match(/const CR_R=(\d+),\s*CR_TOP=(\d+)/);
+  // v624 re-encuadre: `CR_TOP` pasó a ser `CR_TOP0` (la posición ANTES de repartir el aire que
+  // sobra en una tarjeta corta). La propiedad que se vigila no cambió: el tamaño del retrato.
+  const m = src.match(/const CR_R=(\d+),\s*CR_TOP0=(\d+)/);
   assert.ok(m, '🔴 desaparecieron las constantes del retrato');
   const R = +m[1];
   assert.ok(2 * R / 1080 >= 0.22,
@@ -19076,10 +19078,10 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
   const num = (re, q) => { const m = src.match(re); assert.ok(m, 'no se pudo leer ' + q); return +m[1]; };
-  const R = num(/const CR_R=(\d+),/, 'CR_R'), TOP = num(/CR_TOP=(\d+),/, 'CR_TOP');
-  const CH = num(/CW=\d+,CH=(\d+),/, 'alto de ficha'), GAP = num(/CH=\d+,GAP=(\d+),/, 'separacion');
-  const PRH = num(/const h=(\d+);/, 'alto de la tarjeta de record');
-  const PRGAP = num(/ry\+=h\+(\d+);/, 'separacion de records');
+  const R = num(/const CR_R=(\d+),/, 'CR_R'), TOP = num(/CR_TOP0=(\d+);/, 'CR_TOP0');
+  const CH = num(/CW=\d+,CH=(\d+),/, 'alto de ficha'), GAP = num(/CH=\d+,GAP=(\d+);/, 'separacion');
+  const PRH = num(/const PRH=(\d+),/, 'alto de la tarjeta de record');
+  const PRGAP = num(/PRH=\d+, PRGAP=(\d+);/, 'separacion de records');
   const PIE = num(/x\.fillRect\(90,(\d+),900,4\)/, 'la raya del pie');
   // v622 re-encuadre: las cifras pasaron a UNA fila (modelo C). La propiedad no cambia —con el
   // radio que sea, lo de abajo cabe—, así que ahora TAMBIÉN el arranque de la fila y el salto a
@@ -19104,7 +19106,7 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
   //    circulo. Clase de v566: el candado del motor no protege la pantalla.
   const cuerpo = src.slice(src.indexOf('function wfShare('), src.indexOf('function _wfCanvasPreview') > 0
     ? src.indexOf('function _wfCanvasPreview') : src.indexOf('function wfShare(') + 12000);
-  assert.ok(/const _dy=\(CR_CY\+CR_R\)-422;/.test(cuerpo),
+  assert.ok(/const _dy0=\(CR_TOP0\+2\*CR_R\)-422;/.test(cuerpo) && /_dy=_dy0\+_sobra/.test(cuerpo),
     '🔴 el desplazamiento dejo de derivarse del circulo: crecer el retrato ya no mueve nada');
   [[/x\.fillText\(d\.name,540,492\+_dy\)/, 'el nombre'],
    [/'ENTRENAMIENTO COMPLETADO',540,548\+_dy/, 'el rotulo'],
@@ -19126,7 +19128,7 @@ test('v622 · el retrato es el que eligió el PO (≥50% del ancho) y las cifras
   const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
   const R = +(src.match(/const CR_R=(\d+),/) || [])[1];
   assert.ok(2 * R / 1080 >= 0.5, `🔴 el retrato ya no es el modelo C: ${(2 * R / 1080 * 100).toFixed(1)}% del ancho`);
-  const CW = +(src.match(/const CW=(\d+),/) || [])[1], GAP = +(src.match(/CH=\d+,GAP=(\d+),/) || [])[1];
+  const CW = +(src.match(/const CW=(\d+),/) || [])[1], GAP = +(src.match(/CH=\d+,GAP=(\d+);/) || [])[1];
   // Las cuatro fichas tienen que caber entre los márgenes de 90 px que usan los récords y el pie.
   assert.ok(4 * CW + 3 * GAP <= 900, `🔴 cuatro fichas miden ${4 * CW + 3 * GAP} px y el hueco es de 900: se salen`);
   const share = sinComentarios(src.slice(src.indexOf('function wfShare('), src.indexOf('function wfShare(') + 12000));
@@ -19509,6 +19511,43 @@ test('v624 · CABLEADO: la habitación de la sesión ofrece compartir, prepara l
   assert.ok(/CUR\.loggedAs==='coach' && _shClient && parseInt\(_shClient\.age\)<18\s*\r?\n?\s*&& !\(typeof showcaseMinorOk==='function' && showcaseMinorOk\(_shClient\)\)/.test(cuerpo),
     '🔴 se fue el candado de menores del panel del coach');
   assert.ok(/if\(_shData&&!_shMenor\)\{/.test(cuerpo), '🔴 el candado de menores dejó de decidir si el botón existe');
+});
+
+// 🔒 La tarjeta de una sesión VIEJA trae 2 cifras y ningún récord, y la composición se armó con la
+//    LLENA: el bloque colgaba de arriba y dejaba ~508 px de vacío abajo, el 26% de la imagen. Lo
+//    que sobra se parte por la mitad — y el CONTROL es que la tarjeta llena NO se mueva nada, o
+//    esto sería haber cambiado el modelo que el PO eligió mirando (v622).
+test('v624 🔒 el aire que sobra se reparte, y la tarjeta LLENA no se mueve ni un píxel', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const num = (re, q) => { const m = src.match(re); assert.ok(m, 'no se pudo leer ' + q); return +m[1]; };
+  const R = num(/const CR_R=(\d+),/, 'CR_R'), TOP0 = num(/CR_TOP0=(\d+);/, 'CR_TOP0');
+  const CH = num(/CW=\d+,CH=(\d+),/, 'alto de ficha');
+  const PRH = num(/const PRH=(\d+),/, 'alto de record'), PRGAP = num(/PRH=\d+, PRGAP=(\d+);/, 'salto');
+  const YC0 = num(/let yc=(\d+)\+_dy;/, 'arranque de las cifras');
+  const RYGAP = num(/let ry=yc\+\(cells\.length\?CH:0\)\+(\d+);/, 'salto a los records');
+  const LLENO = num(/_sobra=Math\.max\(0,Math\.round\(\((\d+)-_endNat\)\/2\)\)/, 'el fin del caso lleno');
+  const PIE = num(/x\.fillRect\(90,(\d+),900,4\)/, 'la raya del pie');
+  const dy0 = (TOP0 + 2 * R) - 422;
+  const fin = (n, p) => YC0 + dy0 + (n ? CH : 0) + RYGAP + p * (PRH + PRGAP);
+  // La referencia escrita en el código ES el fin del caso lleno: si alguien mueve una constante y
+  // no la actualiza, la tarjeta llena empezaría a moverse. Por eso se comprueba, no se supone.
+  assert.strictEqual(fin(4, 3), LLENO,
+    `🔴 la referencia del reparto (${LLENO}) ya no es donde termina la tarjeta llena (${fin(4, 3)})`);
+  // CONTROL: con la tarjeta llena no sobra nada → el modelo C queda EXACTAMENTE como él lo eligió.
+  assert.strictEqual(Math.max(0, Math.round((LLENO - fin(4, 3)) / 2)), 0,
+    '🔴 la tarjeta llena se movería: eso es cambiar el modelo que el PO eligió mirando');
+  // Y con la corta el aire se reparte: ni todo abajo (lo que se veía roto) ni tanto que se monte.
+  const sobra2 = Math.round((LLENO - fin(2, 0)) / 2);
+  assert.ok(sobra2 > 120, `🔴 el vacío de la tarjeta corta volvió a quedarse todo abajo (${sobra2} px)`);
+  assert.ok(fin(2, 0) + 2 * sobra2 <= LLENO && TOP0 + sobra2 > 126,
+    '🔴 el reparto se salió de su banda: o se monta sobre el pie o se mete en el sello');
+  // 🔒 CABLEADO: el desplazamiento lo tienen que APLICAR el círculo y todo lo que cuelga de él —
+  //    la cuenta de arriba usa las constantes y saldría verde con el código sin aplicarlas (v619).
+  assert.ok(/CR_TOP=CR_TOP0\+_sobra, CR_CY=CR_TOP\+CR_R, _dy=_dy0\+_sobra/.test(src),
+    '🔴 el reparto se calcula y no se aplica: la tarjeta corta vuelve a colgar de arriba');
+  assert.ok(/_endNat=764\+_dy0\+\(cells\.length\?CH:0\)\+30\+prs3\.length\*\(PRH\+PRGAP\)/.test(src),
+    '🔴 el fin del bloque dejó de derivarse de lo que de verdad se pinta');
 });
 
 // ══════════════════════════════════════════════════════
