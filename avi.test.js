@@ -19078,15 +19078,20 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
   const PRH = num(/const h=(\d+);/, 'alto de la tarjeta de record');
   const PRGAP = num(/ry\+=h\+(\d+);/, 'separacion de records');
   const PIE = num(/x\.fillRect\(90,(\d+),900,4\)/, 'la raya del pie');
+  // v622 re-encuadre: las cifras pasaron a UNA fila (modelo C). La propiedad no cambia —con el
+  // radio que sea, lo de abajo cabe—, así que ahora TAMBIÉN el arranque de la fila y el salto a
+  // los récords se LEEN del código en vez de suponer las dos filas de antes.
+  const YC0 = num(/let yc=(\d+)\+_dy;/, 'arranque de las cifras');
+  const RYGAP = num(/let ry=yc\+\(cells\.length\?CH:0\)\+(\d+);/, 'salto a los records');
   const dy = (TOP + 2 * R) - 422;                 // 422 era el borde inferior del circulo viejo
-  const yc = 790 + dy;                            // primera fila de cifras
-  const ry = yc + 2 * (CH + GAP) + 24;            // 4 cifras = 2 filas
+  const yc = YC0 + dy;                            // la fila de cifras
+  const ry = yc + CH + RYGAP;                     // 4 cifras = 1 fila (v622)
   const fin = ry + 3 * PRH + 2 * PRGAP;           // 3 records, el tope
   assert.ok(fin < PIE - 30,
     `🔴 el caso apretado termina en y=${fin} y la raya del pie esta en ${PIE}: se montan`);
   // Y su CONTROL: que el calculo pueda fallar de verdad. Con un radio disparatado tiene que dar
   // colision — si no, esta asercion no vigila nada (un gate que no puede fallar no es un gate).
-  const finGrande = (200 + 2 * 260 - 422) + 790 + 2 * (CH + GAP) + 24 + 3 * PRH + 2 * PRGAP;
+  const finGrande = (TOP + 2 * 400 - 422) + YC0 + CH + RYGAP + 3 * PRH + 2 * PRGAP;
   assert.ok(finGrande >= PIE - 30, 'el calculo no detecta una colision ni con un radio absurdo');
 
   // 🔴 Y ESTO ES LO QUE DE VERDAD FALTABA: la cuenta de arriba usa las CONSTANTES, asi que salia
@@ -19102,9 +19107,32 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
    [/'ENTRENAMIENTO COMPLETADO',540,548\+_dy/, 'el rotulo'],
    [/x\.fillText\(_tit,540,660\+_dy\)/, 'el titular'],
    [/x\.fillText\(_sub,540,722\+_dy\)/, 'el subtitulo'],
-   [/let yc=790\+_dy;/, 'las cifras']].forEach(([re, q]) => {
+   [/let yc=\d+\+_dy;/, 'las cifras']].forEach(([re, q]) => {
     assert.ok(re.test(cuerpo), `🔴 ${q} dejo de seguir al circulo: el retrato nuevo se le monta encima`);
   });
+});
+
+// ══════════════════════════════════════════════════════
+// v622 — EL MODELO C: EL RETRATO «MUY GRANDE», ELEGIDO POR EL PO
+// ══════════════════════════════════════════════════════
+// Entre cinco modelos dibujados con el código real eligió el C (17-sep): 580 px = 54% del ancho.
+// Para que quepa, las cuatro cifras van en UNA fila y los récords se compactan.
+
+test('v622 · el retrato es el que eligió el PO (≥50% del ancho) y las cifras caben en una fila', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const R = +(src.match(/const CR_R=(\d+),/) || [])[1];
+  assert.ok(2 * R / 1080 >= 0.5, `🔴 el retrato ya no es el modelo C: ${(2 * R / 1080 * 100).toFixed(1)}% del ancho`);
+  const CW = +(src.match(/const CW=(\d+),/) || [])[1], GAP = +(src.match(/CH=\d+,GAP=(\d+),/) || [])[1];
+  // Las cuatro fichas tienen que caber entre los márgenes de 90 px que usan los récords y el pie.
+  assert.ok(4 * CW + 3 * GAP <= 900, `🔴 cuatro fichas miden ${4 * CW + 3 * GAP} px y el hueco es de 900: se salen`);
+  const share = sinComentarios(src.slice(src.indexOf('function wfShare('), src.indexOf('function wfShare(') + 12000));
+  // Una sola fila: la y de cada ficha es la de la fila, y la x avanza con el índice.
+  assert.ok(/const cx=X0\+i\*\(CW\+GAP\), cy=yc;/.test(share), '🔴 las cifras volvieron a partirse en filas');
+  // Centrada con las fichas que haya: con 3 cifras no queda un hueco a la derecha.
+  assert.ok(/X0=540-\(cells\.length\*CW\+/.test(share), '🔴 la fila de cifras dejó de centrarse con las que haya');
+  // Y la cifra se ajusta a su ficha: en 210 px «4.320 kg» a tamaño fijo se sale.
+  assert.ok(/measureText\(String\(c2\[1\]\)\)\.width>CW-\d+/.test(share), '🔴 la cifra ya no se ajusta a su ficha');
 });
 
 // ══════════════════════════════════════════════════════

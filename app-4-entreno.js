@@ -2786,8 +2786,9 @@ function wfShare(){
 
   // ── Todo CENTRADO, como la pantalla ──
   x.textAlign='center';
-  x.fillStyle='#EAFBF4';x.font=_cf(64,'900',true);x.fillText('AVI',540,140);
-  x.fillStyle='#10E0A0';x.fillRect(495,164,90,6);
+  // v622 · el sello sube 40 px: es el sitio que el retrato del modelo C necesita arriba.
+  x.fillStyle='#EAFBF4';x.font=_cf(64,'900',true);x.fillText('AVI',540,100);
+  x.fillStyle='#10E0A0';x.fillRect(495,120,90,6);
   // ── v619 · EL RETRATO, MÁS GRANDE ────────────────────────────────────────────────────
   // Reporte del PO (15-sep): «se ve muy pequeña la foto». Medido sobre el lienzo real: el radio
   // era 92, o sea **184 px de diámetro en un lienzo de 1080 = el 17% del ancho** — en una imagen
@@ -2798,7 +2799,12 @@ function wfShare(){
   // 🔒 Y la posición de lo que viene debajo se DERIVA del propio círculo (`_dy`): con los seis
   //    números escritos a mano, tocar el radio deja seis sitios que hay que acordarse de mover
   //    —y el que se olvide se monta encima del vecino, que es justo lo que no se ve en un test.
-  const CR_R=140, CR_TOP=200, CR_CY=CR_TOP+CR_R;   // 280 px = 26% del ancho (era 17%)
+  // ── v622 · EL MODELO C, «MUY GRANDE», ELEGIDO POR EL PO ────────────────────────────────
+  // Entre cinco modelos dibujados con este mismo código (26% · 39% · 54% · foto de portada · sin
+  // foto) eligió el C: **580 px = el 54% del ancho**. Para que quepa sin tocar el pie, las cuatro
+  // cifras pasan a UNA fila y los récords se compactan (124 → 108 px): así el caso apretado
+  // termina en y≈1609 con la raya del pie en 1760, el mismo aire que tenía v619.
+  const CR_R=290, CR_TOP=150, CR_CY=CR_TOP+CR_R;   // 580 px = 54% del ancho (v619: 26%, antes 17%)
   const _dy=(CR_CY+CR_R)-422;                      // 422 era el borde inferior del círculo viejo
   // el retrato (o el trofeo de siempre si no hay foto de perfil), como en la pantalla
   if(_wfShareAvatar||d.fullName||d.name){
@@ -2826,41 +2832,46 @@ function wfShare(){
   while(ss>22&&x.measureText(_sub).width>920){ss-=2;x.font=_cf(ss,'600');}
   x.fillText(_sub,540,722+_dy);
 
-  // ── Las cifras, 2×2, con la MISMA ficha de la pantalla (.wf-stat) ──
+  // ── Las cifras, en UNA fila (v622), con la MISMA ficha de la pantalla (.wf-stat) ──
+  // La fila se CENTRA con las fichas que haya: una sesión sin volumen trae 3, y alinearlas a la
+  // izquierda dejaría un hueco a la derecha que se lee como una ficha que falta.
   const cells=d.chips.slice(0,4);
-  const CW=436,CH=180,GAP=28,X0=540-(CW+GAP/2);
-  let yc=790+_dy;
+  const CW=210,CH=150,GAP=20,X0=540-(cells.length*CW+Math.max(0,cells.length-1)*GAP)/2;
+  let yc=764+_dy;
   cells.forEach((c2,i)=>{
-    const cx=X0+(i%2)*(CW+GAP), cy=yc+Math.floor(i/2)*(CH+GAP);
-    x.fillStyle='rgba(4,8,10,.58)';_rr(cx,cy,CW,CH,38);x.fill();
-    x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=3;_rr(cx,cy,CW,CH,38);x.stroke();
+    const cx=X0+i*(CW+GAP), cy=yc;
+    x.fillStyle='rgba(4,8,10,.58)';_rr(cx,cy,CW,CH,30);x.fill();
+    x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=3;_rr(cx,cy,CW,CH,30);x.stroke();
     x.fillStyle='#10E0A0';
-    let vs=62; x.font=_cf(vs,'800',false);
-    while(vs>30&&x.measureText(String(c2[1])).width>CW-56){vs-=4;x.font=_cf(vs,'800');}
-    x.fillText(String(c2[1]),cx+CW/2,cy+96);
-    x.fillStyle='rgba(242,245,244,.7)';x.font=_cf(27,'600');
-    x.fillText(String(c2[0]).toUpperCase(),cx+CW/2,cy+142);
+    // En 210 px no cabe «4.320 kg» a 62: la cifra se ajusta a su ficha, nunca se sale de ella.
+    let vs=48; x.font=_cf(vs,'800',false);
+    while(vs>26&&x.measureText(String(c2[1])).width>CW-26){vs-=2;x.font=_cf(vs,'800');}
+    x.fillText(String(c2[1]),cx+CW/2,cy+80);
+    x.fillStyle='rgba(242,245,244,.7)';
+    let ls=24; x.font=_cf(ls,'600');
+    while(ls>16&&x.measureText(String(c2[0]).toUpperCase()).width>CW-20){ls-=2;x.font=_cf(ls,'600');}
+    x.fillText(String(c2[0]).toUpperCase(),cx+CW/2,cy+120);
   });
-  let ry=yc+Math.ceil(cells.length/2)*(CH+GAP)+24;
+  let ry=yc+(cells.length?CH:0)+30;
 
   // ── Los récords, con la MISMA tarjeta de la pantalla (.wf-pr) ──
   d.prs.slice(0,3).forEach(pr=>{
-    const h=124;
+    const h=108;
     const g3=x.createLinearGradient(90,ry,990,ry+h);
     g3.addColorStop(0,'rgba(4,8,10,.62)');g3.addColorStop(1,'rgba(4,8,10,.52)');
-    x.fillStyle=g3;_rr(90,ry,900,h,32);x.fill();
-    x.strokeStyle='rgba(16,224,160,.35)';x.lineWidth=3;_rr(90,ry,900,h,32);x.stroke();
+    x.fillStyle=g3;_rr(90,ry,900,h,28);x.fill();
+    x.strokeStyle='rgba(16,224,160,.35)';x.lineWidth=3;_rr(90,ry,900,h,28);x.stroke();
     x.textAlign='start';
-    x.fillStyle='#F2C94C';x.font=_cf(44,'900');x.fillText('★',126,ry+78);
-    x.fillStyle='#FFFFFF';x.font=_cf(34,'800');
+    x.fillStyle='#F2C94C';x.font=_cf(42,'900');x.fillText('★',126,ry+70);
+    x.fillStyle='#FFFFFF';x.font=_cf(32,'800');
     let nm=(pr.isNew?'¡Primer récord! ':'¡Nuevo récord! ')+pr.name;
     while(nm.length>6&&x.measureText(nm).width>720)nm=nm.slice(0,-1);
     if(nm!==((pr.isNew?'¡Primer récord! ':'¡Nuevo récord! ')+pr.name))nm=nm.replace(/\s+\S*$/,'')+'…';
-    x.fillText(nm,192,ry+58);
-    x.fillStyle='rgba(242,245,244,.92)';x.font=_cf(30,'600');
-    x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' '+(typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'):'')):(pr.val+' '+pr.unit),192,ry+100);
+    x.fillText(nm,192,ry+50);
+    x.fillStyle='rgba(242,245,244,.92)';x.font=_cf(28,'600');
+    x.fillText(pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps+' '+(typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'):'')):(pr.val+' '+pr.unit),192,ry+88);
     x.textAlign='center';
-    ry+=h+18;
+    ry+=h+16;
   });
   x.textAlign='start';
   // pie con el coach
