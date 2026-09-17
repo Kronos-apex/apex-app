@@ -1,0 +1,30 @@
+Copyright (c) 2026 Andrés Martínez. Todos los derechos reservados.
+Copyright (c) 2026 Andrés Martínez. All rights reserved.
+
+Este código fuente está publicado para que el producto pueda auditarse y para
+que su despliegue estático sea posible. Eso NO lo convierte en software libre.
+
+Queda prohibido, sin autorización escrita previa del titular:
+  · usar, copiar, modificar, fusionar o publicar este código, en todo o en parte;
+  · distribuirlo, sublicenciarlo o venderlo;
+  · desplegar una instancia derivada de esta plataforma, con o sin ánimo de lucro.
+
+Se permite leerlo, citarlo con atribución y reportar vulnerabilidades (ver SECURITY.md).
+
+El nombre AVI, su identidad visual y los contenidos de entrenamiento y nutrición
+son propiedad del titular y no se incluyen en ninguna autorización de código.
+
+EL SOFTWARE SE ENTREGA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO.
+
+---
+
+This source code is published so the product can be audited and so that its
+static deployment is possible. That does NOT make it open source.
+
+Without prior written permission from the copyright holder, you may not use,
+copy, modify, merge, publish, distribute, sublicense or sell this code, in whole
+or in part, nor deploy a derivative instance of this platform.
+
+Reading it, quoting it with attribution and reporting vulnerabilities are permitted.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

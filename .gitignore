@@ -13,3 +13,8 @@ scripts/demo/
 scripts/_*
 _*.html
 .tmp-chrome-*/
+
+# Notas y corridas de borrador que no son del producto
+_baseline.txt
+llm-council/
+scratch/
