@@ -2508,14 +2508,13 @@ function showWorkoutFinish(routine,stats){
   // alguien la fija; `typeof` porque `finishPhotoFor` vive en avi-core.
   // v605 · Si la persona subio su foto de perfil, ESA es el fondo (pedido del PO). Si no, la
   // generica que le corresponde. `window.AVI_FINISH_PHOTO` sigue mandando por encima de las dos.
-  const _bgSrc=window.AVI_FINISH_PHOTO
-    ||((typeof finishBackdropFor==='function')?finishBackdropFor(c)
-      :((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO));
+  const _bgSrc=_wfShareBgSrc(c);   // v624 · UNA sola definición de «qué foto le toca» (ver abajo)
   document.getElementById('wf-photo').style.backgroundImage=`url('${_bgSrc}')`;
   // La MISMA foto va al lienzo compartible, para que la imagen que sale sea la pantalla que se
   // ve. Se prepara aqui y no al tocar «Compartir»: `navigator.share` exige activacion reciente.
-  _wfBgPhoto=null;
-  if(typeof canvasSafePhoto==='function')canvasSafePhoto(_bgSrc,img=>{_wfBgPhoto=img||null;});
+  // v624 · el fondo y el retrato del lienzo los prepara `_wfPrepShareCanvas`, que es la MISMA
+  // función que usa la habitación de una sesión guardada (una sola definición de qué foto le toca).
+  _wfPrepShareCanvas(c);
   // v597 — el retrato de QUIEN entrenó, en el sitio del trofeo (pedido del PO: «que esa pantalla
   // sea totalmente personalizada»). La foto ya la sube el propio asesorado desde su perfil
   // (`openAvatarPicker` → `client.avatar`): aquí no nace ningún dato nuevo, se conecta el que ya
@@ -2692,6 +2691,26 @@ let _wfShareAvatar=null;
 // mismo origen, asi que nunca tiñe, pero pasa por la misma comprobacion que cualquier otra:
 // una regla de seguridad con excepciones deja de ser una regla.
 let _wfBgPhoto=null;
+// v624 · Las DOS fotos del lienzo (el fondo de su sexo o su propia foto de perfil, y el retrato
+// del círculo) se preparan aquí, en UNA función: la pantalla de cierre y la habitación de una
+// sesión guardada comparten lienzo, así que dos copias de «qué foto le toca» se acabarían
+// separando (la lección del peso, v448/v511). Asíncronas a propósito: quien llame prepara al
+// ABRIR la pantalla, no al tocar «Compartir».
+// Qué foto de fondo le toca a esta persona: la suya si la subió, si no la que corresponde a su
+// sexo, y `window.AVI_FINISH_PHOTO` manda por encima de las dos. UNA definición para la pantalla
+// de cierre y para el lienzo — si se separan, la imagen que se comparte deja de ser la pantalla
+// que se vio, que es justo lo que v603 vino a arreglar.
+function _wfShareBgSrc(c){
+  return window.AVI_FINISH_PHOTO
+    ||((typeof finishBackdropFor==='function')?finishBackdropFor(c)
+      :((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO));
+}
+function _wfPrepShareCanvas(c){
+  const src=_wfShareBgSrc(c);
+  _wfBgPhoto=null;
+  if(typeof canvasSafePhoto==='function')canvasSafePhoto(src,img=>{_wfBgPhoto=img||null;});
+  _wfPrepShareAvatar((c&&c.avatar)||'');
+}
 function _wfPrepShareAvatar(src){
   _wfShareAvatar=null;
   // 🔒 Cruza módulos: sin app-1 no hay comprobación de teñido, y sin comprobación NO se arriesga
@@ -3225,6 +3244,26 @@ function openSessionRoom(clientId,sid){
       return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
     }).join('');
   }
+  // ── v624 · COMPARTIR UN ENTRENO YA GUARDADO ───────────────────────────────────────────────
+  // Reporte del PO: la imagen solo existía en la pantalla de cierre y «si de casualidad oprimes
+  // Continuar ya perdiste la opción». El entreno queda guardado; su imagen no se podía volver a
+  // sacar. Aquí vive la sesión, así que aquí va la puerta (clase v613).
+  // 🔒 Las fotos del lienzo se preparan al ABRIR la habitación, no al tocar el botón:
+  //    `navigator.share` exige activación reciente del usuario, así que una espera entre el toque
+  //    y el share es un riesgo gratis (misma razón que en el cierre).
+  const _shClient=(DB.clients||[]).find(x=>x&&x.id===clientId)||null;
+  const _shData=(typeof sessionShareData==='function')?sessionShareData(s,_shClient):null;
+  // 🔒 El COACH no comparte el entreno de un menor sin el permiso del acudiente (misma puerta que
+  //    la tarjeta de progreso, v573). En la app del propio asesorado no cambia nada: es su dato y
+  //    su pantalla de cierre ya se lo ofrece.
+  const _shMenor=CUR.loggedAs==='coach' && _shClient && parseInt(_shClient.age)<18
+    && !(typeof showcaseMinorOk==='function' && showcaseMinorOk(_shClient));
+  let shareHTML='';
+  if(_shData&&!_shMenor){
+    _wfShareData=_shData;
+    _wfPrepShareCanvas(_shClient);
+    shareHTML=`<button type="button" class="btn bp" style="width:100%;margin-top:16px" onclick="wfShare()" aria-label="Compartir este entreno como imagen">Compartir este entreno</button>`;
+  }
   const circ=2*Math.PI*26, off=(circ*(1-pct/100)).toFixed(1);
   const feelHero=s.feeling?`<div class="sroom-hero-feel">${feelingEmoji(s.feeling)} ${esc(feelingLabel(s.feeling))}</div>`:'';
   body.innerHTML=`
@@ -3242,6 +3281,7 @@ function openSessionRoom(clientId,sid){
     <div class="sroom-stats">${statsHTML}</div>
     ${cmpHTML}
     <div class="sroom-summary">${_sessionSummary(s,reps,exCount,pct)}</div>
+    ${shareHTML}
     ${prHTML}
     <div class="sroom-sec">Ejercicios de la sesión <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3)">· toca uno para ver su progreso</span></div>
     <div class="sroom-exs">${_sessionExercisesHTML(s,clientId)}</div>

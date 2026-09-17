@@ -5789,6 +5789,40 @@ function fmtDuration(sec) {
   return mm ? `${h} h ${mm} min` : `${h} h`;
 }
 
+// ── v624 · LA IMAGEN DE UN ENTRENO YA GUARDADO ───────────────────────────────────────────────
+// Reporte del PO: la imagen para compartir solo existía en la pantalla de cierre, y «si de
+// casualidad oprimes Continuar ya perdiste la opción» — el entreno queda guardado y su imagen no
+// se puede volver a sacar. Es la clase de v613: el derecho no caduca, la PUERTA sí.
+// Arma los mismos datos que la pantalla de cierre a partir de una sesión del historial. PURA.
+// 🔒 LO QUE NO SE GUARDÓ NO SE PINTA: medido sobre las 482 sesiones reales (16-sep), la duración
+//    y las calorías están en el 75% (88% en las de este mes) y los récords en el 41% — las de
+//    mayo y junio son anteriores a esos campos. Una tarjeta que rellene esos huecos con un número
+//    inventado es la mentira de v437; con menos fichas se ve igual de bien (la fila las centra).
+// 🔒 La fecha se arma a mano y no con `toLocaleDateString`: en WebViews sin ICU completo lanza
+//    RangeError (gotcha ya pagado en la pantalla de cierre).
+const SHARE_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const SHARE_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+  'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function sessionShareData(session, client) {
+  const s = session || {};
+  if (!s.date) return null;                       // sin fecha no hay sesión que contar
+  const t = Date.parse(s.date);
+  if (!isFinite(t)) return null;
+  const d = new Date(t);
+  const fecha = SHARE_DIAS[d.getDay()] + ', ' + d.getDate() + ' de ' + SHARE_MESES[d.getMonth()];
+  const full = ((client && client.name) || '').trim();
+  const chips = [];
+  if (s.durationSec > 0) chips.push(['Duración', fmtDuration(s.durationSec)]);
+  if (s.kcal > 0) chips.push(['Calorías', s.kcal + ' kcal']);
+  chips.push(['Series', (s.doneSets || 0) + '/' + (s.totalSets || 0)]);
+  if (s.totalVol > 0) chips.push(['Volumen', s.totalVol.toLocaleString() + ' kg']);
+  const prs = (Array.isArray(s.prs) ? s.prs : []).slice(0, 3).map(pr => ({
+    name: pr.name, id: pr.id, val: pr.val != null ? pr.val : pr.kg, unit: pr.unit || 'kg', reps: pr.reps,
+    isNew: !!pr.isNew,
+  }));
+  return { name: full.split(' ')[0] || '', fullName: full, rname: s.routineName || '', fecha, chips, prs };
+}
+
 // ── Titular de la pantalla de cierre (v579) ──
 // Desde v579 esa pantalla también la ve quien cierra TEMPRANO, así que el titular tiene que
 // cuadrar con las cifras que van justo debajo: «¡Lo lograste!» encima de «Series 6/12» es la
@@ -11042,6 +11076,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtMetric,
     fmtDuration,
     wfTitle,
+    sessionShareData,
     WF_FEELINGS,
     feelingEmoji,
     feelingLabel,

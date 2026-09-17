@@ -13925,14 +13925,17 @@ test('🔒 CABLEADO v604: la pantalla pide la foto de la PERSONA, no la constant
   const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
   const i = src.indexOf('function showWorkoutFinish(');
   const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  assert.ok(/finishPhotoFor\(c&&c\.sex\)/.test(cuerpo),
+  // v624 re-encuadre: la regla de «qué foto le toca» salió a `_wfShareBgSrc`, porque desde v624 la
+  // comparten la pantalla de cierre y la habitación de una sesión guardada. La propiedad no cambia
+  // —una sola fuente para la pantalla y el lienzo—, pero ya no se afirma sobre una variable local.
+  const regla = src.slice(src.indexOf('function _wfShareBgSrc('), src.indexOf('function _wfPrepShareCanvas('));
+  assert.ok(/finishPhotoFor\(c&&c\.sex\)/.test(regla),
     '🔴 la pantalla volvió a la foto fija: a las mujeres les sale un hombre de fondo otra vez');
-  assert.ok(/typeof finishPhotoFor==='function'/.test(cuerpo),
-    'llamada a avi-core sin guarda typeof');
-  // Y la MISMA fuente alimenta la pantalla y el lienzo compartible: si se separan, la imagen que
-  // se comparte deja de ser la pantalla que se vio (que es justo lo que v603 vino a arreglar).
-  assert.ok(/_bgSrc/.test(cuerpo) && (cuerpo.match(/_bgSrc/g) || []).length >= 3,
-    '🔴 la foto de la pantalla y la del lienzo dejaron de salir de la misma variable');
+  assert.ok(/typeof finishPhotoFor==='function'/.test(regla), 'llamada a avi-core sin guarda typeof');
+  assert.ok(/const _bgSrc=_wfShareBgSrc\(c\);/.test(cuerpo) && /_wfPrepShareCanvas\(c\);/.test(cuerpo),
+    '🔴 la foto de la pantalla y la del lienzo dejaron de salir de la misma regla');
+  const prep = src.slice(src.indexOf('function _wfPrepShareCanvas('), src.indexOf('function _wfPrepShareAvatar('));
+  assert.ok(/const src=_wfShareBgSrc\(c\);/.test(prep), '🔴 el lienzo volvió a resolver la foto por su cuenta');
 });
 
 test('🔒 v603: la tarjeta de vista previa existe, es 1200×630 y no pesa de más', () => {
@@ -19441,6 +19444,71 @@ test('v623 · CABLEADO: rutinas no tocadas no se mandan, el panel fusiona, arran
   const poll = app1.slice(app1.indexOf('async function _pollAuthClient('), app1.indexOf('async function _pollAuthCoach('));
   assert.ok(/_authBaseSet\(Object\.assign\(\{\},_b,\{routines:row\.routines\}\)\)/.test(poll), '🔴 el refresco adopta el plan del coach y no lo anota en la base');
   assert.ok(/_authBase&&_authBaseUid===_authUid/.test(app1), '🔴 la base en memoria puede ser de OTRA cuenta de la misma pestaña');
+});
+
+// ══════════════════════════════════════════════════════
+// v624 — LA IMAGEN DE UN ENTRENO YA GUARDADO
+// ══════════════════════════════════════════════════════
+// Reporte del PO: la imagen solo existía en la pantalla de cierre y «si de casualidad oprimes
+// Continuar ya perdiste la opción de compartir». El entreno queda guardado; su imagen no.
+// Clase de v613: el derecho no caduca, la PUERTA sí.
+
+const _ses624 = {
+  id: 's1', date: '2026-09-15T16:30:00.000Z', routineName: 'Pierna',
+  doneSets: 18, totalSets: 18, totalVol: 4320, durationSec: 2880, kcal: 412,
+  prs: [{ name: 'Prensa de Pierna', val: 95, unit: 'kg', reps: 12, isNew: false }],
+};
+
+test('v624 · una sesión guardada arma la MISMA tarjeta que la pantalla de cierre', () => {
+  const d = core.sessionShareData(_ses624, { name: 'Astrid Beltran' });
+  assert.strictEqual(d.name, 'Astrid', '🔴 el nombre grande de la tarjeta');
+  assert.strictEqual(d.fullName, 'Astrid Beltran', '🔴 sin nombre completo el círculo pierde iniciales y color');
+  assert.strictEqual(d.rname, 'Pierna');
+  assert.match(d.fecha, /martes, 15 de septiembre/, '🔴 la fecha es la del ENTRENO, no la de hoy');
+  // El separador de miles lo pone el idioma del aparato («4.320» en es-CO, «4,320» en en-US), así
+  // que se afirma con la MISMA regla, no con un texto escrito a mano — si no, este test falla en
+  // el teléfono de alguien y no en el mío (la lección del huso horario de v517).
+  assert.deepStrictEqual(d.chips, [['Duración', '48 min'], ['Calorías', '412 kcal'], ['Series', '18/18'],
+    ['Volumen', (4320).toLocaleString() + ' kg']]);
+  assert.strictEqual(d.prs.length, 1);
+});
+
+test('v624 🔒 lo que no se guardó NO se pinta: ni duración, ni calorías, ni récords inventados', () => {
+  // Las sesiones de mayo y junio son anteriores a esos campos (medido: 25% del total no los trae).
+  const vieja = { id: 's0', date: '2026-05-25T16:34:00.000Z', routineName: 'Glúteo', doneSets: 23, totalSets: 23, totalVol: 19780 };
+  const d = core.sessionShareData(vieja, { name: 'Kathe Beltran' });
+  assert.deepStrictEqual(d.chips.map(c => c[0]), ['Series', 'Volumen'], '🔴 se inventó una duración o unas calorías');
+  assert.deepStrictEqual(d.prs, [], '🔴 se inventaron récords de una sesión que no los guardó');
+  // 🔒 CONTROL: con los campos puestos SÍ salen — si no, este test pasaría con la función rota.
+  assert.strictEqual(core.sessionShareData(_ses624, {}).chips.length, 4);
+  // Un volumen en cero tampoco se pinta (un «0 kg» no dice nada).
+  assert.ok(!core.sessionShareData({ date: vieja.date, doneSets: 5, totalSets: 5, totalVol: 0 }, {}).chips.some(c => c[0] === 'Volumen'));
+});
+
+test('v624 · sin fecha no hay tarjeta (null), y la fecha no depende del idioma del teléfono', () => {
+  assert.strictEqual(core.sessionShareData({}, {}), null);
+  assert.strictEqual(core.sessionShareData({ date: 'no-es-fecha' }, {}), null);
+  assert.strictEqual(core.sessionShareData(null, null), null);
+  // `toLocaleDateString` con opciones lanza RangeError en WebViews sin ICU completo (gotcha ya
+  // pagado en la pantalla de cierre): la fecha se arma a mano.
+  const fn = core.sessionShareData.toString();
+  assert.ok(!/toLocaleDateString/.test(fn), '🔴 la fecha volvió a depender del ICU del teléfono');
+});
+
+test('v624 · CABLEADO: la habitación de la sesión ofrece compartir, prepara la foto al ABRIR y no deja compartir un menor al coach', () => {
+  const app4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = app4.indexOf('function openSessionRoom(');
+  const cuerpo = app4.slice(i, app4.indexOf('\nfunction ', i + 10));
+  assert.ok(/const _shData=\(typeof sessionShareData==='function'\)\?sessionShareData\(s,_shClient\):null;/.test(cuerpo),
+    '🔴 la habitación dejó de armar la tarjeta de ESA sesión');
+  // La foto se prepara al ABRIR, no al tocar: navigator.share exige activación reciente.
+  const iPrep = cuerpo.indexOf('_wfPrepShareCanvas(_shClient);'), iBtn = cuerpo.indexOf('onclick="wfShare()"');
+  assert.ok(iPrep > 0 && iBtn > 0 && iPrep < iBtn, '🔴 la foto del lienzo se prepararía después del toque');
+  assert.ok(/\$\{shareHTML\}/.test(cuerpo), '🔴 el botón se arma y no se pinta (puerta cerrada, ventana abierta)');
+  // 🔒 El coach no comparte el entreno de un menor sin permiso del acudiente (misma puerta que v573).
+  assert.ok(/CUR\.loggedAs==='coach' && _shClient && parseInt\(_shClient\.age\)<18\s*\r?\n?\s*&& !\(typeof showcaseMinorOk==='function' && showcaseMinorOk\(_shClient\)\)/.test(cuerpo),
+    '🔴 se fue el candado de menores del panel del coach');
+  assert.ok(/if\(_shData&&!_shMenor\)\{/.test(cuerpo), '🔴 el candado de menores dejó de decidir si el botón existe');
 });
 
 // ══════════════════════════════════════════════════════
