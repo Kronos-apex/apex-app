@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v625: LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN
+
+**De dónde sale:** del plan «AVI no la hizo un novato» (§1, F1.2). v623 cerró que una escritura
+pisara `profile`/`routines` con la copia en memoria de un aparato abierto, y quedó medido que la
+MISMA vía sigue sin fusionar en 7 colecciones. Antes de tocar nada: **¿a quién le pasó de verdad?**
+
+**La medición** (`scripts/medir-perdida-columnas.mjs`, 45 respaldos · 44 pares de días · 1.134
+filas comparadas): la señal es **un elemento que está un día y al siguiente no, SIN su lápida**.
+
+| colección | desaparecidos sin lápida |
+|---|---|
+| history · prs · bodyweight · medidas · nutrition | **0** |
+| photos | 1 (el día del despliegue de v568 — no concluyente) |
+| **msgs** | **31, todos el mismo día** |
+
+🔬 **Y la primera corrida decía 45, casi todos falsos.** Dos defectos de MI sonda, los dos cazados
+verificando caso por caso antes de reportar:
+1. **Las lápidas son de septiembre** (v566 el 3-sep, v614 el 15, v620 el 16) y casi todos los
+   casos eran de julio: un borrado legítimo hecho cuando el mecanismo no existía se ve idéntico a
+   una pérdida. Con el corte por colección, `prs` y `bodyweight` cayeron a 0.
+2. **v566/v567 le ASIGNÓ id a las medidas viejas** (`2026-06-30T…` pasó a `d:2026-06-30T…`), y mi
+   clave de identidad leyó ese cambio como una desaparición. Lo delató contar: Claudia tenía **1
+   viva antes y 1 viva después**, o sea que no se perdió nada. Normalizada la clave, `medidas` a 0.
+
+**EL CASO REAL, verificado:** el **5-ago-2026** el hilo propio del coach pasó de **29 mensajes a
+2**. Los 2 que quedaron son los prellenados del plan de choque que él envió a las 20:21 («vi que
+el Pájaro se te plantó en 25 kg…»), y el resto de la fila **creció normal ese día** (historial
+54→55, perfil 20→22 claves): no fue un borrado, fue el panel escribiendo `msgs` entera con su
+copia en memoria. Se llevó 27 mensajes.
+
+**El arreglo es más simple que v623 porque la colección es APPEND-ONLY:** un mensaje no se edita
+ni se borra, así que lo que se sube es la **UNIÓN** con lo que hay en la nube (`mergeMsgs`, que
+existe desde siempre y ya se usaba al arrancar). Con eso **escribir no puede quitarle un mensaje a
+nadie, ni aunque la copia de quien escribe venga vacía**. Cableado en las TRES puertas: el
+teléfono, el panel sobre su propia fila y el panel sobre la de cada asesorado.
+🔒 **Si no se puede LEER la nube no se bloquea el envío**: la escritura de al lado va a fallar
+igual y cae a la cola, que vuelve a unir al reintentar (v588). Bloquear aquí perdería el mensaje,
+que es justo el defecto que la cola vino a matar.
+🔒 **Solo para mensajes.** Un test lo exige: las otras colecciones se editan y se borran, y una
+unión ahí **resucitaría lo borrado** (la clase de v566/v568/v614).
+
+**Verificación.** Suite **1226 → 1229** en los tres modos · hook 12/12 · matriz nueva
+`_sabotaje-v625` **8/8 muerden** · `_verify-perfil-dos-aparatos` **15/15** (extendido: ella
+escribe desde el celular, el coach responde con su copia vieja, y el control apagando la unión
+reproduce la pérdida) · `_verify-cola-coach` 18/18 · `_verify-chatunified` verde.
+
+⚠️ **Dos gotchas propios en el mismo lote:** mis dos primeros tests **devolvían promesas** y
+`test()` es SÍNCRONO, o sea que pasaban sin afirmar nada (gotcha de v621, otra vez) — se ejecuta
+la función con el `async`/`await` quitado. Y un sabotaje salió «NO SE APLICÓ» porque la línea que
+anclaba aparece DOS veces con indentaciones distintas.
+
+⏭️ **Quedan 6 colecciones de las 7** (history, prs, bodyweight, medidas, nutrition, photos). Hoy
+**no tienen víctima medida** y su arreglo NO es este: se editan y se borran, así que necesitan
+fusión de tres vías o patch en el servidor, no unión.
+
 ## ⏮️ 2026-09-17 — v624: COMPARTIR UN ENTRENO YA GUARDADO, NO SOLO EL DE HOY
 
 **Reporte del PO:** *«los entrenamientos solo se pueden compartir al finalizar el entrenamiento y

@@ -1412,6 +1412,10 @@ pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos.
 - 🔴 **UNA COMPOSICIÓN DE LIENZO SE DISEÑA CON LA TARJETA LLENA Y SE ROMPE CON LA CORTA — y el reparto del aire lleva su control.** La imagen del entreno se armó con 4 cifras y 3 récords; una sesión del historial trae 2 cifras y ninguno, y el bloque colgaba de arriba dejando **508 px de vacío, el 26% de la imagen**. **Reglas: (1) lo que sobra se parte por la mitad, nunca se deja todo abajo; (2) la regla se escribe de modo que la tarjeta LLENA no se mueva ni un píxel —el modelo lo eligió el PO MIRANDO, y moverlo sería cambiar su decisión—, y eso ES el control del test; (3) el candado afirma que la referencia del reparto sigue siendo donde termina la tarjeta llena, o una constante movida la despega en silencio; (4) se MIRA la imagen: esto no lo caza ningún test, en un lienzo no hay reflow que avise.** (v624)
 - 🔴 **UN HARNESS QUE ESPERA A QUE EXISTA UNA FUNCIÓN MIDE ANTES DE QUE LA APP ARRANQUE, Y EL SPLASH SE QUEDA CON EL TOQUE.** El de v624 dio rojo en «se puede tocar» con `tapadoPor: ld-logo`: las funciones existen al PARSEAR el archivo, pero el arranque real corre dentro de `syncFromCloud().then()` y hasta entonces `#avi-loading` (z-index 9999) está encima de todo. El gotcha de «DOM presente ≠ app booteada» ya estaba escrito para los checks de producción; **también vale para cualquier hit-testing**: se espera el símbolo POST-arranque (`window._aviUpdateBusy`) y se AFIRMA que el splash se fue, como control de montaje propio. Y el diagnóstico de siempre: cuando un check de «se puede tocar» cae solo, la hipótesis es el montaje, no la app (v579). (v624)
 
+- 🔴 **EN UNA COLECCIÓN APPEND-ONLY EL ARREGLO NO ES FUSIONAR: ES QUE ESCRIBIR NO PUEDA QUITAR.** El 5-ago-2026 el hilo propio del coach pasó de **29 mensajes a 2** — los 2 prellenados del plan de choque que acababa de enviar—, con el resto de la fila creciendo normal ese día: el panel escribió la columna `msgs` entera con su copia en memoria. v623 resolvió lo mismo en `profile` con una fusión de tres vías, pero un mensaje **no se edita ni se borra**, así que ahí basta la UNIÓN con la nube (`mergeMsgs`, que ya existía) y entonces **una copia vacía tampoco puede vaciar el hilo**. **Reglas: (1) antes de elegir el mecanismo, pregunta si la colección admite BORRADO — con borrado hace falta fusión de tres vías o lápida; sin él, unión, que es más simple y más fuerte; (2) la unión NO se extiende a las colecciones que sí se borran: ahí resucitaría lo borrado (v566/v568/v614), y eso lo tiene que exigir un test; (3) si no se puede LEER la nube NO se bloquea la escritura —perder el mensaje es peor—: la escritura de al lado fallará igual y cae a la cola, que vuelve a unir (v588); (4) lo que se guarda como «confirmado» es lo UNIDO, no lo que traía en memoria, o el siguiente guardado cree que la nube tiene menos de lo que tiene.** (v625)
+- 🔴 **UNA SONDA SOBRE RESPALDOS HISTÓRICOS MIENTE SI NO SABE DESDE CUÁNDO EXISTE EL MECANISMO QUE MIDE.** La primera corrida de `medir-perdida-columnas` dio **45 «pérdidas»** y casi todas eran falsas por dos causas, las dos temporales: **(a) las lápidas son de septiembre** (v566 el 3-sep, v614 el 15, v620 el 16) y los casos eran de julio — un borrado legítimo hecho cuando la lápida no existía se ve EXACTAMENTE igual que una pérdida; **(b) v566/v567 le ASIGNÓ id a las entradas viejas** (`2026-06-30T…` → `d:2026-06-30T…`), y una clave de identidad ingenua lee ese cambio como una desaparición. **Reglas: (1) toda comparación entre dos fotos de datos lleva una fecha «desde» POR CAMPO, la del despliegue del mecanismo; (2) antes de llamar hallazgo a una desaparición, CUENTA los vivos a los dos lados — si el total no bajó, cambió la identidad y no se perdió nada; (3) la clave de identidad se NORMALIZA contra las migraciones que hubo.** 💎 Y el corolario del método: los hallazgos se verifican **uno por uno contra el dato crudo** antes de reportarlos — de 45, sobrevivió 1. (v625)
+- ⚠️ **`ls` mide el DISCO y `git ls-files` mide el REPOSITORIO, y para «qué ve quien audita» solo vale el segundo.** Conté «38 archivos en la raíz, 11 de borrador» listando el disco; en GitHub eran **23 y solo 5 de basura**, porque `.gitignore` ya tapaba los `_*.html` (los ignorados existen localmente y NO están publicados). Misma familia que las tres sondas falsas del 31-jul: la herramienta medía otra cosa que la pregunta. (v625)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1607,7 +1611,23 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-17 (**v624 — COMPARTIR UN ENTRENO YA GUARDADO, NO SOLO EL DE HOY**.
+*Última actualización: 2026-09-17 (**v625 — LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN**. Primer
+frente del plan `docs/plan-profesional.md` (§1, F1.2). v623 cerró la escritura de columna entera
+para `profile`/`routines` y quedaban **7 colecciones**; antes de tocarlas, **medir a quién le pasó**
+(`scripts/medir-perdida-columnas.mjs`, 45 respaldos · 44 pares · 1.134 filas): history, prs,
+bodyweight, medidas y nutrition en **0**, y **msgs con 31 el mismo día**. 🔬 La primera corrida
+decía 45 y casi todos eran defectos de MI sonda —las lápidas son de septiembre y los casos de
+julio; y v566 le asignó id a las medidas viejas, que la sonda leyó como desaparición—. **EL CASO
+REAL:** el 5-ago el hilo propio del coach pasó de **29 mensajes a 2** (los 2 prellenados del plan
+de choque que envió a las 20:21), con el resto de la fila creciendo normal: el panel escribió
+`msgs` entera con su copia en memoria y se llevó 27. Como un mensaje **no se edita ni se borra**,
+el arreglo es la **UNIÓN** con la nube (`mergeMsgs`, que ya existía) en las TRES puertas — así una
+copia vacía tampoco puede vaciar un hilo. 🔒 Sin poder leer la nube NO se bloquea el envío (cae a
+la cola de v588, que vuelve a unir) y 🔒 la unión NO se extiende a las colecciones que sí se
+borran, con su test. Suite **1226 → 1229**, `_sabotaje-v625` **8/8**,
+`_verify-perfil-dos-aparatos` **15/15**. ⚠️ Dos gotchas míos: dos tests devolvían PROMESAS y
+`test()` es síncrono (pasaban sin afirmar, gotcha de v621), y un ancla de sabotaje no era única.
+⏭️ Quedan 6 colecciones **sin víctima medida**, y su arreglo NO es la unión) · (**v624 — COMPARTIR UN ENTRENO YA GUARDADO, NO SOLO EL DE HOY**.
 Reporte del PO: *«los entrenamientos solo se pueden compartir al finalizar… si de casualidad le
 oprimes continuar ya perdiste la opción»*. El entreno queda en el historial y su imagen no: clase
 de v613 (el derecho no caduca, la PUERTA sí). Ahora la habitación de cualquier sesión —la puerta

@@ -177,7 +177,9 @@ No se toca «porque se ve mejor». Se toca el día que haya un motivo medible.
 | Punto | Estado | Cerrado en |
 |---|---|---|
 | F1.1 ambiente de pruebas | ⏳ sin empezar | |
-| F1.2 columnas enteras (7 colecciones) | ⏳ sin empezar — **medir primero** | |
+| F1.2 · **medición de las 7** | ✅ hecha (45 respaldos, 44 pares, 1.134 filas) | v625 |
+| F1.2 · msgs (única con víctima real) | ✅ **cerrada** — unión con la nube | v625 |
+| F1.2 · las otras 6 | ⏸️ **sin víctima medida** — no se tocan a ciegas | |
 | F1.3 legal | ⏳ del PO + abogado (3-oct) | |
 | F1.4 fallos visibles | ⏳ sin empezar | |
 | F2.1 README | ⏳ sin empezar | |
