@@ -2426,12 +2426,62 @@ function mergeMsgs(local, cloud, cap) {
 // de arriba (nada se pierde); el resto (perfil, rutinas, nutrición — territorio
 // del coach) lo manda la nube. Cierra la ventana "entrené offline y Android mató
 // la app antes de reconectar" (P0-2 auditoría 2026-07-01). Pura y testeable.
+// ── v620 · LA LÁPIDA DE LOS RÉCORDS BORRADOS ─────────────────────────────────────────
+// Cuarta víctima de la clase de v566/v568/v614: `prfixDelete` quitaba el récord con `delete` y
+// `mergePRs` es una UNIÓN, así que una copia vieja del teléfono lo devolvía en la primera fusión.
+// 🔒 La lápida NO vive en la columna `prs` sino en `profile.prTombs`: `refresh_snapshot` cuenta
+//    `Object.keys(prs)` para la medalla pública «primer récord», y una lápida ahí dentro
+//    contaría como récord. Así no hace falta tocar la edge function.
+// 🔒 Tapa el NÚMERO que se borró y nada más (misma regla que `corregidoDe`, v618): un récord de
+//    otro valor, o el mismo levantado DESPUÉS del borrado, compite normal. Si no, un teléfono
+//    sin red que batió su marca de verdad la perdería contra un borrado que no hablaba de él.
+const PR_TOMB_DAYS = 400;   // mismo plazo que las lápidas de medidas/fotos/peso
+function prTombsMerge(a, b) {
+  const out = {};
+  [a, b].forEach(src => {
+    if (!src || typeof src !== 'object') return;
+    Object.keys(src).forEach(k => {
+      const t = src[k]; if (!t || !t.at) return;
+      if (!out[k] || new Date(t.at).getTime() > new Date(out[k].at).getTime()) out[k] = t;
+    });
+  });
+  return out;
+}
+function prTombsPrune(tombs, nowIso) {
+  const ahora = new Date(nowIso || Date.now()).getTime(), out = {};
+  Object.keys(tombs || {}).forEach(k => {
+    const t = new Date(tombs[k] && tombs[k].at).getTime();
+    if (Number.isFinite(t) && (ahora - t) / 86400000 <= PR_TOMB_DAYS) out[k] = tombs[k];
+  });
+  return out;
+}
+function applyPrTombs(prs, tombs) {
+  const out = Object.assign({}, prs && typeof prs === 'object' ? prs : {});
+  let removed = 0;
+  const tsOf = raw => { if (raw == null || raw === '') return 0; const t = new Date(raw).getTime(); return Number.isFinite(t) ? t : 0; };
+  Object.keys(tombs || {}).forEach(k => {
+    const t = tombs[k], p = out[k];
+    if (!t || !p) return;
+    const val = p.val != null ? p.val : (p.kg || 0);
+    const setAt = Math.max(tsOf(p.corregido), tsOf(p.date));
+    if (val === t.val && setAt <= tsOf(t.at)) { delete out[k]; removed++; }
+  });
+  return { prs: out, removed };
+}
+
 function mergeAuthRow(localRow, cloudRow) {
   localRow = localRow || {}; cloudRow = cloudRow || {};
   const out = Object.assign({}, cloudRow);
   const pair = (fn, l, c) => fn({ x: l }, { x: c }).x;
   out.history = pair(mergeHistory, localRow.history || [], cloudRow.history || []);
   out.prs = pair(mergePRs, localRow.prs || {}, cloudRow.prs || {});
+  // 🔴 Los récords se pueden BORRAR (v620): la unión de arriba los resucitaría. Las lápidas de
+  //    los DOS lados se unen, viajan en el perfil, y tapan lo que se borró.
+  const _tombs = prTombsMerge(localRow.profile && localRow.profile.prTombs, cloudRow.profile && cloudRow.profile.prTombs);
+  if (Object.keys(_tombs).length) {
+    out.profile = Object.assign({}, cloudRow.profile || {}, { prTombs: _tombs });
+    out.prs = applyPrTombs(out.prs, _tombs).prs;
+  }
   out.msgs = mergeMsgs(localRow.msgs, cloudRow.msgs);
   // 🔴 El peso tampoco usa la unión por fecha: desde v614 se puede BORRAR, y una unión no sabe
   //    de borrados — la toma eliminada volvía de la nube en la primera fusión tras entrenar
@@ -4992,6 +5042,10 @@ function selfClientFromRow(row, opts) {
     // (no podría cancelarla) y `applyDueDeload` no la encontraría el día que le toca — o sea que
     // no arrancaría nunca. Es exactamente el hueco de v512, una feature más tarde.
     deloadPlan: p.deloadPlan || null,
+    // 🔒 Las lápidas de récords (v620) también: el coach puede borrar un récord SUYO, y sin esto
+    //    la lápida no viajaría en su vista y el borrado de su propio récord volvería a resucitar.
+    //    Solo si existe: un `prTombs:null` inventaría una clave en el perfil al guardar.
+    ...(p.prTombs ? { prTombs: p.prTombs } : {}),
     routines: Array.isArray(row.routines) ? row.routines : [],
     // NADA de negocio: sin payments, sin tier, sin suspended, sin wantsCoach.
   };
@@ -10466,7 +10520,37 @@ function coachQueueVerdict(entry, lectura) {
   if (estado === 'mudo') return 'mudo';
   if (estado === 'ausente') return 'huerfana';
   if (entry.tooBig) return 'retener';
+  // v620 · Si la nube YA tiene exactamente lo que la cola quiere subir, no hay nada pendiente:
+  // el cambio llegó por otra vía (el coach lo rehízo, u otro aparato lo subió). Va ANTES de la
+  // regla de «no pisar», porque esa regla existe para no borrar trabajo ajeno, y aquí no hay
+  // nada que escribir. Sin esto, «vuelve a hacerlo desde la ficha» no vaciaba nunca el aviso.
+  if (lectura && lectura.valor !== undefined && coachQueueSameAsCloud(entry, lectura.valor)) return 'igual';
   return coachQueueCanReplay(entry, lectura && lectura.updatedAt) ? 'subir' : 'retener';
+}
+
+// ¿La nube ya tiene lo que esta entrada quiere subir? PURA (v620).
+// `valorNube` es lo que la nube tiene HOY en el mismo sitio que la entrada escribiría:
+// la columna (`history`, `prs`…), `{profile,routines}` para `ax_c`, o el valor del ajuste para
+// `cs:<clave>`. Los mensajes se fusionan por unión, así que basta con que CADA mensaje en cola
+// ya esté allá. El resto se compara por contenido, sin depender del orden de las claves.
+// 🔒 Ante la duda devuelve false: decir «ya está» sobre algo que no está es perderlo en silencio.
+function coachQueueSameAsCloud(entry, valorNube) {
+  if (!entry || entry.tooBig || entry.val === undefined || valorNube === undefined) return false;
+  const canon = v => {
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).filter(k => v[k] !== undefined).sort()
+      .map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+    return JSON.stringify(v === undefined ? null : v);
+  };
+  if (entry.col === 'msgs') {
+    const mias = Array.isArray(entry.val) ? entry.val : null;
+    const nube = Array.isArray(valorNube) ? valorNube : null;
+    if (!mias || !nube) return false;
+    const clave = m => m ? (String(m.from) + '|' + String(m.date) + '|' + String(m.text)) : '';
+    const hay = new Set(nube.map(clave));
+    return mias.every(m => hay.has(clave(m)));
+  }
+  try { return canon(entry.val) === canon(valorNube); } catch (e) { return false; }
 }
 
 // Saca de la cola TODO lo pendiente de un asesorado. PURA. La llama el borrado de la ficha:
@@ -11362,6 +11446,11 @@ if (typeof module !== 'undefined' && module.exports) {
     coachQueuePut,
     coachQueueCanReplay,
     coachQueueVerdict,
+    coachQueueSameAsCloud,
+    prTombsMerge,
+    prTombsPrune,
+    applyPrTombs,
+    PR_TOMB_DAYS,
     coachQueueDropClient,
     COACH_Q_MAX_ENTRY,
     COACH_Q_MAX_TOTAL,

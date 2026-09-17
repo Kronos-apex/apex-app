@@ -500,8 +500,10 @@ function _applyAuthClientDB(client, coll){
   // 🧹 Auto-cura (v591) — DESPUÉS de sanear, y sobre el historial YA saneado: si corriera antes,
   // un 200 kg imposible (que `sanitizeHistory` deja en blanco) se convertiría en récord.
   const _hp=(typeof healStalePrs==='function')?healStalePrs(_sp.prs,_sh.history):{prs:_sp.prs,curados:[]};
-  DB.prs       ={[id]: _hp.prs};
-  if(_sp.removed>0||_pr.moved>0||_hp.curados.length){ try{ svNow('ax_pr',DB.prs);
+  // 🪦 v620 · lo que el coach BORRÓ no vuelve aunque este teléfono traiga la copia vieja.
+  const _tb=(typeof applyPrTombs==='function')?applyPrTombs(_hp.prs,client.prTombs):{prs:_hp.prs,removed:0};
+  DB.prs       ={[id]: _tb.prs};
+  if(_sp.removed>0||_pr.moved>0||_hp.curados.length||_tb.removed){ try{ svNow('ax_pr',DB.prs);
     if(_pr.moved>0)log&&log('AVI: '+_pr.moved+' récord(s) reasignados desde un ejercicio retirado');
     if(_sp.removed>0)log&&log('AVI: retirados '+_sp.removed+' récords imposibles');
     if(_hp.curados.length)log&&log('AVI: '+_hp.curados.length+' récord(s) atascados puestos al día'); }catch(_e){} }
@@ -910,6 +912,17 @@ function _cwqMarkOrphan(col,id){
   if(!e||e.huerfana)return;
   e.huerfana=true; _cwqWrite(l);
 }
+// v620 · RETENIDA = la nube tiene algo más nuevo y no se pisa (regla v588). Hasta v619 eso no
+// tenía salida: el aviso decía «vuelve a hacerlo desde la ficha» y se quedaba ahí para siempre —
+// el caso real fue el de una asesorada que usa la app todos los días, así que su fila SIEMPRE es
+// más nueva que cualquier pendiente viejo. Se marca para que el coach la pueda soltar, igual que
+// la huérfana. Quien decide quedarse con lo de la nube es él, no la app.
+function _cwqMarkHeld(col,id){
+  const l=_cwqRead(); const e=l.find(x=>x&&x.col===col&&x.id===id);
+  if(!e||e.retenida)return;
+  e.retenida=true; _cwqWrite(l);
+}
+function _cwqDescartable(x){ return !!(x&&(x.huerfana||x.retenida||x.tooBig)); }
 // ¿Este mensaje concreto está esperando en la cola? (para pintarlo «sin enviar» en el hilo)
 // 🔴 La cola guarda el HILO ENTERO (es lo que se sube), así que preguntar «¿está en el payload?»
 // marca «sin enviar» también los mensajes que la nube ya tiene — se vio MIRANDO la captura, no
@@ -937,16 +950,19 @@ async function _flushCoachWrites(){
   for(const e of list){
     if(!e||!e.col||!e.id){ continue; }
     if(e.huerfana){ orphan++; continue; }   // ya se preguntó: su fila no está. No se reintenta.
-    if(e.tooBig){ held++; continue; }
+    if(e.tooBig){ _cwqMarkHeld(e.col,e.id); held++; continue; }
     // Un ajuste del coach vive en SU fila y se escribe con el patch del servidor (jamás con un
     // upsert de la columna entera: ahí adentro está la biblioteca, 240 KB — lección v589).
     if(String(e.col).indexOf('cs:')===0){
       try{
         const lec=await UD.readClientCol(_authUid,'coach_settings');
-        const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:lec&&lec.row&&lec.row.updated_at});
+        const _cs=lec&&lec.row&&lec.row.coach_settings;
+        const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:lec&&lec.row&&lec.row.updated_at,
+          valor:(_cs&&typeof _cs==='object')?_cs[e.col.slice(3)]:undefined});
         if(v==='mudo'){ fail++; continue; }
         if(v==='huerfana'){ _cwqMarkOrphan(e.col,e.id); orphan++; continue; }
-        if(v!=='subir'){ held++; continue; }
+        if(v==='igual'){ _cwqDrop(e.col,e.id); ok++; continue; }
+        if(v!=='subir'){ _cwqMarkHeld(e.col,e.id); held++; continue; }
         const patch={}; patch[e.col.slice(3)]=e.val;
         await UD.patchCoachSettings(patch);
         _cwqDrop(e.col,e.id); ok++;
@@ -958,10 +974,12 @@ async function _flushCoachWrites(){
       const lec=await UD.readClientCol(esMio?_authUid:e.id,_cwqSelect(e.col));
       const fila=lec&&lec.row;
       // La decisión es PURA y vive en avi-core: aquí solo se obedece.
-      const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:fila&&fila.updated_at});
+      const _valNube=!fila?undefined:(e.col==='ax_c'?{profile:fila.profile||{},routines:fila.routines||[]}:fila[e.col]);
+      const v=coachQueueVerdict(e,{estado:(lec&&lec.estado)||'mudo',updatedAt:fila&&fila.updated_at,valor:_valNube});
       if(v==='mudo'){ fail++; continue; }                  // no se pudo preguntar → sigue en cola
       if(v==='huerfana'){ _cwqMarkOrphan(e.col,e.id); orphan++; continue; }
-      if(v!=='subir'){ held++; continue; }
+      if(v==='igual'){ _cwqDrop(e.col,e.id); ok++; continue; }   // la nube ya lo tiene: nada pendiente
+      if(v!=='subir'){ _cwqMarkHeld(e.col,e.id); held++; continue; }
       if(e.col==='msgs'){
         // Fusión por unión: nunca pisa lo que el asesorado escribió desde su teléfono.
         const fus=mergeCoachMsgs(fila.msgs||[],e.val||[]);
@@ -993,9 +1011,9 @@ function _renderCoachSync(){
   // Armado = ya se preguntó y esas filas no están; el siguiente toque las suelta. Se DICE con el
   // nombre por delante, porque en un celular no hay `title` que alguien pueda leer.
   if(_cwqArmed){
-    const hu=list.filter(x=>x&&x.huerfana);
+    const hu=list.filter(_cwqDescartable);
     el.textContent='🗑️ Descartar '+(hu.length===1?('el de '+_cwqCorto(hu[0].name)):(hu.length+' cambios'));
-    el.title='Ya no están en tu lista: '+hu.map(x=>x.name).join(' · ')+' — toca para descartarlos';
+    el.title='No se pueden subir: '+hu.map(x=>x.name).join(' · ')+' — toca para descartarlos';
     return;
   }
   el.textContent='⚠️ '+n+' sin guardar';
@@ -1017,8 +1035,8 @@ function _cwqDisarm(){ _cwqArmed=false; if(_cwqArmT){clearTimeout(_cwqArmT);_cwq
 async function coachSyncRetry(){
   // Segundo toque del descarte. Se desarma solo: un botón que se queda armado es una trampa (v568).
   if(_cwqArmed){
-    const hu=_cwqRead().filter(x=>x&&x.huerfana);
-    _cwqWrite(_cwqRead().filter(x=>!(x&&x.huerfana)));
+    const hu=_cwqRead().filter(_cwqDescartable);
+    _cwqWrite(_cwqRead().filter(x=>!_cwqDescartable(x)));
     if(!_cwqRead().length)_setAuthDirty(false);
     _cwqDisarm();
     toast('✅ Listo — '+(hu.length===1?'ese cambio ya no aparece':'esos cambios ya no aparecen'));
@@ -1029,18 +1047,25 @@ async function coachSyncRetry(){
   if(typeof _cchatId!=='undefined'&&_cchatId&&typeof renderCoachChatThread==='function')renderCoachChatThread(_cchatId);
   if(!_cwqRead().length){ toast('✅ Ya quedó todo guardado'); return; }
   _renderCoachSync();
-  // Huérfana: la consulta SÍ llegó y esa fila no está. No se descarta sola (regla v588: quien
-  // descarta su trabajo es él), pero deja de reintentarse y el aviso por fin tiene salida.
-  if(r.orphan){
-    const hu=_cwqRead().filter(x=>x&&x.huerfana);
-    const q=hu.length===1?('El cambio de '+(hu[0].name||'un asesorado')+' ('+_cwqLabel(hu[0].col)+')'):(hu.length+' cambios');
-    toast('👤 '+q+' no se puede guardar: ya no está en tu lista. Toca otra vez para descartarlo.');
-    _cwqArmed=true; _renderCoachSync();
-    _cwqArmT=setTimeout(_cwqDisarm,8000);
-    return;
+  // Lo que NO se puede subir tiene salida, con el nombre por delante y un segundo toque:
+  //  · huérfana (v612): la consulta SÍ llegó y esa fila ya no está.
+  //  · retenida (v620): la nube tiene algo más nuevo. Antes el toast mandaba a «rehacerlo desde
+  //    la ficha» y el aviso no se iba NUNCA; soltarla es quedarse con lo que ya está en la nube,
+  //    que es lo que la persona ve hoy en su app.
+  // No se descarta sola (regla v588: quien descarta su trabajo es él).
+  if(r.orphan||r.held){
+    const hu=_cwqRead().filter(_cwqDescartable);
+    if(hu.length){
+      const uno=hu[0], porque=uno.huerfana?'ya no está en tu lista':'en la nube hay algo más nuevo';
+      const q=hu.length===1?('El cambio de '+(uno.name||'un asesorado')+' ('+_cwqLabel(uno.col)+') no se puede guardar: '+porque)
+        :(hu.length+' cambios viejos no se pueden guardar ('+hu.map(x=>_cwqCorto(x.name)).join(', ')+')');
+      toast('🕓 '+q+'. Toca otra vez para descartar'+(hu.length===1?'lo':'los')+'.');
+      _cwqArmed=true; _renderCoachSync();
+      _cwqArmT=setTimeout(_cwqDisarm,8000);
+      return;
+    }
   }
-  if(r.fail) toast('📴 Sigo sin conexión — lo vuelvo a intentar al reconectar');
-  else if(r.held) toast('⚠️ '+r.held+(r.held===1?' cambio quedó':' cambios quedaron')+' sin subir: hay algo más nuevo en la nube. Vuelve a hacerlo desde la ficha.');
+  if(r.fail){ toast('📴 Sigo sin conexión — lo vuelvo a intentar al reconectar'); }
 }
 function _hydrateCoachFromRows(rows){
   DB.clients=rows.map(rowToClient);
@@ -1129,8 +1154,9 @@ function _hydrateSelfClient(){
     // del caso real se queda sin arreglar (lección de v518: curar en un solo lado no dura).
     const _prSelf=(row.prs&&typeof row.prs==='object')?row.prs:{};
     const _hpSelf=(typeof healStalePrs==='function')?healStalePrs(_prSelf,DB.history[id]):{prs:_prSelf,curados:[]};
-    DB.prs[id]       =_hpSelf.prs;
-    if(_hpSelf.curados.length){ try{ sv('ax_pr',DB.prs); log&&log('AVI: '+_hpSelf.curados.length+' récord(s) míos atascados puestos al día'); }catch(_e){} }
+    const _tbSelf=(typeof applyPrTombs==='function')?applyPrTombs(_hpSelf.prs,row.profile&&row.profile.prTombs):{prs:_hpSelf.prs,removed:0};
+    DB.prs[id]       =_tbSelf.prs;
+    if(_hpSelf.curados.length||_tbSelf.removed){ try{ sv('ax_pr',DB.prs); log&&log('AVI: '+_hpSelf.curados.length+' récord(s) míos atascados puestos al día'); }catch(_e){} }
     DB.medidas[id]   =Array.isArray(row.medidas)?row.medidas:[];
     DB.nutrition[id] =(row.nutrition&&typeof row.nutrition==='object')?row.nutrition:{};
     DB.photos[id]    =Array.isArray(row.photos)?row.photos:[];
@@ -1158,7 +1184,8 @@ async function _ensureClientHeavy(id){
   if(_heavyLoaded[id])return;
   const h=await UD.loadClientHeavy(id);
   if(h){
-    DB.prs[id]      =h.prs      ||{};
+    const _cl=(DB.clients||[]).find(x=>x.id===id);
+    DB.prs[id]      =(typeof applyPrTombs==='function')?applyPrTombs(h.prs||{},_cl&&_cl.prTombs).prs:(h.prs||{});
     DB.medidas[id]  =h.medidas  ||[];
     DB.nutrition[id]=h.nutrition||{};
     DB.photos[id]   =h.photos   ||[];
@@ -3129,6 +3156,13 @@ function prfixDelete(){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c||!_prfixId)return;
   const p=((DB.prs||{})[c.id]||{})[_prfixId];
   if(!confirm(`¿Borrar el récord de ${(p&&p.name)||_prfixId}?\n\nSi vuelve a levantar ese peso, se crea de nuevo solo.`))return;
+  // 🔴 v620 · Un `delete` solo NO borra: `mergePRs` es una unión y la copia vieja de su teléfono
+  //    lo devolvía en la primera fusión. Se deja LÁPIDA con el número que se quitó, en el perfil
+  //    (no en `prs`: la medalla pública cuenta sus claves). Se guarda el perfil ANTES que los
+  //    récords, para que ninguna lectura vea el récord ya ido sin su lápida.
+  const _val=p?(p.val!=null?p.val:(p.kg||0)):0;
+  c.prTombs=prTombsPrune(Object.assign({},c.prTombs||{},{[_prfixId]:{at:new Date().toISOString(),val:_val}}));
+  svNow('ax_c',DB.clients);
   delete DB.prs[c.id][_prfixId];
   svNow('ax_pr',DB.prs);
   cm('m-prfix'); _prfixId=null;

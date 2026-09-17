@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-16 — v620: EL AVISO AMARILLO TIENE SALIDA Y EL RÉCORD BORRADO NO RESUCITA
+
+**Reporte del PO:** *«el aviso amarillo… aún está ahí, no has quitado nada. Y arregla lo de los records»*.
+
+**El aviso.** v612 le dio salida a la HUÉRFANA (fila borrada), pero el pendiente era de **Diana Pilar,
+cuya fila EXISTE y se actualiza a diario** (medido: `updated_at` 16-sep 13:46). Veredicto `retener`
+→ el toast mandaba a «rehacerlo desde la ficha» y **no había ninguna salida**. Ahora: (1) si la nube
+ya tiene exactamente lo pendiente, se suelta solo (`igual`, `coachQueueSameAsCloud`); (2) lo retenido
+se MARCA y el aviso lo nombra y lo descarta con un segundo toque, igual que la huérfana.
+
+**Los récords.** Cuarta víctima de la clase v566/v568/v614. La lápida vive en `profile.prTombs`, **no
+en `prs`**, porque `refresh_snapshot` cuenta `Object.keys(prs)` para la medalla pública: así **no hubo
+que desplegar la edge function**. Tapa solo el número borrado y solo si no se levantó después (regla
+de `corregidoDe`, v618). Se aplica en la fusión y en las tres puertas de lectura (asesorado, fila
+propia del coach, ficha en el panel). ⚠️ Riesgo que queda: un teléfono con la app ABIERTA desde antes
+del borrado puede reescribir el perfil sin la lápida.
+
+**QA:** suite **1205 → 1210** en los dos husos · 10 sabotajes (4 del aviso, 6 de la lápida), **10/10 muerden**.
+
+---
+
 ## ⏮️ 2026-09-15 — v619: EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE
 
 **Reporte del PO:** *«dale más tamaño a la foto de los asesorados que se comparte al terminar el

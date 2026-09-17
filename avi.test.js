@@ -17528,10 +17528,13 @@ test('🔒 CABLEADO v591: la cura corre en las DOS puertas, y DESPUÉS de sanear
     '🔴 la cura dejó de correr sobre lo SANEADO: un 200 kg imposible se volvería récord');
   assert.ok(cli.indexOf('sanitizePrs') < cli.indexOf('healStalePrs'),
     '🔴 la cura corre ANTES de sanear: curaría un récord que el saneo iba a retirar');
-  assert.ok(/DB\.prs\s*=\{\[id\]:\s*_hp\.prs\}/.test(cli), 'lo curado no llega a DB');
+  // v620 re-encuadre: lo curado pasa por las lápidas antes de llegar a DB. La propiedad es la
+  // misma — lo que entra a DB sale de lo curado —, con un eslabón más en medio.
+  assert.ok(/DB\.prs\s*=\{\[id\]:\s*_hp\.prs\}/.test(cli)
+    || (/applyPrTombs\(_hp\.prs,/.test(cli) && /DB\.prs\s*=\{\[id\]:\s*_tb\.prs\}/.test(cli)), 'lo curado no llega a DB');
   // 🔒 Se afirma la GUARDA EXACTA del guardado, no que el identificador aparezca: la línea que
   //    escribe el log también lo nombra, así que quitarlo de la condición salía VERDE.
-  assert.ok(/if\(_sp\.removed>0\|\|_pr\.moved>0\|\|_hp\.curados\.length\)\{\s*try\{\s*svNow\('ax_pr',DB\.prs\)/.test(cli),
+  assert.ok(/if\(_sp\.removed>0\|\|_pr\.moved>0\|\|_hp\.curados\.length(\|\|_tb\.removed)?\)\{\s*try\{\s*svNow\('ax_pr',DB\.prs\)/.test(cli),
     '🔴 se cura en memoria y no se persiste: vuelve a estar atascado al siguiente arranque');
   // Puerta del COACH entrenando (5 de los 9 medidos son suyos).
   const self = sinComentarios(src.slice(src.indexOf('function _hydrateSelfClient('), src.indexOf('async function _loadCoachClientsIntoDB(')));
@@ -19102,6 +19105,117 @@ test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
    [/let yc=790\+_dy;/, 'las cifras']].forEach(([re, q]) => {
     assert.ok(re.test(cuerpo), `🔴 ${q} dejo de seguir al circulo: el retrato nuevo se le monta encima`);
   });
+});
+
+// ══════════════════════════════════════════════════════
+// v620 — EL AVISO «N SIN GUARDAR» YA NO SE QUEDA CLAVADO CUANDO LA NUBE ES MÁS NUEVA
+// ══════════════════════════════════════════════════════
+// Reporte del PO (16-sep): «el aviso amarillo aún está ahí». v612 le dio salida a la HUÉRFANA
+// (fila borrada), pero el pendiente era de Diana Pilar, cuya fila EXISTE y se actualiza cada día
+// (medido: updated_at 16-sep 13:46). Veredicto «retener» → el toast mandaba a rehacerlo desde la
+// ficha y el aviso no tenía NINGUNA salida.
+
+test('v620 · si la nube ya tiene lo pendiente, no hay nada pendiente', () => {
+  const { coachQueueVerdict, coachQueueSameAsCloud } = core;
+  const e = { col: 'history', id: 'c1', val: [{ date: 'a', vol: 1 }], ts: 1000 };
+  const nuevo = '2030-01-01T00:00:00.000Z';
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ok', updatedAt: nuevo, valor: [{ vol: 1, date: 'a' }] }), 'igual',
+    '🔴 lo que ya está en la nube (con las claves en otro orden) sigue clavado en el aviso');
+  // 🔒 CONTROL: distinto contenido NO es igual, y sigue la regla de no pisar.
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ok', updatedAt: nuevo, valor: [{ date: 'a', vol: 2 }] }), 'retener');
+  // Sin valor leído no se asume nada.
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ok', updatedAt: nuevo }), 'retener');
+  // Mensajes: basta con que CADA uno en cola ya esté allá (la nube puede tener más).
+  const m = { col: 'msgs', id: 'c1', val: [{ from: 'coach', date: 'd1', text: 'hola' }] };
+  assert.ok(coachQueueSameAsCloud(m, [{ from: 'c1', date: 'd0', text: 'x' }, { from: 'coach', date: 'd1', text: 'hola' }]));
+  assert.ok(!coachQueueSameAsCloud(m, [{ from: 'c1', date: 'd0', text: 'x' }]), '🔴 un mensaje que nunca llegó se da por entregado');
+  // Un pendiente sin payload (tooBig) jamás se declara igual.
+  assert.ok(!coachQueueSameAsCloud({ col: 'photos', id: 'c1', tooBig: true, val: null }, null));
+});
+
+test('v620 · CABLEADO: lo retenido se MARCA y el aviso le da salida con un segundo toque', () => {
+  const app3 = sinComentarios(_srcApp3());
+  const fl = app3.slice(app3.indexOf('async function _flushCoachWrites'), app3.indexOf('function _renderCoachSync('));
+  assert.ok(fl.length > 300, 'no se recortó _flushCoachWrites');
+  const lineasRet = fl.split('\n').filter(l => /v!=='subir'/.test(l));
+  assert.strictEqual(lineasRet.length, 2, 'las dos ramas (ajustes y columnas) deciden la retención');
+  lineasRet.forEach(l => assert.match(l, /_cwqMarkHeld\(e\.col,e\.id\);\s*held\+\+/,
+    '🔴 lo retenido vuelve a no marcarse: el aviso se clava sin salida'));
+  const igual = fl.split('\n').filter(l => /v==='igual'/.test(l));
+  assert.strictEqual(igual.length, 2, '🔴 una rama no reconoce que la nube ya lo tiene');
+  igual.forEach(l => assert.match(l, /_cwqDrop\(e\.col,e\.id\)/));
+  // El veredicto recibe el VALOR de la nube en las dos ramas (sin él, 'igual' es inalcanzable).
+  assert.strictEqual((fl.match(/coachQueueVerdict\(e,\{[^;]*valor:/g) || []).length, 2,
+    '🔴 el veredicto no recibe lo que la nube tiene: «igual» nunca puede salir');
+  const rt = app3.slice(app3.indexOf('async function coachSyncRetry'), app3.indexOf('function _hydrateCoachFromRows'));
+  assert.match(rt, /if\(r\.orphan\|\|r\.held\)\{/, '🔴 lo retenido no tiene rama de salida');
+  assert.match(rt, /_cwqRead\(\)\.filter\(_cwqDescartable\)/);
+  const desc = app3.slice(app3.indexOf('function _cwqDescartable'), app3.indexOf('function _cwqDescartable') + 120);
+  assert.match(desc, /x\.retenida/, '🔴 el descarte ya no incluye lo retenido');
+});
+
+// ══════════════════════════════════════════════════════
+// v620 — EL RÉCORD BORRADO YA NO RESUCITA
+// ══════════════════════════════════════════════════════
+// Cuarta víctima de la clase v566/v568/v614: `prfixDelete` hacía `delete` y `mergePRs` es una
+// UNIÓN. La lápida va en `profile.prTombs` y NO en `prs`, porque `refresh_snapshot` cuenta
+// `Object.keys(prs)` para la medalla pública — así no hay que desplegar la edge function.
+
+const _prBorrado = () => ({ e1: { val: 200000, kg: 200000, reps: 8, date: '2026-08-01T10:00:00.000Z' } });
+const _tumba = { e1: { at: '2026-09-01T10:00:00.000Z', val: 200000 } };
+
+test('v620 · la copia vieja del teléfono NO devuelve el récord que el coach borró', () => {
+  const nube = { prs: {}, profile: { name: 'Samuel', prTombs: _tumba } };
+  const telefono = { prs: _prBorrado(), profile: { name: 'Samuel' } };
+  const r = core.mergeAuthRow(telefono, nube);
+  assert.ok(!r.prs.e1, '🔴 el récord borrado resucitó en la fusión');
+  assert.deepStrictEqual(r.profile.prTombs, _tumba, '🔴 la fusión perdió la lápida');
+  // 🔒 CONTROL: sin lápida la unión lo conserva (si no, este test no probaría la lápida).
+  assert.ok(core.mergeAuthRow(telefono, { prs: {}, profile: {} }).prs.e1);
+});
+
+test('v620 🔒 la lápida tapa SOLO el número borrado: otro valor o levantarlo después, gana', () => {
+  // Un teléfono sin red batió su marca de verdad (30 kg) antes del borrado de un typo: sobrevive.
+  const legit = { e1: { val: 30, kg: 30, reps: 8, date: '2026-08-20T10:00:00.000Z' } };
+  assert.ok(core.applyPrTombs(legit, _tumba).prs.e1, '🔴 la lápida se comió un récord que no hablaba de ella');
+  // El mismo número, levantado DESPUÉS del borrado: es real, vuelve.
+  const despues = { e1: { val: 200000, kg: 200000, reps: 8, date: '2026-09-05T10:00:00.000Z' } };
+  assert.ok(core.applyPrTombs(despues, _tumba).prs.e1, '🔴 volver a levantarlo ya no crea el récord');
+  assert.strictEqual(core.applyPrTombs(_prBorrado(), _tumba).removed, 1);
+});
+
+test('v620 · las lápidas de los dos lados se unen (gana la más reciente) y caducan a los 400 días', () => {
+  const a = { e1: { at: '2026-09-01T00:00:00.000Z', val: 5 } }, b = { e1: { at: '2026-09-10T00:00:00.000Z', val: 7 }, e2: { at: '2026-09-02T00:00:00.000Z', val: 1 } };
+  const m = core.prTombsMerge(a, b);
+  assert.strictEqual(m.e1.val, 7); assert.ok(m.e2);
+  assert.ok(!core.prTombsPrune({ e1: { at: '2025-01-01T00:00:00.000Z', val: 1 } }, '2026-09-16T00:00:00.000Z').e1);
+  assert.ok(core.prTombsPrune({ e1: { at: '2026-09-01T00:00:00.000Z', val: 1 } }, '2026-09-16T00:00:00.000Z').e1);
+});
+
+test('v620 · la vista del coach sobre sí mismo lleva sus lápidas (y no inventa la clave si no hay)', () => {
+  assert.deepStrictEqual(core.selfClientFromRow({ profile: { prTombs: _tumba } }).prTombs, _tumba);
+  assert.ok(!('prTombs' in core.selfClientFromRow({ profile: {} })));
+});
+
+test('v620 · CABLEADO: borrar deja lápida y las TRES puertas de lectura la aplican', () => {
+  const app3 = sinComentarios(_srcApp3());
+  const del = app3.slice(app3.indexOf('function prfixDelete()'), app3.indexOf('function renderCoachFoodLogCard'));
+  assert.ok(del.length > 100, 'no se recortó prfixDelete');
+  assert.match(del, /c\.prTombs=prTombsPrune\(/, '🔴 borrar un récord ya no deja lápida: resucita');
+  assert.ok(del.indexOf("svNow('ax_c'") > 0 && del.indexOf("svNow('ax_c'") < del.indexOf('delete DB.prs'),
+    '🔴 la lápida no se guarda antes de quitar el récord');
+  const puertas = [
+    [app3.slice(app3.indexOf('function _applyAuthClientDB('), app3.indexOf('function _applyAuthClientDB(') + 6000), /applyPrTombs\(_hp\.prs,client\.prTombs\)/, 'app del asesorado'],
+    [app3, /applyPrTombs\(_hpSelf\.prs,row\.profile&&row\.profile\.prTombs\)/, 'fila propia del coach'],
+    [app3.slice(app3.indexOf('async function _ensureClientHeavy('), app3.indexOf('async function _ensureClientHeavy(') + 700), /applyPrTombs\(h\.prs\|\|\{\},_cl&&_cl\.prTombs\)/, 'ficha del asesorado en el panel'],
+  ];
+  puertas.forEach(([src, re, q]) => assert.match(src, re, `🔴 ${q}: vuelve a mostrar el récord borrado`));
+  assert.match(app3, /DB\.prs\s*=\{\[id\]: _tb\.prs\}/, '🔴 el asesorado calcula la lápida y no la usa');
+  // Y la medalla pública sigue contando `prs`: la lápida NO puede vivir ahí dentro.
+  const core620 = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const mar = sinComentarios(core620.slice(core620.indexOf('function mergeAuthRow('), core620.indexOf('function parseOAuthReturn(')));
+  assert.ok(!/out\.prs\.prTombs|prs\[['"]prTombs/.test(mar), '🔴 la lápida entró a prs: la medalla pública la contaría');
+  assert.match(mar, /out\.prs = applyPrTombs\(out\.prs, _tombs\)\.prs/, '🔴 la fusión dejó de aplicar la lápida');
 });
 
 // ══════════════════════════════════════════════════════
