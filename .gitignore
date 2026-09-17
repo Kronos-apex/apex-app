@@ -18,3 +18,6 @@ _*.html
 _baseline.txt
 llm-council/
 scratch/
+
+# Salida del spike de migración (se regenera con tsc)
+scripts/_spike-out/

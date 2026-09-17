@@ -151,8 +151,8 @@ No se toca «porque se ve mejor». Se toca el día que haya un motivo medible.
 
 | No se hace | Por qué |
 |---|---|
-| Reescribir a React/Vue/Svelte | 37.118 líneas que funcionan + 1.226 pruebas que se perderían, meses de regresiones, cero beneficio para quien entrena |
-| Pasar a TypeScript | exige construcción, y la restricción «sin build» es lo que hace que esto se pueda abrir desde un archivo y sobreviva sin npm |
+| ~~Reescribir a React/Vue/Svelte~~ **REVISADO el 17-sep** | Sigue en pie para una reescritura COMPLETA y de golpe. Pero **el PO pidió el camino y se midió: existe** → . El motor (11.574 líneas) **se importa sin tocarlo** desde TypeScript —probado— así que lo que se migra es el PANEL DEL COACH (~4.200 líneas de interfaz), por pantallas y sin apagar nada. La app del asesorado NO se migra: ahí el offline es la ventaja. |
+| Pasar a TypeScript **la app del asesorado** | exige construcción, y la restricción «sin build» es lo que hace que esto se pueda abrir desde un archivo y sobreviva sin npm. **El panel del coach sí va a TypeScript** (no tiene esa restricción: es una herramienta en línea). |
 | Partir `index.html` en muchos HTML | rompe la restricción del PO y la portabilidad; el beneficio es estético |
 | Renombrar `apex`/`ax_` a `avi` | rompería los datos guardados y la PWA instalada de gente real. Ya está documentado como prohibido |
 | Añadir dependencias «de las que usa todo el mundo» | cada una es superficie de ataque y de mantenimiento en una app con datos de salud |
