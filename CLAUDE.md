@@ -1403,6 +1403,8 @@ o al nombre no movía ni un número de mi cuenta. La cuenta describía una app q
 era. **Regla: junto a la aserción calculada va la de CABLEADO — que cada pieza lleve de verdad el
 término que la ata a lo de arriba.** Es la clase de v566 («el candado del motor no protege la
 pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos. (v619)
+- 🔴 **UN DATO QUE VIVE DENTRO DE UNA COLUMNA QUE SE REEMPLAZA ENTERA SOLO SOBREVIVE SI TODOS LOS QUE ESCRIBEN ESA COLUMNA LO TRAEN — y un aparato abierto desde antes no lo trae.** v620 puso la lápida de los récords en `profile.prTombs` para no tocar la edge de la medalla, y `upsertOwn`/`updateClientRow` reemplazan `profile` entero: cualquier guardado del perfil desde un teléfono (o un panel del coach) abierto antes del borrado la quitaba de la nube. **Reglas: (1) al meter un dato en una columna jsonb compartida, enumera TODOS sus escritores, no solo el que lo crea — aquí eran cinco (guardado normal, subida al reconectar, panel propio, panel de un asesorado, cola de reintentos); (2) el que escribe pregunta a la nube SOLO ese dato antes de escribir (`tombs:profile->prTombs`, bytes) y lo une al suyo — no se re-lee el perfil entero; (3) si la pregunta no tiene respuesta NO se bloquea el guardado: la escritura sin red falla igual y cae a su cola, que vuelve a preguntar.** ⚠️ Y esto no es solo de las lápidas: **cualquier cosa que el coach escriba en el perfil de un asesorado con la app abierta tiene el mismo riesgo** — no está medido, queda en el radar. (v621)
+- 🔴 **`test()` DE LA SUITE ES SÍNCRONO: UNA PRUEBA `async` SALE VERDE SIN HABER ESPERADO NADA.** La que ejecuta las funciones reales de v621 nació con `await` y el runner ignora la promesa — habría aprobado aunque el arreglo no hiciera nada. Se le quita el `async`/`await` al código extraído y el stub responde en el acto. **Antes de escribir una prueba asíncrona en `avi.test.js`, mira la firma de `test()`.** Hermano de «un candado puede aprobar por CASUALIDAD». (v621)
 
 ---
 
@@ -1599,7 +1601,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-15 (**v619 — EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE**.
+*Última actualización: 2026-09-17 (**v621 — LA LÁPIDA DEL RÉCORD YA NO LA BORRA UN TELÉFONO VIEJO**. Pedido del PO: tapar el riesgo que v620 dejó escrito. `profile` se reemplaza entero al guardar, así que un aparato abierto desde antes del borrado le quitaba la lápida a la nube y su copia vieja de `prs` resucitaba el récord. Ahora las cinco puertas que escriben el perfil entero preguntan antes **solo las lápidas** y las unen (`foldPrTombs`, PURA); sin respuesta, el guardado sigue. Consulta verificada contra la base real (200 con la sintaxis buena, 400 con la rota). Suite **1210 → 1214**, `_sabotaje-v621` **12/12**, y `_verify-cola-coach` vuelve a **18/18** tras 5 rojos heredados de v612 por un stub con la forma vieja) · (**v620 — EL AVISO AMARILLO TIENE SALIDA Y EL RÉCORD BORRADO NO RESUCITA**) · (**v619 — EL RETRATO DE LA IMAGEN COMPARTIDA, MÁS GRANDE**.
 Reporte del PO: *«se ve muy pequeña la foto»*. Medido sobre el lienzo real: el radio era **92**, o
 sea 184 px en un lienzo de 1080 — **el 17% del ancho**, en una imagen que existe para que se vea
 QUIÉN entrenó. Ahora **280 px = el 26%** (+52% de diámetro, más del doble de área). El espacio
