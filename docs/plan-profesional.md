@@ -182,10 +182,10 @@ No se toca «porque se ve mejor». Se toca el día que haya un motivo medible.
 | F1.2 · las otras 6 | ⏸️ **sin víctima medida** — no se tocan a ciegas | |
 | F1.3 legal | ⏳ del PO + abogado (3-oct) | |
 | F1.4 fallos visibles | ⏳ sin empezar | |
-| F2.1 README | ⏳ sin empezar | |
-| F2.2 ARCHITECTURE.md | ⏳ sin empezar | |
-| F2.3 limpiar la raíz | ⏳ sin empezar | |
-| F2.4 LICENSE + SECURITY.md | ⏳ sin empezar | |
+| F2.1 README | ✅ hecho (con resumen en inglés y las cifras de QA) | 17-sep |
+| F2.2 ARCHITECTURE.md | ✅ hecho (incluye §4, la deuda, sin adornos) | 17-sep |
+| F2.3 limpiar la raíz | ✅ hecho (23 → 21 archivos, 5 de basura fuera) | 17-sep |
+| F2.4 LICENSE + SECURITY.md | ✅ hecho | 17-sep |
 | F2.5 QA visible | ⏳ sin empezar | |
 
 **Medición de partida (17-sep-2026, v624):** 37.118 líneas de app · `avi-core.js` 11.574 ·
