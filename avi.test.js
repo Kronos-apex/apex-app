@@ -19219,6 +19219,69 @@ test('v620 · CABLEADO: borrar deja lápida y las TRES puertas de lectura la apl
 });
 
 // ══════════════════════════════════════════════════════
+// v621 — LA LÁPIDA NO SE PIERDE CUANDO UN TELÉFONO VIEJO GUARDA EL PERFIL
+// ══════════════════════════════════════════════════════
+// El hueco que dejó v620: `upsertOwn` reemplaza `profile` ENTERO. Un teléfono con la app abierta
+// desde antes del borrado sube su perfil sin `prTombs` (con el check-in, un hábito…) y su copia
+// vieja de `prs`: la nube se queda sin lápida y CON el récord, y el siguiente arranque ya no
+// tiene con qué taparlo.
+
+// Simula lo que queda en la nube después de que el teléfono viejo sube perfil y récords.
+const _subidaTelefono = (cliente, prsLocal, doblar) => {
+  let perfil = core.clientToRow(cliente, {}).profile, prs = prsLocal;
+  if (doblar) { const f = core.foldPrTombs(perfil, _tumba, prsLocal); perfil = f.profile; prs = f.prs; }
+  return { user_id: 'u1', profile: perfil, prs };
+};
+const _arranque = fila => core.applyPrTombs(fila.prs, core.rowToClient(fila).prTombs).prs;
+
+test('v621 · el teléfono abierto desde antes del borrado ya NO le quita la lápida a la nube', () => {
+  const viejo = { id: 'u1', name: 'Samuel' };   // su ficha en memoria: de antes del borrado
+  // 🔒 CONTROL: sin unir las lápidas de la nube, el récord borrado vuelve para quedarse.
+  const sin = _subidaTelefono(viejo, _prBorrado(), false);
+  assert.ok(!sin.profile.prTombs && _arranque(sin).e1, 'el control no reproduce el hueco: este test no prueba nada');
+  const con = _subidaTelefono(viejo, _prBorrado(), true);
+  assert.deepStrictEqual(con.profile.prTombs, _tumba, '🔴 la subida del perfil borró la lápida de la nube');
+  assert.ok(!con.prs.e1, '🔴 la copia vieja de récords subió el récord borrado');
+  assert.ok(!_arranque(con).e1, '🔴 el récord borrado resucitó en el siguiente arranque');
+  assert.strictEqual(con.profile.name, 'Samuel', '🔴 unir lápidas le pisó el resto del perfil');
+});
+
+test('v621 🔒 unir lápidas no inventa nada: sin lápidas el perfil sale IGUAL, y un récord real sobrevive', () => {
+  const p = { name: 'Luz' };
+  const f = core.foldPrTombs(p, {}, { e1: { val: 40, date: '2026-09-10T00:00:00.000Z' } });
+  assert.strictEqual(f.profile, p, '🔴 inventó `prTombs` en un perfil que no tenía');
+  assert.ok(!('prTombs' in f.profile));
+  assert.ok(core.foldPrTombs(p, null, {}).profile === p, '🔴 una nube sin respuesta cambió el perfil');
+  const legit = core.foldPrTombs({ name: 'Luz' }, _tumba, { e1: { val: 30, kg: 30, date: '2026-08-20T00:00:00.000Z' } });
+  assert.ok(legit.prs.e1, '🔴 la lápida se comió un récord de OTRO número');
+  // Las dos lápidas se unen: la local no se pierde porque la nube traiga otra.
+  const dos = core.foldPrTombs({ prTombs: { e2: { at: '2026-09-02T00:00:00.000Z', val: 9 } } }, _tumba, {}, '2026-09-17T00:00:00.000Z');
+  assert.ok(dos.tombs.e1 && dos.tombs.e2, '🔴 unir perdió una de las dos lápidas');
+});
+
+test('v621 · CABLEADO: TODA escritura del perfil entero pregunta antes por las lápidas', () => {
+  const app1 = sinComentarios(_srcApp1()), app3 = sinComentarios(_srcApp3());
+  assert.match(app1, /readClientCol\(userId,'tombs:profile->prTombs'\)/, '🔴 la lectura de lápidas trae otra cosa');
+  // 1. el asesorado: el guardado normal (perfil y récords) y la subida al reconectar
+  const pau = app1.slice(app1.indexOf('async function _persistAuthUser('), app1.indexOf('async function _persistAuthUser(') + 2500);
+  const iFold = pau.indexOf("if(k==='ax_c'||k==='ax_pr') await _foldOwnPrTombs(id);");
+  assert.ok(iFold > 0, '🔴 guardar perfil/récords del asesorado ya no trae las lápidas');
+  assert.ok(iFold < pau.indexOf('await UD.upsertOwn({profile:row.profile'), '🔴 las lápidas llegan DESPUÉS de subir el perfil');
+  const fl = app3.slice(app3.indexOf('async function _flushAuthOnline('), app3.indexOf('async function _flushAuthOnline(') + 900);
+  assert.ok(fl.indexOf('await _foldOwnPrTombs(') > 0 && fl.indexOf('await _foldOwnPrTombs(') < fl.indexOf('_snapshotAuthRow()'),
+    '🔴 la subida al reconectar manda el perfil sin las lápidas de la nube');
+  // 2. el panel del coach: su propia fila, la de cada asesorado, y la cola de reintentos
+  const pcw = app1.slice(app1.indexOf('async function _persistCoachWrite('), app1.indexOf('async function _persistCoachWrite(') + 4000);
+  assert.match(pcw, /const _perfil=await _profileWithCloudPrTombs\(_authUid,/, '🔴 el coach guardándose a sí mismo borra sus lápidas');
+  assert.ok(pcw.indexOf('row.profile=await _profileWithCloudPrTombs(id,row.profile);') > 0 &&
+    pcw.indexOf('row.profile=await _profileWithCloudPrTombs(id,row.profile);') < pcw.indexOf('await UD.updateClientRow(id,'),
+    '🔴 un panel viejo del coach borra la lápida del asesorado');
+  const cola = app3.slice(app3.indexOf('async function _flushCoachWrites('), app3.indexOf('async function _flushCoachWrites(') + 5000);
+  assert.match(cola, /patch\.profile=foldPrTombs\(patch\.profile,fila\.profile&&fila\.profile\.prTombs,null\)\.profile;/,
+    '🔴 el reintento de la cola sube una foto vieja del perfil sin lápidas');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

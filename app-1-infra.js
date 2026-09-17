@@ -359,6 +359,13 @@ const UD={
       return data?{estado:'ok',row:data}:{estado:'ausente',row:null};
     }catch(e){ warn('UD.readClientCol (¿sin conexión?):',e&&e.message); return {estado:'mudo',row:null}; }
   },
+  // v621 · SOLO las lápidas de récords de una fila (bytes, no el perfil entero). Ver `foldPrTombs`.
+  // Sin respuesta → null: quien escribe sigue con las suyas (no se bloquea un guardado por esto;
+  // si no hay red, la escritura de al lado también falla y cae a su cola, que vuelve a preguntar).
+  async readPrTombs(userId){
+    const lec=await this.readClientCol(userId,'tombs:profile->prTombs');
+    return (lec&&lec.estado==='ok'&&lec.row)?(lec.row.tombs||{}):null;
+  },
   // Actualiza la fila de un cliente (el coach puede por RLS: coach_id = su uid). UPDATE
   // (no upsert: el INSERT lo bloquea la política WITH CHECK auth.uid()=user_id). Para 2.2e-2.
   async updateClientRow(clientId,patch){
@@ -997,6 +1004,27 @@ function _persistAuthUserDebounced(k,v){
 function flushAuthDebounced(){
   Object.keys(_udPending).forEach(k=>{ const v=_udPending[k]; delete _udPending[k]; clearTimeout(_udDebounce[k]); _persistAuthUser(k,v); });
 }
+// v621 · Antes de subir el perfil o los récords PROPIOS, se traen las lápidas de la nube y se unen
+// a las de este teléfono (ver `foldPrTombs`). Muta la ficha y los récords en memoria para que lo
+// que se sube —y el respaldo local— ya las lleve. Sin respuesta de la nube, no toca nada.
+// ⏱️ Cuesta una lectura de bytes antes de escribir. Si al cerrar la app eso deja la escritura sin
+//    terminar, no se pierde nada: el respaldo local queda «sucio» y el arranque fusiona con
+//    `mergeAuthRow`, que ya une las lápidas de los dos lados.
+async function _foldOwnPrTombs(id){
+  if(!_authUid||typeof foldPrTombs!=='function'||!UD.readPrTombs)return;
+  const client=(DB.clients||[]).find(c=>c&&c.id===id)||(DB.clients&&DB.clients[0]); if(!client)return;
+  const nube=await UD.readPrTombs(_authUid); if(nube===null)return;
+  const f=foldPrTombs(client,nube,(DB.prs&&DB.prs[id])||{});
+  if(f.profile!==client) client.prTombs=f.tombs;
+  if(f.removed&&DB.prs) DB.prs[id]=f.prs;
+}
+// Lo mismo para quien escribe el perfil de OTRA fila (el panel del coach, que puede estar abierto
+// en un segundo aparato desde antes del borrado). Devuelve el perfil a subir, con las lápidas unidas.
+async function _profileWithCloudPrTombs(uid,profile){
+  if(!uid||typeof foldPrTombs!=='function'||!UD.readPrTombs)return profile;
+  const nube=await UD.readPrTombs(uid); if(nube===null)return profile;
+  return foldPrTombs(profile,nube,null).profile;
+}
 async function _persistAuthUser(k,v){
   // Plantillas (ax_tpl): nivel coach/global → viven en la fila PROPIA del coach (columna
   // `templates`), no por-cliente ni en el blob legacy. Sin esto NO se guardaban en modo auth
@@ -1037,6 +1065,9 @@ async function _persistAuthUser(k,v){
   const id=CUR.clientId; if(!id)return;
   _udInflight++;
   try{
+    // 🪦 v621 · el perfil viaja ENTERO: sin esto, un teléfono abierto desde antes del borrado de un
+    //    récord le quitaba la lápida a la nube, y su copia vieja de `prs` lo resucitaba.
+    if(k==='ax_c'||k==='ax_pr') await _foldOwnPrTombs(id);
     if(k==='ax_c'){
       const client=(DB.clients&&DB.clients[0])||null; if(!client)return;
       const row=clientToRow(client,{}); // perfil (escalares) + rutinas, sin tocar coach_id/role
@@ -1102,8 +1133,8 @@ async function _persistCoachWrite(k,v){
         // que se conserva sea exactamente lo que la vista no podía representar.
         let _base=COACH_OWN_ROW;
         try{ if(!_base && typeof _readAuthRow==='function') _base=_readAuthRow(_authUid); }catch(_e){}
-        const _perfil=(_base&&_base.profile&&typeof mergeOwnProfile==='function')
-          ? mergeOwnProfile(_base.profile,row.profile) : row.profile;
+        const _perfil=await _profileWithCloudPrTombs(_authUid,(_base&&_base.profile&&typeof mergeOwnProfile==='function')
+          ? mergeOwnProfile(_base.profile,row.profile) : row.profile);   // 🪦 v621
         try{
           await UD.upsertOwn({profile:_perfil,routines:row.routines}); _coachSnap[sk]=val;
           // La fila en memoria queda igual a lo que acaba de quedar en la nube: así un SEGUNDO
@@ -1119,7 +1150,11 @@ async function _persistCoachWrite(k,v){
       const val=_coachClientJSON(c), sk='ax_c:'+id;
       if(_coachSnap[sk]===val)continue; // ese cliente no cambió
       const row=clientToRow(c,{});
-      try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=val; _cwqDrop('ax_c',id); }
+      // 🪦 v621 · otro aparato del coach pudo borrarle un récord mientras este panel seguía abierto.
+      row.profile=await _profileWithCloudPrTombs(id,row.profile);
+      if(row.profile.prTombs) c.prTombs=row.profile.prTombs;   // la ficha en memoria queda igual a lo que sube
+      const _val=_coachClientJSON(c);
+      try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=_val; _cwqDrop('ax_c',id); }
       catch(e){ _cwqAdd('ax_c',id,{profile:row.profile,routines:row.routines}); warn('AVI coach persist ax_c falló, en cola para reintentar:',id,e&&e.message); }
     }
     return;

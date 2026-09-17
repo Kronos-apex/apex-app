@@ -557,6 +557,8 @@ function _refreshAuthCache(){ if(AUTH_MODE&&AUTH_ROLE!=='coach'&&_authUid){ _cac
 // (sin coach_id/role → upsert deja esas columnas intactas). Idempotente.
 async function _flushAuthOnline(){
   if(!AUTH_MODE||AUTH_ROLE==='coach'||!_authDirty)return;
+  // 🪦 v621 · esta subida lleva el perfil y los récords ENTEROS: primero las lápidas de la nube.
+  if(typeof _foldOwnPrTombs==='function'&&DB.clients&&DB.clients[0]) await _foldOwnPrTombs(DB.clients[0].id);
   const row=_snapshotAuthRow(); if(!row)return;
   const patch={profile:row.profile,routines:row.routines,history:row.history,prs:row.prs,
     bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs};
@@ -987,6 +989,9 @@ async function _flushCoachWrites(){
         if(DB.msgs) DB.msgs[e.id]=fus;
       } else if(e.col==='ax_c'){
         const patch={profile:(e.val&&e.val.profile)||{},routines:(e.val&&e.val.routines)||[]};
+        // 🪦 v621 · lo encolado es una foto VIEJA del perfil: se le unen las lápidas que la nube ya
+        //    tiene (vienen en la fila recién leída, sin otra consulta).
+        if(typeof foldPrTombs==='function') patch.profile=foldPrTombs(patch.profile,fila.profile&&fila.profile.prTombs,null).profile;
         if(esMio) await UD.upsertOwn(patch); else await UD.updateClientRow(e.id,patch);
       } else {
         const patch={}; patch[e.col]=e.val;

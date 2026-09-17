@@ -2468,6 +2468,21 @@ function applyPrTombs(prs, tombs) {
   });
   return { prs: out, removed };
 }
+// ── v621 · LA LÁPIDA NO SE PIERDE CUANDO UN TELÉFONO VIEJO GUARDA EL PERFIL ──────────────────
+// 🔴 v620 dejó un hueco: `upsertOwn`/`updateClientRow` REEMPLAZAN la columna `profile` entera, y
+//    un teléfono con la app abierta desde ANTES del borrado tiene el perfil sin `prTombs`. Con
+//    cualquier guardado del perfil (el check-in, un hábito) la lápida se iba de la nube, y con
+//    ella la única defensa: la copia vieja de `prs` que ese mismo teléfono sube volvía para quedarse.
+// Por eso, antes de escribir, quien escribe pregunta a la nube SOLO sus lápidas y las une a las
+// suyas. Pura: recibe lo local y lo de la nube, devuelve el perfil y los récords ya tapados.
+// 🔒 Sin lápidas en ningún lado, el perfil sale IDÉNTICO (no inventa `prTombs:{}`).
+function foldPrTombs(profile, cloudTombs, prs, nowIso) {
+  const base = (profile && typeof profile === 'object') ? profile : {};
+  const tombs = prTombsPrune(prTombsMerge(base.prTombs, cloudTombs), nowIso);
+  const hay = Object.keys(tombs).length > 0;
+  const r = hay ? applyPrTombs(prs, tombs) : { prs: prs, removed: 0 };
+  return { profile: hay ? Object.assign({}, base, { prTombs: tombs }) : base, tombs, prs: r.prs, removed: r.removed };
+}
 
 function mergeAuthRow(localRow, cloudRow) {
   localRow = localRow || {}; cloudRow = cloudRow || {};
@@ -11450,6 +11465,7 @@ if (typeof module !== 'undefined' && module.exports) {
     prTombsMerge,
     prTombsPrune,
     applyPrTombs,
+    foldPrTombs,
     PR_TOMB_DAYS,
     coachQueueDropClient,
     COACH_Q_MAX_ENTRY,
