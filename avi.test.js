@@ -19318,12 +19318,17 @@ test('v621 · CABLEADO: TODA escritura del perfil entero pregunta antes por las 
   assert.match(app1, /readClientCol\(userId,'tombs:profile->prTombs'\)/, '🔴 la lectura de lápidas trae otra cosa');
   // 1. el asesorado: el guardado normal (perfil y récords) y la subida al reconectar
   const pau = app1.slice(app1.indexOf('async function _persistAuthUser('), app1.indexOf('async function _persistAuthUser(') + 2500);
-  const iFold = pau.indexOf("if(k==='ax_c'||k==='ax_pr') await _foldOwnPrTombs(id);");
-  assert.ok(iFold > 0, '🔴 guardar perfil/récords del asesorado ya no trae las lápidas');
-  assert.ok(iFold < pau.indexOf('await UD.upsertOwn({profile:row.profile'), '🔴 las lápidas llegan DESPUÉS de subir el perfil');
-  const fl = app3.slice(app3.indexOf('async function _flushAuthOnline('), app3.indexOf('async function _flushAuthOnline(') + 900);
-  assert.ok(fl.indexOf('await _foldOwnPrTombs(') > 0 && fl.indexOf('await _foldOwnPrTombs(') < fl.indexOf('_snapshotAuthRow()'),
-    '🔴 la subida al reconectar manda el perfil sin las lápidas de la nube');
+  // v623 re-encuadre: el perfil ya no pregunta SOLO por las lápidas, se fusiona entero con la nube
+  // (`_mergeOwnWithCloud`, que une las lápidas dentro y cae a `_foldOwnPrTombs` sin respuesta). La
+  // propiedad es la misma: nada sube el perfil entero sin haber mirado antes la nube.
+  assert.ok(pau.indexOf("if(k==='ax_pr') await _foldOwnPrTombs(id);") > 0, '🔴 guardar récords del asesorado ya no trae las lápidas');
+  const iMg = pau.indexOf("const _mg=(k==='ax_c')?await _mergeOwnWithCloud(id):null;");
+  assert.ok(iMg > 0 && iMg < pau.indexOf('await UD.upsertOwn(patch);'), '🔴 el perfil del asesorado sube sin mirar antes la nube');
+  const mw = app1.slice(app1.indexOf('async function _mergeOwnWithCloud('), app1.indexOf('async function _persistAuthUser('));
+  assert.ok((mw.match(/await _foldOwnPrTombs\(id\)/g) || []).length === 2, '🔴 sin respuesta de la nube la fusión ya no cae a las lápidas');
+  const fl = app3.slice(app3.indexOf('async function _flushAuthOnline('), app3.indexOf('async function _flushAuthOnline(') + 1600);
+  assert.ok(fl.indexOf('_mg=await _mergeOwnWithCloud(') > 0 && fl.indexOf('_mg=await _mergeOwnWithCloud(') < fl.indexOf('_snapshotAuthRow()'),
+    '🔴 la subida al reconectar manda el perfil sin fusionarlo con la nube');
   // 2. el panel del coach: su propia fila, la de cada asesorado, y la cola de reintentos
   const pcw = app1.slice(app1.indexOf('async function _persistCoachWrite('), app1.indexOf('async function _persistCoachWrite(') + 4000);
   assert.match(pcw, /const _perfil=await _profileWithCloudPrTombs\(_authUid,/, '🔴 el coach guardándose a sí mismo borra sus lápidas');
@@ -19333,6 +19338,104 @@ test('v621 · CABLEADO: TODA escritura del perfil entero pregunta antes por las 
   const cola = app3.slice(app3.indexOf('async function _flushCoachWrites('), app3.indexOf('async function _flushCoachWrites(') + 5000);
   assert.match(cola, /patch\.profile=foldPrTombs\(patch\.profile,fila\.profile&&fila\.profile\.prTombs,null\)\.profile;/,
     '🔴 el reintento de la cola sube una foto vieja del perfil sin lápidas');
+});
+
+// ══════════════════════════════════════════════════════
+// v623 — LO QUE EL COACH CAMBIA EN EL PERFIL NO LO PISA UN TELÉFONO ABIERTO (NI AL REVÉS)
+// ══════════════════════════════════════════════════════
+// v621 cerró la lápida; el defecto era de TODO el perfil. Cada lado sube `profile`/`routines`
+// enteros desde su memoria: un vaso de agua desde un teléfono abierto borraba el pago que el coach
+// acababa de registrar, y una rutina editada desde un panel abierto borraba el vaso.
+
+test('v623 · el pago del coach y el vaso de agua del asesorado sobreviven los dos', () => {
+  const base  = { name: 'Luz', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 2 } } };
+  const phone = { name: 'Luz', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 3 } } };
+  const nube  = { habits: { water: { '2026-09-17': 2 } }, payments: [{ d: '2026-09-01' }, { d: '2026-09-17' }], name: 'Luz' };
+  // 🔒 CONTROL: lo que hacía la app (subir la copia del teléfono) pierde el pago.
+  assert.strictEqual(phone.payments.length, 1, 'el control no reproduce la pérdida');
+  const m = core.mergeProfile3(base, phone, nube);
+  assert.strictEqual(m.payments.length, 2, '🔴 el pago que registró el coach se perdió');
+  assert.strictEqual(m.habits.water['2026-09-17'], 3, '🔴 el vaso de agua del asesorado se perdió');
+});
+
+test('v623 🔒 la fusión no confunde el orden de claves de la nube con un cambio', () => {
+  // jsonb reordena las claves: si eso contara como «cambió», este lado ganaría siempre (el defecto).
+  const base = { deload: { a: 1, b: 2 } }, local = { deload: { a: 1, b: 2 } }, nube = { deload: { b: 3, a: 1 } };
+  assert.deepStrictEqual(core.mergeProfile3(base, local, nube).deload, { b: 3, a: 1 }, '🔴 el orden de claves se leyó como cambio local');
+  assert.strictEqual(core.canonJSON({ b: 1, a: [{ y: 1, x: 2 }] }), core.canonJSON({ a: [{ x: 2, y: 1 }], b: 1 }));
+  // CONTROL: un JSON.stringify a pelo SÍ los ve distintos (por eso hace falta la forma canónica).
+  assert.notStrictEqual(JSON.stringify({ b: 1, a: 1 }), JSON.stringify({ a: 1, b: 1 }));
+});
+
+test('v623 · una clave que la nube quitó se va, y si los dos la tocaron manda quien escribe', () => {
+  const m1 = core.mergeProfile3({ deload: { d: 1 } }, { deload: { d: 1 } }, {});
+  assert.ok(!('deload' in m1), '🔴 el coach cerró la descarga y el teléfono viejo la resucitó');
+  const m2 = core.mergeProfile3({ goal: 'A' }, { goal: 'B' }, { goal: 'C' });
+  assert.strictEqual(m2.goal, 'B', 'con los dos tocando la misma clave manda la acción que se está guardando');
+});
+
+test('v623 · rutinas que este lado no tocó vienen de la nube; las lápidas se unen siempre', () => {
+  const r0 = [{ id: 'r1', name: 'Pierna' }], r1 = [{ id: 'r1', name: 'Pierna y glúteo' }];
+  const m = core.mergeOwnRow3(
+    { profile: { name: 'Ana' }, routines: r0 },
+    { profile: { name: 'Ana', prTombs: { e1: { at: '2026-09-10T00:00:00.000Z', val: 5 } } }, routines: r0 },
+    { profile: { name: 'Ana', prTombs: { e2: { at: '2026-09-11T00:00:00.000Z', val: 9 } } }, routines: r1 });
+  assert.deepStrictEqual(m.routines, r1, '🔴 el plan que editó el coach volvió al viejo');
+  assert.ok(m.profile.prTombs.e1 && m.profile.prTombs.e2, '🔴 la fusión perdió una de las lápidas');
+});
+
+test('v623 · EJECUTADO: el teléfono adopta el pago, conserva lo suyo y NO manda rutinas que no tocó', () => {
+  // Las funciones REALES de app-1 con la nube de mentira. `test()` es síncrono (v621): sin async.
+  const src = _srcApp1();
+  const cortar = (nombre, kw) => { const i = src.indexOf(kw + ' ' + nombre + '('); return src.slice(i, src.indexOf('\n}', i) + 2).replace('async function', 'function').replace(/\bawait /g, ''); };
+  const armar = (lec, baseGuardada) => {
+    const ls = {}; if (baseGuardada) ls['ax_udbase_u1'] = JSON.stringify(baseGuardada);
+    const ctx = { DB: { clients: [{ id: 'u1', name: 'Luz', payments: [{ d: 1 }], habits: { w: 3 }, routines: [{ id: 'r1', n: 'viejo' }] }], prs: { u1: {} } },
+      _authUid: 'u1', localStorage: { getItem: k => ls[k] || null, setItem: (k, v) => { ls[k] = v; }, removeItem: k => { delete ls[k]; } },
+      UD: { readClientCol: () => lec }, clientToRow: core.clientToRow, mergeOwnRow3: core.mergeOwnRow3, canonJSON: core.canonJSON,
+      applyPrTombs: core.applyPrTombs, __fold: 0 };
+    ctx._foldOwnPrTombs = () => { ctx.__fold++; };
+    require('vm').runInNewContext('var _authBase=null,_authBaseUid=null;\n'
+      + ['_authBaseKey', '_authBaseGet', '_authBaseSet', '_applyOwnRow'].map(n => cortar(n, 'function')).join('\n')
+      + cortar('_mergeOwnWithCloud', 'async function') + '\nthis.mg=_mergeOwnWithCloud;', ctx);
+    return { ctx, ls };
+  };
+  const base = { profile: { name: 'Luz', payments: [{ d: 1 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'viejo' }] };
+  const nube = { estado: 'ok', row: { profile: { name: 'Luz', payments: [{ d: 1 }, { d: 2 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'NUEVO' }] } };
+  const { ctx, ls } = armar(nube, base);
+  const r = ctx.mg('u1');
+  const c = ctx.DB.clients[0];
+  assert.strictEqual(c.payments.length, 2, '🔴 la ficha que se sube no trae el pago del coach');
+  assert.strictEqual(c.habits.w, 3, '🔴 la ficha perdió el vaso que el asesorado acaba de tomar');
+  assert.strictEqual(r.sendRoutines, false, '🔴 se mandarían las rutinas viejas encima del plan nuevo del coach');
+  assert.strictEqual(JSON.parse(ls['ax_udbase_u1']).profile.payments.length, 2, '🔴 la base no quedó en lo que dice la nube');
+  // Sin respuesta de la nube no se fusiona nada y se cae a las lápidas de v621.
+  // 🔒 Una fila SIN perfil no es «la nube lo borró todo»: no se fusiona (si no, se iría la ficha entera).
+  const vacia = armar({ estado: 'ok', row: { profile: null, routines: [] } }, base);
+  assert.strictEqual(vacia.ctx.mg('u1'), null);
+  assert.strictEqual(vacia.ctx.DB.clients[0].name, 'Luz', '🔴 una lectura sin perfil borró la ficha entera');
+  const mudo = armar({ estado: 'mudo', row: null }, base);
+  assert.strictEqual(mudo.ctx.mg('u1'), null);
+  assert.strictEqual(mudo.ctx.__fold, 1, '🔴 sin nube ya no se unen ni las lápidas');
+  assert.strictEqual(mudo.ctx.DB.clients[0].payments.length, 1);
+});
+
+test('v623 · CABLEADO: rutinas no tocadas no se mandan, el panel fusiona, arranque y refresco llevan la base', () => {
+  const app1 = sinComentarios(_srcApp1()), app3 = sinComentarios(_srcApp3());
+  const pau = app1.slice(app1.indexOf('async function _persistAuthUser('), app1.indexOf('async function _persistAuthUser(') + 5000);
+  assert.ok(/if\(!_mg\|\|_mg\.sendRoutines\) patch\.routines=row\.routines;/.test(pau), '🔴 el teléfono vuelve a mandar rutinas que no tocó');
+  const pcw = app1.slice(app1.indexOf('async function _persistCoachWrite('), app1.indexOf('async function _persistCoachWrite(') + 6000);
+  const iM = pcw.indexOf('const _m=mergeOwnRow3(_cb,');
+  assert.ok(iM > 0 && iM < pcw.indexOf('await UD.updateClientRow(id,'), '🔴 el panel del coach vuelve a pisar lo que el asesorado subió');
+  assert.ok(/_cb=\{profile:sn\.p,routines:sn\.r\}/.test(pcw), '🔴 el panel fusiona sin la base confirmada (_coachSnap)');
+  const fl = app3.slice(app3.indexOf('async function _flushAuthOnline('), app3.indexOf('async function _flushAuthOnline(') + 1600);
+  assert.ok(/if\(_mg&&!_mg\.sendRoutines\) delete patch\.routines;/.test(fl), '🔴 al reconectar se mandan rutinas que no se tocaron');
+  assert.ok(/const _m=mergeOwnRow3\(_b,\{profile:cached\.profile,routines:cached\.routines\},\{profile:_nube\.profile,routines:_nube\.routines\}\);/.test(app3),
+    '🔴 el arranque vuelve a tirar lo que se tocó sin red');
+  assert.ok(/if\(online&&!_mergedOffline&&typeof _authBaseSet==='function'\) _authBaseSet\(/.test(app3), '🔴 el arranque no deja base: la primera fusión no sabría qué cambió');
+  const poll = app1.slice(app1.indexOf('async function _pollAuthClient('), app1.indexOf('async function _pollAuthCoach('));
+  assert.ok(/_authBaseSet\(Object\.assign\(\{\},_b,\{routines:row\.routines\}\)\)/.test(poll), '🔴 el refresco adopta el plan del coach y no lo anota en la base');
+  assert.ok(/_authBase&&_authBaseUid===_authUid/.test(app1), '🔴 la base en memoria puede ser de OTRA cuenta de la misma pestaña');
 });
 
 // ══════════════════════════════════════════════════════

@@ -2484,6 +2484,49 @@ function foldPrTombs(profile, cloudTombs, prs, nowIso) {
   return { profile: hay ? Object.assign({}, base, { prTombs: tombs }) : base, tombs, prs: r.prs, removed: r.removed };
 }
 
+// ── v623 · LO QUE EL COACH CAMBIA EN EL PERFIL NO LO PISA UN TELÉFONO ABIERTO (NI AL REVÉS) ──
+// v621 cerró la lápida de los récords, pero el defecto era de TODO el perfil: `upsertOwn` y
+// `updateClientRow` reemplazan `profile` y `routines` ENTEROS, y cada lado escribe su copia de
+// memoria. Un vaso de agua desde un teléfono abierto antes de que el coach registrara un pago
+// borraba el pago; una rutina editada desde un panel abierto antes del vaso borraba el vaso. El
+// refresco en vivo del asesorado solo trae las RUTINAS, así que el resto no se corrige solo.
+// La regla es la de un merge de tres vías, por clave de primer nivel: `base` es lo último que este
+// aparato sabe que estaba en la nube. Si ESTE lado no tocó la clave, manda la nube; si solo la
+// tocó este lado, manda este lado; si la tocaron los dos, manda el que escribe ahora (es la acción
+// que la persona acaba de hacer) — y eso es raro: el coach y el asesorado casi nunca editan la
+// misma clave. PURA.
+// 🔴 La comparación es CANÓNICA: `jsonb` reordena las claves de los objetos, así que comparar con
+//    `JSON.stringify` a pelo daría «cambió» sobre un valor idéntico y este lado ganaría siempre —
+//    o sea, el defecto de antes con otra cara.
+function canonJSON(v) {
+  if (Array.isArray(v)) return '[' + v.map(canonJSON).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).filter(k => v[k] !== undefined).sort()
+    .map(k => JSON.stringify(k) + ':' + canonJSON(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+function mergeProfile3(base, local, cloud) {
+  const b = (base && typeof base === 'object') ? base : {};
+  const l = (local && typeof local === 'object') ? local : {};
+  const c = (cloud && typeof cloud === 'object') ? cloud : {};
+  const out = {};
+  new Set([...Object.keys(b), ...Object.keys(l), ...Object.keys(c)]).forEach(k => {
+    const tocoLocal = canonJSON(l[k]) !== canonJSON(b[k]);
+    const v = tocoLocal ? l[k] : c[k];
+    if (v !== undefined) out[k] = v;               // una clave borrada del lado que manda, se va
+  });
+  return out;
+}
+// El perfil y las rutinas de una fila, juntos. Las rutinas van como UNA clave (el plan se edita
+// entero). Las lápidas de récords (v620/v621) no siguen la regla de «uno manda»: se UNEN siempre.
+function mergeOwnRow3(base, local, cloud) {
+  const B = base || {}, L = local || {}, C = cloud || {};
+  let profile = mergeProfile3(B.profile, L.profile, C.profile);
+  const tombs = prTombsMerge(L.profile && L.profile.prTombs, C.profile && C.profile.prTombs);
+  if (Object.keys(tombs).length) profile = Object.assign({}, profile, { prTombs: tombs });
+  const r = mergeProfile3({ r: B.routines }, { r: L.routines }, { r: C.routines }).r;
+  return { profile, routines: Array.isArray(r) ? r : (Array.isArray(L.routines) ? L.routines : []) };
+}
+
 function mergeAuthRow(localRow, cloudRow) {
   localRow = localRow || {}; cloudRow = cloudRow || {};
   const out = Object.assign({}, cloudRow);
@@ -11466,6 +11509,9 @@ if (typeof module !== 'undefined' && module.exports) {
     prTombsPrune,
     applyPrTombs,
     foldPrTombs,
+    canonJSON,
+    mergeProfile3,
+    mergeOwnRow3,
     PR_TOMB_DAYS,
     coachQueueDropClient,
     COACH_Q_MAX_ENTRY,

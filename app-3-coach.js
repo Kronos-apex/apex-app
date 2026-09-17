@@ -557,13 +557,17 @@ function _refreshAuthCache(){ if(AUTH_MODE&&AUTH_ROLE!=='coach'&&_authUid){ _cac
 // (sin coach_id/role → upsert deja esas columnas intactas). Idempotente.
 async function _flushAuthOnline(){
   if(!AUTH_MODE||AUTH_ROLE==='coach'||!_authDirty)return;
-  // 🪦 v621 · esta subida lleva el perfil y los récords ENTEROS: primero las lápidas de la nube.
-  if(typeof _foldOwnPrTombs==='function'&&DB.clients&&DB.clients[0]) await _foldOwnPrTombs(DB.clients[0].id);
+  // 🔀 v623 · esta subida lleva el perfil ENTERO: primero se fusiona con la nube (y con él las
+  //    lápidas de v621). Sin respuesta de la nube, `_mergeOwnWithCloud` cae a solo las lápidas.
+  let _mg=null;
+  if(typeof _mergeOwnWithCloud==='function'&&DB.clients&&DB.clients[0]) _mg=await _mergeOwnWithCloud(DB.clients[0].id);
   const row=_snapshotAuthRow(); if(!row)return;
   const patch={profile:row.profile,routines:row.routines,history:row.history,prs:row.prs,
     bodyweight:row.bodyweight,medidas:row.medidas,nutrition:row.nutrition,photos:row.photos,msgs:row.msgs};
+  if(_mg&&!_mg.sendRoutines) delete patch.routines;   // las rutinas que este aparato no tocó no se mandan
   try{
     await UD.upsertOwn(patch);
+    if(typeof _authBaseSet==='function'){ const _b=_authBaseGet(); _authBaseSet({profile:row.profile,routines:patch.routines||(_b&&_b.routines)||row.routines}); }
     // Subió la fila COMPLETA de datos → todo confirmado: limpia claves fallidas y el flag.
     Object.keys(_udFailedKeys).forEach(k=>{delete _udFailedKeys[k];});
     _setAuthDirty(false);
@@ -702,7 +706,19 @@ async function _enterAuthSession(authUser){
   if(online && row && _readAuthDirty(_authUid)){
     const cached=_readAuthRow(_authUid);
     if(cached){
-      try{ row=mergeAuthRow(cached,row); _mergedOffline=true; log('AVI: fusionando datos offline pendientes con la nube'); }
+      try{
+        const _nube=row;
+        row=mergeAuthRow(cached,row); _mergedOffline=true; log('AVI: fusionando datos offline pendientes con la nube');
+        // 🔀 v623 · `mergeAuthRow` deja el perfil de la NUBE, así que lo que se tocó sin red (un vaso
+        //    de agua, un hábito) se perdía al volver. Con la base guardada se sabe qué cambió cada lado.
+        const _b=(typeof _authBaseGet==='function')?_authBaseGet():null;
+        if(_b&&typeof mergeOwnRow3==='function'){
+          const _m=mergeOwnRow3(_b,{profile:cached.profile,routines:cached.routines},{profile:_nube.profile,routines:_nube.routines});
+          row.profile=_m.profile; row.routines=_m.routines;
+          if(_m.profile.prTombs&&typeof applyPrTombs==='function') row.prs=applyPrTombs(row.prs,_m.profile.prTombs).prs;
+        }
+        if(typeof _authBaseSet==='function') _authBaseSet({profile:_nube.profile||{},routines:Array.isArray(_nube.routines)?_nube.routines:[]});
+      }
       catch(e){ warn('AVI: merge offline falló, se usa la nube tal cual:',e&&e.message); }
     }
   }
@@ -728,6 +744,8 @@ async function _enterAuthSession(authUser){
       medidas:row.medidas, nutrition:row.nutrition, photos:row.photos, msgs:row.msgs,
     });
     if(online) _cacheAuthRow(_authUid,row); // refresca el respaldo con lo recién bajado (ya fusionado)
+    // v623 · recién bajado de la nube y sin nada pendiente: esto ES la base de la próxima fusión.
+    if(online&&!_mergedOffline&&typeof _authBaseSet==='function') _authBaseSet({profile:row.profile||{},routines:Array.isArray(row.routines)?row.routines:[]});
     if(_mergedOffline){ _setAuthDirty(true); _flushAuthOnline(); } // sube la fila fusionada; al confirmar limpia el flag
   } else {
     const prof=_profileFromMeta(authUser);

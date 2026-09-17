@@ -768,6 +768,9 @@ async function _pollAuthClient(){
     const client=DB.clients.find(x=>x.id===cid);
     if(client&&JSON.stringify(client.routines||[])!==JSON.stringify(row.routines)){
       client.routines=row.routines; touched=true;
+      // v623 · lo adoptado de la nube pasa a ser la base: si no, la próxima fusión creería que
+      // este teléfono cambió las rutinas y le devolvería al coach el plan viejo.
+      if(typeof _authBaseGet==='function'){ const _b=_authBaseGet(); if(_b) _authBaseSet(Object.assign({},_b,{routines:row.routines})); }
       if(typeof renderClientToday==='function')renderClientToday(client);
       const rtTab=document.getElementById('cn-routines');
       if(rtTab&&rtTab.classList.contains('on')&&typeof renderClientAllRoutines==='function')renderClientAllRoutines(client);
@@ -1025,6 +1028,57 @@ async function _profileWithCloudPrTombs(uid,profile){
   const nube=await UD.readPrTombs(uid); if(nube===null)return profile;
   return foldPrTombs(profile,nube,null).profile;
 }
+// ── v623 · EL PERFIL SE FUSIONA CON LA NUBE ANTES DE SUBIRLO (ver `mergeOwnRow3`) ──────────
+// `base` = lo último que ESTE aparato sabe que estaba en la nube (perfil y rutinas). Vive en
+// memoria y en localStorage (`ax_udbase_<uid>`), porque el arranque «sucio» también la necesita.
+// 🔒 La copia en memoria lleva el uid al lado: cerrar sesión y entrar con otra cuenta en la misma
+//    pestaña no puede fusionar el perfil de una persona contra la base de otra (clase v398).
+let _authBase=null, _authBaseUid=null;
+function _authBaseKey(uid){ return 'ax_udbase_'+uid; }
+function _authBaseGet(){
+  if(!_authUid)return null;
+  if(_authBase&&_authBaseUid===_authUid)return _authBase;
+  try{ const r=localStorage.getItem(_authBaseKey(_authUid)); _authBase=r?JSON.parse(r):null; }catch(e){ _authBase=null; }
+  _authBaseUid=_authUid;
+  return _authBase;
+}
+function _authBaseSet(b){
+  _authBase=b||null; _authBaseUid=_authUid; if(!_authUid)return;
+  try{ if(b)localStorage.setItem(_authBaseKey(_authUid),JSON.stringify(b)); else localStorage.removeItem(_authBaseKey(_authUid)); }catch(e){}
+}
+// Deja la ficha en memoria igual a un perfil ya fusionado. Una clave que la fusión quitó se quita
+// (la nube la borró y este lado no la tocó); `id` y `password` no viven en el perfil y no se tocan.
+function _applyOwnRow(client,profile,routines){
+  if(!client||!profile)return;
+  Object.keys(client).forEach(k=>{ if(k!=='id'&&k!=='routines'&&k!=='password'&&!(k in profile)) delete client[k]; });
+  Object.assign(client,profile);
+  if(Array.isArray(routines)) client.routines=routines;
+}
+// Lee perfil y rutinas de la nube y los FUSIONA en la ficha propia antes de subirla. Devuelve si
+// hay que mandar las rutinas: si este aparato no las tocó NO se mandan, porque la copia en memoria
+// puede ser vieja (el refresco en vivo no las cambia en pleno entreno) y mandarla pisaría el plan
+// que el coach acaba de editar. Sin respuesta de la nube, vuelve a lo de v621 (solo lápidas).
+async function _mergeOwnWithCloud(id){
+  const client=(DB.clients||[]).find(c=>c&&c.id===id)||(DB.clients&&DB.clients[0]); if(!client)return null;
+  if(!_authUid||typeof mergeOwnRow3!=='function'||!UD.readClientCol){ await _foldOwnPrTombs(id); return null; }
+  const lec=await UD.readClientCol(_authUid,'profile,routines');
+  // 🔒 Una fila sin perfil (nulo, o una lectura que no lo trajo) NO es «la nube lo borró todo»: si se
+  //    fusionara, cada clave que este lado no tocó se iría. Sin perfil de verdad, no se fusiona.
+  if(!lec||lec.estado!=='ok'||!lec.row||!lec.row.profile||typeof lec.row.profile!=='object'||!Array.isArray(lec.row.routines)){ await _foldOwnPrTombs(id); return null; }
+  const nube={profile:lec.row.profile||{},routines:Array.isArray(lec.row.routines)?lec.row.routines:[]};
+  const local=clientToRow(client,{});
+  // Sin base (primer guardado tras actualizar) no se sabe qué tocó este lado: manda este lado,
+  // que es lo de siempre — y desde aquí ya hay base para el siguiente.
+  const base=_authBaseGet()||{profile:nube.profile,routines:local.routines};
+  const m=mergeOwnRow3(base,{profile:local.profile,routines:local.routines},nube);
+  const tocoRutinas=canonJSON(local.routines)!==canonJSON(base.routines);
+  _applyOwnRow(client,m.profile,null);
+  if(DB.prs&&DB.prs[id]&&m.profile.prTombs&&typeof applyPrTombs==='function'){
+    const t=applyPrTombs(DB.prs[id],m.profile.prTombs); if(t.removed) DB.prs[id]=t.prs;
+  }
+  _authBaseSet({profile:nube.profile,routines:tocoRutinas?nube.routines:base.routines});
+  return {sendRoutines:tocoRutinas};
+}
 async function _persistAuthUser(k,v){
   // Plantillas (ax_tpl): nivel coach/global → viven en la fila PROPIA del coach (columna
   // `templates`), no por-cliente ni en el blob legacy. Sin esto NO se guardaban en modo auth
@@ -1067,11 +1121,18 @@ async function _persistAuthUser(k,v){
   try{
     // 🪦 v621 · el perfil viaja ENTERO: sin esto, un teléfono abierto desde antes del borrado de un
     //    récord le quitaba la lápida a la nube, y su copia vieja de `prs` lo resucitaba.
-    if(k==='ax_c'||k==='ax_pr') await _foldOwnPrTombs(id);
+    // 🔀 v623 · y no solo las lápidas: TODO el perfil se fusiona con la nube (un pago que el coach
+    //    registró mientras este teléfono estaba abierto ya no se pierde con un vaso de agua).
+    const _mg=(k==='ax_c')?await _mergeOwnWithCloud(id):null;
+    if(k==='ax_pr') await _foldOwnPrTombs(id);
     if(k==='ax_c'){
       const client=(DB.clients&&DB.clients[0])||null; if(!client)return;
       const row=clientToRow(client,{}); // perfil (escalares) + rutinas, sin tocar coach_id/role
-      await UD.upsertOwn({profile:row.profile, routines:row.routines});
+      const patch={profile:row.profile};
+      if(!_mg||_mg.sendRoutines) patch.routines=row.routines;
+      await UD.upsertOwn(patch);
+      const _b=_authBaseGet();
+      _authBaseSet({profile:row.profile,routines:patch.routines||(_b&&_b.routines)||row.routines});
     }
     else if(k==='ax_hist')   { await UD.upsertOwn({history:   (v&&v[id])||[]}); }
     else if(k==='ax_pr')     { await UD.upsertOwn({prs:       (v&&v[id])||{}}); }
@@ -1150,9 +1211,21 @@ async function _persistCoachWrite(k,v){
       const val=_coachClientJSON(c), sk='ax_c:'+id;
       if(_coachSnap[sk]===val)continue; // ese cliente no cambió
       const row=clientToRow(c,{});
-      // 🪦 v621 · otro aparato del coach pudo borrarle un récord mientras este panel seguía abierto.
-      row.profile=await _profileWithCloudPrTombs(id,row.profile);
-      if(row.profile.prTombs) c.prTombs=row.profile.prTombs;   // la ficha en memoria queda igual a lo que sube
+      // 🔀 v623 · el panel escribe perfil y rutinas ENTEROS con su copia de cuando abrió la ficha: un
+      //    vaso de agua o un reporte de dolor que el asesorado subió después se borraba. Se fusiona
+      //    con la nube usando como base lo último confirmado (`_coachSnap`). La lápida de v621 va
+      //    dentro de la fusión; sin base o sin respuesta, queda solo la lápida.
+      let _cb=null; try{ const sn=_coachSnap[sk]?JSON.parse(_coachSnap[sk]):null; if(sn)_cb={profile:sn.p,routines:sn.r}; }catch(_e){}
+      const _lec=(UD.readClientCol&&typeof mergeOwnRow3==='function')?await UD.readClientCol(id,'profile,routines'):null;
+      if(_lec&&_lec.estado==='ok'&&_lec.row&&_lec.row.profile&&typeof _lec.row.profile==='object'&&Array.isArray(_lec.row.routines)&&_cb){   // sin perfil de verdad no se fusiona (se borraría todo)
+        const _m=mergeOwnRow3(_cb,{profile:row.profile,routines:row.routines},
+          {profile:_lec.row.profile||{},routines:Array.isArray(_lec.row.routines)?_lec.row.routines:[]});
+        row.profile=_m.profile; row.routines=_m.routines;
+        _applyOwnRow(c,_m.profile,_m.routines);
+      } else {
+        row.profile=await _profileWithCloudPrTombs(id,row.profile);   // 🪦 v621
+        if(row.profile.prTombs) c.prTombs=row.profile.prTombs;
+      }
       const _val=_coachClientJSON(c);
       try{ await UD.updateClientRow(id,{profile:row.profile,routines:row.routines}); _coachSnap[sk]=_val; _cwqDrop('ax_c',id); }
       catch(e){ _cwqAdd('ax_c',id,{profile:row.profile,routines:row.routines}); warn('AVI coach persist ax_c falló, en cola para reintentar:',id,e&&e.message); }
