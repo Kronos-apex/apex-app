@@ -213,6 +213,17 @@ if os.path.exists(test_file):
             ok('avi.test.js en UTC — ' + (out_utc.split('\n')[-1].strip() if out_utc else 'OK'))
         else:
             fail('Tests fallaron SOLO en UTC (así corre CI):\n' + '\n'.join(out_utc.split('\n')[-10:]))
+        # 🔴 Y EN INGLÉS (v638). CI estuvo rojo desde v628 con todo verde aquí: un test esperaba
+        # `(4320).toLocaleString()`, que aquí da «4.320» (Windows en es-CO) y en el runner «4,320».
+        # En Windows Node no hace caso a LANG, así que se fuerza con una precarga.
+        env_en = dict(os.environ, TZ='UTC', NODE_OPTIONS='--require ' + os.path.join(ROOT, 'scripts', 'hooks', '_idioma-en.cjs'))
+        r_en = subprocess.run(['node', test_file], capture_output=True,
+                              encoding='utf-8', errors='replace', cwd=ROOT, env=env_en)
+        out_en = (r_en.stdout or '').strip()
+        if r_en.returncode == 0:
+            ok('avi.test.js en inglés + UTC — ' + (out_en.split('\n')[-1].strip() if out_en else 'OK'))
+        else:
+            fail('Tests fallaron SOLO en inglés (así corre CI):\n' + '\n'.join(out_en.split('\n')[-10:]))
         # 🔴 Y UNA TERCERA VEZ CON FINALES DE LÍNEA LF, que es lo que recibe CI.
         # Esta máquina tiene core.autocrlf=true: el repo guarda LF y la copia de trabajo es
         # CRLF, así que las dos corridas de arriba miden un archivo que NADIE MÁS TIENE.

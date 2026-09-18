@@ -19474,7 +19474,7 @@ test('v624 · una sesión guardada arma la MISMA tarjeta que la pantalla de cier
   // que se afirma con la MISMA regla, no con un texto escrito a mano — si no, este test falla en
   // el teléfono de alguien y no en el mío (la lección del huso horario de v517).
   assert.deepStrictEqual(d.chips, [['Duración', '48 min'], ['Calorías', '412 kcal'], ['Series', '18/18'],
-    ['Volumen', (4320).toLocaleString() + ' kg']]);
+    ['Volumen', '4.320 kg']]);  // v638: literal; (4320).toLocaleString() daba «4,320» en CI (máquina en inglés)
   assert.strictEqual(d.prs.length, 1);
 });
 
