@@ -1081,7 +1081,7 @@ function renderClientToday(client, overrideRoutine){
   if(!_dia1 && typeof renderNewsCard==='function')renderNewsCard();
   renderCoachUpsell(client);
   const routines=client.routines||[];
-  if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div style="font-size:32px;margin-bottom:10px">📋</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
+  if(!routines.length){_todayOrder(false);con.innerHTML='<div class="noroutine"><div class="ic-circle">'+(typeof aviIcon==='function'?aviIcon('clipboard',22):'📋')+'</div><div style="font-size:14px;font-weight:700;color:var(--gt);margin-bottom:6px">Tu plan aún está en preparación</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un mensaje.</div><button class="btn bp bsm" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Ir a mensajes →</button></div>';return}
   // ✅ "Ya entrenaste hoy" (v366, fix v367): si ya TERMINÓ un entreno hoy (CUALQUIER rutina
   // finalizada — el lunes de pierna pudo finalizar la de espalda), colapsamos el entrenamiento en una
   // tarjeta compacta para que agua/pasos queden a la mano sin scrollear. CLAVE DEL FIX: exige sesión
@@ -1183,10 +1183,10 @@ function renderClientToday(client, overrideRoutine){
   try{ if(typeof openGuidedEmbedded==='function' && openGuidedEmbedded(todayR)) return; }
   catch(err){ console.error('[AVI] el guiado embebido lanzó', err); }
   con.innerHTML=`<div class="card" style="text-align:center;padding:26px 18px">
-    <div style="font-size:32px;margin-bottom:10px">🔄</div>
+    <div class="ic-circle">${typeof aviIcon==='function'?aviIcon('repeat',22):'🔄'}</div>
     <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">No pudimos cargar tu entrenamiento</div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Suele resolverse recargando la app. Tus datos están a salvo.</div>
-    <button class="btn bp bsm" onclick="location.reload()">🔄 Recargar la app</button>
+    <button class="btn bp bsm" onclick="location.reload()">Recargar la app</button>
   </div>`;
 }
 

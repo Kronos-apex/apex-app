@@ -2377,3 +2377,5 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 /* Icono del título del recuadro de instalación (17-sep): hereda el color y la altura
    del rótulo, para que no se vea pegado ni salte de línea base como hacía el emoji. */
 .ic-ttl{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
+/* v630 · icono de estado (candado Premium, plan en preparación, error): SVG de la marca en un círculo, nunca un emoji grande */
+.ic-circle{width:46px;height:46px;margin:0 auto 8px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center}

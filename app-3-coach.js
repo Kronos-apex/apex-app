@@ -1746,7 +1746,7 @@ function premiumLockHTML(title,desc){
     ? `<button onclick="cnTab('cn-messages',document.getElementById('tab-msgs'))" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Hablar con mi coach</button>`
     : `<button onclick="showPremiumUpsell()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>`;
   return `<div style="background:var(--w);border:1px dashed var(--br2);border-radius:var(--r);padding:18px 16px;text-align:center">
-    <div style="font-size:26px;margin-bottom:6px">🔒</div>
+    <div class="ic-circle">${_coIco('lock',22,'🔒')}</div>
     <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(title)}</div>
     <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">${esc(desc)} ${cierre}</div>
     ${accion}

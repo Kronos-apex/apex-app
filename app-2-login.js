@@ -843,7 +843,7 @@ function openTemplatePicker(){
     const exN=(tpl.exercises||[]).length;
     const div=document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out);margin-bottom:4px';
-    div.innerHTML=`<span style="font-size:22px">📂</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--blt)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Usar →</span>`;
+    div.innerHTML=`<span style="color:var(--g2);display:flex;flex-shrink:0">${typeof aviIcon==='function'?aviIcon('folder',22):'📂'}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(tpl.name)}</div><div style="font-size:11px;color:var(--t2)">${exN} ejercicio${exN!==1?'s':''} · ⏱${tpl.restSec||60}s${tpl.tag?` · <span style="color:var(--blt)">${esc(tpl.tag)}</span>`:''}</div></div><span style="color:var(--gt);font-size:13px;font-weight:700">Usar →</span>`;
     div.onmouseover=()=>{div.style.borderColor='var(--g2)';div.style.background='var(--gl)'};
     div.onmouseout=()=>{div.style.borderColor='var(--br)';div.style.background='var(--w)'};
     div.onclick=()=>{

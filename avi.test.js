@@ -19848,6 +19848,30 @@ test('v629 🔒 ninguna cifra se pega a su unidad: «120 kg», no «120kg»', ()
 });
 
 // ══════════════════════════════════════════════════════
+// v630 — LOS ICONOS GRANDES DE ESTADO SON DE LA MARCA, NO EMOJI
+// ══════════════════════════════════════════════════════
+section('v630 · iconos de estado');
+
+test('v630 🔒 ningún emoji grande hace de ilustración (candado Premium, plan vacío, error)', () => {
+  const fs = require('fs'), path = require('path');
+  // Un emoji a 20px o más, solo dentro de su caja, es una ILUSTRACIÓN: se ve distinto en cada
+  // teléfono y no hereda el color de la marca. El candado amarillo de lo Premium convivía a dos
+  // dedos con el candado SVG de los logros bloqueados.
+  const re = /font-size:(2\d|3\d|4\d|5\d)px[^"]*">\s*(\p{Extended_Pictographic}\uFE0F?)\s*<\//gu;
+  // Única excepción declarada: el aviso de «sin conexión» del arranque vive INLINE en index.html
+  // y tiene que funcionar aunque no cargue ningún módulo (ni el sprite).
+  const EXC = ['📶'];
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d.*\.js$|^index\.html$/.test(f)).forEach(f => {
+    const txt = fs.readFileSync(path.join(__dirname, f), 'utf8'); let m;
+    while ((m = re.exec(txt))) if (!EXC.includes(m[2])) malos.push(f + ':' + txt.slice(0, m.index).split('\n').length + ' ' + m[2]);
+  });
+  assert.deepStrictEqual(malos, [], '🔴 volvió un emoji grande como ilustración: ' + malos.join(', '));
+  re.lastIndex = 0;
+  assert.ok(re.test('<div style="font-size:26px;margin-bottom:6px">🔒</div>'), 'el criterio no discrimina');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
