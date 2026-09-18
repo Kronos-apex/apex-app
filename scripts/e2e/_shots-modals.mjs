@@ -54,5 +54,33 @@ for (const theme of ['dark', 'light']) {
     await ev(`cm('${mid}')`); await sleep(150);
   }
 }
+// v638 · el CONSTRUCTOR DE RUTINAS y el SELECTOR DE EJERCICIOS (capturas del PO, 18-sep):
+// nombres cortados a una línea, el músculo en crudo («biceps», «otro»), casillas blancas en tema
+// oscuro y emoji de entorno pegados al nombre. Se montan con ejercicios del catálogo REAL.
+for (const theme of ['dark', 'light']) {
+  await ev(`(typeof setTheme==='function')&&setTheme('${theme}')`); await sleep(300);
+  const rb = await ev(`(()=>{document.querySelectorAll('.mdbg.on').forEach(m=>m.classList.remove('on'));
+    const ids=['e7','e21','e10','e136'];
+    CUR.routineExs=ids.map(id=>({...DB.exercises.find(e=>e.id===id),sets:3,reps:10})).filter(e=>e.id);
+    CUR.restSec=60; renderRfExList(); om('m-routine');
+    const box=document.getElementById('rf-exlist');
+    const nombres=[...box.querySelectorAll('div[style*="font-weight:600"]')].map(n=>({t:n.textContent,corta:n.scrollWidth>n.clientWidth+1}));
+    const crudo=/\\b(biceps|triceps|gluteo|otro|pecho|espalda|hombros|piernas)\\s·/.test(box.innerText);
+    const blancas=[...box.querySelectorAll('input')].some(i=>getComputedStyle(i).backgroundColor==='rgb(255, 255, 255)');
+    return {n:CUR.routineExs.length,nombres,crudo,blancas,tema:'${theme}'};})()`);
+  A.ok(rb.n === 4, `${theme}/constructor: se montaron los 4 ejercicios`, rb);
+  A.ok(rb.nombres.length >= 4 && rb.nombres.every(n => !n.corta), `${theme}/constructor: ningún nombre de ejercicio sale cortado`, rb.nombres);
+  A.ok(!rb.crudo, `${theme}/constructor: el músculo se escribe para humanos (no «biceps · …»)`, rb);
+  if (theme === 'dark') A.ok(!rb.blancas, 'dark/constructor: las casillas no son blancas en tema oscuro', rb);
+  await ev(`(()=>{const b=document.querySelector('#m-routine .md');if(b)b.scrollTop=b.scrollHeight;const l=document.getElementById('rf-exlist');if(l)l.scrollIntoView({block:'start'});})()`);
+  await sleep(300); await shot(`${theme}-m-routine`);
+  await ev(`cm('m-routine')`); await sleep(150);
+  const pk = await ev(`(()=>{openPickerForTemplate();const l=document.getElementById('pk-list');
+    return {emoji:/[\u{1F3CB}\u{1F3E0}\u{1F333}\u{1F938}]/u.test(l.innerText), crudo:/\\b(biceps|triceps|gluteo|pecho|espalda)\\s·/.test(l.innerText), filas:l.children.length};})()`);
+  A.ok(pk.filas > 10, `${theme}/selector: pinta ejercicios`, pk);
+  A.ok(!pk.emoji && !pk.crudo, `${theme}/selector: sin emoji de entorno ni músculo crudo`, pk);
+  await sleep(200); await shot(`${theme}-m-picker`);
+  await ev(`cm('m-picker')`); await sleep(150);
+}
 ws.close();
 salir(A, { chrome, srv, out: OUT });

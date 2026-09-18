@@ -20050,6 +20050,48 @@ test('v637 · un día «2026-09-18» se lee «Viernes, 18 de septiembre», en el
   assert.ok(!/\$\{esc\(dayKey\)\}/.test(js), '🔴 la ficha del coach vuelve a pintar la clave cruda del día');
 });
 
+test('v638 🔒 selector de ejercicios y constructor de rutinas: músculo legible, sin emoji, sin casillas blancas', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  ['app-2-login.js', 'app-3-coach.js'].forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n').forEach((l, i) => {
+      if (/\$\{esc\((e|ex|x)\.muscle\)\} ·/.test(l)) malos.push(f + ':' + (i + 1));
+    });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 vuelve el músculo en crudo («biceps · …», «otro · …»): ' + malos.join(', '));
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = coach.indexOf('function envChips(');
+  const env = coach.slice(i, coach.indexOf('\n}', i));
+  assert.ok(/class="envtag"/.test(env) && !/\p{Extended_Pictographic}/u.test(env), '🔴 el entorno vuelve a ser un emoji pegado al nombre');
+  const j = coach.indexOf('function rfExRow(');
+  const row = coach.slice(j, coach.indexOf('\nfunction ', j + 10));
+  assert.ok(!/background:white/.test(row), '🔴 las casillas del constructor vuelven a ser blancas en tema oscuro');
+  assert.ok(!/text-overflow:ellipsis;white-space:nowrap">\$\{esc\(e\.name\)\}/.test(row), '🔴 el nombre del ejercicio vuelve a cortarse en una línea');
+  assert.ok(!/Quitá o agregá/.test(coach), '🔴 volvió el voseo al calentamiento');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const sel = (html.match(/<select class="sel" id="pk-env"[\s\S]*?<\/select>/) || [''])[0];
+  assert.ok(sel && !/\p{Extended_Pictographic}/u.test(sel), '🔴 el filtro de entorno vuelve a llevar emoji');
+});
+
+test('v638 🔒 el nombre de un ejercicio usa hasta 2 líneas: nunca se corta en una («Curl de Bíceps co…»)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  // Reporte del PO (18-sep): «los nombres de los ejercicios se recortan y se dificulta reconocerlos».
+  ['.thl-x', '.mroom-top-nm', '.msc-ex-nm', '.pr-ex-name', '.exprog-name'].forEach(sel => {
+    const re = new RegExp(sel.replace('.', '\\.') + '\\{([^}]*)\\}');
+    const r = (css.match(re) || ['', ''])[1];
+    assert.ok(r, 'desapareció la regla ' + sel);
+    assert.ok(!/white-space:nowrap/.test(r) && /-webkit-line-clamp:2/.test(r), '🔴 ' + sel + ' vuelve a cortar el nombre en una línea');
+  });
+  const malos = [];
+  ['app-2-login.js', 'app-3-coach.js', 'app-7-community.js'].forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n').forEach((l, i) => {
+      if (/text-overflow:ellipsis[^>]*>\$\{esc\((e|ex|p)\.name/.test(l) || /text-overflow:ellipsis[^>]*>' \+ esc\((e|pr)\.name/.test(l)) malos.push(f + ':' + (i + 1));
+    });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 un nombre de ejercicio vuelve a cortarse: ' + malos.join(', '));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

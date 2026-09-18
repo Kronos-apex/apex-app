@@ -1424,7 +1424,7 @@ function _cmtyPrShareHtml(){
   prs.slice(0, 12).forEach((pr, i) => {
     h += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--br)">' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:13.5px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(pr.name) + '</div>' +
+        '<div style="font-size:13.5px;font-weight:700;color:var(--t1);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">' + esc(pr.name) + '</div>' +
         '<div style="font-size:12px;color:var(--gt);font-weight:700">' + esc(String(pr.val)) + ' kg</div>' +
       '</div>' +
       '<button class="btn bg bsm" style="min-height:36px;flex:0 0 auto" onclick="cmtyPrAsk(' + i + ')">Compartir</button>' +
@@ -1853,7 +1853,7 @@ function _cmtyPostCard(post){
   let exHtml = exs.slice(0, 8).map(e => {
     const sr = [e.sets, e.reps].filter(x => x != null && x !== '').join('×');
     return '<div style="font-size:12px;color:var(--t2);padding:2px 0;display:flex;justify-content:space-between;gap:10px">' +
-      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.name || 'Ejercicio') + '</span>' +
+      '<span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">' + esc(e.name || 'Ejercicio') + '</span>' +
       (sr ? '<span style="color:var(--t3);flex:0 0 auto">' + esc(sr) + '</span>' : '') + '</div>';
   }).join('');
   if(exs.length > 8) exHtml += '<div style="font-size:11px;color:var(--t3);padding-top:2px">y ' + (exs.length - 8) + ' más…</div>';

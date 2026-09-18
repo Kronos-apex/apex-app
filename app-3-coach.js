@@ -3126,7 +3126,7 @@ function renderCoachPRsCard(c){
     const val=p.val!=null?p.val:p.kg;
     return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--br)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name||exId)}</div>
+        <div style="font-size:13px;color:var(--t1);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(p.name||exId)}</div>
         <div style="font-size:11px;color:var(--t2)">${esc(String(val))} ${esc(unit)}${p.reps?' × '+esc(String(p.reps))+' '+esc(typeof repsUnitOf==='function'?repsUnitOf(exId):'reps'):''}</div>
       </div>
       <button class="btn bg bsm" style="min-height:34px;padding:0 11px" onclick="coachEditPR('${esc(exId)}')">Corregir</button>
@@ -3517,7 +3517,7 @@ function unlinkBiset(i){ if(CUR.routineExs[i]){delete CUR.routineExs[i].ssNext;r
 // Una fila de ejercicio del constructor. abMark: 'A'|'B' si va dentro de una biserie.
 function rfExRow(i,n,abMark){
   const e=CUR.routineExs[i];
-  const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:white;outline:none;color:var(--gt)`;
+  const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:var(--surface);outline:none;color:var(--gt)`;
   const upDis=i===0; const dnDis=i===n-1;
   const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
   // Botón de unir en biserie: solo si i no está ya en pareja, hay un siguiente, y el siguiente tampoco está en pareja.
@@ -3532,8 +3532,8 @@ function rfExRow(i,n,abMark){
   // (e.reps ES minutos, no reps; el "seg" era el descanso). Camilo 2026-06-29.
   const track = (typeof exTrack==='function') ? exTrack(e) : 'peso_reps';
   const lbl = t => `<span style="font-size:11px;color:var(--t3);font-weight:600;margin-right:2px">${t}</span>`;
-  const restCtl = `<span title="Descanso entre series — por defecto según el tipo de ejercicio; edítalo para fijarlo" style="font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;margin-right:2px">⏱</span>`
-    + `<input type="number" inputmode="numeric" style="${inpSt};width:58px;color:var(--t2);border-color:var(--br2)" value="${restForExercise(e,{restSec:CUR.restSec})}" min="0" max="600" step="5" onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()" onfocus="this.select()"><span style="color:var(--t3);font-size:11px;font-weight:600">seg</span>`;
+  const restCtl = `<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span title="Descanso entre series — por defecto según el tipo de ejercicio; edítalo para fijarlo" style="font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;margin-right:2px;display:inline-flex">${_coIco('timer',14,'⏱')}</span>`
+    + `<input type="number" inputmode="numeric" style="${inpSt};width:58px;color:var(--t2);border-color:var(--br2)" value="${restForExercise(e,{restSec:CUR.restSec})}" min="0" max="600" step="5" onchange="CUR.routineExs[${i}].restSec=Math.max(0,parseInt(this.value)||0);renderRfExList()" onfocus="this.select()"><span style="color:var(--t3);font-size:11px;font-weight:600">seg</span></span>`;
   const delCtl = `<button onclick="rfDelEx(${i})" style="margin-left:auto;width:28px;height:28px;border-radius:50%;border:none;background:var(--rdl);color:var(--rdt);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>`;
   const setsIn = `<input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20" onchange="CUR.routineExs[${i}].sets=Math.max(1,parseInt(this.value)||1);this.value=CUR.routineExs[${i}].sets" onfocus="this.select()">`;
   let ctl;
@@ -3561,8 +3561,8 @@ function rfExRow(i,n,abMark){
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px">
         ${abChip}${muscleIcon(e.muscle,20)}
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name)}</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(e.muscle)} · ${esc(e.type)}</div>
+          <div style="font-size:13px;font-weight:600;line-height:1.3">${esc(e.name)}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px">${esc([typeof muscleHuman==='function'?muscleHuman(e.muscle):e.muscle,e.type].filter(Boolean).join(' · '))}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">${linkBtn}${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
@@ -3573,7 +3573,7 @@ function rfExRow(i,n,abMark){
 function renderRfExList(){
   const con=document.getElementById('rf-exlist');
   if(!CUR.routineExs.length){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca "+ Añadir ejercicios" para comenzar</div>';
+    con.innerHTML='<div style="color:var(--t3);font-size:13px;padding:14px 0;text-align:center;border:1.5px dashed var(--br2);border-radius:var(--rsm)">Toca «+ Añadir ejercicios» para comenzar</div>';
     renderRfWarmup();
     return;
   }
@@ -3633,7 +3633,7 @@ function renderRfWarmup(){
       <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
       <button onclick="rfWarmDel('${ex.id}')" title="Quitar" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0">✕</button>
     </div>`).join('');
-  con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Auto-sugerido según los músculos. Quitá o agregá para personalizarlo.</div>'}`
+  con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Sugerido según los músculos de la rutina. Quita o agrega para personalizarlo.</div>'}`
     +(rows||'<div style="font-size:11.5px;color:var(--t3);margin-bottom:6px">Sin movimientos — la app auto-sugiere el calentamiento.</div>')
     +`<button class="btn bg bsm" onclick="openWarmPicker()" style="margin-top:2px">+ Agregar movimiento</button>`;
 }
@@ -3743,9 +3743,9 @@ function pkEnvFilter(v){CUR.pkEnv=v;renderPickerForTarget();}
 // Chip compacto del entorno MÍNIMO necesario (el más accesible) de un ejercicio.
 function envChips(env){
   env=env||['gym'];
-  const e=env.includes('corporal')?'🤸':env.includes('casa')?'🏠':env.includes('parque')?'🌳':'🏋️';
+  // v638: era un emoji (🏋️/🏠/🌳/🤸) pegado al nombre; se escribe la palabra en una etiqueta.
   const lbl=env.includes('corporal')?'Peso corporal':env.includes('casa')?'Casa':env.includes('parque')?'Parque':'Gym';
-  return `<span title="${lbl}" style="font-size:11px;opacity:.85">${e}</span>`;
+  return `<span class="envtag">${lbl}</span>`;
 }
 
 // ══════════════════════ MESSAGES (COACH) ══════════════════════

@@ -718,7 +718,7 @@ function renderTodayHead(client, heroRoutine){
   // nombre y no tiene sitio para una frase de 40 caracteres.
   const chip=hero
     ? (ws.weeks>=1
-        ? `<div class="streak-chip">${_ic('flame',14,'🔥')} <b>${ws.weeks}</b> sem${ws.weeks!==1?'s':''}.</div>`
+        ? `<div class="streak-chip">${_ic('flame',14,'🔥')} <b>${ws.weeks}</b> sem.</div>`
         : ws.thisWeekDays>0
           ? `<div class="streak-chip">${_ic('target',14,'💪')} <b>${ws.thisWeekDays}</b>/<b>${ws.target}</b> esta semana</div>`
           : `<div class="streak-chip streak-0">${_ic('target',14,'💪')} Empieza tu racha</div>`)

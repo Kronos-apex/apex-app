@@ -643,8 +643,8 @@ function renderTfExList(){
     html+=`<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--w);border:1px solid var(--br);border-left:3px solid ${MC[e.muscle]||'var(--bl)'};border-radius:var(--rsm);margin-bottom:6px">
       ${muscleIcon(e.muscle,20)}
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</div>
-        <div style="font-size:11px;color:var(--t2)">${esc(e.muscle)} · ${esc(e.type)}</div>
+        <div style="font-size:13px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(e.name)}</div>
+        <div style="font-size:11px;color:var(--t2)">${esc([typeof muscleHuman==='function'?muscleHuman(e.muscle):e.muscle,e.type].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
         <input type="number" inputmode="numeric" style="${inpSt}" value="${e.sets}" min="1" max="20"
@@ -690,7 +690,7 @@ function renderPickerForTarget(){
       const col=pickerTarget==='exclude'?'var(--rd)':'var(--g)';
       const div=document.createElement('div');
       div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${on?col:'var(--br)'};background:${on?col+'14':'var(--w)'};margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)`;
-      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:${on?col:'var(--t3)'}">${on?(pickerTarget==='exclude'?'🚫':'⭐'):'+'}</span>`;
+      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc([typeof muscleHuman==='function'?muscleHuman(ex.muscle):ex.muscle,ex.type].filter(Boolean).join(' · '))}</div></div><span style="font-size:17px;color:${on?col:'var(--t3)'}">${on?(pickerTarget==='exclude'?'🚫':'⭐'):'+'}</span>`;
       div.onclick=()=>{
         const i=arr.indexOf(ex.id);
         if(i>=0)arr.splice(i,1); else arr.push(ex.id);
@@ -710,7 +710,7 @@ function renderPickerForTarget(){
     filtered.forEach(ex=>{
       const div=document.createElement('div');
       div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid var(--br);background:var(--w);margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)';
-      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)}</div></div><span style="font-size:17px;color:var(--gt)">→</span>`;
+      div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc([typeof muscleHuman==='function'?muscleHuman(ex.muscle):ex.muscle,ex.type].filter(Boolean).join(' · '))}</div></div><span style="font-size:17px;color:var(--gt)">→</span>`;
       div.onclick=()=>_applySubstitute(ex);
       list.appendChild(div);
     });
@@ -734,7 +734,7 @@ function renderPickerForTarget(){
     const already=currentExs.some(e=>e.id===ex.id);
     const div=document.createElement('div');
     div.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rsm);cursor:pointer;border:1.5px solid ${already?'var(--g2)':'var(--br)'};background:${already?'var(--gl)':'var(--w)'};margin-bottom:3px;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)`;
-    div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscle)} · ${esc(ex.type)} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
+    div.innerHTML=`${muscleIcon(ex.muscle,20)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(ex.name)} ${envChips(ex.env)}</div><div style="font-size:11px;color:var(--t2)">${esc([typeof muscleHuman==='function'?muscleHuman(ex.muscle):ex.muscle,ex.type].filter(Boolean).join(' · '))} · ${ex.sets}×${ex.reps}</div></div><span style="font-size:17px;color:${already?'var(--g)':'var(--t3)'}">${already?'✓':'+'}</span>`;
     div.onclick=()=>{
       if(already){toast('Ya está en la lista');return}
       if(pickerTarget==='template'){tplExs.push({...ex});renderTfExList();}
@@ -1090,7 +1090,7 @@ function renderProgressPanel(){
       wrap.innerHTML=`<div class="pex-row" onclick="togglePexRow('${chartId}')">
         <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16)}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ex.name)}</div>
+          <div style="font-size:12px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(ex.name)}</div>
           <div style="font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.sessions} ${m.sessions===1?'sesión':'sesiones'} · <span style="font-weight:600;color:${trendColor}">${trendStr}</span></div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-right:8px">

@@ -871,7 +871,7 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .tod-hero-list{list-style:none;margin:0 0 20px;padding:0}
 .thl{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.10)}
 .thl-n{width:22px;flex-shrink:0;font-size:11px;font-weight:800;color:var(--accent3);font-variant-numeric:tabular-nums}
-.thl-x{flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thl-x{flex:1;min-width:0;font-size:14px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word}
 .thl-d{flex-shrink:0;font-size:12px;font-weight:600;color:rgba(255,255,255,.66);font-variant-numeric:tabular-nums}
 .thl-more{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.70);padding-left:34px}
 .tod-hero-cta{width:100%;min-height:56px;border:0;border-radius:16px;background:var(--accent3);
@@ -1107,7 +1107,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .mroom-top:active{transform:scale(.99)}
 .mroom-top-rk{width:24px;height:24px;border-radius:50%;background:var(--gl);color:var(--gt);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mroom-top-mid{flex:1;min-width:0}
-.mroom-top-nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.mroom-top-nm{font-size:13px;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word;margin-bottom:5px}
 .mroom-top-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
 .mroom-top-fill{height:100%;border-radius:3px}
 .mroom-top-v{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--t1);flex-shrink:0}
@@ -1189,7 +1189,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .msc-ex{display:flex;align-items:center;gap:11px;background:var(--w);border:1px solid var(--br);border-radius:12px;padding:10px 13px;margin-bottom:7px;cursor:pointer}
 .msc-ex:active{transform:scale(.99)}
 .msc-ex-mid{flex:1;min-width:0}
-.msc-ex-nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.msc-ex-nm{font-size:13px;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word;margin-bottom:5px}
 .msc-ex-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
 .msc-ex-fill{height:100%;border-radius:3px}
 .msc-ex-v{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--t1);flex-shrink:0;text-align:right}
@@ -1348,7 +1348,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .pr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br)}
 .pr-row:last-child{border-bottom:none}
 .pr-ex-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 2px 7px -2px rgba(0,0,0,.14);border:1px solid var(--br)}
-.pr-ex-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-ex-name{font-size:13px;font-weight:600;flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word}
 .pr-ex-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--gt)}
 .pr-ex-date{font-size:10px;color:var(--t3);margin-top:1px;text-align:right}
 .collapse-more{display:block;width:100%;margin-top:8px;padding:8px;min-height:36px;background:transparent;border:none;border-top:1px dashed var(--br2);color:var(--gt);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s}
@@ -1971,7 +1971,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .exprog-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;transition:background .15s}
 .exprog-header:hover{background:var(--bg)}
 .exprog-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
-.exprog-name{font-size:13px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exprog-name{font-size:13px;font-weight:700;flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word}
 .exprog-pr{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:800;color:var(--gt)}
 .exprog-sessions{font-size:11px;color:var(--t3);margin-bottom:8px}
 .exprog-body{display:none;border-top:1px solid var(--br);padding:12px 14px;background:var(--bg)}
@@ -2392,3 +2392,5 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 #cn-meals>.card{margin-bottom:12px}
 /* v634: «Corregir» y «Eliminar» de cada medida medían 27px de alto (mínimo táctil 36). */
 .medacts button{min-height:36px}
+/* v638: el entorno de un ejercicio (Gym, Casa, Parque, Peso corporal) como etiqueta, no como emoji pegado al nombre */
+.envtag{display:inline-block;font-size:10px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--br);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
