@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v628: LAS CIFRAS SE ESCRIBEN IGUAL EN TODOS LOS TELÉFONOS
+
+**Sigue el pedido del PO** (*«que se vea profesional»*). Se MIRARON en captura las 7 habitaciones
+del asesorado, y la del detalle del entreno delataba trabajo a medias:
+- **«Jueves, 17 De Septiembre»**: `.sroom-date` llevaba `text-transform:capitalize` sobre una
+  fecha que el JS YA capitalizaba — en español la preposición va en minúscula.
+- **«3400 kg»**: `toLocaleString()` SIN idioma pinta lo que diga el TELÉFONO — «3.400» en uno en
+  español, «3,400» en uno en inglés y «3400» en un WebView sin datos de idioma (así salía en el
+  banco). **19 llamadas** así en la app y en el lienzo compartible. Nace `fmtMiles` (avi-core,
+  pura, sin ICU): punto de miles, coma decimal, máximo un decimal.
+- **«+150 / kg»** partido en dos líneas → `nowrap`. **«120kg × 10»** pegado y partido a la mitad
+  → «120 kg» / «× 10» en dos líneas a propósito.
+- La rutina: comillas rectas → «» de la marca, y 📋 → el `clipboard` del sprite.
+
+Suite **1236 → 1240** en local, UTC y LF · hook 12/12 · `_sabotaje-v628` **9/9** · mirado en
+captura, claro y oscuro.
+
 ## ⏮️ 2026-09-17 — v626 + v627: LOS CONTROLES LLEVAN ICONO, NO EMOJI
 
 **Pedido del PO:** *«mejora donde se pueda mejorar, que se vea profesional y que no parezca hecha
