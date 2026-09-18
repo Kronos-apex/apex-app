@@ -19924,6 +19924,60 @@ test('v631 🔒 toda variable de calorías o de la franja pasa por fmtMiles, vay
     'el criterio no discrimina');
 });
 
+test('v632 🔒 ningún emoji compuesto (con unión ZWJ): en teléfonos viejos sale partido en dos', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$|^avi-core\.js$|^index\.html$/.test(f)).forEach(f => {
+    fs.readFileSync(path.join(__dirname, f), 'utf8').split(/\r?\n/).forEach((l, i) => { if (l.includes('\u200d')) malos.push(f + ':' + (i + 1)); });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 volvió un emoji compuesto (el ánimo «Cansado» salía como 😮 + 💨): ' + malos.join(', '));
+});
+
+test('v632 · las iniciales del avatar nunca pintan un carácter roto', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = src.indexOf('function ini(n){');
+  assert.ok(i >= 0, 'desapareció ini()');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i) + 2);
+  const ini = new Function(cuerpo + '\nreturn ini;')();
+  assert.strictEqual(ini('Samuel Cifuentes'), 'SC');
+  assert.strictEqual(ini('🧪 QA HARNESS (no borrar)'), 'QH', 'el emoji del nombre partía el avatar en «�Q»');
+  assert.strictEqual(ini('  valery   gómez '), 'VG');
+  assert.strictEqual(ini('Ángela'), 'Á');
+  assert.strictEqual(ini('💪'), '?');
+  assert.strictEqual(ini(''), '?');
+  assert.ok(!/[\uD800-\uDFFF]/.test(ini('🔥 Luz')), 'medio par sustituto en las iniciales');
+});
+
+test('v632 🔒 los iconos con clase propia (portada, récords, ajustes) no vuelven a ser emoji', () => {
+  const fs = require('fs'), path = require('path');
+  const re = /class="([\w -]*)"[^>]*>\s*(\p{Extended_Pictographic}\uFE0F?)\s*<\//gu;
+  const VIGILADAS = ['fr-emoji', 'wf-pr-ico', 'sroom-pr-ic', 'exroom-hero-ic', 'btn bg bsm'];
+  const malos = [];
+  ['app-4-entreno.js', 'app-7-community.js'].forEach(f => {
+    const txt = fs.readFileSync(path.join(__dirname, f), 'utf8'); let m;
+    while ((m = re.exec(txt))) if (VIGILADAS.includes(m[1])) malos.push(f + ':' + txt.slice(0, m.index).split('\n').length + ' ' + m[2]);
+  });
+  assert.deepStrictEqual(malos, [], '🔴 volvió un emoji donde va el icono de la marca: ' + malos.join(', '));
+});
+
+test('v632 🔒 la portada del día 1 ABRE el entreno y no deja una tarjeta repetida debajo', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = js.indexOf('function firstRunGo(){');
+  assert.ok(i > 0, 'desapareció firstRunGo');
+  const cuerpo = js.slice(i, js.indexOf('\n}', i));
+  assert.ok(/expandTodayWorkout\(\); return;/.test(cuerpo), '🔴 el botón del día 1 vuelve a solo bajar la pantalla');
+  assert.ok(/con\.innerHTML=\(_heroOK\|\|_portada\)\?'':_startCardHTML\(client,todayR\);/.test(js),
+    '🔴 con la portada puesta vuelve a pintarse la tarjeta de arranque repetida');
+});
+
+test('v632 🔒 «+ Rutina» es una acción principal, no una alerta', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/class="btn bp bsm"[^>]*onclick="openNewRoutine\(\)">\+ Rutina</.test(html), '🔴 «+ Rutina» volvió al color de alerta');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

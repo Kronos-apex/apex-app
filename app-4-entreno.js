@@ -796,7 +796,7 @@ function renderFirstRun(client, routine, opts){
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
   const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te armó tu plan. '):'';  // sin nombre, no se repite el título
   el.innerHTML='<div class="fr-wrap">'+
-    '<div class="fr-emoji" aria-hidden="true">💪</div>'+
+    '<div class="ic-circle" aria-hidden="true">'+(typeof aviIcon==='function'?aviIcon('barbell',22):'💪')+'</div>'+
     '<h2 class="fr-h">'+(nombre?esc(nombre)+', tu plan está listo':'Tu plan está listo')+'</h2>'+
     '<p class="fr-sub">'+quien+'Hoy empiezas con el primero — tómate tu tiempo, lo importante es terminarlo.</p>'+
     '<div class="fr-card">'+
@@ -837,7 +837,7 @@ function _firstRunEspera(el, client, opts){
     .concat(mins?['~'+mins+' min']:[])
     .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
   el.innerHTML='<div class="fr-wrap">'+
-    '<div class="fr-emoji" aria-hidden="true">📅</div>'+
+    '<div class="ic-circle" aria-hidden="true">'+(typeof aviIcon==='function'?aviIcon('calendar',22):'📅')+'</div>'+
     '<h2 class="fr-h">'+(nombre?esc(nombre)+', tu plan ya está listo':'Tu plan ya está listo')+'</h2>'+
     '<p class="fr-sub">'+quien+porque+' Tu primer entreno es <b>'+esc(cuando)+'</b>.</p>'+
     '<div class="fr-card">'+
@@ -852,7 +852,12 @@ function _firstRunEspera(el, client, opts){
 }
 // El entreno YA está montado debajo (el guiado embebido ES el cuerpo de «Hoy»): el botón no
 // "arranca" nada, lleva hasta él. Así no se toca el motor del guiado, que es zona caliente.
+// v632: desde v447 el entreno llega COLAPSADO, así que «bajar hasta el entreno» llevaba a una
+// SEGUNDA tarjeta con su propio «Empezar»: la persona nueva tenía que tocar dos veces para
+// arrancar su primer entreno, y veía el mismo entreno dos veces seguidas. El botón de la portada
+// ahora ABRE el entreno.
 function firstRunGo(){
+  if(typeof expandTodayWorkout==='function'){ expandTodayWorkout(); return; }
   const b=document.getElementById('cn-today-body');
   if(b&&b.scrollIntoView) b.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1176,7 +1181,11 @@ function renderClientToday(client, overrideRoutine){
     // pueden ocupar la misma. Sin héroe (rutina sin ejercicios) queda la tarjeta de arranque.
     const _heroOK=!_dia1 && typeof todayHeroModel==='function' && !!todayHeroModel(todayR);
     renderTodayHead(client, _heroOK?todayR:null);
-    con.innerHTML=_heroOK?'':_startCardHTML(client,todayR);
+    // v632: con la portada del día 1 pintada, la tarjeta de arranque repetía el mismo entreno y
+    // otro «Empezar» justo debajo. La portada YA es el arranque (su botón abre el entreno).
+    const _fr=document.getElementById('cn-firstrun');
+    const _portada=!!(_dia1&&_fr&&_fr.innerHTML.trim());
+    con.innerHTML=(_heroOK||_portada)?'':_startCardHTML(client,todayR);
     return;
   }
   con.innerHTML='';
@@ -2541,7 +2550,7 @@ function showWorkoutFinish(routine,stats){
   let prHtml=prs.slice(0,3).map(pr=>{
     const val=pr.val!=null?pr.val:pr.kg;const unit=pr.unit||'kg';
     const detail=unit==='kg'?`${fmtMetric(val,unit)}${pr.reps?` × ${pr.reps} ${typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'}`:''}`:fmtMetric(val,unit);
-    return `<div class="wf-pr"><span class="wf-pr-ico">🏆</span><div style="flex:1;min-width:0"><div class="wf-pr-name">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="wf-pr-det">${esc(detail)}</div></div></div>`;
+    return `<div class="wf-pr"><span class="wf-pr-ico">${(typeof aviIcon==='function'?aviIcon('trophy',18):'🏆')}</span><div style="flex:1;min-width:0"><div class="wf-pr-name">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="wf-pr-det">${esc(detail)}</div></div></div>`;
   }).join('');
   if(prs.length>3)prHtml+=`<div style="font-size:11.5px;color:rgba(242,245,244,.7);text-align:center">+${prs.length-3} récord${prs.length-3!==1?'s':''} más 🎉</div>`;
   prWrap.innerHTML=prHtml;
@@ -3254,7 +3263,7 @@ function openSessionRoom(clientId,sid){
   if(prs.length){
     prHTML=`<div class="sroom-sec">${typeof aviIcon==='function'?aviIcon('trophy',14):'🏆'} Récords de este día</div>`+prs.map(pr=>{
       const detail=(pr.unit==='kg'||!pr.unit)?`${fmtMetric(pr.val,pr.unit||'kg')}${pr.reps?` × ${pr.reps} ${typeof repsUnitOf==='function'?repsUnitOf(pr.id||''):'reps'}`:''}`:fmtMetric(pr.val,pr.unit);
-      return `<div class="sroom-pr"><span class="sroom-pr-ic">🏆</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
+      return `<div class="sroom-pr"><span class="sroom-pr-ic">${(typeof aviIcon==='function'?aviIcon('trophy',20):'🏆')}</span><div><div class="sroom-pr-n">${pr.isNew?'¡Primer récord!':'¡Nuevo récord!'} ${esc(pr.name)}</div><div class="sroom-pr-d">${esc(detail)}</div></div></div>`;
     }).join('');
   }
   // ── v624 · COMPARTIR UN ENTRENO YA GUARDADO ───────────────────────────────────────────────
@@ -3553,7 +3562,7 @@ function openRecordRoom(clientId,exName){
 
   body.innerHTML=`
     <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,#e0a72e18,#e0a72e08),var(--w);border-color:#e0a72e44">
-      <div class="exroom-hero-ic" style="background:#e0a72e22;border:1px solid #e0a72e66">🏆</div>
+      <div class="exroom-hero-ic" style="background:#e0a72e22;border:1px solid #e0a72e66;color:#e0a72e">${(typeof aviIcon==='function'?aviIcon('trophy',26):'🏆')}</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(exName)}</div>
         <div class="rr-hero-rec">${fmtMetric(recVal,unit)}${isKg&&pr.reps?` <small>× ${pr.reps}</small>`:''}</div>

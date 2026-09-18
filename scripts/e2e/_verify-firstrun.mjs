@@ -119,12 +119,22 @@ const d2 = await ev(`(()=>{const ids=['cn-habits','cn-coach-card','cn-missday','
   return ids.filter(id=>{const e=document.getElementById(id); return e && e.innerHTML.trim().length>0 && e.style.display!=='none';});})()`);
 check('D2 el día 1 no hay tarjetas secundarias compitiendo', Array.isArray(d2) && d2.length === 0, JSON.stringify(d2));
 
-// D3: el ánimo no aparece antes del primer entreno; el entreno SÍ está montado debajo.
+// D3: el ánimo no aparece antes del primer entreno, y el entreno NO sale repetido debajo.
+// 🔁 RE-ENCUADRADO en v632. Antes afirmaba «el entreno SÍ está montado debajo» midiendo que el
+// cuerpo tuviera >200 caracteres — y lo que lo llenaba desde v447 era la tarjeta de arranque
+// COLAPSADA: el mismo entreno por segunda vez, con otro «Empezar». El botón de la portada solo
+// bajaba hasta ella, así que la persona nueva tocaba DOS veces para arrancar. Ahora la portada ES
+// el arranque: debajo no hay nada repetido, y su botón ABRE el entreno (D3b).
 const d3 = await ev(`(()=>{const mc=document.querySelector('#cn-today-body .checkin-card');
   const body=document.getElementById('cn-today-body');
-  return {moodVisible:!!(mc&&mc.offsetHeight>0), entrenoMontado:!!(body&&body.innerHTML.trim().length>200)};})()`);
-check('D3 el ánimo no compite el día 1, y el entreno SÍ está montado debajo',
-  d3.moodVisible === false && d3.entrenoMontado === true, JSON.stringify(d3));
+  return {moodVisible:!!(mc&&mc.offsetHeight>0), repetida:!!(body&&body.querySelector('.start-card'))};})()`);
+check('D3 el ánimo no compite el día 1, y el entreno NO sale repetido debajo de la portada',
+  d3.moodVisible === false && d3.repetida === false, JSON.stringify(d3));
+const d3b = await ev(`(()=>{firstRunGo();const body=document.getElementById('cn-today-body');
+  return {len:(body&&body.innerHTML.trim().length)||0, repetida:!!(body&&body.querySelector('.start-card'))};})()`);
+check('🔴 D3b «Empezar mi primer entreno» ABRE el entreno de un toque (no baja a otro «Empezar»)',
+  d3b.len > 200 && d3b.repetida === false, JSON.stringify(d3b));
+await ev(`(()=>{CUR.todayExpanded=null;renderClientToday(DB.clients[0]);})()`);
 
 // D4 — EL CANDADO (clase v367): una sesión PARCIAL (la que deja el auto-guardado de la 1ª serie)
 // significa que YA empezó → la portada debe desaparecer y jamás taparle el entreno.

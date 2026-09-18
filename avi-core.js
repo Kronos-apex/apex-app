@@ -5198,7 +5198,7 @@ function rowToClient(row) {
 const MOOD_STATES = [
   { id: 'bien',    emoji: '😊',   label: 'Bien' },
   { id: 'energia', emoji: '🔥',   label: 'Con toda la energía' },
-  { id: 'cansado', emoji: '😮‍💨', label: 'Cansado' },
+  { id: 'cansado', emoji: '😴', label: 'Cansado' },  // v632: el anterior era un emoji compuesto (ZWJ) y en teléfonos viejos salía partido en dos
   { id: 'estres',  emoji: '😤',   label: 'Estresado / enojado' },
   { id: 'periodo', emoji: '🩸',   label: 'En mi periodo', femaleOnly: true },
   { id: 'dolor',   emoji: '🤕',   label: 'Con dolor o molestia' },
@@ -5271,7 +5271,7 @@ function applyMood(routine, mood, opts) {
       out.restSec = rest + 15;
       let dropped = null;
       if (exs.length > 4) dropped = exs.pop(); // quita el último accesorio en sesiones largas
-      adapt.title = 'Hoy entrenamos suave 😮‍💨';
+      adapt.title = 'Hoy entrenamos suave 😌';
       adapt.why = 'Bajamos una serie por ejercicio y subimos el descanso. Mejor entrenar liviano que no entrenar — mañana vuelves con todo.';
       adapt.tone = 'b';
       adapt.changes.push('−1 serie por ejercicio', '+15s de descanso');

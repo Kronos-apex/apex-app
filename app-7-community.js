@@ -342,7 +342,7 @@ function _cmtyHeadMain(){
       (typeof aviIcon === 'function' ? aviIcon('chat', 18) : '💬') +
       (unread ? '<span style="position:absolute;top:-5px;right:-5px;background:var(--g);color:#fff;font-size:10px;font-weight:800;border-radius:10px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px">' + (unread > 9 ? '9+' : unread) + '</span>' : '') +
     '</button>' +
-    '<button class="btn bg bsm" aria-label="Ajustes de la comunidad" title="Ajustes" style="min-height:40px;flex:0 0 auto;font-size:17px" onclick="cmtyGoView(\'settings\')">⚙️</button>' +
+    '<button class="btn bg bsm" aria-label="Ajustes de la comunidad" title="Ajustes" style="min-height:40px;flex:0 0 auto;display:flex;align-items:center" onclick="cmtyGoView(\'settings\')">' + (typeof aviIcon === 'function' ? aviIcon('sliders', 18) : '⚙️') + '</button>' +
   '</div>';
 }
 // Encabezado de una sub-vista (ajustes / bandeja): volver + título.

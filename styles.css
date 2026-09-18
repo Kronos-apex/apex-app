@@ -1079,7 +1079,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom-summary b{color:var(--gt);font-weight:800}
 .sroom-sec{font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin:6px 0 11px}
 .sroom-pr{display:flex;align-items:center;gap:11px;background:linear-gradient(165deg,#FBF4DC,#F4E9C2);border:1px solid #EBDDA8;border-radius:var(--rsm);padding:11px 13px;margin-bottom:8px;box-shadow:0 4px 12px rgba(154,123,22,.14)}
-.sroom-pr-ic{font-size:22px;flex-shrink:0}
+.sroom-pr-ic{font-size:22px;flex-shrink:0;color:#e0a72e;display:flex}
 .sroom-pr-n{font-size:13px;font-weight:800;color:#7a5e0e}
 .sroom-pr-d{font-size:12px;color:#9A7B16;margin-top:1px}
 .sroom-exs{margin-top:2px}
@@ -1535,7 +1535,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wf-stat-lbl{font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:rgba(242,245,244,.7);margin-top:5px}
 .wf-prs{width:100%;max-width:420px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
 .wf-pr{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(4,8,10,.62),rgba(4,8,10,.52));border:1px solid rgba(16,224,160,.35);border-radius:12px;padding:8px 11px;text-align:left}
-.wf-pr-ico{font-size:17px;flex-shrink:0}
+.wf-pr-ico{font-size:17px;flex-shrink:0;color:#10E0A0;display:flex}
 .wf-pr-name{font-size:12.5px;font-weight:800;line-height:1.15}
 .wf-pr-det{font-size:11px;color:rgba(242,245,244,.92)}
 .wf-feeling{width:100%;max-width:420px;margin-bottom:16px}

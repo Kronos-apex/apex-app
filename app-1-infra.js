@@ -139,7 +139,14 @@ function muscleIcon(muscle,size){
 // oscuras por un pelo de luminancia.
 const AVC=['#0A7C5B','#457B9D','#E76F51','#994DE1','#00BFA5','#E9C46A','#D83642','#FF6B6B'];
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
-function ini(n){return n.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
+// v632: las iniciales se toman de la primera LETRA de cada palabra. La versión anterior tomaba
+// `w[0]`, que en un nombre que empieza con un emoji («🧪 QA») es MEDIO carácter (una mitad de un
+// par sustituto) y el avatar pintaba «�Q». Palabras sin letras (un emoji, un número) se saltan;
+// sin ninguna letra, «?» — nunca un carácter roto.
+function ini(n){
+  const letras=String(n||'').trim().split(/\s+/).map(w=>(w.match(/\p{L}/u)||[''])[0]).filter(Boolean);
+  return letras.length?letras.join('').toUpperCase().slice(0,2):'?';
+}
 function avc(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%AVC.length;return AVC[Math.abs(h)]}
 // Estilo completo del avatar: el relleno y SU tinta, para que ningún sitio vuelva a escribir
 // `background:${avc(x)}` a secas y heredar el blanco fijo de `.cav`.

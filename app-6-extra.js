@@ -1248,7 +1248,7 @@ function gmRenderHiit(setsEl, ei, ex, sets){
   const card=document.createElement('div');
   card.style.cssText='padding:16px;text-align:center;background:var(--bg);border-radius:12px';
   card.innerHTML=`
-    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace">${cfg.work}s 🔥 · ${cfg.rest}s 😮‍💨 · ${sets} rondas</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace">${cfg.work}s 🔥 · ${cfg.rest}s 😌 · ${sets} rondas</div>
     <div id="gm-hiit-disp-${ei}" style="font-size:46px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1">${done>=sets?'✓':cfg.work}</div>
     <div id="gm-hiit-phase-${ei}" style="font-size:14px;font-weight:700;margin:4px 0;color:var(--t3)">${done>=sets?'¡Completado!':'Listo para empezar'}</div>
     <div id="gm-hiit-rounds-${ei}" style="font-size:12px;color:var(--t2);margin-bottom:12px">Ronda ${Math.min(done+1,sets)} de ${sets}</div>
@@ -1270,7 +1270,7 @@ function gmStartHiit(ei, rounds, work, rest){
   let phaseEnd=Date.now()+work*1000; // fin de la fase actual por timestamp (robusto a iOS bloqueado)
   const paint=()=>{
     disp.textContent=String(left).padStart(2,'0');
-    phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😮‍💨 DESCANSO';
+    phaseEl.textContent=phase==='work'?'🔥 TRABAJO':'😌 DESCANSO';
     phaseEl.style.color=phase==='work'?'var(--rdt)':'var(--gt)';
     roundsEl.textContent=`Ronda ${Math.min(round+1,rounds)} de ${rounds}`;
   };
