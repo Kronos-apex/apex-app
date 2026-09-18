@@ -8181,6 +8181,95 @@ function nutProtCheck(client, servido, weightKg) {
 // (nunca baja). El descuento por adherencia (gxDiscount/gxNextTier) se
 // ELIMINÓ el 2026-07-06 por decisión de Camilo: tuvo poca recepción.
 
+// ── v639 · LOS LOGROS ─────────────────────────────────────────────────────────────────────────
+// Pedido del PO (18-sep): «revisa el tema de los logros, si podemos agregar o mejorar los que ya
+// tenemos», y que al cumplir la semana completa —u otro logro— se pueda compartir.
+// Los 8 de antes medían solo CANTIDAD (entrenos, kilos, nivel), dos repetían lo que ya dice la
+// tarjeta de nivel, y NINGUNO premiaba la constancia, que es lo que de verdad cambia un cuerpo.
+// Catálogo en 4 grupos. Reglas:
+//  🔒 Un logro ganado NO se pierde: la racha cuenta la MEJOR racha histórica, no la actual.
+//  🔒 «Semana completa» = TODOS los días de su plan en una semana (planDays). No es la racha,
+//     que se cumple con STREAK_WEEK_MIN_DAYS: son dos cosas distintas con dos nombres distintos.
+//  🔒 Los ids son estables: se guardan como «ya vistos» en el teléfono para saber qué es NUEVO.
+//  ⚠️ `communitySnapshot` (y su copia en la edge `refresh_snapshot`) siguen contando las 8
+//     medallas de antes hasta que se despliegue la edge con este catálogo.
+const GX_ACH_GROUPS = [
+  { id: 'constancia', nm: 'Constancia' },
+  { id: 'entrenos', nm: 'Entrenos' },
+  { id: 'fuerza', nm: 'Récords' },
+  { id: 'volumen', nm: 'Kilos movidos' },
+];
+const GX_ACH = [
+  { id: 'sem1', g: 'constancia', m: 'fullWeeks', goal: 1, ic: 'calendar', nm: 'Semana completa', ds: 'Todos los días del plan en una misma semana' },
+  { id: 'sem4', g: 'constancia', m: 'fullWeeks', goal: 4, ic: 'calendar', nm: '4 semanas completas', ds: 'Cuatro semanas con el plan entero' },
+  { id: 'sem12', g: 'constancia', m: 'fullWeeks', goal: 12, ic: 'calendar', nm: '12 semanas completas', ds: 'Doce semanas con el plan entero' },
+  { id: 'racha4', g: 'constancia', m: 'bestStreak', goal: 4, ic: 'flame', nm: 'Un mes seguido', ds: 'Cuatro semanas seguidas sin fallar una' },
+  { id: 'racha12', g: 'constancia', m: 'bestStreak', goal: 12, ic: 'flame', nm: 'Tres meses seguidos', ds: 'Doce semanas seguidas sin fallar una' },
+  { id: 'racha24', g: 'constancia', m: 'bestStreak', goal: 24, ic: 'flame', nm: 'Medio año seguido', ds: 'Veinticuatro semanas seguidas' },
+  { id: 'racha52', g: 'constancia', m: 'bestStreak', goal: 52, ic: 'crown', nm: 'Un año seguido', ds: 'Cincuenta y dos semanas seguidas' },
+  { id: 'ent1', g: 'entrenos', m: 'total', goal: 1, ic: 'play', nm: 'Primer entreno', ds: 'El primero siempre es el más difícil' },
+  { id: 'ent25', g: 'entrenos', m: 'total', goal: 25, ic: 'check', nm: '25 entrenos', ds: 'Veinticinco entrenos terminados' },
+  { id: 'ent50', g: 'entrenos', m: 'total', goal: 50, ic: 'medal', nm: '50 entrenos', ds: 'Cincuenta entrenos terminados' },
+  { id: 'ent100', g: 'entrenos', m: 'total', goal: 100, ic: 'star', nm: '100 entrenos', ds: 'Cien entrenos terminados' },
+  { id: 'ent200', g: 'entrenos', m: 'total', goal: 200, ic: 'crown', nm: '200 entrenos', ds: 'Doscientos entrenos terminados' },
+  { id: 'pr1', g: 'fuerza', m: 'prs', goal: 1, ic: 'trophy', nm: 'Primer récord', ds: 'La primera marca personal' },
+  { id: 'pr5', g: 'fuerza', m: 'prs', goal: 5, ic: 'trophy', nm: '5 récords', ds: 'Marca personal en cinco ejercicios' },
+  { id: 'pr15', g: 'fuerza', m: 'prs', goal: 15, ic: 'trophy', nm: '15 récords', ds: 'Marca personal en quince ejercicios' },
+  { id: 'vol10k', g: 'volumen', m: 'totalVol', goal: 10000, ic: 'dumbbell', nm: '10.000 kg', ds: 'Diez mil kilos movidos en total' },
+  { id: 'vol50k', g: 'volumen', m: 'totalVol', goal: 50000, ic: 'dumbbell', nm: '50.000 kg', ds: 'Cincuenta mil kilos movidos' },
+  { id: 'vol100k', g: 'volumen', m: 'totalVol', goal: 100000, ic: 'barbell', nm: '100.000 kg', ds: 'Cien mil kilos movidos' },
+  { id: 'vol250k', g: 'volumen', m: 'totalVol', goal: 250000, ic: 'barbell', nm: '250.000 kg', ds: 'Doscientos cincuenta mil kilos' },
+  { id: 'vol1m', g: 'volumen', m: 'totalVol', goal: 1000000, ic: 'crown', nm: 'Un millón de kilos', ds: 'Un millón de kilos movidos' },
+];
+// Semanas en las que entrenó TODOS los días de su plan (o más). Varias sesiones el mismo día
+// cuentan un día, igual que la racha.
+function fullWeeksCount(sessions, planDaysN) {
+  const tgt = Math.max(1, Math.min(7, parseInt(planDaysN) || 3));
+  const byWeek = {};
+  (sessions || []).forEach(s => {
+    const raw = s && s.date; if (raw == null || raw === '') return;
+    const d = new Date(raw); if (isNaN(d.getTime())) return;
+    const wk = weekStartTs(d);
+    (byWeek[wk] = byWeek[wk] || new Set()).add(d.toDateString());
+  });
+  return Object.keys(byWeek).filter(k => byWeek[k].size >= tgt).length;
+}
+// Los números de los que salen los logros. PURA.
+function gxStats(client, sessions, prs) {
+  const hist = sessions || [];
+  return {
+    total: hist.length,
+    prs: prs ? Object.keys(prs).length : 0,
+    totalVol: hist.reduce((s, h) => s + ((h && h.totalVol) || 0), 0),
+    fullWeeks: fullWeeksCount(hist, planDays(client)),
+    bestStreak: longestWeekStreak(hist, streakTarget(client)),
+  };
+}
+// El catálogo con su estado: { ...logro, cur, earned }. PURA.
+function gxAchievements(stats) {
+  const st = stats || {};
+  return GX_ACH.map(a => {
+    const cur = Math.max(0, Number(st[a.m]) || 0);
+    return Object.assign({}, a, { cur, earned: cur >= a.goal });
+  });
+}
+// Los que están ganados y la persona todavía no ha visto. `seen` = ids ya vistos (o null si el
+// teléfono nunca guardó nada: entonces NADA es nuevo, para no anunciarle de golpe todo lo que ya
+// tenía el día que llega esta versión). PURA.
+function gxNewlyEarned(list, seen) {
+  if (!Array.isArray(seen)) return [];
+  return (list || []).filter(a => a.earned && seen.indexOf(a.id) < 0);
+}
+// ¿Esta semana ya cumplió el plan ENTERO? → { met, days, target, weekKey } (weekKey 'YYYY-MM-DD'
+// del lunes, para no volver a invitar a compartir la misma semana). PURA.
+function gxWeekComplete(client, sessions, now) {
+  const target = Math.max(1, Math.min(7, planDays(client) || 3));
+  const ws = weekStreak(sessions || [], target, now);
+  const lunes = new Date(weekStartTs(now ? new Date(now) : new Date()));
+  const weekKey = lunes.getFullYear() + '-' + String(lunes.getMonth() + 1).padStart(2, '0') + '-' + String(lunes.getDate()).padStart(2, '0');
+  return { met: ws.metThisWeek, days: ws.thisWeekDays, target, weekKey };
+}
+
 const GX_LEVELS = [{ n: 1, name: 'Arranque', min: 0 }, { n: 2, name: 'Constante', min: 10 }, { n: 3, name: 'Comprometido', min: 30 }, { n: 4, name: 'Imparable', min: 60 }, { n: 5, name: 'Élite AVI', min: 120 }];
 
 // Nivel permanente según el total de entrenamientos completados.
@@ -11113,6 +11202,13 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtMetric,
     fmtDuration,
     fmtMiles,
+    GX_ACH,
+    GX_ACH_GROUPS,
+    fullWeeksCount,
+    gxStats,
+    gxAchievements,
+    gxNewlyEarned,
+    gxWeekComplete,
     fechaDiaTexto,
     chartLabelBelow,
     wfTitle,

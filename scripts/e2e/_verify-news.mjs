@@ -181,7 +181,12 @@ try {
     const orig=window.clientHasCoach, origF=window.isFreeClient;
     window.clientHasCoach=()=>${coachV}; window.isFreeClient=()=>${freeV};
     localStorage.setItem('ax_news_seen','314');
-    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; window.isFreeClient=origF; }
+    // 🔁 v639: el tour muestra las 3 MÁS NUEVAS, así que cada novedad para todos empuja fuera a la
+    // del registro de comida y este check se ponía rojo sin que el gate cambiara. Se mide contra el
+    // catálogo COMO ESTABA cuando salió la última novedad Premium: lo que se prueba es el gate.
+    const _premV=AVI_NEWS.filter(n=>n.premium).reduce((m,n)=>Math.max(m,n.v),0);
+    const _fuera=AVI_NEWS.filter(n=>n.v>_premV); _fuera.forEach(n=>AVI_NEWS.splice(AVI_NEWS.indexOf(n),1));
+    try{ renderNewsCard(); }finally{ window.clientHasCoach=orig; window.isFreeClient=origF; _fuera.forEach(n=>AVI_NEWS.push(n)); }
     const open=!document.getElementById('news-tour').classList.contains('hidden');
     const dots=document.querySelectorAll('#nt-dots .nt-dot').length;
     const items=(typeof _ntItems!=='undefined'?_ntItems:[]).map(n=>n.t);

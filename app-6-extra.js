@@ -3025,6 +3025,8 @@ function whatsappNudge(id){
 const AVI_NEWS=[
   // v624 — La imagen del entreno dejo de caducar al tocar «Continuar». Sin publico marcado a
   // proposito: compartir un entreno guardado es de TODOS, tambien del tier libre.
+  {v:639, icon:'medal', t:'Logros nuevos, y los puedes compartir', d:'Ahora hay 20 logros en 4 grupos, y los más importantes premian la constancia: semanas completas y meses seguidos. Cuando completas tu semana o ganas un logro, al terminar el entreno te ofrecemos una imagen para compartirlo.',
+   steps:['Abre «Progreso» y baja hasta «Tus logros»','Cada logro pendiente te dice cuánto te falta','Toca uno que ya ganaste para compartirlo como imagen']},
   {v:624, icon:'camera', t:'Comparte cualquier entreno, no solo el de hoy', d:'Antes la imagen de tu entreno solo existía en la pantalla de celebración: si tocabas «Continuar», la perdías. Ahora entras a cualquier entreno tuyo y la armas cuando quieras.',
    steps:['Abre la pestaña «Progreso» y toca el entreno que quieras compartir','Debajo del resumen, toca «Compartir este entreno»','La imagen sale con las cifras y los récords de ESE día']},
   // v597 — ESTA ENTRADA EXISTE PARA QUE LA FUNCIÓN TENGA A QUIÉN SERVIR. El cierre solo se

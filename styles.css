@@ -2394,3 +2394,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .medacts button{min-height:36px}
 /* v638: el entorno de un ejercicio (Gym, Casa, Parque, Peso corporal) como etiqueta, no como emoji pegado al nombre */
 .envtag{display:inline-block;font-size:10px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--br);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
+/* v639 · logros: grupos, cuánto falta, y la invitación a compartir en el cierre */
+.gx-gt{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--t2);margin:12px 2px 7px}
+.gx-cnt{font-size:11px;font-weight:700;color:var(--t2);margin-left:6px}
+.gx-hint{font-size:11.5px;color:var(--t2);margin:2px 2px 4px}
+button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
+.gx-bp{font-size:9px;font-weight:700;color:var(--t2);margin-top:3px;font-variant-numeric:tabular-nums}
+.wf-logro{background:linear-gradient(135deg,rgba(16,224,160,.22),rgba(4,8,10,.62));border:1px solid rgba(16,224,160,.55);border-radius:16px;padding:14px 16px;margin:0 0 12px;text-align:center}
+.wf-logro-k{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#10E0A0}
+.wf-logro-t{font-size:22px;font-weight:800;color:#fff;margin-top:4px}
+.wf-logro-d{font-size:13px;color:rgba(234,251,244,.82);margin-top:3px;line-height:1.4}
+.wf-logro-btn{margin-top:10px;width:100%;min-height:44px;border:none;border-radius:12px;background:#10E0A0;color:#04130D;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}

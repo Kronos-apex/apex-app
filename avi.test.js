@@ -217,6 +217,13 @@ const {
   fmtMetric,
   fmtDuration,
   fmtMiles,
+  GX_ACH,
+  GX_ACH_GROUPS,
+  fullWeeksCount,
+  gxStats,
+  gxAchievements,
+  gxNewlyEarned,
+  gxWeekComplete,
   fechaDiaTexto,
   chartLabelBelow,
   feelingEmoji,
@@ -20090,6 +20097,62 @@ test('v638 🔒 el nombre de un ejercicio usa hasta 2 líneas: nunca se corta en
     });
   });
   assert.deepStrictEqual(malos, [], '🔴 un nombre de ejercicio vuelve a cortarse: ' + malos.join(', '));
+});
+
+// ══════════════════════════════════════════════════════
+// v639 — LOS LOGROS: CONSTANCIA PRIMERO, Y SE PUEDEN COMPARTIR
+// ══════════════════════════════════════════════════════
+section('v639 · logros');
+
+test('v639 · el catálogo: ids únicos, cada grupo existe y sus metas van de menor a mayor', () => {
+  const ids = GX_ACH.map(a => a.id);
+  assert.strictEqual(new Set(ids).size, ids.length, 'ids repetidos: se guardan como «ya vistos» en el teléfono');
+  const grupos = GX_ACH_GROUPS.map(g => g.id);
+  GX_ACH.forEach(a => assert.ok(grupos.includes(a.g), a.id + ' cuelga de un grupo que no existe'));
+  assert.ok(GX_ACH.some(a => a.g === 'constancia' && a.m === 'fullWeeks') && GX_ACH.some(a => a.m === 'bestStreak'),
+    '🔴 la constancia (semanas completas y rachas) es lo que los logros de antes no premiaban');
+  const porMetrica = {};
+  GX_ACH.forEach(a => { (porMetrica[a.m] = porMetrica[a.m] || []).push(a.goal); });
+  Object.entries(porMetrica).forEach(([m, g]) => assert.deepStrictEqual(g, g.slice().sort((x, y) => x - y), m + ': metas desordenadas («50.000» antes que «20.000» era el defecto viejo)'));
+  // 🔒 nada de peso, medidas ni grasa en un logro que se comparte (regla de Valery)
+  assert.ok(!GX_ACH.some(a => /peso corporal|grasa|medida|cintura|kilos? menos/i.test(a.nm + a.ds)), '🔴 un logro habla del cuerpo');
+});
+
+test('v639 · semana completa = TODOS los días del plan, no la racha de 2', () => {
+  const now = new Date(2026, 8, 18, 12);            // viernes 18-sep-2026
+  const s = d => ({ date: new Date(2026, 8, d, 9).toISOString(), totalVol: 1000 });
+  const plan3 = { days: 3, routines: [{ day: 'Lunes' }, { day: 'Miércoles' }, { day: 'Viernes' }] };
+  assert.deepStrictEqual(gxWeekComplete(plan3, [s(14), s(16)], now), { met: false, days: 2, target: 3, weekKey: '2026-09-14' });
+  assert.strictEqual(gxWeekComplete(plan3, [s(14), s(16), s(18)], now).met, true);
+  assert.strictEqual(gxWeekComplete(plan3, [s(14), s(14), s(16)], now).met, false, 'dos sesiones el mismo día cuentan UN día');
+  assert.strictEqual(fullWeeksCount([s(7), s(9), s(11), s(14), s(16)], 3), 1);
+});
+
+test('v639 · un logro ganado no se pierde y lo nuevo se calcula contra lo ya visto', () => {
+  const cl = { days: 2, routines: [{ day: 'Lunes' }, { day: 'Jueves' }] };
+  const vieja = [0, 1, 2, 3].map(w => ({ date: new Date(2026, 5, 1 + 7 * w, 9).toISOString(), totalVol: 3000 }))
+    .concat([0, 1, 2, 3].map(w => ({ date: new Date(2026, 5, 4 + 7 * w, 9).toISOString(), totalVol: 3000 })));
+  const st = gxStats(cl, vieja, { e1: {} });
+  assert.strictEqual(st.bestStreak, 4, 'la MEJOR racha, aunque hoy ya no entrene');
+  const L = gxAchievements(st);
+  assert.ok(L.find(a => a.id === 'racha4').earned, '«Un mes seguido» se conserva aunque la racha actual sea 0');
+  assert.deepStrictEqual(gxNewlyEarned(L, null), [], 'sin registro previo NADA es nuevo (no se anuncian meses de golpe)');
+  assert.deepStrictEqual(gxNewlyEarned(L, ['ent1', 'pr1']).map(a => a.id).sort(), L.filter(a => a.earned && !['ent1', 'pr1'].includes(a.id)).map(a => a.id).sort());
+});
+
+test('v639 🔒 CABLEADO: el cierre ofrece el logro ANTES que los demás pedidos, y la tarjeta usa el catálogo', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = js.indexOf('function showWorkoutFinish(');
+  const cuerpo = js.slice(i, js.indexOf('\nfunction ', i + 10));
+  assert.ok(/^\s*renderWfLogro\(\);/m.test(cuerpo), '🔴 el cierre dejó de ofrecer compartir el logro');
+  assert.ok(cuerpo.indexOf('renderWfLogro();') < cuerpo.indexOf('renderWfMilestoneAsk()'), '🔴 el logro tiene que tomar el turno ANTES que los otros pedidos');
+  const g = js.slice(js.indexOf('function renderGamification('), js.indexOf('\nfunction ', js.indexOf('function renderGamification(') + 10));
+  assert.ok(/gxAchievements\(/.test(g) && /gxShareLogro\(/.test(g), '🔴 la tarjeta de logros volvió a una lista escrita a mano');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(html.indexOf('id="wf-logro"') > 0 && html.indexOf('id="wf-logro"') < html.indexOf('id="wf-milestone-ask"'), 'falta el hueco del logro en la pantalla de cierre');
+  const card = js.slice(js.indexOf('function _gxCard('), js.indexOf('\nfunction ', js.indexOf('function _gxCard(') + 10));
+  assert.ok(!/bodyweight|weight|grasa|bodyFat|medidas/i.test(card), '🔴 la imagen del logro no puede llevar datos del cuerpo');
 });
 
 // ══════════════════════════════════════════════════════

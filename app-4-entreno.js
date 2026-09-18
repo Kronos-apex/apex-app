@@ -633,22 +633,134 @@ function renderGamification(client){
     </div>
   </div>`;
   // ── Logros ──
-  // Medallas de marca (v312, pedido Camilo): el "oro" lo pone el chip .gx-bic (anillo
-  // degradado), el glifo es del set de línea. Progresión de kg: dumbbell→disc→barbell.
-  // fb = emoji original por si aviIcon no cargó (caché mezclada).
-  const B=[
-    {ic:'trophy',fb:'🏆',nm:'Primer récord',on:prs>=1,gold:true},
-    {ic:'check',fb:'✅',nm:'10 entrenos',on:total>=10},
-    {ic:'medal',fb:'🎖️',nm:'30 entrenos',on:total>=30},
-    {ic:'dumbbell',fb:'💪',nm:'10.000 kg',on:totalVol>=10000,gold:true},
-    {ic:'barbell',fb:'⭐',nm:'50.000 kg',on:totalVol>=50000},
-    {ic:'disc',fb:'🔩',nm:'20.000 kg',on:totalVol>=20000},
-    {ic:'star',fb:'🥇',nm:'Nivel 3',on:L.cur.n>=3,gold:true},
-    {ic:'crown',fb:'👑',nm:'Imparable',on:L.cur.n>=4,gold:true},
-  ];
+  // ── Logros (v639) ── El catálogo vive en avi-core (`GX_ACH`): 4 grupos y la constancia por
+  // delante, que es lo que los 8 de antes no premiaban. Un logro ganado se toca para COMPARTIRLO;
+  // uno pendiente dice cuánto le falta — un candado sin número no invita a nada.
+  const _st=(typeof gxStats==='function')?gxStats(client,hist,(DB.prs||{})[client.id]||{}):null;
+  const _L=_st?gxAchievements(_st):[];
+  gxSeenInit(client.id,_L);
   const _bIc=(n,fb)=>typeof aviIcon==='function'?aviIcon(n,19):fb;
-  const badgesHTML=`<div class="streak-title" style="margin-top:16px">${typeof aviIcon==='function'?aviIcon('medal',14):'🎖️'} Tus logros</div><div class="gx-badges">${B.map(b=>`<div class="gx-badge ${b.on?(b.gold?'gold':''):'lock'}"><div class="gx-bic">${b.on?_bIc(b.ic,b.fb):_bIc('lock','🔒')}</div><div class="gx-bn">${esc(b.nm)}</div></div>`).join('')}</div>`;
+  const _n=_L.filter(a=>a.earned).length;
+  const _falta=a=>a.m==='totalVol'?fmtMiles(a.cur)+' / '+fmtMiles(a.goal):a.cur+' / '+a.goal;
+  const grupos=(GX_ACH_GROUPS||[]).map(g=>{
+    const items=_L.filter(a=>a.g===g.id);
+    return `<div class="gx-gt">${esc(g.nm)}</div><div class="gx-badges">${items.map(a=>a.earned
+      ?`<button type="button" class="gx-badge ${a.g==='constancia'?'gold':''}" onclick="gxShareLogro('${a.id}')" aria-label="Compartir el logro ${esc(a.nm)}"><div class="gx-bic">${_bIc(a.ic,'★')}</div><div class="gx-bn">${esc(a.nm)}</div></button>`
+      :`<div class="gx-badge lock"><div class="gx-bic">${_bIc(a.ic,'·')}</div><div class="gx-bn">${esc(a.nm)}</div><div class="gx-bp">${_falta(a)}</div></div>`).join('')}</div>`;
+  }).join('');
+  const badgesHTML=`<div class="streak-title" style="margin-top:16px">${typeof aviIcon==='function'?aviIcon('medal',14):'🎖️'} Tus logros <span class="gx-cnt">${_n} de ${_L.length}</span></div>`
+    +(_n?`<div class="gx-hint">Toca un logro ganado para compartirlo.</div>`:'')+grupos;
   con.innerHTML=lvlHTML+badgesHTML;
+  if(typeof _wfPrepShareAvatar==='function')_wfPrepShareAvatar(client.avatar||'');
+}
+
+// ── v639 · QUÉ LOGROS YA VIO LA PERSONA ── Para anunciar solo lo NUEVO. Local del teléfono
+// (como los silencios de las tarjetas), con el id del asesorado en la clave (lección v398).
+// 🔒 La primera vez se guarda lo que YA tenía sin anunciarlo: si no, el día que llega esta versión
+//    le saltarían de golpe todos los logros de meses como si fueran de hoy.
+function _gxSeenKey(cid){ return 'ax_gxseen_'+cid; }
+function gxSeenGet(cid){ try{ const v=JSON.parse(localStorage.getItem(_gxSeenKey(cid))||'null'); return Array.isArray(v)?v:null; }catch(e){ return null; } }
+function gxSeenAdd(cid,ids){ try{ const cur=gxSeenGet(cid)||[]; ids.forEach(id=>{ if(cur.indexOf(id)<0)cur.push(id); }); localStorage.setItem(_gxSeenKey(cid),JSON.stringify(cur)); }catch(e){} }
+function gxSeenInit(cid,list){ if(!cid||gxSeenGet(cid))return; gxSeenAdd(cid,(list||[]).filter(a=>a.earned).map(a=>a.id)); }
+
+// ── v639 · AL TERMINAR EL ENTRENO: ¿ganó algo? ── Pedido del PO: al cumplir la semana completa
+// —o cualquier otro logro— invitar a compartirlo. Toma el TURNO de la pantalla de cierre (F13:
+// un solo pedido por cierre) porque es lo más raro y lo que más vale de todo lo que se le pide.
+// Orden: un logro NUEVO manda; si no hay, la semana completa (una vez por semana).
+let _gxShare=null;   // lo que se va a compartir: {kind:'logro'|'semana', ...}
+function renderWfLogro(){
+  const el=document.getElementById('wf-logro'); if(!el)return;
+  el.innerHTML=''; _gxShare=null;
+  const c=(DB.clients||[]).find(x=>x&&x.id===CUR.clientId); if(!c||typeof gxStats!=='function')return;
+  const hist=(DB.history||{})[c.id]||[];
+  const list=gxAchievements(gxStats(c,hist,(DB.prs||{})[c.id]||{}));
+  // Si el teléfono nunca guardó qué vio, se toma como visto lo que tenía ANTES de este entreno
+  // (todo menos la sesión más reciente): así lo de hoy sí se anuncia y lo de meses atrás no.
+  if(!gxSeenGet(c.id)){
+    const ult=hist.reduce((m,s)=>(!m||String(s&&s.date)>String(m.date))?s:m,null);
+    gxSeenInit(c.id,gxAchievements(gxStats(c,hist.filter(s=>s!==ult),(DB.prs||{})[c.id]||{})));
+  }
+  const nuevos=gxNewlyEarned(list,gxSeenGet(c.id));
+  let html='';
+  if(nuevos.length){
+    const a=nuevos[nuevos.length-1];   // el de meta más alta: el catálogo va de menor a mayor
+    gxSeenAdd(c.id,nuevos.map(x=>x.id));
+    _gxShare={kind:'logro',id:a.id};
+    html=`<div class="wf-logro"><div class="wf-logro-k">${typeof aviIcon==='function'?aviIcon(a.ic,16):''} ¡Logro nuevo!</div>
+      <div class="wf-logro-t">${esc(a.nm)}</div><div class="wf-logro-d">${esc(a.ds)}${nuevos.length>1?` · y ${nuevos.length-1} logro${nuevos.length>2?'s':''} más`:''}</div>
+      <button type="button" class="wf-logro-btn" onclick="gxShareLogro('${a.id}')">Compartir mi logro</button></div>`;
+  } else {
+    const w=gxWeekComplete(c,hist,Date.now());
+    let visto=''; try{ visto=localStorage.getItem('ax_gxweek_'+c.id)||''; }catch(e){}
+    if(w.met&&visto!==w.weekKey){
+      try{ localStorage.setItem('ax_gxweek_'+c.id,w.weekKey); }catch(e){}
+      _gxShare={kind:'semana',days:w.days,target:w.target,weekKey:w.weekKey};
+      html=`<div class="wf-logro"><div class="wf-logro-k">${typeof aviIcon==='function'?aviIcon('calendar',16):''} ¡Semana completa!</div>
+        <div class="wf-logro-t">${w.days} de ${w.target} días</div><div class="wf-logro-d">Cumpliste tu plan entero esta semana.</div>
+        <button type="button" class="wf-logro-btn" onclick="gxShareWeek()">Compartir mi semana</button></div>`;
+    }
+  }
+  if(!html)return;
+  el.innerHTML=html;
+  try{ _wfAskOwner='logro'; }catch(e){}   // F13: el resto de pedidos ceden en este cierre
+}
+
+// ── La imagen del logro ── Misma marca que la del entreno (fuentes, verde, retrato), pero su
+// propia composición: el logro es el titular. Nada de peso, medidas ni % de grasa (regla de
+// Valery): solo lo que la persona hizo.
+function _gxCard(eyebrow,title,sub,name,avatarName){
+  const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
+  const x=cv.getContext('2d');
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  const g=x.createLinearGradient(0,0,0,1920);g.addColorStop(0,'#0B2A1F');g.addColorStop(.55,'#06120D');g.addColorStop(1,'#030806');
+  x.fillStyle=g;x.fillRect(0,0,1080,1920);
+  const r=x.createRadialGradient(540,700,40,540,700,620);r.addColorStop(0,'rgba(16,224,160,.28)');r.addColorStop(1,'rgba(16,224,160,0)');
+  x.fillStyle=r;x.fillRect(0,0,1080,1920);
+  x.textAlign='center';
+  x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,150);
+  if(typeof _wfDrawCrest==='function')_wfDrawCrest(x,540,560,200,avatarName||name,(typeof _wfShareAvatar!=='undefined')?_wfShareAvatar:null,'system-ui,Roboto,sans-serif');
+  x.fillStyle='#10E0A0';x.font=_cf(44,'800');
+  try{ x.letterSpacing='8px'; }catch(e){}
+  x.fillText(eyebrow.toUpperCase(),540,990);
+  try{ x.letterSpacing='0px'; }catch(e){}
+  // El titular en la tipografía display; se achica hasta caber en el ancho.
+  let px=150; x.fillStyle='#FFFFFF';
+  do{ x.font=_cf(px,'900',true); px-=6; }while(x.measureText(title.toUpperCase()).width>960&&px>60);
+  x.fillText(title.toUpperCase(),540,1160);
+  x.fillStyle='rgba(234,251,244,.82)';x.font=_cf(46,'600');
+  const words=String(sub||'').split(' ');let line='',y=1270;
+  words.forEach(w=>{ const t=line?line+' '+w:w; if(x.measureText(t).width>900){ x.fillText(line,540,y); y+=62; line=w; } else line=t; });
+  if(line)x.fillText(line,540,y);
+  x.fillStyle='#FFFFFF';x.font=_cf(58,'800');x.fillText(name||'',540,860);  // el nombre va pegado a su retrato
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+' en AVI',540,1830);
+  try{window._gxLastCanvas=cv;}catch(e){}
+  return cv;
+}
+function _gxShareCanvas(cv,file){
+  try{
+  cv.toBlob(async blob=>{
+    if(!blob){toast('No se pudo crear la imagen');return;}
+    const f=new File([blob],file,{type:'image/png'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:'Mi logro en AVI'}); return; }
+    }catch(e){ if(e&&e.name==='AbortError')return; }
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file;
+    document.body.appendChild(a);a.click();a.remove();
+    toast('📥 Imagen guardada — súbela a tu estado');
+  },'image/png');
+  }catch(e){ toast('No se pudo crear la imagen'); }
+}
+function _gxFirstName(c){ return String((c&&c.name)||'').trim().split(/\s+/)[0]||''; }
+function gxShareLogro(id){
+  const c=(DB.clients||[]).find(x=>x&&x.id===CUR.clientId);
+  const a=(typeof GX_ACH!=='undefined'?GX_ACH:[]).find(x=>x.id===id); if(!c||!a)return;
+  _gxShareCanvas(_gxCard('Logro desbloqueado',a.nm,a.ds,_gxFirstName(c),c.name),'avi-logro.png');
+}
+function gxShareWeek(){
+  const c=(DB.clients||[]).find(x=>x&&x.id===CUR.clientId); const s=_gxShare; if(!c||!s||s.kind!=='semana')return;
+  const f=(typeof fechaDiaTexto==='function')?fechaDiaTexto(s.weekKey).split(', ')[1]:'';
+  _gxShareCanvas(_gxCard('Semana completa',s.days+' de '+s.target+' días','Cumplí mi plan entero'+(f?' la semana del '+f:' esta semana'),_gxFirstName(c),c.name),'avi-semana.png');
 }
 
 // Progressive disclosure del Perfil: para un asesorado nuevo, oculta las tarjetas de
@@ -2570,6 +2682,7 @@ function showWorkoutFinish(routine,stats){
   // push (que ya trae su propio silencio de 7 días) y por último compartir, que se puede hacer
   // después desde el muro. Mismo criterio que A2 cediéndole el turno a «Comparte AVI» en «Hoy».
   _wfAskOwner=null;
+  renderWfLogro(); // v639: logro nuevo o semana completa → invitar a compartir (toma el turno)
   if(typeof renderWfMilestoneAsk==='function')renderWfMilestoneAsk(); // A4: el opt-in de logros EN el hito
   renderWfPushNudge(); // v325: activar notificaciones en el momento de máximo compromiso
   _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro
