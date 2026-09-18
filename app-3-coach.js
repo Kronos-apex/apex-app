@@ -2428,7 +2428,7 @@ function renderValoracion(c){
   const kcalLabel = _est ? _est.label : _kcalT.label;
   const macros = _est ? _est.macros : calcMacrosFromKcal(kcalObj, w, goal, h);
   // Resumen visible cuando la tarjeta está colapsada: el dato clave (objetivo calórico).
-  if(sumEl){ sumEl.textContent = kcalObj ? kcalObj.toLocaleString()+' kcal/día' : (tdee?tdee.toLocaleString()+' kcal TDEE':''); sumEl.style.color='var(--gt)'; }
+  if(sumEl){ sumEl.textContent = kcalObj ? fmtMiles(kcalObj)+' kcal/día' : (tdee?fmtMiles(tdee)+' kcal TDEE':''); sumEl.style.color='var(--gt)'; }
 
   // ── Render ──
   const statBox = (icon, label, val, sub, color) =>
@@ -2488,7 +2488,7 @@ function renderValoracion(c){
     if(kcalObj){
       html += `<div class="vmac-obj">
         <div class="vmac-obj-t">${_coIco('target',12,'🎯')} OBJETIVO: ${esc(goal).toUpperCase()}</div>
-        <div class="vmac-kcal">${kcalObj.toLocaleString()} kcal/día</div>
+        <div class="vmac-kcal">${fmtMiles(kcalObj)} kcal/día</div>
         <div class="vmac-lbl">${kcalLabel}</div>
       </div>`;
     }

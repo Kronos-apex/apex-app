@@ -216,6 +216,7 @@ const {
   MS_GRACE_DAYS,
   fmtMetric,
   fmtDuration,
+  fmtMiles,
   feelingEmoji,
   feelingLabel,
   habitDayKey,
@@ -19747,6 +19748,58 @@ test('v627 🔒 la SEGUNDA puerta: el JS que reescribe el contador no le devuelv
   assert.ok(/eb\.textContent=`Excluidos \(/.test(cuerpo) && /pb\.textContent=`Priorizados \(/.test(cuerpo),
     '🔴 el contador volvió a escribir el emoji encima del botón');
   assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2B00}-\u{2BFF}]/u.test(cuerpo), '🔴 hay un emoji en la función que pinta los contadores');
+});
+
+// ══════════════════════════════════════════════════════
+// v628 — LAS CIFRAS SE ESCRIBEN IGUAL EN TODOS LOS TELÉFONOS
+// ══════════════════════════════════════════════════════
+section('v628 · fmtMiles y el detalle del entreno');
+
+test('v628 · fmtMiles escribe en español de Colombia, sin depender del idioma del teléfono', () => {
+  assert.strictEqual(fmtMiles(3400), '3.400');
+  assert.strictEqual(fmtMiles(1234567), '1.234.567');
+  assert.strictEqual(fmtMiles(999), '999');
+  assert.strictEqual(fmtMiles(3412.5), '3.412,5');
+  assert.strictEqual(fmtMiles(3.4), '3,4');
+  assert.strictEqual(fmtMiles(-150), '-150');
+  assert.strictEqual(fmtMiles(0), '0');
+  assert.strictEqual(fmtMiles(-0.01), '0');
+  assert.strictEqual(fmtMiles(NaN), '0');
+  assert.strictEqual(fmtMiles('2500'), '2.500');
+});
+
+test('v628 🔒 ninguna cifra se formatea con el idioma del teléfono (toLocaleString sin idioma)', () => {
+  const fs = require('fs'), path = require('path');
+  const archivos = fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).concat(['avi-core.js']);
+  assert.ok(archivos.length >= 8, 'el barrido no encontró los módulos');
+  const malos = [];
+  for (const f of archivos) {
+    const js = sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    js.split('\n').forEach((l, i) => { if (/\.toLocaleString\(\s*\)/.test(l)) malos.push(f + ':' + (i + 1)); });
+  }
+  assert.deepStrictEqual(malos, [], '🔴 vuelve a haber cifras que cambian según el teléfono: ' + malos.join(', '));
+  // CONTROL: el criterio caza la forma prohibida y deja pasar la que lleva idioma.
+  assert.ok(/\.toLocaleString\(\s*\)/.test('x.toLocaleString()') && !/\.toLocaleString\(\s*\)/.test("x.toLocaleString('es-CO')"));
+});
+
+test('v628 🔒 la fecha del detalle no se escribe «17 De Septiembre» y el +150 kg no se parte', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const fecha = (css.match(/\.sroom-date\{[^}]*\}/) || [''])[0];
+  assert.ok(fecha, 'desapareció la regla de la fecha');
+  assert.ok(!/capitalize/.test(fecha), '🔴 capitalize pone «De» en mayúscula en una fecha en español');
+  const dif = (css.match(/\.sroom-cmp \.sroom-cmp-d\{[^}]*\}/) || [''])[0];
+  assert.ok(/white-space:nowrap/.test(dif), '🔴 la diferencia de volumen se vuelve a partir en dos líneas');
+});
+
+test('v628 🔒 la habitación de la rutina habla con las comillas de la marca y su icono no es un emoji', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = js.indexOf('Aún no has hecho esta rutina');
+  assert.ok(i > 0, 'desapareció el texto de la rutina sin hacer');
+  const linea = js.slice(i, js.indexOf('\n', i));
+  assert.ok(!/"Hoy"|"Hacer esta rutina ahora"/.test(linea) && /«Hoy»/.test(linea), '🔴 volvieron las comillas rectas');
+  assert.ok(/aviIcon\('clipboard',26\)/.test(js), '🔴 la cabecera de la rutina volvió a un emoji suelto');
 });
 
 // ══════════════════════════════════════════════════════

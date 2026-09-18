@@ -620,7 +620,7 @@ function renderGamification(client){
   // «735.2k kg» juntaba el sufijo compacto y la unidad y se leia mal. Esta tarjeta era la
   // UNICA que lo hacia: la pantalla de cierre, el promedio de la grafica y el detalle de
   // sesion ya escriben el volumen con separador de miles. Se alinea con sus vecinos.
-  const volTxt = `${Math.round(totalVol).toLocaleString()}<span class="u"> kg</span>`;
+  const volTxt = `${fmtMiles(Math.round(totalVol))}<span class="u"> kg</span>`;
   const lvlHTML=`<div class="gx-lvl">
     <div class="gx-ltop">
       <div class="gx-ring"><svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="7"/><circle cx="50" cy="50" r="44" fill="none" stroke="#10E0A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ2}" stroke-dashoffset="${off.toFixed(1)}" style="filter:drop-shadow(0 0 5px rgba(16,224,160,.6))"/></svg><div class="gx-num"><b>${L.cur.n}</b><small>NIVEL</small></div></div>
@@ -2278,7 +2278,7 @@ function updateVolSummary(routine,ei,sets,ex,el){
   }
   if(!doneSets){el.textContent='';return;}
   let txt;
-  if(track==='peso_reps'||(track==='reps'&&totalVol>0))txt=`Volumen: ${Math.round(totalVol).toLocaleString()} kg`;
+  if(track==='peso_reps'||(track==='reps'&&totalVol>0))txt=`Volumen: ${fmtMiles(Math.round(totalVol))} kg`;
   else if(track==='reps')txt=`Total: ${totReps} ${typeof repsUnitOf==='function'?repsUnitOf(ex):'reps'}`;
   else if(track==='tiempo')txt=`Tiempo: ${totSecs}s`;
   else if(track==='cardio')txt=`Cardio: ${totMin} min`;
@@ -2535,7 +2535,7 @@ function showWorkoutFinish(routine,stats){
   if(durationSec!=null)chips.push(['Duración',fmtDuration(durationSec)]);
   if(kcal!=null&&kcal>0)chips.push(['Calorías',`${kcal} kcal`]);
   chips.push(['Series',`${done}/${total}`]);
-  if(vol>0)chips.push(['Volumen',`${vol.toLocaleString()} kg`]);
+  if(vol>0)chips.push(['Volumen',`${fmtMiles(vol)} kg`]);
   document.getElementById('wf-stats').innerHTML=chips.map(([l,v])=>`<div class="wf-stat"><div class="wf-stat-val">${esc(v)}</div><div class="wf-stat-lbl">${esc(l)}</div></div>`).join('');
   const prWrap=document.getElementById('wf-prs');
   let prHtml=prs.slice(0,3).map(pr=>{
@@ -3074,7 +3074,7 @@ function renderVolChart(sessions){
   const maxV=Math.max(...vals)||1;const minV=Math.min(...vals);
   const pad=8;const chartW=W-pad*2;const chartH=H-16;
   const avg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-  document.getElementById('vol-chart-avg').textContent=`Promedio: ${avg.toLocaleString()} kg`;
+  document.getElementById('vol-chart-avg').textContent=`Promedio: ${fmtMiles(avg)} kg`;
   const pts=withVol.map((s,i)=>{
     const x=pad+i*(chartW/(withVol.length-1));
     const y=8+chartH-((s.totalVol-minV)/(maxV-minV||1))*chartH;
@@ -3114,14 +3114,14 @@ function _sessionExercisesHTML(s,clientId){
     const exVol=_exVol(ex);
     const auxChip=(emoji,label,col,bg,a)=>`<div style="background:${bg};border:1px solid ${col}55;border-radius:6px;padding:6px 8px;text-align:center">
         <div style="font-size:10px;color:${col};margin-bottom:2px">${emoji} ${label}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${col}">${a.kg?esc(a.kg)+'kg':'—'}${a.reps?' × '+esc(a.reps):''}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${col}">${a.kg?esc(a.kg)+' kg':'—'}${a.reps?'<br>× '+esc(a.reps):''}</div>
       </div>`;
     const chips=[];
     if(ex.warm&&(ex.warm.kg||ex.warm.reps))chips.push(auxChip(typeof aviIcon==='function'?aviIcon('flame',11):'🔥','Calent.','#E8973A','rgba(232,151,58,.10)',ex.warm));
     ex.sets.forEach((st,si)=>{
       chips.push(`<div style="background:${st.done?'var(--gl)':'var(--bg)'};border:1px solid ${st.done?'var(--g2)':'var(--br)'};border-radius:6px;padding:6px 8px;text-align:center">
           <div style="font-size:10px;color:var(--t3);margin-bottom:2px">Serie ${si+1}</div>
-          ${st.done?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?esc(st.kg)+'kg':'—'} × ${esc(st.reps)}</div>`:`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
+          ${st.done?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?esc(st.kg)+' kg':'—'}<br>× ${esc(st.reps)}</div>`:`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
         </div>`);
       if(st.drop&&(st.drop.kg||st.drop.reps))chips.push(auxChip(typeof aviIcon==='function'?aviIcon('tridown',10):'🔻','Drop','#3B82F6','rgba(59,130,246,.08)',st.drop));
     });
@@ -3133,7 +3133,7 @@ function _sessionExercisesHTML(s,clientId){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"${door}>
           ${muscleIcon(ex.muscle,18)}
           <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
-          ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt);font-weight:600">${Math.round(exVol)} kg vol</span>`:''}
+          ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt);font-weight:600">${fmtMiles(Math.round(exVol))} kg</span>`:''}
           ${clientId?`<span style="${exVol>0?'':'margin-left:auto;'}color:var(--t3);font-size:16px;flex-shrink:0">›</span>`:''}
         </div>
         ${volBar}
@@ -3209,7 +3209,7 @@ function _sessionSummary(s,reps,exCount,pct){
   let t=`Completaste <b>${s.doneSets} de ${s.totalSets} series</b> (${pct}%) en <b>${nEx} ejercicio${nEx===1?'':'s'}</b>`;
   if(s.durationSec)t+=`, durante <b>${fmtDuration(s.durationSec)}</b>`;
   t+='. ';
-  if(s.totalVol>0)t+=`Moviste <b>${s.totalVol.toLocaleString()} kg</b> en total`;
+  if(s.totalVol>0)t+=`Moviste <b>${fmtMiles(s.totalVol)} kg</b> en total`;
   if(s.kcal)t+=`${s.totalVol>0?' y':'Quemaste'} unas <b>${s.kcal} kcal</b>`;
   if(s.totalVol>0||s.kcal)t+='. ';
   const np=(s.prs||[]).length;
@@ -3232,7 +3232,7 @@ function openSessionRoom(clientId,sid){
   const stats=[];
   if(s.durationSec)stats.push(['⏱','Duración',fmtDuration(s.durationSec),'#3a86c8']);
   if(s.kcal)stats.push(['🔥','Calorías',s.kcal+' kcal','#e0772e']);
-  if(s.totalVol>0)stats.push(['🏋️','Volumen',s.totalVol.toLocaleString()+' kg','#10b981']);
+  if(s.totalVol>0)stats.push(['🏋️','Volumen',fmtMiles(s.totalVol)+' kg','#10b981']);
   if(reps>0)stats.push(['🔁','Reps totales',String(reps),'#9b6dd6']);
   stats.push(['📋','Ejercicios',String(exCount||exs.length),'#0ea5b7']);
   stats.push(['✅','Series',`${s.doneSets}/${s.totalSets}`,pct===100?'#10b981':'#e0a72e']);
@@ -3247,7 +3247,7 @@ function openSessionRoom(clientId,sid){
     const cls=pd>=2?'up':pd<=-2?'down':'flat';
     const ic=cls==='up'?'📈':cls==='down'?'📉':'➖';
     const txt=cls==='flat'?'Mismo volumen que la vez anterior de esta rutina':`${dv>0?'Subiste':'Bajaste'} el volumen vs la vez anterior de esta rutina`;
-    cmpHTML=`<div class="sroom-cmp ${cls}"><span class="sroom-cmp-ic">${_sroomIc(ic)}</span><span>${txt}</span><span class="sroom-cmp-d">${dv>0?'+':''}${dv.toLocaleString()} kg</span></div>`;
+    cmpHTML=`<div class="sroom-cmp ${cls}"><span class="sroom-cmp-ic">${_sroomIc(ic)}</span><span>${txt}</span><span class="sroom-cmp-d">${dv>0?'+':''}${fmtMiles(dv)} kg</span></div>`;
   }
   let prHTML='';
   const prs=s.prs||[];
@@ -3275,7 +3275,7 @@ function openSessionRoom(clientId,sid){
   if(_shData&&!_shMenor){
     _wfShareData=_shData;
     _wfPrepShareCanvas(_shClient);
-    shareHTML=`<button type="button" class="btn bp" style="width:100%;margin-top:16px" onclick="wfShare()" aria-label="Compartir este entreno como imagen">Compartir este entreno</button>`;
+    shareHTML=`<button type="button" class="btn bp" style="width:100%;margin:16px 0 14px" onclick="wfShare()" aria-label="Compartir este entreno como imagen">Compartir este entreno</button>`;
   }
   const circ=2*Math.PI*26, off=(circ*(1-pct/100)).toFixed(1);
   const feelHero=s.feeling?`<div class="sroom-hero-feel">${feelingEmoji(s.feeling)} ${esc(feelingLabel(s.feeling))}</div>`:'';
@@ -3450,7 +3450,7 @@ function openMonthRoom(clientId,year,month){
   const statsHTML=[
     stat('🏋️','Entrenos',String(ms.length),'#10b981'),
     stat('📊','Volumen',vol>=1000?(vol/1000).toFixed(1).replace('.0','')+' t':vol+' kg','#9b6dd6'),
-    stat('🔥','Calorías',kcal?kcal.toLocaleString()+'':'—','#e0772e'),
+    stat('🔥','Calorías',kcal?fmtMiles(kcal):'—','#e0772e'),
     stat('⏱','Tiempo',dur?fmtDuration(dur):'—','#3a86c8'),
     stat('📅','Días','+'+adh.trainedDays,'#0ea5b7'),
     stat('⚡','Racha máx',streakRec+(streakRec===1?' día':' días'),'#e0a72e'),
@@ -3473,7 +3473,7 @@ function openMonthRoom(clientId,year,month){
   const maxV=topEx.length?topEx[0].vol:1;
   const topHTML=topEx.length?`<div class="sroom-sec">Tus ejercicios estrella</div>`+topEx.map((e,i)=>{
     const col=(typeof MC!=='undefined'&&MC[e.muscle])||'var(--g)'; const w=Math.max(8,Math.round(e.vol/maxV*100));
-    return `<div class="mroom-top" onclick="openExerciseRoom('${esc(String(clientId))}','${esc(e.id||'')}','${esc(e.name||'')}')"><div class="mroom-top-rk">${i+1}</div><div class="mroom-top-mid"><div class="mroom-top-nm">${esc(e.name)}</div><div class="mroom-top-track"><div class="mroom-top-fill" style="width:${w}%;background:${col}"></div></div></div><div class="mroom-top-v">${Math.round(e.vol).toLocaleString()}<small>kg</small></div></div>`;
+    return `<div class="mroom-top" onclick="openExerciseRoom('${esc(String(clientId))}','${esc(e.id||'')}','${esc(e.name||'')}')"><div class="mroom-top-rk">${i+1}</div><div class="mroom-top-mid"><div class="mroom-top-nm">${esc(e.name)}</div><div class="mroom-top-track"><div class="mroom-top-fill" style="width:${w}%;background:${col}"></div></div></div><div class="mroom-top-v">${fmtMiles(Math.round(e.vol))}<small>kg</small></div></div>`;
   }).join(''):'';
   // balance empuje/tracción
   let balHTML='';
@@ -3484,7 +3484,7 @@ function openMonthRoom(clientId,year,month){
       <div class="adv-bal-legend"><span><i class="dot push"></i> Empuje · ${bal.push}</span><span><i class="dot pull"></i> Tracción · ${bal.pull}</span></div>
       <div class="adv-verdict" style="border-color:${vcol}55"><span>${bal.verdict==='equilibrado'?'✅':'⚖️'}</span><span>${esc(bal.msg)}</span></div></div>`;
   }
-  const summary=`Entrenaste <b>${ms.length} ${ms.length===1?'vez':'veces'}</b> en ${esc(cap)} (${adh.trainedDays} ${adh.trainedDays===1?'día':'días'}, ${adhPct}% de adherencia). Moviste <b>${vol.toLocaleString()} kg</b> en total${kcal?` y quemaste unas <b>${kcal.toLocaleString()} kcal</b>`:''}. ${streakRec>=2?`Encadenaste hasta <b>${streakRec} días seguidos</b> 🔥`:'¡A sumar más días el próximo mes! 💪'}`;
+  const summary=`Entrenaste <b>${ms.length} ${ms.length===1?'vez':'veces'}</b> en ${esc(cap)} (${adh.trainedDays} ${adh.trainedDays===1?'día':'días'}, ${adhPct}% de adherencia). Moviste <b>${fmtMiles(vol)} kg</b> en total${kcal?` y quemaste unas <b>${fmtMiles(kcal)} kcal</b>`:''}. ${streakRec>=2?`Encadenaste hasta <b>${streakRec} días seguidos</b> 🔥`:'¡A sumar más días el próximo mes! 💪'}`;
 
   body.innerHTML=`
     <div class="sroom-hero exroom-hero">
@@ -3592,7 +3592,7 @@ function openRoutineRoom(clientId,routineId){
   const daysAgo=last?Math.floor((Date.now()-last.getTime())/864e5):null;
   const lastStr=daysAgo===null?'—':daysAgo<=0?'Hoy':daysAgo===1?'Ayer':daysAgo<7?'Hace '+daysAgo+' d':last.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
   const IND='#6366f1';
-  const fv=v=>v>=1000?(v/1000).toFixed(1).replace('.0','')+' t':v+' kg';
+  const fv=v=>v>=1000?fmtMiles(v/1000)+' t':fmtMiles(v)+' kg';
 
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
@@ -3613,7 +3613,7 @@ function openRoutineRoom(clientId,routineId){
     }).join('');
     sessHTML=`<div class="sroom-sec">Tus veces con esta rutina</div>${rows}`;
   } else {
-    sessHTML=`<div class="exroom-note">Aún no has hecho esta rutina. Tócala en "Hoy" o usa <b>"Hacer esta rutina ahora"</b> y aquí verás tu progreso cada vez 💪</div>`;
+    sessHTML=`<div class="exroom-note">Aún no has hecho esta rutina. Tócala en «Hoy» o usa <b>«Hacer esta rutina ahora»</b> y aquí verás tu progreso cada vez 💪</div>`;
   }
 
   const planHTML=(rt.exercises||[]).length?`<div class="sroom-sec">El plan</div>`+(rt.exercises||[]).map(e=>`<div class="exrow"><div class="exicon" style="background:${(MC[e.muscle]||'#ccc')}18;border:1px solid ${(MC[e.muscle]||'#ccc')}30">${exIcon(e)}</div><div style="flex:1;min-width:0"><div class="exname">${esc(e.name||'')}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):(e.muscle||''))}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join(''):'';
@@ -3623,7 +3623,7 @@ function openRoutineRoom(clientId,routineId){
   const isToday=rt.day===['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
   body.innerHTML=`
     <div class="sroom-hero exroom-hero hero-tint" style="background:linear-gradient(135deg,${IND}18,${IND}08),var(--w);border-color:${IND}44">
-      <div class="exroom-hero-ic" style="background:${IND}22;border:1px solid ${IND}66">📋</div>
+      <div class="exroom-hero-ic" style="background:${IND}22;border:1px solid ${IND}66;color:${IND}">${typeof aviIcon==='function'?aviIcon('clipboard',26):'📋'}</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(rt.name)}</div>
         <div class="exroom-tags"><span>${esc(rt.day||'')}${isToday?' · hoy':''}</span><span>${exN} ejercicio${exN!==1?'s':''}</span><span>${totS} series</span></div>
@@ -3902,7 +3902,7 @@ function renderClientHistory(clientId){
         <div style="display:flex;gap:8px;align-items:center">
           <div class="pbar" style="flex:1;margin-top:0"><div class="pfill" style="width:${pct}%;background:${pcol}"></div></div>
           <span class="sescard-pct" style="color:${pcol}">${pct}%</span>
-          ${s.totalVol>0?`<span class="sescard-vol">${s.totalVol.toLocaleString()} kg</span>`:''}
+          ${s.totalVol>0?`<span class="sescard-vol">${fmtMiles(s.totalVol)} kg</span>`:''}
           <span class="sescard-arrow">›</span>
         </div>
       </div>`;
@@ -3936,7 +3936,7 @@ function renderCoachClientHistory(clientId){
     const feel=s.feeling?` <span title="${esc(feelingLabel(s.feeling))}">${feelingEmoji(s.feeling)}</span>`:'';
     const meta=[s.durationSec?fmtDuration(s.durationSec):'',s.kcal?`${s.kcal} kcal`:''].filter(Boolean).join(' · ');
     const hasDetail=(s.exercises||[]).length>0;
-    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--gt)':'var(--ort)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${s.totalVol.toLocaleString()}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
+    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--gt)':'var(--ort)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${fmtMiles(s.totalVol)}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
     con.appendChild(div);
   });
   if(sessions.length>3){

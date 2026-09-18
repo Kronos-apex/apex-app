@@ -5782,6 +5782,20 @@ function fmtMetric(v, unit) {
   const u = unit === 'kg' ? ' kg' : unit === 'reps' ? ' reps' : unit === 's' ? ' s' : unit === 'min' ? ' min' : unit === 'rondas' ? ' rondas' : ' ' + (unit || '');
   return n + u;
 }
+// ── v628 · LOS MILES SE ESCRIBEN IGUAL EN TODOS LOS TELÉFONOS ─────────────────────────────
+// `toLocaleString()` sin idioma pinta lo que diga el TELÉFONO: «3.400» en uno en español, «3,400»
+// en uno en inglés y «3400» en un WebView sin datos de idioma (así salía en el banco). La misma
+// cifra no puede verse de tres formas en la misma app. Español de Colombia, escrito a mano —sin
+// depender de ICU, la misma razón por la que las fechas de v624 se arman sin
+// `toLocaleDateString`—: punto de miles, coma decimal, máximo un decimal. PURA.
+function fmtMiles(n) {
+  const x = Number(n);
+  if (!isFinite(x)) return '0';
+  const r = Math.round(Math.abs(x) * 10) / 10;
+  const partes = String(r).split('.');
+  const ent = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (x < 0 && r !== 0 ? '-' : '') + ent + (partes[1] ? ',' + partes[1] : '');
+}
 function fmtDuration(sec) {
   const m = Math.round(sec / 60);
   if (m < 60) return `${m} min`;
@@ -5815,7 +5829,7 @@ function sessionShareData(session, client) {
   if (s.durationSec > 0) chips.push(['Duración', fmtDuration(s.durationSec)]);
   if (s.kcal > 0) chips.push(['Calorías', s.kcal + ' kcal']);
   chips.push(['Series', (s.doneSets || 0) + '/' + (s.totalSets || 0)]);
-  if (s.totalVol > 0) chips.push(['Volumen', s.totalVol.toLocaleString() + ' kg']);
+  if (s.totalVol > 0) chips.push(['Volumen', fmtMiles(s.totalVol) + ' kg']);
   const prs = (Array.isArray(s.prs) ? s.prs : []).slice(0, 3).map(pr => ({
     name: pr.name, id: pr.id, val: pr.val != null ? pr.val : pr.kg, unit: pr.unit || 'kg', reps: pr.reps,
     isNew: !!pr.isNew,
@@ -11075,6 +11089,7 @@ if (typeof module !== 'undefined' && module.exports) {
     coachBuildReport,
     fmtMetric,
     fmtDuration,
+    fmtMiles,
     wfTitle,
     sessionShareData,
     WF_FEELINGS,

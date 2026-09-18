@@ -1059,7 +1059,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom-ring-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;color:#fff}
 .sroom-ring-n small{font-size:11px;margin-left:1px;opacity:.8}
 .sroom-hero-txt{min-width:0}
-.sroom-date{font-size:12px;color:rgba(234,251,244,.7);font-weight:600;text-transform:capitalize}
+.sroom-date{font-size:12px;color:rgba(234,251,244,.7);font-weight:600}
 .sroom-title{font-size:22px;font-weight:800;color:#fff;line-height:1.15;margin:3px 0 7px}
 .sroom-hero-feel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:rgba(234,251,244,.9);background:rgba(255,255,255,.09);padding:4px 11px;border-radius:999px}
 /* tarjetas de estadística con capas y sombra */
@@ -1072,7 +1072,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom-cmp.down{background:var(--orl);color:var(--ort);border:1px solid color-mix(in srgb,var(--or) 35%,transparent)}
 .sroom-cmp.flat{background:var(--bg);color:var(--t2);border:1px solid var(--br)}
 .sroom-cmp .sroom-cmp-ic{display:flex;align-items:center;flex-shrink:0}
-.sroom-cmp .sroom-cmp-d{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px}
+.sroom-cmp .sroom-cmp-d{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;white-space:nowrap}
 .sroom-stat-v{font-size:18px;font-weight:800;color:var(--t1);line-height:1.1;word-break:break-word}
 .sroom-stat-l{font-size:9.5px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
 .sroom-summary{background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:14px 16px;font-size:13.5px;line-height:1.62;color:var(--t1);margin-bottom:16px;box-shadow:0 4px 14px rgba(16,224,160,.08)}
