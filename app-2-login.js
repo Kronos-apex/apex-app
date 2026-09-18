@@ -880,13 +880,14 @@ function drawExProgChart(container, points, color, unit){
   if(!points.length)return;
   unit=unit||'kg';
   const W=Math.max(container.offsetWidth||window.innerWidth-80||260,200);
-  const H=72;const pad=8;const chartW=W-pad*2;const chartH=H-18;
+  // v629: franja propia arriba (etiqueta de un pico) y abajo (etiqueta de un valle + fechas).
+  const H=96;const pad=8;const TOP=16;const chartW=W-pad*2;const chartH=H-TOP-28;
   const vals=points.map(p=>p.maxKg);
   const maxV=Math.max(...vals)||1;const minV=Math.min(...vals);
   const span=maxV-minV||1;
   const pts=points.map((p,i)=>({
     x:pad+i*(chartW/Math.max(points.length-1,1)),
-    y:6+chartH-((p.maxKg-minV)/span)*chartH,
+    y:TOP+chartH-((p.maxKg-minV)/span)*chartH,
     p
   }));
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
@@ -922,7 +923,9 @@ function drawExProgChart(container, points, color, unit){
       const anc=i===0?'start':i===pts.length-1?'end':'middle';
       const lx=i===0?pad:i===pts.length-1?(W-pad):p.x;
       if(!epConValor.has(i))return '';
-      const ly=p.y<16?(p.y+12):(p.y-5); // el punto más alto voltea su etiqueta hacia abajo (no se recorta arriba)
+      // v629: del lado donde NO pasa la línea — debajo en un valle, encima en lo demás.
+      const abajo=typeof chartLabelBelow==='function'&&chartLabelBelow(vals,i);
+      const ly=abajo?(p.y+13):(p.y-6);
       return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" style="fill:${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
     }).join('')}
   </svg>`;

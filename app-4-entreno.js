@@ -339,7 +339,7 @@ function renderBodyWeightSection(clientId){
     </svg>`;
     if(summEl){
       const arrow=trend<0?'↓':trend>0?'↑':'→';
-      summEl.innerHTML=`Inicio: <strong>${entries[0].kg}kg</strong> · Actual: <strong>${entries[entries.length-1].kg}kg</strong> · <span style="color:${trendColor};font-weight:700">${arrow} ${Math.abs(trend).toFixed(1)}kg</span>`;
+      summEl.innerHTML=`Inicio: <strong>${entries[0].kg} kg</strong> · Actual: <strong>${entries[entries.length-1].kg} kg</strong> · <span style="color:${trendColor};font-weight:700">${arrow} ${Math.abs(trend).toFixed(1)} kg</span>`;
     }
   }
 
@@ -434,7 +434,7 @@ function _prRowHtml(pr,clientId,exId){
     <div style="text-align:right">
       <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
       <div style="font-size:10px;color:var(--t2)">${isKg?`${pr.reps} ${esc(typeof repsUnitOf==='function'?repsUnitOf(exId||pr.id||''):'reps')}`:'récord'}</div>
-      ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)}kg · 1RM est.</div>`:''}
+      ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)} kg · 1RM est.</div>`:''}
     </div>
   </div>`;}
 function renderPRsInProfile(clientId){
@@ -482,7 +482,7 @@ function renderClientProfile(client){
   const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
   const _pc=document.getElementById('cn-prof-card');
   _pc.style.backgroundImage=`url('${aviProfilePhoto(client.sex)}')`;
-  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">${typeof aviIcon==='function'?aviIcon('camera',12):'📷'}</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">${_pfi('target','🎯')} ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">${_pfi('chart','📊')} ${esc(client.level)}</span>`:''}<span class="profpill">${_pfi('calendar','📅')} ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">${_pfi('scale','⚖️')} ${currentKg}kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">${typeof aviIcon==='function'?aviIcon('camera',12):'📷'}</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">${_pfi('target','🎯')} ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">${_pfi('chart','📊')} ${esc(client.level)}</span>`:''}<span class="profpill">${_pfi('calendar','📅')} ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">${_pfi('scale','⚖️')} ${currentKg} kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
   const rows=[[`${_pfi('target','🎯')} Objetivo`,client.goal],[`${_pfi('chart','📊')} Nivel`,client.level],[`${_pfi('calendar','📅')} Días de entreno`,`${client.days} días por semana`],currentKg?[`${_pfi('scale','⚖️')} Peso actual`,`${currentKg} kg`]:null,client.notes?[`${_pfi('pencil','📝')} Nota del coach`,client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
@@ -3387,7 +3387,7 @@ function openExerciseRoom(clientId,exId,exName){
     const ex=(s.exercises||[]).find(x=>(exId&&x.id===exId)||x.name===name)||{};
     const done=(ex.sets||[]).filter(st=>st.done);
     let best='—';
-    if(done.length){const bw=done.reduce((m,st)=>Math.max(m,parseFloat(st.kg)||0),0);const br=done.find(st=>(parseFloat(st.kg)||0)===bw);best=bw>0?`${bw}kg × ${br?esc(String(br.reps)):''}`:`${done.length} serie${done.length!==1?'s':''}`;}
+    if(done.length){const bw=done.reduce((m,st)=>Math.max(m,parseFloat(st.kg)||0),0);const br=done.find(st=>(parseFloat(st.kg)||0)===bw);best=bw>0?`${bw} kg × ${br?esc(String(br.reps)):''}`:`${done.length} serie${done.length!==1?'s':''}`;}
     return `<div class="exroom-hrow"><span>${new Date(s.date).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})}</span><span class="exroom-hrow-v">${best}</span></div>`;
   }).join('');
   const recentHTML=did.length?`<div class="sroom-sec">Últimas veces</div>${recent}`:'';
@@ -3936,7 +3936,7 @@ function renderCoachClientHistory(clientId){
     const feel=s.feeling?` <span title="${esc(feelingLabel(s.feeling))}">${feelingEmoji(s.feeling)}</span>`:'';
     const meta=[s.durationSec?fmtDuration(s.durationSec):'',s.kcal?`${s.kcal} kcal`:''].filter(Boolean).join(' · ');
     const hasDetail=(s.exercises||[]).length>0;
-    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--gt)':'var(--ort)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${fmtMiles(s.totalVol)}kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
+    div.innerHTML=`<div style="padding:9px 0${hasDetail?';cursor:pointer':''}"${hasDetail?` onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div><div style="font-size:13px;font-weight:600">${esc(s.routineName)}${feel}${hasDetail?' <span style="color:var(--t3);font-size:11px">▾</span>':''}</div><div style="font-size:11px;color:var(--t3)">${dateStr}${meta?' · '+meta:''}</div></div><div style="text-align:right"><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--gt)':'var(--ort)'}">${pct}%</span>${s.totalVol>0?`<span style="font-size:11px;color:var(--t2);margin-left:8px">${fmtMiles(s.totalVol)} kg</span>`:''}</div></div><div class="pbar" style="margin-top:0"><div class="pfill" style="width:${pct}%;background:${pct===100?'var(--g)':'var(--or)'}"></div></div></div>${hasDetail?`<div style="display:none;background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 9px">${_sessionExercisesHTML(s,clientId)}</div>`:''}`;
     con.appendChild(div);
   });
   if(sessions.length>3){

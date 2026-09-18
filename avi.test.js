@@ -217,6 +217,7 @@ const {
   fmtMetric,
   fmtDuration,
   fmtMiles,
+  chartLabelBelow,
   feelingEmoji,
   feelingLabel,
   habitDayKey,
@@ -19800,6 +19801,50 @@ test('v628 🔒 la habitación de la rutina habla con las comillas de la marca y
   const linea = js.slice(i, js.indexOf('\n', i));
   assert.ok(!/"Hoy"|"Hacer esta rutina ahora"/.test(linea) && /«Hoy»/.test(linea), '🔴 volvieron las comillas rectas');
   assert.ok(/aviIcon\('clipboard',26\)/.test(js), '🔴 la cabecera de la rutina volvió a un emoji suelto');
+});
+
+// ══════════════════════════════════════════════════════
+// v629 — LA ETIQUETA DE UN PUNTO VA DONDE NO PASA LA LÍNEA
+// ══════════════════════════════════════════════════════
+section('v629 · etiquetas de la gráfica de progresión');
+
+test('v629 · un valle lleva la etiqueta debajo; un pico o una pendiente, encima', () => {
+  // Subida 100 → 120: el primero es valle (debajo), el último no (encima).
+  assert.strictEqual(chartLabelBelow([100, 120], 0), true);
+  assert.strictEqual(chartLabelBelow([100, 120], 1), false);
+  // Bajada 120 → 100: el último es valle.
+  assert.strictEqual(chartLabelBelow([120, 100], 0), false);
+  assert.strictEqual(chartLabelBelow([120, 100], 1), true);
+  // En medio: valle abajo, pico y escalón arriba.
+  assert.strictEqual(chartLabelBelow([100, 80, 110], 1), true);
+  assert.strictEqual(chartLabelBelow([100, 130, 110], 1), false);
+  assert.strictEqual(chartLabelBelow([100, 110, 120], 1), false);
+  // 🔒 CONTROL: plano no es valle (si lo fuera, una racha igual se iría toda abajo).
+  assert.strictEqual(chartLabelBelow([100, 100, 100], 1), false);
+  assert.strictEqual(chartLabelBelow([100], 0), false);
+});
+
+test('v629 🔒 la gráfica de progresión decide el lado con chartLabelBelow y deja franja arriba', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const i = js.indexOf('function drawExProgChart(');
+  assert.ok(i > 0, 'desapareció drawExProgChart');
+  const cuerpo = js.slice(i, js.indexOf('\nfunction ', i + 10));
+  assert.ok(/chartLabelBelow\(vals,i\)/.test(cuerpo), '🔴 la etiqueta ya no pregunta de qué lado va');
+  assert.ok(/const ly=abajo\?/.test(cuerpo), '🔴 la respuesta se calcula y no se usa');
+  assert.ok(/y:TOP\+chartH/.test(cuerpo), '🔴 los puntos volvieron a pegarse al borde de arriba');
+  assert.ok(!/p\.y<16/.test(cuerpo), '🔴 volvió el volteo por altura, que monta la etiqueta sobre la línea');
+});
+
+test('v629 🔒 ninguna cifra se pega a su unidad: «120 kg», no «120kg»', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n')
+      .forEach((l, i) => { if (/\}kg\b/.test(l)) malos.push(f + ':' + (i + 1)); });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 hay kilos pegados al número: ' + malos.join(', '));
+  assert.ok(/\}kg\b/.test('${x}kg') && !/\}kg\b/.test('${x} kg'), 'el criterio no discrimina');
 });
 
 // ══════════════════════════════════════════════════════

@@ -5796,6 +5796,17 @@ function fmtMiles(n) {
   const ent = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return (x < 0 && r !== 0 ? '-' : '') + ent + (partes[1] ? ',' + partes[1] : '');
 }
+// ── v629 · LA ETIQUETA DE UN PUNTO VA DEL LADO DONDE NO PASA LA LÍNEA ──────────────────────
+// La gráfica de progresión ponía el valor SIEMPRE encima del punto (y el más alto, debajo): en
+// cuanto la curva sube, la etiqueta del primer punto queda montada sobre la línea que arranca
+// de él, y la del último, volteada hacia abajo, sobre la línea que le llega. La regla: un punto
+// que es VALLE (todos sus vecinos valen más) lleva la etiqueta debajo; cualquier otro, encima.
+// Recibe los VALORES, no las coordenadas de pantalla. PURA.
+function chartLabelBelow(vals, i) {
+  const v = Number(vals[i]);
+  const vec = [vals[i - 1], vals[i + 1]].filter(x => x !== undefined && isFinite(Number(x))).map(Number);
+  return vec.length > 0 && vec.every(x => x > v);
+}
 function fmtDuration(sec) {
   const m = Math.round(sec / 60);
   if (m < 60) return `${m} min`;
@@ -11090,6 +11101,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtMetric,
     fmtDuration,
     fmtMiles,
+    chartLabelBelow,
     wfTitle,
     sessionShareData,
     WF_FEELINGS,
