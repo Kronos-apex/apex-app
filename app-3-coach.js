@@ -1260,6 +1260,7 @@ async function _enterCoachAuth(authUser, ownRow){
   }
   await _loadCoachClientsIntoDB();
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
+  if(typeof coachStampName==='function')coachStampName();   // v640: su nombre, en la ficha de cada asesorado
   showScreen('s-coach');
   initCoach();
   // Push del coach ('_coach'): igual que el cliente, el registro se perdió con el cutover

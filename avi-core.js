@@ -5807,6 +5807,24 @@ function chartLabelBelow(vals, i) {
   const vec = [vals[i - 1], vals[i + 1]].filter(x => x !== undefined && isFinite(Number(x))).map(Number);
   return vec.length > 0 && vec.every(x => x > v);
 }
+// ── v640 · EL NOMBRE DEL COACH TIENE QUE LLEGAR AL TELÉFONO DEL ASESORADO ────────────────────
+// Reporte del PO (18-sep): puso su nombre en Ajustes y las imágenes que comparten sus asesorados
+// seguían diciendo «Entreno con Mi Coach». El nombre vive en la fila del COACH (`coach_settings`)
+// y la RLS es por dueño: el teléfono del asesorado NO puede leerla — la misma pared que dejó
+// muerta la tarjeta de Nequi (v540). La salida es que el coach lo ESCRIBA en la ficha de cada
+// asesorado (`coachName`), que su teléfono sí lee. PURA: marca los que cambian y dice cuáles.
+// 🔒 El «Mi Coach» de fábrica NO se estampa: sería escribir en 20 fichas un nombre que no es de
+//    nadie. Y la fila del propio coach (SELF_CLIENT_ID) queda fuera: su teléfono ya lo sabe.
+function coachNameStamp(clients, name) {
+  const nm = String(name || '').trim();
+  if (!nm || nm === 'Mi Coach') return [];
+  const cambiados = [];
+  (clients || []).forEach(c => {
+    if (!c || !c.id || c.id === SELF_CLIENT_ID) return;
+    if (c.coachName !== nm) { c.coachName = nm; cambiados.push(c.id); }
+  });
+  return cambiados;
+}
 function fmtDuration(sec) {
   const m = Math.round(sec / 60);
   if (m < 60) return `${m} min`;
@@ -11202,6 +11220,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtMetric,
     fmtDuration,
     fmtMiles,
+    coachNameStamp,
     GX_ACH,
     GX_ACH_GROUPS,
     fullWeeksCount,

@@ -217,6 +217,7 @@ const {
   fmtMetric,
   fmtDuration,
   fmtMiles,
+  coachNameStamp,
   GX_ACH,
   GX_ACH_GROUPS,
   fullWeeksCount,
@@ -20157,6 +20158,50 @@ test('v639 🔒 CABLEADO: el cierre ofrece el logro ANTES que los demás pedidos
   assert.ok(html.indexOf('id="wf-logro"') > 0 && html.indexOf('id="wf-logro"') < html.indexOf('id="wf-milestone-ask"'), 'falta el hueco del logro en la pantalla de cierre');
   const card = js.slice(js.indexOf('function _gxCard('), js.indexOf('\nfunction ', js.indexOf('function _gxCard(') + 10));
   assert.ok(!/bodyweight|weight|grasa|bodyFat|medidas/i.test(card), '🔴 la imagen del logro no puede llevar datos del cuerpo');
+});
+
+// ══════════════════════════════════════════════════════
+// v640 — EL NOMBRE DEL COACH LLEGA AL TELÉFONO DEL ASESORADO
+// ══════════════════════════════════════════════════════
+section('v640 · nombre del coach en lo que comparte el asesorado');
+
+test('v640 · coachNameStamp escribe el nombre en cada ficha que no lo tiene al día (y solo en esas)', () => {
+  const cl = [{ id: 'a' }, { id: 'b', coachName: 'Andrés' }, { id: '_self' }, null, { id: 'c', coachName: 'Viejo' }];
+  assert.deepStrictEqual(coachNameStamp(cl, 'Andrés'), ['a', 'c']);
+  assert.strictEqual(cl[0].coachName, 'Andrés');
+  assert.strictEqual(cl[2].coachName, undefined, 'la fila del propio coach no se toca');
+  assert.deepStrictEqual(coachNameStamp(cl, 'Andrés'), [], 'segunda vez: nada que subir');
+  // 🔒 el «Mi Coach» de fábrica no es el nombre de nadie: no se estampa
+  const otros = [{ id: 'x' }];
+  assert.deepStrictEqual(coachNameStamp(otros, 'Mi Coach'), []);
+  assert.deepStrictEqual(coachNameStamp(otros, '   '), []);
+  assert.strictEqual(otros[0].coachName, undefined);
+});
+
+test('v640 · en el teléfono del asesorado manda el nombre de SU ficha, nunca «Mi Coach»', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = src.indexOf('function coachNameForClient(){');
+  assert.ok(i > 0, 'desapareció coachNameForClient');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i) + 2);
+  const mk = (clients, cid, cn) => new Function('DB', 'CUR', 'getCoachName', cuerpo + '\nreturn coachNameForClient();')({ clients }, { clientId: cid }, () => cn);
+  assert.strictEqual(mk([{ id: 'a', coachName: 'Andrés' }], 'a', 'Mi Coach'), 'Andrés', 'el asesorado lee el nombre de su ficha');
+  assert.strictEqual(mk([{ id: 'a' }], 'a', 'Mi Coach'), '', 'sin nombre real: vacío (quien llama pone «mi coach»), nunca «Mi Coach»');
+  assert.strictEqual(mk([{ id: '_self' }], '_self', 'Andrés'), 'Andrés', 'el coach en su propio entreno sí tiene su nombre local');
+});
+
+test('v640 🔒 CABLEADO: el coach estampa al entrar y al guardar Ajustes; el asesorado ya no lee getCoachName() a pelo', () => {
+  const fs = require('fs'), path = require('path');
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const s = a2.slice(a2.indexOf('async function saveSettings('), a2.indexOf('\nfunction ', a2.indexOf('async function saveSettings(') + 10));
+  assert.ok(/sv\('ax_cn',[^;]*\);\s*coachStampName\(\);/.test(s), '🔴 guardar el nombre en Ajustes ya no se lo lleva a los asesorados');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const e = a3.slice(a3.indexOf('async function _enterCoachAuth('), a3.indexOf('\nasync function ', a3.indexOf('async function _enterCoachAuth(') + 10));
+  assert.ok(/await _loadCoachClientsIntoDB\(\);[\s\S]{0,200}coachStampName\(\)/.test(e), '🔴 al entrar el coach ya no pone su nombre al día en las fichas');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const crudos = a4.split('\n').filter(l => /const coach=\(typeof getCoachName==='function'&&getCoachName\(\)\)/.test(l));
+  assert.strictEqual(crudos.length, 0, '🔴 una pantalla del asesorado vuelve a leer el nombre local («Mi Coach» en su teléfono)');
+  assert.ok((a4.match(/coachNameForClient\(\)/g) || []).length >= 4, 'las 4 pantallas que nombran al coach pasan por coachNameForClient');
 });
 
 // ══════════════════════════════════════════════════════

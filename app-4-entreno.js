@@ -732,7 +732,7 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   words.forEach(w=>{ const t=line?line+' '+w:w; if(x.measureText(t).width>900){ x.fillText(line,540,y); y+=62; line=w; } else line=t; });
   if(line)x.fillText(line,540,y);
   x.fillStyle='#FFFFFF';x.font=_cf(58,'800');x.fillText(name||'',540,860);  // el nombre va pegado a su retrato
-  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+' en AVI',540,1830);
   try{window._gxLastCanvas=cv;}catch(e){}
   return cv;
@@ -905,7 +905,7 @@ function renderFirstRun(client, routine, opts){
     .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
   // «Mi Coach» es el valor POR DEFECTO de `getCoachName` (app-2): usarlo aquí sonaría a plantilla
   // sin rellenar («Mi Coach te armó tu plan»). Sin nombre real, la frase se dice sin nombre.
-  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te armó tu plan. '):'';  // sin nombre, no se repite el título
   el.innerHTML='<div class="fr-wrap">'+
     '<div class="ic-circle" aria-hidden="true">'+(typeof aviIcon==='function'?aviIcon('barbell',22):'💪')+'</div>'+
@@ -931,7 +931,7 @@ function _firstRunEspera(el, client, opts){
   const prox=nextPlanDay(client.routines||[], new Date());
   if(!prox) return false;
   const nombre=((client.name||'').trim().split(' ')[0])||'';
-  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te lo armó. '):'';
   // 🔴 Por encima de 7 días «el lunes» MIENTE (pasa cuando el día del plan cae festivo y hay que
   // saltar a la semana siguiente). El texto sigue a `enDias`, no al nombre del día.
@@ -3034,7 +3034,7 @@ function wfShare(){
   // composicion centrada eso se lee como un descuido, no como una decision.
   x.textAlign='center';
   x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');
-  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),540,1830);
   x.textAlign='start';

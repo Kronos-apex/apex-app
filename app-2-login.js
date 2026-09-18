@@ -133,6 +133,24 @@ function getCoachEmail(){return _b64dec(ld('ax_ce',_b64enc('coach@apex.com')));}
 function getCoachPassHash(){return ld('ax_cph',null);} // new SHA-256 field
 function getCoachPassLegacy(){return _b64dec(ld('ax_cp',_b64enc('1234')));} // migration only
 function getCoachName(){return _b64dec(ld('ax_cn',_b64enc('Mi Coach')));}
+// v640 · El nombre del coach para lo que ve el ASESORADO (imágenes que comparte, portada del día
+// 1). En su teléfono `ax_cn` es el «Mi Coach» de fábrica —la fila del coach no se le puede leer—,
+// así que manda el que el coach estampó en su ficha. Sin nombre real, '' (quien llama pone su
+// respaldo): nunca «Entreno con Mi Coach».
+function coachNameForClient(){
+  const c=(DB.clients||[]).find(x=>x&&x.id===CUR.clientId);
+  if(c&&c.coachName)return String(c.coachName);
+  const n=getCoachName();
+  return (n&&n!=='Mi Coach')?n:'';
+}
+// Escribe el nombre del coach en la ficha de cada asesorado que no lo tenga al día. Solo en la
+// app del COACH. `sv('ax_c')` sube únicamente las fichas que cambiaron (y fusiona, v623).
+function coachStampName(){
+  try{
+    if(CUR.loggedAs!=='coach'||typeof coachNameStamp!=='function')return;
+    if(coachNameStamp(DB.clients,getCoachName()).length)sv('ax_c',DB.clients);
+  }catch(e){ warn('AVI: estampar el nombre del coach falló (no bloquea):',e&&e.message); }
+}
 function getCoachSite(){return ld('ax_site','');}
 
 // ── Verify coach password (SHA-256 preferred, base64 fallback) ──
@@ -528,6 +546,7 @@ async function saveSettings(){
     perr.style.display='none';
   }
   sv('ax_cn',_b64enc(name));
+  coachStampName();   // v640: que el nombre nuevo les llegue a sus asesorados
   sv('ax_ce',_b64enc(email));
   if(site!==undefined)sv('ax_site',site);
   const nequi=document.getElementById('st-nequi')?document.getElementById('st-nequi').value.trim().replace(/\s/g,''):'';
