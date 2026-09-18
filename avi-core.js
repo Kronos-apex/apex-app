@@ -5828,6 +5828,18 @@ function fmtDuration(sec) {
 const SHARE_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const SHARE_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
   'septiembre', 'octubre', 'noviembre', 'diciembre'];
+// v637 · un día guardado como clave «2026-09-18» se pintaba TAL CUAL en la ficha del coach.
+// Se escribe «Viernes, 18 de septiembre». 🔴 Se parte la cadena a mano: `new Date('2026-09-18')`
+// la toma como medianoche UTC, que en Colombia es el día ANTERIOR. Sin clave válida, se devuelve
+// lo que llegó (nunca un «Invalid Date»). PURA.
+function fechaDiaTexto(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ''));
+  if (!m) return String(ymd || '');
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  if (d.getMonth() !== +m[2] - 1) return String(ymd);
+  const dia = SHARE_DIAS[d.getDay()];
+  return dia.charAt(0).toUpperCase() + dia.slice(1) + ', ' + d.getDate() + ' de ' + SHARE_MESES[d.getMonth()];
+}
 function sessionShareData(session, client) {
   const s = session || {};
   if (!s.date) return null;                       // sin fecha no hay sesión que contar
@@ -11101,6 +11113,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtMetric,
     fmtDuration,
     fmtMiles,
+    fechaDiaTexto,
     chartLabelBelow,
     wfTitle,
     sessionShareData,

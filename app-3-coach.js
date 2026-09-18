@@ -3252,10 +3252,10 @@ function renderCoachFoodLogCard(c){
 }
 function _flCoachDetalleHtml(c,dayKey){
   const arr=(((c.foodlog||{}).d)||{})[dayKey]||[];
-  if(!arr.length)return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br);font-size:12px;color:var(--t3)">${esc(dayKey)} — no registró nada ese día.</div>`;
+  if(!arr.length)return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br);font-size:12px;color:var(--t3)">${esc(typeof fechaDiaTexto==='function'?fechaDiaTexto(dayKey):dayKey)} — no registró nada ese día.</div>`;
   const orden=arr.slice().sort((a,b)=>(a.ts-b.ts));
   let html=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">
-    <div style="font-size:12px;font-weight:800;color:var(--t1);margin-bottom:7px">${esc(dayKey)}</div>`;
+    <div style="font-size:12px;font-weight:800;color:var(--t1);margin-bottom:7px">${esc(typeof fechaDiaTexto==='function'?fechaDiaTexto(dayKey):dayKey)}</div>`;
   FOODLOG_MEALS.forEach(m=>{
     const items=orden.filter(e=>e.meal===m); if(!items.length)return;
     const kc=Math.round(items.reduce((a,e)=>a+(parseFloat(e.kcal)||0),0));

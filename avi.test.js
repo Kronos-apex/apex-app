@@ -217,6 +217,7 @@ const {
   fmtMetric,
   fmtDuration,
   fmtMiles,
+  fechaDiaTexto,
   chartLabelBelow,
   feelingEmoji,
   feelingLabel,
@@ -20036,6 +20037,17 @@ test('v636 🔒 las fechas de pago se escriben «4 de agosto de 2026», no «04 
   assert.deepStrictEqual(malos, [], '🔴 volvió el día con cero delante: ' + malos.join(', '));
   const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
   assert.ok(/const courtBtn=`<button class="btn bg bsm"/.test(js), '🔴 «No cobrarle» volvió al rojo de lo destructivo');
+});
+
+test('v637 · un día «2026-09-18» se lee «Viernes, 18 de septiembre», en el día LOCAL', () => {
+  assert.strictEqual(fechaDiaTexto('2026-09-18'), 'Viernes, 18 de septiembre');
+  assert.strictEqual(fechaDiaTexto('2026-01-01'), 'Jueves, 1 de enero', 'en UTC-5, new Date(ymd) daría el 31 de diciembre');
+  assert.strictEqual(fechaDiaTexto('2026-02-30'), '2026-02-30', 'un día que no existe no se inventa');
+  assert.strictEqual(fechaDiaTexto(''), '');
+  assert.strictEqual(fechaDiaTexto(null), '');
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.ok(!/\$\{esc\(dayKey\)\}/.test(js), '🔴 la ficha del coach vuelve a pintar la clave cruda del día');
 });
 
 // ══════════════════════════════════════════════════════
