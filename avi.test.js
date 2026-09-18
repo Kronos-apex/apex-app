@@ -20126,6 +20126,9 @@ test('v639 · semana completa = TODOS los días del plan, no la racha de 2', () 
   assert.strictEqual(gxWeekComplete(plan3, [s(14), s(16), s(18)], now).met, true);
   assert.strictEqual(gxWeekComplete(plan3, [s(14), s(14), s(16)], now).met, false, 'dos sesiones el mismo día cuentan UN día');
   assert.strictEqual(fullWeeksCount([s(7), s(9), s(11), s(14), s(16)], 3), 1);
+  assert.strictEqual(fullWeeksCount([s(14), s(14), s(16)], 3), 0, 'en el conteo histórico también: dos sesiones el mismo día son UN día');
+  // 🔒 y gxStats le pasa los días del PLAN, no el umbral de la racha (2): con 2 de 3 no hay semana completa
+  assert.strictEqual(gxStats(plan3, [s(14), s(16)], {}).fullWeeks, 0, '🔴 «semana completa» se conformó con la racha de 2 días');
 });
 
 test('v639 · un logro ganado no se pierde y lo nuevo se calcula contra lo ya visto', () => {
