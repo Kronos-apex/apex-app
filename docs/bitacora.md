@@ -4,6 +4,34 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-18 — v633 a v637: TODAS LAS PANTALLAS, EN ORDEN
+
+**Pedido del PO:** *«sigue puliendo… revisa todas las pantallas en orden»*. Recorrido con captura
+(claro y oscuro): entrada y registro → las 6 pestañas del asesorado → sus habitaciones → entreno en
+curso → cierre → panel del coach (Inicio, Asesorados, ficha, Plantillas, Ejercicios, Mensajes) →
+asistente de datos, tour y modales.
+
+- **v633:** la raya verde que cruzaba el «AVI» del login NO era del logo (lo dijo el PO) → fuera.
+- **v634 · registro:** el «+» de Altura se salía de la tarjeta a 390px; WhatsApp y Lesiones usaban
+  una fila SIN estilo (170px, ejemplo cortado); «AVI •» se pegaba a la línea de abajo con el
+  formulario abierto. «Hoy»: la comida sin aire debajo. Medidas: botones de 27px → 36px.
+- **v635 · coach:** 🔴 **la barra inferior solo se marcaba al TOCARLA** — llegar a un panel por
+  una tarjeta, el menú o «atrás» dejaba resaltada la pestaña anterior; ahora la sincroniza `gp`.
+  El «+ Nuevo» de la barra empujaba el botón de salir fuera de la pantalla (y repetía el de la
+  página). Bandeja: «Andrea: «…»» y «2 mensajes». Los 9 cortes de texto terminan en «…».
+- **v636 · ficha:** fechas «04 de ago de 2026» → «4 de agosto de 2026» (10 sitios); «No
+  cobrarle» deja el rojo de lo destructivo.
+- **v637 · ficha:** el detalle de comida pintaba la clave cruda «2026-09-18» → `fechaDiaTexto`,
+  que parte la cadena a mano (`new Date('2026-09-18')` es el día ANTERIOR en Colombia).
+
+**Harnesses que mentían o estaban muertos, arreglados de paso:** `_shots-login` abría los
+formularios a mano (salteando `cinFormMode`) → ahora pulsa los botones reales y mide la geometría;
+`_verify-medidas` contaba 12 perímetros (13 desde v598); `_shot-f4` no abría el entreno colapsado
+(rojo desde v447); `_verify-renovaciones` N1a dependía del día del mes; `_verify-empujar` RETIRADO
+(buscaba un aviso quitado en v592; lo reemplaza `_verify-inicio-coach`, verde).
+
+Suite **1254 → 1260** en local, UTC y LF · hook 12/12 · `_prodcheck 637` verde.
+
 ## ⏮️ 2026-09-17 — v629 a v632: LO QUE SE VEÍA EN CAPTURA, PANTALLA POR PANTALLA
 
 **Pedido del PO antes de dormir:** *«sigue con eso y las otras pantallas lo que permitan los

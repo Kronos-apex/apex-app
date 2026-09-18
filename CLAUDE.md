@@ -1426,6 +1426,9 @@ pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos.
 - 🔴 **`w[0]` NO ES LA PRIMERA LETRA: en un nombre que empieza con emoji es MEDIO carácter** (la mitad de un par sustituto) y el avatar pintaba «�Q». Las iniciales se toman con `\p{L}`. Hermano: **un emoji compuesto (ZWJ, como 😮‍💨) sale partido en dos en teléfonos sin soporte** — hay un candado que prohíbe `\u200d` en el código. (v632)
 - 🔴 **UN CANDADO DE FORMATO QUE MIRA LA PALABRA QUE SIGUE A LA CIFRA SE SALTA LAS QUE VAN EN OTRA ETIQUETA.** «${x} kcal» lo cazaba; `<b>${band.lo}</b> y …` y el titular en una caja con «kcal» en la de abajo, no — los dos sabotajes salieron verdes. Se afirma por la VARIABLE (toda interpolación de `*kcal*`/`band.*` pasa por `fmtMiles`). Y al formatear cifras, **los harnesses que las leían con `\d+` se rompen en silencio o leen «200» de «3.200»**: se re-corren todos los que parsean números. (v631)
 
+- 🔴 **UN ESTADO VISUAL QUE SOLO ACTUALIZA EL CONTROL QUE LO CAMBIA MIENTE EN CUANTO SE LLEGA POR OTRA PUERTA.** La barra inferior del coach se marcaba en el `onclick` de cada pestaña (`setBottomNav(this)`), así que llegar a «Mensajes» desde una tarjeta del Inicio, el menú lateral o el botón atrás dejaba resaltada la pestaña anterior. El resaltado lo decide ahora **el panel en el que se está** (`gp`), no el botón que se tocó. **Regla: un indicador de «dónde estás» se deriva del estado, nunca del evento que lo cambió.** (v635)
+- 🔴 **`new Date('2026-09-18')` ES MEDIANOCHE UTC = EL DÍA ANTERIOR EN COLOMBIA.** Las claves de día (`YYYY-MM-DD`) se parten a mano (`fechaDiaTexto`), igual que ya se hacía en los hábitos. Y un harness que abre un formulario «a mano» con `style.display` en vez de pulsar el botón real **mide otra pantalla**: `_shots-login` mostraba el aviso de instalar encima del formulario, que la app sí aparta. (v634, v637)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1621,7 +1624,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-17 (**v628 → v632 — PULIDO VISUAL PANTALLA POR PANTALLA, EN PRODUCCIÓN**: `fmtMiles` en todas las cifras («3.400 kg», «2.400 kcal», «160 g»), etiquetas de la gráfica fuera de la línea, iconos de la marca donde había emoji grandes, iniciales y emoji compuestos que ya no se rompen, y **el día 1 arranca de un toque** (antes el entreno salía dos veces). Suite 1253, sabotajes 9/9 + 11/11 + 6/6) · (**v626 + v627 — LOS CONTROLES LLEVAN ICONO, NO EMOJI**.
+*Última actualización: 2026-09-18 (**v633 → v637 — TODAS LAS PANTALLAS EN ORDEN, EN PRODUCCIÓN**: raya del logo fuera, registro que cabe, barra inferior del coach que sigue al panel, fechas en español, 5 harnesses muertos o mentirosos arreglados/retirados; suite 1260) · (**v628 → v632 — PULIDO VISUAL PANTALLA POR PANTALLA, EN PRODUCCIÓN**: `fmtMiles` en todas las cifras («3.400 kg», «2.400 kcal», «160 g»), etiquetas de la gráfica fuera de la línea, iconos de la marca donde había emoji grandes, iniciales y emoji compuestos que ya no se rompen, y **el día 1 arranca de un toque** (antes el entreno salía dos veces). Suite 1253, sabotajes 9/9 + 11/11 + 6/6) · (**v626 + v627 — LOS CONTROLES LLEVAN ICONO, NO EMOJI**.
 Pedido del PO: *«mejora donde se pueda mejorar, que se vea profesional y que no parezca hecha por un
 novato»*. Se MIRÓ antes de tocar: **0 errores de tilde en 5.548 textos** y el ritmo de los
 formularios era constante — no eran el problema. Lo que delataba era **un emoji haciendo de icono
