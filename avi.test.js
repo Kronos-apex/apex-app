@@ -19978,6 +19978,13 @@ test('v632 🔒 «+ Rutina» es una acción principal, no una alerta', () => {
   assert.ok(/class="btn bp bsm"[^>]*onclick="openNewRoutine\(\)">\+ Rutina</.test(html), '🔴 «+ Rutina» volvió al color de alerta');
 });
 
+test('v633 🔒 el «AVI» del login no lleva una raya encima (no es parte del logo)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.cin-word\{/.test(css), 'desapareció la regla del logo: el candado ya no vigila nada');
+  assert.ok(!/\.cin-word::?(after|before)\{/.test(css), '🔴 volvió un adorno pintado encima del «AVI» (se lee como tachado)');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
