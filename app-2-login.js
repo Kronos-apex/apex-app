@@ -1553,7 +1553,7 @@ function renderPaymentCard(client){
   if(!nequi||st!=='expiring'){con.innerHTML='';return;}
   const pays=(client.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
   const last=pays[0];
-  const dueStr=last?new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'';
+  const dueStr=last?new Date(last.dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'';
   const amount=last&&last.amount?'$'+Number(last.amount).toLocaleString('es-CO')+' COP':'';
   con.innerHTML=`<div style="background:var(--yll);border:1.5px solid var(--yl);border-radius:var(--r);padding:14px 16px">
     <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px">💳 Tu plan vence pronto</div>
@@ -1732,7 +1732,7 @@ function renderHome(){
         <div style="font-size:12px;font-weight:700;color:var(--ort);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} ${expiring.length} plan${expiring.length>1?'es':''} vence${expiring.length>1?'n':''} en 5 días</div>
         ${expiring.map(c=>{
           const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
-          const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
+          const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long'});
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--br)">
             <span style="font-size:13px;font-weight:600">${esc(c.name.split(' ')[0])} ${esc(c.name.split(' ')[1]||'')}</span>
             <div style="display:flex;align-items:center;gap:6px">
@@ -2189,7 +2189,7 @@ function openCoachStat(kind){
       html+=`<div class="sroom-stats">${stat('💵','Total','$'+total.toLocaleString('es-CO'),'#10b981')}${stat('👥','Pagaron',rows.length,'#3a86c8')}${stat('📊','Promedio','$'+prom.toLocaleString('es-CO'),'#9b6dd6')}</div>`;
       html+=`<div class="sroom-sec">De dónde salen</div>`;
       html+=rows.map(({c,sub,pm})=>{
-        const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short'})).join(', ');
+        const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'numeric',month:'long'})).join(', ');
         const nota=pm.map(p=>p.note).filter(Boolean)[0]||'';
         const meta=`${pm.length>1?pm.length+' pagos: ':''}${fechas}${nota?' · '+esc(nota):''}`;
         return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--gt)">$${sub.toLocaleString('es-CO')}</span>`);
@@ -2208,7 +2208,7 @@ function openCoachStat(kind){
       html+=`<div class="sroom-sec">Tus asesorados vigentes</div>`;
       html+=act.map(({c,st})=>{
         const b=MS.badge(st), d=_dueMs(c);
-        const dueStr=isFinite(d)?new Date(d).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'—';
+        const dueStr=isFinite(d)?new Date(d).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'—';
         return _crepRow(c.id,c.name,`Vence: ${dueStr} · ${esc(c.level||'—')}`,`<span class="crep-badge" style="background:${b.bg};color:${b.color}">${esc(b.label)}</span>`);
       }).join('');
     } else html+=empty('🟢','No hay asesorados activos ahora mismo.');
@@ -2231,7 +2231,7 @@ function openCoachStat(kind){
       html+=byClient.map(({c,sess})=>{
         const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
         const last=sess.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
-        const lastStr=new Date(last.date).toLocaleDateString('es-CO',{weekday:'short',day:'2-digit',month:'short'});
+        const lastStr=new Date(last.date).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'long'});
         return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--ort)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
       }).join('');
     } else html+=empty('🏋️','Nadie ha entrenado esta semana todavía.');

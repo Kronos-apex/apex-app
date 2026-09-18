@@ -20026,6 +20026,18 @@ test('v635 🔒 los textos cortados terminan en «…», no en tres puntos', () 
   assert.ok(!/\$\{count\} msg</.test(js), '🔴 la bandeja volvió a decir «2 msg»');
 });
 
+test('v636 🔒 las fechas de pago se escriben «4 de agosto de 2026», no «04 de ago de 2026»', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n')
+      .forEach((l, i) => { if (/day:'2-digit'/.test(l)) malos.push(f + ':' + (i + 1)); });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 volvió el día con cero delante: ' + malos.join(', '));
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  assert.ok(/const courtBtn=`<button class="btn bg bsm"/.test(js), '🔴 «No cobrarle» volvió al rojo de lo destructivo');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -96,7 +96,14 @@ try {
   ]);
   let v = await leer();
   log('    ' + JSON.stringify({ ingr: v.ingr, actv: v.actv, n1: v.notaIngr.txt, n2: v.notaActv.txt }));
-  check('N1a la caja del mes NO cambia (sigue siendo la plata que entró)', v.ingr === '$0', v.ingr);
+  // 🔁 v636: esperaba «$0» a secas, y el pago de prueba de Danilo (vence en 14 días → pagó hace 16)
+  // cae DENTRO del mes en curso a partir del día 17: el check se ponía rojo según el calendario, con
+  // la app bien (gotcha de los fixtures con fechas). Lo esperado se CALCULA igual que el fixture:
+  // la caja es la suma de los pagos hechos este mes, y las renovaciones pendientes no entran.
+  const _mes = new Date(); const _esteMes = n => { const f = new Date(Date.now() + n * 86400000); return f.getMonth() === _mes.getMonth() && f.getFullYear() === _mes.getFullYear(); };
+  const _caja = [-4, -4, -4, -1, 14].map((v, i) => _esteMes(v - 30) ? [150000, 150000, 130000, 125000, 150000][i] : 0).reduce((a, b) => a + b, 0);
+  const _cajaTxt = '$' + String(_caja).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  check('N1a la caja del mes NO cambia (sigue siendo la plata que entró)', v.ingr === _cajaTxt, v.ingr + ' (esperado ' + _cajaTxt + ')');
   check('N1b «Activos» NO cambia: la gracia no cuenta como al día (v528)', v.actv === '1', v.actv);
   check('N1c pero ahora se DICE cuántos faltan por renovar', v.notaIngr.visible && /4 por renovar/.test(v.notaIngr.txt), v.notaIngr.txt);
   check('N1d con la plata estimada y marcada como estimación', /≈\$555\.000/.test(v.notaIngr.txt), v.notaIngr.txt);

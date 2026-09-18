@@ -2814,9 +2814,9 @@ function renderDetailMembership(id){
   // Fecha de vencimiento legible
   let dueStr='—', dateStr='—', daysLeftStr='';
   if(last){
-    dateStr=new Date(last.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+    dateStr=new Date(last.date).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
     const due=new Date(last.dueDate);
-    dueStr=due.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+    dueStr=due.toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
     const daysLeft=Math.ceil((due-Date.now())/86400000);
     if(daysLeft>=0) daysLeftStr=`<span style="font-size:11px;color:var(--t2)">${daysLeft} día${daysLeft!==1?'s':''} restante${daysLeft!==1?'s':''}</span>`;
     else daysLeftStr=`<span style="font-size:11px;color:var(--rdt)">${Math.abs(daysLeft)} día${Math.abs(daysLeft)!==1?'s':''} vencido${Math.abs(daysLeft)!==1?'s':''}</span>`;
@@ -2830,8 +2830,8 @@ function renderDetailMembership(id){
   if(pays.length){
     histHTML='<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">Historial de pagos</div>';
     pays.slice(0,5).forEach((p,i,arr)=>{
-      const d=new Date(p.date).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
-      const dd=new Date(p.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      const d=new Date(p.date).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+      const dd=new Date(p.dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
       const amt=p.amount?'$'+Number(p.amount).toLocaleString('es-CO'):'—';
       const isLast=i===arr.slice(0,5).length-1;
       histHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--bg);border-radius:var(--rsm);${isLast?'':'margin-bottom:7px'}">
@@ -2857,7 +2857,9 @@ function renderDetailMembership(id){
   // «No cobrarle» / «Volver a cobrarle». Y va aquí, junto a Suspender, porque son la misma
   // familia de decisión del coach sobre la cuenta — no un ajuste escondido en otra pantalla.
   const courtLabel=c.courtesy?'Volver a cobrarle':'No cobrarle';
-  const courtBtn=`<button class="btn bd bsm" onclick="toggleCourtesy('${id}')">${courtLabel}</button>`;
+  // v636: iba en ROJO (la clase de lo destructivo) al lado de «Suspender». No cobrarle a alguien
+  // no le quita nada: se pinta neutra, y el rojo queda para lo que sí corta el acceso.
+  const courtBtn=`<button class="btn bg bsm" onclick="toggleCourtesy('${id}')">${courtLabel}</button>`;
 
   con.innerHTML=`
     <div class="card">
@@ -2971,7 +2973,7 @@ function whatsappReminder(id){
   const last=pays[0];
   let dueStr='pronto';
   if(last){
-    dueStr=new Date(last.dueDate).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+    dueStr=new Date(last.dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
   }
   const nombre=c.name.split(' ')[0];
   const amount=last&&last.amount?` ($${last.amount.toLocaleString('es-CO')} COP)`:'';
