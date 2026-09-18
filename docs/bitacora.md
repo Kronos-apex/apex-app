@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-18 — CI verde otra vez + v638 a v640
+
+- **CI rojo desde v628 (11 commits):** un test esperaba `(4320).toLocaleString()` — «4.320» aquí, «4,320» en el runner.
+  En Windows Node ignora `LANG`; el pre-commit corre ahora la suite en inglés + UTC (`scripts/hooks/_idioma-en.cjs`).
+- **v638:** los nombres de ejercicio usan hasta 2 líneas en todas partes (reporte del PO); selector de ejercicios y
+  constructor de rutinas con músculo legible, entorno como etiqueta, casillas oscuras; «2 sem.».
+- **v639 · logros:** 20 en 4 grupos con la constancia primero (`GX_ACH`); «semana completa» = todos los días del
+  plan; se comparten desde «Progreso» y al terminar el entreno (toma el turno del cierre). `_verify-logros` 16/16,
+  `_sabotaje-v639` 6/6 (la primera corrida dio 4: dos huecos de mis tests).
+- **v640 · nombre del coach:** vivía en su fila (RLS por dueño) y las imágenes de los asesorados decían «Mi Coach»;
+  el coach lo estampa en `profile.coachName` (`coachNameStamp`).
+- ⏳ Pendiente de la conexión de Supabase (`/mcp`): proyecto de pruebas y desplegar `refresh_snapshot` con el
+  catálogo nuevo (Comunidad sigue contando las 8 medallas viejas). 🚫 GitHub privado no se hizo: en plan gratis
+  apaga Pages.
+
 ## ⏮️ 2026-09-18 — v633 a v637: TODAS LAS PANTALLAS, EN ORDEN
 
 **Pedido del PO:** *«sigue puliendo… revisa todas las pantallas en orden»*. Recorrido con captura
