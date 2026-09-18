@@ -19905,6 +19905,25 @@ test('v631 🔒 la cabecera de nutrición usa el icono de la marca, no 🥗', ()
   assert.ok((js.match(/aviIcon\('apple',26\)/g) || []).length >= 2, '🔴 falta el icono en alguna de las dos cabeceras');
 });
 
+// 🔴 La primera versión solo cazaba la cifra PEGADA a la palabra «kcal», y dos sabotajes salieron
+// VERDES: el titular del plan va en una caja y «kcal» en la de abajo, y la franja dice «entre
+// <b>2391</b> y …». Se afirma por la VARIABLE, no por la palabra que la sigue.
+test('v631 🔒 toda variable de calorías o de la franja pasa por fmtMiles, vaya donde vaya', () => {
+  const fs = require('fs'), path = require('path');
+  const TEXTO = ['kcalLabel'];   // es un rótulo, no una cifra
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n').forEach((l, i) => {
+      const re = /\$\{((?:esc\(String\()?([\w.]*(?:kcal|Kcal|band\.(?:lo|hi|falta|sobra|hecho))[\w.]*)\)*)\}/g; let m;
+      while ((m = re.exec(l))) if (!TEXTO.includes(m[2])) malos.push(f + ':' + (i + 1) + ' ' + m[1]);
+    });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 calorías sin fmtMiles: ' + malos.join(', '));
+  const re = /\$\{((?:esc\(String\()?([\w.]*(?:kcal|Kcal|band\.(?:lo|hi|falta|sobra|hecho))[\w.]*)\)*)\}/;
+  assert.ok(re.test('<b>${band.lo}</b> y') && re.test('${esc(String(_kcalReal))}</div>') && !re.test('${fmtMiles(band.lo)}'),
+    'el criterio no discrimina');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
