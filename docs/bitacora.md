@@ -4,6 +4,43 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v629 a v632: LO QUE SE VEÍA EN CAPTURA, PANTALLA POR PANTALLA
+
+**Pedido del PO antes de dormir:** *«sigue con eso y las otras pantallas lo que permitan los
+tokens»*. Se capturaron (claro y oscuro) las habitaciones del asesorado, «Hoy», el día 1,
+progreso, perfil, rutinas, nutrición, el panel y la ficha del coach, y se corrigió lo que
+delataba trabajo a medias:
+
+- **v629 · la gráfica de progresión** ponía el valor siempre encima del punto (y el más alto,
+  debajo): con la curva subiendo las dos etiquetas quedaban **montadas sobre la línea**. Ahora un
+  VALLE lleva la etiqueta debajo y lo demás encima (`chartLabelBelow`, pura), con franja propia.
+  Y **7 cifras pegadas a su unidad** («120kg × 10») → «120 kg».
+- **v630 · iconos de estado:** el candado amarillo 🔒 de las cajas Premium convivía a dos dedos
+  con el candado SVG de los logros; mismo cambio en «plan en preparación» (📋), el error de carga
+  (🔄), el selector de plantillas (📂) y el aviso de letra grande (👓). Clase `.ic-circle`.
+- **v631 · calorías y gramos:** ~50 cifras de kcal crudas — la misma frase decía «entre **2391**
+  y **3.105** kcal» —, 20 gramos pegados («160g»), el 🥗 de la cabecera de nutrición y la tarjeta
+  de descanso con «0 ejercicios · 0 series». 🔴 El primer candado solo miraba la cifra PEGADA a
+  la palabra «kcal» y **dos sabotajes salieron verdes** (el titular va en una caja y «kcal» en la
+  de abajo): ahora se afirma por la VARIABLE. Cinco harnesses que leían «2400» se ajustaron para
+  comparar sin el punto de miles.
+- **v632 · el día 1 (el hallazgo más importante del lote):** el botón «Empezar mi primer entreno»
+  solo **bajaba la pantalla hasta una SEGUNDA tarjeta con el mismo entreno y otro «Empezar»** —
+  efecto cruzado de v447 (el entreno colapsado) sobre la portada de v403. La persona nueva veía
+  su entreno dos veces y tocaba dos veces para arrancar. Ahora el botón ABRE el entreno y con la
+  portada puesta no se pinta la tarjeta. **El harness `_verify-firstrun` D3 aprobaba el defecto**
+  («hay algo montado debajo» = la tarjeta repetida): re-encuadrado + D3b nuevo. Además: las
+  iniciales del avatar partían los emoji («🧪 QA» → «�Q»), el ánimo «Cansado» usaba 😮‍💨
+  (compuesto ZWJ, sale partido en 😮 + 💨 en teléfonos viejos) → 😴, y «+ Rutina» dejó el color
+  de alerta.
+
+Suite **1240 → 1253** en local, UTC y LF · hook 12/12 en cada commit · matrices
+`_sabotaje-v629-631` **11/11** y `_sabotaje-v632` **6/6** · `_verify-firstrun`, `_verify-hero`,
+`_guiado-suite`, `_verify-arranque-modulos`, `_verify-foodlog` 41/41, `_verify-deload`,
+`_verify-meals`, `_verify-menores(-coach)`, `_verify-chips` verdes · `_prodcheck 632` verde.
+⚠️ `_shots-rooms` falló UNA vez en «dark-6-nutrition: la habitación abre» y pasó al re-correrlo:
+flaky, sin causa encontrada.
+
 ## ⏮️ 2026-09-17 — v628: LAS CIFRAS SE ESCRIBEN IGUAL EN TODOS LOS TELÉFONOS
 
 **Sigue el pedido del PO** (*«que se vea profesional»*). Se MIRARON en captura las 7 habitaciones

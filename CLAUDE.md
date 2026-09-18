@@ -1422,6 +1422,10 @@ pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos.
 
 - 🔴 **`toLocaleString()` SIN IDIOMA NO ES UN FORMATO: ES LO QUE DIGA EL TELÉFONO.** La misma cifra salía «3.400», «3,400» o «3400» según el aparato (el último en WebViews sin datos de idioma, que es como salía en el banco). **Toda cifra visible pasa por `fmtMiles`** (avi-core, pura, sin ICU — la misma razón por la que las fechas de v624 no usan `toLocaleDateString`), y un candado barre los módulos prohibiendo la forma sin idioma. Y su hermano del mismo lote: **`text-transform:capitalize` sobre una fecha en español escribe «17 De Septiembre»** — capitaliza CADA palabra; la primera mayúscula se pone en el JS, nunca en el CSS. (v628)
 
+- 🔴 **DOS FEATURES CORRECTAS POR SEPARADO PUEDEN SUMAR UN DEFECTO QUE NINGUNA TIENE: la portada del día 1 (v403) mandaba «bajar hasta el entreno», y desde v447 el entreno llega COLAPSADO en una tarjeta con su propio «Empezar».** Resultado: quien entrenaba por primera vez veía su entreno DOS veces y tocaba DOS veces para arrancar, durante 185 versiones. Y el harness lo aprobaba: su D3 pedía «algo montado debajo» y ese algo era la tarjeta repetida. **Al cambiar cómo se presenta una pantalla, busca QUIÉN navega hacia ella** (aquí `firstRunGo`) y re-lee lo que afirman sus harnesses: un check de «hay contenido» no distingue el contenido correcto del duplicado. (v632)
+- 🔴 **`w[0]` NO ES LA PRIMERA LETRA: en un nombre que empieza con emoji es MEDIO carácter** (la mitad de un par sustituto) y el avatar pintaba «�Q». Las iniciales se toman con `\p{L}`. Hermano: **un emoji compuesto (ZWJ, como 😮‍💨) sale partido en dos en teléfonos sin soporte** — hay un candado que prohíbe `\u200d` en el código. (v632)
+- 🔴 **UN CANDADO DE FORMATO QUE MIRA LA PALABRA QUE SIGUE A LA CIFRA SE SALTA LAS QUE VAN EN OTRA ETIQUETA.** «${x} kcal» lo cazaba; `<b>${band.lo}</b> y …` y el titular en una caja con «kcal» en la de abajo, no — los dos sabotajes salieron verdes. Se afirma por la VARIABLE (toda interpolación de `*kcal*`/`band.*` pasa por `fmtMiles`). Y al formatear cifras, **los harnesses que las leían con `\d+` se rompen en silencio o leen «200» de «3.200»**: se re-corren todos los que parsean números. (v631)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1617,7 +1621,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-17 (**v626 + v627 — LOS CONTROLES LLEVAN ICONO, NO EMOJI**.
+*Última actualización: 2026-09-17 (**v628 → v632 — PULIDO VISUAL PANTALLA POR PANTALLA, EN PRODUCCIÓN**: `fmtMiles` en todas las cifras («3.400 kg», «2.400 kcal», «160 g»), etiquetas de la gráfica fuera de la línea, iconos de la marca donde había emoji grandes, iniciales y emoji compuestos que ya no se rompen, y **el día 1 arranca de un toque** (antes el entreno salía dos veces). Suite 1253, sabotajes 9/9 + 11/11 + 6/6) · (**v626 + v627 — LOS CONTROLES LLEVAN ICONO, NO EMOJI**.
 Pedido del PO: *«mejora donde se pueda mejorar, que se vea profesional y que no parezca hecha por un
 novato»*. Se MIRÓ antes de tocar: **0 errores de tilde en 5.548 textos** y el ritmo de los
 formularios era constante — no eran el problema. Lo que delataba era **un emoji haciendo de icono
