@@ -3409,7 +3409,7 @@ const PLACE_DEFAULT_STYLE={gym:'gym_hipertrofia',casa:'casa_equipo',corporal:'ca
 // Viven en el propio objeto del cliente (c.genPrefs) → viajan y se sincronizan con él,
 // igual que sus rutinas. El deload 🔄 es por-sesión de generación (no se persiste).
 function genPrefs(c){ if(!c.genPrefs)c.genPrefs={exclude:[],prefer:[]}; c.genPrefs.exclude=c.genPrefs.exclude||[]; c.genPrefs.prefer=c.genPrefs.prefer||[]; return c.genPrefs; }
-function _updateGenPrefBtns(c){ const p=genPrefs(c); const eb=document.getElementById('mg-excl-btn'),pb=document.getElementById('mg-pref-btn'); if(eb)eb.textContent=`🚫 Excluidos (${p.exclude.length})`; if(pb)pb.textContent=`⭐ Priorizados (${p.prefer.length})`; }
+function _updateGenPrefBtns(c){ const p=genPrefs(c); const eb=document.getElementById('mg-excl-btn'),pb=document.getElementById('mg-pref-btn'); if(eb)eb.textContent=`Excluidos (${p.exclude.length})`; if(pb)pb.textContent=`Priorizados (${p.prefer.length})`; }
 function openGenPrefsPicker(kind){
   pickerTarget=kind; CUR.pkFilter='all'; CUR.pkEnv='all';
   const es=document.getElementById('pk-env'); if(es)es.value='all';

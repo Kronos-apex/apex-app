@@ -19709,6 +19709,47 @@ test('v626 · el recuadro de instalar usa las comillas de la marca, no las recta
 });
 
 // ══════════════════════════════════════════════════════
+// v627 — LOS BOTONES SIGUEN LA CONVENCIÓN DE LA APP: SIN EMOJI
+// ══════════════════════════════════════════════════════
+// Medido el 17-sep sobre el marcado estático: de 78 botones .btn con texto, 70 iban sin emoji y 8
+// con uno delante («💾 Guardar», «✨ Generar», «📅 Programar»…). La convención estaba clara y los
+// 8 eran la excepción: la misma acción escrita de dos formas es lo que hace que una app se vea
+// armada a pedazos. Se igualaron a la mayoría, no a mi gusto.
+
+test('v627 · ningún botón .btn del marcado abre con un emoji de color', () => {
+  const fs = require('fs'), path = require('path');
+  const html = sinComentarios(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
+  // 🔴 El emoji que va dentro de <span class="t-ic" data-ic="…"> NO lo ve nadie: `aviIconizeStatic`
+  //    lo reemplaza por el SVG de marca al cargar (es solo el RESPALDO si el módulo no carga). La
+  //    primera versión de este test los contaba y acusaba 8 botones sanos — medía el código fuente,
+  //    no la pantalla. Se quitan esos envoltorios antes de mirar.
+  const botones = [...html.matchAll(/<button[^>]*class="btn[^"]*"[^>]*>([\s\S]*?)<\/button>/g)]
+    .map(m => m[1].replace(/<span class="t-ic[^"]*"[^>]*data-ic="[^"]*"[^>]*>[\s\S]*?<\/span>/g, ' ')
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  // 🔒 CONTROL DE COBERTURA: si el patrón deja de casar, esto aprobaría sobre nada.
+  assert.ok(botones.length >= 60, `🔴 solo ${botones.length} botones: el patrón dejó de leer el marcado`);
+  // El «✓» es un signo TIPOGRÁFICO: hereda el color del botón. El que delata es el emoji de color,
+  // que se dibuja distinto en cada sistema operativo y no respeta el color del botón.
+  const conEmoji = botones.filter(t => /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test(t) && !/^[\u2713\u2714]/.test(t));
+  assert.deepStrictEqual(conEmoji, [], '🔴 volvió un botón con emoji delante: ' + conEmoji.join(' | '));
+  // 🔒 CONTROL DE DISCRIMINACIÓN: el criterio SÍ caza un botón con emoji (si no, pasa por vacío).
+  assert.ok(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test('💾 Guardar'), 'el criterio no discrimina');
+});
+
+test('v627 🔒 la SEGUNDA puerta: el JS que reescribe el contador no le devuelve el emoji', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = js.indexOf('function _updateGenPrefBtns(');
+  assert.ok(i > 0, '🔴 desapareció la función que actualiza los contadores');
+  const cuerpo = js.slice(i, js.indexOf('\n', i + 10));
+  // Si solo se limpiaba el HTML, el primer render volvía a escribir «🚫 Excluidos (N)»: el mismo
+  // defecto del saludo de v626, que también tenía dos puertas.
+  assert.ok(/eb\.textContent=`Excluidos \(/.test(cuerpo) && /pb\.textContent=`Priorizados \(/.test(cuerpo),
+    '🔴 el contador volvió a escribir el emoji encima del botón');
+  assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2B00}-\u{2BFF}]/u.test(cuerpo), '🔴 hay un emoji en la función que pinta los contadores');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
