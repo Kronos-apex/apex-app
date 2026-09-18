@@ -19985,6 +19985,16 @@ test('v633 🔒 el «AVI» del login no lleva una raya encima (no es parte del l
   assert.ok(!/\.cin-word::?(after|before)\{/.test(css), '🔴 volvió un adorno pintado encima del «AVI» (se lee como tachado)');
 });
 
+test('v634 🔒 el registro y el perfil: filas que caben, campos a lo ancho, toques de 36px', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.wz-row \.wz-tel\{width:100%/.test(css), '🔴 WhatsApp y Lesiones vuelven a 170px con el ejemplo cortado');
+  assert.ok(/\.wz-row \.lab\{display:flex/.test(css), '🔴 el título de la fila vuelve a caer en líneas sueltas');
+  assert.ok(/\.medacts button\{min-height:36px\}/.test(css), '🔴 «Corregir»/«Eliminar» de las medidas vuelven a 27px');
+  assert.ok(/#cn-meals>\.card\{margin-bottom:12px\}/.test(css), '🔴 «Tu comida de hoy» vuelve a quedar pegada a la tarjeta de abajo');
+  assert.ok(/\.cin-brand\{[^}]*margin-bottom:26px/.test(css), '🔴 «AVI •» vuelve a pegarse a la línea de abajo con un formulario abierto');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

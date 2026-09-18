@@ -37,6 +37,9 @@ await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}
   const plancha={...DB.exercises.find(e=>e.id==='e17'),sets:2,reps:40,track:'tiempo'};
   c.routines=[{id:'rShotF4',name:'Visual F4',day:days[new Date().getDay()],exercises:[press,plancha]}];
   localStorage.removeItem('apex_tip_done_'+c.id);
+  // v634: desde v447 el entreno llega COLAPSADO tras «Empezar»; sin abrirlo esta captura
+  // medía una pantalla sin guiado y salía en rojo. Se abre como lo abre la persona.
+  CUR.todayExpanded='rShotF4';
   renderClientToday(c);})()`);
 await sleep(1200);
 const shot=async n=>{const r=await send('Page.captureScreenshot',{format:'png'});writeFileSync(process.env.TEMP.replace(/\\/g,'/')+'/'+n+'.png',Buffer.from(r.data,'base64'));console.log('shot '+n);};

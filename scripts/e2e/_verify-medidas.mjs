@@ -114,10 +114,12 @@ const campos = JSON.parse(await ev(`(()=>{
     avisoTexto: (document.getElementById('med-first').innerText||'').replace(/\\s+/g,' ').trim().slice(0,160),
     lados: MED_FIELDS.filter(f=>f.lado).length
   });})()`));
-ok(campos.total === 12, 'la lista declara 12 perímetros', campos.total);
-ok(campos.pintados === 12, 'los 12 se pintan de verdad en la pantalla', campos.faltan);
+// v634: la lista pasó a 13 con «hombros» (v598) y esto llevaba rojo desde entonces con la app bien.
+// Se afirma contra la PROPIA lista: todo lo que declara se pinta y trae su pista.
+ok(campos.total >= 13, 'la lista declara sus perímetros (13 desde v598, con hombros)', campos.total);
+ok(campos.pintados === campos.total, 'todos se pintan de verdad en la pantalla', campos.faltan);
 ok(campos.lados === 8, 'ocho de ellos son por lado (brazo, antebrazo, muslo, pantorrilla × 2)', campos.lados);
-ok(campos.conPista === 12, 'los 12 traen su instrucción visible debajo', campos.conPista);
+ok(campos.conPista === campos.total, 'todos traen su instrucción visible debajo', campos.conPista);
 ok(campos.aviso === true, 'la primera vez se ve el aviso de las tres reglas');
 ok(/ayunas/i.test(campos.avisoTexto) && /suelto/i.test(campos.avisoTexto),
   'el aviso dice lo que decide si dos tomas se pueden comparar', campos.avisoTexto);

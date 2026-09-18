@@ -1179,7 +1179,7 @@ function renderMedidasClient(clientId){
       <span style="min-width:0"><b>${esc(fmt(e.date))}</b> <span style="color:var(--t3)">· ${n} medida${n!==1?'s':''}</span></span>
       <span class="medacts">${pidiendo
         ? `<button onclick="delMedida('${esc(e.id)}')" style="border-color:var(--rd);color:var(--rd)">Sí, eliminar</button><button onclick="cancelDelMedida()">Cancelar</button>`
-        : `<button onclick="openMedModal('${esc(e.id)}')">✏️ Corregir</button><button onclick="askDelMedida('${esc(e.id)}')">Eliminar</button>`}</span>
+        : `<button onclick="openMedModal('${esc(e.id)}')">Corregir</button><button onclick="askDelMedida('${esc(e.id)}')">Eliminar</button>`}</span>
     </div>`;
   });
   html+=`</div>`;

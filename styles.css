@@ -2003,7 +2003,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    360×640: sin esto, 170 px del aviso quedaban fuera y eran inalcanzables. */
 .cin-wrap{position:relative;z-index:6;display:flex;flex-direction:column;height:100%;overflow-y:auto;width:100%;max-width:430px;margin:0 auto;
   padding:max(38px,env(safe-area-inset-top)) 26px max(24px,env(safe-area-inset-bottom))}
-.cin-brand{display:flex;align-items:center;gap:9px}
+.cin-brand{display:flex;align-items:center;gap:9px;margin-bottom:26px;flex-shrink:0} /* v634: con un formulario abierto el héroe sube y «AVI •» quedaba pegado a la línea de abajo */
 .cin-brand svg{width:21px;height:19px}
 .cin-brand span{font-size:10.5px;font-weight:800;letter-spacing:3.5px;color:#fff;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.8)}
 .cin-dot{width:5px;height:5px;border-radius:50%;background:#10E0A0;box-shadow:0 0 10px rgba(16,224,160,.45)}
@@ -2151,9 +2151,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 /* Las filas `wz-row` (WhatsApp, Lesiones) reusan la caja del ícono de los steppers. Sin esta
    regla el SVG no tenía NI tamaño NI fill:none: salía un bloque negro de 300x150. Estuvo
    oculto desde v418 sólo porque el símbolo `#i-chat` no existía y no había nada que pintar. */
-.wz-row{--c:#10E0A0}
+.wz-row{--c:#10E0A0;margin-bottom:6px}
+/* v634: la fila existía sin su estilo: el título caía en tres líneas sueltas (ícono / texto /
+   campo) y el campo medía 170px fijos, con «Ej: hernia discal, dol…» cortado. Ahora el título
+   va como el de los steppers y el campo ocupa el ancho. */
+.wz-row .lab{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:rgba(242,245,244,.7);margin-bottom:8px}
+.wz-row .wz-tel{width:100%;box-sizing:border-box}
 .wz-stepper .lic,.wz-row .lic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:color-mix(in srgb,var(--c) 20%,#0c1512);border:1px solid color-mix(in srgb,var(--c) 38%,transparent)}
-.wz-stepper .ctl{display:flex;align-items:center;gap:9px}
+.wz-stepper .ctl{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .wz-pm{width:40px;height:40px;border-radius:12px;border:1.5px solid rgba(16,224,160,.35);background:rgba(16,224,160,.08);color:#10E0A0;font-size:23px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;font-family:inherit;transition:transform .1s,background .15s}
 .wz-pm:active{transform:scale(.92);background:rgba(16,224,160,.18)}
 /* Teléfono del registro: es texto, no una cifra que se sube con +/− como peso o altura,
@@ -2164,9 +2169,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-tel::placeholder{color:rgba(242,245,244,.45)}
 .wz-tel:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(19,181,131,.25)}
 .wz-opt{font-weight:400;color:rgba(242,245,244,.6);font-size:.85em}
-.wz-num{width:58px;background:transparent;border:none;color:#fff;font-family:'Anton',sans-serif;font-size:30px;font-weight:400;text-align:center;outline:none;-moz-appearance:textfield;letter-spacing:.5px}
+.wz-num{width:52px;background:transparent;border:none;color:#fff;font-family:'Anton',sans-serif;font-size:30px;font-weight:400;text-align:center;outline:none;-moz-appearance:textfield;letter-spacing:.5px}
 .wz-num::-webkit-outer-spin-button,.wz-num::-webkit-inner-spin-button{-webkit-appearance:none}
-.wz-unit{font-size:13px;color:rgba(242,245,244,.5);font-weight:600;min-width:30px}
+.wz-unit{font-size:13px;color:rgba(242,245,244,.5);font-weight:600;min-width:26px}
 .wz-foot{margin-top:24px}
 .wz-or{display:flex;align-items:center;gap:10px;margin:15px 0;color:rgba(242,245,244,.4);font-size:12px;font-weight:600}
 .wz-or::before,.wz-or::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(242,245,244,.18),transparent)}
@@ -2379,3 +2384,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .ic-ttl{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
 /* v630 · icono de estado (candado Premium, plan en preparación, error): SVG de la marca en un círculo, nunca un emoji grande */
 .ic-circle{width:46px;height:46px;margin:0 auto 8px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center}
+/* v634: «Tu comida de hoy» no tenía aire debajo y quedaba pegada a la tarjeta siguiente (el entreno o «Ya entrenaste hoy»). */
+#cn-meals>.card{margin-bottom:12px}
+/* v634: «Corregir» y «Eliminar» de cada medida medían 27px de alto (mínimo táctil 36). */
+.medacts button{min-height:36px}

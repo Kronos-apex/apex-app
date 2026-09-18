@@ -53,11 +53,13 @@ await ev(`(()=>{const b=document.getElementById('install-banner');if(b)b.style.d
 await sleep(400); await shot('2-welcome-clean');
 
 // 4) Form de login
-await ev(`(()=>{const c=document.getElementById('cin-cta');if(c)c.style.display='none';const card=document.getElementById('cin-card');if(card)card.style.display='block';})()`);
+// v634: se pulsa el botón REAL. Abrirlo a mano con style.display se saltaba cinFormMode y la
+// captura mostraba el recuadro «Instala la app» encima del formulario, que la app sí aparta.
+await ev(`document.querySelector('.cin-cta-fill').click()`);
 await sleep(500); await afirmaPantalla(ev, A, { nombre: 'formulario de entrar', sel: '#cin-card', minTxt: 20 }); await shot('3-login-form');
 
-// 5) Wizard registro paso 1
-await ev(`(()=>{const card=document.getElementById('cin-card');if(card)card.style.display='none';const s=document.getElementById('cin-signup');if(s)s.style.display='block';if(window.WZ&&WZ.open)try{WZ.open()}catch(e){}})()`);
+// 5) Wizard registro paso 1 — por los botones REALES: «← Volver» y luego «Crear cuenta» (v634).
+await ev(`(()=>{document.querySelector('#cin-card .cin-back').click();document.querySelector('.cin-cta-out').click();})()`);
 await sleep(600); await shot('4-signup-step1');
 
 // 5-bis) Paso «Tu cuerpo»: es donde viven WhatsApp y Lesiones. Quedó pendiente de v418
@@ -90,6 +92,21 @@ A.ok(/hernia|rodilla/i.test(cuerpo.placeholderLesiones), 'las lesiones traen un 
 A.ok(cuerpo.tamIconos.length >= 2 && cuerpo.tamIconos.every(t => t === '19x19'),
   'los íconos de esas filas miden lo que deben (no un bloque de 300x150)', cuerpo.tamIconos);
 console.log('  paso «Tu cuerpo»:', JSON.stringify(cuerpo));
+// v634 · el paso «Tu cuerpo» se MIRÓ y tenía dos defectos que ninguna aserción veía: el «+» de la
+// fila de Altura se salía de la tarjeta (a 390px la fila no cabía), y WhatsApp/Lesiones —que
+// usaban la clase de la fila SIN su estilo— quedaban a 170px con el ejemplo cortado.
+const geo = await ev(`(()=>{
+  const card=document.querySelector('#wz-s-body'); const cr=card.getBoundingClientRect();
+  const filas=[...card.querySelectorAll('.wz-stepper,.wz-row')].map(f=>{const r=f.getBoundingClientRect();
+    const hijos=[...f.querySelectorAll('button,input')].map(x=>x.getBoundingClientRect().right);
+    return {der:Math.round(Math.max(r.right,...hijos)), limite:Math.round(cr.right)};});
+  const campos=['su-phone','su-notes'].map(id=>{const el=document.getElementById(id);const fila=el.closest('.wz-row');
+    return Math.round(el.getBoundingClientRect().width/fila.getBoundingClientRect().width*100);});
+  return {filas, campos};
+})()`);
+A.ok(geo.filas.length >= 5 && geo.filas.every(f => f.der <= f.limite + 1),
+  'ninguna fila del paso «Tu cuerpo» se sale de su tarjeta (el «+» de Altura se salía)', geo.filas);
+A.ok(geo.campos.every(pc => pc >= 90), 'WhatsApp y Lesiones ocupan el ancho de su fila (antes 170px con el ejemplo cortado)', geo.campos);
 // La tarjeta del wizard tiene scroll PROPIO: sin bajarlo, la captura corta antes de los
 // campos y no se ve lo que se quiere revisar (fue justo lo que pasó la primera vez).
 await ev(`(()=>{const n=document.getElementById('su-notes'); if(n)n.scrollIntoView({block:'center'});})()`);

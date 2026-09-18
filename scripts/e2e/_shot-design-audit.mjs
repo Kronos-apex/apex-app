@@ -35,7 +35,7 @@ await ev(`(()=>{ ['avi-loading','apex-loading'].forEach(x=>{const l=document.get
   window._pushCtx={clientId:'cX',days:[],shifts:null};
   document.getElementById('wf-title').textContent='¡Lo lograste, Samuel!';
   document.getElementById('wf-sub').textContent='Full Body · lunes, 12 de julio';
-  document.getElementById('wf-stats').innerHTML='<div class="wf-stat"><div class="wf-stat-val">42 min</div><div class="wf-stat-lbl">Duracion</div></div><div class="wf-stat"><div class="wf-stat-val">320 kcal</div><div class="wf-stat-lbl">Calorias</div></div><div class="wf-stat"><div class="wf-stat-val">8/8</div><div class="wf-stat-lbl">Series</div></div><div class="wf-stat"><div class="wf-stat-val">4,850 kg</div><div class="wf-stat-lbl">Volumen</div></div>';
+  document.getElementById('wf-stats').innerHTML='<div class="wf-stat"><div class="wf-stat-val">42 min</div><div class="wf-stat-lbl">Duración</div></div><div class="wf-stat"><div class="wf-stat-val">320 kcal</div><div class="wf-stat-lbl">Calorías</div></div><div class="wf-stat"><div class="wf-stat-val">8/8</div><div class="wf-stat-lbl">Series</div></div><div class="wf-stat"><div class="wf-stat-val">4.850 kg</div><div class="wf-stat-lbl">Volumen</div></div>';
   if(typeof WF_FEELINGS!=='undefined')document.getElementById('wf-faces').innerHTML=WF_FEELINGS.map(f=>'<button class="wf-face">'+f.e+'</button>').join('');
   if(typeof renderWfPushNudge==='function')renderWfPushNudge();
   const wf=document.getElementById('workout-finish'); wf.classList.add('on'); wf.style.zIndex='99999';
