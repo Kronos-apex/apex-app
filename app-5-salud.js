@@ -243,10 +243,10 @@ function renderNutritionCoach(clientId){
   let html='';
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(String(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
-      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))}g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
-      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))}g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
-      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))}g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
+      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(fmtMiles(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
+      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))} g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
+      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))} g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
+      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))} g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
   if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${esc(String(nut.meals))} comidas/d\u00eda</div>`;
@@ -371,13 +371,13 @@ function nutCalcHTML(c){
     <div style="font-size:11px;color:var(--t2);margin-bottom:9px">¿Qué tan activo eres en tu día a día?</div>
     <div style="display:flex;gap:5px;margin-bottom:16px">${actBtns}</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
-      <div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--gt)">${est.kcalObj}</div><div style="font-size:11px;color:var(--t2);font-weight:600">KCAL / DÍA</div></div>
+      <div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--gt)">${fmtMiles(est.kcalObj)}</div><div style="font-size:11px;color:var(--t2);font-weight:600">KCAL / DÍA</div></div>
       <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:14px 4px"><div style="font-size:26px;font-weight:800;color:var(--blt)">${est.water||'—'}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${m.prot_g}g</div><div style="font-size:10px;color:var(--t2)">Proteína</div><div style="font-size:10px;color:var(--blt);font-weight:600">${m.prot_g*4} kcal</div></div>
-      <div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${m.carb_g}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${m.carb_g*4} kcal</div></div>
-      <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${m.fat_g}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${m.fat_g*9} kcal</div></div>
+      <div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${m.prot_g} g</div><div style="font-size:10px;color:var(--t2)">Proteína</div><div style="font-size:10px;color:var(--blt);font-weight:600">${fmtMiles(m.prot_g*4)} kcal</div></div>
+      <div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${m.carb_g} g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--t2);font-weight:600">${fmtMiles(m.carb_g*4)} kcal</div></div>
+      <div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${m.fat_g} g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${fmtMiles(m.fat_g*9)} kcal</div></div>
     </div>
     <div style="background:var(--gl);border-left:3px solid var(--g);border-radius:var(--rsm);padding:11px 13px;font-size:12px;color:var(--gt);line-height:1.55"><b>${esc(est.label)}.</b> Estimación automática según tus datos (${esc(tmbFormulaName(c))}). Ajústala según tu progreso real semana a semana.</div>`;
 }
@@ -469,7 +469,7 @@ function renderMealsToday(client){
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleMealsToday()">
         <div style="min-width:0">
           <div style="font-size:13px;font-weight:800;color:var(--t1)">${typeof aviIcon==='function'?aviIcon('utensils',14):'🥗'} Tu comida de hoy</div>
-          <div style="font-size:11.5px;color:var(--t2);margin-top:2px">${esc(_mealsDayLabel(kind))} · ${t.kcal} kcal</div>
+          <div style="font-size:11.5px;color:var(--t2);margin-top:2px">${esc(_mealsDayLabel(kind))} · ${fmtMiles(t.kcal)} kcal</div>
         </div>
         <button class="btn bg bsm" style="flex-shrink:0;min-height:36px" aria-expanded="${abierto?'true':'false'}">${abierto?'Ocultar':'Ver'}</button>
       </div>
@@ -532,12 +532,12 @@ function renderNutritionClient(clientId){
         <div style="font-size:12.5px;color:var(--t1);min-width:0">${esc(d.day)}${esHoy?' <span style="color:var(--gt);font-size:11px">· hoy</span>':''}</div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--t3)">${esc(et)}</span>
-          <span style="font-size:12.5px;color:var(--t1);min-width:62px;text-align:right">${d.target.kcal} kcal</span>
+          <span style="font-size:12.5px;color:var(--t1);min-width:62px;text-align:right">${fmtMiles(d.target.kcal)} kcal</span>
         </div>
       </div>`;}).join('');
     _semanaHtml=`<div class="card" style="padding:12px 14px;margin-bottom:16px">
       <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">${typeof aviIcon==='function'?aviIcon('utensils',14):'🥗'} Tu semana de comida</div>
-      <div style="font-size:11.5px;color:var(--t2);margin-bottom:8px">Promedio <b>${_sem.promedioKcal} kcal al día</b>. Los días que entrenas comes un poco más y los de descanso un poco menos — en la semana comes lo mismo.</div>
+      <div style="font-size:11.5px;color:var(--t2);margin-bottom:8px">Promedio <b>${fmtMiles(_sem.promedioKcal)} kcal al día</b>. Los días que entrenas comes un poco más y los de descanso un poco menos — en la semana comes lo mismo.</div>
       ${filas}
     </div>`;
   }
@@ -550,14 +550,14 @@ function renderNutritionClient(clientId){
     // el PROMEDIO de la semana puede diferir en 1-2 kcal por el redondeo del reparto diario y lo
     // dice la tarjeta de la semana. Dos números distintos a la vista es justo el bug que se arregla.
     const _kcalReal=_sem?_sem.baseKcal:(parseInt(nut.kcal)||0);
-    if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="--nc:var(--gt);text-align:center;background:var(--gl);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(String(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
+    if(_kcalReal)html+=`<div class="nutri-card" onclick="openNutriInfo('kcal')" style="--nc:var(--gt);text-align:center;background:var(--gl);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--gt)">${esc(fmtMiles(_kcalReal))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">CALOR\u00cdAS / D\u00cdA</div></div>`;
     if(nut.water)html+=`<div class="nutri-card" onclick="openNutriInfo('water')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:12px 4px"><span class="nutri-i">\u24d8</span><div style="font-size:22px;font-weight:800;color:var(--blt)">${esc(String(nut.water))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">VASOS DE AGUA</div></div>`;
     html+=`</div>`;
     if(_mac.prot_g||_mac.carb_g||_mac.fat_g){
       html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">`;
-      if(_mac.prot_g)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(_mac.prot_g))}g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${_mac.prot_g*4} kcal</div></div>`;
-      if(_mac.carb_g)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="--nc:var(--ylt);text-align:center;background:var(--yll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ylt)">${esc(String(_mac.carb_g))}g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--ylt);font-weight:600">${_mac.carb_g*4} kcal</div></div>`;
-      if(_mac.fat_g)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="--nc:var(--ort);text-align:center;background:var(--orl);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(_mac.fat_g))}g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${_mac.fat_g*9} kcal</div></div>`;
+      if(_mac.prot_g)html+=`<div class="nutri-card" onclick="openNutriInfo('prot')" style="--nc:var(--blt);text-align:center;background:var(--bll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(_mac.prot_g))} g</div><div style="font-size:10px;color:var(--t2)">Prote\u00edna</div><div style="font-size:10px;color:var(--blt);font-weight:600">${fmtMiles(_mac.prot_g*4)} kcal</div></div>`;
+      if(_mac.carb_g)html+=`<div class="nutri-card" onclick="openNutriInfo('carbs')" style="--nc:var(--ylt);text-align:center;background:var(--yll);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ylt)">${esc(String(_mac.carb_g))} g</div><div style="font-size:10px;color:var(--t2)">Carbos</div><div style="font-size:10px;color:var(--ylt);font-weight:600">${fmtMiles(_mac.carb_g*4)} kcal</div></div>`;
+      if(_mac.fat_g)html+=`<div class="nutri-card" onclick="openNutriInfo('fat')" style="--nc:var(--ort);text-align:center;background:var(--orl);border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">\u24d8</span><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(_mac.fat_g))} g</div><div style="font-size:10px;color:var(--t2)">Grasas</div><div style="font-size:10px;color:var(--ort);font-weight:600">${fmtMiles(_mac.fat_g*9)} kcal</div></div>`;
       html+=`</div>`;
     }
   }
@@ -617,7 +617,7 @@ function openNutritionRoom(clientId){
   } else {
     const est=nutritionEstimate(c,_nutPesoDe(c));
     if(!est){
-      body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155">🥗</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">Nutrición</div></div></div>
+      body.innerHTML=`<div class="sroom-hero exroom-hero"><div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98155;color:#10b981">${typeof aviIcon==='function'?aviIcon('apple',26):'🥗'}</div><div class="sroom-hero-txt"><div class="sroom-title" style="margin-top:0">Nutrición</div></div></div>
         <div class="exroom-note">Completa tu <b>peso, estatura, edad y sexo</b> en tu Perfil y aquí verás tu estimación automática de calorías y macros para tu objetivo 🍎</div><div style="height:30px"></div>`;
       body.scrollTop=0; _roomFront(room); _syncRoomBodyClass(); return;
     }
@@ -639,14 +639,14 @@ function openNutritionRoom(clientId){
   // una leyenda que no coincidía con su propia gráfica.
   const tile=(bg,col,ic,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:13px 4px 12px">${info?'<span class="nutri-i">ⓘ</span>':''}<div class="nutri-ic">${typeof aviIcon==='function'?aviIcon(ic,17):''}</div><div style="font-size:22px;font-weight:800;color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
   const _st=[
-    tile('--gl','--gt','flame',d.kcal||'—','CALORÍAS / DÍA','kcal'),
+    tile('--gl','--gt','flame',d.kcal?fmtMiles(d.kcal):'—','CALORÍAS / DÍA','kcal'),
     d.water?tile('--bll','--blt','droplet',d.water,'VASOS DE AGUA','water'):null,
     d.meals?tile('--yll','--ylt','utensils',d.meals,'COMIDAS',null):null,
   ].filter(Boolean);
   const stats=`<div style="display:grid;grid-template-columns:repeat(${_st.length},1fr);gap:10px">${_st.join('')}</div>`;
 
   // Sin círculo de ícono: la barra de macros de arriba ya es su leyenda.
-  const macroTile=(bg,col,g,lab,kc,info)=>`<div class="nutri-card" onclick="openNutriInfo('${info}')" style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">ⓘ</span><div style="font-size:18px;font-weight:800;color:var(${col})">${g}g</div><div style="font-size:10px;color:var(--t2)">${esc(lab)}</div><div style="font-size:10px;color:var(${col});font-weight:600">${kc} kcal</div></div>`;
+  const macroTile=(bg,col,g,lab,kc,info)=>`<div class="nutri-card" onclick="openNutriInfo('${info}')" style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:11px 4px 10px"><span class="nutri-i">ⓘ</span><div style="font-size:18px;font-weight:800;color:var(${col})">${g} g</div><div style="font-size:10px;color:var(--t2)">${esc(lab)}</div><div style="font-size:10px;color:var(${col});font-weight:600">${fmtMiles(kc)} kcal</div></div>`;
   let macroHTML='';
   if(d.prot||d.carb||d.fat){
     macroHTML=`<div class="sroom-sec">Tus macros</div>
@@ -699,7 +699,7 @@ function openNutritionRoom(clientId){
       guideHTML+=`<div class="sroom-sec">Cómo repartir tu día</div>`+split.map(s=>
         `<div class="nutr-meal" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
           <div class="nutr-meal-h" style="margin:0">${esc(s.name)}</div>
-          <div class="nutr-meal-t" style="white-space:nowrap;color:var(--t2)"><b style="color:var(--t1)">${s.kcal}</b> kcal · <b style="color:#3a86c8">${s.prot}g</b> prot</div>
+          <div class="nutr-meal-t" style="white-space:nowrap;color:var(--t2)"><b style="color:var(--t1)">${fmtMiles(s.kcal)}</b> kcal · <b style="color:#3a86c8">${s.prot} g</b> prot</div>
         </div>`).join('')+
         `<div class="exroom-note" style="margin-top:9px">Guía aproximada. La proteína va repartida en partes iguales: tu cuerpo la aprovecha mejor cuando llega a cada comida, no toda de una.</div>`;
     }
@@ -716,7 +716,7 @@ function openNutritionRoom(clientId){
          verde de nutrición no nombraba nada que el verde de marca no dijera ya con más fuerza:
          era el único de los cuatro que pagaba el ancla sin comprar identidad. -->
     <div class="sroom-hero exroom-hero">
-      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98166">🥗</div>
+      <div class="exroom-hero-ic" style="background:#10b98122;border:1px solid #10b98166;color:#10b981">${typeof aviIcon==='function'?aviIcon('apple',26):'🥗'}</div>
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">Mi nutrición</div>
         <div class="exroom-tags"><span>${d.isEst?'Estimación automática':'Plan de tu coach'}</span>${d.label?`<span>${esc(d.label)}</span>`:''}</div>
@@ -809,14 +809,14 @@ function shareNutWhatsapp(){
     const _wb=(typeof nutBaseFor==='function')?nutBaseFor(cl,nut,_nutPesoDe(cl)):null;
     const _wk=(_wb&&_wb.kcalObj)?_wb.kcalObj:nut.kcal;
     const _wm=(_wb&&_wb.macros)?_wb.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
-    if(_wk)msg+=`🔥 *Calorías diarias:* ${_wk} kcal\n`;
+    if(_wk)msg+=`🔥 *Calorías diarias:* ${fmtMiles(_wk)} kcal\n`;
     if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
     if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
     if(_wm.prot_g||_wm.carb_g||_wm.fat_g){
       msg+=`\n📊 *Macros:*\n`;
-      if(_wm.prot_g)msg+=`  • Proteína: ${_wm.prot_g}g (${_wm.prot_g*4} kcal)\n`;
-      if(_wm.carb_g)msg+=`  • Carbohidratos: ${_wm.carb_g}g (${_wm.carb_g*4} kcal)\n`;
-      if(_wm.fat_g)msg+=`  • Grasas saludables: ${_wm.fat_g}g (${_wm.fat_g*9} kcal)\n`;
+      if(_wm.prot_g)msg+=`  • Proteína: ${_wm.prot_g} g (${fmtMiles(_wm.prot_g*4)} kcal)\n`;
+      if(_wm.carb_g)msg+=`  • Carbohidratos: ${_wm.carb_g} g (${fmtMiles(_wm.carb_g*4)} kcal)\n`;
+      if(_wm.fat_g)msg+=`  • Grasas saludables: ${_wm.fat_g} g (${fmtMiles(_wm.fat_g*9)} kcal)\n`;
     }
     if(nut.examples){
       msg+=`\n💡 *Ejemplos de comidas:*\n`;
@@ -830,13 +830,13 @@ function shareNutWhatsapp(){
     const est=cl?nutritionEstimate(cl,_nutPesoDe(cl)):null;
     if(!est){toast('Completa tu peso, estatura, edad y sexo en tu Perfil para ver tu estimación');return;}
     const m=est.macros||{};
-    msg+=`🔥 *Calorías diarias:* ${est.kcalObj} kcal _(estimación automática)_\n`;
+    msg+=`🔥 *Calorías diarias:* ${fmtMiles(est.kcalObj)} kcal _(estimación automática)_\n`;
     if(est.water)msg+=`💧 *Agua:* ${est.water} vasos/día\n`;
     if(m.prot_g||m.carb_g||m.fat_g){
       msg+=`\n📊 *Macros:*\n`;
-      if(m.prot_g)msg+=`  • Proteína: ${m.prot_g}g (${m.prot_g*4} kcal)\n`;
-      if(m.carb_g)msg+=`  • Carbohidratos: ${m.carb_g}g (${m.carb_g*4} kcal)\n`;
-      if(m.fat_g)msg+=`  • Grasas saludables: ${m.fat_g}g (${m.fat_g*9} kcal)\n`;
+      if(m.prot_g)msg+=`  • Proteína: ${m.prot_g} g (${fmtMiles(m.prot_g*4)} kcal)\n`;
+      if(m.carb_g)msg+=`  • Carbohidratos: ${m.carb_g} g (${fmtMiles(m.carb_g*4)} kcal)\n`;
+      if(m.fat_g)msg+=`  • Grasas saludables: ${m.fat_g} g (${fmtMiles(m.fat_g*9)} kcal)\n`;
     }
     if(est.label)msg+=`\n🎯 ${est.label}\n`;
   }
@@ -1880,14 +1880,14 @@ function _foodLogBlockHtml(client){
   // todos los días. Y se dice lo que le QUEDA, no lo que lleva.
   const band=(typeof foodLogBandFor==='function')?foodLogBandFor(pr.kcal.meta,pr.kcal.hecho):null;
   const sub=!meta||!band
-    ? (tot.n?`<b>${tot.kcal}</b> kcal registradas hoy`:'Anota lo que comes y llévalo claro')
+    ? (tot.n?`<b>${fmtMiles(tot.kcal)}</b> kcal registradas hoy`:'Anota lo que comes y llévalo claro')
     : (tot.n
         ? (band.estado==='dentro'
-            ? `<b>${Math.round(band.hecho)}</b> kcal · ✓ vas en tu franja`
+            ? `<b>${fmtMiles(Math.round(band.hecho))}</b> kcal · ✓ vas en tu franja`
             : band.estado==='bajo'
-              ? `<b>${Math.round(band.hecho)}</b> kcal · te quedan ${band.falta}`
-              : `<b>${Math.round(band.hecho)}</b> kcal · ${band.sobra} por encima`)
-        : `Hoy te toca entre <b>${band.lo}</b> y <b>${band.hi}</b> kcal`);
+              ? `<b>${fmtMiles(Math.round(band.hecho))}</b> kcal · te quedan ${fmtMiles(band.falta)}`
+              : `<b>${fmtMiles(Math.round(band.hecho))}</b> kcal · ${fmtMiles(band.sobra)} por encima`)
+        : `Hoy te toca entre <b>${fmtMiles(band.lo)}</b> y <b>${fmtMiles(band.hi)}</b> kcal`);
   return `<div class="hb-sep"></div>
     <div class="hb-row">
       <span class="hb-ic fl" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('utensils',21):'🍽️'}</span>
@@ -2135,11 +2135,11 @@ function _flDiaHtml(c){
   // en ella. Exigir el número al gramo es exigir lo que ni el propio plato clava.
   const _band=(typeof foodLogBandFor==='function')?foodLogBandFor(pr.kcal.meta,pr.kcal.hecho):null;
   const _sub=tot.n===0
-    ? (_band?`Hoy te toca entre <b>${_band.lo}</b> y <b>${_band.hi}</b> kcal`:'Todavía no has anotado nada hoy')
+    ? (_band?`Hoy te toca entre <b>${fmtMiles(_band.lo)}</b> y <b>${fmtMiles(_band.hi)}</b> kcal`:'Todavía no has anotado nada hoy')
     : (_band
-        ? (_band.estado==='dentro' ? `✓ Vas en tu franja de hoy (<b>${_band.lo}</b>-<b>${_band.hi}</b> kcal)`
-          : _band.estado==='bajo' ? `Te quedan <b>${_band.falta}</b> kcal para tu franja de hoy`
-          : `Vas <b>${_band.sobra}</b> kcal por encima de tu franja de hoy`)
+        ? (_band.estado==='dentro' ? `✓ Vas en tu franja de hoy (<b>${fmtMiles(_band.lo)}</b>-<b>${fmtMiles(_band.hi)}</b> kcal)`
+          : _band.estado==='bajo' ? `Te quedan <b>${fmtMiles(_band.falta)}</b> kcal para tu franja de hoy`
+          : `Vas <b>${fmtMiles(_band.sobra)}</b> kcal por encima de tu franja de hoy`)
         : `${tot.n} ${tot.n===1?'alimento anotado':'alimentos anotados'} hoy`);
   let html=`<div class="sroom-hero exroom-hero" style="margin-bottom:14px">
       <div class="sroom-hero-txt">
@@ -2163,7 +2163,7 @@ function _flDiaHtml(c){
     const marcada=typeof foodLogPlanMealDone==='function'&&foodLogPlanMealDone(c.foodlog,mi);
     html+=`<div style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:800;color:var(--t1)">${FOODLOG_MEAL_LABEL[m]}${items.length?` <span style="font-weight:600;color:var(--t2)">· ${kc} kcal</span>`:''}</div>
+        <div style="font-size:13px;font-weight:800;color:var(--t1)">${FOODLOG_MEAL_LABEL[m]}${items.length?` <span style="font-weight:600;color:var(--t2)">· ${fmtMiles(kc)} kcal</span>`:''}</div>
         <button class="btn bp bsm" style="min-height:34px;padding:0 13px;flex-shrink:0" onclick="flBuscar('${m}')">+ Agregar</button>
       </div>`;
     // El plan se ofrece SOLO si no está ya marcado. Deshacer se hace desde la tarjeta de «Hoy» o

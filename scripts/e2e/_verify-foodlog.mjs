@@ -419,8 +419,9 @@ try {
   await sleep(500);
   s = JSON.parse(await ev(`JSON.stringify((()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);
     const meta=_foodLogTargetHoy(c.id); const b=foodLogBandFor(meta.kcal,0);
-    return {hab:document.getElementById('cn-habits').textContent||'',
-      room:document.getElementById('flroom-body').textContent||'', lo:b.lo, hi:b.hi, meta:b.meta};})())`));
+    const sm=(t=>String(t).replace(/(\\d)\\.(\\d{3})/g,'$1$2'));  // v631: la app escribe «2.192»; se compara sin el punto de miles
+    return {hab:sm(document.getElementById('cn-habits').textContent||''),
+      room:sm(document.getElementById('flroom-body').textContent||''), lo:b.lo, hi:b.hi, meta:b.meta};})())`));
   check('FR1 sin nada anotado, las dos pantallas dan la FRANJA del día, no una cifra exacta',
     s.hab.includes(String(s.lo)) && s.hab.includes(String(s.hi)) &&
     s.room.includes(String(s.lo)) && s.room.includes(String(s.hi)) && s.lo < s.meta && s.hi > s.meta,
@@ -449,8 +450,9 @@ try {
     const tot=foodLogTotals(foodLogDay(c.foodlog));
     const b=foodLogBandFor(ph.plan.target.kcal,tot.kcal);
     const hastaMeta=Math.round(b.meta-b.hecho);
+    const sm=(t=>String(t).replace(/(\\d)\\.(\\d{3})/g,'$1$2'));
     return {falta:b.falta, hastaMeta, estado:b.estado,
-      room:document.getElementById('flroom-body').textContent||''};})())`));
+      room:sm(document.getElementById('flroom-body').textContent||'')};})())`));
   check('FR3 «te quedan X» cuenta hasta la FRANJA, no hasta la cifra exacta',
     s.estado === 'bajo' && s.falta < s.hastaMeta && s.room.includes('Te quedan ' + s.falta),
     JSON.stringify({ falta: s.falta, hastaMeta: s.hastaMeta }));

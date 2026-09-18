@@ -85,7 +85,7 @@ const r2 = await ev(`(()=>{toggleMealsToday();
   const t=c?c.textContent.replace(/\\s+/g,' ').trim():'';
   return {t, comidas:['Desayuno','Media mañana','Almuerzo','Media tarde','Cena'].filter(n=>t.includes(n)),
     gramos:(t.match(/\\(\\d+ g\\)/g)||[]).length,
-    kcal:(t.match(/(\\d{3,4}) kcal/)||[])[1]||null};})()`);
+    kcal:((t.match(/(\\d{1,2}\\.?\\d{3}) kcal/)||[])[1]||'').replace(/\\./g,'')||null};})()`);
 ok(r2.comidas.length === 5, 'trae las 5 comidas del día', r2.comidas);
 ok(r2.gramos >= 8, 'trae CANTIDADES en gramos, no solo macros', { cantidades: r2.gramos });
 // 🔴 el plan del COACH manda: 3200 escritas por él, NO la estimación (2229)

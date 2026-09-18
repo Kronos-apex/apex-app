@@ -64,7 +64,7 @@ const ficha = await ev(`(()=>{const el=document.getElementById('d-nutreview')||[
   return JSON.stringify({txt:(el.innerText||'').replace(/\\s+/g,' ').slice(0,600),alto:Math.round(r.height),dentro:r.top>=0&&r.bottom<=window.innerHeight,desborde:el.scrollWidth-el.clientWidth})})()`);
 const F = JSON.parse(ficha || 'null');
 A.ok(!!F && /menor de edad/i.test(F.txt) && /techo|por encima/i.test(F.txt), 'C1 la ficha avisa que su plan queda por encima de su techo', F && F.txt);
-A.ok(!!F && F.txt.includes(String(R.sirve)), 'C2 y cita el número que de verdad se le está sirviendo', { busca: R.sirve, txt: F && F.txt });
+A.ok(!!F && F.txt.replace(/(\d)\.(\d{3})/g, '$1$2').includes(String(R.sirve)), 'C2 y cita el número que de verdad se le está sirviendo', { busca: R.sirve, txt: F && F.txt });
 A.ok(!!F && F.desborde <= 1 && F.dentro, 'C3 la tarjeta cabe y se ve entera a 390px', F);
 await shot('ficha-techo');
 
@@ -81,7 +81,7 @@ const nota = await ev(`(()=>{const n=document.getElementById('nut-goal-nota');if
 const N = JSON.parse(nota || 'null');
 A.ok(editor === '3200', 'MONTAJE: el formulario quedó con el plan escrito del coach', editor);
 A.ok(!!N && N.vis && /menor de edad/i.test(N.txt), 'C4 el editor avisa al coach mientras escribe', { editor, N });
-A.ok(!!N && N.txt.includes(String(R.sirve)), 'C5 el aviso del editor cita el MISMO número servido', { busca: R.sirve, txt: N && N.txt });
+A.ok(!!N && N.txt.replace(/(\d)\.(\d{3})/g, '$1$2').includes(String(R.sirve)), 'C5 el aviso del editor cita el MISMO número servido', { busca: R.sirve, txt: N && N.txt });
 A.ok(!!N && N.desborde <= 1, 'C6 el aviso no se desborda a lo ancho', N);
 await ev(`(()=>{const n=document.getElementById('nut-goal-nota');if(n)n.scrollIntoView({block:'center'})})()`); await sleep(300);
 await shot('editor-techo');

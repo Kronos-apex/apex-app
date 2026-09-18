@@ -19871,6 +19871,40 @@ test('v630 🔒 ningún emoji grande hace de ilustración (candado Premium, plan
   assert.ok(re.test('<div style="font-size:26px;margin-bottom:6px">🔒</div>'), 'el criterio no discrimina');
 });
 
+test('v631 🔒 una rutina sin ejercicios (el descanso) no presume «0 ejercicios · 0 series»', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = js.indexOf('<div class="rcthumb');
+  assert.ok(i > 0, 'desapareció la tarjeta de rutina');
+  const linea = js.slice(js.lastIndexOf('\n', i), js.indexOf('\n', i));
+  assert.ok(/\$\{exN\?`<span class="rcpill">\$\{exN\} ejercicio/.test(linea), '🔴 la tarjeta vuelve a contar ceros');
+});
+
+test('v631 🔒 calorías y gramos se escriben «2.400 kcal» y «160 g», nunca «2400 kcal» ni «160g»', () => {
+  const fs = require('fs'), path = require('path');
+  const crudas = [], pegadas = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n').forEach((l, i) => {
+      const re = /\$\{([^{}`]{1,50})\}(<\/b>)?( ?)kcal/g; let m;
+      while ((m = re.exec(l))) if (!/^(esc\()?fmtMiles\(/.test(m[1])) crudas.push(f + ':' + (i + 1) + ' ' + m[1]);
+      if (/\}g\b/.test(l)) pegadas.push(f + ':' + (i + 1));
+    });
+  });
+  assert.deepStrictEqual(crudas, [], '🔴 calorías sin separador de miles: ' + crudas.join(', '));
+  assert.deepStrictEqual(pegadas, [], '🔴 gramos pegados al número: ' + pegadas.join(', '));
+  // CONTROL: el criterio caza la forma cruda y deja pasar la buena.
+  const re = /\$\{([^{}`]{1,50})\}( ?)kcal/;
+  assert.ok(re.test('${d.kcal} kcal') && /\$\{([^{}`]{1,50})\}(<\/b>)?( ?)kcal/.test('<b>${band.lo}</b> kcal'));
+  assert.ok(/^(esc\()?fmtMiles\(/.test('fmtMiles(d.kcal)'));
+});
+
+test('v631 🔒 la cabecera de nutrición usa el icono de la marca, no 🥗', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  assert.ok(!/exroom-hero-ic[^>]*>🥗</.test(js), '🔴 volvió el emoji a la cabecera');
+  assert.ok((js.match(/aviIcon\('apple',26\)/g) || []).length >= 2, '🔴 falta el icono en alguna de las dos cabeceras');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

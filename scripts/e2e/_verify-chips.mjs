@@ -280,7 +280,7 @@ plato = await evj(FILA_PLATO);
 // El control lleva la regla de v478 dentro: cuando SÍ hay objetivo se dice en FRANJA
 // («entre 1810 y 2350 kcal»), nunca como una cifra exacta que el propio plato no clava.
 check('C7-bis CONTROL: con datos del perfil la fila SÍ da el objetivo del día, y como FRANJA',
-  !plato.err && /te toca entre\s*\d+\s*y\s*\d+\s*kcal/i.test(plato.sub), JSON.stringify(plato));
+  !plato.err && /te toca entre\s*\d[\d.]*\s*y\s*\d[\d.]*\s*kcal/i.test(plato.sub), JSON.stringify(plato));
 
 // ══════════ C8 · tier LIBRE: la misma tira, y el detalle SIN la fila que no puede abrir ══════════
 // Desde v507 los dos tiers ven 2 chips, así que lo que distingue al libre ya no es la tira sino

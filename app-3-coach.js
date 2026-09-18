@@ -2497,18 +2497,18 @@ function renderValoracion(c){
       <div class="vmac-g">
         <div class="vmac-c prot">
           <div class="vmac-k">Proteína</div>
-          <div class="vmac-n">${macros.prot_g}g</div>
-          <div class="vmac-u">${macros.prot_g*4} kcal</div>
+          <div class="vmac-n">${macros.prot_g} g</div>
+          <div class="vmac-u">${fmtMiles(macros.prot_g*4)} kcal</div>
         </div>
         <div class="vmac-c carb">
           <div class="vmac-k">Carbos</div>
-          <div class="vmac-n">${macros.carb_g}g</div>
-          <div class="vmac-u">${macros.carb_g*4} kcal</div>
+          <div class="vmac-n">${macros.carb_g} g</div>
+          <div class="vmac-u">${fmtMiles(macros.carb_g*4)} kcal</div>
         </div>
         <div class="vmac-c fat">
           <div class="vmac-k">Grasas</div>
-          <div class="vmac-n">${macros.fat_g}g</div>
-          <div class="vmac-u">${macros.fat_g*9} kcal</div>
+          <div class="vmac-n">${macros.fat_g} g</div>
+          <div class="vmac-u">${fmtMiles(macros.fat_g*9)} kcal</div>
         </div>
       </div>`;
     }
@@ -2671,8 +2671,8 @@ function _shockAnalysisLine(a){
 function _protFrase(p){
   const kcal=Math.abs(p.gramos)*4;
   return p.dir==='corta'
-    ? `<b>No hay que subirle las calorías:</b> se mueven ~${kcal} kcal de carbohidrato a proteína y el total queda igual.`
-    : `Esos ${kcal} kcal rinden más como <b>carbohidrato</b>, que es el combustible del entrenamiento.`;
+    ? `<b>No hay que subirle las calorías:</b> se mueven ~${fmtMiles(kcal)} kcal de carbohidrato a proteína y el total queda igual.`
+    : `Esos ${fmtMiles(kcal)} kcal rinden más como <b>carbohidrato</b>, que es el combustible del entrenamiento.`;
 }
 function renderNutReviewCard(c){
   const el=document.getElementById('d-nutreview'); if(!el)return;
@@ -2715,8 +2715,8 @@ function renderNutReviewCard(c){
       // El descuadre es lo ÚNICO que falla: entonces sí es el titular.
       el.style.display='';
       el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(--yll);border-left:3px solid var(--yl)">
-        <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(String(_desfase.titular))} kcal, pero sus macros suman ${_desfase.real}</div>
-        <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${_desfase.real} kcal</b> — ${Math.abs(_desfase.dif)} ${_desfase.dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
+        <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(fmtMiles(_desfase.titular))} kcal, pero sus macros suman ${_desfase.real}</div>
+        <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${fmtMiles(_desfase.real)} kcal</b> — ${Math.abs(_desfase.dif)} ${_desfase.dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
       </div>`;
       return;
     }
@@ -2728,7 +2728,7 @@ function renderNutReviewCard(c){
       tono='--bll'; tinta='--blt';
     } else if(r.status==='sin_plan'){
       titulo='No tiene plan de alimentación';
-      cuerpo=`Según su cuerpo y su objetivo le corresponden <b>${r.sugerido} kcal</b> al día.`;
+      cuerpo=`Según su cuerpo y su objetivo le corresponden <b>${fmtMiles(r.sugerido)} kcal</b> al día.`;
       tono='--bll'; tinta='--blt';
     } else if(r.status==='rotulo_miente'){
       // 🔒 Este aviso dice lo CONTRARIO que el de abajo: sus números están bien y no hay que
@@ -2738,7 +2738,7 @@ function renderNutReviewCard(c){
       const _tit=((typeof GOAL_WHY==='object'&&GOAL_WHY[r.rotulo])||{}).title||r.rotulo||'';
       titulo=`Sus n&uacute;meros est&aacute;n bien, pero su app le explica otra cosa`;
       cuerpo=`A <b>${esc(c.name||'')}</b> la app le dice que est&aacute; en <b>${esc(_tit)}</b>, `+
-        `pero su plan le da <b>${r.sirve||r.actual} kcal</b> contra un gasto de <b>${r.base&&r.base.tdee}</b> `+
+        `pero su plan le da <b>${fmtMiles(r.sirve||r.actual)} kcal</b> contra un gasto de <b>${r.base&&r.base.tdee}</b> `+
         `&mdash; eso es <b>${_DIR[r.mismatch.real]||''}</b>. `+
         `El plan est&aacute; bien para su objetivo (<b>${esc(c.goal||'sin objetivo')}</b>); lo que no cuadra es el `+
         `<b>Objetivo del plan</b> en <b>Nutrici&oacute;n</b>, que se qued&oacute; de una plantilla anterior.`;
@@ -2750,8 +2750,8 @@ function renderNutReviewCard(c){
       titulo=`${esc(c.name||'')} es menor de edad y su plan queda bajo su gasto`;
       const _b=(typeof nutBaseFor==='function')?nutBaseFor(c,_nut,peso):null;
       const _sirve=(_b&&_b.kcalObj)?_b.kcalObj:null;
-      cuerpo=`Su plan dice <b>${r.actual} kcal</b> y gasta <b>${r.sugerido}</b>. Un menor en crecimiento no lleva déficit, `+
-        (_sirve?`así que la app le está sirviendo <b>${_sirve} kcal</b> con el mismo reparto que tú elegiste.`
+      cuerpo=`Su plan dice <b>${fmtMiles(r.actual)} kcal</b> y gasta <b>${fmtMiles(r.sugerido)}</b>. Un menor en crecimiento no lleva déficit, `+
+        (_sirve?`así que la app le está sirviendo <b>${fmtMiles(_sirve)} kcal</b> con el mismo reparto que tú elegiste.`
               :`así que la app le sube el plan hasta su gasto.`)+
         ` Si quieres otro número, súbelo tú en <b>Nutrición</b>.`;
       tono='--bll'; tinta='--blt';
@@ -2770,22 +2770,22 @@ function renderNutReviewCard(c){
       // no admite grados en ninguno de los dos sentidos. Aquí el coach lee «para su edad» porque
       // es información clínica que él SÍ necesita; ella no lee ni una palabra de esto.
       titulo=`${esc(c.name||'')} es menor de edad y su plan queda por encima de su techo`;
-      cuerpo=`Su plan le da <b>${r.cap.kcalAntes} kcal</b> y gasta <b>${r.cap.tdee}</b>. `+
+      cuerpo=`Su plan le da <b>${fmtMiles(r.cap.kcalAntes)} kcal</b> y gasta <b>${fmtMiles(r.cap.tdee)}</b>. `+
         (r.cap.sobrepeso
           ? `Para su edad y su sexo no le corresponde un superávit: su dirección es mantenimiento y el músculo lo pone el entrenamiento. `
           : `Un menor no pasa de un 10% por encima de su gasto. `)+
-        `Así que la app le está sirviendo <b>${r.sirve||r.cap.techo} kcal</b>, sin bajarle la proteína. `+
+        `Así que la app le está sirviendo <b>${fmtMiles(r.sirve||r.cap.techo)} kcal</b>, sin bajarle la proteína. `+
         `Si quieres otro número, escríbelo tú en <b>Nutrición</b>.`;
       tono='--bll'; tinta='--blt';
     } else {
       const sobra=r.gap>0;
-      titulo=`Su plan está ${sobra?'por encima':'por debajo'} en ${Math.abs(r.gap)} kcal`;
+      titulo=`Su plan está ${sobra?'por encima':'por debajo'} en ${fmtMiles(Math.abs(r.gap))} kcal`;
       const riesgo=r.riesgo==='come_de_mas_para_bajar'
         ? ' Quiere <b>perder grasa</b> y está comiendo por encima de su mantenimiento: así no va a bajar.'
         : r.riesgo==='come_de_menos_para_subir'
         ? ' Quiere <b>ganar músculo</b> y está comiendo por debajo de lo que necesita: así no va a subir.'
         : '';
-      cuerpo=`Tiene <b>${r.actual} kcal</b> y le corresponden <b>${r.sugerido}</b>.${riesgo}`;
+      cuerpo=`Tiene <b>${fmtMiles(r.actual)} kcal</b> y le corresponden <b>${r.sugerido}</b>.${riesgo}`;
       if(r.riesgo){ tono='--rdl'; tinta='--rdt'; }
     }
     // 🔒 LA PROTEÍNA VIAJA CON CUALQUIER TARJETA, no solo con la suya. Kathe y Luz tienen el rótulo
@@ -2798,7 +2798,7 @@ function renderNutReviewCard(c){
     // 🔒 Y EL DESCUADRE DE TITULAR VIAJA IGUAL, por la misma razón: no se calla porque haya algo
     // más grande, pero tampoco se queda con el titular. Se dice al final y con su propio verbo.
     if(_desfase&&r.status!=='sin_plan'&&r.status!=='sin_datos'){
-      cuerpo+=` <span style="opacity:.9">Además, su plan dice <b>${_desfase.titular} kcal</b> y sus macros suman <b>${_desfase.real}</b>: como la comida se arma con los macros, el titular está de más.</span>`;
+      cuerpo+=` <span style="opacity:.9">Además, su plan dice <b>${fmtMiles(_desfase.titular)} kcal</b> y sus macros suman <b>${_desfase.real}</b>: como la comida se arma con los macros, el titular está de más.</span>`;
     }
     el.style.display='';
     el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(${tono});border-left:3px solid var(${tinta})">
@@ -3260,7 +3260,7 @@ function _flCoachDetalleHtml(c,dayKey){
     const items=orden.filter(e=>e.meal===m); if(!items.length)return;
     const kc=Math.round(items.reduce((a,e)=>a+(parseFloat(e.kcal)||0),0));
     html+=`<div style="margin-bottom:7px">
-      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${esc(FOODLOG_MEAL_LABEL_COACH[m]||m)} · ${kc} kcal</div>`;
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${esc(FOODLOG_MEAL_LABEL_COACH[m]||m)} · ${fmtMiles(kc)} kcal</div>`;
     items.forEach(e=>{
       html+=`<div style="font-size:12px;color:var(--t1);padding:3px 0">• ${esc(e.name||'Alimento')} <span style="color:var(--t3)">${e.g} g${e.kcal==null?'':' · '+e.kcal+' kcal'}</span></div>`;
     });

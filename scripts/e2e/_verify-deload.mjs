@@ -256,10 +256,10 @@ try {
     // Se devuelven CONCLUSIONES, no las cadenas: el innerHTML del perfil pasa de 7 KB y al
     // serializarlo entero la evaluación devolvía undefined sin decir por qué.
     return {lenHoy:hoy.length, lenPerf:perf.length,
-      perfTieneSemana:/semana de comida/i.test(perf)&&perf.indexOf(String(w.promedioKcal))>=0,
+      perfTieneSemana:/semana de comida/i.test(perf)&&perf.indexOf(fmtMiles(w.promedioKcal))>=0,
       // El titular y las tarjetas de macros que van debajo tienen que decir lo MISMO.
-      titularCuadra:perf.indexOf(String(base.kcalObj))>=0&&base.kcalObj===nutMacroKcal(base.macros),
-      perfSinTitularFalso:perf.indexOf(String(base.kcalEscrito)+' ')<0||base.desfase===0,
+      titularCuadra:perf.indexOf(fmtMiles(base.kcalObj))>=0&&base.kcalObj===nutMacroKcal(base.macros),
+      perfSinTitularFalso:perf.indexOf(fmtMiles(base.kcalEscrito)+' ')<0||base.desfase===0,
       hoyExplica:/en la semana comes lo mismo/i.test(hoy),
       real:base.kcalObj, escrito:base.kcalEscrito, promedio:w.promedioKcal,
       desvio:Math.round(desvio*10000)/100, muestra:hoy.replace(/\s+/g,' ').slice(0,110)};
