@@ -1416,6 +1416,10 @@ pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos.
 - 🔴 **UNA SONDA SOBRE RESPALDOS HISTÓRICOS MIENTE SI NO SABE DESDE CUÁNDO EXISTE EL MECANISMO QUE MIDE.** La primera corrida de `medir-perdida-columnas` dio **45 «pérdidas»** y casi todas eran falsas por dos causas, las dos temporales: **(a) las lápidas son de septiembre** (v566 el 3-sep, v614 el 15, v620 el 16) y los casos eran de julio — un borrado legítimo hecho cuando la lápida no existía se ve EXACTAMENTE igual que una pérdida; **(b) v566/v567 le ASIGNÓ id a las entradas viejas** (`2026-06-30T…` → `d:2026-06-30T…`), y una clave de identidad ingenua lee ese cambio como una desaparición. **Reglas: (1) toda comparación entre dos fotos de datos lleva una fecha «desde» POR CAMPO, la del despliegue del mecanismo; (2) antes de llamar hallazgo a una desaparición, CUENTA los vivos a los dos lados — si el total no bajó, cambió la identidad y no se perdió nada; (3) la clave de identidad se NORMALIZA contra las migraciones que hubo.** 💎 Y el corolario del método: los hallazgos se verifican **uno por uno contra el dato crudo** antes de reportarlos — de 45, sobrevivió 1. (v625)
 - ⚠️ **`ls` mide el DISCO y `git ls-files` mide el REPOSITORIO, y para «qué ve quien audita» solo vale el segundo.** Conté «38 archivos en la raíz, 11 de borrador» listando el disco; en GitHub eran **23 y solo 5 de basura**, porque `.gitignore` ya tapaba los `_*.html` (los ignorados existen localmente y NO están publicados). Misma familia que las tres sondas falsas del 31-jul: la herramienta medía otra cosa que la pregunta. (v625)
 
+- 🔴 **EL MARCADO FUENTE NO ES LA PANTALLA: un emoji dentro de `<span class="t-ic" data-ic="…">` NO lo ve nadie, porque `aviIconizeStatic` lo cambia por el SVG de marca al cargar — es solo el RESPALDO si el módulo no carga.** Hay **51** en `index.html`. La primera versión del candado de v627 los contaba y acusó **8 botones sanos**: medía el código, no lo que pinta el navegador. **Reglas: (1) antes de acusar un emoji en el marcado, mira si va dentro de un `t-ic` — ese ya es SVG en pantalla; (2) el candado quita esos envoltorios ANTES de mirar, y su matriz lleva el caso como CONTROL que NO debe morder, o el próximo que lo toque «arreglará» algo sano; (3) el patrón bueno para un icono estático es el sprite (`<svg><use href="#i-…"/></svg>`) o el `t-ic` — nunca un emoji suelto.** (v627)
+- 🔴 **UNA CONVENCIÓN VISUAL SE DECIDE POR MAYORÍA MEDIDA, NO POR GUSTO — y un botón con DOS PUERTAS se limpia en las dos.** De 78 botones `.btn`, 70 iban sin emoji: los 8 que lo llevaban eran la excepción y se igualaron a la mayoría. Dos de ellos tenían una segunda puerta —el JS que reescribe el contador (`_updateGenPrefBtns`)— que habría devuelto el emoji en el primer render: la misma clase que el saludo del coach, limpiado en el marcado Y en el render. **Al quitar algo de un texto, `grep` quién más lo ESCRIBE, no solo dónde está.** (v627)
+- 🔴 **UNA SONDA ESTÁTICA NO PUEDE SEPARAR UN ICONO DE UN DATO NI DE LA VOZ DE MARCA.** La de emoji se equivocó dos veces seguidas por esa razón: contaba los MENSAJES («⚠️ El nombre es obligatorio», que es voz de marca) y, al corregir eso, los ICONOS DE LOS EJERCICIOS (que son datos). **Se acota a lo único que el texto sí puede afirmar** —aquí, emoji dentro de un `<button>` del marcado— y lo demás se mira en captura. Y el número que da una sonda así no se reporta hasta verificarlo contra lo que se ve: 218 → 459 → 8 → 0 reales. (v627)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1611,7 +1615,19 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-17 (**v625 — LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN**. Primer
+*Última actualización: 2026-09-17 (**v626 + v627 — LOS CONTROLES LLEVAN ICONO, NO EMOJI**.
+Pedido del PO: *«mejora donde se pueda mejorar, que se vea profesional y que no parezca hecha por un
+novato»*. Se MIRÓ antes de tocar: **0 errores de tilde en 5.548 textos** y el ritmo de los
+formularios era constante — no eran el problema. Lo que delataba era **un emoji haciendo de icono
+dentro de un control**, teniendo un sprite SVG propio. **v626:** el ojo de la contraseña (8 campos)
+→ SVG con `togglePass` intercambiando el símbolo; la píldora y el recuadro de instalar → SVG, y sus 3
+comillas rectas a las angulares de la marca; el saludo del coach sin 👋 en las dos puertas. **v627:**
+**70 de 78 botones van sin emoji** y los 8 que lo llevaban se igualaron; dos tenían una segunda
+puerta en el JS que reescribe el contador. Suite **1229 → 1236**, `_verify-ojo-contrasena` verde,
+`_sabotaje-v626-627` **9/9 + 1 control**. 🔴 **Cuatro mediciones mías erradas, cazadas por un
+control**: la sonda de emoji dijo 218 (contaba mensajes), luego 459 (contaba iconos de ejercicios),
+y el test acusó 8 botones sanos porque sus emoji van dentro de un `t-ic` que se vuelve SVG al cargar)
+· (**v625 — LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN**. Primer
 frente del plan `docs/plan-profesional.md` (§1, F1.2). v623 cerró la escritura de columna entera
 para `profile`/`routines` y quedaban **7 colecciones**; antes de tocarlas, **medir a quién le pasó**
 (`scripts/medir-perdida-columnas.mjs`, 45 respaldos · 44 pares · 1.134 filas): history, prs,

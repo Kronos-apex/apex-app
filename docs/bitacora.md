@@ -4,6 +4,60 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-17 — v626 + v627: LOS CONTROLES LLEVAN ICONO, NO EMOJI
+
+**Pedido del PO:** *«mejora donde se pueda mejorar, que se vea profesional y que no parezca hecha
+por un novato»* (tras descartar la migración a un framework).
+
+**Se MIRÓ antes de tocar, y la medición tumbó dos hipótesis mías antes de encontrar la buena:**
+- **El texto no era el problema**: 0 errores de tilde en **5.548 textos visibles**
+  (`scripts/medir-calidad-texto.mjs`). El único que marcó —«Practica la bisagra»— es imperativo y
+  va sin tilde.
+- **El ritmo de los formularios tampoco**: a ojo «Nuevo asesorado» parecía irregular; medido
+  alterna 39/28 px de forma constante.
+
+**Lo que sí delataba: un emoji haciendo de icono DENTRO de un control.** No hereda el color del
+botón, se dibuja distinto en cada sistema operativo y convive con los SVG limpios del sprite a
+dos centímetros. Y el patrón bueno ya existía en la app (`aviIcon('eye')` en la biblioteca de
+ejercicios): lo que se había quedado atrás era el **marcado estático**.
+
+**v626 — la primera pantalla y el panel:**
+- el **ojo de ver la contraseña** (8 campos, lo ve todo el mundo al entrar) → SVG del sprite
+  (`i-eye`/`i-eye-off`); `togglePass` intercambia el SÍMBOLO en vez de escribir texto, que
+  borraría el icono, y la etiqueta para lector de pantalla sigue cambiando;
+- la **píldora «Instalar app»** y el recuadro **«INSTALA LA APP»** → SVG que hereda el color
+  (`i-install`), y sus **3 comillas rectas** pasan a las angulares de la marca (la app usa 446
+  angulares y solo tenía esas 3 rectas, justo en la primera pantalla que se ve);
+- el **saludo del coach** sin el 👋, en las DOS puertas (marcado y render).
+- Medido y NO tocado: la píldora se superpone a la tarjeta de Comunidad pero **no roba ni un
+  toque** (27 controles, 0 robados).
+
+**v627 — la convención de los botones:** medido, **70 de 78 botones `.btn` van sin emoji**; los 8
+que lo llevaban («💾 Guardar», «✨ Generar», «📅 Programar», «🚫 Excluidos»…) eran la excepción y
+se igualaron a la mayoría. El «✓ Crear estas rutinas» se queda: es un signo tipográfico que hereda
+el color, no un emoji. 🔴 **Dos de ellos tenían una SEGUNDA puerta**: el JS que actualiza el
+contador (`_updateGenPrefBtns`) reescribía «🚫 Excluidos (N)» — limpiar solo el HTML habría
+devuelto el emoji en el primer render, la misma clase que el saludo de v626.
+
+**Verificación.** Suite **1229 → 1236** en los tres modos · hook 12/12 · harness nuevo
+`_verify-ojo-contrasena` (revela, cambia de icono, vuelve, y el svg sobrevive al toque) · matriz
+nueva `_sabotaje-v626-627` **9/9 muerden + 1 control en verde** · mirado en captura, claro y oscuro.
+
+🔴 **Cuatro veces me equivoqué midiendo, y las cuatro las cazó un control, no yo:**
+1. La primera sonda de emoji decía **218** y contaba los MENSAJES («⚠️ El nombre es obligatorio»),
+   que son voz de marca y se quedan.
+2. Al corregirla subió a **459** porque contaba los **iconos de los ejercicios**, que son DATOS.
+   Una sonda estática no puede separar icono de dato ni de voz de marca: se acotó a lo único que
+   sí puede afirmar (emoji dentro de un `<button>` del marcado).
+3. Mi primera medición de los botones (70/8) **se quedaba corta**: no veía los que tienen marcado
+   anidado. El test lo destapó con 8 más…
+4. …**y esos 8 no eran defectos**: iban dentro de `<span class="t-ic" data-ic="…">`, que
+   `aviIconizeStatic` cambia por SVG al cargar. **El test leía el código fuente, no la pantalla.**
+   Se corrigió para quitar esos envoltorios, y el sabotaje lleva ese caso como CONTROL que no
+   debe morder.
+Además: un control de la conducta del ojo dio 0×0 porque medía con el formulario cerrado (mi
+montaje), y un ancla de sabotaje aparecía en DOS campos de contraseña.
+
 ## ⏮️ 2026-09-17 — v625: LOS MENSAJES SE UNEN, NUNCA SE REEMPLAZAN
 
 **De dónde sale:** del plan «AVI no la hizo un novato» (§1, F1.2). v623 cerró que una escritura
