@@ -1736,7 +1736,7 @@ function renderScheduledNotifs(){
       const targetName=n.target==='all'?'Todos':DB.clients.find(c=>c.id===n.target)?.name||'?';
       const repeatLabel={once:'Una vez',daily:'Cada día',weekdays:'Lun–Vie'}[n.repeat]||n.repeat;
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s);border-radius:var(--rsm);margin-bottom:6px;font-size:12px">
-        <div style="flex:1"><div style="font-weight:600;color:var(--t1)">🕐 ${esc(n.time)} · ${esc(targetName)} · ${esc(repeatLabel)}</div><div style="color:var(--t2);margin-top:2px">${esc(n.msg.substring(0,60))}${n.msg.length>60?'...':''}</div></div>
+        <div style="flex:1"><div style="font-weight:600;color:var(--t1)">🕐 ${esc(n.time)} · ${esc(targetName)} · ${esc(repeatLabel)}</div><div style="color:var(--t2);margin-top:2px">${esc(n.msg.substring(0,60))}${n.msg.length>60?'…':''}</div></div>
         <button class="btn bd" style="padding:3px 8px;font-size:11px" onclick="cancelNotification('${esc(n.id)}')">✕</button>
       </div>`;
     }).join('');

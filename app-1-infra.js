@@ -635,7 +635,7 @@ function showAviNotif(title,body,tag){
 function notifNewMessage(fromName,preview){
   showAviNotif(
     '💬 Nuevo mensaje de '+fromName,
-    preview.length>80?preview.slice(0,77)+'...':preview,
+    preview.length>80?preview.slice(0,77)+'…':preview,
     'avi-msg-'+Date.now()
   );
 }

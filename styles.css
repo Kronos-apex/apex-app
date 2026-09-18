@@ -2384,6 +2384,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .ic-ttl{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
 /* v630 · icono de estado (candado Premium, plan en preparación, error): SVG de la marca en un círculo, nunca un emoji grande */
 .ic-circle{width:46px;height:46px;margin:0 auto 8px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center}
+/* v635: en el teléfono el «+ Nuevo» de la barra empujaba el botón de salir FUERA de la pantalla
+   en «Asesorados», y repetía el «+ Nuevo asesorado» que ya está en la propia página (y en el
+   héroe del Inicio). El JS lo enciende con style.display, de ahí el !important. */
+@media (max-width:560px){#topbar-action-btn{display:none!important}}
 /* v634: «Tu comida de hoy» no tenía aire debajo y quedaba pegada a la tarjeta siguiente (el entreno o «Ya entrenaste hoy»). */
 #cn-meals>.card{margin-bottom:12px}
 /* v634: «Corregir» y «Eliminar» de cada medida medían 27px de alto (mínimo táctil 36). */

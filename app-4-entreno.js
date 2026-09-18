@@ -36,7 +36,7 @@ function renderExercises(){
   grid.innerHTML='';
   visibles.forEach(ex=>{
     const color=MC[ex.muscle]||'#6B6B6B';const div=document.createElement('div');div.className='exc';
-    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscleLabel||ex.muscle||'')} · ${esc(ex.type||'')}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Ver detalle" aria-label="Ver detalle del ejercicio" onclick="openExDetail('${ex.id}',true)">${typeof aviIcon==='function'?aviIcon('eye',15):'👁'}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar ejercicio" aria-label="Editar ejercicio" onclick="openEditEx('${ex.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button></div></div><span class="tag mc-chip" style="--mc:${color};--mct:${(typeof mcInk==='function'?mcInk(color):color)};--mcu:${(typeof mcInkUp==='function'?mcInkUp(color):color)};background:${color}15;border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'...':''}</div>`:''}`;
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px"><div style="width:36px;height:36px;border-radius:8px;background:${color}18;border:1.5px solid ${color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">${exIcon(ex)}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(ex.name)}</div><div style="font-size:11px;color:var(--t2)">${esc(ex.muscleLabel||ex.muscle||'')} · ${esc(ex.type||'')}</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Ver detalle" aria-label="Ver detalle del ejercicio" onclick="openExDetail('${ex.id}',true)">${typeof aviIcon==='function'?aviIcon('eye',15):'👁'}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar ejercicio" aria-label="Editar ejercicio" onclick="openEditEx('${ex.id}')">${typeof aviIcon==='function'?aviIcon('pencil',14):'✏️'}</button></div></div><span class="tag mc-chip" style="--mc:${color};--mct:${(typeof mcInk==='function'?mcInk(color):color)};--mcu:${(typeof mcInkUp==='function'?mcInkUp(color):color)};background:${color}15;border:1px solid ${color}30;font-size:11px">${ex.sets}×${ex.reps}</span>${ex.desc?`<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${esc(ex.desc.slice(0,80))}${ex.desc.length>80?'…':''}</div>`:''}`;
     grid.appendChild(div);
   });
   // Estado vacío consciente de POR QUÉ está vacío: no es lo mismo un músculo sin ejercicios
@@ -1282,7 +1282,7 @@ function notifyCoachMood(client){
   if(!DB.msgs[cid])DB.msgs[cid]=[];
   DB.msgs[cid].push({from:'client',text,date:new Date().toISOString(),system:true});
   svNow('ax_m',DB.msgs);
-  pushToClient('_coach','🩺 '+name+' tiene dolor hoy',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:cid,tag:'avi-chat-coach'});
+  pushToClient('_coach','🩺 '+name+' tiene dolor hoy',text.length>80?text.slice(0,77)+'…':text,{type:'message',chatId:cid,tag:'avi-chat-coach'});
 }
 
 // ── Coach Inteligente: tarjeta de insight en "Hoy" (Capa B, v352) ──
@@ -4030,7 +4030,7 @@ function _clientSend(text){
   svNow('ax_m',DB.msgs);
   const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
   // Push al coach para notificación en tiempo real
-  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
+  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'…':text,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
   renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 function sendClientMsg(){

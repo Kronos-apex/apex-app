@@ -19995,6 +19995,37 @@ test('v634 🔒 el registro y el perfil: filas que caben, campos a lo ancho, toq
   assert.ok(/\.cin-brand\{[^}]*margin-bottom:26px/.test(css), '🔴 «AVI •» vuelve a pegarse a la línea de abajo con un formulario abierto');
 });
 
+test('v635 🔒 la barra inferior del coach sigue al panel, venga de donde venga', () => {
+  const fs = require('fs'), path = require('path');
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const i = js.indexOf('function gp(id,sidebarEl,pageTitle,_silent){');
+  assert.ok(i >= 0, 'desapareció gp');
+  const cuerpo = js.slice(i, js.indexOf('\nfunction ', i + 10));
+  assert.ok(/querySelectorAll\('\.cbnav-item'\)\.forEach\(b=>b\.classList\.toggle\('on'/.test(cuerpo),
+    '🔴 la barra inferior vuelve a marcarse solo al tocarla: llegar por una tarjeta o por «atrás» deja la pestaña anterior');
+  assert.ok(/id==='p-detail'\?'p-clients':id/.test(cuerpo), '🔴 la ficha del asesorado dejó de colgar de «Asesorados»');
+});
+
+test('v635 🔒 en el teléfono la barra del coach no se sale (el «+ Nuevo» repetido se oculta)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/@media \(max-width:560px\)\{#topbar-action-btn\{display:none!important\}\}/.test(css),
+    '🔴 el «+ Nuevo» de la barra vuelve a empujar el botón de salir fuera de la pantalla');
+});
+
+test('v635 🔒 los textos cortados terminan en «…», no en tres puntos', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = [];
+  fs.readdirSync(__dirname).filter(f => /^app-\d-.*\.js$/.test(f)).forEach(f => {
+    sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n')
+      .forEach((l, i) => { if (/'\.\.\.'/.test(l)) malos.push(f + ':' + (i + 1)); });
+  });
+  assert.deepStrictEqual(malos, [], '🔴 volvieron los tres puntos: ' + malos.join(', '));
+  const js = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.ok(!/: "\$\{esc\(last\.text/.test(js) && /: «\$\{esc\(last\.text/.test(js), '🔴 la bandeja del coach volvió a las comillas rectas');
+  assert.ok(!/\$\{count\} msg</.test(js), '🔴 la bandeja volvió a decir «2 msg»');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

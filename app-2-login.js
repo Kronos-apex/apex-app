@@ -1511,6 +1511,11 @@ function gp(id,sidebarEl,pageTitle,_silent){
   document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
   if(sidebarEl) sidebarEl.classList.add('on');
+  // v635: la barra inferior la marcaba SOLO el toque sobre ella (setBottomNav). Llegar a un panel
+  // por otra puerta —una tarjeta del Inicio, el menú lateral, el botón atrás— dejaba resaltada la
+  // pestaña ANTERIOR. Ahora la decide el panel en el que se está. La ficha cuelga de Asesorados.
+  const _navId=id==='p-detail'?'p-clients':id;
+  document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.toggle('on',(b.getAttribute('onclick')||'').indexOf("gp('"+_navId+"'")===0));
   // Update topbar title
   const tp=document.getElementById('topbar-page');
   if(tp&&pageTitle) tp.textContent=pageTitle;

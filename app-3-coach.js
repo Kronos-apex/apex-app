@@ -105,7 +105,7 @@ function renderClients(){
         </div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span>${atn}</div>
         <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
-        ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_coIco('chat',11,'💬')} "${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}"</div>`:''}
+        ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_coIco('chat',11,'💬')} «${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}»</div>`:''}
       </div>
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px;align-self:stretch;justify-content:center">
         ${spark||''}
@@ -417,7 +417,7 @@ function _selfRegLimAlert(c,res){
     svNow('ax_m',DB.msgs); svNow('ax_c',DB.clients);
     if(typeof pushToClient==='function'){
       pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+' se registró con una limitación',
-        txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+        txt.length>80?txt.slice(0,77)+'…':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
     }
     return true;
   }catch(e){ warn('AVI: aviso de limitación falló (no bloquea):',e&&e.message); return false; }
@@ -440,7 +440,7 @@ function _selfRegMinorAlert(c){
     svNow('ax_m',DB.msgs); svNow('ax_c',DB.clients);
     if(typeof pushToClient==='function'){
       pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+' es menor de edad',
-        txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+        txt.length>80?txt.slice(0,77)+'…':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
     }
     return true;
   }catch(e){ warn('AVI: aviso de menor falló (no bloquea):',e&&e.message); return false; }
@@ -3788,7 +3788,7 @@ function renderMsgs(){
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">Asesorado</span>'}: "${esc(last.text.slice(0,45))}${last.text.length>45?'...':''}"</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} msg</div>`;
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">'+esc(String(c.name||'').trim().split(/\s+/)[0]||'Asesorado')+'</span>'}: «${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}»</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} mensaje${count===1?'':'s'}</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
   renderMsgsSinConversar(con);
@@ -3926,7 +3926,7 @@ async function sendCoachChatMsg(){
   const _enCola=(typeof _cwqHasMsg==='function')&&_cwqHasMsg(id,_msg.date);
   if(_cchatId===id)renderCoachChatThread(id,true);
   if(_enCola){ toast('📴 Sin conexión: guardé el mensaje y lo envío al reconectar'); return; }
-  if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'...':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
+  if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'…':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
   toast('💬 Mensaje enviado');
 }
 // v364 (adopción, ítem c): invitar al asesorado a ABRIR la app para activar sus notificaciones.

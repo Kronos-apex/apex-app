@@ -527,7 +527,7 @@ function painSubmit(){
       if(!DB.msgs[c.id])DB.msgs[c.id]=[];
       DB.msgs[c.id].push({from:'client',text:txt,date:new Date().toISOString()});
       svNow('ax_m',DB.msgs);
-      pushToClient('_coach','⚠️ '+(c.name||'Asesorado').split(' ')[0]+' reportó dolor',txt.length>80?txt.slice(0,77)+'...':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+      pushToClient('_coach','⚠️ '+(c.name||'Asesorado').split(' ')[0]+' reportó dolor',txt.length>80?txt.slice(0,77)+'…':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
     }
   }catch(_e){}
   cm('m-pain');
