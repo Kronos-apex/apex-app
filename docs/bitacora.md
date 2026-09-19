@@ -4,6 +4,17 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-18 — v641: Comunidad cuenta los 20 logros (edge `refresh_snapshot` v8)
+
+- Con Supabase conectado: `communitySnapshot` (avi-core) y la edge cuentan `GX_ACH` en vez de las 8 medallas
+  viejas. Antes Comunidad decía un número que no salía en ninguna pantalla. Medido en los 10 perfiles reales:
+  todos suben, nadie baja (Astrid 8 → 14, Luz 7 → 12, diana 0 → 0).
+- Test que lee `ACH_RULES` de la edge y lo compara métrica y meta con `GX_ACH`; `c2_parity_snapshot.cjs` estaba
+  desfasado desde v7 (usaba `planDays` en la racha) y se puso al día + 2 casos. Sabotajes: los 3 muerden.
+- Edge v8 desplegada por MCP: sin token 401, OPTIONS 200. `_prodcheck 641` verde, CI verde. Los números
+  guardados se refrescan solos la próxima vez que cada quien abra Comunidad o termine un entreno.
+- ⏳ Sigue pendiente el **proyecto de pruebas** de Supabase (crearlo puede tener costo: decisión del PO).
+
 ## ⏮️ 2026-09-18 — CI verde otra vez + v638 a v640
 
 - **CI rojo desde v628 (11 commits):** un test esperaba `(4320).toLocaleString()` — «4.320» aquí, «4,320» en el runner.
