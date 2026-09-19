@@ -2630,7 +2630,7 @@ test('communitySnapshot: destila racha/semana/nivel/logros/hoy (server-side, no 
   assert.strictEqual(s.sessions_4w, 3);              // lun/mar/mié dentro de 28d; el de abril NO
   assert.strictEqual(s.level, 1);                    // 4 entrenos < 10 → nivel 1
   assert.strictEqual(s.streak_weeks, 1);             // meta 2: esta semana lun+mar+mié = 3 días ≥ 2 → cumple
-  assert.strictEqual(s.achievements, 3);             // PR(2≥1) + 10k(21k) + 20k(21k); NO 50k, NO 10/30 entrenos, NO nivel3
+  assert.strictEqual(s.achievements, 4);             // v641 (GX_ACH): sem1 (3 días ≥ plan de 2) · ent1 · pr1 · vol10k (21k); NO racha4, NO ent25, NO vol50k
   assert.strictEqual(s.total_sessions, 4);           // #5: todos los entrenos cuentan (incl. el de abril)
   assert.strictEqual(s.training_since, '2026-04-24'); // #5: el primero es el de hace ~40 días
 });
@@ -2641,8 +2641,8 @@ test('communitySnapshot: logros por volumen y nivel; sin datos → cero honesto'
   const hist = Array.from({ length: 30 }, (_, i) => ({ date: D(2026, 6, 1), totalVol: 2000 }));
   const s = communitySnapshot({ days: 3 }, hist, { e1: {} }, now);
   assert.strictEqual(s.level, 3);                    // 30 ≥ 30 (GX_LEVELS)
-  // medallas on: PR(1) + 10ent + 30ent + 10k + 20k + 50k + nivel3 = 7  (falta 50k? 60k≥50k sí; nivel4 no)
-  assert.strictEqual(s.achievements, 7);
+  // v641 (GX_ACH): ent1 + ent25 + pr1 + vol10k + vol50k = 5 (60k < 100k; los 30 son el MISMO día → 0 semanas completas)
+  assert.strictEqual(s.achievements, 5);
   assert.strictEqual(s.total_sessions, 30);
   assert.strictEqual(s.training_since, '2026-06-01');
   const empty = communitySnapshot({ days: 3 }, [], {}, now);
@@ -12982,6 +12982,36 @@ test('el umbral de racha de avi-core y el de la edge refresh_snapshot son idént
     'el umbral de la edge y el de avi-core se separaron');
   assert.ok(/streakTargetN\s*\(/.test(src), 'la edge perdió streakTargetN');
   assert.ok(/tgt\s*=\s*streakTargetN\(/.test(src), 'la edge volvió a calcular la racha contra planDays');
+});
+
+// ── v641: el catálogo de logros vive DUPLICADO ──
+// GX_ACH en avi-core (lo que la persona ve en Progreso) y ACH_RULES en la edge `refresh_snapshot`
+// (el número que ven sus amigos en Comunidad). Si se separan, Comunidad dice «12 logros» a quien
+// en su teléfono tiene 11. Se compara métrica Y meta, en orden: agregar, quitar o cambiar uno rompe.
+test('v641: el catálogo de logros de avi-core y el de la edge refresh_snapshot son idénticos', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'supabase/functions/refresh_snapshot/index.ts'), 'utf8');
+  const m = src.match(/const\s+ACH_RULES[^=]*=\s*\[([\s\S]*?)\];/);
+  assert.ok(m, 'no se encontró ACH_RULES en la edge refresh_snapshot');
+  const pares = [...m[1].matchAll(/\[\s*"(\w+)"\s*,\s*(\d+)\s*\]/g)].map(x => x[1] + ':' + x[2]);
+  const core = GX_ACH.map(a => a.m + ':' + a.goal);
+  assert.strictEqual(core.length, 20, 'el catálogo de avi-core cambió de tamaño: revisa también la edge');
+  assert.deepStrictEqual(pares, core, 'los logros de la edge y de avi-core se separaron');
+  // y la edge cuenta con ellos, no con las 8 medallas viejas
+  assert.ok(!/const badges\s*=/.test(src), 'la edge sigue con las medallas viejas');
+});
+
+test('v641: communitySnapshot cuenta los logros de GX_ACH, los mismos de Progreso', () => {
+  const h = [];
+  for (let w = 0; w < 5; w++) for (const dd of [0, 2, 4]) h.push({ date: new Date(2026, 2, 2 + w * 7 + dd, 19).toISOString(), totalVol: 900 });
+  const client = { days: 3 };
+  const prs = { a: {}, b: {} };
+  const snap = communitySnapshot(client, h, prs, new Date(2026, 5, 3, 15));
+  const vistos = gxAchievements(gxStats(client, h, prs)).filter(a => a.earned).map(a => a.id);
+  // 5 semanas completas: sem1+sem4 · racha4 · ent1 (15 entrenos) · pr1 · vol10k (13.500 kg)
+  assert.deepStrictEqual(vistos, ['sem1', 'sem4', 'racha4', 'ent1', 'pr1', 'vol10k']);
+  assert.strictEqual(snap.achievements, vistos.length);
 });
 
 // ── A4 (adopción 2026-07-25): los umbrales de racha viven DUPLICADOS ──

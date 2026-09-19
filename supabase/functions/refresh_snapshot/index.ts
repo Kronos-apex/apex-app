@@ -1,4 +1,8 @@
-// ══════════ refresh_snapshot (C2 · v2 C3 · v4 R2 hitos · v5 #5 perfil rico · v6 A4 catch-up · v7 racha) ══════════
+// ══════════ refresh_snapshot (C2 · v2 C3 · v4 R2 hitos · v5 #5 perfil rico · v6 A4 catch-up · v7 racha · v8 logros) ══════════
+// v8 (2026-09-18, avi-v641): `achievements` cuenta el catálogo de logros de v639 (20, en 4 grupos:
+// constancia, entrenos, récords, kilos) en vez de las 8 medallas viejas. Comunidad mostraba un
+// número que no coincidía con ninguna pantalla de la app. `ACH_RULES` es espejo de GX_ACH en
+// avi-core y un test de la suite exige que coincidan métrica por métrica.
 // v7 (2026-07-30): la racha deja de exigir el plan ENTERO. Medido en producción, `streak_weeks`
 // estaba en 0 para las 8 personas con perfil —incluida quien lleva 31 sesiones y 10 semanas
 // seguidas entrenando— porque una semana solo contaba con `planDays` días (4-5) y la conducta real
@@ -33,7 +37,7 @@
 // (no hay fila en community_profiles), no hace nada. Zona horaria fija: America/Bogota (UTC-5, sin DST).
 //
 // PORT FIEL de `communitySnapshot` en avi-core.js (testeado en avi.test.js) — misma lógica de
-// weekStreak/gxLevel/planDays y las 8 medallas de renderGamification. Única diferencia: aquí el día
+// weekStreak/gxLevel/planDays y el catálogo de logros GX_ACH (v8). Única diferencia: aquí el día
 // y la semana se anclan a Bogota (allá = zona local del dispositivo, que para los usuarios ES Colombia).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -115,6 +119,43 @@ function weekStreakWeeks(hist: any[], tgt: number, nowT: number): number {
   while (byWeek[cur] && byWeek[cur].size >= tgt) { weeks++; cur -= WEEK; }
   return weeks;
 }
+// ESPEJO de GX_ACH en avi-core (v639): [métrica, meta] de cada logro, en el mismo orden.
+// ⚠️ Si cambias el catálogo allá, cámbialo aquí: la paridad la exige un test de la suite.
+const ACH_RULES: [string, number][] = [
+  ["fullWeeks", 1], ["fullWeeks", 4], ["fullWeeks", 12],
+  ["bestStreak", 4], ["bestStreak", 12], ["bestStreak", 24], ["bestStreak", 52],
+  ["total", 1], ["total", 25], ["total", 50], ["total", 100], ["total", 200],
+  ["prs", 1], ["prs", 5], ["prs", 15],
+  ["totalVol", 10000], ["totalVol", 50000], ["totalVol", 100000], ["totalVol", 250000], ["totalVol", 1000000],
+];
+// Días Bogota entrenados por semana (lunes Bogota). Salta fechas vacías: new Date(null) = 1970.
+function daysByWeek(hist: any[]): Record<number, Set<number>> {
+  const byWeek: Record<number, Set<number>> = {};
+  for (const h of (hist || [])) {
+    const raw = h && h.date; if (raw == null || raw === "") continue;
+    const t = new Date(raw).getTime(); if (isNaN(t)) continue;
+    const wk = bogotaWeekStart(t);
+    (byWeek[wk] = byWeek[wk] || new Set()).add(bogotaDayStart(t));
+  }
+  return byWeek;
+}
+// Espejo de `fullWeeksCount`: semanas con TODOS los días del plan.
+function fullWeeksN(hist: any[], planN: number): number {
+  const byWeek = daysByWeek(hist);
+  return Object.keys(byWeek).filter((k) => byWeek[Number(k)].size >= planN).length;
+}
+// Espejo de `longestWeekStreak`: la MEJOR racha histórica (un logro ganado no se pierde).
+function longestStreakN(hist: any[], tgt: number): number {
+  const byWeek = daysByWeek(hist);
+  const met = Object.keys(byWeek).map(Number).filter((k) => byWeek[k].size >= tgt).sort((a, b) => a - b);
+  if (!met.length) return 0;
+  const WEEK = 7 * 86400000;
+  let best = 1, cur = 1;
+  for (let i = 1; i < met.length; i++) {
+    if (met[i] - met[i - 1] === WEEK) { cur++; if (cur > best) best = cur; } else cur = 1;
+  }
+  return best;
+}
 function snapshot(row: any, nowT: number) {
   const hist = Array.isArray(row && row.history) ? row.history : [];
   const prs = (row && row.prs) || {};
@@ -136,9 +177,13 @@ function snapshot(row: any, nowT: number) {
     if (ds === today) trained_today = true;
     if (minDay === null || ds < minDay) minDay = ds;
   }
-  const badges = [prsCount >= 1, total >= 10, total >= 30, totalVol >= 10000, totalVol >= 50000, totalVol >= 20000, lvl >= 3, lvl >= 4];
+  const pd = planDays(row && row.routines, row && row.profile && row.profile.days);
+  const stats: Record<string, number> = {
+    total, prs: prsCount, totalVol, fullWeeks: fullWeeksN(hist, pd), bestStreak: longestStreakN(hist, tgt),
+  };
+  const achievements = ACH_RULES.filter(([m, goal]) => (stats[m] || 0) >= goal).length;
   return {
-    streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today,
+    streak_weeks, sessions_4w: days4w.size, level: lvl, achievements, trained_today,
     total_sessions: total, training_since: minDay === null ? null : ymdBogota(minDay),
   };
 }

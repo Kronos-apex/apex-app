@@ -3075,7 +3075,8 @@ function longestWeekStreak(sessions, target) {
   const tgt = Math.max(1, Math.min(7, parseInt(target) || 3));
   const byWeek = {};
   (sessions || []).forEach(s => {
-    const d = new Date(s && s.date); if (isNaN(d.getTime())) return;
+    const raw = s && s.date; if (raw == null || raw === '') return; // new Date(null) = 1970, no NaN
+    const d = new Date(raw); if (isNaN(d.getTime())) return;
     const wk = weekStartTs(d);
     (byWeek[wk] = byWeek[wk] || new Set()).add(d.toDateString());
   });
@@ -8209,8 +8210,8 @@ function nutProtCheck(client, servido, weightKg) {
 //  🔒 «Semana completa» = TODOS los días de su plan en una semana (planDays). No es la racha,
 //     que se cumple con STREAK_WEEK_MIN_DAYS: son dos cosas distintas con dos nombres distintos.
 //  🔒 Los ids son estables: se guardan como «ya vistos» en el teléfono para saber qué es NUEVO.
-//  ⚠️ `communitySnapshot` (y su copia en la edge `refresh_snapshot`) siguen contando las 8
-//     medallas de antes hasta que se despliegue la edge con este catálogo.
+//  🔒 `communitySnapshot` y la edge `refresh_snapshot` cuentan ESTE catálogo (v641): la edge
+//     lleva su copia en `ACH_RULES` y un test de la suite exige que coincidan métrica por métrica.
 const GX_ACH_GROUPS = [
   { id: 'constancia', nm: 'Constancia' },
   { id: 'entrenos', nm: 'Entrenos' },
@@ -8304,16 +8305,14 @@ function gxLevel(total) {
 // ── Snapshot de constancia para la COMUNIDAD (idea #5, C2) — PURA, fuente de verdad ──
 // Destila el historial/prs/plan de un usuario en las 5 cifras públicas que ven sus amigos:
 // racha de semanas, días entrenados en las últimas 4 semanas, nivel, nº de logros y si entrenó
-// hoy. Reusa weekStreak/gxLevel/planDays/localDayStart (ya testeadas). La lógica de logros calca
-// las 8 medallas de renderGamification (app-4). **La edge function `refresh_snapshot` la PORTA a
+// hoy. Reusa weekStreak/gxLevel/planDays/localDayStart (ya testeadas). Los logros son los de
+// GX_ACH (v639/v641). **La edge function `refresh_snapshot` la PORTA a
 // TS y la corre server-side (decisión #7): el cliente NO puede inflar estos números.** Nota TZ:
 // aquí usa la zona local (= Colombia en los dispositivos reales); la edge la fija a America/Bogota.
 function communitySnapshot(client, sessions, prs, now) {
   const hist = sessions || [];
   const total = hist.length;
-  const totalVol = hist.reduce((s, h) => s + ((h && h.totalVol) || 0), 0);
   const lvl = gxLevel(total).cur.n;
-  const prsCount = prs ? Object.keys(prs).length : 0;
   const streakWeeks = weekStreak(hist, streakTarget(client), now).weeks;
   const today = localDayStart(now || new Date());
   const cutoff = today - 27 * 86400000; // hoy + 27 días previos = ventana de 4 semanas
@@ -8329,13 +8328,14 @@ function communitySnapshot(client, sessions, prs, now) {
     if (ds === today) trainedToday = true;
     if (minDay === null || ds < minDay) minDay = ds;
   });
-  // Las 8 medallas de renderGamification (app-4): PR, 10/30 entrenos, 10k/20k/50k kg, nivel 3/4.
-  const badges = [prsCount >= 1, total >= 10, total >= 30, totalVol >= 10000, totalVol >= 50000, totalVol >= 20000, lvl >= 3, lvl >= 4];
+  // v641: el catálogo de v639 (GX_ACH), el mismo que ve la persona en Progreso. Antes contaba
+  // las 8 medallas viejas y Comunidad mostraba un número que no existía en ninguna pantalla.
+  const achievements = gxAchievements(gxStats(client, hist, prs)).filter(a => a.earned).length;
   return {
     streak_weeks: streakWeeks,
     sessions_4w: days4w.size,
     level: lvl,
-    achievements: badges.filter(Boolean).length,
+    achievements,
     trained_today: trainedToday,
     // #5 perfil rico (agregados seguros, mismo régimen server-side que streak/level):
     total_sessions: total,                                 // Nº de entrenos del historial

@@ -11,6 +11,12 @@ function ymdBogota(dayStart){ const x=new Date(dayStart-BOGOTA_OFFSET_MS); const
 function planDays(routines, days){ const fromR=(routines||[]).filter(r=>r&&r.day&&r.day!=='Libre').length; const d=fromR||parseInt(days)||3; return Math.max(1,Math.min(7,d)); }
 function gxLevelN(total){ let n=1; for(let i=0;i<GX_MINS.length;i++){ if(total>=GX_MINS[i]) n=i+1; } return n; }
 function weekStreakWeeks(hist,tgt,nowT){ const byWeek={}; for(const h of (hist||[])){ const t=new Date(h&&h.date).getTime(); if(isNaN(t))continue; const wk=bogotaWeekStart(t); (byWeek[wk]=byWeek[wk]||new Set()).add(bogotaDayStart(t)); } const WEEK=7*86400000; const curWk=bogotaWeekStart(nowT); const met=((byWeek[curWk]&&byWeek[curWk].size)||0)>=tgt; let weeks=0; let cur=met?curWk:curWk-WEEK; while(byWeek[cur]&&byWeek[cur].size>=tgt){ weeks++; cur-=WEEK; } return weeks; }
+const STREAK_WEEK_MIN_DAYS=2;
+function streakTargetN(routines,days){ return Math.max(1,Math.min(planDays(routines,days),STREAK_WEEK_MIN_DAYS)); }
+const ACH_RULES=[["fullWeeks",1],["fullWeeks",4],["fullWeeks",12],["bestStreak",4],["bestStreak",12],["bestStreak",24],["bestStreak",52],["total",1],["total",25],["total",50],["total",100],["total",200],["prs",1],["prs",5],["prs",15],["totalVol",10000],["totalVol",50000],["totalVol",100000],["totalVol",250000],["totalVol",1000000]];
+function daysByWeek(hist){ const byWeek={}; for(const h of (hist||[])){ const raw=h&&h.date; if(raw==null||raw==='')continue; const t=new Date(raw).getTime(); if(isNaN(t))continue; const wk=bogotaWeekStart(t); (byWeek[wk]=byWeek[wk]||new Set()).add(bogotaDayStart(t)); } return byWeek; }
+function fullWeeksN(hist,planN){ const b=daysByWeek(hist); return Object.keys(b).filter(k=>b[Number(k)].size>=planN).length; }
+function longestStreakN(hist,tgt){ const b=daysByWeek(hist); const met=Object.keys(b).map(Number).filter(k=>b[k].size>=tgt).sort((a,c)=>a-c); if(!met.length)return 0; const W=7*86400000; let best=1,cur=1; for(let i=1;i<met.length;i++){ if(met[i]-met[i-1]===W){cur++; if(cur>best)best=cur;} else cur=1; } return best; }
 function edgeSnapshot(row,nowT){
   const hist=Array.isArray(row&&row.history)?row.history:[];
   const prs=(row&&row.prs)||{};
@@ -18,14 +24,16 @@ function edgeSnapshot(row,nowT){
   const totalVol=hist.reduce((s,h)=>s+((h&&h.totalVol)||0),0);
   const lvl=gxLevelN(total);
   const prsCount=Object.keys(prs).length;
-  const tgt=planDays(row&&row.routines, row&&row.profile&&row.profile.days);
+  const tgt=streakTargetN(row&&row.routines, row&&row.profile&&row.profile.days);
   const streak_weeks=weekStreakWeeks(hist,tgt,nowT);
   const today=bogotaDayStart(nowT);
   const cutoff=today-27*86400000;
   const days4w=new Set(); let trained_today=false; let minDay=null;
   for(const h of hist){ const raw=h&&h.date; if(raw==null||raw==='')continue; const t=new Date(raw).getTime(); if(isNaN(t))continue; const ds=bogotaDayStart(t); if(ds>=cutoff)days4w.add(ds); if(ds===today)trained_today=true; if(minDay===null||ds<minDay)minDay=ds; }
-  const badges=[prsCount>=1,total>=10,total>=30,totalVol>=10000,totalVol>=50000,totalVol>=20000,lvl>=3,lvl>=4];
-  return { streak_weeks, sessions_4w: days4w.size, level: lvl, achievements: badges.filter(Boolean).length, trained_today, total_sessions: total, training_since: minDay===null?null:ymdBogota(minDay) };
+  const pd=planDays(row&&row.routines, row&&row.profile&&row.profile.days);
+  const stats={ total, prs: prsCount, totalVol, fullWeeks: fullWeeksN(hist,pd), bestStreak: longestStreakN(hist,tgt) };
+  const achievements=ACH_RULES.filter(([m,g])=>(stats[m]||0)>=g).length;
+  return { streak_weeks, sessions_4w: days4w.size, level: lvl, achievements, trained_today, total_sessions: total, training_since: minDay===null?null:ymdBogota(minDay) };
 }
 
 // ---- fixtures difíciles ----
@@ -52,6 +60,13 @@ cases.push({name:'planDays-rutinas', client:{routines:[{day:'Lunes'},{day:'Miér
 // 7) volumen alto → medallas
 cases.push({name:'volumen', client:{days:3}, prs:{a:{}}, now:D(2026,6,3),
   hist:Array.from({length:30},()=>({date:iso(D(2026,6,1)),totalVol:2000}))});
+
+// 8) v641: 13 semanas seguidas con el plan entero (3 días) → sem1/sem4/sem12 + racha4/racha12
+{ const h=[]; for(let w=0;w<13;w++){ for(const dd of [0,2,4]){ const x=D(2026,3,2+w*7+dd,19); h.push({date:iso(x),totalVol:900}); } }
+  cases.push({name:'constancia-13sem', client:{days:3}, prs:{a:{},b:{},c:{},d:{},e:{}}, now:D(2026,6,3,15), hist:h}); }
+// 9) racha rota a mitad + null/'' que NO deben contar como la semana de 1970
+{ const h=[{date:null},{date:''}]; for(const w of [0,1,2,3,5,6]){ h.push({date:iso(D(2026,4,6+w*7,8))}); h.push({date:iso(D(2026,4,8+w*7,8))}); }
+  cases.push({name:'racha-rota+nulos', client:{days:2}, prs:{}, now:D(2026,6,3,15), hist:h}); }
 
 let fails=0;
 for(const c of cases){
