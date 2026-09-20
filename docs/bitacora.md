@@ -4,6 +4,46 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-20 — v644: el calentamiento sigue al PLAN, y las 14 piezas muertas dejan de estarlo
+
+- **La decisión del PO, que cambió el mecanismo que yo proponía.** Yo había medido el problema (de cada grupo
+  se tomaban SIEMPRE los dos primeros, así que del 3.º en adelante solo se llegaba si el filtro quitaba a uno
+  de los dos de arriba) y había construido una **rotación por DÍA**. Él la descartó en una línea: *«nada de
+  rotación de ejercicios de calentamiento a menos que se modifique la rutina, ahí sí se justifica rotar
+  dependiendo de qué tanto se modifique»*. Tiene razón y es mejor producto: **un calentamiento se hace bien
+  cuando la persona se lo sabe**; barajarlo cada mañana lo vuelve algo que hay que leer.
+- **Implementado:** `wuTake` desplaza el punto de partida dando la vuelta, y `wuRotForRoutine` (PURA) deriva
+  ese desplazamiento de los ejercicios de la rutina, sumando un valor por ejercicio — cambiar uno de seis mueve
+  UN término y cambiar cuatro mueve cuatro, así que cuanto más se toca el plan más probable es que el
+  calentamiento cambie. **Reordenar NO cuenta como modificar.** 🔒 Sale del plan **GUARDADO**, nunca de
+  `CUR.activeRoutine`, que ES la rutina que ya adaptó el ánimo del día: si saliera de esa, el calentamiento
+  cambiaría con «hoy estoy cansada» — rotar por día con otro nombre. 🔒 Con desplazamiento 0 el motor devuelve
+  **exactamente lo de siempre**: ese es el control de que el mecanismo no cambia nada por su cuenta.
+- **📊 Medido contra las 118 rutinas REALES: 20 de 34 piezas usadas → 34 de 34, ninguna muerta**, y **0
+  contraindicados colados** con las tres zonas que hoy declara alguien. (Cuadra con la auditoría: 34 − 20 = las
+  14 que E2 contó con 0/118.)
+- **🔺 TERCERA RONDA DE LAURA, y es la parte que no se podía saltar.** Al dejar que cualquier pieza llegue a
+  cualquiera, **su barrido del 20-sep dejó de ser suficiente**: cubría exactamente las promociones del mecanismo
+  viejo. Dictó las seis casillas que faltaban — hombro ❌ `we4` y ❌ `wa1` (cierre en cadena: el peso del cuerpo
+  sobre el hombro y el manguito cargado abajo, el mismo mecanismo por el que `we4` ya salía de cuello y muñeca),
+  cuello ❌ `we5` (carga axial variable sobre las cervicales), tobillo ❌ `wr2` (dorsiflexión bajo carga, igual
+  que su hermana `wai1`) y muñeca ❌ `we1` (cuadrupedia con la muñeca en extensión máxima). **`wa4` quedó 🟡 en
+  hombro y NO entra**: un 🟡 no cambia la conducta y una regla ancha también hace daño (v424).
+- 💎 **Y su veredicto sobre la rotación coincide con el del PO por otra vía**: la movilidad se puede rotar (no se
+  aprende, se ejecuta) pero **la activación es patrón motor** —sentadilla, desplante, peso muerto de peso
+  corporal, plancha— y rotarla a diario le pide a alguien reaprender técnica cada mañana. El mecanismo del PO es
+  **más estricto que su propia recomendación**: la activación solo se mueve cuando el coach cambia el plan.
+- **QA.** Suite **1276 → 1280** en los cuatro modos, hook 12/12, matriz nueva `_sabotaje-v644` **12/12**, harness
+  `_verify-aviso-calentamiento` verde en los dos temas, `_prodcheck 644` verde, CI verde.
+- 🔴 **Los dos verdes de la matriz eran huecos míos, y el segundo enseña algo nuevo:** devolver `pool.slice(0,2)`
+  DENTRO de `buildWarmup` salía verde porque mis candados probaban `wuTake` y probaban que el render le pasa el
+  desplazamiento, pero ninguno probaba que el MOTOR lo use. Y al escribir ese candado, **afirmar la lista ENTERA
+  tampoco mordía**: revertir solo la movilidad dejaba la activación rotando y el resultado seguía cambiando.
+  **Un candado sobre la UNIÓN de dos mecanismos no vigila a ninguno de los dos** — se afirma cada mitad aparte.
+- 🔁 Y en el harness de pantalla, la aserción «recibe `wc1` + `wc4`» codificaba un par concreto que desde ahora
+  se mueve con el plan: **re-encuadrada a la PROPIEDAD** (que nada de lo que llega esté contraindicado para lo
+  que esa persona declaró), calculada con el filtro real dentro de la página.
+
 ## ⏮️ 2026-09-20 — v643: el segundo lote del calentamiento, y las 10 piezas que no le llegan a nadie
 
 - **Un título de sección sin nada debajo.** El filtro de lesiones vacía una zona a propósito y el título se
