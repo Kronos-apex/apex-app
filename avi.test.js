@@ -20293,10 +20293,19 @@ test('🔴 el aviso «ojo con su zona» también en la pantalla donde se ENTRENA
     '🔴 renderWarmup no consulta warmupWarnZones: el aviso volvió a existir solo en el editor');
   assert.ok(/warmupWarnText\(/.test(cuerpo), 'renderWarmup no usa warmupWarnText (la fuente única del texto)');
   assert.ok(/_wuAvisoFila\(ex\)/.test(cuerpo), 'la fila del movimiento no pinta su aviso');
-  assert.ok(/_wuAvisoCab/.test(cuerpo), 'la CABECERA no pinta el aviso, y la tarjeta llega colapsada: escondido = inexistente');
+  // 🔴 Este assert decía `/_wuAvisoCab/` y APROBÓ el sabotaje que quitaba el aviso de la cabecera:
+  // el identificador sigue en su declaración aunque ya no se pinte. Se exige la INTERPOLACIÓN, y
+  // dentro de la cabecera (junto a la insignia), que es el sitio que importa — la tarjeta llega
+  // colapsada, así que un aviso que solo vive en las filas está escondido tras un toque.
+  assert.ok(/wu-status-badge[\s\S]{0,160}\$\{_wuAvisoCab\}/.test(cuerpo),
+    'la CABECERA no pinta el aviso, y la tarjeta llega colapsada: escondido = inexistente');
   // El aviso se calcula sobre lo que de verdad se pinta (lista manual o auto-derivada), no sobre
   // una de las dos: si solo cubriera una rama, la otra quedaría muda.
-  assert.ok(/_wuItems\s*=\s*custom\s*\|\|/.test(cuerpo), 'el aviso no cubre las dos ramas (lista propia del coach y auto-derivada)');
+  // 🔴 El primer intento de este assert (`/_wuItems\s*=\s*custom\s*\|\|/`) APROBÓ un sabotaje que
+  // ponía `custom||[]` y dejaba muda la rama auto-derivada (las 118 rutinas de 124). Un candado que
+  // solo comprueba el principio de la expresión no vigila la expresión: se nombran las DOS fuentes.
+  assert.ok(/_wuItems\s*=\s*custom\s*\|\|\s*\[\s*\.\.\.articulares\s*,\s*\.\.\.activaciones\s*\]/.test(cuerpo),
+    'el aviso no cubre las dos ramas (lista propia del coach y auto-derivada)');
   // Y un aviso sin estilo es un aviso invisible.
   const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
   assert.ok(/\.wu-ex-warn\{[^}]*var\(--ort\)/.test(css), '.wu-ex-warn sin tinta --ort: el aviso queda ilegible o invisible');
