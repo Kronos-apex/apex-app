@@ -20358,6 +20358,59 @@ test('🔴 «Entrenar otra vez» abre un entreno LIMPIO (ejecutado, no leído)',
   assert.strictEqual((src.match(/function _wipeSessionFlags\(/g) || []).length, 1, '_wipeSessionFlags duplicada');
 });
 
+test('🔴 ningún título de sección se pinta sin ejercicios debajo, y una lista que no resuelve nada no deja tarjeta muerta', () => {
+  // Segundo lote de la auditoría. Dos caminos llevaban a una tarjeta que no sirve para nada:
+  // (a) el filtro de lesiones vacía una zona a propósito y el título se pintaba igual — con lumbar
+  //     y tobillo declarados, un día de pierna deja «⚡ Activación muscular» con CERO filas;
+  // (b) una lista propia del coach cuyos ids ya no existen dejaba «0/0» con la insignia naranja
+  //     que nunca pasa a verde, porque `updateWarmupProgress` con total 0 cae al `else`.
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const i = src.indexOf('function renderWarmup(');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(cuerpo.length > 800 && /wu-section-title/.test(cuerpo), 'CONTROL DE COBERTURA · el recorte de renderWarmup no trae su cuerpo');
+  // Cada título va dentro de la guarda de SU lista (y no de la otra, que sería el mismo defecto).
+  assert.ok(/articulares\.length\?`<div class="wu-section-title">[^`]*Movilidad/.test(cuerpo),
+    '🔴 el título de Movilidad se pinta sin comprobar que tenga ejercicios');
+  assert.ok(/activaciones\.length\?`<div class="wu-section-title"[^`]*Activación/.test(cuerpo),
+    '🔴 el título de Activación se pinta sin comprobar que tenga ejercicios');
+  // Una lista propia sin ningún id vivo NO cuenta como lista propia, y sin nada que ofrecer no hay tarjeta.
+  assert.ok(/_customVivos&&_customVivos\.length\)\?_customVivos:null/.test(cuerpo.replace(/\s/g, '')) ||
+            /const custom=\(_customVivos&&_customVivos\.length\)\?_customVivos:null/.test(cuerpo),
+    '🔴 una lista propia con 0 ids vivos vuelve a contar como lista del coach');
+  assert.ok(/if\(!total\)\{\s*con\.innerHTML='';\s*return;\s*\}/.test(cuerpo),
+    '🔴 sin un solo movimiento se sigue pintando la tarjeta (insignia que pide calentar y nada con qué)');
+  // Y el botón de video deja de ser el último emoji crudo dentro de un control de esta tarjeta.
+  assert.ok(/wu-guide-btn[\s\S]{0,320}_gmIco\('play'/.test(cuerpo),
+    'el botón de «cómo se hace» no usa el icono de la marca');
+  assert.ok(!/wu-guide-btn[\s\S]{0,320}opacity:/.test(cuerpo),
+    'el botón lleva opacity: se apaga la TINTA, no el contenido (regla del repo desde v453)');
+});
+
+test('🔴 el selector de calentamiento no se cierra en cada toque (8 toques para 4 movimientos)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = src.indexOf('function rfWarmAdd(');
+  const add = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(add.length > 200, 'CONTROL DE COBERTURA · no se recortó rfWarmAdd');
+  assert.ok(!/cm\('m-warmpick'\)/.test(add), '🔴 volvió a cerrarse el selector en cada movimiento agregado');
+  assert.ok(/_wpMarkUsed\(id\)/.test(add), 'el movimiento agregado no se marca en el selector');
+  // La marca va EN SITIO: repintar con openWarmPicker() devuelve el scroll al principio y en una
+  // lista de 34 eso es perder el sitio en cada toque — se cambiaría una molestia por otra.
+  assert.ok(!/openWarmPicker\(\)/.test(add), '🔴 se repinta el selector entero: el coach pierde el scroll');
+  const j = src.indexOf('function _wpMarkUsed(');
+  assert.ok(j > 0, '_wpMarkUsed desapareció');
+  const mark = src.slice(j, src.indexOf('\nfunction ', j + 10));
+  assert.ok(/data-wp="/.test(mark) && /data-wptick/.test(mark), 'la marca no encuentra su fila ni su ✓');
+  // El selector tiene que ETIQUETAR sus filas o la marca no las encuentra (las dos mitades, v598).
+  const k = src.indexOf('function openWarmPicker(');
+  const pick = src.slice(k, src.indexOf('\nfunction ', k + 10));
+  assert.ok(/data-wp="\$\{ex\.id\}"/.test(pick), 'las filas del selector no llevan su identificador');
+  assert.ok(/data-wptick/.test(pick), 'el ✓/+ del selector no se puede actualizar');
+  assert.ok(!/opacity:\$\{used\?/.test(pick),
+    '🔴 lo ya agregado vuelve a apagarse con opacity SOBRE LA LETRA: ahí está el nombre del movimiento');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

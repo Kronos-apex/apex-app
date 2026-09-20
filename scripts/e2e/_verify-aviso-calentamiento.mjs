@@ -82,10 +82,16 @@ async function pintar(caso) {
         aviso:((f.querySelector('.wu-ex-warn')||{}).textContent||'').trim(),
         altoAviso: f.querySelector('.wu-ex-warn') ? Math.round(f.querySelector('.wu-ex-warn').getBoundingClientRect().height) : 0,
       }));
+      // Un título de sección con NADA debajo: se cuenta mirando el DOM, no el marcado.
+      const titulos=[...wrap.querySelectorAll('.wu-section-title')];
+      const vacios=titulos.filter(t=>!(t.nextElementSibling&&t.nextElementSibling.classList.contains('wu-ex-row')))
+        .map(t=>t.textContent.trim());
       const cab=wrap.querySelector('.wu-warn-head');
       let peor=0; wrap.querySelectorAll('*').forEach(el=>{ const x=Math.round(el.getBoundingClientRect().right-window.innerWidth); if(x>peor)peor=x; });
       const c1=wrap.querySelector('.wu-ex-warn');
-      return { ok:true, filas,
+      const guia=wrap.querySelector('.wu-guide-btn');
+      return { ok:true, filas, titulos:titulos.map(t=>t.textContent.trim()), vacios, html:wrap.innerHTML.length,
+        guiaSvg: !!(guia&&guia.querySelector('svg[data-ico]')), guiaTxt: guia?(guia.textContent||'').trim():'',
         cab: cab ? cab.textContent.trim() : '', altoCab: cab ? Math.round(cab.getBoundingClientRect().height) : 0,
         colorCab: cab ? getComputedStyle(cab).color : '', colorFila: c1 ? getComputedStyle(c1).color : '',
         alto: Math.round(wrap.getBoundingClientRect().height), excesoPx: peor };
@@ -118,6 +124,11 @@ for (const tema of ['claro', 'oscuro']) {
     document.body.innerHTML='<div id="wu-wrap"></div>';
     window.module={exports:{}};
     window.esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    // \`aviIcon\` (app-1) y \`_gmIco\` (app-6, línea 388) viven FUERA del tramo extraído: en la app
+    // existen, aquí hay que ponerlos o el render lanza. El icono de juguete lleva \`data-ico\` para
+    // poder AFIRMAR en pantalla que el botón pinta un SVG y no el emoji de respaldo.
+    window.aviIcon=(n,sz)=>'<svg width="'+sz+'" height="'+sz+'" data-ico="'+n+'"><rect width="100%" height="100%" fill="currentColor"/></svg>';
+    window._gmIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
     const meter=txt=>{const e=document.createElement('script'); e.textContent=txt; document.head.appendChild(e);};
     meter(${JSON.stringify(CORE)});
     meter(${JSON.stringify(TRAMO)});
@@ -145,6 +156,8 @@ for (const tema of ['claro', 'oscuro']) {
   A.ok(!/contraindicad|L4|L5|flexi[óo]n lumbar/i.test(m1.cab + marcadas.map(f => f.aviso).join(' ')),
     `${tema}: sin jerga clínica en lo que lee la persona`, m1.cab);
   A.ok(m1.excesoPx <= 1, `${tema}: no se desborda a 360 px (exceso ${m1.excesoPx}px)`, m1.excesoPx);
+  A.ok(m1.guiaSvg && !/🎥/.test(m1.guiaTxt),
+    `${tema}: el botón de «cómo se hace» pinta el icono de la marca, no el emoji`, { svg: m1.guiaSvg, txt: m1.guiaTxt });
   A.ok(/rgb/.test(m1.colorCab || '') && !/rgba\(0, 0, 0, 0\)/.test(m1.colorCab || ''),
     `${tema}: el aviso tiene color resuelto (si el token falla, queda invisible)`, m1.colorCab);
 
@@ -166,6 +179,24 @@ for (const tema of ['claro', 'oscuro']) {
   A.ok(m3.filas.every(f => !f.aviso) && !m3.cab,
     `${tema}: en el auto-derivado no hay avisos porque el filtro YA los quitó`, m3.filas.filter(f => f.aviso).map(f => f.id));
   A.ok(m3.filas.length >= 2, `${tema}: el calentamiento no queda vacío tras filtrar`, m3.filas.length);
+
+  // ── CASO 3 · lumbar + tobillo en día de pierna: la sección que se quedaba sola ─
+  // Medido por E1: con esas dos zonas, `activaciones` queda en CERO y el título se pintaba igual.
+  // Hoy no le pasa a nadie (ninguna ficha declara las dos) y por eso mismo se cierra ahora.
+  const m4 = await pintar({ notes: 'Hernia lumbar L5 y esguince de tobillo',
+    exercises: [{ id: 'e2', name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', sets: 4, reps: 12 },
+                { id: 'e5', name: 'Curl Femoral Tumbado', muscle: 'piernas', type: 'Aislamiento', sets: 3, reps: 12 }] });
+  A.ok(m4.ok, `${tema}: el caso lumbar+tobillo se pinta sin lanzar`, m4.err || '');
+  A.ok(m4.vacios.length === 0, `${tema}: ningún título se queda sin ejercicios debajo`, m4.vacios);
+  A.ok(m4.filas.length >= 2 && m4.titulos.length >= 1,
+    `${tema}: CONTROL · la tarjeta sigue pintando lo que SÍ sobrevive al filtro`, { filas: m4.filas.length, titulos: m4.titulos });
+
+  // ── CASO 4 · lista propia del coach cuyos ids ya no existen ──────────────
+  const m5 = await pintar({ warmup: ['zz1', 'zz2', 'zz3'],
+    exercises: [{ id: 'e2', name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', sets: 4, reps: 12 }] });
+  A.ok(m5.ok, `${tema}: el caso de ids muertos se pinta sin lanzar`, m5.err || '');
+  A.ok(m5.filas.length >= 2, `${tema}: una lista que no resuelve nada cae al auto-derivado, no a «0/0»`, m5.filas.length);
+  A.ok(m5.titulos.length >= 1, `${tema}: y cae al auto-derivado de verdad (trae sus secciones)`, m5.titulos);
 
   // Captura del caso que importa (la lista manual con su dolor activo).
   await pintar({ warmup: LISTA_PO, painCare: PAIN_PO,

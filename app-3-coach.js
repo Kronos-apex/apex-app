@@ -3649,7 +3649,18 @@ function rfWarmAdd(id){
     const suTu=lim.propio?'tu':'su';
     if(!confirm(`${ex.name}\n\nEn ${quien} está una molestia en ${suTu} ${z.join(' y ')}, y este movimiento es de los que la app le quita solita a su plan.\n\nSi lo estás poniendo a propósito, dale.`))return;
   }
-  const cur=_effWarmIds(); if(!cur.includes(id))cur.push(id); CUR.routineWarmup=cur; renderRfWarmup(); cm('m-warmpick');
+  const cur=_effWarmIds(); if(!cur.includes(id))cur.push(id); CUR.routineWarmup=cur; renderRfWarmup(); _wpMarkUsed(id);
+}
+// 🔒 v642 · El selector YA NO SE CIERRA en cada toque (`cm('m-warmpick')`): armar un calentamiento
+// de 4 movimientos costaba 8 toques en vez de 5, porque había que volver a abrirlo cada vez.
+// Y la marca se pone EN SITIO en vez de repintar con `openWarmPicker()`: reconstruir `#wp-body`
+// devuelve el scroll al principio, y en una lista de 34 eso es perder el sitio en cada toque —
+// se cambiaría una molestia por otra. Si el selector no está abierto, no hace nada.
+function _wpMarkUsed(id){
+  const row=document.querySelector('#wp-body [data-wp="'+id+'"]'); if(!row)return;
+  row.removeAttribute('onclick'); row.onclick=null;
+  row.style.cursor='default'; row.style.background='var(--bg)';
+  const tk=row.querySelector('[data-wptick]'); if(tk){ tk.textContent='✓'; tk.style.color='var(--g)'; }
 }
 function openWarmPicker(){
   const body=document.getElementById('wp-body'); if(!body) return;
@@ -3660,10 +3671,14 @@ function openWarmPicker(){
   for(const area in WARMUP_LIBRARY){
     const pool=WARMUP_LIBRARY[area]||[]; if(!pool.length) continue;
     html+=`<div style="font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin:10px 0 5px">${esc(labels[area]||area)}</div>`;
-    html+=pool.map(ex=>{const used=have.has(ex.id);return `<div onclick="${used?'':`rfWarmAdd('${ex.id}')`}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--br);border-radius:9px;margin-bottom:5px;cursor:${used?'default':'pointer'};opacity:${used?'.45':'1'}">
+    // `data-wp`/`data-wptick`: los usa `_wpMarkUsed` para marcar lo recién agregado sin repintar.
+    // 🔒 Lo que ya está puesto se distingue por el ✓ y por el fondo, NUNCA con `opacity` sobre la
+    // letra (regla del repo desde v453): ahí sigue estando el nombre del movimiento, y si no se lee
+    // el coach deja de saber qué tiene ya en la lista, que es justo lo que esa marca viene a decir.
+    html+=pool.map(ex=>{const used=have.has(ex.id);return `<div data-wp="${ex.id}" ${used?'':`onclick="rfWarmAdd('${ex.id}')"`} style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--br);border-radius:9px;margin-bottom:5px;cursor:${used?'default':'pointer'};background:${used?'var(--bg)':'transparent'}">
         <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
         <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
-        <span style="font-size:13px;font-weight:800;color:${used?'var(--g)':'var(--g2)'};flex-shrink:0">${used?'✓':'+'}</span>
+        <span data-wptick style="font-size:13px;font-weight:800;color:${used?'var(--g)':'var(--g2)'};flex-shrink:0">${used?'✓':'+'}</span>
       </div>`;}).join('');
   }
   body.innerHTML=html;

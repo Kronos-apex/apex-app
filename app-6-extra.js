@@ -2475,8 +2475,18 @@ function renderWarmup(exercises){
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;
-  const custom=(customIds&&customIds.length)?customIds.map(id=>findWarmupEx(id)).filter(Boolean):null;
+  // 🔒 v642 · Una lista propia que NO RESUELVE NINGÚN id se trata como si no existiera. `findWarmupEx`
+  // devuelve undefined para un id que ya no está en la biblioteca (hoy no pasa: los 49 ids en uso
+  // existen los 49), y sin esto el `filter(Boolean)` dejaba un array VACÍO que seguía contando como
+  // «lista del coach»: tarjeta con «0/0», cuerpo en blanco y la insignia naranja que NUNCA pasa a
+  // verde, porque `updateWarmupProgress` con total 0 cae al `else`. Un camino sin salida. Caer al
+  // auto-derivado es además lo que el propio editor promete («Sin movimientos — la app auto-sugiere»).
+  const _customVivos=(customIds&&customIds.length)?customIds.map(id=>findWarmupEx(id)).filter(Boolean):null;
+  const custom=(_customVivos&&_customVivos.length)?_customVivos:null;
   const total=custom?custom.length:(articulares.length+activaciones.length);
+  // Sin un solo movimiento que ofrecer no se pinta la tarjeta: más vale nada que una tarjeta muerta
+  // con una insignia que le pide calentar y una lista donde no hay con qué.
+  if(!total){ con.innerHTML=''; return; }
   // Si la persona ya la había abierto, se repinta ABIERTA (ver toggleWarmup): así un repintado
   // del guiado no le cambia el alto de lo que está mirando.
   const _wuOpen=wuIsOpen(rid);
@@ -2518,7 +2528,7 @@ function renderWarmup(exercises){
         <div class="wu-ex-reps">${esc(ex.reps)}</div>
         ${_wuAvisoFila(ex)}
       </div>
-      <button class="wu-guide-btn" aria-label="Ver cómo se hace: guía y video" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;font-size:17px;cursor:pointer;flex-shrink:0;margin-right:2px;opacity:.75">🎥</button>
+      <button class="wu-guide-btn" aria-label="Ver cómo se hace: guía y video" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;cursor:pointer;flex-shrink:0;margin-right:2px;color:var(--t3);display:flex;align-items:center">${_gmIco('play',17,'🎥')}</button>
       <button id="wu-btn-${ex.id}" class="wu-check-btn" onclick="event.stopPropagation();wuToggle('${ex.id}')" style="${d?'background:var(--g);border-color:var(--g)':''}">${d?'✓':''}</button>
     </div>`;
   };
@@ -2544,10 +2554,14 @@ function renderWarmup(exercises){
       <div id="wu-body" class="wu-body${_wuOpen?' open':''}">
         ${custom
           ? custom.map(exRow).join('')
-          : `<div class="wu-section-title">🦴 Movilidad articular</div>
-        ${articulares.map(exRow).join('')}
-        <div class="wu-section-title" style="margin-top:14px">⚡ Activación muscular</div>
-        ${activaciones.map(exRow).join('')}`}
+          // 🔒 v642 · Cada título se pinta SOLO si su lista trae algo. El filtro de lesiones vacía una
+          // zona a propósito cuando todo lo suyo está contraindicado, y el título se pintaba igual:
+          // medido, con lumbar + tobillo declarados un día de pierna o de glúteo deja «⚡ Activación
+          // muscular» con CERO filas debajo. Hoy no le pasa a nadie (ninguna ficha declara esas dos),
+          // y por eso mismo se cierra ahora: cuando le pase a alguien, nadie va a estar mirando.
+          : `${articulares.length?`<div class="wu-section-title">🦴 Movilidad articular</div>
+        ${articulares.map(exRow).join('')}`:''}${activaciones.length?`<div class="wu-section-title"${articulares.length?' style="margin-top:14px"':''}>⚡ Activación muscular</div>
+        ${activaciones.map(exRow).join('')}`:''}`}
       </div>
     </div>`;
   updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)
