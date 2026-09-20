@@ -20471,12 +20471,17 @@ test('🔴 el MOTOR usa el desplazamiento (no basta con que el cableado se lo pa
   const rutina = [{ id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto' },
                   { id: 'e2', name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento' }];
   const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id).join(',');
+  // 🔴 Las DOS mitades se afirman por SEPARADO: la primera versión comparaba la lista entera y los
+  // dos sabotajes salieron VERDES, porque revertir solo la movilidad dejaba la activación rotando
+  // y el resultado seguía cambiando. Un candado sobre la unión no vigila a ninguno de los dos.
+  const mov = r => buildWarmup(rutina, null, { rot: r }).articulares.map(e => e.id).join(',');
+  const act = r => buildWarmup(rutina, null, { rot: r }).activaciones.map(e => e.id).join(',');
+  assert.ok(mov(0).length > 0 && act(0).length > 0, 'el motor no devolvió calentamiento');
+  assert.ok(mov(0) !== mov(1) || mov(0) !== mov(2),
+    '🔴 la MOVILIDAD devuelve lo mismo con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
+  assert.ok(act(0) !== act(1) || act(0) !== act(2),
+    '🔴 la ACTIVACIÓN devuelve lo mismo con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
   const r0 = ids(buildWarmup(rutina, null, { rot: 0 }));
-  const r1 = ids(buildWarmup(rutina, null, { rot: 1 }));
-  const r2 = ids(buildWarmup(rutina, null, { rot: 2 }));
-  assert.ok(r0.length > 0, 'el motor no devolvió calentamiento');
-  assert.ok(r0 !== r1 || r0 !== r2,
-    '🔴 el motor devuelve lo MISMO con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
   // 🔒 Y el control que mantiene válidos los dictámenes: sin desplazamiento, lo de siempre.
   assert.strictEqual(ids(buildWarmup(rutina, null)), r0, '🔴 con desplazamiento 0 el motor ya no devuelve lo de siempre');
 });

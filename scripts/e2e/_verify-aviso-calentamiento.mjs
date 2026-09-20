@@ -89,8 +89,14 @@ async function pintar(caso) {
       const cab=wrap.querySelector('.wu-warn-head');
       let peor=0; wrap.querySelectorAll('*').forEach(el=>{ const x=Math.round(el.getBoundingClientRect().right-window.innerWidth); if(x>peor)peor=x; });
       const c1=wrap.querySelector('.wu-ex-warn');
+      // Lo que de verdad hay que afirmar no es QUÉ piezas llegan (eso se mueve con el plan desde
+      // v644) sino que NINGUNA de las que llegan esté contraindicada para lo que esa persona
+      // declaró. Se calcula con el filtro REAL, que está cargado en la página.
+      const _lim=(typeof limitationsFor==='function')?limitationsFor(DB.clients[0],Date.now()).keys:[];
+      const malos=filas.filter(f=>{ const ex=(typeof findWarmupEx==='function')?findWarmupEx(f.id):null;
+        return ex && typeof warmupContraindicated==='function' && warmupContraindicated(ex,_lim); }).map(f=>f.id);
       const guia=wrap.querySelector('.wu-guide-btn');
-      return { ok:true, filas, titulos:titulos.map(t=>t.textContent.trim()), vacios, html:wrap.innerHTML.length,
+      return { ok:true, filas, titulos:titulos.map(t=>t.textContent.trim()), vacios, malos, html:wrap.innerHTML.length,
         guiaSvg: !!(guia&&guia.querySelector('svg[data-ico]')), guiaTxt: guia?(guia.textContent||'').trim():'',
         cab: cab ? cab.textContent.trim() : '', altoCab: cab ? Math.round(cab.getBoundingClientRect().height) : 0,
         colorCab: cab ? getComputedStyle(cab).color : '', colorFila: c1 ? getComputedStyle(c1).color : '',
@@ -175,7 +181,10 @@ for (const tema of ['claro', 'oscuro']) {
   A.ok(m3.ok, `${tema}: el caso auto-derivado se pinta sin lanzar`, m3.err || '');
   const ids3 = m3.filas.map(f => f.id);
   A.ok(!ids3.includes('wc3'), `${tema}: wc3 (90/90) NO llega a quien declara rodilla — dictamen de Laura`, ids3.join(','));
-  A.ok(ids3.includes('wc1') && ids3.includes('wc4'), `${tema}: en su lugar recibe wc1 + wc4, los dos aprobados`, ids3.join(','));
+  // 🔒 Desde v644 el calentamiento se mueve con el PLAN, así que QUÉ par llega no es una constante:
+  // lo que se afirma es que nada de lo que llega está contraindicado para lo que ella declaró.
+  A.ok(m3.malos.length === 0, `${tema}: nada de lo que recibe está contraindicado para su rodilla`, m3.malos);
+  A.ok(ids3.length >= 4, `${tema}: y recibe un calentamiento completo, no dos piezas sueltas`, ids3.join(','));
   A.ok(m3.filas.every(f => !f.aviso) && !m3.cab,
     `${tema}: en el auto-derivado no hay avisos porque el filtro YA los quitó`, m3.filas.filter(f => f.aviso).map(f => f.id));
   A.ok(m3.filas.length >= 2, `${tema}: el calentamiento no queda vacío tras filtrar`, m3.filas.length);
