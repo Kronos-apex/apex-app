@@ -2901,6 +2901,51 @@ function wuSessionPatterns(exercises, esConCarga) {
   return conCarga ? [] : [p];
 }
 
+// ── EL CALENTAMIENTO SIGUE AL PLAN, NO AL CALENDARIO (v644) ────────────────────────────
+// 🔴 De cada grupo el motor tomaba SIEMPRE los dos primeros, así que del 3.º en adelante solo se
+// llegaba si el filtro de lesiones quitaba a uno de los dos de arriba. Medido el 20-sep corriendo
+// el motor real sobre los 10 músculos × 5 tipos de primer ejercicio × los 3 perfiles de limitación
+// que existen: **24 piezas alcanzables de 34, y 10 imposibles**. Una corrección clínica sobre una
+// de esas 10 no la habría visto nadie jamás.
+//
+// 🔒 DECISIÓN DEL PO (20-sep), y es la que manda sobre el mecanismo: **NADA de rotar por día.**
+// Un calentamiento se hace bien cuando la persona se lo sabe; barajarlo cada mañana lo vuelve algo
+// que hay que leer. El desplazamiento se DERIVA DE LA RUTINA: mientras el plan no cambie, el
+// calentamiento es el mismo para siempre — y cuando el coach lo modifica, se mueve.
+//
+// «Dependiendo de qué tanto se modifique» se implementa sumando un valor por ejercicio: cambiar
+// uno de seis mueve UN término de la suma; cambiar cuatro mueve cuatro, así que cuanto más se
+// toca la rutina más probable es que el calentamiento cambie. Honestidad sobre el límite: es
+// aritmética modular, así que un cambio grande PUEDE caer en el mismo puesto — lo que se garantiza
+// es que el calentamiento no se mueve solo, no que se mueva siempre que se toque el plan.
+//
+// 🔒 Se deriva del plan GUARDADO, nunca de la rutina que ya adaptó el ánimo del día: si mirara esa,
+//    el calentamiento cambiaría con «hoy estoy cansada», que es rotar por día con otro nombre.
+function wuRotForRoutine(routine) {
+  const r = routine || {};
+  const exs = Array.isArray(r.exercises) ? r.exercises : [];
+  if (!exs.length) return 0;
+  let acc = 0;
+  for (const e of exs) {
+    if (!e) continue;
+    const s = String(e.id || e.name || '') + '|' + String(e.muscle || '');
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100003;
+    acc += h;
+  }
+  return acc % 1000003;
+}
+
+function wuTake(pool, n, rot) {
+  const p = Array.isArray(pool) ? pool : [];
+  const k = Math.max(0, Math.min(n | 0, p.length));
+  if (!k) return [];
+  const r = (!isFinite(rot) || rot < 0) ? 0 : Math.floor(rot) % p.length;
+  const out = [];
+  for (let i = 0; i < k; i++) out.push(p[(r + i) % p.length]);
+  return out;
+}
+
 // ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────
 // El candado de v431 vigila los KILOS. Auditando los entrenamientos rápidos (8-sep) apareció que
 // las REPETICIONES no tienen ninguno, y que ya hay daño real:
@@ -11702,6 +11747,8 @@ if (typeof module !== 'undefined' && module.exports) {
     repsOutlier,
     WU_PATTERNS,
     wuMovePattern,
+    wuRotForRoutine,
+    wuTake,
     wuSessionPatterns,
     mergeCoachMsgs,
     ROUTINE_PROMISES,

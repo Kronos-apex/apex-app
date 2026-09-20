@@ -2327,7 +2327,7 @@ const MUSCLE_WARMUP_MAP = {
 // cerrada con la ventana abierta (hallazgo de Laura). El filtro va ANTES del slice(0,2) para no
 // quedarnos cortos. Si una zona quedara SIN NADA, se queda vacía: NUNCA se cae al pool sin
 // filtrar — un calentamiento de menos no le hace daño a nadie, uno contraindicado sí.
-function buildWarmup(exercises,limKeys){
+function buildWarmup(exercises,limKeys,opts){
   const _lim=(limKeys&&limKeys.length&&typeof warmupContraindicated==='function')?limKeys:null;
   // 🔴 v594 · EL CALENTAMIENTO NO REPITE LO QUE YA VIENE (reporte del PO, 8-sep).
   // `_usados` acumula los PATRONES de movimiento ya cubiertos. Empieza con el del primer ejercicio
@@ -2341,6 +2341,14 @@ function buildWarmup(exercises,limKeys){
   const _sesPats=(typeof wuSessionPatterns==='function')?wuSessionPatterns(exercises,_conCarga):[];
   const _usados=new Set();
   const _pat=ex=>(typeof wuMovePattern==='function')?wuMovePattern(ex&&ex.name):null;
+  // 🔴 v644 · LA ROTACION POR DIA. Hasta hoy se tomaban SIEMPRE los dos primeros de cada grupo, asi
+  // que del 3.º en adelante solo se llegaba si el filtro de lesiones quitaba a uno de los dos de
+  // arriba: medido, 10 de las 34 piezas no le llegaban a NADIE. `_rot` desplaza el punto de partida
+  // un puesto por dia, dando la vuelta, asi que a lo largo de la semana se usan todas.
+  // 🔒 Sin `opts` el desplazamiento es 0 y el resultado es EXACTAMENTE el de siempre: eso mantiene
+  //    validos los casos ya dictaminados y es el control de que la rotacion no cambia nada sola.
+  const _rot=(opts&&isFinite(opts.rot))?Math.max(0,Math.floor(opts.rot)):0;
+  const _toma=(pool,n)=>(typeof wuTake==='function')?wuTake(pool,n,_rot):pool.slice(0,n);
   const wuPool=(area,evitar)=>{
     const pool=WARMUP_LIBRARY[area]||[];
     const conFiltro=_lim?pool.filter(ex=>!warmupContraindicated(ex,_lim)):pool;
@@ -2387,7 +2395,7 @@ function buildWarmup(exercises,limKeys){
         // v594 · la movilidad solo evita repetirse a SÍ MISMA (no mira la sesión: ver arriba).
         const pool=wuPool(area,_usados);
         // Take 1-2 exercises per area
-        pool.slice(0,2).forEach(ex=>{ articulares.push(ex); const p=_pat(ex); if(p)_usados.add(p); });
+        _toma(pool,2).forEach(ex=>{ articulares.push(ex); const p=_pat(ex); if(p)_usados.add(p); });
       }
     });
   });
@@ -2404,7 +2412,7 @@ function buildWarmup(exercises,limKeys){
         // ejercicio de la sesion cuando va SIN CARGA (ahi seria literalmente la primera serie).
         const evitar=new Set([..._usados,..._sesPats]);
         const pool=wuPool(area,evitar);
-        pool.slice(0,2).forEach(ex=>{
+        _toma(pool,2).forEach(ex=>{
           if(activaciones.length<4){ activaciones.push(ex); const p=_pat(ex); if(p)_usados.add(p); }
         });
       }
@@ -2471,7 +2479,14 @@ function renderWarmup(exercises){
   // persona reportó, no solo lo que escribió el coach. Es la ventana que quedó abierta en v424
   // con otra cara — entonces el calentamiento ignoraba las notas; hasta hoy ignoraba el dolor.
   const _wuLim=(_wuCli&&typeof limitationsFor==='function')?limitationsFor(_wuCli,Date.now()).keys:null;
-  const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises,_wuLim);
+  // 🔒 v644 · El desplazamiento se deriva de la RUTINA GUARDADA, no del día y no de la rutina que
+  // ya adaptó el ánimo (`CUR.activeRoutine` ES la adaptada): mientras el coach no toque el plan, el
+  // calentamiento es exactamente el mismo, que es lo que el PO pidió. Si la rutina no se encuentra
+  // guardada (un entrenamiento rápido, una rutina elegida a mano), se usa la que se está entrenando.
+  const _wuRutId=CUR.activeRoutine&&CUR.activeRoutine.id;
+  const _wuGuardada=(_wuCli&&(_wuCli.routines||[]).find(r=>r&&r.id===_wuRutId))||CUR.activeRoutine;
+  const _wuRot=(typeof wuRotForRoutine==='function')?wuRotForRoutine(_wuGuardada):0;
+  const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises,_wuLim,{rot:_wuRot});
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;

@@ -20411,6 +20411,76 @@ test('🔴 el selector de calentamiento no se cierra en cada toque (8 toques par
     '🔴 lo ya agregado vuelve a apagarse con opacity SOBRE LA LETRA: ahí está el nombre del movimiento');
 });
 
+test('🔴 el calentamiento sigue al PLAN, no al calendario (v644)', () => {
+  // Decisión del PO: nada de rotar por día — un calentamiento se hace bien cuando la persona se lo
+  // sabe. El desplazamiento se deriva de la RUTINA, así que mientras el plan no cambie es el mismo.
+  const r1 = { exercises: [{ id: 'e1', muscle: 'pecho' }, { id: 'e2', muscle: 'pecho' }, { id: 'e3', muscle: 'hombros' }] };
+  const r1b = { exercises: [{ id: 'e1', muscle: 'pecho' }, { id: 'e2', muscle: 'pecho' }, { id: 'e3', muscle: 'hombros' }] };
+  const r2 = { exercises: [{ id: 'e1', muscle: 'pecho' }, { id: 'e9', muscle: 'pecho' }, { id: 'e3', muscle: 'hombros' }] };
+  assert.strictEqual(core.wuRotForRoutine(r1), core.wuRotForRoutine(r1b), '🔴 la misma rutina da dos calentamientos distintos');
+  assert.notStrictEqual(core.wuRotForRoutine(r1), core.wuRotForRoutine(r2), 'cambiar un ejercicio no mueve nada');
+  assert.strictEqual(core.wuRotForRoutine({}), 0, 'sin ejercicios no hay desplazamiento');
+  assert.strictEqual(core.wuRotForRoutine(null), 0, 'sin rutina no hay desplazamiento');
+  // 🔒 El orden de los ejercicios NO cambia el calentamiento: reordenar no es modificar el plan.
+  const r3 = { exercises: [{ id: 'e3', muscle: 'hombros' }, { id: 'e2', muscle: 'pecho' }, { id: 'e1', muscle: 'pecho' }] };
+  assert.strictEqual(core.wuRotForRoutine(r1), core.wuRotForRoutine(r3), 'reordenar los ejercicios cambió el calentamiento');
+
+  // `wuTake` con desplazamiento 0 tiene que ser EXACTAMENTE lo de siempre: ese es el control de que
+  // el mecanismo no cambia nada por su cuenta, y lo que mantiene válidos los dictámenes de Laura.
+  const pool = ['a', 'b', 'c', 'd', 'e'];
+  assert.deepStrictEqual(core.wuTake(pool, 2, 0), pool.slice(0, 2), '🔴 con desplazamiento 0 ya no devuelve los dos primeros');
+  assert.deepStrictEqual(core.wuTake(pool, 2, 1), ['b', 'c'], 'el desplazamiento no avanza un puesto');
+  assert.deepStrictEqual(core.wuTake(pool, 2, 4), ['e', 'a'], 'el desplazamiento no da la vuelta al final del grupo');
+  assert.deepStrictEqual(core.wuTake(['a', 'b'], 2, 1), ['b', 'a'], 'en un grupo de 2 la vuelta se rompe');
+  assert.deepStrictEqual(core.wuTake(pool, 2, -3), pool.slice(0, 2), 'un desplazamiento inválido tiene que caer al de siempre');
+  assert.deepStrictEqual(core.wuTake([], 2, 7), [], 'un grupo vacío no puede lanzar');
+  assert.deepStrictEqual(core.wuTake(pool, 9, 0), pool, 'pedir más de lo que hay no puede repetir ni lanzar');
+
+  // 🔒 LA PROPIEDAD QUE IMPORTA: ninguna pieza puede quedar muerta. Para cada grupo del catálogo,
+  // CADA pieza tiene que salir con algún desplazamiento — medido contra las 118 rutinas reales,
+  // esto lleva la cobertura de 20/34 a 34/34.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
+  const { WARMUP_LIBRARY } = new Function('warmupContraindicated',
+    src.slice(ini, src.indexOf('\n}', fin) + 2) + '\nreturn {WARMUP_LIBRARY};')(core.warmupContraindicated);
+  const pools = Object.keys(WARMUP_LIBRARY);
+  assert.ok(pools.length >= 9, 'CONTROL DE COBERTURA · no se leyó la biblioteca real');
+  pools.forEach(area => {
+    const p = WARMUP_LIBRARY[area];
+    const vistos = new Set();
+    for (let rot = 0; rot < p.length; rot++) core.wuTake(p, 2, rot).forEach(e => vistos.add(e.id));
+    assert.strictEqual(vistos.size, p.length,
+      `🔴 en «${area}» hay piezas que no salen con ningún desplazamiento: ${p.filter(e => !vistos.has(e.id)).map(e => e.id)}`);
+  });
+});
+
+test('🔴 CABLEADO v644 · el desplazamiento sale de la rutina GUARDADA y nadie rota por fecha', () => {
+  const fs = require('fs'), path = require('path');
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = a6.indexOf('function renderWarmup(');
+  const cuerpo = a6.slice(i, a6.indexOf('\nfunction ', i + 10));
+  assert.ok(cuerpo.length > 800, 'CONTROL DE COBERTURA · no se recortó renderWarmup');
+  assert.ok(/buildWarmup\(exercises,_wuLim,\{rot:_wuRot\}\)/.test(cuerpo), 'renderWarmup no le pasa el desplazamiento al motor');
+  // 🔒 La rutina de la que sale el desplazamiento es la GUARDADA, no `CUR.activeRoutine` — que ES la
+  //    que ya adaptó el ánimo del día. Si saliera de esa, el calentamiento cambiaría con «hoy estoy
+  //    cansada», que es rotar por día con otro nombre, y el PO lo descartó.
+  assert.ok(/_wuGuardada=\(_wuCli&&\(_wuCli\.routines\|\|\[\]\)\.find/.test(cuerpo.replace(/\s/g, '')) ||
+            /_wuCli\.routines\|\|\[\]\)\.find\(r=>r&&r\.id===_wuRutId\)/.test(cuerpo),
+    '🔴 el desplazamiento no sale del plan guardado (saldría de la rutina ya adaptada por el ánimo)');
+  assert.ok(/wuRotForRoutine\(_wuGuardada\)/.test(cuerpo), 'renderWarmup no deriva el desplazamiento de la rutina');
+  assert.ok(/wuRotForRoutine\(\{exercises:CUR\.routineExs/.test(a3),
+    'el editor del coach no usa el mismo desplazamiento que va a recibir la persona');
+  // 🔒 LA DECISIÓN DEL PO, con candado: NADA de rotar por día. Si alguien vuelve a atar el
+  //    calentamiento a una fecha, esto cae.
+  [a6, a3, sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'))].forEach((f, n) => {
+    assert.ok(!/wuRotForDate/.test(f), `🔴 volvió la rotación por FECHA (archivo ${n}): el PO la descartó`);
+  });
+  assert.ok(!/\{rot:[^}]*Date/.test(a6 + a3), '🔴 alguien le está pasando una fecha como desplazamiento');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

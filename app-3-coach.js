@@ -3608,7 +3608,12 @@ function _effWarmIds(){
   // Auto-sugerido según músculos, respetando las lesiones del asesorado. Si el coach ARMÓ su
   // propia lista (CUR.routineWarmup) se respeta tal cual: ahí decidió una persona, no el filtro.
   const _c=DB.clients.find(x=>x.id===CUR.clientId);
-  const w=buildWarmup(CUR.routineExs||[],_c?limitationsFor(_c,Date.now()).keys:null);
+  // 🔒 v644 · El mismo desplazamiento que va a recibir la persona, derivado de la rutina que el
+  // coach tiene delante: si aqui se quedara fijo, lo que el revisa y lo que ella entrena serian dos
+  // calentamientos distintos. `CUR.routineExs` es justo lo que esta editando, asi que el
+  // calentamiento sugerido se mueve mientras arma la rutina — que es lo que pidio el PO.
+  const _r=(typeof wuRotForRoutine==='function')?wuRotForRoutine({exercises:CUR.routineExs||[]}):0;
+  const w=buildWarmup(CUR.routineExs||[],_c?limitationsFor(_c,Date.now()).keys:null,{rot:_r});
   return [...w.articulares,...w.activaciones].map(e=>e.id);
 }
 // Limitaciones del asesorado que se está editando + si es el entrenamiento PROPIO del coach.
