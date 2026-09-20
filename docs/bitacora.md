@@ -4,6 +4,53 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-20 — v642: los tres rojos de la auditoría del CALENTAMIENTO (10ª ronda)
+
+- **La ronda.** Área elegida leyendo el «Qué NO miré» del 8-sep, que la dejó anotada a nombre del PO. Tres
+  frentes en paralelo (`docs/auditoria-calentamiento-2026-09-20/`): E1 el asesorado (Lucas+Sofía), E2 lo
+  deportivo (Laura+Valery), E3 el editor y la medición (Mateo+Valentina). **Baseline del orquestador antes de
+  lanzar a nadie:** 34 piezas en 9 pools · 124 rutinas reales de las que **118 (95%) usan el calentamiento que
+  decide el código** · **0 de 503 sesiones guardan rastro del calentamiento**, o sea un cero SIN instrumento, y
+  el briefing prohibió expresamente convertirlo en conclusión. E3 lo respetó: midió dos proxies, los declaró
+  inconclusos (N=3) y **dictaminó NO instrumentar hoy**.
+- **🔴 El aviso «ojo con su zona» vivía solo en el editor del coach.** El calentamiento MANUAL no se filtra —y
+  está bien: ahí decide una persona— pero el chip que existe para que eso se VEA se pintaba únicamente en
+  `renderRfWarmup`/`openWarmPicker`, una pantalla a la que nadie vuelve después de guardar. Medido: **el propio
+  PO entrenaba `we5` y `wai3` con una bandera roja ACTIVA** (muslo por detrás, 14-sep) porque armó su lista el
+  10-sep, **cuatro días antes de lesionarse**. Lo encontraron E2 y E3 por separado. `renderWarmup` pinta ahora
+  el mismo aviso por fila **y en la cabecera** (la tarjeta llega colapsada: escondido = inexistente), con la
+  MISMA fuente (`warmupWarnZones`/`warmupWarnText`), y en las DOS ramas a propósito: en la auto-derivada el
+  filtro ya quitó lo contraindicado y no pinta nada, pero si ese filtro se rompe, **avisa en vez de callar**.
+- **🔴 `wc3` «Apertura de cadera (90/90)» PROHIBIDA con rodilla** (dictamen de Laura). Nadie la servía a
+  propósito: se **PROMUEVE**. El pool de cadera tiene 5 y el motor toma 2; con rodilla declarada `wc2` sale por
+  el regex del ENTRENO («estocada») y `wc3` hereda su puesto **sin que nadie la revisara para esa zona**. Se la
+  comían **Laura Ramirez Rueda y Miguel Pulido** (rodilla operada, 10% menos de cartílago). Con `wc3` fuera
+  queda `wc1`+`wc4`, los dos aprobados el 8-ago, y `wc4` además **activa lo que van a usar ese día**.
+  Laura barrió las 8 zonas × 9 pools buscando toda promoción sin dictamen: `wa4`, `wac3`, `wai3`/`wai4` ✅ y
+  `wai1` sigue 🟡 con su matiz.
+- **🔴 «Entrenar otra vez» abría el entreno YA TERMINADO.** Solo levantaba una bandera y repintaba: series y
+  calentamiento seguían marcados, así que había que buscar «Reiniciar» para poder empezar. Medido contra el
+  historial: **4 personas ya entrenaron dos veces la misma rutina el mismo día** (Samuel, Estella, Natalia y el
+  PO). La limpieza estaba COPIADA a mano en dos sitios y este era el tercero que la necesitaba → **una sola
+  puerta**, `_wipeSessionFlags`, que barre por prefijo `done_<rid>_` (cubre series, calentamiento por ejercicio
+  y dropsets, y no se le escapan los índices huérfanos que dejaba el recorrido por ejercicios).
+  `clearWarmDropDone` retirada: su único llamador era esa puerta. Los kg se conservan y la entrada de la mañana
+  no corre riesgo porque `startNewSession` acuña sesión nueva (v260).
+- **QA.** Suite **1271 → 1274** en los cuatro modos, hook 12/12, matriz nueva `_sabotaje-v642` **12/12 muerden**
+  con el control en verde, harness nuevo `_verify-aviso-calentamiento` **36/36** en los dos temas a 360 px,
+  `_prodcheck 642` verde con `jsErrors: []`, CI verde.
+- **🔴 Cuatro fallos propios, todos cazados por un control.** (1) La matriz salió 5/12: **6 sabotajes INERTES**
+  por los finales de línea (el repo guarda LF, la copia de trabajo es CRLF). (2) Un candado pedía
+  `/_wuItems\s*=\s*custom\s*\|\|/`, que **lo satisface `custom||[]`** — aprobaba dejar muda la rama
+  auto-derivada, o sea 118 de 124 rutinas. (3) Su hermano de la cabecera pedía el identificador, que sigue
+  existiendo en la declaración aunque ya no se pinte. (4) En el harness, `new Function(core)()` define las
+  funciones **en el ámbito de esa función y no en el global**, así que `warmupWarnZones` quedaba sin definir y
+  el aviso no habría salido nunca — el «defecto» habría sido mío.
+- ⏭️ **Sin tocar, por orden del PO (segundo lote):** el título «⚡ Activación muscular» puede quedarse sin
+  ejercicios debajo (hace falta lumbar + tobillo en la misma persona; hoy nadie) · el selector de movimientos
+  se cierra en cada toque (8 toques en vez de 5) · el 🎥 es el último emoji crudo dentro de un control ahí ·
+  **41% del catálogo (14 de 34 piezas) nunca llega a nadie** por auto-derivación.
+
 ## ⏮️ 2026-09-18 — v641: Comunidad cuenta los 20 logros (edge `refresh_snapshot` v8)
 
 - Con Supabase conectado: `communitySnapshot` (avi-core) y la edge cuentan `GX_ACH` en vez de las 8 medallas
