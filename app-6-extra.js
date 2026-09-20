@@ -2481,6 +2481,33 @@ function renderWarmup(exercises){
   // del guiado no le cambia el alto de lo que está mirando.
   const _wuOpen=wuIsOpen(rid);
 
+  // 🔴 v642 · EL AVISO «OJO CON SU ZONA» TAMBIÉN AQUÍ, NO SOLO EN EL EDITOR DEL COACH.
+  // El calentamiento MANUAL (`routine.warmup`) es la única superficie que NO se filtra, y está
+  // bien así: ahí decide una persona y hacerle desaparecer opciones en silencio sería peor
+  // (`avi-core.js`, sobre `warmupWarnZones`). Pero el chip que existe para que eso se VEA vivía
+  // SOLO en `renderRfWarmup`/`openWarmPicker` (app-3-coach) — o sea, en una pantalla a la que
+  // nadie vuelve después de guardar. Quien entrena no veía absolutamente nada.
+  // Medido el 20-sep (auditoría del calentamiento, E2+E3 por separado): el propio PO entrenaba
+  // `we5` y `wai3` con una bandera roja ACTIVA (muslo por detrás, 14-sep) sin un solo aviso,
+  // porque armó esa lista el 10-sep — cuatro días ANTES de lesionarse. Un aviso que solo existe
+  // en el momento de configurar no protege de lo que pasa DESPUÉS.
+  // 🔒 Se pinta para TODAS las filas a propósito, no solo las manuales: en el auto-derivado el
+  // filtro ya quitó lo contraindicado, así que `warmupWarnZones` devuelve [] y no pinta nada — y
+  // si mañana ese filtro se rompe, esto AVISA en vez de callar. Misma fuente que el editor
+  // (`warmupWarnZones`/`warmupWarnText`), jamás una segunda lista: así es como se separan.
+  // 🔒 El aviso va también en la CABECERA porque la tarjeta llega COLAPSADA: un aviso escondido
+  // detrás de un toque es un aviso que no existe.
+  const _wuItems=custom||[...articulares,...activaciones];
+  const _wuZonasDe=(ex)=>(typeof warmupWarnZones==='function')?warmupWarnZones(ex,_wuLim):[];
+  const _wuTxt=(z)=>(typeof warmupWarnText==='function')?warmupWarnText(z,true):'';
+  const _wuAvisoFila=(ex)=>{
+    const z=_wuZonasDe(ex); const t=z.length?_wuTxt(z):'';
+    return t?`<div class="wu-ex-warn">⚠️ ${esc(t)}</div>`:'';
+  };
+  const _wuZonas=[];
+  _wuItems.forEach(ex=>_wuZonasDe(ex).forEach(z=>{ if(_wuZonas.indexOf(z)<0)_wuZonas.push(z); }));
+  const _wuAvisoCab=(()=>{ const t=_wuZonas.length?_wuTxt(_wuZonas):''; return t?`<div class="wu-warn-head">⚠️ ${esc(t)}</div>`:''; })();
+
   const exRow=(ex)=>{
     const d=rid&&wuIsDone(rid,ex.id); // estado persistido: queda marcado al salir y volver
     return `
@@ -2489,6 +2516,7 @@ function renderWarmup(exercises){
       <div class="wu-ex-info">
         <div class="wu-ex-name">${esc(ex.name)}</div>
         <div class="wu-ex-reps">${esc(ex.reps)}</div>
+        ${_wuAvisoFila(ex)}
       </div>
       <button class="wu-guide-btn" aria-label="Ver cómo se hace: guía y video" title="Cómo se hace (guía + video)" onclick="event.stopPropagation();openWarmupDetail('${ex.id}')" style="background:none;border:none;font-size:17px;cursor:pointer;flex-shrink:0;margin-right:2px;opacity:.75">🎥</button>
       <button id="wu-btn-${ex.id}" class="wu-check-btn" onclick="event.stopPropagation();wuToggle('${ex.id}')" style="${d?'background:var(--g);border-color:var(--g)':''}">${d?'✓':''}</button>
@@ -2504,6 +2532,7 @@ function renderWarmup(exercises){
         <div>
           <div class="wu-title">${sessionEmoji} Calentamiento — ${esc(sessionLabel)}</div>
           <div id="wu-status-badge" class="wu-badge">⚡ Calentar antes de empezar</div>
+          ${_wuAvisoCab}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="wu-prog-txt"><span id="wu-prog-num">0/${total}</span></div>

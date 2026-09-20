@@ -1061,8 +1061,26 @@ function _trainedTodayCardHTML(client){
 }
 // "Entrenar otra vez": muestra el entrenamiento de hoy aunque ya haya entrenado (2ª sesión del día).
 // El flag vive en CUR (se resetea al recargar); un nuevo día ya no aplica (finishedTrainingToday será false).
+// 🔴 v642 · ABRE UN ENTRENO LIMPIO, NO EL QUE ACABA DE TERMINAR.
+// Hasta hoy esto solo levantaba la bandera y repintaba: las series seguían marcadas y el
+// calentamiento seguía en ✓, así que la persona pedía «otra vez» y le aparecía un entreno YA
+// TERMINADO — tenía que buscar «Reiniciar» para poder empezar. Medido el 20-sep contra el
+// historial real: **4 personas ya entrenaron dos veces la misma rutina el mismo día** (Samuel,
+// Estella, Natalia y el propio PO), así que no es hipotético.
+// 🔒 Por qué aquí sí se limpia sin preguntar y en `startRoutineNow` NO: aquí la intención es
+// inequívoca (tocó «Entrenar otra vez» sobre «¡Ya entrenaste hoy!»), mientras que elegir una
+// rutina desde «Rutinas» también se usa para MIRARLA — borrarle ahí las marcas a quien solo está
+// viendo sería destruir su sesión en curso.
+// 🔒 El entreno de la mañana NO corre riesgo: cada sesión guarda su entrada de historial atada a
+// su propio `session_id` (v260), y `startNewSession` acuña uno nuevo → la segunda sesión es una
+// entrada APARTE y jamás pisa la primera. Los kg y las reps se conservan como sugerencia.
+// 🔒 La bandera se CONSUME dentro de `renderClientToday` y no se limpia aquí a mano, porque cuál es
+// «la rutina de hoy» lo resuelve el render (día de la semana, festivo, rutina elegida, ánimo,
+// trabajo a medias restaurado). Resolverlo también aquí sería una segunda lista que se
+// desincroniza — la clase de error que pagó este repo con el filtro de lesiones y el calentamiento.
 function todayTrainAgain(){
   CUR.trainAgain=true;
+  CUR.trainAgainWipe=true;
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   if(c){ renderClientToday(c,CUR.todayOverride); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; }
 }
@@ -1272,6 +1290,16 @@ function renderClientToday(client, overrideRoutine){
   const _adapted=_mood?applyMood(baseR,_mood,{sex:client.sex}):null;
   const todayR=_adapted||baseR;
   prepareTodaySession(todayR); // reset diario + reubicar dropsets huérfanos
+  // «Entrenar otra vez» (v642): la limpieza se ejecuta AQUÍ, donde ya se sabe cuál es la rutina de
+  // hoy de verdad, y se consume de una sola vez para que un repintado posterior (el poll de 15 s,
+  // un cambio de ánimo) no vuelva a borrar lo que la persona acabe de marcar en la 2ª sesión.
+  // Va DESPUÉS de `prepareTodaySession` a propósito: ese sella la fecha del día, y si se hiciera
+  // antes, el reset diario podría acuñar sesión encima de la que acabamos de acuñar.
+  if(CUR.trainAgainWipe){
+    CUR.trainAgainWipe=false;
+    _wipeSessionFlags(todayR);
+    startNewSession(todayR.id);
+  }
   // F5b (2026-07-06): la lista clásica se RETIRÓ. El guiado embebido es la única vista;
   // si no puede embeber (throw por SW/index desincronizado), tarjeta de error con
   // Reintentar — NUNCA pantalla en blanco (blindaje F4, adaptado).
@@ -2011,15 +2039,9 @@ function _rehomeOrphanDropsets(routine){
     });
   });
 }
-// Desmarca el "hecho" de calentamiento + dropsets (por día / reinicio), conservando el
-// peso como sugerencia (la CONFIG de dropset persiste). Igual que las series efectivas.
-function clearWarmDropDone(routine){
-  (routine.exercises||[]).forEach((ex,ei)=>{
-    setDone(routine.id,ei,WARM_SI,false);
-    const sets=parseInt(ex.sets)||3;
-    for(let si=0;si<sets;si++) setDone(routine.id,ei,dropTok(si),false);
-  });
-}
+// (`clearWarmDropDone` RETIRADA el 2026-09-20: desmarcaba a mano el calentamiento y los dropsets
+//  recorriendo los ejercicios, y su único llamador es hoy `_wipeSessionFlags`, que los cubre con el
+//  barrido por prefijo `done_<rid>_` sin que se le escape ningún índice viejo. Una sola puerta.)
 // Peso de dropset ≈ 70% del peso registrado en SU serie (o del sugerido).
 function _dropKg(routine,ex,ei,si){
   return dropLoad(parseFloat(getLog(routine.id,ei,si,'kg'))||_suggestKg(ex)||parseFloat(ex.defaultKg)||0);
@@ -2147,15 +2169,29 @@ function _prsMergeSession(routine,nuevos){
   return Array.from(por.values());
 }
 
+// Borra TODO lo que marca «esto ya lo hice» de una sesión: las series, el calentamiento de la
+// sesión y los sets de calentamiento/dropsets por ejercicio. NO toca los kg ni las reps (esos se
+// conservan como sugerencia) ni el historial ya guardado.
+// 🔴 Nace el 20-sep-2026 porque esta limpieza vivía COPIADA a mano en dos sitios (`resetSession` y
+// `checkAndResetSession`) y el tercero que la necesitaba no la tenía: «Entrenar otra vez». Una
+// limpieza duplicada a mano es una lista de la que siempre se olvida alguien — y el olvidado aquí
+// era justo el camino por el que la persona pide EXPLÍCITAMENTE empezar de nuevo.
+// 🔒 Barre por PREFIJO (`done_<rid>_`) en vez de recorrer los ejercicios, y esa es la parte que
+// importa: un solo barrido cubre las series, el token de calentamiento por ejercicio (`w0`) y los
+// dropsets (`d<si>`), y no se le escapa nada cuando el coach cambió el número de series o el ánimo
+// adaptó la rutina DESPUÉS de haberse marcado — recorrer `exercises` deja vivas justo las marcas de
+// los índices que ya no existen, que es de donde salía el «esto ya está hecho» fantasma.
+// `log_<rid>_` (los kg y las reps) es OTRO prefijo y no se toca: se conservan como sugerencia.
+function _wipeSessionFlags(routine){
+  if(!routine||!routine.id)return;
+  const p='done_'+routine.id+'_';
+  try{ Object.keys(localStorage).filter(k=>k.indexOf(p)===0).forEach(k=>localStorage.removeItem(k)); }catch(_e){}
+  clearWarmup(routine.id);
+}
 function resetSession(){
   const routine=CUR.activeRoutine;if(!routine)return false;
   if(!confirm('¿Reiniciar el entrenamiento de hoy? Se borrarán las series completadas pero se conservarán los pesos.'))return false;
-  (routine.exercises||[]).forEach((ex,ei)=>{
-    const sets=parseInt(ex.sets)||3;
-    for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
-  });
-  clearWarmup(routine.id);
-  clearWarmDropDone(routine);
+  _wipeSessionFlags(routine);
   localStorage.removeItem(`session_date_${routine.id}`);
   startNewSession(routine.id); // reiniciar = sesión NUEVA → no pisa la entrada de historial ya guardada
   // (F5b: la limpieza de timers/overlay del guiado la hace gmResetSession, que es quien llama.)
@@ -2185,12 +2221,7 @@ function checkAndResetSession(routine){
   const lastDate=localStorage.getItem(dateKey);
   const today=new Date().toDateString();
   if(lastDate&&lastDate!==today){
-    (routine.exercises||[]).forEach((ex,ei)=>{
-      const sets=parseInt(ex.sets)||3;
-      for(let si=0;si<sets;si++) localStorage.removeItem(getDoneKey(routine.id,ei,si));
-    });
-    clearWarmup(routine.id); // el calentamiento también es por día
-    clearWarmDropDone(routine); // sets de calentamiento + dropsets: desmarcar por día
+    _wipeSessionFlags(routine); // series + calentamiento de la sesión + sets/dropsets: todo es por día
     _sweepOrphanSessionKeys(routine); // limpia log_/done_ de ei/si que ya no existen
     startNewSession(routine.id); // día nuevo = sesión nueva (entrada de historial aparte)
   }

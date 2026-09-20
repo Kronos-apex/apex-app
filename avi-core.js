@@ -788,9 +788,26 @@ function correctiveFor(limKeys, lib, place, opts) {
 // `wt2` «Movilidad tobillo en pared» no dice que es dorsiflexión BAJO CARGA.
 // 🔒 `wt1` «Círculos de tobillo» se queda DENTRO a propósito: sin carga y sentado, es el
 // tratamiento y no el riesgo. Mismo criterio que salvó al wall-sit y al sit-to-stand.
+// 🔴 `wc3` añadido el 2026-09-20 por dictamen de Laura (auditoría del calentamiento, E2):
+// «`wc3` "Apertura de cadera (90/90)": la rodilla delantera queda en flexión profunda sosteniendo
+// el peso del tronco inclinado sobre ella, con la tibia rotada bajo el fémur — el mismo patrón que
+// agrava un menisco o un cartílago desgastado, y sin ningún componente terapéutico que lo
+// justifique (a diferencia de `wr3`, que es un estiramiento suave sin flexión forzada).»
+// CÓMO LLEGÓ AHÍ, que es la lección: `wc3` **no se la sirve nadie a propósito**. Se PROMUEVE. El
+// pool de cadera es [wc1,wc2,wc3,wc4,wc5] y el motor toma 2; con `rodilla` declarada, `wc2` sale
+// por el regex del ENTRENO (contiene «estocada») y `wc3` hereda su puesto. Nadie la revisó porque
+// nadie sabía que el pool se reordena solo. Medido el 20-sep contra las rutinas REALES: se la
+// estaban comiendo dos personas con la rodilla dañada (una operada). Con `wc3` fuera el par queda
+// `wc1`+`wc4` (puente de glúteo), que Laura sí aprobó el 8-ago y que además ACTIVA lo que van a
+// usar ese día — el arreglo las deja mejor, no solo distinto.
+// 🔒 LA CLASE: ensanchar una regla del ENTRENO reordena en silencio el CALENTAMIENTO de quien
+// tenga esa zona. Laura barrió el 20-sep las 8 zonas × 9 pools buscando toda promoción sin
+// dictamen: `wa4` (por cuello y por muñeca), `wac3` (por cuello) y `wai3`/`wai4` (por rodilla)
+// quedaron ✅; `wai1` (por aductor/abductor) sigue 🟡 con su matiz del 8-ago; lumbar, hombro y
+// tobillo no promueven nada nuevo. Si mañana se toca `GEN_ZONE_EXCL`, esto se vuelve a barrer.
 const WARMUP_ZONE_EXCL_IDS = {
   lumbar: ['we3', 'we5', 'wai3', 'wac3'],
-  rodilla: ['wr2', 'wai1', 'wai2'],
+  rodilla: ['wr2', 'wai1', 'wai2', 'wc3'],
   hombro: ['wh3'],
   aductor: ['wc2', 'wc3', 'wc5', 'wai2'],
   abductor: ['wc2', 'wc3', 'wc5', 'wai2'],

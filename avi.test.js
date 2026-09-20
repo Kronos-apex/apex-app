@@ -20235,6 +20235,121 @@ test('v640 🔒 CABLEADO: el coach estampa al entrar y al guardar Ajustes; el as
 });
 
 // ══════════════════════════════════════════════════════
+// AUDITORÍA DEL CALENTAMIENTO (2026-09-20) — v642
+// ══════════════════════════════════════════════════════
+
+test('🔴 wc3 (90/90) fuera del calentamiento de quien declara RODILLA — dictamen de Laura 20-sep', () => {
+  // Nadie le servía wc3 a propósito: se PROMUEVE. El pool de cadera es [wc1..wc5] y el motor toma
+  // 2; con rodilla declarada, wc2 sale por el regex del ENTRENO («estocada») y wc3 hereda su
+  // puesto. Se la estaban comiendo dos personas con la rodilla dañada (una operada).
+  // Se EJECUTA buildWarmup de verdad: un candado que solo leyera el array no vería la promoción.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
+  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
+  const cierre = src.indexOf('\n}', fin);
+  const { WARMUP_LIBRARY, buildWarmup } = new Function('warmupContraindicated',
+    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated);
+  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id);
+  const pierna = [{ name: 'Prensa de Pierna', muscle: 'piernas' }, { name: 'Sentadilla Goblet', muscle: 'piernas' }];
+
+  // CONTROL DE DISCRIMINACIÓN: sin limitación wc3 NO sale (gana wc2, que es el 2.º del pool). Si
+  // este assert cayera, el test de abajo aprobaría por casualidad y no por el arreglo.
+  const libre = ids(buildWarmup(pierna, null));
+  assert.ok(libre.includes('wc2'), 'sin limitación el par de cadera debe ser wc1+wc2 (si no, el pool cambió)');
+  assert.ok(!libre.includes('wc3'), 'sin limitación wc3 no debería aparecer: solo llega por promoción');
+
+  const limR = parseLimitations('Rodillas desgastadas, lesión de rodilla operada').keys;
+  assert.ok(limR.includes('rodilla'), 'la nota real de estas dos personas debe leerse como rodilla');
+  const conR = ids(buildWarmup(pierna, limR));
+  assert.ok(!conR.includes('wc3'), '🔴 wc3 (90/90) sigue llegando a quien declara rodilla: flexión profunda + rotación tibiofemoral bajo el peso del tronco');
+  assert.ok(!conR.includes('wc2'), 'wc2 debe seguir fuera con rodilla (regex «estocada»)');
+  // Y lo que queda tiene que ser MEJOR, no solo distinto: wc4 (puente de glúteo) la aprobó Laura el
+  // 8-ago y además activa lo que van a usar ese día.
+  assert.ok(conR.includes('wc1') && conR.includes('wc4'), 'con wc3 fuera, el par de cadera debe quedar wc1+wc4 (los dos aprobados el 8-ago)');
+  assert.ok(conR.length >= 2, 'el calentamiento no puede quedar vacío tras filtrar');
+  // Ningún id fantasma: la lista de exclusión y el catálogo no se pueden separar.
+  const todos = new Set(Object.keys(WARMUP_LIBRARY).flatMap(k => WARMUP_LIBRARY[k].map(e => e.id)));
+  Object.values(core.WARMUP_ZONE_EXCL_IDS).flat().forEach(id =>
+    assert.ok(todos.has(id), `WARMUP_ZONE_EXCL_IDS apunta a "${id}", que no existe en WARMUP_LIBRARY`));
+});
+
+test('🔴 el aviso «ojo con su zona» también en la pantalla donde se ENTRENA, no solo en el editor', () => {
+  // El chip vivía solo en renderRfWarmup/openWarmPicker (app-3-coach): una pantalla a la que nadie
+  // vuelve después de guardar. El calentamiento MANUAL no se filtra (correcto, ahí decide el
+  // coach), así que sin aviso en «Hoy» la persona no tiene cómo saberlo. Medido el 20-sep: el PO
+  // entrenaba we5 y wai3 con una bandera roja activa, con su lista armada 4 días antes.
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const i = src.indexOf('function renderWarmup(');
+  assert.ok(i > 0, 'renderWarmup desapareció de app-6-extra.js');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  // CONTROL DE COBERTURA: si el recorte saliera vacío o mal, los asserts de abajo pasarían solos.
+  assert.ok(cuerpo.length > 800 && /wu-ex-row/.test(cuerpo) && /wu-prog-fill/.test(cuerpo),
+    'el recorte de renderWarmup no trae su cuerpo real: el resto del test no probaría nada');
+  // Los comentarios ya están fuera (sinComentarios): esto mide CÓDIGO, no mi propia explicación.
+  assert.ok(/warmupWarnZones\(ex,\s*_wuLim\)/.test(cuerpo),
+    '🔴 renderWarmup no consulta warmupWarnZones: el aviso volvió a existir solo en el editor');
+  assert.ok(/warmupWarnText\(/.test(cuerpo), 'renderWarmup no usa warmupWarnText (la fuente única del texto)');
+  assert.ok(/_wuAvisoFila\(ex\)/.test(cuerpo), 'la fila del movimiento no pinta su aviso');
+  assert.ok(/_wuAvisoCab/.test(cuerpo), 'la CABECERA no pinta el aviso, y la tarjeta llega colapsada: escondido = inexistente');
+  // El aviso se calcula sobre lo que de verdad se pinta (lista manual o auto-derivada), no sobre
+  // una de las dos: si solo cubriera una rama, la otra quedaría muda.
+  assert.ok(/_wuItems\s*=\s*custom\s*\|\|/.test(cuerpo), 'el aviso no cubre las dos ramas (lista propia del coach y auto-derivada)');
+  // Y un aviso sin estilo es un aviso invisible.
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.wu-ex-warn\{[^}]*var\(--ort\)/.test(css), '.wu-ex-warn sin tinta --ort: el aviso queda ilegible o invisible');
+  assert.ok(/\.wu-warn-head\{[^}]*var\(--ort\)/.test(css), '.wu-warn-head sin tinta --ort');
+});
+
+test('🔴 «Entrenar otra vez» abre un entreno LIMPIO (ejecutado, no leído)', () => {
+  // Antes solo levantaba la bandera y repintaba: series y calentamiento seguían marcados, así que
+  // pedir «otra vez» mostraba un entreno YA TERMINADO. Medido contra el historial: 4 personas ya
+  // entrenaron dos veces la misma rutina el mismo día.
+  const fs = require('fs'), path = require('path');
+  const crudo = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const src = sinComentarios(crudo);
+
+  // (1) La limpieza, EJECUTADA con un localStorage de juguete.
+  const i = src.indexOf('function _wipeSessionFlags(');
+  assert.ok(i > 0, '_wipeSessionFlags desapareció de app-4-entreno.js');
+  const fn = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  let limpiado = null;
+  const store = {
+    'done_r1_0_0': '1', 'done_r1_0_w0': '1', 'done_r1_1_d2': '1',
+    'done_r1_9_9': '1',            // índice HUÉRFANO: el coach recortó las series después de marcar
+    'log_r1_0_0_kg': '40',         // los kg se conservan como sugerencia
+    'drop_r1_0_0': '1',            // la CONFIG del dropset persiste
+    'done_r2_0_0': '1',            // otra rutina: intocable
+  };
+  const ls = { removeItem: k => { delete store[k]; }, getItem: k => (k in store ? store[k] : null) };
+  Object.keys(store).forEach(k => { ls[k] = store[k]; }); // Object.keys(localStorage) en el navegador
+  const wipe = new Function('localStorage,clearWarmup', fn + '\nreturn _wipeSessionFlags;')(
+    ls, rid => { limpiado = rid; });
+  wipe({ id: 'r1', exercises: [{ sets: 3 }, { sets: 3 }] });
+  assert.ok(!('done_r1_0_0' in store), 'las series marcadas siguen marcadas en la 2ª sesión');
+  assert.ok(!('done_r1_0_w0' in store), 'los sets de calentamiento por ejercicio siguen marcados');
+  assert.ok(!('done_r1_1_d2' in store), 'los dropsets siguen marcados');
+  assert.ok(!('done_r1_9_9' in store), '🔴 una marca de un índice que ya no existe sobrevive: el «ya está hecho» fantasma');
+  assert.strictEqual(store['log_r1_0_0_kg'], '40', 'se borraron los kg: se conservan como sugerencia');
+  assert.strictEqual(store['drop_r1_0_0'], '1', 'se borró la configuración del dropset, que debe persistir');
+  assert.strictEqual(store['done_r2_0_0'], '1', '🔴 la limpieza pisó OTRA rutina');
+  assert.strictEqual(limpiado, 'r1', 'no se limpió el calentamiento de la sesión (clearWarmup)');
+
+  // (2) El cableado: el botón marca, y el render lo consume UNA vez y acuña sesión nueva.
+  const boton = src.slice(src.indexOf('function todayTrainAgain('), src.indexOf('\nfunction ', src.indexOf('function todayTrainAgain(') + 10));
+  assert.ok(/CUR\.trainAgainWipe\s*=\s*true/.test(boton), '«Entrenar otra vez» ya no pide la limpieza');
+  assert.ok(/_wipeSessionFlags/.test(src.slice(src.indexOf('if(CUR.trainAgainWipe)'), src.indexOf('if(CUR.trainAgainWipe)') + 260)),
+    'el render no limpia cuando la bandera está puesta');
+  assert.ok(/CUR\.trainAgainWipe\s*=\s*false[\s\S]{0,200}startNewSession\(/.test(src),
+    'la bandera no se consume de una sola vez, o no se acuña sesión nueva (la 2ª sesión pisaría la entrada de la mañana)');
+  // (3) La limpieza tiene UNA sola puerta: la copia vieja no puede volver.
+  assert.ok(!/function clearWarmDropDone\(/.test(src), 'volvió clearWarmDropDone: la limpieza otra vez duplicada a mano');
+  assert.strictEqual((src.match(/function _wipeSessionFlags\(/g) || []).length, 1, '_wipeSessionFlags duplicada');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
