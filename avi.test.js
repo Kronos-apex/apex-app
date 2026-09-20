@@ -20456,6 +20456,55 @@ test('🔴 el calentamiento sigue al PLAN, no al calendario (v644)', () => {
   });
 });
 
+test('🔴 el MOTOR usa el desplazamiento (no basta con que el cableado se lo pase)', () => {
+  // 🔴 Los dos sabotajes que devolvían `pool.slice(0,2)` DENTRO de `buildWarmup` salieron VERDES:
+  // los candados de al lado prueban `wuTake` y prueban que renderWarmup le pasa el desplazamiento,
+  // pero ninguno probaba que el motor lo USE. Se ejecuta el motor real y se compara su SALIDA.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
+  const { buildWarmup } = new Function('warmupContraindicated', 'exTrack', 'wuMovePattern', 'wuSessionPatterns', 'wuTake',
+    src.slice(ini, src.indexOf('\n}', fin) + 2) + '\nreturn {buildWarmup};')(
+    core.warmupContraindicated, core.exTrack, core.wuMovePattern, core.wuSessionPatterns, core.wuTake);
+  assert.strictEqual(typeof buildWarmup, 'function', 'CONTROL · no se extrajo buildWarmup del archivo real');
+  const rutina = [{ id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto' },
+                  { id: 'e2', name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento' }];
+  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id).join(',');
+  const r0 = ids(buildWarmup(rutina, null, { rot: 0 }));
+  const r1 = ids(buildWarmup(rutina, null, { rot: 1 }));
+  const r2 = ids(buildWarmup(rutina, null, { rot: 2 }));
+  assert.ok(r0.length > 0, 'el motor no devolvió calentamiento');
+  assert.ok(r0 !== r1 || r0 !== r2,
+    '🔴 el motor devuelve lo MISMO con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
+  // 🔒 Y el control que mantiene válidos los dictámenes: sin desplazamiento, lo de siempre.
+  assert.strictEqual(ids(buildWarmup(rutina, null)), r0, '🔴 con desplazamiento 0 el motor ya no devuelve lo de siempre');
+});
+
+test('🔴 tercera ronda de Laura: las 6 casillas que faltaban al dejar que cualquier pieza llegue a cualquiera', () => {
+  // Al seguir el calentamiento al PLAN, una pieza del 3.º en adelante ya no necesita que el filtro
+  // quite a otra para aparecer: CUALQUIERA puede llegarle a CUALQUIERA. Eso dejó sin cubrir casillas
+  // que el barrido del 20-sep no tenía por qué mirar. Se ejecuta el filtro REAL, no se lee la lista.
+  const caso = (id, zona) => core.warmupContraindicated({ id, name: 'x' }, [zona]);
+  [['we4', 'hombro'], ['wa1', 'hombro'], ['we5', 'cuello'], ['wr2', 'tobillo'], ['we1', 'muneca']]
+    .forEach(([id, z]) => assert.ok(caso(id, z), `🔴 ${id} sigue llegándole a quien declara ${z}`));
+  // 🔒 CONTROL: sin la zona declarada esas mismas piezas SIGUEN sirviendo — si no, esto no sería un
+  //    filtro sino haber borrado media biblioteca (lección v424: una regla ancha también hace daño).
+  [['we4', 'lumbar'], ['wa1', 'tobillo'], ['we5', 'muneca'], ['wr2', 'hombro'], ['we1', 'cuello']]
+    .forEach(([id, z]) => assert.ok(!caso(id, z), `${id} se está excluyendo de más (${z})`));
+  // 🔒 `wa4` quedó 🟡 en hombro y NO entra: un 🟡 no cambia la conducta.
+  assert.ok(!caso('wa4', 'hombro'), 'wa4 entró como ❌ en hombro y Laura la dictaminó 🟡');
+  // Y ningún id fantasma: la lista y el catálogo no se pueden separar.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const { WARMUP_LIBRARY } = new Function('warmupContraindicated',
+    src.slice(ini, src.indexOf('\n}', src.indexOf('return {sessionLabel')) + 2) + '\nreturn {WARMUP_LIBRARY};')(core.warmupContraindicated);
+  const todos = new Set(Object.keys(WARMUP_LIBRARY).flatMap(k => WARMUP_LIBRARY[k].map(e => e.id)));
+  Object.values(core.WARMUP_ZONE_EXCL_IDS).flat().forEach(id =>
+    assert.ok(todos.has(id), `WARMUP_ZONE_EXCL_IDS apunta a "${id}", que no existe en la biblioteca`));
+});
+
 test('🔴 CABLEADO v644 · el desplazamiento sale de la rutina GUARDADA y nadie rota por fecha', () => {
   const fs = require('fs'), path = require('path');
   const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));

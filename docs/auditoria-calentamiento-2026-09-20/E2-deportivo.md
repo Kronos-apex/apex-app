@@ -332,6 +332,71 @@ Las otras cuatro zonas (**lumbar**, **hombro**, **tobillo**, **rodilla** en el r
 🟡 sin cambio de conducta), todas las promociones que el patrón «una zona quita a otra pieza» puede
 producir hoy en el catálogo de 34 quedan revisadas. No queda ninguna sin dictamen.**
 
+## La rotación (20-sep, tercera ronda) — el PO decidió que ninguna pieza quede muerta
+
+El coordinador me trae la decisión ya tomada: **rotar dentro de cada pool, un desplazamiento por
+día, determinista**, con el filtro de lesiones corriendo ANTES del recorte igual que hoy. Eso
+cambia el terreno por completo — mi barrido del 20-sep cubría las promociones que hoy ocurren
+*por el mecanismo del recorte* (posición 3+ solo sube si el filtro tumba una de las dos primeras).
+Con rotación, **cualquiera de las 34 piezas le llega a cualquier persona, tenga la zona que tenga**,
+y la mayoría de esas piezas nunca fueron revisadas para esa zona porque nunca la alcanzaban. Es
+`wc3` otra vez, multiplicado por 34×8.
+
+### 1. La matriz completa — solo las casillas NUEVAS que faltan
+
+Barrí las 34 piezas contra las 8 zonas (id ∪ regex de `GEN_ZONE_EXCL`, contra el nombre real del
+catálogo) y comparé cada resultado contra lo que ya está en `WARMUP_ZONE_EXCL_IDS` o ya lo dicté yo
+mismo el 20-sep. Lo que sigue es SOLO lo que falta agregar — lo que ya está, no lo repito.
+
+| Zona | Pieza | Veredicto | Razón clínica (texto de comentario) |
+|---|---|---|---|
+| **hombro** | `we4` «Plancha de hombros» | ❌ | Peso corporal completo sobre el hombro en cadena cerrada con el codo bloqueado (apoyo en manos, brazo extendido) — es la misma carga que un fondo o un press en el suelo, y el nombre lo esconde bajo «hombros» de escápula en vez de gesto de empuje. Ya está excluida de cuello y muñeca por el mismo mecanismo, y nadie la había mirado para hombro. |
+| **hombro** | `wa1` «Flexión de pecho (lagartija)» | ❌ | Cierre en cadena de la cadera al hombro: bodyweight en compresión contra el suelo con el codo en flexión profunda al fondo — la posición inferior del movimiento carga el manguito rotador exactamente como un press horizontal, que sí está prohibido en el catálogo de entreno para esta zona. Ya excluida de muñeca por el mismo apoyo de mano; hombro nunca se revisó. |
+| **hombro** | `wa4` «Balanceo de brazos cruzados» | 🟡 | El balanceo dinámico de brazos abiertos-cruzados pasa por horizontal-adducción repetida, que es una posición provocadora en impingement subacromial agudo; no es una carga externa (es autolimitado por dolor), así que no lo excluyo — pero el texto debería decir «sin superar la altura del hombro» si algún día el catálogo admite modificadores. Sin cambio de conducta hoy, mismo estado que `wai1` en aductor/abductor. |
+| **cuello** | `we5` «Rollitos sobre colchoneta» | ❌ | El propio gesto es rodar el peso del tronco hacia atrás sobre la columna alta — carga por compresión axial variable justo sobre las vértebras cervicales, el mismo mecanismo que descarta una vela o un rollback en cualquier protocolo de columna. Ya excluida de lumbar; cuello nunca se revisó porque `we5` no aparecía nunca en ese pool hasta la rotación. |
+| **tobillo** | `wr2` «Sentadilla de movilidad lenta» | ❌ | Sentadilla completa de tobillo en dorsiflexión máxima bajo peso corporal — es el mismo patrón de carga en el rango final de tobillo que ya excluye a su hermana `wai1` («Sentadilla con peso corporal») en esta misma zona; ningún criterio distingue una de la otra salvo la velocidad de ejecución, que no cambia la carga articular. |
+| **muñeca** | `we1` «Cat-Cow (Gato-Vaca)» | ❌ | Posición de cuadrupedia con la muñeca en extensión máxima soportando ~25-30% del peso corporal — mismo mecanismo de carga en extensión que ya excluye la plancha y la lagartija de esta zona; nadie la había revisado porque nunca sube de posición 1 en el pool de espalda hasta que algo saca a `we5`/`we3` primero, y ahora con rotación diaria le toca a cualquiera con dolor de muñeca sin que el filtro la haya mirado nunca.
+
+Todas las demás casillas quedan verificadas y **sanas** contra el catálogo real de 34 piezas — no
+hay más huecos que reportar. Verifiqué explícitamente lumbar completo (nada nuevo: Cat-Cow es
+terapéutico para lumbar, la plancha ya está aprobada, los hip-hinges guardan «espalda recta»),
+aductor/abductor (nada nuevo fuera de lo ya dictado), y rodilla más allá de `wc3` (nada nuevo:
+`wt1`/`wt2` siguen siendo tratamiento, no riesgo).
+
+### 2. Mi veredicto sobre la rotación en sí — NO es un «sí» simple
+
+Un calentamiento tiene dos trabajos distintos y la rotación les sienta distinto:
+
+- **La movilidad articular** (círculos, rotaciones, estiramientos suaves) no necesita repetición
+  para hacerse bien — el rango de movimiento no se «aprende», se ejecuta. Ahí rotar dentro de la
+  semana no cuesta nada y de hecho es mejor: cubre planos que un par fijo nunca toca.
+- **La activación** (sentadillas, desplantes, peso muerto de peso corporal, plancha) SÍ es un
+  patrón motor que se automatiza con repetición, y automatizarlo es justamente lo que hace que la
+  activación cumpla su función — despertar el patrón antes de cargarlo de verdad. Rotar la
+  activación cada día es exactamente lo que un entrenador NUNCA haría con un principiante: le pide
+  reaprender la técnica de un movimiento nuevo cada mañana, con menos atención de la que le pone
+  al ejercicio de verdad. El riesgo más grande de un calentamiento no es que sea repetitivo — es
+  que alguien lo ejecute mal por no conocerlo, y eso empeora justo con la rotación diaria.
+
+**Mi respuesta no es «sí, rotar todo» ni «no, nunca rotar»: es que la mecánica de rotación se
+aplique con GRANOS DISTINTOS por área.** Movilidad articular: rotación diaria, sin objeción — el
+riesgo de ejecución es bajo y la variedad no cuesta nada. Activación: **rotación SEMANAL, no
+diaria** (el mismo par toda la semana, cambia la semana siguiente) — así la persona automatiza el
+patrón durante los días que lo necesita y el catálogo entero sigue rotando con el tiempo, sin
+pedirle aprender un movimiento nuevo cada sesión. Si el PO insiste en rotación diaria pareja para
+las dos capas, mi objeción queda registrada aquí: no es un riesgo de lesión (por eso no es ❌), es
+un costo de calidad de ejecución que un entrenador de verdad no aceptaría, y **no** es razón para
+podar la biblioteca — podar sería peor, porque el problema no es que existan 34 piezas, es la
+velocidad con la que se le pide a alguien conocerlas.
+
+### 3. Valery — desde el criterio de entrenamiento
+
+Variedad SÍ aporta en la movilidad (cubre ángulos que un par fijo no toca y evita que el
+calentamiento se sienta un trámite mecánico que la gente empieza a saltarse), pero en la
+activación es ruido si rota más rápido de lo que la persona puede grabar el gesto — la activación
+existe para que el sistema nervioso reconozca el patrón un segundo antes de cargarlo, no para
+enseñar movimientos nuevos. Semanal en activación, diaria en movilidad.
+
 ## Qué NO miré y por qué
 
 - **Los «sets de calentamiento» por ejercicio (la aproximación con % de peso)** — el briefing dice

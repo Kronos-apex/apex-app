@@ -805,19 +805,33 @@ function correctiveFor(limKeys, lib, place, opts) {
 // dictamen: `wa4` (por cuello y por muñeca), `wac3` (por cuello) y `wai3`/`wai4` (por rodilla)
 // quedaron ✅; `wai1` (por aductor/abductor) sigue 🟡 con su matiz del 8-ago; lumbar, hombro y
 // tobillo no promueven nada nuevo. Si mañana se toca `GEN_ZONE_EXCL`, esto se vuelve a barrer.
+// 🔴 TERCERA RONDA DE LAURA (20-sep, v644). Al dejar que el calentamiento siga al PLAN, CUALQUIER
+// pieza puede llegarle a CUALQUIER persona — antes las del 3.º en adelante solo aparecían si el
+// filtro quitaba a otra, y su barrido cubría exactamente esas promociones. Con eso su matriz dejó
+// de ser suficiente y dictó las seis casillas que faltaban (las de abajo van marcadas «v644»).
+// `wa4` «Balanceo de brazos cruzados» quedó 🟡 en hombro (posición provocadora solo en impingement
+// agudo): NO entra, porque un 🟡 no cambia la conducta y una regla ancha también hace daño (v424).
 const WARMUP_ZONE_EXCL_IDS = {
   lumbar: ['we3', 'we5', 'wai3', 'wac3'],
   rodilla: ['wr2', 'wai1', 'wai2', 'wc3'],
-  hombro: ['wh3'],
+  // v644 · `we4` plancha de hombros y `wa1` lagartija: CIERRE EN CADENA, el peso del cuerpo sobre el
+  // hombro y el manguito cargado en la posición baja — el mismo mecanismo por el que `we4` ya salía
+  // de cuello y de muñeca, que nadie había mirado para el hombro.
+  hombro: ['wh3', 'we4', 'wa1'],
   aductor: ['wc2', 'wc3', 'wc5', 'wai2'],
   abductor: ['wc2', 'wc3', 'wc5', 'wai2'],
-  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1'],
-  tobillo: ['wai1', 'wai2', 'wai4', 'wt2'],
+  // v644 · `we5` rollitos: rodar el peso del tronco mete carga axial VARIABLE sobre las cervicales.
+  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1', 'we5'],
+  // v644 · `wr2` sentadilla de movilidad lenta: dorsiflexión BAJO CARGA, el mismo patrón por el que
+  // su hermana `wai1` ya estaba fuera de esta zona.
+  tobillo: ['wai1', 'wai2', 'wai4', 'wt2', 'wr2'],
   // 🔒 `we4 «Plancha de hombros»` habla del hombro en el nombre y su descripción dice «en
   // posición de lagartija alta… los brazos no se doblan»: es peso corporal completo sobre las
   // muñecas en extensión máxima con el codo bloqueado. El arquetipo del gesto que hay que
   // quitar, escondido bajo un nombre de escápula, y EN EL CALENTAMIENTO.
-  muneca: ['we4'],
+  // v644 · `we1` Cat-Cow: cuadrupedia con la muñeca en extensión máxima, el mismo mecanismo que ya
+  // excluye la plancha y la lagartija.
+  muneca: ['we4', 'we1'],
 };
 // Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
 // Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
