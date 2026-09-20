@@ -4,6 +4,39 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-20 — v643: el segundo lote del calentamiento, y las 10 piezas que no le llegan a nadie
+
+- **Un título de sección sin nada debajo.** El filtro de lesiones vacía una zona a propósito y el título se
+  pintaba igual: con lumbar + tobillo declarados, un día de pierna o de glúteo deja **«⚡ Activación muscular»
+  con CERO filas**. Cada título va ahora dentro de la guarda de SU lista. Sin víctima hoy (ninguna ficha declara
+  las dos zonas) y por eso mismo se cierra ahora.
+- **Y su hermano, que sí dejaba una tarjeta MUERTA:** una lista propia del coach cuyos ids ya no existen daba
+  **«0/0»** con el cuerpo en blanco y la insignia naranja que **nunca pasa a verde** (`updateWarmupProgress` con
+  total 0 cae al `else`). Una lista sin ningún id vivo deja de contar como lista propia y cae al auto-derivado
+  —que es lo que su propio editor promete—, y sin un solo movimiento que ofrecer no se pinta la tarjeta.
+- **El selector se cerraba en cada toque**: armar un calentamiento de 4 movimientos costaba **8 toques en vez de
+  5**. La marca se pone EN SITIO (`_wpMarkUsed`) y no repintando con `openWarmPicker()`, que devolvería el scroll
+  al principio — en una lista de 34 sería cambiar una molestia por otra. De paso, lo ya agregado se distingue por
+  el ✓ y el fondo y **no con `opacity` sobre la letra** (regla del repo desde v453): ahí está el nombre del
+  movimiento, que es justo lo que esa marca viene a decir.
+- **El 🎥** era el último emoji crudo dentro de un control de esa tarjeta (su vecino es SVG desde v626) → icono
+  de marca, sin `opacity`.
+- **📊 MEDIDO para la decisión del PO: 10 de las 34 piezas no le llegan a NADIE.** Corriendo `buildWarmup` de
+  verdad sobre los 10 músculos × 5 tipos de primer ejercicio × los 3 perfiles de limitación que existen hoy
+  (ninguna · rodilla · lumbar): **24 alcanzables, 10 imposibles** — `wh3` `wh4` `wh5` `wc3` `wc5` `wm3` `we3`
+  `we4` `wa4` `wa2`. La causa es el `slice(0,2)` por pool: del 3.º en adelante solo se llega si el filtro quita a
+  uno de los dos primeros. (E2 contó 14 contra las rutinas que existen hoy; este barrido es un SUPERCONJUNTO del
+  alcance, así que 10 es el piso estructural. Las dos cifras son correctas en lo que cada una mide.)
+  ⚠️ De paso, un defecto de MI consulta: `NOT (jsonb_typeof(x)='array' AND …)` sobre una clave AUSENTE da
+  `NOT NULL` = NULL y **descarta la fila en silencio** — se me tragó 48 de las 118 rutinas hasta que el conteo
+  no cuadró. Es la lógica de tres valores de SQL, y el delator fue que el total no daba.
+- **QA.** Suite **1274 → 1276** en los cuatro modos, hook 12/12, matriz nueva `_sabotaje-v643` **11/11 a la
+  primera**, harness `_verify-aviso-calentamiento` **48/48** en los dos temas (4 casos nuevos, incluido el icono
+  medido EN PANTALLA), `_prodcheck 643` verde, CI verde.
+- 🔴 **Y las matrices de v642/v643 nacieron en `scripts/`, que está en `.gitignore`** — ahí una matriz se pierde
+  con la máquina y hay que reescribirla cada vez que alguien toca esos candados, que es el problema que v473
+  cerró versionando la primera. Movidas a `scripts/e2e/` y re-corridas donde viven ahora.
+
 ## ⏮️ 2026-09-20 — v642: los tres rojos de la auditoría del CALENTAMIENTO (10ª ronda)
 
 - **La ronda.** Área elegida leyendo el «Qué NO miré» del 8-sep, que la dejó anotada a nombre del PO. Tres
