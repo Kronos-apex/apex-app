@@ -1637,7 +1637,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-21 (**v645 — ELIMINAR LA CONVERSACIÓN, SOLO PARA QUIEN LA ELIMINA**: decisión del PO —como «Vaciar chat» de WhatsApp, coach y asesorado pueden, cada uno para sí—. El hilo compartido NO se toca (append-only, unión de v625): cada lado guarda una marca con la fecha del último mensaje visto y la vista filtra. Suite **1287**, `_sabotaje-v645` 9/9, `_verify-eliminar-chat` 15/15) · (**v644 — EL CALENTAMIENTO SIGUE AL PLAN, EN PRODUCCIÓN**: decisión del PO
+*Última actualización: 2026-09-21 (**v646 — LA RESPUESTA RÁPIDA LLEVA SU ENTRENO** (`chatMsgContext`, suite 1290) · **v645 — ELIMINAR LA CONVERSACIÓN, SOLO PARA QUIEN LA ELIMINA**: decisión del PO —como «Vaciar chat» de WhatsApp, coach y asesorado pueden, cada uno para sí—. El hilo compartido NO se toca (append-only, unión de v625): cada lado guarda una marca con la fecha del último mensaje visto y la vista filtra. Suite **1287**, `_sabotaje-v645` 9/9, `_verify-eliminar-chat` 15/15) · (**v644 — EL CALENTAMIENTO SIGUE AL PLAN, EN PRODUCCIÓN**: decisión del PO
 —*«nada de rotación a menos que se modifique la rutina»*— contra la rotación por DÍA que yo había construido, y
 es mejor producto: un calentamiento se hace bien cuando la persona se lo sabe. `wuRotForRoutine` (PURA) deriva
 el desplazamiento de los ejercicios del plan GUARDADO (nunca de la rutina ya adaptada por el ánimo) y `wuTake`

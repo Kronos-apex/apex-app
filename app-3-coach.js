@@ -3960,6 +3960,7 @@ function renderCoachChatThread(clientId, forceBottom){
   msgs.forEach(m=>{
     const isC=m.from==='coach';
     const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,isC,false));
     const t=document.createElement('div');t.className=`mt${isC?' r':''}`;
     // v588 · el estado REAL del mensaje. Antes todos se pintaban igual y el que nunca salió
     // se veía idéntico al entregado — con la app diciendo además «Mensaje enviado».

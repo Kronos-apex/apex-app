@@ -20622,6 +20622,53 @@ test('🔒 CABLEADO v645 · TODO lector del chat pasa por la vista filtrada', ()
 });
 
 // ══════════════════════════════════════════════════════
+// v646 · LA RESPUESTA RÁPIDA LLEVA SU ENTRENO
+// ══════════════════════════════════════════════════════
+const _ctxSes = (date, extra) => Object.assign({ id: 's-' + date, date, routineName: 'Pierna A', doneSets: 3, totalSets: 8,
+  exercises: [
+    { name: 'Hip Thrust', sets: [{ kg: '80', reps: '10', done: true }, { kg: '90', reps: '8', done: true }, { kg: '100', reps: '5', done: false }] },
+    { name: 'Curl Femoral', sets: [{ kg: '30', reps: '12', done: true }] },
+    { name: 'Sin hacer', sets: [{ kg: '20', reps: '10', done: false }] },
+  ] }, extra || {});
+test('v646 · el contexto es la sesión de HOY, elegida por fecha y no por posición', () => {
+  const ahora = new Date(2026, 8, 21, 18, 0);
+  const vieja = _ctxSes(new Date(2026, 8, 21, 7, 0).toISOString(), { routineName: 'Mañana' });
+  const nueva = _ctxSes(new Date(2026, 8, 21, 17, 0).toISOString(), { routineName: 'Tarde' });
+  const ayer = _ctxSes(new Date(2026, 8, 20, 17, 0).toISOString(), { routineName: 'Ayer' });
+  // el historial puede venir en cualquier orden: la más reciente de HOY gana
+  assert.strictEqual(core.chatMsgContext([nueva, vieja, ayer], ahora).rutina, 'Tarde');
+  assert.strictEqual(core.chatMsgContext([ayer, vieja, nueva], ahora).rutina, 'Tarde');
+  assert.strictEqual(core.chatMsgContext([ayer], ahora), null, '🔴 un entreno de AYER no puede pasar por el de hoy');
+  assert.strictEqual(core.chatMsgContext([], ahora), null);
+  assert.strictEqual(core.chatMsgContext(undefined, ahora), null);
+});
+test('v646 · el contexto cuenta solo las series HECHAS y resume la mejor carga', () => {
+  const ahora = new Date(2026, 8, 21, 18, 0);
+  const c = core.chatMsgContext([_ctxSes(new Date(2026, 8, 21, 17, 0).toISOString())], ahora);
+  assert.deepStrictEqual(c.ejs.map(e => e.n), ['Hip Thrust', 'Curl Femoral'], 'un ejercicio sin series hechas no se nombra');
+  assert.strictEqual(c.ejs[0].s, 2); assert.strictEqual(c.ejs[0].kg, 90); assert.strictEqual(c.ejs[0].reps, 8);
+  assert.strictEqual(c.hechas, 3); assert.strictEqual(c.total, 8); assert.strictEqual(c.fin, false);
+  assert.strictEqual(core.chatCtxExLine(c.ejs[0]), 'Hip Thrust · 2 series · 90 kg × 8');
+  assert.strictEqual(core.chatCtxExLine({ n: 'Plancha', s: 1, kg: 0, reps: 0 }), 'Plancha · 1 serie');
+  const muchos = _ctxSes(new Date(2026, 8, 21, 17, 0).toISOString(), { exercises: Array.from({ length: 12 }, (_, i) => ({ name: 'E' + i, sets: [{ kg: '1', reps: '1', done: true }] })) });
+  assert.strictEqual(core.chatMsgContext([muchos], ahora).ejs.length, core.CHAT_CTX_MAX_EX, 'el contexto es compacto');
+});
+test('🔒 CABLEADO v646 · la respuesta rápida lleva el contexto y el coach lo ve', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const a1 = sinComentarios(_srcApp1());
+  const a3 = sinComentarios(_srcApp3());
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const quick = cuerpo(a4, 'function clientQuickMsg(');
+  assert.ok(/chatMsgContext\(/.test(quick) && /_clientSend\(.*,\s*ctx\);/.test(quick), '🔴 la respuesta rápida ya no manda su entreno');
+  const send = cuerpo(a4, 'function _clientSend(');
+  assert.ok(/_m\.ctx\s*=\s*ctx/.test(send), '🔴 el mensaje no guarda el contexto');
+  assert.ok(/chatCtxNode\(m\.ctx/.test(cuerpo(a3, 'function renderCoachChatThread(')), '🔴 el coach no ve el contexto en su chat');
+  const nodo = cuerpo(a1, 'function chatCtxNode(');
+  assert.ok(!/innerHTML/.test(nodo) && /textContent/.test(nodo), '🔴 el contexto trae nombres tecleados: va por textContent');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

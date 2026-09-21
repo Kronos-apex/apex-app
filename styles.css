@@ -712,6 +712,11 @@ html[data-theme="light"] .mta {
 .mb.cs{background:var(--g);color:white;align-self:flex-end;border-bottom-right-radius:4px}
 .mb.cl{background:var(--w);border:1px solid var(--br);color:var(--t1);align-self:flex-start;border-bottom-left-radius:4px}
 .mt{font-size:10px;color:var(--t3);padding:0 4px 4px}
+/* v646 · el entreno de hoy que acompaña a una respuesta rápida */
+.mctx{max-width:78%;align-self:flex-start;margin:3px 0 2px;padding:7px 10px;border-radius:10px;background:var(--surface);border:1px dashed var(--br2);font-size:11.5px;line-height:1.45;color:var(--t2)}
+.mctx.r{align-self:flex-end}
+.mctx-h{font-weight:700;color:var(--t1)}
+.mctx-l{overflow-wrap:anywhere}
 .mt.r{text-align:right}
 .mrow{display:flex;gap:7px;padding:10px 14px;border-top:1px solid var(--br);align-items:flex-end}
 /* v316 (estudio, mejora 6): respuestas rápidas del asesorado — un toque y sale el mensaje */

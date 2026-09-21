@@ -2492,6 +2492,45 @@ function msgsVisible(list, clearedAt) {
   return arr.filter(m => new Date(m && m.date).getTime() > c);
 }
 
+// ── v646 · LA RESPUESTA RÁPIDA LLEVA SU ENTRENO ──────────────────────────────────────────
+// Medido 21-sep: las respuestas rápidas son más de un tercio de lo que escriben los asesorados
+// (18 de ~50) y llegan como texto pelado — «🤕 Algo me dolió» obliga al coach a preguntar «¿en
+// qué?». El mensaje viaja con la sesión de HOY que ya está en el historial (se guarda desde la
+// 1.ª serie, v483, así que también vale a mitad de entreno).
+// 🔒 La sesión se elige por FECHA, nunca por posición (v448: el historial no garantiza orden).
+// 🔒 Sin sesión de hoy devuelve null: un contexto de otro día confundiría más que no tenerlo.
+// 🔒 Compacto y sin datos de salud: solo lo que se ve en la pantalla del entreno.
+const CHAT_CTX_MAX_EX = 8;
+function chatMsgContext(sessions, now) {
+  const hoy = new Date(now || Date.now());
+  const mismoDia = d => { const x = new Date(d); return Number.isFinite(x.getTime()) && x.getFullYear() === hoy.getFullYear() && x.getMonth() === hoy.getMonth() && x.getDate() === hoy.getDate(); };
+  let s = null;
+  (Array.isArray(sessions) ? sessions : []).forEach(x => {
+    if (!x || !x.date || !mismoDia(x.date)) return;
+    if (!s || new Date(x.date) > new Date(s.date)) s = x;
+  });
+  if (!s) return null;
+  const ejs = (Array.isArray(s.exercises) ? s.exercises : []).map(e => {
+    const sets = (Array.isArray(e && e.sets) ? e.sets : []).filter(x => x && x.done);
+    let kg = 0, reps = 0;
+    sets.forEach(x => { const k = parseFloat(x.kg) || 0, r = parseInt(x.reps, 10) || 0; if (k > kg || (k === kg && r > reps)) { kg = k; reps = r; } });
+    return { n: String(e && e.name || '').slice(0, 60), s: sets.length, kg, reps };
+  }).filter(e => e.n && e.s > 0).slice(0, CHAT_CTX_MAX_EX);
+  const hechas = Number.isFinite(+s.doneSets) ? +s.doneSets : ejs.reduce((a, e) => a + e.s, 0);
+  return {
+    sid: s.id || null,
+    rutina: String(s.routineName || 'Entreno').slice(0, 60),
+    hechas, total: Number.isFinite(+s.totalSets) ? +s.totalSets : null,
+    fin: !!s.finishedAt, ejs,
+  };
+}
+// Una línea legible por ejercicio: «Hip Thrust con Barra · 4 series · 80 kg × 10».
+function chatCtxExLine(e) {
+  if (!e) return '';
+  const carga = e.kg > 0 ? ` · ${e.kg} kg × ${e.reps}` : (e.reps > 0 ? ` · ${e.reps} reps` : '');
+  return `${e.n} · ${e.s} serie${e.s === 1 ? '' : 's'}${carga}`;
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -11537,6 +11576,9 @@ if (typeof module !== 'undefined' && module.exports) {
     chatClearLater,
     chatClearMapMerge,
     msgsVisible,
+    chatMsgContext,
+    chatCtxExLine,
+    CHAT_CTX_MAX_EX,
     mergeAuthRow,
     parseOAuthReturn,
     _msgKey,

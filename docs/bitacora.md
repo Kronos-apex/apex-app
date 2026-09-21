@@ -4,6 +4,18 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v646: la respuesta rápida lleva su entreno
+
+- **Primera del lote del chat que pidió el PO** (*«dale con todas en orden»*: contexto → respuestas del coach →
+  visto → fotos). Medido antes: las respuestas rápidas son **18 de ~50** mensajes de asesorados y llegaban como
+  texto pelado — «🤕 Algo me dolió» obligaba al coach a preguntar «¿en qué?».
+- `chatMsgContext` (PURA) toma la sesión de **HOY** del historial —por FECHA, nunca por posición (v448)— y
+  la resume: rutina, series hechas/total, cada ejercicio con su mejor carga (solo series HECHAS, máx. 8). Sin
+  entreno hoy viaja SIN contexto. Va en el mensaje (`ctx`); el coach lo ve completo y el asesorado en compacto
+  (para que sepa que su coach lo ve). El push al coach nombra la rutina. Todo por `textContent`.
+- **QA.** Suite **1287 → 1290**, `_sabotaje-v646` 7 casos, harness nuevo `_verify-chat-lote` (sección X) 4/4
+  con capturas miradas en claro y oscuro.
+
 ## ⏮️ 2026-09-21 — v645: eliminar la conversación, solo para quien la elimina
 
 - **Pedido del PO:** *«si alguien quiere eliminar la conversación en AVI hoy no se puede»*. Dos decisiones

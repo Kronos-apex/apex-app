@@ -153,6 +153,20 @@ function avc(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%AVC.length;ret
 function avcStyle(n){const c=avc(n);return `background:${c};color:${typeof inkOn==='function'?inkOn(c):'#FFFFFF'}`}
 function fmtT(d){return new Date(d).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
 function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}
+// v646 · la tarjeta del entreno que acompaña a una respuesta rápida. La pintan el chat del coach
+// (completa: rutina, series y cada ejercicio) y el del asesorado (compacta: solo la rutina, para
+// que sepa que su coach la ve). Todo por textContent: el nombre de un ejercicio lo teclea alguien.
+function chatCtxNode(ctx,derecha,compacta){
+  const w=document.createElement('div'); w.className='mctx'+(derecha?' r':'');
+  const h=document.createElement('div'); h.className='mctx-h';
+  const series=(ctx.total?`${ctx.hechas}/${ctx.total}`:`${ctx.hechas}`)+' series';
+  h.textContent=`📋 ${ctx.rutina||'Entreno'} · ${series}${ctx.fin?' · terminado':' · en curso'}`;
+  w.appendChild(h);
+  if(!compacta&&Array.isArray(ctx.ejs)&&typeof chatCtxExLine==='function'){
+    ctx.ejs.forEach(e=>{ const l=document.createElement('div'); l.className='mctx-l'; l.textContent=chatCtxExLine(e); w.appendChild(l); });
+  }
+  return w;
+}
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';

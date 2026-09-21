@@ -4195,18 +4195,23 @@ function _paintMsgThread(con,msgs){
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
     const mine=m.from!=='coach';
     const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,mine,true));
     const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
   });
 }
 // Ruta ÚNICA de envío del asesorado — la usan el textarea y las respuestas rápidas (v316).
-function _clientSend(text){
+// v646 · `ctx` (opcional) = el entreno de hoy que acompaña a una respuesta rápida (chatMsgContext).
+function _clientSend(text,ctx){
   const clientId=CUR.clientId;if(!text||!clientId)return;
   if(!DB.msgs[clientId])DB.msgs[clientId]=[];
-  DB.msgs[clientId].push({from:'client',text,date:new Date().toISOString()});
+  const _m={from:'client',text,date:new Date().toISOString()};
+  if(ctx)_m.ctx=ctx;
+  DB.msgs[clientId].push(_m);
   svNow('ax_m',DB.msgs);
   const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
-  // Push al coach para notificación en tiempo real
-  pushToClient('_coach','💬 '+clientName+' te escribió',text.length>80?text.slice(0,77)+'…':text,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
+  // Push al coach para notificación en tiempo real (con la rutina, si viaja contexto)
+  const _cuerpo=(text.length>80?text.slice(0,77)+'…':text)+(ctx?' · '+ctx.rutina:'');
+  pushToClient('_coach','💬 '+clientName+' te escribió',_cuerpo,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
   renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
 }
 function sendClientMsg(){
@@ -4216,7 +4221,12 @@ function sendClientMsg(){
   _clientSend(text);
 }
 // v316 (estudio, mejora 6): chip de respuesta rápida — un toque, mensaje enviado.
-function clientQuickMsg(t){ if(navigator.vibrate)navigator.vibrate(15); _clientSend((t||'').trim()); }
+// v646 · la respuesta rápida viaja con el entreno de HOY, si lo hay — así «Algo me dolió» ya dice en qué.
+function clientQuickMsg(t){
+  if(navigator.vibrate)navigator.vibrate(15);
+  const ctx=(typeof chatMsgContext==='function')?chatMsgContext((DB.history||{})[CUR.clientId],new Date()):null;
+  _clientSend((t||'').trim(),ctx);
+}
 
 // (restInt/_restVis/_restPaused — estado del rest-banner clasico — RETIRADOS en F5b)
 
