@@ -4677,27 +4677,18 @@ test('🔒 CABLEADO v600: la carpeta del bucket sale de la SESION, no del id de 
     assert.ok(i > 0, 'no existe ' + n);
     return src.slice(i, src.indexOf('\n}', i)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
   };
-  const up = cuerpo('uploadPhotoToStorage');
-  // La ruta se construye con el uuid de la sesion y por UNA sola funcion: dos formas de armarla
-  // acaban separandose y el borrado se queda pidiendo un archivo que no existe (v435).
-  assert.ok(/_photoPath\(uid,\s*photoId\)/.test(up),
-    '🔴 la ruta volvio a armarse a mano: subir y borrar pueden separarse');
-  assert.ok(!/\$\{clientId\}\//.test(up),
-    '🔴 volvio la carpeta con el id de cliente de la app: la policy no matchea por ninguna rama');
-  // 🔒 Y sin uuid NO se intenta subir: una subida a una ruta que la RLS va a rechazar solo
-  //    produce el mismo base64 silencioso de siempre, pero mas tarde.
-  assert.ok(/if\(!uid\)throw/.test(up),
-    'sin sesion se sigue intentando subir a una carpeta que nadie acepta');
-  // El nombre del objeto tiene que decir de QUIEN es, o los avatares de un coach se pisan entre
-  // ellos dentro de su carpeta (y con `x-upsert` puesto, sin un solo error).
+  // 🔁 v652 re-encuadre: `uploadPhotoToStorage` (subía al bucket PÚBLICO) ya no existe. La propiedad
+  // de fondo sigue: la ruta sale de UNA función y lleva a quién pertenece — ahora `profileAvatarPath`
+  // (carpeta de la persona, bucket privado), y sin uuid no se intenta subir.
+  assert.ok(!/function uploadPhotoToStorage\(/.test(src), '🔴 volvió la subida al bucket PÚBLICO');
+  const av4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const sa = av4.slice(av4.indexOf('function saveAvatar('), av4.indexOf('\n}', av4.indexOf('function saveAvatar(')));
+  assert.ok(/profileAvatarPath\(clientId,/.test(sa) && /_chatMediaUpload\(path,blob,'image\/jpeg','progress-photos'\)/.test(sa) && !/uploadPhotoToStorage/.test(sa),
+    '🔴 la foto de perfil no va al bucket PRIVADO con su ruta propia');
+  assert.strictEqual(core.profileAvatarPath('mpis0v4bsd1geso7tt', 'x'), null, 'sin uuid no hay ruta (la RLS la rechazaría)');
+  // Las copias viejas del bucket público se siguen limpiando con su nombre de siempre.
   assert.ok(/function avatarObjId\(clientId\)\s*\{\s*return\s*'avatar-'\+String\(clientId\|\|''\);/.test(src),
-    '🔴 el nombre del avatar dejo de llevar el id del asesorado: se sobrescriben entre ellos');
-  const av4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
-  assert.ok(/uploadPhotoToStorage\(avatarObjId\(clientId\),/.test(av4),
-    'el avatar del asesorado se sube con un nombre que no lo identifica');
-  // 🔒 Cruza modulos (app-4 llama a app-5): la app tiene que ARRANCAR aunque uno no cargue.
-  assert.ok(/typeof\s+avatarObjId\s*!==\s*'function'|typeof\s+avatarObjId\s*===\s*'function'/.test(av4),
-    '🔴 llamada entre modulos sin guarda typeof: es lo que revento 3 veces en Android');
+    '🔴 el nombre del avatar viejo dejó de llevar el id del asesorado');
   // Borrar saca la ruta de la URL guardada: las fotos de antes de v600 viven bajo la carpeta
   // vieja, y rearmarla con el uuid nuevo dejaria el archivo huerfano en el bucket para siempre.
   const del = cuerpo('deletePhotoFromStorage');
@@ -12778,13 +12769,14 @@ section('Arranque — la guarda que faltaba (2026-07-30)');
 
 // CANDADO del arranque: la llamada que reventó 3 veces en Android real (24/26/27-jul) por invocar
 // una función de OTRO módulo sin comprobar que existiera.
-test('migratePhotosToStorage se llama con guarda typeof (revienta el arranque sin ella)', () => {
+test('🔒 v652 · la migración vieja que subía fotos al bucket PÚBLICO ya no existe ni se llama', () => {
+  // 🔁 Re-encuadre: antes este candado exigía la guarda `typeof` en la llamada. La llamada se retiró
+  // porque `migratePhotosToStorage` subía fotos de progreso y de perfil al bucket PÚBLICO al arrancar.
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
-  const linea = src.split('\n').find(l => /migratePhotosToStorage\(\)/.test(l) && !/^\s*\/\//.test(l));
-  assert.ok(linea, 'no se encontró la llamada a migratePhotosToStorage');
-  assert.ok(/typeof\s+migratePhotosToStorage\s*===\s*'function'/.test(linea),
-    'la llamada perdió su guarda typeof: ' + linea.trim());
+  ['app-1-infra.js', 'app-5-salud.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-2-login.js', 'app-6-extra.js'].forEach(f => {
+    const t = fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.ok(!/migratePhotosToStorage\(/.test(t) && !/uploadPhotoToStorage\(/.test(t), '🔴 ' + f + ' vuelve a subir fotos al bucket público');
+  });
 });
 
 section('Tope de lo que se registra en una serie (2026-07-30)');
@@ -16814,8 +16806,10 @@ test('🔒 CABLEADO v597: el cierre pinta el retrato DE QUIEN entrenó, y sin fo
   assert.ok(/_wfRenderCrest\(c\)/.test(_v597('showWorkoutFinish')),
     '🔴 showWorkoutFinish dejó de pedir el retrato: la pantalla vuelve a ser igual para todos');
   const crest = _v597('_wfRenderCrest');
-  assert.ok(/client\s*&&\s*client\.avatar/.test(crest),
-    '🔴 el retrato dejó de salir de client.avatar: pintaría una foto que no es de quien entrenó');
+  // 🔁 v652: la foto de perfil es privada; el retrato sale de `avatarUrlFor(client)` (una sola forma de
+  // resolverla para todas las pantallas) y solo se pinta si el cierre sigue siendo de esa persona.
+  assert.ok(/avatarUrlFor\(client\)/.test(crest) && /el\.dataset\.for!==_quien/.test(crest),
+    '🔴 el retrato dejó de salir de la foto de quien entrenó');
   // Sin foto NO se degrada a iniciales: se queda el trofeo, que es lo que ya celebraba. Una
   // pantalla nueva no puede empeorarle el cierre a quien no tiene avatar (hoy, casi todos).
   assert.ok(/if\(!src\)return;/.test(crest) && /textContent='🏆'/.test(crest),
@@ -20860,8 +20854,7 @@ test('🔒 CABLEADO v650 · ninguna foto de progreso vuelve a ir al bucket PÚBL
   assert.ok(/_chatMediaUpload\(path,blob,'image\/jpeg',PROGRESS_BUCKET\)/.test(guardar) && !/uploadPhotoToStorage/.test(guardar), '🔴 la foto nueva tiene que ir al bucket PRIVADO');
   assert.ok(/saveProgressPhoto\(/.test(cuerpo(a5, 'function savePhoto(')), 'el Perfil no pasa por la puerta única');
   assert.ok(/saveProgressPhoto\(/.test(cuerpo(a6, 'function _dobSavePhoto(')) && !/uploadPhotoToStorage/.test(cuerpo(a6, 'function _dobSavePhoto(')), '🔴 el asistente del día 1 sube por su cuenta (y al bucket público)');
-  const mig = cuerpo(a5, 'async function migratePhotosToStorage(');
-  assert.ok(!/DB\.photos/.test(mig), '🔴 la migración vieja volvió a subir fotos de progreso al bucket PÚBLICO');
+  assert.ok(!/async function migratePhotosToStorage\(/.test(a5), '🔴 volvió la migración que subía fotos al bucket PÚBLICO');
   const mud = cuerpo(a5, 'async function migrateProgressPhotosPrivate(');
   assert.ok(/if\(!cid\|\|!me\|\|cid!==me\)return;/.test(mud), 'solo el dueño muda su carpeta');
   assert.ok(/_chatMediaUpload\(path,blob,'image\/jpeg',PROGRESS_BUCKET,true\)/.test(mud) && /photoMovedToPrivate\(/.test(mud), 'la mudanza tiene que ir al bucket privado y quitar el enlace');
@@ -20882,6 +20875,49 @@ test('🔒 CABLEADO v651 · «Mi entrenamiento» también muda tus fotos, y no g
   const mud = cuerpo(a5, 'async function migrateProgressPhotosPrivate(');
   const iGuard = mud.indexOf('if(cambio&&CUR.clientId!==cid)return;'), iSave = mud.indexOf("svNow('ax_photos'");
   assert.ok(iGuard > 0 && iSave > iGuard, '🔴 si la vista cambió a mitad de la mudanza, guardaría por el camino equivocado');
+});
+
+// ══════════════════════════════════════════════════════
+// v652 · LA FOTO DE PERFIL TAMBIÉN ES PRIVADA
+// ══════════════════════════════════════════════════════
+test('v652 · ruta de la foto de perfil, y qué foto todavía hay que mudar', () => {
+  const u = '0a6484ed-42af-449d-9903-e440ac683ecf';
+  assert.strictEqual(core.profileAvatarPath(u, 'k1'), u + '/perfil-k1.jpg');
+  assert.strictEqual(core.profileAvatarPathOk(u + '/perfil-k1.jpg', u), true);
+  assert.strictEqual(core.profileAvatarPathOk(u + '/progreso-k1.jpg', u), false, 'una foto de progreso no es la de perfil');
+  assert.strictEqual(core.profileAvatarPathOk('otro/perfil-k1.jpg', u), false);
+  assert.strictEqual(core.avatarNeedsPrivate({ avatar: 'data:image/jpeg;base64,xx' }), true);
+  assert.strictEqual(core.avatarNeedsPrivate({ avatar: 'https://x/storage/v1/object/public/apex-photos/u/avatar-u.jpg?v=1' }), true, '🔴 el enlace público es justo lo que hay que mudar');
+  assert.strictEqual(core.avatarNeedsPrivate({ avatarPath: u + '/perfil-k1.jpg' }), false);
+  assert.strictEqual(core.avatarNeedsPrivate({}), false);
+  assert.strictEqual(core.clientHasAvatar({ avatarPath: 'x' }), true);
+  assert.strictEqual(core.clientHasAvatar({ avatar: '  ' }), false);
+});
+test('v652 · el fondo del cierre usa el enlace firmado cuando llega, y sin foto la genérica', () => {
+  assert.strictEqual(core.finishBackdropFor({ sex: 'F', avatarPath: 'u/perfil-x.jpg' }, 'https://firmado/x'), 'https://firmado/x');
+  assert.strictEqual(core.finishBackdropFor({ sex: 'F', avatarPath: 'u/perfil-x.jpg' }), core.WF_PHOTO_F, 'mientras no llega el enlace, la genérica (nunca un fondo negro)');
+  assert.strictEqual(core.finishBackdropFor({ sex: 'M' }, ''), core.WF_PHOTO_M, 'un enlace vacío no gana');
+  assert.strictEqual(core.finishBackdropFor({ sex: 'M', avatar: 'data:image/png;base64,x' }), 'data:image/png;base64,x', 'la foto vieja en la ficha se sigue usando');
+});
+test('🔒 CABLEADO v652 · toda pantalla pide la foto de perfil por el resolvedor único', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = sinComentarios(_srcApp1());
+  const a3 = sinComentarios(_srcApp3());
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const a5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const res = cuerpo(a1, 'async function avatarUrlFor(');
+  assert.ok(/profileAvatarPathOk\(c\.avatarPath,c\.id\)/.test(res) && /_chatMediaUrl\(c\.avatarPath,'progress-photos'\)/.test(res), '🔴 el resolvedor no firma la foto privada o no valida la carpeta');
+  assert.ok(/avatarUrlFor\(c\)\.then/.test(cuerpo(a3, 'async function openDetail(')), 'la ficha del coach no pide la foto privada');
+  // En ningún lado se vuelve a leer `c.avatar` a pelo para pintar (el resolvedor es la única puerta).
+  [[a3, 'async function openDetail('], [a4, 'function renderClientProfile('], [a4, 'function _wfRenderCrest(']].forEach(([src, fn]) =>
+    assert.ok(!/\$\{(c|client)\.avatar\}|url\("\$\{c\.avatar\}"\)|src="\$\{esc\(client\.avatar\)\}"/.test(cuerpo(src, fn)), `🔴 ${fn} pinta la foto vieja a pelo`));
+  const sa = cuerpo(a4, 'function saveAvatar(');
+  assert.ok(sa.indexOf('svNow(\'ax_c\'') < sa.indexOf('_privDelete(_prevPath'), '🔴 borra la foto anterior antes de guardar la nueva');
+  assert.ok(/_privDelete\(_prevPath,'progress-photos'\)/.test(cuerpo(a4, 'function removeAvatar(')), 'quitar la foto no la borra de su bucket');
+  const mud = cuerpo(a5, 'async function migrateProgressPhotosPrivate(');
+  const iSube = mud.indexOf("await _chatMediaUpload(path,blob,'image/jpeg',PROGRESS_BUCKET,true);"), iGuard = mud.indexOf('if(CUR.clientId!==cid)return;'), iSet = mud.indexOf('yo.avatarPath=path;');
+  assert.ok(iSube > 0 && iGuard > iSube && iSet > iGuard, '🔴 la mudanza de la foto de perfil no tiene su guardia de cambio de vista');
 });
 
 // ══════════════════════════════════════════════════════

@@ -238,6 +238,18 @@ async function _chatPrepMedia(f){
   return {blob:f,type:tipo,kind:chk.kind};
 }
 
+// v652 · El enlace de la foto de perfil de una persona. UNA sola función para todas las pantallas:
+//    la privada se firma (vence en una hora) y la vieja (base64 en la ficha) se devuelve tal cual.
+//    Una ruta que no es de la carpeta de esa persona no se pide.
+async function avatarUrlFor(c){
+  if(!c)return '';
+  if(c.avatarPath){
+    if(typeof profileAvatarPathOk!=='function'||!profileAvatarPathOk(c.avatarPath,c.id))return '';
+    try{ return (await _chatMediaUrl(c.avatarPath,'progress-photos'))||''; }catch(e){ return ''; }
+  }
+  return (typeof c.avatar==='string'&&/^(data:image\/|https?:\/\/)/.test(c.avatar))?c.avatar:'';
+}
+
 // v646 · la tarjeta del entreno que acompaña a una respuesta rápida. La pintan el chat del coach
 // (completa: rutina, series y cada ejercicio) y el del asesorado (compacta: solo la rutina, para
 // que sepa que su coach la ve). Todo por textContent: el nombre de un ejercicio lo teclea alguien.
@@ -1492,10 +1504,9 @@ async function syncFromCloud(){
   DB.photos=ld('ax_photos',{});
   DB.nequi=ld('ax_nequi','');
   setP(100,'¡Listo!');
-  // La función vive en app-5-salud.js: si ese módulo no alcanzó a cargar, esto lanzaba y
-  // reventaba el arranque. Pasó 3 veces en Android real (24/26/27-jul, v375/v393/v403). Era el
-  // ÚNICO llamado de esta zona sin el `typeof` que usa todo el código de alrededor.
-  setTimeout(()=>{ if(typeof migratePhotosToStorage==='function') migratePhotosToStorage(); },3000);
+  // 🔴 v652 · Aquí corría `migratePhotosToStorage`, que subía fotos de progreso y de PERFIL al bucket
+  //    PÚBLICO a los 3 s del arranque (solo no lo lograba porque aún no había sesión). Retirada: las
+  //    mudanzas van al bucket privado y las hace el dueño al entrar (`migrateProgressPhotosPrivate`).
   // Mantener la pantalla de carga unos segundos para que se vea la marca y se lea
   // el mensaje (antes se quitaba en 100-350ms y no daba tiempo). Un poco menos si ya
   // hay sesión guardada (no es registro nuevo), pero igual visible.

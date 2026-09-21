@@ -109,6 +109,38 @@ const m3 = await ev(`(async()=>{ COACH_SELF=true; _authUid='${C}'; CUR.clientId=
   return {guardados}; })()`);
 check('P9 🔒 si vuelve al panel a mitad de la mudanza, NO guarda por el camino del coach', m3.guardados === 0, JSON.stringify(m3));
 
+// ═════ v652 · LA FOTO DE PERFIL TAMBIÉN ES PRIVADA ═════
+const A = '22222222-3333-4444-8555-666666666666';
+await ev(`(()=>{ COACH_SELF=false; _authUid='${A}'; CUR.clientId='${A}'; CUR.loggedAs='client';
+  window.__firmas=[];
+  DB.clients=[{id:'${A}',name:'Ana Perfil',email:'ana@x.co',tier:'premium',sex:'F',days:3,routines:[],avatarPath:'${A}/perfil-k1.jpg'}];
+  DB.photos={'${A}':[]}; DB.bodyweight={'${A}':[]};
+  showScreen('s-client'); const b=document.querySelector('.cntab[onclick*="cn-profile"]'); if(b)cnTab('cn-profile',b);
+  renderClientProfile(DB.clients[0]); })()`);
+await sleep(500);
+const a1 = await ev(`(()=>{const i=document.querySelector('#cn-prof-card .profav-img'); return {img:!!i, src:!!i&&!!i.src&&i.src.startsWith('data:image/'), firma:JSON.stringify(window.__firmas)};})()`);
+check('A1 el perfil muestra SU foto privada (enlace firmado del bucket privado)', a1.img && a1.src && a1.firma.includes('perfil-k1.jpg') && a1.firma.includes('progress-photos'), JSON.stringify(a1));
+await ev(`document.getElementById('cn-prof-card').scrollIntoView({block:'center'})`); await sleep(150); await shot('perfil-privado');
+await ev(`(()=>{ showScreen('s-coach'); CUR.loggedAs='coach'; gp('p-detail',null,'Detalle'); openDetail('${A}'); })()`); await sleep(500);
+const a2 = await ev(`(()=>{const av=document.getElementById('d-av'); return {bg:av.style.background.indexOf('data:image/')>=0, txt:av.textContent};})()`);
+check('A2 la ficha del coach muestra la foto privada del asesorado', a2.bg && a2.txt === '', JSON.stringify(a2));
+// Subir una foto nueva: al privado, sin enlace en la ficha, y la anterior se borra DESPUÉS.
+const a3 = await ev(`(async()=>{ CUR.loggedAs='client'; CUR.clientId='${A}'; window.__subidas=[]; const borrados=[];
+  const pdO=window._privDelete; window._privDelete=async (p,b)=>{borrados.push(p+'@'+b);};
+  const cO=window.compressImage; window.compressImage=async d=>window.__b64;
+  const f=new File([new Uint8Array(100)],'a.jpg',{type:'image/jpeg'});
+  saveAvatar(f); await new Promise(r=>setTimeout(r,800));
+  window._privDelete=pdO; window.compressImage=cO;
+  const c=DB.clients[0]; return {path:c.avatarPath||null, avatar:c.avatar?'sí':'no', subida:window.__subidas[0]||null, borrados, publicas:window.__publicas}; })()`);
+check('A3 una foto de perfil nueva va al PRIVADO y borra la anterior', a3.path && a3.path !== A + '/perfil-k1.jpg' && /^22222222-3333-4444-8555-666666666666\/perfil-/.test(a3.path) && a3.avatar === 'no' && a3.subida && a3.subida.bucket === 'progress-photos' && a3.borrados.join() === A + '/perfil-k1.jpg@progress-photos' && a3.publicas === 0, JSON.stringify(a3));
+// Mudanza: la foto vieja (base64) del dueño pasa al privado.
+const a4 = await ev(`(async()=>{ _authUid='${A}'; CUR.clientId='${A}'; const c=DB.clients[0]; delete c.avatarPath; c.avatar=window.__b64; window.__subidas=[];
+  await migrateProgressPhotosPrivate(); return {path:c.avatarPath||null, avatar:c.avatar?'sí':'no', upsert:(window.__subidas[0]||{}).upsert}; })()`);
+check('A4 el dueño muda su foto de perfil vieja al privado', /^22222222-3333-4444-8555-666666666666\/perfil-/.test(a4.path || '') && a4.avatar === 'no' && a4.upsert === true, JSON.stringify(a4));
+const a5 = await ev(`(async()=>{ _authUid='otro'; CUR.clientId='${A}'; const c=DB.clients[0]; delete c.avatarPath; c.avatar=window.__b64; window.__subidas=[];
+  await migrateProgressPhotosPrivate(); return {subidas:window.__subidas.length, avatar:c.avatar?'sí':'no'}; })()`);
+check('A5 🔒 nadie más muda la foto de perfil de otra persona', a5.subidas === 0 && a5.avatar === 'sí', JSON.stringify(a5));
+
 log('\njsErrors: ' + JSON.stringify(jsErrors));
 const fallas = results.filter(r => r.startsWith('FAIL')).length;
 log(fallas || jsErrors.length ? `\n🔴 ${fallas} FALLA(S)` : `\n✅ ${results.length}/${results.length} OK`);

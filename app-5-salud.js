@@ -1373,22 +1373,6 @@ function _photoPathFromUrl(url){
   return m?decodeURIComponent(m[1]):null;
 }
 
-async function uploadPhotoToStorage(photoId,base64){
-  const res=await fetch(base64);
-  const blob=await res.blob();
-  const {token,uid}=await _storageSession();
-  // 🔒 Sin uuid de sesión NO hay carpeta que la RLS acepte. Se lanza aquí para que el llamador
-  //    caiga a base64 —lo de siempre— en vez de subir a una ruta que va a ser rechazada.
-  if(!uid)throw new Error('Storage upload: sin sesión');
-  const path=_photoPath(uid,photoId);
-  const r=await fetch(`${SB_URL}/storage/v1/object/apex-photos/${path}`,{
-    method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'image/jpeg','x-upsert':'true'},
-    body:blob
-  });
-  if(!r.ok)throw new Error('Storage upload failed: '+r.status);
-  return `${SB_URL}/storage/v1/object/public/apex-photos/${path}`;
-}
 
 async function deletePhotoFromStorage(photoId,url){
   const {token,uid}=await _storageSession();
@@ -1401,34 +1385,10 @@ async function deletePhotoFromStorage(photoId,url){
   }).catch(()=>{});
 }
 
-async function migratePhotosToStorage(){
-  // 🔴 v650: aquí se subían las fotos de PROGRESO en base64 al bucket PÚBLICO. Solo no pasó porque a
-  //    los 3 s del arranque todavía no hay sesión. Esa parte se retiró: las fotos de progreso las muda
-  //    `migrateProgressPhotosPrivate`, y a un bucket PRIVADO. Aquí quedan solo los avatares.
-  // Avatares en base64 → Storage. Cubre los avatares de clientes cargados (coach) y, en
-  // modo asesorado, el propio (DB.clients=[me]). Mismo camino de guardado que saveAvatar.
-  let avChanged=false;
-  for(const c of (DB.clients||[])){
-    if(c.avatar&&c.avatar.startsWith('data:image/')){
-      try{c.avatar=(await uploadPhotoToStorage(avatarObjId(c.id),c.avatar))+'?v='+Date.now();avChanged=true;}
-      catch(e){warn('AVI avatar migration skip:',c.id,e.message);}
-    }
-  }
-  if(avChanged){svNow('ax_c',DB.clients);log('AVI: avatares migrados a Storage');}
-  // El avatar PROPIO del coach no está en DB.clients (su fila no se carga al abrir el panel).
-  if(AUTH_ROLE==='coach'){
-    try{
-      const own=await UD.loadOwn();
-      const av=own&&own.profile&&own.profile.avatar;
-      if(typeof av==='string'&&av.startsWith('data:image/')){
-        const u=await AUTH.getUser();
-        const url=(await uploadPhotoToStorage('avatar',av))+'?v='+Date.now();
-        await UD.upsertOwn({profile:Object.assign({},own.profile,{avatar:url})});
-        log('AVI: avatar propio del coach migrado a Storage');
-      }
-    }catch(e){warn('AVI own-avatar migration skip:',e.message);}
-  }
-}
+// ⛔ v652 · `uploadPhotoToStorage` y `migratePhotosToStorage` BORRADAS: subían fotos de progreso y
+//    de perfil al bucket PÚBLICO `apex-photos`. Hoy todo va al privado `progress-photos` (progreso
+//    desde v650, perfil desde v652) y la mudanza la hace el dueño (`migrateProgressPhotosPrivate`).
+//    `deletePhotoFromStorage` se queda: limpia las copias viejas que todavía existan en el público.
 
 // ══════════════ FOTOS DE PROGRESO ══════════════
 
@@ -1522,10 +1482,28 @@ async function migrateProgressPhotosPrivate(){
   if(_photoMigrando||typeof photoNeedsPrivate!=='function')return;
   const cid=CUR&&CUR.clientId; const me=(typeof _authUid!=='undefined')?_authUid:null;
   if(!cid||!me||cid!==me)return;                      // solo el dueño, sobre su propia carpeta
-  const lista=(DB.photos||{})[cid]; if(!Array.isArray(lista)||!lista.some(photoNeedsPrivate))return;
+  const lista=(DB.photos||{})[cid]||[];
+  const yo=(DB.clients||[]).find(x=>x.id===cid);
+  const _avPend=!!(yo&&typeof avatarNeedsPrivate==='function'&&avatarNeedsPrivate(yo));
+  if(!_avPend&&(!Array.isArray(lista)||!lista.some(photoNeedsPrivate)))return;
   _photoMigrando=true;
   let cambio=false; const publicas=[];
   try{
+    // v652 · su FOTO DE PERFIL también: al mismo bucket privado, con su propia ruta.
+    if(_avPend){
+      try{
+        const path=profileAvatarPath(cid,Date.now().toString(36));
+        if(path){
+          const prev=yo.avatar;
+          const blob=await (await fetch(prev)).blob();
+          await _chatMediaUpload(path,blob,'image/jpeg',PROGRESS_BUCKET,true);
+          if(CUR.clientId!==cid)return;             // cambió la vista: no se guarda por otro camino
+          yo.avatarPath=path; delete yo.avatar;
+          svNow('ax_c',DB.clients);
+          if(/^https:/.test(prev)&&typeof avatarObjId==='function'){ try{ deletePhotoFromStorage(avatarObjId(cid),prev); }catch(e){} }
+        }
+      }catch(e){ warn('AVI mudanza de la foto de perfil pospuesta:',e&&e.message); }
+    }
     for(let i=0;i<lista.length;i++){
       const p=lista[i]; if(!photoNeedsPrivate(p))continue;
       const path=progressPhotoPath(cid,p.id||('d'+String(p.date||'').replace(/\D/g,''))); if(!path)continue;

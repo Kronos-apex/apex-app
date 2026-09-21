@@ -56,8 +56,11 @@ function finishPhotoFor(sex) {
 // 🔒 El avatar solo manda si existe de verdad: una cadena vacía o un `null` caen a la genérica,
 //    porque un fondo negro sin foto rompe la tarjeta entera (y es lo que pasaría si se confiara
 //    en que «si hay campo, hay foto»).
-function finishBackdropFor(client) {
-  const av = client && typeof client.avatar === 'string' ? client.avatar.trim() : '';
+// v652 · `avatarUrl` (opcional): la foto de perfil privada no vive en `client.avatar` sino en una ruta
+//    que hay que firmar; quien ya tiene el enlace lo pasa aquí y manda sobre el campo viejo.
+function finishBackdropFor(client, avatarUrl) {
+  const av = typeof avatarUrl === 'string' ? avatarUrl.trim()
+    : (client && typeof client.avatar === 'string' ? client.avatar.trim() : '');
   if (av) return av;
   return finishPhotoFor(client && client.sex);
 }
@@ -2659,6 +2662,27 @@ function photoMovedToPrivate(p, path, nowIso) {
   const out = Object.assign({}, p, { path, mAt: nowIso || new Date().toISOString() });
   delete out.src;
   return out;
+}
+
+// ── v652 · LA FOTO DE PERFIL TAMBIÉN ES PRIVADA ─────────────────────────────────────────
+// Vive en el mismo bucket privado que las de progreso (`progress-photos`), en la carpeta de la
+// persona, como `perfil-<marca>.jpg`. El perfil guarda la RUTA (`avatarPath`); `avatar` queda
+// solo para lo viejo (base64 dentro de la ficha) mientras se muda.
+function profileAvatarPath(folderUid, stamp) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(folderUid || ''))) return null;
+  const limpio = String(stamp || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+  return limpio ? `${folderUid}/perfil-${limpio}.jpg` : null;
+}
+function profileAvatarPathOk(path, folderUid) {
+  return typeof path === 'string' && !!folderUid && path.indexOf(String(folderUid) + '/perfil-') === 0 && !/\.\./.test(path);
+}
+function clientHasAvatar(c) {
+  return !!(c && (c.avatarPath || (typeof c.avatar === 'string' && c.avatar.trim())));
+}
+// ¿Su foto de perfil todavía vive fuera del bucket privado? (base64 en la ficha o enlace PÚBLICO)
+function avatarNeedsPrivate(c) {
+  if (!c || c.avatarPath || typeof c.avatar !== 'string') return false;
+  return c.avatar.indexOf('data:image/') === 0 || /\/object\/public\/apex-photos\//.test(c.avatar);
 }
 
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
@@ -11729,6 +11753,10 @@ if (typeof module !== 'undefined' && module.exports) {
     progressPhotoPathOk,
     photoNeedsPrivate,
     photoMovedToPrivate,
+    profileAvatarPath,
+    profileAvatarPathOk,
+    clientHasAvatar,
+    avatarNeedsPrivate,
     CHAT_MEDIA_MAX_BYTES,
     CHAT_VIDEO_MAX_S,
     mergeAuthRow,

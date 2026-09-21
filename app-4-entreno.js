@@ -479,10 +479,16 @@ function renderClientProfile(client){
   const bwEntries=bwLive(DB.bodyweight[client.id]||[]);
   const currentKg=bwEntries.length?bwEntries[0].kg:client.weight;
   const _pfi=(nm,fb)=>typeof aviIcon==='function'?aviIcon(nm,12):fb;
-  const avInner=client.avatar?`<img class="profav-img" src="${esc(client.avatar)}" alt="">`:ini(client.name);
+  // v652 · la foto se pide aparte (enlace firmado): el `<img>` nace sin `src` y se llena al llegar.
+  const _tieneAv=(typeof clientHasAvatar==='function')?clientHasAvatar(client):!!client.avatar;
+  const avInner=_tieneAv?`<img class="profav-img" alt="">`:ini(client.name);
   const _pc=document.getElementById('cn-prof-card');
   _pc.style.backgroundImage=`url('${aviProfilePhoto(client.sex)}')`;
-  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${client.avatar?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">${typeof aviIcon==='function'?aviIcon('camera',12):'📷'}</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">${_pfi('target','🎯')} ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">${_pfi('chart','📊')} ${esc(client.level)}</span>`:''}<span class="profpill">${_pfi('calendar','📅')} ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">${_pfi('scale','⚖️')} ${currentKg} kg</span>`:''}</div>${client.avatar?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  _pc.innerHTML=`<div class="profav tap" onclick="openAvatarPicker()" title="${_tieneAv?'Cambiar foto':'Agregar foto'}">${avInner}<div class="profav-cam">${typeof aviIcon==='function'?aviIcon('camera',12):'📷'}</div></div><div><div class="profname">${esc(client.name)}</div><div class="profmeta">${esc(client.email)}</div><div class="profpills">${client.goal?`<span class="profpill">${_pfi('target','🎯')} ${esc(client.goal)}</span>`:''}${client.level?`<span class="profpill">${_pfi('chart','📊')} ${esc(client.level)}</span>`:''}<span class="profpill">${_pfi('calendar','📅')} ${esc(String(client.days||3))} días/sem</span>${currentKg?`<span class="profpill">${_pfi('scale','⚖️')} ${currentKg} kg</span>`:''}</div>${_tieneAv?`<div class="profrm" onclick="removeAvatar()">✕ Quitar foto</div>`:''}</div></div>`;
+  if(_tieneAv&&typeof avatarUrlFor==='function'){
+    const _im=_pc.querySelector('.profav-img');
+    avatarUrlFor(client).then(u=>{ if(!_im||!_im.isConnected)return; if(u)_im.src=u; else _im.replaceWith(document.createTextNode(ini(client.name))); });
+  }
   const rows=[[`${_pfi('target','🎯')} Objetivo`,client.goal],[`${_pfi('chart','📊')} Nivel`,client.level],[`${_pfi('calendar','📅')} Días de entreno`,`${client.days} días por semana`],currentKg?[`${_pfi('scale','⚖️')} Peso actual`,`${currentKg} kg`]:null,client.notes?[`${_pfi('pencil','📝')} Nota del coach`,client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
@@ -569,16 +575,21 @@ function saveAvatar(file){
   reader.onload=async e=>{
     toast('⏳ Subiendo foto...');
     const small=await compressImage(e.target.result,40000);
-    let src=small;
-    // 🔒 `avatarObjId` y `uploadPhotoToStorage` viven en app-5: guarda `typeof` obligatoria (la
-    //    app tiene que ARRANCAR aunque un módulo no cargue — reventó 3 veces en Android real).
+    // v652 · al bucket PRIVADO, en la carpeta de la persona. Sin red se queda en su ficha (también
+    //    privada) y se muda después; nunca va al bucket público.
+    const _prevPath=client.avatarPath, _prevLegacy=client.avatar;
+    const path=(typeof profileAvatarPath==='function')?profileAvatarPath(clientId,Date.now().toString(36)):null;
     try{
-      if(typeof uploadPhotoToStorage!=='function'||typeof avatarObjId!=='function')throw new Error('modulo de fotos no cargado');
-      src=(await uploadPhotoToStorage(avatarObjId(clientId),small))+'?v='+Date.now();
+      if(!path||typeof _chatMediaUpload!=='function')throw new Error('sin ruta');
+      const blob=await (await fetch(small)).blob();
+      await _chatMediaUpload(path,blob,'image/jpeg','progress-photos');
+      client.avatarPath=path; delete client.avatar;
     }
-    catch(err){warn('AVI avatar upload failed, keeping base64',err.message);}
-    client.avatar=src;
+    catch(err){warn('AVI foto de perfil: se guarda en la ficha por ahora:',err&&err.message); client.avatar=small; delete client.avatarPath;}
     svNow('ax_c',DB.clients);
+    // La foto anterior se borra DESPUÉS de guardar la nueva (si falla al revés, se queda sin foto).
+    if(_prevPath&&_prevPath!==client.avatarPath&&typeof _privDelete==='function')_privDelete(_prevPath,'progress-photos');
+    if(_prevLegacy&&/^https:/.test(_prevLegacy)&&typeof deletePhotoFromStorage==='function'&&typeof avatarObjId==='function')deletePhotoFromStorage(avatarObjId(clientId),_prevLegacy);
     renderClientProfile(client);
     toast('📸 Foto de perfil actualizada');
   };
@@ -586,15 +597,16 @@ function saveAvatar(file){
 }
 function removeAvatar(){
   const clientId=CUR.clientId;if(!clientId)return;
-  const client=DB.clients.find(c=>c.id===clientId);if(!client||!client.avatar)return;
+  const client=DB.clients.find(c=>c.id===clientId);if(!client||!((typeof clientHasAvatar==='function')?clientHasAvatar(client):client.avatar))return;
   if(!confirm('¿Quitar tu foto de perfil? Volverás a ver tus iniciales.'))return;
   // La URL se guarda ANTES de borrar el campo: de ella sale la ruta real del archivo. Las fotos
   // subidas antes de v600 viven bajo la carpeta vieja, y reconstruir la ruta con el uuid nuevo
   // pediría borrar algo que no existe — el archivo quedaría huérfano en el bucket para siempre.
-  const _prev=client.avatar;
-  delete client.avatar;
+  const _prev=client.avatar, _prevPath=client.avatarPath;
+  delete client.avatar; delete client.avatarPath;
   svNow('ax_c',DB.clients);
-  if(typeof deletePhotoFromStorage==='function'&&typeof avatarObjId==='function')deletePhotoFromStorage(avatarObjId(clientId),_prev);
+  if(_prevPath&&typeof _privDelete==='function')_privDelete(_prevPath,'progress-photos');
+  else if(_prev&&typeof deletePhotoFromStorage==='function'&&typeof avatarObjId==='function')deletePhotoFromStorage(avatarObjId(clientId),_prev);
   renderClientProfile(client);
   toast('Foto quitada');
 }
@@ -651,7 +663,7 @@ function renderGamification(client){
   const badgesHTML=`<div class="streak-title" style="margin-top:16px">${typeof aviIcon==='function'?aviIcon('medal',14):'🎖️'} Tus logros <span class="gx-cnt">${_n} de ${_L.length}</span></div>`
     +(_n?`<div class="gx-hint">Toca un logro ganado para compartirlo.</div>`:'')+grupos;
   con.innerHTML=lvlHTML+badgesHTML;
-  if(typeof _wfPrepShareAvatar==='function')_wfPrepShareAvatar(client.avatar||'');
+  if(typeof _wfPrepShareAvatar==='function'&&typeof avatarUrlFor==='function')avatarUrlFor(client).then(u=>_wfPrepShareAvatar(u||''));
 }
 
 // ── v639 · QUÉ LOGROS YA VIO LA PERSONA ── Para anunciar solo lo NUEVO. Local del teléfono
@@ -2661,7 +2673,9 @@ function showWorkoutFinish(routine,stats){
   // v605 · Si la persona subio su foto de perfil, ESA es el fondo (pedido del PO). Si no, la
   // generica que le corresponde. `window.AVI_FINISH_PHOTO` sigue mandando por encima de las dos.
   const _bgSrc=_wfShareBgSrc(c);   // v624 · UNA sola definición de «qué foto le toca» (ver abajo)
-  document.getElementById('wf-photo').style.backgroundImage=`url('${_bgSrc}')`;
+  const _wfPh=document.getElementById('wf-photo');
+  _wfPh.style.backgroundImage=`url('${_bgSrc}')`;
+  _wfPh.dataset.for=(c&&c.id)||'';   // v652 · la foto privada llega después: solo se pone si sigue siendo el cierre de ESTA persona
   // La MISMA foto va al lienzo compartible, para que la imagen que sale sea la pantalla que se
   // ve. Se prepara aqui y no al tocar «Compartir»: `navigator.share` exige activacion reciente.
   // v624 · el fondo y el retrato del lienzo los prepara `_wfPrepShareCanvas`, que es la MISMA
@@ -2813,9 +2827,13 @@ let _wfShareData=null;
 // que es una ruta nuestra y fija— con una URL de usuario rompería la regla entera con un apóstrofo.
 function _wfRenderCrest(client){
   const el=document.getElementById('wf-crest'); if(!el)return;
-  const src=(client&&client.avatar)||'';
   const trofeo=()=>{el.classList.remove('wf-crest-photo');el.textContent='🏆';};
   trofeo();                    // el estado de partida es SIEMPRE el trofeo (el cierre de otro asesorado no hereda su foto)
+  // v652 · la foto de perfil es privada: se pide su enlace y, al llegar, se comprueba que el cierre
+  //    siga siendo el de esta persona antes de pintarla.
+  const _quien=(client&&client.id)||''; el.dataset.for=_quien;
+  (typeof avatarUrlFor==='function'?avatarUrlFor(client):Promise.resolve('')).then(src=>{
+  if(el.dataset.for!==_quien)return;
   _wfPrepShareAvatar(src);
   if(!src)return;
   const img=document.createElement('img');
@@ -2824,8 +2842,9 @@ function _wfRenderCrest(client){
   // celebración no puede terminar con un cuadro roto encima. Y se pinta al CARGAR, no antes,
   // para que no asome el ícono de imagen rota mientras baja.
   img.onerror=trofeo;
-  img.onload=()=>{el.textContent='';el.appendChild(img);el.classList.add('wf-crest-photo');};
+  img.onload=()=>{ if(el.dataset.for!==_quien)return; el.textContent='';el.appendChild(img);el.classList.add('wf-crest-photo');};
   img.src=src;
+  });
 }
 
 // Copia de la foto apta para el LIENZO de la imagen compartible.
@@ -2853,16 +2872,28 @@ let _wfBgPhoto=null;
 // sexo, y `window.AVI_FINISH_PHOTO` manda por encima de las dos. UNA definición para la pantalla
 // de cierre y para el lienzo — si se separan, la imagen que se comparte deja de ser la pantalla
 // que se vio, que es justo lo que v603 vino a arreglar.
-function _wfShareBgSrc(c){
+function _wfShareBgSrc(c,avatarUrl){
   return window.AVI_FINISH_PHOTO
-    ||((typeof finishBackdropFor==='function')?finishBackdropFor(c)
+    ||((typeof finishBackdropFor==='function')?finishBackdropFor(c,avatarUrl)
       :((typeof finishPhotoFor==='function')?finishPhotoFor(c&&c.sex):WF_DEFAULT_PHOTO));
 }
 function _wfPrepShareCanvas(c){
   const src=_wfShareBgSrc(c);
   _wfBgPhoto=null;
   if(typeof canvasSafePhoto==='function')canvasSafePhoto(src,img=>{_wfBgPhoto=img||null;});
-  _wfPrepShareAvatar((c&&c.avatar)||'');
+  // v652 · la foto de perfil privada llega después (enlace firmado): cuando llega, manda en el fondo
+  //    del lienzo, en el retrato y —si sigue abierto el cierre de esta persona— en la pantalla.
+  if(c&&c.avatarPath&&typeof avatarUrlFor==='function'){
+    _wfPrepShareAvatar('');
+    avatarUrlFor(c).then(u=>{
+      if(!u)return;
+      const bg=_wfShareBgSrc(c,u);
+      if(typeof canvasSafePhoto==='function')canvasSafePhoto(bg,img=>{_wfBgPhoto=img||null;});
+      _wfPrepShareAvatar(u);
+      const ph=document.getElementById('wf-photo');
+      if(ph&&ph.dataset.for===c.id&&!/['\\]/.test(bg))ph.style.backgroundImage=`url('${bg}')`;
+    });
+  } else _wfPrepShareAvatar((c&&c.avatar)||'');
 }
 function _wfPrepShareAvatar(src){
   _wfShareAvatar=null;

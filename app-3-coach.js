@@ -1861,8 +1861,10 @@ function convertToPremium(cid){ setClientPlan(cid,'coach'); }
 async function openDetail(id,_silent){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
   const av=document.getElementById('d-av');
-  if(c.avatar){av.textContent='';av.style.background=`#ccc center/cover url("${c.avatar}")`;}
-  else{av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.color=inkOn(avc(c.name));av.style.backgroundImage='';}
+  // v652 · primero las iniciales; la foto (privada, con enlace firmado) llega después si la hay.
+  av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.color=inkOn(avc(c.name));av.style.backgroundImage='';
+  if(typeof clientHasAvatar==='function'&&clientHasAvatar(c)&&typeof avatarUrlFor==='function')
+    avatarUrlFor(c).then(u=>{ if(u&&CUR.clientId===id&&!/["\\]/.test(u)){av.textContent='';av.style.background=`#ccc center/cover url("${u}")`;} });
   document.getElementById('d-name').textContent=c.name;
   // Identidad y datos organizados en grupos (skill: agrupar por whitespace, jerarquía):
   // (1) CORREO en su propia línea con ícono de sobre — contacto, separado de las medidas.
@@ -2026,7 +2028,7 @@ function renderStoryCard(c){
   // 🔒 Guarda de módulo: sin app-1 no hay comprobación de teñido, y sin comprobación NO se
   //    arriesga el lienzo — sale el círculo de iniciales, que es el respaldo de siempre.
   _storyAvatar=null;
-  if(typeof canvasSafePhoto==='function')canvasSafePhoto(c&&c.avatar,img=>{_storyAvatar=img||null;});
+  if(typeof canvasSafePhoto==='function'&&typeof avatarUrlFor==='function')avatarUrlFor(c).then(u=>canvasSafePhoto(u,img=>{_storyAvatar=img||null;}));
   const filas=st.subidas.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px">
       <span style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.ejercicio)}</span>
       <b style="color:var(--gt);white-space:nowrap">${esc(String(x.de))} → ${esc(String(x.a))} kg</b></div>`).join('');

@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v652: la foto de perfil también es privada
+
+- **Pedido del PO.** Medido: 5 fotos de perfil con enlace público, 3 en base64 dentro de la ficha, 22 personas sin
+  foto; en `apex-photos` además 2 archivos huérfanos. Las de COMUNIDAD (bucket `avatars`, 1 foto) quedan fuera: la
+  comunidad está congelada y ahí la foto se muestra a los contactos por diseño.
+- La foto va al mismo bucket privado `progress-photos`, como `<uid>/perfil-<marca>.jpg`; el perfil guarda
+  `avatarPath` y `avatar` queda solo para lo viejo. **Un resolvedor único** (`avatarUrlFor`) firma el enlace para las
+  seis superficies: perfil, ficha del coach, tarjeta de historia, logros, retrato y fondo del cierre y el lienzo
+  compartible (el fondo arranca con la genérica y cambia a la suya cuando llega el enlace; se comprueba que el
+  cierre siga siendo de esa persona). Verificado antes de escribir: el enlace firmado sale con CORS `*`, así que el
+  lienzo no se tiñe.
+- 🔴 **Segunda bomba del mismo tipo:** `migratePhotosToStorage` también subía los avatares en base64 **al público**
+  (los de todos los asesorados, desde el panel del coach). Borradas `migratePhotosToStorage` y
+  `uploadPhotoToStorage`; la mudanza la hace el dueño, con guardia de cambio de vista.
+- La foto anterior se borra DESPUÉS de guardar la nueva.
+- **QA.** Suite **1306 → 1309** (4 candados re-encuadrados: afirmaban la subida al público y el retrato leído de
+  `client.avatar`), `_sabotaje-v652` 6 casos, `_verify-fotos-privadas` 15/15 con captura mirada.
+  ⚠️ `_verify-v597` tiene **4 FAIL que ya estaban en HEAD** (C1, C2, T1d, S6 — el lienzo cambió en v619/v622 y el
+  harness no), comprobado en un worktree limpio y dos corridas; mi cambio dejó T1a en rojo y se corrigió (el
+  resolvedor aceptaba solo `https`; ahora `http(s)` como antes).
+
 ## ⏮️ 2026-09-21 — v651: «Mi entrenamiento» también muda sus fotos al privado
 
 - Pedido del PO. Sus fotos de progreso en «Mi entrenamiento» no pasaban por la auto-cura de v650 porque esa vista
