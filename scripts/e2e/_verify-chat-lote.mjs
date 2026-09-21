@@ -106,6 +106,38 @@ chk('X4 el coach ve la rutina y CADA ejercicio con su carga', /Pierna LOTE/.test
 await tema('light'); await sleep(150); await shot('ctx-coach-claro');
 await tema('dark'); await sleep(150); await shot('ctx-coach-oscuro'); await tema('light');
 
+// ═════ v647 · QUIÉN ESPERA + RESPUESTAS GUARDADAS ═════
+await ev(`(()=>{ try{localStorage.removeItem('ax_cqr');localStorage.removeItem('ax_msgclear');}catch(e){}
+  const hace=h=>new Date(Date.now()-h*3600000).toISOString();
+  DB.clients=[{id:'kc1',name:'Ana Espera',days:3,tier:'premium'},{id:'kc2',name:'Beto Atendido',days:3,tier:'premium'}];
+  DB.msgs={kc1:[{from:'coach',text:'hola',date:hace(90)},{from:'client',text:'¿Puedo cambiar la rutina?',date:hace(72)}],
+           kc2:[{from:'client',text:'listo',date:hace(80)},{from:'coach',text:'bien',date:hace(79)}]};
+  document.querySelectorAll('#s-coach .panel').forEach(p=>p.classList.remove('on'));
+  const home=document.getElementById('p-home'); if(home)home.classList.add('on');
+  closeCoachChat&&(document.getElementById('coach-chat').classList.remove('on'));
+  renderAwaitCard(); })()`);
+await sleep(300);
+const w1 = await ev(`(()=>{const e=document.getElementById('h-await'); return {vis:getComputedStyle(e).display!=='none', txt:(e.innerText||'').replace(/\\s+/g,' ')};})()`);
+chk('W1 el Inicio avisa quién espera y desde cuándo', w1.vis && /1 persona espera tu respuesta/.test(w1.txt) && /Ana Espera/.test(w1.txt) && /hace 3 días/.test(w1.txt) && !/Beto/.test(w1.txt), `«${w1.txt}»`);
+await ev(`document.getElementById('h-await').scrollIntoView({block:'center'})`); await tema('light'); await sleep(150); await shot('await-home-claro');
+await tema('dark'); await sleep(150); await shot('await-home-oscuro'); await tema('light');
+const w2 = await ev(`(()=>{renderMsgs(); const l=document.getElementById('msgs-list'); const f=l.querySelector('.cli'); return {primero:f?f.innerText.replace(/\\s+/g,' '):'', marcas:l.querySelectorAll('.msg-wait').length};})()`);
+chk('W2 en la bandeja, quien espera va arriba con su marca', /Espera tu respuesta · hace 3 días/.test(w2.primero) && /Ana Espera/.test(w2.primero) && w2.marcas === 1, `primero=«${w2.primero}» marcas=${w2.marcas}`);
+await ev(`openCoachChat('kc1')`); await sleep(400);
+const w3 = await ev(`(()=>{const b=[...document.querySelectorAll('#cchat-qr .cchat-qr-b')]; const r=b[0]?b[0].getBoundingClientRect():null; return {n:b.length, primero:b.length?b[0].textContent:'', alto:r?Math.round(r.height):0};})()`);
+chk('W3 el chat trae «Editar» primero + las 4 respuestas de fábrica', w3.n === 5 && w3.primero === 'Editar' && w3.alto >= 36, JSON.stringify(w3));
+await tema('light'); await sleep(100); await shot('qr-chat-claro');
+const antes = await ev(`DB.msgs.kc1.length`);
+await ev(`document.querySelectorAll('#cchat-qr .cchat-qr-b')[1].click()`); await sleep(200);
+const w4 = await ev(`({val:document.getElementById('cchat-in').value, n:DB.msgs.kc1.length})`);
+chk('W4 la frase va a la caja y NO se envía sola', w4.val === '¡Bien hecho! 💪 Sigue así' && w4.n === antes, JSON.stringify(w4));
+await ev(`document.querySelector('#cchat-qr .cchat-qr-edit').click()`); await sleep(200);
+await ev(`(()=>{document.getElementById('cchat-qr-in').value='Uno\\nDos\\n\\n'; })()`);
+await tema('dark'); await sleep(100); await shot('qr-editor-oscuro'); await tema('light');
+await ev(`coachQrEditSave()`); await sleep(250);
+const w5 = await ev(`(()=>{const b=[...document.querySelectorAll('#cchat-qr .cchat-qr-b')].map(x=>x.textContent); return {b, guardado:localStorage.getItem('ax_cqr'), editor:getComputedStyle(document.getElementById('cchat-qr-ed')).display};})()`);
+chk('W5 editar guarda SUS frases y el chat las usa', JSON.stringify(w5.b) === JSON.stringify(['Editar', 'Uno', 'Dos']) && w5.guardado === '["Uno","Dos"]' && w5.editor === 'none', JSON.stringify(w5));
+
 // @@SECCIONES@@
 
 const ok = R.every(r => r[1]) && jsErrors.length === 0;

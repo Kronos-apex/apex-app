@@ -1813,6 +1813,7 @@ function renderHome(){
   if(typeof renderMyTrainingCard==='function')renderMyTrainingCard();
   if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
+  if(typeof renderAwaitCard==='function')renderAwaitCard();
   if(typeof renderPageCard==='function')renderPageCard();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();

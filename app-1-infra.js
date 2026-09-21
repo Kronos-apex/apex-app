@@ -170,7 +170,7 @@ function chatCtxNode(ctx,derecha,compacta){
 // ══════════ SUPABASE SYNC ══════════
 const SB_URL='https://eoebhrxbokyllqalyecj.supabase.co';
 const SB_KEY='sb_publishable_hKjgo84b9Lews5oq90b9Fg_1pue73W8';
-const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi','ax_msgreads','ax_leadsdone','ax_msgclear'];
+const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','ax_cn','ax_nut','ax_med','ax_photos','ax_cph','ax_site','ax_nequi','ax_msgreads','ax_leadsdone','ax_msgclear','ax_cqr'];
 // Ajustes GLOBALES del coach (no per-cliente, no secretos): ejercicios custom, nº Nequi para
 // cobrar, nombre/email/sitio. En AUTH_MODE viven en SU fila (columna `coach_settings` jsonb),
 // igual que las plantillas (ax_tpl→templates). Antes caían al vacío en _persistCoachWrite →
@@ -179,7 +179,7 @@ const SB_KEYS=['ax_c','ax_e','ax_m','ax_hist','ax_pr','ax_bw','ax_tpl','ax_ce','
 // v589 · QUÉ CLAVE DE AJUSTES OCUPA QUÉ SITIO DENTRO DE `coach_settings`. Fuente ÚNICA: de aquí
 // salen la lista de claves Y el objeto completo, así que no pueden separarse. Antes el nombre
 // corto solo existía escrito a mano dentro de `_coachSettingsObj`.
-const _COACH_SETTINGS_COL={ax_e:'e',ax_nequi:'nequi',ax_cn:'cn',ax_ce:'ce',ax_site:'site',ax_msgreads:'mr',ax_leadsdone:'ld',ax_msgclear:'mc'};
+const _COACH_SETTINGS_COL={ax_e:'e',ax_nequi:'nequi',ax_cn:'cn',ax_ce:'ce',ax_site:'site',ax_msgreads:'mr',ax_leadsdone:'ld',ax_msgclear:'mc',ax_cqr:'qr'};
 const _COACH_SETTINGS_KEYS=Object.keys(_COACH_SETTINGS_COL);
 // Construye el objeto completo coach_settings desde el estado local (sv ya espejó cada clave a
 // localStorage antes de persistir) → un upsert idempotente que no pisa las demás claves.
@@ -188,9 +188,10 @@ const _COACH_SETTINGS_KEYS=Object.keys(_COACH_SETTINGS_COL);
 // `ld` = leads ya ATENDIDOS {clientId: iso}. Vive del lado del COACH a propósito: el flag
 // `wantsCoach` está en la fila del asesorado y su dispositivo puede re-subirlo (clase F7).
 // `mc` (v645) = conversaciones que el coach ELIMINÓ para él {clientId: iso} — ver `chatClearMark`.
+// `qr` (v647) = sus respuestas guardadas del chat; `null` = nunca las tocó (salen las de fábrica).
 // El objeto ENTERO ya casi no se usa para escribir (v589 sube solo la clave que cambió); queda
 // para el arranque y para el respaldo.
-const _COACH_SETTINGS_DEF={ax_e:[],ax_nequi:'',ax_cn:'',ax_ce:'',ax_site:'',ax_msgreads:{},ax_leadsdone:{},ax_msgclear:{}};
+const _COACH_SETTINGS_DEF={ax_e:[],ax_nequi:'',ax_cn:'',ax_ce:'',ax_site:'',ax_msgreads:{},ax_leadsdone:{},ax_msgclear:{},ax_cqr:null};
 function _coachSettingsObj(){
   const o={};
   Object.keys(_COACH_SETTINGS_COL).forEach(k=>{ o[_COACH_SETTINGS_COL[k]]=ld(k,_COACH_SETTINGS_DEF[k]); });

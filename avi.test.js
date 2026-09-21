@@ -17371,9 +17371,9 @@ test('🔒 v589 · el nombre corto de cada ajuste sale de UNA tabla, no escrito 
   const src = _srcApp1();
   const mapa = (src.match(/const _COACH_SETTINGS_COL=\{([^}]*)\}/) || [])[1] || '';
   const claves = mapa.split(',').map(x => x.split(':')[0].trim()).filter(Boolean);
-  // 8 desde v645 (`mc`, chats que el coach eliminó para él). `coach_settings_patch` fusiona
+  // 9 desde v647 (`qr`, sus respuestas guardadas); 8 desde v645 (`mc`). `coach_settings_patch` fusiona
   // cualquier clave de primer nivel con `||`, así que una clave nueva no pide migración.
-  assert.strictEqual(claves.length, 8, 'cambió el número de ajustes del coach: revisa el mapa');
+  assert.strictEqual(claves.length, 9, 'cambió el número de ajustes del coach: revisa el mapa');
   // La lista de claves y el objeto que se guarda se DERIVAN del mismo sitio: si alguien vuelve a
   // escribir los nombres cortos a mano en `_coachSettingsObj`, los dos lados se separan en
   // silencio y el patch escribiría en una clave que nadie lee (clase del espejo del .sql).
@@ -20666,6 +20666,52 @@ test('🔒 CABLEADO v646 · la respuesta rápida lleva el contexto y el coach lo
   assert.ok(/chatCtxNode\(m\.ctx/.test(cuerpo(a3, 'function renderCoachChatThread(')), '🔴 el coach no ve el contexto en su chat');
   const nodo = cuerpo(a1, 'function chatCtxNode(');
   assert.ok(!/innerHTML/.test(nodo) && /textContent/.test(nodo), '🔴 el contexto trae nombres tecleados: va por textContent');
+});
+
+// ══════════════════════════════════════════════════════
+// v647 · QUIÉN ESPERA RESPUESTA + RESPUESTAS GUARDADAS DEL COACH
+// ══════════════════════════════════════════════════════
+test('v647 · espera quien habló último y lleva más de 24 h; se cuenta desde el PRIMER mensaje sin respuesta', () => {
+  const now = new Date('2026-09-21T12:00:00.000Z');
+  const clients = [{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Beto' }, { id: 'c', name: 'Caro' }, { id: 'd', name: 'Dani', suspended: true }, { id: 'e', name: 'Eva' }];
+  const msgs = {
+    a: [{ from: 'coach', text: 'hola', date: '2026-09-15T10:00:00.000Z' }, { from: 'client', text: '¿y?', date: '2026-09-18T12:00:00.000Z' }, { from: 'client', text: '¿hola?', date: '2026-09-20T12:00:00.000Z' }],
+    b: [{ from: 'client', text: 'x', date: '2026-09-20T00:00:00.000Z' }, { from: 'coach', text: 'listo', date: '2026-09-20T01:00:00.000Z' }],
+    c: [{ from: 'client', text: 'reciente', date: '2026-09-21T02:00:00.000Z' }],
+    d: [{ from: 'client', text: 'x', date: '2026-09-01T00:00:00.000Z' }],
+    e: [{ from: 'client', text: '🤕 Eva marcó que entrena con dolor', date: '2026-09-19T12:00:00.000Z', system: true }],
+  };
+  const r = core.chatAwaiting(clients, msgs, {}, now);
+  assert.deepStrictEqual(r.map(x => x.id), ['a', 'e'], 'respondidos, recientes y suspendidos no esperan; el aviso de dolor SÍ');
+  assert.strictEqual(r[0].horas, 72, '🔴 la espera se cuenta desde el primer mensaje sin respuesta, no desde el último');
+  assert.strictEqual(r[0].n, 2);
+  assert.strictEqual(core.chatAwaiting(clients, msgs, { a: '2026-09-20T12:00:00.000Z' }, now).map(x => x.id).join(), 'e', 'lo que el coach eliminó no le reclama');
+  assert.strictEqual(core.chatWaitText(30), 'hace 30 h');
+  assert.strictEqual(core.chatWaitText(72), 'hace 3 días');
+});
+test('v647 · las respuestas guardadas: sin tocar salen las de fábrica, vaciar es una decisión', () => {
+  assert.deepStrictEqual(core.coachQuickReplies(null), core.COACH_QR_DEFAULT);
+  assert.deepStrictEqual(core.coachQuickReplies(undefined), core.COACH_QR_DEFAULT);
+  assert.deepStrictEqual(core.coachQuickReplies([]), [], '🔴 si las borró todas, no vuelven solas');
+  assert.deepStrictEqual(core.coachQuickReplies(['  hola  ', '', '   ', 'chao']), ['hola', 'chao']);
+  assert.strictEqual(core.coachQuickReplies(Array.from({ length: 20 }, (_, i) => 'f' + i)).length, core.COACH_QR_MAX);
+  core.COACH_QR_DEFAULT.forEach(f => assert.ok(!/\b(mirá|tenés|podés|vos)\b/i.test(f), 'voz colombiana, sin voseo'));
+});
+test('🔒 CABLEADO v647 · el aviso entra al Inicio con prioridad y la frase guardada NO se envía sola', () => {
+  const fs = require('fs'), path = require('path');
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const a3 = sinComentarios(_srcApp3());
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  assert.strictEqual(core.COACH_NOTICE_PRIORITY[1], 'h-await', 'va justo después de «entrenaron hoy»');
+  assert.ok(/id="h-await"/.test(html), 'falta el contenedor del aviso');
+  const home = cuerpo(a2, 'function renderHome(');
+  assert.ok(home.indexOf('renderAwaitCard()') > 0 && home.indexOf('renderAwaitCard()') < home.indexOf('_applyCoachCap()'), '🔴 el aviso se pinta DESPUÉS del tope: el tope no lo vería');
+  assert.ok(/chatAwaiting\(DB\.clients,DB\.msgs,_coachClears\(\)/.test(cuerpo(a3, 'function renderAwaitCard(')), 'el aviso ignora lo que el coach eliminó');
+  const usar = cuerpo(a3, 'function coachQrUse(');
+  assert.ok(!/sendCoachChatMsg|svNow\('ax_m'|DB\.msgs/.test(usar) && /ta\.value\s*=\s*t/.test(usar), '🔴 la frase guardada tiene que ir a la caja, no salir sola');
+  assert.ok(/renderCoachQr\(\)/.test(cuerpo(a3, 'function openCoachChat(')), 'el chat no pinta las respuestas guardadas');
+  assert.ok(/Array\.isArray\(_cs\.qr\)[\s\S]{0,80}ax_cqr/.test(a3), 'las respuestas guardadas no se hidratan de la nube');
 });
 
 // ══════════════════════════════════════════════════════

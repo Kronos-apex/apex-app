@@ -12,9 +12,11 @@ const SABOTAJES = [
   [CORE, '1· la conducta ANTERIOR: no se topa nada, vuelven los 5 avisos',
     '  const max = (opts.max === undefined) ? COACH_MAX_NOTICES : opts.max;',
     '  const max = 99;'],
-  [CORE, '2· el orden deja de mandar: el pulso puede quitarle el sitio a los vencimientos',
-    "  'h-expiry-banner',\n  'h-adherence-banner',\n  'h-deload',",
-    "  'h-pulse',\n  'h-deload',\n  'h-adherence-banner',"],
+  // 🔁 v647: el ancla vieja nombraba `h-adherence-banner` (retirado en v592) y llevaba sin aplicarse
+  //    desde entonces. Ahora invierte la lista VIGENTE: el pulso pasa delante de todos.
+  [CORE, '2· el orden deja de mandar: el pulso le quita el sitio a «entrenaron hoy» y a «esperan respuesta»',
+    "  'h-today-banner',\n  'h-await',\n  'h-expiry-banner',\n  'h-deload',\n  'h-pulse',\n];",
+    "  'h-pulse',\n  'h-deload',\n  'h-expiry-banner',\n  'h-await',\n  'h-today-banner',\n];"],
   [CORE, '3· un aviso sin puesto en la lista DESAPARECE en silencio',
     '  const sinRango = (presentes || []).filter(id => prioridad.indexOf(id) === -1);',
     '  const sinRango = [];'],

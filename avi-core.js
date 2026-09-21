@@ -2531,6 +2531,50 @@ function chatCtxExLine(e) {
   return `${e.n} · ${e.s} serie${e.s === 1 ? '' : 's'}${carga}`;
 }
 
+// ── v647 · QUIÉN ESPERA RESPUESTA DEL COACH ─────────────────────────────────────────────
+// Medido 21-sep: la mitad de las respuestas del coach tardan 13 h o más y 1 de cada 10, 15 días
+// o más. Una conversación ESPERA cuando lo último que se ve es de la persona (incluye los avisos
+// automáticos de dolor: también piden respuesta) y lleva más de `horas` así.
+// 🔒 Mira lo VISIBLE para el coach (su marca de «eliminé», v645): lo que eliminó no le reclama.
+// 🔒 Ordenado de la espera más larga a la más corta; empate por nombre (determinista, v360).
+const CHAT_WAIT_HOURS = 24;
+function chatAwaiting(clients, msgsById, clearsById, now, horas) {
+  const lim = (horas === undefined ? CHAT_WAIT_HOURS : horas) * 3600000;
+  const t0 = new Date(now || Date.now()).getTime();
+  const out = [];
+  (Array.isArray(clients) ? clients : []).forEach(c => {
+    if (!c || !c.id || c.suspended) return;
+    const vis = msgsVisible((msgsById || {})[c.id], (clearsById || {})[c.id])
+      .slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!vis.length || vis[vis.length - 1].from !== 'client') return;
+    // desde el PRIMER mensaje sin respuesta (después de la última respuesta del coach)
+    let i = vis.length - 1;
+    while (i > 0 && vis[i - 1].from === 'client') i--;
+    const desde = new Date(vis[i].date).getTime();
+    if (!Number.isFinite(desde) || t0 - desde < lim) return;
+    out.push({ id: c.id, name: c.name || '', desde: vis[i].date, horas: Math.floor((t0 - desde) / 3600000), n: vis.length - i });
+  });
+  return out.sort((a, b) => (b.horas - a.horas) || String(a.name).localeCompare(String(b.name)));
+}
+// «hace 30 h» / «hace 3 días»: lo que el coach lee.
+function chatWaitText(horas) {
+  if (!(horas >= 0)) return '';
+  if (horas < 48) return `hace ${horas} h`;
+  return `hace ${Math.floor(horas / 24)} días`;
+}
+// Las frases guardadas del coach. Sin nada guardado, las de fábrica; lo que él escriba MANDA.
+const COACH_QR_DEFAULT = [
+  '¡Bien hecho! 💪 Sigue así',
+  'Baja un poco la carga y me cuentas cómo te sientes',
+  'La próxima sesión subimos el peso',
+  'Recibido, lo reviso y te escribo',
+];
+const COACH_QR_MAX = 8, COACH_QR_LEN = 200;
+function coachQuickReplies(saved) {
+  if (!Array.isArray(saved)) return COACH_QR_DEFAULT.slice();
+  return saved.map(x => String(x == null ? '' : x).trim().slice(0, COACH_QR_LEN)).filter(Boolean).slice(0, COACH_QR_MAX);
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -9076,8 +9120,12 @@ function todayCardPlan(presentes, opts) {
 // ⛔ `h-adherence-banner` SE RETIRÓ del Inicio en v592 (mismo reporte). No desapareció: la lista
 //    completa, con sus dos secciones y el botón de empujar, vive en el reporte «Sin entrenar»,
 //    detrás de la cifra que sigue en la pantalla.
+// v647 · `h-await` («esperan tu respuesta») va SEGUNDO, justo después de lo que el PO pidió ver
+// primero: solo aparece cuando alguien lleva más de 24 h sin respuesta, y es el remedio directo a
+// las esperas de 15 días medidas el 21-sep.
 const COACH_NOTICE_PRIORITY = [
   'h-today-banner',
+  'h-await',
   'h-expiry-banner',
   'h-deload',
   'h-pulse',
@@ -11579,6 +11627,12 @@ if (typeof module !== 'undefined' && module.exports) {
     chatMsgContext,
     chatCtxExLine,
     CHAT_CTX_MAX_EX,
+    chatAwaiting,
+    chatWaitText,
+    CHAT_WAIT_HOURS,
+    coachQuickReplies,
+    COACH_QR_DEFAULT,
+    COACH_QR_MAX,
     mergeAuthRow,
     parseOAuthReturn,
     _msgKey,

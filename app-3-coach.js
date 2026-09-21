@@ -907,7 +907,7 @@ function _cwqAdd(col,id,val,nombre){
 //    Solo aporta su identidad (`cs:<clave corta>`, una entrada por ajuste para que cambiar el
 //    Nequi no borre de la cola la biblioteca) y su forma de escritura (el patch del servidor).
 const _CS_NOMBRE={e:'biblioteca de ejercicios',nequi:'número de Nequi',cn:'tu nombre',
-  ce:'ejercicios propios',site:'tu sitio web',mr:'chats leídos',ld:'leads atendidos',mc:'chats eliminados'};
+  ce:'ejercicios propios',site:'tu sitio web',mr:'chats leídos',ld:'leads atendidos',mc:'chats eliminados',qr:'respuestas guardadas'};
 function _cwqSettingId(){ return _authUid||'coach'; }
 function _cwqAddSetting(short,val){ return _cwqAdd('cs:'+short,_cwqSettingId(),val,'Tus ajustes'); }
 function _cwqDropSetting(short){ _cwqDrop('cs:'+short,_cwqSettingId()); }
@@ -1258,6 +1258,8 @@ async function _enterCoachAuth(authUser, ownRow){
       }
       // v645 · chats que el coach eliminó para él: gana la marca más reciente (una marca solo
       // avanza), así que un aparato con la copia vieja no le devuelve la conversación.
+      // v647 · sus respuestas guardadas: la nube manda si trae una lista (vacía también es una decisión).
+      if(Array.isArray(_cs.qr)) localStorage.setItem('ax_cqr',JSON.stringify(_cs.qr));
       if(_cs.mc && typeof _cs.mc==='object' && typeof chatClearMapMerge==='function'){
         localStorage.setItem('ax_msgclear',JSON.stringify(chatClearMapMerge(_coachClears(),_cs.mc)));
       }
@@ -3808,13 +3810,17 @@ function renderMsgs(){
   const sbBdg=document.getElementById('sb-msgs-bdg');
   if(sbBdg){sbBdg.textContent=unreadClients;sbBdg.style.display=unreadClients>0?'inline-flex':'none';}
   con.innerHTML='';
+  // v647 · quién lleva más de 24 h esperando: se marca en la fila y sube arriba de la lista.
+  const _espera={}; if(typeof chatAwaiting==='function')chatAwaiting(DB.clients,DB.msgs,_coachClears(),new Date()).forEach(x=>{_espera[x.id]=x;});
+  list.sort((a,b)=>((_espera[b.c.id]?_espera[b.c.id].horas:-1)-(_espera[a.c.id]?_espera[a.c.id].horas:-1)));
   if(!list.length)con.innerHTML='<div class="empty" style="padding:28px 20px"><div class="eico" style="color:var(--g2)">'+_coIco('chat',34,'💬')+'</div><div class="etxt">Todavía no hay conversaciones</div><div class="esub">Toca a cualquiera de abajo y escríbele el primer mensaje</div></div>';
   list.forEach(({c,last,count})=>{
     const lastClientMsg=_coachMsgs(c.id).filter(m=>m.from==='client').slice(-1)[0];
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
-    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">'+esc(String(c.name||'').trim().split(/\s+/)[0]||'Asesorado')+'</span>'}: «${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}»</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} mensaje${count===1?'':'s'}</div>`;
+    const _esp=_espera[c.id];
+    div.innerHTML=`<div class="cav" style="width:38px;height:38px;font-size:14px;${avcStyle(c.name)}">${esc(ini(c.name))}</div><div style="flex:1;min-width:0">${_esp?`<div class="msg-wait">Espera tu respuesta · ${esc(chatWaitText(_esp.horas))}</div>`:''}<div class="cn">${esc(c.name)}${hasUnread?'<span style="display:inline-block;width:8px;height:8px;background:var(--rd);border-radius:50%;margin-left:6px;vertical-align:middle"></span>':''}</div><div class="cm">${last.from==='coach'?'<span style="color:var(--g2);font-weight:600">Tú</span>':'<span style="color:var(--blt);font-weight:600">'+esc(String(c.name||'').trim().split(/\s+/)[0]||'Asesorado')+'</span>'}: «${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}»</div></div><div style="font-size:11px;color:var(--t3);text-align:right">${fmtD(last.date)}<br>${count} mensaje${count===1?'':'s'}</div>`;
     div.onclick=()=>openCoachChat(c.id);con.appendChild(div);
   });
   renderMsgsSinConversar(con);
@@ -3868,6 +3874,49 @@ function markCoachRead(id){
   else { try{ localStorage.setItem('ax_msgreads',JSON.stringify(m)); }catch(e){} }
 }
 
+// ══════════ v647 · QUIÉN ESPERA TU RESPUESTA + TUS RESPUESTAS GUARDADAS ══════════
+// Medido 21-sep: la mitad de las respuestas del coach tardan 13 h o más; 1 de cada 10, 15 días.
+function renderAwaitCard(){
+  const el=document.getElementById('h-await'); if(!el)return;
+  const lista=(typeof chatAwaiting==='function')?chatAwaiting(DB.clients,DB.msgs,_coachClears(),new Date()):[];
+  if(!lista.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  const n=lista.length, top=lista.slice(0,5);
+  el.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
+    <div style="font-size:12px;font-weight:700;color:var(--ort);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('chat',13):'💬'} ${n} ${n>1?'personas esperan':'persona espera'} tu respuesta</div>
+    ${top.map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--br);cursor:pointer;min-height:36px" onclick="openCoachChat('${esc(x.id)}')">
+      <div style="font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div>
+      <span style="font-size:11px;color:var(--t2);flex-shrink:0">${esc(chatWaitText(x.horas))}${x.n>1?` · ${x.n} mensajes`:''}</span>
+    </div>`).join('')}
+    ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Mensajes</div>`:''}
+  </div>`;
+}
+function _coachQrList(){ let v=null; try{ v=JSON.parse(localStorage.getItem('ax_cqr')||'null'); }catch(e){} return (typeof coachQuickReplies==='function')?coachQuickReplies(v):[]; }
+function renderCoachQr(){
+  const el=document.getElementById('cchat-qr'); if(!el)return;
+  el.innerHTML='';
+  // «Editar» va PRIMERO: al final de una fila que se desliza queda fuera de la pantalla y no se encuentra.
+  const ed=document.createElement('button'); ed.type='button'; ed.className='cchat-qr-b cchat-qr-edit'; ed.textContent='Editar'; ed.setAttribute('aria-label','Editar respuestas guardadas'); ed.onclick=coachQrEditOpen; el.appendChild(ed);
+  _coachQrList().forEach((t,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='cchat-qr-b'; b.textContent=t; b.onclick=()=>coachQrUse(i); el.appendChild(b); });
+}
+// Pone la frase en la caja; la envía él (misma regla que el plan de choque: nada sale sin su toque).
+function coachQrUse(i){
+  const t=_coachQrList()[i]; const ta=document.getElementById('cchat-in'); if(!t||!ta)return;
+  ta.value=t; if(typeof _cchatGrow==='function')_cchatGrow(ta); ta.focus();
+}
+function coachQrEditOpen(){
+  const ed=document.getElementById('cchat-qr-ed'), ta=document.getElementById('cchat-qr-in'); if(!ed||!ta)return;
+  ta.value=_coachQrList().join('\n'); ed.style.display='block'; ta.focus();
+}
+function coachQrEditClose(){ const ed=document.getElementById('cchat-qr-ed'); if(ed)ed.style.display='none'; }
+function coachQrEditSave(){
+  const ta=document.getElementById('cchat-qr-in'); if(!ta)return;
+  const lista=coachQuickReplies(ta.value.split('\n'));
+  sv('ax_cqr',lista);
+  coachQrEditClose(); renderCoachQr();
+  toast(lista.length?'Respuestas guardadas':'Quitaste todas tus respuestas guardadas');
+}
+
 // ══════════ v645 · ELIMINAR LA CONVERSACIÓN — SOLO PARA EL COACH ══════════
 // El asesorado conserva la suya (decisión del PO). No se toca `DB.msgs`: se guarda una marca en
 // `ax_msgclear` {clientId: iso}, que viaja en coach_settings.mc a sus otros aparatos, y TODO
@@ -3919,6 +3968,7 @@ function openCoachChat(clientId){
   const av=document.getElementById('cchat-av'); if(av){ av.style.background=avc(c.name); av.style.color=inkOn(avc(c.name)); av.textContent=ini(c.name); }
   const nm=document.getElementById('cchat-name'); if(nm)nm.textContent=c.name; // textContent → sin XSS
   renderCoachChatThread(clientId,true); // al abrir SIEMPRE al final
+  coachQrEditClose(); renderCoachQr();
   markCoachRead(clientId);
   if(typeof renderMsgs==='function')renderMsgs(); // refresca badges/lista detrás
   const el=document.getElementById('coach-chat'); if(!el)return;

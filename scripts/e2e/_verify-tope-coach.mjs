@@ -42,7 +42,9 @@ await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, devi
 const results = [];
 const check = (n, c, x = '') => { const line = (c ? 'OK ' : 'FAIL ') + n + (x ? ' — ' + x : ''); results.push(line); log('  ' + line); };
 
-const IDS = ['h-today-banner', 'h-expiry-banner', 'h-adherence-banner', 'h-deload', 'h-pulse'];
+// 🔁 v647 · la lista se LEE de la app (COACH_NOTICE_PRIORITY) en vez de escribirla a mano: la copia
+//    a mano se quedó con `h-adherence-banner`, retirado en v592, y el harness pasó 55 versiones en rojo.
+let IDS = [];
 
 // Lee SOLO lo visible: qué avisos se ven, en qué orden en la pantalla, y qué dice la fila.
 const ver = () => ev(`(()=>{
@@ -86,6 +88,9 @@ async function cincoAvisos() {
       c3:[{id:'s3',routineId:'r3',routineName:'Full body',date:new Date().toISOString(),startedAt:new Date().toISOString(),finishedAt:new Date().toISOString(),doneSets:9,totalSets:9,totalVol:1200,exercises:[]}],
     };
     DB.prs={c3:{e1:{name:'Sentadilla',maxKg:100,unit:'kg',reps:8,date:new Date().toISOString()}}};
+    // v647 · alguien lleva 3 días esperando respuesta en el chat (aviso «h-await»)
+    DB.msgs={c2:[{from:'client',text:'¿Cambio la rutina?',date:d(-3)}]};
+    try{localStorage.removeItem('ax_msgclear');}catch(e){}
     renderHome();
     return 'ok';
   }catch(e){return String(e&&e.stack||e);}})()`);
@@ -96,6 +101,8 @@ async function cincoAvisos() {
 try {
   const ready = await waitFor(`(typeof renderHome==='function' && typeof coachNoticePlan==='function' && !!document.getElementById('h-more'))`, 60000);
   if (!ready) throw new Error('scripts no cargaron (renderHome/coachNoticePlan/#h-more)');
+  IDS = await ev(`COACH_NOTICE_PRIORITY.slice()`);
+  if (!Array.isArray(IDS) || IDS.length < 4) throw new Error('MONTAJE: no pude leer COACH_NOTICE_PRIORITY → ' + JSON.stringify(IDS));
   await ev(`(()=>{try{['apex-loading','avi-loading'].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.remove('on');e.style.display='none';}});}catch(e){}
                   try{showScreen('s-coach');}catch(e){}
                   try{if(typeof gp==='function')gp('p-home');}catch(e){}})()`);
@@ -111,8 +118,9 @@ try {
   const antes = v.visibles.length + v.ocultos.length;
   check('T1a el montaje deja MÁS de 2 avisos (si no, el tope no mediría nada)', antes > 2, 'avisos=' + antes);
   check('T1b pero solo se VEN 2', v.visibles.length === 2, JSON.stringify(v.visibles));
-  check('T1c y son los que el PO eligió: vencimientos y empujón',
-    v.visibles.indexOf('h-expiry-banner') >= 0 && v.visibles.indexOf('h-adherence-banner') >= 0, JSON.stringify(v.visibles));
+  // v592: «entrenaron hoy» primero (decisión del PO); v647: «esperan tu respuesta» segundo.
+  check('T1c y son los dos primeros de la prioridad: entrenaron hoy + esperan tu respuesta',
+    JSON.stringify(v.visibles) === JSON.stringify(['h-today-banner', 'h-await']), JSON.stringify(v.visibles));
   check('T1d lo apartado se DICE, no se silencia', /avisos? más/.test(v.fila), v.fila);
   check('T1e y la cuenta cuadra con lo que se escondió', new RegExp(String(antes - 2) + ' aviso').test(v.fila), v.fila + ' | pintados=' + antes);
   await shot('tope-coach-t1');
@@ -132,7 +140,7 @@ try {
 
   // ── T3: 🔴 cerrar devuelve la pantalla a su sitio ──
   log('\n=== T3: cerrar (la trampa de mover nodos) ===');
-  const ordenOriginal = ['h-today-banner', 'h-expiry-banner', 'h-adherence-banner', 'h-deload', 'h-pulse', 'h-more'];
+  const ordenOriginal = IDS.concat(['h-more']);
   await ev(`coachMoreToggle()`);
   await sleep(400);
   v = await ver();

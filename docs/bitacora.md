@@ -4,6 +4,24 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v647: quién espera tu respuesta, y tus respuestas guardadas
+
+- **Segunda del lote del chat.** Medido: la mitad de las respuestas del coach tardan 13 h o más y **1 de cada 10,
+  15 días o más**; 4 mensajes sin respuesta. El cuello de botella del chat no es la pantalla, es responder.
+- `chatAwaiting` (PURA): una conversación ESPERA cuando lo último visible es de la persona (incluye los avisos de
+  dolor) y lleva más de 24 h; se cuenta desde el PRIMER mensaje sin respuesta y respeta lo que el coach eliminó
+  (v645). Aviso nuevo **`h-await` en el Inicio, SEGUNDO en la prioridad** (después de «entrenaron hoy», que el
+  PO pidió primero en v592): solo sale cuando alguien espera. En la bandeja, quien espera sube y lleva su marca.
+- **Respuestas guardadas del coach** (`ax_cqr` → `coach_settings.qr`, las tres piezas de v321 + hidratación):
+  fila deslizable sobre la caja de escribir, «Editar» PRIMERO (al final quedaba fuera de pantalla). Un toque pone
+  la frase en la caja — **la envía él**. Sin tocar salen 4 de fábrica; si las borra todas, no vuelven solas.
+- 🔁 **Dos piezas viejas re-encuadradas, las dos rotas desde v592** (retiro de `h-adherence-banner`) y nadie
+  lo vio: `_verify-tope-coach` (2 FAIL; ahora LEE `COACH_NOTICE_PRIORITY` de la app en vez de copiarla, y su
+  montaje incluye a alguien esperando) y el caso 2 de `_sabotaje-tope-coach` (ancla despegada). Comprobado sobre
+  un worktree en HEAD que fallaban ANTES de este cambio.
+- **QA.** Suite **1290 → 1293** (el conteo de ajustes del coach pasa a 9, a propósito), `_sabotaje-v647` 7 casos,
+  `_verify-chat-lote` 9/9 con capturas miradas, `_verify-tope-coach` verde.
+
 ## ⏮️ 2026-09-21 — v646: la respuesta rápida lleva su entreno
 
 - **Primera del lote del chat que pidió el PO** (*«dale con todas en orden»*: contexto → respuestas del coach →
