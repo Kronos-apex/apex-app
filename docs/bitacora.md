@@ -22,6 +22,13 @@
   enlace público se suben al privado (upsert por id, idempotente) y la entrada pierde el enlace, con `mAt` nuevo
   para ganar la fusión contra copias viejas. Solo el dueño, sobre su carpeta.
 - `delete-account` **v7**: limpia también `progress-photos`.
+- **Mudanza hecha en el servidor (21-sep, tras desplegar v650):** las 2 fotos con enlace público — una del propio
+  PO, otra de un asesorado — se copiaron al privado con la llave de servicio (**copia verificada byte a byte**), sus
+  entradas pasaron a `path` con `mAt` nuevo y las copias públicas se borraron. El CDN siguió sirviendo el enlace
+  viejo ~20 s (caché); después, 400. **Estado medido: 0 fotos de progreso públicas**, 2 en el bucket privado, 13
+  dentro de la ficha (privadas por RLS; se mudan solas cuando su dueño abra la app). En `apex-photos` quedan solo
+  avatares. ⚠️ Las fotos del coach en «Mi entrenamiento» no pasan por la auto-cura (entra por otra puerta): siguen
+  en su ficha, privadas.
 - **QA.** Suite **1300 → 1305**, `_sabotaje-v650` 6 casos, harness nuevo `_verify-fotos-privadas` 8/8 con captura
   mirada, `_verify-fotos-coach` 12/12 (sin tocar), `_probe-delete-account` verde.
 
