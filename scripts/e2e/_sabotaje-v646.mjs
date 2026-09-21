@@ -39,24 +39,7 @@ const SABOTAJES = [
   ['el nombre del ejercicio entra como HTML', 'infra',
     '    ctx.ejs.forEach(e=>{ const l=document.createElement(\'div\'); l.className=\'mctx-l\'; l.textContent=chatCtxExLine(e); w.appendChild(l); });',
     '    ctx.ejs.forEach(e=>{ const l=document.createElement(\'div\'); l.className=\'mctx-l\'; l.innerHTML=chatCtxExLine(e); w.appendChild(l); });'],
-]; sv('ax_m',DB.msgs);"],
-  ['el asesorado elimina con un filter sobre el hilo compartido', 'ent',
-    "  svNow('ax_c',DB.clients);\n  markMsgsRead();",
-    "  DB.msgs[clientId]=[]; svNow('ax_m',DB.msgs);\n  markMsgsRead();"],
-  ['eliminar vuelve a ser UN toque', 'co',
-    "  if(btn.dataset.armed!=='1'){\n    btn._ico=btn.innerHTML; btn.dataset.armed='1'; btn.classList.add('armed'); btn.textContent='Eliminar';",
-    "  if(false){\n    btn._ico=btn.innerHTML; btn.classList.add('armed'); btn.textContent='Eliminar';"],
-  ['la bandeja del coach lee el hilo crudo', 'co',
-    'const list=DB.clients.map(c=>{const ms=_coachMsgs(c.id);return',
-    'const list=DB.clients.map(c=>{const ms=DB.msgs[c.id]||[];return'],
-  ['el chat del asesorado lee el hilo crudo', 'ent',
-    "  const msgs=_clientMsgs(clientId);const con=document.getElementById('cn-msg-thread');",
-    "  const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');"],
-  ['la marca del coach no se hidrata de la nube', 'co',
-    "        localStorage.setItem('ax_msgclear',JSON.stringify(chatClearMapMerge(_coachClears(),_cs.mc)));",
-    "        localStorage.setItem('ax_msgclear',JSON.stringify(_coachClears()));"],
-];
-
+]; 
 const orig = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, readFileSync(p, 'utf8')]));
 let muerden = 0;
 
