@@ -20715,6 +20715,45 @@ test('🔒 CABLEADO v647 · el aviso entra al Inicio con prioridad y la frase gu
 });
 
 // ══════════════════════════════════════════════════════
+// v648 · «VISTO»: EL ASESORADO SABE QUE SU COACH LEYÓ
+// ══════════════════════════════════════════════════════
+test('v648 · se estampa solo si hay un mensaje del asesorado posterior a la marca anterior', () => {
+  const ms = [{ from: 'coach', date: '2026-09-20T10:00:00.000Z' }, { from: 'client', date: '2026-09-20T11:00:00.000Z' }];
+  assert.strictEqual(core.coachReadShouldStamp(ms, null), true);
+  assert.strictEqual(core.coachReadShouldStamp(ms, '2026-09-20T10:30:00.000Z'), true);
+  assert.strictEqual(core.coachReadShouldStamp(ms, '2026-09-20T11:00:00.000Z'), false, '🔴 abrir el chat sin novedades no puede subir el perfil');
+  assert.strictEqual(core.coachReadShouldStamp([{ from: 'coach', date: '2026-09-20T12:00:00.000Z' }], null), false, 'lo que escribió el coach no se «ve»');
+  assert.strictEqual(core.coachReadShouldStamp([], null), false);
+});
+test('v648 · «Visto» va solo en el ÚLTIMO mensaje suyo que el coach ya leyó', () => {
+  const ms = [
+    { from: 'client', date: '2026-09-20T10:00:00.000Z' },
+    { from: 'coach', date: '2026-09-20T10:05:00.000Z' },
+    { from: 'client', date: '2026-09-20T11:00:00.000Z' },
+    { from: 'client', date: '2026-09-20T13:00:00.000Z' },
+  ];
+  assert.strictEqual(core.chatSeenIndex(ms, '2026-09-20T12:00:00.000Z'), 2, 'el de las 13:00 todavía no lo ha visto');
+  assert.strictEqual(core.chatSeenIndex(ms, '2026-09-20T14:00:00.000Z'), 3);
+  assert.strictEqual(core.chatSeenIndex(ms, '2026-09-20T09:00:00.000Z'), -1);
+  assert.strictEqual(core.chatSeenIndex(ms, null), -1, 'sin marca, nada dice «Visto»');
+  assert.strictEqual(core.chatSeenIndex(ms, 'basura'), -1);
+});
+test('🔒 CABLEADO v648 · el coach estampa en el perfil y el celular del asesorado lo recoge', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = sinComentarios(_srcApp1());
+  const a3 = sinComentarios(_srcApp3());
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const mark = cuerpo(a3, 'function markCoachRead(');
+  assert.ok(/coachReadShouldStamp\(/.test(mark) && /c\.coachReadAt\s*=\s*ahora/.test(mark) && /sv\('ax_c'/.test(mark), '🔴 leer ya no le avisa al asesorado');
+  assert.ok(/row\.profile&&row\.profile\.coachReadAt/.test(cuerpo(a1, 'async function _pollAuthClient(')), '🔴 el refresco del asesorado no trae el «Visto»');
+  const pint = cuerpo(a4, 'function _paintMsgThread(');
+  assert.ok(/chatSeenIndex\(msgs,coachReadAt\)/.test(pint) && /_i===_visto\?' · Visto'/.test(pint), '🔴 el hilo del asesorado no pinta el «Visto»');
+  const rcm = cuerpo(a4, 'function renderClientMsgs(');
+  assert.strictEqual((rcm.match(/_paintMsgThread\(con,msgs,\(DB\.clients\.find\(x=>x\.id===clientId\)\|\|\{\}\)\.coachReadAt\)/g) || []).length, 2, 'las dos ramas (chat y archivo) pasan la marca');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

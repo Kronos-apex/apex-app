@@ -138,6 +138,35 @@ await ev(`coachQrEditSave()`); await sleep(250);
 const w5 = await ev(`(()=>{const b=[...document.querySelectorAll('#cchat-qr .cchat-qr-b')].map(x=>x.textContent); return {b, guardado:localStorage.getItem('ax_cqr'), editor:getComputedStyle(document.getElementById('cchat-qr-ed')).display};})()`);
 chk('W5 editar guarda SUS frases y el chat las usa', JSON.stringify(w5.b) === JSON.stringify(['Editar', 'Uno', 'Dos']) && w5.guardado === '["Uno","Dos"]' && w5.editor === 'none', JSON.stringify(w5));
 
+// ═════ v648 · «VISTO» ═════
+// Lado coach: abrir el chat con un mensaje nuevo del asesorado estampa coachReadAt en su ficha.
+await ev(`(()=>{ const hace=h=>new Date(Date.now()-h*3600000).toISOString();
+  DB.clients=[{id:'kv1',name:'Vale Visto',days:3,tier:'premium'}];
+  DB.msgs={kv1:[{from:'client',text:'¿Hoy pierna?',date:hace(2)}]};
+  openCoachChat('kv1'); })()`);
+await sleep(300);
+const v1 = await ev(`(()=>{const c=DB.clients[0]; return {marca:c.coachReadAt||null, ok:!!c.coachReadAt&&new Date(c.coachReadAt)>=new Date(DB.msgs.kv1[0].date)};})()`);
+chk('V1 abrir el chat con algo nuevo estampa la marca en la ficha del asesorado', v1.ok, JSON.stringify(v1));
+const marca1 = v1.marca;
+await sleep(1100);
+await ev(`(()=>{closeCoachChat(); setTimeout(()=>openCoachChat('kv1'),0);})()`); await sleep(400);
+const v2 = await ev(`DB.clients[0].coachReadAt`);
+chk('V2 abrirlo otra vez SIN novedades no vuelve a escribir', v2 === marca1, `${marca1} → ${v2}`);
+// Lado asesorado: vuelve a su pantalla (showScreen) con la marca puesta y un mensaje posterior sin ver.
+await ev(`(()=>{ showScreen('s-client'); CUR.loggedAs='client';
+  const hace=h=>new Date(Date.now()-h*3600000).toISOString();
+  const c={id:'kv1',name:'Vale Visto',tier:'premium',coachReadAt:hace(1),routines:[]};
+  DB.clients=[c]; CUR.clientId='kv1';
+  DB.msgs={kv1:[{from:'client',text:'Uno',date:hace(3)},{from:'coach',text:'Dale',date:hace(2.5)},{from:'client',text:'Dos',date:hace(2)},{from:'client',text:'Tres',date:hace(0.5)}]};
+  const b=document.querySelector('.cntab[onclick*="cn-messages"]'); if(b)cnTab('cn-messages',b);
+  renderClientMsgs('kv1'); })()`);
+await sleep(400);
+const v3 = await ev(`(()=>{const ms=[...document.querySelectorAll('#cn-msg-thread .mt')].map(x=>x.textContent); return ms;})()`);
+const conVisto = v3.filter(t => /Visto/.test(t));
+chk('V3 el asesorado ve «Visto» UNA vez, bajo el último mensaje que su coach leyó', conVisto.length === 1 && v3.indexOf(conVisto[0]) === 2, JSON.stringify(v3));
+await tema('light'); await sleep(150); await shot('visto-asesorado-claro');
+await tema('dark'); await sleep(150); await shot('visto-asesorado-oscuro'); await tema('light');
+
 // @@SECCIONES@@
 
 const ok = R.every(r => r[1]) && jsErrors.length === 0;

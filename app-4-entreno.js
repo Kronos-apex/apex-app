@@ -4164,7 +4164,7 @@ function renderClientMsgs(clientId){
     }
     // 'archive': su conversación sigue siendo suya. Se pinta completa y el candado baja al
     // sitio donde estaría la caja de escribir, que es lo único que de verdad se perdió.
-    _paintMsgThread(con,msgs);
+    _paintMsgThread(con,msgs,(DB.clients.find(x=>x.id===clientId)||{}).coachReadAt);
     const pie=document.createElement('div');
     pie.style.cssText='margin-top:12px';
     pie.innerHTML=premiumLockHTML('Aquí quedó tu conversación','Puedes releerla cuando quieras. Para volver a escribirle a tu coach necesitas plan con coach.');
@@ -4184,19 +4184,21 @@ function renderClientMsgs(clientId){
       +'<div class="esub">Cuéntale cómo te fue, pregúntale una duda o avísale si algo te dolió'+(nom?', '+esc(nom):'')+'. Te responde por acá mismo.</div></div>';
     return;
   }
-  _paintMsgThread(con,msgs);
+  _paintMsgThread(con,msgs,(DB.clients.find(x=>x.id===clientId)||{}).coachReadAt);
   con.scrollTop=con.scrollHeight;
 }
 // Pinta el hilo tal cual lo ve el ASESORADO. Una sola función para los dos estados que lo
 // muestran (chat abierto y archivo en solo lectura): dos copias serían dos verdades sobre la
 // misma conversación, y la del archivo envejecería sin que nadie la mire.
-function _paintMsgThread(con,msgs){
-  (msgs||[]).forEach(m=>{
+function _paintMsgThread(con,msgs,coachReadAt){
+  // v648 · «Visto» bajo el último mensaje suyo que su coach ya leyó.
+  const _visto=(typeof chatSeenIndex==='function')?chatSeenIndex(msgs,coachReadAt):-1;
+  (msgs||[]).forEach((m,_i)=>{
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
     const mine=m.from!=='coach';
     const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
     if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,mine,true));
-    const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}`;con.appendChild(t);
+    const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}${_i===_visto?' · Visto':''}`;con.appendChild(t);
   });
 }
 // Ruta ÚNICA de envío del asesorado — la usan el textarea y las respuestas rápidas (v316).

@@ -4,6 +4,18 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v648: «Visto», el asesorado sabe que su coach leyó
+
+- **Tercera del lote del chat.** Lo que lee el coach vivía solo en SUS ajustes (`coach_settings.mr`), que el
+  celular del asesorado no puede leer (RLS por dueño). Ahora, al leer, `markCoachRead` estampa `coachReadAt` en
+  el PERFIL del asesorado (fusión de tres vías, v623) — **solo si hay un mensaje suyo posterior a la marca
+  anterior** (`coachReadShouldStamp`): abrir el chat sin novedades no sube nada.
+- El refresco en vivo del asesorado ya trae su fila entera: recoge esa sola clave y actualiza su base de fusión.
+  `chatSeenIndex` pone «· Visto» bajo el ÚLTIMO mensaje suyo que el coach ya leyó (en el chat y en el archivo).
+- ⚠️ Honesto sobre el alcance: la marca llega al celular del asesorado en su siguiente refresco (cada pocos
+  segundos con la app abierta; al abrirla, si estaba cerrada) — no es instantáneo.
+- **QA.** Suite **1293 → 1296**, `_sabotaje-v648` 5 casos, `_verify-chat-lote` 12/12 con capturas miradas.
+
 ## ⏮️ 2026-09-21 — v647: quién espera tu respuesta, y tus respuestas guardadas
 
 - **Segunda del lote del chat.** Medido: la mitad de las respuestas del coach tardan 13 h o más y **1 de cada 10,

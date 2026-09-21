@@ -3869,9 +3869,17 @@ function _coachReads(){ try{ return JSON.parse(localStorage.getItem('ax_msgreads
 function _coachReadOf(id){ const m=_coachReads(); return m[id]||null; }
 function markCoachRead(id){
   if(!id)return;
-  const m=_coachReads(); m[id]=new Date().toISOString();
+  const ahora=new Date().toISOString();
+  const m=_coachReads(); m[id]=ahora;
   if(typeof sv==='function')sv('ax_msgreads',m); // sv espeja a localStorage y sube coach_settings
   else { try{ localStorage.setItem('ax_msgreads',JSON.stringify(m)); }catch(e){} }
+  // v648 · «Visto» para el asesorado: se estampa en SU perfil, que es lo que su celular puede leer.
+  //    Solo si hay un mensaje suyo nuevo desde la última marca — abrir el chat sin novedades no sube nada.
+  const c=(DB.clients||[]).find(x=>x.id===id);
+  if(c&&typeof coachReadShouldStamp==='function'&&coachReadShouldStamp(DB.msgs[id],c.coachReadAt)){
+    c.coachReadAt=ahora;
+    if(typeof sv==='function')sv('ax_c',DB.clients);
+  }
 }
 
 // ══════════ v647 · QUIÉN ESPERA TU RESPUESTA + TUS RESPUESTAS GUARDADAS ══════════

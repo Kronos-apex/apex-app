@@ -781,6 +781,16 @@ async function _pollAuthClient(){
       if(chatEl&&!chatEl.classList.contains('on')&&typeof toast==='function')toast('💬 Nuevo mensaje de tu coach');
     });
   }
+  // 1b) v648 · «Visto»: la marca que el coach estampa al leer viaja en el perfil de ESTA fila.
+  //     Solo esa clave — el resto del perfil lo sigue gobernando la fusión de tres vías (v623).
+  const _yo=DB.clients.find(x=>x.id===cid);
+  const _rv=row.profile&&row.profile.coachReadAt;
+  if(_yo&&_rv&&_rv!==_yo.coachReadAt){
+    _yo.coachReadAt=_rv; touched=true;
+    if(typeof _authBaseGet==='function'){ const _b=_authBaseGet(); if(_b&&_b.profile) _authBaseSet(Object.assign({},_b,{profile:Object.assign({},_b.profile,{coachReadAt:_rv})})); }
+    const _chat=document.getElementById('cn-messages');
+    if(_chat&&_chat.classList.contains('on')&&typeof renderClientMsgs==='function')renderClientMsgs(cid);
+  }
   // 2) Cambios de rutina que hizo el coach. NO pisar si el usuario está editando, entrenando
   //    o tiene cambios locales sin confirmar (_authDirty) — su copia manda hasta que suba.
   const editorOpen=(()=>{const m=document.getElementById('m-routine');return !!(m&&getComputedStyle(m).display!=='none');})();

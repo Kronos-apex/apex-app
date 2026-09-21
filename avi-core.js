@@ -2575,6 +2575,32 @@ function coachQuickReplies(saved) {
   return saved.map(x => String(x == null ? '' : x).trim().slice(0, COACH_QR_LEN)).filter(Boolean).slice(0, COACH_QR_MAX);
 }
 
+// ── v648 · «VISTO»: EL ASESORADO SABE QUE SU COACH LEYÓ ────────────────────────────────────
+// Lo que lee el coach vive en SUS ajustes (coach_settings.mr), que el celular del asesorado no puede
+// leer (RLS por dueño). Por eso al leer se estampa `coachReadAt` en el PERFIL del asesorado, que sí
+// viaja a su celular en el refresco en vivo.
+// 🔒 Solo se estampa si hay algo NUEVO que marcar (un mensaje suyo posterior a la marca anterior):
+//    abrir el chat sin novedades no escribe nada — cada escritura del perfil es una subida.
+function coachReadShouldStamp(msgs, prevReadAt) {
+  const prev = new Date(prevReadAt).getTime();
+  return (Array.isArray(msgs) ? msgs : []).some(m => m && m.from === 'client' &&
+    Number.isFinite(new Date(m.date).getTime()) && (!Number.isFinite(prev) || new Date(m.date).getTime() > prev));
+}
+// Índice del ÚLTIMO mensaje del asesorado que su coach ya vio (-1 si ninguno). La marca va solo en
+// ese, como en cualquier chat: repetir «Visto» en cada burbuja es ruido.
+function chatSeenIndex(msgs, coachReadAt) {
+  const r = new Date(coachReadAt).getTime();
+  if (!Number.isFinite(r)) return -1;
+  const arr = Array.isArray(msgs) ? msgs : [];
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const m = arr[i];
+    if (!m || m.from !== 'client') continue;
+    const t = new Date(m.date).getTime();
+    if (Number.isFinite(t) && t <= r) return i;
+  }
+  return -1;
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -11633,6 +11659,8 @@ if (typeof module !== 'undefined' && module.exports) {
     coachQuickReplies,
     COACH_QR_DEFAULT,
     COACH_QR_MAX,
+    coachReadShouldStamp,
+    chatSeenIndex,
     mergeAuthRow,
     parseOAuthReturn,
     _msgKey,
