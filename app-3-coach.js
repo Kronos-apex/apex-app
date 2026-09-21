@@ -4017,7 +4017,10 @@ function renderCoachChatThread(clientId, forceBottom){
   }
   msgs.forEach(m=>{
     const isC=m.from==='coach';
-    const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    const b=document.createElement('div');b.className=`mb ${isC?'cs':'cl'}`;
+    if(m.media&&typeof chatMediaNode==='function'){ b.classList.add('mb-media'); b.appendChild(chatMediaNode(m,clientId)); }
+    else b.textContent=m.text||'';
+    con.appendChild(b);
     if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,isC,false));
     const t=document.createElement('div');t.className=`mt${isC?' r':''}`;
     // v588 · el estado REAL del mensaje. Antes todos se pintaban igual y el que nunca salió
@@ -4056,6 +4059,27 @@ async function sendCoachChatMsg(){
   if(_enCola){ toast('📴 Sin conexión: guardé el mensaje y lo envío al reconectar'); return; }
   if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',text.length>80?text.slice(0,77)+'…':text,{type:'message',chatId:id,tag:'avi-chat-'+id});
   toast('💬 Mensaje enviado');
+}
+// v649 · foto o video al asesorado: va a la carpeta DEL ASESORADO (así lo pueden ver los dos).
+let _cchatMediaSubiendo=false;
+function coachSendMedia(){
+  const id=_cchatId; if(!id||_cchatMediaSubiendo||typeof chatPickMedia!=='function')return;
+  chatPickMedia(async prep=>{
+    const path=chatMediaPath(id,(typeof uid==='function'?uid():String(Date.now())),prep.kind);
+    if(!path){ toast('No se pudo preparar el envío'); return; }
+    _cchatMediaSubiendo=true; toast(prep.kind==='vid'?'Subiendo video…':'Subiendo foto…');
+    try{ await _chatMediaUpload(path,prep.blob,prep.type); }
+    catch(e){ _cchatMediaSubiendo=false; toast('No se pudo enviar. Revisa tu conexión e inténtalo de nuevo'); return; }
+    _cchatMediaSubiendo=false;
+    if(!DB.msgs[id])DB.msgs[id]=[];
+    DB.msgs[id].push({from:'coach',text:prep.kind==='vid'?'🎥 Video':'📷 Foto',date:new Date().toISOString(),media:{path,kind:prep.kind}});
+    markCoachRead(id);
+    if(_cchatId===id)renderCoachChatThread(id,true);
+    if(typeof renderMsgs==='function')renderMsgs();
+    try{ await svNow('ax_m',DB.msgs); }catch(e){ warn('AVI: enviar archivo falló:',e&&e.message); }
+    if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',prep.kind==='vid'?'Te mandó un video':'Te mandó una foto',{type:'message',chatId:id,tag:'avi-chat-'+id});
+    toast(prep.kind==='vid'?'Video enviado':'Foto enviada');
+  });
 }
 // v364 (adopción, ítem c): invitar al asesorado a ABRIR la app para activar sus notificaciones.
 // RAÍZ del problema de adopción: un mensaje del chat interno solo llega como PUSH a quien YA está

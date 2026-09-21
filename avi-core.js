@@ -2601,6 +2601,39 @@ function chatSeenIndex(msgs, coachReadAt) {
   return -1;
 }
 
+// ── v649 · FOTO O VIDEO EN EL CHAT ──────────────────────────────────────────────────────
+// Bucket PRIVADO `chat-media` (migración 20260921_chat_media.sql): todo lo de una pareja vive en
+// la carpeta del ASESORADO, suba quien suba. Estos topes son el ESPEJO de los del bucket (20 MB y
+// los mismos tipos): un archivo que el servidor va a rechazar se frena aquí con un texto humano.
+// 📏 El video se topa también por DURACIÓN (60 s): una técnica se ve en una serie, y el plan gratis
+//    de Supabase trae 1 GB para todos.
+const CHAT_MEDIA_MAX_BYTES = 20 * 1024 * 1024;
+const CHAT_VIDEO_MAX_S = 60;
+const CHAT_MEDIA_TYPES = { 'image/jpeg': 'img', 'image/webp': 'img', 'image/png': 'img', 'video/mp4': 'vid', 'video/quicktime': 'vid', 'video/webm': 'vid' };
+function chatMediaCheck(f) {
+  f = f || {};
+  const kind = CHAT_MEDIA_TYPES[String(f.type || '').toLowerCase()];
+  if (!kind) return { ok: false, motivo: 'Ese tipo de archivo no se puede enviar. Manda una foto o un video.' };
+  if (kind === 'vid') {
+    if (!(f.size > 0) || f.size > CHAT_MEDIA_MAX_BYTES) return { ok: false, kind, motivo: `El video pesa demasiado (máximo ${CHAT_MEDIA_MAX_BYTES / 1048576} MB). Graba uno más corto.` };
+    if (!(f.duration > 0)) return { ok: false, kind, motivo: 'No se pudo leer ese video. Prueba con otro.' };
+    if (f.duration > CHAT_VIDEO_MAX_S + 0.5) return { ok: false, kind, motivo: `El video dura más de ${CHAT_VIDEO_MAX_S} segundos. Con una serie basta.` };
+  }
+  return { ok: true, kind };
+}
+// La ruta del archivo: SIEMPRE la carpeta del asesorado. Sin uuid válido no hay ruta (la RLS la
+// rechazaría igual, y así no se sube a ciegas).
+function chatMediaPath(folderUid, id, kind) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(folderUid || ''))) return null;
+  const limpio = String(id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+  if (!limpio) return null;
+  return `${folderUid}/chat-${limpio}.${kind === 'vid' ? 'mp4' : 'jpg'}`;
+}
+// Solo se pinta un archivo de la carpeta que se espera: un mensaje con una ruta ajena no se sigue.
+function chatMediaPathOk(path, folderUid) {
+  return typeof path === 'string' && !!folderUid && path.indexOf(String(folderUid) + '/chat-') === 0 && !/\.\./.test(path);
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -11661,6 +11694,11 @@ if (typeof module !== 'undefined' && module.exports) {
     COACH_QR_MAX,
     coachReadShouldStamp,
     chatSeenIndex,
+    chatMediaCheck,
+    chatMediaPath,
+    chatMediaPathOk,
+    CHAT_MEDIA_MAX_BYTES,
+    CHAT_VIDEO_MAX_S,
     mergeAuthRow,
     parseOAuthReturn,
     _msgKey,

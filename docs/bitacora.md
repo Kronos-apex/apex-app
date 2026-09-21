@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v649: foto o video en el chat, en un bucket PRIVADO
+
+- **Cuarta y última del lote del chat.** El asesorado le manda a su coach una foto o un video corto de su
+  técnica, y al revés (botón de cámara junto a la caja de escribir, en los dos chats).
+- 🔴 **Lo que se decidió antes de escribir una línea:** el bucket de fotos que ya existía (`apex-photos`) es
+  **PÚBLICO** — cualquiera con el enlace ve el archivo — y aquí viaja el cuerpo de una persona entrenando, a veces
+  un menor. Bucket nuevo **`chat-media` PRIVADO** (migración `20260921_chat_media.sql`, aplicada por MCP): sin
+  enlace público; la app pide un enlace FIRMADO que vence en una hora. Todo lo de una pareja vive en la carpeta
+  del ASESORADO, suba quien suba: lo pueden leer exactamente dos personas.
+- **Topes** (espejo cliente↔servidor con test): 20 MB, fotos y videos solamente, video ≤ 60 s; la foto se reduce
+  a 1600 px antes de subir. El plan gratis trae 1 GB (hoy se usan 0,5 MB).
+- **Primero se sube, después existe el mensaje**: si la subida falla no queda un mensaje apuntando a la nada.
+  Solo se pinta un archivo de la carpeta esperada (una ruta ajena en un mensaje no se sigue).
+- **`delete-account` v6 desplegada**: limpia también `chat-media`, y borra por PÁGINAS — `list` trae 100 como
+  mucho, así que un chat con más fotos dejaba restos (defecto que ya tenían los otros dos buckets).
+- **QA.** Políticas probadas en transacción con rollback (dueño y coach suben y ven; extraño y anónimo, 0).
+  Sonda nueva **`_probe-chat-media` 8/8 contra producción** con la cuenta QA (sube, firma, sirve, SIN firma no se
+  ve, no sube a carpeta ajena, rechaza PDF, limpia). Suite **1296 → 1300**, `_sabotaje-v649` 7 casos,
+  `_verify-chat-lote` 17/17 con capturas miradas, `_probe-delete-account` verde.
+- ⏭️ **Para el abogado (3-oct):** la política de datos no menciona fotos y videos del chat.
+
 ## ⏮️ 2026-09-21 — v648: «Visto», el asesorado sabe que su coach leyó
 
 - **Tercera del lote del chat.** Lo que lee el coach vivía solo en SUS ajustes (`coach_settings.mr`), que el

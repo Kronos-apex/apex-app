@@ -153,6 +153,81 @@ function avc(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%AVC.length;ret
 function avcStyle(n){const c=avc(n);return `background:${c};color:${typeof inkOn==='function'?inkOn(c):'#FFFFFF'}`}
 function fmtT(d){return new Date(d).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
 function fmtD(d){return new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}
+// ══════════ v649 · FOTO O VIDEO EN EL CHAT ══════════
+// Bucket PRIVADO `chat-media`: sin enlace público; se pide uno FIRMADO que vence en una hora.
+// Todo va a la carpeta del ASESORADO (la de quien lo sube si es él; la de su asesorado si es el coach).
+async function _chatMediaToken(){
+  try{ const s=await AUTH.getSession(); if(s&&s.access_token)return s.access_token; }catch(e){}
+  return null;
+}
+async function _chatMediaUpload(path,blob,contentType){
+  // 🔒 Un harness JAMÁS sube a producción (mismo sello que las escrituras a la nube).
+  if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))throw new Error('sellado');
+  const token=await _chatMediaToken(); if(!token)throw new Error('sin sesión');
+  const r=await fetch(`${SB_URL}/storage/v1/object/chat-media/${path}`,{method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':contentType},body:blob});
+  if(!r.ok)throw new Error('subida '+r.status);
+  return path;
+}
+const _chatMediaUrls={};
+async function _chatMediaUrl(path){
+  const c=_chatMediaUrls[path]; if(c&&c.exp>Date.now()+60000)return c.url;
+  const token=await _chatMediaToken(); if(!token)return null;
+  const r=await fetch(`${SB_URL}/storage/v1/object/sign/chat-media/${path}`,{method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:3600})});
+  if(!r.ok)return null;
+  const j=await r.json().catch(()=>null); const rel=j&&(j.signedURL||j.signedUrl); if(!rel)return null;
+  const url=`${SB_URL}/storage/v1${rel.charAt(0)==='/'?'':'/'}${rel}`;
+  _chatMediaUrls[path]={url,exp:Date.now()+3600000};
+  return url;
+}
+// Lo que se pinta dentro de la burbuja. La URL se pide DESPUÉS de pintar: el hilo no espera a la red.
+function chatMediaNode(m,folderUid){
+  const w=document.createElement('div'); w.className='mmedia';
+  const path=m&&m.media&&m.media.path;
+  if(typeof chatMediaPathOk!=='function'||!chatMediaPathOk(path,folderUid)){ w.textContent='Archivo no disponible'; return w; }
+  const vid=m.media.kind==='vid';
+  w.textContent=vid?'Cargando video…':'Cargando foto…';
+  _chatMediaUrl(path).then(url=>{
+    if(!url){ w.textContent=vid?'No se pudo cargar el video':'No se pudo cargar la foto'; return; }
+    w.textContent='';
+    if(vid){ const v=document.createElement('video'); v.src=url; v.controls=true; v.playsInline=true; v.preload='metadata'; w.appendChild(v); }
+    else { const i=document.createElement('img'); i.src=url; i.alt='Foto del chat'; i.loading='lazy'; i.onclick=()=>window.open(url,'_blank'); w.appendChild(i); }
+  }).catch(()=>{ w.textContent='No se pudo cargar'; });
+  return w;
+}
+// Elige un archivo y lo deja listo para subir: la foto se reduce (1600 px, JPEG) y el video se mide.
+function chatPickMedia(cb){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*,video/*';
+  inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(f)_chatPrepMedia(f).then(cb).catch(e=>toast(e.message||'No se pudo leer ese archivo')); };
+  inp.click();
+}
+async function _chatPrepMedia(f){
+  const tipo=String(f.type||'').toLowerCase();
+  if(tipo.indexOf('image/')===0){
+    const url=URL.createObjectURL(f);
+    try{
+      const img=await new Promise((ok,ko)=>{const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>ko(new Error('No se pudo leer esa foto')); i.src=url;});
+      const k=Math.min(1,1600/Math.max(img.naturalWidth||1,img.naturalHeight||1));
+      const cv=document.createElement('canvas'); cv.width=Math.round(img.naturalWidth*k); cv.height=Math.round(img.naturalHeight*k);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      const blob=await new Promise(ok=>cv.toBlob(ok,'image/jpeg',0.82));
+      const chk=chatMediaCheck({type:'image/jpeg',size:blob&&blob.size});
+      if(!blob||!chk.ok)throw new Error(chk.motivo||'No se pudo preparar la foto');
+      return {blob,type:'image/jpeg',kind:'img'};
+    } finally { URL.revokeObjectURL(url); }
+  }
+  let dur=0;
+  if(tipo.indexOf('video/')===0){
+    const url=URL.createObjectURL(f);
+    try{ dur=await new Promise(ok=>{const v=document.createElement('video'); v.preload='metadata'; v.onloadedmetadata=()=>ok(v.duration||0); v.onerror=()=>ok(0); v.src=url;}); }
+    finally{ URL.revokeObjectURL(url); }
+  }
+  const chk=chatMediaCheck({type:tipo,size:f.size,duration:dur});
+  if(!chk.ok)throw new Error(chk.motivo);
+  return {blob:f,type:tipo,kind:chk.kind};
+}
+
 // v646 · la tarjeta del entreno que acompaña a una respuesta rápida. La pintan el chat del coach
 // (completa: rutina, series y cada ejercicio) y el del asesorado (compacta: solo la rutina, para
 // que sepa que su coach la ve). Todo por textContent: el nombre de un ejercicio lo teclea alguien.

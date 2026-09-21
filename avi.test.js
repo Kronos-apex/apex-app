@@ -16528,7 +16528,10 @@ test('🔴 v574 · se limpian los DOS buckets y los errores registrados', () => 
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert.match(html, /Se borrarán para siempre tu cuenta, perfil, rutinas, progreso, medidas y fotos/,
     'cambió el texto de la promesa: revisa que el borrado siga cumpliéndola');
-  assert.match(_DEL_FULL, /\["avatars",\s*"apex-photos"\]/, 'sigue limpiando un solo bucket');
+  // v649: TRES buckets — `chat-media` guarda las fotos y videos del chat en la carpeta del asesorado,
+  // y se borra por páginas (`list` trae 100 como mucho).
+  assert.match(_DEL_FULL, /\["avatars",\s*"apex-photos",\s*"chat-media"\]/, 'no limpia los tres buckets (fotos y videos del chat incluidos)');
+  assert.match(_DEL_FULL, /for \(let vuelta = 0;[\s\S]{0,300}files\.length < 100/, '🔴 el borrado de archivos ya no pagina: más de 100 dejan restos');
   assert.match(_DEL_FULL, /from\("app_errors"\)\s*\.delete\(\)\s*\.eq\("uid",\s*uid\)/,
     'sus errores registrados (uid + user-agent) sobreviven al borrado');
 });
@@ -20753,6 +20756,62 @@ test('🔒 CABLEADO v648 · el coach estampa en el perfil y el celular del aseso
   assert.ok(/chatSeenIndex\(msgs,coachReadAt\)/.test(pint) && /_i===_visto\?' · Visto'/.test(pint), '🔴 el hilo del asesorado no pinta el «Visto»');
   const rcm = cuerpo(a4, 'function renderClientMsgs(');
   assert.strictEqual((rcm.match(/_paintMsgThread\(con,msgs,\(DB\.clients\.find\(x=>x\.id===clientId\)\|\|\{\}\)\.coachReadAt\)/g) || []).length, 2, 'las dos ramas (chat y archivo) pasan la marca');
+});
+
+// ══════════════════════════════════════════════════════
+// v649 · FOTO O VIDEO EN EL CHAT (bucket privado chat-media)
+// ══════════════════════════════════════════════════════
+test('v649 · qué se puede mandar: fotos siempre, videos hasta 60 s y 20 MB', () => {
+  assert.strictEqual(core.chatMediaCheck({ type: 'image/jpeg', size: 300000 }).ok, true);
+  assert.strictEqual(core.chatMediaCheck({ type: 'image/jpeg', size: 300000 }).kind, 'img');
+  assert.strictEqual(core.chatMediaCheck({ type: 'video/mp4', size: 8e6, duration: 45 }).kind, 'vid');
+  assert.strictEqual(core.chatMediaCheck({ type: 'video/mp4', size: 8e6, duration: 75 }).ok, false, '🔴 un video de más de 60 s no sale');
+  assert.strictEqual(core.chatMediaCheck({ type: 'video/mp4', size: 25 * 1048576, duration: 30 }).ok, false, '🔴 más de 20 MB no sale');
+  assert.strictEqual(core.chatMediaCheck({ type: 'video/mp4', size: 8e6, duration: 0 }).ok, false, 'un video que no se pudo medir no sale');
+  assert.strictEqual(core.chatMediaCheck({ type: 'application/pdf', size: 1000 }).ok, false);
+  assert.ok(/60 segundos/.test(core.chatMediaCheck({ type: 'video/mp4', size: 8e6, duration: 75 }).motivo), 'el motivo lo lee una persona');
+});
+test('🔒 v649 · la ruta es SIEMPRE la carpeta del asesorado, y solo se pinta lo de esa carpeta', () => {
+  const u = '0a6484ed-42af-449d-9903-e440ac683ecf';
+  assert.strictEqual(core.chatMediaPath(u, 'abc123', 'vid'), u + '/chat-abc123.mp4');
+  assert.strictEqual(core.chatMediaPath(u, 'abc123', 'img'), u + '/chat-abc123.jpg');
+  assert.strictEqual(core.chatMediaPath('mpiru2b-legacy', 'abc', 'img'), null, '🔴 sin uuid la RLS rechaza: no se sube a ciegas');
+  assert.strictEqual(core.chatMediaPath(u, '../../x', 'img'), u + '/chat-x.jpg', 'el id no puede escapar de la carpeta');
+  assert.strictEqual(core.chatMediaPathOk(u + '/chat-abc.jpg', u), true);
+  assert.strictEqual(core.chatMediaPathOk('otro-uid/chat-abc.jpg', u), false, '🔴 un mensaje no puede hacer que la app pida el archivo de OTRA persona');
+  assert.strictEqual(core.chatMediaPathOk(u + '/chat-../x.jpg', u), false);
+  assert.strictEqual(core.chatMediaPathOk(undefined, u), false);
+});
+test('🔒 ESPEJO v649 · el bucket es PRIVADO y sus topes son los del cliente', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260921_chat_media.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  assert.ok(/values \('chat-media', 'chat-media', false, (\d+)/.test(sql), '🔴 el bucket del chat tiene que ser PRIVADO');
+  assert.strictEqual(+sql.match(/'chat-media', false, (\d+)/)[1], core.CHAT_MEDIA_MAX_BYTES, 'el tope del servidor y el del cliente se separaron');
+  const tipos = (sql.match(/array\[([^\]]+)\]/) || [])[1].match(/'([^']+)'/g).map(x => x.slice(1, -1)).sort();
+  const cli = ['image/jpeg', 'image/webp', 'image/png', 'video/mp4', 'video/quicktime', 'video/webm'].filter(t => core.chatMediaCheck({ type: t, size: 1, duration: 1 }).ok).sort();
+  assert.deepStrictEqual(tipos, cli, 'los tipos que acepta el servidor y los que deja pasar la app se separaron');
+  ['select', 'insert', 'update', 'delete'].forEach(op => assert.ok(new RegExp('create policy chat_media_' + op + ' on storage\\.objects for ' + op + ' to authenticated').test(sql), 'falta la política ' + op + ' (el upsert y el enlace firmado necesitan SELECT)'));
+  assert.ok(!/to anon|to public/.test(sql), '🔴 nadie sin cuenta toca este bucket');
+});
+test('🔒 CABLEADO v649 · primero se sube, después existe el mensaje; y nada se pinta por innerHTML', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = sinComentarios(_srcApp1());
+  const a3 = sinComentarios(_srcApp3());
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  [[a4, 'function clientSendMedia('], [a3, 'function coachSendMedia(']].forEach(([src, fn]) => {
+    const b = cuerpo(src, fn);
+    const iSube = b.indexOf('await _chatMediaUpload('), iPush = b.indexOf('.push({from:');
+    assert.ok(iSube > 0 && iPush > iSube, `🔴 ${fn} crea el mensaje antes de subir el archivo`);
+    assert.ok(/catch\(e\)\{[^}]*return;\s*\}/.test(b), `🔴 ${fn}: si la subida falla, el mensaje no puede crearse igual`);
+    assert.ok(/chatMediaPath\(/.test(b), `${fn} arma la ruta a mano`);
+  });
+  assert.ok(/cloudWriteSealed\(/.test(cuerpo(a1, 'async function _chatMediaUpload(')), '🔴 un harness podría subir a producción');
+  const nodo = cuerpo(a1, 'function chatMediaNode(');
+  assert.ok(/chatMediaPathOk\(path,folderUid\)/.test(nodo) && !/innerHTML/.test(nodo), '🔴 el nodo del archivo tiene que validar la ruta y no usar innerHTML');
+  assert.ok(/chatMediaNode\(m,CUR\.clientId\)/.test(cuerpo(a4, 'function _paintMsgThread(')), 'el asesorado no ve los archivos');
+  assert.ok(/chatMediaNode\(m,clientId\)/.test(cuerpo(a3, 'function renderCoachChatThread(')), 'el coach no ve los archivos');
 });
 
 // ══════════════════════════════════════════════════════

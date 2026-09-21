@@ -167,6 +167,50 @@ chk('V3 el asesorado ve «Visto» UNA vez, bajo el último mensaje que su coach 
 await tema('light'); await sleep(150); await shot('visto-asesorado-claro');
 await tema('dark'); await sleep(150); await shot('visto-asesorado-oscuro'); await tema('light');
 
+// ═════ v649 · FOTO O VIDEO ═════
+// En localhost la subida está SELLADA (y así debe seguir): se sustituyen SOLO la subida, la URL
+// firmada y el selector de archivos — el resto del flujo es el real. La sonda
+// `_probe-chat-media.mjs` prueba esos tres contra el servidor de verdad.
+await ev(`(()=>{ window.__subidas=[]; window.__falla=false;
+  const cv=document.createElement('canvas'); cv.width=320; cv.height=240; const g=cv.getContext('2d'); g.fillStyle='#e76f51'; g.fillRect(0,0,320,240); g.fillStyle='#fff'; g.font='40px sans-serif'; g.fillText('TÉCNICA',60,135);
+  window.__img=cv.toDataURL('image/jpeg');
+  window._chatMediaUpload=async (path,blob,type)=>{ if(window.__falla)throw new Error('red'); window.__subidas.push({path,type,size:blob.size}); return path; };
+  window._chatMediaUrl=async path=>window.__img;
+  window.chatPickMedia=cb=>cb({blob:new Blob([new Uint8Array(1000)],{type:'image/jpeg'}),type:'image/jpeg',kind:'img'});
+  const U='11111111-2222-4333-8444-555555555555';
+  DB.clients=[{id:U,name:'Fer Foto',tier:'premium',routines:[]}]; CUR.clientId=U; CUR.loggedAs='client';
+  DB.msgs={[U]:[]};
+  showScreen('s-client'); const b=document.querySelector('.cntab[onclick*="cn-messages"]'); if(b)cnTab('cn-messages',b);
+  renderClientMsgs(U); })()`);
+await sleep(300);
+await ev(`document.querySelector('#cn-msg-composer .mattach').click()`); await sleep(500);
+const f1 = await ev(`(()=>{const U=CUR.clientId; const ms=DB.msgs[U]; const m=ms[ms.length-1]||{}; const img=document.querySelector('#cn-msg-thread .mmedia img');
+  return {subidas:window.__subidas.length, ruta:(window.__subidas[0]||{}).path||'', media:m.media||null, img:!!img&&img.getBoundingClientRect().height>40};})()`);
+chk('F1 el asesorado manda una foto: se sube a SU carpeta y se ve en el hilo', f1.subidas === 1 && /^11111111-2222-4333-8444-555555555555\/chat-/.test(f1.ruta) && f1.media && f1.media.kind === 'img' && f1.img, JSON.stringify(f1));
+await ev(`document.querySelector('#cn-msg-thread .mmedia').scrollIntoView({block:'center'})`);
+await tema('light'); await sleep(150); await shot('foto-asesorado-claro');
+await tema('dark'); await sleep(150); await shot('foto-asesorado-oscuro'); await tema('light');
+await ev(`(()=>{window.__falla=true; document.querySelector('#cn-msg-composer .mattach').click();})()`); await sleep(400);
+const f2 = await ev(`DB.msgs[CUR.clientId].length`);
+chk('F2 si la subida falla, NO aparece un mensaje roto', f2 === 1, `mensajes=${f2}`);
+await ev(`(()=>{window.__falla=false; DB.msgs[CUR.clientId].push({from:'coach',text:'📷 Foto',date:new Date().toISOString(),media:{path:'otra-persona/chat-x.jpg',kind:'img'}}); renderClientMsgs(CUR.clientId);})()`);
+await sleep(300);
+const f3 = await ev(`(()=>{const n=[...document.querySelectorAll('#cn-msg-thread .mmedia')]; const u=n[n.length-1]; return {txt:u?u.textContent:'', img:u?!!u.querySelector('img'):null};})()`);
+chk('F3 🔒 una ruta de OTRA carpeta no se pide ni se pinta', f3.img === false && /no disponible/.test(f3.txt), JSON.stringify(f3));
+// Coach: el mismo archivo en su chat, y un video suyo.
+await ev(`(()=>{ const U=CUR.clientId; showScreen('s-coach'); CUR.loggedAs='coach';
+  window.chatPickMedia=cb=>cb({blob:new Blob([new Uint8Array(2000)],{type:'video/mp4'}),type:'video/mp4',kind:'vid'});
+  DB.msgs[U]=DB.msgs[U].filter(m=>!(m.media&&/^otra/.test(m.media.path)));
+  openCoachChat(U); })()`);
+await sleep(400);
+await ev(`document.querySelector('#coach-chat .mattach').click()`); await sleep(500);
+const f4 = await ev(`(()=>{const U=CUR.clientId||DB.clients[0].id; const ult=window.__subidas[window.__subidas.length-1]||{};
+  return {imgs:document.querySelectorAll('#cchat-thread .mmedia img').length, videos:document.querySelectorAll('#cchat-thread .mmedia video').length, ruta:ult.path||'', tipo:ult.type||''};})()`);
+chk('F4 el coach ve la foto y manda un video a la carpeta DEL ASESORADO', f4.imgs === 1 && f4.videos === 1 && /^11111111-2222-4333-8444-555555555555\/chat-.*\.mp4$/.test(f4.ruta) && f4.tipo === 'video/mp4', JSON.stringify(f4));
+await tema('light'); await sleep(150); await shot('foto-coach-claro');
+const f5 = await ev(`(()=>{const b=document.querySelector('#coach-chat .mattach').getBoundingClientRect(); const c=document.querySelector('#cn-msg-composer .mattach'); return {coach:Math.round(Math.min(b.width,b.height))};})()`);
+chk('F5 el botón de adjuntar se puede tocar (≥40 px)', f5.coach >= 40, JSON.stringify(f5));
+
 // @@SECCIONES@@
 
 const ok = R.every(r => r[1]) && jsErrors.length === 0;

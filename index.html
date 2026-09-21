@@ -72,7 +72,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=648">
+<link rel="stylesheet" href="styles.css?v=649">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -801,6 +801,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
           <button type="button" onclick="clientQuickMsg(this.textContent)">🙏 ¡Gracias, coach!</button>
         </div>
         <div class="mrow" id="cn-msg-composer">
+          <button type="button" class="mattach" onclick="clientSendMedia()" aria-label="Enviar foto o video" title="Enviar foto o video"><span class="t-ic" data-ic="camera" data-ic-size="20">📷</span></button>
           <textarea class="mta" id="cn-msg-in" maxlength="1000" placeholder="Escribe a tu coach..." rows="1"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMsg()}"
             oninput="ar(this)"></textarea>
@@ -1395,19 +1396,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=648"></script>
-<script src="muscle-map.js?v=648"></script>
-<script src="exercise-muscles.js?v=648"></script>
+<script src="avi-core.js?v=649"></script>
+<script src="muscle-map.js?v=649"></script>
+<script src="exercise-muscles.js?v=649"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=648"></script>
-<script src="app-2-login.js?v=648"></script>
-<script src="app-3-coach.js?v=648"></script>
-<script src="app-4-entreno.js?v=648"></script>
-<script src="app-5-salud.js?v=648"></script>
-<script src="app-6-extra.js?v=648"></script>
-<script src="app-7-community.js?v=648"></script>
+<script src="app-1-infra.js?v=649"></script>
+<script src="app-2-login.js?v=649"></script>
+<script src="app-3-coach.js?v=649"></script>
+<script src="app-4-entreno.js?v=649"></script>
+<script src="app-5-salud.js?v=649"></script>
+<script src="app-6-extra.js?v=649"></script>
+<script src="app-7-community.js?v=649"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1985,6 +1986,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="cchat-qr-ed-b"><button type="button" class="btn bg bsm" onclick="coachQrEditClose()">Cancelar</button><button type="button" class="btn bp bsm" onclick="coachQrEditSave()">Guardar</button></div>
   </div>
   <div class="cchat-composer">
+    <button type="button" class="mattach" onclick="coachSendMedia()" aria-label="Enviar foto o video" title="Enviar foto o video"><span class="t-ic" data-ic="camera" data-ic-size="20">📷</span></button>
     <textarea id="cchat-in" rows="1" placeholder="Escribe un mensaje…" oninput="_cchatGrow(this)"></textarea>
     <button class="cchat-send" onclick="sendCoachChatMsg()" aria-label="Enviar">➤</button>
   </div>

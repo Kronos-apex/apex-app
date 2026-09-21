@@ -717,6 +717,12 @@ html[data-theme="light"] .mta {
 .mctx.r{align-self:flex-end}
 .mctx-h{font-weight:700;color:var(--t1)}
 .mctx-l{overflow-wrap:anywhere}
+/* v649 · foto o video dentro de la burbuja */
+.mb.mb-media{padding:4px;max-width:70%}
+.mmedia{font-size:12px;min-width:120px;min-height:60px;display:flex;align-items:center;justify-content:center;border-radius:10px;overflow:hidden}
+.mmedia img,.mmedia video{display:block;width:100%;max-height:340px;object-fit:cover;border-radius:10px;cursor:pointer;background:var(--br)}
+.mattach{background:none;border:none;color:var(--gt);cursor:pointer;min-width:40px;min-height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px}
+.mattach:active{transform:scale(.92)}
 .mt.r{text-align:right}
 .mrow{display:flex;gap:7px;padding:10px 14px;border-top:1px solid var(--br);align-items:flex-end}
 /* v316 (estudio, mejora 6): respuestas rápidas del asesorado — un toque y sale el mensaje */

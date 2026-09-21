@@ -4196,7 +4196,10 @@ function _paintMsgThread(con,msgs,coachReadAt){
   (msgs||[]).forEach((m,_i)=>{
     // Vista del CLIENTE: lo MÍO (from==='client') va a la derecha/verde (cs); el coach a la izquierda (cl).
     const mine=m.from!=='coach';
-    const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;b.textContent=m.text||'';con.appendChild(b);
+    const b=document.createElement('div');b.className=`mb ${mine?'cs':'cl'}`;
+    if(m.media&&typeof chatMediaNode==='function'){ b.classList.add('mb-media'); b.appendChild(chatMediaNode(m,CUR.clientId)); }
+    else b.textContent=m.text||'';
+    con.appendChild(b);
     if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,mine,true));
     const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}${_i===_visto?' · Visto':''}`;con.appendChild(t);
   });
@@ -4215,6 +4218,29 @@ function _clientSend(text,ctx){
   const _cuerpo=(text.length>80?text.slice(0,77)+'…':text)+(ctx?' · '+ctx.rutina:'');
   pushToClient('_coach','💬 '+clientName+' te escribió',_cuerpo,{type:'message',chatId:clientId,tag:'avi-chat-coach'});
   renderClientMsgs(clientId);toast('💬 Mensaje enviado a tu coach');
+}
+// v649 · foto o video a su coach. Va a SU carpeta del bucket privado; si la subida falla no se
+//    crea el mensaje (un mensaje que apunta a un archivo que no existe es peor que ninguno).
+let _mediaSubiendo=false;
+function clientSendMedia(){
+  const clientId=CUR.clientId; if(!clientId||_mediaSubiendo)return;
+  if(typeof chatPickMedia!=='function')return;
+  chatPickMedia(async prep=>{
+    const id=(typeof uid==='function'?uid():String(Date.now()));
+    const path=chatMediaPath(clientId,id,prep.kind);
+    if(!path){ toast('No se pudo preparar el envío'); return; }
+    _mediaSubiendo=true; toast(prep.kind==='vid'?'Subiendo video…':'Subiendo foto…');
+    try{ await _chatMediaUpload(path,prep.blob,prep.type); }
+    catch(e){ _mediaSubiendo=false; toast('No se pudo enviar. Revisa tu conexión e inténtalo de nuevo'); return; }
+    _mediaSubiendo=false;
+    if(!DB.msgs[clientId])DB.msgs[clientId]=[];
+    const texto=prep.kind==='vid'?'🎥 Video':'📷 Foto';
+    DB.msgs[clientId].push({from:'client',text:texto,date:new Date().toISOString(),media:{path,kind:prep.kind}});
+    svNow('ax_m',DB.msgs);
+    const clientName=DB.clients.find(c=>c.id===clientId)?.name||'Asesorado';
+    pushToClient('_coach','💬 '+clientName+' te escribió',prep.kind==='vid'?'Te mandó un video':'Te mandó una foto',{type:'message',chatId:clientId,tag:'avi-chat-coach'});
+    renderClientMsgs(clientId); toast(prep.kind==='vid'?'Video enviado a tu coach':'Foto enviada a tu coach');
+  });
 }
 function sendClientMsg(){
   // Guard ANTES de limpiar (aviso Julián v316): sin sesión el texto no se borra en silencio.
