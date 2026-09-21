@@ -20746,7 +20746,9 @@ test('🔒 CABLEADO v648 · el coach estampa en el perfil y el celular del aseso
   const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
   const mark = cuerpo(a3, 'function markCoachRead(');
   assert.ok(/coachReadShouldStamp\(/.test(mark) && /c\.coachReadAt\s*=\s*ahora/.test(mark) && /sv\('ax_c'/.test(mark), '🔴 leer ya no le avisa al asesorado');
-  assert.ok(/row\.profile&&row\.profile\.coachReadAt/.test(cuerpo(a1, 'async function _pollAuthClient(')), '🔴 el refresco del asesorado no trae el «Visto»');
+  // La LÍNEA con su guarda, no solo el nombre: un `if(false)` delante deja el identificador intacto (v579).
+  const poll = cuerpo(a1, 'async function _pollAuthClient(');
+  assert.ok(/row\.profile&&row\.profile\.coachReadAt/.test(poll) && /^\s*if\(_yo&&_rv&&_rv!==_yo\.coachReadAt\)\{\s*$/m.test(poll) && /_yo\.coachReadAt=_rv;/.test(poll), '🔴 el refresco del asesorado no trae el «Visto»');
   const pint = cuerpo(a4, 'function _paintMsgThread(');
   assert.ok(/chatSeenIndex\(msgs,coachReadAt\)/.test(pint) && /_i===_visto\?' · Visto'/.test(pint), '🔴 el hilo del asesorado no pinta el «Visto»');
   const rcm = cuerpo(a4, 'function renderClientMsgs(');
