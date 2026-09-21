@@ -2451,6 +2451,47 @@ function mergeMsgs(local, cloud, cap) {
   return merged.x || [];
 }
 
+// ── v645 · ELIMINAR LA CONVERSACIÓN — SOLO PARA QUIEN LA ELIMINA ────────────────────────
+// Decisión del PO (21-sep-2026): como «Vaciar chat» de WhatsApp. El otro conserva su copia —
+// al coach no se le puede borrar el «me duele la rodilla» ni un pago acordado.
+// 🔴 NO se borra nada de `msgs`: es APPEND-ONLY y se fusiona por UNIÓN (v625), así que un
+//    `filter` resucitaría en la siguiente fusión y, peor, se lo quitaría TAMBIÉN al otro. Cada
+//    lado guarda una MARCA — «no me enseñes nada de esta fecha para atrás» — y la vista filtra.
+//    Una marca solo avanza (`chatClearLater`), así que ninguna copia vieja la deshace.
+// 🔒 La marca es la fecha del ÚLTIMO MENSAJE QUE SE ESTABA VIENDO, no el reloj del teléfono:
+//    un mensaje que el otro escribió sin conexión antes de que se borrara y sube después, o uno
+//    cuyo teléfono va adelantado, es NUEVO para quien borró y tiene que llegarle.
+function chatClearMark(list) {
+  let best = null;
+  (Array.isArray(list) ? list : []).forEach(m => {
+    const t = new Date(m && m.date).getTime();
+    if (Number.isFinite(t) && (best === null || t > best)) best = t;
+  });
+  return best === null ? null : new Date(best).toISOString();
+}
+function chatClearLater(a, b) {
+  const ta = new Date(a).getTime(), tb = new Date(b).getTime();
+  if (!Number.isFinite(ta)) return Number.isFinite(tb) ? b : null;
+  if (!Number.isFinite(tb)) return a;
+  return tb > ta ? b : a;
+}
+// Mapa {clientId: marca} del coach: gana la marca más reciente por asesorado.
+function chatClearMapMerge(a, b) {
+  const out = {};
+  [a, b].forEach(src => {
+    if (!src || typeof src !== 'object') return;
+    Object.keys(src).forEach(k => { const v = chatClearLater(out[k], src[k]); if (v) out[k] = v; });
+  });
+  return out;
+}
+// Lo que esta persona ve: solo lo POSTERIOR a su marca. Sin marca válida, todo.
+function msgsVisible(list, clearedAt) {
+  const arr = Array.isArray(list) ? list : [];
+  const c = new Date(clearedAt).getTime();
+  if (!Number.isFinite(c)) return arr;
+  return arr.filter(m => new Date(m && m.date).getTime() > c);
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -11492,6 +11533,10 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeClientArrays,
     mergePRs,
     mergeMsgs,
+    chatClearMark,
+    chatClearLater,
+    chatClearMapMerge,
+    msgsVisible,
     mergeAuthRow,
     parseOAuthReturn,
     _msgKey,

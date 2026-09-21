@@ -4109,20 +4109,52 @@ function markMsgsRead(){
 function updateMsgBadge(clientId){
   const badge=document.getElementById('msg-badge');if(!badge)return;
   const lastRead=localStorage.getItem(`msg_read_${clientId}`);
-  const msgs=DB.msgs[clientId]||[];
+  const msgs=_clientMsgs(clientId);
   const unread=msgs.filter(m=>m.from==='coach'&&(!lastRead||new Date(m.date)>new Date(lastRead))).length;
   if(unread>0){badge.setAttribute('data-count',unread>9?'9+':String(unread));}
   else{badge.removeAttribute('data-count');}
 }
 
+// ══════════ v645 · ELIMINAR LA CONVERSACIÓN — SOLO PARA EL ASESORADO ══════════
+// Su coach conserva la suya (decisión del PO). No se toca `DB.msgs` (append-only, se fusiona por
+// unión): la marca `chatClearedAt` vive en SU perfil —que se fusiona a tres vías (v623), así que
+// el panel del coach no se la pisa— y todo lector del chat de este lado pasa por `_clientMsgs`.
+function _clientMsgs(clientId){
+  const ms=(DB.msgs&&DB.msgs[clientId])||[];
+  const c=(DB.clients||[]).find(x=>x.id===clientId);
+  return (typeof msgsVisible==='function')?msgsVisible(ms,c&&c.chatClearedAt):ms;
+}
+// Dos toques sobre el propio botón y se desarma solo (regla v568: sin `confirm()`).
+function _clientChatDelDisarm(btn){
+  if(!btn||btn.dataset.armed!=='1')return;
+  btn.dataset.armed=''; btn.classList.remove('armed'); btn.textContent='Eliminar chat';
+}
+function clientChatAskDelete(btn){
+  const clientId=CUR.clientId; if(!clientId||!btn)return;
+  const c=(DB.clients||[]).find(x=>x.id===clientId); if(!c)return;
+  const vis=_clientMsgs(clientId); if(!vis.length)return;
+  if(btn.dataset.armed!=='1'){
+    btn.dataset.armed='1'; btn.classList.add('armed'); btn.textContent='¿Seguro? Toca otra vez';
+    toast('Se borra solo para ti. Tu coach conserva su copia');
+    setTimeout(()=>_clientChatDelDisarm(btn),6000);
+    return;
+  }
+  const v=chatClearLater(c.chatClearedAt,chatClearMark(vis)); if(v)c.chatClearedAt=v;
+  svNow('ax_c',DB.clients);
+  markMsgsRead();
+  renderClientMsgs(clientId);
+  toast('Listo, la conversación ya no aparece para ti');
+}
 function renderClientMsgs(clientId){
-  const msgs=DB.msgs[clientId]||[];const con=document.getElementById('cn-msg-thread');con.innerHTML='';
+  const msgs=_clientMsgs(clientId);const con=document.getElementById('cn-msg-thread');con.innerHTML='';
+  const del=document.getElementById('cn-msg-del');
   const composer=document.getElementById('cn-msg-composer');
   const quick=document.getElementById('cn-msg-quick'); // v316: respuestas rápidas
   // El chat es SOLO-COACH (Premium + Coach). ESCRIBIR sigue siendo lo premium; LEER lo que ya
   // se habló, no. `chatViewMode` (avi-core, puro) decide cuál de los 3 estados toca — ver ahí
   // por qué el candado ya no se come el historial (v584, caso Samuel: 40 mensajes ocultos).
   const _vista=chatViewMode(DB.clients.find(x=>x.id===clientId),msgs);
+  if(del){ _clientChatDelDisarm(del); del.style.display=(msgs.length&&_vista!=='lock')?'':'none'; }
   if(_vista!=='open'){
     if(composer)composer.style.display='none';
     if(quick)quick.style.display='none';

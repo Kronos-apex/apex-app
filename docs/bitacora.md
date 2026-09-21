@@ -4,6 +4,38 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v645: eliminar la conversación, solo para quien la elimina
+
+- **Pedido del PO:** *«si alguien quiere eliminar la conversación en AVI hoy no se puede»*. Dos decisiones
+  suyas, tomadas con las opciones delante: **se borra solo para quien la borra** (como «Vaciar chat» de
+  WhatsApp — el otro conserva su copia) y **pueden los dos, coach y asesorado**. La razón de fondo: al coach no
+  se le puede borrar un «me duele la rodilla», un pago acordado o lo hablado con un menor porque el asesorado
+  vació su chat.
+- **Por qué NO se toca el hilo.** `msgs` es append-only y se fusiona por UNIÓN desde v625 (el hilo que pasó de
+  29 mensajes a 2): un `filter` resucitaría en la siguiente fusión y, peor, **se lo quitaría también al otro**.
+  Cada lado guarda una MARCA —«no me enseñes nada de esta fecha para atrás»— y solo la vista filtra. La marca
+  solo AVANZA (`chatClearLater`), así que ninguna copia vieja devuelve lo eliminado.
+- 🔒 **La marca es la fecha del ÚLTIMO mensaje que se estaba viendo, no el reloj del teléfono**
+  (`chatClearMark`): un mensaje que el otro escribió sin conexión antes del borrado y sube después —o uno cuyo
+  teléfono va adelantado— es NUEVO para quien borró y le tiene que llegar. Con el reloj se lo comería.
+- **Dónde vive cada marca.** El coach: `ax_msgclear` {clientId: fecha} en `coach_settings.mc` (las tres piezas
+  de v321 + hidratación con fusión «gana la más reciente»; `coach_settings_patch` fusiona cualquier clave, sin
+  migración). El asesorado: `chatClearedAt` en SU perfil, que se fusiona a tres vías (v623) — el panel del coach
+  abierto desde antes no se la pisa (test explícito).
+- **Todos los lectores pasan por la vista filtrada** (`_coachMsgs` / `_clientMsgs`): bandeja, hilo, preview de la
+  ficha, orden por atención y badges del coach; hilo y badge del asesorado. `_sinConversar` mira el hilo ENTERO a
+  propósito: quien eliminó sí ha hablado con esa persona.
+- **Interfaz.** Coach: papelera en la barra del chat. Asesorado: «Eliminar chat» junto al título. Los dos de **dos
+  toques sobre el propio botón**, desarmándose a los 6 s (v568, sin `confirm()`), y el aviso dice que el otro
+  conserva su copia. El botón solo aparece si hay algo que eliminar.
+- **Datos reales antes de construir** (respaldo del 20-sep): 13 conversaciones, 99 mensajes, 0 fechas fuera de
+  formato ISO — el filtro compara fechas y no hay ninguna que lo engañe.
+- **QA.** Suite **1280 → 1287** en los cuatro modos, hook, matriz nueva `scripts/e2e/_sabotaje-v645.mjs` **9/9
+  muerden**, harness nuevo `_verify-eliminar-chat` **15/15** con capturas MIRADAS en claro y oscuro.
+  🔁 El candado de v589 que cuenta los ajustes del coach (7 → 8) cayó a propósito y se re-encuadró con su razón.
+  🔴 Dos fallos míos cazados antes de servir: el recorte de un test se comía la función vecina (que sí escribe el
+  hilo), y el icono de la papelera volvía con otro color al desarmarse.
+
 ## ⏮️ 2026-09-20 — v644: el calentamiento sigue al PLAN, y las 14 piezas muertas dejan de estarlo
 
 - **La decisión del PO, que cambió el mecanismo que yo proponía.** Yo había medido el problema (de cada grupo

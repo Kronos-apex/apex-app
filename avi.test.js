@@ -17371,7 +17371,9 @@ test('🔒 v589 · el nombre corto de cada ajuste sale de UNA tabla, no escrito 
   const src = _srcApp1();
   const mapa = (src.match(/const _COACH_SETTINGS_COL=\{([^}]*)\}/) || [])[1] || '';
   const claves = mapa.split(',').map(x => x.split(':')[0].trim()).filter(Boolean);
-  assert.strictEqual(claves.length, 7, 'cambió el número de ajustes del coach: revisa el mapa');
+  // 8 desde v645 (`mc`, chats que el coach eliminó para él). `coach_settings_patch` fusiona
+  // cualquier clave de primer nivel con `||`, así que una clave nueva no pide migración.
+  assert.strictEqual(claves.length, 8, 'cambió el número de ajustes del coach: revisa el mapa');
   // La lista de claves y el objeto que se guarda se DERIVAN del mismo sitio: si alguien vuelve a
   // escribir los nombres cortos a mano en `_coachSettingsObj`, los dos lados se separan en
   // silencio y el patch escribiría en una clave que nadie lee (clase del espejo del .sql).
@@ -20533,6 +20535,90 @@ test('🔴 CABLEADO v644 · el desplazamiento sale de la rutina GUARDADA y nadie
     assert.ok(!/wuRotForDate/.test(f), `🔴 volvió la rotación por FECHA (archivo ${n}): el PO la descartó`);
   });
   assert.ok(!/\{rot:[^}]*Date/.test(a6 + a3), '🔴 alguien le está pasando una fecha como desplazamiento');
+});
+
+// ══════════════════════════════════════════════════════
+// v645 · ELIMINAR LA CONVERSACIÓN — SOLO PARA QUIEN LA ELIMINA
+// ══════════════════════════════════════════════════════
+const _chatHilo = () => [
+  { from: 'client', text: 'me duele la rodilla', date: '2026-09-20T10:00:00.000Z' },
+  { from: 'coach',  text: 'cambiemos la sentadilla', date: '2026-09-20T10:05:00.000Z' },
+  { from: 'client', text: 'gracias', date: '2026-09-20T10:06:00.000Z' },
+];
+test('v645 · la marca es la fecha del ÚLTIMO mensaje visto, y tapa todo lo anterior', () => {
+  const h = _chatHilo();
+  const marca = core.chatClearMark(h);
+  assert.strictEqual(marca, '2026-09-20T10:06:00.000Z');
+  assert.strictEqual(core.msgsVisible(h, marca).length, 0, 'lo eliminado sigue a la vista');
+  assert.strictEqual(core.chatClearMark([]), null, 'un hilo vacío no tiene marca');
+  assert.strictEqual(core.msgsVisible(h, null).length, 3, 'sin marca se ve todo');
+  assert.strictEqual(core.msgsVisible(h, 'basura').length, 3, 'una marca ilegible no puede esconder el hilo');
+});
+test('🔴 v645 · lo que el otro escribió SIN CONEXIÓN antes del borrado y sube después, SÍ llega', () => {
+  // La marca NO es el reloj: el coach escribió a las 10:10 sin red, la persona borró a las 10:20
+  // viendo hasta las 10:06, y el mensaje sube a las 10:30. Para ella es nuevo.
+  const h = _chatHilo();
+  const marca = core.chatClearMark(h);
+  const tarde = { from: 'coach', text: '¿cómo sigue la rodilla?', date: '2026-09-20T10:10:00.000Z' };
+  const unido = core.mergeMsgs(h, h.concat([tarde]));
+  assert.deepStrictEqual(core.msgsVisible(unido, marca).map(m => m.text), ['¿cómo sigue la rodilla?']);
+});
+test('🔴 v645 · eliminar NO le quita nada al otro: el hilo compartido sigue entero', () => {
+  // Es la propiedad que decidió el PO. La marca de uno no entra en `msgs`, así que la fusión de la
+  // nube (unión, v625) le sigue dando al otro el hilo completo.
+  const h = _chatHilo();
+  const marcaAsesorado = core.chatClearMark(h);
+  assert.strictEqual(core.mergeMsgs(h, h).length, 3);
+  assert.strictEqual(core.msgsVisible(h, undefined).length, 3, 'el coach sin marca propia lo ve todo');
+  assert.strictEqual(core.msgsVisible(h, marcaAsesorado).length, 0);
+});
+test('v645 · una marca solo AVANZA: una copia vieja no devuelve lo eliminado', () => {
+  const vieja = '2026-09-01T00:00:00.000Z', nueva = '2026-09-20T10:06:00.000Z';
+  assert.strictEqual(core.chatClearLater(nueva, vieja), nueva);
+  assert.strictEqual(core.chatClearLater(vieja, nueva), nueva);
+  assert.strictEqual(core.chatClearLater(undefined, nueva), nueva);
+  assert.strictEqual(core.chatClearLater(nueva, undefined), nueva);
+  assert.strictEqual(core.chatClearLater(undefined, undefined), null);
+  const m = core.chatClearMapMerge({ a: nueva, b: vieja }, { a: vieja, b: nueva, c: vieja });
+  assert.deepStrictEqual(m, { a: nueva, b: nueva, c: vieja });
+});
+test('🔒 v645 · el panel del coach NO le pisa al asesorado su marca (fusión de tres vías del perfil)', () => {
+  // El panel abrió la ficha ANTES de que la persona eliminara el chat: su copia no trae la marca.
+  const base = { name: 'Ana', water: 1 };
+  const panel = { name: 'Ana', water: 1, deload: { on: true } };
+  const nube = { name: 'Ana', water: 1, chatClearedAt: '2026-09-20T10:06:00.000Z' };
+  const m = core.mergeProfile3(base, panel, nube);
+  assert.strictEqual(m.chatClearedAt, '2026-09-20T10:06:00.000Z', '🔴 el coach le devolvió el chat borrado');
+  assert.deepStrictEqual(m.deload, { on: true });
+});
+test('🔒 CABLEADO v645 · eliminar escribe la MARCA, nunca el hilo', () => {
+  const a3 = sinComentarios(_srcApp3());
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const cuerpo = (src, fn, fin) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf(fin, i)); };
+  const co = cuerpo(a3, 'function coachChatAskDelete(', '\n}\n');
+  const cl = cuerpo(a4, 'function clientChatAskDelete(', '\n}\n');
+  [co, cl].forEach((b, n) => {
+    assert.ok(!/ax_m'|DB\.msgs/.test(b), `🔴 eliminar (${n ? 'asesorado' : 'coach'}) toca el hilo compartido: se lo borraría al otro`);
+    assert.ok(/chatClearLater\(/.test(b) && /chatClearMark\(/.test(b), 'la marca no sale del motor');
+    assert.ok(/dataset\.armed/.test(b) && !/confirm\(/.test(b), 'eliminar tiene que ser de dos toques y sin confirm() (v568)');
+  });
+  assert.ok(/sv\('ax_msgclear'/.test(co), 'la marca del coach no viaja a sus ajustes');
+  assert.ok(/svNow\('ax_c'/.test(cl) && /c\.chatClearedAt=/.test(cl), 'la marca del asesorado no va a su perfil');
+});
+test('🔒 CABLEADO v645 · TODO lector del chat pasa por la vista filtrada', () => {
+  const a3 = sinComentarios(_srcApp3());
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  // Hasta el cierre de la función (la llave en columna 0), no hasta la siguiente `function`: la
+  // vecina de `renderCoachChatThread` es `async` y el recorte se comía su escritura del hilo.
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  ['function renderMsgs(', 'function renderCoachChatThread(', 'function renderDetailMsgs('].forEach(fn =>
+    assert.ok(!/DB\.msgs\[/.test(cuerpo(a3, fn)), `🔴 ${fn} lee el hilo crudo: el coach vería lo que eliminó`));
+  const home = cuerpo(a3, 'function renderClients(');
+  assert.ok(!/DB\.msgs\[/.test(home), '🔴 la lista de asesorados ordena por mensajes que el coach eliminó');
+  ['function renderClientMsgs(', 'function updateMsgBadge('].forEach(fn =>
+    assert.ok(!/DB\.msgs\[/.test(cuerpo(a4, fn)), `🔴 ${fn} lee el hilo crudo: el asesorado vería lo que eliminó`));
+  // Y la marca del coach entra al arrancar desde sus ajustes, fusionada (una marca solo avanza).
+  assert.ok(/_cs\.mc[\s\S]{0,200}chatClearMapMerge\(/.test(a3), 'la marca del coach no se hidrata de la nube');
 });
 
 // ══════════════════════════════════════════════════════

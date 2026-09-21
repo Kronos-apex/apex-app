@@ -1440,6 +1440,8 @@ pantalla») en un dibujo, donde además no hay nada que pueda romperse a gritos.
 - 🔴 **UNA MATRIZ DE SABOTAJE ESCRITA EN `scripts/` NO EXISTE: ese prefijo está en `.gitignore`.** Las dos de v642/v643 nacieron ahí y se habrían perdido con la máquina, obligando a reescribirlas cada vez que alguien toque esos candados — **exactamente el problema que v473 cerró versionando la primera en `scripts/e2e/`**. Van en `scripts/e2e/`, y al moverlas hay que corregir la raíz (desde ahí son DOS niveles) y **re-correrlas donde viven ahora**, o se versiona una matriz que no corre. (v643)
 - ⚠️ **DOS TRAMPAS AL MONTAR UN HARNESS QUE EJECUTA CÓDIGO DE LA APP EN UNA PÁGINA DE PRUEBA.** (1) **`new Function(texto)()` define las funciones en el ámbito de ESA función, no en el global**: `avi-core.js` cargado así deja `warmupWarnZones` y `limitationsFor` como `undefined`, las guardas `typeof x==='function'` de la app las esquivan sin lanzar y **la rama se apaga en silencio** — el «defecto» sale del montaje. Se inyecta con un `<script>` (`textContent` + `appendChild`), que sí corre en ámbito global. (2) **En una URL `data:` el almacenamiento está APAGADO y `localStorage` LANZA al leerlo**: hay que ponerle un sustituto en memoria con `Object.defineProperty(window,'localStorage',…)`. Las dos las cazó el control de montaje en la primera corrida. (v642)
 
+- 🔴 **«ELIMINAR» EN UNA COLECCIÓN APPEND-ONLY NO ES BORRAR: ES UNA MARCA POR LADO, Y LA VISTA FILTRA.** v625 dijo «un mensaje no se edita ni se borra» y v645 añadió eliminar la conversación sin romper eso: `msgs` sigue siendo unión y nadie le quita un elemento; cada lado guarda «no me enseñes nada hasta aquí» (coach: `ax_msgclear` en `coach_settings.mc`; asesorado: `chatClearedAt` en su perfil) y **todo lector pasa por `_coachMsgs`/`_clientMsgs`**. **Reglas: (1) cuando el producto pide borrar lo que la sincronización trata como indeleble, pregunta primero PARA QUIÉN se borra — «solo para mí» se resuelve sin tocar el dato compartido y «para los dos» necesita lápidas; (2) la marca se toma del último elemento VISTO, nunca del reloj, o se come lo que el otro escribió sin red; (3) la marca solo avanza (máximo), así que es inmune a copias viejas; (4) al añadir un filtro de vista, `grep` de TODOS los lectores de la colección — los que pintan, los que cuentan no leídos y los que ordenan — y un test que prohíba leer el crudo en cada uno.** (v645)
+
 ---
 
 ## 🗺️ ROADMAP
@@ -1635,7 +1637,7 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-09-20 (**v644 — EL CALENTAMIENTO SIGUE AL PLAN, EN PRODUCCIÓN**: decisión del PO
+*Última actualización: 2026-09-21 (**v645 — ELIMINAR LA CONVERSACIÓN, SOLO PARA QUIEN LA ELIMINA**: decisión del PO —como «Vaciar chat» de WhatsApp, coach y asesorado pueden, cada uno para sí—. El hilo compartido NO se toca (append-only, unión de v625): cada lado guarda una marca con la fecha del último mensaje visto y la vista filtra. Suite **1287**, `_sabotaje-v645` 9/9, `_verify-eliminar-chat` 15/15) · (**v644 — EL CALENTAMIENTO SIGUE AL PLAN, EN PRODUCCIÓN**: decisión del PO
 —*«nada de rotación a menos que se modifique la rutina»*— contra la rotación por DÍA que yo había construido, y
 es mejor producto: un calentamiento se hace bien cuando la persona se lo sabe. `wuRotForRoutine` (PURA) deriva
 el desplazamiento de los ejercicios del plan GUARDADO (nunca de la rutina ya adaptada por el ánimo) y `wuTake`

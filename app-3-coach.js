@@ -50,14 +50,14 @@ function renderClients(){
   const _ldone=_leadsDone(); // leads ya atendidos (registro del coach) → no vuelven a subir al tope
   const _optsById={};
   DB.clients.forEach(c=>{
-    const ms=DB.msgs[c.id];
+    const ms=_coachMsgs(c.id);
     const o={};
     if(ms&&ms.length){ const iso=_reads[c.id]; o.msgs=ms; o.lastReadTs=iso?Date.parse(iso):null; }
     if(_ldone[c.id]) o.leadsDone=_ldone;
     if(Object.keys(o).length) _optsById[c.id]=o;
   });
   sortClientsByAttention(DB.clients,DB.history,undefined,_optsById).forEach(({c,r})=>{
-    const ms=DB.msgs[c.id]||[];const last=ms[ms.length-1];
+    const ms=_coachMsgs(c.id);const last=ms[ms.length-1];
     // Rutina del día o mañana
     const _days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
     const _todayName=_days[new Date().getDay()];
@@ -907,7 +907,7 @@ function _cwqAdd(col,id,val,nombre){
 //    Solo aporta su identidad (`cs:<clave corta>`, una entrada por ajuste para que cambiar el
 //    Nequi no borre de la cola la biblioteca) y su forma de escritura (el patch del servidor).
 const _CS_NOMBRE={e:'biblioteca de ejercicios',nequi:'número de Nequi',cn:'tu nombre',
-  ce:'ejercicios propios',site:'tu sitio web',mr:'chats leídos',ld:'leads atendidos'};
+  ce:'ejercicios propios',site:'tu sitio web',mr:'chats leídos',ld:'leads atendidos',mc:'chats eliminados'};
 function _cwqSettingId(){ return _authUid||'coach'; }
 function _cwqAddSetting(short,val){ return _cwqAdd('cs:'+short,_cwqSettingId(),val,'Tus ajustes'); }
 function _cwqDropSetting(short){ _cwqDrop('cs:'+short,_cwqSettingId()); }
@@ -1255,6 +1255,11 @@ async function _enterCoachAuth(authUser, ownRow){
         const mergedL={...locL};
         Object.keys(_cs.ld).forEach(id=>{ if(!mergedL[id]||new Date(_cs.ld[id])>new Date(mergedL[id]))mergedL[id]=_cs.ld[id]; });
         localStorage.setItem('ax_leadsdone',JSON.stringify(mergedL));
+      }
+      // v645 · chats que el coach eliminó para él: gana la marca más reciente (una marca solo
+      // avanza), así que un aparato con la copia vieja no le devuelve la conversación.
+      if(_cs.mc && typeof _cs.mc==='object' && typeof chatClearMapMerge==='function'){
+        localStorage.setItem('ax_msgclear',JSON.stringify(chatClearMapMerge(_coachClears(),_cs.mc)));
       }
     }catch(e){ warn('AVI: hidratar coach_settings falló (no bloquea):',e&&e.message); }
   }
@@ -3775,7 +3780,7 @@ function renderDetailMsgs(id){
   // completa (openCoachChat, botón «Abrir chat»). Aquí va solo un PREVIEW de los últimos 2
   // mensajes, SOLO LECTURA. El leído NO se marca por abrir el PERFIL (v321, aviso Lucas): se
   // abre para editar rutina/medidas sin ver el chat → limpiaría el badge en falso.
-  const msgs=DB.msgs[id]||[];const con=document.getElementById('d-msgs');if(!con)return;con.innerHTML='';
+  const msgs=_coachMsgs(id);const con=document.getElementById('d-msgs');if(!con)return;con.innerHTML='';
   if(!msgs.length){con.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin mensajes. Abre el chat para escribir el primero 👇</div>';return}
   const prev=msgs.slice(-2);
   if(msgs.length>prev.length){
@@ -3791,10 +3796,10 @@ function renderDetailMsgs(id){
 }
 function renderMsgs(){
   const con=document.getElementById('msgs-list');
-  const list=DB.clients.map(c=>{const ms=DB.msgs[c.id]||[];return ms.length?{c,last:ms[ms.length-1],count:ms.length}:null}).filter(Boolean).sort((a,b)=>new Date(b.last.date)-new Date(a.last.date));
+  const list=DB.clients.map(c=>{const ms=_coachMsgs(c.id);return ms.length?{c,last:ms[ms.length-1],count:ms.length}:null}).filter(Boolean).sort((a,b)=>new Date(b.last.date)-new Date(a.last.date));
   // Badge on sidebar msgs item: count clients with last msg from client (unread by coach)
   const unreadClients=DB.clients.filter(c=>{
-    const ms=DB.msgs[c.id]||[];
+    const ms=_coachMsgs(c.id);
     const lastClientMsg=ms.filter(m=>m.from==='client').slice(-1)[0];
     if(!lastClientMsg)return false;
     const lastRead=_coachReadOf(c.id);
@@ -3805,7 +3810,7 @@ function renderMsgs(){
   con.innerHTML='';
   if(!list.length)con.innerHTML='<div class="empty" style="padding:28px 20px"><div class="eico" style="color:var(--g2)">'+_coIco('chat',34,'💬')+'</div><div class="etxt">Todavía no hay conversaciones</div><div class="esub">Toca a cualquiera de abajo y escríbele el primer mensaje</div></div>';
   list.forEach(({c,last,count})=>{
-    const lastClientMsg=(DB.msgs[c.id]||[]).filter(m=>m.from==='client').slice(-1)[0];
+    const lastClientMsg=_coachMsgs(c.id).filter(m=>m.from==='client').slice(-1)[0];
     const lastRead=_coachReadOf(c.id);
     const hasUnread=lastClientMsg&&(!lastRead||new Date(lastClientMsg.date)>new Date(lastRead));
     const div=document.createElement('div');div.className='cli';
@@ -3822,6 +3827,8 @@ function renderMsgs(){
 // justo que la gente no arranca. Así que el hueco lo ocupa la lista de a quién le falta el
 // primer mensaje, a un toque de escribirle. Sin flujo nuevo: reusa openCoachChat.
 // Los suspendidos no aparecen (no son un pendiente, son bajas).
+// 🔒 Mira el hilo ENTERO, no lo visible (v645): quien eliminó la conversación sí ha hablado con
+//    esa persona, y decirle «nunca han cruzado un mensaje» sería falso.
 function _sinConversar(){
   return (DB.clients||[]).filter(c=>c&&!c.suspended&&!((DB.msgs[c.id]||[]).length));
 }
@@ -3861,6 +3868,46 @@ function markCoachRead(id){
   else { try{ localStorage.setItem('ax_msgreads',JSON.stringify(m)); }catch(e){} }
 }
 
+// ══════════ v645 · ELIMINAR LA CONVERSACIÓN — SOLO PARA EL COACH ══════════
+// El asesorado conserva la suya (decisión del PO). No se toca `DB.msgs`: se guarda una marca en
+// `ax_msgclear` {clientId: iso}, que viaja en coach_settings.mc a sus otros aparatos, y TODO
+// lector del chat del lado del coach pasa por `_coachMsgs`. El motor está en avi-core.
+function _coachClears(){ try{ return JSON.parse(localStorage.getItem('ax_msgclear')||'{}')||{}; }catch(e){ return {}; } }
+function _coachMsgs(id){
+  const ms=(DB.msgs&&DB.msgs[id])||[];
+  return (typeof msgsVisible==='function')?msgsVisible(ms,_coachClears()[id]):ms;
+}
+// Dos toques sobre el propio botón y se desarma solo (regla v568: sin `confirm()`).
+function _cchatDelDisarm(btn){
+  if(!btn||btn.dataset.armed!=='1')return;
+  btn.dataset.armed=''; btn.classList.remove('armed');
+  // Se devuelve el MISMO marcado que traía (el del index), o el icono cambia de color al desarmarse.
+  btn.innerHTML=btn._ico||((typeof aviIcon==='function')?aviIcon('trash',20):'🗑️');
+}
+function coachChatAskDelete(btn){
+  const id=_cchatId; if(!id||!btn)return;
+  const vis=_coachMsgs(id);
+  if(!vis.length)return;
+  const c=DB.clients.find(x=>x.id===id)||{};
+  const first=String(c.name||'').trim().split(/\s+/)[0]||'Tu asesorado';
+  if(btn.dataset.armed!=='1'){
+    btn._ico=btn.innerHTML; btn.dataset.armed='1'; btn.classList.add('armed'); btn.textContent='Eliminar';
+    toast(`Toca «Eliminar» otra vez. Solo se borra para ti: ${first} conserva la suya`);
+    setTimeout(()=>_cchatDelDisarm(btn),6000);
+    return;
+  }
+  const m=_coachClears(); const v=chatClearLater(m[id],chatClearMark(vis)); if(v)m[id]=v;
+  sv('ax_msgclear',m);
+  markCoachRead(id);
+  renderCoachChatThread(id,true);
+  if(typeof renderMsgs==='function')renderMsgs();
+  if(typeof renderHome==='function')renderHome();
+  if(typeof renderClients==='function')renderClients();
+  const det=document.getElementById('p-detail');
+  if(CUR.clientId===id&&det&&det.classList.contains('on')&&typeof renderDetailMsgs==='function')renderDetailMsgs(id);
+  toast('Conversación eliminada');
+}
+
 // ══════════ CHAT DE PANTALLA COMPLETA DEL COACH (v321) ══════════
 // La conversación con un asesorado en una vista dedicada (no enterrada en el perfil). La abren
 // la notificación (openChatFor) y la bandeja (renderMsgs). Aterriza SIEMPRE en el último msg.
@@ -3887,7 +3934,8 @@ function renderCoachChatThread(clientId, forceBottom){
   // leyendo mensajes de arriba y llega uno nuevo por el poll, NO lo tiramos al fondo (aviso Lucas).
   const nearBottom=forceBottom||con.scrollHeight<=con.clientHeight||(con.scrollHeight-con.clientHeight-con.scrollTop)<=48;
   const prevTop=con.scrollTop;
-  const msgs=DB.msgs[clientId]||[]; con.innerHTML='';
+  const msgs=_coachMsgs(clientId); con.innerHTML='';
+  const del=document.getElementById('cchat-del'); if(del){ _cchatDelDisarm(del); del.style.display=msgs.length?'':'none'; }
   const cli=DB.clients.find(x=>x.id===clientId)||{};
   const first=(cli.name||'Asesorado').split(' ')[0];
   // Aviso de NO-ENTREGA: el chat es solo-coach, así que a un plan 'libre'/'app' el mensaje se
