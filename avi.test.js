@@ -20920,6 +20920,13 @@ test('🔒 CABLEADO v652 · toda pantalla pide la foto de perfil por el resolved
   assert.ok(iSube > 0 && iGuard > iSube && iSet > iGuard, '🔴 la mudanza de la foto de perfil no tiene su guardia de cambio de vista');
 });
 
+test('🔒 v652 · el bucket viejo `apex-photos` quedó PRIVADO (cinturón: ya no guarda nada)', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260921_apex_photos_private.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  assert.ok(/update storage\.buckets set public = false where id = 'apex-photos';/.test(sql), '🔴 apex-photos volvería a servir enlaces públicos');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

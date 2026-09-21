@@ -19,6 +19,11 @@
   (los de todos los asesorados, desde el panel del coach). Borradas `migratePhotosToStorage` y
   `uploadPhotoToStorage`; la mudanza la hace el dueño, con guardia de cambio de vista.
 - La foto anterior se borra DESPUÉS de guardar la nueva.
+- **Mudanza hecha en el servidor tras desplegar:** las 5 fotos de perfil públicas se copiaron al privado (**idénticas
+  byte a byte**), los perfiles pasaron a `avatarPath` y se borraron los 7 objetos de `apex-photos` (5 + 2 huérfanos).
+  Antes se midió: 0 referencias a `apex-photos` en perfiles, fotos, ajustes y mensajes. Después `apex-photos` quedó
+  además PRIVADO (migración `20260921_apex_photos_private.sql`). **Estado: los cuatro buckets de fotos de personas
+  son privados salvo `avatars` (Comunidad, 1 foto), que se dejó por decisión: congelada y visible a contactos por diseño.**
 - **QA.** Suite **1306 → 1309** (4 candados re-encuadrados: afirmaban la subida al público y el retrato leído de
   `client.avatar`), `_sabotaje-v652` 6 casos, `_verify-fotos-privadas` 15/15 con captura mirada.
   ⚠️ `_verify-v597` tiene **4 FAIL que ya estaban en HEAD** (C1, C2, T1d, S6 — el lienzo cambió en v619/v622 y el
