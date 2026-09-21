@@ -137,15 +137,16 @@ Deno.serve(async (req) => {
     const { error: e4 } = await admin.from("app_errors").delete().eq("uid", uid);
     if (e4) throw new Error("app_errors: " + e4.message);
 
-    // 4. Archivos en Storage — los TRES buckets. `avatars` va por uuid; `apex-photos` se
+    // 4. Archivos en Storage — los CUATRO buckets. `avatars` va por uuid; `apex-photos` se
     //    creó antes de auth y sus carpetas usan el id LEGACY (gotcha 2026-07-12), así que
     //    por uuid puede no encontrar nada: se intenta igual, y lo de hoy vive como base64
     //    dentro de `user_data` (que sí cascadea). Best-effort: no bloquea el borrado.
     //    v649 · + `chat-media` (fotos y videos del chat, PRIVADO): todo lo de una pareja
     //    coach-asesorado vive en la carpeta del asesorado, suba quien suba.
+    //    v650 · + `progress-photos` (fotos de progreso, PRIVADO), mismo modelo de carpeta.
     //    🔴 `list` devuelve como mucho 100 por llamada: un chat con más fotos dejaba restos.
     //    Se borra por PÁGINAS hasta que la carpeta quede vacía (tope de vueltas por si acaso).
-    for (const bucket of ["avatars", "apex-photos", "chat-media"]) {
+    for (const bucket of ["avatars", "apex-photos", "chat-media", "progress-photos"]) {
       try {
         for (let vuelta = 0; vuelta < 50; vuelta++) {
           const { data: files } = await admin.storage.from(bucket).list(uid, { limit: 100 });

@@ -2634,6 +2634,33 @@ function chatMediaPathOk(path, folderUid) {
   return typeof path === 'string' && !!folderUid && path.indexOf(String(folderUid) + '/chat-') === 0 && !/\.\./.test(path);
 }
 
+// ── v650 · LAS FOTOS DE PROGRESO VIVEN EN UN BUCKET PRIVADO ────────────────────────────────
+// `apex-photos` es PÚBLICO (quien tenga el enlace ve la foto). Las fotos de progreso pasan a
+// `progress-photos` (privado, migración 20260921_progress_photos.sql), en la carpeta del
+// asesorado; la entrada guarda la RUTA (`path`) y no una URL: el enlace se firma al pintar.
+// Allí se quedan solo las fotos de perfil.
+const PROGRESS_BUCKET = 'progress-photos';
+function progressPhotoPath(folderUid, id) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(folderUid || ''))) return null;
+  const limpio = String(id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+  return limpio ? `${folderUid}/progreso-${limpio}.jpg` : null;
+}
+function progressPhotoPathOk(path, folderUid) {
+  return typeof path === 'string' && !!folderUid && path.indexOf(String(folderUid) + '/progreso-') === 0 && !/\.\./.test(path);
+}
+// ¿Esta foto todavía vive fuera del bucket privado? (base64 en la fila, o enlace PÚBLICO).
+function photoNeedsPrivate(p) {
+  if (!p || p.del || p.path || typeof p.src !== 'string') return false;
+  return p.src.indexOf('data:image/') === 0 || /\/object\/public\/apex-photos\//.test(p.src);
+}
+// La entrada ya mudada: sin `src` (ni base64 ni enlace público) y con `mAt` nuevo, para que la
+// fusión por modificación (v568) la haga ganar sobre una copia vieja de otro teléfono.
+function photoMovedToPrivate(p, path, nowIso) {
+  const out = Object.assign({}, p, { path, mAt: nowIso || new Date().toISOString() });
+  delete out.src;
+  return out;
+}
+
 // Fusiona la fila user_data local (respaldo offline con cambios sin confirmar)
 // con la fila recién bajada de la nube. Regla: las COLECCIONES generadas por el
 // usuario (historial, PRs, mensajes, peso, medidas, fotos) se UNEN con los merges
@@ -11697,6 +11724,11 @@ if (typeof module !== 'undefined' && module.exports) {
     chatMediaCheck,
     chatMediaPath,
     chatMediaPathOk,
+    PROGRESS_BUCKET,
+    progressPhotoPath,
+    progressPhotoPathOk,
+    photoNeedsPrivate,
+    photoMovedToPrivate,
     CHAT_MEDIA_MAX_BYTES,
     CHAT_VIDEO_MAX_S,
     mergeAuthRow,

@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v650: las fotos de progreso pasan a un bucket PRIVADO
+
+- **Pedido del PO**, tras el hallazgo de v649: `apex-photos` es PÚBLICO — quien tenga el enlace ve la foto.
+- **Medido antes:** 15 fotos de progreso vivas de 6 personas: **13 en base64 dentro de la propia fila** (ya
+  privadas por RLS) y **2 con enlace público** (de mayo, en carpetas legacy). En `apex-photos` hay además 7 fotos
+  de PERFIL: esas se quedan (se muestran en toda la app; no son de progreso).
+- 🔴 **La bomba que apareció leyendo:** `migratePhotosToStorage` corría 3 s después del arranque y subía las fotos
+  en base64 **al bucket PÚBLICO**. Solo no pasaba porque a esa hora todavía no hay sesión. Retirada esa parte.
+- **Bucket `progress-photos` PRIVADO** (migración `20260921_progress_photos.sql`, aplicada por MCP; políticas
+  probadas con rollback). La entrada guarda la RUTA (`path`), no una URL; se pinta con enlace FIRMADO en las tres
+  pantallas (ficha del coach, perfil del asesorado, visor). Las viejas se siguen viendo.
+- **Una sola puerta para guardar** (`saveProgressPhoto`): el Perfil y el asistente del día 1 subían cada uno por
+  la suya, y la del día 1 ni ponía `mAt` ni respetaba las lápidas al topar. Sin red, la foto queda en la fila
+  (privada) — **nunca cae al público**.
+- **Auto-cura en el teléfono del dueño** (`migrateProgressPhotosPrivate`): al entrar, sus fotos en base64 o con
+  enlace público se suben al privado (upsert por id, idempotente) y la entrada pierde el enlace, con `mAt` nuevo
+  para ganar la fusión contra copias viejas. Solo el dueño, sobre su carpeta.
+- `delete-account` **v7**: limpia también `progress-photos`.
+- **QA.** Suite **1300 → 1305**, `_sabotaje-v650` 6 casos, harness nuevo `_verify-fotos-privadas` 8/8 con captura
+  mirada, `_verify-fotos-coach` 12/12 (sin tocar), `_probe-delete-account` verde.
+
 ## ⏮️ 2026-09-21 — v649: foto o video en el chat, en un bucket PRIVADO
 
 - **Cuarta y última del lote del chat.** El asesorado le manda a su coach una foto o un video corto de su

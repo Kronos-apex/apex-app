@@ -788,6 +788,8 @@ async function _enterAuthSession(authUser){
   showScreen('s-client');
   initClientView(client);
   startMsgPolling();
+  // v650 · sus fotos de progreso viejas (base64 o enlace público) se mudan al bucket privado.
+  setTimeout(()=>{ if(typeof migrateProgressPhotosPrivate==='function')migrateProgressPhotosPrivate(); },4000);
   // Push: el registro vivía SOLO en tryAutoLogin (camino legacy) → desde el cutover a auth
   // NINGÚN dispositivo se re-registraba y los envíos dirigidos (chat) no encontraban
   // suscripción (última fila: 2026-06-02, cazado en auditoría 2026-07-06). Mismo patrón

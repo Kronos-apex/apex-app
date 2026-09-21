@@ -1297,11 +1297,12 @@ function renderPhotosCoach(clientId){
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
       <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${esc(p.id)}','${esc(clientId)}',true)">
-        <img src="${/^(data:image\/|https:\/\/)/.test(p.src)?p.src:''}" alt="Foto de progreso" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
+        ${_photoImgHtml(p,clientId,'width:100%;aspect-ratio:3/4;object-fit:cover;display:block')}
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
   <div style="font-size:11px;color:var(--t3);margin-top:8px">${photos.length} foto${photos.length!==1?'s':''} · la más reciente, de hace ${dias(photos[0].date)} días</div>`;
+  hydratePrivatePhotos(con);
 }
 
 function drawMedChart(container,points,field,color){
@@ -1401,17 +1402,9 @@ async function deletePhotoFromStorage(photoId,url){
 }
 
 async function migratePhotosToStorage(){
-  const photos=DB.photos||{};
-  let changed=false;
-  for(const cid of Object.keys(photos)){
-    for(const p of photos[cid]){
-      if(p.src&&p.src.startsWith('data:image/')){
-        try{p.src=await uploadPhotoToStorage(p.id,p.src);changed=true;}
-        catch(e){warn('AVI storage migration skip:',p.id,e.message);}
-      }
-    }
-  }
-  if(changed){svNow('ax_photos',DB.photos);log('AVI: fotos migradas a Storage');}
+  // 🔴 v650: aquí se subían las fotos de PROGRESO en base64 al bucket PÚBLICO. Solo no pasó porque a
+  //    los 3 s del arranque todavía no hay sesión. Esa parte se retiró: las fotos de progreso las muda
+  //    `migrateProgressPhotosPrivate`, y a un bucket PRIVADO. Aquí quedan solo los avatares.
   // Avatares en base64 → Storage. Cubre los avatares de clientes cargados (coach) y, en
   // modo asesorado, el propio (DB.clients=[me]). Mismo camino de guardado que saveAvatar.
   let avChanged=false;
@@ -1478,6 +1471,82 @@ function compressImage(base64,maxLen){
   });
 }
 
+// ══════════ v650 · FOTOS DE PROGRESO EN EL BUCKET PRIVADO ══════════
+// Una foto con `path` se pinta con un enlace FIRMADO que se pide después de dibujar; las viejas
+// (base64 o enlace público) se siguen viendo mientras se mudan.
+function _photoImgHtml(p,cid,style,alt){
+  const a=esc(alt||'Foto de progreso');
+  if(p&&p.path&&typeof progressPhotoPathOk==='function'&&progressPhotoPathOk(p.path,cid))
+    return `<img data-ppath="${esc(p.path)}" alt="${a}" style="${style};background:var(--br)" loading="lazy">`;
+  const src=p&&/^(data:image\/|https:\/\/)/.test(p.src||'')?p.src:'';
+  return `<img src="${src}" alt="${a}" style="${style}" loading="lazy">`;
+}
+function hydratePrivatePhotos(root){
+  if(!root||typeof _chatMediaUrl!=='function')return;
+  root.querySelectorAll('img[data-ppath]').forEach(img=>{
+    const path=img.getAttribute('data-ppath');
+    _chatMediaUrl(path,PROGRESS_BUCKET).then(url=>{ if(url&&img.isConnected)img.src=url; }).catch(()=>{});
+  });
+}
+// UNA sola puerta para guardar una foto de progreso (el Perfil y el asistente del día 1 pasaban
+// cada uno por la suya, y la del día 1 ni ponía `mAt` ni respetaba las lápidas al topar).
+async function saveProgressPhoto(clientId,base64,label){
+  const photoId=uid(), ahora=new Date().toISOString();
+  const entry={id:photoId,date:ahora,mAt:ahora,label};
+  const path=(typeof progressPhotoPath==='function')?progressPhotoPath(clientId,photoId):null;
+  try{
+    if(!path)throw new Error('sin ruta');
+    const blob=await (await fetch(base64)).blob();
+    await _chatMediaUpload(path,blob,'image/jpeg',PROGRESS_BUCKET);
+    entry.path=path;
+  }catch(e){
+    // Sin red o sin sesión se queda DENTRO de la fila, que también es privada (RLS por dueño),
+    // y la mudanza la sube la próxima vez. Nunca cae al bucket público.
+    warn('AVI foto de progreso: se guarda en la fila por ahora:',e&&e.message); entry.src=base64;
+  }
+  if(!DB.photos)DB.photos={};
+  if(!DB.photos[clientId])DB.photos[clientId]=[];
+  DB.photos[clientId].unshift(entry);
+  // El tope lo aplica `photoPrune`: con un `slice` a secas una lápida ocuparía el cupo de
+  // una foto viva y borrar se comería el historial (lección de las medidas, v566).
+  if(typeof photoPrune==='function')DB.photos[clientId]=photoPrune(DB.photos[clientId],ahora);
+  else if(DB.photos[clientId].length>12)DB.photos[clientId]=DB.photos[clientId].slice(0,12);
+  svNow('ax_photos',DB.photos);
+  return entry;
+}
+// La mudanza: las fotos PROPIAS que siguen en base64 o con enlace público pasan al bucket privado.
+// La hace el dueño desde su teléfono (su carpeta), con la sesión ya puesta. Idempotente: la ruta
+// sale del id de la foto y se sube con upsert, así que repetirla no duplica nada.
+let _photoMigrando=false;
+async function migrateProgressPhotosPrivate(){
+  if(_photoMigrando||typeof photoNeedsPrivate!=='function')return;
+  const cid=CUR&&CUR.clientId; const me=(typeof _authUid!=='undefined')?_authUid:null;
+  if(!cid||!me||cid!==me)return;                      // solo el dueño, sobre su propia carpeta
+  const lista=(DB.photos||{})[cid]; if(!Array.isArray(lista)||!lista.some(photoNeedsPrivate))return;
+  _photoMigrando=true;
+  let cambio=false; const publicas=[];
+  try{
+    for(let i=0;i<lista.length;i++){
+      const p=lista[i]; if(!photoNeedsPrivate(p))continue;
+      const path=progressPhotoPath(cid,p.id||('d'+String(p.date||'').replace(/\D/g,''))); if(!path)continue;
+      try{
+        const blob=await (await fetch(p.src)).blob();
+        await _chatMediaUpload(path,blob,'image/jpeg',PROGRESS_BUCKET,true);
+        if(/^https:/.test(p.src))publicas.push(p);
+        lista[i]=photoMovedToPrivate(p,path,new Date().toISOString()); cambio=true;
+      }catch(e){ warn('AVI mudanza de foto pospuesta:',p.id,e&&e.message); }
+    }
+    if(cambio){
+      svNow('ax_photos',DB.photos);
+      // Recién guardada la entrada nueva, se pide borrar la copia PÚBLICA. Las de antes de v600
+      // viven en una carpeta vieja que la RLS no deja borrar desde aquí: esas se limpian en el
+      // servidor (queda escrito en la bitácora de v650).
+      publicas.forEach(p=>{ try{ deletePhotoFromStorage(p.id,p.src); }catch(e){} });
+      const g=document.getElementById('cn-photos-grid'); if(g&&typeof renderPhotosClient==='function')renderPhotosClient(cid);
+    }
+  }finally{ _photoMigrando=false; }
+}
+
 function savePhoto(){
   const clientId=CUR.clientId;if(!clientId)return;
   const input=document.getElementById('photo-input');
@@ -1490,18 +1559,7 @@ function savePhoto(){
   reader.onload=async e=>{
     let base64=e.target.result;
     toast('\u23f3 Subiendo foto...');base64=await compressImage(base64,100000);
-    const photoId=uid();
-    let src=base64;
-    try{src=await uploadPhotoToStorage(photoId,base64);}
-    catch(e){warn('AVI storage upload failed, keeping base64',e.message);}
-    if(!DB.photos)DB.photos={};
-    if(!DB.photos[clientId])DB.photos[clientId]=[];
-    DB.photos[clientId].unshift({id:photoId,date:new Date().toISOString(),mAt:new Date().toISOString(),label:finalLabel,src});
-    // El tope lo aplica `photoPrune`: con un `slice` a secas una lápida ocuparía el cupo de
-    // una foto viva y borrar se comería el historial (lección de las medidas, v566).
-    if(typeof photoPrune==='function')DB.photos[clientId]=photoPrune(DB.photos[clientId],new Date().toISOString());
-    else if(DB.photos[clientId].length>12)DB.photos[clientId]=DB.photos[clientId].slice(0,12);
-    svNow('ax_photos',DB.photos);
+    await saveProgressPhoto(clientId,base64,finalLabel);
     cm('m-photos');
     renderPhotosClient(clientId);
     toast('\uD83D\uDCF8 Foto guardada');
@@ -1529,11 +1587,12 @@ function renderPhotosClient(clientId){
   con.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     ${photos.map(p=>`
       <div style="position:relative;border-radius:var(--rsm);overflow:hidden;cursor:pointer" onclick="viewPhoto('${esc(p.id)}','${esc(clientId)}')">
-        <img src="${/^(data:image\/|https:\/\/)/.test(p.src)?p.src:''}" alt="Foto de progreso" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block" loading="lazy">
+        ${_photoImgHtml(p,clientId,'width:100%;aspect-ratio:3/4;object-fit:cover;display:block')}
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:6px;font-size:10px;color:white;font-weight:600">${esc(p.label)}</div>
       </div>`).join('')}
   </div>
   <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right">${photos.length}/12 fotos guardadas</div>`+_verCoach;
+  hydratePrivatePhotos(con);
 }
 
 // `soloLectura` (v586): el COACH abre el visor sin el botón de eliminar. Borrar es
@@ -1546,7 +1605,7 @@ function viewPhoto(photoId,clientId,soloLectura){
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
-    <img src="${/^(data:image\/|https:\/\/)/.test(photo.src)?photo.src:''}" alt="Foto de progreso ampliada" style="max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain">
+    ${_photoImgHtml(photo,cid,'max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain','Foto de progreso ampliada')}
     <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${esc(photo.label)}</div>
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
@@ -1555,6 +1614,7 @@ function viewPhoto(photoId,clientId,soloLectura){
     </div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
+  hydratePrivatePhotos(overlay);
 }
 
 // 🔒 Dos pasos, en el propio botón. Sin `confirm()` (bloquea el hilo y en la PWA se lo come
@@ -1589,7 +1649,9 @@ function deletePhoto(photoId,clientId){
   // Y se le pasa la URL de la entrada, que es de donde sale la ruta REAL del archivo (las fotos
   // de antes de v600 viven bajo la carpeta vieja: ver `_photoPathFromUrl`).
   const _ent=((DB.photos||{})[cid]||[]).find(e=>(typeof photoEntryId==='function'?photoEntryId(e):e&&e.id)===photoId);
-  deletePhotoFromStorage(photoId,_ent&&_ent.src);
+  // v650: la foto privada se borra de SU bucket; la vieja (enlace público) por el camino de antes.
+  if(_ent&&_ent.path)_privDelete(_ent.path,PROGRESS_BUCKET);
+  else deletePhotoFromStorage(photoId,_ent&&_ent.src);
   if(!DB.photos)DB.photos={};
   DB.photos[cid]=lista;
   sv('ax_photos',DB.photos);

@@ -16530,7 +16530,7 @@ test('🔴 v574 · se limpian los DOS buckets y los errores registrados', () => 
     'cambió el texto de la promesa: revisa que el borrado siga cumpliéndola');
   // v649: TRES buckets — `chat-media` guarda las fotos y videos del chat en la carpeta del asesorado,
   // y se borra por páginas (`list` trae 100 como mucho).
-  assert.match(_DEL_FULL, /\["avatars",\s*"apex-photos",\s*"chat-media"\]/, 'no limpia los tres buckets (fotos y videos del chat incluidos)');
+  assert.match(_DEL_FULL, /\["avatars",\s*"apex-photos",\s*"chat-media",\s*"progress-photos"\]/, 'no limpia los tres buckets (fotos y videos del chat incluidos)');
   assert.match(_DEL_FULL, /for \(let vuelta = 0;[\s\S]{0,300}files\.length < 100/, '🔴 el borrado de archivos ya no pagina: más de 100 dejan restos');
   assert.match(_DEL_FULL, /from\("app_errors"\)\s*\.delete\(\)\s*\.eq\("uid",\s*uid\)/,
     'sus errores registrados (uid + user-agent) sobreviven al borrado');
@@ -20812,6 +20812,64 @@ test('🔒 CABLEADO v649 · primero se sube, después existe el mensaje; y nada 
   assert.ok(/chatMediaPathOk\(path,folderUid\)/.test(nodo) && !/innerHTML/.test(nodo), '🔴 el nodo del archivo tiene que validar la ruta y no usar innerHTML');
   assert.ok(/chatMediaNode\(m,CUR\.clientId\)/.test(cuerpo(a4, 'function _paintMsgThread(')), 'el asesorado no ve los archivos');
   assert.ok(/chatMediaNode\(m,clientId\)/.test(cuerpo(a3, 'function renderCoachChatThread(')), 'el coach no ve los archivos');
+});
+
+// ══════════════════════════════════════════════════════
+// v650 · LAS FOTOS DE PROGRESO VIVEN EN UN BUCKET PRIVADO
+// ══════════════════════════════════════════════════════
+test('v650 · qué foto todavía hay que mudar: base64 y enlace PÚBLICO sí; la ya privada y la lápida no', () => {
+  assert.strictEqual(core.photoNeedsPrivate({ id: 'a', src: 'data:image/jpeg;base64,xx' }), true);
+  assert.strictEqual(core.photoNeedsPrivate({ id: 'a', src: 'https://x.supabase.co/storage/v1/object/public/apex-photos/u/a.jpg' }), true, '🔴 un enlace público es justo lo que hay que mudar');
+  assert.strictEqual(core.photoNeedsPrivate({ id: 'a', path: 'u/progreso-a.jpg' }), false);
+  assert.strictEqual(core.photoNeedsPrivate({ id: 'a', del: true, mAt: 'x' }), false, 'una lápida no se sube');
+  assert.strictEqual(core.photoNeedsPrivate({ id: 'a', src: 'https://otra.cosa/foto.jpg' }), false, 'solo lo que es nuestro');
+});
+test('🔒 v650 · la foto mudada pierde el enlace público y GANA la fusión contra una copia vieja', () => {
+  const vieja = { id: 'f1', date: '2026-05-28T10:00:00.000Z', label: 'Inicio', src: 'https://x/storage/v1/object/public/apex-photos/u/f1.jpg' };
+  const nueva = core.photoMovedToPrivate(vieja, 'uu/progreso-f1.jpg', '2026-09-21T12:00:00.000Z');
+  assert.strictEqual(nueva.src, undefined, '🔴 la entrada mudada no puede seguir llevando el enlace público');
+  assert.strictEqual(nueva.path, 'uu/progreso-f1.jpg'); assert.strictEqual(nueva.label, 'Inicio'); assert.strictEqual(nueva.date, vieja.date);
+  const m = core.mergePhotos({ c: [nueva] }, { c: [vieja] }).c;
+  assert.strictEqual(m.length, 1); assert.strictEqual(m[0].path, 'uu/progreso-f1.jpg', '🔴 un teléfono con la copia vieja le devolvería el enlace público');
+  const m2 = core.mergePhotos({ c: [vieja] }, { c: [nueva] }).c;
+  assert.strictEqual(m2[0].path, 'uu/progreso-f1.jpg', 'en los dos sentidos');
+});
+test('🔒 v650 · ruta en la carpeta del asesorado, y solo se pinta la de esa carpeta', () => {
+  const u = '0a6484ed-42af-449d-9903-e440ac683ecf';
+  assert.strictEqual(core.progressPhotoPath(u, 'abc'), u + '/progreso-abc.jpg');
+  assert.strictEqual(core.progressPhotoPath('mpis0v4bsd1geso7tt', 'abc'), null, 'sin uuid no hay ruta (la RLS la rechazaría)');
+  assert.strictEqual(core.progressPhotoPathOk(u + '/progreso-abc.jpg', u), true);
+  assert.strictEqual(core.progressPhotoPathOk('otro/progreso-abc.jpg', u), false);
+  assert.strictEqual(core.progressPhotoPathOk(u + '/chat-abc.jpg', u), false, 'una foto de progreso no apunta al chat');
+});
+test('🔒 ESPEJO v650 · el bucket de fotos de progreso es PRIVADO y solo de imágenes', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260921_progress_photos.sql'), 'utf8')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  assert.ok(/values \('progress-photos', 'progress-photos', false, 5242880, array\['image\/jpeg','image\/webp','image\/png'\]\)/.test(sql), '🔴 el bucket tiene que ser PRIVADO, 5 MB y solo imágenes');
+  ['select', 'insert', 'update', 'delete'].forEach(op => assert.ok(new RegExp('create policy progress_photos_' + op + ' on storage\\.objects for ' + op + ' to authenticated').test(sql), 'falta la política ' + op));
+  assert.ok(!/to anon|to public/.test(sql));
+  assert.strictEqual(core.PROGRESS_BUCKET, 'progress-photos');
+});
+test('🔒 CABLEADO v650 · ninguna foto de progreso vuelve a ir al bucket PÚBLICO', () => {
+  const fs = require('fs'), path = require('path');
+  const a5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const guardar = cuerpo(a5, 'async function saveProgressPhoto(');
+  assert.ok(/_chatMediaUpload\(path,blob,'image\/jpeg',PROGRESS_BUCKET\)/.test(guardar) && !/uploadPhotoToStorage/.test(guardar), '🔴 la foto nueva tiene que ir al bucket PRIVADO');
+  assert.ok(/saveProgressPhoto\(/.test(cuerpo(a5, 'function savePhoto(')), 'el Perfil no pasa por la puerta única');
+  assert.ok(/saveProgressPhoto\(/.test(cuerpo(a6, 'function _dobSavePhoto(')) && !/uploadPhotoToStorage/.test(cuerpo(a6, 'function _dobSavePhoto(')), '🔴 el asistente del día 1 sube por su cuenta (y al bucket público)');
+  const mig = cuerpo(a5, 'async function migratePhotosToStorage(');
+  assert.ok(!/DB\.photos/.test(mig), '🔴 la migración vieja volvió a subir fotos de progreso al bucket PÚBLICO');
+  const mud = cuerpo(a5, 'async function migrateProgressPhotosPrivate(');
+  assert.ok(/if\(!cid\|\|!me\|\|cid!==me\)return;/.test(mud), 'solo el dueño muda su carpeta');
+  assert.ok(/_chatMediaUpload\(path,blob,'image\/jpeg',PROGRESS_BUCKET,true\)/.test(mud) && /photoMovedToPrivate\(/.test(mud), 'la mudanza tiene que ir al bucket privado y quitar el enlace');
+  ['function renderPhotosClient(', 'function renderPhotosCoach(', 'function viewPhoto('].forEach(fn => {
+    const b = cuerpo(a5, fn);
+    assert.ok(/_photoImgHtml\(/.test(b) && /hydratePrivatePhotos\(/.test(b) && !/p\.src\?p\.src|photo\.src\?photo\.src/.test(b), `🔴 ${fn} no sabe pintar una foto privada`);
+  });
+  assert.ok(/if\(_ent&&_ent\.path\)_privDelete\(_ent\.path,PROGRESS_BUCKET\);/.test(cuerpo(a5, 'function deletePhoto(')), 'borrar una foto privada no la quita de su bucket');
 });
 
 // ══════════════════════════════════════════════════════

@@ -160,26 +160,36 @@ async function _chatMediaToken(){
   try{ const s=await AUTH.getSession(); if(s&&s.access_token)return s.access_token; }catch(e){}
   return null;
 }
-async function _chatMediaUpload(path,blob,contentType){
+// v650 · `bucket` opcional: la misma subida y el mismo enlace firmado sirven a las fotos de
+//    progreso (`progress-photos`), que también son privadas. `upsert` solo para una migración
+//    que puede repetirse sobre la misma ruta.
+async function _chatMediaUpload(path,blob,contentType,bucket,upsert){
   // 🔒 Un harness JAMÁS sube a producción (mismo sello que las escrituras a la nube).
   if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))throw new Error('sellado');
   const token=await _chatMediaToken(); if(!token)throw new Error('sin sesión');
-  const r=await fetch(`${SB_URL}/storage/v1/object/chat-media/${path}`,{method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':contentType},body:blob});
+  const h={'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':contentType}; if(upsert)h['x-upsert']='true';
+  const r=await fetch(`${SB_URL}/storage/v1/object/${bucket||'chat-media'}/${path}`,{method:'POST',headers:h,body:blob});
   if(!r.ok)throw new Error('subida '+r.status);
   return path;
 }
 const _chatMediaUrls={};
-async function _chatMediaUrl(path){
-  const c=_chatMediaUrls[path]; if(c&&c.exp>Date.now()+60000)return c.url;
+async function _chatMediaUrl(path,bucket){
+  const b=bucket||'chat-media', k=b+'/'+path;
+  const c=_chatMediaUrls[k]; if(c&&c.exp>Date.now()+60000)return c.url;
   const token=await _chatMediaToken(); if(!token)return null;
-  const r=await fetch(`${SB_URL}/storage/v1/object/sign/chat-media/${path}`,{method:'POST',
+  const r=await fetch(`${SB_URL}/storage/v1/object/sign/${b}/${path}`,{method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:3600})});
   if(!r.ok)return null;
   const j=await r.json().catch(()=>null); const rel=j&&(j.signedURL||j.signedUrl); if(!rel)return null;
   const url=`${SB_URL}/storage/v1${rel.charAt(0)==='/'?'':'/'}${rel}`;
-  _chatMediaUrls[path]={url,exp:Date.now()+3600000};
+  _chatMediaUrls[k]={url,exp:Date.now()+3600000};
   return url;
+}
+async function _privDelete(path,bucket){
+  if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))return;
+  const token=await _chatMediaToken(); if(!token||!path)return;
+  await fetch(`${SB_URL}/storage/v1/object/${bucket}`,{method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({prefixes:[path]})}).catch(()=>{});
 }
 // Lo que se pinta dentro de la burbuja. La URL se pide DESPUÉS de pintar: el hilo no espera a la red.
 function chatMediaNode(m,folderUid){

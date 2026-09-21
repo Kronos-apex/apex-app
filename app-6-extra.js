@@ -2179,16 +2179,9 @@ function _dobSavePhoto(){
   reader.onload = async e => {
     let base64 = e.target.result;
     toast('⏳ Subiendo foto...'); base64 = await compressImage(base64, 100000);
-    const photoId = uid();
-    let src = base64;
-    try{ src = await uploadPhotoToStorage(photoId, base64); }
-    catch(e){ warn('AVI storage upload failed, keeping base64', e.message); }
-    if(!DB.photos) DB.photos = {};
-    if(!DB.photos[clientId]) DB.photos[clientId] = [];
     const label = 'Foto inicial ' + new Date().toLocaleDateString('es-ES', {month:'short', year:'numeric'});
-    DB.photos[clientId].unshift({id:photoId, date:new Date().toISOString(), label:label, src});
-    if(DB.photos[clientId].length > 12) DB.photos[clientId] = DB.photos[clientId].slice(0, 12);
-    svNow('ax_photos', DB.photos);
+    // v650 · la MISMA puerta que el Perfil: bucket privado, `mAt` y el tope que respeta lápidas.
+    if(typeof saveProgressPhoto === 'function') await saveProgressPhoto(clientId, base64, label);
     renderPhotosClient(clientId);
     toast('📸 Foto guardada');
     _dobFinish();
