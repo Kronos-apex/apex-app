@@ -20872,6 +20872,18 @@ test('🔒 CABLEADO v650 · ninguna foto de progreso vuelve a ir al bucket PÚBL
   assert.ok(/if\(_ent&&_ent\.path\)_privDelete\(_ent\.path,PROGRESS_BUCKET\);/.test(cuerpo(a5, 'function deletePhoto(')), 'borrar una foto privada no la quita de su bucket');
 });
 
+test('🔒 CABLEADO v651 · «Mi entrenamiento» también muda tus fotos, y no guarda si cambiaste de vista', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(_srcApp3());
+  const a5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const mt = cuerpo(a3, 'async function openMyTraining(');
+  assert.ok(/COACH_SELF=true;[\s\S]*migrateProgressPhotosPrivate\(\)/.test(mt), '🔴 «Mi entrenamiento» no muda las fotos del coach');
+  const mud = cuerpo(a5, 'async function migrateProgressPhotosPrivate(');
+  const iGuard = mud.indexOf('if(cambio&&CUR.clientId!==cid)return;'), iSave = mud.indexOf("svNow('ax_photos'");
+  assert.ok(iGuard > 0 && iSave > iGuard, '🔴 si la vista cambió a mitad de la mudanza, guardaría por el camino equivocado');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -1302,6 +1302,8 @@ async function openMyTraining(){
   const bk=document.getElementById('coach-self-topbar-btn'); if(bk)bk.style.display='';
   showScreen('s-client');
   initClientView(me);
+  // v651 · tus fotos de progreso viejas (base64 dentro de tu ficha) también pasan al bucket privado.
+  setTimeout(()=>{ if(typeof migrateProgressPhotosPrivate==='function')migrateProgressPhotosPrivate(); },4000);
 }
 async function backToCoachPanel(){
   // Conserva las ediciones de esta sesión: re-snapshot de tu fila ANTES de recargar clientes,

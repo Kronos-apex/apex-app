@@ -4,6 +4,16 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v651: «Mi entrenamiento» también muda sus fotos al privado
+
+- Pedido del PO. Sus fotos de progreso en «Mi entrenamiento» no pasaban por la auto-cura de v650 porque esa vista
+  entra por `openMyTraining`, no por el login del asesorado. Ahora la llama también; como el coach ahí es su propio
+  asesorado (`COACH_SELF`, escribe en SU fila), sus fotos van a SU carpeta del bucket privado.
+- 🔒 **Guardia nueva en la mudanza:** es asíncrona, y si el coach vuelve a su panel a mitad, guardar iría por el
+  camino de escritura del coach. Si la vista cambió no guarda; lo subido queda en su ruta y la próxima vez se
+  re-adopta (upsert por id).
+- **QA.** Suite **1305 → 1306**, `_sabotaje-v651` 2 casos, `_verify-fotos-privadas` 10/10.
+
 ## ⏮️ 2026-09-21 — v650: las fotos de progreso pasan a un bucket PRIVADO
 
 - **Pedido del PO**, tras el hallazgo de v649: `apex-photos` es PÚBLICO — quien tenga el enlace ve la foto.

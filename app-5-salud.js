@@ -1536,6 +1536,10 @@ async function migrateProgressPhotosPrivate(){
         lista[i]=photoMovedToPrivate(p,path,new Date().toISOString()); cambio=true;
       }catch(e){ warn('AVI mudanza de foto pospuesta:',p.id,e&&e.message); }
     }
+    // 🔒 v651 · la mudanza es asíncrona: si en el camino cambió la vista (el coach volvió a su panel
+    //    desde «Mi entrenamiento»), guardar ahora iría por OTRO camino de escritura. No se guarda:
+    //    lo subido queda en su ruta y la próxima vez se re-adopta (upsert por id, idempotente).
+    if(cambio&&CUR.clientId!==cid)return;
     if(cambio){
       svNow('ax_photos',DB.photos);
       // Recién guardada la entrada nueva, se pide borrar la copia PÚBLICA. Las de antes de v600

@@ -93,6 +93,22 @@ const m1 = await ev(`(async()=>{ _authUid='${U}'; CUR.clientId='${U}';
   return {quedanFuera:l.filter(p=>photoNeedsPrivate(p)).length, total:l.length, upserts:window.__subidas.filter(s=>s.upsert).length, conSrc:l.filter(p=>p.src).length, pub:l.find(p=>p.id==='pub1')||null}; })()`);
 check('P7 el dueño muda sus fotos viejas (base64 y enlace público) al privado', m1.quedanFuera === 0 && m1.conSrc === 0 && m1.upserts >= 2 && m1.pub && m1.pub.path === U + '/progreso-pub1.jpg', JSON.stringify(m1));
 
+// v651 · «Mi entrenamiento»: el coach es su propio asesorado (COACH_SELF) y muda SUS fotos.
+const C = '0a6484ed-42af-449d-9903-e440ac683ecf';
+const m2 = await ev(`(async()=>{ COACH_SELF=true; _authUid='${C}'; CUR.clientId='${C}';
+  DB.photos={'${C}':[{id:'c1',label:'Coach',date:new Date(Date.now()-30*86400000).toISOString(),src:window.__b64}]};
+  let guardados=0; const svO=window.svNow; window.svNow=(k,v)=>{ if(k==='ax_photos')guardados++; return svO?svO(k,v):null; };
+  await migrateProgressPhotosPrivate(); window.svNow=svO;
+  const p=DB.photos['${C}'][0]; return {path:p.path||null, src:p.src?'sí':'no', guardados}; })()`);
+check('P8 «Mi entrenamiento» muda las fotos del coach a SU carpeta privada', m2.path === C + '/progreso-c1.jpg' && m2.src === 'no' && m2.guardados === 1, JSON.stringify(m2));
+const m3 = await ev(`(async()=>{ COACH_SELF=true; _authUid='${C}'; CUR.clientId='${C}';
+  DB.photos={'${C}':[{id:'c2',label:'Coach 2',date:new Date(Date.now()-20*86400000).toISOString(),src:window.__b64}]};
+  const upO=window._chatMediaUpload; window._chatMediaUpload=async (...a)=>{ CUR.clientId=null; COACH_SELF=false; return upO(...a); };
+  let guardados=0; const svO=window.svNow; window.svNow=(k,v)=>{ if(k==='ax_photos')guardados++; return svO?svO(k,v):null; };
+  await migrateProgressPhotosPrivate(); window.svNow=svO; window._chatMediaUpload=upO;
+  return {guardados}; })()`);
+check('P9 🔒 si vuelve al panel a mitad de la mudanza, NO guarda por el camino del coach', m3.guardados === 0, JSON.stringify(m3));
+
 log('\njsErrors: ' + JSON.stringify(jsErrors));
 const fallas = results.filter(r => r.startsWith('FAIL')).length;
 log(fallas || jsErrors.length ? `\n🔴 ${fallas} FALLA(S)` : `\n✅ ${results.length}/${results.length} OK`);
