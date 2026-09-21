@@ -104,21 +104,23 @@ const medirLienzo = async (conNombre) => {
     HTMLCanvasElement.prototype.toBlob=orig; document.createElement=origCreate;
     const cv=window._wfLastCanvas; if(!cv) return JSON.stringify({err:err||'sin lienzo'});
     let px=null, rojoCentro=null, centro=null, teñido='';
+    // 🔁 v653 · la geometría la DICE el lienzo («cv._layout»). Hasta aquí iba escrita a mano (nombre
+    //    en y≈492, retrato en 540,330) y v619/v622 la movieron: la sonda medía FONDO donde esperaba el
+    //    nombre y el retrato, y daba 4 FAIL sobre una tarjeta correcta. Sin geometría, se aborta.
+    const LY=cv._layout; if(!LY) return JSON.stringify({err:'el lienzo no dice su geometría (cv._layout)'});
     try{
       const g=cv.getContext('2d');
-      // banda del NOMBRE: v603 la tarjeta pasó a estar CENTRADA como la pantalla, asi que el
-      // nombre ya no va al lado del circulo sino DEBAJO (540,492). La sonda se realinea; si se
-      // dejara en las coordenadas viejas mediria fondo y diria que el nombre no se dibuja.
-      const d=g.getImageData(120,440,840,70).data; let claros=0;
+      // banda del NOMBRE: la línea base que usó la tarjeta, con el alto de la letra por encima.
+      const d=g.getImageData(120,Math.round(LY.nameY)-52,840,70).data; let claros=0;
       for(let i=0;i<d.length;i+=4){ if(d[i]>230&&d[i+1]>230&&d[i+2]>230) claros++; }
       px=claros;
-      // centro del CÍRCULO del retrato (v603: centrado, cx=540, cy=330)
-      const c=g.getImageData(540,330,1,1).data;
+      // centro del CÍRCULO del retrato, donde lo dibujó la tarjeta
+      const c=g.getImageData(Math.round(LY.cx),Math.round(LY.cy),1,1).data;
       centro=[c[0],c[1],c[2]];
       rojoCentro=(c[0]>200&&c[1]<60&&c[2]<60);
     }catch(e){ teñido=String(e&&e.name||e); }  // getImageData lanza si el lienzo quedó TEÑIDO
     return JSON.stringify({blob,err,claros:px,centro,rojoCentro,teñido,
-      avatarListo:!!_wfShareAvatar, w:cv.width, h:cv.height});
+      avatarListo:!!_wfShareAvatar, w:cv.width, h:cv.height, layout:LY});
   })()`);
 };
 
@@ -316,10 +318,13 @@ try {
     // el color natural de la persona a proposito — es un retrato, no una textura. La primera
     // version de esta sonda lo contaba como 'naranja que sobrevivio' y decia que el duotono
     // fallaba cuando lo que medía era justo lo que NO debe tratarse.
+    // 🔁 v653 · el retrato se excluye DONDE LO DIBUJÓ la tarjeta («cv._layout»), con su anillo.
+    const LY=cv._layout; if(!LY) return JSON.stringify({err:'el lienzo no dice su geometría (cv._layout)'});
+    const RX=LY.r+14;
     const d=g.getImageData(0,0,1080,900).data; let naranja=0, verdes=0, muestras=0;
     for(let i=0;i<d.length;i+=40){
       const px=(i/4)%1080, py=Math.floor((i/4)/1080);
-      if((px-540)*(px-540)+(py-330)*(py-330)<=112*112)continue;   // el retrato y su anillo, fuera
+      if((px-LY.cx)*(px-LY.cx)+(py-LY.cy)*(py-LY.cy)<=RX*RX)continue;   // el retrato y su anillo, fuera
       muestras++;
       const r=d[i],gg=d[i+1],b=d[i+2];
       if(r>120&&r>gg+50&&r>b+60)naranja++;

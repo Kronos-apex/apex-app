@@ -3023,6 +3023,9 @@ function wfShare(){
   const _endNat=764+_dy0+(cells.length?CH:0)+30+prs3.length*(PRH+PRGAP);
   const _sobra=Math.max(0,Math.round((1624-_endNat)/2));
   const CR_TOP=CR_TOP0+_sobra, CR_CY=CR_TOP+CR_R, _dy=_dy0+_sobra;
+  // v653 · la geometría que salió, pegada al lienzo: las sondas la LEEN en vez de copiarla. Con las
+  //    coordenadas escritas a mano, `_verify-v597` quedó midiendo el fondo desde v619 (4 FAIL).
+  try{ cv._layout={cx:540,cy:CR_CY,r:CR_R,nameY:492+_dy}; }catch(e){}
   // el retrato (o el trofeo de siempre si no hay foto de perfil), como en la pantalla
   if(_wfShareAvatar||d.fullName||d.name){
     _wfDrawCrest(x,540,CR_CY,CR_R,d.fullName||d.name,_wfShareAvatar,F);

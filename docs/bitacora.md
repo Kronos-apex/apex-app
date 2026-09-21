@@ -4,6 +4,19 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-21 — v653: la prueba del cierre de entreno mide donde la tarjeta dibuja
+
+- **Pedido del PO** (de la lista de pendientes). `_verify-v597` tenía **4 FAIL** (C1 nombre, C2 retrato, T1d nombre
+  sin foto, S6 duotono) que ya estaban en HEAD desde v619/v622. **La app estaba bien; la prueba medía en
+  coordenadas escritas a mano** (nombre en y≈492, retrato en 540,330 con radio 101) y v622 llevó el retrato a
+  580 px repartiendo el aire según el contenido: medía FONDO donde esperaba el nombre y el retrato, y en S6
+  contaba el propio retrato como «fondo sin tratar».
+- **Arreglo de raíz, no de números:** la tarjeta pega su geometría al lienzo (`cv._layout`: centro y radio del
+  retrato, línea del nombre) y la prueba la LEE; si falta, aborta en vez de medir cualquier cosa. Así no vuelve a
+  envejecer cuando cambie el diseño.
+- **QA.** `_verify-v597` **27/27** con sus controles discriminando (sin nombre la banda queda en 0; sin foto el
+  círculo trae iniciales). Sabotajes a mano sobre la tarjeta (sin nombre, sin retrato) → la prueba cae.
+
 ## ⏮️ 2026-09-21 — v652: la foto de perfil también es privada
 
 - **Pedido del PO.** Medido: 5 fotos de perfil con enlace público, 3 en base64 dentro de la ficha, 22 personas sin
