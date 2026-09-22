@@ -745,7 +745,10 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   if(line)x.fillText(line,540,y);
   x.fillStyle='#FFFFFF';x.font=_cf(58,'800');x.fillText(name||'',540,860);  // el nombre va pegado a su retrato
   const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
-  x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+' en AVI',540,1830);
+  // v659 · el pie lleva el enlace de la web (pedido del PO): quien vea esta imagen en una historia
+  //   tiene a dónde ir. Manda el sitio del coach si lo configuró; si no, la web de AVI.
+  const _site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+_site,540,1830);
   try{window._gxLastCanvas=cv;}catch(e){}
   return cv;
 }
@@ -3091,8 +3094,9 @@ function wfShare(){
   x.textAlign='center';
   x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');
   const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
-  const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
-  x.fillText('Entreno con '+(coach||'mi coach')+(site?('  ·  '+site):''),540,1830);
+  // v659 · sin sitio propio del coach cae a la web de AVI: antes esta imagen salía sin enlace.
+  const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+site,540,1830);
   x.textAlign='start';
   try{window._wfLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness v313)
   // 🔒 Cinturón sobre los tirantes: `toBlob` de un lienzo teñido lanza SÍNCRONO. La sonda de

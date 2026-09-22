@@ -11492,6 +11492,19 @@ function waPhoneNote(raw) {
   return 'No reconozco ese número. Si es de otro país, guárdalo con indicativo (+1, +34…).';
 }
 
+// ══════════ v659 · EL PIE DE LAS IMÁGENES QUE SE COMPARTEN ══════════
+// Pedido del PO: que la imagen del cierre del entreno y la de los logros lleven el enlace de la
+// WEB. Medido antes de tocar: el sitio del coach (`ax_site`) está VACÍO en producción, así que
+// esas tres tarjetas salían SIN ningún enlace — quien las veía en una historia no tenía a dónde ir.
+// Regla: manda el sitio propio del coach si lo configuró; si no, la web de AVI.
+// Va sin `https://` porque es un pie para LEER, no para tocar (el enlace tocable viaja aparte,
+// como texto del compartir).
+const AVI_WEB_HOST = 'avientrena.com';
+function shareSiteLabel(site) {
+  const s = String(site == null ? '' : site).trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  return s || AVI_WEB_HOST;
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -11499,6 +11512,8 @@ if (typeof module !== 'undefined' && module.exports) {
     applyMood,
     waPhone,
     waPhoneNote,
+    AVI_WEB_HOST,
+    shareSiteLabel,
     coachCanReach,
     coachPendingRenewals,
     coachInGrace,

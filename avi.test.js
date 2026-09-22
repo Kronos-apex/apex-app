@@ -21027,6 +21027,42 @@ test('🔒 v658 · el service worker REDIRIGE la navegación cuando la app mudó
 });
 
 // ══════════════════════════════════════════════════════
+// v659 · EL ENLACE DE LA WEB EN LO QUE SE COMPARTE
+// ══════════════════════════════════════════════════════
+test('🔒 v659 · el pie cae a la web de AVI cuando el coach no tiene sitio propio', () => {
+  const { shareSiteLabel, AVI_WEB_HOST } = require('./avi-core.js');
+  assert.strictEqual(AVI_WEB_HOST, 'avientrena.com');
+  // Medido el 22-sep: `ax_site` está VACÍO en producción → sin esto, las tres tarjetas salían SIN enlace.
+  ['', '   ', null, undefined].forEach(v => assert.strictEqual(shareSiteLabel(v), 'avientrena.com', 'sin sitio propio tiene que salir la web de AVI'));
+  // 🔒 CONTROL: el sitio del coach MANDA cuando existe (si no, esto sería borrarle su web).
+  assert.strictEqual(shareSiteLabel('https://gimnasiox.com/'), 'gimnasiox.com');
+  assert.strictEqual(shareSiteLabel('  entrenaconandres.co  '), 'entrenaconandres.co');
+});
+test('🔒 v659 · las TRES imágenes que se comparten llevan el enlace en el pie', () => {
+  const fs = require('fs'), path = require('path');
+  const rd = f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+  const a4 = rd('app-4-entreno.js'), a3 = rd('app-3-coach.js');
+  const pies = (a4.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []).concat(a3.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []);
+  assert.strictEqual(pies.length, 3, '🔴 cambió el número de pies: el cierre, el logro y el progreso del coach');
+  pies.forEach(p => assert.ok(!/site\?\(/.test(p), '🔴 volvió el pie condicional: sin sitio del coach, la imagen sale sin enlace'));
+  // 🔒 Contar los pies NO basta: un pie puede seguir ahí y haber perdido el enlace (dos sabotajes
+  //    salieron VERDES con este test antes de exigirlo). Cada uno lleva el separador y su variable.
+  pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,1830\);$/,
+    '🔴 un pie dejó de llevar el enlace: ' + p.slice(0, 90)));
+  assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 2, '🔴 una de las dos tarjetas del asesorado dejó de resolver el enlace');
+  assert.ok(/shareSiteLabel\(/.test(a3), '🔴 la tarjeta de progreso del coach dejó de resolver el enlace');
+});
+test('🔒 v659 · al compartir, el enlace viaja también como TEXTO (tocable)', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const f = a1.slice(a1.indexOf('async function shareCanvasImage('), a1.indexOf('\n}', a1.indexOf('async function shareCanvasImage(')));
+  assert.ok(/_aviWebUrl\(\)\)\|\|'https:\/\/avientrena\.com\/'/.test(f), '🔴 el texto dejó de llevar la dirección de la web');
+  assert.ok(/text:\(titulo\?titulo\+' · ':''\)\+'Entrena con AVI: '\+web/.test(f), '🔴 se fue el texto que acompaña a la imagen');
+  // 🔒 Un destino que no admite texto junto al archivo NO puede quedarse sin compartir la imagen.
+  assert.ok(/navigator\.canShare\(datos\)\?datos:\{files:\[file\],title:titulo\|\|'AVI'\}/.test(f),
+    '🔴 sin el respaldo, un destino que rechaza el texto se queda sin imagen');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

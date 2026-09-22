@@ -345,7 +345,13 @@ async function shareCanvasImage(cv,nombre,titulo,textoGuardada){
     if(!blob){ if(typeof toast==='function')toast('No se pudo crear la imagen'); return; }
     const file=new File([blob],base+'.png',{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      try{ await navigator.share({files:[file],title:titulo||'AVI'}); }
+      // v659 · El enlace de la web viaja COMO TEXTO además de dibujado en el pie de la imagen: así
+      //   queda TOCABLE en WhatsApp o Instagram, que es lo que convierte a quien la ve. Si el
+      //   destino no admite texto junto al archivo, `canShare` lo dice y se manda solo la imagen.
+      const web=(typeof _aviWebUrl==='function'&&_aviWebUrl())||'https://avientrena.com/';
+      const datos={files:[file],title:titulo||'AVI',text:(titulo?titulo+' · ':'')+'Entrena con AVI: '+web};
+      const pay=navigator.canShare(datos)?datos:{files:[file],title:titulo||'AVI'};
+      try{ await navigator.share(pay); }
       catch(e){
         const n=e&&e.name;
         if(n==='AbortError')return;                         // canceló el menú: silencio

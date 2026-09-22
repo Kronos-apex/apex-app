@@ -2252,8 +2252,9 @@ function shareClientProgress(){
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1760,900,4);
   x.fillStyle='rgba(234,251,244,.7)';x.font=_cf(34,'700');
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
-  const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
-  x.fillText('Entrena con '+(coach||'AVI')+(site?('  ·  '+site):''),90,1830);
+  // v659 · sin sitio propio del coach cae a la web de AVI (medido: `ax_site` está vacío).
+  const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillText('Entrena con '+(coach||'AVI')+'  ·  '+site,90,1830);
   try{window._storyLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness)
   // v654 · la puerta única (PNG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
   if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-progreso','Progreso en AVI','📥 Imagen guardada — súbela a tu historia');

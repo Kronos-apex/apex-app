@@ -4,6 +4,19 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v659: lo que se comparte lleva el enlace de la web
+
+- **Pedido del PO:** que la imagen del cierre del entreno y la de los logros lleven el enlace de la web.
+- 🔴 **Medido antes de tocar (`coach_settings`): el sitio del coach está VACÍO**, y el pie era condicional
+  (`site?('  ·  '+site):''`) → las TRES tarjetas compartibles salían **sin ningún enlace**: quien las veía en una
+  historia no tenía a dónde ir. `shareSiteLabel` (avi-core, pura) manda el sitio propio del coach si lo configuró
+  y cae a `avientrena.com` si no; quita el `https://` y la barra final porque el pie es para LEER.
+- **Y el enlace viaja también como TEXTO** en el compartir (`navigator.share` con `text`), que es lo que lo deja
+  TOCABLE en WhatsApp o Instagram. Si el destino no admite texto junto al archivo (`canShare` lo dice), se manda
+  solo la imagen: nadie se queda sin compartir.
+- **QA:** suite **1319** · `_sabotaje-v659` **7/7** (2 salieron VERDES: mi candado contaba los pies y no exigía
+  que CADA uno llevara el enlace) · imagen MIRADA en `_shot-wfshare` («Entreno con mi coach · avientrena.com»).
+
 ## ⏮️ 2026-09-22 — v658: el salto a app.avientrena.com (construido, todavía DORMIDO)
 
 - **Decisión del PO:** mudar la app entera ahora, con pocos asesorados, **llevando la sesión** («nadie vuelve a
