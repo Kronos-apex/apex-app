@@ -5,6 +5,92 @@ window.AVI_DEBUG = location.hostname === 'localhost' || location.hostname === '1
 const log  = (...a) => window.AVI_DEBUG && console.log(...a);
 const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 
+// ══════════ v658 · LA MUDANZA A app.avientrena.com ══════════
+// El PO compró avientrena.com (22-sep-2026) y decidió mudar la app ENTERA ahora, con pocos asesorados,
+// llevando la sesión (aprobado por él: «nadie vuelve a escribir su contraseña»).
+// El teléfono ata la app instalada, la sesión y las notificaciones al ORIGEN: cambiarlo es, para él,
+// otra app. Medido en local (`_exp-mudanza-congelada`): cuando el origen viejo pasa a redirigir, la app
+// ya instalada NO muestra error — se queda CONGELADA en su caché para siempre, sin avisar a nadie.
+// Por eso el salto lo da la PÁGINA, no el service worker, y solo cuando es seguro:
+//   · se arma únicamente si el hogar nuevo RESPONDE por https (`mudanza.json`): antes de la mudanza
+//     el dominio no existe y esto no hace nada; con el certificado aún sin emitir, tampoco;
+//   · espera a que la nube haya confirmado todo (flag «sucio», escrituras en vuelo o pendientes) y a
+//     que no haya un entreno vivo ni un modal abierto (`_aviUpdateBusy`, la misma noción de v325);
+//   · se LLEVA la sesión y los ajustes pequeños del teléfono por el `#` de la dirección (no viaja al
+//     servidor y la llegada lo borra de la barra en el acto).
+const AVI_HOME_ORIGIN='https://app.avientrena.com';
+const AVI_OLD_HOSTS=['kronos-apex.github.io'];
+// Qué se lleva: la sesión (`avi_auth`) y los ajustes locales pequeños. NO los respaldos grandes de
+// la fila (`ax_udcache_*`): la nube los tiene y el hogar nuevo los baja al entrar.
+function _mvPickStorage(ls){
+  const out={}; let total=0;
+  for(let i=0;i<ls.length;i++){
+    const k=ls.key(i); if(!k)continue;
+    if(!(k==='avi_auth'||/^ax_/.test(k)))continue;
+    if(/^ax_udcache_/.test(k))continue;
+    const v=ls.getItem(k); if(v==null)continue;
+    if(k!=='avi_auth'&&(v.length>4000||total+v.length>60000))continue;
+    out[k]=v; total+=v.length;
+  }
+  return out;
+}
+function _mvEncode(obj){ return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function _mvDecode(s){ s=String(s||'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+// ¿Quedó algo sin confirmar en la nube? Ante la duda, NO se muda (se vuelve a mirar luego).
+function _mvHasPending(){
+  try{
+    if(typeof _authDirty!=='undefined'&&_authDirty)return true;
+    if(typeof _udInflight!=='undefined'&&_udInflight>0)return true;
+    if(typeof _udPending!=='undefined'&&Object.keys(_udPending).length)return true;
+    if(typeof _udFailedKeys!=='undefined'&&Object.keys(_udFailedKeys).length)return true;
+    if(typeof _pendingPush!=='undefined'&&Object.keys(_pendingPush).length)return true;
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^ax_udirty_/.test(k||'')&&localStorage.getItem(k)==='1')return true; }
+  }catch(e){ return true; }
+  return false;
+}
+function _mvTarget(){
+  const sp=new URLSearchParams((location.search||'').replace(/^\?/,'')); sp.set('mudanza','1');
+  return AVI_HOME_ORIGIN+'/?'+sp.toString()+'#avimv='+_mvEncode(_mvPickStorage(localStorage));
+}
+let _mvArmed=false, _mvGone=false;
+function _mvTry(){
+  if(!_mvArmed||_mvGone)return false;
+  if(typeof window._aviUpdateBusy==='function'&&window._aviUpdateBusy())return false;
+  if(_mvHasPending())return false;
+  _mvGone=true;
+  try{ location.replace(_mvTarget()); }catch(e){ _mvGone=false; return false; }
+  return true;
+}
+(function _aviMudanza(){
+  if(typeof location==='undefined'||AVI_OLD_HOSTS.indexOf(location.host)<0)return;
+  if(typeof fetch!=='function')return;
+  fetch(AVI_HOME_ORIGIN+'/mudanza.json',{cache:'no-store'})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      if(!j||j.home!==AVI_HOME_ORIGIN)return;
+      _mvArmed=true;
+      if(!_mvTry()) setInterval(_mvTry,5000);
+    })
+    .catch(()=>{});   // el hogar nuevo aún no existe: seguir aquí, sin ruido
+})();
+// ── La LLEGADA: el hogar nuevo recibe lo que trajo la mudanza ANTES de crear el cliente de auth
+//    (que lee `avi_auth` al nacer). El `#` se borra de la barra en el acto: la sesión no debe
+//    quedar a la vista ni en el historial. Solo se escribe lo que este origen aún no tiene.
+(function _aviLlegada(){
+  try{
+    const m=/[#&]avimv=([^&]+)/.exec(location.hash||''); if(!m)return;
+    const sp=new URLSearchParams((location.search||'').replace(/^\?/,'')); sp.delete('mudanza');
+    const q=sp.toString();
+    history.replaceState(null,'',location.pathname+(q?'?'+q:''));
+    const data=_mvDecode(m[1]);
+    Object.keys(data||{}).forEach(k=>{
+      if(!(k==='avi_auth'||/^ax_/.test(k)))return;
+      if(localStorage.getItem(k)==null) localStorage.setItem(k,String(data[k]));
+    });
+    window._aviLlegoMudanza=true;
+  }catch(e){}
+})();
+
 // ── Navegación con botón ATRÁS (Android/TWA): stack lógico de pantallas ──
 // Cada navegación HACIA ADELANTE (cambiar de pestaña) registra en AVINAV.stack cómo
 // deshacerse. El handler (_aviHandleBack en app-2-login.js) por cada atrás del sistema:

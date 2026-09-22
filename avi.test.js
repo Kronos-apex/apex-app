@@ -20987,6 +20987,46 @@ test('🔒 v657 · las edge functions contestan a los DOS orígenes, por petici�
 });
 
 // ══════════════════════════════════════════════════════
+// v658 · LA MUDANZA A app.avientrena.com
+// ══════════════════════════════════════════════════════
+test('🔒 v658 · el salto solo se arma con el hogar nuevo RESPONDIENDO, y nunca con algo sin confirmar', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const cuerpo = (fn) => { const i = a1.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return a1.slice(i, a1.indexOf('\n}', i)); };
+  assert.ok(/const AVI_HOME_ORIGIN='https:\/\/app\.avientrena\.com';/.test(a1), '🔴 cambió el hogar nuevo');
+  const arma = cuerpo('function _aviMudanza(');
+  assert.ok(/fetch\(AVI_HOME_ORIGIN\+'\/mudanza\.json'/.test(arma) && /j\.home!==AVI_HOME_ORIGIN/.test(arma),
+    '🔴 el salto dejó de exigir que el hogar nuevo responda: se activaría antes de la mudanza');
+  assert.ok(/\.catch\(\(\)=>\{\}\)/.test(arma), '🔴 sin hogar nuevo tiene que seguir en silencio');
+  const tryFn = cuerpo('function _mvTry(');
+  assert.ok(/_aviUpdateBusy\(\)\)return false;/.test(tryFn), '🔴 saltaría con un entreno vivo o un modal abierto');
+  assert.ok(/_mvHasPending\(\)\)return false;/.test(tryFn), '🔴 saltaría con trabajo sin confirmar en la nube');
+  const pend = cuerpo('function _mvHasPending(');
+  ['_authDirty', '_udInflight', '_udPending', '_udFailedKeys', '_pendingPush', 'ax_udirty_'].forEach(k =>
+    assert.ok(pend.includes(k), `🔴 dejó de mirar ${k} antes de mudarse`));
+  assert.ok(/catch\(e\)\{ return true; \}/.test(pend), '🔴 ante la duda tiene que NO mudarse');
+});
+test('🔒 v658 · lo que viaja es la sesión y los ajustes chicos, jamás los respaldos grandes', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const pick = a1.slice(a1.indexOf('function _mvPickStorage('), a1.indexOf('\n}', a1.indexOf('function _mvPickStorage(')));
+  assert.ok(/k==='avi_auth'\|\|\/\^ax_\/\.test\(k\)/.test(pick), '🔴 cambió qué claves viajan');
+  assert.ok(/\/\^ax_udcache_\/\.test\(k\)\)continue;/.test(pick), '🔴 volvería a viajar el respaldo grande de la fila');
+  assert.ok(/v\.length>4000\|\|total\+v\.length>60000/.test(pick), '🔴 se fue el tope de tamaño');
+  const lleg = a1.slice(a1.indexOf('function _aviLlegada('), a1.indexOf('\n}', a1.indexOf('function _aviLlegada(')));
+  assert.ok(lleg.indexOf('history.replaceState') < lleg.indexOf('_mvDecode'),
+    '🔴 la sesión se quedaría a la vista en la barra: el # se borra ANTES de nada');
+  assert.ok(/sp\.delete\('mudanza'\)/.test(lleg), '🔴 la marca ?mudanza se queda en la barra');
+  assert.ok(/localStorage\.getItem\(k\)==null/.test(lleg), '🔴 la llegada pisaría lo que el hogar nuevo ya tiene');
+});
+test('🔒 v658 · el service worker REDIRIGE la navegación cuando la app mudó de origen', () => {
+  const sw = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'sw.js'), 'utf8'));
+  assert.ok(/if \(net\.redirected && new URL\(net\.url\)\.origin !== self\.location\.origin\) return Response\.redirect\(net\.url, 302\);/.test(sw),
+    '🔴 sin esto, el teléfono ya instalado muestra PANTALLA DE ERROR el día de la mudanza (medido)');
+  const nav = sw.slice(sw.indexOf("e.request.mode === 'navigate'"), sw.indexOf("e.request.mode === 'navigate'") + 1200);
+  assert.ok(nav.indexOf('Response.redirect') < nav.indexOf('_guardar(e.request, net)'),
+    '🔴 la respuesta de otro origen no se guarda en la caché de este');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

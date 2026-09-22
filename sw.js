@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v657';
+const CACHE_NAME = 'avi-v658';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -96,6 +96,11 @@ self.addEventListener('fetch', e => {
           fetch(e.request.url, {cache:'no-cache'}),
           new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
         ]);
+        // v658 · Si el servidor MUDÓ la app a otro origen (la mudanza a app.avientrena.com: Pages
+        // redirige el origen viejo), se REDIRIGE la navegación. Devolver la respuesta ya seguida
+        // es inválido para una navegación: medido, el teléfono mostraba una PANTALLA DE ERROR
+        // (`_verify-mudanza-instalada`). Tampoco se guarda en caché: es de otro origen.
+        if (net.redirected && new URL(net.url).origin !== self.location.origin) return Response.redirect(net.url, 302);
         _guardar(e.request, net);
         return net;
       } catch (_e) {

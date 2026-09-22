@@ -60,6 +60,10 @@ function initPWA(){
       .then(reg=>{
         log('AVI SW ✅');
         window._swReg=reg;
+        // v658 · Llegó por la mudanza (app-1 `_aviLlegada`): se le dice por qué cambió la dirección
+        // y qué hacer. La sesión ya viajó, así que no se le pide la contraseña.
+        if(window._aviLlegoMudanza&&typeof toast==='function')
+          setTimeout(()=>toast('🏠 AVI estrenó dirección: app.avientrena.com. Instálala de nuevo para tenerla en tu pantalla.',8000),2500);
         // ── AUTO-ACTUALIZACIÓN SEGURA (v325) ─────────────────────────────────
         // La PÁGINA decide CUÁNDO aplicar una versión nueva, nunca el SW a la fuerza
         // (v324 recargaba TODAS las pestañas al activar → podía cortar un entreno). Reglas:
