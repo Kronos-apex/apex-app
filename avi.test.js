@@ -16876,8 +16876,12 @@ test('🔒 v597: una foto NO puede llevarse el compartir entero (lienzo teñido)
   });
   // Cinturón sobre los tirantes: si alguna vez entra una imagen por otra puerta, la persona ve
   // un aviso y no una excepción que se lleve la pantalla de cierre (blindaje de v579).
+  // 🔁 v654: el `toBlob` se mudó a `shareCanvasImage` (app-1), la puerta única de las tres tarjetas.
+  //    El blindaje se muda con él: dentro de la promesa, un lanzamiento síncrono es un «no se pudo».
   const share = _v597('wfShare');
-  assert.ok(/try\{\s*cv\.toBlob/.test(share) && /catch\(e\)\{ toast\('No se pudo crear la imagen'\); \}/.test(share),
+  assert.ok(/shareCanvasImage\(cv,/.test(share) && !/cv\.toBlob/.test(share), '🔴 el cierre volvió a compartir por su cuenta');
+  const sci = infra.slice(infra.indexOf('async function shareCanvasImage('), infra.indexOf('\n}', infra.indexOf('async function shareCanvasImage(')));
+  assert.ok(/try\{ cv\.toBlob\(ok,'image\/jpeg',0\.9\); \}catch\(e\)\{ ok\(null\); \}/.test(sci) && /No se pudo crear la imagen/.test(sci),
     '🔴 `toBlob` volvió a correr a pelo: un lienzo teñido se llevaría el cierre con una excepción');
 });
 
@@ -20925,6 +20929,28 @@ test('🔒 v652 · el bucket viejo `apex-photos` quedó PRIVADO (cinturón: ya n
   const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20260921_apex_photos_private.sql'), 'utf8')
     .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
   assert.ok(/update storage\.buckets set public = false where id = 'apex-photos';/.test(sql), '🔴 apex-photos volvería a servir enlaces públicos');
+});
+
+// ══════════════════════════════════════════════════════
+// v654 · COMPARTIR UNA IMAGEN: UNA SOLA PUERTA
+// ══════════════════════════════════════════════════════
+test('🔒 CABLEADO v654 · las tres tarjetas comparten por la puerta única, en JPEG y sin doble toque', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = sinComentarios(_srcApp1());
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  const sci = cuerpo(a1, 'async function shareCanvasImage(');
+  assert.ok(/if\(_shareBusy\)return;/.test(sci) && /_shareBusy=true;/.test(sci) && /finally\{ _shareBusy=false; \}/.test(sci), '🔴 un segundo toque vuelve a chocar con el primero (o el candado no se suelta nunca)');
+  assert.ok(sci.indexOf("toast('Preparando tu imagen…')") < sci.indexOf('cv.toBlob('), '🔴 sin aviso inmediato: la persona no sabe que su toque entró');
+  assert.ok(/'image\/jpeg',0\.9/.test(sci) && /type:'image\/jpeg'/.test(sci) && !/image\/png/.test(sci), '🔴 la imagen volvió a PNG (~10 veces más pesada)');
+  assert.ok(/n==='NotAllowedError'/.test(sci) && /Toca «Compartir» otra vez/.test(sci), '🔴 si Android pierde el permiso, la app vuelve a guardar en silencio');
+  // Ninguna otra parte arma su propio `navigator.share` con archivos: la puerta es una.
+  ['app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'].forEach(f => {
+    const t = sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    assert.ok(!/navigator\.share\(\{files:/.test(t), `🔴 ${f} comparte una imagen por su cuenta`);
+  });
+  assert.ok(/shareCanvasImage\(cv,'avi-progreso'/.test(sinComentarios(_srcApp3())), 'la tarjeta de progreso del coach no usa la puerta única');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/shareCanvasImage\(cv,'avi-entreno'/.test(a4) && /shareCanvasImage\(cv,file,'Mi logro en AVI'\)/.test(a4), 'el cierre o los logros no usan la puerta única');
 });
 
 // ══════════════════════════════════════════════════════

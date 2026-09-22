@@ -750,18 +750,9 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   return cv;
 }
 function _gxShareCanvas(cv,file){
-  try{
-  cv.toBlob(async blob=>{
-    if(!blob){toast('No se pudo crear la imagen');return;}
-    const f=new File([blob],file,{type:'image/png'});
-    try{
-      if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:'Mi logro en AVI'}); return; }
-    }catch(e){ if(e&&e.name==='AbortError')return; }
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file;
-    document.body.appendChild(a);a.click();a.remove();
-    toast('📥 Imagen guardada — súbela a tu estado');
-  },'image/png');
-  }catch(e){ toast('No se pudo crear la imagen'); }
+  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  if(typeof shareCanvasImage==='function')shareCanvasImage(cv,file,'Mi logro en AVI');
+  else toast('No se pudo crear la imagen');
 }
 function _gxFirstName(c){ return String((c&&c.name)||'').trim().split(/\s+/)[0]||''; }
 function gxShareLogro(id){
@@ -3108,22 +3099,9 @@ function wfShare(){
   // `_wfPrepShareAvatar` ya impide que una foto teñida llegue aquí, pero si alguna vez entra una
   // imagen por otra puerta, el asesorado tiene que ver un aviso — no una excepción que se lleve
   // el cierre entero (misma razón que el blindaje de los récords en v579).
-  try{
-  cv.toBlob(async blob=>{
-    if(!blob){toast('No se pudo crear la imagen');return;}
-    const file=new File([blob],'avi-entreno.png',{type:'image/png'});
-    try{
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:'Mi entreno en AVI'});
-        return;
-      }
-    }catch(e){ if(e&&e.name==='AbortError')return; } // canceló el share: silencio
-    // Respaldo (desktop/navegadores sin share de archivos): descarga directa
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='avi-entreno.png';
-    document.body.appendChild(a);a.click();a.remove();
-    toast('📥 Imagen guardada — súbela a tu estado');
-  },'image/png');
-  }catch(e){ toast('No se pudo crear la imagen'); }
+  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-entreno','Mi entreno en AVI');
+  else toast('No se pudo crear la imagen');
 }
 function closeWorkoutFinish(){
   document.getElementById('workout-finish').classList.remove('on');

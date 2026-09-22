@@ -4,6 +4,19 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v654: «Compartir» responde al primer toque
+
+- **Reporte del PO (21-sep):** al terminar el entreno tuvo que tocar «Compartir» varias veces antes de que saliera el menú.
+- **Medido:** la imagen se prepara en 0,2-0,6 s (el permiso de Android no se vencía), pero salía como **PNG de ~915 KB**
+  (el mismo dibujo en JPEG: **96 KB**) y **sin ninguna señal** de que el toque entró. La persona volvía a tocar, el
+  segundo `navigator.share` chocaba con el primero y la app caía en silencio a «guardar imagen».
+- **Arreglo:** `shareCanvasImage` (app-1), puerta ÚNICA para las tres tarjetas (cierre, logro, progreso del coach):
+  aviso «Preparando tu imagen…» en el mismo toque, JPEG 0,9, candado contra el doble toque, y si Android pierde el
+  permiso (`NotAllowedError`) pide «Toca «Compartir» otra vez» en vez de descargar. El blindaje de v597 (lienzo
+  teñido) se mudó con el `toBlob`.
+- **QA:** suite 1311 (candado v597 re-encuadrado + CABLEADO v654: ningún otro archivo arma su propio `share` con
+  archivos) · `_verify-compartir-toque` 5/5 · sabotaje (sin candado + PNG) → K1, K3, K4 en rojo (4 menús, 915 KB).
+
 ## ⏮️ 2026-09-21 — v653: la prueba del cierre de entreno mide donde la tarjeta dibuja
 
 - **Pedido del PO** (de la lista de pendientes). `_verify-v597` tenía **4 FAIL** (C1 nombre, C2 retrato, T1d nombre

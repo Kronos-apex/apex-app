@@ -2255,19 +2255,9 @@ function shareClientProgress(){
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entrena con '+(coach||'AVI')+(site?('  ·  '+site):''),90,1830);
   try{window._storyLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness)
-  cv.toBlob(async blob=>{
-    if(!blob){toast('No se pudo crear la imagen');return;}
-    const file=new File([blob],'avi-progreso.png',{type:'image/png'});
-    try{
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:'Progreso en AVI'});
-        return;
-      }
-    }catch(e){ if(e&&e.name==='AbortError')return; }
-    const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='avi-progreso.png';
-    document.body.appendChild(a2);a2.click();a2.remove();
-    toast('📥 Imagen guardada — súbela a tu historia');
-  },'image/png');
+  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-progreso','Progreso en AVI','📥 Imagen guardada — súbela a tu historia');
+  else toast('No se pudo crear la imagen');
 }
 
 // ── PUBLICAR ESA TARJETA EN LA PÁGINA DE LLEGADA (v523) ──────────────────────────────
