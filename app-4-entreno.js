@@ -1663,7 +1663,7 @@ const AVI_SHARE_URL='https://kronos-apex.github.io/apex-app/';
 // ⚠️ La misma dirección está escrita en el `<a class="cin-web">` de index.html —tiene que ser
 // estática para sobrevivir a un módulo que no cargue— y un test de la suite las COMPARA.
 // El día que haya dominio propio (`SEO-LANZAMIENTO.md` del proyecto web), se cambia en los dos.
-const AVI_WEB_URL='https://avi-web-chi.vercel.app/';
+const AVI_WEB_URL='https://avientrena.com/';
 const AVI_SHARE_MSG='Entreno con AVI 💪 una app para llevar mis rutinas y ver mi progreso. Míralo aquí:';
 function renderShareBanner(client){
   const el=document.getElementById('cn-share'); if(!el)return;

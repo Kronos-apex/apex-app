@@ -1984,7 +1984,7 @@ function renderDeloadAlerts(){
 // problema, es el acceso a una superficie que él usa para vender. Un acceso que solo aparece
 // «cuando pasa algo» no es un acceso.
 function _aviUrl(){ return (typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://kronos-apex.github.io/apex-app/'; }
-function _aviWebUrl(){ return (typeof AVI_WEB_URL!=='undefined')?AVI_WEB_URL:'https://avi-web-chi.vercel.app/'; }
+function _aviWebUrl(){ return (typeof AVI_WEB_URL!=='undefined')?AVI_WEB_URL:'https://avientrena.com/'; }
 function renderPageCard(){
   const el=document.getElementById('h-page'); if(!el)return;
   const url=_aviUrl();

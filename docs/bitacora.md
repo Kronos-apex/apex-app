@@ -4,6 +4,18 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v656: la web de venta estrena dominio propio, avientrena.com
+
+- **El PO compró `avientrena.com` en Vercel** (USD 11,25/año, renovación automática, vence 22-sep-2027). Pidió un enlace
+  «más bonito y personalizado» para compartir. `avi.com` estaba tomado; `avi.vercel.app` y `avi-app.vercel.app` NO eran
+  suyos (verificado: un sitio personal y una agencia de viajes).
+- **avi-web:** `site.url` → `https://avientrena.com`; `www.` y la vieja `avi-web-chi.vercel.app` redirigen (308,
+  conservan la ruta). Canónico, `og:url`, sitemap y la imagen de vista previa verificados en el dominio real.
+- **apex-app:** `AVI_WEB_URL`, el respaldo de `_aviWebUrl` y el enlace estático de la bienvenida apuntan al dominio nuevo;
+  el candado v543 ahora exige esa dirección y que no quede ninguna vieja.
+- ⏭️ **La APP sigue en `kronos-apex.github.io/apex-app`**: mudarla cambia el origen (reinstalar, sesión, push). Decisión
+  del PO pendiente entre mudarla a `app.avientrena.com` o dejar ese nombre como enlace que lleva a la actual.
+
 ## ⏮️ 2026-09-22 — v655: la imagen compartida vuelve a PNG (definición máxima)
 
 - **Decisión del PO:** *«La idea es que la imagen salga con muy buena resolución, no quiero una imagen con mala

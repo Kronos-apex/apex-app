@@ -6079,6 +6079,10 @@ test('🔒 v543 · la app enlaza a la WEB, y la dirección es UNA sola en los do
   // test dice el segundo sitio que hay que tocar (patrón del espejo del .sql y de la edge).
   assert.strictEqual(a[1], c[1],
     'la dirección del enlace de la bienvenida se separó de AVI_WEB_URL');
+  // 🔒 v656 · el dominio propio (22-sep-2026). La vieja `avi-web-chi.vercel.app` redirige, pero
+  //    la app enlaza directo: sin salto intermedio y con la dirección que el PO ve y comparte.
+  assert.strictEqual(c[1], 'https://avientrena.com/', 'la app volvió a enlazar la dirección vieja de la web');
+  assert.ok(!/avi-web-chi\.vercel\.app/.test(html + ent + login), 'queda un enlace a la dirección vieja de la web');
   // 🔒 Y NO puede ser la misma que la app: son dos cosas distintas y confundirlas manda a la
   // gente a la puerta equivocada — el enlace de la bienvenida apuntaría a la propia bienvenida.
   const app = ent.match(/const AVI_SHARE_URL='([^']+)'/);
@@ -13730,7 +13734,7 @@ test('⏮️ v578 · la vitrina YA NO vive en la app: vive en la web', () => {
     'volvieron los estilos de la tira de tarjetas');
   // 🔒 CONTROL: lo que se quitó es la VITRINA, no el enlace a la web ni el apartado del
   //    formulario (v571). Sin esto, «borrarlo todo» pasaría las tres aserciones de arriba.
-  assert.ok(/AVI_WEB_URL|avi-web-chi\.vercel\.app/.test(html),
+  assert.ok(/AVI_WEB_URL|avientrena\.com/.test(html),
     'la bienvenida se quedó sin el enlace a la web, que es donde viven ahora las tarjetas');
   assert.ok(/\.cin-hide-onform\{display:none!important\}/.test(css) &&
     /cinFormMode/.test(app2), 'se llevó por delante el apartado de la bienvenida (v571)');

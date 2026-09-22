@@ -6,7 +6,7 @@ Plataforma de entrenamiento personal en formato **PWA instalable**, para un entr
 asesorados. El coach arma rutinas, planes de nutrición y seguimiento; cada asesorado entrena desde
 su celular, **con o sin conexión**, y su progreso se sincroniza cuando vuelve la red.
 
-**En producción:** <https://kronos-apex.github.io/apex-app/> · Sitio de venta: <https://avi-web-chi.vercel.app>
+**En producción:** <https://kronos-apex.github.io/apex-app/> · Sitio de venta: <https://avientrena.com>
 
 > *English summary at the bottom.*
 

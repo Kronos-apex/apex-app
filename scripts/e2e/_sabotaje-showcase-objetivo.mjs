@@ -78,7 +78,7 @@ const SABOTAJES = [
     de: '.cin-hide-onform{display:none!important}',
     a:  '.cin-hide-onform{display:none!important}\n.sc-card{flex:0 0 82%}' },
   { n: 11, f: HTML, why: 'CONTROL del candado: se lleva por delante el enlace a la web, que es adonde se fueron las tarjetas',
-    de: '<a class="cin-web" href="https://avi-web-chi.vercel.app/"',
+    de: '<a class="cin-web" href="https://avientrena.com/"',
     a:  '<a class="cin-webXX" href="https://ejemplo-invalido.test/"' },
   // ⚠️ El ancla va con `s.coach_id`: `count(*)` a secas aparece DOS veces en el .sql (la otra
   //    valida las claves del jsonb) y el runner lo canta como «NO SE APLICÓ» — gotcha vigente.

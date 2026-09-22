@@ -72,7 +72,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=655">
+<link rel="stylesheet" href="styles.css?v=656">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -194,7 +194,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
            ⚠️ La dirección está ESCRITA aquí y en `AVI_WEB_URL` (app-4): un test de la suite las
            compara, porque dos direcciones a mano acaban separándose. Va estática y no pintada por
            JS para que siga estando si un módulo no carga (la app ya reventó 3 veces así). -->
-      <a class="cin-web" href="https://avi-web-chi.vercel.app/" target="_blank" rel="noopener">¿Primera vez aquí? Conoce AVI, los planes y los precios →</a>
+      <a class="cin-web" href="https://avientrena.com/" target="_blank" rel="noopener">¿Primera vez aquí? Conoce AVI, los planes y los precios →</a>
     </div>
 
     <!-- v578 · LA VITRINA YA NO VIVE AQUÍ. Decisión del PO (6-sep): *«quita esas tarjetas de la
@@ -1396,19 +1396,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=655"></script>
-<script src="muscle-map.js?v=655"></script>
-<script src="exercise-muscles.js?v=655"></script>
+<script src="avi-core.js?v=656"></script>
+<script src="muscle-map.js?v=656"></script>
+<script src="exercise-muscles.js?v=656"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=655"></script>
-<script src="app-2-login.js?v=655"></script>
-<script src="app-3-coach.js?v=655"></script>
-<script src="app-4-entreno.js?v=655"></script>
-<script src="app-5-salud.js?v=655"></script>
-<script src="app-6-extra.js?v=655"></script>
-<script src="app-7-community.js?v=655"></script>
+<script src="app-1-infra.js?v=656"></script>
+<script src="app-2-login.js?v=656"></script>
+<script src="app-3-coach.js?v=656"></script>
+<script src="app-4-entreno.js?v=656"></script>
+<script src="app-5-salud.js?v=656"></script>
+<script src="app-6-extra.js?v=656"></script>
+<script src="app-7-community.js?v=656"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
